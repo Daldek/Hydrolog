@@ -91,11 +91,10 @@ class ConcentrationTime:
         cn: int,
     ) -> float:
         """
-        Calculate time of concentration using SCS Lag equation.
+        Calculate time of concentration using SCS Lag equation (metric).
 
         The SCS Lag equation estimates watershed lag time, which is then
-        converted to time of concentration using the relationship tc = L / 0.6,
-        where L is the lag time.
+        converted to time of concentration using the relationship tc = Lag / 0.6.
 
         Parameters
         ----------
@@ -119,14 +118,17 @@ class ConcentrationTime:
 
         Notes
         -----
-        Formula:
-        Lag [h] = (L^0.8 * (S + 1)^0.7) / (1900 * Y^0.5)
+        Formula (metric units):
+        Lag [h] = (L^0.8 * (S + 25.4)^0.7) / (7182 * Y^0.5)
         tc = Lag / 0.6
 
         Where:
-        - L: hydraulic length [ft] (converted from meters)
-        - S: maximum retention = (1000/CN) - 10 [in]
+        - L: hydraulic length [m]
+        - S: maximum retention = (25400/CN) - 254 [mm]
         - Y: average watershed slope [%]
+
+        The constant 7182 is derived from the original imperial formula
+        (with constant 1900) by converting feet to meters and inches to mm.
 
         References
         ----------
@@ -136,7 +138,7 @@ class ConcentrationTime:
         Examples
         --------
         >>> ConcentrationTime.scs_lag(length_m=8200, slope_percent=2.3, cn=72)
-        75.2...
+        97.5...
         """
         if length_m <= 0:
             raise InvalidParameterError(f"length_m must be positive, got {length_m}")
@@ -147,20 +149,18 @@ class ConcentrationTime:
         if not 1 <= cn <= 100:
             raise InvalidParameterError(f"cn must be in range 1-100, got {cn}")
 
-        # Convert meters to feet (1 m = 3.28084 ft)
-        length_ft = length_m * 3.28084
-
-        # Calculate maximum retention S [inches]
-        # For CN=100, S=0 (no retention)
+        # Calculate maximum retention S [mm]
+        # S = (25400/CN) - 254 (metric version of (1000/CN) - 10 in inches)
         if cn == 100:
-            retention_in = 0.0
+            retention_mm = 0.0
         else:
-            retention_in = (1000.0 / cn) - 10.0
+            retention_mm = (25400.0 / cn) - 254.0
 
-        # SCS Lag equation: Lag [hours]
-        # Lag = (L^0.8 * (S + 1)^0.7) / (1900 * Y^0.5)
-        lag_hours = ((length_ft**0.8) * ((retention_in + 1) ** 0.7)) / (
-            1900.0 * (slope_percent**0.5)
+        # SCS Lag equation (metric): Lag [hours]
+        # Lag = (L^0.8 * (S + 25.4)^0.7) / (7182 * Y^0.5)
+        # Constant 7182 = 1900 * 25.4^0.7 / 3.28084^0.8
+        lag_hours = ((length_m**0.8) * ((retention_mm + 25.4) ** 0.7)) / (
+            7182.0 * (slope_percent**0.5)
         )
 
         # Convert lag to tc: tc = Lag / 0.6
@@ -249,7 +249,7 @@ class ConcentrationTime:
         cn: int,
     ) -> float:
         """
-        Calculate time of concentration using NRCS (NEH-4) method.
+        Calculate time of concentration using NRCS (NEH-4) method (metric).
 
         The NRCS method from National Engineering Handbook Part 630,
         Chapter 15 estimates time of concentration based on watershed
@@ -277,14 +277,17 @@ class ConcentrationTime:
 
         Notes
         -----
-        Formula:
-        Lag [h] = (L^0.8 * ((1000/CN) - 9)^0.7) / (1140 * Y^0.5)
+        Formula (metric units):
+        Lag [h] = (L^0.8 * (S + 25.4)^0.7) / (4309 * Y^0.5)
         tc = 5/3 * Lag
 
         Where:
-        - L: hydraulic length [ft] (converted from meters)
-        - CN: Curve Number
+        - L: hydraulic length [m]
+        - S: maximum retention = (25400/CN) - 254 [mm]
         - Y: average watershed slope [%]
+
+        The constant 4309 is derived from the original imperial formula
+        (with constant 1140) by converting feet to meters and inches to mm.
 
         The relationship tc = 5/3 * Lag comes from the assumption that
         Lag = 0.6 * tc for the SCS dimensionless unit hydrograph.
@@ -297,7 +300,7 @@ class ConcentrationTime:
         Examples
         --------
         >>> ConcentrationTime.nrcs(length_m=8200, slope_percent=2.3, cn=72)
-        195.6...
+        162.5...
         """
         if length_m <= 0:
             raise InvalidParameterError(f"length_m must be positive, got {length_m}")
@@ -308,22 +311,18 @@ class ConcentrationTime:
         if not 1 <= cn <= 100:
             raise InvalidParameterError(f"cn must be in range 1-100, got {cn}")
 
-        # Convert meters to feet (1 m = 3.28084 ft)
-        length_ft = length_m * 3.28084
-
-        # Calculate retention term: (1000/CN) - 9
-        # For CN=100, this becomes -9, but we'll handle it
+        # Calculate maximum retention S [mm]
+        # S = (25400/CN) - 254 (metric version of (1000/CN) - 10 in inches)
         if cn == 100:
-            retention_term = 1.0  # Minimum value to avoid negative
+            retention_mm = 0.0
         else:
-            retention_term = (1000.0 / cn) - 9.0
-            if retention_term < 1.0:
-                retention_term = 1.0
+            retention_mm = (25400.0 / cn) - 254.0
 
-        # NRCS Lag equation: Lag [hours]
-        # Lag = (L^0.8 * ((1000/CN) - 9)^0.7) / (1140 * Y^0.5)
-        lag_hours = ((length_ft**0.8) * (retention_term**0.7)) / (
-            1140.0 * (slope_percent**0.5)
+        # NRCS Lag equation (metric): Lag [hours]
+        # Lag = (L^0.8 * (S + 25.4)^0.7) / (4309 * Y^0.5)
+        # Constant 4309 = 1140 * 25.4^0.7 / 3.28084^0.8
+        lag_hours = ((length_m**0.8) * ((retention_mm + 25.4) ** 0.7)) / (
+            4309.0 * (slope_percent**0.5)
         )
 
         # Convert lag to tc: tc = Lag * (5/3) = Lag / 0.6
