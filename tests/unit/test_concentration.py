@@ -89,8 +89,8 @@ class TestSCSLag:
             length_m=length_m, slope_percent=slope_percent, cn=cn
         )
 
-        # Assert - SCS Lag gives ~369 min for these parameters
-        assert 350.0 < tc < 400.0
+        # Assert - SCS Lag (metric) gives ~363 min for these parameters
+        assert 350.0 < tc < 380.0
 
     def test_scs_lag_higher_cn_gives_shorter_tc(self):
         """Test that higher CN (less retention) gives shorter tc."""
@@ -165,8 +165,8 @@ class TestNRCS:
             length_m=length_m, slope_percent=slope_percent, cn=cn
         )
 
-        # Assert - NRCS gives ~614 min for these parameters
-        assert 580.0 < tc < 650.0
+        # Assert - NRCS (metric) gives ~605 min for these parameters
+        assert 580.0 < tc < 630.0
 
     def test_nrcs_higher_cn_gives_shorter_tc(self):
         """Test that higher CN (less retention) gives shorter tc."""
