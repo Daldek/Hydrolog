@@ -7,8 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Planned for v0.2.0
-- `hydrolog.morphometry` module - morphometric parameters
+### Planned for v0.3.0
+- `hydrolog.network` module - river network classification
+- `hydrolog.precipitation.interpolation` - spatial interpolation
+
+---
+
+## [0.2.0] - 2026-01-18
+
+### Added
+
+#### `hydrolog.morphometry` - Morphometric Parameters
+
+**Geometric parameters (geometric.py):**
+- `WatershedGeometry` - main class for geometric analysis
+- `GeometricParameters` - dataclass with area, perimeter, length, width
+- `ShapeIndicators` - dataclass with shape coefficients:
+  - Form factor (Horton)
+  - Compactness coefficient (Gravelius)
+  - Circularity ratio (Miller)
+  - Elongation ratio (Schumm)
+  - Lemniscate ratio (Chorley)
+
+**Terrain analysis (terrain.py):**
+- `TerrainAnalysis` - elevation and slope analysis
+- `ElevationParameters` - min, max, mean elevation, relief
+- `SlopeParameters` - watershed and channel slopes
+- `mean_elevation_from_dem()` - DEM-based calculation
+
+**Hypsometric curve (hypsometry.py):**
+- `HypsometricCurve` - hypsometric analysis from DEM
+- `HypsometricResult` - curve data and statistics
+- Hypsometric integral calculation
+- Elevation percentiles
+
+#### Testing & Quality
+- 47 new tests for morphometry (150 total)
+- 95% code coverage
 
 ---
 
