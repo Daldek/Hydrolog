@@ -64,11 +64,11 @@ class ConcentrationTime:
     --------
     >>> tc = ConcentrationTime.kirpich(length_km=8.2, slope_m_per_m=0.023)
     >>> print(f"{tc:.1f} min")
-    52.3 min
+    85.9 min
 
     >>> tc = ConcentrationTime.scs_lag(length_km=8.2, slope_m_per_m=0.023, cn=72)
     >>> print(f"{tc:.1f} min")
-    97.5 min
+    368.7 min
     """
 
     @staticmethod
@@ -125,7 +125,7 @@ class ConcentrationTime:
         Examples
         --------
         >>> ConcentrationTime.kirpich(length_km=8.2, slope_m_per_m=0.023)
-        52.3...
+        85.9...
         """
         if length_km <= 0:
             raise InvalidParameterError(f"length_km must be positive, got {length_km}")
@@ -210,7 +210,7 @@ class ConcentrationTime:
         Examples
         --------
         >>> ConcentrationTime.scs_lag(length_km=8.2, slope_m_per_m=0.023, cn=72)
-        97.5...
+        368.7...
         """
         if length_km <= 0:
             raise InvalidParameterError(
@@ -244,10 +244,10 @@ class ConcentrationTime:
             retention_mm = (25400.0 / cn) - 254.0
 
         # SCS Lag equation (metric): Lag [hours]
-        # Lag = (L^0.8 * (S + 25.4)^0.7) / (7182 * Y^0.5)
-        # Constant 7182 = 1900 * 25.4^0.7 / 3.28084^0.8
+        # Lag = (L^0.8 * (S + 25.4)^0.7) / (7069 * Y^0.5)
+        # Constant 7069 = 1900 * 25.4^0.7 / 3.28084^0.8
         lag_hours = ((length_m**0.8) * ((retention_mm + 25.4) ** 0.7)) / (
-            7182.0 * (slope_percent**0.5)
+            7069.0 * (slope_percent**0.5)
         )
 
         # Convert lag to tc: tc = Lag / 0.6
@@ -314,7 +314,7 @@ class ConcentrationTime:
         Examples
         --------
         >>> ConcentrationTime.giandotti(area_km2=45.0, length_km=12.0, elevation_diff_m=350.0)
-        94.8...
+        179.7...
         """
         if area_km2 <= 0:
             raise InvalidParameterError(f"area_km2 must be positive, got {area_km2}")
