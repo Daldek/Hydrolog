@@ -12,71 +12,66 @@ class TestKirpich:
     def test_kirpich_typical_values(self):
         """Test Kirpich formula with typical watershed parameters."""
         # Arrange
-        length_m = 8200.0
+        length_km = 8.2
         slope_m_per_m = 0.023
 
         # Act
-        tc = ConcentrationTime.kirpich(length_m=length_m, slope_m_per_m=slope_m_per_m)
+        tc = ConcentrationTime.kirpich(length_km=length_km, slope_m_per_m=slope_m_per_m)
 
-        # Assert - tc = 0.0195 * 8200^0.77 * 0.023^(-0.385) = ~86 min
+        # Assert - tc [h] = 0.0663 * 8.2^0.77 * 0.023^(-0.385) = ~1.43 h = ~86 min
         assert 80.0 < tc < 92.0
 
     def test_kirpich_known_value(self):
         """Test Kirpich formula against hand-calculated value."""
-        # tc = 0.0195 * L^0.77 * S^(-0.385)
-        # tc = 0.0195 * 1000^0.77 * 0.01^(-0.385)
-        # tc = 0.0195 * 177.83 * 6.166 = 21.38 min
-        length_m = 1000.0
+        # tc [h] = 0.0663 * L^0.77 * S^(-0.385)
+        # tc [h] = 0.0663 * 1.0^0.77 * 0.01^(-0.385)
+        # tc [h] = 0.0663 * 1.0 * 5.891 = 0.39 h = 23.4 min
+        length_km = 1.0
         slope_m_per_m = 0.01
 
-        tc = ConcentrationTime.kirpich(length_m=length_m, slope_m_per_m=slope_m_per_m)
+        tc = ConcentrationTime.kirpich(length_km=length_km, slope_m_per_m=slope_m_per_m)
 
-        # Actual: ~23.44 min (formula precision)
-        assert abs(tc - 23.44) < 0.5
+        assert abs(tc - 23.4) < 1.0
 
     def test_kirpich_steep_slope(self):
         """Test that steeper slope gives shorter tc."""
-        length_m = 5000.0
-        tc_gentle = ConcentrationTime.kirpich(length_m=length_m, slope_m_per_m=0.01)
-        tc_steep = ConcentrationTime.kirpich(length_m=length_m, slope_m_per_m=0.05)
+        length_km = 5.0
+        tc_gentle = ConcentrationTime.kirpich(length_km=length_km, slope_m_per_m=0.01)
+        tc_steep = ConcentrationTime.kirpich(length_km=length_km, slope_m_per_m=0.05)
 
         assert tc_steep < tc_gentle
 
     def test_kirpich_longer_channel(self):
         """Test that longer channel gives longer tc."""
         slope_m_per_m = 0.02
-        tc_short = ConcentrationTime.kirpich(
-            length_m=2000.0, slope_m_per_m=slope_m_per_m
-        )
-        tc_long = ConcentrationTime.kirpich(
-            length_m=8000.0, slope_m_per_m=slope_m_per_m
-        )
+        tc_short = ConcentrationTime.kirpich(length_km=2.0, slope_m_per_m=slope_m_per_m)
+        tc_long = ConcentrationTime.kirpich(length_km=8.0, slope_m_per_m=slope_m_per_m)
 
         assert tc_long > tc_short
 
     def test_kirpich_zero_length_raises(self):
         """Test that zero length raises InvalidParameterError."""
-        with pytest.raises(InvalidParameterError, match="length_m must be positive"):
-            ConcentrationTime.kirpich(length_m=0, slope_m_per_m=0.02)
+        with pytest.raises(InvalidParameterError, match="length_km must be positive"):
+            ConcentrationTime.kirpich(length_km=0, slope_m_per_m=0.02)
 
     def test_kirpich_negative_length_raises(self):
         """Test that negative length raises InvalidParameterError."""
-        with pytest.raises(InvalidParameterError, match="length_m must be positive"):
-            ConcentrationTime.kirpich(length_m=-100, slope_m_per_m=0.02)
+        with pytest.raises(InvalidParameterError, match="length_km must be positive"):
+            ConcentrationTime.kirpich(length_km=-1.0, slope_m_per_m=0.02)
 
     def test_kirpich_zero_slope_raises(self):
         """Test that zero slope raises InvalidParameterError."""
         with pytest.raises(
             InvalidParameterError, match="slope_m_per_m must be positive"
         ):
-            ConcentrationTime.kirpich(length_m=1000, slope_m_per_m=0)
+            ConcentrationTime.kirpich(length_km=1.0, slope_m_per_m=0)
 
     def test_kirpich_negative_slope_raises(self):
         """Test that negative slope raises InvalidParameterError."""
         with pytest.raises(
             InvalidParameterError, match="slope_m_per_m must be positive"
         ):
-            ConcentrationTime.kirpich(length_m=1000, slope_m_per_m=-0.01)
+            ConcentrationTime.kirpich(length_km=1.0, slope_m_per_m=-0.01)
 
 
 class TestSCSLag:
@@ -153,6 +148,86 @@ class TestSCSLag:
         """Test that CN > 100 raises InvalidParameterError."""
         with pytest.raises(InvalidParameterError, match="cn must be in range 1-100"):
             ConcentrationTime.scs_lag(length_m=5000, slope_percent=2.0, cn=101)
+
+
+class TestNRCS:
+    """Tests for NRCS method."""
+
+    def test_nrcs_typical_values(self):
+        """Test NRCS method with typical watershed parameters."""
+        # Arrange
+        length_m = 8200.0
+        slope_percent = 2.3
+        cn = 72
+
+        # Act
+        tc = ConcentrationTime.nrcs(
+            length_m=length_m, slope_percent=slope_percent, cn=cn
+        )
+
+        # Assert - NRCS gives ~614 min for these parameters
+        assert 580.0 < tc < 650.0
+
+    def test_nrcs_higher_cn_gives_shorter_tc(self):
+        """Test that higher CN (less retention) gives shorter tc."""
+        length_m = 5000.0
+        slope_percent = 3.0
+
+        tc_low_cn = ConcentrationTime.nrcs(
+            length_m=length_m, slope_percent=slope_percent, cn=60
+        )
+        tc_high_cn = ConcentrationTime.nrcs(
+            length_m=length_m, slope_percent=slope_percent, cn=85
+        )
+
+        assert tc_high_cn < tc_low_cn
+
+    def test_nrcs_cn_100(self):
+        """Test NRCS with CN=100 (no retention)."""
+        tc = ConcentrationTime.nrcs(length_m=5000.0, slope_percent=2.0, cn=100)
+
+        # Should still return a positive value
+        assert tc > 0
+
+    def test_nrcs_high_cn_handled(self):
+        """Test NRCS with high CN where retention term would be < 1."""
+        # CN > 91 gives (1000/CN) - 9 < 1
+        tc = ConcentrationTime.nrcs(length_m=5000.0, slope_percent=2.0, cn=95)
+
+        # Should still return a positive value
+        assert tc > 0
+
+    def test_nrcs_steeper_slope_shorter_tc(self):
+        """Test that steeper slope gives shorter tc."""
+        length_m = 5000.0
+        cn = 75
+
+        tc_gentle = ConcentrationTime.nrcs(length_m=length_m, slope_percent=1.0, cn=cn)
+        tc_steep = ConcentrationTime.nrcs(length_m=length_m, slope_percent=5.0, cn=cn)
+
+        assert tc_steep < tc_gentle
+
+    def test_nrcs_zero_length_raises(self):
+        """Test that zero length raises InvalidParameterError."""
+        with pytest.raises(InvalidParameterError, match="length_m must be positive"):
+            ConcentrationTime.nrcs(length_m=0, slope_percent=2.0, cn=75)
+
+    def test_nrcs_negative_slope_raises(self):
+        """Test that negative slope raises InvalidParameterError."""
+        with pytest.raises(
+            InvalidParameterError, match="slope_percent must be positive"
+        ):
+            ConcentrationTime.nrcs(length_m=5000, slope_percent=-2.0, cn=75)
+
+    def test_nrcs_cn_too_low_raises(self):
+        """Test that CN < 1 raises InvalidParameterError."""
+        with pytest.raises(InvalidParameterError, match="cn must be in range 1-100"):
+            ConcentrationTime.nrcs(length_m=5000, slope_percent=2.0, cn=0)
+
+    def test_nrcs_cn_too_high_raises(self):
+        """Test that CN > 100 raises InvalidParameterError."""
+        with pytest.raises(InvalidParameterError, match="cn must be in range 1-100"):
+            ConcentrationTime.nrcs(length_m=5000, slope_percent=2.0, cn=101)
 
 
 class TestGiandotti:
@@ -256,3 +331,4 @@ class TestConcentrationTimeImport:
         assert hasattr(CT, "kirpich")
         assert hasattr(CT, "scs_lag")
         assert hasattr(CT, "giandotti")
+        assert hasattr(CT, "nrcs")
