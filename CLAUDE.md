@@ -43,22 +43,15 @@ git log --oneline -5
 - **feature/*** - opcjonalnie dla większych funkcjonalności
 
 ### Tagowanie (OBOWIĄZKOWE)
-Claude Code MUSI automatycznie tagować ważne punkty:
-
-| Tag | Kiedy | Przykład |
-|-----|-------|----------|
-| `cp<N>` | Po ukończeniu checkpointu | `cp1`, `cp2` |
-| `v<X.Y.Z>` | Wydanie wersji | `v0.1.0`, `v1.0.0` |
+Claude Code MUSI automatycznie tagować wydania wersji:
 
 ```bash
-# Po ukończeniu checkpointu
-git tag -a cp1 -m "Checkpoint 1: hydrolog.time complete"
-git push origin cp1
-
 # Wydanie wersji
 git tag -a v0.1.0 -m "Release v0.1.0: SCS-CN hydrograph"
 git push origin v0.1.0
 ```
+
+**Uwaga:** Checkpointy (CP) są śledzone tylko w PROGRESS.md, bez tagów Git.
 
 ## Konwencje kodowania
 
