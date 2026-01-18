@@ -5,10 +5,10 @@
 | Pole | Wartość |
 |------|---------|
 | **Faza** | 1 - Implementacja |
-| **Sprint** | 0.1 - Core modules |
-| **Sesja** | 5 |
+| **Sprint** | 0.2 - Morphometry |
+| **Sesja** | 7 |
 | **Data** | 2026-01-18 |
-| **Następny milestone** | CP4 - v0.1.0 wydanie |
+| **Następny milestone** | v0.3.0 - Interpolacja + sieć rzeczna |
 | **Gałąź robocza** | develop |
 
 ---
@@ -22,6 +22,8 @@
 | CP2 | `hydrolog.precipitation` - hietogramy | ✅ Ukończony |
 | CP3 | `hydrolog.runoff` - SCS-CN + hydrogram | ✅ Ukończony |
 | CP4 | v0.1.0 - Pierwsze wydanie | ✅ Ukończony |
+| CP5 | `hydrolog.morphometry` - parametry morfometryczne | ✅ Ukończony |
+| CP6 | v0.2.0 - Wydanie morphometry | ✅ Ukończony |
 
 ---
 
@@ -30,7 +32,7 @@
 | Wersja | Zakres | Status |
 |--------|--------|--------|
 | v0.1.0 | Hydrogram SCS-CN | ✅ Wydana (2026-01-18) |
-| v0.2.0 | Parametry morfometryczne | 📋 Planowany |
+| v0.2.0 | Parametry morfometryczne | ✅ Wydana (2026-01-18) |
 | v0.3.0 | Interpolacja + sieć rzeczna | 📋 Planowany |
 | v1.0.0 | Stabilne API + CLI | 📋 Planowany |
 
@@ -38,33 +40,37 @@
 
 ## Bieżąca sesja
 
-### Sesja 6 (2026-01-18) - UKOŃCZONA
+### Sesja 7 (2026-01-18) - UKOŃCZONA
 
-**Cel:** Wydanie v0.1.0 (CP4)
+**Cel:** Moduł `hydrolog.morphometry` i wydanie v0.2.0
 
 **Co zostało zrobione:**
-- [x] Zaktualizowano README.md z poprawnymi przykładami API
-- [x] Zaktualizowano CHANGELOG.md z informacjami o wydaniu
-- [x] Uruchomiono pełne testy (103 testy, 94% pokrycia)
-- [x] Utworzono commit release
-- [x] Utworzono tag v0.1.0
-- [x] Wypchnięto tag na GitHub
+- [x] Zaimplementowano `geometric.py` - parametry geometryczne i wskaźniki kształtu
+- [x] Zaimplementowano `terrain.py` - analiza wysokościowa i spadków
+- [x] Zaimplementowano `hypsometry.py` - krzywa hipsograficzna
+- [x] Zaktualizowano `__init__.py` z eksportami
+- [x] Napisano 47 testów jednostkowych dla morphometry
+- [x] Uruchomiono testy (150 testów, 95% pokrycia)
+- [x] Zaktualizowano README.md z dokumentacją morphometry
+- [x] Zaktualizowano CHANGELOG.md z v0.2.0
+- [x] Zaktualizowano pyproject.toml do v0.2.0
+- [x] Utworzono tag v0.2.0 i wypchnięto na GitHub
 
 **Co jest w trakcie:**
-- Nic - v0.1.0 wydana!
+- Nic - v0.2.0 wydana!
 
-**Następne kroki (Sesja 7):**
-1. CP5 - Moduł `hydrolog.morphometry` (v0.2.0)
-2. Parametry geometryczne zlewni
-3. Wskaźniki kształtu
+**Następne kroki (Sesja 8):**
+1. Moduł `hydrolog.network` - klasyfikacja sieci rzecznej
+2. Moduł `hydrolog.precipitation.interpolation` - interpolacja przestrzenna
+3. Wydanie v0.3.0
 
 ---
 
 ## Kontekst dla nowej sesji
 
 ### Stan projektu
-- **Faza:** Implementacja - CP1 ukończony
-- **Ostatni commit:** `feat(time): add ConcentrationTime class`
+- **Faza:** Implementacja - v0.2.0 ukończona
+- **Ostatni commit:** `docs: prepare v0.2.0 release`
 - **Środowisko:** `.venv` z Python 3.12.12
 - **Repo GitHub:** https://github.com/Daldek/Hydrolog.git
 
@@ -72,6 +78,7 @@
 - `hydrolog.time.ConcentrationTime` - 3 metody (Kirpich, SCS Lag, Giandotti)
 - `hydrolog.precipitation` - 3 typy hietogramów (Block, Triangular, Beta)
 - `hydrolog.runoff` - SCS-CN, hydrogram jednostkowy, HydrographGenerator
+- `hydrolog.morphometry` - WatershedGeometry, TerrainAnalysis, HypsometricCurve
 
 ### Pliki do przeczytania
 1. `CLAUDE.md` - instrukcje podstawowe
@@ -85,6 +92,28 @@
 ---
 
 ## Historia sesji
+
+### Sesja 7 (2026-01-18) - UKOŃCZONA
+
+**Wykonane:**
+- Zaimplementowano moduł `hydrolog.morphometry` (CP5)
+- Klasy: `WatershedGeometry`, `GeometricParameters`, `ShapeIndicators`
+- Klasy: `TerrainAnalysis`, `ElevationParameters`, `SlopeParameters`
+- Klasy: `HypsometricCurve`, `HypsometricResult`
+- 47 testów jednostkowych dla morphometry, łącznie 150 testów, 95% pokrycia
+- Wydano wersję v0.2.0 (CP6)
+
+**Pliki utworzone/zmodyfikowane:**
+- `hydrolog/morphometry/geometric.py` (nowy)
+- `hydrolog/morphometry/terrain.py` (nowy)
+- `hydrolog/morphometry/hypsometry.py` (nowy)
+- `hydrolog/morphometry/__init__.py` (zaktualizowany)
+- `tests/unit/test_morphometry.py` (nowy)
+- `README.md` (zaktualizowany)
+- `docs/CHANGELOG.md` (zaktualizowany)
+- `pyproject.toml` (zaktualizowany do v0.2.0)
+
+---
 
 ### Sesja 6 (2026-01-18) - UKOŃCZONA
 
@@ -257,4 +286,4 @@ Hydrolog/
 
 ---
 
-**Ostatnia aktualizacja:** 2026-01-18, Sesja 6
+**Ostatnia aktualizacja:** 2026-01-18, Sesja 7
