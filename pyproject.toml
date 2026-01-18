@@ -1,0 +1,84 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hydrolog"
+version = "0.1.0"
+description = "Python library for hydrological calculations"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.12"
+authors = [
+    {name = "Daldek"}
+]
+keywords = [
+    "hydrology",
+    "SCS-CN",
+    "hydrograph",
+    "runoff",
+    "precipitation",
+    "watershed"
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Hydrology",
+]
+dependencies = [
+    "numpy>=1.24",
+    "imgwtools @ git+https://github.com/Daldek/IMGWTools.git",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "black>=23.0",
+    "mypy>=1.0",
+    "flake8>=6.0",
+]
+interpolation = [
+    "scipy>=1.10",
+]
+
+[project.scripts]
+hydrolog = "hydrolog.cli.main:main"
+
+[project.urls]
+Homepage = "https://github.com/Daldek/Hydrolog"
+Repository = "https://github.com/Daldek/Hydrolog.git"
+Issues = "https://github.com/Daldek/Hydrolog/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["hydrolog*"]
+
+[tool.black]
+line-length = 88
+target-version = ["py312"]
+include = '\.pyi?$'
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v"
+
+[tool.coverage.run]
+source = ["hydrolog"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
