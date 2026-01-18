@@ -9,7 +9,7 @@
 | **Sesja** | 2 |
 | **Data** | 2026-01-18 |
 | **Następny milestone** | CP1 - hydrolog.time |
-| **Gałąź robocza** | main |
+| **Gałąź robocza** | develop |
 
 ---
 
