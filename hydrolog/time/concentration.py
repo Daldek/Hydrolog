@@ -1,6 +1,51 @@
 """Time of concentration calculation methods."""
 
+import warnings
+
 from hydrolog.exceptions import InvalidParameterError
+
+# Typical parameter ranges for validation warnings
+_KIRPICH_LENGTH_RANGE = (0.001, 80.0)  # km
+_KIRPICH_SLOPE_RANGE = (0.002, 0.15)  # m/m
+
+_SCS_LAG_LENGTH_RANGE = (0.03, 30.0)  # km
+_SCS_LAG_SLOPE_RANGE = (0.001, 0.15)  # m/m
+_SCS_LAG_CN_RANGE = (50, 95)  # dimensionless
+
+_GIANDOTTI_AREA_RANGE = (100.0, 10000.0)  # km2
+_GIANDOTTI_LENGTH_RANGE = (1.0, 300.0)  # km
+_GIANDOTTI_ELEVATION_RANGE = (20.0, 3000.0)  # m
+
+
+def _warn_if_out_of_range(
+    value: float,
+    param_name: str,
+    min_val: float,
+    max_val: float,
+    method_name: str,
+) -> None:
+    """Issue warning if parameter is outside typical range.
+
+    Parameters
+    ----------
+    value : float
+        The parameter value to check.
+    param_name : str
+        Name of the parameter for the warning message.
+    min_val : float
+        Minimum typical value.
+    max_val : float
+        Maximum typical value.
+    method_name : str
+        Name of the method for the warning message.
+    """
+    if value < min_val or value > max_val:
+        warnings.warn(
+            f"{method_name}: {param_name}={value} is outside typical range "
+            f"[{min_val}, {max_val}]. Results may be unreliable.",
+            UserWarning,
+            stacklevel=3,
+        )
 
 
 class ConcentrationTime:
@@ -10,15 +55,20 @@ class ConcentrationTime:
     Time of concentration (tc) is the time required for runoff to travel
     from the hydraulically most distant point in the watershed to the outlet.
 
+    All methods use standardized units:
+    - Length: km (kilometers)
+    - Slope: m/m (dimensionless)
+    - Output: min (minutes)
+
     Examples
     --------
     >>> tc = ConcentrationTime.kirpich(length_km=8.2, slope_m_per_m=0.023)
     >>> print(f"{tc:.1f} min")
     52.3 min
 
-    >>> tc = ConcentrationTime.scs_lag(length_m=8200, slope_percent=2.3, cn=72)
+    >>> tc = ConcentrationTime.scs_lag(length_km=8.2, slope_m_per_m=0.023, cn=72)
     >>> print(f"{tc:.1f} min")
-    368.7 min
+    97.5 min
     """
 
     @staticmethod
@@ -51,6 +101,13 @@ class ConcentrationTime:
         InvalidParameterError
             If length_km <= 0 or slope_m_per_m <= 0.
 
+        Warns
+        -----
+        UserWarning
+            If length_km > 80 km or slope_m_per_m outside 0.002-0.15.
+            The Kirpich formula was developed for small agricultural
+            watersheds (0.004-0.45 km2) with slopes 3-10%.
+
         Notes
         -----
         Formula: tc [h] = 0.0663 * L^0.77 * S^(-0.385)
@@ -77,6 +134,14 @@ class ConcentrationTime:
                 f"slope_m_per_m must be positive, got {slope_m_per_m}"
             )
 
+        # Warn if parameters are outside typical range
+        _warn_if_out_of_range(
+            length_km, "length_km", *_KIRPICH_LENGTH_RANGE, "kirpich"
+        )
+        _warn_if_out_of_range(
+            slope_m_per_m, "slope_m_per_m", *_KIRPICH_SLOPE_RANGE, "kirpich"
+        )
+
         # Kirpich formula: tc [hours]
         tc_hours: float = 0.0663 * (length_km**0.77) * (slope_m_per_m ** (-0.385))
 
@@ -86,8 +151,8 @@ class ConcentrationTime:
 
     @staticmethod
     def scs_lag(
-        length_m: float,
-        slope_percent: float,
+        length_km: float,
+        slope_m_per_m: float,
         cn: int,
     ) -> float:
         """
@@ -98,13 +163,15 @@ class ConcentrationTime:
 
         Parameters
         ----------
-        length_m : float
-            Hydraulic length of the watershed (longest flow path) [m].
-            Must be positive.
-        slope_percent : float
-            Average watershed slope [%]. Must be positive.
+        length_km : float
+            Hydraulic length of the watershed (longest flow path) [km].
+            Must be positive. Typical range: 0.03-30 km.
+        slope_m_per_m : float
+            Average watershed slope [m/m]. Must be positive.
+            Typical range: 0.001-0.15.
         cn : int
             SCS Curve Number (1-100). CN=100 means no retention.
+            Recommended range for this method: 50-95.
 
         Returns
         -------
@@ -114,7 +181,12 @@ class ConcentrationTime:
         Raises
         ------
         InvalidParameterError
-            If length_m <= 0, slope_percent <= 0, or cn not in range 1-100.
+            If length_km <= 0, slope_m_per_m <= 0, or cn not in range 1-100.
+
+        Warns
+        -----
+        UserWarning
+            If parameters are outside typical application range.
 
         Notes
         -----
@@ -123,9 +195,9 @@ class ConcentrationTime:
         tc = Lag / 0.6
 
         Where:
-        - L: hydraulic length [m]
+        - L: hydraulic length [m] (converted internally from km)
         - S: maximum retention = (25400/CN) - 254 [mm]
-        - Y: average watershed slope [%]
+        - Y: average watershed slope [%] (converted internally from m/m)
 
         The constant 7182 is derived from the original imperial formula
         (with constant 1900) by converting feet to meters and inches to mm.
@@ -137,17 +209,32 @@ class ConcentrationTime:
 
         Examples
         --------
-        >>> ConcentrationTime.scs_lag(length_m=8200, slope_percent=2.3, cn=72)
+        >>> ConcentrationTime.scs_lag(length_km=8.2, slope_m_per_m=0.023, cn=72)
         97.5...
         """
-        if length_m <= 0:
-            raise InvalidParameterError(f"length_m must be positive, got {length_m}")
-        if slope_percent <= 0:
+        if length_km <= 0:
             raise InvalidParameterError(
-                f"slope_percent must be positive, got {slope_percent}"
+                f"length_km must be positive, got {length_km}"
+            )
+        if slope_m_per_m <= 0:
+            raise InvalidParameterError(
+                f"slope_m_per_m must be positive, got {slope_m_per_m}"
             )
         if not 1 <= cn <= 100:
             raise InvalidParameterError(f"cn must be in range 1-100, got {cn}")
+
+        # Warn if parameters are outside typical range
+        _warn_if_out_of_range(
+            length_km, "length_km", *_SCS_LAG_LENGTH_RANGE, "scs_lag"
+        )
+        _warn_if_out_of_range(
+            slope_m_per_m, "slope_m_per_m", *_SCS_LAG_SLOPE_RANGE, "scs_lag"
+        )
+        _warn_if_out_of_range(cn, "cn", *_SCS_LAG_CN_RANGE, "scs_lag")
+
+        # Convert input units to formula units
+        length_m = length_km * 1000.0  # km -> m
+        slope_percent = slope_m_per_m * 100.0  # m/m -> %
 
         # Calculate maximum retention S [mm]
         # S = (25400/CN) - 254 (metric version of (1000/CN) - 10 in inches)
@@ -203,6 +290,12 @@ class ConcentrationTime:
         InvalidParameterError
             If any parameter is not positive.
 
+        Warns
+        -----
+        UserWarning
+            If area_km2 < 100 km2. The Giandotti formula was developed
+            for larger Italian mountain watersheds (> 170 km2).
+
         Notes
         -----
         Formula: tc = (4 * sqrt(A) + 1.5 * L) / (0.8 * sqrt(H))
@@ -231,6 +324,17 @@ class ConcentrationTime:
             raise InvalidParameterError(
                 f"elevation_diff_m must be positive, got {elevation_diff_m}"
             )
+
+        # Warn if parameters are outside typical range
+        _warn_if_out_of_range(
+            area_km2, "area_km2", *_GIANDOTTI_AREA_RANGE, "giandotti"
+        )
+        _warn_if_out_of_range(
+            length_km, "length_km", *_GIANDOTTI_LENGTH_RANGE, "giandotti"
+        )
+        _warn_if_out_of_range(
+            elevation_diff_m, "elevation_diff_m", *_GIANDOTTI_ELEVATION_RANGE, "giandotti"
+        )
 
         # Giandotti formula: tc [hours]
         tc_hours = (4.0 * (area_km2**0.5) + 1.5 * length_km) / (
