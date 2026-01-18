@@ -21,7 +21,7 @@
 | CP1 | `hydrolog.time` - czas koncentracji | ✅ Ukończony |
 | CP2 | `hydrolog.precipitation` - hietogramy | ✅ Ukończony |
 | CP3 | `hydrolog.runoff` - SCS-CN + hydrogram | ✅ Ukończony |
-| CP4 | v0.1.0 - Pierwsze wydanie | 📋 Planowany |
+| CP4 | v0.1.0 - Pierwsze wydanie | ✅ Ukończony |
 
 ---
 
@@ -29,7 +29,7 @@
 
 | Wersja | Zakres | Status |
 |--------|--------|--------|
-| v0.1.0 | Hydrogram SCS-CN | 📋 Planowany |
+| v0.1.0 | Hydrogram SCS-CN | ✅ Wydana (2026-01-18) |
 | v0.2.0 | Parametry morfometryczne | 📋 Planowany |
 | v0.3.0 | Interpolacja + sieć rzeczna | 📋 Planowany |
 | v1.0.0 | Stabilne API + CLI | 📋 Planowany |
@@ -38,29 +38,25 @@
 
 ## Bieżąca sesja
 
-### Sesja 5 (2026-01-18) - UKOŃCZONA
+### Sesja 6 (2026-01-18) - UKOŃCZONA
 
-**Cel:** Implementacja modułu `hydrolog.runoff` (CP3)
+**Cel:** Wydanie v0.1.0 (CP4)
 
 **Co zostało zrobione:**
-- [x] Utworzono `hydrolog/runoff/scs_cn.py` - metoda SCS Curve Number
-- [x] Utworzono `hydrolog/runoff/unit_hydrograph.py` - hydrogram jednostkowy SCS
-- [x] Utworzono `hydrolog/runoff/convolution.py` - splot dyskretny
-- [x] Utworzono `hydrolog/runoff/generator.py` - klasa `HydrographGenerator`
-- [x] Zaimplementowano warunki wilgotnościowe AMC (I, II, III)
-- [x] Zaktualizowano `hydrolog/runoff/__init__.py` z eksportami
-- [x] Utworzono testy jednostkowe (46 testów dla runoff)
-- [x] Pokrycie kodu: 94% (łącznie 103 testy)
-- [x] Formatowanie (Black) i typy (mypy) OK
+- [x] Zaktualizowano README.md z poprawnymi przykładami API
+- [x] Zaktualizowano CHANGELOG.md z informacjami o wydaniu
+- [x] Uruchomiono pełne testy (103 testy, 94% pokrycia)
+- [x] Utworzono commit release
+- [x] Utworzono tag v0.1.0
+- [x] Wypchnięto tag na GitHub
 
 **Co jest w trakcie:**
-- Nic - CP3 kompletny
+- Nic - v0.1.0 wydana!
 
-**Następne kroki (Sesja 6):**
-1. CP4 - Przygotowanie wydania v0.1.0
-2. Aktualizacja README.md
-3. Weryfikacja dokumentacji
-4. Tagowanie wersji i release
+**Następne kroki (Sesja 7):**
+1. CP5 - Moduł `hydrolog.morphometry` (v0.2.0)
+2. Parametry geometryczne zlewni
+3. Wskaźniki kształtu
 
 ---
 
@@ -89,6 +85,19 @@
 ---
 
 ## Historia sesji
+
+### Sesja 6 (2026-01-18) - UKOŃCZONA
+
+**Wykonane:**
+- Wydano wersję v0.1.0
+- Zaktualizowano README.md i CHANGELOG.md
+- Utworzono tag v0.1.0 i wypchnięto na GitHub
+
+**Pliki utworzone/zmodyfikowane:**
+- `README.md` (zaktualizowany)
+- `docs/CHANGELOG.md` (zaktualizowany)
+
+---
 
 ### Sesja 5 (2026-01-18) - UKOŃCZONA
 
@@ -248,4 +257,4 @@ Hydrolog/
 
 ---
 
-**Ostatnia aktualizacja:** 2026-01-18, Sesja 5
+**Ostatnia aktualizacja:** 2026-01-18, Sesja 6
