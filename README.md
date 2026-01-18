@@ -2,11 +2,12 @@
 
 Biblioteka Python do obliczeń hydrologicznych.
 
-## Funkcjonalności (v0.1.0)
+## Funkcjonalności (v0.2.0)
 
 - **Hydrogramy odpływu** - metoda SCS Curve Number
 - **Hietogramy** - rozkład Beta, blokowy, trójkątny
 - **Czas koncentracji** - wzory Kirpicha, SCS Lag, Giandotti
+- **Parametry morfometryczne** - wskaźniki kształtu, teren, krzywa hipsograficzna
 
 ## Instalacja
 
@@ -110,6 +111,35 @@ result_normal = generator.generate(precip, amc=AMC.II)
 result_wet = generator.generate(precip, amc=AMC.III)
 ```
 
+### Parametry morfometryczne
+
+```python
+from hydrolog.morphometry import WatershedGeometry, TerrainAnalysis, HypsometricCurve
+import numpy as np
+
+# Wskaźniki kształtu zlewni
+geom = WatershedGeometry(area_km2=45.0, perimeter_km=32.0, length_km=12.0)
+indicators = geom.get_shape_indicators()
+print(f"Wskaźnik formy: {indicators.form_factor:.3f}")
+print(f"Wskaźnik zwartości: {indicators.compactness_coefficient:.3f}")
+
+# Parametry terenu
+terrain = TerrainAnalysis(
+    elevation_min_m=150.0,
+    elevation_max_m=520.0,
+    length_km=12.0,
+    elevation_mean_m=340.0
+)
+elev = terrain.get_elevation_parameters()
+print(f"Deniwelacja: {elev.relief_m} m")
+
+# Krzywa hipsograficzna (z danych DEM)
+elevations = np.random.uniform(150, 520, 10000)  # Symulacja DEM
+hypso = HypsometricCurve(elevations)
+result = hypso.analyze()
+print(f"Całka hipsograficzna: {result.hypsometric_integral:.3f}")
+```
+
 ## Struktura modułów
 
 ```
@@ -117,7 +147,7 @@ hydrolog/
 ├── runoff/          # Opad-odpływ (SCS-CN, hydrogramy) ✅
 ├── precipitation/   # Hietogramy ✅
 ├── time/            # Czas koncentracji ✅
-├── morphometry/     # Parametry fizjograficzne (v0.2.0)
+├── morphometry/     # Parametry fizjograficzne ✅
 ├── network/         # Klasyfikacja sieci rzecznej (v0.3.0)
 └── cli/             # Interfejs CLI (v1.0.0)
 ```
@@ -126,8 +156,8 @@ hydrolog/
 
 | Wersja | Zakres | Status |
 |--------|--------|--------|
-| **v0.1.0** | Hydrogram SCS-CN, hietogramy, czas koncentracji | ✅ Wydana |
-| v0.2.0 | Parametry morfometryczne | Planowana |
+| v0.1.0 | Hydrogram SCS-CN, hietogramy, czas koncentracji | ✅ Wydana |
+| **v0.2.0** | Parametry morfometryczne | ✅ Wydana |
 | v0.3.0 | Interpolacja opadów, klasyfikacja sieci | Planowana |
 | v1.0.0 | Stabilne API, CLI, dokumentacja | Planowana |
 
