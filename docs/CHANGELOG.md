@@ -90,6 +90,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | Version | Date | Description |
 |---------|------|-------------|
 | **0.1.0** | 2026-01-18 | SCS-CN hydrograph, hyetographs, concentration time |
-| 0.2.0 | TBD | Morphometric parameters |
+| **0.2.0** | 2026-01-18 | Morphometric parameters |
 | 0.3.0 | TBD | Interpolation + river network |
 | 1.0.0 | TBD | Stable API + CLI |
