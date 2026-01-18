@@ -6,7 +6,7 @@
 |------|---------|
 | **Faza** | 1 - Implementacja |
 | **Sprint** | 0.3+ - Rozszerzenia |
-| **Sesja** | 8 |
+| **Sesja** | 9 |
 | **Data** | 2026-01-18 |
 | **Następny milestone** | v0.4.0 - CLI + dodatkowe metody |
 | **Gałąź robocza** | develop |
@@ -44,28 +44,26 @@
 
 ## Bieżąca sesja
 
-### Sesja 8 (2026-01-18) - UKOŃCZONA
+### Sesja 9 (2026-01-18) - UKOŃCZONA
 
-**Cel:** Standaryzacja jednostek i Nash IUH
+**Cel:** Weryfikacja i poprawka formuł czasu koncentracji
 
 **Co zostało zrobione:**
-- [x] Standaryzacja jednostek w `ConcentrationTime`:
-  - Zmieniono `scs_lag()`: `length_m` → `length_km`, `slope_percent` → `slope_m_per_m`
-  - Dodano ostrzeżenia dla parametrów poza typowym zakresem
-  - Zaktualizowano docstringi i testy
-- [x] Dodano Nash Instantaneous Unit Hydrograph (IUH):
-  - Nowa klasa `NashIUH` z modelem kaskady Nasha
-  - Metoda `generate()` - generowanie IUH
-  - Metoda `to_unit_hydrograph()` - konwersja do D-minutowego UH
-  - Metody `from_tc()` i `from_moments()` - estymacja parametrów
-  - 41 nowych testów dla Nash IUH
-- [x] Zainstalowano scipy jako zależność
-- [x] Uruchomiono testy (263 testy, wszystkie przechodzą)
-- [x] Wypchnięto zmiany na GitHub
+- [x] Zweryfikowano formuły w `concentration.py`:
+  - Kirpich - formuła poprawna
+  - SCS Lag - znaleziono błąd w stałej przeliczeniowej
+  - Giandotti - formuła poprawna
+- [x] Poprawiono stałą w SCS Lag: `7182` → `7069` (prawidłowe przeliczenie metryczne)
+- [x] Poprawiono przykłady w docstringach (wszystkie miały złe wartości):
+  - Kirpich: 52.3 → 85.9 min
+  - SCS Lag: 97.5 → 368.7 min
+  - Giandotti: 94.8 → 179.7 min
+- [x] Uruchomiono testy (36/36 przechodzą)
+- [x] Zapoznano się z plikiem `parametry_modeli_PMHGW.xlsx` (dane IMGW dla 5 zlewni)
 
-**Następne kroki (Sesja 9):**
+**Następne kroki (Sesja 10):**
 1. CLI interface (`hydrolog.cli`)
-2. Dodatkowe metody hydrogramu (Clark IUH)
+2. Dodatkowe metody hydrogramu (Clark IUH, Snyder)
 3. Wydanie v0.4.0
 
 ---
@@ -74,7 +72,7 @@
 
 ### Stan projektu
 - **Faza:** Implementacja - v0.3.0+ ukończona
-- **Ostatni commit:** `feat(runoff): add Nash Instantaneous Unit Hydrograph (IUH)`
+- **Ostatni commit:** `fix(time): correct SCS Lag constant and docstring examples`
 - **Środowisko:** `.venv` z Python 3.12.12
 - **Repo GitHub:** https://github.com/Daldek/Hydrolog.git
 
@@ -98,6 +96,21 @@
 ---
 
 ## Historia sesji
+
+### Sesja 8 (2026-01-18) - UKOŃCZONA
+
+**Wykonane:**
+- Standaryzacja jednostek w `ConcentrationTime`
+- Dodano Nash Instantaneous Unit Hydrograph (IUH)
+- 41 nowych testów dla Nash IUH
+- Zainstalowano scipy jako zależność
+
+**Pliki utworzone/zmodyfikowane:**
+- `hydrolog/runoff/nash_iuh.py` (nowy)
+- `hydrolog/time/concentration.py` (zaktualizowany)
+- `tests/unit/test_nash_iuh.py` (nowy)
+
+---
 
 ### Sesja 7 (2026-01-18) - UKOŃCZONA
 
@@ -292,4 +305,4 @@ Hydrolog/
 
 ---
 
-**Ostatnia aktualizacja:** 2026-01-18, Sesja 8
+**Ostatnia aktualizacja:** 2026-01-18, Sesja 9
