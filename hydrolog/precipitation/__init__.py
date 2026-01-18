@@ -8,10 +8,33 @@ from hydrolog.precipitation.hietogram import (
     BetaHietogram,
 )
 
+from hydrolog.precipitation.interpolation import (
+    Station,
+    ThiessenResult,
+    IDWResult,
+    IsohyetResult,
+    thiessen_polygons,
+    inverse_distance_weighting,
+    areal_precipitation_idw,
+    isohyet_method,
+    arithmetic_mean,
+)
+
 __all__ = [
+    # Hietograms
     "HietogramResult",
     "Hietogram",
     "BlockHietogram",
     "TriangularHietogram",
     "BetaHietogram",
+    # Interpolation
+    "Station",
+    "ThiessenResult",
+    "IDWResult",
+    "IsohyetResult",
+    "thiessen_polygons",
+    "inverse_distance_weighting",
+    "areal_precipitation_idw",
+    "isohyet_method",
+    "arithmetic_mean",
 ]
