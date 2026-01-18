@@ -6,9 +6,9 @@
 |------|---------|
 | **Faza** | 1 - Implementacja |
 | **Sprint** | 0.1 - Core modules |
-| **Sesja** | 4 |
+| **Sesja** | 5 |
 | **Data** | 2026-01-18 |
-| **Następny milestone** | CP3 - hydrolog.runoff |
+| **Następny milestone** | CP4 - v0.1.0 wydanie |
 | **Gałąź robocza** | develop |
 
 ---
@@ -20,7 +20,7 @@
 | CP0 | Dokumentacja i struktura repo | ✅ Ukończony |
 | CP1 | `hydrolog.time` - czas koncentracji | ✅ Ukończony |
 | CP2 | `hydrolog.precipitation` - hietogramy | ✅ Ukończony |
-| CP3 | `hydrolog.runoff` - SCS-CN + hydrogram | 📋 Planowany |
+| CP3 | `hydrolog.runoff` - SCS-CN + hydrogram | ✅ Ukończony |
 | CP4 | v0.1.0 - Pierwsze wydanie | 📋 Planowany |
 
 ---
@@ -38,31 +38,29 @@
 
 ## Bieżąca sesja
 
-### Sesja 4 (2026-01-18) - UKOŃCZONA
+### Sesja 5 (2026-01-18) - UKOŃCZONA
 
-**Cel:** Implementacja modułu `hydrolog.precipitation` (CP2)
+**Cel:** Implementacja modułu `hydrolog.runoff` (CP3)
 
 **Co zostało zrobione:**
-- [x] Utworzono `hydrolog/precipitation/hietogram.py` z klasami hietogramów
-- [x] Zaimplementowano `HietogramResult` (dataclass z wynikami)
-- [x] Zaimplementowano `Hietogram` (klasa abstrakcyjna)
-- [x] Zaimplementowano `BlockHietogram` (rozkład równomierny)
-- [x] Zaimplementowano `TriangularHietogram` (rozkład trójkątny)
-- [x] Zaimplementowano `BetaHietogram` (rozkład Beta)
-- [x] Dodano walidację parametrów
-- [x] Zaktualizowano `hydrolog/precipitation/__init__.py` z eksportami
-- [x] Utworzono testy jednostkowe (33 testy)
-- [x] Pokrycie kodu: 91% (łącznie 57 testów)
+- [x] Utworzono `hydrolog/runoff/scs_cn.py` - metoda SCS Curve Number
+- [x] Utworzono `hydrolog/runoff/unit_hydrograph.py` - hydrogram jednostkowy SCS
+- [x] Utworzono `hydrolog/runoff/convolution.py` - splot dyskretny
+- [x] Utworzono `hydrolog/runoff/generator.py` - klasa `HydrographGenerator`
+- [x] Zaimplementowano warunki wilgotnościowe AMC (I, II, III)
+- [x] Zaktualizowano `hydrolog/runoff/__init__.py` z eksportami
+- [x] Utworzono testy jednostkowe (46 testów dla runoff)
+- [x] Pokrycie kodu: 94% (łącznie 103 testy)
 - [x] Formatowanie (Black) i typy (mypy) OK
 
 **Co jest w trakcie:**
-- Nic - CP2 kompletny
+- Nic - CP3 kompletny
 
-**Następne kroki (Sesja 5):**
-1. Rozpocząć CP3 - moduł `hydrolog.runoff`
-2. Implementacja metody SCS-CN
-3. Implementacja hydrogramu jednostkowego SCS
-4. Testy jednostkowe dla modułu runoff
+**Następne kroki (Sesja 6):**
+1. CP4 - Przygotowanie wydania v0.1.0
+2. Aktualizacja README.md
+3. Weryfikacja dokumentacji
+4. Tagowanie wersji i release
 
 ---
 
@@ -77,6 +75,7 @@
 ### Zaimplementowane moduły
 - `hydrolog.time.ConcentrationTime` - 3 metody (Kirpich, SCS Lag, Giandotti)
 - `hydrolog.precipitation` - 3 typy hietogramów (Block, Triangular, Beta)
+- `hydrolog.runoff` - SCS-CN, hydrogram jednostkowy, HydrographGenerator
 
 ### Pliki do przeczytania
 1. `CLAUDE.md` - instrukcje podstawowe
@@ -90,6 +89,24 @@
 ---
 
 ## Historia sesji
+
+### Sesja 5 (2026-01-18) - UKOŃCZONA
+
+**Wykonane:**
+- Zaimplementowano moduł `hydrolog.runoff` (CP3)
+- Klasy: `SCSCN`, `AMC`, `SCSUnitHydrograph`, `HydrographGenerator`
+- Funkcja `convolve_discrete` do splotu dyskretnego
+- 46 testów jednostkowych dla runoff, łącznie 103 testy, 94% pokrycia
+
+**Pliki utworzone/zmodyfikowane:**
+- `hydrolog/runoff/scs_cn.py` (nowy)
+- `hydrolog/runoff/unit_hydrograph.py` (nowy)
+- `hydrolog/runoff/convolution.py` (nowy)
+- `hydrolog/runoff/generator.py` (nowy)
+- `hydrolog/runoff/__init__.py` (zaktualizowany)
+- `tests/unit/test_runoff.py` (nowy)
+
+---
 
 ### Sesja 4 (2026-01-18) - UKOŃCZONA
 
@@ -231,4 +248,4 @@ Hydrolog/
 
 ---
 
-**Ostatnia aktualizacja:** 2026-01-18, Sesja 4
+**Ostatnia aktualizacja:** 2026-01-18, Sesja 5
