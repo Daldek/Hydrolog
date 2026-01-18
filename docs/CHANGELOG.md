@@ -7,9 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `NashIUH` - Nash Instantaneous Unit Hydrograph
+  - Nash cascade model with n reservoirs and K storage constant
+  - `generate()` - IUH generation at specified timestep
+  - `to_unit_hydrograph()` - S-curve conversion to D-minute UH
+  - `from_tc()` - parameter estimation from concentration time
+  - `from_moments()` - parameter estimation from lag time and variance
+- `IUHResult` and `NashUHResult` dataclasses
+
+### Changed
+- **BREAKING:** `ConcentrationTime.scs_lag()` signature changed:
+  - `length_m` → `length_km` (meters to kilometers)
+  - `slope_percent` → `slope_m_per_m` (percent to dimensionless)
+- Added parameter range warnings to all concentration time methods:
+  - Kirpich: warns if length or slope outside typical application range
+  - SCS Lag: warns if length, slope, or CN outside recommended range
+  - Giandotti: warns if area, length, or elevation outside typical range
+
+### Dependencies
+- Added `scipy` as dependency (for gamma functions in Nash IUH)
+
 ### Planned for v0.4.0
 - CLI interface for command-line operations
 - Additional interpolation methods (kriging)
+- Clark IUH
 
 ---
 

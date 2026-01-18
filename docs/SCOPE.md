@@ -185,9 +185,11 @@ hydrolog hietogram --total 38.5 --duration 60 --type beta \
 - Metoda racjonalna (Q = CIA) dla małych zlewni
 - Clark Unit Hydrograph
 - Snyder Unit Hydrograph
-- Nash Cascade
 - Kalibracja parametrów
 - Analiza niepewności (Monte Carlo)
+
+**Zaimplementowane (od v0.3+):**
+- ✅ Nash Cascade (IUH) - `hydrolog.runoff.NashIUH`
 
 ---
 
@@ -230,10 +232,11 @@ hydrolog/
 **Wymagane:**
 - Python >= 3.12
 - NumPy >= 1.24
+- SciPy >= 1.10 (dla funkcji gamma w Nash IUH)
 - IMGWTools (dla modułu precipitation.scenarios)
 
 **Opcjonalne:**
-- SciPy (dla interpolacji Kriging)
+- (Kriging - planowane)
 
 ### 3.3 API Design
 
@@ -246,7 +249,7 @@ from hydrolog.precipitation import BetaHietogram
 from hydrolog.time import ConcentrationTime
 
 # Czas koncentracji
-tc = ConcentrationTime.kirpich(length_km=8.2, slope_percent=2.3)
+tc = ConcentrationTime.kirpich(length_km=8.2, slope_m_per_m=0.023)
 
 # Hietogram
 hietogram = BetaHietogram(
@@ -273,9 +276,10 @@ print(f"Time to peak: {result.time_to_peak_min} min")
 
 | Wersja | Zakres | Moduły | Status |
 |--------|--------|--------|--------|
-| **v0.1.0** | Hydrogram SCS-CN | `runoff`, `precipitation.hietogram`, `time` | ⏳ W trakcie |
-| **v0.2.0** | Parametry morfometryczne | `morphometry` | 📋 Planowane |
-| **v0.3.0** | Interpolacja + sieć | `precipitation.interpolation`, `network` | 📋 Planowane |
+| **v0.1.0** | Hydrogram SCS-CN | `runoff`, `precipitation.hietogram`, `time` | ✅ Wydana |
+| **v0.2.0** | Parametry morfometryczne | `morphometry` | ✅ Wydana |
+| **v0.3.0** | Interpolacja + sieć | `precipitation.interpolation`, `network` | ✅ Wydana |
+| **v0.3+** | Nash IUH, standaryzacja jednostek | `runoff.nash_iuh`, `time` | ✅ Zaimplementowane |
 | **v1.0.0** | Stabilne API + CLI | Wszystkie + `cli` | 📋 Planowane |
 
 ---
@@ -302,8 +306,8 @@ print(f"Time to peak: {result.time_to_peak_min} min")
 | Biblioteka | Cel | Wymagana |
 |------------|-----|----------|
 | NumPy | Obliczenia numeryczne | Tak |
+| SciPy | Funkcje gamma (Nash IUH) | Tak |
 | IMGWTools | Dane PMAXTP | Tak (dla `precipitation.scenarios`) |
-| SciPy | Kriging interpolation | Nie (opcjonalna) |
 
 **Hydrolog NIE duplikuje funkcjonalności:**
 - Kartografa (pobieranie danych przestrzennych)

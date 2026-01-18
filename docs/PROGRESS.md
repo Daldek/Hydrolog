@@ -5,10 +5,10 @@
 | Pole | Wartość |
 |------|---------|
 | **Faza** | 1 - Implementacja |
-| **Sprint** | 0.2 - Morphometry |
-| **Sesja** | 7 |
+| **Sprint** | 0.3+ - Rozszerzenia |
+| **Sesja** | 8 |
 | **Data** | 2026-01-18 |
-| **Następny milestone** | v0.3.0 - Interpolacja + sieć rzeczna |
+| **Następny milestone** | v0.4.0 - CLI + dodatkowe metody |
 | **Gałąź robocza** | develop |
 
 ---
@@ -24,6 +24,9 @@
 | CP4 | v0.1.0 - Pierwsze wydanie | ✅ Ukończony |
 | CP5 | `hydrolog.morphometry` - parametry morfometryczne | ✅ Ukończony |
 | CP6 | v0.2.0 - Wydanie morphometry | ✅ Ukończony |
+| CP7 | `hydrolog.network` + interpolacja | ✅ Ukończony |
+| CP8 | v0.3.0 - Wydanie network + interpolation | ✅ Ukończony |
+| CP9 | Standaryzacja jednostek + Nash IUH | ✅ Ukończony |
 
 ---
 
@@ -33,52 +36,54 @@
 |--------|--------|--------|
 | v0.1.0 | Hydrogram SCS-CN | ✅ Wydana (2026-01-18) |
 | v0.2.0 | Parametry morfometryczne | ✅ Wydana (2026-01-18) |
-| v0.3.0 | Interpolacja + sieć rzeczna | 📋 Planowany |
+| v0.3.0 | Interpolacja + sieć rzeczna | ✅ Wydana (2026-01-18) |
+| v0.4.0 | CLI + dodatkowe metody | 📋 Planowany |
 | v1.0.0 | Stabilne API + CLI | 📋 Planowany |
 
 ---
 
 ## Bieżąca sesja
 
-### Sesja 7 (2026-01-18) - UKOŃCZONA
+### Sesja 8 (2026-01-18) - UKOŃCZONA
 
-**Cel:** Moduł `hydrolog.morphometry` i wydanie v0.2.0
+**Cel:** Standaryzacja jednostek i Nash IUH
 
 **Co zostało zrobione:**
-- [x] Zaimplementowano `geometric.py` - parametry geometryczne i wskaźniki kształtu
-- [x] Zaimplementowano `terrain.py` - analiza wysokościowa i spadków
-- [x] Zaimplementowano `hypsometry.py` - krzywa hipsograficzna
-- [x] Zaktualizowano `__init__.py` z eksportami
-- [x] Napisano 47 testów jednostkowych dla morphometry
-- [x] Uruchomiono testy (150 testów, 95% pokrycia)
-- [x] Zaktualizowano README.md z dokumentacją morphometry
-- [x] Zaktualizowano CHANGELOG.md z v0.2.0
-- [x] Zaktualizowano pyproject.toml do v0.2.0
-- [x] Utworzono tag v0.2.0 i wypchnięto na GitHub
+- [x] Standaryzacja jednostek w `ConcentrationTime`:
+  - Zmieniono `scs_lag()`: `length_m` → `length_km`, `slope_percent` → `slope_m_per_m`
+  - Dodano ostrzeżenia dla parametrów poza typowym zakresem
+  - Zaktualizowano docstringi i testy
+- [x] Dodano Nash Instantaneous Unit Hydrograph (IUH):
+  - Nowa klasa `NashIUH` z modelem kaskady Nasha
+  - Metoda `generate()` - generowanie IUH
+  - Metoda `to_unit_hydrograph()` - konwersja do D-minutowego UH
+  - Metody `from_tc()` i `from_moments()` - estymacja parametrów
+  - 41 nowych testów dla Nash IUH
+- [x] Zainstalowano scipy jako zależność
+- [x] Uruchomiono testy (263 testy, wszystkie przechodzą)
+- [x] Wypchnięto zmiany na GitHub
 
-**Co jest w trakcie:**
-- Nic - v0.2.0 wydana!
-
-**Następne kroki (Sesja 8):**
-1. Moduł `hydrolog.network` - klasyfikacja sieci rzecznej
-2. Moduł `hydrolog.precipitation.interpolation` - interpolacja przestrzenna
-3. Wydanie v0.3.0
+**Następne kroki (Sesja 9):**
+1. CLI interface (`hydrolog.cli`)
+2. Dodatkowe metody hydrogramu (Clark IUH)
+3. Wydanie v0.4.0
 
 ---
 
 ## Kontekst dla nowej sesji
 
 ### Stan projektu
-- **Faza:** Implementacja - v0.2.0 ukończona
-- **Ostatni commit:** `docs: prepare v0.2.0 release`
+- **Faza:** Implementacja - v0.3.0+ ukończona
+- **Ostatni commit:** `feat(runoff): add Nash Instantaneous Unit Hydrograph (IUH)`
 - **Środowisko:** `.venv` z Python 3.12.12
 - **Repo GitHub:** https://github.com/Daldek/Hydrolog.git
 
 ### Zaimplementowane moduły
-- `hydrolog.time.ConcentrationTime` - 3 metody (Kirpich, SCS Lag, Giandotti)
-- `hydrolog.precipitation` - 3 typy hietogramów (Block, Triangular, Beta)
-- `hydrolog.runoff` - SCS-CN, hydrogram jednostkowy, HydrographGenerator
+- `hydrolog.time.ConcentrationTime` - 3 metody (Kirpich, SCS Lag, Giandotti) + ostrzeżenia zakresów
+- `hydrolog.precipitation` - 3 typy hietogramów (Block, Triangular, Beta) + interpolacja (Thiessen, IDW, Isohyet)
+- `hydrolog.runoff` - SCS-CN, SCSUnitHydrograph, NashIUH, HydrographGenerator
 - `hydrolog.morphometry` - WatershedGeometry, TerrainAnalysis, HypsometricCurve
+- `hydrolog.network` - StreamNetwork, klasyfikacja Strahlera/Shreve'a
 
 ### Pliki do przeczytania
 1. `CLAUDE.md` - instrukcje podstawowe
@@ -88,6 +93,7 @@
 ### Zależności zewnętrzne
 - **IMGWTools** - `https://github.com/Daldek/IMGWTools.git` - dane PMAXTP
 - **NumPy** - obliczenia numeryczne
+- **SciPy** - funkcje specjalne (gamma) dla Nash IUH
 
 ---
 
@@ -286,4 +292,4 @@ Hydrolog/
 
 ---
 
-**Ostatnia aktualizacja:** 2026-01-18, Sesja 7
+**Ostatnia aktualizacja:** 2026-01-18, Sesja 8
