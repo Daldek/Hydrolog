@@ -150,86 +150,6 @@ class TestSCSLag:
             ConcentrationTime.scs_lag(length_m=5000, slope_percent=2.0, cn=101)
 
 
-class TestNRCS:
-    """Tests for NRCS method."""
-
-    def test_nrcs_typical_values(self):
-        """Test NRCS method with typical watershed parameters."""
-        # Arrange
-        length_m = 8200.0
-        slope_percent = 2.3
-        cn = 72
-
-        # Act
-        tc = ConcentrationTime.nrcs(
-            length_m=length_m, slope_percent=slope_percent, cn=cn
-        )
-
-        # Assert - NRCS (metric) gives ~605 min for these parameters
-        assert 580.0 < tc < 630.0
-
-    def test_nrcs_higher_cn_gives_shorter_tc(self):
-        """Test that higher CN (less retention) gives shorter tc."""
-        length_m = 5000.0
-        slope_percent = 3.0
-
-        tc_low_cn = ConcentrationTime.nrcs(
-            length_m=length_m, slope_percent=slope_percent, cn=60
-        )
-        tc_high_cn = ConcentrationTime.nrcs(
-            length_m=length_m, slope_percent=slope_percent, cn=85
-        )
-
-        assert tc_high_cn < tc_low_cn
-
-    def test_nrcs_cn_100(self):
-        """Test NRCS with CN=100 (no retention)."""
-        tc = ConcentrationTime.nrcs(length_m=5000.0, slope_percent=2.0, cn=100)
-
-        # Should still return a positive value
-        assert tc > 0
-
-    def test_nrcs_high_cn_handled(self):
-        """Test NRCS with high CN where retention term would be < 1."""
-        # CN > 91 gives (1000/CN) - 9 < 1
-        tc = ConcentrationTime.nrcs(length_m=5000.0, slope_percent=2.0, cn=95)
-
-        # Should still return a positive value
-        assert tc > 0
-
-    def test_nrcs_steeper_slope_shorter_tc(self):
-        """Test that steeper slope gives shorter tc."""
-        length_m = 5000.0
-        cn = 75
-
-        tc_gentle = ConcentrationTime.nrcs(length_m=length_m, slope_percent=1.0, cn=cn)
-        tc_steep = ConcentrationTime.nrcs(length_m=length_m, slope_percent=5.0, cn=cn)
-
-        assert tc_steep < tc_gentle
-
-    def test_nrcs_zero_length_raises(self):
-        """Test that zero length raises InvalidParameterError."""
-        with pytest.raises(InvalidParameterError, match="length_m must be positive"):
-            ConcentrationTime.nrcs(length_m=0, slope_percent=2.0, cn=75)
-
-    def test_nrcs_negative_slope_raises(self):
-        """Test that negative slope raises InvalidParameterError."""
-        with pytest.raises(
-            InvalidParameterError, match="slope_percent must be positive"
-        ):
-            ConcentrationTime.nrcs(length_m=5000, slope_percent=-2.0, cn=75)
-
-    def test_nrcs_cn_too_low_raises(self):
-        """Test that CN < 1 raises InvalidParameterError."""
-        with pytest.raises(InvalidParameterError, match="cn must be in range 1-100"):
-            ConcentrationTime.nrcs(length_m=5000, slope_percent=2.0, cn=0)
-
-    def test_nrcs_cn_too_high_raises(self):
-        """Test that CN > 100 raises InvalidParameterError."""
-        with pytest.raises(InvalidParameterError, match="cn must be in range 1-100"):
-            ConcentrationTime.nrcs(length_m=5000, slope_percent=2.0, cn=101)
-
-
 class TestGiandotti:
     """Tests for Giandotti formula."""
 
@@ -331,4 +251,3 @@ class TestConcentrationTimeImport:
         assert hasattr(CT, "kirpich")
         assert hasattr(CT, "scs_lag")
         assert hasattr(CT, "giandotti")
-        assert hasattr(CT, "nrcs")
