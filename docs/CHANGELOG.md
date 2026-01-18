@@ -7,35 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-- Project documentation:
-  - `CLAUDE.md` - instructions for AI developer
-  - `README.md` - project description
-  - `docs/SCOPE.md` - project scope
-  - `docs/PRD.md` - product requirements
-  - `docs/DEVELOPMENT_STANDARDS.md` - coding standards
-  - `docs/IMPLEMENTATION_PROMPT.md` - implementation guide
-  - `docs/PROGRESS.md` - progress tracker
-  - `docs/CHANGELOG.md` - this file
-
-### Planned for v0.1.0
-- `hydrolog.time` module - concentration time calculations
-- `hydrolog.precipitation` module - hietogram generation
-- `hydrolog.runoff` module - SCS-CN method, unit hydrograph
+### Planned for v0.2.0
+- `hydrolog.morphometry` module - morphometric parameters
 
 ---
 
-## [0.1.0] - TBD
+## [0.1.0] - 2026-01-18
 
 ### Added
-- `hydrolog.time.ConcentrationTime` - Kirpich and SCS Lag methods
-- `hydrolog.precipitation.BetaHietogram` - Beta distribution hietogram
-- `hydrolog.precipitation.BlockHietogram` - Constant intensity hietogram
-- `hydrolog.runoff.calculate_effective_precipitation` - SCS-CN effective precipitation
-- `hydrolog.runoff.SCSUnitHydrograph` - SCS dimensionless unit hydrograph
-- `hydrolog.runoff.HydrographGenerator` - Full hydrograph generation
-- Unit tests with >80% coverage
-- NumPy style docstrings (English)
+
+#### `hydrolog.time` - Concentration Time
+- `ConcentrationTime.kirpich()` - Kirpich formula (L in km, S in m/m)
+- `ConcentrationTime.scs_lag()` - SCS Lag equation (metric units)
+- `ConcentrationTime.giandotti()` - Giandotti formula
+
+#### `hydrolog.precipitation` - Hyetographs
+- `HietogramResult` - dataclass with time series results
+- `BlockHietogram` - uniform intensity distribution
+- `TriangularHietogram` - triangular distribution with configurable peak
+- `BetaHietogram` - Beta distribution for realistic storm patterns
+
+#### `hydrolog.runoff` - Rainfall-Runoff
+- `SCSCN` - SCS Curve Number calculations
+  - Maximum retention S calculation
+  - Initial abstraction Ia calculation
+  - Effective precipitation Pe calculation
+  - AMC conditions (I, II, III) support
+- `SCSUnitHydrograph` - SCS dimensionless unit hydrograph
+  - Standard NRCS tabulated ratios
+  - Lag time and time to peak calculations
+- `convolve_discrete()` - discrete convolution function
+- `HydrographGenerator` - complete rainfall-runoff transformation
+  - Integration with hyetograph module
+  - Water balance tracking
+  - Runoff coefficient calculation
+
+#### Testing & Quality
+- 103 unit tests
+- 94% code coverage
+- Full type hints (mypy)
+- Black formatting
 
 ---
 
@@ -43,7 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Date | Description |
 |---------|------|-------------|
-| 0.1.0 | TBD | Hydrogram SCS-CN |
+| **0.1.0** | 2026-01-18 | SCS-CN hydrograph, hyetographs, concentration time |
 | 0.2.0 | TBD | Morphometric parameters |
 | 0.3.0 | TBD | Interpolation + river network |
 | 1.0.0 | TBD | Stable API + CLI |
