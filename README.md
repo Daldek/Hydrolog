@@ -2,24 +2,21 @@
 
 Biblioteka Python do obliczeń hydrologicznych.
 
-## Funkcjonalności
+## Funkcjonalności (v0.1.0)
 
 - **Hydrogramy odpływu** - metoda SCS Curve Number
 - **Hietogramy** - rozkład Beta, blokowy, trójkątny
-- **Czas koncentracji** - wzory Kirpicha, SCS Lag
-- **Parametry morfometryczne** - wskaźniki geometryczne i terenowe
-- **Klasyfikacja sieci rzecznej** - metody Hortona i Strahlera
-- **Interpolacja opadów** - IDW, Thiessen
+- **Czas koncentracji** - wzory Kirpicha, SCS Lag, Giandotti
 
 ## Instalacja
 
 ```bash
 # Z GitHub
-pip install git+https://github.com/Daldek/hydrolog2.git
+pip install git+https://github.com/Daldek/Hydrolog.git
 
 # Lokalna instalacja deweloperska
-git clone https://github.com/Daldek/hydrolog2.git
-cd hydrolog2
+git clone https://github.com/Daldek/Hydrolog.git
+cd Hydrolog
 pip install -e .
 ```
 
@@ -33,42 +30,42 @@ from hydrolog.precipitation import BetaHietogram
 from hydrolog.time import ConcentrationTime
 
 # 1. Oblicz czas koncentracji
-tc = ConcentrationTime.kirpich(length_km=8.2, slope_percent=2.3)
+tc = ConcentrationTime.kirpich(length_km=8.2, slope_m_per_m=0.023)
 print(f"Czas koncentracji: {tc:.1f} min")
 
 # 2. Utwórz hietogram
-hietogram = BetaHietogram(
-    total_mm=38.5,
-    duration_min=60,
-    timestep_min=5
-)
+hietogram = BetaHietogram(alpha=2.0, beta=5.0)
+precip = hietogram.generate(total_mm=38.5, duration_min=60.0, timestep_min=5.0)
 
 # 3. Wygeneruj hydrogram
-generator = HydrographGenerator(
-    area_km2=45.3,
-    cn=72,
-    tc_min=tc
-)
-result = generator.generate(hietogram)
+generator = HydrographGenerator(area_km2=45.3, cn=72, tc_min=tc)
+result = generator.generate(precip)
 
 # 4. Wyniki
 print(f"Qmax: {result.peak_discharge_m3s:.2f} m³/s")
-print(f"Czas do szczytu: {result.time_to_peak_min} min")
+print(f"Czas do szczytu: {result.time_to_peak_min:.0f} min")
 print(f"Objętość odpływu: {result.total_volume_m3:.0f} m³")
+print(f"Współczynnik odpływu: {result.runoff_coefficient:.3f}")
 ```
 
-### Tylko hietogram
+### Hietogramy
 
 ```python
-from hydrolog.precipitation import BetaHietogram, BlockHietogram
+from hydrolog.precipitation import BetaHietogram, BlockHietogram, TriangularHietogram
 
-# Hietogram Beta (realistyczny)
-beta = BetaHietogram(total_mm=38.5, duration_min=60, timestep_min=5)
-print(f"Intensywności: {beta.intensities_mm_per_min}")
+# Hietogram Beta (realistyczny rozkład burzy)
+beta = BetaHietogram(alpha=2.0, beta=5.0)
+result = beta.generate(total_mm=38.5, duration_min=60.0, timestep_min=5.0)
+print(f"Intensywności [mm]: {result.intensities_mm}")
 
 # Hietogram blokowy (stała intensywność)
-block = BlockHietogram(total_mm=38.5, duration_min=60, timestep_min=5)
-print(f"Intensywność: {block.intensity_mm_per_min:.3f} mm/min")
+block = BlockHietogram()
+result = block.generate(total_mm=38.5, duration_min=60.0, timestep_min=5.0)
+print(f"Intensywność na krok: {result.intensities_mm[0]:.2f} mm")
+
+# Hietogram trójkątny (szczyt w 40% czasu trwania)
+tri = TriangularHietogram(peak_position=0.4)
+result = tri.generate(total_mm=38.5, duration_min=60.0, timestep_min=5.0)
 ```
 
 ### Czas koncentracji
@@ -76,75 +73,73 @@ print(f"Intensywność: {block.intensity_mm_per_min:.3f} mm/min")
 ```python
 from hydrolog.time import ConcentrationTime
 
-# Wzór Kirpicha
-tc_kirpich = ConcentrationTime.kirpich(length_km=8.2, slope_percent=2.3)
+# Wzór Kirpicha (L w km, S w m/m)
+tc_kirpich = ConcentrationTime.kirpich(length_km=8.2, slope_m_per_m=0.023)
 
-# Wzór SCS Lag
-tc_scs = ConcentrationTime.scs_lag(length_m=8200, cn=72, slope_percent=2.3)
+# Wzór SCS Lag (L w m, S w %, CN 1-100)
+tc_scs = ConcentrationTime.scs_lag(length_m=8200, slope_percent=2.3, cn=72)
+
+# Wzór Giandotti (A w km², L w km, H w m)
+tc_giandotti = ConcentrationTime.giandotti(
+    area_km2=45.0, length_km=12.0, elevation_diff_m=350.0
+)
 
 print(f"Kirpich: {tc_kirpich:.1f} min")
 print(f"SCS Lag: {tc_scs:.1f} min")
+print(f"Giandotti: {tc_giandotti:.1f} min")
+```
+
+### Warunki wilgotnościowe (AMC)
+
+```python
+from hydrolog.runoff import HydrographGenerator, AMC
+from hydrolog.precipitation import BlockHietogram
+
+hietogram = BlockHietogram()
+precip = hietogram.generate(total_mm=50.0, duration_min=60.0)
+
+generator = HydrographGenerator(area_km2=45.0, cn=72, tc_min=90.0)
+
+# Suche warunki (AMC-I) - mniejszy odpływ
+result_dry = generator.generate(precip, amc=AMC.I)
+
+# Normalne warunki (AMC-II) - domyślne
+result_normal = generator.generate(precip, amc=AMC.II)
+
+# Mokre warunki (AMC-III) - większy odpływ
+result_wet = generator.generate(precip, amc=AMC.III)
 ```
 
 ## Struktura modułów
 
 ```
 hydrolog/
-├── runoff/          # Opad-odpływ (SCS-CN, hydrogramy)
-├── precipitation/   # Hietogramy, interpolacja
-├── time/            # Czas koncentracji
-├── morphometry/     # Parametry fizjograficzne
-├── network/         # Klasyfikacja sieci rzecznej
-└── cli/             # Interfejs CLI
-```
-
-## CLI
-
-```bash
-# Generowanie hydrogramu
-hydrolog generate-hydrograph \
-    --area 45.3 --cn 72 --tc 68.5 \
-    --precipitation 38.5 --duration 60 \
-    --output result.json
-
-# Obliczenie czasu koncentracji
-hydrolog calculate-tc \
-    --length 8.2 --slope 2.3 --method kirpich
-
-# Generowanie hietogramu
-hydrolog hietogram \
-    --total 38.5 --duration 60 --type beta \
-    --timestep 5 --output hietogram.csv
+├── runoff/          # Opad-odpływ (SCS-CN, hydrogramy) ✅
+├── precipitation/   # Hietogramy ✅
+├── time/            # Czas koncentracji ✅
+├── morphometry/     # Parametry fizjograficzne (v0.2.0)
+├── network/         # Klasyfikacja sieci rzecznej (v0.3.0)
+└── cli/             # Interfejs CLI (v1.0.0)
 ```
 
 ## Roadmap
 
-| Wersja | Zakres |
-|--------|--------|
-| v0.1.0 | Hydrogram SCS-CN, hietogramy, czas koncentracji |
-| v0.2.0 | Parametry morfometryczne |
-| v0.3.0 | Interpolacja opadów, klasyfikacja sieci |
-| v1.0.0 | Stabilne API, CLI, dokumentacja |
+| Wersja | Zakres | Status |
+|--------|--------|--------|
+| **v0.1.0** | Hydrogram SCS-CN, hietogramy, czas koncentracji | ✅ Wydana |
+| v0.2.0 | Parametry morfometryczne | Planowana |
+| v0.3.0 | Interpolacja opadów, klasyfikacja sieci | Planowana |
+| v1.0.0 | Stabilne API, CLI, dokumentacja | Planowana |
 
-## Zależności
+## Wymagania
 
 - Python >= 3.12
 - NumPy >= 1.24
-- IMGWTools (dla danych PMAXTP)
 
 ## Powiązane projekty
 
-- [Hydrograf](https://github.com/Daldek/Hydrograf) - System analizy hydrologicznej (używa Hydrolog)
-- [Kartograf](https://github.com/Daldek/Kartograf) - Pobieranie danych przestrzennych
-- [IMGWTools](https://github.com/Daldek/IMGWTools) - Dane z IMGW
+- [IMGWTools](https://github.com/Daldek/IMGWTools) - Dane opadowe z IMGW
 
 ## Licencja
 
 MIT License - zobacz [LICENSE](LICENSE)
-
-## Dokumentacja
-
-- [SCOPE.md](docs/SCOPE.md) - Zakres projektu
-- [PRD.md](docs/PRD.md) - Wymagania produktowe
-- [DEVELOPMENT_STANDARDS.md](docs/DEVELOPMENT_STANDARDS.md) - Standardy kodowania
-- [PROGRESS.md](docs/PROGRESS.md) - Status projektu
