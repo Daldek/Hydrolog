@@ -6,9 +6,9 @@
 |------|---------|
 | **Faza** | 0 - Inicjalizacja |
 | **Sprint** | 0.1 - Setup |
-| **Sesja** | 1 |
+| **Sesja** | 2 |
 | **Data** | 2026-01-18 |
-| **Następny milestone** | Git init + struktura pakietu |
+| **Następny milestone** | CP1 - hydrolog.time |
 | **Gałąź robocza** | main |
 
 ---
@@ -17,7 +17,7 @@
 
 | CP | Opis | Status |
 |----|------|--------|
-| CP0 | Dokumentacja i struktura repo | ⏳ W trakcie |
+| CP0 | Dokumentacja i struktura repo | ✅ Ukończony |
 | CP1 | `hydrolog.time` - czas koncentracji | 📋 Planowany |
 | CP2 | `hydrolog.precipitation` - hietogramy | 📋 Planowany |
 | CP3 | `hydrolog.runoff` - SCS-CN + hydrogram | 📋 Planowany |
@@ -38,41 +38,39 @@
 
 ## Bieżąca sesja
 
-### Sesja 1 (2026-01-18) - UKOŃCZONA
+### Sesja 2 (2026-01-18) - UKOŃCZONA
 
-**Cel:** Utworzenie dokumentacji i struktury repozytorium
+**Cel:** Inicjalizacja repozytorium Git i struktura pakietu
 
 **Co zostało zrobione:**
-- [x] Przeprowadzono wywiad o zakresie projektu
-- [x] Utworzono folder `hydrolog2/`
-- [x] Utworzono `CLAUDE.md` - instrukcje dla AI
-- [x] Utworzono `docs/SCOPE.md` - zakres projektu
-- [x] Utworzono `docs/PRD.md` - wymagania produktowe
-- [x] Utworzono `README.md` - opis projektu
-- [x] Utworzono `docs/DEVELOPMENT_STANDARDS.md` - standardy kodowania
-- [x] Utworzono `docs/IMPLEMENTATION_PROMPT.md` - prompt dla AI
-- [x] Utworzono `docs/PROGRESS.md` - ten plik
-- [x] Utworzono `docs/CHANGELOG.md` - historia zmian
+- [x] Zainicjalizowano repozytorium Git
+- [x] Dodano remote: https://github.com/Daldek/Hydrolog.git
+- [x] Utworzono strukturę pakietu `hydrolog/` z submodułami
+- [x] Utworzono strukturę testów `tests/`
+- [x] Utworzono `pyproject.toml` z konfiguracją projektu
+- [x] Utworzono `.gitignore`
+- [x] Utworzono `LICENSE` (MIT)
+- [x] Utworzono `hydrolog/exceptions.py`
+- [x] Utworzono `tests/conftest.py` z fixtures
+- [x] Pierwszy commit i push do GitHub
 
 **Co jest w trakcie:**
-- Nic - dokumentacja kompletna
+- Nic - CP0 kompletny
 
-**Następne kroki (Sesja 2):**
-1. Użytkownik tworzy środowisko venv (pyenv + Python 3.12.12)
-2. Użytkownik tworzy repo GitHub i podaje adres
-3. Zainicjalizować Git i pierwszy commit
-4. Utworzyć strukturę pakietu (`hydrolog/`, `tests/`)
-5. Utworzyć `pyproject.toml`, `.gitignore`, `LICENSE`
+**Następne kroki (Sesja 3):**
+1. Rozpocząć CP1 - moduł `hydrolog.time`
+2. Implementacja `ConcentrationTime` (wzór Kirpicha, SCS Lag)
+3. Testy jednostkowe dla modułu time
 
 ---
 
 ## Kontekst dla nowej sesji
 
 ### Stan projektu
-- **Faza:** Inicjalizacja - dokumentacja KOMPLETNA
-- **Ostatni commit:** (brak - repo nie zainicjalizowane)
-- **Środowisko:** pyenv + Python 3.12.12 (czeka na utworzenie przez użytkownika)
-- **Repo GitHub:** (czeka na adres od użytkownika)
+- **Faza:** Inicjalizacja KOMPLETNA - gotowy do implementacji
+- **Ostatni commit:** `feat: initial project structure`
+- **Środowisko:** `.venv` z Python 3.12.12
+- **Repo GitHub:** https://github.com/Daldek/Hydrolog.git
 
 ### Pliki do przeczytania
 1. `CLAUDE.md` - instrukcje podstawowe
@@ -87,6 +85,27 @@
 
 ## Historia sesji
 
+### Sesja 2 (2026-01-18) - UKOŃCZONA
+
+**Wykonane:**
+- Zainicjalizowano repozytorium Git
+- Połączono z GitHub (https://github.com/Daldek/Hydrolog.git)
+- Utworzono kompletną strukturę pakietu Python
+- Utworzono pyproject.toml z konfiguracją (black, mypy, pytest)
+- Utworzono moduł exceptions.py
+- Utworzono conftest.py z fixtures
+- Pierwszy commit i push
+
+**Pliki utworzone:**
+- `pyproject.toml`, `.gitignore`, `LICENSE`
+- `hydrolog/__init__.py`, `hydrolog/exceptions.py`
+- `hydrolog/{runoff,morphometry,precipitation,network,time,cli}/__init__.py`
+- `hydrolog/cli/main.py`
+- `tests/__init__.py`, `tests/conftest.py`
+- `tests/{unit,integration}/__init__.py`
+
+---
+
 ### Sesja 1 (2026-01-18) - UKOŃCZONA
 
 **Wykonane:**
@@ -98,7 +117,7 @@
 
 **Decyzje:**
 - Nazwa: Hydrolog
-- Lokalizacja: `/Users/piotr/Programowanie/hydrolog2/`
+- Lokalizacja: `/Users/piotr/Programowanie/Hydrolog/`
 - Licencja: MIT
 - Dystrybucja: GitHub → PyPI
 - Język: Dokumentacja PL, kod EN
@@ -139,7 +158,7 @@ git push
 ## Struktura docelowa
 
 ```
-hydrolog2/
+Hydrolog/
 ├── CLAUDE.md
 ├── README.md
 ├── LICENSE
@@ -178,4 +197,4 @@ hydrolog2/
 
 ---
 
-**Ostatnia aktualizacja:** 2026-01-18, Sesja 1
+**Ostatnia aktualizacja:** 2026-01-18, Sesja 2
