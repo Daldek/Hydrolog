@@ -2,12 +2,14 @@
 
 Biblioteka Python do obliczeń hydrologicznych.
 
-## Funkcjonalności (v0.2.0)
+## Funkcjonalności (v0.3.0)
 
 - **Hydrogramy odpływu** - metoda SCS Curve Number
 - **Hietogramy** - rozkład Beta, blokowy, trójkątny
 - **Czas koncentracji** - wzory Kirpicha, SCS Lag, Giandotti
 - **Parametry morfometryczne** - wskaźniki kształtu, teren, krzywa hipsograficzna
+- **Klasyfikacja sieci rzecznej** - metody Strahlera i Shreve'a
+- **Interpolacja opadów** - Thiessen, IDW, izohiety
 
 ## Instalacja
 
@@ -140,15 +142,59 @@ result = hypso.analyze()
 print(f"Całka hipsograficzna: {result.hypsometric_integral:.3f}")
 ```
 
+### Klasyfikacja sieci rzecznej
+
+```python
+from hydrolog.network import StreamNetwork, StreamSegment, OrderingMethod
+
+# Definiuj sieć rzeczną
+segments = [
+    StreamSegment(1, [], length_km=1.0),   # Źródłowy
+    StreamSegment(2, [], length_km=0.8),   # Źródłowy
+    StreamSegment(3, [1, 2], length_km=2.0),  # Połączenie
+]
+
+# Klasyfikuj metodą Strahlera
+network = StreamNetwork(segments, area_km2=10.0)
+network.classify(OrderingMethod.STRAHLER)
+
+# Statystyki sieci
+stats = network.get_statistics()
+print(f"Rząd maksymalny: {stats.max_order}")
+print(f"Gęstość drenażu: {stats.drainage_density:.2f} km/km²")
+```
+
+### Interpolacja opadów
+
+```python
+from hydrolog.precipitation import Station, thiessen_polygons, inverse_distance_weighting
+
+# Stacje pomiarowe
+stations = [
+    Station("S1", x=0, y=0, precipitation_mm=25.0),
+    Station("S2", x=10, y=0, precipitation_mm=35.0),
+    Station("S3", x=5, y=8, precipitation_mm=30.0),
+]
+
+# Metoda Thiessena
+areas = {"S1": 15.0, "S2": 20.0, "S3": 10.0}  # km²
+result = thiessen_polygons(stations, areas)
+print(f"Opad średni (Thiessen): {result.areal_precipitation_mm:.1f} mm")
+
+# Metoda IDW
+result = inverse_distance_weighting(stations, target_x=5, target_y=4, power=2)
+print(f"Opad w punkcie (IDW): {result.areal_precipitation_mm:.1f} mm")
+```
+
 ## Struktura modułów
 
 ```
 hydrolog/
 ├── runoff/          # Opad-odpływ (SCS-CN, hydrogramy) ✅
-├── precipitation/   # Hietogramy ✅
+├── precipitation/   # Hietogramy + interpolacja ✅
 ├── time/            # Czas koncentracji ✅
 ├── morphometry/     # Parametry fizjograficzne ✅
-├── network/         # Klasyfikacja sieci rzecznej (v0.3.0)
+├── network/         # Klasyfikacja sieci rzecznej ✅
 └── cli/             # Interfejs CLI (v1.0.0)
 ```
 
@@ -157,8 +203,8 @@ hydrolog/
 | Wersja | Zakres | Status |
 |--------|--------|--------|
 | v0.1.0 | Hydrogram SCS-CN, hietogramy, czas koncentracji | ✅ Wydana |
-| **v0.2.0** | Parametry morfometryczne | ✅ Wydana |
-| v0.3.0 | Interpolacja opadów, klasyfikacja sieci | Planowana |
+| v0.2.0 | Parametry morfometryczne | ✅ Wydana |
+| **v0.3.0** | Interpolacja opadów, klasyfikacja sieci | ✅ Wydana |
 | v1.0.0 | Stabilne API, CLI, dokumentacja | Planowana |
 
 ## Wymagania

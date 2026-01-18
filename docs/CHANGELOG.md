@@ -7,9 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Planned for v0.3.0
-- `hydrolog.network` module - river network classification
-- `hydrolog.precipitation.interpolation` - spatial interpolation
+### Planned for v0.4.0
+- CLI interface for command-line operations
+- Additional interpolation methods (kriging)
+
+---
+
+## [0.3.0] - 2026-01-18
+
+### Added
+
+#### `hydrolog.network` - River Network Classification
+
+**Stream ordering (stream_order.py):**
+- `StreamSegment` - dataclass for network segments
+- `StreamNetwork` - main class for network analysis
+- `OrderingMethod` - enum (STRAHLER, SHREVE)
+- `NetworkStatistics` - complete network statistics
+- Strahler stream ordering method
+- Shreve stream ordering method
+- Bifurcation ratio calculation
+- Length ratio calculation
+
+**Utility functions:**
+- `bifurcation_ratio()` - calculate Rb between orders
+- `drainage_density()` - streams length / watershed area
+- `stream_frequency()` - streams count / watershed area
+
+#### `hydrolog.precipitation.interpolation` - Spatial Interpolation
+
+**Interpolation methods:**
+- `Station` - dataclass for measurement stations
+- `thiessen_polygons()` - Thiessen/Voronoi polygon method
+- `inverse_distance_weighting()` - IDW interpolation
+- `areal_precipitation_idw()` - grid-based IDW averaging
+- `isohyet_method()` - isohyet contour method
+- `arithmetic_mean()` - simple station average
+
+**Result dataclasses:**
+- `ThiessenResult` - weights and contributions
+- `IDWResult` - interpolated values with weights
+- `IsohyetResult` - zone-based precipitation
+
+#### Testing & Quality
+- 60 new tests for network and interpolation (210 total)
+- 95% code coverage
 
 ---
 
@@ -91,5 +133,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 |---------|------|-------------|
 | **0.1.0** | 2026-01-18 | SCS-CN hydrograph, hyetographs, concentration time |
 | **0.2.0** | 2026-01-18 | Morphometric parameters |
-| 0.3.0 | TBD | Interpolation + river network |
+| **0.3.0** | 2026-01-18 | Interpolation + river network |
 | 1.0.0 | TBD | Stable API + CLI |
