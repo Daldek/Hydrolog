@@ -277,28 +277,18 @@ Gałąź `main` otrzymuje tylko merge z `develop` przy wydaniach.
 
 ### 6.2 Tagowanie
 
-Tagi są tworzone automatycznie przez Claude Code:
-
-| Tag | Opis | Kiedy |
-|-----|------|-------|
-| `cp<N>` | Checkpoint | Po ukończeniu checkpointu (CP1, CP2, etc.) |
-| `v<X.Y.Z>` | Wersja | Przy wydaniu nowej wersji |
+Tagi `v<X.Y.Z>` są tworzone automatycznie przez Claude Code przy wydaniach:
 
 ```bash
-# Tworzenie tagu checkpointu
-git tag -a cp1 -m "Checkpoint 1: hydrolog.time complete"
-git push origin cp1
-
 # Tworzenie tagu wersji
 git tag -a v0.1.0 -m "Release v0.1.0: SCS-CN hydrograph generation"
 git push origin v0.1.0
 
 # Lista tagów
 git tag -l
-
-# Przejście do tagu
-git checkout cp1
 ```
+
+**Uwaga:** Checkpointy (CP) są śledzone tylko w `docs/PROGRESS.md`, bez tagów Git.
 
 ### 6.4 Conventional Commits
 
