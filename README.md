@@ -2,9 +2,9 @@
 
 Biblioteka Python do obliczeń hydrologicznych.
 
-## Funkcjonalności (v0.3.0)
+## Funkcjonalności
 
-- **Hydrogramy odpływu** - metoda SCS Curve Number
+- **Hydrogramy odpływu** - metoda SCS Curve Number, Nash IUH
 - **Hietogramy** - rozkład Beta, blokowy, trójkątny
 - **Czas koncentracji** - wzory Kirpicha, SCS Lag, Giandotti
 - **Parametry morfometryczne** - wskaźniki kształtu, teren, krzywa hipsograficzna
@@ -79,8 +79,8 @@ from hydrolog.time import ConcentrationTime
 # Wzór Kirpicha (L w km, S w m/m)
 tc_kirpich = ConcentrationTime.kirpich(length_km=8.2, slope_m_per_m=0.023)
 
-# Wzór SCS Lag (L w m, S w %, CN 1-100)
-tc_scs = ConcentrationTime.scs_lag(length_m=8200, slope_percent=2.3, cn=72)
+# Wzór SCS Lag (L w km, S w m/m, CN 1-100)
+tc_scs = ConcentrationTime.scs_lag(length_km=8.2, slope_m_per_m=0.023, cn=72)
 
 # Wzór Giandotti (A w km², L w km, H w m)
 tc_giandotti = ConcentrationTime.giandotti(
@@ -111,6 +111,29 @@ result_normal = generator.generate(precip, amc=AMC.II)
 
 # Mokre warunki (AMC-III) - większy odpływ
 result_wet = generator.generate(precip, amc=AMC.III)
+```
+
+### Chwilowy hydrogram jednostkowy (Nash IUH)
+
+```python
+from hydrolog.runoff import NashIUH
+from hydrolog.time import ConcentrationTime
+
+# Metoda 1: Bezpośrednie podanie parametrów
+iuh = NashIUH(n=3.0, k_min=30.0)
+
+# Metoda 2: Estymacja z czasu koncentracji
+tc = ConcentrationTime.kirpich(length_km=8.2, slope_m_per_m=0.023)
+iuh = NashIUH.from_tc(tc_min=tc, n=3.0, lag_ratio=0.6)
+
+# Generowanie IUH
+result = iuh.generate(timestep_min=5.0, duration_min=300.0)
+print(f"Czas do szczytu IUH: {iuh.time_to_peak_min:.1f} min")
+print(f"Czas opóźnienia: {iuh.lag_time_min:.1f} min")
+
+# Konwersja do D-minutowego hydrogramu jednostkowego
+uh = iuh.to_unit_hydrograph(area_km2=45.0, duration_min=30.0)
+print(f"Qmax UH: {uh.peak_discharge_m3s:.2f} m³/s")
 ```
 
 ### Parametry morfometryczne
@@ -211,6 +234,7 @@ hydrolog/
 
 - Python >= 3.12
 - NumPy >= 1.24
+- SciPy >= 1.10
 
 ## Powiązane projekty
 
