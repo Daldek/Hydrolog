@@ -4,11 +4,11 @@
 
 | Pole | Wartość |
 |------|---------|
-| **Faza** | 0 - Inicjalizacja |
-| **Sprint** | 0.1 - Setup |
-| **Sesja** | 2 |
+| **Faza** | 1 - Implementacja |
+| **Sprint** | 0.1 - Core modules |
+| **Sesja** | 3 |
 | **Data** | 2026-01-18 |
-| **Następny milestone** | CP1 - hydrolog.time |
+| **Następny milestone** | CP2 - hydrolog.precipitation |
 | **Gałąź robocza** | develop |
 
 ---
@@ -18,7 +18,7 @@
 | CP | Opis | Status |
 |----|------|--------|
 | CP0 | Dokumentacja i struktura repo | ✅ Ukończony |
-| CP1 | `hydrolog.time` - czas koncentracji | 📋 Planowany |
+| CP1 | `hydrolog.time` - czas koncentracji | ✅ Ukończony |
 | CP2 | `hydrolog.precipitation` - hietogramy | 📋 Planowany |
 | CP3 | `hydrolog.runoff` - SCS-CN + hydrogram | 📋 Planowany |
 | CP4 | v0.1.0 - Pierwsze wydanie | 📋 Planowany |
@@ -38,39 +38,41 @@
 
 ## Bieżąca sesja
 
-### Sesja 2 (2026-01-18) - UKOŃCZONA
+### Sesja 3 (2026-01-18) - UKOŃCZONA
 
-**Cel:** Inicjalizacja repozytorium Git i struktura pakietu
+**Cel:** Implementacja modułu `hydrolog.time` (CP1)
 
 **Co zostało zrobione:**
-- [x] Zainicjalizowano repozytorium Git
-- [x] Dodano remote: https://github.com/Daldek/Hydrolog.git
-- [x] Utworzono strukturę pakietu `hydrolog/` z submodułami
-- [x] Utworzono strukturę testów `tests/`
-- [x] Utworzono `pyproject.toml` z konfiguracją projektu
-- [x] Utworzono `.gitignore`
-- [x] Utworzono `LICENSE` (MIT)
-- [x] Utworzono `hydrolog/exceptions.py`
-- [x] Utworzono `tests/conftest.py` z fixtures
-- [x] Pierwszy commit i push do GitHub
+- [x] Utworzono `hydrolog/time/concentration.py` z klasą `ConcentrationTime`
+- [x] Zaimplementowano metodę Kirpicha (`kirpich()`)
+- [x] Zaimplementowano metodę SCS Lag (`scs_lag()`)
+- [x] Zaimplementowano metodę Giandottiego (`giandotti()`)
+- [x] Dodano walidację parametrów i własne wyjątki
+- [x] Zaktualizowano `hydrolog/time/__init__.py` z eksportami
+- [x] Utworzono testy jednostkowe (24 testy)
+- [x] Pokrycie kodu: 100%
+- [x] Formatowanie (Black) i typy (mypy) OK
 
 **Co jest w trakcie:**
-- Nic - CP0 kompletny
+- Nic - CP1 kompletny
 
-**Następne kroki (Sesja 3):**
-1. Rozpocząć CP1 - moduł `hydrolog.time`
-2. Implementacja `ConcentrationTime` (wzór Kirpicha, SCS Lag)
-3. Testy jednostkowe dla modułu time
+**Następne kroki (Sesja 4):**
+1. Rozpocząć CP2 - moduł `hydrolog.precipitation`
+2. Implementacja hietogramów (Beta, blokowy, trójkątny)
+3. Testy jednostkowe dla modułu precipitation
 
 ---
 
 ## Kontekst dla nowej sesji
 
 ### Stan projektu
-- **Faza:** Inicjalizacja KOMPLETNA - gotowy do implementacji
-- **Ostatni commit:** `feat: initial project structure`
+- **Faza:** Implementacja - CP1 ukończony
+- **Ostatni commit:** `feat(time): add ConcentrationTime class`
 - **Środowisko:** `.venv` z Python 3.12.12
 - **Repo GitHub:** https://github.com/Daldek/Hydrolog.git
+
+### Zaimplementowane moduły
+- `hydrolog.time.ConcentrationTime` - 3 metody (Kirpich, SCS Lag, Giandotti)
 
 ### Pliki do przeczytania
 1. `CLAUDE.md` - instrukcje podstawowe
@@ -84,6 +86,20 @@
 ---
 
 ## Historia sesji
+
+### Sesja 3 (2026-01-18) - UKOŃCZONA
+
+**Wykonane:**
+- Zaimplementowano moduł `hydrolog.time` (CP1)
+- Klasa `ConcentrationTime` z 3 metodami statycznymi
+- 24 testy jednostkowe, 100% pokrycia
+
+**Pliki utworzone/zmodyfikowane:**
+- `hydrolog/time/concentration.py` (nowy)
+- `hydrolog/time/__init__.py` (zaktualizowany)
+- `tests/unit/test_concentration.py` (nowy)
+
+---
 
 ### Sesja 2 (2026-01-18) - UKOŃCZONA
 
@@ -197,4 +213,4 @@ Hydrolog/
 
 ---
 
-**Ostatnia aktualizacja:** 2026-01-18, Sesja 2
+**Ostatnia aktualizacja:** 2026-01-18, Sesja 3
