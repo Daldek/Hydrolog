@@ -6,9 +6,9 @@
 |------|---------|
 | **Faza** | 1 - Implementacja |
 | **Sprint** | 0.1 - Core modules |
-| **Sesja** | 3 |
+| **Sesja** | 4 |
 | **Data** | 2026-01-18 |
-| **Następny milestone** | CP2 - hydrolog.precipitation |
+| **Następny milestone** | CP3 - hydrolog.runoff |
 | **Gałąź robocza** | develop |
 
 ---
@@ -19,7 +19,7 @@
 |----|------|--------|
 | CP0 | Dokumentacja i struktura repo | ✅ Ukończony |
 | CP1 | `hydrolog.time` - czas koncentracji | ✅ Ukończony |
-| CP2 | `hydrolog.precipitation` - hietogramy | 📋 Planowany |
+| CP2 | `hydrolog.precipitation` - hietogramy | ✅ Ukończony |
 | CP3 | `hydrolog.runoff` - SCS-CN + hydrogram | 📋 Planowany |
 | CP4 | v0.1.0 - Pierwsze wydanie | 📋 Planowany |
 
@@ -38,28 +38,31 @@
 
 ## Bieżąca sesja
 
-### Sesja 3 (2026-01-18) - UKOŃCZONA
+### Sesja 4 (2026-01-18) - UKOŃCZONA
 
-**Cel:** Implementacja modułu `hydrolog.time` (CP1)
+**Cel:** Implementacja modułu `hydrolog.precipitation` (CP2)
 
 **Co zostało zrobione:**
-- [x] Utworzono `hydrolog/time/concentration.py` z klasą `ConcentrationTime`
-- [x] Zaimplementowano metodę Kirpicha (`kirpich()`)
-- [x] Zaimplementowano metodę SCS Lag (`scs_lag()`)
-- [x] Zaimplementowano metodę Giandottiego (`giandotti()`)
-- [x] Dodano walidację parametrów i własne wyjątki
-- [x] Zaktualizowano `hydrolog/time/__init__.py` z eksportami
-- [x] Utworzono testy jednostkowe (24 testy)
-- [x] Pokrycie kodu: 100%
+- [x] Utworzono `hydrolog/precipitation/hietogram.py` z klasami hietogramów
+- [x] Zaimplementowano `HietogramResult` (dataclass z wynikami)
+- [x] Zaimplementowano `Hietogram` (klasa abstrakcyjna)
+- [x] Zaimplementowano `BlockHietogram` (rozkład równomierny)
+- [x] Zaimplementowano `TriangularHietogram` (rozkład trójkątny)
+- [x] Zaimplementowano `BetaHietogram` (rozkład Beta)
+- [x] Dodano walidację parametrów
+- [x] Zaktualizowano `hydrolog/precipitation/__init__.py` z eksportami
+- [x] Utworzono testy jednostkowe (33 testy)
+- [x] Pokrycie kodu: 91% (łącznie 57 testów)
 - [x] Formatowanie (Black) i typy (mypy) OK
 
 **Co jest w trakcie:**
-- Nic - CP1 kompletny
+- Nic - CP2 kompletny
 
-**Następne kroki (Sesja 4):**
-1. Rozpocząć CP2 - moduł `hydrolog.precipitation`
-2. Implementacja hietogramów (Beta, blokowy, trójkątny)
-3. Testy jednostkowe dla modułu precipitation
+**Następne kroki (Sesja 5):**
+1. Rozpocząć CP3 - moduł `hydrolog.runoff`
+2. Implementacja metody SCS-CN
+3. Implementacja hydrogramu jednostkowego SCS
+4. Testy jednostkowe dla modułu runoff
 
 ---
 
@@ -73,6 +76,7 @@
 
 ### Zaimplementowane moduły
 - `hydrolog.time.ConcentrationTime` - 3 metody (Kirpich, SCS Lag, Giandotti)
+- `hydrolog.precipitation` - 3 typy hietogramów (Block, Triangular, Beta)
 
 ### Pliki do przeczytania
 1. `CLAUDE.md` - instrukcje podstawowe
@@ -86,6 +90,20 @@
 ---
 
 ## Historia sesji
+
+### Sesja 4 (2026-01-18) - UKOŃCZONA
+
+**Wykonane:**
+- Zaimplementowano moduł `hydrolog.precipitation` (CP2)
+- Klasy hietogramów: `HietogramResult`, `Hietogram` (ABC), `BlockHietogram`, `TriangularHietogram`, `BetaHietogram`
+- 33 testy jednostkowe dla hietogramów, łącznie 57 testów, 91% pokrycia
+
+**Pliki utworzone/zmodyfikowane:**
+- `hydrolog/precipitation/hietogram.py` (nowy)
+- `hydrolog/precipitation/__init__.py` (zaktualizowany)
+- `tests/unit/test_hietogram.py` (nowy)
+
+---
 
 ### Sesja 3 (2026-01-18) - UKOŃCZONA
 
@@ -213,4 +231,4 @@ Hydrolog/
 
 ---
 
-**Ostatnia aktualizacja:** 2026-01-18, Sesja 3
+**Ostatnia aktualizacja:** 2026-01-18, Sesja 4
