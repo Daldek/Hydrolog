@@ -31,15 +31,19 @@ class SnyderUHResult:
     area_km2 : float
         Watershed area [km²].
     lag_time_min : float
-        Basin lag time tL [min].
+        Basin lag time tL [min] (original, unadjusted).
+    adjusted_lag_time_min : float
+        Adjusted lag time tL' [min] for non-standard duration.
     time_to_peak_min : float
         Time to peak discharge tp [min].
     peak_discharge_m3s : float
         Peak discharge qp [m³/s per mm].
     time_base_min : float
         Time base of the hydrograph tb [min].
+    duration_min : float
+        Actual rainfall duration D' used for generation [min].
     standard_duration_min : float
-        Standard rainfall duration D [min].
+        Standard rainfall duration D = tL/5.5 [min].
     ct : float
         Time coefficient Ct.
     cp : float
@@ -50,9 +54,11 @@ class SnyderUHResult:
     ordinates_m3s: NDArray[np.float64]
     area_km2: float
     lag_time_min: float
+    adjusted_lag_time_min: float
     time_to_peak_min: float
     peak_discharge_m3s: float
     time_base_min: float
+    duration_min: float
     standard_duration_min: float
     ct: float
     cp: float
@@ -479,14 +485,20 @@ class SnyderUH:
         peak_idx = np.argmax(ordinates)
         peak_discharge = float(ordinates[peak_idx])
 
+        # Calculate adjusted lag time for non-standard duration
+        D_standard = self.standard_duration_min
+        adjusted_lag_time = self.lag_time_min + (duration_min - D_standard) / 4.0
+
         return SnyderUHResult(
             times_min=times,
             ordinates_m3s=ordinates,
             area_km2=self.area_km2,
             lag_time_min=self.lag_time_min,
+            adjusted_lag_time_min=adjusted_lag_time,
             time_to_peak_min=tp_min,
             peak_discharge_m3s=peak_discharge,
             time_base_min=self.time_base_min(),
+            duration_min=duration_min,
             standard_duration_min=self.standard_duration_min,
             ct=self.ct,
             cp=self.cp,

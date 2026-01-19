@@ -271,6 +271,30 @@ class TestSnyderUHGenerate:
         result = uh.generate(timestep_min=30.0, duration_min=60.0)
 
         assert result.standard_duration_min == uh.standard_duration_min
+        assert result.duration_min == 60.0
+
+    def test_generate_duration_adjustment(self):
+        """Test that lag time is correctly adjusted for non-standard duration."""
+        uh = SnyderUH(area_km2=100.0, L_km=15.0, Lc_km=8.0)
+
+        # Generate with standard duration
+        result_std = uh.generate(timestep_min=30.0)
+        assert abs(result_std.duration_min - uh.standard_duration_min) < 0.01
+        assert abs(result_std.adjusted_lag_time_min - uh.lag_time_min) < 0.01
+
+        # Generate with custom duration (longer than standard)
+        D_prime = 120.0
+        result_custom = uh.generate(timestep_min=30.0, duration_min=D_prime)
+
+        # Verify adjustment formula: tL' = tL + (D' - D) / 4
+        D_std = uh.standard_duration_min
+        expected_adj_lag = uh.lag_time_min + (D_prime - D_std) / 4.0
+
+        assert result_custom.duration_min == D_prime
+        assert abs(result_custom.adjusted_lag_time_min - expected_adj_lag) < 0.01
+
+        # Longer duration should increase adjusted lag time
+        assert result_custom.adjusted_lag_time_min > result_std.adjusted_lag_time_min
 
     def test_generate_peak_timing_reasonable(self):
         """Test peak occurs at reasonable time."""
