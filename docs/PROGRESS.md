@@ -6,8 +6,8 @@
 |------|---------|
 | **Faza** | 1 - Implementacja |
 | **Sprint** | 0.3+ - Rozszerzenia |
-| **Sesja** | 9 |
-| **Data** | 2026-01-18 |
+| **Sesja** | 10 |
+| **Data** | 2026-01-19 |
 | **Następny milestone** | v0.4.0 - CLI + dodatkowe metody |
 | **Gałąź robocza** | develop |
 
@@ -44,6 +44,32 @@
 
 ## Bieżąca sesja
 
+### Sesja 10 (2026-01-19) - W TRAKCIE
+
+**Cel:** Integracja z Kartografem (dane glebowe, HSG)
+
+**Co zostało zrobione:**
+- [x] Zapoznano się z nową wersją Kartografa (v0.3.0):
+  - SoilGrids - dane glebowe (clay, sand, silt)
+  - HSGCalculator - grupy hydrologiczne dla SCS-CN
+  - Klasyfikacja USDA (12 klas tekstury → 4 grupy HSG)
+- [x] Zaktualizowano SCOPE.md:
+  - Dodano informacje o integracji z Kartografem
+  - Zaktualizowano tabelę zależności
+- [x] Zaktualizowano pyproject.toml:
+  - Dodano opcjonalną zależność `spatial` z Kartografem
+  - Dodano grupę `all` dla wszystkich opcjonalnych zależności
+
+**W trakcie:**
+- [ ] Implementacja modułu `runoff.cn_lookup` (tabele CN wg USDA)
+
+**Następne kroki:**
+1. Implementacja CN lookup tables (HSG + land cover → CN)
+2. CLI interface (`hydrolog.cli`)
+3. Wydanie v0.4.0
+
+---
+
 ### Sesja 9 (2026-01-18) - UKOŃCZONA
 
 **Cel:** Weryfikacja i poprawka formuł czasu koncentracji
@@ -60,11 +86,6 @@
   - Giandotti: 94.8 → 179.7 min
 - [x] Uruchomiono testy (36/36 przechodzą)
 - [x] Zapoznano się z plikiem `parametry_modeli_PMHGW.xlsx` (dane IMGW dla 5 zlewni)
-
-**Następne kroki (Sesja 10):**
-1. CLI interface (`hydrolog.cli`)
-2. Dodatkowe metody hydrogramu (Clark IUH, Snyder)
-3. Wydanie v0.4.0
 
 ---
 
@@ -90,6 +111,7 @@
 
 ### Zależności zewnętrzne
 - **IMGWTools** - `https://github.com/Daldek/IMGWTools.git` - dane PMAXTP
+- **Kartograf** - `https://github.com/Daldek/Kartograf.git` - HSG, SoilGrids, dane przestrzenne (opcjonalna)
 - **NumPy** - obliczenia numeryczne
 - **SciPy** - funkcje specjalne (gamma) dla Nash IUH
 
@@ -305,4 +327,4 @@ Hydrolog/
 
 ---
 
-**Ostatnia aktualizacja:** 2026-01-18, Sesja 9
+**Ostatnia aktualizacja:** 2026-01-19, Sesja 10
