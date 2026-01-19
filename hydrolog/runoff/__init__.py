@@ -1,5 +1,15 @@
 """Runoff generation module using SCS-CN method."""
 
+from hydrolog.runoff.cn_lookup import (
+    CNLookupResult,
+    HydrologicCondition,
+    LandCover,
+    calculate_weighted_cn,
+    get_cn,
+    get_cn_range,
+    list_land_covers,
+    lookup_cn,
+)
 from hydrolog.runoff.convolution import HydrographResult, convolve_discrete
 from hydrolog.runoff.generator import HydrographGenerator, HydrographGeneratorResult
 from hydrolog.runoff.nash_iuh import IUHResult, NashIUH, NashUHResult
@@ -14,6 +24,15 @@ __all__ = [
     "SCSCN",
     "AMC",
     "EffectivePrecipitationResult",
+    # CN Lookup (TR-55 tables)
+    "get_cn",
+    "lookup_cn",
+    "get_cn_range",
+    "list_land_covers",
+    "calculate_weighted_cn",
+    "LandCover",
+    "HydrologicCondition",
+    "CNLookupResult",
     # Unit hydrograph (SCS)
     "SCSUnitHydrograph",
     "UnitHydrographResult",
