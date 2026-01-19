@@ -45,9 +45,9 @@
 
 ## Bieżąca sesja
 
-### Sesja 11 (2026-01-19) - UKOŃCZONA
+### Sesja 11 (2026-01-19) - W TRAKCIE
 
-**Cel:** Korekta formuł modelu Snydera dla jednostek SI
+**Cel:** Korekta formuł modelu Snydera dla jednostek SI + walidacja z HEC-HMS
 
 **Co zostało zrobione:**
 - [x] Zaktualizowano dokumentację (README.md, SCOPE.md) dla v0.4.0
@@ -62,6 +62,41 @@
 - [x] Zaktualizowano 45 testów dla nowych formuł
 - [x] Zweryfikowano bilans wodny (100,000 m³ dla 1mm na 100 km²)
 - [x] Łącznie 414 testów jednostkowych (wszystkie przechodzą)
+- [x] Przetestowano model Snydera na rzeczywistej zlewni
+
+**Test na zlewni rzeczywistej:**
+```
+Parametry zlewni:
+  A = 2.555 km², L = 2.44 km, Lc = 1.355 km
+  Hmax = 710 m, Hmin = 405 m, S = 11.9%
+  Ct = 1.35, Cp = 0.6, CN = 57
+
+Opad:
+  P = 89.2 mm, t = 24h, rozkład Beta(2,3)
+  Pe = 10.67 mm (C = 0.120)
+
+Wyniki Hydrolog:
+  tL = 1.93 h, tLR = 2.10 h (dla Δt=1h)
+  Qmax = 0.81 m³/s, czas do szczytu = 16.0 h
+
+Wyniki HEC-HMS (do porównania):
+  tL = 1.954 h, tLR = 2.115 h
+  Qmax ≈ 3 m³/s (!)
+```
+
+**⚠️ ROZBIEŻNOŚĆ Z HEC-HMS:**
+- Hydrolog: Qmax = 0.81 m³/s
+- HEC-HMS: Qmax ≈ 3 m³/s (różnica ~4×)
+- Parametry tL, tD, tLR są zgodne (~1-2% różnicy)
+- Teoretyczne maksimum (cały Pe naraz) = 2.13 m³/s
+- HEC-HMS daje wynik WYŻSZY niż teoretyczne maksimum
+
+**Do zbadania w następnej sesji:**
+1. [ ] Sprawdzić wartość Cp w HEC-HMS
+2. [ ] Sprawdzić unit peak (qP) w HEC-HMS
+3. [ ] Sprawdzić excess precipitation w HEC-HMS
+4. [ ] Porównać kształt hydrogramu jednostkowego
+5. [ ] Zweryfikować metodę splotu (convolution)
 
 **Pliki zmodyfikowane:**
 - `hydrolog/runoff/snyder_uh.py` - poprawione formuły SI
@@ -69,10 +104,10 @@
 - `README.md` - dodane przykłady CLI
 - `docs/SCOPE.md` - zaktualizowany status funkcjonalności
 
-**Następne kroki (v1.0.0):**
-1. Stabilizacja API
-2. Dokumentacja użytkownika
-3. Przykłady użycia
+**Następne kroki:**
+1. Rozwiązać rozbieżność z HEC-HMS
+2. Stabilizacja API (v1.0.0)
+3. Dokumentacja użytkownika
 
 ---
 
@@ -387,4 +422,4 @@ Hydrolog/
 
 ---
 
-**Ostatnia aktualizacja:** 2026-01-19, Sesja 11
+**Ostatnia aktualizacja:** 2026-01-19, Sesja 11 (w trakcie - rozbieżność z HEC-HMS)
