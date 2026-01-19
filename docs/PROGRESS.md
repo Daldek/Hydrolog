@@ -45,6 +45,22 @@
 
 ## Bieżąca sesja
 
+### Sesja 12 (2026-01-19) - W TRAKCIE
+
+**Cel:** Metoda Lutza do estymacji parametrów modelu Nasha
+
+**Co zostało zrobione:**
+- [x] Zaimplementowano metodę `NashIUH.from_lutz()`:
+  - Estymacja parametrów n i K z charakterystyk fizjograficznych zlewni
+  - Parametry wejściowe: L, Lc, spadek, współczynnik Manninga, % urbanizacji, % lasów
+  - Numeryczne rozwiązywanie równania f(N) dla parametru N (metoda Brenta)
+  - Referencja: Lutz W. (1984) - Berechnung von Hochwasserabflüssen
+- [x] Dodano 17 nowych testów jednostkowych dla metody Lutza
+- [x] Zaktualizowano README.md z przykładem użycia
+- [x] Łącznie 485 testów jednostkowych (wszystkie przechodzą)
+
+---
+
 ### Sesja 11 (2026-01-19) - UKOŃCZONA
 
 **Cel:** Korekta formuł modelu Snydera + ujednolicenie API modeli UH
