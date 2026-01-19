@@ -266,13 +266,31 @@ pytest tests/ --cov=hydrolog --cov-report=html --cov-fail-under=80
 ### 6.1 Branching
 
 ```
-main          # Stabilna wersja
-develop       # Aktywny rozwój
+main          # Stabilna wersja (tylko merge z develop)
+develop       # Aktywny rozwój (DOMYŚLNA GAŁĄŹ ROBOCZA)
 feature/*     # Nowe funkcjonalności
 fix/*         # Poprawki błędów
 ```
 
-### 6.2 Conventional Commits
+**WAŻNE:** Cały rozwój kodu odbywa się na gałęzi `develop`.
+Gałąź `main` otrzymuje tylko merge z `develop` przy wydaniach.
+
+### 6.2 Tagowanie
+
+Tagi `v<X.Y.Z>` są tworzone automatycznie przez Claude Code przy wydaniach:
+
+```bash
+# Tworzenie tagu wersji
+git tag -a v0.1.0 -m "Release v0.1.0: SCS-CN hydrograph generation"
+git push origin v0.1.0
+
+# Lista tagów
+git tag -l
+```
+
+**Uwaga:** Checkpointy (CP) są śledzone tylko w `docs/PROGRESS.md`, bez tagów Git.
+
+### 6.4 Conventional Commits
 
 ```bash
 # Format
@@ -293,7 +311,7 @@ docs(readme): add quick start examples
 test(time): add tests for Kirpich formula
 ```
 
-### 6.3 Commit często
+### 6.5 Commit często
 
 - Każda logiczna zmiana = osobny commit
 - Łatwiejsze code review
