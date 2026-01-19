@@ -49,9 +49,9 @@
 
 ## Bieżąca sesja
 
-### Sesja 15 (2026-01-19) - W TRAKCIE
+### Sesja 15 (2026-01-19) - UKOŃCZONA
 
-**Cel:** Poprawki wizualizacji na podstawie feedbacku użytkownika
+**Cel:** Poprawki wizualizacji + uporządkowanie kodu (usunięcie zbędnych metod)
 
 **Co zostało zrobione:**
 - [x] Poprawiono `plot_hietogram()`:
