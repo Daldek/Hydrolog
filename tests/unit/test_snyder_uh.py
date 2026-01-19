@@ -103,9 +103,9 @@ class TestSnyderUHTimings:
         """Test time to peak with standard duration."""
         uh = SnyderUH(area_km2=100.0, L_km=15.0, Lc_km=8.0)
 
-        # tPR = tLR + D/5.5 for standard duration (where tLR = tL)
-        D = uh.standard_duration_hours
-        expected_hours = uh.lag_time_hours + D / 5.5
+        # tp = tL + tD/2 for standard duration (where tLR = tL)
+        tD = uh.standard_duration_hours
+        expected_hours = uh.lag_time_hours + tD / 2.0
         actual_hours = uh.time_to_peak_hours()
 
         assert abs(actual_hours - expected_hours) < 0.01
