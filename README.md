@@ -5,7 +5,7 @@ Biblioteka Python do obliczeń hydrologicznych.
 ## Funkcjonalności
 
 - **Hydrogramy odpływu** - SCS-CN, Nash IUH, Clark IUH, Snyder UH
-- **Hietogramy** - rozkład Beta, blokowy, trójkątny
+- **Hietogramy** - rozkład Beta, blokowy, trójkątny, DVWK Euler Type II
 - **Czas koncentracji** - wzory Kirpicha, SCS Lag, Giandotti
 - **Parametry morfometryczne** - wskaźniki kształtu, teren, krzywa hipsograficzna
 - **Klasyfikacja sieci rzecznej** - metody Strahlera i Shreve'a
@@ -56,7 +56,9 @@ print(f"Współczynnik odpływu: {result.runoff_coefficient:.3f}")
 ### Hietogramy
 
 ```python
-from hydrolog.precipitation import BetaHietogram, BlockHietogram, TriangularHietogram
+from hydrolog.precipitation import (
+    BetaHietogram, BlockHietogram, TriangularHietogram, EulerIIHietogram
+)
 
 # Hietogram Beta (realistyczny rozkład burzy)
 beta = BetaHietogram(alpha=2.0, beta=5.0)
@@ -71,6 +73,11 @@ print(f"Intensywność na krok: {result.intensities_mm[0]:.2f} mm")
 # Hietogram trójkątny (szczyt w 40% czasu trwania)
 tri = TriangularHietogram(peak_position=0.4)
 result = tri.generate(total_mm=38.5, duration_min=60.0, timestep_min=5.0)
+
+# Hietogram DVWK Euler Type II (metoda alternating block, szczyt w 1/3 czasu)
+euler = EulerIIHietogram(peak_position=0.33)  # domyślnie 1/3
+result = euler.generate(total_mm=38.5, duration_min=60.0, timestep_min=5.0)
+print(f"Szczyt: {result.intensities_mm.max():.2f} mm w kroku {result.intensities_mm.argmax()+1}")
 ```
 
 ### Czas koncentracji
@@ -115,25 +122,75 @@ result_normal = generator.generate(precip, amc=AMC.II)
 result_wet = generator.generate(precip, amc=AMC.III)
 ```
 
+### HydrographGenerator z różnymi modelami UH
+
+```python
+from hydrolog.runoff import HydrographGenerator
+from hydrolog.precipitation import BetaHietogram
+
+# Hietogram
+hietogram = BetaHietogram(alpha=2.0, beta=5.0)
+precip = hietogram.generate(total_mm=50.0, duration_min=60.0, timestep_min=5.0)
+
+# Model SCS (domyślny)
+gen_scs = HydrographGenerator(area_km2=45.0, cn=72, tc_min=90.0)
+result_scs = gen_scs.generate(precip)
+
+# Model Nasha
+gen_nash = HydrographGenerator(
+    area_km2=45.0, cn=72,
+    uh_model="nash",
+    uh_params={"n": 3.0, "k": 0.5}  # k w godzinach (domyślnie)
+)
+result_nash = gen_nash.generate(precip)
+
+# Model Clarka
+gen_clark = HydrographGenerator(
+    area_km2=45.0, cn=72, tc_min=60.0,
+    uh_model="clark",
+    uh_params={"r": 30.0}  # współczynnik retencji [min]
+)
+result_clark = gen_clark.generate(precip)
+
+# Model Snydera
+gen_snyder = HydrographGenerator(
+    area_km2=100.0, cn=72,
+    uh_model="snyder",
+    uh_params={"L_km": 15.0, "Lc_km": 8.0}  # długość cieku i do centroidu
+)
+result_snyder = gen_snyder.generate(precip)
+
+print(f"SCS: Qmax = {result_scs.peak_discharge_m3s:.2f} m³/s")
+print(f"Nash: Qmax = {result_nash.peak_discharge_m3s:.2f} m³/s")
+print(f"Clark: Qmax = {result_clark.peak_discharge_m3s:.2f} m³/s")
+print(f"Snyder: Qmax = {result_snyder.peak_discharge_m3s:.2f} m³/s")
+```
+
 ### Chwilowy hydrogram jednostkowy (Nash IUH)
 
 ```python
 from hydrolog.runoff import NashIUH
 from hydrolog.time import ConcentrationTime
 
-# Metoda 1: Bezpośrednie podanie parametrów
+# Metoda 1: IUH bez powierzchni (zwraca wartości bezwymiarowe [1/min])
 iuh = NashIUH(n=3.0, k_min=30.0)
-
-# Metoda 2: Estymacja z czasu koncentracji
-tc = ConcentrationTime.kirpich(length_km=8.2, slope_m_per_m=0.023)
-iuh = NashIUH.from_tc(tc_min=tc, n=3.0, lag_ratio=0.6)
-
-# Generowanie IUH
-result = iuh.generate(timestep_min=5.0, duration_min=300.0)
+result_iuh = iuh.generate(timestep_min=5.0)  # IUHResult
 print(f"Czas do szczytu IUH: {iuh.time_to_peak_min:.1f} min")
 print(f"Czas opóźnienia: {iuh.lag_time_min:.1f} min")
 
-# Konwersja do D-minutowego hydrogramu jednostkowego
+# Metoda 2: UH z powierzchnią (zwraca wartości wymiarowe [m³/s/mm])
+nash = NashIUH(n=3.0, k_min=30.0, area_km2=45.0)
+result_uh = nash.generate(timestep_min=5.0)  # NashUHResult
+print(f"Qmax UH: {result_uh.peak_discharge_m3s:.2f} m³/s na mm")
+
+# Metoda 3: Estymacja z czasu koncentracji
+tc = ConcentrationTime.kirpich(length_km=8.2, slope_m_per_m=0.023)
+iuh = NashIUH.from_tc(tc_min=tc, n=3.0, lag_ratio=0.6)
+
+# Jawne generowanie IUH (zawsze zwraca IUHResult)
+result = iuh.generate_iuh(timestep_min=5.0, duration_min=300.0)
+
+# Konwersja IUH do D-minutowego hydrogramu jednostkowego
 uh = iuh.to_unit_hydrograph(area_km2=45.0, duration_min=30.0)
 print(f"Qmax UH: {uh.peak_discharge_m3s:.2f} m³/s")
 ```
@@ -143,17 +200,23 @@ print(f"Qmax UH: {uh.peak_discharge_m3s:.2f} m³/s")
 ```python
 from hydrolog.runoff import ClarkIUH
 
-# Metoda 1: Bezpośrednie podanie parametrów
+# Metoda 1: IUH bez powierzchni (zwraca wartości bezwymiarowe [1/min])
 iuh = ClarkIUH(tc_min=60.0, r_min=30.0)
-
-# Metoda 2: Z proporcji R/Tc
-iuh = ClarkIUH.from_tc_r_ratio(tc_min=90.0, r_tc_ratio=0.5)
-
-# Generowanie IUH
-result = iuh.generate(timestep_min=5.0)
+result_iuh = iuh.generate(timestep_min=5.0)  # ClarkIUHResult
 print(f"Czas opóźnienia: {iuh.lag_time_min:.1f} min")
 
-# Konwersja do D-minutowego hydrogramu jednostkowego
+# Metoda 2: UH z powierzchnią (zwraca wartości wymiarowe [m³/s/mm])
+clark = ClarkIUH(tc_min=60.0, r_min=30.0, area_km2=45.0)
+result_uh = clark.generate(timestep_min=5.0)  # ClarkUHResult
+print(f"Qmax UH: {result_uh.peak_discharge_m3s:.2f} m³/s na mm")
+
+# Metoda 3: Z proporcji R/Tc
+iuh = ClarkIUH.from_tc_r_ratio(tc_min=90.0, r_tc_ratio=0.5)
+
+# Jawne generowanie IUH (zawsze zwraca ClarkIUHResult)
+result = iuh.generate_iuh(timestep_min=5.0)
+
+# Konwersja IUH do D-minutowego hydrogramu jednostkowego
 uh = iuh.to_unit_hydrograph(area_km2=45.0, duration_min=30.0, timestep_min=5.0)
 print(f"Qmax UH: {uh.peak_discharge_m3s:.2f} m³/s")
 ```

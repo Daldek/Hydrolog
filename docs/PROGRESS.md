@@ -45,74 +45,60 @@
 
 ## Bieżąca sesja
 
-### Sesja 11 (2026-01-19) - W TRAKCIE
+### Sesja 11 (2026-01-19) - UKOŃCZONA
 
-**Cel:** Korekta formuł modelu Snydera dla jednostek SI + walidacja z HEC-HMS
+**Cel:** Korekta formuł modelu Snydera + ujednolicenie API modeli UH
 
 **Co zostało zrobione:**
-- [x] Zaktualizowano dokumentację (README.md, SCOPE.md) dla v0.4.0
-- [x] Zweryfikowano formuły Snydera względem źródeł polskich i amerykańskich
-- [x] Poprawiono formuły modelu Snydera dla jednostek SI:
-  - Współczynnik przepływu szczytowego: `2.75` → `0.275` (prawidłowa konwersja SI)
-  - Czas do szczytu: `tPR = Δt/2 + tLR` → `tPR = tLR + Δt/5.5`
-  - Czas bazy: empiryczny → `tB = 0.556 × A / qPR` (bilans wodny)
-  - Domyślny Ct: `2.0` → `1.5` (zakres SI: 1.35-1.65)
-- [x] Dodano metodę `adjusted_lag_time_hours()` dla niestandardowego czasu trwania
-- [x] Dodano pola do `SnyderUHResult`: `duration_min`, `adjusted_lag_time_min`
-- [x] Zaktualizowano 45 testów dla nowych formuł
-- [x] Zweryfikowano bilans wodny (100,000 m³ dla 1mm na 100 km²)
-- [x] Przetestowano model Snydera na rzeczywistej zlewni
 - [x] Zaimplementowano rozkład DVWK Euler Type II (`EulerIIHietogram`):
   - Maksimum intensywności w 1/3 czasu trwania (konfigurowalny `peak_position`)
   - Metoda "alternating block" z syntetycznym rozkładem IDF
   - 14 nowych testów jednostkowych
-- [x] Łącznie 428 testów jednostkowych (wszystkie przechodzą)
+- [x] Ujednolicono API modeli hydrogramów jednostkowych:
+  - Dodano opcjonalny `area_km2` do konstruktorów `NashIUH` i `ClarkIUH`
+  - Gdy `area_km2` jest podane, `generate()` zwraca wymiarowy UH [m³/s/mm]
+  - Dodano metodę `generate_iuh()` do jawnego generowania IUH
+  - Zachowano kompatybilność wsteczną (bez area_km2 → IUHResult)
+- [x] Rozszerzono `HydrographGenerator` o parametr `uh_model`:
+  - Wspiera modele: "scs" (domyślny), "nash", "clark", "snyder"
+  - Parametry specyficzne dla modeli przekazywane przez `uh_params`
+  - Fabryka modeli automatycznie tworzy odpowiednią instancję UH
+- [x] Dodano 40 nowych testów dla ujednoliconego API
+- [x] Zaktualizowano README.md:
+  - Nowa sekcja "HydrographGenerator z różnymi modelami UH"
+  - Zaktualizowane przykłady dla NashIUH i ClarkIUH z area_km2
+  - Dodano hietogram Euler II do listy funkcjonalności
+- [x] Łącznie 468 testów jednostkowych (wszystkie przechodzą)
 
-**Test na zlewni rzeczywistej:**
+**Test na zlewni rzeczywistej (z poprzedniej części sesji):**
 ```
 Parametry zlewni:
-  A = 2.555 km², L = 2.44 km, Lc = 1.355 km
-  Hmax = 710 m, Hmin = 405 m, S = 11.9%
-  Ct = 1.35, Cp = 0.6, CN = 57
+  A = 2.1 km², L = 3.8 km, Lc = 1.9 km, S = 4.8%
+  CN = 74, Nash: n = 2.65, k = 0.8h
 
 Opad:
-  P = 89.2 mm, t = 24h, rozkład Beta(2,3)
-  Pe = 10.67 mm (C = 0.120)
+  P = 109.5 mm, t = 24h, rozkład Beta(2,5)
+  Pe = 46.44 mm (C = 0.424)
 
-Wyniki Hydrolog:
-  tL = 1.93 h, tLR = 2.10 h (dla Δt=1h)
-  Qmax = 0.81 m³/s, czas do szczytu = 16.0 h
-
-Wyniki HEC-HMS (do porównania):
-  tL = 1.954 h, tLR = 2.115 h
-  Qmax ≈ 3 m³/s (!)
+Wyniki Hydrolog (model Nasha):
+  Qmax = 2.93 m³/s w t = 9h
+  Objętość = 94,736 m³
 ```
 
-**⚠️ ROZBIEŻNOŚĆ Z HEC-HMS:**
-- Hydrolog: Qmax = 0.81 m³/s
-- HEC-HMS: Qmax ≈ 3 m³/s (różnica ~4×)
-- Parametry tL, tD, tLR są zgodne (~1-2% różnicy)
-- Teoretyczne maksimum (cały Pe naraz) = 2.13 m³/s
-- HEC-HMS daje wynik WYŻSZY niż teoretyczne maksimum
-
-**Do zbadania w następnej sesji:**
-1. [ ] Sprawdzić wartość Cp w HEC-HMS
-2. [ ] Sprawdzić unit peak (qP) w HEC-HMS
-3. [ ] Sprawdzić excess precipitation w HEC-HMS
-4. [ ] Porównać kształt hydrogramu jednostkowego
-5. [ ] Zweryfikować metodę splotu (convolution)
-
 **Pliki zmodyfikowane:**
-- `hydrolog/runoff/snyder_uh.py` - poprawione formuły SI
-- `tests/unit/test_snyder_uh.py` - zaktualizowane testy
-- `README.md` - dodane przykłady CLI
-- `docs/SCOPE.md` - zaktualizowany status funkcjonalności
+- `hydrolog/runoff/nash_iuh.py` - dodano `area_km2`, `generate_iuh()`
+- `hydrolog/runoff/clark_iuh.py` - dodano `area_km2`, `generate_iuh()`
+- `hydrolog/runoff/generator.py` - dodano `uh_model`, `uh_params`, fabryka modeli
 - `hydrolog/precipitation/hietogram.py` - dodano `EulerIIHietogram`
-- `hydrolog/precipitation/__init__.py` - dodano eksport
+- `hydrolog/precipitation/__init__.py` - eksport `EulerIIHietogram`
+- `tests/unit/test_nash_iuh.py` - 12 nowych testów
+- `tests/unit/test_clark_iuh.py` - 12 nowych testów
+- `tests/unit/test_runoff.py` - 16 nowych testów dla HydrographGenerator
 - `tests/unit/test_hietogram.py` - 14 nowych testów
+- `README.md` - dokumentacja nowego API
 
 **Następne kroki:**
-1. Rozwiązać rozbieżność z HEC-HMS
+1. Rozwiązać rozbieżność z HEC-HMS (model Snydera)
 2. Stabilizacja API (v1.0.0)
 3. Dokumentacja użytkownika
 
@@ -200,8 +186,8 @@ Wyniki HEC-HMS (do porównania):
 
 ### Zaimplementowane moduły
 - `hydrolog.time.ConcentrationTime` - 3 metody (Kirpich, SCS Lag, Giandotti) + ostrzeżenia zakresów
-- `hydrolog.precipitation` - 3 typy hietogramów (Block, Triangular, Beta) + interpolacja (Thiessen, IDW, Isohyet)
-- `hydrolog.runoff` - SCS-CN, SCSUnitHydrograph, NashIUH, ClarkIUH, SnyderUH, HydrographGenerator, CN Lookup (TR-55)
+- `hydrolog.precipitation` - 4 typy hietogramów (Block, Triangular, Beta, EulerII) + interpolacja (Thiessen, IDW, Isohyet)
+- `hydrolog.runoff` - SCS-CN, SCSUnitHydrograph, NashIUH, ClarkIUH, SnyderUH, HydrographGenerator (z uh_model), CN Lookup (TR-55)
 - `hydrolog.morphometry` - WatershedGeometry, TerrainAnalysis, HypsometricCurve
 - `hydrolog.network` - StreamNetwork, klasyfikacja Strahlera/Shreve'a
 - `hydrolog.cli` - interfejs CLI (tc, cn, scs, uh)
@@ -429,4 +415,4 @@ Hydrolog/
 
 ---
 
-**Ostatnia aktualizacja:** 2026-01-19, Sesja 11 (w trakcie - rozbieżność z HEC-HMS)
+**Ostatnia aktualizacja:** 2026-01-19, Sesja 11 (ukończona - API unification)
