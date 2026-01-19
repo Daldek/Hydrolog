@@ -61,15 +61,17 @@
   - Dodano grupę `all` dla wszystkich opcjonalnych zależności
 
 **Zaimplementowano:**
+- [x] Integracja z Kartografem v0.3.0 (HSG, SoilGrids)
 - [x] Moduł `runoff.cn_lookup` z tabelami CN (USDA TR-55):
   - 20 typów pokrycia terenu (`LandCover` enum)
   - 3 stany hydrologiczne (`HydrologicCondition` enum)
   - Funkcje: `get_cn()`, `lookup_cn()`, `calculate_weighted_cn()`
   - 38 testów jednostkowych
+- [x] Poprawka docstringa `effective_precipitation` (Pe=12.89→7.09 mm)
 
 **Następne kroki:**
-1. Implementacja CN lookup tables (HSG + land cover → CN)
-2. CLI interface (`hydrolog.cli`)
+1. CLI interface (`hydrolog.cli`)
+2. Dodatkowe metody hydrogramu (Clark IUH, Snyder)
 3. Wydanie v0.4.0
 
 ---
