@@ -364,3 +364,112 @@ class TestClarkIUHBehavior:
             p for p in peaks if ordinates[p] > 0.1 * result.peak_ordinate_per_min
         ]
         assert len(significant_peaks) == 1
+
+
+class TestClarkIUHWithArea:
+    """Tests for ClarkIUH with area_km2 parameter in constructor."""
+
+    def test_init_with_area(self):
+        """Test initialization with area_km2."""
+        iuh = ClarkIUH(tc_min=60.0, r_min=30.0, area_km2=45.0)
+
+        assert iuh.tc_min == 60.0
+        assert iuh.r_min == 30.0
+        assert iuh.area_km2 == 45.0
+
+    def test_init_without_area(self):
+        """Test initialization without area_km2."""
+        iuh = ClarkIUH(tc_min=60.0, r_min=30.0)
+
+        assert iuh.area_km2 is None
+
+    def test_init_zero_area_raises(self):
+        """Test that area_km2=0 raises InvalidParameterError."""
+        with pytest.raises(InvalidParameterError, match="area_km2 must be positive"):
+            ClarkIUH(tc_min=60.0, r_min=30.0, area_km2=0)
+
+    def test_init_negative_area_raises(self):
+        """Test that negative area_km2 raises InvalidParameterError."""
+        with pytest.raises(InvalidParameterError, match="area_km2 must be positive"):
+            ClarkIUH(tc_min=60.0, r_min=30.0, area_km2=-10.0)
+
+    def test_generate_with_area_returns_clark_uh_result(self):
+        """Test that generate() returns ClarkUHResult when area_km2 is set."""
+        iuh = ClarkIUH(tc_min=60.0, r_min=30.0, area_km2=45.0)
+
+        result = iuh.generate(timestep_min=5.0)
+
+        assert isinstance(result, ClarkUHResult)
+
+    def test_generate_without_area_returns_iuh_result(self):
+        """Test that generate() returns ClarkIUHResult when area_km2 is None."""
+        iuh = ClarkIUH(tc_min=60.0, r_min=30.0)
+
+        result = iuh.generate(timestep_min=5.0)
+
+        assert isinstance(result, ClarkIUHResult)
+
+    def test_generate_with_area_has_correct_attributes(self):
+        """Test that ClarkUHResult has correct attributes."""
+        iuh = ClarkIUH(tc_min=60.0, r_min=30.0, area_km2=45.0)
+
+        result = iuh.generate(timestep_min=5.0)
+
+        assert result.area_km2 == 45.0
+        assert result.tc_min == 60.0
+        assert result.r_min == 30.0
+        assert result.duration_min == 5.0  # D = timestep
+
+    def test_generate_with_area_positive_ordinates(self):
+        """Test that UH ordinates are non-negative."""
+        iuh = ClarkIUH(tc_min=60.0, r_min=30.0, area_km2=45.0)
+
+        result = iuh.generate(timestep_min=5.0)
+
+        assert np.all(result.ordinates_m3s >= 0)
+
+    def test_generate_with_area_volume_conservation(self):
+        """Test that UH preserves volume (1 mm over area)."""
+        iuh = ClarkIUH(tc_min=60.0, r_min=30.0, area_km2=45.0)
+
+        result = iuh.generate(timestep_min=1.0)
+
+        # Volume = integral of Q(t) dt
+        # Q in m³/s, t in min -> convert to seconds
+        volume_m3 = np.trapezoid(result.ordinates_m3s, result.times_min * 60.0)
+
+        # Expected volume: 1 mm over 45 km² = 45 × 1000 m³
+        expected_volume = 45.0 * 1000.0
+
+        # Allow 10% tolerance for numerical integration
+        assert abs(volume_m3 - expected_volume) / expected_volume < 0.10
+
+
+class TestClarkIUHGenerateIUH:
+    """Tests for explicit generate_iuh() method."""
+
+    def test_generate_iuh_returns_iuh_result(self):
+        """Test that generate_iuh() returns ClarkIUHResult even with area_km2."""
+        iuh = ClarkIUH(tc_min=60.0, r_min=30.0, area_km2=45.0)
+
+        result = iuh.generate_iuh(timestep_min=5.0)
+
+        assert isinstance(result, ClarkIUHResult)
+
+    def test_generate_iuh_without_area_works(self):
+        """Test that generate_iuh() works without area_km2."""
+        iuh = ClarkIUH(tc_min=60.0, r_min=30.0)
+
+        result = iuh.generate_iuh(timestep_min=5.0)
+
+        assert isinstance(result, ClarkIUHResult)
+
+    def test_generate_iuh_ordinates_sum_to_one(self):
+        """Test that IUH integrates to approximately 1."""
+        iuh = ClarkIUH(tc_min=60.0, r_min=30.0, area_km2=45.0)
+
+        result = iuh.generate_iuh(timestep_min=1.0, duration_min=500.0)
+
+        integral = np.trapezoid(result.ordinates_per_min, result.times_min)
+
+        assert abs(integral - 1.0) < 0.01
