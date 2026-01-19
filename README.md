@@ -11,6 +11,7 @@ Biblioteka Python do obliczeń hydrologicznych.
 - **Klasyfikacja sieci rzecznej** - metody Strahlera i Shreve'a
 - **Interpolacja opadów** - Thiessen, IDW, izohiety
 - **CN Lookup** - tablice TR-55 (20 typów pokrycia terenu)
+- **Wizualizacja** - hietogramy, hydrogramy, wykresy kombinowane, porównania UH
 - **CLI** - interfejs linii poleceń
 
 ## Instalacja
@@ -535,6 +536,93 @@ result = inverse_distance_weighting(stations, target_x=5, target_y=4, power=2)
 print(f"Opad w punkcie (IDW): {result.areal_precipitation_mm:.1f} mm")
 ```
 
+### Wizualizacja
+
+```python
+from hydrolog.runoff import HydrographGenerator
+from hydrolog.precipitation import BetaHietogram
+from hydrolog.visualization import (
+    setup_hydrolog_style,
+    plot_rainfall_runoff,
+    plot_hietogram,
+    plot_hydrograph,
+    plot_uh_comparison,
+)
+
+# Ustaw styl wykresów
+setup_hydrolog_style()
+
+# Generuj dane
+hietogram = BetaHietogram(alpha=2.0, beta=5.0)
+precip = hietogram.generate(total_mm=50.0, duration_min=120.0, timestep_min=10.0)
+
+generator = HydrographGenerator(area_km2=45.0, cn=72, tc_min=90.0)
+result = generator.generate(precip)
+
+# Wykres hietogramu z sumą kumulatywną
+fig = plot_hietogram(precip, show_cumulative=True)
+fig.savefig("hietogram.png", dpi=150)
+
+# Wykres hydrogramu
+fig = plot_hydrograph(result.hydrograph, show_peak=True)
+fig.savefig("hydrograph.png", dpi=150)
+
+# Wykres kombinowany (hietogram + hydrogram)
+fig = plot_rainfall_runoff(
+    hietogram=precip,
+    hydrograph=result.hydrograph,
+    effective_precip=result.effective_precip_mm,
+    title="Zlewnia - epizod opadowy"
+)
+fig.savefig("rainfall_runoff.png", dpi=150)
+```
+
+#### Porównanie modeli UH
+
+```python
+from hydrolog.runoff import SCSUnitHydrograph, NashIUH, ClarkIUH, SnyderUH
+from hydrolog.visualization import plot_uh_comparison
+
+# Generuj hydrogramy jednostkowe różnych modeli
+scs = SCSUnitHydrograph(area_km2=45, tc_min=90).generate(timestep_min=10)
+nash = NashIUH(n=3, k_min=30, area_km2=45).generate(timestep_min=10)
+clark = ClarkIUH(tc_min=60, r_min=30, area_km2=45).generate(timestep_min=10)
+snyder = SnyderUH(area_km2=45, L_km=15, Lc_km=8).generate(timestep_min=10)
+
+# Porównaj na jednym wykresie z tabelą
+models = {
+    "SCS": scs,
+    "Nash (n=3, K=30)": nash,
+    "Clark (Tc=60, R=30)": clark,
+    "Snyder (Ct=1.5)": snyder,
+}
+fig = plot_uh_comparison(models, show_table=True)
+fig.savefig("uh_comparison.png", dpi=150)
+```
+
+#### Krzywa hipsograficzna
+
+```python
+import numpy as np
+from hydrolog.morphometry import HypsometricCurve
+from hydrolog.visualization import plot_hypsometric_curve
+
+# Analiza DEM
+elevations = np.random.uniform(200, 800, 10000)  # Symulacja
+hypso = HypsometricCurve(elevations)
+result = hypso.analyze()
+
+# Wykres z integralem i krzywymi referencyjnymi
+fig = plot_hypsometric_curve(result, show_integral=True, show_reference=True)
+fig.savefig("hypsometry.png", dpi=150)
+```
+
+#### Instalacja zależności wizualizacji
+
+```bash
+pip install hydrolog[visualization]
+```
+
 ### CLI - Interfejs linii poleceń
 
 ```bash
@@ -572,6 +660,7 @@ hydrolog/
 ├── time/            # Czas koncentracji ✅
 ├── morphometry/     # Parametry fizjograficzne ✅
 ├── network/         # Klasyfikacja sieci rzecznej ✅
+├── visualization/   # Wykresy (matplotlib/seaborn) ✅
 └── cli/             # Interfejs CLI ✅
 ```
 
@@ -582,7 +671,8 @@ hydrolog/
 | v0.1.0 | Hydrogram SCS-CN, hietogramy, czas koncentracji | ✅ Wydana |
 | v0.2.0 | Parametry morfometryczne | ✅ Wydana |
 | v0.3.0 | Interpolacja opadów, klasyfikacja sieci | ✅ Wydana |
-| **v0.4.0** | CLI, Clark IUH, Snyder UH, CN Lookup | ✅ Wydana |
+| v0.4.0 | CLI, Clark IUH, Snyder UH, CN Lookup | ✅ Wydana |
+| **v0.5.0** | Wizualizacja (matplotlib/seaborn) | ✅ Wydana |
 | v1.0.0 | Stabilne API, dokumentacja | Planowana |
 
 ## Wymagania
@@ -591,6 +681,10 @@ hydrolog/
 - NumPy >= 1.24
 - SciPy >= 1.10 (dla Nash IUH)
 - IMGWTools (dla danych opadowych PMAXTP)
+
+**Zależności opcjonalne:**
+- `matplotlib >= 3.7` + `seaborn >= 0.12` - dla wizualizacji (`pip install hydrolog[visualization]`)
+- `kartograf` - dla danych przestrzennych HSG (`pip install hydrolog[spatial]`)
 
 ## Powiązane projekty
 
