@@ -45,6 +45,13 @@ dev = [
 interpolation = [
     "scipy>=1.10",
 ]
+spatial = [
+    "kartograf @ git+https://github.com/Daldek/Kartograf.git",
+]
+all = [
+    "scipy>=1.10",
+    "kartograf @ git+https://github.com/Daldek/Kartograf.git",
+]
 
 [project.scripts]
 hydrolog = "hydrolog.cli.main:main"

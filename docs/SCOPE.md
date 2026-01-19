@@ -57,6 +57,11 @@ Hydrolog jest analogiczny do **Kartografa** (pobieranie danych przestrzennych) -
 - Współczynnik odpływu [-]
 - Szereg czasowy: czas vs przepływ
 
+**Integracja z Kartografem (opcjonalna):**
+- Automatyczne wyznaczanie CN z danych glebowych HSG (Hydrologic Soil Groups)
+- Grupy hydrologiczne A, B, C, D z SoilGrids (tekstura gleby)
+- Tabele CN według USDA-NRCS dla kombinacji HSG + pokrycie terenu
+
 ---
 
 #### 2.1.2 Moduł `precipitation` - Opady (v0.1.0 / v0.3.0)
@@ -170,6 +175,7 @@ hydrolog hietogram --total 38.5 --duration 60 --type beta \
 **Pobieranie danych:**
 - ❌ Pobieranie NMT (→ Kartograf)
 - ❌ Pobieranie pokrycia terenu (→ Kartograf)
+- ❌ Pobieranie danych glebowych/HSG (→ Kartograf)
 - ❌ Pobieranie danych IMGW (→ IMGWTools)
 - ❌ Operacje na bazach danych
 
@@ -236,7 +242,7 @@ hydrolog/
 - IMGWTools (dla modułu precipitation.scenarios)
 
 **Opcjonalne:**
-- (Kriging - planowane)
+- Kartograf >= 0.3.0 (dla automatycznego wyznaczania CN z danych glebowych HSG)
 
 ### 3.3 API Design
 
@@ -308,9 +314,10 @@ print(f"Time to peak: {result.time_to_peak_min} min")
 | NumPy | Obliczenia numeryczne | Tak |
 | SciPy | Funkcje gamma (Nash IUH) | Tak |
 | IMGWTools | Dane PMAXTP | Tak (dla `precipitation.scenarios`) |
+| Kartograf | HSG, dane glebowe, pokrycie terenu | Nie (opcjonalna dla `runoff.cn_lookup`) |
 
 **Hydrolog NIE duplikuje funkcjonalności:**
-- Kartografa (pobieranie danych przestrzennych)
+- Kartografa (pobieranie danych przestrzennych, HSG, SoilGrids)
 - IMGWTools (pobieranie danych IMGW)
 
 ---
