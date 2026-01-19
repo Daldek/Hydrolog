@@ -79,7 +79,7 @@ class SCSCN:
     >>> scs = SCSCN(cn=72)
     >>> result = scs.effective_precipitation(precipitation_mm=50.0)
     >>> print(f"Effective: {result.total_effective_mm:.2f} mm")
-    Effective: 12.89 mm
+    Effective: 7.09 mm
     """
 
     def __init__(self, cn: int, ia_coefficient: float = 0.2) -> None:
@@ -223,7 +223,7 @@ class SCSCN:
         >>> scs = SCSCN(cn=72)
         >>> result = scs.effective_precipitation(50.0)
         >>> print(f"Pe = {result.total_effective_mm:.2f} mm")
-        Pe = 12.89 mm
+        Pe = 7.09 mm
         """
         # Adjust CN for moisture conditions
         cn_adjusted = self.adjust_cn_for_amc(amc)
