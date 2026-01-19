@@ -223,16 +223,13 @@ def plot_cn_curve(
 
         Pe = np.array(Pe)
 
-        # Get adjusted CN for label
-        cn_adj = scs.adjust_cn_for_amc(amc)
-
         ax.plot(
             P,
             Pe,
             linestyle=linestyle,
             linewidth=2,
             alpha=alpha,
-            label=f"{label} (CN={cn_adj})",
+            label=label,
             color=get_color("effective_precip") if amc == AMC.II else None,
         )
 
@@ -244,7 +241,7 @@ def plot_cn_curve(
     ax.set_ylabel(get_label("precipitation_effective"))
 
     if title is None:
-        title = f"Krzywa SCS-CN: opad całkowity → opad efektywny (CN = {cn})"
+        title = "Krzywa SCS-CN: opad całkowity → opad efektywny"
     ax.set_title(title, fontsize=12)
 
     # Format

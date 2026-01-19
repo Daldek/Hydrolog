@@ -572,61 +572,6 @@ class NashIUH:
         return cls(n=n, k_min=k_min)
 
     @classmethod
-    def from_moments(
-        cls,
-        lag_time_min: float,
-        variance_min2: float,
-    ) -> "NashIUH":
-        """
-        Create NashIUH from statistical moments.
-
-        Estimates Nash parameters from the first two moments
-        of an observed hydrograph.
-
-        Parameters
-        ----------
-        lag_time_min : float
-            First moment (lag time) [min].
-        variance_min2 : float
-            Second central moment (variance) [min²].
-
-        Returns
-        -------
-        NashIUH
-            Configured Nash IUH generator.
-
-        Notes
-        -----
-        For the Nash model:
-        - First moment (mean): M1 = n × K
-        - Second moment (variance): M2 = n × K²
-
-        Solving for n and K:
-        - K = M2 / M1
-        - n = M1 / K = M1² / M2
-
-        Examples
-        --------
-        >>> iuh = NashIUH.from_moments(lag_time_min=90.0, variance_min2=2700.0)
-        >>> print(f"n = {iuh.n:.2f}, K = {iuh.k_min:.1f} min")
-        n = 3.00, K = 30.0 min
-        """
-        if lag_time_min <= 0:
-            raise InvalidParameterError(
-                f"lag_time_min must be positive, got {lag_time_min}"
-            )
-        if variance_min2 <= 0:
-            raise InvalidParameterError(
-                f"variance_min2 must be positive, got {variance_min2}"
-            )
-
-        # Solve for K and n
-        k_min = variance_min2 / lag_time_min
-        n = lag_time_min / k_min  # = lag_time² / variance
-
-        return cls(n=n, k_min=k_min)
-
-    @classmethod
     def from_lutz(
         cls,
         L_km: float,

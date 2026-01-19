@@ -207,10 +207,6 @@ print(f"Qmax UH: {result_uh.peak_discharge_m3s:.2f} m³/s na mm")
 tc = ConcentrationTime.kirpich(length_km=8.2, slope_m_per_m=0.023)
 iuh = NashIUH.from_tc(tc_min=tc, n=3.0, lag_ratio=0.6)
 
-# Metoda 4: Z momentów statystycznych (obserwowany hydrogram)
-iuh = NashIUH.from_moments(lag_time_min=90.0, variance_min2=2700.0)
-print(f"n = {iuh.n:.2f}, K = {iuh.k_min:.1f} min")  # n=3.0, K=30.0
-
 # Jawne generowanie IUH (zawsze zwraca IUHResult)
 result = iuh.generate_iuh(timestep_min=5.0, duration_min=300.0)
 
@@ -433,12 +429,6 @@ print(f"tb = {snyder.time_base_min(delta_t):.1f} min")       # 1417.0 min
 # Generowanie hydrogramu jednostkowego
 result = snyder.generate(timestep_min=10.0, duration_min=60.0)
 print(f"Qmax = {result.peak_discharge_m3s:.3f} m³/s/mm")
-
-# Metoda 2: Z czasu koncentracji (estymacja L, Lc)
-snyder = SnyderUH.from_tc(area_km2=45.3, tc_min=180.0, ct=1.65, cp=0.565)
-
-# Metoda 3: Ze znanego czasu opóźnienia
-snyder = SnyderUH.from_lag_time(area_km2=45.3, lag_time_min=399.0, ct=1.65, cp=0.565)
 ```
 
 **Referencje:**

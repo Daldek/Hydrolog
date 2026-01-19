@@ -71,7 +71,7 @@ LABELS_PL = {
     "precipitation_total": "Opad całkowity P [mm]",
     "precipitation_effective": "Opad efektywny Pe [mm]",
     "intensity": "Natężenie [mm/h]",
-    "intensity_mm": "Natężenie [mm/krok]",
+    "intensity_mm": "Opad [mm]",
     "cumulative": "Suma kumulatywna [mm]",
     # Discharge
     "discharge": "Przepływ [m³/s]",
