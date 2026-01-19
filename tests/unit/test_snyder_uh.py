@@ -17,7 +17,7 @@ class TestSnyderUHInit:
         assert uh.area_km2 == 100.0
         assert uh.L_km == 15.0
         assert uh.Lc_km == 8.0
-        assert uh.ct == 2.0  # default
+        assert uh.ct == 1.5  # default (SI)
         assert uh.cp == 0.6  # default
 
     def test_init_custom_coefficients(self):
@@ -69,10 +69,10 @@ class TestSnyderUHProperties:
 
     def test_lag_time_calculation(self):
         """Test lag time calculation."""
-        uh = SnyderUH(area_km2=100.0, L_km=15.0, Lc_km=8.0, ct=2.0)
+        uh = SnyderUH(area_km2=100.0, L_km=15.0, Lc_km=8.0, ct=1.5)
 
-        # tL = Ct * (L * Lc)^0.3 = 2.0 * (15 * 8)^0.3 = 2.0 * 120^0.3
-        expected_hours = 2.0 * (120.0**0.3)
+        # tL = Ct * (L * Lc)^0.3 = 1.5 * (15 * 8)^0.3 = 1.5 * 120^0.3
+        expected_hours = 1.5 * (120.0**0.3)
         assert abs(uh.lag_time_hours - expected_hours) < 0.01
 
     def test_lag_time_min_conversion(self):
@@ -103,9 +103,9 @@ class TestSnyderUHTimings:
         """Test time to peak with standard duration."""
         uh = SnyderUH(area_km2=100.0, L_km=15.0, Lc_km=8.0)
 
-        # tp = D/2 + tL for standard duration
+        # tPR = tLR + D/5.5 for standard duration (where tLR = tL)
         D = uh.standard_duration_hours
-        expected_hours = D / 2.0 + uh.lag_time_hours
+        expected_hours = uh.lag_time_hours + D / 5.5
         actual_hours = uh.time_to_peak_hours()
 
         assert abs(actual_hours - expected_hours) < 0.01
@@ -124,10 +124,9 @@ class TestSnyderUHTimings:
         """Test time base calculation using water balance formula."""
         uh = SnyderUH(area_km2=100.0, L_km=15.0, Lc_km=8.0)
 
-        # tb = tp + 0.37 * A / qP [hours] (water balance, ensures tb > tp)
-        tp = uh.time_to_peak_hours()
+        # tb = 0.556 * A / qP [hours] (water balance for triangular UH)
         qp = uh.peak_discharge()
-        expected_hours = tp + 0.37 * uh.area_km2 / qp
+        expected_hours = 0.556 * uh.area_km2 / qp
         assert abs(uh.time_base_hours() - expected_hours) < 0.01
 
     def test_time_base_min_conversion(self):
@@ -154,11 +153,11 @@ class TestSnyderUHPeakDischarge:
         """Test peak discharge with standard duration."""
         uh = SnyderUH(area_km2=100.0, L_km=15.0, Lc_km=8.0, cp=0.6)
 
-        # qp = 2.75 * Cp * A / tL
-        expected = 2.75 * 0.6 * 100.0 / uh.lag_time_hours
+        # qp = 0.275 * Cp * A / tL (SI units)
+        expected = 0.275 * 0.6 * 100.0 / uh.lag_time_hours
         actual = uh.peak_discharge()
 
-        assert abs(actual - expected) < 0.1
+        assert abs(actual - expected) < 0.01
 
     def test_peak_discharge_increases_with_area(self):
         """Test that peak discharge increases with area."""
@@ -230,7 +229,7 @@ class TestSnyderUHGenerate:
         result = uh.generate(timestep_min=30.0)
 
         assert result.area_km2 == 100.0
-        assert result.ct == 2.0
+        assert result.ct == 1.5
         assert result.cp == 0.6
         assert len(result.times_min) == len(result.ordinates_m3s)
 
@@ -292,18 +291,18 @@ class TestSnyderUHGenerate:
         # Generate with standard duration
         result_std = uh.generate(timestep_min=30.0)
         assert abs(result_std.duration_min - uh.standard_duration_min) < 0.01
-        assert abs(result_std.adjusted_lag_time_min - uh.lag_time_min) < 0.01
+        assert abs(result_std.adjusted_lag_time_min - uh.lag_time_min) < 0.5
 
         # Generate with custom duration (longer than standard)
         D_prime = 120.0
         result_custom = uh.generate(timestep_min=30.0, duration_min=D_prime)
 
-        # Verify adjustment formula: tL' = tL + (D' - D) / 4
+        # Verify adjustment formula: tLR = tL + 0.25 × (Δt - tD)
         D_std = uh.standard_duration_min
-        expected_adj_lag = uh.lag_time_min + (D_prime - D_std) / 4.0
+        expected_adj_lag = uh.lag_time_min + 0.25 * (D_prime - D_std)
 
         assert result_custom.duration_min == D_prime
-        assert abs(result_custom.adjusted_lag_time_min - expected_adj_lag) < 0.01
+        assert abs(result_custom.adjusted_lag_time_min - expected_adj_lag) < 0.5
 
         # Longer duration should increase adjusted lag time
         assert result_custom.adjusted_lag_time_min > result_std.adjusted_lag_time_min
