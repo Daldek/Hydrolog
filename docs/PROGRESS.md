@@ -6,7 +6,7 @@
 |------|---------|
 | **Faza** | 1 - Implementacja |
 | **Sprint** | 0.3+ - Rozszerzenia |
-| **Sesja** | 11 |
+| **Sesja** | 12 |
 | **Data** | 2026-01-19 |
 | **Następny milestone** | v1.0.0 - Stabilne API |
 | **Gałąź robocza** | develop |
@@ -45,7 +45,7 @@
 
 ## Bieżąca sesja
 
-### Sesja 12 (2026-01-19) - W TRAKCIE
+### Sesja 12 (2026-01-19) - UKOŃCZONA
 
 **Cel:** Metoda Lutza do estymacji parametrów modelu Nasha
 
@@ -54,10 +54,30 @@
   - Estymacja parametrów n i K z charakterystyk fizjograficznych zlewni
   - Parametry wejściowe: L, Lc, spadek, współczynnik Manninga, % urbanizacji, % lasów
   - Numeryczne rozwiązywanie równania f(N) dla parametru N (metoda Brenta)
-  - Referencja: Lutz W. (1984) - Berechnung von Hochwasserabflüssen
+  - Wzór zweryfikowany z tabelą C.2 (KZGW 2017) - zgodność < 0.001
 - [x] Dodano 17 nowych testów jednostkowych dla metody Lutza
-- [x] Zaktualizowano README.md z przykładem użycia
+- [x] Zaktualizowano dokumentację README.md:
+  - Teoria modelu Nasha (kaskada zbiorników, wzór IUH, właściwości)
+  - Metody estymacji parametrów (from_tc, from_moments, from_lutz)
+  - Algorytm metody Lutza z pełnymi wzorami
+  - Wpływ parametrów fizjograficznych na odpływ
 - [x] Łącznie 485 testów jednostkowych (wszystkie przechodzą)
+
+**Metoda Lutza - algorytm:**
+```
+1. P₁ = 3.989×n + 0.028                    (n = Manning)
+2. tp = P₁ × (L×Lc/Jg^1.5)^0.26 × e^(-0.016U) × e^(0.004W)   [h]
+3. up = 0.66 / tp^1.04                     [1/h]
+4. f(N) = tp × up  →  N (z tabeli C.2 lub wzoru)
+5. K = tp / (N-1)                          [h]
+```
+
+**Referencje:**
+- Lutz W. (1984). *Berechnung von Hochwasserabflüssen unter Anwendung von
+  Gebietskenngrößen*. Mitteilungen des Instituts für Hydrologie und Wasserwirtschaft,
+  H. 24, Universität Karlsruhe. 235 s.
+- KZGW (2017). *Aktualizacja metodyki obliczania przepływów i opadów maksymalnych*.
+  Załącznik 2, Tabela C.2.
 
 ---
 
