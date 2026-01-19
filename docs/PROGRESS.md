@@ -6,7 +6,7 @@
 |------|---------|
 | **Faza** | 1 - Implementacja |
 | **Sprint** | 0.3+ - Rozszerzenia |
-| **Sesja** | 10 |
+| **Sesja** | 11 |
 | **Data** | 2026-01-19 |
 | **Następny milestone** | v1.0.0 - Stabilne API |
 | **Gałąź robocza** | develop |
@@ -44,6 +44,37 @@
 ---
 
 ## Bieżąca sesja
+
+### Sesja 11 (2026-01-19) - UKOŃCZONA
+
+**Cel:** Korekta formuł modelu Snydera dla jednostek SI
+
+**Co zostało zrobione:**
+- [x] Zaktualizowano dokumentację (README.md, SCOPE.md) dla v0.4.0
+- [x] Zweryfikowano formuły Snydera względem źródeł polskich i amerykańskich
+- [x] Poprawiono formuły modelu Snydera dla jednostek SI:
+  - Współczynnik przepływu szczytowego: `2.75` → `0.275` (prawidłowa konwersja SI)
+  - Czas do szczytu: `tPR = Δt/2 + tLR` → `tPR = tLR + Δt/5.5`
+  - Czas bazy: empiryczny → `tB = 0.556 × A / qPR` (bilans wodny)
+  - Domyślny Ct: `2.0` → `1.5` (zakres SI: 1.35-1.65)
+- [x] Dodano metodę `adjusted_lag_time_hours()` dla niestandardowego czasu trwania
+- [x] Dodano pola do `SnyderUHResult`: `duration_min`, `adjusted_lag_time_min`
+- [x] Zaktualizowano 45 testów dla nowych formuł
+- [x] Zweryfikowano bilans wodny (100,000 m³ dla 1mm na 100 km²)
+- [x] Łącznie 414 testów jednostkowych (wszystkie przechodzą)
+
+**Pliki zmodyfikowane:**
+- `hydrolog/runoff/snyder_uh.py` - poprawione formuły SI
+- `tests/unit/test_snyder_uh.py` - zaktualizowane testy
+- `README.md` - dodane przykłady CLI
+- `docs/SCOPE.md` - zaktualizowany status funkcjonalności
+
+**Następne kroki (v1.0.0):**
+1. Stabilizacja API
+2. Dokumentacja użytkownika
+3. Przykłady użycia
+
+---
 
 ### Sesja 10 (2026-01-19) - UKOŃCZONA
 
@@ -94,11 +125,6 @@
 **Wydano:**
 - v0.4.0 (2026-01-19) - CLI + Clark IUH + Snyder UH + CN lookup
 - Merge develop → main (v0.4.0)
-
-**Następne kroki (v1.0.0):**
-1. Stabilizacja API
-2. Dokumentacja użytkownika
-3. Przykłady użycia
 
 ---
 
@@ -361,4 +387,4 @@ Hydrolog/
 
 ---
 
-**Ostatnia aktualizacja:** 2026-01-19, Sesja 10
+**Ostatnia aktualizacja:** 2026-01-19, Sesja 11
