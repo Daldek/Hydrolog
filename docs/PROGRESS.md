@@ -93,6 +93,7 @@
 
 **Wydano:**
 - v0.4.0 (2026-01-19) - CLI + Clark IUH + Snyder UH + CN lookup
+- Merge develop → main (v0.4.0)
 
 **Następne kroki (v1.0.0):**
 1. Stabilizacja API
@@ -123,8 +124,9 @@
 ## Kontekst dla nowej sesji
 
 ### Stan projektu
-- **Faza:** Implementacja - v0.3.0+ ukończona
-- **Ostatni commit:** `fix(time): correct SCS Lag constant and docstring examples`
+- **Faza:** Implementacja - v0.4.0 wydana
+- **Ostatni commit:** `release: v0.4.0`
+- **Tag:** `v0.4.0`
 - **Środowisko:** `.venv` z Python 3.12.12
 - **Repo GitHub:** https://github.com/Daldek/Hydrolog.git
 
