@@ -86,42 +86,46 @@ class SnyderUH:
         Length along main stream from outlet to centroid of watershed [km].
         Must be positive.
     ct : float, optional
-        Time coefficient, by default 2.0.
-        Typical range: 1.8-2.2 (can vary from 0.4 to 8.0).
+        Time coefficient, by default 1.5.
+        Typical range for SI units: 1.35-1.65.
     cp : float, optional
         Peak coefficient, by default 0.6.
         Typical range: 0.4-0.8.
 
     Notes
     -----
-    Key relationships (metric units):
+    Key relationships (SI/metric units):
 
     Basin lag time:
-        tL = Ct * (L * Lc)^0.3  [hours]
+        tL = Ct × (L × Lc)^0.3  [hours]
 
-    where L and Lc are in km.
+    where L and Lc are in km, Ct typically 1.35-1.65 for SI.
 
     Standard rainfall duration:
-        D = tL / 5.5  [hours]
+        tD = tL / 5.5  [hours]
+
+    Adjusted lag time (for non-standard duration Δt):
+        tLR = tL + 0.25 × (Δt - tD)  [hours]
 
     Time to peak:
-        tp = D/2 + tL  [hours]
+        tPR = tLR + Δt / 5.5  [hours]
 
     Peak discharge:
-        qp = 2.75 * Cp * A / tL  [m³/s per mm]
+        qP = 0.275 × Cp × A / tL  [m³/s per mm]
+        qPR = qP × (tL / tLR)  [m³/s per mm] (adjusted)
 
-    Time base (triangular approximation):
-        tb = 72 + 3 * tL  [hours]
+    Time base (from water balance):
+        tB = 0.556 × A / qPR  [hours]
 
     Hydrograph widths at 50% and 75% of peak:
         W50 = 5.87 / (qp/A)^1.08  [hours]
         W75 = 3.35 / (qp/A)^1.08  [hours]
 
     The coefficients Ct and Cp characterize the watershed:
-    - Ct: Related to watershed slope and storage
-      - Lower values (0.4-1.8): Steep, mountainous areas
-      - Higher values (2.2-8.0): Flat, swampy areas
-    - Cp: Related to retention and storage
+    - Ct: Related to watershed slope and storage (SI: 1.35-1.65)
+      - Lower values: Steep, mountainous areas
+      - Higher values: Flat, swampy areas
+    - Cp: Related to retention and storage (0.4-0.8)
       - Lower values (0.4-0.5): High storage, rural areas
       - Higher values (0.6-0.8): Low storage, urban areas
       - Inversely related to Ct
@@ -143,7 +147,7 @@ class SnyderUH:
         area_km2: float,
         L_km: float,
         Lc_km: float,
-        ct: float = 2.0,
+        ct: float = 1.5,
         cp: float = 0.6,
     ) -> None:
         """
@@ -158,9 +162,11 @@ class SnyderUH:
         Lc_km : float
             Length to centroid [km]. Must be positive.
         ct : float, optional
-            Time coefficient, by default 2.0.
+            Time coefficient (SI), by default 1.5.
+            Typical range: 1.35-1.65.
         cp : float, optional
             Peak coefficient, by default 0.6.
+            Typical range: 0.4-0.8.
 
         Raises
         ------
@@ -220,7 +226,7 @@ class SnyderUH:
 
     def time_to_peak_hours(self, duration_hours: Optional[float] = None) -> float:
         """
-        Calculate time to peak tp [hours].
+        Calculate time to peak tPR [hours].
 
         Parameters
         ----------
@@ -235,19 +241,16 @@ class SnyderUH:
 
         Notes
         -----
-        Formula: tp = D/2 + tL_adj
+        Formula: tPR = tLR + Δt / 5.5
 
-        For non-standard duration D' != D:
-            tL_adj = tL - (D - D') / 4
+        where tLR is the adjusted lag time.
         """
         if duration_hours is None:
             duration_hours = self.standard_duration_hours
 
-        # Adjust lag time for non-standard duration
-        D_standard = self.standard_duration_hours
-        tL_adj = self.lag_time_hours - (D_standard - duration_hours) / 4.0
+        tL_adj = self.adjusted_lag_time_hours(duration_hours)
 
-        return duration_hours / 2.0 + tL_adj
+        return tL_adj + duration_hours / 5.5
 
     def time_to_peak_min(self, duration_min: Optional[float] = None) -> float:
         """
@@ -269,9 +272,39 @@ class SnyderUH:
             duration_hours = duration_min / 60.0
         return self.time_to_peak_hours(duration_hours) * 60.0
 
+    def adjusted_lag_time_hours(
+        self, duration_hours: Optional[float] = None
+    ) -> float:
+        """
+        Calculate adjusted lag time tLR [hours].
+
+        Parameters
+        ----------
+        duration_hours : float, optional
+            Rainfall duration [hours]. If not specified, uses
+            standard duration.
+
+        Returns
+        -------
+        float
+            Adjusted lag time [hours].
+
+        Notes
+        -----
+        Formula: tLR = tL + 0.25 × (Δt - tD)
+        """
+        if duration_hours is None:
+            duration_hours = self.standard_duration_hours
+
+        D_standard = self.standard_duration_hours
+        tL_adj = self.lag_time_hours + 0.25 * (duration_hours - D_standard)
+
+        # Ensure positive lag time
+        return max(tL_adj, 0.1 * self.lag_time_hours)
+
     def peak_discharge(self, duration_min: Optional[float] = None) -> float:
         """
-        Calculate peak discharge qp [m³/s per mm].
+        Calculate adjusted peak discharge qPR [m³/s per mm].
 
         Parameters
         ----------
@@ -282,33 +315,28 @@ class SnyderUH:
         Returns
         -------
         float
-            Peak discharge [m³/s per mm].
+            Adjusted peak discharge [m³/s per mm].
 
         Notes
         -----
-        Formula: qp = 2.75 * Cp * A / tL_adj
+        Formulas:
+            qP = 0.275 × Cp × A / tL  [m³/s per mm] (standard)
+            qPR = qP × (tL / tLR)  [m³/s per mm] (adjusted)
 
-        For non-standard duration, the adjusted lag time is used.
+        Which simplifies to:
+            qPR = 0.275 × Cp × A / tLR
         """
         duration_hours = None
         if duration_min is not None:
             duration_hours = duration_min / 60.0
 
-        # Adjust lag time for non-standard duration
-        if duration_hours is None:
-            tL_adj = self.lag_time_hours
-        else:
-            D_standard = self.standard_duration_hours
-            tL_adj = self.lag_time_hours - (D_standard - duration_hours) / 4.0
+        tL_adj = self.adjusted_lag_time_hours(duration_hours)
 
-        # Ensure positive lag time
-        tL_adj = max(tL_adj, 0.1 * self.lag_time_hours)
-
-        return 2.75 * self.cp * self.area_km2 / tL_adj
+        return 0.275 * self.cp * self.area_km2 / tL_adj
 
     def time_base_hours(self, duration_min: Optional[float] = None) -> float:
         """
-        Calculate time base tb [hours].
+        Calculate time base tB [hours].
 
         Parameters
         ----------
@@ -323,30 +351,21 @@ class SnyderUH:
 
         Notes
         -----
-        Formula based on water balance, ensuring tb > tp:
+        Formula based on water balance for triangular UH:
 
-            tb = tPR + 0.37 × A / qPR  [hours]
+            tB = 0.556 × A / qPR  [hours]
 
         where:
-        - tPR is adjusted time to peak [hours]
         - A is watershed area [km²]
         - qPR is adjusted peak discharge [m³/s per mm]
 
-        This formula ensures:
-        1. Time base is always greater than time to peak
-        2. Recession limb volume satisfies water balance
-
         Derivation:
-        - For Snyder UH, rising limb volume ≈ 1/3 of total
-        - Recession limb volume ≈ 2/3 × A × 1000 m³
-        - V_recession = 0.5 × (tb - tp) × qp × 3600
-        - Solving: (tb - tp) = 0.37 × A / qp
+        - Volume for 1 mm over A km² = A × 1000 m³
+        - For triangular UH: V = 0.5 × qp × tb × 3600
+        - Solving: tb = 2 × A × 1000 / (qp × 3600) = 0.556 × A / qp
         """
-        tp_hours = self.time_to_peak_hours(
-            duration_min / 60.0 if duration_min else None
-        )
         qp = self.peak_discharge(duration_min)
-        return tp_hours + 0.37 * self.area_km2 / qp
+        return 0.556 * self.area_km2 / qp
 
     def time_base_min(self, duration_min: Optional[float] = None) -> float:
         """
@@ -528,8 +547,7 @@ class SnyderUH:
         peak_discharge = float(ordinates[peak_idx])
 
         # Calculate adjusted lag time for non-standard duration
-        D_standard = self.standard_duration_min
-        adjusted_lag_time = self.lag_time_min + (duration_min - D_standard) / 4.0
+        adjusted_lag_time = self.adjusted_lag_time_hours(duration_min / 60.0) * 60.0
 
         return SnyderUHResult(
             times_min=times,
@@ -551,7 +569,7 @@ class SnyderUH:
         cls,
         area_km2: float,
         lag_time_min: float,
-        ct: float = 2.0,
+        ct: float = 1.5,
         cp: float = 0.6,
     ) -> "SnyderUH":
         """
@@ -566,7 +584,7 @@ class SnyderUH:
         lag_time_min : float
             Basin lag time [min].
         ct : float, optional
-            Time coefficient, by default 2.0.
+            Time coefficient (SI), by default 1.5.
         cp : float, optional
             Peak coefficient, by default 0.6.
 
@@ -623,7 +641,7 @@ class SnyderUH:
         cls,
         area_km2: float,
         tc_min: float,
-        ct: float = 2.0,
+        ct: float = 1.5,
         cp: float = 0.6,
     ) -> "SnyderUH":
         """
@@ -638,7 +656,7 @@ class SnyderUH:
         tc_min : float
             Time of concentration [min].
         ct : float, optional
-            Time coefficient, by default 2.0.
+            Time coefficient (SI), by default 1.5.
         cp : float, optional
             Peak coefficient, by default 0.6.
 
