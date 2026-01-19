@@ -5,6 +5,7 @@ from typing import Optional, Union
 
 import numpy as np
 from numpy.typing import NDArray
+from scipy.optimize import brentq
 from scipy.special import gamma
 
 from hydrolog.exceptions import InvalidParameterError
@@ -624,3 +625,192 @@ class NashIUH:
         n = lag_time_min / k_min  # = lag_time² / variance
 
         return cls(n=n, k_min=k_min)
+
+    @classmethod
+    def from_lutz(
+        cls,
+        L_km: float,
+        Lc_km: float,
+        slope: float,
+        manning_n: float,
+        urban_pct: float = 0.0,
+        forest_pct: float = 0.0,
+        area_km2: Optional[float] = None,
+    ) -> "NashIUH":
+        """
+        Create NashIUH using Lutz method for ungauged catchments.
+
+        The Lutz method estimates Nash model parameters from catchment
+        physiographic characteristics. Recommended for non-urbanized
+        catchments.
+
+        Parameters
+        ----------
+        L_km : float
+            Main stream length from outlet to watershed divide [km].
+        Lc_km : float
+            Length along main stream from outlet to the point
+            nearest to catchment centroid [km].
+        slope : float
+            Average slope of main stream [-] (e.g., 0.01 for 1%).
+        manning_n : float
+            Manning's roughness coefficient for main channel [-].
+            Typical values: 0.025-0.050 for natural streams.
+        urban_pct : float, optional
+            Percentage of urbanized area [%], by default 0.0.
+        forest_pct : float, optional
+            Percentage of forested area [%], by default 0.0.
+        area_km2 : float, optional
+            Watershed area [km²]. If provided, generate() returns
+            dimensional unit hydrograph [m³/s per mm].
+
+        Returns
+        -------
+        NashIUH
+            Configured Nash IUH generator.
+
+        Raises
+        ------
+        InvalidParameterError
+            If any parameter is invalid or if N cannot be determined.
+
+        Notes
+        -----
+        The Lutz method computes:
+
+        1. Time to peak of unit hydrograph:
+
+        .. math::
+            t_p = P_1 \\cdot \\left(\\frac{L \\cdot L_c}{J_g^{1.5}}\\right)^{0.26}
+                  \\cdot e^{-0.016 U} \\cdot e^{0.004 W}
+
+        where :math:`P_1 = 3.989 n + 0.028` (n = Manning coefficient).
+
+        2. Peak IUH ordinate:
+
+        .. math::
+            u_p = \\frac{0.66}{t_p^{1.04}}
+
+        3. Shape function:
+
+        .. math::
+            f(N) = t_p \\cdot u_p
+
+        4. Parameter N is found by solving:
+
+        .. math::
+            f(N) = \\frac{(N-1)^N \\cdot e^{-(N-1)}}{\\Gamma(N)}
+
+        5. Storage coefficient:
+
+        .. math::
+            K = \\frac{t_p}{N-1}
+
+        References
+        ----------
+        Lutz, W. (1984). Berechnung von Hochwasserabflüssen unter
+        Anwendung von Gebietskenngrößen. Mitteilungen des Instituts
+        für Hydrologie und Wasserwirtschaft, H. 24, Universität Karlsruhe.
+
+        KZGW (2017). Aktualizacja metodyki obliczania przepływów
+        i opadów maksymalnych. Załącznik 2, Tabela C.2.
+
+        Examples
+        --------
+        >>> nash = NashIUH.from_lutz(
+        ...     L_km=15.0,
+        ...     Lc_km=8.0,
+        ...     slope=0.02,
+        ...     manning_n=0.035,
+        ...     forest_pct=40.0
+        ... )
+        >>> print(f"n = {nash.n:.2f}, K = {nash.k_min:.1f} min")
+        """
+        # Validate inputs
+        if L_km <= 0:
+            raise InvalidParameterError(f"L_km must be positive, got {L_km}")
+        if Lc_km <= 0:
+            raise InvalidParameterError(f"Lc_km must be positive, got {Lc_km}")
+        if Lc_km > L_km:
+            raise InvalidParameterError(
+                f"Lc_km ({Lc_km}) cannot exceed L_km ({L_km})"
+            )
+        if slope <= 0:
+            raise InvalidParameterError(f"slope must be positive, got {slope}")
+        if manning_n <= 0:
+            raise InvalidParameterError(
+                f"manning_n must be positive, got {manning_n}"
+            )
+        if urban_pct < 0 or urban_pct > 100:
+            raise InvalidParameterError(
+                f"urban_pct must be in [0, 100], got {urban_pct}"
+            )
+        if forest_pct < 0 or forest_pct > 100:
+            raise InvalidParameterError(
+                f"forest_pct must be in [0, 100], got {forest_pct}"
+            )
+        if area_km2 is not None and area_km2 <= 0:
+            raise InvalidParameterError(
+                f"area_km2 must be positive, got {area_km2}"
+            )
+
+        # Step 1: Calculate P1 parameter
+        P1 = 3.989 * manning_n + 0.028
+
+        # Step 2: Calculate time to peak [hours]
+        # tp = P1 * (L * Lc / Jg^1.5)^0.26 * exp(-0.016*U) * exp(0.004*W)
+        geometric_factor = (L_km * Lc_km / (slope**1.5)) ** 0.26
+        urban_factor = np.exp(-0.016 * urban_pct)
+        forest_factor = np.exp(0.004 * forest_pct)
+        tp_hours = P1 * geometric_factor * urban_factor * forest_factor
+
+        # Step 3: Calculate peak IUH ordinate [1/hour]
+        up_per_hour = 0.66 / (tp_hours**1.04)
+
+        # Step 4: Calculate f(N) = tp * up
+        f_N_target = tp_hours * up_per_hour
+
+        # Step 5: Find N by solving f(N) = (N-1)^N * e^(-(N-1)) / Gamma(N)
+        def f_N_equation(N: float) -> float:
+            """Calculate f(N) for Nash model."""
+            if N <= 1:
+                return 0.0
+            n_minus_1 = N - 1
+            numerator = (n_minus_1**N) * np.exp(-n_minus_1)
+            denominator = gamma(N)
+            return numerator / denominator
+
+        def objective(N: float) -> float:
+            """Objective function: f(N) - target = 0."""
+            return f_N_equation(N) - f_N_target
+
+        # f(N) has maximum around N=2-3, then decreases
+        # Typical range for f(N): 0.35 - 0.40
+        # Search in range N = 1.1 to 20
+        try:
+            # Check if solution exists in range
+            f_low = objective(1.1)
+            f_high = objective(20.0)
+
+            if f_low * f_high > 0:
+                # No sign change - check if target is achievable
+                f_max = max(f_N_equation(N) for N in np.linspace(1.1, 20, 100))
+                if f_N_target > f_max:
+                    raise InvalidParameterError(
+                        f"f(N) = {f_N_target:.4f} is too high. "
+                        f"Maximum achievable f(N) ≈ {f_max:.4f}. "
+                        "Check input parameters."
+                    )
+
+            N = brentq(objective, 1.1, 20.0, xtol=1e-6)
+        except ValueError as e:
+            raise InvalidParameterError(
+                f"Could not find valid N for f(N) = {f_N_target:.4f}. "
+                f"Error: {e}"
+            )
+
+        # Step 6: Calculate K [hours], convert to minutes
+        K_hours = tp_hours / (N - 1)
+        k_min = K_hours * 60.0
+
+        return cls(n=N, k_min=k_min, area_km2=area_km2)

@@ -454,6 +454,250 @@ class TestNashIUHGenerateIUH:
         assert abs(integral - 1.0) < 0.01
 
 
+class TestNashIUHFromLutz:
+    """Tests for creating NashIUH using Lutz method."""
+
+    def test_from_lutz_basic(self):
+        """Test from_lutz with basic parameters."""
+        nash = NashIUH.from_lutz(
+            L_km=15.0,
+            Lc_km=8.0,
+            slope=0.02,
+            manning_n=0.035,
+        )
+
+        # Should return valid Nash parameters
+        assert nash.n > 1.0
+        assert nash.k_min > 0
+        assert nash.area_km2 is None
+
+    def test_from_lutz_with_area(self):
+        """Test from_lutz with area_km2."""
+        nash = NashIUH.from_lutz(
+            L_km=15.0,
+            Lc_km=8.0,
+            slope=0.02,
+            manning_n=0.035,
+            area_km2=50.0,
+        )
+
+        assert nash.area_km2 == 50.0
+
+    def test_from_lutz_forest_effect(self):
+        """Test that forest increases time to peak (larger K)."""
+        nash_no_forest = NashIUH.from_lutz(
+            L_km=15.0,
+            Lc_km=8.0,
+            slope=0.02,
+            manning_n=0.035,
+            forest_pct=0.0,
+        )
+        nash_with_forest = NashIUH.from_lutz(
+            L_km=15.0,
+            Lc_km=8.0,
+            slope=0.02,
+            manning_n=0.035,
+            forest_pct=50.0,
+        )
+
+        # Forest should increase lag time (more retention)
+        assert nash_with_forest.lag_time_min > nash_no_forest.lag_time_min
+
+    def test_from_lutz_urban_effect(self):
+        """Test that urbanization decreases time to peak (smaller K)."""
+        nash_no_urban = NashIUH.from_lutz(
+            L_km=15.0,
+            Lc_km=8.0,
+            slope=0.02,
+            manning_n=0.035,
+            urban_pct=0.0,
+        )
+        nash_with_urban = NashIUH.from_lutz(
+            L_km=15.0,
+            Lc_km=8.0,
+            slope=0.02,
+            manning_n=0.035,
+            urban_pct=30.0,
+        )
+
+        # Urbanization should decrease lag time (faster response)
+        assert nash_with_urban.lag_time_min < nash_no_urban.lag_time_min
+
+    def test_from_lutz_steeper_slope_faster_response(self):
+        """Test that steeper slope gives faster response."""
+        nash_gentle = NashIUH.from_lutz(
+            L_km=15.0,
+            Lc_km=8.0,
+            slope=0.01,
+            manning_n=0.035,
+        )
+        nash_steep = NashIUH.from_lutz(
+            L_km=15.0,
+            Lc_km=8.0,
+            slope=0.05,
+            manning_n=0.035,
+        )
+
+        # Steeper slope should give faster response (smaller lag)
+        assert nash_steep.lag_time_min < nash_gentle.lag_time_min
+
+    def test_from_lutz_higher_manning_slower_response(self):
+        """Test that higher Manning n gives slower response."""
+        nash_smooth = NashIUH.from_lutz(
+            L_km=15.0,
+            Lc_km=8.0,
+            slope=0.02,
+            manning_n=0.025,
+        )
+        nash_rough = NashIUH.from_lutz(
+            L_km=15.0,
+            Lc_km=8.0,
+            slope=0.02,
+            manning_n=0.050,
+        )
+
+        # Rougher channel should give slower response (larger lag)
+        assert nash_rough.lag_time_min > nash_smooth.lag_time_min
+
+    def test_from_lutz_longer_stream_slower_response(self):
+        """Test that longer stream gives slower response."""
+        nash_short = NashIUH.from_lutz(
+            L_km=10.0,
+            Lc_km=5.0,
+            slope=0.02,
+            manning_n=0.035,
+        )
+        nash_long = NashIUH.from_lutz(
+            L_km=30.0,
+            Lc_km=15.0,
+            slope=0.02,
+            manning_n=0.035,
+        )
+
+        # Longer stream should give slower response
+        assert nash_long.lag_time_min > nash_short.lag_time_min
+
+    def test_from_lutz_n_in_reasonable_range(self):
+        """Test that calculated N is in reasonable range for natural catchments."""
+        nash = NashIUH.from_lutz(
+            L_km=15.0,
+            Lc_km=8.0,
+            slope=0.02,
+            manning_n=0.035,
+        )
+
+        # N should typically be between 1.5 and 10 for natural catchments
+        assert 1.1 < nash.n < 15.0
+
+    def test_from_lutz_zero_L_raises(self):
+        """Test that L_km=0 raises error."""
+        with pytest.raises(InvalidParameterError, match="L_km must be positive"):
+            NashIUH.from_lutz(
+                L_km=0,
+                Lc_km=5.0,
+                slope=0.02,
+                manning_n=0.035,
+            )
+
+    def test_from_lutz_zero_Lc_raises(self):
+        """Test that Lc_km=0 raises error."""
+        with pytest.raises(InvalidParameterError, match="Lc_km must be positive"):
+            NashIUH.from_lutz(
+                L_km=15.0,
+                Lc_km=0,
+                slope=0.02,
+                manning_n=0.035,
+            )
+
+    def test_from_lutz_Lc_greater_than_L_raises(self):
+        """Test that Lc > L raises error."""
+        with pytest.raises(InvalidParameterError, match="Lc_km.*cannot exceed L_km"):
+            NashIUH.from_lutz(
+                L_km=10.0,
+                Lc_km=15.0,
+                slope=0.02,
+                manning_n=0.035,
+            )
+
+    def test_from_lutz_zero_slope_raises(self):
+        """Test that slope=0 raises error."""
+        with pytest.raises(InvalidParameterError, match="slope must be positive"):
+            NashIUH.from_lutz(
+                L_km=15.0,
+                Lc_km=8.0,
+                slope=0,
+                manning_n=0.035,
+            )
+
+    def test_from_lutz_zero_manning_raises(self):
+        """Test that manning_n=0 raises error."""
+        with pytest.raises(InvalidParameterError, match="manning_n must be positive"):
+            NashIUH.from_lutz(
+                L_km=15.0,
+                Lc_km=8.0,
+                slope=0.02,
+                manning_n=0,
+            )
+
+    def test_from_lutz_invalid_urban_pct_raises(self):
+        """Test that invalid urban_pct raises error."""
+        with pytest.raises(InvalidParameterError, match="urban_pct must be in"):
+            NashIUH.from_lutz(
+                L_km=15.0,
+                Lc_km=8.0,
+                slope=0.02,
+                manning_n=0.035,
+                urban_pct=-10.0,
+            )
+
+        with pytest.raises(InvalidParameterError, match="urban_pct must be in"):
+            NashIUH.from_lutz(
+                L_km=15.0,
+                Lc_km=8.0,
+                slope=0.02,
+                manning_n=0.035,
+                urban_pct=150.0,
+            )
+
+    def test_from_lutz_invalid_forest_pct_raises(self):
+        """Test that invalid forest_pct raises error."""
+        with pytest.raises(InvalidParameterError, match="forest_pct must be in"):
+            NashIUH.from_lutz(
+                L_km=15.0,
+                Lc_km=8.0,
+                slope=0.02,
+                manning_n=0.035,
+                forest_pct=-5.0,
+            )
+
+    def test_from_lutz_zero_area_raises(self):
+        """Test that area_km2=0 raises error."""
+        with pytest.raises(InvalidParameterError, match="area_km2 must be positive"):
+            NashIUH.from_lutz(
+                L_km=15.0,
+                Lc_km=8.0,
+                slope=0.02,
+                manning_n=0.035,
+                area_km2=0,
+            )
+
+    def test_from_lutz_generate_works(self):
+        """Test that generated Nash can produce hydrograph."""
+        nash = NashIUH.from_lutz(
+            L_km=15.0,
+            Lc_km=8.0,
+            slope=0.02,
+            manning_n=0.035,
+            area_km2=50.0,
+        )
+
+        result = nash.generate(timestep_min=10.0)
+
+        assert isinstance(result, NashUHResult)
+        assert result.peak_discharge_m3s > 0
+        assert len(result.times_min) > 0
+
+
 class TestNashIUHImport:
     """Test module imports."""
 

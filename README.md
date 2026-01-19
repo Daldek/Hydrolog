@@ -187,6 +187,18 @@ print(f"Qmax UH: {result_uh.peak_discharge_m3s:.2f} m³/s na mm")
 tc = ConcentrationTime.kirpich(length_km=8.2, slope_m_per_m=0.023)
 iuh = NashIUH.from_tc(tc_min=tc, n=3.0, lag_ratio=0.6)
 
+# Metoda 4: Metoda Lutza (dla zlewni niezurbanizowanych)
+nash = NashIUH.from_lutz(
+    L_km=15.0,          # Długość cieku głównego [km]
+    Lc_km=8.0,          # Długość do centroidu zlewni [km]
+    slope=0.02,         # Spadek cieku [-]
+    manning_n=0.035,    # Współczynnik Manninga [-]
+    forest_pct=40.0,    # Udział lasów [%]
+    urban_pct=5.0,      # Udział urbanizacji [%]
+    area_km2=50.0       # Powierzchnia zlewni [km²]
+)
+print(f"n = {nash.n:.2f}, K = {nash.k_min:.1f} min")
+
 # Jawne generowanie IUH (zawsze zwraca IUHResult)
 result = iuh.generate_iuh(timestep_min=5.0, duration_min=300.0)
 
