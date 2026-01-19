@@ -166,19 +166,38 @@ print(f"Clark: Qmax = {result_clark.peak_discharge_m3s:.2f} m³/s")
 print(f"Snyder: Qmax = {result_snyder.peak_discharge_m3s:.2f} m³/s")
 ```
 
-### Chwilowy hydrogram jednostkowy (Nash IUH)
+### Model Nasha (Nash IUH)
+
+Model Nasha reprezentuje zlewnię jako **kaskadę n identycznych zbiorników liniowych**, każdy ze stałą retencji K:
+
+```
+Opad → [Zbiornik 1] → [Zbiornik 2] → ... → [Zbiornik n] → Odpływ
+           K              K                    K
+```
+
+**Wzór IUH:**
+```
+u(t) = 1/(K×Γ(n)) × (t/K)^(n-1) × e^(-t/K)    [1/min]
+```
+
+**Właściwości:**
+| Wielkość | Wzór |
+|----------|------|
+| Czas opóźnienia | tlag = n × K |
+| Czas do szczytu | tp = (n-1) × K |
+| Wariancja | σ² = n × K² |
 
 ```python
 from hydrolog.runoff import NashIUH
 from hydrolog.time import ConcentrationTime
 
-# Metoda 1: IUH bez powierzchni (zwraca wartości bezwymiarowe [1/min])
+# Metoda 1: Bezpośrednie podanie parametrów (IUH, wartości bezwymiarowe [1/min])
 iuh = NashIUH(n=3.0, k_min=30.0)
 result_iuh = iuh.generate(timestep_min=5.0)  # IUHResult
 print(f"Czas do szczytu IUH: {iuh.time_to_peak_min:.1f} min")
 print(f"Czas opóźnienia: {iuh.lag_time_min:.1f} min")
 
-# Metoda 2: UH z powierzchnią (zwraca wartości wymiarowe [m³/s/mm])
+# Metoda 2: Z powierzchnią zlewni (UH, wartości wymiarowe [m³/s/mm])
 nash = NashIUH(n=3.0, k_min=30.0, area_km2=45.0)
 result_uh = nash.generate(timestep_min=5.0)  # NashUHResult
 print(f"Qmax UH: {result_uh.peak_discharge_m3s:.2f} m³/s na mm")
@@ -187,7 +206,44 @@ print(f"Qmax UH: {result_uh.peak_discharge_m3s:.2f} m³/s na mm")
 tc = ConcentrationTime.kirpich(length_km=8.2, slope_m_per_m=0.023)
 iuh = NashIUH.from_tc(tc_min=tc, n=3.0, lag_ratio=0.6)
 
-# Metoda 4: Metoda Lutza (dla zlewni niezurbanizowanych)
+# Metoda 4: Z momentów statystycznych (obserwowany hydrogram)
+iuh = NashIUH.from_moments(lag_time_min=90.0, variance_min2=2700.0)
+print(f"n = {iuh.n:.2f}, K = {iuh.k_min:.1f} min")  # n=3.0, K=30.0
+
+# Jawne generowanie IUH (zawsze zwraca IUHResult)
+result = iuh.generate_iuh(timestep_min=5.0, duration_min=300.0)
+
+# Konwersja IUH do D-minutowego hydrogramu jednostkowego
+uh = iuh.to_unit_hydrograph(area_km2=45.0, duration_min=30.0)
+print(f"Qmax UH: {uh.peak_discharge_m3s:.2f} m³/s")
+```
+
+### Metoda Lutza (estymacja parametrów Nasha)
+
+Metoda Lutza służy do estymacji parametrów modelu Nasha (n, K) z charakterystyk
+fizjograficznych zlewni. **Zalecana dla zlewni niezurbanizowanych** bez danych pomiarowych.
+
+**Algorytm:**
+```
+1. P₁ = 3.989×n + 0.028                    (n = współczynnik Manninga)
+2. tp = P₁ × (L×Lc/Jg^1.5)^0.26 × e^(-0.016U) × e^(0.004W)   [h]
+3. up = 0.66 / tp^1.04                     [1/h]
+4. f(N) = tp × up  →  N (z tabeli lub numerycznie)
+5. K = tp / (N-1)                          [h]
+```
+
+**Wpływ parametrów:**
+| Czynnik | Wpływ na odpływ |
+|---------|-----------------|
+| ↑ Las (W) | Wolniejszy (↑ tp) |
+| ↑ Urbanizacja (U) | Szybszy (↓ tp) |
+| ↑ Spadek (Jg) | Szybszy (↓ tp) |
+| ↑ Manning (n) | Wolniejszy (↑ tp) |
+
+```python
+from hydrolog.runoff import NashIUH
+
+# Estymacja parametrów metodą Lutza
 nash = NashIUH.from_lutz(
     L_km=15.0,          # Długość cieku głównego [km]
     Lc_km=8.0,          # Długość do centroidu zlewni [km]
@@ -197,15 +253,21 @@ nash = NashIUH.from_lutz(
     urban_pct=5.0,      # Udział urbanizacji [%]
     area_km2=50.0       # Powierzchnia zlewni [km²]
 )
-print(f"n = {nash.n:.2f}, K = {nash.k_min:.1f} min")
 
-# Jawne generowanie IUH (zawsze zwraca IUHResult)
-result = iuh.generate_iuh(timestep_min=5.0, duration_min=300.0)
+print(f"n = {nash.n:.2f}")           # n = 3.66
+print(f"K = {nash.k_min:.1f} min")   # K = 70.9 min
+print(f"tlag = {nash.lag_time_min:.1f} min")  # tlag = 259.3 min
 
-# Konwersja IUH do D-minutowego hydrogramu jednostkowego
-uh = iuh.to_unit_hydrograph(area_km2=45.0, duration_min=30.0)
-print(f"Qmax UH: {uh.peak_discharge_m3s:.2f} m³/s")
+# Generowanie hydrogramu jednostkowego
+uh = nash.generate(timestep_min=10.0)
+print(f"Qmax = {uh.peak_discharge_m3s:.2f} m³/s/mm")
 ```
+
+**Referencje:**
+- Lutz W. (1984). *Berechnung von Hochwasserabflüssen unter Anwendung von Gebietskenngrößen*.
+  Mitteilungen des Instituts für Hydrologie und Wasserwirtschaft, H. 24, Universität Karlsruhe.
+- KZGW (2017). *Aktualizacja metodyki obliczania przepływów i opadów maksymalnych*.
+  Załącznik 2, Tabela C.2.
 
 ### Clark IUH
 

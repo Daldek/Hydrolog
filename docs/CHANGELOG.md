@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+#### `hydrolog.runoff.nash_iuh` - Lutz Method
+- `NashIUH.from_lutz()` - parameter estimation from catchment characteristics
+  - Estimates Nash model parameters (n, K) from physiographic data
+  - Input parameters: L, Lc, slope, Manning's n, urban%, forest%
+  - Numerical solution of f(N) equation using Brent's method
+  - Verified against KZGW (2017) Table C.2 (accuracy < 0.001)
+  - Reference: Lutz W. (1984), Universität Karlsruhe
+
+### Changed
+- Enhanced README.md documentation:
+  - Nash model theory (reservoir cascade, IUH formula, properties)
+  - All parameter estimation methods (from_tc, from_moments, from_lutz)
+  - Lutz method algorithm with full equations
+  - Influence of physiographic parameters on runoff
+
+### Testing
+- 17 new tests for Lutz method
+- Total: 485 unit tests (all passing)
+
 ---
 
 ## [0.4.0] - 2026-01-19
