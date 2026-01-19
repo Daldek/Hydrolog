@@ -306,22 +306,64 @@ class SnyderUH:
 
         return 2.75 * self.cp * self.area_km2 / tL_adj
 
-    def time_base_hours(self) -> float:
+    def time_base_hours(self, duration_min: Optional[float] = None) -> float:
         """
         Calculate time base tb [hours].
 
+        Parameters
+        ----------
+        duration_min : float, optional
+            Rainfall duration [min]. If not specified, uses
+            standard duration.
+
+        Returns
+        -------
+        float
+            Time base [hours].
+
         Notes
         -----
-        Formula: tb = 72 + 3 * tL [hours]
+        Formula based on water balance, ensuring tb > tp:
 
-        This is based on the triangular approximation where
-        tb = 3 + tL/8 days = 72 + 3*tL hours.
+            tb = tPR + 0.37 × A / qPR  [hours]
+
+        where:
+        - tPR is adjusted time to peak [hours]
+        - A is watershed area [km²]
+        - qPR is adjusted peak discharge [m³/s per mm]
+
+        This formula ensures:
+        1. Time base is always greater than time to peak
+        2. Recession limb volume satisfies water balance
+
+        Derivation:
+        - For Snyder UH, rising limb volume ≈ 1/3 of total
+        - Recession limb volume ≈ 2/3 × A × 1000 m³
+        - V_recession = 0.5 × (tb - tp) × qp × 3600
+        - Solving: (tb - tp) = 0.37 × A / qp
         """
-        return 72.0 + 3.0 * self.lag_time_hours
+        tp_hours = self.time_to_peak_hours(
+            duration_min / 60.0 if duration_min else None
+        )
+        qp = self.peak_discharge(duration_min)
+        return tp_hours + 0.37 * self.area_km2 / qp
 
-    def time_base_min(self) -> float:
-        """Calculate time base tb [min]."""
-        return self.time_base_hours() * 60.0
+    def time_base_min(self, duration_min: Optional[float] = None) -> float:
+        """
+        Calculate time base tb [min].
+
+        Parameters
+        ----------
+        duration_min : float, optional
+            Rainfall duration [min]. If not specified, uses
+            standard duration.
+
+        Returns
+        -------
+        float
+            Time base [min].
+        """
+        return self.time_base_hours(duration_min) * 60.0
 
     def width_at_percent(self, percent: float) -> float:
         """
@@ -458,7 +500,7 @@ class SnyderUH:
 
         # Determine total duration
         if total_duration_min is None:
-            total_duration_min = self.time_base_min()
+            total_duration_min = self.time_base_min(duration_min)
 
         if total_duration_min <= 0:
             raise InvalidParameterError(
@@ -497,7 +539,7 @@ class SnyderUH:
             adjusted_lag_time_min=adjusted_lag_time,
             time_to_peak_min=tp_min,
             peak_discharge_m3s=peak_discharge,
-            time_base_min=self.time_base_min(),
+            time_base_min=self.time_base_min(duration_min),
             duration_min=duration_min,
             standard_duration_min=self.standard_duration_min,
             ct=self.ct,

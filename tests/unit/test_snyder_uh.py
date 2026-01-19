@@ -121,11 +121,13 @@ class TestSnyderUHTimings:
         assert tp_60 > tp_30
 
     def test_time_base_calculation(self):
-        """Test time base calculation."""
+        """Test time base calculation using water balance formula."""
         uh = SnyderUH(area_km2=100.0, L_km=15.0, Lc_km=8.0)
 
-        # tb = 72 + 3 * tL [hours]
-        expected_hours = 72.0 + 3.0 * uh.lag_time_hours
+        # tb = tp + 0.37 * A / qP [hours] (water balance, ensures tb > tp)
+        tp = uh.time_to_peak_hours()
+        qp = uh.peak_discharge()
+        expected_hours = tp + 0.37 * uh.area_km2 / qp
         assert abs(uh.time_base_hours() - expected_hours) < 0.01
 
     def test_time_base_min_conversion(self):
@@ -133,6 +135,16 @@ class TestSnyderUHTimings:
         uh = SnyderUH(area_km2=100.0, L_km=15.0, Lc_km=8.0)
 
         assert abs(uh.time_base_min() - uh.time_base_hours() * 60.0) < 0.01
+
+    def test_time_base_adjusts_with_duration(self):
+        """Test that time base adjusts for non-standard duration."""
+        uh = SnyderUH(area_km2=100.0, L_km=15.0, Lc_km=8.0)
+
+        tb_30 = uh.time_base_min(duration_min=30.0)
+        tb_120 = uh.time_base_min(duration_min=120.0)
+
+        # Longer duration -> lower qPR -> longer time base
+        assert tb_120 > tb_30
 
 
 class TestSnyderUHPeakDischarge:
