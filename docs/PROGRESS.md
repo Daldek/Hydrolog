@@ -5,10 +5,10 @@
 | Pole | Wartość |
 |------|---------|
 | **Faza** | 1 - Implementacja |
-| **Sprint** | 0.5.0 - Wizualizacja |
-| **Sesja** | 14 |
+| **Sprint** | 0.5.0 - Wizualizacja (poprawki) |
+| **Sesja** | 15 |
 | **Data** | 2026-01-19 |
-| **Następny milestone** | v1.0.0 - Stabilne API |
+| **Następny milestone** | v0.6.0 - Generowanie raportów |
 | **Gałąź robocza** | develop |
 
 ---
@@ -42,11 +42,59 @@
 | v0.3.0 | Interpolacja + sieć rzeczna | ✅ Wydana (2026-01-18) |
 | v0.4.0 | CLI + Clark + Snyder + CN lookup | ✅ Wydana (2026-01-19) |
 | v0.5.0 | Wizualizacja (matplotlib/seaborn) | ✅ Wydana (2026-01-19) |
+| v0.6.0 | Generowanie raportów z obliczeniami | 📋 Planowany |
 | v1.0.0 | Stabilne API + CLI | 📋 Planowany |
 
 ---
 
 ## Bieżąca sesja
+
+### Sesja 15 (2026-01-19) - W TRAKCIE
+
+**Cel:** Poprawki wizualizacji na podstawie feedbacku użytkownika
+
+**Co zostało zrobione:**
+- [x] Poprawiono `plot_hietogram()`:
+  - Oś Y zawsze w mm/h (natężenie)
+  - Nowy parametr `distribution` do wyświetlania nazwy rozkładu w podtytule
+  - Tytuł: "Hietogram opadu" + opcjonalnie "Rozkład X (parametry)"
+- [x] Poprawiono `plot_hietogram_comparison()`:
+  - Oś Y w mm/h (konwersja z mm/krok)
+  - Usunięto zduplikowany stats_box (legenda tylko w jednym miejscu)
+- [x] Poprawiono `plot_hydrograph()`:
+  - Usunięto etykietę tekstową przy kulminacji (pozostał tylko marker)
+  - Uproszczony tytuł "Hydrogram odpływu"
+- [x] Poprawiono `plot_cn_curve()`:
+  - Usunięto wartości CN z legendy (to samo CN, różne AMC)
+  - Legendy: "AMC-I (suche)", "AMC-II (normalne)", "AMC-III (mokre)"
+- [x] Usunięto zbędne wizualizacje z testowego skryptu:
+  - Removed: generator_dashboard, water_balance_bars, water_balance_pie, hypsometric_curve, bifurcation_ratios
+  - Pozostało 10 kluczowych wizualizacji
+- [x] Wszystkie 53 testy wizualizacji przechodzą
+- [x] Uprządkowanie kodu - usunięcie metod fabrycznych wymagających danych pomiarowych:
+  - Usunięto `SnyderUH.from_lag_time()` i `from_tc()` (estymowały L, Lc)
+  - Usunięto `NashIUH.from_moments()` (wymagał wariancji z hydrogramu obserwowanego)
+  - Usunięto `ClarkIUH.from_recession()` (wymagał stałej recesji z hydrogramu obserwowanego)
+  - Usunięto 15 testów dla usuniętych metod
+  - Zaktualizowano README.md i CHANGELOG.md
+- [x] Wszystkie 523 testy przechodzą
+
+**Pliki zmodyfikowane:**
+- `hydrolog/visualization/hietogram.py` - Y-axis mm/h, distribution param
+- `hydrolog/visualization/hydrograph.py` - removed peak annotation text
+- `hydrolog/visualization/water_balance.py` - removed CN from AMC labels
+- `hydrolog/visualization/styles.py` - changed intensity_mm label
+- `tmp/generate_visualizations.py` - reduced to 10 visualizations
+- `hydrolog/runoff/snyder_uh.py` - usunięto `from_lag_time()`, `from_tc()`
+- `hydrolog/runoff/nash_iuh.py` - usunięto `from_moments()`
+- `hydrolog/runoff/clark_iuh.py` - usunięto `from_recession()`
+- `tests/unit/test_snyder_uh.py` - usunięto `TestSnyderUHFactoryMethods`
+- `tests/unit/test_nash_iuh.py` - usunięto `TestNashIUHFromMoments`
+- `tests/unit/test_clark_iuh.py` - usunięto testy `from_recession`
+- `README.md` - usunięto przykłady usuniętych metod
+- `docs/CHANGELOG.md` - dodano sekcję "Removed" w [Unreleased]
+
+---
 
 ### Sesja 14 (2026-01-19) - UKOŃCZONA
 
@@ -577,4 +625,4 @@ Hydrolog/
 
 ---
 
-**Ostatnia aktualizacja:** 2026-01-19, Sesja 14 (ukończona - moduł wizualizacji v0.5.0)
+**Ostatnia aktualizacja:** 2026-01-19, Sesja 15 (poprawki wizualizacji)

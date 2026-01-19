@@ -320,60 +320,6 @@ class TestSnyderUHGenerate:
         assert abs(actual_peak_time - result.time_to_peak_min) < 2 * 30.0
 
 
-class TestSnyderUHFactoryMethods:
-    """Tests for factory methods."""
-
-    def test_from_lag_time_valid(self):
-        """Test from_lag_time with valid parameters."""
-        uh = SnyderUH.from_lag_time(area_km2=100.0, lag_time_min=180.0)
-
-        assert uh.area_km2 == 100.0
-        # Lag time should match input
-        assert abs(uh.lag_time_min - 180.0) < 1.0
-
-    def test_from_lag_time_invalid_area_raises(self):
-        """Test from_lag_time with invalid area."""
-        with pytest.raises(InvalidParameterError) as exc_info:
-            SnyderUH.from_lag_time(area_km2=0.0, lag_time_min=180.0)
-        assert "area_km2 must be positive" in str(exc_info.value)
-
-    def test_from_lag_time_invalid_lag_raises(self):
-        """Test from_lag_time with invalid lag time."""
-        with pytest.raises(InvalidParameterError) as exc_info:
-            SnyderUH.from_lag_time(area_km2=100.0, lag_time_min=0.0)
-        assert "lag_time_min must be positive" in str(exc_info.value)
-
-    def test_from_lag_time_custom_coefficients(self):
-        """Test from_lag_time with custom coefficients."""
-        uh = SnyderUH.from_lag_time(
-            area_km2=100.0, lag_time_min=180.0, ct=1.8, cp=0.7
-        )
-
-        assert uh.ct == 1.8
-        assert uh.cp == 0.7
-
-    def test_from_tc_valid(self):
-        """Test from_tc with valid parameters."""
-        uh = SnyderUH.from_tc(area_km2=100.0, tc_min=300.0)
-
-        assert uh.area_km2 == 100.0
-        # Lag time should be 0.6 * tc
-        assert abs(uh.lag_time_min - 0.6 * 300.0) < 1.0
-
-    def test_from_tc_invalid_tc_raises(self):
-        """Test from_tc with invalid tc."""
-        with pytest.raises(InvalidParameterError) as exc_info:
-            SnyderUH.from_tc(area_km2=100.0, tc_min=0.0)
-        assert "tc_min must be positive" in str(exc_info.value)
-
-    def test_from_tc_custom_coefficients(self):
-        """Test from_tc with custom coefficients."""
-        uh = SnyderUH.from_tc(area_km2=100.0, tc_min=300.0, ct=2.2, cp=0.5)
-
-        assert uh.ct == 2.2
-        assert uh.cp == 0.5
-
-
 class TestSnyderUHBehavior:
     """Tests for physical behavior of Snyder model."""
 

@@ -269,31 +269,6 @@ class TestClarkIUHToUnitHydrograph:
 class TestClarkIUHFactoryMethods:
     """Tests for factory methods."""
 
-    def test_from_recession_valid(self):
-        """Test from_recession with valid parameters."""
-        iuh = ClarkIUH.from_recession(tc_min=60.0, recession_constant=0.9)
-
-        assert iuh.tc_min == 60.0
-        assert iuh.r_min > 0
-
-    def test_from_recession_invalid_tc_raises(self):
-        """Test from_recession with invalid tc."""
-        with pytest.raises(InvalidParameterError) as exc_info:
-            ClarkIUH.from_recession(tc_min=0.0, recession_constant=0.9)
-        assert "tc_min must be positive" in str(exc_info.value)
-
-    def test_from_recession_invalid_constant_raises(self):
-        """Test from_recession with invalid recession constant."""
-        with pytest.raises(InvalidParameterError) as exc_info:
-            ClarkIUH.from_recession(tc_min=60.0, recession_constant=1.5)
-        assert "recession_constant must be in (0, 1)" in str(exc_info.value)
-
-    def test_from_recession_constant_zero_raises(self):
-        """Test from_recession with zero constant."""
-        with pytest.raises(InvalidParameterError) as exc_info:
-            ClarkIUH.from_recession(tc_min=60.0, recession_constant=0.0)
-        assert "recession_constant must be in (0, 1)" in str(exc_info.value)
-
     def test_from_tc_r_ratio_valid(self):
         """Test from_tc_r_ratio with valid parameters."""
         iuh = ClarkIUH.from_tc_r_ratio(tc_min=90.0, r_tc_ratio=0.5)

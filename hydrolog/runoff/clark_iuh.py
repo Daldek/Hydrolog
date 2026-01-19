@@ -510,58 +510,6 @@ class ClarkIUH:
         )
 
     @classmethod
-    def from_recession(
-        cls,
-        tc_min: float,
-        recession_constant: float,
-    ) -> "ClarkIUH":
-        """
-        Create ClarkIUH from recession analysis.
-
-        Estimates the storage coefficient R from an observed
-        recession constant.
-
-        Parameters
-        ----------
-        tc_min : float
-            Time of concentration [min].
-        recession_constant : float
-            Recession constant from hydrograph analysis.
-            Ratio of flow at time t to flow at time t + dt.
-
-        Returns
-        -------
-        ClarkIUH
-            Configured Clark IUH generator.
-
-        Notes
-        -----
-        For a linear reservoir, the recession constant K_r is related
-        to R by: R = -dt / ln(K_r), where dt is the time interval
-        used in recession analysis.
-
-        For typical daily analysis (dt = 1440 min):
-        R = -1440 / ln(K_r)
-
-        Examples
-        --------
-        >>> # Recession constant of 0.9 (90% of flow remains after 1 day)
-        >>> iuh = ClarkIUH.from_recession(tc_min=60.0, recession_constant=0.9)
-        """
-        if tc_min <= 0:
-            raise InvalidParameterError(f"tc_min must be positive, got {tc_min}")
-        if not 0 < recession_constant < 1:
-            raise InvalidParameterError(
-                f"recession_constant must be in (0, 1), got {recession_constant}"
-            )
-
-        # Assume daily time step for recession analysis
-        dt = 1440.0  # minutes in a day
-        r_min = -dt / np.log(recession_constant)
-
-        return cls(tc_min=tc_min, r_min=r_min)
-
-    @classmethod
     def from_tc_r_ratio(
         cls,
         tc_min: float,

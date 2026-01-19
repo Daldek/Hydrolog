@@ -96,16 +96,12 @@ def plot_hydrograph(
     if fill:
         ax.fill_between(times, discharge, alpha=0.3, color=line_color)
 
-    # Peak annotation
+    # Peak marker (no annotation text)
     if show_peak:
         peak_idx = np.argmax(discharge)
         peak_time = times[peak_idx]
         peak_q = discharge[peak_idx]
-
         ax.plot(peak_time, peak_q, "o", color=line_color, markersize=8)
-        add_peak_annotation(
-            ax, peak_time, peak_q, label=f"Qmax = {peak_q:.2f} m³/s\nt = {peak_time:.0f} min"
-        )
 
     # Stats box
     if show_volume:
@@ -121,7 +117,7 @@ def plot_hydrograph(
     ax.set_ylabel(get_label("discharge"))
 
     if title is None:
-        title = f"Hydrogram odpływu (Qmax = {result.peak_discharge_m3s:.2f} m³/s)"
+        title = "Hydrogram odpływu"
     ax.set_title(title)
 
     # Format

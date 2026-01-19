@@ -22,13 +22,13 @@ from hydrolog.visualization.styles import (
 def plot_hietogram(
     result: HietogramResult,
     show_cumulative: bool = True,
-    show_intensity: bool = False,
+    distribution: Optional[str] = None,
     title: Optional[str] = None,
     ax: Optional[plt.Axes] = None,
     figsize: tuple = (10, 6),
 ) -> plt.Figure:
     """
-    Plot hietogram with precipitation depth and optional cumulative curve.
+    Plot hietogram with precipitation intensity and optional cumulative curve.
 
     Parameters
     ----------
@@ -36,10 +36,11 @@ def plot_hietogram(
         Hietogram result from any hietogram generator.
     show_cumulative : bool, optional
         Show cumulative precipitation line, by default True.
-    show_intensity : bool, optional
-        Show intensity [mm/h] instead of depth [mm], by default False.
+    distribution : str, optional
+        Distribution name and parameters to display in subtitle
+        (e.g., "Beta (α=2, β=5)").
     title : str, optional
-        Plot title. If None, auto-generated.
+        Plot title. If None, uses "Hietogram opadu".
     ax : plt.Axes, optional
         Existing axes to plot on. If None, creates new figure.
     figsize : tuple, optional
@@ -57,7 +58,7 @@ def plot_hietogram(
     >>>
     >>> hietogram = BetaHietogram(alpha=2, beta=5)
     >>> result = hietogram.generate(total_mm=50, duration_min=120, timestep_min=10)
-    >>> fig = plot_hietogram(result, title="Hietogram Beta")
+    >>> fig = plot_hietogram(result, distribution="Beta (α=2, β=5)")
     >>> fig.savefig("hietogram.png")
     """
     # Create figure if not provided
@@ -70,12 +71,9 @@ def plot_hietogram(
     times = result.times_min
     timestep = result.timestep_min
 
-    if show_intensity:
-        values = result.intensity_mm_per_h
-        ylabel = get_label("intensity")
-    else:
-        values = result.intensities_mm
-        ylabel = get_label("intensity_mm")
+    # Always use intensity in mm/h
+    values = result.intensity_mm_per_h
+    ylabel = get_label("intensity")
 
     # Calculate bar positions (center of each interval)
     bar_positions = times - timestep / 2
@@ -96,9 +94,12 @@ def plot_hietogram(
     if show_cumulative:
         ax2 = ax.twinx()
         cumulative = np.cumsum(result.intensities_mm)
+        # Prepend 0 to start cumulative curve at (0,0)
+        cum_times = np.concatenate([[0], times])
+        cum_values = np.concatenate([[0], cumulative])
         ax2.plot(
-            times,
-            cumulative,
+            cum_times,
+            cum_values,
             color=get_color("cumulative"),
             linewidth=2,
             marker="o",
@@ -121,7 +122,9 @@ def plot_hietogram(
     ax.set_ylabel(ylabel)
 
     if title is None:
-        title = f"Hietogram (P = {result.total_mm:.1f} mm, t = {result.duration_min:.0f} min)"
+        title = "Hietogram opadu"
+        if distribution:
+            title += f"\nRozkład {distribution}"
     ax.set_title(title)
 
     # Format axes
@@ -136,6 +139,7 @@ def plot_hietogram(
 def plot_hietogram_comparison(
     precip: HietogramResult,
     effective: Union[NDArray[np.float64], list],
+    cn: Optional[int] = None,
     title: Optional[str] = None,
     ax: Optional[plt.Axes] = None,
     figsize: tuple = (10, 6),
@@ -149,8 +153,10 @@ def plot_hietogram_comparison(
         Total precipitation hietogram.
     effective : NDArray or list
         Effective precipitation values [mm] for each timestep.
+    cn : int, optional
+        Curve Number value to display in legend.
     title : str, optional
-        Plot title. If None, auto-generated.
+        Plot title. If None, uses "Hietogram opadu".
     ax : plt.Axes, optional
         Existing axes to plot on.
     figsize : tuple, optional
@@ -168,8 +174,8 @@ def plot_hietogram_comparison(
     >>>
     >>> result = generator.generate(precip)
     >>> fig = plot_hietogram_comparison(
-    ...     precip, result.effective_precip_mm,
-    ...     title="Opad całkowity vs efektywny"
+    ...     precip, result.effective_precip_mm, cn=72,
+    ...     title="Hietogram opadu"
     ... )
     """
     if ax is None:
@@ -186,11 +192,16 @@ def plot_hietogram_comparison(
     bar_positions = times - timestep / 2
     bar_width = timestep * 0.4
 
+    # Convert to intensity mm/h
+    conversion = 60.0 / timestep
+    precip_intensity = precip.intensities_mm * conversion
+    effective_intensity = effective * conversion
+
     # Total precipitation
     total_sum = precip.total_mm
     ax.bar(
         bar_positions - bar_width / 2,
-        precip.intensities_mm,
+        precip_intensity,
         width=bar_width,
         color=get_color("precipitation"),
         edgecolor="white",
@@ -201,38 +212,30 @@ def plot_hietogram_comparison(
 
     # Effective precipitation
     effective_sum = float(np.sum(effective))
+    cn_label = f" (CN={cn})" if cn is not None else ""
     ax.bar(
         bar_positions + bar_width / 2,
-        effective,
+        effective_intensity,
         width=bar_width,
         color=get_color("effective_precip"),
         edgecolor="white",
         linewidth=0.5,
         alpha=0.8,
-        label=f"Opad efektywny Pe = {effective_sum:.1f} mm",
+        label=f"Opad efektywny Pe = {effective_sum:.1f} mm{cn_label}",
     )
 
     # Labels and title
     ax.set_xlabel(get_label("time_min"))
-    ax.set_ylabel(get_label("intensity_mm"))
+    ax.set_ylabel(get_label("intensity"))
 
     if title is None:
-        runoff_coef = effective_sum / total_sum if total_sum > 0 else 0
-        title = f"Porównanie opadów (C = {runoff_coef:.3f})"
+        title = "Hietogram opadu"
     ax.set_title(title)
-
-    # Stats box
-    stats = {
-        "P": f"{total_sum:.1f} mm",
-        "Pe": f"{effective_sum:.1f} mm",
-        "C": f"{effective_sum / total_sum:.3f}" if total_sum > 0 else "0",
-    }
-    add_stats_box(ax, stats, loc="upper right")
 
     # Format
     ax.set_xlim(0, precip.duration_min)
-    ax.set_ylim(0, max(precip.intensities_mm) * 1.2)
-    ax.legend(loc="upper left")
+    ax.set_ylim(0, max(precip_intensity) * 1.2)
+    ax.legend(loc="upper right")
     format_time_axis(ax, "min", precip.duration_min)
 
     fig.tight_layout()

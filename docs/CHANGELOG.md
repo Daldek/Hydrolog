@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- `plot_hietogram()` - Y-axis now always in mm/h (intensity), new `distribution` parameter for subtitle
+- `plot_hietogram_comparison()` - Y-axis in mm/h, removed duplicate stats box
+- `plot_hydrograph()` - Removed text annotation at peak (only marker remains)
+- `plot_cn_curve()` - Removed CN values from AMC legend (same CN, different AMC conditions)
+
+### Removed
+- `SnyderUH.from_lag_time()` - Estimated L and Lc from lag time (impractical, these parameters should be measured from maps/GIS)
+- `SnyderUH.from_tc()` - Delegated to `from_lag_time()`, same issue
+- `NashIUH.from_moments()` - Required variance and lag time from observed hydrograph (not practical for ungauged catchments)
+- `ClarkIUH.from_recession()` - Required recession constant from observed hydrograph
+
 ---
 
 ## [0.5.0] - 2026-01-19
@@ -283,4 +295,6 @@ Requires optional dependencies: `pip install hydrolog[visualization]`
 | **0.2.0** | 2026-01-18 | Morphometric parameters |
 | **0.3.0** | 2026-01-18 | Interpolation + river network |
 | **0.4.0** | 2026-01-19 | CLI + Clark IUH + Snyder UH + CN lookup |
+| **0.5.0** | 2026-01-19 | Visualization module (matplotlib/seaborn) |
+| 0.6.0 | TBD | Report generation with calculations |
 | 1.0.0 | TBD | Stable API |

@@ -315,36 +315,6 @@ class TestNashIUHFromTC:
             NashIUH.from_tc(tc_min=90.0, lag_ratio=1.5)
 
 
-class TestNashIUHFromMoments:
-    """Tests for creating NashIUH from statistical moments."""
-
-    def test_from_moments_basic(self):
-        """Test from_moments with known values."""
-        # For n=3, K=30: tlag=90, variance=n×K²=2700
-        iuh = NashIUH.from_moments(lag_time_min=90.0, variance_min2=2700.0)
-
-        assert abs(iuh.n - 3.0) < 0.01
-        assert abs(iuh.k_min - 30.0) < 0.01
-
-    def test_from_moments_different_values(self):
-        """Test from_moments with different parameters."""
-        # For n=4, K=20: tlag=80, variance=4×400=1600
-        iuh = NashIUH.from_moments(lag_time_min=80.0, variance_min2=1600.0)
-
-        assert abs(iuh.n - 4.0) < 0.01
-        assert abs(iuh.k_min - 20.0) < 0.01
-
-    def test_from_moments_zero_lag_raises(self):
-        """Test that zero lag time raises error."""
-        with pytest.raises(InvalidParameterError, match="lag_time_min must be positive"):
-            NashIUH.from_moments(lag_time_min=0, variance_min2=1000.0)
-
-    def test_from_moments_zero_variance_raises(self):
-        """Test that zero variance raises error."""
-        with pytest.raises(InvalidParameterError, match="variance_min2 must be positive"):
-            NashIUH.from_moments(lag_time_min=90.0, variance_min2=0)
-
-
 class TestNashIUHWithArea:
     """Tests for NashIUH with area_km2 parameter in constructor."""
 

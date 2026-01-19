@@ -96,13 +96,13 @@ def plot_hypsometric_curve(
     if show_reference:
         x = np.linspace(0, 1, 100)
 
-        # Young/convex (HI > 0.6) - example: y = (1-x)^0.3
-        y_young = (1 - x) ** 0.3
-        ax.plot(x, y_young, "--", color="green", alpha=0.5, linewidth=1, label="Młoda (HI > 0.6)")
+        # Convex curve (HI > 0.6) - example: y = (1-x)^0.3
+        y_convex = (1 - x) ** 0.3
+        ax.plot(x, y_convex, "--", color="green", alpha=0.5, linewidth=1, label="HI > 0.6 (wypukła)")
 
-        # Old/concave (HI < 0.4) - example: y = (1-x)^3
-        y_old = (1 - x) ** 3
-        ax.plot(x, y_old, "--", color="red", alpha=0.5, linewidth=1, label="Stara (HI < 0.4)")
+        # Concave curve (HI < 0.4) - example: y = (1-x)^3
+        y_concave = (1 - x) ** 3
+        ax.plot(x, y_concave, "--", color="red", alpha=0.5, linewidth=1, label="HI < 0.4 (wklęsła)")
 
     # Diagonal reference line
     ax.plot([0, 1], [1, 0], ":", color="gray", linewidth=1, alpha=0.5)
@@ -112,14 +112,14 @@ def plot_hypsometric_curve(
     ax.set_ylabel(get_label("relative_height"))
 
     if title is None:
-        # Interpret stage
+        # Interpret curve shape
         if HI > 0.6:
-            stage = "młoda (wypukła)"
+            shape = "wypukła"
         elif HI < 0.4:
-            stage = "stara (wklęsła)"
+            shape = "wklęsła"
         else:
-            stage = "dojrzała"
-        title = f"Krzywa hipsograficzna (HI = {HI:.3f}, faza: {stage})"
+            shape = "S-kształtna"
+        title = f"Krzywa hipsograficzna (HI = {HI:.3f}, {shape})"
 
     ax.set_title(title, fontsize=12)
 
