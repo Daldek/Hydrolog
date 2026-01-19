@@ -8,7 +8,7 @@
 | **Sprint** | 0.3+ - Rozszerzenia |
 | **Sesja** | 10 |
 | **Data** | 2026-01-19 |
-| **Następny milestone** | v0.4.0 - CLI + dodatkowe metody |
+| **Następny milestone** | v1.0.0 - Stabilne API |
 | **Gałąź robocza** | develop |
 
 ---
@@ -27,6 +27,7 @@
 | CP7 | `hydrolog.network` + interpolacja | ✅ Ukończony |
 | CP8 | v0.3.0 - Wydanie network + interpolation | ✅ Ukończony |
 | CP9 | Standaryzacja jednostek + Nash IUH | ✅ Ukończony |
+| CP10 | v0.4.0 - CLI + Clark + Snyder + CN lookup | ✅ Ukończony |
 
 ---
 
@@ -37,16 +38,16 @@
 | v0.1.0 | Hydrogram SCS-CN | ✅ Wydana (2026-01-18) |
 | v0.2.0 | Parametry morfometryczne | ✅ Wydana (2026-01-18) |
 | v0.3.0 | Interpolacja + sieć rzeczna | ✅ Wydana (2026-01-18) |
-| v0.4.0 | CLI + dodatkowe metody | 📋 Planowany |
+| v0.4.0 | CLI + Clark + Snyder + CN lookup | ✅ Wydana (2026-01-19) |
 | v1.0.0 | Stabilne API + CLI | 📋 Planowany |
 
 ---
 
 ## Bieżąca sesja
 
-### Sesja 10 (2026-01-19) - W TRAKCIE
+### Sesja 10 (2026-01-19) - UKOŃCZONA
 
-**Cel:** Integracja z Kartografem + dodatkowe metody hydrogramu
+**Cel:** Integracja z Kartografem + CLI + dodatkowe metody hydrogramu
 
 **Co zostało zrobione:**
 - [x] Zapoznano się z nową wersją Kartografa (v0.3.0):
@@ -90,8 +91,13 @@
   - 27 testów jednostkowych
 - [x] Łącznie 412 testów jednostkowych (wszystkie przechodzą)
 
-**Następne kroki:**
-1. Wydanie v0.4.0
+**Wydano:**
+- v0.4.0 (2026-01-19) - CLI + Clark IUH + Snyder UH + CN lookup
+
+**Następne kroki (v1.0.0):**
+1. Stabilizacja API
+2. Dokumentacja użytkownika
+3. Przykłady użycia
 
 ---
 

@@ -7,7 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.4.0] - 2026-01-19
+
 ### Added
+
+#### `hydrolog.cli` - Command-Line Interface
+- `hydrolog tc` - concentration time calculation
+  - `kirpich` - Kirpich formula
+  - `scs-lag` - SCS Lag equation
+  - `giandotti` - Giandotti formula
+- `hydrolog cn` - Curve Number lookup (TR-55)
+  - `lookup` - look up CN for HSG and land cover
+  - `list` - list available land cover types
+  - `range` - show CN range for a land cover
+- `hydrolog scs` - SCS-CN runoff calculation
+  - AMC conditions support (I, II, III)
+  - Custom initial abstraction coefficient
+- `hydrolog uh` - unit hydrograph generation
+  - `scs` - SCS dimensionless unit hydrograph
+  - `nash` - Nash cascade IUH
+  - `clark` - Clark IUH
+  - `snyder` - Snyder synthetic UH
+  - Output formats: table, CSV, JSON
+
+#### `hydrolog.runoff.clark_iuh` - Clark IUH
+- `ClarkIUH` - Clark Instantaneous Unit Hydrograph
+  - Translation via time-area histogram
+  - Linear reservoir routing
+  - Simplified elliptical time-area curve
+- `ClarkIUHResult` and `ClarkUHResult` dataclasses
+- `from_recession()` - parameter estimation from recession analysis
+- `from_tc_r_ratio()` - estimation from Tc and R/Tc ratio
+
+#### `hydrolog.runoff.snyder_uh` - Snyder UH
+- `SnyderUH` - Snyder Synthetic Unit Hydrograph
+  - Empirical relationships (Snyder, 1938)
+  - Parameters: L, Lc, Ct, Cp
+  - Width calculations at 50% and 75% of peak
+- `SnyderUHResult` dataclass
+- `from_lag_time()` - parameter estimation from lag time
+- `from_tc()` - estimation from concentration time
+
+#### `hydrolog.runoff.cn_lookup` - CN Lookup Tables
+- `get_cn()` - look up CN for HSG and land cover
+- `lookup_cn()` - detailed lookup with result object
+- `get_cn_range()` - CN range for land cover type
+- `list_land_covers()` - list available land covers
+- `calculate_weighted_cn()` - area-weighted CN calculation
+- `LandCover` - 20 land cover types (TR-55)
+- `HydrologicCondition` - poor, fair, good conditions
+
+#### `hydrolog.runoff.nash_iuh` - Nash IUH
 - `NashIUH` - Nash Instantaneous Unit Hydrograph
   - Nash cascade model with n reservoirs and K storage constant
   - `generate()` - IUH generation at specified timestep
@@ -20,18 +72,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **BREAKING:** `ConcentrationTime.scs_lag()` signature changed:
   - `length_m` → `length_km` (meters to kilometers)
   - `slope_percent` → `slope_m_per_m` (percent to dimensionless)
-- Added parameter range warnings to all concentration time methods:
-  - Kirpich: warns if length or slope outside typical application range
-  - SCS Lag: warns if length, slope, or CN outside recommended range
-  - Giandotti: warns if area, length, or elevation outside typical range
+- Added parameter range warnings to all concentration time methods
+
+### Fixed
+- Corrected SCS Lag constant: `7182` → `7069` (proper metric conversion)
+- Fixed docstring examples in `scs_cn.py` (Pe = 7.09 mm, not 12.89 mm)
 
 ### Dependencies
 - Added `scipy` as dependency (for gamma functions in Nash IUH)
+- Added optional `kartograf` dependency for spatial/soil data
 
-### Planned for v0.4.0
-- CLI interface for command-line operations
-- Additional interpolation methods (kriging)
-- Clark IUH
+### Testing
+- 412 unit tests (all passing)
+- 27 new CLI tests
+- 41 Clark IUH tests
+- 43 Snyder UH tests
+- 38 CN lookup tests
 
 ---
 
@@ -156,4 +212,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | **0.1.0** | 2026-01-18 | SCS-CN hydrograph, hyetographs, concentration time |
 | **0.2.0** | 2026-01-18 | Morphometric parameters |
 | **0.3.0** | 2026-01-18 | Interpolation + river network |
-| 1.0.0 | TBD | Stable API + CLI |
+| **0.4.0** | 2026-01-19 | CLI + Clark IUH + Snyder UH + CN lookup |
+| 1.0.0 | TBD | Stable API |
