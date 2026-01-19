@@ -4,12 +4,12 @@
 
 | Pole | Wartość |
 |------|---------|
-| **Faza** | 0 - Inicjalizacja |
-| **Sprint** | 0.1 - Setup |
-| **Sesja** | 2 |
-| **Data** | 2026-01-18 |
-| **Następny milestone** | CP1 - hydrolog.time |
-| **Gałąź robocza** | main |
+| **Faza** | 1 - Implementacja |
+| **Sprint** | 0.3+ - Rozszerzenia |
+| **Sesja** | 10 |
+| **Data** | 2026-01-19 |
+| **Następny milestone** | v1.0.0 - Stabilne API |
+| **Gałąź robocza** | develop |
 
 ---
 
@@ -18,10 +18,16 @@
 | CP | Opis | Status |
 |----|------|--------|
 | CP0 | Dokumentacja i struktura repo | ✅ Ukończony |
-| CP1 | `hydrolog.time` - czas koncentracji | 📋 Planowany |
-| CP2 | `hydrolog.precipitation` - hietogramy | 📋 Planowany |
-| CP3 | `hydrolog.runoff` - SCS-CN + hydrogram | 📋 Planowany |
-| CP4 | v0.1.0 - Pierwsze wydanie | 📋 Planowany |
+| CP1 | `hydrolog.time` - czas koncentracji | ✅ Ukończony |
+| CP2 | `hydrolog.precipitation` - hietogramy | ✅ Ukończony |
+| CP3 | `hydrolog.runoff` - SCS-CN + hydrogram | ✅ Ukończony |
+| CP4 | v0.1.0 - Pierwsze wydanie | ✅ Ukończony |
+| CP5 | `hydrolog.morphometry` - parametry morfometryczne | ✅ Ukończony |
+| CP6 | v0.2.0 - Wydanie morphometry | ✅ Ukończony |
+| CP7 | `hydrolog.network` + interpolacja | ✅ Ukończony |
+| CP8 | v0.3.0 - Wydanie network + interpolation | ✅ Ukończony |
+| CP9 | Standaryzacja jednostek + Nash IUH | ✅ Ukończony |
+| CP10 | v0.4.0 - CLI + Clark + Snyder + CN lookup | ✅ Ukończony |
 
 ---
 
@@ -29,48 +35,106 @@
 
 | Wersja | Zakres | Status |
 |--------|--------|--------|
-| v0.1.0 | Hydrogram SCS-CN | 📋 Planowany |
-| v0.2.0 | Parametry morfometryczne | 📋 Planowany |
-| v0.3.0 | Interpolacja + sieć rzeczna | 📋 Planowany |
+| v0.1.0 | Hydrogram SCS-CN | ✅ Wydana (2026-01-18) |
+| v0.2.0 | Parametry morfometryczne | ✅ Wydana (2026-01-18) |
+| v0.3.0 | Interpolacja + sieć rzeczna | ✅ Wydana (2026-01-18) |
+| v0.4.0 | CLI + Clark + Snyder + CN lookup | ✅ Wydana (2026-01-19) |
 | v1.0.0 | Stabilne API + CLI | 📋 Planowany |
 
 ---
 
 ## Bieżąca sesja
 
-### Sesja 2 (2026-01-18) - UKOŃCZONA
+### Sesja 10 (2026-01-19) - UKOŃCZONA
 
-**Cel:** Inicjalizacja repozytorium Git i struktura pakietu
+**Cel:** Integracja z Kartografem + CLI + dodatkowe metody hydrogramu
 
 **Co zostało zrobione:**
-- [x] Zainicjalizowano repozytorium Git
-- [x] Dodano remote: https://github.com/Daldek/Hydrolog.git
-- [x] Utworzono strukturę pakietu `hydrolog/` z submodułami
-- [x] Utworzono strukturę testów `tests/`
-- [x] Utworzono `pyproject.toml` z konfiguracją projektu
-- [x] Utworzono `.gitignore`
-- [x] Utworzono `LICENSE` (MIT)
-- [x] Utworzono `hydrolog/exceptions.py`
-- [x] Utworzono `tests/conftest.py` z fixtures
-- [x] Pierwszy commit i push do GitHub
+- [x] Zapoznano się z nową wersją Kartografa (v0.3.0):
+  - SoilGrids - dane glebowe (clay, sand, silt)
+  - HSGCalculator - grupy hydrologiczne dla SCS-CN
+  - Klasyfikacja USDA (12 klas tekstury → 4 grupy HSG)
+- [x] Zaktualizowano SCOPE.md:
+  - Dodano informacje o integracji z Kartografem
+  - Zaktualizowano tabelę zależności
+- [x] Zaktualizowano pyproject.toml:
+  - Dodano opcjonalną zależność `spatial` z Kartografem
+  - Dodano grupę `all` dla wszystkich opcjonalnych zależności
 
-**Co jest w trakcie:**
-- Nic - CP0 kompletny
+**Zaimplementowano:**
+- [x] Integracja z Kartografem v0.3.0 (HSG, SoilGrids)
+- [x] Moduł `runoff.cn_lookup` z tabelami CN (USDA TR-55):
+  - 20 typów pokrycia terenu (`LandCover` enum)
+  - 3 stany hydrologiczne (`HydrologicCondition` enum)
+  - Funkcje: `get_cn()`, `lookup_cn()`, `calculate_weighted_cn()`
+  - 38 testów jednostkowych
+- [x] Poprawka docstringa `effective_precipitation` (Pe=12.89→7.09 mm)
+- [x] Moduł `runoff.clark_iuh` - Clark Instantaneous Unit Hydrograph:
+  - Klasy: `ClarkIUH`, `ClarkIUHResult`, `ClarkUHResult`
+  - Model translacja + zbiornik liniowy (Clark, 1945)
+  - Uproszczony histogram czas-powierzchnia (eliptyczna zlewnia)
+  - Metody fabryczne: `from_recession()`, `from_tc_r_ratio()`
+  - 41 testów jednostkowych
+- [x] Moduł `runoff.snyder_uh` - Snyder Synthetic Unit Hydrograph:
+  - Klasy: `SnyderUH`, `SnyderUHResult`
+  - Empiryczne zależności Snydera (1938)
+  - Parametry: L, Lc, Ct, Cp
+  - Metody fabryczne: `from_lag_time()`, `from_tc()`
+  - 43 testy jednostkowe
+- [x] Zaktualizowano `runoff/__init__.py` - eksporty nowych klas
+- [x] Moduł `cli` - interfejs linii poleceń:
+  - Komenda `tc` - czas koncentracji (Kirpich, SCS Lag, Giandotti)
+  - Komenda `cn` - wyszukiwanie CN z tablic TR-55
+  - Komenda `scs` - obliczenia odpływu SCS-CN
+  - Komenda `uh` - generowanie hydrogramów (SCS, Nash, Clark, Snyder)
+  - Formaty wyjściowe: tabela, CSV, JSON
+  - 27 testów jednostkowych
+- [x] Łącznie 412 testów jednostkowych (wszystkie przechodzą)
 
-**Następne kroki (Sesja 3):**
-1. Rozpocząć CP1 - moduł `hydrolog.time`
-2. Implementacja `ConcentrationTime` (wzór Kirpicha, SCS Lag)
-3. Testy jednostkowe dla modułu time
+**Wydano:**
+- v0.4.0 (2026-01-19) - CLI + Clark IUH + Snyder UH + CN lookup
+
+**Następne kroki (v1.0.0):**
+1. Stabilizacja API
+2. Dokumentacja użytkownika
+3. Przykłady użycia
+
+---
+
+### Sesja 9 (2026-01-18) - UKOŃCZONA
+
+**Cel:** Weryfikacja i poprawka formuł czasu koncentracji
+
+**Co zostało zrobione:**
+- [x] Zweryfikowano formuły w `concentration.py`:
+  - Kirpich - formuła poprawna
+  - SCS Lag - znaleziono błąd w stałej przeliczeniowej
+  - Giandotti - formuła poprawna
+- [x] Poprawiono stałą w SCS Lag: `7182` → `7069` (prawidłowe przeliczenie metryczne)
+- [x] Poprawiono przykłady w docstringach (wszystkie miały złe wartości):
+  - Kirpich: 52.3 → 85.9 min
+  - SCS Lag: 97.5 → 368.7 min
+  - Giandotti: 94.8 → 179.7 min
+- [x] Uruchomiono testy (36/36 przechodzą)
+- [x] Zapoznano się z plikiem `parametry_modeli_PMHGW.xlsx` (dane IMGW dla 5 zlewni)
 
 ---
 
 ## Kontekst dla nowej sesji
 
 ### Stan projektu
-- **Faza:** Inicjalizacja KOMPLETNA - gotowy do implementacji
-- **Ostatni commit:** `feat: initial project structure`
+- **Faza:** Implementacja - v0.3.0+ ukończona
+- **Ostatni commit:** `fix(time): correct SCS Lag constant and docstring examples`
 - **Środowisko:** `.venv` z Python 3.12.12
 - **Repo GitHub:** https://github.com/Daldek/Hydrolog.git
+
+### Zaimplementowane moduły
+- `hydrolog.time.ConcentrationTime` - 3 metody (Kirpich, SCS Lag, Giandotti) + ostrzeżenia zakresów
+- `hydrolog.precipitation` - 3 typy hietogramów (Block, Triangular, Beta) + interpolacja (Thiessen, IDW, Isohyet)
+- `hydrolog.runoff` - SCS-CN, SCSUnitHydrograph, NashIUH, ClarkIUH, SnyderUH, HydrographGenerator, CN Lookup (TR-55)
+- `hydrolog.morphometry` - WatershedGeometry, TerrainAnalysis, HypsometricCurve
+- `hydrolog.network` - StreamNetwork, klasyfikacja Strahlera/Shreve'a
+- `hydrolog.cli` - interfejs CLI (tc, cn, scs, uh)
 
 ### Pliki do przeczytania
 1. `CLAUDE.md` - instrukcje podstawowe
@@ -79,11 +143,109 @@
 
 ### Zależności zewnętrzne
 - **IMGWTools** - `https://github.com/Daldek/IMGWTools.git` - dane PMAXTP
+- **Kartograf** - `https://github.com/Daldek/Kartograf.git` - HSG, SoilGrids, dane przestrzenne (opcjonalna)
 - **NumPy** - obliczenia numeryczne
+- **SciPy** - funkcje specjalne (gamma) dla Nash IUH
 
 ---
 
 ## Historia sesji
+
+### Sesja 8 (2026-01-18) - UKOŃCZONA
+
+**Wykonane:**
+- Standaryzacja jednostek w `ConcentrationTime`
+- Dodano Nash Instantaneous Unit Hydrograph (IUH)
+- 41 nowych testów dla Nash IUH
+- Zainstalowano scipy jako zależność
+
+**Pliki utworzone/zmodyfikowane:**
+- `hydrolog/runoff/nash_iuh.py` (nowy)
+- `hydrolog/time/concentration.py` (zaktualizowany)
+- `tests/unit/test_nash_iuh.py` (nowy)
+
+---
+
+### Sesja 7 (2026-01-18) - UKOŃCZONA
+
+**Wykonane:**
+- Zaimplementowano moduł `hydrolog.morphometry` (CP5)
+- Klasy: `WatershedGeometry`, `GeometricParameters`, `ShapeIndicators`
+- Klasy: `TerrainAnalysis`, `ElevationParameters`, `SlopeParameters`
+- Klasy: `HypsometricCurve`, `HypsometricResult`
+- 47 testów jednostkowych dla morphometry, łącznie 150 testów, 95% pokrycia
+- Wydano wersję v0.2.0 (CP6)
+
+**Pliki utworzone/zmodyfikowane:**
+- `hydrolog/morphometry/geometric.py` (nowy)
+- `hydrolog/morphometry/terrain.py` (nowy)
+- `hydrolog/morphometry/hypsometry.py` (nowy)
+- `hydrolog/morphometry/__init__.py` (zaktualizowany)
+- `tests/unit/test_morphometry.py` (nowy)
+- `README.md` (zaktualizowany)
+- `docs/CHANGELOG.md` (zaktualizowany)
+- `pyproject.toml` (zaktualizowany do v0.2.0)
+
+---
+
+### Sesja 6 (2026-01-18) - UKOŃCZONA
+
+**Wykonane:**
+- Wydano wersję v0.1.0
+- Zaktualizowano README.md i CHANGELOG.md
+- Utworzono tag v0.1.0 i wypchnięto na GitHub
+
+**Pliki utworzone/zmodyfikowane:**
+- `README.md` (zaktualizowany)
+- `docs/CHANGELOG.md` (zaktualizowany)
+
+---
+
+### Sesja 5 (2026-01-18) - UKOŃCZONA
+
+**Wykonane:**
+- Zaimplementowano moduł `hydrolog.runoff` (CP3)
+- Klasy: `SCSCN`, `AMC`, `SCSUnitHydrograph`, `HydrographGenerator`
+- Funkcja `convolve_discrete` do splotu dyskretnego
+- 46 testów jednostkowych dla runoff, łącznie 103 testy, 94% pokrycia
+
+**Pliki utworzone/zmodyfikowane:**
+- `hydrolog/runoff/scs_cn.py` (nowy)
+- `hydrolog/runoff/unit_hydrograph.py` (nowy)
+- `hydrolog/runoff/convolution.py` (nowy)
+- `hydrolog/runoff/generator.py` (nowy)
+- `hydrolog/runoff/__init__.py` (zaktualizowany)
+- `tests/unit/test_runoff.py` (nowy)
+
+---
+
+### Sesja 4 (2026-01-18) - UKOŃCZONA
+
+**Wykonane:**
+- Zaimplementowano moduł `hydrolog.precipitation` (CP2)
+- Klasy hietogramów: `HietogramResult`, `Hietogram` (ABC), `BlockHietogram`, `TriangularHietogram`, `BetaHietogram`
+- 33 testy jednostkowe dla hietogramów, łącznie 57 testów, 91% pokrycia
+
+**Pliki utworzone/zmodyfikowane:**
+- `hydrolog/precipitation/hietogram.py` (nowy)
+- `hydrolog/precipitation/__init__.py` (zaktualizowany)
+- `tests/unit/test_hietogram.py` (nowy)
+
+---
+
+### Sesja 3 (2026-01-18) - UKOŃCZONA
+
+**Wykonane:**
+- Zaimplementowano moduł `hydrolog.time` (CP1)
+- Klasa `ConcentrationTime` z 3 metodami statycznymi
+- 24 testy jednostkowe, 100% pokrycia
+
+**Pliki utworzone/zmodyfikowane:**
+- `hydrolog/time/concentration.py` (nowy)
+- `hydrolog/time/__init__.py` (zaktualizowany)
+- `tests/unit/test_concentration.py` (nowy)
+
+---
 
 ### Sesja 2 (2026-01-18) - UKOŃCZONA
 
@@ -197,4 +359,4 @@ Hydrolog/
 
 ---
 
-**Ostatnia aktualizacja:** 2026-01-18, Sesja 2
+**Ostatnia aktualizacja:** 2026-01-19, Sesja 10

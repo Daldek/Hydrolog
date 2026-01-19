@@ -35,6 +35,24 @@ git log --oneline -5
 - Następne kroki
 - Commit i push
 
+## Git Workflow
+
+### Gałęzie
+- **main** - stabilna wersja (tylko merge z develop)
+- **develop** - aktywny rozwój (ZAWSZE pracuj na tej gałęzi)
+- **feature/*** - opcjonalnie dla większych funkcjonalności
+
+### Tagowanie (OBOWIĄZKOWE)
+Claude Code MUSI automatycznie tagować wydania wersji:
+
+```bash
+# Wydanie wersji
+git tag -a v0.1.0 -m "Release v0.1.0: SCS-CN hydrograph"
+git push origin v0.1.0
+```
+
+**Uwaga:** Checkpointy (CP) są śledzone tylko w PROGRESS.md, bez tagów Git.
+
 ## Konwencje kodowania
 
 - **Python:** snake_case dla zmiennych/funkcji, PascalCase dla klas
