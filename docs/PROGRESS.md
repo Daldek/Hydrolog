@@ -60,8 +60,12 @@
   - Dodano opcjonalną zależność `spatial` z Kartografem
   - Dodano grupę `all` dla wszystkich opcjonalnych zależności
 
-**W trakcie:**
-- [ ] Implementacja modułu `runoff.cn_lookup` (tabele CN wg USDA)
+**Zaimplementowano:**
+- [x] Moduł `runoff.cn_lookup` z tabelami CN (USDA TR-55):
+  - 20 typów pokrycia terenu (`LandCover` enum)
+  - 3 stany hydrologiczne (`HydrologicCondition` enum)
+  - Funkcje: `get_cn()`, `lookup_cn()`, `calculate_weighted_cn()`
+  - 38 testów jednostkowych
 
 **Następne kroki:**
 1. Implementacja CN lookup tables (HSG + land cover → CN)
@@ -100,7 +104,7 @@
 ### Zaimplementowane moduły
 - `hydrolog.time.ConcentrationTime` - 3 metody (Kirpich, SCS Lag, Giandotti) + ostrzeżenia zakresów
 - `hydrolog.precipitation` - 3 typy hietogramów (Block, Triangular, Beta) + interpolacja (Thiessen, IDW, Isohyet)
-- `hydrolog.runoff` - SCS-CN, SCSUnitHydrograph, NashIUH, HydrographGenerator
+- `hydrolog.runoff` - SCS-CN, SCSUnitHydrograph, NashIUH, HydrographGenerator, **CN Lookup (TR-55)**
 - `hydrolog.morphometry` - WatershedGeometry, TerrainAnalysis, HypsometricCurve
 - `hydrolog.network` - StreamNetwork, klasyfikacja Strahlera/Shreve'a
 
