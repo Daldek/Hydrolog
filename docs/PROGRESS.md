@@ -6,7 +6,7 @@
 |------|---------|
 | **Faza** | 1 - Implementacja |
 | **Sprint** | 0.3+ - Rozszerzenia |
-| **Sesja** | 12 |
+| **Sesja** | 13 |
 | **Data** | 2026-01-19 |
 | **Następny milestone** | v1.0.0 - Stabilne API |
 | **Gałąź robocza** | develop |
@@ -44,6 +44,48 @@
 ---
 
 ## Bieżąca sesja
+
+### Sesja 13 (2026-01-19) - UKOŃCZONA
+
+**Cel:** Korekta wzorów modelu Snydera + dokumentacja dla hydrologów
+
+**Co zostało zrobione:**
+- [x] Poprawiono wzór na czas do szczytu w modelu Snydera:
+  - Było: `tpR = tLR + Δt/5.5` ❌
+  - Jest: `tpR = tLR + Δt/2` ✅
+- [x] Zaktualizowano notację w `snyder_uh.py`:
+  - D → tD (standardowy czas trwania opadu)
+  - D' → Δt (rzeczywisty czas trwania opadu)
+- [x] Zaktualizowano wszystkie docstringi z poprawnymi wzorami
+- [x] Poprawiono test jednostkowy dla nowego wzoru
+- [x] Rozbudowano dokumentację Snydera w README.md:
+  - Teoria i wszystkie wzory (tL, tD, tp, qp, tLR, tpR, qpR, tb, W50, W75)
+  - Algorytm krok po kroku z wyprowadzeniami
+  - Tabela współczynników Ct (1.35-1.65) i Cp (0.4-0.8)
+  - Przykład obliczeniowy z danymi numerycznymi
+  - Przykłady kodu z wszystkimi metodami
+- [x] Wszystkie 485 testów przechodzi
+
+**Commity sesji:**
+```
+198ad62 fix(snyder): correct time-to-peak formula and update notation
+e3a0787 docs(readme): add detailed Snyder UH documentation with formulas
+```
+
+**Wzory Snydera (poprawna notacja):**
+```
+Dla Δt = tD (standardowy):
+  tp = tL + tD/2
+  qp = 0.275 × Cp × A / tL
+
+Dla Δt ≠ tD (niestandardowy):
+  tLR = tL + 0.25 × (Δt - tD)
+  tpR = tLR + Δt/2
+  qpR = qp × (tL / tLR)
+  tb  = 0.556 × A / qpR
+```
+
+---
 
 ### Sesja 12 (2026-01-19) - UKOŃCZONA
 
@@ -467,4 +509,4 @@ Hydrolog/
 
 ---
 
-**Ostatnia aktualizacja:** 2026-01-19, Sesja 11 (ukończona - API unification)
+**Ostatnia aktualizacja:** 2026-01-19, Sesja 13 (ukończona - Snyder fix + docs)
