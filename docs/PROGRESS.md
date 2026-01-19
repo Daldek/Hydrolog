@@ -61,7 +61,23 @@
   - Metody estymacji parametrów (from_tc, from_moments, from_lutz)
   - Algorytm metody Lutza z pełnymi wzorami
   - Wpływ parametrów fizjograficznych na odpływ
+- [x] Zaktualizowano CHANGELOG.md (sekcja [Unreleased])
+- [x] Utworzono notebook `examples/05_model_nasha.ipynb`:
+  - Teoria modelu Nasha z wzorami LaTeX
+  - Przykłady użycia: IUH bezwymiarowy, UH wymiarowy
+  - Metody estymacji: from_tc, from_moments, from_lutz
+  - Tabele wpływu lesistości i urbanizacji na parametry
+  - Integracja z HydrographGenerator
+  - Porównanie modeli: SCS vs Nash
+  - Wizualizacja wyników (matplotlib)
 - [x] Łącznie 485 testów jednostkowych (wszystkie przechodzą)
+
+**Commity sesji:**
+```
+3136a11 feat(nash): add Lutz method for parameter estimation
+932fed1 docs: comprehensive Nash model and Lutz method documentation
+645bd39 docs(examples): add Nash model and Lutz method notebook
+```
 
 **Metoda Lutza - algorytm:**
 ```
