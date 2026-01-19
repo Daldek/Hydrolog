@@ -46,7 +46,7 @@
 
 ### Sesja 10 (2026-01-19) - W TRAKCIE
 
-**Cel:** Integracja z Kartografem (dane glebowe, HSG)
+**Cel:** Integracja z Kartografem + dodatkowe metody hydrogramu
 
 **Co zostało zrobione:**
 - [x] Zapoznano się z nową wersją Kartografa (v0.3.0):
@@ -68,11 +68,24 @@
   - Funkcje: `get_cn()`, `lookup_cn()`, `calculate_weighted_cn()`
   - 38 testów jednostkowych
 - [x] Poprawka docstringa `effective_precipitation` (Pe=12.89→7.09 mm)
+- [x] Moduł `runoff.clark_iuh` - Clark Instantaneous Unit Hydrograph:
+  - Klasy: `ClarkIUH`, `ClarkIUHResult`, `ClarkUHResult`
+  - Model translacja + zbiornik liniowy (Clark, 1945)
+  - Uproszczony histogram czas-powierzchnia (eliptyczna zlewnia)
+  - Metody fabryczne: `from_recession()`, `from_tc_r_ratio()`
+  - 41 testów jednostkowych
+- [x] Moduł `runoff.snyder_uh` - Snyder Synthetic Unit Hydrograph:
+  - Klasy: `SnyderUH`, `SnyderUHResult`
+  - Empiryczne zależności Snydera (1938)
+  - Parametry: L, Lc, Ct, Cp
+  - Metody fabryczne: `from_lag_time()`, `from_tc()`
+  - 43 testy jednostkowe
+- [x] Zaktualizowano `runoff/__init__.py` - eksporty nowych klas
+- [x] Łącznie 385 testów jednostkowych (wszystkie przechodzą)
 
 **Następne kroki:**
 1. CLI interface (`hydrolog.cli`)
-2. Dodatkowe metody hydrogramu (Clark IUH, Snyder)
-3. Wydanie v0.4.0
+2. Wydanie v0.4.0
 
 ---
 
@@ -106,7 +119,7 @@
 ### Zaimplementowane moduły
 - `hydrolog.time.ConcentrationTime` - 3 metody (Kirpich, SCS Lag, Giandotti) + ostrzeżenia zakresów
 - `hydrolog.precipitation` - 3 typy hietogramów (Block, Triangular, Beta) + interpolacja (Thiessen, IDW, Isohyet)
-- `hydrolog.runoff` - SCS-CN, SCSUnitHydrograph, NashIUH, HydrographGenerator, **CN Lookup (TR-55)**
+- `hydrolog.runoff` - SCS-CN, SCSUnitHydrograph, NashIUH, **ClarkIUH**, **SnyderUH**, HydrographGenerator, CN Lookup (TR-55)
 - `hydrolog.morphometry` - WatershedGeometry, TerrainAnalysis, HypsometricCurve
 - `hydrolog.network` - StreamNetwork, klasyfikacja Strahlera/Shreve'a
 
