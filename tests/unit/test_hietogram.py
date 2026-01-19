@@ -8,6 +8,7 @@ from hydrolog.precipitation import (
     BlockHietogram,
     TriangularHietogram,
     BetaHietogram,
+    EulerIIHietogram,
 )
 from hydrolog.exceptions import InvalidParameterError
 
@@ -292,6 +293,7 @@ class TestHietogramImport:
             BlockHietogram,
             TriangularHietogram,
             BetaHietogram,
+            EulerIIHietogram,
         )
 
         assert HietogramResult is not None
@@ -299,3 +301,129 @@ class TestHietogramImport:
         assert BlockHietogram is not None
         assert TriangularHietogram is not None
         assert BetaHietogram is not None
+        assert EulerIIHietogram is not None
+
+
+class TestEulerIIHietogram:
+    """Tests for DVWK Euler Type II hyetograph."""
+
+    def test_euler_ii_peak_at_one_third(self):
+        """Test that Euler II peak is at approximately 1/3 of duration."""
+        hietogram = EulerIIHietogram()
+        result = hietogram.generate(total_mm=30.0, duration_min=60.0, timestep_min=5.0)
+
+        # 12 steps, peak should be at index 3-4 (1/3 of 12 = 4)
+        peak_idx = np.argmax(result.intensities_mm)
+        assert 3 <= peak_idx <= 4
+
+    def test_euler_ii_default_peak_position(self):
+        """Test default peak position is 0.33."""
+        hietogram = EulerIIHietogram()
+        assert hietogram.peak_position == 0.33
+
+    def test_euler_ii_total_preserved(self):
+        """Test that total precipitation is preserved."""
+        hietogram = EulerIIHietogram()
+        result = hietogram.generate(total_mm=50.0, duration_min=100.0, timestep_min=5.0)
+
+        assert np.isclose(result.intensities_mm.sum(), 50.0)
+
+    def test_euler_ii_custom_peak_position(self):
+        """Test Euler II with custom peak position."""
+        hietogram = EulerIIHietogram(peak_position=0.5)
+        result = hietogram.generate(total_mm=30.0, duration_min=60.0, timestep_min=10.0)
+
+        # Peak should be near center (index 2-3 of 6 steps)
+        peak_idx = np.argmax(result.intensities_mm)
+        assert 2 <= peak_idx <= 3
+
+    def test_euler_ii_decreasing_from_peak(self):
+        """Test that intensities decrease from peak in both directions."""
+        hietogram = EulerIIHietogram()
+        result = hietogram.generate(total_mm=30.0, duration_min=60.0, timestep_min=5.0)
+
+        peak_idx = np.argmax(result.intensities_mm)
+        peak_intensity = result.intensities_mm[peak_idx]
+
+        # All other intensities should be less than or equal to peak
+        for i, intensity in enumerate(result.intensities_mm):
+            if i != peak_idx:
+                assert intensity <= peak_intensity
+
+    def test_euler_ii_alternating_pattern(self):
+        """Test that intensities follow alternating block pattern."""
+        hietogram = EulerIIHietogram()
+        result = hietogram.generate(total_mm=30.0, duration_min=60.0, timestep_min=5.0)
+
+        # Find peak and check neighbors have second and third highest values
+        sorted_intensities = np.sort(result.intensities_mm)[::-1]
+        peak_idx = np.argmax(result.intensities_mm)
+
+        # The neighbors of peak should have high intensities
+        if peak_idx > 0:
+            left_neighbor = result.intensities_mm[peak_idx - 1]
+            assert left_neighbor in sorted_intensities[:4]  # Top 4 intensities
+
+    def test_euler_ii_times_correct(self):
+        """Test that time values are at end of each interval."""
+        hietogram = EulerIIHietogram()
+        result = hietogram.generate(total_mm=30.0, duration_min=60.0, timestep_min=10.0)
+
+        expected_times = np.array([10.0, 20.0, 30.0, 40.0, 50.0, 60.0])
+        np.testing.assert_array_almost_equal(result.times_min, expected_times)
+
+    def test_euler_ii_result_attributes(self):
+        """Test that result contains correct attributes."""
+        hietogram = EulerIIHietogram()
+        result = hietogram.generate(total_mm=30.0, duration_min=60.0, timestep_min=10.0)
+
+        assert result.total_mm == 30.0
+        assert result.duration_min == 60.0
+        assert result.timestep_min == 10.0
+        assert result.n_steps == 6
+
+    def test_euler_ii_invalid_peak_zero_raises(self):
+        """Test that peak_position=0 raises error."""
+        with pytest.raises(
+            InvalidParameterError, match="peak_position must be in range"
+        ):
+            EulerIIHietogram(peak_position=0.0)
+
+    def test_euler_ii_invalid_peak_one_raises(self):
+        """Test that peak_position=1 raises error."""
+        with pytest.raises(
+            InvalidParameterError, match="peak_position must be in range"
+        ):
+            EulerIIHietogram(peak_position=1.0)
+
+    def test_euler_ii_invalid_peak_negative_raises(self):
+        """Test that negative peak_position raises error."""
+        with pytest.raises(
+            InvalidParameterError, match="peak_position must be in range"
+        ):
+            EulerIIHietogram(peak_position=-0.5)
+
+    def test_euler_ii_validation(self):
+        """Test that EulerIIHietogram validates generate params."""
+        hietogram = EulerIIHietogram()
+        with pytest.raises(InvalidParameterError, match="total_mm must be positive"):
+            hietogram.generate(total_mm=-10.0, duration_min=60.0, timestep_min=10.0)
+
+    def test_euler_ii_few_steps(self):
+        """Test Euler II with small number of steps."""
+        hietogram = EulerIIHietogram()
+        result = hietogram.generate(total_mm=30.0, duration_min=30.0, timestep_min=10.0)
+
+        assert result.n_steps == 3
+        assert np.isclose(result.intensities_mm.sum(), 30.0)
+
+    def test_euler_ii_many_steps(self):
+        """Test Euler II with large number of steps."""
+        hietogram = EulerIIHietogram()
+        result = hietogram.generate(total_mm=100.0, duration_min=120.0, timestep_min=5.0)
+
+        assert result.n_steps == 24
+        assert np.isclose(result.intensities_mm.sum(), 100.0)
+        # Peak should be around index 8 (1/3 of 24)
+        peak_idx = np.argmax(result.intensities_mm)
+        assert 7 <= peak_idx <= 9

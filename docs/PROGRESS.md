@@ -61,8 +61,12 @@
 - [x] Dodano pola do `SnyderUHResult`: `duration_min`, `adjusted_lag_time_min`
 - [x] Zaktualizowano 45 testów dla nowych formuł
 - [x] Zweryfikowano bilans wodny (100,000 m³ dla 1mm na 100 km²)
-- [x] Łącznie 414 testów jednostkowych (wszystkie przechodzą)
 - [x] Przetestowano model Snydera na rzeczywistej zlewni
+- [x] Zaimplementowano rozkład DVWK Euler Type II (`EulerIIHietogram`):
+  - Maksimum intensywności w 1/3 czasu trwania (konfigurowalny `peak_position`)
+  - Metoda "alternating block" z syntetycznym rozkładem IDF
+  - 14 nowych testów jednostkowych
+- [x] Łącznie 428 testów jednostkowych (wszystkie przechodzą)
 
 **Test na zlewni rzeczywistej:**
 ```
@@ -103,6 +107,9 @@ Wyniki HEC-HMS (do porównania):
 - `tests/unit/test_snyder_uh.py` - zaktualizowane testy
 - `README.md` - dodane przykłady CLI
 - `docs/SCOPE.md` - zaktualizowany status funkcjonalności
+- `hydrolog/precipitation/hietogram.py` - dodano `EulerIIHietogram`
+- `hydrolog/precipitation/__init__.py` - dodano eksport
+- `tests/unit/test_hietogram.py` - 14 nowych testów
 
 **Następne kroki:**
 1. Rozwiązać rozbieżność z HEC-HMS

@@ -6,6 +6,7 @@ from hydrolog.precipitation.hietogram import (
     BlockHietogram,
     TriangularHietogram,
     BetaHietogram,
+    EulerIIHietogram,
 )
 
 from hydrolog.precipitation.interpolation import (
@@ -27,6 +28,7 @@ __all__ = [
     "BlockHietogram",
     "TriangularHietogram",
     "BetaHietogram",
+    "EulerIIHietogram",
     # Interpolation
     "Station",
     "ThiessenResult",
