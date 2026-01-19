@@ -345,6 +345,115 @@ class TestNashIUHFromMoments:
             NashIUH.from_moments(lag_time_min=90.0, variance_min2=0)
 
 
+class TestNashIUHWithArea:
+    """Tests for NashIUH with area_km2 parameter in constructor."""
+
+    def test_init_with_area(self):
+        """Test initialization with area_km2."""
+        iuh = NashIUH(n=3.0, k_min=30.0, area_km2=45.0)
+
+        assert iuh.n == 3.0
+        assert iuh.k_min == 30.0
+        assert iuh.area_km2 == 45.0
+
+    def test_init_without_area(self):
+        """Test initialization without area_km2."""
+        iuh = NashIUH(n=3.0, k_min=30.0)
+
+        assert iuh.area_km2 is None
+
+    def test_init_zero_area_raises(self):
+        """Test that area_km2=0 raises InvalidParameterError."""
+        with pytest.raises(InvalidParameterError, match="area_km2 must be positive"):
+            NashIUH(n=3.0, k_min=30.0, area_km2=0)
+
+    def test_init_negative_area_raises(self):
+        """Test that negative area_km2 raises InvalidParameterError."""
+        with pytest.raises(InvalidParameterError, match="area_km2 must be positive"):
+            NashIUH(n=3.0, k_min=30.0, area_km2=-10.0)
+
+    def test_generate_with_area_returns_nash_uh_result(self):
+        """Test that generate() returns NashUHResult when area_km2 is set."""
+        iuh = NashIUH(n=3.0, k_min=30.0, area_km2=45.0)
+
+        result = iuh.generate(timestep_min=5.0)
+
+        assert isinstance(result, NashUHResult)
+
+    def test_generate_without_area_returns_iuh_result(self):
+        """Test that generate() returns IUHResult when area_km2 is None."""
+        iuh = NashIUH(n=3.0, k_min=30.0)
+
+        result = iuh.generate(timestep_min=5.0)
+
+        assert isinstance(result, IUHResult)
+
+    def test_generate_with_area_has_correct_attributes(self):
+        """Test that NashUHResult has correct attributes."""
+        iuh = NashIUH(n=3.0, k_min=30.0, area_km2=45.0)
+
+        result = iuh.generate(timestep_min=5.0)
+
+        assert result.area_km2 == 45.0
+        assert result.n == 3.0
+        assert result.k_min == 30.0
+        assert result.duration_min == 5.0  # D = timestep
+
+    def test_generate_with_area_positive_ordinates(self):
+        """Test that UH ordinates are non-negative."""
+        iuh = NashIUH(n=3.0, k_min=30.0, area_km2=45.0)
+
+        result = iuh.generate(timestep_min=5.0)
+
+        assert np.all(result.ordinates_m3s >= 0)
+
+    def test_generate_with_area_volume_conservation(self):
+        """Test that UH preserves volume (1 mm over area)."""
+        iuh = NashIUH(n=3.0, k_min=30.0, area_km2=45.0)
+
+        result = iuh.generate(timestep_min=1.0)
+
+        # Volume = integral of Q(t) dt
+        # Q in m³/s, t in min -> convert to seconds
+        volume_m3 = np.trapezoid(result.ordinates_m3s, result.times_min * 60.0)
+
+        # Expected volume: 1 mm over 45 km² = 45 × 1000 m³
+        expected_volume = 45.0 * 1000.0
+
+        # Allow 5% tolerance for numerical integration
+        assert abs(volume_m3 - expected_volume) / expected_volume < 0.05
+
+
+class TestNashIUHGenerateIUH:
+    """Tests for explicit generate_iuh() method."""
+
+    def test_generate_iuh_returns_iuh_result(self):
+        """Test that generate_iuh() returns IUHResult even with area_km2."""
+        iuh = NashIUH(n=3.0, k_min=30.0, area_km2=45.0)
+
+        result = iuh.generate_iuh(timestep_min=5.0)
+
+        assert isinstance(result, IUHResult)
+
+    def test_generate_iuh_without_area_works(self):
+        """Test that generate_iuh() works without area_km2."""
+        iuh = NashIUH(n=3.0, k_min=30.0)
+
+        result = iuh.generate_iuh(timestep_min=5.0)
+
+        assert isinstance(result, IUHResult)
+
+    def test_generate_iuh_ordinates_sum_to_one(self):
+        """Test that IUH integrates to approximately 1."""
+        iuh = NashIUH(n=3.0, k_min=30.0, area_km2=45.0)
+
+        result = iuh.generate_iuh(timestep_min=1.0, duration_min=500.0)
+
+        integral = np.trapezoid(result.ordinates_per_min, result.times_min)
+
+        assert abs(integral - 1.0) < 0.01
+
+
 class TestNashIUHImport:
     """Test module imports."""
 

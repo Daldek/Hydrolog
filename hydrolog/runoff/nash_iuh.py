@@ -1,7 +1,7 @@
 """Nash Instantaneous Unit Hydrograph (IUH) generation."""
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 from numpy.typing import NDArray
@@ -138,7 +138,9 @@ class NashIUH:
     Lag time: 90.0 min
     """
 
-    def __init__(self, n: float, k_min: float) -> None:
+    def __init__(
+        self, n: float, k_min: float, area_km2: Optional[float] = None
+    ) -> None:
         """
         Initialize Nash IUH generator.
 
@@ -148,6 +150,9 @@ class NashIUH:
             Number of reservoirs (shape parameter). Must be > 0.
         k_min : float
             Reservoir storage constant [min]. Must be > 0.
+        area_km2 : float, optional
+            Watershed area [km²]. If provided, generate() returns
+            dimensional unit hydrograph [m³/s per mm].
 
         Raises
         ------
@@ -158,9 +163,12 @@ class NashIUH:
             raise InvalidParameterError(f"n must be positive, got {n}")
         if k_min <= 0:
             raise InvalidParameterError(f"k_min must be positive, got {k_min}")
+        if area_km2 is not None and area_km2 <= 0:
+            raise InvalidParameterError(f"area_km2 must be positive, got {area_km2}")
 
         self.n = n
         self.k_min = k_min
+        self.area_km2 = area_km2
 
     @property
     def lag_time_min(self) -> float:
@@ -233,9 +241,68 @@ class NashIUH:
         self,
         timestep_min: float = 5.0,
         duration_min: Optional[float] = None,
+    ) -> Union[IUHResult, NashUHResult]:
+        """
+        Generate Nash Unit Hydrograph.
+
+        If area_km2 was provided in constructor, returns dimensional
+        unit hydrograph [m³/s per mm]. Otherwise returns IUH [1/min].
+
+        Parameters
+        ----------
+        timestep_min : float, optional
+            Time step for discretization [min], by default 5.0.
+        duration_min : float, optional
+            Total duration [min]. If not specified, uses
+            5 × lag_time or until ordinate < 0.001 × peak.
+
+        Returns
+        -------
+        IUHResult or NashUHResult
+            IUHResult if area_km2 not provided (ordinates in 1/min).
+            NashUHResult if area_km2 provided (ordinates in m³/s per mm).
+
+        Raises
+        ------
+        InvalidParameterError
+            If timestep_min is not positive.
+
+        Examples
+        --------
+        >>> # Without area - returns IUH
+        >>> iuh = NashIUH(n=3.0, k_min=30.0)
+        >>> result = iuh.generate(timestep_min=5.0)
+        >>> print(f"Peak at {result.time_to_peak_min:.1f} min")
+        Peak at 60.0 min
+
+        >>> # With area - returns dimensional UH
+        >>> nash = NashIUH(n=3.0, k_min=30.0, area_km2=45.0)
+        >>> result = nash.generate(timestep_min=5.0)
+        >>> print(f"Peak: {result.peak_discharge_m3s:.2f} m³/s per mm")
+        """
+        if self.area_km2 is not None:
+            # Return dimensional unit hydrograph
+            return self.to_unit_hydrograph(
+                area_km2=self.area_km2,
+                duration_min=timestep_min,  # D = timestep for UH
+                timestep_min=timestep_min,
+                total_duration_min=duration_min,
+            )
+        else:
+            # Return IUH
+            return self.generate_iuh(
+                timestep_min=timestep_min, duration_min=duration_min
+            )
+
+    def generate_iuh(
+        self,
+        timestep_min: float = 5.0,
+        duration_min: Optional[float] = None,
     ) -> IUHResult:
         """
         Generate Nash Instantaneous Unit Hydrograph.
+
+        Always returns IUH regardless of area_km2 setting.
 
         Parameters
         ----------
@@ -248,7 +315,7 @@ class NashIUH:
         Returns
         -------
         IUHResult
-            Generated IUH with times and ordinates.
+            Generated IUH with times and ordinates [1/min].
 
         Raises
         ------
@@ -258,7 +325,7 @@ class NashIUH:
         Examples
         --------
         >>> iuh = NashIUH(n=3.0, k_min=30.0)
-        >>> result = iuh.generate(timestep_min=5.0)
+        >>> result = iuh.generate_iuh(timestep_min=5.0)
         >>> print(f"Peak at {result.time_to_peak_min:.1f} min")
         Peak at 60.0 min
         """
