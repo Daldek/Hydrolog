@@ -295,23 +295,154 @@ uh = iuh.to_unit_hydrograph(area_km2=45.0, duration_min=30.0, timestep_min=5.0)
 print(f"Qmax UH: {uh.peak_discharge_m3s:.2f} m³/s")
 ```
 
-### Snyder UH
+### Model Snydera (Snyder UH)
+
+Model Snydera (1938) to **empiryczna metoda syntetycznego hydrogramu jednostkowego** oparta na charakterystykach fizjograficznych zlewni. Jeden z najstarszych i najczęściej stosowanych modeli w hydrologii inżynierskiej.
+
+#### Teoria i wzory
+
+**Parametry wejściowe:**
+| Symbol | Opis | Jednostka |
+|--------|------|-----------|
+| A | Powierzchnia zlewni | km² |
+| L | Długość cieku głównego (od ujścia do działu wód) | km |
+| Lc | Długość wzdłuż cieku od ujścia do środka ciężkości zlewni | km |
+| Ct | Współczynnik czasowy (zależy od charakteru zlewni) | - |
+| Cp | Współczynnik szczytowy (zależy od retencji) | - |
+
+**Krok 1: Czas opóźnienia (lag time)**
+```
+tL = Ct × (L × Lc)^0.3    [h]
+```
+
+**Krok 2: Standardowy czas trwania opadu**
+```
+tD = tL / 5.5    [h]
+```
+
+**Krok 3: Parametry dla standardowego czasu trwania (Δt = tD)**
+```
+tp = tL + tD/2           [h]  ← czas do szczytu
+qp = 0.275 × Cp × A / tL [m³/s/mm]  ← przepływ szczytowy
+```
+
+**Krok 4: Korekta dla niestandardowego czasu trwania (Δt ≠ tD)**
+
+Jeżeli rzeczywisty czas trwania opadu Δt różni się od standardowego tD:
+```
+tLR = tL + 0.25 × (Δt - tD)    [h]  ← skorygowany czas opóźnienia
+tpR = tLR + Δt/2               [h]  ← skorygowany czas do szczytu
+qpR = qp × (tL / tLR)          [m³/s/mm]  ← skorygowany przepływ szczytowy
+```
+
+**Krok 5: Czas podstawy hydrogramu (z bilansu wodnego)**
+```
+tb = 0.556 × A / qpR    [h]
+```
+
+*Wyprowadzenie:* Dla trójkątnego hydrogramu jednostkowego objętość V = 0.5 × qp × tb × 3600 s/h.
+Dla 1 mm opadu na A km²: V = A × 10⁶ m² × 0.001 m = A × 1000 m³.
+Stąd: tb = 2 × A × 1000 / (qp × 3600) = 0.556 × A / qp.
+
+**Szerokości hydrogramu:**
+```
+W50 = 5.87 / (qp/A)^1.08    [h]  ← szerokość przy 50% szczytu
+W75 = 3.35 / (qp/A)^1.08    [h]  ← szerokość przy 75% szczytu
+```
+
+#### Współczynniki Ct i Cp
+
+| Typ zlewni | Ct (SI) | Cp | Opis |
+|------------|---------|-----|------|
+| Górska, stroma | 1.35-1.45 | 0.60-0.80 | Szybki odpływ, mała retencja |
+| Pagórkowata | 1.45-1.55 | 0.50-0.65 | Typowe warunki |
+| Nizinna, płaska | 1.55-1.65 | 0.40-0.55 | Wolny odpływ, duża retencja |
+
+**Zakresy typowe:** Ct = 1.35-1.65, Cp = 0.4-0.8
+
+**Zależności:**
+- Ct i Cp są **odwrotnie skorelowane** (większy Ct → mniejszy Cp)
+- **Urbanizacja**: ↓ Ct, ↑ Cp (szybszy odpływ, wyższy szczyt)
+- **Zalesienie**: ↑ Ct, ↓ Cp (wolniejszy odpływ, niższy szczyt)
+
+#### Przykład obliczeniowy
+
+**Dane zlewni:**
+- A = 45.3 km²
+- L = 14.9 km
+- Lc = 7.0 km
+- Ct = 1.65, Cp = 0.565
+- Δt = 60 min (rzeczywisty czas trwania opadu)
+
+**Obliczenia:**
+
+```
+Krok 1: Czas opóźnienia
+  tL = 1.65 × (14.9 × 7.0)^0.3 = 1.65 × 104.3^0.3 = 1.65 × 4.03 = 6.65 h
+
+Krok 2: Standardowy czas trwania opadu
+  tD = 6.65 / 5.5 = 1.21 h = 72.6 min
+
+Krok 3: Parametry dla standardowego czasu (Δt = tD = 72.6 min)
+  tp = 6.65 + 1.21/2 = 6.65 + 0.605 = 7.26 h
+  qp = 0.275 × 0.565 × 45.3 / 6.65 = 1.058 m³/s/mm
+
+Krok 4: Korekta dla Δt = 60 min (niestandardowy)
+  tLR = 6.65 + 0.25 × (1.00 - 1.21) = 6.65 - 0.05 = 6.60 h
+  tpR = 6.60 + 1.00/2 = 6.60 + 0.50 = 7.10 h = 426 min
+  qpR = 1.058 × (6.65 / 6.60) = 1.058 × 1.008 = 1.066 m³/s/mm
+
+Krok 5: Czas podstawy
+  tb = 0.556 × 45.3 / 1.066 = 23.62 h = 1417 min
+```
+
+**Wyniki:**
+| Parametr | Wartość | Jednostka |
+|----------|---------|-----------|
+| tL | 399.1 | min |
+| tD | 72.6 | min |
+| tpR | 426.0 | min |
+| qpR | 1.066 | m³/s/mm |
+| tb | 1417 | min |
+
+#### Użycie w kodzie
 
 ```python
 from hydrolog.runoff import SnyderUH
 
-# Metoda 1: Bezpośrednie podanie parametrów (L, Lc w km)
-uh = SnyderUH(area_km2=100.0, L_km=15.0, Lc_km=8.0, ct=2.0, cp=0.6)
+# Metoda 1: Bezpośrednie podanie parametrów
+snyder = SnyderUH(
+    area_km2=45.3,
+    L_km=14.9,
+    Lc_km=7.0,
+    ct=1.65,
+    cp=0.565
+)
 
-# Metoda 2: Z czasu koncentracji
-uh = SnyderUH.from_tc(area_km2=100.0, tc_min=180.0, ct=2.0, cp=0.6)
+# Podstawowe parametry (właściwości)
+print(f"tL = {snyder.lag_time_min:.1f} min")          # 399.1 min
+print(f"tD = {snyder.standard_duration_min:.1f} min") # 72.6 min
 
-# Generowanie hydrogramu
-result = uh.generate(timestep_min=30.0)
-print(f"Czas opóźnienia: {uh.lag_time_min:.1f} min")
-print(f"Qmax: {result.peak_discharge_m3s:.2f} m³/s")
-print(f"Czas bazy: {result.time_base_min:.0f} min")
+# Parametry dla konkretnego czasu trwania opadu (metody)
+delta_t = 60  # min
+print(f"tpR = {snyder.time_to_peak_min(delta_t):.1f} min")  # 426.0 min
+print(f"qpR = {snyder.peak_discharge(delta_t):.3f} m³/s/mm") # 1.066 m³/s/mm
+print(f"tb = {snyder.time_base_min(delta_t):.1f} min")       # 1417.0 min
+
+# Generowanie hydrogramu jednostkowego
+result = snyder.generate(timestep_min=10.0, duration_min=60.0)
+print(f"Qmax = {result.peak_discharge_m3s:.3f} m³/s/mm")
+
+# Metoda 2: Z czasu koncentracji (estymacja L, Lc)
+snyder = SnyderUH.from_tc(area_km2=45.3, tc_min=180.0, ct=1.65, cp=0.565)
+
+# Metoda 3: Ze znanego czasu opóźnienia
+snyder = SnyderUH.from_lag_time(area_km2=45.3, lag_time_min=399.0, ct=1.65, cp=0.565)
 ```
+
+**Referencje:**
+- Snyder, F.F. (1938). *Synthetic unit-graphs*. Transactions of the AGU, 19, 447-454.
+- Bedient, P.B. & Huber, W.C. (1992). *Hydrology and Floodplain Analysis*. Addison-Wesley.
 
 ### CN Lookup (tablice TR-55)
 
