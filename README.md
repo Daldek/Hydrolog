@@ -4,12 +4,14 @@ Biblioteka Python do obliczeń hydrologicznych.
 
 ## Funkcjonalności
 
-- **Hydrogramy odpływu** - metoda SCS Curve Number, Nash IUH
+- **Hydrogramy odpływu** - SCS-CN, Nash IUH, Clark IUH, Snyder UH
 - **Hietogramy** - rozkład Beta, blokowy, trójkątny
 - **Czas koncentracji** - wzory Kirpicha, SCS Lag, Giandotti
 - **Parametry morfometryczne** - wskaźniki kształtu, teren, krzywa hipsograficzna
 - **Klasyfikacja sieci rzecznej** - metody Strahlera i Shreve'a
 - **Interpolacja opadów** - Thiessen, IDW, izohiety
+- **CN Lookup** - tablice TR-55 (20 typów pokrycia terenu)
+- **CLI** - interfejs linii poleceń
 
 ## Instalacja
 
@@ -136,6 +138,62 @@ uh = iuh.to_unit_hydrograph(area_km2=45.0, duration_min=30.0)
 print(f"Qmax UH: {uh.peak_discharge_m3s:.2f} m³/s")
 ```
 
+### Clark IUH
+
+```python
+from hydrolog.runoff import ClarkIUH
+
+# Metoda 1: Bezpośrednie podanie parametrów
+iuh = ClarkIUH(tc_min=60.0, r_min=30.0)
+
+# Metoda 2: Z proporcji R/Tc
+iuh = ClarkIUH.from_tc_r_ratio(tc_min=90.0, r_tc_ratio=0.5)
+
+# Generowanie IUH
+result = iuh.generate(timestep_min=5.0)
+print(f"Czas opóźnienia: {iuh.lag_time_min:.1f} min")
+
+# Konwersja do D-minutowego hydrogramu jednostkowego
+uh = iuh.to_unit_hydrograph(area_km2=45.0, duration_min=30.0, timestep_min=5.0)
+print(f"Qmax UH: {uh.peak_discharge_m3s:.2f} m³/s")
+```
+
+### Snyder UH
+
+```python
+from hydrolog.runoff import SnyderUH
+
+# Metoda 1: Bezpośrednie podanie parametrów (L, Lc w km)
+uh = SnyderUH(area_km2=100.0, L_km=15.0, Lc_km=8.0, ct=2.0, cp=0.6)
+
+# Metoda 2: Z czasu koncentracji
+uh = SnyderUH.from_tc(area_km2=100.0, tc_min=180.0, ct=2.0, cp=0.6)
+
+# Generowanie hydrogramu
+result = uh.generate(timestep_min=30.0)
+print(f"Czas opóźnienia: {uh.lag_time_min:.1f} min")
+print(f"Qmax: {result.peak_discharge_m3s:.2f} m³/s")
+print(f"Czas bazy: {result.time_base_min:.0f} min")
+```
+
+### CN Lookup (tablice TR-55)
+
+```python
+from hydrolog.runoff import get_cn, lookup_cn, LandCover, HydrologicCondition
+
+# Proste wyszukanie CN
+cn = get_cn("B", "forest", "good")
+print(f"CN dla lasu (HSG B, good): {cn}")  # 55
+
+# Szczegółowe wyszukanie
+result = lookup_cn("C", LandCover.PASTURE, HydrologicCondition.FAIR)
+print(f"CN: {result.cn}, Opis: {result.description}")
+
+# Lista dostępnych pokryć terenu
+from hydrolog.runoff import list_land_covers
+covers = list_land_covers()
+```
+
 ### Parametry morfometryczne
 
 ```python
@@ -209,16 +267,44 @@ result = inverse_distance_weighting(stations, target_x=5, target_y=4, power=2)
 print(f"Opad w punkcie (IDW): {result.areal_precipitation_mm:.1f} mm")
 ```
 
+### CLI - Interfejs linii poleceń
+
+```bash
+# Czas koncentracji
+hydrolog tc kirpich --length 2.5 --slope 0.02
+hydrolog tc scs-lag --length 5.0 --slope 0.01 --cn 72
+hydrolog tc giandotti --area 100 --length 15 --elevation 500
+
+# Wyszukiwanie CN
+hydrolog cn lookup --hsg B --cover forest --condition good
+hydrolog cn list
+hydrolog cn range --cover pasture
+
+# Obliczenia SCS-CN
+hydrolog scs --cn 72 --precipitation 50
+hydrolog scs --cn 72 --precipitation 50 --amc III
+
+# Generowanie hydrogramów
+hydrolog uh scs --area 45 --tc 90 --timestep 10
+hydrolog uh nash --area 45 --n 3 --k 30 --timestep 10
+hydrolog uh clark --area 45 --tc 60 --r 30 --timestep 10
+hydrolog uh snyder --area 100 --L 15 --Lc 8 --timestep 30
+
+# Eksport wyników
+hydrolog uh scs --area 45 --tc 90 --timestep 10 --csv > hydrograph.csv
+hydrolog uh scs --area 45 --tc 90 --timestep 10 --json > hydrograph.json
+```
+
 ## Struktura modułów
 
 ```
 hydrolog/
-├── runoff/          # Opad-odpływ (SCS-CN, hydrogramy) ✅
+├── runoff/          # Opad-odpływ (SCS-CN, Nash, Clark, Snyder) ✅
 ├── precipitation/   # Hietogramy + interpolacja ✅
 ├── time/            # Czas koncentracji ✅
 ├── morphometry/     # Parametry fizjograficzne ✅
 ├── network/         # Klasyfikacja sieci rzecznej ✅
-└── cli/             # Interfejs CLI (v1.0.0)
+└── cli/             # Interfejs CLI ✅
 ```
 
 ## Roadmap
@@ -227,14 +313,16 @@ hydrolog/
 |--------|--------|--------|
 | v0.1.0 | Hydrogram SCS-CN, hietogramy, czas koncentracji | ✅ Wydana |
 | v0.2.0 | Parametry morfometryczne | ✅ Wydana |
-| **v0.3.0** | Interpolacja opadów, klasyfikacja sieci | ✅ Wydana |
-| v1.0.0 | Stabilne API, CLI, dokumentacja | Planowana |
+| v0.3.0 | Interpolacja opadów, klasyfikacja sieci | ✅ Wydana |
+| **v0.4.0** | CLI, Clark IUH, Snyder UH, CN Lookup | ✅ Wydana |
+| v1.0.0 | Stabilne API, dokumentacja | Planowana |
 
 ## Wymagania
 
 - Python >= 3.12
 - NumPy >= 1.24
-- SciPy >= 1.10
+- SciPy >= 1.10 (dla Nash IUH)
+- IMGWTools (dla danych opadowych PMAXTP)
 
 ## Powiązane projekty
 
