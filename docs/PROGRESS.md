@@ -81,11 +81,17 @@
   - Metody fabryczne: `from_lag_time()`, `from_tc()`
   - 43 testy jednostkowe
 - [x] Zaktualizowano `runoff/__init__.py` - eksporty nowych klas
-- [x] Łącznie 385 testów jednostkowych (wszystkie przechodzą)
+- [x] Moduł `cli` - interfejs linii poleceń:
+  - Komenda `tc` - czas koncentracji (Kirpich, SCS Lag, Giandotti)
+  - Komenda `cn` - wyszukiwanie CN z tablic TR-55
+  - Komenda `scs` - obliczenia odpływu SCS-CN
+  - Komenda `uh` - generowanie hydrogramów (SCS, Nash, Clark, Snyder)
+  - Formaty wyjściowe: tabela, CSV, JSON
+  - 27 testów jednostkowych
+- [x] Łącznie 412 testów jednostkowych (wszystkie przechodzą)
 
 **Następne kroki:**
-1. CLI interface (`hydrolog.cli`)
-2. Wydanie v0.4.0
+1. Wydanie v0.4.0
 
 ---
 
@@ -119,9 +125,10 @@
 ### Zaimplementowane moduły
 - `hydrolog.time.ConcentrationTime` - 3 metody (Kirpich, SCS Lag, Giandotti) + ostrzeżenia zakresów
 - `hydrolog.precipitation` - 3 typy hietogramów (Block, Triangular, Beta) + interpolacja (Thiessen, IDW, Isohyet)
-- `hydrolog.runoff` - SCS-CN, SCSUnitHydrograph, NashIUH, **ClarkIUH**, **SnyderUH**, HydrographGenerator, CN Lookup (TR-55)
+- `hydrolog.runoff` - SCS-CN, SCSUnitHydrograph, NashIUH, ClarkIUH, SnyderUH, HydrographGenerator, CN Lookup (TR-55)
 - `hydrolog.morphometry` - WatershedGeometry, TerrainAnalysis, HypsometricCurve
 - `hydrolog.network` - StreamNetwork, klasyfikacja Strahlera/Shreve'a
+- `hydrolog.cli` - interfejs CLI (tc, cn, scs, uh)
 
 ### Pliki do przeczytania
 1. `CLAUDE.md` - instrukcje podstawowe
