@@ -5,8 +5,8 @@
 | Pole | Wartość |
 |------|---------|
 | **Faza** | 1 - Implementacja |
-| **Sprint** | 0.3+ - Rozszerzenia |
-| **Sesja** | 13 |
+| **Sprint** | 0.5.0 - Wizualizacja |
+| **Sesja** | 14 |
 | **Data** | 2026-01-19 |
 | **Następny milestone** | v1.0.0 - Stabilne API |
 | **Gałąź robocza** | develop |
@@ -28,6 +28,8 @@
 | CP8 | v0.3.0 - Wydanie network + interpolation | ✅ Ukończony |
 | CP9 | Standaryzacja jednostek + Nash IUH | ✅ Ukończony |
 | CP10 | v0.4.0 - CLI + Clark + Snyder + CN lookup | ✅ Ukończony |
+| CP11 | `hydrolog.visualization` - moduł wizualizacji | ✅ Ukończony |
+| CP12 | v0.5.0 - Wydanie z wizualizacją | ✅ Ukończony |
 
 ---
 
@@ -39,11 +41,74 @@
 | v0.2.0 | Parametry morfometryczne | ✅ Wydana (2026-01-18) |
 | v0.3.0 | Interpolacja + sieć rzeczna | ✅ Wydana (2026-01-18) |
 | v0.4.0 | CLI + Clark + Snyder + CN lookup | ✅ Wydana (2026-01-19) |
+| v0.5.0 | Wizualizacja (matplotlib/seaborn) | ✅ Wydana (2026-01-19) |
 | v1.0.0 | Stabilne API + CLI | 📋 Planowany |
 
 ---
 
 ## Bieżąca sesja
+
+### Sesja 14 (2026-01-19) - UKOŃCZONA
+
+**Cel:** Moduł wizualizacji v0.5.0
+
+**Co zostało zrobione:**
+- [x] Zaimplementowano kompletny moduł `hydrolog.visualization`:
+  - `styles.py` - kolory, etykiety PL, style matplotlib/seaborn
+  - `hietogram.py` - `plot_hietogram()`, `plot_hietogram_comparison()`
+  - `hydrograph.py` - `plot_hydrograph()`, `plot_unit_hydrograph()`
+  - `combined.py` - `plot_rainfall_runoff()`, `plot_generator_result()`
+  - `unit_hydrograph.py` - `plot_uh_comparison()` z tabelą
+  - `water_balance.py` - `plot_water_balance()`, `plot_cn_curve()`
+  - `morphometry.py` - `plot_hypsometric_curve()`, `plot_elevation_histogram()`
+  - `network.py` - `plot_stream_order_stats()`, `plot_bifurcation_ratios()`
+  - `interpolation.py` - `plot_stations_map()`
+- [x] Zaktualizowano `pyproject.toml`:
+  - Wersja 0.5.0
+  - Dodano opcjonalną zależność `visualization` (matplotlib>=3.7, seaborn>=0.12)
+  - Zaktualizowano grupę `all`
+- [x] Napisano 53 testy jednostkowe dla wizualizacji
+- [x] Łącznie 538 testów jednostkowych (wszystkie przechodzą)
+- [x] Zaktualizowano dokumentację:
+  - README.md - sekcja wizualizacji z przykładami
+  - CHANGELOG.md - wpis v0.5.0
+  - PROGRESS.md - ten plik
+
+**Pliki utworzone:**
+```
+hydrolog/visualization/
+├── __init__.py
+├── styles.py
+├── hietogram.py
+├── hydrograph.py
+├── combined.py
+├── unit_hydrograph.py
+├── water_balance.py
+├── morphometry.py
+├── network.py
+└── interpolation.py
+tests/unit/test_visualization.py
+```
+
+**Funkcje wizualizacji:**
+| Moduł | Funkcja | Opis |
+|-------|---------|------|
+| hietogram | `plot_hietogram()` | Hietogram z sumą kumulatywną |
+| hietogram | `plot_hietogram_comparison()` | Porównanie P vs Pe |
+| hydrograph | `plot_hydrograph()` | Hydrogram Q(t) z Qmax |
+| hydrograph | `plot_unit_hydrograph()` | Hydrogram jednostkowy |
+| combined | `plot_rainfall_runoff()` | Wykres kombinowany (odwrócony hietogram + hydrogram) |
+| combined | `plot_generator_result()` | Dashboard z bilansem wodnym |
+| unit_hydrograph | `plot_uh_comparison()` | Porównanie modeli UH z tabelą |
+| water_balance | `plot_water_balance()` | Bilans SCS-CN (słupki/kołowy) |
+| water_balance | `plot_cn_curve()` | Krzywa P→Pe z wariantami AMC |
+| morphometry | `plot_hypsometric_curve()` | Krzywa hipsograficzna z HI |
+| morphometry | `plot_elevation_histogram()` | Histogram wysokości |
+| network | `plot_stream_order_stats()` | Statystyki sieci (3 panele) |
+| network | `plot_bifurcation_ratios()` | Współczynniki Rb |
+| interpolation | `plot_stations_map()` | Mapa stacji z wagami |
+
+---
 
 ### Sesja 13 (2026-01-19) - UKOŃCZONA
 
@@ -272,9 +337,9 @@ Wyniki Hydrolog (model Nasha):
 ## Kontekst dla nowej sesji
 
 ### Stan projektu
-- **Faza:** Implementacja - v0.4.0 wydana
-- **Ostatni commit:** `release: v0.4.0`
-- **Tag:** `v0.4.0`
+- **Faza:** Implementacja - v0.5.0 wydana
+- **Ostatni commit:** `feat(visualization): add visualization module`
+- **Tag:** `v0.5.0`
 - **Środowisko:** `.venv` z Python 3.12.12
 - **Repo GitHub:** https://github.com/Daldek/Hydrolog.git
 
@@ -284,6 +349,7 @@ Wyniki Hydrolog (model Nasha):
 - `hydrolog.runoff` - SCS-CN, SCSUnitHydrograph, NashIUH, ClarkIUH, SnyderUH, HydrographGenerator (z uh_model), CN Lookup (TR-55)
 - `hydrolog.morphometry` - WatershedGeometry, TerrainAnalysis, HypsometricCurve
 - `hydrolog.network` - StreamNetwork, klasyfikacja Strahlera/Shreve'a
+- `hydrolog.visualization` - 15 funkcji wizualizacji (hietogramy, hydrogramy, porównania UH, bilans wodny, morfometria, sieć rzeczna)
 - `hydrolog.cli` - interfejs CLI (tc, cn, scs, uh)
 
 ### Pliki do przeczytania
@@ -296,6 +362,7 @@ Wyniki Hydrolog (model Nasha):
 - **Kartograf** - `https://github.com/Daldek/Kartograf.git` - HSG, SoilGrids, dane przestrzenne (opcjonalna)
 - **NumPy** - obliczenia numeryczne
 - **SciPy** - funkcje specjalne (gamma) dla Nash IUH
+- **matplotlib + seaborn** - wizualizacja (opcjonalna)
 
 ---
 
@@ -490,6 +557,7 @@ Hydrolog/
 │   ├── time/
 │   ├── morphometry/
 │   ├── network/
+│   ├── visualization/       # NOWY w v0.5.0
 │   └── cli/
 └── tests/
     ├── conftest.py
@@ -509,4 +577,4 @@ Hydrolog/
 
 ---
 
-**Ostatnia aktualizacja:** 2026-01-19, Sesja 13 (ukończona - Snyder fix + docs)
+**Ostatnia aktualizacja:** 2026-01-19, Sesja 14 (ukończona - moduł wizualizacji v0.5.0)

@@ -7,7 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.5.0] - 2026-01-19
+
 ### Added
+
+#### `hydrolog.visualization` - Visualization Module
+New module for graphical presentation of hydrological results.
+Requires optional dependencies: `pip install hydrolog[visualization]`
+
+**Hietogram plots (`hietogram.py`):**
+- `plot_hietogram()` - precipitation hyetograph with intensity bars and optional cumulative line
+- `plot_hietogram_comparison()` - comparison of total vs effective precipitation
+
+**Hydrograph plots (`hydrograph.py`):**
+- `plot_hydrograph()` - runoff hydrograph Q(t) with peak annotation and volume
+- `plot_unit_hydrograph()` - unit hydrograph for any model (SCS, Nash, Clark, Snyder)
+
+**Combined plots (`combined.py`):**
+- `plot_rainfall_runoff()` - classic rainfall-runoff plot with inverted hietogram on top
+- `plot_generator_result()` - full dashboard with water balance table
+
+**Unit hydrograph comparison (`unit_hydrograph.py`):**
+- `plot_uh_comparison()` - multiple UH models on one plot with comparison table
+
+**Water balance (`water_balance.py`):**
+- `plot_water_balance()` - SCS-CN water balance visualization (bars or pie)
+- `plot_cn_curve()` - P → Pe relationship with AMC variants
+
+**Morphometry (`morphometry.py`):**
+- `plot_hypsometric_curve()` - hypsometric curve h/H vs a/A with HI integral
+- `plot_elevation_histogram()` - elevation distribution histogram
+
+**Network (`network.py`):**
+- `plot_stream_order_stats()` - three-panel stream network statistics
+- `plot_bifurcation_ratios()` - bifurcation ratios by stream order
+
+**Interpolation (`interpolation.py`):**
+- `plot_stations_map()` - precipitation station map with weights
+
+**Styles (`styles.py`):**
+- `setup_hydrolog_style()` - configure matplotlib/seaborn for consistent styling
+- `COLORS`, `LABELS_PL`, `PALETTE` - color scheme and Polish labels
+- `get_color()`, `get_label()` - helper functions
+- `format_time_axis()`, `add_peak_annotation()`, `add_stats_box()`, `add_watermark()`
 
 #### `hydrolog.runoff.nash_iuh` - Lutz Method
 - `NashIUH.from_lutz()` - parameter estimation from catchment characteristics
@@ -23,10 +67,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - All parameter estimation methods (from_tc, from_moments, from_lutz)
   - Lutz method algorithm with full equations
   - Influence of physiographic parameters on runoff
+  - New visualization module section with examples
+
+### Dependencies
+- Added optional `visualization` dependency group: matplotlib>=3.7, seaborn>=0.12
 
 ### Testing
+- 53 new tests for visualization module
 - 17 new tests for Lutz method
-- Total: 485 unit tests (all passing)
+- Total: 538 unit tests (all passing)
 
 ---
 
