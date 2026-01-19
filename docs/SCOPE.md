@@ -145,17 +145,31 @@ Hydrolog jest analogiczny do **Kartografa** (pobieranie danych przestrzennych) -
 
 ---
 
-#### 2.1.6 Moduł `cli` - Interfejs CLI (v1.0.0)
+#### 2.1.6 Moduł `cli` - Interfejs CLI (v0.4.0) ✅
 
-**Komendy:**
+**Zaimplementowane komendy:**
 ```bash
-hydrolog generate-hydrograph --area 45.3 --cn 72 --tc 68.5 \
-    --precipitation 38.5 --duration 60 --output result.json
+# Czas koncentracji
+hydrolog tc kirpich --length 2.5 --slope 0.02
+hydrolog tc scs-lag --length 5.0 --slope 0.01 --cn 72
+hydrolog tc giandotti --area 100 --length 15 --elevation 500
 
-hydrolog calculate-tc --length 8.2 --slope 2.3 --method kirpich
+# Wyszukiwanie CN (tablice TR-55)
+hydrolog cn lookup --hsg B --cover forest --condition good
+hydrolog cn list
+hydrolog cn range --cover pasture
 
-hydrolog hietogram --total 38.5 --duration 60 --type beta \
-    --timestep 5 --output hietogram.csv
+# Obliczenia SCS-CN
+hydrolog scs --cn 72 --precipitation 50
+hydrolog scs --cn 72 --precipitation 50 --amc III
+
+# Generowanie hydrogramów (SCS, Nash, Clark, Snyder)
+hydrolog uh scs --area 45 --tc 90 --timestep 10
+hydrolog uh nash --area 45 --n 3 --k 30 --timestep 10
+hydrolog uh clark --area 45 --tc 60 --r 30 --timestep 10
+hydrolog uh snyder --area 100 --L 15 --Lc 8 --timestep 30
+
+# Eksport: --csv lub --json
 ```
 
 ---
@@ -189,13 +203,14 @@ hydrolog hietogram --total 38.5 --duration 60 --type beta \
 
 **Post v1.0:**
 - Metoda racjonalna (Q = CIA) dla małych zlewni
-- Clark Unit Hydrograph
-- Snyder Unit Hydrograph
 - Kalibracja parametrów
 - Analiza niepewności (Monte Carlo)
 
 **Zaimplementowane (od v0.3+):**
 - ✅ Nash Cascade (IUH) - `hydrolog.runoff.NashIUH`
+- ✅ Clark Unit Hydrograph - `hydrolog.runoff.ClarkIUH`
+- ✅ Snyder Unit Hydrograph - `hydrolog.runoff.SnyderUH`
+- ✅ CN Lookup (TR-55) - `hydrolog.runoff.cn_lookup`
 
 ---
 
@@ -210,7 +225,11 @@ hydrolog/
 │   ├── __init__.py
 │   ├── scs_cn.py           # SCS Curve Number calculations
 │   ├── unit_hydrograph.py  # SCS Unit Hydrograph
-│   └── convolution.py      # Discrete convolution
+│   ├── convolution.py      # Discrete convolution
+│   ├── nash_iuh.py         # Nash Cascade IUH
+│   ├── clark_iuh.py        # Clark IUH
+│   ├── snyder_uh.py        # Snyder Synthetic UH
+│   └── cn_lookup.py        # CN Lookup Tables (TR-55)
 ├── morphometry/             # Parametry fizjograficzne
 │   ├── __init__.py
 │   ├── geometric.py        # Area, perimeter, length
@@ -285,8 +304,8 @@ print(f"Time to peak: {result.time_to_peak_min} min")
 | **v0.1.0** | Hydrogram SCS-CN | `runoff`, `precipitation.hietogram`, `time` | ✅ Wydana |
 | **v0.2.0** | Parametry morfometryczne | `morphometry` | ✅ Wydana |
 | **v0.3.0** | Interpolacja + sieć | `precipitation.interpolation`, `network` | ✅ Wydana |
-| **v0.3+** | Nash IUH, standaryzacja jednostek | `runoff.nash_iuh`, `time` | ✅ Zaimplementowane |
-| **v1.0.0** | Stabilne API + CLI | Wszystkie + `cli` | 📋 Planowane |
+| **v0.4.0** | CLI + Clark + Snyder + CN Lookup | `cli`, `runoff.clark_iuh`, `runoff.snyder_uh`, `runoff.cn_lookup` | ✅ Wydana |
+| **v1.0.0** | Stabilne API + dokumentacja | Wszystkie | 📋 Planowane |
 
 ---
 
@@ -350,6 +369,6 @@ print(f"Time to peak: {result.time_to_peak_min} min")
 
 ---
 
-**Wersja dokumentu:** 1.0
-**Data ostatniej aktualizacji:** 2026-01-18
+**Wersja dokumentu:** 1.1
+**Data ostatniej aktualizacji:** 2026-01-19
 **Status:** W trakcie realizacji
