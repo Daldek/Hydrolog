@@ -134,7 +134,7 @@ relief = params.relief_m   # max - min
 
 ### Metody `from_dict()` w istniejących klasach
 
-**Status:** 🔲 Do zaimplementowania
+**Status:** ✅ Zaimplementowane
 
 **Pliki:**
 - `hydrolog/morphometry/geometric.py` - `WatershedGeometry.from_dict()`
@@ -323,10 +323,11 @@ print(f"Qmax: {result.peak_discharge_m3s:.2f} m³/s")
 | Plik | Zmiana | Status |
 |------|--------|--------|
 | `hydrolog/morphometry/watershed_params.py` | NOWY - WatershedParameters | ✅ |
-| `hydrolog/morphometry/geometric.py` | + `from_dict()` | 🔲 |
-| `hydrolog/morphometry/terrain.py` | + `from_dict()` | 🔲 |
-| `hydrolog/morphometry/__init__.py` | Eksport WatershedParameters | 🔲 |
-| `tests/unit/test_watershed_params.py` | NOWY - testy | 🔲 |
+| `hydrolog/morphometry/geometric.py` | + `from_dict()` | ✅ |
+| `hydrolog/morphometry/terrain.py` | + `from_dict()` | ✅ |
+| `hydrolog/morphometry/__init__.py` | Eksport WatershedParameters | ✅ |
+| `tests/unit/test_watershed_params.py` | NOWY - testy jednostkowe | ✅ |
+| `tests/integration/test_hydrograf_integration.py` | NOWY - testy integracyjne | ✅ |
 
 ### Hydrograf (przy CP3)
 
