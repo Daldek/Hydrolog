@@ -481,32 +481,46 @@ Wyniki Hydrolog (model Nasha):
 ## Kontekst dla nowej sesji
 
 ### Stan projektu
-- **Faza:** Implementacja - v0.5.0 wydana
-- **Ostatni commit:** `feat(visualization): add visualization module`
-- **Tag:** `v0.5.0`
+- **Faza:** Implementacja - v0.5.0 wydana + integracja GIS
+- **Ostatni commit:** `feat(morphometry): add WatershedParameters for GIS integration`
+- **Tag:** `v0.5.0` (ostatni release)
 - **Środowisko:** `.venv` z Python 3.12.12
 - **Repo GitHub:** https://github.com/Daldek/Hydrolog.git
+- **Testy:** 558 testów (wszystkie przechodzą)
 
 ### Zaimplementowane moduły
 - `hydrolog.time.ConcentrationTime` - 3 metody (Kirpich, SCS Lag, Giandotti) + ostrzeżenia zakresów
 - `hydrolog.precipitation` - 4 typy hietogramów (Block, Triangular, Beta, EulerII) + interpolacja (Thiessen, IDW, Isohyet)
 - `hydrolog.runoff` - SCS-CN, SCSUnitHydrograph, NashIUH, ClarkIUH, SnyderUH, HydrographGenerator (z uh_model), CN Lookup (TR-55)
-- `hydrolog.morphometry` - WatershedGeometry, TerrainAnalysis, HypsometricCurve
+- `hydrolog.morphometry` - WatershedGeometry, TerrainAnalysis, HypsometricCurve, **WatershedParameters** (NEW - integracja GIS)
 - `hydrolog.network` - StreamNetwork, klasyfikacja Strahlera/Shreve'a
 - `hydrolog.visualization` - 15 funkcji wizualizacji (hietogramy, hydrogramy, porównania UH, bilans wodny, morfometria, sieć rzeczna)
 - `hydrolog.cli` - interfejs CLI (tc, cn, scs, uh)
+
+### Ostatnio dodane (Sesja 16)
+- `WatershedParameters` - standaryzowany interfejs wymiany danych z GIS (Hydrograf, QGIS, ArcGIS)
+- `from_dict()` w WatershedGeometry i TerrainAnalysis
+- `docs/INTEGRATION.md` - dokumentacja integracji
+- Dokumentacja dla Hydrografa: `Hydrograf/docs/HYDROLOG_INTEGRATION.md`
 
 ### Pliki do przeczytania
 1. `CLAUDE.md` - instrukcje podstawowe
 2. `docs/PROGRESS.md` - ten plik (aktualny stan)
 3. `docs/SCOPE.md` - jeśli potrzebujesz zrozumieć zakres
+4. `docs/INTEGRATION.md` - integracja z systemami GIS
 
 ### Zależności zewnętrzne
 - **IMGWTools** - `https://github.com/Daldek/IMGWTools.git` - dane PMAXTP
 - **Kartograf** - `https://github.com/Daldek/Kartograf.git` - HSG, SoilGrids, dane przestrzenne (opcjonalna)
+- **Hydrograf** - `https://github.com/Daldek/Hydrograf.git` - aplikacja GIS (integracja przez WatershedParameters)
 - **NumPy** - obliczenia numeryczne
 - **SciPy** - funkcje specjalne (gamma) dla Nash IUH
 - **matplotlib + seaborn** - wizualizacja (opcjonalna)
+
+### Następne kroki (do rozważenia)
+1. **v0.6.0** - Generowanie raportów z obliczeniami
+2. **v1.0.0** - Stabilizacja API
+3. Rozwiązać rozbieżność z HEC-HMS (model Snydera)
 
 ---
 
@@ -721,4 +735,4 @@ Hydrolog/
 
 ---
 
-**Ostatnia aktualizacja:** 2026-01-19, Sesja 15 (poprawki wizualizacji)
+**Ostatnia aktualizacja:** 2026-01-20, Sesja 16 (integracja GIS - WatershedParameters)
