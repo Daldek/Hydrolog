@@ -91,7 +91,63 @@ class TerrainAnalysis:
     >>> elev = terrain.get_elevation_parameters()
     >>> print(f"Relief: {elev.relief_m} m")
     Relief: 370.0 m
+
+    Create from dictionary (e.g., API response):
+
+    >>> data = {"elevation_min_m": 150.0, "elevation_max_m": 520.0,
+    ...         "length_km": 12.0, "elevation_mean_m": 340.0}
+    >>> terrain = TerrainAnalysis.from_dict(data)
     """
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "TerrainAnalysis":
+        """
+        Create TerrainAnalysis from a dictionary.
+
+        This method is designed for easy integration with JSON APIs
+        and external data sources like Hydrograf.
+
+        Parameters
+        ----------
+        data : dict
+            Dictionary with terrain parameters. Required keys:
+            elevation_min_m, elevation_max_m, length_km.
+            Optional keys: elevation_mean_m, channel_length_km.
+
+        Returns
+        -------
+        TerrainAnalysis
+            New instance with values from dictionary.
+
+        Raises
+        ------
+        KeyError
+            If required keys are missing.
+        InvalidParameterError
+            If parameter values are invalid.
+
+        Examples
+        --------
+        >>> data = {"elevation_min_m": 150.0, "elevation_max_m": 520.0,
+        ...         "length_km": 12.0}
+        >>> terrain = TerrainAnalysis.from_dict(data)
+        >>> print(f"Relief: {terrain.relief_m} m")
+        Relief: 370.0 m
+
+        With optional parameters:
+
+        >>> data = {"elevation_min_m": 150.0, "elevation_max_m": 520.0,
+        ...         "length_km": 12.0, "elevation_mean_m": 340.0,
+        ...         "channel_length_km": 15.0}
+        >>> terrain = TerrainAnalysis.from_dict(data)
+        """
+        return cls(
+            elevation_min_m=data["elevation_min_m"],
+            elevation_max_m=data["elevation_max_m"],
+            length_km=data["length_km"],
+            elevation_mean_m=data.get("elevation_mean_m"),
+            channel_length_km=data.get("channel_length_km"),
+        )
 
     def __init__(
         self,

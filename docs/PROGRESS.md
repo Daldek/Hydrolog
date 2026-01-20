@@ -5,9 +5,9 @@
 | Pole | Wartość |
 |------|---------|
 | **Faza** | 1 - Implementacja |
-| **Sprint** | 0.5.0 - Wizualizacja (poprawki) |
-| **Sesja** | 15 |
-| **Data** | 2026-01-19 |
+| **Sprint** | 0.5.x - Integracja GIS |
+| **Sesja** | 16 |
+| **Data** | 2026-01-20 |
 | **Następny milestone** | v0.6.0 - Generowanie raportów |
 | **Gałąź robocza** | develop |
 
@@ -48,6 +48,102 @@
 ---
 
 ## Bieżąca sesja
+
+### Sesja 16 (2026-01-20) - UKOŃCZONA
+
+**Cel:** Integracja Hydrograf ↔ Hydrolog - standaryzowany interfejs wymiany danych
+
+**Co zostało zrobione:**
+- [x] Analiza repozytoriów Hydrograf i Hydrolog pod kątem integracji
+- [x] Zaprojektowano architekturę integracji (Wariant C - oba repozytoria):
+  - Hydrograf: oblicza parametry morfometryczne z DEM/cells
+  - Hydrolog: przetwarza parametry hydrologicznie
+- [x] Utworzono dokumentację integracji:
+  - `docs/INTEGRATION.md` - kompleksowy przewodnik dla Hydrologa
+  - `Hydrograf/docs/HYDROLOG_INTEGRATION.md` - dokumentacja dla Hydrografa
+- [x] Zaimplementowano `WatershedParameters` dataclass:
+  - Standaryzowany format wymiany danych (JSON schema)
+  - Metody `from_dict()`, `from_json()`, `to_dict()`, `to_json()`
+  - Konwersje: `to_geometry()`, `to_terrain()`
+  - Obliczenia: `calculate_tc()` z 3 metodami (kirpich, scs_lag, giandotti)
+  - Właściwości: `width_km`, `relief_m`
+- [x] Dodano metody `from_dict()` do istniejących klas:
+  - `WatershedGeometry.from_dict()` w `geometric.py`
+  - `TerrainAnalysis.from_dict()` w `terrain.py`
+- [x] Zaktualizowano eksporty w `morphometry/__init__.py`
+- [x] Napisano 35 testów jednostkowych:
+  - WatershedParameters: walidacja, serializacja, konwersje, calculate_tc
+  - WatershedGeometry.from_dict()
+  - TerrainAnalysis.from_dict()
+- [x] Poprawiono 2 błędy w testach:
+  - `test_from_dict_missing_required_key`: TypeError zamiast KeyError (oba akceptowalne)
+  - `test_calculate_tc_giandotti`: elevation_diff_m zamiast elevation_mean_m
+- [x] Wszystkie 558 testów przechodzi
+- [x] Zaktualizowano CHANGELOG.md i PROGRESS.md
+
+**Pliki utworzone:**
+```
+hydrolog/morphometry/watershed_params.py  # WatershedParameters dataclass
+docs/INTEGRATION.md                       # Dokumentacja integracji
+tests/unit/test_watershed_params.py       # 35 testów
+```
+
+**Pliki zmodyfikowane:**
+```
+hydrolog/morphometry/geometric.py         # +from_dict()
+hydrolog/morphometry/terrain.py           # +from_dict()
+hydrolog/morphometry/__init__.py          # +WatershedParameters export
+docs/CHANGELOG.md                         # wpis [Unreleased]
+docs/PROGRESS.md                          # ten plik
+```
+
+**Pliki w Hydrografie (dokumentacja):**
+```
+Hydrograf/docs/HYDROLOG_INTEGRATION.md    # Plan implementacji dla CP3
+```
+
+**Architektura integracji:**
+```
+┌─────────────────────────────────┐
+│          HYDROGRAF              │
+│  (analizy przestrzenne GIS)     │
+│                                 │
+│  - Wyznaczanie zlewni z NMT     │
+│  - Obliczanie parametrów        │
+│    morfometrycznych             │
+│  - Obliczanie CN z pokrycia     │
+└───────────┬─────────────────────┘
+            │ JSON (WatershedParameters schema)
+            ▼
+┌─────────────────────────────────┐
+│          HYDROLOG               │
+│  (obliczenia hydrologiczne)     │
+│                                 │
+│  - WatershedParameters.from_dict()
+│  - Czas koncentracji            │
+│  - Hydrogramy jednostkowe       │
+│  - Transformacja opad→odpływ    │
+└─────────────────────────────────┘
+```
+
+**Przykład użycia:**
+```python
+from hydrolog.morphometry import WatershedParameters
+
+# Z API Hydrografa
+response = {"area_km2": 45.3, "perimeter_km": 32.1, "length_km": 12.5,
+            "elevation_min_m": 150.0, "elevation_max_m": 520.0, "cn": 72}
+
+# Import do Hydrologa
+params = WatershedParameters.from_dict(response)
+tc = params.calculate_tc(method="kirpich")
+
+# Użycie z HydrographGenerator
+from hydrolog.runoff import HydrographGenerator
+gen = HydrographGenerator(area_km2=params.area_km2, cn=params.cn, tc_min=tc)
+```
+
+---
 
 ### Sesja 15 (2026-01-19) - UKOŃCZONA
 
