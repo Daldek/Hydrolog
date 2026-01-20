@@ -340,6 +340,42 @@ print(f"Qmax: {result.peak_discharge_m3s:.2f} m³/s")
 
 ---
 
+## Status integracji (2026-01-20)
+
+### Hydrolog - GOTOWY (z zastrzeżeniem)
+
+| Komponent | Status | Uwagi |
+|-----------|--------|-------|
+| WatershedParameters | ✅ | from_dict(), to_json(), calculate_tc() |
+| WatershedGeometry.from_dict() | ✅ | Wskaźniki kształtu |
+| TerrainAnalysis.from_dict() | ✅ | Parametry terenu |
+| HydrographGenerator | ⚠️ | **Wymaga naprawy błędu SCS (v0.5.1)** |
+| Testy jednostkowe | ✅ | 35 testów |
+| Testy integracyjne | ✅ | 15 testów |
+
+**⚠️ UWAGA:** Wykryto krytyczny błąd w `SCSUnitHydrograph.peak_discharge()` - stała 2.08 zamiast 0.208.
+Qmax jest zawyżony ~10x. Do naprawy w wersji v0.5.1.
+
+### Hydrograf - DO IMPLEMENTACJI
+
+| Komponent | Status | Uwagi |
+|-----------|--------|-------|
+| MorphometricParameters schema | 🔲 | Pydantic model |
+| build_morphometric_params() | 🔲 | Funkcja obliczająca |
+| API endpoint /morphometry | 🔲 | Rozszerzenie API |
+| Integracja z Hydrolog | 🔲 | pip install hydrolog |
+
+### Przetestowane scenariusze
+
+1. ✅ JSON → WatershedParameters (symulacja API)
+2. ✅ Batch processing wielu zlewni
+3. ✅ Walidacja nieprawidłowych danych
+4. ✅ Round-trip serializacja (from_json → to_json → from_json)
+5. ⚠️ Pełny workflow z HydrographGenerator (wymaga naprawy błędu SCS)
+6. ✅ Test na danych rzeczywistych NMT (godło N-33-131-D-a-3-1)
+
+---
+
 ## Kontekst dla kolejnych sesji
 
 ### Jeśli pracujesz nad Hydrologiem:

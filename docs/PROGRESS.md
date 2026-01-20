@@ -5,10 +5,10 @@
 | Pole | Wartość |
 |------|---------|
 | **Faza** | 1 - Implementacja |
-| **Sprint** | 0.5.x - Integracja GIS |
-| **Sesja** | 16 |
+| **Sprint** | 0.5.x - Bugfix + Integracja GIS |
+| **Sesja** | 17 |
 | **Data** | 2026-01-20 |
-| **Następny milestone** | v0.6.0 - Generowanie raportów |
+| **Następny milestone** | v0.5.1 - Bugfix SCS peak discharge |
 | **Gałąź robocza** | develop |
 
 ---
@@ -48,6 +48,92 @@
 ---
 
 ## Bieżąca sesja
+
+### Sesja 17 (2026-01-20) - UKOŃCZONA
+
+**Cel:** Test integracji Hydrograf ↔ Hydrolog + test na danych rzeczywistych
+
+**Co zostało zrobione:**
+- [x] Uruchomiono 35 testów jednostkowych WatershedParameters (wszystkie przechodzą)
+- [x] Napisano 15 testów integracyjnych symulujących Hydrograf API
+- [x] Przetestowano pełny workflow: JSON → WatershedParameters → HydrographGenerator
+- [x] Zainstalowano Kartograf i pobrano NMT dla godła N-33-131-D-a-3-1
+- [x] Przeprowadzono test na danych rzeczywistych (okolice Gniezna)
+- [x] Wygenerowano wizualizacje (hydrogram, bilans wodny)
+- [x] Wykryto KRYTYCZNY BŁĄD w stałej hydrogramu SCS
+
+**WYKRYTY BŁĄD - DO NAPRAWY W SESJI 18:**
+- **Plik:** `hydrolog/runoff/unit_hydrograph.py:214`
+- **Problem:** Stała `2.08` zamiast `0.208` w wzorze qp
+- **Wzór SCS:** `qp = 0.208 * A / tp` [m³/s per mm]
+- **Skutek:** Qmax zawyżony ~10x
+- **Priorytet:** KRYTYCZNY
+
+**Analiza błędu:**
+```
+Dla danych testowych: A = 5.16 km², tp = 0.456 h, Pe = 30.3 mm
+
+Błędnie:   qp = 2.08  × 5.16 / 0.456 = 23.5 → Qmax ≈ 575 m³/s
+Poprawnie: qp = 0.208 × 5.16 / 0.456 = 2.35 → Qmax ≈ 57 m³/s
+
+Ale nawet 57 m³/s jest za wysokie dla scenariusza Q1%!
+Przyczyna: użyto 85mm/60min (opad nawałnicowy) zamiast 85mm/24h (realistyczny Q1%)
+
+Realistyczne wartości dla tej zlewni (5.16 km², 85mm/24h):
+- Qmax ≈ 5 m³/s
+- q ≈ 1.0 m³/s/km² (typowe dla Q1% w Polsce)
+```
+
+**Pliki utworzone:**
+```
+tests/integration/test_hydrograf_integration.py  # 15 testów integracyjnych
+tmp/test_data/nmt_N-33-131-D-a-3-1.tif           # NMT z GUGiK (32 MB)
+tmp/test_data/hydrogram_N-33-131-D-a-3-1.png     # wizualizacja
+tmp/test_data/bilans_N-33-131-D-a-3-1.png        # bilans wodny
+```
+
+**Pliki zmodyfikowane:**
+```
+docs/INTEGRATION.md  # statusy ✅ dla ukończonych zadań
+docs/PROGRESS.md     # ten plik
+docs/CHANGELOG.md    # wpis o błędzie i testach
+```
+
+**Wnioski z testu na danych rzeczywistych (NMT):**
+
+| Parametr | Wartość |
+|----------|---------|
+| Godło | N-33-131-D-a-3-1 (okolice Gniezna) |
+| Źródło | GUGiK NMT 1m (przez Kartograf) |
+| Powierzchnia | 5.16 km² |
+| Relief | 41.6 m (77.6 - 119.2 m n.p.m.) |
+| Tc (Kirpich) | 44.8 min |
+| CN (szacowany) | 75 |
+
+**Co działa poprawnie:**
+1. ✅ Pobieranie NMT przez Kartograf (GugikProvider)
+2. ✅ Parsowanie godła mapy (SheetParser)
+3. ✅ Analiza rastrowa (rasterio) - statystyki wysokości
+4. ✅ Import do WatershedParameters.from_dict()
+5. ✅ Obliczanie czasu koncentracji (Kirpich)
+6. ✅ Wskaźniki kształtu (Cf, Cz, Ck, Ce)
+7. ✅ Generowanie wizualizacji (matplotlib)
+
+**Co wymaga naprawy:**
+1. ❌ Stała w SCSUnitHydrograph.peak_discharge() - błąd 10x
+2. ⚠️ Brak automatycznego wyznaczania zlewni (wymaga Hydrograf)
+3. ⚠️ CN przyjęty szacunkowo (75) - brak danych pokrycia terenu
+
+**Testy:** 573 passed (558 jednostkowych + 15 nowych integracyjnych)
+
+**Następne kroki (sesja 18):**
+1. **PRIORYTET:** Naprawić błąd w stałej SCS (2.08 → 0.208)
+2. Zaktualizować testy jednostkowe z poprawnymi wartościami
+3. Powtórzyć test na danych rzeczywistych z realistycznym scenariuszem (85mm/24h)
+4. Zweryfikować wyniki z literaturą (USDA TR-55)
+5. Dodać testy regresyjne z wartościami z literatury
+
+---
 
 ### Sesja 16 (2026-01-20) - UKOŃCZONA
 
@@ -482,11 +568,19 @@ Wyniki Hydrolog (model Nasha):
 
 ### Stan projektu
 - **Faza:** Implementacja - v0.5.0 wydana + integracja GIS
-- **Ostatni commit:** `feat(morphometry): add WatershedParameters for GIS integration`
+- **Ostatni commit:** `docs: document session 17 and critical SCS bug discovery`
 - **Tag:** `v0.5.0` (ostatni release)
 - **Środowisko:** `.venv` z Python 3.12.12
 - **Repo GitHub:** https://github.com/Daldek/Hydrolog.git
-- **Testy:** 558 testów (wszystkie przechodzą)
+- **Testy:** 573 testów (558 jednostkowych + 15 integracyjnych)
+
+### ⚠️ KRYTYCZNY BŁĄD DO NAPRAWY
+```
+Plik:    hydrolog/runoff/unit_hydrograph.py:214
+Błąd:    qp = 2.08 * self.area_km2 / tp_hours
+Powinno: qp = 0.208 * self.area_km2 / tp_hours
+Skutek:  Qmax zawyżony ~10x
+```
 
 ### Zaimplementowane moduły
 - `hydrolog.time.ConcentrationTime` - 3 metody (Kirpich, SCS Lag, Giandotti) + ostrzeżenia zakresów
@@ -735,4 +829,4 @@ Hydrolog/
 
 ---
 
-**Ostatnia aktualizacja:** 2026-01-20, Sesja 16 (integracja GIS - WatershedParameters)
+**Ostatnia aktualizacja:** 2026-01-20, Sesja 17 (test integracji + wykrycie błędu SCS)

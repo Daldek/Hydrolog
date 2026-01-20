@@ -44,9 +44,20 @@ New dataclass for standardized data exchange between GIS systems (Hydrograf, QGI
 - `NashIUH.from_moments()` - Required variance and lag time from observed hydrograph (not practical for ungauged catchments)
 - `ClarkIUH.from_recession()` - Required recession constant from observed hydrograph
 
+### Known Issues (to be fixed in v0.5.1)
+- **CRITICAL:** `SCSUnitHydrograph.peak_discharge()` uses incorrect constant `2.08` instead of `0.208`
+  - Causes ~10x overestimation of Qmax
+  - File: `hydrolog/runoff/unit_hydrograph.py:214`
+  - Reference: USDA TR-55, SCS formula `qp = 0.208 * A / tp`
+
 ### Testing
 - 35 new tests for WatershedParameters and from_dict() methods
-- Total: 558 unit tests (all passing)
+- 15 new integration tests for Hydrograf API workflow (`tests/integration/test_hydrograf_integration.py`)
+  - Full workflow: JSON → WatershedParameters → HydrographGenerator
+  - Batch processing of multiple watersheds
+  - Data validation and error handling
+  - Round-trip serialization
+- Total: 573 tests (558 unit + 15 integration, all passing)
 
 ---
 
