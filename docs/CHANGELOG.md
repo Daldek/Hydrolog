@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+#### `hydrolog.morphometry.WatershedParameters` - GIS Integration Interface
+New dataclass for standardized data exchange between GIS systems (Hydrograf, QGIS, ArcGIS) and Hydrolog.
+
+- `WatershedParameters` - complete watershed parameters container
+  - Required: area_km2, perimeter_km, length_km, elevation_min_m, elevation_max_m
+  - Optional: name, elevation_mean_m, mean_slope_m_per_m, channel_length_km, channel_slope_m_per_m, cn, source, crs
+  - `from_dict()` / `from_json()` - create from API response or JSON
+  - `to_dict()` / `to_json()` - export for serialization
+  - `to_geometry()` - convert to WatershedGeometry
+  - `to_terrain()` - convert to TerrainAnalysis
+  - `calculate_tc(method)` - calculate concentration time (kirpich, scs_lag, giandotti)
+  - Computed properties: `width_km`, `relief_m`
+
+#### Factory methods for morphometry classes
+- `WatershedGeometry.from_dict()` - create from dictionary
+- `TerrainAnalysis.from_dict()` - create from dictionary
+
+#### Documentation
+- `docs/INTEGRATION.md` - comprehensive integration guide for GIS systems
+  - JSON schema for data exchange
+  - Usage examples with Hydrograf
+  - Implementation details for third-party integrations
+
 ### Changed
 - `plot_hietogram()` - Y-axis now always in mm/h (intensity), new `distribution` parameter for subtitle
 - `plot_hietogram_comparison()` - Y-axis in mm/h, removed duplicate stats box
@@ -18,6 +43,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `SnyderUH.from_tc()` - Delegated to `from_lag_time()`, same issue
 - `NashIUH.from_moments()` - Required variance and lag time from observed hydrograph (not practical for ungauged catchments)
 - `ClarkIUH.from_recession()` - Required recession constant from observed hydrograph
+
+### Testing
+- 35 new tests for WatershedParameters and from_dict() methods
+- Total: 558 unit tests (all passing)
 
 ---
 
