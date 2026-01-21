@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.5.1] - 2026-01-21
+
+### Fixed
+- **CRITICAL:** `SCSUnitHydrograph.peak_discharge()` - corrected constant from `2.08` to `0.208`
+  - Previous implementation caused ~10x overestimation of Qmax
+  - Correct formula: `qp = 0.208 * A / tp` [m³/s per mm]
+  - Updated docstring with proper mathematical derivation
+  - Reference: USDA TR-55 triangular unit hydrograph approximation
+
+### Changed
+- Synchronized version numbers: `__init__.py` and `pyproject.toml` now both show `0.5.1`
+- Updated test expectations in `test_runoff.py` for correct peak discharge values
+
 ### Added
 
 #### `hydrolog.morphometry.WatershedParameters` - GIS Integration Interface
@@ -32,23 +47,11 @@ New dataclass for standardized data exchange between GIS systems (Hydrograf, QGI
   - Usage examples with Hydrograf
   - Implementation details for third-party integrations
 
-### Changed
-- `plot_hietogram()` - Y-axis now always in mm/h (intensity), new `distribution` parameter for subtitle
-- `plot_hietogram_comparison()` - Y-axis in mm/h, removed duplicate stats box
-- `plot_hydrograph()` - Removed text annotation at peak (only marker remains)
-- `plot_cn_curve()` - Removed CN values from AMC legend (same CN, different AMC conditions)
-
-### Removed
+### Removed (from v0.5.0-unreleased)
 - `SnyderUH.from_lag_time()` - Estimated L and Lc from lag time (impractical, these parameters should be measured from maps/GIS)
 - `SnyderUH.from_tc()` - Delegated to `from_lag_time()`, same issue
 - `NashIUH.from_moments()` - Required variance and lag time from observed hydrograph (not practical for ungauged catchments)
 - `ClarkIUH.from_recession()` - Required recession constant from observed hydrograph
-
-### Known Issues (to be fixed in v0.5.1)
-- **CRITICAL:** `SCSUnitHydrograph.peak_discharge()` uses incorrect constant `2.08` instead of `0.208`
-  - Causes ~10x overestimation of Qmax
-  - File: `hydrolog/runoff/unit_hydrograph.py:214`
-  - Reference: USDA TR-55, SCS formula `qp = 0.208 * A / tp`
 
 ### Testing
 - 35 new tests for WatershedParameters and from_dict() methods
