@@ -67,10 +67,11 @@ git push origin v0.1.0
 
 ## Zależności zewnętrzne
 
-- **IMGWTools** - dane opadowe PMAXTP (`fetch_pmaxtp()`)
-- **Kartograf** - zestaw narzędzi słuzący do pobierania numerycznego modelu terenu, pokrycia terenu i danych glebowych
-- **NumPy** - obliczenia numeryczne
-- Hydrolog NIE duplikuje funkcji pobierania danych
+- **NumPy** - obliczenia numeryczne (wymagane)
+- **Kartograf** - zestaw narzędzi do pobierania NMT, pokrycia terenu i danych glebowych (opcjonalne)
+- **SciPy** - funkcje gamma dla Nash IUH (opcjonalne)
+
+Hydrolog NIE zawiera funkcji pobierania danych - to zadanie zewnętrznych bibliotek.
 
 ## Struktura modułów
 
