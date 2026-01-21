@@ -42,6 +42,7 @@
 | v0.3.0 | Interpolacja + sieć rzeczna | ✅ Wydana (2026-01-18) |
 | v0.4.0 | CLI + Clark + Snyder + CN lookup | ✅ Wydana (2026-01-19) |
 | v0.5.0 | Wizualizacja (matplotlib/seaborn) | ✅ Wydana (2026-01-19) |
+| v0.5.1 | Bugfix SCS + GIS integration | ✅ Wydana (2026-01-21) |
 | v0.6.0 | Generowanie raportów z obliczeniami | 📋 Planowany |
 | v1.0.0 | Stabilne API + CLI | 📋 Planowany |
 
@@ -49,7 +50,7 @@
 
 ## Bieżąca sesja
 
-### Sesja 19 (2026-01-21) - W TRAKCIE
+### Sesja 19 (2026-01-21) - UKOŃCZONA
 
 **Cel:** Naprawa krytycznego błędu SCS + wydanie v0.5.1
 
@@ -60,6 +61,7 @@
 - [x] Zaktualizowano test `test_peak_discharge` z poprawnymi wartościami oczekiwanymi
 - [x] Wszystkie 573 testy przechodzą
 - [x] Zaktualizowano CHANGELOG.md z opisem naprawy
+- [x] Wydano v0.5.1 (tag + push)
 
 **Pliki zmodyfikowane:**
 ```
@@ -71,10 +73,12 @@ docs/CHANGELOG.md                       # sekcja [0.5.1] z opisem naprawy
 docs/PROGRESS.md                        # ten plik
 ```
 
-**Następne kroki:**
-1. Commit i push zmian
-2. Tag v0.5.1
-3. Rozważyć naprawy w innych projektach (IMGWTools, Kartograf)
+**Commity sesji:**
+```
+cc3e2a7 fix(scs): correct peak discharge constant from 2.08 to 0.208
+```
+
+**Tag:** `v0.5.1`
 
 ---
 
@@ -642,20 +646,12 @@ Wyniki Hydrolog (model Nasha):
 ## Kontekst dla nowej sesji
 
 ### Stan projektu
-- **Faza:** Implementacja - v0.5.0 wydana + integracja GIS
-- **Ostatni commit:** `docs: document session 17 and critical SCS bug discovery`
-- **Tag:** `v0.5.0` (ostatni release)
+- **Faza:** Implementacja - v0.5.1 wydana
+- **Ostatni commit:** `fix(scs): correct peak discharge constant from 2.08 to 0.208`
+- **Tag:** `v0.5.1` (ostatni release)
 - **Środowisko:** `.venv` z Python 3.12.12
 - **Repo GitHub:** https://github.com/Daldek/Hydrolog.git
 - **Testy:** 573 testów (558 jednostkowych + 15 integracyjnych)
-
-### ⚠️ KRYTYCZNY BŁĄD DO NAPRAWY
-```
-Plik:    hydrolog/runoff/unit_hydrograph.py:214
-Błąd:    qp = 2.08 * self.area_km2 / tp_hours
-Powinno: qp = 0.208 * self.area_km2 / tp_hours
-Skutek:  Qmax zawyżony ~10x
-```
 
 ### Zaimplementowane moduły
 - `hydrolog.time.ConcentrationTime` - 3 metody (Kirpich, SCS Lag, Giandotti) + ostrzeżenia zakresów
@@ -666,11 +662,15 @@ Skutek:  Qmax zawyżony ~10x
 - `hydrolog.visualization` - 15 funkcji wizualizacji (hietogramy, hydrogramy, porównania UH, bilans wodny, morfometria, sieć rzeczna)
 - `hydrolog.cli` - interfejs CLI (tc, cn, scs, uh)
 
-### Ostatnio dodane (Sesja 16)
+### Ostatnio dodane (Sesja 19 - v0.5.1)
+- **NAPRAWIONO:** Stała SCS w `peak_discharge()`: `2.08` → `0.208`
+- Zaktualizowany docstring z poprawnym wyprowadzeniem matematycznym
+- Zsynchronizowane wersje w `__init__.py` i `pyproject.toml`
+
+### Ostatnio dodane (Sesja 16 - v0.5.0)
 - `WatershedParameters` - standaryzowany interfejs wymiany danych z GIS (Hydrograf, QGIS, ArcGIS)
 - `from_dict()` w WatershedGeometry i TerrainAnalysis
 - `docs/INTEGRATION.md` - dokumentacja integracji
-- Dokumentacja dla Hydrografa: `Hydrograf/docs/HYDROLOG_INTEGRATION.md`
 
 ### Pliki do przeczytania
 1. `CLAUDE.md` - instrukcje podstawowe
@@ -686,10 +686,15 @@ Skutek:  Qmax zawyżony ~10x
 - **SciPy** - funkcje specjalne (gamma) dla Nash IUH
 - **matplotlib + seaborn** - wizualizacja (opcjonalna)
 
+### Problemy cross-project do rozważenia
+1. **IMGWTools** - Python `>=3.11` (powinno być `>=3.12` dla spójności)
+2. **Kartograf** - brak eksportów `SoilGridsProvider`, `HSGCalculator` w `__init__.py`
+
 ### Następne kroki (do rozważenia)
 1. **v0.6.0** - Generowanie raportów z obliczeniami
 2. **v1.0.0** - Stabilizacja API
 3. Rozwiązać rozbieżność z HEC-HMS (model Snydera)
+4. Naprawy w IMGWTools i Kartograf (kompatybilność cross-project)
 
 ---
 
@@ -904,4 +909,4 @@ Hydrolog/
 
 ---
 
-**Ostatnia aktualizacja:** 2026-01-20, Sesja 17 (test integracji + wykrycie błędu SCS)
+**Ostatnia aktualizacja:** 2026-01-21, Sesja 19 (naprawa błędu SCS + wydanie v0.5.1)
