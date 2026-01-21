@@ -5,10 +5,10 @@
 | Pole | Wartość |
 |------|---------|
 | **Faza** | 1 - Implementacja |
-| **Sprint** | 0.5.x - Bugfix + Integracja GIS |
-| **Sesja** | 20 |
+| **Sprint** | 0.6.x - Generowanie raportów |
+| **Sesja** | 21 |
 | **Data** | 2026-01-21 |
-| **Następny milestone** | v0.6.0 - Generowanie raportów |
+| **Następny milestone** | v1.0.0 - Stabilne API |
 | **Gałąź robocza** | develop |
 
 ---
@@ -30,6 +30,8 @@
 | CP10 | v0.4.0 - CLI + Clark + Snyder + CN lookup | ✅ Ukończony |
 | CP11 | `hydrolog.visualization` - moduł wizualizacji | ✅ Ukończony |
 | CP12 | v0.5.0 - Wydanie z wizualizacją | ✅ Ukończony |
+| CP13 | `hydrolog.reports` - moduł raportów | ✅ Ukończony |
+| CP14 | v0.6.0 - Wydanie z raportami | ✅ Ukończony |
 
 ---
 
@@ -44,12 +46,81 @@
 | v0.5.0 | Wizualizacja (matplotlib/seaborn) | ✅ Wydana (2026-01-19) |
 | v0.5.1 | Bugfix SCS + GIS integration | ✅ Wydana (2026-01-21) |
 | v0.5.2 | Refaktor: usunięcie nieużywanego imgwtools | ✅ Wydana (2026-01-21) |
-| v0.6.0 | Generowanie raportów z obliczeniami | 📋 Planowany |
+| v0.6.0 | Generowanie raportów Markdown z LaTeX | ✅ Wydana (2026-01-21) |
 | v1.0.0 | Stabilne API + CLI | 📋 Planowany |
 
 ---
 
 ## Bieżąca sesja
+
+### Sesja 21 (2026-01-21) - UKOŃCZONA
+
+**Cel:** Moduł raportów v0.6.0
+
+**Co zostało zrobione:**
+- [x] Zaimplementowano kompletny moduł `hydrolog.reports`:
+  - `formatters.py` - FormulaRenderer (wzory LaTeX z podstawieniami), TableGenerator (tabele Markdown)
+  - `templates.py` - polskie szablony, nagłówki sekcji, opisy metod
+  - `generator.py` - HydrologyReportGenerator, ReportConfig
+  - `sections/` - 7 generatorów sekcji:
+    - `watershed.py` - parametry zlewni i wskaźniki kształtu
+    - `concentration.py` - czas koncentracji (Kirpich, SCS Lag, Giandotti)
+    - `hietogram.py` - rozkład czasowy opadu
+    - `scs_cn.py` - opad efektywny SCS-CN (S, Ia, Pe)
+    - `unit_hydrograph.py` - hydrogram jednostkowy (SCS, Nash, Clark, Snyder)
+    - `convolution.py` - splot dyskretny
+    - `water_balance.py` - bilans wodny
+- [x] Napisano 37 testów jednostkowych dla modułu raportów
+- [x] Zaktualizowano wersję do 0.6.0 w `__init__.py` i `pyproject.toml`
+- [x] Zaktualizowano CHANGELOG.md z pełnym opisem v0.6.0
+- [x] Zaktualizowano README.md:
+  - Dodano "Raporty" do listy funkcjonalności
+  - Dodano sekcję "Generowanie raportów" z przykładami
+  - Zaktualizowano strukturę modułów (dodano `reports/`)
+  - Zaktualizowano roadmapę (v0.6.0 wydana)
+- [x] Wszystkie 610 testów przechodzi
+
+**Pliki utworzone:**
+```
+hydrolog/reports/
+├── __init__.py
+├── formatters.py
+├── templates.py
+├── generator.py
+└── sections/
+    ├── __init__.py
+    ├── watershed.py
+    ├── concentration.py
+    ├── hietogram.py
+    ├── scs_cn.py
+    ├── unit_hydrograph.py
+    ├── convolution.py
+    └── water_balance.py
+tests/unit/test_reports.py
+```
+
+**Pliki zmodyfikowane:**
+```
+hydrolog/__init__.py   # __version__ = "0.6.0"
+pyproject.toml         # version = "0.6.0"
+docs/CHANGELOG.md      # sekcja [0.6.0]
+README.md              # sekcja raportów, struktura, roadmapa
+docs/PROGRESS.md       # ten plik
+```
+
+**Struktura raportu:**
+1. Parametry zlewni (geometria, teren, wskaźniki kształtu)
+2. Czas koncentracji (wzór z podstawieniami)
+3. Hietogram (parametry, rozkład czasowy)
+4. Opad efektywny SCS-CN (S, Ia, Pe z wzorami LaTeX)
+5. Hydrogram jednostkowy (parametry modelu, ordinaty)
+6. Splot dyskretny (procedura konwolucji)
+7. Wyniki (Qmax, tp, V, szereg czasowy)
+8. Bilans wodny (tabela z procentami)
+
+**Testy:** 610 passed (573 istniejących + 37 nowych dla raportów)
+
+---
 
 ### Sesja 20 (2026-01-21) - UKOŃCZONA
 
@@ -681,31 +752,34 @@ Wyniki Hydrolog (model Nasha):
 ## Kontekst dla nowej sesji
 
 ### Stan projektu
-- **Faza:** Implementacja - v0.5.1 wydana
-- **Ostatni commit:** `fix(scs): correct peak discharge constant from 2.08 to 0.208`
-- **Tag:** `v0.5.1` (ostatni release)
+- **Faza:** Implementacja - v0.6.0 wydana
+- **Ostatni commit:** `feat(reports): add report generation module`
+- **Tag:** `v0.6.0` (ostatni release)
 - **Środowisko:** `.venv` z Python 3.12.12
 - **Repo GitHub:** https://github.com/Daldek/Hydrolog.git
-- **Testy:** 573 testów (558 jednostkowych + 15 integracyjnych)
+- **Testy:** 610 testów (595 jednostkowych + 15 integracyjnych)
 
 ### Zaimplementowane moduły
 - `hydrolog.time.ConcentrationTime` - 3 metody (Kirpich, SCS Lag, Giandotti) + ostrzeżenia zakresów
 - `hydrolog.precipitation` - 4 typy hietogramów (Block, Triangular, Beta, EulerII) + interpolacja (Thiessen, IDW, Isohyet)
 - `hydrolog.runoff` - SCS-CN, SCSUnitHydrograph, NashIUH, ClarkIUH, SnyderUH, HydrographGenerator (z uh_model), CN Lookup (TR-55)
-- `hydrolog.morphometry` - WatershedGeometry, TerrainAnalysis, HypsometricCurve, **WatershedParameters** (NEW - integracja GIS)
+- `hydrolog.morphometry` - WatershedGeometry, TerrainAnalysis, HypsometricCurve, WatershedParameters (integracja GIS)
 - `hydrolog.network` - StreamNetwork, klasyfikacja Strahlera/Shreve'a
 - `hydrolog.visualization` - 15 funkcji wizualizacji (hietogramy, hydrogramy, porównania UH, bilans wodny, morfometria, sieć rzeczna)
+- `hydrolog.reports` - **NEW** HydrologyReportGenerator (raporty Markdown z wzorami LaTeX)
 - `hydrolog.cli` - interfejs CLI (tc, cn, scs, uh)
+
+### Ostatnio dodane (Sesja 21 - v0.6.0)
+- `hydrolog.reports` - kompletny moduł generowania raportów Markdown
+- `FormulaRenderer` - wzory LaTeX z podstawionymi wartościami
+- `TableGenerator` - tabele Markdown z automatycznym skracaniem
+- 7 generatorów sekcji: watershed, concentration, hietogram, scs_cn, unit_hydrograph, convolution, water_balance
+- 37 nowych testów jednostkowych
 
 ### Ostatnio dodane (Sesja 19 - v0.5.1)
 - **NAPRAWIONO:** Stała SCS w `peak_discharge()`: `2.08` → `0.208`
 - Zaktualizowany docstring z poprawnym wyprowadzeniem matematycznym
 - Zsynchronizowane wersje w `__init__.py` i `pyproject.toml`
-
-### Ostatnio dodane (Sesja 16 - v0.5.0)
-- `WatershedParameters` - standaryzowany interfejs wymiany danych z GIS (Hydrograf, QGIS, ArcGIS)
-- `from_dict()` w WatershedGeometry i TerrainAnalysis
-- `docs/INTEGRATION.md` - dokumentacja integracji
 
 ### Pliki do przeczytania
 1. `CLAUDE.md` - instrukcje podstawowe
@@ -726,10 +800,10 @@ Wyniki Hydrolog (model Nasha):
 2. **Kartograf** - brak eksportów `SoilGridsProvider`, `HSGCalculator` w `__init__.py`
 
 ### Następne kroki (do rozważenia)
-1. **v0.6.0** - Generowanie raportów z obliczeniami
-2. **v1.0.0** - Stabilizacja API
-3. Rozwiązać rozbieżność z HEC-HMS (model Snydera)
-4. Naprawy w IMGWTools i Kartograf (kompatybilność cross-project)
+1. **v1.0.0** - Stabilizacja API
+2. Rozwiązać rozbieżność z HEC-HMS (model Snydera)
+3. Naprawy w IMGWTools i Kartograf (kompatybilność cross-project)
+4. Rozszerzenie CLI o komendę `report`
 
 ---
 
@@ -924,7 +998,8 @@ Hydrolog/
 │   ├── time/
 │   ├── morphometry/
 │   ├── network/
-│   ├── visualization/       # NOWY w v0.5.0
+│   ├── visualization/
+│   ├── reports/             # NOWY w v0.6.0
 │   └── cli/
 └── tests/
     ├── conftest.py
@@ -944,4 +1019,4 @@ Hydrolog/
 
 ---
 
-**Ostatnia aktualizacja:** 2026-01-21, Sesja 19 (naprawa błędu SCS + wydanie v0.5.1)
+**Ostatnia aktualizacja:** 2026-01-21, Sesja 21 (moduł raportów + wydanie v0.6.0)

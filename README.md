@@ -12,6 +12,7 @@ Biblioteka Python do obliczeń hydrologicznych.
 - **Interpolacja opadów** - Thiessen, IDW, izohiety
 - **CN Lookup** - tablice TR-55 (20 typów pokrycia terenu)
 - **Wizualizacja** - hietogramy, hydrogramy, wykresy kombinowane, porównania UH
+- **Raporty** - kompletne raporty obliczeniowe w Markdown z wzorami LaTeX
 - **CLI** - interfejs linii poleceń
 
 ## Instalacja
@@ -613,6 +614,73 @@ fig.savefig("hypsometry.png", dpi=150)
 pip install hydrolog[visualization]
 ```
 
+### Generowanie raportów
+
+Moduł `hydrolog.reports` generuje kompletne raporty obliczeniowe w formacie Markdown z wzorami LaTeX i pełną procedurą obliczeniową.
+
+```python
+from hydrolog.reports import HydrologyReportGenerator, ReportConfig
+from hydrolog.runoff import HydrographGenerator
+from hydrolog.precipitation import BetaHietogram
+
+# Generuj dane
+hietogram = BetaHietogram(alpha=2.0, beta=5.0)
+precip = hietogram.generate(total_mm=50.0, duration_min=120.0, timestep_min=10.0)
+
+generator = HydrographGenerator(area_km2=45.0, cn=72, tc_min=90.0)
+result = generator.generate(precip)
+
+# Konfiguracja raportu
+config = ReportConfig(
+    tc_method="kirpich",      # kirpich, scs_lag, giandotti
+    uh_model="scs",           # scs, nash, clark, snyder
+    include_formulas=True,    # Wzory LaTeX
+    include_tables=True,      # Tabele z wynikami
+    max_table_rows=50         # Automatyczne skracanie
+)
+
+# Wygeneruj raport
+report_gen = HydrologyReportGenerator(config)
+report = report_gen.generate(
+    result=result,
+    hietogram=precip,
+    watershed_name="Zlewnia Testowa",
+    tc_min=90.0
+)
+
+# Zapisz do pliku
+with open("raport.md", "w") as f:
+    f.write(report)
+```
+
+**Przykładowy fragment raportu:**
+
+```markdown
+## 4. Opad Efektywny (SCS-CN)
+
+### 4.1 Parametry metody
+- Curve Number: **CN = 72**
+- Warunki wilgotnościowe: **AMC-II**
+
+### 4.2 Retencja maksymalna
+
+$$S = \frac{25400}{CN} - 254 = \frac{25400}{72} - 254 = 98.78 \text{ mm}$$
+
+### 4.3 Abstrakcja początkowa
+
+$$I_a = 0.2 \cdot S = 0.2 \cdot 98.78 = 19.76 \text{ mm}$$
+```
+
+**Struktura raportu:**
+1. Parametry zlewni (geometria, teren, wskaźniki kształtu)
+2. Czas koncentracji (wzór z podstawieniami)
+3. Hietogram (parametry, rozkład czasowy)
+4. Opad efektywny SCS-CN (S, Ia, Pe z wzorami)
+5. Hydrogram jednostkowy (parametry modelu, ordinaty)
+6. Splot dyskretny (procedura konwolucji)
+7. Wyniki (Qmax, tp, V, szereg czasowy)
+8. Bilans wodny (tabela z procentami)
+
 ### CLI - Interfejs linii poleceń
 
 ```bash
@@ -651,6 +719,7 @@ hydrolog/
 ├── morphometry/     # Parametry fizjograficzne ✅
 ├── network/         # Klasyfikacja sieci rzecznej ✅
 ├── visualization/   # Wykresy (matplotlib/seaborn) ✅
+├── reports/         # Raporty Markdown z wzorami LaTeX ✅
 └── cli/             # Interfejs CLI ✅
 ```
 
@@ -662,7 +731,8 @@ hydrolog/
 | v0.2.0 | Parametry morfometryczne | ✅ Wydana |
 | v0.3.0 | Interpolacja opadów, klasyfikacja sieci | ✅ Wydana |
 | v0.4.0 | CLI, Clark IUH, Snyder UH, CN Lookup | ✅ Wydana |
-| **v0.5.0** | Wizualizacja (matplotlib/seaborn) | ✅ Wydana |
+| v0.5.0 | Wizualizacja (matplotlib/seaborn) | ✅ Wydana |
+| **v0.6.0** | Raporty Markdown z wzorami LaTeX | ✅ Wydana |
 | v1.0.0 | Stabilne API, dokumentacja | Planowana |
 
 ## Wymagania
