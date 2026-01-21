@@ -10,7 +10,7 @@ Reference:
 """
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 from numpy.typing import NDArray
@@ -149,7 +149,9 @@ class ClarkIUH:
     >>> print(f"Peak at {result.time_to_peak_min:.1f} min")
     """
 
-    def __init__(self, tc_min: float, r_min: float) -> None:
+    def __init__(
+        self, tc_min: float, r_min: float, area_km2: Optional[float] = None
+    ) -> None:
         """
         Initialize Clark IUH generator.
 
@@ -159,6 +161,9 @@ class ClarkIUH:
             Time of concentration [min]. Must be positive.
         r_min : float
             Storage coefficient [min]. Must be positive.
+        area_km2 : float, optional
+            Watershed area [km²]. If provided, generate() returns
+            dimensional unit hydrograph [m³/s per mm].
 
         Raises
         ------
@@ -169,9 +174,12 @@ class ClarkIUH:
             raise InvalidParameterError(f"tc_min must be positive, got {tc_min}")
         if r_min <= 0:
             raise InvalidParameterError(f"r_min must be positive, got {r_min}")
+        if area_km2 is not None and area_km2 <= 0:
+            raise InvalidParameterError(f"area_km2 must be positive, got {area_km2}")
 
         self.tc_min = tc_min
         self.r_min = r_min
+        self.area_km2 = area_km2
 
     @property
     def lag_time_min(self) -> float:
@@ -280,9 +288,67 @@ class ClarkIUH:
         self,
         timestep_min: float = 5.0,
         duration_min: Optional[float] = None,
+    ) -> Union[ClarkIUHResult, ClarkUHResult]:
+        """
+        Generate Clark Unit Hydrograph.
+
+        If area_km2 was provided in constructor, returns dimensional
+        unit hydrograph [m³/s per mm]. Otherwise returns IUH [1/min].
+
+        Parameters
+        ----------
+        timestep_min : float, optional
+            Time step for discretization [min], by default 5.0.
+        duration_min : float, optional
+            Total duration [min]. If not specified, uses
+            Tc + 5*R or until ordinate < 0.001 * peak.
+
+        Returns
+        -------
+        ClarkIUHResult or ClarkUHResult
+            ClarkIUHResult if area_km2 not provided (ordinates in 1/min).
+            ClarkUHResult if area_km2 provided (ordinates in m³/s per mm).
+
+        Raises
+        ------
+        InvalidParameterError
+            If timestep_min is not positive.
+
+        Examples
+        --------
+        >>> # Without area - returns IUH
+        >>> iuh = ClarkIUH(tc_min=60.0, r_min=30.0)
+        >>> result = iuh.generate(timestep_min=5.0)
+        >>> print(f"Steps: {result.n_steps}")
+
+        >>> # With area - returns dimensional UH
+        >>> clark = ClarkIUH(tc_min=60.0, r_min=30.0, area_km2=45.0)
+        >>> result = clark.generate(timestep_min=5.0)
+        >>> print(f"Peak: {result.peak_discharge_m3s:.2f} m³/s per mm")
+        """
+        if self.area_km2 is not None:
+            # Return dimensional unit hydrograph
+            return self.to_unit_hydrograph(
+                area_km2=self.area_km2,
+                duration_min=timestep_min,  # D = timestep for UH
+                timestep_min=timestep_min,
+                total_duration_min=duration_min,
+            )
+        else:
+            # Return IUH
+            return self.generate_iuh(
+                timestep_min=timestep_min, duration_min=duration_min
+            )
+
+    def generate_iuh(
+        self,
+        timestep_min: float = 5.0,
+        duration_min: Optional[float] = None,
     ) -> ClarkIUHResult:
         """
         Generate Clark Instantaneous Unit Hydrograph.
+
+        Always returns IUH regardless of area_km2 setting.
 
         Parameters
         ----------
@@ -295,7 +361,7 @@ class ClarkIUH:
         Returns
         -------
         ClarkIUHResult
-            Generated IUH with times and ordinates.
+            Generated IUH with times and ordinates [1/min].
 
         Raises
         ------
@@ -305,7 +371,7 @@ class ClarkIUH:
         Examples
         --------
         >>> iuh = ClarkIUH(tc_min=60.0, r_min=30.0)
-        >>> result = iuh.generate(timestep_min=5.0)
+        >>> result = iuh.generate_iuh(timestep_min=5.0)
         >>> print(f"Steps: {result.n_steps}")
         """
         if timestep_min <= 0:
@@ -407,8 +473,8 @@ class ClarkIUH:
         if total_duration_min is None:
             total_duration_min = self.tc_min + 5.0 * self.r_min + duration_min
 
-        # Generate IUH
-        iuh_result = self.generate(timestep_min=timestep_min, duration_min=total_duration_min)
+        # Generate IUH (always use generate_iuh to avoid recursion)
+        iuh_result = self.generate_iuh(timestep_min=timestep_min, duration_min=total_duration_min)
 
         # Create S-curve by cumulative sum of IUH
         s_curve = np.cumsum(iuh_result.ordinates_per_min) * timestep_min
@@ -442,58 +508,6 @@ class ClarkIUH:
             time_to_peak_min=time_to_peak,
             peak_discharge_m3s=peak_discharge,
         )
-
-    @classmethod
-    def from_recession(
-        cls,
-        tc_min: float,
-        recession_constant: float,
-    ) -> "ClarkIUH":
-        """
-        Create ClarkIUH from recession analysis.
-
-        Estimates the storage coefficient R from an observed
-        recession constant.
-
-        Parameters
-        ----------
-        tc_min : float
-            Time of concentration [min].
-        recession_constant : float
-            Recession constant from hydrograph analysis.
-            Ratio of flow at time t to flow at time t + dt.
-
-        Returns
-        -------
-        ClarkIUH
-            Configured Clark IUH generator.
-
-        Notes
-        -----
-        For a linear reservoir, the recession constant K_r is related
-        to R by: R = -dt / ln(K_r), where dt is the time interval
-        used in recession analysis.
-
-        For typical daily analysis (dt = 1440 min):
-        R = -1440 / ln(K_r)
-
-        Examples
-        --------
-        >>> # Recession constant of 0.9 (90% of flow remains after 1 day)
-        >>> iuh = ClarkIUH.from_recession(tc_min=60.0, recession_constant=0.9)
-        """
-        if tc_min <= 0:
-            raise InvalidParameterError(f"tc_min must be positive, got {tc_min}")
-        if not 0 < recession_constant < 1:
-            raise InvalidParameterError(
-                f"recession_constant must be in (0, 1), got {recession_constant}"
-            )
-
-        # Assume daily time step for recession analysis
-        dt = 1440.0  # minutes in a day
-        r_min = -dt / np.log(recession_constant)
-
-        return cls(tc_min=tc_min, r_min=r_min)
 
     @classmethod
     def from_tc_r_ratio(

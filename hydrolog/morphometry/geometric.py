@@ -84,7 +84,57 @@ class WatershedGeometry:
     >>> indicators = geom.get_shape_indicators()
     >>> print(f"Form factor: {indicators.form_factor:.3f}")
     Form factor: 0.312
+
+    Create from dictionary (e.g., API response):
+
+    >>> data = {"area_km2": 45.0, "perimeter_km": 32.0, "length_km": 12.0}
+    >>> geom = WatershedGeometry.from_dict(data)
     """
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "WatershedGeometry":
+        """
+        Create WatershedGeometry from a dictionary.
+
+        This method is designed for easy integration with JSON APIs
+        and external data sources like Hydrograf.
+
+        Parameters
+        ----------
+        data : dict
+            Dictionary with watershed parameters. Required keys:
+            area_km2, perimeter_km, length_km.
+
+        Returns
+        -------
+        WatershedGeometry
+            New instance with values from dictionary.
+
+        Raises
+        ------
+        KeyError
+            If required keys are missing.
+        InvalidParameterError
+            If parameter values are invalid.
+
+        Examples
+        --------
+        >>> data = {"area_km2": 45.0, "perimeter_km": 32.0, "length_km": 12.0}
+        >>> geom = WatershedGeometry.from_dict(data)
+        >>> print(f"Area: {geom.area_km2} km²")
+        Area: 45.0 km²
+
+        Extra keys in the dictionary are ignored:
+
+        >>> data = {"area_km2": 45.0, "perimeter_km": 32.0, "length_km": 12.0,
+        ...         "elevation_min_m": 150.0, "source": "Hydrograf"}
+        >>> geom = WatershedGeometry.from_dict(data)
+        """
+        return cls(
+            area_km2=data["area_km2"],
+            perimeter_km=data["perimeter_km"],
+            length_km=data["length_km"],
+        )
 
     def __init__(
         self,

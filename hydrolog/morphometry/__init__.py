@@ -14,8 +14,11 @@ from hydrolog.morphometry.terrain import (
     SlopeParameters,
     TerrainAnalysis,
 )
+from hydrolog.morphometry.watershed_params import WatershedParameters
 
 __all__ = [
+    # Integration interface
+    "WatershedParameters",
     # Geometric
     "WatershedGeometry",
     "GeometricParameters",

@@ -5,10 +5,10 @@
 | Pole | Wartość |
 |------|---------|
 | **Faza** | 1 - Implementacja |
-| **Sprint** | 0.3+ - Rozszerzenia |
-| **Sesja** | 10 |
-| **Data** | 2026-01-19 |
-| **Następny milestone** | v1.0.0 - Stabilne API |
+| **Sprint** | 0.5.x - Bugfix + Integracja GIS |
+| **Sesja** | 19 |
+| **Data** | 2026-01-21 |
+| **Następny milestone** | v0.6.0 - Generowanie raportów |
 | **Gałąź robocza** | develop |
 
 ---
@@ -28,6 +28,8 @@
 | CP8 | v0.3.0 - Wydanie network + interpolation | ✅ Ukończony |
 | CP9 | Standaryzacja jednostek + Nash IUH | ✅ Ukończony |
 | CP10 | v0.4.0 - CLI + Clark + Snyder + CN lookup | ✅ Ukończony |
+| CP11 | `hydrolog.visualization` - moduł wizualizacji | ✅ Ukończony |
+| CP12 | v0.5.0 - Wydanie z wizualizacją | ✅ Ukończony |
 
 ---
 
@@ -39,11 +41,536 @@
 | v0.2.0 | Parametry morfometryczne | ✅ Wydana (2026-01-18) |
 | v0.3.0 | Interpolacja + sieć rzeczna | ✅ Wydana (2026-01-18) |
 | v0.4.0 | CLI + Clark + Snyder + CN lookup | ✅ Wydana (2026-01-19) |
+| v0.5.0 | Wizualizacja (matplotlib/seaborn) | ✅ Wydana (2026-01-19) |
+| v0.5.1 | Bugfix SCS + GIS integration | ✅ Wydana (2026-01-21) |
+| v0.6.0 | Generowanie raportów z obliczeniami | 📋 Planowany |
 | v1.0.0 | Stabilne API + CLI | 📋 Planowany |
 
 ---
 
 ## Bieżąca sesja
+
+### Sesja 19 (2026-01-21) - UKOŃCZONA
+
+**Cel:** Naprawa krytycznego błędu SCS + wydanie v0.5.1
+
+**Co zostało zrobione:**
+- [x] Naprawiono stałą SCS: `2.08` → `0.208` w `unit_hydrograph.py:218`
+- [x] Zaktualizowano docstring z poprawnym wyprowadzeniem matematycznym
+- [x] Zsynchronizowano wersję: `__init__.py` i `pyproject.toml` → `0.5.1`
+- [x] Zaktualizowano test `test_peak_discharge` z poprawnymi wartościami oczekiwanymi
+- [x] Wszystkie 573 testy przechodzą
+- [x] Zaktualizowano CHANGELOG.md z opisem naprawy
+- [x] Wydano v0.5.1 (tag + push)
+
+**Pliki zmodyfikowane:**
+```
+hydrolog/runoff/unit_hydrograph.py      # stała 2.08 → 0.208, nowy docstring
+hydrolog/__init__.py                    # __version__ = "0.5.1"
+pyproject.toml                          # version = "0.5.1"
+tests/unit/test_runoff.py               # poprawione asercje w test_peak_discharge
+docs/CHANGELOG.md                       # sekcja [0.5.1] z opisem naprawy
+docs/PROGRESS.md                        # ten plik
+```
+
+**Commity sesji:**
+```
+cc3e2a7 fix(scs): correct peak discharge constant from 2.08 to 0.208
+```
+
+**Tag:** `v0.5.1`
+
+---
+
+### Sesja 18 (2026-01-21) - UKOŃCZONA
+
+**Cel:** Analiza cross-project (Hydrograf, Hydrolog, Kartograf, IMGWTools) + plan naprawy
+
+**Kontekst:**
+Przeprowadzono kompleksową analizę 4 powiązanych repozytoriów pod kątem:
+- Spójności zależności
+- Standardów kodu
+- Kompatybilności wzajemnej
+- Możliwości niezależnego działania każdego projektu
+
+**Wykryte problemy:**
+
+#### 🔴 KRYTYCZNE (Hydrolog) - NAPRAWIONE w Sesji 19
+
+1. **Błąd stałej SCS** - `hydrolog/runoff/unit_hydrograph.py:214`
+   - Było: `qp = 2.08 * self.area_km2 / tp_hours`
+   - Jest: `qp = 0.208 * self.area_km2 / tp_hours`
+   - **Status:** ✅ NAPRAWIONY
+
+2. **Niespójność wersji**
+   - `pyproject.toml` i `__init__.py` zsynchronizowane do `0.5.1`
+   - **Status:** ✅ NAPRAWIONY
+
+#### 🟠 WAŻNE (inne projekty) - DO ROZWAŻENIA
+
+3. **IMGWTools** - Python `>=3.11` (powinno być `>=3.12` dla spójności)
+4. **Kartograf** - brak eksportów w `__init__.py`:
+   - `SoilGridsProvider`
+   - `HSGCalculator`
+
+**Mapa zależności:**
+```
+HYDROGRAF (główna aplikacja)
+    ├── IMGWTools (dane IMGW)
+    ├── Kartograf (dane GIS)
+    └── Hydrolog (obliczenia hydrologiczne)
+            ├── IMGWTools (wymagany)
+            └── Kartograf (opcjonalny)
+```
+
+**Dokumentacja cross-project:**
+- `Hydrograf/docs/CROSS_PROJECT_ANALYSIS.md` - pełna analiza
+
+---
+
+### Sesja 17 (2026-01-20) - UKOŃCZONA
+
+**Cel:** Test integracji Hydrograf ↔ Hydrolog + test na danych rzeczywistych
+
+**Co zostało zrobione:**
+- [x] Uruchomiono 35 testów jednostkowych WatershedParameters (wszystkie przechodzą)
+- [x] Napisano 15 testów integracyjnych symulujących Hydrograf API
+- [x] Przetestowano pełny workflow: JSON → WatershedParameters → HydrographGenerator
+- [x] Zainstalowano Kartograf i pobrano NMT dla godła N-33-131-D-a-3-1
+- [x] Przeprowadzono test na danych rzeczywistych (okolice Gniezna)
+- [x] Wygenerowano wizualizacje (hydrogram, bilans wodny)
+- [x] Wykryto KRYTYCZNY BŁĄD w stałej hydrogramu SCS
+
+**WYKRYTY BŁĄD - DO NAPRAWY W SESJI 18:**
+- **Plik:** `hydrolog/runoff/unit_hydrograph.py:214`
+- **Problem:** Stała `2.08` zamiast `0.208` w wzorze qp
+- **Wzór SCS:** `qp = 0.208 * A / tp` [m³/s per mm]
+- **Skutek:** Qmax zawyżony ~10x
+- **Priorytet:** KRYTYCZNY
+
+**Analiza błędu:**
+```
+Dla danych testowych: A = 5.16 km², tp = 0.456 h, Pe = 30.3 mm
+
+Błędnie:   qp = 2.08  × 5.16 / 0.456 = 23.5 → Qmax ≈ 575 m³/s
+Poprawnie: qp = 0.208 × 5.16 / 0.456 = 2.35 → Qmax ≈ 57 m³/s
+
+Ale nawet 57 m³/s jest za wysokie dla scenariusza Q1%!
+Przyczyna: użyto 85mm/60min (opad nawałnicowy) zamiast 85mm/24h (realistyczny Q1%)
+
+Realistyczne wartości dla tej zlewni (5.16 km², 85mm/24h):
+- Qmax ≈ 5 m³/s
+- q ≈ 1.0 m³/s/km² (typowe dla Q1% w Polsce)
+```
+
+**Pliki utworzone:**
+```
+tests/integration/test_hydrograf_integration.py  # 15 testów integracyjnych
+tmp/test_data/nmt_N-33-131-D-a-3-1.tif           # NMT z GUGiK (32 MB)
+tmp/test_data/hydrogram_N-33-131-D-a-3-1.png     # wizualizacja
+tmp/test_data/bilans_N-33-131-D-a-3-1.png        # bilans wodny
+```
+
+**Pliki zmodyfikowane:**
+```
+docs/INTEGRATION.md  # statusy ✅ dla ukończonych zadań
+docs/PROGRESS.md     # ten plik
+docs/CHANGELOG.md    # wpis o błędzie i testach
+```
+
+**Wnioski z testu na danych rzeczywistych (NMT):**
+
+| Parametr | Wartość |
+|----------|---------|
+| Godło | N-33-131-D-a-3-1 (okolice Gniezna) |
+| Źródło | GUGiK NMT 1m (przez Kartograf) |
+| Powierzchnia | 5.16 km² |
+| Relief | 41.6 m (77.6 - 119.2 m n.p.m.) |
+| Tc (Kirpich) | 44.8 min |
+| CN (szacowany) | 75 |
+
+**Co działa poprawnie:**
+1. ✅ Pobieranie NMT przez Kartograf (GugikProvider)
+2. ✅ Parsowanie godła mapy (SheetParser)
+3. ✅ Analiza rastrowa (rasterio) - statystyki wysokości
+4. ✅ Import do WatershedParameters.from_dict()
+5. ✅ Obliczanie czasu koncentracji (Kirpich)
+6. ✅ Wskaźniki kształtu (Cf, Cz, Ck, Ce)
+7. ✅ Generowanie wizualizacji (matplotlib)
+
+**Co wymaga naprawy:**
+1. ❌ Stała w SCSUnitHydrograph.peak_discharge() - błąd 10x
+2. ⚠️ Brak automatycznego wyznaczania zlewni (wymaga Hydrograf)
+3. ⚠️ CN przyjęty szacunkowo (75) - brak danych pokrycia terenu
+
+**Testy:** 573 passed (558 jednostkowych + 15 nowych integracyjnych)
+
+**Następne kroki (sesja 18):**
+1. **PRIORYTET:** Naprawić błąd w stałej SCS (2.08 → 0.208)
+2. Zaktualizować testy jednostkowe z poprawnymi wartościami
+3. Powtórzyć test na danych rzeczywistych z realistycznym scenariuszem (85mm/24h)
+4. Zweryfikować wyniki z literaturą (USDA TR-55)
+5. Dodać testy regresyjne z wartościami z literatury
+
+---
+
+### Sesja 16 (2026-01-20) - UKOŃCZONA
+
+**Cel:** Integracja Hydrograf ↔ Hydrolog - standaryzowany interfejs wymiany danych
+
+**Co zostało zrobione:**
+- [x] Analiza repozytoriów Hydrograf i Hydrolog pod kątem integracji
+- [x] Zaprojektowano architekturę integracji (Wariant C - oba repozytoria):
+  - Hydrograf: oblicza parametry morfometryczne z DEM/cells
+  - Hydrolog: przetwarza parametry hydrologicznie
+- [x] Utworzono dokumentację integracji:
+  - `docs/INTEGRATION.md` - kompleksowy przewodnik dla Hydrologa
+  - `Hydrograf/docs/HYDROLOG_INTEGRATION.md` - dokumentacja dla Hydrografa
+- [x] Zaimplementowano `WatershedParameters` dataclass:
+  - Standaryzowany format wymiany danych (JSON schema)
+  - Metody `from_dict()`, `from_json()`, `to_dict()`, `to_json()`
+  - Konwersje: `to_geometry()`, `to_terrain()`
+  - Obliczenia: `calculate_tc()` z 3 metodami (kirpich, scs_lag, giandotti)
+  - Właściwości: `width_km`, `relief_m`
+- [x] Dodano metody `from_dict()` do istniejących klas:
+  - `WatershedGeometry.from_dict()` w `geometric.py`
+  - `TerrainAnalysis.from_dict()` w `terrain.py`
+- [x] Zaktualizowano eksporty w `morphometry/__init__.py`
+- [x] Napisano 35 testów jednostkowych:
+  - WatershedParameters: walidacja, serializacja, konwersje, calculate_tc
+  - WatershedGeometry.from_dict()
+  - TerrainAnalysis.from_dict()
+- [x] Poprawiono 2 błędy w testach:
+  - `test_from_dict_missing_required_key`: TypeError zamiast KeyError (oba akceptowalne)
+  - `test_calculate_tc_giandotti`: elevation_diff_m zamiast elevation_mean_m
+- [x] Wszystkie 558 testów przechodzi
+- [x] Zaktualizowano CHANGELOG.md i PROGRESS.md
+
+**Pliki utworzone:**
+```
+hydrolog/morphometry/watershed_params.py  # WatershedParameters dataclass
+docs/INTEGRATION.md                       # Dokumentacja integracji
+tests/unit/test_watershed_params.py       # 35 testów
+```
+
+**Pliki zmodyfikowane:**
+```
+hydrolog/morphometry/geometric.py         # +from_dict()
+hydrolog/morphometry/terrain.py           # +from_dict()
+hydrolog/morphometry/__init__.py          # +WatershedParameters export
+docs/CHANGELOG.md                         # wpis [Unreleased]
+docs/PROGRESS.md                          # ten plik
+```
+
+**Pliki w Hydrografie (dokumentacja):**
+```
+Hydrograf/docs/HYDROLOG_INTEGRATION.md    # Plan implementacji dla CP3
+```
+
+**Architektura integracji:**
+```
+┌─────────────────────────────────┐
+│          HYDROGRAF              │
+│  (analizy przestrzenne GIS)     │
+│                                 │
+│  - Wyznaczanie zlewni z NMT     │
+│  - Obliczanie parametrów        │
+│    morfometrycznych             │
+│  - Obliczanie CN z pokrycia     │
+└───────────┬─────────────────────┘
+            │ JSON (WatershedParameters schema)
+            ▼
+┌─────────────────────────────────┐
+│          HYDROLOG               │
+│  (obliczenia hydrologiczne)     │
+│                                 │
+│  - WatershedParameters.from_dict()
+│  - Czas koncentracji            │
+│  - Hydrogramy jednostkowe       │
+│  - Transformacja opad→odpływ    │
+└─────────────────────────────────┘
+```
+
+**Przykład użycia:**
+```python
+from hydrolog.morphometry import WatershedParameters
+
+# Z API Hydrografa
+response = {"area_km2": 45.3, "perimeter_km": 32.1, "length_km": 12.5,
+            "elevation_min_m": 150.0, "elevation_max_m": 520.0, "cn": 72}
+
+# Import do Hydrologa
+params = WatershedParameters.from_dict(response)
+tc = params.calculate_tc(method="kirpich")
+
+# Użycie z HydrographGenerator
+from hydrolog.runoff import HydrographGenerator
+gen = HydrographGenerator(area_km2=params.area_km2, cn=params.cn, tc_min=tc)
+```
+
+---
+
+### Sesja 15 (2026-01-19) - UKOŃCZONA
+
+**Cel:** Poprawki wizualizacji + uporządkowanie kodu (usunięcie zbędnych metod)
+
+**Co zostało zrobione:**
+- [x] Poprawiono `plot_hietogram()`:
+  - Oś Y zawsze w mm/h (natężenie)
+  - Nowy parametr `distribution` do wyświetlania nazwy rozkładu w podtytule
+  - Tytuł: "Hietogram opadu" + opcjonalnie "Rozkład X (parametry)"
+- [x] Poprawiono `plot_hietogram_comparison()`:
+  - Oś Y w mm/h (konwersja z mm/krok)
+  - Usunięto zduplikowany stats_box (legenda tylko w jednym miejscu)
+- [x] Poprawiono `plot_hydrograph()`:
+  - Usunięto etykietę tekstową przy kulminacji (pozostał tylko marker)
+  - Uproszczony tytuł "Hydrogram odpływu"
+- [x] Poprawiono `plot_cn_curve()`:
+  - Usunięto wartości CN z legendy (to samo CN, różne AMC)
+  - Legendy: "AMC-I (suche)", "AMC-II (normalne)", "AMC-III (mokre)"
+- [x] Usunięto zbędne wizualizacje z testowego skryptu:
+  - Removed: generator_dashboard, water_balance_bars, water_balance_pie, hypsometric_curve, bifurcation_ratios
+  - Pozostało 10 kluczowych wizualizacji
+- [x] Wszystkie 53 testy wizualizacji przechodzą
+- [x] Uprządkowanie kodu - usunięcie metod fabrycznych wymagających danych pomiarowych:
+  - Usunięto `SnyderUH.from_lag_time()` i `from_tc()` (estymowały L, Lc)
+  - Usunięto `NashIUH.from_moments()` (wymagał wariancji z hydrogramu obserwowanego)
+  - Usunięto `ClarkIUH.from_recession()` (wymagał stałej recesji z hydrogramu obserwowanego)
+  - Usunięto 15 testów dla usuniętych metod
+  - Zaktualizowano README.md i CHANGELOG.md
+- [x] Wszystkie 523 testy przechodzą
+
+**Pliki zmodyfikowane:**
+- `hydrolog/visualization/hietogram.py` - Y-axis mm/h, distribution param
+- `hydrolog/visualization/hydrograph.py` - removed peak annotation text
+- `hydrolog/visualization/water_balance.py` - removed CN from AMC labels
+- `hydrolog/visualization/styles.py` - changed intensity_mm label
+- `tmp/generate_visualizations.py` - reduced to 10 visualizations
+- `hydrolog/runoff/snyder_uh.py` - usunięto `from_lag_time()`, `from_tc()`
+- `hydrolog/runoff/nash_iuh.py` - usunięto `from_moments()`
+- `hydrolog/runoff/clark_iuh.py` - usunięto `from_recession()`
+- `tests/unit/test_snyder_uh.py` - usunięto `TestSnyderUHFactoryMethods`
+- `tests/unit/test_nash_iuh.py` - usunięto `TestNashIUHFromMoments`
+- `tests/unit/test_clark_iuh.py` - usunięto testy `from_recession`
+- `README.md` - usunięto przykłady usuniętych metod
+- `docs/CHANGELOG.md` - dodano sekcję "Removed" w [Unreleased]
+
+---
+
+### Sesja 14 (2026-01-19) - UKOŃCZONA
+
+**Cel:** Moduł wizualizacji v0.5.0
+
+**Co zostało zrobione:**
+- [x] Zaimplementowano kompletny moduł `hydrolog.visualization`:
+  - `styles.py` - kolory, etykiety PL, style matplotlib/seaborn
+  - `hietogram.py` - `plot_hietogram()`, `plot_hietogram_comparison()`
+  - `hydrograph.py` - `plot_hydrograph()`, `plot_unit_hydrograph()`
+  - `combined.py` - `plot_rainfall_runoff()`, `plot_generator_result()`
+  - `unit_hydrograph.py` - `plot_uh_comparison()` z tabelą
+  - `water_balance.py` - `plot_water_balance()`, `plot_cn_curve()`
+  - `morphometry.py` - `plot_hypsometric_curve()`, `plot_elevation_histogram()`
+  - `network.py` - `plot_stream_order_stats()`, `plot_bifurcation_ratios()`
+  - `interpolation.py` - `plot_stations_map()`
+- [x] Zaktualizowano `pyproject.toml`:
+  - Wersja 0.5.0
+  - Dodano opcjonalną zależność `visualization` (matplotlib>=3.7, seaborn>=0.12)
+  - Zaktualizowano grupę `all`
+- [x] Napisano 53 testy jednostkowe dla wizualizacji
+- [x] Łącznie 538 testów jednostkowych (wszystkie przechodzą)
+- [x] Zaktualizowano dokumentację:
+  - README.md - sekcja wizualizacji z przykładami
+  - CHANGELOG.md - wpis v0.5.0
+  - PROGRESS.md - ten plik
+
+**Pliki utworzone:**
+```
+hydrolog/visualization/
+├── __init__.py
+├── styles.py
+├── hietogram.py
+├── hydrograph.py
+├── combined.py
+├── unit_hydrograph.py
+├── water_balance.py
+├── morphometry.py
+├── network.py
+└── interpolation.py
+tests/unit/test_visualization.py
+```
+
+**Funkcje wizualizacji:**
+| Moduł | Funkcja | Opis |
+|-------|---------|------|
+| hietogram | `plot_hietogram()` | Hietogram z sumą kumulatywną |
+| hietogram | `plot_hietogram_comparison()` | Porównanie P vs Pe |
+| hydrograph | `plot_hydrograph()` | Hydrogram Q(t) z Qmax |
+| hydrograph | `plot_unit_hydrograph()` | Hydrogram jednostkowy |
+| combined | `plot_rainfall_runoff()` | Wykres kombinowany (odwrócony hietogram + hydrogram) |
+| combined | `plot_generator_result()` | Dashboard z bilansem wodnym |
+| unit_hydrograph | `plot_uh_comparison()` | Porównanie modeli UH z tabelą |
+| water_balance | `plot_water_balance()` | Bilans SCS-CN (słupki/kołowy) |
+| water_balance | `plot_cn_curve()` | Krzywa P→Pe z wariantami AMC |
+| morphometry | `plot_hypsometric_curve()` | Krzywa hipsograficzna z HI |
+| morphometry | `plot_elevation_histogram()` | Histogram wysokości |
+| network | `plot_stream_order_stats()` | Statystyki sieci (3 panele) |
+| network | `plot_bifurcation_ratios()` | Współczynniki Rb |
+| interpolation | `plot_stations_map()` | Mapa stacji z wagami |
+
+---
+
+### Sesja 13 (2026-01-19) - UKOŃCZONA
+
+**Cel:** Korekta wzorów modelu Snydera + dokumentacja dla hydrologów
+
+**Co zostało zrobione:**
+- [x] Poprawiono wzór na czas do szczytu w modelu Snydera:
+  - Było: `tpR = tLR + Δt/5.5` ❌
+  - Jest: `tpR = tLR + Δt/2` ✅
+- [x] Zaktualizowano notację w `snyder_uh.py`:
+  - D → tD (standardowy czas trwania opadu)
+  - D' → Δt (rzeczywisty czas trwania opadu)
+- [x] Zaktualizowano wszystkie docstringi z poprawnymi wzorami
+- [x] Poprawiono test jednostkowy dla nowego wzoru
+- [x] Rozbudowano dokumentację Snydera w README.md:
+  - Teoria i wszystkie wzory (tL, tD, tp, qp, tLR, tpR, qpR, tb, W50, W75)
+  - Algorytm krok po kroku z wyprowadzeniami
+  - Tabela współczynników Ct (1.35-1.65) i Cp (0.4-0.8)
+  - Przykład obliczeniowy z danymi numerycznymi
+  - Przykłady kodu z wszystkimi metodami
+- [x] Wszystkie 485 testów przechodzi
+
+**Commity sesji:**
+```
+198ad62 fix(snyder): correct time-to-peak formula and update notation
+e3a0787 docs(readme): add detailed Snyder UH documentation with formulas
+```
+
+**Wzory Snydera (poprawna notacja):**
+```
+Dla Δt = tD (standardowy):
+  tp = tL + tD/2
+  qp = 0.275 × Cp × A / tL
+
+Dla Δt ≠ tD (niestandardowy):
+  tLR = tL + 0.25 × (Δt - tD)
+  tpR = tLR + Δt/2
+  qpR = qp × (tL / tLR)
+  tb  = 0.556 × A / qpR
+```
+
+---
+
+### Sesja 12 (2026-01-19) - UKOŃCZONA
+
+**Cel:** Metoda Lutza do estymacji parametrów modelu Nasha
+
+**Co zostało zrobione:**
+- [x] Zaimplementowano metodę `NashIUH.from_lutz()`:
+  - Estymacja parametrów n i K z charakterystyk fizjograficznych zlewni
+  - Parametry wejściowe: L, Lc, spadek, współczynnik Manninga, % urbanizacji, % lasów
+  - Numeryczne rozwiązywanie równania f(N) dla parametru N (metoda Brenta)
+  - Wzór zweryfikowany z tabelą C.2 (KZGW 2017) - zgodność < 0.001
+- [x] Dodano 17 nowych testów jednostkowych dla metody Lutza
+- [x] Zaktualizowano dokumentację README.md:
+  - Teoria modelu Nasha (kaskada zbiorników, wzór IUH, właściwości)
+  - Metody estymacji parametrów (from_tc, from_moments, from_lutz)
+  - Algorytm metody Lutza z pełnymi wzorami
+  - Wpływ parametrów fizjograficznych na odpływ
+- [x] Zaktualizowano CHANGELOG.md (sekcja [Unreleased])
+- [x] Utworzono notebook `examples/05_model_nasha.ipynb`:
+  - Teoria modelu Nasha z wzorami LaTeX
+  - Przykłady użycia: IUH bezwymiarowy, UH wymiarowy
+  - Metody estymacji: from_tc, from_moments, from_lutz
+  - Tabele wpływu lesistości i urbanizacji na parametry
+  - Integracja z HydrographGenerator
+  - Porównanie modeli: SCS vs Nash
+  - Wizualizacja wyników (matplotlib)
+- [x] Łącznie 485 testów jednostkowych (wszystkie przechodzą)
+
+**Commity sesji:**
+```
+3136a11 feat(nash): add Lutz method for parameter estimation
+932fed1 docs: comprehensive Nash model and Lutz method documentation
+645bd39 docs(examples): add Nash model and Lutz method notebook
+```
+
+**Metoda Lutza - algorytm:**
+```
+1. P₁ = 3.989×n + 0.028                    (n = Manning)
+2. tp = P₁ × (L×Lc/Jg^1.5)^0.26 × e^(-0.016U) × e^(0.004W)   [h]
+3. up = 0.66 / tp^1.04                     [1/h]
+4. f(N) = tp × up  →  N (z tabeli C.2 lub wzoru)
+5. K = tp / (N-1)                          [h]
+```
+
+**Referencje:**
+- Lutz W. (1984). *Berechnung von Hochwasserabflüssen unter Anwendung von
+  Gebietskenngrößen*. Mitteilungen des Instituts für Hydrologie und Wasserwirtschaft,
+  H. 24, Universität Karlsruhe. 235 s.
+- KZGW (2017). *Aktualizacja metodyki obliczania przepływów i opadów maksymalnych*.
+  Załącznik 2, Tabela C.2.
+
+---
+
+### Sesja 11 (2026-01-19) - UKOŃCZONA
+
+**Cel:** Korekta formuł modelu Snydera + ujednolicenie API modeli UH
+
+**Co zostało zrobione:**
+- [x] Zaimplementowano rozkład DVWK Euler Type II (`EulerIIHietogram`):
+  - Maksimum intensywności w 1/3 czasu trwania (konfigurowalny `peak_position`)
+  - Metoda "alternating block" z syntetycznym rozkładem IDF
+  - 14 nowych testów jednostkowych
+- [x] Ujednolicono API modeli hydrogramów jednostkowych:
+  - Dodano opcjonalny `area_km2` do konstruktorów `NashIUH` i `ClarkIUH`
+  - Gdy `area_km2` jest podane, `generate()` zwraca wymiarowy UH [m³/s/mm]
+  - Dodano metodę `generate_iuh()` do jawnego generowania IUH
+  - Zachowano kompatybilność wsteczną (bez area_km2 → IUHResult)
+- [x] Rozszerzono `HydrographGenerator` o parametr `uh_model`:
+  - Wspiera modele: "scs" (domyślny), "nash", "clark", "snyder"
+  - Parametry specyficzne dla modeli przekazywane przez `uh_params`
+  - Fabryka modeli automatycznie tworzy odpowiednią instancję UH
+- [x] Dodano 40 nowych testów dla ujednoliconego API
+- [x] Zaktualizowano README.md:
+  - Nowa sekcja "HydrographGenerator z różnymi modelami UH"
+  - Zaktualizowane przykłady dla NashIUH i ClarkIUH z area_km2
+  - Dodano hietogram Euler II do listy funkcjonalności
+- [x] Łącznie 468 testów jednostkowych (wszystkie przechodzą)
+
+**Test na zlewni rzeczywistej (z poprzedniej części sesji):**
+```
+Parametry zlewni:
+  A = 2.1 km², L = 3.8 km, Lc = 1.9 km, S = 4.8%
+  CN = 74, Nash: n = 2.65, k = 0.8h
+
+Opad:
+  P = 109.5 mm, t = 24h, rozkład Beta(2,5)
+  Pe = 46.44 mm (C = 0.424)
+
+Wyniki Hydrolog (model Nasha):
+  Qmax = 2.93 m³/s w t = 9h
+  Objętość = 94,736 m³
+```
+
+**Pliki zmodyfikowane:**
+- `hydrolog/runoff/nash_iuh.py` - dodano `area_km2`, `generate_iuh()`
+- `hydrolog/runoff/clark_iuh.py` - dodano `area_km2`, `generate_iuh()`
+- `hydrolog/runoff/generator.py` - dodano `uh_model`, `uh_params`, fabryka modeli
+- `hydrolog/precipitation/hietogram.py` - dodano `EulerIIHietogram`
+- `hydrolog/precipitation/__init__.py` - eksport `EulerIIHietogram`
+- `tests/unit/test_nash_iuh.py` - 12 nowych testów
+- `tests/unit/test_clark_iuh.py` - 12 nowych testów
+- `tests/unit/test_runoff.py` - 16 nowych testów dla HydrographGenerator
+- `tests/unit/test_hietogram.py` - 14 nowych testów
+- `README.md` - dokumentacja nowego API
+
+**Następne kroki:**
+1. Rozwiązać rozbieżność z HEC-HMS (model Snydera)
+2. Stabilizacja API (v1.0.0)
+3. Dokumentacja użytkownika
+
+---
 
 ### Sesja 10 (2026-01-19) - UKOŃCZONA
 
@@ -93,11 +620,7 @@
 
 **Wydano:**
 - v0.4.0 (2026-01-19) - CLI + Clark IUH + Snyder UH + CN lookup
-
-**Następne kroki (v1.0.0):**
-1. Stabilizacja API
-2. Dokumentacja użytkownika
-3. Przykłady użycia
+- Merge develop → main (v0.4.0)
 
 ---
 
@@ -123,29 +646,55 @@
 ## Kontekst dla nowej sesji
 
 ### Stan projektu
-- **Faza:** Implementacja - v0.3.0+ ukończona
-- **Ostatni commit:** `fix(time): correct SCS Lag constant and docstring examples`
+- **Faza:** Implementacja - v0.5.1 wydana
+- **Ostatni commit:** `fix(scs): correct peak discharge constant from 2.08 to 0.208`
+- **Tag:** `v0.5.1` (ostatni release)
 - **Środowisko:** `.venv` z Python 3.12.12
 - **Repo GitHub:** https://github.com/Daldek/Hydrolog.git
+- **Testy:** 573 testów (558 jednostkowych + 15 integracyjnych)
 
 ### Zaimplementowane moduły
 - `hydrolog.time.ConcentrationTime` - 3 metody (Kirpich, SCS Lag, Giandotti) + ostrzeżenia zakresów
-- `hydrolog.precipitation` - 3 typy hietogramów (Block, Triangular, Beta) + interpolacja (Thiessen, IDW, Isohyet)
-- `hydrolog.runoff` - SCS-CN, SCSUnitHydrograph, NashIUH, ClarkIUH, SnyderUH, HydrographGenerator, CN Lookup (TR-55)
-- `hydrolog.morphometry` - WatershedGeometry, TerrainAnalysis, HypsometricCurve
+- `hydrolog.precipitation` - 4 typy hietogramów (Block, Triangular, Beta, EulerII) + interpolacja (Thiessen, IDW, Isohyet)
+- `hydrolog.runoff` - SCS-CN, SCSUnitHydrograph, NashIUH, ClarkIUH, SnyderUH, HydrographGenerator (z uh_model), CN Lookup (TR-55)
+- `hydrolog.morphometry` - WatershedGeometry, TerrainAnalysis, HypsometricCurve, **WatershedParameters** (NEW - integracja GIS)
 - `hydrolog.network` - StreamNetwork, klasyfikacja Strahlera/Shreve'a
+- `hydrolog.visualization` - 15 funkcji wizualizacji (hietogramy, hydrogramy, porównania UH, bilans wodny, morfometria, sieć rzeczna)
 - `hydrolog.cli` - interfejs CLI (tc, cn, scs, uh)
+
+### Ostatnio dodane (Sesja 19 - v0.5.1)
+- **NAPRAWIONO:** Stała SCS w `peak_discharge()`: `2.08` → `0.208`
+- Zaktualizowany docstring z poprawnym wyprowadzeniem matematycznym
+- Zsynchronizowane wersje w `__init__.py` i `pyproject.toml`
+
+### Ostatnio dodane (Sesja 16 - v0.5.0)
+- `WatershedParameters` - standaryzowany interfejs wymiany danych z GIS (Hydrograf, QGIS, ArcGIS)
+- `from_dict()` w WatershedGeometry i TerrainAnalysis
+- `docs/INTEGRATION.md` - dokumentacja integracji
 
 ### Pliki do przeczytania
 1. `CLAUDE.md` - instrukcje podstawowe
 2. `docs/PROGRESS.md` - ten plik (aktualny stan)
 3. `docs/SCOPE.md` - jeśli potrzebujesz zrozumieć zakres
+4. `docs/INTEGRATION.md` - integracja z systemami GIS
 
 ### Zależności zewnętrzne
 - **IMGWTools** - `https://github.com/Daldek/IMGWTools.git` - dane PMAXTP
 - **Kartograf** - `https://github.com/Daldek/Kartograf.git` - HSG, SoilGrids, dane przestrzenne (opcjonalna)
+- **Hydrograf** - `https://github.com/Daldek/Hydrograf.git` - aplikacja GIS (integracja przez WatershedParameters)
 - **NumPy** - obliczenia numeryczne
 - **SciPy** - funkcje specjalne (gamma) dla Nash IUH
+- **matplotlib + seaborn** - wizualizacja (opcjonalna)
+
+### Problemy cross-project do rozważenia
+1. **IMGWTools** - Python `>=3.11` (powinno być `>=3.12` dla spójności)
+2. **Kartograf** - brak eksportów `SoilGridsProvider`, `HSGCalculator` w `__init__.py`
+
+### Następne kroki (do rozważenia)
+1. **v0.6.0** - Generowanie raportów z obliczeniami
+2. **v1.0.0** - Stabilizacja API
+3. Rozwiązać rozbieżność z HEC-HMS (model Snydera)
+4. Naprawy w IMGWTools i Kartograf (kompatybilność cross-project)
 
 ---
 
@@ -340,6 +889,7 @@ Hydrolog/
 │   ├── time/
 │   ├── morphometry/
 │   ├── network/
+│   ├── visualization/       # NOWY w v0.5.0
 │   └── cli/
 └── tests/
     ├── conftest.py
@@ -359,4 +909,4 @@ Hydrolog/
 
 ---
 
-**Ostatnia aktualizacja:** 2026-01-19, Sesja 10
+**Ostatnia aktualizacja:** 2026-01-21, Sesja 19 (naprawa błędu SCS + wydanie v0.5.1)

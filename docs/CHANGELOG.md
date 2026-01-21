@@ -9,6 +9,131 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.5.1] - 2026-01-21
+
+### Fixed
+- **CRITICAL:** `SCSUnitHydrograph.peak_discharge()` - corrected constant from `2.08` to `0.208`
+  - Previous implementation caused ~10x overestimation of Qmax
+  - Correct formula: `qp = 0.208 * A / tp` [m³/s per mm]
+  - Updated docstring with proper mathematical derivation
+  - Reference: USDA TR-55 triangular unit hydrograph approximation
+
+### Changed
+- Synchronized version numbers: `__init__.py` and `pyproject.toml` now both show `0.5.1`
+- Updated test expectations in `test_runoff.py` for correct peak discharge values
+
+### Added
+
+#### `hydrolog.morphometry.WatershedParameters` - GIS Integration Interface
+New dataclass for standardized data exchange between GIS systems (Hydrograf, QGIS, ArcGIS) and Hydrolog.
+
+- `WatershedParameters` - complete watershed parameters container
+  - Required: area_km2, perimeter_km, length_km, elevation_min_m, elevation_max_m
+  - Optional: name, elevation_mean_m, mean_slope_m_per_m, channel_length_km, channel_slope_m_per_m, cn, source, crs
+  - `from_dict()` / `from_json()` - create from API response or JSON
+  - `to_dict()` / `to_json()` - export for serialization
+  - `to_geometry()` - convert to WatershedGeometry
+  - `to_terrain()` - convert to TerrainAnalysis
+  - `calculate_tc(method)` - calculate concentration time (kirpich, scs_lag, giandotti)
+  - Computed properties: `width_km`, `relief_m`
+
+#### Factory methods for morphometry classes
+- `WatershedGeometry.from_dict()` - create from dictionary
+- `TerrainAnalysis.from_dict()` - create from dictionary
+
+#### Documentation
+- `docs/INTEGRATION.md` - comprehensive integration guide for GIS systems
+  - JSON schema for data exchange
+  - Usage examples with Hydrograf
+  - Implementation details for third-party integrations
+
+### Removed (from v0.5.0-unreleased)
+- `SnyderUH.from_lag_time()` - Estimated L and Lc from lag time (impractical, these parameters should be measured from maps/GIS)
+- `SnyderUH.from_tc()` - Delegated to `from_lag_time()`, same issue
+- `NashIUH.from_moments()` - Required variance and lag time from observed hydrograph (not practical for ungauged catchments)
+- `ClarkIUH.from_recession()` - Required recession constant from observed hydrograph
+
+### Testing
+- 35 new tests for WatershedParameters and from_dict() methods
+- 15 new integration tests for Hydrograf API workflow (`tests/integration/test_hydrograf_integration.py`)
+  - Full workflow: JSON → WatershedParameters → HydrographGenerator
+  - Batch processing of multiple watersheds
+  - Data validation and error handling
+  - Round-trip serialization
+- Total: 573 tests (558 unit + 15 integration, all passing)
+
+---
+
+## [0.5.0] - 2026-01-19
+
+### Added
+
+#### `hydrolog.visualization` - Visualization Module
+New module for graphical presentation of hydrological results.
+Requires optional dependencies: `pip install hydrolog[visualization]`
+
+**Hietogram plots (`hietogram.py`):**
+- `plot_hietogram()` - precipitation hyetograph with intensity bars and optional cumulative line
+- `plot_hietogram_comparison()` - comparison of total vs effective precipitation
+
+**Hydrograph plots (`hydrograph.py`):**
+- `plot_hydrograph()` - runoff hydrograph Q(t) with peak annotation and volume
+- `plot_unit_hydrograph()` - unit hydrograph for any model (SCS, Nash, Clark, Snyder)
+
+**Combined plots (`combined.py`):**
+- `plot_rainfall_runoff()` - classic rainfall-runoff plot with inverted hietogram on top
+- `plot_generator_result()` - full dashboard with water balance table
+
+**Unit hydrograph comparison (`unit_hydrograph.py`):**
+- `plot_uh_comparison()` - multiple UH models on one plot with comparison table
+
+**Water balance (`water_balance.py`):**
+- `plot_water_balance()` - SCS-CN water balance visualization (bars or pie)
+- `plot_cn_curve()` - P → Pe relationship with AMC variants
+
+**Morphometry (`morphometry.py`):**
+- `plot_hypsometric_curve()` - hypsometric curve h/H vs a/A with HI integral
+- `plot_elevation_histogram()` - elevation distribution histogram
+
+**Network (`network.py`):**
+- `plot_stream_order_stats()` - three-panel stream network statistics
+- `plot_bifurcation_ratios()` - bifurcation ratios by stream order
+
+**Interpolation (`interpolation.py`):**
+- `plot_stations_map()` - precipitation station map with weights
+
+**Styles (`styles.py`):**
+- `setup_hydrolog_style()` - configure matplotlib/seaborn for consistent styling
+- `COLORS`, `LABELS_PL`, `PALETTE` - color scheme and Polish labels
+- `get_color()`, `get_label()` - helper functions
+- `format_time_axis()`, `add_peak_annotation()`, `add_stats_box()`, `add_watermark()`
+
+#### `hydrolog.runoff.nash_iuh` - Lutz Method
+- `NashIUH.from_lutz()` - parameter estimation from catchment characteristics
+  - Estimates Nash model parameters (n, K) from physiographic data
+  - Input parameters: L, Lc, slope, Manning's n, urban%, forest%
+  - Numerical solution of f(N) equation using Brent's method
+  - Verified against KZGW (2017) Table C.2 (accuracy < 0.001)
+  - Reference: Lutz W. (1984), Universität Karlsruhe
+
+### Changed
+- Enhanced README.md documentation:
+  - Nash model theory (reservoir cascade, IUH formula, properties)
+  - All parameter estimation methods (from_tc, from_moments, from_lutz)
+  - Lutz method algorithm with full equations
+  - Influence of physiographic parameters on runoff
+  - New visualization module section with examples
+
+### Dependencies
+- Added optional `visualization` dependency group: matplotlib>=3.7, seaborn>=0.12
+
+### Testing
+- 53 new tests for visualization module
+- 17 new tests for Lutz method
+- Total: 538 unit tests (all passing)
+
+---
+
 ## [0.4.0] - 2026-01-19
 
 ### Added
@@ -213,4 +338,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | **0.2.0** | 2026-01-18 | Morphometric parameters |
 | **0.3.0** | 2026-01-18 | Interpolation + river network |
 | **0.4.0** | 2026-01-19 | CLI + Clark IUH + Snyder UH + CN lookup |
+| **0.5.0** | 2026-01-19 | Visualization module (matplotlib/seaborn) |
+| 0.6.0 | TBD | Report generation with calculations |
 | 1.0.0 | TBD | Stable API |
