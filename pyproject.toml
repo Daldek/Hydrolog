@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hydrolog"
-version = "0.5.1"
+version = "0.5.2"
 description = "Python library for hydrological calculations"
 readme = "README.md"
 license = {text = "MIT"}
@@ -31,7 +31,6 @@ classifiers = [
 ]
 dependencies = [
     "numpy>=1.24",
-    "imgwtools @ git+https://github.com/Daldek/IMGWTools.git",
 ]
 
 [project.optional-dependencies]

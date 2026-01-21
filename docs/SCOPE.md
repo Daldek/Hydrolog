@@ -77,10 +77,10 @@ Hydrolog jest analogiczny do **Kartografa** (pobieranie danych przestrzennych) -
 - Thiessen (Voronoi polygons)
 - Kriging (opcjonalnie)
 
-**Scenariusze opadowe (v0.3.0):**
-- Integracja z IMGWTools (`fetch_pmaxtp()`)
-- Parsowanie danych PMAXTP
-- Kombinacje: czas trwania × prawdopodobieństwo
+**Scenariusze opadowe (przyszłość):**
+- ❌ Nie zaimplementowane
+- Dane PMAXTP pobiera aplikacja nadrzędna (np. Hydrograf via IMGWTools)
+- Hydrolog otrzymuje gotowe wartości opadów
 
 ---
 
@@ -257,10 +257,9 @@ hydrolog/
 **Wymagane:**
 - Python >= 3.12
 - NumPy >= 1.24
-- SciPy >= 1.10 (dla funkcji gamma w Nash IUH)
-- IMGWTools (dla modułu precipitation.scenarios)
 
 **Opcjonalne:**
+- SciPy >= 1.10 (dla funkcji gamma w Nash IUH)
 - Kartograf >= 0.3.0 (dla automatycznego wyznaczania CN z danych glebowych HSG)
 
 ### 3.3 API Design
@@ -331,13 +330,12 @@ print(f"Time to peak: {result.time_to_peak_min} min")
 | Biblioteka | Cel | Wymagana |
 |------------|-----|----------|
 | NumPy | Obliczenia numeryczne | Tak |
-| SciPy | Funkcje gamma (Nash IUH) | Tak |
-| IMGWTools | Dane PMAXTP | Tak (dla `precipitation.scenarios`) |
+| SciPy | Funkcje gamma (Nash IUH) | Nie (opcjonalna) |
 | Kartograf | HSG, dane glebowe, pokrycie terenu | Nie (opcjonalna dla `runoff.cn_lookup`) |
 
-**Hydrolog NIE duplikuje funkcjonalności:**
-- Kartografa (pobieranie danych przestrzennych, HSG, SoilGrids)
-- IMGWTools (pobieranie danych IMGW)
+**Hydrolog NIE zawiera funkcji pobierania danych:**
+- Dane opadowe PMAXTP → pobiera aplikacja nadrzędna (np. Hydrograf via IMGWTools)
+- Dane przestrzenne → Kartograf (opcjonalnie)
 
 ---
 
