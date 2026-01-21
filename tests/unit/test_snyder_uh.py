@@ -17,7 +17,7 @@ class TestSnyderUHInit:
         assert uh.area_km2 == 100.0
         assert uh.L_km == 15.0
         assert uh.Lc_km == 8.0
-        assert uh.ct == 2.0  # default
+        assert uh.ct == 1.5  # default (SI)
         assert uh.cp == 0.6  # default
 
     def test_init_custom_coefficients(self):
@@ -69,10 +69,10 @@ class TestSnyderUHProperties:
 
     def test_lag_time_calculation(self):
         """Test lag time calculation."""
-        uh = SnyderUH(area_km2=100.0, L_km=15.0, Lc_km=8.0, ct=2.0)
+        uh = SnyderUH(area_km2=100.0, L_km=15.0, Lc_km=8.0, ct=1.5)
 
-        # tL = Ct * (L * Lc)^0.3 = 2.0 * (15 * 8)^0.3 = 2.0 * 120^0.3
-        expected_hours = 2.0 * (120.0**0.3)
+        # tL = Ct * (L * Lc)^0.3 = 1.5 * (15 * 8)^0.3 = 1.5 * 120^0.3
+        expected_hours = 1.5 * (120.0**0.3)
         assert abs(uh.lag_time_hours - expected_hours) < 0.01
 
     def test_lag_time_min_conversion(self):
@@ -103,9 +103,9 @@ class TestSnyderUHTimings:
         """Test time to peak with standard duration."""
         uh = SnyderUH(area_km2=100.0, L_km=15.0, Lc_km=8.0)
 
-        # tp = D/2 + tL for standard duration
-        D = uh.standard_duration_hours
-        expected_hours = D / 2.0 + uh.lag_time_hours
+        # tp = tL + tD/2 for standard duration (where tLR = tL)
+        tD = uh.standard_duration_hours
+        expected_hours = uh.lag_time_hours + tD / 2.0
         actual_hours = uh.time_to_peak_hours()
 
         assert abs(actual_hours - expected_hours) < 0.01
@@ -121,11 +121,12 @@ class TestSnyderUHTimings:
         assert tp_60 > tp_30
 
     def test_time_base_calculation(self):
-        """Test time base calculation."""
+        """Test time base calculation using water balance formula."""
         uh = SnyderUH(area_km2=100.0, L_km=15.0, Lc_km=8.0)
 
-        # tb = 72 + 3 * tL [hours]
-        expected_hours = 72.0 + 3.0 * uh.lag_time_hours
+        # tb = 0.556 * A / qP [hours] (water balance for triangular UH)
+        qp = uh.peak_discharge()
+        expected_hours = 0.556 * uh.area_km2 / qp
         assert abs(uh.time_base_hours() - expected_hours) < 0.01
 
     def test_time_base_min_conversion(self):
@@ -133,6 +134,16 @@ class TestSnyderUHTimings:
         uh = SnyderUH(area_km2=100.0, L_km=15.0, Lc_km=8.0)
 
         assert abs(uh.time_base_min() - uh.time_base_hours() * 60.0) < 0.01
+
+    def test_time_base_adjusts_with_duration(self):
+        """Test that time base adjusts for non-standard duration."""
+        uh = SnyderUH(area_km2=100.0, L_km=15.0, Lc_km=8.0)
+
+        tb_30 = uh.time_base_min(duration_min=30.0)
+        tb_120 = uh.time_base_min(duration_min=120.0)
+
+        # Longer duration -> lower qPR -> longer time base
+        assert tb_120 > tb_30
 
 
 class TestSnyderUHPeakDischarge:
@@ -142,11 +153,11 @@ class TestSnyderUHPeakDischarge:
         """Test peak discharge with standard duration."""
         uh = SnyderUH(area_km2=100.0, L_km=15.0, Lc_km=8.0, cp=0.6)
 
-        # qp = 2.75 * Cp * A / tL
-        expected = 2.75 * 0.6 * 100.0 / uh.lag_time_hours
+        # qp = 0.275 * Cp * A / tL (SI units)
+        expected = 0.275 * 0.6 * 100.0 / uh.lag_time_hours
         actual = uh.peak_discharge()
 
-        assert abs(actual - expected) < 0.1
+        assert abs(actual - expected) < 0.01
 
     def test_peak_discharge_increases_with_area(self):
         """Test that peak discharge increases with area."""
@@ -218,7 +229,7 @@ class TestSnyderUHGenerate:
         result = uh.generate(timestep_min=30.0)
 
         assert result.area_km2 == 100.0
-        assert result.ct == 2.0
+        assert result.ct == 1.5
         assert result.cp == 0.6
         assert len(result.times_min) == len(result.ordinates_m3s)
 
@@ -271,6 +282,30 @@ class TestSnyderUHGenerate:
         result = uh.generate(timestep_min=30.0, duration_min=60.0)
 
         assert result.standard_duration_min == uh.standard_duration_min
+        assert result.duration_min == 60.0
+
+    def test_generate_duration_adjustment(self):
+        """Test that lag time is correctly adjusted for non-standard duration."""
+        uh = SnyderUH(area_km2=100.0, L_km=15.0, Lc_km=8.0)
+
+        # Generate with standard duration
+        result_std = uh.generate(timestep_min=30.0)
+        assert abs(result_std.duration_min - uh.standard_duration_min) < 0.01
+        assert abs(result_std.adjusted_lag_time_min - uh.lag_time_min) < 0.5
+
+        # Generate with custom duration (longer than standard)
+        D_prime = 120.0
+        result_custom = uh.generate(timestep_min=30.0, duration_min=D_prime)
+
+        # Verify adjustment formula: tLR = tL + 0.25 × (Δt - tD)
+        D_std = uh.standard_duration_min
+        expected_adj_lag = uh.lag_time_min + 0.25 * (D_prime - D_std)
+
+        assert result_custom.duration_min == D_prime
+        assert abs(result_custom.adjusted_lag_time_min - expected_adj_lag) < 0.5
+
+        # Longer duration should increase adjusted lag time
+        assert result_custom.adjusted_lag_time_min > result_std.adjusted_lag_time_min
 
     def test_generate_peak_timing_reasonable(self):
         """Test peak occurs at reasonable time."""
@@ -283,60 +318,6 @@ class TestSnyderUHGenerate:
 
         # Allow some discretization error
         assert abs(actual_peak_time - result.time_to_peak_min) < 2 * 30.0
-
-
-class TestSnyderUHFactoryMethods:
-    """Tests for factory methods."""
-
-    def test_from_lag_time_valid(self):
-        """Test from_lag_time with valid parameters."""
-        uh = SnyderUH.from_lag_time(area_km2=100.0, lag_time_min=180.0)
-
-        assert uh.area_km2 == 100.0
-        # Lag time should match input
-        assert abs(uh.lag_time_min - 180.0) < 1.0
-
-    def test_from_lag_time_invalid_area_raises(self):
-        """Test from_lag_time with invalid area."""
-        with pytest.raises(InvalidParameterError) as exc_info:
-            SnyderUH.from_lag_time(area_km2=0.0, lag_time_min=180.0)
-        assert "area_km2 must be positive" in str(exc_info.value)
-
-    def test_from_lag_time_invalid_lag_raises(self):
-        """Test from_lag_time with invalid lag time."""
-        with pytest.raises(InvalidParameterError) as exc_info:
-            SnyderUH.from_lag_time(area_km2=100.0, lag_time_min=0.0)
-        assert "lag_time_min must be positive" in str(exc_info.value)
-
-    def test_from_lag_time_custom_coefficients(self):
-        """Test from_lag_time with custom coefficients."""
-        uh = SnyderUH.from_lag_time(
-            area_km2=100.0, lag_time_min=180.0, ct=1.8, cp=0.7
-        )
-
-        assert uh.ct == 1.8
-        assert uh.cp == 0.7
-
-    def test_from_tc_valid(self):
-        """Test from_tc with valid parameters."""
-        uh = SnyderUH.from_tc(area_km2=100.0, tc_min=300.0)
-
-        assert uh.area_km2 == 100.0
-        # Lag time should be 0.6 * tc
-        assert abs(uh.lag_time_min - 0.6 * 300.0) < 1.0
-
-    def test_from_tc_invalid_tc_raises(self):
-        """Test from_tc with invalid tc."""
-        with pytest.raises(InvalidParameterError) as exc_info:
-            SnyderUH.from_tc(area_km2=100.0, tc_min=0.0)
-        assert "tc_min must be positive" in str(exc_info.value)
-
-    def test_from_tc_custom_coefficients(self):
-        """Test from_tc with custom coefficients."""
-        uh = SnyderUH.from_tc(area_km2=100.0, tc_min=300.0, ct=2.2, cp=0.5)
-
-        assert uh.ct == 2.2
-        assert uh.cp == 0.5
 
 
 class TestSnyderUHBehavior:

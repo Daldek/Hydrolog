@@ -12,6 +12,9 @@ Używaj środowiska wirtualnego z `.venv`:
 1. `docs/PROGRESS.md` - aktualny stan projektu i zadania
 2. `docs/SCOPE.md` - zakres projektu (co IN/OUT)
 3. `docs/DEVELOPMENT_STANDARDS.md` - standardy kodowania
+4. `docs/IMPLEMENTATION_PROMPT.md`
+5. `docs/PRD.md` - Product Requirements Document
+6. `docs/CHANGELOG.md`
 
 ## Workflow sesji
 
@@ -24,7 +27,9 @@ git log --oneline -5
 ```
 
 ### W trakcie sesji
+- W razie wątpliwości zadawaj pytania
 - Commituj często (małe zmiany)
+- Aktualizuj CHANGELOG.md, zeby byc na biezaco ze zmianami
 - Aktualizuj PROGRESS.md po każdym milestone
 - Używaj Conventional Commits: `feat:`, `fix:`, `docs:`, `test:`
 
@@ -40,7 +45,6 @@ git log --oneline -5
 ### Gałęzie
 - **main** - stabilna wersja (tylko merge z develop)
 - **develop** - aktywny rozwój (ZAWSZE pracuj na tej gałęzi)
-- **feature/*** - opcjonalnie dla większych funkcjonalności
 
 ### Tagowanie (OBOWIĄZKOWE)
 Claude Code MUSI automatycznie tagować wydania wersji:
@@ -64,6 +68,7 @@ git push origin v0.1.0
 ## Zależności zewnętrzne
 
 - **IMGWTools** - dane opadowe PMAXTP (`fetch_pmaxtp()`)
+- **Kartograf** - zestaw narzędzi słuzący do pobierania numerycznego modelu terenu, pokrycia terenu i danych glebowych
 - **NumPy** - obliczenia numeryczne
 - Hydrolog NIE duplikuje funkcji pobierania danych
 

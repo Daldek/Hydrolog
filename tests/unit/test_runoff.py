@@ -167,8 +167,8 @@ class TestSCSUnitHydrograph:
         """Test peak discharge calculation."""
         uh = SCSUnitHydrograph(area_km2=45.0, tc_min=90.0)
         qp = uh.peak_discharge(timestep_min=10.0)
-        # qp = 2.08 * A / tp_h = 2.08 * 45 / (59/60) = 95.2 m³/s per mm
-        assert 90 < qp < 100
+        # qp = 0.208 * A / tp_h = 0.208 * 45 / (59/60) = 9.52 m³/s per mm
+        assert 9 < qp < 10
 
     def test_generate_hydrograph(self):
         """Test unit hydrograph generation."""
@@ -379,6 +379,165 @@ class TestHydrographGenerator:
         """Test CN property accessor."""
         generator = HydrographGenerator(area_km2=45.0, cn=72, tc_min=90.0)
         assert generator.cn == 72
+
+
+class TestHydrographGeneratorModels:
+    """Tests for HydrographGenerator with different UH models."""
+
+    def test_default_is_scs_model(self):
+        """Test that default model is SCS."""
+        generator = HydrographGenerator(area_km2=45.0, cn=72, tc_min=90.0)
+        assert generator.uh_model == "scs"
+
+    def test_scs_model_explicit(self):
+        """Test SCS model with explicit parameter."""
+        generator = HydrographGenerator(
+            area_km2=45.0, cn=72, tc_min=90.0, uh_model="scs"
+        )
+        result = generator.generate([5.0, 10.0, 15.0, 10.0, 5.0], timestep_min=10.0)
+
+        assert result.peak_discharge_m3s > 0
+        assert result.hydrograph is not None
+
+    def test_nash_model(self):
+        """Test Nash model."""
+        generator = HydrographGenerator(
+            area_km2=45.0,
+            cn=72,
+            uh_model="nash",
+            uh_params={"n": 3.0, "k": 0.5},  # k in hours by default
+        )
+        result = generator.generate([5.0, 10.0, 15.0, 10.0, 5.0], timestep_min=10.0)
+
+        assert result.peak_discharge_m3s > 0
+        assert result.hydrograph is not None
+
+    def test_nash_model_k_in_minutes(self):
+        """Test Nash model with k in minutes."""
+        generator = HydrographGenerator(
+            area_km2=45.0,
+            cn=72,
+            uh_model="nash",
+            uh_params={"n": 3.0, "k": 30.0, "k_unit": "min"},
+        )
+        result = generator.generate([5.0, 10.0, 15.0, 10.0, 5.0], timestep_min=10.0)
+
+        assert result.peak_discharge_m3s > 0
+
+    def test_clark_model(self):
+        """Test Clark model."""
+        generator = HydrographGenerator(
+            area_km2=45.0,
+            cn=72,
+            tc_min=60.0,
+            uh_model="clark",
+            uh_params={"r": 30.0},
+        )
+        result = generator.generate([5.0, 10.0, 15.0, 10.0, 5.0], timestep_min=10.0)
+
+        assert result.peak_discharge_m3s > 0
+        assert result.hydrograph is not None
+
+    def test_snyder_model(self):
+        """Test Snyder model."""
+        generator = HydrographGenerator(
+            area_km2=100.0,
+            cn=72,
+            uh_model="snyder",
+            uh_params={"L_km": 15.0, "Lc_km": 8.0},
+        )
+        result = generator.generate([5.0, 10.0, 15.0, 10.0, 5.0], timestep_min=30.0)
+
+        assert result.peak_discharge_m3s > 0
+        assert result.hydrograph is not None
+
+    def test_snyder_model_with_coefficients(self):
+        """Test Snyder model with custom coefficients."""
+        generator = HydrographGenerator(
+            area_km2=100.0,
+            cn=72,
+            uh_model="snyder",
+            uh_params={"L_km": 15.0, "Lc_km": 8.0, "ct": 1.8, "cp": 0.55},
+        )
+        result = generator.generate([5.0, 10.0, 15.0, 10.0, 5.0], timestep_min=30.0)
+
+        assert result.peak_discharge_m3s > 0
+
+    def test_invalid_uh_model_raises(self):
+        """Test that invalid model name raises error."""
+        with pytest.raises(InvalidParameterError, match="uh_model must be one of"):
+            HydrographGenerator(
+                area_km2=45.0, cn=72, tc_min=90.0, uh_model="invalid"
+            )
+
+    def test_nash_missing_n_raises(self):
+        """Test that Nash model without n parameter raises error."""
+        with pytest.raises(InvalidParameterError, match="'n' parameter"):
+            HydrographGenerator(
+                area_km2=45.0, cn=72, uh_model="nash", uh_params={"k": 0.5}
+            )
+
+    def test_nash_missing_k_raises(self):
+        """Test that Nash model without k parameter raises error."""
+        with pytest.raises(InvalidParameterError, match="'k' parameter"):
+            HydrographGenerator(
+                area_km2=45.0, cn=72, uh_model="nash", uh_params={"n": 3.0}
+            )
+
+    def test_clark_missing_r_raises(self):
+        """Test that Clark model without r parameter raises error."""
+        with pytest.raises(InvalidParameterError, match="'r' parameter"):
+            HydrographGenerator(
+                area_km2=45.0, cn=72, tc_min=60.0, uh_model="clark", uh_params={}
+            )
+
+    def test_clark_without_tc_raises(self):
+        """Test that Clark model without tc_min raises error."""
+        with pytest.raises(InvalidParameterError, match="tc_min is required"):
+            HydrographGenerator(
+                area_km2=45.0, cn=72, uh_model="clark", uh_params={"r": 30.0}
+            )
+
+    def test_snyder_missing_L_raises(self):
+        """Test that Snyder model without L_km raises error."""
+        with pytest.raises(InvalidParameterError, match="'L_km' parameter"):
+            HydrographGenerator(
+                area_km2=100.0,
+                cn=72,
+                uh_model="snyder",
+                uh_params={"Lc_km": 8.0},
+            )
+
+    def test_snyder_missing_Lc_raises(self):
+        """Test that Snyder model without Lc_km raises error."""
+        with pytest.raises(InvalidParameterError, match="'Lc_km' parameter"):
+            HydrographGenerator(
+                area_km2=100.0,
+                cn=72,
+                uh_model="snyder",
+                uh_params={"L_km": 15.0},
+            )
+
+    def test_scs_without_tc_raises(self):
+        """Test that SCS model without tc_min raises error."""
+        with pytest.raises(InvalidParameterError, match="tc_min is required"):
+            HydrographGenerator(area_km2=45.0, cn=72, uh_model="scs")
+
+    def test_model_name_case_insensitive(self):
+        """Test that model name is case insensitive."""
+        generator_lower = HydrographGenerator(
+            area_km2=45.0, cn=72, tc_min=90.0, uh_model="scs"
+        )
+        generator_upper = HydrographGenerator(
+            area_km2=45.0, cn=72, tc_min=90.0, uh_model="SCS"
+        )
+        generator_mixed = HydrographGenerator(
+            area_km2=45.0, cn=72, tc_min=90.0, uh_model="Scs"
+        )
+
+        assert generator_lower.uh_model == "scs"
+        assert generator_upper.uh_model == "scs"
+        assert generator_mixed.uh_model == "scs"
 
 
 class TestRunoffImport:

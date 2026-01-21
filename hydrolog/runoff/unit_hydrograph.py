@@ -106,7 +106,7 @@ class SCSUnitHydrograph:
     Key relationships:
     - Lag time: tlag = 0.6 * tc
     - Time to peak: tp = D/2 + tlag (D = rainfall duration/timestep)
-    - Peak discharge: qp = 2.08 * A / tp (A in km², tp in hours)
+    - Peak discharge: qp = 0.208 * A / tp (A in km², tp in hours)
     - Time base: tb ≈ 2.67 * tp (triangular approximation)
 
     The unit hydrograph represents the runoff response to 1 mm
@@ -200,18 +200,22 @@ class SCSUnitHydrograph:
 
         Notes
         -----
-        Formula (metric): qp = 2.08 * A / tp
+        Formula (metric): qp = 0.208 * A / tp
         - A: area [km²]
         - tp: time to peak [hours]
         - qp: peak discharge [m³/s per mm]
 
-        The constant 2.08 is derived from the triangular
-        approximation: qp = 0.208 * A * 1000 / (tp * 3600)
-        simplified to qp = 2.08 * A / tp (tp in hours).
+        The constant 0.208 comes from the triangular unit hydrograph
+        approximation where the volume under the hydrograph equals 1 mm
+        of runoff over the watershed:
+        V = 1 mm * A km² = 0.001 m * A * 10⁶ m² = A * 1000 m³
+        For a triangle: V = 0.5 * qp * tb, with tb ≈ 2.67 * tp
+        Solving: qp = 2V / (2.67 * tp) = 2 * A * 1000 / (2.67 * tp * 3600)
+                 qp ≈ 0.208 * A / tp [m³/s per mm]
         """
         tp_min = self.time_to_peak(timestep_min)
         tp_hours = tp_min / 60.0
-        qp: float = 2.08 * self.area_km2 / tp_hours
+        qp: float = 0.208 * self.area_km2 / tp_hours
         return qp
 
     def time_base(self, timestep_min: float) -> float:

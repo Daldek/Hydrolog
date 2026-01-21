@@ -1,10 +1,11 @@
 """Nash Instantaneous Unit Hydrograph (IUH) generation."""
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 from numpy.typing import NDArray
+from scipy.optimize import brentq
 from scipy.special import gamma
 
 from hydrolog.exceptions import InvalidParameterError
@@ -138,7 +139,9 @@ class NashIUH:
     Lag time: 90.0 min
     """
 
-    def __init__(self, n: float, k_min: float) -> None:
+    def __init__(
+        self, n: float, k_min: float, area_km2: Optional[float] = None
+    ) -> None:
         """
         Initialize Nash IUH generator.
 
@@ -148,6 +151,9 @@ class NashIUH:
             Number of reservoirs (shape parameter). Must be > 0.
         k_min : float
             Reservoir storage constant [min]. Must be > 0.
+        area_km2 : float, optional
+            Watershed area [km²]. If provided, generate() returns
+            dimensional unit hydrograph [m³/s per mm].
 
         Raises
         ------
@@ -158,9 +164,12 @@ class NashIUH:
             raise InvalidParameterError(f"n must be positive, got {n}")
         if k_min <= 0:
             raise InvalidParameterError(f"k_min must be positive, got {k_min}")
+        if area_km2 is not None and area_km2 <= 0:
+            raise InvalidParameterError(f"area_km2 must be positive, got {area_km2}")
 
         self.n = n
         self.k_min = k_min
+        self.area_km2 = area_km2
 
     @property
     def lag_time_min(self) -> float:
@@ -233,9 +242,68 @@ class NashIUH:
         self,
         timestep_min: float = 5.0,
         duration_min: Optional[float] = None,
+    ) -> Union[IUHResult, NashUHResult]:
+        """
+        Generate Nash Unit Hydrograph.
+
+        If area_km2 was provided in constructor, returns dimensional
+        unit hydrograph [m³/s per mm]. Otherwise returns IUH [1/min].
+
+        Parameters
+        ----------
+        timestep_min : float, optional
+            Time step for discretization [min], by default 5.0.
+        duration_min : float, optional
+            Total duration [min]. If not specified, uses
+            5 × lag_time or until ordinate < 0.001 × peak.
+
+        Returns
+        -------
+        IUHResult or NashUHResult
+            IUHResult if area_km2 not provided (ordinates in 1/min).
+            NashUHResult if area_km2 provided (ordinates in m³/s per mm).
+
+        Raises
+        ------
+        InvalidParameterError
+            If timestep_min is not positive.
+
+        Examples
+        --------
+        >>> # Without area - returns IUH
+        >>> iuh = NashIUH(n=3.0, k_min=30.0)
+        >>> result = iuh.generate(timestep_min=5.0)
+        >>> print(f"Peak at {result.time_to_peak_min:.1f} min")
+        Peak at 60.0 min
+
+        >>> # With area - returns dimensional UH
+        >>> nash = NashIUH(n=3.0, k_min=30.0, area_km2=45.0)
+        >>> result = nash.generate(timestep_min=5.0)
+        >>> print(f"Peak: {result.peak_discharge_m3s:.2f} m³/s per mm")
+        """
+        if self.area_km2 is not None:
+            # Return dimensional unit hydrograph
+            return self.to_unit_hydrograph(
+                area_km2=self.area_km2,
+                duration_min=timestep_min,  # D = timestep for UH
+                timestep_min=timestep_min,
+                total_duration_min=duration_min,
+            )
+        else:
+            # Return IUH
+            return self.generate_iuh(
+                timestep_min=timestep_min, duration_min=duration_min
+            )
+
+    def generate_iuh(
+        self,
+        timestep_min: float = 5.0,
+        duration_min: Optional[float] = None,
     ) -> IUHResult:
         """
         Generate Nash Instantaneous Unit Hydrograph.
+
+        Always returns IUH regardless of area_km2 setting.
 
         Parameters
         ----------
@@ -248,7 +316,7 @@ class NashIUH:
         Returns
         -------
         IUHResult
-            Generated IUH with times and ordinates.
+            Generated IUH with times and ordinates [1/min].
 
         Raises
         ------
@@ -258,7 +326,7 @@ class NashIUH:
         Examples
         --------
         >>> iuh = NashIUH(n=3.0, k_min=30.0)
-        >>> result = iuh.generate(timestep_min=5.0)
+        >>> result = iuh.generate_iuh(timestep_min=5.0)
         >>> print(f"Peak at {result.time_to_peak_min:.1f} min")
         Peak at 60.0 min
         """
@@ -504,56 +572,190 @@ class NashIUH:
         return cls(n=n, k_min=k_min)
 
     @classmethod
-    def from_moments(
+    def from_lutz(
         cls,
-        lag_time_min: float,
-        variance_min2: float,
+        L_km: float,
+        Lc_km: float,
+        slope: float,
+        manning_n: float,
+        urban_pct: float = 0.0,
+        forest_pct: float = 0.0,
+        area_km2: Optional[float] = None,
     ) -> "NashIUH":
         """
-        Create NashIUH from statistical moments.
+        Create NashIUH using Lutz method for ungauged catchments.
 
-        Estimates Nash parameters from the first two moments
-        of an observed hydrograph.
+        The Lutz method estimates Nash model parameters from catchment
+        physiographic characteristics. Recommended for non-urbanized
+        catchments.
 
         Parameters
         ----------
-        lag_time_min : float
-            First moment (lag time) [min].
-        variance_min2 : float
-            Second central moment (variance) [min²].
+        L_km : float
+            Main stream length from outlet to watershed divide [km].
+        Lc_km : float
+            Length along main stream from outlet to the point
+            nearest to catchment centroid [km].
+        slope : float
+            Average slope of main stream [-] (e.g., 0.01 for 1%).
+        manning_n : float
+            Manning's roughness coefficient for main channel [-].
+            Typical values: 0.025-0.050 for natural streams.
+        urban_pct : float, optional
+            Percentage of urbanized area [%], by default 0.0.
+        forest_pct : float, optional
+            Percentage of forested area [%], by default 0.0.
+        area_km2 : float, optional
+            Watershed area [km²]. If provided, generate() returns
+            dimensional unit hydrograph [m³/s per mm].
 
         Returns
         -------
         NashIUH
             Configured Nash IUH generator.
 
+        Raises
+        ------
+        InvalidParameterError
+            If any parameter is invalid or if N cannot be determined.
+
         Notes
         -----
-        For the Nash model:
-        - First moment (mean): M1 = n × K
-        - Second moment (variance): M2 = n × K²
+        The Lutz method computes:
 
-        Solving for n and K:
-        - K = M2 / M1
-        - n = M1 / K = M1² / M2
+        1. Time to peak of unit hydrograph:
+
+        .. math::
+            t_p = P_1 \\cdot \\left(\\frac{L \\cdot L_c}{J_g^{1.5}}\\right)^{0.26}
+                  \\cdot e^{-0.016 U} \\cdot e^{0.004 W}
+
+        where :math:`P_1 = 3.989 n + 0.028` (n = Manning coefficient).
+
+        2. Peak IUH ordinate:
+
+        .. math::
+            u_p = \\frac{0.66}{t_p^{1.04}}
+
+        3. Shape function:
+
+        .. math::
+            f(N) = t_p \\cdot u_p
+
+        4. Parameter N is found by solving:
+
+        .. math::
+            f(N) = \\frac{(N-1)^N \\cdot e^{-(N-1)}}{\\Gamma(N)}
+
+        5. Storage coefficient:
+
+        .. math::
+            K = \\frac{t_p}{N-1}
+
+        References
+        ----------
+        Lutz, W. (1984). Berechnung von Hochwasserabflüssen unter
+        Anwendung von Gebietskenngrößen. Mitteilungen des Instituts
+        für Hydrologie und Wasserwirtschaft, H. 24, Universität Karlsruhe.
+
+        KZGW (2017). Aktualizacja metodyki obliczania przepływów
+        i opadów maksymalnych. Załącznik 2, Tabela C.2.
 
         Examples
         --------
-        >>> iuh = NashIUH.from_moments(lag_time_min=90.0, variance_min2=2700.0)
-        >>> print(f"n = {iuh.n:.2f}, K = {iuh.k_min:.1f} min")
-        n = 3.00, K = 30.0 min
+        >>> nash = NashIUH.from_lutz(
+        ...     L_km=15.0,
+        ...     Lc_km=8.0,
+        ...     slope=0.02,
+        ...     manning_n=0.035,
+        ...     forest_pct=40.0
+        ... )
+        >>> print(f"n = {nash.n:.2f}, K = {nash.k_min:.1f} min")
         """
-        if lag_time_min <= 0:
+        # Validate inputs
+        if L_km <= 0:
+            raise InvalidParameterError(f"L_km must be positive, got {L_km}")
+        if Lc_km <= 0:
+            raise InvalidParameterError(f"Lc_km must be positive, got {Lc_km}")
+        if Lc_km > L_km:
             raise InvalidParameterError(
-                f"lag_time_min must be positive, got {lag_time_min}"
+                f"Lc_km ({Lc_km}) cannot exceed L_km ({L_km})"
             )
-        if variance_min2 <= 0:
+        if slope <= 0:
+            raise InvalidParameterError(f"slope must be positive, got {slope}")
+        if manning_n <= 0:
             raise InvalidParameterError(
-                f"variance_min2 must be positive, got {variance_min2}"
+                f"manning_n must be positive, got {manning_n}"
+            )
+        if urban_pct < 0 or urban_pct > 100:
+            raise InvalidParameterError(
+                f"urban_pct must be in [0, 100], got {urban_pct}"
+            )
+        if forest_pct < 0 or forest_pct > 100:
+            raise InvalidParameterError(
+                f"forest_pct must be in [0, 100], got {forest_pct}"
+            )
+        if area_km2 is not None and area_km2 <= 0:
+            raise InvalidParameterError(
+                f"area_km2 must be positive, got {area_km2}"
             )
 
-        # Solve for K and n
-        k_min = variance_min2 / lag_time_min
-        n = lag_time_min / k_min  # = lag_time² / variance
+        # Step 1: Calculate P1 parameter
+        P1 = 3.989 * manning_n + 0.028
 
-        return cls(n=n, k_min=k_min)
+        # Step 2: Calculate time to peak [hours]
+        # tp = P1 * (L * Lc / Jg^1.5)^0.26 * exp(-0.016*U) * exp(0.004*W)
+        geometric_factor = (L_km * Lc_km / (slope**1.5)) ** 0.26
+        urban_factor = np.exp(-0.016 * urban_pct)
+        forest_factor = np.exp(0.004 * forest_pct)
+        tp_hours = P1 * geometric_factor * urban_factor * forest_factor
+
+        # Step 3: Calculate peak IUH ordinate [1/hour]
+        up_per_hour = 0.66 / (tp_hours**1.04)
+
+        # Step 4: Calculate f(N) = tp * up
+        f_N_target = tp_hours * up_per_hour
+
+        # Step 5: Find N by solving f(N) = (N-1)^N * e^(-(N-1)) / Gamma(N)
+        def f_N_equation(N: float) -> float:
+            """Calculate f(N) for Nash model."""
+            if N <= 1:
+                return 0.0
+            n_minus_1 = N - 1
+            numerator = (n_minus_1**N) * np.exp(-n_minus_1)
+            denominator = gamma(N)
+            return numerator / denominator
+
+        def objective(N: float) -> float:
+            """Objective function: f(N) - target = 0."""
+            return f_N_equation(N) - f_N_target
+
+        # f(N) has maximum around N=2-3, then decreases
+        # Typical range for f(N): 0.35 - 0.40
+        # Search in range N = 1.1 to 20
+        try:
+            # Check if solution exists in range
+            f_low = objective(1.1)
+            f_high = objective(20.0)
+
+            if f_low * f_high > 0:
+                # No sign change - check if target is achievable
+                f_max = max(f_N_equation(N) for N in np.linspace(1.1, 20, 100))
+                if f_N_target > f_max:
+                    raise InvalidParameterError(
+                        f"f(N) = {f_N_target:.4f} is too high. "
+                        f"Maximum achievable f(N) ≈ {f_max:.4f}. "
+                        "Check input parameters."
+                    )
+
+            N = brentq(objective, 1.1, 20.0, xtol=1e-6)
+        except ValueError as e:
+            raise InvalidParameterError(
+                f"Could not find valid N for f(N) = {f_N_target:.4f}. "
+                f"Error: {e}"
+            )
+
+        # Step 6: Calculate K [hours], convert to minutes
+        K_hours = tp_hours / (N - 1)
+        k_min = K_hours * 60.0
+
+        return cls(n=N, k_min=k_min, area_km2=area_km2)
