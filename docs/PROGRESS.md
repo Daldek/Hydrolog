@@ -6,7 +6,7 @@
 |------|---------|
 | **Faza** | 1 - Implementacja |
 | **Sprint** | 0.5.x - Bugfix + Integracja GIS |
-| **Sesja** | 19 |
+| **Sesja** | 20 |
 | **Data** | 2026-01-21 |
 | **Następny milestone** | v0.6.0 - Generowanie raportów |
 | **Gałąź robocza** | develop |
@@ -43,12 +43,47 @@
 | v0.4.0 | CLI + Clark + Snyder + CN lookup | ✅ Wydana (2026-01-19) |
 | v0.5.0 | Wizualizacja (matplotlib/seaborn) | ✅ Wydana (2026-01-19) |
 | v0.5.1 | Bugfix SCS + GIS integration | ✅ Wydana (2026-01-21) |
+| v0.5.2 | Refaktor: usunięcie nieużywanego imgwtools | ✅ Wydana (2026-01-21) |
 | v0.6.0 | Generowanie raportów z obliczeniami | 📋 Planowany |
 | v1.0.0 | Stabilne API + CLI | 📋 Planowany |
 
 ---
 
 ## Bieżąca sesja
+
+### Sesja 20 (2026-01-21) - UKOŃCZONA
+
+**Cel:** Refaktoryzacja zależności - usunięcie nieużywanego IMGWTools
+
+**Kontekst:**
+Analiza wykazała, że IMGWTools jest zadeklarowane jako wymagana zależność, ale nigdzie nie jest importowane ani używane w kodzie. Było planowane dla `precipitation.scenarios`, ale nigdy nie zaimplementowane.
+
+**Co zostało zrobione:**
+- [x] Usunięto IMGWTools z `dependencies` w pyproject.toml
+- [x] Zaktualizowano wersję do v0.5.2
+- [x] Zaktualizowano CLAUDE.md - sekcja zależności
+- [x] Zaktualizowano SCOPE.md - sekcje o zależnościach i scenariuszach opadowych
+- [x] Wydano v0.5.2 (tag + push)
+
+**Pliki zmodyfikowane:**
+```
+pyproject.toml         # usunięto imgwtools z dependencies
+hydrolog/__init__.py   # __version__ = "0.5.2"
+CLAUDE.md              # zaktualizowano sekcję zależności
+docs/SCOPE.md          # zaktualizowano sekcje o zależnościach
+docs/PROGRESS.md       # ten plik
+```
+
+**Commit sesji:**
+```
+4c5de2c refactor: remove unused imgwtools dependency
+```
+
+**Tag:** `v0.5.2`
+
+**Uwaga:** IMGWTools jest teraz importowane bezpośrednio w Hydrograf, gdzie jest faktycznie używane (`fetch_pmaxtp()` w `preprocess_precipitation.py`).
+
+---
 
 ### Sesja 19 (2026-01-21) - UKOŃCZONA
 
