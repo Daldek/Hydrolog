@@ -9,6 +9,73 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.6.0] - 2026-01-21
+
+### Added
+
+#### `hydrolog.reports` - Report Generation Module
+New module for generating comprehensive hydrological calculation reports in Markdown format.
+
+**Main classes:**
+- `HydrologyReportGenerator` - main class for report generation
+  - `generate()` - create report from HydrographGeneratorResult
+  - Supports all UH models (SCS, Nash, Clark, Snyder)
+  - Outputs complete calculation procedure with formulas
+- `ReportConfig` - configuration dataclass
+  - `tc_method` - concentration time method (kirpich, scs_lag, giandotti)
+  - `uh_model` - unit hydrograph model (scs, nash, clark, snyder)
+  - `include_formulas` - include LaTeX formulas (default: True)
+  - `include_tables` - include data tables (default: True)
+  - `max_table_rows` - maximum rows before abbreviation (default: 50)
+
+**Formatters (`formatters.py`):**
+- `FormulaRenderer` - render LaTeX formulas with substituted values
+  - SCS-CN formulas: retention, initial abstraction, effective precipitation
+  - Time of concentration: Kirpich, SCS Lag, Giandotti
+  - Unit hydrograph: SCS, Nash IUH, Clark IUH, Snyder UH
+  - Convolution and water balance formulas
+- `TableGenerator` - generate Markdown tables
+  - Parameters tables with alignment
+  - Time series tables with automatic abbreviation
+  - Water balance summary tables
+  - Hydrograph results tables
+
+**Report sections (`sections/`):**
+- `generate_watershed_section()` - watershed parameters and shape indicators
+- `generate_tc_section()` - concentration time calculations
+- `generate_hietogram_section()` - precipitation temporal distribution
+- `generate_scs_cn_section()` - SCS-CN effective precipitation
+- `generate_uh_section()` - unit hydrograph (all models)
+- `generate_convolution_section()` - discrete convolution
+- `generate_water_balance_section()` - water balance summary
+
+**Templates (`templates.py`):**
+- Polish section headers and labels
+- Method descriptions (Kirpich, SCS, Nash, Clark, Snyder)
+- AMC condition descriptions
+- Literature references
+- Glossary of hydrological terms
+
+**Report structure:**
+1. Watershed parameters (geometry, terrain, shape indicators)
+2. Time of concentration (formula with substitutions)
+3. Hietogram (parameters, temporal distribution table)
+4. SCS-CN effective precipitation (S, Ia, Pe formulas with values)
+5. Unit hydrograph (model-specific formulas and ordinates)
+6. Convolution (formula, procedure description)
+7. Hydrograph results (Qmax, tp, V, time series)
+8. Water balance (summary table with percentages)
+
+### Testing
+- 37 new tests for reports module
+- Total: 610 tests (all passing)
+
+### Documentation
+- Updated CHANGELOG.md
+- Report examples in module docstrings
+
+---
+
 ## [0.5.1] - 2026-01-21
 
 ### Fixed
