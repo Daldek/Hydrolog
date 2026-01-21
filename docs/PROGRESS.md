@@ -6,9 +6,9 @@
 |------|---------|
 | **Faza** | 1 - Implementacja |
 | **Sprint** | 0.5.x - Bugfix + Integracja GIS |
-| **Sesja** | 18 |
+| **Sesja** | 19 |
 | **Data** | 2026-01-21 |
-| **Następny milestone** | v0.5.1 - Bugfix SCS peak discharge + sync wersji |
+| **Następny milestone** | v0.6.0 - Generowanie raportów |
 | **Gałąź robocza** | develop |
 
 ---
@@ -49,7 +49,36 @@
 
 ## Bieżąca sesja
 
-### Sesja 18 (2026-01-21) - W TRAKCIE
+### Sesja 19 (2026-01-21) - W TRAKCIE
+
+**Cel:** Naprawa krytycznego błędu SCS + wydanie v0.5.1
+
+**Co zostało zrobione:**
+- [x] Naprawiono stałą SCS: `2.08` → `0.208` w `unit_hydrograph.py:218`
+- [x] Zaktualizowano docstring z poprawnym wyprowadzeniem matematycznym
+- [x] Zsynchronizowano wersję: `__init__.py` i `pyproject.toml` → `0.5.1`
+- [x] Zaktualizowano test `test_peak_discharge` z poprawnymi wartościami oczekiwanymi
+- [x] Wszystkie 573 testy przechodzą
+- [x] Zaktualizowano CHANGELOG.md z opisem naprawy
+
+**Pliki zmodyfikowane:**
+```
+hydrolog/runoff/unit_hydrograph.py      # stała 2.08 → 0.208, nowy docstring
+hydrolog/__init__.py                    # __version__ = "0.5.1"
+pyproject.toml                          # version = "0.5.1"
+tests/unit/test_runoff.py               # poprawione asercje w test_peak_discharge
+docs/CHANGELOG.md                       # sekcja [0.5.1] z opisem naprawy
+docs/PROGRESS.md                        # ten plik
+```
+
+**Następne kroki:**
+1. Commit i push zmian
+2. Tag v0.5.1
+3. Rozważyć naprawy w innych projektach (IMGWTools, Kartograf)
+
+---
+
+### Sesja 18 (2026-01-21) - UKOŃCZONA
 
 **Cel:** Analiza cross-project (Hydrograf, Hydrolog, Kartograf, IMGWTools) + plan naprawy
 
@@ -60,40 +89,25 @@ Przeprowadzono kompleksową analizę 4 powiązanych repozytoriów pod kątem:
 - Kompatybilności wzajemnej
 - Możliwości niezależnego działania każdego projektu
 
-**Wykryte problemy do naprawy:**
+**Wykryte problemy:**
 
-#### 🔴 KRYTYCZNE (Hydrolog)
+#### 🔴 KRYTYCZNE (Hydrolog) - NAPRAWIONE w Sesji 19
 
 1. **Błąd stałej SCS** - `hydrolog/runoff/unit_hydrograph.py:214`
-   ```python
-   # BŁĘDNIE:
-   qp = 2.08 * self.area_km2 / tp_hours
-
-   # POPRAWNIE:
-   qp = 0.208 * self.area_km2 / tp_hours
-   ```
-   - Docstring twierdzi, że `0.208 * 1000 / 3600 = 2.08` - TO JEST BŁĄD MATEMATYCZNY
-   - Prawidłowo: `0.208 * 1000 / 3600 = 0.0578`
-   - **Skutek:** Qmax zawyżony ~10x
+   - Było: `qp = 2.08 * self.area_km2 / tp_hours`
+   - Jest: `qp = 0.208 * self.area_km2 / tp_hours`
+   - **Status:** ✅ NAPRAWIONY
 
 2. **Niespójność wersji**
-   - `pyproject.toml`: `version = "0.5.0"`
-   - `__init__.py`: `__version__ = "0.4.0"` ← DO NAPRAWY
+   - `pyproject.toml` i `__init__.py` zsynchronizowane do `0.5.1`
+   - **Status:** ✅ NAPRAWIONY
 
-#### 🟠 WAŻNE (inne projekty)
+#### 🟠 WAŻNE (inne projekty) - DO ROZWAŻENIA
 
 3. **IMGWTools** - Python `>=3.11` (powinno być `>=3.12` dla spójności)
 4. **Kartograf** - brak eksportów w `__init__.py`:
    - `SoilGridsProvider`
    - `HSGCalculator`
-
-**Stan gałęzi git:**
-| Projekt | Gałąź | Status |
-|---------|-------|--------|
-| Hydrograf | develop | ✅ |
-| Hydrolog | develop | ✅ |
-| Kartograf | develop | ✅ |
-| IMGWTools | master (=slave) | ✅ |
 
 **Mapa zależności:**
 ```
@@ -105,22 +119,8 @@ HYDROGRAF (główna aplikacja)
             └── Kartograf (opcjonalny)
 ```
 
-**Plan naprawy (do wykonania):**
-- [ ] Naprawić stałą SCS: `2.08` → `0.208`
-- [ ] Zaktualizować docstring z poprawną matematyką
-- [ ] Zsynchronizować `__version__` w `__init__.py`
-- [ ] Zaktualizować testy jednostkowe z poprawnymi wartościami
-- [ ] Wydać v0.5.1 z poprawkami
-
 **Dokumentacja cross-project:**
-- Utworzono `Hydrograf/docs/CROSS_PROJECT_ANALYSIS.md` z pełną analizą
-- Zaktualizowano PROGRESS.md we wszystkich projektach
-
-**Następne kroki:**
-1. Naprawić błąd SCS (KRYTYCZNY)
-2. Zsynchronizować wersję
-3. Uruchomić testy, upewnić się że przechodzą
-4. Wydać v0.5.1
+- `Hydrograf/docs/CROSS_PROJECT_ANALYSIS.md` - pełna analiza
 
 ---
 

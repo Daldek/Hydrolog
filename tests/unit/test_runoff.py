@@ -167,8 +167,8 @@ class TestSCSUnitHydrograph:
         """Test peak discharge calculation."""
         uh = SCSUnitHydrograph(area_km2=45.0, tc_min=90.0)
         qp = uh.peak_discharge(timestep_min=10.0)
-        # qp = 2.08 * A / tp_h = 2.08 * 45 / (59/60) = 95.2 m³/s per mm
-        assert 90 < qp < 100
+        # qp = 0.208 * A / tp_h = 0.208 * 45 / (59/60) = 9.52 m³/s per mm
+        assert 9 < qp < 10
 
     def test_generate_hydrograph(self):
         """Test unit hydrograph generation."""
