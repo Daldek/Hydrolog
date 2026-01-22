@@ -204,9 +204,12 @@ nash = NashIUH(n=3.0, k_min=30.0, area_km2=45.0)
 result_uh = nash.generate(timestep_min=5.0)  # NashUHResult
 print(f"Qmax UH: {result_uh.peak_discharge_m3s:.2f} m³/s na mm")
 
-# Metoda 3: Estymacja z czasu koncentracji
-tc = ConcentrationTime.kirpich(length_km=8.2, slope_m_per_m=0.023)
-iuh = NashIUH.from_tc(tc_min=tc, n=3.0, lag_ratio=0.6)
+# Metoda 3: Estymacja metodą Lutza (ZALECANA dla zlewni bez danych pomiarowych)
+nash_lutz = NashIUH.from_lutz(
+    L_km=8.2, Lc_km=4.5, slope=0.023, manning_n=0.035,
+    forest_pct=30.0, urban_pct=5.0, area_km2=45.0
+)
+print(f"Lutz: n={nash_lutz.n:.2f}, K={nash_lutz.k_min:.1f} min")
 
 # Jawne generowanie IUH (zawsze zwraca IUHResult)
 result = iuh.generate_iuh(timestep_min=5.0, duration_min=300.0)
