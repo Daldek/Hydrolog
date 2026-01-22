@@ -13,7 +13,12 @@ from hydrolog.runoff.cn_lookup import (
 )
 from hydrolog.runoff.convolution import HydrographResult, convolve_discrete
 from hydrolog.runoff.generator import HydrographGenerator, HydrographGeneratorResult
-from hydrolog.runoff.nash_iuh import IUHResult, NashIUH, NashUHResult
+from hydrolog.runoff.nash_iuh import (
+    IUHResult,
+    LutzCalculationResult,
+    NashIUH,
+    NashUHResult,
+)
 from hydrolog.runoff.scs_cn import AMC, SCSCN, EffectivePrecipitationResult
 from hydrolog.runoff.snyder_uh import SnyderUH, SnyderUHResult
 from hydrolog.runoff.unit_hydrograph import SCSUnitHydrograph, UnitHydrographResult
@@ -42,6 +47,7 @@ __all__ = [
     "NashIUH",
     "IUHResult",
     "NashUHResult",
+    "LutzCalculationResult",
     # Instantaneous Unit Hydrograph (Clark)
     "ClarkIUH",
     "ClarkIUHResult",

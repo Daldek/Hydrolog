@@ -227,24 +227,135 @@ def _generate_nash_section(
     k_min = model_params.get("k_min", 30.0)
     k_h = k_min / 60
 
-    lines.extend([
-        SUBSECTION_HEADERS["unit_hydrograph"]["params"],
-        "",
-        f"- Powierzchnia zlewni: A = {area_km2:.2f} km²",
-        f"- Liczba zbiorników: n = {n:.2f}",
-        f"- Stała zbiornika: K = {k_min:.1f} min = {k_h:.3f} h",
-        f"- Czas opóźnienia: tlag = n × K = {n * k_min:.1f} min",
-    ])
+    # Check if Lutz calculation results are available
+    lutz_params = model_params.get("lutz_params")
+
+    if lutz_params:
+        # Full Lutz method documentation
+        lines.append(
+            "Parametry modelu (n, K) wyznaczono **metodą Lutza (1984)** "
+            "na podstawie charakterystyk fizjograficznych zlewni."
+        )
+        lines.append("")
+        lines.append("### 5.2 Obliczenie parametrów metodą Lutza")
+        lines.append("")
+        lines.append("**Dane wejściowe:**")
+        lines.append(f"- L = {lutz_params.L_km:.2f} km (długość cieku)")
+        lines.append(f"- Lc = {lutz_params.Lc_km:.2f} km (odległość do środka ciężkości)")
+        lines.append(f"- Jg = {lutz_params.slope:.4f} (spadek cieku)")
+        lines.append(f"- n_M = {lutz_params.manning_n:.3f} (współczynnik Manninga)")
+        lines.append(f"- U = {lutz_params.urban_pct:.1f}% (powierzchnia uszczelniona)")
+        lines.append(f"- W = {lutz_params.forest_pct:.1f}% (lesistość)")
+        lines.append("")
+        lines.append("---")
+        lines.append("")
+        lines.append("**Krok 1: Współczynnik P₁**")
+        lines.append("")
+        lines.append(
+            f"$$P_1 = 3.989 \\cdot n_M + 0.028 = "
+            f"3.989 \\cdot {lutz_params.manning_n:.3f} + 0.028 = {lutz_params.P1:.4f}$$"
+        )
+        lines.append("")
+        lines.append("---")
+        lines.append("")
+        lines.append("**Krok 2: Czas do szczytu IUH (tp)**")
+        lines.append("")
+        lines.append(
+            "$$t_p = P_1 \\cdot \\left(\\frac{L \\cdot L_c}{J_g^{1.5}}\\right)^{0.26} "
+            "\\cdot e^{-0.016 \\cdot U} \\cdot e^{0.004 \\cdot W}$$"
+        )
+        lines.append("")
+        lines.append(
+            f"$$t_p = {lutz_params.P1:.4f} \\cdot "
+            f"\\left(\\frac{{{lutz_params.L_km:.2f} \\cdot {lutz_params.Lc_km:.2f}}}"
+            f"{{{lutz_params.slope:.4f}^{{1.5}}}}\\right)^{{0.26}} \\cdot "
+            f"e^{{-0.016 \\cdot {lutz_params.urban_pct:.1f}}} \\cdot "
+            f"e^{{0.004 \\cdot {lutz_params.forest_pct:.1f}}} = "
+            f"{lutz_params.tp_hours:.3f} \\text{{ h}} = {lutz_params.tp_min:.1f} \\text{{ min}}$$"
+        )
+        lines.append("")
+        lines.append("---")
+        lines.append("")
+        lines.append("**Krok 3: Rzędna szczytowa IUH (up)**")
+        lines.append("")
+        lines.append(
+            f"$$u_p = \\frac{{0.66}}{{t_p^{{1.04}}}} = "
+            f"\\frac{{0.66}}{{{lutz_params.tp_hours:.3f}^{{1.04}}}} = "
+            f"{lutz_params.up_per_hour:.3f} \\text{{ [1/h]}}$$"
+        )
+        lines.append("")
+        lines.append("---")
+        lines.append("")
+        lines.append("**Krok 4: Funkcja f(N)**")
+        lines.append("")
+        lines.append(
+            f"$$f(N)_{{target}} = t_p \\cdot u_p = "
+            f"{lutz_params.tp_hours:.3f} \\cdot {lutz_params.up_per_hour:.3f} = "
+            f"{lutz_params.f_N_target:.3f}$$"
+        )
+        lines.append("")
+        lines.append("Szukamy N spełniającego równanie:")
+        lines.append("")
+        lines.append(
+            f"$$f(N) = \\frac{{(N-1)^N \\cdot e^{{-(N-1)}}}}{{\\Gamma(N)}} = "
+            f"{lutz_params.f_N_target:.3f}$$"
+        )
+        lines.append("")
+        lines.append(f"Rozwiązanie numeryczne (metoda Brenta): **N = {lutz_params.n:.3f}**")
+        lines.append("")
+        lines.append("---")
+        lines.append("")
+        lines.append("**Krok 5: Stała magazynowania K**")
+        lines.append("")
+        lines.append(
+            f"$$K = \\frac{{t_p}}{{N - 1}} = "
+            f"\\frac{{{lutz_params.tp_hours:.3f}}}{{{lutz_params.n:.3f} - 1}} = "
+            f"\\frac{{{lutz_params.tp_hours:.3f}}}{{{lutz_params.n - 1:.3f}}} = "
+            f"{lutz_params.k_hours:.3f} \\text{{ h}} = {lutz_params.k_min:.2f} \\text{{ min}}$$"
+        )
+        lines.append("")
+        lines.append("---")
+        lines.append("")
+        lines.append("### 5.3 Podsumowanie parametrów Nasha")
+        lines.append("")
+        lines.append("| Parametr | Symbol | Wartość | Jednostka |")
+        lines.append("|:---------|:------:|--------:|:---------:|")
+        lines.append(f"| Liczba zbiorników | n | {n:.3f} | - |")
+        lines.append(f"| Stała magazynowania | K | {k_min:.2f} | min |")
+        lines.append(f"| Czas do szczytu IUH | tp | {(n-1)*k_min:.1f} | min |")
+        lines.append(f"| Czas opóźnienia (lag) | tlag = n×K | {n*k_min:.1f} | min |")
+        lines.append("")
+        lines.append("**Referencje:**")
+        lines.append(
+            "- Lutz W. (1984): *Berechnung von Hochwasserabflüssen unter Anwendung von "
+            "Gebietskenngrößen*. Universität Karlsruhe."
+        )
+        lines.append(
+            "- KZGW (2017): *Aktualizacja metodyki obliczania przepływów "
+            "i opadów maksymalnych*. Tabela C.2."
+        )
+        lines.append("")
+        lines.append("### 5.4 Wzór IUH Nasha")
+    else:
+        # Standard Nash section without Lutz details
+        lines.extend([
+            SUBSECTION_HEADERS["unit_hydrograph"]["params"],
+            "",
+            f"- Powierzchnia zlewni: A = {area_km2:.2f} km²",
+            f"- Liczba zbiorników: n = {n:.2f}",
+            f"- Stała zbiornika: K = {k_min:.1f} min = {k_h:.3f} h",
+            f"- Czas opóźnienia: tlag = n × K = {n * k_min:.1f} min",
+        ])
 
     if include_formulas:
         lines.extend([
             "",
-            SUBSECTION_HEADERS["unit_hydrograph"]["formulas"],
+            "**Chwilowy hydrogram jednostkowy (IUH):**",
             "",
             FormulaRenderer.nash_iuh_formula(n, k_min),
         ])
 
-        if n > 1:
+        if n > 1 and not lutz_params:
             tp_theoretical = (n - 1) * k_min
             lines.extend([
                 "",

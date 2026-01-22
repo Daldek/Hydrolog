@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+#### `hydrolog.runoff.nash_iuh` - Lutz Calculation Results
+- `LutzCalculationResult` - new dataclass storing all intermediate calculation steps
+  - Input parameters: L_km, Lc_km, slope, manning_n, urban_pct, forest_pct
+  - Intermediate values: P1, geometric_factor, urban_factor, forest_factor
+  - Output values: tp_hours, up_per_hour, f_N_target, n, k_hours, k_min
+  - Computed properties: tp_min, lag_min, lag_hours
+- `NashIUH.lutz_params` - stores LutzCalculationResult when created via `from_lutz()`
+
+#### `hydrolog.reports` - Enhanced Report Generation
+- `figures_dir` parameter in `HydrologyReportGenerator.generate()`
+  - Automatically embeds PNG figures in report as Markdown images
+  - Expected files: hietogram_beta.png, hydrogram_jednostkowy_nash.png, rainfall_runoff.png, bilans_wodny.png, generator_dashboard.png
+- Automatic Lutz method documentation in Nash UH section
+  - Full calculation steps with LaTeX formulas when `lutz_params` provided
+  - All intermediate values automatically substituted
+  - Literature references (Lutz 1984, KZGW 2017)
+
+### Changed
+- Terminology: "ordynaty" → "rzędne" throughout codebase (Polish orthography)
+  - Updated: templates.py, formatters.py, convolution.py, visualization modules
+
 ---
 
 ## [0.6.0] - 2026-01-21

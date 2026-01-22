@@ -141,7 +141,7 @@ def plot_uh_comparison(
     # Check if all are IUH or UH for ylabel
     all_iuh = all(isinstance(r, (IUHResult, ClarkIUHResult)) for r in models.values())
     if all_iuh:
-        ax_plot.set_ylabel("Ordynaty IUH [1/min]")
+        ax_plot.set_ylabel("Rzędne IUH [1/min]")
     else:
         ax_plot.set_ylabel(get_label("discharge_unit"))
 

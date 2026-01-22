@@ -134,7 +134,7 @@ FORMULA_EXPLANATIONS: Dict[str, str] = {
     ),
     "convolution": (
         "gdzie Q(n) - przepływ w kroku n, Pe(m) - opad efektywny w kroku m, "
-        "UH(k) - ordinata hydrogramu jednostkowego"
+        "UH(k) - rzędna hydrogramu jednostkowego"
     ),
 }
 
@@ -206,7 +206,7 @@ SUBSECTION_HEADERS: Dict[str, Dict[str, str]] = {
         "model": "### 5.1 Model",
         "params": "### 5.2 Parametry modelu",
         "formulas": "### 5.3 Wzory obliczeniowe",
-        "ordinates": "### 5.4 Ordinaty hydrogramu jednostkowego",
+        "ordinates": "### 5.4 Rzędne hydrogramu jednostkowego",
     },
     "convolution": {
         "formula": "### 6.1 Wzór",

@@ -6,8 +6,8 @@
 |------|---------|
 | **Faza** | 1 - Implementacja |
 | **Sprint** | 0.6.x - Generowanie raportów |
-| **Sesja** | 21 |
-| **Data** | 2026-01-21 |
+| **Sesja** | 22 |
+| **Data** | 2026-01-22 |
 | **Następny milestone** | v1.0.0 - Stabilne API |
 | **Gałąź robocza** | develop |
 
@@ -52,6 +52,60 @@
 ---
 
 ## Bieżąca sesja
+
+### Sesja 22 (2026-01-22) - UKOŃCZONA
+
+**Cel:** Rozszerzenie modułu raportów o automatyczne obliczenia Lutza + osadzanie wykresów
+
+**Co zostało zrobione:**
+- [x] Rozszerzono `NashIUH.from_lutz()` o zwracanie wartości pośrednich:
+  - Nowa dataclass `LutzCalculationResult` ze wszystkimi krokami obliczeń
+  - Atrybut `lutz_params` w `NashIUH` przechowuje wyniki
+  - Właściwości: `tp_min`, `tp_hours`, `k_hours`, `lag_min` etc.
+- [x] Poprawiono terminologię w całym module:
+  - "ordynaty" → "rzędne" (z ę z ogonkiem)
+  - Zaktualizowano: templates.py, formatters.py, convolution.py, visualization/unit_hydrograph.py, visualization/hydrograph.py
+- [x] Rozszerzono `_generate_nash_section()` w `sections/unit_hydrograph.py`:
+  - Automatyczna dokumentacja metody Lutza gdy `lutz_params` dostępne
+  - Pełne wzory z podstawionymi wartościami (P₁, tp, up, f(N), K)
+  - Referencje do literatury (Lutz 1984, KZGW 2017)
+- [x] Dodano osadzanie wykresów w raporcie:
+  - Nowy parametr `figures_dir` w `HydrologyReportGenerator.generate()`
+  - Nowa metoda `_build_figures_section()` generuje sekcję "9. Wykresy"
+  - Wykresy osadzane jako Markdown images: `![opis](plik.png)`
+- [x] Zaktualizowano skrypt testowy `tmp/test_hydrologia_nash.py`:
+  - Przekazywanie `lutz_params` w `uh_params`
+  - Przekazywanie `figures_dir` do generatora
+- [x] Przetestowano pełny workflow (103 testy Nash + 37 testów raportów)
+
+**Pliki zmodyfikowane:**
+```
+hydrolog/runoff/nash_iuh.py           # +LutzCalculationResult, +lutz_params
+hydrolog/runoff/__init__.py           # +LutzCalculationResult export
+hydrolog/reports/generator.py         # +figures_dir, +_build_figures_section()
+hydrolog/reports/templates.py         # ordynaty → rzędne
+hydrolog/reports/formatters.py        # ordynaty → rzędne
+hydrolog/reports/sections/convolution.py        # ordynaty → rzędne
+hydrolog/reports/sections/unit_hydrograph.py    # +pełna dokumentacja Lutza
+hydrolog/visualization/unit_hydrograph.py       # ordynaty → rzędne
+hydrolog/visualization/hydrograph.py            # ordynaty → rzędne
+tmp/test_hydrologia_nash.py           # +lutz_params, +figures_dir
+```
+
+**Wyniki obliczeń (zlewnia Beskidzka):**
+| Parametr | Wartość |
+|----------|---------|
+| Qmax | 3.097 m³/s |
+| tp | 540 min (9.0 h) |
+| V | 97,579 m³ |
+| n (Nash-Lutz) | 3.838 |
+| K (Nash-Lutz) | 27.87 min |
+| Pe | 46.47 mm |
+| C | 0.424 |
+
+**Testy:** 610 passed (bez zmian)
+
+---
 
 ### Sesja 21 (2026-01-21) - UKOŃCZONA
 
@@ -769,6 +823,13 @@ Wyniki Hydrolog (model Nasha):
 - `hydrolog.reports` - **NEW** HydrologyReportGenerator (raporty Markdown z wzorami LaTeX)
 - `hydrolog.cli` - interfejs CLI (tc, cn, scs, uh)
 
+### Ostatnio dodane (Sesja 22)
+- `LutzCalculationResult` - dataclass z wynikami pośrednimi metody Lutza
+- `NashIUH.lutz_params` - atrybut przechowujący obliczenia Lutza
+- `figures_dir` w generatorze raportów - automatyczne osadzanie wykresów
+- Automatyczna dokumentacja metody Lutza w sekcji Nash UH
+- Poprawiona terminologia: "ordynaty" → "rzędne"
+
 ### Ostatnio dodane (Sesja 21 - v0.6.0)
 - `hydrolog.reports` - kompletny moduł generowania raportów Markdown
 - `FormulaRenderer` - wzory LaTeX z podstawionymi wartościami
@@ -1019,4 +1080,4 @@ Hydrolog/
 
 ---
 
-**Ostatnia aktualizacja:** 2026-01-21, Sesja 21 (moduł raportów + wydanie v0.6.0)
+**Ostatnia aktualizacja:** 2026-01-22, Sesja 22 (rozszerzenie raportów: Lutz + wykresy)

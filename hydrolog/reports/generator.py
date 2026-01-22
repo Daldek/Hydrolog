@@ -120,6 +120,7 @@ class HydrologyReportGenerator:
         tc_method: Optional[str] = None,
         watershed_params: Optional[Dict[str, Any]] = None,
         uh_params: Optional[Dict[str, Any]] = None,
+        figures_dir: Optional[str] = None,
     ) -> str:
         """
         Generate complete hydrological report.
@@ -148,6 +149,10 @@ class HydrologyReportGenerator:
             Additional watershed parameters for detailed section.
         uh_params : dict, optional
             Unit hydrograph model parameters.
+        figures_dir : str, optional
+            Directory containing figures to embed in report.
+            Expected files: hietogram_beta.png, hydrogram_jednostkowy_nash.png,
+            rainfall_runoff.png, bilans_wodny.png, generator_dashboard.png.
 
         Returns
         -------
@@ -229,6 +234,10 @@ class HydrologyReportGenerator:
             area_km2=area_km2,
             include_formulas=self.config.include_formulas,
         ))
+
+        # 9. Figures (if directory provided)
+        if figures_dir:
+            sections.append(self._build_figures_section(figures_dir))
 
         # Combine sections
         content = "\n\n".join(sections)
@@ -490,6 +499,38 @@ class HydrologyReportGenerator:
                 else:
                     ordinates[i] = 0
         return ordinates
+
+    def _build_figures_section(self, figures_dir: str) -> str:
+        """Build figures section with embedded images."""
+        figures_path = Path(figures_dir)
+
+        # Define expected figures with Polish descriptions
+        figures = [
+            ("hietogram_beta.png", "Hietogram opadu"),
+            ("hydrogram_jednostkowy_nash.png", "Hydrogram jednostkowy Nasha"),
+            ("rainfall_runoff.png", "Transformacja opad-odpływ"),
+            ("bilans_wodny.png", "Bilans wodny SCS-CN"),
+            ("generator_dashboard.png", "Podsumowanie analizy hydrologicznej"),
+        ]
+
+        lines = [
+            "## 9. Wykresy",
+            "",
+            "Poniżej przedstawiono wykresy dokumentujące przebieg obliczeń.",
+            "",
+        ]
+
+        for filename, description in figures:
+            filepath = figures_path / filename
+            if filepath.exists():
+                lines.extend([
+                    f"### {description}",
+                    "",
+                    f"![{description}]({filename})",
+                    "",
+                ])
+
+        return "\n".join(lines)
 
     def _save(self, content: str, path: Union[str, Path]) -> None:
         """Save report to file."""

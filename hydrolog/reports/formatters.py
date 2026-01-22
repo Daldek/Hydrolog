@@ -382,7 +382,7 @@ class FormulaRenderer:
             "gdzie:\n"
             "- $Q(n)$ - przepływ w kroku czasowym n [m³/s]\n"
             "- $P_e(m)$ - opad efektywny w kroku m [mm]\n"
-            "- $UH(k)$ - ordinata hydrogramu jednostkowego [m³/s/mm]\n"
+            "- $UH(k)$ - rzędna hydrogramu jednostkowego [m³/s/mm]\n"
             "- $M$ - liczba kroków opadu"
         )
 
