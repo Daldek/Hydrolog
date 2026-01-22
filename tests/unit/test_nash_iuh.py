@@ -272,11 +272,21 @@ class TestNashIUHToUnitHydrograph:
 
 
 class TestNashIUHFromTC:
-    """Tests for creating NashIUH from time of concentration."""
+    """Tests for creating NashIUH from time of concentration.
+
+    Note: from_tc() is deprecated and will be removed in v1.0.0.
+    These tests verify both functionality and deprecation warning.
+    """
+
+    def test_from_tc_emits_deprecation_warning(self):
+        """Test that from_tc emits DeprecationWarning."""
+        with pytest.warns(DeprecationWarning, match="from_tc.*deprecated"):
+            NashIUH.from_tc(tc_min=90.0)
 
     def test_from_tc_default_n(self):
         """Test from_tc with default n."""
-        iuh = NashIUH.from_tc(tc_min=90.0)
+        with pytest.warns(DeprecationWarning):
+            iuh = NashIUH.from_tc(tc_min=90.0)
 
         # Default n = 3, lag_ratio = 0.6
         # tlag = 0.6 × 90 = 54 min
@@ -286,7 +296,8 @@ class TestNashIUHFromTC:
 
     def test_from_tc_custom_n(self):
         """Test from_tc with custom n."""
-        iuh = NashIUH.from_tc(tc_min=90.0, n=4.0)
+        with pytest.warns(DeprecationWarning):
+            iuh = NashIUH.from_tc(tc_min=90.0, n=4.0)
 
         # tlag = 0.6 × 90 = 54 min
         # K = 54 / 4 = 13.5 min
@@ -295,7 +306,8 @@ class TestNashIUHFromTC:
 
     def test_from_tc_custom_lag_ratio(self):
         """Test from_tc with custom lag ratio."""
-        iuh = NashIUH.from_tc(tc_min=100.0, n=3.0, lag_ratio=0.5)
+        with pytest.warns(DeprecationWarning):
+            iuh = NashIUH.from_tc(tc_min=100.0, n=3.0, lag_ratio=0.5)
 
         # tlag = 0.5 × 100 = 50 min
         # K = 50 / 3 = 16.67 min
@@ -303,16 +315,19 @@ class TestNashIUHFromTC:
 
     def test_from_tc_zero_tc_raises(self):
         """Test that zero tc raises error."""
-        with pytest.raises(InvalidParameterError, match="tc_min must be positive"):
-            NashIUH.from_tc(tc_min=0)
+        with pytest.warns(DeprecationWarning):
+            with pytest.raises(InvalidParameterError, match="tc_min must be positive"):
+                NashIUH.from_tc(tc_min=0)
 
     def test_from_tc_invalid_lag_ratio_raises(self):
         """Test that invalid lag ratio raises error."""
-        with pytest.raises(InvalidParameterError, match="lag_ratio must be in"):
-            NashIUH.from_tc(tc_min=90.0, lag_ratio=0)
+        with pytest.warns(DeprecationWarning):
+            with pytest.raises(InvalidParameterError, match="lag_ratio must be in"):
+                NashIUH.from_tc(tc_min=90.0, lag_ratio=0)
 
-        with pytest.raises(InvalidParameterError, match="lag_ratio must be in"):
-            NashIUH.from_tc(tc_min=90.0, lag_ratio=1.5)
+        with pytest.warns(DeprecationWarning):
+            with pytest.raises(InvalidParameterError, match="lag_ratio must be in"):
+                NashIUH.from_tc(tc_min=90.0, lag_ratio=1.5)
 
 
 class TestNashIUHWithArea:

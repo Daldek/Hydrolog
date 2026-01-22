@@ -29,6 +29,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Terminology: "ordynaty" → "rzędne" throughout codebase (Polish orthography)
   - Updated: templates.py, formatters.py, convolution.py, visualization modules
+- `hydrolog.runoff.nash_iuh` module docstring updated with literature references:
+  - Nash (1957), Lutz (1984), Rosso (1984), KZGW (2017)
+
+### Deprecated
+
+#### `hydrolog.runoff.nash_iuh.NashIUH.from_tc()`
+- **Will be removed in version 1.0.0**
+- This method uses the SCS relationship `lag = 0.6 × Tc` which was developed for
+  the SCS Unit Hydrograph, NOT for the Nash model
+- The Nash model lag time (`n × K`) is a mathematical result of the cascade,
+  not an input parameter
+- **Recommended alternatives:**
+  - Use `from_lutz()` for ungauged watersheds (Lutz 1984, KZGW 2017)
+  - Provide `n` and `K` directly to the constructor
+
+### Documentation
+- Added `docs/NASH_AUDIT_REPORT.md` - architectural audit of Nash IUH module
+  - Literature verification (10 sources)
+  - Analysis of `from_tc()` vs `from_lutz()` methods
+  - Recommendations for module architecture
 
 ---
 
