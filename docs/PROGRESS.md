@@ -6,7 +6,7 @@
 |------|---------|
 | **Faza** | 1 - Implementacja |
 | **Sprint** | 0.6.x - Generowanie raportów |
-| **Sesja** | 22 |
+| **Sesja** | 23 |
 | **Data** | 2026-01-22 |
 | **Następny milestone** | v1.0.0 - Stabilne API |
 | **Gałąź robocza** | develop |
@@ -52,6 +52,34 @@
 ---
 
 ## Bieżąca sesja
+
+### Sesja 23 (2026-01-22) - W TRAKCIE
+
+**Cel:** Przegląd dokumentacji po ostatnich commitach
+
+**Kontekst:**
+Ostatnie 2 commity (c6c2d9c, 45a108c) wprowadziły istotne zmiany:
+1. Deprecation `NashIUH.from_tc()` z DeprecationWarning
+2. Referencje literaturowe w `concentration.py`
+3. Audyt architektury modułu Nash (`NASH_AUDIT_REPORT.md`)
+
+**Co zostało zrobione:**
+- [x] Przegląd zmian w ostatnich 2 commitach
+- [x] Zaktualizowano README.md:
+  - Usunięto przykład `from_tc()`, zastąpiono przykładem `from_lutz()`
+- [x] Zaktualizowano CHANGELOG.md:
+  - Dodano informacje o zmianach w `concentration.py` (referencje literaturowe)
+  - Dodano informację o wyłączeniu `plot_generator_result()`
+- [x] Zaktualizowano PROGRESS.md (sesja 23)
+
+**Pliki zmodyfikowane:**
+```
+README.md               # from_tc() → from_lutz() w przykładzie
+docs/CHANGELOG.md       # dodane zmiany z concentration.py
+docs/PROGRESS.md        # sesja 23
+```
+
+---
 
 ### Sesja 22 (2026-01-22) - UKOŃCZONA
 

@@ -31,6 +31,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated: templates.py, formatters.py, convolution.py, visualization modules
 - `hydrolog.runoff.nash_iuh` module docstring updated with literature references:
   - Nash (1957), Lutz (1984), Rosso (1984), KZGW (2017)
+- `hydrolog.time.concentration` module enhanced with literature references:
+  - `kirpich()`: Added Ponce (2014), CivilWeb (2023); clarified original units (minutes, slope in m/m)
+  - `scs_lag()`: Added TR-55, HEC-HMS references; clarified tc vs tl vs tp distinction
+  - `giandotti()`: Added Grimaldi (2012), Michailidi (2018); verified original output in hours
+- `hydrolog.visualization`: Temporarily disabled `plot_generator_result()` export (to be removed)
 
 ### Deprecated
 
