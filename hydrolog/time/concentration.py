@@ -106,21 +106,34 @@ class ConcentrationTime:
         UserWarning
             If length_km > 80 km or slope_m_per_m outside 0.002-0.15.
             The Kirpich formula was developed for small agricultural
-            watersheds (0.004-0.45 km2) with slopes 3-10%.
+            watersheds (0.004-0.45 km2) with slopes 3-10% (0.03-0.10 m/m).
 
         Notes
         -----
-        Formula: tc [h] = 0.0663 * L^0.77 * S^(-0.385)
+        Original formula (US units):
+            tc [min] = 0.0078 * L[ft]^0.77 * S[ft/ft]^(-0.385)
 
-        Where:
-        - tc: time of concentration [h] (converted to min)
-        - L: channel length [km]
-        - S: channel slope [m/m]
+        Metric conversion (this implementation):
+            tc [h] = 0.0663 * L[km]^0.77 * S[m/m]^(-0.385)
+
+        The original formula outputs time in **minutes**. Slope is dimensionless
+        (m/m or ft/ft), not in percent. The constant 0.0663 is derived from
+        the original 0.0078 by converting feet to kilometers:
+        K = 0.0078 * (1000/0.3048)^0.77 / 60 ≈ 0.0663
+
+        Original calibration data: 7 small agricultural watersheds in Tennessee,
+        areas 0.004-0.45 km² (1.25-112 acres), slopes 3-10%.
 
         References
         ----------
         Kirpich, Z.P. (1940). Time of concentration of small agricultural
         watersheds. Civil Engineering, 10(6), 362.
+
+        Ponce, V.M. (2014). Engineering Hydrology: Principles and Practices.
+        Online: https://ponce.sdsu.edu/kirpich.php
+
+        CivilWeb (2023). Kirpich Formula - Time of Concentration.
+        https://civilweb-spreadsheets.com/drainage-design-spreadsheets/
 
         Examples
         --------
@@ -191,21 +204,35 @@ class ConcentrationTime:
         Notes
         -----
         Formula (metric units):
-        Lag [h] = (L^0.8 * (S + 25.4)^0.7) / (7182 * Y^0.5)
-        tc = Lag / 0.6
+            Lag [h] = (L^0.8 * (S + 25.4)^0.7) / (7069 * Y^0.5)
+            tc = Lag / 0.6
 
         Where:
         - L: hydraulic length [m] (converted internally from km)
         - S: maximum retention = (25400/CN) - 254 [mm]
         - Y: average watershed slope [%] (converted internally from m/m)
 
-        The constant 7182 is derived from the original imperial formula
-        (with constant 1900) by converting feet to meters and inches to mm.
+        The constant 7069 is derived from the original imperial formula
+        (constant 1900) by converting feet to meters and inches to mm.
+
+        **Important distinction:**
+        - tc (time of concentration) = time for runoff to travel from the
+          most distant point to the outlet
+        - tl (lag time) = 0.6 * tc = time from centroid of rainfall to peak
+        - tp (time to peak) = D/2 + tl = time to peak of unit hydrograph
+          (where D is the rainfall duration)
+
+        This method calculates tc, not tp. For unit hydrograph calculations,
+        use tp = D/2 + 0.6*tc.
 
         References
         ----------
         USDA-NRCS (1986). Urban Hydrology for Small Watersheds.
-        Technical Release 55 (TR-55).
+        Technical Release 55 (TR-55). Chapter 3.
+        https://www.hydrocad.net/pdf/TR-55%20Manual.pdf
+
+        USACE HEC-HMS (2024). Technical Reference Manual - SCS Unit Hydrograph.
+        https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/
 
         Examples
         --------
@@ -298,18 +325,31 @@ class ConcentrationTime:
 
         Notes
         -----
-        Formula: tc = (4 * sqrt(A) + 1.5 * L) / (0.8 * sqrt(H))
+        Formula:
+            tc [h] = (4 * sqrt(A) + 1.5 * L) / (0.8 * sqrt(H))
 
         Where:
-        - tc: time of concentration [hours]
-        - A: watershed area [km2]
+        - tc: time of concentration [hours] (converted to minutes internally)
+        - A: watershed area [km²]
         - L: main channel length [km]
-        - H: elevation difference [m]
+        - H: elevation difference between mean elevation and outlet [m]
+
+        The original formula outputs time in **hours**. This implementation
+        converts the result to minutes for consistency with other methods.
 
         References
         ----------
         Giandotti, M. (1934). Previsione delle piene e delle magre dei
-        corsi d'acqua. Ministero LL.PP., Servizio Idrografico Italiano.
+        corsi d'acqua. Memorie e Studi Idrografici, Vol. 8.
+        Ministero dei Lavori Pubblici, Servizio Idrografico Italiano, Roma.
+
+        Grimaldi, S. et al. (2012). Time of concentration: a paradox in
+        modern hydrology. Hydrological Sciences Journal, 57(2), 217-228.
+        https://doi.org/10.1080/02626667.2011.644244
+
+        Michailidi, E.M. et al. (2018). Timing the time of concentration:
+        shedding light on a paradox. Hydrological Sciences Journal, 63(5).
+        https://doi.org/10.1080/02626667.2018.1450985
 
         Examples
         --------

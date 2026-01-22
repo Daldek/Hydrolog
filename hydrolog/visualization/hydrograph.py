@@ -255,8 +255,8 @@ def _get_uh_stats(result: UHResultType, is_iuh: bool) -> dict:
 
     # Model-specific parameters
     if isinstance(result, (NashUHResult, IUHResult)):
-        stats["n"] = f"{result.n:.2f}"
-        stats["K"] = f"{result.k_min:.1f} min"
+        stats["N"] = f"{result.n:.2f}"
+        stats["k"] = f"{result.k_min:.1f} min"
     elif isinstance(result, (ClarkUHResult, ClarkIUHResult)):
         stats["Tc"] = f"{result.tc_min:.1f} min"
         stats["R"] = f"{result.r_min:.1f} min"
@@ -270,7 +270,7 @@ def _get_uh_stats(result: UHResultType, is_iuh: bool) -> dict:
 def _get_uh_title(result: UHResultType) -> str:
     """Generate title based on UH type."""
     if isinstance(result, (NashUHResult, IUHResult)):
-        return f"Hydrogram jednostkowy Nash (n={result.n:.2f}, K={result.k_min:.1f} min)"
+        return f"Hydrogram jednostkowy Nash (N={result.n:.2f}, k={result.k_min:.1f} min)"
     elif isinstance(result, (ClarkUHResult, ClarkIUHResult)):
         return f"Hydrogram jednostkowy Clark (Tc={result.tc_min:.1f}, R={result.r_min:.1f} min)"
     elif isinstance(result, SnyderUHResult):
