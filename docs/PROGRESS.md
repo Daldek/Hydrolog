@@ -99,6 +99,14 @@ docs/PROGRESS.md        # sesja 23
 | Clark IUH | ✅ OK | - | - |
 | Snyder UH | ❌ NIE DOTYCZY | - | ✅ WBUDOWANA |
 
+**Testy:** 611 passed
+
+**Commity sesji:**
+```
+18a0112 docs: add computation paths documentation for UH models
+41cd447 docs: update documentation after from_tc() deprecation
+```
+
 ---
 
 ### Sesja 22 (2026-01-22) - UKOŃCZONA
