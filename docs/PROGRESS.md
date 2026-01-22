@@ -53,31 +53,51 @@
 
 ## Bieżąca sesja
 
-### Sesja 23 (2026-01-22) - W TRAKCIE
+### Sesja 23 (2026-01-22) - UKOŃCZONA
 
-**Cel:** Przegląd dokumentacji po ostatnich commitach
+**Cel:** Dokumentacja ścieżek obliczeniowych dla modeli UH
 
 **Kontekst:**
-Ostatnie 2 commity (c6c2d9c, 45a108c) wprowadziły istotne zmiany:
-1. Deprecation `NashIUH.from_tc()` z DeprecationWarning
-2. Referencje literaturowe w `concentration.py`
-3. Audyt architektury modułu Nash (`NASH_AUDIT_REPORT.md`)
+Po deprecation `NashIUH.from_tc()` konieczne było stworzenie kompleksowej dokumentacji
+wyjaśniającej prawidłowe metody estymacji parametrów dla każdego modelu hydrogramu jednostkowego.
 
 **Co zostało zrobione:**
 - [x] Przegląd zmian w ostatnich 2 commitach
 - [x] Zaktualizowano README.md:
   - Usunięto przykład `from_tc()`, zastąpiono przykładem `from_lutz()`
-- [x] Zaktualizowano CHANGELOG.md:
-  - Dodano informacje o zmianach w `concentration.py` (referencje literaturowe)
-  - Dodano informację o wyłączeniu `plot_generator_result()`
-- [x] Zaktualizowano PROGRESS.md (sesja 23)
+  - Dodano sekcję "Dokumentacja" z linkami
+- [x] Zaktualizowano CHANGELOG.md
+- [x] Utworzono `docs/COMPUTATION_PATHS.md` (~500 linii):
+  - Macierz kompatybilności: model × metoda estymacji
+  - Diagramy przepływu danych (ASCII) dla każdego modelu
+  - Weryfikacja literaturowa każdej ścieżki obliczeniowej
+  - Ostrzeżenia o nieprawidłowym użyciu (Nash + from_tc, Snyder + zewnętrzne Tc)
+  - Przykłady kodu dla prawidłowych ścieżek
+  - Sekcja "Typowe błędy i jak ich uniknąć"
+  - 10 referencji literaturowych
+- [x] Zaktualizowano CLAUDE.md - dodano COMPUTATION_PATHS.md do listy obowiązkowej lektury
+
+**Pliki utworzone:**
+```
+docs/COMPUTATION_PATHS.md    # NOWY - ścieżki obliczeniowe (~500 linii)
+```
 
 **Pliki zmodyfikowane:**
 ```
-README.md               # from_tc() → from_lutz() w przykładzie
-docs/CHANGELOG.md       # dodane zmiany z concentration.py
+README.md               # sekcja Dokumentacja, from_tc() → from_lutz()
+CLAUDE.md               # dodano COMPUTATION_PATHS.md do listy
+docs/CHANGELOG.md       # wpis o nowej dokumentacji
 docs/PROGRESS.md        # sesja 23
 ```
+
+**Kluczowe ustalenia (macierz kompatybilności):**
+
+| Model | Tc (Kirpich/SCS/Giandotti) | from_lutz() | Własna metoda |
+|-------|:--------------------------:|:-----------:|:-------------:|
+| SCS UH | ✅ OK | - | - |
+| Nash IUH | ⚠️ DEPRECATED | ✅ ZALECANA | - |
+| Clark IUH | ✅ OK | - | - |
+| Snyder UH | ❌ NIE DOTYCZY | - | ✅ WBUDOWANA |
 
 ---
 
