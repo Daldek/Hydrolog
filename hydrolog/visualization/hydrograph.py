@@ -188,7 +188,7 @@ def plot_unit_hydrograph(
 
     if is_iuh:
         ordinates = result.ordinates_per_min
-        ylabel = "Ordynaty IUH [1/min]"
+        ylabel = "Rzędne IUH [1/min]"
         peak_value = result.peak_ordinate_per_min
     else:
         ordinates = result.ordinates_m3s

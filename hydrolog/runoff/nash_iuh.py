@@ -12,6 +12,83 @@ from hydrolog.exceptions import InvalidParameterError
 
 
 @dataclass
+class LutzCalculationResult:
+    """
+    Intermediate calculation results from Lutz method.
+
+    Contains all values computed during Nash parameter estimation,
+    useful for detailed reports showing calculation steps.
+
+    Attributes
+    ----------
+    L_km : float
+        Main stream length [km].
+    Lc_km : float
+        Length to catchment centroid [km].
+    slope : float
+        Stream slope [-].
+    manning_n : float
+        Manning's roughness coefficient [-].
+    urban_pct : float
+        Urbanized area percentage [%].
+    forest_pct : float
+        Forested area percentage [%].
+    P1 : float
+        Coefficient P1 = 3.989 * n + 0.028.
+    geometric_factor : float
+        Geometric factor (L * Lc / Jg^1.5)^0.26.
+    urban_factor : float
+        Urban factor exp(-0.016 * U).
+    forest_factor : float
+        Forest factor exp(0.004 * W).
+    tp_hours : float
+        Time to peak [hours].
+    up_per_hour : float
+        Peak IUH ordinate [1/hour].
+    f_N_target : float
+        Target value for f(N) = tp * up.
+    n : float
+        Number of reservoirs (Nash parameter).
+    k_hours : float
+        Storage constant [hours].
+    k_min : float
+        Storage constant [min].
+    """
+
+    L_km: float
+    Lc_km: float
+    slope: float
+    manning_n: float
+    urban_pct: float
+    forest_pct: float
+    P1: float
+    geometric_factor: float
+    urban_factor: float
+    forest_factor: float
+    tp_hours: float
+    up_per_hour: float
+    f_N_target: float
+    n: float
+    k_hours: float
+    k_min: float
+
+    @property
+    def tp_min(self) -> float:
+        """Time to peak [min]."""
+        return self.tp_hours * 60.0
+
+    @property
+    def lag_time_min(self) -> float:
+        """Lag time = n * K [min]."""
+        return self.n * self.k_min
+
+    @property
+    def tp_iuh_min(self) -> float:
+        """Time to peak of IUH = (n-1) * K [min]."""
+        return (self.n - 1) * self.k_min
+
+
+@dataclass
 class IUHResult:
     """
     Result of Instantaneous Unit Hydrograph generation.
@@ -21,7 +98,7 @@ class IUHResult:
     times_min : NDArray[np.float64]
         Time values [min].
     ordinates_per_min : NDArray[np.float64]
-        IUH ordinates [1/min]. These represent the fraction of
+        IUH ordinates (rzędne) [1/min]. These represent the fraction of
         unit input released per minute.
     n : float
         Number of reservoirs (shape parameter).
@@ -30,7 +107,7 @@ class IUHResult:
     time_to_peak_min : float
         Time to peak discharge [min].
     peak_ordinate_per_min : float
-        Peak IUH ordinate [1/min].
+        Peak IUH ordinate (rzędna szczytowa) [1/min].
     """
 
     times_min: NDArray[np.float64]
@@ -140,7 +217,11 @@ class NashIUH:
     """
 
     def __init__(
-        self, n: float, k_min: float, area_km2: Optional[float] = None
+        self,
+        n: float,
+        k_min: float,
+        area_km2: Optional[float] = None,
+        lutz_params: Optional[LutzCalculationResult] = None,
     ) -> None:
         """
         Initialize Nash IUH generator.
@@ -154,6 +235,9 @@ class NashIUH:
         area_km2 : float, optional
             Watershed area [km²]. If provided, generate() returns
             dimensional unit hydrograph [m³/s per mm].
+        lutz_params : LutzCalculationResult, optional
+            Intermediate calculation results from Lutz method.
+            Stored for report generation.
 
         Raises
         ------
@@ -170,6 +254,7 @@ class NashIUH:
         self.n = n
         self.k_min = k_min
         self.area_km2 = area_km2
+        self.lutz_params = lutz_params
 
     @property
     def lag_time_min(self) -> float:
@@ -716,18 +801,18 @@ class NashIUH:
         f_N_target = tp_hours * up_per_hour
 
         # Step 5: Find N by solving f(N) = (N-1)^N * e^(-(N-1)) / Gamma(N)
-        def f_N_equation(N: float) -> float:
+        def f_N_equation(N_val: float) -> float:
             """Calculate f(N) for Nash model."""
-            if N <= 1:
+            if N_val <= 1:
                 return 0.0
-            n_minus_1 = N - 1
-            numerator = (n_minus_1**N) * np.exp(-n_minus_1)
-            denominator = gamma(N)
+            n_minus_1 = N_val - 1
+            numerator = (n_minus_1**N_val) * np.exp(-n_minus_1)
+            denominator = gamma(N_val)
             return numerator / denominator
 
-        def objective(N: float) -> float:
+        def objective(N_val: float) -> float:
             """Objective function: f(N) - target = 0."""
-            return f_N_equation(N) - f_N_target
+            return f_N_equation(N_val) - f_N_target
 
         # f(N) has maximum around N=2-3, then decreases
         # Typical range for f(N): 0.35 - 0.40
@@ -739,7 +824,7 @@ class NashIUH:
 
             if f_low * f_high > 0:
                 # No sign change - check if target is achievable
-                f_max = max(f_N_equation(N) for N in np.linspace(1.1, 20, 100))
+                f_max = max(f_N_equation(N_val) for N_val in np.linspace(1.1, 20, 100))
                 if f_N_target > f_max:
                     raise InvalidParameterError(
                         f"f(N) = {f_N_target:.4f} is too high. "
@@ -758,4 +843,24 @@ class NashIUH:
         K_hours = tp_hours / (N - 1)
         k_min = K_hours * 60.0
 
-        return cls(n=N, k_min=k_min, area_km2=area_km2)
+        # Store all intermediate calculation results
+        lutz_params = LutzCalculationResult(
+            L_km=L_km,
+            Lc_km=Lc_km,
+            slope=slope,
+            manning_n=manning_n,
+            urban_pct=urban_pct,
+            forest_pct=forest_pct,
+            P1=P1,
+            geometric_factor=geometric_factor,
+            urban_factor=urban_factor,
+            forest_factor=forest_factor,
+            tp_hours=tp_hours,
+            up_per_hour=up_per_hour,
+            f_N_target=f_N_target,
+            n=N,
+            k_hours=K_hours,
+            k_min=k_min,
+        )
+
+        return cls(n=N, k_min=k_min, area_km2=area_km2, lutz_params=lutz_params)

@@ -68,7 +68,7 @@ def generate_convolution_section(
         f"| Parametr | Wartość |",
         f"|:---------|--------:|",
         f"| Liczba kroków opadu efektywnego (M) | {n_precip_steps} |",
-        f"| Liczba ordinat hydrogramu jednostkowego (N) | {n_uh_steps} |",
+        f"| Liczba rzędnych hydrogramu jednostkowego (N) | {n_uh_steps} |",
         f"| Liczba kroków wynikowego hydrogramu | {n_result_steps} |",
         f"| Krok czasowy Δt | {timestep_min:.1f} min |",
         f"| Całkowity czas trwania hydrogramu | {n_result_steps * timestep_min:.1f} min |",
