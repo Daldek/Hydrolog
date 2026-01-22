@@ -749,6 +749,12 @@ hydrolog/
 - `matplotlib >= 3.7` + `seaborn >= 0.12` - dla wizualizacji (`pip install hydrolog[visualization]`)
 - `kartograf` - dla danych przestrzennych HSG (`pip install hydrolog[spatial]`)
 
+## Dokumentacja
+
+- [Ścieżki obliczeniowe](docs/COMPUTATION_PATHS.md) - Prawidłowe metody estymacji parametrów dla każdego modelu UH
+- [Audyt Nash IUH](docs/NASH_AUDIT_REPORT.md) - Weryfikacja literaturowa modułu Nash
+- [Integracja GIS](docs/INTEGRATION.md) - Integracja z systemami GIS (Hydrograf, QGIS)
+
 ## Powiązane projekty
 
 - [IMGWTools](https://github.com/Daldek/IMGWTools) - Dane opadowe z IMGW

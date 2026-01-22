@@ -54,6 +54,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Literature verification (10 sources)
   - Analysis of `from_tc()` vs `from_lutz()` methods
   - Recommendations for module architecture
+- Added `docs/COMPUTATION_PATHS.md` - computation paths for all UH models
+  - Compatibility matrix: model × parameter estimation method
+  - ASCII flow diagrams for each model (SCS, Nash, Clark, Snyder)
+  - Literature verification for each computation path
+  - Code examples for correct usage
+  - "Common errors and how to avoid them" section
+  - 10 literature references
 
 ---
 

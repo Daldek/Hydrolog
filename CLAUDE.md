@@ -15,6 +15,7 @@ Używaj środowiska wirtualnego z `.venv`:
 4. `docs/IMPLEMENTATION_PROMPT.md`
 5. `docs/PRD.md` - Product Requirements Document
 6. `docs/CHANGELOG.md`
+7. `docs/COMPUTATION_PATHS.md` - ścieżki obliczeniowe dla modeli UH
 
 ## Workflow sesji
 
