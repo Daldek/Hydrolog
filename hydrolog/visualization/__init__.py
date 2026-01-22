@@ -68,7 +68,7 @@ if HAS_MATPLOTLIB:
 
     from hydrolog.visualization.combined import (
         plot_rainfall_runoff,
-        plot_generator_result,
+        # plot_generator_result,  # TODO: Temporarily disabled, to be removed
     )
 
     from hydrolog.visualization.unit_hydrograph import (
@@ -114,7 +114,7 @@ if HAS_MATPLOTLIB:
         "plot_unit_hydrograph",
         # Combined
         "plot_rainfall_runoff",
-        "plot_generator_result",
+        # "plot_generator_result",  # TODO: Temporarily disabled, to be removed
         # Unit Hydrograph comparison
         "plot_uh_comparison",
         # Water balance

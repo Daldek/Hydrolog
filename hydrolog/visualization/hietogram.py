@@ -102,7 +102,7 @@ def plot_hietogram(
             cum_values,
             color=get_color("cumulative"),
             linewidth=2,
-            marker="o",
+            # marker="o",
             markersize=4,
             label="Suma kumulatywna",
         )

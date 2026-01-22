@@ -82,7 +82,9 @@ hydrolog/
 ├── precipitation/   # Hietogramy, interpolacja
 ├── network/         # Klasyfikacja sieci rzecznej
 ├── time/            # Czas koncentracji
-└── cli/             # Interfejs CLI
+├── cli/             # Interfejs CLI
+├── reports/         # Raport z wynikami obliczeń
+└── visualization/   # Generowanie wykresów z wynikami obliczeń
 ```
 
 ## Komendy
