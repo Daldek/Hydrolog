@@ -40,7 +40,7 @@ class TestCLITc:
         assert result == 0
         captured = capsys.readouterr()
         assert "kirpich" in captured.out
-        assert "scs-lag" in captured.out
+        assert "nrcs" in captured.out
         assert "giandotti" in captured.out
 
     def test_tc_kirpich(self, capsys):
@@ -57,12 +57,12 @@ class TestCLITc:
             main(["tc", "kirpich", "--length", "2.5"])
         assert exc_info.value.code != 0
 
-    def test_tc_scs_lag(self, capsys):
-        """Test tc scs-lag calculation."""
-        result = main(["tc", "scs-lag", "--length", "5.0", "--slope", "0.01", "--cn", "72"])
+    def test_tc_nrcs(self, capsys):
+        """Test tc nrcs calculation."""
+        result = main(["tc", "nrcs", "--length", "5.0", "--slope", "0.01", "--cn", "72"])
         assert result == 0
         captured = capsys.readouterr()
-        assert "SCS Lag" in captured.out
+        assert "NRCS" in captured.out
         assert "Curve Number" in captured.out
 
     def test_tc_giandotti(self, capsys):

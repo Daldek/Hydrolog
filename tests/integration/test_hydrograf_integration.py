@@ -153,8 +153,8 @@ class TestHydrografIntegration:
         tc_kirpich = params.calculate_tc(method="kirpich")
         assert tc_kirpich > 0
 
-        # SCS Lag (requires CN)
-        tc_scs = params.calculate_tc(method="scs_lag")
+        # NRCS (requires CN)
+        tc_scs = params.calculate_tc(method="nrcs")
         assert tc_scs > 0
 
         # Giandotti
@@ -341,8 +341,8 @@ class TestHydrografDataValidation:
         with pytest.raises(Exception):
             WatershedParameters.from_dict(incomplete_data)
 
-    def test_scs_lag_without_cn_raises_error(self):
-        """Test that SCS Lag method without CN raises error."""
+    def test_nrcs_without_cn_raises_error(self):
+        """Test that NRCS method without CN raises error."""
         data = {
             "area_km2": 45.0,
             "perimeter_km": 32.0,
@@ -355,4 +355,4 @@ class TestHydrografDataValidation:
         params = WatershedParameters.from_dict(data)
 
         with pytest.raises(Exception):
-            params.calculate_tc(method="scs_lag")
+            params.calculate_tc(method="nrcs")

@@ -74,10 +74,10 @@ class TestKirpich:
             ConcentrationTime.kirpich(length_km=1.0, slope_m_per_m=-0.01)
 
 
-class TestSCSLag:
-    """Tests for SCS Lag equation."""
+class TestNRCS:
+    """Tests for NRCS equation."""
 
-    def test_scs_lag_typical_values(self):
+    def test_nrcs_typical_values(self):
         """Test SCS Lag equation with typical watershed parameters."""
         # Arrange
         length_km = 8.2
@@ -85,69 +85,69 @@ class TestSCSLag:
         cn = 72
 
         # Act
-        tc = ConcentrationTime.scs_lag(
+        tc = ConcentrationTime.nrcs(
             length_km=length_km, slope_m_per_m=slope_m_per_m, cn=cn
         )
 
         # Assert - SCS Lag (metric) gives ~363 min for these parameters
         assert 350.0 < tc < 380.0
 
-    def test_scs_lag_higher_cn_gives_shorter_tc(self):
+    def test_nrcs_higher_cn_gives_shorter_tc(self):
         """Test that higher CN (less retention) gives shorter tc."""
         length_km = 5.0
         slope_m_per_m = 0.03
 
-        tc_low_cn = ConcentrationTime.scs_lag(
+        tc_low_cn = ConcentrationTime.nrcs(
             length_km=length_km, slope_m_per_m=slope_m_per_m, cn=60
         )
-        tc_high_cn = ConcentrationTime.scs_lag(
+        tc_high_cn = ConcentrationTime.nrcs(
             length_km=length_km, slope_m_per_m=slope_m_per_m, cn=85
         )
 
         assert tc_high_cn < tc_low_cn
 
-    def test_scs_lag_cn_100(self):
+    def test_nrcs_cn_100(self):
         """Test SCS Lag with CN=100 (no retention)."""
-        tc = ConcentrationTime.scs_lag(length_km=5.0, slope_m_per_m=0.02, cn=100)
+        tc = ConcentrationTime.nrcs(length_km=5.0, slope_m_per_m=0.02, cn=100)
 
         # Should still return a positive value
         assert tc > 0
 
-    def test_scs_lag_steeper_slope_shorter_tc(self):
+    def test_nrcs_steeper_slope_shorter_tc(self):
         """Test that steeper slope gives shorter tc."""
         length_km = 5.0
         cn = 75
 
-        tc_gentle = ConcentrationTime.scs_lag(
+        tc_gentle = ConcentrationTime.nrcs(
             length_km=length_km, slope_m_per_m=0.01, cn=cn
         )
-        tc_steep = ConcentrationTime.scs_lag(
+        tc_steep = ConcentrationTime.nrcs(
             length_km=length_km, slope_m_per_m=0.05, cn=cn
         )
 
         assert tc_steep < tc_gentle
 
-    def test_scs_lag_zero_length_raises(self):
+    def test_nrcs_zero_length_raises(self):
         """Test that zero length raises InvalidParameterError."""
         with pytest.raises(InvalidParameterError, match="length_km must be positive"):
-            ConcentrationTime.scs_lag(length_km=0, slope_m_per_m=0.02, cn=75)
+            ConcentrationTime.nrcs(length_km=0, slope_m_per_m=0.02, cn=75)
 
-    def test_scs_lag_negative_slope_raises(self):
+    def test_nrcs_negative_slope_raises(self):
         """Test that negative slope raises InvalidParameterError."""
         with pytest.raises(
             InvalidParameterError, match="slope_m_per_m must be positive"
         ):
-            ConcentrationTime.scs_lag(length_km=5.0, slope_m_per_m=-0.02, cn=75)
+            ConcentrationTime.nrcs(length_km=5.0, slope_m_per_m=-0.02, cn=75)
 
-    def test_scs_lag_cn_too_low_raises(self):
+    def test_nrcs_cn_too_low_raises(self):
         """Test that CN < 1 raises InvalidParameterError."""
         with pytest.raises(InvalidParameterError, match="cn must be in range 1-100"):
-            ConcentrationTime.scs_lag(length_km=5.0, slope_m_per_m=0.02, cn=0)
+            ConcentrationTime.nrcs(length_km=5.0, slope_m_per_m=0.02, cn=0)
 
-    def test_scs_lag_cn_too_high_raises(self):
+    def test_nrcs_cn_too_high_raises(self):
         """Test that CN > 100 raises InvalidParameterError."""
         with pytest.raises(InvalidParameterError, match="cn must be in range 1-100"):
-            ConcentrationTime.scs_lag(length_km=5.0, slope_m_per_m=0.02, cn=101)
+            ConcentrationTime.nrcs(length_km=5.0, slope_m_per_m=0.02, cn=101)
 
 
 class TestGiandotti:
@@ -249,7 +249,7 @@ class TestConcentrationTimeImport:
 
         assert CT is not None
         assert hasattr(CT, "kirpich")
-        assert hasattr(CT, "scs_lag")
+        assert hasattr(CT, "nrcs")
         assert hasattr(CT, "giandotti")
 
 
@@ -279,28 +279,28 @@ class TestParameterRangeWarnings:
             warnings.simplefilter("error")
             ConcentrationTime.kirpich(length_km=5.0, slope_m_per_m=0.03)
 
-    def test_scs_lag_warns_on_low_cn(self):
+    def test_nrcs_warns_on_low_cn(self):
         """Test warning for CN below recommended range."""
         with pytest.warns(UserWarning, match="outside typical range"):
-            ConcentrationTime.scs_lag(length_km=5.0, slope_m_per_m=0.02, cn=45)
+            ConcentrationTime.nrcs(length_km=5.0, slope_m_per_m=0.02, cn=45)
 
-    def test_scs_lag_warns_on_high_cn(self):
+    def test_nrcs_warns_on_high_cn(self):
         """Test warning for CN above recommended range."""
         with pytest.warns(UserWarning, match="outside typical range"):
-            ConcentrationTime.scs_lag(length_km=5.0, slope_m_per_m=0.02, cn=98)
+            ConcentrationTime.nrcs(length_km=5.0, slope_m_per_m=0.02, cn=98)
 
-    def test_scs_lag_warns_on_long_length(self):
+    def test_nrcs_warns_on_long_length(self):
         """Test warning for length above typical range."""
         with pytest.warns(UserWarning, match="outside typical range"):
-            ConcentrationTime.scs_lag(length_km=50.0, slope_m_per_m=0.02, cn=72)
+            ConcentrationTime.nrcs(length_km=50.0, slope_m_per_m=0.02, cn=72)
 
-    def test_scs_lag_no_warning_in_range(self):
+    def test_nrcs_no_warning_in_range(self):
         """Test no warning when parameters are in typical range."""
         import warnings
 
         with warnings.catch_warnings():
             warnings.simplefilter("error")
-            ConcentrationTime.scs_lag(length_km=5.0, slope_m_per_m=0.02, cn=72)
+            ConcentrationTime.nrcs(length_km=5.0, slope_m_per_m=0.02, cn=72)
 
     def test_giandotti_warns_on_small_area(self):
         """Test warning for area below recommended range."""

@@ -34,7 +34,7 @@ class ReportConfig:
     Parameters
     ----------
     tc_method : str, optional
-        Time of concentration method ("kirpich", "scs_lag", "giandotti"),
+        Time of concentration method ("kirpich", "nrcs", "giandotti"),
         by default "kirpich".
     uh_model : str, optional
         Unit hydrograph model ("scs", "nash", "clark", "snyder"),
@@ -460,7 +460,7 @@ class HydrologyReportGenerator:
             if "channel_slope_m_per_m" in watershed_params:
                 params["slope_m_per_m"] = watershed_params["channel_slope_m_per_m"]
 
-        elif method == "scs_lag":
+        elif method == "nrcs":
             if "channel_length_km" in watershed_params:
                 params["length_km"] = watershed_params["channel_length_km"]
             if "mean_slope_percent" in watershed_params:

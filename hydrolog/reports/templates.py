@@ -28,7 +28,7 @@ SECTION_HEADERS: Dict[str, str] = {
 
 TC_METHODS: Dict[str, str] = {
     "kirpich": "Wzór Kirpicha (1940)",
-    "scs_lag": "Równanie SCS Lag (USDA TR-55)",
+    "nrcs": "Równanie NRCS (USDA TR-55)",
     "giandotti": "Wzór Giandottiego (1934)",
 }
 
@@ -117,7 +117,7 @@ FORMULA_EXPLANATIONS: Dict[str, str] = {
         "S - retencja maksymalna [mm]"
     ),
     "kirpich": "gdzie L - długość cieku [km], S - spadek cieku [m/m]",
-    "scs_lag": (
+    "nrcs": (
         "gdzie L - długość hydrauliczna [m], S - retencja [mm], "
         "Y - średni spadek zlewni [%]"
     ),

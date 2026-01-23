@@ -394,8 +394,8 @@ class TestWatershedParametersCalculateTc:
         # tc should be longer with longer channel
         assert tc_with_channel > tc_no_channel
 
-    def test_calculate_tc_scs_lag_requires_cn(self) -> None:
-        """Test that SCS Lag method requires CN."""
+    def test_calculate_tc_nrcs_requires_cn(self) -> None:
+        """Test that NRCS method requires CN."""
         params = WatershedParameters(
             area_km2=45.0,
             perimeter_km=32.0,
@@ -407,10 +407,10 @@ class TestWatershedParametersCalculateTc:
         )
 
         with pytest.raises(InvalidParameterError, match="CN is required"):
-            params.calculate_tc(method="scs_lag")
+            params.calculate_tc(method="nrcs")
 
-    def test_calculate_tc_scs_lag_with_cn(self) -> None:
-        """Test SCS Lag method with CN."""
+    def test_calculate_tc_nrcs_with_cn(self) -> None:
+        """Test NRCS method with CN."""
         params = WatershedParameters(
             area_km2=45.0,
             perimeter_km=32.0,
@@ -421,7 +421,7 @@ class TestWatershedParametersCalculateTc:
             cn=72,
         )
 
-        tc = params.calculate_tc(method="scs_lag")
+        tc = params.calculate_tc(method="nrcs")
 
         assert tc > 0
 

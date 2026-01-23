@@ -34,7 +34,7 @@ def generate_tc_section(
     tc_min : float
         Calculated time of concentration [min].
     method : str
-        Method used ("kirpich", "scs_lag", "giandotti").
+        Method used ("kirpich", "nrcs", "giandotti").
     length_km : float, optional
         Channel/hydraulic length [km].
     slope_m_per_m : float, optional
@@ -88,9 +88,9 @@ def generate_tc_section(
                     f"**Wynik:** $t_c$ = {tc_min:.1f} min",
                 ])
 
-        elif method == "scs_lag":
+        elif method == "nrcs":
             if length_km is not None and slope_percent is not None and cn is not None:
-                lines.append(FormulaRenderer.scs_lag_tc(
+                lines.append(FormulaRenderer.nrcs_tc(
                     length_km=length_km,
                     slope_percent=slope_percent,
                     cn=cn,

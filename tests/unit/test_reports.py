@@ -111,16 +111,16 @@ class TestFormulaRenderer:
         assert "85.9" in result
         assert "Kirpich" in result or "min" in result
 
-    def test_scs_lag_tc(self):
-        """Test SCS Lag formula rendering."""
-        result = FormulaRenderer.scs_lag_tc(
+    def test_nrcs_tc(self):
+        """Test NRCS formula rendering."""
+        result = FormulaRenderer.nrcs_tc(
             length_km=5.0,
             slope_percent=2.5,
             cn=72,
             tc_min=200.0,
         )
 
-        assert "7069" in result
+        assert "0.01416" in result
         assert "72" in result
         assert "200" in result
 
@@ -443,13 +443,13 @@ class TestReportConfig:
     def test_custom_values(self):
         """Test custom configuration values."""
         config = ReportConfig(
-            tc_method="scs_lag",
+            tc_method="nrcs",
             uh_model="nash",
             include_formulas=False,
             max_table_rows=30,
         )
 
-        assert config.tc_method == "scs_lag"
+        assert config.tc_method == "nrcs"
         assert config.uh_model == "nash"
         assert config.include_formulas is False
         assert config.max_table_rows == 30

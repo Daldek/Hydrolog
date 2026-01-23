@@ -21,7 +21,7 @@ Dokument ten służy jako przewodnik, który:
 
 ### 1.2 Macierz kompatybilności
 
-| Model | Kirpich | SCS Lag | Giandotti | from_lutz() | Bezpośrednio | Własna metoda |
+| Model | Kirpich | NRCS | Giandotti | from_lutz() | Bezpośrednio | Własna metoda |
 |-------|:-------:|:-------:|:---------:|:-----------:|:------------:|:-------------:|
 | **SCS UH** | ✅ | ✅ | ✅ | - | - | - |
 | **Nash IUH** | ⚠️ | ⚠️ | ⚠️ | ✅ | ✅ | - |
@@ -136,7 +136,7 @@ Dokument ten służy jako przewodnik, który:
 | Metoda | Status | Uzasadnienie |
 |--------|--------|--------------|
 | Kirpich | ✅ OK | Tc jest parametrem wejściowym metody SCS |
-| SCS Lag | ✅ OK | Metoda opracowana razem z SCS UH (TR-55) |
+| NRCS | ✅ OK | Metoda opracowana razem z SCS UH (TR-55) |
 | Giandotti | ✅ OK | Tc jest parametrem wejściowym metody SCS |
 
 **Uzasadnienie literaturowe:**
@@ -398,7 +398,7 @@ nash_correct = NashIUH.from_lutz(
 | Metoda | Status | Uzasadnienie |
 |--------|--------|--------------|
 | Kirpich → Tc | ✅ OK | Tc = czas translacji (zgodne z modelem Clark) |
-| SCS Lag → Tc | ✅ OK | Tc = czas translacji |
+| NRCS → Tc | ✅ OK | Tc = czas translacji |
 | Giandotti → Tc | ✅ OK | Tc = czas translacji |
 | Bezpośrednio Tc, R | ✅ OK | Gdy masz zmierzone/skalibrowane wartości |
 | R/Tc ratio | ✅ OK | Typowe wartości: 0.2-1.5 |
@@ -515,7 +515,7 @@ print(f"Qmax = {result.peak_discharge_m3s:.2f} m³/s")
 │                                                                       │
 │  NIE UŻYWAJ z modelem Snydera:                                       │
 │  ❌ ConcentrationTime.kirpich()                                       │
-│  ❌ ConcentrationTime.scs_lag()                                       │
+│  ❌ ConcentrationTime.nrcs()                                          │
 │  ❌ ConcentrationTime.giandotti()                                     │
 │                                                                       │
 │  Użycie zewnętrznego Tc byłoby nieuzasadnione metodologicznie,       │
@@ -600,7 +600,7 @@ print(f"Qmax = {result.peak_discharge_m3s:.2f} m³/s")
 | Ścieżka obliczeniowa | Źródło | Status |
 |----------------------|--------|:------:|
 | SCS UH + Kirpich → Tc | USDA TR-55 (1986), Kirpich (1940) | ✅ |
-| SCS UH + SCS Lag → Tc | USDA TR-55 (1986) | ✅ |
+| SCS UH + NRCS → Tc | USDA TR-55 (1986) | ✅ |
 | SCS UH + Giandotti → Tc | Giandotti (1934), TR-55 | ✅ |
 | Nash IUH + from_lutz() | Lutz (1984), KZGW (2017) | ✅ |
 | Nash IUH + bezpośrednio n, K | Nash (1957) | ✅ |

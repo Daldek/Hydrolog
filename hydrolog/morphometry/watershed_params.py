@@ -330,7 +330,7 @@ class WatershedParameters:
         Parameters
         ----------
         method : str, optional
-            Calculation method: "kirpich", "scs_lag", or "giandotti".
+            Calculation method: "kirpich", "nrcs", or "giandotti".
             Default is "kirpich".
 
         Returns
@@ -347,7 +347,7 @@ class WatershedParameters:
 
         Notes
         -----
-        For "kirpich" and "scs_lag", uses channel_length_km if available,
+        For "kirpich" and "nrcs", uses channel_length_km if available,
         otherwise falls back to length_km.
 
         For slope, uses channel_slope_m_per_m if available, otherwise
@@ -379,12 +379,12 @@ class WatershedParameters:
                 length_km=length_km,
                 slope_m_per_m=slope_m_per_m,
             )
-        elif method == "scs_lag":
+        elif method == "nrcs":
             if self.cn is None:
                 raise InvalidParameterError(
-                    "CN is required for SCS Lag method. Set cn parameter."
+                    "CN is required for NRCS method. Set cn parameter."
                 )
-            return ConcentrationTime.scs_lag(
+            return ConcentrationTime.nrcs(
                 length_km=length_km,
                 slope_m_per_m=slope_m_per_m,
                 cn=self.cn,
@@ -402,5 +402,5 @@ class WatershedParameters:
             )
         else:
             raise ValueError(
-                f"Unknown method: '{method}'. Use 'kirpich', 'scs_lag', or 'giandotti'."
+                f"Unknown method: '{method}'. Use 'kirpich', 'nrcs', or 'giandotti'."
             )

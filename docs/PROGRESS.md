@@ -446,7 +446,7 @@ docs/CHANGELOG.md    # wpis o błędzie i testach
   - Standaryzowany format wymiany danych (JSON schema)
   - Metody `from_dict()`, `from_json()`, `to_dict()`, `to_json()`
   - Konwersje: `to_geometry()`, `to_terrain()`
-  - Obliczenia: `calculate_tc()` z 3 metodami (kirpich, scs_lag, giandotti)
+  - Obliczenia: `calculate_tc()` z 3 metodami (kirpich, nrcs, giandotti)
   - Właściwości: `width_km`, `relief_m`
 - [x] Dodano metody `from_dict()` do istniejących klas:
   - `WatershedGeometry.from_dict()` w `geometric.py`
