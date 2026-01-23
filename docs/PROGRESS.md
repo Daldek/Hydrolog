@@ -6,8 +6,8 @@
 |------|---------|
 | **Faza** | 1 - Implementacja |
 | **Sprint** | 0.6.x - Generowanie raportów |
-| **Sesja** | 23 |
-| **Data** | 2026-01-22 |
+| **Sesja** | 24 |
+| **Data** | 2026-01-23 |
 | **Następny milestone** | v1.0.0 - Stabilne API |
 | **Gałąź robocza** | develop |
 
@@ -52,6 +52,81 @@
 ---
 
 ## Bieżąca sesja
+
+### Sesja 24 (2026-01-23) - UKOŃCZONA
+
+**Cel:** Refaktoryzacja: zmiana nazwy `scs_lag()` → `nrcs()` w całym projekcie
+
+**Kontekst:**
+Nazwa `scs_lag` była myląca - metoda oblicza czas koncentracji (tc), nie czas opóźnienia (lag).
+Nazwa `nrcs` jest bardziej zgodna z literaturą (USDA-NRCS TR-55).
+
+**Co zostało zrobione:**
+- [x] Zaktualizowano docstringi w `ConcentrationTime`:
+  - Poprawiono przykład w docstringu klasy (`scs_lag` → `nrcs`)
+  - Poprawiono literówkę `tc min]` → `tc[min]` w metodzie `kirpich()`
+  - Zaktualizowano pełny docstring metody `nrcs()` z poprawnym wyprowadzeniem wzoru
+  - Zmieniono nazwę metody w ostrzeżeniach (`"scs_lag"` → `"nrcs"`)
+- [x] Zaktualizowano CLI (`hydrolog/cli/commands/tc.py`):
+  - Komenda `scs-lag` → `nrcs`
+- [x] Zaktualizowano wszystkie wywołania w kodzie (6 plików):
+  - `hydrolog/morphometry/watershed_params.py`
+  - `hydrolog/reports/generator.py`
+  - `hydrolog/reports/formatters.py`
+  - `hydrolog/reports/templates.py`
+  - `hydrolog/reports/sections/concentration.py`
+- [x] Zaktualizowano testy (5 plików):
+  - `tests/unit/test_concentration.py`
+  - `tests/unit/test_cli.py`
+  - `tests/unit/test_reports.py`
+  - `tests/unit/test_watershed_params.py`
+  - `tests/integration/test_hydrograf_integration.py`
+- [x] Zaktualizowano dokumentację (5 plików):
+  - `README.md`
+  - `docs/CHANGELOG.md`
+  - `docs/COMPUTATION_PATHS.md`
+  - `docs/PROGRESS.md`
+  - `docs/NASH_AUDIT_REPORT.md`
+- [x] Zaktualizowano notebook `examples/03_czas_koncentracji.ipynb`
+- [x] Wszystkie 611 testów przechodzi
+
+**Pliki zmodyfikowane (18):**
+```
+hydrolog/time/concentration.py          # docstringi + ostrzeżenia
+hydrolog/cli/commands/tc.py             # komenda CLI
+hydrolog/morphometry/watershed_params.py
+hydrolog/reports/generator.py
+hydrolog/reports/formatters.py
+hydrolog/reports/templates.py
+hydrolog/reports/sections/concentration.py
+tests/unit/test_concentration.py
+tests/unit/test_cli.py
+tests/unit/test_reports.py
+tests/unit/test_watershed_params.py
+tests/integration/test_hydrograf_integration.py
+README.md
+docs/CHANGELOG.md
+docs/COMPUTATION_PATHS.md
+docs/PROGRESS.md
+docs/NASH_AUDIT_REPORT.md
+examples/03_czas_koncentracji.ipynb
+```
+
+**Wzór NRCS (metryczny):**
+```
+tc[min] = 0.01416 × L[m]^0.8 × (S[mm]+25.4)^0.7 × Y[%]^(-0.5)
+```
+
+**Commit sesji:**
+```
+3232c59 refactor(time)!: rename scs_lag() to nrcs() in ConcentrationTime
+```
+
+**Uwaga:** To jest **breaking change** - stara nazwa `scs_lag()` nie jest już dostępna.
+
+**Testy:** 611 passed
+
+---
 
 ### Sesja 23 (2026-01-22) - UKOŃCZONA
 
@@ -867,10 +942,10 @@ Wyniki Hydrolog (model Nasha):
 - **Tag:** `v0.6.0` (ostatni release)
 - **Środowisko:** `.venv` z Python 3.12.12
 - **Repo GitHub:** https://github.com/Daldek/Hydrolog.git
-- **Testy:** 610 testów (595 jednostkowych + 15 integracyjnych)
+- **Testy:** 611 testów (596 jednostkowych + 15 integracyjnych)
 
 ### Zaimplementowane moduły
-- `hydrolog.time.ConcentrationTime` - 3 metody (Kirpich, SCS Lag, Giandotti) + ostrzeżenia zakresów
+- `hydrolog.time.ConcentrationTime` - 3 metody (Kirpich, NRCS, Giandotti) + ostrzeżenia zakresów
 - `hydrolog.precipitation` - 4 typy hietogramów (Block, Triangular, Beta, EulerII) + interpolacja (Thiessen, IDW, Isohyet)
 - `hydrolog.runoff` - SCS-CN, SCSUnitHydrograph, NashIUH, ClarkIUH, SnyderUH, HydrographGenerator (z uh_model), CN Lookup (TR-55)
 - `hydrolog.morphometry` - WatershedGeometry, TerrainAnalysis, HypsometricCurve, WatershedParameters (integracja GIS)
@@ -878,6 +953,12 @@ Wyniki Hydrolog (model Nasha):
 - `hydrolog.visualization` - 15 funkcji wizualizacji (hietogramy, hydrogramy, porównania UH, bilans wodny, morfometria, sieć rzeczna)
 - `hydrolog.reports` - **NEW** HydrologyReportGenerator (raporty Markdown z wzorami LaTeX)
 - `hydrolog.cli` - interfejs CLI (tc, cn, scs, uh)
+
+### Ostatnio dodane (Sesja 24)
+- **BREAKING CHANGE:** Zmiana nazwy metody `scs_lag()` → `nrcs()` w `ConcentrationTime`
+- Zaktualizowane docstringi z poprawnym wyprowadzeniem wzoru NRCS
+- Zmiana komendy CLI `scs-lag` → `nrcs`
+- Aktualizacja 18 plików (kod, testy, dokumentacja, notebook)
 
 ### Ostatnio dodane (Sesja 22)
 - `LutzCalculationResult` - dataclass z wynikami pośrednimi metody Lutza
@@ -1136,4 +1217,4 @@ Hydrolog/
 
 ---
 
-**Ostatnia aktualizacja:** 2026-01-22, Sesja 22 (rozszerzenie raportów: Lutz + wykresy)
+**Ostatnia aktualizacja:** 2026-01-23, Sesja 24 (refaktoryzacja: scs_lag → nrcs)
