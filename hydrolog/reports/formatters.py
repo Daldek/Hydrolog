@@ -187,14 +187,14 @@ class FormulaRenderer:
         )
 
     @staticmethod
-    def scs_lag_tc(
+    def nrcs_tc(
         length_km: float,
         slope_percent: float,
         cn: int,
         tc_min: float,
     ) -> str:
         """
-        Render SCS Lag formula.
+        Render NRCS formula.
 
         Parameters
         ----------
@@ -214,12 +214,10 @@ class FormulaRenderer:
         """
         length_m = length_km * 1000
         s = (25400 / cn) - 254 if cn < 100 else 0
-        lag_min = tc_min * 0.6
         return (
             "**Wzór ogólny:**\n\n"
-            "$$t_{lag} = \\frac{L^{0.8} \\cdot (S + 25.4)^{0.7}}"
-            "{7069 \\cdot Y^{0.5}} \\text{ [h]}$$\n\n"
-            "$$t_c = \\frac{t_{lag}}{0.6}$$\n\n"
+            "$$t_c = 0.01416 \\cdot L^{0.8} \\cdot (S + 25.4)^{0.7}"
+            " \\cdot Y^{-0.5} \\text{ [min]}$$\n\n"
             "gdzie:\n"
             "- $L$ - długość hydrauliczna [m]\n"
             "- $S$ - retencja maksymalna [mm]\n"
@@ -228,8 +226,7 @@ class FormulaRenderer:
             f"- L = {length_m:.0f} m\n"
             f"- S = {s:.2f} mm (dla CN = {cn})\n"
             f"- Y = {slope_percent:.2f} %\n\n"
-            f"$$t_{{lag}} = {lag_min:.1f} \\text{{ min}}$$\n\n"
-            f"$$t_c = \\frac{{{lag_min:.1f}}}{{0.6}} = {tc_min:.1f} \\text{{ min}}$$"
+            f"$$t_c = {tc_min:.1f} \\text{{ min}}$$"
         )
 
     @staticmethod

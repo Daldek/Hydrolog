@@ -33,8 +33,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Nash (1957), Lutz (1984), Rosso (1984), KZGW (2017)
 - `hydrolog.time.concentration` module enhanced with literature references:
   - `kirpich()`: Added Ponce (2014), CivilWeb (2023); clarified original units (minutes, slope in m/m)
-  - `scs_lag()`: Added TR-55, HEC-HMS references; clarified tc vs tl vs tp distinction
+  - `nrcs()`: Added TR-55, HEC-HMS references; clarified tc vs tl vs tp distinction
   - `giandotti()`: Added Grimaldi (2012), Michailidi (2018); verified original output in hours
+- **BREAKING:** `ConcentrationTime.scs_lag()` renamed to `ConcentrationTime.nrcs()`
+  - Method calculates tc directly using the NRCS equation
+  - Formula simplified: `tc = 0.01416 × L^0.8 × (S+25.4)^0.7 × Y^-0.5`
+  - All references in codebase updated (CLI, reports, morphometry, tests)
 - `hydrolog.visualization`: Temporarily disabled `plot_generator_result()` export (to be removed)
 
 ### Deprecated
@@ -77,7 +81,7 @@ New module for generating comprehensive hydrological calculation reports in Mark
   - Supports all UH models (SCS, Nash, Clark, Snyder)
   - Outputs complete calculation procedure with formulas
 - `ReportConfig` - configuration dataclass
-  - `tc_method` - concentration time method (kirpich, scs_lag, giandotti)
+  - `tc_method` - concentration time method (kirpich, nrcs, giandotti)
   - `uh_model` - unit hydrograph model (scs, nash, clark, snyder)
   - `include_formulas` - include LaTeX formulas (default: True)
   - `include_tables` - include data tables (default: True)
@@ -156,7 +160,7 @@ New dataclass for standardized data exchange between GIS systems (Hydrograf, QGI
   - `to_dict()` / `to_json()` - export for serialization
   - `to_geometry()` - convert to WatershedGeometry
   - `to_terrain()` - convert to TerrainAnalysis
-  - `calculate_tc(method)` - calculate concentration time (kirpich, scs_lag, giandotti)
+  - `calculate_tc(method)` - calculate concentration time (kirpich, nrcs, giandotti)
   - Computed properties: `width_km`, `relief_m`
 
 #### Factory methods for morphometry classes
@@ -316,13 +320,13 @@ Requires optional dependencies: `pip install hydrolog[visualization]`
 - `IUHResult` and `NashUHResult` dataclasses
 
 ### Changed
-- **BREAKING:** `ConcentrationTime.scs_lag()` signature changed:
+- **BREAKING:** `ConcentrationTime.scs_lag()` signature changed (now renamed to `nrcs()`):
   - `length_m` → `length_km` (meters to kilometers)
   - `slope_percent` → `slope_m_per_m` (percent to dimensionless)
 - Added parameter range warnings to all concentration time methods
 
 ### Fixed
-- Corrected SCS Lag constant: `7182` → `7069` (proper metric conversion)
+- Corrected NRCS constant: `7182` → `7069` (proper metric conversion)
 - Fixed docstring examples in `scs_cn.py` (Pe = 7.09 mm, not 12.89 mm)
 
 ### Dependencies
@@ -420,7 +424,7 @@ Requires optional dependencies: `pip install hydrolog[visualization]`
 
 #### `hydrolog.time` - Concentration Time
 - `ConcentrationTime.kirpich()` - Kirpich formula (L in km, S in m/m)
-- `ConcentrationTime.scs_lag()` - SCS Lag equation (metric units)
+- `ConcentrationTime.nrcs()` - NRCS equation (metric units)
 - `ConcentrationTime.giandotti()` - Giandotti formula
 
 #### `hydrolog.precipitation` - Hyetographs

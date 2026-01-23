@@ -15,12 +15,12 @@ def register_parser(subparsers: argparse._SubParsersAction) -> None:
         epilog="""
 Methods:
   kirpich   Kirpich formula (small agricultural watersheds)
-  scs-lag   SCS Lag equation (uses Curve Number)
+  nrcs      NRCS equation (uses Curve Number)
   giandotti Giandotti formula (larger watersheds)
 
 Examples:
   hydrolog tc kirpich --length 2.5 --slope 0.02
-  hydrolog tc scs-lag --length 5.0 --slope 0.01 --cn 72
+  hydrolog tc nrcs --length 5.0 --slope 0.01 --cn 72
   hydrolog tc giandotti --area 100 --length 15 --elevation 500
 """,
     )
@@ -57,13 +57,13 @@ Examples:
     )
     kirpich.set_defaults(func=_run_kirpich)
 
-    # SCS Lag method
-    scs_lag = method_parsers.add_parser(
-        "scs-lag",
-        help="SCS Lag equation",
-        description="Calculate Tc using SCS Lag equation (requires Curve Number).",
+    # NRCS method
+    nrcs = method_parsers.add_parser(
+        "nrcs",
+        help="NRCS equation",
+        description="Calculate Tc using NRCS equation (requires Curve Number).",
     )
-    scs_lag.add_argument(
+    nrcs.add_argument(
         "-L",
         "--length",
         type=float,
@@ -71,7 +71,7 @@ Examples:
         metavar="KM",
         help="Flow path length [km]",
     )
-    scs_lag.add_argument(
+    nrcs.add_argument(
         "-S",
         "--slope",
         type=float,
@@ -79,7 +79,7 @@ Examples:
         metavar="M/M",
         help="Average watershed slope [m/m]",
     )
-    scs_lag.add_argument(
+    nrcs.add_argument(
         "-CN",
         "--cn",
         type=int,
@@ -87,7 +87,7 @@ Examples:
         metavar="CN",
         help="Curve Number (1-100)",
     )
-    scs_lag.set_defaults(func=_run_scs_lag)
+    nrcs.set_defaults(func=_run_nrcs)
 
     # Giandotti method
     giandotti = method_parsers.add_parser(
@@ -147,15 +147,15 @@ def _run_kirpich(args: argparse.Namespace) -> int:
     return 0
 
 
-def _run_scs_lag(args: argparse.Namespace) -> int:
-    """Execute SCS Lag calculation."""
-    tc = ConcentrationTime.scs_lag(
+def _run_nrcs(args: argparse.Namespace) -> int:
+    """Execute NRCS calculation."""
+    tc = ConcentrationTime.nrcs(
         length_km=args.length,
         slope_m_per_m=args.slope,
         cn=args.cn,
     )
 
-    print(f"SCS Lag Time of Concentration")
+    print(f"NRCS Time of Concentration")
     print(f"{'─' * 35}")
     print(f"  Flow path length: {args.length:.2f} km")
     print(f"  Watershed slope:  {args.slope:.4f} m/m")

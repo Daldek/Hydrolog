@@ -147,7 +147,7 @@ Zawiera trzy metody obliczania Tc:
 | Metoda | Oryginalne zastosowanie | Status w Hydrolog |
 |--------|-------------------------|-------------------|
 | `kirpich()` | Małe zlewnie rolnicze, metoda racjonalna | ✅ Prawidłowa implementacja |
-| `scs_lag()` | SCS Unit Hydrograph | ✅ Prawidłowa implementacja |
+| `nrcs()` | SCS Unit Hydrograph | ✅ Prawidłowa implementacja |
 | `giandotti()` | Włoskie zlewnie górskie | ✅ Prawidłowa implementacja |
 
 **Ważne:** Te metody są **niezależne** od modułu Nash IUH. Problem występuje gdy użytkownik używa `NashIUH.from_tc()` z Tc obliczonym przez te metody.
@@ -162,7 +162,7 @@ Zawiera trzy metody obliczania Tc:
 │  concentration.py          nash_iuh.py                          │
 │  ┌──────────────┐          ┌──────────────┐                     │
 │  │ kirpich()    │          │ NashIUH      │                     │
-│  │ scs_lag()    │──Tc──────│ ├─from_tc()  │ ← PROBLEMATYCZNE    │
+│  │ nrcs()       │──Tc──────│ ├─from_tc()  │ ← PROBLEMATYCZNE    │
 │  │ giandotti()  │          │ └─from_lutz()│ ← PRAWIDŁOWE        │
 │  └──────────────┘          └──────────────┘                     │
 │                                                                 │
@@ -252,7 +252,7 @@ Metody Kirpich, SCS Lag i Giandotti są **prawidłowo zaimplementowane** i mają
 │  concentration.py          nash_iuh.py                          │
 │  ┌──────────────┐          ┌──────────────┐                     │
 │  │ kirpich()    │          │ NashIUH      │                     │
-│  │ scs_lag()    │          │ ├─__init__() │ ← Bezpośrednie n,K  │
+│  │ nrcs()       │          │ ├─__init__() │ ← Bezpośrednie n,K  │
 │  │ giandotti()  │          │ └─from_lutz()│ ← Cechy fizjograf.  │
 │  └──────────────┘          └──────────────┘                     │
 │        │                                                        │

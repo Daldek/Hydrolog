@@ -90,8 +90,8 @@ from hydrolog.time import ConcentrationTime
 # Wzór Kirpicha (L w km, S w m/m)
 tc_kirpich = ConcentrationTime.kirpich(length_km=8.2, slope_m_per_m=0.023)
 
-# Wzór SCS Lag (L w km, S w m/m, CN 1-100)
-tc_scs = ConcentrationTime.scs_lag(length_km=8.2, slope_m_per_m=0.023, cn=72)
+# Wzór NRCS (L w km, S w m/m, CN 1-100)
+tc_nrcs = ConcentrationTime.nrcs(length_km=8.2, slope_m_per_m=0.023, cn=72)
 
 # Wzór Giandotti (A w km², L w km, H w m)
 tc_giandotti = ConcentrationTime.giandotti(
@@ -99,7 +99,7 @@ tc_giandotti = ConcentrationTime.giandotti(
 )
 
 print(f"Kirpich: {tc_kirpich:.1f} min")
-print(f"SCS Lag: {tc_scs:.1f} min")
+print(f"NRCS: {tc_nrcs:.1f} min")
 print(f"Giandotti: {tc_giandotti:.1f} min")
 ```
 
@@ -635,7 +635,7 @@ result = generator.generate(precip)
 
 # Konfiguracja raportu
 config = ReportConfig(
-    tc_method="kirpich",      # kirpich, scs_lag, giandotti
+    tc_method="kirpich",      # kirpich, nrcs, giandotti
     uh_model="scs",           # scs, nash, clark, snyder
     include_formulas=True,    # Wzory LaTeX
     include_tables=True,      # Tabele z wynikami

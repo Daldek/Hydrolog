@@ -64,11 +64,11 @@ class ConcentrationTime:
     --------
     >>> tc = ConcentrationTime.kirpich(length_km=8.2, slope_m_per_m=0.023)
     >>> print(f"{tc:.1f} min")
-    85.9 min
+    86.0 min
 
-    >>> tc = ConcentrationTime.scs_lag(length_km=8.2, slope_m_per_m=0.023, cn=72)
+    >>> tc = ConcentrationTime.nrcs(length_km=8.2, slope_m_per_m=0.023, cn=72)
     >>> print(f"{tc:.1f} min")
-    368.7 min
+    369.0 min
     """
 
     @staticmethod
@@ -111,15 +111,35 @@ class ConcentrationTime:
         Notes
         -----
         Original formula (US units):
-            tc [min] = 0.0078 * L[ft]^0.77 * S[ft/ft]^(-0.385)
-
+            tc[min] = 0.0078 * L[ft]^0.77 * S^(-0.385)
         Metric conversion (this implementation):
-            tc [h] = 0.0663 * L[km]^0.77 * S[m/m]^(-0.385)
+            tc[min] = 0.0195 * L[m]^0.77 * S^(-0.385)
+        or
+            tc[min] = 3.981 * L[km]^0.77 * S^(-0.385)
+        or
+            tc[h] = 0.0663 * L[km]^0.77 * S^(-0.385)
 
         The original formula outputs time in **minutes**. Slope is dimensionless
         (m/m or ft/ft), not in percent. The constant 0.0663 is derived from
-        the original 0.0078 by converting feet to kilometers:
-        K = 0.0078 * (1000/0.3048)^0.77 / 60 ≈ 0.0663
+        the original 0.0078 by converting feet to kilometers and minutes to hours:
+            tc = 0.0078 * L[ft]^0.77 * S^(-0.385)
+            L[ft] = L[m] * 3.281
+            tc = 0.0078 * (3.281 * L[m])^0.77 * S^(-0.385)
+            tc = 0.0078 * 3.281^0.77 *L[m]^0.77 * S^(-0.385)
+            0.0078 * 3.281^0.77 ≈ 0.0195
+            tc = 0.0195 * L[m]^0.77 * S^(-0.385)
+            
+        Converting to kilometers:
+            L[m] = L[km] * 1000
+            tc = 0.0195 * (1000 * L[km])^0.77 * S^(-0.385)
+            tc = 0.0195 * 1000^0.77 * L[km]^0.77 * S^(-0.385)
+            0.0195 * 1000^0.77 ≈ 3.981
+            tc[min] = 3.981 * L[km]^0.77 * S^(-0.385)
+            
+        Converting minutes to hours:
+            tc[h] = (3.981 / 60) * L[km]^0.77 * S^(-0.385)
+            3.981 / 60 ≈ 0.0663
+            tc[h] = 0.0663 * L[km]^0.77 * S^(-0.385)
 
         Original calibration data: 7 small agricultural watersheds in Tennessee,
         areas 0.004-0.45 km² (1.25-112 acres), slopes 3-10%.
@@ -155,24 +175,22 @@ class ConcentrationTime:
             slope_m_per_m, "slope_m_per_m", *_KIRPICH_SLOPE_RANGE, "kirpich"
         )
 
-        # Kirpich formula: tc [hours]
-        tc_hours: float = 0.0663 * (length_km**0.77) * (slope_m_per_m ** (-0.385))
+        # Kirpich formula: tc [minutes]
+        tc_min: float = 3.981 * (length_km**0.77) * (slope_m_per_m ** (-0.385))
 
-        # Convert to minutes
-        tc_min: float = tc_hours * 60.0
         return tc_min
 
     @staticmethod
-    def scs_lag(
+    def nrcs(
         length_km: float,
         slope_m_per_m: float,
         cn: int,
     ) -> float:
         """
-        Calculate time of concentration using SCS Lag equation (metric).
+        Calculate time of concentration (tc) using NRCS equation (metric).
 
-        The SCS Lag equation estimates watershed lag time, which is then
-        converted to time of concentration using the relationship tc = Lag / 0.6.
+        The NRCS method equation estimates watershed lag time, which is then
+        converted to concentration time using the relationship tc = tlag / 0.6.
 
         Parameters
         ----------
@@ -203,24 +221,42 @@ class ConcentrationTime:
 
         Notes
         -----
-        Formula (metric units):
-            Lag [h] = (L^0.8 * (S + 25.4)^0.7) / (7069 * Y^0.5)
-            tc = Lag / 0.6
+        Original formula (US units):
+            tlag[h] = (L[ft]^0.8 * ((1000/CN) - 9)^0.7) / (1900 * Y[%]^0.5)
+        where CN is the Curve Number and S[in] = (1000/CN) - 10 [inches]
+        thus
+            tlag[h] = (L[ft]^0.8 * (S[in] + 1)^0.7) / (1900 * Y[%]^0.5)
+        or
+            tlag[h] = 0.000526 * (S[in] + 1)^0.7 * L[ft]^0.8 * Y[%]^(-0.5)
+        
+        Metric conversion (this implementation):
+            L[ft] = 3.28 * L[m]
+            
+            S[mm] = 25.4 * ((1000/CN) - 10) [mm]
+            thus
+            (S[in] + 1) = (S[mm] + 25.4) / 25.4
+            
+            tlag[h] = (3.28^0.8 * L[m]^0.8 * (S[mm] + 25.4)^0.7) / (1900 * 25.4^0.7 * Y[%]^0.5)
+            
+            3.28^0.8 / (1900 * 25.4^0.7) ≈ 0.000141
+            
+            tlag[h] = 0.000141 * L[m]^0.8 * (S[mm] + 25.4)^0.7 * Y[%]^(-0.5)
+            
+            tc[h] = tlag / 0.6
+            tc[h] = 0.000236 * L[m]^0.8 * (S[mm] + 25.4)^0.7 * Y[%]^(-0.5)
+            
+            tc[min] = 0.000236 * 60 * L[m]^0.8 * (S[mm] + 25.4)^0.7 * Y[%]^(-0.5)
+            tc[min] = 0.01416 * L[m]^0.8 * (S[mm] + 25.4)^0.7 * Y[%]^(-0.5)
 
         Where:
         - L: hydraulic length [m] (converted internally from km)
         - S: maximum retention = (25400/CN) - 254 [mm]
         - Y: average watershed slope [%] (converted internally from m/m)
 
-        The constant 7069 is derived from the original imperial formula
-        (constant 1900) by converting feet to meters and inches to mm.
-
         **Important distinction:**
         - tc (time of concentration) = time for runoff to travel from the
           most distant point to the outlet
-        - tl (lag time) = 0.6 * tc = time from centroid of rainfall to peak
-        - tp (time to peak) = D/2 + tl = time to peak of unit hydrograph
-          (where D is the rainfall duration)
+        - tlag = 0.6 * tc = time from centroid of rainfall to peak flow
 
         This method calculates tc, not tp. For unit hydrograph calculations,
         use tp = D/2 + 0.6*tc.
@@ -236,8 +272,8 @@ class ConcentrationTime:
 
         Examples
         --------
-        >>> ConcentrationTime.scs_lag(length_km=8.2, slope_m_per_m=0.023, cn=72)
-        368.7...
+        >>> ConcentrationTime.nrcs(length_km=8.2, slope_m_per_m=0.023, cn=72)
+        369.0...
         """
         if length_km <= 0:
             raise InvalidParameterError(
@@ -252,12 +288,12 @@ class ConcentrationTime:
 
         # Warn if parameters are outside typical range
         _warn_if_out_of_range(
-            length_km, "length_km", *_SCS_LAG_LENGTH_RANGE, "scs_lag"
+            length_km, "length_km", *_SCS_LAG_LENGTH_RANGE, "nrcs"
         )
         _warn_if_out_of_range(
-            slope_m_per_m, "slope_m_per_m", *_SCS_LAG_SLOPE_RANGE, "scs_lag"
+            slope_m_per_m, "slope_m_per_m", *_SCS_LAG_SLOPE_RANGE, "nrcs"
         )
-        _warn_if_out_of_range(cn, "cn", *_SCS_LAG_CN_RANGE, "scs_lag")
+        _warn_if_out_of_range(cn, "cn", *_SCS_LAG_CN_RANGE, "nrcs")
 
         # Convert input units to formula units
         length_m = length_km * 1000.0  # km -> m
@@ -270,18 +306,8 @@ class ConcentrationTime:
         else:
             retention_mm = (25400.0 / cn) - 254.0
 
-        # SCS Lag equation (metric): Lag [hours]
-        # Lag = (L^0.8 * (S + 25.4)^0.7) / (7069 * Y^0.5)
-        # Constant 7069 = 1900 * 25.4^0.7 / 3.28084^0.8
-        lag_hours = ((length_m**0.8) * ((retention_mm + 25.4) ** 0.7)) / (
-            7069.0 * (slope_percent**0.5)
-        )
-
-        # Convert lag to tc: tc = Lag / 0.6
-        tc_hours = lag_hours / 0.6
-
-        # Convert to minutes
-        tc_min: float = tc_hours * 60.0
+        # tc formula (from tlag / 0.6): tc [min]
+        tc_min = 0.01416 * length_m**0.8 * (retention_mm + 25.4)**0.7 * slope_percent**(-0.5)
 
         return tc_min
 
