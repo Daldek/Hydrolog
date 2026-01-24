@@ -6,8 +6,8 @@
 |------|---------|
 | **Faza** | 1 - Implementacja |
 | **Sprint** | 0.6.x - Generowanie raportów |
-| **Sesja** | 24 |
-| **Data** | 2026-01-23 |
+| **Sesja** | 25 |
+| **Data** | 2026-01-24 |
 | **Następny milestone** | v1.0.0 - Stabilne API |
 | **Gałąź robocza** | develop |
 
@@ -52,6 +52,52 @@
 ---
 
 ## Bieżąca sesja
+
+### Sesja 25 (2026-01-24) - UKOŃCZONA
+
+**Cel:** Naprawa błędów wizualizacji w notebookach przykładowych
+
+**Kontekst:**
+Notebooki w folderze `examples/` zawierały błędne nazwy atrybutów, które powodowały błędy
+przy generowaniu wykresów.
+
+**Co zostało zrobione:**
+- [x] Naprawiono `01_hydrogram_scs_cn.ipynb`:
+  - `precip.timestep_min` → `precip.times_min`
+  - `result.time_step_min` → `result.hydrograph.times_min`
+  - `result.discharge_m3s` → `result.hydrograph.discharge_m3s`
+- [x] Naprawiono `02_hietogramy.ipynb`:
+  - `time_steps_min` → `times_min` (4 miejsca)
+  - Usunięto nieistniejący atrybut `mean_intensity_mm_min`
+- [x] Zweryfikowano `03_czas_koncentracji.ipynb` - bez zmian (poprawny)
+- [x] Naprawiono `04_morfometria.ipynb`:
+  - `get_geometric_parameters()` → `get_parameters()`
+- [x] Naprawiono `05_model_nasha.ipynb`:
+  - `hydrograph.time_steps_min` → `hydrograph.times_min` (3 miejsca)
+
+**Pliki zmodyfikowane (5):**
+```
+examples/01_hydrogram_scs_cn.ipynb
+examples/02_hietogramy.ipynb
+examples/04_morfometria.ipynb
+examples/05_model_nasha.ipynb
+```
+
+**Wzorzec błędów:**
+| Błędna nazwa | Poprawna nazwa |
+|--------------|----------------|
+| `time_steps_min` | `times_min` |
+| `result.discharge_m3s` | `result.hydrograph.discharge_m3s` |
+| `get_geometric_parameters()` | `get_parameters()` |
+
+**Commit sesji:**
+```
+051cf41 fix(examples): correct attribute names in visualization code
+```
+
+**Testy:** Wszystkie notebooki zweryfikowane - wizualizacje działają poprawnie
+
+---
 
 ### Sesja 24 (2026-01-23) - UKOŃCZONA
 
