@@ -5,9 +5,9 @@
 | Pole | Wartość |
 |------|---------|
 | **Faza** | 1 - Implementacja |
-| **Sprint** | 0.6.x - Generowanie raportów |
-| **Sesja** | 21 |
-| **Data** | 2026-01-21 |
+| **Sprint** | 0.6.x - Nash urban regression |
+| **Sesja** | 22 |
+| **Data** | 2026-03-20 |
 | **Następny milestone** | v1.0.0 - Stabilne API |
 | **Gałąź robocza** | develop |
 
@@ -32,6 +32,7 @@
 | CP12 | v0.5.0 - Wydanie z wizualizacją | ✅ Ukończony |
 | CP13 | `hydrolog.reports` - moduł raportów | ✅ Ukończony |
 | CP14 | v0.6.0 - Wydanie z raportami | ✅ Ukończony |
+| CP15 | Nash urban regression + v0.6.1 | ✅ Ukończony |
 
 ---
 
@@ -47,11 +48,48 @@
 | v0.5.1 | Bugfix SCS + GIS integration | ✅ Wydana (2026-01-21) |
 | v0.5.2 | Refaktor: usunięcie nieużywanego imgwtools | ✅ Wydana (2026-01-21) |
 | v0.6.0 | Generowanie raportów Markdown z LaTeX | ✅ Wydana (2026-01-21) |
+| v0.6.1 | Nash: regresja dla zlewni zurbanizowanych | ✅ Wydana (2026-03-20) |
 | v1.0.0 | Stabilne API + CLI | 📋 Planowany |
 
 ---
 
 ## Bieżąca sesja
+
+### Sesja 22 (2026-03-20) - UKOŃCZONA
+
+**Cel:** Analiza arkusza Obliczenia.xlsx + implementacja regresji dla zlewni zurbanizowanych
+
+**Co zostało zrobione:**
+- [x] Analiza arkusza `tmp/Obliczenia.xlsx` z kursu podyplomowego
+- [x] Porównanie procedury obliczeniowej arkusza z implementacją Hydrologa
+- [x] Potwierdzenie zgodności: SCS-CN (kumulatywny), IUH Nasha, UH z S-curve, splot
+- [x] Identyfikacja luki: brak metody estymacji parametrów Nasha dla zlewni zurbanizowanych
+- [x] Zaimplementowano `NashIUH.from_urban_regression()`:
+  - Formuły: tL = 1.28·A^0.46·(1+U)^(-1.66)·H^(-0.27)·D^0.37
+  - k = 0.56·A^0.39·(1+U)^(-0.62)·H^(-0.11)·D^0.22, N = tL/k
+  - Weryfikacja z danymi z arkusza: N≈1.621, k≈0.394h, tL≈0.639h
+- [x] Napisano 11 testów jednostkowych (w tym test referencyjny z arkusza)
+- [x] Zbadano referencje bibliograficzne:
+  - Formuły regresyjne: Rao, Delleur, Sarma (1972), ASCE + Purdue (1969)
+  - Nazwa metody: `from_urban_regression()` (neutralna, bez błędnej atrybucji)
+- [x] Zaktualizowano wersję do 0.6.1
+- [x] Zaktualizowano CHANGELOG.md, README.md, PROGRESS.md
+- [x] Wszystkie 621 testów przechodzi
+
+**Pliki zmodyfikowane:**
+```
+hydrolog/runoff/nash_iuh.py    # +from_urban_regression()
+hydrolog/__init__.py           # __version__ = "0.6.1"
+pyproject.toml                 # version = "0.6.1"
+tests/unit/test_nash_iuh.py    # +TestNashIUHFromUrbanRegression (11 testów)
+README.md                      # sekcja Nash urban regression + referencje
+docs/CHANGELOG.md              # sekcja [0.6.1]
+docs/PROGRESS.md               # ten plik
+```
+
+**Testy:** 621 passed (610 istniejących + 11 nowych)
+
+---
 
 ### Sesja 21 (2026-01-21) - UKOŃCZONA
 
@@ -752,22 +790,28 @@ Wyniki Hydrolog (model Nasha):
 ## Kontekst dla nowej sesji
 
 ### Stan projektu
-- **Faza:** Implementacja - v0.6.0 wydana
-- **Ostatni commit:** `feat(reports): add report generation module`
-- **Tag:** `v0.6.0` (ostatni release)
-- **Środowisko:** `.venv` z Python 3.12.12
+- **Faza:** Implementacja - v0.6.1 wydana
+- **Ostatni commit:** `feat(nash): add urban regression method for parameter estimation`
+- **Tag:** `v0.6.1` (ostatni release)
+- **Środowisko:** `.venv` z Python 3.12+
 - **Repo GitHub:** https://github.com/Daldek/Hydrolog.git
-- **Testy:** 610 testów (595 jednostkowych + 15 integracyjnych)
+- **Testy:** 621 testów (606 jednostkowych + 15 integracyjnych)
 
 ### Zaimplementowane moduły
 - `hydrolog.time.ConcentrationTime` - 3 metody (Kirpich, SCS Lag, Giandotti) + ostrzeżenia zakresów
 - `hydrolog.precipitation` - 4 typy hietogramów (Block, Triangular, Beta, EulerII) + interpolacja (Thiessen, IDW, Isohyet)
-- `hydrolog.runoff` - SCS-CN, SCSUnitHydrograph, NashIUH, ClarkIUH, SnyderUH, HydrographGenerator (z uh_model), CN Lookup (TR-55)
+- `hydrolog.runoff` - SCS-CN, SCSUnitHydrograph, NashIUH (from_tc, from_lutz, from_urban_regression), ClarkIUH, SnyderUH, HydrographGenerator (z uh_model), CN Lookup (TR-55)
 - `hydrolog.morphometry` - WatershedGeometry, TerrainAnalysis, HypsometricCurve, WatershedParameters (integracja GIS)
 - `hydrolog.network` - StreamNetwork, klasyfikacja Strahlera/Shreve'a
 - `hydrolog.visualization` - 15 funkcji wizualizacji (hietogramy, hydrogramy, porównania UH, bilans wodny, morfometria, sieć rzeczna)
-- `hydrolog.reports` - **NEW** HydrologyReportGenerator (raporty Markdown z wzorami LaTeX)
+- `hydrolog.reports` - HydrologyReportGenerator (raporty Markdown z wzorami LaTeX)
 - `hydrolog.cli` - interfejs CLI (tc, cn, scs, uh)
+
+### Ostatnio dodane (Sesja 22 - v0.6.1)
+- `NashIUH.from_urban_regression()` - estymacja parametrów Nasha dla zlewni zurbanizowanych
+- Formuły potęgowe: tL(A, U, H, D), k(A, U, H, D), N = tL/k
+- Referencje: Rao, Delleur, Sarma (1972/1969)
+- 11 nowych testów (weryfikacja z arkuszem Obliczenia.xlsx)
 
 ### Ostatnio dodane (Sesja 21 - v0.6.0)
 - `hydrolog.reports` - kompletny moduł generowania raportów Markdown
