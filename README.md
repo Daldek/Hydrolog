@@ -261,11 +261,39 @@ uh = nash.generate(timestep_min=10.0)
 print(f"Qmax = {uh.peak_discharge_m3s:.2f} m³/s/mm")
 ```
 
-**Referencje:**
+**Referencje (Lutz):**
 - Lutz W. (1984). *Berechnung von Hochwasserabflüssen unter Anwendung von Gebietskenngrößen*.
   Mitteilungen des Instituts für Hydrologie und Wasserwirtschaft, H. 24, Universität Karlsruhe.
 - KZGW (2017). *Aktualizacja metodyki obliczania przepływów i opadów maksymalnych*.
   Załącznik 2, Tabela C.2.
+
+#### Estymacja parametrów Nasha — regresja dla zlewni zurbanizowanych
+
+```python
+from hydrolog.runoff import NashIUH
+
+# Estymacja parametrów dla zlewni zurbanizowanej
+nash = NashIUH.from_urban_regression(
+    area_km2=1.3,              # Powierzchnia zlewni [km²]
+    effective_precip_mm=1.31,  # Opad efektywny [mm]
+    duration_h=0.17,           # Czas trwania opadu [h]
+    urban_fraction=0.05,       # Wskaźnik urbanizacji [-]
+)
+
+print(f"N = {nash.n:.3f}")           # N = 1.625
+print(f"k = {nash.k_min:.1f} min")   # k = 23.7 min
+print(f"tL = {nash.lag_time_min:.1f} min")  # tL = 38.6 min
+
+# Generowanie hydrogramu jednostkowego
+uh = nash.generate(timestep_min=6.0)
+print(f"Qmax = {uh.peak_discharge_m3s:.4f} m³/s/mm")
+```
+
+**Referencje (regresja dla zlewni zurbanizowanych):**
+- Rao, R.A.; Delleur, J.W.; Sarma, B.S.P. (1972). *Conceptual Hydrologic Models for
+  Urbanizing Basins*. Journal of the Hydraulics Division, ASCE, 98(HY7), 1205-1220.
+- Sarma, P.B.S.; Delleur, J.W.; Rao, A.R. (1969). *A Program in Urban Hydrology, Part II*.
+  Purdue University WRRC, Technical Report No. 9.
 
 ### Clark IUH
 

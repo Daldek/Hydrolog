@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.6.1] - 2026-03-20
+
+### Added
+
+#### `hydrolog.runoff.nash_iuh` - Urban Regression Method
+- `NashIUH.from_urban_regression()` - parameter estimation for urbanized catchments
+  - Estimates Nash model parameters (N, k) from catchment area, effective
+    precipitation, rainfall duration, and urbanization index
+  - Power-law regression equations: tL = 1.28·A^0.46·(1+U)^(-1.66)·H^(-0.27)·D^0.37,
+    k = 0.56·A^0.39·(1+U)^(-0.62)·H^(-0.11)·D^0.22
+  - Verified against reference spreadsheet (Obliczenia.xlsx)
+  - References: Rao, Delleur, Sarma (1972), ASCE J. Hydraulics Div. 98(HY7)
+
+### Testing
+- 11 new tests for urban regression method (including reference value verification)
+- Total: 621 tests (all passing)
+
+---
+
 ## [0.6.0] - 2026-01-21
 
 ### Added
