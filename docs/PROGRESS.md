@@ -841,7 +841,7 @@ Wyniki Hydrolog (model Nasha):
 ## Kontekst dla nowej sesji
 
 ### Stan projektu
-- **Faza:** Implementacja - v0.6.1 wydana
+- **Faza:** Implementacja - v0.6.2 wydana
 - **Ostatni commit:** v0.6.2 — raporty UH + korekty wzorów metrycznych
 - **Tag:** `v0.6.2` (ostatni release)
 - **Środowisko:** `.venv` z Python 3.12+
@@ -849,7 +849,7 @@ Wyniki Hydrolog (model Nasha):
 - **Testy:** 626 testów (611 jednostkowych + 15 integracyjnych)
 
 ### Zaimplementowane moduły
-- `hydrolog.time.ConcentrationTime` - 3 metody (Kirpich, SCS Lag, Giandotti) + ostrzeżenia zakresów
+- `hydrolog.time.ConcentrationTime` - 3 metody (Kirpich, NRCS, Giandotti) + ostrzeżenia zakresów
 - `hydrolog.precipitation` - 4 typy hietogramów (Block, Triangular, Beta, EulerII) + interpolacja (Thiessen, IDW, Isohyet)
 - `hydrolog.runoff` - SCS-CN, SCSUnitHydrograph, NashIUH (from_tc, from_lutz, from_urban_regression), ClarkIUH, SnyderUH, HydrographGenerator (z uh_model), CN Lookup (TR-55)
 - `hydrolog.morphometry` - WatershedGeometry, TerrainAnalysis, HypsometricCurve, WatershedParameters (integracja GIS)
@@ -1121,4 +1121,4 @@ Hydrolog/
 
 ---
 
-**Ostatnia aktualizacja:** 2026-01-21, Sesja 21 (moduł raportów + wydanie v0.6.0)
+**Ostatnia aktualizacja:** 2026-03-22, Sesja 23 (raporty UH + korekty wzorów metrycznych + wydanie v0.6.2)

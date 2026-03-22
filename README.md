@@ -6,7 +6,7 @@ Biblioteka Python do obliczeń hydrologicznych.
 
 - **Hydrogramy odpływu** - SCS-CN, Nash IUH, Clark IUH, Snyder UH
 - **Hietogramy** - rozkład Beta, blokowy, trójkątny, DVWK Euler Type II
-- **Czas koncentracji** - wzory Kirpicha, SCS Lag, Giandotti
+- **Czas koncentracji** - wzory Kirpicha, NRCS, Giandotti
 - **Parametry morfometryczne** - wskaźniki kształtu, teren, krzywa hipsograficzna
 - **Klasyfikacja sieci rzecznej** - metody Strahlera i Shreve'a
 - **Interpolacja opadów** - Thiessen, IDW, izohiety
@@ -717,7 +717,7 @@ $$I_a = 0.2 \cdot S = 0.2 \cdot 98.78 = 19.76 \text{ mm}$$
 ```bash
 # Czas koncentracji
 hydrolog tc kirpich --length 2.5 --slope 0.02
-hydrolog tc scs-lag --length 5.0 --slope 0.01 --cn 72
+hydrolog tc nrcs --length 5.0 --slope 0.01 --cn 72
 hydrolog tc giandotti --area 100 --length 15 --elevation 500
 
 # Wyszukiwanie CN
