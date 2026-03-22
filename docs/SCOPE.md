@@ -88,14 +88,14 @@ Hydrolog jest analogiczny do **Kartografa** (pobieranie danych przestrzennych) -
 
 **Czas koncentracji (tc):**
 - Wzór Kirpicha: `tc = 0.0195 × L^0.77 × S^(-0.385)`
-- Wzór SCS Lag: `tc = L^0.8 × (S + 1)^0.7 / (1900 × Y^0.5)`
+- Wzór NRCS: `tc = L^0.8 × (S + 1)^0.7 / (1900 × Y^0.5)`
 - Wzór Giandotti (opcjonalnie)
 - Wzór NRCS (opcjonalnie)
 
 **Parametry wejściowe:**
 - Długość głównego cieku [km lub m]
 - Spadek cieku [% lub m/m]
-- CN (dla metody SCS Lag)
+- CN (dla metody NRCS)
 
 ---
 
@@ -151,7 +151,7 @@ Hydrolog jest analogiczny do **Kartografa** (pobieranie danych przestrzennych) -
 ```bash
 # Czas koncentracji
 hydrolog tc kirpich --length 2.5 --slope 0.02
-hydrolog tc scs-lag --length 5.0 --slope 0.01 --cn 72
+hydrolog tc nrcs --length 5.0 --slope 0.01 --cn 72
 hydrolog tc giandotti --area 100 --length 15 --elevation 500
 
 # Wyszukiwanie CN (tablice TR-55)

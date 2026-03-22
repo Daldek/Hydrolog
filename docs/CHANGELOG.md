@@ -206,6 +206,15 @@ New module for generating comprehensive hydrological calculation reports in Mark
 
 ---
 
+## [0.5.2] - 2026-01-21
+
+### Changed
+- Removed unused `imgwtools` from required dependencies in `pyproject.toml`
+- IMGWTools is now only imported directly in Hydrograf where it is actually used
+- Updated documentation (CLAUDE.md, SCOPE.md) to reflect dependency changes
+
+---
+
 ## [0.5.1] - 2026-01-21
 
 ### Fixed
@@ -536,5 +545,9 @@ Requires optional dependencies: `pip install hydrolog[visualization]`
 | **0.3.0** | 2026-01-18 | Interpolation + river network |
 | **0.4.0** | 2026-01-19 | CLI + Clark IUH + Snyder UH + CN lookup |
 | **0.5.0** | 2026-01-19 | Visualization module (matplotlib/seaborn) |
-| 0.6.0 | TBD | Report generation with calculations |
+| **0.5.1** | 2026-01-21 | Fix SCS peak discharge constant |
+| **0.5.2** | 2026-01-21 | Remove unused imgwtools dependency |
+| **0.6.0** | 2026-01-21 | Report generation module |
+| **0.6.1** | 2026-03-20 | Nash urban regression method |
+| **0.6.2** | 2026-03-22 | UH report formulas + metric corrections |
 | 1.0.0 | TBD | Stable API |
