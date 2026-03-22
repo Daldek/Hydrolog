@@ -186,9 +186,7 @@ class HydrographGenerator:
 
         # tc_min required for SCS and Clark
         if uh_model in ("scs", "clark") and tc_min is None:
-            raise InvalidParameterError(
-                f"tc_min is required for '{uh_model}' model"
-            )
+            raise InvalidParameterError(f"tc_min is required for '{uh_model}' model")
         if tc_min is not None and tc_min <= 0:
             raise InvalidParameterError(f"tc_min must be positive, got {tc_min}")
 

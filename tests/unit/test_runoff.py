@@ -466,9 +466,7 @@ class TestHydrographGeneratorModels:
     def test_invalid_uh_model_raises(self):
         """Test that invalid model name raises error."""
         with pytest.raises(InvalidParameterError, match="uh_model must be one of"):
-            HydrographGenerator(
-                area_km2=45.0, cn=72, tc_min=90.0, uh_model="invalid"
-            )
+            HydrographGenerator(area_km2=45.0, cn=72, tc_min=90.0, uh_model="invalid")
 
     def test_nash_missing_n_raises(self):
         """Test that Nash model without n parameter raises error."""

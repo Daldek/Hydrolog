@@ -282,9 +282,7 @@ class SnyderUH:
             duration_hours = duration_min / 60.0
         return self.time_to_peak_hours(duration_hours) * 60.0
 
-    def adjusted_lag_time_hours(
-        self, duration_hours: Optional[float] = None
-    ) -> float:
+    def adjusted_lag_time_hours(self, duration_hours: Optional[float] = None) -> float:
         """
         Calculate adjusted lag time tLR [hours].
 
@@ -421,9 +419,7 @@ class SnyderUH:
         For other percentages, linear interpolation is used.
         """
         if not 0 < percent <= 100:
-            raise InvalidParameterError(
-                f"percent must be in (0, 100], got {percent}"
-            )
+            raise InvalidParameterError(f"percent must be in (0, 100], got {percent}")
 
         qp = self.peak_discharge()
         qp_per_area = qp / self.area_km2
@@ -475,9 +471,7 @@ class SnyderUH:
         t_over_k = times_min[mask] / k_min
         # Gamma PDF: f(t) = (t/k)^(n-1) * exp(-t/k) / (k * Gamma(n))
         # Normalized to peak at qp
-        ordinates[mask] = qp * (
-            (t_over_k ** (n - 1)) * np.exp(-(t_over_k - (n - 1)))
-        )
+        ordinates[mask] = qp * ((t_over_k ** (n - 1)) * np.exp(-(t_over_k - (n - 1))))
 
         return ordinates
 

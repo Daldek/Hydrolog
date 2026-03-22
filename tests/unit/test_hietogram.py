@@ -420,7 +420,9 @@ class TestEulerIIHietogram:
     def test_euler_ii_many_steps(self):
         """Test Euler II with large number of steps."""
         hietogram = EulerIIHietogram()
-        result = hietogram.generate(total_mm=100.0, duration_min=120.0, timestep_min=5.0)
+        result = hietogram.generate(
+            total_mm=100.0, duration_min=120.0, timestep_min=5.0
+        )
 
         assert result.n_steps == 24
         assert np.isclose(result.intensities_mm.sum(), 100.0)

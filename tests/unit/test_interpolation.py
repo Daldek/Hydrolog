@@ -172,9 +172,7 @@ class TestInverseDistanceWeighting:
     def test_max_distance(self, two_stations):
         """Test max_distance parameter."""
         # S2 is at (10, 0), distance from (2, 0) is 8
-        result = inverse_distance_weighting(
-            two_stations, 2, 0, power=2, max_distance=5
-        )
+        result = inverse_distance_weighting(two_stations, 2, 0, power=2, max_distance=5)
 
         # Only S1 should be included
         assert "S1" in result.station_weights
@@ -235,9 +233,7 @@ class TestArealPrecipitationIDW:
         """Test that mismatched array lengths raise error."""
         stations = [Station("S1", 0, 0, precipitation_mm=25.0)]
         with pytest.raises(InvalidParameterError, match="same length"):
-            areal_precipitation_idw(
-                stations, np.array([0, 1, 2]), np.array([0, 1])
-            )
+            areal_precipitation_idw(stations, np.array([0, 1, 2]), np.array([0, 1]))
 
     def test_empty_grid(self):
         """Test that empty grid raises error."""

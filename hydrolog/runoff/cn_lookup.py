@@ -77,19 +77,47 @@ class LandCover(Enum):
 # Format: {(LandCover, HydrologicCondition): {"A": cn, "B": cn, "C": cn, "D": cn}}
 # For land covers without condition variation, use None as condition key
 
-_CN_TABLE: Dict[
-    Tuple[LandCover, Optional[HydrologicCondition]], Dict[str, int]
-] = {
+_CN_TABLE: Dict[Tuple[LandCover, Optional[HydrologicCondition]], Dict[str, int]] = {
     # Agricultural - Fallow (bare soil)
     (LandCover.FALLOW, None): {"A": 77, "B": 86, "C": 91, "D": 94},
     # Agricultural - Row crops (straight row)
-    (LandCover.ROW_CROPS, HydrologicCondition.POOR): {"A": 72, "B": 81, "C": 88, "D": 91},
-    (LandCover.ROW_CROPS, HydrologicCondition.FAIR): {"A": 69, "B": 79, "C": 86, "D": 90},
-    (LandCover.ROW_CROPS, HydrologicCondition.GOOD): {"A": 67, "B": 78, "C": 85, "D": 89},
+    (LandCover.ROW_CROPS, HydrologicCondition.POOR): {
+        "A": 72,
+        "B": 81,
+        "C": 88,
+        "D": 91,
+    },
+    (LandCover.ROW_CROPS, HydrologicCondition.FAIR): {
+        "A": 69,
+        "B": 79,
+        "C": 86,
+        "D": 90,
+    },
+    (LandCover.ROW_CROPS, HydrologicCondition.GOOD): {
+        "A": 67,
+        "B": 78,
+        "C": 85,
+        "D": 89,
+    },
     # Agricultural - Small grain
-    (LandCover.SMALL_GRAIN, HydrologicCondition.POOR): {"A": 65, "B": 76, "C": 84, "D": 88},
-    (LandCover.SMALL_GRAIN, HydrologicCondition.FAIR): {"A": 64, "B": 75, "C": 83, "D": 87},
-    (LandCover.SMALL_GRAIN, HydrologicCondition.GOOD): {"A": 63, "B": 75, "C": 83, "D": 87},
+    (LandCover.SMALL_GRAIN, HydrologicCondition.POOR): {
+        "A": 65,
+        "B": 76,
+        "C": 84,
+        "D": 88,
+    },
+    (LandCover.SMALL_GRAIN, HydrologicCondition.FAIR): {
+        "A": 64,
+        "B": 75,
+        "C": 83,
+        "D": 87,
+    },
+    (LandCover.SMALL_GRAIN, HydrologicCondition.GOOD): {
+        "A": 63,
+        "B": 75,
+        "C": 83,
+        "D": 87,
+    },
     # Agricultural - Pasture/grassland
     (LandCover.PASTURE, HydrologicCondition.POOR): {"A": 68, "B": 79, "C": 86, "D": 89},
     (LandCover.PASTURE, HydrologicCondition.FAIR): {"A": 49, "B": 69, "C": 79, "D": 84},
@@ -105,9 +133,24 @@ _CN_TABLE: Dict[
     (LandCover.FOREST, HydrologicCondition.FAIR): {"A": 36, "B": 60, "C": 73, "D": 79},
     (LandCover.FOREST, HydrologicCondition.GOOD): {"A": 30, "B": 55, "C": 70, "D": 77},
     # Natural - Herbaceous (weeds, grass mix)
-    (LandCover.HERBACEOUS, HydrologicCondition.POOR): {"A": 68, "B": 79, "C": 86, "D": 89},
-    (LandCover.HERBACEOUS, HydrologicCondition.FAIR): {"A": 49, "B": 69, "C": 79, "D": 84},
-    (LandCover.HERBACEOUS, HydrologicCondition.GOOD): {"A": 39, "B": 61, "C": 74, "D": 80},
+    (LandCover.HERBACEOUS, HydrologicCondition.POOR): {
+        "A": 68,
+        "B": 79,
+        "C": 86,
+        "D": 89,
+    },
+    (LandCover.HERBACEOUS, HydrologicCondition.FAIR): {
+        "A": 49,
+        "B": 69,
+        "C": 79,
+        "D": 84,
+    },
+    (LandCover.HERBACEOUS, HydrologicCondition.GOOD): {
+        "A": 39,
+        "B": 61,
+        "C": 74,
+        "D": 80,
+    },
     # Developed - Farmstead
     (LandCover.FARMSTEAD, None): {"A": 59, "B": 74, "C": 82, "D": 86},
     # Developed - Residential (low density, 1-2 acre lots)
@@ -121,9 +164,24 @@ _CN_TABLE: Dict[
     # Developed - Industrial (72% impervious)
     (LandCover.INDUSTRIAL, None): {"A": 81, "B": 88, "C": 91, "D": 93},
     # Developed - Open space (parks, lawns)
-    (LandCover.OPEN_SPACE, HydrologicCondition.POOR): {"A": 68, "B": 79, "C": 86, "D": 89},
-    (LandCover.OPEN_SPACE, HydrologicCondition.FAIR): {"A": 49, "B": 69, "C": 79, "D": 84},
-    (LandCover.OPEN_SPACE, HydrologicCondition.GOOD): {"A": 39, "B": 61, "C": 74, "D": 80},
+    (LandCover.OPEN_SPACE, HydrologicCondition.POOR): {
+        "A": 68,
+        "B": 79,
+        "C": 86,
+        "D": 89,
+    },
+    (LandCover.OPEN_SPACE, HydrologicCondition.FAIR): {
+        "A": 49,
+        "B": 69,
+        "C": 79,
+        "D": 84,
+    },
+    (LandCover.OPEN_SPACE, HydrologicCondition.GOOD): {
+        "A": 39,
+        "B": 61,
+        "C": 74,
+        "D": 80,
+    },
     # Impervious - Paved (parking, roads)
     (LandCover.PAVED, None): {"A": 98, "B": 98, "C": 98, "D": 98},
     # Impervious - Gravel roads
@@ -200,9 +258,7 @@ def get_cn(
     # Validate and normalize HSG
     hsg = hsg.upper()
     if hsg not in ("A", "B", "C", "D"):
-        raise InvalidParameterError(
-            f"Invalid HSG: '{hsg}'. Must be one of: A, B, C, D"
-        )
+        raise InvalidParameterError(f"Invalid HSG: '{hsg}'. Must be one of: A, B, C, D")
 
     # Convert string to LandCover enum if needed
     if isinstance(land_cover, str):

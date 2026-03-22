@@ -80,7 +80,9 @@ class TestHydrografIntegration:
             tc_min=tc_min,
         )
         hietogram_gen = BetaHietogram()
-        hietogram = hietogram_gen.generate(total_mm=50.0, duration_min=60, timestep_min=5)
+        hietogram = hietogram_gen.generate(
+            total_mm=50.0, duration_min=60, timestep_min=5
+        )
         result = generator.generate(hietogram)
 
         # 6. Verify result
@@ -261,7 +263,9 @@ class TestHydrografIntegration:
 
         results = []
         hietogram_gen = BetaHietogram()
-        hietogram = hietogram_gen.generate(total_mm=50.0, duration_min=60, timestep_min=5)
+        hietogram = hietogram_gen.generate(
+            total_mm=50.0, duration_min=60, timestep_min=5
+        )
 
         for data in watersheds_data:
             params = WatershedParameters.from_dict(data)
@@ -273,11 +277,13 @@ class TestHydrografIntegration:
                 tc_min=tc,
             )
             result = generator.generate(hietogram)
-            results.append({
-                "name": params.name,
-                "qmax": result.peak_discharge_m3s,
-                "tc": tc,
-            })
+            results.append(
+                {
+                    "name": params.name,
+                    "qmax": result.peak_discharge_m3s,
+                    "tc": tc,
+                }
+            )
 
         # Verify all processed
         assert len(results) == 3

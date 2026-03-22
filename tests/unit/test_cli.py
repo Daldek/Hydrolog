@@ -59,7 +59,9 @@ class TestCLITc:
 
     def test_tc_nrcs(self, capsys):
         """Test tc nrcs calculation."""
-        result = main(["tc", "nrcs", "--length", "5.0", "--slope", "0.01", "--cn", "72"])
+        result = main(
+            ["tc", "nrcs", "--length", "5.0", "--slope", "0.01", "--cn", "72"]
+        )
         assert result == 0
         captured = capsys.readouterr()
         assert "NRCS" in captured.out
@@ -67,7 +69,9 @@ class TestCLITc:
 
     def test_tc_giandotti(self, capsys):
         """Test tc giandotti calculation."""
-        result = main(["tc", "giandotti", "--area", "100", "--length", "15", "--elevation", "500"])
+        result = main(
+            ["tc", "giandotti", "--area", "100", "--length", "15", "--elevation", "500"]
+        )
         assert result == 0
         captured = capsys.readouterr()
         assert "Giandotti" in captured.out
@@ -87,7 +91,9 @@ class TestCLICN:
 
     def test_cn_lookup(self, capsys):
         """Test cn lookup."""
-        result = main(["cn", "lookup", "--hsg", "B", "--cover", "forest", "--condition", "good"])
+        result = main(
+            ["cn", "lookup", "--hsg", "B", "--cover", "forest", "--condition", "good"]
+        )
         assert result == 0
         captured = capsys.readouterr()
         assert "CN = 55" in captured.out
@@ -175,7 +181,9 @@ class TestCLIUH:
 
     def test_uh_nash(self, capsys):
         """Test Nash unit hydrograph generation."""
-        result = main(["uh", "nash", "--area", "45", "--n", "3", "--k", "30", "--timestep", "10"])
+        result = main(
+            ["uh", "nash", "--area", "45", "--n", "3", "--k", "30", "--timestep", "10"]
+        )
         assert result == 0
         captured = capsys.readouterr()
         assert "Nash" in captured.out
@@ -183,7 +191,20 @@ class TestCLIUH:
 
     def test_uh_clark(self, capsys):
         """Test Clark unit hydrograph generation."""
-        result = main(["uh", "clark", "--area", "45", "--tc", "60", "--r", "30", "--timestep", "10"])
+        result = main(
+            [
+                "uh",
+                "clark",
+                "--area",
+                "45",
+                "--tc",
+                "60",
+                "--r",
+                "30",
+                "--timestep",
+                "10",
+            ]
+        )
         assert result == 0
         captured = capsys.readouterr()
         assert "Clark" in captured.out
@@ -191,7 +212,20 @@ class TestCLIUH:
 
     def test_uh_snyder(self, capsys):
         """Test Snyder unit hydrograph generation."""
-        result = main(["uh", "snyder", "--area", "100", "--L", "15", "--Lc", "8", "--timestep", "30"])
+        result = main(
+            [
+                "uh",
+                "snyder",
+                "--area",
+                "100",
+                "--L",
+                "15",
+                "--Lc",
+                "8",
+                "--timestep",
+                "30",
+            ]
+        )
         assert result == 0
         captured = capsys.readouterr()
         assert "Snyder" in captured.out
@@ -199,7 +233,9 @@ class TestCLIUH:
 
     def test_uh_csv_output(self, capsys):
         """Test CSV output format."""
-        result = main(["uh", "scs", "--area", "45", "--tc", "90", "--timestep", "10", "--csv"])
+        result = main(
+            ["uh", "scs", "--area", "45", "--tc", "90", "--timestep", "10", "--csv"]
+        )
         assert result == 0
         captured = capsys.readouterr()
         assert "time_min,discharge_m3s_per_mm" in captured.out
@@ -208,7 +244,9 @@ class TestCLIUH:
 
     def test_uh_json_output(self, capsys):
         """Test JSON output format."""
-        result = main(["uh", "scs", "--area", "45", "--tc", "90", "--timestep", "10", "--json"])
+        result = main(
+            ["uh", "scs", "--area", "45", "--tc", "90", "--timestep", "10", "--json"]
+        )
         assert result == 0
         captured = capsys.readouterr()
         data = json.loads(captured.out)

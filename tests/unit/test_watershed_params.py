@@ -91,14 +91,18 @@ class TestWatershedParameters:
         """Test validation rejects zero perimeter."""
         minimal_data["perimeter_km"] = 0.0
 
-        with pytest.raises(InvalidParameterError, match="perimeter_km must be positive"):
+        with pytest.raises(
+            InvalidParameterError, match="perimeter_km must be positive"
+        ):
             WatershedParameters(**minimal_data)
 
     def test_validation_invalid_elevations(self, minimal_data: dict) -> None:
         """Test validation rejects max <= min elevation."""
         minimal_data["elevation_max_m"] = 100.0  # less than min (150.0)
 
-        with pytest.raises(InvalidParameterError, match="elevation_max_m.*must be greater"):
+        with pytest.raises(
+            InvalidParameterError, match="elevation_max_m.*must be greater"
+        ):
             WatershedParameters(**minimal_data)
 
     def test_validation_invalid_cn(self, minimal_data: dict) -> None:
@@ -112,7 +116,9 @@ class TestWatershedParameters:
         """Test validation rejects negative slope."""
         minimal_data["mean_slope_m_per_m"] = -0.01
 
-        with pytest.raises(InvalidParameterError, match="mean_slope_m_per_m must be non-negative"):
+        with pytest.raises(
+            InvalidParameterError, match="mean_slope_m_per_m must be non-negative"
+        ):
             WatershedParameters(**minimal_data)
 
 
@@ -440,7 +446,9 @@ class TestWatershedParametersCalculateTc:
 
         assert tc > 0
 
-    def test_calculate_tc_unknown_method(self, params_with_slope: WatershedParameters) -> None:
+    def test_calculate_tc_unknown_method(
+        self, params_with_slope: WatershedParameters
+    ) -> None:
         """Test that unknown method raises ValueError."""
         with pytest.raises(ValueError, match="Unknown method"):
             params_with_slope.calculate_tc(method="unknown")

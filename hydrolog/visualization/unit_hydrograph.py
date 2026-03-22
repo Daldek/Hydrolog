@@ -20,7 +20,6 @@ from hydrolog.visualization.styles import (
     format_time_axis,
 )
 
-
 # Type alias for all UH result types
 UHResultType = Union[
     UnitHydrographResult,

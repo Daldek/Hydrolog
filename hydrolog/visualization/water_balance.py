@@ -118,7 +118,9 @@ def _plot_balance_bars(ax: plt.Axes, P: float, Ia: float, F: float, Pe: float) -
         bottom += value
 
     # Add total P line
-    ax.axhline(y=P, color="black", linestyle="--", linewidth=2, label=f"Opad P = {P:.1f} mm")
+    ax.axhline(
+        y=P, color="black", linestyle="--", linewidth=2, label=f"Opad P = {P:.1f} mm"
+    )
 
     ax.set_ylabel("Wysokość warstwy [mm]")
     ax.set_ylim(0, P * 1.1)
@@ -150,7 +152,15 @@ def _plot_balance_pie(ax: plt.Axes, P: float, Ia: float, F: float, Pe: float) ->
     )
 
     # Add center text
-    ax.text(0, 0, f"P = {P:.1f} mm", ha="center", va="center", fontsize=12, fontweight="bold")
+    ax.text(
+        0,
+        0,
+        f"P = {P:.1f} mm",
+        ha="center",
+        va="center",
+        fontsize=12,
+        fontweight="bold",
+    )
 
 
 def plot_cn_curve(
@@ -219,7 +229,11 @@ def plot_cn_curve(
         Pe = []
         for p in P:
             result = scs.effective_precipitation(p, amc=amc)
-            Pe.append(result.effective_mm if hasattr(result, "effective_mm") else float(result))
+            Pe.append(
+                result.effective_mm
+                if hasattr(result, "effective_mm")
+                else float(result)
+            )
 
         Pe = np.array(Pe)
 

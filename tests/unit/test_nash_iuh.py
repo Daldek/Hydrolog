@@ -178,7 +178,9 @@ class TestNashIUHGenerate:
         """Test that zero timestep raises error."""
         iuh = NashIUH(n=3.0, k_min=30.0)
 
-        with pytest.raises(InvalidParameterError, match="timestep_min must be positive"):
+        with pytest.raises(
+            InvalidParameterError, match="timestep_min must be positive"
+        ):
             iuh.generate(timestep_min=0)
 
     def test_generate_custom_duration(self):
@@ -267,7 +269,9 @@ class TestNashIUHToUnitHydrograph:
         """Test that zero duration raises error."""
         iuh = NashIUH(n=3.0, k_min=30.0)
 
-        with pytest.raises(InvalidParameterError, match="duration_min must be positive"):
+        with pytest.raises(
+            InvalidParameterError, match="duration_min must be positive"
+        ):
             iuh.to_unit_hydrograph(area_km2=45.0, duration_min=0)
 
 
@@ -803,9 +807,7 @@ class TestNashIUHFromUrbanRegression:
 
     def test_from_urban_regression_zero_duration_raises(self):
         """Test that duration_h=0 raises error."""
-        with pytest.raises(
-            InvalidParameterError, match="duration_h must be positive"
-        ):
+        with pytest.raises(InvalidParameterError, match="duration_h must be positive"):
             NashIUH.from_urban_regression(
                 area_km2=5.0,
                 effective_precip_mm=10.0,
@@ -814,9 +816,7 @@ class TestNashIUHFromUrbanRegression:
 
     def test_from_urban_regression_invalid_urban_fraction_raises(self):
         """Test that invalid urban_fraction raises error."""
-        with pytest.raises(
-            InvalidParameterError, match="urban_fraction must be in"
-        ):
+        with pytest.raises(InvalidParameterError, match="urban_fraction must be in"):
             NashIUH.from_urban_regression(
                 area_km2=5.0,
                 effective_precip_mm=10.0,
@@ -824,9 +824,7 @@ class TestNashIUHFromUrbanRegression:
                 urban_fraction=-0.1,
             )
 
-        with pytest.raises(
-            InvalidParameterError, match="urban_fraction must be in"
-        ):
+        with pytest.raises(InvalidParameterError, match="urban_fraction must be in"):
             NashIUH.from_urban_regression(
                 area_km2=5.0,
                 effective_precip_mm=10.0,

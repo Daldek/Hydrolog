@@ -180,42 +180,50 @@ class HydrologyReportGenerator:
 
         # 1. Watershed parameters
         if watershed_params:
-            sections.append(self._build_watershed_section(
-                area_km2=area_km2,
-                cn=cn_ii,
-                **watershed_params,
-            ))
+            sections.append(
+                self._build_watershed_section(
+                    area_km2=area_km2,
+                    cn=cn_ii,
+                    **watershed_params,
+                )
+            )
 
         # 2. Time of concentration
         if tc_min is not None:
             tc_params = self._extract_tc_params(watershed_params, tc_method)
-            sections.append(generate_tc_section(
-                tc_min=tc_min,
-                method=tc_method,
-                cn=cn_ii,
-                include_formulas=self.config.include_formulas,
-                **tc_params,
-            ))
+            sections.append(
+                generate_tc_section(
+                    tc_min=tc_min,
+                    method=tc_method,
+                    cn=cn_ii,
+                    include_formulas=self.config.include_formulas,
+                    **tc_params,
+                )
+            )
 
         # 3. Hietogram
         sections.append(self._build_hietogram_section(hietogram))
 
         # 4. SCS-CN Effective Precipitation
-        sections.append(self._build_scs_cn_section(
-            result=result,
-            hietogram=hietogram,
-            cn_ii=cn_ii,
-            amc=amc,
-        ))
+        sections.append(
+            self._build_scs_cn_section(
+                result=result,
+                hietogram=hietogram,
+                cn_ii=cn_ii,
+                amc=amc,
+            )
+        )
 
         # 5. Unit Hydrograph
-        sections.append(self._build_uh_section(
-            result=result,
-            area_km2=area_km2,
-            tc_min=tc_min,
-            hietogram=hietogram,
-            uh_params=uh_params,
-        ))
+        sections.append(
+            self._build_uh_section(
+                result=result,
+                area_km2=area_km2,
+                tc_min=tc_min,
+                hietogram=hietogram,
+                uh_params=uh_params,
+            )
+        )
 
         # 6. Convolution
         sections.append(self._build_convolution_section(result, hietogram))
@@ -224,16 +232,18 @@ class HydrologyReportGenerator:
         sections.append(self._build_hydrograph_section(result))
 
         # 8. Water Balance
-        sections.append(generate_water_balance_section(
-            total_precip_mm=result.total_precip_mm,
-            initial_abstraction_mm=result.initial_abstraction_mm,
-            retention_mm=result.retention_mm,
-            total_effective_mm=result.total_effective_mm,
-            runoff_coefficient=result.runoff_coefficient,
-            total_volume_m3=result.total_volume_m3,
-            area_km2=area_km2,
-            include_formulas=self.config.include_formulas,
-        ))
+        sections.append(
+            generate_water_balance_section(
+                total_precip_mm=result.total_precip_mm,
+                initial_abstraction_mm=result.initial_abstraction_mm,
+                retention_mm=result.retention_mm,
+                total_effective_mm=result.total_effective_mm,
+                runoff_coefficient=result.runoff_coefficient,
+                total_volume_m3=result.total_volume_m3,
+                area_km2=area_km2,
+                include_formulas=self.config.include_formulas,
+            )
+        )
 
         # 9. Figures (if directory provided)
         if figures_dir:
@@ -361,7 +371,9 @@ class HydrologyReportGenerator:
             qp_m3s = 0.208 * area_km2 / tp_h
         else:
             tp_min = result.hydrograph.time_to_peak_min * 0.7
-            qp_m3s = result.hydrograph.peak_discharge_m3s / max(result.effective_precip_mm)
+            qp_m3s = result.hydrograph.peak_discharge_m3s / max(
+                result.effective_precip_mm
+            )
 
         # Generate simplified UH shape
         uh_ordinates = self._generate_uh_shape(uh_times, tp_min, qp_m3s)
@@ -420,18 +432,20 @@ class HydrologyReportGenerator:
         ]
 
         if self.config.include_tables:
-            lines.extend([
-                "",
-                "### 7.2 Szereg czasowy",
-                "",
-                TableGenerator.time_series_table(
-                    times=hydrograph.times_min,
-                    values=hydrograph.discharge_m3s,
-                    time_header="Czas [min]",
-                    value_header="Q [m³/s]",
-                    max_rows=self.config.max_table_rows,
-                ),
-            ])
+            lines.extend(
+                [
+                    "",
+                    "### 7.2 Szereg czasowy",
+                    "",
+                    TableGenerator.time_series_table(
+                        times=hydrograph.times_min,
+                        values=hydrograph.discharge_m3s,
+                        time_header="Czas [min]",
+                        value_header="Q [m³/s]",
+                        max_rows=self.config.max_table_rows,
+                    ),
+                ]
+            )
 
         return "\n".join(lines)
 
@@ -473,9 +487,13 @@ class HydrologyReportGenerator:
                 params["length_km"] = watershed_params["channel_length_km"]
             elif "length_km" in watershed_params:
                 params["length_km"] = watershed_params["length_km"]
-            if "elevation_max_m" in watershed_params and "elevation_min_m" in watershed_params:
+            if (
+                "elevation_max_m" in watershed_params
+                and "elevation_min_m" in watershed_params
+            ):
                 params["elevation_diff_m"] = (
-                    watershed_params["elevation_max_m"] - watershed_params["elevation_min_m"]
+                    watershed_params["elevation_max_m"]
+                    - watershed_params["elevation_min_m"]
                 )
 
         return params
@@ -523,12 +541,14 @@ class HydrologyReportGenerator:
         for filename, description in figures:
             filepath = figures_path / filename
             if filepath.exists():
-                lines.extend([
-                    f"### {description}",
-                    "",
-                    f"![{description}]({filename})",
-                    "",
-                ])
+                lines.extend(
+                    [
+                        f"### {description}",
+                        "",
+                        f"![{description}]({filename})",
+                        "",
+                    ]
+                )
 
         return "\n".join(lines)
 

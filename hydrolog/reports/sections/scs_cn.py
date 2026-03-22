@@ -85,79 +85,91 @@ def generate_scs_cn_section(
 
     # AMC adjustment if needed
     if amc != "II" and cn_adjusted != cn_ii:
-        lines.extend([
-            "",
-            "**Korekta CN dla warunków wilgotnościowych:**",
-            "",
-            FormulaRenderer.scs_amc_adjustment(cn_ii, cn_adjusted, amc),
-            "",
-            f"- CN skorygowany: **CN = {cn_adjusted}**",
-        ])
+        lines.extend(
+            [
+                "",
+                "**Korekta CN dla warunków wilgotnościowych:**",
+                "",
+                FormulaRenderer.scs_amc_adjustment(cn_ii, cn_adjusted, amc),
+                "",
+                f"- CN skorygowany: **CN = {cn_adjusted}**",
+            ]
+        )
     else:
         lines.append(f"- CN używany w obliczeniach: **CN = {cn_adjusted}**")
 
     if include_formulas:
         # Retention section
-        lines.extend([
-            "",
-            SUBSECTION_HEADERS["scs_cn"]["retention"],
-            "",
-            "Retencja maksymalna S określa zdolność retencyjną zlewni:",
-            "",
-            FormulaRenderer.scs_retention(cn_adjusted),
-            "",
-        ])
+        lines.extend(
+            [
+                "",
+                SUBSECTION_HEADERS["scs_cn"]["retention"],
+                "",
+                "Retencja maksymalna S określa zdolność retencyjną zlewni:",
+                "",
+                FormulaRenderer.scs_retention(cn_adjusted),
+                "",
+            ]
+        )
 
         # Initial abstraction section
-        lines.extend([
-            SUBSECTION_HEADERS["scs_cn"]["ia"],
-            "",
-            "Abstrakcja początkowa obejmuje intercepcję, zwilżenie powierzchni "
-            "i retencję w zagłębieniach terenu:",
-            "",
-            FormulaRenderer.scs_initial_abstraction(retention_mm, ia_coefficient),
-            "",
-        ])
+        lines.extend(
+            [
+                SUBSECTION_HEADERS["scs_cn"]["ia"],
+                "",
+                "Abstrakcja początkowa obejmuje intercepcję, zwilżenie powierzchni "
+                "i retencję w zagłębieniach terenu:",
+                "",
+                FormulaRenderer.scs_initial_abstraction(retention_mm, ia_coefficient),
+                "",
+            ]
+        )
 
         # Effective precipitation section
-        lines.extend([
-            SUBSECTION_HEADERS["scs_cn"]["pe"],
-            "",
-            f"Dla opadu całkowitego P = {total_precip_mm:.2f} mm:",
-            "",
-            FormulaRenderer.scs_effective_precipitation(
-                p_mm=total_precip_mm,
-                ia_mm=initial_abstraction_mm,
-                s_mm=retention_mm,
-                pe_mm=total_effective_mm,
-            ),
-            "",
-        ])
+        lines.extend(
+            [
+                SUBSECTION_HEADERS["scs_cn"]["pe"],
+                "",
+                f"Dla opadu całkowitego P = {total_precip_mm:.2f} mm:",
+                "",
+                FormulaRenderer.scs_effective_precipitation(
+                    p_mm=total_precip_mm,
+                    ia_mm=initial_abstraction_mm,
+                    s_mm=retention_mm,
+                    pe_mm=total_effective_mm,
+                ),
+                "",
+            ]
+        )
 
     # Distribution table
     if include_table and times_min is not None and precip_mm is not None:
-        lines.extend([
-            SUBSECTION_HEADERS["scs_cn"]["distribution"],
-            "",
-            TableGenerator.precipitation_table(
-                times=times_min,
-                precip_mm=precip_mm,
-                effective_mm=effective_mm,
-                max_rows=max_table_rows,
-            ),
-            "",
-        ])
+        lines.extend(
+            [
+                SUBSECTION_HEADERS["scs_cn"]["distribution"],
+                "",
+                TableGenerator.precipitation_table(
+                    times=times_min,
+                    precip_mm=precip_mm,
+                    effective_mm=effective_mm,
+                    max_rows=max_table_rows,
+                ),
+                "",
+            ]
+        )
 
     # Summary
-    lines.extend([
-        "**Podsumowanie:**",
-        "",
-        f"| Parametr | Wartość |",
-        f"|:---------|--------:|",
-        f"| Opad całkowity P | {total_precip_mm:.2f} mm |",
-        f"| Retencja maksymalna S | {retention_mm:.2f} mm |",
-        f"| Abstrakcja początkowa Ia | {initial_abstraction_mm:.2f} mm |",
-        f"| **Opad efektywny Pe** | **{total_effective_mm:.2f} mm** |",
-    ])
+    lines.extend(
+        [
+            "**Podsumowanie:**",
+            "",
+            f"| Parametr | Wartość |",
+            f"|:---------|--------:|",
+            f"| Opad całkowity P | {total_precip_mm:.2f} mm |",
+            f"| Retencja maksymalna S | {retention_mm:.2f} mm |",
+            f"| Abstrakcja początkowa Ia | {initial_abstraction_mm:.2f} mm |",
+            f"| **Opad efektywny Pe** | **{total_effective_mm:.2f} mm** |",
+        ]
+    )
 
     return "\n".join(lines)
