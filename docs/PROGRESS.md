@@ -6,7 +6,7 @@
 |------|---------|
 | **Faza** | 1 - Implementacja |
 | **Sprint** | 0.6.x - Raporty UH + korekty wzorów |
-| **Sesja** | 23 |
+| **Sesja** | 24 |
 | **Data** | 2026-03-22 |
 | **Następny milestone** | v1.0.0 - Stabilne API |
 | **Gałąź robocza** | develop |
@@ -56,6 +56,53 @@
 ---
 
 ## Bieżąca sesja
+
+### Sesja 24 (2026-03-22) - UKOŃCZONA
+
+**Cel:** Audyt jakości kodu i spójności po konfliktach gałęzi main/develop
+
+**Co zostało zrobione:**
+- [x] Pełny audyt repo (4 równoległe zespoły agentów):
+  - Weryfikacja stanu Git i gałęzi (topologia, historia, konflikty)
+  - Audyt jakości kodu (testy, Black, mypy, pokrycie)
+  - Spójność dokumentacji i wersji (CHANGELOG, README, SCOPE, PROGRESS)
+  - Zgodność ze standardami i wymaganiami (PRD, SCOPE, DEVELOPMENT_STANDARDS)
+- [x] Naprawiono tracking gałęzi `develop`: `origin/main` → `origin/develop`
+- [x] Black formatting na 31 plikach (71/71 zgodnych)
+- [x] Zaktualizowano referencje "SCS Lag" → "NRCS" w 4 plikach (8 edycji):
+  - README.md, docs/SCOPE.md, docs/PROGRESS.md, reports/sections/concentration.py
+- [x] Naprawiono CHANGELOG.md:
+  - Dodano brakującą sekcję [0.5.2]
+  - Zaktualizowano tabelę wersji (dodano v0.5.1–v0.6.2)
+- [x] Naprawiono stale referencje w PROGRESS.md (v0.6.1→v0.6.2, footer)
+- [x] Naprawiono `.. deprecated:: 0.7.0` → `0.6.2` w nash_iuh.py
+- [x] Merge develop → main, przesunięto tag v0.6.2 na prawidłowy commit
+- [x] Push: develop, main, tag v0.6.2
+
+**Pliki zmodyfikowane:**
+```
+# Black formatting (31 plików .py) — tylko formatowanie
+hydrolog/**/*.py, tests/**/*.py
+
+# Dokumentacja i naprawy
+README.md                                    # SCS Lag → NRCS
+docs/CHANGELOG.md                            # +v0.5.2, tabela wersji
+docs/PROGRESS.md                             # stale refs, sesja 24
+docs/SCOPE.md                                # SCS Lag → NRCS
+hydrolog/reports/sections/concentration.py   # SCS Lag → NRCS w docstringu
+hydrolog/runoff/nash_iuh.py                  # deprecated 0.7.0 → 0.6.2
+```
+
+**Wyniki audytu — zidentyfikowane problemy (średnioterminowe, przed v1.0.0):**
+- 89 błędów mypy w 21 plikach (union-attr, arg-type, no-any-return)
+- Pokrycie `reports/sections/unit_hydrograph.py` = 28%
+- Niespójność default Ct w CLI (2.0) vs klasa Snyder (1.5)
+- Brak Horton classification i współczynnika krętości (SCOPE)
+- SCOPE.md nie uwzględnia modułów visualization i reports
+
+**Testy:** 627 passed (bez zmian funkcjonalnych)
+
+---
 
 ### Sesja 23 (2026-03-22) - UKOŃCZONA
 
@@ -846,7 +893,7 @@ Wyniki Hydrolog (model Nasha):
 - **Tag:** `v0.6.2` (ostatni release)
 - **Środowisko:** `.venv` z Python 3.12+
 - **Repo GitHub:** https://github.com/Daldek/Hydrolog.git
-- **Testy:** 626 testów (611 jednostkowych + 15 integracyjnych)
+- **Testy:** 627 testów (612 jednostkowych + 15 integracyjnych)
 
 ### Zaimplementowane moduły
 - `hydrolog.time.ConcentrationTime` - 3 metody (Kirpich, NRCS, Giandotti) + ostrzeżenia zakresów
@@ -857,6 +904,13 @@ Wyniki Hydrolog (model Nasha):
 - `hydrolog.visualization` - 15 funkcji wizualizacji (hietogramy, hydrogramy, porównania UH, bilans wodny, morfometria, sieć rzeczna)
 - `hydrolog.reports` - HydrologyReportGenerator (raporty Markdown z wzorami LaTeX)
 - `hydrolog.cli` - interfejs CLI (tc, cn, scs, uh)
+
+### Ostatnio dodane (Sesja 24 - audyt jakości)
+- Black formatting na 31 plikach
+- Naprawiono tracking gałęzi develop
+- Zaktualizowano referencje SCS Lag → NRCS w dokumentacji
+- Naprawiono CHANGELOG (brakująca sekcja v0.5.2, tabela wersji)
+- Naprawiono stale referencje wersji w PROGRESS.md i nash_iuh.py
 
 ### Ostatnio dodane (Sesja 23 - v0.6.2)
 - Pełne wzory obliczeniowe w raportach dla Nash (3 metody), Clark, Snyder
@@ -1121,4 +1175,4 @@ Hydrolog/
 
 ---
 
-**Ostatnia aktualizacja:** 2026-03-22, Sesja 23 (raporty UH + korekty wzorów metrycznych + wydanie v0.6.2)
+**Ostatnia aktualizacja:** 2026-03-22, Sesja 24 (audyt jakości kodu + naprawy dokumentacji)
