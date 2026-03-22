@@ -143,9 +143,7 @@ class StreamNetwork:
             raise InvalidParameterError("segments list cannot be empty")
 
         if area_km2 is not None and area_km2 <= 0:
-            raise InvalidParameterError(
-                f"area_km2 must be positive, got {area_km2}"
-            )
+            raise InvalidParameterError(f"area_km2 must be positive, got {area_km2}")
 
         self.segments = {seg.segment_id: seg for seg in segments}
         self.area_km2 = area_km2
@@ -159,11 +157,7 @@ class StreamNetwork:
 
     def _find_headwaters(self) -> list[int]:
         """Find headwater segments (no upstream tributaries)."""
-        return [
-            seg_id
-            for seg_id, seg in self.segments.items()
-            if not seg.upstream_ids
-        ]
+        return [seg_id for seg_id, seg in self.segments.items() if not seg.upstream_ids]
 
     def _get_downstream_segments(self, segment_id: int) -> list[int]:
         """Find segments that have this segment as upstream."""

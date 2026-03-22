@@ -319,7 +319,7 @@ class NashIUH:
             return 1.0 / self.k_min
 
         n_minus_1 = self.n - 1
-        numerator = (n_minus_1 ** n_minus_1) * np.exp(-n_minus_1)
+        numerator = (n_minus_1**n_minus_1) * np.exp(-n_minus_1)
         denominator = self.k_min * gamma(self.n)
         return float(numerator / denominator)
 
@@ -622,7 +622,7 @@ class NashIUH:
         """
         Create NashIUH from time of concentration.
 
-        .. deprecated:: 0.7.0
+        .. deprecated:: 0.6.2
             This method will be removed in version 1.0.0.
             Use :meth:`from_lutz` for ungauged watersheds or provide
             n and K directly to the constructor.
@@ -701,9 +701,7 @@ class NashIUH:
         if tc_min <= 0:
             raise InvalidParameterError(f"tc_min must be positive, got {tc_min}")
         if lag_ratio <= 0 or lag_ratio > 1:
-            raise InvalidParameterError(
-                f"lag_ratio must be in (0, 1], got {lag_ratio}"
-            )
+            raise InvalidParameterError(f"lag_ratio must be in (0, 1], got {lag_ratio}")
 
         # Default n if not specified
         if n is None:
@@ -824,15 +822,11 @@ class NashIUH:
         if Lc_km <= 0:
             raise InvalidParameterError(f"Lc_km must be positive, got {Lc_km}")
         if Lc_km > L_km:
-            raise InvalidParameterError(
-                f"Lc_km ({Lc_km}) cannot exceed L_km ({L_km})"
-            )
+            raise InvalidParameterError(f"Lc_km ({Lc_km}) cannot exceed L_km ({L_km})")
         if slope <= 0:
             raise InvalidParameterError(f"slope must be positive, got {slope}")
         if manning_n <= 0:
-            raise InvalidParameterError(
-                f"manning_n must be positive, got {manning_n}"
-            )
+            raise InvalidParameterError(f"manning_n must be positive, got {manning_n}")
         if urban_pct < 0 or urban_pct > 100:
             raise InvalidParameterError(
                 f"urban_pct must be in [0, 100], got {urban_pct}"
@@ -842,9 +836,7 @@ class NashIUH:
                 f"forest_pct must be in [0, 100], got {forest_pct}"
             )
         if area_km2 is not None and area_km2 <= 0:
-            raise InvalidParameterError(
-                f"area_km2 must be positive, got {area_km2}"
-            )
+            raise InvalidParameterError(f"area_km2 must be positive, got {area_km2}")
 
         # Step 1: Calculate P1 parameter
         P1 = 3.989 * manning_n + 0.028
@@ -897,8 +889,7 @@ class NashIUH:
             N = brentq(objective, 1.1, 20.0, xtol=1e-6)
         except ValueError as e:
             raise InvalidParameterError(
-                f"Could not find valid N for f(N) = {f_N_target:.4f}. "
-                f"Error: {e}"
+                f"Could not find valid N for f(N) = {f_N_target:.4f}. " f"Error: {e}"
             )
 
         # Step 6: Calculate K [hours], convert to minutes
@@ -1051,9 +1042,7 @@ class NashIUH:
         """
         # Validate inputs
         if area_km2 <= 0:
-            raise InvalidParameterError(
-                f"area_km2 must be positive, got {area_km2}"
-            )
+            raise InvalidParameterError(f"area_km2 must be positive, got {area_km2}")
         if effective_precip_mm <= 0:
             raise InvalidParameterError(
                 f"effective_precip_mm must be positive, got {effective_precip_mm}"
@@ -1071,20 +1060,20 @@ class NashIUH:
         # Metric constant 1.28 from imperial 0.831 (Sarma et al. 1969)
         tL_h = (
             1.28
-            * (area_km2 ** 0.46)
+            * (area_km2**0.46)
             * ((1 + urban_fraction) ** -1.66)
-            * (effective_precip_mm ** -0.27)
-            * (duration_h ** 0.37)
+            * (effective_precip_mm**-0.27)
+            * (duration_h**0.37)
         )
 
         # Step 2: Storage coefficient [hours]
         # Metric constant 0.56 from imperial ~0.569 (Sarma et al. 1969)
         k_h = (
             0.56
-            * (area_km2 ** 0.39)
+            * (area_km2**0.39)
             * ((1 + urban_fraction) ** -0.62)
-            * (effective_precip_mm ** -0.11)
-            * (duration_h ** 0.22)
+            * (effective_precip_mm**-0.11)
+            * (duration_h**0.22)
         )
 
         # Step 3: Number of reservoirs

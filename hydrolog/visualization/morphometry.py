@@ -75,7 +75,9 @@ def plot_hypsometric_curve(
 
     # Plot hypsometric curve
     color = get_color("hypsometric")
-    ax.plot(rel_area, rel_height, color=color, linewidth=2.5, label="Krzywa hipsograficzna")
+    ax.plot(
+        rel_area, rel_height, color=color, linewidth=2.5, label="Krzywa hipsograficzna"
+    )
 
     # Fill area under curve (hypsometric integral)
     if show_integral:
@@ -98,11 +100,27 @@ def plot_hypsometric_curve(
 
         # Convex curve (HI > 0.6) - example: y = (1-x)^0.3
         y_convex = (1 - x) ** 0.3
-        ax.plot(x, y_convex, "--", color="green", alpha=0.5, linewidth=1, label="HI > 0.6 (wypukła)")
+        ax.plot(
+            x,
+            y_convex,
+            "--",
+            color="green",
+            alpha=0.5,
+            linewidth=1,
+            label="HI > 0.6 (wypukła)",
+        )
 
         # Concave curve (HI < 0.4) - example: y = (1-x)^3
         y_concave = (1 - x) ** 3
-        ax.plot(x, y_concave, "--", color="red", alpha=0.5, linewidth=1, label="HI < 0.4 (wklęsła)")
+        ax.plot(
+            x,
+            y_concave,
+            "--",
+            color="red",
+            alpha=0.5,
+            linewidth=1,
+            label="HI < 0.4 (wklęsła)",
+        )
 
     # Diagonal reference line
     ax.plot([0, 1], [1, 0], ":", color="gray", linewidth=1, alpha=0.5)
@@ -197,9 +215,19 @@ def plot_elevation_histogram(
     mean_elev = np.mean(elevations)
     median_elev = np.median(elevations)
 
-    ax.axvline(mean_elev, color="red", linestyle="--", linewidth=2, label=f"Średnia = {mean_elev:.1f} m")
     ax.axvline(
-        median_elev, color="orange", linestyle="-.", linewidth=2, label=f"Mediana = {median_elev:.1f} m"
+        mean_elev,
+        color="red",
+        linestyle="--",
+        linewidth=2,
+        label=f"Średnia = {mean_elev:.1f} m",
+    )
+    ax.axvline(
+        median_elev,
+        color="orange",
+        linestyle="-.",
+        linewidth=2,
+        label=f"Mediana = {median_elev:.1f} m",
     )
 
     # Labels

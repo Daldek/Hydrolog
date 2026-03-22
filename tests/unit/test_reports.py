@@ -19,7 +19,6 @@ from hydrolog.reports.sections.water_balance import generate_water_balance_secti
 from hydrolog.reports.sections.watershed import generate_watershed_section
 from hydrolog.runoff import HydrographGenerator
 
-
 # =============================================================================
 # FormulaRenderer Tests
 # =============================================================================
@@ -594,7 +593,9 @@ class TestReportIntegration:
         """Test full report workflow with SCS model."""
         # Generate precipitation
         hietogram = BetaHietogram(alpha=2, beta=5)
-        precip = hietogram.generate(total_mm=50.0, duration_min=120.0, timestep_min=10.0)
+        precip = hietogram.generate(
+            total_mm=50.0, duration_min=120.0, timestep_min=10.0
+        )
 
         # Generate hydrograph
         generator = HydrographGenerator(
@@ -647,7 +648,9 @@ class TestReportIntegration:
         """Test full report workflow with Nash model."""
         # Generate precipitation
         hietogram = BetaHietogram(alpha=2, beta=5)
-        precip = hietogram.generate(total_mm=50.0, duration_min=120.0, timestep_min=10.0)
+        precip = hietogram.generate(
+            total_mm=50.0, duration_min=120.0, timestep_min=10.0
+        )
 
         # Generate hydrograph with Nash model
         generator = HydrographGenerator(

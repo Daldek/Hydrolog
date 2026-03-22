@@ -128,14 +128,14 @@ class ConcentrationTime:
             tc = 0.0078 * 3.281^0.77 *L[m]^0.77 * S^(-0.385)
             0.0078 * 3.281^0.77 ≈ 0.0195
             tc = 0.0195 * L[m]^0.77 * S^(-0.385)
-            
+
         Converting to kilometers:
             L[m] = L[km] * 1000
             tc = 0.0195 * (1000 * L[km])^0.77 * S^(-0.385)
             tc = 0.0195 * 1000^0.77 * L[km]^0.77 * S^(-0.385)
             0.0195 * 1000^0.77 ≈ 3.981
             tc[min] = 3.981 * L[km]^0.77 * S^(-0.385)
-            
+
         Converting minutes to hours:
             tc[h] = (3.981 / 60) * L[km]^0.77 * S^(-0.385)
             3.981 / 60 ≈ 0.0663
@@ -168,9 +168,7 @@ class ConcentrationTime:
             )
 
         # Warn if parameters are outside typical range
-        _warn_if_out_of_range(
-            length_km, "length_km", *_KIRPICH_LENGTH_RANGE, "kirpich"
-        )
+        _warn_if_out_of_range(length_km, "length_km", *_KIRPICH_LENGTH_RANGE, "kirpich")
         _warn_if_out_of_range(
             slope_m_per_m, "slope_m_per_m", *_KIRPICH_SLOPE_RANGE, "kirpich"
         )
@@ -260,9 +258,7 @@ class ConcentrationTime:
         369.0...
         """
         if length_km <= 0:
-            raise InvalidParameterError(
-                f"length_km must be positive, got {length_km}"
-            )
+            raise InvalidParameterError(f"length_km must be positive, got {length_km}")
         if slope_m_per_m <= 0:
             raise InvalidParameterError(
                 f"slope_m_per_m must be positive, got {slope_m_per_m}"
@@ -271,9 +267,7 @@ class ConcentrationTime:
             raise InvalidParameterError(f"cn must be in range 1-100, got {cn}")
 
         # Warn if parameters are outside typical range
-        _warn_if_out_of_range(
-            length_km, "length_km", *_SCS_LAG_LENGTH_RANGE, "nrcs"
-        )
+        _warn_if_out_of_range(length_km, "length_km", *_SCS_LAG_LENGTH_RANGE, "nrcs")
         _warn_if_out_of_range(
             slope_m_per_m, "slope_m_per_m", *_SCS_LAG_SLOPE_RANGE, "nrcs"
         )
@@ -291,7 +285,12 @@ class ConcentrationTime:
             retention_mm = (25400.0 / cn) - 254.0
 
         # tc formula (from tlag / 0.6): tc [min]
-        tc_min = 0.01416 * length_m**0.8 * (retention_mm + 25.4)**0.7 * slope_percent**(-0.5)
+        tc_min = (
+            0.01416
+            * length_m**0.8
+            * (retention_mm + 25.4) ** 0.7
+            * slope_percent ** (-0.5)
+        )
 
         return tc_min
 
@@ -376,14 +375,15 @@ class ConcentrationTime:
             )
 
         # Warn if parameters are outside typical range
-        _warn_if_out_of_range(
-            area_km2, "area_km2", *_GIANDOTTI_AREA_RANGE, "giandotti"
-        )
+        _warn_if_out_of_range(area_km2, "area_km2", *_GIANDOTTI_AREA_RANGE, "giandotti")
         _warn_if_out_of_range(
             length_km, "length_km", *_GIANDOTTI_LENGTH_RANGE, "giandotti"
         )
         _warn_if_out_of_range(
-            elevation_diff_m, "elevation_diff_m", *_GIANDOTTI_ELEVATION_RANGE, "giandotti"
+            elevation_diff_m,
+            "elevation_diff_m",
+            *_GIANDOTTI_ELEVATION_RANGE,
+            "giandotti",
         )
 
         # Giandotti formula: tc [hours]

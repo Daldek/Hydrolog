@@ -47,33 +47,37 @@ def generate_convolution_section(
     ]
 
     if include_formulas:
-        lines.extend([
-            SUBSECTION_HEADERS["convolution"]["formula"],
-            "",
-            FormulaRenderer.convolution_formula(),
-            "",
-        ])
+        lines.extend(
+            [
+                SUBSECTION_HEADERS["convolution"]["formula"],
+                "",
+                FormulaRenderer.convolution_formula(),
+                "",
+            ]
+        )
 
-    lines.extend([
-        SUBSECTION_HEADERS["convolution"]["description"],
-        "",
-        "Procedura splotu dyskretnego:",
-        "",
-        "1. Opad efektywny Pe(t) dzielony jest na przyrosty w kolejnych krokach czasowych",
-        "2. Każdy przyrost opadu generuje odpływ proporcjonalny do hydrogramu jednostkowego",
-        "3. Odpływy cząstkowe są sumowane (superpozycja) dając wynikowy hydrogram",
-        "",
-        "**Parametry procedury:**",
-        "",
-        f"| Parametr | Wartość |",
-        f"|:---------|--------:|",
-        f"| Liczba kroków opadu efektywnego (M) | {n_precip_steps} |",
-        f"| Liczba rzędnych hydrogramu jednostkowego (N) | {n_uh_steps} |",
-        f"| Liczba kroków wynikowego hydrogramu | {n_result_steps} |",
-        f"| Krok czasowy Δt | {timestep_min:.1f} min |",
-        f"| Całkowity czas trwania hydrogramu | {n_result_steps * timestep_min:.1f} min |",
-        "",
-        "**Uwaga:** Długość wynikowego hydrogramu = M + N - 1 kroków czasowych.",
-    ])
+    lines.extend(
+        [
+            SUBSECTION_HEADERS["convolution"]["description"],
+            "",
+            "Procedura splotu dyskretnego:",
+            "",
+            "1. Opad efektywny Pe(t) dzielony jest na przyrosty w kolejnych krokach czasowych",
+            "2. Każdy przyrost opadu generuje odpływ proporcjonalny do hydrogramu jednostkowego",
+            "3. Odpływy cząstkowe są sumowane (superpozycja) dając wynikowy hydrogram",
+            "",
+            "**Parametry procedury:**",
+            "",
+            f"| Parametr | Wartość |",
+            f"|:---------|--------:|",
+            f"| Liczba kroków opadu efektywnego (M) | {n_precip_steps} |",
+            f"| Liczba rzędnych hydrogramu jednostkowego (N) | {n_uh_steps} |",
+            f"| Liczba kroków wynikowego hydrogramu | {n_result_steps} |",
+            f"| Krok czasowy Δt | {timestep_min:.1f} min |",
+            f"| Całkowity czas trwania hydrogramu | {n_result_steps * timestep_min:.1f} min |",
+            "",
+            "**Uwaga:** Długość wynikowego hydrogramu = M + N - 1 kroków czasowych.",
+        ]
+    )
 
     return "\n".join(lines)

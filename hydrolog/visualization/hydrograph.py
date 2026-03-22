@@ -23,7 +23,6 @@ from hydrolog.visualization.styles import (
     add_stats_box,
 )
 
-
 # Type alias for all UH result types
 UHResultType = Union[
     UnitHydrographResult,
@@ -270,7 +269,9 @@ def _get_uh_stats(result: UHResultType, is_iuh: bool) -> dict:
 def _get_uh_title(result: UHResultType) -> str:
     """Generate title based on UH type."""
     if isinstance(result, (NashUHResult, IUHResult)):
-        return f"Hydrogram jednostkowy Nash (N={result.n:.2f}, k={result.k_min:.1f} min)"
+        return (
+            f"Hydrogram jednostkowy Nash (N={result.n:.2f}, k={result.k_min:.1f} min)"
+        )
     elif isinstance(result, (ClarkUHResult, ClarkIUHResult)):
         return f"Hydrogram jednostkowy Clark (Tc={result.tc_min:.1f}, R={result.r_min:.1f} min)"
     elif isinstance(result, SnyderUHResult):

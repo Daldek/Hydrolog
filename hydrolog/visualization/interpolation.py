@@ -103,7 +103,9 @@ def plot_stations_map(
 
     # Add labels
     if show_values:
-        for i, (x, y, precip, sid) in enumerate(zip(x_coords, y_coords, precip_values, station_ids)):
+        for i, (x, y, precip, sid) in enumerate(
+            zip(x_coords, y_coords, precip_values, station_ids)
+        ):
             # Station ID above marker
             ax.annotate(
                 sid,

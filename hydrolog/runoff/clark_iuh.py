@@ -486,7 +486,9 @@ class ClarkIUH:
             total_duration_min = self.tc_min + 5.0 * self.r_min + duration_min
 
         # Generate IUH (always use generate_iuh to avoid recursion)
-        iuh_result = self.generate_iuh(timestep_min=timestep_min, duration_min=total_duration_min)
+        iuh_result = self.generate_iuh(
+            timestep_min=timestep_min, duration_min=total_duration_min
+        )
 
         # Create S-curve by cumulative sum of IUH
         s_curve = np.cumsum(iuh_result.ordinates_per_min) * timestep_min

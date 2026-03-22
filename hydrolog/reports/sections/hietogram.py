@@ -91,18 +91,22 @@ def generate_hietogram_section(
     if distribution_params:
         dist_name = f"{dist_name} ({distribution_params})"
 
-    lines.extend([
-        "",
-        f"**Typ rozkładu:** {dist_name}",
-    ])
+    lines.extend(
+        [
+            "",
+            f"**Typ rozkładu:** {dist_name}",
+        ]
+    )
 
     # Distribution table
     if include_table:
-        lines.extend([
-            "",
-            SUBSECTION_HEADERS["hietogram"]["distribution"],
-            "",
-        ])
+        lines.extend(
+            [
+                "",
+                SUBSECTION_HEADERS["hietogram"]["distribution"],
+                "",
+            ]
+        )
 
         # Calculate cumulative
         cumsum = np.cumsum(intensities_mm)
@@ -119,7 +123,9 @@ def generate_hietogram_section(
                 p = intensities_mm[i]
                 pc = cumsum[i]
                 intensity_h = (p / timestep_min) * 60
-                table_lines.append(f"| {t:.1f} | {p:.2f} | {pc:.2f} | {intensity_h:.2f} |")
+                table_lines.append(
+                    f"| {t:.1f} | {p:.2f} | {pc:.2f} | {intensity_h:.2f} |"
+                )
 
             lines.append("\n".join(table_lines))
         else:
@@ -137,7 +143,9 @@ def generate_hietogram_section(
                 p = intensities_mm[i]
                 pc = cumsum[i]
                 intensity_h = (p / timestep_min) * 60
-                table_lines.append(f"| {t:.1f} | {p:.2f} | {pc:.2f} | {intensity_h:.2f} |")
+                table_lines.append(
+                    f"| {t:.1f} | {p:.2f} | {pc:.2f} | {intensity_h:.2f} |"
+                )
 
             table_lines.append("| ... | ... | ... | ... |")
 
@@ -146,7 +154,9 @@ def generate_hietogram_section(
                 p = intensities_mm[i]
                 pc = cumsum[i]
                 intensity_h = (p / timestep_min) * 60
-                table_lines.append(f"| {t:.1f} | {p:.2f} | {pc:.2f} | {intensity_h:.2f} |")
+                table_lines.append(
+                    f"| {t:.1f} | {p:.2f} | {pc:.2f} | {intensity_h:.2f} |"
+                )
 
             table_lines.append(f"\n*Tabela skrócona ({n} wierszy)*")
             lines.append("\n".join(table_lines))

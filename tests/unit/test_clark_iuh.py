@@ -122,7 +122,7 @@ class TestClarkIUHTimeArea:
         """
         iuh = ClarkIUH(tc_min=60.0, r_min=30.0)
         # 1.414 * 0.5^1.5 = 1.414 * 0.35355... ≈ 0.49992
-        expected = 1.414 * (0.5 ** 1.5)
+        expected = 1.414 * (0.5**1.5)
         result = iuh.cumulative_time_area(30.0)
         assert abs(result - expected) < 1e-10
         # Also verify it is close to 0.5 (within rounding of coefficient)
@@ -134,7 +134,7 @@ class TestClarkIUHTimeArea:
         # t = 25 -> tau = 0.25  (in lower branch)
         t = 25.0
         tau = t / 100.0
-        expected = 1.414 * (tau ** 1.5)
+        expected = 1.414 * (tau**1.5)
         assert abs(iuh.cumulative_time_area(t) - expected) < 1e-10
 
     def test_cumulative_time_area_upper_branch(self):
@@ -159,9 +159,9 @@ class TestClarkIUHTimeArea:
         for t in test_times_non_mid:
             a = iuh.cumulative_time_area(t)
             b = iuh.cumulative_time_area(80.0 - t)
-            assert abs(a + b - 1.0) < 1e-10, (
-                f"Symmetry failed at t={t}: A({t}) + A({80.0 - t}) = {a + b}"
-            )
+            assert (
+                abs(a + b - 1.0) < 1e-10
+            ), f"Symmetry failed at t={t}: A({t}) + A({80.0 - t}) = {a + b}"
         # At the midpoint, symmetry holds within rounding of the 1.414 coefficient
         a_mid = iuh.cumulative_time_area(40.0)
         assert abs(2 * a_mid - 1.0) < 1e-3
@@ -176,9 +176,9 @@ class TestClarkIUHTimeArea:
         a1 = iuh.cumulative_time_area(dt)
         slope_near_zero = (a1 - a0) / dt
         # Slope should be very small (approaching 0) not very large
-        assert slope_near_zero < 0.01, (
-            f"dA/dt near zero = {slope_near_zero:.4f} suggests singularity"
-        )
+        assert (
+            slope_near_zero < 0.01
+        ), f"dA/dt near zero = {slope_near_zero:.4f} suggests singularity"
 
 
 class TestClarkIUHGenerate:

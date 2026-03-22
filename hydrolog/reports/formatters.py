@@ -545,9 +545,7 @@ class FormulaRenderer:
         )
 
     @staticmethod
-    def clark_from_tc_r_ratio(
-        tc_min: float, r_tc_ratio: float, r_min: float
-    ) -> str:
+    def clark_from_tc_r_ratio(tc_min: float, r_tc_ratio: float, r_min: float) -> str:
         """
         Render Clark R estimation from R/Tc ratio with substituted values.
 
@@ -573,9 +571,7 @@ class FormulaRenderer:
         )
 
     @staticmethod
-    def clark_routing_coefficient(
-        timestep_min: float, r_min: float, c1: float
-    ) -> str:
+    def clark_routing_coefficient(timestep_min: float, r_min: float, c1: float) -> str:
         """
         Render Clark routing coefficient C1 with substituted values.
 
@@ -722,14 +718,12 @@ class FormulaRenderer:
             "$$t_b = \\frac{0{,}556 \\cdot A}{q_p} \\text{ [h]}$$\n\n"
             "$$W_{50} = \\frac{0{,}1783}{(q_p/A)^{1{,}08}} \\text{ [h]}, "
             "\\quad W_{75} = \\frac{0{,}1019}{(q_p/A)^{1{,}08}} \\text{ [h]}$$",
-
             "**Parametry wejściowe:**\n\n"
             f"- $L$ = {L_km:.2f} km (długość cieku)\n"
             f"- $L_c$ = {Lc_km:.2f} km (odległość do centroidu)\n"
             f"- $C_t$ = {ct:.2f} (współczynnik czasowy)\n"
             f"- $C_p$ = {cp:.2f} (współczynnik szczytowy)\n"
             f"- $A$ = {area_km2:.2f} km²",
-
             "**Obliczenia (standardowy czas trwania):**\n\n"
             f"$$t_L = {ct:.2f} \\cdot ({L_km:.2f} \\cdot {Lc_km:.2f})^{{0.3}} = "
             f"{tL_h:.3f} \\text{{ h}} = {tL_min:.1f} \\text{{ min}}$$\n\n"
@@ -804,8 +798,7 @@ class FormulaRenderer:
     def runoff_coefficient(pe_mm: float, p_mm: float, c: float) -> str:
         """Render runoff coefficient formula."""
         return (
-            "$$C = \\frac{P_e}{P} = "
-            f"\\frac{{{pe_mm:.2f}}}{{{p_mm:.2f}}} = {c:.3f}$$"
+            "$$C = \\frac{P_e}{P} = " f"\\frac{{{pe_mm:.2f}}}{{{p_mm:.2f}}} = {c:.3f}$$"
         )
 
 

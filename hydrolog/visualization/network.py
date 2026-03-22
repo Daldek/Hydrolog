@@ -206,7 +206,13 @@ def plot_bifurcation_ratios(
 
     # Mean line
     mean_rb = np.mean(values)
-    ax.axhline(mean_rb, color="red", linestyle="--", linewidth=2, label=f"Średnia Rb = {mean_rb:.2f}")
+    ax.axhline(
+        mean_rb,
+        color="red",
+        linestyle="--",
+        linewidth=2,
+        label=f"Średnia Rb = {mean_rb:.2f}",
+    )
 
     # Reference range (typical: 3-5)
     ax.axhspan(3, 5, alpha=0.1, color="green", label="Zakres typowy (3-5)")

@@ -82,65 +82,77 @@ def generate_uh_section(
 
     # Model-specific content
     if model == "scs":
-        lines.extend(_generate_scs_section(
-            area_km2=area_km2,
-            tc_min=tc_min,
-            duration_min=duration_min,
-            time_to_peak_min=time_to_peak_min,
-            peak_discharge_m3s=peak_discharge_m3s,
-            model_params=model_params,
-            include_formulas=include_formulas,
-        ))
+        lines.extend(
+            _generate_scs_section(
+                area_km2=area_km2,
+                tc_min=tc_min,
+                duration_min=duration_min,
+                time_to_peak_min=time_to_peak_min,
+                peak_discharge_m3s=peak_discharge_m3s,
+                model_params=model_params,
+                include_formulas=include_formulas,
+            )
+        )
     elif model == "nash":
-        lines.extend(_generate_nash_section(
-            area_km2=area_km2,
-            time_to_peak_min=time_to_peak_min,
-            peak_discharge_m3s=peak_discharge_m3s,
-            model_params=model_params,
-            include_formulas=include_formulas,
-        ))
+        lines.extend(
+            _generate_nash_section(
+                area_km2=area_km2,
+                time_to_peak_min=time_to_peak_min,
+                peak_discharge_m3s=peak_discharge_m3s,
+                model_params=model_params,
+                include_formulas=include_formulas,
+            )
+        )
     elif model == "clark":
-        lines.extend(_generate_clark_section(
-            area_km2=area_km2,
-            tc_min=tc_min,
-            time_to_peak_min=time_to_peak_min,
-            peak_discharge_m3s=peak_discharge_m3s,
-            model_params=model_params,
-            include_formulas=include_formulas,
-        ))
+        lines.extend(
+            _generate_clark_section(
+                area_km2=area_km2,
+                tc_min=tc_min,
+                time_to_peak_min=time_to_peak_min,
+                peak_discharge_m3s=peak_discharge_m3s,
+                model_params=model_params,
+                include_formulas=include_formulas,
+            )
+        )
     elif model == "snyder":
-        lines.extend(_generate_snyder_section(
-            area_km2=area_km2,
-            time_to_peak_min=time_to_peak_min,
-            peak_discharge_m3s=peak_discharge_m3s,
-            model_params=model_params,
-            include_formulas=include_formulas,
-        ))
+        lines.extend(
+            _generate_snyder_section(
+                area_km2=area_km2,
+                time_to_peak_min=time_to_peak_min,
+                peak_discharge_m3s=peak_discharge_m3s,
+                model_params=model_params,
+                include_formulas=include_formulas,
+            )
+        )
 
     # Ordinates table
     if include_table:
-        lines.extend([
-            "",
-            SUBSECTION_HEADERS["unit_hydrograph"]["ordinates"],
-            "",
-            TableGenerator.uh_ordinates_table(
-                times=times_min,
-                ordinates=ordinates_m3s,
-                max_rows=max_table_rows,
-            ),
-            "",
-        ])
+        lines.extend(
+            [
+                "",
+                SUBSECTION_HEADERS["unit_hydrograph"]["ordinates"],
+                "",
+                TableGenerator.uh_ordinates_table(
+                    times=times_min,
+                    ordinates=ordinates_m3s,
+                    max_rows=max_table_rows,
+                ),
+                "",
+            ]
+        )
 
     # Summary
-    lines.extend([
-        "**Charakterystyki hydrogramu jednostkowego:**",
-        "",
-        f"| Parametr | Wartość |",
-        f"|:---------|--------:|",
-        f"| Czas do szczytu tp | {time_to_peak_min:.1f} min |",
-        f"| Przepływ szczytowy qp | {peak_discharge_m3s:.4f} m³/s/mm |",
-        f"| Powierzchnia zlewni A | {area_km2:.2f} km² |",
-    ])
+    lines.extend(
+        [
+            "**Charakterystyki hydrogramu jednostkowego:**",
+            "",
+            f"| Parametr | Wartość |",
+            f"|:---------|--------:|",
+            f"| Czas do szczytu tp | {time_to_peak_min:.1f} min |",
+            f"| Przepływ szczytowy qp | {peak_discharge_m3s:.4f} m³/s/mm |",
+            f"| Powierzchnia zlewni A | {area_km2:.2f} km² |",
+        ]
+    )
 
     return "\n".join(lines)
 
@@ -158,14 +170,18 @@ def _generate_scs_section(
     lines = []
 
     # Extract parameters
-    tlag_min = model_params.get("lag_time_min", time_to_peak_min * 0.6 if tc_min else None)
+    tlag_min = model_params.get(
+        "lag_time_min", time_to_peak_min * 0.6 if tc_min else None
+    )
     tb_min = model_params.get("time_base_min")
 
-    lines.extend([
-        SUBSECTION_HEADERS["unit_hydrograph"]["params"],
-        "",
-        f"- Powierzchnia zlewni: A = {area_km2:.2f} km²",
-    ])
+    lines.extend(
+        [
+            SUBSECTION_HEADERS["unit_hydrograph"]["params"],
+            "",
+            f"- Powierzchnia zlewni: A = {area_km2:.2f} km²",
+        ]
+    )
 
     if tc_min:
         lines.append(f"- Czas koncentracji: tc = {tc_min:.1f} min")
@@ -173,42 +189,50 @@ def _generate_scs_section(
         lines.append(f"- Czas trwania opadu: D = {duration_min:.1f} min")
 
     if include_formulas and tc_min and tlag_min:
-        lines.extend([
-            "",
-            SUBSECTION_HEADERS["unit_hydrograph"]["formulas"],
-            "",
-            "**Czas opóźnienia (lag time):**",
-            "",
-            FormulaRenderer.scs_uh_lag_time(tc_min, tlag_min),
-            "",
-            "**Czas do szczytu:**",
-            "",
-        ])
+        lines.extend(
+            [
+                "",
+                SUBSECTION_HEADERS["unit_hydrograph"]["formulas"],
+                "",
+                "**Czas opóźnienia (lag time):**",
+                "",
+                FormulaRenderer.scs_uh_lag_time(tc_min, tlag_min),
+                "",
+                "**Czas do szczytu:**",
+                "",
+            ]
+        )
 
         if duration_min:
-            lines.append(FormulaRenderer.scs_uh_time_to_peak(
-                duration_min, tlag_min, time_to_peak_min
-            ))
+            lines.append(
+                FormulaRenderer.scs_uh_time_to_peak(
+                    duration_min, tlag_min, time_to_peak_min
+                )
+            )
         else:
             lines.append(f"$$t_p = {time_to_peak_min:.1f} \\text{{ min}}$$")
 
-        lines.extend([
-            "",
-            "**Przepływ szczytowy jednostkowy:**",
-            "",
-            FormulaRenderer.scs_uh_peak_discharge(
-                area_km2, time_to_peak_min, peak_discharge_m3s
-            ),
-        ])
+        lines.extend(
+            [
+                "",
+                "**Przepływ szczytowy jednostkowy:**",
+                "",
+                FormulaRenderer.scs_uh_peak_discharge(
+                    area_km2, time_to_peak_min, peak_discharge_m3s
+                ),
+            ]
+        )
 
         if tb_min:
-            lines.extend([
-                "",
-                "**Czas bazowy:**",
-                "",
-                f"$$t_b = 5 \\cdot t_p = 5 \\cdot {time_to_peak_min:.1f} = "
-                f"{tb_min:.1f} \\text{{ min}}$$",
-            ])
+            lines.extend(
+                [
+                    "",
+                    "**Czas bazowy:**",
+                    "",
+                    f"$$t_b = 5 \\cdot t_p = 5 \\cdot {time_to_peak_min:.1f} = "
+                    f"{tb_min:.1f} \\text{{ min}}$$",
+                ]
+            )
 
     return lines
 
@@ -249,7 +273,9 @@ def _generate_nash_section(
         lines.append("")
         lines.append("**Dane wejściowe:**")
         lines.append(f"- L = {lutz_params.L_km:.2f} km (długość cieku)")
-        lines.append(f"- Lc = {lutz_params.Lc_km:.2f} km (odległość do środka ciężkości)")
+        lines.append(
+            f"- Lc = {lutz_params.Lc_km:.2f} km (odległość do środka ciężkości)"
+        )
         lines.append(f"- Jg = {lutz_params.slope:.4f} (spadek cieku)")
         lines.append(f"- n_M = {lutz_params.manning_n:.3f} (współczynnik Manninga)")
         lines.append(f"- U = {lutz_params.urban_pct:.1f}% (powierzchnia uszczelniona)")
@@ -309,7 +335,9 @@ def _generate_nash_section(
             f"{lutz_params.f_N_target:.3f}$$"
         )
         lines.append("")
-        lines.append(f"Rozwiązanie numeryczne (metoda Brenta): **N = {lutz_params.n:.3f}**")
+        lines.append(
+            f"Rozwiązanie numeryczne (metoda Brenta): **N = {lutz_params.n:.3f}**"
+        )
         lines.append("")
         lines.append("---")
         lines.append("")
@@ -346,14 +374,16 @@ def _generate_nash_section(
         lines.append("### 5.4 Wzór IUH Nasha")
     else:
         # Standard Nash section without Lutz details
-        lines.extend([
-            SUBSECTION_HEADERS["unit_hydrograph"]["params"],
-            "",
-            f"- Powierzchnia zlewni: A = {area_km2:.2f} km²",
-            f"- Liczba zbiorników: n = {n:.2f}",
-            f"- Stała zbiornika: K = {k_min:.1f} min = {k_h:.3f} h",
-            f"- Czas opóźnienia: tlag = n × K = {n * k_min:.1f} min",
-        ])
+        lines.extend(
+            [
+                SUBSECTION_HEADERS["unit_hydrograph"]["params"],
+                "",
+                f"- Powierzchnia zlewni: A = {area_km2:.2f} km²",
+                f"- Liczba zbiorników: n = {n:.2f}",
+                f"- Stała zbiornika: K = {k_min:.1f} min = {k_h:.3f} h",
+                f"- Czas opóźnienia: tlag = n × K = {n * k_min:.1f} min",
+            ]
+        )
 
     # Show estimation-specific input parameters
     if estimation_method == "from_lutz":
@@ -377,26 +407,30 @@ def _generate_nash_section(
         lines.append(f"- Tereny leśne W = {forest_pct:.1f}%")
 
     if include_formulas:
-        lines.extend([
-            "",
-            "**Chwilowy hydrogram jednostkowy (IUH):**",
-            "",
-        ])
+        lines.extend(
+            [
+                "",
+                "**Chwilowy hydrogram jednostkowy (IUH):**",
+                "",
+            ]
+        )
 
         # Estimation method formulas (rendered BEFORE model formula)
         if estimation_method == "from_tc":
             tc_min = model_params.get("tc_min")
             lag_ratio = model_params.get("lag_ratio", 0.6)
             if tc_min is not None:
-                lines.extend([
-                    FormulaRenderer.nash_from_tc_formulas(
-                        tc_min=tc_min,
-                        n=n,
-                        lag_ratio=lag_ratio,
-                        k_min=k_min,
-                    ),
-                    "",
-                ])
+                lines.extend(
+                    [
+                        FormulaRenderer.nash_from_tc_formulas(
+                            tc_min=tc_min,
+                            n=n,
+                            lag_ratio=lag_ratio,
+                            k_min=k_min,
+                        ),
+                        "",
+                    ]
+                )
 
         elif estimation_method == "from_lutz":
             P1 = model_params.get("P1")
@@ -411,23 +445,25 @@ def _generate_nash_section(
                 v is not None
                 for v in (P1, tp_hours, up_per_hour, f_N, L_km, Lc_km, slope, manning_n)
             ):
-                lines.extend([
-                    FormulaRenderer.nash_from_lutz_formulas(
-                        L_km=L_km,
-                        Lc_km=Lc_km,
-                        slope=slope,
-                        manning_n=manning_n,
-                        urban_pct=model_params.get("urban_pct", 0.0),
-                        forest_pct=model_params.get("forest_pct", 0.0),
-                        P1=P1,
-                        tp_hours=tp_hours,
-                        up_per_hour=up_per_hour,
-                        f_N=f_N,
-                        n=n,
-                        k_min=k_min,
-                    ),
-                    "",
-                ])
+                lines.extend(
+                    [
+                        FormulaRenderer.nash_from_lutz_formulas(
+                            L_km=L_km,
+                            Lc_km=Lc_km,
+                            slope=slope,
+                            manning_n=manning_n,
+                            urban_pct=model_params.get("urban_pct", 0.0),
+                            forest_pct=model_params.get("forest_pct", 0.0),
+                            P1=P1,
+                            tp_hours=tp_hours,
+                            up_per_hour=up_per_hour,
+                            f_N=f_N,
+                            n=n,
+                            k_min=k_min,
+                        ),
+                        "",
+                    ]
+                )
 
         elif estimation_method == "from_urban_regression":
             ur_area = model_params.get("area_km2", area_km2)
@@ -437,36 +473,42 @@ def _generate_nash_section(
             ur_tL = model_params.get("tL_h")
             ur_k = model_params.get("k_h", k_h)
             if ur_precip is not None and ur_duration is not None and ur_tL is not None:
-                lines.extend([
-                    FormulaRenderer.nash_urban_regression_formulas(
-                        area_km2=ur_area,
-                        urban_fraction=ur_urban,
-                        effective_precip_mm=ur_precip,
-                        duration_h=ur_duration,
-                        tL_h=ur_tL,
-                        k_h=ur_k,
-                        N=n,
-                    ),
-                    "",
-                ])
+                lines.extend(
+                    [
+                        FormulaRenderer.nash_urban_regression_formulas(
+                            area_km2=ur_area,
+                            urban_fraction=ur_urban,
+                            effective_precip_mm=ur_precip,
+                            duration_h=ur_duration,
+                            tL_h=ur_tL,
+                            k_h=ur_k,
+                            N=n,
+                        ),
+                        "",
+                    ]
+                )
 
         # Model formula (always shown)
         if estimation_method:
-            lines.extend([
-                "**Wzór IUH Nasha (wyznaczone parametry):**",
-                "",
-            ])
+            lines.extend(
+                [
+                    "**Wzór IUH Nasha (wyznaczone parametry):**",
+                    "",
+                ]
+            )
         lines.append(FormulaRenderer.nash_iuh_formula(n, k_min))
 
         if n > 1:
             tp_theoretical = (n - 1) * k_min
-            lines.extend([
-                "",
-                "**Czas do szczytu IUH:**",
-                "",
-                f"$$t_p = (n - 1) \\cdot K = ({n:.2f} - 1) \\cdot {k_min:.1f} = "
-                f"{tp_theoretical:.1f} \\text{{ min}}$$",
-            ])
+            lines.extend(
+                [
+                    "",
+                    "**Czas do szczytu IUH:**",
+                    "",
+                    f"$$t_p = (n - 1) \\cdot K = ({n:.2f} - 1) \\cdot {k_min:.1f} = "
+                    f"{tp_theoretical:.1f} \\text{{ min}}$$",
+                ]
+            )
 
     return lines
 
@@ -495,24 +537,26 @@ def _generate_clark_section(
 
     lag_time_min = tc / 2.0 + r_min
 
-    lines.extend([
-        SUBSECTION_HEADERS["unit_hydrograph"]["params"],
-        "",
-        f"- Powierzchnia zlewni: A = {area_km2:.2f} km²",
-        f"- Czas koncentracji: Tc = {tc:.1f} min",
-        f"- Stała zbiornika: R = {r_min:.1f} min",
-    ])
+    lines.extend(
+        [
+            SUBSECTION_HEADERS["unit_hydrograph"]["params"],
+            "",
+            f"- Powierzchnia zlewni: A = {area_km2:.2f} km²",
+            f"- Czas koncentracji: Tc = {tc:.1f} min",
+            f"- Stała zbiornika: R = {r_min:.1f} min",
+        ]
+    )
 
     # Show ratio when derived via from_tc_r_ratio
     if estimation_method == "from_tc_r_ratio" and r_tc_ratio is not None:
-        lines.append(
-            f"- Stosunek R/Tc = {r_tc_ratio:.3f} (metoda estymacji R/Tc)"
-        )
+        lines.append(f"- Stosunek R/Tc = {r_tc_ratio:.3f} (metoda estymacji R/Tc)")
 
-    lines.extend([
-        f"- Tc + R = {tc + r_min:.1f} min",
-        f"- Czas opóźnienia (przybliżony): Tc/2 + R = {lag_time_min:.1f} min",
-    ])
+    lines.extend(
+        [
+            f"- Tc + R = {tc + r_min:.1f} min",
+            f"- Czas opóźnienia (przybliżony): Tc/2 + R = {lag_time_min:.1f} min",
+        ]
+    )
 
     if timestep_min is not None:
         lines.append(f"- Krok czasowy obliczeń: Δt = {timestep_min:.1f} min")
@@ -520,34 +564,42 @@ def _generate_clark_section(
         lines.append(f"- Współczynnik routingu: C1 = {c1:.4f}")
 
     if include_formulas:
-        lines.extend([
-            "",
-            SUBSECTION_HEADERS["unit_hydrograph"]["formulas"],
-            "",
-            FormulaRenderer.clark_iuh_formula(tc, r_min),
-        ])
+        lines.extend(
+            [
+                "",
+                SUBSECTION_HEADERS["unit_hydrograph"]["formulas"],
+                "",
+                FormulaRenderer.clark_iuh_formula(tc, r_min),
+            ]
+        )
 
         # Estimation method formulas
         if estimation_method == "from_tc_r_ratio" and r_tc_ratio is not None:
-            lines.extend([
-                "",
-                FormulaRenderer.clark_from_tc_r_ratio(tc, r_tc_ratio, r_min),
-            ])
+            lines.extend(
+                [
+                    "",
+                    FormulaRenderer.clark_from_tc_r_ratio(tc, r_tc_ratio, r_min),
+                ]
+            )
 
         # Time-area histogram with substituted Tc
-        lines.extend([
-            "",
-            FormulaRenderer.clark_time_area_substituted(tc),
-        ])
+        lines.extend(
+            [
+                "",
+                FormulaRenderer.clark_time_area_substituted(tc),
+            ]
+        )
 
         # Routing equation - general form first, then with numeric C1
-        lines.extend([
-            "",
-            "**Routing przez zbiornik liniowy (równanie Muskingum):**",
-            "",
-            "$$O_t = O_{t-1} + C_1 \\cdot (I_t + I_{t-1} - 2 \\cdot O_{t-1})$$",
-            "",
-        ])
+        lines.extend(
+            [
+                "",
+                "**Routing przez zbiornik liniowy (równanie Muskingum):**",
+                "",
+                "$$O_t = O_{t-1} + C_1 \\cdot (I_t + I_{t-1} - 2 \\cdot O_{t-1})$$",
+                "",
+            ]
+        )
 
         if c1 is not None and timestep_min is not None:
             lines.append(
@@ -560,13 +612,15 @@ def _generate_clark_section(
             )
 
         # Lag time approximation
-        lines.extend([
-            "",
-            "**Przybliżony czas opóźnienia:**",
-            "",
-            f"$$t_{{lag}} \\approx \\frac{{T_c}}{{2}} + R = "
-            f"\\frac{{{tc:.1f}}}{{2}} + {r_min:.1f} = {lag_time_min:.1f} \\text{{ min}}$$",
-        ])
+        lines.extend(
+            [
+                "",
+                "**Przybliżony czas opóźnienia:**",
+                "",
+                f"$$t_{{lag}} \\approx \\frac{{T_c}}{{2}} + R = "
+                f"\\frac{{{tc:.1f}}}{{2}} + {r_min:.1f} = {lag_time_min:.1f} \\text{{ min}}$$",
+            ]
+        )
 
     return lines
 
@@ -602,9 +656,7 @@ def _generate_snyder_section(
     tL_min: float = model_params.get("lag_time_min", 60.0)
 
     # Standard duration tD = tL / 5.5
-    tD_min: float = model_params.get(
-        "standard_duration_min", tL_min / 5.5
-    )
+    tD_min: float = model_params.get("standard_duration_min", tL_min / 5.5)
 
     # Time base tb = 0.556 * A / qp  (hours -> minutes)
     tb_min: float = model_params.get(
@@ -617,8 +669,8 @@ def _generate_snyder_section(
     # where qp/A is in m³/s/km²/mm; constants derived from imperial W50=770,
     # W75=440 (cfs/mi²/inch) via conv = 25.4 / (0.028317 * 2.58999).
     qp_per_area = peak_discharge_m3s / area_km2
-    w50_h: float = model_params.get("w50_h", 0.1783 / (qp_per_area ** 1.08))
-    w75_h: float = model_params.get("w75_h", 0.1019 / (qp_per_area ** 1.08))
+    w50_h: float = model_params.get("w50_h", 0.1783 / (qp_per_area**1.08))
+    w75_h: float = model_params.get("w75_h", 0.1019 / (qp_per_area**1.08))
 
     # Non-standard duration parameters (present only when Δt ≠ tD)
     duration_min: Optional[float] = model_params.get("duration_min")
@@ -626,51 +678,57 @@ def _generate_snyder_section(
     tpR_min: Optional[float] = model_params.get("adjusted_tp_min")
     qpR_m3s: Optional[float] = model_params.get("adjusted_qp_m3s")
 
-    lines.extend([
-        SUBSECTION_HEADERS["unit_hydrograph"]["params"],
-        "",
-        f"- Powierzchnia zlewni: A = {area_km2:.2f} km²",
-        f"- Długość cieku: L = {L_km:.2f} km",
-        f"- Odległość do centroidu: Lc = {Lc_km:.2f} km",
-        f"- Współczynnik czasowy: Ct = {ct:.2f}",
-        f"- Współczynnik szczytowy: Cp = {cp:.2f}",
-        f"- Czas opóźnienia zlewni: tL = {tL_min:.1f} min",
-        f"- Standardowy czas trwania: tD = {tD_min:.1f} min",
-    ])
+    lines.extend(
+        [
+            SUBSECTION_HEADERS["unit_hydrograph"]["params"],
+            "",
+            f"- Powierzchnia zlewni: A = {area_km2:.2f} km²",
+            f"- Długość cieku: L = {L_km:.2f} km",
+            f"- Odległość do centroidu: Lc = {Lc_km:.2f} km",
+            f"- Współczynnik czasowy: Ct = {ct:.2f}",
+            f"- Współczynnik szczytowy: Cp = {cp:.2f}",
+            f"- Czas opóźnienia zlewni: tL = {tL_min:.1f} min",
+            f"- Standardowy czas trwania: tD = {tD_min:.1f} min",
+        ]
+    )
 
     if duration_min is not None:
         lines.append(f"- Użyty czas trwania opadu: Δt = {duration_min:.1f} min")
 
-    lines.extend([
-        f"- Czas do szczytu: tp = {time_to_peak_min:.1f} min",
-        f"- Przepływ szczytowy (standardowy): qp = {peak_discharge_m3s:.4f} m³/s/mm",
-        f"- Czas bazowy: tb = {tb_min:.1f} min",
-        f"- Szerokość W50 = {w50_h:.3f} h, W75 = {w75_h:.3f} h",
-    ])
+    lines.extend(
+        [
+            f"- Czas do szczytu: tp = {time_to_peak_min:.1f} min",
+            f"- Przepływ szczytowy (standardowy): qp = {peak_discharge_m3s:.4f} m³/s/mm",
+            f"- Czas bazowy: tb = {tb_min:.1f} min",
+            f"- Szerokość W50 = {w50_h:.3f} h, W75 = {w75_h:.3f} h",
+        ]
+    )
 
     if include_formulas:
-        lines.extend([
-            "",
-            SUBSECTION_HEADERS["unit_hydrograph"]["formulas"],
-            "",
-            FormulaRenderer.snyder_uh_formulas(
-                L_km=L_km,
-                Lc_km=Lc_km,
-                ct=ct,
-                cp=cp,
-                tL_min=tL_min,
-                tD_min=tD_min,
-                tp_min=time_to_peak_min,
-                qp_m3s=peak_discharge_m3s,
-                area_km2=area_km2,
-                tb_min=tb_min,
-                w50_h=w50_h,
-                w75_h=w75_h,
-                duration_min=duration_min,
-                tLR_min=tLR_min,
-                tpR_min=tpR_min,
-                qpR_m3s=qpR_m3s,
-            ),
-        ])
+        lines.extend(
+            [
+                "",
+                SUBSECTION_HEADERS["unit_hydrograph"]["formulas"],
+                "",
+                FormulaRenderer.snyder_uh_formulas(
+                    L_km=L_km,
+                    Lc_km=Lc_km,
+                    ct=ct,
+                    cp=cp,
+                    tL_min=tL_min,
+                    tD_min=tD_min,
+                    tp_min=time_to_peak_min,
+                    qp_m3s=peak_discharge_m3s,
+                    area_km2=area_km2,
+                    tb_min=tb_min,
+                    w50_h=w50_h,
+                    w75_h=w75_h,
+                    duration_min=duration_min,
+                    tLR_min=tLR_min,
+                    tpR_min=tpR_min,
+                    qpR_m3s=qpR_m3s,
+                ),
+            ]
+        )
 
     return lines
