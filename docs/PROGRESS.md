@@ -5,9 +5,9 @@
 | Pole | Wartość |
 |------|---------|
 | **Faza** | 1 - Implementacja |
-| **Sprint** | 0.6.x - Nash urban regression |
-| **Sesja** | 22 |
-| **Data** | 2026-03-20 |
+| **Sprint** | 0.6.x - Raporty UH + korekty wzorów |
+| **Sesja** | 23 |
+| **Data** | 2026-03-22 |
 | **Następny milestone** | v1.0.0 - Stabilne API |
 | **Gałąź robocza** | develop |
 
@@ -33,6 +33,7 @@
 | CP13 | `hydrolog.reports` - moduł raportów | ✅ Ukończony |
 | CP14 | v0.6.0 - Wydanie z raportami | ✅ Ukończony |
 | CP15 | Nash urban regression + v0.6.1 | ✅ Ukończony |
+| CP16 | Raporty UH + korekty wzorów metrycznych + v0.6.2 | ✅ Ukończony |
 
 ---
 
@@ -49,11 +50,61 @@
 | v0.5.2 | Refaktor: usunięcie nieużywanego imgwtools | ✅ Wydana (2026-01-21) |
 | v0.6.0 | Generowanie raportów Markdown z LaTeX | ✅ Wydana (2026-01-21) |
 | v0.6.1 | Nash: regresja dla zlewni zurbanizowanych | ✅ Wydana (2026-03-20) |
+| v0.6.2 | Raporty UH + korekty wzorów metrycznych | ✅ Wydana (2026-03-22) |
 | v1.0.0 | Stabilne API + CLI | 📋 Planowany |
 
 ---
 
 ## Bieżąca sesja
+
+### Sesja 23 (2026-03-22) - UKOŃCZONA
+
+**Cel:** Pełne wzory obliczeniowe w raportach + weryfikacja i korekta wzorów metrycznych
+
+**Co zostało zrobione:**
+- [x] Rozbudowa modułu raportów o pełne wzory dla wszystkich modeli UH:
+  - Nash: 3 metody estymacji (from_tc, from_lutz, from_urban_regression)
+  - Clark: estymacja R, C1, histogram czas-powierzchnia, lag time
+  - Snyder: tL, tD, tp, qp, tb, W50, W75, korekta niestandardowego czasu
+  - 6 nowych metod FormulaRenderer + detekcja estimation_method
+- [x] Weryfikacja wzorów metrycznych (6 agentów równoległych):
+  - SCS-CN, SCS UH, Kirpich, SCS Lag, Nash, Clark, Snyder
+  - Krzyżowa weryfikacja imperial ↔ metryczny na przykładach numerycznych
+- [x] Korekta Snyder W50/W75: 5.87→0.1783, 3.35→0.1019
+- [x] Korekta Clark: dwuczęściowy histogram HEC-HMS (z ^1.5, bez osobliwości)
+- [x] Korekta SCS Lag docstring: 7182→7069
+- [x] Weryfikacja Nash urban regression:
+  - Stałe 1.28/0.56 potwierdzone jako metryczne (z 0.831/0.569 imperialnych)
+  - Dowód matematyczny konwersji z weryfikacją numeryczną
+  - Dokumentacja: docs/NASH_URBAN_REGRESSION_DERIVATION.md
+- [x] Dokumentacja SCSCN: referencja Woodward et al. (2003) dla λ=0.05
+- [x] Wygenerowano przykładowy raport (zlewnia miejska 3.46 km², CN=79)
+- [x] Zaktualizowano wersję do 0.6.2
+- [x] Zaktualizowano CHANGELOG.md, PROGRESS.md
+- [x] Wszystkie 626 testów przechodzi
+
+**Pliki zmodyfikowane:**
+```
+hydrolog/reports/formatters.py               # +6 metod FormulaRenderer
+hydrolog/reports/sections/unit_hydrograph.py  # Nash 3 metody, Clark, Snyder
+hydrolog/runoff/clark_iuh.py                 # histogram HEC-HMS 2-part
+hydrolog/runoff/nash_iuh.py                  # dokumentacja konwersji + referencje
+hydrolog/runoff/scs_cn.py                    # doc Woodward 2003
+hydrolog/runoff/snyder_uh.py                 # W50=0.1783, W75=0.1019
+hydrolog/time/concentration.py               # docstring 7182→7069
+tests/unit/test_clark_iuh.py                 # +5 testów histogramu
+tests/unit/test_nash_iuh.py                  # aktualizacja testów ref.
+```
+
+**Pliki utworzone:**
+```
+docs/NASH_URBAN_REGRESSION_DERIVATION.md     # dowód konwersji imperial→metryczny
+tmp/raport_nash_urban.md                     # przykładowy raport
+```
+
+**Testy:** 626 passed (621 istniejących + 5 nowych Clark)
+
+---
 
 ### Sesja 22 (2026-03-20) - UKOŃCZONA
 
@@ -791,11 +842,11 @@ Wyniki Hydrolog (model Nasha):
 
 ### Stan projektu
 - **Faza:** Implementacja - v0.6.1 wydana
-- **Ostatni commit:** `feat(nash): add urban regression method for parameter estimation`
-- **Tag:** `v0.6.1` (ostatni release)
+- **Ostatni commit:** v0.6.2 — raporty UH + korekty wzorów metrycznych
+- **Tag:** `v0.6.2` (ostatni release)
 - **Środowisko:** `.venv` z Python 3.12+
 - **Repo GitHub:** https://github.com/Daldek/Hydrolog.git
-- **Testy:** 621 testów (606 jednostkowych + 15 integracyjnych)
+- **Testy:** 626 testów (611 jednostkowych + 15 integracyjnych)
 
 ### Zaimplementowane moduły
 - `hydrolog.time.ConcentrationTime` - 3 metody (Kirpich, SCS Lag, Giandotti) + ostrzeżenia zakresów
@@ -806,6 +857,13 @@ Wyniki Hydrolog (model Nasha):
 - `hydrolog.visualization` - 15 funkcji wizualizacji (hietogramy, hydrogramy, porównania UH, bilans wodny, morfometria, sieć rzeczna)
 - `hydrolog.reports` - HydrologyReportGenerator (raporty Markdown z wzorami LaTeX)
 - `hydrolog.cli` - interfejs CLI (tc, cn, scs, uh)
+
+### Ostatnio dodane (Sesja 23 - v0.6.2)
+- Pełne wzory obliczeniowe w raportach dla Nash (3 metody), Clark, Snyder
+- Korekty wzorów metrycznych: Snyder W50/W75, Clark histogram HEC-HMS
+- Weryfikacja konwersji imperial→metryczny dla wszystkich wzorów
+- Dokumentacja konwersji Nash urban regression (0.831→1.28)
+- 5 nowych testów Clark + aktualizacja testów Nash
 
 ### Ostatnio dodane (Sesja 22 - v0.6.1)
 - `NashIUH.from_urban_regression()` - estymacja parametrów Nasha dla zlewni zurbanizowanych
