@@ -9,8 +9,8 @@ A modular library providing tools for:
 - River network classification
 """
 
-__version__ = "0.6.0"
-__author__ = "Daldek"
+__version__ = "0.6.2"
+__author__ = "Piotr de Bever"
 
 from hydrolog.exceptions import HydrologError, InvalidParameterError, CalculationError
 

@@ -926,3 +926,171 @@ class NashIUH:
         )
 
         return cls(n=N, k_min=k_min, area_km2=area_km2, lutz_params=lutz_params)
+
+    @classmethod
+    def from_urban_regression(
+        cls,
+        area_km2: float,
+        effective_precip_mm: float,
+        duration_h: float,
+        urban_fraction: float = 0.0,
+    ) -> "NashIUH":
+        """
+        Create NashIUH using empirical regression for urbanized catchments.
+
+        Estimates Nash model parameters (N, k) from catchment area,
+        effective precipitation, rainfall duration, and urbanization
+        index using power-law regression equations developed for
+        urbanized and partially urbanized catchments.
+
+        Parameters
+        ----------
+        area_km2 : float
+            Watershed area [km²]. Must be positive.
+        effective_precip_mm : float
+            Total effective precipitation depth [mm]. Must be positive.
+        duration_h : float
+            Effective rainfall duration [h]. Must be positive.
+        urban_fraction : float, optional
+            Urbanization index [-], by default 0.0.
+            Range [0, 1), where 0 = natural, 0.5 = 50% urbanized.
+            Defined as ratio of built-up area to total watershed area.
+
+        Returns
+        -------
+        NashIUH
+            Configured Nash IUH generator with area_km2 set.
+
+        Raises
+        ------
+        InvalidParameterError
+            If any parameter is invalid.
+
+        Notes
+        -----
+        The method uses power-law regression equations in metric units:
+
+        1. Lag time:
+
+        .. math::
+            t_L = 1.28 \\cdot A^{0.46} \\cdot (1+U)^{-1.66}
+                  \\cdot H^{-0.27} \\cdot D^{0.37}
+
+        2. Storage coefficient:
+
+        .. math::
+            k = 0.56 \\cdot A^{0.39} \\cdot (1+U)^{-0.62}
+                \\cdot H^{-0.11} \\cdot D^{0.22}
+
+        3. Number of reservoirs:
+
+        .. math::
+            N = t_L / k
+
+        where A is catchment area [km²], U is urbanization index [-],
+        H is effective precipitation [mm], and D is rainfall duration [h].
+
+        **Imperial origin and metric conversion:**
+
+        The original regression (Sarma, Delleur, Rao 1969 [2]) was
+        developed at Purdue University on watersheds near Indianapolis,
+        Indiana ("between 5 and 20 square miles"). The original
+        imperial constants are 0.831 (tL) and ~0.569 (k) for inputs
+        in mi² and inches.
+
+        The metric constants 1.28 and 0.56 already incorporate the
+        unit conversions and appear in the 1972 ASCE paper [1]::
+
+            c_tL = 0.831 × (1/2.58999)^0.46 × (25.4)^0.27 = 1.285 ≈ 1.28
+            c_k  = 0.569 × (1/2.58999)^0.39 × (25.4)^0.11 = 0.560 ≈ 0.56
+
+        Verification: for the same physical watershed, the imperial
+        formula (0.831, mi², in) and the metric formula (1.28, km², mm)
+        produce identical lag times (difference < 0.4%).
+
+        These metric constants are consistent with Polish hydrological
+        literature — see e.g. Kołodziejczyk (2017) [3], Banasik (2009)
+        [4].
+
+        The regression was derived from analysis of ~200 storms on
+        watersheds with varying degrees of urbanization, relating
+        Nash model parameters to meteorological and physiographic
+        factors including the urbanization factor.
+
+        References
+        ----------
+        [1] Rao, R.A.; Delleur, J.W.; Sarma, B.S.P. (1972). Conceptual
+        Hydrologic Models for Urbanizing Basins. Journal of the
+        Hydraulics Division, ASCE, 98(HY7), 1205-1220.
+        TRID record: https://trid.trb.org/view/103282
+
+        [2] Sarma, P.B.S.; Delleur, J.W.; Rao, A.R. (1969). A Program
+        in Urban Hydrology, Part II. Purdue University Water Resources
+        Research Center, Technical Report No. 9.
+        Full text (PDF): https://docs.lib.purdue.edu/watertech/8/
+
+        [3] Kołodziejczyk, K. (2017). Assessment of the impact of
+        a parameter estimation method for the Nash Model on selected
+        parameters of a catchment discharge hydrograph. E3S Web of
+        Conferences, 17, 00041.
+        Full text (PDF): https://www.e3s-conferences.org/articles/e3sconf/pdf/2017/05/e3sconf_eko2017_00041.pdf
+
+        [4] Banasik, K. (2009). Wyznaczanie wezbrań powodziowych
+        w małych zlewniach zurbanizowanych. Wyd. SGGW, Warszawa.
+
+        Examples
+        --------
+        >>> nash = NashIUH.from_urban_regression(
+        ...     area_km2=1.3,
+        ...     effective_precip_mm=1.305,
+        ...     duration_h=0.167,
+        ...     urban_fraction=0.05,
+        ... )
+        >>> print(f"N = {nash.n:.3f}, k = {nash.k_min:.1f} min")
+        N = 1.621, k = 23.6 min
+        """
+        # Validate inputs
+        if area_km2 <= 0:
+            raise InvalidParameterError(
+                f"area_km2 must be positive, got {area_km2}"
+            )
+        if effective_precip_mm <= 0:
+            raise InvalidParameterError(
+                f"effective_precip_mm must be positive, got {effective_precip_mm}"
+            )
+        if duration_h <= 0:
+            raise InvalidParameterError(
+                f"duration_h must be positive, got {duration_h}"
+            )
+        if urban_fraction < 0 or urban_fraction >= 1:
+            raise InvalidParameterError(
+                f"urban_fraction must be in [0, 1), got {urban_fraction}"
+            )
+
+        # Step 1: Lag time [hours]
+        # Metric constant 1.28 from imperial 0.831 (Sarma et al. 1969)
+        tL_h = (
+            1.28
+            * (area_km2 ** 0.46)
+            * ((1 + urban_fraction) ** -1.66)
+            * (effective_precip_mm ** -0.27)
+            * (duration_h ** 0.37)
+        )
+
+        # Step 2: Storage coefficient [hours]
+        # Metric constant 0.56 from imperial ~0.569 (Sarma et al. 1969)
+        k_h = (
+            0.56
+            * (area_km2 ** 0.39)
+            * ((1 + urban_fraction) ** -0.62)
+            * (effective_precip_mm ** -0.11)
+            * (duration_h ** 0.22)
+        )
+
+        # Step 3: Number of reservoirs
+        N = tL_h / k_h
+
+        # Convert k to minutes
+        k_min = k_h * 60.0
+
+        return cls(n=N, k_min=k_min, area_km2=area_km2)

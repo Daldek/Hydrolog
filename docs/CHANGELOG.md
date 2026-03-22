@@ -68,6 +68,77 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.6.2] - 2026-03-22
+
+### Added
+
+#### Raporty — pełne wzory obliczeniowe dla wszystkich modeli UH
+- **Nash IUH** — 3 metody estymacji parametrów w raportach:
+  - `from_tc` — formuły tlag = λ·tc, K = tlag/n z podstawionymi wartościami
+  - `from_lutz` — 6 kroków metody Lutza (P1, tp, up, f(N), N, K) z podstawieniami
+  - `from_urban_regression` — 3 kroki regresji (tL, k, N) z tabelą wejść i referencją
+- **Clark IUH** — rozbudowana sekcja raportu:
+  - Estymacja R z metody R/Tc z podstawieniami
+  - Współczynnik routingu C1 = Δt/(2R+Δt) z wartościami
+  - Histogram czas-powierzchnia (dwuczęściowy HEC-HMS) z Tc
+  - Czas opóźnienia tlag ≈ Tc/2 + R
+- **Snyder UH** — pełne wzory z podstawieniami numerycznymi:
+  - tL, tD = tL/5.5, tp, qp, tb — wszystkie z wartościami
+  - W50, W75 — szerokości hydrogramu z poprawnymi stałymi metrycznymi
+  - Korekta dla niestandardowego czasu trwania (tLR, tpR, qpR)
+- **6 nowych metod** `FormulaRenderer`:
+  - `nash_from_tc_formulas()`, `nash_from_lutz_formulas()`,
+    `nash_urban_regression_formulas()`
+  - `clark_from_tc_r_ratio()`, `clark_routing_coefficient()`,
+    `clark_time_area_substituted()`
+- Detekcja `estimation_method` w `model_params` we wszystkich sekcjach UH
+
+### Fixed
+
+#### Korekty wzorów metrycznych
+- **Snyder W50/W75** — poprawione stałe metryczne:
+  - W50: 5.87 → **0.1783** (imperialna 770 / conv^1.08, conv ≈ 2323)
+  - W75: 3.35 → **0.1019** (imperialna 440 / conv^1.08)
+  - Poprzednie wartości dawały wyniki zawyżone ~33×
+- **Clark histogram czas-powierzchnia** — zmiana na standard HEC-HMS:
+  - Było: `1.414·(t/Tc)^0.5 - 0.414·(t/Tc)^1.5` (osobliwość przy t=0)
+  - Jest: dwuczęściowy z wykładnikiem 1.5 (symetryczny, centroid = Tc/2)
+- **SCS Lag docstring** — stała 7182 → **7069** (kod był poprawny, błąd w dokumentacji)
+
+### Documentation
+- Dokumentacja `SCSCN` — dodano referencję Woodward et al. (2003) dla λ=0.05
+  z ostrzeżeniem o konieczności rekalibracji CN
+- Dokumentacja `from_urban_regression()` — pełna historia konwersji
+  imperial→metryczny z referencjami (Sarma 1969, Rao 1972, Kołodziejczyk 2017)
+- Nowy plik `docs/NASH_URBAN_REGRESSION_DERIVATION.md` — dowód matematyczny
+  konwersji stałych 0.831→1.28 i 0.569→0.56 z weryfikacją numeryczną
+
+### Testing
+- 5 nowych testów Clark IUH (histogram: symetria, brak osobliwości, centroid)
+- Aktualizacja testów referencyjnych Nash urban regression
+- Total: 626 testów (wszystkie przechodzą)
+
+---
+
+## [0.6.1] - 2026-03-20
+
+### Added
+
+#### `hydrolog.runoff.nash_iuh` - Urban Regression Method
+- `NashIUH.from_urban_regression()` - parameter estimation for urbanized catchments
+  - Estimates Nash model parameters (N, k) from catchment area, effective
+    precipitation, rainfall duration, and urbanization index
+  - Power-law regression equations: tL = 1.28·A^0.46·(1+U)^(-1.66)·H^(-0.27)·D^0.37,
+    k = 0.56·A^0.39·(1+U)^(-0.62)·H^(-0.11)·D^0.22
+  - Verified against reference spreadsheet (Obliczenia.xlsx)
+  - References: Rao, Delleur, Sarma (1972), ASCE J. Hydraulics Div. 98(HY7)
+
+### Testing
+- 11 new tests for urban regression method (including reference value verification)
+- Total: 621 tests (all passing)
+
+---
+
 ## [0.6.0] - 2026-01-21
 
 ### Added

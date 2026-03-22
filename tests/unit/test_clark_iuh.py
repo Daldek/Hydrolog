@@ -114,6 +114,72 @@ class TestClarkIUHTimeArea:
 
         assert np.all(incremental >= 0)
 
+    def test_cumulative_time_area_at_half_tc(self):
+        """Test cumulative area at t=Tc/2 is approximately 0.5 (symmetric midpoint).
+
+        The coefficient 1.414 is a rounded approximation of sqrt(2) = 1.41421356...
+        so the exact midpoint value is 1.414 * 0.5^1.5 ≈ 0.49992, not exactly 0.5.
+        """
+        iuh = ClarkIUH(tc_min=60.0, r_min=30.0)
+        # 1.414 * 0.5^1.5 = 1.414 * 0.35355... ≈ 0.49992
+        expected = 1.414 * (0.5 ** 1.5)
+        result = iuh.cumulative_time_area(30.0)
+        assert abs(result - expected) < 1e-10
+        # Also verify it is close to 0.5 (within rounding of coefficient)
+        assert abs(result - 0.5) < 1e-3
+
+    def test_cumulative_time_area_lower_branch(self):
+        """Test lower-branch formula (0 <= t <= Tc/2): A_cum = 1.414 * tau^1.5."""
+        iuh = ClarkIUH(tc_min=100.0, r_min=50.0)
+        # t = 25 -> tau = 0.25  (in lower branch)
+        t = 25.0
+        tau = t / 100.0
+        expected = 1.414 * (tau ** 1.5)
+        assert abs(iuh.cumulative_time_area(t) - expected) < 1e-10
+
+    def test_cumulative_time_area_upper_branch(self):
+        """Test upper-branch formula (Tc/2 < t <= Tc): A_cum = 1 - 1.414*(1-tau)^1.5."""
+        iuh = ClarkIUH(tc_min=100.0, r_min=50.0)
+        # t = 75 -> tau = 0.75  (in upper branch)
+        t = 75.0
+        tau = t / 100.0
+        expected = 1.0 - 1.414 * ((1.0 - tau) ** 1.5)
+        assert abs(iuh.cumulative_time_area(t) - expected) < 1e-10
+
+    def test_cumulative_time_area_symmetry(self):
+        """Test formula is symmetric: A_cum(t) + A_cum(Tc-t) = 1 for all t in [0, Tc].
+
+        The two-part piecewise formula is mathematically symmetric around Tc/2.
+        A small numerical deviation occurs at t=Tc/2 because the coefficient 1.414
+        is a rounded approximation of sqrt(2).
+        """
+        iuh = ClarkIUH(tc_min=80.0, r_min=40.0)
+        # Times excluding the midpoint (t=40), which has a known ~0.015% rounding gap
+        test_times_non_mid = [0.0, 10.0, 20.0, 30.0, 50.0, 60.0, 70.0, 80.0]
+        for t in test_times_non_mid:
+            a = iuh.cumulative_time_area(t)
+            b = iuh.cumulative_time_area(80.0 - t)
+            assert abs(a + b - 1.0) < 1e-10, (
+                f"Symmetry failed at t={t}: A({t}) + A({80.0 - t}) = {a + b}"
+            )
+        # At the midpoint, symmetry holds within rounding of the 1.414 coefficient
+        a_mid = iuh.cumulative_time_area(40.0)
+        assert abs(2 * a_mid - 1.0) < 1e-3
+
+    def test_cumulative_time_area_no_singularity_near_zero(self):
+        """Test that dA/dt is finite and bounded near t=0 (no sqrt singularity)."""
+        iuh = ClarkIUH(tc_min=60.0, r_min=30.0)
+        # With the corrected formula (tau^1.5), dA/dt -> 0 as t -> 0
+        # With the old formula (tau^0.5), dA/dt -> infinity
+        dt = 0.001
+        a0 = iuh.cumulative_time_area(0.0)
+        a1 = iuh.cumulative_time_area(dt)
+        slope_near_zero = (a1 - a0) / dt
+        # Slope should be very small (approaching 0) not very large
+        assert slope_near_zero < 0.01, (
+            f"dA/dt near zero = {slope_near_zero:.4f} suggests singularity"
+        )
+
 
 class TestClarkIUHGenerate:
     """Tests for IUH generation."""
