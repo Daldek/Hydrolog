@@ -683,6 +683,173 @@ class TestNashIUHFromLutz:
         assert len(result.times_min) > 0
 
 
+class TestNashIUHFromUrbanRegression:
+    """Tests for creating NashIUH using urban regression method."""
+
+    def test_from_urban_regression_reference_values(self):
+        """Test against reference values from Rao et al. (1972).
+
+        Input: A=1.3 km², H=1.305 mm, D=0.1667 h, U=0.05
+        Constants: c_tL=1.28, c_k=0.56 (metric, from Sarma et al. 1969)
+        Expected: N≈1.621, k≈0.394 h (23.6 min), tL≈0.639 h
+        """
+        nash = NashIUH.from_urban_regression(
+            area_km2=1.3,
+            effective_precip_mm=1.3050751317520879,
+            duration_h=0.16666666666666666,
+            urban_fraction=0.05,
+        )
+
+        assert abs(nash.n - 1.621) < 0.01
+        assert abs(nash.k_min - 0.394 * 60.0) < 0.5
+        assert abs(nash.lag_time_min - 0.639 * 60.0) < 0.5
+        assert nash.area_km2 == 1.3
+
+    def test_from_urban_regression_basic(self):
+        """Test from_urban_regression with basic parameters."""
+        nash = NashIUH.from_urban_regression(
+            area_km2=5.0,
+            effective_precip_mm=10.0,
+            duration_h=1.0,
+        )
+
+        assert nash.n > 0
+        assert nash.k_min > 0
+        assert nash.area_km2 == 5.0
+
+    def test_from_urban_regression_urban_effect(self):
+        """Test that urbanization decreases lag time (faster response)."""
+        nash_natural = NashIUH.from_urban_regression(
+            area_km2=5.0,
+            effective_precip_mm=10.0,
+            duration_h=1.0,
+            urban_fraction=0.0,
+        )
+        nash_urban = NashIUH.from_urban_regression(
+            area_km2=5.0,
+            effective_precip_mm=10.0,
+            duration_h=1.0,
+            urban_fraction=0.3,
+        )
+
+        assert nash_urban.lag_time_min < nash_natural.lag_time_min
+
+    def test_from_urban_regression_larger_area_slower_response(self):
+        """Test that larger area gives slower response."""
+        nash_small = NashIUH.from_urban_regression(
+            area_km2=1.0,
+            effective_precip_mm=10.0,
+            duration_h=1.0,
+        )
+        nash_large = NashIUH.from_urban_regression(
+            area_km2=50.0,
+            effective_precip_mm=10.0,
+            duration_h=1.0,
+        )
+
+        assert nash_large.lag_time_min > nash_small.lag_time_min
+
+    def test_from_urban_regression_more_precip_faster_response(self):
+        """Test that higher effective precipitation gives faster response."""
+        nash_low = NashIUH.from_urban_regression(
+            area_km2=5.0,
+            effective_precip_mm=2.0,
+            duration_h=1.0,
+        )
+        nash_high = NashIUH.from_urban_regression(
+            area_km2=5.0,
+            effective_precip_mm=20.0,
+            duration_h=1.0,
+        )
+
+        # Higher H → smaller tL (negative exponent -0.27)
+        assert nash_high.lag_time_min < nash_low.lag_time_min
+
+    def test_from_urban_regression_longer_duration_slower_response(self):
+        """Test that longer rainfall duration gives larger lag time."""
+        nash_short = NashIUH.from_urban_regression(
+            area_km2=5.0,
+            effective_precip_mm=10.0,
+            duration_h=0.5,
+        )
+        nash_long = NashIUH.from_urban_regression(
+            area_km2=5.0,
+            effective_precip_mm=10.0,
+            duration_h=3.0,
+        )
+
+        # Longer D → larger tL (positive exponent 0.37)
+        assert nash_long.lag_time_min > nash_short.lag_time_min
+
+    def test_from_urban_regression_zero_area_raises(self):
+        """Test that area_km2=0 raises error."""
+        with pytest.raises(InvalidParameterError, match="area_km2 must be positive"):
+            NashIUH.from_urban_regression(
+                area_km2=0,
+                effective_precip_mm=10.0,
+                duration_h=1.0,
+            )
+
+    def test_from_urban_regression_zero_precip_raises(self):
+        """Test that effective_precip_mm=0 raises error."""
+        with pytest.raises(
+            InvalidParameterError, match="effective_precip_mm must be positive"
+        ):
+            NashIUH.from_urban_regression(
+                area_km2=5.0,
+                effective_precip_mm=0,
+                duration_h=1.0,
+            )
+
+    def test_from_urban_regression_zero_duration_raises(self):
+        """Test that duration_h=0 raises error."""
+        with pytest.raises(
+            InvalidParameterError, match="duration_h must be positive"
+        ):
+            NashIUH.from_urban_regression(
+                area_km2=5.0,
+                effective_precip_mm=10.0,
+                duration_h=0,
+            )
+
+    def test_from_urban_regression_invalid_urban_fraction_raises(self):
+        """Test that invalid urban_fraction raises error."""
+        with pytest.raises(
+            InvalidParameterError, match="urban_fraction must be in"
+        ):
+            NashIUH.from_urban_regression(
+                area_km2=5.0,
+                effective_precip_mm=10.0,
+                duration_h=1.0,
+                urban_fraction=-0.1,
+            )
+
+        with pytest.raises(
+            InvalidParameterError, match="urban_fraction must be in"
+        ):
+            NashIUH.from_urban_regression(
+                area_km2=5.0,
+                effective_precip_mm=10.0,
+                duration_h=1.0,
+                urban_fraction=1.0,
+            )
+
+    def test_from_urban_regression_generate_works(self):
+        """Test that generated Nash can produce hydrograph."""
+        nash = NashIUH.from_urban_regression(
+            area_km2=1.3,
+            effective_precip_mm=1.305,
+            duration_h=0.167,
+            urban_fraction=0.05,
+        )
+
+        result = nash.generate(timestep_min=5.0)
+
+        assert isinstance(result, NashUHResult)
+        assert result.peak_discharge_m3s > 0
+        assert len(result.times_min) > 0
+
+
 class TestNashIUHImport:
     """Test module imports."""
 

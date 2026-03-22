@@ -5,9 +5,9 @@
 | Pole | Wartość |
 |------|---------|
 | **Faza** | 1 - Implementacja |
-| **Sprint** | 0.6.x - Generowanie raportów |
-| **Sesja** | 25 |
-| **Data** | 2026-01-24 |
+| **Sprint** | 0.6.x - Raporty UH + korekty wzorów |
+| **Sesja** | 23 |
+| **Data** | 2026-03-22 |
 | **Następny milestone** | v1.0.0 - Stabilne API |
 | **Gałąź robocza** | develop |
 
@@ -32,6 +32,8 @@
 | CP12 | v0.5.0 - Wydanie z wizualizacją | ✅ Ukończony |
 | CP13 | `hydrolog.reports` - moduł raportów | ✅ Ukończony |
 | CP14 | v0.6.0 - Wydanie z raportami | ✅ Ukończony |
+| CP15 | Nash urban regression + v0.6.1 | ✅ Ukończony |
+| CP16 | Raporty UH + korekty wzorów metrycznych + v0.6.2 | ✅ Ukończony |
 
 ---
 
@@ -47,240 +49,96 @@
 | v0.5.1 | Bugfix SCS + GIS integration | ✅ Wydana (2026-01-21) |
 | v0.5.2 | Refaktor: usunięcie nieużywanego imgwtools | ✅ Wydana (2026-01-21) |
 | v0.6.0 | Generowanie raportów Markdown z LaTeX | ✅ Wydana (2026-01-21) |
+| v0.6.1 | Nash: regresja dla zlewni zurbanizowanych | ✅ Wydana (2026-03-20) |
+| v0.6.2 | Raporty UH + korekty wzorów metrycznych | ✅ Wydana (2026-03-22) |
 | v1.0.0 | Stabilne API + CLI | 📋 Planowany |
 
 ---
 
 ## Bieżąca sesja
 
-### Sesja 25 (2026-01-24) - UKOŃCZONA
+### Sesja 23 (2026-03-22) - UKOŃCZONA
 
-**Cel:** Naprawa błędów wizualizacji w notebookach przykładowych
-
-**Kontekst:**
-Notebooki w folderze `examples/` zawierały błędne nazwy atrybutów, które powodowały błędy
-przy generowaniu wykresów.
+**Cel:** Pełne wzory obliczeniowe w raportach + weryfikacja i korekta wzorów metrycznych
 
 **Co zostało zrobione:**
-- [x] Naprawiono `01_hydrogram_scs_cn.ipynb`:
-  - `precip.timestep_min` → `precip.times_min`
-  - `result.time_step_min` → `result.hydrograph.times_min`
-  - `result.discharge_m3s` → `result.hydrograph.discharge_m3s`
-- [x] Naprawiono `02_hietogramy.ipynb`:
-  - `time_steps_min` → `times_min` (4 miejsca)
-  - Usunięto nieistniejący atrybut `mean_intensity_mm_min`
-- [x] Zweryfikowano `03_czas_koncentracji.ipynb` - bez zmian (poprawny)
-- [x] Naprawiono `04_morfometria.ipynb`:
-  - `get_geometric_parameters()` → `get_parameters()`
-- [x] Naprawiono `05_model_nasha.ipynb`:
-  - `hydrograph.time_steps_min` → `hydrograph.times_min` (3 miejsca)
+- [x] Rozbudowa modułu raportów o pełne wzory dla wszystkich modeli UH:
+  - Nash: 3 metody estymacji (from_tc, from_lutz, from_urban_regression)
+  - Clark: estymacja R, C1, histogram czas-powierzchnia, lag time
+  - Snyder: tL, tD, tp, qp, tb, W50, W75, korekta niestandardowego czasu
+  - 6 nowych metod FormulaRenderer + detekcja estimation_method
+- [x] Weryfikacja wzorów metrycznych (6 agentów równoległych):
+  - SCS-CN, SCS UH, Kirpich, SCS Lag, Nash, Clark, Snyder
+  - Krzyżowa weryfikacja imperial ↔ metryczny na przykładach numerycznych
+- [x] Korekta Snyder W50/W75: 5.87→0.1783, 3.35→0.1019
+- [x] Korekta Clark: dwuczęściowy histogram HEC-HMS (z ^1.5, bez osobliwości)
+- [x] Korekta SCS Lag docstring: 7182→7069
+- [x] Weryfikacja Nash urban regression:
+  - Stałe 1.28/0.56 potwierdzone jako metryczne (z 0.831/0.569 imperialnych)
+  - Dowód matematyczny konwersji z weryfikacją numeryczną
+  - Dokumentacja: docs/NASH_URBAN_REGRESSION_DERIVATION.md
+- [x] Dokumentacja SCSCN: referencja Woodward et al. (2003) dla λ=0.05
+- [x] Wygenerowano przykładowy raport (zlewnia miejska 3.46 km², CN=79)
+- [x] Zaktualizowano wersję do 0.6.2
+- [x] Zaktualizowano CHANGELOG.md, PROGRESS.md
+- [x] Wszystkie 626 testów przechodzi
 
-**Pliki zmodyfikowane (5):**
+**Pliki zmodyfikowane:**
 ```
-examples/01_hydrogram_scs_cn.ipynb
-examples/02_hietogramy.ipynb
-examples/04_morfometria.ipynb
-examples/05_model_nasha.ipynb
+hydrolog/reports/formatters.py               # +6 metod FormulaRenderer
+hydrolog/reports/sections/unit_hydrograph.py  # Nash 3 metody, Clark, Snyder
+hydrolog/runoff/clark_iuh.py                 # histogram HEC-HMS 2-part
+hydrolog/runoff/nash_iuh.py                  # dokumentacja konwersji + referencje
+hydrolog/runoff/scs_cn.py                    # doc Woodward 2003
+hydrolog/runoff/snyder_uh.py                 # W50=0.1783, W75=0.1019
+hydrolog/time/concentration.py               # docstring 7182→7069
+tests/unit/test_clark_iuh.py                 # +5 testów histogramu
+tests/unit/test_nash_iuh.py                  # aktualizacja testów ref.
 ```
-
-**Wzorzec błędów:**
-| Błędna nazwa | Poprawna nazwa |
-|--------------|----------------|
-| `time_steps_min` | `times_min` |
-| `result.discharge_m3s` | `result.hydrograph.discharge_m3s` |
-| `get_geometric_parameters()` | `get_parameters()` |
-
-**Commit sesji:**
-```
-051cf41 fix(examples): correct attribute names in visualization code
-```
-
-**Testy:** Wszystkie notebooki zweryfikowane - wizualizacje działają poprawnie
-
----
-
-### Sesja 24 (2026-01-23) - UKOŃCZONA
-
-**Cel:** Refaktoryzacja: zmiana nazwy `scs_lag()` → `nrcs()` w całym projekcie
-
-**Kontekst:**
-Nazwa `scs_lag` była myląca - metoda oblicza czas koncentracji (tc), nie czas opóźnienia (lag).
-Nazwa `nrcs` jest bardziej zgodna z literaturą (USDA-NRCS TR-55).
-
-**Co zostało zrobione:**
-- [x] Zaktualizowano docstringi w `ConcentrationTime`:
-  - Poprawiono przykład w docstringu klasy (`scs_lag` → `nrcs`)
-  - Poprawiono literówkę `tc min]` → `tc[min]` w metodzie `kirpich()`
-  - Zaktualizowano pełny docstring metody `nrcs()` z poprawnym wyprowadzeniem wzoru
-  - Zmieniono nazwę metody w ostrzeżeniach (`"scs_lag"` → `"nrcs"`)
-- [x] Zaktualizowano CLI (`hydrolog/cli/commands/tc.py`):
-  - Komenda `scs-lag` → `nrcs`
-- [x] Zaktualizowano wszystkie wywołania w kodzie (6 plików):
-  - `hydrolog/morphometry/watershed_params.py`
-  - `hydrolog/reports/generator.py`
-  - `hydrolog/reports/formatters.py`
-  - `hydrolog/reports/templates.py`
-  - `hydrolog/reports/sections/concentration.py`
-- [x] Zaktualizowano testy (5 plików):
-  - `tests/unit/test_concentration.py`
-  - `tests/unit/test_cli.py`
-  - `tests/unit/test_reports.py`
-  - `tests/unit/test_watershed_params.py`
-  - `tests/integration/test_hydrograf_integration.py`
-- [x] Zaktualizowano dokumentację (5 plików):
-  - `README.md`
-  - `docs/CHANGELOG.md`
-  - `docs/COMPUTATION_PATHS.md`
-  - `docs/PROGRESS.md`
-  - `docs/NASH_AUDIT_REPORT.md`
-- [x] Zaktualizowano notebook `examples/03_czas_koncentracji.ipynb`
-- [x] Wszystkie 611 testów przechodzi
-
-**Pliki zmodyfikowane (18):**
-```
-hydrolog/time/concentration.py          # docstringi + ostrzeżenia
-hydrolog/cli/commands/tc.py             # komenda CLI
-hydrolog/morphometry/watershed_params.py
-hydrolog/reports/generator.py
-hydrolog/reports/formatters.py
-hydrolog/reports/templates.py
-hydrolog/reports/sections/concentration.py
-tests/unit/test_concentration.py
-tests/unit/test_cli.py
-tests/unit/test_reports.py
-tests/unit/test_watershed_params.py
-tests/integration/test_hydrograf_integration.py
-README.md
-docs/CHANGELOG.md
-docs/COMPUTATION_PATHS.md
-docs/PROGRESS.md
-docs/NASH_AUDIT_REPORT.md
-examples/03_czas_koncentracji.ipynb
-```
-
-**Wzór NRCS (metryczny):**
-```
-tc[min] = 0.01416 × L[m]^0.8 × (S[mm]+25.4)^0.7 × Y[%]^(-0.5)
-```
-
-**Commit sesji:**
-```
-3232c59 refactor(time)!: rename scs_lag() to nrcs() in ConcentrationTime
-```
-
-**Uwaga:** To jest **breaking change** - stara nazwa `scs_lag()` nie jest już dostępna.
-
-**Testy:** 611 passed
-
----
-
-### Sesja 23 (2026-01-22) - UKOŃCZONA
-
-**Cel:** Dokumentacja ścieżek obliczeniowych dla modeli UH
-
-**Kontekst:**
-Po deprecation `NashIUH.from_tc()` konieczne było stworzenie kompleksowej dokumentacji
-wyjaśniającej prawidłowe metody estymacji parametrów dla każdego modelu hydrogramu jednostkowego.
-
-**Co zostało zrobione:**
-- [x] Przegląd zmian w ostatnich 2 commitach
-- [x] Zaktualizowano README.md:
-  - Usunięto przykład `from_tc()`, zastąpiono przykładem `from_lutz()`
-  - Dodano sekcję "Dokumentacja" z linkami
-- [x] Zaktualizowano CHANGELOG.md
-- [x] Utworzono `docs/COMPUTATION_PATHS.md` (~500 linii):
-  - Macierz kompatybilności: model × metoda estymacji
-  - Diagramy przepływu danych (ASCII) dla każdego modelu
-  - Weryfikacja literaturowa każdej ścieżki obliczeniowej
-  - Ostrzeżenia o nieprawidłowym użyciu (Nash + from_tc, Snyder + zewnętrzne Tc)
-  - Przykłady kodu dla prawidłowych ścieżek
-  - Sekcja "Typowe błędy i jak ich uniknąć"
-  - 10 referencji literaturowych
-- [x] Zaktualizowano CLAUDE.md - dodano COMPUTATION_PATHS.md do listy obowiązkowej lektury
 
 **Pliki utworzone:**
 ```
-docs/COMPUTATION_PATHS.md    # NOWY - ścieżki obliczeniowe (~500 linii)
+docs/NASH_URBAN_REGRESSION_DERIVATION.md     # dowód konwersji imperial→metryczny
+tmp/raport_nash_urban.md                     # przykładowy raport
 ```
 
-**Pliki zmodyfikowane:**
-```
-README.md               # sekcja Dokumentacja, from_tc() → from_lutz()
-CLAUDE.md               # dodano COMPUTATION_PATHS.md do listy
-docs/CHANGELOG.md       # wpis o nowej dokumentacji
-docs/PROGRESS.md        # sesja 23
-```
-
-**Kluczowe ustalenia (macierz kompatybilności):**
-
-| Model | Tc (Kirpich/SCS/Giandotti) | from_lutz() | Własna metoda |
-|-------|:--------------------------:|:-----------:|:-------------:|
-| SCS UH | ✅ OK | - | - |
-| Nash IUH | ⚠️ DEPRECATED | ✅ ZALECANA | - |
-| Clark IUH | ✅ OK | - | - |
-| Snyder UH | ❌ NIE DOTYCZY | - | ✅ WBUDOWANA |
-
-**Testy:** 611 passed
-
-**Commity sesji:**
-```
-18a0112 docs: add computation paths documentation for UH models
-41cd447 docs: update documentation after from_tc() deprecation
-```
+**Testy:** 626 passed (621 istniejących + 5 nowych Clark)
 
 ---
 
-### Sesja 22 (2026-01-22) - UKOŃCZONA
+### Sesja 22 (2026-03-20) - UKOŃCZONA
 
-**Cel:** Rozszerzenie modułu raportów o automatyczne obliczenia Lutza + osadzanie wykresów
+**Cel:** Analiza arkusza Obliczenia.xlsx + implementacja regresji dla zlewni zurbanizowanych
 
 **Co zostało zrobione:**
-- [x] Rozszerzono `NashIUH.from_lutz()` o zwracanie wartości pośrednich:
-  - Nowa dataclass `LutzCalculationResult` ze wszystkimi krokami obliczeń
-  - Atrybut `lutz_params` w `NashIUH` przechowuje wyniki
-  - Właściwości: `tp_min`, `tp_hours`, `k_hours`, `lag_min` etc.
-- [x] Poprawiono terminologię w całym module:
-  - "ordynaty" → "rzędne" (z ę z ogonkiem)
-  - Zaktualizowano: templates.py, formatters.py, convolution.py, visualization/unit_hydrograph.py, visualization/hydrograph.py
-- [x] Rozszerzono `_generate_nash_section()` w `sections/unit_hydrograph.py`:
-  - Automatyczna dokumentacja metody Lutza gdy `lutz_params` dostępne
-  - Pełne wzory z podstawionymi wartościami (P₁, tp, up, f(N), K)
-  - Referencje do literatury (Lutz 1984, KZGW 2017)
-- [x] Dodano osadzanie wykresów w raporcie:
-  - Nowy parametr `figures_dir` w `HydrologyReportGenerator.generate()`
-  - Nowa metoda `_build_figures_section()` generuje sekcję "9. Wykresy"
-  - Wykresy osadzane jako Markdown images: `![opis](plik.png)`
-- [x] Zaktualizowano skrypt testowy `tmp/test_hydrologia_nash.py`:
-  - Przekazywanie `lutz_params` w `uh_params`
-  - Przekazywanie `figures_dir` do generatora
-- [x] Przetestowano pełny workflow (103 testy Nash + 37 testów raportów)
+- [x] Analiza arkusza `tmp/Obliczenia.xlsx` z kursu podyplomowego
+- [x] Porównanie procedury obliczeniowej arkusza z implementacją Hydrologa
+- [x] Potwierdzenie zgodności: SCS-CN (kumulatywny), IUH Nasha, UH z S-curve, splot
+- [x] Identyfikacja luki: brak metody estymacji parametrów Nasha dla zlewni zurbanizowanych
+- [x] Zaimplementowano `NashIUH.from_urban_regression()`:
+  - Formuły: tL = 1.28·A^0.46·(1+U)^(-1.66)·H^(-0.27)·D^0.37
+  - k = 0.56·A^0.39·(1+U)^(-0.62)·H^(-0.11)·D^0.22, N = tL/k
+  - Weryfikacja z danymi z arkusza: N≈1.621, k≈0.394h, tL≈0.639h
+- [x] Napisano 11 testów jednostkowych (w tym test referencyjny z arkusza)
+- [x] Zbadano referencje bibliograficzne:
+  - Formuły regresyjne: Rao, Delleur, Sarma (1972), ASCE + Purdue (1969)
+  - Nazwa metody: `from_urban_regression()` (neutralna, bez błędnej atrybucji)
+- [x] Zaktualizowano wersję do 0.6.1
+- [x] Zaktualizowano CHANGELOG.md, README.md, PROGRESS.md
+- [x] Wszystkie 621 testów przechodzi
 
 **Pliki zmodyfikowane:**
 ```
-hydrolog/runoff/nash_iuh.py           # +LutzCalculationResult, +lutz_params
-hydrolog/runoff/__init__.py           # +LutzCalculationResult export
-hydrolog/reports/generator.py         # +figures_dir, +_build_figures_section()
-hydrolog/reports/templates.py         # ordynaty → rzędne
-hydrolog/reports/formatters.py        # ordynaty → rzędne
-hydrolog/reports/sections/convolution.py        # ordynaty → rzędne
-hydrolog/reports/sections/unit_hydrograph.py    # +pełna dokumentacja Lutza
-hydrolog/visualization/unit_hydrograph.py       # ordynaty → rzędne
-hydrolog/visualization/hydrograph.py            # ordynaty → rzędne
-tmp/test_hydrologia_nash.py           # +lutz_params, +figures_dir
+hydrolog/runoff/nash_iuh.py    # +from_urban_regression()
+hydrolog/__init__.py           # __version__ = "0.6.1"
+pyproject.toml                 # version = "0.6.1"
+tests/unit/test_nash_iuh.py    # +TestNashIUHFromUrbanRegression (11 testów)
+README.md                      # sekcja Nash urban regression + referencje
+docs/CHANGELOG.md              # sekcja [0.6.1]
+docs/PROGRESS.md               # ten plik
 ```
 
-**Wyniki obliczeń (zlewnia Beskidzka):**
-| Parametr | Wartość |
-|----------|---------|
-| Qmax | 3.097 m³/s |
-| tp | 540 min (9.0 h) |
-| V | 97,579 m³ |
-| n (Nash-Lutz) | 3.838 |
-| K (Nash-Lutz) | 27.87 min |
-| Pe | 46.47 mm |
-| C | 0.424 |
-
-**Testy:** 610 passed (bez zmian)
+**Testy:** 621 passed (610 istniejących + 11 nowych)
 
 ---
 
@@ -567,7 +425,7 @@ docs/CHANGELOG.md    # wpis o błędzie i testach
   - Standaryzowany format wymiany danych (JSON schema)
   - Metody `from_dict()`, `from_json()`, `to_dict()`, `to_json()`
   - Konwersje: `to_geometry()`, `to_terrain()`
-  - Obliczenia: `calculate_tc()` z 3 metodami (kirpich, nrcs, giandotti)
+  - Obliczenia: `calculate_tc()` z 3 metodami (kirpich, scs_lag, giandotti)
   - Właściwości: `width_km`, `relief_m`
 - [x] Dodano metody `from_dict()` do istniejących klas:
   - `WatershedGeometry.from_dict()` w `geometric.py`
@@ -983,35 +841,35 @@ Wyniki Hydrolog (model Nasha):
 ## Kontekst dla nowej sesji
 
 ### Stan projektu
-- **Faza:** Implementacja - v0.6.0 wydana
-- **Ostatni commit:** `feat(reports): add report generation module`
-- **Tag:** `v0.6.0` (ostatni release)
-- **Środowisko:** `.venv` z Python 3.12.12
+- **Faza:** Implementacja - v0.6.1 wydana
+- **Ostatni commit:** v0.6.2 — raporty UH + korekty wzorów metrycznych
+- **Tag:** `v0.6.2` (ostatni release)
+- **Środowisko:** `.venv` z Python 3.12+
 - **Repo GitHub:** https://github.com/Daldek/Hydrolog.git
-- **Testy:** 611 testów (596 jednostkowych + 15 integracyjnych)
+- **Testy:** 626 testów (611 jednostkowych + 15 integracyjnych)
 
 ### Zaimplementowane moduły
-- `hydrolog.time.ConcentrationTime` - 3 metody (Kirpich, NRCS, Giandotti) + ostrzeżenia zakresów
+- `hydrolog.time.ConcentrationTime` - 3 metody (Kirpich, SCS Lag, Giandotti) + ostrzeżenia zakresów
 - `hydrolog.precipitation` - 4 typy hietogramów (Block, Triangular, Beta, EulerII) + interpolacja (Thiessen, IDW, Isohyet)
-- `hydrolog.runoff` - SCS-CN, SCSUnitHydrograph, NashIUH, ClarkIUH, SnyderUH, HydrographGenerator (z uh_model), CN Lookup (TR-55)
+- `hydrolog.runoff` - SCS-CN, SCSUnitHydrograph, NashIUH (from_tc, from_lutz, from_urban_regression), ClarkIUH, SnyderUH, HydrographGenerator (z uh_model), CN Lookup (TR-55)
 - `hydrolog.morphometry` - WatershedGeometry, TerrainAnalysis, HypsometricCurve, WatershedParameters (integracja GIS)
 - `hydrolog.network` - StreamNetwork, klasyfikacja Strahlera/Shreve'a
 - `hydrolog.visualization` - 15 funkcji wizualizacji (hietogramy, hydrogramy, porównania UH, bilans wodny, morfometria, sieć rzeczna)
-- `hydrolog.reports` - **NEW** HydrologyReportGenerator (raporty Markdown z wzorami LaTeX)
+- `hydrolog.reports` - HydrologyReportGenerator (raporty Markdown z wzorami LaTeX)
 - `hydrolog.cli` - interfejs CLI (tc, cn, scs, uh)
 
-### Ostatnio dodane (Sesja 24)
-- **BREAKING CHANGE:** Zmiana nazwy metody `scs_lag()` → `nrcs()` w `ConcentrationTime`
-- Zaktualizowane docstringi z poprawnym wyprowadzeniem wzoru NRCS
-- Zmiana komendy CLI `scs-lag` → `nrcs`
-- Aktualizacja 18 plików (kod, testy, dokumentacja, notebook)
+### Ostatnio dodane (Sesja 23 - v0.6.2)
+- Pełne wzory obliczeniowe w raportach dla Nash (3 metody), Clark, Snyder
+- Korekty wzorów metrycznych: Snyder W50/W75, Clark histogram HEC-HMS
+- Weryfikacja konwersji imperial→metryczny dla wszystkich wzorów
+- Dokumentacja konwersji Nash urban regression (0.831→1.28)
+- 5 nowych testów Clark + aktualizacja testów Nash
 
-### Ostatnio dodane (Sesja 22)
-- `LutzCalculationResult` - dataclass z wynikami pośrednimi metody Lutza
-- `NashIUH.lutz_params` - atrybut przechowujący obliczenia Lutza
-- `figures_dir` w generatorze raportów - automatyczne osadzanie wykresów
-- Automatyczna dokumentacja metody Lutza w sekcji Nash UH
-- Poprawiona terminologia: "ordynaty" → "rzędne"
+### Ostatnio dodane (Sesja 22 - v0.6.1)
+- `NashIUH.from_urban_regression()` - estymacja parametrów Nasha dla zlewni zurbanizowanych
+- Formuły potęgowe: tL(A, U, H, D), k(A, U, H, D), N = tL/k
+- Referencje: Rao, Delleur, Sarma (1972/1969)
+- 11 nowych testów (weryfikacja z arkuszem Obliczenia.xlsx)
 
 ### Ostatnio dodane (Sesja 21 - v0.6.0)
 - `hydrolog.reports` - kompletny moduł generowania raportów Markdown
@@ -1263,4 +1121,4 @@ Hydrolog/
 
 ---
 
-**Ostatnia aktualizacja:** 2026-01-23, Sesja 24 (refaktoryzacja: scs_lag → nrcs)
+**Ostatnia aktualizacja:** 2026-01-21, Sesja 21 (moduł raportów + wydanie v0.6.0)

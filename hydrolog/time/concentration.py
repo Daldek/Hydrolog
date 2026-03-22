@@ -222,31 +222,15 @@ class ConcentrationTime:
         Notes
         -----
         Original formula (US units):
-            tlag[h] = (L[ft]^0.8 * ((1000/CN) - 9)^0.7) / (1900 * Y[%]^0.5)
-        where CN is the Curve Number and S[in] = (1000/CN) - 10 [inches]
-        thus
             tlag[h] = (L[ft]^0.8 * (S[in] + 1)^0.7) / (1900 * Y[%]^0.5)
-        or
-            tlag[h] = 0.000526 * (S[in] + 1)^0.7 * L[ft]^0.8 * Y[%]^(-0.5)
-        
+
         Metric conversion (this implementation):
-            L[ft] = 3.28 * L[m]
-            
-            S[mm] = 25.4 * ((1000/CN) - 10) [mm]
-            thus
+            Lag [h] = (L[m]^0.8 * (S[mm] + 25.4)^0.7) / (7069 * Y[%]^0.5)
+            tc = Lag / 0.6
+
+        The constant 7069 = 1900 * 0.3048^0.8 * 25.4^0.7 is derived from:
+            L[ft] = L[m] / 0.3048
             (S[in] + 1) = (S[mm] + 25.4) / 25.4
-            
-            tlag[h] = (3.28^0.8 * L[m]^0.8 * (S[mm] + 25.4)^0.7) / (1900 * 25.4^0.7 * Y[%]^0.5)
-            
-            3.28^0.8 / (1900 * 25.4^0.7) ≈ 0.000141
-            
-            tlag[h] = 0.000141 * L[m]^0.8 * (S[mm] + 25.4)^0.7 * Y[%]^(-0.5)
-            
-            tc[h] = tlag / 0.6
-            tc[h] = 0.000236 * L[m]^0.8 * (S[mm] + 25.4)^0.7 * Y[%]^(-0.5)
-            
-            tc[min] = 0.000236 * 60 * L[m]^0.8 * (S[mm] + 25.4)^0.7 * Y[%]^(-0.5)
-            tc[min] = 0.01416 * L[m]^0.8 * (S[mm] + 25.4)^0.7 * Y[%]^(-0.5)
 
         Where:
         - L: hydraulic length [m] (converted internally from km)

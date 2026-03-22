@@ -117,8 +117,14 @@ class SnyderUH:
         tb = 0.556 × A / qpR  [hours]
 
     **Hydrograph widths at 50% and 75% of peak:**
-        W50 = 5.87 / (qp/A)^1.08  [hours]
-        W75 = 3.35 / (qp/A)^1.08  [hours]
+        W50 = 0.1783 / (qp/A)^1.08  [hours]
+        W75 = 0.1019 / (qp/A)^1.08  [hours]
+
+    where qp/A is in m³/s/km²/mm (metric units).
+    The constants 0.1783 and 0.1019 are the metric conversions of the
+    original imperial constants W50=770 and W75=440 (with qp/A in
+    cfs/mi²/inch): C_metric = C_imperial / conv^1.08 where
+    conv = (2.58999 × 25.4) / 0.028317 ≈ 2323.2.
 
     The coefficients Ct and Cp characterize the watershed:
     - Ct: Related to watershed slope and storage (SI: 1.35-1.65)
@@ -408,9 +414,9 @@ class SnyderUH:
 
         Notes
         -----
-        Formulas:
-            W50 = 5.87 / (qp/A)^1.08
-            W75 = 3.35 / (qp/A)^1.08
+        Formulas (metric units, qp/A in m³/s/km²/mm):
+            W50 = 0.1783 / (qp/A)^1.08
+            W75 = 0.1019 / (qp/A)^1.08
 
         For other percentages, linear interpolation is used.
         """
@@ -422,9 +428,9 @@ class SnyderUH:
         qp = self.peak_discharge()
         qp_per_area = qp / self.area_km2
 
-        # Base widths at 50% and 75%
-        w50 = 5.87 / (qp_per_area**1.08)
-        w75 = 3.35 / (qp_per_area**1.08)
+        # Base widths at 50% and 75% (metric constants, qp/A in m³/s/km²/mm)
+        w50 = 0.1783 / (qp_per_area**1.08)
+        w75 = 0.1019 / (qp_per_area**1.08)
 
         if abs(percent - 50.0) < 0.01:
             return w50
