@@ -191,7 +191,7 @@ class ConcentrationTime:
         Notes
         -----
         Formula (metric units):
-        Lag [h] = (L^0.8 * (S + 25.4)^0.7) / (7182 * Y^0.5)
+        Lag [h] = (L^0.8 * (S + 25.4)^0.7) / (7069 * Y^0.5)
         tc = Lag / 0.6
 
         Where:
@@ -199,7 +199,7 @@ class ConcentrationTime:
         - S: maximum retention = (25400/CN) - 254 [mm]
         - Y: average watershed slope [%] (converted internally from m/m)
 
-        The constant 7182 is derived from the original imperial formula
+        The constant 7069 is derived from the original imperial formula
         (with constant 1900) by converting feet to meters and inches to mm.
 
         References

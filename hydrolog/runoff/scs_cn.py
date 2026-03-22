@@ -71,8 +71,29 @@ class SCSCN:
         Curve Number for AMC-II conditions (1-100).
         CN=100 means all precipitation becomes runoff.
     ia_coefficient : float, optional
-        Initial abstraction coefficient, by default 0.2.
-        Ia = ia_coefficient * S
+        Initial abstraction coefficient (λ), by default 0.2.
+        Ia = λ · S
+
+    Notes
+    -----
+    The standard initial abstraction ratio is λ = 0.2 (USDA-NRCS,
+    NEH Part 630, Chapter 10). An alternative value of λ ≈ 0.05 was
+    proposed based on analysis of several hundred watershed datasets:
+
+        Woodward, D.E.; Hawkins, R.H.; Jiang, R.; Hjelmfelt Jr., A.T.;
+        Van Mullem, J.A.; Quan, Q.D. (2003). Runoff Curve Number Method:
+        Examination of the Initial Abstraction Ratio. World Water and
+        Environmental Resources Congress, Philadelphia, PA. ASCE.
+        DOI: 10.1061/40685(2003)308
+
+    See also: Hawkins, R.H.; Ward, T.J.; Woodward, D.E.; Van Mullem,
+    J.A. (2009). Curve Number Hydrology: State of the Practice.
+    ASCE/EWRI.
+
+    **Caution:** When using λ = 0.05, the standard CN lookup tables
+    (TR-55, calibrated with λ = 0.2) are not directly applicable —
+    CN values require recalibration. As of 2026, NRCS has not
+    officially adopted λ = 0.05 in its directives.
 
     Examples
     --------
