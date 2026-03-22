@@ -121,9 +121,13 @@ class ClarkIUH:
     elliptically-shaped watershed (HEC-HMS standard):
 
     .. math::
-        A_{cum}(t) = 1.414 \\cdot (t/T_c)^{0.5} - 0.414 \\cdot (t/T_c)^{1.5}
+        A_{cum}(t) = \\begin{cases}
+            1.414 \\cdot (t/T_c)^{1.5} & 0 \\leq t \\leq T_c/2 \\\\
+            1 - 1.414 \\cdot (1 - t/T_c)^{1.5} & T_c/2 < t \\leq T_c
+        \\end{cases}
 
     for t <= Tc, where A_cum is the cumulative fraction of watershed area.
+    This two-part formula produces a symmetric S-curve with centroid at Tc/2.
 
     The linear reservoir routing uses the Muskingum-Cunge equation:
 
@@ -212,19 +216,27 @@ class ClarkIUH:
 
         Notes
         -----
-        Formula for elliptical watershed:
-        A_cum(t) = 1.414 * (t/Tc)^0.5 - 0.414 * (t/Tc)^1.5
+        HEC-HMS standard two-part formula for elliptical watershed:
 
-        This produces a symmetric time-area histogram with peak
-        contribution rate at t = Tc/3.
+        For tau = t / Tc:
+          - tau <= 0.5: A_cum = 1.414 * tau^1.5
+          - tau > 0.5:  A_cum = 1.0 - 1.414 * (1.0 - tau)^1.5
+
+        Boundary conditions:
+          - A_cum(0)    = 0
+          - A_cum(Tc/2) = 1.414 * 0.5^1.5 ≈ 0.5  (symmetric centroid)
+          - A_cum(Tc)   = 1.0
         """
         if t_min <= 0:
             return 0.0
         if t_min >= self.tc_min:
             return 1.0
 
-        t_ratio = t_min / self.tc_min
-        return 1.414 * (t_ratio**0.5) - 0.414 * (t_ratio**1.5)
+        tau = t_min / self.tc_min
+        if tau <= 0.5:
+            return 1.414 * (tau**1.5)
+        else:
+            return 1.0 - 1.414 * ((1.0 - tau) ** 1.5)
 
     def incremental_time_area(
         self, times_min: NDArray[np.float64]
