@@ -137,33 +137,31 @@ print(f"Peak intensity: {hietogram.peak_intensity_mm_per_min:.2f} mm/min")
 **Aby** określić czas odpowiedzi zlewni
 
 **Kryteria akceptacji:**
-- [ ] Przyjmuje: długość cieku [km], spadek [%]
+- [ ] Przyjmuje: długość cieku [km], spadek [m/m]
 - [ ] Zwraca: czas koncentracji [min]
 - [ ] Wzór: tc = 0.0195 × L^0.77 × S^(-0.385)
-- [ ] Obsługuje jednostki: km i m dla długości, % i m/m dla spadku
 
 **Przykład:**
 ```python
 from hydrolog.time import ConcentrationTime
 
-tc = ConcentrationTime.kirpich(length_km=8.2, slope_percent=2.3)
+tc = ConcentrationTime.kirpich(length_km=8.2, slope_m_per_m=0.023)
 print(f"tc = {tc:.1f} min")
-
-# Alternatywnie z metrami
-tc = ConcentrationTime.kirpich(length_m=8200, slope_m_per_m=0.023)
 ```
 
 ---
 
-#### US-T02: Obliczanie czasu koncentracji - SCS Lag
+#### US-T02: Obliczanie czasu koncentracji - NRCS (dawniej SCS Lag)
 **Jako** deweloper
-**Chcę** obliczyć czas koncentracji metodą SCS Lag
+**Chcę** obliczyć czas koncentracji metodą NRCS
 **Aby** uwzględnić CN w obliczeniach
 
 **Kryteria akceptacji:**
-- [ ] Przyjmuje: długość cieku [m lub ft], CN, spadek [%]
+- [ ] Przyjmuje: długość cieku [km], CN, spadek [m/m]
 - [ ] Zwraca: czas koncentracji [min]
 - [ ] Wzór: Lag = L^0.8 × (S+1)^0.7 / (1900 × Y^0.5), tc = Lag / 0.6
+
+> **Uwaga:** Metoda przemianowana z `scs_lag` na `nrcs` w v0.3.0. Parametr `slope_percent` zmieniony na `slope_m_per_m`.
 
 ---
 
@@ -288,7 +286,7 @@ tc = ConcentrationTime.kirpich(length_m=8200, slope_m_per_m=0.023)
 - [ ] `runoff.unit_hydrograph` - SCS UH
 - [ ] `runoff.convolution` - splot
 - [ ] `precipitation.hietogram` - Beta, blokowy
-- [ ] `time.concentration` - Kirpich, SCS Lag
+- [ ] `time.concentration` - Kirpich, NRCS (dawniej SCS Lag)
 - [ ] Testy: > 80% coverage
 - [ ] Dokumentacja: README, docstrings
 

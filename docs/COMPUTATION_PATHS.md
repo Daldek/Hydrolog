@@ -1,7 +1,7 @@
 # Ścieżki obliczeniowe dla modeli hydrogramów jednostkowych
 
-**Wersja dokumentu:** 1.0
-**Data:** 2026-01-22
+**Wersja dokumentu:** 1.1
+**Data:** 2026-03-23
 **Dotyczy:** Hydrolog >= 0.6.0
 
 ---
@@ -21,12 +21,12 @@ Dokument ten służy jako przewodnik, który:
 
 ### 1.2 Macierz kompatybilności
 
-| Model | Kirpich | NRCS | Giandotti | FAA | Kerby | Kerby-Kirpich | from_lutz() | Bezpośrednio | Własna metoda |
-|-------|:-------:|:-------:|:---------:|:---:|:-----:|:-------------:|:-----------:|:------------:|:-------------:|
-| **SCS UH** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | - | - | - |
-| **Nash IUH** | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ✅ | ✅ | - |
-| **Clark IUH** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | - | ✅ | - |
-| **Snyder UH** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | - | ✅ | ✅ |
+| Model | Kirpich | NRCS | Giandotti | FAA | Kerby | Kerby-Kirpich | from_lutz() | from_urban_regression() | Bezpośrednio | Własna metoda |
+|-------|:-------:|:-------:|:---------:|:---:|:-----:|:-------------:|:-----------:|:-----------------------:|:------------:|:-------------:|
+| **SCS UH** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | - | - | - | - |
+| **Nash IUH** | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ✅ | ✅ | ✅ | - |
+| **Clark IUH** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | - | - | ✅ | - |
+| **Snyder UH** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | - | - | ✅ | ✅ |
 
 **Legenda:**
 - ✅ **OK** - prawidłowe użycie, potwierdzone literaturą
@@ -100,9 +100,10 @@ Dokument ten służy jako przewodnik, który:
               ┌──────────────┼──────────────┐
               ▼              ▼              ▼
     ┌─────────────────┐ ┌─────────────┐ ┌─────────────┐
-    │    KIRPICH      │ │   SCS LAG   │ │  GIANDOTTI  │
-    │ tc=0.0663×L^0.77│ │ tc=f(L,S,CN)│ │ tc=f(A,L,H) │
-    │    ×S^(-0.385)  │ │             │ │             │
+    │    KIRPICH      │ │    NRCS     │ │  GIANDOTTI  │
+    │ tc=3.981×L^0.77 │ │ tc=f(L,S,CN)│ │ tc=f(A,L,H) │
+    │  ×S^(-0.385)    │ │             │ │             │
+    │    [min]        │ │             │ │             │
     └────────┬────────┘ └──────┬──────┘ └──────┬──────┘
              │                 │               │
              └─────────────────┼───────────────┘
@@ -130,6 +131,12 @@ Dokument ten służy jako przewodnik, który:
     │   (tablica 33 punkty) │
     └───────────────────────┘
 ```
+
+> **Uwaga o stałej Kirpicha:** W literaturze spotyka się dwie równoważne formy:
+> - `tc[min] = 3.981 × L[km]^0.77 × S^(-0.385)` (wynik w minutach -- używana w kodzie)
+> - `tc[h] = 0.0663 × L[km]^0.77 × S^(-0.385)` (wynik w godzinach)
+>
+> Obie formy są tożsame: `3.981 / 60 ≈ 0.0663`. Implementacja w Hydrolog używa stałej **3.981** i zwraca wynik w **minutach**.
 
 #### 3.1.2 Prawidłowe metody estymacji Tc
 
@@ -197,37 +204,44 @@ print(f"Qmax = {hydrograph.peak_discharge_m3s:.2f} m³/s")
 #### 3.2.1 Diagram - prawidłowe ścieżki
 
 ```
-                           DANE WEJŚCIOWE
-    ┌─────────────────────────────────────────────────────────┐
-    │        METODA LUTZA                 │  BEZPOŚREDNIE     │
-    │  L_km, Lc_km, slope, manning_n      │  n (liczba zb.)   │
-    │  urban_pct, forest_pct              │  K [min]          │
-    └─────────────────┬───────────────────┴────────┬──────────┘
-                      │                            │
-                      ▼                            │
-    ┌─────────────────────────────────────┐        │
-    │          NashIUH.from_lutz()        │        │
-    │  ────────────────────────────       │        │
-    │  1. P1 = 3.989×n_manning + 0.028    │        │
-    │  2. tp = P1×(L×Lc/Jg^1.5)^0.26      │        │
-    │        ×e^(-0.016U)×e^(0.004W)      │        │
-    │  3. up = 0.66 / tp^1.04             │        │
-    │  4. f(N) = tp×up → rozwiąż dla N    │        │
-    │  5. K = tp / (N-1)                  │        │
-    └─────────────────┬───────────────────┘        │
-                      │                            │
-                      └────────────┬───────────────┘
-                                   ▼
-                           ┌───────────────┐
-                           │   n, K [min]  │
-                           └───────┬───────┘
-                                   │
-                                   ▼
-                    ┌──────────────────────────────┐
-                    │         NASH IUH             │
-                    │  u(t) = (t/K)^(n-1)×e^(-t/K) │
-                    │        / (K × Γ(n))          │
-                    └──────────────────────────────┘
+                              DANE WEJŚCIOWE
+    ┌──────────────────────────────────────────────────────────────────────┐
+    │   METODA LUTZA            │  REGRESJA URBAN.    │  BEZPOŚREDNIE     │
+    │  L_km, Lc_km, slope,      │  area_km2,          │  n (liczba zb.)   │
+    │  manning_n, urban_pct,    │  effective_precip_mm,│  K [min]          │
+    │  forest_pct              │  duration_h,         │                   │
+    │                          │  urban_fraction      │                   │
+    └──────────┬───────────────┴──────────┬───────────┴────────┬──────────┘
+               │                          │                    │
+               ▼                          ▼                    │
+    ┌───────────────────────────┐ ┌───────────────────────┐    │
+    │  NashIUH.from_lutz()      │ │ NashIUH               │    │
+    │  ─────────────────────── │ │ .from_urban_regression │    │
+    │  1. P1 = 3.989×n + 0.028 │ │ ──────────────────── │    │
+    │  2. tp = P1×(L×Lc/       │ │ 1. tL = 1.28×A^0.46  │    │
+    │     Jg^1.5)^0.26         │ │    ×(1+U)^(-1.66)    │    │
+    │    ×e^(-0.016U)          │ │    ×H^(-0.27)        │    │
+    │    ×e^(0.004W)           │ │    ×D^0.37           │    │
+    │  3. up = 0.66/tp^1.04    │ │ 2. k = 0.56×A^0.39   │    │
+    │  4. f(N) = tp×up →      │ │    ×(1+U)^(-0.62)    │    │
+    │     rozwiąż dla N        │ │    ×H^(-0.11)        │    │
+    │  5. K = tp / (N-1)       │ │    ×D^0.22           │    │
+    └──────────┬────────────────┘ │ 3. N = tL / k        │    │
+               │                  └──────────┬────────────┘    │
+               │                             │                 │
+               └─────────────┬───────────────┘                 │
+                             └──────────────┬──────────────────┘
+                                            ▼
+                                    ┌───────────────┐
+                                    │   n, K [min]  │
+                                    └───────┬───────┘
+                                            │
+                                            ▼
+                             ┌──────────────────────────────┐
+                             │         NASH IUH             │
+                             │  u(t) = (t/K)^(n-1)×e^(-t/K) │
+                             │        / (K × Γ(n))          │
+                             └──────────────────────────────┘
 ```
 
 #### 3.2.2 OSTRZEŻENIE: from_tc() jest DEPRECATED
@@ -271,8 +285,9 @@ print(f"Qmax = {hydrograph.peak_discharge_m3s:.2f} m³/s")
 | Metoda | Status | Uzasadnienie |
 |--------|--------|--------------|
 | `from_lutz()` | ✅ ZALECANA | Opracowana specjalnie dla Nasha (Lutz, 1984) |
+| `from_urban_regression()` | ✅ OK | Regresja dla zlewni zurbanizowanych (Rao, Delleur, Sarma 1972) |
 | Bezpośrednio `n`, `K` | ✅ OK | Gdy masz skalibrowane wartości |
-| Metoda momentów | ✅ OK | Wymaga danych z obserwowanego hydrogramu |
+| ~~Metoda momentów~~ | USUNIĘTA w v0.5.1 | Wymaga danych z obserwowanego hydrogramu |
 | `from_tc()` | ⚠️ DEPRECATED | Brak uzasadnienia naukowego |
 
 #### 3.2.4 Wzory metody Lutza
@@ -299,7 +314,47 @@ print(f"Qmax = {hydrograph.peak_discharge_m3s:.2f} m³/s")
 | ↑ Spadek (Jg) | Szybszy (↓ tp) |
 | ↑ Manning (n) | Wolniejszy (↑ tp) |
 
-#### 3.2.5 Przykład kodu - PRAWIDŁOWE UŻYCIE
+#### 3.2.5 Wzory metody regresji dla zlewni zurbanizowanych
+
+Metoda `from_urban_regression()` wykorzystuje empiryczne równania regresji potęgowej
+(Rao, Delleur, Sarma 1972) opracowane dla zlewni zurbanizowanych i częściowo
+zurbanizowanych:
+
+```
+1. Czas opóźnienia:
+   tL = 1.28 × A^0.46 × (1+U)^(-1.66) × H^(-0.27) × D^0.37        [h]
+
+2. Stała magazynowania:
+   k = 0.56 × A^0.39 × (1+U)^(-0.62) × H^(-0.11) × D^0.22         [h]
+
+3. Liczba zbiorników:
+   N = tL / k                                                        [-]
+```
+
+**Parametry wejściowe:**
+
+| Symbol | Parametr | Jednostka |
+|--------|----------|-----------|
+| A | Powierzchnia zlewni | km² |
+| U | Wskaźnik urbanizacji (0 = naturalna, 0.5 = 50% zurbanizowana) | - |
+| H | Opad efektywny (suma) | mm |
+| D | Czas trwania opadu efektywnego | h |
+
+**Pochodzenie stałych metrycznych:**
+Oryginalna regresja (Sarma, Delleur, Rao 1969) została opracowana w jednostkach
+imperialnych (mi², in). Stałe metryczne 1.28 i 0.56 uwzględniają konwersję jednostek
+i pojawiają się w publikacji ASCE z 1972 roku.
+
+**Wpływ parametrów:**
+
+| Czynnik | Wpływ na odpływ |
+|---------|-----------------|
+| ↑ Powierzchnia (A) | Wolniejszy (↑ tL, ↑ k) |
+| ↑ Urbanizacja (U) | Szybszy (↓ tL, ↓ k) |
+| ↑ Opad efektywny (H) | Szybszy (↓ tL, ↓ k) |
+| ↑ Czas trwania (D) | Wolniejszy (↑ tL, ↑ k) |
+
+#### 3.2.6 Przykład kodu - PRAWIDŁOWE UŻYCIE
 
 ```python
 from hydrolog.runoff import NashIUH, HydrographGenerator
@@ -319,7 +374,17 @@ print(f"n = {nash.n:.2f}")
 print(f"K = {nash.k_min:.1f} min")
 print(f"tlag = {nash.lag_time_min:.1f} min")
 
-# METODA 2: Bezpośrednie podanie parametrów
+# METODA 2: from_urban_regression() - dla zlewni zurbanizowanych
+nash_urban = NashIUH.from_urban_regression(
+    area_km2=1.3,
+    effective_precip_mm=1.305,
+    duration_h=0.167,
+    urban_fraction=0.05,
+)
+print(f"n = {nash_urban.n:.3f}")
+print(f"K = {nash_urban.k_min:.1f} min")
+
+# METODA 3: Bezpośrednie podanie parametrów
 # (gdy masz skalibrowane wartości)
 nash_direct = NashIUH(n=3.5, k_min=45.0, area_km2=50.0)
 
@@ -336,7 +401,7 @@ result = generator.generate(precip)
 print(f"Qmax = {result.peak_discharge_m3s:.2f} m³/s")
 ```
 
-#### 3.2.6 Przykład kodu - BŁĘDNE UŻYCIE (NIE RÓB TEGO!)
+#### 3.2.7 Przykład kodu - BŁĘDNE UŻYCIE (NIE RÓB TEGO!)
 
 ```python
 from hydrolog.time import ConcentrationTime
@@ -368,7 +433,7 @@ nash_correct = NashIUH.from_lutz(
               ┌──────────────┼──────────────┐
               ▼              ▼              ▼
     ┌─────────────────┐ ┌─────────────┐ ┌─────────────┐
-    │    KIRPICH      │ │   SCS LAG   │ │  GIANDOTTI  │
+    │    KIRPICH      │ │    NRCS     │ │  GIANDOTTI  │
     └────────┬────────┘ └──────┬──────┘ └──────┬──────┘
              │                 │               │
              └─────────────────┼───────────────┘
@@ -428,8 +493,17 @@ nash_correct = NashIUH.from_lutz(
 Model dwuetapowy:
 
 1. TRANSLACJA (histogram czas-powierzchnia):
-   A_cum(t) = 1.414 × (t/Tc)^0.5 - 0.414 × (t/Tc)^1.5   dla t ≤ Tc
-   (uproszczona krzywa dla zlewni eliptycznej)
+   Krzywa HEC-HMS dla zlewni eliptycznej (dwuczęściowa):
+
+   tau = t / Tc
+
+   Dla tau ≤ 0.5:  A_cum(t) = 1.414 × tau^1.5
+   Dla tau > 0.5:  A_cum(t) = 1.0 - 1.414 × (1.0 - tau)^1.5
+
+   Warunki brzegowe:
+   - A_cum(0)    = 0
+   - A_cum(Tc/2) = 1.414 × 0.5^1.5 ≈ 0.5  (symetryczny centroid)
+   - A_cum(Tc)   = 1.0
 
 2. ATENUACJA (zbiornik liniowy):
    O(t) = O(t-1) + C1 × (I(t) + I(t-1) - 2×O(t-1))
@@ -615,6 +689,7 @@ print(f"Qmax = {result.peak_discharge_m3s:.2f} m³/s")
 | SCS UH + Kerby-Kirpich → Tc | Roussel et al. (2005), TR-55 | ✅ |
 | Clark IUH + Kerby-Kirpich → Tc | Roussel et al. (2005), Clark (1945) | ✅ |
 | Nash IUH + from_lutz() | Lutz (1984), KZGW (2017) | ✅ |
+| Nash IUH + from_urban_regression() | Rao, Delleur, Sarma (1972), Banasik (2009) | ✅ |
 | Nash IUH + bezpośrednio n, K | Nash (1957) | ✅ |
 | Nash IUH + from_tc() | **BRAK UZASADNIENIA** | ⚠️ |
 | Clark IUH + Tc (dowolna metoda) | Clark (1945), HEC-HMS | ✅ |
@@ -633,6 +708,7 @@ print(f"Qmax = {result.peak_discharge_m3s:.2f} m³/s")
 | Kerby, W.S. | 1959 | Formuła Tc dla spływu arkuszowego (retardance coefficient) |
 | Giandotti, M. | 1934 | Formuła Tc dla zlewni włoskich |
 | Roussel, M.C. et al. | 2005 | Metoda kompozytowa Kerby-Kirpich (TxDOT 0-4696-2) |
+| Rao, Delleur, Sarma | 1972 | Regresja parametrów Nasha dla zlewni zurbanizowanych |
 | Lutz, W. | 1984 | Estymacja parametrów Nasha z cech fizjograficznych |
 | USDA TR-55 | 1986 | Metoda SCS-CN, relacja tlag = 0.6×Tc |
 | KZGW | 2017 | Polska metodyka, tabela f(N) dla Lutza |
@@ -738,27 +814,33 @@ print(f"Qmax = {result.peak_discharge_m3s:.2f} m³/s")
 
 5. **Nash, J.E.** (1957). The form of the instantaneous unit hydrograph. *International Association of Scientific Hydrology*, 45(3), 114-121.
 
-6. **Snyder, F.F.** (1938). Synthetic unit-graphs. *Transactions of the American Geophysical Union*, 19, 447-454.
+6. **Rao, R.A., Delleur, J.W., & Sarma, B.S.P.** (1972). Conceptual Hydrologic Models for Urbanizing Basins. *Journal of the Hydraulics Division, ASCE*, 98(HY7), 1205-1220.
+
+7. **Sarma, P.B.S., Delleur, J.W., & Rao, A.R.** (1969). A Program in Urban Hydrology, Part II. *Purdue University Water Resources Research Center, Technical Report No. 9*. https://docs.lib.purdue.edu/watertech/8/
+
+8. **Snyder, F.F.** (1938). Synthetic unit-graphs. *Transactions of the American Geophysical Union*, 19, 447-454.
 
 ### Dokumentacja techniczna
 
-7. **FAA** (2013). Airport Drainage Design. Advisory Circular AC 150/5320-5D. Federal Aviation Administration, U.S. Department of Transportation.
+9. **FAA** (2013). Airport Drainage Design. Advisory Circular AC 150/5320-5D. Federal Aviation Administration, U.S. Department of Transportation.
 
-8. **Kerby, W.S.** (1959). Time of concentration for overland flow. *Civil Engineering*, 29(3), 174.
+10. **Kerby, W.S.** (1959). Time of concentration for overland flow. *Civil Engineering*, 29(3), 174.
 
-9. **Roussel, M.C., Thompson, D.B., Fang, X., Cleveland, T.G., & Garcia, C.A.** (2005). Time-parameter estimation for applicable Texas watersheds. *TxDOT Research Report 0-4696-2*. Texas Department of Transportation.
+11. **Roussel, M.C., Thompson, D.B., Fang, X., Cleveland, T.G., & Garcia, C.A.** (2005). Time-parameter estimation for applicable Texas watersheds. *TxDOT Research Report 0-4696-2*. Texas Department of Transportation.
 
-10. **KZGW** (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych. Załącznik 2, Tabela C.2.
+12. **KZGW** (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych. Załącznik 2, Tabela C.2.
 
-11. **USACE HEC-HMS** (2024). Technical Reference Manual. https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/
+13. **USACE HEC-HMS** (2024). Technical Reference Manual. https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/
 
-12. **USDA-NRCS** (1986). Urban Hydrology for Small Watersheds. Technical Release 55 (TR-55).
+14. **USDA-NRCS** (1986). Urban Hydrology for Small Watersheds. Technical Release 55 (TR-55).
 
 ### Podręczniki
 
-13. **Bedient, P.B. & Huber, W.C.** (1992). *Hydrology and Floodplain Analysis*. Addison-Wesley.
+15. **Banasik, K.** (2009). Wyznaczanie wezbrań powodziowych w małych zlewniach zurbanizowanych. *Wyd. SGGW, Warszawa*.
+
+16. **Bedient, P.B. & Huber, W.C.** (1992). *Hydrology and Floodplain Analysis*. Addison-Wesley.
 
 ---
 
-**Wersja dokumentu:** 1.0
-**Data ostatniej aktualizacji:** 2026-01-22
+**Wersja dokumentu:** 1.1
+**Data ostatniej aktualizacji:** 2026-03-23

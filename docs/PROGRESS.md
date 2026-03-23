@@ -5,9 +5,9 @@
 | Pole | Wartość |
 |------|---------|
 | **Faza** | 1 - Implementacja |
-| **Sprint** | 0.6.x - Raporty UH + korekty wzorów |
-| **Sesja** | 24 |
-| **Data** | 2026-03-22 |
+| **Sprint** | 0.6.x - Raporty UH + korekty wzorów + metody tc |
+| **Sesja** | 25 |
+| **Data** | 2026-03-23 |
 | **Następny milestone** | v1.0.0 - Stabilne API |
 | **Gałąź robocza** | develop |
 
@@ -82,12 +82,20 @@
 - [x] Obsługa CLI: `hydrolog tc kerby-kirpich --ov-length 0.25 --ov-slope 0.008 --retardance 0.40 --ch-length 5.0 --ch-slope 0.005`
 - [x] Testy jednostkowe dla metody Kerby-Kirpich
 - [x] Aktualizacja dokumentacji: CHANGELOG.md, SCOPE.md, PROGRESS.md, COMPUTATION_PATHS.md
+- [x] Refaktor spójności API (`refactor(time): harmonize API consistency`):
+  - Rename stałych `_SCS_LAG_*` → `_NRCS_*` (spójność nazewnictwa)
+  - Dodanie `tc_min: float` typed assignment w `kerby_kirpich()` return path
+  - Poprawki CLI: separatory, f-stringi, formatowanie
+  - 28 nowych testów dla pełnego pokrycia parytetowego (90 → 118 testów tc)
+- [x] Audyt dokumentacji i naprawy (PROGRESS.md, CHANGELOG.md, SCOPE.md)
+
+**Testy:** 710 (627 → 710, +83 nowe testy tc)
 
 **Pliki zmodyfikowane:**
 ```
-hydrolog/time/concentration.py   # +faa() method, +kerby() method, +kerby_kirpich() method
-hydrolog/cli/main.py             # +tc faa, +tc kerby, +tc kerby-kirpich subcommands
-tests/                           # +testy FAA, +testy Kerby, +testy Kerby-Kirpich
+hydrolog/time/concentration.py   # +faa() method, +kerby() method, +kerby_kirpich() method, rename _SCS_LAG_*→_NRCS_*
+hydrolog/cli/commands/tc.py       # +tc faa, +tc kerby, +tc kerby-kirpich subcommands, poprawki formatowania
+tests/unit/test_concentration.py # +83 testy (20 FAA + 19 Kerby + 14 Kerby-Kirpich + 28 parytet + 2 nowe)
 docs/CHANGELOG.md                # wpisy FAA i Kerby w [Unreleased]
 docs/SCOPE.md                    # FAA i Kerby w sekcji time + CLI
 docs/PROGRESS.md                 # sesja 25
@@ -928,21 +936,29 @@ Wyniki Hydrolog (model Nasha):
 
 ### Stan projektu
 - **Faza:** Implementacja - v0.6.2 wydana
-- **Ostatni commit:** v0.6.2 — raporty UH + korekty wzorów metrycznych
+- **Ostatni commit:** refactor(time): harmonize API consistency across all tc methods
 - **Tag:** `v0.6.2` (ostatni release)
 - **Środowisko:** `.venv` z Python 3.12+
 - **Repo GitHub:** https://github.com/Daldek/Hydrolog.git
-- **Testy:** 627 testów (612 jednostkowych + 15 integracyjnych)
+- **Testy:** 710 testów (695 jednostkowych + 15 integracyjnych)
 
 ### Zaimplementowane moduły
-- `hydrolog.time.ConcentrationTime` - 3 metody (Kirpich, NRCS, Giandotti) + ostrzeżenia zakresów
+- `hydrolog.time.ConcentrationTime` - 6 metod (Kirpich, NRCS, Giandotti, FAA, Kerby, Kerby-Kirpich) + ostrzeżenia zakresów
 - `hydrolog.precipitation` - 4 typy hietogramów (Block, Triangular, Beta, EulerII) + interpolacja (Thiessen, IDW, Isohyet)
 - `hydrolog.runoff` - SCS-CN, SCSUnitHydrograph, NashIUH (from_tc, from_lutz, from_urban_regression), ClarkIUH, SnyderUH, HydrographGenerator (z uh_model), CN Lookup (TR-55)
 - `hydrolog.morphometry` - WatershedGeometry, TerrainAnalysis, HypsometricCurve, WatershedParameters (integracja GIS)
 - `hydrolog.network` - StreamNetwork, klasyfikacja Strahlera/Shreve'a
 - `hydrolog.visualization` - 15 funkcji wizualizacji (hietogramy, hydrogramy, porównania UH, bilans wodny, morfometria, sieć rzeczna)
 - `hydrolog.reports` - HydrologyReportGenerator (raporty Markdown z wzorami LaTeX)
-- `hydrolog.cli` - interfejs CLI (tc, cn, scs, uh)
+- `hydrolog.cli` - interfejs CLI (tc [kirpich, nrcs, giandotti, faa, kerby, kerby-kirpich], cn, scs, uh)
+
+### Ostatnio dodane (Sesja 25 - metody tc + refaktor API)
+- `ConcentrationTime.faa()` — metoda FAA (AC 150/5320-5D)
+- `ConcentrationTime.kerby()` — metoda Kerby (1959) z korektą niskich spadków
+- `ConcentrationTime.kerby_kirpich()` — metoda kompozytowa Kerby-Kirpich (Roussel 2005)
+- CLI: `hydrolog tc faa`, `hydrolog tc kerby`, `hydrolog tc kerby-kirpich`
+- Refaktor API: rename `_SCS_LAG_*` → `_NRCS_*`, poprawki CLI, 83 nowe testy
+- Audyt dokumentacji i naprawy (CHANGELOG, SCOPE, PROGRESS, COMPUTATION_PATHS)
 
 ### Ostatnio dodane (Sesja 24 - audyt jakości)
 - Black formatting na 31 plikach
@@ -1214,4 +1230,4 @@ Hydrolog/
 
 ---
 
-**Ostatnia aktualizacja:** 2026-03-22, Sesja 24 (audyt jakości kodu + naprawy dokumentacji)
+**Ostatnia aktualizacja:** 2026-03-23, Sesja 25 (metody tc FAA/Kerby/Kerby-Kirpich + refaktor API)

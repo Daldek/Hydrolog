@@ -22,7 +22,7 @@ Stworzyć bibliotekę analogiczną do Kartografa, ale dla obliczeń hydrologiczn
 ### 1.2 Stack technologiczny
 
 - **Python:** 3.12+
-- **Zależności:** NumPy, IMGWTools
+- **Zależności:** NumPy (IMGWTools usunięte w v0.2.0)
 - **Testy:** pytest
 - **Formatowanie:** Black (88 znaków)
 - **Dokumentacja:** NumPy style docstrings (EN)
@@ -111,7 +111,9 @@ hydrolog2/
 │   ├── time/
 │   ├── morphometry/
 │   ├── network/
-│   └── cli/
+│   ├── cli/
+│   ├── reports/              # Dodane w v0.5.0
+│   └── visualization/        # Dodane w v0.5.0
 └── tests/                    # Testy
     ├── conftest.py
     ├── unit/

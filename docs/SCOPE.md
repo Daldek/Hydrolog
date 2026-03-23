@@ -2,8 +2,8 @@
 
 ## Biblioteka Narzędzi Hydrologicznych
 
-**Wersja:** 1.0
-**Data:** 2026-01-18
+**Wersja:** 1.2
+**Data:** 2026-03-23
 **Status:** W trakcie realizacji
 
 ---
@@ -70,12 +70,14 @@ Hydrolog jest analogiczny do **Kartografa** (pobieranie danych przestrzennych) -
 - Rozkład Beta (α, β konfigurowalne, domyślnie α=2, β=5)
 - Rozkład blokowy (stała intensywność)
 - Rozkład trójkątny
-- Rozkład NRCS Type II (opcjonalnie)
+- Rozkład DVWK Euler Type II (`EulerIIHietogram`)
 
 **Interpolacja (v0.3.0):**
 - IDW (Inverse Distance Weighting)
 - Thiessen (Voronoi polygons)
-- Kriging (opcjonalnie)
+- Metoda izohiet (`isohyet_method`)
+- Średnia arytmetyczna (`arithmetic_mean`)
+- Kriging (opcjonalnie — niezaimplementowany)
 
 **Scenariusze opadowe (przyszłość):**
 - ❌ Nie zaimplementowane
@@ -86,14 +88,13 @@ Hydrolog jest analogiczny do **Kartografa** (pobieranie danych przestrzennych) -
 
 #### 2.1.3 Moduł `time` - Czasy charakterystyczne (v0.1.0)
 
-**Czas koncentracji (tc):**
+**Czas koncentracji (tc) — 6 metod:**
 - Wzór Kirpicha: `tc = 0.0195 × L^0.77 × S^(-0.385)`
-- Wzór NRCS: `tc = L^0.8 × (S + 1)^0.7 / (1900 × Y^0.5)`
+- Wzór NRCS: `tc = 0.01416 × L^0.8 × (S+25.4)^0.7 × Y^-0.5`
+- Wzór Giandotti: `tc = (4√A + 1.5L) / (0.8 × √Hśr)`
 - Wzór FAA: `tc = 22.213 × (1.1 - C) × L^0.5 / S^(1/3)`
 - Wzór Kerby: `tc = 36.37 × (L × N)^0.467 × S^(-0.2335)`
 - Metoda Kerby-Kirpich: `tc = t_overland(Kerby) + t_channel(Kirpich)`
-- Wzór Giandotti (opcjonalnie)
-- Wzór NRCS (opcjonalnie)
 
 **Parametry wejściowe:**
 - Długość głównego cieku [km lub m]
@@ -132,19 +133,18 @@ Hydrolog jest analogiczny do **Kartografa** (pobieranie danych przestrzennych) -
 #### 2.1.5 Moduł `network` - Sieć rzeczna (v0.3.0)
 
 **Klasyfikacja:**
-- Metoda Hortona
 - Metoda Strahlera
+- Metoda Shreve'a
 
 **Wskaźniki:**
-- Wskaźnik bifurkacji
-- Gęstość sieci rzecznej
-- Wskaźnik częstości cieków
-- Współczynnik krętości
+- Wskaźnik bifurkacji (`bifurcation_ratio`)
+- Gęstość sieci rzecznej (`drainage_density`)
+- Wskaźnik częstości cieków (`stream_frequency`)
 
-**Prawa Hortona:**
-- Prawo liczby cieków
-- Prawo długości cieków
-- Prawo powierzchni zlewni
+**Statystyki sieci (`NetworkStatistics`):**
+- Liczba cieków wg rzędu
+- Średnia długość cieków wg rzędu
+- Maksymalny rząd cieku
 
 ---
 
@@ -180,6 +180,65 @@ hydrolog uh snyder --area 100 --L 15 --Lc 8 --timestep 30
 
 ---
 
+#### 2.1.7 Moduł `reports` - Raporty obliczeniowe (v0.6.0)
+
+**Generowanie raportów Markdown z formułami LaTeX:**
+- `HydrologyReportGenerator` — główna klasa generująca raport
+- `ReportConfig` — konfiguracja (metoda tc, model UH, opcje tabel/formuł)
+- `FormulaRenderer` — renderowanie wzorów z podstawionymi wartościami
+- `TableGenerator` — generowanie tabel Markdown (parametry, szeregi czasowe)
+
+**Sekcje raportu:**
+- Parametry zlewni (geometria, teren, wskaźniki kształtu)
+- Czas koncentracji (wzory z podstawieniami)
+- Hietogram (parametry, rozkład czasowy)
+- Opad efektywny SCS-CN (S, Ia, Pe z wartościami)
+- Hydrogram jednostkowy (SCS, Nash, Clark, Snyder — wzory specyficzne dla modelu)
+- Splot dyskretny (procedura, wzory)
+- Bilans wodny (tabela podsumowująca)
+
+**Szablony (`templates.py`):**
+- Polskie nagłówki i etykiety
+- Opisy metod, warunków AMC
+- Referencje literaturowe, glosariusz terminów
+
+---
+
+#### 2.1.8 Moduł `visualization` - Wykresy (v0.5.0)
+
+Moduł wymaga opcjonalnych zależności: `pip install hydrolog[visualization]`
+
+**Hietogramy:**
+- `plot_hietogram()` — wykres intensywności opadu z opcjonalną linią kumulatywną
+- `plot_hietogram_comparison()` — porównanie opadu całkowitego i efektywnego
+
+**Hydrogramy:**
+- `plot_hydrograph()` — hydrogram odpływu Q(t) z anotacją szczytu
+- `plot_unit_hydrograph()` — hydrogram jednostkowy (dowolny model)
+
+**Wykresy złożone:**
+- `plot_rainfall_runoff()` — klasyczny wykres opad-odpływ
+
+**Porównanie UH:**
+- `plot_uh_comparison()` — porównanie wielu modeli UH na jednym wykresie
+
+**Bilans wodny:**
+- `plot_water_balance()` — wizualizacja bilansu SCS-CN (słupki lub kołowy)
+- `plot_cn_curve()` — relacja P → Pe z wariantami AMC
+
+**Morfometria:**
+- `plot_hypsometric_curve()` — krzywa hipsograficzna z całką HI
+- `plot_elevation_histogram()` — histogram rozkładu wysokości
+
+**Sieć rzeczna:**
+- `plot_stream_order_stats()` — statystyki sieci w 3 panelach
+- `plot_bifurcation_ratios()` — wskaźniki bifurkacji wg rzędu
+
+**Interpolacja:**
+- `plot_stations_map()` — mapa stacji opadowych z wagami
+
+---
+
 ### 2.2 ❌ OUT OF SCOPE - Poza zakresem
 
 **Funkcjonalności:**
@@ -199,9 +258,11 @@ hydrolog uh snyder --area 100 --L 15 --Lc 8 --timestep 30
 - ❌ Pobieranie danych IMGW (→ IMGWTools)
 - ❌ Operacje na bazach danych
 
-**Wizualizacje:**
-- ❌ Wykresy i mapy (→ aplikacja kliencka)
-- ❌ Eksport PDF/raportów
+**Wizualizacje i raporty:**
+- ✅ Wykresy statyczne (matplotlib) — moduł `visualization` (od v0.5.0)
+- ✅ Raporty Markdown/LaTeX — moduł `reports` (od v0.6.0)
+- ❌ Eksport PDF (→ zewnętrzne narzędzia, np. Pandoc)
+- ❌ Interaktywne mapy (→ aplikacja kliencka)
 
 ---
 
@@ -227,11 +288,13 @@ hydrolog uh snyder --area 100 --L 15 --Lc 8 --timestep 30
 ```
 hydrolog/
 ├── __init__.py              # Wersja, główne importy
+├── exceptions.py            # Wspólne wyjątki (InvalidParameterError)
 ├── runoff/                  # Moduł opad-odpływ
 │   ├── __init__.py
 │   ├── scs_cn.py           # SCS Curve Number calculations
 │   ├── unit_hydrograph.py  # SCS Unit Hydrograph
 │   ├── convolution.py      # Discrete convolution
+│   ├── generator.py        # HydrographGenerator (opad→odpływ)
 │   ├── nash_iuh.py         # Nash Cascade IUH
 │   ├── clark_iuh.py        # Clark IUH
 │   ├── snyder_uh.py        # Snyder Synthetic UH
@@ -240,22 +303,52 @@ hydrolog/
 │   ├── __init__.py
 │   ├── geometric.py        # Area, perimeter, length
 │   ├── terrain.py          # Elevation, slope
-│   └── indicators.py       # Shape coefficients
+│   ├── hypsometry.py       # Krzywa hipsograficzna
+│   └── watershed_params.py # WatershedParameters (GIS integration)
 ├── precipitation/           # Opady
 │   ├── __init__.py
 │   ├── hietogram.py        # Temporal distributions
-│   ├── interpolation.py    # IDW, Thiessen
-│   └── scenarios.py        # PMAXTP integration
+│   └── interpolation.py    # IDW, Thiessen, isohyet, arithmetic mean
 ├── network/                 # Sieć rzeczna
 │   ├── __init__.py
-│   ├── classification.py   # Horton, Strahler
-│   └── parameters.py       # Network indicators
+│   └── stream_order.py     # Strahler, Shreve, wskaźniki sieci
 ├── time/                    # Czasy charakterystyczne
 │   ├── __init__.py
-│   └── concentration.py    # tc calculations
-└── cli/                     # Interfejs CLI
+│   └── concentration.py    # tc calculations (6 metod)
+├── cli/                     # Interfejs CLI
+│   ├── __init__.py
+│   ├── main.py             # Entry point
+│   └── commands/            # Podkomendy CLI
+│       ├── __init__.py
+│       ├── tc.py            # hydrolog tc ...
+│       ├── cn.py            # hydrolog cn ...
+│       ├── scs.py           # hydrolog scs ...
+│       └── uh.py            # hydrolog uh ...
+├── reports/                 # Generowanie raportów (v0.6.0)
+│   ├── __init__.py
+│   ├── generator.py        # HydrologyReportGenerator
+│   ├── formatters.py       # FormulaRenderer, TableGenerator
+│   ├── templates.py        # Polskie szablony i nagłówki
+│   └── sections/            # Sekcje raportu
+│       ├── __init__.py
+│       ├── watershed.py     # Parametry zlewni
+│       ├── concentration.py # Czas koncentracji
+│       ├── hietogram.py     # Hietogram
+│       ├── scs_cn.py        # Opad efektywny SCS-CN
+│       ├── unit_hydrograph.py # Hydrogram jednostkowy
+│       ├── convolution.py   # Splot dyskretny
+│       └── water_balance.py # Bilans wodny
+└── visualization/           # Wykresy (v0.5.0, wymaga matplotlib)
     ├── __init__.py
-    └── main.py             # Entry point
+    ├── styles.py            # Style, kolory, etykiety PL
+    ├── hietogram.py         # Wykresy hietogramów
+    ├── hydrograph.py        # Wykresy hydrogramów
+    ├── combined.py          # Wykresy opad-odpływ
+    ├── unit_hydrograph.py   # Porównanie UH
+    ├── water_balance.py     # Bilans wodny, krzywa CN
+    ├── morphometry.py       # Krzywa hipsograficzna, histogram
+    ├── network.py           # Statystyki sieci rzecznej
+    └── interpolation.py     # Mapa stacji opadowych
 ```
 
 ### 3.2 Zależności
@@ -266,6 +359,7 @@ hydrolog/
 
 **Opcjonalne:**
 - SciPy >= 1.10 (dla funkcji gamma w Nash IUH)
+- matplotlib >= 3.7 + seaborn >= 0.12 (dla modułu `visualization`)
 - Kartograf >= 0.3.0 (dla automatycznego wyznaczania CN z danych glebowych HSG)
 
 ### 3.3 API Design
@@ -282,7 +376,8 @@ from hydrolog.time import ConcentrationTime
 tc = ConcentrationTime.kirpich(length_km=8.2, slope_m_per_m=0.023)
 
 # Hietogram
-hietogram = BetaHietogram(
+hietogram = BetaHietogram(alpha=2.0, beta=5.0)
+precip = hietogram.generate(
     total_mm=38.5,
     duration_min=60,
     timestep_min=5
@@ -294,7 +389,7 @@ generator = HydrographGenerator(
     cn=72,
     tc_min=tc
 )
-result = generator.generate(hietogram)
+result = generator.generate(precip)
 
 print(f"Qmax: {result.peak_discharge_m3s:.2f} m³/s")
 print(f"Time to peak: {result.time_to_peak_min} min")
@@ -310,6 +405,12 @@ print(f"Time to peak: {result.time_to_peak_min} min")
 | **v0.2.0** | Parametry morfometryczne | `morphometry` | ✅ Wydana |
 | **v0.3.0** | Interpolacja + sieć | `precipitation.interpolation`, `network` | ✅ Wydana |
 | **v0.4.0** | CLI + Clark + Snyder + CN Lookup | `cli`, `runoff.clark_iuh`, `runoff.snyder_uh`, `runoff.cn_lookup` | ✅ Wydana |
+| **v0.5.0** | Wizualizacja + metoda Lutza | `visualization`, `runoff.nash_iuh.from_lutz` | ✅ Wydana |
+| **v0.5.1** | Korekta SCS peak discharge | `runoff.unit_hydrograph`, `morphometry.watershed_params` | ✅ Wydana |
+| **v0.5.2** | Czyszczenie zależności | `pyproject.toml` | ✅ Wydana |
+| **v0.6.0** | Raporty obliczeniowe | `reports` | ✅ Wydana |
+| **v0.6.1** | Nash urban regression | `runoff.nash_iuh.from_urban_regression` | ✅ Wydana |
+| **v0.6.2** | Wzory UH w raportach + korekty metryczne | `reports`, `runoff.snyder_uh`, `runoff.clark_iuh` | ✅ Wydana |
 | **v1.0.0** | Stabilne API + dokumentacja | Wszystkie | 📋 Planowane |
 
 ---
@@ -373,6 +474,6 @@ print(f"Time to peak: {result.time_to_peak_min} min")
 
 ---
 
-**Wersja dokumentu:** 1.1
-**Data ostatniej aktualizacji:** 2026-01-19
+**Wersja dokumentu:** 1.2
+**Data ostatniej aktualizacji:** 2026-03-23
 **Status:** W trakcie realizacji

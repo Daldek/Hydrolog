@@ -42,7 +42,7 @@ SCS_PEAK_FACTOR = 0.208
 | Intensywność | mm/min | mm_per_min | `intensity_mm_per_min` |
 | Przepływ | m³/s | m3s | `discharge_m3s` |
 | Czas | min | min | `tc_min`, `duration_min` |
-| Spadek | % | percent | `slope_percent` |
+| Spadek | m/m | m_per_m | `slope_m_per_m` |
 
 ---
 
@@ -57,13 +57,13 @@ SCS_PEAK_FACTOR = 0.208
 # DOBRZE
 def calculate_time_of_concentration(
     length_km: float,
-    slope_percent: float,
+    slope_m_per_m: float,
     method: str = "kirpich"
 ) -> float:
     pass
 
 # ŹLE (za długa linia)
-def calculate_time_of_concentration(length_km: float, slope_percent: float, method: str = "kirpich") -> float:
+def calculate_time_of_concentration(length_km: float, slope_m_per_m: float, method: str = "kirpich") -> float:
     pass
 ```
 
@@ -242,11 +242,11 @@ def test_calculate_effective_precipitation_invalid_cn_raises():
 def test_kirpich_formula():
     # Arrange
     length_km = 8.2
-    slope_percent = 2.3
+    slope_m_per_m = 0.023
     expected_tc_min = 68.5  # From literature
 
     # Act
-    result = ConcentrationTime.kirpich(length_km, slope_percent)
+    result = ConcentrationTime.kirpich(length_km, slope_m_per_m)
 
     # Assert
     assert abs(result - expected_tc_min) < 1.0  # ±1 min tolerance
