@@ -59,7 +59,7 @@
 
 ### Sesja 25 (2026-03-23)
 
-**Cel:** Dodanie metody FAA do modułu czasu koncentracji
+**Cel:** Dodanie metod FAA i Kerby do modułu czasu koncentracji
 
 **Co zostało zrobione:**
 - [x] Implementacja `ConcentrationTime.faa()` — metoda FAA dla spływu powierzchniowego
@@ -67,17 +67,23 @@
   - Źródło: FAA Advisory Circular AC 150/5320-5D (2013)
 - [x] Obsługa CLI: `hydrolog tc faa --length 0.15 --slope 0.02 --runoff-coeff 0.6`
 - [x] Testy jednostkowe dla metody FAA
+- [x] Implementacja `ConcentrationTime.kerby()` — metoda Kerby dla spływu powierzchniowego/arkuszowego
+  - Wzór: `tc = 36.37 × (L × N)^0.467 × S^(-0.2335)`
+  - Korekta niskich spadków: S < 0.002 → S_adj = S + 0.0005 (Cleveland et al. 2012)
+  - Źródło: Kerby, W.S. (1959). Civil Engineering, 29(3), 174
+- [x] Obsługa CLI: `hydrolog tc kerby --length 0.10 --slope 0.008 --retardance 0.40`
+- [x] Testy jednostkowe dla metody Kerby
 - [x] Aktualizacja dokumentacji: CHANGELOG.md, SCOPE.md, PROGRESS.md, COMPUTATION_PATHS.md
 
 **Pliki zmodyfikowane:**
 ```
-hydrolog/time/concentration.py   # +faa() method
-hydrolog/cli/main.py             # +tc faa subcommand
-tests/                           # +testy FAA
-docs/CHANGELOG.md                # wpis FAA w [Unreleased]
-docs/SCOPE.md                    # FAA w sekcji time + CLI
+hydrolog/time/concentration.py   # +faa() method, +kerby() method
+hydrolog/cli/main.py             # +tc faa subcommand, +tc kerby subcommand
+tests/                           # +testy FAA, +testy Kerby
+docs/CHANGELOG.md                # wpisy FAA i Kerby w [Unreleased]
+docs/SCOPE.md                    # FAA i Kerby w sekcji time + CLI
 docs/PROGRESS.md                 # sesja 25
-docs/COMPUTATION_PATHS.md        # FAA w macierzy kompatybilności
+docs/COMPUTATION_PATHS.md        # FAA i Kerby w macierzy kompatybilności
 ```
 
 ---
