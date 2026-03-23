@@ -18,12 +18,14 @@ Methods:
   nrcs      NRCS equation (uses Curve Number)
   giandotti Giandotti formula (larger watersheds)
   faa       FAA method (airport/overland flow)
+  kerby     Kerby formula (shallow overland flow)
 
 Examples:
   hydrolog tc kirpich --length 2.5 --slope 0.02
   hydrolog tc nrcs --length 5.0 --slope 0.01 --cn 72
   hydrolog tc giandotti --area 100 --length 15 --elevation 500
   hydrolog tc faa --length 0.15 --slope 0.02 --runoff-coeff 0.6
+  hydrolog tc kerby --length 0.1 --slope 0.008 --retardance 0.40
 """,
     )
 
@@ -155,6 +157,38 @@ Examples:
     )
     faa.set_defaults(func=_run_faa)
 
+    # Kerby method
+    kerby = method_parsers.add_parser(
+        "kerby",
+        help="Kerby formula",
+        description="Calculate Tc using Kerby formula for shallow overland flow.",
+    )
+    kerby.add_argument(
+        "-L",
+        "--length",
+        type=float,
+        required=True,
+        metavar="KM",
+        help="Overland flow length [km]",
+    )
+    kerby.add_argument(
+        "-S",
+        "--slope",
+        type=float,
+        required=True,
+        metavar="M/M",
+        help="Average overland slope [m/m]",
+    )
+    kerby.add_argument(
+        "-N",
+        "--retardance",
+        type=float,
+        required=True,
+        metavar="N",
+        help="Kerby retardance roughness coefficient (0.02-0.80)",
+    )
+    kerby.set_defaults(func=_run_kerby)
+
     parser.set_defaults(func=_show_help, parser=parser)
 
 
@@ -232,6 +266,25 @@ def _run_faa(args: argparse.Namespace) -> int:
     print(f"  Overland flow length: {args.length:.2f} km")
     print(f"  Overland slope:       {args.slope:.4f} m/m")
     print(f"  Runoff coefficient:   {args.runoff_coeff:.2f}")
+    print(f"{'─' * 35}")
+    print(f"  Tc = {tc:.1f} min ({tc/60:.2f} h)")
+
+    return 0
+
+
+def _run_kerby(args: argparse.Namespace) -> int:
+    """Execute Kerby calculation."""
+    tc = ConcentrationTime.kerby(
+        length_km=args.length,
+        slope_m_per_m=args.slope,
+        retardance=args.retardance,
+    )
+
+    print(f"Kerby Time of Concentration")
+    print(f"{'─' * 35}")
+    print(f"  Overland flow length: {args.length:.4f} km")
+    print(f"  Overland slope:       {args.slope:.4f} m/m")
+    print(f"  Retardance (N):       {args.retardance:.2f}")
     print(f"{'─' * 35}")
     print(f"  Tc = {tc:.1f} min ({tc/60:.2f} h)")
 

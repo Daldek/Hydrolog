@@ -16,6 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Source: FAA Advisory Circular AC 150/5320-5D (2013)
   - CLI support: `hydrolog tc faa --length 0.15 --slope 0.02 --runoff-coeff 0.6`
 
+#### `hydrolog.time.concentration` - Kerby Method
+- `ConcentrationTime.kerby()` - Kerby (1959) method for overland/sheet flow tc calculation
+  - Formula: `tc = 36.37 × (L × N)^0.467 × S^(-0.2335)`
+  - Parameters: L (overland flow length in km), N (Kerby retardance roughness coefficient), S (slope in m/m)
+  - Low-slope adjustment: for S < 0.002, S_adj = S + 0.0005 (Cleveland et al. 2012)
+  - Source: Kerby, W.S. (1959). "Time of concentration for overland flow." Civil Engineering, 29(3), 174
+  - CLI support: `hydrolog tc kerby --length 0.10 --slope 0.008 --retardance 0.40`
+
 #### `hydrolog.runoff.nash_iuh` - Lutz Calculation Results
 - `LutzCalculationResult` - new dataclass storing all intermediate calculation steps
   - Input parameters: L_km, Lc_km, slope, manning_n, urban_pct, forest_pct
