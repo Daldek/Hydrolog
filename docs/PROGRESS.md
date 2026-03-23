@@ -935,9 +935,9 @@ Wyniki Hydrolog (model Nasha):
 ## Kontekst dla nowej sesji
 
 ### Stan projektu
-- **Faza:** Implementacja - v0.6.2 wydana
-- **Ostatni commit:** refactor(time): harmonize API consistency across all tc methods
-- **Tag:** `v0.6.2` (ostatni release)
+- **Faza:** Implementacja - v0.6.3 wydana
+- **Ostatni commit:** chore: bump version to v0.6.3
+- **Tag:** `v0.6.3` (ostatni release)
 - **Środowisko:** `.venv` z Python 3.12+
 - **Repo GitHub:** https://github.com/Daldek/Hydrolog.git
 - **Testy:** 710 testów (695 jednostkowych + 15 integracyjnych)
@@ -958,7 +958,9 @@ Wyniki Hydrolog (model Nasha):
 - `ConcentrationTime.kerby_kirpich()` — metoda kompozytowa Kerby-Kirpich (Roussel 2005)
 - CLI: `hydrolog tc faa`, `hydrolog tc kerby`, `hydrolog tc kerby-kirpich`
 - Refaktor API: rename `_SCS_LAG_*` → `_NRCS_*`, poprawki CLI, 83 nowe testy
-- Audyt dokumentacji i naprawy (CHANGELOG, SCOPE, PROGRESS, COMPUTATION_PATHS)
+- Audyt dokumentacji i naprawy (CHANGELOG, SCOPE, PROGRESS, COMPUTATION_PATHS, PRD, DEV_STD, IMPL_PROMPT)
+- Naprawa 88 błędów mypy w 20 plikach (mypy clean: 0 errors)
+- Version bump → v0.6.3, tag, merge develop→main, push
 
 ### Ostatnio dodane (Sesja 24 - audyt jakości)
 - Black formatting na 31 plikach
@@ -1230,4 +1232,4 @@ Hydrolog/
 
 ---
 
-**Ostatnia aktualizacja:** 2026-03-23, Sesja 25 (metody tc FAA/Kerby/Kerby-Kirpich + refaktor API)
+**Ostatnia aktualizacja:** 2026-03-23, Sesja 25 (v0.6.3: metody tc FAA/Kerby/Kerby-Kirpich + mypy clean + audyt docs)
