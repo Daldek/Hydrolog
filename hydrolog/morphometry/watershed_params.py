@@ -1,10 +1,16 @@
 """Standardized watershed parameters for integration with GIS systems."""
 
+from __future__ import annotations
+
 import json
 from dataclasses import asdict, dataclass, field
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from hydrolog.exceptions import InvalidParameterError
+
+if TYPE_CHECKING:
+    from hydrolog.morphometry.geometric import WatershedGeometry
+    from hydrolog.morphometry.terrain import TerrainAnalysis
 
 
 @dataclass

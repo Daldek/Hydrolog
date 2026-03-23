@@ -132,6 +132,6 @@ if HAS_MATPLOTLIB:
 else:
     __all__ = []
 
-    def __getattr__(name: str):
+    def __getattr__(name: str) -> None:
         """Raise helpful error when matplotlib is not installed."""
         _check_visualization_deps()

@@ -445,6 +445,14 @@ def _generate_nash_section(
                 v is not None
                 for v in (P1, tp_hours, up_per_hour, f_N, L_km, Lc_km, slope, manning_n)
             ):
+                assert P1 is not None
+                assert tp_hours is not None
+                assert up_per_hour is not None
+                assert f_N is not None
+                assert L_km is not None
+                assert Lc_km is not None
+                assert slope is not None
+                assert manning_n is not None
                 lines.extend(
                     [
                         FormulaRenderer.nash_from_lutz_formulas(

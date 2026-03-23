@@ -210,6 +210,7 @@ class HydrographGenerator:
         Unit hydrograph model instance.
         """
         if self.uh_model == "scs":
+            assert self.tc_min is not None, "tc_min is required for SCS model"
             return SCSUnitHydrograph(area_km2=self.area_km2, tc_min=self.tc_min)
 
         elif self.uh_model == "nash":
@@ -241,6 +242,7 @@ class HydrographGenerator:
                     "Clark model requires 'r' parameter in uh_params"
                 )
 
+            assert self.tc_min is not None, "tc_min is required for Clark model"
             return ClarkIUH(tc_min=self.tc_min, r_min=r, area_km2=self.area_km2)
 
         elif self.uh_model == "snyder":

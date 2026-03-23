@@ -66,7 +66,8 @@ def plot_hypsometric_curve(
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
     else:
-        fig = ax.get_figure()
+        fig = ax.get_figure()  # type: ignore[assignment]
+        assert fig is not None
 
     # Extract data
     rel_area = result.relative_areas
@@ -196,7 +197,8 @@ def plot_elevation_histogram(
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
     else:
-        fig = ax.get_figure()
+        fig = ax.get_figure()  # type: ignore[assignment]
+        assert fig is not None
 
     elevations = np.asarray(elevations)
 
@@ -216,14 +218,14 @@ def plot_elevation_histogram(
     median_elev = np.median(elevations)
 
     ax.axvline(
-        mean_elev,
+        float(mean_elev),
         color="red",
         linestyle="--",
         linewidth=2,
         label=f"Średnia = {mean_elev:.1f} m",
     )
     ax.axvline(
-        median_elev,
+        float(median_elev),
         color="orange",
         linestyle="-.",
         linewidth=2,
