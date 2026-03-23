@@ -59,7 +59,7 @@
 
 ### Sesja 25 (2026-03-23)
 
-**Cel:** Dodanie metod FAA i Kerby do modułu czasu koncentracji
+**Cel:** Dodanie metod FAA, Kerby i Kerby-Kirpich do modułu czasu koncentracji
 
 **Co zostało zrobione:**
 - [x] Implementacja `ConcentrationTime.faa()` — metoda FAA dla spływu powierzchniowego
@@ -73,13 +73,21 @@
   - Źródło: Kerby, W.S. (1959). Civil Engineering, 29(3), 174
 - [x] Obsługa CLI: `hydrolog tc kerby --length 0.10 --slope 0.008 --retardance 0.40`
 - [x] Testy jednostkowe dla metody Kerby
+- [x] Implementacja `ConcentrationTime.kerby_kirpich()` — metoda kompozytowa Kerby-Kirpich
+  - Wzór: `tc = t_overland(Kerby) + t_channel(Kirpich)`
+  - Kerby: `tc_ov = 36.37 × (L_ov × N)^0.467 × S_ov^(-0.2335)`
+  - Kirpich: `tc_ch = 3.981 × L_ch^0.77 × S_ch^(-0.385)`
+  - Korekta niskich spadków (Cleveland et al. 2012): S < 0.002 → S_adj = S + 0.0005 (oba segmenty)
+  - Źródło: Roussel et al. (2005). TxDOT Report 0-4696-2
+- [x] Obsługa CLI: `hydrolog tc kerby-kirpich --ov-length 0.25 --ov-slope 0.008 --retardance 0.40 --ch-length 5.0 --ch-slope 0.005`
+- [x] Testy jednostkowe dla metody Kerby-Kirpich
 - [x] Aktualizacja dokumentacji: CHANGELOG.md, SCOPE.md, PROGRESS.md, COMPUTATION_PATHS.md
 
 **Pliki zmodyfikowane:**
 ```
-hydrolog/time/concentration.py   # +faa() method, +kerby() method
-hydrolog/cli/main.py             # +tc faa subcommand, +tc kerby subcommand
-tests/                           # +testy FAA, +testy Kerby
+hydrolog/time/concentration.py   # +faa() method, +kerby() method, +kerby_kirpich() method
+hydrolog/cli/main.py             # +tc faa, +tc kerby, +tc kerby-kirpich subcommands
+tests/                           # +testy FAA, +testy Kerby, +testy Kerby-Kirpich
 docs/CHANGELOG.md                # wpisy FAA i Kerby w [Unreleased]
 docs/SCOPE.md                    # FAA i Kerby w sekcji time + CLI
 docs/PROGRESS.md                 # sesja 25

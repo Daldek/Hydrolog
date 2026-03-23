@@ -21,12 +21,12 @@ Dokument ten służy jako przewodnik, który:
 
 ### 1.2 Macierz kompatybilności
 
-| Model | Kirpich | NRCS | Giandotti | FAA | Kerby | from_lutz() | Bezpośrednio | Własna metoda |
-|-------|:-------:|:-------:|:---------:|:---:|:-----:|:-----------:|:------------:|:-------------:|
-| **SCS UH** | ✅ | ✅ | ✅ | ✅ | ✅ | - | - | - |
-| **Nash IUH** | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ✅ | ✅ | - |
-| **Clark IUH** | ✅ | ✅ | ✅ | ✅ | ✅ | - | ✅ | - |
-| **Snyder UH** | ❌ | ❌ | ❌ | ❌ | ❌ | - | ✅ | ✅ |
+| Model | Kirpich | NRCS | Giandotti | FAA | Kerby | Kerby-Kirpich | from_lutz() | Bezpośrednio | Własna metoda |
+|-------|:-------:|:-------:|:---------:|:---:|:-----:|:-------------:|:-----------:|:------------:|:-------------:|
+| **SCS UH** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | - | - | - |
+| **Nash IUH** | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ✅ | ✅ | - |
+| **Clark IUH** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | - | ✅ | - |
+| **Snyder UH** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | - | ✅ | ✅ |
 
 **Legenda:**
 - ✅ **OK** - prawidłowe użycie, potwierdzone literaturą
@@ -140,6 +140,7 @@ Dokument ten służy jako przewodnik, który:
 | Giandotti | ✅ OK | Tc jest parametrem wejściowym metody SCS |
 | FAA | ✅ OK | Tc jest parametrem wejściowym metody SCS (spływ powierzchniowy) |
 | Kerby | ✅ OK | Tc jest parametrem wejściowym metody SCS (spływ arkuszowy) |
+| Kerby-Kirpich | ✅ OK | Kompozytowe Tc (spływ powierzchniowy + korytowy) jest parametrem wejściowym SCS |
 
 **Uzasadnienie literaturowe:**
 - Relacja `tlag = 0.6 × Tc` pochodzi z USDA TR-55 (1986)
@@ -404,6 +405,7 @@ nash_correct = NashIUH.from_lutz(
 | Giandotti → Tc | ✅ OK | Tc = czas translacji |
 | FAA → Tc | ✅ OK | Tc = czas translacji (spływ powierzchniowy) |
 | Kerby → Tc | ✅ OK | Tc = czas translacji (spływ arkuszowy) |
+| Kerby-Kirpich → Tc | ✅ OK | Tc = czas translacji (kompozytowy: spływ powierzchniowy + korytowy) |
 | Bezpośrednio Tc, R | ✅ OK | Gdy masz zmierzone/skalibrowane wartości |
 | R/Tc ratio | ✅ OK | Typowe wartości: 0.2-1.5 |
 
@@ -610,6 +612,8 @@ print(f"Qmax = {result.peak_discharge_m3s:.2f} m³/s")
 | SCS UH + Kerby → Tc | Kerby (1959), TR-55 | ✅ |
 | Clark IUH + FAA → Tc | FAA AC 150/5320-5D (2013), Clark (1945) | ✅ |
 | Clark IUH + Kerby → Tc | Kerby (1959), Clark (1945) | ✅ |
+| SCS UH + Kerby-Kirpich → Tc | Roussel et al. (2005), TR-55 | ✅ |
+| Clark IUH + Kerby-Kirpich → Tc | Roussel et al. (2005), Clark (1945) | ✅ |
 | Nash IUH + from_lutz() | Lutz (1984), KZGW (2017) | ✅ |
 | Nash IUH + bezpośrednio n, K | Nash (1957) | ✅ |
 | Nash IUH + from_tc() | **BRAK UZASADNIENIA** | ⚠️ |
@@ -628,6 +632,7 @@ print(f"Qmax = {result.peak_discharge_m3s:.2f} m³/s")
 | FAA | 2013 | Formuła Tc dla spływu powierzchniowego (AC 150/5320-5D) |
 | Kerby, W.S. | 1959 | Formuła Tc dla spływu arkuszowego (retardance coefficient) |
 | Giandotti, M. | 1934 | Formuła Tc dla zlewni włoskich |
+| Roussel, M.C. et al. | 2005 | Metoda kompozytowa Kerby-Kirpich (TxDOT 0-4696-2) |
 | Lutz, W. | 1984 | Estymacja parametrów Nasha z cech fizjograficznych |
 | USDA TR-55 | 1986 | Metoda SCS-CN, relacja tlag = 0.6×Tc |
 | KZGW | 2017 | Polska metodyka, tabela f(N) dla Lutza |
@@ -741,15 +746,17 @@ print(f"Qmax = {result.peak_discharge_m3s:.2f} m³/s")
 
 8. **Kerby, W.S.** (1959). Time of concentration for overland flow. *Civil Engineering*, 29(3), 174.
 
-9. **KZGW** (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych. Załącznik 2, Tabela C.2.
+9. **Roussel, M.C., Thompson, D.B., Fang, X., Cleveland, T.G., & Garcia, C.A.** (2005). Time-parameter estimation for applicable Texas watersheds. *TxDOT Research Report 0-4696-2*. Texas Department of Transportation.
 
-10. **USACE HEC-HMS** (2024). Technical Reference Manual. https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/
+10. **KZGW** (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych. Załącznik 2, Tabela C.2.
 
-11. **USDA-NRCS** (1986). Urban Hydrology for Small Watersheds. Technical Release 55 (TR-55).
+11. **USACE HEC-HMS** (2024). Technical Reference Manual. https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/
+
+12. **USDA-NRCS** (1986). Urban Hydrology for Small Watersheds. Technical Release 55 (TR-55).
 
 ### Podręczniki
 
-12. **Bedient, P.B. & Huber, W.C.** (1992). *Hydrology and Floodplain Analysis*. Addison-Wesley.
+13. **Bedient, P.B. & Huber, W.C.** (1992). *Hydrology and Floodplain Analysis*. Addison-Wesley.
 
 ---
 

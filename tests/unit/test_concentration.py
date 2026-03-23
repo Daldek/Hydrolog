@@ -475,6 +475,194 @@ class TestKerby:
         assert tc > 0
 
 
+class TestKerbyKirpich:
+    """Tests for Kerby-Kirpich composite method."""
+
+    def test_kerby_kirpich_typical_values(self):
+        """Test Kerby-Kirpich with typical values equals sum of parts."""
+        ov_length = 0.25
+        ov_slope = 0.008
+        retardance = 0.40
+        ch_length = 5.0
+        ch_slope = 0.005
+
+        tc = ConcentrationTime.kerby_kirpich(
+            overland_length_km=ov_length,
+            overland_slope_m_per_m=ov_slope,
+            retardance=retardance,
+            channel_length_km=ch_length,
+            channel_slope_m_per_m=ch_slope,
+        )
+
+        t_overland = ConcentrationTime.kerby(ov_length, ov_slope, retardance)
+        t_channel = ConcentrationTime.kirpich(ch_length, ch_slope)
+
+        assert abs(tc - (t_overland + t_channel)) < 0.01
+
+    def test_kerby_kirpich_known_value(self):
+        """Test Kerby-Kirpich against hand-calculated reference value."""
+        tc = ConcentrationTime.kerby_kirpich(
+            overland_length_km=0.25,
+            overland_slope_m_per_m=0.008,
+            retardance=0.40,
+            channel_length_km=5.0,
+            channel_slope_m_per_m=0.005,
+        )
+
+        # t_overland ≈ 35.1 min, t_channel ≈ 108.9 min → total ≈ 144.0 min
+        assert 135.0 < tc < 146.0
+
+    def test_kerby_kirpich_equals_sum_of_parts(self):
+        """Verify composite equals kerby() + kirpich() for same params."""
+        ov_length = 0.15
+        ov_slope = 0.005
+        retardance = 0.20
+        ch_length = 3.0
+        ch_slope = 0.010
+
+        tc_composite = ConcentrationTime.kerby_kirpich(
+            overland_length_km=ov_length,
+            overland_slope_m_per_m=ov_slope,
+            retardance=retardance,
+            channel_length_km=ch_length,
+            channel_slope_m_per_m=ch_slope,
+        )
+
+        t_overland = ConcentrationTime.kerby(ov_length, ov_slope, retardance)
+        t_channel = ConcentrationTime.kirpich(ch_length, ch_slope)
+
+        assert abs(tc_composite - (t_overland + t_channel)) < 0.01
+
+    def test_kerby_kirpich_channel_low_slope_adjustment(self):
+        """Test low-slope adjustment is applied to channel slope."""
+        ch_slope = 0.001  # Below threshold → adjusted to 0.0015
+
+        tc = ConcentrationTime.kerby_kirpich(
+            overland_length_km=0.10,
+            overland_slope_m_per_m=0.005,
+            retardance=0.40,
+            channel_length_km=5.0,
+            channel_slope_m_per_m=ch_slope,
+        )
+
+        # Compute expected: kerby uses 0.005 (no adj), kirpich uses 0.0015
+        t_overland = ConcentrationTime.kerby(0.10, 0.005, 0.40)
+        t_channel_adj = ConcentrationTime.kirpich(5.0, 0.0015)
+        t_channel_raw = ConcentrationTime.kirpich(5.0, 0.001)
+
+        # Should match the adjusted calculation
+        assert abs(tc - (t_overland + t_channel_adj)) < 0.01
+        # Should differ from raw (unadjusted) kirpich
+        assert abs(tc - (t_overland + t_channel_raw)) > 1.0
+
+    def test_kerby_kirpich_overland_dominates(self):
+        """Very short channel → result approximately equals kerby alone."""
+        ov_length = 0.30
+        ov_slope = 0.005
+        retardance = 0.60
+        ch_length = 0.01  # Very short channel
+        ch_slope = 0.05
+
+        tc = ConcentrationTime.kerby_kirpich(
+            overland_length_km=ov_length,
+            overland_slope_m_per_m=ov_slope,
+            retardance=retardance,
+            channel_length_km=ch_length,
+            channel_slope_m_per_m=ch_slope,
+        )
+
+        t_overland = ConcentrationTime.kerby(ov_length, ov_slope, retardance)
+
+        # Channel contribution should be negligible
+        assert abs(tc - t_overland) / t_overland < 0.05
+
+    def test_kerby_kirpich_channel_dominates(self):
+        """Very short overland → result approximately equals kirpich alone."""
+        ov_length = 0.01  # Very short overland
+        ov_slope = 0.008
+        retardance = 0.10
+        ch_length = 10.0
+        ch_slope = 0.010
+
+        tc = ConcentrationTime.kerby_kirpich(
+            overland_length_km=ov_length,
+            overland_slope_m_per_m=ov_slope,
+            retardance=retardance,
+            channel_length_km=ch_length,
+            channel_slope_m_per_m=ch_slope,
+        )
+
+        t_channel = ConcentrationTime.kirpich(ch_length, ch_slope)
+
+        # Overland contribution should be negligible
+        assert abs(tc - t_channel) / t_channel < 0.05
+
+    def test_kerby_kirpich_zero_overland_length_raises(self):
+        """Test that zero overland length raises InvalidParameterError."""
+        with pytest.raises(
+            InvalidParameterError, match="overland_length_km must be positive"
+        ):
+            ConcentrationTime.kerby_kirpich(
+                overland_length_km=0,
+                overland_slope_m_per_m=0.008,
+                retardance=0.40,
+                channel_length_km=5.0,
+                channel_slope_m_per_m=0.005,
+            )
+
+    def test_kerby_kirpich_zero_channel_length_raises(self):
+        """Test that zero channel length raises InvalidParameterError."""
+        with pytest.raises(
+            InvalidParameterError, match="channel_length_km must be positive"
+        ):
+            ConcentrationTime.kerby_kirpich(
+                overland_length_km=0.25,
+                overland_slope_m_per_m=0.008,
+                retardance=0.40,
+                channel_length_km=0,
+                channel_slope_m_per_m=0.005,
+            )
+
+    def test_kerby_kirpich_negative_overland_slope_raises(self):
+        """Test that negative overland slope raises InvalidParameterError."""
+        with pytest.raises(
+            InvalidParameterError,
+            match="overland_slope_m_per_m must be positive",
+        ):
+            ConcentrationTime.kerby_kirpich(
+                overland_length_km=0.25,
+                overland_slope_m_per_m=-0.008,
+                retardance=0.40,
+                channel_length_km=5.0,
+                channel_slope_m_per_m=0.005,
+            )
+
+    def test_kerby_kirpich_negative_channel_slope_raises(self):
+        """Test that negative channel slope raises InvalidParameterError."""
+        with pytest.raises(
+            InvalidParameterError,
+            match="channel_slope_m_per_m must be positive",
+        ):
+            ConcentrationTime.kerby_kirpich(
+                overland_length_km=0.25,
+                overland_slope_m_per_m=0.008,
+                retardance=0.40,
+                channel_length_km=5.0,
+                channel_slope_m_per_m=-0.005,
+            )
+
+    def test_kerby_kirpich_negative_retardance_raises(self):
+        """Test that negative retardance raises InvalidParameterError."""
+        with pytest.raises(InvalidParameterError, match="retardance must be positive"):
+            ConcentrationTime.kerby_kirpich(
+                overland_length_km=0.25,
+                overland_slope_m_per_m=0.008,
+                retardance=-0.40,
+                channel_length_km=5.0,
+                channel_slope_m_per_m=0.005,
+            )
+
+
 class TestConcentrationTimeImport:
     """Test module imports."""
 
@@ -488,6 +676,7 @@ class TestConcentrationTimeImport:
         assert hasattr(CT, "giandotti")
         assert hasattr(CT, "faa")
         assert hasattr(CT, "kerby")
+        assert hasattr(CT, "kerby_kirpich")
 
 
 class TestParameterRangeWarnings:
@@ -644,4 +833,40 @@ class TestParameterRangeWarnings:
             warnings.simplefilter("error")
             ConcentrationTime.kerby(
                 length_km=0.10, slope_m_per_m=0.005, retardance=0.40
+            )
+
+    def test_kerby_kirpich_warns_on_long_overland(self):
+        """Test warning for overland length above typical range."""
+        with pytest.warns(UserWarning, match="outside typical range"):
+            ConcentrationTime.kerby_kirpich(
+                overland_length_km=0.50,
+                overland_slope_m_per_m=0.005,
+                retardance=0.40,
+                channel_length_km=5.0,
+                channel_slope_m_per_m=0.005,
+            )
+
+    def test_kerby_kirpich_warns_on_long_channel(self):
+        """Test warning for channel length above typical range."""
+        with pytest.warns(UserWarning, match="outside typical range"):
+            ConcentrationTime.kerby_kirpich(
+                overland_length_km=0.10,
+                overland_slope_m_per_m=0.005,
+                retardance=0.40,
+                channel_length_km=100.0,
+                channel_slope_m_per_m=0.005,
+            )
+
+    def test_kerby_kirpich_no_warning_in_range(self):
+        """Test no warning when all parameters are in typical range."""
+        import warnings
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            ConcentrationTime.kerby_kirpich(
+                overland_length_km=0.10,
+                overland_slope_m_per_m=0.005,
+                retardance=0.40,
+                channel_length_km=5.0,
+                channel_slope_m_per_m=0.005,
             )
