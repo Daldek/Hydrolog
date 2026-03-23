@@ -258,12 +258,12 @@ def _run_kirpich(args: argparse.Namespace) -> int:
         slope_m_per_m=args.slope,
     )
 
-    print(f"Kirpich Time of Concentration")
-    print(f"{'─' * 35}")
+    print("Kirpich Time of Concentration")
+    print("─" * 35)
     print(f"  Channel length:  {args.length:.2f} km")
     print(f"  Channel slope:   {args.slope:.4f} m/m")
-    print(f"{'─' * 35}")
-    print(f"  Tc = {tc:.1f} min ({tc/60:.2f} h)")
+    print("─" * 35)
+    print(f"  Tc = {tc:.1f} min ({tc / 60:.2f} h)")
 
     return 0
 
@@ -276,13 +276,13 @@ def _run_nrcs(args: argparse.Namespace) -> int:
         cn=args.cn,
     )
 
-    print(f"NRCS Time of Concentration")
-    print(f"{'─' * 35}")
+    print("NRCS Time of Concentration")
+    print("─" * 35)
     print(f"  Flow path length: {args.length:.2f} km")
     print(f"  Watershed slope:  {args.slope:.4f} m/m")
     print(f"  Curve Number:     {args.cn}")
-    print(f"{'─' * 35}")
-    print(f"  Tc = {tc:.1f} min ({tc/60:.2f} h)")
+    print("─" * 35)
+    print(f"  Tc = {tc:.1f} min ({tc / 60:.2f} h)")
 
     return 0
 
@@ -295,13 +295,13 @@ def _run_giandotti(args: argparse.Namespace) -> int:
         elevation_diff_m=args.elevation,
     )
 
-    print(f"Giandotti Time of Concentration")
-    print(f"{'─' * 35}")
+    print("Giandotti Time of Concentration")
+    print("─" * 35)
     print(f"  Watershed area:      {args.area:.2f} km²")
     print(f"  Main channel length: {args.length:.2f} km")
     print(f"  Mean elevation:      {args.elevation:.1f} m")
-    print(f"{'─' * 35}")
-    print(f"  Tc = {tc:.1f} min ({tc/60:.2f} h)")
+    print("─" * 35)
+    print(f"  Tc = {tc:.1f} min ({tc / 60:.2f} h)")
 
     return 0
 
@@ -314,13 +314,13 @@ def _run_faa(args: argparse.Namespace) -> int:
         runoff_coeff=args.runoff_coeff,
     )
 
-    print(f"FAA Time of Concentration")
-    print(f"{'─' * 35}")
+    print("FAA Time of Concentration")
+    print("─" * 35)
     print(f"  Overland flow length: {args.length:.2f} km")
     print(f"  Overland slope:       {args.slope:.4f} m/m")
     print(f"  Runoff coefficient:   {args.runoff_coeff:.2f}")
-    print(f"{'─' * 35}")
-    print(f"  Tc = {tc:.1f} min ({tc/60:.2f} h)")
+    print("─" * 35)
+    print(f"  Tc = {tc:.1f} min ({tc / 60:.2f} h)")
 
     return 0
 
@@ -333,13 +333,13 @@ def _run_kerby(args: argparse.Namespace) -> int:
         retardance=args.retardance,
     )
 
-    print(f"Kerby Time of Concentration")
-    print(f"{'─' * 35}")
-    print(f"  Overland flow length: {args.length:.4f} km")
+    print("Kerby Time of Concentration")
+    print("─" * 35)
+    print(f"  Overland flow length: {args.length:.2f} km")
     print(f"  Overland slope:       {args.slope:.4f} m/m")
     print(f"  Retardance (N):       {args.retardance:.2f}")
-    print(f"{'─' * 35}")
-    print(f"  Tc = {tc:.1f} min ({tc/60:.2f} h)")
+    print("─" * 35)
+    print(f"  Tc = {tc:.1f} min ({tc / 60:.2f} h)")
 
     return 0
 
@@ -363,9 +363,8 @@ def _run_kerby_kirpich(args: argparse.Namespace) -> int:
 
     t_channel = tc - t_overland
 
-    separator = "─" * 39
     print("Kerby-Kirpich Time of Concentration")
-    print(separator)
+    print("─" * 35)
     print("  Overland flow:")
     print(f"    Length:      {args.ov_length:.2f} km")
     print(f"    Slope:       {args.ov_slope:.4f} m/m")
@@ -375,7 +374,7 @@ def _run_kerby_kirpich(args: argparse.Namespace) -> int:
     print(f"    Length:      {args.ch_length:.2f} km")
     print(f"    Slope:       {args.ch_slope:.4f} m/m")
     print(f"    t_channel  = {t_channel:.1f} min")
-    print(separator)
+    print("─" * 35)
     print(f"  Tc = {tc:.1f} min ({tc / 60:.2f} h)")
 
     return 0

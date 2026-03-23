@@ -8,9 +8,9 @@ from hydrolog.exceptions import InvalidParameterError
 _KIRPICH_LENGTH_RANGE = (0.001, 80.0)  # km
 _KIRPICH_SLOPE_RANGE = (0.002, 0.15)  # m/m
 
-_SCS_LAG_LENGTH_RANGE = (0.03, 30.0)  # km
-_SCS_LAG_SLOPE_RANGE = (0.001, 0.15)  # m/m
-_SCS_LAG_CN_RANGE = (50, 95)  # dimensionless
+_NRCS_LENGTH_RANGE = (0.03, 30.0)  # km
+_NRCS_SLOPE_RANGE = (0.001, 0.15)  # m/m
+_NRCS_CN_RANGE = (50, 95)  # dimensionless
 
 _GIANDOTTI_AREA_RANGE = (100.0, 10000.0)  # km2
 _GIANDOTTI_LENGTH_RANGE = (1.0, 300.0)  # km
@@ -278,11 +278,11 @@ class ConcentrationTime:
             raise InvalidParameterError(f"cn must be in range 1-100, got {cn}")
 
         # Warn if parameters are outside typical range
-        _warn_if_out_of_range(length_km, "length_km", *_SCS_LAG_LENGTH_RANGE, "nrcs")
+        _warn_if_out_of_range(length_km, "length_km", *_NRCS_LENGTH_RANGE, "nrcs")
         _warn_if_out_of_range(
-            slope_m_per_m, "slope_m_per_m", *_SCS_LAG_SLOPE_RANGE, "nrcs"
+            slope_m_per_m, "slope_m_per_m", *_NRCS_SLOPE_RANGE, "nrcs"
         )
-        _warn_if_out_of_range(cn, "cn", *_SCS_LAG_CN_RANGE, "nrcs")
+        _warn_if_out_of_range(cn, "cn", *_NRCS_CN_RANGE, "nrcs")
 
         # Convert input units to formula units
         length_m = length_km * 1000.0  # km -> m
@@ -842,4 +842,6 @@ class ConcentrationTime:
             channel_length_km, channel_slope_adj
         )
 
-        return t_overland + t_channel
+        tc_min: float = t_overland + t_channel
+
+        return tc_min
