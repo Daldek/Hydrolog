@@ -350,6 +350,131 @@ class TestFAA:
         assert tc > 0
 
 
+class TestKerby:
+    """Tests for Kerby formula."""
+
+    def test_kerby_typical_values(self):
+        """Test Kerby formula with typical overland flow parameters."""
+        # tc = 36.37 * (0.10 * 0.40)^0.467 * 0.008^(-0.2335)
+        # tc ≈ 24.98 min
+        tc = ConcentrationTime.kerby(
+            length_km=0.10, slope_m_per_m=0.008, retardance=0.40
+        )
+
+        assert abs(tc - 24.98) < 0.5
+
+    def test_kerby_known_value(self):
+        """Test Kerby formula against hand-calculated cross-reference value."""
+        # L=1000 ft (0.3048 km), N=0.40, S=0.01
+        # tc = 36.37 * (0.3048 * 0.40)^0.467 * 0.01^(-0.2335)
+        # = 36.37 * (0.12192)^0.467 * 0.01^(-0.2335)
+        # = 36.37 * 0.3745 * 2.926
+        # ≈ 39.90 min
+        tc = ConcentrationTime.kerby(
+            length_km=0.3048, slope_m_per_m=0.01, retardance=0.40
+        )
+
+        assert abs(tc - 39.90) < 0.1
+
+    def test_kerby_higher_n_gives_longer_tc(self):
+        """Test that rougher surface (higher N) gives longer tc."""
+        tc_smooth = ConcentrationTime.kerby(
+            length_km=0.10, slope_m_per_m=0.008, retardance=0.10
+        )
+        tc_rough = ConcentrationTime.kerby(
+            length_km=0.10, slope_m_per_m=0.008, retardance=0.60
+        )
+
+        assert tc_rough > tc_smooth
+
+    def test_kerby_longer_path_gives_longer_tc(self):
+        """Test that longer overland flow path gives longer tc."""
+        tc_short = ConcentrationTime.kerby(
+            length_km=0.05, slope_m_per_m=0.008, retardance=0.40
+        )
+        tc_long = ConcentrationTime.kerby(
+            length_km=0.30, slope_m_per_m=0.008, retardance=0.40
+        )
+
+        assert tc_long > tc_short
+
+    def test_kerby_steeper_slope_gives_shorter_tc(self):
+        """Test that steeper slope gives shorter tc."""
+        tc_gentle = ConcentrationTime.kerby(
+            length_km=0.10, slope_m_per_m=0.003, retardance=0.40
+        )
+        tc_steep = ConcentrationTime.kerby(
+            length_km=0.10, slope_m_per_m=0.008, retardance=0.40
+        )
+
+        assert tc_steep < tc_gentle
+
+    def test_kerby_zero_length_raises(self):
+        """Test that zero length raises InvalidParameterError."""
+        with pytest.raises(InvalidParameterError, match="length_km must be positive"):
+            ConcentrationTime.kerby(length_km=0, slope_m_per_m=0.008, retardance=0.40)
+
+    def test_kerby_negative_length_raises(self):
+        """Test that negative length raises InvalidParameterError."""
+        with pytest.raises(InvalidParameterError, match="length_km must be positive"):
+            ConcentrationTime.kerby(
+                length_km=-0.1, slope_m_per_m=0.008, retardance=0.40
+            )
+
+    def test_kerby_zero_slope_raises(self):
+        """Test that zero slope raises InvalidParameterError."""
+        with pytest.raises(
+            InvalidParameterError, match="slope_m_per_m must be positive"
+        ):
+            ConcentrationTime.kerby(length_km=0.10, slope_m_per_m=0, retardance=0.40)
+
+    def test_kerby_negative_slope_raises(self):
+        """Test that negative slope raises InvalidParameterError."""
+        with pytest.raises(
+            InvalidParameterError, match="slope_m_per_m must be positive"
+        ):
+            ConcentrationTime.kerby(
+                length_km=0.10, slope_m_per_m=-0.008, retardance=0.40
+            )
+
+    def test_kerby_zero_retardance_raises(self):
+        """Test that zero retardance raises InvalidParameterError."""
+        with pytest.raises(InvalidParameterError, match="retardance must be positive"):
+            ConcentrationTime.kerby(length_km=0.10, slope_m_per_m=0.008, retardance=0)
+
+    def test_kerby_negative_retardance_raises(self):
+        """Test that negative retardance raises InvalidParameterError."""
+        with pytest.raises(InvalidParameterError, match="retardance must be positive"):
+            ConcentrationTime.kerby(
+                length_km=0.10, slope_m_per_m=0.008, retardance=-0.40
+            )
+
+    def test_kerby_low_slope_adjustment(self):
+        """Test that low-slope adjustment is applied for S < 0.002."""
+        # S=0.001 -> S_adj=0.0015 (adjusted)
+        # Without adjustment: tc = 36.37 * (0.10*0.40)^0.467 * 0.001^(-0.2335) ≈ 40.59
+        # With adjustment:    tc = 36.37 * (0.10*0.40)^0.467 * 0.0015^(-0.2335) ≈ 36.92
+        tc = ConcentrationTime.kerby(
+            length_km=0.10, slope_m_per_m=0.001, retardance=0.40
+        )
+
+        # The adjusted result (~36.92) should differ from unadjusted (~40.59)
+        assert abs(tc - 36.92) < 0.5
+        # Should NOT match unadjusted value
+        assert abs(tc - 40.59) > 1.0
+
+    def test_kerby_impervious_surface(self):
+        """Test Kerby with smooth impervious surface (N=0.02)."""
+        # N=0.02 should give short tc
+        tc = ConcentrationTime.kerby(
+            length_km=0.10, slope_m_per_m=0.008, retardance=0.02
+        )
+
+        # tc ≈ 6.17 min for impervious surface
+        assert tc < 10.0
+        assert tc > 0
+
+
 class TestConcentrationTimeImport:
     """Test module imports."""
 
@@ -362,6 +487,7 @@ class TestConcentrationTimeImport:
         assert hasattr(CT, "nrcs")
         assert hasattr(CT, "giandotti")
         assert hasattr(CT, "faa")
+        assert hasattr(CT, "kerby")
 
 
 class TestParameterRangeWarnings:
@@ -476,3 +602,46 @@ class TestParameterRangeWarnings:
         with warnings.catch_warnings():
             warnings.simplefilter("error")
             ConcentrationTime.faa(length_km=0.15, slope_m_per_m=0.02, runoff_coeff=0.6)
+
+    def test_kerby_warns_on_long_length(self):
+        """Test warning for length above typical range."""
+        with pytest.warns(UserWarning, match="outside typical range"):
+            ConcentrationTime.kerby(
+                length_km=0.50, slope_m_per_m=0.005, retardance=0.40
+            )
+
+    def test_kerby_warns_on_small_slope(self):
+        """Test warning for slope below typical range."""
+        with pytest.warns(UserWarning, match="outside typical range"):
+            ConcentrationTime.kerby(
+                length_km=0.10, slope_m_per_m=0.0005, retardance=0.40
+            )
+
+    def test_kerby_warns_on_large_slope(self):
+        """Test warning for slope above typical range."""
+        with pytest.warns(UserWarning, match="outside typical range"):
+            ConcentrationTime.kerby(length_km=0.10, slope_m_per_m=0.02, retardance=0.40)
+
+    def test_kerby_warns_on_low_n(self):
+        """Test warning for retardance below typical range."""
+        with pytest.warns(UserWarning, match="outside typical range"):
+            ConcentrationTime.kerby(
+                length_km=0.10, slope_m_per_m=0.005, retardance=0.01
+            )
+
+    def test_kerby_warns_on_high_n(self):
+        """Test warning for retardance above typical range."""
+        with pytest.warns(UserWarning, match="outside typical range"):
+            ConcentrationTime.kerby(
+                length_km=0.10, slope_m_per_m=0.005, retardance=0.90
+            )
+
+    def test_kerby_no_warning_in_range(self):
+        """Test no warning when parameters are in typical range."""
+        import warnings
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            ConcentrationTime.kerby(
+                length_km=0.10, slope_m_per_m=0.005, retardance=0.40
+            )
