@@ -16,6 +16,10 @@ _GIANDOTTI_AREA_RANGE = (100.0, 10000.0)  # km2
 _GIANDOTTI_LENGTH_RANGE = (1.0, 300.0)  # km
 _GIANDOTTI_ELEVATION_RANGE = (20.0, 3000.0)  # m
 
+_FAA_LENGTH_RANGE = (0.015, 3.0)  # km (50 ft to 10,000 ft)
+_FAA_SLOPE_RANGE = (0.005, 0.10)  # m/m (0.5% to 10%)
+_FAA_C_RANGE = (0.10, 0.95)  # dimensionless
+
 
 def _warn_if_out_of_range(
     value: float,
@@ -285,7 +289,7 @@ class ConcentrationTime:
             retention_mm = (25400.0 / cn) - 254.0
 
         # tc formula (from tlag / 0.6): tc [min]
-        tc_min = (
+        tc_min: float = (
             0.01416
             * length_m**0.8
             * (retention_mm + 25.4) ** 0.7
@@ -393,5 +397,117 @@ class ConcentrationTime:
 
         # Convert to minutes
         tc_min: float = tc_hours * 60.0
+
+        return tc_min
+
+    @staticmethod
+    def faa(
+        length_km: float,
+        slope_m_per_m: float,
+        runoff_coeff: float,
+    ) -> float:
+        """
+        Calculate time of concentration using the FAA method.
+
+        The FAA (Federal Aviation Agency) method was originally developed
+        for airport drainage design and is suitable for overland flow
+        on relatively flat surfaces with short flow paths.
+
+        Parameters
+        ----------
+        length_km : float
+            Overland flow length [km]. Must be positive.
+        slope_m_per_m : float
+            Average overland slope [m/m]. Must be positive.
+        runoff_coeff : float
+            Rational method runoff coefficient (0 < C <= 1.0).
+            Must be greater than 0 and at most 1.0.
+
+        Returns
+        -------
+        float
+            Time of concentration [min].
+
+        Raises
+        ------
+        InvalidParameterError
+            If length_km <= 0, slope_m_per_m <= 0, or runoff_coeff
+            is not in the range (0, 1.0].
+
+        Warns
+        -----
+        UserWarning
+            If parameters are outside typical application ranges:
+            length_km outside [0.015, 3.0] km, slope_m_per_m outside
+            [0.005, 0.10], or runoff_coeff outside [0.10, 0.95].
+
+        Notes
+        -----
+        Original formula (US units):
+
+            tc [min] = 1.8 * (1.1 - C) * L[ft]^0.5 / S[%]^(1/3)
+
+        Metric conversion (this implementation):
+
+            tc [min] = 22.213 * (1.1 - C) * L[km]^0.5 / S[m/m]^(1/3)
+
+        Derivation of the metric constant 22.213:
+
+            L[ft] = L[km] * 1000 / 0.3048
+            S[%] = S[m/m] * 100
+
+            tc = 1.8 * (1.1 - C) * (L[km] * 1000 / 0.3048)^0.5
+                 / (S[m/m] * 100)^(1/3)
+            tc = 1.8 * (1/0.3048)^0.5 * 1000^0.5 / 100^(1/3)
+                 * (1.1 - C) * L[km]^0.5 / S[m/m]^(1/3)
+            1.8 * (1/0.3048)^0.5 * 1000^0.5 / 100^(1/3) = 22.213
+
+        Where:
+
+        - C: rational method runoff coefficient (dimensionless)
+        - L: overland flow length
+        - S: average overland slope
+
+        References
+        ----------
+        Federal Aviation Agency (1966). Airport Drainage. Advisory Circular
+        AC 150/5320-5A. US Department of Transportation.
+
+        Federal Aviation Administration (2013). Airport Drainage Design.
+        Advisory Circular AC 150/5320-5D. US Department of Transportation.
+
+        Chin, D.A. (2000). Water-Resources Engineering. Prentice Hall.
+
+        Chow, V.T., Maidment, D.R. & Mays, L.W. (1988). Applied Hydrology.
+        McGraw-Hill.
+
+        Examples
+        --------
+        >>> ConcentrationTime.faa(length_km=0.15, slope_m_per_m=0.02, runoff_coeff=0.6)
+        15.8...
+        """
+        if length_km <= 0:
+            raise InvalidParameterError(f"length_km must be positive, got {length_km}")
+        if slope_m_per_m <= 0:
+            raise InvalidParameterError(
+                f"slope_m_per_m must be positive, got {slope_m_per_m}"
+            )
+        if runoff_coeff <= 0 or runoff_coeff > 1.0:
+            raise InvalidParameterError(
+                f"runoff_coeff must be in range (0, 1.0], got {runoff_coeff}"
+            )
+
+        # Warn if parameters are outside typical range
+        _warn_if_out_of_range(length_km, "length_km", *_FAA_LENGTH_RANGE, "faa")
+        _warn_if_out_of_range(slope_m_per_m, "slope_m_per_m", *_FAA_SLOPE_RANGE, "faa")
+        _warn_if_out_of_range(runoff_coeff, "runoff_coeff", *_FAA_C_RANGE, "faa")
+
+        # FAA formula: tc [minutes]
+        tc_min: float = (
+            22.213
+            * (1.1 - runoff_coeff)
+            * (length_km**0.5)
+            / (slope_m_per_m ** (1.0 / 3.0))
+        )
 
         return tc_min
