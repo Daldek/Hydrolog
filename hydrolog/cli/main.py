@@ -79,7 +79,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     # Execute the command
     try:
-        return args.func(args)
+        return int(args.func(args))
     except KeyboardInterrupt:
         print("\nOperation cancelled.", file=sys.stderr)
         return 130

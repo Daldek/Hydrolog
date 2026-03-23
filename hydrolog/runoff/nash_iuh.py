@@ -862,11 +862,11 @@ class NashIUH:
             n_minus_1 = N_val - 1
             numerator = (n_minus_1**N_val) * np.exp(-n_minus_1)
             denominator = gamma(N_val)
-            return numerator / denominator
+            return float(numerator / denominator)
 
         def objective(N_val: float) -> float:
             """Objective function: f(N) - target = 0."""
-            return f_N_equation(N_val) - f_N_target
+            return float(f_N_equation(N_val) - f_N_target)
 
         # f(N) has maximum around N=2-3, then decreases
         # Typical range for f(N): 0.35 - 0.40

@@ -76,7 +76,8 @@ def plot_hydrograph(
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
     else:
-        fig = ax.get_figure()
+        fig = ax.get_figure()  # type: ignore[assignment]
+        assert fig is not None
 
     times = result.times_min
     discharge = result.discharge_m3s
@@ -177,15 +178,14 @@ def plot_unit_hydrograph(
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
     else:
-        fig = ax.get_figure()
+        fig = ax.get_figure()  # type: ignore[assignment]
+        assert fig is not None
 
     # Extract data based on result type
     times = result.times_min
 
     # Determine if this is IUH (dimensionless) or UH (dimensional)
-    is_iuh = isinstance(result, (IUHResult, ClarkIUHResult))
-
-    if is_iuh:
+    if isinstance(result, (IUHResult, ClarkIUHResult)):
         ordinates = result.ordinates_per_min
         ylabel = "Rzędne IUH [1/min]"
         peak_value = result.peak_ordinate_per_min
@@ -220,7 +220,7 @@ def plot_unit_hydrograph(
 
     # Stats box
     if show_params:
-        stats = _get_uh_stats(result, is_iuh)
+        stats = _get_uh_stats(result, isinstance(result, (IUHResult, ClarkIUHResult)))
         add_stats_box(ax, stats, loc="upper right")
 
     # Labels
@@ -245,7 +245,7 @@ def _get_uh_stats(result: UHResultType, is_iuh: bool) -> dict:
     """Extract statistics from UH result for display."""
     stats = {}
 
-    if is_iuh:
+    if isinstance(result, (IUHResult, ClarkIUHResult)):
         stats["up"] = f"{result.peak_ordinate_per_min:.4f} 1/min"
     else:
         stats["Qp"] = f"{result.peak_discharge_m3s:.3f} m³/s/mm"

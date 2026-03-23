@@ -54,7 +54,8 @@ def plot_water_balance(
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
     else:
-        fig = ax.get_figure()
+        fig = ax.get_figure()  # type: ignore[assignment]
+        assert fig is not None
 
     # Extract components
     P = result.total_precip_mm
@@ -88,7 +89,7 @@ def _plot_balance_bars(ax: plt.Axes, P: float, Ia: float, F: float, Pe: float) -
     ]
     colors = ["#8c564b", "#bcbd22", get_color("effective_precip")]
 
-    bottom = 0
+    bottom: float = 0.0
     bars = []
     for value, label, color in zip(components, labels, colors):
         bar = ax.bar(
@@ -208,7 +209,8 @@ def plot_cn_curve(
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
     else:
-        fig = ax.get_figure()
+        fig = ax.get_figure()  # type: ignore[assignment]
+        assert fig is not None
 
     # Generate P values
     P = np.linspace(p_range[0], p_range[1], 200)
@@ -226,20 +228,16 @@ def plot_cn_curve(
         conditions = [(AMC.II, f"CN = {cn}", "-", 1.0)]
 
     for amc, label, linestyle, alpha in conditions:
-        Pe = []
+        pe_list: list[float] = []
         for p in P:
-            result = scs.effective_precipitation(p, amc=amc)
-            Pe.append(
-                result.effective_mm
-                if hasattr(result, "effective_mm")
-                else float(result)
-            )
+            result = scs.effective_precipitation(float(p), amc=amc)
+            pe_list.append(float(result.effective_mm))
 
-        Pe = np.array(Pe)
+        Pe_arr = np.array(pe_list)
 
         ax.plot(
             P,
-            Pe,
+            Pe_arr,
             linestyle=linestyle,
             linewidth=2,
             alpha=alpha,

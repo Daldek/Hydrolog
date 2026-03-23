@@ -66,7 +66,8 @@ def plot_stations_map(
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
     else:
-        fig = ax.get_figure()
+        fig = ax.get_figure()  # type: ignore[assignment]
+        assert fig is not None
 
     # Extract coordinates and values
     x_coords = [s.x for s in stations]
