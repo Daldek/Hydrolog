@@ -5,9 +5,9 @@
 | Pole | Wartość |
 |------|---------|
 | **Faza** | 1 - Implementacja |
-| **Sprint** | 0.6.x - Raporty UH + korekty wzorów |
-| **Sesja** | 23 |
-| **Data** | 2026-03-22 |
+| **Sprint** | 0.6.x - Raporty UH + korekty wzorów + metody tc |
+| **Sesja** | 25 |
+| **Data** | 2026-03-23 |
 | **Następny milestone** | v1.0.0 - Stabilne API |
 | **Gałąź robocza** | develop |
 
@@ -56,6 +56,100 @@
 ---
 
 ## Bieżąca sesja
+
+### Sesja 25 (2026-03-23)
+
+**Cel:** Dodanie metod FAA, Kerby i Kerby-Kirpich do modułu czasu koncentracji
+
+**Co zostało zrobione:**
+- [x] Implementacja `ConcentrationTime.faa()` — metoda FAA dla spływu powierzchniowego
+  - Wzór: `tc = 22.213 × (1.1 - C) × L^0.5 / S^(1/3)`
+  - Źródło: FAA Advisory Circular AC 150/5320-5D (2013)
+- [x] Obsługa CLI: `hydrolog tc faa --length 0.15 --slope 0.02 --runoff-coeff 0.6`
+- [x] Testy jednostkowe dla metody FAA
+- [x] Implementacja `ConcentrationTime.kerby()` — metoda Kerby dla spływu powierzchniowego/arkuszowego
+  - Wzór: `tc = 36.37 × (L × N)^0.467 × S^(-0.2335)`
+  - Korekta niskich spadków: S < 0.002 → S_adj = S + 0.0005 (Cleveland et al. 2012)
+  - Źródło: Kerby, W.S. (1959). Civil Engineering, 29(3), 174
+- [x] Obsługa CLI: `hydrolog tc kerby --length 0.10 --slope 0.008 --retardance 0.40`
+- [x] Testy jednostkowe dla metody Kerby
+- [x] Implementacja `ConcentrationTime.kerby_kirpich()` — metoda kompozytowa Kerby-Kirpich
+  - Wzór: `tc = t_overland(Kerby) + t_channel(Kirpich)`
+  - Kerby: `tc_ov = 36.37 × (L_ov × N)^0.467 × S_ov^(-0.2335)`
+  - Kirpich: `tc_ch = 3.981 × L_ch^0.77 × S_ch^(-0.385)`
+  - Korekta niskich spadków (Cleveland et al. 2012): S < 0.002 → S_adj = S + 0.0005 (oba segmenty)
+  - Źródło: Roussel et al. (2005). TxDOT Report 0-4696-2
+- [x] Obsługa CLI: `hydrolog tc kerby-kirpich --ov-length 0.25 --ov-slope 0.008 --retardance 0.40 --ch-length 5.0 --ch-slope 0.005`
+- [x] Testy jednostkowe dla metody Kerby-Kirpich
+- [x] Aktualizacja dokumentacji: CHANGELOG.md, SCOPE.md, PROGRESS.md, COMPUTATION_PATHS.md
+- [x] Refaktor spójności API (`refactor(time): harmonize API consistency`):
+  - Rename stałych `_SCS_LAG_*` → `_NRCS_*` (spójność nazewnictwa)
+  - Dodanie `tc_min: float` typed assignment w `kerby_kirpich()` return path
+  - Poprawki CLI: separatory, f-stringi, formatowanie
+  - 28 nowych testów dla pełnego pokrycia parytetowego (90 → 118 testów tc)
+- [x] Audyt dokumentacji i naprawy (PROGRESS.md, CHANGELOG.md, SCOPE.md)
+
+**Testy:** 710 (627 → 710, +83 nowe testy tc)
+
+**Pliki zmodyfikowane:**
+```
+hydrolog/time/concentration.py   # +faa() method, +kerby() method, +kerby_kirpich() method, rename _SCS_LAG_*→_NRCS_*
+hydrolog/cli/commands/tc.py       # +tc faa, +tc kerby, +tc kerby-kirpich subcommands, poprawki formatowania
+tests/unit/test_concentration.py # +83 testy (20 FAA + 19 Kerby + 14 Kerby-Kirpich + 28 parytet + 2 nowe)
+docs/CHANGELOG.md                # wpisy FAA i Kerby w [Unreleased]
+docs/SCOPE.md                    # FAA i Kerby w sekcji time + CLI
+docs/PROGRESS.md                 # sesja 25
+docs/COMPUTATION_PATHS.md        # FAA i Kerby w macierzy kompatybilności
+```
+
+---
+
+### Sesja 24 (2026-03-22) - UKOŃCZONA
+
+**Cel:** Audyt jakości kodu i spójności po konfliktach gałęzi main/develop
+
+**Co zostało zrobione:**
+- [x] Pełny audyt repo (4 równoległe zespoły agentów):
+  - Weryfikacja stanu Git i gałęzi (topologia, historia, konflikty)
+  - Audyt jakości kodu (testy, Black, mypy, pokrycie)
+  - Spójność dokumentacji i wersji (CHANGELOG, README, SCOPE, PROGRESS)
+  - Zgodność ze standardami i wymaganiami (PRD, SCOPE, DEVELOPMENT_STANDARDS)
+- [x] Naprawiono tracking gałęzi `develop`: `origin/main` → `origin/develop`
+- [x] Black formatting na 31 plikach (71/71 zgodnych)
+- [x] Zaktualizowano referencje "SCS Lag" → "NRCS" w 4 plikach (8 edycji):
+  - README.md, docs/SCOPE.md, docs/PROGRESS.md, reports/sections/concentration.py
+- [x] Naprawiono CHANGELOG.md:
+  - Dodano brakującą sekcję [0.5.2]
+  - Zaktualizowano tabelę wersji (dodano v0.5.1–v0.6.2)
+- [x] Naprawiono stale referencje w PROGRESS.md (v0.6.1→v0.6.2, footer)
+- [x] Naprawiono `.. deprecated:: 0.7.0` → `0.6.2` w nash_iuh.py
+- [x] Merge develop → main, przesunięto tag v0.6.2 na prawidłowy commit
+- [x] Push: develop, main, tag v0.6.2
+
+**Pliki zmodyfikowane:**
+```
+# Black formatting (31 plików .py) — tylko formatowanie
+hydrolog/**/*.py, tests/**/*.py
+
+# Dokumentacja i naprawy
+README.md                                    # SCS Lag → NRCS
+docs/CHANGELOG.md                            # +v0.5.2, tabela wersji
+docs/PROGRESS.md                             # stale refs, sesja 24
+docs/SCOPE.md                                # SCS Lag → NRCS
+hydrolog/reports/sections/concentration.py   # SCS Lag → NRCS w docstringu
+hydrolog/runoff/nash_iuh.py                  # deprecated 0.7.0 → 0.6.2
+```
+
+**Wyniki audytu — zidentyfikowane problemy (średnioterminowe, przed v1.0.0):**
+- 89 błędów mypy w 21 plikach (union-attr, arg-type, no-any-return)
+- Pokrycie `reports/sections/unit_hydrograph.py` = 28%
+- Niespójność default Ct w CLI (2.0) vs klasa Snyder (1.5)
+- Brak Horton classification i współczynnika krętości (SCOPE)
+- SCOPE.md nie uwzględnia modułów visualization i reports
+
+**Testy:** 627 passed (bez zmian funkcjonalnych)
+
+---
 
 ### Sesja 23 (2026-03-22) - UKOŃCZONA
 
@@ -842,21 +936,36 @@ Wyniki Hydrolog (model Nasha):
 
 ### Stan projektu
 - **Faza:** Implementacja - v0.6.2 wydana
-- **Ostatni commit:** v0.6.2 — raporty UH + korekty wzorów metrycznych
+- **Ostatni commit:** refactor(time): harmonize API consistency across all tc methods
 - **Tag:** `v0.6.2` (ostatni release)
 - **Środowisko:** `.venv` z Python 3.12+
 - **Repo GitHub:** https://github.com/Daldek/Hydrolog.git
-- **Testy:** 626 testów (611 jednostkowych + 15 integracyjnych)
+- **Testy:** 710 testów (695 jednostkowych + 15 integracyjnych)
 
 ### Zaimplementowane moduły
-- `hydrolog.time.ConcentrationTime` - 3 metody (Kirpich, NRCS, Giandotti) + ostrzeżenia zakresów
+- `hydrolog.time.ConcentrationTime` - 6 metod (Kirpich, NRCS, Giandotti, FAA, Kerby, Kerby-Kirpich) + ostrzeżenia zakresów
 - `hydrolog.precipitation` - 4 typy hietogramów (Block, Triangular, Beta, EulerII) + interpolacja (Thiessen, IDW, Isohyet)
 - `hydrolog.runoff` - SCS-CN, SCSUnitHydrograph, NashIUH (from_tc, from_lutz, from_urban_regression), ClarkIUH, SnyderUH, HydrographGenerator (z uh_model), CN Lookup (TR-55)
 - `hydrolog.morphometry` - WatershedGeometry, TerrainAnalysis, HypsometricCurve, WatershedParameters (integracja GIS)
 - `hydrolog.network` - StreamNetwork, klasyfikacja Strahlera/Shreve'a
 - `hydrolog.visualization` - 15 funkcji wizualizacji (hietogramy, hydrogramy, porównania UH, bilans wodny, morfometria, sieć rzeczna)
 - `hydrolog.reports` - HydrologyReportGenerator (raporty Markdown z wzorami LaTeX)
-- `hydrolog.cli` - interfejs CLI (tc, cn, scs, uh)
+- `hydrolog.cli` - interfejs CLI (tc [kirpich, nrcs, giandotti, faa, kerby, kerby-kirpich], cn, scs, uh)
+
+### Ostatnio dodane (Sesja 25 - metody tc + refaktor API)
+- `ConcentrationTime.faa()` — metoda FAA (AC 150/5320-5D)
+- `ConcentrationTime.kerby()` — metoda Kerby (1959) z korektą niskich spadków
+- `ConcentrationTime.kerby_kirpich()` — metoda kompozytowa Kerby-Kirpich (Roussel 2005)
+- CLI: `hydrolog tc faa`, `hydrolog tc kerby`, `hydrolog tc kerby-kirpich`
+- Refaktor API: rename `_SCS_LAG_*` → `_NRCS_*`, poprawki CLI, 83 nowe testy
+- Audyt dokumentacji i naprawy (CHANGELOG, SCOPE, PROGRESS, COMPUTATION_PATHS)
+
+### Ostatnio dodane (Sesja 24 - audyt jakości)
+- Black formatting na 31 plikach
+- Naprawiono tracking gałęzi develop
+- Zaktualizowano referencje SCS Lag → NRCS w dokumentacji
+- Naprawiono CHANGELOG (brakująca sekcja v0.5.2, tabela wersji)
+- Naprawiono stale referencje wersji w PROGRESS.md i nash_iuh.py
 
 ### Ostatnio dodane (Sesja 23 - v0.6.2)
 - Pełne wzory obliczeniowe w raportach dla Nash (3 metody), Clark, Snyder
@@ -1121,4 +1230,4 @@ Hydrolog/
 
 ---
 
-**Ostatnia aktualizacja:** 2026-03-22, Sesja 23 (raporty UH + korekty wzorów metrycznych + wydanie v0.6.2)
+**Ostatnia aktualizacja:** 2026-03-23, Sesja 25 (metody tc FAA/Kerby/Kerby-Kirpich + refaktor API)

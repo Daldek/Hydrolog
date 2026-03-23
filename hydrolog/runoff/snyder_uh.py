@@ -204,7 +204,7 @@ class SnyderUH:
         -----
         Formula: tL = Ct * (L * Lc)^0.3
         """
-        return self.ct * ((self.L_km * self.Lc_km) ** 0.3)
+        return float(self.ct * ((self.L_km * self.Lc_km) ** 0.3))
 
     @property
     def lag_time_min(self) -> float:
@@ -429,22 +429,22 @@ class SnyderUH:
         w75 = 0.1019 / (qp_per_area**1.08)
 
         if abs(percent - 50.0) < 0.01:
-            return w50
+            return float(w50)
         elif abs(percent - 75.0) < 0.01:
-            return w75
+            return float(w75)
         elif percent < 50.0:
             # Extrapolate below 50%
             # Assume linear relationship in log space
             ratio = percent / 50.0
-            return w50 / ratio
+            return float(w50 / ratio)
         elif percent < 75.0:
             # Interpolate between 50% and 75%
             t = (percent - 50.0) / 25.0
-            return w50 + t * (w75 - w50)
+            return float(w50 + t * (w75 - w50))
         else:
             # Extrapolate above 75%
             ratio = percent / 75.0
-            return w75 * (1.0 / ratio)
+            return float(w75 * (1.0 / ratio))
 
     def _generate_shape(
         self, times_min: NDArray[np.float64], duration_min: Optional[float] = None

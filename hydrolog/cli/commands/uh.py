@@ -250,9 +250,9 @@ def _format_output(
     for i in range(max(0, n - 3), n):
         show_indices.add(i)
 
-    show_indices = sorted(show_indices)
+    sorted_indices = sorted(show_indices)
     prev_i = -1
-    for i in show_indices:
+    for i in sorted_indices:
         if prev_i >= 0 and i > prev_i + 1:
             lines.append("  ...")
         marker = " *" if i == peak_idx else ""

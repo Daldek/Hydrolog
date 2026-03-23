@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.6.3] - 2026-03-23
+
+### Added
+
+#### `hydrolog.time.concentration` - FAA Method
+- `ConcentrationTime.faa()` - FAA (Federal Aviation Agency) method for overland/sheet flow tc calculation
+  - Formula: `tc = 22.213 × (1.1 - C) × L^0.5 / S^(1/3)`
+  - Parameters: C (rational method runoff coefficient), L (overland flow length in km), S (slope in m/m)
+  - Source: FAA Advisory Circular AC 150/5320-5D (2013)
+  - CLI support: `hydrolog tc faa --length 0.15 --slope 0.02 --runoff-coeff 0.6`
+
+#### `hydrolog.time.concentration` - Kerby Method
+- `ConcentrationTime.kerby()` - Kerby (1959) method for overland/sheet flow tc calculation
+  - Formula: `tc = 36.37 × (L × N)^0.467 × S^(-0.2335)`
+  - Parameters: L (overland flow length in km), N (Kerby retardance roughness coefficient), S (slope in m/m)
+  - Low-slope adjustment: for S < 0.002, S_adj = S + 0.0005 (Cleveland et al. 2012)
+  - Source: Kerby, W.S. (1959). "Time of concentration for overland flow." Civil Engineering, 29(3), 174
+  - CLI support: `hydrolog tc kerby --length 0.10 --slope 0.008 --retardance 0.40`
+
+#### `hydrolog.time.concentration` - Kerby-Kirpich Composite Method
+- `ConcentrationTime.kerby_kirpich()` - Kerby-Kirpich composite method for time of concentration
+  - Combines Kerby (overland flow) and Kirpich (channel flow) for composite tc estimation
+  - Formula: `tc = t_overland(Kerby) + t_channel(Kirpich)`
+    - Kerby: `tc_ov = 36.37 × (L_ov × N)^0.467 × S_ov^(-0.2335)`
+    - Kirpich: `tc_ch = 3.981 × L_ch^0.77 × S_ch^(-0.385)`
+  - Low-slope adjustment (Cleveland et al. 2012): for S < 0.002, S_adj = S + 0.0005 (applied to both segments)
+  - Source: Roussel et al. (2005). TxDOT Report 0-4696-2
+  - CLI support: `hydrolog tc kerby-kirpich --ov-length 0.25 --ov-slope 0.008 --retardance 0.40 --ch-length 5.0 --ch-slope 0.005`
+
+### Changed
+- `refactor(time): harmonize API consistency across all tc methods` — rename `_SCS_LAG_*` to `_NRCS_*`, fix CLI formatting, add 28 parity tests (90 → 118)
+
+### Fixed
+- `fix(types): resolve all 88 mypy errors across the codebase` — float() casts, type narrowing, TYPE_CHECKING imports, assert guards
+- `docs: fix stale content and cross-document inconsistencies` — CHANGELOG, SCOPE, PROGRESS, COMPUTATION_PATHS, PRD, DEV_STANDARDS, IMPL_PROMPT
+
+---
+
+## [0.6.2] - 2026-03-22
+
 ### Added
 
 #### `hydrolog.runoff.nash_iuh` - Lutz Calculation Results
@@ -25,6 +67,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Full calculation steps with LaTeX formulas when `lutz_params` provided
   - All intermediate values automatically substituted
   - Literature references (Lutz 1984, KZGW 2017)
+
+#### Raporty — pełne wzory obliczeniowe dla wszystkich modeli UH
+- **Nash IUH** — 3 metody estymacji parametrów w raportach:
+  - `from_tc` — formuły tlag = λ·tc, K = tlag/n z podstawionymi wartościami
+  - `from_lutz` — 6 kroków metody Lutza (P1, tp, up, f(N), N, K) z podstawieniami
+  - `from_urban_regression` — 3 kroki regresji (tL, k, N) z tabelą wejść i referencją
+- **Clark IUH** — rozbudowana sekcja raportu:
+  - Estymacja R z metody R/Tc z podstawieniami
+  - Współczynnik routingu C1 = Δt/(2R+Δt) z wartościami
+  - Histogram czas-powierzchnia (dwuczęściowy HEC-HMS) z Tc
+  - Czas opóźnienia tlag ≈ Tc/2 + R
+- **Snyder UH** — pełne wzory z podstawieniami numerycznymi:
+  - tL, tD = tL/5.5, tp, qp, tb — wszystkie z wartościami
+  - W50, W75 — szerokości hydrogramu z poprawnymi stałymi metrycznymi
+  - Korekta dla niestandardowego czasu trwania (tLR, tpR, qpR)
+- **6 nowych metod** `FormulaRenderer`:
+  - `nash_from_tc_formulas()`, `nash_from_lutz_formulas()`,
+    `nash_urban_regression_formulas()`
+  - `clark_from_tc_r_ratio()`, `clark_routing_coefficient()`,
+    `clark_time_area_substituted()`
+- Detekcja `estimation_method` w `model_params` we wszystkich sekcjach UH
 
 ### Changed
 - Terminology: "ordynaty" → "rzędne" throughout codebase (Polish orthography)
@@ -53,46 +116,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Use `from_lutz()` for ungauged watersheds (Lutz 1984, KZGW 2017)
   - Provide `n` and `K` directly to the constructor
 
-### Documentation
-- Added `docs/NASH_AUDIT_REPORT.md` - architectural audit of Nash IUH module
-  - Literature verification (10 sources)
-  - Analysis of `from_tc()` vs `from_lutz()` methods
-  - Recommendations for module architecture
-- Added `docs/COMPUTATION_PATHS.md` - computation paths for all UH models
-  - Compatibility matrix: model × parameter estimation method
-  - ASCII flow diagrams for each model (SCS, Nash, Clark, Snyder)
-  - Literature verification for each computation path
-  - Code examples for correct usage
-  - "Common errors and how to avoid them" section
-  - 10 literature references
-
----
-
-## [0.6.2] - 2026-03-22
-
-### Added
-
-#### Raporty — pełne wzory obliczeniowe dla wszystkich modeli UH
-- **Nash IUH** — 3 metody estymacji parametrów w raportach:
-  - `from_tc` — formuły tlag = λ·tc, K = tlag/n z podstawionymi wartościami
-  - `from_lutz` — 6 kroków metody Lutza (P1, tp, up, f(N), N, K) z podstawieniami
-  - `from_urban_regression` — 3 kroki regresji (tL, k, N) z tabelą wejść i referencją
-- **Clark IUH** — rozbudowana sekcja raportu:
-  - Estymacja R z metody R/Tc z podstawieniami
-  - Współczynnik routingu C1 = Δt/(2R+Δt) z wartościami
-  - Histogram czas-powierzchnia (dwuczęściowy HEC-HMS) z Tc
-  - Czas opóźnienia tlag ≈ Tc/2 + R
-- **Snyder UH** — pełne wzory z podstawieniami numerycznymi:
-  - tL, tD = tL/5.5, tp, qp, tb — wszystkie z wartościami
-  - W50, W75 — szerokości hydrogramu z poprawnymi stałymi metrycznymi
-  - Korekta dla niestandardowego czasu trwania (tLR, tpR, qpR)
-- **6 nowych metod** `FormulaRenderer`:
-  - `nash_from_tc_formulas()`, `nash_from_lutz_formulas()`,
-    `nash_urban_regression_formulas()`
-  - `clark_from_tc_r_ratio()`, `clark_routing_coefficient()`,
-    `clark_time_area_substituted()`
-- Detekcja `estimation_method` w `model_params` we wszystkich sekcjach UH
-
 ### Fixed
 
 #### Korekty wzorów metrycznych
@@ -106,12 +129,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **SCS Lag docstring** — stała 7182 → **7069** (kod był poprawny, błąd w dokumentacji)
 
 ### Documentation
+- Added `docs/NASH_AUDIT_REPORT.md` - architectural audit of Nash IUH module
+  - Literature verification (10 sources)
+  - Analysis of `from_tc()` vs `from_lutz()` methods
+  - Recommendations for module architecture
+- Added `docs/COMPUTATION_PATHS.md` - computation paths for all UH models
+  - Compatibility matrix: model × parameter estimation method
+  - ASCII flow diagrams for each model (SCS, Nash, Clark, Snyder)
+  - Literature verification for each computation path
+  - Code examples for correct usage
+  - "Common errors and how to avoid them" section
+  - 10 literature references
 - Dokumentacja `SCSCN` — dodano referencję Woodward et al. (2003) dla λ=0.05
   z ostrzeżeniem o konieczności rekalibracji CN
 - Dokumentacja `from_urban_regression()` — pełna historia konwersji
   imperial→metryczny z referencjami (Sarma 1969, Rao 1972, Kołodziejczyk 2017)
-- Nowy plik `docs/NASH_URBAN_REGRESSION_DERIVATION.md` — dowód matematyczny
-  konwersji stałych 0.831→1.28 i 0.569→0.56 z weryfikacją numeryczną
+- ~~Nowy plik `docs/NASH_URBAN_REGRESSION_DERIVATION.md`~~ — dowód matematyczny
+  konwersji stałych 0.831→1.28 i 0.569→0.56 z weryfikacją numeryczną (plik usunięty)
 
 ### Testing
 - 5 nowych testów Clark IUH (histogram: symetria, brak osobliwości, centroid)
@@ -322,13 +356,25 @@ Requires optional dependencies: `pip install hydrolog[visualization]`
   - Verified against KZGW (2017) Table C.2 (accuracy < 0.001)
   - Reference: Lutz W. (1984), Universität Karlsruhe
 
+#### `hydrolog.precipitation` - Euler Type II Hyetograph
+- `EulerIIHietogram` - DVWK Euler Type II hyetograph for design storms
+
+#### `hydrolog.runoff.snyder_uh` - Enhancements
+- `SnyderUHResult` - added duration tracking (`duration_hours` field)
+- Water balance formula for Snyder time base calculation
+
 ### Changed
+- **BREAKING:** Unified UH model API — `area_km2` parameter moved to constructor for all UH models
 - Enhanced README.md documentation:
   - Nash model theory (reservoir cascade, IUH formula, properties)
   - All parameter estimation methods (from_tc, from_moments, from_lutz)
   - Lutz method algorithm with full equations
   - Influence of physiographic parameters on runoff
   - New visualization module section with examples
+
+### Fixed
+- `fix(snyder)`: Corrected time-to-peak formula and updated notation
+- `fix(snyder)`: Corrected SI unit formulas for Snyder UH model
 
 ### Dependencies
 - Added optional `visualization` dependency group: matplotlib>=3.7, seaborn>=0.12

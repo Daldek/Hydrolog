@@ -184,7 +184,8 @@ def plot_bifurcation_ratios(
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
     else:
-        fig = ax.get_figure()
+        fig = ax.get_figure()  # type: ignore[assignment]
+        assert fig is not None
 
     if not stats.bifurcation_ratios:
         ax.text(
@@ -205,7 +206,7 @@ def plot_bifurcation_ratios(
     bars = ax.bar(x, values, color=PALETTE[2], edgecolor="white", alpha=0.8)
 
     # Mean line
-    mean_rb = np.mean(values)
+    mean_rb = float(np.mean(values))
     ax.axhline(
         mean_rb,
         color="red",
