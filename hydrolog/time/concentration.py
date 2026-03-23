@@ -20,6 +20,13 @@ _FAA_LENGTH_RANGE = (0.015, 3.0)  # km (50 ft to 10,000 ft)
 _FAA_SLOPE_RANGE = (0.005, 0.10)  # m/m (0.5% to 10%)
 _FAA_C_RANGE = (0.10, 0.95)  # dimensionless
 
+_KERBY_LENGTH_RANGE = (0.01, 0.366)  # km (approx 30 ft to 1200 ft)
+_KERBY_SLOPE_RANGE = (0.001, 0.01)  # m/m (original calibration)
+_KERBY_N_RANGE = (0.02, 0.80)  # dimensionless
+
+_KERBY_LOW_SLOPE_THRESHOLD = 0.002  # m/m
+_KERBY_LOW_SLOPE_OFFSET = 0.0005  # m/m
+
 
 def _warn_if_out_of_range(
     value: float,
@@ -509,5 +516,137 @@ class ConcentrationTime:
             * (length_km**0.5)
             / (slope_m_per_m ** (1.0 / 3.0))
         )
+
+        return tc_min
+
+    @staticmethod
+    def kerby(
+        length_km: float,
+        slope_m_per_m: float,
+        retardance: float,
+    ) -> float:
+        """
+        Calculate time of concentration using the Kerby formula.
+
+        The Kerby formula (1959) estimates tc for shallow overland
+        (sheet) flow on small, relatively flat catchments. It is commonly
+        used as the overland-flow component in composite tc methods
+        (e.g., Kerby-Kirpich).
+
+        Parameters
+        ----------
+        length_km : float
+            Overland flow length [km]. Must be positive.
+        slope_m_per_m : float
+            Average overland slope [m/m]. Must be positive.
+        retardance : float
+            Kerby retardance roughness coefficient (dimensionless).
+            Must be positive. Typical values:
+
+            ========================================================  =====
+            Surface                                                   N
+            ========================================================  =====
+            Smooth impervious (pavement, asphalt, concrete)           0.02
+            Smooth bare packed soil                                    0.10
+            Poor grass, cultivated row crops                           0.20
+            Pasture, average grass                                     0.40
+            Deciduous forest                                           0.60
+            Dense grass, coniferous forest, deciduous forest w/ litter 0.80
+            ========================================================  =====
+
+        Returns
+        -------
+        float
+            Time of concentration [min].
+
+        Raises
+        ------
+        InvalidParameterError
+            If length_km <= 0, slope_m_per_m <= 0, or retardance <= 0.
+
+        Warns
+        -----
+        UserWarning
+            If parameters are outside typical application ranges:
+            length_km outside [0.01, 0.366] km, slope_m_per_m outside
+            [0.001, 0.01], or retardance outside [0.02, 0.80].
+
+        Notes
+        -----
+        Original formula (US units):
+
+            tc [min] = (0.67 * L[ft] * N / sqrt(S))^0.467
+
+        Expanded form:
+
+            tc [min] = 0.67^0.467 * (L[ft] * N)^0.467 * S^(-0.5*0.467)
+            tc [min] = 0.8294 * (L[ft] * N)^0.467 * S^(-0.2335)
+
+        Metric conversion (this implementation):
+
+            tc [min] = 36.37 * (L[km] * N)^0.467 * S^(-0.2335)
+
+        Derivation of the metric constant 36.37:
+
+            L[ft] = L[m] / 0.3048
+            K_SI = (0.67 / 0.3048)^0.467 = 2.19816^0.467 = 1.4446
+
+            L[m] = L[km] * 1000
+            K_km = 1.4446 * 1000^0.467 = 1.4446 * 25.1768 = 36.37
+
+            tc [min] = 36.37 * (L[km] * N)^0.467 * S^(-0.2335)
+
+        Low-slope adjustment (Cleveland et al. 2012):
+
+            For S < 0.002: S_adj = S + 0.0005
+
+        This prevents unreasonably large tc values on very flat terrain.
+
+        References
+        ----------
+        Kerby, W.S. (1959). Time of concentration for overland flow.
+        Civil Engineering, 29(3), 174.
+
+        Roussel, M.C., Thompson, D.B., Fang, X., Cleveland, T.G., and
+        Garcia, C.A. (2005). Time-parameter estimation for applicable Texas
+        watersheds. TxDOT Research Report 0-4696-2.
+
+        Cleveland, T.G., Thompson, D.B., and Fang, X. (2012). Use of the
+        Kerby-Kirpich approach for Texas watersheds. TxDOT Research Report
+        0-6544-1.
+
+        Texas Department of Transportation (2019). Hydraulic Design Manual.
+        Chapter 4: Time of Concentration.
+
+        Examples
+        --------
+        >>> ConcentrationTime.kerby(length_km=0.10, slope_m_per_m=0.008, retardance=0.40)
+        24.9...
+        """
+        if length_km <= 0:
+            raise InvalidParameterError(f"length_km must be positive, got {length_km}")
+        if slope_m_per_m <= 0:
+            raise InvalidParameterError(
+                f"slope_m_per_m must be positive, got {slope_m_per_m}"
+            )
+        if retardance <= 0:
+            raise InvalidParameterError(
+                f"retardance must be positive, got {retardance}"
+            )
+
+        # Warn if parameters are outside typical range
+        _warn_if_out_of_range(length_km, "length_km", *_KERBY_LENGTH_RANGE, "kerby")
+        _warn_if_out_of_range(
+            slope_m_per_m, "slope_m_per_m", *_KERBY_SLOPE_RANGE, "kerby"
+        )
+        _warn_if_out_of_range(retardance, "retardance", *_KERBY_N_RANGE, "kerby")
+
+        # Low-slope adjustment (Cleveland et al. 2012)
+        slope = slope_m_per_m
+        if slope < _KERBY_LOW_SLOPE_THRESHOLD:
+            slope = slope + _KERBY_LOW_SLOPE_OFFSET
+
+        # Kerby formula: tc [minutes]
+        tc_min: float = 36.37 * (length_km * retardance) ** 0.467 * slope ** (-0.2335)
 
         return tc_min
