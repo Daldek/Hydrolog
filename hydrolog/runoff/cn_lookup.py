@@ -262,16 +262,17 @@ def get_cn(
 
     # Convert string to LandCover enum if needed
     if isinstance(land_cover, str):
+        land_cover_str: str = land_cover
         try:
-            land_cover = LandCover(land_cover.lower())
+            land_cover = LandCover(land_cover_str.lower())
         except ValueError:
             # Try matching by name
             try:
-                land_cover = LandCover[land_cover.upper()]
+                land_cover = LandCover[land_cover_str.upper()]
             except KeyError:
                 valid = [lc.value for lc in LandCover]
                 raise InvalidParameterError(
-                    f"Invalid land cover: '{land_cover}'. Valid options: {valid}"
+                    f"Invalid land cover: '{land_cover_str}'. Valid options: {valid}"
                 )
 
     # Convert string to HydrologicCondition if needed
@@ -340,10 +341,11 @@ def lookup_cn(
     hsg = hsg.upper()
 
     if isinstance(land_cover, str):
+        land_cover_str2: str = land_cover
         try:
-            land_cover = LandCover(land_cover.lower())
+            land_cover = LandCover(land_cover_str2.lower())
         except ValueError:
-            land_cover = LandCover[land_cover.upper()]
+            land_cover = LandCover[land_cover_str2.upper()]
 
     if isinstance(condition, str):
         condition = HydrologicCondition(condition.lower())
@@ -379,10 +381,11 @@ def get_cn_range(land_cover: Union[LandCover, str]) -> Dict[str, Tuple[int, int]
     HSG A: (30, 45)
     """
     if isinstance(land_cover, str):
+        land_cover_str3: str = land_cover
         try:
-            land_cover = LandCover(land_cover.lower())
+            land_cover = LandCover(land_cover_str3.lower())
         except ValueError:
-            land_cover = LandCover[land_cover.upper()]
+            land_cover = LandCover[land_cover_str3.upper()]
 
     result: Dict[str, Tuple[int, int]] = {}
 

@@ -234,9 +234,9 @@ class ClarkIUH:
 
         tau = t_min / self.tc_min
         if tau <= 0.5:
-            return 1.414 * (tau**1.5)
+            return float(1.414 * (tau**1.5))
         else:
-            return 1.0 - 1.414 * ((1.0 - tau) ** 1.5)
+            return float(1.0 - 1.414 * ((1.0 - tau) ** 1.5))
 
     def incremental_time_area(
         self, times_min: NDArray[np.float64]

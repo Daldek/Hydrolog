@@ -270,7 +270,7 @@ class HydrologyReportGenerator:
         self,
         area_km2: float,
         cn: Optional[int] = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> str:
         """Build watershed parameters section."""
         return generate_watershed_section(
@@ -462,7 +462,7 @@ class HydrologyReportGenerator:
         method: str,
     ) -> Dict[str, Any]:
         """Extract parameters needed for tc calculation."""
-        params = {}
+        params: Dict[str, Any] = {}
         if watershed_params is None:
             return params
 

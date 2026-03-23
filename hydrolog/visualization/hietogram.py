@@ -65,7 +65,8 @@ def plot_hietogram(
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
     else:
-        fig = ax.get_figure()
+        fig = ax.get_figure()  # type: ignore[assignment]
+        assert fig is not None
 
     # Prepare data
     times = result.times_min
@@ -181,7 +182,8 @@ def plot_hietogram_comparison(
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
     else:
-        fig = ax.get_figure()
+        fig = ax.get_figure()  # type: ignore[assignment]
+        assert fig is not None
 
     # Ensure effective is numpy array
     effective = np.asarray(effective)

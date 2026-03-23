@@ -223,7 +223,12 @@ def generate_watershed_section(
             ]
         )
 
-        if all([form_factor, compactness, circularity, elongation]):
+        if (
+            form_factor is not None
+            and compactness is not None
+            and circularity is not None
+            and elongation is not None
+        ):
             lines.append(
                 TableGenerator.shape_indicators_table(
                     form_factor=form_factor,

@@ -94,7 +94,8 @@ def plot_uh_comparison(
             fig, ax_plot = plt.subplots(figsize=figsize)
         else:
             ax_plot = ax
-            fig = ax.get_figure()
+            fig = ax.get_figure()  # type: ignore[assignment]
+            assert fig is not None
         ax_table = None
 
     # Get colors for models
@@ -114,15 +115,14 @@ def plot_uh_comparison(
             model_colors[name] = PALETTE[i % len(PALETTE)]
 
     # Plot each model
-    max_time = 0
-    max_q = 0
+    max_time: float = 0.0
+    max_q: float = 0.0
 
     for name, result in models.items():
         times = result.times_min
 
         # Get ordinates based on result type
-        is_iuh = isinstance(result, (IUHResult, ClarkIUHResult))
-        if is_iuh:
+        if isinstance(result, (IUHResult, ClarkIUHResult)):
             ordinates = result.ordinates_per_min
         else:
             ordinates = result.ordinates_m3s
@@ -131,8 +131,8 @@ def plot_uh_comparison(
         ax_plot.plot(times, ordinates, color=color, linewidth=2, label=name)
 
         # Track max values
-        max_time = max(max_time, times[-1])
-        max_q = max(max_q, np.max(ordinates))
+        max_time = max(max_time, float(times[-1]))
+        max_q = max(max_q, float(np.max(ordinates)))
 
     # Labels
     ax_plot.set_xlabel(get_label("time_min"))
@@ -167,11 +167,9 @@ def plot_uh_comparison(
         rows = []
 
         for name, result in models.items():
-            is_iuh = isinstance(result, (IUHResult, ClarkIUHResult))
-
             tp = result.time_to_peak_min
 
-            if is_iuh:
+            if isinstance(result, (IUHResult, ClarkIUHResult)):
                 qp = result.peak_ordinate_per_min
                 qp_str = f"{qp:.4f} [1/min]"
             else:
@@ -184,7 +182,11 @@ def plot_uh_comparison(
                 tb_str = f"{tb:.0f}"
             else:
                 # Estimate as time when Q < 1% of peak
-                ordinates = result.ordinates_per_min if is_iuh else result.ordinates_m3s
+                ordinates = (
+                    result.ordinates_per_min
+                    if isinstance(result, (IUHResult, ClarkIUHResult))
+                    else result.ordinates_m3s
+                )
                 peak = np.max(ordinates)
                 idx = np.where(ordinates > 0.01 * peak)[0]
                 if len(idx) > 0:

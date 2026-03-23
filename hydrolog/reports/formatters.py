@@ -938,6 +938,7 @@ class TableGenerator:
         p_cumsum = np.cumsum(precip_mm)
 
         if has_effective:
+            assert effective_mm is not None
             pe_cumsum = np.cumsum(effective_mm)
             headers = "| Czas [min] | P [mm] | P kum. [mm] | Pe [mm] | Pe kum. [mm] |"
             separator = "|--------:|------:|------:|------:|------:|"
@@ -952,6 +953,7 @@ class TableGenerator:
             p = precip_mm[i]
             pc = p_cumsum[i]
             if has_effective:
+                assert effective_mm is not None
                 pe = effective_mm[i]
                 pec = pe_cumsum[i]
                 lines.append(f"| {t:.1f} | {p:.2f} | {pc:.2f} | {pe:.2f} | {pec:.2f} |")
