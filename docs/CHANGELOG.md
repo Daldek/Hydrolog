@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### `hydrolog.time.concentration` - FAA Method
+- `ConcentrationTime.faa()` - FAA (Federal Aviation Agency) method for overland/sheet flow tc calculation
+  - Formula: `tc = 22.213 × (1.1 - C) × L^0.5 / S^(1/3)`
+  - Parameters: C (rational method runoff coefficient), L (overland flow length in km), S (slope in m/m)
+  - Source: FAA Advisory Circular AC 150/5320-5D (2013)
+  - CLI support: `hydrolog tc faa --length 0.15 --slope 0.02 --runoff-coeff 0.6`
+
 #### `hydrolog.runoff.nash_iuh` - Lutz Calculation Results
 - `LutzCalculationResult` - new dataclass storing all intermediate calculation steps
   - Input parameters: L_km, Lc_km, slope, manning_n, urban_pct, forest_pct

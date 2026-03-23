@@ -57,6 +57,31 @@
 
 ## Bieżąca sesja
 
+### Sesja 25 (2026-03-23)
+
+**Cel:** Dodanie metody FAA do modułu czasu koncentracji
+
+**Co zostało zrobione:**
+- [x] Implementacja `ConcentrationTime.faa()` — metoda FAA dla spływu powierzchniowego
+  - Wzór: `tc = 22.213 × (1.1 - C) × L^0.5 / S^(1/3)`
+  - Źródło: FAA Advisory Circular AC 150/5320-5D (2013)
+- [x] Obsługa CLI: `hydrolog tc faa --length 0.15 --slope 0.02 --runoff-coeff 0.6`
+- [x] Testy jednostkowe dla metody FAA
+- [x] Aktualizacja dokumentacji: CHANGELOG.md, SCOPE.md, PROGRESS.md, COMPUTATION_PATHS.md
+
+**Pliki zmodyfikowane:**
+```
+hydrolog/time/concentration.py   # +faa() method
+hydrolog/cli/main.py             # +tc faa subcommand
+tests/                           # +testy FAA
+docs/CHANGELOG.md                # wpis FAA w [Unreleased]
+docs/SCOPE.md                    # FAA w sekcji time + CLI
+docs/PROGRESS.md                 # sesja 25
+docs/COMPUTATION_PATHS.md        # FAA w macierzy kompatybilności
+```
+
+---
+
 ### Sesja 24 (2026-03-22) - UKOŃCZONA
 
 **Cel:** Audyt jakości kodu i spójności po konfliktach gałęzi main/develop
