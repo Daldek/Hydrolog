@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.6.3] - 2026-03-23
+
 ### Added
 
 #### `hydrolog.time.concentration` - FAA Method
@@ -35,7 +39,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - CLI support: `hydrolog tc kerby-kirpich --ov-length 0.25 --ov-slope 0.008 --retardance 0.40 --ch-length 5.0 --ch-slope 0.005`
 
 ### Changed
-- `refactor(time): harmonize API consistency across all tc methods — rename _SCS_LAG_* to _NRCS_*, fix CLI formatting, add 28 tests`
+- `refactor(time): harmonize API consistency across all tc methods` — rename `_SCS_LAG_*` to `_NRCS_*`, fix CLI formatting, add 28 parity tests (90 → 118)
+
+### Fixed
+- `fix(types): resolve all 88 mypy errors across the codebase` — float() casts, type narrowing, TYPE_CHECKING imports, assert guards
+- `docs: fix stale content and cross-document inconsistencies` — CHANGELOG, SCOPE, PROGRESS, COMPUTATION_PATHS, PRD, DEV_STANDARDS, IMPL_PROMPT
 
 ---
 
