@@ -127,10 +127,47 @@ class TestNRCS:
 
         assert tc_steep < tc_gentle
 
+    def test_nrcs_known_value(self):
+        """Test NRCS formula against hand-calculated value."""
+        # L=1.0 km, S=0.02, CN=75
+        # retention_mm = (25400/75) - 254 = 338.667 - 254 = 84.667 mm
+        # length_m = 1000 m, slope_percent = 2.0
+        # tc = 0.01416 * 1000^0.8 * (84.667+25.4)^0.7 * 2.0^(-0.5)
+        # 1000^0.8 = 251.189
+        # (84.667+25.4)^0.7 = (110.067)^0.7 = 26.853
+        # 2.0^(-0.5) = 0.70711
+        # tc = 0.01416 * 251.189 * 26.853 * 0.70711
+        # tc ≈ 67.6 min
+        tc = ConcentrationTime.nrcs(length_km=1.0, slope_m_per_m=0.02, cn=75)
+
+        assert abs(tc - 67.6) < 1.0
+
+    def test_nrcs_longer_path_gives_longer_tc(self):
+        """Test that longer flow path gives longer tc."""
+        cn = 75
+        slope = 0.02
+
+        tc_short = ConcentrationTime.nrcs(length_km=2.0, slope_m_per_m=slope, cn=cn)
+        tc_long = ConcentrationTime.nrcs(length_km=10.0, slope_m_per_m=slope, cn=cn)
+
+        assert tc_long > tc_short
+
     def test_nrcs_zero_length_raises(self):
         """Test that zero length raises InvalidParameterError."""
         with pytest.raises(InvalidParameterError, match="length_km must be positive"):
             ConcentrationTime.nrcs(length_km=0, slope_m_per_m=0.02, cn=75)
+
+    def test_nrcs_negative_length_raises(self):
+        """Test that negative length raises InvalidParameterError."""
+        with pytest.raises(InvalidParameterError, match="length_km must be positive"):
+            ConcentrationTime.nrcs(length_km=-1.0, slope_m_per_m=0.02, cn=75)
+
+    def test_nrcs_zero_slope_raises(self):
+        """Test that zero slope raises InvalidParameterError."""
+        with pytest.raises(
+            InvalidParameterError, match="slope_m_per_m must be positive"
+        ):
+            ConcentrationTime.nrcs(length_km=5.0, slope_m_per_m=0, cn=75)
 
     def test_nrcs_negative_slope_raises(self):
         """Test that negative slope raises InvalidParameterError."""
@@ -216,11 +253,39 @@ class TestGiandotti:
 
         assert tc_high < tc_low
 
+    def test_giandotti_longer_channel_longer_tc(self):
+        """Test that longer channel gives longer tc."""
+        area_km2 = 50.0
+        elevation_diff_m = 300.0
+
+        tc_short = ConcentrationTime.giandotti(
+            area_km2=area_km2, length_km=5.0, elevation_diff_m=elevation_diff_m
+        )
+        tc_long = ConcentrationTime.giandotti(
+            area_km2=area_km2, length_km=20.0, elevation_diff_m=elevation_diff_m
+        )
+
+        assert tc_long > tc_short
+
     def test_giandotti_zero_area_raises(self):
         """Test that zero area raises InvalidParameterError."""
         with pytest.raises(InvalidParameterError, match="area_km2 must be positive"):
             ConcentrationTime.giandotti(
                 area_km2=0, length_km=10.0, elevation_diff_m=300.0
+            )
+
+    def test_giandotti_negative_area_raises(self):
+        """Test that negative area raises InvalidParameterError."""
+        with pytest.raises(InvalidParameterError, match="area_km2 must be positive"):
+            ConcentrationTime.giandotti(
+                area_km2=-50.0, length_km=10.0, elevation_diff_m=300.0
+            )
+
+    def test_giandotti_zero_length_raises(self):
+        """Test that zero length raises InvalidParameterError."""
+        with pytest.raises(InvalidParameterError, match="length_km must be positive"):
+            ConcentrationTime.giandotti(
+                area_km2=50.0, length_km=0, elevation_diff_m=300.0
             )
 
     def test_giandotti_negative_length_raises(self):
@@ -237,6 +302,15 @@ class TestGiandotti:
         ):
             ConcentrationTime.giandotti(
                 area_km2=50.0, length_km=10.0, elevation_diff_m=0
+            )
+
+    def test_giandotti_negative_elevation_raises(self):
+        """Test that negative elevation difference raises InvalidParameterError."""
+        with pytest.raises(
+            InvalidParameterError, match="elevation_diff_m must be positive"
+        ):
+            ConcentrationTime.giandotti(
+                area_km2=50.0, length_km=10.0, elevation_diff_m=-300.0
             )
 
 
@@ -610,6 +684,19 @@ class TestKerbyKirpich:
                 channel_slope_m_per_m=0.005,
             )
 
+    def test_kerby_kirpich_negative_overland_length_raises(self):
+        """Test that negative overland length raises InvalidParameterError."""
+        with pytest.raises(
+            InvalidParameterError, match="overland_length_km must be positive"
+        ):
+            ConcentrationTime.kerby_kirpich(
+                overland_length_km=-0.25,
+                overland_slope_m_per_m=0.008,
+                retardance=0.40,
+                channel_length_km=5.0,
+                channel_slope_m_per_m=0.005,
+            )
+
     def test_kerby_kirpich_zero_channel_length_raises(self):
         """Test that zero channel length raises InvalidParameterError."""
         with pytest.raises(
@@ -620,6 +707,33 @@ class TestKerbyKirpich:
                 overland_slope_m_per_m=0.008,
                 retardance=0.40,
                 channel_length_km=0,
+                channel_slope_m_per_m=0.005,
+            )
+
+    def test_kerby_kirpich_negative_channel_length_raises(self):
+        """Test that negative channel length raises InvalidParameterError."""
+        with pytest.raises(
+            InvalidParameterError, match="channel_length_km must be positive"
+        ):
+            ConcentrationTime.kerby_kirpich(
+                overland_length_km=0.25,
+                overland_slope_m_per_m=0.008,
+                retardance=0.40,
+                channel_length_km=-5.0,
+                channel_slope_m_per_m=0.005,
+            )
+
+    def test_kerby_kirpich_zero_overland_slope_raises(self):
+        """Test that zero overland slope raises InvalidParameterError."""
+        with pytest.raises(
+            InvalidParameterError,
+            match="overland_slope_m_per_m must be positive",
+        ):
+            ConcentrationTime.kerby_kirpich(
+                overland_length_km=0.25,
+                overland_slope_m_per_m=0,
+                retardance=0.40,
+                channel_length_km=5.0,
                 channel_slope_m_per_m=0.005,
             )
 
@@ -637,6 +751,20 @@ class TestKerbyKirpich:
                 channel_slope_m_per_m=0.005,
             )
 
+    def test_kerby_kirpich_zero_channel_slope_raises(self):
+        """Test that zero channel slope raises InvalidParameterError."""
+        with pytest.raises(
+            InvalidParameterError,
+            match="channel_slope_m_per_m must be positive",
+        ):
+            ConcentrationTime.kerby_kirpich(
+                overland_length_km=0.25,
+                overland_slope_m_per_m=0.008,
+                retardance=0.40,
+                channel_length_km=5.0,
+                channel_slope_m_per_m=0,
+            )
+
     def test_kerby_kirpich_negative_channel_slope_raises(self):
         """Test that negative channel slope raises InvalidParameterError."""
         with pytest.raises(
@@ -649,6 +777,17 @@ class TestKerbyKirpich:
                 retardance=0.40,
                 channel_length_km=5.0,
                 channel_slope_m_per_m=-0.005,
+            )
+
+    def test_kerby_kirpich_zero_retardance_raises(self):
+        """Test that zero retardance raises InvalidParameterError."""
+        with pytest.raises(InvalidParameterError, match="retardance must be positive"):
+            ConcentrationTime.kerby_kirpich(
+                overland_length_km=0.25,
+                overland_slope_m_per_m=0.008,
+                retardance=0,
+                channel_length_km=5.0,
+                channel_slope_m_per_m=0.005,
             )
 
     def test_kerby_kirpich_negative_retardance_raises(self):
@@ -681,6 +820,11 @@ class TestConcentrationTimeImport:
 
 class TestParameterRangeWarnings:
     """Tests for parameter range warnings."""
+
+    def test_kirpich_warns_on_short_channel(self):
+        """Test warning for length below typical range."""
+        with pytest.warns(UserWarning, match="outside typical range"):
+            ConcentrationTime.kirpich(length_km=0.0005, slope_m_per_m=0.02)
 
     def test_kirpich_warns_on_long_channel(self):
         """Test warning for length above typical range."""
@@ -715,10 +859,25 @@ class TestParameterRangeWarnings:
         with pytest.warns(UserWarning, match="outside typical range"):
             ConcentrationTime.nrcs(length_km=5.0, slope_m_per_m=0.02, cn=98)
 
+    def test_nrcs_warns_on_short_length(self):
+        """Test warning for length below typical range."""
+        with pytest.warns(UserWarning, match="outside typical range"):
+            ConcentrationTime.nrcs(length_km=0.01, slope_m_per_m=0.02, cn=72)
+
     def test_nrcs_warns_on_long_length(self):
         """Test warning for length above typical range."""
         with pytest.warns(UserWarning, match="outside typical range"):
             ConcentrationTime.nrcs(length_km=50.0, slope_m_per_m=0.02, cn=72)
+
+    def test_nrcs_warns_on_small_slope(self):
+        """Test warning for slope below typical range."""
+        with pytest.warns(UserWarning, match="outside typical range"):
+            ConcentrationTime.nrcs(length_km=5.0, slope_m_per_m=0.0005, cn=72)
+
+    def test_nrcs_warns_on_large_slope(self):
+        """Test warning for slope above typical range."""
+        with pytest.warns(UserWarning, match="outside typical range"):
+            ConcentrationTime.nrcs(length_km=5.0, slope_m_per_m=0.20, cn=72)
 
     def test_nrcs_no_warning_in_range(self):
         """Test no warning when parameters are in typical range."""
@@ -735,6 +894,13 @@ class TestParameterRangeWarnings:
                 area_km2=50.0, length_km=10.0, elevation_diff_m=200.0
             )
 
+    def test_giandotti_warns_on_large_area(self):
+        """Test warning for area above recommended range."""
+        with pytest.warns(UserWarning, match="outside typical range"):
+            ConcentrationTime.giandotti(
+                area_km2=15000.0, length_km=100.0, elevation_diff_m=500.0
+            )
+
     def test_giandotti_warns_on_small_length(self):
         """Test warning for length below typical range."""
         with pytest.warns(UserWarning, match="outside typical range"):
@@ -742,11 +908,25 @@ class TestParameterRangeWarnings:
                 area_km2=200.0, length_km=0.5, elevation_diff_m=200.0
             )
 
+    def test_giandotti_warns_on_large_length(self):
+        """Test warning for length above typical range."""
+        with pytest.warns(UserWarning, match="outside typical range"):
+            ConcentrationTime.giandotti(
+                area_km2=200.0, length_km=500.0, elevation_diff_m=200.0
+            )
+
     def test_giandotti_warns_on_small_elevation(self):
         """Test warning for elevation below typical range."""
         with pytest.warns(UserWarning, match="outside typical range"):
             ConcentrationTime.giandotti(
                 area_km2=200.0, length_km=15.0, elevation_diff_m=10.0
+            )
+
+    def test_giandotti_warns_on_large_elevation(self):
+        """Test warning for elevation above typical range."""
+        with pytest.warns(UserWarning, match="outside typical range"):
+            ConcentrationTime.giandotti(
+                area_km2=200.0, length_km=15.0, elevation_diff_m=5000.0
             )
 
     def test_giandotti_no_warning_in_range(self):
@@ -758,6 +938,11 @@ class TestParameterRangeWarnings:
             ConcentrationTime.giandotti(
                 area_km2=200.0, length_km=15.0, elevation_diff_m=300.0
             )
+
+    def test_faa_warns_on_short_length(self):
+        """Test warning for length below typical range."""
+        with pytest.warns(UserWarning, match="outside typical range"):
+            ConcentrationTime.faa(length_km=0.005, slope_m_per_m=0.02, runoff_coeff=0.6)
 
     def test_faa_warns_on_long_length(self):
         """Test warning for length above typical range."""
@@ -791,6 +976,13 @@ class TestParameterRangeWarnings:
         with warnings.catch_warnings():
             warnings.simplefilter("error")
             ConcentrationTime.faa(length_km=0.15, slope_m_per_m=0.02, runoff_coeff=0.6)
+
+    def test_kerby_warns_on_short_length(self):
+        """Test warning for length below typical range."""
+        with pytest.warns(UserWarning, match="outside typical range"):
+            ConcentrationTime.kerby(
+                length_km=0.005, slope_m_per_m=0.005, retardance=0.40
+            )
 
     def test_kerby_warns_on_long_length(self):
         """Test warning for length above typical range."""
@@ -846,6 +1038,17 @@ class TestParameterRangeWarnings:
                 channel_slope_m_per_m=0.005,
             )
 
+    def test_kerby_kirpich_warns_on_short_overland(self):
+        """Test warning for overland length below typical range."""
+        with pytest.warns(UserWarning, match="outside typical range"):
+            ConcentrationTime.kerby_kirpich(
+                overland_length_km=0.005,
+                overland_slope_m_per_m=0.005,
+                retardance=0.40,
+                channel_length_km=5.0,
+                channel_slope_m_per_m=0.005,
+            )
+
     def test_kerby_kirpich_warns_on_long_channel(self):
         """Test warning for channel length above typical range."""
         with pytest.warns(UserWarning, match="outside typical range"):
@@ -854,6 +1057,83 @@ class TestParameterRangeWarnings:
                 overland_slope_m_per_m=0.005,
                 retardance=0.40,
                 channel_length_km=100.0,
+                channel_slope_m_per_m=0.005,
+            )
+
+    def test_kerby_kirpich_warns_on_short_channel(self):
+        """Test warning for channel length below typical range."""
+        with pytest.warns(UserWarning, match="outside typical range"):
+            ConcentrationTime.kerby_kirpich(
+                overland_length_km=0.10,
+                overland_slope_m_per_m=0.005,
+                retardance=0.40,
+                channel_length_km=0.0005,
+                channel_slope_m_per_m=0.005,
+            )
+
+    def test_kerby_kirpich_warns_on_small_overland_slope(self):
+        """Test warning for overland slope below typical range."""
+        with pytest.warns(UserWarning, match="outside typical range"):
+            ConcentrationTime.kerby_kirpich(
+                overland_length_km=0.10,
+                overland_slope_m_per_m=0.0005,
+                retardance=0.40,
+                channel_length_km=5.0,
+                channel_slope_m_per_m=0.005,
+            )
+
+    def test_kerby_kirpich_warns_on_large_overland_slope(self):
+        """Test warning for overland slope above typical range."""
+        with pytest.warns(UserWarning, match="outside typical range"):
+            ConcentrationTime.kerby_kirpich(
+                overland_length_km=0.10,
+                overland_slope_m_per_m=0.02,
+                retardance=0.40,
+                channel_length_km=5.0,
+                channel_slope_m_per_m=0.005,
+            )
+
+    def test_kerby_kirpich_warns_on_small_channel_slope(self):
+        """Test warning for channel slope below typical range."""
+        with pytest.warns(UserWarning, match="outside typical range"):
+            ConcentrationTime.kerby_kirpich(
+                overland_length_km=0.10,
+                overland_slope_m_per_m=0.005,
+                retardance=0.40,
+                channel_length_km=5.0,
+                channel_slope_m_per_m=0.001,
+            )
+
+    def test_kerby_kirpich_warns_on_large_channel_slope(self):
+        """Test warning for channel slope above typical range."""
+        with pytest.warns(UserWarning, match="outside typical range"):
+            ConcentrationTime.kerby_kirpich(
+                overland_length_km=0.10,
+                overland_slope_m_per_m=0.005,
+                retardance=0.40,
+                channel_length_km=5.0,
+                channel_slope_m_per_m=0.20,
+            )
+
+    def test_kerby_kirpich_warns_on_low_retardance(self):
+        """Test warning for retardance below typical range."""
+        with pytest.warns(UserWarning, match="outside typical range"):
+            ConcentrationTime.kerby_kirpich(
+                overland_length_km=0.10,
+                overland_slope_m_per_m=0.005,
+                retardance=0.01,
+                channel_length_km=5.0,
+                channel_slope_m_per_m=0.005,
+            )
+
+    def test_kerby_kirpich_warns_on_high_retardance(self):
+        """Test warning for retardance above typical range."""
+        with pytest.warns(UserWarning, match="outside typical range"):
+            ConcentrationTime.kerby_kirpich(
+                overland_length_km=0.10,
+                overland_slope_m_per_m=0.005,
+                retardance=0.90,
+                channel_length_km=5.0,
                 channel_slope_m_per_m=0.005,
             )
 
