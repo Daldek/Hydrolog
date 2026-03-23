@@ -17,11 +17,13 @@ Methods:
   kirpich   Kirpich formula (small agricultural watersheds)
   nrcs      NRCS equation (uses Curve Number)
   giandotti Giandotti formula (larger watersheds)
+  faa       FAA method (airport/overland flow)
 
 Examples:
   hydrolog tc kirpich --length 2.5 --slope 0.02
   hydrolog tc nrcs --length 5.0 --slope 0.01 --cn 72
   hydrolog tc giandotti --area 100 --length 15 --elevation 500
+  hydrolog tc faa --length 0.15 --slope 0.02 --runoff-coeff 0.6
 """,
     )
 
@@ -121,6 +123,38 @@ Examples:
     )
     giandotti.set_defaults(func=_run_giandotti)
 
+    # FAA method
+    faa = method_parsers.add_parser(
+        "faa",
+        help="FAA method",
+        description="Calculate Tc using FAA method for overland flow.",
+    )
+    faa.add_argument(
+        "-L",
+        "--length",
+        type=float,
+        required=True,
+        metavar="KM",
+        help="Overland flow length [km]",
+    )
+    faa.add_argument(
+        "-S",
+        "--slope",
+        type=float,
+        required=True,
+        metavar="M/M",
+        help="Average overland slope [m/m]",
+    )
+    faa.add_argument(
+        "-C",
+        "--runoff-coeff",
+        type=float,
+        required=True,
+        metavar="C",
+        help="Rational method runoff coefficient (0-1)",
+    )
+    faa.set_defaults(func=_run_faa)
+
     parser.set_defaults(func=_show_help, parser=parser)
 
 
@@ -179,6 +213,25 @@ def _run_giandotti(args: argparse.Namespace) -> int:
     print(f"  Watershed area:      {args.area:.2f} km²")
     print(f"  Main channel length: {args.length:.2f} km")
     print(f"  Mean elevation:      {args.elevation:.1f} m")
+    print(f"{'─' * 35}")
+    print(f"  Tc = {tc:.1f} min ({tc/60:.2f} h)")
+
+    return 0
+
+
+def _run_faa(args: argparse.Namespace) -> int:
+    """Execute FAA calculation."""
+    tc = ConcentrationTime.faa(
+        length_km=args.length,
+        slope_m_per_m=args.slope,
+        runoff_coeff=args.runoff_coeff,
+    )
+
+    print(f"FAA Time of Concentration")
+    print(f"{'─' * 35}")
+    print(f"  Overland flow length: {args.length:.2f} km")
+    print(f"  Overland slope:       {args.slope:.4f} m/m")
+    print(f"  Runoff coefficient:   {args.runoff_coeff:.2f}")
     print(f"{'─' * 35}")
     print(f"  Tc = {tc:.1f} min ({tc/60:.2f} h)")
 

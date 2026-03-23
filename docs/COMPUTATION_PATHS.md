@@ -21,12 +21,12 @@ Dokument ten służy jako przewodnik, który:
 
 ### 1.2 Macierz kompatybilności
 
-| Model | Kirpich | NRCS | Giandotti | from_lutz() | Bezpośrednio | Własna metoda |
-|-------|:-------:|:-------:|:---------:|:-----------:|:------------:|:-------------:|
-| **SCS UH** | ✅ | ✅ | ✅ | - | - | - |
-| **Nash IUH** | ⚠️ | ⚠️ | ⚠️ | ✅ | ✅ | - |
-| **Clark IUH** | ✅ | ✅ | ✅ | - | ✅ | - |
-| **Snyder UH** | ❌ | ❌ | ❌ | - | ✅ | ✅ |
+| Model | Kirpich | NRCS | Giandotti | FAA | from_lutz() | Bezpośrednio | Własna metoda |
+|-------|:-------:|:-------:|:---------:|:---:|:-----------:|:------------:|:-------------:|
+| **SCS UH** | ✅ | ✅ | ✅ | ✅ | - | - | - |
+| **Nash IUH** | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ✅ | ✅ | - |
+| **Clark IUH** | ✅ | ✅ | ✅ | ✅ | - | ✅ | - |
+| **Snyder UH** | ❌ | ❌ | ❌ | ❌ | - | ✅ | ✅ |
 
 **Legenda:**
 - ✅ **OK** - prawidłowe użycie, potwierdzone literaturą
@@ -138,6 +138,7 @@ Dokument ten służy jako przewodnik, który:
 | Kirpich | ✅ OK | Tc jest parametrem wejściowym metody SCS |
 | NRCS | ✅ OK | Metoda opracowana razem z SCS UH (TR-55) |
 | Giandotti | ✅ OK | Tc jest parametrem wejściowym metody SCS |
+| FAA | ✅ OK | Tc jest parametrem wejściowym metody SCS (spływ powierzchniowy) |
 
 **Uzasadnienie literaturowe:**
 - Relacja `tlag = 0.6 × Tc` pochodzi z USDA TR-55 (1986)
@@ -400,6 +401,7 @@ nash_correct = NashIUH.from_lutz(
 | Kirpich → Tc | ✅ OK | Tc = czas translacji (zgodne z modelem Clark) |
 | NRCS → Tc | ✅ OK | Tc = czas translacji |
 | Giandotti → Tc | ✅ OK | Tc = czas translacji |
+| FAA → Tc | ✅ OK | Tc = czas translacji (spływ powierzchniowy) |
 | Bezpośrednio Tc, R | ✅ OK | Gdy masz zmierzone/skalibrowane wartości |
 | R/Tc ratio | ✅ OK | Typowe wartości: 0.2-1.5 |
 
@@ -602,6 +604,8 @@ print(f"Qmax = {result.peak_discharge_m3s:.2f} m³/s")
 | SCS UH + Kirpich → Tc | USDA TR-55 (1986), Kirpich (1940) | ✅ |
 | SCS UH + NRCS → Tc | USDA TR-55 (1986) | ✅ |
 | SCS UH + Giandotti → Tc | Giandotti (1934), TR-55 | ✅ |
+| SCS UH + FAA → Tc | FAA AC 150/5320-5D (2013), TR-55 | ✅ |
+| Clark IUH + FAA → Tc | FAA AC 150/5320-5D (2013), Clark (1945) | ✅ |
 | Nash IUH + from_lutz() | Lutz (1984), KZGW (2017) | ✅ |
 | Nash IUH + bezpośrednio n, K | Nash (1957) | ✅ |
 | Nash IUH + from_tc() | **BRAK UZASADNIENIA** | ⚠️ |
@@ -617,6 +621,7 @@ print(f"Qmax = {result.peak_discharge_m3s:.2f} m³/s")
 | Snyder, F.F. | 1938 | Definicja syntetycznego UH Snydera |
 | Kirpich, Z.P. | 1940 | Formuła czasu koncentracji |
 | Clark, C.O. | 1945 | Model translacja + zbiornik |
+| FAA | 2013 | Formuła Tc dla spływu powierzchniowego (AC 150/5320-5D) |
 | Giandotti, M. | 1934 | Formuła Tc dla zlewni włoskich |
 | Lutz, W. | 1984 | Estymacja parametrów Nasha z cech fizjograficznych |
 | USDA TR-55 | 1986 | Metoda SCS-CN, relacja tlag = 0.6×Tc |
@@ -727,15 +732,17 @@ print(f"Qmax = {result.peak_discharge_m3s:.2f} m³/s")
 
 ### Dokumentacja techniczna
 
-7. **KZGW** (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych. Załącznik 2, Tabela C.2.
+7. **FAA** (2013). Airport Drainage Design. Advisory Circular AC 150/5320-5D. Federal Aviation Administration, U.S. Department of Transportation.
 
-8. **USACE HEC-HMS** (2024). Technical Reference Manual. https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/
+8. **KZGW** (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych. Załącznik 2, Tabela C.2.
 
-9. **USDA-NRCS** (1986). Urban Hydrology for Small Watersheds. Technical Release 55 (TR-55).
+9. **USACE HEC-HMS** (2024). Technical Reference Manual. https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/
+
+10. **USDA-NRCS** (1986). Urban Hydrology for Small Watersheds. Technical Release 55 (TR-55).
 
 ### Podręczniki
 
-10. **Bedient, P.B. & Huber, W.C.** (1992). *Hydrology and Floodplain Analysis*. Addison-Wesley.
+11. **Bedient, P.B. & Huber, W.C.** (1992). *Hydrology and Floodplain Analysis*. Addison-Wesley.
 
 ---
 
