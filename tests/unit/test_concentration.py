@@ -240,6 +240,116 @@ class TestGiandotti:
             )
 
 
+class TestFAA:
+    """Tests for FAA method."""
+
+    def test_faa_typical_values(self):
+        """Test FAA method with typical parameters."""
+        # tc = 22.213 * (1.1 - 0.6) * 0.15^0.5 / 0.02^(1/3)
+        # tc = 22.213 * 0.5 * 0.38730 / 0.27144
+        # tc = 22.213 * 0.5 * 1.42693
+        # tc ≈ 15.85 min
+        tc = ConcentrationTime.faa(length_km=0.15, slope_m_per_m=0.02, runoff_coeff=0.6)
+
+        assert abs(tc - 15.85) < 0.1
+
+    def test_faa_known_value(self):
+        """Test FAA method against hand-calculated cross-reference value."""
+        # C=0.9, L=1000 ft = 0.30480 km, S=0.006
+        # tc = 22.213 * (1.1 - 0.9) * 0.30480^0.5 / 0.006^(1/3)
+        # tc = 22.213 * 0.2 * 0.55209 / 0.18171
+        # tc ≈ 13.50 min
+        tc = ConcentrationTime.faa(
+            length_km=0.30480, slope_m_per_m=0.006, runoff_coeff=0.9
+        )
+
+        assert abs(tc - 13.50) < 0.1
+
+    def test_faa_higher_c_gives_shorter_tc(self):
+        """Test that higher runoff coefficient gives shorter tc."""
+        tc_low_c = ConcentrationTime.faa(
+            length_km=0.15, slope_m_per_m=0.02, runoff_coeff=0.4
+        )
+        tc_high_c = ConcentrationTime.faa(
+            length_km=0.15, slope_m_per_m=0.02, runoff_coeff=0.8
+        )
+
+        assert tc_high_c < tc_low_c
+
+    def test_faa_longer_path_gives_longer_tc(self):
+        """Test that longer flow path gives longer tc."""
+        tc_short = ConcentrationTime.faa(
+            length_km=0.10, slope_m_per_m=0.02, runoff_coeff=0.6
+        )
+        tc_long = ConcentrationTime.faa(
+            length_km=0.50, slope_m_per_m=0.02, runoff_coeff=0.6
+        )
+
+        assert tc_long > tc_short
+
+    def test_faa_steeper_slope_gives_shorter_tc(self):
+        """Test that steeper slope gives shorter tc."""
+        tc_gentle = ConcentrationTime.faa(
+            length_km=0.15, slope_m_per_m=0.01, runoff_coeff=0.6
+        )
+        tc_steep = ConcentrationTime.faa(
+            length_km=0.15, slope_m_per_m=0.05, runoff_coeff=0.6
+        )
+
+        assert tc_steep < tc_gentle
+
+    def test_faa_zero_length_raises(self):
+        """Test that zero length raises InvalidParameterError."""
+        with pytest.raises(InvalidParameterError, match="length_km must be positive"):
+            ConcentrationTime.faa(length_km=0, slope_m_per_m=0.02, runoff_coeff=0.6)
+
+    def test_faa_negative_length_raises(self):
+        """Test that negative length raises InvalidParameterError."""
+        with pytest.raises(InvalidParameterError, match="length_km must be positive"):
+            ConcentrationTime.faa(length_km=-0.5, slope_m_per_m=0.02, runoff_coeff=0.6)
+
+    def test_faa_zero_slope_raises(self):
+        """Test that zero slope raises InvalidParameterError."""
+        with pytest.raises(
+            InvalidParameterError, match="slope_m_per_m must be positive"
+        ):
+            ConcentrationTime.faa(length_km=0.15, slope_m_per_m=0, runoff_coeff=0.6)
+
+    def test_faa_negative_slope_raises(self):
+        """Test that negative slope raises InvalidParameterError."""
+        with pytest.raises(
+            InvalidParameterError, match="slope_m_per_m must be positive"
+        ):
+            ConcentrationTime.faa(length_km=0.15, slope_m_per_m=-0.02, runoff_coeff=0.6)
+
+    def test_faa_c_zero_raises(self):
+        """Test that runoff_coeff=0 raises InvalidParameterError."""
+        with pytest.raises(
+            InvalidParameterError, match="runoff_coeff must be in range"
+        ):
+            ConcentrationTime.faa(length_km=0.15, slope_m_per_m=0.02, runoff_coeff=0)
+
+    def test_faa_c_negative_raises(self):
+        """Test that negative runoff_coeff raises InvalidParameterError."""
+        with pytest.raises(
+            InvalidParameterError, match="runoff_coeff must be in range"
+        ):
+            ConcentrationTime.faa(length_km=0.15, slope_m_per_m=0.02, runoff_coeff=-0.5)
+
+    def test_faa_c_above_one_raises(self):
+        """Test that runoff_coeff > 1 raises InvalidParameterError."""
+        with pytest.raises(
+            InvalidParameterError, match="runoff_coeff must be in range"
+        ):
+            ConcentrationTime.faa(length_km=0.15, slope_m_per_m=0.02, runoff_coeff=1.5)
+
+    def test_faa_c_one_valid(self):
+        """Test that runoff_coeff=1.0 is valid (edge case)."""
+        tc = ConcentrationTime.faa(length_km=0.15, slope_m_per_m=0.02, runoff_coeff=1.0)
+
+        assert tc > 0
+
+
 class TestConcentrationTimeImport:
     """Test module imports."""
 
@@ -251,6 +361,7 @@ class TestConcentrationTimeImport:
         assert hasattr(CT, "kirpich")
         assert hasattr(CT, "nrcs")
         assert hasattr(CT, "giandotti")
+        assert hasattr(CT, "faa")
 
 
 class TestParameterRangeWarnings:
@@ -332,3 +443,36 @@ class TestParameterRangeWarnings:
             ConcentrationTime.giandotti(
                 area_km2=200.0, length_km=15.0, elevation_diff_m=300.0
             )
+
+    def test_faa_warns_on_long_length(self):
+        """Test warning for length above typical range."""
+        with pytest.warns(UserWarning, match="outside typical range"):
+            ConcentrationTime.faa(length_km=5.0, slope_m_per_m=0.02, runoff_coeff=0.6)
+
+    def test_faa_warns_on_small_slope(self):
+        """Test warning for slope below typical range."""
+        with pytest.warns(UserWarning, match="outside typical range"):
+            ConcentrationTime.faa(length_km=0.15, slope_m_per_m=0.003, runoff_coeff=0.6)
+
+    def test_faa_warns_on_large_slope(self):
+        """Test warning for slope above typical range."""
+        with pytest.warns(UserWarning, match="outside typical range"):
+            ConcentrationTime.faa(length_km=0.15, slope_m_per_m=0.15, runoff_coeff=0.6)
+
+    def test_faa_warns_on_low_c(self):
+        """Test warning for runoff coefficient below typical range."""
+        with pytest.warns(UserWarning, match="outside typical range"):
+            ConcentrationTime.faa(length_km=0.15, slope_m_per_m=0.02, runoff_coeff=0.05)
+
+    def test_faa_warns_on_high_c(self):
+        """Test warning for runoff coefficient above typical range."""
+        with pytest.warns(UserWarning, match="outside typical range"):
+            ConcentrationTime.faa(length_km=0.15, slope_m_per_m=0.02, runoff_coeff=0.99)
+
+    def test_faa_no_warning_in_range(self):
+        """Test no warning when parameters are in typical range."""
+        import warnings
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            ConcentrationTime.faa(length_km=0.15, slope_m_per_m=0.02, runoff_coeff=0.6)
