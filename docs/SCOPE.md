@@ -91,6 +91,7 @@ Hydrolog jest analogiczny do **Kartografa** (pobieranie danych przestrzennych) -
 - Wzór NRCS: `tc = L^0.8 × (S + 1)^0.7 / (1900 × Y^0.5)`
 - Wzór FAA: `tc = 22.213 × (1.1 - C) × L^0.5 / S^(1/3)`
 - Wzór Kerby: `tc = 36.37 × (L × N)^0.467 × S^(-0.2335)`
+- Metoda Kerby-Kirpich: `tc = t_overland(Kerby) + t_channel(Kirpich)`
 - Wzór Giandotti (opcjonalnie)
 - Wzór NRCS (opcjonalnie)
 
@@ -157,6 +158,7 @@ hydrolog tc nrcs --length 5.0 --slope 0.01 --cn 72
 hydrolog tc giandotti --area 100 --length 15 --elevation 500
 hydrolog tc faa --length 0.15 --slope 0.02 --runoff-coeff 0.6
 hydrolog tc kerby --length 0.10 --slope 0.008 --retardance 0.40
+hydrolog tc kerby-kirpich --ov-length 0.25 --ov-slope 0.008 --retardance 0.40 --ch-length 5.0 --ch-slope 0.005
 
 # Wyszukiwanie CN (tablice TR-55)
 hydrolog cn lookup --hsg B --cover forest --condition good

@@ -650,3 +650,196 @@ class ConcentrationTime:
         tc_min: float = 36.37 * (length_km * retardance) ** 0.467 * slope ** (-0.2335)
 
         return tc_min
+
+    @staticmethod
+    def kerby_kirpich(
+        overland_length_km: float,
+        overland_slope_m_per_m: float,
+        retardance: float,
+        channel_length_km: float,
+        channel_slope_m_per_m: float,
+    ) -> float:
+        """
+        Calculate time of concentration using the Kerby-Kirpich composite method.
+
+        The Kerby-Kirpich method splits the watershed flow path into two
+        segments: overland (sheet) flow estimated with the Kerby equation
+        and channel flow estimated with the Kirpich equation. The total
+        time of concentration is the sum of both components.
+
+        Parameters
+        ----------
+        overland_length_km : float
+            Overland (sheet) flow length from the hydraulically most distant
+            point to the start of a defined channel [km]. Must be positive.
+        overland_slope_m_per_m : float
+            Average overland slope [m/m]. Must be positive.
+        retardance : float
+            Kerby retardance roughness coefficient (dimensionless).
+            Must be positive. Typical values:
+
+            ========================================================  =====
+            Surface                                                   N
+            ========================================================  =====
+            Smooth impervious (pavement, asphalt, concrete)           0.02
+            Smooth bare packed soil                                    0.10
+            Poor grass, cultivated row crops                           0.20
+            Pasture, average grass                                     0.40
+            Deciduous forest                                           0.60
+            Dense grass, coniferous forest, deciduous forest w/ litter 0.80
+            ========================================================  =====
+
+        channel_length_km : float
+            Channel flow length from the start of the defined channel
+            to the watershed outlet [km]. Must be positive.
+        channel_slope_m_per_m : float
+            Average channel slope [m/m]. Must be positive.
+
+        Returns
+        -------
+        float
+            Total time of concentration [min], i.e. t_overland + t_channel.
+
+        Raises
+        ------
+        InvalidParameterError
+            If any parameter is not positive.
+
+        Warns
+        -----
+        UserWarning
+            If overland parameters are outside Kerby typical ranges
+            (length > 0.366 km, slope outside 0.001-0.01, retardance
+            outside 0.02-0.80) or channel parameters are outside Kirpich
+            typical ranges (length > 80 km, slope outside 0.002-0.15).
+
+        Notes
+        -----
+        The composite method treats the watershed flow path as two
+        consecutive segments:
+
+            tc = t_overland + t_channel
+
+        where t_overland is computed with the Kerby (1959) equation and
+        t_channel with the Kirpich (1940) equation.
+
+        **Low-slope adjustment** (Cleveland et al. 2012):
+
+        For slopes below 0.002 m/m, an offset of 0.0005 is added to
+        prevent unreasonably large tc values on very flat terrain:
+
+            S_adj = S + 0.0005  (when S < 0.002)
+
+        This adjustment is applied to **both** segments independently.
+        The Kerby method applies it internally, while this composite
+        method applies it to the channel slope before calling Kirpich.
+
+        The method was validated by Roussel et al. (2005) on 92 Texas
+        watersheds ranging from 0.65 to 388 km².
+
+        References
+        ----------
+        Roussel, M.C., Thompson, D.B., Fang, X., Cleveland, T.G., and
+        Garcia, C.A. (2005). Time-parameter estimation for applicable Texas
+        watersheds. TxDOT Research Report 0-4696-2.
+
+        Cleveland, T.G., Thompson, D.B., and Fang, X. (2012). Use of the
+        Kerby-Kirpich approach for Texas watersheds. TxDOT Research Report
+        0-6544-1.
+
+        Texas Department of Transportation (2019). Hydraulic Design Manual.
+        Chapter 4: Time of Concentration.
+
+        Kerby, W.S. (1959). Time of concentration for overland flow.
+        Civil Engineering, 29(3), 174.
+
+        Kirpich, Z.P. (1940). Time of concentration of small agricultural
+        watersheds. Civil Engineering, 10(6), 362.
+
+        Examples
+        --------
+        >>> tc = ConcentrationTime.kerby_kirpich(
+        ...     overland_length_km=0.25,
+        ...     overland_slope_m_per_m=0.008,
+        ...     retardance=0.40,
+        ...     channel_length_km=5.0,
+        ...     channel_slope_m_per_m=0.005,
+        ... )
+        >>> print(f"{tc:.1f}")
+        144.0
+        """
+        # Validate all parameters
+        if overland_length_km <= 0:
+            raise InvalidParameterError(
+                f"overland_length_km must be positive, got {overland_length_km}"
+            )
+        if overland_slope_m_per_m <= 0:
+            raise InvalidParameterError(
+                f"overland_slope_m_per_m must be positive, "
+                f"got {overland_slope_m_per_m}"
+            )
+        if retardance <= 0:
+            raise InvalidParameterError(
+                f"retardance must be positive, got {retardance}"
+            )
+        if channel_length_km <= 0:
+            raise InvalidParameterError(
+                f"channel_length_km must be positive, got {channel_length_km}"
+            )
+        if channel_slope_m_per_m <= 0:
+            raise InvalidParameterError(
+                f"channel_slope_m_per_m must be positive, "
+                f"got {channel_slope_m_per_m}"
+            )
+
+        # Warn if overland params are outside Kerby typical ranges
+        _warn_if_out_of_range(
+            overland_length_km,
+            "overland_length_km",
+            *_KERBY_LENGTH_RANGE,
+            "kerby_kirpich",
+        )
+        _warn_if_out_of_range(
+            overland_slope_m_per_m,
+            "overland_slope_m_per_m",
+            *_KERBY_SLOPE_RANGE,
+            "kerby_kirpich",
+        )
+        _warn_if_out_of_range(
+            retardance,
+            "retardance",
+            *_KERBY_N_RANGE,
+            "kerby_kirpich",
+        )
+
+        # Warn if channel params are outside Kirpich typical ranges
+        _warn_if_out_of_range(
+            channel_length_km,
+            "channel_length_km",
+            *_KIRPICH_LENGTH_RANGE,
+            "kerby_kirpich",
+        )
+        _warn_if_out_of_range(
+            channel_slope_m_per_m,
+            "channel_slope_m_per_m",
+            *_KIRPICH_SLOPE_RANGE,
+            "kerby_kirpich",
+        )
+
+        # Low-slope adjustment for channel slope (Cleveland et al. 2012)
+        # Kerby already applies this internally for overland slope
+        channel_slope_adj = channel_slope_m_per_m
+        if channel_slope_adj < _KERBY_LOW_SLOPE_THRESHOLD:
+            channel_slope_adj = channel_slope_adj + _KERBY_LOW_SLOPE_OFFSET
+
+        # Overland flow component (Kerby)
+        t_overland: float = ConcentrationTime.kerby(
+            overland_length_km, overland_slope_m_per_m, retardance
+        )
+
+        # Channel flow component (Kirpich)
+        t_channel: float = ConcentrationTime.kirpich(
+            channel_length_km, channel_slope_adj
+        )
+
+        return t_overland + t_channel

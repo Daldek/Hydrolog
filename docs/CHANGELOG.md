@@ -24,6 +24,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Source: Kerby, W.S. (1959). "Time of concentration for overland flow." Civil Engineering, 29(3), 174
   - CLI support: `hydrolog tc kerby --length 0.10 --slope 0.008 --retardance 0.40`
 
+#### `hydrolog.time.concentration` - Kerby-Kirpich Composite Method
+- `ConcentrationTime.kerby_kirpich()` - Kerby-Kirpich composite method for time of concentration
+  - Combines Kerby (overland flow) and Kirpich (channel flow) for composite tc estimation
+  - Formula: `tc = t_overland(Kerby) + t_channel(Kirpich)`
+    - Kerby: `tc_ov = 36.37 × (L_ov × N)^0.467 × S_ov^(-0.2335)`
+    - Kirpich: `tc_ch = 3.981 × L_ch^0.77 × S_ch^(-0.385)`
+  - Low-slope adjustment (Cleveland et al. 2012): for S < 0.002, S_adj = S + 0.0005 (applied to both segments)
+  - Source: Roussel et al. (2005). TxDOT Report 0-4696-2
+  - CLI support: `hydrolog tc kerby-kirpich --ov-length 0.25 --ov-slope 0.008 --retardance 0.40 --ch-length 5.0 --ch-slope 0.005`
+
 #### `hydrolog.runoff.nash_iuh` - Lutz Calculation Results
 - `LutzCalculationResult` - new dataclass storing all intermediate calculation steps
   - Input parameters: L_km, Lc_km, slope, manning_n, urban_pct, forest_pct

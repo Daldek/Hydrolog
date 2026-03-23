@@ -14,11 +14,12 @@ def register_parser(subparsers: argparse._SubParsersAction) -> None:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Methods:
-  kirpich   Kirpich formula (small agricultural watersheds)
-  nrcs      NRCS equation (uses Curve Number)
-  giandotti Giandotti formula (larger watersheds)
-  faa       FAA method (airport/overland flow)
-  kerby     Kerby formula (shallow overland flow)
+  kirpich        Kirpich formula (small agricultural watersheds)
+  nrcs           NRCS equation (uses Curve Number)
+  giandotti      Giandotti formula (larger watersheds)
+  faa            FAA method (airport/overland flow)
+  kerby          Kerby formula (shallow overland flow)
+  kerby-kirpich  Kerby-Kirpich composite (overland + channel)
 
 Examples:
   hydrolog tc kirpich --length 2.5 --slope 0.02
@@ -26,6 +27,7 @@ Examples:
   hydrolog tc giandotti --area 100 --length 15 --elevation 500
   hydrolog tc faa --length 0.15 --slope 0.02 --runoff-coeff 0.6
   hydrolog tc kerby --length 0.1 --slope 0.008 --retardance 0.40
+  hydrolog tc kerby-kirpich --ov-length 0.25 --ov-slope 0.008 --retardance 0.40 --ch-length 5.0 --ch-slope 0.005
 """,
     )
 
@@ -189,6 +191,57 @@ Examples:
     )
     kerby.set_defaults(func=_run_kerby)
 
+    # Kerby-Kirpich composite method
+    kerby_kirpich = method_parsers.add_parser(
+        "kerby-kirpich",
+        help="Kerby-Kirpich composite method",
+        description=(
+            "Calculate Tc using Kerby-Kirpich composite method "
+            "(overland + channel flow)."
+        ),
+    )
+    kerby_kirpich.add_argument(
+        "-OL",
+        "--ov-length",
+        type=float,
+        required=True,
+        metavar="KM",
+        help="Overland flow length [km]",
+    )
+    kerby_kirpich.add_argument(
+        "-OS",
+        "--ov-slope",
+        type=float,
+        required=True,
+        metavar="M/M",
+        help="Overland slope [m/m]",
+    )
+    kerby_kirpich.add_argument(
+        "-N",
+        "--retardance",
+        type=float,
+        required=True,
+        metavar="N",
+        help="Kerby retardance roughness coefficient (0.02-0.80)",
+    )
+    kerby_kirpich.add_argument(
+        "-CL",
+        "--ch-length",
+        type=float,
+        required=True,
+        metavar="KM",
+        help="Channel length [km]",
+    )
+    kerby_kirpich.add_argument(
+        "-CS",
+        "--ch-slope",
+        type=float,
+        required=True,
+        metavar="M/M",
+        help="Channel slope [m/m]",
+    )
+    kerby_kirpich.set_defaults(func=_run_kerby_kirpich)
+
     parser.set_defaults(func=_show_help, parser=parser)
 
 
@@ -287,5 +340,42 @@ def _run_kerby(args: argparse.Namespace) -> int:
     print(f"  Retardance (N):       {args.retardance:.2f}")
     print(f"{'─' * 35}")
     print(f"  Tc = {tc:.1f} min ({tc/60:.2f} h)")
+
+    return 0
+
+
+def _run_kerby_kirpich(args: argparse.Namespace) -> int:
+    """Execute Kerby-Kirpich composite calculation."""
+    # Compute individual components for display
+    t_overland = ConcentrationTime.kerby(
+        length_km=args.ov_length,
+        slope_m_per_m=args.ov_slope,
+        retardance=args.retardance,
+    )
+
+    tc = ConcentrationTime.kerby_kirpich(
+        overland_length_km=args.ov_length,
+        overland_slope_m_per_m=args.ov_slope,
+        retardance=args.retardance,
+        channel_length_km=args.ch_length,
+        channel_slope_m_per_m=args.ch_slope,
+    )
+
+    t_channel = tc - t_overland
+
+    separator = "─" * 39
+    print("Kerby-Kirpich Time of Concentration")
+    print(separator)
+    print("  Overland flow:")
+    print(f"    Length:      {args.ov_length:.2f} km")
+    print(f"    Slope:       {args.ov_slope:.4f} m/m")
+    print(f"    Retardance:  {args.retardance:.2f}")
+    print(f"    t_overland = {t_overland:.1f} min")
+    print("  Channel flow:")
+    print(f"    Length:      {args.ch_length:.2f} km")
+    print(f"    Slope:       {args.ch_slope:.4f} m/m")
+    print(f"    t_channel  = {t_channel:.1f} min")
+    print(separator)
+    print(f"  Tc = {tc:.1f} min ({tc / 60:.2f} h)")
 
     return 0
