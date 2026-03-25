@@ -53,6 +53,7 @@
 | v0.6.1 | Nash: regresja dla zlewni zurbanizowanych | ✅ Wydana (2026-03-20) |
 | v0.6.2 | Raporty UH + korekty wzorów metrycznych | ✅ Wydana (2026-03-22) |
 | v0.6.3 | Audyt spójności API + naprawy | ✅ Wydana (2026-03-25) |
+| v0.6.4 | WatershedParams extension + UH ordinates + docs audit | ✅ Wydana (2026-03-25) |
 | v1.0.0 | Stabilne API + CLI | 📋 Planowany |
 
 ---

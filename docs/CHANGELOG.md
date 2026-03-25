@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.6.4] - 2026-03-25
+
 ### Added
 
 #### `hydrolog.morphometry.WatershedParameters` - Extended Fields
@@ -654,4 +658,5 @@ Requires optional dependencies: `pip install hydrolog[visualization]`
 | **0.6.1** | 2026-03-20 | Nash urban regression method |
 | **0.6.2** | 2026-03-22 | UH report formulas + metric corrections |
 | **0.6.3** | 2026-03-23 | FAA + Kerby + Kerby-Kirpich tc, API audit |
+| **0.6.4** | 2026-03-25 | WatershedParams extension + UH ordinates + docs audit |
 | 1.0.0 | TBD | Stable API |

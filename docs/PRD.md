@@ -2,7 +2,7 @@
 
 ## Hydrolog - Biblioteka Narzędzi Hydrologicznych
 
-**Wersja:** 0.6.3
+**Wersja:** 0.6.4
 **Data:** 2026-03-25
 **Status:** W trakcie realizacji
 
@@ -442,5 +442,5 @@ print(f"tc = {tc:.1f} min")
 
 ---
 
-**Wersja dokumentu:** 0.6.3
+**Wersja dokumentu:** 0.6.4
 **Data ostatniej aktualizacji:** 2026-03-25
