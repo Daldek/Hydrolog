@@ -23,9 +23,13 @@ class Station:
     station_id : str
         Unique identifier for the station.
     x : float
-        X coordinate (easting) [m or km].
+        X coordinate (easting) of the station. Must be in a consistent
+        coordinate system with other stations. The unit (e.g., meters
+        or kilometers) directly affects distance calculations in IDW
+        interpolation.
     y : float
-        Y coordinate (northing) [m or km].
+        Y coordinate (northing) of the station. Must use the same
+        coordinate system and unit as ``x``.
     precipitation_mm : float
         Measured precipitation [mm].
     elevation_m : float, optional
