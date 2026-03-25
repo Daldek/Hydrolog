@@ -51,6 +51,29 @@ class WatershedParameters:
         Data source identifier (e.g., "Hydrograf", "QGIS", "manual").
     crs : str, optional
         Coordinate reference system (e.g., "EPSG:2180").
+    runoff_coeff : float, optional
+        Rational method runoff coefficient C (0 < C <= 1.0).
+        Used by FAA concentration time method.
+    retardance : float, optional
+        Kerby retardance roughness coefficient (0.02-0.80).
+        Used by Kerby and Kerby-Kirpich concentration time methods.
+    overland_length_km : float, optional
+        Overland (sheet) flow length [km]. Used by Kerby-Kirpich method.
+    overland_slope_m_per_m : float, optional
+        Average overland slope [m/m]. Used by Kerby-Kirpich method.
+    Lc_km : float, optional
+        Length along main stream from outlet to the point nearest
+        to catchment centroid [km]. Used by Nash Lutz and Snyder methods.
+    manning_n : float, optional
+        Manning's roughness coefficient for main channel.
+        Typical values: 0.025-0.050 for natural streams.
+        Used by Nash Lutz method.
+    urban_pct : float, optional
+        Percentage of urbanized area [%] (0-100).
+        Used by Nash Lutz method.
+    forest_pct : float, optional
+        Percentage of forested area [%] (0-100).
+        Used by Nash Lutz method.
 
     Attributes
     ----------
@@ -103,6 +126,20 @@ class WatershedParameters:
     source: Optional[str] = None
     crs: Optional[str] = None
 
+    # FAA concentration time
+    runoff_coeff: Optional[float] = None
+
+    # Kerby / Kerby-Kirpich concentration time
+    retardance: Optional[float] = None
+    overland_length_km: Optional[float] = None
+    overland_slope_m_per_m: Optional[float] = None
+
+    # Nash Lutz / Snyder unit hydrograph
+    Lc_km: Optional[float] = None
+    manning_n: Optional[float] = None
+    urban_pct: Optional[float] = None
+    forest_pct: Optional[float] = None
+
     def __post_init__(self) -> None:
         """Validate parameters after initialization."""
         self._validate()
@@ -140,6 +177,39 @@ class WatershedParameters:
             raise InvalidParameterError(
                 f"channel_slope_m_per_m must be non-negative, got {self.channel_slope_m_per_m}"
             )
+        if self.runoff_coeff is not None and (
+            self.runoff_coeff <= 0 or self.runoff_coeff > 1.0
+        ):
+            raise InvalidParameterError(
+                f"runoff_coeff must be in range (0, 1.0], got {self.runoff_coeff}"
+            )
+        if self.retardance is not None and self.retardance <= 0:
+            raise InvalidParameterError(
+                f"retardance must be positive, got {self.retardance}"
+            )
+        if self.overland_length_km is not None and self.overland_length_km <= 0:
+            raise InvalidParameterError(
+                f"overland_length_km must be positive, got {self.overland_length_km}"
+            )
+        if self.overland_slope_m_per_m is not None and self.overland_slope_m_per_m < 0:
+            raise InvalidParameterError(
+                f"overland_slope_m_per_m must be non-negative, "
+                f"got {self.overland_slope_m_per_m}"
+            )
+        if self.Lc_km is not None and self.Lc_km <= 0:
+            raise InvalidParameterError(f"Lc_km must be positive, got {self.Lc_km}")
+        if self.manning_n is not None and self.manning_n <= 0:
+            raise InvalidParameterError(
+                f"manning_n must be positive, got {self.manning_n}"
+            )
+        if self.urban_pct is not None and not 0 <= self.urban_pct <= 100:
+            raise InvalidParameterError(
+                f"urban_pct must be 0-100, got {self.urban_pct}"
+            )
+        if self.forest_pct is not None and not 0 <= self.forest_pct <= 100:
+            raise InvalidParameterError(
+                f"forest_pct must be 0-100, got {self.forest_pct}"
+            )
 
     @property
     def width_km(self) -> float:
@@ -173,7 +243,9 @@ class WatershedParameters:
             Dictionary with watershed parameters. Required keys:
             area_km2, perimeter_km, length_km, elevation_min_m, elevation_max_m.
             Optional keys: name, elevation_mean_m, mean_slope_m_per_m,
-            channel_length_km, channel_slope_m_per_m, cn, source, crs.
+            channel_length_km, channel_slope_m_per_m, cn, source, crs,
+            runoff_coeff, retardance, overland_length_km,
+            overland_slope_m_per_m, Lc_km, manning_n, urban_pct, forest_pct.
 
         Returns
         -------
@@ -208,6 +280,14 @@ class WatershedParameters:
             "cn",
             "source",
             "crs",
+            "runoff_coeff",
+            "retardance",
+            "overland_length_km",
+            "overland_slope_m_per_m",
+            "Lc_km",
+            "manning_n",
+            "urban_pct",
+            "forest_pct",
         }
         filtered_data = {k: v for k, v in data.items() if k in known_fields}
         return cls(**filtered_data)
@@ -336,8 +416,8 @@ class WatershedParameters:
         Parameters
         ----------
         method : str, optional
-            Calculation method: "kirpich", "nrcs", or "giandotti".
-            Default is "kirpich".
+            Calculation method: "kirpich", "nrcs", "giandotti", "faa",
+            "kerby", or "kerby_kirpich". Default is "kirpich".
 
         Returns
         -------
@@ -358,6 +438,16 @@ class WatershedParameters:
 
         For slope, uses channel_slope_m_per_m if available, otherwise
         mean_slope_m_per_m, otherwise calculates from relief/length.
+
+        For "faa", uses length_km as overland flow length and requires
+        runoff_coeff to be set.
+
+        For "kerby", uses length_km as overland flow length and requires
+        retardance to be set.
+
+        For "kerby_kirpich", requires overland_length_km,
+        overland_slope_m_per_m, retardance, channel_length_km, and
+        channel_slope_m_per_m.
 
         Examples
         --------
@@ -406,7 +496,69 @@ class WatershedParameters:
                 length_km=length_km,
                 elevation_diff_m=elevation_diff_m,
             )
+        elif method == "faa":
+            if self.runoff_coeff is None:
+                raise ValueError(
+                    "runoff_coeff is required for FAA method. "
+                    "Set the runoff_coeff parameter (0 < C <= 1.0)."
+                )
+            return ConcentrationTime.faa(
+                length_km=length_km,
+                slope_m_per_m=slope_m_per_m,
+                runoff_coeff=self.runoff_coeff,
+            )
+        elif method == "kerby":
+            if self.retardance is None:
+                raise ValueError(
+                    "retardance is required for Kerby method. "
+                    "Set the retardance parameter (0.02-0.80)."
+                )
+            return ConcentrationTime.kerby(
+                length_km=length_km,
+                slope_m_per_m=slope_m_per_m,
+                retardance=self.retardance,
+            )
+        elif method == "kerby_kirpich":
+            if self.retardance is None:
+                raise ValueError(
+                    "retardance is required for Kerby-Kirpich method. "
+                    "Set the retardance parameter (0.02-0.80)."
+                )
+            # Overland segment parameters
+            ol_length = self.overland_length_km
+            if ol_length is None:
+                raise ValueError(
+                    "overland_length_km is required for Kerby-Kirpich "
+                    "method. Set the overland_length_km parameter."
+                )
+            ol_slope = self.overland_slope_m_per_m
+            if ol_slope is None:
+                raise ValueError(
+                    "overland_slope_m_per_m is required for Kerby-Kirpich "
+                    "method. Set the overland_slope_m_per_m parameter."
+                )
+            # Channel segment parameters
+            ch_length = self.channel_length_km
+            if ch_length is None:
+                raise ValueError(
+                    "channel_length_km is required for Kerby-Kirpich "
+                    "method. Set the channel_length_km parameter."
+                )
+            ch_slope = self.channel_slope_m_per_m
+            if ch_slope is None:
+                raise ValueError(
+                    "channel_slope_m_per_m is required for Kerby-Kirpich "
+                    "method. Set the channel_slope_m_per_m parameter."
+                )
+            return ConcentrationTime.kerby_kirpich(
+                overland_length_km=ol_length,
+                overland_slope_m_per_m=ol_slope,
+                retardance=self.retardance,
+                channel_length_km=ch_length,
+                channel_slope_m_per_m=ch_slope,
+            )
         else:
             raise ValueError(
-                f"Unknown method: '{method}'. Use 'kirpich', 'nrcs', or 'giandotti'."
+                f"Unknown method: '{method}'. Use 'kirpich', 'nrcs', "
+                f"'giandotti', 'faa', 'kerby', or 'kerby_kirpich'."
             )

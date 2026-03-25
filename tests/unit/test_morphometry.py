@@ -490,6 +490,311 @@ class TestHypsometricCurve:
             hypso.generate_curve(n_points=1)
 
 
+class TestWatershedParameters:
+    """Tests for WatershedParameters dataclass."""
+
+    # -- Helpers ---------------------------------------------------------
+    @staticmethod
+    def _base_dict(**overrides: object) -> dict:
+        """Return minimal valid dict with optional overrides."""
+        d: dict = {
+            "area_km2": 45.0,
+            "perimeter_km": 32.0,
+            "length_km": 12.0,
+            "elevation_min_m": 150.0,
+            "elevation_max_m": 520.0,
+        }
+        d.update(overrides)
+        return d
+
+    @staticmethod
+    def _base_params(**overrides: object) -> "WatershedParameters":
+        from hydrolog.morphometry.watershed_params import WatershedParameters
+
+        d = TestWatershedParameters._base_dict(**overrides)
+        return WatershedParameters.from_dict(d)
+
+    # -- New fields: basic construction ----------------------------------
+    def test_new_fields_default_none(self):
+        """New optional fields default to None."""
+        from hydrolog.morphometry.watershed_params import WatershedParameters
+
+        p = self._base_params()
+        assert p.runoff_coeff is None
+        assert p.retardance is None
+        assert p.overland_length_km is None
+        assert p.overland_slope_m_per_m is None
+        assert p.Lc_km is None
+        assert p.manning_n is None
+        assert p.urban_pct is None
+        assert p.forest_pct is None
+
+    def test_new_fields_set_via_constructor(self):
+        """New fields can be set via constructor."""
+        from hydrolog.morphometry.watershed_params import WatershedParameters
+
+        p = WatershedParameters(
+            area_km2=45.0,
+            perimeter_km=32.0,
+            length_km=12.0,
+            elevation_min_m=150.0,
+            elevation_max_m=520.0,
+            runoff_coeff=0.6,
+            retardance=0.40,
+            overland_length_km=0.25,
+            overland_slope_m_per_m=0.008,
+            Lc_km=8.0,
+            manning_n=0.035,
+            urban_pct=10.0,
+            forest_pct=40.0,
+        )
+        assert p.runoff_coeff == 0.6
+        assert p.retardance == 0.40
+        assert p.overland_length_km == 0.25
+        assert p.overland_slope_m_per_m == 0.008
+        assert p.Lc_km == 8.0
+        assert p.manning_n == 0.035
+        assert p.urban_pct == 10.0
+        assert p.forest_pct == 40.0
+
+    # -- from_dict / to_dict round-trip with new fields ------------------
+    def test_from_dict_new_fields(self):
+        """from_dict correctly reads new fields."""
+        p = self._base_params(
+            runoff_coeff=0.5,
+            retardance=0.20,
+            overland_length_km=0.30,
+            overland_slope_m_per_m=0.005,
+            Lc_km=6.0,
+            manning_n=0.04,
+            urban_pct=5.0,
+            forest_pct=55.0,
+        )
+        assert p.runoff_coeff == 0.5
+        assert p.retardance == 0.20
+        assert p.Lc_km == 6.0
+        assert p.manning_n == 0.04
+        assert p.urban_pct == 5.0
+        assert p.forest_pct == 55.0
+
+    def test_to_dict_includes_new_fields(self):
+        """to_dict includes new fields when set."""
+        p = self._base_params(runoff_coeff=0.7, Lc_km=8.0)
+        d = p.to_dict()
+        assert d["runoff_coeff"] == 0.7
+        assert d["Lc_km"] == 8.0
+
+    def test_to_dict_excludes_none_new_fields(self):
+        """to_dict excludes None-valued new fields."""
+        p = self._base_params()
+        d = p.to_dict()
+        assert "runoff_coeff" not in d
+        assert "retardance" not in d
+        assert "Lc_km" not in d
+        assert "manning_n" not in d
+
+    def test_round_trip_json_with_new_fields(self):
+        """JSON round-trip preserves all new fields."""
+        from hydrolog.morphometry.watershed_params import WatershedParameters
+
+        p1 = self._base_params(
+            runoff_coeff=0.65,
+            retardance=0.40,
+            overland_length_km=0.25,
+            overland_slope_m_per_m=0.008,
+            Lc_km=7.5,
+            manning_n=0.035,
+            urban_pct=12.0,
+            forest_pct=30.0,
+        )
+        json_str = p1.to_json()
+        p2 = WatershedParameters.from_json(json_str)
+
+        assert p2.runoff_coeff == p1.runoff_coeff
+        assert p2.retardance == p1.retardance
+        assert p2.overland_length_km == p1.overland_length_km
+        assert p2.overland_slope_m_per_m == p1.overland_slope_m_per_m
+        assert p2.Lc_km == p1.Lc_km
+        assert p2.manning_n == p1.manning_n
+        assert p2.urban_pct == p1.urban_pct
+        assert p2.forest_pct == p1.forest_pct
+
+    def test_from_dict_backward_compatible(self):
+        """from_dict with old-style dict (no new fields) still works."""
+        d = self._base_dict(cn=72, source="Hydrograf")
+        from hydrolog.morphometry.watershed_params import WatershedParameters
+
+        p = WatershedParameters.from_dict(d)
+        assert p.cn == 72
+        assert p.runoff_coeff is None
+
+    # -- Validation for new fields ---------------------------------------
+    def test_invalid_runoff_coeff_zero(self):
+        """runoff_coeff=0 is rejected."""
+        with pytest.raises(InvalidParameterError, match="runoff_coeff"):
+            self._base_params(runoff_coeff=0.0)
+
+    def test_invalid_runoff_coeff_above_1(self):
+        """runoff_coeff > 1.0 is rejected."""
+        with pytest.raises(InvalidParameterError, match="runoff_coeff"):
+            self._base_params(runoff_coeff=1.5)
+
+    def test_invalid_retardance_negative(self):
+        """Negative retardance is rejected."""
+        with pytest.raises(InvalidParameterError, match="retardance"):
+            self._base_params(retardance=-0.1)
+
+    def test_invalid_overland_length_km_zero(self):
+        """overland_length_km=0 is rejected."""
+        with pytest.raises(InvalidParameterError, match="overland_length_km"):
+            self._base_params(overland_length_km=0.0)
+
+    def test_invalid_overland_slope_negative(self):
+        """Negative overland_slope_m_per_m is rejected."""
+        with pytest.raises(InvalidParameterError, match="overland_slope_m_per_m"):
+            self._base_params(overland_slope_m_per_m=-0.01)
+
+    def test_invalid_Lc_km_zero(self):
+        """Lc_km=0 is rejected."""
+        with pytest.raises(InvalidParameterError, match="Lc_km"):
+            self._base_params(Lc_km=0.0)
+
+    def test_invalid_manning_n_negative(self):
+        """Negative manning_n is rejected."""
+        with pytest.raises(InvalidParameterError, match="manning_n"):
+            self._base_params(manning_n=-0.01)
+
+    def test_invalid_urban_pct_above_100(self):
+        """urban_pct > 100 is rejected."""
+        with pytest.raises(InvalidParameterError, match="urban_pct"):
+            self._base_params(urban_pct=101.0)
+
+    def test_invalid_forest_pct_negative(self):
+        """Negative forest_pct is rejected."""
+        with pytest.raises(InvalidParameterError, match="forest_pct"):
+            self._base_params(forest_pct=-1.0)
+
+    # -- calculate_tc: FAA -----------------------------------------------
+    def test_calculate_tc_faa(self):
+        """FAA method produces a positive tc value."""
+        p = self._base_params(
+            runoff_coeff=0.6,
+            mean_slope_m_per_m=0.02,
+        )
+        tc = p.calculate_tc(method="faa")
+        assert tc > 0
+
+    def test_calculate_tc_faa_missing_runoff_coeff(self):
+        """FAA raises ValueError when runoff_coeff is missing."""
+        p = self._base_params(mean_slope_m_per_m=0.02)
+        with pytest.raises(ValueError, match="runoff_coeff"):
+            p.calculate_tc(method="faa")
+
+    # -- calculate_tc: Kerby ---------------------------------------------
+    def test_calculate_tc_kerby(self):
+        """Kerby method produces a positive tc value."""
+        p = self._base_params(
+            retardance=0.40,
+            mean_slope_m_per_m=0.008,
+        )
+        tc = p.calculate_tc(method="kerby")
+        assert tc > 0
+
+    def test_calculate_tc_kerby_missing_retardance(self):
+        """Kerby raises ValueError when retardance is missing."""
+        p = self._base_params(mean_slope_m_per_m=0.008)
+        with pytest.raises(ValueError, match="retardance"):
+            p.calculate_tc(method="kerby")
+
+    # -- calculate_tc: Kerby-Kirpich -------------------------------------
+    def test_calculate_tc_kerby_kirpich(self):
+        """Kerby-Kirpich method produces a positive tc value."""
+        p = self._base_params(
+            retardance=0.40,
+            overland_length_km=0.25,
+            overland_slope_m_per_m=0.008,
+            channel_length_km=5.0,
+            channel_slope_m_per_m=0.005,
+        )
+        tc = p.calculate_tc(method="kerby_kirpich")
+        assert tc > 0
+
+    def test_calculate_tc_kerby_kirpich_missing_retardance(self):
+        """Kerby-Kirpich raises ValueError when retardance is missing."""
+        p = self._base_params(
+            overland_length_km=0.25,
+            overland_slope_m_per_m=0.008,
+            channel_length_km=5.0,
+            channel_slope_m_per_m=0.005,
+        )
+        with pytest.raises(ValueError, match="retardance"):
+            p.calculate_tc(method="kerby_kirpich")
+
+    def test_calculate_tc_kerby_kirpich_missing_overland_length(self):
+        """Kerby-Kirpich raises ValueError when overland_length_km is missing."""
+        p = self._base_params(
+            retardance=0.40,
+            overland_slope_m_per_m=0.008,
+            channel_length_km=5.0,
+            channel_slope_m_per_m=0.005,
+        )
+        with pytest.raises(ValueError, match="overland_length_km"):
+            p.calculate_tc(method="kerby_kirpich")
+
+    def test_calculate_tc_kerby_kirpich_missing_overland_slope(self):
+        """Kerby-Kirpich raises ValueError when overland_slope_m_per_m is missing."""
+        p = self._base_params(
+            retardance=0.40,
+            overland_length_km=0.25,
+            channel_length_km=5.0,
+            channel_slope_m_per_m=0.005,
+        )
+        with pytest.raises(ValueError, match="overland_slope_m_per_m"):
+            p.calculate_tc(method="kerby_kirpich")
+
+    def test_calculate_tc_kerby_kirpich_missing_channel_length(self):
+        """Kerby-Kirpich raises ValueError when channel_length_km is missing."""
+        p = self._base_params(
+            retardance=0.40,
+            overland_length_km=0.25,
+            overland_slope_m_per_m=0.008,
+            channel_slope_m_per_m=0.005,
+        )
+        with pytest.raises(ValueError, match="channel_length_km"):
+            p.calculate_tc(method="kerby_kirpich")
+
+    def test_calculate_tc_kerby_kirpich_missing_channel_slope(self):
+        """Kerby-Kirpich raises ValueError when channel_slope_m_per_m is missing."""
+        p = self._base_params(
+            retardance=0.40,
+            overland_length_km=0.25,
+            overland_slope_m_per_m=0.008,
+            channel_length_km=5.0,
+        )
+        with pytest.raises(ValueError, match="channel_slope_m_per_m"):
+            p.calculate_tc(method="kerby_kirpich")
+
+    # -- calculate_tc: unknown method ------------------------------------
+    def test_calculate_tc_unknown_method(self):
+        """Unknown method raises ValueError with descriptive message."""
+        p = self._base_params()
+        with pytest.raises(ValueError, match="Unknown method"):
+            p.calculate_tc(method="nonexistent")
+
+    # -- Existing methods still work (regression) ------------------------
+    def test_calculate_tc_kirpich_still_works(self):
+        """Kirpich method still works after extension."""
+        p = self._base_params(mean_slope_m_per_m=0.025)
+        tc = p.calculate_tc(method="kirpich")
+        assert tc > 0
+
+    def test_calculate_tc_giandotti_still_works(self):
+        """Giandotti method still works after extension."""
+        p = self._base_params()
+        tc = p.calculate_tc(method="giandotti")
+        assert tc > 0
+
+
 class TestMorphometryImport:
     """Test module imports."""
 
