@@ -4,6 +4,7 @@ This module provides the HydrologyReportGenerator class that combines
 all section generators to produce complete calculation reports.
 """
 
+import warnings
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
@@ -34,8 +35,8 @@ class ReportConfig:
     Parameters
     ----------
     tc_method : str, optional
-        Time of concentration method ("kirpich", "nrcs", "giandotti"),
-        by default "kirpich".
+        Time of concentration method ("kirpich", "nrcs", "giandotti",
+        "faa", "kerby", "kerby_kirpich"), by default "kirpich".
     uh_model : str, optional
         Unit hydrograph model ("scs", "nash", "clark", "snyder"),
         by default "scs".
@@ -171,6 +172,17 @@ class HydrologyReportGenerator:
         # Use config defaults if not specified
         if tc_method is None:
             tc_method = self.config.tc_method
+
+        # Validate hietogram_type against known types
+        _VALID_HIETOGRAM_TYPES = {"block", "triangular", "beta", "euler_ii"}
+        if self.config.hietogram_type not in _VALID_HIETOGRAM_TYPES:
+            warnings.warn(
+                f"ReportConfig.hietogram_type='{self.config.hietogram_type}' "
+                f"is not one of {sorted(_VALID_HIETOGRAM_TYPES)}. "
+                f"Report may contain incorrect distribution labels.",
+                UserWarning,
+                stacklevel=2,
+            )
 
         # Build report sections
         sections = []
@@ -495,6 +507,46 @@ class HydrologyReportGenerator:
                     watershed_params["elevation_max_m"]
                     - watershed_params["elevation_min_m"]
                 )
+
+        elif method == "faa":
+            if "channel_length_km" in watershed_params:
+                params["length_km"] = watershed_params["channel_length_km"]
+            elif "length_km" in watershed_params:
+                params["length_km"] = watershed_params["length_km"]
+            if "channel_slope_m_per_m" in watershed_params:
+                params["slope_m_per_m"] = watershed_params["channel_slope_m_per_m"]
+            if "runoff_coeff" in watershed_params:
+                params["runoff_coeff"] = watershed_params["runoff_coeff"]
+
+        elif method == "kerby":
+            if "channel_length_km" in watershed_params:
+                params["length_km"] = watershed_params["channel_length_km"]
+            elif "length_km" in watershed_params:
+                params["length_km"] = watershed_params["length_km"]
+            if "channel_slope_m_per_m" in watershed_params:
+                params["slope_m_per_m"] = watershed_params["channel_slope_m_per_m"]
+            if "retardance" in watershed_params:
+                params["retardance"] = watershed_params["retardance"]
+
+        elif method == "kerby_kirpich":
+            if "overland_length_km" in watershed_params:
+                params["overland_length_km"] = watershed_params["overland_length_km"]
+            if "overland_slope_m_per_m" in watershed_params:
+                params["overland_slope_m_per_m"] = watershed_params[
+                    "overland_slope_m_per_m"
+                ]
+            if "retardance" in watershed_params:
+                params["retardance"] = watershed_params["retardance"]
+            if "channel_length_km" in watershed_params:
+                params["channel_length_km"] = watershed_params["channel_length_km"]
+            if "channel_slope_m_per_m" in watershed_params:
+                params["channel_slope_m_per_m"] = watershed_params[
+                    "channel_slope_m_per_m"
+                ]
+            if "tc_overland_min" in watershed_params:
+                params["tc_overland_min"] = watershed_params["tc_overland_min"]
+            if "tc_channel_min" in watershed_params:
+                params["tc_channel_min"] = watershed_params["tc_channel_min"]
 
         return params
 

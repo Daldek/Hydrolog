@@ -2,8 +2,8 @@
 
 ## Biblioteka Narzędzi Hydrologicznych
 
-**Wersja:** 1.2
-**Data:** 2026-03-23
+**Wersja:** 1.3
+**Data:** 2026-03-25
 **Status:** W trakcie realizacji
 
 ---
@@ -37,13 +37,14 @@ Hydrolog jest analogiczny do **Kartografa** (pobieranie danych przestrzennych) -
 **Metoda SCS Curve Number:**
 - Obliczanie retencji maksymalnej: `S = 25400/CN - 254`
 - Obliczanie abstrakcji początkowej: `Ia = 0.2 × S`
-- Obliczanie opadu efektywnego: `Pe = (P - Ia)² / (P + 0.8S)`
+- Obliczanie opadu efektywnego: `Pe = (P - Ia)² / (P - Ia + S)` gdy P > Ia, w przeciwnym razie Pe = 0
+  - Forma uproszczona `(P - 0.2S)² / (P + 0.8S)` obowiązuje tylko przy Ia = 0.2S
 - Warunki wilgotnościowe: AMC-I, AMC-II (domyślne), AMC-III
 
 **Hydrogram jednostkowy SCS:**
 - Czas do szczytu: `tp = 0.6 × tc`
-- Przepływ szczytowy: `qp = 0.208 × A / tp`
-- Czas bazowy: `tb = 2.67 × tp`
+- Przepływ szczytowy: `qp = 0.208 × A / tp` (A w km², tp w godzinach)
+- Czas bazowy: `tb = 5.0 × tp` (pełny zakres bezwymiarowego UH; przybliżenie trójkątne to 2.67 × tp)
 - Bezwymiarowy rozkład czasowy
 
 **Transformacja opad → odpływ:**
@@ -127,6 +128,16 @@ Hydrolog jest analogiczny do **Kartografa** (pobieranie danych przestrzennych) -
 **Krzywa hipsograficzna:**
 - Rozkład wysokości
 - Średnia wysokość ważona
+
+**WatershedParameters — dodatkowe pola opcjonalne (v0.6.3):**
+- `runoff_coeff` — współczynnik odpływu dla metody FAA
+- `retardance` — współczynnik szorstkości Kerby (0.02–0.80)
+- `overland_length_km` — długość spływu powierzchniowego [km] (Kerby-Kirpich)
+- `overland_slope_m_per_m` — spadek powierzchniowy [m/m] (Kerby-Kirpich)
+- `Lc_km` — odległość do centroidu zlewni [km] (Nash/Snyder)
+- `manning_n` — współczynnik Manninga (Nash)
+- `urban_pct` — procent zabudowy [%] (Nash)
+- `forest_pct` — procent zalesienia [%] (Nash)
 
 ---
 
@@ -411,6 +422,8 @@ print(f"Time to peak: {result.time_to_peak_min} min")
 | **v0.6.0** | Raporty obliczeniowe | `reports` | ✅ Wydana |
 | **v0.6.1** | Nash urban regression | `runoff.nash_iuh.from_urban_regression` | ✅ Wydana |
 | **v0.6.2** | Wzory UH w raportach + korekty metryczne | `reports`, `runoff.snyder_uh`, `runoff.clark_iuh` | ✅ Wydana |
+| **v0.6.3** | FAA + Kerby + Kerby-Kirpich tc, API audit, WatershedParameters extension | `time.concentration`, `morphometry.watershed_params`, `reports` | ✅ Wydana |
+| **v0.6.4** | WatershedParams extension + UH ordinates + docs audit | `morphometry.watershed_params`, `runoff.generator`, `reports`, `docs` | ✅ Wydana |
 | **v1.0.0** | Stabilne API + dokumentacja | Wszystkie | 📋 Planowane |
 
 ---
@@ -474,6 +487,6 @@ print(f"Time to peak: {result.time_to_peak_min} min")
 
 ---
 
-**Wersja dokumentu:** 1.2
-**Data ostatniej aktualizacji:** 2026-03-23
+**Wersja dokumentu:** 1.3
+**Data ostatniej aktualizacji:** 2026-03-25
 **Status:** W trakcie realizacji

@@ -9,6 +9,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.6.4] - 2026-03-25
+
+### Added
+
+#### `hydrolog.morphometry.WatershedParameters` - Extended Fields
+- 8 new Optional fields for full integration with all tc methods and UH models:
+  - `runoff_coeff` — FAA tc method (Rational method C, 0-1)
+  - `retardance` — Kerby/Kerby-Kirpich tc (roughness coefficient, 0.02-0.80)
+  - `overland_length_km` — Kerby-Kirpich overland segment length [km]
+  - `overland_slope_m_per_m` — Kerby-Kirpich overland slope [m/m]
+  - `Lc_km` — Length to watershed centroid along main channel [km] (Nash Lutz, Snyder)
+  - `manning_n` — Manning's roughness coefficient (Nash Lutz)
+  - `urban_pct` — Urbanized area percentage [%] (Nash Lutz)
+  - `forest_pct` — Forested area percentage [%] (Nash Lutz)
+- `calculate_tc()` extended from 3 to 6 methods: added `"faa"`, `"kerby"`, `"kerby_kirpich"`
+- `from_dict()`/`to_dict()` updated for all new fields (backward compatible)
+
+#### `hydrolog.reports` - FAA/Kerby/Kerby-Kirpich Formula Rendering
+- `FormulaRenderer.faa_tc()` — LaTeX rendering: `tc = 22.213 × (1.1 - C) × L^{0.5} / S^{1/3}`
+- `FormulaRenderer.kerby_tc()` — LaTeX rendering: `tc = 36.37 × (L × N)^{0.467} × S^{-0.2335}`
+- `FormulaRenderer.kerby_kirpich_tc()` — LaTeX composite: `tc = t_{ov} + t_{ch}`
+- `generate_tc_section()` extended with full formula rendering for 3 new tc methods
+- Polish method descriptions added to `templates.py` (TC_METHODS, FORMULA_EXPLANATIONS, REFERENCES)
+
+#### `hydrolog.reports.generator` - Hietogram Type Validation
+- `generate()` emits `UserWarning` if `config.hietogram_type` is not in valid set
+
+#### `hydrolog.runoff.generator` - UH Ordinates Exposure
+- `HydrographGeneratorResult.unit_hydrograph_result` — new Optional field storing computed UH result
+  - Populated automatically by `HydrographGenerator.generate()`
+  - Stores concrete UH type (UnitHydrographResult, NashUHResult, ClarkUHResult, SnyderUHResult)
+  - Backward compatible (defaults to None)
+
+### Changed
+- `hydrolog.cli.commands.uh` — Snyder `--ct` default changed from 2.0 to **1.5** (aligned with Python class default; SI typical range 1.35-1.65)
+- `hydrolog.runoff.snyder_uh` — `generate()` docstring documents why default timestep (30 min) differs from other models (5 min)
+- `hydrolog.runoff.generator` — `generate()` docstring documents explicit timestep passing to all UH models
+
+### Fixed
+- `hydrolog.reports.sections.scs_cn` — added None guards for `retention_mm` and `initial_abstraction_mm` (prevents crash when data missing)
+- `hydrolog.visualization.water_balance` — `F = max(0.0, P - Pe - Ia)` prevents negative continuing abstraction
+- `hydrolog.precipitation.hietogram` — `HietogramResult.intensities_mm` docstring clarified: contains incremental depths [mm], not intensity rates [mm/h]
+- `hydrolog.precipitation.interpolation` — `Station.x`/`y` docstring clarified: must use consistent coordinate system; unit affects IDW distance calculations
+
+### Testing
+- 45 new tests (754 total, all passing):
+  - 30 tests for WatershedParameters extension (fields, validation, tc methods, serialization)
+  - 10 tests for reports (FormulaRenderer, tc sections, SCS-CN guards, hietogram validation)
+  - 6 tests for UH ordinates exposure in HydrographGeneratorResult (all 4 models)
+  - 2 tests for CLI Snyder Ct default alignment (integrated from worktree)
+
+### Documentation
+- Comprehensive audit of all 8 docs files against codebase v0.6.3
+- Fixed outdated API examples: SCSCN class-based, BetaHietogram.generate()
+- Corrected SCS formulas: Pe = (P-Ia)²/(P-Ia+S), tb = 5.0×tp
+- Updated PRD with +7 user stories for missing modules (visualization, reports, Nash/Clark/Snyder)
+- DEVELOPMENT_STANDARDS: added TYPE_CHECKING, dataclass, warnings patterns
+- Moved NASH_AUDIT_REPORT.md to tmp/
+
+---
+
 ## [0.6.3] - 2026-03-23
 
 ### Added
@@ -596,4 +657,6 @@ Requires optional dependencies: `pip install hydrolog[visualization]`
 | **0.6.0** | 2026-01-21 | Report generation module |
 | **0.6.1** | 2026-03-20 | Nash urban regression method |
 | **0.6.2** | 2026-03-22 | UH report formulas + metric corrections |
+| **0.6.3** | 2026-03-23 | FAA + Kerby + Kerby-Kirpich tc, API audit |
+| **0.6.4** | 2026-03-25 | WatershedParams extension + UH ordinates + docs audit |
 | 1.0.0 | TBD | Stable API |

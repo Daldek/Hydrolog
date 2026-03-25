@@ -1,7 +1,7 @@
 # Ścieżki obliczeniowe dla modeli hydrogramów jednostkowych
 
 **Wersja dokumentu:** 1.1
-**Data:** 2026-03-23
+**Data:** 2026-03-25
 **Dotyczy:** Hydrolog >= 0.6.0
 
 ---
@@ -162,6 +162,10 @@ tp = D/2 + tlag                              [min]   (D = krok czasowy)
 qp = 0.208 × A / tp                          [m³/s/mm]   (tp w godzinach!)
 tb = 5.0 × tp                                [min]
 ```
+
+**Uwaga o czasie bazy (tb):** W kontekście SCS UH występują dwie wartości tb — obie są poprawne dla swoich celów:
+- `tb ≈ 2.67 × tp` — przybliżenie trójkątne, używane do wyprowadzenia stałej 0.208
+- `tb = 5.0 × tp` — pełny zakres bezwymiarowej tablicy NRCS (33 punkty), używany przy dyskretyzacji UH
 
 **Wyprowadzenie stałej 0.208:**
 - Dla trójkątnego przybliżenia: V = 0.5 × qp × tb
