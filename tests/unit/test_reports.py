@@ -173,6 +173,60 @@ class TestFormulaRenderer:
         assert "50.00" in result
         assert "0.142" in result
 
+    def test_faa_tc(self):
+        """Test FAA formula rendering."""
+        result = FormulaRenderer.faa_tc(
+            length_km=0.15,
+            slope_m_per_m=0.02,
+            runoff_coeff=0.6,
+            tc_min=15.8,
+        )
+
+        assert "22.213" in result
+        assert "0.15" in result or "0.150" in result
+        assert "0.02" in result or "0.0200" in result
+        assert "0.60" in result
+        assert "15.8" in result
+        assert "min" in result
+
+    def test_kerby_tc(self):
+        """Test Kerby formula rendering."""
+        result = FormulaRenderer.kerby_tc(
+            length_km=0.10,
+            slope_m_per_m=0.008,
+            retardance=0.40,
+            tc_min=24.9,
+        )
+
+        assert "36.37" in result
+        assert "0.10" in result or "0.100" in result
+        assert "0.008" in result or "0.0080" in result
+        assert "0.40" in result
+        assert "24.9" in result
+        assert "min" in result
+
+    def test_kerby_kirpich_tc(self):
+        """Test Kerby-Kirpich composite formula rendering."""
+        result = FormulaRenderer.kerby_kirpich_tc(
+            ov_length_km=0.25,
+            ov_slope_m_per_m=0.008,
+            retardance=0.40,
+            ch_length_km=5.0,
+            ch_slope_m_per_m=0.005,
+            tc_ov_min=40.0,
+            tc_ch_min=104.0,
+            tc_total_min=144.0,
+        )
+
+        assert "Kerby-Kirpich" in result
+        assert "Kerby" in result
+        assert "Kirpich" in result
+        assert "40.0" in result
+        assert "104.0" in result
+        assert "144.0" in result
+        assert "0.25" in result or "0.250" in result
+        assert "5.0" in result or "5.00" in result
+
 
 # =============================================================================
 # TableGenerator Tests
@@ -307,6 +361,64 @@ class TestSectionGenerators:
         assert "Kirpich" in result
         assert "85.9" in result
 
+    def test_generate_tc_section_faa(self):
+        """Test tc section with FAA method."""
+        result = generate_tc_section(
+            tc_min=15.8,
+            method="faa",
+            length_km=0.15,
+            slope_m_per_m=0.02,
+            runoff_coeff=0.6,
+        )
+
+        assert "## 2. Czas Koncentracji" in result
+        assert "FAA" in result
+        assert "15.8" in result
+
+    def test_generate_tc_section_kerby(self):
+        """Test tc section with Kerby method."""
+        result = generate_tc_section(
+            tc_min=24.9,
+            method="kerby",
+            length_km=0.10,
+            slope_m_per_m=0.008,
+            retardance=0.40,
+        )
+
+        assert "## 2. Czas Koncentracji" in result
+        assert "Kerby" in result
+        assert "24.9" in result
+
+    def test_generate_tc_section_kerby_kirpich(self):
+        """Test tc section with Kerby-Kirpich method."""
+        result = generate_tc_section(
+            tc_min=144.0,
+            method="kerby_kirpich",
+            overland_length_km=0.25,
+            overland_slope_m_per_m=0.008,
+            retardance=0.40,
+            channel_length_km=5.0,
+            channel_slope_m_per_m=0.005,
+            tc_overland_min=40.0,
+            tc_channel_min=104.0,
+        )
+
+        assert "## 2. Czas Koncentracji" in result
+        assert "Kerby-Kirpich" in result
+        assert "144.0" in result
+
+    def test_generate_tc_section_faa_fallback(self):
+        """Test tc section with FAA method when params are missing."""
+        result = generate_tc_section(
+            tc_min=15.8,
+            method="faa",
+        )
+
+        assert "## 2. Czas Koncentracji" in result
+        assert "FAA" in result
+        assert "brak danych" in result
+        assert "15.8" in result
+
     def test_generate_hietogram_section(self):
         """Test hietogram section generation."""
         times = np.array([10.0, 20.0, 30.0, 40.0, 50.0, 60.0])
@@ -418,6 +530,38 @@ class TestSectionGenerators:
         assert "7.09" in result
         assert "0.142" in result
 
+    def test_generate_scs_cn_section_none_retention(self):
+        """Test SCS-CN section handles None retention gracefully."""
+        result = generate_scs_cn_section(
+            total_precip_mm=50.0,
+            cn_ii=72,
+            cn_adjusted=72,
+            amc="II",
+            retention_mm=None,  # type: ignore[arg-type]
+            initial_abstraction_mm=None,  # type: ignore[arg-type]
+            total_effective_mm=7.09,
+            include_formulas=True,
+        )
+
+        assert "## 4. Opad Efektywny" in result
+        assert "brak danych" in result
+        assert "7.09" in result
+
+    def test_generate_scs_cn_section_none_retention_summary(self):
+        """Test SCS-CN summary table shows fallback for None values."""
+        result = generate_scs_cn_section(
+            total_precip_mm=50.0,
+            cn_ii=72,
+            cn_adjusted=72,
+            amc="II",
+            retention_mm=None,  # type: ignore[arg-type]
+            initial_abstraction_mm=None,  # type: ignore[arg-type]
+            total_effective_mm=7.09,
+            include_formulas=False,
+        )
+
+        assert "brak danych" in result
+
 
 # =============================================================================
 # ReportConfig Tests
@@ -452,6 +596,30 @@ class TestReportConfig:
         assert config.uh_model == "nash"
         assert config.include_formulas is False
         assert config.max_table_rows == 30
+
+    def test_invalid_hietogram_type_warns(self):
+        """Test that invalid hietogram_type emits a warning."""
+        import warnings
+
+        hietogram = BetaHietogram(alpha=2, beta=5)
+        precip = hietogram.generate(total_mm=50.0, duration_min=60.0, timestep_min=10.0)
+
+        generator = HydrographGenerator(area_km2=45.0, cn=72, tc_min=90.0)
+        result = generator.generate(precip)
+
+        config = ReportConfig(hietogram_type="invalid_type")
+        report = HydrologyReportGenerator(config)
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            report.generate(
+                result=result,
+                hietogram=precip,
+                watershed_name="Test",
+            )
+            hietogram_warnings = [x for x in w if "hietogram_type" in str(x.message)]
+            assert len(hietogram_warnings) == 1
+            assert "invalid_type" in str(hietogram_warnings[0].message)
 
 
 # =============================================================================
