@@ -269,6 +269,147 @@ class FormulaRenderer:
             f"{tc_h:.3f} \\text{{ h}} = {tc_min:.1f} \\text{{ min}}$$"
         )
 
+    @staticmethod
+    def faa_tc(
+        length_km: float,
+        slope_m_per_m: float,
+        runoff_coeff: float,
+        tc_min: float,
+    ) -> str:
+        """
+        Render FAA formula: tc = 22.213 * (1.1 - C) * L^0.5 / S^(1/3).
+
+        Parameters
+        ----------
+        length_km : float
+            Overland flow length [km].
+        slope_m_per_m : float
+            Average overland slope [m/m].
+        runoff_coeff : float
+            Rational method runoff coefficient [-].
+        tc_min : float
+            Calculated concentration time [min].
+
+        Returns
+        -------
+        str
+            LaTeX formula with substituted values.
+        """
+        return (
+            "**Wzór ogólny:**\n\n"
+            "$$t_c = 22.213 \\cdot (1.1 - C) \\cdot L^{0.5}"
+            " \\cdot S^{-1/3} \\text{ [min]}$$\n\n"
+            "gdzie:\n"
+            "- $C$ - współczynnik spływu (metoda racjonalna) [-]\n"
+            "- $L$ - długość spływu powierzchniowego [km]\n"
+            "- $S$ - spadek powierzchni [m/m]\n\n"
+            "**Podstawienie wartości:**\n\n"
+            f"$$t_c = 22.213 \\cdot (1.1 - {runoff_coeff:.2f}) \\cdot "
+            f"{length_km:.3f}^{{0.5}} \\cdot "
+            f"{slope_m_per_m:.4f}^{{-1/3}} = "
+            f"{tc_min:.1f} \\text{{ min}}$$"
+        )
+
+    @staticmethod
+    def kerby_tc(
+        length_km: float,
+        slope_m_per_m: float,
+        retardance: float,
+        tc_min: float,
+    ) -> str:
+        """
+        Render Kerby formula: tc = 36.37 * (L * N)^0.467 * S^(-0.2335).
+
+        Parameters
+        ----------
+        length_km : float
+            Overland flow length [km].
+        slope_m_per_m : float
+            Average overland slope [m/m].
+        retardance : float
+            Kerby retardance roughness coefficient [-].
+        tc_min : float
+            Calculated concentration time [min].
+
+        Returns
+        -------
+        str
+            LaTeX formula with substituted values.
+        """
+        return (
+            "**Wzór ogólny:**\n\n"
+            "$$t_c = 36.37 \\cdot (L \\cdot N)^{0.467}"
+            " \\cdot S^{-0.2335} \\text{ [min]}$$\n\n"
+            "gdzie:\n"
+            "- $L$ - długość spływu powierzchniowego [km]\n"
+            "- $N$ - współczynnik opóźnienia Kerby'ego [-]\n"
+            "- $S$ - spadek powierzchni [m/m]\n\n"
+            "**Podstawienie wartości:**\n\n"
+            f"$$t_c = 36.37 \\cdot ({length_km:.3f} \\cdot "
+            f"{retardance:.2f})^{{0.467}} \\cdot "
+            f"{slope_m_per_m:.4f}^{{-0.2335}} = "
+            f"{tc_min:.1f} \\text{{ min}}$$"
+        )
+
+    @staticmethod
+    def kerby_kirpich_tc(
+        ov_length_km: float,
+        ov_slope_m_per_m: float,
+        retardance: float,
+        ch_length_km: float,
+        ch_slope_m_per_m: float,
+        tc_ov_min: float,
+        tc_ch_min: float,
+        tc_total_min: float,
+    ) -> str:
+        """
+        Render Kerby-Kirpich composite formula: tc = tc_ov + tc_ch.
+
+        Parameters
+        ----------
+        ov_length_km : float
+            Overland flow length [km].
+        ov_slope_m_per_m : float
+            Average overland slope [m/m].
+        retardance : float
+            Kerby retardance roughness coefficient [-].
+        ch_length_km : float
+            Channel flow length [km].
+        ch_slope_m_per_m : float
+            Average channel slope [m/m].
+        tc_ov_min : float
+            Overland flow component (Kerby) [min].
+        tc_ch_min : float
+            Channel flow component (Kirpich) [min].
+        tc_total_min : float
+            Total time of concentration [min].
+
+        Returns
+        -------
+        str
+            LaTeX formula with substituted values.
+        """
+        return (
+            "**Metoda złożona Kerby-Kirpich:**\n\n"
+            "$$t_c = t_{ov} + t_{ch}$$\n\n"
+            "**Składnik spływu powierzchniowego (Kerby):**\n\n"
+            "$$t_{ov} = 36.37 \\cdot (L_{ov} \\cdot N)^{0.467}"
+            " \\cdot S_{ov}^{-0.2335} \\text{ [min]}$$\n\n"
+            f"$$t_{{ov}} = 36.37 \\cdot ({ov_length_km:.3f} \\cdot "
+            f"{retardance:.2f})^{{0.467}} \\cdot "
+            f"{ov_slope_m_per_m:.4f}^{{-0.2335}} = "
+            f"{tc_ov_min:.1f} \\text{{ min}}$$\n\n"
+            "**Składnik przepływu korytowego (Kirpich):**\n\n"
+            "$$t_{ch} = 0.0663 \\cdot L_{ch}^{0.77}"
+            " \\cdot S_{ch}^{-0.385} \\text{ [h]}$$\n\n"
+            f"$$t_{{ch}} = 0.0663 \\cdot {ch_length_km:.2f}^{{0.77}} \\cdot "
+            f"{ch_slope_m_per_m:.4f}^{{-0.385}} = "
+            f"{tc_ch_min:.1f} \\text{{ min}}$$\n\n"
+            "**Wynik:**\n\n"
+            f"$$t_c = {tc_ov_min:.1f} + {tc_ch_min:.1f} = "
+            f"{tc_total_min:.1f} \\text{{ min}}$$"
+        )
+
     # =========================================================================
     # Unit Hydrograph Formulas
     # =========================================================================
