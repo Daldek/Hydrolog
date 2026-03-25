@@ -56,6 +56,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - 6 tests for UH ordinates exposure in HydrographGeneratorResult (all 4 models)
   - 2 tests for CLI Snyder Ct default alignment (integrated from worktree)
 
+### Documentation
+- Comprehensive audit of all 8 docs files against codebase v0.6.3
+- Fixed outdated API examples: SCSCN class-based, BetaHietogram.generate()
+- Corrected SCS formulas: Pe = (P-Ia)²/(P-Ia+S), tb = 5.0×tp
+- Updated PRD with +7 user stories for missing modules (visualization, reports, Nash/Clark/Snyder)
+- DEVELOPMENT_STANDARDS: added TYPE_CHECKING, dataclass, warnings patterns
+- Moved NASH_AUDIT_REPORT.md to tmp/
+
 ---
 
 ## [0.6.3] - 2026-03-23
