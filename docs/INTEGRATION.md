@@ -1,6 +1,7 @@
 # Integracja Hydrograf ↔ Hydrolog
 
 **Data utworzenia:** 2026-01-20
+**Ostatnia aktualizacja:** 2026-03-25
 **Status:** W trakcie implementacji
 
 ---
@@ -38,7 +39,8 @@ Umożliwić łatwą wymianę danych między Hydrografem (analizy przestrzenne GI
 │                         HYDROLOG                                │
 │  Odpowiedzialność: OBLICZENIA HYDROLOGICZNE                     │
 │                                                                 │
-│  - Czas koncentracji (Kirpich, SCS Lag, Giandotti)              │
+│  - Czas koncentracji (Kirpich, SCS Lag, Giandotti, FAA,         │
+│    Kerby, Kerby-Kirpich)                                        │
 │  - Hydrogramy jednostkowe (SCS, Nash, Clark, Snyder)            │
 │  - Transformacja opad→odpływ (splot)                            │
 │  - Wskaźniki kształtu zlewni                                    │
@@ -74,7 +76,17 @@ Umożliwić łatwą wymianę danych między Hydrografem (analizy przestrzenne GI
     "channel_slope_m_per_m": {"type": "number", "minimum": 0, "description": "Spadek cieku [m/m]"},
     "cn": {"type": "integer", "minimum": 0, "maximum": 100, "description": "Curve Number"},
     "source": {"type": "string", "description": "Źródło danych"},
-    "crs": {"type": "string", "description": "Układ współrzędnych"}
+    "crs": {"type": "string", "description": "Układ współrzędnych"},
+
+    "__comment_v063": "Pola opcjonalne dodane w v0.6.3+",
+    "runoff_coeff": {"type": "number", "exclusiveMinimum": 0, "maximum": 1.0, "description": "Współczynnik spływu C dla metody FAA"},
+    "retardance": {"type": "number", "exclusiveMinimum": 0, "description": "Współczynnik szorstkości Kerby (0.02-0.80)"},
+    "overland_length_km": {"type": "number", "exclusiveMinimum": 0, "description": "Długość spływu powierzchniowego [km] (Kerby-Kirpich)"},
+    "overland_slope_m_per_m": {"type": "number", "minimum": 0, "description": "Spadek spływu powierzchniowego [m/m] (Kerby-Kirpich)"},
+    "Lc_km": {"type": "number", "exclusiveMinimum": 0, "description": "Odległość do centroidu zlewni wzdłuż cieku [km] (Nash/Snyder)"},
+    "manning_n": {"type": "number", "exclusiveMinimum": 0, "description": "Współczynnik szorstkości Manninga (Nash)"},
+    "urban_pct": {"type": "number", "minimum": 0, "maximum": 100, "description": "Procent obszaru zurbanizowanego [%] (Nash)"},
+    "forest_pct": {"type": "number", "minimum": 0, "maximum": 100, "description": "Procent obszaru zalesionego [%] (Nash)"}
   }
 }
 ```
@@ -139,6 +151,10 @@ relief = params.relief_m   # max - min
 **Pliki:**
 - `hydrolog/morphometry/geometric.py` - `WatershedGeometry.from_dict()`
 - `hydrolog/morphometry/terrain.py` - `TerrainAnalysis.from_dict()`
+
+> **Powiązane dokumenty:**
+> - Szczegóły matematyczne modeli UH i ścieżek obliczeniowych: patrz [COMPUTATION_PATHS.md](COMPUTATION_PATHS.md)
+> - Zakres projektu i granice odpowiedzialności: patrz [SCOPE.md](SCOPE.md)
 
 ---
 
@@ -308,7 +324,8 @@ generator = HydrographGenerator(
     cn=params.cn,
     tc_min=tc,
 )
-hietogram = BetaHietogram(total_mm=50, duration_min=60, timestep_min=5)
+hietogram_gen = BetaHietogram()
+hietogram = hietogram_gen.generate(total_mm=50, duration_min=60, timestep_min=5)
 result = generator.generate(hietogram)
 
 print(f"Qmax: {result.peak_discharge_m3s:.2f} m³/s")
@@ -340,21 +357,20 @@ print(f"Qmax: {result.peak_discharge_m3s:.2f} m³/s")
 
 ---
 
-## Status integracji (2026-01-20)
+## Status integracji (2026-03-25)
 
-### Hydrolog - GOTOWY (z zastrzeżeniem)
+### Hydrolog - GOTOWY
 
 | Komponent | Status | Uwagi |
 |-----------|--------|-------|
-| WatershedParameters | ✅ | from_dict(), to_json(), calculate_tc() |
+| WatershedParameters | ✅ | from_dict(), to_json(), calculate_tc() — w tym pola v0.6.3+ |
 | WatershedGeometry.from_dict() | ✅ | Wskaźniki kształtu |
 | TerrainAnalysis.from_dict() | ✅ | Parametry terenu |
-| HydrographGenerator | ⚠️ | **Wymaga naprawy błędu SCS (v0.5.1)** |
+| HydrographGenerator | ✅ | Błąd SCS naprawiony w v0.5.1 (stała 0.208) |
 | Testy jednostkowe | ✅ | 35 testów |
 | Testy integracyjne | ✅ | 15 testów |
 
-**⚠️ UWAGA:** Wykryto krytyczny błąd w `SCSUnitHydrograph.peak_discharge()` - stała 2.08 zamiast 0.208.
-Qmax jest zawyżony ~10x. Do naprawy w wersji v0.5.1.
+**Naprawione:** Błąd w `SCSUnitHydrograph.peak_discharge()` — stała 2.08 → 0.208 (naprawione w v0.5.1).
 
 ### Hydrograf - DO IMPLEMENTACJI
 
@@ -371,7 +387,7 @@ Qmax jest zawyżony ~10x. Do naprawy w wersji v0.5.1.
 2. ✅ Batch processing wielu zlewni
 3. ✅ Walidacja nieprawidłowych danych
 4. ✅ Round-trip serializacja (from_json → to_json → from_json)
-5. ⚠️ Pełny workflow z HydrographGenerator (wymaga naprawy błędu SCS)
+5. ✅ Pełny workflow z HydrographGenerator (błąd SCS naprawiony w v0.5.1)
 6. ✅ Test na danych rzeczywistych NMT (godło N-33-131-D-a-3-1)
 
 ---
@@ -395,4 +411,4 @@ Qmax jest zawyżony ~10x. Do naprawy w wersji v0.5.1.
 
 ---
 
-**Ostatnia aktualizacja:** 2026-01-20
+**Ostatnia aktualizacja:** 2026-03-25
