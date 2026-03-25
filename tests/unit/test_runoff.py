@@ -380,6 +380,45 @@ class TestHydrographGenerator:
         generator = HydrographGenerator(area_km2=45.0, cn=72, tc_min=90.0)
         assert generator.cn == 72
 
+    def test_generator_unit_hydrograph_result_populated(self):
+        """Test that unit_hydrograph_result is populated after generate()."""
+        hietogram = BlockHietogram()
+        precip = hietogram.generate(total_mm=50.0, duration_min=60.0, timestep_min=5.0)
+
+        generator = HydrographGenerator(area_km2=45.0, cn=72, tc_min=90.0)
+        result = generator.generate(precip)
+
+        assert result.unit_hydrograph_result is not None
+        # SCS model returns UnitHydrographResult with ordinates_m3s
+        assert hasattr(result.unit_hydrograph_result, "ordinates_m3s")
+        assert hasattr(result.unit_hydrograph_result, "times_min")
+        assert len(result.unit_hydrograph_result.ordinates_m3s) > 0
+
+    def test_generator_unit_hydrograph_result_default_none(self):
+        """Test that unit_hydrograph_result defaults to None."""
+        from hydrolog.runoff import HydrographGeneratorResult, HydrographResult
+
+        # Create a minimal HydrographGeneratorResult without the new field
+        hydrograph = HydrographResult(
+            times_min=np.array([0.0, 5.0]),
+            discharge_m3s=np.array([0.0, 1.0]),
+            peak_discharge_m3s=1.0,
+            time_to_peak_min=5.0,
+            total_volume_m3=300.0,
+            timestep_min=5.0,
+        )
+        gen_result = HydrographGeneratorResult(
+            hydrograph=hydrograph,
+            effective_precip_mm=np.array([1.0]),
+            total_precip_mm=10.0,
+            total_effective_mm=1.0,
+            runoff_coefficient=0.1,
+            cn_used=72,
+            retention_mm=50.0,
+            initial_abstraction_mm=10.0,
+        )
+        assert gen_result.unit_hydrograph_result is None
+
 
 class TestHydrographGeneratorModels:
     """Tests for HydrographGenerator with different UH models."""
@@ -536,6 +575,52 @@ class TestHydrographGeneratorModels:
         assert generator_lower.uh_model == "scs"
         assert generator_upper.uh_model == "scs"
         assert generator_mixed.uh_model == "scs"
+
+    def test_uh_result_populated_scs(self):
+        """Test unit_hydrograph_result is populated for SCS model."""
+        generator = HydrographGenerator(
+            area_km2=45.0, cn=72, tc_min=90.0, uh_model="scs"
+        )
+        result = generator.generate([5.0, 10.0, 15.0, 10.0, 5.0], timestep_min=10.0)
+        assert result.unit_hydrograph_result is not None
+        assert hasattr(result.unit_hydrograph_result, "ordinates_m3s")
+
+    def test_uh_result_populated_nash(self):
+        """Test unit_hydrograph_result is populated for Nash model."""
+        generator = HydrographGenerator(
+            area_km2=45.0,
+            cn=72,
+            uh_model="nash",
+            uh_params={"n": 3.0, "k": 0.5},
+        )
+        result = generator.generate([5.0, 10.0, 15.0, 10.0, 5.0], timestep_min=10.0)
+        assert result.unit_hydrograph_result is not None
+        assert hasattr(result.unit_hydrograph_result, "ordinates_m3s")
+
+    def test_uh_result_populated_clark(self):
+        """Test unit_hydrograph_result is populated for Clark model."""
+        generator = HydrographGenerator(
+            area_km2=45.0,
+            cn=72,
+            tc_min=60.0,
+            uh_model="clark",
+            uh_params={"r": 30.0},
+        )
+        result = generator.generate([5.0, 10.0, 15.0, 10.0, 5.0], timestep_min=10.0)
+        assert result.unit_hydrograph_result is not None
+        assert hasattr(result.unit_hydrograph_result, "ordinates_m3s")
+
+    def test_uh_result_populated_snyder(self):
+        """Test unit_hydrograph_result is populated for Snyder model."""
+        generator = HydrographGenerator(
+            area_km2=100.0,
+            cn=72,
+            uh_model="snyder",
+            uh_params={"L_km": 15.0, "Lc_km": 8.0},
+        )
+        result = generator.generate([5.0, 10.0, 15.0, 10.0, 5.0], timestep_min=30.0)
+        assert result.unit_hydrograph_result is not None
+        assert hasattr(result.unit_hydrograph_result, "ordinates_m3s")
 
 
 class TestRunoffImport:
