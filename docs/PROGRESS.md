@@ -6,8 +6,8 @@
 |------|---------|
 | **Faza** | 1 - Implementacja |
 | **Sprint** | 0.6.x - Raporty UH + korekty wzorów + metody tc |
-| **Sesja** | 25 |
-| **Data** | 2026-03-23 |
+| **Sesja** | 27 |
+| **Data** | 2026-03-25 |
 | **Następny milestone** | v1.0.0 - Stabilne API |
 | **Gałąź robocza** | develop |
 
@@ -34,6 +34,7 @@
 | CP14 | v0.6.0 - Wydanie z raportami | ✅ Ukończony |
 | CP15 | Nash urban regression + v0.6.1 | ✅ Ukończony |
 | CP16 | Raporty UH + korekty wzorów metrycznych + v0.6.2 | ✅ Ukończony |
+| CP17 | Audyt spójności API + naprawy (4 zespoły) | ✅ Ukończony |
 
 ---
 
@@ -51,11 +52,83 @@
 | v0.6.0 | Generowanie raportów Markdown z LaTeX | ✅ Wydana (2026-01-21) |
 | v0.6.1 | Nash: regresja dla zlewni zurbanizowanych | ✅ Wydana (2026-03-20) |
 | v0.6.2 | Raporty UH + korekty wzorów metrycznych | ✅ Wydana (2026-03-22) |
+| v0.6.3 | Audyt spójności API + naprawy | ✅ Wydana (2026-03-25) |
+| v0.6.4 | WatershedParams extension + UH ordinates + docs audit | ✅ Wydana (2026-03-25) |
 | v1.0.0 | Stabilne API + CLI | 📋 Planowany |
 
 ---
 
 ## Bieżąca sesja
+
+### Sesja 27 (2026-03-25) - UKOŃCZONA
+
+**Cel:** Kompleksowy audyt i aktualizacja dokumentacji projektowej
+
+**Co zostało zrobione:**
+- [x] 8 równoległych zespołów eksploracyjnych — zbadanie zgodności docs z kodem v0.6.3
+- [x] Sekwencyjna aktualizacja 8 dokumentów (PRD → SCOPE → COMPUTATION_PATHS → DEVELOPMENT_STANDARDS → IMPLEMENTATION_PROMPT → INTEGRATION → CHANGELOG → PROGRESS)
+- [x] Walidacja krzyżowa — 10 PASS, 3 FAIL naprawione
+- [x] Przeniesienie NASH_AUDIT_REPORT.md do tmp/
+
+**Kluczowe naprawy:**
+- PRD.md: wersja 1.0→0.6.3, API examples (SCSCN class, BetaHietogram.generate), +7 user stories, roadmap
+- SCOPE.md: formuła Pe poprawiona, tb=5.0×tp, +v0.6.3, +8 pól WatershedParams
+- IMPLEMENTATION_PROMPT.md: największa zmiana — nazwa repo, moduł exports, SCSCN class API, formuła Pe, tb=5.0
+- DEVELOPMENT_STANDARDS.md: +TYPE_CHECKING, +dataclass, +warnings, API examples zaktualizowane
+- INTEGRATION.md: BetaHietogram example, +8 pól JSON schema, status table
+
+**Testy:** 754 (bez zmian — sesja dotyczyła wyłącznie dokumentacji)
+
+**Następne kroki:**
+- Bump wersji do v0.6.4 lub v1.0.0
+- Push zmian do origin
+
+---
+
+### Sesja 26 (2026-03-25) - UKOŃCZONA
+
+**Cel:** Audyt spójności API i naprawy — 4 równoległe zespoły agentów na worktree'ach
+
+**Co zostało zrobione:**
+- [x] Audyt eksploracyjny codebase (5 zespołów): runoff, time+precipitation, morphometry+network, CLI, reports+viz
+- [x] Zidentyfikowano 12 problemów (4 krytyczne, 4 średnie, 4 niskie)
+- [x] **Zespół 1** (`fix/cli-snyder-defaults`): Snyder Ct CLI default 2.0→1.5, dokumentacja timestep
+- [x] **Zespół 2** (`fix/watershed-params-extension`): 8 nowych pól WatershedParameters, calculate_tc() 3→6 metod
+- [x] **Zespół 3** (`fix/reports-data-flow`): FormulaRenderer FAA/Kerby/Kerby-Kirpich, None guards, water balance F fix
+- [x] **Zespół 4** (`fix/minor-quality-fixes`): UH ordinates w HydrographGeneratorResult, docstrings
+- [x] Integracja 4 gałęzi do develop (merge bez konfliktów)
+- [x] Aktualizacja CHANGELOG.md i PROGRESS.md
+
+**Testy:** 754 (709 → 754, +45 nowych testów)
+
+**Pliki zmodyfikowane:**
+```
+# Zespół 1 — CLI & Snyder
+hydrolog/cli/commands/uh.py              # Ct default 2.0→1.5
+hydrolog/runoff/snyder_uh.py             # docstring timestep
+hydrolog/runoff/generator.py             # docstring timestep + unit_hydrograph_result field
+
+# Zespół 2 — WatershedParameters
+hydrolog/morphometry/watershed_params.py # +8 pól, +3 metody tc, validation
+tests/unit/test_morphometry.py           # +30 testów
+
+# Zespół 3 — Reports
+hydrolog/reports/formatters.py           # +faa_tc, +kerby_tc, +kerby_kirpich_tc
+hydrolog/reports/generator.py            # +hietogram_type validation, +tc params extraction
+hydrolog/reports/sections/concentration.py # +FAA/Kerby/Kerby-Kirpich sections
+hydrolog/reports/sections/scs_cn.py      # +None guards
+hydrolog/reports/templates.py            # +Polish method descriptions
+hydrolog/visualization/water_balance.py  # F=max(0,P-Pe-Ia)
+tests/unit/test_reports.py               # +10 testów
+
+# Zespół 4 — Minor Quality
+hydrolog/precipitation/hietogram.py      # docstring intensities_mm
+hydrolog/precipitation/interpolation.py  # docstring Station x/y
+hydrolog/runoff/generator.py             # +unit_hydrograph_result field
+tests/unit/test_runoff.py                # +6 testów
+```
+
+---
 
 ### Sesja 25 (2026-03-23)
 
@@ -935,9 +1008,9 @@ Wyniki Hydrolog (model Nasha):
 ## Kontekst dla nowej sesji
 
 ### Stan projektu
-- **Faza:** Implementacja - v0.6.2 wydana
-- **Ostatni commit:** refactor(time): harmonize API consistency across all tc methods
-- **Tag:** `v0.6.2` (ostatni release)
+- **Faza:** Implementacja - v0.6.3 wydana
+- **Ostatni commit:** chore: bump version to v0.6.3
+- **Tag:** `v0.6.3` (ostatni release)
 - **Środowisko:** `.venv` z Python 3.12+
 - **Repo GitHub:** https://github.com/Daldek/Hydrolog.git
 - **Testy:** 710 testów (695 jednostkowych + 15 integracyjnych)
@@ -958,7 +1031,9 @@ Wyniki Hydrolog (model Nasha):
 - `ConcentrationTime.kerby_kirpich()` — metoda kompozytowa Kerby-Kirpich (Roussel 2005)
 - CLI: `hydrolog tc faa`, `hydrolog tc kerby`, `hydrolog tc kerby-kirpich`
 - Refaktor API: rename `_SCS_LAG_*` → `_NRCS_*`, poprawki CLI, 83 nowe testy
-- Audyt dokumentacji i naprawy (CHANGELOG, SCOPE, PROGRESS, COMPUTATION_PATHS)
+- Audyt dokumentacji i naprawy (CHANGELOG, SCOPE, PROGRESS, COMPUTATION_PATHS, PRD, DEV_STD, IMPL_PROMPT)
+- Naprawa 88 błędów mypy w 20 plikach (mypy clean: 0 errors)
+- Version bump → v0.6.3, tag, merge develop→main, push
 
 ### Ostatnio dodane (Sesja 24 - audyt jakości)
 - Black formatting na 31 plikach
@@ -1230,4 +1305,4 @@ Hydrolog/
 
 ---
 
-**Ostatnia aktualizacja:** 2026-03-23, Sesja 25 (metody tc FAA/Kerby/Kerby-Kirpich + refaktor API)
+**Ostatnia aktualizacja:** 2026-03-23, Sesja 25 (v0.6.3: metody tc FAA/Kerby/Kerby-Kirpich + mypy clean + audyt docs)

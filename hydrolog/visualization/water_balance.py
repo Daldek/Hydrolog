@@ -61,7 +61,7 @@ def plot_water_balance(
     P = result.total_precip_mm
     Pe = result.total_effective_mm
     Ia = result.initial_abstraction_mm
-    F = P - Pe - Ia  # Continuing abstraction (infiltration)
+    F = max(0.0, P - Pe - Ia)  # Continuing abstraction (infiltration)
 
     if style == "bars":
         _plot_balance_bars(ax, P, Ia, F, Pe)

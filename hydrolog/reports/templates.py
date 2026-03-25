@@ -30,6 +30,9 @@ TC_METHODS: Dict[str, str] = {
     "kirpich": "Wzór Kirpicha (1940)",
     "nrcs": "Równanie NRCS (USDA TR-55)",
     "giandotti": "Wzór Giandottiego (1934)",
+    "faa": "Metoda FAA (Federal Aviation Agency, 1970)",
+    "kerby": "Wzór Kerby'ego (1959)",
+    "kerby_kirpich": "Metoda złożona Kerby-Kirpich",
 }
 
 UH_MODELS: Dict[str, str] = {
@@ -125,6 +128,18 @@ FORMULA_EXPLANATIONS: Dict[str, str] = {
         "gdzie A - powierzchnia zlewni [km²], L - długość cieku [km], "
         "H - różnica wysokości [m]"
     ),
+    "faa": (
+        "gdzie C - współczynnik spływu [-], L - długość spływu [km], "
+        "S - spadek powierzchni [m/m]"
+    ),
+    "kerby": (
+        "gdzie L - długość spływu [km], N - współczynnik opóźnienia [-], "
+        "S - spadek powierzchni [m/m]"
+    ),
+    "kerby_kirpich": (
+        "tc = t_ov (Kerby) + t_ch (Kirpich); "
+        "metoda złożona dla spływu powierzchniowego i korytowego"
+    ),
     "scs_uh_lag": "gdzie tc - czas koncentracji [min]",
     "scs_uh_tp": "gdzie D - czas trwania opadu [min], tlag - czas opóźnienia [min]",
     "scs_uh_qp": "gdzie A - powierzchnia zlewni [km²], tp - czas do szczytu [h]",
@@ -175,6 +190,14 @@ REFERENCES: Dict[str, str] = {
     "chow": (
         "Chow, V.T., Maidment, D.R., Mays, L.W. (1988). *Applied Hydrology*. "
         "McGraw-Hill, New York."
+    ),
+    "faa": (
+        "Federal Aviation Agency (1970). *Airport Drainage*. "
+        "Advisory Circular AC 150/5320-5B. US Department of Transportation."
+    ),
+    "kerby": (
+        "Kerby, W.S. (1959). Time of concentration for overland flow. "
+        "*Civil Engineering*, 29(3), 174."
     ),
 }
 

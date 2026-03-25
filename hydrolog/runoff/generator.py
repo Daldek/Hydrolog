@@ -39,6 +39,11 @@ class HydrographGeneratorResult:
         Maximum retention S [mm].
     initial_abstraction_mm : float
         Initial abstraction Ia [mm].
+    unit_hydrograph_result : Any, optional
+        Unit hydrograph generation result. The concrete type depends
+        on the UH model used (e.g., ``UnitHydrographResult`` for SCS,
+        ``NashUHResult`` for Nash, ``ClarkUHResult`` for Clark,
+        ``SnyderUHResult`` for Snyder). ``None`` if not available.
     """
 
     hydrograph: HydrographResult
@@ -49,6 +54,7 @@ class HydrographGeneratorResult:
     cn_used: int
     retention_mm: float
     initial_abstraction_mm: float
+    unit_hydrograph_result: Optional[Any] = None
 
     @property
     def peak_discharge_m3s(self) -> float:
@@ -361,4 +367,5 @@ class HydrographGenerator:
             cn_used=eff_result.cn_adjusted,
             retention_mm=eff_result.retention_mm,
             initial_abstraction_mm=eff_result.initial_abstraction_mm,
+            unit_hydrograph_result=uh_result,
         )

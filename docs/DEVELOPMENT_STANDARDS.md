@@ -2,8 +2,8 @@
 
 ## Hydrolog - Biblioteka Narzędzi Hydrologicznych
 
-**Wersja:** 1.0
-**Data:** 2026-01-18
+**Wersja:** 1.1
+**Data:** 2026-03-25
 
 ---
 
@@ -17,11 +17,11 @@ area_km2 = 45.3
 time_concentration_min = 68.5
 discharge_m3s = 42.3
 
-def calculate_effective_precipitation(precipitation_mm: float, cn: int) -> float:
+def effective_precipitation(precipitation_mm: float, cn: int) -> float:
     pass
 
 # Klasy: PascalCase
-class HydrographGenerator:
+class SCSCN:
     pass
 
 class BetaHietogram:
@@ -43,6 +43,17 @@ SCS_PEAK_FACTOR = 0.208
 | Przepływ | m³/s | m3s | `discharge_m3s` |
 | Czas | min | min | `tc_min`, `duration_min` |
 | Spadek | m/m | m_per_m | `slope_m_per_m` |
+
+### 1.3 Symbole prywatne/wewnętrzne
+
+```python
+# Prefiks podkreślenia dla symboli niepublicznych
+_KIRPICH_LENGTH_RANGE = (0.5, 300.0)  # prywatna stała modułowa
+_warn_if_out_of_range(value, range)    # wewnętrzna funkcja pomocnicza
+
+# Używaj pojedynczego podkreślenia (nie podwójnego __name_mangling)
+# Przykłady: hydrolog/time/concentration.py
+```
 
 ---
 
@@ -123,6 +134,32 @@ intensities: NDArray[np.float64]
 elevations: NDArray[np.float64]  # shape: (rows, cols)
 ```
 
+### 3.3 Wzorzec TYPE_CHECKING
+
+```python
+# Zapobieganie cyklicznym importom (np. hydrolog/morphometry/watershed_params.py)
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from hydrolog.other_module import SomeClass
+```
+
+### 3.4 Dataclasses dla obiektów wynikowych
+
+```python
+from dataclasses import dataclass
+
+@dataclass
+class SCSCNResult:
+    """Result container — preferowany wzorzec dla wyników obliczeń."""
+    effective_precipitation_mm: float
+    retention_mm: float
+    initial_abstraction_mm: float
+```
+
+Stosować dla wszystkich obiektów wynikowych (np. `HietogramResult`, `UnitHydrographResult`).
+
 ---
 
 ## 4. Docstrings (NumPy Style, English)
@@ -130,36 +167,36 @@ elevations: NDArray[np.float64]  # shape: (rows, cols)
 ### 4.1 Funkcje
 
 ```python
-def calculate_effective_precipitation(
-    precipitation_mm: float,
-    cn: int,
-    ia_coefficient: float = 0.2
-) -> float:
+def effective_precipitation(
+    self,
+    precipitation_mm: float | NDArray[np.float64],
+    amc: AMC = AMC.II,
+) -> EffectivePrecipitationResult:
     """
     Calculate effective precipitation using SCS-CN method.
 
     Parameters
     ----------
-    precipitation_mm : float
+    precipitation_mm : float or NDArray[np.float64]
         Total precipitation depth [mm].
-    cn : int
-        Curve Number (0-100).
-    ia_coefficient : float, optional
-        Initial abstraction coefficient, by default 0.2.
+    amc : AMC, optional
+        Antecedent moisture condition, by default AMC.II.
 
     Returns
     -------
-    float
-        Effective precipitation depth [mm].
+    EffectivePrecipitationResult
+        Result with effective_mm, retention_mm, initial_abstraction_mm.
 
     Raises
     ------
-    ValueError
-        If CN is not in range 0-100.
+    InvalidParameterError
+        If precipitation is negative.
 
     Examples
     --------
-    >>> calculate_effective_precipitation(38.5, 72)
+    >>> scs = SCSCN(cn=72)
+    >>> result = scs.effective_precipitation(38.5)
+    >>> result.total_effective_mm
     15.23
     """
     pass
@@ -223,16 +260,16 @@ tests/
 ```python
 # test_<moduł>_<funkcja>_<scenariusz>
 
-def test_calculate_effective_precipitation_typical_values():
+def test_scscn_effective_precipitation_typical_values():
     """Test effective precipitation for typical CN and rainfall."""
     pass
 
-def test_calculate_effective_precipitation_zero_rainfall():
+def test_scscn_effective_precipitation_zero_rainfall():
     """Test that zero rainfall returns zero effective precipitation."""
     pass
 
-def test_calculate_effective_precipitation_invalid_cn_raises():
-    """Test that invalid CN raises ValueError."""
+def test_scscn_effective_precipitation_invalid_cn_raises():
+    """Test that invalid CN raises InvalidParameterError."""
     pass
 ```
 
@@ -327,16 +364,13 @@ test(time): add tests for Kirpich formula
 # hydrolog/runoff/__init__.py
 """Runoff generation module."""
 
-from hydrolog.runoff.scs_cn import (
-    calculate_effective_precipitation,
-    calculate_retention,
-)
+from hydrolog.runoff.scs_cn import SCSCN, AMC, EffectivePrecipitationResult
 from hydrolog.runoff.unit_hydrograph import SCSUnitHydrograph
 from hydrolog.runoff.generator import HydrographGenerator
 
 __all__ = [
-    "calculate_effective_precipitation",
-    "calculate_retention",
+    "SCSCN",
+    "AMC",
     "SCSUnitHydrograph",
     "HydrographGenerator",
 ]
@@ -388,6 +422,18 @@ def calculate_retention(cn: int) -> float:
     return 25400 / cn - 254
 ```
 
+### 8.3 Ostrzeżenia dla zakresów parametrów
+
+```python
+import warnings
+
+# Używaj warnings.warn() gdy wartość jest nietypowa, ale nie błędna
+if param < TYPICAL_MIN or param > TYPICAL_MAX:
+    warnings.warn(f"param={param} outside typical range", UserWarning, stacklevel=2)
+```
+
+Wzorzec stosowany w `hydrolog/time/concentration.py` — pozwala użytkownikowi kontynuować obliczenia z nietypowymi wartościami.
+
 ---
 
 ## 9. Komendy
@@ -408,9 +454,11 @@ def calculate_retention(cn: int) -> float:
 # Type checking
 .venv/bin/python -m mypy hydrolog/
 
-# Linting
+# Linting (domyślna konfiguracja — brak pliku .flake8)
 .venv/bin/python -m flake8 hydrolog/ tests/
 ```
+
+**Uwaga:** flake8 jest zainstalowany jako zależność, ale używa domyślnej konfiguracji (brak pliku `.flake8` ani sekcji w `setup.cfg`).
 
 ---
 
@@ -425,5 +473,5 @@ def calculate_retention(cn: int) -> float:
 
 ---
 
-**Wersja dokumentu:** 1.0
-**Data ostatniej aktualizacji:** 2026-01-18
+**Wersja dokumentu:** 1.1
+**Data ostatniej aktualizacji:** 2026-03-25

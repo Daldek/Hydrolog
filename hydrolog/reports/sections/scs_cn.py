@@ -113,34 +113,38 @@ def generate_scs_cn_section(
         )
 
         # Initial abstraction section
-        lines.extend(
-            [
-                SUBSECTION_HEADERS["scs_cn"]["ia"],
-                "",
-                "Abstrakcja początkowa obejmuje intercepcję, zwilżenie powierzchni "
-                "i retencję w zagłębieniach terenu:",
-                "",
-                FormulaRenderer.scs_initial_abstraction(retention_mm, ia_coefficient),
-                "",
-            ]
-        )
+        if retention_mm is not None:
+            lines.extend(
+                [
+                    SUBSECTION_HEADERS["scs_cn"]["ia"],
+                    "",
+                    "Abstrakcja początkowa obejmuje intercepcję, zwilżenie "
+                    "powierzchni i retencję w zagłębieniach terenu:",
+                    "",
+                    FormulaRenderer.scs_initial_abstraction(
+                        retention_mm, ia_coefficient
+                    ),
+                    "",
+                ]
+            )
 
         # Effective precipitation section
-        lines.extend(
-            [
-                SUBSECTION_HEADERS["scs_cn"]["pe"],
-                "",
-                f"Dla opadu całkowitego P = {total_precip_mm:.2f} mm:",
-                "",
-                FormulaRenderer.scs_effective_precipitation(
-                    p_mm=total_precip_mm,
-                    ia_mm=initial_abstraction_mm,
-                    s_mm=retention_mm,
-                    pe_mm=total_effective_mm,
-                ),
-                "",
-            ]
-        )
+        if retention_mm is not None and initial_abstraction_mm is not None:
+            lines.extend(
+                [
+                    SUBSECTION_HEADERS["scs_cn"]["pe"],
+                    "",
+                    f"Dla opadu całkowitego P = {total_precip_mm:.2f} mm:",
+                    "",
+                    FormulaRenderer.scs_effective_precipitation(
+                        p_mm=total_precip_mm,
+                        ia_mm=initial_abstraction_mm,
+                        s_mm=retention_mm,
+                        pe_mm=total_effective_mm,
+                    ),
+                    "",
+                ]
+            )
 
     # Distribution table
     if include_table and times_min is not None and precip_mm is not None:
@@ -159,15 +163,23 @@ def generate_scs_cn_section(
         )
 
     # Summary
+    retention_str = (
+        f"{retention_mm:.2f} mm" if retention_mm is not None else "brak danych"
+    )
+    ia_str = (
+        f"{initial_abstraction_mm:.2f} mm"
+        if initial_abstraction_mm is not None
+        else "brak danych"
+    )
     lines.extend(
         [
             "**Podsumowanie:**",
             "",
-            f"| Parametr | Wartość |",
-            f"|:---------|--------:|",
+            "| Parametr | Wartość |",
+            "|:---------|--------:|",
             f"| Opad całkowity P | {total_precip_mm:.2f} mm |",
-            f"| Retencja maksymalna S | {retention_mm:.2f} mm |",
-            f"| Abstrakcja początkowa Ia | {initial_abstraction_mm:.2f} mm |",
+            f"| Retencja maksymalna S | {retention_str} |",
+            f"| Abstrakcja początkowa Ia | {ia_str} |",
             f"| **Opad efektywny Pe** | **{total_effective_mm:.2f} mm** |",
         ]
     )

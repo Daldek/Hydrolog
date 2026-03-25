@@ -20,7 +20,12 @@ class HietogramResult:
     times_min : NDArray[np.float64]
         Time values at the end of each interval [min].
     intensities_mm : NDArray[np.float64]
-        Precipitation depth in each interval [mm].
+        Precipitation depths per time step [mm].
+
+        Note: Despite the name, this field contains incremental
+        precipitation depths (volume per timestep), not intensity
+        rates. For intensity in [mm/h], use the ``intensity_mm_per_h``
+        property.
     total_mm : float
         Total precipitation depth [mm].
     duration_min : float
