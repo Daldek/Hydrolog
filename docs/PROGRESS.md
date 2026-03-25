@@ -6,8 +6,8 @@
 |------|---------|
 | **Faza** | 1 - Implementacja |
 | **Sprint** | 0.6.x - Raporty UH + korekty wzorów + metody tc |
-| **Sesja** | 25 |
-| **Data** | 2026-03-23 |
+| **Sesja** | 26 |
+| **Data** | 2026-03-25 |
 | **Następny milestone** | v1.0.0 - Stabilne API |
 | **Gałąź robocza** | develop |
 
@@ -34,6 +34,7 @@
 | CP14 | v0.6.0 - Wydanie z raportami | ✅ Ukończony |
 | CP15 | Nash urban regression + v0.6.1 | ✅ Ukończony |
 | CP16 | Raporty UH + korekty wzorów metrycznych + v0.6.2 | ✅ Ukończony |
+| CP17 | Audyt spójności API + naprawy (4 zespoły) | ✅ Ukończony |
 
 ---
 
@@ -56,6 +57,51 @@
 ---
 
 ## Bieżąca sesja
+
+### Sesja 26 (2026-03-25)
+
+**Cel:** Audyt spójności API i naprawy — 4 równoległe zespoły agentów na worktree'ach
+
+**Co zostało zrobione:**
+- [x] Audyt eksploracyjny codebase (5 zespołów): runoff, time+precipitation, morphometry+network, CLI, reports+viz
+- [x] Zidentyfikowano 12 problemów (4 krytyczne, 4 średnie, 4 niskie)
+- [x] **Zespół 1** (`fix/cli-snyder-defaults`): Snyder Ct CLI default 2.0→1.5, dokumentacja timestep
+- [x] **Zespół 2** (`fix/watershed-params-extension`): 8 nowych pól WatershedParameters, calculate_tc() 3→6 metod
+- [x] **Zespół 3** (`fix/reports-data-flow`): FormulaRenderer FAA/Kerby/Kerby-Kirpich, None guards, water balance F fix
+- [x] **Zespół 4** (`fix/minor-quality-fixes`): UH ordinates w HydrographGeneratorResult, docstrings
+- [x] Integracja 4 gałęzi do develop (merge bez konfliktów)
+- [x] Aktualizacja CHANGELOG.md i PROGRESS.md
+
+**Testy:** 754 (709 → 754, +45 nowych testów)
+
+**Pliki zmodyfikowane:**
+```
+# Zespół 1 — CLI & Snyder
+hydrolog/cli/commands/uh.py              # Ct default 2.0→1.5
+hydrolog/runoff/snyder_uh.py             # docstring timestep
+hydrolog/runoff/generator.py             # docstring timestep + unit_hydrograph_result field
+
+# Zespół 2 — WatershedParameters
+hydrolog/morphometry/watershed_params.py # +8 pól, +3 metody tc, validation
+tests/unit/test_morphometry.py           # +30 testów
+
+# Zespół 3 — Reports
+hydrolog/reports/formatters.py           # +faa_tc, +kerby_tc, +kerby_kirpich_tc
+hydrolog/reports/generator.py            # +hietogram_type validation, +tc params extraction
+hydrolog/reports/sections/concentration.py # +FAA/Kerby/Kerby-Kirpich sections
+hydrolog/reports/sections/scs_cn.py      # +None guards
+hydrolog/reports/templates.py            # +Polish method descriptions
+hydrolog/visualization/water_balance.py  # F=max(0,P-Pe-Ia)
+tests/unit/test_reports.py               # +10 testów
+
+# Zespół 4 — Minor Quality
+hydrolog/precipitation/hietogram.py      # docstring intensities_mm
+hydrolog/precipitation/interpolation.py  # docstring Station x/y
+hydrolog/runoff/generator.py             # +unit_hydrograph_result field
+tests/unit/test_runoff.py                # +6 testów
+```
+
+---
 
 ### Sesja 25 (2026-03-23)
 
