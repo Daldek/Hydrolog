@@ -59,15 +59,28 @@
 
 ## Bieżąca sesja
 
-### Sesja 27 (2026-03-25)
+### Sesja 27 (2026-03-25) - UKOŃCZONA
 
-**Cel:** Audyt i aktualizacja dokumentacji projektowej
+**Cel:** Kompleksowy audyt i aktualizacja dokumentacji projektowej
 
 **Co zostało zrobione:**
-- [x] Audyt i aktualizacja PRD, SCOPE, COMPUTATION_PATHS, DEVELOPMENT_STANDARDS, IMPLEMENTATION_PROMPT, INTEGRATION, CHANGELOG, PROGRESS
+- [x] 8 równoległych zespołów eksploracyjnych — zbadanie zgodności docs z kodem v0.6.3
+- [x] Sekwencyjna aktualizacja 8 dokumentów (PRD → SCOPE → COMPUTATION_PATHS → DEVELOPMENT_STANDARDS → IMPLEMENTATION_PROMPT → INTEGRATION → CHANGELOG → PROGRESS)
+- [x] Walidacja krzyżowa — 10 PASS, 3 FAIL naprawione
 - [x] Przeniesienie NASH_AUDIT_REPORT.md do tmp/
 
-**Testy:** 754 (bez zmian)
+**Kluczowe naprawy:**
+- PRD.md: wersja 1.0→0.6.3, API examples (SCSCN class, BetaHietogram.generate), +7 user stories, roadmap
+- SCOPE.md: formuła Pe poprawiona, tb=5.0×tp, +v0.6.3, +8 pól WatershedParams
+- IMPLEMENTATION_PROMPT.md: największa zmiana — nazwa repo, moduł exports, SCSCN class API, formuła Pe, tb=5.0
+- DEVELOPMENT_STANDARDS.md: +TYPE_CHECKING, +dataclass, +warnings, API examples zaktualizowane
+- INTEGRATION.md: BetaHietogram example, +8 pól JSON schema, status table
+
+**Testy:** 754 (bez zmian — sesja dotyczyła wyłącznie dokumentacji)
+
+**Następne kroki:**
+- Bump wersji do v0.6.4 lub v1.0.0
+- Push zmian do origin
 
 ---
 
