@@ -6,7 +6,7 @@
 |------|---------|
 | **Faza** | 1 - Implementacja |
 | **Sprint** | 0.6.x - Raporty UH + korekty wzorów + metody tc |
-| **Sesja** | 26 |
+| **Sesja** | 27 |
 | **Data** | 2026-03-25 |
 | **Następny milestone** | v1.0.0 - Stabilne API |
 | **Gałąź robocza** | develop |
@@ -52,13 +52,26 @@
 | v0.6.0 | Generowanie raportów Markdown z LaTeX | ✅ Wydana (2026-01-21) |
 | v0.6.1 | Nash: regresja dla zlewni zurbanizowanych | ✅ Wydana (2026-03-20) |
 | v0.6.2 | Raporty UH + korekty wzorów metrycznych | ✅ Wydana (2026-03-22) |
+| v0.6.3 | Audyt spójności API + naprawy | ✅ Wydana (2026-03-25) |
 | v1.0.0 | Stabilne API + CLI | 📋 Planowany |
 
 ---
 
 ## Bieżąca sesja
 
-### Sesja 26 (2026-03-25)
+### Sesja 27 (2026-03-25)
+
+**Cel:** Audyt i aktualizacja dokumentacji projektowej
+
+**Co zostało zrobione:**
+- [x] Audyt i aktualizacja PRD, SCOPE, COMPUTATION_PATHS, DEVELOPMENT_STANDARDS, IMPLEMENTATION_PROMPT, INTEGRATION, CHANGELOG, PROGRESS
+- [x] Przeniesienie NASH_AUDIT_REPORT.md do tmp/
+
+**Testy:** 754 (bez zmian)
+
+---
+
+### Sesja 26 (2026-03-25) - UKOŃCZONA
 
 **Cel:** Audyt spójności API i naprawy — 4 równoległe zespoły agentów na worktree'ach
 

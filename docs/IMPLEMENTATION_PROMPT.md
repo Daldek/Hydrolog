@@ -2,8 +2,8 @@
 
 ## Prompt dla AI - Implementacja Biblioteki Hydrolog
 
-**Wersja:** 1.0
-**Data:** 2026-01-18
+**Wersja:** 0.6.3
+**Data:** 2026-03-25
 
 ---
 
@@ -92,7 +92,7 @@ git log --oneline -5
 ### 4.1 Layout repozytorium
 
 ```
-hydrolog2/
+Hydrolog/
 ├── CLAUDE.md                 # Instrukcje dla AI
 ├── README.md                 # Opis projektu
 ├── pyproject.toml            # Konfiguracja pakietu
@@ -112,7 +112,7 @@ hydrolog2/
 │   ├── morphometry/
 │   ├── network/
 │   ├── cli/
-│   ├── reports/              # Dodane w v0.5.0
+│   ├── reports/              # Dodane w v0.6.0
 │   └── visualization/        # Dodane w v0.5.0
 └── tests/                    # Testy
     ├── conftest.py
@@ -124,21 +124,21 @@ hydrolog2/
 
 ```python
 # hydrolog/runoff/__init__.py
-"""Runoff generation module."""
+"""Runoff generation module using SCS-CN method."""
 
-from hydrolog.runoff.scs_cn import (
-    calculate_effective_precipitation,
-    calculate_retention,
-)
+from hydrolog.runoff.scs_cn import SCSCN, AMC, EffectivePrecipitationResult
 from hydrolog.runoff.unit_hydrograph import SCSUnitHydrograph
 from hydrolog.runoff.generator import HydrographGenerator
+from hydrolog.runoff.nash_iuh import NashIUH
+from hydrolog.runoff.clark_iuh import ClarkIUH
+from hydrolog.runoff.snyder_uh import SnyderUH
+from hydrolog.runoff.cn_lookup import get_cn, lookup_cn, calculate_weighted_cn
+from hydrolog.runoff.convolution import convolve_discrete
 
-__all__ = [
-    "calculate_effective_precipitation",
-    "calculate_retention",
-    "SCSUnitHydrograph",
-    "HydrographGenerator",
-]
+# Reprezentatywny podzbiór — pełna lista w __all__ modułu
+# Klasy: SCSCN, AMC, HydrographGenerator, SCSUnitHydrograph,
+#         NashIUH, ClarkIUH, SnyderUH
+# Funkcje: get_cn, lookup_cn, calculate_weighted_cn, convolve_discrete
 ```
 
 ---
@@ -147,61 +147,39 @@ __all__ = [
 
 ### 5.1 Implementacja funkcji
 
-**Zadanie:** Zaimplementuj `calculate_effective_precipitation`
+**Zadanie:** Oblicz opad efektywny metodą SCS-CN (klasa `SCSCN`)
 
 **Kroki:**
 
 1. **Przeczytaj PRD.md** - sekcja US-R02
-2. **Utwórz plik:**
+2. **Użyj klasy SCSCN:**
    ```python
-   # hydrolog/runoff/scs_cn.py
+   # hydrolog/runoff/scs_cn.py zawiera klasę SCSCN
 
-   from hydrolog.exceptions import InvalidParameterError
+   from hydrolog.runoff import SCSCN, AMC
 
-   def calculate_effective_precipitation(
-       precipitation_mm: float,
-       cn: int,
-       ia_coefficient: float = 0.2
-   ) -> float:
-       """
-       Calculate effective precipitation using SCS-CN method.
+   # Inicjalizacja z Curve Number (1-100)
+   scs = SCSCN(cn=72)
 
-       Parameters
-       ----------
-       precipitation_mm : float
-           Total precipitation depth [mm].
-       cn : int
-           Curve Number (0-100).
-       ia_coefficient : float, optional
-           Initial abstraction coefficient, by default 0.2.
+   # Obliczenie opadu efektywnego (scalar)
+   result = scs.effective_precipitation(precipitation_mm=50.0)
+   print(result.total_effective_mm)       # 7.09 mm
+   print(result.effective_mm)             # float dla scalar input
+   print(result.retention_mm)             # S [mm]
+   print(result.initial_abstraction_mm)   # Ia [mm]
+   print(result.cn_adjusted)              # CN (skorygowany dla AMC)
 
-       Returns
-       -------
-       float
-           Effective precipitation depth [mm].
+   # Z korekcją AMC (warunki wilgotnościowe)
+   result_wet = scs.effective_precipitation(
+       precipitation_mm=50.0,
+       amc=AMC.III,  # warunki mokre
+   )
 
-       Raises
-       ------
-       InvalidParameterError
-           If CN is not in range 0-100.
-       """
-       if not 0 <= cn <= 100:
-           raise InvalidParameterError(f"CN must be 0-100, got {cn}")
-
-       if cn == 100:
-           return precipitation_mm
-
-       # Maximum retention
-       s_mm = 25400 / cn - 254
-
-       # Initial abstraction
-       ia_mm = ia_coefficient * s_mm
-
-       # Effective precipitation
-       if precipitation_mm <= ia_mm:
-           return 0.0
-
-       return (precipitation_mm - ia_mm) ** 2 / (precipitation_mm + (1 - ia_coefficient) * s_mm)
+   # Obliczenie dla tablicy opadów (hietogram)
+   result_array = scs.effective_precipitation(
+       precipitation_mm=[5.0, 10.0, 15.0, 8.0]
+   )
+   print(result_array.effective_mm)       # NDArray przyrostów opadu efektywnego
    ```
 
 3. **Napisz testy:**
@@ -209,28 +187,31 @@ __all__ = [
    # tests/unit/test_scs_cn.py
 
    import pytest
-   from hydrolog.runoff.scs_cn import calculate_effective_precipitation
+   from hydrolog.runoff import SCSCN, AMC
    from hydrolog.exceptions import InvalidParameterError
 
-   def test_calculate_effective_precipitation_typical():
+   def test_effective_precipitation_typical():
        """Test with typical values."""
-       result = calculate_effective_precipitation(38.5, 72)
-       assert 10 < result < 20  # Reasonable range
+       scs = SCSCN(cn=72)
+       result = scs.effective_precipitation(precipitation_mm=50.0)
+       assert 5 < result.total_effective_mm < 15  # Reasonable range
 
-   def test_calculate_effective_precipitation_zero_rainfall():
+   def test_effective_precipitation_zero_rainfall():
        """Zero rainfall returns zero."""
-       result = calculate_effective_precipitation(0, 72)
-       assert result == 0.0
+       scs = SCSCN(cn=72)
+       result = scs.effective_precipitation(precipitation_mm=0.0)
+       assert result.total_effective_mm == 0.0
 
-   def test_calculate_effective_precipitation_cn_100():
+   def test_effective_precipitation_cn_100():
        """CN=100 means all rainfall is effective."""
-       result = calculate_effective_precipitation(38.5, 100)
-       assert result == 38.5
+       scs = SCSCN(cn=100)
+       result = scs.effective_precipitation(precipitation_mm=38.5)
+       assert result.total_effective_mm == 38.5
 
-   def test_calculate_effective_precipitation_invalid_cn():
+   def test_invalid_cn_raises():
        """Invalid CN raises exception."""
        with pytest.raises(InvalidParameterError):
-           calculate_effective_precipitation(38.5, 150)
+           SCSCN(cn=150)
    ```
 
 4. **Uruchom testy:**
@@ -268,87 +249,59 @@ from hydrolog.exceptions import InvalidParameterError
 
 @dataclass
 class HietogramResult:
-    """Result of hietogram generation."""
+    """Result of hyetograph generation."""
 
     times_min: NDArray[np.float64]
-    intensities_mm_per_min: NDArray[np.float64]
+    intensities_mm: NDArray[np.float64]       # przyrostowe głębokości [mm/krok]
     total_mm: float
     duration_min: float
     timestep_min: float
 
+    # Właściwości (properties):
+    # n_steps -> int              — liczba kroków
+    # intensity_mm_per_h -> array — intensywność [mm/h]
 
-class BetaHietogram:
+
+class BetaHietogram(Hietogram):
     """
-    Generate hietogram with Beta distribution.
+    Beta distribution hyetograph.
+
+    Dziedziczy po abstrakcyjnej klasie Hietogram.
+    Parametry kształtu (alpha, beta) przekazywane do __init__,
+    dane opadu (total_mm, duration_min, timestep_min) — do generate().
 
     Parameters
     ----------
-    total_mm : float
-        Total precipitation depth [mm].
-    duration_min : float
-        Storm duration [min].
-    timestep_min : float
-        Time step [min].
     alpha : float, optional
-        Beta distribution alpha parameter, by default 2.0.
+        Alpha parameter of Beta distribution, by default 2.0.
     beta : float, optional
-        Beta distribution beta parameter, by default 5.0.
+        Beta parameter of Beta distribution, by default 5.0.
 
     Examples
     --------
-    >>> hietogram = BetaHietogram(38.5, 60, 5)
-    >>> print(hietogram.peak_intensity_mm_per_min)
-    1.23
+    >>> hietogram = BetaHietogram(alpha=2.0, beta=5.0)
+    >>> result = hietogram.generate(total_mm=38.5, duration_min=60, timestep_min=5)
+    >>> print(result.intensities_mm)        # przyrostowe głębokości [mm]
+    >>> print(result.intensity_mm_per_h)    # intensywność [mm/h]
     """
 
-    def __init__(
-        self,
-        total_mm: float,
-        duration_min: float,
-        timestep_min: float,
-        alpha: float = 2.0,
-        beta: float = 5.0
-    ) -> None:
-        self._validate_parameters(total_mm, duration_min, timestep_min)
-
-        self.total_mm = total_mm
-        self.duration_min = duration_min
-        self.timestep_min = timestep_min
+    def __init__(self, alpha: float = 2.0, beta: float = 5.0) -> None:
+        if alpha <= 0:
+            raise InvalidParameterError(f"alpha must be positive, got {alpha}")
+        if beta <= 0:
+            raise InvalidParameterError(f"beta must be positive, got {beta}")
         self.alpha = alpha
         self.beta = beta
 
-        self._result = self._generate()
-
-    def _validate_parameters(
-        self, total_mm: float, duration_min: float, timestep_min: float
-    ) -> None:
-        """Validate input parameters."""
-        if total_mm <= 0:
-            raise InvalidParameterError(f"total_mm must be > 0, got {total_mm}")
-        if duration_min <= 0:
-            raise InvalidParameterError(f"duration_min must be > 0, got {duration_min}")
-        if timestep_min <= 0:
-            raise InvalidParameterError(f"timestep_min must be > 0, got {timestep_min}")
-
-    def _generate(self) -> HietogramResult:
-        """Generate the hietogram."""
-        # Implementation here
-        pass
-
-    @property
-    def times_min(self) -> NDArray[np.float64]:
-        """Time array [min]."""
-        return self._result.times_min
-
-    @property
-    def intensities_mm_per_min(self) -> NDArray[np.float64]:
-        """Intensity array [mm/min]."""
-        return self._result.intensities_mm_per_min
-
-    @property
-    def peak_intensity_mm_per_min(self) -> float:
-        """Peak intensity [mm/min]."""
-        return float(np.max(self._result.intensities_mm_per_min))
+    def generate(
+        self,
+        total_mm: float,
+        duration_min: float,
+        timestep_min: float = 5.0,
+    ) -> HietogramResult:
+        """Generate Beta distribution hyetograph."""
+        # Walidacja i obliczenia — zwraca HietogramResult
+        ...
 ```
 
 ---
@@ -365,8 +318,11 @@ S = 25400 / CN - 254
 Ia = 0.2 * S
 
 # Opad efektywny [mm]
-Pe = (P - Ia)² / (P + 0.8*S)   gdy P > Ia
-Pe = 0                         gdy P <= Ia
+Pe = (P - Ia)² / (P - Ia + S)   gdy P > Ia
+Pe = 0                          gdy P <= Ia
+
+# Uwaga: forma (P + 0.8·S) jest równoważna tylko gdy Ia = 0.2·S.
+# Ogólna postać (P - Ia + S) jest poprawna dla dowolnego λ.
 ```
 
 ### 6.2 Czas koncentracji - Kirpich
@@ -394,7 +350,9 @@ gdzie:
 - tp: czas do szczytu [h]
 
 # Czas bazowy [h]
-tb = 2.67 * tp
+# Aproksymacja trójkątna: tb ≈ 2.67 * tp
+# Pełna tablica bezwymiarowa NRCS (33 punkty): tb = 5.0 * tp
+tb = 5.0 * tp
 ```
 
 ### 6.4 Splot (convolution)
@@ -454,5 +412,5 @@ A: Zaktualizuj PROGRESS.md, commit, push.
 
 ---
 
-**Wersja dokumentu:** 1.0
-**Data ostatniej aktualizacji:** 2026-01-18
+**Wersja dokumentu:** 0.6.3
+**Data ostatniej aktualizacji:** 2026-03-25
