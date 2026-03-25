@@ -2,7 +2,7 @@
 
 ## Prompt dla AI - Implementacja Biblioteki Hydrolog
 
-**Wersja:** 0.6.3
+**Wersja:** 0.6.4
 **Data:** 2026-03-25
 
 ---
@@ -412,5 +412,5 @@ A: Zaktualizuj PROGRESS.md, commit, push.
 
 ---
 
-**Wersja dokumentu:** 0.6.3
+**Wersja dokumentu:** 0.6.4
 **Data ostatniej aktualizacji:** 2026-03-25
