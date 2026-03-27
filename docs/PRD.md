@@ -2,8 +2,8 @@
 
 ## Hydrolog - Biblioteka Narzędzi Hydrologicznych
 
-**Wersja:** 0.6.4
-**Data:** 2026-03-25
+**Wersja:** 0.7.0
+**Data:** 2026-03-26
 **Status:** W trakcie realizacji
 
 ---
@@ -337,7 +337,7 @@ print(f"tc = {tc:.1f} min")
 
 - Python >= 3.12
 - NumPy >= 1.24
-- SciPy >= 1.10 (opcjonalnie, interpolacja i funkcja gamma dla Nash IUH)
+- SciPy >= 1.10 (wymagane od v0.7.0; rozkłady statystyczne, funkcja gamma, optymalizacja)
 - Matplotlib >= 3.7 (opcjonalnie, moduł visualization)
 - Seaborn >= 0.12 (opcjonalnie, moduł visualization)
 - Kartograf (opcjonalnie, dane przestrzenne i glebowe)
@@ -435,6 +435,15 @@ print(f"tc = {tc:.1f} min")
 - [x] Rozszerzenie `WatershedParameters` o 8 nowych pól
 - [x] Testy i dokumentacja (754 testy)
 
+### v0.7.0 - Statystyka hydrologiczna + Hydrometria *(zrealizowane)*
+- [x] `statistics.characteristic` - wartości charakterystyczne (NNQ–WWQ), statystyki dobowe/miesięczne
+- [x] `statistics.high_flows` - analiza częstości: LogNormal, GEV, Pearson III, Weibull
+- [x] `statistics.low_flows` - Fisher-Tippett, detekcja niżówek
+- [x] `statistics.stationarity` - test Manna-Kendalla
+- [x] `hydrometrics.rating_curve` - krzywa natężenia, strefy Rybczyńskiego
+- [x] `visualization.statistics` - 10 funkcji wizualizacji
+- [x] Testy i dokumentacja
+
 ### v1.0.0 - Stabilne API + CLI
 - [ ] Stabilizacja API (bez breaking changes)
 - [ ] Pełna dokumentacja (MkDocs/Sphinx)
@@ -442,5 +451,5 @@ print(f"tc = {tc:.1f} min")
 
 ---
 
-**Wersja dokumentu:** 0.6.4
-**Data ostatniej aktualizacji:** 2026-03-25
+**Wersja dokumentu:** 0.7.0
+**Data ostatniej aktualizacji:** 2026-03-26
