@@ -10,6 +10,7 @@ class TestMannKendall:
     def test_increasing_trend_detected(self):
         """Clear increasing trend should be detected."""
         from hydrolog.statistics.stationarity import mann_kendall_test
+
         series = np.arange(1.0, 51.0)
         result = mann_kendall_test(series)
         assert result.trend_detected is True
@@ -19,6 +20,7 @@ class TestMannKendall:
     def test_decreasing_trend_detected(self):
         """Clear decreasing trend should be detected."""
         from hydrolog.statistics.stationarity import mann_kendall_test
+
         series = np.arange(50.0, 0.0, -1.0)
         result = mann_kendall_test(series)
         assert result.trend_detected is True
@@ -28,6 +30,7 @@ class TestMannKendall:
     def test_no_trend_in_random_data(self):
         """Random stationary data should (usually) not show trend."""
         from hydrolog.statistics.stationarity import mann_kendall_test
+
         rng = np.random.default_rng(42)
         series = rng.normal(100, 10, size=50)
         result = mann_kendall_test(series)
@@ -37,6 +40,7 @@ class TestMannKendall:
     def test_variance_formula(self):
         """Var(S) = n(n-1)(2n+5)/18 for n=5."""
         from hydrolog.statistics.stationarity import mann_kendall_test
+
         series = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
         result = mann_kendall_test(series)
         n = 5
@@ -46,6 +50,7 @@ class TestMannKendall:
     def test_s_statistic_for_known_sequence(self):
         """S = number of concordant - discordant pairs."""
         from hydrolog.statistics.stationarity import mann_kendall_test
+
         series = np.array([1.0, 2.0, 3.0])
         result = mann_kendall_test(series)
         assert result.s_statistic == 3.0
@@ -53,6 +58,7 @@ class TestMannKendall:
     def test_significance_level_stored(self):
         """Result stores the alpha used."""
         from hydrolog.statistics.stationarity import mann_kendall_test
+
         series = np.arange(1.0, 20.0)
         result = mann_kendall_test(series, alpha=0.01)
         assert result.significance_level == 0.01
@@ -61,6 +67,7 @@ class TestMannKendall:
         """Empty series should raise InvalidParameterError."""
         from hydrolog.statistics.stationarity import mann_kendall_test
         from hydrolog.exceptions import InvalidParameterError
+
         with pytest.raises(InvalidParameterError):
             mann_kendall_test(np.array([]))
 
@@ -68,5 +75,6 @@ class TestMannKendall:
         """Series with < 3 values should raise InvalidParameterError."""
         from hydrolog.statistics.stationarity import mann_kendall_test
         from hydrolog.exceptions import InvalidParameterError
+
         with pytest.raises(InvalidParameterError):
             mann_kendall_test(np.array([1.0, 2.0]))

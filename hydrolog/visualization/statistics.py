@@ -27,8 +27,18 @@ from hydrolog.visualization.styles import PALETTE, get_color, add_stats_box
 
 # Polish month names
 _MONTH_NAMES = [
-    "Sty", "Lut", "Mar", "Kwi", "Maj", "Cze",
-    "Lip", "Sie", "Wrz", "Paź", "Lis", "Gru",
+    "Sty",
+    "Lut",
+    "Mar",
+    "Kwi",
+    "Maj",
+    "Cze",
+    "Lip",
+    "Sie",
+    "Wrz",
+    "Paź",
+    "Lis",
+    "Gru",
 ]
 
 # Distribution display names
@@ -343,17 +353,41 @@ def plot_daily_characteristics(
 
     days = daily_stats.day_of_year
 
-    ax.plot(days, daily_stats.max_values, color=PALETTE[3], linewidth=1.5,
-            label="Maksimum", alpha=0.85)
-    ax.plot(days, daily_stats.mean_values, color=PALETTE[0], linewidth=2,
-            label="Średnia")
-    ax.plot(days, daily_stats.median_values, color=PALETTE[2], linewidth=1.5,
-            linestyle="--", label="Mediana")
-    ax.plot(days, daily_stats.min_values, color=PALETTE[1], linewidth=1.5,
-            label="Minimum", alpha=0.85)
+    ax.plot(
+        days,
+        daily_stats.max_values,
+        color=PALETTE[3],
+        linewidth=1.5,
+        label="Maksimum",
+        alpha=0.85,
+    )
+    ax.plot(
+        days, daily_stats.mean_values, color=PALETTE[0], linewidth=2, label="Średnia"
+    )
+    ax.plot(
+        days,
+        daily_stats.median_values,
+        color=PALETTE[2],
+        linewidth=1.5,
+        linestyle="--",
+        label="Mediana",
+    )
+    ax.plot(
+        days,
+        daily_stats.min_values,
+        color=PALETTE[1],
+        linewidth=1.5,
+        label="Minimum",
+        alpha=0.85,
+    )
 
-    ax.fill_between(days, daily_stats.min_values, daily_stats.max_values,
-                    alpha=0.1, color=PALETTE[0])
+    ax.fill_between(
+        days,
+        daily_stats.min_values,
+        daily_stats.max_values,
+        alpha=0.1,
+        color=PALETTE[0],
+    )
 
     ax.set_xlabel("Dzień roku hydrologicznego")
     ax.set_ylabel("Przepływ Q [m³/s]")
@@ -418,8 +452,15 @@ def plot_monthly_statistics(
         lower_err = means - monthly_stats.ci_lower
         upper_err = monthly_stats.ci_upper - means
         yerr = np.array([lower_err, upper_err])
-        ax.bar(x, means, color=color, alpha=0.75, yerr=yerr,
-               capsize=4, error_kw={"elinewidth": 1.5, "ecolor": "gray"})
+        ax.bar(
+            x,
+            means,
+            color=color,
+            alpha=0.75,
+            yerr=yerr,
+            capsize=4,
+            error_kw={"elinewidth": 1.5, "ecolor": "gray"},
+        )
     else:
         ax.bar(x, means, color=color, alpha=0.75)
 
@@ -499,8 +540,14 @@ def plot_annual_hydrographs(
         year_flows = daily_flows[mask]
         sort_idx = np.argsort(year_days)
         color = PALETTE[i % len(PALETTE)]
-        ax.plot(year_days[sort_idx], year_flows[sort_idx],
-                color=color, linewidth=1.2, alpha=0.7, label=str(yr))
+        ax.plot(
+            year_days[sort_idx],
+            year_flows[sort_idx],
+            color=color,
+            linewidth=1.2,
+            alpha=0.7,
+            label=str(yr),
+        )
 
     ax.set_xlabel("Dzień roku hydrologicznego")
     ax.set_ylabel("Przepływ Q [m³/s]")
@@ -509,8 +556,12 @@ def plot_annual_hydrographs(
         title = "Hydrogramy roczne"
     ax.set_title(title)
 
-    ax.legend(loc="upper right", framealpha=0.9, fontsize=9,
-              ncol=max(1, len(unique_years) // 8))
+    ax.legend(
+        loc="upper right",
+        framealpha=0.9,
+        fontsize=9,
+        ncol=max(1, len(unique_years) // 8),
+    )
     ax.grid(True, alpha=0.3)
 
     fig.tight_layout()
@@ -558,16 +609,25 @@ def plot_flow_histogram(
     values = np.asarray(values, dtype=np.float64)
     color = get_color("discharge")
 
-    ax.hist(values, bins=bins, color=color, edgecolor="white",
-            linewidth=0.5, alpha=0.8)
+    ax.hist(values, bins=bins, color=color, edgecolor="white", linewidth=0.5, alpha=0.8)
 
     mean_val = float(np.mean(values))
     median_val = float(np.median(values))
 
-    ax.axvline(mean_val, color="black", linestyle="--", linewidth=1.8,
-               label=f"Średnia = {mean_val:.2f} m³/s")
-    ax.axvline(median_val, color=PALETTE[1], linestyle="-.", linewidth=1.8,
-               label=f"Mediana = {median_val:.2f} m³/s")
+    ax.axvline(
+        mean_val,
+        color="black",
+        linestyle="--",
+        linewidth=1.8,
+        label=f"Średnia = {mean_val:.2f} m³/s",
+    )
+    ax.axvline(
+        median_val,
+        color=PALETTE[1],
+        linestyle="-.",
+        linewidth=1.8,
+        label=f"Mediana = {median_val:.2f} m³/s",
+    )
 
     ax.set_xlabel("Przepływ Q [m³/s]")
     ax.set_ylabel("Liczba obserwacji")
@@ -639,15 +699,19 @@ def plot_low_flow_sequences(
     ax.plot(days, daily_flows, color=color, linewidth=1.2, label="Q dobowe")
 
     # Threshold line
-    ax.axhline(result.threshold, color="orange", linestyle="--", linewidth=1.5,
-               label=f"Próg Q = {result.threshold:.2f} m³/s")
+    ax.axhline(
+        result.threshold,
+        color="orange",
+        linestyle="--",
+        linewidth=1.5,
+        label=f"Próg Q = {result.threshold:.2f} m³/s",
+    )
 
     # Shade each drought sequence
     labeled = False
     for seq in result.sequences:
         label = "Epizod niskiego przepływu" if not labeled else None
-        ax.axvspan(seq.start_index, seq.end_index,
-                   alpha=0.25, color="red", label=label)
+        ax.axvspan(seq.start_index, seq.end_index, alpha=0.25, color="red", label=label)
         labeled = True
 
     ax.set_xlabel("Czas [dni]")
@@ -723,8 +787,15 @@ def plot_rating_curve(
     color = get_color("discharge")
 
     # Scatter: observed (H, Q) pairs
-    ax.scatter(h_obs, q_obs, color=color, edgecolors="white", s=60, zorder=5,
-               label="Pomiary (H, Q)")
+    ax.scatter(
+        h_obs,
+        q_obs,
+        color=color,
+        edgecolors="white",
+        s=60,
+        zorder=5,
+        label="Pomiary (H, Q)",
+    )
 
     # Fitted curve over the range of observed H
     h_min = float(np.min(h_obs))
@@ -732,8 +803,14 @@ def plot_rating_curve(
     h_line = np.linspace(h_min, h_max, 200)
     q_line = rating.predict(h_line)
 
-    ax.plot(h_line, q_line, color="black", linewidth=2, zorder=4,
-            label=f"Q = {result.a:.4f}·(H − {result.h0:.1f})^{result.b:.3f}")
+    ax.plot(
+        h_line,
+        q_line,
+        color="black",
+        linewidth=2,
+        zorder=4,
+        label=f"Q = {result.a:.4f}·(H − {result.h0:.1f})^{result.b:.3f}",
+    )
 
     ax.set_xlabel("Stan wody H [cm]")
     ax.set_ylabel("Przepływ Q [m³/s]")
@@ -809,21 +886,43 @@ def plot_water_level_frequency(
 
     # Optional zone bands drawn first (behind bars)
     if zones is not None:
-        ax.axvspan(zones.ntw_range[0], zones.ntw_range[1],
-                   alpha=0.12, color="blue", label="NTW")
-        ax.axvspan(zones.stw_range[0], zones.stw_range[1],
-                   alpha=0.12, color="green", label="STW")
-        ax.axvspan(zones.wtw_range[0], zones.wtw_range[1],
-                   alpha=0.12, color="red", label="WTW")
+        ax.axvspan(
+            zones.ntw_range[0],
+            zones.ntw_range[1],
+            alpha=0.12,
+            color="blue",
+            label="NTW",
+        )
+        ax.axvspan(
+            zones.stw_range[0],
+            zones.stw_range[1],
+            alpha=0.12,
+            color="green",
+            label="STW",
+        )
+        ax.axvspan(
+            zones.wtw_range[0], zones.wtw_range[1], alpha=0.12, color="red", label="WTW"
+        )
 
     # Bar chart of frequency [%]
-    ax.bar(centers, freq.frequency_pct, width=bin_width * 0.9,
-           color=PALETTE[0], alpha=0.75, label="Częstość [%]")
+    ax.bar(
+        centers,
+        freq.frequency_pct,
+        width=bin_width * 0.9,
+        color=PALETTE[0],
+        alpha=0.75,
+        label="Częstość [%]",
+    )
 
     # Duration (exceedance) curve on twin y-axis
     ax2 = ax.twinx()
-    ax2.plot(centers, freq.duration_pct, color=PALETTE[3], linewidth=2,
-             label="Czas trwania [%]")
+    ax2.plot(
+        centers,
+        freq.duration_pct,
+        color=PALETTE[3],
+        linewidth=2,
+        label="Czas trwania [%]",
+    )
     ax2.set_ylabel("Czas trwania [%]")
     ax2.set_ylim(0, 105)
 
