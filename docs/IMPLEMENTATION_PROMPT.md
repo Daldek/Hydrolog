@@ -2,8 +2,8 @@
 
 ## Prompt dla AI - Implementacja Biblioteki Hydrolog
 
-**Wersja:** 0.6.4
-**Data:** 2026-03-25
+**Wersja:** 0.7.0
+**Data:** 2026-03-26
 
 ---
 
@@ -113,7 +113,9 @@ Hydrolog/
 │   ├── network/
 │   ├── cli/
 │   ├── reports/              # Dodane w v0.6.0
-│   └── visualization/        # Dodane w v0.5.0
+│   ├── visualization/        # Dodane w v0.5.0
+│   ├── statistics/           # Dodane w v0.7.0
+│   └── hydrometrics/         # Dodane w v0.7.0
 └── tests/                    # Testy
     ├── conftest.py
     ├── unit/
@@ -412,5 +414,5 @@ A: Zaktualizuj PROGRESS.md, commit, push.
 
 ---
 
-**Wersja dokumentu:** 0.6.4
-**Data ostatniej aktualizacji:** 2026-03-25
+**Wersja dokumentu:** 0.7.0
+**Data ostatniej aktualizacji:** 2026-03-26

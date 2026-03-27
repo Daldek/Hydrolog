@@ -2,8 +2,8 @@
 
 ## Biblioteka Narzędzi Hydrologicznych
 
-**Wersja:** 1.3
-**Data:** 2026-03-25
+**Wersja:** 1.4
+**Data:** 2026-03-26
 **Status:** W trakcie realizacji
 
 ---
@@ -250,6 +250,26 @@ Moduł wymaga opcjonalnych zależności: `pip install hydrolog[visualization]`
 
 ---
 
+#### 2.1.9 Moduł `statistics` — Statystyka hydrologiczna (v0.7.0)
+
+- Wartości charakterystyczne przepływów (system polski: NNQ–WWQ)
+- Analiza częstości przepływów maksymalnych (LogNormal, GEV, Pearson III, Weibull)
+- Analiza częstości przepływów minimalnych (Fisher-Tippett)
+- Detekcja sekwencji niżówkowych (metoda progowa)
+- Test trendu Manna-Kendalla (weryfikacja stacjonarności)
+- Testy zgodności: Kołmogorowa-Smirnowa, Andersona-Darlinga
+- Kryterium informacyjne Akaike'a (AIC)
+
+---
+
+#### 2.1.10 Moduł `hydrometrics` — Hydrometria (v0.7.0)
+
+- Krzywa natężenia przepływu Q = a × (H − H₀)^b
+- Analiza częstości i czasu trwania stanów wody
+- Metoda Rybczyńskiego (strefy wodowskazowe NTW/STW/WTW)
+
+---
+
 ### 2.2 ❌ OUT OF SCOPE - Poza zakresem
 
 **Funkcjonalności:**
@@ -349,6 +369,17 @@ hydrolog/
 │       ├── unit_hydrograph.py # Hydrogram jednostkowy
 │       ├── convolution.py   # Splot dyskretny
 │       └── water_balance.py # Bilans wodny
+├── statistics/              # Statystyka hydrologiczna (v0.7.0)
+│   ├── __init__.py
+│   ├── _types.py            # Wspólne typy danych
+│   ├── _hydrological_year.py # Rok hydrologiczny
+│   ├── characteristic.py   # Wartości charakterystyczne (NNQ–WWQ)
+│   ├── high_flows.py       # Analiza częstości maksymalnych
+│   ├── low_flows.py        # Fisher-Tippett, niżówki
+│   └── stationarity.py     # Test Manna-Kendalla
+├── hydrometrics/            # Hydrometria (v0.7.0)
+│   ├── __init__.py
+│   └── rating_curve.py     # Krzywa natężenia, strefy Rybczyńskiego
 └── visualization/           # Wykresy (v0.5.0, wymaga matplotlib)
     ├── __init__.py
     ├── styles.py            # Style, kolory, etykiety PL
@@ -359,7 +390,8 @@ hydrolog/
     ├── water_balance.py     # Bilans wodny, krzywa CN
     ├── morphometry.py       # Krzywa hipsograficzna, histogram
     ├── network.py           # Statystyki sieci rzecznej
-    └── interpolation.py     # Mapa stacji opadowych
+    ├── interpolation.py     # Mapa stacji opadowych
+    └── statistics.py        # Statystyka hydrologiczna (v0.7.0)
 ```
 
 ### 3.2 Zależności
@@ -367,9 +399,9 @@ hydrolog/
 **Wymagane:**
 - Python >= 3.12
 - NumPy >= 1.24
+- SciPy >= 1.10 (rozkłady statystyczne, funkcja gamma, optymalizacja — wymagane od v0.7.0)
 
 **Opcjonalne:**
-- SciPy >= 1.10 (dla funkcji gamma w Nash IUH)
 - matplotlib >= 3.7 + seaborn >= 0.12 (dla modułu `visualization`)
 - Kartograf >= 0.3.0 (dla automatycznego wyznaczania CN z danych glebowych HSG)
 
@@ -424,6 +456,7 @@ print(f"Time to peak: {result.time_to_peak_min} min")
 | **v0.6.2** | Wzory UH w raportach + korekty metryczne | `reports`, `runoff.snyder_uh`, `runoff.clark_iuh` | ✅ Wydana |
 | **v0.6.3** | FAA + Kerby + Kerby-Kirpich tc, API audit, WatershedParameters extension | `time.concentration`, `morphometry.watershed_params`, `reports` | ✅ Wydana |
 | **v0.6.4** | WatershedParams extension + UH ordinates + docs audit | `morphometry.watershed_params`, `runoff.generator`, `reports`, `docs` | ✅ Wydana |
+| **v0.7.0** | Statystyka hydrologiczna + Hydrometria | `statistics`, `hydrometrics`, `visualization.statistics` | ✅ Wydana |
 | **v1.0.0** | Stabilne API + dokumentacja | Wszystkie | 📋 Planowane |
 
 ---
@@ -450,7 +483,7 @@ print(f"Time to peak: {result.time_to_peak_min} min")
 | Biblioteka | Cel | Wymagana |
 |------------|-----|----------|
 | NumPy | Obliczenia numeryczne | Tak |
-| SciPy | Funkcje gamma (Nash IUH) | Nie (opcjonalna) |
+| SciPy | Funkcje gamma (Nash IUH), rozkłady statystyczne (`statistics`) | Tak (od v0.7.0) |
 | Kartograf | HSG, dane glebowe, pokrycie terenu | Nie (opcjonalna dla `runoff.cn_lookup`) |
 
 **Hydrolog NIE zawiera funkcji pobierania danych:**
@@ -487,6 +520,6 @@ print(f"Time to peak: {result.time_to_peak_min} min")
 
 ---
 
-**Wersja dokumentu:** 1.3
-**Data ostatniej aktualizacji:** 2026-03-25
+**Wersja dokumentu:** 1.4
+**Data ostatniej aktualizacji:** 2026-03-26
 **Status:** W trakcie realizacji

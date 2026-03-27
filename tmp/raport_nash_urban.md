@@ -1,7 +1,7 @@
 # Raport Hydrologiczny: Zlewnia miejska
 
 **Data wygenerowania:** 2026-03-22
-**Wygenerowano przez:** Hydrolog v0.6.1
+**Wygenerowano przez:** Hydrolog v0.6.2
 
 ---
 
@@ -120,11 +120,11 @@ w hydrogram odpływu metodą splotu (konwolucji).
 ### 5.2 Parametry modelu
 
 - Powierzchnia zlewni: A = 3.46 km²
-- Liczba zbiorników: n = 2.07
-- Stała zbiornika: K = 30.2 min = 0.503 h
-- Czas opóźnienia: tlag = n × K = 62.3 min
+- Liczba zbiorników: n = 1.32
+- Stała zbiornika: K = 30.7 min = 0.511 h
+- Czas opóźnienia: tlag = n × K = 40.3 min
 
-### 5.3 Wzory obliczeniowe
+**Chwilowy hydrogram jednostkowy (IUH):**
 
 **Metoda estymacji parametrów: regresja dla zlewni zurbanizowanych (Rao, Delleur, Sarma 1972)**
 
@@ -139,21 +139,21 @@ w hydrogram odpływu metodą splotu (konwolucji).
 
 **Krok 1: Czas opóźnienia $t_L$**
 
-$$t_L = 1{,}979 \cdot A^{0{,}46} \cdot (1+U)^{-1{,}66} \cdot H^{-0{,}27} \cdot D^{0{,}37} \text{ [h]}$$
+$$t_L = 1{,}28 \cdot A^{0{,}46} \cdot (1+U)^{-1{,}66} \cdot H^{-0{,}27} \cdot D^{0{,}37} \text{ [h]}$$
 
-$$t_L = 1{,}979 \cdot 3.460^{0{,}46} \cdot 1.310^{-1{,}66} \cdot 2.562^{-0{,}27} \cdot 0.2500^{0{,}37} = 1.0391 \text{ h}$$
+$$t_L = 1{,}28 \cdot 3.460^{0{,}46} \cdot 1.310^{-1{,}66} \cdot 2.562^{-0{,}27} \cdot 0.2500^{0{,}37} = 0.6721 \text{ h}$$
 
 **Krok 2: Stała zbiornika $k$**
 
-$$k = 0{,}551 \cdot A^{0{,}39} \cdot (1+U)^{-0{,}62} \cdot H^{-0{,}11} \cdot D^{0{,}22} \text{ [h]}$$
+$$k = 0{,}56 \cdot A^{0{,}39} \cdot (1+U)^{-0{,}62} \cdot H^{-0{,}11} \cdot D^{0{,}22} \text{ [h]}$$
 
-$$k = 0{,}551 \cdot 3.460^{0{,}39} \cdot 1.310^{-0{,}62} \cdot 2.562^{-0{,}11} \cdot 0.2500^{0{,}22} = 0.5027 \text{ h} = 30.16 \text{ min}$$
+$$k = 0{,}56 \cdot 3.460^{0{,}39} \cdot 1.310^{-0{,}62} \cdot 2.562^{-0{,}11} \cdot 0.2500^{0{,}22} = 0.5109 \text{ h} = 30.65 \text{ min}$$
 
 **Krok 3: Liczba zbiorników $N$**
 
 $$N = \frac{t_L}{k}$$
 
-$$N = \frac{1.0391}{0.5027} = 2.067$$
+$$N = \frac{0.6721}{0.5109} = 1.316$$
 
 *Źródło: Rao, R.A.; Delleur, J.W.; Sarma, B.S.P. (1972). Conceptual Hydrologic Models for Urbanizing Basins. Journal of the Hydraulics Division, ASCE, 98(HY7), 1205–1220.*
 
@@ -165,67 +165,50 @@ $$u(t) = \frac{1}{K \cdot \Gamma(n)} \cdot \left(\frac{t}{K}\right)^{n-1} \cdot 
 
 **Parametry modelu:**
 
-- $n$ = 2.07 (liczba zbiorników)
-- $K$ = 30.2 min = 0.503 h (stała zbiornika)
-- $t_{lag}$ = n × K = 62.3 min
+- $n$ = 1.32 (liczba zbiorników)
+- $K$ = 30.7 min = 0.511 h (stała zbiornika)
+- $t_{lag}$ = n × K = 40.3 min
 
 **Czas do szczytu IUH:**
 
-$$t_p = (n - 1) \cdot K = (2.07 - 1) \cdot 30.2 = 32.2 \text{ min}$$
+$$t_p = (n - 1) \cdot K = (1.32 - 1) \cdot 30.7 = 9.7 \text{ min}$$
 
-### 5.4 Ordinaty hydrogramu jednostkowego
+### 5.4 Rzędne hydrogramu jednostkowego
 
 | Czas [min] | q [m³/s/mm] |
 |--------:|--------:|
 | 0.0 | 0.0000 |
-| 1.0 | 0.1156 |
-| 2.0 | 0.2311 |
-| 3.1 | 0.3467 |
-| 4.1 | 0.4623 |
-| 5.1 | 0.5778 |
-| 6.1 | 0.6934 |
-| 7.1 | 0.8090 |
-| 8.1 | 0.9246 |
-| 9.2 | 1.0401 |
-| 10.2 | 1.1557 |
-| 11.2 | 1.2713 |
-| 12.2 | 1.3868 |
-| 13.2 | 1.5024 |
-| 14.2 | 1.6180 |
-| 15.3 | 1.7335 |
-| 16.3 | 1.8491 |
-| 17.3 | 1.9647 |
-| 18.3 | 2.0802 |
-| 19.3 | 2.1958 |
-| ... | ... |
-| 39.7 | 2.7490 |
-| 40.7 | 2.7201 |
-| 41.7 | 2.6912 |
-| 42.7 | 2.6623 |
-| 43.8 | 2.6334 |
-| 44.8 | 2.6045 |
-| 45.8 | 2.5756 |
-| 46.8 | 2.5468 |
-| 47.8 | 2.5179 |
-| 48.8 | 2.4890 |
-| 49.9 | 2.4601 |
-| 50.9 | 2.4312 |
-| 51.9 | 2.4023 |
-| 52.9 | 2.3734 |
-| 53.9 | 2.3445 |
-| 54.9 | 2.3156 |
-| 56.0 | 2.2867 |
-| 57.0 | 2.2578 |
-| 58.0 | 2.2289 |
-
-*Tabela skrócona (58 wierszy)*
+| 1.0 | 0.4208 |
+| 2.1 | 0.8416 |
+| 3.1 | 1.2624 |
+| 4.2 | 1.6832 |
+| 5.2 | 2.1040 |
+| 6.2 | 2.5247 |
+| 7.3 | 2.9455 |
+| 8.3 | 3.3663 |
+| 9.4 | 3.7871 |
+| 10.4 | 4.2079 |
+| 11.5 | 4.6287 |
+| 12.5 | 4.7465 |
+| 13.5 | 4.6413 |
+| 14.6 | 4.5361 |
+| 15.6 | 4.4309 |
+| 16.7 | 4.3257 |
+| 17.7 | 4.2205 |
+| 18.8 | 4.1153 |
+| 19.8 | 4.0101 |
+| 20.8 | 3.9049 |
+| 21.9 | 3.7997 |
+| 22.9 | 3.6946 |
+| 24.0 | 3.5894 |
+| 25.0 | 3.4842 |
 
 **Charakterystyki hydrogramu jednostkowego:**
 
 | Parametr | Wartość |
 |:---------|--------:|
-| Czas do szczytu tp | 27.3 min |
-| Przepływ szczytowy qp | 3.1006 m³/s/mm |
+| Czas do szczytu tp | 11.9 min |
+| Przepływ szczytowy qp | 4.8071 m³/s/mm |
 | Powierzchnia zlewni A | 3.46 km² |
 
 ## 6. Splot Dyskretny (Konwolucja)
@@ -243,7 +226,7 @@ $$Q(n) = \sum_{m=1}^{\min(n,M)} P_e(m) \cdot UH(n - m + 1)$$
 gdzie:
 - $Q(n)$ - przepływ w kroku czasowym n [m³/s]
 - $P_e(m)$ - opad efektywny w kroku m [mm]
-- $UH(k)$ - ordinata hydrogramu jednostkowego [m³/s/mm]
+- $UH(k)$ - rzędna hydrogramu jednostkowego [m³/s/mm]
 - $M$ - liczba kroków opadu
 
 ### 6.2 Opis procedury
@@ -259,7 +242,7 @@ Procedura splotu dyskretnego:
 | Parametr | Wartość |
 |:---------|--------:|
 | Liczba kroków opadu efektywnego (M) | 15 |
-| Liczba ordinat hydrogramu jednostkowego (N) | 181 |
+| Liczba rzędnych hydrogramu jednostkowego (N) | 181 |
 | Liczba kroków wynikowego hydrogramu | 195 |
 | Krok czasowy Δt | 1.0 min |
 | Całkowity czas trwania hydrogramu | 195.0 min |
@@ -274,9 +257,9 @@ Poniżej przedstawiono charakterystyki obliczonego hydrogramu odpływu bezpośre
 
 | Charakterystyka | Wartość | Jednostka |
 |:----------------|--------:|:---------:|
-| Przepływ szczytowy Qmax | 1.75 | m³/s |
-| Czas do szczytu tp | 39.0 | min |
-| Objętość odpływu V | 8,690 | m³ |
+| Przepływ szczytowy Qmax | 2.71 | m³/s |
+| Czas do szczytu tp | 17.0 | min |
+| Objętość odpływu V | 8,814 | m³ |
 
 ### 7.2 Szereg czasowy
 
@@ -286,39 +269,39 @@ Poniżej przedstawiono charakterystyki obliczonego hydrogramu odpływu bezpośre
 | 1.0 | 0.000 |
 | 2.0 | 0.000 |
 | 3.0 | 0.000 |
-| 4.0 | 0.000 |
-| 5.0 | 0.008 |
-| 6.0 | 0.035 |
-| 7.0 | 0.090 |
-| 8.0 | 0.168 |
-| 9.0 | 0.264 |
-| 10.0 | 0.370 |
-| 11.0 | 0.479 |
-| 12.0 | 0.586 |
-| 13.0 | 0.689 |
-| 14.0 | 0.786 |
-| 15.0 | 0.878 |
-| 16.0 | 0.964 |
-| 17.0 | 1.044 |
-| 18.0 | 1.119 |
-| 19.0 | 1.188 |
+| 4.0 | 0.004 |
+| 5.0 | 0.168 |
+| 6.0 | 0.529 |
+| 7.0 | 0.991 |
+| 8.0 | 1.452 |
+| 9.0 | 1.848 |
+| 10.0 | 2.153 |
+| 11.0 | 2.369 |
+| 12.0 | 2.511 |
+| 13.0 | 2.602 |
+| 14.0 | 2.657 |
+| 15.0 | 2.691 |
+| 16.0 | 2.708 |
+| 17.0 | 2.713 |
+| 18.0 | 2.709 |
+| 19.0 | 2.697 |
 | ... | ... |
-| 176.0 | 0.110 |
-| 177.0 | 0.107 |
-| 178.0 | 0.105 |
-| 179.0 | 0.102 |
-| 180.0 | 0.099 |
-| 181.0 | 0.096 |
-| 182.0 | 0.094 |
-| 183.0 | 0.091 |
-| 184.0 | 0.089 |
-| 185.0 | 0.077 |
-| 186.0 | 0.058 |
-| 187.0 | 0.038 |
-| 188.0 | 0.022 |
-| 189.0 | 0.012 |
-| 190.0 | 0.005 |
-| 191.0 | 0.002 |
+| 176.0 | 0.037 |
+| 177.0 | 0.036 |
+| 178.0 | 0.035 |
+| 179.0 | 0.034 |
+| 180.0 | 0.033 |
+| 181.0 | 0.032 |
+| 182.0 | 0.031 |
+| 183.0 | 0.030 |
+| 184.0 | 0.029 |
+| 185.0 | 0.025 |
+| 186.0 | 0.019 |
+| 187.0 | 0.012 |
+| 188.0 | 0.007 |
+| 189.0 | 0.004 |
+| 190.0 | 0.002 |
+| 191.0 | 0.001 |
 | 192.0 | 0.000 |
 | 193.0 | 0.000 |
 | 194.0 | 0.000 |
@@ -347,8 +330,8 @@ $$C = \frac{P_e}{P} = \frac{2.56}{28.00} = 0.092$$
 **Weryfikacja objętościowa:**
 
 - Objętość opadu efektywnego: $V_{Pe}$ = Pe × A = 2.56 mm × 3.46 km² = 8,865 m³
-- Objętość z hydrogramu: $V_Q$ = 8,690 m³
-- Bilans: różnica 1.97%
+- Objętość z hydrogramu: $V_Q$ = 8,814 m³
+- Bilans: ✓ zgodność (0.58% różnicy)
 
 ---
 
@@ -360,4 +343,4 @@ $$C = \frac{P_e}{P} = \frac{2.56}{28.00} = 0.092$$
 | Opad efektywny Pe | 2.56 mm |
 | Straty (Ia + F) | 25.44 mm |
 | Współczynnik odpływu C | 0.092 (9.2%) |
-| Objętość odpływu V | 8,690 m³ |
+| Objętość odpływu V | 8,814 m³ |

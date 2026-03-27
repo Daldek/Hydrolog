@@ -5,11 +5,11 @@
 | Pole | Wartość |
 |------|---------|
 | **Faza** | 1 - Implementacja |
-| **Sprint** | 0.6.x - Raporty UH + korekty wzorów + metody tc |
-| **Sesja** | 27 |
-| **Data** | 2026-03-25 |
+| **Sprint** | 0.7.x - Statystyka hydrologiczna + Hydrometria |
+| **Sesja** | 28 |
+| **Data** | 2026-03-26 |
 | **Następny milestone** | v1.0.0 - Stabilne API |
-| **Gałąź robocza** | develop |
+| **Gałąź robocza** | feature/statistics-hydrometrics → develop |
 
 ---
 
@@ -35,6 +35,7 @@
 | CP15 | Nash urban regression + v0.6.1 | ✅ Ukończony |
 | CP16 | Raporty UH + korekty wzorów metrycznych + v0.6.2 | ✅ Ukończony |
 | CP17 | Audyt spójności API + naprawy (4 zespoły) | ✅ Ukończony |
+| CP18 | `hydrolog.statistics` + `hydrolog.hydrometrics` (v0.7.0) | ✅ Ukończony |
 
 ---
 
@@ -54,11 +55,37 @@
 | v0.6.2 | Raporty UH + korekty wzorów metrycznych | ✅ Wydana (2026-03-22) |
 | v0.6.3 | Audyt spójności API + naprawy | ✅ Wydana (2026-03-25) |
 | v0.6.4 | WatershedParams extension + UH ordinates + docs audit | ✅ Wydana (2026-03-25) |
+| v0.7.0 | Statystyka hydrologiczna + Hydrometria | ✅ Wydana (2026-03-26) |
 | v1.0.0 | Stabilne API + CLI | 📋 Planowany |
 
 ---
 
 ## Bieżąca sesja
+
+### Sesja 28 (2026-03-26)
+
+**Cel:** Migracja kodu statystycznego z IMGWTools do Hydrologa (v0.7.0)
+
+**Co zostało zrobione:**
+- [x] Design spec + literature review + gap analysis (KZGW 2017, PANDA, podręcznik UR Kraków)
+- [x] hydrolog/statistics/ — 6 plików (characteristic, high_flows, low_flows, stationarity, _hydrological_year, _types)
+- [x] hydrolog/hydrometrics/ — rating_curve (krzywa natężenia, strefy Rybczyńskiego)
+- [x] hydrolog/visualization/statistics.py — 10 funkcji wizualizacji
+- [x] 70 nowych testów jednostkowych
+- [x] Aktualizacja dokumentacji projektowej
+- [x] Code review + doc review — naprawiono 2 problemy krytyczne, 4 doc fixes, 5 nowych testów
+- [x] SciPy promowany z opcjonalnej do wymaganej zależności
+
+**Testy:** 824 (754 → 824, +70 nowych)
+
+**Gałąź:** `feature/statistics-hydrometrics` (14 commitów, gotowa do merge)
+
+**Następne kroki:**
+- Merge do develop
+- Bump version tag v0.7.0
+- Push do origin
+
+---
 
 ### Sesja 27 (2026-03-25) - UKOŃCZONA
 
