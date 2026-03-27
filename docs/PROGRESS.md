@@ -9,7 +9,7 @@
 | **Sesja** | 28 |
 | **Data** | 2026-03-26 |
 | **Następny milestone** | v1.0.0 - Stabilne API |
-| **Gałąź robocza** | feature/statistics-hydrometrics → develop |
+| **Gałąź robocza** | develop |
 
 ---
 
@@ -62,7 +62,7 @@
 
 ## Bieżąca sesja
 
-### Sesja 28 (2026-03-26)
+### Sesja 28 (2026-03-26) - UKOŃCZONA
 
 **Cel:** Migracja kodu statystycznego z IMGWTools do Hydrologa (v0.7.0)
 
@@ -75,15 +75,40 @@
 - [x] Aktualizacja dokumentacji projektowej
 - [x] Code review + doc review — naprawiono 2 problemy krytyczne, 4 doc fixes, 5 nowych testów
 - [x] SciPy promowany z opcjonalnej do wymaganej zależności
+- [x] Merge `feature/statistics-hydrometrics` → `develop` (15 commitów)
+- [x] Push develop do origin
 
 **Testy:** 824 (754 → 824, +70 nowych)
 
-**Gałąź:** `feature/statistics-hydrometrics` (14 commitów, gotowa do merge)
+**Pliki zmodyfikowane/utworzone (30 plików, +6662 linii):**
+```
+# Nowe moduły
+hydrolog/statistics/__init__.py
+hydrolog/statistics/_hydrological_year.py
+hydrolog/statistics/_types.py
+hydrolog/statistics/characteristic.py
+hydrolog/statistics/stationarity.py
+hydrolog/statistics/high_flows.py
+hydrolog/statistics/low_flows.py
+hydrolog/hydrometrics/__init__.py
+hydrolog/hydrometrics/rating_curve.py
+hydrolog/visualization/statistics.py
 
-**Następne kroki:**
-- Merge do develop
-- Bump version tag v0.7.0
-- Push do origin
+# Testy
+tests/unit/test_characteristic.py
+tests/unit/test_stationarity.py
+tests/unit/test_high_flows.py
+tests/unit/test_low_flows.py
+tests/unit/test_rating_curve.py
+tests/unit/test_visualization_statistics.py
+
+# Dokumentacja
+docs/superpowers/specs/2026-03-26-statistics-hydrometrics-design.md
+docs/superpowers/specs/2026-03-26-pdf-textbook-gap-analysis.md
+docs/superpowers/plans/2026-03-26-statistics-hydrometrics.md
+docs/SCOPE.md, docs/PRD.md, docs/CHANGELOG.md, docs/PROGRESS.md
+docs/IMPLEMENTATION_PROMPT.md, CLAUDE.md, pyproject.toml
+```
 
 ---
 
