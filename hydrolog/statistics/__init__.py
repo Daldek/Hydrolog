@@ -7,4 +7,9 @@ Provides:
 - Mann-Kendall trend test for series stationarity
 """
 
-__all__: list[str] = []
+from hydrolog.statistics.stationarity import MannKendallResult, mann_kendall_test
+
+__all__: list[str] = [
+    "MannKendallResult",
+    "mann_kendall_test",
+]
