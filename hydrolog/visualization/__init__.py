@@ -94,6 +94,19 @@ if HAS_MATPLOTLIB:
         plot_stations_map,
     )
 
+    from hydrolog.visualization.statistics import (
+        plot_frequency_curve,
+        plot_frequency_comparison,
+        plot_non_exceedance_curve,
+        plot_daily_characteristics,
+        plot_monthly_statistics,
+        plot_annual_hydrographs,
+        plot_flow_histogram,
+        plot_low_flow_sequences,
+        plot_rating_curve,
+        plot_water_level_frequency,
+    )
+
     __all__ = [
         # Styles
         "setup_hydrolog_style",
@@ -128,6 +141,17 @@ if HAS_MATPLOTLIB:
         "plot_bifurcation_ratios",
         # Interpolation
         "plot_stations_map",
+        # Statistics & hydrometrics
+        "plot_frequency_curve",
+        "plot_frequency_comparison",
+        "plot_non_exceedance_curve",
+        "plot_daily_characteristics",
+        "plot_monthly_statistics",
+        "plot_annual_hydrographs",
+        "plot_flow_histogram",
+        "plot_low_flow_sequences",
+        "plot_rating_curve",
+        "plot_water_level_frequency",
     ]
 else:
     __all__ = []

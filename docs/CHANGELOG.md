@@ -9,6 +9,85 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.7.0] - 2026-03-26
+
+### Added
+
+#### `hydrolog.statistics` - Statystyka hydrologiczna
+Nowy moduł do analizy statystycznej szeregów hydrologicznych.
+
+**Wartości charakterystyczne (`characteristic.py`):**
+- `CharacteristicValues` — dataclass z wartościami NNQ, SNQ, SSQ, SWQ, WWQ
+- `DailyStatistics` — statystyki dzienne (percentyle, kwantyle)
+- `MonthlyStatistics` — statystyki miesięczne
+- `calculate_characteristic_values()` — wyznaczanie wartości charakterystycznych (system polski)
+- `calculate_daily_statistics()` — statystyki dla szeregów dobowych
+- `calculate_monthly_statistics()` — statystyki dla szeregów miesięcznych
+
+**Analiza częstości przepływów maksymalnych (`high_flows.py`):**
+- `FrequencyAnalysisResult` — wyniki dopasowania rozkładu (parametry, AIC, testy zgodności)
+- `FloodFrequencyAnalysis` — analiza częstości z 4 rozkładami:
+  - LogNormal (dwuparametrowy)
+  - GEV (Generalized Extreme Value)
+  - Pearson III (Gamma z przesunięciem)
+  - Weibull (wartości ekstremalne min)
+- Testy zgodności: Kołmogorowa-Smirnowa, Andersona-Darlinga
+- Kryterium informacyjne Akaike'a (AIC) do wyboru najlepszego rozkładu
+
+**Analiza częstości przepływów minimalnych (`low_flows.py`):**
+- `LowFlowFrequencyResult` — wyniki dopasowania Fisher-Tippett
+- `LowFlowSequence` — sekwencja niżówkowa (czas trwania, deficyt, intensywność)
+- `LowFlowAnalysisResult` — kompletne wyniki analizy niżówkowej
+- `LowFlowAnalysis` — analiza niżówek:
+  - Dopasowanie rozkładu Fisher-Tippett dla przepływów minimalnych
+  - Detekcja sekwencji niżówkowych metodą progową
+
+**Test trendu (`stationarity.py`):**
+- `MannKendallResult` — wynik testu (statystyka S, Z, p-value, kierunek trendu)
+- `mann_kendall_test()` — nieparametryczny test Manna-Kendalla (KZGW 2017)
+
+**Typy wspólne (`_types.py`, `_hydrological_year.py`):**
+- Typy danych dla szeregów hydrologicznych
+- Narzędzia do obsługi roku hydrologicznego (1.XI – 31.X)
+
+#### `hydrolog.hydrometrics` - Hydrometria
+Nowy moduł do analiz hydrometrycznych.
+
+**Krzywa natężenia przepływu (`rating_curve.py`):**
+- `RatingCurveResult` — wyniki dopasowania krzywej (parametry a, H₀, b, R², RMSE)
+- `WaterLevelZones` — strefy wodowskazowe metodą Rybczyńskiego (NTW/STW/WTW)
+- `FrequencyDistributionResult` — rozkład częstości i czasu trwania stanów wody
+- `RatingCurve` — krzywa natężenia Q = a × (H − H₀)^b z dopasowaniem metodą NLS
+- `WaterLevelFrequency` — analiza częstości i czasu trwania stanów wody + strefy Rybczyńskiego
+
+#### `hydrolog.visualization.statistics` — 10 funkcji wizualizacji statystycznej
+- `plot_frequency_curve()` — krzywa częstości z przedziałami ufności
+- `plot_frequency_comparison()` — porównanie rozkładów na jednym wykresie
+- `plot_non_exceedance_curve()` — krzywa czasu trwania przepływów (FDC)
+- `plot_daily_characteristics()` — wartości charakterystyczne NNQ–WWQ
+- `plot_monthly_statistics()` — statystyki miesięczne (box plot)
+- `plot_annual_hydrographs()` — hydrogramy roczne
+- `plot_flow_histogram()` — histogram rozkładu przepływów
+- `plot_low_flow_sequences()` — sekwencje niżówkowe na tle szeregu
+- `plot_rating_curve()` — krzywa natężenia z danymi pomiarowymi
+- `plot_water_level_frequency()` — częstość i czas trwania stanów wody
+
+### Changed
+- SciPy przeniesiona z zależności opcjonalnej do wymaganej (core dependency).
+  Używana wcześniej opcjonalnie przez `runoff.nash_iuh`; od v0.7.0 wymagana
+  przez moduł `statistics` (rozkłady GEV, Pearson III, Fisher-Tippett).
+
+### Testing
+- 70 nowych testów jednostkowych (754 → 824):
+  - `test_characteristic.py` — wartości charakterystyczne, statystyki dobowe/miesięczne
+  - `test_high_flows.py` — analiza częstości przepływów maksymalnych
+  - `test_low_flows.py` — Fisher-Tippett, detekcja niżówek
+  - `test_stationarity.py` — test Manna-Kendalla
+  - `test_rating_curve.py` — krzywa natężenia, strefy Rybczyńskiego
+  - `test_visualization_statistics.py` — 10 funkcji wizualizacji
+
+---
+
 ## [0.6.4] - 2026-03-25
 
 ### Added
@@ -659,4 +738,5 @@ Requires optional dependencies: `pip install hydrolog[visualization]`
 | **0.6.2** | 2026-03-22 | UH report formulas + metric corrections |
 | **0.6.3** | 2026-03-23 | FAA + Kerby + Kerby-Kirpich tc, API audit |
 | **0.6.4** | 2026-03-25 | WatershedParams extension + UH ordinates + docs audit |
+| **0.7.0** | 2026-03-26 | Statystyka hydrologiczna + Hydrometria |
 | 1.0.0 | TBD | Stable API |
