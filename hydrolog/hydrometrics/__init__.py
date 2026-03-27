@@ -6,4 +6,18 @@ Provides:
 - Rybczyński method for water level zone delimitation
 """
 
-__all__: list[str] = []
+from hydrolog.hydrometrics.rating_curve import (
+    FrequencyDistributionResult,
+    RatingCurve,
+    RatingCurveResult,
+    WaterLevelFrequency,
+    WaterLevelZones,
+)
+
+__all__: list[str] = [
+    "RatingCurve",
+    "RatingCurveResult",
+    "WaterLevelFrequency",
+    "WaterLevelZones",
+    "FrequencyDistributionResult",
+]
