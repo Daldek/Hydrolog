@@ -399,9 +399,9 @@ hydrolog/
 **Wymagane:**
 - Python >= 3.12
 - NumPy >= 1.24
+- SciPy >= 1.10 (rozkłady statystyczne, funkcja gamma, optymalizacja — wymagane od v0.7.0)
 
 **Opcjonalne:**
-- SciPy >= 1.10 (dla funkcji gamma w Nash IUH)
 - matplotlib >= 3.7 + seaborn >= 0.12 (dla modułu `visualization`)
 - Kartograf >= 0.3.0 (dla automatycznego wyznaczania CN z danych glebowych HSG)
 

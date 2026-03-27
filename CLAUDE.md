@@ -70,7 +70,7 @@ git push origin v0.1.0
 
 - **NumPy** - obliczenia numeryczne (wymagane)
 - **Kartograf** - zestaw narzędzi do pobierania NMT, pokrycia terenu i danych glebowych (opcjonalne)
-- **SciPy** - funkcje gamma dla Nash IUH (opcjonalne)
+- **SciPy** - rozkłady statystyczne, funkcja gamma, optymalizacja (wymagane od v0.7.0)
 
 Hydrolog NIE zawiera funkcji pobierania danych - to zadanie zewnętrznych bibliotek.
 
