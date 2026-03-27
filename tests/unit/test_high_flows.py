@@ -114,6 +114,32 @@ class TestFloodFrequencyAnalysis:
         assert len(result.return_periods) == 3
         assert len(result.quantiles) == 3
 
+    def test_empirical_frequency_hazen(self, synthetic_gev_data):
+        from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
+
+        ffa = FloodFrequencyAnalysis(synthetic_gev_data)
+        emp = ffa.empirical_frequency(method="hazen")
+        n = len(synthetic_gev_data)
+        # Hazen: P_i = (i - 0.5) / n
+        assert abs(emp.exceedance_prob[0] - 0.5 / n) < 0.001
+
+    def test_empirical_frequency_cunnane(self, synthetic_gev_data):
+        from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
+
+        ffa = FloodFrequencyAnalysis(synthetic_gev_data)
+        emp = ffa.empirical_frequency(method="cunnane")
+        n = len(synthetic_gev_data)
+        # Cunnane: P_i = (i - 0.4) / (n + 0.2)
+        assert abs(emp.exceedance_prob[0] - 0.6 / (n + 0.2)) < 0.001
+
+    def test_empirical_frequency_invalid_method_raises(self, synthetic_gev_data):
+        from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
+        from hydrolog.exceptions import InvalidParameterError
+
+        ffa = FloodFrequencyAnalysis(synthetic_gev_data)
+        with pytest.raises(InvalidParameterError):
+            ffa.empirical_frequency(method="invalid")
+
     def test_empty_data_raises(self):
         from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
         from hydrolog.exceptions import InvalidParameterError

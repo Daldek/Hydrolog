@@ -111,6 +111,10 @@ def mann_kendall_test(
         s += float(np.sum(np.sign(series[i + 1 :] - series[i])))
 
     # Var(S) = n(n-1)(2n+5) / 18  (no-ties formula)
+    # Note: when ties exist, the exact formula includes a correction:
+    #   Var(S) = [n(n-1)(2n+5) - sum_g t_g(t_g-1)(2t_g+5)] / 18
+    # The no-ties formula slightly overestimates Var(S), making the test
+    # conservative. Acceptable for most hydrological annual series.
     var_s: float = n * (n - 1) * (2 * n + 5) / 18.0
 
     # Continuity-corrected Z statistic

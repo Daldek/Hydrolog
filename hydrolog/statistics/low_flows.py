@@ -331,7 +331,21 @@ class LowFlowAnalysis:
 
         This includes gap days (which contribute zero deficit if Q > threshold)
         when two runs are merged.
+
+        Raises
+        ------
+        InvalidParameterError
+            If threshold <= 0 or min_duration_days < 1.
         """
+        from hydrolog.exceptions import InvalidParameterError
+
+        if threshold <= 0:
+            raise InvalidParameterError(f"threshold must be positive, got {threshold}")
+        if min_duration_days < 1:
+            raise InvalidParameterError(
+                f"min_duration_days must be >= 1, got {min_duration_days}"
+            )
+
         below: NDArray[np.bool_] = self._flows < threshold
 
         # ------------------------------------------------------------------
