@@ -78,7 +78,7 @@ Nowy moduł do analiz hydrometrycznych.
   przez moduł `statistics` (rozkłady GEV, Pearson III, Fisher-Tippett).
 
 ### Testing
-- 65 nowych testów jednostkowych (754 → 819):
+- 70 nowych testów jednostkowych (754 → 824):
   - `test_characteristic.py` — wartości charakterystyczne, statystyki dobowe/miesięczne
   - `test_high_flows.py` — analiza częstości przepływów maksymalnych
   - `test_low_flows.py` — Fisher-Tippett, detekcja niżówek

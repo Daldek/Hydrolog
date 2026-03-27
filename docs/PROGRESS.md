@@ -71,10 +71,19 @@
 - [x] hydrolog/statistics/ — 6 plików (characteristic, high_flows, low_flows, stationarity, _hydrological_year, _types)
 - [x] hydrolog/hydrometrics/ — rating_curve (krzywa natężenia, strefy Rybczyńskiego)
 - [x] hydrolog/visualization/statistics.py — 10 funkcji wizualizacji
-- [x] 65+ nowych testów jednostkowych
+- [x] 70 nowych testów jednostkowych
 - [x] Aktualizacja dokumentacji projektowej
+- [x] Code review + doc review — naprawiono 2 problemy krytyczne, 4 doc fixes, 5 nowych testów
+- [x] SciPy promowany z opcjonalnej do wymaganej zależności
 
-**Testy:** ~820 (754 → ~820, +65 nowych)
+**Testy:** 824 (754 → 824, +70 nowych)
+
+**Gałąź:** `feature/statistics-hydrometrics` (14 commitów, gotowa do merge)
+
+**Następne kroki:**
+- Merge do develop
+- Bump version tag v0.7.0
+- Push do origin
 
 ---
 

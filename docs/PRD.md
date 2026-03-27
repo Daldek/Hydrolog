@@ -337,7 +337,7 @@ print(f"tc = {tc:.1f} min")
 
 - Python >= 3.12
 - NumPy >= 1.24
-- SciPy >= 1.10 (opcjonalnie, interpolacja i funkcja gamma dla Nash IUH)
+- SciPy >= 1.10 (wymagane od v0.7.0; rozkłady statystyczne, funkcja gamma, optymalizacja)
 - Matplotlib >= 3.7 (opcjonalnie, moduł visualization)
 - Seaborn >= 0.12 (opcjonalnie, moduł visualization)
 - Kartograf (opcjonalnie, dane przestrzenne i glebowe)
