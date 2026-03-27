@@ -66,7 +66,11 @@ dependencies = [
 ]
 ```
 
-### 2.3 Data model
+### 2.3 New convention: private underscore modules
+
+The `_hydrological_year.py` and `_types.py` files introduce a new pattern: underscore-prefixed private modules. Currently, the codebase uses underscore-prefixed private **functions** within public modules, but no private modules. This is standard Python convention and is introduced here because hydrological year utilities are shared across multiple files within `statistics/`.
+
+### 2.4 Data model
 
 All inputs are NumPy arrays. No pandas dependency. Data preparation (CSV → NumPy) is the responsibility of the calling application (e.g., IMGWTools).
 
@@ -431,9 +435,11 @@ class WaterLevelFrequency:
 | `plot_rating_curve()` | Q vs H with fitted curve | `plt_rating_curve()` |
 | `plot_water_level_frequency()` | Frequency/duration + zones | `plt_water_level_frequency()` |
 
-All functions:
+All functions follow existing Hydrolog visualization patterns:
 - Accept optional `ax: Axes | None` parameter
-- Return `Axes` for composition
+- Accept optional `figsize: tuple = (10, 6)` parameter
+- Accept optional `title: str | None = None` parameter
+- Return `plt.Figure` (NOT `Axes` — consistent with all existing viz functions)
 - Use `styles.py` colors and Polish labels
 - Accept dataclass results (not raw data)
 
@@ -495,16 +501,123 @@ from hydrolog.statistics.low_flows import (
 from hydrolog.hydrometrics.rating_curve import (
     RatingCurve, RatingCurveResult,
     WaterLevelFrequency, WaterLevelZones,
+    FrequencyDistributionResult,
 )
 ```
 
-### 7.3 Version
+### 7.3 Shared types
+
+`EmpiricalFrequency` is used by both `high_flows.py` and `low_flows.py`. It lives in a private shared module:
+
+```python
+# hydrolog/statistics/_types.py
+@dataclass
+class EmpiricalFrequency:
+    values_sorted: NDArray[np.float64]
+    exceedance_prob: NDArray[np.float64]
+    return_periods: NDArray[np.float64]
+```
+
+Both `high_flows.py` and `low_flows.py` import from `_types.py`. The `__init__.py` re-exports it.
+
+### 7.4 `__all__` lists
+
+Both new `__init__.py` files must include `__all__` lists following the pattern in `hydrolog/runoff/__init__.py`:
+
+```python
+# hydrolog/statistics/__init__.py
+__all__ = [
+    "CharacteristicValues", "calculate_characteristic_values",
+    "DailyStatistics", "MonthlyStatistics",
+    "calculate_daily_statistics", "calculate_monthly_statistics",
+    "FloodFrequencyAnalysis", "FrequencyAnalysisResult", "EmpiricalFrequency",
+    "LowFlowAnalysis", "LowFlowFrequencyResult",
+    "LowFlowSequence", "LowFlowAnalysisResult",
+]
+
+# hydrolog/hydrometrics/__init__.py
+__all__ = [
+    "RatingCurve", "RatingCurveResult",
+    "WaterLevelFrequency", "WaterLevelZones", "FrequencyDistributionResult",
+]
+```
+
+### 7.5 Top-level `hydrolog/__init__.py`
+
+No changes to top-level exports. Users import from submodules:
+```python
+from hydrolog.statistics import FloodFrequencyAnalysis
+from hydrolog.hydrometrics import RatingCurve
+```
+
+### 7.6 Version
 
 Target: v0.7.0
 
+### 7.7 CLI and reports
+
+**CLI commands:** Deferred to v0.7.1 or later. Statistics workflows are less suited to single CLI invocations (require multi-step data preparation). May add `hydrolog stats` subcommand later.
+
+**Report sections:** Deferred to v0.7.1 or later. The existing `reports` module covers rainfall-runoff workflow. Statistics reports have a different structure (frequency curves, characteristic value tables) that warrants separate design.
+
+### 7.8 Breaking change: SciPy promotion
+
+SciPy moves from optional to required dependency. This is a **breaking change** for users who installed Hydrolog without SciPy and only used modules that don't need it (e.g., `time.concentration`, `morphometry`).
+
+**Rationale:** Nash IUH already requires SciPy in practice. Statistics and hydrometrics modules are unusable without it. Formalizes the de facto requirement.
+
+**Required doc updates:** `SCOPE.md` Section 6 (dependency table), `PRD.md` Section 3.4 (compatibility).
+
 ---
 
-## 8. Literature References
+## 8. Error Handling
+
+### 8.1 Input validation
+
+All public functions and constructors validate inputs using `InvalidParameterError` from `hydrolog/exceptions.py`:
+
+| Function/Class | Validation |
+|---------------|------------|
+| `calculate_characteristic_values()` | `len(daily_values) != len(dates)` → error; empty arrays → error |
+| `FloodFrequencyAnalysis.__init__()` | `len(annual_maxima) < 5` → `UserWarning`; empty → error; NaN check |
+| `LowFlowAnalysis.__init__()` | `len(daily_flows) != len(dates)` → error; empty → error |
+| `LowFlowAnalysis.detect_sequences()` | `threshold <= 0` → error; `min_duration_days < 1` → error |
+| `RatingCurve.__init__()` | `len(water_levels) != len(discharges)` → error; `< 3 points` → error |
+| `WaterLevelFrequency.__init__()` | `bin_width <= 0` → error; empty → error |
+| `calculate_monthly_statistics()` | `confidence_level` not in (0, 1) → error |
+
+### 8.2 Warnings
+
+Use `warnings.warn(..., UserWarning, stacklevel=2)` for:
+- K-S test with estimated parameters (`ks_valid = False`)
+- Sample size too small for reliable distribution fitting (< 10 years)
+- `curve_fit` convergence issues in `RatingCurve.fit()`
+- Negative fitted parameters where physically impossible
+
+---
+
+## 9. Documentation Updates Required
+
+The following project documents must be updated as part of v0.7.0:
+
+| Document | Changes needed |
+|----------|---------------|
+| `docs/SCOPE.md` | Add statistics/hydrometrics to Section 2.1, module structure (3.1), roadmap (4), dependency table (6) |
+| `docs/PRD.md` | Add user stories US-S01..S03, US-H01..H02; add v0.7.0 to roadmap |
+| `docs/CHANGELOG.md` | v0.7.0 entry with all new classes/functions |
+| `docs/PROGRESS.md` | New session, checkpoints for statistics/hydrometrics |
+| `docs/IMPLEMENTATION_PROMPT.md` | Add statistics/hydrometrics to module structure |
+| `pyproject.toml` | Move scipy to core dependencies |
+
+---
+
+## 10. NDArray Type Convention
+
+All `NDArray` annotations use the parameterized form `NDArray[np.float64]` consistent with existing codebase (e.g., `scs_cn.py`, `unit_hydrograph.py`).
+
+---
+
+## 11. Literature References
 
 | # | Reference | Used for |
 |---|-----------|----------|
