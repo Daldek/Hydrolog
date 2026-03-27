@@ -45,9 +45,11 @@ hydrolog/
 ├── statistics/                    # NEW MODULE
 │   ├── __init__.py
 │   ├── _hydrological_year.py      # private: year/season utilities
-│   ├── characteristic.py          # characteristic values, daily/monthly stats
-│   ├── high_flows.py              # flood frequency: LogNormal, GEV, Pearson III
-│   └── low_flows.py               # low-flow frequency: Fisher-Tippett, drought sequences
+│   ├── _types.py                  # private: shared dataclasses (EmpiricalFrequency)
+│   ├── characteristic.py          # characteristic values, daily/monthly stats, FDC
+│   ├── high_flows.py              # flood frequency: LogNormal, GEV, Pearson III, Weibull
+│   ├── low_flows.py               # low-flow frequency: Fisher-Tippett, drought sequences
+│   └── stationarity.py            # Mann-Kendall trend test, series homogeneity
 ├── hydrometrics/                  # NEW MODULE
 │   ├── __init__.py
 │   └── rating_curve.py            # rating curve Q=f(H), Rybczyński zones
@@ -139,6 +141,8 @@ class MonthlyStatistics:
     median_values: NDArray
     min_values: NDArray
     std_values: NDArray
+    cv_values: NDArray          # coefficient of variation = std / mean
+    skewness_values: NDArray    # Fisher-Pearson skewness coefficient
     ci_lower: NDArray
     ci_upper: NDArray
     confidence_level: float     # configurable, default 0.95
@@ -171,7 +175,9 @@ def calculate_monthly_statistics(
 ) -> MonthlyStatistics:
     """Monthly statistics with configurable confidence interval.
 
-    CI = mean ± z × std / sqrt(n), clipped at 0.
+    CI = mean ± t × std / sqrt(n), clipped at 0.
+    Uses t-Student distribution with n-1 degrees of freedom
+    (correct for small samples typical in hydrology, n=20-50 years).
     """
 ```
 
@@ -183,15 +189,54 @@ def calculate_monthly_statistics(
 | ZWQ/ZNQ computation | `median(median(w), median(s))` = mean of 2 values | `median(annual_maxima/minima)` — correct |
 | Hydrological year | `groupby("year").cumcount()` — calendar year | Proper Nov 1 – Oct 31 grouping |
 | CI confidence level | Hardcoded 0.95 | Configurable parameter |
+| CI distribution | z (normal) — incorrect for small samples | t-Student with n-1 df (7% wider at n=20) |
 
 #### References
 
 - Characteristic values: Polish hydrological standard (IMGW-PIB)
   - Source: https://pl.wikipedia.org/wiki/Przepływ_rzeki
   - WWQ = max of annual maxima, SWQ = mean of annual maxima, SSQ = mean of annual means, SNQ = mean of annual minima, NNQ = min of annual minima
-- CI formula: z = scipy.stats.norm.ppf(1 - α/2), CI = mean ± z × std / √n
+- CI formula: t = scipy.stats.t.ppf(1 - α/2, df=n-1), CI = mean ± t × std / √n
+  (t-Student with n-1 df; correct for small samples. For n=20 at 95%: t=2.093 vs z=1.960)
 
-### 3.3 `high_flows.py`
+### 3.3 `stationarity.py` — Series homogeneity tests
+
+Required by KZGW (2017) as a prerequisite before frequency analysis.
+
+```python
+@dataclass
+class MannKendallResult:
+    """Result of Mann-Kendall trend test."""
+    s_statistic: float                # Mann-Kendall S statistic
+    var_s: float                      # variance of S
+    z_score: float                    # normalized test statistic (U ~ N(0,1))
+    p_value: float                    # two-sided p-value
+    trend_detected: bool              # True if |z| > z_alpha at given significance
+    trend_direction: str              # "increasing", "decreasing", or "none"
+    significance_level: float         # alpha used for detection
+
+def mann_kendall_test(
+    series: NDArray[np.float64],
+    alpha: float = 0.05,
+) -> MannKendallResult:
+    """Non-parametric Mann-Kendall test for monotonic trend.
+
+    Tests H0: no trend vs H1: monotonic trend in the series.
+    KZGW (2017) requires stationarity verification before frequency analysis.
+
+    Formula:
+        S = Σ_{i=1}^{n-1} Σ_{j=i+1}^{n} sgn(x_j - x_i)
+        Var(S) = n(n-1)(2n+5) / 18
+        U = (S-1)/√Var(S)  if S > 0
+        U = 0               if S = 0
+        U = (S+1)/√Var(S)  if S < 0
+
+    References:
+        Mann (1945), Kendall (1975), KZGW (2017).
+    """
+```
+
+### 3.4 `high_flows.py`
 
 #### Data structures
 
@@ -206,6 +251,9 @@ class FrequencyAnalysisResult:
     ks_statistic: float
     ks_p_value: float
     ks_valid: bool                   # False when params estimated from data
+    ad_statistic: float              # Anderson-Darling (better for tails)
+    ad_critical_values: dict[str, float]  # critical values at significance levels
+    aic: float                       # Akaike Information Criterion (lower = better)
 
 @dataclass
 class EmpiricalFrequency:
@@ -222,8 +270,10 @@ class FloodFrequencyAnalysis:
     def fit_log_normal(self) -> FrequencyAnalysisResult: ...
     def fit_gev(self) -> FrequencyAnalysisResult: ...
     def fit_pearson3(self) -> FrequencyAnalysisResult: ...
+    def fit_weibull(self) -> FrequencyAnalysisResult: ...
     def empirical_frequency(self, method: str = "weibull") -> EmpiricalFrequency: ...
-    def fit_all(self) -> dict[str, FrequencyAnalysisResult]: ...
+    def fit_all(self) -> dict[str, FrequencyAnalysisResult]:
+        """Fit all distributions, rank by AIC, return results."""
 ```
 
 #### Formulas (verified)
@@ -247,6 +297,26 @@ class FloodFrequencyAnalysis:
 - Quantile: `pearson3.ppf(1 - 1/T, skew, loc, scale)`
 - Bulletin 17C (USGS) recommends Log-Pearson III with method of moments
 - Source: https://pubs.usgs.gov/publication/tm4B5
+
+**Weibull (3-parameter):**
+- PDF: `f(x) = (ξ/σ) × ((x−μ)/σ)^(ξ−1) × exp(−((x−μ)/σ)^ξ)` for x > μ
+- E(X) = μ + σ × Γ(1 + 1/ξ)
+- Fit: `shape, loc, scale = scipy.stats.weibull_min.fit(data)`
+- Quantile: `weibull_min.ppf(1 - 1/T, shape, loc, scale)`
+- Required by KZGW (2017) methodology alongside Pearson III and Log-Normal
+- Source: KZGW (2017), "Metodyka obliczania przepływów i opadów maksymalnych"
+
+**Anderson-Darling goodness-of-fit test:**
+- More sensitive than K-S in distribution tails — critical for extreme value analysis
+- Implementation: `scipy.stats.anderson(data, dist_name)`
+- Returns test statistic and critical values at [15%, 10%, 5%, 2.5%, 1%] significance levels
+- Recommended by KZGW (2017) and PANDA (IMGW-PIB 2020)
+- Source: Anderson & Darling (1954); KZGW (2017)
+
+**Akaike Information Criterion (AIC):**
+- Formula: `AIC = 2k − 2ln(L)` where k = number of parameters, L = maximum likelihood
+- Used by `fit_all()` to rank competing distributions — lower AIC = better fit
+- Source: Akaike (1974); referenced in PANDA (IMGW-PIB 2020)
 
 **Plotting positions:**
 - Weibull: `P_i = i / (n+1)` (default, recommended by Gumbel 1958)
@@ -452,8 +522,9 @@ All functions follow existing Hydrolog visualization patterns:
 ```
 tests/unit/
 ├── test_characteristic.py           # ~30 tests
-├── test_high_flows.py               # ~25 tests
+├── test_high_flows.py               # ~30 tests (+Weibull, Anderson-Darling, AIC)
 ├── test_low_flows.py                # ~20 tests
+├── test_stationarity.py             # ~10 tests (Mann-Kendall)
 ├── test_rating_curve.py             # ~15 tests
 └── test_visualization_statistics.py # ~15 tests (smoke tests)
 ```
@@ -466,11 +537,17 @@ tests/unit/
 
 - Characteristic values: known dataset → verify all 12 values
 - Hydrological year: dates spanning Nov–Oct → correct grouping
+- Monthly stats: verify CV, skewness computed; CI uses t-Student (wider than z)
 - Flood frequency: synthetic GEV data → fitted params match input
+- Weibull fit: synthetic Weibull data → params recovered
+- Anderson-Darling: verify statistic and critical values returned
+- AIC: verify lower AIC for correct distribution on synthetic data
 - K-S test: verify `ks_valid=False` warning emitted
+- Mann-Kendall: series with known trend → trend_detected=True; random series → False
+- Mann-Kendall: verify KZGW 30-year warning when n < 30
 - Low-flow sequences: known pattern → correct detection and merging
 - Rating curve: synthetic power-law data → params recovered ±1%
-- Plotting: smoke tests (no crash, returns Axes)
+- Plotting: smoke tests (no crash, returns Figure)
 
 ---
 
@@ -495,6 +572,9 @@ from hydrolog.statistics.high_flows import (
 from hydrolog.statistics.low_flows import (
     LowFlowAnalysis, LowFlowFrequencyResult,
     LowFlowSequence, LowFlowAnalysisResult,
+)
+from hydrolog.statistics.stationarity import (
+    mann_kendall_test, MannKendallResult,
 )
 
 # hydrolog/hydrometrics/__init__.py
@@ -533,6 +613,7 @@ __all__ = [
     "FloodFrequencyAnalysis", "FrequencyAnalysisResult", "EmpiricalFrequency",
     "LowFlowAnalysis", "LowFlowFrequencyResult",
     "LowFlowSequence", "LowFlowAnalysisResult",
+    "mann_kendall_test", "MannKendallResult",
 ]
 
 # hydrolog/hydrometrics/__init__.py
@@ -590,7 +671,8 @@ All public functions and constructors validate inputs using `InvalidParameterErr
 
 Use `warnings.warn(..., UserWarning, stacklevel=2)` for:
 - K-S test with estimated parameters (`ks_valid = False`)
-- Sample size too small for reliable distribution fitting (< 10 years)
+- Sample size < 30 years: `UserWarning` noting KZGW (2017) requires 30+ years
+- Sample size < 10 years: stronger `UserWarning` — results may be unreliable
 - `curve_fit` convergence issues in `RatingCurve.fit()`
 - Negative fitted parameters where physically impossible
 
@@ -631,3 +713,9 @@ All `NDArray` annotations use the parameterized form `NDArray[np.float64]` consi
 | 8 | IMGW-PIB. Rok hydrologiczny. | Hydrological year definition |
 | 9 | Polish Wikipedia: Przepływ rzeki. | Characteristic values definitions |
 | 10 | WMO Guide to Hydrological Practices. | Rating curve methodology |
+| 11 | KZGW (2017). Metodyka obliczania przepływów i opadów maksymalnych. | Polish national standard: required distributions (Pearson III, Log-Normal, Weibull), 30-year minimum, stationarity requirement |
+| 12 | PANDA — IMGW-PIB (2020). Metodyka Opracowania Polskiego Atlasu Natężeń Deszczów. | Polish precipitation frequency standard; Anderson-Darling, AIC |
+| 13 | Mann, H.B. (1945). Non-parametric tests against trend. Econometrica 13. | Mann-Kendall test |
+| 14 | Anderson, T.W. & Darling, D.A. (1954). A test of goodness of fit. JASA 49. | Anderson-Darling test |
+| 15 | Akaike, H. (1974). A new look at the statistical model identification. IEEE Trans. | AIC |
+| 16 | Rutkowska, A. & Młocek, W. (2024/25). Zastosowanie metod statystycznych w hydrologii i meteorologii. UR Kraków. | Textbook: formulas, KZGW/PANDA methodology overview |
