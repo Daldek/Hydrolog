@@ -96,6 +96,36 @@ class TestLowFlowAnalysis:
         result = lfa.detect_sequences(threshold=10.0, min_duration_days=5)
         assert result.sequences[0].deficit_volume == pytest.approx(25.0)
 
+    def test_detect_sequences_negative_threshold_raises(self):
+        """Negative threshold should raise InvalidParameterError."""
+        from hydrolog.statistics.low_flows import LowFlowAnalysis
+        from hydrolog.exceptions import InvalidParameterError
+
+        dates = np.arange(
+            np.datetime64("2020-11-01"),
+            np.datetime64("2021-10-31"),
+            dtype="datetime64[D]",
+        )
+        values = np.full(len(dates), 50.0)
+        lfa = LowFlowAnalysis(values, dates)
+        with pytest.raises(InvalidParameterError):
+            lfa.detect_sequences(threshold=-5.0)
+
+    def test_detect_sequences_zero_min_duration_raises(self):
+        """min_duration_days < 1 should raise InvalidParameterError."""
+        from hydrolog.statistics.low_flows import LowFlowAnalysis
+        from hydrolog.exceptions import InvalidParameterError
+
+        dates = np.arange(
+            np.datetime64("2020-11-01"),
+            np.datetime64("2021-10-31"),
+            dtype="datetime64[D]",
+        )
+        values = np.full(len(dates), 50.0)
+        lfa = LowFlowAnalysis(values, dates)
+        with pytest.raises(InvalidParameterError):
+            lfa.detect_sequences(threshold=10.0, min_duration_days=0)
+
     def test_empty_data_raises(self):
         from hydrolog.statistics.low_flows import LowFlowAnalysis
         from hydrolog.exceptions import InvalidParameterError
