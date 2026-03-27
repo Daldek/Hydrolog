@@ -100,8 +100,7 @@ def mann_kendall_test(
         )
     if series.size < 3:
         raise InvalidParameterError(
-            f"series must contain at least 3 observations; "
-            f"received {series.size}."
+            f"series must contain at least 3 observations; " f"received {series.size}."
         )
 
     n = series.size

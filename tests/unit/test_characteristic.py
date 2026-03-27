@@ -69,11 +69,13 @@ class TestCharacteristicValues:
         rng = np.random.default_rng(42)
         dates_list = []
         values_list = []
-        for year_offset, (mx, mn, avg) in enumerate([
-            (100.0, 10.0, 50.0),
-            (80.0, 5.0, 40.0),
-            (120.0, 15.0, 60.0),
-        ]):
+        for year_offset, (mx, mn, avg) in enumerate(
+            [
+                (100.0, 10.0, 50.0),
+                (80.0, 5.0, 40.0),
+                (120.0, 15.0, 60.0),
+            ]
+        ):
             start = np.datetime64(f"{2020 + year_offset}-11-01")
             days = np.arange(365, dtype="timedelta64[D]")
             year_dates = start + days
@@ -86,25 +88,31 @@ class TestCharacteristicValues:
 
     def test_characteristic_values_wwq(self, known_daily_data):
         from hydrolog.statistics.characteristic import calculate_characteristic_values
+
         dates, values = known_daily_data
         result = calculate_characteristic_values(values, dates)
         assert result.wwx == 120.0
 
     def test_characteristic_values_nnq(self, known_daily_data):
         from hydrolog.statistics.characteristic import calculate_characteristic_values
+
         dates, values = known_daily_data
         result = calculate_characteristic_values(values, dates)
         assert result.nnx == 5.0
 
     def test_characteristic_values_swq_is_mean_of_annual_maxima(self, known_daily_data):
         from hydrolog.statistics.characteristic import calculate_characteristic_values
+
         dates, values = known_daily_data
         result = calculate_characteristic_values(values, dates)
         expected_swq = np.mean([100.0, 80.0, 120.0])
         assert abs(result.swx - expected_swq) < 0.01
 
-    def test_characteristic_values_zwq_is_median_of_annual_maxima(self, known_daily_data):
+    def test_characteristic_values_zwq_is_median_of_annual_maxima(
+        self, known_daily_data
+    ):
         from hydrolog.statistics.characteristic import calculate_characteristic_values
+
         dates, values = known_daily_data
         result = calculate_characteristic_values(values, dates)
         expected_zwq = np.median([100.0, 80.0, 120.0])
@@ -112,6 +120,7 @@ class TestCharacteristicValues:
 
     def test_characteristic_values_period_years(self, known_daily_data):
         from hydrolog.statistics.characteristic import calculate_characteristic_values
+
         dates, values = known_daily_data
         result = calculate_characteristic_values(values, dates)
         assert result.period_years == 3
@@ -119,12 +128,14 @@ class TestCharacteristicValues:
     def test_empty_input_raises(self):
         from hydrolog.statistics.characteristic import calculate_characteristic_values
         from hydrolog.exceptions import InvalidParameterError
+
         with pytest.raises(InvalidParameterError):
             calculate_characteristic_values(np.array([]), np.array([]))
 
     def test_mismatched_lengths_raises(self):
         from hydrolog.statistics.characteristic import calculate_characteristic_values
         from hydrolog.exceptions import InvalidParameterError
+
         with pytest.raises(InvalidParameterError):
             calculate_characteristic_values(
                 np.array([1.0, 2.0]),
@@ -137,6 +148,7 @@ class TestDailyStatistics:
 
     def test_daily_statistics_shape(self):
         from hydrolog.statistics.characteristic import calculate_daily_statistics
+
         rng = np.random.default_rng(42)
         dates = np.arange(
             np.datetime64("2019-11-01"),
@@ -156,6 +168,7 @@ class TestMonthlyStatistics:
 
     def test_ci_uses_t_student_not_z(self):
         from hydrolog.statistics.characteristic import calculate_monthly_statistics
+
         rng = np.random.default_rng(42)
         dates = np.arange(
             np.datetime64("2010-11-01"),
@@ -170,6 +183,7 @@ class TestMonthlyStatistics:
 
     def test_cv_and_skewness_computed(self):
         from hydrolog.statistics.characteristic import calculate_monthly_statistics
+
         rng = np.random.default_rng(42)
         dates = np.arange(
             np.datetime64("2010-11-01"),
@@ -185,6 +199,7 @@ class TestMonthlyStatistics:
     def test_invalid_confidence_level_raises(self):
         from hydrolog.statistics.characteristic import calculate_monthly_statistics
         from hydrolog.exceptions import InvalidParameterError
+
         dates = np.arange(
             np.datetime64("2019-11-01"),
             np.datetime64("2020-10-31"),

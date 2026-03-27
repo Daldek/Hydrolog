@@ -24,9 +24,7 @@ from scipy.stats import genextreme, kstest, lognorm, pearson3, weibull_min
 from hydrolog.exceptions import InvalidParameterError
 from hydrolog.statistics._types import EmpiricalFrequency, compute_plotting_positions
 
-_DEFAULT_RETURN_PERIODS = np.array(
-    [2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 500.0, 1000.0]
-)
+_DEFAULT_RETURN_PERIODS = np.array([2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 500.0, 1000.0])
 
 _AD_CRITICAL_VALUES: dict[str, float] = {
     "15%": 1.610,
@@ -156,13 +154,9 @@ class FloodFrequencyAnalysis:
         return_periods: NDArray[np.float64] | None = None,
     ) -> None:
         if len(annual_maxima) == 0:
-            raise InvalidParameterError(
-                "annual_maxima must not be empty."
-            )
+            raise InvalidParameterError("annual_maxima must not be empty.")
         if np.any(np.isnan(annual_maxima)):
-            raise InvalidParameterError(
-                "annual_maxima must not contain NaN values."
-            )
+            raise InvalidParameterError("annual_maxima must not contain NaN values.")
 
         if len(annual_maxima) < 10:
             warnings.warn(
@@ -284,9 +278,7 @@ class FloodFrequencyAnalysis:
         k = 3
 
         exceedance = 1.0 / self._return_periods
-        quantiles = weibull_min.ppf(
-            1 - exceedance, shape, loc=loc, scale=scale
-        )
+        quantiles = weibull_min.ppf(1 - exceedance, shape, loc=loc, scale=scale)
 
         return self._build_result(
             name="weibull",
@@ -294,14 +286,10 @@ class FloodFrequencyAnalysis:
             k=k,
             quantiles=quantiles,
             cdf_func=lambda x: weibull_min.cdf(x, shape, loc=loc, scale=scale),
-            logpdf_func=lambda x: weibull_min.logpdf(
-                x, shape, loc=loc, scale=scale
-            ),
+            logpdf_func=lambda x: weibull_min.logpdf(x, shape, loc=loc, scale=scale),
         )
 
-    def empirical_frequency(
-        self, method: str = "weibull"
-    ) -> EmpiricalFrequency:
+    def empirical_frequency(self, method: str = "weibull") -> EmpiricalFrequency:
         """Compute empirical plotting positions.
 
         Parameters

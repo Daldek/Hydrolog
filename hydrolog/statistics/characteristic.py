@@ -190,9 +190,7 @@ def calculate_characteristic_values(
     This follows the correct IMGW-PIB methodology.
     """
     if len(daily_values) == 0 or len(dates) == 0:
-        raise InvalidParameterError(
-            "Input arrays must not be empty."
-        )
+        raise InvalidParameterError("Input arrays must not be empty.")
     if len(daily_values) != len(dates):
         raise InvalidParameterError(
             f"Arrays must have the same length: "

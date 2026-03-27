@@ -24,9 +24,7 @@ from hydrolog.exceptions import InvalidParameterError
 from hydrolog.statistics._hydrological_year import hydrological_year
 from hydrolog.statistics._types import EmpiricalFrequency, compute_plotting_positions
 
-_DEFAULT_RETURN_PERIODS = np.array(
-    [2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 500.0, 1000.0]
-)
+_DEFAULT_RETURN_PERIODS = np.array([2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 500.0, 1000.0])
 
 
 # ---------------------------------------------------------------------------
@@ -172,9 +170,7 @@ class LowFlowAnalysis:
         dates = np.asarray(dates)
 
         if len(daily_flows) == 0 or len(dates) == 0:
-            raise InvalidParameterError(
-                "daily_flows and dates must not be empty."
-            )
+            raise InvalidParameterError("daily_flows and dates must not be empty.")
         if len(daily_flows) != len(dates):
             raise InvalidParameterError(
                 f"daily_flows (length {len(daily_flows)}) and dates "
@@ -277,9 +273,7 @@ class LowFlowAnalysis:
             ks_valid=False,
         )
 
-    def empirical_frequency(
-        self, method: str = "weibull"
-    ) -> EmpiricalFrequency:
+    def empirical_frequency(self, method: str = "weibull") -> EmpiricalFrequency:
         """Compute empirical plotting positions for annual minima.
 
         Parameters
@@ -350,7 +344,7 @@ class LowFlowAnalysis:
 
         # Indices where a run starts (0→1) and ends (1→0) in the *original*
         # (unpadded) array.
-        starts: NDArray[np.intp] = np.where(diff == 1)[0]   # already offset-corrected
+        starts: NDArray[np.intp] = np.where(diff == 1)[0]  # already offset-corrected
         ends: NDArray[np.intp] = np.where(diff == -1)[0] - 1  # inclusive end
 
         if len(starts) == 0:
