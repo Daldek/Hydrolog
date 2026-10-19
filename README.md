@@ -1,19 +1,24 @@
 # Hydrolog
 
-Biblioteka Python do obliczeń hydrologicznych.
+Biblioteka Python, interfejs CLI i serwer MCP do obliczeń hydrologicznych zlewni. Liczy lokalnie: bez sieci, bez kluczy i bez pobierania danych - szeregi pomiarowe dostarcza [IMGWTools](https://github.com/Daldek/IMGWTools), rastry (NMT, pokrycie terenu, gleby) [Kartograf](https://github.com/Daldek/Kartograf).
 
 ## Funkcjonalności
 
 - **Hydrogramy odpływu** - SCS-CN, Nash IUH, Clark IUH, Snyder UH
 - **Hietogramy** - rozkład Beta, blokowy, trójkątny, DVWK Euler Type II
-- **Czas koncentracji** - wzory Kirpicha, NRCS, Giandotti
+- **Czas koncentracji** - wzory Kirpicha, NRCS, Giandotti, FAA, Kerby, Kerby-Kirpich
 - **Parametry morfometryczne** - wskaźniki kształtu, teren, krzywa hipsograficzna
 - **Klasyfikacja sieci rzecznej** - metody Strahlera i Shreve'a
 - **Interpolacja opadów** - Thiessen, IDW, izohiety
-- **CN Lookup** - tablice TR-55 (20 typów pokrycia terenu)
+- **CN Lookup** - tablice TR-55 (20 typów pokrycia terenu) i CN ważone powierzchnią
+- **Grupy hydrologiczne gleb (HSG)** - z rastrów iłu, piasku i pyłu (np. SoilGrids)
+- **Statystyka przepływów** - wartości charakterystyczne (NNQ-WWQ), częstość wezbrań i niżówek, test Manna-Kendalla
+- **Hydrometria** - krzywa przepływu, strefy stanów wody (Rybczyński)
 - **Wizualizacja** - hietogramy, hydrogramy, wykresy kombinowane, porównania UH
 - **Raporty** - kompletne raporty obliczeniowe w Markdown z wzorami LaTeX
-- **CLI** - interfejs linii poleceń
+- **Katalog komend (37 komend)** - jedno źródło prawdy dla biblioteki, CLI, serwera MCP i przewodników dla agentów (`AGENTS.md`, `llms.txt`)
+- **CLI** - `hydrolog <grupa> <komenda> --opcja wartość`, wynik w JSON (`--json`)
+- **Serwer MCP** - `hydrolog mcp`: komendy jako narzędzia agentów AI (np. Claude Code)
 
 ## Instalacja
 
@@ -21,11 +26,23 @@ Biblioteka Python do obliczeń hydrologicznych.
 # Z GitHub
 pip install git+https://github.com/Daldek/Hydrolog.git
 
+# Z dodatkami opcjonalnymi
+pip install "hydrolog[raster] @ git+https://github.com/Daldek/Hydrolog.git"
+pip install "hydrolog[mcp,raster] @ git+https://github.com/Daldek/Hydrolog.git"
+
 # Lokalna instalacja deweloperska
 git clone https://github.com/Daldek/Hydrolog.git
 cd Hydrolog
-pip install -e .
+pip install -e ".[all,dev]"
 ```
+
+| Dodatek | Zawartość | Do czego |
+|---------|-----------|----------|
+| *(brak)* | NumPy, SciPy | cała biblioteka, CLI, katalog komend |
+| `[raster]` | rasterio, pyproj | rastry GeoTIFF: komendy `soil hsg`, `soil hsg-stats`, moduł `hydrolog.soil.raster` |
+| `[mcp]` | mcp >= 2.3, < 3 | serwer MCP `hydrolog mcp` |
+| `[visualization]` | matplotlib, seaborn | wykresy w Pythonie (`hydrolog.visualization`) |
+| `[all]` | wszystkie powyższe | |
 
 ## Quick Start
 
@@ -485,6 +502,45 @@ from hydrolog.runoff import list_land_covers
 covers = list_land_covers()
 ```
 
+### Grupy hydrologiczne gleb (HSG)
+
+HSG (A-D) liczy się z zawartości iłu, piasku i pyłu (tylko NumPy) albo z rastrów GeoTIFF (dodatek `hydrolog[raster]`). Reguły (trójkąt uziarnienia USDA → HSG) przeniesiono z Kartografa 0.8.0; Hydrolog nie pobiera rastrów - ił, piasek i pył z SoilGrids (g/kg) pobiera Kartograf (`download_soil`).
+
+```python
+from hydrolog.runoff import calculate_weighted_cn, get_cn
+from hydrolog.soil import classify_usda_texture, hsg_from_rasters, hsg_statistics, texture_to_hsg
+
+# Pojedyncza próbka (jednostka dowolna, byle wspólna dla trzech frakcji)
+texture = classify_usda_texture(clay=20, sand=40, silt=40)  # "loam"
+print(texture_to_hsg(texture))                              # "B"
+
+# Rastry iłu, piasku i pyłu (ten sam układ współrzędnych, siatka i rozmiar) -> raster HSG
+# GeoTIFF uint8: 0 - brak danych, 1-4 to grupy A-D
+hsg_from_rasters("clay.tif", "sand.tif", "silt.tif", output_path="hsg.tif")
+
+# Powierzchnie grup A-D (opcjonalnie tylko prostokąt: bbox=..., bbox_crs="EPSG:2180")
+stats = hsg_statistics("hsg.tif")
+for group, s in stats.groups.items():
+    print(f"HSG {group}: {s.area_ha:.1f} ha ({s.percent:.1f}%)")
+
+# CN ważone powierzchnią grup (jedno pokrycie terenu, np. łąka w dobrym stanie)
+parts = [(get_cn(g, "meadow", "good"), s.area_ha) for g, s in stats.groups.items() if s.area_ha > 0]
+print(f"CN zlewni: {calculate_weighted_cn(parts):.1f}")
+```
+
+Mapowanie tekstura → HSG jest łagodniejsze niż tablica TR-55 dla `sandy_loam` (B), `clay_loam` i `silty_clay_loam` (C); szczegóły i wzory: [Ścieżki obliczeniowe](docs/COMPUTATION_PATHS.md). HSG nie jest liczbą CN - CN wymaga też pokrycia terenu (przecięcie rastrów HSG i pokrycia robi się poza Hydrologiem).
+
+### Serializacja wyników
+
+Każda klasa wynikowa ma `to_dict()` i `to_json()` (`NaN` i nieskończoności to `null`, tablice NumPy listy):
+
+```python
+from hydrolog.runoff import SCSCN
+
+result = SCSCN(cn=72).effective_precipitation(50.0)
+print(result.to_json())
+```
+
 ### Parametry morfometryczne
 
 ```python
@@ -712,15 +768,21 @@ $$I_a = 0.2 \cdot S = 0.2 \cdot 98.78 = 19.76 \text{ mm}$$
 7. Wyniki (Qmax, tp, V, szereg czasowy)
 8. Bilans wodny (tabela z procentami)
 
-### CLI - Interfejs linii poleceń
+### Katalog komend, CLI, serwer MCP i przewodniki dla agentów
 
-Komendy CLI są generowane z katalogu komend (`hydrolog.catalog`) - ten sam katalog
-zasila bibliotekę Pythona (`hydrolog.catalog.run_command`) i serwer MCP.
+Wszystkie interfejsy powstają z jednego katalogu komend (`hydrolog.catalog`): 37 komend w grupach `tc`, `cn`, `scs`, `precip`, `uh`, `hydrograph`, `morphometry`, `network`, `stats`, `hydrometrics`, `soil`, `report` i `commands`. Ta sama komenda działa w trzech miejscach (przykład `tc kirpich`):
+
+- Python: `hydrolog.operations.tc_kirpich(length_km=8.2, slope_m_per_m=0.023)` albo `hydrolog.catalog.run_command("tc kirpich", {...})`
+- CLI: `hydrolog tc kirpich --length-km 8.2 --slope-m-per-m 0.023`
+- MCP: narzędzie `tc_kirpich` z argumentami `{"length_km": 8.2, "slope_m_per_m": 0.023}`
+
+#### CLI
 
 ```bash
 hydrolog --help                 # grupy komend
 hydrolog commands list          # wszystkie komendy z opisami
 hydrolog tc kirpich --help      # opcje komendy, jednostki, przykłady
+hydrolog tc kirpich --schema    # schemat opcji (JSON Schema), bez uruchamiania
 
 # Czas koncentracji
 hydrolog tc kirpich --length-km 8.2 --slope-m-per-m 0.023
@@ -739,23 +801,62 @@ hydrolog uh snyder --area-km2 100 --length-km 15 --centroid-length-km 8 --timest
 hydrolog hydrograph generate --area-km2 45.3 --cn 72 --tc-min 90 \
     --hietogram-type beta --total-mm 50 --duration-min 60
 
+# Zlewnia z pliku JSON (format WatershedParameters.to_json())
+hydrolog hydrograph generate --watershed-file zlewnia.json --tc-method kirpich \
+    --hietogram-type beta --total-mm 50 --duration-min 60
+
 # Dane z plików (CSV/JSON), wynik jako JSON dla skryptów
 hydrolog stats flood-frequency --input-file maxima.csv --value-column Qmax --json > wynik.json
+
+# HSG z rastrów iłu, piasku i pyłu (dodatek [raster]) i powierzchnie grup
+hydrolog soil hsg --clay-path clay.tif --sand-path sand.tif --silt-path silt.tif --output-path hsg.tif
+hydrolog soil hsg-stats --hsg-path hsg.tif
+hydrolog cn weighted --parts '[{"cn": 30, "area": 75.0}, {"cn": 58, "area": 75.0}, {"cn": 71, "area": 75.0}, {"cn": 78, "area": 68.75}]'
 ```
 
 - Opcje to nazwy opcji katalogu w `--kebab-case`; listy liczb podaje się po przecinku
   (`--values 1,2,3`), obiekty jako tekst JSON (`--watershed '{"area_km2": 45.3, ...}'`),
   opcje logiczne jako `--flaga` / `--no-flaga`. Liczba ujemna: `--opcja -5`.
-- `--json` drukuje kopertę wyniku `hydrolog-result/1` (jedna linia), `--schema` - schemat
+- Długie serie i listy podawaj plikiem CSV/JSON (`--input-file`, `--watershed-file`, `--stations-file`, `--segments-file`); eksport szeregu IMGWTools (`series export` do CSV) wczytuje się bez przetwarzania, a kolumnę można wskazać nazwą bez jednostki (`Q` znajduje `Q [m3/s]`).
+- `--json` drukuje kopertę wyniku `hydrolog-result/1` (jedna linia: `schema`, `command`, `hydrolog_version`, `status`, `inputs`, `result`, `files`, `notices`), `--schema` - schemat
   opcji komendy (JSON Schema) bez uruchamiania, `--lang pl|en` wybiera język pomocy i
   komunikatów (domyślnie zmienna `HYDROLOG_LANG`, a gdy jej brak - `pl`).
-- Błąd to czytelny tekst na stderr albo, z `--json`, jedna linia `hydrolog-error/1`.
+- Błąd to czytelny tekst na stderr albo, z `--json`, jedna linia `hydrolog-error/1` (`code`, `message`, `hint`, `details`).
   Kod wyjścia: `2` błędne dane wejściowe, `3` brak pliku lub komendy, `4` obliczenia
   niemożliwe, `6` brak opcjonalnego dodatku, `7` uszkodzone dane, `8` ścieżka
   niedozwolona, `9` błąd zapisu, `1` błąd wewnętrzny.
-- `hydrolog mcp [--allow-dir DIR]...` uruchamia serwer MCP (dodatek `hydrolog[mcp]`).
 - Eksport CSV (`--csv`) i dawne nazwy opcji (`--length`, `--area`, ...) nie istnieją;
   pełny wynik w JSON daje `--json`.
+
+#### Serwer MCP
+
+Serwer MCP udostępnia każdą komendę jako narzędzie (nazwa = `operation_id`, np. `tc_kirpich`); wymaga dodatku `hydrolog[mcp]`.
+
+```bash
+# Claude Code
+claude mcp add hydrolog -- hydrolog mcp --allow-dir ~/hydrolog-data
+```
+
+Inne klienty MCP:
+
+```json
+{"mcpServers": {"hydrolog": {"command": "hydrolog", "args": ["mcp", "--allow-dir", "/home/ola/hydrolog-data"]}}}
+```
+
+- `--allow-dir KATALOG` (można powtórzyć) wskazuje katalogi, w których narzędzia mogą czytać i zapisywać pliki; ścieżki spoza nich kończą się błędem `forbidden`. Bez `--allow-dir` komendy z opcjami typu ścieżka są odrzucane, komendy bez plików (np. `tc_kirpich`) działają.
+- `--lang pl|en` wybiera język opisów narzędzi.
+- Sukces: `structuredContent` = koperta `hydrolog-result/1`; błąd: `isError: true` z dokumentem `hydrolog-error/1`.
+
+#### Przewodniki dla agentów
+
+[`AGENTS.md`](AGENTS.md) (pełny przewodnik: zasady, tabele komend i błędów, typowe przepływy) i [`llms.txt`](llms.txt) (skrót) są generowane z katalogu komend, nie edytuje się ich ręcznie:
+
+```bash
+hydrolog commands guide --format agents --lang pl --path AGENTS.md
+hydrolog commands guide --format llms --lang pl --path llms.txt
+```
+
+Wersja angielska: `--lang en`. Jak dodać komendę i zregenerować przewodniki: [DEVELOPMENT_STANDARDS.md](docs/DEVELOPMENT_STANDARDS.md), sekcja 11.
 
 ## Struktura modułów
 
@@ -766,9 +867,15 @@ hydrolog/
 ├── time/            # Czas koncentracji ✅
 ├── morphometry/     # Parametry fizjograficzne ✅
 ├── network/         # Klasyfikacja sieci rzecznej ✅
+├── statistics/      # Statystyka przepływów ✅
+├── hydrometrics/    # Krzywa przepływu, strefy stanów wody ✅
+├── soil/            # HSG z uziarnienia gleby (GeoTIFF: dodatek [raster]) ✅
+├── catalog/         # Katalog komend: źródło prawdy dla CLI, MCP i przewodników ✅
+├── operations/      # Funkcja operacji na komendę katalogu ✅
+├── cli/             # Interfejs CLI generowany z katalogu ✅
+├── mcp/             # Serwer MCP (dodatek [mcp]) ✅
 ├── visualization/   # Wykresy (matplotlib/seaborn) ✅
-├── reports/         # Raporty Markdown z wzorami LaTeX ✅
-└── cli/             # Interfejs CLI ✅
+└── reports/         # Raporty Markdown z wzorami LaTeX ✅
 ```
 
 ## Roadmap
@@ -781,28 +888,35 @@ hydrolog/
 | v0.4.0 | CLI, Clark IUH, Snyder UH, CN Lookup | ✅ Wydana |
 | v0.5.0 | Wizualizacja (matplotlib/seaborn) | ✅ Wydana |
 | **v0.6.0** | Raporty Markdown z wzorami LaTeX | ✅ Wydana |
-| v1.0.0 | Stabilne API, dokumentacja | Planowana |
+| v0.7.0 | Statystyka hydrologiczna, hydrometria | ✅ Wydana |
+| **v1.0.0** | Stabilne API, katalog komend, CLI z katalogu, serwer MCP, HSG, serializacja wyników | 🔄 W przygotowaniu |
+| po v1.0.0 | Empiryczne wzory na przepływ maksymalny (Punzet, Bogdanowicz-Stachy) | Planowane |
 
 ## Wymagania
 
 - Python >= 3.12
 - NumPy >= 1.24
-- SciPy >= 1.10 (dla Nash IUH)
-- IMGWTools (dla danych opadowych PMAXTP)
+- SciPy >= 1.10
 
 **Zależności opcjonalne:**
-- `matplotlib >= 3.7` + `seaborn >= 0.12` - dla wizualizacji (`pip install hydrolog[visualization]`)
-- `kartograf` - dla danych przestrzennych HSG (`pip install hydrolog[spatial]`)
+- `rasterio >= 1.3` + `pyproj >= 3.6` - rastry GeoTIFF dla HSG (`pip install hydrolog[raster]`)
+- `mcp >= 2.3, < 3` - serwer MCP (`pip install hydrolog[mcp]`)
+- `matplotlib >= 3.7` + `seaborn >= 0.12` - wizualizacja (`pip install hydrolog[visualization]`)
+- `pip install hydrolog[all]` - wszystkie powyższe
+
+Hydrolog nie zależy od Kartografa ani IMGWTools; dane z tych narzędzi wczytuje z plików (CSV/JSON, GeoTIFF).
 
 ## Dokumentacja
 
-- [Ścieżki obliczeniowe](docs/COMPUTATION_PATHS.md) - Prawidłowe metody estymacji parametrów dla każdego modelu UH
-- [Audyt Nash IUH](docs/NASH_AUDIT_REPORT.md) - Weryfikacja literaturowa modułu Nash
-- [Integracja GIS](docs/INTEGRATION.md) - Integracja z systemami GIS (Hydrograf, QGIS)
+- [Ścieżki obliczeniowe](docs/COMPUTATION_PATHS.md) - Prawidłowe metody estymacji parametrów dla każdego modelu UH, HSG, rozkład Fishera-Tippetta dla minimów
+- [Integracja](docs/INTEGRATION.md) - Hydrograf (GIS), Retman, klienci MCP, migracja HSG z Kartografa, eksport IMGWTools
+- [Przewodnik dla agentów](AGENTS.md) - komendy, błędy i typowe przepływy (generowany z katalogu)
+- [Zakres projektu](docs/SCOPE.md), [PRD](docs/PRD.md), [Standardy kodowania](docs/DEVELOPMENT_STANDARDS.md), [Changelog](docs/CHANGELOG.md)
 
 ## Powiązane projekty
 
-- [IMGWTools](https://github.com/Daldek/IMGWTools) - Dane opadowe z IMGW
+- [IMGWTools](https://github.com/Daldek/IMGWTools) - dane IMGW (szeregi pomiarowe, opady); eksport CSV wczytuje Hydrolog
+- [Kartograf](https://github.com/Daldek/Kartograf) - pobieranie NMT, pokrycia terenu i rastrów gleb (SoilGrids) dla HSG
 
 ## Licencja
 

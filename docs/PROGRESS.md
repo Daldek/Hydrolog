@@ -5,11 +5,11 @@
 | Pole | Wartość |
 |------|---------|
 | **Faza** | 1 - Implementacja |
-| **Sprint** | 0.7.x - Statystyka hydrologiczna + Hydrometria |
-| **Sesja** | 28 |
-| **Data** | 2026-03-26 |
-| **Następny milestone** | v1.0.0 - Stabilne API |
-| **Gałąź robocza** | develop |
+| **Sprint** | 1.0.0 - Katalog komend, CLI, serwer MCP, HSG (w przygotowaniu) |
+| **Sesja** | 29 |
+| **Data** | 2026-10-19 |
+| **Następny milestone** | v1.0.0 - Stabilne API (wydanie: bump wersji, tag `v1.0.0`, merge develop → main) |
+| **Gałąź robocza** | `feature/v1-catalog-mcp-hsg` (docelowo merge do develop) |
 
 ---
 
@@ -36,6 +36,7 @@
 | CP16 | Raporty UH + korekty wzorów metrycznych + v0.6.2 | ✅ Ukończony |
 | CP17 | Audyt spójności API + naprawy (4 zespoły) | ✅ Ukończony |
 | CP18 | `hydrolog.statistics` + `hydrolog.hydrometrics` (v0.7.0) | ✅ Ukończony |
+| CP19 | v1.0.0: katalog komend, `operations`, CLI z katalogu, serwer MCP, `hydrolog.soil` (HSG), serializacja wyników, poprawki obliczeniowe, przewodniki dla agentów | 🔄 W przygotowaniu (gałąź `feature/v1-catalog-mcp-hsg`) |
 
 ---
 
@@ -56,11 +57,49 @@
 | v0.6.3 | Audyt spójności API + naprawy | ✅ Wydana (2026-03-25) |
 | v0.6.4 | WatershedParams extension + UH ordinates + docs audit | ✅ Wydana (2026-03-25) |
 | v0.7.0 | Statystyka hydrologiczna + Hydrometria | ✅ Wydana (2026-03-26) |
-| v1.0.0 | Stabilne API + CLI | 📋 Planowany |
+| v1.0.0 | Stabilne API, katalog komend + CLI + MCP, HSG, serializacja wyników | 🔄 W przygotowaniu (2026-10-19) |
 
 ---
 
 ## Bieżąca sesja
+
+### Sesja 29 (2026-10-19) - v1.0.0 W PRZYGOTOWANIU
+
+**Cel:** Hydrolog 1.0.0 - jeden katalog komend jako źródło prawdy dla biblioteki, CLI, serwera MCP i przewodników dla agentów; obliczanie HSG przeniesione z Kartografa; serializacja wyników; poprawki obliczeniowe (gałąź `feature/v1-catalog-mcp-hsg`, projekt: `docs/superpowers/specs/2026-10-19-v1-catalog-mcp-hsg-design.md`).
+
+**Decyzje właściciela (2026-10-19):**
+- Wzorzec ekosystemu (IMGWTools 3.0.0, Kartograf 0.8.0, Retman): katalog komend + koperta wyniku + błędy z rejestru + MCP + `AGENTS.md`/`llms.txt`
+- Obliczanie HSG należy do Hydrologa (Kartograf zostaje przy `download_soil`); Hydrolog nie zależy od Kartografa ani IMGWTools
+- `WatershedParameters` JSON to proponowany format `catchment_characteristics` w Retmanie
+- Empiryczne wzory na przepływ maksymalny (Punzet, Bogdanowicz-Stachy): w zakresie, ale po v1.0.0
+- REST API poza zakresem; pobieranie danych nadal poza zakresem
+- Czysta zmiana: stare CLI usunięte bez aliasów; klasy biblioteki bez zmian nazw i sygnatur (Hydrograf v0.6.3 i Hydraulik v0.7.0 je importują)
+
+**Co zostało zrobione:**
+- [x] Serializacja: `hydrolog._serialization` (`to_jsonable`, `JsonResultMixin` z `to_dict()`/`to_json()`) we wszystkich klasach wynikowych
+- [x] Błędy: rejestr `ERROR_CODES` (8 kodów, kody wyjścia 1, 2, 3, 4, 6, 7, 8, 9), `HydrologError(code, details, hint)`, nowe klasy `InputDataError`, `MissingDependencyError`, `ForbiddenPathError`, `NotFoundError`, `OutputError`; `InvalidParameterError` także `ValueError`
+- [x] `hydrolog.soil`: `texture` (trójkąt USDA, tekstura → HSG), `hsg` (`classify_hsg`, statystyki powierzchni), `raster` (`hsg_from_rasters`, `hsg_statistics`; dodatek `[raster]`); porty testów Kartografa
+- [x] `hydrolog.catalog` (spec, envelope `hydrolog-result/1`, inputs z plików CSV/JSON, dispatch + polityka ścieżek, 13 grup) i `hydrolog.operations`: 37 komend
+- [x] CLI przebudowane na generowane z katalogu (stara składnia usunięta), `hydrolog mcp`
+- [x] Serwer MCP (`hydrolog.mcp`, dodatek `[mcp]`, `mcp>=2.3,<3`)
+- [x] `hydrolog.agent_guide` + `AGENTS.md`, `llms.txt` (generowane, test zgodności bajtów)
+- [x] Poprawki obliczeniowe: Fisher-Tippett dla minimów (Gumbel-min loc 50, scale 8, T=100: −3821 → 13,26; teoria 13,20), Clark UH dla D niebędącego wielokrotnością kroku (1,333 → 1,000 mm dla D = 1,5·dt; D < dt/2 dawniej `ValueError`), Giandotti z `elevation_mean_m == 0`, raport obliczeniowy (sekcja UH z wyniku, λ, wejścia tc), statystyki miesięczne dla n = 1 (CI = NaN), `StreamNetwork` (Shreve `KeyError`, pętla nieskończona przy cyklu/nieznanym upstream), błędy `RatingCurve` (`RatingCurveFitError`)
+- [x] Dokumentacja: README, CHANGELOG (sekcja 1.0.0), SCOPE, PRD, INTEGRATION (Retman, MCP, migracja HSG, IMGWTools), COMPUTATION_PATHS (HSG, Fisher-Tippett, Clark), DEVELOPMENT_STANDARDS (dodawanie komendy, regeneracja przewodników, kody błędów), IMPLEMENTATION_PROMPT, CLAUDE.md, PROGRESS (nieaktualne wzmianki o zależnościach od IMGWTools i Kartografa poprawione)
+
+**Testy:** 3176 zebranych (824 → 3176)
+
+**Co jest w trakcie:**
+- Przegląd kodu (interfejsy: polityka ścieżek, `run_command`; obliczenia: `HydrographGenerator`) prowadzony równolegle z dokumentacją
+- Wydanie: bump wersji w `pyproject.toml` i `hydrolog/__init__.py` (w chwili pisania wciąż 0.7.0), tag `v1.0.0`, merge develop → main; po wydaniu zmienić status v1.0.0 w README, SCOPE, PRD i PROGRESS z „w przygotowaniu" na „wydana"
+
+**Następne kroki:**
+1. Wydanie v1.0.0 (bump wersji, bramka: pytest, black --check, mypy; tag `v1.0.0`; merge develop → main; push)
+2. Kartograf: usunięcie `HSGCalculator`/`calculate_hsg` (HSG liczy Hydrolog), eksport `download_soil` jako jedyna ścieżka gleb
+3. Hydrograf: migracja z `HSGCalculator` na `download_soil` + `hydrolog.soil` (opis i kod: `docs/INTEGRATION.md`, sekcja „Hydrograf: migracja HSG z Kartografa do Hydrologa")
+4. Retman: manifest narzędzia Hydrolog (`supported_versions=">=1.0,<2"`), handlery przez `hydrolog.operations`/`run_command`, format `catchment_characteristics` = `WatershedParameters` JSON
+5. Po v1.0.0: empiryczne wzory na przepływ maksymalny (Punzet, Bogdanowicz-Stachy)
+
+---
 
 ### Sesja 28 (2026-03-26) - UKOŃCZONA
 
@@ -520,14 +559,16 @@ Przeprowadzono kompleksową analizę 4 powiązanych repozytoriów pod kątem:
    - `pyproject.toml` i `__init__.py` zsynchronizowane do `0.5.1`
    - **Status:** ✅ NAPRAWIONY
 
-#### 🟠 WAŻNE (inne projekty) - DO ROZWAŻENIA
+#### 🟠 WAŻNE (inne projekty) - stan z sesji 18, do rozważenia (aktualizacja 2026-10-19: patrz niżej)
 
 3. **IMGWTools** - Python `>=3.11` (powinno być `>=3.12` dla spójności)
 4. **Kartograf** - brak eksportów w `__init__.py`:
    - `SoilGridsProvider`
    - `HSGCalculator`
 
-**Mapa zależności:**
+> **Aktualizacja (sesja 29, 2026-10-19):** pkt 4 nieaktualny - od v1.0.0 HSG liczy Hydrolog (`hydrolog.soil`), a Kartograf 0.8.0 pobiera rastry gleb (`download_soil`); Hydrolog nie importuje ani `HSGCalculator`, ani `SoilGridsProvider`.
+
+**Mapa zależności (stan z sesji 18):**
 ```
 HYDROGRAF (główna aplikacja)
     ├── IMGWTools (dane IMGW)
@@ -536,6 +577,8 @@ HYDROGRAF (główna aplikacja)
             ├── IMGWTools (wymagany)
             └── Kartograf (opcjonalny)
 ```
+
+**Mapa zależności od v1.0.0 (nieaktualne są wpisy IMGWTools i Kartograf powyżej):** Hydrolog wymaga tylko NumPy i SciPy (dodatki opcjonalne: `raster`, `mcp`, `visualization`). IMGWTools został usunięty z zależności w v0.5.2, dodatek `spatial` (Kartograf) w v1.0.0. Dane z IMGWTools (eksport CSV szeregu) i Kartografa (rastry GeoTIFF) Hydrolog wczytuje z plików.
 
 **Dokumentacja cross-project:**
 - `Hydrograf/docs/CROSS_PROJECT_ANALYSIS.md` - pełna analiza
@@ -1060,12 +1103,11 @@ Wyniki Hydrolog (model Nasha):
 ## Kontekst dla nowej sesji
 
 ### Stan projektu
-- **Faza:** Implementacja - v0.6.3 wydana
-- **Ostatni commit:** chore: bump version to v0.6.3
-- **Tag:** `v0.6.3` (ostatni release)
+- **Faza:** Implementacja - v0.7.0 wydana, v1.0.0 w przygotowaniu (gałąź `feature/v1-catalog-mcp-hsg`)
+- **Ostatni tag:** `v0.7.0` (ostatni release)
 - **Środowisko:** `.venv` z Python 3.12+
 - **Repo GitHub:** https://github.com/Daldek/Hydrolog.git
-- **Testy:** 710 testów (695 jednostkowych + 15 integracyjnych)
+- **Testy:** 3176 zebranych (stan 2026-10-19)
 
 ### Zaimplementowane moduły
 - `hydrolog.time.ConcentrationTime` - 6 metod (Kirpich, NRCS, Giandotti, FAA, Kerby, Kerby-Kirpich) + ostrzeżenia zakresów
@@ -1073,9 +1115,14 @@ Wyniki Hydrolog (model Nasha):
 - `hydrolog.runoff` - SCS-CN, SCSUnitHydrograph, NashIUH (from_tc, from_lutz, from_urban_regression), ClarkIUH, SnyderUH, HydrographGenerator (z uh_model), CN Lookup (TR-55)
 - `hydrolog.morphometry` - WatershedGeometry, TerrainAnalysis, HypsometricCurve, WatershedParameters (integracja GIS)
 - `hydrolog.network` - StreamNetwork, klasyfikacja Strahlera/Shreve'a
-- `hydrolog.visualization` - 15 funkcji wizualizacji (hietogramy, hydrogramy, porównania UH, bilans wodny, morfometria, sieć rzeczna)
+- `hydrolog.statistics`, `hydrolog.hydrometrics` - statystyka przepływów, krzywa przepływu (v0.7.0)
+- `hydrolog.soil` - HSG z uziarnienia gleby, rastry GeoTIFF (dodatek `[raster]`) (v1.0.0)
+- `hydrolog.catalog`, `hydrolog.operations` - katalog 37 komend i warstwa operacji (v1.0.0)
+- `hydrolog.cli` - CLI generowane z katalogu: `hydrolog <grupa> <komenda> --opcje` (v1.0.0)
+- `hydrolog.mcp` - serwer MCP `hydrolog mcp` (dodatek `[mcp]`) (v1.0.0)
+- `hydrolog.agent_guide` - generator `AGENTS.md` / `llms.txt` (v1.0.0)
+- `hydrolog.visualization` - 15 funkcji wizualizacji + 10 funkcji statystycznych
 - `hydrolog.reports` - HydrologyReportGenerator (raporty Markdown z wzorami LaTeX)
-- `hydrolog.cli` - interfejs CLI (tc [kirpich, nrcs, giandotti, faa, kerby, kerby-kirpich], cn, scs, uh)
 
 ### Ostatnio dodane (Sesja 25 - metody tc + refaktor API)
 - `ConcentrationTime.faa()` — metoda FAA (AC 150/5320-5D)
@@ -1126,22 +1173,23 @@ Wyniki Hydrolog (model Nasha):
 4. `docs/INTEGRATION.md` - integracja z systemami GIS
 
 ### Zależności zewnętrzne
-- **IMGWTools** - `https://github.com/Daldek/IMGWTools.git` - dane PMAXTP
-- **Kartograf** - `https://github.com/Daldek/Kartograf.git` - HSG, SoilGrids, dane przestrzenne (opcjonalna)
-- **Hydrograf** - `https://github.com/Daldek/Hydrograf.git` - aplikacja GIS (integracja przez WatershedParameters)
-- **NumPy** - obliczenia numeryczne
-- **SciPy** - funkcje specjalne (gamma) dla Nash IUH
-- **matplotlib + seaborn** - wizualizacja (opcjonalna)
+- **NumPy**, **SciPy** - wymagane (obliczenia numeryczne, rozkłady statystyczne, funkcja gamma)
+- **rasterio + pyproj** - HSG z rastrów (dodatek `[raster]`, opcjonalna)
+- **mcp** (`>=2.3,<3`) - serwer MCP (dodatek `[mcp]`, opcjonalna)
+- **matplotlib + seaborn** - wizualizacja (dodatek `[visualization]`, opcjonalna)
+- **Hydrograf** - `https://github.com/Daldek/Hydrograf.git` - aplikacja GIS (integracja przez WatershedParameters; pin v0.6.3)
+- **Kartograf** i **IMGWTools** NIE są zależnościami Hydrologa: IMGWTools (`https://github.com/Daldek/IMGWTools.git`) dostarcza szeregi pomiarowe (eksport CSV), Kartograf (`https://github.com/Daldek/Kartograf.git`) rastry (NMT, pokrycie terenu, gleby); Hydrolog wczytuje je z plików
 
 ### Problemy cross-project do rozważenia
-1. **IMGWTools** - Python `>=3.11` (powinno być `>=3.12` dla spójności)
-2. **Kartograf** - brak eksportów `SoilGridsProvider`, `HSGCalculator` w `__init__.py`
+1. **Kartograf** - usunięcie `HSGCalculator`/`calculate_hsg` (HSG liczy Hydrolog), zostaje `download_soil`
+2. **Hydrograf** - migracja z `HSGCalculator` (`backend/core/cn_calculator.py`, `scripts/bootstrap.py`) na `download_soil` + `hydrolog.soil` (opis: `docs/INTEGRATION.md`)
+3. **Retman** - manifest narzędzia Hydrolog (`supported_versions=">=1.0,<2"`), format `catchment_characteristics` = `WatershedParameters` JSON
 
 ### Następne kroki (do rozważenia)
-1. **v1.0.0** - Stabilizacja API
+1. **v1.0.0** - wydanie (bump wersji, tag, merge develop → main)
 2. Rozwiązać rozbieżność z HEC-HMS (model Snydera)
-3. Naprawy w IMGWTools i Kartograf (kompatybilność cross-project)
-4. Rozszerzenie CLI o komendę `report`
+3. Po v1.0.0: empiryczne wzory na przepływ maksymalny (Punzet, Bogdanowicz-Stachy)
+4. Migracje w Kartografie, Hydrografie i Retmanie (patrz wyżej)
 
 ---
 
@@ -1357,4 +1405,4 @@ Hydrolog/
 
 ---
 
-**Ostatnia aktualizacja:** 2026-03-23, Sesja 25 (v0.6.3: metody tc FAA/Kerby/Kerby-Kirpich + mypy clean + audyt docs)
+**Ostatnia aktualizacja:** 2026-10-19, Sesja 29 (v1.0.0 w przygotowaniu: katalog komend, CLI z katalogu, serwer MCP, HSG, serializacja wyników, poprawki obliczeniowe, dokumentacja)

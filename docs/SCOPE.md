@@ -2,9 +2,9 @@
 
 ## Biblioteka Narzędzi Hydrologicznych
 
-**Wersja:** 1.4
-**Data:** 2026-03-26
-**Status:** W trakcie realizacji
+**Wersja:** 1.5
+**Data:** 2026-10-19
+**Status:** v1.0.0 w przygotowaniu
 
 ---
 
@@ -12,7 +12,7 @@
 
 ### 1.1 Cel Projektu
 
-**Hydrolog** to biblioteka Python dostarczająca narzędzia do obliczeń hydrologicznych. Zaprojektowana jako zewnętrzna zależność dla projektu Hydrograf oraz innych systemów wymagających funkcji hydrologicznych.
+**Hydrolog** to biblioteka Python, interfejs CLI (`hydrolog`) i serwer MCP dostarczające narzędzia do obliczeń hydrologicznych. Zaprojektowana jako zewnętrzna zależność dla projektu Hydrograf oraz innych systemów wymagających funkcji hydrologicznych (m.in. Retman, agenci AI).
 
 ### 1.2 Główne cele
 
@@ -21,10 +21,13 @@
 - Generowanie hietogramów (rozkład opadu w czasie)
 - Interpolacja danych opadowych
 - Klasyfikacja sieci rzecznej
+- Wyznaczanie grup hydrologicznych gleb (HSG) z rastrów uziarnienia
+- Statystyka przepływów i hydrometria
+- Jeden katalog komend jako źródło prawdy dla biblioteki, CLI, serwera MCP i przewodników dla agentów
 
 ### 1.3 Analogia
 
-Hydrolog jest analogiczny do **Kartografa** (pobieranie danych przestrzennych) - modularna biblioteka Python z czystym API, możliwa do użycia jako zależność w innych projektach.
+Hydrolog jest analogiczny do **Kartografa** (pobieranie danych przestrzennych) i **IMGWTools** (pobieranie danych IMGW) - modularna biblioteka Python z czystym API, możliwa do użycia jako zależność w innych projektach. Od v1.0.0 podobnie jak one udostępnia jeden katalog komend (CLI + MCP + AGENTS.md/llms.txt), ale nie zależy od żadnej z tych bibliotek: Hydrolog niczego nie pobiera, pliki z danymi dostarczają narzędzia zewnętrzne.
 
 ---
 
@@ -58,10 +61,11 @@ Hydrolog jest analogiczny do **Kartografa** (pobieranie danych przestrzennych) -
 - Współczynnik odpływu [-]
 - Szereg czasowy: czas vs przepływ
 
-**Integracja z Kartografem (opcjonalna):**
-- Automatyczne wyznaczanie CN z danych glebowych HSG (Hydrologic Soil Groups)
-- Grupy hydrologiczne A, B, C, D z SoilGrids (tekstura gleby)
-- Tabele CN według USDA-NRCS dla kombinacji HSG + pokrycie terenu
+**Grupy hydrologiczne gleb (HSG) - moduł `soil` (v1.0.0):**
+- Klasa uziarnienia USDA z zawartości iłu, piasku i pyłu (12 klas) oraz jej przypisanie do HSG A-D (reguły z Kartografa 0.8.0, ADR-025)
+- Raster HSG (GeoTIFF `uint8`: 0 - brak danych, 1-4 to A-D) z rastrów iłu, piasku i pyłu (np. SoilGrids w g/kg) oraz powierzchnie grup w całej zlewni lub w prostokącie bbox (dodatek `hydrolog[raster]`)
+- Tabele CN według USDA-NRCS dla kombinacji HSG + pokrycie terenu (`runoff.cn_lookup`) i CN ważone powierzchnią (`cn weighted`)
+- Pobranie rastrów gleb pozostaje poza zakresem (Kartograf `download_soil`)
 
 ---
 
@@ -159,35 +163,53 @@ Hydrolog jest analogiczny do **Kartografa** (pobieranie danych przestrzennych) -
 
 ---
 
-#### 2.1.6 Moduł `cli` - Interfejs CLI (v0.4.0) ✅
+#### 2.1.6 Moduł `cli` - Interfejs CLI (v0.4.0, przebudowany w v1.0.0) ✅
 
-**Zaimplementowane komendy:**
+Od v1.0.0 CLI jest generowane z katalogu komend (`hydrolog.catalog`): 37 komend w 13 grupach (lista: `hydrolog commands list`). Składnia: `hydrolog <grupa> <komenda> --opcja wartość`; flagi ogólne `--json`, `--schema`, `--lang pl|en`, `-V`. Dawna składnia CLI (v0.4.0-v0.7.0) została usunięta bez aliasów.
+
 ```bash
 # Czas koncentracji
-hydrolog tc kirpich --length 2.5 --slope 0.02
-hydrolog tc nrcs --length 5.0 --slope 0.01 --cn 72
-hydrolog tc giandotti --area 100 --length 15 --elevation 500
-hydrolog tc faa --length 0.15 --slope 0.02 --runoff-coeff 0.6
-hydrolog tc kerby --length 0.10 --slope 0.008 --retardance 0.40
-hydrolog tc kerby-kirpich --ov-length 0.25 --ov-slope 0.008 --retardance 0.40 --ch-length 5.0 --ch-slope 0.005
+hydrolog tc kirpich --length-km 2.5 --slope-m-per-m 0.02
+hydrolog tc nrcs --length-km 5.0 --slope-m-per-m 0.01 --cn 72
+hydrolog tc giandotti --area-km2 100 --length-km 15 --elevation-diff-m 500
+hydrolog tc faa --length-km 0.15 --slope-m-per-m 0.02 --runoff-coeff 0.6
+hydrolog tc kerby --length-km 0.10 --slope-m-per-m 0.008 --retardance 0.40
+hydrolog tc kerby-kirpich --overland-length-km 0.25 --overland-slope-m-per-m 0.008 \
+    --retardance 0.40 --channel-length-km 5.0 --channel-slope-m-per-m 0.005
 
 # Wyszukiwanie CN (tablice TR-55)
-hydrolog cn lookup --hsg B --cover forest --condition good
+hydrolog cn lookup --hsg B --land-cover forest --condition good
 hydrolog cn list
-hydrolog cn range --cover pasture
+hydrolog cn range --land-cover pasture
 
 # Obliczenia SCS-CN
-hydrolog scs --cn 72 --precipitation 50
-hydrolog scs --cn 72 --precipitation 50 --amc III
+hydrolog scs effective --cn 72 --precipitation-mm 50
+hydrolog scs effective --cn 72 --precipitation-mm 50 --amc III
 
-# Generowanie hydrogramów (SCS, Nash, Clark, Snyder)
-hydrolog uh scs --area 45 --tc 90 --timestep 10
-hydrolog uh nash --area 45 --n 3 --k 30 --timestep 10
-hydrolog uh clark --area 45 --tc 60 --r 30 --timestep 10
-hydrolog uh snyder --area 100 --L 15 --Lc 8 --timestep 30
+# Hydrogramy jednostkowe (SCS, Nash, Clark, Snyder)
+hydrolog uh scs --area-km2 45 --tc-min 90 --timestep-min 10
+hydrolog uh nash --area-km2 45 --n 3 --k-min 30 --timestep-min 10
+hydrolog uh clark --area-km2 45 --tc-min 60 --r-min 30 --timestep-min 10
+hydrolog uh snyder --area-km2 100 --length-km 15 --centroid-length-km 8 --timestep-min 30
 
-# Eksport: --csv lub --json
+# Wynik w formacie JSON (koperta hydrolog-result/1)
+hydrolog uh scs --area-km2 45 --tc-min 90 --json
 ```
+
+Pozostałe grupy: `precip`, `hydrograph`, `morphometry`, `network`, `stats`, `hydrometrics`, `soil`, `report`, `commands`.
+
+---
+
+#### 2.1.6a Warstwa operacji, katalog komend i interfejsy dla agentów (v1.0.0)
+
+- **Katalog komend** (`hydrolog.catalog`) - jedno źródło prawdy: deklaracje `Command` i `Option` (opisy PL/EN, jednostki, zakresy, grupy `one_of`, przykłady), `data_commands()`, `command_schema()`, `validate_command()`, `run_command()`
+- **Warstwa operacji** (`hydrolog.operations`) - po jednej publicznej, otypowanej funkcji na komendę; komponuje istniejące klasy, nie zawiera nowej hydrologii
+- **Koperta wyniku** `hydrolog-result/1` i dokument błędu `hydrolog-error/1` z zamkniętym rejestrem `ERROR_CODES` (kody wyjścia CLI: 1, 2, 3, 4, 6, 7, 8, 9)
+- **Serializacja** - wszystkie klasy wynikowe mają `to_dict()` i `to_json()` (`JsonResultMixin`)
+- **Dane z plików** - szeregi, stacje, odcinki sieci i zlewnie jako CSV/JSON (w tym eksport szeregu IMGWTools `export_series` bez przetwarzania); `WatershedParameters` JSON to format `catchment_characteristics` w Retmanie
+- **Serwer MCP** (`hydrolog mcp`, dodatek `hydrolog[mcp]`) - każda komenda katalogu jest narzędziem; dostęp do plików ograniczony do katalogów `--allow-dir`
+- **Przewodniki dla agentów** - `AGENTS.md` i `llms.txt` generowane z katalogu (`hydrolog commands guide`), pilnowane testem zgodności bajt po bajcie
+- Wykresy (`hydrolog.visualization`) pozostają tylko w Pythonie, poza katalogiem komend
 
 ---
 
@@ -285,8 +307,9 @@ Moduł wymaga opcjonalnych zależności: `pip install hydrolog[visualization]`
 **Pobieranie danych:**
 - ❌ Pobieranie NMT (→ Kartograf)
 - ❌ Pobieranie pokrycia terenu (→ Kartograf)
-- ❌ Pobieranie danych glebowych/HSG (→ Kartograf)
-- ❌ Pobieranie danych IMGW (→ IMGWTools)
+- ❌ Pobieranie rastrów gleb (→ Kartograf `download_soil`); samo obliczanie HSG z pobranych rastrów uziarnienia jest w zakresie (moduł `soil`, od v1.0.0)
+- ❌ Pobieranie danych IMGW (→ IMGWTools); Hydrolog wczytuje gotowy plik CSV/JSON z eksportu
+- ❌ REST API (interfejsy: biblioteka Python, CLI i serwer MCP)
 - ❌ Operacje na bazach danych
 
 **Wizualizacje i raporty:**
@@ -300,6 +323,7 @@ Moduł wymaga opcjonalnych zależności: `pip install hydrolog[visualization]`
 ### 2.3 ⏳ FUTURE SCOPE - Planowane na przyszłość
 
 **Post v1.0:**
+- Empiryczne wzory na przepływ maksymalny (Punzet, Bogdanowicz-Stachy) - decyzja właściciela projektu z 2026-10-19: w zakresie, ale po v1.0.0
 - Metoda racjonalna (Q = CIA) dla małych zlewni
 - Kalibracja parametrów
 - Analiza niepewności (Monte Carlo)
@@ -346,15 +370,27 @@ hydrolog/
 ├── time/                    # Czasy charakterystyczne
 │   ├── __init__.py
 │   └── concentration.py    # tc calculations (6 metod)
-├── cli/                     # Interfejs CLI
-│   ├── __init__.py
-│   ├── main.py             # Entry point
-│   └── commands/            # Podkomendy CLI
-│       ├── __init__.py
-│       ├── tc.py            # hydrolog tc ...
-│       ├── cn.py            # hydrolog cn ...
-│       ├── scs.py           # hydrolog scs ...
-│       └── uh.py            # hydrolog uh ...
+├── _serialization.py        # to_jsonable(), JsonResultMixin (to_dict/to_json) (v1.0.0)
+├── agent_guide.py           # Generator AGENTS.md / llms.txt z katalogu (v1.0.0)
+├── _data/agents/            # Szablony przewodników dla agentów (PL/EN)
+├── catalog/                 # Katalog komend (v1.0.0)
+│   ├── spec.py              # Command, Option
+│   ├── envelope.py          # Koperta hydrolog-result/1, Notice
+│   ├── inputs.py            # Szeregi, stacje, zlewnie z JSON lub plików CSV/JSON
+│   ├── dispatch.py          # validate_command, run_command, polityka ścieżek
+│   └── groups/              # Po jednym module na grupę komend (COMMANDS)
+├── operations/              # Po jednej funkcji publicznej na komendę katalogu (v1.0.0)
+├── mcp/                     # Serwer MCP (v1.0.0, dodatek [mcp])
+├── soil/                    # HSG z uziarnienia gleby (v1.0.0)
+│   ├── texture.py           # Trójkąt uziarnienia USDA, tekstura → HSG (tylko NumPy)
+│   ├── hsg.py               # classify_hsg(), hsg_statistics_array()
+│   └── raster.py            # Wejście/wyjście GeoTIFF (dodatek [raster])
+├── cli/                     # Interfejs CLI generowany z katalogu (v1.0.0)
+│   ├── main.py              # Punkt wejścia (hydrolog.cli.main:main)
+│   ├── parser.py            # Parser argparse z deklaracji katalogu
+│   ├── args.py, values.py   # Obsługa opcji i wartości z wiersza poleceń
+│   ├── render.py, texts.py  # Podsumowanie tekstowe i komunikaty PL/EN
+│   └── __main__.py          # python -m hydrolog.cli
 ├── reports/                 # Generowanie raportów (v0.6.0)
 │   ├── __init__.py
 │   ├── generator.py        # HydrologyReportGenerator
@@ -401,9 +437,13 @@ hydrolog/
 - NumPy >= 1.24
 - SciPy >= 1.10 (rozkłady statystyczne, funkcja gamma, optymalizacja — wymagane od v0.7.0)
 
-**Opcjonalne:**
-- matplotlib >= 3.7 + seaborn >= 0.12 (dla modułu `visualization`)
-- Kartograf >= 0.3.0 (dla automatycznego wyznaczania CN z danych glebowych HSG)
+**Opcjonalne (dodatki `pip install hydrolog[...]`):**
+- `raster`: rasterio >= 1.3 + pyproj >= 3.6 (komendy `soil hsg` i `soil hsg-stats`, `hydrolog.soil.raster`)
+- `mcp`: mcp >= 2.3, < 3 (serwer MCP `hydrolog mcp`)
+- `visualization`: matplotlib >= 3.7 + seaborn >= 0.12 (moduł `visualization`)
+- `all`: wszystkie powyższe
+
+Hydrolog nie zależy od Kartografa ani IMGWTools; dawny dodatek `spatial` (Kartograf) został usunięty w v1.0.0.
 
 ### 3.3 API Design
 
@@ -457,7 +497,7 @@ print(f"Time to peak: {result.time_to_peak_min} min")
 | **v0.6.3** | FAA + Kerby + Kerby-Kirpich tc, API audit, WatershedParameters extension | `time.concentration`, `morphometry.watershed_params`, `reports` | ✅ Wydana |
 | **v0.6.4** | WatershedParams extension + UH ordinates + docs audit | `morphometry.watershed_params`, `runoff.generator`, `reports`, `docs` | ✅ Wydana |
 | **v0.7.0** | Statystyka hydrologiczna + Hydrometria | `statistics`, `hydrometrics`, `visualization.statistics` | ✅ Wydana |
-| **v1.0.0** | Stabilne API + dokumentacja | Wszystkie | 📋 Planowane |
+| **v1.0.0** | Stabilne API, katalog komend, CLI z katalogu, serwer MCP, HSG, serializacja wyników, poprawki obliczeniowe | `catalog`, `operations`, `mcp`, `soil`, `cli`, `agent_guide` | 🔄 W przygotowaniu |
 
 ---
 
@@ -473,7 +513,7 @@ print(f"Time to peak: {result.time_to_peak_min} min")
 ### 5.2 Ograniczenia techniczne
 
 - **Pure Python + NumPy:** Brak zależności od GeoPandas/Shapely w core
-- **Dane wejściowe:** NumPy arrays, listy, słowniki (nie GeoJSON/Shapefile)
+- **Dane wejściowe:** NumPy arrays, listy, słowniki; w CLI/MCP pliki CSV/JSON i rastry GeoTIFF (nie Shapefile)
 - **Thread-safe:** Klasy są thread-safe (brak stanu globalnego)
 
 ---
@@ -484,11 +524,14 @@ print(f"Time to peak: {result.time_to_peak_min} min")
 |------------|-----|----------|
 | NumPy | Obliczenia numeryczne | Tak |
 | SciPy | Funkcje gamma (Nash IUH), rozkłady statystyczne (`statistics`) | Tak (od v0.7.0) |
-| Kartograf | HSG, dane glebowe, pokrycie terenu | Nie (opcjonalna dla `runoff.cn_lookup`) |
+| IMGWTools | Dane IMGW (szeregi pomiarowe) | Nie (Hydrolog wczytuje jego eksport CSV) |
+| rasterio, pyproj | Rastry GeoTIFF dla HSG | Nie (dodatek `[raster]`) |
+| mcp | Serwer MCP | Nie (dodatek `[mcp]`) |
 
 **Hydrolog NIE zawiera funkcji pobierania danych:**
 - Dane opadowe PMAXTP → pobiera aplikacja nadrzędna (np. Hydrograf via IMGWTools)
-- Dane przestrzenne → Kartograf (opcjonalnie)
+- Szeregi pomiarowe → IMGWTools (`series export` do CSV)
+- Rastry (NMT, pokrycie terenu, gleby) → Kartograf; Hydrolog nie zależy od Kartografa
 
 ---
 
@@ -520,6 +563,6 @@ print(f"Time to peak: {result.time_to_peak_min} min")
 
 ---
 
-**Wersja dokumentu:** 1.4
-**Data ostatniej aktualizacji:** 2026-03-26
-**Status:** W trakcie realizacji
+**Wersja dokumentu:** 1.5
+**Data ostatniej aktualizacji:** 2026-10-19
+**Status:** v1.0.0 w przygotowaniu
