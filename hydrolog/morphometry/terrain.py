@@ -6,11 +6,12 @@ from typing import Optional
 import numpy as np
 from numpy.typing import NDArray
 
+from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError
 
 
 @dataclass
-class ElevationParameters:
+class ElevationParameters(JsonResultMixin):
     """
     Elevation parameters of a watershed.
 
@@ -36,7 +37,7 @@ class ElevationParameters:
 
 
 @dataclass
-class SlopeParameters:
+class SlopeParameters(JsonResultMixin):
     """
     Slope parameters of a watershed.
 

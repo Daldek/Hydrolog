@@ -20,6 +20,7 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.stats import genextreme, kstest
 
+from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError
 from hydrolog.statistics._hydrological_year import hydrological_year
 from hydrolog.statistics._types import EmpiricalFrequency, compute_plotting_positions
@@ -33,7 +34,7 @@ _DEFAULT_RETURN_PERIODS = np.array([2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 500.0, 10
 
 
 @dataclass
-class LowFlowFrequencyResult:
+class LowFlowFrequencyResult(JsonResultMixin):
     """Result of fitting Fisher-Tippett distribution to annual minima.
 
     Attributes
@@ -68,7 +69,7 @@ class LowFlowFrequencyResult:
 
 
 @dataclass
-class LowFlowSequence:
+class LowFlowSequence(JsonResultMixin):
     """A single drought (low-flow) sequence.
 
     Attributes
@@ -98,7 +99,7 @@ class LowFlowSequence:
 
 
 @dataclass
-class LowFlowAnalysisResult:
+class LowFlowAnalysisResult(JsonResultMixin):
     """Summary of drought sequence detection.
 
     Attributes

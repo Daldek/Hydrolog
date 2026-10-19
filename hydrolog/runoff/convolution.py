@@ -5,11 +5,12 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import NDArray
 
+from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError
 
 
 @dataclass
-class HydrographResult:
+class HydrographResult(JsonResultMixin):
     """
     Result of hydrograph generation.
 

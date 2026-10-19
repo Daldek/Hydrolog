@@ -20,11 +20,12 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.stats import norm
 
+from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError
 
 
 @dataclass
-class MannKendallResult:
+class MannKendallResult(JsonResultMixin):
     """Result of the Mann-Kendall trend test.
 
     Attributes

@@ -6,6 +6,7 @@ from typing import Any, Dict, Optional, Union
 import numpy as np
 from numpy.typing import NDArray
 
+from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError
 from hydrolog.precipitation.hietogram import HietogramResult
 from hydrolog.runoff.convolution import HydrographResult, convolve_discrete
@@ -17,7 +18,7 @@ from hydrolog.runoff.snyder_uh import SnyderUH
 
 
 @dataclass
-class HydrographGeneratorResult:
+class HydrographGeneratorResult(JsonResultMixin):
     """
     Complete result of hydrograph generation.
 

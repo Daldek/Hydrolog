@@ -265,7 +265,8 @@ class WatershedParameters:
         ...         "elevation_min_m": 150.0, "elevation_max_m": 520.0}
         >>> params = WatershedParameters.from_dict(data)
         """
-        # Extract only known fields
+        # Extract only known fields (this also ignores a top-level "schema"
+        # marker such as "hydrolog-catchment/1" written by catalog tooling)
         known_fields = {
             "area_km2",
             "perimeter_km",

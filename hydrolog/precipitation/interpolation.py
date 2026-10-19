@@ -10,11 +10,12 @@ from typing import Optional
 import numpy as np
 from numpy.typing import NDArray
 
+from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError
 
 
 @dataclass
-class Station:
+class Station(JsonResultMixin):
     """
     Precipitation measurement station.
 
@@ -44,7 +45,7 @@ class Station:
 
 
 @dataclass
-class ThiessenResult:
+class ThiessenResult(JsonResultMixin):
     """
     Result of Thiessen polygon interpolation.
 
@@ -64,7 +65,7 @@ class ThiessenResult:
 
 
 @dataclass
-class IDWResult:
+class IDWResult(JsonResultMixin):
     """
     Result of IDW interpolation.
 
@@ -84,7 +85,7 @@ class IDWResult:
 
 
 @dataclass
-class IsohyetResult:
+class IsohyetResult(JsonResultMixin):
     """
     Result of isohyet method interpolation.
 

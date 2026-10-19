@@ -11,6 +11,7 @@ from typing import Optional
 import numpy as np
 from numpy.typing import NDArray
 
+from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError
 
 
@@ -22,7 +23,7 @@ class OrderingMethod(Enum):
 
 
 @dataclass
-class StreamSegment:
+class StreamSegment(JsonResultMixin):
     """
     Represents a single stream segment in a river network.
 
@@ -45,7 +46,7 @@ class StreamSegment:
 
 
 @dataclass
-class NetworkStatistics:
+class NetworkStatistics(JsonResultMixin):
     """
     Statistics of a classified river network.
 
