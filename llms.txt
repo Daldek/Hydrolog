@@ -1,0 +1,86 @@
+# Hydrolog
+
+> Biblioteka Pythona, CLI i serwer MCP do obliczeń hydrologicznych zlewni: SCS-CN i liczby CN, hietogramy projektowe, czas koncentracji, hydrogramy jednostkowe i odpływu, morfometria, statystyki przepływów, grupy hydrologiczne gleb (HSG) z rastrów, raport w Markdown. Liczy lokalnie, bez sieci i bez pobierania danych. Liczba komend w katalogu: 37, liczba grup: 13.
+
+1. **Schemat najpierw:** `commands list` (spis) i `commands schema` (opcje, jednostki, zakresy, przykłady); w MCP `tools/list`. Nie zgaduj opcji.
+2. **Pliki zamiast tablic:** serie, stacje, odcinki sieci i zlewnie podawaj plikiem CSV/JSON (`input_file`, `watershed_file`...), nie wklejaj długich list liczb.
+3. **Jednostki:** opis opcji podaje jednostkę (km, km2, m/m, mm, min, m3/s; spadek w m/m, nie w %); nie przeliczaj po cichu i nie zgaduj wartości użytkownika.
+4. **Błędy po kodach:** `hydrolog-error/1`: decyduj po `code` i `details.option`/`details.reason`, popraw argument według `hint` i ponów; błędu nie podawaj jako wyniku.
+5. **Ścieżki bezwzględne w katalogach dozwolonych:** MCP odrzuca (`forbidden`) pliki spoza `--allow-dir`, a bez niego każdą opcję typu path.
+6. **Zapis zastępuje:** opcje wyjściowe (`output`, `output_path`, `path`) nadpisują plik bez pytania — podawaj nowe nazwy; `files` wylicza zapisane (SHA-256).
+7. **Bez pobierania danych:** Hydrolog nie używa sieci; szeregi daje IMGWTools (`series export` → CSV), rastry gleb Kartograf (`soil download`).
+
+- Interfejsy: Python (`hydrolog.operations`, argumenty nazwane = opcje komendy), CLI `hydrolog <grupa> <komenda> --opcja wartość` (`--json` — koperta w jednej linii, `--schema` — schemat opcji) i serwer MCP `hydrolog mcp --allow-dir KATALOG` (dodatek `hydrolog[mcp]`; narzędzie = `operation_id`, np. `tc_kirpich`). Instalacja: `pip install "hydrolog @ git+https://github.com/Daldek/Hydrolog.git"`; komendy `soil hsg` i `soil hsg-stats` wymagają dodatku `hydrolog[raster]`.
+- Wynik: koperta `hydrolog-result/1` z polami `inputs`, `result`, `files` i `notices` (ostrzeżenia przekaż użytkownikowi).
+- Błąd: dokument `hydrolog-error/1` (`code`, `title`, `message`, `hint`, `details`; CLI: ostatnia linia stderr z `--json`); kody z zamkniętego rejestru (kod wyjścia CLI w nawiasie): `validation_error` (2), `not_found` (3), `calculation_error` (4), `data_error` (7), `missing_dependency` (6), `forbidden` (8), `io_error` (9), `internal_error` (1).
+- Dane wejściowe: CSV (przecinek lub średnik, nagłówek) albo JSON; kolumnę wskazujesz nazwą z jednostką albo bez (`Q` znajduje `Q [m3/s]`); zlewnia to JSON `WatershedParameters`.
+
+Grupy komend (`hydrolog commands list`; opcje i przykłady: `hydrolog commands schema --command "<komenda>"`):
+
+- `tc` — Czas koncentracji: `faa`, `giandotti`, `kerby`, `kerby-kirpich`, `kirpich`, `nrcs`, `watershed`
+- `cn` — Liczba CN (TR-55): `list`, `lookup`, `range`, `weighted`
+- `scs` — Opad efektywny SCS-CN: `effective`
+- `precip` — Opady: hietogramy i opad obszarowy: `areal`, `hietogram`
+- `uh` — Hydrogramy jednostkowe: `clark`, `nash`, `scs`, `snyder`
+- `hydrograph` — Hydrogram odpływu: `generate`
+- `morphometry` — Morfometria zlewni: `watershed`
+- `network` — Sieć rzeczna: `stats`
+- `stats` — Statystyki przepływów: `characteristic`, `daily`, `flood-frequency`, `low-flow`, `low-flow-sequences`, `mann-kendall`, `monthly`
+- `hydrometrics` — Hydrometria: `rating-curve`, `water-level-zones`
+- `soil` — Gleby: uziarnienie i HSG: `hsg`, `hsg-stats`, `texture`
+- `report` — Raport obliczeniowy: `generate`
+- `commands` — Opis katalogu komend: `guide`, `list`, `schema`
+
+Typowe przepływy (CLI; w MCP wywołaj narzędzie `operation_id` z argumentami = opcje; symbole wielkimi literami zastąp własnymi wartościami):
+
+**1. Hydrogram projektowy ze zlewni opisanej plikiem JSON**
+
+```
+hydrolog morphometry watershed --watershed-file /dane/hydrolog/zlewnia.json
+hydrolog tc watershed --watershed-file /dane/hydrolog/zlewnia.json --method kirpich
+hydrolog hydrograph generate --watershed-file /dane/hydrolog/zlewnia.json --tc-method kirpich --hietogram-type beta --total-mm 50 --duration-min 60 --timestep-min 5 --uh-model scs
+hydrolog report generate --output /dane/hydrolog/raport.md --watershed-file /dane/hydrolog/zlewnia.json --tc-method kirpich --hietogram-type beta --total-mm 50 --duration-min 60 --timestep-min 5 --uh-model scs
+```
+
+**2. Częstość wezbrań z eksportu CSV z IMGWTools**
+
+```
+imgw series export --root MAGAZYN_IMGW --dataset pl.imgw.hydro_daily --station KOD_STACJI --variables Q --format csv --path /dane/hydrolog/q_dobowe.csv
+hydrolog stats flood-frequency --input-file /dane/hydrolog/q_dobowe.csv --value-column Q --date-column date --distribution all --return-periods 10,50,100
+hydrolog stats characteristic --input-file /dane/hydrolog/q_dobowe.csv --value-column Q --date-column date --parameter Q
+```
+
+**3. Grupy hydrologiczne gleb (HSG) z rastrów SoilGrids i ważone CN**
+
+```
+kartograf soil download --property clay --depth 0-5cm --stat mean --bbox 626000,480000,628000,482000 --bbox-crs EPSG:2180 --output /dane/kartograf --json
+hydrolog soil hsg --clay-path /dane/kartograf/soil/global_soilgrids_clay_0-5cm_mean/bbox/626000_480000_628000_482000.tif --sand-path /dane/kartograf/soil/global_soilgrids_sand_0-5cm_mean/bbox/626000_480000_628000_482000.tif --silt-path /dane/kartograf/soil/global_soilgrids_silt_0-5cm_mean/bbox/626000_480000_628000_482000.tif --output-path /dane/hydrolog/hsg.tif
+hydrolog soil hsg-stats --hsg-path /dane/hydrolog/hsg.tif
+hydrolog cn list
+hydrolog cn weighted --parts '[{"cn":30,"area":75.0},{"cn":58,"area":75.0},{"cn":71,"area":75.0},{"cn":78,"area":68.75}]'
+hydrolog hydrograph generate --area-km2 45.3 --cn 58.85 --tc-min 120 --hietogram-type beta --total-mm 50 --duration-min 60
+```
+
+**4. Porównanie metod czasu koncentracji**
+
+```
+hydrolog tc watershed --watershed-file /dane/hydrolog/zlewnia.json --method kirpich
+hydrolog tc watershed --watershed-file /dane/hydrolog/zlewnia.json --method nrcs
+hydrolog tc watershed --watershed-file /dane/hydrolog/zlewnia.json --method giandotti
+hydrolog hydrograph generate --watershed-file /dane/hydrolog/zlewnia.json --tc-min 136 --hietogram-type beta --total-mm 50 --duration-min 60
+```
+
+## Dokumentacja
+
+- [AGENTS.md](https://raw.githubusercontent.com/Daldek/Hydrolog/main/AGENTS.md): pełny przewodnik dla agentów — zasady, koperta i błędy, formaty plików, wszystkie komendy z opcjami, przepływy w CLI i MCP, czego nie robić
+- [README.md](https://raw.githubusercontent.com/Daldek/Hydrolog/main/README.md): instalacja i przykłady użycia biblioteki
+- [Zakres](https://raw.githubusercontent.com/Daldek/Hydrolog/main/docs/SCOPE.md): co jest w zakresie, a co poza nim (Hydrolog niczego nie pobiera)
+- [Ścieżki obliczeniowe](https://raw.githubusercontent.com/Daldek/Hydrolog/main/docs/COMPUTATION_PATHS.md): które metody czasu koncentracji i parametry pasują do modeli hydrogramu jednostkowego (SCS, Nash, Clark, Snyder)
+- [Integracja](https://raw.githubusercontent.com/Daldek/Hydrolog/main/docs/INTEGRATION.md): wymiana zlewni z Hydrografem (format `WatershedParameters`)
+- [Zmiany](https://raw.githubusercontent.com/Daldek/Hydrolog/main/docs/CHANGELOG.md): zmiany per wydanie
+
+## Optional
+
+- [Projekt 1.0.0](https://raw.githubusercontent.com/Daldek/Hydrolog/main/docs/superpowers/specs/2026-10-19-v1-catalog-mcp-hsg-design.md): katalog komend, serwer MCP, serializacja wyników, HSG
+- [Standardy](https://raw.githubusercontent.com/Daldek/Hydrolog/main/docs/DEVELOPMENT_STANDARDS.md): zasady pracy nad kodem
+- [PRD](https://raw.githubusercontent.com/Daldek/Hydrolog/main/docs/PRD.md): wymagania produktowe

@@ -29,11 +29,12 @@ from numpy.typing import NDArray
 from scipy.optimize import brentq
 from scipy.special import gamma
 
+from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError
 
 
 @dataclass
-class LutzCalculationResult:
+class LutzCalculationResult(JsonResultMixin):
     """
     Intermediate calculation results from Lutz method.
 
@@ -110,7 +111,7 @@ class LutzCalculationResult:
 
 
 @dataclass
-class IUHResult:
+class IUHResult(JsonResultMixin):
     """
     Result of Instantaneous Unit Hydrograph generation.
 
@@ -150,7 +151,7 @@ class IUHResult:
 
 
 @dataclass
-class NashUHResult:
+class NashUHResult(JsonResultMixin):
     """
     Result of Nash Unit Hydrograph (finite duration D).
 
@@ -1038,7 +1039,7 @@ class NashIUH:
         ...     urban_fraction=0.05,
         ... )
         >>> print(f"N = {nash.n:.3f}, k = {nash.k_min:.1f} min")
-        N = 1.621, k = 23.6 min
+        N = 1.621, k = 23.7 min
         """
         # Validate inputs
         if area_km2 <= 0:

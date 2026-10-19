@@ -15,11 +15,12 @@ from typing import Optional, Union
 import numpy as np
 from numpy.typing import NDArray
 
+from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError
 
 
 @dataclass
-class ClarkIUHResult:
+class ClarkIUHResult(JsonResultMixin):
     """
     Result of Clark Instantaneous Unit Hydrograph generation.
 
@@ -54,7 +55,7 @@ class ClarkIUHResult:
 
 
 @dataclass
-class ClarkUHResult:
+class ClarkUHResult(JsonResultMixin):
     """
     Result of Clark Unit Hydrograph (finite duration D).
 
@@ -439,15 +440,17 @@ class ClarkIUH:
         """
         Convert IUH to D-minute Unit Hydrograph.
 
-        Generates a unit hydrograph for rainfall of duration D
-        by convolving the IUH with a rectangular pulse.
+        Generates the unit hydrograph of an effective rainfall of duration D by
+        the S-curve method: the S-curve of the IUH minus the same curve lagged
+        by D, divided by D.
 
         Parameters
         ----------
         area_km2 : float
             Watershed area [km²].
         duration_min : float
-            Rainfall duration D [min].
+            Rainfall duration D [min]. Need not be a multiple of
+            ``timestep_min``.
         timestep_min : float, optional
             Time step for discretization [min], by default 5.0.
         total_duration_min : float, optional
@@ -462,23 +465,63 @@ class ClarkIUH:
         Raises
         ------
         InvalidParameterError
-            If any parameter is not positive.
+            If any parameter is not positive and finite.
+
+        Notes
+        -----
+        With S(t) the S-curve (the cumulative sum of the IUH ordinates, i.e.
+        the response to a continuous unit-rate input), the D-minute unit
+        hydrograph is
+
+        .. math::
+            U_D(t) = \\frac{S(t) - S(t - D)}{D}
+
+        S is known at the grid points ``t_i = i * dt`` only (``dt`` is
+        ``timestep_min``). The lagged curve S(t_i - D) is read from S by linear
+        interpolation (S = 0 before t = 0), so D need not be a whole multiple of
+        the time step; for D = k * dt it is exactly S(t_{i-k}). With
+        ``m = floor(D / dt)`` and ``f = D / dt - m`` the ordinates are a
+        weighted moving average of the IUH ordinates ``u_j``:
+
+        .. math::
+            U_D(t_i) = \\frac{dt}{D}\\left(\\sum_{j=i-m+1}^{i} u_j
+            + f \\, u_{i-m}\\right)
+
+        Volume: the volume of the result is
+        :math:`\\frac{dt}{D} \\sum_i [S(t_i) - S(t_i - D)]`. For the
+        piecewise-linear S this sum is :math:`\\frac{dt}{D}\\left(f \\, S_{n-m-1}
+        + \\sum_{j=n-m}^{n-1} S_j\\right)`, which equals 1 (mm) whenever S has
+        reached 1 at the last ``m + 1`` grid points, for any D > 0. Only the
+        part of the response that lies beyond ``total_duration_min`` is missing.
+        Shifting S by the rounded number of steps instead, while dividing by D,
+        gives the volume ``round(D / dt) * dt / D`` (1.33 mm for D = 1.5 dt).
+
+        The S-curve is resolved to one time step: a D shorter than ``dt``
+        gives the hydrograph of D = ``dt``. Use ``timestep_min <= duration_min``
+        to resolve a short rainfall.
 
         Examples
         --------
         >>> iuh = ClarkIUH(tc_min=60.0, r_min=30.0)
         >>> uh = iuh.to_unit_hydrograph(area_km2=45.0, duration_min=30.0)
         >>> print(f"Peak: {uh.peak_discharge_m3s:.2f} m³/s per mm")
+        Peak: 10.87 m³/s per mm
+
+        D need not be a multiple of the time step (volume is still 1 mm):
+
+        >>> uh = iuh.to_unit_hydrograph(area_km2=45.0, duration_min=7.5)
+        >>> print(f"Depth: {uh.ordinates_m3s.sum() * 5.0 * 60.0 / 45000.0:.3f} mm")
+        Depth: 1.000 mm
         """
         if area_km2 <= 0:
             raise InvalidParameterError(f"area_km2 must be positive, got {area_km2}")
-        if duration_min <= 0:
+        if not (np.isfinite(duration_min) and duration_min > 0):
             raise InvalidParameterError(
-                f"duration_min must be positive, got {duration_min}"
+                f"duration_min must be positive and finite, got {duration_min}"
             )
-        if timestep_min <= 0:
+        if not (np.isfinite(timestep_min) and timestep_min > 0):
             raise InvalidParameterError(
-                f"timestep_min must be positive, got {timestep_min}"
+                f"timestep_min must be positive and finite, got {timestep_min}"
             )
 
         # Determine total duration
@@ -490,17 +533,18 @@ class ClarkIUH:
             timestep_min=timestep_min, duration_min=total_duration_min
         )
 
-        # Create S-curve by cumulative sum of IUH
+        # S-curve S(t_i), t_i = i * timestep, of the sampled IUH (S = 0 for t <= 0)
         s_curve = np.cumsum(iuh_result.ordinates_per_min) * timestep_min
 
-        # Shift S-curve by duration D
-        shift_steps = int(np.round(duration_min / timestep_min))
-        s_curve_shifted = np.zeros_like(s_curve)
-        if shift_steps < len(s_curve):
-            s_curve_shifted[shift_steps:] = s_curve[:-shift_steps]
+        # Lagged S-curve S(t_i - D): the lag in steps need not be an integer, so
+        # S is interpolated linearly between the grid points. A whole number of
+        # steps lands on the grid points and gives the shifted curve exactly.
+        lag_steps = duration_min / timestep_min
+        grid = np.arange(len(s_curve), dtype=np.float64)
+        s_curve_lagged = np.interp(grid - lag_steps, grid, s_curve, left=0.0)
 
         # D-minute UH = (S(t) - S(t-D)) / D
-        uh_dimensionless = (s_curve - s_curve_shifted) / duration_min
+        uh_dimensionless = (s_curve - s_curve_lagged) / duration_min
 
         # Scale to m³/s per mm
         # 1 mm over area_km2 = area_km2 * 1e6 m² * 0.001 m = area_km2 * 1000 m³

@@ -9,6 +9,7 @@ from hydrolog.runoff import (
     SCSUnitHydrograph,
     HydrographGenerator,
     HydrographResult,
+    SnyderUH,
     convolve_discrete,
 )
 from hydrolog.precipitation import BlockHietogram, BetaHietogram
@@ -621,6 +622,115 @@ class TestHydrographGeneratorModels:
         result = generator.generate([5.0, 10.0, 15.0, 10.0, 5.0], timestep_min=30.0)
         assert result.unit_hydrograph_result is not None
         assert hasattr(result.unit_hydrograph_result, "ordinates_m3s")
+
+
+class TestHydrographGeneratorSnyderDuration:
+    """The convolution needs the Snyder unit hydrograph of D = the time step.
+
+    The discrete convolution takes the unit hydrograph as the response to 1 mm of
+    effective precipitation falling in one time step. Snyder (1938; HEC-HMS Technical
+    Reference Manual) gives the hydrograph of the standard duration tD = tL / 5.5 and
+    corrects it for another duration D: tLR = tL + 0.25 (D - tD), tpR = tLR + D / 2,
+    qpR = qp tL / tLR. The generator used the standard one whatever the step was.
+    """
+
+    AREA, L_KM, LC_KM = 45.0, 12.0, 6.0
+
+    @pytest.fixture
+    def storm(self):
+        """A beta storm of 50 mm in 120 min in 5-minute steps."""
+        return BetaHietogram().generate(
+            total_mm=50.0, duration_min=120.0, timestep_min=5.0
+        )
+
+    @pytest.fixture
+    def generator(self):
+        return HydrographGenerator(
+            area_km2=self.AREA,
+            cn=72,
+            uh_model="snyder",
+            uh_params={"L_km": self.L_KM, "Lc_km": self.LC_KM},
+        )
+
+    def test_the_unit_hydrograph_is_the_one_for_the_time_step(self, generator, storm):
+        """Review case: tL = 324.7 min, tD = 59.0 min, step 5 min.
+
+        The unit hydrograph had tp = 354.2 min and a peak of 1.379 m3/s/mm (the
+        values for D = tD = 59 min); for D = 5 min tLR = 311.2 min, tpR = 313.7 min
+        and the peak is 1.542 m3/s/mm.
+        """
+        unit = generator.generate(storm).unit_hydrograph_result
+
+        assert unit.duration_min == 5.0
+        assert unit.standard_duration_min == pytest.approx(59.03, abs=0.01)
+        assert unit.adjusted_lag_time_min == pytest.approx(311.16, abs=0.01)
+        assert unit.time_to_peak_min == pytest.approx(313.66, abs=0.01)
+        assert unit.peak_discharge_m3s == pytest.approx(1.5424, abs=1e-4)
+
+    def test_the_peak_of_the_hydrograph_rises_and_comes_earlier(self, generator, storm):
+        """Qmax 9.76 m3/s at 405 min -> 10.90 m3/s at 365 min (+11.8 %)."""
+        result = generator.generate(storm)
+        standard = SnyderUH(self.AREA, self.L_KM, self.LC_KM).generate(timestep_min=5.0)
+        before = convolve_discrete(
+            result.effective_precip_mm, standard.ordinates_m3s, 5.0
+        )
+
+        assert standard.time_to_peak_min == pytest.approx(354.19, abs=0.01)
+        assert standard.peak_discharge_m3s == pytest.approx(1.3793, abs=1e-4)
+        assert before.peak_discharge_m3s == pytest.approx(9.7556, abs=1e-4)
+        assert before.time_to_peak_min == 405.0
+        assert result.peak_discharge_m3s == pytest.approx(10.9023, abs=1e-4)
+        assert result.time_to_peak_min == 365.0
+        assert result.peak_discharge_m3s / before.peak_discharge_m3s == pytest.approx(
+            1.1175, abs=1e-4
+        )
+
+    def test_the_volume_is_the_effective_depth_over_the_area(self, generator, storm):
+        """The corrected unit hydrograph still holds 1 mm: the runoff is conserved."""
+        result = generator.generate(storm)
+
+        assert result.hydrograph.total_volume_m3 == pytest.approx(
+            result.total_effective_mm * self.AREA * 1000.0, rel=1e-9
+        )
+
+    def test_a_step_equal_to_the_standard_duration_changes_nothing(self, generator):
+        """For D = tD the correction vanishes: tLR = tL, the standard hydrograph."""
+        snyder = SnyderUH(self.AREA, self.L_KM, self.LC_KM)
+        step = snyder.standard_duration_min
+
+        unit = generator.generate(
+            [4.0, 12.0, 20.0, 9.0, 3.0], timestep_min=step
+        ).unit_hydrograph_result
+
+        standard = snyder.generate(timestep_min=step)
+        assert unit.duration_min == pytest.approx(step)
+        assert unit.adjusted_lag_time_min == pytest.approx(unit.lag_time_min)
+        np.testing.assert_allclose(unit.ordinates_m3s, standard.ordinates_m3s)
+
+    @pytest.mark.parametrize("step", [5.0, 15.0, 60.0, 120.0])
+    def test_the_unit_hydrograph_follows_the_time_step(self, generator, step):
+        """The unit hydrograph is that of the step, whatever the step is."""
+        unit = generator.generate(
+            [5.0, 10.0, 15.0, 10.0, 5.0], timestep_min=step
+        ).unit_hydrograph_result
+        expected = SnyderUH(self.AREA, self.L_KM, self.LC_KM).generate(
+            timestep_min=step, duration_min=step
+        )
+
+        assert unit.duration_min == step
+        np.testing.assert_allclose(unit.ordinates_m3s, expected.ordinates_m3s)
+        # the longer the rainfall of the unit hydrograph, the lower and later its peak
+        assert unit.time_to_peak_min == pytest.approx(expected.time_to_peak_min)
+
+    def test_other_models_do_not_take_a_duration(self):
+        """The SCS unit hydrograph is generated for the step as before."""
+        generator = HydrographGenerator(area_km2=45.0, cn=72, tc_min=90.0)
+        result = generator.generate([5.0, 10.0, 15.0], timestep_min=10.0)
+
+        expected = SCSUnitHydrograph(area_km2=45.0, tc_min=90.0).generate(10.0)
+        np.testing.assert_allclose(
+            result.unit_hydrograph_result.ordinates_m3s, expected.ordinates_m3s
+        )
 
 
 class TestRunoffImport:

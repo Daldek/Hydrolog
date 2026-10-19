@@ -263,3 +263,104 @@ class TestStreamFrequency:
         """Test that zero area raises error."""
         with pytest.raises(InvalidParameterError, match="must be positive"):
             stream_frequency(n_streams=10, area_km2=0)
+
+
+def _network(spec):
+    """Network of ``(segment_id, upstream_ids)`` pairs, each 1 km long."""
+    return StreamNetwork(
+        [StreamSegment(seg_id, list(up), length_km=1.0) for seg_id, up in spec]
+    )
+
+
+class TestClassifyInvalidGraph:
+    """``classify`` rejects networks that have no order.
+
+    A cycle fed by a headwater or an unknown upstream id next to a headwater made
+    it loop forever; without any headwater it silently left every order at 0.
+    """
+
+    @pytest.mark.parametrize("method", list(OrderingMethod))
+    def test_a_cycle_fed_by_a_headwater_is_rejected(self, method):
+        network = _network([(1, []), (2, [1, 3]), (3, [2])])
+        with pytest.raises(InvalidParameterError) as caught:
+            network.classify(method)
+        assert caught.value.code == "validation_error"
+        assert caught.value.details == {"reason": "cycle", "segments": [2, 3]}
+        assert "2 -> 3 -> 2" in str(caught.value)
+        assert isinstance(caught.value, ValueError)
+
+    def test_a_cycle_without_a_headwater_is_rejected(self):
+        network = _network([(1, [2]), (2, [1])])
+        with pytest.raises(InvalidParameterError) as caught:
+            network.classify()
+        assert caught.value.details == {"reason": "cycle", "segments": [1, 2]}
+
+    def test_a_segment_upstream_of_itself_is_rejected(self):
+        network = _network([(1, []), (2, [1, 2])])
+        with pytest.raises(InvalidParameterError, match="Segment 2 lists itself"):
+            network.classify()
+
+    def test_the_cycle_is_listed_in_flow_order_without_its_downstream_segments(self):
+        """5 -> 3 -> 4 -> 5 flows in a circle; 6 only drains it, 1 feeds it."""
+        network = _network([(1, []), (5, [4, 1]), (4, [3]), (3, [5]), (6, [3])])
+        with pytest.raises(InvalidParameterError) as caught:
+            network.classify()
+        assert caught.value.details["segments"] == [3, 4, 5]
+        assert "3 -> 4 -> 5 -> 3" in str(caught.value)
+
+    @pytest.mark.parametrize(
+        "spec",
+        [
+            [(1, []), (2, [1, 9])],  # next to a headwater: used to loop
+            [(1, [9])],  # no headwater: used to leave every order at 0
+        ],
+    )
+    def test_an_unknown_upstream_id_is_rejected(self, spec):
+        network = _network(spec)
+        with pytest.raises(InvalidParameterError) as caught:
+            network.classify()
+        assert caught.value.details == {
+            "reason": "unknown_upstream",
+            "segment_id": spec[-1][0],
+            "upstream_id": 9,
+            "n_unknown": 1,
+        }
+        assert f"Segment {spec[-1][0]} lists upstream segment 9" in str(caught.value)
+        assert caught.value.hint
+
+    def test_all_unknown_ids_are_counted_and_the_first_is_named(self):
+        network = _network([(1, [7, 8]), (2, [9])])
+        with pytest.raises(InvalidParameterError) as caught:
+            network.classify()
+        assert caught.value.details["upstream_id"] == 7
+        assert caught.value.details["n_unknown"] == 3
+
+    def test_a_rejected_network_stays_unclassified(self):
+        network = _network([(1, []), (2, [1, 3]), (3, [2])])
+        with pytest.raises(InvalidParameterError):
+            network.classify()
+        assert [seg.order for seg in network.segments.values()] == [0, 0, 0]
+        with pytest.raises(InvalidParameterError, match="must be classified"):
+            network.get_statistics()
+
+    @pytest.mark.parametrize("method", list(OrderingMethod))
+    def test_the_order_does_not_depend_on_the_listing_order(self, method):
+        """Downstream segments listed before the ones that feed them."""
+        spec = [
+            (7, [5, 6]),
+            (6, [3, 4]),
+            (5, [1, 2]),
+            (4, []),
+            (3, []),
+            (2, []),
+            (1, []),
+        ]
+        network = _network(spec)
+        network.classify(method)
+        expected = {
+            OrderingMethod.STRAHLER: {1: 1, 2: 1, 3: 1, 4: 1, 5: 2, 6: 2, 7: 3},
+            OrderingMethod.SHREVE: {1: 1, 2: 1, 3: 1, 4: 1, 5: 2, 6: 2, 7: 4},
+        }[method]
+        assert {
+            seg_id: seg.order for seg_id, seg in network.segments.items()
+        } == expected

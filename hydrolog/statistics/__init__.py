@@ -7,7 +7,7 @@ Provides:
 - Mann-Kendall trend test for series stationarity
 """
 
-from hydrolog.statistics._types import EmpiricalFrequency
+from hydrolog.statistics._types import EmpiricalFrequency, LowFlowEmpiricalFrequency
 from hydrolog.statistics.characteristic import (
     CharacteristicValues,
     DailyStatistics,
@@ -43,6 +43,7 @@ __all__ = [
     # Low-flow
     "LowFlowAnalysis",
     "LowFlowFrequencyResult",
+    "LowFlowEmpiricalFrequency",
     "LowFlowSequence",
     "LowFlowAnalysisResult",
     # Stationarity

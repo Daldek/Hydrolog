@@ -1,0 +1,14 @@
+{
+  "name": "Zlewnia Przykładowa",
+  "area_km2": 45.3,
+  "perimeter_km": 32.1,
+  "length_km": 12.5,
+  "elevation_min_m": 150.0,
+  "elevation_max_m": 520.0,
+  "elevation_mean_m": 310.0,
+  "mean_slope_m_per_m": 0.045,
+  "channel_length_km": 14.2,
+  "channel_slope_m_per_m": 0.021,
+  "cn": 72,
+  "source": "manual"
+}

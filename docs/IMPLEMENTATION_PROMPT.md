@@ -2,8 +2,8 @@
 
 ## Prompt dla AI - Implementacja Biblioteki Hydrolog
 
-**Wersja:** 0.7.0
-**Data:** 2026-03-26
+**Wersja:** 1.0.0 (w przygotowaniu)
+**Data:** 2026-10-19
 
 ---
 
@@ -13,16 +13,18 @@ Jesteś jedynym deweloperem pracującym nad **Hydrolog** - biblioteką Python do
 
 ### 1.1 Cel projektu
 
-Stworzyć bibliotekę analogiczną do Kartografa, ale dla obliczeń hydrologicznych:
+Stworzyć bibliotekę analogiczną do Kartografa, ale dla obliczeń hydrologicznych (biblioteka Python, CLI `hydrolog` i serwer MCP generowane z jednego katalogu komend):
 - Generowanie hydrogramów (SCS-CN)
 - Obliczanie parametrów morfometrycznych
 - Hietogramy i interpolacja opadów
 - Klasyfikacja sieci rzecznej
+- Statystyka przepływów i hydrometria
+- Grupy hydrologiczne gleb (HSG) z rastrów uziarnienia
 
 ### 1.2 Stack technologiczny
 
 - **Python:** 3.12+
-- **Zależności:** NumPy (IMGWTools usunięte w v0.2.0)
+- **Zależności:** NumPy i SciPy (wymagane); dodatki opcjonalne: `raster` (rasterio, pyproj), `mcp` (mcp >= 2.3, < 3), `visualization` (matplotlib, seaborn), `all`. Hydrolog nie zależy od Kartografa ani IMGWTools (IMGWTools usunięte w v0.5.2, dodatek `spatial` z Kartografem usunięty w v1.0.0); dane dostarczają one jako pliki.
 - **Testy:** pytest
 - **Formatowanie:** Black (88 znaków)
 - **Dokumentacja:** NumPy style docstrings (EN)
@@ -93,6 +95,8 @@ git log --oneline -5
 
 ```
 Hydrolog/
+├── AGENTS.md                 # Przewodnik dla agentów (generowany: hydrolog commands guide)
+├── llms.txt                  # j.w., skrót dla LLM-ów (generowany)
 ├── CLAUDE.md                 # Instrukcje dla AI
 ├── README.md                 # Opis projektu
 ├── pyproject.toml            # Konfiguracja pakietu
@@ -105,13 +109,19 @@ Hydrolog/
 │   └── CHANGELOG.md
 ├── hydrolog/                 # Kod źródłowy
 │   ├── __init__.py
-│   ├── exceptions.py         # Własne wyjątki
+│   ├── exceptions.py         # Wyjątki i rejestr ERROR_CODES
+│   ├── _serialization.py     # JsonResultMixin (to_dict/to_json) - v1.0.0
+│   ├── agent_guide.py        # Generator AGENTS.md / llms.txt - v1.0.0
 │   ├── runoff/
 │   ├── precipitation/
 │   ├── time/
 │   ├── morphometry/
 │   ├── network/
-│   ├── cli/
+│   ├── catalog/              # Katalog komend (źródło prawdy dla CLI/MCP) - v1.0.0
+│   ├── operations/           # Funkcja operacji na komendę - v1.0.0
+│   ├── cli/                  # CLI generowane z katalogu (v1.0.0)
+│   ├── mcp/                  # Serwer MCP, dodatek [mcp] - v1.0.0
+│   ├── soil/                 # HSG z uziarnienia, dodatek [raster] - v1.0.0
 │   ├── reports/              # Dodane w v0.6.0
 │   ├── visualization/        # Dodane w v0.5.0
 │   ├── statistics/           # Dodane w v0.7.0
@@ -414,5 +424,5 @@ A: Zaktualizuj PROGRESS.md, commit, push.
 
 ---
 
-**Wersja dokumentu:** 0.7.0
-**Data ostatniej aktualizacji:** 2026-03-26
+**Wersja dokumentu:** 1.0.0 (w przygotowaniu)
+**Data ostatniej aktualizacji:** 2026-10-19

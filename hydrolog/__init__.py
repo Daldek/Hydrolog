@@ -9,14 +9,30 @@ A modular library providing tools for:
 - River network classification
 """
 
-__version__ = "0.7.0"
+__version__ = "1.0.0.dev0"
 __author__ = "Piotr de Bever"
 
-from hydrolog.exceptions import HydrologError, InvalidParameterError, CalculationError
+from hydrolog.exceptions import (
+    ERROR_CODES,
+    CalculationError,
+    ForbiddenPathError,
+    HydrologError,
+    InputDataError,
+    InvalidParameterError,
+    MissingDependencyError,
+    NotFoundError,
+    OutputError,
+)
 
 __all__ = [
     "__version__",
     "HydrologError",
     "InvalidParameterError",
     "CalculationError",
+    "InputDataError",
+    "MissingDependencyError",
+    "ForbiddenPathError",
+    "NotFoundError",
+    "OutputError",
+    "ERROR_CODES",
 ]

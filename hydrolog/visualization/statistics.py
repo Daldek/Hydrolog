@@ -5,7 +5,7 @@ including flood frequency curves, low-flow sequences, rating curves,
 and water level frequency distributions.
 """
 
-from typing import Optional
+from typing import Optional, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,7 +14,7 @@ from numpy.typing import NDArray
 from hydrolog.statistics.high_flows import FrequencyAnalysisResult
 from hydrolog.statistics.low_flows import LowFlowFrequencyResult, LowFlowAnalysisResult
 from hydrolog.statistics.characteristic import DailyStatistics, MonthlyStatistics
-from hydrolog.statistics._types import EmpiricalFrequency
+from hydrolog.statistics._types import EmpiricalFrequency, LowFlowEmpiricalFrequency
 from hydrolog.statistics._hydrological_year import hydrological_year
 from hydrolog.hydrometrics.rating_curve import (
     RatingCurve,
@@ -225,7 +225,7 @@ def plot_frequency_comparison(
 
 def plot_non_exceedance_curve(
     result: LowFlowFrequencyResult,
-    empirical: Optional[EmpiricalFrequency] = None,
+    empirical: Optional[Union[EmpiricalFrequency, LowFlowEmpiricalFrequency]] = None,
     title: Optional[str] = None,
     ax: Optional[plt.Axes] = None,
     figsize: tuple = (10, 6),
@@ -236,8 +236,12 @@ def plot_non_exceedance_curve(
     ----------
     result : LowFlowFrequencyResult
         Fitted low-flow frequency analysis result.
-    empirical : EmpiricalFrequency, optional
-        Empirical plotting positions to overlay as scatter points.
+    empirical : LowFlowEmpiricalFrequency or EmpiricalFrequency, optional
+        Empirical plotting positions to overlay as scatter points: the
+        non-exceedance positions of ``LowFlowAnalysis.empirical_non_exceedance()``
+        (also the ``empirical`` of the ``stats low-flow`` result) or the exceedance
+        positions of ``LowFlowAnalysis.empirical_frequency()``, converted with
+        ``1 - P``.
     title : str, optional
         Plot title. Auto-generated if None.
     ax : plt.Axes, optional
@@ -278,11 +282,16 @@ def plot_non_exceedance_curve(
     )
 
     if empirical is not None:
-        # For low flows, non-exceedance = 1 - exceedance
-        non_exc_emp_pct = (1.0 - empirical.exceedance_prob) * 100.0
+        if isinstance(empirical, LowFlowEmpiricalFrequency):
+            non_exc_emp_pct = empirical.non_exceedance_probabilities * 100.0
+            emp_values = empirical.values_ascending
+        else:
+            # Exceedance positions: non-exceedance = 1 - exceedance
+            non_exc_emp_pct = (1.0 - empirical.exceedance_prob) * 100.0
+            emp_values = empirical.values_sorted
         ax.scatter(
             non_exc_emp_pct,
-            empirical.values_sorted,
+            emp_values,
             color=color,
             edgecolors="white",
             s=50,

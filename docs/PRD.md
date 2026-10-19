@@ -2,9 +2,9 @@
 
 ## Hydrolog - Biblioteka Narzędzi Hydrologicznych
 
-**Wersja:** 0.7.0
-**Data:** 2026-03-26
-**Status:** W trakcie realizacji
+**Wersja:** 1.0.0 (w przygotowaniu)
+**Data:** 2026-10-19
+**Status:** v1.0.0 w przygotowaniu
 
 ---
 
@@ -12,7 +12,7 @@
 
 ### 1.1 Wizja
 
-Hydrolog to biblioteka Python dostarczająca zestaw narzędzi do obliczeń hydrologicznych - od generowania hydrogramów odpływu po analizę parametrów morfometrycznych zlewni.
+Hydrolog to biblioteka Python, interfejs CLI i serwer MCP dostarczające zestaw narzędzi do obliczeń hydrologicznych - od generowania hydrogramów odpływu po analizę parametrów morfometrycznych zlewni, statystykę przepływów i wyznaczanie grup hydrologicznych gleb. Wszystkie interfejsy powstają z jednego katalogu komend, więc ta sama komenda działa w kodzie, w terminalu i w narzędziach agentów AI.
 
 ### 1.2 Cele biznesowe
 
@@ -27,7 +27,9 @@ Hydrolog to biblioteka Python dostarczająca zestaw narzędzi do obliczeń hydro
 |------------|----------|---------------------|
 | **Deweloper Hydrograf** | Obliczenia hydrologiczne w API | Import modułów jako zależność |
 | **Hydrolog/badacz** | Szybkie obliczenia w Jupyter | Proste API, przykłady |
-| **Automatyzacja** | Batch processing | CLI interface |
+| **Automatyzacja** | Batch processing | CLI generowane z katalogu komend, wynik `--json` |
+| **Retman (platforma agentowa)** | Handlery obliczeń i dane zlewni jako pliki | Warstwa `hydrolog.operations`, `WatershedParameters` JSON, koperta `hydrolog-result/1` |
+| **Agent AI (Claude Code i inni klienci MCP)** | Wywoływanie obliczeń bez zgadywania opcji | Serwer MCP `hydrolog mcp`, `AGENTS.md`, `llms.txt` |
 
 ---
 
@@ -200,7 +202,7 @@ print(f"tc = {tc:.1f} min")
 
 ---
 
-### 2.6 CLI (v0.4.0)
+### 2.6 CLI (v0.4.0, przebudowany w v1.0.0)
 
 #### US-C01: Generowanie hydrogramu przez CLI
 **Jako** użytkownik
@@ -208,10 +210,10 @@ print(f"tc = {tc:.1f} min")
 **Aby** zautomatyzować obliczenia
 
 **Kryteria akceptacji:**
-- [ ] Komenda: `hydrolog generate-hydrograph`
-- [ ] Parametry: --area, --cn, --tc, --precipitation, --duration
-- [ ] Opcje: --output (JSON/CSV), --hietogram-type
-- [ ] Wyświetla wyniki lub zapisuje do pliku
+- [x] Komenda: `hydrolog hydrograph generate`
+- [x] Parametry: `--area-km2`, `--cn`, `--tc-min`, `--hietogram-type`, `--total-mm`, `--duration-min` albo `--watershed-file` (WatershedParameters JSON)
+- [x] Wynik: podsumowanie tekstowe albo, z `--json`, koperta `hydrolog-result/1`
+- [x] Raport Markdown: `hydrolog report generate --output raport.md ...`
 
 ---
 
@@ -308,6 +310,52 @@ print(f"tc = {tc:.1f} min")
 
 ---
 
+### 2.14 Katalog komend, serwer MCP i HSG (v1.0.0)
+
+#### US-K01: Jedna definicja komendy dla wszystkich interfejsów
+**Jako** deweloper Hydrologa
+**Chcę** zadeklarować komendę raz (operacja + `Command`/`Option`)
+**Aby** biblioteka, CLI, serwer MCP i przewodniki dla agentów miały te same nazwy opcji, jednostki, zakresy i walidację
+
+**Kryteria akceptacji:**
+- [x] 37 komend w 13 grupach, lista: `hydrolog commands list`
+- [x] Schemat opcji (JSON Schema) dla całego katalogu lub jednej komendy: `commands schema`, `--schema`
+- [x] Koperta wyniku `hydrolog-result/1` i dokument błędu `hydrolog-error/1` z zamkniętym rejestrem `ERROR_CODES`
+- [x] Wszystkie klasy wynikowe mają `to_dict()` i `to_json()`
+- [x] Test zgodności CLI, MCP i Pythona oraz bajt po bajcie `AGENTS.md`/`llms.txt` z generatorem
+
+#### US-K02: Obliczenia z plików
+**Jako** agent lub skrypt
+**Chcę** podawać serie, stacje, odcinki sieci i zlewnie plikiem CSV/JSON
+**Aby** nie wklejać długich list liczb do argumentów
+
+**Kryteria akceptacji:**
+- [x] CSV (przecinek lub średnik, UTF-8, nagłówek) i JSON
+- [x] Eksport szeregu IMGWTools (`export_series`) wczytuje się bez przetwarzania
+- [x] Zlewnia: `WatershedParameters` JSON (format `catchment_characteristics` w Retmanie)
+
+#### US-M01: Serwer MCP
+**Jako** użytkownik klienta MCP (np. Claude Code)
+**Chcę** wywoływać komendy Hydrologa jako narzędzia
+**Aby** agent liczył hydrologię lokalnie, bez sieci i kluczy
+
+**Kryteria akceptacji:**
+- [x] `hydrolog mcp [--allow-dir DIR]... [--lang pl|en]` (dodatek `hydrolog[mcp]`)
+- [x] Jedno narzędzie na komendę (nazwa = `operation_id`), `structuredContent` = koperta wyniku, błąd jako `isError` z `hydrolog-error/1`
+- [x] Dostęp do plików tylko w katalogach `--allow-dir` (inaczej `forbidden`)
+
+#### US-S01: Grupa hydrologiczna gleby (HSG)
+**Jako** hydrolog
+**Chcę** wyznaczyć rastr HSG z rastrów iłu, piasku i pyłu (np. SoilGrids) i powierzchnie grup A-D
+**Aby** policzyć CN ważone powierzchnią zlewni
+
+**Kryteria akceptacji:**
+- [x] `hydrolog.soil`: klasa uziarnienia USDA i HSG (tylko NumPy), `hsg_from_rasters`, `hsg_statistics` (dodatek `hydrolog[raster]`)
+- [x] Komendy `soil texture`, `soil hsg`, `soil hsg-stats`
+- [x] Reguły zgodne z Kartografem 0.8.0 (ADR-025); Hydrolog nie zależy od Kartografa
+
+---
+
 ## 3. Wymagania niefunkcjonalne
 
 ### 3.1 Wydajność
@@ -340,7 +388,8 @@ print(f"tc = {tc:.1f} min")
 - SciPy >= 1.10 (wymagane od v0.7.0; rozkłady statystyczne, funkcja gamma, optymalizacja)
 - Matplotlib >= 3.7 (opcjonalnie, moduł visualization)
 - Seaborn >= 0.12 (opcjonalnie, moduł visualization)
-- Kartograf (opcjonalnie, dane przestrzenne i glebowe)
+- rasterio >= 1.3, pyproj >= 3.6 (opcjonalnie, dodatek `[raster]`: HSG z rastrów)
+- mcp >= 2.3, < 3 (opcjonalnie, dodatek `[mcp]`: serwer MCP)
 - Brak zależności od GeoPandas/Shapely w core
 
 ---
@@ -358,7 +407,8 @@ print(f"tc = {tc:.1f} min")
 
 - Dane wejściowe: NumPy arrays, podstawowe typy Python
 - Thread-safe (brak stanu globalnego)
-- Brak operacji I/O w core (tylko CLI)
+- Operacje wejścia/wyjścia (pliki CSV/JSON, GeoTIFF, zapis raportu) tylko w warstwie operacji/katalogu i CLI/MCP; klasy obliczeniowe nie czytają plików
+- Brak dostępu do sieci i pobierania danych (dane dostarczają IMGWTools i Kartograf)
 
 ---
 
@@ -444,12 +494,19 @@ print(f"tc = {tc:.1f} min")
 - [x] `visualization.statistics` - 10 funkcji wizualizacji
 - [x] Testy i dokumentacja
 
-### v1.0.0 - Stabilne API + CLI
-- [ ] Stabilizacja API (bez breaking changes)
-- [ ] Pełna dokumentacja (MkDocs/Sphinx)
+### v1.0.0 - Stabilne API, katalog komend, MCP, HSG *(w przygotowaniu)*
+- [x] `catalog`, `operations` - katalog 37 komend i warstwa operacji
+- [x] `cli` - CLI generowane z katalogu (zmiana niezgodna wstecz: dawna składnia usunięta)
+- [x] `mcp` - serwer MCP (`hydrolog mcp`, dodatek `[mcp]`)
+- [x] `agent_guide` - `AGENTS.md` i `llms.txt` generowane z katalogu
+- [x] `soil` - HSG z rastrów uziarnienia (dodatek `[raster]`), usunięcie zależności od Kartografa
+- [x] Serializacja wyników (`JsonResultMixin`), rejestr błędów `ERROR_CODES`
+- [x] Poprawki obliczeniowe: Fisher-Tippett dla minimów, Clark UH dla D niebędącego wielokrotnością kroku, raport obliczeniowy, StreamNetwork, RatingCurve (szczegóły: CHANGELOG)
+- [ ] Empiryczne wzory na przepływ maksymalny (Punzet, Bogdanowicz-Stachy) - po v1.0.0
+- [ ] Pełna dokumentacja API (MkDocs/Sphinx)
 - [ ] Publikacja na PyPI
 
 ---
 
-**Wersja dokumentu:** 0.7.0
-**Data ostatniej aktualizacji:** 2026-03-26
+**Wersja dokumentu:** 1.0.0 (w przygotowaniu)
+**Data ostatniej aktualizacji:** 2026-10-19
