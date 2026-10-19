@@ -234,13 +234,21 @@ CSV/JSON with `name,x,y,precipitation_mm`. Hydrolog does **not** import IMGWTool
   [--lang pl|en]`. Without `--allow-dir` commands with `path` options are refused
   (`forbidden`), pure-input commands work.
 - One tool per catalog command: name = `operation_id`, title = `hydrolog <name>`,
-  description from catalog, `inputSchema` = command `input_schema`, annotations:
-  `readOnlyHint = not writes`, `destructiveHint = false`, `idempotentHint = true`,
-  `openWorldHint = false`.
+  description from catalog (plus a sentence naming the `one_of` alternatives and, for
+  a writing command, its output options), `inputSchema` = command `input_schema`
+  without `$schema` (2020-12 is the MCP default) and without the top-level `oneOf` of
+  the `one_of` groups: model APIs (Anthropic API, Claude Code) reject a tool whose
+  input schema has `oneOf`/`anyOf`/`allOf` at the top level and fail the whole
+  session. The alternatives are named in the description and still enforced by
+  `validate_command` (`details.reason = "one_of"`). An option `lang` (choice `pl`/`en`)
+  defaults to the server language. Annotations: `readOnlyHint = not writes`,
+  `destructiveHint = writes` (a writing command replaces its output file),
+  `idempotentHint = true`, `openWorldHint = false`.
 - Success: `structuredContent` = envelope, plus the same JSON as text content.
   Failure: `isError=true` with the `hydrolog-error/1` document.
 - Server `instructions`: short rules generated from the agent guide principles.
-- Missing `mcp` package → `MissingDependencyError` with install hint.
+- Missing `mcp` package → `MissingDependencyError` with install hint
+  (`pip install hydrolog[mcp]`).
 
 ### 7.3 Agent guides (`hydrolog/agent_guide.py`)
 

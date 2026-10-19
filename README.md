@@ -714,31 +714,48 @@ $$I_a = 0.2 \cdot S = 0.2 \cdot 98.78 = 19.76 \text{ mm}$$
 
 ### CLI - Interfejs linii poleceń
 
+Komendy CLI są generowane z katalogu komend (`hydrolog.catalog`) - ten sam katalog
+zasila bibliotekę Pythona (`hydrolog.catalog.run_command`) i serwer MCP.
+
 ```bash
+hydrolog --help                 # grupy komend
+hydrolog commands list          # wszystkie komendy z opisami
+hydrolog tc kirpich --help      # opcje komendy, jednostki, przykłady
+
 # Czas koncentracji
-hydrolog tc kirpich --length 2.5 --slope 0.02
-hydrolog tc nrcs --length 5.0 --slope 0.01 --cn 72
-hydrolog tc giandotti --area 100 --length 15 --elevation 500
+hydrolog tc kirpich --length-km 8.2 --slope-m-per-m 0.023
+hydrolog tc nrcs --length-km 8.2 --slope-m-per-m 0.023 --cn 72
+hydrolog tc giandotti --area-km2 145 --length-km 21.5 --elevation-diff-m 320
 
-# Wyszukiwanie CN
-hydrolog cn lookup --hsg B --cover forest --condition good
-hydrolog cn list
-hydrolog cn range --cover pasture
+# Wyszukiwanie CN i opad efektywny
+hydrolog cn lookup --hsg B --land-cover forest --condition good
+hydrolog cn range --land-cover pasture
+hydrolog scs effective --cn 72 --precipitation-mm 50 --amc III
 
-# Obliczenia SCS-CN
-hydrolog scs --cn 72 --precipitation 50
-hydrolog scs --cn 72 --precipitation 50 --amc III
+# Hydrogramy jednostkowe i hydrogram odpływu
+hydrolog uh scs --area-km2 45 --tc-min 90 --timestep-min 10
+hydrolog uh nash --area-km2 45 --n 3 --k-min 30 --timestep-min 10
+hydrolog uh snyder --area-km2 100 --length-km 15 --centroid-length-km 8 --timestep-min 30
+hydrolog hydrograph generate --area-km2 45.3 --cn 72 --tc-min 90 \
+    --hietogram-type beta --total-mm 50 --duration-min 60
 
-# Generowanie hydrogramów
-hydrolog uh scs --area 45 --tc 90 --timestep 10
-hydrolog uh nash --area 45 --n 3 --k 30 --timestep 10
-hydrolog uh clark --area 45 --tc 60 --r 30 --timestep 10
-hydrolog uh snyder --area 100 --L 15 --Lc 8 --timestep 30
-
-# Eksport wyników
-hydrolog uh scs --area 45 --tc 90 --timestep 10 --csv > hydrograph.csv
-hydrolog uh scs --area 45 --tc 90 --timestep 10 --json > hydrograph.json
+# Dane z plików (CSV/JSON), wynik jako JSON dla skryptów
+hydrolog stats flood-frequency --input-file maxima.csv --value-column Qmax --json > wynik.json
 ```
+
+- Opcje to nazwy opcji katalogu w `--kebab-case`; listy liczb podaje się po przecinku
+  (`--values 1,2,3`), obiekty jako tekst JSON (`--watershed '{"area_km2": 45.3, ...}'`),
+  opcje logiczne jako `--flaga` / `--no-flaga`. Liczba ujemna: `--opcja -5`.
+- `--json` drukuje kopertę wyniku `hydrolog-result/1` (jedna linia), `--schema` - schemat
+  opcji komendy (JSON Schema) bez uruchamiania, `--lang pl|en` wybiera język pomocy i
+  komunikatów (domyślnie zmienna `HYDROLOG_LANG`, a gdy jej brak - `pl`).
+- Błąd to czytelny tekst na stderr albo, z `--json`, jedna linia `hydrolog-error/1`.
+  Kod wyjścia: `2` błędne dane wejściowe, `3` brak pliku lub komendy, `4` obliczenia
+  niemożliwe, `6` brak opcjonalnego dodatku, `7` uszkodzone dane, `8` ścieżka
+  niedozwolona, `9` błąd zapisu, `1` błąd wewnętrzny.
+- `hydrolog mcp [--allow-dir DIR]...` uruchamia serwer MCP (dodatek `hydrolog[mcp]`).
+- Eksport CSV (`--csv`) i dawne nazwy opcji (`--length`, `--area`, ...) nie istnieją;
+  pełny wynik w JSON daje `--json`.
 
 ## Struktura modułów
 

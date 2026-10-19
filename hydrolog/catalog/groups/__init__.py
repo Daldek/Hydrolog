@@ -23,7 +23,21 @@ from types import ModuleType
 
 from hydrolog.catalog.spec import Command
 
-GROUP_MODULES: tuple[str, ...] = ("meta",)
+GROUP_MODULES: tuple[str, ...] = (
+    "tc",
+    "cn",
+    "scs",
+    "precip",
+    "uh",
+    "hydrograph",
+    "morphometry",
+    "network",
+    "stats",
+    "hydrometrics",
+    "soil",
+    "report",
+    "meta",
+)
 """Names of the group modules of this package, in presentation order."""
 
 

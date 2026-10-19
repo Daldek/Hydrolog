@@ -963,7 +963,8 @@ class TestRunCommand:
         en = run_command("commands_list", {"lang": "en"}).result
         assert [a.name for a in pl] == [b.name for b in en]
         assert [a.summary for a in pl] != [b.summary for b in en]
-        assert en[0].summary.startswith("List the catalog commands")
+        listing = next(item for item in en if item.name == "commands list")
+        assert listing.summary.startswith("List the catalog commands")
 
     def test_commands_schema_of_one_command(self):
         """The schema operation returns the same document as ``command_schema``."""
