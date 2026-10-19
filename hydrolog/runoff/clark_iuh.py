@@ -15,11 +15,12 @@ from typing import Optional, Union
 import numpy as np
 from numpy.typing import NDArray
 
+from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError
 
 
 @dataclass
-class ClarkIUHResult:
+class ClarkIUHResult(JsonResultMixin):
     """
     Result of Clark Instantaneous Unit Hydrograph generation.
 
@@ -54,7 +55,7 @@ class ClarkIUHResult:
 
 
 @dataclass
-class ClarkUHResult:
+class ClarkUHResult(JsonResultMixin):
     """
     Result of Clark Unit Hydrograph (finite duration D).
 

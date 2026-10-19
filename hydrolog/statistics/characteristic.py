@@ -24,6 +24,7 @@ from numpy.typing import NDArray
 from scipy.stats import skew as scipy_skew
 from scipy.stats import t as t_dist
 
+from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError
 from hydrolog.statistics._hydrological_year import (
     hydrological_day_of_year,
@@ -32,7 +33,7 @@ from hydrolog.statistics._hydrological_year import (
 
 
 @dataclass
-class CharacteristicValues:
+class CharacteristicValues(JsonResultMixin):
     """Second-degree characteristic flow/stage values (Polish system).
 
     Attributes
@@ -84,7 +85,7 @@ class CharacteristicValues:
 
 
 @dataclass
-class DailyStatistics:
+class DailyStatistics(JsonResultMixin):
     """Statistics per hydrological day-of-year.
 
     Attributes
@@ -112,7 +113,7 @@ class DailyStatistics:
 
 
 @dataclass
-class MonthlyStatistics:
+class MonthlyStatistics(JsonResultMixin):
     """Monthly statistics with confidence intervals.
 
     Attributes

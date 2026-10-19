@@ -10,6 +10,7 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.optimize import curve_fit
 
+from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError
 
 # ---------------------------------------------------------------------------
@@ -18,7 +19,7 @@ from hydrolog.exceptions import InvalidParameterError
 
 
 @dataclass
-class RatingCurveResult:
+class RatingCurveResult(JsonResultMixin):
     """
     Result of rating curve fitting Q = a * (H - H0)^b.
 
@@ -50,7 +51,7 @@ class RatingCurveResult:
 
 
 @dataclass
-class WaterLevelZones:
+class WaterLevelZones(JsonResultMixin):
     """
     Rybczyński water level zones.
 
@@ -83,7 +84,7 @@ class WaterLevelZones:
 
 
 @dataclass
-class FrequencyDistributionResult:
+class FrequencyDistributionResult(JsonResultMixin):
     """
     Result of water level frequency distribution analysis.
 

@@ -7,9 +7,11 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import NDArray
 
+from hydrolog._serialization import JsonResultMixin
+
 
 @dataclass
-class EmpiricalFrequency:
+class EmpiricalFrequency(JsonResultMixin):
     """Empirical frequency (plotting positions).
 
     Parameters

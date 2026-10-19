@@ -6,11 +6,12 @@ from typing import Optional
 import numpy as np
 from numpy.typing import NDArray
 
+from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError
 
 
 @dataclass
-class HypsometricResult:
+class HypsometricResult(JsonResultMixin):
     """
     Result of hypsometric curve analysis.
 

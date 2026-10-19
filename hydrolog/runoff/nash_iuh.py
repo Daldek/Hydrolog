@@ -29,11 +29,12 @@ from numpy.typing import NDArray
 from scipy.optimize import brentq
 from scipy.special import gamma
 
+from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError
 
 
 @dataclass
-class LutzCalculationResult:
+class LutzCalculationResult(JsonResultMixin):
     """
     Intermediate calculation results from Lutz method.
 
@@ -110,7 +111,7 @@ class LutzCalculationResult:
 
 
 @dataclass
-class IUHResult:
+class IUHResult(JsonResultMixin):
     """
     Result of Instantaneous Unit Hydrograph generation.
 
@@ -150,7 +151,7 @@ class IUHResult:
 
 
 @dataclass
-class NashUHResult:
+class NashUHResult(JsonResultMixin):
     """
     Result of Nash Unit Hydrograph (finite duration D).
 

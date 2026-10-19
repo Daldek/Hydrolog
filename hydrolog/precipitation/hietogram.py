@@ -7,11 +7,12 @@ from typing import Tuple
 import numpy as np
 from numpy.typing import NDArray
 
+from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError
 
 
 @dataclass
-class HietogramResult:
+class HietogramResult(JsonResultMixin):
     """
     Result of hyetograph generation.
 

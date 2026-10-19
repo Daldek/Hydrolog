@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Dict, Optional, Tuple, Union
 
+from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError
 
 
@@ -194,7 +195,7 @@ _CN_TABLE: Dict[Tuple[LandCover, Optional[HydrologicCondition]], Dict[str, int]]
 
 
 @dataclass
-class CNLookupResult:
+class CNLookupResult(JsonResultMixin):
     """
     Result of CN lookup operation.
 
