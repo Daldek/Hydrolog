@@ -620,7 +620,10 @@ class HydrologyReportGenerator:
 
         Applies the rules of ``WatershedParameters.calculate_tc``: the length is
         the channel length, else the watershed length; the slope is the channel
-        slope, else the mean slope, else the relief over the length.
+        slope, else the mean slope, else the relief over the length (NRCS takes
+        the mean slope of the watershed first: Y of TR-55 is the average land
+        slope); FAA and Kerby time the overland flow, so they take
+        ``overland_length_km`` and ``overland_slope_m_per_m``, never the channel.
         """
         if watershed_params is None:
             return {}
@@ -631,9 +634,10 @@ class HydrologyReportGenerator:
         if method == "kirpich":
             return _present(length_km=length_km, slope_m_per_m=slope)
         if method == "nrcs":
+            land_slope = _slope_m_per_m(values, length_km, land_first=True)
             return _present(
                 length_km=length_km,
-                slope_percent=None if slope is None else slope * 100.0,
+                slope_percent=None if land_slope is None else land_slope * 100.0,
             )
         if method == "giandotti":
             return _present(
@@ -643,14 +647,14 @@ class HydrologyReportGenerator:
             )
         if method == "faa":
             return _present(
-                length_km=length_km,
-                slope_m_per_m=slope,
+                length_km=values.get("overland_length_km"),
+                slope_m_per_m=values.get("overland_slope_m_per_m"),
                 runoff_coeff=values.get("runoff_coeff"),
             )
         if method == "kerby":
             return _present(
-                length_km=length_km,
-                slope_m_per_m=slope,
+                length_km=values.get("overland_length_km"),
+                slope_m_per_m=values.get("overland_slope_m_per_m"),
                 retardance=values.get("retardance"),
             )
         if method == "kerby_kirpich":
@@ -723,16 +727,20 @@ def _present(**values: Any) -> Dict[str, Any]:
 
 
 def _slope_m_per_m(
-    values: Dict[str, Any], length_km: Optional[float]
+    values: Dict[str, Any], length_km: Optional[float], land_first: bool = False
 ) -> Optional[float]:
     """Slope a time of concentration method is fed with (``calculate_tc`` rule).
 
-    The channel slope, else the mean slope, else the relief over the length.
+    The channel slope, else the mean slope, else the relief over the length; with
+    ``land_first`` (NRCS) the mean slope of the watershed comes before the channel
+    slope.
     """
-    if values.get("channel_slope_m_per_m") is not None:
-        return float(values["channel_slope_m_per_m"])
-    if values.get("mean_slope_percent") is not None:
-        return float(values["mean_slope_percent"]) / 100.0
+    channel = values.get("channel_slope_m_per_m")
+    mean = values.get("mean_slope_percent")
+    mean = None if mean is None else float(mean) / 100.0
+    for slope in (mean, channel) if land_first else (channel, mean):
+        if slope is not None:
+            return float(slope)
     relief_m = values.get("relief_m")
     if (
         relief_m is None

@@ -23,7 +23,7 @@ Skróty w nazwach opcji i wynikach: `tc` — czas koncentracji [min]; `CN` — l
 
 | Interfejs | Odkrywanie | Wywołanie | Wynik | Błąd |
 |---|---|---|---|---|
-| Python | `data_commands()`, `command_schema()` z `hydrolog.catalog` | funkcja z `hydrolog.operations` (argumenty nazwane = opcje) albo `run_command("<grupa> <komenda>", {...})` | obiekt wynikowy z `to_dict()` i `to_json()`; `run_command` zwraca kopertę (`CommandResult`) | wyjątek `HydrologError` (`code`, `hint`, `details`) |
+| Python | `data_commands()`, `command_schema()` z `hydrolog.catalog` | funkcja z `hydrolog.operations` (argumenty nazwane = opcje) albo `run_command("<grupa> <komenda>", {...})` | funkcja operacji zwraca obiekt wynikowy z `to_dict()` i `to_json()` albo `OperationOutput(result, notices, files)` (wynik w `.result`, ostrzeżenia w `.notices`, zapisane pliki w `.files`); `run_command` zawsze zwraca kopertę (`CommandResult` z `to_dict()` i `to_json()`) | wyjątek `HydrologError` (`code`, `hint`, `details`) |
 | CLI | `hydrolog commands list`, `hydrolog commands schema`, `--schema` | `hydrolog <grupa> <komenda> --opcja wartość` | podsumowanie tekstowe; z `--json` koperta w jednej linii stdout | tekst na stderr albo, z `--json`, jedna linia `hydrolog-error/1`; kod wyjścia z rejestru |
 | MCP | `tools/list` | narzędzie `<operation_id>` z argumentami = opcjami | `structuredContent` = koperta (ten sam JSON jako tekst) | `isError: true` i dokument `hydrolog-error/1` |
 

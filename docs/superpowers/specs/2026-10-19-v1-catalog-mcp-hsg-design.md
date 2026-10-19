@@ -47,7 +47,9 @@ hydrolog/
 │   ├── texture.py          # USDA texture triangle, texture→HSG (numpy only)
 │   ├── hsg.py              # classify_hsg(), hsg_statistics_array(), HsgStatistics
 │   └── raster.py           # GeoTIFF IO, needs extra [raster] (rasterio, pyproj)
-├── operations.py           # NEW: one public function per catalog command (section 6.3)
+├── operations/             # NEW: operation layer, one module per command group (section 6.3)
+│   ├── __init__.py         # re-exports one public function per catalog command
+│   └── <group>.py          # tc.py, cn.py, ..., meta.py (the `commands` group)
 ├── catalog/                # NEW: command catalog (section 6)
 │   ├── __init__.py         # data_commands, command_schema, validate_command, run_command
 │   ├── spec.py             # Command, Option dataclasses
@@ -161,13 +163,18 @@ commands with an output path option.
   given, every path must be inside one of them → `ForbiddenPathError`), call the operation
   function with keyword arguments, wrap the result.
 
-### 6.3 Operation layer (`hydrolog/operations.py`)
+### 6.3 Operation layer (`hydrolog/operations/`)
 
 One public, documented (NumPy docstring, full type hints, `Literal` for choices) function per
 catalog command, keyword-only, taking JSON-friendly inputs (numbers, strings, lists, paths)
-and returning a `JsonResultMixin` object or a small result dataclass defined there. This is
-the surface for Retman handlers and `retman-scaffold` (signature + docstring parsing).
-Operations compose the existing classes; they contain no new hydrology.
+and returning a `JsonResultMixin` object (a small result dataclass defined in the module of
+its group) or, when the command has notices or writes files, an
+`OperationOutput(result, notices, files)` (return protocol: section 6.4 and
+`catalog/envelope.py`). The functions live in one module per command group
+(`operations/tc.py` implements `catalog/groups/tc.py`) and are re-exported by
+`operations/__init__.py`, so `Command.function` = `"hydrolog.operations:<name>"` resolves to
+the package. This is the surface for Retman handlers and `retman-scaffold` (signature +
+docstring parsing). Operations compose the existing classes; they contain no new hydrology.
 
 ### 6.4 Envelope (`catalog/envelope.py`)
 

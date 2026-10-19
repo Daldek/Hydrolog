@@ -80,11 +80,12 @@ FULL_WATERSHED = {
 }
 
 # What each method of ``WatershedParameters.calculate_tc`` cannot do without, in the
-# order the library reports it (besides the always present watershed fields).
+# order the library reports it (besides the always present watershed fields). FAA and
+# Kerby time the overland flow, so they need the overland flow length and slope.
 REQUIRED_FIELDS = {
     "nrcs": ("cn",),
-    "faa": ("runoff_coeff",),
-    "kerby": ("retardance",),
+    "faa": ("runoff_coeff", "overland_length_km", "overland_slope_m_per_m"),
+    "kerby": ("retardance", "overland_length_km", "overland_slope_m_per_m"),
     "kerby_kirpich": (
         "retardance",
         "overland_length_km",
@@ -232,6 +233,49 @@ class TestTimeOfConcentration:
         )
         again = quietly(ConcentrationTime.kerby_kirpich, **result.parameters)
         assert again == pytest.approx(result.tc_min, rel=1e-12)
+
+    @pytest.mark.parametrize(
+        "method, extra",
+        [("faa", {"runoff_coeff": 0.45}), ("kerby", {"retardance": 0.4})],
+    )
+    def test_overland_flow_methods_report_the_overland_path_not_the_channel(
+        self, method, extra
+    ):
+        """FAA and Kerby time the overland flow (0.25 km at 0.008), not the 10.8 km
+        channel: the result is inside the range of the formulas, so no notices."""
+        result, notices = unwrap(
+            ops.tc_watershed(watershed=FULL_WATERSHED, method=method)
+        )
+        assert result.parameters == {
+            "length_km": 0.25,
+            "slope_m_per_m": 0.008,
+            **extra,
+        }
+        assert notices == []
+
+    def test_nrcs_reports_the_land_slope_of_the_watershed(self):
+        """TR-55: Y is the average land slope (0.025), not the channel slope (0.018)."""
+        result, _ = unwrap(ops.tc_watershed(watershed=FULL_WATERSHED, method="nrcs"))
+        assert result.parameters == {
+            "length_km": 10.8,
+            "slope_m_per_m": 0.025,
+            "cn": 72.0,
+        }
+
+    def test_a_watershed_with_a_channel_only_has_no_faa_or_kerby(self):
+        """No silent substitution of the channel: the error names the fields and the
+        alternative."""
+        data = without(FULL_WATERSHED, "overland_length_km", "overland_slope_m_per_m")
+        with pytest.raises(InvalidParameterError) as caught:
+            ops.tc_watershed(watershed=data, method="kerby")
+        assert caught.value.code == "validation_error"
+        assert caught.value.details == {
+            "option": "watershed",
+            "reason": "missing_field",
+            "method": "kerby",
+            "missing": ["overland_length_km", "overland_slope_m_per_m"],
+        }
+        assert "kerby_kirpich" in caught.value.hint
 
     def test_a_mean_elevation_of_zero_is_a_value_not_a_missing_one(self):
         """Giandotti: H = 0 - (-30) = 30 m; the middle of the range would give 65 m."""
@@ -1492,6 +1536,18 @@ STORM = {
     "timestep_min": 5.0,
 }
 SERIES = [5.0, 10.0, 15.0, 10.0, 5.0, 3.0]
+# A watershed without CN (L = 12 km, land slope 2.5 %) and a 50 mm / 120 min beta
+# storm: the case of the review of the CN override (tc by NRCS).
+OVERRIDE_WATERSHED = {
+    "name": "Zlewnia CN",
+    "area_km2": 45.0,
+    "perimeter_km": 32.0,
+    "length_km": 12.0,
+    "elevation_min_m": 150.0,
+    "elevation_max_m": 520.0,
+    "mean_slope_m_per_m": 0.025,
+}
+OVERRIDE_STORM = {"hietogram_type": "beta", "total_mm": 50.0, "duration_min": 120.0}
 
 
 def library_run(
@@ -1768,6 +1824,109 @@ class TestHydrographGenerate:
         assert result.cn == 85.0
         assert result.peak_discharge_m3s == pytest.approx(expected.peak_discharge_m3s)
 
+    def test_cn_override_reaches_the_nrcs_time_of_concentration(self):
+        """The CN next to a watershed is the CN of the whole computation.
+
+        Watershed with CN 60 in the file (L = 12 km, S = 0.025), ``cn=85`` given,
+        beta storm of 50 mm in 120 min. The NRCS lag equation took the retention of
+        the CN of the file (S = 169.3 mm) while the runoff used CN 85: tc = 657.7 min,
+        Qmax = 27.64 m3/s at 440 min. With the CN of the computation (S = 44.8 mm)
+        tc = 322.1 min, Qmax = 55.62 m3/s at 240 min (twice the peak).
+        """
+        data = {**OVERRIDE_WATERSHED, "cn": 60}
+        result, _ = unwrap(
+            ops.hydrograph_generate(
+                watershed=data, cn=85, tc_method="nrcs", **OVERRIDE_STORM
+            )
+        )
+        assert result.cn == 85.0
+        assert result.tc_min == pytest.approx(322.09, abs=0.01)
+        assert result.peak_discharge_m3s == pytest.approx(55.625, abs=0.005)
+        assert result.time_to_peak_min == 240.0
+
+        # what the computation did before: tc of the CN of the file, runoff of CN 85
+        tc_of_the_file = WatershedParameters.from_dict(data).calculate_tc("nrcs")
+        before, _ = unwrap(
+            ops.hydrograph_generate(
+                watershed=data, cn=85, tc_min=tc_of_the_file, **OVERRIDE_STORM
+            )
+        )
+        assert before.tc_min == pytest.approx(657.73, abs=0.01)
+        assert before.peak_discharge_m3s == pytest.approx(27.637, abs=0.005)
+        assert before.time_to_peak_min == 440.0
+
+        # the override acts as if the CN were written into the watershed
+        written, _ = unwrap(
+            ops.hydrograph_generate(
+                watershed={**data, "cn": 85}, tc_method="nrcs", **OVERRIDE_STORM
+            )
+        )
+        assert result.tc_min == pytest.approx(written.tc_min, rel=1e-12)
+        assert_arrays(result.discharge_m3s, written.discharge_m3s)
+
+    def test_cn_override_is_what_the_run_and_its_tc_inputs_report(self):
+        """``tc_parameters`` and the watershed of the run carry the CN used."""
+        run = compute_hydrograph(
+            watershed={**OVERRIDE_WATERSHED, "cn": 60},
+            cn=85,
+            tc_method="nrcs",
+            **OVERRIDE_STORM,
+        )
+        assert run.cn == 85.0
+        assert run.tc_parameters["cn"] == 85.0
+        assert run.watershed.cn == 85
+
+    def test_cn_override_gives_nrcs_the_cn_a_watershed_lacks(self):
+        """No ``cn`` in the file and ``cn`` given: NRCS works (it was "missing: cn")."""
+        result, _ = unwrap(
+            ops.hydrograph_generate(
+                watershed=OVERRIDE_WATERSHED, cn=85, tc_method="nrcs", **OVERRIDE_STORM
+            )
+        )
+        assert result.tc_min == pytest.approx(322.09, abs=0.01)
+        assert result.peak_discharge_m3s == pytest.approx(55.625, abs=0.005)
+        with pytest.raises(InvalidParameterError) as caught:
+            ops.hydrograph_generate(
+                watershed=OVERRIDE_WATERSHED, tc_method="nrcs", **OVERRIDE_STORM
+            )
+        assert caught.value.details["option"] == "cn"
+        assert caught.value.details["reason"] == "required"
+
+    def test_a_watershed_cn_is_used_without_an_override(self):
+        """Without ``cn`` the watershed value is the CN of runoff and of tc."""
+        data = {**OVERRIDE_WATERSHED, "cn": 72}
+        run = compute_hydrograph(watershed=data, tc_method="nrcs", **OVERRIDE_STORM)
+        assert run.cn == 72.0 and run.tc_parameters["cn"] == 72.0
+        assert run.tc_min == pytest.approx(
+            WatershedParameters.from_dict(data).calculate_tc("nrcs")
+        )
+
+    def test_snyder_hydrograph_uses_the_unit_hydrograph_of_the_time_step(self):
+        """Snyder (1938): the unit hydrograph of D = the 5-minute step, not of tD.
+
+        Review case (45 km2, L = 12 km, Lc = 6 km, CN 72, beta 50 mm / 120 min): the
+        unit hydrograph had tp = 354.2 min and qp = 1.379 m3/s/mm and the hydrograph
+        Qmax = 9.76 m3/s at 405 min (the values for the standard duration tD = 59 min).
+        For D = 5 min: tp = 313.7 min, qp = 1.542 m3/s/mm, Qmax = 10.90 m3/s at 365 min.
+        """
+        result, _ = unwrap(
+            ops.hydrograph_generate(
+                area_km2=45.0,
+                cn=72,
+                hietogram_type="beta",
+                total_mm=50.0,
+                duration_min=120.0,
+                timestep_min=5.0,
+                uh_model="snyder",
+                snyder_length_km=12.0,
+                snyder_centroid_length_km=6.0,
+            )
+        )
+        assert result.uh_time_to_peak_min == pytest.approx(313.66, abs=0.01)
+        assert result.uh_peak_discharge_m3s_per_mm == pytest.approx(1.5424, abs=1e-4)
+        assert result.peak_discharge_m3s == pytest.approx(10.9023, abs=1e-4)
+        assert result.time_to_peak_min == 365.0
+
     def test_watershed_file(self, tmp_path):
         """A ``WatershedParameters`` JSON file works like the inline object."""
         path = tmp_path / "zlewnia.json"
@@ -2039,10 +2198,15 @@ class TestHydrographGenerate:
         assert caught.value.details["reason"] == reason
 
     def test_missing_tc_fields_are_listed(self):
-        """A watershed without ``runoff_coeff`` cannot use the FAA method."""
+        """A watershed with a channel only cannot use the FAA method: it needs the
+        overland flow path and the runoff coefficient."""
         with pytest.raises(InvalidParameterError) as caught:
             ops.hydrograph_generate(watershed=WATERSHED, tc_method="faa", **STORM)
-        assert caught.value.details["missing"] == ["runoff_coeff"]
+        assert caught.value.details["missing"] == [
+            "runoff_coeff",
+            "overland_length_km",
+            "overland_slope_m_per_m",
+        ]
 
     def test_model_parameter_ranges_are_validated_by_the_library(self):
         """A non-positive Nash ``n`` is the library's validation error."""
@@ -2063,8 +2227,10 @@ class TestHydrographGenerate:
         )
         tc = WatershedParameters.from_dict(WATERSHED).calculate_tc(method="nrcs")
         assert run.tc_min == pytest.approx(tc) and run.tc_method == "nrcs"
+        # NRCS takes the average land slope of the watershed (0.025), not the slope
+        # of the channel (0.018)
         assert run.tc_parameters == pytest.approx(
-            {"length_km": 10.8, "slope_m_per_m": 0.018, "cn": 72.0}
+            {"length_km": 10.8, "slope_m_per_m": 0.025, "cn": 72.0}
         )
         assert (run.area_km2, run.cn, run.amc, run.ia_coefficient) == (
             45.3,

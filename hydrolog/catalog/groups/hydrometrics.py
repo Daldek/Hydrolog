@@ -29,7 +29,10 @@ COMMANDS: tuple[Command, ...] = (
             "stanu wody H (cm albo m) i przepływu Q [m³/s] nieliniową metodą "
             "najmniejszych kwadratów (`scipy.optimize.curve_fit`; więzy a ≥ 0, b ≥ 0, "
             "H₀ poniżej najniższego stanu z pomiarów; punkt startowy a = 1, b = 1,5, "
-            "H₀ = `h0_initial`). Z `remove_outliers=true` po pierwszym dopasowaniu "
+            "H₀ = `h0_initial`, domyślnie dobierany z danych: najniższy stan minus "
+            "10 % rozstępu stanów, co najmniej jedna jednostka, więc działa także dla "
+            "stanów poniżej zera wodowskazu). Z `remove_outliers=true` po pierwszym "
+            "dopasowaniu "
             "odrzucane są pary, których reszta przekracza `outlier_std` odchyleń "
             "standardowych, i krzywa jest dopasowywana ponownie (o ile zostaną co "
             "najmniej 3 pary). Wymaga co najmniej 3 par; pary z brakującą wartością "
@@ -45,8 +48,11 @@ COMMANDS: tuple[Command, ...] = (
             "level H (cm or m) and discharge Q [m³/s] by non-linear least squares "
             "(`scipy.optimize.curve_fit`; constraints a ≥ 0, b ≥ 0, H₀ below the "
             "lowest observed level; starting point a = 1, b = 1.5, H₀ = "
-            "`h0_initial`). With `remove_outliers=true` the pairs whose residual "
-            "exceeds `outlier_std` standard deviations are dropped after the first "
+            "`h0_initial`, by default chosen from the data: the lowest level minus "
+            "10 % of the range of the levels, at least one unit, so it works for "
+            "levels below the gauge zero too). With `remove_outliers=true` the pairs "
+            "whose residual exceeds `outlier_std` standard deviations are dropped "
+            "after the first "
             "fit and the curve is fitted again (when at least 3 pairs remain). At "
             "least 3 pairs are required; pairs with a missing value (NaN) are "
             "skipped and reported in `notices`; failure to converge is "
@@ -119,13 +125,18 @@ COMMANDS: tuple[Command, ...] = (
                 type="number",
                 description=(
                     "Początkowe przybliżenie H₀, stanu zerowego przepływu, w "
-                    "jednostce stanów; musi być niższe niż najniższy stan z pomiarów."
+                    "jednostce stanów; musi być niższe niż najniższy stan z pomiarów. "
+                    "Bez tej opcji dobierane z danych (najniższy stan minus 10 % "
+                    "rozstępu stanów, co najmniej jedna jednostka), także dla stanów "
+                    "ujemnych."
                 ),
                 description_en=(
                     "Initial guess of H₀, the level of zero flow, in the unit of the "
-                    "levels; must be below the lowest observed level."
+                    "levels; must be below the lowest observed level. Without this "
+                    "option it is chosen from the data (the lowest level minus 10 % "
+                    "of the range of the levels, at least one unit), also for "
+                    "negative levels."
                 ),
-                default=0.0,
             ),
             Option(
                 name="remove_outliers",
@@ -171,6 +182,10 @@ COMMANDS: tuple[Command, ...] = (
                 "water_levels": [62, 88, 115, 142, 170, 200, 235, 270],
                 "discharges": [1.05, 3.4, 6.32, 10.48, 15.7, 20.5, 26.63, 34.92],
                 "h0_initial": 40.0,
+            },
+            {
+                "water_levels": [-10, 5, 20, 40, 80, 120],
+                "discharges": [0.5, 1.2, 2.5, 4.8, 10.1, 17.3],
             },
         ),
     ),

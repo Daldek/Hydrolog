@@ -25,7 +25,10 @@ files), :mod:`~hydrolog.catalog.dispatch` (lookup, validation, running) and
 How to add a command
 --------------------
 1. **Operation.** Add a public, documented (NumPy docstring), fully type-hinted,
-   keyword-only function to ``hydrolog/operations.py``, in the section of its group.
+   keyword-only function to the module of its group, ``hydrolog/operations/<group>.py``
+   (``operations`` is a package with one module per group; a new group gets a new
+   module), and re-export it in ``hydrolog/operations/__init__.py`` (``import`` and
+   ``__all__``), where ``function="hydrolog.operations:<name>"`` resolves.
    Its parameters are named exactly like the options, take JSON-friendly values
    (numbers, strings, lists, paths as ``str``) and have a Python default wherever the
    option has no ``required=True``. It composes existing classes (no new

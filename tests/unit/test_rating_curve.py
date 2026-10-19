@@ -152,6 +152,91 @@ class TestRatingCurveErrors:
         assert isinstance(error.__cause__, RuntimeError)
 
 
+class TestRatingCurveDefaultStart:
+    """The start of H0 is chosen from the data when ``h0_initial`` is not given.
+
+    Regression: the fixed default 0.0 had to lie below the lowest level, so a series
+    with a reading at or below zero (a stage of -10 cm is normal) could not be fitted
+    without choosing a start by hand: "h0_initial must be a finite number below the
+    lowest water level (-10), got 0.0".
+    """
+
+    NEGATIVE_LEVELS = np.array([-10.0, 5.0, 20.0, 40.0, 80.0, 120.0])
+    NEGATIVE_FLOWS = np.array([0.5, 1.2, 2.5, 4.8, 10.1, 17.3])
+
+    def test_a_series_with_negative_levels_can_be_fitted_without_a_start(self):
+        from hydrolog.hydrometrics import RatingCurve
+
+        result = RatingCurve(self.NEGATIVE_LEVELS, self.NEGATIVE_FLOWS).fit()
+        assert result.a == pytest.approx(0.004917, rel=1e-3)
+        assert result.b == pytest.approx(1.640, abs=1e-3)
+        assert result.h0 == pytest.approx(-25.17, abs=0.01)
+        assert result.r_squared > 0.999
+
+    @pytest.mark.parametrize(
+        ("levels", "start"),
+        [
+            ([60.0, 80.0, 100.0, 130.0, 160.0, 200.0], 60.0 - 14.0),
+            ([-10.0, 5.0, 20.0, 40.0, 80.0, 120.0], -10.0 - 13.0),
+            ([-300.0, -250.0, -200.0, -100.0], -300.0 - 20.0),
+            ([1.2, 1.5, 1.9, 2.4], 1.2 - 1.0),
+        ],
+        ids=["a tenth of the range", "negative", "all negative", "at least one unit"],
+    )
+    def test_the_start_is_a_tenth_of_the_range_below_the_lowest_level(
+        self, monkeypatch, levels, start
+    ):
+        """``min(H) - max(1, 0.1 * range)``, as given to the optimiser."""
+        from hydrolog.hydrometrics import RatingCurve, rating_curve
+
+        starts = []
+        real = rating_curve.curve_fit
+
+        def spy(*args, **kwargs):
+            starts.append(kwargs["p0"][2])
+            return real(*args, **kwargs)
+
+        monkeypatch.setattr(rating_curve, "curve_fit", spy)
+        h = np.array(levels)
+        h0 = h.min() - 0.3 * (h.max() - h.min())
+        RatingCurve(h, 0.05 * (h - h0) ** 1.6).fit()
+        assert starts == [pytest.approx(start)]
+
+    def test_no_start_is_the_same_as_the_documented_start(self):
+        from hydrolog.hydrometrics import RatingCurve
+
+        h = np.linspace(60.0, 200.0, 20)
+        q = 2.5 * (h - 50.0) ** 1.8
+        assert RatingCurve(h, q).fit() == RatingCurve(h, q).fit(h0_initial=46.0)
+        assert RatingCurve(h, q).fit(h0_initial=None) == RatingCurve(h, q).fit()
+
+    def test_the_default_start_gives_the_solution_of_the_explicit_starts(self):
+        """Noisy synthetic curve, levels in m: the start does not change the fit."""
+        from hydrolog.hydrometrics import RatingCurve
+
+        rng = np.random.default_rng(11)
+        h = np.sort(rng.uniform(-0.4, 2.1, 25))
+        q = 12.0 * (h + 0.9) ** 1.7 * np.exp(rng.normal(0.0, 0.03, 25))
+        by_default = RatingCurve(h, q).fit()
+        for start in (h.min() - 0.05, h.min() - 1.0, h.min() - 3.0):
+            explicit = RatingCurve(h, q).fit(h0_initial=start)
+            assert explicit.h0 == pytest.approx(by_default.h0, abs=1e-3)
+            assert explicit.b == pytest.approx(by_default.b, abs=1e-3)
+        assert by_default.h0 == pytest.approx(-0.9, abs=0.1)
+        assert by_default.b == pytest.approx(1.7, abs=0.1)
+
+    @pytest.mark.parametrize("bad", [-5.0, 0.0, float("nan"), float("inf")])
+    def test_a_given_start_is_validated_whatever_the_levels(self, bad):
+        from hydrolog.exceptions import InvalidParameterError
+        from hydrolog.hydrometrics import RatingCurve
+
+        curve = RatingCurve(self.NEGATIVE_LEVELS, self.NEGATIVE_FLOWS)
+        with pytest.raises(InvalidParameterError) as caught:
+            curve.fit(h0_initial=bad)
+        assert caught.value.details["option"] == "h0_initial"
+        assert caught.value.details["maximum"] == -10.0
+
+
 class TestWaterLevelFrequency:
 
     def test_frequency_distribution(self):

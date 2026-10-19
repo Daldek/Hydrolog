@@ -21,6 +21,7 @@ from hydrolog.morphometry import (
     GeometricParameters,
     ShapeIndicators,
     SlopeParameters,
+    WatershedParameters,
 )
 
 __all__ = ["WatershedMorphometry", "morphometry_watershed"]
@@ -54,6 +55,39 @@ class WatershedMorphometry(JsonResultMixin):
     slopes: SlopeParameters
 
 
+def _slopes_from_relief_notice(
+    parameters: WatershedParameters, slopes: SlopeParameters
+) -> Notice | None:
+    """Notice that slopes given in the file are not the slopes of the result.
+
+    ``TerrainAnalysis`` derives both slopes from the relief, so ``mean_slope_m_per_m``
+    and ``channel_slope_m_per_m`` of the watershed parameters are not used here,
+    while ``tc watershed`` and ``hydrograph generate`` use them. The notice gives
+    both values of every slope that the file also supplies.
+    """
+    clauses: list[str] = []
+    if parameters.mean_slope_m_per_m is not None:
+        clauses.append(
+            f"watershed slope {slopes.watershed_slope_m_per_m:.4g} m/m (relief ratio "
+            f"H/L) instead of mean_slope_m_per_m = {parameters.mean_slope_m_per_m:g} m/m"
+        )
+    if parameters.channel_slope_m_per_m is not None:
+        clauses.append(
+            f"channel slope {slopes.channel_slope_m_per_m:.4g} m/m (H / channel "
+            f"length) instead of channel_slope_m_per_m = "
+            f"{parameters.channel_slope_m_per_m:g} m/m"
+        )
+    if not clauses:
+        return None
+    return Notice(
+        "info",
+        "slopes_from_relief",
+        "The slopes are computed from the relief and the slopes of the watershed "
+        "parameters are not used here: " + "; ".join(clauses) + ". The commands for "
+        "the time of concentration use the given slopes.",
+    )
+
+
 def morphometry_watershed(
     *,
     watershed: Mapping[str, Any] | None = None,
@@ -65,7 +99,10 @@ def morphometry_watershed(
     :class:`~hydrolog.morphometry.TerrainAnalysis` from the watershed parameters
     (``WatershedParameters.to_geometry()`` and ``to_terrain()``) and collects their
     indicators. The watershed slope is the relief ratio H / L (not a DEM-derived
-    slope); the main channel slope is H divided by the channel length.
+    slope); the main channel slope is H divided by the channel length. The slopes
+    ``mean_slope_m_per_m`` and ``channel_slope_m_per_m`` that the parameters may
+    carry are not used here (the time of concentration commands do use them): a
+    notice gives both values.
 
     Parameters
     ----------
@@ -80,9 +117,10 @@ def morphometry_watershed(
     -------
     OperationOutput
         ``result`` is a :class:`WatershedMorphometry`. The notices say when the mean
-        elevation was approximated by ``(min + max) / 2`` (no ``elevation_mean_m``) or
+        elevation was approximated by ``(min + max) / 2`` (no ``elevation_mean_m``),
         the channel length was taken equal to the watershed length (no
-        ``channel_length_km``).
+        ``channel_length_km``), or the parameters carry a slope that is not used
+        (``slopes_from_relief``: the computed value and the given one).
 
     Raises
     ------
@@ -134,4 +172,7 @@ def morphometry_watershed(
             details={"reason": "arithmetic"},
             hint="Check the units: lengths in km, area in km2, elevations in m.",
         ) from exc
+    slopes_notice = _slopes_from_relief_notice(parameters, result.slopes)
+    if slopes_notice is not None:
+        notices.append(slopes_notice)
     return OperationOutput(result, notices)

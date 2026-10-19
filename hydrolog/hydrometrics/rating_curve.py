@@ -195,7 +195,7 @@ class RatingCurve:
 
     def fit(
         self,
-        h0_initial: float = 0.0,
+        h0_initial: float | None = None,
         remove_outliers: bool = False,
         outlier_std: float = 2.0,
     ) -> RatingCurveResult:
@@ -204,9 +204,14 @@ class RatingCurve:
 
         Parameters
         ----------
-        h0_initial : float, optional
-            Initial guess for H0 (zero-flow level), by default 0.0. Must be a
-            finite number below the lowest water level (H0 is bounded by it).
+        h0_initial : float or None, optional
+            Initial guess for H0 (zero-flow level), in the unit of the water
+            levels. By default (``None``) it is chosen from the data, below the
+            lowest water level by a tenth of the range of the levels and by at
+            least one unit: ``min(H) - max(1, 0.1 * (max(H) - min(H)))``. Such a
+            start is admissible whatever the sign of the levels (stages below the
+            gauge zero are normal). A given value must be a finite number below
+            the lowest water level (H0 is bounded by it).
         remove_outliers : bool, optional
             If True, remove points whose residuals exceed ``outlier_std``
             standard deviations before the final fit, by default False.
@@ -222,15 +227,35 @@ class RatingCurve:
         Raises
         ------
         InvalidParameterError
-            If ``h0_initial`` is not a finite number below the lowest water level
-            (``details``: ``option``, ``reason``, ``maximum``, ``value``).
+            If ``h0_initial`` is given and is not a finite number below the lowest
+            water level (``details``: ``option``, ``reason``, ``maximum``,
+            ``value``).
         RatingCurveFitError
             If the optimiser does not converge or the power law cannot be
             evaluated for the data. It is a ``CalculationError``, and for
             compatibility with earlier versions also an ``InvalidParameterError``.
+
+        Notes
+        -----
+        The rating equation is the power-law stage-discharge relation
+        ``Q = a (H - H0)^b`` with ``H0`` the stage of zero flow (ISO 1100-2:2010,
+        Hydrometry - Measurement of liquid flow in open channels - Part 2:
+        Determination of the stage-discharge relationship). The least-squares
+        problem is not convex in ``H0``: the start must be admissible (below every
+        level) and should not be far from the solution.
+
+        Versions before 1.0.0 started from ``h0_initial = 0.0``, which is not
+        below the lowest level of a gauge with readings at or below zero (stages
+        below the gauge zero, e.g. -10 cm, are normal): such a series could not be
+        fitted without choosing a start by hand. In a benchmark of synthetic
+        rating curves (levels in cm and m, positive and negative, 1-8 % noise,
+        6-30 gaugings) starts between 0.1 and 1 range below the lowest level all
+        reached the best least-squares solution.
         """
         h_min = float(np.min(self._h))
-        if not (math.isfinite(h0_initial) and h0_initial < h_min):
+        if h0_initial is None:
+            h0_initial = _default_h0_initial(self._h)
+        elif not (math.isfinite(h0_initial) and h0_initial < h_min):
             raise InvalidParameterError(
                 f"h0_initial must be a finite number below the lowest water level "
                 f"({h_min:g}), got {h0_initial!r}",
@@ -348,8 +373,20 @@ class RatingCurve:
 
 
 # ---------------------------------------------------------------------------
-# Module-level helper (used inside RatingCurve._fit_once via curve_fit)
+# Module-level helpers (``_power_law`` is used inside RatingCurve._fit_once via
+# curve_fit; ``_default_h0_initial`` by RatingCurve.fit)
 # ---------------------------------------------------------------------------
+
+
+def _default_h0_initial(water_levels: NDArray[np.float64]) -> float:
+    """Data-dependent start of H0: below the lowest level by a tenth of the range.
+
+    ``min(H) - max(1, 0.1 * (max(H) - min(H)))``, in the unit of the levels: always
+    below every level, whatever their sign.
+    """
+    h_min = float(np.min(water_levels))
+    span = float(np.max(water_levels)) - h_min
+    return h_min - max(1.0, 0.1 * span)
 
 
 def _power_law(

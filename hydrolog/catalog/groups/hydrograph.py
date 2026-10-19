@@ -80,13 +80,15 @@ GENERATE_OPTIONS: tuple[Option, ...] = (
         type="number",
         description=(
             "Liczba krzywej CN dla AMC II, 1–100 (może być ułamkowa, np. z `cn "
-            "weighted`). Wymagana z `area_km2`; obok zlewni nadpisuje jej `cn` "
-            "(a gdy zlewnia nie ma `cn`, jest wymagana)."
+            "weighted`). Wymagana z `area_km2`; obok zlewni nadpisuje jej `cn` w "
+            "całym obliczeniu, także w czasie koncentracji metodą nrcs (a gdy "
+            "zlewnia nie ma `cn`, jest wymagana)."
         ),
         description_en=(
             "Curve Number CN for AMC II, 1-100 (may be fractional, e.g. from "
             "`cn weighted`). Required with `area_km2`; next to a watershed it "
-            "overrides its `cn` (and is required when the watershed has none)."
+            "overrides its `cn` in the whole computation, also in the time of "
+            "concentration by nrcs (and is required when the watershed has none)."
         ),
         minimum=1,
         maximum=100,
@@ -365,18 +367,23 @@ COMMANDS: tuple[Command, ...] = (
             "(4) dyskretny splot opadu efektywnego z hydrogramem jednostkowym. "
             "Zlewnia: `watershed`/`watershed_file` (WatershedParameters: "
             "powierzchnia, CN, dane do tc) albo `area_km2` + `cn`; `cn` podane "
-            "obok zlewni nadpisuje jej wartość. Czas koncentracji (scs, clark): "
+            "obok zlewni nadpisuje jej wartość w całym obliczeniu, także w czasie "
+            "koncentracji metodą nrcs. Czas koncentracji (scs, clark): "
             "`tc_min` albo, dla zlewni, liczony metodą `tc_method` (domyślnie "
             "kirpich; pola zlewni: patrz `tc watershed`). Opcje spoza wybranego "
             "wariantu (typu hietogramu, modelu) są odrzucane. Model snyder ma "
-            "własne równanie lagu — `tc_min` nie jest do niego używany. Wynik: "
+            "własne równanie lagu — `tc_min` nie jest do niego używany, a jego "
+            "hydrogram jednostkowy jest liczony dla czasu trwania opadu równego "
+            "krokowi `timestep_min` (tLR, tpR i qpR wg Snydera), bo splot traktuje "
+            "go jako odpowiedź na 1 mm opadu efektywnego w jednym kroku. Wynik: "
             "szczyt Q [m³/s], czas do szczytu [min], objętość odpływu [m³], "
             "współczynnik odpływu, bilans (opad, opad efektywny, S, Ia, CN po "
             "korekcie AMC), parametry hydrogramu jednostkowego oraz pełne "
             "szeregi: czas, przepływ, opad i opad efektywny w krokach. "
             "Informacje: ostrzeżenia o parametrach poza typowym zakresem wzorów "
             "tc, λ ≠ 0,2, duration_min niepodzielne przez krok. Literatura: "
-            "USDA-NRCS (1986), TR-55; NEH Part 630 (rozdz. 10, 16)."
+            "USDA-NRCS (1986), TR-55; NEH Part 630 (rozdz. 10, 15, 16); Snyder, "
+            "F.F. (1938), Synthetic unit-graphs, Trans. AGU 19, 447–454."
         ),
         description_en=(
             "Design direct-runoff hydrograph of a catchment (HydrographGenerator): "
@@ -394,19 +401,26 @@ COMMANDS: tuple[Command, ...] = (
             "discrete convolution of the effective precipitation with the unit "
             "hydrograph. Catchment: `watershed`/`watershed_file` "
             "(WatershedParameters: area, CN, data for tc) or `area_km2` + `cn`; "
-            "a `cn` given next to a watershed overrides its value. Time of "
+            "a `cn` given next to a watershed overrides its value in the whole "
+            "computation, also in the time of concentration by nrcs. Time of "
             "concentration (scs, clark): `tc_min` or, for a watershed, computed "
             "by `tc_method` (default kirpich; watershed fields: see `tc "
             "watershed`). Options outside the chosen variant (hyetograph type, "
             "model) are rejected. The snyder model has its own lag equation - "
-            "`tc_min` is not used by it. Result: peak Q [m3/s], time to peak "
+            "`tc_min` is not used by it, and its unit hydrograph is computed for "
+            "a rainfall duration equal to the step `timestep_min` (Snyder's tLR, "
+            "tpR and qpR), because the convolution takes it as the response to "
+            "1 mm of effective precipitation in one step. Result: peak Q [m3/s], "
+            "time to peak "
             "[min], runoff volume [m3], runoff coefficient, the balance "
             "(precipitation, effective precipitation, S, Ia, CN after the AMC "
             "adjustment), the unit hydrograph parameters and the full series: "
             "time, discharge, precipitation and effective precipitation per "
             "step. Notices: warnings about parameters outside the typical range "
             "of the tc formulas, λ != 0.2, a duration not divisible by the step. "
-            "Reference: USDA-NRCS (1986), TR-55; NEH Part 630 (chapters 10, 16)."
+            "Reference: USDA-NRCS (1986), TR-55; NEH Part 630 (chapters 10, 15, "
+            "16); Snyder, F.F. (1938), Synthetic unit-graphs, Trans. AGU 19, "
+            "447-454."
         ),
         function="hydrolog.operations:hydrograph_generate",
         options=GENERATE_OPTIONS,

@@ -15,9 +15,7 @@ when the extra is not installed::
     pip install hydrolog[raster]
 """
 
-import contextlib
 import math
-import os
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -26,6 +24,7 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
+from hydrolog._atomic import atomic_output
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import (
     InputDataError,
@@ -244,25 +243,20 @@ def _write_hsg_geotiff(
         "compress": "deflate",
     }
     classes = ", ".join(f"{code}={name}" for name, code in HSG_CODES.items())
-    temporary = output_path.with_name(f".{output_path.name}.{os.getpid()}.tmp")
     try:
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        with rasterio.open(temporary, "w", **profile) as dst:
-            dst.write(hsg, 1)
-            dst.update_tags(
-                1,
-                LAYER_NAME="Hydrologic Soil Group",
-                LAYER_DESCRIPTION=f"HSG classification: {classes}",
-            )
-        os.replace(temporary, output_path)
+        with atomic_output(output_path) as temporary:
+            with rasterio.open(temporary, "w", **profile) as dst:
+                dst.write(hsg, 1)
+                dst.update_tags(
+                    1,
+                    LAYER_NAME="Hydrologic Soil Group",
+                    LAYER_DESCRIPTION=f"HSG classification: {classes}",
+                )
     except OSError as exc:
         raise OutputError(
             f"Cannot write the HSG raster {output_path}: {exc}",
             details={"path": str(output_path)},
         ) from exc
-    finally:
-        with contextlib.suppress(OSError):
-            temporary.unlink()
 
 
 def hsg_from_rasters(

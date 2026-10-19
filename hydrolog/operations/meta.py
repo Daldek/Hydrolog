@@ -9,13 +9,12 @@ conventions of the operation layer are described there.
 
 from __future__ import annotations
 
-import contextlib
 import os
-import threading
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from hydrolog._atomic import atomic_output
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.agent_guide import GuideFormat, agent_guide
 from hydrolog.catalog import command_schema, data_commands
@@ -102,23 +101,15 @@ def _write_text(text: str, target: Path) -> None:
     """Write ``text`` to ``target`` atomically (written aside, then renamed).
 
     The file is UTF-8 with ``"\\n"`` line ends on every platform; missing directories
-    are created and an existing file is replaced. The temporary name holds the process
-    and thread ids: the MCP server runs calls in worker threads, and two calls may
-    write the same file.
+    are created and an existing file is replaced.
     """
-    suffix = f"{os.getpid()}.{threading.get_ident()}.tmp"
-    temporary = target.with_name(f".{target.name}.{suffix}")
     try:
-        target.parent.mkdir(parents=True, exist_ok=True)
-        temporary.write_text(text, encoding="utf-8", newline="\n")
-        os.replace(temporary, target)
+        with atomic_output(target) as temporary:
+            temporary.write_text(text, encoding="utf-8", newline="\n")
     except OSError as exc:
         raise OutputError(
             f"Cannot write the guide {target}: {exc}", details={"path": str(target)}
         ) from exc
-    finally:
-        with contextlib.suppress(OSError):
-            temporary.unlink()
 
 
 def commands_guide(
