@@ -290,7 +290,11 @@ class StreamNetwork:
         # Calculate bifurcation ratios (Rb = N_i / N_{i+1})
         bifurcation_ratios: dict[int, float] = {}
         for order in range(1, max_order):
-            if order + 1 in segment_counts and segment_counts[order + 1] > 0:
+            if (
+                order in segment_counts
+                and order + 1 in segment_counts
+                and segment_counts[order + 1] > 0
+            ):
                 bifurcation_ratios[order] = (
                     segment_counts[order] / segment_counts[order + 1]
                 )
@@ -298,7 +302,11 @@ class StreamNetwork:
         # Calculate length ratios (Rl = L_{i+1} / L_i)
         length_ratios: dict[int, float] = {}
         for order in range(1, max_order):
-            if mean_lengths[order] > 0 and order + 1 in mean_lengths:
+            if (
+                order in mean_lengths
+                and order + 1 in mean_lengths
+                and mean_lengths[order] > 0
+            ):
                 length_ratios[order] = mean_lengths[order + 1] / mean_lengths[order]
 
         # Total stream length

@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+#### `hydrolog.cli` - CLI generowane z katalogu komend (zmiana niezgodna wstecz)
+Parser argparse powstaje z `hydrolog.catalog.data_commands()`: każda komenda katalogu
+jest dostępna jako `hydrolog <grupa> <komenda> --opcje`, z pomocą, jednostkami i
+przykładami z katalogu (PL/EN). Punkt wejścia bez zmian (`hydrolog.cli.main:main`).
+- Opcje: `--kebab-case` nazw opcji katalogu; liczby i listy liczb (`--values 1,2,3`),
+  teksty, obiekty i listy obiektów jako JSON, opcje logiczne `--flaga` / `--no-flaga`,
+  liczby ujemne (`--opcja -5`); walidację (zakresy, wybory, `one_of`) robi katalog,
+  więc CLI, serwer MCP i Python zgłaszają te same błędy.
+- Flagi ogólne (przed grupą i po komendzie): `--json` (koperta `hydrolog-result/1`
+  w jednej linii), `--schema` (JSON Schema opcji bez uruchamiania), `--lang pl|en`
+  (zmienna `HYDROLOG_LANG`, domyślnie `pl`; dla komend z opcją `lang` jest to ta opcja),
+  `-V/--version`. Bez `--json` wynik to zwięzłe podsumowanie (skalary, tabele,
+  pierwsze wiersze tablic, uwagi, zapisane pliki).
+- Błędy: czytelny tekst na stderr albo jedna linia `hydrolog-error/1` z `--json`;
+  kod wyjścia z `ERROR_CODES` (2, 3, 4, 6, 7, 8, 9, 1; 130 po Ctrl-C). Nieznana
+  komenda to `not_found` (kod 3) z podpowiedzią, błąd składni to `validation_error` (2).
+- `hydrolog mcp [--allow-dir DIR]... [--lang pl|en]` uruchamia serwer MCP (dodatek
+  `hydrolog[mcp]`); `python -m hydrolog.cli` działa jak komenda `hydrolog`.
+
+### Removed
+
+- `hydrolog.cli.commands` (stare podkomendy `tc`, `cn`, `scs`, `uh` z opcjami `--length`,
+  `--area`, `--tc`, `--csv`, ...). Bez aliasów starych nazw: np. `hydrolog scs --cn 72
+  --precipitation 50` to teraz `hydrolog scs effective --cn 72 --precipitation-mm 50`;
+  eksport CSV zastępuje `--json` (pełna koperta wyniku).
+
 ---
 
 ## [0.7.0] - 2026-03-26

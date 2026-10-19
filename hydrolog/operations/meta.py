@@ -1,26 +1,9 @@
-"""Operation layer: one public function per catalog command (spec section 6.3).
+"""Operations of the group ``commands``: the catalog describing itself.
 
-Every command of :mod:`hydrolog.catalog` calls exactly one function of this module
-(``Command.function`` = ``"hydrolog.operations:<name>"``). The functions are the
-Python surface for Retman handlers and for ``retman-scaffold`` (signature and
-docstring parsing), so each one is
-
-* public and documented (NumPy docstring, English),
-* fully type-hinted, keyword-only, with ``Literal`` for choices,
-* taking JSON-friendly inputs (numbers, strings, lists, paths as ``str``) whose names
-  equal the catalog options,
-* returning a :class:`~hydrolog._serialization.JsonResultMixin` result (or a small
-  result dataclass defined here), or a
-  :class:`~hydrolog.catalog.envelope.OperationOutput` when it has notices or writes
-  files (return protocol: :mod:`hydrolog.catalog.envelope`).
-
-Operations compose the existing classes and functions; they contain no new
-hydrology. Series, stations and watershed parameters are loaded with
-:mod:`hydrolog.catalog.inputs`.
-
-Layout: one section per command group, in the order of
-``hydrolog.catalog.groups.GROUP_MODULES``. A new group adds its section (and its
-functions to ``__all__``) above the ``commands`` section, which stays last.
+``commands list`` lists the catalog commands, ``commands schema`` returns the JSON
+Schema of the options of one command or of the whole catalog. The functions are
+re-exported by :mod:`hydrolog.operations`; the conventions of the operation layer are
+described there.
 """
 
 from __future__ import annotations
@@ -37,9 +20,6 @@ __all__ = [
     "commands_schema",
     "list_commands",
 ]
-
-
-# --- group: commands ------------------------------------------------------------------
 
 
 @dataclass
