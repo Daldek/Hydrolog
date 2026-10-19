@@ -383,14 +383,18 @@ COMMANDS: tuple[Command, ...] = (
             "(τ = t/tc); (2) tłumienie w zbiorniku liniowym S = R·O, O_t = O_{t−1} "
             "+ C1·(I_t + I_{t−1} − 2·O_{t−1}), C1 = dt/(2R + dt). IUH jest "
             "normalizowany do 1, a hydrogram D-minutowy to różnica krzywej S i jej "
-            "kopii przesuniętej o D, podzielona przez D i przeskalowana "
+            "kopii opóźnionej o D, podzielona przez D i przeskalowana "
             "objętością 1 mm × A [m³/s na mm]. tc [min] jest czasem translacji "
             "(z dowolnej metody grupy `tc`). Stałą retencji R podaje się wprost "
             "(`r_min` [min]) albo przez stosunek `r_tc_ratio` = R/tc (typowo "
             "0,2–0,4 zlewnie strome i miejskie, 0,4–0,8 przeciętne, 0,8–1,5 "
             "płaskie i bagienne) — dokładnie jedna z tych opcji. Czas trwania "
-            "opadu D musi być całkowitą wielokrotnością kroku czasowego (krzywa S "
-            "jest przesuwana o całkowitą liczbę kroków). Przybliżony lag: tc/2 + "
+            "opadu D może być dowolny (> 0), nie musi być wielokrotnością kroku: "
+            "krzywa S jest interpolowana liniowo między krokami, a objętość "
+            "hydrogramu to 1 mm (bez ogona odpowiedzi dłuższego niż "
+            "`total_duration_min`); krzywa S ma rozdzielczość jednego kroku, "
+            "więc D krótszy od kroku daje hydrogram dla D = krok (aby go "
+            "rozróżnić, zmniejsz krok). Przybliżony lag: tc/2 + "
             "R. Wynik: tc, R, lag, czas do szczytu, szczyt [m³/s na mm] i rzędne. "
             "Literatura: Clark, C.O. (1945), Storage and the unit hydrograph, "
             "Transactions ASCE 110, 1419–1446; USACE, HEC-HMS Technical Reference "
@@ -403,14 +407,18 @@ COMMANDS: tuple[Command, ...] = (
             "t/tc); (2) attenuation in a linear reservoir S = R·O, O_t = O_{t-1} + "
             "C1·(I_t + I_{t-1} - 2·O_{t-1}), C1 = dt/(2R + dt). The IUH is "
             "normalized to 1 and the D-minute hydrograph is the difference of the "
-            "S-curve and its copy shifted by D, divided by D and scaled by the "
+            "S-curve and its copy lagged by D, divided by D and scaled by the "
             "volume 1 mm × A [m3/s per mm]. tc [min] is the translation time (from "
             "any method of the `tc` group). The storage constant R is given "
             "directly (`r_min` [min]) or through the ratio `r_tc_ratio` = R/tc "
             "(typically 0.2-0.4 steep and urban catchments, 0.4-0.8 average, "
             "0.8-1.5 flat and swampy) - exactly one of the two. The rainfall "
-            "duration D must be a whole multiple of the time step (the S-curve is "
-            "shifted by a whole number of steps). Approximate lag: tc/2 + R. "
+            "duration D may be any value > 0, not necessarily a multiple of the "
+            "time step: the S-curve is interpolated linearly between the steps and "
+            "the volume of the hydrograph is 1 mm (without a response tail beyond "
+            "`total_duration_min`); the S-curve is resolved "
+            "to one step, so a D shorter than the step gives the hydrograph of "
+            "D = step (reduce the step to resolve it). Approximate lag: tc/2 + R. "
             "Result: tc, R, lag, time to peak, peak [m3/s per mm] and the "
             "ordinates. References: Clark, C.O. (1945), Storage and the unit "
             "hydrograph, Transactions ASCE 110, 1419-1446; USACE, HEC-HMS "
@@ -453,8 +461,10 @@ COMMANDS: tuple[Command, ...] = (
                 "With the default D it is also the unit rainfall duration.",
             ),
             _rainfall_duration(
-                "Całkowita wielokrotność kroku; domyślnie równy krokowi.",
-                "A whole multiple of the step; defaults to the step.",
+                "Dowolny D > 0; krótszy od kroku daje hydrogram dla D = krok; "
+                "domyślnie równy krokowi.",
+                "Any D > 0; one shorter than the step gives the hydrograph of D = "
+                "step; defaults to the step.",
             ),
             _total_duration(
                 "Domyślnie tc + 5·R + D.",

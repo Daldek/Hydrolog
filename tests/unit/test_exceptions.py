@@ -158,6 +158,50 @@ class TestExceptionClasses:
         )
 
 
+class TestValueErrorCompatibility:
+    """``InvalidParameterError`` is a ``ValueError`` (and only it is)."""
+
+    def test_invalid_parameter_error_is_a_value_error(self):
+        """Code written for the plain ``ValueError`` of older versions keeps working."""
+        with pytest.raises(ValueError, match="CN must be 0-100"):
+            raise InvalidParameterError("CN must be 0-100, got 120")
+
+    def test_other_hydrolog_errors_are_not_value_errors(self):
+        """``except ValueError`` must not swallow calculation or file-system errors."""
+        for cls in (
+            CalculationError,
+            InputDataError,
+            MissingDependencyError,
+            ForbiddenPathError,
+            NotFoundError,
+            OutputError,
+        ):
+            assert not issubclass(cls, ValueError), cls.__name__
+        assert not issubclass(HydrologError, ValueError)
+
+    def test_a_value_error_hydrolog_error_is_not_reported_as_a_bug(self):
+        """The document checks ``HydrologError`` before the foreign-exception
+        branch, so the ``ValueError`` base does not turn it into ``internal_error``."""
+        exc = InvalidParameterError("bad", details={"option": "cn"}, hint="Use 0-100.")
+        doc = error_document(exc, command="cn lookup")
+        assert doc["code"] == "validation_error"
+        assert doc["exit_code"] == 2
+        assert doc["details"] == {"option": "cn"}
+        assert doc["hint"] == "Use 0-100."
+
+    def test_pickling_keeps_class_and_value_error_nature(self):
+        exc = InvalidParameterError("bad", details={"option": "cn"}, hint="h")
+        clone = pickle.loads(pickle.dumps(exc))
+        assert type(clone) is InvalidParameterError
+        assert isinstance(clone, ValueError)
+        assert (str(clone), clone.code, clone.details, clone.hint) == (
+            "bad",
+            "validation_error",
+            {"option": "cn"},
+            "h",
+        )
+
+
 class TestErrorDocument:
     """Tests for ``error_document`` (``hydrolog-error/1``)."""
 

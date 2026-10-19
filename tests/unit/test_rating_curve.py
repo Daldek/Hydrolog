@@ -61,6 +61,97 @@ class TestRatingCurve:
             RatingCurve(np.array([1.0, 2.0]), np.array([1.0, 2.0]))
 
 
+class TestRatingCurveErrors:
+    """Failure modes of ``RatingCurve`` are Hydrolog errors of the right kind."""
+
+    @pytest.fixture
+    def curve_data(self):
+        h = np.linspace(60.0, 200.0, 20)
+        return h, 2.5 * (h - 50.0) ** 1.8
+
+    @pytest.mark.parametrize(
+        "h0_initial", [60.0, 70.0, float("nan"), float("inf"), -float("inf")]
+    )
+    def test_initial_zero_level_must_be_finite_and_below_every_level(
+        self, curve_data, h0_initial
+    ):
+        """Was a bare ``ValueError`` from SciPy (``x0`` is infeasible)."""
+        from hydrolog.exceptions import InvalidParameterError
+        from hydrolog.hydrometrics import RatingCurve
+
+        with pytest.raises(InvalidParameterError) as caught:
+            RatingCurve(*curve_data).fit(h0_initial=h0_initial)
+        assert caught.value.code == "validation_error"
+        assert caught.value.details["option"] == "h0_initial"
+        assert caught.value.details["maximum"] == 60.0
+        assert "lower than every water level" in caught.value.hint
+
+    def test_initial_zero_level_error_is_still_a_value_error(self, curve_data):
+        from hydrolog.hydrometrics import RatingCurve
+
+        with pytest.raises(ValueError):
+            RatingCurve(*curve_data).fit(h0_initial=70.0)
+
+    def test_initial_zero_level_just_below_the_lowest_level_is_accepted(
+        self, curve_data
+    ):
+        """The optimiser keeps H0 1e-6 below the lowest level; a start inside that
+        margin is moved to the bound instead of failing."""
+        from hydrolog.hydrometrics import RatingCurve
+
+        result = RatingCurve(*curve_data).fit(h0_initial=60.0 - 1e-7)
+        assert result.h0 == pytest.approx(50.0, abs=0.5)
+
+    @pytest.mark.parametrize("bad", [float("nan"), float("inf")])
+    def test_non_finite_measurements_are_rejected(self, bad):
+        from hydrolog.exceptions import InvalidParameterError
+        from hydrolog.hydrometrics import RatingCurve
+
+        with pytest.raises(InvalidParameterError, match="finite"):
+            RatingCurve(np.array([60.0, 80.0, bad]), np.array([1.0, 2.0, 3.0]))
+        with pytest.raises(InvalidParameterError, match="finite"):
+            RatingCurve(np.array([60.0, 80.0, 90.0]), np.array([1.0, bad, 3.0]))
+
+    @pytest.mark.filterwarnings("ignore::RuntimeWarning")
+    def test_power_law_overflow_is_a_calculation_error(self):
+        """Levels so large that the power law overflows: no fit is possible."""
+        from hydrolog.exceptions import CalculationError
+        from hydrolog.hydrometrics import RatingCurve, RatingCurveFitError
+
+        curve = RatingCurve(
+            np.array([1e250, 2e250, 3e250, 4e250]), np.array([1.0, 2.0, 3.0, 4.0])
+        )
+        with pytest.raises(RatingCurveFitError) as caught:
+            curve.fit()
+        assert isinstance(caught.value, CalculationError)
+        assert caught.value.code == "calculation_error"
+        assert caught.value.exit_code == 4
+        assert caught.value.details == {"fit": "rating curve"}
+
+    def test_non_convergence_is_a_calculation_error_catchable_as_before(
+        self, curve_data, monkeypatch
+    ):
+        """Raised as ``InvalidParameterError`` (a ``ValueError``) before 1.0.0, so
+        that is still what ``except`` clauses written for it catch."""
+        from hydrolog.exceptions import CalculationError, InvalidParameterError
+        from hydrolog.hydrometrics import RatingCurve, RatingCurveFitError
+        from hydrolog.hydrometrics import rating_curve
+
+        def no_convergence(*args, **kwargs):
+            raise RuntimeError("Optimal parameters not found: maxfev exceeded")
+
+        monkeypatch.setattr(rating_curve, "curve_fit", no_convergence)
+        with pytest.raises(RatingCurveFitError) as caught:
+            RatingCurve(*curve_data).fit(h0_initial=50.0)
+        error = caught.value
+        assert isinstance(error, CalculationError)
+        assert isinstance(error, InvalidParameterError)
+        assert isinstance(error, ValueError)
+        assert error.code == "calculation_error"
+        assert "maxfev exceeded" in str(error)
+        assert isinstance(error.__cause__, RuntimeError)
+
+
 class TestWaterLevelFrequency:
 
     def test_frequency_distribution(self):

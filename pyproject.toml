@@ -77,6 +77,9 @@ Issues = "https://github.com/Daldek/Hydrolog/issues"
 where = ["."]
 include = ["hydrolog*"]
 
+[tool.setuptools.package-data]
+hydrolog = ["_data/agents/*.md"]
+
 [tool.black]
 line-length = 88
 target-version = ["py312"]
@@ -87,6 +90,11 @@ python_version = "3.12"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+# SciPy and seaborn ship neither a py.typed marker nor bundled stubs.
+module = ["scipy", "scipy.*", "seaborn", "seaborn.*"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

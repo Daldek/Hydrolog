@@ -88,6 +88,10 @@ class HydrographRun:
     tc_method : str or None
         Method that computed ``tc_min`` from the watershed; ``None`` when ``tc_min``
         was given or not needed.
+    tc_parameters : dict of str to float or None
+        Arguments the method was fed with (``TcResult.parameters``: what
+        ``WatershedParameters.calculate_tc`` derived from the watershed); ``None``
+        when ``tc_method`` is ``None``.
     uh_model : str
         ``"scs"``, ``"nash"``, ``"clark"`` or ``"snyder"``.
     uh_params : dict
@@ -114,6 +118,7 @@ class HydrographRun:
     uh_params: dict[str, Any]
     hietogram_type: str | None
     watershed: WatershedParameters | None
+    tc_parameters: dict[str, float] | None = None
 
 
 @dataclass
@@ -431,13 +436,16 @@ def compute_hydrograph(
     notices: list[Notice] = []
     tc: float | None = tc_min
     method_used: str | None = None
+    tc_parameters: dict[str, float] | None = None
     with capture_warnings() as warned:
         if tc is None and catchment is not None and (needs_tc or tc_method):
             method_used = tc_method or "kirpich"
             option = "watershed_file" if watershed_file is not None else "watershed"
-            tc = watershed_concentration_time(
+            concentration = watershed_concentration_time(
                 catchment, method_used, option=option
-            ).tc_min
+            )
+            tc = concentration.tc_min
+            tc_parameters = concentration.parameters
         if tc is not None and not needs_tc:
             notices.append(
                 Notice(
@@ -512,6 +520,7 @@ def compute_hydrograph(
         uh_params=uh_params,
         hietogram_type=generated,
         watershed=catchment,
+        tc_parameters=tc_parameters,
     )
 
 

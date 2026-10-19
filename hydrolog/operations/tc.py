@@ -37,22 +37,6 @@ TcMethod = Literal["kirpich", "nrcs", "giandotti", "faa", "kerby", "kerby_kirpic
 TC_METHODS: tuple[str, ...] = get_args(TcMethod)
 """Methods accepted by :func:`tc_watershed` (``WatershedParameters.calculate_tc``)."""
 
-# Watershed fields a method cannot do without (documented in
-# ``WatershedParameters.calculate_tc``). The library decides whether a call fails;
-# this table only names the missing fields in the error.
-_REQUIRED_FIELDS: dict[str, tuple[str, ...]] = {
-    "nrcs": ("cn",),
-    "faa": ("runoff_coeff",),
-    "kerby": ("retardance",),
-    "kerby_kirpich": (
-        "retardance",
-        "overland_length_km",
-        "overland_slope_m_per_m",
-        "channel_length_km",
-        "channel_slope_m_per_m",
-    ),
-}
-
 
 @dataclass
 class TcResult(JsonResultMixin):
@@ -321,14 +305,6 @@ def tc_kerby_kirpich(
     return OperationOutput(_result("kerby_kirpich", tc_min, parameters), notices)
 
 
-def _missing_fields(watershed: WatershedParameters, method: str) -> list[str]:
-    return [
-        name
-        for name in _REQUIRED_FIELDS.get(method, ())
-        if getattr(watershed, name) is None
-    ]
-
-
 def _effective_parameters(
     watershed: WatershedParameters, method: str
 ) -> dict[str, float]:
@@ -336,7 +312,8 @@ def _effective_parameters(
 
     Mirrors the documented selection rules of ``calculate_tc`` (length:
     ``channel_length_km`` else ``length_km``; slope: channel slope, mean slope,
-    relief over length) so the result shows what the method was fed with.
+    relief over length; Giandotti: mean elevation, by default the middle of the
+    range, minus the outlet) so the result shows what the method was fed with.
     """
     length_km = watershed.channel_length_km or watershed.length_km
     if watershed.channel_slope_m_per_m is not None:
@@ -347,8 +324,10 @@ def _effective_parameters(
         slope = watershed.relief_m / (length_km * 1000)
     parameters: dict[str, float] = {}
     if method == "giandotti":
-        mean = watershed.elevation_mean_m or (
-            (watershed.elevation_min_m + watershed.elevation_max_m) / 2
+        mean = (
+            watershed.elevation_mean_m
+            if watershed.elevation_mean_m is not None
+            else (watershed.elevation_min_m + watershed.elevation_max_m) / 2
         )
         parameters = {
             "area_km2": watershed.area_km2,
@@ -421,9 +400,9 @@ def watershed_concentration_time(
         )
     try:
         tc_min = watershed.calculate_tc(method=method)
-    except (ValueError, InvalidParameterError) as exc:
-        missing = _missing_fields(watershed, method)
-        if missing:
+    except InvalidParameterError as exc:
+        if exc.details.get("reason") == "missing_field":
+            missing = list(exc.details["missing"])
             raise InvalidParameterError(
                 f"Method {method!r} needs watershed parameters that are missing: "
                 f"{', '.join(missing)}",
@@ -441,7 +420,7 @@ def watershed_concentration_time(
         raise InvalidParameterError(
             str(exc),
             details={"option": option, "reason": "invalid_value", "method": method},
-            hint=exc.hint if isinstance(exc, InvalidParameterError) else None,
+            hint=exc.hint,
         ) from exc
     result = _result(method, tc_min, _effective_parameters(watershed, method))
     result.watershed_name = watershed.name

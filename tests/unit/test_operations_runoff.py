@@ -27,11 +27,7 @@ from hydrolog.operations.cn import (
 from hydrolog.operations.hydrograph import UH_MODELS, compute_hydrograph
 from hydrolog.operations.precip import AREAL_METHODS, HIETOGRAM_TYPES
 from hydrolog.operations.scs import AMC_CLASSES
-from hydrolog.operations.tc import (
-    _REQUIRED_FIELDS,
-    TC_METHODS,
-    watershed_concentration_time,
-)
+from hydrolog.operations.tc import TC_METHODS, watershed_concentration_time
 from hydrolog.precipitation import (
     BetaHietogram,
     BlockHietogram,
@@ -81,6 +77,21 @@ FULL_WATERSHED = {
     "retardance": 0.4,
     "overland_length_km": 0.25,
     "overland_slope_m_per_m": 0.008,
+}
+
+# What each method of ``WatershedParameters.calculate_tc`` cannot do without, in the
+# order the library reports it (besides the always present watershed fields).
+REQUIRED_FIELDS = {
+    "nrcs": ("cn",),
+    "faa": ("runoff_coeff",),
+    "kerby": ("retardance",),
+    "kerby_kirpich": (
+        "retardance",
+        "overland_length_km",
+        "overland_slope_m_per_m",
+        "channel_length_km",
+        "channel_slope_m_per_m",
+    ),
 }
 
 STATIONS = [
@@ -222,15 +233,33 @@ class TestTimeOfConcentration:
         again = quietly(ConcentrationTime.kerby_kirpich, **result.parameters)
         assert again == pytest.approx(result.tc_min, rel=1e-12)
 
+    def test_a_mean_elevation_of_zero_is_a_value_not_a_missing_one(self):
+        """Giandotti: H = 0 - (-30) = 30 m; the middle of the range would give 65 m."""
+        data = {
+            **FULL_WATERSHED,
+            "elevation_min_m": -30.0,
+            "elevation_max_m": 100.0,
+            "elevation_mean_m": 0.0,
+        }
+        expected = quietly(
+            WatershedParameters.from_dict(data).calculate_tc, "giandotti"
+        )
+        result, _ = unwrap(ops.tc_watershed(watershed=data, method="giandotti"))
+        assert result.parameters["elevation_diff_m"] == pytest.approx(30.0)
+        assert result.tc_min == pytest.approx(expected, rel=1e-12)
+        again = quietly(ConcentrationTime.giandotti, **result.parameters)
+        assert again == pytest.approx(result.tc_min, rel=1e-12)
+
     @pytest.mark.parametrize(
         "method, field",
-        [(m, f) for m, fields in _REQUIRED_FIELDS.items() for f in fields],
+        [(m, f) for m, fields in REQUIRED_FIELDS.items() for f in fields],
     )
     def test_missing_field_is_named_and_the_library_agrees(self, method, field):
-        """Each field of the table is really needed: without it the library fails."""
+        """Each field of the table is really needed: the library names it."""
         data = without(FULL_WATERSHED, field)
-        with pytest.raises((ValueError, InvalidParameterError)):
+        with pytest.raises(InvalidParameterError) as library:
             WatershedParameters.from_dict(data).calculate_tc(method=method)
+        assert library.value.details["missing"] == [field]
         with pytest.raises(InvalidParameterError) as caught:
             ops.tc_watershed(watershed=data, method=method)
         assert caught.value.code == "validation_error"
@@ -245,13 +274,11 @@ class TestTimeOfConcentration:
         """A bare watershed lacks everything the composite method needs."""
         bare = without(
             FULL_WATERSHED,
-            *_REQUIRED_FIELDS["kerby_kirpich"],
+            *REQUIRED_FIELDS["kerby_kirpich"],
         )
         with pytest.raises(InvalidParameterError) as caught:
             ops.tc_watershed(watershed=bare, method="kerby_kirpich")
-        assert caught.value.details["missing"] == list(
-            _REQUIRED_FIELDS["kerby_kirpich"]
-        )
+        assert caught.value.details["missing"] == list(REQUIRED_FIELDS["kerby_kirpich"])
         assert "retardance" in str(caught.value)
 
     def test_watershed_file_error_names_the_file_option(self, tmp_path):
@@ -1361,30 +1388,26 @@ class TestUnitHydrographs:
         assert result.time_base_min is None
         assert volume_in_mm(result) == pytest.approx(1.0, abs=1e-3)
 
-    def test_clark_rainfall_duration_is_a_whole_number_of_steps(self):
-        """D = 2 steps works and equals ``to_unit_hydrograph``; others are rejected."""
+    @pytest.mark.parametrize("duration", [10.0, 7.0, 2.0, 12.5])
+    def test_clark_rainfall_duration_is_any_positive_value(self, duration):
+        """D, a multiple of the step or not, gives the class's hydrograph of 1 mm."""
         result = ops.uh_clark(
             area_km2=45.3,
             tc_min=120.0,
             r_min=60.0,
             timestep_min=5.0,
-            rainfall_duration_min=10.0,
+            rainfall_duration_min=duration,
+            total_duration_min=1200.0,
         )
         expected = ClarkIUH(tc_min=120.0, r_min=60.0).to_unit_hydrograph(
-            area_km2=45.3, duration_min=10.0, timestep_min=5.0
+            area_km2=45.3,
+            duration_min=duration,
+            timestep_min=5.0,
+            total_duration_min=1200.0,
         )
         assert_arrays(result.ordinates_m3s_per_mm, expected.ordinates_m3s)
-        assert result.duration_min == 10.0
-        for bad in (7.0, 2.0, 12.5):
-            with pytest.raises(InvalidParameterError) as caught:
-                ops.uh_clark(
-                    area_km2=45.3,
-                    tc_min=120.0,
-                    r_min=60.0,
-                    timestep_min=5.0,
-                    rainfall_duration_min=bad,
-                )
-            assert caught.value.details["reason"] == "not_multiple"
+        assert result.duration_min == duration
+        assert volume_in_mm(result) == pytest.approx(1.0, abs=1e-6)
 
     def test_clark_needs_exactly_one_of_r_and_ratio(self):
         """Both or neither of ``r_min`` / ``r_tc_ratio`` is a one_of error."""
@@ -2040,6 +2063,9 @@ class TestHydrographGenerate:
         )
         tc = WatershedParameters.from_dict(WATERSHED).calculate_tc(method="nrcs")
         assert run.tc_min == pytest.approx(tc) and run.tc_method == "nrcs"
+        assert run.tc_parameters == pytest.approx(
+            {"length_km": 10.8, "slope_m_per_m": 0.018, "cn": 72.0}
+        )
         assert (run.area_km2, run.cn, run.amc, run.ia_coefficient) == (
             45.3,
             72.0,
@@ -2071,6 +2097,7 @@ class TestHydrographGenerate:
         assert (
             run.hietogram_type is None and run.tc_min is None and run.watershed is None
         )
+        assert run.tc_parameters is None
         assert run.uh_params == {"n": 3.0, "k": 48.0, "k_unit": "min"}
         assert_arrays(run.hietogram.intensities_mm, SERIES)
         assert_arrays(run.hietogram.times_min, [10.0, 20.0, 30.0, 40.0, 50.0, 60.0])

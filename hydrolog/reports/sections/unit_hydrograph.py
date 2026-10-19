@@ -642,7 +642,9 @@ def _generate_snyder_section(
 ) -> list:
     """Generate Snyder UH-specific content.
 
-    Reads the following keys from model_params (all optional with defaults):
+    Reads the following keys from model_params (all optional; the defaults
+    are those of Snyder's method, except L_km and Lc_km: when they are not
+    given they are not shown and tL is shown as a value):
     - L_km              : main stream length [km]
     - Lc_km             : length to centroid [km]
     - ct                : time coefficient Ct
@@ -657,8 +659,8 @@ def _generate_snyder_section(
     """
     lines = []
 
-    L_km: float = model_params.get("L_km", 10.0)
-    Lc_km: float = model_params.get("Lc_km", 5.0)
+    L_km: Optional[float] = model_params.get("L_km")
+    Lc_km: Optional[float] = model_params.get("Lc_km")
     ct: float = model_params.get("ct", 1.5)
     cp: float = model_params.get("cp", 0.6)
     tL_min: float = model_params.get("lag_time_min", 60.0)
@@ -691,8 +693,14 @@ def _generate_snyder_section(
             SUBSECTION_HEADERS["unit_hydrograph"]["params"],
             "",
             f"- Powierzchnia zlewni: A = {area_km2:.2f} km²",
-            f"- Długość cieku: L = {L_km:.2f} km",
-            f"- Odległość do centroidu: Lc = {Lc_km:.2f} km",
+        ]
+    )
+    if L_km is not None:
+        lines.append(f"- Długość cieku: L = {L_km:.2f} km")
+    if Lc_km is not None:
+        lines.append(f"- Odległość do centroidu: Lc = {Lc_km:.2f} km")
+    lines.extend(
+        [
             f"- Współczynnik czasowy: Ct = {ct:.2f}",
             f"- Współczynnik szczytowy: Cp = {cp:.2f}",
             f"- Czas opóźnienia zlewni: tL = {tL_min:.1f} min",

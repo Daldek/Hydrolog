@@ -14,7 +14,11 @@ unchanged: ``code``, ``details`` and ``hint`` are optional keyword-only argument
 Notes
 -----
 Messages are English (as everywhere in the library); only the registry titles are
-localized (``lang="pl"`` or ``"en"``).
+localized (``lang="pl"`` or ``"en"``). :class:`InvalidParameterError` is also a
+:class:`ValueError` (which several modules raised for invalid arguments before the
+registry existed), so existing ``except ValueError`` handlers keep working;
+:func:`error_document` checks :class:`HydrologError` first, so it never reports such
+an error as a bug.
 """
 
 from __future__ import annotations
@@ -185,10 +189,13 @@ class HydrologError(Exception):
         return ERROR_CODES[self.code].exit_code
 
 
-class InvalidParameterError(HydrologError):
+class InvalidParameterError(HydrologError, ValueError):
     """Invalid parameter value.
 
-    Default code: ``validation_error``.
+    Default code: ``validation_error``. Also a :class:`ValueError`, so code written
+    for the plain ``ValueError`` of earlier versions (``except ValueError``) keeps
+    catching invalid arguments. Where an ``except`` chain must tell the two apart,
+    list :class:`HydrologError` (or this class) before :class:`ValueError`.
     """
 
     default_code: ClassVar[ErrorCode] = "validation_error"

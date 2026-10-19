@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import ClassVar, Optional
 
 import numpy as np
 from numpy.typing import NDArray
 from scipy.optimize import curve_fit
 
 from hydrolog._serialization import JsonResultMixin
-from hydrolog.exceptions import InvalidParameterError
+from hydrolog.exceptions import CalculationError, ErrorCode, InvalidParameterError
 
 # ---------------------------------------------------------------------------
 # Result dataclasses
@@ -118,6 +118,21 @@ class FrequencyDistributionResult(JsonResultMixin):
 # ---------------------------------------------------------------------------
 
 
+class RatingCurveFitError(CalculationError, InvalidParameterError):
+    """The rating curve cannot be fitted to the measurements.
+
+    Raised when the optimiser does not converge or the power law cannot be
+    evaluated for the data (for example overflow for very large levels). It is a
+    :class:`~hydrolog.exceptions.CalculationError` (code ``calculation_error``).
+    For compatibility with versions before 1.0.0, which raised
+    :class:`~hydrolog.exceptions.InvalidParameterError` in these cases, it is
+    also an ``InvalidParameterError`` (and therefore a ``ValueError``), so
+    existing ``except`` clauses keep catching it.
+    """
+
+    default_code: ClassVar[ErrorCode] = "calculation_error"
+
+
 class RatingCurve:
     """
     Fit a power-law rating curve Q = a * (H - H0)^b to paired measurements.
@@ -132,7 +147,8 @@ class RatingCurve:
     Raises
     ------
     InvalidParameterError
-        If arrays have mismatched lengths or fewer than 3 data points.
+        If arrays have mismatched lengths, fewer than 3 data points or contain
+        NaN or infinite values.
 
     Examples
     --------
@@ -163,6 +179,11 @@ class RatingCurve:
                 f"At least 3 data points required for curve fitting, "
                 f"got {len(water_levels)}"
             )
+        if not (np.all(np.isfinite(water_levels)) and np.all(np.isfinite(discharges))):
+            raise InvalidParameterError(
+                "water_levels and discharges must be finite numbers "
+                "(no NaN or infinite values)"
+            )
 
         self._h: NDArray[np.float64] = water_levels
         self._q: NDArray[np.float64] = discharges
@@ -184,7 +205,8 @@ class RatingCurve:
         Parameters
         ----------
         h0_initial : float, optional
-            Initial guess for H0 (zero-flow level), by default 0.0.
+            Initial guess for H0 (zero-flow level), by default 0.0. Must be a
+            finite number below the lowest water level (H0 is bounded by it).
         remove_outliers : bool, optional
             If True, remove points whose residuals exceed ``outlier_std``
             standard deviations before the final fit, by default False.
@@ -200,8 +222,27 @@ class RatingCurve:
         Raises
         ------
         InvalidParameterError
-            If the curve cannot be fitted (e.g., all points are removed).
+            If ``h0_initial`` is not a finite number below the lowest water level
+            (``details``: ``option``, ``reason``, ``maximum``, ``value``).
+        RatingCurveFitError
+            If the optimiser does not converge or the power law cannot be
+            evaluated for the data. It is a ``CalculationError``, and for
+            compatibility with earlier versions also an ``InvalidParameterError``.
         """
+        h_min = float(np.min(self._h))
+        if not (math.isfinite(h0_initial) and h0_initial < h_min):
+            raise InvalidParameterError(
+                f"h0_initial must be a finite number below the lowest water level "
+                f"({h_min:g}), got {h0_initial!r}",
+                details={
+                    "option": "h0_initial",
+                    "reason": "maximum",
+                    "maximum": h_min,
+                    "value": str(h0_initial),
+                },
+                hint="Give h0_initial lower than every water level, in the same unit.",
+            )
+
         h = self._h.copy()
         q = self._q.copy()
         n_outliers_removed = 0
@@ -285,19 +326,25 @@ class RatingCurve:
                 _power_law,
                 h,
                 q,
-                p0=[1.0, 1.5, h0_initial],
+                # The start must lie inside the bounds (h0_initial < h_min is
+                # checked by fit(); this closes the 1e-6 gap below h_min).
+                p0=[1.0, 1.5, min(h0_initial, h0_upper)],
                 bounds=(
                     [0.0, 0.0, -np.inf],
                     [np.inf, np.inf, h0_upper],
                 ),
                 maxfev=10_000,
             )
-        except RuntimeError as exc:
-            raise InvalidParameterError(
-                f"Rating curve fitting did not converge: {exc}"
+        except (RuntimeError, ValueError, ArithmeticError) as exc:
+            # RuntimeError: no convergence; ValueError/ArithmeticError: the power
+            # law is not finite for these data (the inputs were validated above).
+            raise RatingCurveFitError(
+                f"The rating curve cannot be fitted: {exc}",
+                details={"fit": "rating curve"},
+                hint="Check the measurement pairs or try another h0_initial.",
             ) from exc
 
-        return popt
+        return np.asarray(popt, dtype=np.float64)
 
 
 # ---------------------------------------------------------------------------
@@ -457,10 +504,9 @@ class WaterLevelFrequency:
         WaterLevelZones
             Boundary values and ranges for each zone.
         """
-        if self._freq_result is None:
-            self.frequency_distribution()
-
-        result = self._freq_result  # type: ignore[assignment]
+        result = self._freq_result
+        if result is None:
+            result = self.frequency_distribution()
 
         h_min = float(result.bin_edges[0])
         h_max = float(result.bin_edges[-1])

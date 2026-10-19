@@ -4,13 +4,37 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict, dataclass, field
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, Optional, cast
 
 from hydrolog.exceptions import InvalidParameterError
 
 if TYPE_CHECKING:
     from hydrolog.morphometry.geometric import WatershedGeometry
     from hydrolog.morphometry.terrain import TerrainAnalysis
+
+_TC_METHODS = ("kirpich", "nrcs", "giandotti", "faa", "kerby", "kerby_kirpich")
+
+# Fields besides the always present ones that a time of concentration method cannot
+# do without, in the order they are reported.
+_TC_REQUIRED_FIELDS: dict[str, tuple[str, ...]] = {
+    "nrcs": ("cn",),
+    "faa": ("runoff_coeff",),
+    "kerby": ("retardance",),
+    "kerby_kirpich": (
+        "retardance",
+        "overland_length_km",
+        "overland_slope_m_per_m",
+        "channel_length_km",
+        "channel_slope_m_per_m",
+    ),
+}
+
+_TC_METHOD_LABELS = {
+    "nrcs": "NRCS",
+    "faa": "FAA",
+    "kerby": "Kerby",
+    "kerby_kirpich": "Kerby-Kirpich",
+}
 
 
 @dataclass
@@ -428,27 +452,33 @@ class WatershedParameters:
         Raises
         ------
         InvalidParameterError
-            If required parameters for the method are missing.
-        ValueError
-            If method is unknown.
+            If the method is unknown (``details["reason"] == "choice"``), a
+            parameter the method requires is missing (``details["reason"] ==
+            "missing_field"``, ``details["missing"]`` lists all of them) or a
+            value is rejected by the formula. It is also a ``ValueError``, so
+            code that caught the ``ValueError`` of earlier versions keeps
+            working.
 
         Notes
         -----
-        For "kirpich" and "nrcs", uses channel_length_km if available,
-        otherwise falls back to length_km.
+        The length used is ``channel_length_km`` if available, otherwise
+        ``length_km``; the slope is ``channel_slope_m_per_m`` if available,
+        otherwise ``mean_slope_m_per_m``, otherwise it is calculated from relief
+        and length. This applies to "kirpich", "nrcs", "giandotti" (length
+        only), "faa" and "kerby".
 
-        For slope, uses channel_slope_m_per_m if available, otherwise
-        mean_slope_m_per_m, otherwise calculates from relief/length.
+        For "nrcs" ``cn`` must be set. For "giandotti" the elevation difference
+        is ``elevation_mean_m - elevation_min_m``; ``elevation_mean_m``
+        defaults to the middle of the elevation range (also when it is 0 m
+        a.s.l., which is a valid mean elevation).
 
-        For "faa", uses length_km as overland flow length and requires
-        runoff_coeff to be set.
+        For "faa" the length and slope selected above are the overland flow
+        length and slope and ``runoff_coeff`` must be set. For "kerby" they are
+        used in the same way and ``retardance`` must be set.
 
-        For "kerby", uses length_km as overland flow length and requires
-        retardance to be set.
-
-        For "kerby_kirpich", requires overland_length_km,
-        overland_slope_m_per_m, retardance, channel_length_km, and
-        channel_slope_m_per_m.
+        For "kerby_kirpich", ``retardance``, ``overland_length_km``,
+        ``overland_slope_m_per_m``, ``channel_length_km`` and
+        ``channel_slope_m_per_m`` must be set.
 
         Examples
         --------
@@ -458,6 +488,37 @@ class WatershedParameters:
         >>> tc = params.calculate_tc(method="kirpich")
         """
         from hydrolog.time import ConcentrationTime
+
+        if method not in _TC_METHODS:
+            raise InvalidParameterError(
+                f"Unknown method: '{method}'. Use 'kirpich', 'nrcs', "
+                f"'giandotti', 'faa', 'kerby', or 'kerby_kirpich'.",
+                details={
+                    "option": "method",
+                    "reason": "choice",
+                    "allowed": list(_TC_METHODS),
+                    "value": method,
+                },
+            )
+        missing = [
+            name
+            for name in _TC_REQUIRED_FIELDS.get(method, ())
+            if getattr(self, name) is None
+        ]
+        if missing:
+            names = ", ".join(missing)
+            shown = "CN" if missing == ["cn"] else names
+            plural = len(missing) > 1
+            raise InvalidParameterError(
+                f"{shown} {'are' if plural else 'is'} required for "
+                f"{_TC_METHOD_LABELS[method]} method. "
+                f"Set the {names} parameter{'s' if plural else ''}.",
+                details={
+                    "reason": "missing_field",
+                    "method": method,
+                    "missing": missing,
+                },
+            )
 
         # Determine length to use
         length_km = self.channel_length_km or self.length_km
@@ -476,20 +537,18 @@ class WatershedParameters:
                 length_km=length_km,
                 slope_m_per_m=slope_m_per_m,
             )
-        elif method == "nrcs":
-            if self.cn is None:
-                raise InvalidParameterError(
-                    "CN is required for NRCS method. Set cn parameter."
-                )
+        if method == "nrcs":
             return ConcentrationTime.nrcs(
                 length_km=length_km,
                 slope_m_per_m=slope_m_per_m,
-                cn=self.cn,
+                cn=cast(int, self.cn),
             )
-        elif method == "giandotti":
+        if method == "giandotti":
             # elevation_diff_m = mean elevation - outlet elevation
-            elevation_mean = self.elevation_mean_m or (
-                (self.elevation_min_m + self.elevation_max_m) / 2
+            elevation_mean = (
+                self.elevation_mean_m
+                if self.elevation_mean_m is not None
+                else (self.elevation_min_m + self.elevation_max_m) / 2
             )
             elevation_diff_m = elevation_mean - self.elevation_min_m
             return ConcentrationTime.giandotti(
@@ -497,69 +556,22 @@ class WatershedParameters:
                 length_km=length_km,
                 elevation_diff_m=elevation_diff_m,
             )
-        elif method == "faa":
-            if self.runoff_coeff is None:
-                raise ValueError(
-                    "runoff_coeff is required for FAA method. "
-                    "Set the runoff_coeff parameter (0 < C <= 1.0)."
-                )
+        if method == "faa":
             return ConcentrationTime.faa(
                 length_km=length_km,
                 slope_m_per_m=slope_m_per_m,
-                runoff_coeff=self.runoff_coeff,
+                runoff_coeff=cast(float, self.runoff_coeff),
             )
-        elif method == "kerby":
-            if self.retardance is None:
-                raise ValueError(
-                    "retardance is required for Kerby method. "
-                    "Set the retardance parameter (0.02-0.80)."
-                )
+        if method == "kerby":
             return ConcentrationTime.kerby(
                 length_km=length_km,
                 slope_m_per_m=slope_m_per_m,
-                retardance=self.retardance,
+                retardance=cast(float, self.retardance),
             )
-        elif method == "kerby_kirpich":
-            if self.retardance is None:
-                raise ValueError(
-                    "retardance is required for Kerby-Kirpich method. "
-                    "Set the retardance parameter (0.02-0.80)."
-                )
-            # Overland segment parameters
-            ol_length = self.overland_length_km
-            if ol_length is None:
-                raise ValueError(
-                    "overland_length_km is required for Kerby-Kirpich "
-                    "method. Set the overland_length_km parameter."
-                )
-            ol_slope = self.overland_slope_m_per_m
-            if ol_slope is None:
-                raise ValueError(
-                    "overland_slope_m_per_m is required for Kerby-Kirpich "
-                    "method. Set the overland_slope_m_per_m parameter."
-                )
-            # Channel segment parameters
-            ch_length = self.channel_length_km
-            if ch_length is None:
-                raise ValueError(
-                    "channel_length_km is required for Kerby-Kirpich "
-                    "method. Set the channel_length_km parameter."
-                )
-            ch_slope = self.channel_slope_m_per_m
-            if ch_slope is None:
-                raise ValueError(
-                    "channel_slope_m_per_m is required for Kerby-Kirpich "
-                    "method. Set the channel_slope_m_per_m parameter."
-                )
-            return ConcentrationTime.kerby_kirpich(
-                overland_length_km=ol_length,
-                overland_slope_m_per_m=ol_slope,
-                retardance=self.retardance,
-                channel_length_km=ch_length,
-                channel_slope_m_per_m=ch_slope,
-            )
-        else:
-            raise ValueError(
-                f"Unknown method: '{method}'. Use 'kirpich', 'nrcs', "
-                f"'giandotti', 'faa', 'kerby', or 'kerby_kirpich'."
-            )
+        return ConcentrationTime.kerby_kirpich(
+            overland_length_km=cast(float, self.overland_length_km),
+            overland_slope_m_per_m=cast(float, self.overland_slope_m_per_m),
+            retardance=cast(float, self.retardance),
+            channel_length_km=cast(float, self.channel_length_km),
+            channel_slope_m_per_m=cast(float, self.channel_slope_m_per_m),
+        )

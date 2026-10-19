@@ -30,6 +30,7 @@ from mcp import Client
 from mcp.client.stdio import StdioServerParameters, stdio_client
 from mcp.shared.exceptions import MCPError
 
+from hydrolog.agent_guide import principles
 from hydrolog.catalog import (
     Command,
     OperationOutput,
@@ -42,9 +43,10 @@ from hydrolog.exceptions import (
     ERROR_CODES,
     InvalidParameterError,
     MissingDependencyError,
+    NotFoundError,
 )
 from hydrolog.mcp import create_server, run_stdio
-from hydrolog.mcp._instructions import MAX_CHARS
+from hydrolog.mcp._instructions import MAX_BYTES, build_instructions
 from hydrolog.time import ConcentrationTime
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -426,54 +428,54 @@ class TestTools:
 
 
 class TestInstructions:
-    """The ``instructions`` of the server: rules built from the catalog."""
+    """The ``instructions`` of the server: the rules of the agent guide, in short."""
 
     @pytest.mark.parametrize("lang", ["pl", "en"])
-    def test_instructions_are_short_and_name_the_catalog_facts(self, lang):
-        """Discovery tools and every command group appear; the text stays short."""
+    def test_instructions_are_short_and_carry_the_rules_of_the_guide(self, lang):
+        """Every rule of the guide, the discovery tools and the documents appear."""
         _, instructions = listing(lang=lang)
 
-        assert len(instructions) <= MAX_CHARS
-        for group in dict.fromkeys(command.group for command in COMMANDS):
-            assert group in instructions
-        assert "commands_list" in instructions
-        assert "commands_schema" in instructions
+        assert len(instructions.encode("utf-8")) <= MAX_BYTES
+        for rule in principles(lang):
+            assert rule in instructions
+        for tool in ("commands_list", "commands_schema", "commands_guide"):
+            assert tool in instructions
         assert "hydrolog-result/1" in instructions
         assert "hydrolog-error/1" in instructions
 
     def test_instructions_follow_the_server_language(self):
-        assert "Reguły:" in listing(lang="pl")[1]
+        assert "Zasady:" in listing(lang="pl")[1]
         assert "Rules:" in listing(lang="en")[1]
-        assert "Reguły:" not in listing(lang="en")[1]
+        assert "Zasady:" not in listing(lang="en")[1]
 
-    def test_allowed_directories_are_listed(self, demo_catalog, tmp_path):
-        """The agent learns where it may read and write, and which options are files."""
+    @pytest.mark.parametrize("lang", ["pl", "en"])
+    def test_allowed_directories_are_listed(self, tmp_path, lang):
+        """The agent learns where it may read and write."""
         data = tmp_path / "data"
         other = tmp_path / "other"
 
-        _, instructions = listing(allowed_dirs=[data, other])
+        _, instructions = listing(lang=lang, allowed_dirs=[data, other])
 
         assert f"{data.resolve()}, {other.resolve()}" in instructions
-        assert "odczyt: " in instructions
-        assert "zapis: " in instructions
-        assert "input_file" in instructions
-        assert "output_file" in instructions
-        assert "forbidden" not in instructions
+        assert "(--allow-dir)" not in instructions
 
-    def test_without_directories_files_are_declared_refused(self, demo_catalog):
+    def test_without_directories_files_are_declared_refused(self):
         """No allowed directory: the text says path options are refused."""
         _, pl = listing()
         _, en = listing(lang="en")
 
-        assert "--allow-dir" in pl
-        assert "forbidden" in pl
-        assert "are refused (error forbidden)" in en
+        assert "Brak katalogów dozwolonych (--allow-dir)" in pl
+        assert "No allowed directories (--allow-dir)" in en
 
-    def test_units_in_use_are_listed(self, demo_catalog):
-        """Units come from the options of the catalog, not from the text."""
-        _, instructions = listing()
+    def test_a_catalog_without_the_discovery_commands_is_refused(self):
+        """The text sends the agent to three tools; a catalog without one is an error."""
+        for missing in ("commands list", "commands schema", "commands guide"):
+            commands = tuple(c for c in COMMANDS if c.name != missing)
 
-        assert "[km]" in instructions
+            with pytest.raises(NotFoundError) as caught:
+                build_instructions(commands, lang="pl", allowed_dirs=())
+
+            assert caught.value.details == {"command": missing}
 
 
 # --- calls -----------------------------------------------------------------------------
