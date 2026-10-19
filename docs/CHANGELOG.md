@@ -7,6 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [1.0.0] - 2026-10-19
+
+Pierwsze wydanie stabilnego API: od tej wersji obowiązuje wersjonowanie semantyczne (nazwy komend i opcji, schematy `hydrolog-result/1` i `hydrolog-error/1` oraz kody błędów są publicznym API). Klasy biblioteki (`SCSCN`, `HydrographGenerator`, `NashIUH`, `ClarkIUH`, `SnyderUH`, `ConcentrationTime`, hietogramy, `WatershedParameters`, statystyki, hydrometria, raporty, wizualizacja) zachowują nazwy i sygnatury; zmiany w nich są dodatkami lub poprawkami błędów opisanymi niżej.
+
+### BREAKING
+
+- **CLI:** dawna składnia (v0.4.0-v0.7.0) została usunięta bez aliasów; komendy mają teraz postać `hydrolog <grupa> <komenda> --opcja wartość` z nazwami opcji katalogu (`--kebab-case`, jednostka w nazwie). Przykłady: `hydrolog scs --cn 72 --precipitation 50` → `hydrolog scs effective --cn 72 --precipitation-mm 50`; `hydrolog tc kirpich --length 2.5 --slope 0.02` → `hydrolog tc kirpich --length-km 2.5 --slope-m-per-m 0.02`; `hydrolog uh scs --area 45 --tc 90 --timestep 10` → `hydrolog uh scs --area-km2 45 --tc-min 90 --timestep-min 10`; `hydrolog cn lookup --cover forest` → `hydrolog cn lookup --land-cover forest`. Eksport `--csv` nie istnieje; pełny wynik daje `--json` (koperta `hydrolog-result/1`).
+- **Dodatek `hydrolog[spatial]` (Kartograf) usunięty:** Hydrolog nie zależy już od Kartografa (ani od IMGWTools). Rastry gleb pobiera Kartograf (`download_soil`), a HSG liczy Hydrolog (`hydrolog.soil`, dodatek `hydrolog[raster]`). Dodatek `all` obejmuje teraz `raster`, `mcp` i `visualization`.
+- **Zmienione wyniki liczbowe** (poprawki błędów, patrz „Fixed"): kwantyle `LowFlowAnalysis.fit_fisher_tippett()`, hydrogram jednostkowy Clarka dla czasu trwania D niebędącego wielokrotnością kroku, `calculate_monthly_statistics()` dla miesiąca z jedną wartością (`NaN` zamiast przedziału `[średnia, średnia]`) oraz treść raportu obliczeniowego.
+- **Zmiana typów wyjątków:** wyjątki walidacji są teraz `InvalidParameterError` (także `ValueError`), a nie gołe `ValueError` (`WatershedParameters.calculate_tc()`, `calculate_monthly_statistics()` dla miesiąca bez wartości); `RatingCurve` zgłasza `RatingCurveFitError` (`CalculationError`, a zgodnie wstecz także `InvalidParameterError`). Kod z `except ValueError` lub `except InvalidParameterError` działa jak dotąd.
+- `HydrologyReportGenerator.generate()` zgłasza `InvalidParameterError`, gdy `result.unit_hydrograph_result` jest `None` (raport dokumentuje hydrogram jednostkowy użyty w obliczeniach, a `HydrographGenerator.generate()` zawsze go zwraca).
+
+### Added
+
+#### Katalog komend (`hydrolog.catalog`) i warstwa operacji (`hydrolog.operations`)
+Jedno źródło prawdy dla biblioteki, CLI, serwera MCP i przewodników dla agentów: 37 komend w 13 grupach (`tc`, `cn`, `scs`, `precip`, `uh`, `hydrograph`, `morphometry`, `network`, `stats`, `hydrometrics`, `soil`, `report`, `commands`); lista: `hydrolog commands list`.
+- `Command` i `Option` (opisy PL/EN, jednostki, zakresy, grupy `one_of`, przykłady), `data_commands()`, `get_command()`, `command_schema()` (JSON Schema 2020-12, dokument `hydrolog-commands/1`), `validate_command()`, `run_command()` (polityka ścieżek `allowed_dirs`), `capture_warnings()`.
+- `hydrolog.operations`: po jednej publicznej, otypowanej funkcji na komendę (`tc_kirpich`, `hydrograph_generate`, `stats_flood_frequency`, `soil_hsg`, ...); zwraca obiekt wynikowy z `to_dict()`/`to_json()` albo `OperationOutput` (wynik, ostrzeżenia, zapisane pliki).
+- Koperta wyniku `hydrolog-result/1` (`schema`, `command`, `hydrolog_version`, `status`, `inputs`, `result`, `files` z SHA-256, `notices`).
+- Dokument błędu `hydrolog-error/1` i zamknięty rejestr `ERROR_CODES`: `validation_error` (2), `not_found` (3), `calculation_error` (4), `missing_dependency` (6), `data_error` (7), `forbidden` (8), `io_error` (9), `internal_error` (1); `HydrologError` ma `code`, `details` i `hint`.
+- Nowe klasy wyjątków: `InputDataError`, `MissingDependencyError`, `ForbiddenPathError`, `NotFoundError`, `OutputError` (wyeksportowane z `hydrolog`).
+
+#### Serializacja wyników (`hydrolog._serialization`)
+- `JsonResultMixin` z `to_dict()` i `to_json()` we wszystkich klasach wynikowych (runoff, precipitation, morphometry, network, statistics, hydrometrics, soil); `NaN` i nieskończoności są `null`, tablice NumPy listami, nieznany typ to `TypeError`. `WatershedParameters.to_dict()`/`to_json()` bez zmian.
+
+#### Dane wejściowe z plików
+- Serie (`input_file` + `value_column`/`date_column`), stacje opadowe (`stations_file`), odcinki sieci (`segments_file`) i zlewnie (`watershed_file`) jako CSV (przecinek lub średnik, UTF-8) albo JSON; kolumny wskazuje się nazwą dokładną lub bez sufiksu jednostki (`Q` znajduje `Q [m3/s]`).
+- Eksport szeregu IMGWTools (`export_series` CSV) wczytuje się bez przetwarzania; `WatershedParameters` JSON jest proponowanym formatem `catchment_characteristics` w Retmanie.
+
+#### `hydrolog.soil` - Grupy hydrologiczne gleb (HSG)
+Reguły przeniesione z Kartografa 0.8.0 (`kartograf.hydrology.hsg`, ADR-025); Kartograf zostaje przy pobieraniu rastrów (`download_soil`).
+- `texture`: klasyfikacja uziarnienia USDA (12 klas) z zawartości iłu, piasku i pyłu (`classify_usda_texture`, `classify_usda_texture_array`), `TEXTURE_TO_HSG`, `texture_to_hsg` (tylko NumPy).
+- `hsg`: `classify_hsg`, `hsg_statistics_array`, `HsgStatistics`, `HSG_CODES` (GeoTIFF `uint8`: 0 - brak danych, 1-4 to A-D).
+- `raster` (dodatek `hydrolog[raster]`: `rasterio>=1.3`, `pyproj>=3.6`): `hsg_from_rasters()` (rastry iłu, piasku i pyłu → GeoTIFF HSG) i `hsg_statistics()` (powierzchnie grup, opcjonalnie w prostokącie `bbox`).
+- Komendy `soil texture`, `soil hsg`, `soil hsg-stats`.
+
+#### Serwer MCP (`hydrolog mcp`)
+- Dodatek `hydrolog[mcp]` (`mcp>=2.3,<3`): każda komenda katalogu jest narzędziem (nazwa = `operation_id`), `structuredContent` = koperta wyniku, błąd jako `isError` z `hydrolog-error/1`.
+- `hydrolog mcp [--allow-dir DIR]... [--lang pl|en]`: dostęp do plików tylko w katalogach `--allow-dir` (bez nich komendy z opcjami typu ścieżka kończą się `forbidden`).
+
+#### Przewodniki dla agentów
+- `AGENTS.md` i `llms.txt` w repozytorium, generowane z katalogu przez `hydrolog commands guide --format agents|llms --lang pl|en [--path PLIK]`; test porównuje bajty z generatorem (`hydrolog.agent_guide`).
+
+#### Pozostałe
+- `hydrolog.hydrometrics.RatingCurveFitError`.
+- `pyproject.toml`: dodatki `raster`, `mcp`, `all`; szablony przewodników w pakiecie (`package-data`); `jsonschema` w zależnościach `dev`.
+
 ### Changed
 
 #### `hydrolog.cli` - CLI generowane z katalogu komend (zmiana niezgodna wstecz)
@@ -28,12 +77,33 @@ przykładami z katalogu (PL/EN). Punkt wejścia bez zmian (`hydrolog.cli.main:ma
 - `hydrolog mcp [--allow-dir DIR]... [--lang pl|en]` uruchamia serwer MCP (dodatek
   `hydrolog[mcp]`); `python -m hydrolog.cli` działa jak komenda `hydrolog`.
 
+#### Pozostałe zmiany
+- `InvalidParameterError` jest teraz także `ValueError` (kod z `except ValueError` nadal go łapie); wszystkie wyjątki Hydrologa mają `code`, `details` i `hint`.
+- `WatershedParameters.from_dict()` toleruje dodatkowy klucz `schema` (np. `"hydrolog-catchment/1"`); `calculate_tc()` dla nieznanej metody lub brakującego pola wymaganego przez metodę zgłasza `InvalidParameterError` (`details.reason` = `choice` / `missing_field`, `details.missing` wymienia wszystkie braki), dawniej mieszanka `ValueError` i `InvalidParameterError`.
+- `ClarkIUH.to_unit_hydrograph()`: `duration_min` i `timestep_min` muszą być dodatnie i skończone (`InvalidParameterError`).
+- `HydrologyReportGenerator.generate()` ma nowe argumenty opcjonalne `ia_coefficient` i `tc_params`.
+
 ### Removed
 
 - `hydrolog.cli.commands` (stare podkomendy `tc`, `cn`, `scs`, `uh` z opcjami `--length`,
   `--area`, `--tc`, `--csv`, ...). Bez aliasów starych nazw: np. `hydrolog scs --cn 72
   --precipitation 50` to teraz `hydrolog scs effective --cn 72 --precipitation-mm 50`;
   eksport CSV zastępuje `--json` (pełna koperta wyniku).
+- Dodatki `spatial` (i zależność od Kartografa) z `pyproject.toml`.
+
+### Fixed
+
+- **Rozkład Fishera–Tippetta dla minimów (`LowFlowAnalysis.fit_fisher_tippett()`).** Wersje < 1.0.0 dopasowywały do minimów rocznych rozkład *maksimów* (GEV) i czytały jego kwantyl w punkcie p = 1/T; to rozkład zwierciadlany, który poprawnie opisuje środek próby, ale nie lewy ogon rozkładu wartości najmniejszych. Teraz GEV dopasowuje się do *zanegowanych* minimów (`min(x) = −max(−x)`), a kwantyl to `−genextreme.isf(p, c, loc=−loc, scale=scale)`. Syntetyczna próba 1000 minimów rocznych z rozkładu Gumbela dla minimów (loc = 50, scale = 8), T = 100 lat: **−3821 → 13,26** (wartość teoretyczna 13,20); rozkład Weibulla (k = 2, loc = 1, scale = 5): T = 100 lat 1,24 → 1,51 (teoria 1,50), T = 1000 lat 0,33 → 1,18 (teoria 1,16). Raportowane `shape` to `c` z `scipy.stats.genextreme`, `loc` odnosi się do minimów. Szczegóły: `docs/COMPUTATION_PATHS.md` sekcja 3.6.
+- **Clark UH dla czasu trwania D niebędącego wielokrotnością kroku (`ClarkIUH.to_unit_hydrograph()`).** Krzywa S była przesuwana o `round(D/dt)` kroków, ale dzielona przez D, więc objętość hydrogramu wynosiła `round(D/dt)·dt/D` mm: dla D = 1,5·dt **1,333 → 1,000 mm**, dla D = 2,5·dt 0,8 → 1,000 mm; dla D < dt/2 funkcja zgłaszała `ValueError` (`s_curve[:-0]`). Teraz opóźniona krzywa S jest interpolowana liniowo, objętość wynosi 1 mm dla dowolnego D > 0, a dla całkowitych wielokrotności kroku wynik jest bez zmian. Wynik jest ciągły względem D (dawniej skok co pół kroku).
+- `WatershedParameters.calculate_tc("giandotti")`: `elevation_mean_m == 0` (średnia wysokość 0 m n.p.m.) była traktowana jak brak wartości i zastępowana środkiem przedziału wysokości.
+- **Raport obliczeniowy (`HydrologyReportGenerator`).** Sekcja hydrogramu jednostkowego dokumentuje teraz hydrogram użyty w obliczeniach (`result.unit_hydrograph_result`: model, parametry, rzędne, czas do szczytu), a nie szkic z założonych wartości (dawniej np. Nash n = 3, K = 30 min, trójkątne rzędne); współczynnik λ w Ia = λ·S pochodzi z obliczeń (dawniej stałe 0,2); sekcja czasu koncentracji używa wejść wzoru tak jak `calculate_tc()` (dawniej NRCS brał nieistniejący klucz `mean_slope_percent`, Giandotti liczył różnicę max − min zamiast średnia − min); wzory Kerby i Kerby-Kirpich pokazują spadek po korekcie małych spadków, a czas koryta Kirpicha jest podany w godzinach i minutach; wzory Snydera działają bez L i Lc; liczba kroków hydrogramu w sekcji splotu jest rzeczywista.
+- `calculate_monthly_statistics()`: miesiąc z jedną wartością miał przedział ufności `[średnia, średnia]` (twierdzenie o dokładnie znanej średniej) i ostrzeżenia NumPy; teraz odchylenie standardowe, współczynnik zmienności, skośność i przedział ufności takiego miesiąca to `NaN` (`null` w JSON). Miesiąc bez żadnej wartości zgłasza `InvalidParameterError` (`details.missing_months`), dawniej błąd NumPy.
+- `StreamNetwork`: metoda Shreve'a kończyła się `KeyError` w statystykach sieci (rzędy Shreve'a nie są ciągłe, a wskaźniki bifurkacji i długości zakładały ciągłe); `classify()` zapętlał się nieskończenie dla sieci z cyklem lub z nieistniejącym `upstream_id` przy źródle, a bez żadnego źródła po cichu zostawiał wszystkie rzędy równe 0 - teraz `InvalidParameterError` (`details.reason` = `cycle` / `unknown_upstream`), a segmenty pozostają bez zmian.
+- `RatingCurve`: `fit(h0_initial=...)` z wartością nieskończoną, `NaN` lub nie niższą od najniższego stanu kończyło się gołym `ValueError` ze SciPy (punkt startowy poza ograniczeniami) - teraz `InvalidParameterError` (`details.option` = `h0_initial`, `details.maximum` = najniższy stan, wskazówka w `hint`); pomiary z `NaN` lub nieskończonością są odrzucane przy tworzeniu obiektu. Brak zbieżności i przepełnienie prawa potęgowego to `RatingCurveFitError` (kod `calculation_error`, także `InvalidParameterError`, więc `except` napisane dla wersji < 1.0.0 nadal działa), z przyczyną w `__cause__`.
+
+### Testing
+
+- Zbieranych jest 3176 testów (824 w v0.7.0): katalog komend (parytet CLI/Python dla każdego przykładu), parser i render CLI, serwer MCP (klient-serwer w procesie), serializacja, `hydrolog.soil` (porty testów Kartografa; testy rastrów pomijane bez `rasterio`), warstwa operacji, przewodniki dla agentów (zgodność bajtów), regresje poprawek z sekcji „Fixed".
 
 ---
 
@@ -767,4 +837,4 @@ Requires optional dependencies: `pip install hydrolog[visualization]`
 | **0.6.3** | 2026-03-23 | FAA + Kerby + Kerby-Kirpich tc, API audit |
 | **0.6.4** | 2026-03-25 | WatershedParams extension + UH ordinates + docs audit |
 | **0.7.0** | 2026-03-26 | Statystyka hydrologiczna + Hydrometria |
-| 1.0.0 | TBD | Stable API |
+| **1.0.0** | 2026-10-19 | Stable API: command catalog, CLI from catalog, MCP server, HSG (`hydrolog.soil`), result serialization, calculation fixes |

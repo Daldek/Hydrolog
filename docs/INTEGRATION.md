@@ -1,14 +1,14 @@
 # Integracja Hydrograf ↔ Hydrolog
 
 **Data utworzenia:** 2026-01-20
-**Ostatnia aktualizacja:** 2026-03-25
-**Status:** W trakcie implementacji
+**Ostatnia aktualizacja:** 2026-10-19 (Hydrolog 1.0.0: Retman, klienci MCP, migracja HSG, eksport IMGWTools)
+**Status:** W trakcie implementacji (Hydrolog - gotowy; Hydrograf - do implementacji)
 
 ---
 
 ## Cel
 
-Umożliwić łatwą wymianę danych między Hydrografem (analizy przestrzenne GIS) a Hydrologiem (obliczenia hydrologiczne), z możliwością integracji z innymi systemami.
+Umożliwić łatwą wymianę danych między Hydrografem (analizy przestrzenne GIS) a Hydrologiem (obliczenia hydrologiczne), z możliwością integracji z innymi systemami: platformą agentową Retman, klientami MCP (np. Claude Code) oraz narzędziami IMGWTools i Kartograf, które dostarczają dane wejściowe. Hydrolog niczego nie pobiera i nie zależy od żadnego z tych narzędzi - wymiana odbywa się przez pliki (JSON, CSV, GeoTIFF).
 
 ---
 
@@ -333,6 +333,127 @@ print(f"Qmax: {result.peak_discharge_m3s:.2f} m³/s")
 
 ---
 
+## Hydrolog 1.0.0: warstwa operacji, katalog komend i pliki
+
+Od v1.0.0 Hydrolog ma jeden katalog komend (`hydrolog.catalog`, 37 komend, lista: `hydrolog commands list`), z którego powstają: warstwa operacji w Pythonie (`hydrolog.operations`), CLI `hydrolog`, serwer MCP (`hydrolog mcp`) i przewodniki dla agentów (`AGENTS.md`, `llms.txt`). Klasy biblioteki (`HydrographGenerator`, `WatershedParameters`, ...) działają jak dotąd; poniższe sekcje dotyczą nowych sposobów integracji.
+
+### Retman (handlery obliczeń)
+
+Retman wywołuje Hydrologa przez warstwę komend, a nie przez klasy biblioteki.
+
+- **Warstwa operacji:** `hydrolog.operations` - po jednej publicznej, otypowanej funkcji na komendę (`tc_kirpich`, `hydrograph_generate`, `stats_flood_frequency`, `soil_hsg`, ...), argumenty nazwane tak jak opcje komendy, dokumentacja NumPy (z niej korzysta `retman-scaffold`). Funkcja zwraca obiekt wynikowy z `to_dict()`/`to_json()` albo `OperationOutput` (`result`, `notices`, `files`), gdy komenda ma ostrzeżenia lub zapisuje pliki.
+- **Katalog i koperta:** `hydrolog.catalog.run_command("<grupa> <komenda>", {opcje})` waliduje opcje, uruchamia operację i zwraca kopertę `hydrolog-result/1` (`inputs`, `result`, `files` z SHA-256, `notices`; `to_dict()`, `to_json()`). Schemat opcji (JSON Schema): `command_schema()`, `hydrolog commands schema`. Błędy to wyjątki `HydrologError` z `code`, `hint` i `details` (rejestr `ERROR_CODES`; dokument `hydrolog-error/1`).
+- **`catchment_characteristics`:** proponowany format to `WatershedParameters` JSON (`WatershedParameters.to_json()`; wymagane `area_km2`, `perimeter_km`, `length_km`, `elevation_min_m`, `elevation_max_m`). Plik trafia do komend jako `watershed_file`, a `WatershedParameters.from_dict()` ignoruje dodatkowy klucz `schema` (np. `"hydrolog-catchment/1"`) dopisany przez narzędzia katalogowe.
+- **Wejścia i wyjścia przez pliki:** serie (`input_file` + `value_column`/`date_column`), stacje opadowe (`stations_file`), odcinki sieci (`segments_file`), zlewnia (`watershed_file`) jako CSV/JSON; wyniki zapisujące pliki (`soil hsg` - GeoTIFF, `report generate` - Markdown) podają je w `files`. Retman nie musi wklejać serii do argumentów.
+- **Wersje:** manifest narzędzia w Retmanie: `supported_versions=">=1.0,<2"` (od 1.0.0 obowiązuje wersjonowanie semantyczne: opcje, nazwy komend i kształt kopert nie zmieniają się niezgodnie wstecz w serii 1.x).
+
+```python
+from hydrolog.catalog import run_command
+
+result = run_command(
+    "hydrograph generate",
+    {
+        "watershed_file": "/dane/zlewnie/potok_x.json",
+        "tc_method": "kirpich",
+        "hietogram_type": "beta",
+        "total_mm": 50,
+        "duration_min": 60,
+    },
+)
+print(result.result.peak_discharge_m3s, [n.text for n in result.notices])  # obiekt wynikowy
+envelope = result.to_dict()  # koperta hydrolog-result/1 jako słownik (result.to_json() - tekst)
+```
+
+### Klienci MCP (Claude Code i inni)
+
+Serwer MCP udostępnia każdą komendę katalogu jako narzędzie (nazwa = `operation_id`, np. `tc_kirpich`). Wymaga dodatku `hydrolog[mcp]` (`mcp>=2.3,<3`) i działa na stdio.
+
+```bash
+pip install "hydrolog[mcp,raster] @ git+https://github.com/Daldek/Hydrolog.git"
+
+# Claude Code
+claude mcp add hydrolog -- hydrolog mcp --allow-dir ~/hydrolog-data
+```
+
+Inne klienty MCP (plik konfiguracji, np. `.mcp.json`):
+
+```json
+{"mcpServers": {"hydrolog": {"command": "hydrolog", "args": ["mcp", "--allow-dir", "/home/ola/hydrolog-data"]}}}
+```
+
+- `--allow-dir DIR` (można powtórzyć) wskazuje katalogi, w których narzędzia mogą czytać i zapisywać pliki; ścieżki spoza nich kończą się błędem `forbidden`. Bez `--allow-dir` komendy z opcjami typu ścieżka są odrzucane, komendy bez plików (np. `tc_kirpich`, `cn_lookup`) działają.
+- `--lang pl|en` wybiera język opisów narzędzi.
+- Sukces: `structuredContent` = koperta `hydrolog-result/1`; błąd: `isError: true` z dokumentem `hydrolog-error/1`.
+- Przewodnik dla agentów: `AGENTS.md` w repozytorium (generowany: `hydrolog commands guide --format agents --lang pl`).
+
+### IMGWTools: eksport szeregu → komendy `stats`
+
+Hydrolog nie pobiera danych IMGW. Szereg dobowy eksportuje IMGWTools (`series export`) do pliku CSV z jednostkami w nagłówku (`Q [m3/s]`), kolumną `date`, flagami wartości i atrybucją. Plik wczytuje się bez przetwarzania (separator przecinek lub średnik, UTF-8; kolumny podaje się nazwą bez jednostki: `Q` znajduje `Q [m3/s]`):
+
+```bash
+hydrolog stats flood-frequency --input-file q_dobowe.csv --value-column Q --date-column date \
+    --distribution all --return-periods 10,50,100
+hydrolog stats low-flow --input-file q_dobowe.csv --value-column Q --date-column date
+hydrolog stats characteristic --input-file q_dobowe.csv --value-column Q --date-column date
+hydrolog stats monthly --input-file q_dobowe.csv --value-column Q --date-column date
+```
+
+Maksima i minima roczne wybierane są z lat hydrologicznych (XI-X); seria krótsza niż zalecana daje ostrzeżenie w `notices`. Te same komendy są dostępne w Pythonie (`hydrolog.operations.stats_flood_frequency(input_file=..., value_column="Q", date_column="date")`) i MCP (`stats_flood_frequency`).
+
+### Hydrograf: migracja HSG z Kartografa do Hydrologa
+
+Dotychczas grupy hydrologiczne gleb liczył Kartograf (`HSGCalculator`, `calculate_hsg`; w Hydrografie: `backend/core/cn_calculator.py` i `scripts/bootstrap.py`). Od Hydrologa 1.0.0 obliczanie HSG należy do Hydrologa (moduł `hydrolog.soil`; reguły i mapowanie tekstura → HSG przeniesione z Kartografa 0.8.0, ADR-025), a Kartograf zostaje przy samym pobieraniu rastrów (`download_soil`). Hydrolog nie zależy od Kartografa (dawny dodatek `hydrolog[spatial]` usunięto).
+
+Dotychczasowa ścieżka w Hydrografie:
+
+```python
+from kartograf.hydrology import HSGCalculator
+
+hsg_calc = HSGCalculator()
+hsg_calc.calculate_hsg_by_bbox(bbox, hsg_path)      # pobranie + obliczenie HSG
+hsg_stats = hsg_calc.get_hsg_statistics(hsg_path)   # udziały grup
+```
+
+Docelowa ścieżka (Kartograf `download_soil` → Hydrolog `hsg_from_rasters` → `hsg_statistics` → CN ważone):
+
+```python
+from kartograf import BBox, download_soil
+from hydrolog.runoff import calculate_weighted_cn, get_cn
+from hydrolog.soil import hsg_from_rasters, hsg_statistics   # wymaga hydrolog[raster]
+
+bbox = BBox(626000, 480000, 628000, 482000, "EPSG:2180")
+
+# 1. Kartograf: trzy rastry SoilGrids (g/kg) - ił, piasek, pył (te same: warstwa, głębokość, statystyka)
+paths = {}
+for prop in ("clay", "sand", "silt"):
+    report = download_soil(
+        output_dir="/dane/kartograf", bbox=bbox,
+        property=prop, depth="0-5cm", stat="mean",
+    )
+    paths[prop] = report.files[0].file.path
+
+# 2. Hydrolog: raster HSG (GeoTIFF uint8: 0 - brak danych, 1-4 to A-D)
+hsg_from_rasters(paths["clay"], paths["sand"], paths["silt"], output_path="/dane/hydrolog/hsg.tif")
+
+# 3. Hydrolog: powierzchnie grup A-D (opcjonalnie tylko prostokąt: bbox=..., bbox_crs=...)
+stats = hsg_statistics("/dane/hydrolog/hsg.tif")
+
+# 4. CN ważone powierzchnią: część to para (CN, powierzchnia); CN z tablic TR-55 dla pokrycia terenu zlewni
+parts = [
+    (get_cn(group, "meadow", "good"), group_stats.area_ha)
+    for group, group_stats in stats.groups.items()
+    if group_stats.area_ha > 0
+]
+cn = calculate_weighted_cn(parts)
+```
+
+- Rastry iłu, piasku i pyłu muszą mieć ten sam układ współrzędnych, siatkę i rozmiar (inaczej `InputDataError`, kod `data_error`); jednostki dowolne, ale spójne.
+- Ta sama ścieżka w CLI: `hydrolog soil hsg --clay-path ... --sand-path ... --silt-path ... --output-path hsg.tif`, `hydrolog soil hsg-stats --hsg-path hsg.tif`, `hydrolog cn weighted --parts '[{"cn": 30, "area": 75.0}, ...]'`.
+- HSG to tylko jeden z dwóch czynników CN: przy kilku pokryciach terenu części są parami (HSG × pokrycie), a przecięcie rastrów HSG i pokrycia robi Hydrograf (Hydrolog tego nie robi).
+- Usunięcie HSG z Kartografa i przepięcie Hydrografa (`get_hsg_from_soilgrids`, `bootstrap.py`) to osobne zmiany w tamtych repozytoriach; do czasu ich wykonania Hydrograf (pin v0.6.3) działa ze starą ścieżką.
+
+---
+
 ## Lista zmian do implementacji
 
 ### Hydrolog (w tej sesji)
@@ -357,7 +478,7 @@ print(f"Qmax: {result.peak_discharge_m3s:.2f} m³/s")
 
 ---
 
-## Status integracji (2026-03-25)
+## Status integracji (2026-10-19)
 
 ### Hydrolog - GOTOWY
 
@@ -369,6 +490,9 @@ print(f"Qmax: {result.peak_discharge_m3s:.2f} m³/s")
 | HydrographGenerator | ✅ | Błąd SCS naprawiony w v0.5.1 (stała 0.208) |
 | Testy jednostkowe | ✅ | 35 testów |
 | Testy integracyjne | ✅ | 15 testów |
+| Warstwa operacji, katalog komend, CLI, MCP (v1.0.0) | ✅ | 37 komend; `hydrolog.operations`, `hydrolog mcp` |
+| Moduł `soil` (HSG, v1.0.0) | ✅ | `hsg_from_rasters`, `hsg_statistics`, komendy `soil *` |
+| Serializacja wyników (v1.0.0) | ✅ | `to_dict()`/`to_json()` we wszystkich klasach wynikowych |
 
 **Naprawione:** Błąd w `SCSUnitHydrograph.peak_discharge()` — stała 2.08 → 0.208 (naprawione w v0.5.1).
 
@@ -379,7 +503,7 @@ print(f"Qmax: {result.peak_discharge_m3s:.2f} m³/s")
 | MorphometricParameters schema | 🔲 | Pydantic model |
 | build_morphometric_params() | 🔲 | Funkcja obliczająca |
 | API endpoint /morphometry | 🔲 | Rozszerzenie API |
-| Integracja z Hydrolog | 🔲 | pip install hydrolog |
+| Integracja z Hydrolog | 🔲 | pip install hydrolog; migracja HSG: sekcja "Hydrograf: migracja HSG z Kartografa do Hydrologa" |
 
 ### Przetestowane scenariusze
 
@@ -411,4 +535,4 @@ print(f"Qmax: {result.peak_discharge_m3s:.2f} m³/s")
 
 ---
 
-**Ostatnia aktualizacja:** 2026-03-25
+**Ostatnia aktualizacja:** 2026-10-19

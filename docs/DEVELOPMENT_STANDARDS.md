@@ -2,8 +2,8 @@
 
 ## Hydrolog - Biblioteka Narzędzi Hydrologicznych
 
-**Wersja:** 1.1
-**Data:** 2026-03-25
+**Wersja:** 1.2
+**Data:** 2026-10-19
 
 ---
 
@@ -249,9 +249,14 @@ tests/
 │   ├── test_scs_cn.py
 │   ├── test_unit_hydrograph.py
 │   ├── test_hietogram.py
-│   └── test_concentration.py
+│   ├── test_concentration.py
+│   ├── test_catalog_core.py       # katalog komend (walidacja, przykłady, parytet CLI/Python)
+│   ├── test_cli_*.py              # parser, wartości, render, parytet CLI
+│   ├── test_mcp.py                # serwer MCP (klient-serwer w procesie)
+│   └── test_agent_guide.py        # zgodność AGENTS.md / llms.txt z generatorem
 ├── integration/
 │   └── test_full_hydrograph.py
+├── fixtures/                      # pliki CSV/JSON/GeoTIFF używane przez testy
 └── conftest.py
 ```
 
@@ -393,20 +398,23 @@ from hydrolog.runoff.generator import HydrographGenerator
 ### 8.1 Własne wyjątki
 
 ```python
-# hydrolog/exceptions.py
+# hydrolog/exceptions.py (skrót)
 
 class HydrologError(Exception):
-    """Base exception for Hydrolog."""
-    pass
+    """Base exception: code, details, hint (keyword-only, optional)."""
 
-class InvalidParameterError(HydrologError):
-    """Invalid parameter value."""
-    pass
-
-class CalculationError(HydrologError):
-    """Error during calculation."""
-    pass
+class InvalidParameterError(HydrologError, ValueError):  # code "validation_error"
+class CalculationError(HydrologError):                    # code "calculation_error"
+class InputDataError(HydrologError):                      # code "data_error"
+class MissingDependencyError(HydrologError):              # code "missing_dependency"
+class ForbiddenPathError(HydrologError):                  # code "forbidden"
+class NotFoundError(HydrologError):                       # code "not_found"
+class OutputError(HydrologError):                         # code "io_error"
 ```
+
+`InvalidParameterError` jest też `ValueError` (kod napisany pod `except ValueError` z wersji < 1.0.0 nadal działa). Błąd, który ma być jednocześnie `CalculationError` i zgodny wstecz z `InvalidParameterError`, to `RatingCurveFitError(CalculationError, InvalidParameterError)`.
+
+Dotychczasowe `raise InvalidParameterError("komunikat")` działa bez zmian; `code`, `details` i `hint` są opcjonalnymi argumentami nazwanymi.
 
 ### 8.2 Walidacja na wejściu
 
@@ -433,6 +441,29 @@ if param < TYPICAL_MIN or param > TYPICAL_MAX:
 ```
 
 Wzorzec stosowany w `hydrolog/time/concentration.py` — pozwala użytkownikowi kontynuować obliczenia z nietypowymi wartościami.
+
+### 8.4 Kody błędów (`ERROR_CODES`) i szczegóły błędu
+
+Zamknięty rejestr `hydrolog.exceptions.ERROR_CODES` mapuje kod na tytuł (PL/EN) i kod wyjścia CLI; ten sam kod widzi użytkownik Pythona (`exc.code`), CLI (kod wyjścia, z `--json` linia `hydrolog-error/1` na stderr) i klient MCP (`isError`).
+
+| Kod | Kod wyjścia | Klasa wyjątku | Kiedy |
+|-----|:-----------:|---------------|-------|
+| `validation_error` | 2 | `InvalidParameterError` | zła wartość, typ lub zakres argumentu, brak wymaganego argumentu |
+| `not_found` | 3 | `NotFoundError` | brak pliku wejściowego, nieznana komenda |
+| `calculation_error` | 4 | `CalculationError` | dane poprawne formalnie, ale wyniku nie da się policzyć (brak zbieżności, za krótka seria) |
+| `data_error` | 7 | `InputDataError` | plik wejściowy nieczytelny lub błędny (kolumna, liczba, data, raster) |
+| `missing_dependency` | 6 | `MissingDependencyError` | brak dodatku opcjonalnego (`[raster]`, `[mcp]`, `[visualization]`) |
+| `forbidden` | 8 | `ForbiddenPathError` | ścieżka poza katalogami dozwolonymi serwera MCP |
+| `io_error` | 9 | `OutputError` | nie można zapisać pliku wyjściowego |
+| `internal_error` | 1 | `HydrologError` | błąd w Hydrologu (kod domyślny klasy bazowej) |
+
+Zasady:
+
+- Rzucaj najwęższą klasę (`InvalidParameterError` zamiast gołego `ValueError`); komunikat (`message`) i `hint` są po angielsku, w jednej linii.
+- `details` to JSON-owy słownik z kontekstem błędu. Konwencja: `option` - nazwa błędnej opcji (taka jak w katalogu), `reason` - powód (`required`, `type`, `minimum`, `maximum`, `choice`, `one_of`, `unknown_option`, `missing_field`, `cycle`...), a do tego `value`, `allowed`, `path`, `column` zależnie od błędu. Agenci decydują po `code`, `details.option` i `details.reason`, nie po tekście komunikatu.
+- `hint` mówi, jak poprawić wywołanie (jedno zdanie).
+- Nowy kod błędu to zmiana publicznego kontraktu (kod wyjścia, dokument `hydrolog-error/1`): dopisz go do `ErrorCode` i `ERROR_CODES`, do `_ERROR_ADVICE` w `hydrolog/agent_guide.py` (opis w tabeli błędów przewodników) i zregeneruj przewodniki (sekcja 11). Zwykle wystarcza istniejący kod z innym `reason`.
+- Ostrzeżenia nie są błędami: `warnings.warn(..., UserWarning)` (sekcja 8.3); w operacjach katalogu `capture_warnings` zamienia je na `notices` koperty wyniku.
 
 ---
 
@@ -469,9 +500,40 @@ Wzorzec stosowany w `hydrolog/time/concentration.py` — pozwala użytkownikowi 
 - [ ] Formatowanie OK (`black --check`)
 - [ ] Type hints OK (`mypy`)
 - [ ] Docstrings dla publicznych funkcji/klas
-- [ ] PROGRESS.md zaktualizowany
+- [ ] Zmiana komendy lub opcji katalogu: `AGENTS.md` i `llms.txt` zregenerowane (sekcja 11)
+- [ ] CHANGELOG.md i PROGRESS.md zaktualizowane
 
 ---
 
-**Wersja dokumentu:** 1.1
-**Data ostatniej aktualizacji:** 2026-03-25
+## 11. Katalog komend: dodawanie komendy i przewodniki dla agentów
+
+Biblioteka, CLI, serwer MCP i przewodniki powstają z jednego katalogu komend (`hydrolog/catalog/`). Nie edytuje się osobno parsera CLI, narzędzi MCP ani `AGENTS.md`/`llms.txt`.
+
+### 11.1 Jak dodać komendę
+
+1. **Operacja** w `hydrolog/operations/<grupa>.py`: publiczna, udokumentowana (docstring NumPy po angielsku), w pełni otypowana funkcja o argumentach nazwanych (keyword-only) dokładnie tak jak opcje komendy; nazwa `<grupa>_<komenda>` (`tc_kirpich`), `Literal` dla wyborów, wartości przyjazne JSON-owi (liczby, teksty, listy, ścieżki jako `str`). Operacja składa istniejące klasy (bez nowej hydrologii), serie, stacje i zlewnie wczytuje przez `hydrolog.catalog.inputs`, błędy zgłasza wyjątkami z `hydrolog.exceptions`. Zwraca wynik z `JsonResultMixin` (`to_dict()`/`to_json()`) albo `OperationOutput` (wynik + `notices` + zapisane `files`). Wyeksportuj ją w `hydrolog/operations/__init__.py` (z `__all__`).
+2. **Deklaracja** w `hydrolog/catalog/groups/<grupa>.py` (krotka `COMMANDS`): `Command` (`name` `"<grupa> <komenda>"`, `operation_id`, `summary` do 120 znaków i `description` po polsku, `summary_en`/`description_en`, `function="hydrolog.operations:<nazwa>"`, `options`, `one_of`, `writes`, `examples`) i `Option` (typ, opis PL/EN, `required`, `default` tylko gdy API ma udokumentowaną wartość domyślną, `minimum`/`maximum`/`exclusive_minimum`, `unit`, `writes` dla opcji wyjściowej). Co najmniej jeden przykład w `examples`. Nowa grupa: dopisz jej moduł do `GROUP_MODULES` w `hydrolog/catalog/groups/__init__.py` (kolejność w pomocy i przewodnikach; `commands` zostaje ostatnia) i tytuł do `_GROUP_TITLES` w `hydrolog/agent_guide.py`.
+3. **CLI i MCP** nie wymagają zmian: flagi `--kebab-case`, schemat (`--schema`), narzędzie MCP o nazwie `operation_id` i wiersz w przewodnikach powstają z deklaracji. Opcje typu `path` podlegają polityce ścieżek (MCP: tylko katalogi `--allow-dir`).
+4. **Testy:** przykłady z `examples` uruchamia test parytetu przez `run_command` i CLI (`--json`) i porównuje koperty; dodaj testy operacji dla przypadków brzegowych i błędów (`code`, `details.option`, `details.reason`).
+5. **Przewodniki:** zregeneruj `AGENTS.md` i `llms.txt` w tej samej zmianie (sekcja 11.2).
+6. **Dokumentacja:** CHANGELOG.md (liczba komend, nowa komenda), README i PROGRESS.md, jeśli komenda jest widoczna dla użytkownika.
+
+### 11.2 Regeneracja przewodników dla agentów
+
+`AGENTS.md` i `llms.txt` w katalogu głównym repozytorium są generowane (nie edytuj ich ręcznie):
+
+```bash
+.venv/bin/hydrolog commands guide --format agents --lang pl --path AGENTS.md
+.venv/bin/hydrolog commands guide --format llms --lang pl --path llms.txt
+```
+
+Wersja angielska (na stdout): `hydrolog commands guide --format agents --lang en`. Test `tests/unit/test_agent_guide.py` porównuje bajty obu plików z generatorem, więc zmiana katalogu, szablonów w `hydrolog/_data/agents/`, rejestru błędów, zasad albo przepływów w `hydrolog/agent_guide.py` bez regeneracji kończy się niepowodzeniem testu. Każdy krok przepływu w przewodniku jest walidowany względem katalogu: zmiana nazwy opcji zatrzyma generator, dopóki nie poprawisz przepływu.
+
+### 11.3 Wersjonowanie interfejsów (od v1.0.0)
+
+Od v1.0.0 obowiązuje wersjonowanie semantyczne. Nazwy komend, nazwy i typy opcji, schematy `hydrolog-result/1` i `hydrolog-error/1` oraz kody błędów rejestru są publicznym API: zmiana niezgodna wstecz wymaga nowej wersji głównej. Dodawanie komend, opcji opcjonalnych i pól wyniku jest zmianą zgodną wstecz.
+
+---
+
+**Wersja dokumentu:** 1.2
+**Data ostatniej aktualizacji:** 2026-10-19

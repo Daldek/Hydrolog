@@ -1,8 +1,8 @@
-# Ścieżki obliczeniowe dla modeli hydrogramów jednostkowych
+# Ścieżki obliczeniowe dla modeli hydrogramów jednostkowych (oraz HSG i rozkład Fishera–Tippetta)
 
-**Wersja dokumentu:** 1.1
-**Data:** 2026-03-25
-**Dotyczy:** Hydrolog >= 0.6.0
+**Wersja dokumentu:** 1.2
+**Data:** 2026-10-19
+**Dotyczy:** Hydrolog >= 1.0.0 (sekcje 3.3.6, 3.5 i 3.6 opisują zachowanie od v1.0.0; pozostałe: >= 0.6.0)
 
 ---
 
@@ -551,6 +551,35 @@ result = generator.generate(precip)
 print(f"Qmax = {result.peak_discharge_m3s:.2f} m³/s")
 ```
 
+#### 3.3.6 Hydrogram D-minutowy z krzywej S (`to_unit_hydrograph`)
+
+`ClarkIUH.to_unit_hydrograph(area_km2, duration_min, timestep_min)` przekształca IUH w hydrogram jednostkowy opadu efektywnego o czasie trwania D metodą krzywej S:
+
+```
+S(t)  = ∑ u(t_i) × dt                     (suma skumulowana rzędnych IUH; odpowiedź na ciągły opad o jednostkowej intensywności)
+U_D(t) = [ S(t) - S(t - D) ] / D          (hydrogram jednostkowy dla opadu 1 mm w czasie D)
+```
+
+Krzywa S jest znana tylko w węzłach `t_i = i × dt`, więc opóźniona krzywa `S(t_i - D)` jest odczytywana interpolacją liniową (przed t = 0 jest równa 0). Dzięki temu **D nie musi być wielokrotnością kroku `dt`**:
+
+| D / dt | Zachowanie |
+|--------|------------|
+| całkowite k (D = k·dt) | dokładnie krzywa S przesunięta o k kroków (jak dotąd) |
+| niecałkowite (np. 1,5) | interpolacja liniowa między dwoma sąsiednimi węzłami; objętość UH = 1 mm |
+| < 1 | S rozwiązana co najwyżej do kroku: wynik jak dla D = dt; do rozdzielenia krótkiego opadu użyj `timestep_min <= duration_min` |
+
+Objętość hydrogramu (suma rzędnych × dt, przeliczona na warstwę wody nad zlewnią) wynosi **1 mm** dla dowolnego D > 0, o ile całą odpowiedź obejmuje `total_duration_min` (domyślnie `tc + 5R + D` gubi tylko pomijalny ogon).
+
+> **Zmiana w v1.0.0 (poprawka błędu).** Wersje < 1.0.0 przesuwały krzywą S o `round(D/dt)` kroków, ale dzieliły przez D. Dla D niebędącego wielokrotnością kroku objętość wynosiła `round(D/dt)·dt/D` mm: **1,333 mm dla D = 1,5·dt** i 0,8 mm dla D = 2,5·dt (przepływy o 33% za duże lub 20% za małe), a dla D < dt/2 `to_unit_hydrograph` zgłaszało `ValueError` (`s_curve[:-0]`). Od v1.0.0 objętość wynosi 1,000 mm dla każdego D, a niedodatnie lub nieskończone D i krok zgłaszają `InvalidParameterError`.
+
+```python
+iuh = ClarkIUH(tc_min=60.0, r_min=30.0)
+# D = 1,5 kroku: objętość UH = 1 mm (dawniej 1,333 mm)
+uh = iuh.to_unit_hydrograph(area_km2=45.0, duration_min=7.5, timestep_min=5.0,
+                            total_duration_min=1000.0)
+print(f"{uh.ordinates_m3s.sum() * 5.0 * 60.0 / 45000.0:.3f} mm")   # 1.000 mm
+```
+
 ---
 
 ### 3.4 Snyder UH
@@ -677,6 +706,131 @@ print(f"Qmax = {result.peak_discharge_m3s:.2f} m³/s")
 
 ---
 
+### 3.5 Grupy hydrologiczne gleb (HSG) i CN ważone powierzchnią (`hydrolog.soil`, od v1.0.0)
+
+HSG (A-D) jest jednym z dwóch czynników liczby CN (drugim jest pokrycie terenu). Moduł `hydrolog.soil` wyznacza HSG z zawartości iłu, piasku i pyłu; reguły i mapowanie przeniesiono z Kartografa 0.8.0 (`kartograf.hydrology.hsg`, ADR-025), a Kartograf zostaje przy pobieraniu rastrów (`download_soil`).
+
+#### 3.5.1 Diagram przepływu danych
+
+```
+Kartograf download_soil (property = clay | sand | silt, SoilGrids, g/kg)
+        │   trzy rastry GeoTIFF: ten sam CRS, siatka i rozmiar
+        ▼
+hydrolog.soil.hsg_from_rasters(clay, sand, silt, output_path)      [dodatek hydrolog[raster]]
+        │   klasa uziarnienia USDA (12 klas) → HSG; GeoTIFF uint8: 0 = brak danych, 1-4 = A-D
+        ▼
+hydrolog.soil.hsg_statistics(hsg_path, bbox=None, bbox_crs=None)
+        │   powierzchnia (m², ha) i udział (%) grup A-D oraz brak danych
+        ▼
+get_cn(HSG, pokrycie terenu, stan) × powierzchnia grupy  →  calculate_weighted_cn(...)
+        ▼
+CN zlewni  →  SCSCN / HydrographGenerator
+```
+
+Te same kroki w CLI: `soil hsg`, `soil hsg-stats`, `cn weighted`; klasę uziarnienia i HSG pojedynczej próbki daje `soil texture` (`classify_usda_texture`, `texture_to_hsg`).
+
+#### 3.5.2 Klasyfikacja uziarnienia (trójkąt USDA)
+
+Reguły (c - ił, s - piasek, si - pył, w % sumy trzech frakcji), pierwsza spełniona wygrywa:
+
+| # | Klasa | Warunek |
+|---|-------|---------|
+| 1 | `sand` | si + 1,5·c < 15 |
+| 2 | `loamy_sand` | si + 1,5·c ≥ 15 i si + 2·c < 30 |
+| 3 | `sandy_loam` | (7 ≤ c ≤ 20, s > 52, si + 2·c ≥ 30) lub (c < 7, si < 50, si + 2·c ≥ 30) |
+| 4 | `silt` | si ≥ 80, c < 12 |
+| 5 | `silt_loam` | (si ≥ 50, 12 ≤ c < 27) lub (50 ≤ si < 80, c < 12) |
+| 6 | `loam` | 7 ≤ c ≤ 27, 28 ≤ si < 50, s ≤ 52 |
+| 7 | `sandy_clay_loam` | 20 ≤ c < 35, si < 28, s > 45 |
+| 8 | `clay_loam` | 27 ≤ c < 40, 20 < s ≤ 45 |
+| 9 | `silty_clay_loam` | 27 ≤ c < 40, s ≤ 20 |
+| 10 | `sandy_clay` | c ≥ 35, s > 45 |
+| 11 | `silty_clay` | c ≥ 40, si ≥ 40 |
+| 12 | `clay` | c ≥ 40, s ≤ 45, si < 40 |
+
+- Reguły porównują **ilości** frakcji z ich sumą (bez dzielenia, w `float64`), więc wynik nie zależy od jednostki (%, g/kg), byle była wspólna dla trzech rastrów, a wartości na granicach trójkąta są klasyfikowane dokładnie.
+- Suma równa zero daje `loam` w klasyfikatorze uziarnienia; w `classify_hsg` taka komórka (wszystkie trzy frakcje równe 0, konwencja SoilGrids dla luk) to brak danych.
+- Brak danych (kod 0) to także NaN/±Inf i wartość równa znacznikowi `nodata` któregokolwiek z trzech rastrów. Ujemna ilość w komórce z danymi jest błędem.
+
+#### 3.5.3 Uziarnienie → HSG
+
+| HSG | Klasy uziarnienia |
+|-----|-------------------|
+| A | `sand`, `loamy_sand` |
+| B | `sandy_loam`, `loam`, `silt_loam`, `silt` |
+| C | `sandy_clay_loam`, `clay_loam`, `silty_clay_loam` |
+| D | `sandy_clay`, `silty_clay`, `clay` |
+
+Mapowanie jest **łagodniejsze niż tablica TR-55** (USDA-NRCS NEH Part 630, rozdz. 7) dla trzech klas przejściowych: `sandy_loam` = B (TR-55: A), `clay_loam` i `silty_clay_loam` = C (TR-55: D). Ich rzeczywista grupa zależy też od struktury gleby, a środkowa grupa jest dla metody SCS-CN ostrożna (Kartograf ADR-025, decyzja b). Zmiana tabeli `TEXTURE_TO_HSG` zmienia CN u każdego użytkownika.
+
+#### 3.5.4 Statystyki powierzchni
+
+- Powierzchnia komórki: dla układu współrzędnych **geograficznego** liczona geodezyjnie dla każdego wiersza rastra (zależy od szerokości), dla **rzutowanego** z transformacji afinicznej.
+- `percent` grup A-D to udział w powierzchni **z danymi**, `percent` braku danych - udział w powierzchni całkowitej; sumy grup i braku danych dają `total_area_m2`.
+- Opcjonalny prostokąt `bbox` (z `bbox_crs`) przycina statystykę z uwzględnieniem udziału komórek brzegowych.
+
+#### 3.5.5 Przykład kodu
+
+```python
+from hydrolog.runoff import calculate_weighted_cn, get_cn
+from hydrolog.soil import hsg_from_rasters, hsg_statistics   # wymaga hydrolog[raster]
+
+hsg_from_rasters("clay.tif", "sand.tif", "silt.tif", output_path="hsg.tif")
+stats = hsg_statistics("hsg.tif")
+
+# CN ważone powierzchnią (jedno pokrycie terenu, np. łąka w dobrym stanie)
+parts = [(get_cn(g, "meadow", "good"), s.area_ha)
+         for g, s in stats.groups.items() if s.area_ha > 0]
+cn = calculate_weighted_cn(parts)
+```
+
+> **Uwaga.** HSG nie jest liczbą CN. Przy kilku pokryciach terenu części CN są parami (HSG × pokrycie), a przecięcie rastra HSG z rastrem pokrycia terenu wykonuje się poza Hydrologiem.
+
+---
+
+### 3.6 Przepływy minimalne: rozkład Fishera–Tippetta dla minimów (`LowFlowAnalysis`, poprawka w v1.0.0)
+
+`LowFlowAnalysis.fit_fisher_tippett()` dopasowuje do minimów rocznych (rok hydrologiczny XI-X) rozkład wartości **najmniejszych**: uogólniony rozkład wartości ekstremalnych (GEV) dla minimów, którego szczególnymi przypadkami są rozkład Gumbela dla minimów i trójparametrowy rozkład Weibulla.
+
+#### 3.6.1 Wzory
+
+```
+Dystrybuanta minimów rocznych x:
+
+   F(x) = 1 - exp( -( 1 + c × (x - loc) / scale )^(1/c) ),     1 + c × (x - loc) / scale > 0
+
+   c → 0   rozkład Gumbela dla minimów:  F(x) = 1 - exp( -exp( (x - loc) / scale ) )
+   c > 0   minima mają dolną granicę  loc - scale / c  (Weibull o kształcie 1/c)
+
+Kwantyl o prawdopodobieństwie nieprzewyższenia p = 1/T (przepływ, który wystąpi raz na T lat
+jako równy lub mniejszy):
+
+   Q_T = loc + scale / c × ( (-ln(1 - p))^c - 1 )
+```
+
+Ponieważ minimum próby jest ujemnym maksimum próby ze zmienionym znakiem, `min(x) = -max(-x)`, parametry estymuje się metodą największej wiarygodności z **zanegowanych** minimów (`scipy.stats.genextreme`), a kwantyl to `Q_T = -genextreme.isf(p, c, loc=-loc, scale=scale)`. Raportowany `shape` to parametr `c` z `scipy.stats.genextreme` (czyli minus parametr kształtu ξ w zwykłej notacji GEV).
+
+> **Zmiana w v1.0.0 (poprawka błędu).** Wersje < 1.0.0 dopasowywały do minimów wprost rozkład **maksimów** i czytały jego kwantyl w punkcie p. To rozkład zwierciadlany: poprawnie przybliża środek próby, ale jego lewy ogon nie jest ogonem rozkładu wartości najmniejszych, więc kwantyle rzadkich niżówek były obciążone, coraz bardziej wraz z T, i mogły być ujemne. Dla syntetycznej próby 1000 minimów rocznych z rozkładu Gumbela dla minimów (loc = 50, scale = 8) kwantyl dla T = 100 lat wynosił **−3821**, a od v1.0.0 wynosi **13,26** (wartość teoretyczna 13,20). Dla rozkładu Weibulla (k = 2, loc = 1, scale = 5) dla T = 100 lat: 1,24 → 1,51 (teoria 1,50), dla T = 1000 lat: 0,33 → 1,18 (teoria 1,16).
+
+#### 3.6.2 Ograniczenia
+
+- Rozkład nie jest ograniczony do przepływów dodatnich: przy `shape ≤ 0` minima nie mają dolnej granicy, a kwantyle bardzo długich okresów powtarzalności mogą być ujemne.
+- Trzy parametry z kilkudziesięciu lat danych są niepewne, zwłaszcza kształt, a z nim kwantyle rzadkich niżówek (poniżej 10 lat danych wynik ma ostrzeżenie).
+- Test Kołmogorowa-Smirnowa jest informacyjny (`ks_valid = False`: parametry estymowano z tych samych danych).
+
+```python
+from hydrolog.statistics import LowFlowAnalysis
+
+analysis = LowFlowAnalysis(daily_flows, dates, return_periods=[10, 50, 100])
+ft = analysis.fit_fisher_tippett()
+print(ft.parameters)   # {"shape": ..., "loc": ..., "scale": ...}
+print(ft.quantiles)    # przepływ [m³/s] raz na 10, 50, 100 lat
+```
+
+Ta sama analiza w CLI: `hydrolog stats low-flow --input-file q_dobowe.csv --value-column Q --date-column date --return-periods 10,50,100`.
+
+---
+
 ## 4. Weryfikacja literaturowa
 
 ### 4.1 Tabela źródeł dla każdej ścieżki obliczeniowej
@@ -699,6 +853,9 @@ print(f"Qmax = {result.peak_discharge_m3s:.2f} m³/s")
 | Clark IUH + Tc (dowolna metoda) | Clark (1945), HEC-HMS | ✅ |
 | Clark IUH + R/Tc ratio | HEC-HMS, praktyka inżynierska | ✅ |
 | Snyder UH + L, Lc, Ct, Cp | Snyder (1938) | ✅ |
+| Clark UH D-minutowy (krzywa S, dowolne D > 0) | Clark (1945), metoda krzywej S (np. Chow, Maidment, Mays 1988) | ✅ |
+| HSG z uziarnienia USDA (mapowanie klas) | USDA Soil Survey Manual (Handbook 18), NEH Part 630 rozdz. 7 (TR-55), Kartograf ADR-025 | ✅ (z odstępstwem dla 3 klas) |
+| Rozkład minimów rocznych (GEV dla minimów) | Fisher i Tippett (1928), Gumbel (1958), Coles (2001) | ✅ |
 
 ### 4.2 Kluczowe publikacje
 
@@ -716,6 +873,10 @@ print(f"Qmax = {result.peak_discharge_m3s:.2f} m³/s")
 | Lutz, W. | 1984 | Estymacja parametrów Nasha z cech fizjograficznych |
 | USDA TR-55 | 1986 | Metoda SCS-CN, relacja tlag = 0.6×Tc |
 | KZGW | 2017 | Polska metodyka, tabela f(N) dla Lutza |
+| Fisher, R.A. i Tippett, L.H.C. | 1928 | Rozkłady graniczne wartości najmniejszej i największej próby |
+| Gumbel, E.J. | 1958 | Statystyka wartości ekstremalnych (rozkład dla minimów) |
+| Coles, S. | 2001 | Estymacja GEV metodą największej wiarygodności (rozdz. 3) |
+| USDA Soil Survey Manual | 1993 | Trójkąt uziarnienia, klasy tekstury |
 
 ---
 
@@ -844,7 +1005,19 @@ print(f"Qmax = {result.peak_discharge_m3s:.2f} m³/s")
 
 16. **Bedient, P.B. & Huber, W.C.** (1992). *Hydrology and Floodplain Analysis*. Addison-Wesley.
 
+17. **Fisher, R.A. & Tippett, L.H.C.** (1928). Limiting forms of the frequency distribution of the largest or smallest member of a sample. *Proceedings of the Cambridge Philosophical Society*, 24(2), 180-190.
+
+18. **Gumbel, E.J.** (1958). *Statistics of Extremes*. Columbia University Press, New York.
+
+19. **Coles, S.** (2001). *An Introduction to Statistical Modeling of Extreme Values*. Springer, London.
+
+20. **USDA** (1993). Soil Survey Manual. Handbook No. 18. Soil Survey Division Staff, USDA.
+
+21. **USDA-NRCS** (2007). National Engineering Handbook, Part 630 Hydrology, Chapter 7: Hydrologic Soil Groups.
+
+22. **Chow, V.T., Maidment, D.R. & Mays, L.W.** (1988). *Applied Hydrology*. McGraw-Hill (metoda krzywej S hydrogramu jednostkowego).
+
 ---
 
-**Wersja dokumentu:** 1.1
-**Data ostatniej aktualizacji:** 2026-03-23
+**Wersja dokumentu:** 1.2
+**Data ostatniej aktualizacji:** 2026-10-19
