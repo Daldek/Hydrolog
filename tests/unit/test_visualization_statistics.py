@@ -42,7 +42,7 @@ class TestStatisticsVisualization:
         rng = np.random.default_rng(42)
         dates = np.arange(
             np.datetime64("2015-11-01"),
-            np.datetime64("2020-10-31"),
+            np.datetime64("2020-11-01"),
             dtype="datetime64[D]",
         )
         values = rng.uniform(2, 30, size=len(dates))
@@ -51,6 +51,33 @@ class TestStatisticsVisualization:
         fig = plot_non_exceedance_curve(result)
         assert isinstance(fig, plt.Figure)
         plt.close(fig)
+
+    def test_plot_non_exceedance_curve_puts_both_empirical_conventions_in_one_place(
+        self,
+    ):
+        """Non-exceedance positions and the exceedance positions seen as ``1 - P``
+        are the same points: (F in %, annual minimum), the smallest at F = 1/(n + 1).
+        """
+        from hydrolog.statistics.low_flows import LowFlowAnalysis
+        from hydrolog.visualization.statistics import plot_non_exceedance_curve
+
+        rng = np.random.default_rng(42)
+        dates = np.arange(
+            np.datetime64("2015-11-01"),
+            np.datetime64("2020-11-01"),
+            dtype="datetime64[D]",
+        )
+        lfa = LowFlowAnalysis(rng.uniform(2, 30, size=len(dates)), dates)
+        result = lfa.fit_fisher_tippett()
+        points = []
+        for empirical in (lfa.empirical_non_exceedance(), lfa.empirical_frequency()):
+            fig = plot_non_exceedance_curve(result, empirical)
+            offsets = fig.axes[0].collections[0].get_offsets()
+            points.append(np.asarray(offsets)[np.argsort(offsets[:, 0])])
+            plt.close(fig)
+        np.testing.assert_allclose(points[0], points[1])
+        assert points[0][0, 0] == pytest.approx(100.0 / 6.0)
+        assert points[0][0, 1] == pytest.approx(lfa.annual_minima().min())
 
     def test_plot_daily_characteristics(self):
         from hydrolog.statistics.characteristic import calculate_daily_statistics

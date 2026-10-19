@@ -7,6 +7,7 @@ from typing import Union
 import numpy as np
 from numpy.typing import NDArray
 
+from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError
 
 
@@ -33,7 +34,7 @@ class AMC(Enum):
 
 
 @dataclass
-class EffectivePrecipitationResult:
+class EffectivePrecipitationResult(JsonResultMixin):
     """
     Result of effective precipitation calculation.
 

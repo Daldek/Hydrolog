@@ -3,11 +3,12 @@
 from dataclasses import dataclass
 import math
 
+from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError
 
 
 @dataclass
-class ShapeIndicators:
+class ShapeIndicators(JsonResultMixin):
     """
     Shape indicators for a watershed.
 
@@ -38,7 +39,7 @@ class ShapeIndicators:
 
 
 @dataclass
-class GeometricParameters:
+class GeometricParameters(JsonResultMixin):
     """
     Basic geometric parameters of a watershed.
 

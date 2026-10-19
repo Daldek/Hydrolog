@@ -69,10 +69,12 @@ git push origin v0.1.0
 ## Zależności zewnętrzne
 
 - **NumPy** - obliczenia numeryczne (wymagane)
-- **Kartograf** - zestaw narzędzi do pobierania NMT, pokrycia terenu i danych glebowych (opcjonalne)
 - **SciPy** - rozkłady statystyczne, funkcja gamma, optymalizacja (wymagane od v0.7.0)
+- **rasterio, pyproj** - rastry GeoTIFF dla HSG (dodatek `hydrolog[raster]`, opcjonalne)
+- **mcp** (`>=2.3,<3`) - serwer MCP (dodatek `hydrolog[mcp]`, opcjonalne)
+- **matplotlib, seaborn** - wykresy (dodatek `hydrolog[visualization]`, opcjonalne)
 
-Hydrolog NIE zawiera funkcji pobierania danych - to zadanie zewnętrznych bibliotek.
+Kartograf i IMGWTools NIE są zależnościami Hydrologa (dawny dodatek `spatial` usunięto w v1.0.0): dostarczają dane (rastry NMT, pokrycia terenu i gleb; szeregi pomiarowe), a Hydrolog wczytuje je z plików. Hydrolog NIE zawiera funkcji pobierania danych.
 
 ## Struktura modułów
 
@@ -83,7 +85,13 @@ hydrolog/
 ├── precipitation/   # Hietogramy, interpolacja
 ├── network/         # Klasyfikacja sieci rzecznej
 ├── time/            # Czas koncentracji
-├── cli/             # Interfejs CLI
+├── statistics/      # Statystyka przepływów
+├── hydrometrics/    # Krzywa przepływu, strefy stanów wody
+├── soil/            # HSG z uziarnienia gleby (GeoTIFF: dodatek [raster])
+├── catalog/         # Katalog komend: źródło prawdy dla CLI, MCP i przewodników
+├── operations/      # Funkcja operacji na komendę katalogu
+├── cli/             # Interfejs CLI generowany z katalogu
+├── mcp/             # Serwer MCP (dodatek [mcp])
 ├── reports/         # Raport z wynikami obliczeń
 └── visualization/   # Generowanie wykresów z wynikami obliczeń
 ```

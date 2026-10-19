@@ -394,6 +394,35 @@ class LowFlowAnalysis:
 - Fit: `shape, loc, scale = scipy.stats.genextreme.fit(annual_minima)`
 - Quantile: `Q_T = genextreme.ppf(p, shape, loc, scale)` — note: `p` directly (non-exceedance), NOT `1-p`
 
+> **Erratum 2026-10-19 (v1.0.0) — the two formulas above are wrong for minima; the
+> original text is kept for the record and superseded by this note.**
+>
+> `scipy.stats.genextreme` is the GEV for *maxima*. Fitted directly to annual minima
+> it is the mirror-image family: it can follow the bulk of the sample but not the
+> left tail of the smallest-value distribution, so the quantiles of rare droughts
+> were biased, increasingly with `T`. For 1000 noise-free annual minima drawn from a
+> Weibull minimum distribution (shape 2, loc 1, scale 5) the old quantile was 1.24
+> instead of 1.50 at T = 100 years (−17 %) and 0.33 instead of 1.16 at T = 1000
+> years (−71 %); for a Gumbel minimum distribution (loc 50, scale 8) it was −3800
+> instead of 13 at T = 100 years. Since `min(x) = −max(−x)`, the Fisher–Tippett
+> distribution of smallest values (GEV for minima) is fitted to the **negated**
+> minima:
+>
+> - Fit: `c, loc_neg, scale = scipy.stats.genextreme.fit(-annual_minima)`; reported
+>   parameters `shape = c`, `loc = -loc_neg`, `scale`.
+> - Distribution of the minima:
+>   `F(x) = 1 − exp(−[1 + c·(x − loc)/scale]^(1/c))` (Gumbel minimum for `c → 0`;
+>   three-parameter Weibull with shape `1/c` for `c > 0`, lower bound
+>   `loc − scale/c`).
+> - Quantile with non-exceedance probability `p = 1/T`:
+>   `Q_T = −genextreme.isf(p, c, loc_neg, scale) = loc + scale/c · ((−ln(1 − p))^c − 1)`.
+> - K-S: `kstest(-annual_minima, genextreme(c, loc_neg, scale).cdf)` (the statistic
+>   of a sample and of its mirror image is the same).
+> - References: Fisher & Tippett (1928), Proc. Cambridge Philos. Soc. 24, 180–190;
+>   Gumbel (1958), *Statistics of Extremes*; Coles (2001), *An Introduction to
+>   Statistical Modeling of Extreme Values*, ch. 3; Stedinger, Vogel &
+>   Foufoula-Georgiou (1993), *Handbook of Hydrology*, ch. 18; WMO-No. 1029.
+
 **Drought sequence detection:**
 - Threshold level method (Yevjevich 1967)
 - Sequences: Q < threshold for ≥ min_duration_days consecutive days

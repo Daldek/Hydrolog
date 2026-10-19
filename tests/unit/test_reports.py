@@ -1,8 +1,13 @@
 """Unit tests for the reports module."""
 
+import dataclasses
+import warnings
+
 import numpy as np
 import pytest
 
+from hydrolog.exceptions import InvalidParameterError
+from hydrolog.morphometry import WatershedParameters
 from hydrolog.precipitation import BetaHietogram
 from hydrolog.reports import (
     FormulaRenderer,
@@ -17,7 +22,9 @@ from hydrolog.reports.sections.scs_cn import generate_scs_cn_section
 from hydrolog.reports.sections.unit_hydrograph import generate_uh_section
 from hydrolog.reports.sections.water_balance import generate_water_balance_section
 from hydrolog.reports.sections.watershed import generate_watershed_section
+from hydrolog.reports.templates import SUBSECTION_HEADERS
 from hydrolog.runoff import HydrographGenerator
+from hydrolog.time import ConcentrationTime
 
 # =============================================================================
 # FormulaRenderer Tests
@@ -226,6 +233,55 @@ class TestFormulaRenderer:
         assert "144.0" in result
         assert "0.25" in result or "0.250" in result
         assert "5.0" in result or "5.00" in result
+
+    def test_kerby_tc_substitutes_the_slope_the_formula_used(self):
+        """Below 0.002 m/m the library adds 0.0005: the report shows what it used.
+
+        With the raw 0.0010 the substitution would not reproduce the time shown.
+        """
+        tc = ConcentrationTime.kerby(
+            length_km=0.10, slope_m_per_m=0.001, retardance=0.4
+        )
+
+        result = FormulaRenderer.kerby_tc(
+            length_km=0.10, slope_m_per_m=0.001, retardance=0.40, tc_min=tc
+        )
+
+        assert "0.0015^{-0.2335}" in result
+        assert "0.0010 + 0.0005 = 0.0015" in result
+        assert 36.37 * (0.10 * 0.40) ** 0.467 * 0.0015 ** (-0.2335) == pytest.approx(tc)
+
+    def test_kerby_tc_without_adjustment_has_no_note(self):
+        result = FormulaRenderer.kerby_tc(
+            length_km=0.10, slope_m_per_m=0.002, retardance=0.40, tc_min=30.0
+        )
+
+        assert "0.0020^{-0.2335}" in result
+        assert "korekt" not in result
+
+    def test_kerby_kirpich_tc_substitutes_the_slopes_the_formulas_used(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")  # the slopes are below the typical range
+            tc_ov = ConcentrationTime.kerby(0.25, 0.001, 0.4)
+            tc = ConcentrationTime.kerby_kirpich(0.25, 0.001, 0.4, 5.0, 0.0015)
+
+        result = FormulaRenderer.kerby_kirpich_tc(
+            ov_length_km=0.25,
+            ov_slope_m_per_m=0.001,
+            retardance=0.40,
+            ch_length_km=5.0,
+            ch_slope_m_per_m=0.0015,
+            tc_ov_min=tc_ov,
+            tc_ch_min=tc - tc_ov,
+            tc_total_min=tc,
+        )
+
+        assert "0.0015^{-0.2335}" in result  # overland: 0.001 + 0.0005
+        assert "0.0020^{-0.385}" in result  # channel: 0.0015 + 0.0005
+        channel_min = tc - tc_ov
+        channel_h = 0.0663 * 5.0**0.77 * 0.0020 ** (-0.385)
+        assert channel_h * 60.0 == pytest.approx(channel_min, rel=2e-3)
+        assert f"{channel_min / 60:.3f} \\text{{ h}} = {channel_min:.1f}" in result
 
 
 # =============================================================================
@@ -842,3 +898,408 @@ class TestReportIntegration:
 
         assert "Nash" in content
         assert "zbiornik" in content.lower() or "n =" in content
+
+
+# =============================================================================
+# The report documents the computation that was performed
+# =============================================================================
+
+_UH_MODELS = {
+    "scs": {"uh_model": "scs", "tc_min": 90.0},
+    "nash": {
+        "uh_model": "nash",
+        "uh_params": {"n": 2.5, "k": 48.0, "k_unit": "min"},
+    },
+    "clark": {"uh_model": "clark", "tc_min": 90.0, "uh_params": {"r": 35.0}},
+    "snyder": {
+        "uh_model": "snyder",
+        "uh_params": {"L_km": 15.0, "Lc_km": 7.5, "ct": 1.7, "cp": 0.65},
+    },
+}
+
+# Watershed parameters of a catchment that all six tc methods can be applied to
+_CATCHMENT = {
+    "area_km2": 45.0,
+    "perimeter_km": 32.1,
+    "length_km": 12.5,
+    "elevation_min_m": 150.0,
+    "elevation_max_m": 520.0,
+    "elevation_mean_m": 330.0,
+    "mean_slope_m_per_m": 0.025,
+    "channel_length_km": 10.8,
+    "channel_slope_m_per_m": 0.018,
+    "cn": 72,
+    "runoff_coeff": 0.45,
+    "retardance": 0.4,
+    "overland_length_km": 0.25,
+    "overland_slope_m_per_m": 0.008,
+}
+
+
+def _precipitation():
+    return BetaHietogram(alpha=2, beta=5).generate(
+        total_mm=50.0, duration_min=60.0, timestep_min=10.0
+    )
+
+
+def _computation(model="scs", cn=72, ia_coefficient=0.2):
+    """Hydrograph of one model; returns ``(result, precipitation)``."""
+    settings = dict(_UH_MODELS[model])
+    precip = _precipitation()
+    generator = HydrographGenerator(
+        area_km2=45.0, cn=cn, ia_coefficient=ia_coefficient, **settings
+    )
+    return generator.generate(precip), precip
+
+
+def _ordinate_rows(content):
+    """The ``(time, ordinate)`` cells of the unit hydrograph table, as printed."""
+    after = content.split(SUBSECTION_HEADERS["unit_hydrograph"]["ordinates"])[1]
+    rows = []
+    for line in after.splitlines():
+        cells = [cell.strip() for cell in line.strip("|").split("|")]
+        if line.startswith("| ") and cells[0].replace(".", "", 1).isdigit():
+            rows.append((cells[0], cells[1]))
+        elif rows and not line.startswith("|"):
+            break
+    return rows
+
+
+def _section(content, number):
+    """Text of the section ``## <number>.`` up to the next one."""
+    start = content.index(f"## {number}.")
+    end = content.find(f"## {number + 1}.", start)
+    return content[start:] if end < 0 else content[start:end]
+
+
+class TestReportShowsTheUnitHydrographThatWasUsed:
+    """The unit hydrograph section is not a placeholder shape."""
+
+    @pytest.mark.parametrize("model", list(_UH_MODELS))
+    def test_the_ordinates_are_those_of_the_unit_hydrograph(self, model):
+        result, precip = _computation(model)
+        unit = result.unit_hydrograph_result
+
+        content = HydrologyReportGenerator(
+            ReportConfig(uh_model=model, max_table_rows=10_000)
+        ).generate(
+            result=result,
+            hietogram=precip,
+            area_km2=45.0,
+            tc_min=_UH_MODELS[model].get("tc_min"),
+            uh_params=_UH_MODELS[model].get("uh_params") if model == "snyder" else None,
+        )
+
+        assert _ordinate_rows(content) == [
+            (f"{t:.1f}", f"{q:.4f}") for t, q in zip(unit.times_min, unit.ordinates_m3s)
+        ]
+
+    @pytest.mark.parametrize("model", ["scs", "nash", "clark"])
+    def test_the_summary_is_the_peak_of_the_unit_hydrograph(self, model):
+        result, precip = _computation(model)
+        unit = result.unit_hydrograph_result
+
+        content = HydrologyReportGenerator(ReportConfig(uh_model=model)).generate(
+            result=result,
+            hietogram=precip,
+            area_km2=45.0,
+            tc_min=_UH_MODELS[model].get("tc_min"),
+        )
+
+        section = _section(content, 5)
+        assert f"| Czas do szczytu tp | {unit.time_to_peak_min:.1f} min |" in section
+        assert (
+            f"| Przepływ szczytowy qp | {unit.peak_discharge_m3s:.4f} m³/s/mm |"
+            in section
+        )
+
+    def test_the_convolution_section_counts_the_ordinates_of_the_unit_hydrograph(
+        self,
+    ):
+        result, precip = _computation("nash")
+
+        content = HydrologyReportGenerator(ReportConfig(uh_model="nash")).generate(
+            result=result, hietogram=precip, area_km2=45.0
+        )
+
+        n_ordinates = len(result.unit_hydrograph_result.ordinates_m3s)
+        assert (
+            f"| Liczba rzędnych hydrogramu jednostkowego (N) | {n_ordinates} |"
+            in content
+        )
+
+    def test_model_parameters_are_those_of_the_model_not_defaults(self):
+        """Nash n = 2.5, K = 48 min without ``uh_params``: no n = 3, K = 30 default."""
+        result, precip = _computation("nash")
+
+        content = HydrologyReportGenerator(ReportConfig(uh_model="nash")).generate(
+            result=result, hietogram=precip, area_km2=45.0
+        )
+
+        assert "n = 2.50" in content
+        assert "K = 48.0 min" in content
+        assert "K = 30.0 min" not in content
+
+    def test_clark_parameters_are_those_of_the_model(self):
+        result, precip = _computation("clark")
+
+        content = HydrologyReportGenerator(ReportConfig(uh_model="clark")).generate(
+            result=result, hietogram=precip, area_km2=45.0
+        )
+
+        assert "Tc = 90.0 min" in content
+        assert "R = 35.0 min" in content
+        assert "Δt = 10.0 min" in content
+
+    def test_snyder_formulas_use_the_coefficients_of_the_model(self):
+        result, precip = _computation("snyder")
+        unit = result.unit_hydrograph_result
+
+        content = HydrologyReportGenerator(ReportConfig(uh_model="snyder")).generate(
+            result=result,
+            hietogram=precip,
+            area_km2=45.0,
+            uh_params={"L_km": 15.0, "Lc_km": 7.5},
+        )
+
+        assert "Ct = 1.70" in content and "Cp = 0.65" in content
+        assert "L = 15.00 km" in content and "Lc = 7.50 km" in content
+        assert f"tL = {unit.lag_time_min:.1f} min" in content
+        peak = 0.275 * 0.65 * 45.0 / (unit.lag_time_min / 60.0)
+        assert f"qp = {peak:.4f} m³/s/mm" in content
+
+    def test_unknown_stream_lengths_are_not_invented(self):
+        """The result has no L and Lc: without ``uh_params`` they are left out."""
+        result, precip = _computation("snyder")
+        unit = result.unit_hydrograph_result
+
+        content = HydrologyReportGenerator(ReportConfig(uh_model="snyder")).generate(
+            result=result, hietogram=precip, area_km2=45.0
+        )
+
+        section = _section(content, 5)
+        assert "Długość cieku" not in section
+        assert "Odległość do centroidu" not in section
+        assert "L = 10.00 km" not in section and "Lc = 5.00 km" not in section
+        assert (
+            f"t_L = {unit.lag_time_min / 60:.3f} \\text{{ h}} = "
+            f"{unit.lag_time_min:.1f} \\text{{ min}}"
+        ) in section
+        assert "Ct = 1.70" in section
+
+    def test_the_caller_dict_of_uh_params_is_not_modified(self):
+        result, precip = _computation("snyder")
+        uh_params = {"L_km": 15.0, "Lc_km": 7.5}
+
+        HydrologyReportGenerator(ReportConfig(uh_model="snyder")).generate(
+            result=result, hietogram=precip, area_km2=45.0, uh_params=uh_params
+        )
+
+        assert uh_params == {"L_km": 15.0, "Lc_km": 7.5}
+
+    def test_a_result_without_a_unit_hydrograph_cannot_be_documented(self):
+        result, precip = _computation("scs")
+        bare = dataclasses.replace(result, unit_hydrograph_result=None)
+
+        with pytest.raises(InvalidParameterError) as caught:
+            HydrologyReportGenerator().generate(
+                result=bare, hietogram=precip, area_km2=45.0
+            )
+
+        assert caught.value.details["reason"] == "no_unit_hydrograph"
+
+    def test_the_model_of_the_result_wins_over_the_configured_one(self):
+        result, precip = _computation("nash")
+
+        with pytest.warns(UserWarning, match="uh_model='scs'.*'nash'"):
+            content = HydrologyReportGenerator(ReportConfig(uh_model="scs")).generate(
+                result=result, hietogram=precip, area_km2=45.0
+            )
+
+        assert "Model kaskady zbiorników Nasha" in content
+        assert "Hydrogram jednostkowy SCS" not in content
+
+    def test_a_matching_model_does_not_warn(self):
+        result, precip = _computation("clark")
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            HydrologyReportGenerator(ReportConfig(uh_model="clark")).generate(
+                result=result, hietogram=precip, area_km2=45.0
+            )
+
+
+class TestReportShowsTheInitialAbstractionCoefficient:
+    """Ia = λ S is rendered with the λ of the computation, not always with 0.2."""
+
+    @pytest.mark.parametrize("coefficient", [0.05, 0.1, 0.3])
+    def test_lambda_is_read_back_from_the_result(self, coefficient):
+        result, precip = _computation("scs", ia_coefficient=coefficient)
+
+        content = HydrologyReportGenerator().generate(
+            result=result, hietogram=precip, area_km2=45.0
+        )
+
+        assert (
+            f"I_a = \\lambda \\cdot S = {coefficient} \\cdot "
+            f"{result.retention_mm:.2f} = {result.initial_abstraction_mm:.2f}"
+        ) in content
+
+    def test_an_explicit_coefficient_is_used(self):
+        """CN = 100 has S = 0: λ cannot be read back, so it is given."""
+        result, precip = _computation("scs", cn=100, ia_coefficient=0.3)
+
+        read_back = HydrologyReportGenerator().generate(
+            result=result, hietogram=precip, area_km2=45.0
+        )
+        given = HydrologyReportGenerator().generate(
+            result=result, hietogram=precip, area_km2=45.0, ia_coefficient=0.3
+        )
+
+        assert "\\lambda \\cdot S = 0.2 \\cdot 0.00" in read_back
+        assert "\\lambda \\cdot S = 0.3 \\cdot 0.00" in given
+
+
+class TestReportShowsTheInputsOfTheTimeOfConcentration:
+    """Every method of ``calculate_tc`` shows the arguments it was fed with."""
+
+    @staticmethod
+    def _tc(method):
+        params = WatershedParameters.from_dict(_CATCHMENT)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            return params.calculate_tc(method=method)
+
+    @staticmethod
+    def _watershed_params():
+        """The watershed dict of the report: rows of the section and tc inputs."""
+        values = {
+            key: value
+            for key, value in _CATCHMENT.items()
+            if key not in ("area_km2", "cn", "mean_slope_m_per_m")
+        }
+        values["mean_slope_percent"] = _CATCHMENT["mean_slope_m_per_m"] * 100.0
+        return values
+
+    def _tc_section(self, method, **extra):
+        result, precip = _computation("scs")
+        content = HydrologyReportGenerator(ReportConfig(tc_method=method)).generate(
+            result=result,
+            hietogram=precip,
+            area_km2=45.0,
+            cn_ii=72,
+            tc_min=self._tc(method),
+            tc_method=method,
+            watershed_params=self._watershed_params(),
+            **extra,
+        )
+        return _section(content, 2)
+
+    @pytest.mark.parametrize(
+        "method, expected",
+        [
+            ("kirpich", ["10.80^{0.77}", "0.0180^{-0.385}"]),
+            # NRCS: Y is the mean land slope of the watershed (2.5 %), not the channel's
+            ("nrcs", ["L = 10800 m", "Y = 2.50 %", "dla CN = 72"]),
+            ("giandotti", ["\\sqrt{45.00}", "1.5 \\cdot 10.80", "\\sqrt{180.0}"]),
+            # FAA and Kerby time the overland flow path (0.25 km at 0.008), not the channel
+            ("faa", ["(1.1 - 0.45)", "0.250^{0.5}", "0.0080^{-1/3}"]),
+            ("kerby", ["(0.250 \\cdot 0.40)^{0.467}", "0.0080^{-0.2335}"]),
+            (
+                "kerby_kirpich",
+                ["(0.250 \\cdot 0.40)^{0.467}", "0.0080^{-0.2335}", "10.80^{0.77}"],
+            ),
+        ],
+    )
+    def test_the_formula_shows_the_inputs_of_the_computation(self, method, expected):
+        section = self._tc_section(method)
+
+        assert "brak danych" not in section
+        for fragment in expected:
+            assert fragment in section, fragment
+
+    def test_the_composite_method_components_add_up_to_the_time_of_concentration(
+        self,
+    ):
+        tc = self._tc("kerby_kirpich")
+        overland = ConcentrationTime.kerby(0.25, 0.008, 0.4)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            channel = ConcentrationTime.kirpich(10.8, 0.018)
+        assert tc == pytest.approx(overland + channel)
+
+        section = self._tc_section("kerby_kirpich")
+
+        assert f"t_c = {overland:.1f} + {channel:.1f} = {tc:.1f}" in section
+
+    def test_inputs_given_as_tc_params_are_shown_as_given(self):
+        section = self._tc_section(
+            "kirpich", tc_params={"length_km": 3.0, "slope_m_per_m": 0.05}
+        )
+
+        assert "3.00^{0.77}" in section
+        assert "0.0500^{-0.385}" in section
+
+    def test_tc_params_may_be_given_without_any_watershed_params(self):
+        result, precip = _computation("scs")
+
+        content = HydrologyReportGenerator().generate(
+            result=result,
+            hietogram=precip,
+            area_km2=45.0,
+            tc_min=90.0,
+            tc_method="faa",
+            tc_params={
+                "length_km": 0.2,
+                "slope_m_per_m": 0.02,
+                "runoff_coeff": 0.6,
+            },
+        )
+
+        section = _section(content, 2)
+        assert "(1.1 - 0.60)" in section and "0.200^{0.5}" in section
+
+    def test_the_inputs_that_are_no_watershed_rows_do_not_reach_that_section(self):
+        result, precip = _computation("scs")
+
+        content = HydrologyReportGenerator(ReportConfig(tc_method="kerby")).generate(
+            result=result,
+            hietogram=precip,
+            area_km2=45.0,
+            tc_min=self._tc("kerby"),
+            tc_method="kerby",
+            watershed_params=self._watershed_params(),
+        )
+
+        assert "## 1. Parametry Zlewni" in content
+        assert "retardance" not in _section(content, 1)
+
+    def test_the_slope_falls_back_to_the_mean_slope_and_to_the_relief(self):
+        """The rules of ``calculate_tc``: channel slope, mean slope, relief/length."""
+        no_channel = {
+            key: value
+            for key, value in self._watershed_params().items()
+            if key not in ("channel_slope_m_per_m", "channel_length_km")
+        }
+        no_slopes = {
+            key: value
+            for key, value in no_channel.items()
+            if key != "mean_slope_percent"
+        }
+        result, precip = _computation("scs")
+
+        def kirpich_section(watershed_params):
+            content = HydrologyReportGenerator().generate(
+                result=result,
+                hietogram=precip,
+                area_km2=45.0,
+                tc_min=90.0,
+                tc_method="kirpich",
+                watershed_params=watershed_params,
+            )
+            return _section(content, 2)
+
+        assert "12.50^{0.77}" in kirpich_section(no_channel)
+        assert "0.0250^{-0.385}" in kirpich_section(no_channel)
+        relief_slope = (520.0 - 150.0) / (12.5 * 1000.0)
+        assert f"{relief_slope:.4f}^{{-0.385}}" in kirpich_section(no_slopes)

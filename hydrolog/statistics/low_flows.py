@@ -1,11 +1,29 @@
 """Low-flow frequency analysis and drought sequence detection.
 
-Implements Fisher-Tippett (Gumbel minimum) distribution fitting to annual
-minimum series, empirical plotting positions for low-flow frequency, and
-vectorised detection of drought sequences based on threshold exceedance.
+Implements the Fisher-Tippett distribution of *smallest* values (the generalized
+extreme value distribution for minima; Gumbel minimum and the three-parameter
+Weibull distribution are its special cases) fitted to annual minimum series,
+empirical plotting positions for low-flow frequency, and vectorised detection of
+drought sequences based on threshold exceedance.
+
+The annual minima are those of the *complete* Polish hydrological years (1 November
+- 31 October) of the daily series; a year in which a day has no value is skipped
+with a warning. The return periods of low flows are non-exceedance return periods
+(a flow equalled or undercut once in *T* years): the fitted quantiles
+(:class:`LowFlowFrequencyResult`) and the empirical plotting positions
+(:class:`~hydrolog.statistics.LowFlowEmpiricalFrequency`) follow the same
+convention.
 
 References
 ----------
+Fisher, R. A. & Tippett, L. H. C. (1928): Limiting forms of the frequency
+    distribution of the largest or smallest member of a sample. Proc. Cambridge
+    Philos. Soc. 24(2), 180-190.
+Gumbel, E. J. (1958): Statistics of Extremes. Columbia University Press.
+Coles, S. (2001): An Introduction to Statistical Modeling of Extreme Values.
+    Springer, ch. 3 (minima are modelled as maxima of the negated series).
+Stedinger, J. R., Vogel, R. M. & Foufoula-Georgiou, E. (1993): Frequency analysis
+    of extreme events. In: Maidment, D. R. (Ed.), Handbook of Hydrology, ch. 18.
 WMO No. 1029 (2009): Manual on Low-flow Estimation and Prediction.
 Tallaksen & van Lanen (Eds., 2004): Hydrological Drought — Processes and
     Estimation Methods for Streamflow and Groundwater. Elsevier.
@@ -20,9 +38,19 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.stats import genextreme, kstest
 
-from hydrolog.exceptions import InvalidParameterError
-from hydrolog.statistics._hydrological_year import hydrological_year
-from hydrolog.statistics._types import EmpiricalFrequency, compute_plotting_positions
+from hydrolog._serialization import JsonResultMixin
+from hydrolog.exceptions import CalculationError, InvalidParameterError
+from hydrolog.statistics._hydrological_year import (
+    AnnualExtremes,
+    annual_extremes,
+    incomplete_years_message,
+)
+from hydrolog.statistics._types import (
+    EmpiricalFrequency,
+    LowFlowEmpiricalFrequency,
+    compute_non_exceedance_positions,
+    compute_plotting_positions,
+)
 
 _DEFAULT_RETURN_PERIODS = np.array([2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 500.0, 1000.0])
 
@@ -33,15 +61,28 @@ _DEFAULT_RETURN_PERIODS = np.array([2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 500.0, 10
 
 
 @dataclass
-class LowFlowFrequencyResult:
-    """Result of fitting Fisher-Tippett distribution to annual minima.
+class LowFlowFrequencyResult(JsonResultMixin):
+    """Result of fitting the Fisher-Tippett distribution of smallest values.
+
+    The fitted distribution function of the annual minima *x* is::
+
+        F(x) = 1 - exp(-(1 + shape * (x - loc) / scale) ** (1 / shape))
+
+    where ``1 + shape * (x - loc) / scale > 0``. For ``shape -> 0`` it becomes
+    the Gumbel minimum ``F(x) = 1 - exp(-exp((x - loc) / scale))``; for
+    ``shape > 0`` the minima have the lower bound ``loc - scale / shape`` (the
+    three-parameter Weibull distribution with shape ``1 / shape``). The
+    quantile with non-exceedance probability *p* is
+    ``loc + scale / shape * ((-ln(1 - p)) ** shape - 1)``.
 
     Attributes
     ----------
     distribution_name : str
         Always ``"fisher_tippett"``.
     parameters : dict[str, float]
-        Fitted distribution parameters: ``shape``, ``loc``, ``scale``.
+        Fitted distribution parameters: ``shape`` (the ``c`` of
+        :data:`scipy.stats.genextreme`, i.e. minus the shape ``xi`` of the usual
+        GEV notation), ``loc`` and ``scale`` (in the unit of the flows).
     return_periods : NDArray[np.float64]
         Return periods *T* (years) — in low-flow context these are
         *non-exceedance* return periods (drought recurrence intervals).
@@ -68,7 +109,7 @@ class LowFlowFrequencyResult:
 
 
 @dataclass
-class LowFlowSequence:
+class LowFlowSequence(JsonResultMixin):
     """A single drought (low-flow) sequence.
 
     Attributes
@@ -98,7 +139,7 @@ class LowFlowSequence:
 
 
 @dataclass
-class LowFlowAnalysisResult:
+class LowFlowAnalysisResult(JsonResultMixin):
     """Summary of drought sequence detection.
 
     Attributes
@@ -146,6 +187,14 @@ class LowFlowAnalysis:
         If *daily_flows* is empty or lengths of *daily_flows* and *dates*
         do not match.
 
+    Notes
+    -----
+    The annual minima are those of the *complete* hydrological years (see
+    :meth:`annual_minima`); a ``NaN`` flow and a day absent from ``dates`` are
+    days without a value. The return periods of the results are non-exceedance
+    return periods: a low flow of return period *T* is equalled or undercut once
+    in *T* years.
+
     Examples
     --------
     >>> import numpy as np
@@ -153,7 +202,7 @@ class LowFlowAnalysis:
     >>> rng = np.random.default_rng(0)
     >>> dates = np.arange(
     ...     np.datetime64("2010-11-01"),
-    ...     np.datetime64("2020-10-31"),
+    ...     np.datetime64("2020-11-01"),
     ...     dtype="datetime64[D]",
     ... )
     >>> flows = rng.uniform(1, 100, size=len(dates))
@@ -190,77 +239,127 @@ class LowFlowAnalysis:
     # ------------------------------------------------------------------
 
     def annual_minima(self) -> NDArray[np.float64]:
-        """Extract annual minimum flows (one per hydrological year).
+        """Extract annual minimum flows (one per complete hydrological year).
 
-        Uses the Polish hydrological year (Nov 1 – Oct 31).
+        Uses the Polish hydrological year (Nov 1 – Oct 31). Only *complete* years
+        are used: a year is complete when the series has a value for every day of
+        it (365 days, or 366 when it contains 29 February; a ``NaN`` flow is a day
+        without a value). The minimum of a year with missing days may be higher
+        than the true one and would bias the low-flow quantiles, so such a year is
+        skipped and named in a warning (WMO No. 1029, 2009, and KZGW, 2017, take
+        whole years of observations for annual extremes). A calendar-year series
+        (1 January - 31 December) therefore loses its first hydrological year
+        (which lacks November and December) and its last one (which holds only
+        those two months).
 
         Returns
         -------
         NDArray[np.float64]
-            Array of annual minima, one value per year present in the
-            data, sorted by hydrological year.
+            Array of annual minima, one value per complete hydrological year,
+            sorted by hydrological year.
+
+        Raises
+        ------
+        CalculationError
+            If the series has no complete hydrological year.
 
         Warns
         -----
         UserWarning
-            If fewer than 10 years are available.
-        """
-        hydro_years = hydrological_year(self._dates)
-        unique_years = np.unique(hydro_years)
+            If incomplete years were skipped, and if fewer than 10 complete
+            years are available.
 
-        if len(unique_years) < 10:
+        Notes
+        -----
+        Versions before 1.0.0 took the minimum of every hydrological year that
+        appears in the dates, including the stub years at both ends of a
+        calendar-year series (for a 1991-2020 series: 31 "years", the last holding
+        only November and December 2020, with a minimum above the true annual one).
+        """
+        extremes = self._annual_extremes()
+        if extremes.incomplete:
+            warnings.warn(incomplete_years_message(extremes), UserWarning, stacklevel=2)
+        if len(extremes.years) < 10:
             warnings.warn(
-                f"Only {len(unique_years)} year(s) of data available; "
+                f"Only {len(extremes.years)} year(s) of data available; "
                 "low-flow frequency estimates may be unreliable.",
                 UserWarning,
                 stacklevel=2,
             )
-
-        minima = np.array(
-            [self._flows[hydro_years == yr].min() for yr in unique_years],
-            dtype=np.float64,
-        )
-        return minima
+        return extremes.values.copy()
 
     def fit_fisher_tippett(self) -> LowFlowFrequencyResult:
-        """Fit Fisher-Tippett (Gumbel minimum / GEV) distribution to annual minima.
+        """Fit the Fisher-Tippett distribution of smallest values to annual minima.
 
-        For low-flow analysis the distribution is fitted to annual minima and
-        quantiles are computed directly from non-exceedance probabilities
-        ``p = 1/T``, giving the flow level expected to be equalled or
-        *not exceeded* once in *T* years.
+        The annual minima are modelled with the generalized extreme value (GEV)
+        distribution *for minima* (Fisher-Tippett distribution of smallest
+        values; see :class:`LowFlowFrequencyResult` for the distribution
+        function and its special cases, Gumbel minimum and Weibull). Because the
+        minimum of a sample is the negative of the maximum of the negated sample,
+        ``min(x) = -max(-x)``, the parameters are estimated by maximum
+        likelihood from the *negated* minima with :data:`scipy.stats.genextreme`
+        (Fisher & Tippett 1928; Gumbel 1958; Coles 2001, ch. 3). The quantile of
+        the minima with non-exceedance probability ``p = 1/T`` is
+        ``Q_T = -genextreme.isf(p, c, loc=-loc, scale=scale)``, the flow that is
+        equalled or *not exceeded* once in *T* years on average.
 
         Returns
         -------
         LowFlowFrequencyResult
             Fitted result with quantile estimates.
 
+        Raises
+        ------
+        CalculationError
+            If the series has no complete hydrological year.
+
+        Warns
+        -----
+        UserWarning
+            If incomplete years were skipped or fewer than 10 complete years are
+            available (see :meth:`annual_minima`).
+
         Notes
         -----
-        SciPy's ``genextreme`` parameterises GEV with ``c = -ξ``.  For the
-        Gumbel minimum (Fisher-Tippett Type I minimum), ``c ≈ 0``.  The
-        fitted shape parameter is retained in the result.
+        Versions before 1.0.0 fitted the distribution of *maxima* directly to the
+        minima and read its quantiles at ``p``. That is the mirror-image
+        distribution family: it can approximate the bulk of the minima, but its
+        left tail is not that of the smallest-value distribution, so the
+        quantiles of rare droughts were biased, increasingly with ``T``, and could
+        even be negative. The fit to the negated minima is consistent: for a
+        sample from a minimum-type distribution its quantiles converge to the
+        true ones.
+
+        The fitted distribution is not constrained to positive flows: with
+        ``shape <= 0`` the minima have no lower bound and the quantiles of very
+        long return periods can be negative. The three parameters are estimated
+        by maximum likelihood; for short records (a few tens of years) the shape,
+        and with it the quantiles of rare droughts, is very uncertain.
         """
         minima = self.annual_minima()
+        # min(x) = -max(-x): the minima-type GEV is the maxima-type GEV of -x.
+        negated = -minima
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", UserWarning)
-            c, loc, scale = genextreme.fit(minima)
+            c, loc_negated, scale = genextreme.fit(negated)
+        fitted = genextreme(c, loc=loc_negated, scale=scale)
 
+        # ``0.0 - x`` instead of ``-x``: an all-zero record must give 0.0, not -0.0.
         params: dict[str, float] = {
             "shape": float(c),
-            "loc": float(loc),
+            "loc": float(0.0 - loc_negated),
             "scale": float(scale),
         }
 
-        # Non-exceedance probability p = 1/T  (low flows: interested in
-        # values *not exceeded* with probability p).
+        # Non-exceedance probability p = 1/T of the minima = exceedance
+        # probability of the negated series; isf stays accurate for tiny p.
         p = 1.0 / self._return_periods
-        quantiles = genextreme.ppf(p, c, loc=loc, scale=scale)
+        quantiles = 0.0 - fitted.isf(p)
 
-        # K-S test (informational; invalid when parameters estimated from data)
-        cdf_func = lambda x: genextreme.cdf(x, c, loc=loc, scale=scale)  # noqa: E731
-        ks_stat, ks_pval = kstest(minima, cdf_func)
+        # K-S test (informational; invalid when parameters estimated from data).
+        # The statistic is the same for a sample and its mirror image.
+        ks_stat, ks_pval = kstest(negated, fitted.cdf)
 
         return LowFlowFrequencyResult(
             distribution_name="fisher_tippett",
@@ -287,12 +386,61 @@ class LowFlowAnalysis:
         EmpiricalFrequency
             Annual minima sorted in descending order with exceedance
             probabilities and return periods.
+
+        Notes
+        -----
+        The probabilities and return periods of the result belong to the
+        *exceedance* of the minima: the deepest low flow has the largest
+        exceedance probability ``n / (n + 1)`` and the shortest return period
+        ``(n + 1) / n``. They are not the return periods of low flows used by
+        :meth:`fit_fisher_tippett`; to compare the sample with the fitted
+        quantiles use :meth:`empirical_non_exceedance`.
         """
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", UserWarning)
             minima = self.annual_minima()
 
         return compute_plotting_positions(minima, method=method)
+
+    def empirical_non_exceedance(
+        self, method: str = "weibull"
+    ) -> LowFlowEmpiricalFrequency:
+        """Compute empirical non-exceedance plotting positions of annual minima.
+
+        The empirical counterpart of :meth:`fit_fisher_tippett`, in the same
+        convention: the annual minima are sorted ascending, the ``m``-th smallest
+        gets the non-exceedance probability ``F = m / (n + 1)`` (Weibull) and the
+        return period ``T = 1 / F``, the average interval in years between years
+        whose minimum is equal to or lower than the value (WMO No. 1029, 2009;
+        Tallaksen and van Lanen, 2004). The deepest low flow of ``n`` years has
+        ``T = n + 1``; compare these ``(F, value)`` pairs with the fitted
+        quantiles at ``F = 1 / T``.
+
+        Parameters
+        ----------
+        method : str, optional
+            Plotting position method, by default ``"weibull"``.
+            Options: ``"weibull"`` (``F = m / (n + 1)``), ``"hazen"``
+            (``F = (m - 0.5) / n``), ``"cunnane"`` (``F = (m - 0.4) / (n + 0.2)``).
+
+        Returns
+        -------
+        LowFlowEmpiricalFrequency
+            Annual minima sorted in ascending order with non-exceedance
+            probabilities and return periods.
+
+        Raises
+        ------
+        CalculationError
+            If the series has no complete hydrological year.
+        InvalidParameterError
+            If ``method`` is not one of the supported options.
+        """
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            minima = self.annual_minima()
+
+        return compute_non_exceedance_positions(minima, method=method)
 
     def detect_sequences(
         self,
@@ -413,3 +561,27 @@ class LowFlowAnalysis:
             max_duration_days=max_duration,
             n_events=len(sequences),
         )
+
+    # ------------------------------------------------------------------
+    # Private helpers
+    # ------------------------------------------------------------------
+
+    def _annual_extremes(self) -> AnnualExtremes:
+        """Annual minima of the complete hydrological years of the series.
+
+        Raises
+        ------
+        CalculationError
+            If the series has no complete hydrological year.
+        """
+        extremes = annual_extremes(self._flows, self._dates, "min")
+        if len(extremes.years) == 0:
+            raise CalculationError(
+                "The series has no complete hydrological year (1 November - "
+                "31 October with a value for every day), so there are no annual "
+                "minima",
+                details={"incomplete_years": extremes.incomplete_years},
+                hint="Provide at least one full hydrological year of daily values "
+                "without gaps.",
+            )
+        return extremes

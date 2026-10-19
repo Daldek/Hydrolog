@@ -24,6 +24,7 @@ from numpy.typing import NDArray
 from scipy.stats import skew as scipy_skew
 from scipy.stats import t as t_dist
 
+from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError
 from hydrolog.statistics._hydrological_year import (
     hydrological_day_of_year,
@@ -32,7 +33,7 @@ from hydrolog.statistics._hydrological_year import (
 
 
 @dataclass
-class CharacteristicValues:
+class CharacteristicValues(JsonResultMixin):
     """Second-degree characteristic flow/stage values (Polish system).
 
     Attributes
@@ -84,7 +85,7 @@ class CharacteristicValues:
 
 
 @dataclass
-class DailyStatistics:
+class DailyStatistics(JsonResultMixin):
     """Statistics per hydrological day-of-year.
 
     Attributes
@@ -112,8 +113,12 @@ class DailyStatistics:
 
 
 @dataclass
-class MonthlyStatistics:
+class MonthlyStatistics(JsonResultMixin):
     """Monthly statistics with confidence intervals.
+
+    Entries that are undefined for a month with a single value (``std_values``,
+    ``cv_values``, ``skewness_values``, ``ci_lower``, ``ci_upper``) are ``NaN``
+    (``null`` in JSON).
 
     Attributes
     ----------
@@ -128,7 +133,7 @@ class MonthlyStatistics:
     min_values : NDArray[np.float64]
         Minimum value per month.
     std_values : NDArray[np.float64]
-        Standard deviation per month.
+        Sample standard deviation (``ddof=1``) per month.
     cv_values : NDArray[np.float64]
         Coefficient of variation (std / mean) per month.
     skewness_values : NDArray[np.float64]
@@ -286,6 +291,11 @@ def calculate_monthly_statistics(
 ) -> MonthlyStatistics:
     """Compute monthly statistics with t-Student confidence intervals.
 
+    All values of a calendar month (over all years) form one sample. The
+    confidence interval of the mean is ``mean ± t * s / sqrt(n)`` with the
+    two-sided Student quantile ``t`` for ``n - 1`` degrees of freedom; its lower
+    limit is not allowed below zero (the values are flows or stages).
+
     Parameters
     ----------
     daily_values : NDArray[np.float64]
@@ -303,7 +313,24 @@ def calculate_monthly_statistics(
     Raises
     ------
     InvalidParameterError
-        If confidence_level is not in the open interval (0, 1).
+        If confidence_level is not in the open interval (0, 1), or if some
+        calendar month has no value (``details["missing_months"]`` lists them).
+        Both errors are also ``ValueError``.
+
+    Notes
+    -----
+    A month with a single value has no sample standard deviation (``ddof=1``),
+    hence no coefficient of variation, no skewness and no t-based confidence
+    interval (it needs ``n - 1 >= 1`` degrees of freedom): for such a month
+    ``std_values``, ``cv_values``, ``skewness_values``, ``ci_lower`` and
+    ``ci_upper`` are ``NaN`` (no warning is issued), while the maximum, mean,
+    median and minimum are the value itself. Before 1.0.0 the interval of such a
+    month was reported as the zero-width interval ``[mean, mean]``, which claims an
+    exactly known mean, and NumPy warned about the undefined deviation.
+
+    References
+    ----------
+    Student (1908): The probable error of a mean. Biometrika 6(1), 1-25.
     """
     if not (0.0 < confidence_level < 1.0):
         raise InvalidParameterError(
@@ -312,15 +339,25 @@ def calculate_monthly_statistics(
 
     months = dates.astype("datetime64[M]").astype(int) % 12 + 1
 
+    counts = np.bincount(months, minlength=13)[1:]  # observations of month 1..12
+    missing = [month for month in range(1, 13) if counts[month - 1] == 0]
+    if missing:
+        raise InvalidParameterError(
+            "Monthly statistics need values in every calendar month; "
+            f"no values in month(s): {', '.join(str(month) for month in missing)}",
+            details={"missing_months": missing},
+            hint="Provide a series that covers at least one full year.",
+        )
+
     max_vals = np.empty(12, dtype=np.float64)
     mean_vals = np.empty(12, dtype=np.float64)
     median_vals = np.empty(12, dtype=np.float64)
     min_vals = np.empty(12, dtype=np.float64)
-    std_vals = np.empty(12, dtype=np.float64)
-    cv_vals = np.empty(12, dtype=np.float64)
-    skew_vals = np.empty(12, dtype=np.float64)
-    ci_lo = np.empty(12, dtype=np.float64)
-    ci_hi = np.empty(12, dtype=np.float64)
+    std_vals = np.full(12, np.nan, dtype=np.float64)
+    cv_vals = np.full(12, np.nan, dtype=np.float64)
+    skew_vals = np.full(12, np.nan, dtype=np.float64)
+    ci_lo = np.full(12, np.nan, dtype=np.float64)
+    ci_hi = np.full(12, np.nan, dtype=np.float64)
 
     alpha = 1.0 - confidence_level
 
@@ -333,19 +370,18 @@ def calculate_monthly_statistics(
         mean_vals[i] = np.mean(month_vals)
         median_vals[i] = np.median(month_vals)
         min_vals[i] = np.min(month_vals)
+        if n < 2:
+            continue  # deviation, CV, skewness and CI stay NaN (see Notes)
+
         std_vals[i] = np.std(month_vals, ddof=1)
         cv_vals[i] = std_vals[i] / mean_vals[i] if mean_vals[i] != 0.0 else 0.0
         skew_vals[i] = float(scipy_skew(month_vals))
 
         # t-Student confidence interval for the mean
-        if n > 1:
-            t_val = t_dist.ppf(1.0 - alpha / 2.0, df=n - 1)
-            margin = t_val * std_vals[i] / np.sqrt(n)
-            ci_lo[i] = max(0.0, mean_vals[i] - margin)
-            ci_hi[i] = mean_vals[i] + margin
-        else:
-            ci_lo[i] = mean_vals[i]
-            ci_hi[i] = mean_vals[i]
+        t_val = t_dist.ppf(1.0 - alpha / 2.0, df=n - 1)
+        margin = t_val * std_vals[i] / np.sqrt(n)
+        ci_lo[i] = max(0.0, mean_vals[i] - margin)
+        ci_hi[i] = mean_vals[i] + margin
 
     return MonthlyStatistics(
         months=np.arange(1, 13, dtype=np.float64),

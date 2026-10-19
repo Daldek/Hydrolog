@@ -14,11 +14,12 @@ from typing import Optional
 import numpy as np
 from numpy.typing import NDArray
 
+from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError
 
 
 @dataclass
-class SnyderUHResult:
+class SnyderUHResult(JsonResultMixin):
     """
     Result of Snyder Unit Hydrograph generation.
 

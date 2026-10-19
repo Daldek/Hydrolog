@@ -21,6 +21,7 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.stats import genextreme, kstest, lognorm, pearson3, weibull_min
 
+from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError
 from hydrolog.statistics._types import EmpiricalFrequency, compute_plotting_positions
 
@@ -36,7 +37,7 @@ _AD_CRITICAL_VALUES: dict[str, float] = {
 
 
 @dataclass
-class FrequencyAnalysisResult:
+class FrequencyAnalysisResult(JsonResultMixin):
     """Result of fitting a distribution to annual maxima.
 
     Attributes

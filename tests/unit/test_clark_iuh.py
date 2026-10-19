@@ -514,3 +514,138 @@ class TestClarkIUHGenerateIUH:
         integral = np.trapezoid(result.ordinates_per_min, result.times_min)
 
         assert abs(integral - 1.0) < 0.01
+
+
+def _depth_mm(result, timestep_min):
+    """Depth [mm] under a unit hydrograph over its catchment (1 mm expected)."""
+    return (
+        float(np.sum(result.ordinates_m3s))
+        * timestep_min
+        * 60.0
+        / (result.area_km2 * 1000.0)
+    )
+
+
+def _exact_s_curve(clark, times_min, step_min=0.05):
+    """Exact S-curve of the Clark model at ``times_min`` (independent reference).
+
+    The linear reservoir R dS/dt + S = A(t) driven by the time-area curve A is
+    integrated on a fine grid (exact for the piecewise-linear A between its points).
+    """
+    grid = np.arange(0.0, float(np.max(times_min)) + step_min, step_min)
+    area = np.array([clark.cumulative_time_area(t) for t in grid])
+    decay = np.exp(-step_min / clark.r_min)
+    s_fine = np.zeros_like(grid)
+    for i in range(1, len(grid)):
+        rise = area[i] - area[i - 1]
+        s_fine[i] = (
+            s_fine[i - 1] * decay
+            + area[i - 1] * (1.0 - decay)
+            + rise * (1.0 - clark.r_min / step_min * (1.0 - decay))
+        )
+    return np.interp(times_min, grid, s_fine, left=0.0)
+
+
+class TestClarkUHDurationNotWholeSteps:
+    """D-minute hydrograph for a D that is not a whole multiple of the step.
+
+    The S-curve used to be shifted by ``round(D / dt)`` steps but divided by D, so
+    the volume was ``round(D / dt) * dt / D`` mm (1.33 mm for D = 1.5 dt, 0.8 mm for
+    2.5 dt) and a D below half a step raised ``ValueError`` (``s_curve[:-0]``).
+    """
+
+    @pytest.mark.parametrize("ratio", [0.2, 0.5, 0.75, 1.0, 1.5, 2.0, 2.5, 3.3, 7.77])
+    def test_volume_is_one_millimetre_for_any_duration(self, ratio):
+        """The hydrograph holds exactly 1 mm whatever D / dt is."""
+        clark = ClarkIUH(tc_min=60.0, r_min=30.0)
+
+        result = clark.to_unit_hydrograph(
+            area_km2=45.0,
+            duration_min=ratio * 5.0,
+            timestep_min=5.0,
+            total_duration_min=1000.0,  # the whole response fits in the result
+        )
+
+        assert _depth_mm(result, 5.0) == pytest.approx(1.0, abs=1e-9)
+        assert np.all(np.isfinite(result.ordinates_m3s))
+        assert np.all(result.ordinates_m3s >= 0.0)
+
+    @pytest.mark.parametrize("ratio", [0.3, 1.5, 2.5, 7.77])
+    def test_volume_with_the_default_length_of_the_result(self, ratio):
+        """The default length (tc + 5R + D) loses only a negligible tail."""
+        clark = ClarkIUH(tc_min=60.0, r_min=30.0)
+
+        result = clark.to_unit_hydrograph(
+            area_km2=45.0, duration_min=ratio * 5.0, timestep_min=5.0
+        )
+
+        assert _depth_mm(result, 5.0) == pytest.approx(1.0, abs=2e-3)
+
+    @pytest.mark.parametrize("steps", [1, 2, 6])
+    def test_whole_steps_are_the_shifted_s_curve(self, steps):
+        """D = k * dt: (S(t) - S(t - k dt)) / D of the cumulated IUH, as always."""
+        clark = ClarkIUH(tc_min=60.0, r_min=30.0)
+        step = 5.0
+        duration = steps * step
+        iuh = clark.generate_iuh(
+            timestep_min=step, duration_min=60.0 + 5.0 * 30.0 + duration
+        )
+        s_curve = np.cumsum(iuh.ordinates_per_min) * step
+        lagged = np.concatenate([np.zeros(steps), s_curve[:-steps]])
+        expected = (s_curve - lagged) / duration * 45.0 * 1000.0 / 60.0
+
+        result = clark.to_unit_hydrograph(
+            area_km2=45.0, duration_min=duration, timestep_min=step
+        )
+
+        np.testing.assert_allclose(result.ordinates_m3s, expected, rtol=1e-12)
+
+    def test_ordinates_change_continuously_with_the_duration(self):
+        """D = 12.49 and 12.51 min differ slightly (a rounded shift jumped a step)."""
+        clark = ClarkIUH(tc_min=60.0, r_min=30.0)
+        kwargs = {"area_km2": 45.0, "timestep_min": 5.0, "total_duration_min": 400.0}
+
+        below = clark.to_unit_hydrograph(duration_min=12.49, **kwargs)
+        above = clark.to_unit_hydrograph(duration_min=12.51, **kwargs)
+
+        gap = np.max(np.abs(below.ordinates_m3s - above.ordinates_m3s))
+        assert gap < 0.005 * below.peak_discharge_m3s
+
+    @pytest.mark.parametrize("duration", [3.0, 5.0, 7.0])
+    def test_matches_the_exact_clark_model(self, duration):
+        """D = 1.5, 2.5 and 3.5 steps agree with the continuous model.
+
+        The reference integrates the reservoir equation on a fine grid; the
+        discrete hydrograph differs from it by the discretization of a 2 min step.
+        """
+        clark = ClarkIUH(tc_min=60.0, r_min=30.0)
+        step = 2.0
+
+        result = clark.to_unit_hydrograph(
+            area_km2=45.0,
+            duration_min=duration,
+            timestep_min=step,
+            total_duration_min=600.0,
+        )
+
+        times = result.times_min
+        exact = (
+            (_exact_s_curve(clark, times) - _exact_s_curve(clark, times - duration))
+            / duration
+            * 45.0
+            * 1000.0
+            / 60.0
+        )
+        peak = float(np.max(exact))
+        assert np.max(np.abs(result.ordinates_m3s - exact)) < 0.01 * peak
+        assert result.peak_discharge_m3s == pytest.approx(peak, rel=0.005)
+
+    @pytest.mark.parametrize("bad", [float("nan"), float("inf"), -1.0, 0.0])
+    def test_unusable_duration_or_step_raises(self, bad):
+        """A non-positive or non-finite D or step is a validation error."""
+        clark = ClarkIUH(tc_min=60.0, r_min=30.0)
+
+        with pytest.raises(InvalidParameterError, match="duration_min"):
+            clark.to_unit_hydrograph(area_km2=45.0, duration_min=bad)
+        with pytest.raises(InvalidParameterError, match="timestep_min"):
+            clark.to_unit_hydrograph(area_km2=45.0, duration_min=30.0, timestep_min=bad)

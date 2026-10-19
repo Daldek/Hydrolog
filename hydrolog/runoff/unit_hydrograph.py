@@ -5,6 +5,7 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import NDArray
 
+from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError
 
 # SCS dimensionless unit hydrograph ratios (t/tp vs q/qp)
@@ -50,7 +51,7 @@ SCS_DIMENSIONLESS_UH = np.array(
 
 
 @dataclass
-class UnitHydrographResult:
+class UnitHydrographResult(JsonResultMixin):
     """
     Result of unit hydrograph generation.
 
