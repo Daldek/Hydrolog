@@ -495,12 +495,19 @@ _FLOWS: Final[tuple[_Flow, ...]] = (
         "stosowalności: porównaj je i przeczytaj `notices`, nie wybieraj po cichu — "
         "pokaż różnice użytkownikowi albo uzasadnij wybór. Bez pliku zlewni służą "
         "komendy metod (`tc kirpich`, `tc nrcs`, `tc giandotti`...) z samymi "
-        "liczbami.",
+        "liczbami. `faa` i `kerby` liczą czas spływu powierzchniowego (z "
+        "`overland_length_km` i `overland_slope_m_per_m`, nie z długości i spadku "
+        "koryta), więc nie zastępują czasu koncentracji zlewni z korytem — do tego "
+        "służy `kerby_kirpich`.",
         "The methods give different `tc` (by a factor of several) and each has its "
         "own range of validity: compare them and read `notices`, do not choose "
         "silently — show the differences to the user or justify the choice. Without a "
         "watershed file the method commands (`tc kirpich`, `tc nrcs`, `tc "
-        "giandotti`...) take the numbers directly.",
+        "giandotti`...) take the numbers directly. `faa` and `kerby` give the "
+        "overland flow time (from `overland_length_km` and "
+        "`overland_slope_m_per_m`, not from the channel length and slope), so they "
+        "do not replace the time of concentration of a watershed with a channel — "
+        "`kerby_kirpich` does.",
         (
             _Step(
                 "metoda Kirpicha: długość i spadek cieku z pliku zlewni.",
@@ -509,8 +516,12 @@ _FLOWS: Final[tuple[_Flow, ...]] = (
                 {"watershed_file": _WATERSHED, "method": "kirpich"},
             ),
             _Step(
-                "metoda NRCS (TR-55): dodatkowo `cn` z pliku zlewni.",
-                "NRCS (TR-55): also the `cn` of the watershed file.",
+                "metoda NRCS (TR-55): długość cieku, średni spadek zlewni "
+                "(`mean_slope_m_per_m`, dopiero bez niego spadek cieku) i `cn` z "
+                "pliku zlewni.",
+                "NRCS (TR-55): the channel length, the mean slope of the watershed "
+                "(`mean_slope_m_per_m`; the channel slope only without it) and the "
+                "`cn` of the watershed file.",
                 "tc watershed",
                 {"watershed_file": _WATERSHED, "method": "nrcs"},
             ),

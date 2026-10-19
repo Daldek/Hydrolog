@@ -676,34 +676,64 @@ class TestWatershedParameters:
 
     # -- calculate_tc: FAA -----------------------------------------------
     def test_calculate_tc_faa(self):
-        """FAA method produces a positive tc value."""
+        """FAA method is fed with the overland flow length and slope."""
+        from hydrolog.time import ConcentrationTime
+
         p = self._base_params(
             runoff_coeff=0.6,
-            mean_slope_m_per_m=0.02,
+            overland_length_km=0.15,
+            overland_slope_m_per_m=0.02,
         )
         tc = p.calculate_tc(method="faa")
         assert tc > 0
+        assert tc == pytest.approx(
+            ConcentrationTime.faa(length_km=0.15, slope_m_per_m=0.02, runoff_coeff=0.6)
+        )
 
     def test_calculate_tc_faa_missing_runoff_coeff(self):
         """FAA raises ValueError when runoff_coeff is missing."""
-        p = self._base_params(mean_slope_m_per_m=0.02)
+        p = self._base_params(overland_length_km=0.15, overland_slope_m_per_m=0.02)
         with pytest.raises(ValueError, match="runoff_coeff"):
+            p.calculate_tc(method="faa")
+
+    def test_calculate_tc_faa_missing_overland_flow(self):
+        """FAA does not fall back to the channel: the overland flow path is needed."""
+        p = self._base_params(
+            runoff_coeff=0.6, mean_slope_m_per_m=0.02, channel_length_km=10.0
+        )
+        with pytest.raises(ValueError, match="overland_length_km"):
             p.calculate_tc(method="faa")
 
     # -- calculate_tc: Kerby ---------------------------------------------
     def test_calculate_tc_kerby(self):
-        """Kerby method produces a positive tc value."""
+        """Kerby method is fed with the overland flow length and slope."""
+        from hydrolog.time import ConcentrationTime
+
         p = self._base_params(
             retardance=0.40,
-            mean_slope_m_per_m=0.008,
+            overland_length_km=0.10,
+            overland_slope_m_per_m=0.008,
         )
         tc = p.calculate_tc(method="kerby")
         assert tc > 0
+        assert tc == pytest.approx(
+            ConcentrationTime.kerby(
+                length_km=0.10, slope_m_per_m=0.008, retardance=0.40
+            )
+        )
 
     def test_calculate_tc_kerby_missing_retardance(self):
         """Kerby raises ValueError when retardance is missing."""
-        p = self._base_params(mean_slope_m_per_m=0.008)
+        p = self._base_params(overland_length_km=0.10, overland_slope_m_per_m=0.008)
         with pytest.raises(ValueError, match="retardance"):
+            p.calculate_tc(method="kerby")
+
+    def test_calculate_tc_kerby_missing_overland_flow(self):
+        """Kerby does not fall back to the channel: the overland flow path is needed."""
+        p = self._base_params(
+            retardance=0.40, mean_slope_m_per_m=0.008, channel_length_km=10.0
+        )
+        with pytest.raises(ValueError, match="overland_slope_m_per_m"):
             p.calculate_tc(method="kerby")
 
     # -- calculate_tc: Kerby-Kirpich -------------------------------------

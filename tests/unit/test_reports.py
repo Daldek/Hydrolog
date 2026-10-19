@@ -1199,10 +1199,12 @@ class TestReportShowsTheInputsOfTheTimeOfConcentration:
         "method, expected",
         [
             ("kirpich", ["10.80^{0.77}", "0.0180^{-0.385}"]),
-            ("nrcs", ["L = 10800 m", "Y = 1.80 %", "dla CN = 72"]),
+            # NRCS: Y is the mean land slope of the watershed (2.5 %), not the channel's
+            ("nrcs", ["L = 10800 m", "Y = 2.50 %", "dla CN = 72"]),
             ("giandotti", ["\\sqrt{45.00}", "1.5 \\cdot 10.80", "\\sqrt{180.0}"]),
-            ("faa", ["(1.1 - 0.45)", "10.800^{0.5}", "0.0180^{-1/3}"]),
-            ("kerby", ["(10.800 \\cdot 0.40)^{0.467}", "0.0180^{-0.2335}"]),
+            # FAA and Kerby time the overland flow path (0.25 km at 0.008), not the channel
+            ("faa", ["(1.1 - 0.45)", "0.250^{0.5}", "0.0080^{-1/3}"]),
+            ("kerby", ["(0.250 \\cdot 0.40)^{0.467}", "0.0080^{-0.2335}"]),
             (
                 "kerby_kirpich",
                 ["(0.250 \\cdot 0.40)^{0.467}", "0.0080^{-0.2335}", "10.80^{0.77}"],

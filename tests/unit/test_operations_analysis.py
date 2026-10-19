@@ -134,6 +134,27 @@ def _boundary_series():
     return values.tolist(), [str(day) for day in dates]
 
 
+def _calendar_year_series(first_year: int = 1991, last_year: int = 2020):
+    """Daily values of a calendar-year export (1 January - 31 December), as lists.
+
+    Baseline 5.0, a flood on every 15 March (10 + y % 7) and a dip on every 15
+    September (2.0 + 0.1 * (y % 5)). The hydrological years ``first_year`` ...
+    ``last_year`` hold both, but the first lacks November and December of the year
+    before and the year ``last_year + 1`` holds only November and December of
+    ``last_year``: baseline, no flood and no dip.
+    """
+    dates = np.arange(
+        np.datetime64(f"{first_year}-01-01"),
+        np.datetime64(f"{last_year + 1}-01-01"),
+        dtype="datetime64[D]",
+    )
+    values = np.full(len(dates), 5.0)
+    for year in range(first_year, last_year + 1):
+        values[dates == np.datetime64(f"{year}-03-15")] = 10.0 + year % 7
+        values[dates == np.datetime64(f"{year}-09-15")] = 2.0 + 0.1 * (year % 5)
+    return values.tolist(), [str(day) for day in dates]
+
+
 # --- declarations of the analysis groups ----------------------------------------------
 
 
@@ -272,6 +293,59 @@ class TestMorphometryWatershed:
             370.0 / 12500.0
         )
         assert run("morphometry watershed", watershed=WATERSHED).notices == ()
+
+    def test_slopes_of_the_file_are_not_used_and_the_notice_gives_both_values(self):
+        """``tc watershed`` computes with the slopes of the file, this command with the
+        relief: the notice shows both numbers instead of two silent "channel slopes"."""
+        data = {
+            **WATERSHED,
+            "mean_slope_m_per_m": 0.025,
+            "channel_slope_m_per_m": 0.02,
+        }
+        output = run("morphometry watershed", watershed=data)
+
+        slopes = output.result.slopes
+        assert slopes.watershed_slope_m_per_m == pytest.approx(370.0 / 12500.0)
+        assert slopes.channel_slope_m_per_m == pytest.approx(370.0 / 14200.0)
+        (notice,) = output.notices
+        assert (notice.level, notice.code) == ("info", "slopes_from_relief")
+        for value in (
+            "watershed slope 0.0296 m/m",
+            "mean_slope_m_per_m = 0.025 m/m",
+            "channel slope 0.02606 m/m",
+            "channel_slope_m_per_m = 0.02 m/m",
+        ):
+            assert value in notice.text
+        assert (
+            tc.tc_watershed(watershed=data).result.parameters["slope_m_per_m"] == 0.02
+        )
+
+    @pytest.mark.parametrize(
+        "given, absent",
+        [
+            ("mean_slope_m_per_m", "channel_slope_m_per_m"),
+            ("channel_slope_m_per_m", "mean_slope_m_per_m"),
+        ],
+    )
+    def test_the_notice_names_only_the_slopes_that_the_file_gives(self, given, absent):
+        output = run("morphometry watershed", watershed={**WATERSHED, given: 0.02})
+        (notice,) = output.notices
+        assert notice.code == "slopes_from_relief"
+        assert f"{given} = 0.02 m/m" in notice.text
+        assert absent not in notice.text
+
+    def test_without_slopes_in_the_file_there_is_no_slope_notice(self):
+        output = run("morphometry watershed", watershed=WATERSHED)
+        assert "slopes_from_relief" not in {n.code for n in output.notices}
+
+    def test_the_slope_notice_is_in_the_envelope(self):
+        document = _json_roundtrip(
+            run(
+                "morphometry watershed",
+                watershed={**WATERSHED, "mean_slope_m_per_m": 0.025},
+            )
+        )
+        assert [n["code"] for n in document["notices"]] == ["slopes_from_relief"]
 
     def test_mean_elevation_outside_the_range_is_rejected(self):
         with pytest.raises(InvalidParameterError, match="elevation_mean_m"):
@@ -607,7 +681,8 @@ class TestImgwToolsExport:
         assert result.result == mann_kendall_test(np.array(self.VALID_Q))
         assert result.notices[0].code == "missing_values_removed"
 
-    def test_a_single_year_is_too_short_for_flood_frequency(self):
+    def test_a_partial_year_is_no_annual_maximum_for_flood_frequency(self):
+        """14 days of HY 2024 (2 of them missing): not a complete year, so no sample."""
         with pytest.raises(CalculationError) as caught:
             run(
                 "stats flood-frequency",
@@ -615,7 +690,12 @@ class TestImgwToolsExport:
                 value_column="Q",
                 date_column="date",
             )
-        assert caught.value.details == {"count": 1, "minimum": 3}
+        assert caught.value.details == {
+            "count": 0,
+            "minimum": 3,
+            "incomplete_years": [2024],
+        }
+        assert "2024 (12 of 366 days)" in str(caught.value)
 
     def test_months_without_data_stop_the_monthly_statistics(self):
         with pytest.raises(CalculationError) as caught:
@@ -977,6 +1057,64 @@ class TestFloodFrequency:
             )
         assert caught.value.details["reason"] == "length_mismatch"
 
+    def test_a_calendar_year_series_uses_complete_hydrological_years_only(self):
+        """Regression: 1991-2020 gave 31 "years", the last holding Nov-Dec 2020 only.
+
+        The stub years were 1991 (no November-December 1990; maximum 12.0) and 2021
+        (November-December 2020; the baseline 5.0 as "annual maximum", far below the
+        10-16 of the whole years), and nothing told the user.
+        """
+        values, dates = _calendar_year_series()
+        result = run(
+            "stats flood-frequency", values=values, dates=dates, distribution="gev"
+        )
+        sample = result.result
+        years = list(range(1992, 2021))
+        assert sample.hydrological_years == years
+        assert sample.annual_maxima == [10.0 + year % 7 for year in years]
+        assert sample.n_years == 29
+        assert sample.incomplete_years == [1991, 2021]
+        notice = next(n for n in result.notices if n.code == "incomplete_years")
+        assert notice.level == "warning"
+        assert notice.text.endswith("1991 (304 of 365 days), 2021 (61 of 365 days)")
+        direct = FloodFrequencyAnalysis(np.array(sample.annual_maxima)).fit_gev()
+        assert sample.distributions[0].to_dict() == direct.to_dict()
+
+    @pytest.mark.parametrize("how", ["absent date", "nan value"])
+    def test_one_missing_day_costs_its_hydrological_year(self, how):
+        values, dates = _calendar_year_series()
+        day = dates.index("2005-04-02")
+        if how == "absent date":
+            del values[day], dates[day]
+        else:
+            values[day] = float("nan")
+        result = stats.stats_flood_frequency(
+            values=values, dates=dates, distribution="gev"
+        )
+        assert 2005 not in result.result.hydrological_years
+        assert result.result.n_years == 28
+        assert result.result.incomplete_years == [1991, 2005, 2021]
+        texts = {n.code: n.text for n in result.notices}
+        assert "2005 (364 of 365 days)" in texts["incomplete_years"]
+        assert ("missing_values_removed" in texts) == (how == "nan value")
+
+    def test_without_a_complete_year_the_error_names_the_incomplete_ones(self):
+        values, dates = _calendar_year_series(2000, 2001)  # HY 2000 and 2002 are stubs
+        with pytest.raises(CalculationError) as caught:
+            stats.stats_flood_frequency(values=values, dates=dates)
+        assert caught.value.details == {
+            "count": 1,
+            "minimum": 3,
+            "incomplete_years": [2000, 2002],
+        }
+        assert "2002 (61 of 365 days)" in str(caught.value)
+        assert caught.value.hint
+
+    def test_annual_maxima_given_directly_have_no_incomplete_years(self):
+        result = stats.stats_flood_frequency(values=[10.0, 12.0, 11.0, 15.0])
+        assert result.result.incomplete_years is None
+        assert result.result.hydrological_years is None
+
     def test_result_is_json(self):
         document = _json_roundtrip(
             run(
@@ -988,6 +1126,7 @@ class TestFloodFrequency:
         )
         assert document["result"]["distributions"][0]["distribution_name"] == "gev"
         assert document["result"]["hydrological_years"] is None
+        assert document["result"]["incomplete_years"] is None
         assert document["notices"][0]["code"] == "user_warning"
 
 
@@ -1015,8 +1154,10 @@ class TestLowFlow:
         )
         assert result.result.annual_minima == direct.annual_minima().tolist()
         assert (
-            result.result.empirical.to_dict() == direct.empirical_frequency().to_dict()
+            result.result.empirical.to_dict()
+            == direct.empirical_non_exceedance().to_dict()
         )
+        assert result.result.incomplete_years == []
         assert result.result.n_years == 3
         assert result.result.hydrological_years == [2022, 2023, 2024]
         assert [n.code for n in result.notices] == ["user_warning"]
@@ -1029,6 +1170,96 @@ class TestLowFlow:
         assert result.hydrological_years == [2020, 2021, 2022, 2023]
         assert result.annual_minima == [1.0, 0.5, 0.8, 0.9]
 
+    def test_a_calendar_year_series_uses_complete_hydrological_years_only(self):
+        """Regression: 1991-2020 gave 31 "years", the last holding Nov-Dec 2020 only.
+
+        The last "annual minimum" was the baseline 5.0 of November-December 2020
+        instead of a dip of 2.0-2.4, and the first year lacked its November-December.
+        """
+        values, dates = _calendar_year_series()
+        result = run(
+            "stats low-flow", values=values, dates=dates, return_periods=[10, 100]
+        )
+        sample = result.result
+        years = list(range(1992, 2021))
+        assert sample.hydrological_years == years
+        assert sample.annual_minima == pytest.approx(
+            [2.0 + 0.1 * (year % 5) for year in years]
+        )
+        assert sample.n_years == 29
+        assert sample.incomplete_years == [1991, 2021]
+        assert [n.code for n in result.notices] == ["incomplete_years"]
+        assert result.notices[0].level == "warning"
+        assert result.notices[0].text.endswith(
+            "1991 (304 of 365 days), 2021 (61 of 365 days)"
+        )
+        day = np.array(dates, dtype="datetime64[D]")
+        whole_years = (day >= np.datetime64("1991-11-01")) & (
+            day < np.datetime64("2020-11-01")
+        )
+        direct = LowFlowAnalysis(
+            np.array(values)[whole_years], day[whole_years], np.array([10.0, 100.0])
+        )
+        assert sample.fisher_tippett.to_dict() == direct.fit_fisher_tippett().to_dict()
+
+    @pytest.mark.parametrize("how", ["absent date", "nan value"])
+    def test_one_missing_day_costs_its_hydrological_year(self, how):
+        values, dates = _calendar_year_series()
+        day = dates.index("2005-04-02")
+        if how == "absent date":
+            del values[day], dates[day]
+        else:
+            values[day] = float("nan")
+        result = stats.stats_low_flow(values=values, dates=dates)
+        assert 2005 not in result.result.hydrological_years
+        assert result.result.n_years == 28
+        assert result.result.incomplete_years == [1991, 2005, 2021]
+        texts = {n.code: n.text for n in result.notices}
+        assert "2005 (364 of 365 days)" in texts["incomplete_years"]
+        assert ("missing_values_removed" in texts) == (how == "nan value")
+
+    def test_the_empirical_block_uses_the_convention_of_the_fitted_quantiles(self):
+        """Regression: values descending with *exceedance* probabilities, so the deepest
+        low flow of the fixture (1.66) had T = 1.33 (probability 0.75) while the
+        Fisher-Tippett block counts T with the non-exceedance probability 1 / T; now
+        F = m / (n + 1) = 0.25 and T = 1 / F = 4.
+        """
+        result = run(
+            "stats low-flow",
+            input_file=str(DAILY_FLOWS),
+            value_column="Q",
+            date_column="date",
+            return_periods=[2, 10, 50],
+        ).result
+        empirical = result.empirical
+        assert empirical.values_ascending.tolist() == [1.66, 1.79, 1.88]
+        assert empirical.non_exceedance_probabilities.tolist() == [0.25, 0.5, 0.75]
+        np.testing.assert_allclose(empirical.return_periods, [4.0, 2.0, 4.0 / 3.0])
+        assert result.annual_minima == [1.79, 1.88, 1.66]
+        assert result.fisher_tippett.non_exceedance_probabilities.tolist() == [
+            0.5,
+            0.1,
+            0.02,
+        ]
+
+    def test_result_is_json(self):
+        document = _json_roundtrip(
+            run(
+                "stats low-flow",
+                input_file=str(DAILY_FLOWS),
+                value_column="Q",
+                date_column="date",
+                return_periods=[2, 10, 50],
+            )
+        )["result"]
+        assert list(document["empirical"]) == [
+            "values_ascending",
+            "non_exceedance_probabilities",
+            "return_periods",
+        ]
+        assert document["incomplete_years"] == []
+        assert document["hydrological_years"] == [2022, 2023, 2024]
+
     def test_low_flow_quantiles_fall_with_the_return_period(self):
         quantiles = run(
             "stats low-flow",
@@ -1039,7 +1270,7 @@ class TestLowFlow:
         ).result.fisher_tippett.quantiles
         assert np.all(np.diff(quantiles) < 0)
 
-    def test_fewer_than_three_years_are_a_calculation_error(self):
+    def test_fewer_than_three_complete_years_are_a_calculation_error(self):
         with pytest.raises(CalculationError) as caught:
             run(
                 "stats low-flow",
@@ -1047,7 +1278,11 @@ class TestLowFlow:
                 value_column="Q",
                 date_column="date",
             )
-        assert caught.value.details == {"count": 1, "minimum": 3}
+        assert caught.value.details == {
+            "count": 0,
+            "minimum": 3,
+            "incomplete_years": [2024],
+        }
 
     def test_return_periods_are_checked(self):
         with pytest.raises(InvalidParameterError):
@@ -1409,12 +1644,40 @@ class TestRatingCurve:
         assert caught.value.details["option"] == "h0_initial"
         assert caught.value.details["maximum"] == 62.0
 
-    def test_the_default_initial_level_fails_for_negative_levels_with_a_hint(self):
+    def test_the_default_initial_level_is_chosen_from_the_data_for_negative_levels(
+        self,
+    ):
+        """Regression: the fixed default 0.0 rejected every series with a level <= 0.
+
+        Stages below the gauge zero are normal (-10 cm); the call ended in
+        "h0_initial must be a finite number below the lowest water level (-10), got
+        0.0" (exit code 2). Now H0 starts at min(H) - max(1, 0.1 * range) = -23 and
+        the fit converges to a = 0.004917, b = 1.640, H0 = -25.17 (R2 = 0.9998), the
+        solution of every explicit start below the lowest level.
+        """
+        options = {
+            "water_levels": [-10, 5, 20, 40, 80, 120],
+            "discharges": [0.5, 1.2, 2.5, 4.8, 10.1, 17.3],
+        }
+        fitted = run("hydrometrics rating-curve", **options).result
+        assert fitted.a == pytest.approx(0.004917, rel=1e-3)
+        assert fitted.b == pytest.approx(1.640, abs=1e-3)
+        assert fitted.h0 == pytest.approx(-25.17, abs=0.01)
+        assert fitted.r_squared == pytest.approx(0.99975, abs=1e-4)
+        explicit = run("hydrometrics rating-curve", h0_initial=-30, **options).result
+        assert (fitted.a, fitted.b, fitted.h0) == pytest.approx(
+            (explicit.a, explicit.b, explicit.h0), rel=1e-4
+        )
+
+    def test_a_given_initial_level_is_still_checked_for_negative_levels(self):
         with pytest.raises(InvalidParameterError) as caught:
             hydrometrics.hydrometrics_rating_curve(
                 water_levels=[-20.0, 10.0, 40.0, 80.0],
                 discharges=[0.5, 2.0, 6.0, 15.0],
+                h0_initial=0.0,
             )
+        assert caught.value.details["option"] == "h0_initial"
+        assert caught.value.details["maximum"] == -20.0
         assert "lower than every water level" in caught.value.hint
 
     def test_a_numerically_failing_fit_is_a_calculation_error(self):
@@ -2216,6 +2479,47 @@ class TestReportGenerate:
         assert (
             f"t_c = {overland:.1f} + {run_.tc_min - overland:.1f} = {run_.tc_min:.1f}"
         ) in _section(text, 2)
+
+    def test_the_tc_section_and_the_runoff_section_use_the_same_cn(self, tmp_path):
+        """Review: the tc section said "S = 98.78 mm (dla CN = 72)", the CN of the
+        watershed file, while the runoff section said "CN = 85", the CN given."""
+        result, text = _report(
+            tmp_path, watershed=_FULL_WATERSHED, cn=85, tc_method="nrcs", **_DESIGN
+        )
+
+        assert "S = 44.82 mm (dla CN = 85)" in _section(text, 2)
+        assert "dla CN = 72" not in text
+        assert "98.78" not in _section(text, 2)
+        assert "**CN = 85**" in _section(text, 4)
+        assert result.result.cn_used == 85
+        computed = compute_hydrograph(
+            watershed=_FULL_WATERSHED, cn=85, tc_method="nrcs", **_DESIGN
+        )
+        assert f"{computed.tc_min:.1f}" in _section(text, 2)
+
+    def test_the_snyder_section_documents_the_unit_hydrograph_of_the_time_step(
+        self, tmp_path
+    ):
+        """Review: with 5-minute steps the report said "Δt = 59.0 min", the standard
+        duration, next to a hydrograph that was convolved in 5-minute steps."""
+        options = {
+            **_CATCHMENT,
+            **_DESIGN,
+            "uh_model": "snyder",
+            "snyder_length_km": 15.0,
+            "snyder_centroid_length_km": 7.5,
+            "snyder_ct": 1.7,
+            "snyder_cp": 0.65,
+        }
+        _, text = _report(tmp_path, **options)
+
+        unit = compute_hydrograph(**options).result.unit_hydrograph_result
+        section = _section(text, 5)
+        assert unit.duration_min == 5.0
+        assert "Użyty czas trwania opadu: Δt = 5.0 min" in section
+        assert f"tD = {unit.standard_duration_min:.1f} min" in section
+        assert "$\\Delta t$ = 5.0 min" in section  # the correction for D = 5 min
+        assert f"{unit.adjusted_lag_time_min:.1f}" in section
 
     def test_a_given_tc_has_no_formula_inputs_to_show(self, tmp_path):
         _, text = _report(

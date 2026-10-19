@@ -9,12 +9,12 @@
 
 from __future__ import annotations
 
-import contextlib
 import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from hydrolog._atomic import atomic_output
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.catalog.envelope import Notice, OperationOutput, capture_warnings
 from hydrolog.exceptions import InvalidParameterError, OutputError
@@ -176,18 +176,13 @@ def _check_output(
 
 def _write(content: str, output: Path) -> None:
     """Write the report atomically (written aside, then renamed)."""
-    temporary = output.with_name(f".{output.name}.{os.getpid()}.tmp")
     try:
-        output.parent.mkdir(parents=True, exist_ok=True)
-        temporary.write_text(content, encoding="utf-8")
-        os.replace(temporary, output)
+        with atomic_output(output) as temporary:
+            temporary.write_text(content, encoding="utf-8")
     except OSError as exc:
         raise OutputError(
             f"Cannot write the report {output}: {exc}", details={"path": str(output)}
         ) from exc
-    finally:
-        with contextlib.suppress(OSError):
-            temporary.unlink()
 
 
 # --- operation ------------------------------------------------------------------------

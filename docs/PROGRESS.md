@@ -84,20 +84,27 @@
 - [x] Serwer MCP (`hydrolog.mcp`, dodatek `[mcp]`, `mcp>=2.3,<3`)
 - [x] `hydrolog.agent_guide` + `AGENTS.md`, `llms.txt` (generowane, test zgodności bajtów)
 - [x] Poprawki obliczeniowe: Fisher-Tippett dla minimów (Gumbel-min loc 50, scale 8, T=100: −3821 → 13,26; teoria 13,20), Clark UH dla D niebędącego wielokrotnością kroku (1,333 → 1,000 mm dla D = 1,5·dt; D < dt/2 dawniej `ValueError`), Giandotti z `elevation_mean_m == 0`, raport obliczeniowy (sekcja UH z wyniku, λ, wejścia tc), statystyki miesięczne dla n = 1 (CI = NaN), `StreamNetwork` (Shreve `KeyError`, pętla nieskończona przy cyklu/nieznanym upstream), błędy `RatingCurve` (`RatingCurveFitError`)
-- [x] Dokumentacja: README, CHANGELOG (sekcja 1.0.0), SCOPE, PRD, INTEGRATION (Retman, MCP, migracja HSG, IMGWTools), COMPUTATION_PATHS (HSG, Fisher-Tippett, Clark), DEVELOPMENT_STANDARDS (dodawanie komendy, regeneracja przewodników, kody błędów), IMPLEMENTATION_PROMPT, CLAUDE.md, PROGRESS (nieaktualne wzmianki o zależnościach od IMGWTools i Kartografa poprawione)
+- [x] Poprawki po przeglądzie kodu: nadpisany `cn` stosowany także do tc NRCS (Qmax 27,64 → 55,62 m³/s w przykładzie recenzenta), Snyder w `HydrographGenerator` dla D = krok (Qmax +11,8%), `calculate_tc` FAA/Kerby z odcinka spływu powierzchniowego (155,3 → 27,7 min), NRCS ze średniego spadku zlewni, ekstrema roczne tylko z pełnych lat hydrologicznych (notice `incomplete_years`), pozycje empiryczne niżówek w konwencji nieprzekroczenia, domyślny start H0 krzywej natężenia z danych, unikalne pliki tymczasowe (`hydrolog/_atomic.py`), notice `slopes_from_relief`
+- [x] Dokumentacja: README, CHANGELOG (sekcja 1.0.0, niewydana), SCOPE, PRD, INTEGRATION (Retman, MCP, migracja HSG, IMGWTools), COMPUTATION_PATHS (HSG, Fisher-Tippett, Clark, tc ze zlewni), DEVELOPMENT_STANDARDS (dodawanie komendy, regeneracja przewodników, kody błędów), IMPLEMENTATION_PROMPT, CLAUDE.md, PROGRESS
+- [x] Wersja `1.0.0.dev0`; gałąź scalona do `develop`
 
-**Testy:** 3176 zebranych (824 → 3176)
+**Testy:** 3293 passed, 4 skipped (824 → 3297); black i mypy (czysty cache) bez uwag; smoke CLI i MCP stdio (SDK 2.3.0)
 
 **Co jest w trakcie:**
-- Przegląd kodu (interfejsy: polityka ścieżek, `run_command`; obliczenia: `HydrographGenerator`) prowadzony równolegle z dokumentacją
-- Wydanie: bump wersji w `pyproject.toml` i `hydrolog/__init__.py` (w chwili pisania wciąż 0.7.0), tag `v1.0.0`, merge develop → main; po wydaniu zmienić status v1.0.0 w README, SCOPE, PRD i PROGRESS z „w przygotowaniu" na „wydana"
+- Nic. Zgodnie z decyzją właściciela: BEZ merge develop → main i BEZ tagu `v1.0.0` — przed tagiem będą jeszcze zmiany
+
+**Do decyzji właściciela:**
+- `NashIUH.from_tc()` - zapowiedziane usunięcie w 1.0.0 (CHANGELOG 0.6.2, `DeprecationWarning`), nadal obecne; sprawdzić użycie w Hydrografie przed usunięciem
+- `stats characteristic|daily|monthly` liczą ze wszystkich dni, także z lat niepełnych (inaczej niż ekstrema roczne)
+- Retman: `supported_versions=">=1.0,<2"` nie obejmuje `1.0.0.dev0` (PEP 440) - do testów przed tagiem potrzebny zakres z pre-release
 
 **Następne kroki:**
-1. Wydanie v1.0.0 (bump wersji, bramka: pytest, black --check, mypy; tag `v1.0.0`; merge develop → main; push)
+1. Dalsze zmiany przed v1.0.0 (właściciel), potem wydanie: wersja 1.0.0, statusy „wydana”, tag `v1.0.0`, merge develop → main (tylko na polecenie właściciela)
 2. Kartograf: usunięcie `HSGCalculator`/`calculate_hsg` (HSG liczy Hydrolog), eksport `download_soil` jako jedyna ścieżka gleb
 3. Hydrograf: migracja z `HSGCalculator` na `download_soil` + `hydrolog.soil` (opis i kod: `docs/INTEGRATION.md`, sekcja „Hydrograf: migracja HSG z Kartografa do Hydrologa")
-4. Retman: manifest narzędzia Hydrolog (`supported_versions=">=1.0,<2"`), handlery przez `hydrolog.operations`/`run_command`, format `catchment_characteristics` = `WatershedParameters` JSON
-5. Po v1.0.0: empiryczne wzory na przepływ maksymalny (Punzet, Bogdanowicz-Stachy)
+4. Retman: manifest narzędzia Hydrolog, handlery przez `hydrolog.operations`/`run_command`, format `catchment_characteristics` = `WatershedParameters` JSON
+5. IMGWTools: top-level `oneOf` w `inputSchema` narzędzi MCP jest odrzucany przez API Anthropic (Claude Code) - Hydrolog go usuwa, IMGWTools nie
+6. Po v1.0.0: empiryczne wzory na przepływ maksymalny (Punzet, Bogdanowicz-Stachy)
 
 ---
 

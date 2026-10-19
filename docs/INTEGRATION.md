@@ -81,8 +81,8 @@ Umożliwić łatwą wymianę danych między Hydrografem (analizy przestrzenne GI
     "__comment_v063": "Pola opcjonalne dodane w v0.6.3+",
     "runoff_coeff": {"type": "number", "exclusiveMinimum": 0, "maximum": 1.0, "description": "Współczynnik spływu C dla metody FAA"},
     "retardance": {"type": "number", "exclusiveMinimum": 0, "description": "Współczynnik szorstkości Kerby (0.02-0.80)"},
-    "overland_length_km": {"type": "number", "exclusiveMinimum": 0, "description": "Długość spływu powierzchniowego [km] (Kerby-Kirpich)"},
-    "overland_slope_m_per_m": {"type": "number", "minimum": 0, "description": "Spadek spływu powierzchniowego [m/m] (Kerby-Kirpich)"},
+    "overland_length_km": {"type": "number", "exclusiveMinimum": 0, "description": "Długość spływu powierzchniowego [km] (FAA, Kerby, Kerby-Kirpich)"},
+    "overland_slope_m_per_m": {"type": "number", "minimum": 0, "description": "Spadek spływu powierzchniowego [m/m] (FAA, Kerby, Kerby-Kirpich)"},
     "Lc_km": {"type": "number", "exclusiveMinimum": 0, "description": "Odległość do centroidu zlewni wzdłuż cieku [km] (Nash/Snyder)"},
     "manning_n": {"type": "number", "exclusiveMinimum": 0, "description": "Współczynnik szorstkości Manninga (Nash)"},
     "urban_pct": {"type": "number", "minimum": 0, "maximum": 100, "description": "Procent obszaru zurbanizowanego [%] (Nash)"},
@@ -398,7 +398,7 @@ hydrolog stats characteristic --input-file q_dobowe.csv --value-column Q --date-
 hydrolog stats monthly --input-file q_dobowe.csv --value-column Q --date-column date
 ```
 
-Maksima i minima roczne wybierane są z lat hydrologicznych (XI-X); seria krótsza niż zalecana daje ostrzeżenie w `notices`. Te same komendy są dostępne w Pythonie (`hydrolog.operations.stats_flood_frequency(input_file=..., value_column="Q", date_column="date")`) i MCP (`stats_flood_frequency`).
+Maksima i minima roczne (`stats flood-frequency`, `stats low-flow`) wybierane są z **kompletnych** lat hydrologicznych (XI-X; wartość dla każdego dnia roku): eksport z lat kalendarzowych traci pierwszy i ostatni rok hydrologiczny, a pominięte lata wymienia notice `incomplete_years` i pole wyniku `incomplete_years`. Seria krótsza niż zalecana daje ostrzeżenie w `notices`; seria bez 3 kompletnych lat kończy się `calculation_error`. Te same komendy są dostępne w Pythonie (`hydrolog.operations.stats_flood_frequency(input_file=..., value_column="Q", date_column="date")`) i MCP (`stats_flood_frequency`).
 
 ### Hydrograf: migracja HSG z Kartografa do Hydrologa
 

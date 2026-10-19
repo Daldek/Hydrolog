@@ -124,6 +124,19 @@ class HydrographGenerator:
 
     Example: ``uh_params={"L_km": 15.0, "Lc_km": 8.0}``
 
+    The convolution takes the unit hydrograph as the response to 1 mm of
+    effective precipitation in one time step, so for the Snyder model it is
+    generated for the rainfall duration D equal to that time step: adjusted lag
+    ``tLR = tL + 0.25 (D - tD)``, time to peak ``tpR = tLR + D / 2`` and peak
+    ``qpR = qp tL / tLR``, with ``tD = tL / 5.5`` the standard duration (Snyder,
+    1938; USACE-HEC, 2000, HEC-HMS Technical Reference Manual, "Snyder Unit
+    Hydrograph Model"; Chow, Maidment and Mays, 1988, Applied Hydrology).
+    ``HydrographGeneratorResult.unit_hydrograph_result`` is that hydrograph
+    (``duration_min`` is the time step). Before 1.0.0 the unit hydrograph of
+    the standard duration was used for every time step: the peak was too low and
+    too late for a time step shorter than tD, and too high and too early for a
+    longer one.
+
     Examples
     --------
     >>> from hydrolog.runoff import HydrographGenerator
@@ -343,8 +356,15 @@ class HydrographGenerator:
         eff_result = self.scs_cn.effective_precipitation(precip_mm, amc=amc)
         effective_mm = np.asarray(eff_result.effective_mm, dtype=np.float64)
 
-        # Generate unit hydrograph
-        uh_result = self.unit_hydrograph.generate(timestep_min=dt)
+        # Generate unit hydrograph. The discrete convolution treats it as the
+        # response to 1 mm of effective precipitation falling in one time step, so
+        # the Snyder hydrograph must be the one for the duration D = dt (adjusted
+        # lag tLR, time to peak tpR and peak qpR), not for the standard duration
+        # tD = tL / 5.5 (Snyder 1938; HEC-HMS Technical Reference Manual).
+        if self.uh_model == "snyder":
+            uh_result = self.unit_hydrograph.generate(timestep_min=dt, duration_min=dt)
+        else:
+            uh_result = self.unit_hydrograph.generate(timestep_min=dt)
 
         # Perform convolution
         hydrograph = convolve_discrete(

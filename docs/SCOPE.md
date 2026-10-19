@@ -136,8 +136,8 @@ Hydrolog jest analogiczny do **Kartografa** (pobieranie danych przestrzennych) i
 **WatershedParameters — dodatkowe pola opcjonalne (v0.6.3):**
 - `runoff_coeff` — współczynnik odpływu dla metody FAA
 - `retardance` — współczynnik szorstkości Kerby (0.02–0.80)
-- `overland_length_km` — długość spływu powierzchniowego [km] (Kerby-Kirpich)
-- `overland_slope_m_per_m` — spadek powierzchniowy [m/m] (Kerby-Kirpich)
+- `overland_length_km` — długość spływu powierzchniowego [km] (FAA, Kerby, Kerby-Kirpich)
+- `overland_slope_m_per_m` — spadek powierzchniowy [m/m] (FAA, Kerby, Kerby-Kirpich)
 - `Lc_km` — odległość do centroidu zlewni [km] (Nash/Snyder)
 - `manning_n` — współczynnik Manninga (Nash)
 - `urban_pct` — procent zabudowy [%] (Nash)

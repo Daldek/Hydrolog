@@ -10,7 +10,7 @@ the same.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, Literal, cast, get_args
 
 import numpy as np
@@ -102,7 +102,8 @@ class HydrographRun:
         ``"block"``, ``"triangular"``, ``"beta"`` or ``"euler_ii"`` when the
         hyetograph was generated, ``None`` for a precipitation series.
     watershed : WatershedParameters or None
-        The watershed parameters when a watershed was given.
+        The watershed parameters when a watershed was given, with the ``cn`` option
+        applied (the ``cn`` the runoff and the NRCS time of concentration used).
     """
 
     result: HydrographGeneratorResult
@@ -166,9 +167,11 @@ class HydrographGenerateResult(JsonResultMixin):
     uh_parameters : dict of str to float
         Model parameters (names as in the ``uh`` commands).
     uh_time_to_peak_min : float
-        Time to peak of the unit hydrograph [min].
+        Time to peak of the unit hydrograph [min]. For the ``snyder`` model it is
+        tpR of the unit hydrograph for the duration of the time step.
     uh_peak_discharge_m3s_per_mm : float
-        Peak ordinate of the unit hydrograph [m3/s per mm].
+        Peak ordinate of the unit hydrograph [m3/s per mm]. For the ``snyder``
+        model the unit hydrograph is the one for the duration of the time step.
     timestep_min : float
         Time step [min].
     duration_min : float
@@ -373,16 +376,21 @@ def compute_hydrograph(
         area, curve_number = area_km2, cn
     else:
         catchment = load_watershed(watershed=watershed, watershed_file=watershed_file)
+        if cn is not None:
+            # The CN given next to a watershed is the CN of the catchment for the
+            # whole computation. In particular the retention S of the NRCS lag
+            # equation (TR-55, chapter 3; NEH-630, chapter 15) must come from the
+            # CN the runoff is computed with, not from the one in the file.
+            catchment = replace(catchment, cn=cast(int, cn))
         area = catchment.area_km2
-        resolved = cn if cn is not None else catchment.cn
-        if resolved is None:
+        if catchment.cn is None:
             raise option_error(
                 "cn",
                 "required",
                 "Option 'cn' is required: the watershed has no 'cn'",
                 hint="Give cn or add it to the watershed parameters.",
             )
-        curve_number = resolved
+        curve_number = catchment.cn
 
     needs_tc = model in _TC_MODELS
     if tc_method is not None and catchment is None:
@@ -571,7 +579,9 @@ def hydrograph_generate(
         Catchment area [km2], > 0; with ``cn``, instead of a watershed.
     cn : float, optional
         Curve Number for AMC II, 1-100; with ``area_km2``, or next to a watershed to
-        override its ``cn`` (required when the watershed has none).
+        override its ``cn`` (required when the watershed has none). The override
+        is the CN of the whole computation, also of the retention S in the lag
+        equation of ``tc_method="nrcs"``.
     tc_min : float, optional
         Time of concentration [min], > 0. Required by the ``scs`` and ``clark``
         models unless a watershed lets ``tc_method`` compute it.
@@ -613,7 +623,9 @@ def hydrograph_generate(
     snyder_length_km, snyder_centroid_length_km : float, optional
         Snyder L and Lc [km] (required for ``snyder``).
     snyder_ct, snyder_cp : float, optional
-        Snyder coefficients, defaults 1.5 and 0.6.
+        Snyder coefficients, defaults 1.5 and 0.6. The unit hydrograph is that
+        for rainfall of the duration of the time step (adjusted lag tLR, time to
+        peak tpR and peak qpR), as the convolution requires.
 
     Returns
     -------

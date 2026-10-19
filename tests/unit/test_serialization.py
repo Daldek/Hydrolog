@@ -430,6 +430,13 @@ CASES = [
         {},
     ),
     (
+        "LowFlowEmpiricalFrequency",
+        lambda: LowFlowAnalysis(
+            _daily_flows(_dates()), _dates()
+        ).empirical_non_exceedance(),
+        {},
+    ),
+    (
         "MannKendallResult",
         _flow_stats_nan,
         {"trend_direction": "increasing"},

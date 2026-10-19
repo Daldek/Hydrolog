@@ -11,13 +11,19 @@ functions are re-exported by :mod:`hydrolog.operations`.
 Years are the Polish hydrological years (1 November - 31 October, named after the
 calendar year in which they end), the same convention as
 :func:`hydrolog.statistics.calculate_characteristic_values`.
+
+The annual maxima of ``stats flood-frequency`` (from a daily series) and the annual
+minima of ``stats low-flow`` are extremes of *complete* hydrological years only: a
+year in which some day has no value (an absent date or a ``NaN``) is skipped and
+named in the ``incomplete_years`` notice and result field (KZGW, 2017; WMO No. 1029,
+2009). A calendar-year export therefore loses its first and last hydrological year.
 """
 
 from __future__ import annotations
 
 import os
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Literal
 
 import numpy as np
@@ -40,6 +46,7 @@ from hydrolog.statistics import (
     FloodFrequencyAnalysis,
     FrequencyAnalysisResult,
     LowFlowAnalysis,
+    LowFlowEmpiricalFrequency,
     LowFlowFrequencyResult,
     MannKendallResult,
     MonthlyStatistics,
@@ -48,7 +55,13 @@ from hydrolog.statistics import (
     calculate_monthly_statistics,
     mann_kendall_test,
 )
-from hydrolog.statistics._hydrological_year import hydrological_year
+from hydrolog.statistics._hydrological_year import (
+    AnnualExtremes,
+    annual_extremes,
+    describe_incomplete_years,
+    hydrological_year,
+    incomplete_years_message,
+)
 
 __all__ = [
     "DEFAULT_RETURN_PERIODS",
@@ -106,7 +119,7 @@ class FloodFrequencyResult(JsonResultMixin):
         Number of annual maxima the distributions were fitted to.
     annual_maxima : list of float
         The sample: annual maxima in time order (derived from a daily series by
-        hydrological year, or the values as given).
+        complete hydrological year, or the values as given).
     hydrological_years : list of int or None
         Hydrological year of every annual maximum when they were derived from a daily
         series; ``None`` when the annual maxima were given directly.
@@ -117,7 +130,12 @@ class FloodFrequencyResult(JsonResultMixin):
         goodness of fit (K-S, Anderson-Darling, AIC). All four sorted by AIC
         (best first) for ``distribution="all"``, otherwise the one requested.
     empirical : EmpiricalFrequency
-        Empirical frequency of the sample (Weibull plotting positions).
+        Empirical frequency of the sample (Weibull plotting positions; values sorted
+        descending, exceedance probabilities and return periods of exceedance).
+    incomplete_years : list of int or None
+        Hydrological years of the daily series that were skipped because some day
+        has no value (empty when every year was complete); ``None`` when the annual
+        maxima were given directly.
     """
 
     n_years: int
@@ -126,6 +144,7 @@ class FloodFrequencyResult(JsonResultMixin):
     best_distribution: str
     distributions: list[FrequencyAnalysisResult]
     empirical: EmpiricalFrequency
+    incomplete_years: list[int] | None = None
 
 
 @dataclass
@@ -135,24 +154,32 @@ class LowFlowFrequencyAnalysis(JsonResultMixin):
     Attributes
     ----------
     n_years : int
-        Number of hydrological years (annual minima) in the series.
+        Number of complete hydrological years (annual minima) the distribution was
+        fitted to.
     hydrological_years : list of int
         Hydrological year of every annual minimum.
     annual_minima : list of float
-        Annual minima in the unit of the series, one per hydrological year.
+        Annual minima in the unit of the series, one per complete hydrological year.
     fisher_tippett : LowFlowFrequencyResult
         Fitted Fisher-Tippett distribution of smallest values (GEV for minima):
         parameters, low-flow quantiles for the return periods and K-S statistics.
-    empirical : EmpiricalFrequency
-        Empirical frequency of the annual minima (Weibull plotting positions; values
-        sorted descending, exceedance probabilities).
+    empirical : LowFlowEmpiricalFrequency
+        Empirical non-exceedance frequency of the annual minima (Weibull plotting
+        positions): ``values_ascending``, ``non_exceedance_probabilities``
+        ``F = m / (n + 1)`` and ``return_periods`` ``T = 1 / F``, in the same
+        convention as ``fisher_tippett`` (the deepest low flow has the smallest
+        ``F`` and the longest ``T``).
+    incomplete_years : list of int
+        Hydrological years of the series that were skipped because some day has no
+        value (empty when every year was complete).
     """
 
     n_years: int
     hydrological_years: list[int]
     annual_minima: list[float]
     fisher_tippett: LowFlowFrequencyResult
-    empirical: EmpiricalFrequency
+    empirical: LowFlowEmpiricalFrequency
+    incomplete_years: list[int] = field(default_factory=list)
 
 
 @dataclass
@@ -258,15 +285,58 @@ def _return_periods(return_periods: Sequence[float]) -> NDArray[np.float64]:
 
 
 def _annual_extremes(
-    series: Series, reduce: Callable[[NDArray[np.float64]], Any]
-) -> tuple[list[int], NDArray[np.float64]]:
-    """Maximum or minimum of every hydrological year of a dated series."""
-    years = hydrological_year(_dates_of(series))
-    labels = np.unique(years)
-    extremes = np.array(
-        [reduce(series.values[years == label]) for label in labels], dtype=np.float64
+    series: Series, kind: Literal["max", "min"]
+) -> tuple[AnnualExtremes, list[Notice]]:
+    """Maximum or minimum of every complete hydrological year of a dated series.
+
+    The notice (code ``incomplete_years``) names the years that were skipped.
+    """
+    extremes = annual_extremes(series.values, _dates_of(series), kind)
+    notices: list[Notice] = []
+    if extremes.incomplete:
+        notices.append(
+            Notice("warning", "incomplete_years", incomplete_years_message(extremes))
+        )
+    return extremes, notices
+
+
+def _require_years(extremes: AnnualExtremes, what: str, *, advice: str = "") -> None:
+    """Require ``_MIN_ANNUAL_VALUES`` complete hydrological years.
+
+    Parameters
+    ----------
+    extremes : AnnualExtremes
+        Annual extremes of the complete years of the series.
+    what : str
+        Name of the analysis for the message.
+    advice : str, optional
+        Sentence appended to the hint when years were skipped.
+
+    Raises
+    ------
+    CalculationError
+        If fewer are available (``details``: ``count``, ``minimum`` and, when years
+        were skipped, ``incomplete_years``).
+    """
+    count = len(extremes.years)
+    if count >= _MIN_ANNUAL_VALUES:
+        return
+    message = (
+        f"{what} needs at least {_MIN_ANNUAL_VALUES} complete hydrological years, "
+        f"got {count}"
     )
-    return [int(label) for label in labels], extremes
+    details: dict[str, Any] = {"count": count, "minimum": _MIN_ANNUAL_VALUES}
+    hint = "Provide a longer series."
+    if extremes.incomplete:
+        message += f"; incomplete years: {describe_incomplete_years(extremes)}"
+        details["incomplete_years"] = extremes.incomplete_years
+        hint = (
+            "A hydrological year counts only with a value for every day of it; "
+            "fill the gaps or provide a longer series."
+        )
+        if advice:
+            hint = f"{hint} {advice}"
+    raise CalculationError(message, details=details, hint=hint)
 
 
 def _fit(what: str, fit: Callable[[], Any]) -> Any:
@@ -518,7 +588,8 @@ def stats_flood_frequency(
     maxima and estimates the quantiles of the given return periods
     (:class:`hydrolog.statistics.FloodFrequencyAnalysis`). The series is either the
     annual maxima themselves (no dates) or a daily series with dates, from which the
-    annual maxima of every hydrological year are taken first.
+    annual maxima of every *complete* hydrological year are taken first (a year with
+    a day without a value is skipped and named in the ``incomplete_years`` notice).
 
     Parameters
     ----------
@@ -543,9 +614,10 @@ def stats_flood_frequency(
     -------
     OperationOutput
         ``result`` is a :class:`FloodFrequencyResult`; the notices report removed
-        missing values and the warnings of the fit (short sample: fewer than 30 years
-        in the KZGW 2017 methodology, fewer than 10 years unreliable; the K-S test is
-        not valid for fitted parameters).
+        missing values, skipped incomplete years (code ``incomplete_years``) and the
+        warnings of the fit (short sample: fewer than 30 years in the KZGW 2017
+        methodology, fewer than 10 years unreliable; the K-S test is not valid for
+        fitted parameters).
 
     Raises
     ------
@@ -555,7 +627,8 @@ def stats_flood_frequency(
     NotFoundError, InputDataError
         If the file does not exist or cannot be read.
     CalculationError
-        If fewer than 3 annual maxima are available or a fit fails numerically.
+        If fewer than 3 annual maxima (complete hydrological years) are available or
+        a fit fails numerically.
     """
     check_choice("distribution", distribution, _DISTRIBUTIONS)
     periods = _return_periods(return_periods)
@@ -567,16 +640,26 @@ def stats_flood_frequency(
         date_column=date_column,
     )
     hydrological_years: list[int] | None = None
+    incomplete_years: list[int] | None = None
     if series.dates is None:
         maxima = series.values
+        require_count(
+            len(maxima),
+            _MIN_ANNUAL_VALUES,
+            "Flood frequency analysis",
+            unit="annual maxima",
+        )
     else:
-        hydrological_years, maxima = _annual_extremes(series, np.max)
-    require_count(
-        len(maxima),
-        _MIN_ANNUAL_VALUES,
-        "Flood frequency analysis",
-        unit="annual maxima",
-    )
+        extremes, year_notices = _annual_extremes(series, "max")
+        _require_years(
+            extremes,
+            "Flood frequency analysis",
+            advice="Annual maxima that are already extracted go without dates.",
+        )
+        maxima = extremes.values
+        hydrological_years = [int(year) for year in extremes.years]
+        incomplete_years = extremes.incomplete_years
+        notices.extend(year_notices)
     with capture_warnings(_NUMERIC_WARNINGS) as numeric:
         analysis = FloodFrequencyAnalysis(maxima, periods)
         fitted: list[FrequencyAnalysisResult]
@@ -601,6 +684,7 @@ def stats_flood_frequency(
         best_distribution=fitted[0].distribution_name,
         distributions=fitted,
         empirical=empirical,
+        incomplete_years=incomplete_years,
     )
     return OperationOutput(result, [*notices, *numeric])
 
@@ -619,12 +703,15 @@ def stats_low_flow(
 ) -> OperationOutput:
     """Low-flow frequency analysis (``stats low-flow``).
 
-    Takes the annual minima of a daily series by hydrological year, fits the
-    Fisher-Tippett distribution of smallest values (GEV for minima) to them and
-    estimates the low-flow quantile of every return period: the value not exceeded
-    once in ``T`` years, with non-exceedance probability ``1 / T``
+    Takes the annual minima of a daily series by complete hydrological year (a year
+    with a day without a value is skipped and named in the ``incomplete_years``
+    notice), fits the Fisher-Tippett distribution of smallest values (GEV for minima)
+    to them and estimates the low-flow quantile of every return period: the value not
+    exceeded once in ``T`` years, with non-exceedance probability ``1 / T``
     (:class:`hydrolog.statistics.LowFlowAnalysis`; WMO No. 1029, 2009; Tallaksen and
-    van Lanen, 2004).
+    van Lanen, 2004). The empirical block uses the same convention (ascending annual
+    minima with non-exceedance probabilities ``F = m / (n + 1)`` and return periods
+    ``T = 1 / F``).
 
     Parameters
     ----------
@@ -646,7 +733,8 @@ def stats_low_flow(
     -------
     OperationOutput
         ``result`` is a :class:`LowFlowFrequencyAnalysis`; the notices report removed
-        missing values and the warnings of the fit (fewer than 10 years: unreliable).
+        missing values, skipped incomplete years (code ``incomplete_years``) and the
+        warnings of the fit (fewer than 10 years: unreliable).
 
     Raises
     ------
@@ -656,7 +744,7 @@ def stats_low_flow(
     NotFoundError, InputDataError
         If the file does not exist or cannot be read.
     CalculationError
-        If the series spans fewer than 3 hydrological years or the fit fails.
+        If the series has fewer than 3 complete hydrological years or the fit fails.
     """
     periods = _return_periods(return_periods)
     series, notices = load_valid_series(
@@ -668,28 +756,26 @@ def stats_low_flow(
         require_dates=True,
     )
     dates_array = _dates_of(series)
-    n_years = len(np.unique(hydrological_year(dates_array)))
-    require_count(
-        n_years,
-        _MIN_ANNUAL_VALUES,
-        "Low-flow frequency analysis",
-        unit="hydrological years",
-    )
-    analysis = LowFlowAnalysis(series.values, dates_array, periods)
+    extremes, year_notices = _annual_extremes(series, "min")
+    _require_years(extremes, "Low-flow frequency analysis")
+    # The analysis takes the complete years of the days it is given; hand it those
+    # only, so that the skipped years are reported once, in the notice above.
+    complete = np.isin(hydrological_year(dates_array), extremes.years)
+    analysis = LowFlowAnalysis(series.values[complete], dates_array[complete], periods)
     with capture_warnings(_NUMERIC_WARNINGS) as numeric:
-        years, minima = _annual_extremes(series, np.min)
         fitted: LowFlowFrequencyResult = _fit(
             "the Fisher-Tippett distribution", analysis.fit_fisher_tippett
         )
-        empirical = analysis.empirical_frequency()
+        empirical = analysis.empirical_non_exceedance()
     result = LowFlowFrequencyAnalysis(
-        n_years=len(minima),
-        hydrological_years=years,
-        annual_minima=[float(value) for value in minima],
+        n_years=len(extremes.years),
+        hydrological_years=[int(year) for year in extremes.years],
+        annual_minima=[float(value) for value in extremes.values],
         fisher_tippett=fitted,
         empirical=empirical,
+        incomplete_years=extremes.incomplete_years,
     )
-    return OperationOutput(result, [*notices, *numeric])
+    return OperationOutput(result, [*notices, *year_notices, *numeric])
 
 
 def stats_low_flow_sequences(

@@ -171,7 +171,7 @@ def hydrometrics_rating_curve(
     input_file: str | os.PathLike[str] | None = None,
     level_column: str | None = None,
     discharge_column: str | None = None,
-    h0_initial: float = 0.0,
+    h0_initial: float | None = None,
     remove_outliers: bool = False,
     outlier_std: float = 2.0,
 ) -> OperationOutput:
@@ -180,7 +180,8 @@ def hydrometrics_rating_curve(
     Fits the rating curve to pairs of water level ``H`` and discharge ``Q`` by
     non-linear least squares (:class:`hydrolog.hydrometrics.RatingCurve`; ``a >= 0``,
     ``b >= 0``, ``H0`` below every observed level; starting point ``a = 1``,
-    ``b = 1.5``, ``H0 = h0_initial``). With ``remove_outliers`` the pairs whose
+    ``b = 1.5``, ``H0 = h0_initial``, by default chosen from the levels so that it
+    works for stages at or below zero). With ``remove_outliers`` the pairs whose
     residual exceeds ``outlier_std`` standard deviations are dropped after the first
     fit and the curve is fitted again (when at least 3 pairs remain).
 
@@ -198,7 +199,9 @@ def hydrometrics_rating_curve(
         Column of ``input_file`` with the discharges.
     h0_initial : float, optional
         Initial guess of H0, the level of zero flow, in the unit of the levels; below
-        the lowest observed level, by default 0.0.
+        the lowest observed level. By default it is chosen from the data: the lowest
+        level minus a tenth of the range of the levels (at least one unit), whatever
+        the sign of the levels.
     remove_outliers : bool, optional
         Drop outlying pairs and refit, by default ``False``.
     outlier_std : float, optional
@@ -215,7 +218,7 @@ def hydrometrics_rating_curve(
     ------
     InvalidParameterError
         If the pairs are given inconsistently or differ in length, ``outlier_std`` is
-        not positive, or ``h0_initial`` is not below the lowest water level.
+        not positive, or a given ``h0_initial`` is not below the lowest water level.
     NotFoundError, InputDataError
         If the file does not exist or cannot be read.
     CalculationError

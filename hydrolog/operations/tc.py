@@ -310,47 +310,15 @@ def _effective_parameters(
 ) -> dict[str, float]:
     """Formula arguments that ``WatershedParameters.calculate_tc`` derives.
 
-    Mirrors the documented selection rules of ``calculate_tc`` (length:
-    ``channel_length_km`` else ``length_km``; slope: channel slope, mean slope,
-    relief over length; Giandotti: mean elevation, by default the middle of the
-    range, minus the outlet) so the result shows what the method was fed with.
+    Taken from :meth:`WatershedParameters.tc_parameters`, the one place that
+    selects them from the watershed fields (FAA and Kerby: the overland flow
+    length and slope; Kirpich: the channel slope first; NRCS: the mean slope of
+    the watershed first; Giandotti: mean elevation, by default the middle of the
+    range, minus the outlet), so the result shows what the method was fed with.
     """
-    length_km = watershed.channel_length_km or watershed.length_km
-    if watershed.channel_slope_m_per_m is not None:
-        slope = watershed.channel_slope_m_per_m
-    elif watershed.mean_slope_m_per_m is not None:
-        slope = watershed.mean_slope_m_per_m
-    else:
-        slope = watershed.relief_m / (length_km * 1000)
-    parameters: dict[str, float] = {}
-    if method == "giandotti":
-        mean = (
-            watershed.elevation_mean_m
-            if watershed.elevation_mean_m is not None
-            else (watershed.elevation_min_m + watershed.elevation_max_m) / 2
-        )
-        parameters = {
-            "area_km2": watershed.area_km2,
-            "length_km": length_km,
-            "elevation_diff_m": mean - watershed.elevation_min_m,
-        }
-    elif method == "kerby_kirpich":
-        parameters = {
-            "overland_length_km": cast(float, watershed.overland_length_km),
-            "overland_slope_m_per_m": cast(float, watershed.overland_slope_m_per_m),
-            "retardance": cast(float, watershed.retardance),
-            "channel_length_km": cast(float, watershed.channel_length_km),
-            "channel_slope_m_per_m": cast(float, watershed.channel_slope_m_per_m),
-        }
-    else:
-        parameters = {"length_km": length_km, "slope_m_per_m": slope}
-        if method == "nrcs":
-            parameters["cn"] = float(cast(int, watershed.cn))
-        elif method == "faa":
-            parameters["runoff_coeff"] = cast(float, watershed.runoff_coeff)
-        elif method == "kerby":
-            parameters["retardance"] = cast(float, watershed.retardance)
-    return parameters
+    return {
+        name: float(value) for name, value in watershed.tc_parameters(method).items()
+    }
 
 
 def watershed_concentration_time(
@@ -412,7 +380,8 @@ def watershed_concentration_time(
                     "method": method,
                     "missing": missing,
                 },
-                hint=(
+                hint=exc.hint
+                or (
                     f"Add {', '.join(missing)} to the watershed parameters or use "
                     "another method."
                 ),
@@ -443,10 +412,17 @@ def tc_watershed(
     watershed_file : str, optional
         JSON file in the ``WatershedParameters.to_json()`` format.
     method : {"kirpich", "nrcs", "giandotti", "faa", "kerby", "kerby_kirpich"}, optional
-        Formula, by default ``"kirpich"``. ``nrcs`` needs ``cn``, ``faa`` needs
-        ``runoff_coeff``, ``kerby`` needs ``retardance``, ``kerby_kirpich`` needs
-        ``retardance``, ``overland_length_km``, ``overland_slope_m_per_m``,
-        ``channel_length_km`` and ``channel_slope_m_per_m``.
+        Formula, by default ``"kirpich"``. Length: ``channel_length_km``, else
+        ``length_km``; slope: ``channel_slope_m_per_m``, then
+        ``mean_slope_m_per_m``, then relief over length (``nrcs`` takes the mean
+        slope of the watershed first: the average land slope Y of TR-55).
+        ``nrcs`` needs ``cn``. ``faa`` and ``kerby`` time the overland flow, so
+        they use ``overland_length_km`` and ``overland_slope_m_per_m`` (not the
+        channel) and need them, besides ``runoff_coeff`` (``faa``) or
+        ``retardance`` (``kerby``); for a watershed with a channel use
+        ``kerby_kirpich``, which needs ``retardance``, ``overland_length_km``,
+        ``overland_slope_m_per_m``, ``channel_length_km`` and
+        ``channel_slope_m_per_m``.
 
     Returns
     -------

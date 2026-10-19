@@ -23,7 +23,7 @@ Abbreviations in option names and results: `tc` — time of concentration [min];
 
 | Interface | Discovery | Call | Result | Error |
 |---|---|---|---|---|
-| Python | `data_commands()`, `command_schema()` from `hydrolog.catalog` | a function of `hydrolog.operations` (keyword arguments = options) or `run_command("<group> <command>", {...})` | a result object with `to_dict()` and `to_json()`; `run_command` returns the envelope (`CommandResult`) | a `HydrologError` exception (`code`, `hint`, `details`) |
+| Python | `data_commands()`, `command_schema()` from `hydrolog.catalog` | a function of `hydrolog.operations` (keyword arguments = options) or `run_command("<group> <command>", {...})` | an operation function returns a result object with `to_dict()` and `to_json()` or an `OperationOutput(result, notices, files)` (the result in `.result`, the warnings in `.notices`, the files written in `.files`); `run_command` always returns the envelope (a `CommandResult` with `to_dict()` and `to_json()`) | a `HydrologError` exception (`code`, `hint`, `details`) |
 | CLI | `hydrolog commands list`, `hydrolog commands schema`, `--schema` | `hydrolog <group> <command> --option value` | a text summary; with `--json` the envelope on one line of stdout | text on stderr or, with `--json`, one `hydrolog-error/1` line; the exit code from the registry |
 | MCP | `tools/list` | the tool `<operation_id>` with the arguments = the options | `structuredContent` = the envelope (the same JSON as text) | `isError: true` and a `hydrolog-error/1` document |
 

@@ -29,7 +29,7 @@ Skróty w nazwach opcji i wynikach: `tc` — czas koncentracji [min]; `CN` — l
 
 | Interfejs | Odkrywanie | Wywołanie | Wynik | Błąd |
 |---|---|---|---|---|
-| Python | `data_commands()`, `command_schema()` z `hydrolog.catalog` | funkcja z `hydrolog.operations` (argumenty nazwane = opcje) albo `run_command("<grupa> <komenda>", {...})` | obiekt wynikowy z `to_dict()` i `to_json()`; `run_command` zwraca kopertę (`CommandResult`) | wyjątek `HydrologError` (`code`, `hint`, `details`) |
+| Python | `data_commands()`, `command_schema()` z `hydrolog.catalog` | funkcja z `hydrolog.operations` (argumenty nazwane = opcje) albo `run_command("<grupa> <komenda>", {...})` | funkcja operacji zwraca obiekt wynikowy z `to_dict()` i `to_json()` albo `OperationOutput(result, notices, files)` (wynik w `.result`, ostrzeżenia w `.notices`, zapisane pliki w `.files`); `run_command` zawsze zwraca kopertę (`CommandResult` z `to_dict()` i `to_json()`) | wyjątek `HydrologError` (`code`, `hint`, `details`) |
 | CLI | `hydrolog commands list`, `hydrolog commands schema`, `--schema` | `hydrolog <grupa> <komenda> --opcja wartość` | podsumowanie tekstowe; z `--json` koperta w jednej linii stdout | tekst na stderr albo, z `--json`, jedna linia `hydrolog-error/1`; kod wyjścia z rejestru |
 | MCP | `tools/list` | narzędzie `<operation_id>` z argumentami = opcjami | `structuredContent` = koperta (ten sam JSON jako tekst) | `isError: true` i dokument `hydrolog-error/1` |
 
@@ -153,7 +153,7 @@ Tabela każdej grupy podaje komendę, nazwę narzędzia MCP (`operation_id`), op
 
 | Komenda | Narzędzie MCP | Opis | Opcje | Skutek |
 |---|---|---|---|---|
-| `hydrometrics rating-curve` | `hydrometrics_rating_curve` | Krzywa przepływu Q = a·(H − H₀)^b dopasowana do par stan–przepływ, z opcjonalnym usuwaniem odstających. | `water_levels`, `discharges`, `input_file`, `level_column`, `discharge_column`, `h0_initial=0.0`, `remove_outliers=false`, `outlier_std=2.0` (dokładnie jedna grupa: `water_levels`+`discharges` / `input_file`+`level_column`+`discharge_column`) | odczyt |
+| `hydrometrics rating-curve` | `hydrometrics_rating_curve` | Krzywa przepływu Q = a·(H − H₀)^b dopasowana do par stan–przepływ, z opcjonalnym usuwaniem odstających. | `water_levels`, `discharges`, `input_file`, `level_column`, `discharge_column`, `h0_initial`, `remove_outliers=false`, `outlier_std=2.0` (dokładnie jedna grupa: `water_levels`+`discharges` / `input_file`+`level_column`+`discharge_column`) | odczyt |
 | `hydrometrics water-level-zones` | `hydrometrics_water_level_zones` | Strefy stanów wody wg Rybczyńskiego (NTW, STW, WTW) z histogramu i krzywej czasu trwania stanów. | `values`, `input_file`, `value_column`, `bin_width=10.0` (dokładnie jedna grupa: `values` / `input_file`+`value_column`) | odczyt |
 
 ### `soil` — Gleby: uziarnienie i HSG
@@ -223,11 +223,11 @@ Hydrolog nie pobiera rastrów: ił, piasek i pył z SoilGrids (g/kg) pobiera Kar
 
 ### 4. Porównanie metod czasu koncentracji
 
-Metody dają różne `tc` (nawet kilkukrotnie) i każda ma swój zakres stosowalności: porównaj je i przeczytaj `notices`, nie wybieraj po cichu — pokaż różnice użytkownikowi albo uzasadnij wybór. Bez pliku zlewni służą komendy metod (`tc kirpich`, `tc nrcs`, `tc giandotti`...) z samymi liczbami.
+Metody dają różne `tc` (nawet kilkukrotnie) i każda ma swój zakres stosowalności: porównaj je i przeczytaj `notices`, nie wybieraj po cichu — pokaż różnice użytkownikowi albo uzasadnij wybór. Bez pliku zlewni służą komendy metod (`tc kirpich`, `tc nrcs`, `tc giandotti`...) z samymi liczbami. `faa` i `kerby` liczą czas spływu powierzchniowego (z `overland_length_km` i `overland_slope_m_per_m`, nie z długości i spadku koryta), więc nie zastępują czasu koncentracji zlewni z korytem — do tego służy `kerby_kirpich`.
 
 1. `hydrolog tc watershed --watershed-file /dane/hydrolog/zlewnia.json --method kirpich` — metoda Kirpicha: długość i spadek cieku z pliku zlewni.
    - MCP: `tc_watershed {"watershed_file": "/dane/hydrolog/zlewnia.json", "method": "kirpich"}`
-2. `hydrolog tc watershed --watershed-file /dane/hydrolog/zlewnia.json --method nrcs` — metoda NRCS (TR-55): dodatkowo `cn` z pliku zlewni.
+2. `hydrolog tc watershed --watershed-file /dane/hydrolog/zlewnia.json --method nrcs` — metoda NRCS (TR-55): długość cieku, średni spadek zlewni (`mean_slope_m_per_m`, dopiero bez niego spadek cieku) i `cn` z pliku zlewni.
    - MCP: `tc_watershed {"watershed_file": "/dane/hydrolog/zlewnia.json", "method": "nrcs"}`
 3. `hydrolog tc watershed --watershed-file /dane/hydrolog/zlewnia.json --method giandotti` — metoda Giandottiego: powierzchnia, długość i wysokość średnia nad przekrojem zamykającym; wzór jest dla dużych zlewni górskich, więc dla małej zlewni (poza zakresem z opisu komendy) wynik ma ostrzeżenie w `notices`.
    - MCP: `tc_watershed {"watershed_file": "/dane/hydrolog/zlewnia.json", "method": "giandotti"}`

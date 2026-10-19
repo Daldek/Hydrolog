@@ -1,8 +1,8 @@
 # Ścieżki obliczeniowe dla modeli hydrogramów jednostkowych (oraz HSG i rozkład Fishera–Tippetta)
 
-**Wersja dokumentu:** 1.2
+**Wersja dokumentu:** 1.3
 **Data:** 2026-10-19
-**Dotyczy:** Hydrolog >= 1.0.0 (sekcje 3.3.6, 3.5 i 3.6 opisują zachowanie od v1.0.0; pozostałe: >= 0.6.0)
+**Dotyczy:** Hydrolog >= 1.0.0 (sekcje 3.3.6, 3.4.6, 3.5, 3.6, 3.7 i 3.8 opisują zachowanie od v1.0.0; pozostałe: >= 0.6.0)
 
 ---
 
@@ -23,15 +23,16 @@ Dokument ten służy jako przewodnik, który:
 
 | Model | Kirpich | NRCS | Giandotti | FAA | Kerby | Kerby-Kirpich | from_lutz() | from_urban_regression() | Bezpośrednio | Własna metoda |
 |-------|:-------:|:-------:|:---------:|:---:|:-----:|:-------------:|:-----------:|:-----------------------:|:------------:|:-------------:|
-| **SCS UH** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | - | - | - | - |
+| **SCS UH** | ✅ | ✅ | ✅ | ✅¹ | ✅¹ | ✅ | - | - | - | - |
 | **Nash IUH** | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ✅ | ✅ | ✅ | - |
-| **Clark IUH** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | - | - | ✅ | - |
+| **Clark IUH** | ✅ | ✅ | ✅ | ✅¹ | ✅¹ | ✅ | - | - | ✅ | - |
 | **Snyder UH** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | - | - | ✅ | ✅ |
 
 **Legenda:**
 - ✅ **OK** - prawidłowe użycie, potwierdzone literaturą
 - ⚠️ **DEPRECATED** - działające, ale bez uzasadnienia naukowego (będzie usunięte w v1.0.0)
 - ❌ **NIE DOTYCZY** - model nie używa zewnętrznego Tc
+- ✅¹ **OK z ograniczeniem** - FAA i Kerby liczą czas spływu powierzchniowego (drogi rzędu setek metrów), więc jako Tc zlewni nadają się tylko dla małych zlewni bez wyraźnego koryta; dla zlewni z korytem Tc daje Kerby-Kirpich (spływ powierzchniowy + koryto) albo Kirpich (sekcja 3.7)
 
 ---
 
@@ -145,14 +146,15 @@ Dokument ten służy jako przewodnik, który:
 | Kirpich | ✅ OK | Tc jest parametrem wejściowym metody SCS |
 | NRCS | ✅ OK | Metoda opracowana razem z SCS UH (TR-55) |
 | Giandotti | ✅ OK | Tc jest parametrem wejściowym metody SCS |
-| FAA | ✅ OK | Tc jest parametrem wejściowym metody SCS (spływ powierzchniowy) |
-| Kerby | ✅ OK | Tc jest parametrem wejściowym metody SCS (spływ arkuszowy) |
+| FAA | ✅ OK¹ | Tc jest parametrem wejściowym metody SCS (czas spływu powierzchniowego) |
+| Kerby | ✅ OK¹ | Tc jest parametrem wejściowym metody SCS (czas spływu arkuszowego, droga do 366 m) |
 | Kerby-Kirpich | ✅ OK | Kompozytowe Tc (spływ powierzchniowy + korytowy) jest parametrem wejściowym SCS |
 
 **Uzasadnienie literaturowe:**
 - Relacja `tlag = 0.6 × Tc` pochodzi z USDA TR-55 (1986)
 - Została opracowana **specjalnie** dla SCS Dimensionless Unit Hydrograph
 - Wszystkie metody obliczania Tc są odpowiednie jako wejście
+- ¹ FAA i Kerby to wzory na czas spływu powierzchniowego, nie czas koncentracji zlewni z korytem; dla takiej zlewni użyj Kerby-Kirpich (sekcja 3.7)
 
 #### 3.1.3 Wzory
 
@@ -472,8 +474,8 @@ nash_correct = NashIUH.from_lutz(
 | Kirpich → Tc | ✅ OK | Tc = czas translacji (zgodne z modelem Clark) |
 | NRCS → Tc | ✅ OK | Tc = czas translacji |
 | Giandotti → Tc | ✅ OK | Tc = czas translacji |
-| FAA → Tc | ✅ OK | Tc = czas translacji (spływ powierzchniowy) |
-| Kerby → Tc | ✅ OK | Tc = czas translacji (spływ arkuszowy) |
+| FAA → Tc | ✅ OK¹ | Tc = czas translacji (czas spływu powierzchniowego) |
+| Kerby → Tc | ✅ OK¹ | Tc = czas translacji (czas spływu arkuszowego) |
 | Kerby-Kirpich → Tc | ✅ OK | Tc = czas translacji (kompozytowy: spływ powierzchniowy + korytowy) |
 | Bezpośrednio Tc, R | ✅ OK | Gdy masz zmierzone/skalibrowane wartości |
 | R/Tc ratio | ✅ OK | Typowe wartości: 0.2-1.5 |
@@ -482,6 +484,7 @@ nash_correct = NashIUH.from_lutz(
 - W modelu Clarka, Tc reprezentuje **czas translacji** - czas przejścia wody od najdalszego punktu zlewni do ujścia
 - Jest to **zgodne** z fizyczną interpretacją czasu koncentracji
 - Źródło: Clark (1945), HEC-HMS Technical Reference Manual
+- ¹ FAA i Kerby: tylko małe zlewnie bez koryta (jak w sekcji 3.1.2); dla zlewni z korytem Kerby-Kirpich
 
 #### 3.3.3 Dobór współczynnika R
 
@@ -704,6 +707,24 @@ result = generator.generate(precip)
 print(f"Qmax = {result.peak_discharge_m3s:.2f} m³/s")
 ```
 
+#### 3.4.6 Snyder w `HydrographGenerator`: hydrogram jednostkowy dla D = krok czasowy (od v1.0.0)
+
+Splot dyskretny traktuje hydrogram jednostkowy jako odpowiedź na 1 mm opadu efektywnego w jednym kroku `dt`. Dlatego `HydrographGenerator` buduje hydrogram Snydera dla czasu trwania **D = dt** (poprawka tLR, tpR i qpR z sekcji 3.4.3), a nie dla standardowego tD = tL/5,5 (Snyder 1938; USACE HEC-HMS, Technical Reference Manual, „Snyder Unit Hydrograph Model"; Chow, Maidment, Mays 1988):
+
+```python
+uh = snyder.generate(timestep_min=dt, duration_min=dt)   # tak liczy generator
+```
+
+Wersje < 1.0.0 wołały `snyder.generate(timestep_min=dt)`, czyli hydrogram dla tD, i splatały go w krokach `dt`: dla kroku krótszego od tD szczyt był za niski i za późny (tpR = tLR + D/2, tLR = tL + 0,25 (D − tD)), dla dłuższego za wysoki i za wczesny. `uh_time_to_peak_min` w wyniku `hydrograph generate` to tpR, a raport dokumentuje Δt równe krokowi.
+
+| Zlewnia 45 km², L = 12 km, Lc = 6 km, Ct = 1,5, Cp = 0,6, CN 72, opad beta 50 mm/120 min, krok 5 min | przed v1.0.0 (D = tD = 59,0 min) | od v1.0.0 (D = 5 min) |
+|------|------:|------:|
+| Hydrogram jednostkowy: czas do szczytu tp [min] | 354,2 | 313,7 |
+| Hydrogram jednostkowy: szczyt qp [m³/s/mm] | 1,379 | 1,542 |
+| Hydrogram odpływu: Qmax [m³/s] (czas [min]) | 9,76 (405) | 10,90 (365) |
+
+Dla kroku równego tD poprawka znika (tLR = tL) i wynik jest taki jak dawniej.
+
 ---
 
 ### 3.5 Grupy hydrologiczne gleb (HSG) i CN ważone powierzchnią (`hydrolog.soil`, od v1.0.0)
@@ -818,6 +839,25 @@ Ponieważ minimum próby jest ujemnym maksimum próby ze zmienionym znakiem, `mi
 - Trzy parametry z kilkudziesięciu lat danych są niepewne, zwłaszcza kształt, a z nim kwantyle rzadkich niżówek (poniżej 10 lat danych wynik ma ostrzeżenie).
 - Test Kołmogorowa-Smirnowa jest informacyjny (`ks_valid = False`: parametry estymowano z tych samych danych).
 
+#### 3.6.3 Minima (i maksima) roczne: tylko kompletne lata hydrologiczne (poprawka w v1.0.0)
+
+Minima roczne `LowFlowAnalysis` i maksima roczne `stats flood-frequency` (z szeregu dobowego) są ekstremami **całych lat obserwacji** (KZGW 2017; WMO nr 1029, 2009): rok hydrologiczny (1 XI – 31 X) wchodzi do próby tylko wtedy, gdy szereg ma wartość dla **każdego** dnia roku — 365 dni, a 366 dla roku z 29 lutego (rok o nazwie przestępnej: 1 XI 2019 – 31 X 2020 ma 366 dni). Brak daty albo `NaN` wyklucza cały rok, bo w dniu bez wartości mogło wystąpić maksimum lub minimum roku. Pominięte lata (z liczbą dni z danymi) zgłasza notice `incomplete_years` i pole wyniku `incomplete_years`; biblioteka (`LowFlowAnalysis.annual_minima()`) ostrzega `UserWarning`, a seria bez kompletnego roku to `CalculationError`. Praktyczny skutek: eksport z lat kalendarzowych (1 I – 31 XII) traci pierwszy rok hydrologiczny (bez listopada i grudnia) i ostatni (same listopad i grudzień).
+
+> **Zmiana w v1.0.0 (poprawka błędu).** Wersje < 1.0.0 brały ekstremum z każdego roku obecnego w datach, także z niepełnego. Dla syntetycznej serii kalendarzowej 1991–2020 (wezbranie 15 III i niżówka 15 IX każdego roku) próba miała 31 „lat”, w tym 2021 z samymi listopadem i grudniem 2020 (maksimum i minimum równe poziomowi bazowemu 5,0, przy medianie pełnych lat 13,0 i 2,2). Od v1.0.0 próba ma 29 lat (1992–2020): GEV dla T = 100 lat **16,08 → 16,35**, Fisher–Tippett dla T = 100 lat **2,002 → 1,968**. Szereg z lukami: uzupełnij dane albo (dla maksimów) podaj maksima roczne wprost, bez dat.
+
+#### 3.6.4 Częstość empiryczna minimów: konwencja nieprzekroczenia (poprawka w v1.0.0)
+
+W analizie niżówek okres powtarzalności *T* należy do prawdopodobieństwa **nieprzekroczenia** *F = 1/T* (przepływ równy lub niższy raz na *T* lat; WMO nr 1029, 2009; Tallaksen i van Lanen, 2004) — tak liczy kwantyle `fisher_tippett`. Pozycje empiryczne `LowFlowAnalysis.empirical_non_exceedance()` (wynik `LowFlowEmpiricalFrequency`, blok `empirical` komendy `stats low-flow`) mają tę samą konwencję: minima roczne rosnąco (`values_ascending`), *m*-te najmniejsze ma
+
+```
+Weibull (domyślnie):  F_m = m / (n + 1)          Hazen: (m − 0,5) / n          Cunnane: (m − 0,4) / (n + 0,2)
+T_m = 1 / F_m                                    (najgłębsza niżówka n lat: T = n + 1)
+```
+
+Punkty (F, wartość) leżą więc na tym samym wykresie co kwantyle `fisher_tippett` (`non_exceedance_probabilities = 1/T`). `LowFlowAnalysis.empirical_frequency()` zwraca nadal pozycje *przewyższenia* (wartości malejąco, `P = i/(n+1)`), czyli odwrotną stronę tej samej próbki (`F = 1 − P`).
+
+> **Zmiana w v1.0.0 (poprawka błędu).** Blok `empirical` w `stats low-flow` był wynikiem `empirical_frequency()`, więc przy `fisher_tippett.return_periods` o konwencji nieprzekroczenia stał obok `return_periods` o konwencji przewyższenia. Dla `tests/fixtures/daily_flows_3y.csv` (minima 1,79; 1,88; 1,66) najgłębsza niżówka 1,66 miała T = **1,33** (P = 0,75), a od v1.0.0 ma F = 0,25 i T = **4**.
+
 ```python
 from hydrolog.statistics import LowFlowAnalysis
 
@@ -828,6 +868,48 @@ print(ft.quantiles)    # przepływ [m³/s] raz na 10, 50, 100 lat
 ```
 
 Ta sama analiza w CLI: `hydrolog stats low-flow --input-file q_dobowe.csv --value-column Q --date-column date --return-periods 10,50,100`.
+
+### 3.7 Czas koncentracji ze zlewni (`WatershedParameters.calculate_tc`, `tc watershed`; poprawki w v1.0.0)
+
+`WatershedParameters.calculate_tc(method)` i komenda `tc watershed` liczą tc wybraną metodą z pól zlewni. Argumenty wzoru wyprowadza z pól `WatershedParameters.tc_parameters(method)`; te same liczby widać w `result.parameters` komendy i w sekcji czasu koncentracji raportu.
+
+| Metoda | Długość | Spadek | Pola wymagane poza podstawowymi |
+|--------|---------|--------|---------------------------------|
+| Kirpich | `channel_length_km`, inaczej `length_km` | `channel_slope_m_per_m`, potem `mean_slope_m_per_m`, potem H/(L·1000) | - |
+| NRCS | jak Kirpich | **`mean_slope_m_per_m`** (średni spadek terenu zlewni Y), potem `channel_slope_m_per_m`, potem H/(L·1000) | `cn` |
+| Giandotti | jak Kirpich | - (H = `elevation_mean_m` − `elevation_min_m`; bez średniej: środek przedziału) | - |
+| FAA | **`overland_length_km`** | **`overland_slope_m_per_m`** | `runoff_coeff`, `overland_length_km`, `overland_slope_m_per_m` |
+| Kerby | **`overland_length_km`** | **`overland_slope_m_per_m`** | `retardance`, `overland_length_km`, `overland_slope_m_per_m` |
+| Kerby-Kirpich | `overland_length_km` i `channel_length_km` | `overland_slope_m_per_m` i `channel_slope_m_per_m` | `retardance`, `overland_length_km`, `overland_slope_m_per_m`, `channel_length_km`, `channel_slope_m_per_m` |
+
+- **FAA i Kerby to wzory na czas spływu powierzchniowego** (FAA 1966, 2013; Kerby 1959). Kerby wyprowadził swój wzór dla dróg spływu do 366 m (1200 ft; Roussel i in. 2005; TxDOT Hydraulic Design Manual, rozdz. 4, sekcja 11), a biblioteka ostrzega dla FAA poza 0,015–3 km. Długość i spadek koryta dawały więc wynik poza zakresem wzoru dla każdej zlewni z korytem. Od v1.0.0 FAA i Kerby biorą wyłącznie `overland_length_km` i `overland_slope_m_per_m` i wymagają ich: brak pól to `InvalidParameterError` (`details.missing`), bez cichego podstawiania koryta. Wynik to czas spływu powierzchniowego; **tc zlewni z korytem daje metoda złożona Kerby-Kirpich**, a FAA i Kerby mają sens jako Tc zlewni tylko dla małych zlewni bez wyraźnego koryta.
+- **NRCS**: w równaniu opóźnienia TR-55 (rozdz. 3; NEH Part 630, rozdz. 15) Y to średni spadek terenu zlewni [%], nie spadek drogi spływu, więc `mean_slope_m_per_m` ma pierwszeństwo przed spadkiem koryta (przed v1.0.0 było odwrotnie).
+
+Przykład (zlewnia: L = 12 km, koryto 10 km o spadku 0,02, spadek terenu 0,025, CN 72, spływ powierzchniowy 0,2 km o spadku 0,01, C = 0,5, N = 0,4):
+
+| Metoda | tc przed v1.0.0 [min] | tc od v1.0.0 [min] | Powód |
+|--------|----------------------:|-------------------:|-------|
+| FAA | 155,3 (ostrzeżenie: L = 10 km poza 0,015–3 km) | 27,7 | spływ powierzchniowy 0,2 km, S = 0,01 |
+| Kerby | 173,2 (dwa ostrzeżenia) | 32,8 | jak FAA |
+| NRCS | 463,9 | 414,9 | Y = 2,5% (teren) zamiast 2,0% (koryto) |
+| Kirpich | 105,7 | 105,7 | bez zmian |
+| Kerby-Kirpich | 138,5 | 138,5 | bez zmian |
+
+#### 3.7.1 `cn` obok zlewni w `hydrograph generate` i `report generate`
+
+Opcja `cn` podana obok zlewni jest CN całego obliczenia: nadpisuje `cn` zlewni zarówno w SCS-CN, jak i w czasie koncentracji metodą `nrcs`, w której retencja S = 25400/CN − 254 (TR-55, rozdz. 3) pochodzi z tego samego CN. Zlewnia bez `cn` też działa, gdy podano `cn`. Dawniej czas koncentracji NRCS brał CN z pliku, a opad efektywny CN z opcji. Przykład (CN 60 w pliku, `cn` = 85, L = 12 km, Y = 2,5%, opad beta 50 mm/120 min): tc 657,7 → 322,1 min, Qmax 27,64 → 55,62 m³/s, czas do szczytu 440 → 240 min.
+
+### 3.8 Krzywa przepływu Q = a·(H − H₀)^b: punkt startowy H₀ (`RatingCurve`, poprawka w v1.0.0)
+
+`RatingCurve.fit()` (`hydrometrics rating-curve`) dopasowuje `Q = a·(H − H₀)^b` metodą najmniejszych kwadratów (`scipy.optimize.curve_fit`, więzy a ≥ 0, b ≥ 0, H₀ < min(H)) z punktem startowym a = 1, b = 1,5, H₀ = `h0_initial`. Bez `h0_initial` start H₀ leży poniżej najniższego stanu o dziesiątą część rozstępu stanów, co najmniej o jedną jednostkę stanów:
+
+```
+H₀,start = min(H) − max(1, 0,1·(max(H) − min(H)))
+```
+
+Taki start jest dopuszczalny przy dowolnym znaku stanów (stany poniżej zera wodowskazu, np. −10 cm, są normalne). Podana jawnie wartość musi być skończona i niższa niż najniższy stan (`validation_error`).
+
+> **Zmiana w v1.0.0 (poprawka błędu).** Stały start 0 nie był niższy od najniższego stanu wodowskazu z odczytem ≤ 0, więc `hydrolog hydrometrics rating-curve --water-levels=-10,5,20,40,80,120 --discharges 0.5,1.2,2.5,4.8,10.1,17.3` kończyło się błędem („h0_initial must be … below the lowest water level (−10), got 0.0”). Od v1.0.0 start wynosi −23 i dopasowanie daje a = 0,004917, b = 1,640, H₀ = −25,17 (R² = 0,9998). Na 60 syntetycznych krzywych (stany w cm i m, dodatnie i ujemne, szum 1–8 %, 6–30 pomiarów) starty od 0,1 do 1 rozstępu poniżej najniższego stanu zawsze dawały najlepsze rozwiązanie najmniejszych kwadratów.
 
 ---
 
@@ -840,10 +922,10 @@ Ta sama analiza w CLI: `hydrolog stats low-flow --input-file q_dobowe.csv --valu
 | SCS UH + Kirpich → Tc | USDA TR-55 (1986), Kirpich (1940) | ✅ |
 | SCS UH + NRCS → Tc | USDA TR-55 (1986) | ✅ |
 | SCS UH + Giandotti → Tc | Giandotti (1934), TR-55 | ✅ |
-| SCS UH + FAA → Tc | FAA AC 150/5320-5D (2013), TR-55 | ✅ |
-| SCS UH + Kerby → Tc | Kerby (1959), TR-55 | ✅ |
-| Clark IUH + FAA → Tc | FAA AC 150/5320-5D (2013), Clark (1945) | ✅ |
-| Clark IUH + Kerby → Tc | Kerby (1959), Clark (1945) | ✅ |
+| SCS UH + FAA → Tc | FAA AC 150/5320-5D (2013), TR-55 | ✅ (małe zlewnie bez koryta) |
+| SCS UH + Kerby → Tc | Kerby (1959), TR-55 | ✅ (małe zlewnie bez koryta) |
+| Clark IUH + FAA → Tc | FAA AC 150/5320-5D (2013), Clark (1945) | ✅ (małe zlewnie bez koryta) |
+| Clark IUH + Kerby → Tc | Kerby (1959), Clark (1945) | ✅ (małe zlewnie bez koryta) |
 | SCS UH + Kerby-Kirpich → Tc | Roussel et al. (2005), TR-55 | ✅ |
 | Clark IUH + Kerby-Kirpich → Tc | Roussel et al. (2005), Clark (1945) | ✅ |
 | Nash IUH + from_lutz() | Lutz (1984), KZGW (2017) | ✅ |
@@ -853,9 +935,14 @@ Ta sama analiza w CLI: `hydrolog stats low-flow --input-file q_dobowe.csv --valu
 | Clark IUH + Tc (dowolna metoda) | Clark (1945), HEC-HMS | ✅ |
 | Clark IUH + R/Tc ratio | HEC-HMS, praktyka inżynierska | ✅ |
 | Snyder UH + L, Lc, Ct, Cp | Snyder (1938) | ✅ |
+| Snyder UH w `HydrographGenerator` (D = krok czasowy: tLR, tpR, qpR) | Snyder (1938), HEC-HMS Technical Reference Manual, Chow, Maidment, Mays (1988) | ✅ |
+| NRCS ze zlewni (Y = średni spadek terenu zlewni) | TR-55 (1986) rozdz. 3, NEH Part 630 rozdz. 15 (2010) | ✅ |
+| FAA, Kerby ze zlewni (czas spływu powierzchniowego z `overland_*`) | FAA AC 150/5320-5A/5D, Kerby (1959), Roussel i in. (2005), TxDOT Hydraulic Design Manual rozdz. 4 sekcja 11 | ✅ |
 | Clark UH D-minutowy (krzywa S, dowolne D > 0) | Clark (1945), metoda krzywej S (np. Chow, Maidment, Mays 1988) | ✅ |
 | HSG z uziarnienia USDA (mapowanie klas) | USDA Soil Survey Manual (Handbook 18), NEH Part 630 rozdz. 7 (TR-55), Kartograf ADR-025 | ✅ (z odstępstwem dla 3 klas) |
 | Rozkład minimów rocznych (GEV dla minimów) | Fisher i Tippett (1928), Gumbel (1958), Coles (2001) | ✅ |
+| Ekstrema roczne z szeregu dobowego: tylko kompletne lata hydrologiczne | KZGW (2017), WMO nr 1029 (2009) | ✅ |
+| Częstość empiryczna minimów (pozycje nieprzewyższenia) | Weibull (1939), Hazen (1930), Cunnane (1978); WMO nr 1029 (2009), Tallaksen i van Lanen (2004) | ✅ |
 
 ### 4.2 Kluczowe publikacje
 
@@ -1015,9 +1102,13 @@ Ta sama analiza w CLI: `hydrolog stats low-flow --input-file q_dobowe.csv --valu
 
 21. **USDA-NRCS** (2007). National Engineering Handbook, Part 630 Hydrology, Chapter 7: Hydrologic Soil Groups.
 
-22. **Chow, V.T., Maidment, D.R. & Mays, L.W.** (1988). *Applied Hydrology*. McGraw-Hill (metoda krzywej S hydrogramu jednostkowego).
+22. **Chow, V.T., Maidment, D.R. & Mays, L.W.** (1988). *Applied Hydrology*. McGraw-Hill (metoda krzywej S hydrogramu jednostkowego, hydrogramy syntetyczne, w tym Snydera).
+
+23. **USDA-NRCS** (2010). National Engineering Handbook, Part 630 Hydrology, Chapter 15: Time of Concentration (równanie opóźnienia: Y to średni spadek terenu zlewni).
+
+24. **TxDOT**. Hydraulic Design Manual, Chapter 4 Hydrology, Section 11: Time of Concentration (granica 1200 ft = 366 m dla wzoru Kerby'ego; metoda Kerby-Kirpich).
 
 ---
 
-**Wersja dokumentu:** 1.2
+**Wersja dokumentu:** 1.3
 **Data ostatniej aktualizacji:** 2026-10-19
