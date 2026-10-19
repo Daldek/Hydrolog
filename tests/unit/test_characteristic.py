@@ -208,3 +208,69 @@ class TestMonthlyStatistics:
         values = np.ones(len(dates))
         with pytest.raises(InvalidParameterError):
             calculate_monthly_statistics(values, dates, confidence_level=1.5)
+
+    def test_a_month_without_data_is_an_invalid_parameter_error(self):
+        """Was ``ValueError: zero-size array to reduction operation``."""
+        from hydrolog.exceptions import InvalidParameterError
+        from hydrolog.statistics.characteristic import calculate_monthly_statistics
+
+        dates = np.arange(
+            np.datetime64("2020-01-01"),
+            np.datetime64("2020-07-01"),
+            dtype="datetime64[D]",
+        )
+        with pytest.raises(InvalidParameterError) as caught:
+            calculate_monthly_statistics(np.linspace(1.0, 10.0, len(dates)), dates)
+        assert caught.value.code == "validation_error"
+        assert caught.value.details == {"missing_months": [7, 8, 9, 10, 11, 12]}
+        assert "7, 8, 9, 10, 11, 12" in str(caught.value)
+        assert caught.value.hint
+        assert isinstance(caught.value, ValueError)  # as the error it replaces
+
+    def test_a_single_value_month_has_undefined_dispersion_and_no_warning(self):
+        """Deviation, CV, skewness and CI are NaN, not a NumPy warning."""
+        import warnings
+
+        from hydrolog.statistics.characteristic import calculate_monthly_statistics
+
+        dates = np.array(
+            [np.datetime64(f"2020-{month:02d}-15") for month in range(1, 13)]
+        )
+        values = np.arange(1.0, 13.0)
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            result = calculate_monthly_statistics(values, dates)
+        for field in (
+            result.max_values,
+            result.mean_values,
+            result.median_values,
+            result.min_values,
+        ):
+            np.testing.assert_array_equal(field, values)
+        for field in (
+            result.std_values,
+            result.cv_values,
+            result.skewness_values,
+            result.ci_lower,
+            result.ci_upper,
+        ):
+            assert np.all(np.isnan(field))
+
+    def test_a_single_value_month_does_not_disturb_the_other_months(self):
+        """Two values 100 and 102: mean 101, s = sqrt(2), so the half-width of the
+        interval is t(0.975, 1 d.o.f.) * s / sqrt(2) = 12.7062 exactly."""
+        from hydrolog.statistics.characteristic import calculate_monthly_statistics
+
+        dates = np.array(
+            [np.datetime64(f"2020-{month:02d}-15") for month in range(1, 13)]
+            + [np.datetime64(f"2021-{month:02d}-15") for month in range(1, 12)]
+        )
+        values = np.array([100.0] * 12 + [102.0] * 11)
+        result = calculate_monthly_statistics(values, dates)
+        np.testing.assert_allclose(result.mean_values[:11], 101.0)
+        np.testing.assert_allclose(result.std_values[:11], np.sqrt(2.0))
+        np.testing.assert_allclose(result.ci_upper[:11], 101.0 + 12.706204736)
+        np.testing.assert_allclose(result.ci_lower[:11], 101.0 - 12.706204736)
+        assert np.isnan(result.std_values[11])  # December: 2020 only
+        assert np.isnan(result.ci_lower[11]) and np.isnan(result.ci_upper[11])
+        assert result.mean_values[11] == 100.0

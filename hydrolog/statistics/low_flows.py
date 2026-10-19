@@ -1,11 +1,21 @@
 """Low-flow frequency analysis and drought sequence detection.
 
-Implements Fisher-Tippett (Gumbel minimum) distribution fitting to annual
-minimum series, empirical plotting positions for low-flow frequency, and
-vectorised detection of drought sequences based on threshold exceedance.
+Implements the Fisher-Tippett distribution of *smallest* values (the generalized
+extreme value distribution for minima; Gumbel minimum and the three-parameter
+Weibull distribution are its special cases) fitted to annual minimum series,
+empirical plotting positions for low-flow frequency, and vectorised detection of
+drought sequences based on threshold exceedance.
 
 References
 ----------
+Fisher, R. A. & Tippett, L. H. C. (1928): Limiting forms of the frequency
+    distribution of the largest or smallest member of a sample. Proc. Cambridge
+    Philos. Soc. 24(2), 180-190.
+Gumbel, E. J. (1958): Statistics of Extremes. Columbia University Press.
+Coles, S. (2001): An Introduction to Statistical Modeling of Extreme Values.
+    Springer, ch. 3 (minima are modelled as maxima of the negated series).
+Stedinger, J. R., Vogel, R. M. & Foufoula-Georgiou, E. (1993): Frequency analysis
+    of extreme events. In: Maidment, D. R. (Ed.), Handbook of Hydrology, ch. 18.
 WMO No. 1029 (2009): Manual on Low-flow Estimation and Prediction.
 Tallaksen & van Lanen (Eds., 2004): Hydrological Drought — Processes and
     Estimation Methods for Streamflow and Groundwater. Elsevier.
@@ -35,14 +45,27 @@ _DEFAULT_RETURN_PERIODS = np.array([2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 500.0, 10
 
 @dataclass
 class LowFlowFrequencyResult(JsonResultMixin):
-    """Result of fitting Fisher-Tippett distribution to annual minima.
+    """Result of fitting the Fisher-Tippett distribution of smallest values.
+
+    The fitted distribution function of the annual minima *x* is::
+
+        F(x) = 1 - exp(-(1 + shape * (x - loc) / scale) ** (1 / shape))
+
+    where ``1 + shape * (x - loc) / scale > 0``. For ``shape -> 0`` it becomes
+    the Gumbel minimum ``F(x) = 1 - exp(-exp((x - loc) / scale))``; for
+    ``shape > 0`` the minima have the lower bound ``loc - scale / shape`` (the
+    three-parameter Weibull distribution with shape ``1 / shape``). The
+    quantile with non-exceedance probability *p* is
+    ``loc + scale / shape * ((-ln(1 - p)) ** shape - 1)``.
 
     Attributes
     ----------
     distribution_name : str
         Always ``"fisher_tippett"``.
     parameters : dict[str, float]
-        Fitted distribution parameters: ``shape``, ``loc``, ``scale``.
+        Fitted distribution parameters: ``shape`` (the ``c`` of
+        :data:`scipy.stats.genextreme`, i.e. minus the shape ``xi`` of the usual
+        GEV notation), ``loc`` and ``scale`` (in the unit of the flows).
     return_periods : NDArray[np.float64]
         Return periods *T* (years) — in low-flow context these are
         *non-exceedance* return periods (drought recurrence intervals).
@@ -224,44 +247,71 @@ class LowFlowAnalysis:
         return minima
 
     def fit_fisher_tippett(self) -> LowFlowFrequencyResult:
-        """Fit Fisher-Tippett (Gumbel minimum / GEV) distribution to annual minima.
+        """Fit the Fisher-Tippett distribution of smallest values to annual minima.
 
-        For low-flow analysis the distribution is fitted to annual minima and
-        quantiles are computed directly from non-exceedance probabilities
-        ``p = 1/T``, giving the flow level expected to be equalled or
-        *not exceeded* once in *T* years.
+        The annual minima are modelled with the generalized extreme value (GEV)
+        distribution *for minima* (Fisher-Tippett distribution of smallest
+        values; see :class:`LowFlowFrequencyResult` for the distribution
+        function and its special cases, Gumbel minimum and Weibull). Because the
+        minimum of a sample is the negative of the maximum of the negated sample,
+        ``min(x) = -max(-x)``, the parameters are estimated by maximum
+        likelihood from the *negated* minima with :data:`scipy.stats.genextreme`
+        (Fisher & Tippett 1928; Gumbel 1958; Coles 2001, ch. 3). The quantile of
+        the minima with non-exceedance probability ``p = 1/T`` is
+        ``Q_T = -genextreme.isf(p, c, loc=-loc, scale=scale)``, the flow that is
+        equalled or *not exceeded* once in *T* years on average.
 
         Returns
         -------
         LowFlowFrequencyResult
             Fitted result with quantile estimates.
 
+        Warns
+        -----
+        UserWarning
+            If fewer than 10 years are available (see :meth:`annual_minima`).
+
         Notes
         -----
-        SciPy's ``genextreme`` parameterises GEV with ``c = -ξ``.  For the
-        Gumbel minimum (Fisher-Tippett Type I minimum), ``c ≈ 0``.  The
-        fitted shape parameter is retained in the result.
+        Versions before 1.0.0 fitted the distribution of *maxima* directly to the
+        minima and read its quantiles at ``p``. That is the mirror-image
+        distribution family: it can approximate the bulk of the minima, but its
+        left tail is not that of the smallest-value distribution, so the
+        quantiles of rare droughts were biased, increasingly with ``T``, and could
+        even be negative. The fit to the negated minima is consistent: for a
+        sample from a minimum-type distribution its quantiles converge to the
+        true ones.
+
+        The fitted distribution is not constrained to positive flows: with
+        ``shape <= 0`` the minima have no lower bound and the quantiles of very
+        long return periods can be negative. The three parameters are estimated
+        by maximum likelihood; for short records (a few tens of years) the shape,
+        and with it the quantiles of rare droughts, is very uncertain.
         """
         minima = self.annual_minima()
+        # min(x) = -max(-x): the minima-type GEV is the maxima-type GEV of -x.
+        negated = -minima
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", UserWarning)
-            c, loc, scale = genextreme.fit(minima)
+            c, loc_negated, scale = genextreme.fit(negated)
+        fitted = genextreme(c, loc=loc_negated, scale=scale)
 
+        # ``0.0 - x`` instead of ``-x``: an all-zero record must give 0.0, not -0.0.
         params: dict[str, float] = {
             "shape": float(c),
-            "loc": float(loc),
+            "loc": float(0.0 - loc_negated),
             "scale": float(scale),
         }
 
-        # Non-exceedance probability p = 1/T  (low flows: interested in
-        # values *not exceeded* with probability p).
+        # Non-exceedance probability p = 1/T of the minima = exceedance
+        # probability of the negated series; isf stays accurate for tiny p.
         p = 1.0 / self._return_periods
-        quantiles = genextreme.ppf(p, c, loc=loc, scale=scale)
+        quantiles = 0.0 - fitted.isf(p)
 
-        # K-S test (informational; invalid when parameters estimated from data)
-        cdf_func = lambda x: genextreme.cdf(x, c, loc=loc, scale=scale)  # noqa: E731
-        ks_stat, ks_pval = kstest(minima, cdf_func)
+        # K-S test (informational; invalid when parameters estimated from data).
+        # The statistic is the same for a sample and its mirror image.
+        ks_stat, ks_pval = kstest(negated, fitted.cdf)
 
         return LowFlowFrequencyResult(
             distribution_name="fisher_tippett",

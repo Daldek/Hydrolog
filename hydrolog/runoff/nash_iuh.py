@@ -1039,7 +1039,7 @@ class NashIUH:
         ...     urban_fraction=0.05,
         ... )
         >>> print(f"N = {nash.n:.3f}, k = {nash.k_min:.1f} min")
-        N = 1.621, k = 23.6 min
+        N = 1.621, k = 23.7 min
         """
         # Validate inputs
         if area_km2 <= 0:

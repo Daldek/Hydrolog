@@ -9,6 +9,36 @@ from typing import List, Optional, Tuple, Union
 import numpy as np
 from numpy.typing import NDArray
 
+from hydrolog.time.concentration import (
+    _KERBY_LOW_SLOPE_OFFSET,
+    _KERBY_LOW_SLOPE_THRESHOLD,
+)
+
+
+def _low_slope_adjusted(slope_m_per_m: float) -> float:
+    """Slope that Kerby and the channel part of Kerby-Kirpich substitute.
+
+    ``ConcentrationTime`` adds an offset to slopes below a threshold (Cleveland et
+    al., 2012); the report substitutes the slope the formula was really evaluated
+    with.
+    """
+    if slope_m_per_m < _KERBY_LOW_SLOPE_THRESHOLD:
+        return slope_m_per_m + _KERBY_LOW_SLOPE_OFFSET
+    return slope_m_per_m
+
+
+def _low_slope_note(symbol: str, slope_m_per_m: float) -> str:
+    """Line explaining the low-slope adjustment (empty when none was applied)."""
+    adjusted = _low_slope_adjusted(slope_m_per_m)
+    if adjusted == slope_m_per_m:
+        return ""
+    return (
+        f"\n\nSpadek ${symbol}$ = {slope_m_per_m:.4f} m/m jest mniejszy od "
+        f"{_KERBY_LOW_SLOPE_THRESHOLD}, więc zastosowano korektę małych spadków "
+        f"(Cleveland i in., 2012): ${symbol}$ = {slope_m_per_m:.4f} + "
+        f"{_KERBY_LOW_SLOPE_OFFSET} = {adjusted:.4f} m/m."
+    )
+
 
 class FormulaRenderer:
     """
@@ -347,8 +377,8 @@ class FormulaRenderer:
             "**Podstawienie wartości:**\n\n"
             f"$$t_c = 36.37 \\cdot ({length_km:.3f} \\cdot "
             f"{retardance:.2f})^{{0.467}} \\cdot "
-            f"{slope_m_per_m:.4f}^{{-0.2335}} = "
-            f"{tc_min:.1f} \\text{{ min}}$$"
+            f"{_low_slope_adjusted(slope_m_per_m):.4f}^{{-0.2335}} = "
+            f"{tc_min:.1f} \\text{{ min}}$$" + _low_slope_note("S", slope_m_per_m)
         )
 
     @staticmethod
@@ -397,14 +427,19 @@ class FormulaRenderer:
             " \\cdot S_{ov}^{-0.2335} \\text{ [min]}$$\n\n"
             f"$$t_{{ov}} = 36.37 \\cdot ({ov_length_km:.3f} \\cdot "
             f"{retardance:.2f})^{{0.467}} \\cdot "
-            f"{ov_slope_m_per_m:.4f}^{{-0.2335}} = "
-            f"{tc_ov_min:.1f} \\text{{ min}}$$\n\n"
+            f"{_low_slope_adjusted(ov_slope_m_per_m):.4f}^{{-0.2335}} = "
+            f"{tc_ov_min:.1f} \\text{{ min}}$$"
+            + _low_slope_note("S_{ov}", ov_slope_m_per_m)
+            + "\n\n"
             "**Składnik przepływu korytowego (Kirpich):**\n\n"
             "$$t_{ch} = 0.0663 \\cdot L_{ch}^{0.77}"
             " \\cdot S_{ch}^{-0.385} \\text{ [h]}$$\n\n"
             f"$$t_{{ch}} = 0.0663 \\cdot {ch_length_km:.2f}^{{0.77}} \\cdot "
-            f"{ch_slope_m_per_m:.4f}^{{-0.385}} = "
-            f"{tc_ch_min:.1f} \\text{{ min}}$$\n\n"
+            f"{_low_slope_adjusted(ch_slope_m_per_m):.4f}^{{-0.385}} = "
+            f"{tc_ch_min / 60:.3f} \\text{{ h}} = "
+            f"{tc_ch_min:.1f} \\text{{ min}}$$"
+            + _low_slope_note("S_{ch}", ch_slope_m_per_m)
+            + "\n\n"
             "**Wynik:**\n\n"
             f"$$t_c = {tc_ov_min:.1f} + {tc_ch_min:.1f} = "
             f"{tc_total_min:.1f} \\text{{ min}}$$"
@@ -772,8 +807,8 @@ class FormulaRenderer:
 
     @staticmethod
     def snyder_uh_formulas(
-        L_km: float,
-        Lc_km: float,
+        L_km: Optional[float],
+        Lc_km: Optional[float],
         ct: float,
         cp: float,
         tL_min: float,
@@ -798,10 +833,11 @@ class FormulaRenderer:
 
         Parameters
         ----------
-        L_km : float
-            Main stream length [km].
-        Lc_km : float
-            Length to watershed centroid [km].
+        L_km : float or None
+            Main stream length [km]; None when unknown (it is then not shown
+            and tL is given as a value).
+        Lc_km : float or None
+            Length to watershed centroid [km]; None when unknown.
         ct : float
             Time coefficient Ct.
         cp : float
@@ -850,6 +886,17 @@ class FormulaRenderer:
             and abs(duration_min - tD_min) > 0.5
         )
 
+        length_inputs = ""
+        if L_km is not None:
+            length_inputs += f"- $L$ = {L_km:.2f} km (długość cieku)\n"
+        if Lc_km is not None:
+            length_inputs += f"- $L_c$ = {Lc_km:.2f} km (odległość do centroidu)\n"
+        lag_substitution = ""
+        if L_km is not None and Lc_km is not None:
+            lag_substitution = (
+                f"{ct:.2f} \\cdot ({L_km:.2f} \\cdot {Lc_km:.2f})^{{0.3}} = "
+            )
+
         parts: list = [
             "**Wzory Snydera:**\n\n"
             "$$t_L = C_t \\cdot (L \\cdot L_c)^{0.3} \\text{ [h]}$$\n\n"
@@ -860,13 +907,12 @@ class FormulaRenderer:
             "$$W_{50} = \\frac{0{,}1783}{(q_p/A)^{1{,}08}} \\text{ [h]}, "
             "\\quad W_{75} = \\frac{0{,}1019}{(q_p/A)^{1{,}08}} \\text{ [h]}$$",
             "**Parametry wejściowe:**\n\n"
-            f"- $L$ = {L_km:.2f} km (długość cieku)\n"
-            f"- $L_c$ = {Lc_km:.2f} km (odległość do centroidu)\n"
+            f"{length_inputs}"
             f"- $C_t$ = {ct:.2f} (współczynnik czasowy)\n"
             f"- $C_p$ = {cp:.2f} (współczynnik szczytowy)\n"
             f"- $A$ = {area_km2:.2f} km²",
             "**Obliczenia (standardowy czas trwania):**\n\n"
-            f"$$t_L = {ct:.2f} \\cdot ({L_km:.2f} \\cdot {Lc_km:.2f})^{{0.3}} = "
+            f"$$t_L = {lag_substitution}"
             f"{tL_h:.3f} \\text{{ h}} = {tL_min:.1f} \\text{{ min}}$$\n\n"
             f"$$t_D = \\frac{{{tL_h:.3f}}}{{5{{,}}5}} = "
             f"{tD_h:.3f} \\text{{ h}} = {tD_min:.1f} \\text{{ min}}$$\n\n"

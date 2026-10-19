@@ -46,6 +46,7 @@ from hydrolog.operations import (
     report,
     soil,
     stats,
+    tc,
 )
 from hydrolog.operations.hydrograph import compute_hydrograph
 from hydrolog.soil import classify_usda_texture, texture_to_hsg
@@ -57,6 +58,7 @@ from hydrolog.statistics import (
     calculate_monthly_statistics,
     mann_kendall_test,
 )
+from hydrolog.time import ConcentrationTime
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = REPO_ROOT / "tests" / "fixtures"
@@ -482,7 +484,7 @@ class TestNetworkStats:
         assert caught.value.details["reason"] == reason
 
     def test_a_cycle_downstream_of_a_headwater_is_rejected_not_looped(self):
-        """The ordering of the library never ends on a cycle: catch it first."""
+        """The library rejects the cycle (it used to loop forever)."""
         records = [
             {"segment_id": 1, "upstream_ids": [], "length_km": 1.0},
             {"segment_id": 2, "upstream_ids": [1, 3], "length_km": 1.0},
@@ -776,14 +778,35 @@ class TestCharacteristicDailyMonthly:
         assert result.result.confidence_level == 0.9
         assert result.notices == ()
 
-    def test_a_month_with_one_value_has_no_deviation_and_a_notice(self):
+    def test_a_month_with_one_value_has_undefined_dispersion_and_a_notice(self):
         dates = [f"2022-{month:02d}-15" for month in range(1, 13)]
         values = [float(month) for month in range(1, 13)]
         result = run("stats monthly", values=values, dates=dates)
         document = _json_roundtrip(result)["result"]
-        assert document["std_values"] == [None] * 12
-        assert document["ci_lower"] == document["ci_upper"] == document["mean_values"]
-        assert {n.code for n in result.notices} == {"runtime_warning"}
+        assert document["mean_values"] == values
+        for field in (
+            "std_values",
+            "cv_values",
+            "skewness_values",
+            "ci_lower",
+            "ci_upper",
+        ):
+            assert document[field] == [None] * 12, field
+        assert [n.code for n in result.notices] == ["single_value_month"]
+        assert "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12" in result.notices[0].text
+
+    def test_only_the_months_with_one_value_are_named_in_the_notice(self):
+        dates = [f"2022-{month:02d}-15" for month in range(1, 13)]
+        dates += [f"2023-{month:02d}-15" for month in range(1, 12)]  # not December
+        values = [float(month) for month in range(1, 13)] + [
+            float(month) + 2.0 for month in range(1, 12)
+        ]
+        result = run("stats monthly", values=values, dates=dates)
+        document = _json_roundtrip(result)["result"]
+        assert document["std_values"][:11] != [None] * 11
+        assert document["std_values"][11] is None
+        assert [n.code for n in result.notices] == ["single_value_month"]
+        assert result.notices[0].text.startswith("Month(s) 12 hold a single value")
 
     @pytest.mark.parametrize("level", [0.0, 1.0, -0.2, 1.5])
     def test_confidence_level_must_be_inside_zero_one(self, level):
@@ -1031,6 +1054,30 @@ class TestLowFlow:
             stats.stats_low_flow(
                 values=[1.0], dates=["2022-01-01"], return_periods=[1.0]
             )
+
+
+class TestFitErrorClassification:
+    """A numerical failure of a fit is a calculation error, a Hydrolog error is not."""
+
+    def test_a_numerical_failure_is_a_calculation_error(self):
+        def failing():
+            raise FloatingPointError("overflow")
+
+        with pytest.raises(CalculationError) as caught:
+            stats._fit("the test distribution", failing)
+        assert caught.value.code == "calculation_error"
+        assert caught.value.details == {"fit": "the test distribution"}
+
+    def test_an_invalid_parameter_error_keeps_its_code(self):
+        """It is also a ``ValueError``, which must not read as a numerical failure."""
+
+        def invalid():
+            raise InvalidParameterError("bad input", details={"option": "x"})
+
+        with pytest.raises(InvalidParameterError) as caught:
+            stats._fit("the test distribution", invalid)
+        assert caught.value.code == "validation_error"
+        assert caught.value.details == {"option": "x"}
 
 
 def _sequence_series():
@@ -1769,6 +1816,97 @@ def _report(tmp_path, name="raport.md", **options):
     return result, output.read_text(encoding="utf-8")
 
 
+# a watershed with the inputs of all six time of concentration methods
+_FULL_WATERSHED = {
+    "name": "Potok Młynówka",
+    "area_km2": 45.3,
+    "perimeter_km": 32.1,
+    "length_km": 12.5,
+    "elevation_min_m": 150.0,
+    "elevation_max_m": 520.0,
+    "elevation_mean_m": 330.0,
+    "mean_slope_m_per_m": 0.025,
+    "channel_length_km": 10.8,
+    "channel_slope_m_per_m": 0.018,
+    "cn": 72,
+    "runoff_coeff": 0.45,
+    "retardance": 0.4,
+    "overland_length_km": 0.25,
+    "overland_slope_m_per_m": 0.008,
+}
+
+
+def _section(text, number):
+    """Text of the report section ``## <number>.`` up to the next section."""
+    start = text.index(f"## {number}.")
+    end = text.find(f"## {number + 1}.", start)
+    return text[start:] if end < 0 else text[start:end]
+
+
+def _ordinate_rows(text):
+    """``(time, ordinate)`` of the unit hydrograph table of a report, as printed."""
+    section = _section(text, 5).split("### 5.4")[1]
+    rows = []
+    for line in section.splitlines():
+        cells = [cell.strip() for cell in line.strip("|").split("|")]
+        if line.startswith("| ") and cells[0].replace(".", "", 1).isdigit():
+            rows.append((cells[0], cells[1]))
+    return rows
+
+
+def _tc_formula_fragments(method, p):
+    """Pieces of the substituted formula of a method for the arguments ``p``."""
+    if method == "kirpich":
+        return [
+            f"{p['length_km']:.2f}^{{0.77}}",
+            f"{p['slope_m_per_m']:.4f}^{{-0.385}}",
+        ]
+    if method == "nrcs":
+        return [
+            f"L = {p['length_km'] * 1000:.0f} m",
+            f"Y = {p['slope_m_per_m'] * 100:.2f} %",
+            f"dla CN = {int(p['cn'])}",
+        ]
+    if method == "giandotti":
+        return [
+            f"\\sqrt{{{p['area_km2']:.2f}}}",
+            f"1.5 \\cdot {p['length_km']:.2f}",
+            f"\\sqrt{{{p['elevation_diff_m']:.1f}}}",
+        ]
+    if method == "faa":
+        return [
+            f"(1.1 - {p['runoff_coeff']:.2f})",
+            f"{p['length_km']:.3f}^{{0.5}}",
+            f"{p['slope_m_per_m']:.4f}^{{-1/3}}",
+        ]
+    if method == "kerby":
+        return [
+            f"({p['length_km']:.3f} \\cdot {p['retardance']:.2f})^{{0.467}}",
+            f"{p['slope_m_per_m']:.4f}^{{-0.2335}}",
+        ]
+    return [  # kerby_kirpich
+        f"({p['overland_length_km']:.3f} \\cdot {p['retardance']:.2f})^{{0.467}}",
+        f"{p['overland_slope_m_per_m']:.4f}^{{-0.2335}}",
+        f"{p['channel_length_km']:.2f}^{{0.77}}",
+        f"{p['channel_slope_m_per_m']:.4f}^{{-0.385}}",
+    ]
+
+
+# (method, fields the watershed lacks): the arguments of a method follow what is there
+_TC_REPORT_CASES = [
+    (method, dropped)
+    for method in ("kirpich", "nrcs", "giandotti", "faa", "kerby", "kerby_kirpich")
+    for dropped in (
+        (),
+        ("channel_length_km", "channel_slope_m_per_m"),
+        ("channel_length_km", "channel_slope_m_per_m", "mean_slope_m_per_m"),
+        ("elevation_mean_m",),
+    )
+    # the composite method cannot do without the channel
+    if not (method == "kerby_kirpich" and "channel_length_km" in dropped)
+]
+
+
 class TestReportGenerate:
     """``report generate``: the report of the computation of ``hydrograph generate``."""
 
@@ -1995,21 +2133,104 @@ class TestReportGenerate:
         assert result.inputs["ia_coefficient"] == 0.2
 
     @pytest.mark.parametrize("coefficient", [0.05, 0.25, 1.0])
-    def test_another_ia_coefficient_is_refused_because_the_formula_assumes_0_2(
+    def test_another_ia_coefficient_is_computed_and_rendered(
         self, tmp_path, coefficient
     ):
-        output = tmp_path / "raport.md"
-        with pytest.raises(InvalidParameterError) as caught:
-            run(
-                "report generate",
-                output=str(output),
-                ia_coefficient=coefficient,
-                **_CATCHMENT,
-                **_DESIGN,
-            )
-        assert caught.value.details["option"] == "ia_coefficient"
-        assert caught.value.details["reason"] == "unsupported"
-        assert not output.exists()
+        """λ = 0.05 / 0.25 / 1: the effective precipitation and the formula use it."""
+        options = {**_CATCHMENT, **_DESIGN, "ia_coefficient": coefficient}
+        result, text = _report(tmp_path, **options)
+        computed = compute_hydrograph(**options).result
+        standard = compute_hydrograph(**_CATCHMENT, **_DESIGN).result
+
+        assert result.inputs["ia_coefficient"] == coefficient
+        assert result.result.total_effective_mm == computed.total_effective_mm
+        assert result.result.total_effective_mm != pytest.approx(
+            standard.total_effective_mm
+        )
+        assert (
+            f"I_a = \\lambda \\cdot S = {coefficient} \\cdot "
+            f"{computed.retention_mm:.2f} = {computed.initial_abstraction_mm:.2f}"
+        ) in text
+        assert (
+            f"| Abstrakcja początkowa Ia | {computed.initial_abstraction_mm:.2f} mm |"
+            in text
+        )
+
+    @pytest.mark.parametrize(
+        "model, options",
+        [
+            ("scs", {}),
+            ("nash", {"nash_n": 2.5, "nash_k_min": 48.0}),
+            ("clark", {"clark_r_min": 35.0}),
+            ("clark", {"clark_r_tc_ratio": 0.5}),
+            (
+                "snyder",
+                {
+                    "snyder_length_km": 15.0,
+                    "snyder_centroid_length_km": 7.5,
+                    "snyder_ct": 1.7,
+                    "snyder_cp": 0.65,
+                },
+            ),
+        ],
+    )
+    def test_the_unit_hydrograph_section_lists_the_computed_ordinates(
+        self, tmp_path, model, options
+    ):
+        """The table is the unit hydrograph the hydrograph was computed with."""
+        inputs = {**_CATCHMENT, **_DESIGN, "uh_model": model, **options}
+        _, text = _report(tmp_path, max_table_rows=10_000, **inputs)
+
+        unit = compute_hydrograph(**inputs).result.unit_hydrograph_result
+        assert _ordinate_rows(text) == [
+            (f"{t:.1f}", f"{q:.4f}") for t, q in zip(unit.times_min, unit.ordinates_m3s)
+        ]
+
+    @pytest.mark.parametrize("method, dropped", _TC_REPORT_CASES, ids=str)
+    def test_the_tc_section_shows_what_the_method_was_fed_with(
+        self, tmp_path, method, dropped
+    ):
+        """Whatever the watershed gives, the formula shows the derived arguments."""
+        watershed = {
+            key: value for key, value in _FULL_WATERSHED.items() if key not in dropped
+        }
+        _, text = _report(tmp_path, watershed=watershed, tc_method=method, **_DESIGN)
+
+        parameters = tc.tc_watershed(
+            watershed=watershed, method=method
+        ).result.parameters
+        section = _section(text, 2)
+        assert "brak danych" not in section
+        for fragment in _tc_formula_fragments(method, parameters):
+            assert fragment in section, fragment
+
+    def test_the_composite_tc_components_add_up_to_the_reported_tc(self, tmp_path):
+        _, text = _report(
+            tmp_path, watershed=_FULL_WATERSHED, tc_method="kerby_kirpich", **_DESIGN
+        )
+
+        run_ = compute_hydrograph(
+            watershed=_FULL_WATERSHED, tc_method="kerby_kirpich", **_DESIGN
+        )
+        overland = ConcentrationTime.kerby(0.25, 0.008, 0.4)
+        assert (
+            f"t_c = {overland:.1f} + {run_.tc_min - overland:.1f} = {run_.tc_min:.1f}"
+        ) in _section(text, 2)
+
+    def test_a_given_tc_has_no_formula_inputs_to_show(self, tmp_path):
+        _, text = _report(
+            tmp_path,
+            watershed=_FULL_WATERSHED,
+            tc_min=95.0,
+            uh_model="nash",
+            nash_n=3.0,
+            nash_k_min=48.0,
+            **_DESIGN,
+        )
+
+        section = _section(text, 2)
+        assert "Metoda: wartość zadana" in section
+        assert "95.0 min" in section
 
     def test_a_failing_computation_writes_nothing(self, tmp_path):
         output = tmp_path / "sub" / "raport.md"

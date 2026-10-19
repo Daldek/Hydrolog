@@ -10,6 +10,7 @@ from hydrolog.morphometry import (
     WatershedGeometry,
     WatershedParameters,
 )
+from hydrolog.time import ConcentrationTime
 
 
 class TestWatershedParameters:
@@ -449,9 +450,121 @@ class TestWatershedParametersCalculateTc:
     def test_calculate_tc_unknown_method(
         self, params_with_slope: WatershedParameters
     ) -> None:
-        """Test that unknown method raises ValueError."""
-        with pytest.raises(ValueError, match="Unknown method"):
+        """An unknown method is an InvalidParameterError that is also a ValueError."""
+        with pytest.raises(InvalidParameterError, match="Unknown method") as caught:
             params_with_slope.calculate_tc(method="unknown")
+
+        assert isinstance(caught.value, ValueError)
+        assert caught.value.details == {
+            "option": "method",
+            "reason": "choice",
+            "allowed": [
+                "kirpich",
+                "nrcs",
+                "giandotti",
+                "faa",
+                "kerby",
+                "kerby_kirpich",
+            ],
+            "value": "unknown",
+        }
+
+    @pytest.mark.parametrize(
+        "method, missing",
+        [
+            ("nrcs", ["cn"]),
+            ("faa", ["runoff_coeff"]),
+            ("kerby", ["retardance"]),
+            (
+                "kerby_kirpich",
+                [
+                    "retardance",
+                    "overland_length_km",
+                    "overland_slope_m_per_m",
+                    "channel_length_km",
+                    "channel_slope_m_per_m",
+                ],
+            ),
+        ],
+    )
+    def test_calculate_tc_missing_fields_are_named(
+        self, params_with_slope: WatershedParameters, method: str, missing: list[str]
+    ) -> None:
+        """Every missing field is named in the error, which is also a ValueError."""
+        with pytest.raises(InvalidParameterError) as caught:
+            params_with_slope.calculate_tc(method=method)
+
+        assert isinstance(caught.value, ValueError)
+        assert caught.value.details == {
+            "reason": "missing_field",
+            "method": method,
+            "missing": missing,
+        }
+        assert all(name in str(caught.value) for name in missing)
+
+    def test_calculate_tc_lists_only_the_missing_fields(self) -> None:
+        """Fields that are set are not reported as missing."""
+        params = WatershedParameters(
+            area_km2=45.0,
+            perimeter_km=32.0,
+            length_km=12.0,
+            elevation_min_m=150.0,
+            elevation_max_m=520.0,
+            retardance=0.4,
+            overland_length_km=0.25,
+            channel_length_km=5.0,
+        )
+
+        with pytest.raises(InvalidParameterError) as caught:
+            params.calculate_tc(method="kerby_kirpich")
+
+        assert caught.value.details["missing"] == [
+            "overland_slope_m_per_m",
+            "channel_slope_m_per_m",
+        ]
+
+    def test_calculate_tc_giandotti_with_a_mean_elevation_of_zero(self) -> None:
+        """0 m a.s.l. is a mean elevation, not "mean elevation not given".
+
+        The elevation difference of Giandotti is mean - outlet = 30 m. With ``or`` the
+        zero was replaced by the middle of the range (35 m): H = 65 m.
+        """
+        params = WatershedParameters(
+            area_km2=150.0,
+            perimeter_km=60.0,
+            length_km=20.0,
+            elevation_min_m=-30.0,
+            elevation_max_m=100.0,
+            elevation_mean_m=0.0,
+        )
+
+        tc = params.calculate_tc(method="giandotti")
+
+        expected = ConcentrationTime.giandotti(
+            area_km2=150.0, length_km=20.0, elevation_diff_m=30.0
+        )
+        assert tc == pytest.approx(expected, rel=1e-12)
+        middle_of_range = ConcentrationTime.giandotti(
+            area_km2=150.0, length_km=20.0, elevation_diff_m=65.0
+        )
+        assert tc != pytest.approx(middle_of_range)
+
+    def test_calculate_tc_giandotti_defaults_the_mean_to_the_middle_of_the_range(
+        self,
+    ) -> None:
+        """Without a mean elevation H = (max - min) / 2."""
+        params = WatershedParameters(
+            area_km2=150.0,
+            perimeter_km=60.0,
+            length_km=20.0,
+            elevation_min_m=100.0,
+            elevation_max_m=300.0,
+        )
+
+        expected = ConcentrationTime.giandotti(
+            area_km2=150.0, length_km=20.0, elevation_diff_m=100.0
+        )
+        assert params.calculate_tc(method="giandotti") == pytest.approx(expected)
 
     def test_calculate_tc_slope_from_relief(self) -> None:
         """Test tc calculation with slope calculated from relief."""

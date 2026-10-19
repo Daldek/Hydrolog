@@ -8,30 +8,10 @@ hydrograph and writes the report. The operation is in
 
 from __future__ import annotations
 
-import dataclasses
-
 from hydrolog.catalog.groups.hydrograph import GENERATE_ONE_OF, GENERATE_OPTIONS
 from hydrolog.catalog.spec import Command, Option
 
 _FIXTURES = "tests/fixtures"
-
-
-def _report_input(option: Option) -> Option:
-    """An input of ``hydrograph generate``, as the report takes it."""
-    if option.name != "ia_coefficient":
-        return option
-    return dataclasses.replace(
-        option,
-        description=(
-            "Współczynnik strat początkowych λ (Ia = λ·S). Raport renderuje wzór "
-            "z λ = 0,2 (standard), więc inna wartość jest odrzucana; domyślnie 0,2."
-        ),
-        description_en=(
-            "Initial abstraction ratio λ (Ia = λ·S). The report renders the formula "
-            "with λ = 0.2 (the standard), so any other value is rejected; default "
-            "0.2."
-        ),
-    )
 
 
 COMMANDS: tuple[Command, ...] = (
@@ -57,14 +37,14 @@ COMMANDS: tuple[Command, ...] = (
             "jednostkowy wybranego modelu, splot dyskretny, charakterystyki "
             "hydrogramu wynikowego (Qmax, czas do szczytu, objętość) i bilans wodny, "
             "ze wzorami w LaTeX i tabelami szeregów czasowych (skracanymi do "
-            "`max_table_rows` wierszy). Ograniczenia generatora raportów: sekcja "
-            "hydrogramu jednostkowego pokazuje kształt uproszczony (trójkątny), a nie "
-            "rzędne modelu, natomiast sekcje wyników pochodzą z obliczeń; wzór "
-            "straty początkowej jest renderowany z λ = 0,2, dlatego `ia_coefficient` "
-            "inny niż 0,2 jest odrzucany; parametry wejściowe metod faa, kerby, "
-            "kerby_kirpich i powierzchnia w metodzie giandottiego nie trafiają do "
-            "sekcji czasu koncentracji. Plik jest zapisywany atomowo, istniejący jest "
-            "zastępowany (nie może nim być plik wejściowy). Wynik: `output_path`, "
+            "`max_table_rows` wierszy). Raport odzwierciedla wykonane obliczenia: "
+            "sekcja hydrogramu jednostkowego pokazuje rzędne i parametry użytego "
+            "modelu, wzór straty początkowej używa podanego `ia_coefficient` "
+            "(λ), a sekcja czasu koncentracji — argumenty, którymi metodę zasilono "
+            "danymi zlewni (także te wejścia metod faa, kerby, kerby_kirpich i "
+            "giandotti, które nie są wierszami sekcji parametrów zlewni). Plik "
+            "jest zapisywany atomowo, istniejący jest zastępowany (nie może nim "
+            "być plik wejściowy). Wynik: `output_path`, "
             "`size_bytes`, `sections` (tytuły sekcji), `watershed_name` oraz "
             "podsumowanie obliczeń (`peak_discharge_m3s`, `time_to_peak_min`, "
             "`total_volume_m3`, `total_precipitation_mm`, `total_effective_mm`, "
@@ -83,13 +63,14 @@ COMMANDS: tuple[Command, ...] = (
             "chosen model, the discrete convolution, the characteristics of the "
             "resulting hydrograph (Qmax, time to peak, volume) and the water "
             "balance, with LaTeX formulas and time series tables (abbreviated to "
-            "`max_table_rows` rows). Limits of the report generator: the unit "
-            "hydrograph section shows a simplified (triangular) shape, not the "
-            "ordinates of the model, while the result sections come from the "
-            "computation; the initial abstraction formula is rendered with λ = 0.2, "
-            "so an `ia_coefficient` other than 0.2 is rejected; the input "
-            "parameters of the faa, kerby and kerby_kirpich methods and the area in "
-            "the giandotti method do not reach the time of concentration section. "
+            "`max_table_rows` rows). The report reflects the computation that was "
+            "performed: the unit hydrograph section shows the ordinates and "
+            "parameters of the model that was used, the initial abstraction formula "
+            "uses the given `ia_coefficient` (λ) and the time of concentration "
+            "section shows the arguments the method was fed with from the "
+            "watershed (also the inputs of the faa, kerby, kerby_kirpich and "
+            "giandotti methods that are not rows of the watershed parameters "
+            "section). "
             "The file is written atomically and an existing one is replaced (it "
             "must not be an input file). Result: `output_path`, `size_bytes`, "
             "`sections` (section titles), `watershed_name` and the computation "
@@ -126,7 +107,7 @@ COMMANDS: tuple[Command, ...] = (
                     "watershed, else `Zlewnia`."
                 ),
             ),
-            *(_report_input(option) for option in GENERATE_OPTIONS),
+            *GENERATE_OPTIONS,
             Option(
                 name="include_formulas",
                 type="boolean",

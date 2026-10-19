@@ -24,9 +24,9 @@ import numpy as np
 from numpy.typing import NDArray
 
 from hydrolog._serialization import JsonResultMixin
-from hydrolog.catalog.envelope import OperationOutput, capture_warnings
+from hydrolog.catalog.envelope import Notice, OperationOutput, capture_warnings
 from hydrolog.catalog.inputs import Series, load_series
-from hydrolog.exceptions import CalculationError, InvalidParameterError
+from hydrolog.exceptions import CalculationError, HydrologError, InvalidParameterError
 from hydrolog.operations._analysis import (
     check_choice,
     check_open_unit_interval,
@@ -141,8 +141,8 @@ class LowFlowFrequencyAnalysis(JsonResultMixin):
     annual_minima : list of float
         Annual minima in the unit of the series, one per hydrological year.
     fisher_tippett : LowFlowFrequencyResult
-        Fitted Fisher-Tippett (GEV) distribution: parameters, low-flow quantiles for
-        the return periods and K-S statistics.
+        Fitted Fisher-Tippett distribution of smallest values (GEV for minima):
+        parameters, low-flow quantiles for the return periods and K-S statistics.
     empirical : EmpiricalFrequency
         Empirical frequency of the annual minima (Weibull plotting positions; values
         sorted descending, exceedance probabilities).
@@ -270,9 +270,15 @@ def _annual_extremes(
 
 
 def _fit(what: str, fit: Callable[[], Any]) -> Any:
-    """Run a fit; a numerical failure is a ``CalculationError``."""
+    """Run a fit; a numerical failure is a ``CalculationError``.
+
+    Errors of Hydrolog itself pass unchanged (``InvalidParameterError`` is also a
+    ``ValueError``, which would otherwise be reported as a numerical failure).
+    """
     try:
         return fit()
+    except HydrologError:
+        raise
     except (ArithmeticError, ValueError, RuntimeError) as exc:
         raise CalculationError(
             f"Fitting {what} failed: {exc}",
@@ -438,8 +444,9 @@ def stats_monthly(
     -------
     OperationOutput
         ``result`` is a :class:`~hydrolog.statistics.MonthlyStatistics`; the notices
-        report removed missing values and numerical warnings (a month with a single
-        value has no standard deviation: ``None`` in JSON).
+        report removed missing values and months with a single value (they have no
+        standard deviation, coefficient of variation, skewness or confidence
+        interval: ``None`` in JSON), and numerical warnings.
 
     Raises
     ------
@@ -462,8 +469,11 @@ def stats_monthly(
         require_dates=True,
     )
     dates_array = _dates_of(series)
-    present = set((dates_array.astype("datetime64[M]").astype(int) % 12 + 1).tolist())
-    absent = [month for month in range(1, 13) if month not in present]
+    months = dates_array.astype("datetime64[M]").astype(int) % 12 + 1
+    # The library rejects a series without a month as an invalid parameter; as a
+    # series that is too short (like require_count) it is a calculation error here.
+    counts = np.bincount(months, minlength=13)[1:]  # observations of month 1..12
+    absent = [month for month in range(1, 13) if counts[month - 1] == 0]
     if absent:
         raise CalculationError(
             "Monthly statistics need values in every calendar month; no values in "
@@ -474,6 +484,17 @@ def stats_monthly(
     with capture_warnings(_NUMERIC_WARNINGS) as numeric:
         result: MonthlyStatistics = calculate_monthly_statistics(
             series.values, dates_array, confidence_level=confidence
+        )
+    single = [month for month in range(1, 13) if counts[month - 1] == 1]
+    if single:
+        notices.append(
+            Notice(
+                "warning",
+                "single_value_month",
+                f"Month(s) {', '.join(str(month) for month in single)} hold a single "
+                "value: their standard deviation, coefficient of variation, skewness "
+                "and confidence interval are undefined (null)",
+            )
         )
     return OperationOutput(result, [*notices, *numeric])
 
@@ -599,9 +620,9 @@ def stats_low_flow(
     """Low-flow frequency analysis (``stats low-flow``).
 
     Takes the annual minima of a daily series by hydrological year, fits the
-    Fisher-Tippett (GEV) distribution to them and estimates the low-flow quantile of
-    every return period: the value not exceeded once in ``T`` years, with
-    non-exceedance probability ``1 / T``
+    Fisher-Tippett distribution of smallest values (GEV for minima) to them and
+    estimates the low-flow quantile of every return period: the value not exceeded
+    once in ``T`` years, with non-exceedance probability ``1 / T``
     (:class:`hydrolog.statistics.LowFlowAnalysis`; WMO No. 1029, 2009; Tallaksen and
     van Lanen, 2004).
 

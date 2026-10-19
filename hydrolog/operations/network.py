@@ -157,62 +157,56 @@ def _length_km(value: object, row: int, path: Path | None) -> float:
     return number
 
 
-def _check_graph(
-    segments: Sequence[StreamSegment], rows: Mapping[int, int], path: Path | None
-) -> None:
-    """Reject unknown upstream ids and cycles (the ordering never ends on them)."""
-    for segment in segments:
-        row = rows[segment.segment_id]
-        for upstream in segment.upstream_ids:
-            if upstream == segment.segment_id:
-                _fail(
-                    path,
-                    f"row {row}: segment {upstream} lists itself as upstream",
-                    reason="cycle",
-                    row=row,
-                    segments=[upstream],
-                )
-            if upstream not in rows:
-                _fail(
-                    path,
-                    f"row {row}: upstream segment {upstream} of segment "
-                    f"{segment.segment_id} is not in the network",
-                    reason="unknown_upstream",
-                    row=row,
-                    value=upstream,
-                )
-    waiting = {segment.segment_id: len(segment.upstream_ids) for segment in segments}
-    downstream: dict[int, list[int]] = {segment.segment_id: [] for segment in segments}
-    for segment in segments:
-        for upstream in segment.upstream_ids:
-            downstream[upstream].append(segment.segment_id)
-    ready = [segment_id for segment_id, count in waiting.items() if count == 0]
-    done = 0
-    while ready:
-        current = ready.pop()
-        done += 1
-        for following in downstream[current]:
-            waiting[following] -= 1
-            if waiting[following] == 0:
-                ready.append(following)
-    if done < len(segments):
-        stuck = sorted(segment_id for segment_id, count in waiting.items() if count > 0)
-        listed = ", ".join(str(item) for item in stuck[:_MAX_LISTED])
+def _graph_error(
+    exc: InvalidParameterError, rows: Mapping[int, int], path: Path | None
+) -> NoReturn:
+    """Re-raise a graph error of the library (unknown upstream id, cycle) with its row.
+
+    ``StreamNetwork.classify`` finds the problem; this adds the row of the record
+    (and, for a file, turns it into an input data error).
+    """
+    reason = exc.details.get("reason")
+    if reason == "unknown_upstream":
+        segment_id = exc.details["segment_id"]
+        upstream = exc.details["upstream_id"]
+        row = rows[segment_id]
+        _fail(
+            path,
+            f"row {row}: upstream segment {upstream} of segment {segment_id} is not "
+            "in the network",
+            reason="unknown_upstream",
+            row=row,
+            value=upstream,
+        )
+    if reason == "cycle":
+        members: list[int] = exc.details["segments"]
+        if len(members) == 1:
+            row = rows[members[0]]
+            _fail(
+                path,
+                f"row {row}: segment {members[0]} lists itself as upstream",
+                reason="cycle",
+                row=row,
+                segments=members,
+            )
+        listed = ", ".join(str(item) for item in members[:_MAX_LISTED])
         _fail(
             path,
             f"the segments form a cycle (involving {listed}"
-            f"{', ...' if len(stuck) > _MAX_LISTED else ''})",
+            f"{', ...' if len(members) > _MAX_LISTED else ''})",
             reason="cycle",
-            segments=stuck[:_MAX_LISTED],
+            segments=members[:_MAX_LISTED],
         )
+    raise exc
 
 
 def _build_segments(
     records: Sequence[object], path: Path | None
-) -> list[StreamSegment]:
-    """Validated segments of the records.
+) -> tuple[list[StreamSegment], dict[int, int]]:
+    """Validated segments of the records and the row of each segment id.
 
     Each record has ``segment_id``, ``length_km`` and (optionally) ``upstream_ids``.
+    The links between the segments are checked by ``StreamNetwork.classify``.
     """
     if not records:
         _fail(path, "no segments given", reason="empty")
@@ -256,8 +250,7 @@ def _build_segments(
                 length_km=_length_km(record["length_km"], row, path),
             )
         )
-    _check_graph(segments, rows, path)
-    return segments
+    return segments, rows
 
 
 def _file_records(path: str | os.PathLike[str]) -> tuple[Path, list[dict[str, Any]]]:
@@ -343,8 +336,12 @@ def network_stats(
         if isinstance(segments, str) or not isinstance(segments, Sequence):
             _fail(None, "expected a list of segment objects", reason="type")
         records = segments
-    network = StreamNetwork(_build_segments(records, path), area_km2=area_km2)
-    network.classify(OrderingMethod(method))
+    segment_list, rows = _build_segments(records, path)
+    network = StreamNetwork(segment_list, area_km2=area_km2)
+    try:
+        network.classify(OrderingMethod(method))
+    except InvalidParameterError as exc:
+        _graph_error(exc, rows, path)
     frequency = (
         None
         if area_km2 is None

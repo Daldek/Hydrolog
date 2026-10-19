@@ -9,6 +9,7 @@ Provides:
 from hydrolog.hydrometrics.rating_curve import (
     FrequencyDistributionResult,
     RatingCurve,
+    RatingCurveFitError,
     RatingCurveResult,
     WaterLevelFrequency,
     WaterLevelZones,
@@ -16,6 +17,7 @@ from hydrolog.hydrometrics.rating_curve import (
 
 __all__: list[str] = [
     "RatingCurve",
+    "RatingCurveFitError",
     "RatingCurveResult",
     "WaterLevelFrequency",
     "WaterLevelZones",

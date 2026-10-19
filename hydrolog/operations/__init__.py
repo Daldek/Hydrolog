@@ -52,7 +52,12 @@ from hydrolog.operations.hydrometrics import (
     hydrometrics_rating_curve,
     hydrometrics_water_level_zones,
 )
-from hydrolog.operations.meta import CommandSummary, commands_schema, list_commands
+from hydrolog.operations.meta import (
+    CommandSummary,
+    commands_guide,
+    commands_schema,
+    list_commands,
+)
 from hydrolog.operations.morphometry import WatershedMorphometry, morphometry_watershed
 from hydrolog.operations.network import NetworkAnalysis, network_stats
 from hydrolog.operations.precip import (
@@ -166,6 +171,7 @@ __all__ = [
     "report_generate",
     # commands
     "CommandSummary",
+    "commands_guide",
     "commands_schema",
     "list_commands",
 ]

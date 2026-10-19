@@ -12,14 +12,13 @@ deprecated and not justified for the Nash model).
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass, field
 
 import numpy as np
 from numpy.typing import NDArray
 
 from hydrolog._serialization import JsonResultMixin
-from hydrolog.operations._common import option_error, select_group
+from hydrolog.operations._common import select_group
 from hydrolog.runoff import (
     ClarkIUH,
     LutzCalculationResult,
@@ -306,8 +305,9 @@ def uh_clark(
     timestep_min : float, optional
         Time step [min], > 0, by default 5.
     rainfall_duration_min : float, optional
-        Unit rainfall duration D [min]; a whole multiple of ``timestep_min``
-        (default: ``timestep_min``).
+        Unit rainfall duration D [min], > 0; need not be a multiple of
+        ``timestep_min`` (default: ``timestep_min``). The S-curve is resolved to
+        one step, so a D shorter than the step gives the hydrograph of D = step.
     total_duration_min : float, optional
         Length of the result [min]; defaults to ``tc + 5 R + D``.
 
@@ -319,8 +319,7 @@ def uh_clark(
     Raises
     ------
     InvalidParameterError
-        If both or neither of ``r_min`` and ``r_tc_ratio`` is given, ``D`` is not a
-        whole multiple of the time step (``reason = "not_multiple"``), or a value is
+        If both or neither of ``r_min`` and ``r_tc_ratio`` is given, or a value is
         not positive.
     """
     chosen = select_group(
@@ -334,18 +333,6 @@ def uh_clark(
         assert r_tc_ratio is not None
         reservoir = ClarkIUH.from_tc_r_ratio(tc_min=tc_min, r_tc_ratio=r_tc_ratio)
     duration = timestep_min if rainfall_duration_min is None else rainfall_duration_min
-    steps = duration / timestep_min
-    if rainfall_duration_min is not None and (
-        round(steps) < 1 or not math.isclose(steps, round(steps), abs_tol=1e-9)
-    ):
-        raise option_error(
-            "rainfall_duration_min",
-            "not_multiple",
-            f"rainfall_duration_min = {duration:g} must be a whole multiple of "
-            f"timestep_min = {timestep_min:g} for the Clark model",
-            hint="The S-curve is shifted by a whole number of steps; choose D = k * "
-            "timestep_min.",
-        )
     shape = reservoir.to_unit_hydrograph(
         area_km2=area_km2,
         duration_min=duration,

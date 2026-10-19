@@ -10,7 +10,6 @@
 from __future__ import annotations
 
 import contextlib
-import math
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -30,10 +29,7 @@ from hydrolog.operations.scs import Amc
 from hydrolog.operations.tc import TcMethod
 from hydrolog.reports import HydrologyReportGenerator, ReportConfig
 
-__all__ = ["REPORT_IA_COEFFICIENT", "ReportResult", "report_generate"]
-
-REPORT_IA_COEFFICIENT = 0.2
-"""The initial abstraction coefficient the report formulas are rendered with."""
+__all__ = ["ReportResult", "report_generate"]
 
 _TC_GIVEN_LABEL = "wartość zadana"
 _SERIES_LABEL = "opad zadany szeregiem"
@@ -118,24 +114,34 @@ def _watershed_params(parameters: WatershedParameters) -> dict[str, Any]:
 
 
 def _uh_params(run: HydrographRun) -> dict[str, Any]:
-    """The unit hydrograph parameters under the names the report section reads."""
-    params = run.uh_params
-    if run.uh_model == "nash":
-        k = float(params["k"])
-        return {
-            "n": params["n"],
-            "k_min": k if params.get("k_unit", "min") == "min" else k * 60.0,
-        }
-    if run.uh_model == "clark":
-        clark: dict[str, Any] = {"r_min": params["r"]}
-        if run.tc_min is not None:
-            clark["tc_min"] = run.tc_min
-        return clark
+    """What the report needs of the unit hydrograph model besides its result.
+
+    The values of the model (Nash n and K, Clark R and tc, Snyder Ct and Cp, the
+    SCS lag time) are read by the report from the unit hydrograph the hydrograph was
+    computed with; the Snyder stream lengths are not part of that result.
+    """
     if run.uh_model == "snyder":
         return {
-            key: params[key] for key in ("L_km", "Lc_km", "ct", "cp") if key in params
+            key: run.uh_params[key] for key in ("L_km", "Lc_km") if key in run.uh_params
         }
     return {}
+
+
+def _tc_inputs(run: HydrographRun) -> dict[str, Any] | None:
+    """The arguments the time of concentration method was fed with.
+
+    Under the names the report section reads (``TcResult.parameters`` already uses
+    them; the NRCS slope is given in percent there). ``None`` when the time of
+    concentration was given as a value: there is no formula to show.
+    """
+    if run.tc_parameters is None:
+        return None
+    inputs: dict[str, Any] = dict(run.tc_parameters)
+    if run.tc_method == "nrcs":
+        inputs["slope_percent"] = inputs.pop("slope_m_per_m") * 100.0
+    if "cn" in inputs:
+        inputs["cn"] = _curve_number(inputs["cn"])
+    return inputs
 
 
 def _curve_number(cn: float) -> Any:
@@ -197,7 +203,7 @@ def report_generate(
     cn: float | None = None,
     tc_min: float | None = None,
     tc_method: TcMethod | None = None,
-    ia_coefficient: float = REPORT_IA_COEFFICIENT,
+    ia_coefficient: float = 0.2,
     amc: Amc = "II",
     hietogram_type: HietogramType | None = None,
     total_mm: float | None = None,
@@ -232,12 +238,10 @@ def report_generate(
     hyetograph, SCS-CN effective precipitation, unit hydrograph, convolution, result
     characteristics and water balance, with LaTeX formulas and time series tables.
 
-    The generator has limits that carry over: the unit hydrograph section shows a
-    simplified (triangular) shape, not the ordinates of the model; the initial
-    abstraction formula is rendered with the coefficient 0.2, so any other
-    ``ia_coefficient`` is refused; the inputs of the ``faa``, ``kerby`` and
-    ``kerby_kirpich`` methods and the area of ``giandotti`` do not reach the time of
-    concentration section.
+    The report documents the computation that was performed: the unit hydrograph
+    section shows the ordinates and the parameters of the model that was used, the
+    initial abstraction formula uses ``ia_coefficient`` and the time of concentration
+    section shows the arguments the method was fed with (derived from the watershed).
 
     Parameters
     ----------
@@ -260,7 +264,7 @@ def report_generate(
         Method that computes the time of concentration from the watershed
         (``kirpich`` by default).
     ia_coefficient : float, optional
-        Initial abstraction coefficient; the report supports only 0.2, the default.
+        Initial abstraction coefficient λ (Ia = λ·S), by default 0.2.
     amc : {"I", "II", "III"}, optional
         Antecedent moisture condition, by default ``"II"``.
     hietogram_type, total_mm, duration_min, alpha, beta, peak_position : optional
@@ -297,25 +301,13 @@ def report_generate(
     Raises
     ------
     InvalidParameterError
-        If the inputs are invalid (see ``hydrograph generate``), ``ia_coefficient``
-        is not 0.2, ``max_table_rows`` is below 1, or ``output`` is an input file.
+        If the inputs are invalid (see ``hydrograph generate``), ``max_table_rows``
+        is below 1, or ``output`` is an input file.
     NotFoundError, InputDataError
         If an input file does not exist or cannot be read.
     OutputError
         If the report cannot be written.
     """
-    if not math.isclose(ia_coefficient, REPORT_IA_COEFFICIENT):
-        raise InvalidParameterError(
-            f"Option 'ia_coefficient': the report renders the SCS-CN formulas with "
-            f"the coefficient {REPORT_IA_COEFFICIENT}, got {ia_coefficient!r}",
-            details={
-                "option": "ia_coefficient",
-                "reason": "unsupported",
-                "allowed": [REPORT_IA_COEFFICIENT],
-                "value": str(ia_coefficient),
-            },
-            hint="Use ia_coefficient 0.2, or compute with 'hydrograph generate'.",
-        )
     if max_table_rows < 1:
         raise InvalidParameterError(
             f"Option 'max_table_rows': must be >= 1, got {max_table_rows!r}",
@@ -385,6 +377,8 @@ def report_generate(
             tc_method=method_label,
             watershed_params=_watershed_params(catchment) if catchment else None,
             uh_params=_uh_params(run),
+            ia_coefficient=run.ia_coefficient,
+            tc_params=_tc_inputs(run),
         )
     # a given precipitation series has no distribution type: its label is not a warning
     kept: list[Notice] = [

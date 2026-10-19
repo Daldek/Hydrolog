@@ -141,3 +141,105 @@ class TestLowFlowAnalysis:
             LowFlowAnalysis(
                 np.array([1.0, 2.0]), np.array(["2021-01-01"], dtype="datetime64[D]")
             )
+
+
+def _series_with_annual_minima(minima):
+    """Daily-style series whose annual minima are exactly ``minima``.
+
+    Two observations per hydrological year (15 March: the minimum, 15 July: the
+    minimum plus 10), starting with the hydrological year 1901.
+    """
+    years = np.arange(1901, 1901 + len(minima))
+    low_days = np.array([np.datetime64(f"{year}-03-15") for year in years])
+    high_days = np.array([np.datetime64(f"{year}-07-15") for year in years])
+    dates = np.concatenate([low_days, high_days])
+    values = np.concatenate([minima, np.asarray(minima) + 10.0])
+    order = np.argsort(dates)
+    return values[order], dates[order]
+
+
+def _quantile_sample(distribution, size):
+    """Noise-free sample: the quantiles of ``distribution`` at (i - 0.5) / size."""
+    return distribution.ppf((np.arange(1, size + 1) - 0.5) / size)
+
+
+class TestFisherTippettForMinima:
+    """The fit is the GEV *for minima*: quantiles are those of the smallest values.
+
+    Regression of the fit of the maxima-type GEV to the minima, which recovered
+    only the bulk of the sample. For the Weibull minimum distribution below (1000
+    noise-free annual minima) it gave 1.24 instead of 1.50 at T = 100 years
+    (-17 %) and 0.33 instead of 1.16 at T = 1000 years (-71 %); for the Gumbel
+    minimum distribution it gave -3800 instead of 13 at T = 100 years.
+    """
+
+    RETURN_PERIODS = np.array([2.0, 5.0, 10.0, 20.0, 50.0, 100.0])
+
+    def _fit(self, distribution, size=1000):
+        from hydrolog.statistics.low_flows import LowFlowAnalysis
+
+        values, dates = _series_with_annual_minima(_quantile_sample(distribution, size))
+        return LowFlowAnalysis(values, dates, self.RETURN_PERIODS).fit_fisher_tippett()
+
+    def test_recovers_the_quantiles_of_a_weibull_minimum_distribution(self):
+        from scipy.stats import weibull_min
+
+        truth = weibull_min(2.0, loc=1.0, scale=5.0)
+        result = self._fit(truth)
+        np.testing.assert_allclose(
+            result.quantiles, truth.ppf(1.0 / self.RETURN_PERIODS), rtol=0.02
+        )
+
+    def test_parameters_are_those_of_the_minimum_distribution(self):
+        """Weibull(k, x0, lam) is the minima GEV with c = 1/k, loc = x0 + lam,
+        scale = lam / k (here 0.5, 6, 2.5)."""
+        from scipy.stats import weibull_min
+
+        result = self._fit(weibull_min(2.0, loc=1.0, scale=5.0))
+        assert result.parameters["shape"] == pytest.approx(0.5, abs=0.02)
+        assert result.parameters["loc"] == pytest.approx(6.0, abs=0.1)
+        assert result.parameters["scale"] == pytest.approx(2.5, abs=0.05)
+
+    def test_recovers_the_quantiles_of_a_gumbel_minimum_distribution(self):
+        from scipy.stats import gumbel_l
+
+        truth = gumbel_l(loc=50.0, scale=8.0)
+        result = self._fit(truth)
+        assert result.parameters["shape"] == pytest.approx(0.0, abs=0.02)
+        assert result.parameters["loc"] == pytest.approx(50.0, abs=0.5)
+        assert result.parameters["scale"] == pytest.approx(8.0, abs=0.2)
+        np.testing.assert_allclose(
+            result.quantiles, truth.ppf(1.0 / self.RETURN_PERIODS), rtol=0.02
+        )
+
+    def test_quantiles_follow_the_closed_form_of_the_reported_parameters(self):
+        """Q_T = loc + scale / c * ((-ln(1 - 1/T)) ** c - 1), independent of SciPy."""
+        from scipy.stats import weibull_min
+
+        result = self._fit(weibull_min(3.0, loc=0.5, scale=8.0), size=60)
+        c = result.parameters["shape"]
+        p = 1.0 / self.RETURN_PERIODS
+        expected = result.parameters["loc"] + result.parameters["scale"] / c * (
+            (-np.log1p(-p)) ** c - 1.0
+        )
+        np.testing.assert_allclose(result.quantiles, expected, rtol=1e-9)
+
+    def test_rarer_droughts_have_lower_flows_and_two_years_is_the_median(self):
+        from scipy.stats import weibull_min
+
+        truth = weibull_min(2.0, loc=1.0, scale=5.0)
+        result = self._fit(truth)
+        assert np.all(np.diff(result.quantiles) < 0)
+        assert result.quantiles[0] == pytest.approx(truth.median(), rel=0.01)
+        np.testing.assert_allclose(
+            result.non_exceedance_probabilities, 1.0 / self.RETURN_PERIODS
+        )
+
+    def test_ks_statistic_compares_the_sample_with_the_fitted_minimum_distribution(
+        self,
+    ):
+        from scipy.stats import weibull_min
+
+        result = self._fit(weibull_min(2.0, loc=1.0, scale=5.0))
+        assert result.ks_statistic < 0.01
+        assert result.ks_valid is False

@@ -19,7 +19,7 @@ from numpy.typing import NDArray
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.catalog.envelope import Notice, OperationOutput, capture_warnings
 from hydrolog.catalog.inputs import read_table
-from hydrolog.exceptions import CalculationError, InvalidParameterError
+from hydrolog.exceptions import InvalidParameterError
 from hydrolog.hydrometrics import (
     FrequencyDistributionResult,
     RatingCurve,
@@ -236,33 +236,13 @@ def hydrometrics_rating_curve(
     require_count(
         len(levels), _MIN_PAIRS, "Rating curve fitting", unit="measurement pairs"
     )
-    lowest = float(np.min(levels))
-    if not h0_initial < lowest:
-        raise InvalidParameterError(
-            f"Option 'h0_initial': {h0_initial!r} must be below the lowest water "
-            f"level ({lowest:g})",
-            details={
-                "option": "h0_initial",
-                "reason": "maximum",
-                "maximum": lowest,
-                "value": str(h0_initial),
-            },
-            hint="Give h0_initial lower than every water level, in the same unit.",
-        )
     curve = RatingCurve(levels, flows)
-    try:
-        with capture_warnings(_NUMERIC_WARNINGS) as numeric:
-            result: RatingCurveResult = curve.fit(
-                h0_initial=h0_initial,
-                remove_outliers=remove_outliers,
-                outlier_std=outlier_std,
-            )
-    except (InvalidParameterError, ArithmeticError, ValueError, RuntimeError) as exc:
-        raise CalculationError(
-            f"The rating curve cannot be fitted: {exc}",
-            details={"fit": "rating curve"},
-            hint="Check the measurement pairs or try another h0_initial.",
-        ) from exc
+    with capture_warnings(_NUMERIC_WARNINGS) as numeric:
+        result: RatingCurveResult = curve.fit(
+            h0_initial=h0_initial,
+            remove_outliers=remove_outliers,
+            outlier_std=outlier_std,
+        )
     return OperationOutput(result, [*notices, *numeric])
 
 
