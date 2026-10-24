@@ -1,21 +1,25 @@
 """Tests for morphometry module."""
 
 import math
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
 
+from hydrolog.exceptions import InvalidParameterError
 from hydrolog.morphometry import (
-    WatershedGeometry,
-    GeometricParameters,
-    ShapeIndicators,
-    TerrainAnalysis,
     ElevationParameters,
-    SlopeParameters,
+    GeometricParameters,
     HypsometricCurve,
     HypsometricResult,
+    ShapeIndicators,
+    SlopeParameters,
+    TerrainAnalysis,
+    WatershedGeometry,
 )
-from hydrolog.exceptions import InvalidParameterError
+
+if TYPE_CHECKING:
+    from hydrolog.morphometry.watershed_params import WatershedParameters
 
 
 class TestWatershedGeometry:
@@ -517,7 +521,6 @@ class TestWatershedParameters:
     # -- New fields: basic construction ----------------------------------
     def test_new_fields_default_none(self):
         """New optional fields default to None."""
-        from hydrolog.morphometry.watershed_params import WatershedParameters
 
         p = self._base_params()
         assert p.runoff_coeff is None
@@ -831,14 +834,9 @@ class TestMorphometryImport:
     def test_import_all_classes(self):
         """Test that all classes can be imported."""
         from hydrolog.morphometry import (
-            WatershedGeometry,
-            GeometricParameters,
-            ShapeIndicators,
-            TerrainAnalysis,
-            ElevationParameters,
-            SlopeParameters,
             HypsometricCurve,
-            HypsometricResult,
+            TerrainAnalysis,
+            WatershedGeometry,
         )
 
         assert WatershedGeometry is not None

@@ -14,7 +14,7 @@ import json
 import math
 from enum import Enum
 from pathlib import PurePath
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 
@@ -133,7 +133,7 @@ class JsonResultMixin:
         assert isinstance(result, dict)
         return result
 
-    def to_json(self, indent: Optional[int] = None) -> str:
+    def to_json(self, indent: int | None = None) -> str:
         """
         Serialize the result to a JSON string.
 

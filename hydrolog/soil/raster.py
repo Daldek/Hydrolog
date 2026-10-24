@@ -244,14 +244,16 @@ def _write_hsg_geotiff(
     }
     classes = ", ".join(f"{code}={name}" for name, code in HSG_CODES.items())
     try:
-        with atomic_output(output_path) as temporary:
-            with rasterio.open(temporary, "w", **profile) as dst:
-                dst.write(hsg, 1)
-                dst.update_tags(
-                    1,
-                    LAYER_NAME="Hydrologic Soil Group",
-                    LAYER_DESCRIPTION=f"HSG classification: {classes}",
-                )
+        with (
+            atomic_output(output_path) as temporary,
+            rasterio.open(temporary, "w", **profile) as dst,
+        ):
+            dst.write(hsg, 1)
+            dst.update_tags(
+                1,
+                LAYER_NAME="Hydrologic Soil Group",
+                LAYER_DESCRIPTION=f"HSG classification: {classes}",
+            )
     except OSError as exc:
         raise OutputError(
             f"Cannot write the HSG raster {output_path}: {exc}",

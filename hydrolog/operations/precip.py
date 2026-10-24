@@ -9,7 +9,7 @@ and the interpolation functions of :mod:`hydrolog.precipitation.interpolation`.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Literal, get_args
 
 import numpy as np

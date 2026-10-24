@@ -4,8 +4,6 @@ Generates the section documenting SCS Curve Number method calculations
 including retention, initial abstraction, and effective precipitation.
 """
 
-from typing import Optional
-
 import numpy as np
 from numpy.typing import NDArray
 
@@ -27,9 +25,9 @@ def generate_scs_cn_section(
     initial_abstraction_mm: float,
     total_effective_mm: float,
     ia_coefficient: float = 0.2,
-    times_min: Optional[NDArray[np.float64]] = None,
-    precip_mm: Optional[NDArray[np.float64]] = None,
-    effective_mm: Optional[NDArray[np.float64]] = None,
+    times_min: NDArray[np.float64] | None = None,
+    precip_mm: NDArray[np.float64] | None = None,
+    effective_mm: NDArray[np.float64] | None = None,
     include_formulas: bool = True,
     include_table: bool = True,
     max_table_rows: int = 30,

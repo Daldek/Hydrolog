@@ -120,12 +120,15 @@ def generate_water_balance_section(
             "",
             "**Podsumowanie bilansu wodnego:**",
             "",
-            f"| | Wartość |",
-            f"|:--|--------:|",
+            "| | Wartość |",
+            "|:--|--------:|",
             f"| Opad całkowity P | {total_precip_mm:.2f} mm |",
             f"| Opad efektywny Pe | {total_effective_mm:.2f} mm |",
             f"| Straty (Ia + F) | {total_precip_mm - total_effective_mm:.2f} mm |",
-            f"| Współczynnik odpływu C | {runoff_coefficient:.3f} ({runoff_coefficient*100:.1f}%) |",
+            (
+                f"| Współczynnik odpływu C | {runoff_coefficient:.3f} "
+                f"({runoff_coefficient * 100:.1f}%) |"
+            ),
             f"| Objętość odpływu V | {total_volume_m3:,.0f} m³ |",
         ]
     )

@@ -176,8 +176,7 @@ GENERATE_OPTIONS: tuple[Option, ...] = (
         name="input_file",
         type="path",
         description=(
-            "Plik CSV lub JSON z wysokościami opadu w krokach [mm] (zamiast "
-            "`values`)."
+            "Plik CSV lub JSON z wysokościami opadu w krokach [mm] (zamiast `values`)."
         ),
         description_en=(
             "CSV or JSON file with the precipitation depths per step [mm] "
@@ -188,8 +187,7 @@ GENERATE_OPTIONS: tuple[Option, ...] = (
         name="value_column",
         type="string",
         description=(
-            "Kolumna pliku z wysokościami opadu; pomijana dla pliku "
-            "jednokolumnowego."
+            "Kolumna pliku z wysokościami opadu; pomijana dla pliku jednokolumnowego."
         ),
         description_en=(
             "File column with the precipitation depths; may be omitted for a "
@@ -247,8 +245,7 @@ GENERATE_OPTIONS: tuple[Option, ...] = (
         name="nash_k_min",
         type="number",
         description=(
-            "Nash: stała magazynowania K [min] (> 0, typowo 10–200); razem z "
-            "`nash_n`."
+            "Nash: stała magazynowania K [min] (> 0, typowo 10–200); razem z `nash_n`."
         ),
         description_en=(
             "Nash: storage constant K [min] (> 0, typically 10-200); together "
@@ -261,12 +258,10 @@ GENERATE_OPTIONS: tuple[Option, ...] = (
         name="clark_r_min",
         type="number",
         description=(
-            "Clark: stała retencji R [min] (> 0); alternatywa dla "
-            "`clark_r_tc_ratio`."
+            "Clark: stała retencji R [min] (> 0); alternatywa dla `clark_r_tc_ratio`."
         ),
         description_en=(
-            "Clark: storage constant R [min] (> 0); alternative to "
-            "`clark_r_tc_ratio`."
+            "Clark: storage constant R [min] (> 0); alternative to `clark_r_tc_ratio`."
         ),
         exclusive_minimum=0,
         unit="min",
@@ -306,7 +301,7 @@ GENERATE_OPTIONS: tuple[Option, ...] = (
             "zlewni Lc [km] (> 0)."
         ),
         description_en=(
-            "Snyder: length from the outlet to the catchment centroid Lc [km] " "(> 0)."
+            "Snyder: length from the outlet to the catchment centroid Lc [km] (> 0)."
         ),
         exclusive_minimum=0,
         unit="km",
@@ -350,8 +345,14 @@ COMMANDS: tuple[Command, ...] = (
     Command(
         name="hydrograph generate",
         operation_id="hydrograph_generate",
-        summary="Hydrogram odpływu bezpośredniego zlewni: opad → SCS-CN → hydrogram jednostkowy → splot.",
-        summary_en="Direct runoff hydrograph of a catchment: precipitation -> SCS-CN -> unit hydrograph -> convolution.",
+        summary=(
+            "Hydrogram odpływu bezpośredniego zlewni: opad → SCS-CN → hydrogram "
+            "jednostkowy → splot."
+        ),
+        summary_en=(
+            "Direct runoff hydrograph of a catchment: precipitation -> SCS-CN "
+            "-> unit hydrograph -> convolution."
+        ),
         description=(
             "Projektowy hydrogram odpływu bezpośredniego zlewni (HydrographGenerator): "
             "(1) opad — hietogram projektowy z `hietogram_type`, `total_mm`, "

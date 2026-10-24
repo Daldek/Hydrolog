@@ -92,10 +92,14 @@ def warning_operation(*, length_km: float):
     """Warn twice about the same thing and report it as a notice."""
     with capture_warnings() as notices:
         warnings.warn(
-            f"length_km={length_km} is outside the typical range", UserWarning
+            f"length_km={length_km} is outside the typical range",
+            UserWarning,
+            stacklevel=2,
         )
         warnings.warn(
-            f"length_km={length_km} is outside the typical range", UserWarning
+            f"length_km={length_km} is outside the typical range",
+            UserWarning,
+            stacklevel=2,
         )
     return OperationOutput(result={"ok": True}, notices=notices)
 
@@ -1159,9 +1163,9 @@ class TestCaptureWarnings:
         with warnings.catch_warnings(record=True) as leaked:
             warnings.simplefilter("always")
             with capture_warnings() as notices:
-                warnings.warn("short series", UserWarning)
-                warnings.warn("value out of range", UserWarning)
-                warnings.warn("short series", UserWarning)
+                warnings.warn("short series", UserWarning, stacklevel=2)
+                warnings.warn("value out of range", UserWarning, stacklevel=2)
+                warnings.warn("short series", UserWarning, stacklevel=2)
                 assert notices == []
         assert leaked == []
         assert notices == [
@@ -1171,32 +1175,33 @@ class TestCaptureWarnings:
 
     def test_other_categories_are_reissued_not_swallowed(self):
         """A ``RuntimeWarning`` is not a notice by default and is not swallowed."""
-        with pytest.warns(RuntimeWarning, match="invalid value") as outer:
-            with capture_warnings() as notices:
-                warnings.warn("invalid value encountered", RuntimeWarning)
-                warnings.warn("short series", UserWarning)
+        with (
+            pytest.warns(RuntimeWarning, match="invalid value") as outer,
+            capture_warnings() as notices,
+        ):
+            warnings.warn("invalid value encountered", RuntimeWarning, stacklevel=2)
+            warnings.warn("short series", UserWarning, stacklevel=2)
         assert [n.text for n in notices] == ["short series"]
         assert [str(w.message) for w in outer] == ["invalid value encountered"]
 
     def test_categories_are_chosen_by_the_caller(self):
         """``categories`` selects what becomes a notice; the code names the category."""
         with capture_warnings((RuntimeWarning,)) as notices:
-            warnings.warn("nan produced", RuntimeWarning)
+            warnings.warn("nan produced", RuntimeWarning, stacklevel=2)
         assert notices == [Notice("warning", "runtime_warning", "nan produced")]
 
     def test_empty_message_still_gives_a_notice(self):
         """A warning without text is reported by its category."""
         with capture_warnings() as notices:
-            warnings.warn("", UserWarning)
+            warnings.warn("", UserWarning, stacklevel=2)
         assert notices == [Notice("warning", "user_warning", "UserWarning")]
 
     def test_exception_in_the_block_propagates_and_releases_the_lock(self):
         """A failing computation neither hides its error nor blocks later captures."""
-        with pytest.raises(CalculationError):
-            with capture_warnings():
-                raise CalculationError("no convergence")
+        with pytest.raises(CalculationError), capture_warnings():
+            raise CalculationError("no convergence")
         with capture_warnings() as notices:
-            warnings.warn("again", UserWarning)
+            warnings.warn("again", UserWarning, stacklevel=2)
         assert [n.text for n in notices] == ["again"]
 
     def test_concurrent_captures_do_not_mix_their_warnings(self):
@@ -1206,7 +1211,7 @@ class TestCaptureWarnings:
         def work(number: int) -> None:
             with capture_warnings() as notices:
                 for _ in range(5):
-                    warnings.warn(f"thread {number}", UserWarning)
+                    warnings.warn(f"thread {number}", UserWarning, stacklevel=2)
                     time.sleep(0.002)  # invites a thread switch inside the block
             results[number] = [n.text for n in notices]
 
@@ -1255,9 +1260,9 @@ class TestPathPolicy:
             self._path_command(), {"input_file": "data/in.csv", "out": "o.txt"}
         )
         base = tmp_path.resolve()
-        assert CALLS == [
+        assert [
             {"input_file": str(base / "data" / "in.csv"), "out": str(base / "o.txt")}
-        ]
+        ] == CALLS
         assert result.inputs == CALLS[0]
 
     def test_dot_dot_is_normalized(self, tmp_path, monkeypatch):

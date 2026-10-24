@@ -4,11 +4,10 @@ import warnings
 
 import numpy as np
 import pytest
-from scipy.stats import genextreme, lognorm, pearson3, weibull_min
+from scipy.stats import genextreme, lognorm
 
 
 class TestFloodFrequencyAnalysis:
-
     @pytest.fixture
     def synthetic_gev_data(self):
         rng = np.random.default_rng(42)
@@ -133,23 +132,23 @@ class TestFloodFrequencyAnalysis:
         assert abs(emp.exceedance_prob[0] - 0.6 / (n + 0.2)) < 0.001
 
     def test_empirical_frequency_invalid_method_raises(self, synthetic_gev_data):
-        from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
         from hydrolog.exceptions import InvalidParameterError
+        from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
 
         ffa = FloodFrequencyAnalysis(synthetic_gev_data)
         with pytest.raises(InvalidParameterError):
             ffa.empirical_frequency(method="invalid")
 
     def test_empty_data_raises(self):
-        from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
         from hydrolog.exceptions import InvalidParameterError
+        from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
 
         with pytest.raises(InvalidParameterError):
             FloodFrequencyAnalysis(np.array([]))
 
     def test_nan_in_data_raises(self):
-        from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
         from hydrolog.exceptions import InvalidParameterError
+        from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
 
         with pytest.raises(InvalidParameterError):
             FloodFrequencyAnalysis(np.array([1.0, np.nan, 3.0]))

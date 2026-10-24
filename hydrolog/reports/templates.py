@@ -4,13 +4,12 @@ This module contains all Polish-language text templates, section headers,
 method descriptions, and literature references used in report generation.
 """
 
-from typing import Dict
 
 # =============================================================================
 # Section Headers
 # =============================================================================
 
-SECTION_HEADERS: Dict[str, str] = {
+SECTION_HEADERS: dict[str, str] = {
     "watershed": "## 1. Parametry Zlewni",
     "concentration": "## 2. Czas Koncentracji",
     "hietogram": "## 3. Hietogram Opadu",
@@ -26,7 +25,7 @@ SECTION_HEADERS: Dict[str, str] = {
 # Method Descriptions
 # =============================================================================
 
-TC_METHODS: Dict[str, str] = {
+TC_METHODS: dict[str, str] = {
     "kirpich": "Wzór Kirpicha (1940)",
     "nrcs": "Równanie NRCS (USDA TR-55)",
     "giandotti": "Wzór Giandottiego (1934)",
@@ -35,21 +34,21 @@ TC_METHODS: Dict[str, str] = {
     "kerby_kirpich": "Metoda złożona Kerby-Kirpich",
 }
 
-UH_MODELS: Dict[str, str] = {
+UH_MODELS: dict[str, str] = {
     "scs": "Hydrogram jednostkowy SCS (NRCS)",
     "nash": "Model kaskady zbiorników Nasha (IUH)",
     "clark": "Model Clarka (IUH)",
     "snyder": "Syntetyczny hydrogram Snydera",
 }
 
-HIETOGRAM_TYPES: Dict[str, str] = {
+HIETOGRAM_TYPES: dict[str, str] = {
     "block": "Rozkład blokowy (równomierny)",
     "triangular": "Rozkład trójkątny",
     "beta": "Rozkład Beta",
     "euler_ii": "Rozkład Euler II (DVWK)",
 }
 
-AMC_DESCRIPTIONS: Dict[str, str] = {
+AMC_DESCRIPTIONS: dict[str, str] = {
     "I": "warunki suche - najniższy potencjał odpływu",
     "II": "warunki normalne/przeciętne",
     "III": "warunki mokre - najwyższy potencjał odpływu",
@@ -71,7 +70,7 @@ REPORT_HEADER_TEMPLATE = """# Raport Hydrologiczny: {name}
 # Section Intro Texts
 # =============================================================================
 
-SECTION_INTROS: Dict[str, str] = {
+SECTION_INTROS: dict[str, str] = {
     "watershed": """
 Poniżej przedstawiono parametry fizjograficzne analizowanej zlewni.
 """,
@@ -112,9 +111,12 @@ abstrakcję początkową, infiltrację oraz opad efektywny (odpływ).
 # Formula Explanations
 # =============================================================================
 
-FORMULA_EXPLANATIONS: Dict[str, str] = {
+FORMULA_EXPLANATIONS: dict[str, str] = {
     "scs_retention": "gdzie CN - Curve Number [-]",
-    "scs_ia": "gdzie S - retencja maksymalna [mm], λ - współczynnik abstrakcji (domyślnie 0.2)",
+    "scs_ia": (
+        "gdzie S - retencja maksymalna [mm], λ - współczynnik abstrakcji "
+        "(domyślnie 0.2)"
+    ),
     "scs_pe": (
         "gdzie P - opad całkowity [mm], Ia - abstrakcja początkowa [mm], "
         "S - retencja maksymalna [mm]"
@@ -144,8 +146,7 @@ FORMULA_EXPLANATIONS: Dict[str, str] = {
     "scs_uh_tp": "gdzie D - czas trwania opadu [min], tlag - czas opóźnienia [min]",
     "scs_uh_qp": "gdzie A - powierzchnia zlewni [km²], tp - czas do szczytu [h]",
     "nash_iuh": (
-        "gdzie n - liczba zbiorników, K - stała zbiornika [min], "
-        "Γ(n) - funkcja gamma"
+        "gdzie n - liczba zbiorników, K - stała zbiornika [min], Γ(n) - funkcja gamma"
     ),
     "convolution": (
         "gdzie Q(n) - przepływ w kroku n, Pe(m) - opad efektywny w kroku m, "
@@ -157,7 +158,7 @@ FORMULA_EXPLANATIONS: Dict[str, str] = {
 # Literature References
 # =============================================================================
 
-REFERENCES: Dict[str, str] = {
+REFERENCES: dict[str, str] = {
     "scs": (
         "USDA-NRCS (1986). *Urban Hydrology for Small Watersheds*. "
         "Technical Release 55 (TR-55). Washington, D.C."
@@ -205,7 +206,7 @@ REFERENCES: Dict[str, str] = {
 # Subsection Headers
 # =============================================================================
 
-SUBSECTION_HEADERS: Dict[str, Dict[str, str]] = {
+SUBSECTION_HEADERS: dict[str, dict[str, str]] = {
     "watershed": {
         "input": "### 1.1 Dane wejściowe",
         "shape": "### 1.2 Wskaźniki kształtu",
@@ -249,7 +250,7 @@ SUBSECTION_HEADERS: Dict[str, Dict[str, str]] = {
 # Parameter Labels (Polish)
 # =============================================================================
 
-PARAMETER_LABELS: Dict[str, str] = {
+PARAMETER_LABELS: dict[str, str] = {
     # Watershed
     "area_km2": "Powierzchnia zlewni",
     "perimeter_km": "Obwód zlewni",
@@ -305,7 +306,7 @@ PARAMETER_LABELS: Dict[str, str] = {
 # Units
 # =============================================================================
 
-UNITS: Dict[str, str] = {
+UNITS: dict[str, str] = {
     "area_km2": "km²",
     "perimeter_km": "km",
     "length_km": "km",
@@ -331,16 +332,21 @@ UNITS: Dict[str, str] = {
 # Appendices Content
 # =============================================================================
 
-GLOSSARY: Dict[str, str] = {
+GLOSSARY: dict[str, str] = {
     "CN": "Curve Number - bezwymiarowy wskaźnik potencjału odpływu zlewni (0-100)",
     "AMC": "Antecedent Moisture Condition - warunki wilgotnościowe poprzedzające opad",
-    "tc": "Czas koncentracji - czas przepływu wody z najdalszego punktu zlewni do przekroju zamykającego",
+    "tc": (
+        "Czas koncentracji - czas przepływu wody z najdalszego punktu zlewni do "
+        "przekroju zamykającego"
+    ),
     "tlag": "Czas opóźnienia - czas od środka ciężkości opadu do szczytu hydrogramu",
     "tp": "Czas do szczytu - czas od początku opadu do maksimum hydrogramu",
     "UH": "Unit Hydrograph - hydrogram jednostkowy",
     "IUH": "Instantaneous Unit Hydrograph - chwilowy hydrogram jednostkowy",
     "Pe": "Opad efektywny - część opadu przekształcająca się w odpływ powierzchniowy",
-    "Ia": "Abstrakcja początkowa - straty początkowe (intercepcja, zwilżenie, retencja)",
+    "Ia": (
+        "Abstrakcja początkowa - straty początkowe (intercepcja, zwilżenie, retencja)"
+    ),
     "S": "Retencja maksymalna - maksymalna zdolność retencyjna zlewni",
     "Qmax": "Przepływ szczytowy - maksymalny przepływ w hydrogramie",
 }

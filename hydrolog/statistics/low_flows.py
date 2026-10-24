@@ -532,7 +532,7 @@ class LowFlowAnalysis:
         # ------------------------------------------------------------------
         sequences: list[LowFlowSequence] = []
 
-        for s, e in zip(merged_starts, merged_ends):
+        for s, e in zip(merged_starts, merged_ends, strict=False):
             duration = e - s + 1
             if duration < min_duration_days:
                 continue

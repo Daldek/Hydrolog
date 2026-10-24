@@ -249,7 +249,7 @@ class TestFormulaRenderer:
 
         assert "0.0015^{-0.2335}" in result
         assert "0.0010 + 0.0005 = 0.0015" in result
-        assert 36.37 * (0.10 * 0.40) ** 0.467 * 0.0015 ** (-0.2335) == pytest.approx(tc)
+        assert pytest.approx(tc) == 36.37 * (0.10 * 0.40) ** 0.467 * 0.0015 ** (-0.2335)
 
     def test_kerby_tc_without_adjustment_has_no_note(self):
         result = FormulaRenderer.kerby_tc(
@@ -991,7 +991,8 @@ class TestReportShowsTheUnitHydrographThatWasUsed:
         )
 
         assert _ordinate_rows(content) == [
-            (f"{t:.1f}", f"{q:.4f}") for t, q in zip(unit.times_min, unit.ordinates_m3s)
+            (f"{t:.1f}", f"{q:.4f}")
+            for t, q in zip(unit.times_min, unit.ordinates_m3s, strict=False)
         ]
 
     @pytest.mark.parametrize("model", ["scs", "nash", "clark"])
@@ -1202,7 +1203,8 @@ class TestReportShowsTheInputsOfTheTimeOfConcentration:
             # NRCS: Y is the mean land slope of the watershed (2.5 %), not the channel's
             ("nrcs", ["L = 10800 m", "Y = 2.50 %", "dla CN = 72"]),
             ("giandotti", ["\\sqrt{45.00}", "1.5 \\cdot 10.80", "\\sqrt{180.0}"]),
-            # FAA and Kerby time the overland flow path (0.25 km at 0.008), not the channel
+            # FAA and Kerby time the overland flow path (0.25 km at 0.008), not the
+            # channel
             ("faa", ["(1.1 - 0.45)", "0.250^{0.5}", "0.0080^{-1/3}"]),
             ("kerby", ["(0.250 \\cdot 0.40)^{0.467}", "0.0080^{-0.2335}"]),
             (

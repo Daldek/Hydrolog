@@ -1,18 +1,16 @@
 """Unit tests for hydrolog.network module."""
 
 import pytest
-import numpy as np
 
+from hydrolog.exceptions import InvalidParameterError
 from hydrolog.network import (
     OrderingMethod,
-    StreamSegment,
-    NetworkStatistics,
     StreamNetwork,
+    StreamSegment,
     bifurcation_ratio,
     drainage_density,
     stream_frequency,
 )
-from hydrolog.exceptions import InvalidParameterError
 
 
 class TestStreamSegment:

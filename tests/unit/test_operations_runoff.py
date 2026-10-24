@@ -498,16 +498,19 @@ class TestWeightedCurveNumber:
         """Objects, parallel areas and parallel fractions give the same CN."""
         cns, areas = [55.0, 69.0, 98.0], [27.2, 13.6, 4.5]
         total = sum(areas)
-        expected = calculate_weighted_cn(list(zip(cns, areas)))
+        expected = calculate_weighted_cn(list(zip(cns, areas, strict=False)))
         by_parts = ops.cn_weighted(
-            parts=[{"cn": c, "area": a} for c, a in zip(cns, areas)]
+            parts=[{"cn": c, "area": a} for c, a in zip(cns, areas, strict=False)]
         )
         by_areas = ops.cn_weighted(cn_values=cns, areas=areas)
         by_fractions = ops.cn_weighted(
             cn_values=cns, fractions=[a / total for a in areas]
         )
         by_shares = ops.cn_weighted(
-            parts=[{"cn": c, "fraction": a / total} for c, a in zip(cns, areas)]
+            parts=[
+                {"cn": c, "fraction": a / total}
+                for c, a in zip(cns, areas, strict=False)
+            ]
         )
         for result in (by_parts, by_areas, by_fractions, by_shares):
             assert result.cn == pytest.approx(expected, rel=1e-12)
@@ -2360,10 +2363,10 @@ class TestDeclarations:
 
     def test_declared_choices_equal_the_library(self):
         """Choices typed into the declarations match the enums they mirror."""
-        assert LAND_COVERS == tuple(cover.value for cover in LandCover)
-        assert CONDITIONS == tuple(c.value for c in HydrologicCondition)
+        assert tuple(cover.value for cover in LandCover) == LAND_COVERS
+        assert tuple(c.value for c in HydrologicCondition) == CONDITIONS
         assert HSG_GROUPS == ("A", "B", "C", "D")
-        assert AMC_CLASSES == tuple(a.name for a in AMC)
+        assert tuple(a.name for a in AMC) == AMC_CLASSES
         assert set(UH_MODELS) == set(HydrographGenerator.SUPPORTED_MODELS)
         lookup = get_command("cn lookup")
         assert lookup.option("land_cover").choices == LAND_COVERS

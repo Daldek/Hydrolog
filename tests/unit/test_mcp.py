@@ -270,7 +270,8 @@ def catalog_examples(*, with_paths):
     ]
 
 
-# --- the tool list ---------------------------------------------------------------------
+# --- the tool list
+# ---------------------------------------------------------------------
 
 
 class TestTools:
@@ -306,7 +307,8 @@ class TestTools:
             assert hints.open_world_hint is False
 
     def test_a_writing_command_is_neither_read_only_nor_harmless(self, demo_catalog):
-        """File output means not read-only and destructive; a pure command is neither."""
+        """File output means not read-only and destructive; a pure command is
+        neither."""
         tools = {tool.name: tool for tool in listing()[0]}
 
         for name in ("demo_copy", "demo_note"):
@@ -424,7 +426,8 @@ class TestTools:
             assert prop["enum"] == ["pl", "en"]
 
 
-# --- the instructions ------------------------------------------------------------------
+# --- the instructions
+# ------------------------------------------------------------------
 
 
 class TestInstructions:
@@ -468,7 +471,8 @@ class TestInstructions:
         assert "No allowed directories (--allow-dir)" in en
 
     def test_a_catalog_without_the_discovery_commands_is_refused(self):
-        """The text sends the agent to three tools; a catalog without one is an error."""
+        """The text sends the agent to three tools; a catalog without one is an
+        error."""
         for missing in ("commands list", "commands schema", "commands guide"):
             commands = tuple(c for c in COMMANDS if c.name != missing)
 
@@ -478,7 +482,8 @@ class TestInstructions:
             assert caught.value.details == {"command": missing}
 
 
-# --- calls -----------------------------------------------------------------------------
+# --- calls
+# -----------------------------------------------------------------------------
 
 
 class TestCalls:
@@ -486,7 +491,8 @@ class TestCalls:
 
     @pytest.mark.parametrize("mode", MODES)
     def test_a_pure_tool_answers_with_the_envelope(self, mode):
-        """The result is ``run_command(...).to_dict()`` as structured content and text."""
+        """The result is ``run_command(...).to_dict()`` as structured content and
+        text."""
         result = call("commands_list", {"lang": "en"}, mode=mode)
 
         assert result.is_error is False
@@ -518,7 +524,8 @@ class TestCalls:
         assert document["notices"] == []
 
     def test_warnings_of_the_library_travel_as_notices(self):
-        """A value outside the typical range of the formula is a notice, not an error."""
+        """A value outside the typical range of the formula is a notice, not an
+        error."""
         result = call("tc_kirpich", {"length_km": 120, "slope_m_per_m": 0.02})
 
         document = document_of(result)
@@ -527,7 +534,8 @@ class TestCalls:
         assert "120" in document["notices"][0]["text"]
 
     def test_arguments_are_normalized_by_the_catalog(self, demo_catalog):
-        """Defaults are applied and reported in ``inputs``; the result is the operation's."""
+        """Defaults are applied and reported in ``inputs``; the result is the
+        operation's."""
         document = document_of(call("demo_add", {"a_km": 2}))
 
         assert document["command"] == "demo add"
@@ -598,7 +606,8 @@ class TestCalls:
             assert document_of(result)["result"] == {"label": label}
 
 
-# --- errors ----------------------------------------------------------------------------
+# --- errors
+# ----------------------------------------------------------------------------
 
 
 class TestErrors:
@@ -724,7 +733,8 @@ class TestErrors:
         assert not caplog.records  # not a bug: nothing to log
 
     def test_an_unknown_tool_is_a_protocol_error_with_suggestions(self):
-        """The MCP error for a tool the server does not have; it suggests a close name."""
+        """The MCP error for a tool the server does not have; it suggests a close
+        name."""
         error = protocol_error("commands_lst")
 
         assert error.code == types.INVALID_PARAMS
@@ -736,7 +746,8 @@ class TestErrors:
         assert protocol_error("commands list").code == types.INVALID_PARAMS
 
 
-# --- paths -----------------------------------------------------------------------------
+# --- paths
+# -----------------------------------------------------------------------------
 
 
 class TestPathPolicy:
@@ -764,7 +775,8 @@ class TestPathPolicy:
     def test_inside_an_allowed_directory_the_command_runs_and_reports_its_file(
         self, demo_catalog, tmp_path
     ):
-        """Read and write inside; the envelope lists the written file with its SHA-256."""
+        """Read and write inside; the envelope lists the written file with its
+        SHA-256."""
         allowed = tmp_path / "data"
         allowed.mkdir()
         (allowed / "in.txt").write_text("abc", encoding="utf-8")
@@ -884,7 +896,8 @@ class TestPathPolicy:
     def test_every_catalog_command_with_files_is_refused_without_directories(
         self, command, example
     ):
-        """The real catalog: a path option never works on a server without directories."""
+        """The real catalog: a path option never works on a server without
+        directories."""
         document = error_of(call(command.operation_id, example))
 
         assert document["code"] == "forbidden", document
@@ -938,7 +951,8 @@ class TestPathPolicy:
         assert caught.value.details == {"option": "allowed_dirs", "reason": "empty"}
 
 
-# --- creating the server ---------------------------------------------------------------
+# --- creating the server
+# ---------------------------------------------------------------
 
 
 class TestCreateServer:
@@ -1014,7 +1028,8 @@ class TestCreateServer:
         assert info.version == hydrolog.__version__
 
 
-# --- a real process on stdio -----------------------------------------------------------
+# --- a real process on stdio
+# -----------------------------------------------------------
 
 
 LAUNCHERS = ["python", "cli"]

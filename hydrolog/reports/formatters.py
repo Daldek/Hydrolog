@@ -4,8 +4,6 @@ This module provides utilities for rendering mathematical formulas
 with substituted values and generating formatted Markdown tables.
 """
 
-from typing import List, Optional, Tuple, Union
-
 import numpy as np
 from numpy.typing import NDArray
 
@@ -50,7 +48,8 @@ class FormulaRenderer:
     Examples
     --------
     >>> FormulaRenderer.scs_retention(cn=72)
-    '$$S = \\\\frac{25400}{CN} - 254 = \\\\frac{25400}{72} - 254 = 98.89 \\\\text{ mm}$$'
+    '$$S = \\\\frac{25400}{CN} - 254 = \\\\frac{25400}{72} - 254 = 98.89 \\\\text{ '
+    'mm}$$'
     """
 
     # =========================================================================
@@ -72,10 +71,7 @@ class FormulaRenderer:
         str
             LaTeX formula with substituted values.
         """
-        if cn == 100:
-            s = 0.0
-        else:
-            s = (25400 / cn) - 254
+        s = 0.0 if cn == 100 else 25400 / cn - 254
         return (
             f"$$S = \\frac{{25400}}{{CN}} - 254 = "
             f"\\frac{{25400}}{{{cn}}} - 254 = {s:.2f} \\text{{ mm}}$$"
@@ -173,7 +169,8 @@ class FormulaRenderer:
             )
         elif amc == "III":
             formula = (
-                f"$$CN_{{III}} = \\frac{{CN_{{II}}}}{{0.427 + 0.00573 \\cdot CN_{{II}}}} = "
+                f"$$CN_{{III}} = "
+                f"\\frac{{CN_{{II}}}}{{0.427 + 0.00573 \\cdot CN_{{II}}}} = "
                 f"\\frac{{{cn_ii}}}{{0.427 + 0.00573 \\cdot {cn_ii}}} = {cn_adjusted}$$"
             )
         else:
@@ -604,7 +601,8 @@ class FormulaRenderer:
             "$$P_1 = 3{,}989 \\cdot n_{Man} + 0{,}028$$\n\n"
             f"$$P_1 = 3{{,}}989 \\cdot {manning_n:.3f} + 0{{,}}028 = {P1:.4f}$$\n\n"
             "**Krok 2: Czas do szczytu tp**\n\n"
-            "$$t_p = P_1 \\cdot \\left(\\frac{L \\cdot L_c}{J_g^{1{,}5}}\\right)^{0{,}26}"
+            "$$t_p = P_1 \\cdot \\left(\\frac{L \\cdot "
+            "L_c}{J_g^{1{,}5}}\\right)^{0{,}26}"
             " \\cdot e^{-0{,}016 U} \\cdot e^{0{,}004 W} \\quad [\\text{h}]$$\n\n"
             "gdzie:\n"
             f"- $L$ = {L_km:.3f} km (długość cieku)\n"
@@ -713,7 +711,8 @@ class FormulaRenderer:
         """Render Clark IUH formula."""
         return (
             "**Model Clarka:**\n\n"
-            "Translacja (histogram czas-powierzchnia) + routing przez zbiornik liniowy\n\n"
+            "Translacja (histogram czas-powierzchnia) + routing przez zbiornik "
+            "liniowy\n\n"
             "**Parametry modelu:**\n\n"
             f"- $T_c$ = {tc_min:.1f} min (czas koncentracji)\n"
             f"- $R$ = {r_min:.1f} min (stała zbiornika)\n"
@@ -770,7 +769,9 @@ class FormulaRenderer:
             "**Współczynnik routingu C1:**\n\n"
             "$$C_1 = \\frac{\\Delta t}{2R + \\Delta t}$$\n\n"
             "**Podstawienie wartości:**\n\n"
-            f"$$C_1 = \\frac{{{timestep_min:.1f}}}{{2 \\cdot {r_min:.1f} + {timestep_min:.1f}}} = "
+            f"$$C_1 = "
+            f"\\frac{{{timestep_min:.1f}}}"
+            f"{{2 \\cdot {r_min:.1f} + {timestep_min:.1f}}} = "
             f"\\frac{{{timestep_min:.1f}}}{{{denom:.1f}}} = {c1:.4f}$$"
         )
 
@@ -791,24 +792,30 @@ class FormulaRenderer:
         """
         half_tc = tc_min / 2.0
         return (
-            "**Skumulowany histogram czas-powierzchnia (zlewnia eliptyczna, standard HEC-HMS):**\n\n"
+            "**Skumulowany histogram czas-powierzchnia (zlewnia eliptyczna, standard "
+            "HEC-HMS):**\n\n"
             "$$A_{cum}(t) = \\begin{cases}\n"
-            "1.414 \\cdot \\left(\\frac{t}{T_c}\\right)^{1.5} & 0 \\leq t \\leq T_c/2 \\\\\n"
-            "1 - 1.414 \\cdot \\left(1 - \\frac{t}{T_c}\\right)^{1.5} & T_c/2 < t \\leq T_c\n"
+            "1.414 \\cdot \\left(\\frac{t}{T_c}\\right)^{1.5} & 0 \\leq t \\leq T_c/2 "
+            "\\\\\n"
+            "1 - 1.414 \\cdot \\left(1 - \\frac{t}{T_c}\\right)^{1.5} & T_c/2 < t "
+            "\\leq T_c\n"
             "\\end{cases}$$\n\n"
             "**Podstawienie wartości** ($T_c$ = "
             f"{tc_min:.1f}"
             " min):\n\n"
             "$$A_{cum}(t) = \\begin{cases}\n"
-            f"1.414 \\cdot \\left(\\dfrac{{t}}{{{tc_min:.1f}}}\\right)^{{1.5}} & 0 \\leq t \\leq {half_tc:.1f} \\text{{ min}} \\\\\n"
-            f"1 - 1.414 \\cdot \\left(1 - \\dfrac{{t}}{{{tc_min:.1f}}}\\right)^{{1.5}} & {half_tc:.1f} \\text{{ min}} < t \\leq {tc_min:.1f} \\text{{ min}}\n"
+            f"1.414 \\cdot \\left(\\dfrac{{t}}{{{tc_min:.1f}}}\\right)^{{1.5}} & 0 "
+            f"\\leq t \\leq {half_tc:.1f} \\text{{ min}} \\\\\n"
+            f"1 - 1.414 \\cdot \\left(1 - "
+            f"\\dfrac{{t}}{{{tc_min:.1f}}}\\right)^{{1.5}} & {half_tc:.1f} "
+            f"\\text{{ min}} < t \\leq {tc_min:.1f} \\text{{ min}}\n"
             "\\end{cases}$$"
         )
 
     @staticmethod
     def snyder_uh_formulas(
-        L_km: Optional[float],
-        Lc_km: Optional[float],
+        L_km: float | None,
+        Lc_km: float | None,
         ct: float,
         cp: float,
         tL_min: float,
@@ -819,10 +826,10 @@ class FormulaRenderer:
         tb_min: float,
         w50_h: float,
         w75_h: float,
-        duration_min: Optional[float] = None,
-        tLR_min: Optional[float] = None,
-        tpR_min: Optional[float] = None,
-        qpR_m3s: Optional[float] = None,
+        duration_min: float | None = None,
+        tLR_min: float | None = None,
+        tpR_min: float | None = None,
+        qpR_m3s: float | None = None,
     ) -> str:
         """
         Render Snyder UH formulas with substituted values.
@@ -918,7 +925,9 @@ class FormulaRenderer:
             f"{tD_h:.3f} \\text{{ h}} = {tD_min:.1f} \\text{{ min}}$$\n\n"
             f"$$t_p = {tL_h:.3f} + \\frac{{{tD_h:.3f}}}{{2}} = "
             f"{tp_h:.3f} \\text{{ h}} = {tp_min:.1f} \\text{{ min}}$$\n\n"
-            f"$$q_p = \\frac{{0{{,}}275 \\cdot {cp:.2f} \\cdot {area_km2:.2f}}}{{{tL_h:.3f}}} = "
+            f"$$q_p = "
+            f"\\frac{{0{{,}}275 \\cdot {cp:.2f} \\cdot {area_km2:.2f}}}"
+            f"{{{tL_h:.3f}}} = "
             f"{qp_m3s:.4f} \\text{{ m³/s/mm}}$$\n\n"
             f"$$t_b = \\frac{{0{{,}}556 \\cdot {area_km2:.2f}}}{{{qp_m3s:.4f}}} = "
             f"{tb_h:.3f} \\text{{ h}} = {tb_min:.1f} \\text{{ min}}$$\n\n"
@@ -985,7 +994,8 @@ class FormulaRenderer:
     def runoff_coefficient(pe_mm: float, p_mm: float, c: float) -> str:
         """Render runoff coefficient formula."""
         return (
-            "$$C = \\frac{P_e}{P} = " f"\\frac{{{pe_mm:.2f}}}{{{p_mm:.2f}}} = {c:.3f}$$"
+            "$$C = \\frac{P_e}{P} = "
+            f"\\frac{{{pe_mm:.2f}}}{{{p_mm:.2f}}} = {c:.3f}$$"
         )
 
 
@@ -1004,8 +1014,8 @@ class TableGenerator:
 
     @staticmethod
     def parameters_table(
-        data: List[Tuple[str, str, str]],
-        headers: Tuple[str, str, str] = ("Parametr", "Wartość", "Jednostka"),
+        data: list[tuple[str, str, str]],
+        headers: tuple[str, str, str] = ("Parametr", "Wartość", "Jednostka"),
     ) -> str:
         """
         Generate a parameters table with aligned columns.
@@ -1073,19 +1083,19 @@ class TableGenerator:
 
         if n <= max_rows:
             # Show all rows
-            for t, v in zip(times, values):
+            for t, v in zip(times, values, strict=False):
                 lines.append(f"| {t:{time_format}} | {v:{value_format}} |")
         else:
             # Show first rows, ..., last rows
             head_count = max_rows // 2
             tail_count = max_rows - head_count - 1
 
-            for t, v in zip(times[:head_count], values[:head_count]):
+            for t, v in zip(times[:head_count], values[:head_count], strict=False):
                 lines.append(f"| {t:{time_format}} | {v:{value_format}} |")
 
             lines.append("| ... | ... |")
 
-            for t, v in zip(times[-tail_count:], values[-tail_count:]):
+            for t, v in zip(times[-tail_count:], values[-tail_count:], strict=False):
                 lines.append(f"| {t:{time_format}} | {v:{value_format}} |")
 
             lines.append(f"\n*Tabela skrócona ({n} wierszy)*")
@@ -1096,7 +1106,7 @@ class TableGenerator:
     def precipitation_table(
         times: NDArray[np.float64],
         precip_mm: NDArray[np.float64],
-        effective_mm: Optional[NDArray[np.float64]] = None,
+        effective_mm: NDArray[np.float64] | None = None,
         max_rows: int = 30,
     ) -> str:
         """
@@ -1210,9 +1220,15 @@ class TableGenerator:
             "| Składnik bilansu | Wartość [mm] | Udział [%] |",
             "|:-----------------|-------------:|-----------:|",
             f"| Opad całkowity P | {total_precip_mm:.2f} | 100.0 |",
-            f"| Abstrakcja początkowa Ia | {initial_abstraction_mm:.2f} | {pct(initial_abstraction_mm)} |",
+            (
+                f"| Abstrakcja początkowa Ia | {initial_abstraction_mm:.2f} | "
+                f"{pct(initial_abstraction_mm)} |"
+            ),
             f"| Infiltracja F | {infiltration_mm:.2f} | {pct(infiltration_mm)} |",
-            f"| **Opad efektywny Pe** | **{effective_mm:.2f}** | **{pct(effective_mm)}** |",
+            (
+                f"| **Opad efektywny Pe** | **{effective_mm:.2f}** | "
+                f"**{pct(effective_mm)}** |"
+            ),
         ]
         return "\n".join(lines)
 
@@ -1325,8 +1341,14 @@ class TableGenerator:
         lines = [
             "| Wskaźnik | Symbol | Wartość | Interpretacja |",
             "|:---------|:------:|--------:|:--------------|",
-            f"| Wskaźnik formy Hortona | Cf | {form_factor:.3f} | {interpret_cf(form_factor)} |",
-            f"| Wsp. zwartości Graveliusa | Cz | {compactness:.3f} | {interpret_cz(compactness)} |",
+            (
+                f"| Wskaźnik formy Hortona | Cf | {form_factor:.3f} | "
+                f"{interpret_cf(form_factor)} |"
+            ),
+            (
+                f"| Wsp. zwartości Graveliusa | Cz | {compactness:.3f} | "
+                f"{interpret_cz(compactness)} |"
+            ),
             f"| Wsp. kolistości Millera | Ck | {circularity:.3f} | - |",
             f"| Wsp. wydłużenia Schumma | Ce | {elongation:.3f} | - |",
         ]

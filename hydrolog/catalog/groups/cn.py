@@ -88,8 +88,12 @@ COMMANDS: tuple[Command, ...] = (
     Command(
         name="cn lookup",
         operation_id="cn_lookup",
-        summary="Liczba CN z tablic TR-55 dla grupy hydrologicznej gleby i pokrycia terenu.",
-        summary_en="Curve Number from the TR-55 tables for a soil group and a land cover.",
+        summary=(
+            "Liczba CN z tablic TR-55 dla grupy hydrologicznej gleby i pokrycia terenu."
+        ),
+        summary_en=(
+            "Curve Number from the TR-55 tables for a soil group and a land cover."
+        ),
         description=(
             "Odczytuje liczbę krzywej CN (AMC II) z tablic USDA-NRCS TR-55 (National "
             "Engineering Handbook, Part 630, rozdz. 9) dla hydrologicznej grupy "
@@ -155,8 +159,14 @@ COMMANDS: tuple[Command, ...] = (
     Command(
         name="cn list",
         operation_id="cn_list",
-        summary="Pełna tablica CN TR-55: pokrycia terenu, stany hydrologiczne i CN dla grup A–D.",
-        summary_en="The whole TR-55 CN table: land covers, hydrologic conditions, CN for groups A-D.",
+        summary=(
+            "Pełna tablica CN TR-55: pokrycia terenu, stany hydrologiczne i CN "
+            "dla grup A–D."
+        ),
+        summary_en=(
+            "The whole TR-55 CN table: land covers, hydrologic conditions, CN "
+            "for groups A-D."
+        ),
         description=(
             "Zwraca całą tablicę CN (AMC II) z USDA-NRCS TR-55 używaną przez "
             "`cn lookup`: dla każdego pokrycia terenu (`land_cover`) jeden wiersz "
@@ -182,8 +192,14 @@ COMMANDS: tuple[Command, ...] = (
     Command(
         name="cn range",
         operation_id="cn_range",
-        summary="Zakres CN (min–max po stanach hydrologicznych) pokrycia terenu dla grup A–D.",
-        summary_en="CN range (min-max over hydrologic conditions) of a land cover for groups A-D.",
+        summary=(
+            "Zakres CN (min–max po stanach hydrologicznych) pokrycia terenu dla "
+            "grup A–D."
+        ),
+        summary_en=(
+            "CN range (min-max over hydrologic conditions) of a land cover "
+            "for groups A-D."
+        ),
         description=(
             "Dla wybranego pokrycia terenu zwraca przedział CN (AMC II, TR-55) "
             "w każdej hydrologicznej grupie gleby A–D: minimum i maksimum po "
@@ -207,8 +223,12 @@ COMMANDS: tuple[Command, ...] = (
     Command(
         name="cn weighted",
         operation_id="cn_weighted",
-        summary="Średnia ważona powierzchnią liczba CN zlewni złożonej z kilku pokryć/gleb.",
-        summary_en="Area-weighted Curve Number of a watershed made of several covers/soils.",
+        summary=(
+            "Średnia ważona powierzchnią liczba CN zlewni złożonej z kilku pokryć/gleb."
+        ),
+        summary_en=(
+            "Area-weighted Curve Number of a watershed made of several covers/soils."
+        ),
         description=(
             "Liczy średnią ważoną liczbę CN zlewni: CN = Σ(CN_i · w_i) / Σ w_i, "
             "gdzie w_i to powierzchnia (lub udział) części o wartości CN_i, "

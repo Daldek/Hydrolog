@@ -3,8 +3,6 @@
 Generates the section documenting precipitation temporal distribution.
 """
 
-from typing import Optional
-
 import numpy as np
 from numpy.typing import NDArray
 
@@ -24,7 +22,7 @@ def generate_hietogram_section(
     times_min: NDArray[np.float64],
     intensities_mm: NDArray[np.float64],
     distribution: str = "beta",
-    distribution_params: Optional[str] = None,
+    distribution_params: str | None = None,
     include_table: bool = True,
     max_table_rows: int = 30,
 ) -> str:

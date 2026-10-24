@@ -428,16 +428,17 @@ def _table_from_json(path: Path, document: Any) -> Table:
                 source=path, columns=("values",), data={"values": list(document)}
             )
         source.fail(f"unsupported list content; expected {shapes}", reason="shape")
-    if isinstance(document, Mapping) and document:
-        if all(isinstance(value, list) for value in document.values()):
-            lengths = {len(value) for value in document.values()}
-            if len(lengths) != 1:
-                source.fail(
-                    "the columns have different lengths", reason="ragged_columns"
-                )
-            columns = tuple(str(key) for key in document)
-            data = {str(key): list(value) for key, value in document.items()}
-            return Table(source=path, columns=columns, data=data)
+    if (
+        isinstance(document, Mapping)
+        and document
+        and all(isinstance(value, list) for value in document.values())
+    ):
+        lengths = {len(value) for value in document.values()}
+        if len(lengths) != 1:
+            source.fail("the columns have different lengths", reason="ragged_columns")
+        columns = tuple(str(key) for key in document)
+        data = {str(key): list(value) for key, value in document.items()}
+        return Table(source=path, columns=columns, data=data)
     source.fail(f"unsupported JSON structure; expected {shapes}", reason="shape")
 
 

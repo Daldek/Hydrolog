@@ -78,12 +78,7 @@ class TestScalars:
     def test_english_summary(self):
         text = _render({"ok": False, "note": None}, inputs={"mode": "x"}, lang="en")
         assert text == (
-            "demo run: Summary.\n"
-            "Input:\n"
-            "  mode: x\n"
-            "Result:\n"
-            "  ok:   no\n"
-            "  note: n/a"
+            "demo run: Summary.\nInput:\n  mode: x\nResult:\n  ok:   no\n  note: n/a"
         )
 
     def test_unit_is_not_added_to_text_values(self):

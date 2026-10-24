@@ -3,14 +3,14 @@
 import numpy as np
 import pytest
 
-from hydrolog.precipitation import (
-    HietogramResult,
-    BlockHietogram,
-    TriangularHietogram,
-    BetaHietogram,
-    EulerIIHietogram,
-)
 from hydrolog.exceptions import InvalidParameterError
+from hydrolog.precipitation import (
+    BetaHietogram,
+    BlockHietogram,
+    EulerIIHietogram,
+    HietogramResult,
+    TriangularHietogram,
+)
 
 
 class TestHietogramResult:
@@ -288,12 +288,12 @@ class TestHietogramImport:
     def test_import_from_precipitation_module(self):
         """Test that classes can be imported from hydrolog.precipitation."""
         from hydrolog.precipitation import (
-            HietogramResult,
-            Hietogram,
-            BlockHietogram,
-            TriangularHietogram,
             BetaHietogram,
+            BlockHietogram,
             EulerIIHietogram,
+            Hietogram,
+            HietogramResult,
+            TriangularHietogram,
         )
 
         assert HietogramResult is not None

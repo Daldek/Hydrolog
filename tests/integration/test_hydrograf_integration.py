@@ -7,12 +7,13 @@ calculations.
 """
 
 import json
+
 import pytest
 
-from hydrolog.morphometry import WatershedParameters, WatershedGeometry, TerrainAnalysis
-from hydrolog.runoff import HydrographGenerator, SCSCN
-from hydrolog.precipitation import BetaHietogram, HietogramResult
-from hydrolog.time import ConcentrationTime
+from hydrolog.exceptions import InvalidParameterError
+from hydrolog.morphometry import TerrainAnalysis, WatershedGeometry, WatershedParameters
+from hydrolog.precipitation import BetaHietogram
+from hydrolog.runoff import SCSCN, HydrographGenerator
 
 
 class TestHydrografIntegration:
@@ -307,7 +308,7 @@ class TestHydrografDataValidation:
             "cn": 150,  # Invalid: must be 0-100
         }
 
-        with pytest.raises(Exception):  # InvalidParameterError
+        with pytest.raises(InvalidParameterError):  # InvalidParameterError
             WatershedParameters.from_dict(invalid_data)
 
     def test_negative_area_raises_error(self):
@@ -320,7 +321,7 @@ class TestHydrografDataValidation:
             "elevation_max_m": 520.0,
         }
 
-        with pytest.raises(Exception):
+        with pytest.raises(InvalidParameterError):
             WatershedParameters.from_dict(invalid_data)
 
     def test_elevation_max_less_than_min_raises_error(self):
@@ -333,7 +334,7 @@ class TestHydrografDataValidation:
             "elevation_max_m": 150.0,  # Lower
         }
 
-        with pytest.raises(Exception):
+        with pytest.raises(InvalidParameterError):
             WatershedParameters.from_dict(invalid_data)
 
     def test_missing_required_field_raises_error(self):
@@ -344,7 +345,7 @@ class TestHydrografDataValidation:
             # Missing: length_km, elevation_min_m, elevation_max_m
         }
 
-        with pytest.raises(Exception):
+        with pytest.raises(TypeError):
             WatershedParameters.from_dict(incomplete_data)
 
     def test_nrcs_without_cn_raises_error(self):
@@ -360,5 +361,5 @@ class TestHydrografDataValidation:
 
         params = WatershedParameters.from_dict(data)
 
-        with pytest.raises(Exception):
+        with pytest.raises(InvalidParameterError):
             params.calculate_tc(method="nrcs")

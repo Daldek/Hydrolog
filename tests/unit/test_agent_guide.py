@@ -27,11 +27,11 @@ from hydrolog.agent_guide import (
     _FLOWS,
     _GROUP_TITLES,
     _PRINCIPLES,
+    GuideFormat,
     _checked,
     _Flow,
     _render,
     _Step,
-    GuideFormat,
     agent_guide,
     principles,
 )
@@ -46,7 +46,6 @@ from hydrolog.catalog.dispatch import COMMANDS_SCHEMA
 from hydrolog.catalog.envelope import RESULT_SCHEMA, FileRecord, Notice, sha256_file
 from hydrolog.cli.main import main
 from hydrolog.cli.parser import parse_command_line
-from hydrolog.operations import commands_guide
 from hydrolog.exceptions import (
     ERROR_CODES,
     ERROR_SCHEMA,
@@ -57,6 +56,7 @@ from hydrolog.exceptions import (
     OutputError,
     error_document,
 )
+from hydrolog.operations import commands_guide
 
 REPOSITORY = Path(__file__).resolve().parents[2]
 FIXTURES = REPOSITORY / "tests" / "fixtures"
@@ -107,7 +107,8 @@ def code_spans(markdown: str) -> list[str]:
     return re.findall(r"`([^`\n]+)`", markdown)
 
 
-# --- derived files of the repository ---------------------------------------------------
+# --- derived files of the repository
+# ---------------------------------------------------
 
 
 @pytest.mark.parametrize(("name", "format"), GUIDES.items())
@@ -124,7 +125,8 @@ def test_repository_guides_are_the_bytes_of_the_generator(name, format):
 def test_the_documented_command_regenerates_the_repository_file(
     name, format, tmp_path, capsys
 ):
-    """``--format F --lang pl --path FILE`` (the command in the guide) gives the file."""
+    """``--format F --lang pl --path FILE`` (the command in the guide) gives the
+    file."""
     target = tmp_path / name
 
     code = main(
@@ -154,12 +156,14 @@ def test_guide_is_plain_deterministic_text(format, lang, tmp_path, monkeypatch):
     assert not re.search(r"\b20\d\d-\d\d-\d\d\b", unlinked)  # no generation date
 
 
-# --- the catalog in the guide ----------------------------------------------------------
+# --- the catalog in the guide
+# ----------------------------------------------------------
 
 
 @pytest.mark.parametrize("lang", LANGS)
 def test_commands_table_follows_the_catalog(lang):
-    """Every command, once, in catalog order, with its tool, summary, options, effect."""
+    """Every command, once, in catalog order, with its tool, summary, options,
+    effect."""
     table = command_rows(text("agents", lang))
 
     assert [cells[0] for cells in table] == [f"`{c.name}`" for c in COMMANDS]
@@ -229,7 +233,8 @@ def test_error_table_is_the_registry(lang):
 
 @pytest.mark.parametrize("lang", LANGS)
 def test_envelope_and_error_document_fields_are_all_documented(lang):
-    """A field added to the envelope or the error document must be added to the guide."""
+    """A field added to the envelope or the error document must be added to the
+    guide."""
     guide = text("agents", lang)
     envelope = run_command("commands list").to_dict()
     envelope["files"] = [FileRecord("/x", "00").to_dict()]
@@ -259,7 +264,8 @@ def test_schema_names_are_the_current_ones(format, lang):
     assert {RESULT_SCHEMA, ERROR_SCHEMA} <= mentioned
 
 
-# --- the rules --------------------------------------------------------------------------
+# --- the rules
+# --------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize("lang", LANGS)
@@ -294,7 +300,8 @@ def test_unknown_language_is_a_validation_error():
     assert caught.value.details["option"] == "lang"
 
 
-# --- the flows --------------------------------------------------------------------------
+# --- the flows
+# --------------------------------------------------------------------------
 
 PATHS = {
     "/dane/hydrolog/zlewnia.json": FIXTURES / "watershed_example.json",
@@ -441,7 +448,8 @@ def test_result_fields_named_in_the_flows_exist(command, fields, tmp_path):
 
 
 def test_weighted_cn_of_the_flow_uses_the_tr55_numbers_of_the_row_it_names():
-    """``cn list`` -> ``cn weighted``: the parts are the CNs of meadow in good condition."""
+    """``cn list`` -> ``cn weighted``: the parts are the CNs of meadow in good
+    condition."""
     step = next(s for flow in _FLOWS for s in flow.steps if s.command == "cn weighted")
     expected = [
         run_command(
@@ -524,7 +532,8 @@ def test_a_group_without_a_title_is_shown_by_its_name(monkeypatch):
     assert "- `tc` — tc: `faa`" in text("llms")
 
 
-# --- links and names in the guide --------------------------------------------------------
+# --- links and names in the guide
+# --------------------------------------------------------
 
 
 @pytest.mark.parametrize("format", GUIDES.values())
@@ -599,7 +608,8 @@ def test_llms_txt_links_point_at_files_of_the_repository(lang):
     assert base + "AGENTS.md" in links
 
 
-# --- templates and the engine -------------------------------------------------------------
+# --- templates and the engine
+# -------------------------------------------------------------
 
 
 def test_render_replaces_markers_and_rejects_unknown_or_repeated_blocks():
@@ -621,7 +631,8 @@ def test_render_replaces_markers_and_rejects_unknown_or_repeated_blocks():
 
 
 def test_templates_ship_as_package_data():
-    """Every template file is matched by the ``package-data`` patterns of the package."""
+    """Every template file is matched by the ``package-data`` patterns of the
+    package."""
     pyproject = tomllib.loads(
         (REPOSITORY / "pyproject.toml").read_text(encoding="utf-8")
     )
@@ -638,7 +649,8 @@ def test_templates_ship_as_package_data():
         assert any(fnmatch(template, pattern) for pattern in patterns), template
 
 
-# --- the guide API -------------------------------------------------------------------------
+# --- the guide API
+# -------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize(
@@ -660,7 +672,8 @@ def test_language_only_changes_the_prose_not_the_identifiers():
     assert text("agents", "pl") != text("agents", "en")
 
 
-# --- commands guide ---------------------------------------------------------------------------
+# --- commands guide
+# ---------------------------------------------------------------------------
 
 
 def test_declared_formats_are_the_guide_formats():

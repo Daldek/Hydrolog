@@ -22,7 +22,6 @@ maksymalnych. Załącznik 2, Tabela C.2.
 
 import warnings
 from dataclasses import dataclass
-from typing import Optional, Union
 
 import numpy as np
 from numpy.typing import NDArray
@@ -212,7 +211,8 @@ class NashIUH:
     The Nash IUH formula is:
 
     .. math::
-        u(t) = \\frac{1}{K \\cdot \\Gamma(n)} \\cdot \\left(\\frac{t}{K}\\right)^{n-1} \\cdot e^{-t/K}
+        u(t) = \\frac{1}{K \\cdot \\Gamma(n)}
+            \\cdot \\left(\\frac{t}{K}\\right)^{n-1} \\cdot e^{-t/K}
 
     Key properties:
     - Lag time (first moment): tlag = n × K
@@ -242,8 +242,8 @@ class NashIUH:
         self,
         n: float,
         k_min: float,
-        area_km2: Optional[float] = None,
-        lutz_params: Optional[LutzCalculationResult] = None,
+        area_km2: float | None = None,
+        lutz_params: LutzCalculationResult | None = None,
     ) -> None:
         """
         Initialize Nash IUH generator.
@@ -348,8 +348,8 @@ class NashIUH:
     def generate(
         self,
         timestep_min: float = 5.0,
-        duration_min: Optional[float] = None,
-    ) -> Union[IUHResult, NashUHResult]:
+        duration_min: float | None = None,
+    ) -> IUHResult | NashUHResult:
         """
         Generate Nash Unit Hydrograph.
 
@@ -405,7 +405,7 @@ class NashIUH:
     def generate_iuh(
         self,
         timestep_min: float = 5.0,
-        duration_min: Optional[float] = None,
+        duration_min: float | None = None,
     ) -> IUHResult:
         """
         Generate Nash Instantaneous Unit Hydrograph.
@@ -477,7 +477,7 @@ class NashIUH:
         area_km2: float,
         duration_min: float,
         timestep_min: float = 5.0,
-        total_duration_min: Optional[float] = None,
+        total_duration_min: float | None = None,
     ) -> NashUHResult:
         """
         Convert IUH to D-minute Unit Hydrograph.
@@ -617,7 +617,7 @@ class NashIUH:
     def from_tc(
         cls,
         tc_min: float,
-        n: Optional[float] = None,
+        n: float | None = None,
         lag_ratio: float = 0.6,
     ) -> "NashIUH":
         """
@@ -726,7 +726,7 @@ class NashIUH:
         manning_n: float,
         urban_pct: float = 0.0,
         forest_pct: float = 0.0,
-        area_km2: Optional[float] = None,
+        area_km2: float | None = None,
     ) -> "NashIUH":
         """
         Create NashIUH using Lutz method for ungauged catchments.
@@ -890,8 +890,8 @@ class NashIUH:
             N = brentq(objective, 1.1, 20.0, xtol=1e-6)
         except ValueError as e:
             raise InvalidParameterError(
-                f"Could not find valid N for f(N) = {f_N_target:.4f}. " f"Error: {e}"
-            )
+                f"Could not find valid N for f(N) = {f_N_target:.4f}. Error: {e}"
+            ) from e
 
         # Step 6: Calculate K [hours], convert to minutes
         K_hours = tp_hours / (N - 1)

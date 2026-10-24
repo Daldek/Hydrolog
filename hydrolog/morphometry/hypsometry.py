@@ -1,7 +1,6 @@
 """Hypsometric curve analysis for watershed characterization."""
 
 from dataclasses import dataclass
-from typing import Optional
 
 import numpy as np
 from numpy.typing import NDArray
@@ -78,7 +77,7 @@ class HypsometricCurve:
     def __init__(
         self,
         elevations: NDArray[np.float64],
-        cell_areas: Optional[NDArray[np.float64]] = None,
+        cell_areas: NDArray[np.float64] | None = None,
     ) -> None:
         """
         Initialize hypsometric curve analysis.

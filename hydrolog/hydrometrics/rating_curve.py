@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import ClassVar, Optional
+from dataclasses import dataclass
+from typing import ClassVar
 
 import numpy as np
 from numpy.typing import NDArray
@@ -187,7 +187,7 @@ class RatingCurve:
 
         self._h: NDArray[np.float64] = water_levels
         self._q: NDArray[np.float64] = discharges
-        self._result: Optional[RatingCurveResult] = None
+        self._result: RatingCurveResult | None = None
 
     # ------------------------------------------------------------------
     # Public API
@@ -473,7 +473,7 @@ class WaterLevelFrequency:
 
         self._h: NDArray[np.float64] = water_levels
         self._bin_width: float = float(bin_width)
-        self._freq_result: Optional[FrequencyDistributionResult] = None
+        self._freq_result: FrequencyDistributionResult | None = None
 
     # ------------------------------------------------------------------
     # Public API
@@ -498,8 +498,8 @@ class WaterLevelFrequency:
         while bin_edges[-1] <= h_max:
             bin_edges = np.append(bin_edges, bin_edges[-1] + self._bin_width)
 
-        counts, _ = np.histogram(self._h, bins=bin_edges)
-        counts = counts.astype(np.float64)
+        histogram, _ = np.histogram(self._h, bins=bin_edges)
+        counts = histogram.astype(np.float64)
         bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])
 
         total = float(counts.sum())

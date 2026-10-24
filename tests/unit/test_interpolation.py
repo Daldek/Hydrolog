@@ -1,20 +1,17 @@
 """Unit tests for hydrolog.precipitation.interpolation module."""
 
-import pytest
 import numpy as np
+import pytest
 
+from hydrolog.exceptions import InvalidParameterError
 from hydrolog.precipitation.interpolation import (
     Station,
-    ThiessenResult,
-    IDWResult,
-    IsohyetResult,
-    thiessen_polygons,
-    inverse_distance_weighting,
     areal_precipitation_idw,
-    isohyet_method,
     arithmetic_mean,
+    inverse_distance_weighting,
+    isohyet_method,
+    thiessen_polygons,
 )
-from hydrolog.exceptions import InvalidParameterError
 
 
 class TestStation:

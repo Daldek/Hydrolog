@@ -25,8 +25,8 @@ Example
 ... )
 """
 
-from hydrolog.reports.generator import HydrologyReportGenerator, ReportConfig
 from hydrolog.reports.formatters import FormulaRenderer, TableGenerator
+from hydrolog.reports.generator import HydrologyReportGenerator, ReportConfig
 
 __all__ = [
     "HydrologyReportGenerator",

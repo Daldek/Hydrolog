@@ -4,25 +4,18 @@ This module provides functions for visualizing station locations
 and interpolation weights.
 """
 
-from typing import Optional
-
 import matplotlib.pyplot as plt
 import numpy as np
 
 from hydrolog.precipitation.interpolation import Station
 
-from hydrolog.visualization.styles import (
-    get_color,
-    PALETTE,
-)
-
 
 def plot_stations_map(
     stations: list[Station],
-    weights: Optional[dict[str, float]] = None,
-    title: Optional[str] = None,
+    weights: dict[str, float] | None = None,
+    title: str | None = None,
     show_values: bool = True,
-    ax: Optional[plt.Axes] = None,
+    ax: plt.Axes | None = None,
     figsize: tuple = (10, 8),
 ) -> plt.Figure:
     """
@@ -100,12 +93,12 @@ def plot_stations_map(
     )
 
     # Add colorbar
-    cbar = plt.colorbar(scatter, ax=ax, label="Opad [mm]", pad=0.02)
+    plt.colorbar(scatter, ax=ax, label="Opad [mm]", pad=0.02)
 
     # Add labels
     if show_values:
-        for i, (x, y, precip, sid) in enumerate(
-            zip(x_coords, y_coords, precip_values, station_ids)
+        for _i, (x, y, precip, sid) in enumerate(
+            zip(x_coords, y_coords, precip_values, station_ids, strict=False)
         ):
             # Station ID above marker
             ax.annotate(

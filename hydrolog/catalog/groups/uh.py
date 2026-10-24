@@ -82,8 +82,14 @@ COMMANDS: tuple[Command, ...] = (
     Command(
         name="uh scs",
         operation_id="uh_scs",
-        summary="Hydrogram jednostkowy SCS (NRCS, TR-55) z powierzchni i czasu koncentracji.",
-        summary_en="SCS (NRCS, TR-55) unit hydrograph from the area and the time of concentration.",
+        summary=(
+            "Hydrogram jednostkowy SCS (NRCS, TR-55) z powierzchni i czasu "
+            "koncentracji."
+        ),
+        summary_en=(
+            "SCS (NRCS, TR-55) unit hydrograph from the area and the time of "
+            "concentration."
+        ),
         description=(
             "Bezwymiarowy hydrogram jednostkowy SCS (NRCS, TR-55) dla zlewni o "
             "powierzchni A i czasie koncentracji tc: czas opóźnienia tlag = 0,6·tc; "
@@ -128,8 +134,14 @@ COMMANDS: tuple[Command, ...] = (
     Command(
         name="uh nash",
         operation_id="uh_nash",
-        summary="Hydrogram jednostkowy Nasha (kaskada zbiorników): n i K, metoda Lutza lub regresja miejska.",
-        summary_en="Nash cascade unit hydrograph: direct n and K, Lutz method or urban regression.",
+        summary=(
+            "Hydrogram jednostkowy Nasha (kaskada zbiorników): n i K, metoda "
+            "Lutza lub regresja miejska."
+        ),
+        summary_en=(
+            "Nash cascade unit hydrograph: direct n and K, Lutz method or "
+            "urban regression."
+        ),
         description=(
             "Hydrogram jednostkowy Nasha (1957): kaskada n jednakowych zbiorników "
             "liniowych o stałej magazynowania K [min]; IUH u(t) = (t/K)^(n−1)·"
@@ -265,7 +277,7 @@ COMMANDS: tuple[Command, ...] = (
                 name="lutz_urban_pct",
                 type="number",
                 description=(
-                    "Lutz: udział terenów zurbanizowanych U [%]; 0–100; " "domyślnie 0."
+                    "Lutz: udział terenów zurbanizowanych U [%]; 0–100; domyślnie 0."
                 ),
                 description_en=(
                     "Lutz: share of urbanized area U [%]; 0-100; default 0."
@@ -374,8 +386,14 @@ COMMANDS: tuple[Command, ...] = (
     Command(
         name="uh clark",
         operation_id="uh_clark",
-        summary="Hydrogram jednostkowy Clarka (translacja + zbiornik liniowy) z tc oraz R lub R/tc.",
-        summary_en="Clark unit hydrograph (translation + linear reservoir) from tc and R or R/tc.",
+        summary=(
+            "Hydrogram jednostkowy Clarka (translacja + zbiornik liniowy) z tc "
+            "oraz R lub R/tc."
+        ),
+        summary_en=(
+            "Clark unit hydrograph (translation + linear reservoir) from tc "
+            "and R or R/tc."
+        ),
         description=(
             "Hydrogram jednostkowy Clarka (1945) w dwóch krokach: (1) translacja "
             "histogramem czas–powierzchnia o krzywej eliptycznej HEC-HMS, "
@@ -480,8 +498,14 @@ COMMANDS: tuple[Command, ...] = (
     Command(
         name="uh snyder",
         operation_id="uh_snyder",
-        summary="Syntetyczny hydrogram jednostkowy Snydera z L, Lc oraz współczynników Ct i Cp.",
-        summary_en="Snyder synthetic unit hydrograph from L, Lc and the coefficients Ct and Cp.",
+        summary=(
+            "Syntetyczny hydrogram jednostkowy Snydera z L, Lc oraz "
+            "współczynników Ct i Cp."
+        ),
+        summary_en=(
+            "Snyder synthetic unit hydrograph from L, Lc and the coefficients "
+            "Ct and Cp."
+        ),
         description=(
             "Syntetyczny hydrogram jednostkowy Snydera (1938) w wersji metrycznej. "
             "Lag zlewni tL = Ct·(L·Lc)^0,3 [h], gdzie L to długość cieku "
@@ -558,8 +582,7 @@ COMMANDS: tuple[Command, ...] = (
                     "domyślnie 1,5."
                 ),
                 description_en=(
-                    "Time coefficient Ct (SI), > 0; typically 1.35-1.65; "
-                    "default 1.5."
+                    "Time coefficient Ct (SI), > 0; typically 1.35-1.65; default 1.5."
                 ),
                 exclusive_minimum=0,
                 default=1.5,
@@ -568,7 +591,7 @@ COMMANDS: tuple[Command, ...] = (
                 name="cp",
                 type="number",
                 description=(
-                    "Współczynnik szczytowy Cp, > 0; typowo 0,4–0,8; domyślnie " "0,6."
+                    "Współczynnik szczytowy Cp, > 0; typowo 0,4–0,8; domyślnie 0,6."
                 ),
                 description_en=(
                     "Peak coefficient Cp, > 0; typically 0.4-0.8; default 0.6."

@@ -290,10 +290,7 @@ class ConcentrationTime:
 
         # Calculate maximum retention S [mm]
         # S = (25400/CN) - 254 (metric version of (1000/CN) - 10 in inches)
-        if cn == 100:
-            retention_mm = 0.0
-        else:
-            retention_mm = (25400.0 / cn) - 254.0
+        retention_mm = 0.0 if cn == 100 else 25400.0 / cn - 254.0
 
         # tc formula (from tlag / 0.6): tc [min]
         tc_min: float = (
@@ -373,7 +370,9 @@ class ConcentrationTime:
 
         Examples
         --------
-        >>> ConcentrationTime.giandotti(area_km2=45.0, length_km=12.0, elevation_diff_m=350.0)
+        >>> ConcentrationTime.giandotti(
+        ...     area_km2=45.0, length_km=12.0, elevation_diff_m=350.0
+        ... )
         179.7...
         """
         if area_km2 <= 0:
@@ -620,7 +619,9 @@ class ConcentrationTime:
 
         Examples
         --------
-        >>> ConcentrationTime.kerby(length_km=0.10, slope_m_per_m=0.008, retardance=0.40)
+        >>> ConcentrationTime.kerby(
+        ...     length_km=0.10, slope_m_per_m=0.008, retardance=0.40
+        ... )
         24.9...
         """
         if length_km <= 0:
@@ -775,8 +776,7 @@ class ConcentrationTime:
             )
         if overland_slope_m_per_m <= 0:
             raise InvalidParameterError(
-                f"overland_slope_m_per_m must be positive, "
-                f"got {overland_slope_m_per_m}"
+                f"overland_slope_m_per_m must be positive, got {overland_slope_m_per_m}"
             )
         if retardance <= 0:
             raise InvalidParameterError(
@@ -788,8 +788,7 @@ class ConcentrationTime:
             )
         if channel_slope_m_per_m <= 0:
             raise InvalidParameterError(
-                f"channel_slope_m_per_m must be positive, "
-                f"got {channel_slope_m_per_m}"
+                f"channel_slope_m_per_m must be positive, got {channel_slope_m_per_m}"
             )
 
         # Warn if overland params are outside Kerby typical ranges

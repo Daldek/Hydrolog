@@ -4,14 +4,11 @@ This module provides functions for visualizing SCS-CN water balance
 and runoff relationships.
 """
 
-from typing import Optional
-
 import matplotlib.pyplot as plt
 import numpy as np
 
 from hydrolog.runoff.generator import HydrographGeneratorResult
-from hydrolog.runoff.scs_cn import SCSCN, AMC
-
+from hydrolog.runoff.scs_cn import AMC, SCSCN
 from hydrolog.visualization.styles import (
     get_color,
     get_label,
@@ -21,8 +18,8 @@ from hydrolog.visualization.styles import (
 def plot_water_balance(
     result: HydrographGeneratorResult,
     style: str = "bars",
-    title: Optional[str] = None,
-    ax: Optional[plt.Axes] = None,
+    title: str | None = None,
+    ax: plt.Axes | None = None,
     figsize: tuple = (10, 6),
 ) -> plt.Figure:
     """
@@ -91,7 +88,7 @@ def _plot_balance_bars(ax: plt.Axes, P: float, Ia: float, F: float, Pe: float) -
 
     bottom: float = 0.0
     bars = []
-    for value, label, color in zip(components, labels, colors):
+    for value, label, color in zip(components, labels, colors, strict=False):
         bar = ax.bar(
             "Bilans",
             value,
@@ -135,9 +132,9 @@ def _plot_balance_pie(ax: plt.Axes, P: float, Ia: float, F: float, Pe: float) ->
     """Create pie chart for water balance."""
     values = [Ia, F, Pe]
     labels = [
-        f"Ia\n{Ia:.1f} mm\n({Ia/P*100:.1f}%)",
-        f"F\n{F:.1f} mm\n({F/P*100:.1f}%)",
-        f"Pe\n{Pe:.1f} mm\n({Pe/P*100:.1f}%)",
+        f"Ia\n{Ia:.1f} mm\n({Ia / P * 100:.1f}%)",
+        f"F\n{F:.1f} mm\n({F / P * 100:.1f}%)",
+        f"Pe\n{Pe:.1f} mm\n({Pe / P * 100:.1f}%)",
     ]
     colors = ["#8c564b", "#bcbd22", get_color("effective_precip")]
     explode = (0, 0, 0.05)  # Slight explosion for Pe
@@ -149,7 +146,7 @@ def _plot_balance_pie(ax: plt.Axes, P: float, Ia: float, F: float, Pe: float) ->
         explode=explode,
         autopct="",
         startangle=90,
-        wedgeprops=dict(edgecolor="white", linewidth=2),
+        wedgeprops={"edgecolor": "white", "linewidth": 2},
     )
 
     # Add center text
@@ -169,8 +166,8 @@ def plot_cn_curve(
     p_range: tuple = (0, 150),
     amc_variants: bool = True,
     ia_coefficient: float = 0.2,
-    title: Optional[str] = None,
-    ax: Optional[plt.Axes] = None,
+    title: str | None = None,
+    ax: plt.Axes | None = None,
     figsize: tuple = (10, 6),
 ) -> plt.Figure:
     """

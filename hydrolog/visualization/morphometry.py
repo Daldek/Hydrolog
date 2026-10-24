@@ -4,18 +4,15 @@ This module provides functions for visualizing hypsometric curves
 and elevation distributions.
 """
 
-from typing import Optional
-
 import matplotlib.pyplot as plt
 import numpy as np
 from numpy.typing import NDArray
 
 from hydrolog.morphometry.hypsometry import HypsometricResult
-
 from hydrolog.visualization.styles import (
+    add_stats_box,
     get_color,
     get_label,
-    add_stats_box,
 )
 
 
@@ -23,8 +20,8 @@ def plot_hypsometric_curve(
     result: HypsometricResult,
     show_integral: bool = True,
     show_reference: bool = True,
-    title: Optional[str] = None,
-    ax: Optional[plt.Axes] = None,
+    title: str | None = None,
+    ax: plt.Axes | None = None,
     figsize: tuple = (8, 8),
 ) -> plt.Figure:
     """
@@ -92,7 +89,7 @@ def plot_hypsometric_curve(
             fontweight="bold",
             ha="center",
             va="center",
-            bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+            bbox={"boxstyle": "round", "facecolor": "white", "alpha": 0.8},
         )
 
     # Reference curves for interpretation
@@ -164,8 +161,8 @@ def plot_hypsometric_curve(
 def plot_elevation_histogram(
     elevations: NDArray[np.float64],
     bins: int = 20,
-    title: Optional[str] = None,
-    ax: Optional[plt.Axes] = None,
+    title: str | None = None,
+    ax: plt.Axes | None = None,
     figsize: tuple = (10, 6),
 ) -> plt.Figure:
     """

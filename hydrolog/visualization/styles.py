@@ -4,10 +4,7 @@ This module provides consistent styling across all visualization functions,
 including color palettes, Polish labels, and matplotlib/seaborn configuration.
 """
 
-from typing import Optional
-
 import matplotlib.pyplot as plt
-import numpy as np
 
 try:
     import seaborn as sns
@@ -200,7 +197,7 @@ def get_color(key: str) -> str:
 def format_time_axis(
     ax: plt.Axes,
     unit: str = "min",
-    max_time: Optional[float] = None,
+    max_time: float | None = None,
 ) -> None:
     """
     Format time axis with appropriate label and ticks.
@@ -268,8 +265,8 @@ def add_peak_annotation(
         fontsize=10,
         ha="left",
         va="bottom",
-        bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.8),
-        arrowprops=dict(arrowstyle="->", connectionstyle="arc3,rad=0.2"),
+        bbox={"boxstyle": "round,pad=0.3", "facecolor": "white", "alpha": 0.8},
+        arrowprops={"arrowstyle": "->", "connectionstyle": "arc3,rad=0.2"},
     )
 
 
@@ -312,7 +309,7 @@ def add_watermark(
 
 def create_stats_text(
     stats: dict,
-    title: Optional[str] = None,
+    title: str | None = None,
 ) -> str:
     """
     Create formatted text for statistics display.
@@ -360,7 +357,7 @@ def add_stats_box(
     ax: plt.Axes,
     stats: dict,
     loc: str = "upper right",
-    title: Optional[str] = None,
+    title: str | None = None,
 ) -> None:
     """
     Add statistics text box to axes.
@@ -396,6 +393,6 @@ def add_stats_box(
         fontsize=9,
         verticalalignment=va,
         horizontalalignment=ha,
-        bbox=dict(boxstyle="round", facecolor="white", alpha=0.9),
+        bbox={"boxstyle": "round", "facecolor": "white", "alpha": 0.9},
         family="monospace",
     )

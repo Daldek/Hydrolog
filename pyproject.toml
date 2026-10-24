@@ -53,17 +53,6 @@ all = [
     "matplotlib>=3.7",
     "seaborn>=0.12",
 ]
-dev = [
-    "pytest>=7.0",
-    "pytest-cov>=4.0",
-    "black>=23.0",
-    "mypy>=1.0",
-    "flake8>=6.0",
-    "jsonschema>=4.18",
-    "rasterio>=1.3",
-    "pyproj>=3.6",
-    "mcp>=2.3,<3",
-]
 
 [project.scripts]
 hydrolog = "hydrolog.cli.main:main"
@@ -80,13 +69,32 @@ include = ["hydrolog*"]
 [tool.setuptools.package-data]
 hydrolog = ["_data/agents/*.md"]
 
-[tool.black]
+[dependency-groups]
+dev = [
+    "ruff>=0.8",
+    "mypy>=1.13",
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "jsonschema>=4.18",
+]
+
+[tool.ruff]
+target-version = "py312"
 line-length = 88
-target-version = ["py312"]
-include = '\.pyi?$'
+# Local Claude Code settings and temporary agent worktrees (also in .gitignore);
+# notebooks and Markdown code blocks are documentation examples.
+extend-exclude = [".claude", "*.ipynb", "*.md"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "C4"]
+
+[tool.ruff.format]
+quote-style = "double"
 
 [tool.mypy]
 python_version = "3.12"
+files = ["hydrolog"]
+exclude = ['^\.claude/']
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
@@ -100,7 +108,13 @@ ignore_missing_imports = true
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
-addopts = "-v"
+# The default run and the gate exclude `live` (DEV-10.1); `-m live` replaces it.
+addopts = "--strict-markers -m 'not live' --tb=short"
+markers = [
+    "live: real network services (none in this project); run on demand",
+    "slow: more than ~10 s or Docker",
+    "db: needs a database (none in this project)",
+]
 
 [tool.coverage.run]
 source = ["hydrolog"]

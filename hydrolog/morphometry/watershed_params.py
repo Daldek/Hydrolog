@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, dataclass, field
-from typing import TYPE_CHECKING, Any, Optional, cast
+from dataclasses import asdict, dataclass
+from typing import TYPE_CHECKING, Any, cast
 
 from hydrolog.exceptions import InvalidParameterError
 
@@ -156,28 +156,28 @@ class WatershedParameters:
     elevation_max_m: float
 
     # Optional parameters
-    name: Optional[str] = None
-    elevation_mean_m: Optional[float] = None
-    mean_slope_m_per_m: Optional[float] = None
-    channel_length_km: Optional[float] = None
-    channel_slope_m_per_m: Optional[float] = None
-    cn: Optional[int] = None
-    source: Optional[str] = None
-    crs: Optional[str] = None
+    name: str | None = None
+    elevation_mean_m: float | None = None
+    mean_slope_m_per_m: float | None = None
+    channel_length_km: float | None = None
+    channel_slope_m_per_m: float | None = None
+    cn: int | None = None
+    source: str | None = None
+    crs: str | None = None
 
     # FAA concentration time
-    runoff_coeff: Optional[float] = None
+    runoff_coeff: float | None = None
 
     # Kerby / Kerby-Kirpich concentration time
-    retardance: Optional[float] = None
-    overland_length_km: Optional[float] = None
-    overland_slope_m_per_m: Optional[float] = None
+    retardance: float | None = None
+    overland_length_km: float | None = None
+    overland_slope_m_per_m: float | None = None
 
     # Nash Lutz / Snyder unit hydrograph
-    Lc_km: Optional[float] = None
-    manning_n: Optional[float] = None
-    urban_pct: Optional[float] = None
-    forest_pct: Optional[float] = None
+    Lc_km: float | None = None
+    manning_n: float | None = None
+    urban_pct: float | None = None
+    forest_pct: float | None = None
 
     def __post_init__(self) -> None:
         """Validate parameters after initialization."""
@@ -206,7 +206,8 @@ class WatershedParameters:
             raise InvalidParameterError(f"cn must be 0-100, got {self.cn}")
         if self.mean_slope_m_per_m is not None and self.mean_slope_m_per_m < 0:
             raise InvalidParameterError(
-                f"mean_slope_m_per_m must be non-negative, got {self.mean_slope_m_per_m}"
+                f"mean_slope_m_per_m must be non-negative, got "
+                f"{self.mean_slope_m_per_m}"
             )
         if self.channel_length_km is not None and self.channel_length_km <= 0:
             raise InvalidParameterError(
@@ -214,7 +215,8 @@ class WatershedParameters:
             )
         if self.channel_slope_m_per_m is not None and self.channel_slope_m_per_m < 0:
             raise InvalidParameterError(
-                f"channel_slope_m_per_m must be non-negative, got {self.channel_slope_m_per_m}"
+                f"channel_slope_m_per_m must be non-negative, got "
+                f"{self.channel_slope_m_per_m}"
             )
         if self.runoff_coeff is not None and (
             self.runoff_coeff <= 0 or self.runoff_coeff > 1.0
@@ -269,7 +271,7 @@ class WatershedParameters:
         return self.elevation_max_m - self.elevation_min_m
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "WatershedParameters":
+    def from_dict(cls, data: dict[str, Any]) -> WatershedParameters:
         """
         Create WatershedParameters from a dictionary.
 
@@ -333,7 +335,7 @@ class WatershedParameters:
         return cls(**filtered_data)
 
     @classmethod
-    def from_json(cls, json_str: str) -> "WatershedParameters":
+    def from_json(cls, json_str: str) -> WatershedParameters:
         """
         Create WatershedParameters from a JSON string.
 
@@ -377,7 +379,7 @@ class WatershedParameters:
         # Remove None values for cleaner output
         return {k: v for k, v in result.items() if v is not None}
 
-    def to_json(self, indent: Optional[int] = None) -> str:
+    def to_json(self, indent: int | None = None) -> str:
         """
         Export to JSON string.
 
@@ -399,7 +401,7 @@ class WatershedParameters:
         """
         return json.dumps(self.to_dict(), indent=indent)
 
-    def to_geometry(self) -> "WatershedGeometry":
+    def to_geometry(self) -> WatershedGeometry:
         """
         Convert to WatershedGeometry object.
 
@@ -423,7 +425,7 @@ class WatershedParameters:
             length_km=self.length_km,
         )
 
-    def to_terrain(self) -> "TerrainAnalysis":
+    def to_terrain(self) -> TerrainAnalysis:
         """
         Convert to TerrainAnalysis object.
 

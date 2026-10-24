@@ -3,8 +3,8 @@
 import numpy as np
 import pytest
 
-from hydrolog.runoff import NashIUH, IUHResult, NashUHResult
 from hydrolog.exceptions import InvalidParameterError
+from hydrolog.runoff import IUHResult, NashIUH, NashUHResult
 
 
 class TestNashIUHInit:
@@ -319,19 +319,25 @@ class TestNashIUHFromTC:
 
     def test_from_tc_zero_tc_raises(self):
         """Test that zero tc raises error."""
-        with pytest.warns(DeprecationWarning):
-            with pytest.raises(InvalidParameterError, match="tc_min must be positive"):
-                NashIUH.from_tc(tc_min=0)
+        with (
+            pytest.warns(DeprecationWarning),
+            pytest.raises(InvalidParameterError, match="tc_min must be positive"),
+        ):
+            NashIUH.from_tc(tc_min=0)
 
     def test_from_tc_invalid_lag_ratio_raises(self):
         """Test that invalid lag ratio raises error."""
-        with pytest.warns(DeprecationWarning):
-            with pytest.raises(InvalidParameterError, match="lag_ratio must be in"):
-                NashIUH.from_tc(tc_min=90.0, lag_ratio=0)
+        with (
+            pytest.warns(DeprecationWarning),
+            pytest.raises(InvalidParameterError, match="lag_ratio must be in"),
+        ):
+            NashIUH.from_tc(tc_min=90.0, lag_ratio=0)
 
-        with pytest.warns(DeprecationWarning):
-            with pytest.raises(InvalidParameterError, match="lag_ratio must be in"):
-                NashIUH.from_tc(tc_min=90.0, lag_ratio=1.5)
+        with (
+            pytest.warns(DeprecationWarning),
+            pytest.raises(InvalidParameterError, match="lag_ratio must be in"),
+        ):
+            NashIUH.from_tc(tc_min=90.0, lag_ratio=1.5)
 
 
 class TestNashIUHWithArea:
@@ -853,7 +859,7 @@ class TestNashIUHImport:
 
     def test_import_from_runoff_module(self):
         """Test that Nash classes can be imported from hydrolog.runoff."""
-        from hydrolog.runoff import NashIUH, IUHResult, NashUHResult
+        from hydrolog.runoff import IUHResult, NashIUH, NashUHResult
 
         assert NashIUH is not None
         assert IUHResult is not None

@@ -69,7 +69,8 @@ def _slopes_from_relief_notice(
     if parameters.mean_slope_m_per_m is not None:
         clauses.append(
             f"watershed slope {slopes.watershed_slope_m_per_m:.4g} m/m (relief ratio "
-            f"H/L) instead of mean_slope_m_per_m = {parameters.mean_slope_m_per_m:g} m/m"
+            f"H/L) instead of mean_slope_m_per_m = {parameters.mean_slope_m_per_m:g} "
+            f"m/m"
         )
     if parameters.channel_slope_m_per_m is not None:
         clauses.append(

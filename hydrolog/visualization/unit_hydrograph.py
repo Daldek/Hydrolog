@@ -3,39 +3,36 @@
 This module provides functions for comparing multiple unit hydrograph models.
 """
 
-from typing import Optional, Union
-
 import matplotlib.pyplot as plt
 import numpy as np
 
-from hydrolog.runoff.unit_hydrograph import UnitHydrographResult
-from hydrolog.runoff.nash_iuh import NashUHResult, IUHResult
-from hydrolog.runoff.clark_iuh import ClarkUHResult, ClarkIUHResult
+from hydrolog.runoff.clark_iuh import ClarkIUHResult, ClarkUHResult
+from hydrolog.runoff.nash_iuh import IUHResult, NashUHResult
 from hydrolog.runoff.snyder_uh import SnyderUHResult
-
+from hydrolog.runoff.unit_hydrograph import UnitHydrographResult
 from hydrolog.visualization.styles import (
     PALETTE,
+    format_time_axis,
     get_color,
     get_label,
-    format_time_axis,
 )
 
 # Type alias for all UH result types
-UHResultType = Union[
-    UnitHydrographResult,
-    NashUHResult,
-    ClarkUHResult,
-    SnyderUHResult,
-    IUHResult,
-    ClarkIUHResult,
-]
+UHResultType = (
+    UnitHydrographResult
+    | NashUHResult
+    | ClarkUHResult
+    | SnyderUHResult
+    | IUHResult
+    | ClarkIUHResult
+)
 
 
 def plot_uh_comparison(
     models: dict[str, UHResultType],
-    title: Optional[str] = None,
+    title: str | None = None,
     show_table: bool = True,
-    ax: Optional[plt.Axes] = None,
+    ax: plt.Axes | None = None,
     figsize: tuple = (12, 7),
 ) -> plt.Figure:
     """
