@@ -218,6 +218,7 @@ class TestToolList:
         assert writing == {
             "hydrolog_commands_guide",
             "hydrolog_report_generate",
+            "hydrolog_route_cascade",
             "hydrolog_route_lag",
             "hydrolog_route_muskingum",
             "hydrolog_route_muskingum_cunge",

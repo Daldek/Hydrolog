@@ -685,4 +685,165 @@ COMMANDS: tuple[Command, ...] = (
             },
         ),
     ),
+    Command(
+        name="route cascade",
+        operation_id="hydrolog_route_cascade",
+        summary_pl=(
+            "Przeprowadź hydrogram przez kaskadę n zbiorników liniowych (Nash, "
+            "Kalinin-Miljukow)."
+        ),
+        summary=(
+            "Route a hydrograph through a cascade of n linear reservoirs (Nash, "
+            "Kalinin-Milyukov)."
+        ),
+        description_pl=(
+            "Kaskada n równych zbiorników liniowych S = K O. Odpływ jest dokładną "
+            "odpowiedzią na dopływ liniowy między rzędnymi, dla każdego kroku, bez "
+            "podkroków; n nie musi być całkowite. Skala czasu: `k_min` albo "
+            "`length_km` z `celerity_m_per_s` (K = L/(n c)). Zwraca szczyty, "
+            "objętości, bilans i szereg."
+        ),
+        description=(
+            "Cascade of n equal linear reservoirs S = K O. The outflow is the exact "
+            "response to the inflow, linear between ordinates, for any time step and "
+            "without sub-steps; n need not be whole. Time scale: `k_min`, or "
+            "`length_km` with `celerity_m_per_s` (K = L/(n c)). Returns peaks, "
+            "volumes, balance and the series."
+        ),
+        function="hydrolog.operations.route_cascade",
+        options=(
+            Option(
+                name="n",
+                type="number",
+                description_pl=(
+                    "Liczba zbiorników w szeregu; > 0, nie musi być całkowita. n = 1 "
+                    "to jeden zbiornik (największe tłumienie), duże n to samo "
+                    "opóźnienie fali."
+                ),
+                description=(
+                    "Number of reservoirs in series; > 0, need not be whole. n = 1 "
+                    "is one reservoir (the most attenuation), a large n is a pure "
+                    "delay of the wave."
+                ),
+                required=True,
+                exclusive_minimum=0,
+            ),
+            Option(
+                name="k_min",
+                type="number",
+                description_pl=(
+                    "Stała retencji K jednego zbiornika [min]; > 0; odcinek opóźnia "
+                    "falę o n K. Zamiast `length_km` i `celerity_m_per_s`."
+                ),
+                description=(
+                    "Storage constant K of one reservoir [min]; > 0; the reach delays "
+                    "the wave by n K. Instead of `length_km` and `celerity_m_per_s`."
+                ),
+                exclusive_minimum=0,
+                unit="min",
+            ),
+            Option(
+                name="length_km",
+                type="number",
+                description_pl=(
+                    "Długość odcinka [km]; > 0. Razem z `celerity_m_per_s`, zamiast "
+                    "`k_min`: K = L/(n c)."
+                ),
+                description=(
+                    "Length of the reach [km]; > 0. With `celerity_m_per_s`, instead "
+                    "of `k_min`: K = L/(n c)."
+                ),
+                exclusive_minimum=0,
+                unit="km",
+            ),
+            Option(
+                name="celerity_m_per_s",
+                type="number",
+                description_pl=(
+                    "Prędkość fali powodziowej (celerity) [m/s]; > 0. Razem z "
+                    "`length_km`."
+                ),
+                description=("Flood-wave celerity [m/s]; > 0. With `length_km`."),
+                exclusive_minimum=0,
+                unit="m/s",
+            ),
+            *INFLOW_OPTIONS,
+            *RUN_OPTIONS,
+            *OUTPUT_OPTIONS,
+        ),
+        one_of=INFLOW_ONE_OF,
+        examples=(
+            {
+                "n": 3.0,
+                "k_min": 20.0,
+                "input_file": f"{_FIXTURES}/flood_inflow.csv",
+                "output": "outflow.csv",
+            },
+            {
+                # 18 km at 1.5 m/s is 200 min of travel: 2.5 reservoirs of 80 min
+                "n": 2.5,
+                "length_km": 18.0,
+                "celerity_m_per_s": 1.5,
+                "times_min": [0, 60, 120, 180, 240, 300, 360],
+                "discharge_m3s": [5.0, 20.0, 60.0, 35.0, 15.0, 8.0, 5.0],
+            },
+        ),
+        result_schema="hydrolog-route-cascade/1",
+        cardinality="bounded",
+        rules=(
+            "Give `n` and one time scale: `k_min`, or `length_km` with "
+            "`celerity_m_per_s`.",
+            "No time step is too long: nothing is divided or refused.",
+            "Read `notices`: `tail_extended` is the time added after the inflow.",
+        ),
+        rules_pl=(
+            "Podaj `n` i jedną skalę czasu: `k_min` albo `length_km` z "
+            "`celerity_m_per_s`.",
+            "Żaden krok nie jest za długi: nic nie jest dzielone ani odrzucane.",
+            "Czytaj `notices`: `tail_extended` to czas dodany po dopływie.",
+        ),
+        errors=_ERRORS,
+        example_results=(
+            {
+                "model": "cascade",
+                "parameters": {
+                    "n": 3.0,
+                    "k_min": 20.0,
+                    "lag_min": 60.0,
+                    "timestep_over_k": 0.5,
+                },
+                "timestep_min": 10.0,
+                "extension_min": 90.0,
+                "outflow_peak_m3s": 29.15152,
+                "outflow_time_to_peak_min": 120.0,
+                "peak_delay_min": 60.0,
+            },
+            {
+                "model": "cascade",
+                "parameters": {
+                    "n": 2.5,
+                    "k_min": 80.0,
+                    "lag_min": 200.0,
+                    "timestep_over_k": 0.75,
+                    "length_km": 18.0,
+                    "celerity_m_per_s": 1.5,
+                },
+                "extension_min": 660.0,
+                "outflow_peak_m3s": 26.544046,
+                "outflow_time_to_peak_min": 300.0,
+                "peak_attenuation_pct": 55.759923,
+                "peak_delay_min": 180.0,
+                "outflow_m3s": [
+                    5.0,
+                    5.419436,
+                    8.949596,
+                    18.041115,
+                    25.403668,
+                    26.544046,
+                    23.205285,
+                    18.328584,
+                ],
+            },
+        ),
+    ),
 )

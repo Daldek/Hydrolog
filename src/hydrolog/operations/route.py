@@ -35,6 +35,7 @@ from hydrolog.operations._outputs import (
     refuse_input_as_output,
 )
 from hydrolog.routing import (
+    CascadeReach,
     LagReach,
     MuskingumCungeReach,
     MuskingumReach,
@@ -42,7 +43,13 @@ from hydrolog.routing import (
     RoutingResult,
 )
 
-__all__ = ["RouteResult", "route_lag", "route_muskingum", "route_muskingum_cunge"]
+__all__ = [
+    "RouteResult",
+    "route_cascade",
+    "route_lag",
+    "route_muskingum",
+    "route_muskingum_cunge",
+]
 
 
 @dataclass
@@ -509,6 +516,115 @@ def route_muskingum_cunge(
             celerity_m_per_s=celerity_m_per_s,
             top_width_m=top_width_m,
             reference_discharge_m3s=reference_discharge_m3s,
+        ),
+        times_min=times_min,
+        discharge_m3s=discharge_m3s,
+        input_file=input_file,
+        time_column=time_column,
+        value_column=value_column,
+        initial_outflow_m3s=initial_outflow_m3s,
+        extend_min=extend_min,
+        output=output,
+        force=force,
+        check=check,
+    )
+
+
+def route_cascade(
+    *,
+    n: float,
+    k_min: float | None = None,
+    length_km: float | None = None,
+    celerity_m_per_s: float | None = None,
+    times_min: Sequence[float] | None = None,
+    discharge_m3s: Sequence[float] | None = None,
+    input_file: str | os.PathLike[str] | None = None,
+    time_column: str | None = None,
+    value_column: str | None = None,
+    initial_outflow_m3s: float | None = None,
+    extend_min: float | None = None,
+    output: str | os.PathLike[str] | None = None,
+    force: bool = False,
+    check: bool = False,
+) -> OperationOutput:
+    """Cascade-of-reservoirs routing of a hydrograph (``route cascade``).
+
+    The reach is ``n`` equal linear reservoirs in series, each with the storage
+    ``S = K O`` (the Nash model; the Kalinin-Milyukov method for ``n`` equal to the
+    reach length over ``Q / (T S0 c)``), and the outflow is the exact response to the
+    inflow interpolated linearly between its ordinates
+    (:class:`hydrolog.routing.CascadeReach`). The weights follow from the incomplete
+    gamma function, so every time step is allowed: there is no window of stable steps,
+    no sub-reach and no sub-step, and ``n`` need not be whole. The time scale is the
+    storage constant ``k_min`` of one reservoir, or the length and celerity of the
+    reach, whose travel time ``L / c`` is the delay ``n K``; exactly one of the two. The
+    time axis is extended after the last inflow ordinate until the outflow has settled
+    (notice ``tail_extended``).
+
+    Parameters
+    ----------
+    n : float
+        Number of reservoirs, > 0; need not be whole.
+    k_min : float, optional
+        Storage constant ``K`` of one reservoir [min], > 0.
+    length_km : float, optional
+        Length of the reach [km], > 0; with ``celerity_m_per_s``, instead of ``k_min``.
+    celerity_m_per_s : float, optional
+        Celerity of the flood wave [m/s], > 0; with ``length_km``.
+    times_min, discharge_m3s : sequence of float, optional
+        The inflow hydrograph inline: times [min] at a regular step and discharges
+        [m3/s], not negative.
+    input_file : str or os.PathLike, optional
+        CSV or JSON file with the hydrograph, instead of the inline lists.
+    time_column, value_column : str, optional
+        Columns of ``input_file``; default ``time_min`` and ``discharge_m3s``.
+    initial_outflow_m3s : float, optional
+        Outflow at the first ordinate [m3/s], >= 0, held by every reservoir; default
+        the first inflow ordinate.
+    extend_min : float, optional
+        Time added after the last inflow ordinate [min], >= 0; ``0`` adds nothing.
+        Default: until the outflow has settled.
+    output : str or os.PathLike, optional
+        CSV file to write with the outflow hydrograph (``time_min``,
+        ``discharge_m3s``); an existing file is replaced only with ``force``. It must
+        not be ``input_file``. Without it the series is in the result.
+    force : bool, optional
+        Replace an existing ``output`` file, by default ``False``.
+    check : bool, optional
+        With ``output``: plan without effects and return the ``hydrolog-plan/1``
+        document of the target. Without ``output`` there is nothing to plan and the
+        result is computed as usual.
+
+    Returns
+    -------
+    OperationOutput
+        ``result`` is a :class:`RouteResult`; the written file is listed in
+        ``files``. With ``check`` and ``output`` the result is the plan.
+
+    Raises
+    ------
+    InvalidParameterError
+        If a parameter or the inline hydrograph is not valid, both or neither source
+        of the hydrograph is given, not exactly one of ``k_min`` and the pair
+        ``length_km`` with ``celerity_m_per_s`` is given (``details.reason``
+        ``one_of``), or ``output`` is ``input_file``.
+    NotFoundError
+        If ``input_file`` does not exist.
+    InputDataError
+        If ``input_file`` cannot be read or its hydrograph breaks a rule (irregular
+        step, a negative discharge...).
+    ConflictError
+        If ``output`` exists and ``force`` is not given (``details.reason``
+        ``output_exists``).
+    OutputError
+        If the output cannot be written.
+    """
+    return _route(
+        CascadeReach(
+            n=n,
+            k_min=k_min,
+            length_km=length_km,
+            celerity_m_per_s=celerity_m_per_s,
         ),
         times_min=times_min,
         discharge_m3s=discharge_m3s,

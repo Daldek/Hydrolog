@@ -1,5 +1,6 @@
 """Tests of the ``route`` operations: result, outflow file, check and conflicts."""
 
+import math
 from pathlib import Path
 
 import numpy as np
@@ -16,11 +17,18 @@ from hydrolog.exceptions import (
 )
 from hydrolog.operations import (
     RouteResult,
+    route_cascade,
     route_lag,
     route_muskingum,
     route_muskingum_cunge,
 )
-from hydrolog.routing import Hydrograph, LagReach, MuskingumCungeReach, MuskingumReach
+from hydrolog.routing import (
+    CascadeReach,
+    Hydrograph,
+    LagReach,
+    MuskingumCungeReach,
+    MuskingumReach,
+)
 
 from ._routing_reference import (
     CFS_M3S,
@@ -578,3 +586,144 @@ class TestRouteMuskingumCunge:
             "timestep_refined",
             "tail_extended",
         ]
+
+
+class TestRouteCascade:
+    def test_one_reservoir_gives_its_closed_form(self):
+        # n = 1 and a step equal to K: the inflow is a hat on the second ordinate, and
+        # the weights of the kernel are 1/e, (1 - 1/e)^2 and (1 - 1/e)^2 / e^m by hand
+        output = route_cascade(
+            n=1,
+            k_min=10.0,
+            times_min=[0, 10, 20, 30, 40, 50],
+            discharge_m3s=[0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
+            extend_min=0.0,
+        )
+
+        e = math.exp(-1.0)
+        square = (1.0 - e) ** 2
+        np.testing.assert_allclose(
+            output.result.outflow_m3s,
+            [0.0, e] + [square * e**m for m in range(4)],
+            rtol=0,
+            atol=1e-13,
+        )
+        assert output.result.model == "cascade"
+        assert output.result.parameters == {
+            "n": 1.0,
+            "k_min": 10.0,
+            "lag_min": 10.0,
+            "timestep_over_k": 1.0,
+        }
+
+    def test_a_step_far_longer_than_the_storage_constant_is_routed_as_it_is(self):
+        # TIMES has a step of 10 min: ten storage constants, where a recurrence would
+        # be unstable or would have to divide the step
+        output = route_cascade(n=2, k_min=1.0, times_min=TIMES, discharge_m3s=FLOOD)
+
+        result = output.result
+        assert result.parameters["timestep_over_k"] == 10.0
+        assert [notice.code for notice in output.notices] == ["tail_extended"]
+        assert result.timestep_min == 10.0
+        assert result.outflow_m3s.min() >= 0.0
+        assert result.outflow_peak_m3s == pytest.approx(result.inflow_peak_m3s, rel=0.2)
+
+    def test_the_travel_time_of_the_reach_fixes_the_storage_constant(self):
+        # 12 km at 2 m/s is 100 min: four reservoirs of 25 min
+        by_reach = route_cascade(
+            n=4,
+            length_km=12.0,
+            celerity_m_per_s=2.0,
+            times_min=TIMES,
+            discharge_m3s=FLOOD,
+        ).result
+        by_storage = route_cascade(
+            n=4, k_min=25.0, times_min=TIMES, discharge_m3s=FLOOD
+        ).result
+
+        np.testing.assert_allclose(
+            by_reach.outflow_m3s, by_storage.outflow_m3s, rtol=1e-12, atol=1e-12
+        )
+        assert by_reach.parameters["k_min"] == pytest.approx(25.0, rel=1e-12)
+        assert by_reach.parameters["lag_min"] == pytest.approx(100.0, rel=1e-12)
+        assert by_reach.parameters["length_km"] == 12.0
+        assert "length_km" not in by_storage.parameters
+
+    def test_the_volume_balance_is_the_quadrature_error_of_the_series(self):
+        result = route_cascade(n=3, k_min=20.0, input_file=FLOOD_INFLOW).result
+
+        # the outflow between the ordinates is a curve: the trapezoid volume is off by
+        # a few m3 in 240,000, at rest at both ends
+        assert abs(result.balance_error_m3) < 1e-4 * result.inflow_volume_m3
+        assert result.storage_end_m3 == pytest.approx(result.storage_start_m3, rel=0.05)
+
+    @pytest.mark.parametrize(
+        ("options", "given"),
+        [
+            ({"n": 3.0}, []),
+            ({"n": 3.0, "length_km": 12.0}, ["length_km"]),
+            ({"n": 3.0, "celerity_m_per_s": 2.0}, ["celerity_m_per_s"]),
+            (
+                {"n": 3.0, "k_min": 20.0, "length_km": 12.0, "celerity_m_per_s": 2.0},
+                None,
+            ),
+        ],
+        ids=["none", "length", "celerity", "both"],
+    )
+    def test_exactly_one_time_scale_is_needed(self, options, given):
+        with pytest.raises(InvalidParameterError) as caught:
+            run_command(
+                "route cascade",
+                {**options, "times_min": TIMES, "discharge_m3s": FLOOD},
+            )
+
+        details = caught.value.details
+        assert details["reason"] == "one_of"
+        assert details["groups"] == [["k_min"], ["length_km", "celerity_m_per_s"]]
+        if given is not None:
+            assert details["given"] == given
+
+    @pytest.mark.parametrize(
+        ("base", "name", "value"),
+        [
+            ({"k_min": 20.0}, "n", 0.0),
+            ({"k_min": 20.0}, "n", -2.0),
+            ({"k_min": 20.0}, "k_min", 0.0),
+            ({"length_km": 12.0, "celerity_m_per_s": 2.0}, "length_km", -1.0),
+            ({"length_km": 12.0, "celerity_m_per_s": 2.0}, "celerity_m_per_s", 0.0),
+        ],
+    )
+    def test_the_command_and_the_class_refuse_a_value_in_the_same_words(
+        self, base, name, value
+    ):
+        options = {"n": 3.0, **base, name: value}
+
+        with pytest.raises(InvalidParameterError) as via_command:
+            run_command(
+                "route cascade",
+                {**options, "times_min": TIMES, "discharge_m3s": FLOOD},
+            )
+        with pytest.raises(InvalidParameterError) as via_class:
+            CascadeReach(**options)
+
+        for key in ("option", "reason"):
+            assert via_class.value.details[key] == via_command.value.details[key]
+
+    def test_an_example_option_set_gives_a_valid_envelope(self, tmp_path):
+        envelope = run_command(
+            "route cascade",
+            {
+                "n": 3.0,
+                "k_min": 20.0,
+                "input_file": str(FLOOD_INFLOW),
+                "output": str(tmp_path / "outflow.csv"),
+            },
+        ).to_dict()
+
+        assert envelope["result"]["schema"] == "hydrolog-route-cascade/1"
+        assert [record["status"] for record in envelope["result"]["files"]] == [
+            "written"
+        ]
+        assert envelope["result"]["parameters"]["lag_min"] == 60.0
+        assert envelope["result"]["outflow_m3s"] is None
+        assert [notice["code"] for notice in envelope["notices"]] == ["tail_extended"]

@@ -71,6 +71,7 @@ from hydrolog.operations.precip import (
 from hydrolog.operations.report import ReportResult, report_generate
 from hydrolog.operations.route import (
     RouteResult,
+    route_cascade,
     route_lag,
     route_muskingum,
     route_muskingum_cunge,
@@ -152,6 +153,7 @@ __all__ = [
     "route_lag",
     "route_muskingum",
     "route_muskingum_cunge",
+    "route_cascade",
     # morphometry
     "WatershedMorphometry",
     "morphometry_watershed",

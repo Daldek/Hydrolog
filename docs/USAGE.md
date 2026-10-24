@@ -325,6 +325,28 @@ peak; the three-decimal coefficients printed in the text give the table to 0.004
 difference is their rounding (see COMPUTATION_PATHS 3.9.4). The notice `tail_truncated` is correct
 here: the published table ends in the recession and `--extend-min 0` keeps its axis.
 
+`route cascade` sends the hydrograph through `--n` equal linear reservoirs in series, each with the
+storage `S = K O` (the Nash model of `uh nash`; with `n` equal to the reach length over
+`Q / (T S0 c)` it is the Kalinin-Milyukov method). `--n` need not be whole: 1 is one reservoir (the
+most attenuation) and a large `n` only delays the wave by `n K`. Give the time scale as one of two
+groups: the storage constant of one reservoir (`--k-min`), or the length and the celerity of the
+reach (`--length-km` with `--celerity-m-per-s`), whose travel time `L / c` is the delay `n K`; both
+groups or neither is an error (`details.reason` `one_of`). The outflow is the exact response of the
+cascade to the inflow taken as straight lines between the ordinates, so there is no window of
+stable steps as in Muskingum: nothing is divided or refused, and a time step longer than `K` is
+routed as it is. Between the ordinates the outflow is a curve, so `balance_error_m3` is only the
+quadrature error of the trapezoid rule (9.7 m3 of 712,500 m3 here). The example is 18 km at 1.5
+m/s, a travel time of 200 min shared by 2.5 reservoirs of 80 min, with a time step of 60 min.
+
+```bash
+hydrolog route cascade --n 2.5 --length-km 18 --celerity-m-per-s 1.5 \
+  --times-min 0,60,120,180,240,300,360 --discharge-m3s 5,20,60,35,15,8,5 --json
+```
+
+```json output
+{"result": {"schema": "hydrolog-route-cascade/1", "model": "cascade", "parameters": {"n": 2.5, "k_min": 80.0, "lag_min": 200.0, "timestep_over_k": 0.75, "length_km": 18.0, "celerity_m_per_s": 1.5}, "extension_min": 660.0, "outflow_peak_m3s": 26.544046088994683, "outflow_time_to_peak_min": 300.0, "peak_delay_min": 180.0, "outflow_m3s": [5.0, 5.419435772176586, 8.94959612609301, 18.041114804691578, 25.403667771343876, 26.544046088994683, "..."]}}
+```
+
 In Python the classes of `hydrolog.routing` do the same on arrays; `route` returns the outflow
 with the notices, the storage at both ends and the balance.
 
