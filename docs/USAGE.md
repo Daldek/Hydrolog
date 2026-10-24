@@ -287,6 +287,44 @@ The published outflow of the example is 100.0, 109.5, 236.5, 481.3, 487.2, 433.1
 220.3 and 149.2 cfs: the largest difference from the printed table is 0.049 cfs, inside its
 rounding (see COMPUTATION_PATHS 3.9.3).
 
+`route muskingum-cunge` takes the Muskingum parameters from the reach itself (the NRCS form of
+NEH-630 chapter 17): `K = dx / c` and `X = (1 - Q / (T S0 c dx)) / 2` for a distance step `dx`,
+with the flood-wave celerity `c`, the top width `T`, the slope `S0` (`--slope-m-per-m`) and a
+reference discharge `Q` (the inflow peak, or `--reference-discharge-m3s`); `X` may be negative.
+`--length-km` is divided into equal steps, each a Muskingum sub-reach. Give the hydraulics as one
+of two groups: a channel section (`--manning-n` with `--bottom-width-m` and `--side-slope-m-per-m`,
+0 for a rectangle), from which Manning's equation gives `c` and `T` at `Q`, or the wave itself
+(`--celerity-m-per-s` with `--top-width-m`, for example from a hydraulic model); both groups or
+neither is an error (`details.reason` `one_of`). The steps are those of NRCS,
+`dx_c = (c dt + Q / (T S0 c)) / 2`, changed so that every weight stays non-negative (notice
+`subreaches_adjusted`; `substeps_added` when the time step has to be divided); a reach so short and
+flat that it acts as storage is refused (`unstable_timestep`; use a reservoir method). A
+hydrograph that rises from 5 % of its peak to the peak in fewer than 10 steps is interpolated to a
+shorter step (`timestep_refined`). Every step inside the non-negative window meets the accuracy
+limit of NEH-630, so `accuracy_limit` only reports that the NRCS step was beyond it and was
+replaced.
+
+The example is NEH-630 example 17-4 in SI: `L` = 2,600 ft, `S0` = 0.00091, and `c` = 4.297 ft/s and
+`T` = 44.6 ft as printed in the text; the inflow is the 37 ordinates of Table 17-18 in m3/s
+(`tests/fixtures/neh17_4_inflow.csv`, one ordinate per 6 minutes).
+
+```bash
+hydrolog route muskingum-cunge --length-km 0.79248 --slope-m-per-m 0.00091 \
+  --celerity-m-per-s 1.3097256 --top-width-m 13.59408 \
+  --input-file tests/fixtures/neh17_4_inflow.csv --extend-min 0 --json
+```
+
+```json output
+{"result": {"schema": "hydrolog-route-muskingum-cunge/1", "model": "muskingum-cunge", "parameters": {"k_min": 10.084555115972385, "x": -0.25444124673728363, "subreaches": 1, "substeps": 1, "c_current": 0.3556393224656159, "c_previous": 0.027735454184956914, "c_outflow": 0.6166252233494272}, "outflow_peak_m3s": 18.286546121803077, "outflow_time_to_peak_min": 786.0, "peak_delay_min": 12.0, "outflow_m3s": [0.0, 0.007452066362944516, 0.01655604783271178, 0.02751124432336292, "..."]}}
+```
+
+The reach has one step (`K` = 605 s, `X` = -0.254, the weights 0.0277, 0.3556 and 0.6166 against
+the printed 0.028, 0.355 and 0.617). The outflow peaks at 645.78 ft3/s (18.2865 m3/s) at 13.1 h, the
+published 645.72 ft3/s, and the largest difference from Table 17-18 is 0.24 ft3/s, 0.04 % of the
+peak; the three-decimal coefficients printed in the text give the table to 0.0049 ft3/s, so the
+difference is their rounding (see COMPUTATION_PATHS 3.9.4). The notice `tail_truncated` is correct
+here: the published table ends in the recession and `--extend-min 0` keeps its axis.
+
 In Python the classes of `hydrolog.routing` do the same on arrays; `route` returns the outflow
 with the notices, the storage at both ends and the balance.
 
@@ -601,7 +639,7 @@ print(texture, texture_to_hsg(texture))
 Also in the library: `WatershedGeometry` and `TerrainAnalysis` (shape and relief indicators),
 `HypsometricCurve`, `StreamNetwork` (Strahler and Shreve), `thiessen_polygons` and
 `inverse_distance_weighting` (areal precipitation), `hydrolog.routing` (`Hydrograph`,
-`LagReach`, `MuskingumReach`: the flood routing of [Flood routing](#flood-routing)) and
+`LagReach`, `MuskingumReach`, `MuskingumCungeReach`: the flood routing of [Flood routing](#flood-routing)) and
 `hydrolog.reports.HydrologyReportGenerator` with a `ReportConfig` (the command
 `report generate` is the shorter way).
 

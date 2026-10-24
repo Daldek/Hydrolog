@@ -14,10 +14,17 @@ from hydrolog.exceptions import (
     InvalidParameterError,
     OutputError,
 )
-from hydrolog.operations import RouteResult, route_lag, route_muskingum
-from hydrolog.routing import Hydrograph, LagReach, MuskingumReach
+from hydrolog.operations import (
+    RouteResult,
+    route_lag,
+    route_muskingum,
+    route_muskingum_cunge,
+)
+from hydrolog.routing import Hydrograph, LagReach, MuskingumCungeReach, MuskingumReach
 
 from ._routing_reference import (
+    CFS_M3S,
+    FT_M,
     IOWA_INFLOW,
     IOWA_K_MIN,
     IOWA_OUTFLOW,
@@ -25,6 +32,14 @@ from ._routing_reference import (
     IOWA_TIMES_MIN,
     IOWA_TOLERANCE,
     IOWA_X,
+    NEH17_4_CELERITY_FT_PER_S,
+    NEH17_4_INFLOW_CFS,
+    NEH17_4_LENGTH_FT,
+    NEH17_4_OUTFLOW_CFS,
+    NEH17_4_SLOPE,
+    NEH17_4_START_MIN,
+    NEH17_4_STEP_MIN,
+    NEH17_4_TOP_WIDTH_FT,
 )
 
 FIXTURES = Path(__file__).parents[1] / "fixtures"
@@ -391,3 +406,175 @@ class TestRouteMuskingum:
         ]
         assert envelope["result"]["parameters"]["subreaches"] == 4
         assert envelope["result"]["outflow_m3s"] is None
+
+
+class TestRouteMuskingumCunge:
+    SECTION = {
+        "length_km": 5.0,
+        "slope_m_per_m": 0.001,
+        "manning_n": 0.03,
+        "bottom_width_m": 10.0,
+        "side_slope_m_per_m": 2.0,
+    }
+    WAVE = {
+        "length_km": 5.0,
+        "slope_m_per_m": 0.001,
+        "celerity_m_per_s": 1.0,
+        "top_width_m": 20.0,
+    }
+
+    def neh(self, **options) -> OperationOutput:
+        """Example 17-4 of NEH-630 in SI, with the published celerity and top width."""
+        count = len(NEH17_4_INFLOW_CFS)
+        arguments = {
+            "length_km": NEH17_4_LENGTH_FT * FT_M / 1000.0,
+            "slope_m_per_m": NEH17_4_SLOPE,
+            "celerity_m_per_s": NEH17_4_CELERITY_FT_PER_S * FT_M,
+            "top_width_m": NEH17_4_TOP_WIDTH_FT * FT_M,
+            "times_min": [
+                NEH17_4_START_MIN + NEH17_4_STEP_MIN * i for i in range(count)
+            ],
+            "discharge_m3s": [q * CFS_M3S for q in NEH17_4_INFLOW_CFS],
+            "extend_min": 0.0,
+            **options,
+        }
+        return route_muskingum_cunge(**arguments)
+
+    def test_the_published_example_gives_the_published_outflow(self):
+        output = self.neh()
+        result = output.result
+
+        assert isinstance(result, RouteResult)
+        # the exact weights differ from the three printed decimals, which moves the
+        # outflow by up to 0.24 ft3/s (0.04 % of the peak): 0.25 is the bound
+        np.testing.assert_allclose(
+            result.outflow_m3s / CFS_M3S, NEH17_4_OUTFLOW_CFS, rtol=0, atol=0.25
+        )
+        assert result.outflow_time_to_peak_min == pytest.approx(13.1 * 60.0)
+        assert result.parameters["subreaches"] == 1
+        assert result.parameters["k_min"] * 60.0 == pytest.approx(605.07, abs=0.005)
+        assert result.parameters["x"] == pytest.approx(-0.254, abs=5e-4)
+        assert abs(result.balance_error_m3) < 1e-9 * result.inflow_volume_m3
+        # the printed table ends in the recession: the axis is not extended (extend_min
+        # 0) and nothing else was changed in the NRCS grid or the time step
+        assert [(n.level, n.code) for n in output.notices] == [
+            ("warning", "tail_truncated")
+        ]
+
+    def test_the_section_of_the_example_gives_the_table_to_the_celerity(self):
+        # b = 15 ft, 2:1, n = 0.04: Manning's celerity is 2 % below the text's m Q / A
+        output = route_muskingum_cunge(
+            length_km=NEH17_4_LENGTH_FT * FT_M / 1000.0,
+            slope_m_per_m=NEH17_4_SLOPE,
+            manning_n=0.04,
+            bottom_width_m=15.0 * FT_M,
+            side_slope_m_per_m=2.0,
+            times_min=[NEH17_4_START_MIN + NEH17_4_STEP_MIN * i for i in range(37)],
+            discharge_m3s=[q * CFS_M3S for q in NEH17_4_INFLOW_CFS],
+            extend_min=0.0,
+        )
+
+        np.testing.assert_allclose(
+            output.result.outflow_m3s / CFS_M3S, NEH17_4_OUTFLOW_CFS, rtol=0, atol=2.5
+        )
+
+    @pytest.mark.parametrize(
+        ("options", "given"),
+        [
+            ({"length_km": 5.0, "slope_m_per_m": 0.001}, []),
+            (
+                {
+                    "length_km": 5.0,
+                    "slope_m_per_m": 0.001,
+                    "manning_n": 0.03,
+                    "celerity_m_per_s": 1.0,
+                },
+                ["manning_n", "celerity_m_per_s"],
+            ),
+            ({**SECTION, **WAVE}, None),
+        ],
+        ids=["none", "halves", "both"],
+    )
+    def test_exactly_one_group_of_hydraulics_is_needed(self, options, given):
+        with pytest.raises(InvalidParameterError) as caught:
+            run_command(
+                "route muskingum-cunge",
+                {**options, "times_min": TIMES, "discharge_m3s": FLOOD},
+            )
+
+        details = caught.value.details
+        assert details["reason"] == "one_of"
+        assert details["groups"] == [
+            ["manning_n", "bottom_width_m"],
+            ["celerity_m_per_s", "top_width_m"],
+        ]
+        if given is not None:
+            assert details["given"] == given
+
+    @pytest.mark.parametrize(
+        ("base", "name", "value"),
+        [
+            (SECTION, "length_km", 0.0),
+            (SECTION, "slope_m_per_m", -0.001),
+            (SECTION, "manning_n", 0.0),
+            (SECTION, "bottom_width_m", -1.0),
+            (SECTION, "side_slope_m_per_m", -0.5),
+            (WAVE, "celerity_m_per_s", 0.0),
+            (WAVE, "top_width_m", -3.0),
+            (WAVE, "reference_discharge_m3s", 0.0),
+        ],
+    )
+    def test_the_command_and_the_class_refuse_a_value_in_the_same_words(
+        self, base, name, value
+    ):
+        options = {**base, name: value}
+
+        with pytest.raises(InvalidParameterError) as via_command:
+            run_command(
+                "route muskingum-cunge",
+                {**options, "times_min": TIMES, "discharge_m3s": FLOOD},
+            )
+        with pytest.raises(InvalidParameterError) as via_class:
+            MuskingumCungeReach(**options)
+
+        for key in ("option", "reason"):
+            assert via_class.value.details[key] == via_command.value.details[key]
+
+    def test_a_short_flat_reach_is_a_validation_error_that_names_storage_routing(self):
+        with pytest.raises(InvalidParameterError) as caught:
+            run_command(
+                "route muskingum-cunge",
+                {
+                    "length_km": 0.1,
+                    "slope_m_per_m": 0.0002,
+                    "celerity_m_per_s": 1.0,
+                    "top_width_m": 60.0,
+                    "reference_discharge_m3s": 200.0,
+                    "times_min": TIMES,
+                    "discharge_m3s": FLOOD,
+                },
+            )
+
+        assert caught.value.code == "validation_error"
+        assert caught.value.details["reason"] == "unstable_timestep"
+        assert "level-pool" in caught.value.hint
+
+    def test_an_example_option_set_gives_a_valid_envelope(self, tmp_path):
+        envelope = run_command(
+            "route muskingum-cunge",
+            {
+                **self.SECTION,
+                "input_file": str(FLOOD_INFLOW),
+                "output": str(tmp_path / "outflow.csv"),
+            },
+        ).to_dict()
+
+        assert envelope["result"]["schema"] == "hydrolog-route-muskingum-cunge/1"
+        assert [record["status"] for record in envelope["result"]["files"]] == [
+            "written"
+        ]
+        assert envelope["result"]["outflow_m3s"] is None
+        assert [notice["code"] for notice in envelope["notices"]] == [
+            "timestep_refined",
+            "tail_extended",
+        ]

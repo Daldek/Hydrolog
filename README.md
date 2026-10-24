@@ -7,7 +7,7 @@ Hydrolog is a watershed hydrology calculator: SCS-CN curve numbers and effective
 Hydrolog computes the standard quantities of watershed hydrology:
 
 - design direct-runoff hydrograph (peak discharge, time to peak, volume): a block, triangular, Beta or Euler type II design hyetograph (Polish hietogram), SCS-CN effective rainfall and an SCS, Nash, Clark or Snyder unit hydrograph;
-- lumped flood routing of a discharge hydrograph at a regular time step: lag (`route lag`) and Muskingum with sub-reaches (`route muskingum`); the outflow is returned or written to a CSV file that the next `route` command reads;
+- lumped flood routing of a discharge hydrograph at a regular time step: lag (`route lag`), Muskingum with sub-reaches (`route muskingum`) and Muskingum-Cunge from the slope and the channel section or celerity of the reach (`route muskingum-cunge`); the outflow is returned or written to a CSV file that the next `route` command reads;
 - time of concentration (Kirpich, NRCS, Giandotti, FAA, Kerby, Kerby-Kirpich), TR-55 curve numbers (CN) and the area-weighted CN of a watershed;
 - hydrologic soil groups (HSG) from clay, sand and silt rasters such as SoilGrids;
 - watershed shape and relief indicators, river network order (Strahler, Shreve), areal precipitation (Thiessen, IDW, isohyets);
@@ -135,7 +135,7 @@ anyio.run(call_tool)
 
 ## Capabilities
 
-40 commands in 15 groups, all computed offline: no command opens a network connection or downloads data. The MCP tool is `hydrolog_` plus the command name with `_`; every command is also available as `hydrolog.run_command("<command>", **options)`.
+41 commands in 15 groups, all computed offline: no command opens a network connection or downloads data. The MCP tool is `hydrolog_` plus the command name with `_`; every command is also available as `hydrolog.run_command("<command>", **options)`.
 
 | Group | Task | CLI command | MCP tool | Python (`hydrolog.operations`) |
 |---|---|---|---|---|
@@ -160,6 +160,7 @@ anyio.run(call_tool)
 | Runoff hydrograph | Design direct-runoff hydrograph | `hydrograph generate` | `hydrolog_hydrograph_generate` | `hydrograph_generate` |
 | Flood routing | Lag routing of a hydrograph (writes a file if an output is given) | `route lag` | `hydrolog_route_lag` | `route_lag` |
 | | Muskingum routing of a hydrograph over sub-reaches (writes a file if an output is given) | `route muskingum` | `hydrolog_route_muskingum` | `route_muskingum` |
+| | Muskingum-Cunge routing of a hydrograph over a reach with its section or celerity (writes a file if an output is given) | `route muskingum-cunge` | `hydrolog_route_muskingum_cunge` | `route_muskingum_cunge` |
 | Morphometry | Geometric, shape and relief indicators | `morphometry watershed` | `hydrolog_morphometry_watershed` | `morphometry_watershed` |
 | River network | River network order statistics (Strahler, Shreve) | `network stats` | `hydrolog_network_stats` | `network_stats` |
 | Flow statistics | Characteristic values WWQ to NNQ of a daily series | `stats characteristic` | `hydrolog_stats_characteristic` | `stats_characteristic` |
