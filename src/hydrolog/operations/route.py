@@ -34,9 +34,15 @@ from hydrolog.operations._outputs import (
     plan_outputs,
     refuse_input_as_output,
 )
-from hydrolog.routing import LagReach, MuskingumReach, Reach, RoutingResult
+from hydrolog.routing import (
+    LagReach,
+    MuskingumCungeReach,
+    MuskingumReach,
+    Reach,
+    RoutingResult,
+)
 
-__all__ = ["RouteResult", "route_lag", "route_muskingum"]
+__all__ = ["RouteResult", "route_lag", "route_muskingum", "route_muskingum_cunge"]
 
 
 @dataclass
@@ -371,6 +377,139 @@ def route_muskingum(
     """
     return _route(
         MuskingumReach(k_min=k_min, x=x, subreaches=subreaches),
+        times_min=times_min,
+        discharge_m3s=discharge_m3s,
+        input_file=input_file,
+        time_column=time_column,
+        value_column=value_column,
+        initial_outflow_m3s=initial_outflow_m3s,
+        extend_min=extend_min,
+        output=output,
+        force=force,
+        check=check,
+    )
+
+
+def route_muskingum_cunge(
+    *,
+    length_km: float,
+    slope_m_per_m: float,
+    manning_n: float | None = None,
+    bottom_width_m: float | None = None,
+    side_slope_m_per_m: float = 0.0,
+    celerity_m_per_s: float | None = None,
+    top_width_m: float | None = None,
+    reference_discharge_m3s: float | None = None,
+    times_min: Sequence[float] | None = None,
+    discharge_m3s: Sequence[float] | None = None,
+    input_file: str | os.PathLike[str] | None = None,
+    time_column: str | None = None,
+    value_column: str | None = None,
+    initial_outflow_m3s: float | None = None,
+    extend_min: float | None = None,
+    output: str | os.PathLike[str] | None = None,
+    force: bool = False,
+    check: bool = False,
+) -> OperationOutput:
+    """Muskingum-Cunge routing of a hydrograph (``route muskingum-cunge``).
+
+    The Muskingum parameters follow from the hydraulics of the reach, ``K = dx / c`` and
+    ``X = (1 - Q / (T S0 c dx)) / 2`` per routing distance step ``dx`` (NEH-630
+    chapter 17), and are constant for the run
+    (:class:`hydrolog.routing.MuskingumCungeReach`). The hydraulics are given by a
+    channel section (``manning_n`` with ``bottom_width_m`` and ``side_slope_m_per_m``:
+    Manning's equation gives the celerity and the top width at the reference
+    discharge) or directly by ``celerity_m_per_s`` with ``top_width_m``; exactly one
+    of the two groups. The reference discharge is the inflow peak unless
+    ``reference_discharge_m3s`` is given. The reach is divided into ``L / dx_c`` steps
+    with ``dx_c = (c dt + Q / (T S0 c)) / 2``, changed (notice ``subreaches_adjusted``)
+    where its weights would be negative; a rise from 5 % of the peak to the peak in
+    fewer than 10 time steps divides the time step (notice ``timestep_refined``); the
+    notice ``accuracy_limit`` says that the NRCS grid was beyond the accuracy limit of
+    NEH-630 and was replaced.
+
+    Parameters
+    ----------
+    length_km : float
+        Length of the reach [km], > 0.
+    slope_m_per_m : float
+        Friction (bed) slope [m/m], > 0.
+    manning_n : float, optional
+        Manning's roughness [s/m^(1/3)], > 0; with ``bottom_width_m``.
+    bottom_width_m : float, optional
+        Bottom width of the section [m], >= 0 (0: a triangle); with ``manning_n``.
+    side_slope_m_per_m : float, optional
+        Horizontal metres per vertical metre of the banks, >= 0 (0: a rectangle), by
+        default 0; part of the section, ignored with ``celerity_m_per_s``.
+    celerity_m_per_s : float, optional
+        Celerity of the flood wave at the reference discharge [m/s], > 0; with
+        ``top_width_m``, instead of the section.
+    top_width_m : float, optional
+        Width of the water surface at the reference discharge [m], > 0; with
+        ``celerity_m_per_s``.
+    reference_discharge_m3s : float, optional
+        Reference discharge [m3/s], > 0; default the inflow peak.
+    times_min, discharge_m3s : sequence of float, optional
+        The inflow hydrograph inline: times [min] at a regular step and discharges
+        [m3/s], not negative.
+    input_file : str or os.PathLike, optional
+        CSV or JSON file with the hydrograph, instead of the inline lists.
+    time_column, value_column : str, optional
+        Columns of ``input_file``; default ``time_min`` and ``discharge_m3s``.
+    initial_outflow_m3s : float, optional
+        Outflow at the first ordinate [m3/s], >= 0, the same in every step of the
+        reach; default the first inflow ordinate.
+    extend_min : float, optional
+        Time added after the last inflow ordinate [min], >= 0; ``0`` adds nothing.
+        Default: until the outflow has settled.
+    output : str or os.PathLike, optional
+        CSV file to write with the outflow hydrograph (``time_min``,
+        ``discharge_m3s``); an existing file is replaced only with ``force``. It must
+        not be ``input_file``. Without it the series is in the result.
+    force : bool, optional
+        Replace an existing ``output`` file, by default ``False``.
+    check : bool, optional
+        With ``output``: plan without effects and return the ``hydrolog-plan/1``
+        document of the target. Without ``output`` there is nothing to plan and the
+        result is computed as usual.
+
+    Returns
+    -------
+    OperationOutput
+        ``result`` is a :class:`RouteResult`; the written file is listed in
+        ``files``. With ``check`` and ``output`` the result is the plan.
+
+    Raises
+    ------
+    InvalidParameterError
+        If a parameter or the inline hydrograph is not valid, both or neither source
+        of the hydrograph is given, not exactly one group of hydraulics options is
+        given (``details.reason`` ``one_of``), ``output`` is ``input_file``, the
+        inflow is zero everywhere and no ``reference_discharge_m3s`` is given, or no
+        division of the reach keeps the weights non-negative (``details.reason``
+        ``unstable_timestep``; a short or flat reach is storage: ``route level-pool``).
+    NotFoundError
+        If ``input_file`` does not exist.
+    InputDataError
+        If ``input_file`` cannot be read or its hydrograph breaks a rule (irregular
+        step, a negative discharge...).
+    ConflictError
+        If ``output`` exists and ``force`` is not given (``details.reason``
+        ``output_exists``).
+    OutputError
+        If the output cannot be written.
+    """
+    return _route(
+        MuskingumCungeReach(
+            length_km=length_km,
+            slope_m_per_m=slope_m_per_m,
+            manning_n=manning_n,
+            bottom_width_m=bottom_width_m,
+            side_slope_m_per_m=side_slope_m_per_m,
+            celerity_m_per_s=celerity_m_per_s,
+            top_width_m=top_width_m,
+            reference_discharge_m3s=reference_discharge_m3s,
+        ),
         times_min=times_min,
         discharge_m3s=discharge_m3s,
         input_file=input_file,

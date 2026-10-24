@@ -420,4 +420,269 @@ COMMANDS: tuple[Command, ...] = (
             },
         ),
     ),
+    Command(
+        name="route muskingum-cunge",
+        operation_id="hydrolog_route_muskingum_cunge",
+        summary_pl=(
+            "Przeprowadź hydrogram metodą Muskingum-Cunge: K i X z prędkości fali, "
+            "szerokości i spadku odcinka."
+        ),
+        summary=(
+            "Route a hydrograph by Muskingum-Cunge: K and X from the celerity, width "
+            "and slope of the reach."
+        ),
+        description_pl=(
+            "Muskingum-Cunge o stałych współczynnikach (NRCS NEH-630 rozdz. 17): "
+            "K = dx/c, X = (1 - Q/(T S0 c dx))/2 na ceil(L/dx_c) krokach, X może być "
+            "ujemne. Q to szczyt dopływu, chyba że podano `reference_discharge_m3s`."
+        ),
+        description=(
+            "Muskingum-Cunge with constant coefficients (NRCS NEH-630 ch. 17): "
+            "K = dx/c, X = (1 - Q/(T S0 c dx))/2 over ceil(L/dx_c) steps, X may be "
+            "negative. Q is the inflow peak unless `reference_discharge_m3s` is given."
+        ),
+        function="hydrolog.operations.route_muskingum_cunge",
+        options=(
+            Option(
+                name="length_km",
+                type="number",
+                description_pl="Długość odcinka [km]; > 0.",
+                description="Length of the reach [km]; > 0.",
+                required=True,
+                exclusive_minimum=0,
+                unit="km",
+            ),
+            Option(
+                name="slope_m_per_m",
+                type="number",
+                description_pl="Spadek dna (spadek tarcia) odcinka [m/m]; > 0.",
+                description="Friction (bed) slope of the reach [m/m]; > 0.",
+                required=True,
+                exclusive_minimum=0,
+                unit="m/m",
+            ),
+            Option(
+                name="manning_n",
+                type="number",
+                description_pl=(
+                    "Współczynnik szorstkości Manninga [s/m^(1/3)]; > 0. Razem z "
+                    "`bottom_width_m` opisuje przekrój, zamiast `celerity_m_per_s` i "
+                    "`top_width_m`."
+                ),
+                description=(
+                    "Manning's roughness [s/m^(1/3)]; > 0. With `bottom_width_m` it "
+                    "describes the section, instead of `celerity_m_per_s` and "
+                    "`top_width_m`."
+                ),
+                exclusive_minimum=0,
+                unit="s/m^(1/3)",
+            ),
+            Option(
+                name="bottom_width_m",
+                type="number",
+                description_pl=(
+                    "Szerokość dna przekroju [m]; >= 0 (0: trójkąt). Razem z "
+                    "`manning_n`."
+                ),
+                description=(
+                    "Bottom width of the section [m]; >= 0 (0: a triangle). With "
+                    "`manning_n`."
+                ),
+                minimum=0,
+                unit="m",
+            ),
+            Option(
+                name="side_slope_m_per_m",
+                type="number",
+                description_pl=(
+                    "Nachylenie skarp [m/m]: metry w poziomie na metr w pionie; "
+                    ">= 0 (0: prostokąt); domyślnie 0. Część przekroju, pomijane z "
+                    "`celerity_m_per_s`."
+                ),
+                description=(
+                    "Bank slope [m/m]: horizontal metres per vertical metre; >= 0 "
+                    "(0: a rectangle); default 0. Part of the section, ignored with "
+                    "`celerity_m_per_s`."
+                ),
+                minimum=0,
+                unit="m/m",
+            ),
+            Option(
+                name="celerity_m_per_s",
+                type="number",
+                description_pl=(
+                    "Prędkość fali powodziowej (celerity) przy przepływie "
+                    "odniesienia [m/s]; > 0. Razem z `top_width_m`, zamiast przekroju."
+                ),
+                description=(
+                    "Flood-wave celerity at the reference discharge [m/s]; > 0. With "
+                    "`top_width_m`, instead of the section."
+                ),
+                exclusive_minimum=0,
+                unit="m/s",
+            ),
+            Option(
+                name="top_width_m",
+                type="number",
+                description_pl=(
+                    "Szerokość zwierciadła wody przy przepływie odniesienia [m]; "
+                    "> 0. Razem z `celerity_m_per_s`."
+                ),
+                description=(
+                    "Width of the water surface at the reference discharge [m]; > 0. "
+                    "With `celerity_m_per_s`."
+                ),
+                exclusive_minimum=0,
+                unit="m",
+            ),
+            Option(
+                name="reference_discharge_m3s",
+                type="number",
+                description_pl=(
+                    "Przepływ odniesienia [m3/s], przy którym liczone są prędkość "
+                    "fali i szerokość; > 0; domyślnie szczyt dopływu."
+                ),
+                description=(
+                    "Reference discharge [m3/s] at which the celerity and the width "
+                    "are taken; > 0; default the inflow peak."
+                ),
+                exclusive_minimum=0,
+                unit="m3/s",
+            ),
+            *INFLOW_OPTIONS,
+            *RUN_OPTIONS,
+            *OUTPUT_OPTIONS,
+        ),
+        one_of=INFLOW_ONE_OF,
+        examples=(
+            {
+                "length_km": 8.0,
+                "slope_m_per_m": 0.001,
+                "manning_n": 0.035,
+                "bottom_width_m": 12.0,
+                "side_slope_m_per_m": 2.0,
+                "input_file": f"{_FIXTURES}/flood_inflow.csv",
+                "output": "outflow.csv",
+            },
+            {
+                "length_km": 15.0,
+                "slope_m_per_m": 0.0008,
+                "celerity_m_per_s": 1.0,
+                "top_width_m": 30.0,
+                "times_min": [
+                    0,
+                    15,
+                    30,
+                    45,
+                    60,
+                    75,
+                    90,
+                    105,
+                    120,
+                    135,
+                    150,
+                    165,
+                    180,
+                    195,
+                    210,
+                    225,
+                    240,
+                    255,
+                    270,
+                    285,
+                    300,
+                    315,
+                    330,
+                    345,
+                    360,
+                ],
+                "discharge_m3s": [
+                    4.0,
+                    4.61,
+                    6.41,
+                    9.27,
+                    13.0,
+                    17.34,
+                    22.0,
+                    26.66,
+                    31.0,
+                    34.73,
+                    37.59,
+                    39.39,
+                    40.0,
+                    39.39,
+                    37.59,
+                    34.73,
+                    31.0,
+                    26.66,
+                    22.0,
+                    17.34,
+                    13.0,
+                    9.27,
+                    6.41,
+                    4.61,
+                    4.0,
+                ],
+            },
+        ),
+        result_schema="hydrolog-route-muskingum-cunge/1",
+        cardinality="bounded",
+        rules=(
+            "Give one group: `manning_n` with `bottom_width_m`, or `celerity_m_per_s` "
+            "with `top_width_m`.",
+            "Read `notices`: `subreaches_adjusted`, `substeps_added`, "
+            "`timestep_refined`, `accuracy_limit`.",
+        ),
+        rules_pl=(
+            "Podaj jedną grupę: `manning_n` z `bottom_width_m` albo "
+            "`celerity_m_per_s` z `top_width_m`.",
+            "Czytaj `notices`: `subreaches_adjusted`, `substeps_added`, "
+            "`timestep_refined`, `accuracy_limit`.",
+        ),
+        errors=_ERRORS,
+        example_results=(
+            {
+                "model": "muskingum-cunge",
+                "parameters": {
+                    "reference_discharge_m3s": 40.0,
+                    "celerity_m_per_s": 1.74409,
+                    "top_width_m": 20.188973,
+                    "k_min": 76.448665,
+                    "x": -0.209998,
+                    "subreaches": 10,
+                    "substeps": 2,
+                },
+                "extension_min": 80.0,
+                "outflow_peak_m3s": 30.863841,
+                "outflow_time_to_peak_min": 140.0,
+                "peak_delay_min": 80.0,
+            },
+            {
+                "model": "muskingum-cunge",
+                "parameters": {
+                    "celerity_m_per_s": 1.0,
+                    "top_width_m": 30.0,
+                    "k_min": 250.0,
+                    "x": -0.166667,
+                    "subreaches": 12,
+                    "substeps": 1,
+                },
+                "extension_min": 510.0,
+                "outflow_peak_m3s": 28.487838,
+                "outflow_time_to_peak_min": 420.0,
+                "peak_attenuation_pct": 28.780406,
+                "peak_delay_min": 240.0,
+                "outflow_m3s": [
+                    4.0,
+                    4.000002,
+                    4.000025,
+                    4.00019,
+                    4.000964,
+                    4.00374,
+                    4.011883,
+                    4.032238,
+                ],
+            },
+        ),
+    ),
 )

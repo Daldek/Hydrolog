@@ -15,8 +15,10 @@ conserved. ``X`` may be negative.
 Two rules of NEH-630 are applied. The hydrograph must rise from 5 % of its peak to the
 peak in at least 10 time steps, otherwise the step is divided (``timestep_refined``).
 The grid Reynolds number ``Dg = 1 - 2X`` and the Courant number ``Cg = c dt / dx`` give
-the accuracy limit ``Dg <= exp(2.3 Cg)``; beyond it the notice ``accuracy_limit``
-advises a hydraulic model or a storage reach, it is not an error.
+the accuracy limit ``Dg <= exp(2.3 Cg)``. Every distance step whose weights are
+non-negative meets it (there ``|Cg - Dg| <= 1``), so the routing is never beyond it; the
+notice ``accuracy_limit`` says that the step of the NRCS rule would have been beyond the
+limit and was replaced (ADR-0008). It is not an error.
 
 Unlike NRCS WinTR-20, which takes the peak at the upstream end of each distance step
 as its reference, every step has the one reference of the reach (the inflow peak, or
@@ -143,7 +145,8 @@ class MuskingumCungeReach(Reach):
     ``subreaches_adjusted``) or the time step is divided (``substeps_added``); when no
     such combination exists the reach is refused. A rise of fewer than 10 steps from
     5 % of the peak to the peak divides the time step (``timestep_refined``). The
-    accuracy limit is a notice (``accuracy_limit``).
+    notice ``accuracy_limit`` reports an NRCS grid that was beyond the accuracy limit of
+    NEH-630 and was replaced; the routing itself is always inside the limit.
 
     Parameters
     ----------

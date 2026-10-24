@@ -48,6 +48,7 @@ Filled in at the end of each branch (maximum difference from the published value
 |---|---|---|
 | `feature/routing-core` | (identities only) | exact |
 | `feature/routing-muskingum` | University of Iowa, Lesson 27: `K` = 20 h, `X` = 0.25, `dt` = 12 h, one reach, outflow printed to 0.1 cfs | 0.049 cfs, inside the 0.05 cfs of the printing; the identities (`X = 0.5` is a lag, `X = 0` the Clark scheme, mean delay `K`, variance `K²(1 - 2X)/N`) hold to 1e-9 |
+| `feature/routing-muskingum-cunge` | NEH-630 chapter 17, example 17-4: `c` = 4.297 ft/s and `T` = 44.6 ft as printed, 37 ordinates at 0.1 h, outflow of Table 17-18 printed to 0.01 ft³/s | 0.24 ft³/s (0.04 % of the peak; 645.78 against 645.72 ft³/s at 13.1 h); the printed three-decimal coefficients (0.028, 0.355, 0.617) give the table to 0.0049 ft³/s, so the 0.24 is their rounding; from the section (15 ft, 2:1, `n` = 0.04) 2.4 ft³/s (0.4 %), the effect of Manning's celerity 2 % below `m Q / A`; `K` = 605.07 s, `X` = -0.2544 (printed -0.254), `Dg` = 1.509 (printed 1.508) |
 
 ## Not in this plan
 

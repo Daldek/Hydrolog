@@ -37,16 +37,28 @@ are interchangeable and a result can feed the next command or a hydraulic model.
   grid (below).
 - **Stability (D9):** the library chooses automatically and says so with a notice: the
   number of sub-reaches stays inside the positivity window of the scheme
-  (`|2KX| <= dt <= 2K(1-X)` for a Muskingum step; `subreaches_adjusted` when the rule of
-  thumb had to move), and when no number of sub-reaches fits, the step is refined by an
-  integer factor (the inflow is interpolated linearly, the outflow sampled back at the
-  original ordinates; `substeps_added`, `timestep_refined`). A value the caller gave
-  explicitly (`subreaches`) is never changed: outside the window it is a
-  `validation_error` with `details.reason = "unstable_timestep"` and the window.
+  (`|2KX| <= dt <= 2K(1-X)` for a Muskingum step; `|c dt - D| <= dx <= c dt + D` with
+  `D = Q / (T S0 c)` for a Muskingum-Cunge distance step `dx`; `subreaches_adjusted`
+  when the rule of thumb or the NRCS number of steps had to move), and when no number
+  of sub-reaches fits, the step is refined by an integer factor (the inflow is
+  interpolated linearly, the outflow sampled back at the original ordinates;
+  `substeps_added`, and `timestep_refined` where NEH-630 asks for at least 10 steps from
+  5 % of the peak to the peak). A value the caller gave explicitly (`subreaches`) is
+  never changed: outside the window it is a `validation_error` with
+  `details.reason = "unstable_timestep"` and the window. A reach for which no division
+  of the step into at most 100 parts gives a window (a short, flat reach, which is
+  storage) is refused with the same reason.
 - **Non-negativity:** inside the window all weights are non-negative, so a
   non-negative inflow gives a non-negative outflow.
-- **Accuracy notices are not errors:** the Muskingum-Cunge accuracy limit (`accuracy_limit`)
-  and the like are notices of the result.
+- **Accuracy notices are not errors:** the Muskingum-Cunge accuracy limit of NEH-630 is
+  `Dg <= exp(2.3 Cg)` with the grid Reynolds number `Dg = D / dx = 1 - 2X` and the
+  Courant number `Cg = c dt / dx`. Every distance step inside the window above meets
+  it: for `Dg <= 1` the limit is at least 1; for `Dg > 1` the window `|Cg - Dg| <= 1`
+  gives `Cg >= Dg - 1`, and `exp(2.3 (Dg - 1)) >= Dg`. The library therefore never
+  routes beyond the limit, and the notice `accuracy_limit` (level `info`) reports a
+  replacement, not an inaccurate result: the step of the NRCS rule
+  would have been beyond the limit and the reach was routed on a step inside it
+  (`subreaches_adjusted`, or `substeps_added`). It is a notice, never an error.
 - **Files:** `output` writes the outflow as a hydrograph table (`time_min`,
   `discharge_m3s`) with `force` and `check` as in
   [ADR-0003](0003-writing-commands-output-force-check.md). Without `output` the command

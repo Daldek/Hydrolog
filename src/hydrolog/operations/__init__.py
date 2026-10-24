@@ -69,7 +69,12 @@ from hydrolog.operations.precip import (
     precip_hietogram,
 )
 from hydrolog.operations.report import ReportResult, report_generate
-from hydrolog.operations.route import RouteResult, route_lag, route_muskingum
+from hydrolog.operations.route import (
+    RouteResult,
+    route_lag,
+    route_muskingum,
+    route_muskingum_cunge,
+)
 from hydrolog.operations.scs import ScsEffectiveResult, scs_effective
 from hydrolog.operations.soil import (
     SoilTextureResult,
@@ -146,6 +151,7 @@ __all__ = [
     "RouteResult",
     "route_lag",
     "route_muskingum",
+    "route_muskingum_cunge",
     # morphometry
     "WatershedMorphometry",
     "morphometry_watershed",
