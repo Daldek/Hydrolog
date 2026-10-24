@@ -985,6 +985,20 @@ print(result.outflow.discharge_m3s.round(1).tolist())
 # [100.0, 109.5, 236.5, 481.3, 487.2, 433.1, 358.9, 282.9, 220.3, 149.2]
 ```
 
+#### 3.9.4 Muskingum-Cunge with Constant Coefficients (`MuskingumCungeReach`)
+
+```
+K = dx / c        X = (1 - Q / (T S0 c dx)) / 2        dx_c = (c dt + Q / (T S0 c)) / 2
+```
+
+Cunge (1969) set the numerical diffusion of the Muskingum scheme equal to the physical diffusion of the flood wave, `mu = Q / (2 T S0)`, which gives `K` and `X` of a routing distance step `dx` from the celerity `c`, the top width `T`, the slope `S0` and a reference discharge `Q` (NEH-630 chapter 17, eq. 17-20 to 17-22). `X` may be negative. The reach of length `L` is divided into `ceil(L / dx_c)` equal steps (eq. 17-21), each routed as a Muskingum sub-reach, so the volume is conserved; with `D = Q / (T S0 c)` the weights of a step are all non-negative exactly when `|c dt - D| <= dx <= c dt + D` (the window of 3.9.3 with `K = dx / c`).
+
+**Hydraulics and reference.** `c` and `T` are given, or follow from a prismatic section (`TrapezoidalSection`: rectangle, trapezoid, triangle) and Manning's equation at the reference discharge: `c = dQ/dA` (HEC-HMS), which is NRCS `c = m Q / A` with the local slope of the rating instead of the weighted log-log slope `m` of the whole table (2 % lower for example 17-4). The reference is the inflow peak, or `reference_discharge_m3s` (EM 1110-2-1417: base flow plus half of the rise). WinTR-20 takes the peak at the upstream end of each distance step; here every step has the reference of the reach (HEC-HMS), which is the same for one step and keeps the scheme linear and independent of the extension of the series.
+
+**Rules of NEH-630.** (1) The hydrograph must rise from 5 % of its peak to the peak in at least 10 time steps (`rise_steps`); otherwise each step is divided into `ceil(10 / steps)` sub-steps, the inflow interpolated linearly and the outflow read at the original ordinates (notice `timestep_refined`; the balance has a sampling error). (2) Accuracy: with `Cg = c dt / dx` and `Dg = 1 - 2X` the routing is within the limits when `Dg <= exp(2.3 Cg)` (appendix B). Every grid inside the window above meets it (checked on 73,804 random grids, the closest margin is 0.0017), so a grid beyond the limit is one that the planner replaced: it keeps the NRCS number of steps when the window allows it, otherwise takes the largest number of steps inside the window (`subreaches_adjusted`), or divides the time step further (`substeps_added`), and reports the grid of the NRCS rule when it was beyond the limit (`accuracy_limit`). If no division of the reach into 1 to 100 sub-steps has a window (a short, flat reach: the weights are negative) the reach is refused (`validation_error`, `details.reason` `unstable_timestep`, `details.option` `times_min`), and NEH-630 advises storage routing (`route level-pool`).
+
+**Reference values.** NEH-630 example 17-4 (`L` = 2,600 ft, `S0` = 0.00091, `dt` = 0.1 h, reference 684.18 ft3/s, `c` = 4.297 ft/s, `T` = 44.6 ft) gives `dx_c` = 2,735 ft (here 833.63 m), one step, `K` = 605.07 s, `X` = -0.2544 (printed -0.254), the weights 0.0277, 0.3556 and 0.6166 (printed 0.028, 0.355, 0.617), `Cg` = 0.595, `Dg` = 1.509 (printed 1.508) and the limit 3.93. The outflow of Table 17-18 follows from the printed coefficients to 0.0049 ft3/s, half of the printed digit, so the table was computed with the rounded coefficients; the exact weights give it to 0.24 ft3/s (0.04 % of the peak; 645.78 ft3/s at 13.1 h against 645.72 ft3/s), and varying `c`, `T` or `S0` within their printed rounding cannot remove that. Routing the same reach from its section (15 ft bottom, 2:1, `n` = 0.04) gives the table to 2.4 ft3/s (0.4 %), the effect of the 2 % lower celerity. The tests are in `tests/unit/test_routing_cunge.py` and `tests/unit/test_routing_sections.py`; the command `route muskingum-cunge` follows.
+
 ---
 
 ## 4. Literature Verification
@@ -1019,6 +1033,7 @@ print(result.outflow.discharge_m3s.round(1).tolist())
 | Empirical frequency of minima (non-exceedance positions) | Weibull (1939), Hazen (1930), Cunnane (1978); WMO No. 1029 (2009), Tallaksen and van Lanen (2004) | ✅ |
 | Lag routing (`route lag`, `LagReach`) | HEC-HMS Technical Reference Manual (Lag routing model) | ✅ |
 | Muskingum routing with sub-reaches (`route muskingum`, `MuskingumReach`) | McCarthy (1938), Chow, Maidment, Mays (1988), HEC-HMS Technical Reference Manual (Muskingum model), University of Iowa Lesson 27 (worked example) | ✅ |
+| Muskingum-Cunge, constant coefficients (`MuskingumCungeReach`) | Cunge (1969), NRCS NEH Part 630 ch. 17 (2014) eq. 17-20 to 17-22, example 17-4 and appendix B, HEC-HMS Technical Reference Manual (Muskingum-Cunge model) | ✅ |
 
 ### 4.2 Key Publications
 
@@ -1029,6 +1044,7 @@ print(result.outflow.discharge_m3s.round(1).tolist())
 | Kirpich, Z.P. | 1940 | Time of concentration formula |
 | Clark, C.O. | 1945 | Translation + reservoir model |
 | McCarthy, G.T. | 1938 | Muskingum method: wedge storage `S = K [X I + (1 - X) O]` |
+| Cunge, J.A. | 1969 | Muskingum parameters from the diffusion of the flood wave: `K = dx / c`, `X = (1 - Q / (T S0 c dx)) / 2` |
 | FAA | 2013 | Tc formula for overland flow (AC 150/5320-5D) |
 | Kerby, W.S. | 1959 | Tc formula for sheet flow (retardance coefficient) |
 | Giandotti, M. | 1934 | Tc formula for Italian catchments |
@@ -1191,6 +1207,10 @@ print(result.outflow.discharge_m3s.round(1).tolist())
 25. **McCarthy, G.T.** (1938). The unit hydrograph and flood routing. Unpublished manuscript presented at the conference of the North Atlantic Division, U.S. Army Corps of Engineers, New London, Connecticut, 24 June 1938.
 
 26. **University of Iowa**. Lesson 27: Hydrologic Routing, Muskingum Method (course handout EX-L27-Muskingum-soln). https://user.engineering.uiowa.edu/~flood/handouts/EX-L27-Muskingum-soln.pdf
+
+27. **Cunge, J.A.** (1969). On the subject of a flood propagation computation method (Muskingum method). *Journal of Hydraulic Research*, 7(2), 205-230.
+
+28. **USDA-NRCS** (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (Amendment 69): example 17-4, appendices B and C. https://damtoolbox.org/images/a/a6/NEH17.pdf
 
 ---
 

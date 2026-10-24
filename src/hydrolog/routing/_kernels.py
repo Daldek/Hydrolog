@@ -14,14 +14,18 @@ rounding (a few units of 1e-16 relative) and does not loop in Python over long s
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 from scipy.signal import lfilter
 
 __all__ = [
+    "CascadeRun",
     "linear_reservoir_coefficients",
     "muskingum_coefficients",
     "route_linear_reservoir",
+    "route_muskingum_cascade",
     "three_point",
 ]
 
@@ -142,3 +146,79 @@ def route_linear_reservoir(
     """
     c_current, c_previous, c_outflow = linear_reservoir_coefficients(k, dt)
     return three_point(inflow, c_current, c_previous, c_outflow, initial_outflow)
+
+
+@dataclass(frozen=True)
+class CascadeRun:
+    """A hydrograph routed through equal Muskingum sub-reaches in series.
+
+    Attributes
+    ----------
+    outflow : numpy.ndarray
+        Outflow of the last sub-reach at every inflow ordinate.
+    storage_start, storage_end : float
+        Water held by all sub-reaches at the first and at the last ordinate, in the
+        unit of ``flow * k`` (multiply by the seconds of the time unit for m3).
+    storage_steady : float
+        What they would hold at rest under the final inflow: ``count * k * I_last``.
+    weights : tuple of float
+        ``(c_current, c_previous, c_outflow)`` of one sub-reach.
+    """
+
+    outflow: NDArray[np.float64]
+    storage_start: float
+    storage_end: float
+    storage_steady: float
+    weights: tuple[float, float, float]
+
+
+def route_muskingum_cascade(
+    inflow: ArrayLike,
+    k: float,
+    x: float,
+    dt: float,
+    count: int,
+    initial_outflow: float,
+) -> CascadeRun:
+    """Route an inflow through ``count`` equal Muskingum sub-reaches in series.
+
+    Every sub-reach has the storage ``S = k [x I + (1 - x) O]`` with its own inflow
+    ``I`` (the outflow of the one before it) and starts with ``initial_outflow``, so at
+    the first ordinate all but the first are fed by it. The trapezoid continuity holds
+    in every sub-reach, so the volume balance of the whole closes to rounding.
+
+    Parameters
+    ----------
+    inflow : array_like
+        Inflow ordinates at the step ``dt``, at least one.
+    k : float
+        Storage constant of ONE sub-reach, > 0 [same unit as ``dt``].
+    x : float
+        Weighting factor ``X``.
+    dt : float
+        Time step, > 0.
+    count : int
+        Number of sub-reaches, at least 1.
+    initial_outflow : float
+        Outflow of every sub-reach at the first ordinate.
+
+    Returns
+    -------
+    CascadeRun
+        The outflow, the storage at both ends and at rest, and the weights used.
+    """
+    values = np.asarray(inflow, dtype=np.float64)
+    weights = muskingum_coefficients(k, x, dt)
+    # junction[j] is the flow at the last ordinate entering sub-reach j + 1 (0: the
+    # inflow itself), so sub-reach j + 1 holds k [x junction[j] + (1 - x) junction[j+1]]
+    junction = np.empty(count + 1)
+    junction[0] = values[-1]
+    series = values
+    for index in range(1, count + 1):
+        series = three_point(series, *weights, initial_outflow)
+        junction[index] = series[-1]
+    # at the first ordinate every sub-reach but the first is fed by the initial outflow
+    held = x * float(values[0]) + (1.0 - x) * initial_outflow
+    first = k * (held + (count - 1) * initial_outflow)
+    last = k * float(np.sum(x * junction[:-1] + (1.0 - x) * junction[1:]))
+    return CascadeRun(series, first, last, count * k * float(values[-1]), weights)
