@@ -225,11 +225,13 @@ class TestReadTableJson:
         assert error.details["reason"] in ("shape", "empty")
 
     def test_invalid_json_reports_the_position(self, tmp_path):
-        """Syntax errors carry line and column."""
+        """Syntax errors carry line and column (as the ``json`` module counts them)."""
         path = write(tmp_path, "a.json", '{"a": [1,\n 2,]}')
         error = failure(lambda: read_table(path))
         assert error.details["reason"] == "invalid_json"
-        assert (error.details["line"], error.details["column"]) == (2, 3)
+        assert error.details["line"] == 2
+        # Python 3.13 points at the trailing comma (3), Python 3.12 at the bracket (4).
+        assert error.details["column"] in (3, 4)
 
     def test_nan_literal_is_rejected(self, tmp_path):
         """``NaN`` is not JSON; a missing value is ``null``."""
