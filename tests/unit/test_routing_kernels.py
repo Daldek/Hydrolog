@@ -5,6 +5,7 @@ import pytest
 
 from hydrolog.routing._kernels import (
     linear_reservoir_coefficients,
+    muskingum_coefficients,
     route_linear_reservoir,
     three_point,
 )
@@ -131,3 +132,81 @@ class TestLinearReservoir:
 
         assert outflow.sum() == pytest.approx(inflow.sum(), rel=1e-9)
         assert outflow.min() >= 0.0
+
+
+class TestMuskingum:
+    def test_the_weights_of_the_published_example(self):
+        # University of Iowa, Lesson 27: K = 20 h, X = 0.25, dt = 12 h
+        current, previous, outflow = muskingum_coefficients(k=20.0, x=0.25, dt=12.0)
+
+        assert (current, previous, outflow) == pytest.approx((1 / 21, 11 / 21, 9 / 21))
+        assert round(current, 4) == 0.0476
+        assert round(previous, 4) == 0.5238
+        assert round(outflow, 4) == 0.4286
+
+    @pytest.mark.parametrize(
+        ("k", "x", "dt"),
+        [(20.0, 0.25, 12.0), (5.0, 0.0, 10.0), (3.0, 0.5, 2.0), (8.0, -0.25, 6.0)],
+    )
+    def test_the_weights_sum_to_one(self, k, x, dt):
+        assert sum(muskingum_coefficients(k, x, dt)) == pytest.approx(1.0, abs=1e-15)
+
+    def test_x_zero_is_the_linear_reservoir(self):
+        k, dt = 30.0, 10.0
+
+        assert muskingum_coefficients(k, 0.0, dt) == (
+            dt / (2 * k + dt),
+            dt / (2 * k + dt),
+            (2 * k - dt) / (2 * k + dt),
+        )
+
+    def test_x_half_with_k_equal_to_dt_passes_the_previous_inflow_on(self):
+        assert muskingum_coefficients(k=10.0, x=0.5, dt=10.0) == (0.0, 1.0, 0.0)
+
+    def test_the_borders_of_the_window_are_where_a_weight_is_zero(self):
+        k, x = 20.0, 0.25
+
+        # dt = 2KX: the current inflow has no weight;
+        # dt = 2K(1 - X): the previous outflow has none
+        assert muskingum_coefficients(k, x, 2 * k * x)[0] == 0.0
+        assert muskingum_coefficients(k, x, 2 * k * (1 - x))[2] == 0.0
+        # a negative X: dt = -2KX is where the weight of the previous inflow vanishes
+        assert muskingum_coefficients(k, -0.25, 2 * k * 0.25)[1] == 0.0
+
+    def test_outside_the_window_a_weight_is_negative(self):
+        k, x = 20.0, 0.25
+
+        assert muskingum_coefficients(k, x, 0.5 * 2 * k * x)[0] < 0.0
+        assert muskingum_coefficients(k, x, 1.5 * 2 * k * (1 - x))[2] < 0.0
+
+    def test_a_pulse_after_a_dry_start_gives_a_negative_outflow_below_the_window(self):
+        # dt < 2KX: the weight of the current inflow is negative, so the first ordinate
+        # of a rising limb takes water out of the outflow, the case the window excludes
+        weights = muskingum_coefficients(k=60.0, x=0.4, dt=10.0)
+
+        outflow = three_point([0.0, 100.0, 0.0, 0.0], *weights, initial_outflow=0.0)
+
+        assert outflow[1] < 0.0
+
+    def test_the_sinusoidal_response_converges_to_the_transfer_function(self):
+        # S = K [X I + (1 - X) O] has the transfer function (1 - K X s) / (1 + K (1 - X)
+        # s). For I = 1 + sin(w t) the periodic outflow is 1 + |H| sin(w t + arg H); the
+        # trapezoid rule is second-order accurate in dt.
+        k, x, omega = 60.0, 0.3, 2.0 * np.pi / 600.0
+        response = (1.0 - 1j * omega * k * x) / (1.0 + 1j * omega * k * (1.0 - x))
+
+        def worst_error(dt):
+            time = np.arange(int(3000.0 / dt) + 1) * dt
+            exact = 1.0 + np.abs(response) * np.sin(omega * time + np.angle(response))
+            outflow = three_point(
+                1.0 + np.sin(omega * time),
+                *muskingum_coefficients(k, x, dt),
+                initial_outflow=exact[0],
+            )
+            late = time >= 1800.0
+            return float(np.abs(outflow - exact)[late].max())
+
+        coarse, fine = worst_error(40.0), worst_error(20.0)
+
+        assert coarse < 0.01
+        assert fine < coarse / 3.5

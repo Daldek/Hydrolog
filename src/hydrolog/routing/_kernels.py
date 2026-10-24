@@ -20,6 +20,7 @@ from scipy.signal import lfilter
 
 __all__ = [
     "linear_reservoir_coefficients",
+    "muskingum_coefficients",
     "route_linear_reservoir",
     "three_point",
 ]
@@ -57,13 +58,50 @@ def three_point(
     return np.asarray(outflow, dtype=np.float64)
 
 
+def muskingum_coefficients(k: float, x: float, dt: float) -> tuple[float, float, float]:
+    """Weights of the Muskingum scheme ``S = K [X I + (1 - X) O]``, trapezoid rule.
+
+    Continuity ``(S_t - S_{t-1}) / dt = (I_t + I_{t-1} - O_t - O_{t-1}) / 2`` with the
+    storage above gives the three-point recurrence with ``D = 2K(1 - X) + dt`` and
+
+    * ``c_current = (dt - 2KX) / D``, the weight of ``I_t``;
+    * ``c_previous = (dt + 2KX) / D``, the weight of ``I_{t-1}``;
+    * ``c_outflow = (2K(1 - X) - dt) / D``, the weight of ``O_{t-1}``.
+
+    The weights sum to 1 (a steady state is kept). They are all non-negative, which
+    keeps a non-negative inflow non-negative, when ``|2KX| <= dt <= 2K(1 - X)``.
+
+    Parameters
+    ----------
+    k : float
+        Storage constant ``K`` [same unit as ``dt``], > 0.
+    x : float
+        Weighting factor ``X``; the classical range is 0 to 0.5, a negative value
+        occurs in the Muskingum-Cunge scheme.
+    dt : float
+        Time step, > 0.
+
+    Returns
+    -------
+    tuple of float
+        ``(c_current, c_previous, c_outflow)``, the weights of ``I_t``, ``I_{t-1}``
+        and ``O_{t-1}``.
+    """
+    total = 2.0 * k * (1.0 - x) + dt
+    return (
+        (dt - 2.0 * k * x) / total,
+        (dt + 2.0 * k * x) / total,
+        (2.0 * k * (1.0 - x) - dt) / total,
+    )
+
+
 def linear_reservoir_coefficients(k: float, dt: float) -> tuple[float, float, float]:
     """Weights of the linear reservoir ``S = K O`` with the trapezoid rule.
 
     ``O_t = O_{t-1} + C (I_t + I_{t-1} - 2 O_{t-1})`` with ``C = dt / (2K + dt)``. It is
     the three-point recurrence with ``c_current = c_previous = C`` and
-    ``c_outflow = (2K - dt) / (2K + dt)``, the Muskingum scheme with ``X = 0``. The
-    last weight is negative when ``dt > 2K``.
+    ``c_outflow = (2K - dt) / (2K + dt)``, the Muskingum scheme with ``X = 0``
+    (:func:`muskingum_coefficients`). The last weight is negative when ``dt > 2K``.
 
     Parameters
     ----------
@@ -77,8 +115,7 @@ def linear_reservoir_coefficients(k: float, dt: float) -> tuple[float, float, fl
     tuple of float
         ``(c_current, c_previous, c_outflow)``.
     """
-    total = 2.0 * k + dt
-    return dt / total, dt / total, (2.0 * k - dt) / total
+    return muskingum_coefficients(k, 0.0, dt)
 
 
 def route_linear_reservoir(
