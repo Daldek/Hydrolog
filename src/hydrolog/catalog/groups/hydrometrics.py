@@ -15,63 +15,88 @@ _FIXTURES = "tests/fixtures"
 COMMANDS: tuple[Command, ...] = (
     Command(
         name="hydrometrics rating-curve",
-        operation_id="hydrometrics_rating_curve",
-        summary=(
-            "Krzywa przepływu Q = a·(H − H₀)^b dopasowana do par stan–przepływ, z "
-            "opcjonalnym usuwaniem odstających."
-        ),
-        summary_en=(
-            "Rating curve Q = a·(H − H₀)^b fitted to stage–discharge pairs, with "
-            "optional outlier removal."
+        operation_id="hydrolog_hydrometrics_rating_curve",
+        summary_pl=("Dopasuj krzywą przepływu Q = a·(H − H₀)^b do par stan–przepływ"),
+        summary=("Fit a rating curve Q = a·(H − H₀)^b to stage–discharge pairs"),
+        description_pl=(
+            "Potęgowa krzywa przepływu nieliniową metodą najmniejszych kwadratów ze"
+            " stanów H (cm albo m) i przepływów Q [m³/s], z opcjonalnym usuwaniem "
+            "odstających. Do budowy zależności stan–przepływ; strefy stanów: "
+            "`hydrometrics water-level-zones`. Wymaga co najmniej 3 par; pary z NaN"
+            " są pomijane."
         ),
         description=(
-            "Dopasowuje potęgową krzywą przepływu Q = a·(H − H₀)^b do par pomiarów "
-            "stanu wody H (cm albo m) i przepływu Q [m³/s] nieliniową metodą "
-            "najmniejszych kwadratów (`scipy.optimize.curve_fit`; więzy a ≥ 0, b ≥ 0, "
-            "H₀ poniżej najniższego stanu z pomiarów; punkt startowy a = 1, b = 1,5, "
-            "H₀ = `h0_initial`, domyślnie dobierany z danych: najniższy stan minus "
-            "10 % rozstępu stanów, co najmniej jedna jednostka, więc działa także dla "
-            "stanów poniżej zera wodowskazu). Z `remove_outliers=true` po pierwszym "
-            "dopasowaniu "
-            "odrzucane są pary, których reszta przekracza `outlier_std` odchyleń "
-            "standardowych, i krzywa jest dopasowywana ponownie (o ile zostaną co "
-            "najmniej 3 pary). Wymaga co najmniej 3 par; pary z brakującą wartością "
-            "(NaN) są pomijane i zgłaszane w `notices`; brak zbieżności to "
-            "`calculation_error`. Pary podaje się inline (`water_levels` i "
-            "`discharges`) albo w pliku (`input_file` z `level_column` i "
-            "`discharge_column`). Wynik: `a`, `b`, `h0` (w jednostce stanów H), "
-            "`r_squared`, `std_residuals` [m³/s], `n_points` (pary użyte w "
-            "ostatecznym dopasowaniu) i `n_outliers_removed`."
+            "Power-law rating curve by non-linear least squares from water level H "
+            "(cm or m) and discharge Q [m³/s], with optional outlier removal. Use "
+            "to build a stage–discharge relation; for level zones use `hydrometrics"
+            " water-level-zones`. Needs 3 or more pairs; NaN pairs are skipped."
         ),
-        description_en=(
-            "Fits the power-law rating curve Q = a·(H − H₀)^b to pairs of water "
-            "level H (cm or m) and discharge Q [m³/s] by non-linear least squares "
-            "(`scipy.optimize.curve_fit`; constraints a ≥ 0, b ≥ 0, H₀ below the "
-            "lowest observed level; starting point a = 1, b = 1.5, H₀ = "
-            "`h0_initial`, by default chosen from the data: the lowest level minus "
-            "10 % of the range of the levels, at least one unit, so it works for "
-            "levels below the gauge zero too). With `remove_outliers=true` the pairs "
-            "whose residual exceeds `outlier_std` standard deviations are dropped "
-            "after the first "
-            "fit and the curve is fitted again (when at least 3 pairs remain). At "
-            "least 3 pairs are required; pairs with a missing value (NaN) are "
-            "skipped and reported in `notices`; failure to converge is "
-            "`calculation_error`. Pairs are given inline (`water_levels` and "
-            "`discharges`) or in a file (`input_file` with `level_column` and "
-            "`discharge_column`). Result: `a`, `b`, `h0` (in the unit of the "
-            "levels H), `r_squared`, `std_residuals` [m³/s], `n_points` (pairs used "
-            "in the final fit) and `n_outliers_removed`."
+        result_schema="hydrolog-hydrometrics-rating-curve/1",
+        rules=(
+            (
+                "Pass levels and discharges as equal-length lists, or a file with two "
+                "columns."
+            ),
+            (
+                "Check `r_squared`, `n_outliers_removed` and `notices` before using the"
+                " curve."
+            ),
+            "`h0` is in the unit of the levels; discharge is in m³/s.",
         ),
-        function="hydrolog.operations:hydrometrics_rating_curve",
+        rules_pl=(
+            (
+                "Podaj stany i przepływy jako listy równej długości albo plik z dwiema "
+                "kolumnami."
+            ),
+            (
+                "Sprawdź `r_squared`, `n_outliers_removed` i `notices` przed użyciem "
+                "krzywej."
+            ),
+            "`h0` jest w jednostce stanów; przepływ w m³/s.",
+        ),
+        errors=(
+            "validation_error",
+            "not_found",
+            "data_error",
+            "calculation_error",
+            "forbidden",
+        ),
+        example_results=(
+            {
+                "a": 0.00932083,
+                "b": 1.51276,
+                "h0": 39.1108,
+                "r_squared": 0.999093,
+                "n_points": 14,
+                "n_outliers_removed": 1,
+            },
+            {
+                "a": 0.0152929,
+                "b": 1.42498,
+                "h0": 43.7989,
+                "r_squared": 0.998986,
+                "n_points": 8,
+                "n_outliers_removed": 0,
+            },
+            {
+                "a": 0.00491733,
+                "b": 1.64014,
+                "h0": -25.1698,
+                "r_squared": 0.999754,
+                "n_points": 6,
+                "n_outliers_removed": 0,
+            },
+        ),
+        function="hydrolog.operations.hydrometrics_rating_curve",
         options=(
             Option(
                 name="water_levels",
                 type="number_list",
-                description=(
+                description_pl=(
                     "Stany wody H z kolejnych pomiarów przepływu (cm albo m, tak samo "
                     "jak `h0_initial`); tyle samo co `discharges`."
                 ),
-                description_en=(
+                description=(
                     "Water levels H of the successive discharge measurements (cm or "
                     "m, as for `h0_initial`); as many as `discharges`."
                 ),
@@ -79,18 +104,18 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="discharges",
                 type="number_list",
-                description="Przepływy Q zmierzone przy stanach `water_levels`.",
-                description_en="Discharges Q measured at the levels `water_levels`.",
+                description_pl="Przepływy Q zmierzone przy stanach `water_levels`.",
+                description="Discharges Q measured at the levels `water_levels`.",
                 unit="m3/s",
             ),
             replace(
                 INPUT_FILE,
-                description=(
+                description_pl=(
                     "Plik CSV albo JSON z parami stan–przepływ (zamiast list "
                     "`water_levels` i `discharges`); kolumny wskazują `level_column` "
                     "i `discharge_column`."
                 ),
-                description_en=(
+                description=(
                     "CSV or JSON file with stage–discharge pairs (instead of the "
                     "lists `water_levels` and `discharges`); the columns are named by "
                     "`level_column` and `discharge_column`."
@@ -99,11 +124,11 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="level_column",
                 type="string",
-                description=(
+                description_pl=(
                     "Nazwa kolumny ze stanami wody w `input_file` (np. `H`; "
                     "wystarczy nazwa bez jednostki w nawiasie kwadratowym)."
                 ),
-                description_en=(
+                description=(
                     "Name of the water level column in `input_file` (e.g. `H`; the "
                     "name without the unit in square brackets is enough)."
                 ),
@@ -111,11 +136,11 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="discharge_column",
                 type="string",
-                description=(
+                description_pl=(
                     "Nazwa kolumny z przepływami w `input_file` (np. `Q`; wystarczy "
                     "nazwa bez jednostki w nawiasie kwadratowym)."
                 ),
-                description_en=(
+                description=(
                     "Name of the discharge column in `input_file` (e.g. `Q`; the "
                     "name without the unit in square brackets is enough)."
                 ),
@@ -123,14 +148,14 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="h0_initial",
                 type="number",
-                description=(
+                description_pl=(
                     "Początkowe przybliżenie H₀, stanu zerowego przepływu, w "
                     "jednostce stanów; musi być niższe niż najniższy stan z pomiarów. "
                     "Bez tej opcji dobierane z danych (najniższy stan minus 10 % "
                     "rozstępu stanów, co najmniej jedna jednostka), także dla stanów "
                     "ujemnych."
                 ),
-                description_en=(
+                description=(
                     "Initial guess of H₀, the level of zero flow, in the unit of the "
                     "levels; must be below the lowest observed level. Without this "
                     "option it is chosen from the data (the lowest level minus 10 % "
@@ -141,11 +166,11 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="remove_outliers",
                 type="boolean",
-                description=(
+                description_pl=(
                     "Odrzuć pary o resztach większych niż `outlier_std` odchyleń "
                     "standardowych i dopasuj krzywą ponownie."
                 ),
-                description_en=(
+                description=(
                     "Drop the pairs whose residual exceeds `outlier_std` standard "
                     "deviations and fit the curve again."
                 ),
@@ -154,11 +179,11 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="outlier_std",
                 type="number",
-                description=(
+                description_pl=(
                     "Próg odstających obserwacji w odchyleniach standardowych reszt "
                     "(dodatni); działa z `remove_outliers`."
                 ),
-                description_en=(
+                description=(
                     "Outlier threshold in standard deviations of the residuals "
                     "(positive); used with `remove_outliers`."
                 ),
@@ -191,79 +216,86 @@ COMMANDS: tuple[Command, ...] = (
     ),
     Command(
         name="hydrometrics water-level-zones",
-        operation_id="hydrometrics_water_level_zones",
-        summary=(
-            "Strefy stanów wody wg Rybczyńskiego (NTW, STW, WTW) z histogramu i "
-            "krzywej czasu trwania stanów."
+        operation_id="hydrolog_hydrometrics_water_level_zones",
+        summary_pl=(
+            "Wyznacz strefy stanów wody wg Rybczyńskiego (NTW, STW, WTW) ze szeregu"
+            " stanów"
         ),
-        summary_en=(
-            "Rybczyński water level zones (NTW, STW, WTW) from the histogram and the "
-            "duration curve of water levels."
+        summary=(
+            "Delimit Rybczyński water level zones (NTW, STW, WTW) from level series"
+        ),
+        description_pl=(
+            "Granice stref z histogramu i krzywej czasu trwania stanów wody (klasy "
+            "o szerokości `bin_width`): NTW niskie, STW średnie, WTW wysokie tło "
+            "wodne. Do stref stanów wodowskazu; zależność stan–przepływ: "
+            "`hydrometrics rating-curve`. Granice mają jednostkę stanów."
         ),
         description=(
-            "Wyznacza strefy stanów wody metodą Rybczyńskiego z histogramu stanów "
-            "(klasy o szerokości `bin_width`, od najniższego stanu zaokrąglonego w "
-            "dół do liczby całkowitej): NTW (niskie tło wodne) – stany poniżej klasy "
-            "modalnej, STW (średnie tło wodne) – od klasy modalnej do klasy, w której "
-            "krzywa czasu trwania spada poniżej 50 %, WTW (wysokie tło wodne) – stany "
-            "wyższe. Granica NTW/STW (`ntw_upper`) to środek klasy o największej "
-            "częstości, a granica STW/WTW (`stw_upper`) to środek pierwszej klasy, "
-            "dla której czas trwania stanów nie niższych niż jej dolna granica jest "
-            "krótszy niż 50 % czasu; granice mają jednostkę stanów (cm albo m). "
-            "Wynik: `n_observations`, `bin_width`, `zones` (`ntw_upper`, "
-            "`stw_upper`, `ntw_range`, `stw_range`, `wtw_range`) i `frequency` "
-            "(`bin_edges`, `bin_centers`, `counts`, `frequency_pct`, "
-            "`cumulative_frequency_pct`, `duration_pct`). Braki danych (NaN) są "
-            "pomijane i zgłaszane w `notices`."
+            "Zone limits from the histogram and the duration curve of water levels "
+            "(classes of `bin_width`): NTW low, STW medium, WTW high background "
+            "water. Use for level zones of a gauge; for a stage–discharge relation "
+            "use `hydrometrics rating-curve`. Limits are in the unit of the levels."
         ),
-        description_en=(
-            "Delimits water level zones with the Rybczyński method from the "
-            "histogram of the levels (classes of `bin_width`, starting at the lowest "
-            "level rounded down to an integer): NTW (low background water) – levels "
-            "below the modal class, STW (medium background water) – from the modal "
-            "class to the class where the duration curve falls below 50 %, WTW (high "
-            "background water) – higher levels. The NTW/STW limit (`ntw_upper`) is "
-            "the centre of the most frequent class and the STW/WTW limit "
-            "(`stw_upper`) is the centre of the first class for which the duration "
-            "of levels not lower than its lower edge is shorter than 50 % of the "
-            "time; the limits are in the unit of the levels (cm or m). Result: "
-            "`n_observations`, `bin_width`, `zones` (`ntw_upper`, `stw_upper`, "
-            "`ntw_range`, `stw_range`, `wtw_range`) and `frequency` (`bin_edges`, "
-            "`bin_centers`, `counts`, `frequency_pct`, `cumulative_frequency_pct`, "
-            "`duration_pct`). Missing values (NaN) are skipped and reported in "
-            "`notices`."
+        result_schema="hydrolog-hydrometrics-water-level-zones/1",
+        cardinality="bounded",
+        rules=(
+            (
+                "Give water levels in one unit (cm or m) and set `bin_width` in the "
+                "same unit."
+            ),
+            "Check `notices` for skipped missing values.",
+            "Limits are `zones.ntw_upper` and `zones.stw_upper`.",
         ),
-        function="hydrolog.operations:hydrometrics_water_level_zones",
+        rules_pl=(
+            ("Podaj stany w jednej jednostce (cm albo m), `bin_width` w tej samej."),
+            "Sprawdź `notices` pod kątem pominiętych braków danych.",
+            "Granice to `zones.ntw_upper` i `zones.stw_upper`.",
+        ),
+        errors=(
+            "validation_error",
+            "not_found",
+            "data_error",
+            "calculation_error",
+            "forbidden",
+        ),
+        example_results=(
+            {
+                "n_observations": 12,
+                "bin_width": 10.0,
+                "zones": {"ntw_upper": 155.0, "stw_upper": 175.0},
+            },
+        ),
+        function="hydrolog.operations.hydrometrics_water_level_zones",
         options=(
             replace(
                 VALUES,
-                description=(
+                description_pl=(
                     "Stany wody (cm albo m), np. dobowe z wielolecia. Długie szeregi "
                     "podawaj w pliku (`input_file`)."
                 ),
-                description_en=(
+                description=(
                     "Water levels (cm or m), e.g. daily values of many years. Give "
                     "long series in a file (`input_file`)."
                 ),
             ),
             replace(
                 INPUT_FILE,
-                description=(
+                description_pl=(
                     "Plik CSV albo JSON ze stanami wody, np. eksport szeregu z "
                     "IMGWTools; kolumnę wskazuje `value_column`."
                 ),
-                description_en=(
+                description=(
                     "CSV or JSON file with water levels, e.g. an IMGWTools series "
                     "export; the column is named by `value_column`."
                 ),
             ),
             replace(
                 VALUE_COLUMN,
-                description=(
+                description_pl=(
                     "Nazwa kolumny ze stanami wody w `input_file` (np. `H`; "
                     "wystarczy nazwa bez jednostki w nawiasie kwadratowym)."
                 ),
-                description_en=(
+                description=(
                     "Name of the water level column in `input_file` (e.g. `H`; the "
                     "name without the unit in square brackets is enough)."
                 ),
@@ -271,11 +303,11 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="bin_width",
                 type="number",
-                description=(
+                description_pl=(
                     "Szerokość klasy histogramu stanów, w jednostce stanów (cm albo "
                     "m), dodatnia."
                 ),
-                description_en=(
+                description=(
                     "Width of the histogram class of the levels, in the unit of the "
                     "levels (cm or m), positive."
                 ),

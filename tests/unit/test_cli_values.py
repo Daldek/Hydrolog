@@ -13,7 +13,11 @@ from hydrolog.exceptions import InvalidParameterError
 def _option(kind: Any, **kwargs: Any) -> Option:
     if kind == "choice":
         kwargs.setdefault("choices", ("a", "b"))
-    return Option("value", kind, "Wartość", "Value", **kwargs)
+        kwargs.setdefault("meanings", {"a": "First", "b": "Second"})
+        kwargs.setdefault("meanings_pl", {"a": "Pierwszy", "b": "Drugi"})
+    if kind == "path":
+        kwargs.setdefault("path_role", "input")
+    return Option("value", kind, "Value", "Wartość", **kwargs)
 
 
 class TestNumbers:

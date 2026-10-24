@@ -14,8 +14,8 @@ from hydrolog.catalog.spec import Command, Option
 _AREA = Option(
     name="area_km2",
     type="number",
-    description="Powierzchnia zlewni [km²]; > 0.",
-    description_en="Catchment area [km2]; > 0.",
+    description_pl="Powierzchnia zlewni [km²]; > 0.",
+    description="Catchment area [km2]; > 0.",
     required=True,
     exclusive_minimum=0,
     unit="km2",
@@ -26,10 +26,10 @@ def _timestep(default: float, note_pl: str, note_en: str) -> Option:
     return Option(
         name="timestep_min",
         type="number",
-        description=(
+        description_pl=(
             f"Krok czasowy hydrogramu [min]; > 0; domyślnie {default:g}. {note_pl}"
         ),
-        description_en=(
+        description=(
             f"Time step of the hydrograph [min]; > 0; default {default:g}. {note_en}"
         ),
         exclusive_minimum=0,
@@ -42,11 +42,11 @@ def _rainfall_duration(note_pl: str, note_en: str) -> Option:
     return Option(
         name="rainfall_duration_min",
         type="number",
-        description=(
+        description_pl=(
             "Czas trwania opadu jednostkowego D, dla którego liczony jest "
             f"hydrogram [min]; > 0. {note_pl}"
         ),
-        description_en=(
+        description=(
             "Duration D of the unit rainfall the hydrograph is computed for "
             f"[min]; > 0. {note_en}"
         ),
@@ -59,8 +59,8 @@ def _total_duration(note_pl: str, note_en: str) -> Option:
     return Option(
         name="total_duration_min",
         type="number",
-        description=(f"Całkowita długość wyniku [min]; > 0. {note_pl}"),
-        description_en=(f"Total length of the result [min]; > 0. {note_en}"),
+        description_pl=(f"Całkowita długość wyniku [min]; > 0. {note_pl}"),
+        description=(f"Total length of the result [min]; > 0. {note_en}"),
         exclusive_minimum=0,
         unit="min",
     )
@@ -69,8 +69,8 @@ def _total_duration(note_pl: str, note_en: str) -> Option:
 _TC = Option(
     name="tc_min",
     type="number",
-    description=("Czas koncentracji [min]; > 0 (z dowolnej metody grupy `tc`)."),
-    description_en=(
+    description_pl=("Czas koncentracji [min]; > 0 (z dowolnej metody grupy `tc`)."),
+    description=(
         "Time of concentration [min]; > 0 (from any method of the `tc` group)."
     ),
     required=True,
@@ -81,45 +81,28 @@ _TC = Option(
 COMMANDS: tuple[Command, ...] = (
     Command(
         name="uh scs",
-        operation_id="uh_scs",
-        summary=(
-            "Hydrogram jednostkowy SCS (NRCS, TR-55) z powierzchni i czasu "
+        operation_id="hydrolog_uh_scs",
+        summary_pl=(
+            "Oblicz hydrogram jednostkowy SCS (NRCS) z powierzchni i czasu "
             "koncentracji."
         ),
-        summary_en=(
-            "SCS (NRCS, TR-55) unit hydrograph from the area and the time of "
+        summary=(
+            "Compute the SCS (NRCS) unit hydrograph from the area and the time of "
             "concentration."
         ),
+        description_pl=(
+            "Bezwymiarowy hydrogram jednostkowy SCS (NRCS, TR-55) w m3/s na mm. "
+            "Stosuj, gdy znany jest czas koncentracji tc (z komendy `tc`). Nie do "
+            "hydrogramu odpływu (`hydrograph generate`). Kształt z tablicy; krok jest "
+            "zarazem czasem trwania opadu jednostkowego."
+        ),
         description=(
-            "Bezwymiarowy hydrogram jednostkowy SCS (NRCS, TR-55) dla zlewni o "
-            "powierzchni A i czasie koncentracji tc: czas opóźnienia tlag = 0,6·tc; "
-            "czas do szczytu tp = D/2 + tlag, gdzie D to krok czasowy "
-            "`timestep_min` (czas trwania opadu jednostkowego); szczyt qp = 0,208·"
-            "A/tp [m³/s na mm] (A w km², tp w godzinach); podstawa tb = 5·tp. "
-            "Kształt wyznacza tablica bezwymiarowa NRCS (33 punkty t/tp–q/qp, "
-            "interpolacja liniowa). Hydrogram odpowiada 1 mm opadu efektywnego "
-            "rozłożonego równomiernie w czasie D. tc podaje się z dowolnej metody "
-            "grupy `tc` (Kirpich, NRCS, Giandotti, FAA, Kerby, Kerby–Kirpich). "
-            "Wynik: tp, qp, tlag, tb oraz rzędne hydrogramu `ordinates_m3s_per_mm` "
-            "i czasy `times_min`. Literatura: USDA-NRCS (1986), Urban Hydrology for "
-            "Small Watersheds, TR-55, rozdz. 3."
+            "Dimensionless SCS (NRCS, TR-55) unit hydrograph in m3/s per mm. Use when "
+            "tc is known (from a `tc` command). Not for a runoff hydrograph "
+            "(`hydrograph generate`). Fixed table shape; the step is also the unit "
+            "rainfall duration."
         ),
-        description_en=(
-            "The dimensionless SCS (NRCS, TR-55) unit hydrograph of a catchment "
-            "with area A and time of concentration tc: lag time tlag = 0.6·tc; "
-            "time to peak tp = D/2 + tlag, where D is the time step "
-            "`timestep_min` (the unit rainfall duration); peak qp = 0.208·A/tp "
-            "[m3/s per mm] (A in km2, tp in hours); time base tb = 5·tp. The shape "
-            "is the NRCS dimensionless table (33 points t/tp-q/qp, linear "
-            "interpolation). The hydrograph corresponds to 1 mm of effective "
-            "precipitation spread evenly over the time D. tc comes from any "
-            "method of the `tc` group (Kirpich, NRCS, Giandotti, FAA, Kerby, "
-            "Kerby-Kirpich). Result: tp, qp, tlag, tb and the hydrograph "
-            "ordinates `ordinates_m3s_per_mm` with the times `times_min`. "
-            "Reference: USDA-NRCS (1986), Urban Hydrology for Small Watersheds, "
-            "TR-55, chapter 3."
-        ),
-        function="hydrolog.operations:uh_scs",
+        function="hydrolog.operations.uh_scs",
         options=(
             _AREA,
             _TC,
@@ -129,80 +112,64 @@ COMMANDS: tuple[Command, ...] = (
                 "It is also the unit rainfall duration D.",
             ),
         ),
+        result_schema="hydrolog-uh-scs/1",
+        cardinality="bounded",
+        rules=(
+            "Pass tc_min in minutes, taken from a `tc` command.",
+            "Read ordinates in m3/s per mm of effective rain.",
+            "Check `notices` in the result.",
+        ),
+        rules_pl=(
+            "Podaj tc_min w minutach, z komendy `tc`.",
+            "Rzędne odczytuj w m3/s na mm opadu efektywnego.",
+            "Sprawdź `notices` w wyniku.",
+        ),
+        errors=("validation_error",),
+        example_results=(
+            {
+                "model": "scs",
+                "peak_discharge_m3s_per_mm": 10.0061,
+                "time_to_peak_min": 56.5,
+                "lag_time_min": 54.0,
+                "time_base_min": 282.5,
+            },
+        ),
         examples=({"area_km2": 45.3, "tc_min": 90.0, "timestep_min": 5.0},),
     ),
     Command(
         name="uh nash",
-        operation_id="uh_nash",
-        summary=(
-            "Hydrogram jednostkowy Nasha (kaskada zbiorników): n i K, metoda "
-            "Lutza lub regresja miejska."
+        operation_id="hydrolog_uh_nash",
+        summary_pl=(
+            "Oblicz hydrogram jednostkowy Nasha z n i K, metodą Lutza lub regresją "
+            "miejską."
         ),
-        summary_en=(
-            "Nash cascade unit hydrograph: direct n and K, Lutz method or "
-            "urban regression."
+        summary=(
+            "Compute the Nash cascade unit hydrograph from n and K, the Lutz method or"
+            " urban regression."
+        ),
+        description_pl=(
+            "Kaskada zbiorników liniowych Nasha (1957), hydrogram jednostkowy w m3/s "
+            "na mm. Podaj dokładnie jedną grupę parametrów: `n` + `k_min`, Lutz "
+            "(zlewnie niekontrolowane) lub regresja miejska. Nie do kształtów opartych"
+            " na tc (`uh scs`, `uh clark`)."
         ),
         description=(
-            "Hydrogram jednostkowy Nasha (1957): kaskada n jednakowych zbiorników "
-            "liniowych o stałej magazynowania K [min]; IUH u(t) = (t/K)^(n−1)·"
-            "exp(−t/K) / (K·Γ(n)), lag tlag = n·K, czas do szczytu IUH (n−1)·K. "
-            "Hydrogram D-minutowy to różnica krzywych S (niepełna funkcja gamma) "
-            "przesuniętych o D, podzielona przez D i przeskalowana objętością "
-            "1 mm × A [m³/s na mm]. Parametry n i K podaje się jedną z trzech "
-            "dróg (dokładnie jedna grupa opcji): (a) wprost `n` i `k_min` "
-            "(wartości skalibrowane lub oszacowane); (b) metodą Lutza (1984; KZGW "
-            "2017), zalecaną dla zlewni bez pomiarów: tp = P₁·(L·Lc/J^1,5)^0,26·"
-            "exp(−0,016·U)·exp(0,004·W) [h], P₁ = 3,989·n_M + 0,028, następnie N z "
-            "równania f(N) = tp·up = (N−1)^N·exp(−(N−1))/Γ(N), up = 0,66/tp^1,04, "
-            "oraz K = tp/(N−1); wymaga `lutz_length_km` (L), "
-            "`lutz_centroid_length_km` (Lc ≤ L), `lutz_slope_m_per_m` (J), "
-            "`lutz_manning_n` (n_M), opcjonalnie `lutz_urban_pct` (U) i "
-            "`lutz_forest_pct` (W) w procentach; (c) regresją dla zlewni "
-            "zurbanizowanych (Rao, Delleur, Sarma, 1972): tL = 1,28·A^0,46·"
-            "(1+U)^−1,66·H^−0,27·D^0,37 [h], k = 0,56·A^0,39·(1+U)^−0,62·H^−0,11·"
-            "D^0,22 [h], N = tL/k; wymaga `urban_effective_precip_mm` (H) i "
-            "`urban_duration_h` (D), opcjonalnie `urban_fraction` (U ∈ [0, 1)). "
-            "Opcje spoza wybranej grupy są odrzucane. Metoda from_tc (tlag = "
-            "0,6·tc) jest przestarzała i bez uzasadnienia dla modelu Nasha, więc "
-            "nie jest dostępna. Wynik: n, K, lag, czas do szczytu, szczyt "
-            "[m³/s na mm], rzędne i (dla Lutza) wyniki pośrednie obliczeń."
+            "Nash (1957) cascade of linear reservoirs, unit hydrograph in m3/s per mm."
+            " Give exactly one parameter group: `n` + `k_min`, Lutz (ungauged "
+            "catchments) or urban regression. Not for tc-based shapes (`uh scs`, `uh "
+            "clark`)."
         ),
-        description_en=(
-            "The Nash (1957) unit hydrograph: a cascade of n identical linear "
-            "reservoirs with storage constant K [min]; IUH u(t) = (t/K)^(n-1)·"
-            "exp(-t/K) / (K·Γ(n)), lag time tlag = n·K, IUH time to peak "
-            "(n-1)·K. The D-minute hydrograph is the difference of S-curves "
-            "(incomplete gamma function) shifted by D, divided by D and scaled by "
-            "the volume 1 mm × A [m3/s per mm]. The parameters n and K come from "
-            "one of three routes (exactly one group of options): (a) directly "
-            "`n` and `k_min` (calibrated or estimated values); (b) the Lutz "
-            "method (1984; KZGW 2017), recommended for ungauged catchments: tp = "
-            "P1·(L·Lc/J^1.5)^0.26·exp(-0.016·U)·exp(0.004·W) [h], P1 = 3.989·n_M + "
-            "0.028, then N from f(N) = tp·up = (N-1)^N·exp(-(N-1))/Γ(N), up = "
-            "0.66/tp^1.04, and K = tp/(N-1); needs `lutz_length_km` (L), "
-            "`lutz_centroid_length_km` (Lc <= L), `lutz_slope_m_per_m` (J), "
-            "`lutz_manning_n` (n_M), optionally `lutz_urban_pct` (U) and "
-            "`lutz_forest_pct` (W) in percent; (c) the regression for urbanized "
-            "catchments (Rao, Delleur, Sarma, 1972): tL = 1.28·A^0.46·"
-            "(1+U)^-1.66·H^-0.27·D^0.37 [h], k = 0.56·A^0.39·(1+U)^-0.62·H^-0.11·"
-            "D^0.22 [h], N = tL/k; needs `urban_effective_precip_mm` (H) and "
-            "`urban_duration_h` (D), optionally `urban_fraction` (U in [0, 1)). "
-            "Options outside the chosen group are rejected. The from_tc method "
-            "(tlag = 0.6·tc) is deprecated and has no basis for the Nash model, "
-            "so it is not offered. Result: n, K, lag, time to peak, peak [m3/s "
-            "per mm], the ordinates and (for Lutz) the intermediate results."
-        ),
-        function="hydrolog.operations:uh_nash",
+        function="hydrolog.operations.uh_nash",
         options=(
             _AREA,
             Option(
                 name="n",
                 type="number",
-                description=(
+                description_pl=(
                     "Liczba zbiorników kaskady n (parametr kształtu, może być "
                     "ułamkowa); > 0, typowo 1–10. Razem z `k_min`."
                 ),
-                description_en=(
+                description=(
                     "Number of reservoirs n (shape parameter, may be fractional); "
                     "> 0, typically 1-10. Together with `k_min`."
                 ),
@@ -211,11 +178,11 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="k_min",
                 type="number",
-                description=(
+                description_pl=(
                     "Stała magazynowania zbiornika K [min]; > 0, typowo 10–200. "
                     "Razem z `n`."
                 ),
-                description_en=(
+                description=(
                     "Storage constant K of a reservoir [min]; > 0, typically "
                     "10-200. Together with `n`."
                 ),
@@ -225,11 +192,11 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="lutz_length_km",
                 type="number",
-                description=(
+                description_pl=(
                     "Lutz: długość cieku głównego od działu wodnego do przekroju "
                     "zamykającego L [km]; > 0."
                 ),
-                description_en=(
+                description=(
                     "Lutz: length of the main stream from the divide to the "
                     "outlet L [km]; > 0."
                 ),
@@ -239,12 +206,12 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="lutz_centroid_length_km",
                 type="number",
-                description=(
+                description_pl=(
                     "Lutz: długość cieku od przekroju zamykającego do punktu "
                     "najbliższego środka ciężkości zlewni Lc [km]; > 0, nie "
                     "większa niż L."
                 ),
-                description_en=(
+                description=(
                     "Lutz: length along the main stream from the outlet to the "
                     "point nearest to the catchment centroid Lc [km]; > 0, not "
                     "larger than L."
@@ -255,19 +222,19 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="lutz_slope_m_per_m",
                 type="number",
-                description="Lutz: średni spadek cieku głównego J [m/m]; > 0.",
-                description_en="Lutz: mean slope of the main stream J [m/m]; > 0.",
+                description_pl="Lutz: średni spadek cieku głównego J [m/m]; > 0.",
+                description="Lutz: mean slope of the main stream J [m/m]; > 0.",
                 exclusive_minimum=0,
                 unit="m/m",
             ),
             Option(
                 name="lutz_manning_n",
                 type="number",
-                description=(
+                description_pl=(
                     "Lutz: współczynnik szorstkości Manninga koryta n_M; > 0, "
                     "typowo 0,025–0,050 dla cieków naturalnych."
                 ),
-                description_en=(
+                description=(
                     "Lutz: Manning roughness coefficient of the channel n_M; > 0, "
                     "typically 0.025-0.050 for natural streams."
                 ),
@@ -276,12 +243,10 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="lutz_urban_pct",
                 type="number",
-                description=(
+                description_pl=(
                     "Lutz: udział terenów zurbanizowanych U [%]; 0–100; domyślnie 0."
                 ),
-                description_en=(
-                    "Lutz: share of urbanized area U [%]; 0-100; default 0."
-                ),
+                description=("Lutz: share of urbanized area U [%]; 0-100; default 0."),
                 minimum=0,
                 maximum=100,
                 unit="%",
@@ -289,10 +254,10 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="lutz_forest_pct",
                 type="number",
-                description=("Lutz: udział terenów leśnych W [%]; 0–100; domyślnie 0."),
-                description_en=(
-                    "Lutz: share of forested area W [%]; 0-100; default 0."
+                description_pl=(
+                    "Lutz: udział terenów leśnych W [%]; 0–100; domyślnie 0."
                 ),
+                description=("Lutz: share of forested area W [%]; 0-100; default 0."),
                 minimum=0,
                 maximum=100,
                 unit="%",
@@ -300,11 +265,11 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="urban_effective_precip_mm",
                 type="number",
-                description=(
+                description_pl=(
                     "Regresja miejska: suma opadu efektywnego H [mm]; > 0. Razem "
                     "z `urban_duration_h`."
                 ),
-                description_en=(
+                description=(
                     "Urban regression: total effective precipitation H [mm]; > 0. "
                     "Together with `urban_duration_h`."
                 ),
@@ -314,11 +279,11 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="urban_duration_h",
                 type="number",
-                description=(
+                description_pl=(
                     "Regresja miejska: czas trwania opadu efektywnego D [h]; > 0. "
                     "Razem z `urban_effective_precip_mm`."
                 ),
-                description_en=(
+                description=(
                     "Urban regression: duration of the effective rainfall D [h]; "
                     "> 0. Together with `urban_effective_precip_mm`."
                 ),
@@ -328,11 +293,11 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="urban_fraction",
                 type="number",
-                description=(
+                description_pl=(
                     "Regresja miejska: wskaźnik urbanizacji U [-] (udział "
                     "powierzchni zabudowanej, 0 ≤ U < 1); domyślnie 0."
                 ),
-                description_en=(
+                description=(
                     "Urban regression: urbanization index U [-] (built-up share "
                     "of the area, 0 <= U < 1); default 0."
                 ),
@@ -363,6 +328,49 @@ COMMANDS: tuple[Command, ...] = (
             ),
             ("urban_effective_precip_mm", "urban_duration_h"),
         ),
+        result_schema="hydrolog-uh-nash/1",
+        cardinality="bounded",
+        rules=(
+            (
+                "Give exactly one of the three parameter groups; other options are "
+                "rejected."
+            ),
+            "Lutz needs lutz_centroid_length_km <= lutz_length_km.",
+            "Check `notices` in the result.",
+        ),
+        rules_pl=(
+            (
+                "Podaj dokładnie jedną z trzech grup parametrów; pozostałe opcje są "
+                "odrzucane."
+            ),
+            "Lutz wymaga lutz_centroid_length_km <= lutz_length_km.",
+            "Sprawdź `notices` w wyniku.",
+        ),
+        errors=("validation_error",),
+        example_results=(
+            {
+                "model": "nash",
+                "estimation": "direct",
+                "lag_time_min": 90.0,
+                "time_to_peak_min": 65.0,
+                "peak_discharge_m3s_per_mm": 6.79676,
+                "parameters": {"n": 3.0, "k_min": 30.0},
+            },
+            {
+                "estimation": "lutz",
+                "lag_time_min": 158.712,
+                "time_to_peak_min": 120.0,
+                "peak_discharge_m3s_per_mm": 4.13768,
+                "parameters": {"n": 3.75659, "k_min": 42.2491},
+            },
+            {
+                "estimation": "urban_regression",
+                "lag_time_min": 38.3523,
+                "time_to_peak_min": 16.0,
+                "peak_discharge_m3s_per_mm": 0.408326,
+                "parameters": {"n": 1.62133, "k_min": 23.6549},
+            },
+        ),
         examples=(
             {"area_km2": 45.3, "n": 3.0, "k_min": 30.0, "timestep_min": 5.0},
             {
@@ -385,75 +393,38 @@ COMMANDS: tuple[Command, ...] = (
     ),
     Command(
         name="uh clark",
-        operation_id="uh_clark",
-        summary=(
-            "Hydrogram jednostkowy Clarka (translacja + zbiornik liniowy) z tc "
-            "oraz R lub R/tc."
+        operation_id="hydrolog_uh_clark",
+        summary_pl=(
+            "Oblicz hydrogram jednostkowy Clarka z tc oraz stałej retencji R lub "
+            "stosunku R/tc."
         ),
-        summary_en=(
-            "Clark unit hydrograph (translation + linear reservoir) from tc "
-            "and R or R/tc."
+        summary=(
+            "Compute the Clark unit hydrograph from tc and the storage constant R or "
+            "the ratio R/tc."
+        ),
+        description_pl=(
+            "Hydrogram jednostkowy Clarka (1945): translacja czas–powierzchnia i "
+            "zbiornik liniowy, w m3/s na mm. Stosuj z tc z komendy `tc` i R. Nie do "
+            "kształtów Nasha ani Snydera. Opad D krótszy od kroku działa jak D = krok."
         ),
         description=(
-            "Hydrogram jednostkowy Clarka (1945) w dwóch krokach: (1) translacja "
-            "histogramem czas–powierzchnia o krzywej eliptycznej HEC-HMS, "
-            "A_cum = 1,414·τ^1,5 dla τ ≤ 0,5 i 1 − 1,414·(1−τ)^1,5 dla τ > 0,5 "
-            "(τ = t/tc); (2) tłumienie w zbiorniku liniowym S = R·O, O_t = O_{t−1} "
-            "+ C1·(I_t + I_{t−1} − 2·O_{t−1}), C1 = dt/(2R + dt). IUH jest "
-            "normalizowany do 1, a hydrogram D-minutowy to różnica krzywej S i jej "
-            "kopii opóźnionej o D, podzielona przez D i przeskalowana "
-            "objętością 1 mm × A [m³/s na mm]. tc [min] jest czasem translacji "
-            "(z dowolnej metody grupy `tc`). Stałą retencji R podaje się wprost "
-            "(`r_min` [min]) albo przez stosunek `r_tc_ratio` = R/tc (typowo "
-            "0,2–0,4 zlewnie strome i miejskie, 0,4–0,8 przeciętne, 0,8–1,5 "
-            "płaskie i bagienne) — dokładnie jedna z tych opcji. Czas trwania "
-            "opadu D może być dowolny (> 0), nie musi być wielokrotnością kroku: "
-            "krzywa S jest interpolowana liniowo między krokami, a objętość "
-            "hydrogramu to 1 mm (bez ogona odpowiedzi dłuższego niż "
-            "`total_duration_min`); krzywa S ma rozdzielczość jednego kroku, "
-            "więc D krótszy od kroku daje hydrogram dla D = krok (aby go "
-            "rozróżnić, zmniejsz krok). Przybliżony lag: tc/2 + "
-            "R. Wynik: tc, R, lag, czas do szczytu, szczyt [m³/s na mm] i rzędne. "
-            "Literatura: Clark, C.O. (1945), Storage and the unit hydrograph, "
-            "Transactions ASCE 110, 1419–1446; USACE, HEC-HMS Technical Reference "
-            "Manual."
+            "Clark (1945) unit hydrograph: time-area translation plus a linear "
+            "reservoir, in m3/s per mm. Use with tc from a `tc` command and R. Not for"
+            " Nash or Snyder shapes. A rainfall D shorter than the step acts as D = "
+            "step."
         ),
-        description_en=(
-            "The Clark (1945) unit hydrograph in two steps: (1) translation with a "
-            "time-area histogram of the HEC-HMS elliptical curve, A_cum = "
-            "1.414·τ^1.5 for τ <= 0.5 and 1 - 1.414·(1-τ)^1.5 for τ > 0.5 (τ = "
-            "t/tc); (2) attenuation in a linear reservoir S = R·O, O_t = O_{t-1} + "
-            "C1·(I_t + I_{t-1} - 2·O_{t-1}), C1 = dt/(2R + dt). The IUH is "
-            "normalized to 1 and the D-minute hydrograph is the difference of the "
-            "S-curve and its copy lagged by D, divided by D and scaled by the "
-            "volume 1 mm × A [m3/s per mm]. tc [min] is the translation time (from "
-            "any method of the `tc` group). The storage constant R is given "
-            "directly (`r_min` [min]) or through the ratio `r_tc_ratio` = R/tc "
-            "(typically 0.2-0.4 steep and urban catchments, 0.4-0.8 average, "
-            "0.8-1.5 flat and swampy) - exactly one of the two. The rainfall "
-            "duration D may be any value > 0, not necessarily a multiple of the "
-            "time step: the S-curve is interpolated linearly between the steps and "
-            "the volume of the hydrograph is 1 mm (without a response tail beyond "
-            "`total_duration_min`); the S-curve is resolved "
-            "to one step, so a D shorter than the step gives the hydrograph of "
-            "D = step (reduce the step to resolve it). Approximate lag: tc/2 + R. "
-            "Result: tc, R, lag, time to peak, peak [m3/s per mm] and the "
-            "ordinates. References: Clark, C.O. (1945), Storage and the unit "
-            "hydrograph, Transactions ASCE 110, 1419-1446; USACE, HEC-HMS "
-            "Technical Reference Manual."
-        ),
-        function="hydrolog.operations:uh_clark",
+        function="hydrolog.operations.uh_clark",
         options=(
             _AREA,
             _TC,
             Option(
                 name="r_min",
                 type="number",
-                description=(
+                description_pl=(
                     "Stała retencji zbiornika liniowego R [min]; > 0 (alternatywa "
                     "dla `r_tc_ratio`)."
                 ),
-                description_en=(
+                description=(
                     "Storage constant R of the linear reservoir [min]; > 0 "
                     "(alternative to `r_tc_ratio`)."
                 ),
@@ -463,11 +434,11 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="r_tc_ratio",
                 type="number",
-                description=(
+                description_pl=(
                     "Stosunek R/tc [-]; > 0, typowo 0,2–1,5 (alternatywa dla "
                     "`r_min`; R = stosunek · tc)."
                 ),
-                description_en=(
+                description=(
                     "Ratio R/tc [-]; > 0, typically 0.2-1.5 (alternative to "
                     "`r_min`; R = ratio · tc)."
                 ),
@@ -490,6 +461,35 @@ COMMANDS: tuple[Command, ...] = (
             ),
         ),
         one_of=(("r_min",), ("r_tc_ratio",)),
+        result_schema="hydrolog-uh-clark/1",
+        cardinality="bounded",
+        rules=(
+            "Give exactly one of r_min and r_tc_ratio.",
+            "Pass tc_min in minutes, taken from a `tc` command.",
+            "Check `notices` in the result.",
+        ),
+        rules_pl=(
+            "Podaj dokładnie jedną z opcji r_min i r_tc_ratio.",
+            "Podaj tc_min w minutach, z komendy `tc`.",
+            "Sprawdź `notices` w wyniku.",
+        ),
+        errors=("validation_error",),
+        example_results=(
+            {
+                "model": "clark",
+                "lag_time_min": 120.0,
+                "time_to_peak_min": 100.0,
+                "peak_discharge_m3s_per_mm": 5.83984,
+                "parameters": {"tc_min": 120.0, "r_min": 60.0},
+            },
+            {
+                "model": "clark",
+                "lag_time_min": 120.0,
+                "time_to_peak_min": 100.0,
+                "peak_discharge_m3s_per_mm": 5.86008,
+                "parameters": {"tc_min": 120.0, "r_min": 60.0, "r_tc_ratio": 0.5},
+            },
+        ),
         examples=(
             {"area_km2": 45.3, "tc_min": 120.0, "r_min": 60.0, "timestep_min": 10.0},
             {"area_km2": 45.3, "tc_min": 120.0, "r_tc_ratio": 0.5},
@@ -497,61 +497,37 @@ COMMANDS: tuple[Command, ...] = (
     ),
     Command(
         name="uh snyder",
-        operation_id="uh_snyder",
-        summary=(
-            "Syntetyczny hydrogram jednostkowy Snydera z L, Lc oraz "
+        operation_id="hydrolog_uh_snyder",
+        summary_pl=(
+            "Oblicz syntetyczny hydrogram jednostkowy Snydera z L, Lc oraz "
             "współczynników Ct i Cp."
         ),
-        summary_en=(
-            "Snyder synthetic unit hydrograph from L, Lc and the coefficients "
-            "Ct and Cp."
+        summary=(
+            "Compute the Snyder synthetic unit hydrograph from L, Lc and the "
+            "coefficients Ct and Cp."
+        ),
+        description_pl=(
+            "Syntetyczny hydrogram jednostkowy Snydera (1938) w m3/s na mm, z własnym "
+            "równaniem lagu. Stosuj dla zlewni niekontrolowanych ze znanymi "
+            "długościami cieku. Nie używa tc: nie łącz z wynikami `tc`; dla kształtów "
+            "opartych na tc użyj `uh scs`."
         ),
         description=(
-            "Syntetyczny hydrogram jednostkowy Snydera (1938) w wersji metrycznej. "
-            "Lag zlewni tL = Ct·(L·Lc)^0,3 [h], gdzie L to długość cieku "
-            "głównego, a Lc — długość od przekroju zamykającego do punktu "
-            "najbliższego środka ciężkości zlewni [km]; standardowy czas opadu tD "
-            "= tL/5,5. Dla D = tD: tp = tL + tD/2, qp = 0,275·Cp·A/tL [m³/s na mm]. "
-            "Dla D ≠ tD: tLR = tL + 0,25·(D − tD) (nie mniej niż 0,1·tL), tpR = "
-            "tLR + D/2, qpR = 0,275·Cp·A/tLR; podstawa tb = 0,556·A/qpR [h]. "
-            "Kształt to rozkład gamma (n = 3,7) dopasowany do tp i qp, normowany "
-            "do objętości 1 mm × A. Model ma własne równanie lagu i NIE używa "
-            "zewnętrznego czasu koncentracji — nie łączyć z wynikami `tc ...`. "
-            "Współczynniki (SI): Ct 1,35–1,65 (mniejsze dla zlewni górskich), Cp "
-            "0,4–0,8 (Ct i Cp są ujemnie skorelowane). Wynik: tL, tD, tLR, tp, qp, "
-            "tb i rzędne. Literatura: Snyder, F.F. (1938), Synthetic unit-graphs, "
-            "Transactions AGU 19, 447–454; Bedient, P.B., Huber, W.C. (1992), "
-            "Hydrology and Floodplain Analysis."
+            "Snyder (1938) synthetic unit hydrograph in m3/s per mm with its own lag "
+            "equation. Use for ungauged catchments with known stream lengths. Does not"
+            " use tc: do not feed it `tc` results; for tc-based shapes use `uh scs`."
         ),
-        description_en=(
-            "The Snyder (1938) synthetic unit hydrograph in metric form. Basin lag "
-            "tL = Ct·(L·Lc)^0.3 [h], where L is the main stream length and Lc the "
-            "length from the outlet to the point nearest to the catchment "
-            "centroid [km]; standard rainfall duration tD = tL/5.5. For D = tD: "
-            "tp = tL + tD/2, qp = 0.275·Cp·A/tL [m3/s per mm]. For D != tD: tLR = "
-            "tL + 0.25·(D - tD) (at least 0.1·tL), tpR = tLR + D/2, qpR = "
-            "0.275·Cp·A/tLR; time base tb = 0.556·A/qpR [h]. The shape is a gamma "
-            "distribution (n = 3.7) fitted to tp and qp, normalized to the volume "
-            "1 mm × A. The model has its own lag equation and does NOT use an "
-            "external time of concentration - do not combine it with `tc ...` "
-            "results. Coefficients (SI): Ct 1.35-1.65 (lower for mountain "
-            "catchments), Cp 0.4-0.8 (Ct and Cp are negatively correlated). "
-            "Result: tL, tD, tLR, tp, qp, tb and the ordinates. References: "
-            "Snyder, F.F. (1938), Synthetic unit-graphs, Transactions AGU 19, "
-            "447-454; Bedient, P.B., Huber, W.C. (1992), Hydrology and Floodplain "
-            "Analysis."
-        ),
-        function="hydrolog.operations:uh_snyder",
+        function="hydrolog.operations.uh_snyder",
         options=(
             _AREA,
             Option(
                 name="length_km",
                 type="number",
-                description=(
+                description_pl=(
                     "Długość cieku głównego od działu wodnego do przekroju "
                     "zamykającego L [km]; > 0."
                 ),
-                description_en=(
+                description=(
                     "Length of the main stream from the divide to the outlet L "
                     "[km]; > 0."
                 ),
@@ -562,11 +538,11 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="centroid_length_km",
                 type="number",
-                description=(
+                description_pl=(
                     "Długość cieku od przekroju zamykającego do punktu najbliższego "
                     "środka ciężkości zlewni Lc [km]; > 0."
                 ),
-                description_en=(
+                description=(
                     "Length along the main stream from the outlet to the point "
                     "nearest to the catchment centroid Lc [km]; > 0."
                 ),
@@ -577,11 +553,11 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="ct",
                 type="number",
-                description=(
+                description_pl=(
                     "Współczynnik czasowy Ct (SI), > 0; typowo 1,35–1,65; "
                     "domyślnie 1,5."
                 ),
-                description_en=(
+                description=(
                     "Time coefficient Ct (SI), > 0; typically 1.35-1.65; default 1.5."
                 ),
                 exclusive_minimum=0,
@@ -590,10 +566,10 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="cp",
                 type="number",
-                description=(
+                description_pl=(
                     "Współczynnik szczytowy Cp, > 0; typowo 0,4–0,8; domyślnie 0,6."
                 ),
-                description_en=(
+                description=(
                     "Peak coefficient Cp, > 0; typically 0.4-0.8; default 0.6."
                 ),
                 exclusive_minimum=0,
@@ -612,6 +588,35 @@ COMMANDS: tuple[Command, ...] = (
                 "Domyślnie podstawa hydrogramu tb.",
                 "Defaults to the time base tb.",
             ),
+        ),
+        result_schema="hydrolog-uh-snyder/1",
+        cardinality="bounded",
+        rules=(
+            "Give L and Lc in km and Ct, Cp in SI units.",
+            "Do not pass a time of concentration.",
+            "Check `notices` in the result.",
+        ),
+        rules_pl=(
+            "Podaj L i Lc w km oraz Ct, Cp w jednostkach SI.",
+            "Nie podawaj czasu koncentracji.",
+            "Sprawdź `notices` w wyniku.",
+        ),
+        errors=("validation_error",),
+        example_results=(
+            {
+                "model": "snyder",
+                "lag_time_min": 378.44,
+                "time_to_peak_min": 412.843,
+                "peak_discharge_m3s_per_mm": 2.6211,
+                "time_base_min": 1275.23,
+            },
+            {
+                "model": "snyder",
+                "lag_time_min": 361.538,
+                "time_to_peak_min": 394.405,
+                "peak_discharge_m3s_per_mm": 1.23639,
+                "time_base_min": 1293.74,
+            },
         ),
         examples=(
             {"area_km2": 100.0, "length_km": 15.0, "centroid_length_km": 8.0},

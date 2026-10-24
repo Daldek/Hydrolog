@@ -29,7 +29,7 @@ How to add a command
    ``src/hydrolog/operations/<group>.py`` (``operations`` is a package with one
    module per group; a new group gets a new module), and re-export it in
    ``src/hydrolog/operations/__init__.py`` (``import`` and ``__all__``), where
-   ``function="hydrolog.operations:<name>"`` resolves.
+   ``function="hydrolog.operations.<name>"`` resolves.
    Its parameters are named exactly like the options, take JSON-friendly values
    (numbers, strings, lists, paths as ``str``) and have a Python default wherever the
    option has no ``required=True``. It composes existing classes (no new
@@ -46,15 +46,15 @@ How to add a command
        COMMANDS = (
            Command(
                name="tc kirpich",
-               operation_id="tc_kirpich",
-               summary="...",            # Polish, <= 120 characters
-               summary_en="...",
-               description="...",        # Polish: method, literature, limits
-               description_en="...",
-               function="hydrolog.operations:tc_kirpich",
+               operation_id="hydrolog_tc_kirpich",
+               summary="...",               # English, <= 100 characters
+               summary_pl="...",            # its Polish translation
+               description="...",           # English: method, literature, limits
+               description_pl="...",
+               function="hydrolog.operations.tc_kirpich",
                options=(
-                   Option("length_km", "number", "Długość cieku [km]",
-                          "Channel length [km]", required=True,
+                   Option("length_km", "number", "Channel length [km]",
+                          "Długość cieku [km]", required=True,
                           exclusive_minimum=0, unit="km"),
                ),
                examples=({"length_km": 8.2, "slope_m_per_m": 0.023},),
@@ -73,12 +73,15 @@ How to add a command
 """
 
 from hydrolog.catalog.dispatch import (
+    check_command,
     command_schema,
     data_commands,
     get_command,
+    list_commands,
     run_command,
     validate_command,
 )
+from hydrolog.catalog.document import Document, catalog_document, input_schema
 from hydrolog.catalog.envelope import (
     CommandResult,
     FileRecord,
@@ -91,14 +94,19 @@ from hydrolog.catalog.spec import Command, Option
 __all__ = [
     "Command",
     "CommandResult",
+    "Document",
     "FileRecord",
     "Notice",
     "OperationOutput",
     "Option",
     "capture_warnings",
+    "catalog_document",
+    "check_command",
     "command_schema",
     "data_commands",
     "get_command",
+    "input_schema",
+    "list_commands",
     "run_command",
     "validate_command",
 ]

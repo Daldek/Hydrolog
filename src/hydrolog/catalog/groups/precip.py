@@ -8,32 +8,43 @@ _HIETOGRAM_TYPES = ("block", "triangular", "beta", "euler_ii")
 _AREAL_METHODS = ("arithmetic", "thiessen", "idw", "isohyet")
 
 _TYPE_PL = (
-    "Typ rozkładu opadu w czasie: block — blokowy (stała intensywność); "
-    "triangular — trójkątny z maksimum w `peak_position`; beta — rozkład beta "
-    "(parametry `alpha`, `beta`); euler_ii — DVWK Euler typ II (maksimum po ok. "
-    "1/3 czasu trwania, naprzemienne układanie bloków)."
+    "Typ rozkładu opadu w czasie; `alpha`, `beta` dotyczą typu beta, "
+    "`peak_position` typów triangular i euler_ii."
 )
 _TYPE_EN = (
-    "Temporal distribution of the rainfall: block - uniform intensity; "
-    "triangular - triangular with the peak at `peak_position`; beta - Beta "
-    "distribution (parameters `alpha`, `beta`); euler_ii - DVWK Euler type II "
-    "(peak at about 1/3 of the duration, alternating blocks)."
+    "Temporal distribution of the rainfall; `alpha`, `beta` apply to beta, "
+    "`peak_position` to triangular and euler_ii."
 )
+
+_TYPE_MEANINGS = {
+    "block": "Uniform intensity over the whole duration.",
+    "triangular": "Linear rise to the peak at `peak_position`, then linear fall.",
+    "beta": "Shape of a Beta density with parameters `alpha` and `beta`.",
+    "euler_ii": "DVWK Euler type II: peak at about 1/3 of the duration.",
+}
+_TYPE_MEANINGS_PL = {
+    "block": "Stała intensywność w całym czasie trwania.",
+    "triangular": "Liniowy wzrost do maksimum w `peak_position`, potem spadek.",
+    "beta": "Kształt gęstości rozkładu beta o parametrach `alpha` i `beta`.",
+    "euler_ii": "DVWK Euler typ II: maksimum po ok. 1/3 czasu trwania.",
+}
 
 HIETOGRAM_OPTIONS: tuple[Option, ...] = (
     Option(
         name="hietogram_type",
         type="choice",
-        description=_TYPE_PL,
-        description_en=_TYPE_EN,
+        description_pl=_TYPE_PL,
+        description=_TYPE_EN,
         required=True,
         choices=_HIETOGRAM_TYPES,
+        meanings=_TYPE_MEANINGS,
+        meanings_pl=_TYPE_MEANINGS_PL,
     ),
     Option(
         name="total_mm",
         type="number",
-        description="Całkowita wysokość opadu [mm]; > 0.",
-        description_en="Total precipitation depth [mm]; > 0.",
+        description_pl="Całkowita wysokość opadu [mm]; > 0.",
+        description="Total precipitation depth [mm]; > 0.",
         required=True,
         exclusive_minimum=0,
         unit="mm",
@@ -41,13 +52,13 @@ HIETOGRAM_OPTIONS: tuple[Option, ...] = (
     Option(
         name="duration_min",
         type="number",
-        description=(
+        description_pl=(
             "Czas trwania opadu [min]; > 0 i nie krótszy niż krok czasowy. "
             "Hietogram ma `int(duration_min / timestep_min)` kroków; gdy czas "
             "trwania nie jest wielokrotnością kroku, końcówka nie jest pokryta "
             "(uwaga w wyniku)."
         ),
-        description_en=(
+        description=(
             "Rainfall duration [min]; > 0 and not shorter than the time step. The "
             "hyetograph has `int(duration_min / timestep_min)` steps; when the "
             "duration is not a multiple of the step the tail is not covered (a "
@@ -60,8 +71,8 @@ HIETOGRAM_OPTIONS: tuple[Option, ...] = (
     Option(
         name="timestep_min",
         type="number",
-        description="Krok czasowy hietogramu [min]; > 0; domyślnie 5.",
-        description_en="Time step of the hyetograph [min]; > 0; default 5.",
+        description_pl="Krok czasowy hietogramu [min]; > 0; domyślnie 5.",
+        description="Time step of the hyetograph [min]; > 0; default 5.",
         exclusive_minimum=0,
         unit="min",
         default=5.0,
@@ -69,12 +80,12 @@ HIETOGRAM_OPTIONS: tuple[Option, ...] = (
     Option(
         name="alpha",
         type="number",
-        description=(
+        description_pl=(
             "Parametr α rozkładu beta (kształt ramienia wznoszącego), > 0; "
             "tylko dla `beta`; domyślnie 2. Para (2; 5) daje wczesne maksimum "
             "(opad konwekcyjny), (2; 2) — symetryczne, (5; 2) — późne."
         ),
-        description_en=(
+        description=(
             "Parameter α of the Beta distribution (shape of the rising limb), > 0; "
             "only for `beta`; default 2. The pair (2; 5) gives an early peak "
             "(convective storm), (2; 2) a symmetric one, (5; 2) a late one."
@@ -84,11 +95,11 @@ HIETOGRAM_OPTIONS: tuple[Option, ...] = (
     Option(
         name="beta",
         type="number",
-        description=(
+        description_pl=(
             "Parametr β rozkładu beta (kształt ramienia opadającego), > 0; "
             "tylko dla `beta`; domyślnie 5."
         ),
-        description_en=(
+        description=(
             "Parameter β of the Beta distribution (shape of the falling limb), > "
             "0; only for `beta`; default 5."
         ),
@@ -97,12 +108,12 @@ HIETOGRAM_OPTIONS: tuple[Option, ...] = (
     Option(
         name="peak_position",
         type="number",
-        description=(
+        description_pl=(
             "Względne położenie maksimum w czasie trwania, 0 < p < 1 (bez "
             "końców); tylko dla `triangular` (domyślnie 0,5) i `euler_ii` "
             "(domyślnie 0,33)."
         ),
-        description_en=(
+        description=(
             "Relative position of the peak within the duration, 0 < p < 1 "
             "(exclusive); only for `triangular` (default 0.5) and `euler_ii` "
             "(default 0.33)."
@@ -115,43 +126,58 @@ HIETOGRAM_OPTIONS: tuple[Option, ...] = (
 COMMANDS: tuple[Command, ...] = (
     Command(
         name="precip hietogram",
-        operation_id="precip_hietogram",
-        summary="Hietogram opadu projektowego: blokowy, trójkątny, beta lub Euler II.",
-        summary_en="Design hyetograph: block, triangular, Beta or Euler type II.",
+        operation_id="hydrolog_precip_hietogram",
+        summary_pl=(
+            "Oblicz hietogram opadu projektowego: blokowy, trójkątny, beta lub Euler "
+            "II."
+        ),
+        summary=(
+            "Compute a design hyetograph: block, triangular, Beta or Euler type II."
+        ),
+        description_pl=(
+            "Hietogram o zadanej sumie, czasie trwania i kroku: wysokości i natężenia "
+            "w krokach. Stosuj jako opad projektowy dla `scs effective` lub "
+            "`hydrograph generate`. Nie do średnich obszarowych (`precip areal`). "
+            "Parametry innego typu są odrzucane."
+        ),
         description=(
-            "Generuje hietogram — rozkład wysokości opadu w czasie — dla zadanej "
-            "sumy `total_mm` [mm], czasu trwania `duration_min` [min] i kroku "
-            "`timestep_min` [min]. Typy: block (stała intensywność); triangular "
-            "(liniowy wzrost do `peak_position` i spadek); beta (gęstość rozkładu "
-            "beta o parametrach `alpha`, `beta` w środkach przedziałów); euler_ii "
-            "(DVWK Euler II: malejące rangi bloków 1/r^0,7 układane naprzemiennie "
-            "wokół maksimum położonego na ok. 1/3 czasu trwania; DVWK 1984, "
-            "Regeln 113). Suma bloków zawsze równa się `total_mm`. Wynik: "
-            "wysokości opadu w krokach `depths_mm` [mm] (w bibliotece pole "
-            "`intensities_mm` — to wysokości, nie natężenia), natężenia "
-            "`intensities_mm_per_h` [mm/h], czasy końców przedziałów `times_min` "
-            "[min], liczba kroków i maksymalne natężenie. Parametry typu "
-            "niewłaściwego dla wybranego rozkładu są odrzucane. Wynik można "
-            "wprowadzić do `scs effective` (`values`) lub `hydrograph generate`."
+            "Hyetograph of a given total, duration and step: depths and intensities "
+            "per step. Use as the design rainfall for `scs effective` or `hydrograph "
+            "generate`. Not for areal averages (`precip areal`). Parameters of another"
+            " type are rejected."
         ),
-        description_en=(
-            "Generates a hyetograph - the distribution of precipitation depth in "
-            "time - for a given total `total_mm` [mm], duration `duration_min` "
-            "[min] and step `timestep_min` [min]. Types: block (uniform "
-            "intensity); triangular (linear rise to `peak_position` and decay); "
-            "beta (Beta density with parameters `alpha`, `beta` at the interval "
-            "midpoints); euler_ii (DVWK Euler II: block ranks 1/r^0.7 placed "
-            "alternately around a peak at about 1/3 of the duration; DVWK 1984, "
-            "Regeln 113). The blocks always sum to `total_mm`. Result: the depths "
-            "per step `depths_mm` [mm] (the library field `intensities_mm` - "
-            "depths, not rates), the intensities `intensities_mm_per_h` [mm/h], "
-            "the interval end times `times_min` [min], the number of steps and the "
-            "peak intensity. Parameters of another type than the chosen one are "
-            "rejected. The result can be fed into `scs effective` (`values`) or "
-            "`hydrograph generate`."
-        ),
-        function="hydrolog.operations:precip_hietogram",
+        function="hydrolog.operations.precip_hietogram",
         options=HIETOGRAM_OPTIONS,
+        result_schema="hydrolog-precip-hietogram/1",
+        cardinality="bounded",
+        rules=(
+            "Pass duration_min >= timestep_min.",
+            (
+                "Use alpha and beta only for beta, peak_position for triangular and "
+                "euler_ii."
+            ),
+            "Read depths_mm in mm per step; check `notices`.",
+        ),
+        rules_pl=(
+            "Podaj duration_min >= timestep_min.",
+            "alpha i beta tylko dla beta, peak_position dla triangular i euler_ii.",
+            "depths_mm to mm na krok; sprawdź `notices`.",
+        ),
+        errors=("validation_error",),
+        example_results=(
+            {
+                "hietogram_type": "beta",
+                "n_steps": 12,
+                "peak_intensity_mm_per_h": 121.701,
+                "parameters": {"alpha": 2.0, "beta": 5.0},
+            },
+            {
+                "hietogram_type": "euler_ii",
+                "n_steps": 24,
+                "peak_intensity_mm_per_h": 77.7862,
+                "parameters": {"peak_position": 0.33},
+            },
+        ),
         examples=(
             {
                 "hietogram_type": "beta",
@@ -166,82 +192,64 @@ COMMANDS: tuple[Command, ...] = (
     ),
     Command(
         name="precip areal",
-        operation_id="precip_areal",
-        summary=(
-            "Opad obszarowy z posterunków: średnia arytmetyczna, Thiessen, IDW "
+        operation_id="hydrolog_precip_areal",
+        summary_pl=(
+            "Oblicz opad obszarowy z posterunków: średnia arytmetyczna, Thiessen, IDW "
             "lub izohiety."
         ),
-        summary_en=(
-            "Areal precipitation from gauges: arithmetic mean, Thiessen, IDW "
+        summary=(
+            "Compute areal precipitation from gauges: arithmetic mean, Thiessen, IDW "
             "or isohyets."
         ),
+        description_pl=(
+            "Opad obszarowy [mm] z posterunków punktowych wg `method`: arithmetic, "
+            "thiessen (wymaga powierzchni wieloboków), idw (punkt lub siatka) lub "
+            "isohyet. Nie do pobierania danych z posterunków (IMGWTools) ani opadu "
+            "projektowego (`precip hietogram`)."
+        ),
         description=(
-            "Opad obszarowy zlewni [mm] z opadów punktowych. `method`: arithmetic "
-            "— średnia arytmetyczna posterunków (dla gęstej, równomiernej sieci i "
-            "płaskiego terenu); thiessen — średnia ważona powierzchniami "
-            "wieloboków Thiessena (1911) w zlewni, P = Σ P_i·A_i / Σ A_i, "
-            "powierzchnie `polygon_areas_km2` [km²] podaje użytkownik (posterunki "
-            "bez powierzchni są pomijane); idw — ważenie odwrotnością odległości "
-            "(Shepard, 1968), w_i = 1/d_i^p: wartość w punkcie `target_x`, "
-            "`target_y` (np. w środku ciężkości zlewni) albo średnia z wartości w "
-            "punktach siatki `grid_x`, `grid_y`; `power` p domyślnie 2, "
-            "`max_distance` ogranicza posterunki do tych w zadanej odległości "
-            "(tylko dla punktu); isohyet — metoda izohiet: średnia ważona "
-            "udziałami powierzchni stref `area_fractions` (suma 1) ze średnimi "
-            "(P_i + P_{i+1})/2 sąsiednich izohiet `isohyet_values_mm`. "
-            "Posterunki: `stations` (obiekty `name`, `x`, `y`, "
-            "`precipitation_mm`, opcjonalnie `elevation_m`) albo `stations_file` "
-            "(CSV/JSON z tymi kolumnami); współrzędne w jednym układzie "
-            "metrycznym (np. PL-1992, EPSG:2180) — ich jednostka wyznacza "
-            "odległości w IDW i `max_distance`. Wynik: opad obszarowy, wagi i "
-            "udziały posterunków (thiessen, idw), użyte parametry."
+            "Areal precipitation [mm] from point gauges by `method`: arithmetic, "
+            "thiessen (needs polygon areas), idw (point or grid) or isohyet. Not for "
+            "downloading gauge data (IMGWTools) or design rainfall (`precip "
+            "hietogram`)."
         ),
-        description_en=(
-            "Areal precipitation of a watershed [mm] from point measurements. "
-            "`method`: arithmetic - the arithmetic mean of the gauges (for a dense, "
-            "even network and flat terrain); thiessen - the mean weighted by the "
-            "areas of the Thiessen (1911) polygons inside the watershed, P = sum "
-            "P_i·A_i / sum A_i, the areas `polygon_areas_km2` [km2] are supplied "
-            "by the user (gauges without an area are skipped); idw - inverse "
-            "distance weighting (Shepard, 1968), w_i = 1/d_i^p: the value at the "
-            "point `target_x`, `target_y` (e.g. the watershed centroid) or the "
-            "mean of the values at the grid points `grid_x`, `grid_y`; `power` p "
-            "defaults to 2, `max_distance` restricts the gauges to those within "
-            "the distance (point only); isohyet - the isohyetal method: the mean "
-            "weighted by the area fractions of the zones `area_fractions` (sum 1) "
-            "with the means (P_i + P_{i+1})/2 of neighbouring isohyets "
-            "`isohyet_values_mm`. Gauges: `stations` (objects `name`, `x`, `y`, "
-            "`precipitation_mm`, optionally `elevation_m`) or `stations_file` "
-            "(CSV/JSON with those columns); coordinates in one metric system "
-            "(e.g. PL-1992, EPSG:2180) - their unit sets the IDW distances and "
-            "`max_distance`. Result: the areal precipitation, the weights and "
-            "contributions of the gauges (thiessen, idw) and the parameters used."
-        ),
-        function="hydrolog.operations:precip_areal",
+        function="hydrolog.operations.precip_areal",
         options=(
             Option(
                 name="method",
                 type="choice",
-                description=(
-                    "Metoda: arithmetic, thiessen, idw lub isohyet (wymagane "
-                    "opcje każdej metody opisano w opisie komendy)."
+                description_pl=(
+                    "Metoda opadu obszarowego; opcje wymagane przez każdą metodę "
+                    "wskazują opisy pozostałych opcji (`Dla ...`)."
                 ),
-                description_en=(
-                    "Method: arithmetic, thiessen, idw or isohyet (the options "
-                    "each method needs are listed in the command description)."
+                description=(
+                    "Areal precipitation method; the options each method needs "
+                    "are marked in the other option descriptions (`For ...`)."
                 ),
                 required=True,
                 choices=_AREAL_METHODS,
+                meanings={
+                    "arithmetic": "Arithmetic mean of the gauges.",
+                    "thiessen": "Mean weighted by the Thiessen polygon areas.",
+                    "idw": "Inverse distance weighted value at a point or grid.",
+                    "isohyet": "Mean weighted by the area fractions of isohyet zones.",
+                },
+                meanings_pl={
+                    "arithmetic": "Średnia arytmetyczna posterunków.",
+                    "thiessen": "Średnia ważona powierzchniami wieloboków Thiessena.",
+                    "idw": "Wartość ważona odwrotnością odległości (punkt lub siatka).",
+                    "isohyet": "Średnia ważona udziałami powierzchni stref izohiet.",
+                },
             ),
             Option(
                 name="stations",
                 type="object_list",
-                description=(
+                description_pl=(
                     'Posterunki opadowe jako obiekty `{"name": ..., "x": ..., '
                     '"y": ..., "precipitation_mm": ...}` (opcjonalnie '
                     "`elevation_m`); dla arithmetic, thiessen i idw."
                 ),
-                description_en=(
+                description=(
                     'Precipitation gauges as objects `{"name": ..., "x": ..., '
                     '"y": ..., "precipitation_mm": ...}` (optionally '
                     "`elevation_m`); for arithmetic, thiessen and idw."
@@ -250,11 +258,12 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="stations_file",
                 type="path",
-                description=(
+                path_role="input",
+                description_pl=(
                     "Plik CSV (nagłówek `name,x,y,precipitation_mm[,elevation_m]`) "
                     "lub JSON z posterunkami; alternatywa dla `stations`."
                 ),
-                description_en=(
+                description=(
                     "CSV file (header `name,x,y,precipitation_mm[,elevation_m]`) "
                     "or JSON file with the gauges; alternative to `stations`."
                 ),
@@ -262,12 +271,12 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="polygon_areas_km2",
                 type="object",
-                description=(
+                description_pl=(
                     "Dla thiessen: powierzchnie wieloboków Thiessena w zlewni "
                     "[km²] jako obiekt nazwa posterunku → powierzchnia (≥ 0), np. "
                     '`{"Balice": 18.5, "Skawina": 12.6}`.'
                 ),
-                description_en=(
+                description=(
                     "For thiessen: the areas of the Thiessen polygons inside the "
                     "watershed [km2] as an object gauge name -> area (>= 0), e.g. "
                     '`{"Balice": 18.5, "Skawina": 12.6}`.'
@@ -276,11 +285,11 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="target_x",
                 type="number",
-                description=(
+                description_pl=(
                     "Dla idw: współrzędna X punktu docelowego (jednostka jak "
                     "współrzędne posterunków); razem z `target_y`."
                 ),
-                description_en=(
+                description=(
                     "For idw: X coordinate of the target point (same unit as the "
                     "gauge coordinates); together with `target_y`."
                 ),
@@ -288,10 +297,10 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="target_y",
                 type="number",
-                description=(
+                description_pl=(
                     "Dla idw: współrzędna Y punktu docelowego; razem z `target_x`."
                 ),
-                description_en=(
+                description=(
                     "For idw: Y coordinate of the target point; together with "
                     "`target_x`."
                 ),
@@ -299,12 +308,12 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="grid_x",
                 type="number_list",
-                description=(
+                description_pl=(
                     "Dla idw: współrzędne X punktów siatki w zlewni (średnia z "
                     "wartości IDW w punktach); razem z `grid_y` tej samej "
                     "długości, zamiast `target_x`/`target_y`."
                 ),
-                description_en=(
+                description=(
                     "For idw: X coordinates of grid points inside the watershed "
                     "(the mean of the IDW values at the points); together with "
                     "`grid_y` of the same length, instead of `target_x`/`target_y`."
@@ -313,19 +322,21 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="grid_y",
                 type="number_list",
-                description="Dla idw: współrzędne Y punktów siatki; razem z `grid_x`.",
-                description_en=(
+                description_pl=(
+                    "Dla idw: współrzędne Y punktów siatki; razem z `grid_x`."
+                ),
+                description=(
                     "For idw: Y coordinates of the grid points; together with `grid_x`."
                 ),
             ),
             Option(
                 name="power",
                 type="number",
-                description=(
+                description_pl=(
                     "Dla idw: wykładnik odległości p (> 0); domyślnie 2. Większe "
                     "p silniej faworyzuje bliskie posterunki."
                 ),
-                description_en=(
+                description=(
                     "For idw: distance exponent p (> 0); default 2. A larger p "
                     "favours nearby gauges more strongly."
                 ),
@@ -334,11 +345,11 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="max_distance",
                 type="number",
-                description=(
+                description_pl=(
                     "Dla idw w punkcie: największa odległość posterunku (jednostka "
                     "współrzędnych); domyślnie wszystkie posterunki."
                 ),
-                description_en=(
+                description=(
                     "For idw at a point: the largest gauge distance (coordinate "
                     "unit); all gauges by default."
                 ),
@@ -347,11 +358,11 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="isohyet_values_mm",
                 type="number_list",
-                description=(
+                description_pl=(
                     "Dla isohyet: wartości kolejnych izohiet [mm] (co najmniej "
                     "2; n izohiet to n−1 stref)."
                 ),
-                description_en=(
+                description=(
                     "For isohyet: values of the consecutive isohyets [mm] (at "
                     "least 2; n isohyets make n-1 zones)."
                 ),
@@ -361,17 +372,52 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="area_fractions",
                 type="number_list",
-                description=(
+                description_pl=(
                     "Dla isohyet: udziały powierzchni zlewni między kolejnymi "
                     "izohietami (n−1 wartości z przedziału 0–1, suma 1)."
                 ),
-                description_en=(
+                description=(
                     "For isohyet: the fractions of the watershed area between "
                     "consecutive isohyets (n-1 values in 0-1, sum 1)."
                 ),
                 minimum=0,
                 maximum=1,
             ),
+        ),
+        result_schema="hydrolog-precip-areal/1",
+        cardinality="single",
+        rules=(
+            "Give the options each method needs; see the option descriptions.",
+            "Give coordinates in one metric system (e.g. EPSG:2180).",
+            "Check `notices` in the result.",
+        ),
+        rules_pl=(
+            "Podaj opcje wymagane przez metodę; zob. opisy opcji.",
+            "Podaj współrzędne w jednym układzie metrycznym (np. EPSG:2180).",
+            "Sprawdź `notices` w wyniku.",
+        ),
+        errors=("validation_error", "not_found", "data_error", "forbidden"),
+        example_results=(
+            {
+                "method": "arithmetic",
+                "areal_precipitation_mm": 32.1333,
+                "n_stations": 3,
+            },
+            {
+                "method": "thiessen",
+                "areal_precipitation_mm": 32.1766,
+                "station_weights": {
+                    "Balice": 0.408389,
+                    "Krzeszowice": 0.313466,
+                    "Skawina": 0.278146,
+                },
+            },
+            {"method": "idw", "areal_precipitation_mm": 31.6884, "power": 2.0},
+            {
+                "method": "isohyet",
+                "areal_precipitation_mm": 34.0,
+                "area_fractions": [0.3, 0.5, 0.2],
+            },
         ),
         examples=(
             {

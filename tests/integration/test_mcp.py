@@ -1,22 +1,21 @@
-"""Tests for the MCP server: the catalog as tools, calls, errors, path policy, stdio.
+"""Tests for the MCP server (AGI section 5): tools, schemas, modes, calls, stdio.
 
-The SDK client talks to the server in memory (``Client(create_server(...))``); one test
-class starts the server as a real process on stdio. Commands of the real catalog are
-exercised through their catalog examples; behaviours that need a particular shape of
-command (path options, ``one_of``, failing operations) use private demo commands that
-replace the catalog of the server for one test.
+The SDK client talks to the server in memory (``Client(create_server(...))``); the
+classes at the end start the server as a real process on stdio. Everything runs the
+real catalog and its real operations.
 """
 
 import contextlib
-import errno
-import hashlib
+import functools
 import json
-import logging
 import os
+import re
 import shutil
 import subprocess
 import sys
 import threading
+import time
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -29,170 +28,21 @@ from jsonschema import Draft202012Validator
 from mcp import Client
 from mcp.client.stdio import StdioServerParameters, stdio_client
 from mcp.shared.exceptions import MCPError
+from referencing import Registry, Resource
 
-from hydrolog.agent_guide import principles
-from hydrolog.catalog import (
-    Command,
-    OperationOutput,
-    Option,
-    command_schema,
-    data_commands,
-    run_command,
-)
-from hydrolog.exceptions import (
-    ERROR_CODES,
-    InvalidParameterError,
-    MissingDependencyError,
-    NotFoundError,
-)
-from hydrolog.mcp import create_server, run_stdio
-from hydrolog.mcp._instructions import MAX_BYTES, build_instructions
-from hydrolog.time import ConcentrationTime
+from hydrolog.catalog import data_commands, get_command, run_command
+from hydrolog.exceptions import ERROR_CODES, InvalidParameterError, NotFoundError
+from hydrolog.mcp import create_server
+from hydrolog.mcp._output import OUTPUT_SCHEMA
+from hydrolog.mcp.server import main
 
 ROOT = Path(__file__).resolve().parents[2]
+SCHEMAS = ROOT / "schemas" / "nogat"
 COMMANDS = data_commands()
+WRITING = [c for c in COMMANDS if c.writes]
+ALWAYS_LOAD = ["hydrolog_commands_list", "hydrolog_commands_schema"]
+HEAVY_MODULES = ("numpy", "scipy", "rasterio", "matplotlib", "pandas", "pyproj")
 MODES = ["legacy", "auto"]
-
-
-# --- demo operations and commands -----------------------------------------------------
-
-MEETING = threading.Barrier(2)
-
-
-def add_operation(*, a_km: float, b_km: float = 1.0):
-    """Add two lengths."""
-    return {"sum_km": a_km + b_km}
-
-
-def series_operation(*, values=None, dates=None, input_file=None, value_column=None):
-    """Report which group of the options arrived."""
-    return {"values": values, "input_file": input_file, "column": value_column}
-
-
-def copy_operation(*, input_file: str, output_file: str):
-    """Write the upper-cased input to the output file and report it."""
-    text = Path(input_file).read_text(encoding="utf-8").upper()
-    Path(output_file).write_text(text, encoding="utf-8")
-    return OperationOutput(result={"chars": len(text)}, files=(output_file,))
-
-
-def nan_operation(*, x_mm: float):
-    """Return a result with non-finite numbers and a tuple."""
-    return {"value": float("nan"), "limit": float("inf"), "pair": (1, x_mm)}
-
-
-def pick_operation(*, shape=None, shape_file=None):
-    """Report which of the two alternative options arrived."""
-    return {"shape": shape, "shape_file": shape_file}
-
-
-def note_operation(*, note_path=None):
-    """Write a note when asked to."""
-    if note_path is None:
-        return {"written": False}
-    Path(note_path).write_text("note", encoding="utf-8")
-    return OperationOutput(result={"written": True}, files=(note_path,))
-
-
-def boom_operation():
-    """Fail like a bug."""
-    raise RuntimeError("boom")
-
-
-def disk_operation():
-    """Fail like a file-system error that no operation wrapped."""
-    raise PermissionError(errno.EACCES, "Permission denied", "/data/x")
-
-
-def meet_operation(*, label: str):
-    """Wait until a second call is inside an operation too."""
-    MEETING.wait(timeout=20)
-    return {"label": label}
-
-
-def _option(name, type_, **kwargs):
-    return Option(name, type_, f"Opis {name}", f"Description {name}", **kwargs)
-
-
-def _command(name, operation, *options, **kwargs):
-    return Command(
-        name=name,
-        operation_id=name.replace(" ", "_").replace("-", "_"),
-        summary=f"Podsumowanie {name}.",
-        summary_en=f"Summary of {name}.",
-        description=f"Opis komendy {name}.",
-        description_en=f"Description of the command {name}.",
-        function=f"{__name__}:{operation}",
-        options=options,
-        **kwargs,
-    )
-
-
-DEMO = (
-    _command(
-        "demo add",
-        "add_operation",
-        _option("a_km", "number", required=True, exclusive_minimum=0, unit="km"),
-        _option("b_km", "number", default=1.0, unit="km"),
-        examples=({"a_km": 2.5},),
-    ),
-    _command(
-        "demo series",
-        "series_operation",
-        _option("values", "number_list"),
-        _option("dates", "string_list"),
-        _option("input_file", "path"),
-        _option("value_column", "string"),
-        one_of=(("values", "dates"), ("input_file", "value_column")),
-        examples=({"values": [1, 2], "dates": ["2020-01-01", "2020-01-02"]},),
-    ),
-    _command(
-        "demo copy",
-        "copy_operation",
-        _option("input_file", "path", required=True),
-        _option("output_file", "path", required=True, writes=True),
-        writes=True,
-        examples=({"input_file": "in.txt", "output_file": "out.txt"},),
-    ),
-    _command(
-        "demo nan",
-        "nan_operation",
-        _option("x_mm", "number", required=True),
-        examples=({"x_mm": 3},),
-    ),
-    _command(
-        "demo pick",
-        "pick_operation",
-        _option("shape", "object"),
-        _option("shape_file", "path"),
-        one_of=(("shape",), ("shape_file",)),
-        examples=({"shape": {"area_km2": 1}},),
-    ),
-    _command(
-        "demo note",
-        "note_operation",
-        _option("note_path", "path", writes=True),
-        writes=True,
-        examples=({},),
-    ),
-    _command("demo boom", "boom_operation", examples=({},)),
-    _command("demo disk", "disk_operation", examples=({},)),
-    _command(
-        "demo meet",
-        "meet_operation",
-        _option("label", "string", required=True),
-        examples=({"label": "a"},),
-    ),
-)
-
-
-@pytest.fixture
-def demo_catalog(monkeypatch):
-    """The server serves the real catalog plus the demo commands (group ``demo``)."""
-    commands = (*data_commands(), *DEMO)
-    monkeypatch.setattr("hydrolog.mcp.server.data_commands", lambda: commands)
-    MEETING.reset()
-    return commands
 
 
 # --- helpers --------------------------------------------------------------------------
@@ -225,839 +75,917 @@ def call(tool, arguments=None, *, mode="auto", **server_kwargs):
     return anyio.run(scenario)
 
 
-def protocol_error(tool, arguments=None, **server_kwargs):
-    """The MCP error a call of ``tool`` raises on a fresh in-memory server."""
-
-    async def scenario():
-        async with connected(**server_kwargs) as client:
-            with pytest.raises(MCPError) as caught:
-                await client.call_tool(tool, arguments)
-            return caught.value
-
-    return anyio.run(scenario)
+@functools.cache
+def default_listing():
+    return listing()
 
 
-def compact(document):
-    return json.dumps(document, ensure_ascii=False, separators=(",", ":"))
+def tools_by_name(**server_kwargs):
+    tools, _ = listing(**server_kwargs)
+    return {tool.name: tool for tool in tools}
 
 
-def document_of(result):
-    """Structured content of a tool result; its only text content is the same JSON."""
+def vendored(name):
+    return json.loads((SCHEMAS / name).read_text(encoding="utf-8"))
+
+
+def registry():
+    """The vendored Nogat schemas, so that their ``$ref`` between files resolve."""
+    result = Registry()
+    for path in sorted(SCHEMAS.glob("*.schema.json")):
+        document = json.loads(path.read_text(encoding="utf-8"))
+        result = result.with_resource(document["$id"], Resource.from_contents(document))
+    return result
+
+
+def inline_refs(schema):
+    """The result schema with its ``$ref`` to the other vendored files copied in."""
+    schema = json.loads(json.dumps(schema))
+    others = {
+        "commands-1.schema.json": vendored("commands-1.schema.json"),
+        "error-1.schema.json": vendored("error-1.schema.json"),
+    }
+    definitions = schema["$defs"]
+
+    def walk(node):
+        if isinstance(node, dict):
+            reference = node.get("$ref", "")
+            if reference and not reference.startswith("#"):
+                file_name, _, pointer = reference.partition("#")
+                name = pointer.rsplit("/", 1)[1]
+                assert name not in definitions
+                definitions[name] = others[file_name]["$defs"][name]
+                walk(definitions[name])
+                node["$ref"] = f"#/$defs/{name}"
+            for value in list(node.values()):
+                walk(value)
+        elif isinstance(node, list):
+            for value in node:
+                walk(value)
+
+    walk(schema)
+    return schema
+
+
+def envelope_of(result):
+    """The structured content of a call, after checking the text block repeats it."""
+    assert result.structured_content is not None
     assert len(result.content) == 1
-    assert result.content[0].type == "text"
     assert json.loads(result.content[0].text) == result.structured_content
     return result.structured_content
 
 
-def error_of(result):
-    assert result.is_error is True
-    document = document_of(result)
-    assert document["schema"] == "hydrolog-error/1"
+def assert_valid_envelope(result):
+    document = envelope_of(result)
+    schema = default_listing()[0][0].output_schema
+    Draft202012Validator(schema).validate(document)
     return document
 
 
-def has_path_option(command, example):
-    paths = {option.name for option in command.options if option.type == "path"}
-    return bool(paths & set(example))
+def error_of(result):
+    assert result.is_error is True
+    document = envelope_of(result)
+    assert document["schema"] == "hydrolog-error/1"
+    validator = Draft202012Validator(
+        vendored("error-1.schema.json"), registry=registry()
+    )
+    validator.validate(document)
+    return document
 
 
-def catalog_examples(*, with_paths):
-    return [
-        pytest.param(command, example, id=f"{command.operation_id}-{index}")
-        for command in COMMANDS
-        for index, example in enumerate(command.examples)
-        if has_path_option(command, example) is with_paths
-    ]
+def stats_arguments(directory):
+    """Call of ``stats mann-kendall`` on a copy of a fixture inside ``directory``."""
+    shutil.copy(ROOT / "tests" / "fixtures" / "annual_maxima.csv", directory)
+    return {
+        "input_file": str(Path(directory) / "annual_maxima.csv"),
+        "value_column": "Qmax",
+    }
 
 
-# --- the tool list
-# ---------------------------------------------------------------------
+# --- tools: names, descriptions, annotations ------------------------------------------
 
 
-class TestTools:
-    """``tools/list``: one tool per catalog command."""
+class TestToolList:
+    """``tools/list``: names (AGI-5.2), descriptions (AGI-5.3), annotations (5.4)."""
 
     @pytest.mark.parametrize("mode", MODES)
-    def test_one_tool_per_command_in_catalog_order(self, mode):
-        """Tool names are the ``operation_id`` of every command, in catalog order."""
+    def test_every_catalog_command_is_one_tool_in_catalog_order(self, mode):
         tools, _ = listing(mode)
 
-        assert len(tools) == len(data_commands())
         assert [tool.name for tool in tools] == [c.operation_id for c in COMMANDS]
+        assert [tool.name for tool in listing(mode)[0]] == [t.name for t in tools]
 
-    @pytest.mark.parametrize("lang", ["pl", "en"])
-    def test_texts_come_from_the_catalog_in_the_server_language(self, lang):
-        """Title is ``hydrolog <name>``; the description starts with the catalog's."""
-        tools, _ = listing(lang=lang)
+    def test_names_are_short_lowercase_identifiers_with_the_tool_prefix(self):
+        for tool in default_listing()[0]:
+            assert re.fullmatch(r"hydrolog_[a-z0-9_]+", tool.name), tool.name
+            assert len(tool.name) <= 48, tool.name
 
-        for tool, command in zip(tools, COMMANDS, strict=True):
-            assert tool.title == f"hydrolog {command.name}"
-            assert tool.description.startswith(command.describe(lang))
+    def test_descriptions_are_the_catalog_text_within_the_budget(self):
+        by_name = {c.operation_id: c for c in COMMANDS}
+        for tool in default_listing()[0]:
+            command = by_name[tool.name]
+            assert tool.description.startswith(command.summary), tool.name
+            assert command.description in tool.description, tool.name
+            assert len(tool.description) <= 600, tool.name
+            assert tool.title == command.summary
 
-    def test_annotations_state_whether_the_command_writes(self):
-        """Read-only and non-destructive unless the command writes (its output file is
-        replaced); always idempotent, never open-world."""
-        tools, _ = listing()
+    def test_every_tool_has_the_five_annotations(self):
+        for tool in default_listing()[0]:
+            annotations = tool.annotations
+            assert annotations is not None, tool.name
+            assert annotations.title
+            for hint in (
+                annotations.read_only_hint,
+                annotations.destructive_hint,
+                annotations.idempotent_hint,
+                annotations.open_world_hint,
+            ):
+                assert isinstance(hint, bool), tool.name
+            assert annotations.open_world_hint is False
+            assert annotations.idempotent_hint is True
 
-        for tool, command in zip(tools, COMMANDS, strict=True):
-            hints = tool.annotations
-            assert hints.read_only_hint is (not command.writes), command.name
-            assert hints.destructive_hint is command.writes, command.name
-            assert hints.idempotent_hint is True
-            assert hints.open_world_hint is False
+    def test_a_read_only_server_reports_every_tool_read_only(self):
+        for tool in default_listing()[0]:
+            assert tool.annotations.read_only_hint is True, tool.name
+            assert tool.annotations.destructive_hint is False, tool.name
 
-    def test_a_writing_command_is_neither_read_only_nor_harmless(self, demo_catalog):
-        """File output means not read-only and destructive; a pure command is
-        neither."""
-        tools = {tool.name: tool for tool in listing()[0]}
+    def test_a_server_with_writes_reports_the_writing_tools_as_destructive(
+        self, tmp_path
+    ):
+        tools = tools_by_name(allowed_dirs=[tmp_path], allow_writes=True)
 
-        for name in ("demo_copy", "demo_note"):
-            assert tools[name].annotations.read_only_hint is False
-            assert tools[name].annotations.destructive_hint is True
-        assert tools["demo_add"].annotations.read_only_hint is True
-        assert tools["demo_add"].annotations.destructive_hint is False
+        writing = {c.operation_id for c in WRITING}
+        assert writing == {
+            "hydrolog_commands_guide",
+            "hydrolog_report_generate",
+            "hydrolog_soil_hsg",
+        }
+        for name, tool in tools.items():
+            expected_write = name in writing
+            assert tool.annotations.read_only_hint is not expected_write, name
+            assert tool.annotations.destructive_hint is expected_write, name
 
-    def test_input_schemas_are_the_catalog_schemas_a_client_can_pass_on(self):
-        """The properties and requirements of the catalog, with no ``$schema`` and no
-        top-level ``oneOf``/``anyOf``/``allOf`` (model APIs reject those)."""
-        tools, _ = listing()
+    @pytest.mark.parametrize("mode", MODES)
+    def test_only_the_two_discovery_tools_are_always_loaded(self, mode):
+        tools, _ = listing(mode)
 
-        for tool, command in zip(tools, COMMANDS, strict=True):
+        always = [t.name for t in tools if (t.meta or {}).get("anthropic/alwaysLoad")]
+        assert always == ALWAYS_LOAD
+        assert all(
+            "anthropic/alwaysLoad" not in (t.meta or {})
+            for t in tools
+            if t.name not in ALWAYS_LOAD
+        )
+
+
+class TestSchemas:
+    """``inputSchema`` (AGI-5.5) and ``outputSchema`` of the tools."""
+
+    def test_input_schemas_are_closed_documented_2020_12_objects(self):
+        for tool in default_listing()[0]:
             schema = tool.input_schema
-            catalog = command_schema(command)["commands"][0]["input_schema"]
             Draft202012Validator.check_schema(schema)
-            assert not {"$schema", "oneOf", "anyOf", "allOf"} & set(schema)
-            assert schema["type"] == "object"
-            assert schema["additionalProperties"] is False
-            assert schema.get("required") == catalog.get("required")
-            assert list(schema["properties"]) == [o.name for o in command.options]
-            for name, prop in schema["properties"].items():
-                expected = dict(catalog["properties"][name])
-                if name == "lang":
-                    expected["default"] = "pl"
-                assert prop == expected, (command.name, name)
+            assert schema["type"] == "object", tool.name
+            assert schema["additionalProperties"] is False, tool.name
+            for name, definition in schema["properties"].items():
+                assert definition.get("description"), f"{tool.name}.{name}"
+            for keyword in ("oneOf", "anyOf", "allOf"):
+                assert keyword not in schema, tool.name
 
-    def test_the_schema_accepts_every_catalog_example(self):
-        """What the catalog calls a valid example validates against the tool schema."""
-        tools, _ = listing()
-
-        for tool, command in zip(tools, COMMANDS, strict=True):
+    def test_the_examples_of_a_schema_are_valid_arguments(self):
+        for tool in default_listing()[0]:
             validator = Draft202012Validator(tool.input_schema)
-            for example in command.examples:
-                assert validator.is_valid(example), (command.name, example)
+            for example in tool.input_schema["examples"]:
+                validator.validate(example)
 
-    def test_option_groups_are_named_in_the_description_not_in_the_schema(
-        self, demo_catalog
-    ):
-        """``one_of`` leaves the schema (top-level ``oneOf``) but not the contract."""
-        tools = {tool.name: tool for tool in listing()[0]}
-        series = tools["demo_series"]
-
-        assert "oneOf" not in series.input_schema
-        assert (
-            "Podaj dokładnie jedną z grup opcji: (`values`, `dates`) albo "
-            "(`input_file`, `value_column`)."
-        ) in series.description
-        assert tools["demo_add"].description == "Opis komendy demo add."
-
-    def test_option_groups_are_named_in_english_too(self, demo_catalog):
-        tools = {tool.name: tool for tool in listing(lang="en")[0]}
+    def test_the_options_of_a_one_of_group_name_the_alternatives(self):
+        tools = {t.name: t for t in default_listing()[0]}
+        properties = tools["hydrolog_stats_flood_frequency"].input_schema["properties"]
 
         assert (
-            "Give exactly one of these option groups: (`values`, `dates`) or "
-            "(`input_file`, `value_column`)."
-        ) in tools["demo_series"].description
+            "`values` or `input_file` + `value_column`"
+            in properties["values"]["description"]
+        )
+        assert (
+            "`values` or `input_file` + `value_column`"
+            in properties["value_column"]["description"]
+        )
+        assert "alternatives" not in properties["distribution"]["description"]
+
+    def test_the_output_schema_is_the_vendored_result_schema_made_self_contained(self):
+        expected = inline_refs(vendored("result-1.schema.json"))
+        expected.pop("$id")
+        expected["title"] = "hydrolog-result/1"
+
+        assert expected == OUTPUT_SCHEMA
+        for tool in default_listing()[0]:
+            assert tool.output_schema == expected, tool.name
 
     @pytest.mark.parametrize(
-        ("lang", "sentence"),
+        ("tool", "arguments"),
         [
-            ("pl", "Podaj dokładnie jedną z opcji: `shape` albo `shape_file`."),
-            ("en", "Give exactly one of these options: `shape` or `shape_file`."),
+            ("hydrolog_cn_lookup", {"hsg": "B", "land_cover": "forest"}),
+            ("hydrolog_tc_kirpich", {"length_km": 8.2, "slope_m_per_m": 0.023}),
+            ("hydrolog_commands_list", {}),
+            ("hydrolog_commands_schema", {"command": "tc kirpich"}),
+            ("hydrolog_stats_mann_kendall", {"values": [3.0, 4.5, 4.0, 6.2, 7.9]}),
         ],
     )
-    def test_alternative_single_options_are_named_as_options(
-        self, demo_catalog, lang, sentence
+    def test_the_structured_content_of_a_call_validates_against_the_output_schema(
+        self, tool, arguments
     ):
-        """Groups of one option each read as a choice of options, not of groups."""
-        tools = {tool.name: tool for tool in listing(lang=lang)[0]}
+        result = call(tool, arguments)
 
-        assert tools["demo_pick"].description.endswith(sentence)
-        assert "oneOf" not in tools["demo_pick"].input_schema
+        assert result.is_error is False
+        document = assert_valid_envelope(result)
+        assert document["command"] == get_command(tool).name
 
-    def test_output_options_are_named_in_the_description(self, demo_catalog):
-        """A writing command says which options it writes and where they may point."""
-        tools = {tool.name: tool for tool in listing()[0]}
+    def test_a_plan_validates_against_the_output_schema_too(self, tmp_path):
+        result = call(
+            "hydrolog_commands_guide",
+            {"format": "llms", "output": str(tmp_path / "llms.txt")},
+            allowed_dirs=[tmp_path],
+        )
 
-        assert (
-            "Zapisuje pliki (opcje wyjściowe: `output_file`); ścieżki muszą leżeć "
-            "w katalogach dozwolonych serwera."
-        ) in tools["demo_copy"].description
-
-    @pytest.mark.parametrize(
-        ("lang", "sentence"),
-        [
-            (
-                "pl",
-                "Zapisuje plik tylko wtedy, gdy podasz opcję wyjściową (`note_path`); "
-                "ścieżka musi leżeć w katalogu dozwolonym serwera.",
-            ),
-            (
-                "en",
-                "Writes a file only when you give the output option (`note_path`); "
-                "the path must lie inside a directory allowed by the server.",
-            ),
-        ],
-    )
-    def test_an_optional_output_option_is_described_as_optional(
-        self, demo_catalog, lang, sentence
-    ):
-        """A command that writes only on request says so, and is still not read-only."""
-        tools = {tool.name: tool for tool in listing(lang=lang)[0]}
-
-        assert tools["demo_note"].description.endswith(sentence)
-        assert tools["demo_note"].annotations.read_only_hint is False
-
-    def test_language_option_defaults_to_the_server_language(self):
-        """The schema of a ``lang`` option shows the server language as default."""
-        for lang in ("pl", "en"):
-            tools = {tool.name: tool for tool in listing(lang=lang)[0]}
-            prop = tools["commands_list"].input_schema["properties"]["lang"]
-            assert prop["default"] == lang
-            assert prop["enum"] == ["pl", "en"]
-
-
-# --- the instructions
-# ------------------------------------------------------------------
+        document = assert_valid_envelope(result)
+        assert document["result"]["schema"] == "hydrolog-plan/1"
 
 
 class TestInstructions:
-    """The ``instructions`` of the server: the rules of the agent guide, in short."""
+    """The server ``instructions`` (AGI-5.10, DOC-1.7)."""
 
-    @pytest.mark.parametrize("lang", ["pl", "en"])
-    def test_instructions_are_short_and_carry_the_rules_of_the_guide(self, lang):
-        """Every rule of the guide, the discovery tools and the documents appear."""
-        _, instructions = listing(lang=lang)
+    def test_they_fit_the_budget_and_are_english(self, tmp_path):
+        for kwargs in (
+            {},
+            {"allowed_dirs": [tmp_path], "allow_writes": True, "families": ["core"]},
+        ):
+            _, instructions = listing(**kwargs)
 
-        assert len(instructions.encode("utf-8")) <= MAX_BYTES
-        for rule in principles(lang):
-            assert rule in instructions
-        for tool in ("commands_list", "commands_schema", "commands_guide"):
-            assert tool in instructions
-        assert "hydrolog-result/1" in instructions
-        assert "hydrolog-error/1" in instructions
+            assert instructions
+            assert len(instructions) <= 4096
+            assert not re.search("[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]", instructions)
 
-    def test_instructions_follow_the_server_language(self):
-        assert "Zasady:" in listing(lang="pl")[1]
-        assert "Rules:" in listing(lang="en")[1]
-        assert "Zasady:" not in listing(lang="en")[1]
+    def test_they_state_the_workflow_the_limits_and_the_provenance_of_data(self):
+        _, instructions = default_listing()
 
-    @pytest.mark.parametrize("lang", ["pl", "en"])
-    def test_allowed_directories_are_listed(self, tmp_path, lang):
-        """The agent learns where it may read and write."""
-        data = tmp_path / "data"
-        other = tmp_path / "other"
+        assert "discover" in instructions
+        assert "hydrolog_commands_list" in instructions
+        assert "hydrolog_commands_schema" in instructions
+        assert "check" in instructions
+        assert "Kartograf" in instructions
+        assert "IMGWTools" in instructions
+        assert "No allowed directory" in instructions
+        assert "Read-only" in instructions
 
-        _, instructions = listing(lang=lang, allowed_dirs=[data, other])
+    def test_they_follow_the_state_of_the_server(self, tmp_path):
+        _, instructions = listing(
+            allowed_dirs=[tmp_path], allow_writes=True, families=["stats", "core"]
+        )
 
-        assert f"{data.resolve()}, {other.resolve()}" in instructions
-        assert "(--allow-dir)" not in instructions
-
-    def test_without_directories_files_are_declared_refused(self):
-        """No allowed directory: the text says path options are refused."""
-        _, pl = listing()
-        _, en = listing(lang="en")
-
-        assert "Brak katalogów dozwolonych (--allow-dir)" in pl
-        assert "No allowed directories (--allow-dir)" in en
-
-    def test_a_catalog_without_the_discovery_commands_is_refused(self):
-        """The text sends the agent to three tools; a catalog without one is an
-        error."""
-        for missing in ("commands list", "commands schema", "commands guide"):
-            commands = tuple(c for c in COMMANDS if c.name != missing)
-
-            with pytest.raises(NotFoundError) as caught:
-                build_instructions(commands, lang="pl", allowed_dirs=())
-
-            assert caught.value.details == {"command": missing}
+        assert str(tmp_path.resolve()) in instructions
+        assert "Writes are enabled" in instructions
+        assert "stats, core" in instructions
+        assert "Read-only" not in instructions
 
 
-# --- calls
-# -----------------------------------------------------------------------------
+# --- calls ----------------------------------------------------------------------------
 
 
 class TestCalls:
-    """``tools/call``: the envelope on success, the error document on failure."""
+    """Results and errors (AGI-5.5, AGI-5.7)."""
 
     @pytest.mark.parametrize("mode", MODES)
-    def test_a_pure_tool_answers_with_the_envelope(self, mode):
-        """The result is ``run_command(...).to_dict()`` as structured content and
-        text."""
-        result = call("commands_list", {"lang": "en"}, mode=mode)
+    def test_a_read_only_call_returns_the_envelope_as_structured_content_and_text(
+        self, mode
+    ):
+        arguments = {"hsg": "B", "land_cover": "forest"}
+
+        result = call("hydrolog_cn_lookup", arguments, mode=mode)
 
         assert result.is_error is False
-        assert (
-            document_of(result)
-            == run_command("commands list", {"lang": "en"}).to_dict()
-        )
-        assert result.content[0].text == compact(result.structured_content)
+        document = assert_valid_envelope(result)
+        assert document == run_command("cn lookup", arguments).to_dict()
+        assert document["result"]["cn"] == 60
 
-    @pytest.mark.parametrize(("command", "example"), catalog_examples(with_paths=False))
-    def test_every_catalog_example_gives_the_same_result_as_the_python_api(
-        self, command, example
-    ):
-        """Values over MCP equal what ``run_command`` returns for the same options."""
-        result = call(command.operation_id, example)
+    def test_the_default_pages_of_the_discovery_tools_fit_the_result_budget(self):
+        for tool, arguments in (
+            ("hydrolog_commands_list", {}),
+            ("hydrolog_commands_schema", {}),
+            ("hydrolog_commands_schema", {"command": "report generate"}),
+        ):
+            result = call(tool, arguments)
 
-        assert result.is_error is False, result.content[0].text
-        expected = run_command(command, example).to_dict()
-        assert document_of(result) == expected
+            assert result.is_error is False
+            assert len(result.content[0].text) <= 20_000, tool
 
-    def test_a_real_command_gives_the_value_of_the_library(self):
-        """``tc_kirpich`` over MCP is the Kirpich formula of ``ConcentrationTime``."""
-        result = call("tc_kirpich", {"length_km": 8.2, "slope_m_per_m": 0.023})
-
-        document = document_of(result)
-        expected = ConcentrationTime.kirpich(length_km=8.2, slope_m_per_m=0.023)
-        assert document["command"] == "tc kirpich"
-        assert document["result"]["tc_min"] == pytest.approx(expected)
-        assert document["notices"] == []
-
-    def test_warnings_of_the_library_travel_as_notices(self):
-        """A value outside the typical range of the formula is a notice, not an
-        error."""
-        result = call("tc_kirpich", {"length_km": 120, "slope_m_per_m": 0.02})
-
-        document = document_of(result)
-        assert result.is_error is False
-        assert [notice["level"] for notice in document["notices"]] == ["warning"]
-        assert "120" in document["notices"][0]["text"]
-
-    def test_arguments_are_normalized_by_the_catalog(self, demo_catalog):
-        """Defaults are applied and reported in ``inputs``; the result is the
-        operation's."""
-        document = document_of(call("demo_add", {"a_km": 2}))
-
-        assert document["command"] == "demo add"
-        assert document["status"] == "ok"
-        assert document["inputs"] == {"a_km": 2.0, "b_km": 1.0}
-        assert document["result"] == {"sum_km": 3.0}
-        assert document["files"] == [] and document["notices"] == []
-
-    def test_non_finite_numbers_become_null_in_strict_json(self, demo_catalog):
-        """No ``NaN``/``Infinity`` token reaches the client, text or structured."""
-        result = call("demo_nan", {"x_mm": 7})
-
-        def refuse(token):
-            raise AssertionError(f"non-standard JSON constant {token}")
-
-        text = result.content[0].text
-        assert json.loads(text, parse_constant=refuse) == result.structured_content
-        assert result.structured_content["result"] == {
-            "value": None,
-            "limit": None,
-            "pair": [1, 7],
-        }
-
-    def test_language_option_takes_the_server_language(self):
-        """A call without ``lang`` gets the language the server was created with."""
-        english = document_of(call("commands_list", {}, lang="en"))
-        polish = document_of(call("commands_list", {}, lang="pl"))
-
-        assert english["inputs"] == {"lang": "en"}
-        assert english["result"][0]["summary"] == COMMANDS[0].summary_en
-        assert polish["inputs"] == {"lang": "pl"}
-        assert polish["result"][0]["summary"] == COMMANDS[0].summary
-
-    def test_an_explicit_language_wins_over_the_server_language(self):
-        document = document_of(call("commands_list", {"lang": "pl"}, lang="en"))
-
-        assert document["inputs"] == {"lang": "pl"}
-        assert document["result"][0]["summary"] == COMMANDS[0].summary
-
-    def test_a_null_language_counts_as_not_given(self):
-        document = document_of(call("commands_list", {"lang": None}, lang="en"))
-
-        assert document["inputs"] == {"lang": "en"}
-
-    def test_calls_run_in_worker_threads_side_by_side(self, demo_catalog):
-        """Two calls are inside their operations at the same time (a barrier of two)."""
-
-        async def scenario():
-            answers = {}
-
-            async with connected() as client:
-
-                async def one(label):
-                    answers[label] = await client.call_tool(
-                        "demo_meet", {"label": label}
-                    )
-
-                async with anyio.create_task_group() as group:
-                    group.start_soon(one, "a")
-                    group.start_soon(one, "b")
-            return answers
-
-        answers = anyio.run(scenario)
-
-        assert sorted(answers) == ["a", "b"]
-        for label, result in answers.items():
-            assert result.is_error is False, result.content[0].text
-            assert document_of(result)["result"] == {"label": label}
-
-
-# --- errors
-# ----------------------------------------------------------------------------
-
-
-class TestErrors:
-    """Failures are ``isError`` results with a ``hydrolog-error/1`` document."""
-
-    def test_invalid_arguments_are_a_validation_error(self):
-        """The catalog validator answers; the document names the option and reason."""
-        document = error_of(call("commands_list", {"bogus": 1}))
-
-        assert document["code"] == "validation_error"
-        assert document["exit_code"] == 2
-        assert document["command"] == "commands list"
-        assert document["title"] == ERROR_CODES["validation_error"].title
-        assert document["details"] == {
-            "option": "bogus",
-            "reason": "unknown_option",
-            "allowed": ["lang"],
-        }
-        assert document["hint"]
-
-    def test_the_error_title_follows_the_server_language(self):
-        document = error_of(call("commands_list", {"bogus": 1}, lang="en"))
-
-        assert document["title"] == ERROR_CODES["validation_error"].title_en
-
-    def test_a_value_out_of_range_is_a_validation_error(self, demo_catalog):
-        document = error_of(call("demo_add", {"a_km": -1}))
-
-        assert document["code"] == "validation_error"
-        assert document["details"]["option"] == "a_km"
-        assert document["details"]["reason"] == "exclusive_minimum"
-
-    @pytest.mark.parametrize(
-        ("arguments", "option", "reason"),
-        [
-            (
-                {"length_km": -1, "slope_m_per_m": 0.02},
-                "length_km",
-                "exclusive_minimum",
-            ),
-            ({"length_km": "8.2", "slope_m_per_m": 0.02}, "length_km", "type"),
-            ({"length_km": 8.2}, "slope_m_per_m", "required"),
-            ({"length_km": 8.2, "slope_m_per_m": 0.02, "x": 1}, "x", "unknown_option"),
-        ],
-    )
-    def test_a_real_command_rejects_bad_arguments_with_option_and_reason(
-        self, arguments, option, reason
-    ):
-        """``tc_kirpich``: the validation error names the option and the reason."""
-        document = error_of(call("tc_kirpich", arguments))
-
-        assert document["code"] == "validation_error"
-        assert document["command"] == "tc kirpich"
-        assert (document["details"]["option"], document["details"]["reason"]) == (
-            option,
-            reason,
-        )
-
-    def test_a_missing_required_option_is_a_validation_error(self, demo_catalog):
-        document = error_of(call("demo_add", {}))
-
-        assert document["details"] == {"option": "a_km", "reason": "required"}
-
-    def test_the_option_groups_are_enforced_although_the_schema_lacks_them(
-        self, demo_catalog
-    ):
-        """``one_of`` is validated server-side: none given, or two groups at once."""
-        none_given = error_of(call("demo_series", {}))
-        both = error_of(
+    def test_the_discovery_tools_page_the_catalog(self):
+        first = envelope_of(call("hydrolog_commands_list", {"limit": 5}))
+        second = envelope_of(
             call(
-                "demo_series",
-                {
-                    "values": [1],
-                    "dates": ["2020-01-01"],
-                    "input_file": "a.csv",
-                    "value_column": "q",
-                },
-                allowed_dirs=[Path.cwd()],
+                "hydrolog_commands_list",
+                {"limit": 5, "cursor": first["page"]["next_cursor"]},
             )
         )
 
-        assert none_given["code"] == both["code"] == "validation_error"
-        assert none_given["details"]["reason"] == both["details"]["reason"] == "one_of"
-        assert none_given["details"]["groups"] == [
-            ["values", "dates"],
-            ["input_file", "value_column"],
-        ]
+        assert first["page"]["truncated"] is True
+        assert first["page"]["total"] == len(COMMANDS)
+        assert first["result"]["commands"][0] != second["result"]["commands"][0]
 
-    def test_an_error_of_the_operation_keeps_its_code(self):
-        """A ``HydrologError`` raised by an operation is reported as it is."""
-        document = error_of(call("commands_schema", {"command": "zzz"}))
+    def test_an_invalid_option_is_an_error_result_with_code_hint_and_details(self):
+        result = call("hydrolog_cn_lookup", {"hsg": "Z", "land_cover": "forest"})
 
-        assert document["code"] == "not_found"
-        assert document["exit_code"] == 3
-        assert document["command"] == "commands schema"
-        assert document["details"]["command"] == "zzz"
+        error = error_of(result)
+        assert error["code"] == "validation_error"
+        assert error["exit_code"] == 2
+        assert error["command"] == "cn lookup"
+        assert error["hint"]
+        assert error["details"]["option"] == "hsg"
+        assert error["details"]["allowed"] == ["A", "B", "C", "D"]
+        assert error["code"] in ERROR_CODES
 
-    def test_a_bug_is_an_internal_error_without_a_traceback_for_the_client(
-        self, demo_catalog, caplog
-    ):
-        """The client gets the class and message; the traceback goes to the log."""
-        with caplog.at_level(logging.ERROR):
-            document = error_of(call("demo_boom", {}))
+    def test_an_unknown_option_is_a_validation_error_not_a_protocol_error(self):
+        error = error_of(call("hydrolog_cn_lookup", {"bogus": 1}))
 
-        assert document["code"] == "internal_error"
-        assert document["exit_code"] == 1
-        assert document["message"] == "RuntimeError: boom"
-        assert document["details"] == {"exception": "RuntimeError"}
-        assert "Traceback" not in json.dumps(document)
-        logged = [
-            r for r in caplog.records if r.exc_info and r.exc_info[0] is RuntimeError
-        ]
-        assert [r.levelno for r in logged] == [logging.ERROR]
-        assert "demo_boom" in logged[0].getMessage()
+        assert error["code"] == "validation_error"
+        assert error["details"]["reason"] == "unknown_option"
 
-    def test_a_file_system_error_is_an_io_error(self, demo_catalog, caplog):
-        with caplog.at_level(logging.ERROR):
-            document = error_of(call("demo_disk", {}))
+    def test_the_error_title_is_english(self):
+        error = error_of(call("hydrolog_cn_lookup", {"hsg": "Z"}))
 
-        assert document["code"] == "io_error"
-        assert document["exit_code"] == 9
-        assert document["details"] == {"errno": "EACCES", "path": "/data/x"}
-        assert not caplog.records  # not a bug: nothing to log
+        assert error["title"] == "Invalid input"
 
-    def test_an_unknown_tool_is_a_protocol_error_with_suggestions(self):
-        """The MCP error for a tool the server does not have; it suggests a close
-        name."""
-        error = protocol_error("commands_lst")
+    def test_an_unknown_tool_is_a_protocol_error_with_a_suggestion(self):
+        async def scenario():
+            async with connected() as client:
+                with pytest.raises(MCPError) as caught:
+                    await client.call_tool("hydrolog_cn_lookpu", {})
+                return caught.value
 
-        assert error.code == types.INVALID_PARAMS
-        assert "Unknown tool 'commands_lst'" in error.message
-        assert "Did you mean: commands_list" in error.message
+        error = anyio.run(scenario)
 
-    def test_a_command_name_with_a_space_is_not_a_tool_name(self):
-        """Only ``operation_id`` names tools; ``commands list`` is not one."""
-        assert protocol_error("commands list").code == types.INVALID_PARAMS
+        assert error.error.code == types.INVALID_PARAMS
+        assert "hydrolog_cn_lookup" in error.error.message
+
+    def test_a_tool_outside_the_selected_families_is_a_protocol_error(self):
+        async def scenario():
+            async with connected(families=["stats"]) as client:
+                with pytest.raises(MCPError) as caught:
+                    await client.call_tool("hydrolog_cn_lookup", {})
+                return caught.value
+
+        assert anyio.run(scenario).error.code == types.INVALID_PARAMS
+
+    def test_two_calls_of_one_connection_run_at_the_same_time(self):
+        """A call runs in a worker thread: a second one is served meanwhile."""
+        inside = threading.Barrier(2)
+        original = run_command
+
+        def meeting(command, options=None, *, allowed_dirs=None):
+            inside.wait(timeout=20)  # returns only when both calls are inside
+            return original(command, options, allowed_dirs=allowed_dirs)
+
+        async def scenario():
+            answers = []
+
+            async def one(client, hsg):
+                answers.append(
+                    await client.call_tool(
+                        "hydrolog_cn_lookup", {"hsg": hsg, "land_cover": "forest"}
+                    )
+                )
+
+            async with connected() as client, anyio.create_task_group() as group:
+                group.start_soon(one, client, "B")
+                group.start_soon(one, client, "C")
+            return answers
+
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr("hydrolog.mcp._calls.run_command", meeting)
+            answers = anyio.run(scenario)
+
+        assert [a.is_error for a in answers] == [False, False]
 
 
-# --- paths
-# -----------------------------------------------------------------------------
+# --- paths and writes -----------------------------------------------------------------
 
 
 class TestPathPolicy:
-    """Path options work only inside the directories the server allows."""
+    """``--allow-dir`` (AGI-5.8): every path option is checked."""
 
-    def test_without_directories_a_path_option_is_forbidden(
-        self, demo_catalog, tmp_path
-    ):
-        """No allowed directory: refused, and the operation never runs."""
-        source = tmp_path / "in.txt"
-        source.write_text("abc", encoding="utf-8")
-        target = tmp_path / "out.txt"
+    def test_without_allowed_directories_every_path_option_is_forbidden(self, tmp_path):
+        arguments = stats_arguments(tmp_path)
 
-        document = error_of(
-            call("demo_copy", {"input_file": str(source), "output_file": str(target)})
-        )
+        error = error_of(call("hydrolog_stats_mann_kendall", arguments))
 
-        assert document["code"] == "forbidden"
-        assert document["exit_code"] == 12
-        assert document["details"]["option"] == "input_file"
-        assert document["details"]["allowed_dirs"] == []
-        assert "--allow-dir" in document["hint"]
-        assert not target.exists()
+        assert error["code"] == "forbidden"
+        assert error["exit_code"] == ERROR_CODES["forbidden"].exit_code
+        assert error["details"]["option"] == "input_file"
+        assert error["details"]["allowed_dirs"] == []
+        assert error["hint"]
 
-    def test_inside_an_allowed_directory_the_command_runs_and_reports_its_file(
-        self, demo_catalog, tmp_path
-    ):
-        """Read and write inside; the envelope lists the written file with its
-        SHA-256."""
-        allowed = tmp_path / "data"
-        allowed.mkdir()
-        (allowed / "in.txt").write_text("abc", encoding="utf-8")
-        target = allowed / "out.txt"
-
+    def test_commands_that_take_values_work_without_allowed_directories(self):
         result = call(
-            "demo_copy",
-            {"input_file": str(allowed / "in.txt"), "output_file": str(target)},
-            allowed_dirs=[allowed],
+            "hydrolog_stats_mann_kendall", {"values": [1.0, 2.0, 4.0, 3.0, 6]}
         )
 
-        document = document_of(result)
         assert result.is_error is False
-        assert document["result"] == {"chars": 3}
-        assert target.read_text(encoding="utf-8") == "ABC"
-        assert document["files"] == [
-            {
-                "role": "output",
-                "path": str(target.resolve()),
-                "sha256": hashlib.sha256(b"ABC").hexdigest(),
-            }
-        ]
-        assert document["inputs"]["input_file"] == str((allowed / "in.txt").resolve())
 
-    def test_a_path_outside_is_forbidden_and_names_the_allowed_directories(
-        self, demo_catalog, tmp_path
-    ):
-        allowed = tmp_path / "data"
-        allowed.mkdir()
-        outside = tmp_path / "secret.txt"
-        outside.write_text("x", encoding="utf-8")
+    def test_a_file_inside_an_allowed_directory_is_read(self, tmp_path):
+        arguments = stats_arguments(tmp_path)
 
-        document = error_of(
-            call(
-                "demo_copy",
-                {"input_file": str(outside), "output_file": str(allowed / "o.txt")},
-                allowed_dirs=[allowed],
-            )
+        result = call("hydrolog_stats_mann_kendall", arguments, allowed_dirs=[tmp_path])
+
+        assert result.is_error is False
+        assert envelope_of(result)["inputs"]["input_file"] == str(
+            (tmp_path / "annual_maxima.csv").resolve()
         )
 
-        assert document["code"] == "forbidden"
-        assert document["details"] == {
-            "option": "input_file",
-            "path": str(outside.resolve()),
-            "allowed_dirs": [str(allowed.resolve())],
-        }
-        assert not (allowed / "o.txt").exists()
-
-    def test_the_output_path_is_checked_too(self, demo_catalog, tmp_path):
-        """Reading inside is not enough: the file to write must be inside as well."""
-        allowed = tmp_path / "data"
-        allowed.mkdir()
-        (allowed / "in.txt").write_text("abc", encoding="utf-8")
-        target = tmp_path / "out.txt"
-
-        document = error_of(
-            call(
-                "demo_copy",
-                {"input_file": str(allowed / "in.txt"), "output_file": str(target)},
-                allowed_dirs=[allowed],
-            )
-        )
-
-        assert document["code"] == "forbidden"
-        assert document["details"]["option"] == "output_file"
-        assert not target.exists()
-
-    def test_dot_dot_and_symlinks_cannot_leave_the_directory(
-        self, demo_catalog, tmp_path
-    ):
-        """The policy judges where a path points, not how it is written."""
-        allowed = tmp_path / "data"
+    def test_a_file_outside_the_allowed_directories_is_forbidden(self, tmp_path):
+        allowed = tmp_path / "allowed"
         allowed.mkdir()
         outside = tmp_path / "outside"
         outside.mkdir()
-        (outside / "secret.txt").write_text("x", encoding="utf-8")
-        (allowed / "link").symlink_to(outside, target_is_directory=True)
-        attempts = [
-            str(allowed / ".." / "outside" / "secret.txt"),
-            str(allowed / "link" / "secret.txt"),
-        ]
+        arguments = stats_arguments(outside)
 
-        for attempt in attempts:
-            document = error_of(
-                call(
-                    "demo_copy",
-                    {"input_file": attempt, "output_file": str(allowed / "o.txt")},
-                    allowed_dirs=[allowed],
-                )
-            )
-            assert document["code"] == "forbidden", attempt
+        error = error_of(
+            call("hydrolog_stats_mann_kendall", arguments, allowed_dirs=[allowed])
+        )
 
-    def test_relative_paths_are_taken_against_the_working_directory(
-        self, demo_catalog, tmp_path, monkeypatch
-    ):
-        allowed = tmp_path / "data"
+        assert error["code"] == "forbidden"
+        assert error["details"]["allowed_dirs"] == [str(allowed.resolve())]
+        assert error["details"]["path"] == str(
+            (outside / "annual_maxima.csv").resolve()
+        )
+
+    def test_a_relative_path_cannot_escape_through_dot_dot(self, tmp_path):
+        allowed = tmp_path / "allowed"
         allowed.mkdir()
-        (allowed / "in.txt").write_text("abc", encoding="utf-8")
-        monkeypatch.chdir(allowed)
+        (tmp_path / "secret.csv").write_text("Q\n1\n2\n3\n", encoding="utf-8")
+
+        error = error_of(
+            call(
+                "hydrolog_stats_mann_kendall",
+                {"input_file": str(allowed / ".." / "secret.csv"), "value_column": "Q"},
+                allowed_dirs=[allowed],
+            )
+        )
+
+        assert error["code"] == "forbidden"
+
+    def test_a_missing_allowed_directory_is_refused_when_the_server_is_created(
+        self, tmp_path
+    ):
+        with pytest.raises(NotFoundError):
+            create_server(allowed_dirs=[tmp_path / "missing"])
+        with pytest.raises(InvalidParameterError):
+            create_server(allowed_dirs=[""])
+
+
+class TestWriteModes:
+    """``--allow-writes`` (AGI-5.8, DEV-19.3): plans without it, writes with it."""
+
+    guide = staticmethod(
+        lambda directory, **extra: {
+            "format": "llms",
+            "output": str(Path(directory) / "llms.txt"),
+            **extra,
+        }
+    )
+
+    def test_without_allow_writes_a_writing_tool_only_plans(self, tmp_path):
+        arguments = self.guide(tmp_path, force=True, check=False)
+
+        result = call("hydrolog_commands_guide", arguments, allowed_dirs=[tmp_path])
+
+        document = envelope_of(result)
+        assert result.is_error is False
+        assert document["check"] is True
+        assert document["result"]["schema"] == "hydrolog-plan/1"
+        assert [t["action"] for t in document["result"]["targets"]] == ["write"]
+        assert not (tmp_path / "llms.txt").exists()
+
+    def test_without_allow_writes_force_is_ignored(self, tmp_path):
+        target = tmp_path / "llms.txt"
+        target.write_text("mine", encoding="utf-8")
 
         result = call(
-            "demo_copy",
-            {"input_file": "in.txt", "output_file": "out.txt"},
-            allowed_dirs=[allowed],
+            "hydrolog_commands_guide",
+            self.guide(tmp_path, force=True),
+            allowed_dirs=[tmp_path],
         )
 
-        assert result.is_error is False, result.content[0].text
-        assert (allowed / "out.txt").read_text(encoding="utf-8") == "ABC"
+        targets = envelope_of(result)["result"]["targets"]
+        assert targets[0]["action"] == "conflict"
+        assert targets[0]["reason"] == "output_exists"
+        assert target.read_text(encoding="utf-8") == "mine"
 
-    def test_a_pure_tool_works_without_directories(self, demo_catalog):
-        """Commands without path options are not affected by the missing directories."""
-        document = document_of(call("demo_add", {"a_km": 1}))
+    def test_a_plan_still_obeys_the_allowed_directories(self, tmp_path):
+        allowed = tmp_path / "allowed"
+        allowed.mkdir()
 
-        assert document["result"] == {"sum_km": 2.0}
-
-    @pytest.mark.parametrize(("command", "example"), catalog_examples(with_paths=True))
-    def test_every_catalog_command_with_files_is_refused_without_directories(
-        self, command, example
-    ):
-        """The real catalog: a path option never works on a server without
-        directories."""
-        document = error_of(call(command.operation_id, example))
-
-        assert document["code"] == "forbidden", document
-        assert document["details"]["allowed_dirs"] == []
-
-    @pytest.mark.parametrize(("command", "example"), catalog_examples(with_paths=True))
-    def test_every_catalog_example_with_files_runs_inside_an_allowed_directory(
-        self, command, example, tmp_path, monkeypatch
-    ):
-        """Inputs are read and outputs written inside the allowed directory, and the
-        envelope equals the one of the Python API (the fixtures are copied there so
-        that the relative paths of the examples point inside)."""
-        if command.group == "soil":
-            pytest.importorskip("rasterio")
-        shutil.copytree(ROOT / "tests" / "fixtures", tmp_path / "tests" / "fixtures")
-        monkeypatch.chdir(tmp_path)
-
-        result = call(command.operation_id, example, allowed_dirs=[tmp_path])
-
-        assert result.is_error is False, result.content[0].text
-        expected = run_command(command, example, allowed_dirs=[tmp_path]).to_dict()
-        assert document_of(result) == expected
-        for record in expected["files"]:
-            assert Path(record["path"]).is_relative_to(tmp_path.resolve())
-
-    def test_directories_are_resolved_when_the_server_is_created(
-        self, tmp_path, monkeypatch
-    ):
-        """``~``, relative entries and a single path instead of a list."""
-        home = tmp_path / "home"
-        home.mkdir()
-        work = tmp_path / "work"
-        (work / "sub").mkdir(parents=True)
-        monkeypatch.setenv("HOME", str(home))
-        monkeypatch.chdir(work)
-
-        _, instructions = listing(allowed_dirs=["~/data", "sub", str(work / "sub")])
-        _, single = listing(allowed_dirs=work)
-
-        assert str(home.resolve() / "data") in instructions
-        assert instructions.count(str((work / "sub").resolve())) == 1  # deduplicated
-        assert str(work.resolve()) in single
-
-    @pytest.mark.parametrize("empty", ["", "   "])
-    def test_an_empty_directory_is_refused(self, empty):
-        """An empty text would silently mean the working directory."""
-        with pytest.raises(InvalidParameterError) as caught:
-            create_server(allowed_dirs=[empty])
-
-        assert caught.value.code == "validation_error"
-        assert caught.value.details == {"option": "allowed_dirs", "reason": "empty"}
-
-
-# --- creating the server
-# ---------------------------------------------------------------
-
-
-class TestCreateServer:
-    """``create_server`` / ``run_stdio``: arguments and the optional dependency."""
-
-    @pytest.mark.parametrize("function", [create_server, run_stdio])
-    def test_an_unknown_language_is_a_validation_error(self, function):
-        with pytest.raises(InvalidParameterError) as caught:
-            function(lang="de")
-
-        assert caught.value.code == "validation_error"
-        assert caught.value.details == {
-            "option": "lang",
-            "reason": "choice",
-            "allowed": ["pl", "en"],
-            "value": "de",
-        }
-
-    @pytest.mark.parametrize("function", [create_server, run_stdio])
-    @pytest.mark.parametrize("missing", ["mcp_types", "mcp.server", "anyio"])
-    def test_a_missing_sdk_is_a_missing_dependency_error(
-        self, function, missing, monkeypatch
-    ):
-        """No (usable) SDK: the install command is in the hint, nothing is served."""
-        monkeypatch.setitem(sys.modules, missing, None)
-
-        with pytest.raises(MissingDependencyError) as caught:
-            function()
-
-        assert caught.value.code == "missing_dependency"
-        assert caught.value.exit_code == 6
-        assert caught.value.hint == "pip install hydrolog[mcp]"
-        assert caught.value.details["requirement"] == "mcp>=2.3,<3"
-        assert caught.value.details["module"] == missing
-
-    def test_the_package_imports_without_the_sdk(self):
-        """``import hydrolog.mcp`` is safe without the extra; only calls need it."""
-        script = (
-            "import sys\n"
-            "for name in ('mcp', 'mcp_types', 'anyio'):\n"
-            "    sys.modules[name] = None\n"
-            "from hydrolog.mcp import create_server, run_stdio\n"
-            "from hydrolog.exceptions import MissingDependencyError\n"
-            "try:\n"
-            "    create_server()\n"
-            "except MissingDependencyError as exc:\n"
-            "    print(exc.code)\n"
+        error = error_of(
+            call(
+                "hydrolog_commands_guide",
+                self.guide(tmp_path),
+                allowed_dirs=[allowed],
+            )
         )
 
+        assert error["code"] == "forbidden"
+
+    def test_the_schema_of_a_plan_only_tool_says_so(self):
+        properties = tools_by_name()["hydrolog_commands_guide"].input_schema[
+            "properties"
+        ]
+
+        assert properties["check"]["default"] is True
+        assert "read-only" in properties["check"]["description"]
+        assert "Ignored" in properties["force"]["description"]
+        assert "plans" in properties["output"]["description"]
+
+    def test_with_allow_writes_the_file_is_written_and_reported(self, tmp_path):
+        result = call(
+            "hydrolog_commands_guide",
+            self.guide(tmp_path),
+            allowed_dirs=[tmp_path],
+            allow_writes=True,
+        )
+
+        document = assert_valid_envelope(result)
+        target = tmp_path / "llms.txt"
+        assert result.is_error is False
+        assert document["check"] is False
+        record = document["result"]["files"][0]
+        assert record["path"] == str(target.resolve())
+        assert record["status"] == "written"
+        assert record["size_bytes"] == target.stat().st_size
+
+    def test_with_allow_writes_an_existing_file_is_a_conflict_without_force(
+        self, tmp_path
+    ):
+        target = tmp_path / "llms.txt"
+        target.write_text("mine", encoding="utf-8")
+
+        error = error_of(
+            call(
+                "hydrolog_commands_guide",
+                self.guide(tmp_path),
+                allowed_dirs=[tmp_path],
+                allow_writes=True,
+            )
+        )
+
+        assert error["code"] == "conflict"
+        assert error["details"]["reason"] == "output_exists"
+        assert error["details"]["paths"] == [str(target.resolve())]
+        assert target.read_text(encoding="utf-8") == "mine"
+
+    def test_with_allow_writes_force_replaces_the_file(self, tmp_path):
+        target = tmp_path / "llms.txt"
+        target.write_text("mine", encoding="utf-8")
+
+        result = call(
+            "hydrolog_commands_guide",
+            self.guide(tmp_path, force=True),
+            allowed_dirs=[tmp_path],
+            allow_writes=True,
+        )
+
+        assert result.is_error is False
+        assert envelope_of(result)["result"]["files"][0]["status"] == "replaced"
+        assert target.read_text(encoding="utf-8") != "mine"
+
+    def test_with_allow_writes_check_still_plans(self, tmp_path):
+        result = call(
+            "hydrolog_commands_guide",
+            self.guide(tmp_path, check=True),
+            allowed_dirs=[tmp_path],
+            allow_writes=True,
+        )
+
+        assert envelope_of(result)["check"] is True
+        assert not (tmp_path / "llms.txt").exists()
+
+    def test_with_allow_writes_the_output_must_lie_in_an_allowed_directory(
+        self, tmp_path
+    ):
+        allowed = tmp_path / "allowed"
+        allowed.mkdir()
+
+        error = error_of(
+            call(
+                "hydrolog_commands_guide",
+                self.guide(tmp_path),
+                allowed_dirs=[allowed],
+                allow_writes=True,
+            )
+        )
+
+        assert error["code"] == "forbidden"
+        assert not (tmp_path / "llms.txt").exists()
+
+    def test_a_server_without_directories_writes_nothing_even_with_allow_writes(
+        self, tmp_path
+    ):
+        error = error_of(
+            call(
+                "hydrolog_commands_guide",
+                self.guide(tmp_path),
+                allow_writes=True,
+            )
+        )
+
+        assert error["code"] == "forbidden"
+
+
+# --- families -------------------------------------------------------------------------
+
+
+class TestFamilies:
+    """``--tools`` (AGI-5.8) and the ``core`` family (AGI-5.12)."""
+
+    def test_a_group_family_exposes_the_commands_of_the_group(self):
+        tools = tools_by_name(families=["stats"])
+
+        assert list(tools) == [
+            c.operation_id for c in COMMANDS if c.name.startswith("stats ")
+        ]
+
+    def test_the_core_family_has_at_most_ten_tools_including_discovery(self):
+        tools = tools_by_name(families=["core"])
+
+        assert list(tools) == [c.operation_id for c in COMMANDS if c.core]
+        assert 0 < len(tools) <= 10
+        assert set(ALWAYS_LOAD) <= set(tools)
+
+    def test_several_families_are_joined_in_catalog_order(self):
+        tools = tools_by_name(families=["scs", "tc"])
+
+        assert list(tools) == [
+            c.operation_id for c in COMMANDS if c.name.split()[0] in ("scs", "tc")
+        ]
+
+    def test_an_unknown_family_lists_the_allowed_ones(self):
+        with pytest.raises(InvalidParameterError) as caught:
+            create_server(families=["stat"])
+
+        error = caught.value
+        assert error.details["reason"] == "choice"
+        assert "core" in error.details["allowed"]
+        assert "stats" in error.details["allowed"]
+        assert "stats" in str(error)
+
+    def test_an_empty_list_of_families_is_refused(self):
+        with pytest.raises(InvalidParameterError):
+            create_server(families=[])
+
+
+# --- console script and ``hydrolog mcp`` ----------------------------------------------
+
+
+def script_entry(name):
+    """``module:function`` of a console script declared in pyproject."""
+    with (ROOT / "pyproject.toml").open("rb") as handle:
+        return tomllib.load(handle)["project"]["scripts"][name]
+
+
+def launcher_arguments(launcher, *server_arguments, prelude=""):
+    """Arguments of ``sys.executable`` that start a server through a console script:
+    ``hydrolog-mcp`` or ``hydrolog mcp``."""
+    name, words = (
+        ("hydrolog-mcp", []) if launcher == "console" else ("hydrolog", ["mcp"])
+    )
+    module, _, function = script_entry(name).partition(":")
+    code = (
+        f"{prelude}import sys; from {module} import {function}; "
+        f"sys.exit({function}({words!r} + sys.argv[1:]))"
+    )
+    return ["-c", code, *server_arguments]
+
+
+LAUNCHERS = ["console", "cli"]
+
+
+class TestCommandLine:
+    """The options are the same in ``hydrolog-mcp`` and in ``hydrolog mcp``."""
+
+    def test_the_console_script_points_at_the_server_module(self):
+        assert script_entry("hydrolog-mcp") == "hydrolog.mcp.server:main"
+
+    def test_an_unknown_family_is_a_validation_error_on_stderr(self, capsys):
+        status = main(["--tools", "bogus"])
+
+        captured = capsys.readouterr()
+        document = json.loads(captured.err)
+        assert status == 2
+        assert captured.out == ""
+        assert document["schema"] == "hydrolog-error/1"
+        assert document["code"] == "validation_error"
+        assert "core" in document["details"]["allowed"]
+
+    def test_a_missing_directory_is_a_not_found_error_on_stderr(self, capsys, tmp_path):
+        status = main(["--allow-dir", str(tmp_path / "missing")])
+
+        assert status == 3
+        assert json.loads(capsys.readouterr().err)["code"] == "not_found"
+
+    def test_the_server_has_no_language_option(self, capsys):
+        status = main(["--lang", "en"])
+
+        captured = capsys.readouterr()
+        document = json.loads(captured.err)
+        assert (status, captured.out) == (2, "")
+        assert document["code"] == "validation_error"
+        assert document["details"]["reason"] == "usage"
+        assert "--lang" in document["message"]
+
+    def test_help_lists_the_three_server_options(self, capsys):
+        status = main(["--help"])
+
+        assert status == 0
+        output = capsys.readouterr().out
+        for option in ("--allow-dir", "--allow-writes", "--tools"):
+            assert option in output
+
+    @pytest.mark.parametrize("launcher", LAUNCHERS)
+    def test_a_process_serves_the_selected_tools_over_a_pipe(self, launcher, tmp_path):
+        server = StdioServerParameters(
+            command=sys.executable,
+            args=launcher_arguments(
+                launcher, "--allow-dir", str(tmp_path), "--tools", "core"
+            ),
+            env=dict(os.environ),
+            cwd=ROOT,
+        )
+
+        async def scenario(log):
+            async with Client(stdio_client(server, errlog=log)) as client:
+                tools = (await client.list_tools()).tools
+                answer = await client.call_tool(
+                    "hydrolog_cn_lookup", {"hsg": "B", "land_cover": "forest"}
+                )
+                return tools, client.instructions, answer
+
+        with (tmp_path / "stderr.log").open("w+", encoding="utf-8") as log:
+            tools, instructions, answer = anyio.run(scenario, log)
+
+        assert [t.name for t in tools] == [c.operation_id for c in COMMANDS if c.core]
+        assert str(tmp_path.resolve()) in instructions
+        assert answer.is_error is False
+        assert assert_valid_envelope(answer)["result"]["cn"] == 60
+
+    @pytest.mark.parametrize("launcher", LAUNCHERS)
+    def test_a_process_obeys_the_directories_and_the_write_mode_of_its_command_line(
+        self, launcher, tmp_path
+    ):
+        allowed = tmp_path / "allowed"
+        allowed.mkdir()
+        outside = tmp_path / "outside"
+        outside.mkdir()
+        server = StdioServerParameters(
+            command=sys.executable,
+            args=launcher_arguments(
+                launcher, "--allow-dir", str(allowed), "--allow-writes"
+            ),
+            env=dict(os.environ),
+            cwd=ROOT,
+        )
+
+        async def scenario(log):
+            async with Client(stdio_client(server, errlog=log)) as client:
+                tools = (await client.list_tools()).tools
+                written = await client.call_tool(
+                    "hydrolog_commands_guide",
+                    {"format": "llms", "output": str(allowed / "llms.txt")},
+                )
+                refused = await client.call_tool(
+                    "hydrolog_commands_guide",
+                    {"format": "llms", "output": str(outside / "llms.txt")},
+                )
+                return tools, written, refused
+
+        with (tmp_path / "stderr.log").open("w+", encoding="utf-8") as log:
+            tools, written, refused = anyio.run(scenario, log)
+
+        guide = next(t for t in tools if t.name == "hydrolog_commands_guide")
+        assert guide.annotations.read_only_hint is False
+        assert written.is_error is False
+        assert (allowed / "llms.txt").is_file()
+        assert error_of(refused)["code"] == "forbidden"
+        assert not (outside / "llms.txt").exists()
+
+    @pytest.mark.parametrize("launcher", LAUNCHERS)
+    def test_the_process_ends_cleanly_without_a_byte_on_stdout_when_stdin_closes(
+        self, launcher, tmp_path
+    ):
         finished = subprocess.run(
-            [sys.executable, "-c", script],
+            [
+                sys.executable,
+                *launcher_arguments(launcher, "--allow-dir", str(tmp_path)),
+            ],
+            input=b"",
             capture_output=True,
             cwd=ROOT,
             timeout=120,
             check=False,
         )
 
-        assert finished.returncode == 0, finished.stderr.decode()
-        assert finished.stdout.decode().split() == ["missing_dependency"]
+        assert (finished.returncode, finished.stdout) == (0, b""), finished.stderr
 
-    def test_the_server_identifies_itself(self):
-        """Name, title and version of the package."""
-        import hydrolog
-
-        async def scenario():
-            async with connected() as client:
-                return client.server_info
-
-        info = anyio.run(scenario)
-
-        assert info.name == "hydrolog"
-        assert info.title == "Hydrolog"
-        assert info.version == hydrolog.__version__
-
-
-# --- a real process on stdio
-# -----------------------------------------------------------
-
-
-LAUNCHERS = ["python", "cli"]
-
-
-def server_arguments(launcher, directory):
-    """Arguments of ``sys.executable`` that start an English server on stdio whose
-    only allowed directory is ``directory``: through the Python API or ``hydrolog
-    mcp``."""
-    if launcher == "python":
-        code = (
-            "from hydrolog.mcp import run_stdio; "
-            f"run_stdio(allowed_dirs=[{str(directory)!r}], lang='en')"
+    @pytest.mark.parametrize("launcher", LAUNCHERS)
+    def test_a_process_without_the_sdk_reports_the_missing_extra(self, launcher):
+        """Hiding ``mcp`` from the import system gives ``missing_dependency``."""
+        prelude = "import sys; sys.modules['mcp'] = sys.modules['mcp_types'] = None; "
+        finished = subprocess.run(
+            [sys.executable, *launcher_arguments(launcher, prelude=prelude)],
+            input=b"",
+            capture_output=True,
+            cwd=ROOT,
+            timeout=120,
+            check=False,
         )
-        return ["-c", code]
-    return [
-        "-m",
-        "hydrolog.cli",
-        "mcp",
-        "--allow-dir",
-        str(directory),
-        "--lang",
-        "en",
-    ]
+
+        assert finished.returncode == ERROR_CODES["missing_dependency"].exit_code
+        assert finished.stdout == b""
+        assert b"hydrolog[mcp]" in finished.stderr
 
 
-# A server whose catalog has one more command: its operation prints to stdout.
+# --- cold start -----------------------------------------------------------------------
+
+COLD_START_SERVER = """\
+import atexit, json, sys
+from hydrolog.mcp.server import main
+
+HEAVY = {heavy!r}
+atexit.register(
+    lambda: print(
+        "LOADED " + json.dumps([m for m in HEAVY if m in sys.modules]), file=sys.stderr
+    )
+)
+sys.exit(main(sys.argv[1:]))
+"""
+
+
+class TestColdStart:
+    """Cold start and ``tools/list`` take under 5 seconds (AGI-5.11)."""
+
+    def test_the_start_and_the_tool_list_are_fast_and_import_no_numerical_library(
+        self, tmp_path
+    ):
+        script = tmp_path / "server.py"
+        script.write_text(
+            COLD_START_SERVER.format(heavy=HEAVY_MODULES), encoding="utf-8"
+        )
+        server = StdioServerParameters(
+            command=sys.executable, args=[str(script)], env=dict(os.environ), cwd=ROOT
+        )
+
+        async def scenario(log):
+            started = time.perf_counter()
+            async with Client(stdio_client(server, errlog=log)) as client:
+                tools = (await client.list_tools()).tools
+                elapsed = time.perf_counter() - started
+            return tools, elapsed
+
+        with (tmp_path / "stderr.log").open("w+", encoding="utf-8") as log:
+            tools, elapsed = anyio.run(scenario, log)
+            log.seek(0)
+            report = [ln for ln in log.read().splitlines() if ln.startswith("LOADED ")]
+
+        assert len(tools) == len(COMMANDS)
+        assert elapsed < 5, f"start + tools/list took {elapsed:.1f} s"
+        assert report, "the server did not report its modules at exit"
+        assert json.loads(report[-1].removeprefix("LOADED ")) == []
+
+    def test_a_call_loads_the_operation_lazily(self, tmp_path):
+        """The heavy libraries come with the first call that needs them, not before."""
+        script = tmp_path / "server.py"
+        script.write_text(
+            COLD_START_SERVER.format(heavy=HEAVY_MODULES), encoding="utf-8"
+        )
+        server = StdioServerParameters(
+            command=sys.executable, args=[str(script)], env=dict(os.environ), cwd=ROOT
+        )
+
+        async def scenario(log):
+            async with Client(stdio_client(server, errlog=log)) as client:
+                return await client.call_tool(
+                    "hydrolog_tc_kirpich", {"length_km": 8.2, "slope_m_per_m": 0.023}
+                )
+
+        with (tmp_path / "stderr.log").open("w+", encoding="utf-8") as log:
+            result = anyio.run(scenario, log)
+            log.seek(0)
+            report = [ln for ln in log.read().splitlines() if ln.startswith("LOADED ")]
+
+        assert result.is_error is False
+        assert "numpy" in json.loads(report[-1].removeprefix("LOADED "))
+
+
+# --- stdout belongs to the protocol ---------------------------------------------------
+
 NOISY_SERVER = """\
+import sys
 import hydrolog.mcp.server as server
 from hydrolog.catalog import Command, data_commands
 
@@ -1069,113 +997,24 @@ def noisy():
 
 demo = Command(
     name="demo noisy",
-    operation_id="demo_noisy",
+    operation_id="hydrolog_demo_noisy",
     summary="Prints to stdout.",
-    summary_en="Prints to stdout.",
-    description="Prints to stdout.",
-    description_en="Prints to stdout.",
-    function="__main__:noisy",
+    summary_pl="Drukuje na stdout.",
+    description="Prints a line to stdout and returns.",
+    description_pl="Drukuje linię na stdout i wraca.",
+    function="__main__.noisy",
     options=(),
     examples=({},),
+    example_results=({},),
+    result_schema="hydrolog-demo-noisy/1",
 )
 catalog = (*data_commands(), demo)
 server.data_commands = lambda: catalog
-server.run_stdio()
+sys.exit(server.main([]))
 """
 
 
-class TestStdio:
-    """The server as a separate process, spoken to over stdin and stdout."""
-
-    @pytest.mark.parametrize("launcher", LAUNCHERS)
-    def test_the_process_serves_the_same_tools_as_the_in_memory_server(
-        self, launcher, tmp_path
-    ):
-        """List tools, read the instructions and call a tool over a real pipe."""
-        server = StdioServerParameters(
-            command=sys.executable,
-            args=server_arguments(launcher, tmp_path),
-            env=dict(os.environ),
-            cwd=ROOT,
-        )
-
-        async def scenario(log):
-            async with Client(stdio_client(server, errlog=log)) as client:
-                tools = (await client.list_tools()).tools
-                answer = await client.call_tool("commands_list", {})
-                refused = await client.call_tool("commands_list", {"bogus": 1})
-                return tools, client.instructions, answer, refused
-
-        with (tmp_path / "stderr.log").open("w+", encoding="utf-8") as log:
-            tools, instructions, answer, refused = anyio.run(scenario, log)
-
-        expected_tools, expected_instructions = listing(
-            lang="en", allowed_dirs=[tmp_path]
-        )
-        assert [t.model_dump() for t in tools] == [
-            t.model_dump() for t in expected_tools
-        ]
-        assert instructions == expected_instructions
-        assert str(tmp_path.resolve()) in instructions
-        assert answer.is_error is False
-        assert (
-            document_of(answer)
-            == run_command("commands list", {"lang": "en"}).to_dict()
-        )
-        assert error_of(refused)["details"]["reason"] == "unknown_option"
-
-    @pytest.mark.parametrize("launcher", LAUNCHERS)
-    def test_a_pure_tool_runs_and_a_file_tool_obeys_the_directories_of_the_process(
-        self, launcher, tmp_path
-    ):
-        """Over a real pipe: ``tc_kirpich`` computes; a file outside the allowed
-        directory is refused with the allowed directory in the error."""
-        outside = tmp_path.parent / f"{tmp_path.name}-outside.json"
-        outside.write_text("{}", encoding="utf-8")
-        allowed = tmp_path / "allowed"
-        allowed.mkdir()
-        server = StdioServerParameters(
-            command=sys.executable,
-            args=server_arguments(launcher, allowed),
-            env=dict(os.environ),
-            cwd=ROOT,
-        )
-        kirpich = {"length_km": 8.2, "slope_m_per_m": 0.023}
-
-        async def scenario(log):
-            async with Client(stdio_client(server, errlog=log)) as client:
-                computed = await client.call_tool("tc_kirpich", kirpich)
-                refused = await client.call_tool(
-                    "tc_watershed", {"watershed_file": str(outside)}
-                )
-                return computed, refused
-
-        with (tmp_path / "stderr.log").open("w+", encoding="utf-8") as log:
-            computed, refused = anyio.run(scenario, log)
-
-        assert computed.is_error is False
-        assert document_of(computed) == run_command("tc kirpich", kirpich).to_dict()
-        error = error_of(refused)
-        assert error["code"] == "forbidden"
-        assert error["details"]["allowed_dirs"] == [str(allowed.resolve())]
-        assert error["details"]["path"] == str(outside.resolve())
-
-    @pytest.mark.parametrize("launcher", LAUNCHERS)
-    def test_the_process_ends_cleanly_without_a_byte_on_stdout_when_stdin_closes(
-        self, launcher, tmp_path
-    ):
-        """End of input is the shutdown signal; stdout carries nothing but protocol."""
-        finished = subprocess.run(
-            [sys.executable, *server_arguments(launcher, tmp_path)],
-            input=b"",
-            capture_output=True,
-            cwd=ROOT,
-            timeout=120,
-            check=False,
-        )
-
-        assert (finished.returncode, finished.stdout) == (0, b""), finished.stderr
-
+class TestStdout:
     def test_stray_output_of_an_operation_goes_to_stderr_never_to_the_client(
         self, tmp_path
     ):
@@ -1221,7 +1060,7 @@ class TestStdio:
                     "jsonrpc": "2.0",
                     "id": 2,
                     "method": "tools/call",
-                    "params": {"name": "demo_noisy", "arguments": {}},
+                    "params": {"name": "hydrolog_demo_noisy", "arguments": {}},
                 }
             )
             answer = json.loads(process.stdout.readline())
@@ -1232,7 +1071,10 @@ class TestStdio:
 
         assert answer["id"] == 2
         assert answer["result"]["isError"] is False
-        assert answer["result"]["structuredContent"]["result"] == {"ok": True}
+        assert answer["result"]["structuredContent"]["result"] == {
+            "schema": "hydrolog-demo-noisy/1",
+            "ok": True,
+        }
         assert rest == ""
         assert "stray text of an operation" in errors
         assert process.returncode == 0

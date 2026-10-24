@@ -7,66 +7,34 @@ from hydrolog.catalog.spec import Command, Option
 COMMANDS: tuple[Command, ...] = (
     Command(
         name="scs effective",
-        operation_id="scs_effective",
+        operation_id="hydrolog_scs_effective",
+        summary_pl="Oblicz opad efektywny metodą SCS-CN z sumy opadu lub hietogramu.",
         summary=(
-            "Opad efektywny metodą SCS-CN z sumy opadu lub hietogramu (CN, AMC, Ia)."
+            "Compute effective precipitation by the SCS-CN method from a total or a "
+            "hyetograph."
         ),
-        summary_en=(
-            "Effective precipitation by the SCS-CN method from a total or a hyetograph."
+        description_pl=(
+            "Opad efektywny SCS-CN z `precipitation_mm` lub szeregu (`values`, "
+            "`input_file`); CN dla AMC II, `amc` go koryguje. Nie do doboru i ważenia "
+            "CN (`cn lookup`, `cn weighted`) ani hydrogramu (`hydrograph generate`). "
+            "Standardowo Ia = 0,2·S."
         ),
         description=(
-            "Opad efektywny (odpływ bezpośredni) metodą SCS-CN (USDA-NRCS): Pe = "
-            "(P − Ia)² / (P − Ia + S) dla P > Ia, w przeciwnym razie Pe = 0, gdzie "
-            "S = 25400/CN − 254 [mm] to maksymalna retencja, a Ia = λ · S straty "
-            "początkowe (λ = `ia_coefficient`, standardowo 0,2; CN = 100 daje "
-            "S = 0). Wejście: suma opadu `precipitation_mm` [mm] albo szereg "
-            "wysokości opadu w kolejnych krokach czasowych (`values` lub "
-            "`input_file` + `value_column`, każda wartość ≥ 0, bez braków); dla "
-            "szeregu Pe liczone jest od sumy narastającej opadu, a różnice Pe "
-            "dają opad efektywny w poszczególnych krokach. CN podaje się dla "
-            "AMC II; `amc` I (sucho) i III (mokro) przelicza CN wzorami Chow i in. "
-            "(1988): CN_I = CN_II/(2,281 − 0,01281·CN_II), CN_III = CN_II/(0,427 + "
-            "0,00573·CN_II) (wynik zaokrąglony do liczby całkowitej, 1–100). "
-            "Tablice CN z TR-55 są skalibrowane dla λ = 0,2; λ = 0,05 "
-            "(Woodward i in., 2003) wymaga przekalibrowania CN, o czym informuje "
-            "uwaga w wyniku. Wynik: skorygowane CN, S, Ia, suma opadu, suma opadu "
-            "efektywnego, współczynnik odpływu C = Pe/P oraz opad efektywny w "
-            "krokach (dla szeregu). Literatura: USDA-NRCS (2004), National "
-            "Engineering Handbook, Part 630, rozdz. 10; Chow, V.T., Maidment, "
-            "D.R., Mays, L.W. (1988), Applied Hydrology."
+            "SCS-CN effective precipitation from `precipitation_mm` or a series "
+            "(`values`, `input_file`); CN is for AMC II, `amc` adjusts it. Not for CN "
+            "lookup or weighting (`cn lookup`, `cn weighted`) or the hydrograph "
+            "(`hydrograph generate`). Standard Ia = 0.2·S."
         ),
-        description_en=(
-            "Effective precipitation (direct runoff) by the SCS-CN method "
-            "(USDA-NRCS): Pe = (P - Ia)^2 / (P - Ia + S) for P > Ia, otherwise Pe "
-            "= 0, where S = 25400/CN - 254 [mm] is the maximum retention and Ia = "
-            "λ · S the initial abstraction (λ = `ia_coefficient`, 0.2 as "
-            "standard; CN = 100 gives S = 0). Input: the total precipitation "
-            "`precipitation_mm` [mm] or a series of precipitation depths in "
-            "consecutive time steps (`values` or `input_file` + `value_column`, "
-            "each value >= 0, no gaps); for a series Pe is computed from the "
-            "cumulative precipitation and the differences of Pe give the "
-            "effective precipitation of each step. CN is given for AMC II; `amc` I "
-            "(dry) and III (wet) convert it with the formulas of Chow et al. "
-            "(1988): CN_I = CN_II/(2.281 - 0.01281·CN_II), CN_III = CN_II/(0.427 + "
-            "0.00573·CN_II) (rounded to an integer, 1-100). The TR-55 CN tables "
-            "are calibrated for λ = 0.2; λ = 0.05 (Woodward et al., 2003) needs "
-            "recalibrated CN, which a notice in the result points out. Result: the "
-            "adjusted CN, S, Ia, the total precipitation, the total effective "
-            "precipitation, the runoff coefficient C = Pe/P and the effective "
-            "precipitation per step (for a series). References: USDA-NRCS (2004), "
-            "National Engineering Handbook, Part 630, chapter 10; Chow, V.T., "
-            "Maidment, D.R., Mays, L.W. (1988), Applied Hydrology."
-        ),
-        function="hydrolog.operations:scs_effective",
+        function="hydrolog.operations.scs_effective",
         options=(
             Option(
                 name="cn",
                 type="number",
-                description=(
+                description_pl=(
                     "Liczba krzywej CN dla AMC II, 1–100 (może być ułamkowa, np. "
                     "średnia ważona z `cn weighted`)."
                 ),
-                description_en=(
+                description=(
                     "Curve Number CN for AMC II, 1-100 (may be fractional, e.g. a "
                     "weighted mean from `cn weighted`)."
                 ),
@@ -77,19 +45,19 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="precipitation_mm",
                 type="number",
-                description="Całkowita wysokość opadu [mm]; ≥ 0.",
-                description_en="Total precipitation depth [mm]; >= 0.",
+                description_pl="Całkowita wysokość opadu [mm]; ≥ 0.",
+                description="Total precipitation depth [mm]; >= 0.",
                 minimum=0,
                 unit="mm",
             ),
             Option(
                 name="values",
                 type="number_list",
-                description=(
+                description_pl=(
                     "Wysokości opadu w kolejnych krokach czasowych (hietogram) "
                     "[mm]; każda ≥ 0."
                 ),
-                description_en=(
+                description=(
                     "Precipitation depths in consecutive time steps (hyetograph) "
                     "[mm]; each >= 0."
                 ),
@@ -99,11 +67,12 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="input_file",
                 type="path",
-                description=(
+                path_role="input",
+                description_pl=(
                     "Plik CSV (przecinek lub średnik, wiersz nagłówka) albo JSON "
                     "z wysokościami opadu w krokach [mm]."
                 ),
-                description_en=(
+                description=(
                     "CSV file (comma or semicolon, header row) or JSON file with "
                     "precipitation depths per step [mm]."
                 ),
@@ -111,11 +80,11 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="value_column",
                 type="string",
-                description=(
+                description_pl=(
                     "Kolumna pliku z wysokościami opadu; pomijana, gdy plik ma "
                     "jedną kolumnę (nazwa może być bez jednostki `[mm]`)."
                 ),
-                description_en=(
+                description=(
                     "File column holding the precipitation depths; may be omitted "
                     "for a one-column file (the name may omit the `[mm]` unit)."
                 ),
@@ -123,26 +92,30 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="amc",
                 type="choice",
-                description=(
-                    "Wilgotność poprzedzająca (AMC): I — sucho, II — przeciętnie, "
-                    "III — mokro; domyślnie II."
-                ),
-                description_en=(
-                    "Antecedent moisture condition (AMC): I - dry, II - normal, "
-                    "III - wet; default II."
-                ),
+                description_pl=("Wilgotność poprzedzająca (AMC); domyślnie II."),
+                description=("Antecedent moisture condition (AMC); default II."),
                 choices=("I", "II", "III"),
+                meanings={
+                    "I": "Dry antecedent moisture; CN lowered.",
+                    "II": "Normal antecedent moisture; CN as given.",
+                    "III": "Wet antecedent moisture; CN raised.",
+                },
+                meanings_pl={
+                    "I": "Sucho przed opadem; CN obniżone.",
+                    "II": "Przeciętna wilgotność; CN bez zmian.",
+                    "III": "Mokro przed opadem; CN podwyższone.",
+                },
                 default="II",
             ),
             Option(
                 name="ia_coefficient",
                 type="number",
-                description=(
+                description_pl=(
                     "Współczynnik strat początkowych λ (Ia = λ·S), 0 < λ ≤ 1; "
                     "domyślnie 0,2 (wartość standardowa, dla której skalibrowano "
                     "tablice CN)."
                 ),
-                description_en=(
+                description=(
                     "Initial abstraction ratio λ (Ia = λ·S), 0 < λ <= 1; default "
                     "0.2 (the standard value the CN tables are calibrated for)."
                 ),
@@ -152,6 +125,43 @@ COMMANDS: tuple[Command, ...] = (
             ),
         ),
         one_of=(("precipitation_mm",), ("values",), ("input_file",)),
+        result_schema="hydrolog-scs-effective/1",
+        cardinality="bounded",
+        rules=(
+            "Give exactly one of precipitation_mm, values, input_file.",
+            "Pass CN for AMC II; amc adjusts it.",
+            "Check `notices` for a non-standard ia_coefficient.",
+        ),
+        rules_pl=(
+            "Podaj dokładnie jedno z: precipitation_mm, values, input_file.",
+            "Podaj CN dla AMC II; amc je koryguje.",
+            "Sprawdź `notices` przy niestandardowym ia_coefficient.",
+        ),
+        errors=("validation_error", "not_found", "data_error", "forbidden"),
+        core=True,
+        example_results=(
+            {
+                "cn_adjusted": 72.0,
+                "retention_mm": 98.7778,
+                "initial_abstraction_mm": 19.7556,
+                "total_effective_mm": 7.08968,
+                "runoff_coefficient": 0.141794,
+            },
+            {
+                "cn_adjusted": 90,
+                "retention_mm": 28.2222,
+                "initial_abstraction_mm": 5.64444,
+                "total_effective_mm": 49.296,
+                "runoff_coefficient": 0.65728,
+            },
+            {
+                "cn_adjusted": 72.0,
+                "retention_mm": 98.7778,
+                "initial_abstraction_mm": 19.7556,
+                "total_effective_mm": 7.08968,
+                "runoff_coefficient": 0.141794,
+            },
+        ),
         examples=(
             {"cn": 72, "precipitation_mm": 50.0},
             {"cn": 80, "precipitation_mm": 75.0, "amc": "III"},

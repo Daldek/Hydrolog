@@ -27,11 +27,11 @@ _KERBY_TABLE_EN = (
 _CN = Option(
     name="cn",
     type="number",
-    description=(
+    description_pl=(
         "Liczba krzywej CN dla AMC II, 1–100 (zalecany zakres metody: 50–95); "
         "może być ułamkowa (np. średnia ważona z `cn weighted`)."
     ),
-    description_en=(
+    description=(
         "Curve Number CN for AMC II, 1-100 (recommended range of the method: "
         "50-95); may be fractional (e.g. a weighted mean from `cn weighted`)."
     ),
@@ -43,11 +43,11 @@ _CN = Option(
 _RETARDANCE = Option(
     name="retardance",
     type="number",
-    description=(
+    description_pl=(
         "Współczynnik retardacji (szorstkości) Kerby'ego N, > 0; zwykle "
         f"0,02–0,80. {_KERBY_TABLE_PL}"
     ),
-    description_en=(
+    description=(
         "Kerby retardance (roughness) coefficient N, > 0; usually 0.02-0.80. "
         f"{_KERBY_TABLE_EN}"
     ),
@@ -58,43 +58,31 @@ _RETARDANCE = Option(
 COMMANDS: tuple[Command, ...] = (
     Command(
         name="tc kirpich",
-        operation_id="tc_kirpich",
-        summary="Czas koncentracji wzorem Kirpicha z długości i spadku cieku głównego.",
-        summary_en=(
-            "Time of concentration by the Kirpich formula (channel length, slope)."
+        operation_id="hydrolog_tc_kirpich",
+        summary_pl="Oblicz czas koncentracji wzorem Kirpicha (długość i spadek cieku).",
+        summary="Compute time of concentration with the Kirpich formula.",
+        description_pl=(
+            "Czas koncentracji tc [min, h] wzorem Kirpicha z długości cieku głównego "
+            "[km] i spadku [m/m]. Użyj dla małych zlewni rolniczych (0,004–0,45 "
+            "km²); dla spływu powierzchniowego z korytem użyj `tc kerby-kirpich`. "
+            "Ostrzega poza L ≤ 80 km i S 0,002–0,15."
         ),
         description=(
-            "Czas koncentracji tc wzorem Kirpicha (1940): tc [min] = 3,981 · L^0,77 · "
-            "S^(−0,385), gdzie L to długość cieku głównego od działu wodnego do "
-            "przekroju zamykającego [km], a S to średni spadek cieku [m/m] "
-            "(bezwymiarowy, nie w procentach). Wzór opracowano dla małych zlewni "
-            "rolniczych (0,004–0,45 km², spadki 3–10%); dla L > 80 km lub S poza "
-            "0,002–0,15 wynik zawiera ostrzeżenie. Wynik: tc w minutach i godzinach "
-            "oraz użyte parametry. Literatura: Kirpich, Z.P. (1940), Time of "
-            "concentration of small agricultural watersheds, Civil Engineering "
-            "10(6), 362."
+            "Kirpich tc [min, h] from main channel length [km] and slope [m/m]. "
+            "Use for small agricultural watersheds (0.004-0.45 km2); for overland "
+            "plus channel flow use `tc kerby-kirpich`. Warns outside L <= 80 km "
+            "and S 0.002-0.15."
         ),
-        description_en=(
-            "Time of concentration tc by the Kirpich (1940) formula: tc [min] = "
-            "3.981 · L^0.77 · S^(-0.385), where L is the main channel length from "
-            "the watershed divide to the outlet [km] and S the mean channel slope "
-            "[m/m] (dimensionless, not percent). The formula was derived for small "
-            "agricultural watersheds (0.004-0.45 km2, slopes 3-10%); a warning is "
-            "reported for L > 80 km or S outside 0.002-0.15. Result: tc in minutes "
-            "and hours and the parameters used. Reference: Kirpich, Z.P. (1940), "
-            "Time of concentration of small agricultural watersheds, Civil "
-            "Engineering 10(6), 362."
-        ),
-        function="hydrolog.operations:tc_kirpich",
+        function="hydrolog.operations.tc_kirpich",
         options=(
             Option(
                 name="length_km",
                 type="number",
-                description=(
+                description_pl=(
                     "Długość cieku głównego od działu wodnego do przekroju "
                     "zamykającego [km]; > 0 (typowo ≤ 80)."
                 ),
-                description_en=(
+                description=(
                     "Main channel length from the watershed divide to the outlet "
                     "[km]; > 0 (typically <= 80)."
                 ),
@@ -105,11 +93,11 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="slope_m_per_m",
                 type="number",
-                description=(
+                description_pl=(
                     "Średni spadek cieku głównego [m/m] (nie w procentach); > 0 "
                     "(typowo 0,002–0,15)."
                 ),
-                description_en=(
+                description=(
                     "Mean slope of the main channel [m/m] (not percent); > 0 "
                     "(typically 0.002-0.15)."
                 ),
@@ -119,49 +107,55 @@ COMMANDS: tuple[Command, ...] = (
             ),
         ),
         examples=({"length_km": 8.2, "slope_m_per_m": 0.023},),
+        result_schema="hydrolog-tc-kirpich/1",
+        cardinality="single",
+        rules=(
+            "Give the slope in m/m, not percent.",
+            "Read tc_min or tc_h from the result.",
+            "Check `notices` for out-of-range warnings.",
+        ),
+        rules_pl=(
+            "Podaj spadek w m/m, nie w procentach.",
+            "Odczytaj tc_min lub tc_h z wyniku.",
+            "Sprawdź `notices` pod kątem ostrzeżeń o zakresie.",
+        ),
+        errors=("validation_error",),
+        example_results=(
+            {
+                "method": "kirpich",
+                "tc_min": 85.9733,
+                "tc_h": 1.43289,
+                "parameters": {"length_km": 8.2, "slope_m_per_m": 0.023},
+            },
+        ),
     ),
     Command(
         name="tc nrcs",
-        operation_id="tc_nrcs",
-        summary=(
-            "Czas koncentracji metodą NRCS (TR-55, czas opóźnienia) z L, spadku i CN."
-        ),
-        summary_en=(
-            "Time of concentration by the NRCS (TR-55 lag) method from L, slope, CN."
+        operation_id="hydrolog_tc_nrcs",
+        summary_pl="Oblicz czas koncentracji metodą NRCS (TR-55) z L, spadku i CN.",
+        summary="Compute time of concentration with the NRCS (TR-55 lag) method.",
+        description_pl=(
+            "Czas koncentracji tc [min, h] metodą NRCS (TR-55, czas opóźnienia / "
+            "0,6) z długości drogi hydraulicznej [km], spadku zlewni [m/m] i CN. "
+            "Użyj, gdy CN jest znane (`cn lookup`, `cn weighted`). Zwraca tc, nie "
+            "tlag (tlag = 0,6·tc). Ostrzega poza L 0,03–30 km i S 0,001–0,15."
         ),
         description=(
-            "Czas koncentracji tc metodą NRCS (TR-55): najpierw czas opóźnienia "
-            "tlag [h] = L^0,8 · (S_r + 25,4)^0,7 / (7069 · Y^0,5), gdzie L to długość "
-            "drogi hydraulicznej [m], S_r = 25400/CN − 254 to maksymalna retencja "
-            "[mm], a Y to średni spadek zlewni [%]; następnie tc = tlag / 0,6. "
-            "Wejście w jednostkach metrycznych: L [km], spadek [m/m] (przeliczany "
-            "wewnętrznie na %), CN 1–100 (zalecany zakres metody 50–95). Zwraca tc, "
-            "nie tlag (tlag = 0,6 · tc). Dla parametrów poza typowym zakresem "
-            "(L 0,03–30 km, spadek 0,001–0,15) wynik zawiera ostrzeżenie. "
-            "Literatura: USDA-NRCS (1986), Urban Hydrology for Small Watersheds, "
-            "TR-55, rozdz. 3."
+            "NRCS (TR-55) tc [min, h] from hydraulic length [km], watershed slope "
+            "[m/m] and CN. Use when CN is known (`cn lookup`, `cn weighted`). "
+            "Returns tc, not lag (lag = 0.6 * tc). Warns outside L 0.03-30 km and "
+            "S 0.001-0.15."
         ),
-        description_en=(
-            "Time of concentration tc by the NRCS (TR-55) method: first the lag "
-            "time tlag [h] = L^0.8 · (S_r + 25.4)^0.7 / (7069 · Y^0.5), where L is "
-            "the hydraulic length [m], S_r = 25400/CN - 254 the maximum retention "
-            "[mm] and Y the mean watershed slope [%]; then tc = tlag / 0.6. Metric "
-            "input: L [km], slope [m/m] (converted to % internally), CN 1-100 "
-            "(recommended range of the method 50-95). Returns tc, not tlag (tlag = "
-            "0.6 · tc). A warning is reported for parameters outside the typical "
-            "range (L 0.03-30 km, slope 0.001-0.15). Reference: USDA-NRCS (1986), "
-            "Urban Hydrology for Small Watersheds, TR-55, chapter 3."
-        ),
-        function="hydrolog.operations:tc_nrcs",
+        function="hydrolog.operations.tc_nrcs",
         options=(
             Option(
                 name="length_km",
                 type="number",
-                description=(
+                description_pl=(
                     "Długość drogi hydraulicznej zlewni (najdłuższej ścieżki "
                     "spływu) [km]; > 0 (typowo 0,03–30)."
                 ),
-                description_en=(
+                description=(
                     "Hydraulic length of the watershed (longest flow path) [km]; "
                     "> 0 (typically 0.03-30)."
                 ),
@@ -172,11 +166,11 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="slope_m_per_m",
                 type="number",
-                description=(
+                description_pl=(
                     "Średni spadek zlewni [m/m] (nie w procentach); > 0 (typowo "
                     "0,001–0,15)."
                 ),
-                description_en=(
+                description=(
                     "Mean watershed slope [m/m] (not percent); > 0 (typically "
                     "0.001-0.15)."
                 ),
@@ -187,47 +181,52 @@ COMMANDS: tuple[Command, ...] = (
             _CN,
         ),
         examples=({"length_km": 8.2, "slope_m_per_m": 0.023, "cn": 72},),
+        result_schema="hydrolog-tc-nrcs/1",
+        cardinality="single",
+        rules=(
+            "Give the slope in m/m, not percent.",
+            "Pass CN for AMC II; a fractional CN is accepted.",
+            "The result is tc, not lag time.",
+        ),
+        rules_pl=(
+            "Podaj spadek w m/m, nie w procentach.",
+            "Podaj CN dla AMC II; ułamkowe CN jest dopuszczalne.",
+            "Wynik to tc, nie czas opóźnienia.",
+        ),
+        errors=("validation_error",),
+        example_results=(
+            {
+                "method": "nrcs",
+                "tc_min": 369.047,
+                "tc_h": 6.15078,
+                "parameters": {"length_km": 8.2, "slope_m_per_m": 0.023, "cn": 72.0},
+            },
+        ),
     ),
     Command(
         name="tc giandotti",
-        operation_id="tc_giandotti",
-        summary=(
-            "Czas koncentracji wzorem Giandottiego z powierzchni, długości i spadku."
-        ),
-        summary_en=(
-            "Time of concentration by the Giandotti formula (area, length, relief)."
+        operation_id="hydrolog_tc_giandotti",
+        summary_pl="Oblicz czas koncentracji wzorem Giandottiego (A, L, H).",
+        summary="Compute time of concentration with the Giandotti formula.",
+        description_pl=(
+            "Czas koncentracji tc [min, h] wzorem Giandottiego z powierzchni [km²], "
+            "długości cieku [km] i różnicy wysokości [m]. Użyj dla większych "
+            "zlewni górskich (> 170 km²); dla małych zlewni użyj `tc kirpich`. "
+            "Ostrzega poza A 100–10 000 km², L 1–300 km, H 20–3000 m."
         ),
         description=(
-            "Czas koncentracji tc wzorem Giandottiego (1934): tc [h] = (4·√A + "
-            "1,5·L) / (0,8·√H), gdzie A to powierzchnia zlewni [km²], L długość "
-            "cieku głównego [km], H różnica wysokości między średnią wysokością "
-            "zlewni a przekrojem zamykającym [m]. Wzór opracowano dla większych "
-            "zlewni górskich we Włoszech (> 170 km²); dla A poza 100–10 000 km², "
-            "L poza 1–300 km lub H poza 20–3000 m wynik zawiera ostrzeżenie. "
-            "Wynik jest przeliczony na minuty. Literatura: Giandotti, M. (1934), "
-            "Previsione delle piene e delle magre dei corsi d'acqua, Memorie e "
-            "Studi Idrografici 8; Grimaldi, S. i in. (2012), Hydrological Sciences "
-            "Journal 57(2), 217–228."
+            "Giandotti tc [min, h] from area [km2], channel length [km] and "
+            "elevation difference [m]. Use for larger mountain watersheds (> 170 "
+            "km2); for small watersheds use `tc kirpich`. Warns outside A 100-10,000 "
+            "km2, L 1-300 km, H 20-3000 m."
         ),
-        description_en=(
-            "Time of concentration tc by the Giandotti (1934) formula: tc [h] = "
-            "(4·sqrt(A) + 1.5·L) / (0.8·sqrt(H)), where A is the watershed area "
-            "[km2], L the main channel length [km] and H the difference between "
-            "the mean watershed elevation and the outlet [m]. The formula was "
-            "derived for larger Italian mountain watersheds (> 170 km2); a warning "
-            "is reported for A outside 100-10,000 km2, L outside 1-300 km or H "
-            "outside 20-3000 m. The result is converted to minutes. References: "
-            "Giandotti, M. (1934), Previsione delle piene e delle magre dei corsi "
-            "d'acqua, Memorie e Studi Idrografici 8; Grimaldi, S. et al. (2012), "
-            "Hydrological Sciences Journal 57(2), 217-228."
-        ),
-        function="hydrolog.operations:tc_giandotti",
+        function="hydrolog.operations.tc_giandotti",
         options=(
             Option(
                 name="area_km2",
                 type="number",
-                description="Powierzchnia zlewni [km²]; > 0 (typowo 100–10 000).",
-                description_en="Watershed area [km2]; > 0 (typically 100-10,000).",
+                description_pl="Powierzchnia zlewni [km²]; > 0 (typowo 100–10 000).",
+                description="Watershed area [km2]; > 0 (typically 100-10,000).",
                 required=True,
                 exclusive_minimum=0,
                 unit="km2",
@@ -235,8 +234,8 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="length_km",
                 type="number",
-                description="Długość cieku głównego [km]; > 0 (typowo 1–300).",
-                description_en="Main channel length [km]; > 0 (typically 1-300).",
+                description_pl="Długość cieku głównego [km]; > 0 (typowo 1–300).",
+                description="Main channel length [km]; > 0 (typically 1-300).",
                 required=True,
                 exclusive_minimum=0,
                 unit="km",
@@ -244,11 +243,11 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="elevation_diff_m",
                 type="number",
-                description=(
+                description_pl=(
                     "Różnica wysokości między średnią wysokością zlewni a "
                     "przekrojem zamykającym [m]; > 0 (typowo 20–3000)."
                 ),
-                description_en=(
+                description=(
                     "Difference between the mean watershed elevation and the "
                     "outlet [m]; > 0 (typically 20-3000)."
                 ),
@@ -258,51 +257,58 @@ COMMANDS: tuple[Command, ...] = (
             ),
         ),
         examples=({"area_km2": 145.0, "length_km": 21.5, "elevation_diff_m": 320.0},),
+        result_schema="hydrolog-tc-giandotti/1",
+        cardinality="single",
+        rules=(
+            "Give the area in km2, not hectares.",
+            "Give the elevation difference from the mean elevation, not the maximum.",
+            "Check `notices` for out-of-range warnings.",
+        ),
+        rules_pl=(
+            "Podaj powierzchnię w km², nie w hektarach.",
+            "Podaj różnicę względem średniej wysokości zlewni, nie maksimum.",
+            "Sprawdź `notices` pod kątem ostrzeżeń o zakresie.",
+        ),
+        errors=("validation_error",),
+        example_results=(
+            {
+                "method": "giandotti",
+                "tc_min": 337.156,
+                "tc_h": 5.61927,
+                "parameters": {
+                    "area_km2": 145.0,
+                    "length_km": 21.5,
+                    "elevation_diff_m": 320.0,
+                },
+            },
+        ),
     ),
     Command(
         name="tc faa",
-        operation_id="tc_faa",
-        summary=(
-            "Czas koncentracji metodą FAA dla spływu powierzchniowego (L, spadek, C)."
-        ),
-        summary_en=(
-            "Time of concentration by the FAA method for overland flow (L, slope, C)."
+        operation_id="hydrolog_tc_faa",
+        summary_pl="Oblicz czas spływu powierzchniowego metodą FAA (L, spadek, C).",
+        summary="Compute overland flow time with the FAA method.",
+        description_pl=(
+            "Czas spływu powierzchniowego tc [min, h] metodą FAA z długości spływu "
+            "[km], spadku [m/m] i współczynnika odpływu C. Użyj dla krótkich, "
+            "płaskich dróg spływu (L 0,015–3 km); dla zlewni z korytem użyj `tc "
+            "kerby-kirpich` lub `tc kirpich`."
         ),
         description=(
-            "Czas koncentracji tc metodą FAA (Federal Aviation Agency) dla spływu "
-            "powierzchniowego na krótkich, płaskich drogach: tc [min] = 22,213 · "
-            "(1,1 − C) · L^0,5 / S^(1/3) (wersja metryczna wzoru 1,8·(1,1−C)·"
-            "L[ft]^0,5 / S[%]^(1/3)). L to długość spływu powierzchniowego [km], "
-            "S średni spadek terenu [m/m], C współczynnik odpływu metody "
-            "wymiernej (0 < C ≤ 1). Typowy zakres: L 0,015–3 km, S 0,005–0,10, "
-            "C 0,10–0,95 (poza nim wynik zawiera ostrzeżenie). To czas spływu "
-            "powierzchniowego, nie czas koncentracji zlewni z korytem (do tego "
-            "`tc kerby-kirpich` albo `tc kirpich`). Literatura: Federal Aviation "
-            "Agency (1966), Airport Drainage, AC 150/5320-5A; FAA (2013), Airport "
-            "Drainage Design, AC 150/5320-5D."
+            "FAA overland flow tc [min, h] from flow length [km], slope [m/m] and "
+            "runoff coefficient C. Use for short, flat flow paths (L 0.015-3 km); "
+            "for a watershed with a channel use `tc kerby-kirpich` or `tc "
+            "kirpich`."
         ),
-        description_en=(
-            "Time of concentration tc by the FAA (Federal Aviation Agency) method "
-            "for overland flow on short, flat paths: tc [min] = 22.213 · (1.1 - C) "
-            "· L^0.5 / S^(1/3) (metric form of 1.8·(1.1-C)·L[ft]^0.5 / "
-            "S[%]^(1/3)). L is the overland flow length [km], S the mean ground "
-            "slope [m/m], C the rational-method runoff coefficient (0 < C <= 1). "
-            "Typical range: L 0.015-3 km, S 0.005-0.10, C 0.10-0.95 (a warning is "
-            "reported outside it). It is the overland flow time, not the time of "
-            "concentration of a watershed with a channel (use `tc kerby-kirpich` "
-            "or `tc kirpich` for that). References: Federal Aviation Agency "
-            "(1966), Airport Drainage, AC 150/5320-5A; FAA (2013), Airport "
-            "Drainage Design, AC 150/5320-5D."
-        ),
-        function="hydrolog.operations:tc_faa",
+        function="hydrolog.operations.tc_faa",
         options=(
             Option(
                 name="length_km",
                 type="number",
-                description=(
+                description_pl=(
                     "Długość spływu powierzchniowego [km]; > 0 (typowo 0,015–3)."
                 ),
-                description_en="Overland flow length [km]; > 0 (typically 0.015-3).",
+                description="Overland flow length [km]; > 0 (typically 0.015-3).",
                 required=True,
                 exclusive_minimum=0,
                 unit="km",
@@ -310,11 +316,11 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="slope_m_per_m",
                 type="number",
-                description=(
+                description_pl=(
                     "Średni spadek terenu [m/m] (nie w procentach); > 0 (typowo "
                     "0,005–0,10)."
                 ),
-                description_en=(
+                description=(
                     "Mean ground slope [m/m] (not percent); > 0 (typically 0.005-0.10)."
                 ),
                 required=True,
@@ -324,11 +330,11 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="runoff_coeff",
                 type="number",
-                description=(
+                description_pl=(
                     "Współczynnik odpływu C metody wymiernej, 0 < C ≤ 1 (typowo "
                     "0,10–0,95)."
                 ),
-                description_en=(
+                description=(
                     "Rational-method runoff coefficient C, 0 < C <= 1 (typically "
                     "0.10-0.95)."
                 ),
@@ -338,53 +344,58 @@ COMMANDS: tuple[Command, ...] = (
             ),
         ),
         examples=({"length_km": 0.15, "slope_m_per_m": 0.02, "runoff_coeff": 0.6},),
+        result_schema="hydrolog-tc-faa/1",
+        cardinality="single",
+        rules=(
+            "Give the slope in m/m, not percent.",
+            "Treat the result as overland flow time, not watershed tc.",
+            "Check `notices` for out-of-range warnings.",
+        ),
+        rules_pl=(
+            "Podaj spadek w m/m, nie w procentach.",
+            "Traktuj wynik jako czas spływu powierzchniowego, nie tc zlewni.",
+            "Sprawdź `notices` pod kątem ostrzeżeń o zakresie.",
+        ),
+        errors=("validation_error",),
+        example_results=(
+            {
+                "method": "faa",
+                "tc_min": 15.847,
+                "tc_h": 0.264116,
+                "parameters": {
+                    "length_km": 0.15,
+                    "slope_m_per_m": 0.02,
+                    "runoff_coeff": 0.6,
+                },
+            },
+        ),
     ),
     Command(
         name="tc kerby",
-        operation_id="tc_kerby",
-        summary=(
-            "Czas spływu powierzchniowego wzorem Kerby'ego (L, spadek, retardancja N)."
-        ),
-        summary_en=(
-            "Overland flow time of concentration by the Kerby formula (L, slope, N)."
+        operation_id="hydrolog_tc_kerby",
+        summary_pl="Oblicz czas spływu powierzchniowego wzorem Kerby'ego.",
+        summary="Compute overland flow time with the Kerby formula.",
+        description_pl=(
+            "Czas spływu powierzchniowego tc [min, h] wzorem Kerby'ego z długości "
+            "spływu [km], spadku [m/m] i retardancji N. Użyj dla krótkich dróg "
+            "spływu (L ≤ 0,366 km); dla zlewni z korytem użyj `tc kerby-kirpich` "
+            "lub `tc kirpich`. Dla S < 0,002 stosuje poprawkę spadku."
         ),
         description=(
-            "Czas koncentracji tc dla spływu warstwowego wzorem Kerby'ego (1959) w "
-            "wersji metrycznej: tc [min] = 36,37 · (L·N)^0,467 · S^(−0,2335), gdzie "
-            "L to długość spływu powierzchniowego [km], S średni spadek terenu "
-            "[m/m], a N współczynnik retardacji. Dla S < 0,002 stosowana jest "
-            "poprawka niskiego spadku (Cleveland i in., 2012): S + 0,0005. "
-            "Wzór dotyczy krótkich dróg spływu (typowo L ≤ 0,366 km, S "
-            "0,001–0,01, N 0,02–0,80; poza tym zakresem wynik zawiera "
-            "ostrzeżenie); to czas spływu powierzchniowego, nie czas koncentracji "
-            "zlewni z korytem (do tego `tc kerby-kirpich` albo `tc kirpich`). "
-            "Literatura: Kerby, W.S. (1959), Civil Engineering "
-            "29(3), 174; Roussel, M.C. i in. (2005), TxDOT Report 0-4696-2; "
-            "Cleveland, T.G. i in. (2012), TxDOT Report 0-6544-1."
+            "Kerby overland flow tc [min, h] from flow length [km], slope [m/m] and "
+            "retardance N. Use for short flow paths (L <= 0.366 km); for a "
+            "watershed with a channel use `tc kerby-kirpich` or `tc kirpich`. "
+            "Applies a low-slope adjustment for S < 0.002."
         ),
-        description_en=(
-            "Time of concentration tc for sheet flow by the Kerby (1959) formula in "
-            "metric form: tc [min] = 36.37 · (L·N)^0.467 · S^(-0.2335), where L is "
-            "the overland flow length [km], S the mean ground slope [m/m] and N the "
-            "retardance coefficient. For S < 0.002 the low-slope adjustment "
-            "(Cleveland et al., 2012) S + 0.0005 is applied. The formula is meant "
-            "for short flow paths (typically L <= 0.366 km, S 0.001-0.01, N "
-            "0.02-0.80; a warning is reported outside that range); it is the "
-            "overland flow time, not the time of concentration of a watershed with "
-            "a channel (use `tc kerby-kirpich` or `tc kirpich` for that). "
-            "References: Kerby, W.S. (1959), Civil Engineering 29(3), 174; "
-            "Roussel, M.C. et al. (2005), TxDOT Report 0-4696-2; Cleveland, T.G. "
-            "et al. (2012), TxDOT Report 0-6544-1."
-        ),
-        function="hydrolog.operations:tc_kerby",
+        function="hydrolog.operations.tc_kerby",
         options=(
             Option(
                 name="length_km",
                 type="number",
-                description=(
+                description_pl=(
                     "Długość spływu powierzchniowego [km]; > 0 (typowo ≤ 0,366)."
                 ),
-                description_en="Overland flow length [km]; > 0 (typically <= 0.366).",
+                description="Overland flow length [km]; > 0 (typically <= 0.366).",
                 required=True,
                 exclusive_minimum=0,
                 unit="km",
@@ -392,11 +403,11 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="slope_m_per_m",
                 type="number",
-                description=(
+                description_pl=(
                     "Średni spadek terenu [m/m] (nie w procentach); > 0 (typowo "
                     "0,001–0,01)."
                 ),
-                description_en=(
+                description=(
                     "Mean ground slope [m/m] (not percent); > 0 (typically 0.001-0.01)."
                 ),
                 required=True,
@@ -406,55 +417,59 @@ COMMANDS: tuple[Command, ...] = (
             _RETARDANCE,
         ),
         examples=({"length_km": 0.10, "slope_m_per_m": 0.008, "retardance": 0.4},),
+        result_schema="hydrolog-tc-kerby/1",
+        cardinality="single",
+        rules=(
+            "Give the slope in m/m, not percent.",
+            "Pick retardance N from the typical values in the option description.",
+            "Treat the result as overland flow time, not watershed tc.",
+        ),
+        rules_pl=(
+            "Podaj spadek w m/m, nie w procentach.",
+            "Wybierz retardancję N z typowych wartości w opisie opcji.",
+            "Traktuj wynik jako czas spływu powierzchniowego, nie tc zlewni.",
+        ),
+        errors=("validation_error",),
+        example_results=(
+            {
+                "method": "kerby",
+                "tc_min": 24.9766,
+                "tc_h": 0.416277,
+                "parameters": {
+                    "length_km": 0.1,
+                    "slope_m_per_m": 0.008,
+                    "retardance": 0.4,
+                },
+            },
+        ),
     ),
     Command(
         name="tc kerby-kirpich",
-        operation_id="tc_kerby_kirpich",
-        summary=(
-            "Czas koncentracji złożoną metodą Kerby–Kirpich (spływ "
-            "powierzchniowy + koryto)."
-        ),
-        summary_en=(
-            "Time of concentration by the composite Kerby-Kirpich method "
-            "(overland + channel)."
+        operation_id="hydrolog_tc_kerby_kirpich",
+        summary_pl="Oblicz czas koncentracji metodą Kerby–Kirpich (spływ + koryto).",
+        summary="Compute time of concentration with the Kerby-Kirpich method.",
+        description_pl=(
+            "Czas koncentracji tc [min, h] złożoną metodą Kerby–Kirpich: spływ "
+            "powierzchniowy (Kerby) plus koryto (Kirpich). Użyj, gdy droga spływu "
+            "ma oba odcinki; dla samego koryta użyj `tc kirpich`, dla samego "
+            "spływu `tc kerby`. Ostrzega, gdy odcinek wykracza poza zakres wzoru."
         ),
         description=(
-            "Czas koncentracji tc złożoną metodą Kerby–Kirpich: droga spływu dzieli "
-            "się na odcinek powierzchniowy (wzór Kerby'ego) i korytowy (wzór "
-            "Kirpicha), a tc = t_powierzchniowy + t_korytowy [min]. Poprawka "
-            "niskiego spadku (Cleveland i in., 2012; S < 0,002 → S + 0,0005) jest "
-            "stosowana osobno do obu odcinków. Metoda zweryfikowana przez Roussel "
-            "i in. (2005) na 92 zlewniach Teksasu o powierzchni 0,65–388 km². "
-            "Ostrzeżenia, gdy odcinek powierzchniowy wykracza poza zakres wzoru "
-            "Kerby'ego (L ≤ 0,366 km, S 0,001–0,01, N 0,02–0,80) lub korytowy poza "
-            "zakres Kirpicha (L ≤ 80 km, S 0,002–0,15). Literatura: Kerby (1959); "
-            "Kirpich (1940); Roussel, M.C. i in. (2005), TxDOT Report 0-4696-2; "
-            "Cleveland, T.G. i in. (2012), TxDOT Report 0-6544-1."
+            "Kerby-Kirpich tc [min, h]: overland segment (Kerby) plus channel "
+            "segment (Kirpich). Use when the flow path has both; for the channel "
+            "only use `tc kirpich`, for overland flow only `tc kerby`. Warns when "
+            "a segment is outside its formula range."
         ),
-        description_en=(
-            "Time of concentration tc by the composite Kerby-Kirpich method: the "
-            "flow path is split into an overland segment (Kerby formula) and a "
-            "channel segment (Kirpich formula), and tc = t_overland + t_channel "
-            "[min]. The low-slope adjustment (Cleveland et al., 2012; S < 0.002 -> "
-            "S + 0.0005) is applied to both segments independently. The method was "
-            "validated by Roussel et al. (2005) on 92 Texas watersheds of "
-            "0.65-388 km2. Warnings are reported when the overland segment is "
-            "outside the Kerby range (L <= 0.366 km, S 0.001-0.01, N 0.02-0.80) or "
-            "the channel segment outside the Kirpich range (L <= 80 km, S "
-            "0.002-0.15). References: Kerby (1959); Kirpich (1940); Roussel, M.C. "
-            "et al. (2005), TxDOT Report 0-4696-2; Cleveland, T.G. et al. (2012), "
-            "TxDOT Report 0-6544-1."
-        ),
-        function="hydrolog.operations:tc_kerby_kirpich",
+        function="hydrolog.operations.tc_kerby_kirpich",
         options=(
             Option(
                 name="overland_length_km",
                 type="number",
-                description=(
+                description_pl=(
                     "Długość spływu powierzchniowego od najdalszego punktu do "
                     "początku wyraźnego cieku [km]; > 0 (typowo ≤ 0,366)."
                 ),
-                description_en=(
+                description=(
                     "Overland flow length from the most distant point to the start "
                     "of a defined channel [km]; > 0 (typically <= 0.366)."
                 ),
@@ -465,13 +480,11 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="overland_slope_m_per_m",
                 type="number",
-                description=(
+                description_pl=(
                     "Średni spadek spływu powierzchniowego [m/m]; > 0 (typowo "
                     "0,001–0,01)."
                 ),
-                description_en=(
-                    "Mean overland slope [m/m]; > 0 (typically 0.001-0.01)."
-                ),
+                description=("Mean overland slope [m/m]; > 0 (typically 0.001-0.01)."),
                 required=True,
                 exclusive_minimum=0,
                 unit="m/m",
@@ -480,11 +493,11 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="channel_length_km",
                 type="number",
-                description=(
+                description_pl=(
                     "Długość cieku od początku wyraźnego koryta do przekroju "
                     "zamykającego [km]; > 0 (typowo ≤ 80)."
                 ),
-                description_en=(
+                description=(
                     "Channel length from the start of the defined channel to the "
                     "outlet [km]; > 0 (typically <= 80)."
                 ),
@@ -495,8 +508,8 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="channel_slope_m_per_m",
                 type="number",
-                description=("Średni spadek koryta [m/m]; > 0 (typowo 0,002–0,15)."),
-                description_en="Mean channel slope [m/m]; > 0 (typically 0.002-0.15).",
+                description_pl=("Średni spadek koryta [m/m]; > 0 (typowo 0,002–0,15)."),
+                description="Mean channel slope [m/m]; > 0 (typically 0.002-0.15).",
                 required=True,
                 exclusive_minimum=0,
                 unit="m/m",
@@ -511,73 +524,57 @@ COMMANDS: tuple[Command, ...] = (
                 "channel_slope_m_per_m": 0.005,
             },
         ),
+        result_schema="hydrolog-tc-kerby-kirpich/1",
+        cardinality="single",
+        rules=(
+            "Give slopes in m/m and lengths in km.",
+            "Do not count the overland length twice in the channel length.",
+            "Check `notices` for segments outside the formula range.",
+        ),
+        rules_pl=(
+            "Podaj spadki w m/m, a długości w km.",
+            "Nie wliczaj długości spływu powierzchniowego do długości koryta.",
+            "Sprawdź `notices` pod kątem odcinków poza zakresem wzoru.",
+        ),
+        errors=("validation_error",),
+        example_results=(
+            {
+                "method": "kerby_kirpich",
+                "tc_min": 144.02,
+                "tc_h": 2.40034,
+                "parameters": {
+                    "overland_length_km": 0.25,
+                    "overland_slope_m_per_m": 0.008,
+                    "retardance": 0.4,
+                    "channel_length_km": 5.0,
+                    "channel_slope_m_per_m": 0.005,
+                },
+            },
+        ),
     ),
     Command(
         name="tc watershed",
-        operation_id="tc_watershed",
-        summary=(
-            "Czas koncentracji wybraną metodą z parametrów zlewni "
-            "(WatershedParameters)."
-        ),
-        summary_en=(
-            "Time of concentration by a chosen method from watershed parameters."
+        operation_id="hydrolog_tc_watershed",
+        summary_pl="Oblicz czas koncentracji wybraną metodą z parametrów zlewni.",
+        summary="Compute time of concentration by a chosen method from a watershed.",
+        description_pl=(
+            "Czas koncentracji tc [min, h] wybraną metodą z parametrów zlewni "
+            "(WatershedParameters: obiekt `watershed` lub plik `watershed_file`). "
+            "Użyj, gdy zlewnia jest już opisana; wymagane pola zależą od metody, "
+            "braki dają błąd walidacji. Dla pojedynczych liczb użyj `tc <metoda>`."
         ),
         description=(
-            "Czas koncentracji tc wybraną metodą (kirpich, nrcs, giandotti, faa, "
-            "kerby, kerby_kirpich) z parametrów zlewni w formacie "
-            "WatershedParameters (plik JSON `watershed_file` z Hydrografa albo "
-            "obiekt `watershed`). Długość: `channel_length_km`, a gdy jej brak — "
-            "`length_km`; spadek: `channel_slope_m_per_m`, potem "
-            "`mean_slope_m_per_m`, w ostateczności relief/(L·1000); metoda nrcs "
-            "bierze spadek w odwrotnej kolejności, najpierw `mean_slope_m_per_m` "
-            "(w TR-55 Y to średni spadek terenu zlewni, nie koryta). Metody faa i "
-            "kerby to wzory na czas spływu powierzchniowego: zamiast długości i "
-            "spadku koryta biorą `overland_length_km` i `overland_slope_m_per_m` "
-            "(wynik to czas spływu powierzchniowego; dla zlewni z korytem użyj "
-            "kerby_kirpich). Pola wymagane przez metodę: nrcs — `cn`; faa — "
-            "`runoff_coeff`, `overland_length_km`, `overland_slope_m_per_m`; "
-            "kerby — `retardance`, `overland_length_km`, "
-            "`overland_slope_m_per_m`; kerby_kirpich — `retardance`, "
-            "`overland_length_km`, `overland_slope_m_per_m`, `channel_length_km`, "
-            "`channel_slope_m_per_m`; giandotti używa `elevation_mean_m` (gdy "
-            "brak — średniej z min i max) minus `elevation_min_m`. Braki "
-            "kończą się błędem walidacji z listą brakujących pól. Wynik: tc "
-            "[min] i [h], nazwa metody i faktycznie użyte parametry wzoru (wzory "
-            "i literatura: opisy komend `tc kirpich`, `tc nrcs`, `tc giandotti`, "
-            "`tc faa`, `tc kerby`, `tc kerby-kirpich`)."
+            "tc [min, h] by a chosen method from WatershedParameters (`watershed` "
+            "object or `watershed_file`). Use when the watershed is already "
+            "described; required fields depend on the method and missing ones "
+            "raise a validation error. For plain numbers use `tc <method>`."
         ),
-        description_en=(
-            "Time of concentration tc by a chosen method (kirpich, nrcs, "
-            "giandotti, faa, kerby, kerby_kirpich) from watershed parameters in "
-            "the WatershedParameters format (a JSON `watershed_file` from "
-            "Hydrograf or an inline `watershed` object). Length: "
-            "`channel_length_km`, else `length_km`; slope: "
-            "`channel_slope_m_per_m`, then `mean_slope_m_per_m`, finally "
-            "relief/(L·1000); the nrcs method takes the slope in the opposite "
-            "order, `mean_slope_m_per_m` first (Y of TR-55 is the average land "
-            "slope of the watershed, not of the channel). The faa and kerby "
-            "methods are overland flow formulas: instead of the channel length "
-            "and slope they take `overland_length_km` and "
-            "`overland_slope_m_per_m` (the result is the overland flow time; use "
-            "kerby_kirpich for a watershed with a channel). Fields required by "
-            "the method: nrcs - `cn`; faa - `runoff_coeff`, `overland_length_km`, "
-            "`overland_slope_m_per_m`; kerby - `retardance`, "
-            "`overland_length_km`, `overland_slope_m_per_m`; kerby_kirpich - "
-            "`retardance`, `overland_length_km`, `overland_slope_m_per_m`, "
-            "`channel_length_km`, `channel_slope_m_per_m`; giandotti uses "
-            "`elevation_mean_m` (the midpoint of min and max when absent) minus "
-            "`elevation_min_m`. Missing fields end in a validation error listing "
-            "them. Result: tc [min] and [h], the method name and the formula "
-            "parameters actually used (formulas and references: the descriptions "
-            "of `tc kirpich`, `tc nrcs`, `tc giandotti`, `tc faa`, `tc kerby`, "
-            "`tc kerby-kirpich`)."
-        ),
-        function="hydrolog.operations:tc_watershed",
+        function="hydrolog.operations.tc_watershed",
         options=(
             Option(
                 name="watershed",
                 type="object",
-                description=(
+                description_pl=(
                     "Parametry zlewni jako obiekt WatershedParameters (m.in. "
                     "`area_km2`, `perimeter_km`, `length_km`, `elevation_min_m`, "
                     "`elevation_max_m`, opcjonalnie `cn`, `mean_slope_m_per_m`, "
@@ -585,7 +582,7 @@ COMMANDS: tuple[Command, ...] = (
                     "`retardance`, `overland_length_km`, "
                     "`overland_slope_m_per_m`...)."
                 ),
-                description_en=(
+                description=(
                     "Watershed parameters as a WatershedParameters object "
                     "(`area_km2`, `perimeter_km`, `length_km`, `elevation_min_m`, "
                     "`elevation_max_m`, optionally `cn`, `mean_slope_m_per_m`, "
@@ -597,11 +594,12 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="watershed_file",
                 type="path",
-                description=(
+                path_role="input",
+                description_pl=(
                     "Plik JSON z parametrami zlewni (format "
                     "`WatershedParameters.to_json()`)."
                 ),
-                description_en=(
+                description=(
                     "JSON file with the watershed parameters (the "
                     "`WatershedParameters.to_json()` format)."
                 ),
@@ -609,16 +607,34 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="method",
                 type="choice",
-                description=(
+                description_pl=(
                     "Metoda obliczenia tc; domyślnie kirpich. Pola zlewni "
-                    "wymagane przez metodę są wymienione w opisie komendy."
+                    "wymagane przez metodę podaje komenda `tc <metoda>`."
                 ),
-                description_en=(
+                description=(
                     "Method of computing tc; default kirpich. The watershed "
-                    "fields a method needs are listed in the command description."
+                    "fields a method needs follow the matching `tc <method>` "
+                    "command."
                 ),
                 choices=_METHODS,
                 default="kirpich",
+                meanings={
+                    "kirpich": "Kirpich formula from channel length and slope.",
+                    "nrcs": "NRCS (TR-55) lag method; needs `cn`.",
+                    "giandotti": "Giandotti formula from area, length and relief.",
+                    "faa": "FAA overland flow formula; needs `runoff_coeff`.",
+                    "kerby": "Kerby overland flow formula; needs `retardance`.",
+                    "kerby_kirpich": "Composite Kerby overland plus Kirpich channel.",
+                },
+                meanings_pl={
+                    "kirpich": "Wzór Kirpicha z długości i spadku cieku.",
+                    "nrcs": "Metoda NRCS (TR-55, czas opóźnienia); wymaga `cn`.",
+                    "giandotti": "Wzór Giandottiego z powierzchni, długości i relief.",
+                    "faa": "Wzór FAA spływu powierzchniowego; wymaga `runoff_coeff`.",
+                    "kerby": "Wzór Kerby'ego spływu powierzchniowego; wymaga "
+                    "`retardance`.",
+                    "kerby_kirpich": "Złożona: spływ Kerby'ego plus koryto Kirpicha.",
+                },
             ),
         ),
         one_of=(("watershed",), ("watershed_file",)),
@@ -635,6 +651,29 @@ COMMANDS: tuple[Command, ...] = (
                     "cn": 72,
                 },
                 "method": "nrcs",
+            },
+        ),
+        result_schema="hydrolog-tc-watershed/1",
+        cardinality="single",
+        rules=(
+            "Pass `watershed` or `watershed_file`, not both.",
+            "Fill the watershed fields the chosen method needs.",
+            "Read `parameters` to see which values were used.",
+        ),
+        rules_pl=(
+            "Podaj `watershed` albo `watershed_file`, nie oba.",
+            "Wypełnij pola zlewni potrzebne wybranej metodzie.",
+            "Odczytaj `parameters`, aby zobaczyć użyte wartości.",
+        ),
+        errors=("validation_error", "not_found", "data_error", "forbidden"),
+        core=True,
+        example_results=(
+            {
+                "method": "nrcs",
+                "tc_min": 495.966,
+                "tc_h": 8.2661,
+                "watershed_name": "Potok Młynówka",
+                "parameters": {"length_km": 12.5, "slope_m_per_m": 0.025, "cn": 72.0},
             },
         ),
     ),

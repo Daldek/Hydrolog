@@ -1,80 +1,56 @@
-"""MCP tools generated from the command catalog (spec section 7.2).
+"""MCP tools generated from the command catalog (AGI-5.2 to AGI-5.5, AGI-5.8, AGI-5.12).
 
-Every catalog command is one tool, in catalog order:
+Every catalog command is one tool, in catalog order (deterministic):
 
-* ``name`` -- the ``operation_id`` (``tc_kirpich``);
-* ``title`` -- ``hydrolog <name>`` (``hydrolog tc kirpich``);
-* ``description`` -- the catalog description in the server language (method,
-  literature, units, ranges, what the result holds), followed by a sentence on the
-  alternative option groups of a command with ``one_of`` and, for a writing command,
-  on its output options;
-* ``inputSchema`` -- the ``input_schema`` of :func:`hydrolog.catalog.command_schema`
-  (type, bounds, ``enum``, ``default``, units in the descriptions, ``required``,
-  ``additionalProperties: false``, ``examples``) without ``$schema`` -- 2020-12, the
-  dialect of the catalog, is the default dialect of MCP -- and without the top-level
-  ``oneOf`` of the ``one_of`` groups (see below);
-* annotations -- ``readOnlyHint`` unless the command writes files, ``destructiveHint``
-  exactly for a writing command (its output file is replaced), idempotent, never
-  open-world (Hydrolog uses no network).
+* ``name`` -- the ``operation_id`` (``hydrolog_tc_kirpich``), at most 48 characters;
+* ``description`` -- the catalog ``summary``, ``description`` and ``rules``, English,
+  at most 600 characters together (the catalog enforces it); nothing is appended;
+* ``inputSchema`` -- :func:`hydrolog.catalog.input_schema` in English (2020-12,
+  ``additionalProperties: false``, a ``description`` on every property) without the
+  top-level ``oneOf`` of the ``one_of`` groups, which clients that pass the schema on
+  to a model API reject. The alternatives are named in the ``description`` of each
+  option that belongs to one, and
+  :func:`hydrolog.catalog.validate_command` still enforces them
+  (``details.reason = "one_of"``);
+* ``outputSchema`` -- the ``hydrolog-result/1`` envelope (:mod:`hydrolog.mcp._output`);
+* annotations ``title``, ``readOnlyHint``, ``destructiveHint``, ``idempotentHint`` and
+  ``openWorldHint``, derived from ``Command.effects`` and the mode of the server.
 
-The one departure from the catalog schema: clients that pass the tool schema on to a
-model API (Claude Code and the Anthropic API among them) reject a tool whose input
-schema has ``oneOf``, ``anyOf`` or ``allOf`` at the top level, and one such tool makes
-every request of the session fail. The alternatives of ``one_of`` are therefore named
-in the tool description instead; :func:`hydrolog.catalog.validate_command` still
-enforces them and reports a violation with ``details.reason = "one_of"``.
+Modes
+-----
+A writing command (``Command.check`` is not ``None``) runs on a server started with
+``--allow-writes`` as the catalog declares it. Without it the server turns every call
+into a plan (``check`` true, ``force`` ignored, see :mod:`hydrolog.mcp._calls`), so the
+tool is read-only: ``readOnlyHint`` true, ``destructiveHint`` false, and the
+descriptions of its ``check``, ``force`` and output options say so.
 
-An option named ``lang`` (a choice of ``pl`` and ``en``) defaults to the language of
-the server, in the schema and in the call (see :mod:`hydrolog.mcp._calls`).
+The selection of commands by family (``--tools``) is :mod:`hydrolog.mcp._families`.
 """
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any, Final
 
 import mcp.types as types
 
-from hydrolog.catalog import Command, command_schema
-from hydrolog.catalog.spec import Lang
+from hydrolog.catalog import Command, input_schema
+from hydrolog.mcp._output import OUTPUT_SCHEMA
 
-__all__ = ["LANG_OPTION", "CatalogTool", "catalog_tools"]
+__all__ = [
+    "ALWAYS_LOAD_COMMANDS",
+    "ALWAYS_LOAD_KEY",
+    "CatalogTool",
+    "catalog_tools",
+]
 
-LANG_OPTION: Final = "lang"
-"""Name of the option whose default is the language of the server."""
+ALWAYS_LOAD_KEY: Final = "anthropic/alwaysLoad"
+"""Key of ``_meta`` that tells Claude Code to load a tool's definition up front."""
+ALWAYS_LOAD_COMMANDS: Final = ("commands list", "commands schema")
+"""The discovery commands (AGI-5.9): the only tools marked :data:`ALWAYS_LOAD_KEY`."""
 
-_DROPPED_KEYWORDS: Final = ("$schema", "oneOf")
-
-_ONE_OF: Final[Mapping[Lang, str]] = {
-    "pl": "Podaj dokładnie jedną z grup opcji: {groups}.",
-    "en": "Give exactly one of these option groups: {groups}.",
-}
-_ONE_OPTION: Final[Mapping[Lang, str]] = {
-    "pl": "Podaj dokładnie jedną z opcji: {options}.",
-    "en": "Give exactly one of these options: {options}.",
-}
-_OR: Final[Mapping[Lang, str]] = {"pl": " albo ", "en": " or "}
-_WRITES: Final[Mapping[Lang, str]] = {
-    "pl": (
-        "Zapisuje pliki (opcje wyjściowe: {options}); ścieżki muszą leżeć "
-        "w katalogach dozwolonych serwera."
-    ),
-    "en": (
-        "Writes files (output options: {options}); paths must lie inside the "
-        "directories allowed by the server."
-    ),
-}
-_WRITES_WHEN_GIVEN: Final[Mapping[Lang, str]] = {
-    "pl": (
-        "Zapisuje plik tylko wtedy, gdy podasz opcję wyjściową ({options}); ścieżka "
-        "musi leżeć w katalogu dozwolonym serwera."
-    ),
-    "en": (
-        "Writes a file only when you give the output option ({options}); the path "
-        "must lie inside a directory allowed by the server."
-    ),
-}
+_DROPPED_KEYWORDS: Final = ("oneOf",)
 
 
 @dataclass(frozen=True)
@@ -87,94 +63,112 @@ class CatalogTool:
         The tool announced by ``tools/list``.
     command : Command
         The catalog command the tool runs.
-    lang_option : bool
-        Whether the command has the ``lang`` option, which a call without it takes
-        from the server language.
+    plan_only : bool
+        The command writes files but the server is read-only: every call is a plan.
     """
 
     definition: types.Tool
     command: Command
-    lang_option: bool
+    plan_only: bool
 
 
-def _has_lang_option(command: Command) -> bool:
-    return any(
-        option.name == LANG_OPTION and option.type == "choice"
-        for option in command.options
+# --- tool definitions -----------------------------------------------------------------
+
+
+def _alternatives(command: Command) -> dict[str, str]:
+    """Return the suffix of the ``description`` of each option of a ``one_of`` group."""
+    groups = " or ".join(
+        " + ".join(f"`{name}`" for name in group) for group in command.one_of
     )
+    suffix = f" Give exactly one of these alternatives: {groups}."
+    return {name: suffix for group in command.one_of for name in group}
 
 
-def _input_schema(
-    schema: Mapping[str, Any], *, lang_option: bool, lang: Lang
-) -> dict[str, Any]:
-    """Catalog ``input_schema`` as the tool schema (see the module docstring)."""
-    result = {
+def _write_notes(command: Command, *, plan_only: bool) -> dict[str, str]:
+    """Return the suffixes of the ``description`` of the options that concern writes."""
+    notes: dict[str, str] = {}
+    for option in command.options:
+        if option.writes:
+            notes[option.name] = (
+                " The server is read-only (started without `--allow-writes`): "
+                "nothing is written, the call only plans."
+                if plan_only
+                else " The server writes only inside its allowed directories."
+            )
+    if plan_only:
+        notes["check"] = " Always true on this read-only server."
+        notes["force"] = " Ignored on this read-only server."
+    return notes
+
+
+def _input_schema(command: Command, *, plan_only: bool) -> dict[str, Any]:
+    """Return the catalog ``input_schema`` as the tool schema (module docstring)."""
+    schema = {
         keyword: value
-        for keyword, value in schema.items()
+        for keyword, value in input_schema(command, "en").items()
         if keyword not in _DROPPED_KEYWORDS
     }
-    if lang_option:
-        properties = dict(result["properties"])
-        properties[LANG_OPTION] = {**properties[LANG_OPTION], "default": lang}
-        result["properties"] = properties
-    return result
-
-
-def _alternatives(command: Command, lang: Lang) -> str:
-    """Build the sentence that names the ``one_of`` alternatives."""
-    if all(len(group) == 1 for group in command.one_of):
-        names = _OR[lang].join(f"`{group[0]}`" for group in command.one_of)
-        return _ONE_OPTION[lang].format(options=names)
-    groups = _OR[lang].join(
-        "(" + ", ".join(f"`{name}`" for name in group) + ")" for group in command.one_of
-    )
-    return _ONE_OF[lang].format(groups=groups)
-
-
-def _description(command: Command, lang: Lang) -> str:
-    """Catalog description plus the sentences the tool schema cannot carry."""
-    parts = [command.describe(lang)]
+    notes = _write_notes(command, plan_only=plan_only)
     if command.one_of:
-        parts.append(_alternatives(command, lang))
-    if command.writes:
-        outputs = [item for item in command.options if item.writes]
-        names = ", ".join(f"`{item.name}`" for item in outputs)
-        sentence = (
-            _WRITES if all(item.required for item in outputs) else _WRITES_WHEN_GIVEN
-        )
-        parts.append(sentence[lang].format(options=names))
+        for name, suffix in _alternatives(command).items():
+            notes[name] = notes.get(name, "") + suffix
+    properties: dict[str, Any] = {}
+    for name, definition in schema["properties"].items():
+        entry = dict(definition)
+        if name in notes:
+            entry["description"] = entry["description"] + notes[name]
+        if plan_only and name == "check":
+            entry["default"] = True
+        properties[name] = entry
+    schema["properties"] = properties
+    return schema
+
+
+def _description(command: Command) -> str:
+    """Return ``summary``, ``description`` and ``rules`` of the command as one text."""
+    parts = [command.summary, command.description]
+    if command.rules:
+        parts.append(" ".join(command.rules))
     return "\n\n".join(parts)
 
 
-def _tool(command: Command, lang: Lang) -> CatalogTool:
-    entry = command_schema(command, lang=lang)["commands"][0]
-    lang_option = _has_lang_option(command)
+def _tool(command: Command, *, allow_writes: bool) -> CatalogTool:
+    """Build the tool of one command for a server in the given mode."""
+    effects = command.effects
+    plan_only = command.check is not None and not allow_writes
+    read_only = effects.read_only or plan_only
     definition = types.Tool(
         name=command.operation_id,
-        title=f"hydrolog {command.name}",
-        description=_description(command, lang),
-        input_schema=_input_schema(
-            entry["input_schema"], lang_option=lang_option, lang=lang
-        ),
+        title=command.summary,
+        description=_description(command),
+        input_schema=_input_schema(command, plan_only=plan_only),
+        output_schema=OUTPUT_SCHEMA,
         annotations=types.ToolAnnotations(
-            read_only_hint=not command.writes,
-            destructive_hint=command.writes,
-            idempotent_hint=True,
-            open_world_hint=False,
+            title=command.summary,
+            read_only_hint=read_only,
+            destructive_hint=effects.destructive and not read_only,
+            idempotent_hint=effects.idempotent,
+            open_world_hint=effects.network,
+        ),
+        _meta=(
+            {ALWAYS_LOAD_KEY: True} if command.name in ALWAYS_LOAD_COMMANDS else None
         ),
     )
-    return CatalogTool(definition=definition, command=command, lang_option=lang_option)
+    return CatalogTool(definition=definition, command=command, plan_only=plan_only)
 
 
-def catalog_tools(commands: Sequence[Command], *, lang: Lang) -> dict[str, CatalogTool]:
+def catalog_tools(
+    commands: Sequence[Command], *, allow_writes: bool
+) -> dict[str, CatalogTool]:
     """Build the tools of the given catalog commands.
 
     Parameters
     ----------
     commands : sequence of Command
-        Catalog commands, normally :func:`hydrolog.catalog.data_commands`.
-    lang : {"pl", "en"}
-        Language of the descriptions and of the ``lang`` default.
+        Catalog commands, normally the result of :func:`select_commands`.
+    allow_writes : bool
+        Whether the server writes files (``--allow-writes``); without it a writing
+        command is a plan-only, read-only tool.
 
     Returns
     -------
@@ -183,6 +177,6 @@ def catalog_tools(commands: Sequence[Command], *, lang: Lang) -> dict[str, Catal
     """
     tools: dict[str, CatalogTool] = {}
     for command in commands:
-        tool = _tool(command, lang)
+        tool = _tool(command, allow_writes=allow_writes)
         tools[tool.definition.name] = tool
     return tools

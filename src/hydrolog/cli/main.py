@@ -4,43 +4,59 @@ The command line is generated from the catalog
 (:func:`hydrolog.catalog.data_commands`)::
 
     hydrolog <group> <command> --option VALUE ... [--json] [--schema] [--lang pl|en]
-    hydrolog mcp [--allow-dir DIR]... [--lang pl|en]
+                                                  [-v | -q]
+    hydrolog mcp [--allow-dir DIR]... [--allow-writes] [--tools FAMILIES]
     hydrolog [--version]
 
 ``main`` returns the exit status instead of exiting: ``0`` on success, the exit code of
 the error (:data:`hydrolog.exceptions.ERROR_CODES`) on failure -- ``2`` for an invalid
 command line or option value, ``3`` for an unknown command or a missing file, ``4`` for
-an impossible calculation, ``6`` for a missing optional extra, ``7`` for malformed input
-data, ``8`` for a forbidden path, ``9`` for an unwritable output and ``1`` for a bug --
-and ``130`` after Ctrl-C. A reader that closes the pipe early (``... | head``) ends the
-command quietly with ``0``.
+an output file that already exists (``conflict``), ``6`` for a missing optional extra,
+``7`` for malformed input data, ``9`` for an unwritable output, ``12`` for a forbidden
+path, ``13`` for an impossible calculation and ``1`` for a bug -- ``130`` after Ctrl-C
+and ``143`` after ``SIGTERM``. A reader that closes the pipe early (``... | head``)
+ends the command quietly with ``0``.
 
 Output
 ------
 Without ``--json`` the result is a short summary in the language of ``--lang``
-(:mod:`hydrolog.cli.render`); with ``--json`` it is the ``hydrolog-result/1`` envelope
-on one line of stdout. ``--schema`` prints the JSON Schema of the command instead of
-running it. A failure is a readable text on stderr or, with ``--json``, one
-``hydrolog-error/1`` JSON line on stderr.
+(:mod:`hydrolog.cli.render`); with ``--json`` it is the ``hydrolog-result/1`` envelope,
+the only thing on stdout (AGI-3.2). ``--schema`` prints the ``hydrolog-commands/1``
+description of the command instead of running it.
+
+On an error stdout stays empty and the **last line of stderr** is the compact
+``hydrolog-error/1`` document, in English, with and without ``--json`` (AGI-3.3).
+Without ``--json`` a readable explanation in the language of ``--lang`` comes before
+it. Ctrl-C prints only a short text (an outcome, not an error).
+
+Logs
+----
+``-v/--verbose`` and ``-q/--quiet`` set the level of the ``hydrolog`` logger to
+``debug`` and ``error``; otherwise ``HYDROLOG_LOG_LEVEL`` (or ``NOGAT_LOG_LEVEL``,
+``nogat.toml``) decides, ``warning`` by default. The handler writes to stderr and
+lives only while :func:`main` runs (DEV-12.2).
 """
 
 from __future__ import annotations
 
+import contextlib
 import difflib
 import json
+import logging
 import os
 import shutil
+import signal
 import sys
-from collections.abc import Mapping, Sequence
+import types
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Any, TextIO
+from typing import Any, NoReturn, TextIO
 
-from hydrolog.catalog import command_schema, data_commands, run_command
+from hydrolog._settings import resolve_setting
+from hydrolog.catalog import catalog_document, data_commands, run_command
 from hydrolog.catalog.spec import Command, Lang
 from hydrolog.cli.args import MCP_WORD, Invocation, peek, resolve_lang, split_arguments
 from hydrolog.cli.parser import (
-    DEST_ALLOW_DIR,
     CatalogParser,
     UsageError,
     build_command_parser,
@@ -52,7 +68,12 @@ from hydrolog.cli.parser import (
 )
 from hydrolog.cli.render import render_error, render_result
 from hydrolog.cli.texts import env_lang, text
-from hydrolog.exceptions import InvalidParameterError, NotFoundError, error_document
+from hydrolog.exceptions import (
+    HydrologError,
+    InvalidParameterError,
+    NotFoundError,
+    error_document,
+)
 
 __all__ = ["main"]
 
@@ -60,15 +81,83 @@ EXIT_INTERRUPTED = 130
 """Exit status after Ctrl-C (128 + SIGINT)."""
 
 _DEFAULT_WIDTH = 100
+_LOGGER = "hydrolog"
+"""The one logger the command line configures; the library never does (DEV-12.1)."""
+_LEVELS = {
+    "debug": logging.DEBUG,
+    "info": logging.INFO,
+    "warning": logging.WARNING,
+    "error": logging.ERROR,
+}
+
+LOG = logging.getLogger(__name__)
+
+
+class _Terminated(BaseException):
+    """Raised by the ``SIGTERM`` handler; reported as the error ``terminated``."""
 
 
 @dataclass
 class _Reporting:
-    """How a failure is reported: as JSON or as text, in which language, for what."""
+    """How a failure is reported, in which language, for what; the log setup."""
 
     json: bool
     lang: Lang
     command: str | None = None
+    log_handler: logging.Handler | None = None
+    log_level: int = logging.NOTSET
+
+
+def _raise_terminated(signum: int, frame: types.FrameType | None) -> NoReturn:
+    raise _Terminated
+
+
+@contextlib.contextmanager
+def _sigterm_as_error() -> Iterator[None]:
+    """Make ``SIGTERM`` raise :class:`_Terminated`; restore the old handler after."""
+    try:
+        previous = signal.signal(signal.SIGTERM, _raise_terminated)
+    except ValueError:  # not the main thread: the signal cannot be handled here
+        yield
+        return
+    try:
+        yield
+    finally:
+        signal.signal(signal.SIGTERM, signal.SIG_DFL if previous is None else previous)
+
+
+def _start_logging(reporting: _Reporting, verbose: bool, quiet: bool) -> None:
+    """Send the ``hydrolog`` log to stderr at the level of the flags or settings.
+
+    ``-v`` is ``debug`` and ``-q`` is ``error``; without them ``HYDROLOG_LOG_LEVEL``
+    and the other settings decide (default ``warning``, DEV-12.2).
+    """
+    if verbose and quiet:
+        raise UsageError(
+            "The options --verbose and --quiet exclude each other",
+            details={"reason": "exclusive_options", "options": ["verbose", "quiet"]},
+            hint="Give only one of -v and -q.",
+        )
+    explicit = "debug" if verbose else "error" if quiet else None
+    level = resolve_setting("log_level", explicit=explicit).value
+    logger = logging.getLogger(_LOGGER)
+    handler = logging.StreamHandler(sys.stderr)
+    handler.setFormatter(logging.Formatter("%(levelname)s %(name)s: %(message)s"))
+    reporting.log_handler = handler
+    reporting.log_level = logger.level
+    logger.addHandler(handler)
+    logger.setLevel(_LEVELS[level])
+
+
+def _stop_logging(reporting: _Reporting) -> None:
+    """Remove the handler of :func:`_start_logging` and restore the logger's level."""
+    handler = reporting.log_handler
+    if handler is None:
+        return
+    logger = logging.getLogger(_LOGGER)
+    logger.removeHandler(handler)
+    logger.setLevel(reporting.log_level)
+    reporting.log_handler = None
 
 
 # --- output ---------------------------------------------------------------------------
@@ -124,9 +213,17 @@ def _terminal_width() -> int:
 
 
 def _unknown_group(word: str, commands: Sequence[Command]) -> NotFoundError:
-    suggestions = [c.name for c in commands if word in (c.operation_id, c.name)]
-    groups = [*by_group(commands), MCP_WORD]
-    suggestions += difflib.get_close_matches(word, groups, n=3, cutoff=0.6)
+    """Error for a first word that is no group; suggests groups and operation ids."""
+    by_operation = {command.operation_id: command.name for command in commands}
+    suggestions: list[str] = []
+    if word in by_operation:
+        suggestions.append(by_operation[word])
+    else:
+        groups = [*by_group(commands), MCP_WORD]
+        suggestions += difflib.get_close_matches(word, groups, n=3, cutoff=0.6)
+        close = difflib.get_close_matches(word, list(by_operation), n=3, cutoff=0.6)
+        suggestions += [by_operation[item] for item in close]
+        suggestions = list(dict.fromkeys(suggestions))[:3]
     hint = "Run 'hydrolog --help' to see the command groups."
     if suggestions:
         hint = f"Did you mean: {', '.join(suggestions)}? " + hint
@@ -155,15 +252,11 @@ def _find_command(group: str, word: str, members: Sequence[Command]) -> Command:
     )
 
 
-def _group_schema(group: str, lang: Lang) -> dict[str, Any]:
-    """Restrict the ``hydrolog-commands/1`` document to one group."""
-    document = command_schema(lang=lang)
-    document["commands"] = [
-        entry
-        for entry in document["commands"]
-        if entry["name"].split(" ", 1)[0] == group
-    ]
-    return document
+def _group_schema(group: str) -> dict[str, Any]:
+    """Return the ``hydrolog-commands/1`` document restricted to one group."""
+    return catalog_document(
+        command for command in data_commands() if command.group == group
+    )
 
 
 # --- execution ------------------------------------------------------------------------
@@ -179,11 +272,12 @@ def _run_command(
     line = parse_command_line(command, invocation.rest, lang)
     reporting.json = flags.json or line.json
     if flags.schema or line.schema:
-        return _print_schema(command_schema(command, lang=lang))
+        return _print_schema(catalog_document((command,)))
+    _start_logging(reporting, flags.verbose or line.verbose, flags.quiet or line.quiet)
     options = dict(line.options)
-    if any(option.name == "lang" for option in command.options):
-        options["lang"] = lang
+    LOG.debug("Running %s; options: %s", command.name, ", ".join(options) or "none")
     data = run_command(command, options).to_dict()
+    LOG.debug("Finished %s", command.name)
     _harden_stdout()
     if reporting.json:
         _write(sys.stdout, _json_text(data, sys.stdout) + "\n")
@@ -193,44 +287,33 @@ def _run_command(
     return 0
 
 
-def _allowed_directory(value: str) -> Path:
-    """Resolve an ``--allow-dir`` value; it must be an existing directory."""
-    path = Path(os.path.expanduser(value)).resolve()
-    if not path.exists():
-        raise NotFoundError(
-            f"The directory {str(path)!r} of --allow-dir does not exist",
-            details={"option": "allow_dir", "path": str(path)},
-            hint="Give an existing directory.",
-        )
-    if not path.is_dir():
-        raise InvalidParameterError(
-            f"The path {str(path)!r} of --allow-dir is not a directory",
-            details={
-                "option": "allow_dir",
-                "reason": "not_a_directory",
-                "path": str(path),
-            },
-            hint="Give a directory, not a file.",
-        )
-    return path
-
-
-def _run_mcp(invocation: Invocation, reporting: _Reporting) -> int:
+def _run_mcp(
+    invocation: Invocation, reporting: _Reporting, lang_text: str | None
+) -> int:
     parser = build_mcp_parser(reporting.lang)
     if invocation.flags.help:
         return _print_help(parser)
     namespace, extras = parser.parse_known_args(invocation.rest)
+    if lang_text is not None:
+        # The server speaks English only (AGI-9.2); an option that changes nothing
+        # is refused, not ignored. It still selects the language of the help above.
+        raise UsageError(
+            "The option --lang has no effect on the MCP server: its output is always "
+            "English",
+            prog=parser.prog,
+            details={"reason": "ineffective_option", "option": "--lang"},
+            hint=(
+                "Remove --lang; it only selects the language of 'hydrolog mcp --help'."
+            ),
+        )
     if extras:
         raise UsageError(
             f"Unrecognized arguments: {' '.join(extras)}", prog=parser.prog
         )
-    directories = [
-        _allowed_directory(item) for item in vars(namespace).get(DEST_ALLOW_DIR, [])
-    ]
     # Imported here: the server is optional and stdout belongs to its protocol.
-    from hydrolog.mcp import run_stdio
+    from hydrolog.mcp.server import run_arguments
 
-    run_stdio(allowed_dirs=directories, lang=reporting.lang)
+    run_arguments(namespace)
     return 0
 
 
@@ -250,17 +333,19 @@ def _execute(
     words = invocation.words
     if not words:
         if flags.schema:
-            return _print_schema(command_schema(lang=lang))
+            return _print_schema(catalog_document(commands))
         return _print_help(build_root_parser(commands, lang))
     group = words[0]
     if group == MCP_WORD:
-        return _run_mcp(invocation, reporting)
+        if not flags.help:
+            _start_logging(reporting, flags.verbose, flags.quiet)
+        return _run_mcp(invocation, reporting, lang_text)
     groups = by_group(commands)
     if group not in groups:
         raise _unknown_group(group, commands)
     if len(words) == 1:
         if flags.schema:
-            return _print_schema(_group_schema(group, lang))
+            return _print_schema(_group_schema(group))
         return _print_help(build_group_parser(group, groups[group], lang))
     command = _find_command(group, words[1], groups[group])
     reporting.command = command.name
@@ -271,15 +356,21 @@ def _execute(
 
 
 def _fail(exc: BaseException, reporting: _Reporting) -> int:
-    """Print the error (a JSON line or text) to stderr; return its exit status."""
+    """Report an error on stderr and return its exit status (AGI-3.3).
+
+    Without ``--json`` a readable explanation in the language of ``--lang`` comes
+    first; in both modes the last line is the compact ``hydrolog-error/1`` document,
+    in English.
+    """
     command = reporting.command
     if isinstance(exc, UsageError) and exc.command:
         command = exc.command
-    document = error_document(exc, command, reporting.lang)
-    if reporting.json:
-        _write(sys.stderr, _json_text(document, sys.stderr) + "\n")
-    else:
-        _write(sys.stderr, render_error(document, reporting.lang) + "\n")
+    LOG.debug("The command failed", exc_info=exc)
+    document = error_document(exc, command, "en")
+    if not reporting.json:
+        localized = error_document(exc, command, reporting.lang)
+        _write(sys.stderr, render_error(localized, reporting.lang) + "\n")
+    _write(sys.stderr, _json_text(document, sys.stderr) + "\n")
     return int(document["exit_code"])
 
 
@@ -294,6 +385,9 @@ def _silence_stdout() -> None:
 
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the ``hydrolog`` command line.
+
+    While it runs, ``SIGTERM`` is turned into the ``terminated`` error and the
+    ``hydrolog`` logger writes to stderr; both are put back when it returns.
 
     Parameters
     ----------
@@ -314,19 +408,30 @@ def main(argv: Sequence[str] | None = None) -> int:
     except InvalidParameterError:
         lang = env_lang()
     reporting = _Reporting(json=json_requested, lang=lang)
-    try:
-        return _execute(arguments, reporting, lang_text)
-    except SystemExit as exit_request:
-        code = exit_request.code
-        return code if isinstance(code, int) else 0
-    except KeyboardInterrupt:
-        _write(sys.stderr, text("interrupted", reporting.lang) + "\n")
-        return EXIT_INTERRUPTED
-    except BrokenPipeError:
-        _silence_stdout()
-        return 0
-    except Exception as exc:
-        return _fail(exc, reporting)
+    with _sigterm_as_error():
+        try:
+            return _execute(arguments, reporting, lang_text)
+        except SystemExit as exit_request:
+            code = exit_request.code
+            return code if isinstance(code, int) else 0
+        except KeyboardInterrupt:
+            _write(sys.stderr, text("interrupted", reporting.lang) + "\n")
+            return EXIT_INTERRUPTED
+        except _Terminated:
+            return _fail(
+                HydrologError(
+                    "The command was terminated by the signal SIGTERM",
+                    code="terminated",
+                ),
+                reporting,
+            )
+        except BrokenPipeError:
+            _silence_stdout()
+            return 0
+        except Exception as exc:
+            return _fail(exc, reporting)
+        finally:
+            _stop_logging(reporting)
 
 
 if __name__ == "__main__":

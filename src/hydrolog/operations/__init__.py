@@ -1,7 +1,7 @@
 """Operation layer: one public function per catalog command (spec section 6.3).
 
 Every command of :mod:`hydrolog.catalog` calls exactly one function of this package
-(``Command.function`` = ``"hydrolog.operations:<name>"``). The functions are the
+(``Command.function`` = ``"hydrolog.operations.<name>"``). The functions are the
 Python surface for Retman handlers and for ``retman-scaffold`` (signature and
 docstring parsing), so each one is
 
@@ -22,7 +22,7 @@ Layout: one module per command group, named like the group module of
 :mod:`hydrolog.catalog.groups` (``operations/tc.py`` implements
 ``catalog/groups/tc.py``). Operation functions are named ``<group>_<command>``
 (``tc_kirpich``); they are re-exported here, so
-``function="hydrolog.operations:<name>"``
+``function="hydrolog.operations.<name>"``
 resolves to this package, and listed in ``__all__``. A new group adds its import and
 its names below, in the order of ``hydrolog.catalog.groups.GROUP_MODULES``; the
 ``commands`` group (``meta``) stays last.
@@ -42,6 +42,7 @@ from hydrolog.operations.cn import (
     cn_range,
     cn_weighted,
 )
+from hydrolog.operations.config import ConfigShow, config_show
 from hydrolog.operations.hydrograph import (
     HydrographGenerateResult,
     HydrographRun,
@@ -54,10 +55,10 @@ from hydrolog.operations.hydrometrics import (
     hydrometrics_water_level_zones,
 )
 from hydrolog.operations.meta import (
-    CommandSummary,
+    GuideDocument,
     commands_guide,
+    commands_list,
     commands_schema,
-    list_commands,
 )
 from hydrolog.operations.morphometry import WatershedMorphometry, morphometry_watershed
 from hydrolog.operations.network import NetworkAnalysis, network_stats
@@ -170,9 +171,12 @@ __all__ = [
     # report
     "ReportResult",
     "report_generate",
+    # config
+    "ConfigShow",
+    "config_show",
     # commands
-    "CommandSummary",
+    "GuideDocument",
     "commands_guide",
+    "commands_list",
     "commands_schema",
-    "list_commands",
 ]

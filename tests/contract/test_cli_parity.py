@@ -4,24 +4,27 @@ The tests are parametrized over :func:`hydrolog.catalog.data_commands`, so a com
 added to the catalog is covered without touching this file. Conventions for examples
 (shared with the authors of the groups): paths are relative to the repository root and
 point to files that exist there (``tests/fixtures``); options that write a file
-(``writes=True``) are redirected to a scratch directory; an example that needs an
-optional extra that is not installed is skipped. The envelopes are compared in full;
-the only field left out is the SHA-256 of a written file (a generated file may embed
-the date or time), which is instead checked against the file on disk.
+(``path_role="output"``) are redirected to a scratch directory; an example that needs
+an optional extra that is not installed is skipped. The envelopes are compared in full;
+the only field left out is the SHA-256 of a written file (``result.files``; a generated
+file may embed the date or time), which is instead checked against the file on disk.
 """
 
 import json
+import os
 from pathlib import Path
 
 import pytest
 
 from hydrolog.catalog import (
     Command,
+    check_command,
     command_schema,
     data_commands,
     run_command,
     validate_command,
 )
+from hydrolog.catalog.document import COMMAND_LIST_SCHEMA, COMMANDS_SCHEMA
 from hydrolog.catalog.envelope import sha256_file
 from hydrolog.cli.main import main
 from hydrolog.cli.parser import (
@@ -44,13 +47,26 @@ EXAMPLES = [
     for command in COMMANDS
     for index in range(len(command.examples))
 ]
+CHECKED_EXAMPLES = [
+    pytest.param(command, index, id=f"{command.name}#{index}")
+    for command in COMMANDS
+    if command.check is not None
+    for index in range(len(command.examples))
+]
 
 
 @pytest.fixture(autouse=True)
-def _repository_root(monkeypatch):
-    """Examples use paths relative to the repository root; no ambient language."""
+def _repository_root(monkeypatch, tmp_path):
+    """Examples use paths relative to the repository root; no ambient settings."""
     monkeypatch.chdir(REPO_ROOT)
-    monkeypatch.delenv("HYDROLOG_LANG", raising=False)
+    for name in (
+        "HYDROLOG_LANG",
+        "NOGAT_LANG",
+        "HYDROLOG_LOG_LEVEL",
+        "NOGAT_LOG_LEVEL",
+    ):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("NOGAT_CONFIG", str(tmp_path / "no-nogat.toml"))
     monkeypatch.setenv("COLUMNS", "100")
 
 
@@ -64,31 +80,43 @@ def _scratch_outputs(command: Command, example, directory: Path) -> dict:
     return adjusted
 
 
+def _written(envelope: dict) -> list[dict]:
+    """The ``files`` of an envelope: ``result.files``, absent from most results."""
+    result = envelope["result"]
+    return result.get("files", []) if isinstance(result, dict) else []
+
+
 def _without_digests(envelope: dict) -> dict:
     """The envelope without the SHA-256 of written files (a file may embed a time)."""
-    stripped = dict(envelope)
-    stripped["files"] = [
-        {key: value for key, value in record.items() if key != "sha256"}
-        for record in envelope["files"]
-    ]
+    stripped = json.loads(json.dumps(envelope))
+    for record in _written(stripped):
+        del record["sha256"]
     return stripped
 
 
-def _run_or_skip(command: Command, example):
+def _api_envelope(command: Command, example) -> dict:
+    """The envelope of ``run_command``, with the files it wrote removed again.
+
+    The CLI refuses to replace a file without ``--force``, so it has to start from
+    the state ``run_command`` started from.
+    """
     try:
-        return run_command(command, example)
+        envelope = run_command(command, example).to_dict()
     except MissingDependencyError as exc:
         pytest.skip(f"optional extra not installed: {exc}")
+    for record in _written(envelope):
+        os.remove(record["path"])
+    return envelope
 
 
 def test_the_catalog_is_not_empty():
-    assert COMMANDS and EXAMPLES
+    assert COMMANDS and EXAMPLES and CHECKED_EXAMPLES
 
 
 @pytest.mark.parametrize(("command", "index"), EXAMPLES)
 def test_json_envelope_equals_run_command(command, index, capsys, tmp_path):
     example = _scratch_outputs(command, command.examples[index], tmp_path)
-    expected = _run_or_skip(command, example).to_dict()
+    expected = _api_envelope(command, example)
 
     argv = [*command.name.split(), *example_arguments(command, example), "--json"]
     code = main(argv)
@@ -98,7 +126,7 @@ def test_json_envelope_equals_run_command(command, index, capsys, tmp_path):
     assert out.count("\n") == 1, "the envelope is one line"
     envelope = json.loads(out)
     assert _without_digests(envelope) == _without_digests(expected)
-    for record in envelope["files"]:
+    for record in _written(envelope):
         assert sha256_file(record["path"]) == record["sha256"]
 
 
@@ -106,33 +134,51 @@ def test_json_envelope_equals_run_command(command, index, capsys, tmp_path):
 @pytest.mark.parametrize(("command", "index"), EXAMPLES)
 def test_human_summary_of_every_example(command, index, lang, capsys, tmp_path):
     example = _scratch_outputs(command, command.examples[index], tmp_path)
-    has_lang_option = any(option.name == "lang" for option in command.options)
-    if has_lang_option:
-        example["lang"] = lang  # the texts of the result follow --lang
-    result = _run_or_skip(command, example).to_dict()["result"]
+    result = _api_envelope(command, example)["result"]
 
-    argv = [*command.name.split(), *example_arguments(command, example)]
-    if not has_lang_option:
-        argv += ["--lang", lang]
-    code = main(argv)
+    code = main(
+        [*command.name.split(), *example_arguments(command, example), "--lang", lang]
+    )
     out, err = capsys.readouterr()
 
     assert (code, err) == (0, "")
-    if isinstance(result, dict) and "schema" in result:
-        # A versioned document is printed as the JSON it is, ready to be redirected.
-        assert json.loads(out) == result
-    elif isinstance(result, str) and "\n" in result:
-        assert out == result.rstrip("\n") + "\n"
+    assert out.endswith("\n") and not out.endswith("\n\n")
+    lines = out.splitlines()
+    schema = result.get("schema") if isinstance(result, dict) else None
+    if schema == COMMANDS_SCHEMA:
+        # The description of commands has no title line: it starts with a command.
+        assert lines[0].startswith(f"{result['commands'][0]['name']} (hydrolog_")
+    elif schema == "hydrolog-guide/1" and "text" in result:
+        # The guide is the text itself, ready to be redirected into a file.
+        assert out == result["text"].rstrip("\n") + "\n"
     else:
-        assert out.splitlines()[0] == f"{command.name}: {command.summarize(lang)}"
+        assert lines[0] == f"{command.name}: {command.summarize(lang)}"
+    if schema is None:
         assert ("Result" if lang == "en" else "Wynik") in out
+    if schema == COMMAND_LIST_SCHEMA:
+        assert all(entry["name"] in out for entry in result["commands"])
+
+
+@pytest.mark.parametrize(("command", "index"), CHECKED_EXAMPLES)
+def test_check_flag_prints_the_plan_of_check_command(command, index, capsys, tmp_path):
+    example = _scratch_outputs(command, command.examples[index], tmp_path)
+    expected = check_command(command, example).to_dict()
+
+    argv = [*command.name.split(), *example_arguments(command, example)]
+    code = main([*argv, "--check", "--json"])
+    out, err = capsys.readouterr()
+
+    assert (code, err) == (0, "")
+    assert json.loads(out) == expected
+    assert expected["check"] is True
+    assert list(tmp_path.iterdir()) == [], "a plan writes nothing"
 
 
 @pytest.mark.parametrize(("command", "index"), EXAMPLES)
 def test_example_survives_the_round_trip_through_the_command_line(command, index):
     example = command.examples[index]
     line = parse_command_line(command, example_arguments(command, example))
-    carried = {k: v for k, v in example.items() if k != "lang" and v is not None}
+    carried = {k: v for k, v in example.items() if v is not None}
     assert validate_command(command, line.options) == validate_command(command, carried)
 
 
@@ -150,7 +196,10 @@ def test_missing_options_fail_like_run_command(command, capsys):
 
     assert out == ""
     assert code == expected.exit_code == 2
-    assert json.loads(err) == error_document(expected, command.name, "pl")
+    # The last line of stderr is the English document (AGI-3.3).
+    assert json.loads(err.splitlines()[-1]) == error_document(
+        expected, command.name, "en"
+    )
 
 
 @pytest.mark.parametrize("command", COMMANDS, ids=lambda command: command.name)
@@ -158,7 +207,7 @@ def test_schema_flag_prints_the_command_schema(command, capsys):
     assert main([*command.name.split(), "--schema"]) == 0
     out, err = capsys.readouterr()
     assert err == ""
-    assert json.loads(out) == command_schema(command)
+    assert json.loads(out) == command_schema(command).to_dict()
 
 
 @pytest.mark.parametrize("lang", ["pl", "en"])
@@ -179,11 +228,6 @@ def test_help_names_every_option_and_example(command, lang, capsys):
 def test_no_option_collides_with_the_general_flags(command):
     taken = set(GLOBAL_FLAGS)
     for option in command.options:
-        if option.name == "lang":
-            # The command's own language option *is* the general --lang.
-            assert option.type == "choice"
-            assert option.choices == ("pl", "en")
-            continue
         flags = {option.flag}
         if option.type == "boolean":
             flags.add("--no-" + option.flag[2:])

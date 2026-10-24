@@ -1,172 +1,242 @@
 """Group ``commands``: the catalog describing itself.
 
 ``commands list`` gives the names and summaries of all commands, ``commands schema``
-the full option description (JSON Schema) of one command or of the whole catalog, and
-``commands guide`` the guide for AI agents generated from the catalog
-(:mod:`hydrolog.agent_guide`; with ``path`` it also writes the file, which is how the
-repository ``AGENTS.md`` and ``llms.txt`` are made).
+the ``hydrolog-commands/1`` description of one command or a page of the whole
+catalog, and ``commands guide`` the guide for AI agents generated from the catalog
+(:mod:`hydrolog.agent_guide`; with ``output`` it also writes the file, which is how
+the repository ``AGENTS.md`` and ``llms.txt`` are made).
 """
 
 from __future__ import annotations
 
-from dataclasses import replace
-
+from hydrolog.catalog.groups._output import CHECK, FORCE
 from hydrolog.catalog.spec import Command, Option
 
-_LANG = Option(
-    name="lang",
-    type="choice",
-    description="Język opisów w wyniku: pl lub en.",
-    description_en="Language of the texts in the result: pl or en.",
-    choices=("pl", "en"),
-    default="pl",
+_LIMIT = "Number of commands on one page."
+_CURSOR = (
+    "The `page.next_cursor` of the previous page, unchanged; omitted for the first "
+    "page."
 )
 
 COMMANDS: tuple[Command, ...] = (
     Command(
         name="commands list",
-        operation_id="commands_list",
-        summary="Lista komend katalogu: nazwa, operation_id i krótki opis.",
-        summary_en="List the catalog commands: name, operation id and short summary.",
+        operation_id="hydrolog_commands_list",
+        summary="List the catalog commands: name, operation id and summary.",
+        summary_pl="Wylistuj komendy katalogu: nazwa, operation_id i opis.",
         description=(
-            "Zwraca wszystkie komendy katalogu Hydrologa w kolejności grup: nazwę "
-            "(`grupa komenda`), `operation_id` (nazwa narzędzia MCP) i jednozdaniowy "
-            "opis. To punkt startowy dla agenta; pełny opis opcji wybranej komendy "
-            "daje `commands schema`."
+            "Lists every Hydrolog command with name, `operation_id`, summary, MCP "
+            "families and whether it is read-only. Use it first to find a command; "
+            "use `commands schema` for the options of one command and "
+            "`commands guide` for the whole guide."
         ),
-        description_en=(
-            "Returns every Hydrolog catalog command in group order: the name "
-            "(`group command`), the `operation_id` (MCP tool name) and a one-line "
-            "summary. This is the starting point for an agent; `commands schema` "
-            "gives the full option description of a chosen command."
+        description_pl=(
+            "Wylicza komendy Hydrologa: nazwę, `operation_id`, opis, rodziny narzędzi "
+            "MCP i informację, czy komenda tylko czyta. Użyj jej najpierw, by znaleźć "
+            "komendę; opcje jednej komendy daje `commands schema`, cały przewodnik "
+            "`commands guide`."
         ),
-        function="hydrolog.operations:list_commands",
-        options=(_LANG,),
-        examples=({}, {"lang": "en"}),
+        function="hydrolog.operations.commands_list",
+        options=(
+            Option(
+                name="limit",
+                type="integer",
+                description=_LIMIT,
+                description_pl="Liczba komend na jednej stronie.",
+                default=100,
+                minimum=1,
+                maximum=500,
+            ),
+            Option(
+                name="cursor",
+                type="string",
+                description=_CURSOR,
+                description_pl=(
+                    "`page.next_cursor` poprzedniej strony, bez zmian; pominięty dla "
+                    "pierwszej strony."
+                ),
+            ),
+        ),
+        examples=({}, {"limit": 5}),
+        result_schema="hydrolog-command-list/1",
+        cardinality="bounded",
+        rules=(
+            "Call it first to pick a command.",
+            "Then call `commands schema` with `command` for its options.",
+            "Follow `page.next_cursor` while `page.truncated` is true.",
+        ),
+        rules_pl=(
+            "Wywołaj ją najpierw, by wybrać komendę.",
+            "Potem wywołaj `commands schema` z `command`, by poznać opcje.",
+            "Idź za `page.next_cursor`, dopóki `page.truncated` jest prawdą.",
+        ),
+        errors=("validation_error",),
+        core=True,
+        example_results=({"tool": "hydrolog"}, {"tool": "hydrolog"}),
     ),
     Command(
         name="commands schema",
-        operation_id="commands_schema",
-        summary="Opis opcji komend jako JSON Schema (cały katalog albo jedna komenda).",
-        summary_en="Command options as JSON Schema (whole catalog or one command).",
+        operation_id="hydrolog_commands_schema",
+        summary="Return options, result and rules of one command or a catalog page.",
+        summary_pl="Zwróć opcje, wynik i zasady jednej komendy albo strony katalogu.",
         description=(
-            "Zwraca dokument `hydrolog-commands/1`: dla każdej komendy nazwę, "
-            "`operation_id`, opis oraz `input_schema` -- JSON Schema (2020-12) opcji z "
-            "jednostkami, zakresami, wartościami domyślnymi i przykładami. Bez opcji "
-            "`command` opisuje cały katalog; z opcją -- jedną komendę (po nazwie albo "
-            "po `operation_id`)."
+            "Returns the `hydrolog-commands/1` document: options with types, units, "
+            "bounds and enum meanings, result schema, effects, rules, examples and "
+            "errors. Give `command` for one command; without it the catalog is paged "
+            "(`limit`, `cursor`). Not for choosing a command: use `commands list`."
         ),
-        description_en=(
-            "Returns the `hydrolog-commands/1` document: for each command the name, "
-            "`operation_id`, description and `input_schema` -- the JSON Schema "
-            "(2020-12) of its options with units, bounds, defaults and examples. "
-            "Without `command` it describes the whole catalog; with it, one command "
-            "(by name or by `operation_id`)."
+        description_pl=(
+            "Zwraca dokument `hydrolog-commands/1`: opcje z typami, jednostkami, "
+            "zakresami i znaczeniami wartości, schemat wyniku, skutki, zasady, "
+            "przykłady i błędy. Z `command` dotyczy jednej komendy; bez niego katalog "
+            "jest podzielony na strony (`limit`, `cursor`). Do wyboru komendy służy "
+            "`commands list`."
         ),
-        function="hydrolog.operations:commands_schema",
+        function="hydrolog.operations.commands_schema",
         options=(
             Option(
                 name="command",
                 type="string",
                 description=(
-                    "Nazwa komendy (`tc kirpich`) albo jej operation_id "
-                    "(`tc_kirpich`); pominięta -- cały katalog."
+                    "Command name (`tc kirpich`) or its operation_id "
+                    "(`hydrolog_tc_kirpich`); omitted: a page of the whole catalog."
                 ),
-                description_en=(
-                    "Command name (`tc kirpich`) or its operation_id (`tc_kirpich`); "
-                    "omitted -- the whole catalog."
+                description_pl=(
+                    "Nazwa komendy (`tc kirpich`) albo jej operation_id "
+                    "(`hydrolog_tc_kirpich`); pominięta: strona całego katalogu."
                 ),
             ),
-            _LANG,
+            Option(
+                name="limit",
+                type="integer",
+                description=_LIMIT,
+                description_pl="Liczba komend na jednej stronie.",
+                default=5,
+                minimum=1,
+                maximum=50,
+            ),
+            Option(
+                name="cursor",
+                type="string",
+                description=_CURSOR,
+                description_pl=(
+                    "`page.next_cursor` poprzedniej strony, bez zmian; pominięty dla "
+                    "pierwszej strony."
+                ),
+            ),
         ),
-        examples=(
-            {"command": "commands list"},
-            {"command": "commands_schema", "lang": "en"},
+        examples=({"command": "commands list"}, {"command": "tc kirpich"}),
+        result_schema="hydrolog-commands/1",
+        cardinality="bounded",
+        rules=(
+            "Give `command` to get one command instead of a page of the catalog.",
+            "Take option names, units, bounds and enum meanings from `options`.",
         ),
+        rules_pl=(
+            "Podaj `command`, by dostać jedną komendę zamiast strony katalogu.",
+            "Nazwy opcji, jednostki, zakresy i znaczenia wartości czytaj z `options`.",
+        ),
+        errors=("validation_error", "not_found"),
+        core=True,
+        example_results=({"tool": "hydrolog"}, {"tool": "hydrolog"}),
     ),
     Command(
         name="commands guide",
-        operation_id="commands_guide",
-        summary=(
-            "Przewodnik dla agentów (AGENTS.md albo llms.txt) z katalogu komend; "
-            "opcjonalnie zapisuje plik."
-        ),
-        summary_en=(
-            "Agent guide (AGENTS.md or llms.txt) from the command catalog; optionally "
-            "writes a file."
+        operation_id="hydrolog_commands_guide",
+        summary="Render the agent guide (AGENTS.md, llms.txt, block) from the catalog.",
+        summary_pl=(
+            "Wygeneruj z katalogu przewodnik (AGENTS.md, llms.txt, blok) dla agentów."
         ),
         description=(
-            "Zwraca przewodnik dla agentów AI wygenerowany z katalogu komend. "
-            "`format=agents` daje pełny AGENTS.md: zasady pracy, interfejsy (Python, "
-            "CLI, MCP), kopertę wyniku `hydrolog-result/1` i błędy `hydrolog-error/1` "
-            "z rejestrem kodów, formaty plików wejściowych, tabele wszystkich komend "
-            "z opcjami i skutkami, typowe przepływy jako wywołania CLI i MCP, czego "
-            "nie robić oraz pracę nad kodem; `format=llms` daje zwięzły llms.txt (do "
-            "150 linii: zasady, grupy komend, przepływy, odnośniki do dokumentacji). "
-            "Język przewodnika wybiera `lang`. Wynik (`result`) to tekst Markdown "
-            "(UTF-8, końce linii `\\n`); pełny AGENTS.md ma kilkadziesiąt kB, więc "
-            "pobierz go raz na sesję. Z opcją `path` ten sam tekst jest dodatkowo "
-            "zapisywany do pliku (brakujące katalogi są tworzone, istniejący plik "
-            "jest zastępowany), a `files` podaje jego SHA-256 -- tak powstają "
-            "`AGENTS.md` i `llms.txt` w korzeniu repozytorium. Treść zależy tylko od "
-            "zainstalowanej wersji pakietu (bez dat i lokalnych ścieżek)."
+            "Renders the English agent guide from the catalog: `agents` is AGENTS.md, "
+            "`llms` llms.txt, `agents-md-block` the compact block that `inject` puts "
+            "into a consumer's AGENTS.md. `output` or `inject` write a file; not for "
+            "the options of one command: use `commands schema`."
         ),
-        description_en=(
-            "Returns the guide for AI agents generated from the command catalog. "
-            "`format=agents` gives the full AGENTS.md: the rules, the interfaces "
-            "(Python, CLI, MCP), the `hydrolog-result/1` envelope and the "
-            "`hydrolog-error/1` errors with the code registry, the formats of the "
-            "input files, a table of every command with its options and effect, "
-            "typical flows as CLI and MCP calls, what not to do and how to work on "
-            "the code; `format=llms` gives the concise llms.txt (at most 150 lines: "
-            "the rules, the command groups, the flows, links to the documentation). "
-            "`lang` selects the language of the guide. The result (`result`) is "
-            "Markdown text (UTF-8, `\\n` line ends); the full AGENTS.md is several "
-            "dozen kB, so fetch it once per session. With `path` the same text is "
-            "also written to a file (missing directories are created, an existing "
-            "file is replaced) and `files` gives its SHA-256 -- this is how the "
-            "`AGENTS.md` and `llms.txt` in the repository root are made. The text "
-            "depends only on the installed version of the package (no dates, no "
-            "local paths)."
+        description_pl=(
+            "Generuje z katalogu angielski przewodnik dla agentów: `agents` to "
+            "AGENTS.md, `llms` to llms.txt, `agents-md-block` to zwarty blok, który "
+            "`inject` wstawia do AGENTS.md projektu korzystającego. `output` lub "
+            "`inject` zapisują plik; opcje jednej komendy daje `commands schema`."
         ),
-        function="hydrolog.operations:commands_guide",
+        function="hydrolog.operations.commands_guide",
         options=(
             Option(
                 name="format",
                 type="choice",
-                description=(
-                    "Rodzaj przewodnika: `agents` (pełny AGENTS.md) albo `llms` "
-                    "(zwięzły llms.txt)."
-                ),
-                description_en=(
-                    "Kind of guide: `agents` (the full AGENTS.md) or `llms` (the "
-                    "concise llms.txt)."
-                ),
-                choices=("agents", "llms"),
+                description="Kind of guide.",
+                description_pl="Rodzaj przewodnika.",
+                choices=("agents", "llms", "agents-md-block"),
+                meanings={
+                    "agents": "Full AGENTS.md: rules, interfaces, index, flows.",
+                    "llms": "Concise llms.txt: a link list in the llms.txt format.",
+                    "agents-md-block": (
+                        "Compact block between BEGIN/END markers for a consumer's "
+                        "AGENTS.md."
+                    ),
+                },
+                meanings_pl={
+                    "agents": "Pełny AGENTS.md: zasady, interfejsy, indeks, przepływy.",
+                    "llms": "Zwięzły llms.txt: lista odnośników w formacie llms.txt.",
+                    "agents-md-block": (
+                        "Zwarty blok między znacznikami BEGIN/END do AGENTS.md "
+                        "projektu korzystającego."
+                    ),
+                },
                 default="agents",
             ),
-            replace(
-                _LANG,
-                description="Język przewodnika: pl lub en.",
-                description_en="Language of the guide: pl or en.",
-            ),
             Option(
-                name="path",
+                name="output",
                 type="path",
                 description=(
-                    "Plik, do którego zapisać tekst przewodnika; brakujące katalogi "
-                    "są tworzone, istniejący plik jest zastępowany. Bez tej opcji "
-                    "nic nie jest zapisywane (tekst jest tylko w wyniku)."
+                    "File to write the guide to; missing directories are created. An "
+                    "existing file is replaced only with `force`."
                 ),
-                description_en=(
-                    "File to write the guide text to; missing directories are "
-                    "created, an existing file is replaced. Without it nothing is "
-                    "written (the text is only in the result)."
+                description_pl=(
+                    "Plik, do którego zapisać przewodnik; brakujące katalogi są "
+                    "tworzone. Istniejący plik jest zastępowany tylko z `force`."
                 ),
-                writes=True,
+                path_role="output",
             ),
+            Option(
+                name="inject",
+                type="path",
+                description=(
+                    "AGENTS.md of a consumer repository: its block between "
+                    "`<!-- BEGIN hydrolog -->` and `<!-- END hydrolog -->` is "
+                    "replaced, or appended when missing. Only with "
+                    "`format=agents-md-block`; repeating the call changes nothing."
+                ),
+                description_pl=(
+                    "AGENTS.md projektu korzystającego: jego blok między "
+                    "`<!-- BEGIN hydrolog -->` a `<!-- END hydrolog -->` jest "
+                    "zastępowany albo dopisywany. Tylko z `format=agents-md-block`; "
+                    "powtórzenie wywołania niczego nie zmienia."
+                ),
+                path_role="output",
+            ),
+            FORCE,
+            CHECK,
         ),
-        writes=True,
-        examples=({"format": "agents"}, {"format": "llms", "lang": "en"}),
+        examples=({"format": "llms"}, {"format": "agents-md-block"}),
+        result_schema="hydrolog-guide/1",
+        cardinality="bounded",
+        rules=(
+            "Fetch the guide once per session; `agents` is large.",
+            "Use `format=llms` for a short overview.",
+            "Run with `check` before writing a file.",
+        ),
+        rules_pl=(
+            "Pobierz przewodnik raz na sesję; `agents` jest duży.",
+            "Dla krótkiego przeglądu użyj `format=llms`.",
+            "Przed zapisem pliku uruchom z `check`.",
+        ),
+        errors=(
+            "validation_error",
+            "forbidden",
+            "io_error",
+            "conflict",
+        ),
+        example_results=({"format": "llms"}, {"format": "agents-md-block"}),
     ),
 )
