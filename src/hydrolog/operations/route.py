@@ -34,9 +34,9 @@ from hydrolog.operations._outputs import (
     plan_outputs,
     refuse_input_as_output,
 )
-from hydrolog.routing import LagReach, Reach, RoutingResult
+from hydrolog.routing import LagReach, MuskingumReach, Reach, RoutingResult
 
-__all__ = ["RouteResult", "route_lag"]
+__all__ = ["RouteResult", "route_lag", "route_muskingum"]
 
 
 @dataclass
@@ -270,6 +270,107 @@ def route_lag(
     """
     return _route(
         LagReach(lag_min=lag_min),
+        times_min=times_min,
+        discharge_m3s=discharge_m3s,
+        input_file=input_file,
+        time_column=time_column,
+        value_column=value_column,
+        initial_outflow_m3s=initial_outflow_m3s,
+        extend_min=extend_min,
+        output=output,
+        force=force,
+        check=check,
+    )
+
+
+def route_muskingum(
+    *,
+    k_min: float,
+    x: float,
+    subreaches: int | None = None,
+    times_min: Sequence[float] | None = None,
+    discharge_m3s: Sequence[float] | None = None,
+    input_file: str | os.PathLike[str] | None = None,
+    time_column: str | None = None,
+    value_column: str | None = None,
+    initial_outflow_m3s: float | None = None,
+    extend_min: float | None = None,
+    output: str | os.PathLike[str] | None = None,
+    force: bool = False,
+    check: bool = False,
+) -> OperationOutput:
+    """Muskingum routing of a hydrograph (``route muskingum``).
+
+    The storage of the reach is ``K [X I + (1 - X) O]`` and the reach is divided into
+    ``subreaches`` equal sub-reaches of ``K / N`` in series
+    (:class:`hydrolog.routing.MuskingumReach`). The weights of a sub-reach are
+    non-negative only when ``|2KX| <= dt <= 2K(1 - X)``. Without ``subreaches`` the
+    number is ``K / dt`` rounded, which is inside that window whenever it holds a
+    whole number; when it holds none every step is divided into sub-steps (notice
+    ``substeps_added``). The time axis is extended after the last inflow ordinate
+    until the outflow has settled (notice ``tail_extended``).
+
+    Parameters
+    ----------
+    k_min : float
+        Travel time ``K`` of the reach [min], > 0.
+    x : float
+        Weighting factor ``X``, 0 (linear reservoir, maximum attenuation) to 0.5 (no
+        attenuation).
+    subreaches : int, optional
+        Number of equal sub-reaches, >= 1; default ``K / dt`` rounded. A number outside
+        the window of the time step is refused.
+    times_min, discharge_m3s : sequence of float, optional
+        The inflow hydrograph inline: times [min] at a regular step and discharges
+        [m3/s], not negative.
+    input_file : str or os.PathLike, optional
+        CSV or JSON file with the hydrograph, instead of the inline lists.
+    time_column, value_column : str, optional
+        Columns of ``input_file``; default ``time_min`` and ``discharge_m3s``.
+    initial_outflow_m3s : float, optional
+        Outflow at the first ordinate [m3/s], >= 0, the same in every sub-reach;
+        default the first inflow ordinate.
+    extend_min : float, optional
+        Time added after the last inflow ordinate [min], >= 0; ``0`` adds nothing.
+        Default: until the outflow has settled.
+    output : str or os.PathLike, optional
+        CSV file to write with the outflow hydrograph (``time_min``,
+        ``discharge_m3s``); an existing file is replaced only with ``force``. It must
+        not be ``input_file``. Without it the series is in the result.
+    force : bool, optional
+        Replace an existing ``output`` file, by default ``False``.
+    check : bool, optional
+        With ``output``: plan without effects and return the ``hydrolog-plan/1``
+        document of the target. Without ``output`` there is nothing to plan and the
+        result is computed as usual.
+
+    Returns
+    -------
+    OperationOutput
+        ``result`` is a :class:`RouteResult`; the written file is listed in
+        ``files``. With ``check`` and ``output`` the result is the plan.
+
+    Raises
+    ------
+    InvalidParameterError
+        If a parameter or the inline hydrograph is not valid, both or neither source
+        of the hydrograph is given, ``output`` is ``input_file``, ``subreaches`` is
+        outside the window of the time step (``details.reason`` ``unstable_timestep``,
+        with the window) or ``k_min`` is too short for the time step to be divided
+        into 100 sub-steps.
+    NotFoundError
+        If ``input_file`` does not exist.
+    InputDataError
+        If ``input_file`` cannot be read or its hydrograph breaks a rule (irregular
+        step, a negative discharge...).
+    ConflictError
+        If ``output`` exists and ``force`` is not given (``details.reason``
+        ``output_exists``).
+    OutputError
+        If the output cannot be written.
+    """
+    return _route(
+        MuskingumReach(k_min=k_min, x=x, subreaches=subreaches),
         times_min=times_min,
         discharge_m3s=discharge_m3s,
         input_file=input_file,

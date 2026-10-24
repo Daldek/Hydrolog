@@ -7,7 +7,7 @@ Hydrolog is a watershed hydrology calculator: SCS-CN curve numbers and effective
 Hydrolog computes the standard quantities of watershed hydrology:
 
 - design direct-runoff hydrograph (peak discharge, time to peak, volume): a block, triangular, Beta or Euler type II design hyetograph (Polish hietogram), SCS-CN effective rainfall and an SCS, Nash, Clark or Snyder unit hydrograph;
-- lumped flood routing of a discharge hydrograph at a regular time step: lag (`route lag`); the outflow is returned or written to a CSV file that the next `route` command reads;
+- lumped flood routing of a discharge hydrograph at a regular time step: lag (`route lag`) and Muskingum with sub-reaches (`route muskingum`); the outflow is returned or written to a CSV file that the next `route` command reads;
 - time of concentration (Kirpich, NRCS, Giandotti, FAA, Kerby, Kerby-Kirpich), TR-55 curve numbers (CN) and the area-weighted CN of a watershed;
 - hydrologic soil groups (HSG) from clay, sand and silt rasters such as SoilGrids;
 - watershed shape and relief indicators, river network order (Strahler, Shreve), areal precipitation (Thiessen, IDW, isohyets);
@@ -135,7 +135,7 @@ anyio.run(call_tool)
 
 ## Capabilities
 
-39 commands in 15 groups, all computed offline: no command opens a network connection or downloads data. The MCP tool is `hydrolog_` plus the command name with `_`; every command is also available as `hydrolog.run_command("<command>", **options)`.
+40 commands in 15 groups, all computed offline: no command opens a network connection or downloads data. The MCP tool is `hydrolog_` plus the command name with `_`; every command is also available as `hydrolog.run_command("<command>", **options)`.
 
 | Group | Task | CLI command | MCP tool | Python (`hydrolog.operations`) |
 |---|---|---|---|---|
@@ -159,6 +159,7 @@ anyio.run(call_tool)
 | | Snyder synthetic unit hydrograph | `uh snyder` | `hydrolog_uh_snyder` | `uh_snyder` |
 | Runoff hydrograph | Design direct-runoff hydrograph | `hydrograph generate` | `hydrolog_hydrograph_generate` | `hydrograph_generate` |
 | Flood routing | Lag routing of a hydrograph (writes a file if an output is given) | `route lag` | `hydrolog_route_lag` | `route_lag` |
+| | Muskingum routing of a hydrograph over sub-reaches (writes a file if an output is given) | `route muskingum` | `hydrolog_route_muskingum` | `route_muskingum` |
 | Morphometry | Geometric, shape and relief indicators | `morphometry watershed` | `hydrolog_morphometry_watershed` | `morphometry_watershed` |
 | River network | River network order statistics (Strahler, Shreve) | `network stats` | `hydrolog_network_stats` | `network_stats` |
 | Flow statistics | Characteristic values WWQ to NNQ of a daily series | `stats characteristic` | `hydrolog_stats_characteristic` | `stats_characteristic` |
@@ -184,7 +185,7 @@ anyio.run(call_tool)
 - [llms.txt](https://github.com/Daldek/Hydrolog/blob/main/llms.txt) and [AGENTS.md](https://github.com/Daldek/Hydrolog/blob/main/AGENTS.md) state the scope, the workflow, the error codes and typical flows (design hydrograph of a watershed file, flood frequency from an IMGWTools export, HSG from SoilGrids rasters); both are generated from the command catalog. `hydrolog commands guide --format agents` (or `llms`) prints them; `--format agents-md-block --inject AGENTS.md` puts a compact block into another repository's AGENTS.md.
 - The catalog is served by the tool: `hydrolog commands list` (names, operation ids, summaries) and `hydrolog commands schema --command "tc kirpich"` (options with units, bounds and allowed values, result schema, rules, examples, errors). In MCP these are the tools `hydrolog_commands_list` and `hydrolog_commands_schema`; `--schema` after any command prints its description instead of running it.
 - Work in four steps: discover, check, run, read. A result is a `hydrolog-result/1` envelope (`status` is `ok`; a failing command ends with an error instead), an error a `hydrolog-error/1` document.
-- Calculations are read-only. Four commands write one file (`report generate`, `soil hsg`, `commands guide` and `route lag`, whose `--output` is optional) and take `--output`, `--check` and `--force`: `--check` writes nothing and returns the plan, `result.targets[]` with `option`, `path` and `action` (`write`, `replace` or `conflict`); an existing file is replaced only with `--force`. A `route` command without `--output` has no file to plan: it returns the routed hydrograph, also with `--check`.
+- Calculations are read-only. Three commands write one file (`report generate`, `soil hsg`, `commands guide`), and so does every `route` command that is given `--output`; they take `--output`, `--check` and `--force`: `--check` writes nothing and returns the plan, `result.targets[]` with `option`, `path` and `action` (`write`, `replace` or `conflict`); an existing file is replaced only with `--force`. A `route` command without `--output` has no file to plan: it returns the routed hydrograph, also with `--check`.
 
 ```bash
 hydrolog commands schema --command "tc kirpich" --json
@@ -248,7 +249,7 @@ VS Code, `.vscode/mcp.json` (key `servers`):
 ```
 
 - `--allow-dir DIR` (repeatable): the only directories in which tools read files; without it every path option is refused (`forbidden`), while commands that take values still work.
-- `--allow-writes`: lets `report generate`, `soil hsg`, `commands guide` and `route lag` (with `output`) write inside the allowed directories; without it they run as `check` and return the plan, while `route lag` without `output` still returns the routed hydrograph.
+- `--allow-writes`: lets `report generate`, `soil hsg`, `commands guide` and the `route` commands (with `output`) write inside the allowed directories; without it they run as `check` and return the plan, while a `route` command without `output` still returns the routed hydrograph.
 - `--tools FAMILIES`: comma-separated tool families, a command group (`tc`, `cn`, `scs`, `precip`, `uh`, `hydrograph`, `route`, `morphometry`, `network`, `stats`, `hydrometrics`, `soil`, `report`, `config`, `commands`) or `core`, the main tasks (`tc watershed`, `cn lookup`, `cn weighted`, `scs effective`, `hydrograph generate`, `morphometry watershed`, `stats flood-frequency`, `commands list`, `commands schema`).
 - The server speaks English only (`hydrolog mcp --lang en` is rejected). Instructions are at most 4,096 characters, each tool description at most 600; an execution error is an `isError` result that holds the `hydrolog-error/1` document.
 

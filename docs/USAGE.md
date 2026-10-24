@@ -262,6 +262,31 @@ hydrolog route lag --lag-min 30 --input-file tests/fixtures/flood_inflow.csv --o
 {"result": {"schema": "hydrolog-route-lag/1", "model": "lag", "parameters": {"lag_min": 30.0, "lag_steps": 3.0}, "extension_min": 10.0, "outflow_peak_m3s": 40.0, "outflow_time_to_peak_min": 90.0, "peak_delay_min": 30.0, "outflow_m3s": null, "files": [{"path": "...", "status": "written"}]}}
 ```
 
+`route muskingum` is the Muskingum method (the University of Iowa example below: `K` = 20 h,
+`X` = 0.25, steps of 12 h, so `--k-min 1200` and times in minutes). The reach stores
+`K [X I + (1 - X) O]`: `--k-min` is the travel time `K` and `--x` the weight, from 0 (a linear
+reservoir, the most attenuation) to 0.5 (none). The reach is divided into `--subreaches` equal
+sub-reaches of `K/N`, and more of them attenuate less; without `--subreaches` the number is `K`
+over the time step, rounded. The weights of a sub-reach stay non-negative only while
+`|2KX| <= step <= 2K(1 - X)`: a `--subreaches` outside that window is an error
+(`details.reason` `unstable_timestep`, the window in `details.minimum` and `details.maximum`),
+and when no whole number of sub-reaches is inside it the time step is divided into sub-steps
+(notice `substeps_added`; `balance_error_m3` is then the sampling error of the trapezoid rule).
+
+```bash
+hydrolog route muskingum --k-min 1200 --x 0.25 --subreaches 1 --extend-min 0 \
+  --times-min 720,1440,2160,2880,3600,4320,5040,5760,6480,7200 \
+  --discharge-m3s 100,300,680,500,400,310,230,180,100,50 --json
+```
+
+```json output
+{"result": {"schema": "hydrolog-route-muskingum/1", "model": "muskingum", "parameters": {"k_min": 1200.0, "x": 0.25, "subreaches": 1, "substeps": 1, "c_current": 0.047619047619047616, "c_previous": 0.5238095238095238, "c_outflow": 0.42857142857142855}, "outflow_peak_m3s": 487.24142718311816, "outflow_time_to_peak_min": 3600.0, "peak_delay_min": 1440.0, "outflow_m3s": [100.0, 109.52380952380952, 236.46258503401359, 481.3411078717201, 487.24142718311816, 433.10346879276494, 358.9491056730898, 282.8829500503718, 220.28316906920696, 149.16897722013633]}}
+```
+
+The published outflow of the example is 100.0, 109.5, 236.5, 481.3, 487.2, 433.1, 358.9, 282.9,
+220.3 and 149.2 cfs: the largest difference from the printed table is 0.049 cfs, inside its
+rounding (see COMPUTATION_PATHS 3.9.3).
+
 In Python the classes of `hydrolog.routing` do the same on arrays; `route` returns the outflow
 with the notices, the storage at both ends and the balance.
 
@@ -401,8 +426,8 @@ hydrolog report generate --output report.md --watershed-file tests/fixtures/wate
 
 ## 3. Writing files
 
-Four commands write a file: `report generate`, `soil hsg`, `commands guide` (the agent guide
-rendered from the catalog) and `route lag`, which writes the outflow only when it is given
+Three commands write a file: `report generate`, `soil hsg` and `commands guide` (the agent guide
+rendered from the catalog). The `route` commands write the outflow only when they are given
 `--output` (without it `--check` has nothing to plan and computes). Every other command only
 reads. A writing command takes:
 
@@ -576,7 +601,7 @@ print(texture, texture_to_hsg(texture))
 Also in the library: `WatershedGeometry` and `TerrainAnalysis` (shape and relief indicators),
 `HypsometricCurve`, `StreamNetwork` (Strahler and Shreve), `thiessen_polygons` and
 `inverse_distance_weighting` (areal precipitation), `hydrolog.routing` (`Hydrograph`,
-`LagReach`: the flood routing of [Flood routing](#flood-routing)) and
+`LagReach`, `MuskingumReach`: the flood routing of [Flood routing](#flood-routing)) and
 `hydrolog.reports.HydrologyReportGenerator` with a `ReportConfig` (the command
 `report generate` is the shorter way).
 

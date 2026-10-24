@@ -47,6 +47,7 @@ Filled in at the end of each branch (maximum difference from the published value
 | Branch | Reference | Maximum difference |
 |---|---|---|
 | `feature/routing-core` | (identities only) | exact |
+| `feature/routing-muskingum` | University of Iowa, Lesson 27: `K` = 20 h, `X` = 0.25, `dt` = 12 h, one reach, outflow printed to 0.1 cfs | 0.049 cfs, inside the 0.05 cfs of the printing; the identities (`X = 0.5` is a lag, `X = 0` the Clark scheme, mean delay `K`, variance `K²(1 - 2X)/N`) hold to 1e-9 |
 
 ## Not in this plan
 

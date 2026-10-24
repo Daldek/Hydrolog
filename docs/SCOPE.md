@@ -166,7 +166,7 @@ Hydrolog is analogous to **Kartograf** (spatial data download) and **IMGWTools**
 
 #### 2.1.6 Module `cli` - CLI (v0.4.0, rebuilt in v1.0.0) ✅
 
-Since v1.0.0 the CLI is generated from the command catalog (`hydrolog.catalog`): 39 commands in 15 groups (list: `hydrolog commands list`). Syntax: `hydrolog <group> <command> --option value`; global flags `--json`, `--schema`, `--lang pl|en`, `-V`. The former CLI syntax (v0.4.0-v0.7.0) was removed without aliases.
+Since v1.0.0 the CLI is generated from the command catalog (`hydrolog.catalog`): 40 commands in 15 groups (list: `hydrolog commands list`). Syntax: `hydrolog <group> <command> --option value`; global flags `--json`, `--schema`, `--lang pl|en`, `-V`. The former CLI syntax (v0.4.0-v0.7.0) was removed without aliases.
 
 ```bash
 # Time of concentration
@@ -304,6 +304,8 @@ inundation, backwater and structures stay with Hydraulik, HEC-RAS and IMGW HD.
 - `Reach`: the template of a routing element (initial condition, extension of the time axis until
   the outflow has settled, non-negativity, volume balance, notices) and `RoutingResult`
 - Lag: `LagReach`, command `route lag` (the outflow is the inflow, shifted in time)
+- Muskingum: `MuskingumReach` (sub-reaches inside the positivity window, steps divided when no
+  whole number fits), command `route muskingum`
 - The outflow written by `--output` is a hydrograph table that every `route` command reads
 - Not in scope: variable-parameter Muskingum-Cunge and compound sections, kinematic and dynamic
   waves, reservoir operation (plan `docs/plans/2026-10-24-flood-routing.md`)
@@ -393,6 +395,7 @@ hydrolog/
 │   ├── hydrograph.py       # Hydrograph (regular-step table), check_table
 │   ├── reach.py            # Reach (template), RoutingResult, RoutingNotice
 │   ├── lag.py              # LagReach
+│   ├── muskingum.py        # MuskingumReach, subreach_window
 │   └── _kernels.py         # Three-point recurrences, shared with ClarkIUH
 ├── _serialization.py        # to_jsonable(), JsonResultMixin (to_dict/to_json) (v1.0.0)
 ├── agent_guide.py           # AGENTS.md / llms.txt generator from the catalog (v1.0.0)
