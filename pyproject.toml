@@ -83,7 +83,7 @@ where = ["src"]
 include = ["hydrolog*"]
 
 [tool.setuptools.package-data]
-hydrolog = ["py.typed", "_data/agents/*.md"]
+hydrolog = ["py.typed", "_data/agents/*.md", "schemas/*.json"]
 
 [tool.setuptools.dynamic]
 version = {attr = "hydrolog.__version__"}

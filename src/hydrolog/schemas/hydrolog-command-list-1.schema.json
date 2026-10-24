@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Daldek/Hydrolog/blob/main/src/hydrolog/schemas/hydrolog-command-list-1.schema.json",
+  "title": "hydrolog-command-list/1",
+  "description": "Summary of the catalog commands (`commands list`).",
+  "type": "object",
+  "required": [
+    "schema",
+    "tool",
+    "version",
+    "commands"
+  ],
+  "properties": {
+    "schema": {
+      "const": "hydrolog-command-list/1"
+    },
+    "tool": {
+      "const": "hydrolog"
+    },
+    "version": {
+      "type": "string"
+    },
+    "commands": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "operation_id",
+          "summary",
+          "families",
+          "read_only"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "operation_id": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "families": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "read_only": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  }
+}

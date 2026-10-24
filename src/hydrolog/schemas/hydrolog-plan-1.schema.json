@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Daldek/Hydrolog/blob/main/src/hydrolog/schemas/hydrolog-plan-1.schema.json",
+  "title": "hydrolog-plan/1",
+  "description": "Plan of a `check` run: each output file with its action (DEV-19.10).",
+  "type": "object",
+  "required": [
+    "schema",
+    "targets"
+  ],
+  "properties": {
+    "schema": {
+      "const": "hydrolog-plan/1"
+    },
+    "targets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "option",
+          "path",
+          "action"
+        ],
+        "properties": {
+          "option": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "action": {
+            "enum": [
+              "write",
+              "replace",
+              "conflict"
+            ]
+          },
+          "reason": {
+            "enum": [
+              "output_exists",
+              "duplicate_output_name"
+            ]
+          }
+        }
+      }
+    }
+  }
+}
