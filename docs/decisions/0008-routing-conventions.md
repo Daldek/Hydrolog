@@ -33,8 +33,11 @@ are interchangeable and a result can feed the next command or a hydraulic model.
   notice `tail_extended` reports the added minutes.
 - **Balance:** volumes are trapezoid sums. A result lists the storage of the reach at
   both ends and `balance_error_m3` = inflow volume (on the extended axis) - outflow
-  volume - change of storage; it is zero to rounding unless the scheme ran on a refined
-  grid (below).
+  volume - change of storage; it is zero to rounding for the recurrences unless the
+  scheme ran on a refined grid (below). The exact kernel of the cascade evaluates the
+  outflow at the ordinates of a curve, not of a straight line, so its balance error is
+  the quadrature error of the trapezoid rule: second order in the step and negligible
+  when the series starts and ends at rest.
 - **Stability (D9):** the library chooses automatically and says so with a notice: the
   number of sub-reaches stays inside the positivity window of the scheme
   (`|2KX| <= dt <= 2K(1-X)` for a Muskingum step; `|c dt - D| <= dx <= c dt + D` with
@@ -47,7 +50,9 @@ are interchangeable and a result can feed the next command or a hydraulic model.
   never changed: outside the window it is a `validation_error` with
   `details.reason = "unstable_timestep"` and the window. A reach for which no division
   of the step into at most 100 parts gives a window (a short, flat reach, which is
-  storage) is refused with the same reason.
+  storage) is refused with the same reason. A scheme with an exact kernel (the cascade)
+  has no window: no time step is too long for it, and it adds neither sub-reaches nor
+  sub-steps.
 - **Non-negativity:** inside the window all weights are non-negative, so a
   non-negative inflow gives a non-negative outflow.
 - **Accuracy notices are not errors:** the Muskingum-Cunge accuracy limit of NEH-630 is
