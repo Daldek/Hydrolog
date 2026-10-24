@@ -2,8 +2,8 @@
 
 ## Hydrological Toolkit Library
 
-**Version:** 1.5
-**Date:** 2026-10-19
+**Version:** 1.6
+**Date:** 2026-10-24
 **Status:** v1.0.0 in preparation
 
 ---
@@ -23,6 +23,7 @@
 - Classifying the river network
 - Determining hydrologic soil groups (HSG) from soil texture rasters
 - Flow statistics and hydrometry
+- Lumped hydrologic flood routing: lag, Muskingum, Muskingum-Cunge, cascade of linear reservoirs, level-pool reservoir, river network (ADR-0007)
 - A single command catalog as the source of truth for the library, the CLI, the MCP server and the agent guides
 
 ### 1.3 Analogy
@@ -295,8 +296,8 @@ The module requires optional dependencies: `pip install hydrolog[viz]`
 ### 2.2 ❌ OUT OF SCOPE
 
 **Functionality:**
-- ❌ Channel flow routing
-- ❌ Retention reservoir modeling
+- ❌ Hydraulic flood routing (Saint-Venant solvers, water levels, backwater, bridges and culverts, dam breaks) → Hydraulik, HEC-RAS, IMGW HD; lumped hydrologic routing is in scope (module `routing`)
+- ❌ Reservoir operation (gates, release rules); level-pool routing with a given storage-outflow relation is in scope
 - ❌ Flood simulations (inundation maps)
 - ❌ Water quality modeling
 - ❌ Erosion modeling
@@ -498,6 +499,7 @@ print(f"Time to peak: {result.time_to_peak_min} min")
 | **v0.6.4** | WatershedParams extension + UH ordinates + docs audit | `morphometry.watershed_params`, `runoff.generator`, `reports`, `docs` | ✅ Released |
 | **v0.7.0** | Hydrological statistics + Hydrometry | `statistics`, `hydrometrics`, `visualization.statistics` | ✅ Released |
 | **v1.0.0** | Stable API, command catalog, catalog-based CLI, MCP server, HSG, result serialization, calculation fixes | `catalog`, `operations`, `mcp`, `soil`, `cli`, `agent_guide` | 🔄 In preparation |
+| **after v1.0.0** | Flood routing | `routing` | 🔄 Branches `feature/routing-*` (ADR-0007) |
 
 ---
 
@@ -508,7 +510,7 @@ print(f"Time to peak: {result.time_to_peak_min} min")
 - **SCS-CN:** For catchments < 250 km² (a limitation of the USDA method)
 - **Uniform rainfall:** An assumption for small catchments
 - **AMC-II conditions:** Default (average)
-- **No routing:** Hydrograph for the closing cross-section
+- **Routing is lumped:** uniform rainfall over the network, inflow at the upstream end of a reach, no lateral inflow, no losses; hydraulic effects are not computed
 
 ### 5.2 Technical limitations
 
@@ -563,6 +565,6 @@ print(f"Time to peak: {result.time_to_peak_min} min")
 
 ---
 
-**Document version:** 1.5
-**Last updated:** 2026-10-19
+**Document version:** 1.6
+**Last updated:** 2026-10-24
 **Status:** v1.0.0 in preparation

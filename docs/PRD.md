@@ -354,6 +354,19 @@ print(f"tc = {tc:.1f} min")
 - [x] Commands `soil texture`, `soil hsg`, `soil hsg-stats`
 - [x] Rules consistent with Kartograf 0.8.0 (ADR-025); Hydrolog does not depend on Kartograf
 
+### 2.15 Flood routing (ADR-0007)
+
+#### US-R01: Route a hydrograph through a reach
+**As** a hydrologist
+**I want** to route a discharge hydrograph through a reach, a reservoir or a river network
+**So that** I get the delayed and attenuated hydrograph at the downstream end without a hydraulic model
+
+**Acceptance criteria:**
+- [ ] `hydrolog.routing`: `Hydrograph` (regular-step discharge table), lag, Muskingum, Muskingum-Cunge, cascade of linear reservoirs, level-pool reservoir and a river network, one command each in the group `route` (one branch per model; plan `docs/plans/2026-10-24-flood-routing.md`)
+- [ ] Hydrograph in and out as a table `time_min`, `discharge_m3s` (inline lists or a file; `--output` writes the outflow, with `--check` and `--force`)
+- [ ] Steady-state or given initial outflow, extension of the time axis until the outflow has settled, volume balance with the storage of the reach
+- [x] Hydraulics (levels, inundation, backwater, structures) stays out of scope; the documentation names Hydraulik, HEC-RAS and IMGW HD
+
 ---
 
 ## 3. Non-Functional Requirements
@@ -401,7 +414,7 @@ print(f"tc = {tc:.1f} min")
 - SCS-CN for catchments < 250 km²
 - Uniform rainfall over the whole catchment
 - AMC-II antecedent moisture conditions as the default
-- No flow routing
+- Routing is lumped hydrologic routing; no hydraulics (levels, inundation, backwater)
 
 ### 4.2 Technical Assumptions
 
@@ -506,7 +519,10 @@ print(f"tc = {tc:.1f} min")
 - [ ] Complete API documentation (MkDocs/Sphinx)
 - [ ] Publication on PyPI
 
+### After v1.0.0 - Flood routing *(planned, branches `feature/routing-*`, ADR-0007)*
+- [ ] `routing` and the command group `route`: lag, Muskingum, Muskingum-Cunge, cascade of linear reservoirs, level-pool reservoir, river network (plan: `docs/plans/2026-10-24-flood-routing.md`)
+
 ---
 
 **Document version:** 1.0.0 (in preparation)
-**Last updated:** 2026-10-19
+**Last updated:** 2026-10-24

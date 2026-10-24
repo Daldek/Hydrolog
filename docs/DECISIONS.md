@@ -12,3 +12,6 @@ the Nogat standard 2.1 adoption are in the plans of [plans/](plans/).
 | [0004](decisions/0004-settings-and-config-show.md) | Shared settings and `config show` | accepted | 2026-10-24 |
 | [0005](decisions/0005-error-registry.md) | Adopt the shared error registry | accepted | 2026-10-24 |
 | [0006](decisions/0006-mcp-server-conformance.md) | MCP server conformance with AGI section 5 | accepted | 2026-10-24 |
+| [0007](decisions/0007-flood-routing-enters-the-scope.md) | Lumped hydrologic flood routing enters the scope | accepted | 2026-10-24 |
+| [0008](decisions/0008-routing-conventions.md) | Routing conventions: hydrograph table, initial condition, tail, stability | accepted | 2026-10-24 |
+| [0009](decisions/0009-compact-index-line-for-large-groups.md) | One index line for a command group that would not fit the guide | accepted | 2026-10-24 |
