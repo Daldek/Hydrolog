@@ -5,29 +5,38 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "hydrolog"
 dynamic = ["version"]
-description = "Python library for hydrological calculations"
+description = "Watershed hydrology: SCS-CN, design hyetographs, time of concentration, unit hydrographs, morphometry, flow statistics, soil groups. Python library, CLI and MCP server; runs offline."
 readme = "README.md"
-license = {text = "MIT"}
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.12"
 authors = [
-    {name = "Daldek"}
+    {name = "Piotr de Bever", email = "git@debever.pl"}
 ]
 keywords = [
     "hydrology",
-    "SCS-CN",
+    "scs-cn",
+    "curve-number",
     "hydrograph",
+    "unit-hydrograph",
+    "hyetograph",
+    "time-of-concentration",
     "runoff",
     "precipitation",
-    "watershed"
+    "watershed",
+    "flow-statistics",
+    "mcp",
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
+    "Environment :: Console",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Hydrology",
+    "Typing :: Typed",
 ]
 dependencies = [
     "numpy>=1.24",
@@ -39,10 +48,13 @@ raster = [
     "rasterio>=1.3",
     "pyproj>=3.6",
 ]
+# Capped below 3 (DEV-6.4): the server is written against the low-level Server API of
+# MCP SDK v2, which implements MCP specification 2026-07-28; a major release may break
+# it. The "all" extra repeats the requirement.
 mcp = [
     "mcp>=2.3,<3",
 ]
-visualization = [
+viz = [
     "matplotlib>=3.7",
     "seaborn>=0.12",
 ]
@@ -59,7 +71,9 @@ hydrolog = "hydrolog.cli.main:main"
 
 [project.urls]
 Homepage = "https://github.com/Daldek/Hydrolog"
-Repository = "https://github.com/Daldek/Hydrolog.git"
+Source = "https://github.com/Daldek/Hydrolog.git"
+Documentation = "https://github.com/Daldek/Hydrolog/blob/main/docs/USAGE.md"
+Changelog = "https://github.com/Daldek/Hydrolog/blob/main/docs/CHANGELOG.md"
 Issues = "https://github.com/Daldek/Hydrolog/issues"
 
 [tool.setuptools.packages.find]
