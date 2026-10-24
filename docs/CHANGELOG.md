@@ -75,6 +75,9 @@ Rules moved from Kartograf 0.8.0 (`kartograf.hydrology.hsg`, ADR-025); Kartograf
 - English throughout (ECO-005): README, `docs/USAGE.md`, PRD, SCOPE, INTEGRATION, COMPUTATION_PATHS, CHANGELOG and the agent guides; Polish names are kept in parentheses where agents search for them. The plans moved to `docs/plans/`; architecture decisions are in `docs/decisions/` (ADR-0001 to ADR-0006) with the index `docs/DECISIONS.md`; `SECURITY.md`, `CONTRIBUTING.md`, `CONTRIBUTORS.md` and the pull request template were added.
 - `docs/PROGRESS.md` is reduced to the three sections of DOC-6.1 (status, next, open questions); history lives in this file and the git log.
 
+#### Flood routing (`hydrolog.routing`, ADR-0007 to ADR-0009; in progress)
+- `Hydrograph` (a discharge table at a regular time step, `time_min` and `discharge_m3s`, with the checks of ADR-0008 and the volume under it), `Reach` (the base class of the routing elements: initial condition, extension of the time axis until the inflow is released, non-negativity), `RoutingResult` (outflow, storage at both ends, volume balance, notices) and `LagReach` (the outflow is the inflow shifted by `lag_min`, linear interpolation for a fraction of a step). The catalog command `route lag` and the other models follow on their own branches (`docs/plans/2026-10-24-flood-routing.md`).
+
 ### Changed
 
 #### Breaking changes
