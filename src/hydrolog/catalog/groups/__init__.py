@@ -8,7 +8,7 @@ A *group* is a module of this package that exports ``COMMANDS``, a tuple of
 :func:`~hydrolog.catalog.data_commands` (commands inside a group are sorted by name).
 Modules are imported when the catalog is first read.
 
-To add a group: create ``hydrolog/catalog/groups/<module>.py`` with ``COMMANDS`` and
+To add a group: create ``src/hydrolog/catalog/groups/<module>.py`` with ``COMMANDS`` and
 append ``"<module>"`` to :data:`GROUP_MODULES` (design order: ``tc``, ``cn``, ``scs``,
 ``precip``, ``uh``, ``hydrograph``, ``morphometry``, ``network``, ``stats``,
 ``hydrometrics``, ``soil``, ``report``, then ``meta`` -- the group ``commands`` --
