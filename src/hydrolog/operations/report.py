@@ -19,6 +19,11 @@ from hydrolog._serialization import JsonResultMixin
 from hydrolog.catalog.envelope import Notice, OperationOutput, capture_warnings
 from hydrolog.exceptions import InvalidParameterError, OutputError
 from hydrolog.morphometry.watershed_params import WatershedParameters
+from hydrolog.operations._outputs import (
+    conflict_error,
+    plan_output,
+    plan_outputs,
+)
 from hydrolog.operations.hydrograph import (
     HydrographRun,
     UhModel,
@@ -223,6 +228,8 @@ def report_generate(
     include_formulas: bool = True,
     include_tables: bool = True,
     max_table_rows: int = 50,
+    force: bool = False,
+    check: bool = False,
 ) -> OperationOutput:
     """Markdown calculation report of a design hydrograph (``report generate``).
 
@@ -242,8 +249,8 @@ def report_generate(
     Parameters
     ----------
     output : str or os.PathLike
-        Markdown file to write; missing directories are created, an existing file is
-        replaced. It must not be one of the input files.
+        Markdown file to write; missing directories are created. An existing file is
+        replaced only with ``force``. It must not be one of the input files.
     watershed_name : str, optional
         Name in the report header; default: ``name`` of the watershed, else
         ``"Zlewnia"``.
@@ -287,12 +294,18 @@ def report_generate(
         Include the time series tables and the shape indicators, by default ``True``.
     max_table_rows : int, optional
         Rows of a table before it is abbreviated, at least 1, by default 50.
+    force : bool, optional
+        Replace an existing ``output`` file, by default ``False``.
+    check : bool, optional
+        Plan without effects: return the ``hydrolog-plan/1`` document of the target
+        (``write``, ``replace`` or ``conflict``) and write nothing.
 
     Returns
     -------
     OperationOutput
         ``result`` is a :class:`ReportResult`; ``files`` lists the report; the
-        notices are those of the hydrograph computation.
+        notices are those of the hydrograph computation. With ``check`` the result
+        is the plan.
 
     Raises
     ------
@@ -301,6 +314,9 @@ def report_generate(
         is below 1, or ``output`` is an input file.
     NotFoundError, InputDataError
         If an input file does not exist or cannot be read.
+    ConflictError
+        If ``output`` exists and ``force`` is not given (``details.reason``
+        ``output_exists``).
     OutputError
         If the report cannot be written.
     """
@@ -316,6 +332,11 @@ def report_generate(
         )
     target = Path(os.fspath(output))
     _check_output(target, {"watershed_file": watershed_file, "input_file": input_file})
+    plan = plan_outputs({"output": target}, force=force)
+    if check:
+        return plan_output(plan)
+    if (error := conflict_error(plan)) is not None:
+        raise error
 
     # compute_hydrograph captures warnings itself: it must not run inside our block
     run = compute_hydrograph(
@@ -380,7 +401,7 @@ def report_generate(
     kept: list[Notice] = [
         notice
         for notice in warned
-        if not (series_given and "ReportConfig.hietogram_type" in notice.text)
+        if not (series_given and "ReportConfig.hietogram_type" in notice.message)
     ]
     _write(content, target)
     result = run.result
@@ -401,4 +422,6 @@ def report_generate(
         runoff_coefficient=result.runoff_coefficient,
         cn_used=result.cn_used,
     )
-    return OperationOutput(summary, [*run.notices, *kept], files=(target,))
+    return OperationOutput(
+        summary, [*run.notices, *kept], files=(target,), replaced=plan.replaced
+    )

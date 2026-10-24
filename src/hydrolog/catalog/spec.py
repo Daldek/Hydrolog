@@ -49,7 +49,7 @@ import numbers
 import os
 import re
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Final, Literal, NoReturn, get_args
 
 from hydrolog.exceptions import InvalidParameterError
@@ -66,19 +66,41 @@ OptionType = Literal[
     "path",
     "object",
 ]
+PathRole = Literal["input", "output"]
+Cardinality = Literal["single", "bounded", "unbounded"]
 Lang = Literal["pl", "en"]
 
 OPTION_TYPES: Final[tuple[str, ...]] = get_args(OptionType)
 """Allowed values of :attr:`Option.type`."""
 LANGUAGES: Final[tuple[str, ...]] = get_args(Lang)
-"""Languages of catalog texts (Polish is the primary one)."""
-SUMMARY_MAX_CHARS: Final = 120
-"""Maximum length of :attr:`Command.summary` and :attr:`Command.summary_en`."""
+"""Languages of catalog texts (English is authored, Polish is the translation)."""
+TOOL: Final = "hydrolog"
+"""Name of the tool: the prefix of every ``operation_id`` (AGI-2.2)."""
+SUMMARY_MAX_CHARS: Final = 100
+"""Maximum length of :attr:`Command.summary` and its Polish copy (DOC-1.7)."""
+MCP_DESCRIPTION_MAX_CHARS: Final = 600
+"""Maximum length of summary, description and rules together (DOC-1.7, AGI-5.3)."""
+TOOL_NAME_MAX_CHARS: Final = 48
+"""Maximum length of an ``operation_id``, the MCP tool name (AGI-5.2)."""
+CORE_FAMILY_MAX: Final = 10
+"""Maximum number of commands of the ``core`` family (AGI-5.12); a catalog test."""
+ERROR_CODE_NAMES: Final[tuple[str, ...]] = (
+    "validation_error",
+    "not_found",
+    "data_error",
+    "calculation_error",
+    "missing_dependency",
+    "forbidden",
+    "io_error",
+    "conflict",
+)
+"""Registry codes a command can declare in :attr:`Command.errors`."""
 
 _NUMERIC_TYPES: Final = ("number", "integer", "number_list")
 _OPTION_NAME = re.compile(r"[a-z][a-z0-9_]*")
 _COMMAND_NAME = re.compile(r"[a-z][a-z0-9]* [a-z][a-z0-9]*(?:-[a-z0-9]+)*")
-_FUNCTION_PATH = re.compile(r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*:[A-Za-z_]\w*")
+_RESULT_SCHEMA = re.compile(r"hydrolog-[a-z][a-z0-9-]*/[1-9][0-9]*")
+_FUNCTION_PATH = re.compile(r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+")
 _SHOWN_MAX_CHARS = 200
 
 _EXPECTED: Final[Mapping[str, str]] = {
@@ -364,6 +386,32 @@ _NORMALIZERS: Final[Mapping[str, Callable[..., Any]]] = {
 
 
 @dataclass(frozen=True)
+class Effects:
+    """What a command does to the outside world (AGI-2.2 ``effects``).
+
+    Attributes
+    ----------
+    read_only : bool
+        The command changes nothing.
+    writes : {"none", "add", "replace", "delete"}
+        Kind of write; ``"replace"`` for a command that writes a file and replaces
+        an existing one with ``force``.
+    idempotent : bool
+        Calling it again with the same options gives the same state.
+    network : bool
+        The command uses the network.
+    destructive : bool
+        The command can replace or delete existing data.
+    """
+
+    read_only: bool
+    writes: Literal["none", "add", "replace", "delete"]
+    idempotent: bool
+    network: bool
+    destructive: bool
+
+
+@dataclass(frozen=True)
 class Option:
     """One option of a command: a keyword argument of its operation.
 
@@ -377,9 +425,9 @@ class Option:
     type : OptionType
         Value type (see the module docstring).
     description : str
-        Polish description, for humans and agents.
-    description_en : str
-        English description.
+        English description, for humans and agents.
+    description_pl : str
+        Polish translation of ``description`` (the ``i18n.pl`` text).
     required : bool, optional
         The option must be given; incompatible with ``default``.
     default : object, optional
@@ -394,8 +442,12 @@ class Option:
     unit : str, optional
         Unit of the value (``"km"``, ``"m/m"``, ``"mm"``, ``"min"``, ``"km2"``,
         ``"m3/s"``...).
-    writes : bool, optional
-        The option is an output path that the command writes (``path`` only).
+    path_role : {"input", "output"}, optional
+        Role of a ``path`` option, required for it and forbidden for other types:
+        ``"input"`` is read, ``"output"`` is a file the command writes.
+    meanings, meanings_pl : Mapping of str to str, optional
+        One-line meaning of every allowed value of a ``choice`` option (English,
+        Polish); the keys are exactly ``choices``.
 
     Raises
     ------
@@ -406,7 +458,7 @@ class Option:
     name: str
     type: OptionType
     description: str
-    description_en: str
+    description_pl: str
     required: bool = False
     default: object = None
     choices: tuple[str, ...] = ()
@@ -414,7 +466,9 @@ class Option:
     maximum: float | None = None
     exclusive_minimum: float | None = None
     unit: str | None = None
-    writes: bool = False
+    path_role: PathRole | None = None
+    meanings: Mapping[str, str] = field(default_factory=dict)
+    meanings_pl: Mapping[str, str] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         """Validate the field values."""
@@ -444,7 +498,7 @@ class Option:
 
         if self.type not in OPTION_TYPES:
             raise bad(f"unknown type {self.type!r}; allowed: {', '.join(OPTION_TYPES)}")
-        for field_name in ("description", "description_en"):
+        for field_name in ("description", "description_pl"):
             text = getattr(self, field_name)
             if not isinstance(text, str) or not text.strip():
                 raise bad(f"{field_name} must be a non-empty string")
@@ -457,8 +511,18 @@ class Option:
                 raise bad("choices must be non-empty strings")
             if len(set(self.choices)) != len(self.choices):
                 raise bad("choices must be unique")
-        elif self.choices:
-            raise bad("choices are allowed only for type 'choice'")
+            for label, meanings in (
+                ("meanings", self.meanings),
+                ("meanings_pl", self.meanings_pl),
+            ):
+                if set(meanings) != set(self.choices):
+                    raise bad(f"{label} must give a meaning for every choice")
+                if not all(
+                    isinstance(text, str) and text.strip() for text in meanings.values()
+                ):
+                    raise bad(f"{label} must be non-empty strings")
+        elif self.choices or self.meanings or self.meanings_pl:
+            raise bad("choices and meanings are allowed only for type 'choice'")
         bounds = {
             "minimum": self.minimum,
             "maximum": self.maximum,
@@ -479,8 +543,11 @@ class Option:
         lower = self.minimum if self.minimum is not None else self.exclusive_minimum
         if lower is not None and self.maximum is not None and lower > self.maximum:
             raise bad("the lower bound exceeds maximum")
-        if self.writes and self.type != "path":
-            raise bad("writes is allowed only for type 'path'")
+        if self.type == "path":
+            if self.path_role not in get_args(PathRole):
+                raise bad("a path option needs path_role 'input' or 'output'")
+        elif self.path_role is not None:
+            raise bad("path_role is allowed only for type 'path'")
         if self.unit is not None and (not isinstance(self.unit, str) or not self.unit):
             raise bad("unit must be a non-empty string")
 
@@ -489,7 +556,12 @@ class Option:
         """str: command-line flag, ``--kebab-case`` of :attr:`name`."""
         return "--" + self.name.replace("_", "-")
 
-    def describe(self, lang: Lang = "pl") -> str:
+    @property
+    def writes(self) -> bool:
+        """bool: the option is an output path (``path_role == "output"``)."""
+        return self.path_role == "output"
+
+    def describe(self, lang: Lang = "en") -> str:
         """Return the description in ``lang``.
 
         Parameters
@@ -500,9 +572,9 @@ class Option:
         Returns
         -------
         str
-            ``description`` for ``"pl"``, ``description_en`` for ``"en"``.
+            ``description`` for ``"en"``, ``description_pl`` for ``"pl"``.
         """
-        return self.description_en if lang == "en" else self.description
+        return self.description_pl if lang == "pl" else self.description
 
     def normalize(self, value: object) -> Any:
         """Validate one value and return its normalized form.
@@ -528,7 +600,7 @@ class Option:
         """
         return _NORMALIZERS[self.type](self, value)
 
-    def json_schema(self, lang: Lang = "pl") -> dict[str, Any]:
+    def json_schema(self, lang: Lang = "en") -> dict[str, Any]:
         """Describe the option as a JSON Schema (2020-12) property.
 
         Parameters
@@ -599,23 +671,34 @@ class Command:
         ``"<group> <command>"``, lowercase, e.g. ``"tc kirpich"`` or
         ``"stats flood-frequency"``.
     operation_id : str
-        MCP tool name; must equal ``name`` with spaces and hyphens replaced by
-        underscores (``"tc_kirpich"``).
-    summary, summary_en : str
-        One-line summary (Polish, English), at most 120 characters.
-    description, description_en : str
-        Longer text for agents, including the method and literature.
+        MCP tool name; must equal ``hydrolog_`` followed by ``name`` with spaces and
+        hyphens replaced by underscores (``"hydrolog_tc_kirpich"``).
+    summary, summary_pl : str
+        One-line summary (English, Polish), at most 100 characters (DOC-1.7).
+    description, description_pl : str
+        Longer text for agents, including the method and literature (English,
+        Polish).
     function : str
         ``"<module>:<attribute>"`` of the operation, e.g.
-        ``"hydrolog.operations:tc_kirpich"``; imported lazily by ``run_command`` and
+        ``"hydrolog.operations.tc_kirpich"``; imported lazily by ``run_command`` and
         called with keyword arguments named like the options.
     options : tuple of Option
         Options in catalog order; names are unique.
     one_of : tuple of tuple of str, optional
         Alternative option groups; exactly one group must be given completely.
-    writes : bool, optional
-        The command writes files; must be true exactly when an option has
-        ``writes=True``.
+    result_schema : str
+        Id of the domain document in the ``result`` of the envelope
+        (``"hydrolog-<group>-<command>/1"``).
+    cardinality : {"single", "bounded", "unbounded"}, optional
+        Size class of the result (AGI-2.2).
+    rules, rules_pl : tuple of str, optional
+        Short imperative rules for agents (English, Polish).
+    errors : tuple of str, optional
+        Registry codes the command can raise besides ``internal_error``.
+    core : bool, optional
+        The command belongs to the ``core`` family of MCP tools (at most 10).
+    example_results : tuple of Mapping, optional
+        Excerpt of the result of each example, in the order of ``examples``.
     examples : tuple of Mapping, optional
         Example option sets (valid inputs of the command).
 
@@ -628,14 +711,20 @@ class Command:
     name: str
     operation_id: str
     summary: str
-    summary_en: str
+    summary_pl: str
     description: str
-    description_en: str
+    description_pl: str
     function: str
     options: tuple[Option, ...]
     one_of: tuple[tuple[str, ...], ...] = ()
-    writes: bool = False
     examples: tuple[Mapping[str, object], ...] = ()
+    result_schema: str = ""
+    cardinality: Cardinality = "single"
+    rules: tuple[str, ...] = ()
+    rules_pl: tuple[str, ...] = ()
+    errors: tuple[str, ...] = ()
+    core: bool = False
+    example_results: tuple[Mapping[str, object], ...] = ()
 
     def __post_init__(self) -> None:
         """Validate the field values."""
@@ -648,36 +737,66 @@ class Command:
                 "name must be '<group> <command>' in lowercase "
                 "(letters, digits, hyphens inside the command)"
             )
-        expected_id = self.name.replace(" ", "_").replace("-", "_")
+        expected_id = f"{TOOL}_" + self.name.replace(" ", "_").replace("-", "_")
         if self.operation_id != expected_id:
             raise bad(
                 f"operation_id must be {expected_id!r}, got {self.operation_id!r}"
             )
-        for field_name in ("summary", "summary_en"):
+        for field_name in ("summary", "summary_pl"):
             text = getattr(self, field_name)
             if not isinstance(text, str) or not text.strip() or "\n" in text:
                 raise bad(f"{field_name} must be a non-empty single line")
             if len(text) > SUMMARY_MAX_CHARS:
                 raise bad(f"{field_name} is longer than {SUMMARY_MAX_CHARS} characters")
-        for field_name in ("description", "description_en"):
+        for field_name in ("description", "description_pl"):
             text = getattr(self, field_name)
             if not isinstance(text, str) or not text.strip():
                 raise bad(f"{field_name} must be a non-empty string")
+        if not _RESULT_SCHEMA.fullmatch(self.result_schema):
+            raise bad(
+                "result_schema must look like 'hydrolog-<kind>/<n>', got "
+                f"{self.result_schema!r}"
+            )
+        if len(self.operation_id) > TOOL_NAME_MAX_CHARS:
+            raise bad(f"operation_id is longer than {TOOL_NAME_MAX_CHARS} characters")
         if not isinstance(self.function, str) or not _FUNCTION_PATH.fullmatch(
             self.function
         ):
-            raise bad("function must have the form 'package.module:attribute'")
-        for field_name in ("options", "one_of", "examples"):
+            raise bad("function must be a dotted path 'package.module.function'")
+        for field_name in (
+            "options",
+            "one_of",
+            "examples",
+            "rules",
+            "rules_pl",
+            "errors",
+            "example_results",
+        ):
             if not isinstance(getattr(self, field_name), tuple):
                 raise bad(f"{field_name} must be a tuple")
+        if len(self.rules) != len(self.rules_pl):
+            raise bad("rules and rules_pl must have the same number of entries")
+        if not self.examples:
+            raise bad("at least one example is required")
+        if len(self.example_results) != len(self.examples):
+            raise bad("example_results must hold one excerpt per example")
+        if not all(isinstance(item, Mapping) for item in self.example_results):
+            raise bad("each example result must be a mapping")
+        unknown_errors = sorted(set(self.errors) - set(ERROR_CODE_NAMES))
+        if unknown_errors or len(set(self.errors)) != len(self.errors):
+            raise bad(f"errors must be unique registry codes, got {list(self.errors)}")
+        budget = len(self.summary) + len(self.description) + len(" ".join(self.rules))
+        if budget > MCP_DESCRIPTION_MAX_CHARS:
+            raise bad(
+                f"summary, description and rules take {budget} characters; the "
+                f"MCP description allows {MCP_DESCRIPTION_MAX_CHARS}"
+            )
         if not all(isinstance(option, Option) for option in self.options):
             raise bad("options must hold Option instances")
         names = [option.name for option in self.options]
         if len(set(names)) != len(names):
             raise bad("option names must be unique")
         self._check_one_of(names, bad)
-        if self.writes != any(option.writes for option in self.options):
-            raise bad("writes must be true exactly when an option has writes=True")
         for number, example in enumerate(self.examples):
             if not isinstance(example, Mapping):
                 raise bad(f"example #{number} must be a mapping")
@@ -702,6 +821,32 @@ class Command:
             overlap = sorted(required.intersection(group))
             if overlap:
                 raise bad(f"required options cannot be part of one_of: {overlap}")
+
+    @property
+    def writes(self) -> bool:
+        """bool: the command writes a file (an option has ``path_role="output"``)."""
+        return any(option.writes for option in self.options)
+
+    @property
+    def effects(self) -> Effects:
+        """Effects: what the command does to the outside world (AGI-2.2)."""
+        return Effects(
+            read_only=not self.writes,
+            writes="replace" if self.writes else "none",
+            idempotent=True,
+            network=False,
+            destructive=self.writes,
+        )
+
+    @property
+    def check(self) -> str | None:
+        """Return the command that plans this one (itself, with ``check``) or None."""
+        return self.name if self.writes else None
+
+    @property
+    def families(self) -> tuple[str, ...]:
+        """Return the MCP tool families: the group, and ``core`` where it applies."""
+        return (self.group, "core") if self.core else (self.group,)
 
     @property
     def group(self) -> str:
@@ -736,10 +881,10 @@ class Command:
                 return option
         raise KeyError(name)
 
-    def summarize(self, lang: Lang = "pl") -> str:
+    def summarize(self, lang: Lang = "en") -> str:
         """Return the one-line summary in ``lang``."""
-        return self.summary_en if lang == "en" else self.summary
+        return self.summary_pl if lang == "pl" else self.summary
 
-    def describe(self, lang: Lang = "pl") -> str:
+    def describe(self, lang: Lang = "en") -> str:
         """Return the long description in ``lang``."""
-        return self.description_en if lang == "en" else self.description
+        return self.description_pl if lang == "pl" else self.description

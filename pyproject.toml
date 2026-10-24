@@ -69,6 +69,7 @@ all = [
 
 [project.scripts]
 hydrolog = "hydrolog.cli.main:main"
+hydrolog-mcp = "hydrolog.mcp.server:main"
 
 [project.urls]
 Homepage = "https://github.com/Daldek/Hydrolog"

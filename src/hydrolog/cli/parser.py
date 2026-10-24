@@ -17,9 +17,9 @@ Conventions of the command line
 * A ``boolean`` option is the pair ``--flag`` (true) and ``--no-flag`` (false); it
   takes no value.
 * A negative number is accepted after a flag (``--offset -5``, ``--values -1,2``).
-* The global flags ``--json``, ``--schema``, ``--lang`` and ``-V/--version`` are
-  accepted before the group and after the command. A command option named ``lang``
-  (the language of the texts in the result) *is* the global ``--lang``.
+* The global flags ``--json``, ``--schema``, ``--lang``, ``-v/--verbose``,
+  ``-q/--quiet`` and ``-V/--version`` are accepted before the group and after the
+  command; a command option may not use their names.
 """
 
 from __future__ import annotations
@@ -58,13 +58,22 @@ __all__ = [
     "parse_command_line",
 ]
 
-GLOBAL_FLAGS: Final = ("--help", "--json", "--schema", "--lang", "--version")
+GLOBAL_FLAGS: Final = (
+    "--help",
+    "--json",
+    "--schema",
+    "--lang",
+    "--verbose",
+    "--quiet",
+    "--version",
+)
 """Flags of every command line; a command option may not use them."""
 
 DEST_JSON: Final = "global:json"
 DEST_SCHEMA: Final = "global:schema"
 DEST_LANG: Final = "global:lang"
-DEST_ALLOW_DIR: Final = "mcp:allow_dir"
+DEST_VERBOSE: Final = "global:verbose"
+DEST_QUIET: Final = "global:quiet"
 """Namespace attributes of the flags that are not options of a command."""
 
 _NEGATIVE_VALUE: Final = re.compile(r"-[0-9.]")
@@ -79,7 +88,7 @@ _METAVARS: Final = {
     "object_list": "JSON",
 }
 _NUMERIC: Final = ("number", "integer", "number_list")
-_MAX_EXAMPLES: Final = 3
+_VALUE_INDENT: Final = 4
 _USAGE_HANG: Final = 4
 
 
@@ -139,13 +148,25 @@ class CatalogParser(argparse.ArgumentParser):
     command : Command, optional
         The catalog command this parser reads (``None`` for the root, a group and
         ``mcp``).
+    headline : str, optional
+        One sentence printed before the usage line (AGI-3.7): what the command does.
     """
 
     def __init__(
-        self, *args: Any, command: Command | None = None, **kwargs: Any
+        self,
+        *args: Any,
+        command: Command | None = None,
+        headline: str | None = None,
+        **kwargs: Any,
     ) -> None:
         super().__init__(*args, **kwargs)
         self.command = command
+        self.headline = headline
+
+    def format_help(self) -> str:
+        """Return the help text; it starts with the headline, if there is one."""
+        body = super().format_help()
+        return f"{self.headline}\n\n{body}" if self.headline else body
 
     def error(self, message: str) -> NoReturn:
         """Raise :class:`UsageError` instead of printing and exiting."""
@@ -332,14 +353,8 @@ class _BooleanAction(argparse.Action):
         setattr(namespace, self.dest, not (option_string or "").startswith("--no-"))
 
 
-def _add_general_arguments(
-    group: argparse._ArgumentGroup, lang: Lang, lang_option: Option | None = None
-) -> None:
-    """Add ``-h``, ``-V``, ``--json``, ``--schema`` and ``--lang`` to ``group``.
-
-    ``lang_option`` is the command's own ``lang`` option; its description then explains
-    ``--lang``.
-    """
+def _add_general_arguments(group: argparse._ArgumentGroup, lang: Lang) -> None:
+    """Add ``-h``, ``-V``, ``--json``, ``--schema``, ``--lang``, ``-v`` and ``-q``."""
     import hydrolog
 
     group.add_argument("-h", "--help", action="help", help=text("help_help", lang))
@@ -364,13 +379,28 @@ def _add_general_arguments(
         default=argparse.SUPPRESS,
         help=text("help_schema", lang),
     )
-    lang_help = lang_option.describe(lang) if lang_option else text("help_lang", lang)
     group.add_argument(
         "--lang",
         dest=DEST_LANG,
         metavar="{pl,en}",
         default=argparse.SUPPRESS,
-        help=_escape(lang_help),
+        help=_escape(text("help_lang", lang)),
+    )
+    group.add_argument(
+        "-v",
+        "--verbose",
+        dest=DEST_VERBOSE,
+        action="store_true",
+        default=argparse.SUPPRESS,
+        help=text("help_verbose", lang),
+    )
+    group.add_argument(
+        "-q",
+        "--quiet",
+        dest=DEST_QUIET,
+        action="store_true",
+        default=argparse.SUPPRESS,
+        help=text("help_quiet", lang),
     )
 
 
@@ -428,7 +458,33 @@ def _command_usage(command: Command, lang: Lang) -> str:
     return _escape(_wrap_usage(words, lang))
 
 
+def _values_block(command: Command, lang: Lang) -> str:
+    """Return the values of the choice options with their meanings (AGI-3.7)."""
+    width = max(shutil.get_terminal_size().columns - 2, 40)
+    lines = [text("values_title", lang)]
+    for option in command.options:
+        if option.type != "choice":
+            continue
+        meanings = option.meanings_pl if lang == "pl" else option.meanings
+        lines.append(f"  {option.flag}:")
+        pad = max(len(value) for value in option.choices)
+        for value in option.choices:
+            lead = " " * _VALUE_INDENT + value.ljust(pad) + "  "
+            lines.extend(
+                textwrap.wrap(
+                    meanings[value],
+                    width,
+                    initial_indent=lead,
+                    subsequent_indent=" " * len(lead),
+                    break_long_words=False,
+                    break_on_hyphens=False,
+                )
+            )
+    return "\n".join(lines)
+
+
 def _command_epilog(command: Command, lang: Lang) -> str:
+    """Return the notes after the options; the examples come last (AGI-3.7)."""
     blocks: list[str] = []
     if command.one_of:
         by_name = {option.name: option for option in command.options}
@@ -438,15 +494,16 @@ def _command_epilog(command: Command, lang: Lang) -> str:
             for group in command.one_of
         )
         blocks.append("\n".join(lines))
+    if any(option.type == "choice" for option in command.options):
+        blocks.append(_values_block(command, lang))
+    if any(option.type in _NUMERIC for option in command.options):
+        blocks.append(text("negative_values", lang))
     if command.examples:
         lines = [text("examples", lang)]
         lines.extend(
-            "  " + format_example(command, example)
-            for example in command.examples[:_MAX_EXAMPLES]
+            "  " + format_example(command, example) for example in command.examples
         )
         blocks.append("\n".join(lines))
-    if any(option.type in _NUMERIC for option in command.options):
-        blocks.append(text("negative_values", lang))
     return "\n\n".join(blocks)
 
 
@@ -457,8 +514,7 @@ def build_command_parser(command: Command, lang: Lang = "pl") -> CatalogParser:
     ----------
     command : Command
         The command; each option becomes a flag (``--length-km``), a ``boolean``
-        option the pair ``--flag``/``--no-flag``. An option called ``lang`` is not added
-        again: the global ``--lang`` is that option.
+        option the pair ``--flag``/``--no-flag``.
     lang : {"pl", "en"}, optional
         Language of the help.
 
@@ -472,27 +528,24 @@ def build_command_parser(command: Command, lang: Lang = "pl") -> CatalogParser:
     ------
     ValueError
         If an option name collides with a global flag (``json``, ``schema``,
-        ``help``, ``version``, ``lang`` for another type) or with another option of
-        the command.
+        ``help``, ``version``, ``lang``, ``verbose``, ``quiet``) or with another
+        option of the command.
     """
     parser = CatalogParser(
         prog=f"hydrolog {command.name}",
         usage=_command_usage(command, lang),
-        description=f"{command.summarize(lang)}\n\n{command.describe(lang)}",
+        description=command.describe(lang),
         epilog=_command_epilog(command, lang),
         formatter_class=_formatter_for(lang),
         add_help=False,
         allow_abbrev=False,
         command=command,
+        headline=command.summarize(lang),
     )
     required = parser.add_argument_group(text("required_options", lang))
     optional = parser.add_argument_group(text("options", lang))
-    lang_option: Option | None = None
     taken: set[str] = set(GLOBAL_FLAGS)
     for option in command.options:
-        if option.name == "lang" and option.type == "choice":
-            lang_option = option
-            continue
         spellings = {option.flag}
         if option.type == "boolean":
             spellings.add("--no-" + option.flag[2:])
@@ -521,7 +574,7 @@ def build_command_parser(command: Command, lang: Lang = "pl") -> CatalogParser:
                 help=_option_help(option, lang),
             )
     general = parser.add_argument_group(text("general_options", lang))
-    _add_general_arguments(general, lang, lang_option)
+    _add_general_arguments(general, lang)
     return parser
 
 
@@ -537,6 +590,8 @@ class CommandLine:
         ``--json`` was given.
     schema : bool
         ``--schema`` was given.
+    verbose, quiet : bool
+        ``-v/--verbose`` and ``-q/--quiet`` were given.
 
     Notes
     -----
@@ -547,6 +602,8 @@ class CommandLine:
     options: dict[str, Any]
     json: bool
     schema: bool
+    verbose: bool = False
+    quiet: bool = False
 
 
 def join_negative_values(arguments: Sequence[str], command: Command) -> list[str]:
@@ -665,6 +722,8 @@ def parse_command_line(
         options=options,
         json=bool(given.get(DEST_JSON, False)),
         schema=bool(given.get(DEST_SCHEMA, False)),
+        verbose=bool(given.get(DEST_VERBOSE, False)),
+        quiet=bool(given.get(DEST_QUIET, False)),
     )
 
 
@@ -674,15 +733,22 @@ def parse_command_line(
 def _help_parser(
     prog: str, usage: str, description: str, epilog: str, lang: Lang
 ) -> CatalogParser:
-    """Return a parser that only prints help (``usage`` is escaped, texts are not)."""
+    """Return a parser that only prints help (``usage`` is escaped, texts are not).
+
+    The first sentence of ``description`` becomes the headline (AGI-3.7); the rest, if
+    any, stays the description.
+    """
+    first, _, rest = description.strip().partition(". ")
+    headline = first.rstrip(".") + "." if first else None
     return CatalogParser(
         prog=prog,
         usage=_escape(usage),
-        description=description or None,
+        description=rest or None,
         epilog=epilog or None,
         formatter_class=_formatter_for(lang),
         add_help=False,
         allow_abbrev=False,
+        headline=headline,
     )
 
 
@@ -728,7 +794,7 @@ def build_root_parser(commands: Sequence[Command], lang: Lang = "pl") -> Catalog
     lead = " " * len(text("usage_prefix", lang))
     usage = (
         f"hydrolog {text('root_usage_suffix', lang)}\n{lead}"
-        "hydrolog mcp [--allow-dir DIR] [--lang {pl,en}]"
+        "hydrolog mcp [--allow-dir DIR]... [--allow-writes] [--tools FAMILIES]"
     )
     epilog = "\n\n".join(
         block
@@ -770,7 +836,7 @@ def build_group_parser(
     parser = _help_parser(
         f"hydrolog {group}",
         f"hydrolog {group} {text('group_usage_suffix', lang)}",
-        "",
+        text("group_description", lang, group=group),
         text("group_footer", lang, group=group),
         lang,
     )
@@ -797,30 +863,29 @@ def build_mcp_parser(lang: Lang = "pl") -> CatalogParser:
     Returns
     -------
     CatalogParser
-        Parser of ``--allow-dir DIR`` (repeatable), ``--lang`` and ``-h``.
+        Parser of the server options (:func:`hydrolog.mcp.server.add_arguments`:
+        ``--allow-dir DIR`` (repeatable), ``--allow-writes``, ``--tools FAMILIES``)
+        and ``-h``. It has no ``--lang``: the MCP output is always English, so the
+        option is refused when the server starts (:mod:`hydrolog.cli.main`); it still
+        selects the language of this help.
     """
+    from hydrolog.mcp.server import add_arguments
+
     parser = _help_parser(
         "hydrolog mcp",
-        "hydrolog mcp [--allow-dir DIR]... [--lang {pl,en}]",
+        "hydrolog mcp [--allow-dir DIR]... [--allow-writes] [--tools FAMILIES]",
         text("mcp_description", lang),
         "",
         lang,
     )
     group = parser.add_argument_group(text("options", lang))
     group.add_argument("-h", "--help", action="help", help=text("help_help", lang))
-    group.add_argument(
-        "--allow-dir",
-        dest=DEST_ALLOW_DIR,
-        action="append",
-        metavar="DIR",
-        default=argparse.SUPPRESS,
-        help=text("mcp_allow_dir", lang),
-    )
-    group.add_argument(
-        "--lang",
-        dest=DEST_LANG,
-        metavar="{pl,en}",
-        default=argparse.SUPPRESS,
-        help=text("mcp_lang", lang),
+    add_arguments(
+        group,
+        {
+            "allow_dir": text("mcp_allow_dir", lang),
+            "allow_writes": text("mcp_allow_writes", lang),
+            "tools": text("mcp_tools", lang),
+        },
     )
     return parser

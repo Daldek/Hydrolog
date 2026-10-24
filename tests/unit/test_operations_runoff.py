@@ -194,8 +194,8 @@ class TestTimeOfConcentration:
             _, notices = unwrap(ops.tc_kirpich(length_km=120.0, slope_m_per_m=0.0001))
         assert leaked == []
         assert [n.level for n in notices] == ["warning", "warning"]
-        assert "length_km=120.0" in notices[0].text
-        assert "slope_m_per_m=0.0001" in notices[1].text
+        assert "length_km=120.0" in notices[0].message
+        assert "slope_m_per_m=0.0001" in notices[1].message
 
     @pytest.mark.parametrize("method", TC_METHODS)
     def test_watershed_matches_calculate_tc(self, method):
@@ -908,7 +908,7 @@ class TestHietogram:
         assert [(n.level, n.code) for n in notices] == [
             ("warning", "duration_not_covered")
         ]
-        assert "covers 90 min" in notices[0].text
+        assert "covers 90 min" in notices[0].message
 
     def test_values_outside_the_library_ranges_are_validation_errors(self):
         """Step longer than the duration and a peak outside (0, 1)."""
@@ -994,7 +994,7 @@ class TestArealPrecipitation:
         )
         assert sorted(result.station_weights) == ["Balice", "Skawina"]
         assert [n.code for n in notices] == ["stations_without_polygon"]
-        assert "Krzeszowice" in notices[0].text
+        assert "Krzeszowice" in notices[0].message
 
     def test_idw_at_a_point_matches_the_library(self):
         """Point interpolation with the default and a given exponent."""
@@ -1958,7 +1958,7 @@ class TestHydrographGenerate:
             ("warning", "user_warning"),
             ("warning", "user_warning"),
         ]
-        assert "kirpich: length_km=120.0" in notices[0].text
+        assert "kirpich: length_km=120.0" in notices[0].message
 
     def test_duration_not_covered_is_reported(self):
         """The truncated hyetograph is flagged exactly like ``precip hietogram``."""
@@ -2353,7 +2353,7 @@ class TestDeclarations:
     @pytest.mark.parametrize("command", _my_commands(), ids=lambda c: c.name)
     def test_python_defaults_equal_catalog_defaults(self, command):
         """An option default is the default of the operation parameter."""
-        function = getattr(ops, command.function.split(":")[1])
+        function = getattr(ops, command.function.rpartition(".")[2])
         parameters = inspect.signature(function).parameters
         for option in command.options:
             default = parameters[option.name].default

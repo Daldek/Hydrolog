@@ -12,11 +12,23 @@ from __future__ import annotations
 import dataclasses
 import json
 import math
+import sys
 from enum import Enum
 from pathlib import PurePath
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import numpy as np
+if TYPE_CHECKING:
+    import numpy as np
+
+
+def _with_numpy(python: tuple[type, ...], name: str) -> tuple[Any, ...]:
+    """Add the NumPy type ``name`` to ``python`` when NumPy is already imported.
+
+    A value of a NumPy type can only exist once NumPy is imported, so the module is
+    never imported here: building a catalog (MCP ``tools/list``) stays light.
+    """
+    numpy = sys.modules.get("numpy")
+    return python if numpy is None else (*python, getattr(numpy, name))
 
 
 def _key_to_str(key: Any) -> str:
@@ -25,11 +37,11 @@ def _key_to_str(key: Any) -> str:
         return str(key)
     if isinstance(key, Enum):
         return _key_to_str(key.value)
-    if isinstance(key, (bool, np.bool_)):
+    if isinstance(key, _with_numpy((bool,), "bool_")):
         return "true" if bool(key) else "false"
-    if isinstance(key, (int, np.integer)):
+    if isinstance(key, _with_numpy((int,), "integer")):
         return str(int(key))
-    if isinstance(key, (float, np.floating)):
+    if isinstance(key, _with_numpy((float,), "floating")):
         return str(float(key))
     if isinstance(key, PurePath):
         return key.as_posix()
@@ -40,6 +52,8 @@ def _array_to_list(array: np.ndarray) -> Any:
     """Convert an ndarray to nested lists, mapping NaN/Inf to ``None``."""
     if array.dtype.kind in "iub":
         return array.tolist()
+    import numpy as np
+
     if array.dtype.kind == "f" and bool(np.isfinite(array).all()):
         return array.tolist()
     return to_jsonable(array.tolist())
@@ -88,16 +102,16 @@ def to_jsonable(obj: Any) -> Any:
         return None
     if isinstance(obj, Enum):
         return to_jsonable(obj.value)
-    if isinstance(obj, (bool, np.bool_)):
+    if isinstance(obj, _with_numpy((bool,), "bool_")):
         return bool(obj)
-    if isinstance(obj, (int, np.integer)):
+    if isinstance(obj, _with_numpy((int,), "integer")):
         return int(obj)
-    if isinstance(obj, (float, np.floating)):
+    if isinstance(obj, _with_numpy((float,), "floating")):
         value = float(obj)
         return value if math.isfinite(value) else None
     if isinstance(obj, str):
         return str(obj)
-    if isinstance(obj, np.ndarray):
+    if isinstance(obj, _with_numpy((), "ndarray")):
         return _array_to_list(obj)
     if isinstance(obj, PurePath):
         return obj.as_posix()

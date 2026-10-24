@@ -28,11 +28,11 @@ _ANNUAL_MAXIMA = f"{_FIXTURES}/annual_maxima.csv"
 _RETURN_PERIODS = Option(
     name="return_periods",
     type="number_list",
-    description=(
+    description_pl=(
         "Okresy powtarzalności T [lata], każdy większy od 1; domyślnie 2, 5, 10, 20, "
         "50, 100, 500, 1000."
     ),
-    description_en=(
+    description=(
         "Return periods T [years], each greater than 1; default 2, 5, 10, 20, 50, "
         "100, 500, 1000."
     ),
@@ -46,59 +46,86 @@ _UNDATED_ONE_OF = (("values",), ("input_file", "value_column"))
 COMMANDS: tuple[Command, ...] = (
     Command(
         name="stats characteristic",
-        operation_id="stats_characteristic",
-        summary=(
-            "Wartości charakterystyczne II stopnia (WWQ…NNQ) z szeregu dobowego, rok "
-            "hydrologiczny XI–X."
+        operation_id="hydrolog_stats_characteristic",
+        summary_pl=(
+            "Oblicz wartości charakterystyczne II stopnia (WWQ…NNQ) z szeregu dobowego"
         ),
-        summary_en=(
-            "Second-degree characteristic values (WWQ…NNQ) of a daily series, "
-            "hydrological year Nov–Oct."
+        summary=(
+            "Compute second-degree characteristic values (WWQ…NNQ) of a daily series"
+        ),
+        description_pl=(
+            "Wartości charakterystyczne szeregu dobowego przepływów Q albo stanów H"
+            " wg IMGW-PIB, po latach hydrologicznych (XI–X): największa, średnia, "
+            "mediana i najmniejsza z maksimów, średnich i minimów rocznych. Do "
+            "tabel WWQ…NNQ; kwantyle wezbrań daje `stats flood-frequency`. Wymaga "
+            "dat; NaN jest pomijane."
         ),
         description=(
-            "Charakterystyki II stopnia wg metodyki IMGW-PIB z szeregu dobowego "
-            "przepływów Q albo stanów H. Szereg jest dzielony na lata hydrologiczne "
-            "(1 listopada – 31 października; rok nosi numer roku kalendarzowego, w "
-            "którym się kończy), dla każdego roku liczone są maksimum, średnia i "
-            "minimum, a z każdego z tych trzech szeregów rocznych wyznaczane są "
-            "wartość największa (W), średnia (S), mediana (Z) i najmniejsza (N). "
-            "Wynik: `wwx`, `swx`, `zwx`, `nwx` (z maksimów rocznych, czyli WWQ, SWQ, "
-            "ZWQ, NWQ), `wsx`…`nsx` (ze średnich rocznych), `wnx`…`nnx` (z minimów "
-            "rocznych), `period_years` (liczba lat hydrologicznych w szeregu, także "
-            "niepełnych) i `parameter`; jednostką wyniku jest jednostka szeregu. "
-            "Szereg wymaga dat; braki danych (NaN) są pomijane i zgłaszane w "
-            "`notices`."
+            "Characteristic values of a daily discharge Q or stage H series per "
+            "IMGW-PIB, by hydrological year (Nov–Oct): highest, mean, median and "
+            "lowest of the annual maxima, means and minima. Use for WWQ…NNQ tables;"
+            " for flood quantiles use `stats flood-frequency`. Needs dates; NaN is "
+            "skipped."
         ),
-        description_en=(
-            "Second-degree characteristic values following the IMGW-PIB methodology, "
-            "from a daily discharge (Q) or stage (H) series. The series is split into "
-            "hydrological years (1 November – 31 October; a year is named after the "
-            "calendar year in which it ends); for each year the maximum, mean and "
-            "minimum are taken, and from each of these three annual series the "
-            "highest (W), mean (S), median (Z) and lowest (N) value. Result: `wwx`, "
-            "`swx`, `zwx`, `nwx` (of the annual maxima: WWQ, SWQ, ZWQ, NWQ), "
-            "`wsx`…`nsx` (of the annual means), `wnx`…`nnx` (of the annual minima), "
-            "`period_years` (number of hydrological years in the series, partial "
-            "years included) and `parameter`; the unit of the result is the unit of "
-            "the series. The series needs dates; missing values (NaN) are skipped and "
-            "reported in `notices`."
+        result_schema="hydrolog-stats-characteristic/1",
+        rules=(
+            "Give dates with the values, or a file with a date column.",
+            "Check `notices` for skipped missing values.",
+            (
+                "Results are in the unit of the series; `period_years` counts partial "
+                "years."
+            ),
         ),
-        function="hydrolog.operations:stats_characteristic",
+        rules_pl=(
+            "Podaj daty z wartościami albo plik z kolumną dat.",
+            "Sprawdź `notices` pod kątem pominiętych braków danych.",
+            ("Wyniki są w jednostce szeregu; `period_years` liczy też lata niepełne."),
+        ),
+        errors=(
+            "validation_error",
+            "not_found",
+            "data_error",
+            "calculation_error",
+            "forbidden",
+        ),
+        example_results=(
+            {
+                "wwx": 11.4,
+                "wsx": 4.95833,
+                "wnx": 2.5,
+                "period_years": 1,
+                "parameter": "Q",
+            },
+            {
+                "wwx": 24.93,
+                "swx": 20.0133,
+                "nwx": 13.99,
+                "period_years": 3,
+                "parameter": "Q",
+            },
+        ),
+        function="hydrolog.operations.stats_characteristic",
         options=(
             *DATED_OPTIONS,
             Option(
                 name="parameter",
                 type="choice",
-                description=(
-                    "Etykieta szeregu: `Q` (przepływ, wartości WWQ…NNQ) albo `H` (stan "
-                    "wody, WWH…NNH); nie wpływa na obliczenia, tylko na opis wyniku."
+                description_pl=(
+                    "Etykieta szeregu; nie wpływa na obliczenia, tylko na opis wyniku."
                 ),
-                description_en=(
-                    "Series label: `Q` (discharge, values WWQ…NNQ) or `H` (stage, "
-                    "WWH…NNH); it does not affect the computation, only the label of "
-                    "the result."
+                description=(
+                    "Series label; it does not affect the computation, only the "
+                    "label of the result."
                 ),
                 choices=("Q", "H"),
+                meanings={
+                    "Q": "Discharge series (values WWQ…NNQ).",
+                    "H": "Stage series (values WWH…NNH).",
+                },
+                meanings_pl={
+                    "Q": "Szereg przepływów (wartości WWQ…NNQ).",
+                    "H": "Szereg stanów wody (wartości WWH…NNH).",
+                },
                 default="Q",
             ),
         ),
@@ -119,33 +146,49 @@ COMMANDS: tuple[Command, ...] = (
     ),
     Command(
         name="stats daily",
-        operation_id="stats_daily",
-        summary=(
-            "Statystyki dobowe z wielolecia: maksimum, średnia, mediana i minimum dla "
-            "każdej doby roku hydrologicznego."
-        ),
-        summary_en=(
-            "Day-of-year statistics over all years: maximum, mean, median and minimum "
-            "for each day of the hydrological year."
+        operation_id="hydrolog_stats_daily",
+        summary_pl=("Oblicz statystyki dobowe z wielolecia szeregu dobowego"),
+        summary=("Compute day-of-year statistics over all years of a daily series"),
+        description_pl=(
+            "Maksimum, średnia, mediana, minimum i liczba obserwacji dla każdej "
+            "doby roku hydrologicznego (1 = 1 XI, do 366) ze wszystkich lat. Do "
+            "krzywych reżimu dobowego; wartości miesięczne daje `stats monthly`. "
+            "Wymaga dat; NaN jest pomijane. Wynik to tablice o jednakowej długości."
         ),
         description=(
-            "Dla każdej doby roku hydrologicznego (1 = 1 listopada, do 366) liczy ze "
-            "wszystkich lat szeregu maksimum, średnią, medianę, minimum i liczbę "
-            "obserwacji. Wynik to tablice o jednakowej długości: `day_of_year`, "
-            "`max_values`, `mean_values`, `median_values`, `min_values`, `count`; doby "
-            "bez żadnej obserwacji nie występują. Szereg wymaga dat; braki danych "
-            "(NaN) są pomijane i zgłaszane w `notices`."
+            "Maximum, mean, median, minimum and count for each day of the "
+            "hydrological year (1 = 1 Nov, up to 366) over all years. Use for daily"
+            " regime curves; for monthly values use `stats monthly`. Needs dates; "
+            "NaN is skipped. The result is arrays of equal length."
         ),
-        description_en=(
-            "For each day of the hydrological year (1 = 1 November, up to 366) "
-            "computes the maximum, mean, median, minimum and number of observations "
-            "over all years of the series. The result is a set of arrays of equal "
-            "length: `day_of_year`, `max_values`, `mean_values`, `median_values`, "
-            "`min_values`, `count`; days without any observation are absent. The "
-            "series needs dates; missing values (NaN) are skipped and reported in "
-            "`notices`."
+        result_schema="hydrolog-stats-daily/1",
+        cardinality="bounded",
+        rules=(
+            "Give dates with the values, or a file with a date column.",
+            "Check `notices` for skipped missing values.",
+            "Days without observations are absent from the arrays.",
         ),
-        function="hydrolog.operations:stats_daily",
+        rules_pl=(
+            "Podaj daty z wartościami albo plik z kolumną dat.",
+            "Sprawdź `notices` pod kątem pominiętych braków danych.",
+            "Doby bez obserwacji nie występują w tablicach.",
+        ),
+        errors=(
+            "validation_error",
+            "not_found",
+            "data_error",
+            "calculation_error",
+            "forbidden",
+        ),
+        example_results=(
+            {
+                "day_of_year": [1.0, 2.0, 3.0],
+                "max_values": [2.88, 2.67, 7.7],
+                "min_values": [2.57, 2.58, 2.64],
+                "count": [3.0, 3.0, 3.0],
+            },
+        ),
+        function="hydrolog.operations.stats_daily",
         options=DATED_OPTIONS,
         one_of=DATED_ONE_OF,
         examples=(
@@ -158,57 +201,76 @@ COMMANDS: tuple[Command, ...] = (
     ),
     Command(
         name="stats monthly",
-        operation_id="stats_monthly",
-        summary=(
-            "Statystyki miesięczne z przedziałem ufności średniej (t-Studenta) dla "
-            "miesięcy 1–12."
+        operation_id="hydrolog_stats_monthly",
+        summary_pl=(
+            "Oblicz statystyki miesięczne z przedziałem ufności średniej (t-Studenta)"
         ),
-        summary_en=(
-            "Monthly statistics with a t-Student confidence interval of the mean for "
-            "months 1–12."
+        summary=(
+            "Compute monthly statistics with a t-Student confidence interval of the"
+            " mean"
+        ),
+        description_pl=(
+            "Dla miesięcy 1–12: maksimum, średnia, mediana, minimum, odchylenie "
+            "standardowe, współczynnik zmienności, skośność i przedział ufności "
+            "średniej. Do tabel reżimu miesięcznego; wartości dobowe daje `stats "
+            "daily`. Wymaga dat i wartości we wszystkich 12 miesiącach."
         ),
         description=(
-            "Dla każdego miesiąca kalendarzowego (1–12) liczy ze wszystkich wartości "
-            "szeregu maksimum, średnią, medianę, minimum, odchylenie standardowe "
-            "(n − 1), współczynnik zmienności (odchylenie / średnia), skośność "
-            "(współczynnik Fishera–Pearsona) oraz dwustronny przedział ufności "
-            "średniej z rozkładu t-Studenta (dolna granica nie jest mniejsza od 0). "
-            "Miesiąc z jedną wartością nie ma odchylenia standardowego, współczynnika "
-            "zmienności, skośności ani przedziału ufności (w JSON `null`, ostrzeżenie "
-            "`single_value_month` w `notices`). Szereg musi mieć wartości we "
-            "wszystkich 12 miesiącach, inaczej `calculation_error`. Wynik: tablice "
-            "`months`, `max_values`, `mean_values`, `median_values`, `min_values`, "
-            "`std_values`, "
-            "`cv_values`, `skewness_values`, `ci_lower`, `ci_upper` i "
-            "`confidence_level`. Szereg wymaga dat; braki danych (NaN) są pomijane i "
-            "zgłaszane w `notices`."
+            "For months 1–12: maximum, mean, median, minimum, standard deviation, "
+            "variation coefficient, skewness and the confidence interval of the "
+            "mean. Use for monthly regime tables; for daily values use `stats "
+            "daily`. Needs dates and values in all 12 months."
         ),
-        description_en=(
-            "For each calendar month (1–12) computes over all values of the series "
-            "the maximum, mean, median, minimum, standard deviation (n − 1), "
-            "coefficient of variation (deviation / mean), skewness (Fisher–Pearson "
-            "coefficient) and the two-sided t-Student confidence interval of the "
-            "mean (the lower limit is not below 0). A month with a single value has "
-            "no standard deviation, coefficient of variation, skewness or confidence "
-            "interval (`null` in JSON, warning `single_value_month` in `notices`). "
-            "The series must hold values in all 12 months, otherwise "
-            "`calculation_error`. Result: arrays `months`, `max_values`, "
-            "`mean_values`, `median_values`, "
-            "`min_values`, `std_values`, `cv_values`, `skewness_values`, `ci_lower`, "
-            "`ci_upper` and `confidence_level`. The series needs dates; missing "
-            "values (NaN) are skipped and reported in `notices`."
+        result_schema="hydrolog-stats-monthly/1",
+        cardinality="bounded",
+        rules=(
+            (
+                "Give values for all 12 months, otherwise a calculation_error is "
+                "returned."
+            ),
+            (
+                "Check `notices` for `single_value_month`: such a month has null spread"
+                " values."
+            ),
+            "Results are in the unit of the series.",
         ),
-        function="hydrolog.operations:stats_monthly",
+        rules_pl=(
+            (
+                "Podaj wartości ze wszystkich 12 miesięcy, inaczej wystąpi "
+                "calculation_error."
+            ),
+            (
+                "Sprawdź `notices` (`single_value_month`): taki miesiąc ma `null` w "
+                "miarach rozrzutu."
+            ),
+            "Wyniki są w jednostce szeregu.",
+        ),
+        errors=(
+            "validation_error",
+            "not_found",
+            "data_error",
+            "calculation_error",
+            "forbidden",
+        ),
+        example_results=(
+            {
+                "months": [1.0, 2.0, 3.0],
+                "mean_values": [6.09946, 6.86659, 7.22269],
+                "ci_lower": [5.98154, 6.71963, 7.10644],
+                "confidence_level": 0.9,
+            },
+        ),
+        function="hydrolog.operations.stats_monthly",
         options=(
             *DATED_OPTIONS,
             Option(
                 name="confidence_level",
                 type="number",
-                description=(
+                description_pl=(
                     "Poziom ufności przedziału średniej, z przedziału otwartego "
                     "(0, 1), np. 0,95."
                 ),
-                description_en=(
+                description=(
                     "Confidence level of the interval of the mean, in the open "
                     "interval (0, 1), e.g. 0.95."
                 ),
@@ -229,82 +291,73 @@ COMMANDS: tuple[Command, ...] = (
     ),
     Command(
         name="stats flood-frequency",
-        operation_id="stats_flood_frequency",
-        summary=(
-            "Analiza częstości wezbrań: rozkłady log-normalny, GEV, Pearsona III, "
-            "Weibulla; kwantyle dla okresów powtarzalności."
+        operation_id="hydrolog_stats_flood_frequency",
+        summary_pl=(
+            "Oblicz kwantyle wezbrań dla okresów powtarzalności z maksimów rocznych"
         ),
-        summary_en=(
-            "Flood frequency analysis: log-normal, GEV, Pearson III and Weibull "
-            "distributions; quantiles for return periods."
+        summary=("Compute flood quantiles for return periods from annual maxima"),
+        description_pl=(
+            "Dopasowuje rozkłady log-normalny, GEV, Pearsona III i Weibulla do "
+            "maksimów rocznych (największa wiarygodność) i podaje kwantyle z "
+            "miarami zgodności (KS, A², AIC). Do przepływów miarodajnych z maksimów"
+            " rocznych albo szeregu dobowego; niżówki: `stats low-flow`. Lata z "
+            "brakami dni są pomijane."
         ),
         description=(
-            "Dopasowuje do maksimów rocznych rozkłady: log-normalny (2 parametry, "
-            "położenie = 0), GEV, Pearsona typu III i Weibulla (estymacja największej "
-            "wiarygodności, `scipy.stats`) i podaje kwantyle x_T = F⁻¹(1 − 1/T) dla "
-            "zadanych okresów powtarzalności T [lata] oraz miary zgodności: test "
-            "Kołmogorowa–Smirnowa (statystyka i p-value; nieważny dla parametrów "
-            "oszacowanych z tej samej próby, `ks_valid=false`), statystykę "
-            "Andersona–Darlinga (A², przybliżone wartości krytyczne) i kryterium AIC. "
-            "Szereg wejściowy to albo same maksima roczne (bez dat), albo szereg "
-            "dobowy z datami — wtedy maksima są wybierane dla kompletnych lat "
-            "hydrologicznych (1 XI – 31 X): rok jest kompletny, gdy ma wartość dla "
-            "każdego dnia (365 albo 366 dni), a rok z brakującym dniem (nieobecna "
-            "data albo NaN) jest pomijany, bo jego maksimum mogło nie zostać "
-            "zarejestrowane (KZGW 2017 i WMO nr 1029, 2009 biorą do analizy pełne "
-            "lata obserwacji); pominięte lata wymienia `incomplete_years` w wyniku "
-            "i w `notices` (kod `incomplete_years`), więc eksport z lat "
-            "kalendarzowych traci pierwszy i ostatni rok hydrologiczny. Metodyka "
-            "KZGW (2017) zaleca co najmniej 30 lat danych (Coles 2001: podstawy "
-            "teorii wartości ekstremalnych); dla próby krótszej niż 30 lat (a "
-            "zwłaszcza niż 10) w `notices` pojawia się ostrzeżenie, a minimum "
-            "obliczeniowe to 3 maksima (3 kompletne lata). Przy `distribution=all` "
-            "rozkłady są posortowane wg AIC (najlepszy pierwszy). Wynik: `n_years`, "
-            "`annual_maxima`, `hydrological_years`, `incomplete_years`, "
-            "`best_distribution`, `distributions` (parametry, `quantiles`, "
-            "`exceedance_probabilities`, miary zgodności) i `empirical` (częstość "
-            "empiryczna, pozycje plotowania Weibulla: wartości malejąco z "
-            "prawdopodobieństwem przewyższenia)."
+            "Fits log-normal, GEV, Pearson III and Weibull distributions to annual "
+            "maxima (maximum likelihood) and gives quantiles with goodness-of-fit "
+            "(KS, A², AIC). Use for design discharges from annual maxima or a daily"
+            " series; for low flows use `stats low-flow`."
         ),
-        description_en=(
-            "Fits the log-normal (2 parameters, location = 0), GEV, Pearson type III "
-            "and Weibull distributions to annual maxima (maximum likelihood, "
-            "`scipy.stats`) and gives the quantiles x_T = F⁻¹(1 − 1/T) for the "
-            "requested return periods T [years] together with goodness-of-fit "
-            "measures: the Kolmogorov–Smirnov test (statistic and p-value; not valid "
-            "for parameters estimated from the same sample, `ks_valid=false`), the "
-            "Anderson–Darling statistic (A², approximate critical values) and AIC. "
-            "The input series is either the annual maxima themselves (no dates) or a "
-            "daily series with dates, from which the maxima of the complete "
-            "hydrological years (1 Nov – 31 Oct) are taken: a year is complete when "
-            "it has a value for every day (365 or 366 days), and a year with a "
-            "missing day (an absent date or a NaN) is skipped because its maximum "
-            "may have gone unrecorded (KZGW 2017 and WMO No. 1029, 2009 analyse "
-            "whole years of observations); the skipped years are listed in "
-            "`incomplete_years` of the result and in `notices` (code "
-            "`incomplete_years`), so a calendar-year export loses its first and last "
-            "hydrological year. The KZGW (2017) methodology recommends at least 30 "
-            "years of data (Coles 2001: foundations of extreme value theory); a "
-            "sample shorter than 30 years (especially than 10) raises a warning in "
-            "`notices`, and the computational minimum is 3 maxima (3 complete "
-            "years). With `distribution=all` the distributions are sorted by AIC "
-            "(best first). Result: `n_years`, `annual_maxima`, `hydrological_years`, "
-            "`incomplete_years`, `best_distribution`, `distributions` (parameters, "
-            "`quantiles`, `exceedance_probabilities`, goodness of fit) and "
-            "`empirical` (empirical frequency, Weibull plotting positions: values "
-            "descending with exceedance probabilities)."
+        result_schema="hydrolog-stats-flood-frequency/1",
+        cardinality="bounded",
+        rules=(
+            ("Pass annual maxima without dates, or a daily series with dates."),
+            (
+                "Check `notices` for `incomplete_years` and samples shorter than 30 "
+                "years."
+            ),
+            (
+                "Rank distributions by `aic`; `ks_valid=false` means the KS p-value is "
+                "indicative."
+            ),
         ),
-        function="hydrolog.operations:stats_flood_frequency",
+        rules_pl=(
+            "Podaj maksima roczne bez dat albo szereg dobowy z datami.",
+            ("Sprawdź `notices`: `incomplete_years` i próby krótsze niż 30 lat."),
+            (
+                "Porządkuj rozkłady wg `aic`; `ks_valid=false` oznacza orientacyjne "
+                "p-value KS."
+            ),
+        ),
+        errors=(
+            "validation_error",
+            "not_found",
+            "data_error",
+            "calculation_error",
+            "forbidden",
+        ),
+        core=True,
+        example_results=(
+            {"n_years": 35, "best_distribution": "log_normal"},
+            {
+                "n_years": 3,
+                "annual_maxima": [21.12, 13.99, 24.93],
+                "hydrological_years": [2022, 2023, 2024],
+                "best_distribution": "gev",
+            },
+        ),
+        function="hydrolog.operations.stats_flood_frequency",
         options=(
             replace(
                 VALUES,
-                description=(
+                description_pl=(
                     "Szereg w kolejności czasowej: maksima roczne (bez `dates`) albo "
                     "wartości dobowe (z `dates`; maksima roczne są wtedy wybierane dla "
                     "kompletnych lat hydrologicznych XI–X). Długie szeregi podawaj w "
                     "pliku (`input_file`)."
                 ),
-                description_en=(
+                description=(
                     "Series in time order: annual maxima (without `dates`) or daily "
                     "values (with `dates`; the annual maxima are then taken for the "
                     "complete hydrological years Nov–Oct). Give long series in a file "
@@ -313,12 +366,12 @@ COMMANDS: tuple[Command, ...] = (
             ),
             replace(
                 DATES,
-                description=(
+                description_pl=(
                     "Daty wartości dobowych w formacie ISO `RRRR-MM-DD`, ściśle "
                     "rosnące, tyle samo co `values`; pomiń, gdy `values` to maksima "
                     "roczne."
                 ),
-                description_en=(
+                description=(
                     "Dates of daily values in ISO format `YYYY-MM-DD`, strictly "
                     "increasing, as many as `values`; omit when `values` are annual "
                     "maxima."
@@ -328,11 +381,11 @@ COMMANDS: tuple[Command, ...] = (
             VALUE_COLUMN,
             replace(
                 DATE_COLUMN,
-                description=(
+                description_pl=(
                     "Nazwa kolumny z datami ISO w `input_file` (np. `date`); podaj "
                     "dla szeregu dobowego, pomiń dla maksimów rocznych."
                 ),
-                description_en=(
+                description=(
                     "Name of the column with ISO dates in `input_file` (e.g. `date`); "
                     "give it for a daily series, omit it for annual maxima."
                 ),
@@ -340,15 +393,23 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="distribution",
                 type="choice",
-                description=(
-                    "Rozkład do dopasowania: `all` (cztery rozkłady posortowane wg "
-                    "AIC), `log_normal`, `gev`, `pearson3` albo `weibull`."
-                ),
-                description_en=(
-                    "Distribution to fit: `all` (the four distributions sorted by "
-                    "AIC), `log_normal`, `gev`, `pearson3` or `weibull`."
-                ),
+                description_pl=("Rozkład do dopasowania."),
+                description=("Distribution to fit."),
                 choices=("all", "log_normal", "gev", "pearson3", "weibull"),
+                meanings={
+                    "all": "Fit the four distributions, sorted by AIC.",
+                    "log_normal": "Log-normal, 2 parameters, location 0.",
+                    "gev": "Generalized extreme value.",
+                    "pearson3": "Pearson type III.",
+                    "weibull": "Weibull.",
+                },
+                meanings_pl={
+                    "all": "Dopasuj cztery rozkłady, posortowane wg AIC.",
+                    "log_normal": "Log-normalny, 2 parametry, położenie 0.",
+                    "gev": "Uogólniony rozkład wartości ekstremalnych (GEV).",
+                    "pearson3": "Pearsona typu III.",
+                    "weibull": "Weibulla.",
+                },
                 default="all",
             ),
             _RETURN_PERIODS,
@@ -371,85 +432,55 @@ COMMANDS: tuple[Command, ...] = (
     ),
     Command(
         name="stats low-flow",
-        operation_id="stats_low_flow",
-        summary=(
-            "Analiza częstości niżówek: rozkład Fishera–Tippetta (GEV) dla minimów "
-            "rocznych, kwantyle niskich przepływów."
+        operation_id="hydrolog_stats_low_flow",
+        summary_pl=(
+            "Oblicz kwantyle niżówek dla okresów powtarzalności z minimów rocznych"
         ),
-        summary_en=(
-            "Low-flow frequency analysis: Fisher–Tippett (GEV) distribution of annual "
-            "minima, low-flow quantiles."
+        summary=("Compute low-flow quantiles for return periods from annual minima"),
+        description_pl=(
+            "Dopasowuje rozkład Fishera–Tippetta (GEV dla minimów) do minimów "
+            "rocznych i podaje kwantyle niskich przepływów (osiągane lub niższe raz"
+            " na T lat). Do częstości niżówek; wezbrania: `stats flood-frequency`, "
+            "zdarzenia suszy: `stats low-flow-sequences`. Wymaga dat."
         ),
         description=(
-            "Z szeregu dobowego wybiera minima roczne dla kompletnych lat "
-            "hydrologicznych (1 XI – 31 X): rok jest kompletny, gdy ma wartość dla "
-            "każdego dnia (365 albo 366 dni), a rok z brakującym dniem (nieobecna "
-            "data albo NaN) jest pomijany, bo jego minimum mogło nie zostać "
-            "zarejestrowane (WMO nr 1029, 2009 i KZGW 2017 biorą do analizy pełne "
-            "lata obserwacji); pominięte lata wymienia `incomplete_years` w wyniku "
-            "i w `notices` (kod `incomplete_years`), więc eksport z lat "
-            "kalendarzowych traci pierwszy i ostatni rok hydrologiczny. Do minimów "
-            "dopasowuje rozkład Fishera–Tippetta wartości najmniejszych (GEV dla "
-            "minimów, czyli GEV maksimów dopasowany do ujemnych minimów, "
-            "`scipy.stats.genextreme`): F(x) = 1 − exp(−(1 + "
-            "shape·(x − loc)/scale)^(1/shape)); shape → 0 daje rozkład Gumbela, "
-            "shape > 0 rozkład Weibulla z dolną granicą loc − scale/shape, `loc` i "
-            "`scale` są w jednostce szeregu. Podaje kwantyle niskich przepływów "
-            "q_T rzędu p = 1/T dla okresów powtarzalności "
-            "T [lata]: przepływ, który raz na T lat jest osiągany lub niższy "
-            "(prawdopodobieństwo nieprzekroczenia p = 1/T; WMO nr 1029, 2009; "
-            "Tallaksen i van Lanen, 2004). Podaje też statystykę Kołmogorowa–"
-            "Smirnowa (`ks_valid=false`: parametry oszacowano z tej samej próby) i "
-            "częstość empiryczną minimów `empirical` w tej samej konwencji co "
-            "kwantyle: `values_ascending` (minima rosnąco), "
-            "`non_exceedance_probabilities` F = m/(n+1) (pozycje plotowania "
-            "Weibulla, m = 1 dla najmniejszego minimum) i `return_periods` "
-            "T = 1/F; najgłębsza niżówka ma najmniejsze F i najdłuższy okres "
-            "T = n + 1. Minimum obliczeniowe to 3 kompletne lata hydrologiczne; "
-            "poniżej 10 lat w `notices` pojawia się ostrzeżenie o niskiej "
-            "wiarygodności. Wynik: `n_years`, `hydrological_years`, "
-            "`annual_minima`, `incomplete_years`, `fisher_tippett` (`parameters`, "
-            "`quantiles`, `non_exceedance_probabilities`, `ks_statistic`, "
-            "`ks_p_value`) i `empirical`. Szereg wymaga dat; braki danych (NaN) są "
-            "pomijane i zgłaszane w `notices` (dzień bez wartości kosztuje cały rok "
-            "hydrologiczny)."
+            "Fits the Fisher–Tippett (GEV for minima) distribution to annual minima"
+            " and gives low-flow quantiles (flow reached or undercut once in T "
+            "years). Use for low-flow frequency; for floods use `stats "
+            "flood-frequency`, for drought events `stats low-flow-sequences`. Needs"
+            " dates."
         ),
-        description_en=(
-            "Takes the annual minima of a daily series for the complete "
-            "hydrological years (1 Nov – 31 Oct): a year is complete when it has a "
-            "value for every day (365 or 366 days), and a year with a missing day "
-            "(an absent date or a NaN) is skipped because its minimum may have gone "
-            "unrecorded (WMO No. 1029, 2009 and KZGW 2017 analyse whole years of "
-            "observations); the skipped years are listed in `incomplete_years` of "
-            "the result and in `notices` (code `incomplete_years`), so a "
-            "calendar-year export loses its first and last hydrological year. It "
-            "fits to the minima the Fisher–Tippett distribution of smallest values "
-            "(GEV for minima, i.e. the maxima GEV fitted to the negated minima, "
-            "`scipy.stats.genextreme`): F(x) = 1 − exp(−(1 + "
-            "shape·(x − loc)/scale)^(1/shape)); shape → 0 gives the Gumbel "
-            "distribution, shape > 0 the Weibull distribution with the lower bound "
-            "loc − scale/shape, `loc` and `scale` are in the unit of the series. "
-            "It gives the low-flow quantiles q_T of order p = 1/T for the return "
-            "periods T [years]: "
-            "the flow reached or undercut once in T years (non-exceedance probability "
-            "p = 1/T; WMO No. 1029, 2009; Tallaksen and van Lanen, 2004). It also "
-            "gives the Kolmogorov–Smirnov statistic (`ks_valid=false`: the parameters "
-            "are estimated from the same sample) and the empirical frequency of the "
-            "minima `empirical` in the same convention as the quantiles: "
-            "`values_ascending` (the minima, smallest first), "
-            "`non_exceedance_probabilities` F = m/(n+1) (Weibull plotting positions, "
-            "m = 1 for the smallest minimum) and `return_periods` T = 1/F; the "
-            "deepest low flow has the smallest F and the longest period T = n + 1. "
-            "The computational minimum is 3 complete hydrological years; fewer than "
-            "10 years raise a reliability warning in `notices`. Result: `n_years`, "
-            "`hydrological_years`, `annual_minima`, `incomplete_years`, "
-            "`fisher_tippett` (`parameters`, `quantiles`, "
-            "`non_exceedance_probabilities`, `ks_statistic`, `ks_p_value`) and "
-            "`empirical`. The series needs dates; missing values (NaN) are skipped "
-            "and reported in `notices` (a day without a value costs the whole "
-            "hydrological year)."
+        result_schema="hydrolog-stats-low-flow/1",
+        cardinality="bounded",
+        rules=(
+            ("Give a daily series with dates; years with a missing day are skipped."),
+            (
+                "Check `notices` for `incomplete_years` and samples shorter than 10 "
+                "years."
+            ),
+            "At least 3 complete hydrological years are required.",
         ),
-        function="hydrolog.operations:stats_low_flow",
+        rules_pl=(
+            ("Podaj szereg dobowy z datami; lata z brakującym dniem są pomijane."),
+            ("Sprawdź `notices`: `incomplete_years` i próby krótsze niż 10 lat."),
+            "Wymagane są co najmniej 3 kompletne lata hydrologiczne.",
+        ),
+        errors=(
+            "validation_error",
+            "not_found",
+            "data_error",
+            "calculation_error",
+            "forbidden",
+        ),
+        example_results=(
+            {
+                "n_years": 3,
+                "hydrological_years": [2022, 2023, 2024],
+                "annual_minima": [1.79, 1.88, 1.66],
+                "incomplete_years": [],
+            },
+        ),
+        function="hydrolog.operations.stats_low_flow",
         options=(*DATED_OPTIONS, _RETURN_PERIODS),
         one_of=DATED_ONE_OF,
         examples=(
@@ -463,53 +494,59 @@ COMMANDS: tuple[Command, ...] = (
     ),
     Command(
         name="stats low-flow-sequences",
-        operation_id="stats_low_flow_sequences",
-        summary=(
-            "Ciągi niżówkowe (susze hydrologiczne) metodą progową: terminy, czas "
-            "trwania, niedobór."
-        ),
-        summary_en=(
-            "Low-flow (drought) sequences by the threshold level method: dates, "
-            "duration, deficit."
+        operation_id="hydrolog_stats_low_flow_sequences",
+        summary_pl=("Wykryj ciągi niżówkowe (susze) poniżej progu"),
+        summary=("Detect low-flow (drought) sequences below a threshold"),
+        description_pl=(
+            "Metoda poziomu progowego: ciągi dób poniżej `threshold`, łączone przez"
+            " krótkie przerwy, z datami początku i końca, czasem trwania, minimum, "
+            "średnią i niedoborem. Do zdarzeń suszy; częstość minimów rocznych: "
+            "`stats low-flow`. Wymaga kompletnego szeregu dobowego bez NaN."
         ),
         description=(
-            "Wykrywa niżówki metodą poziomu progowego (threshold level method; "
-            "Tallaksen i van Lanen, 2004): niżówka to ciąg dób z wartością poniżej "
-            "`threshold`; dwa ciągi rozdzielone przerwą krótszą niż `max_gap_days` dób "
-            "są łączone, a zachowywane są tylko ciągi trwające co najmniej "
-            "`min_duration_days` dób. Dla każdego ciągu wynik podaje daty początku i "
-            "końca (włącznie), czas trwania [doby], minimum i średnią oraz niedobór "
-            "`deficit_volume` = Σ(próg − wartość) po dobach poniżej progu "
-            "[jednostka szeregu × doba; × 86400 daje m³ dla m³/s]. Szereg musi być "
-            "kompletnym szeregiem dobowym (kolejne dni, bez luk i bez NaN), inaczej "
-            "`calculation_error`. Wynik: `threshold`, `min_duration_days`, "
-            "`max_gap_days`, `n_days`, `n_events`, `total_deficit`, "
-            "`max_duration_days` i `sequences`."
+            "Threshold level method: runs of days below `threshold`, merged across "
+            "short gaps, with start and end dates, duration, minimum, mean and "
+            "deficit. Use for drought events; for frequency of annual minima use "
+            "`stats low-flow`. Needs a complete daily series without NaN."
         ),
-        description_en=(
-            "Detects low flows with the threshold level method (Tallaksen and van "
-            "Lanen, 2004): a low-flow event is a run of days with a value below "
-            "`threshold`; two runs separated by a gap shorter than `max_gap_days` "
-            "days are merged, and only sequences lasting at least `min_duration_days` "
-            "days are kept. For each sequence the result gives the start and end "
-            "dates (inclusive), the duration [days], the minimum and mean, and the "
-            "deficit `deficit_volume` = Σ(threshold − value) over the days below the "
-            "threshold [series unit × day; × 86400 gives m³ for m³/s]. The series "
-            "must be a complete daily series (consecutive days, no gaps, no NaN), "
-            "otherwise `calculation_error`. Result: `threshold`, "
-            "`min_duration_days`, `max_gap_days`, `n_days`, `n_events`, "
-            "`total_deficit`, `max_duration_days` and `sequences`."
+        result_schema="hydrolog-stats-low-flow-sequences/1",
+        cardinality="bounded",
+        rules=(
+            "Pass consecutive daily dates without gaps and without NaN.",
+            "Give `threshold` in the unit of the series.",
+            "Deficit is in series unit × day.",
         ),
-        function="hydrolog.operations:stats_low_flow_sequences",
+        rules_pl=(
+            "Podaj kolejne daty dobowe bez luk i bez NaN.",
+            "Podaj `threshold` w jednostce szeregu.",
+            "Niedobór jest w jednostce szeregu × doba.",
+        ),
+        errors=(
+            "validation_error",
+            "not_found",
+            "data_error",
+            "calculation_error",
+            "forbidden",
+        ),
+        example_results=(
+            {
+                "threshold": 2.2,
+                "n_days": 1096,
+                "n_events": 7,
+                "total_deficit": 23.78,
+                "max_duration_days": 48,
+            },
+        ),
+        function="hydrolog.operations.stats_low_flow_sequences",
         options=(
             VALUES,
             replace(
                 DATES,
-                description=(
+                description_pl=(
                     "Daty kolejnych dób w formacie ISO `RRRR-MM-DD`: kolejne dni, bez "
                     "luk; tyle samo co `values`."
                 ),
-                description_en=(
+                description=(
                     "Dates of consecutive days in ISO format `YYYY-MM-DD`: successive "
                     "days without gaps; as many as `values`."
                 ),
@@ -518,11 +555,11 @@ COMMANDS: tuple[Command, ...] = (
             VALUE_COLUMN,
             replace(
                 DATE_COLUMN,
-                description=(
+                description_pl=(
                     "Nazwa kolumny z datami ISO w `input_file` (np. `date`); daty "
                     "muszą być kolejnymi dniami, bez luk."
                 ),
-                description_en=(
+                description=(
                     "Name of the column with ISO dates in `input_file` (e.g. "
                     "`date`); the dates must be consecutive days without gaps."
                 ),
@@ -530,11 +567,11 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="threshold",
                 type="number",
-                description=(
+                description_pl=(
                     "Próg niżówkowy w jednostce szeregu (np. m³/s), dodatni; dni z "
                     "wartością poniżej progu tworzą niżówkę."
                 ),
-                description_en=(
+                description=(
                     "Low-flow threshold in the unit of the series (e.g. m³/s), "
                     "positive; days with a value below it make up a low-flow event."
                 ),
@@ -544,10 +581,10 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="min_duration_days",
                 type="integer",
-                description=(
+                description_pl=(
                     "Najkrótszy raportowany ciąg niżówkowy w dobach, co najmniej 1."
                 ),
-                description_en=(
+                description=(
                     "Shortest low-flow sequence reported, in days, at least 1."
                 ),
                 default=5,
@@ -557,11 +594,11 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="max_gap_days",
                 type="integer",
-                description=(
+                description_pl=(
                     "Przerwy krótsze niż ta liczba dób między dwoma ciągami poniżej "
                     "progu łączą je w jeden ciąg; 0 wyłącza łączenie."
                 ),
-                description_en=(
+                description=(
                     "Gaps shorter than this number of days between two runs below the "
                     "threshold merge them into one sequence; 0 disables merging."
                 ),
@@ -584,63 +621,79 @@ COMMANDS: tuple[Command, ...] = (
     ),
     Command(
         name="stats mann-kendall",
-        operation_id="stats_mann_kendall",
-        summary=(
-            "Test trendu Manna–Kendalla szeregu (stacjonarność): statystyka, p-value, "
-            "kierunek trendu."
+        operation_id="hydrolog_stats_mann_kendall",
+        summary_pl=(
+            "Zbadaj istnienie monotonicznego trendu w szeregu testem Manna–Kendalla"
         ),
-        summary_en=(
-            "Mann–Kendall trend test of a series (stationarity): statistic, p-value, "
-            "trend direction."
+        summary=("Test a series for a monotonic trend with the Mann–Kendall test"),
+        description_pl=(
+            "Nieparametryczny test Manna–Kendalla: statystyka S, Z, dwustronne "
+            "p-value i kierunek trendu. Do oceny stacjonarności maksimów rocznych "
+            "przed `stats flood-frequency`. Wymaga co najmniej 3 wartości w "
+            "kolejności czasowej; NaN jest pomijane. Wariancja bez poprawki na "
+            "powtórzenia (test nieco zachowawczy)."
         ),
         description=(
-            "Nieparametryczny test istnienia monotonicznego trendu w szeregu "
-            "uporządkowanym w czasie (Mann 1945; Kendall 1975), stosowany m.in. do "
-            "oceny stacjonarności maksimów rocznych przed analizą częstości (KZGW). "
-            "Liczy statystykę S (suma znaków różnic wszystkich par obserwacji), jej "
-            "wariancję wzorem bez poprawki na powtórzenia (test nieco zachowawczy), "
-            "statystykę Z z poprawką na ciągłość i dwustronne p-value; trend jest "
-            "wykryty, gdy p < `alpha`, a jego kierunek (`increasing`, `decreasing`, "
-            "`none`) wynika ze znaku S. Wymaga co najmniej 3 wartości; braki danych "
-            "(NaN) są pomijane i zgłaszane w `notices`. Wynik: `s_statistic`, "
-            "`var_s`, `z_score`, `p_value`, `trend_detected`, `trend_direction`, "
-            "`significance_level`."
+            "Non-parametric Mann–Kendall test: S statistic, Z, two-sided p-value "
+            "and trend direction. Use to check stationarity of annual maxima before"
+            " `stats flood-frequency`. Needs 3 or more values in time order; NaN is"
+            " skipped. Variance has no tie correction (slightly conservative)."
         ),
-        description_en=(
-            "Non-parametric test for a monotonic trend in a series ordered in time "
-            "(Mann 1945; Kendall 1975), used among others to assess the stationarity "
-            "of annual maxima before frequency analysis (KZGW). It computes the S "
-            "statistic (sum of the signs of the differences of all pairs of "
-            "observations), its variance by the formula without the correction for "
-            "ties (the test is slightly conservative), the continuity-corrected Z "
-            "statistic and the two-sided p-value; a trend is detected when p < "
-            "`alpha`, and its direction (`increasing`, `decreasing`, `none`) follows "
-            "the sign of S. At least 3 values are required; missing values (NaN) are "
-            "skipped and reported in `notices`. Result: `s_statistic`, `var_s`, "
-            "`z_score`, `p_value`, `trend_detected`, `trend_direction`, "
-            "`significance_level`."
+        result_schema="hydrolog-stats-mann-kendall/1",
+        rules=(
+            "Pass values in time order, at least 3.",
+            "A trend is detected when `p_value` is below `alpha`.",
+            "Check `notices` for skipped missing values.",
         ),
-        function="hydrolog.operations:stats_mann_kendall",
+        rules_pl=(
+            "Podaj wartości w kolejności czasowej, co najmniej 3.",
+            "Trend jest wykryty, gdy `p_value` jest mniejsze niż `alpha`.",
+            "Sprawdź `notices` pod kątem pominiętych braków danych.",
+        ),
+        errors=(
+            "validation_error",
+            "not_found",
+            "data_error",
+            "calculation_error",
+            "forbidden",
+        ),
+        example_results=(
+            {
+                "s_statistic": -6.0,
+                "p_value": 0.943392,
+                "trend_detected": False,
+                "trend_direction": "none",
+                "significance_level": 0.05,
+            },
+            {
+                "s_statistic": 29.0,
+                "p_value": 0.0122661,
+                "trend_detected": True,
+                "trend_direction": "increasing",
+                "significance_level": 0.05,
+            },
+        ),
+        function="hydrolog.operations.stats_mann_kendall",
         options=(
             replace(
                 VALUES,
-                description=(
+                description_pl=(
                     "Szereg w kolejności czasowej, np. maksima roczne (co najmniej 3 "
                     "wartości). Długie szeregi podawaj w pliku (`input_file`)."
                 ),
-                description_en=(
+                description=(
                     "Series in time order, e.g. annual maxima (at least 3 values). "
                     "Give long series in a file (`input_file`)."
                 ),
             ),
             replace(
                 INPUT_FILE,
-                description=(
+                description_pl=(
                     "Plik CSV (przecinek lub średnik, wiersz nagłówka) albo JSON z "
                     "szeregiem; wiersze w kolejności czasowej. Kolumnę wskazuje "
                     "`value_column`."
                 ),
-                description_en=(
+                description=(
                     "CSV file (comma or semicolon, header row) or JSON file with the "
                     "series; rows in time order. The column is named by "
                     "`value_column`."
@@ -650,10 +703,10 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="alpha",
                 type="number",
-                description=(
+                description_pl=(
                     "Poziom istotności testu z przedziału otwartego (0, 1), np. 0,05."
                 ),
-                description_en=(
+                description=(
                     "Significance level of the test, in the open interval (0, 1), "
                     "e.g. 0.05."
                 ),

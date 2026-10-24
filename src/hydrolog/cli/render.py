@@ -14,9 +14,15 @@ The summary is *generic*: it walks the JSON form of the envelope
   :data:`RECORD_BLOCKS` blocks are shown;
 * several long numeric arrays of equal length in one object (a time axis and its
   values) become one table of the first :data:`ARRAY_ROWS` rows;
-* a result that identifies itself as a versioned document (a ``schema`` such as
-  ``hydrolog-commands/1``) is printed as pretty JSON and a multi-line text result as it
-  is, *without* title and inputs: such a result is meant to be redirected to a file.
+* the ``schema`` of the result is not shown, its ``files`` come last as the written
+  files, after the notices.
+
+Five documents have a layout of their own: the plan of ``--check``
+(``hydrolog-plan/1``: each target with its action, and a line that nothing was
+written), ``commands list`` (a table of names and summaries and the page),
+``commands schema`` (each command with its options, rules and examples), ``commands
+guide`` (the text of the guide, or the written file) and ``config show`` (a table of
+the settings with their source, the settings file, credentials and store).
 
 Tables are fitted to the terminal width by shortening their text columns; numbers and
 headers are never cut. The full data is always available with ``--json``.
@@ -26,11 +32,11 @@ from __future__ import annotations
 
 import json
 import math
-import re
 import textwrap
 from collections.abc import Mapping, Sequence
 from typing import Any, Final
 
+from hydrolog.catalog.document import COMMAND_LIST_SCHEMA, COMMANDS_SCHEMA
 from hydrolog.catalog.spec import Command, Lang
 from hydrolog.cli.texts import text
 
@@ -62,7 +68,13 @@ _MIN_CELL: Final = 8
 _CELL_MAX: Final = 60
 _SLACK: Final = 2
 """A list that exceeds its limit by at most this much is shown in full."""
-_DOCUMENT: Final = re.compile(r"[a-z][a-z0-9_-]*/\d+")
+_PLAN_SCHEMA: Final = "hydrolog-plan/1"
+"""``schema`` of the plan of ``--check`` (``hydrolog.operations.PLAN_SCHEMA``)."""
+_CONFIG_SCHEMA: Final = "hydrolog-config/1"
+_GUIDE_SCHEMA: Final = "hydrolog-guide/1"
+_ENVELOPE_KEYS: Final = ("schema", "files")
+"""Keys of a result that the summary shows as sections, not as fields."""
+_CONFLICT_REASONS: Final = ("output_exists", "duplicate_output_name")
 
 
 def format_number(value: float) -> str:
@@ -113,13 +125,6 @@ def _is_long_numbers(value: object) -> bool:
         and all(item is None or _is_number(item) for item in items)
         and any(_is_number(item) for item in items)
     )
-
-
-def _is_document(value: object) -> bool:
-    if not isinstance(value, Mapping):
-        return False
-    schema = value.get("schema")
-    return isinstance(schema, str) and _DOCUMENT.fullmatch(schema) is not None
 
 
 def _limit(total: int, limit: int) -> int:
@@ -395,6 +400,8 @@ class _Renderer:
     def result(self, value: object) -> list[str]:
         """Lines of the ``result`` of an envelope (``Wynik: ...``)."""
         title = self.label("result")
+        if isinstance(value, str) and "\n" in value:
+            return [f"{title}:", *(" " * _INDENT + part for part in value.splitlines())]
         if isinstance(value, Mapping):
             if not value:
                 return [f"{title}: {{}}"]
@@ -411,18 +418,249 @@ class _Renderer:
         return [f"{title}: {self.scalar(value)}"]
 
 
-def _content(result: object) -> str | None:
-    """Render the result as it is meant to be read: a versioned document or a text.
+def _catalog_commands() -> dict[str, Command]:
+    """Return the catalog by command name (for summaries in the user's language)."""
+    from hydrolog.catalog import data_commands
 
-    A result that names its ``schema`` (``hydrolog-commands/1``) is a document and is
-    printed as pretty JSON; a multi-line text (a generated guide) is printed as it is.
-    Either can then be redirected to a file.
-    """
-    if _is_document(result):
-        return json.dumps(result, ensure_ascii=False, indent=2)
-    if isinstance(result, str) and "\n" in result:
-        return result.rstrip("\n")
-    return None
+    return {command.name: command for command in data_commands()}
+
+
+def _header(command: Command, lang: Lang) -> str:
+    return f"{command.name}: {command.summarize(lang)}"
+
+
+def _page_lines(renderer: _Renderer, shown: int, page: object) -> list[str]:
+    """Return the line(s) that tell how much of a collection is shown (``page``)."""
+    if not isinstance(page, Mapping):
+        return [renderer.label("page_total", total=shown)]
+    total = page.get("total", shown)
+    if not page.get("truncated"):
+        return [renderer.label("page_total", total=total)]
+    lines = [renderer.label("page_shown", shown=shown, total=total)]
+    cursor = page.get("next_cursor")
+    if cursor:
+        lines.append(renderer.label("page_next", cursor=cursor))
+    return lines
+
+
+def _tail(renderer: _Renderer, data: Mapping[str, Any]) -> list[str]:
+    """Return the notices and the written files that follow every result."""
+    lines: list[str] = []
+    notices = data.get("notices") or []
+    if notices:
+        lines.append(f"{renderer.label('notices')}:")
+        for notice in notices:
+            level = renderer.label(f"level_{notice['level']}")
+            lines.append(f"  [{level}] {notice['code']}: {notice['message']}")
+    result = data.get("result")
+    files = (result.get("files") if isinstance(result, Mapping) else None) or []
+    if files:
+        lines.append(f"{renderer.label('files')}:")
+        for record in files:
+            status = renderer.label(f"file_{record['status']}")
+            size = renderer.label("file_bytes", size=record["size_bytes"])
+            digest = f"sha256 {record['sha256'][:12]}…"
+            lines.append(f"  {record['path']}  ({status}, {size}, {digest})")
+    return lines
+
+
+# --- documents with their own rendering -----------------------------------------------
+
+
+def _plan_lines(renderer: _Renderer, result: Mapping[str, Any]) -> list[str]:
+    """Render the ``hydrolog-plan/1`` document: each target with its action."""
+    lines = [renderer.label("plan_title")]
+    targets = result.get("targets") or []
+    if not targets:
+        return [*lines, renderer.label("plan_empty")]
+    headers = [
+        renderer.label("plan_action"),
+        renderer.label("plan_option"),
+        renderer.label("plan_path"),
+        renderer.label("plan_note"),
+    ]
+    rows = []
+    for target in targets:
+        reason = target.get("reason")
+        note = renderer.label(f"plan_{reason}") if reason else ""
+        action = renderer.label(f"plan_{target['action']}")
+        rows.append([action, str(target["option"]), str(target["path"]), note])
+    lines.extend(renderer.table(headers, rows, [False] * len(headers), 0))
+    if any(target["action"] == "conflict" for target in targets):
+        lines.append(renderer.label("plan_blocked"))
+    return lines
+
+
+def _command_list_lines(
+    renderer: _Renderer, result: Mapping[str, Any], page: object
+) -> list[str]:
+    """Render ``hydrolog-command-list/1``: name and summary of each command."""
+    known = _catalog_commands()
+    entries = result.get("commands") or []
+    rows = []
+    for entry in entries:
+        command = known.get(entry["name"])
+        summary = command.summarize(renderer.lang) if command else entry["summary"]
+        rows.append([entry["name"], summary])
+    headers = [renderer.label("command"), renderer.label("summary")]
+    lines = renderer.table(headers, rows, [False, False], 0)
+    return [*lines, *_page_lines(renderer, len(entries), page)]
+
+
+def _schema_option_row(
+    renderer: _Renderer, option: Mapping[str, Any], polish: bool
+) -> list[str]:
+    """One row of the options table of ``commands schema``."""
+    enum = option.get("enum")
+    if enum:
+        kind = "|".join(item["value"] for item in enum)
+    else:
+        kind = str(option["type"])
+        if option.get("items"):
+            kind = f"{kind}[{option['items']}]"
+    if option.get("unit"):
+        kind += f" [{option['unit']}]"
+    translated = option.get("i18n", {}).get("pl", {}) if polish else {}
+    description = translated.get("description") or option.get("description", "")
+    default = option.get("default")
+    return [
+        option["name"],
+        kind,
+        renderer.label("yes" if option.get("required") else "no"),
+        "" if default is None else renderer.cell(default),
+        str(description),
+    ]
+
+
+def _schema_lines(renderer: _Renderer, entry: Mapping[str, Any]) -> list[str]:
+    """One command of a ``hydrolog-commands/1`` document as readable text."""
+    polish = renderer.lang == "pl"
+    translated = entry.get("i18n", {}).get("pl", {}) if polish else {}
+    summary = translated.get("summary") or entry["summary"]
+    description = translated.get("description") or entry.get("description", "")
+    lines = [f"{entry['name']} ({entry['operation_id']}): {summary}"]
+    lines.extend(
+        textwrap.wrap(
+            description,
+            renderer.width - _INDENT,
+            initial_indent=" " * _INDENT,
+            subsequent_indent=" " * _INDENT,
+            break_on_hyphens=False,
+        )
+    )
+    effects = entry.get("effects") or {}
+    key = (
+        "schema_effects_read_only"
+        if effects.get("read_only")
+        else "schema_effects_writes"
+    )
+    lines.append(" " * _INDENT + renderer.label(key))
+    options = entry.get("options") or []
+    if options:
+        lines.append(f"{renderer.label('schema_options')}:")
+        headers = [
+            renderer.label("schema_name"),
+            renderer.label("schema_type"),
+            renderer.label("schema_required"),
+            renderer.label("schema_default"),
+            renderer.label("schema_description"),
+        ]
+        rows = [_schema_option_row(renderer, option, polish) for option in options]
+        lines.extend(renderer.table(headers, rows, [False] * len(headers), _INDENT))
+        for option in options:
+            meanings = (
+                option.get("i18n", {}).get("pl", {}).get("enum") if polish else None
+            )
+            for item in option.get("enum") or []:
+                meaning = (meanings or {}).get(item["value"]) or item["meaning"]
+                lines.append(f"  {option['name']}: {item['value']} = {meaning}")
+    groups = entry.get("one_of") or []
+    if groups:
+        joined = " | ".join("+".join(group) for group in groups)
+        lines.append(renderer.label("schema_one_of", groups=joined))
+    rules = (translated.get("rules") if polish else None) or entry.get("rules") or []
+    if rules:
+        lines.append(f"{renderer.label('schema_rules')}:")
+        lines.extend(f"  - {rule}" for rule in rules)
+    examples = entry.get("examples") or []
+    if examples:
+        lines.append(f"{renderer.label('schema_examples')}:")
+        lines.extend(f"  {example['call']}" for example in examples)
+    errors = entry.get("errors") or []
+    if errors:
+        lines.append(f"{renderer.label('schema_errors')}: {', '.join(errors)}")
+    return lines
+
+
+def _catalog_lines(
+    renderer: _Renderer, result: Mapping[str, Any], page: object
+) -> list[str]:
+    """Render ``hydrolog-commands/1``: every command, then the page."""
+    entries = result.get("commands") or []
+    lines: list[str] = []
+    for entry in entries:
+        if lines:
+            lines.append("")
+        lines.extend(_schema_lines(renderer, entry))
+    if page is not None:
+        lines.extend(["", *_page_lines(renderer, len(entries), page)])
+    return lines
+
+
+def _config_lines(renderer: _Renderer, result: Mapping[str, Any]) -> list[str]:
+    """Render the ``hydrolog-config/1`` document of ``config show``."""
+    headers = [
+        renderer.label("config_setting"),
+        renderer.label("config_value"),
+        renderer.label("config_source"),
+    ]
+    rows = []
+    for setting in result.get("settings") or []:
+        source = renderer.label(f"source_{setting['source']}")
+        if setting.get("detail"):
+            source += f" ({setting['detail']})"
+        rows.append([setting["key"], str(setting["value"]), source])
+    lines = renderer.table(headers, rows, [False] * len(headers), 0)
+    config_file = result.get("config_file") or {}
+    state = renderer.label(
+        "config_file_exists" if config_file.get("exists") else "config_file_absent"
+    )
+    lines.append(
+        renderer.label("config_file", path=config_file.get("path", ""), state=state)
+    )
+    credentials = result.get("credentials") or []
+    if credentials:
+        lines.append(f"{renderer.label('config_credentials')}:")
+        for item in credentials:
+            state = renderer.label(
+                "config_present" if item["present"] else "config_missing"
+            )
+            lines.append(f"  {item['name']}: {state}")
+    else:
+        lines.append(
+            f"{renderer.label('config_credentials')}: {renderer.label('none')}"
+        )
+    store = result.get("store")
+    shown = renderer.label("none") if store is None else renderer.compact(store)
+    lines.append(f"{renderer.label('config_store')}: {shown}")
+    return lines
+
+
+def _generic_lines(
+    renderer: _Renderer, command: Command, data: Mapping[str, Any]
+) -> list[str]:
+    """Render the inputs and the result of any command, walked generically."""
+    units = {option.name: option.unit for option in command.options if option.unit}
+    lines: list[str] = []
+    inputs = data.get("inputs")
+    if inputs:
+        lines.append(f"{renderer.label('input')}:")
+        lines.extend(renderer.mapping(inputs, _INDENT, units=units))
+    result = data.get("result")
+    if isinstance(result, Mapping):
+        result = {k: v for k, v in result.items() if k not in _ENVELOPE_KEYS}
+    lines.extend(renderer.result(result))
+    return lines
 
 
 def render_result(
@@ -448,34 +686,34 @@ def render_result(
     Returns
     -------
     str
-        The summary without a trailing newline: a title line, the inputs with their
-        units, the result, the notices and the written files. A document or a text
-        result (see the module docstring) replaces the title, inputs and result.
+        The summary without a trailing newline. A generic result is a title line, the
+        inputs with their units and the result (without its ``schema`` and ``files``);
+        the plan of ``--check``, ``commands list`` and ``schema``, ``commands guide``
+        and ``config show`` have their own layout (see the module docstring). The
+        notices and the written files (``result.files``) come last.
     """
     renderer = _Renderer(lang, width)
-    units = {option.name: option.unit for option in command.options if option.unit}
-    content = _content(data.get("result"))
-    if content is not None:
-        lines = [content]
+    result = data.get("result")
+    schema = result.get("schema") if isinstance(result, Mapping) else None
+    page = data.get("page")
+    head = [_header(command, lang)]
+    body: list[str]
+    if schema == _PLAN_SCHEMA and isinstance(result, Mapping):
+        body = _plan_lines(renderer, result)
+    elif schema == COMMAND_LIST_SCHEMA and isinstance(result, Mapping):
+        body = _command_list_lines(renderer, result, page)
+    elif schema == COMMANDS_SCHEMA and isinstance(result, Mapping):
+        head, body = [], _catalog_lines(renderer, result, page)
+    elif schema == _CONFIG_SCHEMA and isinstance(result, Mapping):
+        body = _config_lines(renderer, result)
+    elif schema == _GUIDE_SCHEMA and isinstance(result, Mapping):
+        if result.get("files"):
+            body = []
+        else:
+            head, body = [], str(result.get("text", "")).rstrip("\n").splitlines()
     else:
-        lines = [f"{command.name}: {command.summarize(lang)}"]
-        inputs = data.get("inputs")
-        if inputs:
-            lines.append(f"{renderer.label('input')}:")
-            lines.extend(renderer.mapping(inputs, _INDENT, units=units))
-        lines.extend(renderer.result(data.get("result")))
-    notices = data.get("notices") or []
-    if notices:
-        lines.append(f"{renderer.label('notices')}:")
-        for notice in notices:
-            level = renderer.label(f"level_{notice['level']}")
-            lines.append(f"  [{level}] {notice['code']}: {notice['text']}")
-    files = data.get("files") or []
-    if files:
-        lines.append(f"{renderer.label('files')}:")
-        for record in files:
-            lines.append(f"  {record['path']}  (sha256 {record['sha256'][:12]}…)")
-    return "\n".join(lines)
+        body = _generic_lines(renderer, command, data)
+    return "\n".join([*head, *body, *_tail(renderer, data)])
 
 
 def render_error(document: Mapping[str, Any], lang: Lang = "pl") -> str:
@@ -484,9 +722,12 @@ def render_error(document: Mapping[str, Any], lang: Lang = "pl") -> str:
     Parameters
     ----------
     document : Mapping[str, Any]
-        The error document (:func:`hydrolog.exceptions.error_document`).
+        The error document (:func:`hydrolog.exceptions.error_document`); its
+        ``title`` is shown as it is, so pass the document made for ``lang``.
     lang : {"pl", "en"}, optional
-        Language of the labels; the message and hint stay English.
+        Language of the labels. The message and hint stay English, except for a
+        ``conflict`` that names ``details.paths``: its explanation and remedy are
+        written in ``lang``.
 
     Returns
     -------
@@ -494,6 +735,19 @@ def render_error(document: Mapping[str, Any], lang: Lang = "pl") -> str:
         ``Błąd (code): title``, the indented message and, when present, the hint.
     """
     lines = [f"{text('error', lang)} ({document['code']}): {document['title']}"]
+    details = document.get("details") or {}
+    reason = details.get("reason")
+    paths = details.get("paths")
+    if (
+        document["code"] == "conflict"
+        and reason in _CONFLICT_REASONS
+        and isinstance(paths, list)
+        and paths
+    ):
+        lines.append("  " + text(f"conflict_{reason}", lang))
+        lines.extend(f"    {path}" for path in paths)
+        lines.append(f"{text('hint', lang)}: {text(f'conflict_{reason}_hint', lang)}")
+        return "\n".join(lines)
     message = str(document.get("message") or "").strip()
     if message:
         lines.extend("  " + part for part in message.splitlines())

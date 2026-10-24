@@ -1,10 +1,11 @@
-"""Lookup, validation, JSON Schema and execution of catalog commands (spec 6.2).
+"""Lookup, validation, catalog documents and execution of catalog commands.
 
-The public entry points are re-exported by :mod:`hydrolog.catalog`:
+The entry points are re-exported by :mod:`hydrolog.catalog`; the top-level package
+exposes the five of AGI-2.1 with keyword options (:func:`hydrolog.run_command`...):
 
 * :func:`data_commands` and :func:`get_command` -- the catalog and its lookup;
-* :func:`command_schema` -- the ``hydrolog-commands/1`` document (JSON Schema of the
-  options of every command);
+* :func:`list_commands` and :func:`command_schema` -- the command list and the
+  ``hydrolog-commands/1`` document of one command;
 * :func:`validate_command` -- validation and normalization of option values;
 * :func:`run_command` -- validation, path policy, execution and the result envelope.
 
@@ -44,24 +45,23 @@ import itertools
 import os
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
-from typing import Any, Final, cast
+from typing import Any, cast
 
-from hydrolog._serialization import to_jsonable
+from hydrolog.catalog.document import (
+    Document,
+    catalog_document,
+    command_list,
+    paginate,
+)
 from hydrolog.catalog.envelope import CommandResult
 from hydrolog.catalog.groups import collect_commands
-from hydrolog.catalog.spec import LANGUAGES, Command, Lang
+from hydrolog.catalog.spec import Command
 from hydrolog.exceptions import (
     ForbiddenPathError,
     HydrologError,
     InvalidParameterError,
     NotFoundError,
 )
-
-COMMANDS_SCHEMA: Final = "hydrolog-commands/1"
-"""Value of the ``schema`` key of the :func:`command_schema` document."""
-SCHEMA_DIALECT: Final = "https://json-schema.org/draft/2020-12/schema"
-"""JSON Schema dialect of every ``input_schema``."""
-
 
 # --- catalog --------------------------------------------------------------------------
 
@@ -256,95 +256,64 @@ def validate_command(
     return result
 
 
-# --- JSON Schema ----------------------------------------------------------------------
+# --- catalog documents ----------------------------------------------------------------
 
 
-def _input_schema(command: Command, lang: Lang) -> dict[str, Any]:
-    schema: dict[str, Any] = {
-        "$schema": SCHEMA_DIALECT,
-        "type": "object",
-        "properties": {
-            option.name: option.json_schema(lang) for option in command.options
-        },
-    }
-    required = [option.name for option in command.options if option.required]
-    if required:
-        schema["required"] = required
-    if command.one_of:
-        schema["oneOf"] = [{"required": list(group)} for group in command.one_of]
-    schema["additionalProperties"] = False
-    if command.examples:
-        schema["examples"] = [to_jsonable(dict(item)) for item in command.examples]
-    return schema
-
-
-def _command_entry(command: Command, lang: Lang) -> dict[str, Any]:
-    return {
-        "name": command.name,
-        "operation_id": command.operation_id,
-        "summary": command.summarize(lang),
-        "description": command.describe(lang),
-        "input_schema": _input_schema(command, lang),
-        "x-hydrolog": {
-            "writes": command.writes,
-            "function": command.function,
-            "units": {
-                option.name: option.unit for option in command.options if option.unit
-            },
-        },
-    }
-
-
-def command_schema(
-    command: str | Command | None = None, *, lang: Lang = "pl"
-) -> dict[str, Any]:
-    """Describe the options of one command, or of the whole catalog, as JSON Schema.
+def command_schema(command: str | Command) -> Document:
+    """Describe one command as a ``hydrolog-commands/1`` document (AGI-2.1).
 
     Parameters
     ----------
-    command : str or Command, optional
-        Command name or ``operation_id``; ``None`` describes every command.
-    lang : {"pl", "en"}, optional
-        Language of the summaries, descriptions and option descriptions.
+    command : str or Command
+        Command name (``"tc kirpich"``) or ``operation_id``
+        (``"hydrolog_tc_kirpich"``), or a :class:`Command` instance.
 
     Returns
     -------
-    dict
-        ``{"schema": "hydrolog-commands/1", "version", "lang", "commands": [...]}``;
-        each command is ``{"name", "operation_id", "summary", "description",
-        "input_schema", "x-hydrolog"}``. ``input_schema`` is a JSON Schema
-        (2020-12) object with ``properties`` (type, bounds, ``enum``, ``default``,
-        ``description`` with the unit), ``required``, ``oneOf`` (one ``required``
-        group per ``one_of`` alternative), ``additionalProperties: false`` and the
-        declared ``examples``. ``x-hydrolog`` holds ``writes``, ``function`` and
-        ``units`` (unit of each option that has one).
+    Document
+        The catalog document holding that one command: options with types, units,
+        bounds, enum meanings and ``path_role``, result schema, effects, rules,
+        examples, errors and the Polish texts (``i18n.pl``).
 
     Raises
     ------
     NotFoundError
         If ``command`` does not exist.
-    InvalidParameterError
-        If ``lang`` is not ``"pl"`` or ``"en"``.
     """
-    if lang not in LANGUAGES:
-        raise InvalidParameterError(
-            f"Unknown language {lang!r}; allowed: {', '.join(LANGUAGES)}",
-            details={
-                "option": "lang",
-                "reason": "choice",
-                "allowed": list(LANGUAGES),
-                "value": str(lang),
-            },
-        )
-    import hydrolog
+    return Document(catalog_document((_resolve(command),)))
 
-    selected = data_commands() if command is None else (_resolve(command),)
-    return {
-        "schema": COMMANDS_SCHEMA,
-        "version": hydrolog.__version__,
-        "lang": lang,
-        "commands": [_command_entry(item, lang) for item in selected],
-    }
+
+def list_commands(*, limit: int | None = None, cursor: str | None = None) -> Document:
+    """List the catalog commands as a ``hydrolog-command-list/1`` document (AGI-2.1).
+
+    Parameters
+    ----------
+    limit : int, optional
+        Commands per page; ``None`` (default) lists all.
+    cursor : str, optional
+        ``page.next_cursor`` of the previous page.
+
+    Returns
+    -------
+    Document
+        ``commands`` with ``name``, ``operation_id``, ``summary``, ``families`` and
+        ``read_only`` of each command; with ``limit`` also ``page``.
+
+    Raises
+    ------
+    InvalidParameterError
+        If ``limit`` is not positive or ``cursor`` is invalid.
+    """
+    commands = data_commands()
+    if limit is None:
+        return Document(command_list(commands))
+    if isinstance(limit, bool) or not isinstance(limit, int) or limit < 1:
+        raise InvalidParameterError(
+            f"Option 'limit': must be an integer >= 1, got {limit!r}",
+            details={"option": "limit", "reason": "minimum", "minimum": 1},
+        )
+    selected, page = paginate(commands, limit, cursor)
+    return Document({**command_list(selected), "page": page})
 
 
 # --- execution ------------------------------------------------------------------------
@@ -404,8 +373,8 @@ def _apply_path_policy(
 
 
 def _load_function(path: str) -> Callable[..., Any]:
-    """Import ``"package.module:attribute"``."""
-    module_name, _, attribute = path.partition(":")
+    """Import the function at the dotted path ``"package.module.function"``."""
+    module_name, _, attribute = path.rpartition(".")
     try:
         function = getattr(importlib.import_module(module_name), attribute)
     except (ImportError, AttributeError) as exc:
@@ -418,6 +387,50 @@ def _load_function(path: str) -> Callable[..., Any]:
             f"Operation {path!r} is not callable", details={"function": path}
         )
     return cast(Callable[..., Any], function)
+
+
+def check_command(
+    name: str | Command,
+    options: Mapping[str, object] | None = None,
+    *,
+    allowed_dirs: Sequence[str | os.PathLike[str]] | None = None,
+) -> CommandResult:
+    """Plan a command without effects: :func:`run_command` with ``check`` (AGI-2.1).
+
+    Parameters
+    ----------
+    name : str or Command
+        Command name or ``operation_id`` (or a :class:`Command` instance).
+    options : Mapping[str, object], optional
+        Option values by option name; ``check`` is added.
+    allowed_dirs : sequence of str or os.PathLike, optional
+        As in :func:`run_command`.
+
+    Returns
+    -------
+    CommandResult
+        Envelope with ``check`` true whose ``result`` is the ``hydrolog-plan/1``
+        document: each target file with its action (``write``, ``replace`` or
+        ``conflict``). A plan that lists a conflict is a successful result.
+
+    Raises
+    ------
+    NotFoundError
+        If the command does not exist.
+    InvalidParameterError
+        If the command is read-only (it has no ``check`` mode, ``details.reason``
+        ``no_check``) or the options are invalid.
+    """
+    command = _resolve(name)
+    if command.check is None:
+        raise InvalidParameterError(
+            f"Command {command.name!r} has no check mode: it is read-only",
+            details={"option": "check", "reason": "no_check", "command": command.name},
+            hint="Run it directly; only commands that write files have a plan.",
+        )
+    return run_command(
+        command, {**(options or {}), "check": True}, allowed_dirs=allowed_dirs
+    )
 
 
 def run_command(
@@ -473,4 +486,6 @@ def run_command(
     resolved = _apply_path_policy(command, normalized, allowed_dirs)
     function = _load_function(command.function)
     output = function(**resolved)
-    return CommandResult.from_output(command.name, resolved, output)
+    return CommandResult.from_output(
+        command.name, resolved, output, command.result_schema
+    )

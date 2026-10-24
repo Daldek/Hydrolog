@@ -33,6 +33,7 @@ SPEC_TABLE = {
     "forbidden": 12,
     "calculation_error": 13,
     "cancelled": 130,
+    "terminated": 143,
 }
 
 

@@ -92,6 +92,7 @@ _USED_CODES: Final = (
     "forbidden",
     "calculation_error",
     "cancelled",
+    "terminated",
 )
 """Registry codes that Hydrolog can end a call with (ERR-1: none of its own)."""
 

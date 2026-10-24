@@ -16,6 +16,7 @@ from pathlib import Path
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.catalog.envelope import Notice, OperationOutput
 from hydrolog.exceptions import InvalidParameterError
+from hydrolog.operations._outputs import conflict_error, plan_output, plan_outputs
 from hydrolog.soil import (
     HSG_CODES,
     TEXTURE_CLASSES,
@@ -103,7 +104,9 @@ def soil_hsg(
     clay_path: str | os.PathLike[str],
     sand_path: str | os.PathLike[str],
     silt_path: str | os.PathLike[str],
-    output_path: str | os.PathLike[str],
+    output: str | os.PathLike[str],
+    force: bool = False,
+    check: bool = False,
 ) -> OperationOutput:
     """HSG GeoTIFF from clay, sand and silt rasters (``soil hsg``).
 
@@ -117,15 +120,20 @@ def soil_hsg(
     clay_path, sand_path, silt_path : str or os.PathLike
         Rasters of the clay, sand and silt amounts (any unit shared by the three, e.g.
         the g/kg of SoilGrids) on one grid (same CRS, transform and shape).
-    output_path : str or os.PathLike
-        HSG GeoTIFF to write; missing directories are created and an existing file is
-        replaced.
+    output : str or os.PathLike
+        HSG GeoTIFF to write; missing directories are created. An existing file is
+        replaced only with ``force``.
+    force : bool, optional
+        Replace an existing ``output`` file, by default ``False``.
+    check : bool, optional
+        Plan without effects: return the ``hydrolog-plan/1`` document of the target
+        and write nothing.
 
     Returns
     -------
     OperationOutput
         ``result`` is a :class:`~hydrolog.soil.HsgRasterResult`; the written file is
-        listed in ``files``.
+        listed in ``files``. With ``check`` the result is the plan.
 
     Raises
     ------
@@ -137,17 +145,25 @@ def soil_hsg(
         If an input cannot be read, has no CRS, the grids differ or an amount is
         invalid.
     InvalidParameterError
-        If ``output_path`` is one of the inputs.
+        If ``output`` is one of the inputs.
+    ConflictError
+        If ``output`` exists and ``force`` is not given (``details.reason``
+        ``output_exists``).
     OutputError
         If the output cannot be written.
     """
+    plan = plan_outputs({"output": output}, force=force)
+    if check:
+        return plan_output(plan)
+    if (error := conflict_error(plan)) is not None:
+        raise error
     result: HsgRasterResult = hsg_from_rasters(
         Path(os.fspath(clay_path)),
         Path(os.fspath(sand_path)),
         Path(os.fspath(silt_path)),
-        Path(os.fspath(output_path)),
+        Path(os.fspath(output)),
     )
-    return OperationOutput(result, files=(result.output_path,))
+    return OperationOutput(result, files=(result.output_path,), replaced=plan.replaced)
 
 
 def soil_hsg_stats(

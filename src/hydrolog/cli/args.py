@@ -1,6 +1,6 @@
 """The outer layer of the command line: general flags, command words and the rest.
 
-``hydrolog [--json] [--schema] [--lang pl|en] [-V] [-h] <group> <command> [options]``
+``hydrolog [--json] [--schema] [--lang pl|en] [-v | -q] [-V] [-h] <group> <command>``
 
 The general flags may stand before the group, between the words or (read again by the
 command parser) after the command. :func:`split_arguments` peels them off the front and
@@ -11,8 +11,7 @@ suggestions) instead of a usage error.
 
 The language is the one thing that must be known *before* parsing (the help is printed
 while the command line is being parsed), so it is taken from the last ``--lang``
-anywhere
-in the command line (:func:`peek`) and validated by :func:`resolve_lang`.
+anywhere in the command line (:func:`peek`) and validated by :func:`resolve_lang`.
 """
 
 from __future__ import annotations
@@ -35,6 +34,10 @@ _SWITCHES = {
     "--schema": "schema",
     "-V": "version",
     "--version": "version",
+    "-v": "verbose",
+    "--verbose": "verbose",
+    "-q": "quiet",
+    "--quiet": "quiet",
     "-h": "help",
     "--help": "help",
 }
@@ -46,7 +49,7 @@ class Flags:
 
     Attributes
     ----------
-    json, schema, version, help : bool
+    json, schema, version, help, verbose, quiet : bool
         The corresponding flag was given.
     """
 
@@ -54,6 +57,8 @@ class Flags:
     schema: bool = False
     version: bool = False
     help: bool = False
+    verbose: bool = False
+    quiet: bool = False
 
 
 @dataclass
@@ -163,7 +168,8 @@ def resolve_lang(explicit: str | None) -> Lang:
     Parameters
     ----------
     explicit : str or None
-        Text of ``--lang``; ``None`` selects ``HYDROLOG_LANG`` and then Polish.
+        Text of ``--lang``; ``None`` selects the settings (``HYDROLOG_LANG``,
+        ``NOGAT_LANG``, ``nogat.toml``) and then Polish.
 
     Returns
     -------
@@ -173,8 +179,7 @@ def resolve_lang(explicit: str | None) -> Lang:
     Raises
     ------
     InvalidParameterError
-        If ``explicit`` is neither ``pl`` nor ``en`` (``reason="choice"``, like the
-        catalog's own errors of a ``lang`` option).
+        If ``explicit`` is neither ``pl`` nor ``en`` (``reason="choice"``).
     """
     if explicit is None:
         return env_lang()

@@ -21,24 +21,30 @@ from hydrolog.cli.parser import (
 from hydrolog.exceptions import InvalidParameterError
 
 
-def _command(*options: Option, examples=(), one_of=()) -> Command:
+def _command(*options: Option, examples=({},), one_of=()) -> Command:
     return Command(
         name="demo run",
-        operation_id="demo_run",
+        operation_id="hydrolog_demo_run",
         summary="Demo.",
-        summary_en="Demo.",
-        description="Opis.",
-        description_en="Description.",
-        function="tests.unit.test_cli_parser:unused",
+        summary_pl="Demo PL.",
+        description="Description.",
+        description_pl="Opis.",
+        function="tests.unit.test_cli_parser.unused",
         options=options,
         examples=examples,
         one_of=one_of,
+        result_schema="hydrolog-demo-run/1",
+        example_results=tuple({} for _ in examples),
     )
 
 
 def _option(name: str, kind: Any = "number", **kwargs: Any) -> Option:
     if kind == "choice":
         kwargs.setdefault("choices", ("a", "b"))
+        kwargs.setdefault("meanings", {"a": "First one", "b": "Second one"})
+        kwargs.setdefault("meanings_pl", {"a": "Pierwszy", "b": "Drugi"})
+    if kind == "path":
+        kwargs.setdefault("path_role", "input")
     return Option(name, kind, "Opis", "Description", **kwargs)
 
 
@@ -157,6 +163,14 @@ class TestParsing:
         command = _command(_option("a"))
         line = parse_command_line(command, ["--json", "--schema", "--lang", "en"])
         assert (line.json, line.schema, line.options) == (True, True, {})
+        assert (line.verbose, line.quiet) == (False, False)
+
+    def test_verbosity_flags(self):
+        command = _command(_option("a"))
+        assert parse_command_line(command, ["-v"]).verbose is True
+        assert parse_command_line(command, ["--verbose"]).verbose is True
+        line = parse_command_line(command, ["-q", "--a", "1"])
+        assert (line.quiet, line.verbose, line.options) == (True, False, {"a": 1.0})
 
     def test_abbreviations_are_not_accepted(self):
         command = _command(_option("length_km"))
@@ -221,7 +235,9 @@ class TestParsing:
 class TestDeclarations:
     """A declaration that cannot become a command line is reported early."""
 
-    @pytest.mark.parametrize("name", ["json", "schema", "help", "version"])
+    @pytest.mark.parametrize(
+        "name", ["json", "schema", "help", "version", "lang", "verbose", "quiet"]
+    )
     def test_option_named_like_a_general_flag(self, name):
         with pytest.raises(ValueError, match=f"--{name}"):
             build_command_parser(_command(_option(name)))
@@ -232,22 +248,14 @@ class TestDeclarations:
                 _command(_option("flag", "boolean"), _option("no_flag", "boolean"))
             )
 
-    def test_lang_option_is_the_general_flag(self):
-        command = _command(
-            _option("lang", "choice", choices=("pl", "en"), default="pl")
-        )
-        line = parse_command_line(command, ["--lang", "en"])
-        assert line.options == {}  # reported through the language, not as an option
-
 
 class TestHelpParsers:
     """The parsers that only print help."""
 
-    def test_root_help_without_examples(self):
-        parser = build_root_parser([_command(_option("a"))], "en")
-        text = parser.format_help()
-        assert "Examples:" not in text
+    def test_root_help_lists_the_groups(self):
+        text = build_root_parser([_command(_option("a"))], "en").format_help()
         assert "  demo " in text
+        assert text.startswith("Hydrolog: hydrological calculations")
 
     def test_root_help_uses_the_first_example(self):
         command = _command(_option("a"), examples=({"a": 2},))
@@ -263,7 +271,11 @@ class TestHelpParsers:
 
     def test_group_help_lists_summaries(self):
         text = build_group_parser("demo", [_command(_option("a"))], "en").format_help()
-        assert text.startswith("usage: hydrolog demo [general options] <command>")
+        assert (
+            text.splitlines()[0]
+            == "Commands of the group demo of the Hydrolog catalog."
+        )
+        assert "usage: hydrolog demo [general options] <command>" in text
         assert "run" in text and "Demo." in text
 
     def test_defaults_are_shown_for_booleans_and_lists(self):
@@ -277,9 +289,10 @@ class TestHelpParsers:
 
     def test_percent_signs_survive(self):
         command = _command(
-            Option("share", "number", "Udział 100% powierzchni", "Share of 100% area")
+            Option("share", "number", "Share of 100% area", "Udział 100% powierzchni")
         )
-        assert "Udział 100% powierzchni" in build_command_parser(command).format_help()
+        text = build_command_parser(command, "pl").format_help()
+        assert "Udział 100% powierzchni" in text
 
     def test_example_with_unicode_is_printed_verbatim(self):
         command = _command(
@@ -291,3 +304,49 @@ class TestHelpParsers:
             json.dumps({"name": "Młynówka"}, ensure_ascii=False, separators=(",", ":"))
             in text
         )
+
+
+class TestCommandHelp:
+    """The help of a command (AGI-3.7): sentence, enum meanings, examples last."""
+
+    def test_starts_with_the_summary_in_the_language(self):
+        command = _command(_option("a"))
+        assert (
+            build_command_parser(command, "en")
+            .format_help()
+            .startswith("Demo.\n\nusage: hydrolog demo run")
+        )
+        assert (
+            build_command_parser(command, "pl")
+            .format_help()
+            .startswith("Demo PL.\n\nużycie: hydrolog demo run")
+        )
+
+    @pytest.mark.parametrize(
+        ("lang", "first", "second"),
+        [("en", "First one", "Second one"), ("pl", "Pierwszy", "Drugi")],
+    )
+    def test_enum_values_are_listed_with_their_meanings(self, lang, first, second):
+        text = build_command_parser(_command(_option("mode", "choice")), lang)
+        lines = text.format_help().splitlines()
+        start = lines.index("  --mode:")
+        assert lines[start + 1].split(None, 1) == ["a", first]
+        assert lines[start + 2].split(None, 1) == ["b", second]
+
+    def test_examples_come_last(self):
+        command = _command(
+            _option("a"),
+            _option("mode", "choice"),
+            examples=({"a": 1}, {"a": 2, "mode": "b"}),
+        )
+        lines = build_command_parser(command, "en").format_help().splitlines()
+        assert lines[-3:] == [
+            "Examples:",
+            "  hydrolog demo run --a 1",
+            "  hydrolog demo run --a 2 --mode b",
+        ]
+
+    def test_general_options_include_verbosity(self):
+        text = build_command_parser(_command(_option("a")), "en").format_help()
+        assert "-v, --verbose" in text and "-q, --quiet" in text
+        assert "--lang {pl,en}" in text

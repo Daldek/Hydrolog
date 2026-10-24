@@ -18,6 +18,7 @@ import pytest
 from hydrolog.catalog import (
     Command,
     CommandResult,
+    Document,
     Notice,
     OperationOutput,
     Option,
@@ -25,11 +26,14 @@ from hydrolog.catalog import (
     command_schema,
     data_commands,
     get_command,
+    input_schema,
+    list_commands,
     run_command,
     validate_command,
 )
 from hydrolog.catalog.envelope import FileRecord, sha256_file
 from hydrolog.catalog.groups import GROUP_MODULES, collect_commands
+from hydrolog.catalog.spec import SUMMARY_MAX_CHARS
 from hydrolog.exceptions import (
     CalculationError,
     ForbiddenPathError,
@@ -118,20 +122,28 @@ def nan_operation(*, length_km: float):
 def _command(operation: str = "echo_operation", **overrides) -> Command:
     fields: dict[str, Any] = {
         "name": "demo run",
-        "operation_id": "demo_run",
+        "operation_id": "hydrolog_demo_run",
         "summary": "Demo.",
-        "summary_en": "Demo.",
-        "description": "Opis demonstracyjny.",
-        "description_en": "Demo description.",
-        "function": f"{__name__}:{operation}",
+        "summary_pl": "Demo PL.",
+        "description": "Demo description.",
+        "description_pl": "Opis demonstracyjny.",
+        "function": f"{__name__}.{operation}",
         "options": (),
+        "result_schema": "hydrolog-demo-run/1",
+        "examples": ({},),
     }
     fields.update(overrides)
+    fields.setdefault("example_results", tuple({} for _ in fields["examples"]))
     return Command(**fields)
 
 
 def _opt(name: str, type_: Any, **kwargs: Any) -> Option:
-    return Option(name, type_, f"Opis {name}", f"Description {name}", **kwargs)
+    if type_ == "choice" and "meanings" not in kwargs:
+        kwargs["meanings"] = {c: f"Meaning {c}" for c in kwargs.get("choices", ())}
+        kwargs["meanings_pl"] = {c: f"Znaczenie {c}" for c in kwargs["meanings"]}
+    if type_ == "path" and "path_role" not in kwargs:
+        kwargs["path_role"] = "input"
+    return Option(name, type_, f"Description {name}", f"Opis {name}", **kwargs)
 
 
 RICH = _command(
@@ -146,10 +158,9 @@ RICH = _command(
         _opt("stations", "object_list"),
         _opt("watershed", "object"),
         _opt("input_file", "path"),
-        _opt("out", "path", writes=True),
+        _opt("out", "path", path_role="output"),
         _opt("ratio", "number", default=0.5, minimum=0, maximum=1, unit="m/m"),
     ),
-    writes=True,
 )
 
 SERIES = _command(
@@ -208,10 +219,36 @@ class TestOptionDeclaration:
         with pytest.raises(ValueError, match="exceeds maximum"):
             _opt("n", "number", minimum=5, maximum=1)
 
-    def test_writes_only_for_paths(self):
-        """Only a path option can be written."""
-        with pytest.raises(ValueError, match="writes"):
-            _opt("n", "number", writes=True)
+    def test_path_role_is_required_for_paths_and_forbidden_elsewhere(self):
+        """A path is an input or an output; no other type has a role."""
+        with pytest.raises(ValueError, match="path_role 'input' or 'output'"):
+            Option("p", "path", "Path", "Ścieżka")
+        with pytest.raises(ValueError, match="path_role 'input' or 'output'"):
+            _opt("p", "path", path_role="both")
+        with pytest.raises(ValueError, match="only for type 'path'"):
+            _opt("n", "number", path_role="output")
+
+    def test_only_output_paths_write(self):
+        """``writes`` follows ``path_role``."""
+        assert _opt("o", "path", path_role="output").writes is True
+        assert _opt("i", "path", path_role="input").writes is False
+
+    def test_every_choice_needs_a_meaning_in_both_languages(self):
+        """Meanings cover exactly the choices (they feed the catalog document)."""
+        with pytest.raises(ValueError, match="meanings must give a meaning"):
+            Option("m", "choice", "D", "O", choices=("a", "b"), meanings={"a": "x"})
+        with pytest.raises(ValueError, match="meanings_pl must give a meaning"):
+            Option(
+                "m",
+                "choice",
+                "D",
+                "O",
+                choices=("a",),
+                meanings={"a": "x"},
+                meanings_pl={"a": "x", "b": "y"},
+            )
+        with pytest.raises(ValueError, match="only for type 'choice'"):
+            _opt("n", "number", meanings={"a": "x"})
 
     def test_required_option_cannot_have_default(self):
         """A required option with a default is contradictory."""
@@ -227,8 +264,10 @@ class TestOptionDeclaration:
 
     def test_empty_descriptions_are_rejected(self):
         """Both languages need a description."""
-        with pytest.raises(ValueError, match="description_en"):
-            Option("x", "number", "Opis", " ")
+        with pytest.raises(ValueError, match="description_pl"):
+            Option("x", "number", "Description", " ")
+        with pytest.raises(ValueError, match="description"):
+            Option("x", "number", "", "Opis")
 
     def test_choices_must_be_non_empty_strings(self):
         """Empty or non-string choices are rejected."""
@@ -253,9 +292,10 @@ class TestCommandDeclaration:
     def test_group_and_subcommand(self):
         """The name splits into group and subcommand."""
         command = _command(
-            name="stats flood-frequency", operation_id="stats_flood_frequency"
+            name="stats flood-frequency", operation_id="hydrolog_stats_flood_frequency"
         )
         assert (command.group, command.subcommand) == ("stats", "flood-frequency")
+        assert command.families == ("stats",)
 
     @pytest.mark.parametrize(
         "name",
@@ -264,28 +304,97 @@ class TestCommandDeclaration:
     def test_bad_names_are_rejected(self, name):
         """A name is ``<group> <command>`` in lowercase."""
         with pytest.raises(ValueError, match="name must be"):
-            _command(name=name, operation_id="x")
+            _command(name=name, operation_id="hydrolog_x")
 
     def test_operation_id_must_be_snake_case_of_name(self):
-        """``operation_id`` is the name with spaces and hyphens as underscores."""
-        with pytest.raises(ValueError, match="operation_id must be 'demo_run_it'"):
-            _command(name="demo run-it", operation_id="demo-run-it")
+        """``operation_id`` is ``hydrolog_`` and the name with ``_`` for ``-``."""
+        with pytest.raises(
+            ValueError, match="operation_id must be 'hydrolog_demo_run_it'"
+        ):
+            _command(name="demo run-it", operation_id="demo_run_it")
+        with pytest.raises(ValueError, match="operation_id must be"):
+            _command(operation_id="hydrolog_demo_run-")
+
+    def test_operation_id_length_limit(self):
+        """MCP tool names have at most 48 characters."""
+        long = "x" * 40
+        with pytest.raises(ValueError, match="longer than 48"):
+            _command(name=f"demo {long}", operation_id=f"hydrolog_demo_{long}")
 
     def test_summary_length_limit(self):
-        """Summaries are one line of at most 120 characters."""
-        _command(summary="x" * 120)
-        with pytest.raises(ValueError, match="longer than 120"):
-            _command(summary="x" * 121)
+        """Summaries are one line of at most ``SUMMARY_MAX_CHARS`` characters."""
+        _command(summary="x" * SUMMARY_MAX_CHARS)
+        with pytest.raises(ValueError, match="longer than"):
+            _command(summary="x" * (SUMMARY_MAX_CHARS + 1))
         with pytest.raises(ValueError, match="single line"):
-            _command(summary_en="a\nb")
+            _command(summary_pl="a\nb")
 
     @pytest.mark.parametrize(
-        "function", ["operations.tc_kirpich", "hydrolog.operations:", "a b:c", ":x"]
+        "function",
+        ["tc_kirpich", "hydrolog.operations:tc_kirpich", "a b.c", ".x", "x."],
     )
     def test_function_path_format(self, function):
-        """The function is ``package.module:attribute``."""
-        with pytest.raises(ValueError, match="function must have the form"):
+        """The function is a dotted path ``package.module.function``."""
+        with pytest.raises(ValueError, match="function must be a dotted path"):
             _command(function=function)
+
+    @pytest.mark.parametrize(
+        "schema", ["", "tc-kirpich/1", "hydrolog-tc/0", "hydrolog-x"]
+    )
+    def test_result_schema_format(self, schema):
+        """The domain schema id is ``hydrolog-<kind>/<n>``."""
+        with pytest.raises(ValueError, match="result_schema"):
+            _command(result_schema=schema)
+
+    def test_an_example_is_required_with_one_result_excerpt_each(self):
+        """Examples and their result excerpts pair up one to one."""
+        with pytest.raises(ValueError, match="at least one example"):
+            _command(examples=(), example_results=())
+        with pytest.raises(ValueError, match="one excerpt per example"):
+            _command(examples=({}, {}), example_results=({},))
+        with pytest.raises(ValueError, match="must be a mapping"):
+            _command(example_results=([1],))
+
+    def test_rules_exist_in_both_languages(self):
+        """A rule without its translation is a declaration error."""
+        _command(rules=("Do it.",), rules_pl=("Zrób to.",))
+        with pytest.raises(ValueError, match="same number of entries"):
+            _command(rules=("Do it.",), rules_pl=())
+
+    def test_errors_are_unique_registry_codes(self):
+        """``errors`` names codes of the error registry, each once."""
+        assert _command(errors=("not_found", "conflict")).errors == (
+            "not_found",
+            "conflict",
+        )
+        with pytest.raises(ValueError, match="registry codes"):
+            _command(errors=("nonsense",))
+        with pytest.raises(ValueError, match="registry codes"):
+            _command(errors=("conflict", "conflict"))
+
+    def test_the_mcp_description_has_a_size_budget(self):
+        """Summary, description and rules must fit a tool description."""
+        with pytest.raises(ValueError, match="MCP description allows"):
+            _command(description="x" * 600)
+
+    def test_core_family(self):
+        """A core command belongs to its group and to ``core``."""
+        assert _command(core=True).families == ("demo", "core")
+
+    def test_effects_derive_from_the_path_roles(self):
+        """A command that writes a file is a destructive replace; others are pure."""
+        pure = _command(options=(_opt("i", "path"),))
+        assert pure.writes is False
+        assert pure.effects.read_only is True
+        assert pure.effects.writes == "none"
+        assert pure.effects.destructive is False
+        assert pure.check is None
+        writing = _command(options=(_opt("o", "path", path_role="output"),))
+        assert writing.writes is True
+        assert writing.effects.read_only is False
+        assert writing.effects.writes == "replace"
+        assert writing.effects.destructive is True
+        assert writing.check == "demo run"
 
     def test_option_names_must_be_unique(self):
         """Two options with one name are rejected."""
@@ -296,14 +405,6 @@ class TestCommandDeclaration:
         """Lists would be mutable inside a frozen declaration."""
         with pytest.raises(ValueError, match="options must be a tuple"):
             _command(options=[_opt("a", "number")])
-
-    def test_writes_must_match_write_options(self):
-        """``writes`` is true exactly when an option writes."""
-        out = _opt("out", "path", writes=True)
-        with pytest.raises(ValueError, match="writes must be true"):
-            _command(options=(out,), writes=False)
-        with pytest.raises(ValueError, match="writes must be true"):
-            _command(options=(_opt("a", "number"),), writes=True)
 
     def test_one_of_needs_two_groups_of_declared_options(self):
         """Alternatives refer to declared options and need at least two groups."""
@@ -327,6 +428,8 @@ class TestCommandDeclaration:
         """An example naming an undeclared option is a declaration error."""
         with pytest.raises(ValueError, match="unknown options"):
             _command(options=(_opt("a", "number"),), examples=({"b": 1},))
+        with pytest.raises(ValueError, match="unknown options"):
+            _command(options=(_opt("a", "number"),), examples=({"b": 1},))
 
     def test_examples_must_be_mappings(self):
         """An example is an options mapping."""
@@ -335,8 +438,10 @@ class TestCommandDeclaration:
 
     def test_descriptions_must_not_be_empty(self):
         """Both long descriptions are required."""
-        with pytest.raises(ValueError, match="description_en"):
-            _command(description_en=" ")
+        with pytest.raises(ValueError, match="description_pl"):
+            _command(description_pl=" ")
+        with pytest.raises(ValueError, match="description"):
+            _command(description="")
 
     def test_options_must_be_option_instances(self):
         """Plain dicts are not options."""
@@ -367,7 +472,9 @@ def _group_module(name: str, *commands: Command) -> types.ModuleType:
 
 
 def _named(name: str) -> Command:
-    return _command(name=name, operation_id=name.replace(" ", "_").replace("-", "_"))
+    return _command(
+        name=name, operation_id="hydrolog_" + name.replace(" ", "_").replace("-", "_")
+    )
 
 
 class TestRegistry:
@@ -437,7 +544,7 @@ class TestLookup:
 
     def test_lookup_by_name_and_operation_id(self):
         """Both spellings find the same declaration."""
-        assert get_command("commands list") is get_command("commands_list")
+        assert get_command("commands list") is get_command("hydrolog_commands_list")
 
     def test_lookup_ignores_extra_whitespace(self):
         """Surrounding and repeated spaces do not matter."""
@@ -471,70 +578,141 @@ class TestLookup:
 
 
 class TestCommandSchema:
-    """The ``hydrolog-commands/1`` document."""
+    """The ``hydrolog-commands/1`` document and the input schema."""
 
-    def test_root_document_describes_the_whole_catalog(self):
-        """Without a command every catalog command is described."""
-        doc = command_schema()
-        assert doc["schema"] == "hydrolog-commands/1"
-        assert doc["lang"] == "pl"
-        assert [c["name"] for c in doc["commands"]] == [c.name for c in data_commands()]
+    def test_command_schema_describes_one_command(self):
+        """``command_schema`` gives a document of exactly that command."""
+        document = command_schema("tc kirpich")
+        assert isinstance(document, Document)
+        data = document.to_dict()
+        assert data["schema"] == "hydrolog-commands/1"
+        assert data["tool"] == "hydrolog"
+        assert [c["name"] for c in data["commands"]] == ["tc kirpich"]
+
+    def test_lookup_by_operation_id_and_instance(self):
+        """The three ways to name a command give one document."""
+        by_name = command_schema("tc kirpich").to_dict()
+        assert command_schema("hydrolog_tc_kirpich").to_dict() == by_name
+        assert command_schema(get_command("tc kirpich")).to_dict() == by_name
+
+    def test_the_version_is_the_package_version(self):
         import hydrolog
 
-        assert doc["version"] == hydrolog.__version__
-
-    def test_single_command_by_operation_id(self):
-        """A command selects one entry of the same document shape."""
-        doc = command_schema("commands_schema")
-        assert [c["name"] for c in doc["commands"]] == ["commands schema"]
-
-    def test_entry_keys(self):
-        """An entry has the fields of the spec."""
-        entry = command_schema(RICH)["commands"][0]
-        assert list(entry) == [
-            "name",
-            "operation_id",
-            "summary",
-            "description",
-            "input_schema",
-            "x-hydrolog",
-        ]
-        assert entry["x-hydrolog"] == {
-            "writes": True,
-            "function": f"{__name__}:echo_operation",
-            "units": {"length_km": "km", "ratio": "m/m"},
-        }
-
-    def test_language_selects_texts_only(self):
-        """Structure is identical in both languages; texts differ."""
-        pl = command_schema(RICH, lang="pl")["commands"][0]
-        en = command_schema(RICH, lang="en")["commands"][0]
-        assert pl["description"] == "Opis demonstracyjny."
-        assert en["description"] == "Demo description."
-        assert pl["input_schema"]["properties"]["cn"]["description"] == "Opis cn"
-        assert en["input_schema"]["properties"]["cn"]["description"] == "Description cn"
-        strip = lambda schema: json.dumps(  # noqa: E731
-            {k: v for k, v in schema.items() if k != "description"}, sort_keys=True
-        )
-        assert [strip(p) for p in pl["input_schema"]["properties"].values()] == [
-            strip(p) for p in en["input_schema"]["properties"].values()
-        ]
-
-    def test_unknown_language_is_rejected(self):
-        """Only ``pl`` and ``en`` are languages of the catalog."""
-        with pytest.raises(InvalidParameterError) as caught:
-            command_schema(lang="de")  # type: ignore[arg-type]
-        assert caught.value.details["option"] == "lang"
-        assert caught.value.details["allowed"] == ["pl", "en"]
+        assert command_schema("tc kirpich").to_dict()["version"] == hydrolog.__version__
 
     def test_unknown_command_is_not_found(self):
         """Asking for a command that does not exist is ``not_found``."""
         with pytest.raises(NotFoundError):
             command_schema("no such")
 
+    def test_the_old_language_parameter_is_gone(self):
+        """Machine output is English only (AGI-9.2): no ``lang`` parameter."""
+        with pytest.raises(TypeError):
+            command_schema("tc kirpich", lang="pl")  # type: ignore[call-arg]
+
+    def test_document_serializes_to_json_text_and_back(self):
+        document = command_schema(RICH)
+        assert json.loads(document.to_json()) == document.to_dict()
+        assert "\n  " in document.to_json(indent=2)
+
+    def test_to_dict_is_a_copy(self):
+        """Changing the returned dictionary does not change the document."""
+        document = command_schema(RICH)
+        document.to_dict()["commands"].clear()
+        assert len(document.to_dict()["commands"]) == 1
+
+    def test_entry_describes_an_option_of_each_kind(self):
+        entry = command_schema(RICH).to_dict()["commands"][0]
+        assert entry["name"] == "demo run"
+        assert entry["operation_id"] == "hydrolog_demo_run"
+        assert entry["function"] == f"{__name__}.echo_operation"
+        assert entry["summary"] == "Demo."
+        assert entry["description"] == "Demo description."
+        assert entry["result"] == {
+            "schema": "hydrolog-demo-run/1",
+            "cardinality": "single",
+        }
+        options = {item["name"]: item for item in entry["options"]}
+        assert options["length_km"] == {
+            "name": "length_km",
+            "type": "number",
+            "unit": "km",
+            "required": True,
+            "exclusive_minimum": 0,
+            "description": "Description length_km",
+            "i18n": {"pl": {"description": "Opis length_km"}},
+        }
+        assert options["cn"]["type"] == "integer"
+        assert (options["cn"]["min"], options["cn"]["max"]) == (0, 100)
+        assert options["method"]["default"] == "kirpich"
+        assert options["method"]["enum"] == [
+            {"value": "kirpich", "meaning": "Meaning kirpich"},
+            {"value": "nrcs", "meaning": "Meaning nrcs"},
+        ]
+        assert options["method"]["i18n"]["pl"]["enum"] == {
+            "kirpich": "Znaczenie kirpich",
+            "nrcs": "Znaczenie nrcs",
+        }
+        assert options["values"]["type"] == "array"
+        assert options["values"]["items"] == "number"
+        assert options["input_file"]["path_role"] == "input"
+        assert options["out"]["path_role"] == "output"
+
+    def test_polish_texts_are_in_i18n_only(self):
+        entry = command_schema(RICH).to_dict()["commands"][0]
+        assert entry["i18n"]["pl"] == {
+            "summary": "Demo PL.",
+            "description": "Opis demonstracyjny.",
+            "rules": [],
+        }
+        assert "Opis" not in json.dumps(
+            {k: v for k, v in entry.items() if k != "i18n" and k != "options"}
+        )
+
+    def test_effects_check_and_families_derive_from_the_declaration(self):
+        entry = command_schema(RICH).to_dict()["commands"][0]
+        assert entry["effects"] == {
+            "read_only": False,
+            "writes": "replace",
+            "idempotent": True,
+            "network": False,
+            "destructive": True,
+        }
+        assert entry["check"] == "demo run"
+        assert entry["families"] == ["demo"]
+        pure = command_schema(SERIES).to_dict()["commands"][0]
+        assert pure["effects"]["read_only"] is True
+        assert pure["effects"]["writes"] == "none"
+        assert pure["check"] is None
+
+    def test_alternative_options_are_marked_and_listed(self):
+        entry = command_schema(SERIES).to_dict()["commands"][0]
+        assert entry["one_of"] == [["values", "dates"], ["input_file", "value_column"]]
+        marked = {o["name"] for o in entry["options"] if o.get("one_of")}
+        assert marked == {"values", "dates", "input_file", "value_column"}
+
+    def test_examples_carry_the_call_and_the_result_excerpt(self):
+        command = _command(
+            options=(_opt("values", "number_list"),),
+            examples=({"values": (1, 2)},),
+            example_results=({"n": 2},),
+        )
+        entry = command_schema(command).to_dict()["commands"][0]
+        assert entry["examples"] == [
+            {"call": "hydrolog demo run --values 1,2", "result": {"n": 2}}
+        ]
+        options = {item["name"]: item for item in entry["options"]}
+        assert options["values"]["examples"] == [[1, 2]]
+
+    def test_catalog_documents_are_strict_json(self):
+        """The whole catalog serializes without NaN or odd types."""
+        json.dumps(
+            [command_schema(c).to_dict() for c in data_commands()], allow_nan=False
+        )
+
     def test_input_schema_per_option_type(self):
         """Every option type maps to its JSON Schema form."""
-        schema = command_schema(RICH)["commands"][0]["input_schema"]
+        schema = input_schema(RICH)
         props = schema["properties"]
         assert schema["$schema"] == "https://json-schema.org/draft/2020-12/schema"
         assert schema["type"] == "object"
@@ -544,21 +722,21 @@ class TestCommandSchema:
         assert props["length_km"] == {
             "type": "number",
             "exclusiveMinimum": 0,
-            "description": "Opis length_km [km]",
+            "description": "Description length_km [km]",
         }
         assert props["cn"]["type"] == "integer"
         assert (props["cn"]["minimum"], props["cn"]["maximum"]) == (0, 100)
         assert props["method"] == {
             "type": "string",
             "enum": ["kirpich", "nrcs"],
-            "description": "Opis method",
+            "description": "Description method",
             "default": "kirpich",
         }
         assert props["verbose"]["type"] == "boolean"
         assert props["label"] == {
             "type": "string",
             "minLength": 1,
-            "description": "Opis label",
+            "description": "Description label",
         }
         assert props["values"]["type"] == "array"
         assert props["values"]["items"] == {"type": "number", "minimum": 0}
@@ -571,17 +749,27 @@ class TestCommandSchema:
         assert props["out"]["x-hydrolog-writes"] is True
         assert props["ratio"]["default"] == 0.5
 
+    def test_input_schema_language_selects_descriptions_only(self):
+        pl = input_schema(RICH, "pl")["properties"]
+        en = input_schema(RICH, "en")["properties"]
+        assert pl["cn"]["description"] == "Opis cn"
+        assert en["cn"]["description"] == "Description cn"
+        strip = lambda props: json.dumps(  # noqa: E731
+            [{k: v for k, v in p.items() if k != "description"} for p in props.values()]
+        )
+        assert strip(pl) == strip(en)
+
     def test_unit_is_not_repeated_when_the_text_names_it(self):
         """The unit is appended in brackets only when the description lacks it."""
-        option = Option("x", "number", "Długość [km]", "Length [km]", unit="km")
+        option = Option("x", "number", "Length [km]", "Długość [km]", unit="km")
         assert option.json_schema("pl")["description"] == "Długość [km]"
         assert option.json_schema("en")["description"] == "Length [km]"
-        bare = Option("x", "number", "Długość", "Length", unit="km")
+        bare = Option("x", "number", "Length", "Długość", unit="km")
         assert bare.json_schema("pl")["description"] == "Długość [km]"
 
     def test_one_of_becomes_one_required_group_per_alternative(self):
         """``one_of`` maps to ``oneOf`` with ``required`` groups."""
-        schema = command_schema(SERIES)["commands"][0]["input_schema"]
+        schema = input_schema(SERIES)
         assert schema["oneOf"] == [
             {"required": ["values", "dates"]},
             {"required": ["input_file", "value_column"]},
@@ -593,28 +781,22 @@ class TestCommandSchema:
         command = _command(
             options=(_opt("values", "number_list"),), examples=({"values": (1, 2)},)
         )
-        schema = command_schema(command)["commands"][0]["input_schema"]
-        assert schema["examples"] == [{"values": [1, 2]}]
-
-    def test_document_is_strict_json(self):
-        """The whole catalog serializes without NaN or odd types."""
-        json.dumps(command_schema(), allow_nan=False)
+        assert input_schema(command)["examples"] == [{"values": [1, 2]}]
 
     def test_schemas_are_valid_json_schema_and_accept_their_examples(self):
-        """With ``jsonschema`` installed: valid 2020-12 schemas that accept examples."""
+        """Valid 2020-12 schemas that accept the examples of every command."""
         jsonschema = pytest.importorskip("jsonschema")
-        for entry in command_schema()["commands"]:
-            schema = entry["input_schema"]
+        for command in data_commands():
+            schema = input_schema(command)
             jsonschema.Draft202012Validator.check_schema(schema)
             validator = jsonschema.Draft202012Validator(schema)
             for example in schema.get("examples", []):
-                assert list(validator.iter_errors(example)) == [], entry["name"]
+                assert list(validator.iter_errors(example)) == [], command.name
 
     def test_json_schema_and_validate_command_agree_on_a_rich_command(self):
-        """With ``jsonschema`` installed: valid inputs pass both, invalid fail both."""
+        """Valid inputs pass both, invalid fail both."""
         jsonschema = pytest.importorskip("jsonschema")
-        schema = command_schema(RICH)["commands"][0]["input_schema"]
-        validator = jsonschema.Draft202012Validator(schema)
+        validator = jsonschema.Draft202012Validator(input_schema(RICH))
         good = {"length_km": 2.5, "cn": 75, "method": "nrcs", "values": [0, 1.5]}
         assert validator.is_valid(good)
         validate_command(RICH, good)
@@ -629,6 +811,61 @@ class TestCommandSchema:
             assert not validator.is_valid(bad), bad
             with pytest.raises(InvalidParameterError):
                 validate_command(RICH, bad)
+
+
+class TestListCommands:
+    """``list_commands``: the summary list, whole or paged."""
+
+    def test_whole_catalog_without_limit(self):
+        data = list_commands().to_dict()
+        assert data["schema"] == "hydrolog-command-list/1"
+        assert [c["name"] for c in data["commands"]] == [
+            c.name for c in data_commands()
+        ]
+        assert "page" not in data
+        first = data["commands"][0]
+        assert sorted(first) == [
+            "families",
+            "name",
+            "operation_id",
+            "read_only",
+            "summary",
+        ]
+
+    def test_pages_cover_the_catalog_exactly_once(self):
+        names: list[str] = []
+        cursor = None
+        pages = 0
+        while True:
+            data = list_commands(limit=7, cursor=cursor).to_dict()
+            names += [c["name"] for c in data["commands"]]
+            pages += 1
+            assert data["page"]["total"] == len(data_commands())
+            cursor = data["page"]["next_cursor"]
+            assert data["page"]["truncated"] is (cursor is not None)
+            if cursor is None:
+                break
+        assert names == [c.name for c in data_commands()]
+        assert pages == -(-len(data_commands()) // 7)
+
+    def test_a_limit_above_the_total_gives_one_untruncated_page(self):
+        total = len(data_commands())
+        page = list_commands(limit=total + 5).to_dict()["page"]
+        assert page == {"total": total, "truncated": False, "next_cursor": None}
+
+    @pytest.mark.parametrize("limit", [0, -1, True, 2.5, "3"])
+    def test_a_bad_limit_is_a_validation_error(self, limit):
+        with pytest.raises(InvalidParameterError) as caught:
+            list_commands(limit=limit)
+        assert caught.value.details["option"] == "limit"
+
+    @pytest.mark.parametrize("cursor", ["!!", "bm90LWEtbnVtYmVy", "OTk5OTk5"])
+    def test_an_invalid_cursor_is_a_validation_error(self, cursor):
+        """Not base64, not a number, or beyond the collection."""
+        with pytest.raises(InvalidParameterError) as caught:
+            list_commands(limit=3, cursor=cursor)
+        assert caught.value.details["option"] == "cursor"
+        assert caught.value.details["reason"] == "invalid_cursor"
 
 
 # --- validation -----------------------------------------------------------------------
@@ -932,8 +1169,10 @@ class TestValidateCommand:
 
     def test_catalog_command_by_name(self):
         """Catalog commands validate by name or operation id."""
-        assert validate_command("commands list", {}) == {"lang": "pl"}
-        assert validate_command("commands_schema", {"lang": "en"}) == {"lang": "en"}
+        assert validate_command("commands list", {}) == {"limit": 100}
+        assert validate_command("hydrolog_commands_schema", {"limit": 2}) == {
+            "limit": 2
+        }
         with pytest.raises(NotFoundError):
             validate_command("nope nope", {})
 
@@ -953,31 +1192,29 @@ class TestRunCommand:
 
     def test_commands_list_through_the_catalog(self):
         """The meta command runs end to end and returns the envelope."""
-        result = run_command("commands list")
+        result = run_command("commands list", {"limit": 4})
         assert isinstance(result, CommandResult)
         assert result.command == "commands list"
-        assert result.inputs == {"lang": "pl"}
-        names = [item.name for item in result.result]
-        assert names == [c.name for c in data_commands()]
+        assert result.inputs == {"limit": 4}
+        document = result.to_dict()
+        assert document["result"]["schema"] == "hydrolog-command-list/1"
+        assert [c["name"] for c in document["result"]["commands"]] == [
+            c.name for c in data_commands()[:4]
+        ]
+        assert document["page"]["total"] == len(data_commands())
         assert result.files == ()
         assert result.notices == ()
 
-    def test_commands_list_english_summaries(self):
-        """``lang`` changes the summaries only."""
-        pl = run_command("commands list", {"lang": "pl"}).result
-        en = run_command("commands_list", {"lang": "en"}).result
-        assert [a.name for a in pl] == [b.name for b in en]
-        assert [a.summary for a in pl] != [b.summary for b in en]
-        listing = next(item for item in en if item.name == "commands list")
-        assert listing.summary.startswith("List the catalog commands")
-
     def test_commands_schema_of_one_command(self):
-        """The schema operation returns the same document as ``command_schema``."""
-        result = run_command(
-            "commands schema", {"command": "commands_list", "lang": "en"}
+        """The schema operation returns the document of ``command_schema``."""
+        result = run_command("commands schema", {"command": "hydrolog_commands_list"})
+        document = result.to_dict()
+        assert (
+            document["result"]["commands"]
+            == (command_schema("commands list").to_dict()["commands"])
         )
-        assert result.result == command_schema("commands list", lang="en")
-        assert result.inputs == {"command": "commands_list", "lang": "en"}
+        assert "page" not in document
+        assert result.inputs == {"command": "hydrolog_commands_list", "limit": 5}
 
     def test_commands_schema_unknown_command_is_not_found(self):
         """A bad ``command`` option surfaces the lookup error of the operation."""
@@ -1021,7 +1258,7 @@ class TestRunCommand:
 
     def test_unimportable_operation_is_an_internal_error(self):
         """A declaration pointing nowhere is a bug, reported as ``internal_error``."""
-        for function in (f"{__name__}:missing", "hydrolog.no_such_module:f"):
+        for function in (f"{__name__}.missing", "hydrolog.no_such_module.f"):
             with pytest.raises(HydrologError) as caught:
                 run_command(_command(function=function), {})
             assert caught.value.code == "internal_error"
@@ -1030,7 +1267,7 @@ class TestRunCommand:
     def test_operation_that_is_not_callable(self):
         """An attribute that is not a function is rejected."""
         with pytest.raises(HydrologError, match="not callable"):
-            run_command(_command(function=f"{__name__}:CALLS"), {})
+            run_command(_command(function=f"{__name__}.CALLS"), {})
 
 
 class TestEnvelope:
@@ -1046,36 +1283,54 @@ class TestEnvelope:
         document = run_command(command, {"length_km": 2.5}).to_dict()
         assert list(document) == [
             "schema",
+            "tool",
+            "version",
             "command",
-            "hydrolog_version",
+            "check",
             "status",
-            "inputs",
             "result",
-            "files",
             "notices",
+            "inputs",
         ]
         assert document == {
             "schema": "hydrolog-result/1",
+            "tool": "hydrolog",
+            "version": hydrolog.__version__,
             "command": "demo run",
-            "hydrolog_version": hydrolog.__version__,
+            "check": False,
             "status": "ok",
-            "inputs": {"length_km": 2.5},
-            "result": {"tc_min": 25.0},
-            "files": [],
+            "result": {"schema": "hydrolog-demo-run/1", "tc_min": 25.0},
             "notices": [
                 {
                     "level": "warning",
                     "code": "outside_typical_range",
-                    "text": "length is large",
+                    "message": "length is large",
                 }
             ],
+            "inputs": {"length_km": 2.5},
         }
+
+    def test_a_result_that_is_not_a_document_is_a_type_error(self):
+        """The domain result is a mapping; a scalar or a list cannot get a schema."""
+        for value in (3.5, [1, 2], None, "text"):
+            envelope = CommandResult("demo run", {}, value, "hydrolog-demo-run/1")
+            with pytest.raises(TypeError, match="must be a document"):
+                envelope.to_dict()
+
+    def test_the_domain_schema_comes_first_and_the_operation_may_set_it(self):
+        envelope = CommandResult("demo run", {}, {"b": 1}, "hydrolog-demo-run/1")
+        assert list(envelope.to_dict()["result"]) == ["schema", "b"]
+        own = CommandResult(
+            "demo run", {}, {"schema": "hydrolog-plan/1"}, "hydrolog-demo-run/1"
+        )
+        assert own.to_dict()["result"]["schema"] == "hydrolog-plan/1"
 
     def test_to_json_is_strict_utf8_json(self):
         """NaN becomes ``null``, tuples and paths become JSON, text stays readable."""
         command = _command("nan_operation", options=(_opt("length_km", "number"),))
         text = run_command(command, {"length_km": 1}).to_json()
         assert json.loads(text)["result"] == {
+            "schema": "hydrolog-demo-run/1",
             "value": None,
             "pair": [1, 2],
             "path": "/x/y",
@@ -1083,34 +1338,57 @@ class TestEnvelope:
         assert "\n" not in text
         pretty = run_command(command, {"length_km": 1}).to_json(indent=2)
         assert "\n  " in pretty
-        accented = CommandResult("x y", {}, {"nazwa": "Żółć"}).to_json()
+        accented = CommandResult(
+            "x y", {}, {"nazwa": "Żółć"}, "hydrolog-x-y/1"
+        ).to_json()
         assert "Żółć" in accented
 
-    def test_written_file_is_listed_with_sha256(self, tmp_path):
-        """A file reported by the wrapper is recorded with its digest."""
+    def test_written_file_is_listed_inside_the_result(self, tmp_path):
+        """A file reported by the wrapper is recorded with size and digest."""
         command = _command(
             "writing_operation",
             options=(
-                _opt("out", "path", required=True, writes=True),
+                _opt("out", "path", required=True, path_role="output"),
                 _opt("text", "string"),
             ),
-            writes=True,
         )
         target = tmp_path / "out.txt"
         result = run_command(command, {"out": str(target), "text": "zażółć"})
-        digest = hashlib.sha256("zażółć".encode()).hexdigest()
-        assert result.files == (FileRecord(path=str(target.resolve()), sha256=digest),)
-        assert result.to_dict()["files"] == [
-            {"role": "output", "path": str(target.resolve()), "sha256": digest}
+        content = "zażółć".encode()
+        record = FileRecord(
+            path=str(target.resolve()),
+            size_bytes=len(content),
+            sha256=hashlib.sha256(content).hexdigest(),
+        )
+        assert result.files == (record,)
+        document = result.to_dict()
+        assert document["result"]["files"] == [
+            {
+                "path": str(target.resolve()),
+                "size_bytes": len(content),
+                "sha256": record.sha256,
+                "status": "written",
+            }
         ]
-        assert result.result == {"chars": 6}
+        assert document["result"]["chars"] == 6
+        assert "files" not in document
+
+    def test_a_replaced_file_has_the_status_replaced(self, tmp_path):
+        target = tmp_path / "out.txt"
+        target.write_text("old")
+        envelope = CommandResult.from_output(
+            "demo run",
+            {},
+            OperationOutput({}, files=(target,), replaced=(target,)),
+            "hydrolog-demo-run/1",
+        )
+        assert [record.status for record in envelope.files] == ["replaced"]
 
     def test_output_files_protocol_on_the_result(self, tmp_path):
         """A result exposing ``output_files()`` is listed once, duplicates removed."""
         command = _command(
             "protocol_operation",
-            options=(_opt("out", "path", required=True, writes=True),),
-            writes=True,
+            options=(_opt("out", "path", required=True, path_role="output"),),
         )
         target = tmp_path / "bin.dat"
         result = run_command(command, {"out": str(target)})
@@ -1122,13 +1400,24 @@ class TestEnvelope:
         """The envelope never lists a file that is not there."""
         command = _command(
             "ghost_file_operation",
-            options=(_opt("out", "path", required=True, writes=True),),
-            writes=True,
+            options=(_opt("out", "path", required=True, path_role="output"),),
         )
         with pytest.raises(OutputError) as caught:
             run_command(command, {"out": str(tmp_path / "ghost.txt")})
         assert caught.value.code == "io_error"
         assert caught.value.details["path"].endswith("ghost.txt")
+
+    def test_check_and_page_are_reported(self):
+        output = OperationOutput(
+            {"n": 1},
+            check=True,
+            page={"total": 9, "next_cursor": None, "truncated": False},
+        )
+        document = CommandResult.from_output(
+            "demo run", {}, output, "hydrolog-demo-run/1"
+        ).to_dict()
+        assert document["check"] is True
+        assert document["page"] == {"total": 9, "next_cursor": None, "truncated": False}
 
     def test_sha256_file_matches_hashlib_for_large_content(self, tmp_path):
         """Hashing in chunks equals hashing at once."""
@@ -1138,22 +1427,22 @@ class TestEnvelope:
         assert sha256_file(path) == hashlib.sha256(data).hexdigest()
 
     def test_notice_validation(self):
-        """Notices have a known level, a snake_case code and a text."""
+        """Notices have a known level, a snake_case code and a message."""
         assert Notice("info", "short_series", "n=5").to_dict() == {
             "level": "info",
             "code": "short_series",
-            "text": "n=5",
+            "message": "n=5",
         }
         with pytest.raises(ValueError, match="level"):
             Notice("error", "x", "y")  # type: ignore[arg-type]
         with pytest.raises(ValueError, match="snake_case"):
             Notice("info", "Short Series", "y")
-        with pytest.raises(ValueError, match="text"):
+        with pytest.raises(ValueError, match="message"):
             Notice("info", "x", " ")
 
     def test_status_is_ok(self):
         """A returned envelope is always a success."""
-        assert CommandResult("a b", {}, None).status == "ok"
+        assert CommandResult("a b", {}, {}, "hydrolog-a-b/1").status == "ok"
 
 
 class TestCaptureWarnings:
@@ -1182,7 +1471,7 @@ class TestCaptureWarnings:
         ):
             warnings.warn("invalid value encountered", RuntimeWarning, stacklevel=2)
             warnings.warn("short series", UserWarning, stacklevel=2)
-        assert [n.text for n in notices] == ["short series"]
+        assert [n.message for n in notices] == ["short series"]
         assert [str(w.message) for w in outer] == ["invalid value encountered"]
 
     def test_categories_are_chosen_by_the_caller(self):
@@ -1203,7 +1492,7 @@ class TestCaptureWarnings:
             raise CalculationError("no convergence")
         with capture_warnings() as notices:
             warnings.warn("again", UserWarning, stacklevel=2)
-        assert [n.text for n in notices] == ["again"]
+        assert [n.message for n in notices] == ["again"]
 
     def test_concurrent_captures_do_not_mix_their_warnings(self):
         """Threads each see exactly their own warnings (blocks are serialized)."""
@@ -1214,7 +1503,7 @@ class TestCaptureWarnings:
                 for _ in range(5):
                     warnings.warn(f"thread {number}", UserWarning, stacklevel=2)
                     time.sleep(0.002)  # invites a thread switch inside the block
-            results[number] = [n.text for n in notices]
+            results[number] = [n.message for n in notices]
 
         threads = [threading.Thread(target=work, args=(n,)) for n in range(8)]
         for thread in threads:
@@ -1233,7 +1522,7 @@ class TestCaptureWarnings:
             {
                 "level": "warning",
                 "code": "user_warning",
-                "text": "length_km=900.0 is outside the typical range",
+                "message": "length_km=900.0 is outside the typical range",
             }
         ]
 
@@ -1246,10 +1535,9 @@ class TestPathPolicy:
         return _command(
             options=(
                 _opt("input_file", "path"),
-                _opt("out", "path", writes=True),
+                _opt("out", "path", path_role="output"),
                 _opt("label", "string"),
             ),
-            writes=True,
         )
 
     def test_relative_paths_resolve_against_the_working_directory(
@@ -1411,7 +1699,7 @@ class TestPathPolicy:
 
 
 def _operation(command: Command):
-    module_name, _, attribute = command.function.partition(":")
+    module_name, _, attribute = command.function.rpartition(".")
     return module_name, getattr(importlib.import_module(module_name), attribute)
 
 
@@ -1424,7 +1712,7 @@ class TestCatalogIntegrity:
         module_name, function = _operation(command)
         assert module_name == "hydrolog.operations"
         assert callable(function)
-        assert not command.function.split(":")[1].startswith("_")
+        assert not command.function.rpartition(".")[2].startswith("_")
 
     def test_every_option_is_a_keyword_parameter_of_the_operation(self, command):
         """The call ``function(**options)`` can bind every declared option."""
@@ -1454,12 +1742,3 @@ class TestCatalogIntegrity:
         assert command.examples, f"{command.name} has no examples"
         for example in command.examples:
             validate_command(command, example)
-
-    def test_schema_example_validates_against_its_input_schema(self, command):
-        """With ``jsonschema`` installed the examples satisfy the generated schema."""
-        jsonschema = pytest.importorskip("jsonschema")
-        schema = command_schema(command)["commands"][0]["input_schema"]
-        jsonschema.Draft202012Validator.check_schema(schema)
-        validator = jsonschema.Draft202012Validator(schema)
-        for example in schema.get("examples", []):
-            assert validator.is_valid(example)

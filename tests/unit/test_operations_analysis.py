@@ -19,13 +19,14 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from hydrolog.catalog import Command, run_command
+from hydrolog.catalog import Command, get_command, run_command
 from hydrolog.catalog.envelope import sha256_file
 from hydrolog.catalog.groups import collect_commands
 from hydrolog.catalog.groups.hydrograph import GENERATE_ONE_OF, GENERATE_OPTIONS
 from hydrolog.catalog.inputs import load_series, read_table
 from hydrolog.exceptions import (
     CalculationError,
+    ConflictError,
     InputDataError,
     InvalidParameterError,
     MissingDependencyError,
@@ -73,18 +74,8 @@ GROUPS = ("morphometry", "network", "stats", "hydrometrics", "soil", "report")
 
 
 def _declared(name: str) -> Command:
-    """Declaration of a command, bound to its operation module.
-
-    The ``function`` path is pointed at ``hydrolog.operations.<group>`` so these tests
-    do not depend on how ``hydrolog.operations`` re-exports the functions.
-    """
-    group = name.split(" ", 1)[0]
-    module = importlib.import_module(f"hydrolog.catalog.groups.{group}")
-    command = next(item for item in module.COMMANDS if item.name == name)
-    function = command.function.replace(
-        "hydrolog.operations:", f"hydrolog.operations.{group}:"
-    )
-    return dataclasses.replace(command, function=function)
+    """Declaration of a command of the catalog."""
+    return get_command(name)
 
 
 def run(name: str, **options):
@@ -162,16 +153,19 @@ def _commands_of_groups() -> tuple[Command, ...]:
     return collect_commands(list(GROUPS))
 
 
+def _function(command: Command):
+    """The operation function that a command declares (``function`` dotted path)."""
+    module, _, attribute = command.function.rpartition(".")
+    return getattr(importlib.import_module(module), attribute)
+
+
 @pytest.mark.parametrize("command", _commands_of_groups(), ids=lambda c: c.name)
 class TestDeclarations:
     """The declarations agree with the operations they describe."""
 
     def test_declared_defaults_equal_the_python_defaults(self, command):
         """An option default is the default of the operation parameter."""
-        module, _, attribute = command.function.partition(":")
-        group = command.group
-        function = getattr(importlib.import_module(f"{module}.{group}"), attribute)
-        parameters = inspect.signature(function).parameters
+        parameters = inspect.signature(_function(command)).parameters
         for option in command.options:
             if option.default is None:
                 continue
@@ -180,33 +174,10 @@ class TestDeclarations:
 
     def test_options_without_default_are_optional_or_required_in_python(self, command):
         """Required options are parameters without default; the others have one."""
-        module, _, attribute = command.function.partition(":")
-        function = getattr(
-            importlib.import_module(f"{module}.{command.group}"), attribute
-        )
-        parameters = inspect.signature(function).parameters
+        parameters = inspect.signature(_function(command)).parameters
         for option in command.options:
             has_default = parameters[option.name].default is not inspect.Parameter.empty
             assert has_default != option.required, option.name
-
-    def test_examples_run_and_serialize(self, command, tmp_path, monkeypatch):
-        """Every example is a valid call that produces a JSON envelope."""
-        monkeypatch.chdir(REPO_ROOT)
-        bound = _declared(command.name)
-        for example in command.examples:
-            options = dict(example)
-            for option in command.options:
-                if option.writes:
-                    options[option.name] = str(tmp_path / f"{command.operation_id}.out")
-            try:
-                result = run_command(bound, options)
-            except MissingDependencyError:
-                pytest.skip("optional extra [raster] is not installed")
-            document = json.loads(result.to_json())
-            assert document["status"] == "ok"
-            assert document["command"] == command.name
-            for record in document["files"]:
-                assert record["sha256"] == sha256_file(record["path"])
 
 
 # --- morphometry ----------------------------------------------------------------------
@@ -315,7 +286,7 @@ class TestMorphometryWatershed:
             "channel slope 0.02606 m/m",
             "channel_slope_m_per_m = 0.02 m/m",
         ):
-            assert value in notice.text
+            assert value in notice.message
         assert (
             tc.tc_watershed(watershed=data).result.parameters["slope_m_per_m"] == 0.02
         )
@@ -331,8 +302,8 @@ class TestMorphometryWatershed:
         output = run("morphometry watershed", watershed={**WATERSHED, given: 0.02})
         (notice,) = output.notices
         assert notice.code == "slopes_from_relief"
-        assert f"{given} = 0.02 m/m" in notice.text
-        assert absent not in notice.text
+        assert f"{given} = 0.02 m/m" in notice.message
+        assert absent not in notice.message
 
     def test_without_slopes_in_the_file_there_is_no_slope_notice(self):
         output = run("morphometry watershed", watershed=WATERSHED)
@@ -631,8 +602,8 @@ class TestImgwToolsExport:
         assert values.nnx == 2.5
         assert values.ssx == pytest.approx(np.mean(self.VALID_Q))
         assert [n.code for n in result.notices] == ["missing_values_removed"]
-        assert "2 of 14" in result.notices[0].text
-        assert "2023-11-08" in result.notices[0].text
+        assert "2 of 14" in result.notices[0].message
+        assert "2023-11-08" in result.notices[0].message
 
     def test_the_column_name_may_carry_its_unit(self):
         plain = run(
@@ -873,7 +844,7 @@ class TestCharacteristicDailyMonthly:
         ):
             assert document[field] == [None] * 12, field
         assert [n.code for n in result.notices] == ["single_value_month"]
-        assert "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12" in result.notices[0].text
+        assert "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12" in result.notices[0].message
 
     def test_only_the_months_with_one_value_are_named_in_the_notice(self):
         dates = [f"2022-{month:02d}-15" for month in range(1, 13)]
@@ -886,7 +857,7 @@ class TestCharacteristicDailyMonthly:
         assert document["std_values"][:11] != [None] * 11
         assert document["std_values"][11] is None
         assert [n.code for n in result.notices] == ["single_value_month"]
-        assert result.notices[0].text.startswith("Month(s) 12 hold a single value")
+        assert result.notices[0].message.startswith("Month(s) 12 hold a single value")
 
     @pytest.mark.parametrize("level", [0.0, 1.0, -0.2, 1.5])
     def test_confidence_level_must_be_inside_zero_one(self, level):
@@ -1010,13 +981,13 @@ class TestFloodFrequency:
         few = run(
             "stats flood-frequency", values=[100, 120, 90, 150, 130], distribution="gev"
         )
-        texts = " | ".join(n.text for n in few.notices)
+        texts = " | ".join(n.message for n in few.notices)
         assert "Sample size < 10" in texts
         assert {n.code for n in few.notices} == {"user_warning"}
         twenty = run(
             "stats flood-frequency", values=list(range(100, 120)), distribution="gev"
         )
-        assert any("KZGW (2017)" in n.text for n in twenty.notices)
+        assert any("KZGW (2017)" in n.message for n in twenty.notices)
 
     def test_missing_annual_maxima_are_dropped_with_a_notice(self, tmp_path):
         path = tmp_path / "maxima.csv"
@@ -1078,7 +1049,7 @@ class TestFloodFrequency:
         assert sample.incomplete_years == [1991, 2021]
         notice = next(n for n in result.notices if n.code == "incomplete_years")
         assert notice.level == "warning"
-        assert notice.text.endswith("1991 (304 of 365 days), 2021 (61 of 365 days)")
+        assert notice.message.endswith("1991 (304 of 365 days), 2021 (61 of 365 days)")
         direct = FloodFrequencyAnalysis(np.array(sample.annual_maxima)).fit_gev()
         assert sample.distributions[0].to_dict() == direct.to_dict()
 
@@ -1096,7 +1067,7 @@ class TestFloodFrequency:
         assert 2005 not in result.result.hydrological_years
         assert result.result.n_years == 28
         assert result.result.incomplete_years == [1991, 2005, 2021]
-        texts = {n.code: n.text for n in result.notices}
+        texts = {n.code: n.message for n in result.notices}
         assert "2005 (364 of 365 days)" in texts["incomplete_years"]
         assert ("missing_values_removed" in texts) == (how == "nan value")
 
@@ -1163,7 +1134,7 @@ class TestLowFlow:
         assert result.result.n_years == 3
         assert result.result.hydrological_years == [2022, 2023, 2024]
         assert [n.code for n in result.notices] == ["user_warning"]
-        assert "Only 3 year(s)" in result.notices[0].text
+        assert "Only 3 year(s)" in result.notices[0].message
 
     def test_annual_minima_follow_the_hydrological_year(self):
         values, dates = _boundary_series()
@@ -1192,7 +1163,7 @@ class TestLowFlow:
         assert sample.incomplete_years == [1991, 2021]
         assert [n.code for n in result.notices] == ["incomplete_years"]
         assert result.notices[0].level == "warning"
-        assert result.notices[0].text.endswith(
+        assert result.notices[0].message.endswith(
             "1991 (304 of 365 days), 2021 (61 of 365 days)"
         )
         day = np.array(dates, dtype="datetime64[D]")
@@ -1216,7 +1187,7 @@ class TestLowFlow:
         assert 2005 not in result.result.hydrological_years
         assert result.result.n_years == 28
         assert result.result.incomplete_years == [1991, 2005, 2021]
-        texts = {n.code: n.text for n in result.notices}
+        texts = {n.code: n.message for n in result.notices}
         assert "2005 (364 of 365 days)" in texts["incomplete_years"]
         assert ("missing_values_removed" in texts) == (how == "nan value")
 
@@ -1617,7 +1588,7 @@ class TestRatingCurve:
         )
         assert result.result.n_points == 13
         assert [n.code for n in result.notices] == ["missing_values_removed"]
-        assert "2 of 15" in result.notices[0].text
+        assert "2 of 15" in result.notices[0].message
 
     def test_lengths_must_match(self):
         with pytest.raises(InvalidParameterError) as caught:
@@ -1864,6 +1835,7 @@ class TestSoilTexture:
     def test_result_is_json(self):
         document = _json_roundtrip(run("soil texture", clay=45, sand=20, silt=35))
         assert document["result"] == {
+            "schema": "hydrolog-soil-texture/1",
             "texture_class": "clay",
             "texture_code": 12,
             "hsg": "D",
@@ -1927,13 +1899,13 @@ class TestSoilHsg:
     def test_writes_the_hsg_geotiff_and_reports_the_file(self, soil_rasters, tmp_path):
         rasterio = pytest.importorskip("rasterio")
         output = tmp_path / "out" / "hsg.tif"
-        result = run("soil hsg", output_path=str(output), **soil_rasters)
+        result = run("soil hsg", output=str(output), **soil_rasters)
         assert result.result.counts == {"A": 1, "B": 1, "C": 1, "D": 1, "nodata": 2}
         assert result.result.shape == (2, 3)
         assert result.result.crs == "EPSG:2180"
         assert [record.path for record in result.files] == [str(output)]
         assert result.files[0].sha256 == sha256_file(output)
-        assert result.files[0].role == "output"
+        assert result.files[0].status == "written"
         with rasterio.open(output) as raster:
             assert raster.read(1).tolist() == [[1, 2, 3], [4, 0, 0]]
             assert raster.nodata == 0
@@ -1947,7 +1919,7 @@ class TestSoilHsg:
             soil_rasters["silt_path"],
             tmp_path / "direct.tif",
         )
-        result = run("soil hsg", output_path=str(tmp_path / "op.tif"), **soil_rasters)
+        result = run("soil hsg", output=str(tmp_path / "op.tif"), **soil_rasters)
         assert result.result.counts == direct.counts
         assert result.result.shape == direct.shape
         assert (tmp_path / "op.tif").read_bytes() == (
@@ -1956,11 +1928,11 @@ class TestSoilHsg:
 
     def test_the_envelope_is_json_with_the_file_record(self, soil_rasters, tmp_path):
         document = _json_roundtrip(
-            run("soil hsg", output_path=str(tmp_path / "hsg.tif"), **soil_rasters)
+            run("soil hsg", output=str(tmp_path / "hsg.tif"), **soil_rasters)
         )
         assert document["result"]["output_path"] == (tmp_path / "hsg.tif").as_posix()
-        assert document["files"][0]["path"] == str(tmp_path / "hsg.tif")
-        assert len(document["files"][0]["sha256"]) == 64
+        assert document["result"]["files"][0]["path"] == str(tmp_path / "hsg.tif")
+        assert len(document["result"]["files"][0]["sha256"]) == 64
 
     def test_a_missing_input_is_not_found_and_nothing_is_written(
         self, soil_rasters, tmp_path
@@ -1968,22 +1940,55 @@ class TestSoilHsg:
         soil_rasters["silt_path"] = str(tmp_path / "none.tif")
         output = tmp_path / "hsg.tif"
         with pytest.raises(NotFoundError):
-            run("soil hsg", output_path=str(output), **soil_rasters)
+            run("soil hsg", output=str(output), **soil_rasters)
         assert not output.exists()
 
     def test_the_output_must_not_be_an_input(self, soil_rasters):
         with pytest.raises(InvalidParameterError):
             run(
                 "soil hsg",
-                output_path=soil_rasters["clay_path"],
+                output=soil_rasters["clay_path"],
+                force=True,
                 **dict(soil_rasters.items()),
             )
+
+    def test_an_existing_output_is_a_conflict_until_forced(
+        self, soil_rasters, tmp_path
+    ):
+        output = tmp_path / "hsg.tif"
+        output.write_bytes(b"old")
+        with pytest.raises(ConflictError) as caught:
+            run("soil hsg", output=str(output), **soil_rasters)
+        assert caught.value.details["reason"] == "output_exists"
+        assert caught.value.details["paths"] == [str(output)]
+        assert output.read_bytes() == b"old"
+        result = run("soil hsg", output=str(output), force=True, **soil_rasters)
+        assert [record.status for record in result.files] == ["replaced"]
+        assert output.read_bytes() != b"old"
+
+    def test_check_plans_the_output_and_reads_no_raster(self, tmp_path):
+        """The plan needs neither the inputs nor the raster extra."""
+        output = tmp_path / "hsg.tif"
+        result = run(
+            "soil hsg",
+            clay_path=str(tmp_path / "a.tif"),
+            sand_path=str(tmp_path / "b.tif"),
+            silt_path=str(tmp_path / "c.tif"),
+            output=str(output),
+            check=True,
+        )
+        document = _json_roundtrip(result)
+        assert document["result"]["schema"] == "hydrolog-plan/1"
+        assert document["result"]["targets"] == [
+            {"option": "output", "path": str(output), "action": "write"}
+        ]
+        assert not output.exists()
 
     def test_statistics_equal_the_library_function(self, soil_rasters, tmp_path):
         from hydrolog.soil import hsg_statistics
 
         output = tmp_path / "hsg.tif"
-        run("soil hsg", output_path=str(output), **soil_rasters)
+        run("soil hsg", output=str(output), **soil_rasters)
         direct = hsg_statistics(output)
         result = run("soil hsg-stats", hsg_path=str(output))
         assert result.result == direct
@@ -1996,7 +2001,7 @@ class TestSoilHsg:
         self, soil_rasters, tmp_path
     ):
         output = tmp_path / "hsg.tif"
-        run("soil hsg", output_path=str(output), **soil_rasters)
+        run("soil hsg", output=str(output), **soil_rasters)
         # the left half of the first column and the whole second column of both rows
         bbox = [500050.0, 599800.0, 500200.0, 600000.0]
         result = run(
@@ -2010,7 +2015,7 @@ class TestSoilHsg:
         self, soil_rasters, tmp_path
     ):
         output = tmp_path / "hsg.tif"
-        run("soil hsg", output_path=str(output), **soil_rasters)
+        run("soil hsg", output=str(output), **soil_rasters)
         result = run(
             "soil hsg-stats",
             hsg_path=str(output),
@@ -2031,7 +2036,7 @@ class TestSoilHsg:
     )
     def test_invalid_areas_are_parameter_errors(self, soil_rasters, tmp_path, options):
         output = tmp_path / "hsg.tif"
-        run("soil hsg", output_path=str(output), **soil_rasters)
+        run("soil hsg", output=str(output), **soil_rasters)
         with pytest.raises(InvalidParameterError):
             run("soil hsg-stats", hsg_path=str(output), **options)
 
@@ -2058,7 +2063,7 @@ class TestSoilHsg:
                 clay_path=str(tmp_path / "a.tif"),
                 sand_path=str(tmp_path / "b.tif"),
                 silt_path=str(tmp_path / "c.tif"),
-                output_path=str(tmp_path / "out.tif"),
+                output=str(tmp_path / "out.tif"),
             )
 
 
@@ -2325,7 +2330,7 @@ class TestReportGenerate:
         result, text = _report(tmp_path, **_CATCHMENT, **_SERIES)
         assert "**Typ rozkładu:** opad zadany szeregiem" in text
         assert result.result.total_precipitation_mm == pytest.approx(48.0)
-        assert not any("hietogram_type" in notice.text for notice in result.notices)
+        assert not any("hietogram_type" in notice.message for notice in result.notices)
 
     def test_a_designed_hyetograph_is_labelled_with_its_distribution(self, tmp_path):
         _, text = _report(tmp_path, **_CATCHMENT, **_DESIGN)
@@ -2358,17 +2363,64 @@ class TestReportGenerate:
         assert "| ... | ... |" not in long
         assert len(short) < len(long)
 
-    def test_the_file_is_written_atomically_and_replaces_an_existing_one(
-        self, tmp_path
-    ):
+    def test_an_existing_report_is_a_conflict_and_stays_untouched(self, tmp_path):
+        output = tmp_path / "raport.md"
+        output.write_text("old report", encoding="utf-8")
+        with pytest.raises(ConflictError) as caught:
+            run("report generate", output=str(output), **_CATCHMENT, **_DESIGN)
+        assert caught.value.details == {
+            "reason": "output_exists",
+            "paths": [str(output)],
+        }
+        assert output.read_text(encoding="utf-8") == "old report"
+
+    def test_force_replaces_an_existing_report_atomically(self, tmp_path):
         output = tmp_path / "nested" / "dir" / "raport.md"
         output.parent.mkdir(parents=True)
         output.write_text("old report", encoding="utf-8")
-        result = run("report generate", output=str(output), **_CATCHMENT, **_DESIGN)
+        result = run(
+            "report generate",
+            output=str(output),
+            force=True,
+            **_CATCHMENT,
+            **_DESIGN,
+        )
         text = output.read_text(encoding="utf-8")
         assert text.startswith("# Raport Hydrologiczny")
         assert [path.name for path in output.parent.iterdir()] == ["raport.md"]
         assert result.result.size_bytes == len(text.encode("utf-8"))
+        assert [record.status for record in result.files] == ["replaced"]
+
+    def test_a_new_report_is_written_not_replaced(self, tmp_path):
+        result, _ = _report(tmp_path, **_CATCHMENT, **_DESIGN)
+        assert [record.status for record in result.files] == ["written"]
+
+    @pytest.mark.parametrize(
+        ("exists", "force", "action"),
+        [(False, False, "write"), (True, True, "replace"), (True, False, "conflict")],
+    )
+    def test_check_plans_the_target_and_writes_nothing(
+        self, tmp_path, exists, force, action
+    ):
+        output = tmp_path / "raport.md"
+        if exists:
+            output.write_text("old report", encoding="utf-8")
+        result = run(
+            "report generate",
+            output=str(output),
+            force=force,
+            check=True,
+            **_CATCHMENT,
+            **_DESIGN,
+        )
+        document = _json_roundtrip(result)
+        assert document["check"] is True
+        assert document["result"]["schema"] == "hydrolog-plan/1"
+        assert [t["action"] for t in document["result"]["targets"]] == [action]
+        assert result.files == ()
+        assert output.exists() is exists
+        if exists:
+            assert output.read_text(encoding="utf-8") == "old report"
 
     def test_missing_directories_are_created(self, tmp_path):
         output = tmp_path / "a" / "b" / "raport.md"

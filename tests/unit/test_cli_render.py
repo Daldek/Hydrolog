@@ -1,7 +1,5 @@
 """Tests for the generic terminal summary of results and errors."""
 
-import json
-
 import pytest
 
 from hydrolog.catalog import Command, Option
@@ -10,27 +8,32 @@ from hydrolog.cli.render import format_number, render_error, render_result
 
 COMMAND = Command(
     name="demo run",
-    operation_id="demo_run",
-    summary="Podsumowanie.",
-    summary_en="Summary.",
-    description="Opis.",
-    description_en="Description.",
-    function="tests.unit.test_cli_render:unused",
+    operation_id="hydrolog_demo_run",
+    summary="Summary.",
+    summary_pl="Podsumowanie.",
+    description="Description.",
+    description_pl="Opis.",
+    function="hydrolog.operations.demo_run",
     options=(
-        Option("length_km", "number", "Długość", "Length", unit="km"),
-        Option("values", "number_list", "Wartości", "Values", unit="mm"),
-        Option("mode", "string", "Tryb", "Mode"),
+        Option("length_km", "number", "Length", "Długość", unit="km"),
+        Option("values", "number_list", "Values", "Wartości", unit="mm"),
+        Option("mode", "string", "Mode", "Tryb"),
     ),
+    result_schema="hydrolog-demo-run/1",
+    examples=({"length_km": 1.0},),
+    example_results=({},),
 )
 
 
-def _render(result=None, *, inputs=None, notices=(), files=(), lang="pl", width=100):
-    data = {
-        "inputs": inputs or {},
-        "result": result,
-        "files": list(files),
-        "notices": list(notices),
-    }
+def _render(
+    result=None, *, inputs=None, notices=(), files=(), lang="pl", width=100, page=None
+):
+    """Render the envelope of ``demo run``; ``files`` go to ``result.files``."""
+    if files:
+        result = {**(result or {}), "files": list(files)}
+    data = {"inputs": inputs or {}, "result": result, "notices": list(notices)}
+    if page is not None:
+        data["page"] = page
     return render_result(data, COMMAND, lang, width)
 
 
@@ -101,9 +104,10 @@ class TestScalars:
     def test_scalar_and_short_list_results(self, result, expected):
         assert _render(result).splitlines()[-1] == expected
 
-    def test_multiline_text_result_is_printed_as_it_is(self):
-        text = _render("first\nsecond\n", inputs={"mode": "x"})
-        assert text == "first\nsecond"
+    def test_multiline_text_result_is_an_indented_block(self):
+        text = _render("first\nsecond\n", inputs={"mode": "x"}, lang="en")
+        assert text.splitlines()[3:] == ["Result:", "  first", "  second"]
+        assert not text.endswith("\n")
 
     def test_empty_containers(self):
         text = _render({"a": {}, "b": []})
@@ -344,50 +348,194 @@ class TestArrays:
         assert text.splitlines()[-2:] == ["  t: [0, 5, 10]", "  q: [1, 2, 3]"]
 
 
-class TestDocuments:
-    """A result that names its schema is printed as the JSON document it is."""
+class TestResultSchema:
+    """The ``schema`` of a result and its ``files`` are sections, not fields."""
 
-    def test_versioned_document_is_pretty_json_without_a_title(self):
-        document = {"schema": "hydrolog-commands/1", "commands": [{"name": "a b"}]}
-        text = _render(document, inputs={"mode": "x"})
-        assert json.loads(text) == document
-        assert text.splitlines()[1] == '  "schema": "hydrolog-commands/1",'
+    def test_schema_of_the_result_is_not_listed_as_a_field(self):
+        text = _render({"schema": "hydrolog-demo-run/1", "x": 1}, lang="en")
+        assert text == "demo run: Summary.\nResult:\n  x: 1"
 
-    def test_notices_still_follow_a_document(self):
-        document = {"schema": "hydrolog-commands/1"}
-        notice = {"level": "info", "code": "c", "text": "t"}
-        text = _render(document, notices=[notice])
-        assert text.endswith("}\nUwagi:\n  [informacja] c: t")
+    def test_a_schema_key_further_down_is_an_ordinary_field(self):
+        text = _render({"outer": {"schema": "plain text"}}, lang="en")
+        assert text.splitlines()[-1] == "    schema: plain text"
 
-    def test_a_schema_key_of_another_shape_is_an_ordinary_field(self):
-        text = _render({"schema": "plain text"})
-        assert text.splitlines()[-1] == "  schema: plain text"
+
+class TestPlan:
+    """The plan of ``--check`` lists each target with its action."""
+
+    PLAN = {
+        "schema": "hydrolog-plan/1",
+        "targets": [
+            {"option": "output", "path": "/tmp/a.md", "action": "write"},
+            {
+                "option": "output_b",
+                "path": "/tmp/b.md",
+                "action": "conflict",
+                "reason": "output_exists",
+            },
+            {"option": "output_c", "path": "/tmp/c.md", "action": "replace"},
+        ],
+    }
+
+    def test_english_plan_with_a_conflict(self):
+        assert _render(self.PLAN, lang="en").splitlines() == [
+            "demo run: Summary.",
+            "Plan (--check): nothing was written.",
+            "action    option    file       note",
+            "--------  --------  ---------  ------------------------------------------",
+            "write     output    /tmp/a.md",
+            "conflict  output_b  /tmp/b.md  the file exists; add --force to replace it",
+            "replace   output_c  /tmp/c.md",
+            "Running without --check would fail with the error conflict (exit code 4).",
+        ]
+
+    def test_polish_plan_without_a_conflict_has_no_warning(self):
+        plan = {**self.PLAN, "targets": [self.PLAN["targets"][0]]}
+        lines = _render(plan).splitlines()
+        assert lines[:3] == [
+            "demo run: Podsumowanie.",
+            "Plan (--check): nic nie zostało zapisane.",
+            "działanie  opcja   plik       uwaga",
+        ]
+        assert lines[-1].startswith("zapis")
+
+    def test_plan_without_targets(self):
+        plan = {"schema": "hydrolog-plan/1", "targets": []}
+        assert _render(plan, lang="en").splitlines()[1:] == [
+            "Plan (--check): nothing was written.",
+            "No files would be written.",
+        ]
+
+
+class TestCommandList:
+    """``commands list`` is a table of names and summaries, then the page."""
+
+    ENTRIES = [
+        {"name": "tc kirpich", "operation_id": "hydrolog_tc_kirpich", "summary": "X"},
+        {"name": "demo run", "operation_id": "hydrolog_demo_run", "summary": "Own"},
+    ]
+
+    def _document(self):
+        return {"schema": "hydrolog-command-list/1", "commands": self.ENTRIES}
+
+    def test_summaries_come_from_the_catalog_in_the_language(self):
+        lines = _render(self._document(), lang="en").splitlines()
+        assert lines[1].split() == ["command", "summary"]
+        assert lines[3].startswith("tc kirpich  Compute time of concentration")
+        assert lines[4] == "demo run    Own"
+
+    def test_complete_listing_reports_the_total(self):
+        page = {"total": 2, "truncated": False, "next_cursor": None}
+        lines = _render(self._document(), lang="en", page=page).splitlines()
+        assert lines[-1] == "Commands in total: 2."
+
+    def test_truncated_listing_names_the_next_cursor(self):
+        page = {"total": 40, "truncated": True, "next_cursor": "2"}
+        lines = _render(self._document(), lang="en", page=page).splitlines()
+        assert lines[-2:] == ["Showing 2 of 40.", "Next page: --cursor 2"]
+
+
+class TestConfigShow:
+    """``config show``: settings with their source, the file, credentials, store."""
+
+    DOCUMENT = {
+        "schema": "hydrolog-config/1",
+        "settings": [
+            {"key": "lang", "value": "pl", "source": "default"},
+            {"key": "log_level", "value": "debug", "source": "file", "detail": "[x]"},
+        ],
+        "config_file": {"path": "/x/nogat.toml", "exists": True},
+        "credentials": [{"name": "TOKEN", "present": False}],
+        "store": None,
+    }
+
+    def test_english(self):
+        assert _render(self.DOCUMENT, lang="en").splitlines()[1:] == [
+            "setting    value  source",
+            "---------  -----  -------------------",
+            "lang       pl     default",
+            "log_level  debug  settings file ([x])",
+            "Settings file: /x/nogat.toml (exists)",
+            "Credentials:",
+            "  TOKEN: missing",
+            "Data store: n/a",
+        ]
+
+    def test_polish_without_credentials_and_file(self):
+        document = {
+            **self.DOCUMENT,
+            "credentials": [],
+            "config_file": {"path": "/x/nogat.toml", "exists": False},
+        }
+        assert _render(document).splitlines()[-3:] == [
+            "Plik ustawień: /x/nogat.toml (brak pliku)",
+            "Dane uwierzytelniające: brak",
+            "Magazyn danych: brak",
+        ]
+
+
+class TestGuide:
+    """``commands guide`` prints the guide itself, or the file it wrote."""
+
+    def test_guide_text_is_printed_as_it_is(self):
+        document = {"schema": "hydrolog-guide/1", "text": "# Hydrolog\n\nbody\n"}
+        assert _render(document) == "# Hydrolog\n\nbody"
+
+    def test_written_guide_shows_the_title_and_the_file(self):
+        record = {
+            "path": "/tmp/llms.txt",
+            "size_bytes": 10,
+            "sha256": "ab" * 32,
+            "status": "written",
+        }
+        document = {"schema": "hydrolog-guide/1", "files": [record]}
+        assert _render(document, lang="en").splitlines() == [
+            "demo run: Summary.",
+            "Files:",
+            "  /tmp/llms.txt  (written, 10 B, sha256 abababababab…)",
+        ]
 
 
 class TestNoticesAndFiles:
     """The sections after the result."""
 
+    RECORD = {
+        "path": "/tmp/a.tif",
+        "size_bytes": 12,
+        "sha256": "ab" * 32,
+        "status": "written",
+    }
+
     def test_notices_and_files(self):
         text = _render(
             {"x": 1},
             notices=[
-                {"level": "warning", "code": "short_series", "text": "Only 3 values"},
-                {"level": "info", "code": "note", "text": "FYI"},
+                {"level": "warning", "code": "short_series", "message": "Only 3"},
+                {"level": "info", "code": "note", "message": "FYI"},
             ],
-            files=[{"role": "output", "path": "/tmp/a.tif", "sha256": "ab" * 32}],
+            files=[
+                self.RECORD,
+                {**self.RECORD, "path": "/tmp/b.tif", "status": "replaced"},
+            ],
         )
-        assert text.splitlines()[-5:] == [
+        assert text.splitlines()[-6:] == [
             "Uwagi:",
-            "  [ostrzeżenie] short_series: Only 3 values",
+            "  [ostrzeżenie] short_series: Only 3",
             "  [informacja] note: FYI",
             "Pliki:",
-            "  /tmp/a.tif  (sha256 abababababab…)",
+            "  /tmp/a.tif  (zapisano, 12 B, sha256 abababababab…)",
+            "  /tmp/b.tif  (zastąpiono, 12 B, sha256 abababababab…)",
         ]
+
+    def test_files_are_listed_once_not_among_the_result_fields(self):
+        text = _render({"x": 1}, files=[self.RECORD], lang="en")
+        assert text.count("/tmp/a.tif") == 1
+        assert text.splitlines()[:3] == ["demo run: Summary.", "Result:", "  x: 1"]
 
     def test_english_labels(self):
         text = _render(
             {},
-            notices=[{"level": "warning", "code": "c", "text": "t"}],
+            notices=[{"level": "warning", "code": "c", "message": "t"}],
             lang="en",
         )
         assert "Notices:\n  [warning] c: t" in text
@@ -485,7 +633,6 @@ class TestNeverFails:
             data = {
                 "inputs": {"v": _random_json(rng)},
                 "result": _random_json(rng),
-                "files": [],
                 "notices": [],
             }
             for lang in ("pl", "en"):

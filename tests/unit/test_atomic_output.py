@@ -156,12 +156,13 @@ def _race(command, options_of, tmp_path, *, workers=4, rounds=12):
 
 @concurrent
 class TestConcurrentWriters:
-    """Four threads write the same file at once, as MCP calls do."""
+    """Four threads replace the same file at once (``force``), as MCP calls do."""
 
     def test_report_generate(self, tmp_path):
         def options(target):
             return {
                 "output": str(target.with_suffix(".md")),
+                "force": True,
                 "area_km2": 45.0,
                 "cn": 72,
                 "tc_min": 90.0,
@@ -181,7 +182,7 @@ class TestConcurrentWriters:
     def test_commands_guide(self, tmp_path):
         errors, outputs = _race(
             "commands guide",
-            lambda target: {"format": "llms", "lang": "pl", "path": str(target)},
+            lambda target: {"format": "llms", "output": str(target), "force": True},
             tmp_path,
         )
 
@@ -199,7 +200,8 @@ class TestConcurrentWriters:
                 "clay_path": str(FIXTURES / "hsg_clay.tif"),
                 "sand_path": str(FIXTURES / "hsg_sand.tif"),
                 "silt_path": str(FIXTURES / "hsg_silt.tif"),
-                "output_path": str(target.with_suffix(".tif")),
+                "output": str(target.with_suffix(".tif")),
+                "force": True,
             }
 
         errors, outputs = _race("soil hsg", options, tmp_path)
