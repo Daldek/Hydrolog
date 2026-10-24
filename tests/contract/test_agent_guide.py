@@ -19,6 +19,7 @@ import pytest
 
 from hydrolog import agent_guide as guide_module
 from hydrolog.agent_guide import (
+    _COMPACT_GROUPS,
     _ERROR_ADVICE,
     _FLOWS,
     _GROUP_TITLES,
@@ -224,12 +225,74 @@ def test_every_group_has_a_title_and_an_index_heading_linking_the_paths():
         assert heading.endswith(f"[{reference[1]}]")
 
 
-def test_the_index_has_one_line_per_command_in_catalog_order():
+def index_lines(index: str) -> dict[str, list[str]]:
+    """The ``- `` lines of the command index under the heading of each group."""
+    lines: dict[str, list[str]] = {}
+    group = ""
+    for line in index.splitlines():
+        heading = re.match(r"### \[(\w+):", line)
+        if heading:
+            group = heading[1]
+            lines[group] = []
+        elif line.startswith("- "):
+            lines[group].append(line)
+    return lines
+
+
+def test_the_index_names_every_command_once_in_catalog_order():
+    """A line per command; a compact group has one line that names all of them."""
     index = section(agent_guide("agents"), "Command index")
+    by_group = index_lines(index)
 
-    lines = re.findall(r"^- `([^`]+)` \(`([^`]+)`\): (.+)$", index, re.MULTILINE)
+    assert list(by_group) == GROUPS
+    for group in GROUPS:
+        commands = [c for c in COMMANDS if c.group == group]
+        if group in _COMPACT_GROUPS:
+            assert len(by_group[group]) == 1, group
+            names = re.findall(
+                r"`(\w+ [\w-]+)`", by_group[group][0].split(" (tools")[0]
+            )
+            assert names == [c.name for c in commands], group
+        else:
+            lines = [
+                re.fullmatch(r"- `([^`]+)` \(`([^`]+)`\): (.+)", line)
+                for line in by_group[group]
+            ]
+            assert all(lines), group
+            assert [m.groups() for m in lines if m] == [
+                (c.name, c.operation_id, c.summary) for c in commands
+            ]
 
-    assert lines == [(c.name, c.operation_id, c.summary) for c in COMMANDS]
+
+def test_an_operation_id_is_the_tool_prefix_of_its_group_and_the_verb():
+    """What the line of a compact group promises: ``hydrolog_<group>_<verb>``."""
+    for command in COMMANDS:
+        verb = command.subcommand.replace("-", "_")
+        assert command.operation_id == f"hydrolog_{command.group}_{verb}"
+
+
+def test_a_compact_group_has_one_index_line_for_all_its_commands(monkeypatch):
+    plain = agent_guide("agents")
+    normal = index_lines(section(plain, "Command index"))
+    monkeypatch.setattr(
+        guide_module, "_COMPACT_GROUPS", {"stats": "compute flow statistics"}
+    )
+
+    guide = agent_guide("agents")
+    by_group = index_lines(section(guide, "Command index"))
+
+    stats = [c for c in COMMANDS if c.group == "stats"]
+    assert len(stats) > 1 and len(by_group["stats"]) == 1
+    line = by_group["stats"][0]
+    assert re.findall(r"`(stats [\w-]+)`", line.split(" (tools")[0]) == [
+        c.name for c in stats
+    ]
+    assert "`hydrolog_stats_<verb>`" in line and "`commands list`" in line
+    assert line.endswith(": compute flow statistics; summaries: `commands list`.")
+    assert {k: v for k, v in by_group.items() if k != "stats"} == {
+        k: v for k, v in normal.items() if k != "stats"
+    }
+    assert len(guide.encode("utf-8")) < len(plain.encode("utf-8"))
 
 
 def test_error_table_is_the_registry():
