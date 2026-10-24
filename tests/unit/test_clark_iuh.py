@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 
 from hydrolog.exceptions import InvalidParameterError
+from hydrolog.routing._kernels import route_linear_reservoir
 from hydrolog.runoff.clark_iuh import ClarkIUH, ClarkIUHResult, ClarkUHResult
 
 
@@ -649,3 +650,56 @@ class TestClarkUHDurationNotWholeSteps:
             clark.to_unit_hydrograph(area_km2=45.0, duration_min=bad)
         with pytest.raises(InvalidParameterError, match="timestep_min"):
             clark.to_unit_hydrograph(area_km2=45.0, duration_min=30.0, timestep_min=bad)
+
+
+class TestClarkStepGuard:
+    """The linear reservoir needs a step of at most 2 R (finding F1 of the report)."""
+
+    def test_the_reservoir_scheme_gave_a_negative_ordinate_beyond_the_guard(self):
+        """The case of the finding: R = 2 min and a 5 min step (the old result)."""
+        translation = ClarkIUH(tc_min=60.0, r_min=2.0).incremental_time_area(
+            np.arange(0.0, 400.0, 5.0)
+        )
+
+        assert route_linear_reservoir(translation, 2.0, 5.0).min() < 0.0
+
+    @pytest.mark.parametrize("method", ["generate_iuh", "to_unit_hydrograph"])
+    def test_a_step_longer_than_twice_the_storage_constant_is_refused(self, method):
+        clark = ClarkIUH(tc_min=60.0, r_min=2.0)
+        arguments = {"timestep_min": 5.0}
+        if method == "to_unit_hydrograph":
+            arguments.update(area_km2=45.0, duration_min=5.0)
+
+        with pytest.raises(InvalidParameterError) as caught:
+            getattr(clark, method)(**arguments)
+
+        assert caught.value.details == {
+            "option": "timestep_min",
+            "reason": "unstable_timestep",
+            "maximum": 4.0,
+            "value": 5.0,
+        }
+        assert "2 * r_min = 4" in str(caught.value)
+        assert caught.value.hint is not None and "4" in caught.value.hint
+
+    def test_generate_refuses_it_too(self):
+        with pytest.raises(InvalidParameterError, match="unstable|exceed"):
+            ClarkIUH(tc_min=60.0, r_min=2.0, area_km2=45.0).generate(timestep_min=5.0)
+
+    @pytest.mark.parametrize(
+        ("tc_min", "r_min"), [(60.0, 2.5), (60.0, 1.0), (20.0, 0.5), (90.0, 30.0)]
+    )
+    def test_the_longest_accepted_step_gives_no_negative_ordinate(self, tc_min, r_min):
+        step = 2.0 * r_min
+
+        iuh = ClarkIUH(tc_min=tc_min, r_min=r_min).generate_iuh(timestep_min=step)
+
+        assert iuh.ordinates_per_min.min() >= -1e-15
+        assert iuh.ordinates_per_min.sum() * step == pytest.approx(1.0)
+
+    def test_a_rounding_excess_of_the_step_is_accepted(self):
+        step = 0.3 * 2.0 * (1.0 + 1e-12)  # 2 R computed from 0.1 + 0.2 style sums
+
+        iuh = ClarkIUH(tc_min=30.0, r_min=0.1 + 0.2).generate_iuh(timestep_min=step)
+
+        assert iuh.ordinates_per_min.min() >= -1e-12
