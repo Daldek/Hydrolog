@@ -917,6 +917,37 @@ Such a start is admissible for any sign of the stages (stages below the gauge ze
 
 > **Change in v1.0.0 (bug fix).** A fixed start of 0 was not lower than the lowest stage of a gauge with a reading ≤ 0, so `hydrolog hydrometrics rating-curve --water-levels=-10,5,20,40,80,120 --discharges 0.5,1.2,2.5,4.8,10.1,17.3` ended with an error ("h0_initial must be … below the lowest water level (−10), got 0.0"). Since v1.0.0 the start is −23 and the fit gives a = 0.004917, b = 1.640, H₀ = −25.17 (R² = 0.9998). On 60 synthetic curves (stages in cm and m, positive and negative, noise 1–8 %, 6–30 measurements) starts from 0.1 to 1 of the range below the lowest stage always gave the best least-squares solution.
 
+### 3.9 Flood Routing (`hydrolog.routing`, `route *`; ADR-0007)
+
+Lumped hydrologic routing turns an inflow hydrograph into the outflow hydrograph of a reach from storage and translation alone. It computes discharge only: water levels, inundation and backwater are hydraulics (Hydraulik, HEC-RAS, IMGW HD). The parameters of a model come from the user, from observed inflow and outflow, or from channel geometry; they are not derived from the catchment fields, and a routing model is not a substitute for a hydraulic model where the flood wave is not attenuated by storage and diffusion alone.
+
+#### 3.9.1 Conventions Shared by All Models (ADR-0008)
+
+| Item | Rule |
+|------|------|
+| Hydrograph table | `time_min` (minutes since any origin, strictly increasing at a regular step: every step within 1e-6 of the mean step) and `discharge_m3s` (not negative, finite), at least two ordinates. An irregular table is refused, nothing is resampled (`details.reason`: `irregular_step`, `not_increasing`, `negative`, `length_mismatch`, `too_short`, `not_finite`) |
+| Initial condition | the outflow at the first ordinate equals the inflow there (steady state) unless `initial_outflow_m3s` is given |
+| Tail | the outflow outlasts the inflow: the time axis is extended after the last inflow ordinate, where the inflow is held, until the last outflow differs from the final inflow by at most 0.1 % of the inflow peak and the water still stored above its steady amount is below 0.1 % of the inflow volume; at most ten times the inflow duration (at least 100 steps), otherwise the series ends with the warning `tail_truncated`. `extend_min` fixes the extension (`0` adds none). The notice `tail_extended` reports the added minutes |
+| Balance | volumes are trapezoid sums; `balance_error_m3` = inflow volume (on the extended axis) - outflow volume - change of storage: zero to rounding unless the scheme ran on a refined time step |
+| Non-negativity | a non-negative inflow gives a non-negative outflow; a scheme that returned a negative outflow is a `calculation_error` (a bug, not an input) |
+| Notices | accuracy limits are notices of the result, never errors |
+
+#### 3.9.2 Lag (`LagReach`, `route lag`)
+
+```
+O(t) = I(t - lag)        before the first ordinate: I = the initial outflow
+```
+
+The hydrograph is translated without attenuation, as in HEC-HMS (Lag): for a short reach with a predictable travel time. A lag that is a whole number of time steps shifts the ordinates exactly; otherwise the shifted ordinates are interpolated linearly between ordinates, which flattens sharp peaks (notice `lag_interpolated`). The storage of the reach is the water in transit, `lag` times the inflow. A shift by whole steps is exact (the identity tested in `tests/unit/test_routing_core.py`).
+
+```python
+from hydrolog.routing import Hydrograph, LagReach
+
+inflow = Hydrograph.from_step([0.0, 10.0, 40.0, 20.0, 0.0], timestep_min=30.0)
+result = LagReach(lag_min=60.0).route(inflow)
+print(result.outflow.time_to_peak_min, result.peak_delay_min)   # 120.0 60.0
+```
+
 ---
 
 ## 4. Literature Verification
@@ -949,6 +980,7 @@ Such a start is admissible for any sign of the stages (stages below the gauge ze
 | Distribution of annual minima (GEV for minima) | Fisher and Tippett (1928), Gumbel (1958), Coles (2001) | ✅ |
 | Annual extremes from a daily series: complete hydrological years only | KZGW (2017), WMO No. 1029 (2009) | ✅ |
 | Empirical frequency of minima (non-exceedance positions) | Weibull (1939), Hazen (1930), Cunnane (1978); WMO No. 1029 (2009), Tallaksen and van Lanen (2004) | ✅ |
+| Lag routing (`route lag`, `LagReach`) | HEC-HMS Technical Reference Manual (Lag routing model) | ✅ |
 
 ### 4.2 Key Publications
 

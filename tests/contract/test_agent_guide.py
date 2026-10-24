@@ -264,6 +264,13 @@ def test_the_index_names_every_command_once_in_catalog_order():
             ]
 
 
+def test_every_compact_group_is_a_group_of_the_catalog():
+    """A typo in ``_COMPACT_GROUPS`` would silently keep a group at one line each."""
+    assert set(_COMPACT_GROUPS) <= set(GROUPS)
+    for group, purpose in _COMPACT_GROUPS.items():
+        assert purpose and "\n" not in purpose, group
+
+
 def test_an_operation_id_is_the_tool_prefix_of_its_group_and_the_verb():
     """What the line of a compact group promises: ``hydrolog_<group>_<verb>``."""
     for command in COMMANDS:
@@ -275,7 +282,9 @@ def test_a_compact_group_has_one_index_line_for_all_its_commands(monkeypatch):
     plain = agent_guide("agents")
     normal = index_lines(section(plain, "Command index"))
     monkeypatch.setattr(
-        guide_module, "_COMPACT_GROUPS", {"stats": "compute flow statistics"}
+        guide_module,
+        "_COMPACT_GROUPS",
+        {**_COMPACT_GROUPS, "stats": "compute flow statistics"},
     )
 
     guide = agent_guide("agents")

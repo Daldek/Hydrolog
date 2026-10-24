@@ -318,7 +318,7 @@ print(f"tc = {tc:.1f} min")
 **So that** the library, CLI, MCP server and agent guides share the same option names, units, ranges and validation
 
 **Acceptance criteria:**
-- [x] 38 commands in 14 groups, list: `hydrolog commands list`
+- [x] 39 commands in 15 groups, list: `hydrolog commands list`
 - [x] Option schema (JSON Schema) for the whole catalog or a single command: `commands schema`, `--schema`
 - [x] Result envelope `hydrolog-result/1` and error document `hydrolog-error/1` with a closed `ERROR_CODES` registry
 - [x] All result classes have `to_dict()` and `to_json()`
@@ -356,15 +356,20 @@ print(f"tc = {tc:.1f} min")
 
 ### 2.15 Flood routing (ADR-0007)
 
-#### US-R01: Route a hydrograph through a reach
+#### US-F01: Route a hydrograph through a reach
 **As** a hydrologist
 **I want** to route a discharge hydrograph through a reach, a reservoir or a river network
 **So that** I get the delayed and attenuated hydrograph at the downstream end without a hydraulic model
 
 **Acceptance criteria:**
-- [ ] `hydrolog.routing`: `Hydrograph` (regular-step discharge table), lag, Muskingum, Muskingum-Cunge, cascade of linear reservoirs, level-pool reservoir and a river network, one command each in the group `route` (one branch per model; plan `docs/plans/2026-10-24-flood-routing.md`)
-- [ ] Hydrograph in and out as a table `time_min`, `discharge_m3s` (inline lists or a file; `--output` writes the outflow, with `--check` and `--force`)
-- [ ] Steady-state or given initial outflow, extension of the time axis until the outflow has settled, volume balance with the storage of the reach
+- [x] `hydrolog.routing`: `Hydrograph` (regular-step discharge table) and `Reach`, the template of a routing element (steady-state or given initial outflow, extension of the time axis until the outflow has settled, volume balance with the storage of the reach)
+- [x] Hydrograph in and out as a table `time_min`, `discharge_m3s` (inline lists or a file; `--output` writes the outflow, with `--check` and `--force`)
+- [x] Lag: `LagReach`, command `route lag`
+- [ ] Muskingum with automatic sub-reaches: `route muskingum`
+- [ ] Muskingum-Cunge with constant coefficients: `route muskingum-cunge`
+- [ ] Cascade of linear reservoirs: `route cascade`
+- [ ] Level-pool reservoir: `route level-pool`
+- [ ] River network: `route network`
 - [x] Hydraulics (levels, inundation, backwater, structures) stays out of scope; the documentation names Hydraulik, HEC-RAS and IMGW HD
 
 ---
@@ -508,7 +513,7 @@ print(f"tc = {tc:.1f} min")
 - [x] Tests and documentation
 
 ### v1.0.0 - Stable API, command catalog, MCP, HSG *(in preparation)*
-- [x] `catalog`, `operations` - a catalog of 38 commands and the operations layer
+- [x] `catalog`, `operations` - a catalog of 39 commands and the operations layer
 - [x] `cli` - CLI generated from the catalog (breaking change: the former syntax was removed)
 - [x] `mcp` - MCP server (`hydrolog mcp`, extra `[mcp]`)
 - [x] `agent_guide` - `AGENTS.md` and `llms.txt` generated from the catalog
@@ -519,8 +524,9 @@ print(f"tc = {tc:.1f} min")
 - [ ] Complete API documentation (MkDocs/Sphinx)
 - [ ] Publication on PyPI
 
-### After v1.0.0 - Flood routing *(planned, branches `feature/routing-*`, ADR-0007)*
-- [ ] `routing` and the command group `route`: lag, Muskingum, Muskingum-Cunge, cascade of linear reservoirs, level-pool reservoir, river network (plan: `docs/plans/2026-10-24-flood-routing.md`)
+### After v1.0.0 - Flood routing *(branches `feature/routing-*`, ADR-0007)*
+- [x] `routing` and the command group `route`: `Hydrograph`, `Reach`, lag (`route lag`) (plan: `docs/plans/2026-10-24-flood-routing.md`)
+- [ ] Muskingum, Muskingum-Cunge, cascade of linear reservoirs, level-pool reservoir, river network
 
 ---
 

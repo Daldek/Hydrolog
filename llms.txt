@@ -1,14 +1,14 @@
 # Hydrolog
 
-> A Python library, CLI and MCP server for watershed hydrology: SCS-CN and curve numbers, design hyetographs, time of concentration, unit and runoff hydrographs, morphometry, flow statistics, hydrologic soil groups (HSG) from rasters, a Markdown report. It computes locally, with no network and no data downloads.
+> A Python library, CLI and MCP server for watershed hydrology: SCS-CN and curve numbers, design hyetographs, time of concentration, unit and runoff hydrographs, lumped flood routing, morphometry, flow statistics, hydrologic soil groups (HSG) from rasters, a Markdown report. It computes locally, with no network and no data downloads.
 
-Hydrolog is not for spatial data (DEM, land cover, SoilGrids rasters), which Kartograf provides, or for IMGW/CHMU measurement series, which IMGWTools exports to CSV.
+Hydrolog is not for spatial data (DEM, land cover, SoilGrids rasters), which Kartograf provides, for IMGW/CHMU measurement series, which IMGWTools exports to CSV, or for hydraulic modelling (water levels, inundation), which Hydraulik and HEC-RAS do.
 
 Interfaces: Python (`hydrolog.run_command("tc kirpich", length_km=8.2, slope_m_per_m=0.023)`), the CLI (`hydrolog <group> <verb> --option value --json`) and the MCP server (`hydrolog mcp --allow-dir DIR`; a tool is an `operation_id`). Install with `pip install "hydrolog @ git+https://github.com/Daldek/Hydrolog.git"`; the extras are `raster`, `mcp`, `viz` and `all`.
 
 Work in four steps: discover (`hydrolog commands list`, `hydrolog commands schema --command NAME`), check (`--check` for commands that write a file), run, read (`result`, `notices`, `result.files`). A result is a `hydrolog-result/1` envelope; an error is a `hydrolog-error/1` document whose `code` is one of: `internal_error` (1), `validation_error` (2), `not_found` (3), `conflict` (4), `missing_dependency` (6), `data_error` (7), `io_error` (9), `forbidden` (12), `calculation_error` (13), `cancelled` (130), `terminated` (143).
 
-Command groups: `tc`, `cn`, `scs`, `precip`, `uh`, `hydrograph`, `morphometry`, `network`, `stats`, `hydrometrics`, `soil`, `report`, `config`, `commands`.
+Command groups: `tc`, `cn`, `scs`, `precip`, `uh`, `hydrograph`, `route`, `morphometry`, `network`, `stats`, `hydrometrics`, `soil`, `report`, `config`, `commands`.
 
 ## Documentation
 

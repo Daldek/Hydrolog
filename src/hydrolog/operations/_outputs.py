@@ -12,7 +12,8 @@ anything it builds the list of its targets with :func:`plan_outputs`:
   (``duplicate_output_name``), checked first.
 
 With ``check`` the plan is the result (:func:`plan_output`): a plan that lists a
-``conflict`` is still a successful result; only the real run fails.
+``conflict`` is still a successful result; only the real run fails. An output that is
+also an input file is refused first (:func:`refuse_input_as_output`).
 """
 
 from __future__ import annotations
@@ -24,7 +25,7 @@ from pathlib import Path
 from typing import Any, Final, Literal
 
 from hydrolog.catalog.envelope import OperationOutput
-from hydrolog.exceptions import ConflictError
+from hydrolog.exceptions import ConflictError, InvalidParameterError
 
 __all__ = [
     "PLAN_SCHEMA",
@@ -33,6 +34,7 @@ __all__ = [
     "conflict_error",
     "plan_output",
     "plan_outputs",
+    "refuse_input_as_output",
 ]
 
 PLAN_SCHEMA: Final = "hydrolog-plan/1"
@@ -188,3 +190,45 @@ def plan_output(plan: OutputPlan) -> OperationOutput:
         ``result`` is the ``hydrolog-plan/1`` document and ``check`` is true.
     """
     return OperationOutput(plan.document(), check=True)
+
+
+def _is_same_file(first: Path, second: Path) -> bool:
+    """Whether two paths name the same file (also when one does not exist yet)."""
+    try:
+        return first.samefile(second)
+    except OSError:
+        return first.resolve() == second.resolve()
+
+
+def refuse_input_as_output(
+    output: str | os.PathLike[str],
+    inputs: Mapping[str, str | os.PathLike[str] | None],
+    *,
+    hint: str = "Give another file name for the output.",
+) -> None:
+    """Refuse an output path that is one of the input files.
+
+    Parameters
+    ----------
+    output : str or os.PathLike
+        The file the command is going to write.
+    inputs : Mapping
+        Input option name to the path it was given; options that were not given
+        (``None``) are skipped.
+    hint : str, optional
+        Remediation suggestion of the error.
+
+    Raises
+    ------
+    InvalidParameterError
+        With ``details.option`` ``output``, ``details.reason`` ``conflict`` and the
+        name of the input option in ``details.input``.
+    """
+    target = Path(os.fspath(output))
+    for option, given in inputs.items():
+        if given is not None and _is_same_file(target, Path(os.fspath(given))):
+            raise InvalidParameterError(
+                f"Option 'output' must not be the input file of {option!r}: {target}",
+                details={"option": "output", "reason": "conflict", "input": option},
+                hint=hint,
+            )

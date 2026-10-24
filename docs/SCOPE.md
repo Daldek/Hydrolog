@@ -166,7 +166,7 @@ Hydrolog is analogous to **Kartograf** (spatial data download) and **IMGWTools**
 
 #### 2.1.6 Module `cli` - CLI (v0.4.0, rebuilt in v1.0.0) ✅
 
-Since v1.0.0 the CLI is generated from the command catalog (`hydrolog.catalog`): 38 commands in 14 groups (list: `hydrolog commands list`). Syntax: `hydrolog <group> <command> --option value`; global flags `--json`, `--schema`, `--lang pl|en`, `-V`. The former CLI syntax (v0.4.0-v0.7.0) was removed without aliases.
+Since v1.0.0 the CLI is generated from the command catalog (`hydrolog.catalog`): 39 commands in 15 groups (list: `hydrolog commands list`). Syntax: `hydrolog <group> <command> --option value`; global flags `--json`, `--schema`, `--lang pl|en`, `-V`. The former CLI syntax (v0.4.0-v0.7.0) was removed without aliases.
 
 ```bash
 # Time of concentration
@@ -293,6 +293,23 @@ The module requires optional dependencies: `pip install hydrolog[viz]`
 
 ---
 
+#### 2.1.11 Module `routing` - Flood Routing (after v1.0.0, ADR-0007)
+
+Lumped hydrologic routing of discharge hydrographs (storage and translation); water levels,
+inundation, backwater and structures stay with Hydraulik, HEC-RAS and IMGW HD.
+
+- `Hydrograph`: a discharge table at a regular time step (`time_min`, `discharge_m3s`), checked
+  as in ADR-0008 (no resampling), with the volume under it; read from inline lists or a CSV/JSON
+  file (`load_hydrograph`)
+- `Reach`: the template of a routing element (initial condition, extension of the time axis until
+  the outflow has settled, non-negativity, volume balance, notices) and `RoutingResult`
+- Lag: `LagReach`, command `route lag` (the outflow is the inflow, shifted in time)
+- The outflow written by `--output` is a hydrograph table that every `route` command reads
+- Not in scope: variable-parameter Muskingum-Cunge and compound sections, kinematic and dynamic
+  waves, reservoir operation (plan `docs/plans/2026-10-24-flood-routing.md`)
+
+---
+
 ### 2.2 ❌ OUT OF SCOPE
 
 **Functionality:**
@@ -371,13 +388,19 @@ hydrolog/
 ├── time/                    # Characteristic times
 │   ├── __init__.py
 │   └── concentration.py    # tc calculations (6 methods)
+├── routing/                 # Flood routing (after v1.0.0, ADR-0007)
+│   ├── __init__.py
+│   ├── hydrograph.py       # Hydrograph (regular-step table), check_table
+│   ├── reach.py            # Reach (template), RoutingResult, RoutingNotice
+│   ├── lag.py              # LagReach
+│   └── _kernels.py         # Three-point recurrences, shared with ClarkIUH
 ├── _serialization.py        # to_jsonable(), JsonResultMixin (to_dict/to_json) (v1.0.0)
 ├── agent_guide.py           # AGENTS.md / llms.txt generator from the catalog (v1.0.0)
 ├── _data/agents/            # Agent guide templates (English)
 ├── catalog/                 # Command catalog (v1.0.0)
 │   ├── spec.py              # Command, Option
 │   ├── envelope.py          # hydrolog-result/1 envelope, Notice
-│   ├── inputs.py            # Series, stations, catchments from JSON or CSV/JSON files
+│   ├── inputs.py            # Series, hydrographs, stations, catchments from JSON or CSV/JSON files
 │   ├── dispatch.py          # validate_command, run_command, path policy
 │   └── groups/              # One module per command group (COMMANDS)
 ├── operations/              # One public function per catalog command (v1.0.0)

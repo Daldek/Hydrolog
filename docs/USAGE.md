@@ -229,6 +229,50 @@ result = hydrolog.run_command(
 print(f"Qmax {result.peak_discharge_m3s:.1f} m3/s at {result.time_to_peak_min:.0f} min")
 ```
 
+### Flood routing
+
+The `route` commands send a discharge hydrograph through one element and return the outflow
+hydrograph; they are lumped hydrologic methods, so they give discharge only (water levels and
+inundation are hydraulics: Hydraulik, HEC-RAS). `route lag` shifts the hydrograph by `--lag-min`
+without attenuating it; a lag that is not a whole number of time steps is interpolated linearly
+(notice `lag_interpolated`).
+
+- **The hydrograph** is given inline (`--times-min`, `--discharge-m3s`) or from a CSV or JSON file
+  (`--input-file`, with `--time-column` and `--value-column`, by default `time_min` and
+  `discharge_m3s`). Times are minutes, discharges m3/s and not negative, and the time step is
+  regular: an irregular table is an error (`details.reason` `irregular_step`), nothing is
+  resampled.
+- **The start** of the outflow is the first inflow ordinate (a steady state) unless
+  `--initial-outflow-m3s` is given.
+- **The tail**: the outflow outlasts the inflow, so the time axis is extended after the last inflow
+  ordinate, where the inflow is held, until the outflow has settled (notice `tail_extended`);
+  `--extend-min` sets the extension instead, `0` adds nothing.
+- **The result** has the parameters used, the peaks, the volumes, the storage at both ends and
+  `balance_error_m3` (inflow volume - outflow volume - change of storage, zero to rounding), and the
+  series `times_min` and `outflow_m3s`. With `--output` the series goes to a CSV file with the
+  columns `time_min` and `discharge_m3s` instead (`outflow_m3s` is then `null`), which is a valid
+  `--input-file` of every `route` command: the outflow of one reach is the inflow of the next, or
+  of a hydraulic model. Without `--output` there is no file to plan, so `--check` computes as usual.
+
+```bash
+hydrolog route lag --lag-min 30 --input-file tests/fixtures/flood_inflow.csv --output outflow.csv --json
+```
+
+```json output
+{"result": {"schema": "hydrolog-route-lag/1", "model": "lag", "parameters": {"lag_min": 30.0, "lag_steps": 3.0}, "extension_min": 10.0, "outflow_peak_m3s": 40.0, "outflow_time_to_peak_min": 90.0, "peak_delay_min": 30.0, "outflow_m3s": null, "files": [{"path": "...", "status": "written"}]}}
+```
+
+In Python the classes of `hydrolog.routing` do the same on arrays; `route` returns the outflow
+with the notices, the storage at both ends and the balance.
+
+```python
+from hydrolog.routing import Hydrograph, LagReach
+
+inflow = Hydrograph.from_step([0, 10, 40, 20, 0], timestep_min=30)
+result = LagReach(lag_min=60).route(inflow)
+print(result.outflow.time_to_peak_min, result.balance_error_m3)
+```
+
 ### Morphometry and river network
 
 `morphometry watershed` returns geometry, shape indicators, elevation and slope figures from a
@@ -357,8 +401,10 @@ hydrolog report generate --output report.md --watershed-file tests/fixtures/wate
 
 ## 3. Writing files
 
-Three commands write a file: `report generate`, `soil hsg` and `commands guide` (the agent guide
-rendered from the catalog). Every other command only reads. A writing command takes:
+Four commands write a file: `report generate`, `soil hsg`, `commands guide` (the agent guide
+rendered from the catalog) and `route lag`, which writes the outflow only when it is given
+`--output` (without it `--check` has nothing to plan and computes). Every other command only
+reads. A writing command takes:
 
 - `--output FILE`: exactly one plain file; missing directories are created. Hydrolog has no store
   and no managed directory layout.
@@ -529,8 +575,10 @@ print(texture, texture_to_hsg(texture))
 
 Also in the library: `WatershedGeometry` and `TerrainAnalysis` (shape and relief indicators),
 `HypsometricCurve`, `StreamNetwork` (Strahler and Shreve), `thiessen_polygons` and
-`inverse_distance_weighting` (areal precipitation), and `hydrolog.reports.HydrologyReportGenerator`
-with a `ReportConfig` (the command `report generate` is the shorter way).
+`inverse_distance_weighting` (areal precipitation), `hydrolog.routing` (`Hydrograph`,
+`LagReach`: the flood routing of [Flood routing](#flood-routing)) and
+`hydrolog.reports.HydrologyReportGenerator` with a `ReportConfig` (the command
+`report generate` is the shorter way).
 
 Plots are in `hydrolog.visualization`. They need the `viz` extra (matplotlib and seaborn; without
 it a plot function raises `MissingDependencyError`) and are not part of the command catalog. The

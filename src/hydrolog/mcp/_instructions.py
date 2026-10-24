@@ -27,8 +27,8 @@ directory adds its path; the text of the real catalog stays well below it."""
 
 _FLOW: Final = (
     "Tools are the commands of the Hydrolog catalog, named `hydrolog_<group>_<verb>` "
-    "(hydrological calculations: runoff, hydrographs, time of concentration, "
-    "statistics of flows, morphometry). Work in this order: discover "
+    "(hydrological calculations: runoff, hydrographs, flood routing, time of "
+    "concentration, statistics of flows, morphometry). Work in this order: discover "
     "(`{list_tool}`, then `{schema_tool}` for one command) -> check (a tool that "
     "writes a file plans with `check`) -> run -> read (`result`, `notices`, "
     "`result.files`)."

@@ -23,6 +23,7 @@ from hydrolog.operations._outputs import (
     conflict_error,
     plan_output,
     plan_outputs,
+    refuse_input_as_output,
 )
 from hydrolog.operations.hydrograph import (
     HydrographRun,
@@ -156,27 +157,6 @@ def _curve_number(cn: float) -> Any:
     CN is passed on as it is.
     """
     return int(cn) if float(cn).is_integer() else cn
-
-
-def _is_same_file(first: Path, second: Path) -> bool:
-    """Whether two paths name the same file (also when one does not exist yet)."""
-    try:
-        return first.samefile(second)
-    except OSError:
-        return first.resolve() == second.resolve()
-
-
-def _check_output(
-    output: Path, inputs: dict[str, str | os.PathLike[str] | None]
-) -> None:
-    """Refuse an output path that is one of the input files."""
-    for option, given in inputs.items():
-        if given is not None and _is_same_file(output, Path(os.fspath(given))):
-            raise InvalidParameterError(
-                f"Option 'output' must not be the input file of {option!r}: {output}",
-                details={"option": "output", "reason": "conflict", "input": option},
-                hint="Give another file name for the report.",
-            )
 
 
 def _write(content: str, output: Path) -> None:
@@ -331,7 +311,11 @@ def report_generate(
             },
         )
     target = Path(os.fspath(output))
-    _check_output(target, {"watershed_file": watershed_file, "input_file": input_file})
+    refuse_input_as_output(
+        target,
+        {"watershed_file": watershed_file, "input_file": input_file},
+        hint="Give another file name for the report.",
+    )
     plan = plan_outputs({"output": target}, force=force)
     if check:
         return plan_output(plan)

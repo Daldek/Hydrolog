@@ -335,7 +335,7 @@ print(f"Qmax: {result.peak_discharge_m3s:.2f} m³/s")
 
 ## Hydrolog 1.0.0: operations layer, command catalog and files
 
-Since v1.0.0 Hydrolog has a single command catalog (`hydrolog.catalog`, 38 commands, list: `hydrolog commands list`) from which the following are generated: the Python operations layer (`hydrolog.operations`), the `hydrolog` CLI, the MCP server (`hydrolog mcp`) and the agent guides (`AGENTS.md`, `llms.txt`). The library classes (`HydrographGenerator`, `WatershedParameters`, ...) work as before; the sections below describe the new ways of integrating.
+Since v1.0.0 Hydrolog has a single command catalog (`hydrolog.catalog`, 39 commands, list: `hydrolog commands list`) from which the following are generated: the Python operations layer (`hydrolog.operations`), the `hydrolog` CLI, the MCP server (`hydrolog mcp`) and the agent guides (`AGENTS.md`, `llms.txt`). The library classes (`HydrographGenerator`, `WatershedParameters`, ...) work as before; the sections below describe the new ways of integrating.
 
 ### Retman (calculation handlers)
 
@@ -399,6 +399,16 @@ hydrolog stats monthly --input-file q_daily.csv --value-column Q --date-column d
 ```
 
 Annual maxima and minima (`stats flood-frequency`, `stats low-flow`) are taken from **complete** hydrological years (Nov-Oct; a value for every day of the year): an export covering calendar years loses the first and last hydrological year, and the skipped years are listed in the `incomplete_years` notice and the `incomplete_years` result field. A series shorter than recommended produces a warning in `notices`; a series without 3 complete years fails with `calculation_error`. The same commands are available in Python (`hydrolog.operations.stats_flood_frequency(input_file=..., value_column="Q", date_column="date")`) and over MCP (`hydrolog_stats_flood_frequency`).
+
+### Flood routing: the hydrograph table between tools
+
+The `route` commands (ADR-0007, ADR-0008) read and write one file format, the hydrograph table: a CSV (or a JSON object of two equal-length columns) with the columns `time_min` (minutes since any origin, strictly increasing at a regular step) and `discharge_m3s` (m3/s, not negative). Other names are given with `--time-column` and `--value-column`; an irregular step, a gap or a negative discharge is refused, nothing is resampled. A table from any source, for example a column of a hydraulic model or a design hydrograph written by another tool, is an input; the file that a `route` command writes with `--output` has the same two columns, so the outflow of one reach is the inflow of the next, or the discharge boundary condition of a hydraulic model:
+
+```bash
+hydrolog route lag --lag-min 30 --input-file inflow.csv --output outflow.csv
+```
+
+Hydrolog computes discharge only: water levels, inundation and backwater are hydraulics (Hydraulik, HEC-RAS, IMGW HD). Hydrolog writes no other tool's format. A hydrograph contract with Hydraulik and the export of a river network from Hydrograf need `request` issues in those repositories (DEV-17.5); this repository does not make them.
 
 ### Hydrograf: migrating HSG from Kartograf to Hydrolog
 
@@ -492,7 +502,8 @@ cn = calculate_weighted_cn(parts)
 | HydrographGenerator | ✅ | SCS bug fixed in v0.5.1 (constant 0.208) |
 | Unit tests | ✅ | 35 tests |
 | Integration tests | ✅ | 15 tests |
-| Operations layer, command catalog, CLI, MCP (v1.0.0) | ✅ | 38 commands; `hydrolog.operations`, `hydrolog mcp` |
+| Operations layer, command catalog, CLI, MCP (v1.0.0) | ✅ | 39 commands; `hydrolog.operations`, `hydrolog mcp` |
+| `routing` module (after v1.0.0, ADR-0007) | 🔄 | `Hydrograph`, `Reach`, `LagReach`, `route lag`; the other models on `feature/routing-*` |
 | `soil` module (HSG, v1.0.0) | ✅ | `hsg_from_rasters`, `hsg_statistics`, `soil *` commands |
 | Result serialization (v1.0.0) | ✅ | `to_dict()`/`to_json()` in all result classes |
 
