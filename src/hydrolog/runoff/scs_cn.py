@@ -212,7 +212,7 @@ class SCSCN:
 
     def effective_precipitation(
         self,
-        precipitation_mm: NDArray[np.float64] | float | list,
+        precipitation_mm: NDArray[np.float64] | float | list[float],
         amc: AMC = AMC.II,
     ) -> EffectivePrecipitationResult:
         """

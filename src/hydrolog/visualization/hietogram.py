@@ -6,6 +6,8 @@ including intensity bars and cumulative curves.
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 from numpy.typing import NDArray
 
 from hydrolog.precipitation.hietogram import HietogramResult
@@ -21,9 +23,9 @@ def plot_hietogram(
     show_cumulative: bool = True,
     distribution: str | None = None,
     title: str | None = None,
-    ax: plt.Axes | None = None,
-    figsize: tuple = (10, 6),
-) -> plt.Figure:
+    ax: Axes | None = None,
+    figsize: tuple[float, float] = (10, 6),
+) -> Figure:
     """
     Plot hietogram with precipitation intensity and optional cumulative curve.
 
@@ -38,9 +40,9 @@ def plot_hietogram(
         (e.g., "Beta (α=2, β=5)").
     title : str, optional
         Plot title. If None, uses "Hietogram opadu".
-    ax : plt.Axes, optional
+    ax : Axes, optional
         Existing axes to plot on. If None, creates new figure.
-    figsize : tuple, optional
+    figsize : tuple[float, float], optional
         Figure size if creating new figure, by default (10, 6).
 
     Returns
@@ -62,7 +64,7 @@ def plot_hietogram(
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
     else:
-        fig = ax.get_figure()  # type: ignore[assignment]
+        fig = ax.get_figure()  # type: ignore[assignment]  # stub allows SubFigure
         assert fig is not None
 
     # Prepare data
@@ -136,12 +138,12 @@ def plot_hietogram(
 
 def plot_hietogram_comparison(
     precip: HietogramResult,
-    effective: NDArray[np.float64] | list,
+    effective: NDArray[np.float64] | list[float],
     cn: int | None = None,
     title: str | None = None,
-    ax: plt.Axes | None = None,
-    figsize: tuple = (10, 6),
-) -> plt.Figure:
+    ax: Axes | None = None,
+    figsize: tuple[float, float] = (10, 6),
+) -> Figure:
     """
     Plot comparison of total precipitation and effective precipitation.
 
@@ -155,9 +157,9 @@ def plot_hietogram_comparison(
         Curve Number value to display in legend.
     title : str, optional
         Plot title. If None, uses "Hietogram opadu".
-    ax : plt.Axes, optional
+    ax : Axes, optional
         Existing axes to plot on.
-    figsize : tuple, optional
+    figsize : tuple[float, float], optional
         Figure size, by default (10, 6).
 
     Returns
@@ -179,7 +181,7 @@ def plot_hietogram_comparison(
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
     else:
-        fig = ax.get_figure()  # type: ignore[assignment]
+        fig = ax.get_figure()  # type: ignore[assignment]  # stub allows SubFigure
         assert fig is not None
 
     # Ensure effective is numpy array

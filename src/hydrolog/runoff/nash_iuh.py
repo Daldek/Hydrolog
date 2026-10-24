@@ -190,7 +190,7 @@ class NashUHResult(JsonResultMixin):
 
 
 class NashIUH:
-    """
+    r"""
     Nash Instantaneous Unit Hydrograph (IUH).
 
     The Nash model represents the watershed as a cascade of n identical
@@ -211,8 +211,8 @@ class NashIUH:
     The Nash IUH formula is:
 
     .. math::
-        u(t) = \\frac{1}{K \\cdot \\Gamma(n)}
-            \\cdot \\left(\\frac{t}{K}\\right)^{n-1} \\cdot e^{-t/K}
+        u(t) = \frac{1}{K \cdot \Gamma(n)}
+            \cdot \left(\frac{t}{K}\right)^{n-1} \cdot e^{-t/K}
 
     Key properties:
     - Lag time (first moment): tlag = n × K
@@ -479,7 +479,7 @@ class NashIUH:
         timestep_min: float = 5.0,
         total_duration_min: float | None = None,
     ) -> NashUHResult:
-        """
+        r"""
         Convert IUH to D-minute Unit Hydrograph.
 
         Generates a unit hydrograph for rainfall of duration D
@@ -512,20 +512,20 @@ class NashIUH:
         The D-minute unit hydrograph is computed as:
 
         .. math::
-            U(t) = \\frac{1}{D} \\int_0^D u(t - \\tau) d\\tau
+            U(t) = \frac{1}{D} \int_0^D u(t - \tau) d\tau
 
         where u(t) is the IUH. This is implemented as the average
         of S-curves shifted by duration D:
 
         .. math::
-            U(t) = \\frac{S(t) - S(t-D)}{D}
+            U(t) = \frac{S(t) - S(t-D)}{D}
 
         where S(t) is the S-curve (integral of IUH).
 
         The ordinates are then scaled by area to get m³/s per mm:
 
         .. math::
-            Q(t) = U(t) \\cdot A \\cdot 1000 / 60
+            Q(t) = U(t) \cdot A \cdot 1000 / 60
 
         Examples
         --------
@@ -728,7 +728,7 @@ class NashIUH:
         forest_pct: float = 0.0,
         area_km2: float | None = None,
     ) -> "NashIUH":
-        """
+        r"""
         Create NashIUH using Lutz method for ungauged catchments.
 
         The Lutz method estimates Nash model parameters from catchment
@@ -772,30 +772,30 @@ class NashIUH:
         1. Time to peak of unit hydrograph:
 
         .. math::
-            t_p = P_1 \\cdot \\left(\\frac{L \\cdot L_c}{J_g^{1.5}}\\right)^{0.26}
-                  \\cdot e^{-0.016 U} \\cdot e^{0.004 W}
+            t_p = P_1 \cdot \left(\frac{L \cdot L_c}{J_g^{1.5}}\right)^{0.26}
+                  \cdot e^{-0.016 U} \cdot e^{0.004 W}
 
         where :math:`P_1 = 3.989 n + 0.028` (n = Manning coefficient).
 
         2. Peak IUH ordinate:
 
         .. math::
-            u_p = \\frac{0.66}{t_p^{1.04}}
+            u_p = \frac{0.66}{t_p^{1.04}}
 
         3. Shape function:
 
         .. math::
-            f(N) = t_p \\cdot u_p
+            f(N) = t_p \cdot u_p
 
         4. Parameter N is found by solving:
 
         .. math::
-            f(N) = \\frac{(N-1)^N \\cdot e^{-(N-1)}}{\\Gamma(N)}
+            f(N) = \frac{(N-1)^N \cdot e^{-(N-1)}}{\Gamma(N)}
 
         5. Storage coefficient:
 
         .. math::
-            K = \\frac{t_p}{N-1}
+            K = \frac{t_p}{N-1}
 
         References
         ----------
@@ -927,7 +927,7 @@ class NashIUH:
         duration_h: float,
         urban_fraction: float = 0.0,
     ) -> "NashIUH":
-        """
+        r"""
         Create NashIUH using empirical regression for urbanized catchments.
 
         Estimates Nash model parameters (N, k) from catchment area,
@@ -965,14 +965,14 @@ class NashIUH:
         1. Lag time:
 
         .. math::
-            t_L = 1.28 \\cdot A^{0.46} \\cdot (1+U)^{-1.66}
-                  \\cdot H^{-0.27} \\cdot D^{0.37}
+            t_L = 1.28 \cdot A^{0.46} \cdot (1+U)^{-1.66}
+                  \cdot H^{-0.27} \cdot D^{0.37}
 
         2. Storage coefficient:
 
         .. math::
-            k = 0.56 \\cdot A^{0.39} \\cdot (1+U)^{-0.62}
-                \\cdot H^{-0.11} \\cdot D^{0.22}
+            k = 0.56 \cdot A^{0.39} \cdot (1+U)^{-0.62}
+                \cdot H^{-0.11} \cdot D^{0.22}
 
         3. Number of reservoirs:
 

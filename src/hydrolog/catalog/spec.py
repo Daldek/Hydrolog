@@ -417,6 +417,7 @@ class Option:
     writes: bool = False
 
     def __post_init__(self) -> None:
+        """Validate the field values."""
         name = self.name
         if (
             not isinstance(name, str)
@@ -637,6 +638,8 @@ class Command:
     examples: tuple[Mapping[str, object], ...] = ()
 
     def __post_init__(self) -> None:
+        """Validate the field values."""
+
         def bad(problem: str) -> ValueError:
             return ValueError(f"Command {self.name!r}: {problem}")
 

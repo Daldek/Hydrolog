@@ -98,9 +98,9 @@ def commands_schema(*, command: str | None = None, lang: Lang = "pl") -> dict[st
 
 
 def _write_text(text: str, target: Path) -> None:
-    """Write ``text`` to ``target`` atomically (written aside, then renamed).
+    r"""Write ``text`` to ``target`` atomically (written aside, then renamed).
 
-    The file is UTF-8 with ``"\\n"`` line ends on every platform; missing directories
+    The file is UTF-8 with ``"\n"`` line ends on every platform; missing directories
     are created and an existing file is replaced.
     """
     try:
@@ -118,7 +118,7 @@ def commands_guide(
     lang: Lang = "pl",
     path: str | os.PathLike[str] | None = None,
 ) -> str | OperationOutput:
-    """Guide for AI agents generated from the catalog (``commands guide``).
+    r"""Guide for AI agents generated from the catalog (``commands guide``).
 
     Renders ``AGENTS.md`` or ``llms.txt`` (:func:`hydrolog.agent_guide.agent_guide`):
     the rules, the interfaces, the result envelope and the error registry, the input
@@ -134,7 +134,7 @@ def commands_guide(
     lang : {"pl", "en"}, optional
         Language of the guide, by default ``"pl"``.
     path : str or os.PathLike, optional
-        File to write the text to (UTF-8, ``"\\n"`` line ends); missing directories
+        File to write the text to (UTF-8, ``"\n"`` line ends); missing directories
         are created and an existing file is replaced. ``None`` writes nothing.
 
     Returns

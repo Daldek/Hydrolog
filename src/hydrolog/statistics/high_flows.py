@@ -360,7 +360,7 @@ class FloodFrequencyAnalysis:
         FrequencyAnalysisResult
         """
         # K-S test
-        ks_stat, ks_pval = kstest(self._data, cdf_func)  # type: ignore[arg-type]
+        ks_stat, ks_pval = kstest(self._data, cdf_func)
         warnings.warn(
             "Kolmogorov-Smirnov test critical values are invalid when "
             "parameters are estimated from the same data. Use Anderson-"

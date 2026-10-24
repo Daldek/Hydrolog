@@ -4,7 +4,12 @@ This module provides consistent styling across all visualization functions,
 including color palettes, Polish labels, and matplotlib/seaborn configuration.
 """
 
+from typing import Any
+
 import matplotlib.pyplot as plt
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
+from matplotlib.ticker import MultipleLocator
 
 try:
     import seaborn as sns
@@ -195,7 +200,7 @@ def get_color(key: str) -> str:
 
 
 def format_time_axis(
-    ax: plt.Axes,
+    ax: Axes,
     unit: str = "min",
     max_time: float | None = None,
 ) -> None:
@@ -204,7 +209,7 @@ def format_time_axis(
 
     Parameters
     ----------
-    ax : plt.Axes
+    ax : Axes
         Matplotlib axes to format.
     unit : str, optional
         Time unit ('min' or 'h'), by default 'min'.
@@ -218,35 +223,35 @@ def format_time_axis(
         # Set reasonable tick spacing
         if unit == "min":
             if max_time <= 60:
-                ax.xaxis.set_major_locator(plt.MultipleLocator(10))
+                ax.xaxis.set_major_locator(MultipleLocator(10))
             elif max_time <= 180:
-                ax.xaxis.set_major_locator(plt.MultipleLocator(30))
+                ax.xaxis.set_major_locator(MultipleLocator(30))
             elif max_time <= 360:
-                ax.xaxis.set_major_locator(plt.MultipleLocator(60))
+                ax.xaxis.set_major_locator(MultipleLocator(60))
             else:
-                ax.xaxis.set_major_locator(plt.MultipleLocator(120))
+                ax.xaxis.set_major_locator(MultipleLocator(120))
         elif unit == "h":
             if max_time <= 6:
-                ax.xaxis.set_major_locator(plt.MultipleLocator(1))
+                ax.xaxis.set_major_locator(MultipleLocator(1))
             elif max_time <= 24:
-                ax.xaxis.set_major_locator(plt.MultipleLocator(3))
+                ax.xaxis.set_major_locator(MultipleLocator(3))
             else:
-                ax.xaxis.set_major_locator(plt.MultipleLocator(6))
+                ax.xaxis.set_major_locator(MultipleLocator(6))
 
 
 def add_peak_annotation(
-    ax: plt.Axes,
+    ax: Axes,
     x: float,
     y: float,
     label: str = "Qmax",
-    offset: tuple = (10, 10),
+    offset: tuple[float, float] = (10, 10),
 ) -> None:
     """
     Add annotation for peak value on plot.
 
     Parameters
     ----------
-    ax : plt.Axes
+    ax : Axes
         Matplotlib axes.
     x : float
         X coordinate of peak.
@@ -254,7 +259,7 @@ def add_peak_annotation(
         Y coordinate of peak.
     label : str, optional
         Label text, by default 'Qmax'.
-    offset : tuple, optional
+    offset : tuple[float, float], optional
         Text offset in points, by default (10, 10).
     """
     ax.annotate(
@@ -271,7 +276,7 @@ def add_peak_annotation(
 
 
 def add_watermark(
-    fig: plt.Figure,
+    fig: Figure,
     text: str = "Hydrolog",
     alpha: float = 0.1,
 ) -> None:
@@ -280,7 +285,7 @@ def add_watermark(
 
     Parameters
     ----------
-    fig : plt.Figure
+    fig : Figure
         Matplotlib figure.
     text : str, optional
         Watermark text, by default 'Hydrolog'.
@@ -308,7 +313,7 @@ def add_watermark(
 
 
 def create_stats_text(
-    stats: dict,
+    stats: dict[str, Any],
     title: str | None = None,
 ) -> str:
     """
@@ -354,8 +359,8 @@ def create_stats_text(
 
 
 def add_stats_box(
-    ax: plt.Axes,
-    stats: dict,
+    ax: Axes,
+    stats: dict[str, Any],
     loc: str = "upper right",
     title: str | None = None,
 ) -> None:
@@ -364,7 +369,7 @@ def add_stats_box(
 
     Parameters
     ----------
-    ax : plt.Axes
+    ax : Axes
         Matplotlib axes.
     stats : dict
         Dictionary of statistics.

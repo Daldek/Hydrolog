@@ -7,6 +7,7 @@ calculations.
 """
 
 import json
+from typing import cast
 
 import pytest
 
@@ -215,7 +216,7 @@ class TestHydrografIntegration:
         params = WatershedParameters.from_dict(hydrograf_api_response)
 
         # Calculate water balance
-        scs = SCSCN(cn=params.cn)
+        scs = SCSCN(cn=cast(int, params.cn))
         precipitation_mm = 80.0
         result = scs.effective_precipitation(precipitation_mm)
 

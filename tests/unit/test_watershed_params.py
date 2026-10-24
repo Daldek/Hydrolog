@@ -778,8 +778,9 @@ class TestConcentrationTimeInputsOfAWatershed:
             "overland_length_km",
             "overland_slope_m_per_m",
         ]
-        assert "kerby_kirpich" in caught.value.hint
-        assert "overland_length_km" in caught.value.hint
+        hint = caught.value.hint or ""
+        assert "kerby_kirpich" in hint
+        assert "overland_length_km" in hint
 
     def test_a_watershed_without_a_channel_is_timed_by_its_length(self) -> None:
         """Kirpich, NRCS and Giandotti use ``length_km`` when there is no channel."""

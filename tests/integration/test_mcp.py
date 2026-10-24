@@ -25,7 +25,7 @@ pytest.importorskip("mcp")
 
 import anyio
 import mcp.types as types
-from jsonschema import Draft202012Validator
+from jsonschema import Draft202012Validator  # type: ignore[import-untyped]
 from mcp import Client
 from mcp.client.stdio import StdioServerParameters, stdio_client
 from mcp.shared.exceptions import MCPError

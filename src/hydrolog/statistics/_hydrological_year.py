@@ -25,7 +25,7 @@ from numpy.typing import NDArray
 _MAX_LISTED_YEARS = 10
 
 
-def hydrological_year(dates: NDArray) -> NDArray[np.int_]:
+def hydrological_year(dates: NDArray[np.datetime64]) -> NDArray[np.int_]:
     """Assign hydrological year to each date.
 
     Parameters
@@ -45,7 +45,7 @@ def hydrological_year(dates: NDArray) -> NDArray[np.int_]:
     return np.where(months >= 11, years + 1, years)
 
 
-def hydrological_day_of_year(dates: NDArray) -> NDArray[np.int_]:
+def hydrological_day_of_year(dates: NDArray[np.datetime64]) -> NDArray[np.int_]:
     """Compute day-of-year within the hydrological year.
 
     Parameters
@@ -68,7 +68,7 @@ def hydrological_day_of_year(dates: NDArray) -> NDArray[np.int_]:
 
 
 def split_half_years(
-    values: NDArray[np.float64], dates: NDArray
+    values: NDArray[np.float64], dates: NDArray[np.datetime64]
 ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """Split values into winter and summer half-years.
 
@@ -92,7 +92,7 @@ def split_half_years(
 
 
 def days_in_hydrological_year(years: NDArray[np.int_]) -> NDArray[np.int_]:
-    """Number of calendar days of hydrological years.
+    """Count calendar days of hydrological years.
 
     Parameters
     ----------
@@ -149,13 +149,13 @@ class AnnualExtremes(NamedTuple):
 
     @property
     def incomplete_years(self) -> list[int]:
-        """list of int: the skipped hydrological years, in ascending order."""
+        """List of int: the skipped hydrological years, in ascending order."""
         return [item.year for item in self.incomplete]
 
 
 def annual_extremes(
     values: NDArray[np.float64],
-    dates: NDArray,
+    dates: NDArray[np.datetime64],
     kind: Literal["max", "min"],
 ) -> AnnualExtremes:
     """Annual maximum or minimum of every complete hydrological year of a series.

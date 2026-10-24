@@ -4,8 +4,12 @@ This module provides functions for plotting discharge hydrographs
 and unit hydrographs.
 """
 
+from typing import Any
+
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 
 from hydrolog.runoff.clark_iuh import ClarkIUHResult, ClarkUHResult
 from hydrolog.runoff.convolution import HydrographResult
@@ -36,9 +40,9 @@ def plot_hydrograph(
     show_volume: bool = True,
     fill: bool = True,
     title: str | None = None,
-    ax: plt.Axes | None = None,
-    figsize: tuple = (10, 6),
-) -> plt.Figure:
+    ax: Axes | None = None,
+    figsize: tuple[float, float] = (10, 6),
+) -> Figure:
     """
     Plot discharge hydrograph Q(t).
 
@@ -54,9 +58,9 @@ def plot_hydrograph(
         Fill area under curve, by default True.
     title : str, optional
         Plot title. If None, auto-generated.
-    ax : plt.Axes, optional
+    ax : Axes, optional
         Existing axes to plot on.
-    figsize : tuple, optional
+    figsize : tuple[float, float], optional
         Figure size, by default (10, 6).
 
     Returns
@@ -72,7 +76,7 @@ def plot_hydrograph(
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
     else:
-        fig = ax.get_figure()  # type: ignore[assignment]
+        fig = ax.get_figure()  # type: ignore[assignment]  # stub allows SubFigure
         assert fig is not None
 
     times = result.times_min
@@ -130,11 +134,11 @@ def plot_unit_hydrograph(
     show_params: bool = True,
     fill: bool = True,
     title: str | None = None,
-    ax: plt.Axes | None = None,
-    figsize: tuple = (10, 6),
+    ax: Axes | None = None,
+    figsize: tuple[float, float] = (10, 6),
     color: str | None = None,
     label: str | None = None,
-) -> plt.Figure:
+) -> Figure:
     """
     Plot unit hydrograph [m³/s/mm] or IUH [1/min].
 
@@ -148,9 +152,9 @@ def plot_unit_hydrograph(
         Fill area under curve, by default True.
     title : str, optional
         Plot title.
-    ax : plt.Axes, optional
+    ax : Axes, optional
         Existing axes to plot on.
-    figsize : tuple, optional
+    figsize : tuple[float, float], optional
         Figure size, by default (10, 6).
     color : str, optional
         Line color. If None, uses default.
@@ -174,7 +178,7 @@ def plot_unit_hydrograph(
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
     else:
-        fig = ax.get_figure()  # type: ignore[assignment]
+        fig = ax.get_figure()  # type: ignore[assignment]  # stub allows SubFigure
         assert fig is not None
 
     # Extract data based on result type
@@ -237,7 +241,7 @@ def plot_unit_hydrograph(
     return fig
 
 
-def _get_uh_stats(result: UHResultType, is_iuh: bool) -> dict:
+def _get_uh_stats(result: UHResultType, is_iuh: bool) -> dict[str, Any]:
     """Extract statistics from UH result for display."""
     stats = {}
 

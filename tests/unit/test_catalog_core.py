@@ -11,6 +11,7 @@ import time
 import types
 import warnings
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -115,7 +116,7 @@ def nan_operation(*, length_km: float):
 
 
 def _command(operation: str = "echo_operation", **overrides) -> Command:
-    fields = {
+    fields: dict[str, Any] = {
         "name": "demo run",
         "operation_id": "demo_run",
         "summary": "Demo.",
@@ -129,7 +130,7 @@ def _command(operation: str = "echo_operation", **overrides) -> Command:
     return Command(**fields)
 
 
-def _opt(name: str, type_: str, **kwargs) -> Option:
+def _opt(name: str, type_: Any, **kwargs: Any) -> Option:
     return Option(name, type_, f"Opis {name}", f"Description {name}", **kwargs)
 
 

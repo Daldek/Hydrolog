@@ -498,7 +498,7 @@ def load_records(path: str | os.PathLike[str]) -> list[dict[str, Any]]:
 
 
 def _to_float(cell: object) -> float:
-    """Number of a cell (``NaN`` for a missing value); ``ValueError`` if malformed."""
+    """Parse the number of a cell (``NaN`` if missing); ``ValueError`` if malformed."""
     if cell is None:
         return math.nan
     if isinstance(cell, bool):
@@ -597,6 +597,7 @@ class Series:
     source: str
 
     def __len__(self) -> int:
+        """Return the number of values."""
         return len(self.values)
 
     @property
@@ -773,7 +774,7 @@ def _base_type(hint: object) -> object:
 
 @functools.cache
 def _watershed_fields() -> tuple[tuple[str, ...], frozenset[str], frozenset[str]]:
-    """Required field names (declaration order), numeric fields, text fields."""
+    """Return required field names (declaration order), numeric fields, text fields."""
     hints = get_type_hints(WatershedParameters)
     required = tuple(
         item.name
@@ -889,7 +890,7 @@ def load_watershed(
 def _cell_number(
     record: Mapping[str, Any], field_name: str, row: int, source: _Source
 ) -> float:
-    """Number of a record field (``NaN`` when empty or absent)."""
+    """Parse the number of a record field (``NaN`` when empty or absent)."""
     value = record.get(field_name)
     try:
         return _to_float(value)

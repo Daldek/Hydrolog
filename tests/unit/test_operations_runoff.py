@@ -9,6 +9,7 @@ end through :func:`hydrolog.catalog.run_command`.
 import inspect
 import json
 import warnings
+from typing import Any
 
 import numpy as np
 import pytest
@@ -95,7 +96,7 @@ REQUIRED_FIELDS = {
     ),
 }
 
-STATIONS = [
+STATIONS: list[dict[str, Any]] = [
     {"name": "Balice", "x": 555500.0, "y": 244300.0, "precipitation_mm": 31.2},
     {"name": "Krzeszowice", "x": 545900.0, "y": 249700.0, "precipitation_mm": 36.8},
     {"name": "Skawina", "x": 562900.0, "y": 229400.0, "precipitation_mm": 28.4},

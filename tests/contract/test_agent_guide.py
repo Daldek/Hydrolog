@@ -17,7 +17,7 @@ import tomllib
 from fnmatch import fnmatch
 from importlib.util import find_spec
 from pathlib import Path
-from typing import get_args
+from typing import Any, get_args
 
 import pytest
 
@@ -74,7 +74,7 @@ def no_ambient_language(monkeypatch):
     monkeypatch.delenv("HYDROLOG_LANG", raising=False)
 
 
-def text(format: str = "agents", lang: str = "pl") -> str:
+def text(format: Any = "agents", lang: Any = "pl") -> str:
     return agent_guide(format, lang)
 
 

@@ -22,7 +22,7 @@ _SHAPE = {option.name: option for option in HIETOGRAM_OPTIONS}
 
 
 def _optional(option: Option) -> Option:
-    """The same option, no longer required (the series alternative needs none)."""
+    """Return the option, no longer required (the series alternative needs none)."""
     return dataclasses.replace(option, required=False)
 
 

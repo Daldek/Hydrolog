@@ -560,7 +560,7 @@ _EXTERNAL_TOOLS: Final = ("imgw", "kartograf")
 
 
 def _pick[T](pair: tuple[T, T], lang: Lang) -> T:
-    """The English element of a (Polish, English) pair for ``en``, else the Polish."""
+    """Return the English element of a (Polish, English) pair for ``en``, or Polish."""
     return pair[1] if lang == "en" else pair[0]
 
 
@@ -587,7 +587,7 @@ def _json(value: object) -> str:
 
 
 def _groups(commands: Sequence[Command]) -> dict[str, list[Command]]:
-    """The commands by group, in catalog order."""
+    """Group the commands by group, in catalog order."""
     grouped: dict[str, list[Command]] = {}
     for command in commands:
         grouped.setdefault(command.group, []).append(command)
@@ -692,7 +692,7 @@ def _options(command: Command, lang: Lang) -> str:
 
 
 def _effect(command: Command, lang: Lang) -> str:
-    """The effect of a run: reading, or writing the files of the output options."""
+    """Describe the effect of a run: reading, or writing the files of output options."""
     outputs = [option for option in command.options if option.writes]
     if not outputs:
         return _pick(_TEXTS["read"], lang)
@@ -756,8 +756,10 @@ def _error_codes() -> str:
 
 
 def _cli_line(command: Command, options: Mapping[str, object]) -> str:
-    """The command line that gives ``command`` the ``options`` (as the CLI parses
-    it)."""
+    """Return the command line that gives ``command`` the ``options``.
+
+    The line is written the way the CLI parses it.
+    """
     from hydrolog.cli.parser import format_example
 
     return format_example(command, options)
@@ -770,7 +772,7 @@ def _python_call(command: Command, options: Mapping[str, object]) -> str:
 
 
 def _call_example(lang: Lang) -> str:
-    """The same command as a Python call, a CLI line and an MCP call."""
+    """Render the same command as a Python call, a CLI line and an MCP call."""
     name, options = _EXAMPLE
     command = get_command(name)
     validate_command(command, options)
@@ -792,7 +794,7 @@ def _call_example(lang: Lang) -> str:
 
 
 def _external_line(step: _Step, lang: Lang) -> str:
-    """The line of another tool, with the symbols in the language of the guide."""
+    """Render the line of another tool, with symbols in the language of the guide."""
     assert step.external is not None
     line = step.external.format(**_symbols(lang))
     words = shlex.split(line)  # unbalanced quotes are a program error
@@ -806,7 +808,7 @@ def _symbols(lang: Lang) -> dict[str, str]:
 
 
 def _rendered_step(step: _Step, lang: Lang) -> tuple[str, str | None]:
-    """The line of a step (CLI or of another tool) and its MCP call, validated.
+    """Render the line of a step (CLI or of another tool) and its MCP call, validated.
 
     Raises
     ------
@@ -825,7 +827,7 @@ def _rendered_step(step: _Step, lang: Lang) -> tuple[str, str | None]:
 
 
 def _flows(lang: Lang) -> str:
-    """The typical flows: numbered steps with a CLI line and an MCP call each."""
+    """Render the typical flows: numbered steps with a CLI line and an MCP call each."""
     sections = []
     for number, flow in enumerate(_FLOWS, start=1):
         title = _pick((flow.title_pl, flow.title_en), lang)
@@ -848,7 +850,7 @@ def _flows(lang: Lang) -> str:
 
 
 def _flows_short(lang: Lang) -> str:
-    """The flows as titles over fenced lines of commands (for ``llms.txt``)."""
+    """Render the flows as titles over fenced lines of commands (for ``llms.txt``)."""
     sections = []
     for number, flow in enumerate(_FLOWS, start=1):
         title = _pick((flow.title_pl, flow.title_en), lang)
@@ -860,12 +862,12 @@ def _flows_short(lang: Lang) -> str:
 
 
 def _flow_symbols(lang: Lang) -> str:
-    """The symbols of the flows (values taken from other tools), as code spans."""
+    """Render the symbols of the flows (values from other tools), as code spans."""
     return ", ".join(_code(symbol) for symbol in _symbols(lang).values())
 
 
 def _blocks(lang: Lang) -> dict[str, Callable[[], str]]:
-    """Generated blocks of the guide in ``lang`` (rendered only when used)."""
+    """Build the generated blocks of the guide in ``lang`` (rendered only when used)."""
     return {
         "summary": lambda: _summary(lang),
         "rules": lambda: _rules(lang),
@@ -928,7 +930,7 @@ def _template(format: GuideFormat, lang: Lang) -> str:
 
 
 def agent_guide(format: GuideFormat, lang: Lang = "pl") -> str:
-    """Generate the guide for AI agents from the command catalog.
+    r"""Generate the guide for AI agents from the command catalog.
 
     ``format="agents"`` gives ``AGENTS.md``: what Hydrolog is, the rules, the
     interfaces (Python, CLI, MCP), the result envelope, the errors, the input files,
@@ -950,7 +952,7 @@ def agent_guide(format: GuideFormat, lang: Lang = "pl") -> str:
     Returns
     -------
     str
-        UTF-8 Markdown with ``"\\n"`` line ends, ending with a newline.
+        UTF-8 Markdown with ``"\n"`` line ends, ending with a newline.
 
     Raises
     ------

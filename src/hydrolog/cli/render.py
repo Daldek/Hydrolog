@@ -100,12 +100,12 @@ def _is_number(value: object) -> bool:
 
 
 def _as_list(value: object) -> Sequence[Any] | None:
-    """The value as a list (JSON arrays are lists) or ``None``."""
+    """Return the value as a list (JSON arrays are lists) or ``None``."""
     return value if isinstance(value, list | tuple) else None
 
 
 def _is_long_numbers(value: object) -> bool:
-    """A long list of numbers (``None`` allowed): material for a table of arrays."""
+    """Check for a long list of numbers (``None`` allowed): material for a table."""
     items = _as_list(value)
     return (
         items is not None
@@ -240,7 +240,7 @@ class _Renderer:
     def records(
         self, records: Sequence[Mapping[str, Any]], indent: int, depth: int
     ) -> list[str]:
-        """A list of objects: a table of short cells, else ``- field: value`` blocks."""
+        """Render a list of objects: a table of short cells, else ``- field: value``."""
         shown = records[: _limit(len(records), RECORD_ROWS)]
         headers = self.columns(shown)
         flat = all(
@@ -298,7 +298,7 @@ class _Renderer:
     # --- objects --------------------------------------------------------------------
 
     def parallel_arrays(self, data: Mapping[str, Any]) -> list[list[str]]:
-        """Groups (two or more) of long numeric arrays of equal length."""
+        """Find groups (two or more) of long numeric arrays of equal length."""
         by_length: dict[int, list[str]] = {}
         for key, value in data.items():
             if _is_long_numbers(value):
@@ -412,7 +412,7 @@ class _Renderer:
 
 
 def _content(result: object) -> str | None:
-    """The result as it is meant to be read: a versioned document or a text.
+    """Render the result as it is meant to be read: a versioned document or a text.
 
     A result that names its ``schema`` (``hydrolog-commands/1``) is a document and is
     printed as pretty JSON; a multi-line text (a generated guide) is printed as it is.

@@ -295,7 +295,7 @@ class HydrographGenerator:
 
     def generate(
         self,
-        precipitation: HietogramResult | NDArray[np.float64] | list,
+        precipitation: HietogramResult | NDArray[np.float64] | list[float],
         timestep_min: float = 5.0,
         amc: AMC = AMC.II,
     ) -> HydrographGeneratorResult:
