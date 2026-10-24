@@ -28,6 +28,6 @@ Typical flows (CLI; in MCP call the tool `operation_id` with the arguments = the
 
 ## Optional
 
-- [Design 1.0.0](https://raw.githubusercontent.com/Daldek/Hydrolog/main/docs/superpowers/specs/2026-10-19-v1-catalog-mcp-hsg-design.md): the command catalog, the MCP server, result serialization, HSG
+- [Design 1.0.0](https://raw.githubusercontent.com/Daldek/Hydrolog/main/docs/plans/2026-10-19-v1-catalog-mcp-hsg-spec.md): the command catalog, the MCP server, result serialization, HSG
 - [Standards](https://raw.githubusercontent.com/Daldek/Hydrolog/main/docs/DEVELOPMENT_STANDARDS.md): rules for working on the code
 - [PRD](https://raw.githubusercontent.com/Daldek/Hydrolog/main/docs/PRD.md): product requirements

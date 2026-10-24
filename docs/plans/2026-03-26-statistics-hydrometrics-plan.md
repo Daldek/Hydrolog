@@ -1,5 +1,7 @@
 # Statistics & Hydrometrics Implementation Plan
 
+Approved: 2026-03-26
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add `hydrolog/statistics/` and `hydrolog/hydrometrics/` modules — flood frequency analysis, characteristic values, low-flow analysis, Mann-Kendall stationarity test, rating curves, and visualizations.
@@ -8,7 +10,7 @@
 
 **Tech Stack:** Python 3.12+, NumPy, SciPy (scipy.stats, scipy.optimize), matplotlib/seaborn (visualization), pytest
 
-**Spec:** `docs/superpowers/specs/2026-03-26-statistics-hydrometrics-design.md`
+**Spec:** `docs/plans/2026-03-26-statistics-hydrometrics-spec.md`
 
 **Branch:** `feature/statistics-hydrometrics` (already created)
 

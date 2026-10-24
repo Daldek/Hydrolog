@@ -65,7 +65,7 @@
 
 ### Sesja 29 (2026-10-19) - v1.0.0 W PRZYGOTOWANIU
 
-**Cel:** Hydrolog 1.0.0 - jeden katalog komend jako źródło prawdy dla biblioteki, CLI, serwera MCP i przewodników dla agentów; obliczanie HSG przeniesione z Kartografa; serializacja wyników; poprawki obliczeniowe (gałąź `feature/v1-catalog-mcp-hsg`, projekt: `docs/superpowers/specs/2026-10-19-v1-catalog-mcp-hsg-design.md`).
+**Cel:** Hydrolog 1.0.0 - jeden katalog komend jako źródło prawdy dla biblioteki, CLI, serwera MCP i przewodników dla agentów; obliczanie HSG przeniesione z Kartografa; serializacja wyników; poprawki obliczeniowe (gałąź `feature/v1-catalog-mcp-hsg`, projekt: `docs/plans/2026-10-19-v1-catalog-mcp-hsg-spec.md`).
 
 **Decyzje właściciela (2026-10-19):**
 - Wzorzec ekosystemu (IMGWTools 3.0.0, Kartograf 0.8.0, Retman): katalog komend + koperta wyniku + błędy z rejestru + MCP + `AGENTS.md`/`llms.txt`
@@ -149,9 +149,9 @@ tests/unit/test_rating_curve.py
 tests/unit/test_visualization_statistics.py
 
 # Dokumentacja
-docs/superpowers/specs/2026-03-26-statistics-hydrometrics-design.md
-docs/superpowers/specs/2026-03-26-pdf-textbook-gap-analysis.md
-docs/superpowers/plans/2026-03-26-statistics-hydrometrics.md
+docs/plans/2026-03-26-statistics-hydrometrics-spec.md
+docs/plans/2026-03-26-pdf-textbook-gap-analysis-spec.md
+docs/plans/2026-03-26-statistics-hydrometrics-plan.md
 docs/SCOPE.md, docs/PRD.md, docs/CHANGELOG.md, docs/PROGRESS.md
 docs/IMPLEMENTATION_PROMPT.md, CLAUDE.md, pyproject.toml
 ```
