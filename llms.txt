@@ -13,7 +13,8 @@ Command groups: `tc`, `cn`, `scs`, `precip`, `uh`, `hydrograph`, `morphometry`, 
 ## Documentation
 
 - [AGENTS.md](https://raw.githubusercontent.com/Daldek/Hydrolog/main/AGENTS.md): the full guide for agents: interfaces, envelope, error codes, command index, typical flows
-- [README.md](https://raw.githubusercontent.com/Daldek/Hydrolog/main/README.md): installation and examples of using the library
+- [README.md](https://raw.githubusercontent.com/Daldek/Hydrolog/main/README.md): what Hydrolog is for, installation, quick start and MCP client configuration
+- [Usage](https://raw.githubusercontent.com/Daldek/Hydrolog/main/docs/USAGE.md): task-oriented guide to the CLI, the Python interface and the MCP server
 - [Computation paths](https://raw.githubusercontent.com/Daldek/Hydrolog/main/docs/COMPUTATION_PATHS.md): which time-of-concentration methods and parameters suit the unit hydrograph models
 - [Scope](https://raw.githubusercontent.com/Daldek/Hydrolog/main/docs/SCOPE.md): what is in and out of scope
 - [Integration](https://raw.githubusercontent.com/Daldek/Hydrolog/main/docs/INTEGRATION.md): exchange of watersheds with Hydrograf (the `WatershedParameters` format)
@@ -23,3 +24,4 @@ Command groups: `tc`, `cn`, `scs`, `precip`, `uh`, `hydrograph`, `morphometry`, 
 
 - [Design 1.0.0](https://raw.githubusercontent.com/Daldek/Hydrolog/main/docs/plans/2026-10-19-v1-catalog-mcp-hsg-spec.md): the command catalog, the MCP server, result serialization, HSG
 - [PRD](https://raw.githubusercontent.com/Daldek/Hydrolog/main/docs/PRD.md): product requirements
+- [Decisions](https://raw.githubusercontent.com/Daldek/Hydrolog/main/docs/DECISIONS.md): architecture decision records
