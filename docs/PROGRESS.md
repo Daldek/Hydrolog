@@ -30,6 +30,7 @@ Version 1.0.0.dev0 (1.0.0 is unreleased), Python >= 3.12. Branch `chore/nogat-2.
 5. Release 1.0.0 after the history rewrite: set `__version__` in `src/hydrolog/__init__.py` to `1.0.0`, turn `[Unreleased]` in [CHANGELOG.md](CHANGELOG.md) into `[1.0.0] - <date>`, refresh `uv.lock`, tag.
 6. After the rename to `nogat-hydrolog`: change `name` in `pyproject.toml`, the install lines in `README.md`, [USAGE.md](USAGE.md), the guide templates in `src/hydrolog/_data/agents/` (then regenerate `AGENTS.md` and `llms.txt` with `hydrolog commands guide`), the MCP `uvx` command and the install hints of the missing-extra errors (`pip install hydrolog[...]` in `src/hydrolog/soil/raster.py`, `src/hydrolog/mcp/server.py` and `src/hydrolog/visualization/__init__.py`; the tests that read them follow).
 7. After the first PyPI release: add `server.json` and the `mcp-name` comment to `README.md`, publish to the MCP Registry (REL-4).
+8. Read the [research report on continuous modelling and flood routing](research/2026-10-24-long-term-and-routing.md) (branch `research/long-term-and-routing`, based on `chore/nogat-2.1`, not merged) and take its decisions D1 to D15 (section 10): D1 (scope change of [SCOPE.md](SCOPE.md) §2.2), D10 (the `AGENTS.md` byte budget is almost full) and D14 (`docs/research/` against DEV-17.4) come first.
 
 ## Open questions
 
