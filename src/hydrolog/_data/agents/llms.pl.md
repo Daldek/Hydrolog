@@ -28,6 +28,6 @@ Typowe przepływy (CLI; w MCP wywołaj narzędzie `operation_id` z argumentami =
 
 ## Optional
 
-- [Projekt 1.0.0](https://raw.githubusercontent.com/Daldek/Hydrolog/main/docs/superpowers/specs/2026-10-19-v1-catalog-mcp-hsg-design.md): katalog komend, serwer MCP, serializacja wyników, HSG
+- [Projekt 1.0.0](https://raw.githubusercontent.com/Daldek/Hydrolog/main/docs/plans/2026-10-19-v1-catalog-mcp-hsg-spec.md): katalog komend, serwer MCP, serializacja wyników, HSG
 - [Standardy](https://raw.githubusercontent.com/Daldek/Hydrolog/main/docs/DEVELOPMENT_STANDARDS.md): zasady pracy nad kodem
 - [PRD](https://raw.githubusercontent.com/Daldek/Hydrolog/main/docs/PRD.md): wymagania produktowe

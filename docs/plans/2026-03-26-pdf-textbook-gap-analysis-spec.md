@@ -1,8 +1,10 @@
 # Gap Analysis: PDF Textbook vs. Statistics & Hydrometrics Design Spec
 
+Approved: 2026-03-26
+
 **Date:** 2026-03-26
 **PDF source:** "Zastosowanie metod statystycznych w hydrologii i meteorologii" (Application of Statistical Methods in Hydrology and Meteorology), Agnieszka Rutkowska & Wojciech Mlocek, Krakow 2024/25, Cracow University of Agriculture, Department of Applied Mathematics.
-**Spec:** `docs/superpowers/specs/2026-03-26-statistics-hydrometrics-design.md`
+**Spec:** `docs/plans/2026-03-26-statistics-hydrometrics-spec.md`
 
 ---
 
