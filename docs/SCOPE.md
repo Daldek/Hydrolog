@@ -166,7 +166,7 @@ Hydrolog is analogous to **Kartograf** (spatial data download) and **IMGWTools**
 
 #### 2.1.6 Module `cli` - CLI (v0.4.0, rebuilt in v1.0.0) ✅
 
-Since v1.0.0 the CLI is generated from the command catalog (`hydrolog.catalog`): 41 commands in 15 groups (list: `hydrolog commands list`). Syntax: `hydrolog <group> <command> --option value`; global flags `--json`, `--schema`, `--lang pl|en`, `-V`. The former CLI syntax (v0.4.0-v0.7.0) was removed without aliases.
+Since v1.0.0 the CLI is generated from the command catalog (`hydrolog.catalog`): 42 commands in 15 groups (list: `hydrolog commands list`). Syntax: `hydrolog <group> <command> --option value`; global flags `--json`, `--schema`, `--lang pl|en`, `-V`. The former CLI syntax (v0.4.0-v0.7.0) was removed without aliases.
 
 ```bash
 # Time of concentration
@@ -309,6 +309,9 @@ inundation, backwater and structures stay with Hydraulik, HEC-RAS and IMGW HD.
 - Muskingum-Cunge: `MuskingumCungeReach` with constant coefficients (the NRCS form: `K = dx / c`,
   `X` from the diffusion of the wave, distance steps inside the positivity window, the rise-time
   rule), `TrapezoidalSection` (Manning's rating), command `route muskingum-cunge`
+- Cascade of linear reservoirs: `CascadeReach` (Nash, Kalinin-Milyukov; the exact response to the
+  piecewise-linear inflow from the incomplete gamma function, so no window of stable steps and no
+  sub-steps), command `route cascade`
 - The outflow written by `--output` is a hydrograph table that every `route` command reads
 - Not in scope: variable-parameter Muskingum-Cunge and compound sections, kinematic and dynamic
   waves, reservoir operation (plan `docs/plans/2026-10-24-flood-routing.md`)

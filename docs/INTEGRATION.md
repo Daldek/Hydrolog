@@ -335,7 +335,7 @@ print(f"Qmax: {result.peak_discharge_m3s:.2f} m³/s")
 
 ## Hydrolog 1.0.0: operations layer, command catalog and files
 
-Since v1.0.0 Hydrolog has a single command catalog (`hydrolog.catalog`, 41 commands, list: `hydrolog commands list`) from which the following are generated: the Python operations layer (`hydrolog.operations`), the `hydrolog` CLI, the MCP server (`hydrolog mcp`) and the agent guides (`AGENTS.md`, `llms.txt`). The library classes (`HydrographGenerator`, `WatershedParameters`, ...) work as before; the sections below describe the new ways of integrating.
+Since v1.0.0 Hydrolog has a single command catalog (`hydrolog.catalog`, 42 commands, list: `hydrolog commands list`) from which the following are generated: the Python operations layer (`hydrolog.operations`), the `hydrolog` CLI, the MCP server (`hydrolog mcp`) and the agent guides (`AGENTS.md`, `llms.txt`). The library classes (`HydrographGenerator`, `WatershedParameters`, ...) work as before; the sections below describe the new ways of integrating.
 
 ### Retman (calculation handlers)
 
@@ -502,8 +502,8 @@ cn = calculate_weighted_cn(parts)
 | HydrographGenerator | ✅ | SCS bug fixed in v0.5.1 (constant 0.208) |
 | Unit tests | ✅ | 35 tests |
 | Integration tests | ✅ | 15 tests |
-| Operations layer, command catalog, CLI, MCP (v1.0.0) | ✅ | 41 commands; `hydrolog.operations`, `hydrolog mcp` |
-| `routing` module (after v1.0.0, ADR-0007) | 🔄 | `Hydrograph`, `Reach`, `LagReach`, `MuskingumReach`, `MuskingumCungeReach`, `route lag`, `route muskingum`, `route muskingum-cunge`; the other models on `feature/routing-*` |
+| Operations layer, command catalog, CLI, MCP (v1.0.0) | ✅ | 42 commands; `hydrolog.operations`, `hydrolog mcp` |
+| `routing` module (after v1.0.0, ADR-0007) | 🔄 | `Hydrograph`, `Reach`, `LagReach`, `MuskingumReach`, `MuskingumCungeReach`, `CascadeReach`, `route lag`, `route muskingum`, `route muskingum-cunge`, `route cascade`; the other models on `feature/routing-*` |
 | `soil` module (HSG, v1.0.0) | ✅ | `hsg_from_rasters`, `hsg_statistics`, `soil *` commands |
 | Result serialization (v1.0.0) | ✅ | `to_dict()`/`to_json()` in all result classes |
 

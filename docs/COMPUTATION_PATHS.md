@@ -999,7 +999,7 @@ Cunge (1969) set the numerical diffusion of the Muskingum scheme equal to the ph
 
 **Reference values.** NEH-630 example 17-4 (`L` = 2,600 ft, `S0` = 0.00091, `dt` = 0.1 h, reference 684.18 ft3/s, `c` = 4.297 ft/s, `T` = 44.6 ft) gives `dx_c` = 2,735 ft (here 833.63 m), one step, `K` = 605.07 s, `X` = -0.2544 (printed -0.254), the weights 0.0277, 0.3556 and 0.6166 (printed 0.028, 0.355, 0.617), `Cg` = 0.595, `Dg` = 1.509 (printed 1.508) and the limit 3.93. The outflow of Table 17-18 follows from the printed coefficients to 0.0049 ft3/s, half of the printed digit, so the table was computed with the rounded coefficients; the exact weights give it to 0.24 ft3/s (0.04 % of the peak; 645.78 ft3/s at 13.1 h against 645.72 ft3/s), and varying `c`, `T` or `S0` within their printed rounding cannot remove that. Routing the same reach from its section (15 ft bottom, 2:1, `n` = 0.04) gives the table to 2.4 ft3/s (0.4 %), the effect of the 2 % lower celerity. The tests are in `tests/unit/test_routing_cunge.py` and `tests/unit/test_routing_sections.py` (the library) and `tests/unit/test_operations_route.py` (the command `route muskingum-cunge`, in SI).
 
-#### 3.9.5 Cascade of Linear Reservoirs (`CascadeReach`)
+#### 3.9.5 Cascade of Linear Reservoirs (`CascadeReach`, `route cascade`)
 
 ```
 u(t) = (t/K)^(n-1) exp(-t/K) / (K Γ(n))        mean delay n K        variance n K²
@@ -1026,6 +1026,8 @@ print(result.outflow.time_to_peak_min, round(result.outflow.peak_discharge_m3s, 
 ```
 
 **Reference values.** There is no published table for the cascade; the references are its definition and computations that share nothing with the code (`tests/unit/test_routing_cascade.py`). For whole `n`, the exact solution of the chain of reservoirs by the matrix exponential (outflow and storage to 1e-10, also with an initial outflow that differs from the first inflow). For any `n`, the convolution integral of the gamma density of `NashIUH` with the interpolated inflow (1e-8). The weights as the integral of `NashIUH.ordinate` against a hat (1e-11) and against 60-digit arithmetic. A unit-volume pulse of width `dt` reproduces the IUH with an error that falls with `dt²`. One reservoir by hand (`h_0 = 1/e` for `dt = K`). The trapezoid recurrence of the Clark scheme converges to the kernel with second order.
+
+**Command.** `route cascade` takes `n` and exactly one time scale, `k_min` or `length_km` with `celerity_m_per_s` (anything else is a `validation_error`, `details.reason` `one_of`), next to the hydrograph, run and output options of `route lag`. It has no `unstable_timestep`: `parameters` hold `n`, `k_min`, the delay `lag_min = n K`, `timestep_over_k = dt / K` and the length and celerity when they were given, and the only notices are `tail_extended` and `tail_truncated`.
 
 ---
 
@@ -1062,7 +1064,7 @@ print(result.outflow.time_to_peak_min, round(result.outflow.peak_discharge_m3s, 
 | Lag routing (`route lag`, `LagReach`) | HEC-HMS Technical Reference Manual (Lag routing model) | ✅ |
 | Muskingum routing with sub-reaches (`route muskingum`, `MuskingumReach`) | McCarthy (1938), Chow, Maidment, Mays (1988), HEC-HMS Technical Reference Manual (Muskingum model), University of Iowa Lesson 27 (worked example) | ✅ |
 | Muskingum-Cunge, constant coefficients (`route muskingum-cunge`, `MuskingumCungeReach`) | Cunge (1969), NRCS NEH Part 630 ch. 17 (2014) eq. 17-20 to 17-22, example 17-4 and appendix B, HEC-HMS Technical Reference Manual (Muskingum-Cunge model) | ✅ |
-| Cascade of linear reservoirs, exact kernel (`CascadeReach`) | Nash (1957) (the IUH of `NashIUH`), Kalinin and Milyukov (1957) as presented by Ponce (linear reservoirs and numerical diffusion), Chow, Maidment, Mays (1988); weights checked against the numerical integral of the gamma density and the exact solution of the chain | ✅ |
+| Cascade of linear reservoirs, exact kernel (`route cascade`, `CascadeReach`) | Nash (1957) (the IUH of `NashIUH`), Kalinin and Milyukov (1957) as presented by Ponce (linear reservoirs and numerical diffusion), Chow, Maidment, Mays (1988); weights checked against the numerical integral of the gamma density and the exact solution of the chain | ✅ |
 
 ### 4.2 Key Publications
 
