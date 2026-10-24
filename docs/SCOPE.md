@@ -1,174 +1,174 @@
-# SCOPE.md - Zakres Projektu Hydrolog
+# SCOPE.md - Hydrolog Project Scope
 
-## Biblioteka Narzędzi Hydrologicznych
+## Hydrological Toolkit Library
 
-**Wersja:** 1.5
-**Data:** 2026-10-19
-**Status:** v1.0.0 w przygotowaniu
-
----
-
-## 1. Wprowadzenie
-
-### 1.1 Cel Projektu
-
-**Hydrolog** to biblioteka Python, interfejs CLI (`hydrolog`) i serwer MCP dostarczające narzędzia do obliczeń hydrologicznych. Zaprojektowana jako zewnętrzna zależność dla projektu Hydrograf oraz innych systemów wymagających funkcji hydrologicznych (m.in. Retman, agenci AI).
-
-### 1.2 Główne cele
-
-- Generowanie hydrogramów odpływu (SCS-CN)
-- Obliczanie parametrów morfometrycznych zlewni
-- Generowanie hietogramów (rozkład opadu w czasie)
-- Interpolacja danych opadowych
-- Klasyfikacja sieci rzecznej
-- Wyznaczanie grup hydrologicznych gleb (HSG) z rastrów uziarnienia
-- Statystyka przepływów i hydrometria
-- Jeden katalog komend jako źródło prawdy dla biblioteki, CLI, serwera MCP i przewodników dla agentów
-
-### 1.3 Analogia
-
-Hydrolog jest analogiczny do **Kartografa** (pobieranie danych przestrzennych) i **IMGWTools** (pobieranie danych IMGW) - modularna biblioteka Python z czystym API, możliwa do użycia jako zależność w innych projektach. Od v1.0.0 podobnie jak one udostępnia jeden katalog komend (CLI + MCP + AGENTS.md/llms.txt), ale nie zależy od żadnej z tych bibliotek: Hydrolog niczego nie pobiera, pliki z danymi dostarczają narzędzia zewnętrzne.
+**Version:** 1.5
+**Date:** 2026-10-19
+**Status:** v1.0.0 in preparation
 
 ---
 
-## 2. ZAKRES FUNKCJONALNY
+## 1. Introduction
 
-### 2.1 ✅ IN SCOPE - Funkcjonalności
+### 1.1 Project Purpose
 
-#### 2.1.1 Moduł `runoff` - Opad-Odpływ (v0.1.0)
+**Hydrolog** is a Python library, a CLI (`hydrolog`) and an MCP server that provide tools for hydrological calculations. It is designed as an external dependency for the Hydrograf project and for other systems that need hydrological functions (including Retman and AI agents).
 
-**Metoda SCS Curve Number:**
-- Obliczanie retencji maksymalnej: `S = 25400/CN - 254`
-- Obliczanie abstrakcji początkowej: `Ia = 0.2 × S`
-- Obliczanie opadu efektywnego: `Pe = (P - Ia)² / (P - Ia + S)` gdy P > Ia, w przeciwnym razie Pe = 0
-  - Forma uproszczona `(P - 0.2S)² / (P + 0.8S)` obowiązuje tylko przy Ia = 0.2S
-- Warunki wilgotnościowe: AMC-I, AMC-II (domyślne), AMC-III
+### 1.2 Main Goals
 
-**Hydrogram jednostkowy SCS:**
-- Czas do szczytu: `tp = 0.6 × tc`
-- Przepływ szczytowy: `qp = 0.208 × A / tp` (A w km², tp w godzinach)
-- Czas bazowy: `tb = 5.0 × tp` (pełny zakres bezwymiarowego UH; przybliżenie trójkątne to 2.67 × tp)
-- Bezwymiarowy rozkład czasowy
+- Generating runoff hydrographs (SCS-CN)
+- Computing catchment morphometric parameters
+- Generating hyetographs (temporal distribution of rainfall)
+- Interpolating precipitation data
+- Classifying the river network
+- Determining hydrologic soil groups (HSG) from soil texture rasters
+- Flow statistics and hydrometry
+- A single command catalog as the source of truth for the library, the CLI, the MCP server and the agent guides
 
-**Transformacja opad → odpływ:**
-- Splot dyskretny (convolution): `Q(t) = Pe(t) ⊗ UH(t)`
-- Krok czasowy: konfigurowalny (domyślnie 5 min)
+### 1.3 Analogy
 
-**Wyniki:**
-- Qmax - przepływ maksymalny [m³/s]
-- Czas do szczytu [min]
-- Objętość odpływu [m³]
-- Współczynnik odpływu [-]
-- Szereg czasowy: czas vs przepływ
-
-**Grupy hydrologiczne gleb (HSG) - moduł `soil` (v1.0.0):**
-- Klasa uziarnienia USDA z zawartości iłu, piasku i pyłu (12 klas) oraz jej przypisanie do HSG A-D (reguły z Kartografa 0.8.0, ADR-025)
-- Raster HSG (GeoTIFF `uint8`: 0 - brak danych, 1-4 to A-D) z rastrów iłu, piasku i pyłu (np. SoilGrids w g/kg) oraz powierzchnie grup w całej zlewni lub w prostokącie bbox (dodatek `hydrolog[raster]`)
-- Tabele CN według USDA-NRCS dla kombinacji HSG + pokrycie terenu (`runoff.cn_lookup`) i CN ważone powierzchnią (`cn weighted`)
-- Pobranie rastrów gleb pozostaje poza zakresem (Kartograf `download_soil`)
+Hydrolog is analogous to **Kartograf** (spatial data download) and **IMGWTools** (IMGW data download) - a modular Python library with a clean API that can be used as a dependency in other projects. Since v1.0.0, like them, it exposes a single command catalog (CLI + MCP + AGENTS.md/llms.txt), but it does not depend on either of those libraries: Hydrolog downloads nothing, and data files are supplied by external tools.
 
 ---
 
-#### 2.1.2 Moduł `precipitation` - Opady (v0.1.0 / v0.3.0)
+## 2. FUNCTIONAL SCOPE
 
-**Hietogramy (v0.1.0):**
-- Rozkład Beta (α, β konfigurowalne, domyślnie α=2, β=5)
-- Rozkład blokowy (stała intensywność)
-- Rozkład trójkątny
-- Rozkład DVWK Euler Type II (`EulerIIHietogram`)
+### 2.1 ✅ IN SCOPE - Functionality
 
-**Interpolacja (v0.3.0):**
+#### 2.1.1 Module `runoff` - Rainfall-Runoff (v0.1.0)
+
+**SCS Curve Number method:**
+- Computing maximum retention: `S = 25400/CN - 254`
+- Computing initial abstraction: `Ia = 0.2 × S`
+- Computing effective precipitation: `Pe = (P - Ia)² / (P - Ia + S)` when P > Ia, otherwise Pe = 0
+  - The simplified form `(P - 0.2S)² / (P + 0.8S)` is valid only when Ia = 0.2S
+- Antecedent moisture conditions: AMC-I, AMC-II (default), AMC-III
+
+**SCS unit hydrograph:**
+- Time to peak: `tp = 0.6 × tc`
+- Peak discharge: `qp = 0.208 × A / tp` (A in km², tp in hours)
+- Base time: `tb = 5.0 × tp` (full range of the dimensionless UH; the triangular approximation is 2.67 × tp)
+- Dimensionless time distribution
+
+**Rainfall → runoff transformation:**
+- Discrete convolution: `Q(t) = Pe(t) ⊗ UH(t)`
+- Time step: configurable (default 5 min)
+
+**Results:**
+- Qmax - peak discharge [m³/s]
+- Time to peak [min]
+- Runoff volume [m³]
+- Runoff coefficient [-]
+- Time series: time vs discharge
+
+**Hydrologic soil groups (HSG) - module `soil` (v1.0.0):**
+- USDA texture class from clay, sand and silt content (12 classes) and its assignment to HSG A-D (rules from Kartograf 0.8.0, ADR-025)
+- HSG raster (GeoTIFF `uint8`: 0 - no data, 1-4 are A-D) from clay, sand and silt rasters (e.g. SoilGrids in g/kg) and group areas over the whole catchment or within a bbox rectangle (extra `hydrolog[raster]`)
+- USDA-NRCS CN tables for HSG + land cover combinations (`runoff.cn_lookup`) and area-weighted CN (`cn weighted`)
+- Downloading soil rasters remains out of scope (Kartograf `download_soil`)
+
+---
+
+#### 2.1.2 Module `precipitation` - Precipitation (v0.1.0 / v0.3.0)
+
+**Hyetographs (v0.1.0):**
+- Beta distribution (configurable α, β; default α=2, β=5)
+- Block distribution (constant intensity)
+- Triangular distribution
+- DVWK Euler Type II distribution (`EulerIIHietogram`)
+
+**Interpolation (v0.3.0):**
 - IDW (Inverse Distance Weighting)
 - Thiessen (Voronoi polygons)
-- Metoda izohiet (`isohyet_method`)
-- Średnia arytmetyczna (`arithmetic_mean`)
-- Kriging (opcjonalnie — niezaimplementowany)
+- Isohyetal method (`isohyet_method`)
+- Arithmetic mean (`arithmetic_mean`)
+- Kriging (optional - not implemented)
 
-**Scenariusze opadowe (przyszłość):**
-- ❌ Nie zaimplementowane
-- Dane PMAXTP pobiera aplikacja nadrzędna (np. Hydrograf via IMGWTools)
-- Hydrolog otrzymuje gotowe wartości opadów
-
----
-
-#### 2.1.3 Moduł `time` - Czasy charakterystyczne (v0.1.0)
-
-**Czas koncentracji (tc) — 6 metod:**
-- Wzór Kirpicha: `tc = 0.0195 × L^0.77 × S^(-0.385)`
-- Wzór NRCS: `tc = 0.01416 × L^0.8 × (S+25.4)^0.7 × Y^-0.5`
-- Wzór Giandotti: `tc = (4√A + 1.5L) / (0.8 × √Hśr)`
-- Wzór FAA: `tc = 22.213 × (1.1 - C) × L^0.5 / S^(1/3)`
-- Wzór Kerby: `tc = 36.37 × (L × N)^0.467 × S^(-0.2335)`
-- Metoda Kerby-Kirpich: `tc = t_overland(Kerby) + t_channel(Kirpich)`
-
-**Parametry wejściowe:**
-- Długość głównego cieku [km lub m]
-- Spadek cieku [% lub m/m]
-- CN (dla metody NRCS)
+**Rainfall scenarios (future):**
+- ❌ Not implemented
+- PMAXTP data (IMGW maximum probable precipitation) is downloaded by the parent application (e.g. Hydrograf via IMGWTools)
+- Hydrolog receives ready-made precipitation values
 
 ---
 
-#### 2.1.4 Moduł `morphometry` - Parametry fizjograficzne (v0.2.0)
+#### 2.1.3 Module `time` - Characteristic Times (v0.1.0)
 
-**Parametry geometryczne:**
-- Powierzchnia zlewni [km²]
-- Obwód [km]
-- Długość zlewni [km]
-- Szerokość zlewni [km]
+**Time of concentration (tc) - 6 methods:**
+- Kirpich formula: `tc = 0.0195 × L^0.77 × S^(-0.385)`
+- NRCS formula: `tc = 0.01416 × L^0.8 × (S+25.4)^0.7 × Y^-0.5`
+- Giandotti formula: `tc = (4√A + 1.5L) / (0.8 × √Hmean)`
+- FAA formula: `tc = 22.213 × (1.1 - C) × L^0.5 / S^(1/3)`
+- Kerby formula: `tc = 36.37 × (L × N)^0.467 × S^(-0.2335)`
+- Kerby-Kirpich method: `tc = t_overland(Kerby) + t_channel(Kirpich)`
 
-**Wskaźniki kształtu:**
-- Wskaźnik formy Cf = A / L²
-- Wskaźnik zwartości Cz = P / √A
-- Wskaźnik kolistości Ck
-- Wskaźnik wydłużenia Cw
-- Wskaźnik lemniskaty Cl
-
-**Parametry morfometryczne:**
-- Wysokość: max, min, średnia [m n.p.m.]
-- Deniwelacja [m]
-- Spadek zlewni [%]
-- Spadek głównego cieku [%]
-
-**Krzywa hipsograficzna:**
-- Rozkład wysokości
-- Średnia wysokość ważona
-
-**WatershedParameters — dodatkowe pola opcjonalne (v0.6.3):**
-- `runoff_coeff` — współczynnik odpływu dla metody FAA
-- `retardance` — współczynnik szorstkości Kerby (0.02–0.80)
-- `overland_length_km` — długość spływu powierzchniowego [km] (FAA, Kerby, Kerby-Kirpich)
-- `overland_slope_m_per_m` — spadek powierzchniowy [m/m] (FAA, Kerby, Kerby-Kirpich)
-- `Lc_km` — odległość do centroidu zlewni [km] (Nash/Snyder)
-- `manning_n` — współczynnik Manninga (Nash)
-- `urban_pct` — procent zabudowy [%] (Nash)
-- `forest_pct` — procent zalesienia [%] (Nash)
+**Input parameters:**
+- Main stream length [km or m]
+- Stream slope [% or m/m]
+- CN (for the NRCS method)
 
 ---
 
-#### 2.1.5 Moduł `network` - Sieć rzeczna (v0.3.0)
+#### 2.1.4 Module `morphometry` - Physiographic Parameters (v0.2.0)
 
-**Klasyfikacja:**
-- Metoda Strahlera
-- Metoda Shreve'a
+**Geometric parameters:**
+- Catchment area [km²]
+- Perimeter [km]
+- Catchment length [km]
+- Catchment width [km]
 
-**Wskaźniki:**
-- Wskaźnik bifurkacji (`bifurcation_ratio`)
-- Gęstość sieci rzecznej (`drainage_density`)
-- Wskaźnik częstości cieków (`stream_frequency`)
+**Shape indices:**
+- Form factor Cf = A / L²
+- Compactness coefficient Cz = P / √A
+- Circularity ratio Ck
+- Elongation ratio Cw
+- Lemniscate ratio Cl
 
-**Statystyki sieci (`NetworkStatistics`):**
-- Liczba cieków wg rzędu
-- Średnia długość cieków wg rzędu
-- Maksymalny rząd cieku
+**Morphometric parameters:**
+- Elevation: max, min, mean [m a.s.l.]
+- Relief [m]
+- Catchment slope [%]
+- Main stream slope [%]
+
+**Hypsometric curve:**
+- Elevation distribution
+- Weighted mean elevation
+
+**WatershedParameters - additional optional fields (v0.6.3):**
+- `runoff_coeff` - runoff coefficient for the FAA method
+- `retardance` - Kerby roughness coefficient (0.02-0.80)
+- `overland_length_km` - overland flow length [km] (FAA, Kerby, Kerby-Kirpich)
+- `overland_slope_m_per_m` - overland slope [m/m] (FAA, Kerby, Kerby-Kirpich)
+- `Lc_km` - distance to the catchment centroid [km] (Nash/Snyder)
+- `manning_n` - Manning coefficient (Nash)
+- `urban_pct` - percentage of built-up area [%] (Nash)
+- `forest_pct` - percentage of forest cover [%] (Nash)
 
 ---
 
-#### 2.1.6 Moduł `cli` - Interfejs CLI (v0.4.0, przebudowany w v1.0.0) ✅
+#### 2.1.5 Module `network` - River Network (v0.3.0)
 
-Od v1.0.0 CLI jest generowane z katalogu komend (`hydrolog.catalog`): 37 komend w 13 grupach (lista: `hydrolog commands list`). Składnia: `hydrolog <grupa> <komenda> --opcja wartość`; flagi ogólne `--json`, `--schema`, `--lang pl|en`, `-V`. Dawna składnia CLI (v0.4.0-v0.7.0) została usunięta bez aliasów.
+**Classification:**
+- Strahler method
+- Shreve method
+
+**Indices:**
+- Bifurcation ratio (`bifurcation_ratio`)
+- Drainage density (`drainage_density`)
+- Stream frequency (`stream_frequency`)
+
+**Network statistics (`NetworkStatistics`):**
+- Number of streams by order
+- Mean stream length by order
+- Maximum stream order
+
+---
+
+#### 2.1.6 Module `cli` - CLI (v0.4.0, rebuilt in v1.0.0) ✅
+
+Since v1.0.0 the CLI is generated from the command catalog (`hydrolog.catalog`): 37 commands in 13 groups (list: `hydrolog commands list`). Syntax: `hydrolog <group> <command> --option value`; global flags `--json`, `--schema`, `--lang pl|en`, `-V`. The former CLI syntax (v0.4.0-v0.7.0) was removed without aliases.
 
 ```bash
-# Czas koncentracji
+# Time of concentration
 hydrolog tc kirpich --length-km 2.5 --slope-m-per-m 0.02
 hydrolog tc nrcs --length-km 5.0 --slope-m-per-m 0.01 --cn 72
 hydrolog tc giandotti --area-km2 100 --length-km 15 --elevation-diff-m 500
@@ -177,158 +177,158 @@ hydrolog tc kerby --length-km 0.10 --slope-m-per-m 0.008 --retardance 0.40
 hydrolog tc kerby-kirpich --overland-length-km 0.25 --overland-slope-m-per-m 0.008 \
     --retardance 0.40 --channel-length-km 5.0 --channel-slope-m-per-m 0.005
 
-# Wyszukiwanie CN (tablice TR-55)
+# CN lookup (TR-55 tables)
 hydrolog cn lookup --hsg B --land-cover forest --condition good
 hydrolog cn list
 hydrolog cn range --land-cover pasture
 
-# Obliczenia SCS-CN
+# SCS-CN calculations
 hydrolog scs effective --cn 72 --precipitation-mm 50
 hydrolog scs effective --cn 72 --precipitation-mm 50 --amc III
 
-# Hydrogramy jednostkowe (SCS, Nash, Clark, Snyder)
+# Unit hydrographs (SCS, Nash, Clark, Snyder)
 hydrolog uh scs --area-km2 45 --tc-min 90 --timestep-min 10
 hydrolog uh nash --area-km2 45 --n 3 --k-min 30 --timestep-min 10
 hydrolog uh clark --area-km2 45 --tc-min 60 --r-min 30 --timestep-min 10
 hydrolog uh snyder --area-km2 100 --length-km 15 --centroid-length-km 8 --timestep-min 30
 
-# Wynik w formacie JSON (koperta hydrolog-result/1)
+# JSON output (hydrolog-result/1 envelope)
 hydrolog uh scs --area-km2 45 --tc-min 90 --json
 ```
 
-Pozostałe grupy: `precip`, `hydrograph`, `morphometry`, `network`, `stats`, `hydrometrics`, `soil`, `report`, `commands`.
+Other groups: `precip`, `hydrograph`, `morphometry`, `network`, `stats`, `hydrometrics`, `soil`, `report`, `commands`.
 
 ---
 
-#### 2.1.6a Warstwa operacji, katalog komend i interfejsy dla agentów (v1.0.0)
+#### 2.1.6a Operations Layer, Command Catalog and Agent Interfaces (v1.0.0)
 
-- **Katalog komend** (`hydrolog.catalog`) - jedno źródło prawdy: deklaracje `Command` i `Option` (opisy PL/EN, jednostki, zakresy, grupy `one_of`, przykłady), `data_commands()`, `command_schema()`, `validate_command()`, `run_command()`
-- **Warstwa operacji** (`hydrolog.operations`) - po jednej publicznej, otypowanej funkcji na komendę; komponuje istniejące klasy, nie zawiera nowej hydrologii
-- **Koperta wyniku** `hydrolog-result/1` i dokument błędu `hydrolog-error/1` z zamkniętym rejestrem `ERROR_CODES` (kody wyjścia CLI: 1, 2, 3, 4, 6, 7, 8, 9)
-- **Serializacja** - wszystkie klasy wynikowe mają `to_dict()` i `to_json()` (`JsonResultMixin`)
-- **Dane z plików** - szeregi, stacje, odcinki sieci i zlewnie jako CSV/JSON (w tym eksport szeregu IMGWTools `export_series` bez przetwarzania); `WatershedParameters` JSON to format `catchment_characteristics` w Retmanie
-- **Serwer MCP** (`hydrolog mcp`, dodatek `hydrolog[mcp]`) - każda komenda katalogu jest narzędziem; dostęp do plików ograniczony do katalogów `--allow-dir`
-- **Przewodniki dla agentów** - `AGENTS.md` i `llms.txt` generowane z katalogu (`hydrolog commands guide`), pilnowane testem zgodności bajt po bajcie
-- Wykresy (`hydrolog.visualization`) pozostają tylko w Pythonie, poza katalogiem komend
-
----
-
-#### 2.1.7 Moduł `reports` - Raporty obliczeniowe (v0.6.0)
-
-**Generowanie raportów Markdown z formułami LaTeX:**
-- `HydrologyReportGenerator` — główna klasa generująca raport
-- `ReportConfig` — konfiguracja (metoda tc, model UH, opcje tabel/formuł)
-- `FormulaRenderer` — renderowanie wzorów z podstawionymi wartościami
-- `TableGenerator` — generowanie tabel Markdown (parametry, szeregi czasowe)
-
-**Sekcje raportu:**
-- Parametry zlewni (geometria, teren, wskaźniki kształtu)
-- Czas koncentracji (wzory z podstawieniami)
-- Hietogram (parametry, rozkład czasowy)
-- Opad efektywny SCS-CN (S, Ia, Pe z wartościami)
-- Hydrogram jednostkowy (SCS, Nash, Clark, Snyder — wzory specyficzne dla modelu)
-- Splot dyskretny (procedura, wzory)
-- Bilans wodny (tabela podsumowująca)
-
-**Szablony (`templates.py`):**
-- Polskie nagłówki i etykiety
-- Opisy metod, warunków AMC
-- Referencje literaturowe, glosariusz terminów
+- **Command catalog** (`hydrolog.catalog`) - a single source of truth: `Command` and `Option` declarations (PL/EN descriptions, units, ranges, `one_of` groups, examples), `data_commands()`, `command_schema()`, `validate_command()`, `run_command()`
+- **Operations layer** (`hydrolog.operations`) - one public, typed function per command; it composes existing classes and contains no new hydrology
+- **Result envelope** `hydrolog-result/1` and error document `hydrolog-error/1` with a closed `ERROR_CODES` registry (CLI exit codes: 1, 2, 3, 4, 6, 7, 8, 9)
+- **Serialization** - all result classes have `to_dict()` and `to_json()` (`JsonResultMixin`)
+- **Data from files** - series, stations, network segments and catchments as CSV/JSON (including the IMGWTools `export_series` export, read without conversion); `WatershedParameters` JSON is the `catchment_characteristics` format in Retman
+- **MCP server** (`hydrolog mcp`, extra `hydrolog[mcp]`) - every catalog command is a tool; file access is restricted to `--allow-dir` directories
+- **Agent guides** - `AGENTS.md` and `llms.txt` generated from the catalog (`hydrolog commands guide`), enforced by a byte-for-byte consistency test
+- Plots (`hydrolog.visualization`) remain Python-only, outside the command catalog
 
 ---
 
-#### 2.1.8 Moduł `visualization` - Wykresy (v0.5.0)
+#### 2.1.7 Module `reports` - Calculation Reports (v0.6.0)
 
-Moduł wymaga opcjonalnych zależności: `pip install hydrolog[visualization]`
+**Generating Markdown reports with LaTeX formulas:**
+- `HydrologyReportGenerator` - main report generator class
+- `ReportConfig` - configuration (tc method, UH model, table/formula options)
+- `FormulaRenderer` - rendering formulas with substituted values
+- `TableGenerator` - generating Markdown tables (parameters, time series)
 
-**Hietogramy:**
-- `plot_hietogram()` — wykres intensywności opadu z opcjonalną linią kumulatywną
-- `plot_hietogram_comparison()` — porównanie opadu całkowitego i efektywnego
+**Report sections:**
+- Catchment parameters (geometry, terrain, shape indices)
+- Time of concentration (formulas with substituted values)
+- Hyetograph (parameters, temporal distribution)
+- SCS-CN effective precipitation (S, Ia, Pe with values)
+- Unit hydrograph (SCS, Nash, Clark, Snyder - model-specific formulas)
+- Discrete convolution (procedure, formulas)
+- Water balance (summary table)
 
-**Hydrogramy:**
-- `plot_hydrograph()` — hydrogram odpływu Q(t) z anotacją szczytu
-- `plot_unit_hydrograph()` — hydrogram jednostkowy (dowolny model)
-
-**Wykresy złożone:**
-- `plot_rainfall_runoff()` — klasyczny wykres opad-odpływ
-
-**Porównanie UH:**
-- `plot_uh_comparison()` — porównanie wielu modeli UH na jednym wykresie
-
-**Bilans wodny:**
-- `plot_water_balance()` — wizualizacja bilansu SCS-CN (słupki lub kołowy)
-- `plot_cn_curve()` — relacja P → Pe z wariantami AMC
-
-**Morfometria:**
-- `plot_hypsometric_curve()` — krzywa hipsograficzna z całką HI
-- `plot_elevation_histogram()` — histogram rozkładu wysokości
-
-**Sieć rzeczna:**
-- `plot_stream_order_stats()` — statystyki sieci w 3 panelach
-- `plot_bifurcation_ratios()` — wskaźniki bifurkacji wg rzędu
-
-**Interpolacja:**
-- `plot_stations_map()` — mapa stacji opadowych z wagami
+**Templates (`templates.py`):**
+- Polish headings and labels
+- Descriptions of methods and AMC conditions
+- Literature references, glossary of terms
 
 ---
 
-#### 2.1.9 Moduł `statistics` — Statystyka hydrologiczna (v0.7.0)
+#### 2.1.8 Module `visualization` - Plots (v0.5.0)
 
-- Wartości charakterystyczne przepływów (system polski: NNQ–WWQ)
-- Analiza częstości przepływów maksymalnych (LogNormal, GEV, Pearson III, Weibull)
-- Analiza częstości przepływów minimalnych (Fisher-Tippett)
-- Detekcja sekwencji niżówkowych (metoda progowa)
-- Test trendu Manna-Kendalla (weryfikacja stacjonarności)
-- Testy zgodności: Kołmogorowa-Smirnowa, Andersona-Darlinga
-- Kryterium informacyjne Akaike'a (AIC)
+The module requires optional dependencies: `pip install hydrolog[visualization]`
 
----
+**Hyetographs:**
+- `plot_hietogram()` - rainfall intensity plot with an optional cumulative line
+- `plot_hietogram_comparison()` - comparison of total and effective precipitation
 
-#### 2.1.10 Moduł `hydrometrics` — Hydrometria (v0.7.0)
+**Hydrographs:**
+- `plot_hydrograph()` - runoff hydrograph Q(t) with a peak annotation
+- `plot_unit_hydrograph()` - unit hydrograph (any model)
 
-- Krzywa natężenia przepływu Q = a × (H − H₀)^b
-- Analiza częstości i czasu trwania stanów wody
-- Metoda Rybczyńskiego (strefy wodowskazowe NTW/STW/WTW)
+**Combined plots:**
+- `plot_rainfall_runoff()` - classic rainfall-runoff plot
 
----
+**UH comparison:**
+- `plot_uh_comparison()` - comparison of several UH models on one plot
 
-### 2.2 ❌ OUT OF SCOPE - Poza zakresem
+**Water balance:**
+- `plot_water_balance()` - SCS-CN balance visualization (bar or pie)
+- `plot_cn_curve()` - P → Pe relation with AMC variants
 
-**Funkcjonalności:**
-- ❌ Routing przepływu w kanałach
-- ❌ Modelowanie zbiorników retencyjnych
-- ❌ Symulacje powodziowe (mapy zalewowe)
-- ❌ Modelowanie jakości wody
-- ❌ Modelowanie erozji
-- ❌ Modelowanie wód podziemnych
-- ❌ Modelowanie topnienia śniegu
-- ❌ Infiltracja szczegółowa (Green-Ampt)
+**Morphometry:**
+- `plot_hypsometric_curve()` - hypsometric curve with the HI integral
+- `plot_elevation_histogram()` - elevation distribution histogram
 
-**Pobieranie danych:**
-- ❌ Pobieranie NMT (→ Kartograf)
-- ❌ Pobieranie pokrycia terenu (→ Kartograf)
-- ❌ Pobieranie rastrów gleb (→ Kartograf `download_soil`); samo obliczanie HSG z pobranych rastrów uziarnienia jest w zakresie (moduł `soil`, od v1.0.0)
-- ❌ Pobieranie danych IMGW (→ IMGWTools); Hydrolog wczytuje gotowy plik CSV/JSON z eksportu
-- ❌ REST API (interfejsy: biblioteka Python, CLI i serwer MCP)
-- ❌ Operacje na bazach danych
+**River network:**
+- `plot_stream_order_stats()` - network statistics in 3 panels
+- `plot_bifurcation_ratios()` - bifurcation ratios by order
 
-**Wizualizacje i raporty:**
-- ✅ Wykresy statyczne (matplotlib) — moduł `visualization` (od v0.5.0)
-- ✅ Raporty Markdown/LaTeX — moduł `reports` (od v0.6.0)
-- ❌ Eksport PDF (→ zewnętrzne narzędzia, np. Pandoc)
-- ❌ Interaktywne mapy (→ aplikacja kliencka)
+**Interpolation:**
+- `plot_stations_map()` - map of rain gauge stations with weights
 
 ---
 
-### 2.3 ⏳ FUTURE SCOPE - Planowane na przyszłość
+#### 2.1.9 Module `statistics` - Hydrological Statistics (v0.7.0)
+
+- Characteristic flow values (Polish system: NNQ-WWQ)
+- Frequency analysis of maximum flows (LogNormal, GEV, Pearson III, Weibull)
+- Frequency analysis of minimum flows (Fisher-Tippett)
+- Detection of low-flow sequences (threshold method)
+- Mann-Kendall trend test (stationarity check)
+- Goodness-of-fit tests: Kolmogorov-Smirnov, Anderson-Darling
+- Akaike information criterion (AIC)
+
+---
+
+#### 2.1.10 Module `hydrometrics` - Hydrometry (v0.7.0)
+
+- Rating curve Q = a × (H − H₀)^b
+- Frequency and duration analysis of water levels
+- Rybczyński method (gauge zones NTW/STW/WTW: low/medium/high water level zones)
+
+---
+
+### 2.2 ❌ OUT OF SCOPE
+
+**Functionality:**
+- ❌ Channel flow routing
+- ❌ Retention reservoir modeling
+- ❌ Flood simulations (inundation maps)
+- ❌ Water quality modeling
+- ❌ Erosion modeling
+- ❌ Groundwater modeling
+- ❌ Snowmelt modeling
+- ❌ Detailed infiltration (Green-Ampt)
+
+**Data download:**
+- ❌ Downloading the digital elevation model (DEM, Polish NMT) (→ Kartograf)
+- ❌ Downloading land cover (→ Kartograf)
+- ❌ Downloading soil rasters (→ Kartograf `download_soil`); computing HSG from already downloaded texture rasters is in scope (module `soil`, since v1.0.0)
+- ❌ Downloading IMGW data (→ IMGWTools); Hydrolog reads a ready-made CSV/JSON file from the export
+- ❌ REST API (interfaces: Python library, CLI and MCP server)
+- ❌ Database operations
+
+**Visualizations and reports:**
+- ✅ Static plots (matplotlib) - module `visualization` (since v0.5.0)
+- ✅ Markdown/LaTeX reports - module `reports` (since v0.6.0)
+- ❌ PDF export (→ external tools, e.g. Pandoc)
+- ❌ Interactive maps (→ client application)
+
+---
+
+### 2.3 ⏳ FUTURE SCOPE - Planned for the Future
 
 **Post v1.0:**
-- Empiryczne wzory na przepływ maksymalny (Punzet, Bogdanowicz-Stachy) - decyzja właściciela projektu z 2026-10-19: w zakresie, ale po v1.0.0
-- Metoda racjonalna (Q = CIA) dla małych zlewni
-- Kalibracja parametrów
-- Analiza niepewności (Monte Carlo)
+- Empirical peak flow formulas (Punzet, Bogdanowicz-Stachy) - project owner decision of 2026-10-19: in scope, but after v1.0.0
+- Rational method (Q = CIA) for small catchments
+- Parameter calibration
+- Uncertainty analysis (Monte Carlo)
 
-**Zaimplementowane (od v0.3+):**
+**Implemented (since v0.3+):**
 - ✅ Nash Cascade (IUH) - `hydrolog.runoff.NashIUH`
 - ✅ Clark Unit Hydrograph - `hydrolog.runoff.ClarkIUH`
 - ✅ Snyder Unit Hydrograph - `hydrolog.runoff.SnyderUH`
@@ -336,129 +336,129 @@ Moduł wymaga opcjonalnych zależności: `pip install hydrolog[visualization]`
 
 ---
 
-## 3. ARCHITEKTURA
+## 3. ARCHITECTURE
 
-### 3.1 Struktura modułów
+### 3.1 Module Structure
 
 ```
 hydrolog/
-├── __init__.py              # Wersja, główne importy
-├── exceptions.py            # Wspólne wyjątki (InvalidParameterError)
-├── runoff/                  # Moduł opad-odpływ
+├── __init__.py              # Version, main imports
+├── exceptions.py            # Shared exceptions (InvalidParameterError)
+├── runoff/                  # Rainfall-runoff module
 │   ├── __init__.py
 │   ├── scs_cn.py           # SCS Curve Number calculations
 │   ├── unit_hydrograph.py  # SCS Unit Hydrograph
 │   ├── convolution.py      # Discrete convolution
-│   ├── generator.py        # HydrographGenerator (opad→odpływ)
+│   ├── generator.py        # HydrographGenerator (rainfall→runoff)
 │   ├── nash_iuh.py         # Nash Cascade IUH
 │   ├── clark_iuh.py        # Clark IUH
 │   ├── snyder_uh.py        # Snyder Synthetic UH
 │   └── cn_lookup.py        # CN Lookup Tables (TR-55)
-├── morphometry/             # Parametry fizjograficzne
+├── morphometry/             # Physiographic parameters
 │   ├── __init__.py
 │   ├── geometric.py        # Area, perimeter, length
 │   ├── terrain.py          # Elevation, slope
-│   ├── hypsometry.py       # Krzywa hipsograficzna
+│   ├── hypsometry.py       # Hypsometric curve
 │   └── watershed_params.py # WatershedParameters (GIS integration)
-├── precipitation/           # Opady
+├── precipitation/           # Precipitation
 │   ├── __init__.py
 │   ├── hietogram.py        # Temporal distributions
 │   └── interpolation.py    # IDW, Thiessen, isohyet, arithmetic mean
-├── network/                 # Sieć rzeczna
+├── network/                 # River network
 │   ├── __init__.py
-│   └── stream_order.py     # Strahler, Shreve, wskaźniki sieci
-├── time/                    # Czasy charakterystyczne
+│   └── stream_order.py     # Strahler, Shreve, network indices
+├── time/                    # Characteristic times
 │   ├── __init__.py
-│   └── concentration.py    # tc calculations (6 metod)
+│   └── concentration.py    # tc calculations (6 methods)
 ├── _serialization.py        # to_jsonable(), JsonResultMixin (to_dict/to_json) (v1.0.0)
-├── agent_guide.py           # Generator AGENTS.md / llms.txt z katalogu (v1.0.0)
-├── _data/agents/            # Szablony przewodników dla agentów (PL/EN)
-├── catalog/                 # Katalog komend (v1.0.0)
+├── agent_guide.py           # AGENTS.md / llms.txt generator from the catalog (v1.0.0)
+├── _data/agents/            # Agent guide templates (PL/EN)
+├── catalog/                 # Command catalog (v1.0.0)
 │   ├── spec.py              # Command, Option
-│   ├── envelope.py          # Koperta hydrolog-result/1, Notice
-│   ├── inputs.py            # Szeregi, stacje, zlewnie z JSON lub plików CSV/JSON
-│   ├── dispatch.py          # validate_command, run_command, polityka ścieżek
-│   └── groups/              # Po jednym module na grupę komend (COMMANDS)
-├── operations/              # Po jednej funkcji publicznej na komendę katalogu (v1.0.0)
-├── mcp/                     # Serwer MCP (v1.0.0, dodatek [mcp])
-├── soil/                    # HSG z uziarnienia gleby (v1.0.0)
-│   ├── texture.py           # Trójkąt uziarnienia USDA, tekstura → HSG (tylko NumPy)
+│   ├── envelope.py          # hydrolog-result/1 envelope, Notice
+│   ├── inputs.py            # Series, stations, catchments from JSON or CSV/JSON files
+│   ├── dispatch.py          # validate_command, run_command, path policy
+│   └── groups/              # One module per command group (COMMANDS)
+├── operations/              # One public function per catalog command (v1.0.0)
+├── mcp/                     # MCP server (v1.0.0, [mcp] extra)
+├── soil/                    # HSG from soil texture (v1.0.0)
+│   ├── texture.py           # USDA texture triangle, texture → HSG (NumPy only)
 │   ├── hsg.py               # classify_hsg(), hsg_statistics_array()
-│   └── raster.py            # Wejście/wyjście GeoTIFF (dodatek [raster])
-├── cli/                     # Interfejs CLI generowany z katalogu (v1.0.0)
-│   ├── main.py              # Punkt wejścia (hydrolog.cli.main:main)
-│   ├── parser.py            # Parser argparse z deklaracji katalogu
-│   ├── args.py, values.py   # Obsługa opcji i wartości z wiersza poleceń
-│   ├── render.py, texts.py  # Podsumowanie tekstowe i komunikaty PL/EN
+│   └── raster.py            # GeoTIFF input/output ([raster] extra)
+├── cli/                     # CLI generated from the catalog (v1.0.0)
+│   ├── main.py              # Entry point (hydrolog.cli.main:main)
+│   ├── parser.py            # argparse parser from catalog declarations
+│   ├── args.py, values.py   # Handling of command-line options and values
+│   ├── render.py, texts.py  # Text summary and PL/EN messages
 │   └── __main__.py          # python -m hydrolog.cli
-├── reports/                 # Generowanie raportów (v0.6.0)
+├── reports/                 # Report generation (v0.6.0)
 │   ├── __init__.py
 │   ├── generator.py        # HydrologyReportGenerator
 │   ├── formatters.py       # FormulaRenderer, TableGenerator
-│   ├── templates.py        # Polskie szablony i nagłówki
-│   └── sections/            # Sekcje raportu
+│   ├── templates.py        # Polish templates and headings
+│   └── sections/            # Report sections
 │       ├── __init__.py
-│       ├── watershed.py     # Parametry zlewni
-│       ├── concentration.py # Czas koncentracji
+│       ├── watershed.py     # Catchment parameters
+│       ├── concentration.py # Time of concentration
 │       ├── hietogram.py     # Hietogram
-│       ├── scs_cn.py        # Opad efektywny SCS-CN
-│       ├── unit_hydrograph.py # Hydrogram jednostkowy
-│       ├── convolution.py   # Splot dyskretny
-│       └── water_balance.py # Bilans wodny
-├── statistics/              # Statystyka hydrologiczna (v0.7.0)
+│       ├── scs_cn.py        # SCS-CN effective precipitation
+│       ├── unit_hydrograph.py # Unit hydrograph
+│       ├── convolution.py   # Discrete convolution
+│       └── water_balance.py # Water balance
+├── statistics/              # Hydrological statistics (v0.7.0)
 │   ├── __init__.py
-│   ├── _types.py            # Wspólne typy danych
-│   ├── _hydrological_year.py # Rok hydrologiczny
-│   ├── characteristic.py   # Wartości charakterystyczne (NNQ–WWQ)
-│   ├── high_flows.py       # Analiza częstości maksymalnych
-│   ├── low_flows.py        # Fisher-Tippett, niżówki
-│   └── stationarity.py     # Test Manna-Kendalla
-├── hydrometrics/            # Hydrometria (v0.7.0)
+│   ├── _types.py            # Shared data types
+│   ├── _hydrological_year.py # Hydrological year
+│   ├── characteristic.py   # Characteristic values (NNQ-WWQ)
+│   ├── high_flows.py       # Frequency analysis of maximum flows
+│   ├── low_flows.py        # Fisher-Tippett, low flows
+│   └── stationarity.py     # Mann-Kendall test
+├── hydrometrics/            # Hydrometry (v0.7.0)
 │   ├── __init__.py
-│   └── rating_curve.py     # Krzywa natężenia, strefy Rybczyńskiego
-└── visualization/           # Wykresy (v0.5.0, wymaga matplotlib)
+│   └── rating_curve.py     # Rating curve, Rybczyński zones
+└── visualization/           # Plots (v0.5.0, requires matplotlib)
     ├── __init__.py
-    ├── styles.py            # Style, kolory, etykiety PL
-    ├── hietogram.py         # Wykresy hietogramów
-    ├── hydrograph.py        # Wykresy hydrogramów
-    ├── combined.py          # Wykresy opad-odpływ
-    ├── unit_hydrograph.py   # Porównanie UH
-    ├── water_balance.py     # Bilans wodny, krzywa CN
-    ├── morphometry.py       # Krzywa hipsograficzna, histogram
-    ├── network.py           # Statystyki sieci rzecznej
-    ├── interpolation.py     # Mapa stacji opadowych
-    └── statistics.py        # Statystyka hydrologiczna (v0.7.0)
+    ├── styles.py            # Styles, colors, PL labels
+    ├── hietogram.py         # Hyetograph plots
+    ├── hydrograph.py        # Hydrograph plots
+    ├── combined.py          # Rainfall-runoff plots
+    ├── unit_hydrograph.py   # UH comparison
+    ├── water_balance.py     # Water balance, krzywa CN
+    ├── morphometry.py       # Hypsometric curve, histogram
+    ├── network.py           # River network statistics
+    ├── interpolation.py     # Rain gauge station map
+    └── statistics.py        # Hydrological statistics (v0.7.0)
 ```
 
-### 3.2 Zależności
+### 3.2 Dependencies
 
-**Wymagane:**
+**Required:**
 - Python >= 3.12
 - NumPy >= 1.24
-- SciPy >= 1.10 (rozkłady statystyczne, funkcja gamma, optymalizacja — wymagane od v0.7.0)
+- SciPy >= 1.10 (statistical distributions, gamma function, optimization - required since v0.7.0)
 
-**Opcjonalne (dodatki `pip install hydrolog[...]`):**
-- `raster`: rasterio >= 1.3 + pyproj >= 3.6 (komendy `soil hsg` i `soil hsg-stats`, `hydrolog.soil.raster`)
-- `mcp`: mcp >= 2.3, < 3 (serwer MCP `hydrolog mcp`)
-- `visualization`: matplotlib >= 3.7 + seaborn >= 0.12 (moduł `visualization`)
-- `all`: wszystkie powyższe
+**Optional (extras `pip install hydrolog[...]`):**
+- `raster`: rasterio >= 1.3 + pyproj >= 3.6 (commands `soil hsg` and `soil hsg-stats`, `hydrolog.soil.raster`)
+- `mcp`: mcp >= 2.3, < 3 (MCP server `hydrolog mcp`)
+- `visualization`: matplotlib >= 3.7 + seaborn >= 0.12 (module `visualization`)
+- `all`: all of the above
 
-Hydrolog nie zależy od Kartografa ani IMGWTools; dawny dodatek `spatial` (Kartograf) został usunięty w v1.0.0.
+Hydrolog does not depend on Kartograf or IMGWTools; the former `spatial` extra (Kartograf) was removed in v1.0.0.
 
 ### 3.3 API Design
 
-**Styl:** Obiektowy z klasami
+**Style:** Object-oriented, class-based
 
 ```python
-# Przykład użycia
+# Usage example
 from hydrolog.runoff import HydrographGenerator
 from hydrolog.precipitation import BetaHietogram
 from hydrolog.time import ConcentrationTime
 
-# Czas koncentracji
+# Time of concentration
 tc = ConcentrationTime.kirpich(length_km=8.2, slope_m_per_m=0.023)
 
-# Hietogram
+# Hyetograph
 hietogram = BetaHietogram(alpha=2.0, beta=5.0)
 precip = hietogram.generate(
     total_mm=38.5,
@@ -466,7 +466,7 @@ precip = hietogram.generate(
     timestep_min=5
 )
 
-# Hydrogram
+# Hydrograph
 generator = HydrographGenerator(
     area_km2=45.3,
     cn=72,
@@ -480,89 +480,89 @@ print(f"Time to peak: {result.time_to_peak_min} min")
 
 ---
 
-## 4. ROADMAP WERSJI
+## 4. VERSION ROADMAP
 
-| Wersja | Zakres | Moduły | Status |
+| Version | Scope | Modules | Status |
 |--------|--------|--------|--------|
-| **v0.1.0** | Hydrogram SCS-CN | `runoff`, `precipitation.hietogram`, `time` | ✅ Wydana |
-| **v0.2.0** | Parametry morfometryczne | `morphometry` | ✅ Wydana |
-| **v0.3.0** | Interpolacja + sieć | `precipitation.interpolation`, `network` | ✅ Wydana |
-| **v0.4.0** | CLI + Clark + Snyder + CN Lookup | `cli`, `runoff.clark_iuh`, `runoff.snyder_uh`, `runoff.cn_lookup` | ✅ Wydana |
-| **v0.5.0** | Wizualizacja + metoda Lutza | `visualization`, `runoff.nash_iuh.from_lutz` | ✅ Wydana |
-| **v0.5.1** | Korekta SCS peak discharge | `runoff.unit_hydrograph`, `morphometry.watershed_params` | ✅ Wydana |
-| **v0.5.2** | Czyszczenie zależności | `pyproject.toml` | ✅ Wydana |
-| **v0.6.0** | Raporty obliczeniowe | `reports` | ✅ Wydana |
-| **v0.6.1** | Nash urban regression | `runoff.nash_iuh.from_urban_regression` | ✅ Wydana |
-| **v0.6.2** | Wzory UH w raportach + korekty metryczne | `reports`, `runoff.snyder_uh`, `runoff.clark_iuh` | ✅ Wydana |
-| **v0.6.3** | FAA + Kerby + Kerby-Kirpich tc, API audit, WatershedParameters extension | `time.concentration`, `morphometry.watershed_params`, `reports` | ✅ Wydana |
-| **v0.6.4** | WatershedParams extension + UH ordinates + docs audit | `morphometry.watershed_params`, `runoff.generator`, `reports`, `docs` | ✅ Wydana |
-| **v0.7.0** | Statystyka hydrologiczna + Hydrometria | `statistics`, `hydrometrics`, `visualization.statistics` | ✅ Wydana |
-| **v1.0.0** | Stabilne API, katalog komend, CLI z katalogu, serwer MCP, HSG, serializacja wyników, poprawki obliczeniowe | `catalog`, `operations`, `mcp`, `soil`, `cli`, `agent_guide` | 🔄 W przygotowaniu |
+| **v0.1.0** | SCS-CN hydrograph | `runoff`, `precipitation.hietogram`, `time` | ✅ Released |
+| **v0.2.0** | Morphometric parameters | `morphometry` | ✅ Released |
+| **v0.3.0** | Interpolation + network | `precipitation.interpolation`, `network` | ✅ Released |
+| **v0.4.0** | CLI + Clark + Snyder + CN Lookup | `cli`, `runoff.clark_iuh`, `runoff.snyder_uh`, `runoff.cn_lookup` | ✅ Released |
+| **v0.5.0** | Visualization + Lutz method | `visualization`, `runoff.nash_iuh.from_lutz` | ✅ Released |
+| **v0.5.1** | SCS peak discharge correction | `runoff.unit_hydrograph`, `morphometry.watershed_params` | ✅ Released |
+| **v0.5.2** | Dependency cleanup | `pyproject.toml` | ✅ Released |
+| **v0.6.0** | Calculation reports | `reports` | ✅ Released |
+| **v0.6.1** | Nash urban regression | `runoff.nash_iuh.from_urban_regression` | ✅ Released |
+| **v0.6.2** | UH formulas in reports + metric corrections | `reports`, `runoff.snyder_uh`, `runoff.clark_iuh` | ✅ Released |
+| **v0.6.3** | FAA + Kerby + Kerby-Kirpich tc, API audit, WatershedParameters extension | `time.concentration`, `morphometry.watershed_params`, `reports` | ✅ Released |
+| **v0.6.4** | WatershedParams extension + UH ordinates + docs audit | `morphometry.watershed_params`, `runoff.generator`, `reports`, `docs` | ✅ Released |
+| **v0.7.0** | Hydrological statistics + Hydrometry | `statistics`, `hydrometrics`, `visualization.statistics` | ✅ Released |
+| **v1.0.0** | Stable API, command catalog, catalog-based CLI, MCP server, HSG, result serialization, calculation fixes | `catalog`, `operations`, `mcp`, `soil`, `cli`, `agent_guide` | 🔄 In preparation |
 
 ---
 
-## 5. OGRANICZENIA
+## 5. LIMITATIONS
 
-### 5.1 Ograniczenia metodologiczne
+### 5.1 Methodological limitations
 
-- **SCS-CN:** Dla zlewni < 250 km² (ograniczenie metody USDA)
-- **Opad równomierny:** Założenie dla małych zlewni
-- **Warunki AMC-II:** Domyślne (przeciętne)
-- **Brak routingu:** Hydrogram dla przekroju zamykającego
+- **SCS-CN:** For catchments < 250 km² (a limitation of the USDA method)
+- **Uniform rainfall:** An assumption for small catchments
+- **AMC-II conditions:** Default (average)
+- **No routing:** Hydrograph for the closing cross-section
 
-### 5.2 Ograniczenia techniczne
+### 5.2 Technical limitations
 
-- **Pure Python + NumPy:** Brak zależności od GeoPandas/Shapely w core
-- **Dane wejściowe:** NumPy arrays, listy, słowniki; w CLI/MCP pliki CSV/JSON i rastry GeoTIFF (nie Shapefile)
-- **Thread-safe:** Klasy są thread-safe (brak stanu globalnego)
+- **Pure Python + NumPy:** No dependency on GeoPandas/Shapely in the core
+- **Input data:** NumPy arrays, lists, dictionaries; in the CLI/MCP, CSV/JSON files and GeoTIFF rasters (not Shapefile)
+- **Thread-safe:** Classes are thread-safe (no global state)
 
 ---
 
-## 6. ZALEŻNOŚCI ZEWNĘTRZNE
+## 6. EXTERNAL DEPENDENCIES
 
-| Biblioteka | Cel | Wymagana |
+| Library | Purpose | Required |
 |------------|-----|----------|
-| NumPy | Obliczenia numeryczne | Tak |
-| SciPy | Funkcje gamma (Nash IUH), rozkłady statystyczne (`statistics`) | Tak (od v0.7.0) |
-| IMGWTools | Dane IMGW (szeregi pomiarowe) | Nie (Hydrolog wczytuje jego eksport CSV) |
-| rasterio, pyproj | Rastry GeoTIFF dla HSG | Nie (dodatek `[raster]`) |
-| mcp | Serwer MCP | Nie (dodatek `[mcp]`) |
+| NumPy | Numerical computation | Yes |
+| SciPy | Gamma function (Nash IUH), statistical distributions (`statistics`) | Yes (since v0.7.0) |
+| IMGWTools | IMGW data (measurement series) | No (Hydrolog reads its CSV export) |
+| rasterio, pyproj | GeoTIFF rasters for HSG | No (extra `[raster]`) |
+| mcp | MCP server | No (extra `[mcp]`) |
 
-**Hydrolog NIE zawiera funkcji pobierania danych:**
-- Dane opadowe PMAXTP → pobiera aplikacja nadrzędna (np. Hydrograf via IMGWTools)
-- Szeregi pomiarowe → IMGWTools (`series export` do CSV)
-- Rastry (NMT, pokrycie terenu, gleby) → Kartograf; Hydrolog nie zależy od Kartografa
-
----
-
-## 7. KRYTERIA SUKCESU
-
-### 7.1 Jakościowe
-
-- ✅ Pokrycie testami > 80%
-- ✅ Type hints dla wszystkich publicznych funkcji
-- ✅ Docstrings (NumPy style) dla wszystkich publicznych klas/metod
-- ✅ Dokumentacja API (Sphinx/MkDocs)
-
-### 7.2 Funkcjonalne
-
-- ✅ Wyniki zgodne z obliczeniami ręcznymi (±1%)
-- ✅ Walidacja względem przykładów z literatury (USDA TR-55)
-- ✅ Obsługa edge cases (CN=100, tc=0, etc.)
-
-### 7.3 Wydajnościowe
-
-- ✅ Generowanie hydrogramu < 100ms dla typowych danych
-- ✅ Brak wycieków pamięci dla dużych zbiorów danych
+**Hydrolog does NOT contain data download functions:**
+- PMAXTP rainfall data → downloaded by the parent application (e.g. Hydrograf via IMGWTools)
+- Measurement series → IMGWTools (`series export` to CSV)
+- Rasters (DEM, land cover, soil) → Kartograf; Hydrolog does not depend on Kartograf
 
 ---
 
-## 8. LICENCJA
+## 7. SUCCESS CRITERIA
 
-**MIT License** - permisywna, zgodna z użyciem w projektach open-source i komercyjnych.
+### 7.1 Quality
+
+- ✅ Test coverage > 80%
+- ✅ Type hints for all public functions
+- ✅ Docstrings (NumPy style) for all public classes/methods
+- ✅ API documentation (Sphinx/MkDocs)
+
+### 7.2 Functional
+
+- ✅ Results consistent with hand calculations (±1%)
+- ✅ Validation against literature examples (USDA TR-55)
+- ✅ Edge case handling (CN=100, tc=0, etc.)
+
+### 7.3 Performance
+
+- ✅ Hydrograph generation < 100 ms for typical data
+- ✅ No memory leaks for large datasets
 
 ---
 
-**Wersja dokumentu:** 1.5
-**Data ostatniej aktualizacji:** 2026-10-19
-**Status:** v1.0.0 w przygotowaniu
+## 8. LICENSE
+
+**MIT License** - permissive, compatible with use in open-source and commercial projects.
+
+---
+
+**Document version:** 1.5
+**Last updated:** 2026-10-19
+**Status:** v1.0.0 in preparation
