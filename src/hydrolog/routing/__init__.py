@@ -11,7 +11,10 @@ Time is in minutes and discharge in m3/s.
   notices);
 * :class:`LagReach` -- lag routing;
 * :class:`MuskingumReach` -- the Muskingum method, with sub-reaches inside the window of
-  non-negative weights.
+  non-negative weights;
+* :class:`MuskingumCungeReach` -- Muskingum-Cunge with constant coefficients (the NRCS
+  form), from the celerity and top width or from a channel section
+  (:class:`TrapezoidalSection`, Manning's equation).
 
 The recurrences shared with the Clark unit hydrograph are in
 ``hydrolog.routing._kernels``.
@@ -26,16 +29,21 @@ Examples
 
 from __future__ import annotations
 
+from hydrolog.routing.cunge import MuskingumCungeReach
 from hydrolog.routing.hydrograph import Hydrograph
 from hydrolog.routing.lag import LagReach
 from hydrolog.routing.muskingum import MuskingumReach
 from hydrolog.routing.reach import Reach, RoutingNotice, RoutingResult
+from hydrolog.routing.sections import FlowState, TrapezoidalSection
 
 __all__ = [
+    "FlowState",
     "Hydrograph",
     "LagReach",
+    "MuskingumCungeReach",
     "MuskingumReach",
     "Reach",
     "RoutingNotice",
     "RoutingResult",
+    "TrapezoidalSection",
 ]

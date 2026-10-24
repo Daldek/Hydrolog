@@ -18,12 +18,9 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-import numpy as np
-from numpy.typing import NDArray
-
 from hydrolog.exceptions import InvalidParameterError
 from hydrolog.routing._checks import in_range, positive, whole_number
-from hydrolog.routing._kernels import muskingum_coefficients, three_point
+from hydrolog.routing._kernels import route_muskingum_cascade
 from hydrolog.routing.hydrograph import Hydrograph
 from hydrolog.routing.reach import MAX_ORDINATES, Reach, ReachRun, RoutingNotice
 
@@ -84,27 +81,6 @@ class _Plan:
     subreaches: int
     substeps: int
     notices: tuple[RoutingNotice, ...] = ()
-
-
-def _cascade(
-    values: NDArray[np.float64],
-    weights: tuple[float, float, float],
-    count: int,
-    initial_outflow: float,
-) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
-    """Route ``values`` through ``count`` identical sub-reaches in series.
-
-    Every sub-reach starts with ``initial_outflow``. Returns the outflow of the last
-    sub-reach and the flow at the last ordinate at every junction: element 0 is the
-    inflow, element ``j`` the outflow of sub-reach ``j``.
-    """
-    levels = np.empty(count + 1)
-    levels[0] = values[-1]
-    series = values
-    for index in range(1, count + 1):
-        series = three_point(series, *weights, initial_outflow)
-        levels[index] = series[-1]
-    return series, levels
 
 
 class MuskingumReach(Reach):
@@ -253,37 +229,28 @@ class MuskingumReach(Reach):
         plan = self._plan(inflow.timestep_min, len(inflow))
         fine = inflow.refined(plan.substeps)
         step = fine.timestep_min
-        sub_k = self.k_min / plan.subreaches
-        weights = muskingum_coefficients(sub_k, self.x, step)
-        series, levels = _cascade(
-            fine.discharge_m3s, weights, plan.subreaches, initial_outflow_m3s
-        )
-        # Storage of sub-reach j is K/N [X I_j + (1 - X) O_j]; at the first ordinate
-        # every sub-reach but the first is fed by the initial outflow.
-        seconds = sub_k * _SECONDS_PER_MINUTE
-        first = float(fine.discharge_m3s[0])
-        start = seconds * (
-            self.x * first
-            + (1.0 - self.x) * initial_outflow_m3s
-            + (plan.subreaches - 1) * initial_outflow_m3s
-        )
-        end = seconds * float(
-            np.sum(self.x * levels[:-1] + (1.0 - self.x) * levels[1:])
+        run = route_muskingum_cascade(
+            fine.discharge_m3s,
+            self.k_min / plan.subreaches,
+            self.x,
+            step,
+            plan.subreaches,
+            initial_outflow_m3s,
         )
         lowest, highest = subreach_window(self.k_min, self.x, step)
         return ReachRun(
-            outflow_m3s=series[:: plan.substeps],
-            storage_start_m3=start,
-            storage_end_m3=end,
-            storage_steady_m3=self.k_min * _SECONDS_PER_MINUTE * float(levels[0]),
+            outflow_m3s=run.outflow[:: plan.substeps],
+            storage_start_m3=run.storage_start * _SECONDS_PER_MINUTE,
+            storage_end_m3=run.storage_end * _SECONDS_PER_MINUTE,
+            storage_steady_m3=run.storage_steady * _SECONDS_PER_MINUTE,
             parameters={
                 "k_min": self.k_min,
                 "x": self.x,
                 "subreaches": plan.subreaches,
                 "substeps": plan.substeps,
-                "c_current": weights[0],
-                "c_previous": weights[1],
-                "c_outflow": weights[2],
+                "c_current": run.weights[0],
+                "c_previous": run.weights[1],
+                "c_outflow": run.weights[2],
                 "subreaches_min": lowest,
                 "subreaches_max": highest,
             },

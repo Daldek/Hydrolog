@@ -9,10 +9,11 @@ from __future__ import annotations
 
 import math
 import numbers
+from collections.abc import Collection, Sequence
 
 from hydrolog.exceptions import InvalidParameterError
 
-__all__ = ["in_range", "positive", "whole_number"]
+__all__ = ["in_range", "one_complete_group", "positive", "whole_number"]
 
 
 def _shown(value: float) -> float | str:
@@ -174,3 +175,65 @@ def whole_number(value: int, option: str, *, minimum: int = 1) -> int:
             },
         )
     return int(value)
+
+
+def one_complete_group(
+    given: Collection[str], groups: Sequence[Sequence[str]], what: str
+) -> int:
+    """Return the index of the one group whose options are all given.
+
+    The error has the shape of the catalog's ``one_of`` rule, so that a class and a
+    command refuse the same options in the same words.
+
+    Parameters
+    ----------
+    given : collection of str
+        The names of the options that have a value.
+    groups : sequence of sequence of str
+        The alternatives; each is a set of options that go together.
+    what : str
+        What takes the options, for the message (``"The reach"``).
+
+    Returns
+    -------
+    int
+        The index of the complete group.
+
+    Raises
+    ------
+    InvalidParameterError
+        With ``details.reason`` ``one_of`` (``groups``, ``given``, and ``missing`` for
+        the closest group) when no group or several groups are complete.
+    """
+    names = set(given)
+    complete = [index for index, group in enumerate(groups) if names.issuperset(group)]
+    if len(complete) == 1:
+        return complete[0]
+    pretty = " or ".join("+".join(group) for group in groups)
+    details: dict[str, object] = {
+        "reason": "one_of",
+        "groups": [list(group) for group in groups],
+        "given": [
+            name
+            for name in dict.fromkeys(item for group in groups for item in group)
+            if name in names
+        ],
+    }
+    if complete:
+        raise InvalidParameterError(
+            f"{what} takes exactly one group of options ({pretty}), but several are "
+            "given",
+            details={"option": groups[complete[1]][0], **details},
+            hint=f"Give only one of: {pretty}.",
+        )
+    closest = max(groups, key=lambda group: len(names.intersection(group)))
+    missing = [name for name in closest if name not in names]
+    message = f"{what} needs exactly one complete group of options: {pretty}"
+    if names.intersection(closest):
+        message += f"; missing for the closest group: {', '.join(missing)}"
+    details["missing"] = missing
+    raise InvalidParameterError(
+        message,
+        details={"option": missing[0], **details},
+        hint=f"Give one complete group: {pretty}.",
+    )
