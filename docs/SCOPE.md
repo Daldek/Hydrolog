@@ -165,7 +165,7 @@ Hydrolog is analogous to **Kartograf** (spatial data download) and **IMGWTools**
 
 #### 2.1.6 Module `cli` - CLI (v0.4.0, rebuilt in v1.0.0) ✅
 
-Since v1.0.0 the CLI is generated from the command catalog (`hydrolog.catalog`): 37 commands in 13 groups (list: `hydrolog commands list`). Syntax: `hydrolog <group> <command> --option value`; global flags `--json`, `--schema`, `--lang pl|en`, `-V`. The former CLI syntax (v0.4.0-v0.7.0) was removed without aliases.
+Since v1.0.0 the CLI is generated from the command catalog (`hydrolog.catalog`): 38 commands in 14 groups (list: `hydrolog commands list`). Syntax: `hydrolog <group> <command> --option value`; global flags `--json`, `--schema`, `--lang pl|en`, `-V`. The former CLI syntax (v0.4.0-v0.7.0) was removed without aliases.
 
 ```bash
 # Time of concentration
@@ -196,18 +196,18 @@ hydrolog uh snyder --area-km2 100 --length-km 15 --centroid-length-km 8 --timest
 hydrolog uh scs --area-km2 45 --tc-min 90 --json
 ```
 
-Other groups: `precip`, `hydrograph`, `morphometry`, `network`, `stats`, `hydrometrics`, `soil`, `report`, `commands`.
+Other groups: `precip`, `hydrograph`, `morphometry`, `network`, `stats`, `hydrometrics`, `soil`, `report`, `config`, `commands`.
 
 ---
 
 #### 2.1.6a Operations Layer, Command Catalog and Agent Interfaces (v1.0.0)
 
-- **Command catalog** (`hydrolog.catalog`) - a single source of truth: `Command` and `Option` declarations (PL/EN descriptions, units, ranges, `one_of` groups, examples), `data_commands()`, `command_schema()`, `validate_command()`, `run_command()`
+- **Command catalog** (`hydrolog.catalog`) - a single source of truth: `Command` and `Option` declarations (English texts with Polish translations, units, ranges, `one_of` groups, examples), `data_commands()`, `command_schema()`, `validate_command()`, `run_command()`
 - **Operations layer** (`hydrolog.operations`) - one public, typed function per command; it composes existing classes and contains no new hydrology
-- **Result envelope** `hydrolog-result/1` and error document `hydrolog-error/1` with a closed `ERROR_CODES` registry (CLI exit codes: 1, 2, 3, 4, 6, 7, 8, 9)
+- **Result envelope** `hydrolog-result/1` and error document `hydrolog-error/1` with a closed `ERROR_CODES` registry (CLI exit codes: 1, 2, 3, 4, 6, 7, 9, 12, 13)
 - **Serialization** - all result classes have `to_dict()` and `to_json()` (`JsonResultMixin`)
 - **Data from files** - series, stations, network segments and catchments as CSV/JSON (including the IMGWTools `export_series` export, read without conversion); `WatershedParameters` JSON is the `catchment_characteristics` format in Retman
-- **MCP server** (`hydrolog mcp`, extra `hydrolog[mcp]`) - every catalog command is a tool; file access is restricted to `--allow-dir` directories
+- **MCP server** (`hydrolog mcp`, extra `hydrolog[mcp]`) - every catalog command is a tool; file access is restricted to `--allow-dir` directories and writing needs `--allow-writes`
 - **Agent guides** - `AGENTS.md` and `llms.txt` generated from the catalog (`hydrolog commands guide`), enforced by a byte-for-byte consistency test
 - Plots (`hydrolog.visualization`) remain Python-only, outside the command catalog
 
@@ -239,7 +239,7 @@ Other groups: `precip`, `hydrograph`, `morphometry`, `network`, `stats`, `hydrom
 
 #### 2.1.8 Module `visualization` - Plots (v0.5.0)
 
-The module requires optional dependencies: `pip install hydrolog[visualization]`
+The module requires optional dependencies: `pip install hydrolog[viz]`
 
 **Hyetographs:**
 - `plot_hietogram()` - rainfall intensity plot with an optional cumulative line
@@ -372,7 +372,7 @@ hydrolog/
 │   └── concentration.py    # tc calculations (6 methods)
 ├── _serialization.py        # to_jsonable(), JsonResultMixin (to_dict/to_json) (v1.0.0)
 ├── agent_guide.py           # AGENTS.md / llms.txt generator from the catalog (v1.0.0)
-├── _data/agents/            # Agent guide templates (PL/EN)
+├── _data/agents/            # Agent guide templates (English)
 ├── catalog/                 # Command catalog (v1.0.0)
 │   ├── spec.py              # Command, Option
 │   ├── envelope.py          # hydrolog-result/1 envelope, Notice
@@ -440,7 +440,7 @@ hydrolog/
 **Optional (extras `pip install hydrolog[...]`):**
 - `raster`: rasterio >= 1.3 + pyproj >= 3.6 (commands `soil hsg` and `soil hsg-stats`, `hydrolog.soil.raster`)
 - `mcp`: mcp >= 2.3, < 3 (MCP server `hydrolog mcp`)
-- `visualization`: matplotlib >= 3.7 + seaborn >= 0.12 (module `visualization`)
+- `viz`: matplotlib >= 3.7 + seaborn >= 0.12 (module `visualization`)
 - `all`: all of the above
 
 Hydrolog does not depend on Kartograf or IMGWTools; the former `spatial` extra (Kartograf) was removed in v1.0.0.

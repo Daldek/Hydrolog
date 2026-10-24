@@ -318,7 +318,7 @@ print(f"tc = {tc:.1f} min")
 **So that** the library, CLI, MCP server and agent guides share the same option names, units, ranges and validation
 
 **Acceptance criteria:**
-- [x] 37 commands in 13 groups, list: `hydrolog commands list`
+- [x] 38 commands in 14 groups, list: `hydrolog commands list`
 - [x] Option schema (JSON Schema) for the whole catalog or a single command: `commands schema`, `--schema`
 - [x] Result envelope `hydrolog-result/1` and error document `hydrolog-error/1` with a closed `ERROR_CODES` registry
 - [x] All result classes have `to_dict()` and `to_json()`
@@ -340,7 +340,7 @@ print(f"tc = {tc:.1f} min")
 **So that** the agent computes hydrology locally, without network access or keys
 
 **Acceptance criteria:**
-- [x] `hydrolog mcp [--allow-dir DIR]... [--lang pl|en]` (extra `hydrolog[mcp]`)
+- [x] `hydrolog mcp [--allow-dir DIR]... [--allow-writes] [--tools FAMILIES]` (extra `hydrolog[mcp]`); the server output is always English
 - [x] One tool per command (name = `operation_id`), `structuredContent` = result envelope, error as `isError` with `hydrolog-error/1`
 - [x] File access only within `--allow-dir` directories (otherwise `forbidden`)
 
@@ -495,7 +495,7 @@ print(f"tc = {tc:.1f} min")
 - [x] Tests and documentation
 
 ### v1.0.0 - Stable API, command catalog, MCP, HSG *(in preparation)*
-- [x] `catalog`, `operations` - a catalog of 37 commands and the operations layer
+- [x] `catalog`, `operations` - a catalog of 38 commands and the operations layer
 - [x] `cli` - CLI generated from the catalog (breaking change: the former syntax was removed)
 - [x] `mcp` - MCP server (`hydrolog mcp`, extra `[mcp]`)
 - [x] `agent_guide` - `AGENTS.md` and `llms.txt` generated from the catalog

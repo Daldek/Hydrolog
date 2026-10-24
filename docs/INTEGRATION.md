@@ -335,16 +335,16 @@ print(f"Qmax: {result.peak_discharge_m3s:.2f} m³/s")
 
 ## Hydrolog 1.0.0: operations layer, command catalog and files
 
-Since v1.0.0 Hydrolog has a single command catalog (`hydrolog.catalog`, 37 commands, list: `hydrolog commands list`) from which the following are generated: the Python operations layer (`hydrolog.operations`), the `hydrolog` CLI, the MCP server (`hydrolog mcp`) and the agent guides (`AGENTS.md`, `llms.txt`). The library classes (`HydrographGenerator`, `WatershedParameters`, ...) work as before; the sections below describe the new ways of integrating.
+Since v1.0.0 Hydrolog has a single command catalog (`hydrolog.catalog`, 38 commands, list: `hydrolog commands list`) from which the following are generated: the Python operations layer (`hydrolog.operations`), the `hydrolog` CLI, the MCP server (`hydrolog mcp`) and the agent guides (`AGENTS.md`, `llms.txt`). The library classes (`HydrographGenerator`, `WatershedParameters`, ...) work as before; the sections below describe the new ways of integrating.
 
 ### Retman (calculation handlers)
 
 Retman calls Hydrolog through the command layer, not through the library classes.
 
 - **Operations layer:** `hydrolog.operations` - one public, typed function per command (`tc_kirpich`, `hydrograph_generate`, `stats_flood_frequency`, `soil_hsg`, ...), arguments named like the command options, NumPy-style docstrings (used by `retman-scaffold`). The function returns a result object with `to_dict()`/`to_json()`, or an `OperationOutput` (`result`, `notices`, `files`) when the command has warnings or writes files.
-- **Catalog and envelope:** `hydrolog.catalog.run_command("<group> <command>", {options})` validates the options, runs the operation and returns a `hydrolog-result/1` envelope (`inputs`, `result`, `files` with SHA-256, `notices`; `to_dict()`, `to_json()`). Option schema (JSON Schema): `command_schema()`, `hydrolog commands schema`. Errors are `HydrologError` exceptions with `code`, `hint` and `details` (registry `ERROR_CODES`; document `hydrolog-error/1`).
+- **Catalog and envelope:** `hydrolog.catalog.run_command("<group> <command>", {options})` (also `hydrolog.run_command`) validates the options, runs the operation and returns a `hydrolog-result/1` envelope (`schema`, `tool`, `version`, `command`, `check`, `status`, `result`, `notices`, `inputs`; the files written are in `result.files[]` with SHA-256; `to_dict()`, `to_json()`). Option schema (JSON Schema): `command_schema()`, `hydrolog commands schema`. Errors are `HydrologError` exceptions with `code`, `hint` and `details` (registry `ERROR_CODES`; document `hydrolog-error/1`).
 - **`catchment_characteristics`:** the proposed format is `WatershedParameters` JSON (`WatershedParameters.to_json()`; required `area_km2`, `perimeter_km`, `length_km`, `elevation_min_m`, `elevation_max_m`). The file is passed to commands as `watershed_file`, and `WatershedParameters.from_dict()` ignores the extra `schema` key (e.g. `"hydrolog-catchment/1"`) added by the catalog tools.
-- **File inputs and outputs:** series (`input_file` + `value_column`/`date_column`), rainfall stations (`stations_file`), network segments (`segments_file`) and the watershed (`watershed_file`) as CSV/JSON; results that write files (`soil hsg` - GeoTIFF, `report generate` - Markdown) list them in `files`. Retman does not need to paste series into arguments.
+- **File inputs and outputs:** series (`input_file` + `value_column`/`date_column`), rainfall stations (`stations_file`), network segments (`segments_file`) and the watershed (`watershed_file`) as CSV/JSON; results that write files (`soil hsg` - GeoTIFF, `report generate` - Markdown; one file given by `--output`, an existing file needs `--force`) list them in `result.files[]`. Retman does not need to paste series into arguments.
 - **Versions:** the tool manifest in Retman: `supported_versions=">=1.0,<2"` (semantic versioning applies from 1.0.0: options, command names and envelope shapes do not change incompatibly within the 1.x series).
 
 ```python
@@ -360,13 +360,13 @@ result = run_command(
         "duration_min": 60,
     },
 )
-print(result.result.peak_discharge_m3s, [n.text for n in result.notices])  # result object
+print(result.result.peak_discharge_m3s, [n.message for n in result.notices])  # result object
 envelope = result.to_dict()  # hydrolog-result/1 envelope as a dict (result.to_json() - text)
 ```
 
 ### MCP clients (Claude Code and others)
 
-The MCP server exposes every catalog command as a tool (name = `operation_id`, e.g. `tc_kirpich`). It requires the `hydrolog[mcp]` extra (`mcp>=2.3,<3`) and runs over stdio.
+The MCP server exposes every catalog command as a tool (name = `operation_id`, e.g. `hydrolog_tc_kirpich`). It requires the `hydrolog[mcp]` extra (`mcp>=2.3,<3`) and runs over stdio.
 
 ```bash
 pip install "hydrolog[mcp,raster] @ git+https://github.com/Daldek/Hydrolog.git"
@@ -378,13 +378,13 @@ claude mcp add hydrolog -- hydrolog mcp --allow-dir ~/hydrolog-data
 Other MCP clients (configuration file, e.g. `.mcp.json`):
 
 ```json
-{"mcpServers": {"hydrolog": {"command": "hydrolog", "args": ["mcp", "--allow-dir", "/home/ola/hydrolog-data"]}}}
+{"mcpServers": {"hydrolog": {"command": "hydrolog", "args": ["mcp", "--allow-dir", "/data/hydrolog-data"]}}}
 ```
 
-- `--allow-dir DIR` (repeatable) lists the directories in which the tools may read and write files; paths outside them fail with a `forbidden` error. Without `--allow-dir`, commands with path-type options are rejected, while commands without files (e.g. `tc_kirpich`, `cn_lookup`) work.
-- `--lang pl|en` selects the language of the tool descriptions.
+- `--allow-dir DIR` (repeatable) lists the directories in which the tools may read files and, with `--allow-writes`, write them; paths outside them fail with a `forbidden` error. Without `--allow-dir`, commands with path-type options are rejected, while commands without files (e.g. `hydrolog_tc_kirpich`, `hydrolog_cn_lookup`) work.
+- `--allow-writes` lets the writing tools (`hydrolog_report_generate`, `hydrolog_soil_hsg`, `hydrolog_commands_guide`) write inside the `--allow-dir` directories; without it they only plan. `--tools FAMILIES` limits the exposed tools to command groups or `core`. The console script `hydrolog-mcp` starts the same server. The server has no `--lang` option: its output is always English.
 - Success: `structuredContent` = the `hydrolog-result/1` envelope; error: `isError: true` with a `hydrolog-error/1` document.
-- Agent guide: `AGENTS.md` in the repository (generated by `hydrolog commands guide --format agents --lang pl`).
+- Agent guide: `AGENTS.md` in the repository (generated by `hydrolog commands guide --format agents --output AGENTS.md`).
 
 ### IMGWTools: series export → `stats` commands
 
@@ -398,7 +398,7 @@ hydrolog stats characteristic --input-file q_daily.csv --value-column Q --date-c
 hydrolog stats monthly --input-file q_daily.csv --value-column Q --date-column date
 ```
 
-Annual maxima and minima (`stats flood-frequency`, `stats low-flow`) are taken from **complete** hydrological years (Nov-Oct; a value for every day of the year): an export covering calendar years loses the first and last hydrological year, and the skipped years are listed in the `incomplete_years` notice and the `incomplete_years` result field. A series shorter than recommended produces a warning in `notices`; a series without 3 complete years fails with `calculation_error`. The same commands are available in Python (`hydrolog.operations.stats_flood_frequency(input_file=..., value_column="Q", date_column="date")`) and over MCP (`stats_flood_frequency`).
+Annual maxima and minima (`stats flood-frequency`, `stats low-flow`) are taken from **complete** hydrological years (Nov-Oct; a value for every day of the year): an export covering calendar years loses the first and last hydrological year, and the skipped years are listed in the `incomplete_years` notice and the `incomplete_years` result field. A series shorter than recommended produces a warning in `notices`; a series without 3 complete years fails with `calculation_error`. The same commands are available in Python (`hydrolog.operations.stats_flood_frequency(input_file=..., value_column="Q", date_column="date")`) and over MCP (`hydrolog_stats_flood_frequency`).
 
 ### Hydrograf: migrating HSG from Kartograf to Hydrolog
 
@@ -492,7 +492,7 @@ cn = calculate_weighted_cn(parts)
 | HydrographGenerator | ✅ | SCS bug fixed in v0.5.1 (constant 0.208) |
 | Unit tests | ✅ | 35 tests |
 | Integration tests | ✅ | 15 tests |
-| Operations layer, command catalog, CLI, MCP (v1.0.0) | ✅ | 37 commands; `hydrolog.operations`, `hydrolog mcp` |
+| Operations layer, command catalog, CLI, MCP (v1.0.0) | ✅ | 38 commands; `hydrolog.operations`, `hydrolog mcp` |
 | `soil` module (HSG, v1.0.0) | ✅ | `hsg_from_rasters`, `hsg_statistics`, `soil *` commands |
 | Result serialization (v1.0.0) | ✅ | `to_dict()`/`to_json()` in all result classes |
 
@@ -537,4 +537,4 @@ cn = calculate_weighted_cn(parts)
 
 ---
 
-**Last updated:** 2026-10-19
+**Last updated:** 2026-10-24
