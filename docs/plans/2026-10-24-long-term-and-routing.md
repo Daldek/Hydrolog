@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Date | 2026-10-24 |
-| Status | Research for the author's decisions. Nothing in this report is approved or implemented; a change of a command, option or result schema starts with a plan in `docs/plans/` ([DEV-17.4][dev-std]) and ADRs ([DOC-8.1][doc-std]). |
+| Status | Research for the author's decisions. The routing part (section 5, phases R0 to R4) was taken up on 2026-10-24: decisions D1, D9, D10, D13 and D14 are recorded in [ADR-0007](../decisions/0007-flood-routing-enters-the-scope.md) and in the plan [2026-10-24-flood-routing.md](2026-10-24-flood-routing.md). Nothing else in this report is approved; the continuous-modelling part (section 4, phases L0 to L6) is not implemented. A change of a command, option or result schema starts with a plan in `docs/plans/` ([DEV-17.4][dev-std]) and ADRs ([DOC-8.1][doc-std]). |
 | Base | branch `chore/nogat-2.1`, commit `d4f7282` (Hydrolog 1.0.0.dev0); this report lives on branch `research/long-term-and-routing` |
 | Method | Reading of the repository, the Nogat standard 2.1 and the ecosystem registry; checks of candidate libraries on GitHub and PyPI (all dates below are the state on 2026-10-24); reading of primary sources; small throwaway numerical experiments (Appendix A, not kept in the repository). |
-| Location | `docs/research/` is the path requested for this report. DEV-17.4 says `docs/research/` is not used for new work; if the standard prevails, the file moves to `docs/plans/` unchanged (decision D14). |
+| Location | Moved from `docs/research/` to `docs/plans/` on 2026-10-24 (decision D14): DEV-17.4 says `docs/research/` is not used for new work. The text is otherwise unchanged. |
 
 ## 1. Summary
 
