@@ -10,15 +10,17 @@ from hydrolog.routing import Hydrograph, LagReach, MuskingumReach
 from hydrolog.routing.muskingum import MAX_SUBSTEPS, subreach_window
 from hydrolog.routing.reach import MAX_ORDINATES
 
-FLOOD = [0.0, 10.0, 40.0, 90.0, 60.0, 30.0, 10.0, 0.0, 0.0, 0.0]
+from ._routing_reference import (
+    IOWA_INFLOW,
+    IOWA_K_MIN,
+    IOWA_OUTFLOW,
+    IOWA_STEP_MIN,
+    IOWA_TOLERANCE,
+    IOWA_WEIGHTS,
+    IOWA_X,
+)
 
-# University of Iowa, Lesson 27, "Muskingum Flood Routing Example": K = 20 h, X = 0.25,
-# dt = 12 h. The handout prints the inflow, the weights to four decimals and the
-# outflow to 0.1 cfs, so a value of the table is right within 0.05 cfs.
-IOWA_INFLOW = [100.0, 300.0, 680.0, 500.0, 400.0, 310.0, 230.0, 180.0, 100.0, 50.0]
-IOWA_OUTFLOW = [100.0, 109.5, 236.5, 481.3, 487.2, 433.1, 358.9, 282.9, 220.3, 149.2]
-IOWA_WEIGHTS = (0.0476, 0.5238, 0.4286)
-IOWA_TOLERANCE = 0.05
+FLOOD = [0.0, 10.0, 40.0, 90.0, 60.0, 30.0, 10.0, 0.0, 0.0, 0.0]
 
 
 def flood() -> Hydrograph:
@@ -57,10 +59,12 @@ def reference(inflow, k, x, dt, count, initial):
 
 class TestPublishedExample:
     def reach(self) -> MuskingumReach:
-        return MuskingumReach(k_min=20.0 * 60.0, x=0.25, subreaches=1)
+        return MuskingumReach(k_min=IOWA_K_MIN, x=IOWA_X, subreaches=1)
 
     def route(self):
-        inflow = Hydrograph.from_step(IOWA_INFLOW, 12.0 * 60.0, start_min=12.0 * 60.0)
+        inflow = Hydrograph.from_step(
+            IOWA_INFLOW, IOWA_STEP_MIN, start_min=IOWA_STEP_MIN
+        )
         return self.reach().route(inflow, extend_min=0.0)
 
     def test_the_outflow_agrees_with_the_handout_within_its_rounding(self):
@@ -89,10 +93,10 @@ class TestPublishedExample:
         result = self.route()
 
         # S = K [X I + (1 - X) O] in m3: K in seconds times the weighted flow
-        assert result.storage_start_m3 == pytest.approx(1200.0 * 60.0 * 100.0)
+        assert result.storage_start_m3 == pytest.approx(IOWA_K_MIN * 60.0 * 100.0)
         last = result.outflow.discharge_m3s[-1]
         assert result.storage_end_m3 == pytest.approx(
-            1200.0 * 60.0 * (0.25 * 50.0 + 0.75 * last)
+            IOWA_K_MIN * 60.0 * (IOWA_X * 50.0 + (1.0 - IOWA_X) * last)
         )
         assert result.storage_end_m3 > result.storage_start_m3
 

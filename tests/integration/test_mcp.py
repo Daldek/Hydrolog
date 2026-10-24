@@ -219,6 +219,7 @@ class TestToolList:
             "hydrolog_commands_guide",
             "hydrolog_report_generate",
             "hydrolog_route_lag",
+            "hydrolog_route_muskingum",
             "hydrolog_soil_hsg",
         }
         for name, tool in tools.items():

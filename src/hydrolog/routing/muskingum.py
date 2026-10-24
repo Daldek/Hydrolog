@@ -70,6 +70,13 @@ def _rule_of_thumb(k_min: float, step_min: float) -> int:
     return max(1, math.floor(k_min / step_min + 0.5))
 
 
+def _reaches(lowest: int, highest: int | None = None) -> str:
+    """Return the number or range of sub-reaches in words: ``3 to 9 sub-reaches``."""
+    if highest is not None and highest != lowest:
+        return f"{lowest} to {highest} sub-reaches"
+    return "1 sub-reach" if lowest == 1 else f"{lowest} sub-reaches"
+
+
 @dataclass(frozen=True)
 class _Plan:
     """How the scheme runs on a time axis: sub-reaches and sub-steps per step."""
@@ -161,8 +168,10 @@ class MuskingumReach(Reach):
         if lowest <= count <= highest:
             return _Plan(count, 1)
         if lowest <= highest:
-            problem = f"it keeps the weights non-negative for {lowest} to {highest}"
-            hint = f"Give {lowest} to {highest} sub-reaches, or leave it out."
+            problem = (
+                f"the weights stay non-negative only for {_reaches(lowest, highest)}"
+            )
+            hint = f"Give {_reaches(lowest, highest)}, or leave subreaches out."
         else:
             problem = "no whole number of sub-reaches keeps the weights non-negative"
             hint = (
@@ -228,7 +237,7 @@ class MuskingumReach(Reach):
                 hint="Use a shorter hydrograph, a shorter time step or a longer K.",
             )
         count = _rule_of_thumb(self.k_min, step_min / substeps)
-        reaches = "sub-reach" if count == 1 else f"{count} sub-reaches"
+        reaches = _reaches(count)
         notice = RoutingNotice(
             "substeps_added",
             f"No whole number of sub-reaches keeps the weights of K = "

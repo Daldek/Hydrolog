@@ -264,4 +264,160 @@ COMMANDS: tuple[Command, ...] = (
             },
         ),
     ),
+    Command(
+        name="route muskingum",
+        operation_id="hydrolog_route_muskingum",
+        summary_pl=(
+            "Przeprowadź hydrogram metodą Muskingum: retencja K[XI + (1-X)O] na "
+            "pododcinkach."
+        ),
+        summary=(
+            "Route a hydrograph by Muskingum: storage K[XI + (1-X)O] over sub-reaches."
+        ),
+        description_pl=(
+            "Metoda Muskingum (jak w HEC-HMS): S = K[X I + (1-X) O] na `subreaches` "
+            "równych pododcinkach o K/N. Domyślnie N = K/krok; wagi muszą być "
+            "nieujemne: |2KX| <= krok <= 2K(1-X), inaczej krok jest dzielony "
+            "(`substeps_added`). Zwraca szczyty, objętości, bilans i szereg."
+        ),
+        description=(
+            "Muskingum routing (as in HEC-HMS): S = K[X I + (1-X) O] over `subreaches` "
+            "equal sub-reaches of K/N. Default N = K/step; the weights must stay "
+            "non-negative, |2KX| <= step <= 2K(1-X), else the step is divided "
+            "(`substeps_added`). Returns peaks, volumes, balance and the series."
+        ),
+        function="hydrolog.operations.route_muskingum",
+        options=(
+            Option(
+                name="k_min",
+                type="number",
+                description_pl=(
+                    "Czas przepływu fali K na odcinku [min]; > 0 (w przybliżeniu "
+                    "długość odcinka przez prędkość fali powodziowej)."
+                ),
+                description=(
+                    "Travel time K of the reach [min]; > 0 (about the reach length "
+                    "divided by the flood-wave celerity)."
+                ),
+                required=True,
+                exclusive_minimum=0,
+                unit="min",
+            ),
+            Option(
+                name="x",
+                type="number",
+                description_pl=(
+                    "Współczynnik wagowy X, od 0 do 0,5: 0 to zbiornik liniowy "
+                    "(największe tłumienie), 0,5 przenosi falę bez tłumienia."
+                ),
+                description=(
+                    "Weighting factor X, 0 to 0.5: 0 is a linear reservoir (maximum "
+                    "attenuation), 0.5 passes the wave on without attenuation."
+                ),
+                required=True,
+                minimum=0,
+                maximum=0.5,
+            ),
+            Option(
+                name="subreaches",
+                type="integer",
+                description_pl=(
+                    "Liczba równych pododcinków o K/N, co najmniej 1; domyślnie "
+                    "K/krok zaokrąglone. Wagi muszą pozostać nieujemne: "
+                    "2KX/krok <= N <= 2K(1-X)/krok."
+                ),
+                description=(
+                    "Number of equal sub-reaches of K/N, at least 1; default K/step "
+                    "rounded. Each keeps the weights non-negative for "
+                    "2KX/step <= N <= 2K(1-X)/step."
+                ),
+                minimum=1,
+            ),
+            *INFLOW_OPTIONS,
+            *RUN_OPTIONS,
+            *OUTPUT_OPTIONS,
+        ),
+        one_of=INFLOW_ONE_OF,
+        examples=(
+            {
+                "k_min": 40.0,
+                "x": 0.2,
+                "input_file": f"{_FIXTURES}/flood_inflow.csv",
+                "output": "outflow.csv",
+            },
+            {
+                # the University of Iowa example: K = 20 h, X = 0.25, step 12 h
+                "k_min": 1200.0,
+                "x": 0.25,
+                "subreaches": 1,
+                "times_min": [
+                    720,
+                    1440,
+                    2160,
+                    2880,
+                    3600,
+                    4320,
+                    5040,
+                    5760,
+                    6480,
+                    7200,
+                ],
+                "discharge_m3s": [100, 300, 680, 500, 400, 310, 230, 180, 100, 50],
+                "extend_min": 0,
+            },
+        ),
+        result_schema="hydrolog-route-muskingum/1",
+        cardinality="bounded",
+        rules=(
+            "Give the hydrograph inline or as `input_file`, at a regular step.",
+            "`x` is 0 (linear reservoir) to 0.5 (no attenuation); more `subreaches` "
+            "attenuate less.",
+            "A `subreaches` outside the window is `unstable_timestep`; the error gives "
+            "the window.",
+        ),
+        rules_pl=(
+            "Podaj hydrogram w treści albo jako `input_file`, w stałym kroku.",
+            "`x` od 0 (zbiornik liniowy) do 0,5 (bez tłumienia); więcej `subreaches` "
+            "tłumi mniej.",
+            "`subreaches` poza oknem to `unstable_timestep`; błąd podaje okno.",
+        ),
+        errors=_ERRORS,
+        example_results=(
+            {
+                "model": "muskingum",
+                "parameters": {"k_min": 40.0, "x": 0.2, "subreaches": 4},
+                "timestep_min": 10.0,
+                "extension_min": 30.0,
+                "outflow_peak_m3s": 36.437015,
+                "outflow_time_to_peak_min": 100.0,
+                "peak_delay_min": 40.0,
+            },
+            {
+                "model": "muskingum",
+                "parameters": {
+                    "k_min": 1200.0,
+                    "x": 0.25,
+                    "subreaches": 1,
+                    "c_current": 0.047619,
+                    "c_previous": 0.52381,
+                    "c_outflow": 0.428571,
+                },
+                "outflow_peak_m3s": 487.241427,
+                "outflow_time_to_peak_min": 3600.0,
+                "peak_attenuation_pct": 28.346849,
+                "outflow_m3s": [
+                    100.0,
+                    109.52381,
+                    236.462585,
+                    481.341108,
+                    487.241427,
+                    433.103469,
+                    358.949106,
+                    282.88295,
+                    220.283169,
+                    149.168977,
+                ],
+            },
+        ),
+    ),
 )
