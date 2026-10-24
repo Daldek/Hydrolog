@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=77.0.3"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "hydrolog"
-version = "1.0.0.dev0"
+dynamic = ["version"]
 description = "Python library for hydrological calculations"
 readme = "README.md"
 license = {text = "MIT"}
@@ -63,11 +63,14 @@ Repository = "https://github.com/Daldek/Hydrolog.git"
 Issues = "https://github.com/Daldek/Hydrolog/issues"
 
 [tool.setuptools.packages.find]
-where = ["."]
+where = ["src"]
 include = ["hydrolog*"]
 
 [tool.setuptools.package-data]
-hydrolog = ["_data/agents/*.md"]
+hydrolog = ["py.typed", "_data/agents/*.md"]
+
+[tool.setuptools.dynamic]
+version = {attr = "hydrolog.__version__"}
 
 [dependency-groups]
 dev = [
@@ -93,7 +96,7 @@ quote-style = "double"
 
 [tool.mypy]
 python_version = "3.12"
-files = ["hydrolog"]
+files = ["src"]
 exclude = ['^\.claude/']
 warn_return_any = true
 warn_unused_configs = true

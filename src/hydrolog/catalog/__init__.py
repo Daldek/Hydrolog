@@ -25,10 +25,11 @@ files), :mod:`~hydrolog.catalog.dispatch` (lookup, validation, running) and
 How to add a command
 --------------------
 1. **Operation.** Add a public, documented (NumPy docstring), fully type-hinted,
-   keyword-only function to the module of its group, ``hydrolog/operations/<group>.py``
-   (``operations`` is a package with one module per group; a new group gets a new
-   module), and re-export it in ``hydrolog/operations/__init__.py`` (``import`` and
-   ``__all__``), where ``function="hydrolog.operations:<name>"`` resolves.
+   keyword-only function to the module of its group,
+   ``src/hydrolog/operations/<group>.py`` (``operations`` is a package with one
+   module per group; a new group gets a new module), and re-export it in
+   ``src/hydrolog/operations/__init__.py`` (``import`` and ``__all__``), where
+   ``function="hydrolog.operations:<name>"`` resolves.
    Its parameters are named exactly like the options, take JSON-friendly values
    (numbers, strings, lists, paths as ``str``) and have a Python default wherever the
    option has no ``required=True``. It composes existing classes (no new
@@ -39,7 +40,7 @@ How to add a command
    parameters with :mod:`hydrolog.catalog.inputs`; raise the errors of
    :mod:`hydrolog.exceptions` (``InvalidParameterError``, ``InputDataError``,
    ``CalculationError``, ``OutputError``...).
-2. **Declaration.** Create ``hydrolog/catalog/groups/<group>.py`` (or extend the
+2. **Declaration.** Create ``src/hydrolog/catalog/groups/<group>.py`` (or extend the
    module of an existing group) exporting ``COMMANDS``, a tuple of :class:`Command`::
 
        COMMANDS = (
@@ -64,8 +65,8 @@ How to add a command
    for ``choice``, ``operation_id`` = snake_case of ``name``, function path
    format...).
 3. **Registration.** Append the module name to ``GROUP_MODULES`` in
-   ``hydrolog/catalog/groups/__init__.py`` (its position is the group order in the CLI
-   help and the agent guide; the ``commands`` group stays last).
+   ``src/hydrolog/catalog/groups/__init__.py`` (its position is the group order in the
+   CLI help and the agent guide; the ``commands`` group stays last).
 4. **Tests.** Every command needs at least one ``examples`` entry; the catalog tests
    run each example through :func:`run_command` and check that every option is a
    parameter of the operation.

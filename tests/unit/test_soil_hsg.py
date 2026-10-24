@@ -438,7 +438,7 @@ class TestRasterExtraIsOptional:
             "assert classify_hsg([200], [400], [400]).tolist() == [2]\n"
             "assert 'rasterio' not in sys.modules and 'pyproj' not in sys.modules\n"
         )
-        env = {**os.environ, "PYTHONPATH": str(REPO_ROOT)}
+        env = {**os.environ, "PYTHONPATH": str(REPO_ROOT / "src")}
 
         result = subprocess.run(
             [sys.executable, "-c", code], env=env, capture_output=True, text=True

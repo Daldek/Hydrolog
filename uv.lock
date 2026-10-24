@@ -602,7 +602,6 @@ wheels = [
 
 [[package]]
 name = "hydrolog"
-version = "1.0.0.dev0"
 source = { editable = "." }
 dependencies = [
     { name = "numpy" },

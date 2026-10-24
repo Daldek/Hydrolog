@@ -2,7 +2,7 @@
 
 :func:`agent_guide` renders ``AGENTS.md`` (``format="agents"``) and ``llms.txt``
 (``format="llms"``), in Polish or English, from the hand-written templates in
-``hydrolog/_data/agents`` (``<format>.<lang>.md``). Every marker
+``src/hydrolog/_data/agents`` (``<format>.<lang>.md``). Every marker
 ``<!-- hydrolog:<block> -->`` of a template is replaced by a block generated from the
 command catalog (:func:`hydrolog.catalog.data_commands`), the error registry
 (:data:`hydrolog.exceptions.ERROR_CODES`) and the data of this module: the principles

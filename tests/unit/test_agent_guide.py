@@ -557,7 +557,9 @@ def test_paths_and_modules_named_in_the_guide_exist(lang):
     paths = {
         span
         for span in code_spans(guide)
-        if re.fullmatch(r"(?:hydrolog|docs|tests)/[A-Za-z0-9_./-]+|CLAUDE\.md", span)
+        if re.fullmatch(
+            r"(?:src/hydrolog|docs|tests)/[A-Za-z0-9_./-]+|CLAUDE\.md", span
+        )
     }
     modules = {
         span
@@ -568,7 +570,7 @@ def test_paths_and_modules_named_in_the_guide_exist(lang):
     assert {
         "CLAUDE.md",
         "docs/DEVELOPMENT_STANDARDS.md",
-        "hydrolog/agent_guide.py",
+        "src/hydrolog/agent_guide.py",
     } <= paths
     for path in paths:
         assert (REPOSITORY / path).exists(), path
@@ -638,8 +640,8 @@ def test_templates_ship_as_package_data():
     )
     patterns = pyproject["tool"]["setuptools"]["package-data"]["hydrolog"]
     templates = sorted(
-        path.relative_to(REPOSITORY / "hydrolog").as_posix()
-        for path in (REPOSITORY / "hydrolog" / "_data" / "agents").iterdir()
+        path.relative_to(REPOSITORY / "src" / "hydrolog").as_posix()
+        for path in (REPOSITORY / "src" / "hydrolog" / "_data" / "agents").iterdir()
     )
 
     assert templates == sorted(
