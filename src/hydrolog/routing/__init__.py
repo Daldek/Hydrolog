@@ -9,7 +9,9 @@ Time is in minutes and discharge in m3/s.
 * :class:`Reach` -- the base class of the routing elements; :meth:`Reach.route`
   returns a :class:`RoutingResult` (outflow, storage at both ends, volume balance,
   notices);
-* :class:`LagReach` -- lag routing.
+* :class:`LagReach` -- lag routing;
+* :class:`MuskingumReach` -- the Muskingum method, with sub-reaches inside the window of
+  non-negative weights.
 
 The recurrences shared with the Clark unit hydrograph are in
 ``hydrolog.routing._kernels``.
@@ -26,6 +28,14 @@ from __future__ import annotations
 
 from hydrolog.routing.hydrograph import Hydrograph
 from hydrolog.routing.lag import LagReach
+from hydrolog.routing.muskingum import MuskingumReach
 from hydrolog.routing.reach import Reach, RoutingNotice, RoutingResult
 
-__all__ = ["Hydrograph", "LagReach", "Reach", "RoutingNotice", "RoutingResult"]
+__all__ = [
+    "Hydrograph",
+    "LagReach",
+    "MuskingumReach",
+    "Reach",
+    "RoutingNotice",
+    "RoutingResult",
+]

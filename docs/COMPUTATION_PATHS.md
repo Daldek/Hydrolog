@@ -948,6 +948,43 @@ result = LagReach(lag_min=60.0).route(inflow)
 print(result.outflow.time_to_peak_min, result.peak_delay_min)   # 120.0 60.0
 ```
 
+#### 3.9.3 Muskingum (`MuskingumReach`, `route muskingum`)
+
+```
+S = K [X I + (1 - X) O]          K travel time [min], X weight, 0 <= X <= 0.5
+O_t = c_current I_t + c_previous I_{t-1} + c_outflow O_{t-1}        D = 2K(1 - X) + dt
+c_current = (dt - 2KX) / D     c_previous = (dt + 2KX) / D     c_outflow = (2K(1 - X) - dt) / D
+```
+
+The storage is a prism (`K O`) plus a wedge (`K X (I - O)`); the continuity equation over a step with the trapezoid rule gives the recurrence (McCarthy 1938; Chow, Maidment and Mays 1988; [HEC-HMS Muskingum model](https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/channel-flow/muskingum-model)). The weights sum to 1, so a steady state is kept. `X = 0` is a linear reservoir (maximum attenuation, the scheme of `ClarkIUH`), `X = 0.5` a wave that does not attenuate. Whatever the step, the first two moments of the discrete impulse response are those of the continuous model: the mean delay is `K` and the variance `K²(1 - 2X)`.
+
+**Positivity window.** The three weights are non-negative only when `|2KX| <= dt <= 2K(1 - X)`. Below `2KX` the weight of the current inflow is negative, so the first ordinate of a rising limb takes water out of the outflow; above `2K(1 - X)` the weight of the previous outflow is negative and the outflow oscillates. With `K = 20 h`: `X = 0`: `dt` from 0 to 40 h; `0.25`: 10 to 30 h; `0.5`: exactly 20 h.
+
+**Sub-reaches.** The reach is divided into `N` equal sub-reaches of `K/N`, in series, each with the same `X` and each starting with the initial outflow (HEC-HMS). The mean delay stays `K` and the variance becomes `K²(1 - 2X)/N`: more sub-reaches, less attenuation. Every sub-reach has to be inside the window, that is `2KX/dt <= N <= 2K(1 - X)/dt` (`hydrolog.routing.muskingum.subreach_window`). Unless `subreaches` is given, `N` is `K/dt` rounded to the nearest whole number (a half goes up), the HEC-HMS rule that the travel time of a sub-reach is about one time step. The window is symmetric about `K/dt`, so that number is inside it whenever the window holds any whole number. A `subreaches` given by the caller is never changed: outside the window it is a `validation_error` (`details.reason` `unstable_timestep`, `details.minimum` and `details.maximum` the window, `details.timestep_min` the step).
+
+**When no whole number fits** (`K` shorter than the step allows, or `X` near 0.5 with `K/dt` not a whole number) every time step is divided into the fewest equal sub-steps, from 2 to 100, for which a window exists; the inflow is interpolated linearly, the scheme runs on the sub-step and the outflow is read at the original ordinates (notice `substeps_added`). The volume balance then has the sampling error of the trapezoid rule on the original ordinates, which `balance_error_m3` reports. If 100 sub-steps give no window (`K` shorter than `dt / (200 (1 - X))`, or `X = 0.5` with `K/dt` not a ratio of small whole numbers) or the divided series would have more than 1,000,000 ordinates, the reach is refused (`validation_error`, `details.option` `k_min`, `details.reason` `unstable_timestep`); `route lag` has no storage and no such limit.
+
+**Storage and balance.** The storage is the sum over the sub-reaches of `K/N [X I_j + (1 - X) O_j]`, where `I_j` is the inflow of sub-reach `j` (the outflow of `j - 1`); at the first ordinate every sub-reach but the first is fed by the initial outflow. The steady storage is `K` times the final inflow. The balance error is zero to rounding because the trapezoid continuity holds in every sub-reach and the flows at the junctions cancel.
+
+**Reference values.** The [University of Iowa handout](https://user.engineering.uiowa.edu/~flood/handouts/EX-L27-Muskingum-soln.pdf) (Lesson 27) routes ten inflow ordinates at `dt = 12 h` through one reach with `K = 20 h` and `X = 0.25`, starting from the steady outflow of 100 cfs. It prints the weights 0.0476, 0.5238 and 0.4286 and the outflow to 0.1 cfs, so a printed value is right to 0.05 cfs:
+
+| Time (h) | 12 | 24 | 36 | 48 | 60 | 72 | 84 | 96 | 108 | 120 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Inflow (cfs) | 100 | 300 | 680 | 500 | 400 | 310 | 230 | 180 | 100 | 50 |
+| Published outflow (cfs) | 100.0 | 109.5 | 236.5 | 481.3 | 487.2 | 433.1 | 358.9 | 282.9 | 220.3 | 149.2 |
+| `MuskingumReach` (cfs) | 100.0000 | 109.5238 | 236.4626 | 481.3411 | 487.2414 | 433.1035 | 358.9491 | 282.8830 | 220.2832 | 149.1690 |
+
+The largest difference is 0.049 cfs, inside the rounding of the table (`tests/unit/test_routing_muskingum.py`). The same file tests the identities: `X = 0.5` with `K` equal to `N` steps is `LagReach` of `N` steps (exact, and with a fractional number of steps the interpolated lag), `X = 0` is the Clark loop, the mean delay is `K` and the variance `K²(1 - 2X)/N` to 1e-9 for 1 to 4 sub-reaches, and `tests/unit/test_routing_kernels.py` shows second-order convergence of the sinusoidal response to the transfer function `(1 - KXs) / (1 + K(1 - X)s)`.
+
+```python
+from hydrolog.routing import Hydrograph, MuskingumReach
+
+inflow = Hydrograph.from_step([100, 300, 680, 500, 400, 310, 230, 180, 100, 50], 720.0)
+result = MuskingumReach(k_min=1200.0, x=0.25, subreaches=1).route(inflow, extend_min=0.0)
+print(result.outflow.discharge_m3s.round(1).tolist())
+# [100.0, 109.5, 236.5, 481.3, 487.2, 433.1, 358.9, 282.9, 220.3, 149.2]
+```
+
 ---
 
 ## 4. Literature Verification
@@ -981,6 +1018,7 @@ print(result.outflow.time_to_peak_min, result.peak_delay_min)   # 120.0 60.0
 | Annual extremes from a daily series: complete hydrological years only | KZGW (2017), WMO No. 1029 (2009) | ✅ |
 | Empirical frequency of minima (non-exceedance positions) | Weibull (1939), Hazen (1930), Cunnane (1978); WMO No. 1029 (2009), Tallaksen and van Lanen (2004) | ✅ |
 | Lag routing (`route lag`, `LagReach`) | HEC-HMS Technical Reference Manual (Lag routing model) | ✅ |
+| Muskingum routing with sub-reaches (`route muskingum`, `MuskingumReach`) | McCarthy (1938), Chow, Maidment, Mays (1988), HEC-HMS Technical Reference Manual (Muskingum model), University of Iowa Lesson 27 (worked example) | ✅ |
 
 ### 4.2 Key Publications
 
@@ -990,6 +1028,7 @@ print(result.outflow.time_to_peak_min, result.peak_delay_min)   # 120.0 60.0
 | Snyder, F.F. | 1938 | Definition of the Snyder synthetic UH |
 | Kirpich, Z.P. | 1940 | Time of concentration formula |
 | Clark, C.O. | 1945 | Translation + reservoir model |
+| McCarthy, G.T. | 1938 | Muskingum method: wedge storage `S = K [X I + (1 - X) O]` |
 | FAA | 2013 | Tc formula for overland flow (AC 150/5320-5D) |
 | Kerby, W.S. | 1959 | Tc formula for sheet flow (retardance coefficient) |
 | Giandotti, M. | 1934 | Tc formula for Italian catchments |
@@ -1146,6 +1185,12 @@ print(result.outflow.time_to_peak_min, result.peak_delay_min)   # 120.0 60.0
 23. **USDA-NRCS** (2010). National Engineering Handbook, Part 630 Hydrology, Chapter 15: Time of Concentration (lag equation: Y is the mean terrain slope of the catchment).
 
 24. **TxDOT**. Hydraulic Design Manual, Chapter 4 Hydrology, Section 11: Time of Concentration (the 1200 ft = 366 m limit for the Kerby formula; the Kerby-Kirpich method).
+
+### Flood Routing
+
+25. **McCarthy, G.T.** (1938). The unit hydrograph and flood routing. Unpublished manuscript presented at the conference of the North Atlantic Division, U.S. Army Corps of Engineers, New London, Connecticut, 24 June 1938.
+
+26. **University of Iowa**. Lesson 27: Hydrologic Routing, Muskingum Method (course handout EX-L27-Muskingum-soln). https://user.engineering.uiowa.edu/~flood/handouts/EX-L27-Muskingum-soln.pdf
 
 ---
 
