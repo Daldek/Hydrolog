@@ -1,56 +1,55 @@
 """Tests for visualization module."""
 
+import matplotlib
 import numpy as np
 import pytest
-import matplotlib
 
 matplotlib.use("Agg")  # Non-GUI backend for testing
 import matplotlib.pyplot as plt
 
+from hydrolog.morphometry import HypsometricCurve
+from hydrolog.network import StreamNetwork, StreamSegment
+from hydrolog.precipitation import BetaHietogram, Station
+from hydrolog.runoff import (
+    ClarkIUH,
+    HydrographGenerator,
+    NashIUH,
+    SCSUnitHydrograph,
+    SnyderUH,
+)
 from hydrolog.visualization import (
-    # Styles
-    setup_hydrolog_style,
     COLORS,
     LABELS_PL,
     PALETTE,
-    get_color,
-    get_label,
-    add_watermark,
     add_peak_annotation,
     add_stats_box,
+    add_watermark,
     format_time_axis,
+    get_color,
+    get_label,
+    plot_bifurcation_ratios,
+    # Water balance
+    plot_cn_curve,
+    plot_elevation_histogram,
     # Hietogram
     plot_hietogram,
     plot_hietogram_comparison,
     # Hydrograph
     plot_hydrograph,
-    plot_unit_hydrograph,
-    # Combined
-    plot_rainfall_runoff,
-    # Unit Hydrograph comparison
-    plot_uh_comparison,
-    # Water balance
-    plot_cn_curve,
     # Morphometry
     plot_hypsometric_curve,
-    plot_elevation_histogram,
-    # Network
-    plot_stream_order_stats,
-    plot_bifurcation_ratios,
+    # Combined
+    plot_rainfall_runoff,
     # Interpolation
     plot_stations_map,
+    # Network
+    plot_stream_order_stats,
+    # Unit Hydrograph comparison
+    plot_uh_comparison,
+    plot_unit_hydrograph,
+    # Styles
+    setup_hydrolog_style,
 )
-
-from hydrolog.precipitation import BetaHietogram, Station
-from hydrolog.runoff import (
-    HydrographGenerator,
-    SCSUnitHydrograph,
-    NashIUH,
-    ClarkIUH,
-    SnyderUH,
-)
-from hydrolog.morphometry import HypsometricCurve
-from hydrolog.network import StreamNetwork, StreamSegment
 
 
 @pytest.fixture(autouse=True)
@@ -453,19 +452,9 @@ class TestModuleImport:
     def test_import_all_functions(self):
         """Test that all public functions can be imported."""
         from hydrolog.visualization import (
-            setup_hydrolog_style,
             plot_hietogram,
-            plot_hietogram_comparison,
-            plot_hydrograph,
-            plot_unit_hydrograph,
             plot_rainfall_runoff,
-            plot_uh_comparison,
-            plot_cn_curve,
-            plot_hypsometric_curve,
-            plot_elevation_histogram,
-            plot_stream_order_stats,
-            plot_bifurcation_ratios,
-            plot_stations_map,
+            setup_hydrolog_style,
         )
 
         assert setup_hydrolog_style is not None

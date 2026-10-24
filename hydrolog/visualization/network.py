@@ -4,23 +4,20 @@ This module provides functions for visualizing stream network statistics
 and ordering results.
 """
 
-from typing import Optional
-
 import matplotlib.pyplot as plt
 import numpy as np
 
 from hydrolog.network.stream_order import NetworkStatistics
-
 from hydrolog.visualization.styles import (
+    PALETTE,
     get_color,
     get_label,
-    PALETTE,
 )
 
 
 def plot_stream_order_stats(
     stats: NetworkStatistics,
-    title: Optional[str] = None,
+    title: str | None = None,
     figsize: tuple = (14, 5),
 ) -> plt.Figure:
     """
@@ -72,7 +69,7 @@ def plot_stream_order_stats(
     ax1.set_xticklabels(orders)
 
     # Add count labels on bars
-    for bar, count in zip(bars1, counts):
+    for bar, count in zip(bars1, counts, strict=False):
         ax1.text(
             bar.get_x() + bar.get_width() / 2,
             bar.get_height() + 0.5,
@@ -94,7 +91,7 @@ def plot_stream_order_stats(
     ax2.set_xticklabels(orders)
 
     # Add length labels on bars
-    for bar, length in zip(bars2, lengths):
+    for bar, length in zip(bars2, lengths, strict=False):
         ax2.text(
             bar.get_x() + bar.get_width() / 2,
             bar.get_height() + 0.02,
@@ -123,7 +120,7 @@ def plot_stream_order_stats(
             label=f"Rb (śr. = {np.mean(rb_values):.2f})",
         )
         ax3.set_xticks(rb_x)
-        ax3.set_xticklabels([f"{o}/{o+1}" for o in rb_orders])
+        ax3.set_xticklabels([f"{o}/{o + 1}" for o in rb_orders])
 
     # Length ratios
     if stats.length_ratios:
@@ -158,8 +155,8 @@ def plot_stream_order_stats(
 
 def plot_bifurcation_ratios(
     stats: NetworkStatistics,
-    title: Optional[str] = None,
-    ax: Optional[plt.Axes] = None,
+    title: str | None = None,
+    ax: plt.Axes | None = None,
     figsize: tuple = (8, 6),
 ) -> plt.Figure:
     """
@@ -222,7 +219,7 @@ def plot_bifurcation_ratios(
     ax.set_xlabel("Stosunek rzędów")
     ax.set_ylabel(get_label("bifurcation_ratio"))
     ax.set_xticks(x)
-    ax.set_xticklabels([f"{o}/{o+1}" for o in orders])
+    ax.set_xticklabels([f"{o}/{o + 1}" for o in orders])
 
     if title is None:
         title = "Współczynniki bifurkacji Rb"
@@ -232,7 +229,7 @@ def plot_bifurcation_ratios(
     ax.set_ylim(0, max(values) * 1.3)
 
     # Add value labels
-    for bar, value in zip(bars, values):
+    for bar, value in zip(bars, values, strict=False):
         ax.text(
             bar.get_x() + bar.get_width() / 2,
             bar.get_height() + 0.1,

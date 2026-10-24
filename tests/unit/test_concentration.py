@@ -2,8 +2,8 @@
 
 import pytest
 
-from hydrolog.time import ConcentrationTime
 from hydrolog.exceptions import InvalidParameterError
+from hydrolog.time import ConcentrationTime
 
 
 class TestKirpich:

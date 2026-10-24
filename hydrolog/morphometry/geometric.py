@@ -1,7 +1,7 @@
 """Geometric parameters and shape indicators for watershed analysis."""
 
-from dataclasses import dataclass
 import math
+from dataclasses import dataclass
 
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError

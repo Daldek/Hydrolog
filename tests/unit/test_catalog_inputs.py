@@ -138,7 +138,9 @@ class TestReadTableCsv:
     def test_empty_file(self, tmp_path):
         """An empty file or one with only blank lines is ``empty``."""
         for content in ("", "\n\n  \n"):
-            error = failure(lambda: read_table(write(tmp_path, "e.csv", content)))
+            error = failure(
+                lambda content=content: read_table(write(tmp_path, "e.csv", content))
+            )
             assert error.details["reason"] == "empty"
 
     def test_not_utf8_is_an_encoding_error_with_a_hint(self, tmp_path):
@@ -555,7 +557,9 @@ class TestLoadSeriesInline:
     def test_values_must_be_a_list_of_numbers(self):
         """Text and matrices are not value lists."""
         for values in ("1,2,3", np.zeros((2, 2)), 5):
-            error = failure(lambda: load_series(values=values), InvalidParameterError)
+            error = failure(
+                lambda values=values: load_series(values=values), InvalidParameterError
+            )
             assert error.details["option"] == "values"
             assert error.details["reason"] == "type"
 
@@ -756,7 +760,8 @@ class TestLoadSeriesArguments:
             ({"date_column": "d"}, "date_column"),
         ):
             error = failure(
-                lambda: load_series(values=[1], **kwargs), InvalidParameterError
+                lambda kwargs=kwargs: load_series(values=[1], **kwargs),
+                InvalidParameterError,
             )
             assert error.details == {"option": option, "reason": "conflict"}
 
@@ -786,7 +791,9 @@ class TestLoadWatershed:
         """Both or neither source is a validation error."""
         path = write(tmp_path, "ws.json", json.dumps(WATERSHED))
         for kwargs in ({}, {"watershed": WATERSHED, "watershed_file": path}):
-            error = failure(lambda: load_watershed(**kwargs), InvalidParameterError)
+            error = failure(
+                lambda kwargs=kwargs: load_watershed(**kwargs), InvalidParameterError
+            )
             assert error.details["reason"] == "one_of"
 
     def test_missing_required_parameters_inline(self):
@@ -1013,14 +1020,17 @@ class TestLoadStations:
         """Both or neither source is a validation error."""
         path = write(tmp_path, "s.json", json.dumps(STATION_ROWS))
         for kwargs in ({}, {"stations": STATION_ROWS, "stations_file": path}):
-            error = failure(lambda: load_stations(**kwargs), InvalidParameterError)
+            error = failure(
+                lambda kwargs=kwargs: load_stations(**kwargs), InvalidParameterError
+            )
             assert error.details["reason"] == "one_of"
 
     def test_stations_must_be_a_list(self):
         """A string or a mapping is not a list of stations."""
         for stations in ("A", {"name": "A"}):
             error = failure(
-                lambda: load_stations(stations=stations), InvalidParameterError
+                lambda stations=stations: load_stations(stations=stations),
+                InvalidParameterError,
             )
             assert error.details["reason"] == "type"
 

@@ -101,8 +101,7 @@ def get_command(name_or_operation_id: str) -> Command:
     """
     if not isinstance(name_or_operation_id, str):
         raise InvalidParameterError(
-            "Command name must be a string, "
-            f"got {type(name_or_operation_id).__name__}",
+            f"Command name must be a string, got {type(name_or_operation_id).__name__}",
             details={"option": "command", "reason": "type", "expected": "string"},
         )
     key = " ".join(name_or_operation_id.split())

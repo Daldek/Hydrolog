@@ -1,7 +1,7 @@
 """Hydrograph generator combining SCS-CN, unit hydrograph, and convolution."""
 
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Union
+from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
@@ -9,12 +9,12 @@ from numpy.typing import NDArray
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError
 from hydrolog.precipitation.hietogram import HietogramResult
-from hydrolog.runoff.convolution import HydrographResult, convolve_discrete
-from hydrolog.runoff.scs_cn import AMC, SCSCN
-from hydrolog.runoff.unit_hydrograph import SCSUnitHydrograph
-from hydrolog.runoff.nash_iuh import NashIUH
 from hydrolog.runoff.clark_iuh import ClarkIUH
+from hydrolog.runoff.convolution import HydrographResult, convolve_discrete
+from hydrolog.runoff.nash_iuh import NashIUH
+from hydrolog.runoff.scs_cn import AMC, SCSCN
 from hydrolog.runoff.snyder_uh import SnyderUH
+from hydrolog.runoff.unit_hydrograph import SCSUnitHydrograph
 
 
 @dataclass
@@ -55,7 +55,7 @@ class HydrographGeneratorResult(JsonResultMixin):
     cn_used: int
     retention_mm: float
     initial_abstraction_mm: float
-    unit_hydrograph_result: Optional[Any] = None
+    unit_hydrograph_result: Any | None = None
 
     @property
     def peak_discharge_m3s(self) -> float:
@@ -167,10 +167,10 @@ class HydrographGenerator:
         self,
         area_km2: float,
         cn: int,
-        tc_min: Optional[float] = None,
+        tc_min: float | None = None,
         ia_coefficient: float = 0.2,
         uh_model: str = "scs",
-        uh_params: Optional[Dict[str, Any]] = None,
+        uh_params: dict[str, Any] | None = None,
     ) -> None:
         """
         Initialize hydrograph generator.
@@ -248,10 +248,7 @@ class HydrographGenerator:
                 )
 
             # Convert k to minutes if in hours
-            if k_unit == "hours":
-                k_min = k * 60.0
-            else:
-                k_min = k
+            k_min = k * 60.0 if k_unit == "hours" else k
 
             return NashIUH(n=n, k_min=k_min, area_km2=self.area_km2)
 
@@ -298,7 +295,7 @@ class HydrographGenerator:
 
     def generate(
         self,
-        precipitation: Union[HietogramResult, NDArray[np.float64], list],
+        precipitation: HietogramResult | NDArray[np.float64] | list,
         timestep_min: float = 5.0,
         amc: AMC = AMC.II,
     ) -> HydrographGeneratorResult:

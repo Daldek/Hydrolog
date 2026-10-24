@@ -8,8 +8,12 @@ COMMANDS: tuple[Command, ...] = (
     Command(
         name="scs effective",
         operation_id="scs_effective",
-        summary="Opad efektywny metodą SCS-CN z sumy opadu lub hietogramu (CN, AMC, Ia).",
-        summary_en="Effective precipitation by the SCS-CN method from a total or a hyetograph.",
+        summary=(
+            "Opad efektywny metodą SCS-CN z sumy opadu lub hietogramu (CN, AMC, Ia)."
+        ),
+        summary_en=(
+            "Effective precipitation by the SCS-CN method from a total or a hyetograph."
+        ),
         description=(
             "Opad efektywny (odpływ bezpośredni) metodą SCS-CN (USDA-NRCS): Pe = "
             "(P − Ia)² / (P − Ia + S) dla P > Ia, w przeciwnym razie Pe = 0, gdzie "

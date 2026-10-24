@@ -211,7 +211,8 @@ class TestHsgFromRasters:
         assert np.all(_read(out) == 0)
 
     def test_int16_nodata_in_some_cells_only(self, tmp_path):
-        """Test that SoilGrids-style -32768 cells become gaps, the rest is classified."""
+        """Test that SoilGrids-style -32768 cells become gaps, the rest is
+        classified."""
         arrays = {}
         for name, fill in {"clay": 300, "sand": 300, "silt": 400}.items():
             data = np.full((3, 3), fill, dtype=np.int16)
@@ -445,7 +446,8 @@ class TestHsgStatistics:
         assert stats.groups["B"].percent == pytest.approx(25.0)
 
     def test_projected_crs_uses_the_affine_cell_area(self, tmp_path):
-        """Test a metric CRS: 2x2 raster over 10x10 km -> 5x5 km cells = 2500 ha each."""
+        """Test a metric CRS: 2x2 raster over 10x10 km -> 5x5 km cells = 2500 ha
+        each."""
         path = _hsg_raster(
             tmp_path,
             [[1, 1], [2, 3]],
@@ -471,7 +473,8 @@ class TestHsgStatistics:
         assert stats.nodata.area_ha == pytest.approx(3 * stats.groups["B"].area_ha)
 
     def test_geographic_crs_area_is_geodetic_not_square_degrees(self, tmp_path):
-        """Test that an EPSG:4326 raster is measured on the ellipsoid (vs exact area)."""
+        """Test that an EPSG:4326 raster is measured on the ellipsoid (vs exact
+        area)."""
         res = 0.0022457  # ~250 m in latitude
         data = np.full((100, 100), 2, dtype=np.uint8)
         path = _hsg_raster(
@@ -631,7 +634,8 @@ class TestHsgStatisticsBbox:
         ],
     )
     def test_shares_match_the_exact_overlap_of_aligned_bboxes(self, tmp_path, bbox):
-        """Test the cut cells against the analytic overlap (bbox edges on the 1/10 grid)."""
+        """Test the cut cells against the analytic overlap (bbox edges on the 1/10
+        grid)."""
         rng = np.random.default_rng(5)
         codes = rng.integers(0, 5, size=(12, 15), dtype=np.uint8)
         path = _hsg_raster(
@@ -657,7 +661,8 @@ class TestHsgStatisticsBbox:
         _assert_close(stats.to_dict(), expected.to_dict())
 
     def test_bbox_outside_the_raster_gives_zero_areas(self, tmp_path):
-        """Test that a disjoint bbox, or one only touching the raster, counts nothing."""
+        """Test that a disjoint bbox, or one only touching the raster, counts
+        nothing."""
         path = self._edge_raster(tmp_path)
 
         for bbox in (

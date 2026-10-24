@@ -56,7 +56,8 @@ _TEMPLATES: Final = ("_data", "agents")
 _COMMAND_OF_GUIDE: Final = "commands guide"
 
 
-# --- texts -----------------------------------------------------------------------------
+# --- texts
+# -----------------------------------------------------------------------------
 
 # Texts of the generated blocks: (Polish, English).
 _TEXTS: Final[Mapping[str, tuple[str, str]]] = {
@@ -99,7 +100,8 @@ _GROUP_TITLES: Final[Mapping[str, tuple[str, str]]] = {
     "report": ("Raport obliczeniowy", "Calculation report"),
     "commands": ("Opis katalogu komend", "Description of the command catalog"),
 }
-# The rules of AGENTS.md, llms.txt and the instructions of the MCP server. ``{opt:name}``
+# The rules of AGENTS.md, llms.txt and the instructions of the MCP server.
+# ``{opt:name}``
 # and ``{cmd:name}`` are checked against the catalog and replaced by the bare name.
 _PRINCIPLES: Final[tuple[tuple[str, str], ...]] = (
     (
@@ -214,7 +216,8 @@ _ERROR_ADVICE: Final[Mapping[str, tuple[str, str]]] = {
 }
 
 
-# --- flows -----------------------------------------------------------------------------
+# --- flows
+# -----------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -552,7 +555,8 @@ _EXAMPLE: Final = ("tc kirpich", {"length_km": 8.2, "slope_m_per_m": 0.023})
 _EXTERNAL_TOOLS: Final = ("imgw", "kartograf")
 
 
-# --- helpers ---------------------------------------------------------------------------
+# --- helpers
+# ---------------------------------------------------------------------------
 
 
 def _pick[T](pair: tuple[T, T], lang: Lang) -> T:
@@ -620,7 +624,8 @@ def _checked(text: str, commands: Sequence[Command]) -> str:
     return _PLACEHOLDER.sub(fill, text)
 
 
-# --- blocks ----------------------------------------------------------------------------
+# --- blocks
+# ----------------------------------------------------------------------------
 
 
 def principles(lang: Lang = "pl") -> tuple[str, ...]:
@@ -751,7 +756,8 @@ def _error_codes() -> str:
 
 
 def _cli_line(command: Command, options: Mapping[str, object]) -> str:
-    """The command line that gives ``command`` the ``options`` (as the CLI parses it)."""
+    """The command line that gives ``command`` the ``options`` (as the CLI parses
+    it)."""
     from hydrolog.cli.parser import format_example
 
     return format_example(command, options)
@@ -874,7 +880,8 @@ def _blocks(lang: Lang) -> dict[str, Callable[[], str]]:
     }
 
 
-# --- templates -------------------------------------------------------------------------
+# --- templates
+# -------------------------------------------------------------------------
 
 
 def _render(template: str, blocks: Mapping[str, Callable[[], str]]) -> list[str]:

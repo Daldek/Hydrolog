@@ -2,7 +2,6 @@
 
 import numpy as np
 import pytest
-from numpy.typing import NDArray
 
 
 class TestHydrologicalYear:
@@ -69,7 +68,7 @@ class TestCharacteristicValues:
         rng = np.random.default_rng(42)
         dates_list = []
         values_list = []
-        for year_offset, (mx, mn, avg) in enumerate(
+        for year_offset, (mx, mn, _avg) in enumerate(
             [
                 (100.0, 10.0, 50.0),
                 (80.0, 5.0, 40.0),
@@ -126,15 +125,15 @@ class TestCharacteristicValues:
         assert result.period_years == 3
 
     def test_empty_input_raises(self):
-        from hydrolog.statistics.characteristic import calculate_characteristic_values
         from hydrolog.exceptions import InvalidParameterError
+        from hydrolog.statistics.characteristic import calculate_characteristic_values
 
         with pytest.raises(InvalidParameterError):
             calculate_characteristic_values(np.array([]), np.array([]))
 
     def test_mismatched_lengths_raises(self):
-        from hydrolog.statistics.characteristic import calculate_characteristic_values
         from hydrolog.exceptions import InvalidParameterError
+        from hydrolog.statistics.characteristic import calculate_characteristic_values
 
         with pytest.raises(InvalidParameterError):
             calculate_characteristic_values(
@@ -197,8 +196,8 @@ class TestMonthlyStatistics:
         assert np.all(result.cv_values > 0)
 
     def test_invalid_confidence_level_raises(self):
-        from hydrolog.statistics.characteristic import calculate_monthly_statistics
         from hydrolog.exceptions import InvalidParameterError
+        from hydrolog.statistics.characteristic import calculate_monthly_statistics
 
         dates = np.arange(
             np.datetime64("2019-11-01"),

@@ -550,7 +550,8 @@ class CommandLine:
 
 
 def join_negative_values(arguments: Sequence[str], command: Command) -> list[str]:
-    """Glue ``--flag -5`` into ``--flag=-5`` for the flags of ``command`` that take values.
+    """Glue ``--flag -5`` into ``--flag=-5`` for the flags of ``command`` that take
+    values.
 
     argparse reads a word that starts with ``-`` as an option unless it is a plain
     negative number, so ``--values -1,2`` and ``--x -1e-3`` would fail. The word after a

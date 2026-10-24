@@ -12,7 +12,6 @@ Reference:
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, Optional, Tuple, Union
 
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError
@@ -78,7 +77,7 @@ class LandCover(Enum):
 # Format: {(LandCover, HydrologicCondition): {"A": cn, "B": cn, "C": cn, "D": cn}}
 # For land covers without condition variation, use None as condition key
 
-_CN_TABLE: Dict[Tuple[LandCover, Optional[HydrologicCondition]], Dict[str, int]] = {
+_CN_TABLE: dict[tuple[LandCover, HydrologicCondition | None], dict[str, int]] = {
     # Agricultural - Fallow (bare soil)
     (LandCover.FALLOW, None): {"A": 77, "B": 86, "C": 91, "D": 94},
     # Agricultural - Row crops (straight row)
@@ -214,13 +213,13 @@ class CNLookupResult(JsonResultMixin):
     cn: int
     hsg: str
     land_cover: LandCover
-    condition: Optional[HydrologicCondition]
+    condition: HydrologicCondition | None
 
 
 def get_cn(
     hsg: str,
-    land_cover: Union[LandCover, str],
-    condition: Optional[Union[HydrologicCondition, str]] = None,
+    land_cover: LandCover | str,
+    condition: HydrologicCondition | str | None = None,
 ) -> int:
     """
     Get Curve Number for a given HSG and land cover combination.
@@ -274,7 +273,7 @@ def get_cn(
                 valid = [lc.value for lc in LandCover]
                 raise InvalidParameterError(
                     f"Invalid land cover: '{land_cover_str}'. Valid options: {valid}"
-                )
+                ) from None
 
     # Convert string to HydrologicCondition if needed
     if isinstance(condition, str):
@@ -284,7 +283,7 @@ def get_cn(
             valid = [hc.value for hc in HydrologicCondition]
             raise InvalidParameterError(
                 f"Invalid condition: '{condition}'. Valid options: {valid}"
-            )
+            ) from None
 
     # Look up CN value
     # First try with specific condition
@@ -312,8 +311,8 @@ def get_cn(
 
 def lookup_cn(
     hsg: str,
-    land_cover: Union[LandCover, str],
-    condition: Optional[Union[HydrologicCondition, str]] = None,
+    land_cover: LandCover | str,
+    condition: HydrologicCondition | str | None = None,
 ) -> CNLookupResult:
     """
     Look up Curve Number with full result details.
@@ -361,7 +360,7 @@ def lookup_cn(
     )
 
 
-def get_cn_range(land_cover: Union[LandCover, str]) -> Dict[str, Tuple[int, int]]:
+def get_cn_range(land_cover: LandCover | str) -> dict[str, tuple[int, int]]:
     """
     Get the range of CN values for a land cover type across all HSGs.
 
@@ -388,13 +387,13 @@ def get_cn_range(land_cover: Union[LandCover, str]) -> Dict[str, Tuple[int, int]
         except ValueError:
             land_cover = LandCover[land_cover_str3.upper()]
 
-    result: Dict[str, Tuple[int, int]] = {}
+    result: dict[str, tuple[int, int]] = {}
 
     for hsg in ("A", "B", "C", "D"):
         cn_values = []
 
         # Collect all CN values for this land cover and HSG
-        for (lc, cond), cn_dict in _CN_TABLE.items():
+        for (lc, _cond), cn_dict in _CN_TABLE.items():
             if lc == land_cover:
                 cn_values.append(cn_dict[hsg])
 
@@ -404,7 +403,7 @@ def get_cn_range(land_cover: Union[LandCover, str]) -> Dict[str, Tuple[int, int]
     return result
 
 
-def list_land_covers() -> Dict[str, str]:
+def list_land_covers() -> dict[str, str]:
     """
     List all available land cover types.
 
@@ -417,7 +416,7 @@ def list_land_covers() -> Dict[str, str]:
 
 
 def calculate_weighted_cn(
-    cn_area_pairs: list[Tuple[int, float]],
+    cn_area_pairs: list[tuple[int, float]],
 ) -> float:
     """
     Calculate area-weighted average CN for a watershed with multiple land covers.

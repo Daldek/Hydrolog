@@ -71,14 +71,6 @@ How to add a command
    parameter of the operation.
 """
 
-from hydrolog.catalog.spec import Command, Option
-from hydrolog.catalog.envelope import (
-    CommandResult,
-    FileRecord,
-    Notice,
-    OperationOutput,
-    capture_warnings,
-)
 from hydrolog.catalog.dispatch import (
     command_schema,
     data_commands,
@@ -86,6 +78,14 @@ from hydrolog.catalog.dispatch import (
     run_command,
     validate_command,
 )
+from hydrolog.catalog.envelope import (
+    CommandResult,
+    FileRecord,
+    Notice,
+    OperationOutput,
+    capture_warnings,
+)
+from hydrolog.catalog.spec import Command, Option
 
 __all__ = [
     "Command",

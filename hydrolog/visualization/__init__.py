@@ -18,14 +18,14 @@ Examples
 
 # Check for required dependencies
 try:
-    import matplotlib.pyplot as plt
+    import matplotlib.pyplot as plt  # noqa: F401  # availability probe
 
     HAS_MATPLOTLIB = True
 except ImportError:
     HAS_MATPLOTLIB = False
 
 try:
-    import seaborn as sns
+    import seaborn as sns  # noqa: F401  # availability probe
 
     HAS_SEABORN = True
 except ImportError:
@@ -43,6 +43,41 @@ def _check_visualization_deps() -> None:
 
 # Only import submodules if matplotlib is available
 if HAS_MATPLOTLIB:
+    from hydrolog.visualization.combined import (
+        plot_rainfall_runoff,
+        # plot_generator_result,  # TODO: Temporarily disabled, to be removed
+    )
+    from hydrolog.visualization.hietogram import (
+        plot_hietogram,
+        plot_hietogram_comparison,
+    )
+    from hydrolog.visualization.hydrograph import (
+        plot_hydrograph,
+        plot_unit_hydrograph,
+    )
+    from hydrolog.visualization.interpolation import (
+        plot_stations_map,
+    )
+    from hydrolog.visualization.morphometry import (
+        plot_elevation_histogram,
+        plot_hypsometric_curve,
+    )
+    from hydrolog.visualization.network import (
+        plot_bifurcation_ratios,
+        plot_stream_order_stats,
+    )
+    from hydrolog.visualization.statistics import (
+        plot_annual_hydrographs,
+        plot_daily_characteristics,
+        plot_flow_histogram,
+        plot_frequency_comparison,
+        plot_frequency_curve,
+        plot_low_flow_sequences,
+        plot_monthly_statistics,
+        plot_non_exceedance_curve,
+        plot_rating_curve,
+        plot_water_level_frequency,
+    )
     from hydrolog.visualization.styles import (
         COLORS,
         LABELS_PL,
@@ -55,56 +90,12 @@ if HAS_MATPLOTLIB:
         get_label,
         setup_hydrolog_style,
     )
-
-    from hydrolog.visualization.hietogram import (
-        plot_hietogram,
-        plot_hietogram_comparison,
-    )
-
-    from hydrolog.visualization.hydrograph import (
-        plot_hydrograph,
-        plot_unit_hydrograph,
-    )
-
-    from hydrolog.visualization.combined import (
-        plot_rainfall_runoff,
-        # plot_generator_result,  # TODO: Temporarily disabled, to be removed
-    )
-
     from hydrolog.visualization.unit_hydrograph import (
         plot_uh_comparison,
     )
-
     from hydrolog.visualization.water_balance import (
-        plot_water_balance,
         plot_cn_curve,
-    )
-
-    from hydrolog.visualization.morphometry import (
-        plot_hypsometric_curve,
-        plot_elevation_histogram,
-    )
-
-    from hydrolog.visualization.network import (
-        plot_stream_order_stats,
-        plot_bifurcation_ratios,
-    )
-
-    from hydrolog.visualization.interpolation import (
-        plot_stations_map,
-    )
-
-    from hydrolog.visualization.statistics import (
-        plot_frequency_curve,
-        plot_frequency_comparison,
-        plot_non_exceedance_curve,
-        plot_daily_characteristics,
-        plot_monthly_statistics,
-        plot_annual_hydrographs,
-        plot_flow_histogram,
-        plot_low_flow_sequences,
-        plot_rating_curve,
-        plot_water_level_frequency,
+        plot_water_balance,
     )
 
     __all__ = [

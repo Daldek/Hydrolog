@@ -10,7 +10,6 @@ Reference:
 """
 
 from dataclasses import dataclass
-from typing import Optional, Union
 
 import numpy as np
 from numpy.typing import NDArray
@@ -155,7 +154,7 @@ class ClarkIUH:
     """
 
     def __init__(
-        self, tc_min: float, r_min: float, area_km2: Optional[float] = None
+        self, tc_min: float, r_min: float, area_km2: float | None = None
     ) -> None:
         """
         Initialize Clark IUH generator.
@@ -300,8 +299,8 @@ class ClarkIUH:
     def generate(
         self,
         timestep_min: float = 5.0,
-        duration_min: Optional[float] = None,
-    ) -> Union[ClarkIUHResult, ClarkUHResult]:
+        duration_min: float | None = None,
+    ) -> ClarkIUHResult | ClarkUHResult:
         """
         Generate Clark Unit Hydrograph.
 
@@ -356,7 +355,7 @@ class ClarkIUH:
     def generate_iuh(
         self,
         timestep_min: float = 5.0,
-        duration_min: Optional[float] = None,
+        duration_min: float | None = None,
     ) -> ClarkIUHResult:
         """
         Generate Clark Instantaneous Unit Hydrograph.
@@ -435,7 +434,7 @@ class ClarkIUH:
         area_km2: float,
         duration_min: float,
         timestep_min: float = 5.0,
-        total_duration_min: Optional[float] = None,
+        total_duration_min: float | None = None,
     ) -> ClarkUHResult:
         """
         Convert IUH to D-minute Unit Hydrograph.

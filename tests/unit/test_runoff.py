@@ -3,17 +3,17 @@
 import numpy as np
 import pytest
 
+from hydrolog.exceptions import InvalidParameterError
+from hydrolog.precipitation import BetaHietogram, BlockHietogram
 from hydrolog.runoff import (
     AMC,
     SCSCN,
-    SCSUnitHydrograph,
     HydrographGenerator,
     HydrographResult,
+    SCSUnitHydrograph,
     SnyderUH,
     convolve_discrete,
 )
-from hydrolog.precipitation import BlockHietogram, BetaHietogram
-from hydrolog.exceptions import InvalidParameterError
 
 
 class TestSCSCN:
@@ -397,7 +397,7 @@ class TestHydrographGenerator:
 
     def test_generator_unit_hydrograph_result_default_none(self):
         """Test that unit_hydrograph_result defaults to None."""
-        from hydrolog.runoff import HydrographGeneratorResult, HydrographResult
+        from hydrolog.runoff import HydrographGeneratorResult
 
         # Create a minimal HydrographGeneratorResult without the new field
         hydrograph = HydrographResult(
@@ -739,15 +739,11 @@ class TestRunoffImport:
     def test_import_all_classes(self):
         """Test that all classes can be imported."""
         from hydrolog.runoff import (
-            HydrographGenerator,
-            HydrographGeneratorResult,
-            SCSCN,
             AMC,
-            EffectivePrecipitationResult,
+            SCSCN,
+            HydrographGenerator,
             SCSUnitHydrograph,
-            UnitHydrographResult,
             convolve_discrete,
-            HydrographResult,
         )
 
         assert HydrographGenerator is not None

@@ -1,7 +1,5 @@
 """Tests for WatershedParameters and from_dict() methods."""
 
-import json
-
 import pytest
 
 from hydrolog.exceptions import InvalidParameterError

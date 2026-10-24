@@ -4,8 +4,6 @@ Generates the section documenting concentration time calculations
 using Kirpich, NRCS, Giandotti, FAA, Kerby, or Kerby-Kirpich methods.
 """
 
-from typing import Optional
-
 from hydrolog.reports.formatters import FormulaRenderer
 from hydrolog.reports.templates import (
     SECTION_HEADERS,
@@ -18,20 +16,20 @@ from hydrolog.reports.templates import (
 def generate_tc_section(
     tc_min: float,
     method: str,
-    length_km: Optional[float] = None,
-    slope_m_per_m: Optional[float] = None,
-    slope_percent: Optional[float] = None,
-    area_km2: Optional[float] = None,
-    elevation_diff_m: Optional[float] = None,
-    cn: Optional[int] = None,
-    runoff_coeff: Optional[float] = None,
-    retardance: Optional[float] = None,
-    overland_length_km: Optional[float] = None,
-    overland_slope_m_per_m: Optional[float] = None,
-    channel_length_km: Optional[float] = None,
-    channel_slope_m_per_m: Optional[float] = None,
-    tc_overland_min: Optional[float] = None,
-    tc_channel_min: Optional[float] = None,
+    length_km: float | None = None,
+    slope_m_per_m: float | None = None,
+    slope_percent: float | None = None,
+    area_km2: float | None = None,
+    elevation_diff_m: float | None = None,
+    cn: int | None = None,
+    runoff_coeff: float | None = None,
+    retardance: float | None = None,
+    overland_length_km: float | None = None,
+    overland_slope_m_per_m: float | None = None,
+    channel_length_km: float | None = None,
+    channel_slope_m_per_m: float | None = None,
+    tc_overland_min: float | None = None,
+    tc_channel_min: float | None = None,
     include_formulas: bool = True,
 ) -> str:
     """
@@ -301,14 +299,12 @@ def generate_tc_section(
                         "**Dane wejściowe:**",
                         "",
                         (
-                            f"- Długość spływu pow.: L_ov = "
-                            f"{overland_length_km:.3f} km"
+                            f"- Długość spływu pow.: L_ov = {overland_length_km:.3f} km"
                             if overland_length_km
                             else "- Długość spływu pow.: brak danych"
                         ),
                         (
-                            f"- Spadek pow.: S_ov = "
-                            f"{overland_slope_m_per_m:.4f} m/m"
+                            f"- Spadek pow.: S_ov = {overland_slope_m_per_m:.4f} m/m"
                             if overland_slope_m_per_m
                             else "- Spadek pow.: brak danych"
                         ),
@@ -318,13 +314,12 @@ def generate_tc_section(
                             else "- Współczynnik opóźnienia: brak danych"
                         ),
                         (
-                            f"- Długość koryta: L_ch = " f"{channel_length_km:.2f} km"
+                            f"- Długość koryta: L_ch = {channel_length_km:.2f} km"
                             if channel_length_km
                             else "- Długość koryta: brak danych"
                         ),
                         (
-                            f"- Spadek koryta: S_ch = "
-                            f"{channel_slope_m_per_m:.4f} m/m"
+                            f"- Spadek koryta: S_ch = {channel_slope_m_per_m:.4f} m/m"
                             if channel_slope_m_per_m
                             else "- Spadek koryta: brak danych"
                         ),
@@ -342,7 +337,10 @@ def generate_tc_section(
         # Just show the result
         lines.extend(
             [
-                f"Obliczony czas koncentracji: **tc = {tc_min:.1f} min** ({tc_min/60:.2f} h)",
+                (
+                    f"Obliczony czas koncentracji: **tc = {tc_min:.1f} min** "
+                    f"({tc_min / 60:.2f} h)"
+                ),
             ]
         )
 
@@ -352,7 +350,10 @@ def generate_tc_section(
             "",
             "---",
             "",
-            f"**Przyjęty czas koncentracji:** $t_c$ = **{tc_min:.1f} min** = {tc_min/60:.2f} h",
+            (
+                f"**Przyjęty czas koncentracji:** $t_c$ = **{tc_min:.1f} min** = "
+                f"{tc_min / 60:.2f} h"
+            ),
         ]
     )
 

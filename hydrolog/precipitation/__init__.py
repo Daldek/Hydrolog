@@ -1,24 +1,23 @@
 """Precipitation module for hyetograms and interpolation."""
 
 from hydrolog.precipitation.hietogram import (
-    HietogramResult,
-    Hietogram,
-    BlockHietogram,
-    TriangularHietogram,
     BetaHietogram,
+    BlockHietogram,
     EulerIIHietogram,
+    Hietogram,
+    HietogramResult,
+    TriangularHietogram,
 )
-
 from hydrolog.precipitation.interpolation import (
-    Station,
-    ThiessenResult,
     IDWResult,
     IsohyetResult,
-    thiessen_polygons,
-    inverse_distance_weighting,
+    Station,
+    ThiessenResult,
     areal_precipitation_idw,
-    isohyet_method,
     arithmetic_mean,
+    inverse_distance_weighting,
+    isohyet_method,
+    thiessen_polygons,
 )
 
 __all__ = [

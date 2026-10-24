@@ -4,8 +4,6 @@ Generates the section documenting watershed physical characteristics
 including geometry, terrain, and shape indicators.
 """
 
-from typing import Optional
-
 from hydrolog.reports.formatters import TableGenerator
 from hydrolog.reports.templates import (
     PARAMETER_LABELS,
@@ -18,22 +16,22 @@ from hydrolog.reports.templates import (
 
 def generate_watershed_section(
     area_km2: float,
-    perimeter_km: Optional[float] = None,
-    length_km: Optional[float] = None,
-    width_km: Optional[float] = None,
-    elevation_min_m: Optional[float] = None,
-    elevation_max_m: Optional[float] = None,
-    elevation_mean_m: Optional[float] = None,
-    relief_m: Optional[float] = None,
-    mean_slope_percent: Optional[float] = None,
-    channel_length_km: Optional[float] = None,
-    channel_slope_m_per_m: Optional[float] = None,
-    cn: Optional[int] = None,
-    name: Optional[str] = None,
-    form_factor: Optional[float] = None,
-    compactness: Optional[float] = None,
-    circularity: Optional[float] = None,
-    elongation: Optional[float] = None,
+    perimeter_km: float | None = None,
+    length_km: float | None = None,
+    width_km: float | None = None,
+    elevation_min_m: float | None = None,
+    elevation_max_m: float | None = None,
+    elevation_mean_m: float | None = None,
+    relief_m: float | None = None,
+    mean_slope_percent: float | None = None,
+    channel_length_km: float | None = None,
+    channel_slope_m_per_m: float | None = None,
+    cn: int | None = None,
+    name: str | None = None,
+    form_factor: float | None = None,
+    compactness: float | None = None,
+    circularity: float | None = None,
+    elongation: float | None = None,
     include_shape_indicators: bool = True,
 ) -> str:
     """

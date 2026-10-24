@@ -4,10 +4,10 @@ This module provides tools for stream ordering and network analysis.
 """
 
 from hydrolog.network.stream_order import (
-    OrderingMethod,
-    StreamSegment,
     NetworkStatistics,
+    OrderingMethod,
     StreamNetwork,
+    StreamSegment,
     bifurcation_ratio,
     drainage_density,
     stream_frequency,

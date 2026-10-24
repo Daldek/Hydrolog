@@ -5,10 +5,10 @@ all section generators to produce complete calculation reports.
 """
 
 import warnings
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Any
 
 import hydrolog
 from hydrolog.exceptions import InvalidParameterError
@@ -109,7 +109,7 @@ class HydrologyReportGenerator:
     ... )
     """
 
-    def __init__(self, config: Optional[ReportConfig] = None) -> None:
+    def __init__(self, config: ReportConfig | None = None) -> None:
         """
         Initialize report generator.
 
@@ -125,17 +125,17 @@ class HydrologyReportGenerator:
         result: HydrographGeneratorResult,
         hietogram: HietogramResult,
         watershed_name: str = "Zlewnia",
-        output_path: Optional[Union[str, Path]] = None,
-        area_km2: Optional[float] = None,
-        cn_ii: Optional[int] = None,
+        output_path: str | Path | None = None,
+        area_km2: float | None = None,
+        cn_ii: int | None = None,
         amc: str = "II",
-        tc_min: Optional[float] = None,
-        tc_method: Optional[str] = None,
-        watershed_params: Optional[Dict[str, Any]] = None,
-        uh_params: Optional[Dict[str, Any]] = None,
-        figures_dir: Optional[str] = None,
-        ia_coefficient: Optional[float] = None,
-        tc_params: Optional[Dict[str, Any]] = None,
+        tc_min: float | None = None,
+        tc_method: str | None = None,
+        watershed_params: dict[str, Any] | None = None,
+        uh_params: dict[str, Any] | None = None,
+        figures_dir: str | None = None,
+        ia_coefficient: float | None = None,
+        tc_params: dict[str, Any] | None = None,
     ) -> str:
         """
         Generate complete hydrological report.
@@ -371,7 +371,7 @@ class HydrologyReportGenerator:
     def _build_watershed_section(
         self,
         area_km2: float,
-        cn: Optional[int] = None,
+        cn: int | None = None,
         **kwargs: Any,
     ) -> str:
         """Build watershed parameters section."""
@@ -423,7 +423,7 @@ class HydrologyReportGenerator:
 
     @staticmethod
     def _initial_abstraction_coefficient(
-        result: HydrographGeneratorResult, ia_coefficient: Optional[float]
+        result: HydrographGeneratorResult, ia_coefficient: float | None
     ) -> float:
         """Coefficient λ of Ia = λ S: the given one, else read back from ``result``."""
         if ia_coefficient is not None:
@@ -438,8 +438,8 @@ class HydrologyReportGenerator:
         unit: Any,
         model: str,
         area_km2: float,
-        tc_min: Optional[float],
-        uh_params: Optional[Dict[str, Any]],
+        tc_min: float | None,
+        uh_params: dict[str, Any] | None,
     ) -> str:
         """Build unit hydrograph section from the unit hydrograph of the result.
 
@@ -448,7 +448,7 @@ class HydrologyReportGenerator:
         adds what that result does not carry.
         """
         timestep_min = result.hydrograph.timestep_min
-        params: Dict[str, Any] = dict(uh_params or {})
+        params: dict[str, Any] = dict(uh_params or {})
         section_tc_min = tc_min
         tp_min = unit.time_to_peak_min
         qp_m3s = unit.peak_discharge_m3s
@@ -505,8 +505,8 @@ class HydrologyReportGenerator:
         method: str,
         cn: int,
         area_km2: float,
-        watershed_params: Optional[Dict[str, Any]],
-        tc_params: Optional[Dict[str, Any]],
+        watershed_params: dict[str, Any] | None,
+        tc_params: dict[str, Any] | None,
     ) -> str:
         """Build time of concentration section with the inputs of the method."""
         inputs = (
@@ -514,7 +514,7 @@ class HydrologyReportGenerator:
             if tc_params is not None
             else self._extract_tc_params(watershed_params, method, area_km2)
         )
-        section_inputs: Dict[str, Any] = {"cn": cn, **inputs}
+        section_inputs: dict[str, Any] = {"cn": cn, **inputs}
         if method.lower() == "kerby_kirpich":
             self._add_kerby_kirpich_components(section_inputs, tc_min)
         return generate_tc_section(
@@ -525,7 +525,7 @@ class HydrologyReportGenerator:
         )
 
     @staticmethod
-    def _add_kerby_kirpich_components(inputs: Dict[str, Any], tc_min: float) -> None:
+    def _add_kerby_kirpich_components(inputs: dict[str, Any], tc_min: float) -> None:
         """Add the two components of the composite method when they are missing.
 
         ``tc = t_overland + t_channel``: the Kerby overland time follows from the
@@ -612,10 +612,10 @@ class HydrologyReportGenerator:
 
     def _extract_tc_params(
         self,
-        watershed_params: Optional[Dict[str, Any]],
+        watershed_params: dict[str, Any] | None,
         method: str,
         area_km2: float,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Inputs of the ``method`` formula, derived from watershed parameters.
 
         Applies the rules of ``WatershedParameters.calculate_tc``: the length is
@@ -701,7 +701,7 @@ class HydrologyReportGenerator:
 
         return "\n".join(lines)
 
-    def _save(self, content: str, path: Union[str, Path]) -> None:
+    def _save(self, content: str, path: str | Path) -> None:
         """Save report to file."""
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -709,7 +709,8 @@ class HydrologyReportGenerator:
 
 
 def _unit_hydrograph_model(unit: Any, default: str) -> str:
-    """Name of the model a unit hydrograph result belongs to (``default`` if unknown)."""
+    """Name of the model a unit hydrograph result belongs to (``default`` if
+    unknown)."""
     if isinstance(unit, UnitHydrographResult):
         return "scs"
     if isinstance(unit, NashUHResult):
@@ -721,14 +722,14 @@ def _unit_hydrograph_model(unit: Any, default: str) -> str:
     return default
 
 
-def _present(**values: Any) -> Dict[str, Any]:
+def _present(**values: Any) -> dict[str, Any]:
     """The given values that are not None."""
     return {name: value for name, value in values.items() if value is not None}
 
 
 def _slope_m_per_m(
-    values: Dict[str, Any], length_km: Optional[float], land_first: bool = False
-) -> Optional[float]:
+    values: dict[str, Any], length_km: float | None, land_first: bool = False
+) -> float | None:
     """Slope a time of concentration method is fed with (``calculate_tc`` rule).
 
     The channel slope, else the mean slope, else the relief over the length; with
@@ -753,7 +754,7 @@ def _slope_m_per_m(
     return None
 
 
-def _mean_elevation_above_outlet_m(values: Dict[str, Any]) -> Optional[float]:
+def _mean_elevation_above_outlet_m(values: dict[str, Any]) -> float | None:
     """Elevation difference of the Giandotti formula (``calculate_tc`` rule).
 
     Mean elevation minus the outlet elevation; the mean elevation defaults to the

@@ -1,6 +1,7 @@
 """Entry point of the ``hydrolog`` command (``hydrolog.cli.main:main``).
 
-The command line is generated from the catalog (:func:`hydrolog.catalog.data_commands`)::
+The command line is generated from the catalog
+(:func:`hydrolog.catalog.data_commands`)::
 
     hydrolog <group> <command> --option VALUE ... [--json] [--schema] [--lang pl|en]
     hydrolog mcp [--allow-dir DIR]... [--lang pl|en]

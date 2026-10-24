@@ -448,7 +448,7 @@ def cn_weighted(
         assert cn_values is not None
         cns, weights, shares = _weights_from_lists(cn_values, areas, fractions)
         name = "fractions" if shares else "areas"
-    for index, (cn, weight) in enumerate(zip(cns, weights)):
+    for index, (cn, weight) in enumerate(zip(cns, weights, strict=False)):
         if not 1 <= cn <= 100:
             raise option_error(
                 name if parts is not None else "cn_values",
@@ -485,7 +485,7 @@ def cn_weighted(
             hint="Give at least one part with a positive area.",
         )
     # calculate_weighted_cn is annotated with int CN but averages any real number.
-    pairs = cast(list[tuple[int, float]], list(zip(cns, weights)))
+    pairs = cast(list[tuple[int, float]], list(zip(cns, weights, strict=False)))
     return CnWeighted(
         cn=calculate_weighted_cn(pairs),
         n_parts=len(cns),

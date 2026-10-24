@@ -4,29 +4,25 @@ This module provides the classic combined plot with hietogram on top
 (bars pointing down) and hydrograph on bottom.
 """
 
-from typing import Optional, Union
-
 import matplotlib.pyplot as plt
 import numpy as np
 from numpy.typing import NDArray
 
 from hydrolog.precipitation.hietogram import HietogramResult
 from hydrolog.runoff.convolution import HydrographResult
-from hydrolog.runoff.generator import HydrographGeneratorResult
-
 from hydrolog.visualization.styles import (
+    add_stats_box,
+    format_time_axis,
     get_color,
     get_label,
-    format_time_axis,
-    add_stats_box,
 )
 
 
 def plot_rainfall_runoff(
     hietogram: HietogramResult,
     hydrograph: HydrographResult,
-    effective_precip: Optional[Union[NDArray[np.float64], list]] = None,
-    title: Optional[str] = None,
+    effective_precip: NDArray[np.float64] | list | None = None,
+    title: str | None = None,
     figsize: tuple = (12, 8),
     height_ratios: tuple = (1, 2),
 ) -> plt.Figure:
@@ -170,8 +166,8 @@ def plot_rainfall_runoff(
         xytext=(15, 5),
         textcoords="offset points",
         fontsize=10,
-        bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.9),
-        arrowprops=dict(arrowstyle="->", connectionstyle="arc3,rad=0.2"),
+        bbox={"boxstyle": "round,pad=0.3", "facecolor": "white", "alpha": 0.9},
+        arrowprops={"arrowstyle": "->", "connectionstyle": "arc3,rad=0.2"},
     )
 
     # Labels for bottom panel
@@ -253,7 +249,8 @@ def plot_rainfall_runoff(
 #         ax_table = fig.add_subplot(gs[2])
 #     else:
 #         fig, (ax_precip, ax_discharge) = plt.subplots(
-#             2, 1, figsize=figsize, sharex=True, gridspec_kw={"height_ratios": [1, 2], "hspace": 0.05}
+# 2, 1, figsize=figsize, sharex=True, gridspec_kw={"height_ratios": [1, 2], "hspace":
+# 0.05}
 #         )
 #         ax_table = None
 
@@ -307,7 +304,7 @@ def plot_rainfall_runoff(
 #     # Peak
 #     peak_idx = np.argmax(discharge)
 #     ax_discharge.plot(
-#         discharge_times[peak_idx], discharge[peak_idx], "o", color=line_color, markersize=8
+# discharge_times[peak_idx], discharge[peak_idx], "o", color=line_color, markersize=8
 #     )
 
 #     ax_discharge.set_ylabel(get_label("discharge"))
@@ -335,7 +332,7 @@ def plot_rainfall_runoff(
 #             ["Parametr", "Wartość", "Jednostka"],
 #             ["Opad całkowity P", f"{result.total_precip_mm:.1f}", "mm"],
 #             ["Opad efektywny Pe", f"{result.total_effective_mm:.1f}", "mm"],
-#             ["Abstrakcja początkowa Ia", f"{result.initial_abstraction_mm:.1f}", "mm"],
+# ["Abstrakcja początkowa Ia", f"{result.initial_abstraction_mm:.1f}", "mm"],
 #             ["Retencja maksymalna S", f"{result.retention_mm:.1f}", "mm"],
 #             ["Współczynnik odpływu C", f"{result.runoff_coefficient:.3f}", "-"],
 #             ["CN (skorygowany)", f"{result.cn_used}", "-"],

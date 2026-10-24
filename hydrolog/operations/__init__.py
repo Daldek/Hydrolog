@@ -21,7 +21,8 @@ hydrology. Series, stations and watershed parameters are loaded with
 Layout: one module per command group, named like the group module of
 :mod:`hydrolog.catalog.groups` (``operations/tc.py`` implements
 ``catalog/groups/tc.py``). Operation functions are named ``<group>_<command>``
-(``tc_kirpich``); they are re-exported here, so ``function="hydrolog.operations:<name>"``
+(``tc_kirpich``); they are re-exported here, so
+``function="hydrolog.operations:<name>"``
 resolves to this package, and listed in ``__all__``. A new group adds its import and
 its names below, in the order of ``hydrolog.catalog.groups.GROUP_MODULES``; the
 ``commands`` group (``meta``) stays last.

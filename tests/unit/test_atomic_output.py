@@ -66,10 +66,12 @@ class TestAtomicOutput:
         target = tmp_path / "report.md"
         target.write_text("old", encoding="utf-8")
 
-        with pytest.raises(RuntimeError, match="boom"):
-            with atomic_output(target) as temporary:
-                temporary.write_text("partial", encoding="utf-8")
-                raise RuntimeError("boom")
+        with (
+            pytest.raises(RuntimeError, match="boom"),
+            atomic_output(target) as temporary,
+        ):
+            temporary.write_text("partial", encoding="utf-8")
+            raise RuntimeError("boom")
 
         assert target.read_text(encoding="utf-8") == "old"
         assert [path.name for path in tmp_path.iterdir()] == ["report.md"]
@@ -86,9 +88,8 @@ class TestAtomicOutput:
         blocker = tmp_path / "blocker"
         blocker.write_text("a file where a directory is needed", encoding="utf-8")
 
-        with pytest.raises(OSError):
-            with atomic_output(blocker / "report.md"):
-                pytest.fail("the block must not run")
+        with pytest.raises(OSError), atomic_output(blocker / "report.md"):
+            pytest.fail("the block must not run")
 
     def test_calls_in_several_threads_get_their_own_temporary_files(self, tmp_path):
         """All the temporary files exist at the same moment: their names differ.

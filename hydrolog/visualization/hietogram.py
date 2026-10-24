@@ -4,27 +4,24 @@ This module provides functions for plotting precipitation data,
 including intensity bars and cumulative curves.
 """
 
-from typing import Optional, Union
-
 import matplotlib.pyplot as plt
 import numpy as np
 from numpy.typing import NDArray
 
 from hydrolog.precipitation.hietogram import HietogramResult
 from hydrolog.visualization.styles import (
+    format_time_axis,
     get_color,
     get_label,
-    format_time_axis,
-    add_stats_box,
 )
 
 
 def plot_hietogram(
     result: HietogramResult,
     show_cumulative: bool = True,
-    distribution: Optional[str] = None,
-    title: Optional[str] = None,
-    ax: Optional[plt.Axes] = None,
+    distribution: str | None = None,
+    title: str | None = None,
+    ax: plt.Axes | None = None,
     figsize: tuple = (10, 6),
 ) -> plt.Figure:
     """
@@ -80,7 +77,7 @@ def plot_hietogram(
     bar_positions = times - timestep / 2
 
     # Plot bars
-    bars = ax.bar(
+    ax.bar(
         bar_positions,
         values,
         width=timestep * 0.9,
@@ -139,10 +136,10 @@ def plot_hietogram(
 
 def plot_hietogram_comparison(
     precip: HietogramResult,
-    effective: Union[NDArray[np.float64], list],
-    cn: Optional[int] = None,
-    title: Optional[str] = None,
-    ax: Optional[plt.Axes] = None,
+    effective: NDArray[np.float64] | list,
+    cn: int | None = None,
+    title: str | None = None,
+    ax: plt.Axes | None = None,
     figsize: tuple = (10, 6),
 ) -> plt.Figure:
     """

@@ -5,7 +5,6 @@ measurements to areal values over a watershed.
 """
 
 from dataclasses import dataclass
-from typing import Optional
 
 import numpy as np
 from numpy.typing import NDArray
@@ -41,7 +40,7 @@ class Station(JsonResultMixin):
     x: float
     y: float
     precipitation_mm: float
-    elevation_m: Optional[float] = None
+    elevation_m: float | None = None
 
 
 @dataclass
@@ -198,7 +197,7 @@ def inverse_distance_weighting(
     target_x: float,
     target_y: float,
     power: float = 2.0,
-    max_distance: Optional[float] = None,
+    max_distance: float | None = None,
 ) -> IDWResult:
     """
     Interpolate precipitation using Inverse Distance Weighting (IDW).
@@ -356,7 +355,7 @@ def areal_precipitation_idw(
         raise InvalidParameterError("Grid cannot be empty")
 
     interpolated = []
-    for x, y in zip(grid_x, grid_y):
+    for x, y in zip(grid_x, grid_y, strict=False):
         result = inverse_distance_weighting(stations, float(x), float(y), power)
         interpolated.append(result.areal_precipitation_mm)
 

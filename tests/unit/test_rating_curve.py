@@ -5,7 +5,6 @@ import pytest
 
 
 class TestRatingCurve:
-
     @pytest.fixture
     def synthetic_rating_data(self):
         """Q = 2.5 * (H - 50)^1.8 with noise."""
@@ -47,15 +46,15 @@ class TestRatingCurve:
         assert result.n_outliers_removed >= 1
 
     def test_mismatched_lengths_raises(self):
-        from hydrolog.hydrometrics.rating_curve import RatingCurve
         from hydrolog.exceptions import InvalidParameterError
+        from hydrolog.hydrometrics.rating_curve import RatingCurve
 
         with pytest.raises(InvalidParameterError):
             RatingCurve(np.array([1.0, 2.0]), np.array([1.0]))
 
     def test_too_few_points_raises(self):
-        from hydrolog.hydrometrics.rating_curve import RatingCurve
         from hydrolog.exceptions import InvalidParameterError
+        from hydrolog.hydrometrics.rating_curve import RatingCurve
 
         with pytest.raises(InvalidParameterError):
             RatingCurve(np.array([1.0, 2.0]), np.array([1.0, 2.0]))
@@ -134,8 +133,7 @@ class TestRatingCurveErrors:
         """Raised as ``InvalidParameterError`` (a ``ValueError``) before 1.0.0, so
         that is still what ``except`` clauses written for it catch."""
         from hydrolog.exceptions import CalculationError, InvalidParameterError
-        from hydrolog.hydrometrics import RatingCurve, RatingCurveFitError
-        from hydrolog.hydrometrics import rating_curve
+        from hydrolog.hydrometrics import RatingCurve, RatingCurveFitError, rating_curve
 
         def no_convergence(*args, **kwargs):
             raise RuntimeError("Optimal parameters not found: maxfev exceeded")
@@ -238,7 +236,6 @@ class TestRatingCurveDefaultStart:
 
 
 class TestWaterLevelFrequency:
-
     def test_frequency_distribution(self):
         from hydrolog.hydrometrics.rating_curve import WaterLevelFrequency
 
@@ -261,15 +258,15 @@ class TestWaterLevelFrequency:
         assert zones.stw_range[1] == zones.wtw_range[0]
 
     def test_empty_data_raises(self):
-        from hydrolog.hydrometrics.rating_curve import WaterLevelFrequency
         from hydrolog.exceptions import InvalidParameterError
+        from hydrolog.hydrometrics.rating_curve import WaterLevelFrequency
 
         with pytest.raises(InvalidParameterError):
             WaterLevelFrequency(np.array([]))
 
     def test_invalid_bin_width_raises(self):
-        from hydrolog.hydrometrics.rating_curve import WaterLevelFrequency
         from hydrolog.exceptions import InvalidParameterError
+        from hydrolog.hydrometrics.rating_curve import WaterLevelFrequency
 
         with pytest.raises(InvalidParameterError):
             WaterLevelFrequency(np.array([1.0, 2.0]), bin_width=0.0)

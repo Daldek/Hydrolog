@@ -10,7 +10,6 @@ import pytest
 
 
 class TestStatisticsVisualization:
-
     def test_plot_frequency_curve(self):
         from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
         from hydrolog.visualization.statistics import plot_frequency_curve

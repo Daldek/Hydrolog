@@ -4,7 +4,7 @@ Generates the section documenting unit hydrograph model calculations
 for SCS, Nash, Clark, and Snyder models.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
@@ -25,9 +25,9 @@ def generate_uh_section(
     ordinates_m3s: NDArray[np.float64],
     time_to_peak_min: float,
     peak_discharge_m3s: float,
-    model_params: Optional[Dict[str, Any]] = None,
-    tc_min: Optional[float] = None,
-    duration_min: Optional[float] = None,
+    model_params: dict[str, Any] | None = None,
+    tc_min: float | None = None,
+    duration_min: float | None = None,
     include_formulas: bool = True,
     include_table: bool = True,
     max_table_rows: int = 30,
@@ -146,8 +146,8 @@ def generate_uh_section(
         [
             "**Charakterystyki hydrogramu jednostkowego:**",
             "",
-            f"| Parametr | Wartość |",
-            f"|:---------|--------:|",
+            "| Parametr | Wartość |",
+            "|:---------|--------:|",
             f"| Czas do szczytu tp | {time_to_peak_min:.1f} min |",
             f"| Przepływ szczytowy qp | {peak_discharge_m3s:.4f} m³/s/mm |",
             f"| Powierzchnia zlewni A | {area_km2:.2f} km² |",
@@ -159,11 +159,11 @@ def generate_uh_section(
 
 def _generate_scs_section(
     area_km2: float,
-    tc_min: Optional[float],
-    duration_min: Optional[float],
+    tc_min: float | None,
+    duration_min: float | None,
     time_to_peak_min: float,
     peak_discharge_m3s: float,
-    model_params: Dict[str, Any],
+    model_params: dict[str, Any],
     include_formulas: bool,
 ) -> list:
     """Generate SCS-specific content."""
@@ -241,7 +241,7 @@ def _generate_nash_section(
     area_km2: float,
     time_to_peak_min: float,
     peak_discharge_m3s: float,
-    model_params: Dict[str, Any],
+    model_params: dict[str, Any],
     include_formulas: bool,
 ) -> list:
     """Generate Nash IUH-specific content.
@@ -305,7 +305,8 @@ def _generate_nash_section(
             f"{{{lutz_params.slope:.4f}^{{1.5}}}}\\right)^{{0.26}} \\cdot "
             f"e^{{-0.016 \\cdot {lutz_params.urban_pct:.1f}}} \\cdot "
             f"e^{{0.004 \\cdot {lutz_params.forest_pct:.1f}}} = "
-            f"{lutz_params.tp_hours:.3f} \\text{{ h}} = {lutz_params.tp_min:.1f} \\text{{ min}}$$"
+            f"{lutz_params.tp_hours:.3f} \\text{{ h}} = {lutz_params.tp_min:.1f} "
+            f"\\text{{ min}}$$"
         )
         lines.append("")
         lines.append("---")
@@ -347,7 +348,8 @@ def _generate_nash_section(
             f"$$K = \\frac{{t_p}}{{N - 1}} = "
             f"\\frac{{{lutz_params.tp_hours:.3f}}}{{{lutz_params.n:.3f} - 1}} = "
             f"\\frac{{{lutz_params.tp_hours:.3f}}}{{{lutz_params.n - 1:.3f}}} = "
-            f"{lutz_params.k_hours:.3f} \\text{{ h}} = {lutz_params.k_min:.2f} \\text{{ min}}$$"
+            f"{lutz_params.k_hours:.3f} \\text{{ h}} = {lutz_params.k_min:.2f} "
+            f"\\text{{ min}}$$"
         )
         lines.append("")
         lines.append("---")
@@ -358,8 +360,8 @@ def _generate_nash_section(
         lines.append("|:---------|:------:|--------:|:---------:|")
         lines.append(f"| Liczba zbiorników | n | {n:.3f} | - |")
         lines.append(f"| Stała magazynowania | K | {k_min:.2f} | min |")
-        lines.append(f"| Czas do szczytu IUH | tp | {(n-1)*k_min:.1f} | min |")
-        lines.append(f"| Czas opóźnienia (lag) | tlag = n×K | {n*k_min:.1f} | min |")
+        lines.append(f"| Czas do szczytu IUH | tp | {(n - 1) * k_min:.1f} | min |")
+        lines.append(f"| Czas opóźnienia (lag) | tlag = n×K | {n * k_min:.1f} | min |")
         lines.append("")
         lines.append("**Referencje:**")
         lines.append(
@@ -523,10 +525,10 @@ def _generate_nash_section(
 
 def _generate_clark_section(
     area_km2: float,
-    tc_min: Optional[float],
+    tc_min: float | None,
     time_to_peak_min: float,
     peak_discharge_m3s: float,
-    model_params: Dict[str, Any],
+    model_params: dict[str, Any],
     include_formulas: bool,
 ) -> list:
     """Generate Clark IUH-specific content."""
@@ -539,7 +541,7 @@ def _generate_clark_section(
     timestep_min = model_params.get("timestep_min")
 
     # Compute C1 routing coefficient when timestep is available
-    c1: Optional[float] = None
+    c1: float | None = None
     if timestep_min is not None and timestep_min > 0:
         c1 = timestep_min / (2.0 * r_min + timestep_min)
 
@@ -626,7 +628,8 @@ def _generate_clark_section(
                 "**Przybliżony czas opóźnienia:**",
                 "",
                 f"$$t_{{lag}} \\approx \\frac{{T_c}}{{2}} + R = "
-                f"\\frac{{{tc:.1f}}}{{2}} + {r_min:.1f} = {lag_time_min:.1f} \\text{{ min}}$$",
+                f"\\frac{{{tc:.1f}}}{{2}} + {r_min:.1f} = {lag_time_min:.1f} "
+                f"\\text{{ min}}$$",
             ]
         )
 
@@ -637,7 +640,7 @@ def _generate_snyder_section(
     area_km2: float,
     time_to_peak_min: float,
     peak_discharge_m3s: float,
-    model_params: Dict[str, Any],
+    model_params: dict[str, Any],
     include_formulas: bool,
 ) -> list:
     """Generate Snyder UH-specific content.
@@ -659,8 +662,8 @@ def _generate_snyder_section(
     """
     lines = []
 
-    L_km: Optional[float] = model_params.get("L_km")
-    Lc_km: Optional[float] = model_params.get("Lc_km")
+    L_km: float | None = model_params.get("L_km")
+    Lc_km: float | None = model_params.get("Lc_km")
     ct: float = model_params.get("ct", 1.5)
     cp: float = model_params.get("cp", 0.6)
     tL_min: float = model_params.get("lag_time_min", 60.0)
@@ -683,10 +686,10 @@ def _generate_snyder_section(
     w75_h: float = model_params.get("w75_h", 0.1019 / (qp_per_area**1.08))
 
     # Non-standard duration parameters (present only when Δt ≠ tD)
-    duration_min: Optional[float] = model_params.get("duration_min")
-    tLR_min: Optional[float] = model_params.get("adjusted_lag_time_min")
-    tpR_min: Optional[float] = model_params.get("adjusted_tp_min")
-    qpR_m3s: Optional[float] = model_params.get("adjusted_qp_m3s")
+    duration_min: float | None = model_params.get("duration_min")
+    tLR_min: float | None = model_params.get("adjusted_lag_time_min")
+    tpR_min: float | None = model_params.get("adjusted_tp_min")
+    qpR_m3s: float | None = model_params.get("adjusted_qp_m3s")
 
     lines.extend(
         [
@@ -714,7 +717,10 @@ def _generate_snyder_section(
     lines.extend(
         [
             f"- Czas do szczytu: tp = {time_to_peak_min:.1f} min",
-            f"- Przepływ szczytowy (standardowy): qp = {peak_discharge_m3s:.4f} m³/s/mm",
+            (
+                f"- Przepływ szczytowy (standardowy): qp = {peak_discharge_m3s:.4f} "
+                f"m³/s/mm"
+            ),
             f"- Czas bazowy: tb = {tb_min:.1f} min",
             f"- Szerokość W50 = {w50_h:.3f} h, W75 = {w75_h:.3f} h",
         ]

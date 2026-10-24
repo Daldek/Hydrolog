@@ -167,8 +167,14 @@ COMMANDS: tuple[Command, ...] = (
     Command(
         name="precip areal",
         operation_id="precip_areal",
-        summary="Opad obszarowy z posterunków: średnia arytmetyczna, Thiessen, IDW lub izohiety.",
-        summary_en="Areal precipitation from gauges: arithmetic mean, Thiessen, IDW or isohyets.",
+        summary=(
+            "Opad obszarowy z posterunków: średnia arytmetyczna, Thiessen, IDW "
+            "lub izohiety."
+        ),
+        summary_en=(
+            "Areal precipitation from gauges: arithmetic mean, Thiessen, IDW "
+            "or isohyets."
+        ),
         description=(
             "Opad obszarowy zlewni [mm] z opadów punktowych. `method`: arithmetic "
             "— średnia arytmetyczna posterunków (dla gęstej, równomiernej sieci i "
@@ -283,7 +289,7 @@ COMMANDS: tuple[Command, ...] = (
                 name="target_y",
                 type="number",
                 description=(
-                    "Dla idw: współrzędna Y punktu docelowego; razem z " "`target_x`."
+                    "Dla idw: współrzędna Y punktu docelowego; razem z `target_x`."
                 ),
                 description_en=(
                     "For idw: Y coordinate of the target point; together with "
@@ -309,8 +315,7 @@ COMMANDS: tuple[Command, ...] = (
                 type="number_list",
                 description="Dla idw: współrzędne Y punktów siatki; razem z `grid_x`.",
                 description_en=(
-                    "For idw: Y coordinates of the grid points; together with "
-                    "`grid_x`."
+                    "For idw: Y coordinates of the grid points; together with `grid_x`."
                 ),
             ),
             Option(

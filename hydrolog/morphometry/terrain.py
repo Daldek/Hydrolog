@@ -1,7 +1,6 @@
 """Terrain parameters for watershed analysis."""
 
 from dataclasses import dataclass
-from typing import Optional
 
 import numpy as np
 from numpy.typing import NDArray
@@ -155,8 +154,8 @@ class TerrainAnalysis:
         elevation_min_m: float,
         elevation_max_m: float,
         length_km: float,
-        elevation_mean_m: Optional[float] = None,
-        channel_length_km: Optional[float] = None,
+        elevation_mean_m: float | None = None,
+        channel_length_km: float | None = None,
     ) -> None:
         """
         Initialize terrain analysis.
@@ -305,7 +304,7 @@ class TerrainAnalysis:
     @staticmethod
     def mean_elevation_from_dem(
         elevations: NDArray[np.float64],
-        weights: Optional[NDArray[np.float64]] = None,
+        weights: NDArray[np.float64] | None = None,
     ) -> float:
         """
         Calculate mean elevation from DEM data.

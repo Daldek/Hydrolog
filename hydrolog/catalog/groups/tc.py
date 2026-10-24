@@ -60,7 +60,9 @@ COMMANDS: tuple[Command, ...] = (
         name="tc kirpich",
         operation_id="tc_kirpich",
         summary="Czas koncentracji wzorem Kirpicha z długości i spadku cieku głównego.",
-        summary_en="Time of concentration by the Kirpich formula (channel length, slope).",
+        summary_en=(
+            "Time of concentration by the Kirpich formula (channel length, slope)."
+        ),
         description=(
             "Czas koncentracji tc wzorem Kirpicha (1940): tc [min] = 3,981 · L^0,77 · "
             "S^(−0,385), gdzie L to długość cieku głównego od działu wodnego do "
@@ -121,8 +123,12 @@ COMMANDS: tuple[Command, ...] = (
     Command(
         name="tc nrcs",
         operation_id="tc_nrcs",
-        summary="Czas koncentracji metodą NRCS (TR-55, czas opóźnienia) z L, spadku i CN.",
-        summary_en="Time of concentration by the NRCS (TR-55 lag) method from L, slope, CN.",
+        summary=(
+            "Czas koncentracji metodą NRCS (TR-55, czas opóźnienia) z L, spadku i CN."
+        ),
+        summary_en=(
+            "Time of concentration by the NRCS (TR-55 lag) method from L, slope, CN."
+        ),
         description=(
             "Czas koncentracji tc metodą NRCS (TR-55): najpierw czas opóźnienia "
             "tlag [h] = L^0,8 · (S_r + 25,4)^0,7 / (7069 · Y^0,5), gdzie L to długość "
@@ -185,8 +191,12 @@ COMMANDS: tuple[Command, ...] = (
     Command(
         name="tc giandotti",
         operation_id="tc_giandotti",
-        summary="Czas koncentracji wzorem Giandottiego z powierzchni, długości i spadku.",
-        summary_en="Time of concentration by the Giandotti formula (area, length, relief).",
+        summary=(
+            "Czas koncentracji wzorem Giandottiego z powierzchni, długości i spadku."
+        ),
+        summary_en=(
+            "Time of concentration by the Giandotti formula (area, length, relief)."
+        ),
         description=(
             "Czas koncentracji tc wzorem Giandottiego (1934): tc [h] = (4·√A + "
             "1,5·L) / (0,8·√H), gdzie A to powierzchnia zlewni [km²], L długość "
@@ -252,8 +262,12 @@ COMMANDS: tuple[Command, ...] = (
     Command(
         name="tc faa",
         operation_id="tc_faa",
-        summary="Czas koncentracji metodą FAA dla spływu powierzchniowego (L, spadek, C).",
-        summary_en="Time of concentration by the FAA method for overland flow (L, slope, C).",
+        summary=(
+            "Czas koncentracji metodą FAA dla spływu powierzchniowego (L, spadek, C)."
+        ),
+        summary_en=(
+            "Time of concentration by the FAA method for overland flow (L, slope, C)."
+        ),
         description=(
             "Czas koncentracji tc metodą FAA (Federal Aviation Agency) dla spływu "
             "powierzchniowego na krótkich, płaskich drogach: tc [min] = 22,213 · "
@@ -286,7 +300,7 @@ COMMANDS: tuple[Command, ...] = (
                 name="length_km",
                 type="number",
                 description=(
-                    "Długość spływu powierzchniowego [km]; > 0 (typowo " "0,015–3)."
+                    "Długość spływu powierzchniowego [km]; > 0 (typowo 0,015–3)."
                 ),
                 description_en="Overland flow length [km]; > 0 (typically 0.015-3).",
                 required=True,
@@ -301,8 +315,7 @@ COMMANDS: tuple[Command, ...] = (
                     "0,005–0,10)."
                 ),
                 description_en=(
-                    "Mean ground slope [m/m] (not percent); > 0 (typically "
-                    "0.005-0.10)."
+                    "Mean ground slope [m/m] (not percent); > 0 (typically 0.005-0.10)."
                 ),
                 required=True,
                 exclusive_minimum=0,
@@ -329,8 +342,12 @@ COMMANDS: tuple[Command, ...] = (
     Command(
         name="tc kerby",
         operation_id="tc_kerby",
-        summary="Czas spływu powierzchniowego wzorem Kerby'ego (L, spadek, retardancja N).",
-        summary_en="Overland flow time of concentration by the Kerby formula (L, slope, N).",
+        summary=(
+            "Czas spływu powierzchniowego wzorem Kerby'ego (L, spadek, retardancja N)."
+        ),
+        summary_en=(
+            "Overland flow time of concentration by the Kerby formula (L, slope, N)."
+        ),
         description=(
             "Czas koncentracji tc dla spływu warstwowego wzorem Kerby'ego (1959) w "
             "wersji metrycznej: tc [min] = 36,37 · (L·N)^0,467 · S^(−0,2335), gdzie "
@@ -380,8 +397,7 @@ COMMANDS: tuple[Command, ...] = (
                     "0,001–0,01)."
                 ),
                 description_en=(
-                    "Mean ground slope [m/m] (not percent); > 0 (typically "
-                    "0.001-0.01)."
+                    "Mean ground slope [m/m] (not percent); > 0 (typically 0.001-0.01)."
                 ),
                 required=True,
                 exclusive_minimum=0,
@@ -394,8 +410,14 @@ COMMANDS: tuple[Command, ...] = (
     Command(
         name="tc kerby-kirpich",
         operation_id="tc_kerby_kirpich",
-        summary="Czas koncentracji złożoną metodą Kerby–Kirpich (spływ powierzchniowy + koryto).",
-        summary_en="Time of concentration by the composite Kerby-Kirpich method (overland + channel).",
+        summary=(
+            "Czas koncentracji złożoną metodą Kerby–Kirpich (spływ "
+            "powierzchniowy + koryto)."
+        ),
+        summary_en=(
+            "Time of concentration by the composite Kerby-Kirpich method "
+            "(overland + channel)."
+        ),
         description=(
             "Czas koncentracji tc złożoną metodą Kerby–Kirpich: droga spływu dzieli "
             "się na odcinek powierzchniowy (wzór Kerby'ego) i korytowy (wzór "
@@ -493,8 +515,13 @@ COMMANDS: tuple[Command, ...] = (
     Command(
         name="tc watershed",
         operation_id="tc_watershed",
-        summary="Czas koncentracji wybraną metodą z parametrów zlewni (WatershedParameters).",
-        summary_en="Time of concentration by a chosen method from watershed parameters.",
+        summary=(
+            "Czas koncentracji wybraną metodą z parametrów zlewni "
+            "(WatershedParameters)."
+        ),
+        summary_en=(
+            "Time of concentration by a chosen method from watershed parameters."
+        ),
         description=(
             "Czas koncentracji tc wybraną metodą (kirpich, nrcs, giandotti, faa, "
             "kerby, kerby_kirpich) z parametrów zlewni w formacie "

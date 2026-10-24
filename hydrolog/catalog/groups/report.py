@@ -122,8 +122,7 @@ COMMANDS: tuple[Command, ...] = (
                     "Dołącz tabele szeregów czasowych i wskaźniki kształtu zlewni."
                 ),
                 description_en=(
-                    "Include the time series tables and the watershed shape "
-                    "indicators."
+                    "Include the time series tables and the watershed shape indicators."
                 ),
                 default=True,
             ),

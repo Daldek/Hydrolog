@@ -2,7 +2,6 @@
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Union
 
 import numpy as np
 from numpy.typing import NDArray
@@ -28,7 +27,7 @@ class AMC(Enum):
         Wet conditions - highest runoff potential.
     """
 
-    I = "dry"
+    I = "dry"  # noqa: E741  # AMC class I is the SCS name
     II = "normal"
     III = "wet"
 
@@ -52,7 +51,7 @@ class EffectivePrecipitationResult(JsonResultMixin):
         CN value used (adjusted for AMC if applicable).
     """
 
-    effective_mm: Union[NDArray[np.float64], float]
+    effective_mm: NDArray[np.float64] | float
     total_effective_mm: float
     retention_mm: float
     initial_abstraction_mm: float
@@ -213,7 +212,7 @@ class SCSCN:
 
     def effective_precipitation(
         self,
-        precipitation_mm: Union[NDArray[np.float64], float, list],
+        precipitation_mm: NDArray[np.float64] | float | list,
         amc: AMC = AMC.II,
     ) -> EffectivePrecipitationResult:
         """
@@ -287,11 +286,8 @@ class SCSCN:
 
         total_effective = float(pe_cumulative[-1])
 
-        effective: Union[NDArray[np.float64], float]
-        if is_scalar:
-            effective = float(pe_incremental[0])
-        else:
-            effective = pe_incremental
+        effective: NDArray[np.float64] | float
+        effective = float(pe_incremental[0]) if is_scalar else pe_incremental
 
         return EffectivePrecipitationResult(
             effective_mm=effective,

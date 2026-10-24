@@ -9,7 +9,6 @@ Reference:
 """
 
 from dataclasses import dataclass
-from typing import Optional
 
 import numpy as np
 from numpy.typing import NDArray
@@ -231,7 +230,7 @@ class SnyderUH:
         """Standard rainfall duration tD [min]."""
         return self.standard_duration_hours * 60.0
 
-    def time_to_peak_hours(self, duration_hours: Optional[float] = None) -> float:
+    def time_to_peak_hours(self, duration_hours: float | None = None) -> float:
         """
         Calculate time to peak [hours].
 
@@ -263,7 +262,7 @@ class SnyderUH:
 
         return tL_adj + duration_hours / 2.0
 
-    def time_to_peak_min(self, duration_min: Optional[float] = None) -> float:
+    def time_to_peak_min(self, duration_min: float | None = None) -> float:
         """
         Calculate time to peak [min].
 
@@ -283,7 +282,7 @@ class SnyderUH:
             duration_hours = duration_min / 60.0
         return self.time_to_peak_hours(duration_hours) * 60.0
 
-    def adjusted_lag_time_hours(self, duration_hours: Optional[float] = None) -> float:
+    def adjusted_lag_time_hours(self, duration_hours: float | None = None) -> float:
         """
         Calculate adjusted lag time tLR [hours].
 
@@ -313,7 +312,7 @@ class SnyderUH:
         # Ensure positive lag time
         return max(tLR, 0.1 * self.lag_time_hours)
 
-    def peak_discharge(self, duration_min: Optional[float] = None) -> float:
+    def peak_discharge(self, duration_min: float | None = None) -> float:
         """
         Calculate peak discharge [m³/s per mm].
 
@@ -347,7 +346,7 @@ class SnyderUH:
 
         return 0.275 * self.cp * self.area_km2 / tLR
 
-    def time_base_hours(self, duration_min: Optional[float] = None) -> float:
+    def time_base_hours(self, duration_min: float | None = None) -> float:
         """
         Calculate time base tb [hours].
 
@@ -380,7 +379,7 @@ class SnyderUH:
         qpR = self.peak_discharge(duration_min)
         return 0.556 * self.area_km2 / qpR
 
-    def time_base_min(self, duration_min: Optional[float] = None) -> float:
+    def time_base_min(self, duration_min: float | None = None) -> float:
         """
         Calculate time base tb [min].
 
@@ -448,7 +447,7 @@ class SnyderUH:
             return float(w75 * (1.0 / ratio))
 
     def _generate_shape(
-        self, times_min: NDArray[np.float64], duration_min: Optional[float] = None
+        self, times_min: NDArray[np.float64], duration_min: float | None = None
     ) -> NDArray[np.float64]:
         """
         Generate hydrograph shape using gamma distribution approximation.
@@ -479,8 +478,8 @@ class SnyderUH:
     def generate(
         self,
         timestep_min: float = 30.0,
-        duration_min: Optional[float] = None,
-        total_duration_min: Optional[float] = None,
+        duration_min: float | None = None,
+        total_duration_min: float | None = None,
     ) -> SnyderUHResult:
         """
         Generate Snyder Unit Hydrograph.

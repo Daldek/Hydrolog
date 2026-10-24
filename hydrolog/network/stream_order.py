@@ -7,10 +7,6 @@ various stream ordering systems (Strahler, Shreve).
 from collections import deque
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
-
-import numpy as np
-from numpy.typing import NDArray
 
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError
@@ -78,7 +74,7 @@ class NetworkStatistics(JsonResultMixin):
     bifurcation_ratios: dict[int, float]
     length_ratios: dict[int, float]
     total_stream_length_km: float
-    drainage_density: Optional[float] = None
+    drainage_density: float | None = None
 
 
 class StreamNetwork:
@@ -124,7 +120,7 @@ class StreamNetwork:
     def __init__(
         self,
         segments: list[StreamSegment],
-        area_km2: Optional[float] = None,
+        area_km2: float | None = None,
     ) -> None:
         """
         Initialize stream network.
@@ -150,7 +146,7 @@ class StreamNetwork:
         self.segments = {seg.segment_id: seg for seg in segments}
         self.area_km2 = area_km2
         self._classified = False
-        self._method: Optional[OrderingMethod] = None
+        self._method: OrderingMethod | None = None
 
     @property
     def n_segments(self) -> int:

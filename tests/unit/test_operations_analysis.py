@@ -928,7 +928,9 @@ class TestFloodFrequency:
             return_periods=[10, 50, 100],
         ).result
         assert [d.distribution_name for d in result.distributions] == list(expected)
-        for fitted, reference in zip(result.distributions, expected.values()):
+        for fitted, reference in zip(
+            result.distributions, expected.values(), strict=False
+        ):
             assert fitted.to_dict() == reference.to_dict()
         assert result.best_distribution == next(iter(expected))
         assert result.n_years == 35
@@ -1354,7 +1356,7 @@ class TestLowFlowSequences:
         assert result.total_deficit == direct.total_deficit
         assert result.max_duration_days == direct.max_duration_days
         assert result.n_days == 1096
-        for event, reference in zip(result.sequences, direct.sequences):
+        for event, reference in zip(result.sequences, direct.sequences, strict=False):
             assert event.start_index == reference.start_index
             assert event.end_index == reference.end_index
             assert event.duration_days == reference.duration_days
@@ -1592,7 +1594,7 @@ class TestRatingCurve:
     def test_pairs_with_a_missing_value_are_dropped_with_a_notice(self, tmp_path):
         levels, flows = _rating_pairs()
         lines = ["H,Q"]
-        for index, (level, flow) in enumerate(zip(levels, flows)):
+        for index, (level, flow) in enumerate(zip(levels, flows, strict=False)):
             if index == 3:
                 lines.append(f"{level},")
             elif index == 6:
@@ -1974,7 +1976,7 @@ class TestSoilHsg:
             run(
                 "soil hsg",
                 output_path=soil_rasters["clay_path"],
-                **{key: value for key, value in soil_rasters.items()},
+                **dict(soil_rasters.items()),
             )
 
     def test_statistics_equal_the_library_function(self, soil_rasters, tmp_path):
@@ -2446,7 +2448,8 @@ class TestReportGenerate:
 
         unit = compute_hydrograph(**inputs).result.unit_hydrograph_result
         assert _ordinate_rows(text) == [
-            (f"{t:.1f}", f"{q:.4f}") for t, q in zip(unit.times_min, unit.ordinates_m3s)
+            (f"{t:.1f}", f"{q:.4f}")
+            for t, q in zip(unit.times_min, unit.ordinates_m3s, strict=False)
         ]
 
     @pytest.mark.parametrize("method, dropped", _TC_REPORT_CASES, ids=str)

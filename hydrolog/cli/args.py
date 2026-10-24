@@ -10,7 +10,8 @@ here, rather than in argparse, makes an unknown command a ``not_found`` error (w
 suggestions) instead of a usage error.
 
 The language is the one thing that must be known *before* parsing (the help is printed
-while the command line is being parsed), so it is taken from the last ``--lang`` anywhere
+while the command line is being parsed), so it is taken from the last ``--lang``
+anywhere
 in the command line (:func:`peek`) and validated by :func:`resolve_lang`.
 """
 

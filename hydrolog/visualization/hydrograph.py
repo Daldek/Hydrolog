@@ -4,34 +4,30 @@ This module provides functions for plotting discharge hydrographs
 and unit hydrographs.
 """
 
-from typing import Optional, Union
-
 import matplotlib.pyplot as plt
 import numpy as np
 
+from hydrolog.runoff.clark_iuh import ClarkIUHResult, ClarkUHResult
 from hydrolog.runoff.convolution import HydrographResult
-from hydrolog.runoff.unit_hydrograph import UnitHydrographResult
-from hydrolog.runoff.nash_iuh import NashUHResult, IUHResult
-from hydrolog.runoff.clark_iuh import ClarkUHResult, ClarkIUHResult
+from hydrolog.runoff.nash_iuh import IUHResult, NashUHResult
 from hydrolog.runoff.snyder_uh import SnyderUHResult
-
+from hydrolog.runoff.unit_hydrograph import UnitHydrographResult
 from hydrolog.visualization.styles import (
+    add_stats_box,
+    format_time_axis,
     get_color,
     get_label,
-    format_time_axis,
-    add_peak_annotation,
-    add_stats_box,
 )
 
 # Type alias for all UH result types
-UHResultType = Union[
-    UnitHydrographResult,
-    NashUHResult,
-    ClarkUHResult,
-    SnyderUHResult,
-    IUHResult,
-    ClarkIUHResult,
-]
+UHResultType = (
+    UnitHydrographResult
+    | NashUHResult
+    | ClarkUHResult
+    | SnyderUHResult
+    | IUHResult
+    | ClarkIUHResult
+)
 
 
 def plot_hydrograph(
@@ -39,8 +35,8 @@ def plot_hydrograph(
     show_peak: bool = True,
     show_volume: bool = True,
     fill: bool = True,
-    title: Optional[str] = None,
-    ax: Optional[plt.Axes] = None,
+    title: str | None = None,
+    ax: plt.Axes | None = None,
     figsize: tuple = (10, 6),
 ) -> plt.Figure:
     """
@@ -133,11 +129,11 @@ def plot_unit_hydrograph(
     result: UHResultType,
     show_params: bool = True,
     fill: bool = True,
-    title: Optional[str] = None,
-    ax: Optional[plt.Axes] = None,
+    title: str | None = None,
+    ax: plt.Axes | None = None,
     figsize: tuple = (10, 6),
-    color: Optional[str] = None,
-    label: Optional[str] = None,
+    color: str | None = None,
+    label: str | None = None,
 ) -> plt.Figure:
     """
     Plot unit hydrograph [m³/s/mm] or IUH [1/min].
@@ -273,7 +269,10 @@ def _get_uh_title(result: UHResultType) -> str:
             f"Hydrogram jednostkowy Nash (N={result.n:.2f}, k={result.k_min:.1f} min)"
         )
     elif isinstance(result, (ClarkUHResult, ClarkIUHResult)):
-        return f"Hydrogram jednostkowy Clark (Tc={result.tc_min:.1f}, R={result.r_min:.1f} min)"
+        return (
+            f"Hydrogram jednostkowy Clark (Tc={result.tc_min:.1f}, "
+            f"R={result.r_min:.1f} min)"
+        )
     elif isinstance(result, SnyderUHResult):
         return f"Hydrogram jednostkowy Snyder (tL={result.lag_time_min:.0f} min)"
     elif isinstance(result, UnitHydrographResult):

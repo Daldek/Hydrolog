@@ -63,7 +63,8 @@ def hydrological_day_of_year(dates: NDArray) -> NDArray[np.int_]:
     # Construct Nov 1 by advancing 10 months from Jan 1 of (hydro_year - 1).
     prev_years = hydro_years - 1
     nov1 = prev_years.astype("U4").astype("datetime64[Y]") + np.timedelta64(10, "M")
-    return (dates - nov1).astype(int) + 1
+    days: NDArray[np.int64] = (dates - nov1).astype(np.int64) + 1
+    return days
 
 
 def split_half_years(
@@ -210,7 +211,7 @@ def annual_extremes(
     skipped = tuple(
         IncompleteYear(int(year), int(present), int(total))
         for year, present, total in zip(
-            labels[~complete], with_data[~complete], expected[~complete]
+            labels[~complete], with_data[~complete], expected[~complete], strict=False
         )
     )
     return AnnualExtremes(labels[complete], extremes, skipped)

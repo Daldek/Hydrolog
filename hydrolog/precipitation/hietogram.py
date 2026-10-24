@@ -2,7 +2,6 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Tuple
 
 import numpy as np
 from numpy.typing import NDArray
@@ -115,7 +114,8 @@ class Hietogram(ABC):
             )
         if timestep_min > duration_min:
             raise InvalidParameterError(
-                f"timestep_min ({timestep_min}) cannot exceed duration_min ({duration_min})"
+                f"timestep_min ({timestep_min}) cannot exceed duration_min "
+                f"({duration_min})"
             )
 
         n_steps = int(duration_min / timestep_min)
@@ -488,7 +488,9 @@ class EulerIIHietogram(Hietogram):
         Examples
         --------
         >>> hietogram = EulerIIHietogram()
-        >>> result = hietogram.generate(total_mm=50.0, duration_min=60.0, timestep_min=5.0)
+        >>> result = hietogram.generate(
+        ...     total_mm=50.0, duration_min=60.0, timestep_min=5.0
+        ... )
         >>> print(f"Peak intensity: {result.intensities_mm.max():.2f} mm")
         Peak intensity: 12.47 mm
         """

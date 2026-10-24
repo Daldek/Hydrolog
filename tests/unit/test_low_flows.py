@@ -5,7 +5,6 @@ import pytest
 
 
 class TestLowFlowAnalysis:
-
     @pytest.fixture
     def daily_flow_data(self):
         """Synthetic daily data: 3 complete hydrological years with known minima."""
@@ -98,8 +97,8 @@ class TestLowFlowAnalysis:
 
     def test_detect_sequences_negative_threshold_raises(self):
         """Negative threshold should raise InvalidParameterError."""
-        from hydrolog.statistics.low_flows import LowFlowAnalysis
         from hydrolog.exceptions import InvalidParameterError
+        from hydrolog.statistics.low_flows import LowFlowAnalysis
 
         dates = np.arange(
             np.datetime64("2020-11-01"),
@@ -113,8 +112,8 @@ class TestLowFlowAnalysis:
 
     def test_detect_sequences_zero_min_duration_raises(self):
         """min_duration_days < 1 should raise InvalidParameterError."""
-        from hydrolog.statistics.low_flows import LowFlowAnalysis
         from hydrolog.exceptions import InvalidParameterError
+        from hydrolog.statistics.low_flows import LowFlowAnalysis
 
         dates = np.arange(
             np.datetime64("2020-11-01"),
@@ -127,15 +126,15 @@ class TestLowFlowAnalysis:
             lfa.detect_sequences(threshold=10.0, min_duration_days=0)
 
     def test_empty_data_raises(self):
-        from hydrolog.statistics.low_flows import LowFlowAnalysis
         from hydrolog.exceptions import InvalidParameterError
+        from hydrolog.statistics.low_flows import LowFlowAnalysis
 
         with pytest.raises(InvalidParameterError):
             LowFlowAnalysis(np.array([]), np.array([]))
 
     def test_mismatched_lengths_raises(self):
-        from hydrolog.statistics.low_flows import LowFlowAnalysis
         from hydrolog.exceptions import InvalidParameterError
+        from hydrolog.statistics.low_flows import LowFlowAnalysis
 
         with pytest.raises(InvalidParameterError):
             LowFlowAnalysis(
@@ -328,7 +327,11 @@ class TestAnnualMinimaOfCompleteYears:
         assert len(minima) == 28
         np.testing.assert_allclose(
             minima,
-            [m for m, year in zip(self.EXPECTED, range(1992, 2021)) if year != 2005],
+            [
+                m
+                for m, year in zip(self.EXPECTED, range(1992, 2021), strict=False)
+                if year != 2005
+            ],
         )
 
     def test_a_series_without_a_complete_year_has_no_annual_minima(self):

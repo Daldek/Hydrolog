@@ -5,25 +5,22 @@ including flood frequency curves, low-flow sequences, rating curves,
 and water level frequency distributions.
 """
 
-from typing import Optional, Union
-
 import matplotlib.pyplot as plt
 import numpy as np
 from numpy.typing import NDArray
 
-from hydrolog.statistics.high_flows import FrequencyAnalysisResult
-from hydrolog.statistics.low_flows import LowFlowFrequencyResult, LowFlowAnalysisResult
-from hydrolog.statistics.characteristic import DailyStatistics, MonthlyStatistics
-from hydrolog.statistics._types import EmpiricalFrequency, LowFlowEmpiricalFrequency
-from hydrolog.statistics._hydrological_year import hydrological_year
 from hydrolog.hydrometrics.rating_curve import (
+    FrequencyDistributionResult,
     RatingCurve,
     RatingCurveResult,
-    FrequencyDistributionResult,
     WaterLevelZones,
 )
-
-from hydrolog.visualization.styles import PALETTE, get_color, add_stats_box
+from hydrolog.statistics._hydrological_year import hydrological_year
+from hydrolog.statistics._types import EmpiricalFrequency, LowFlowEmpiricalFrequency
+from hydrolog.statistics.characteristic import DailyStatistics, MonthlyStatistics
+from hydrolog.statistics.high_flows import FrequencyAnalysisResult
+from hydrolog.statistics.low_flows import LowFlowAnalysisResult, LowFlowFrequencyResult
+from hydrolog.visualization.styles import PALETTE, add_stats_box, get_color
 
 # Polish month names
 _MONTH_NAMES = [
@@ -53,9 +50,9 @@ _DIST_NAMES = {
 
 def plot_frequency_curve(
     result: FrequencyAnalysisResult,
-    empirical: Optional[EmpiricalFrequency] = None,
-    title: Optional[str] = None,
-    ax: Optional[plt.Axes] = None,
+    empirical: EmpiricalFrequency | None = None,
+    title: str | None = None,
+    ax: plt.Axes | None = None,
     figsize: tuple = (10, 6),
 ) -> plt.Figure:
     """Plot exceedance probability (flood frequency) curve.
@@ -146,9 +143,9 @@ def plot_frequency_curve(
 
 def plot_frequency_comparison(
     results: dict[str, FrequencyAnalysisResult],
-    empirical: Optional[EmpiricalFrequency] = None,
-    title: Optional[str] = None,
-    ax: Optional[plt.Axes] = None,
+    empirical: EmpiricalFrequency | None = None,
+    title: str | None = None,
+    ax: plt.Axes | None = None,
     figsize: tuple = (10, 6),
 ) -> plt.Figure:
     """Plot multiple frequency distribution curves for comparison.
@@ -225,9 +222,9 @@ def plot_frequency_comparison(
 
 def plot_non_exceedance_curve(
     result: LowFlowFrequencyResult,
-    empirical: Optional[Union[EmpiricalFrequency, LowFlowEmpiricalFrequency]] = None,
-    title: Optional[str] = None,
-    ax: Optional[plt.Axes] = None,
+    empirical: EmpiricalFrequency | LowFlowEmpiricalFrequency | None = None,
+    title: str | None = None,
+    ax: plt.Axes | None = None,
     figsize: tuple = (10, 6),
 ) -> plt.Figure:
     """Plot non-exceedance probability curve for low flows.
@@ -322,8 +319,8 @@ def plot_non_exceedance_curve(
 
 def plot_daily_characteristics(
     daily_stats: DailyStatistics,
-    title: Optional[str] = None,
-    ax: Optional[plt.Axes] = None,
+    title: str | None = None,
+    ax: plt.Axes | None = None,
     figsize: tuple = (12, 6),
 ) -> plt.Figure:
     """Plot daily characteristic values over the hydrological year.
@@ -416,8 +413,8 @@ def plot_daily_characteristics(
 def plot_monthly_statistics(
     monthly_stats: MonthlyStatistics,
     show_ci: bool = True,
-    title: Optional[str] = None,
-    ax: Optional[plt.Axes] = None,
+    title: str | None = None,
+    ax: plt.Axes | None = None,
     figsize: tuple = (10, 6),
 ) -> plt.Figure:
     """Plot monthly mean statistics as a bar chart.
@@ -493,8 +490,8 @@ def plot_monthly_statistics(
 def plot_annual_hydrographs(
     daily_flows: NDArray[np.float64],
     dates: NDArray,
-    title: Optional[str] = None,
-    ax: Optional[plt.Axes] = None,
+    title: str | None = None,
+    ax: plt.Axes | None = None,
     figsize: tuple = (12, 6),
 ) -> plt.Figure:
     """Plot overlaid hydrographs for each hydrological year.
@@ -535,7 +532,6 @@ def plot_annual_hydrographs(
     dates = np.asarray(dates)
 
     from hydrolog.statistics._hydrological_year import (
-        hydrological_year,
         hydrological_day_of_year,
     )
 
@@ -580,8 +576,8 @@ def plot_annual_hydrographs(
 def plot_flow_histogram(
     values: NDArray[np.float64],
     bins: int = 20,
-    title: Optional[str] = None,
-    ax: Optional[plt.Axes] = None,
+    title: str | None = None,
+    ax: plt.Axes | None = None,
     figsize: tuple = (10, 6),
 ) -> plt.Figure:
     """Plot histogram of flow values.
@@ -663,8 +659,8 @@ def plot_flow_histogram(
 def plot_low_flow_sequences(
     daily_flows: NDArray[np.float64],
     result: LowFlowAnalysisResult,
-    title: Optional[str] = None,
-    ax: Optional[plt.Axes] = None,
+    title: str | None = None,
+    ax: plt.Axes | None = None,
     figsize: tuple = (12, 5),
 ) -> plt.Figure:
     """Plot daily hydrograph with shaded drought (low-flow) periods.
@@ -752,8 +748,8 @@ def plot_low_flow_sequences(
 def plot_rating_curve(
     rating: RatingCurve,
     result: RatingCurveResult,
-    title: Optional[str] = None,
-    ax: Optional[plt.Axes] = None,
+    title: str | None = None,
+    ax: plt.Axes | None = None,
     figsize: tuple = (8, 6),
 ) -> plt.Figure:
     """Plot rating curve scatter and fitted power-law curve.
@@ -846,9 +842,9 @@ def plot_rating_curve(
 
 def plot_water_level_frequency(
     freq: FrequencyDistributionResult,
-    zones: Optional[WaterLevelZones] = None,
-    title: Optional[str] = None,
-    ax: Optional[plt.Axes] = None,
+    zones: WaterLevelZones | None = None,
+    title: str | None = None,
+    ax: plt.Axes | None = None,
     figsize: tuple = (10, 6),
 ) -> plt.Figure:
     """Plot water level frequency/duration curve with optional zone bands.
