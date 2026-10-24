@@ -14,7 +14,9 @@ Time is in minutes and discharge in m3/s.
   non-negative weights;
 * :class:`MuskingumCungeReach` -- Muskingum-Cunge with constant coefficients (the NRCS
   form), from the celerity and top width or from a channel section
-  (:class:`TrapezoidalSection`, Manning's equation).
+  (:class:`TrapezoidalSection`, Manning's equation);
+* :class:`CascadeReach` -- a cascade of ``n`` linear reservoirs (Nash, Kalinin-Milyukov)
+  with the exact kernel for a piecewise-linear inflow (:func:`cascade_weights`).
 
 The recurrences shared with the Clark unit hydrograph are in
 ``hydrolog.routing._kernels``.
@@ -29,6 +31,7 @@ Examples
 
 from __future__ import annotations
 
+from hydrolog.routing.cascade import CascadeReach, cascade_weights
 from hydrolog.routing.cunge import MuskingumCungeReach
 from hydrolog.routing.hydrograph import Hydrograph
 from hydrolog.routing.lag import LagReach
@@ -37,6 +40,7 @@ from hydrolog.routing.reach import Reach, RoutingNotice, RoutingResult
 from hydrolog.routing.sections import FlowState, TrapezoidalSection
 
 __all__ = [
+    "CascadeReach",
     "FlowState",
     "Hydrograph",
     "LagReach",
@@ -46,4 +50,5 @@ __all__ = [
     "RoutingNotice",
     "RoutingResult",
     "TrapezoidalSection",
+    "cascade_weights",
 ]

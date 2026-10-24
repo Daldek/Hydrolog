@@ -928,7 +928,7 @@ Lumped hydrologic routing turns an inflow hydrograph into the outflow hydrograph
 | Hydrograph table | `time_min` (minutes since any origin, strictly increasing at a regular step: every step within 1e-6 of the mean step) and `discharge_m3s` (not negative, finite), at least two ordinates. An irregular table is refused, nothing is resampled (`details.reason`: `irregular_step`, `not_increasing`, `negative`, `length_mismatch`, `too_short`, `not_finite`) |
 | Initial condition | the outflow at the first ordinate equals the inflow there (steady state) unless `initial_outflow_m3s` is given |
 | Tail | the outflow outlasts the inflow: the time axis is extended after the last inflow ordinate, where the inflow is held, until the last outflow differs from the final inflow by at most 0.1 % of the inflow peak and the water still stored above its steady amount is below 0.1 % of the inflow volume; at most ten times the inflow duration (at least 100 steps), otherwise the series ends with the warning `tail_truncated`. `extend_min` fixes the extension (`0` adds none). The notice `tail_extended` reports the added minutes |
-| Balance | volumes are trapezoid sums; `balance_error_m3` = inflow volume (on the extended axis) - outflow volume - change of storage: zero to rounding unless the scheme ran on a refined time step |
+| Balance | volumes are trapezoid sums; `balance_error_m3` = inflow volume (on the extended axis) - outflow volume - change of storage: zero to rounding for the recurrences, unless the scheme ran on a refined time step; the quadrature error of the trapezoid rule where the outflow is not a recurrence of the ordinates (the exact cascade, 3.9.5) |
 | Non-negativity | a non-negative inflow gives a non-negative outflow; a scheme that returned a negative outflow is a `calculation_error` (a bug, not an input) |
 | Notices | accuracy limits are notices of the result, never errors |
 
@@ -999,6 +999,34 @@ Cunge (1969) set the numerical diffusion of the Muskingum scheme equal to the ph
 
 **Reference values.** NEH-630 example 17-4 (`L` = 2,600 ft, `S0` = 0.00091, `dt` = 0.1 h, reference 684.18 ft3/s, `c` = 4.297 ft/s, `T` = 44.6 ft) gives `dx_c` = 2,735 ft (here 833.63 m), one step, `K` = 605.07 s, `X` = -0.2544 (printed -0.254), the weights 0.0277, 0.3556 and 0.6166 (printed 0.028, 0.355, 0.617), `Cg` = 0.595, `Dg` = 1.509 (printed 1.508) and the limit 3.93. The outflow of Table 17-18 follows from the printed coefficients to 0.0049 ft3/s, half of the printed digit, so the table was computed with the rounded coefficients; the exact weights give it to 0.24 ft3/s (0.04 % of the peak; 645.78 ft3/s at 13.1 h against 645.72 ft3/s), and varying `c`, `T` or `S0` within their printed rounding cannot remove that. Routing the same reach from its section (15 ft bottom, 2:1, `n` = 0.04) gives the table to 2.4 ft3/s (0.4 %), the effect of the 2 % lower celerity. The tests are in `tests/unit/test_routing_cunge.py` and `tests/unit/test_routing_sections.py` (the library) and `tests/unit/test_operations_route.py` (the command `route muskingum-cunge`, in SI).
 
+#### 3.9.5 Cascade of Linear Reservoirs (`CascadeReach`)
+
+```
+u(t) = (t/K)^(n-1) exp(-t/K) / (K Γ(n))        mean delay n K        variance n K²
+```
+
+The reach is `n` equal linear reservoirs `S = K O` in series. Nash (1957) showed that the response to a unit impulse is the gamma density above (the kernel of `NashIUH`); `n` need not be whole. The Kalinin-Milyukov method of the Soviet Union is the same model with a characteristic reach length `Δx_c = Q / (T S0 c)` (Cunge's expression with `X = 0`, 3.9.4): `n = L / Δx_c` reservoirs of `K = Δx_c / c` (Ponce, "Linear reservoirs and numerical diffusion"). `CascadeReach` takes `n` with `k_min`, or with `length_km` and `celerity_m_per_s`, which fix the travel time `L / c = n K`. The SSARR routing equation (Muskingum with `X = 0`, the Clark scheme of `route_muskingum_cascade`) is a trapezoid-rule recurrence of this model: its weights are not negative only for `dt <= 2K`, and its numerical diffusion grows with `dt / K`.
+
+**Exact kernel.** The cascade is evaluated with its kernel and not with a recurrence, so every time step is allowed: there is no positivity window, no sub-reach and no sub-step. The inflow is read as the piecewise-linear interpolation of its ordinates and the outflow at an ordinate is the exact response to it. With `x = t / K`, `a = dt / K`, `P(n, x)` the regularised lower incomplete gamma function (`scipy.special.gammainc`) and `Q = 1 - P`, the response to a unit step is `P(n, x)` and to a unit ramp `S2(x) = ∫P = x P(n, x) - n P(n + 1, x)`. A piecewise-linear inflow is a sum of hats, and a hat is the second difference of the ramp over `dt`, so the outflow at ordinate `j` is `Σ h_m I(j - m)` with
+
+```
+h_0 = S2(a) / a        h_m = [S2((m + 1) a) - 2 S2(m a) + S2((m - 1) a)] / a
+```
+
+(`cascade_weights`). The weights are integrals of the gamma density against a hat, so they are not negative; they add up to 1, and `Σ m h_m a = n`, so the mean delay is exact. The code evaluates them from `V(x) = x - S2(x) = x Q(n, x) + n P(n + 1, x)`, which tends to `n` and so loses no digits at large `x`; the weights lose accuracy as `a` falls, relative to the largest weight about 1e-14 at `a = 1`, 1e-12 at `a = 0.1`, 1e-10 at `a = 0.01` and 2e-8 at `a = 0.001`.
+
+**Start, storage and balance.** All `n` reservoirs start with the initial outflow `O_0` (the first inflow ordinate unless `initial_outflow_m3s` is given), and the inflow follows its ordinates from `I_0`, which may differ: `O_j = O_0 [1 - P(n, ja)] + I_0 [P(n, ja) - D_j] + Σ_{i>=1} I_i h_{j-i}`, where `D_j` is the mean of `P` over the step before ordinate `j`. The storage is the water of the inflow that has not yet left, `∫ I(t - τ) Q(n, τ/K) dτ`, in closed form from `V` and `∫ x Q`; at rest it is `n K I`. The outflow between the ordinates is not a straight line, so its trapezoid volume differs from its integral: `balance_error_m3` is that quadrature error, `(dt² / 12) [O'(end) - O'(start)]` to leading order, second order in `dt` and negligible when the series starts and ends at rest.
+
+```python
+from hydrolog.routing import CascadeReach, Hydrograph
+
+inflow = Hydrograph.from_step([0.0, 10.0, 40.0, 20.0, 0.0], timestep_min=30.0)
+result = CascadeReach(n=3, k_min=30.0).route(inflow)
+print(result.outflow.time_to_peak_min, round(result.outflow.peak_discharge_m3s, 2))   # 120.0 16.02
+```
+
+**Reference values.** There is no published table for the cascade; the references are its definition and computations that share nothing with the code (`tests/unit/test_routing_cascade.py`). For whole `n`, the exact solution of the chain of reservoirs by the matrix exponential (outflow and storage to 1e-10, also with an initial outflow that differs from the first inflow). For any `n`, the convolution integral of the gamma density of `NashIUH` with the interpolated inflow (1e-8). The weights as the integral of `NashIUH.ordinate` against a hat (1e-11) and against 60-digit arithmetic. A unit-volume pulse of width `dt` reproduces the IUH with an error that falls with `dt²`. One reservoir by hand (`h_0 = 1/e` for `dt = K`). The trapezoid recurrence of the Clark scheme converges to the kernel with second order.
+
 ---
 
 ## 4. Literature Verification
@@ -1034,6 +1062,7 @@ Cunge (1969) set the numerical diffusion of the Muskingum scheme equal to the ph
 | Lag routing (`route lag`, `LagReach`) | HEC-HMS Technical Reference Manual (Lag routing model) | ✅ |
 | Muskingum routing with sub-reaches (`route muskingum`, `MuskingumReach`) | McCarthy (1938), Chow, Maidment, Mays (1988), HEC-HMS Technical Reference Manual (Muskingum model), University of Iowa Lesson 27 (worked example) | ✅ |
 | Muskingum-Cunge, constant coefficients (`route muskingum-cunge`, `MuskingumCungeReach`) | Cunge (1969), NRCS NEH Part 630 ch. 17 (2014) eq. 17-20 to 17-22, example 17-4 and appendix B, HEC-HMS Technical Reference Manual (Muskingum-Cunge model) | ✅ |
+| Cascade of linear reservoirs, exact kernel (`CascadeReach`) | Nash (1957) (the IUH of `NashIUH`), Kalinin and Milyukov (1957) as presented by Ponce (linear reservoirs and numerical diffusion), Chow, Maidment, Mays (1988); weights checked against the numerical integral of the gamma density and the exact solution of the chain | ✅ |
 
 ### 4.2 Key Publications
 
@@ -1045,6 +1074,7 @@ Cunge (1969) set the numerical diffusion of the Muskingum scheme equal to the ph
 | Clark, C.O. | 1945 | Translation + reservoir model |
 | McCarthy, G.T. | 1938 | Muskingum method: wedge storage `S = K [X I + (1 - X) O]` |
 | Cunge, J.A. | 1969 | Muskingum parameters from the diffusion of the flood wave: `K = dx / c`, `X = (1 - Q / (T S0 c dx)) / 2` |
+| Kalinin, G.P. and Milyukov, P.I. | 1957 | Cascade of reservoirs for channel routing with a characteristic reach length `Δx_c = Q / (T S0 c)` |
 | FAA | 2013 | Tc formula for overland flow (AC 150/5320-5D) |
 | Kerby, W.S. | 1959 | Tc formula for sheet flow (retardance coefficient) |
 | Giandotti, M. | 1934 | Tc formula for Italian catchments |
@@ -1211,6 +1241,10 @@ Cunge (1969) set the numerical diffusion of the Muskingum scheme equal to the ph
 27. **Cunge, J.A.** (1969). On the subject of a flood propagation computation method (Muskingum method). *Journal of Hydraulic Research*, 7(2), 205-230.
 
 28. **USDA-NRCS** (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (Amendment 69): example 17-4, appendices B and C. https://damtoolbox.org/images/a/a6/NEH17.pdf
+
+29. **Kalinin, G.P. and Milyukov, P.I.** (1957). O raschete neustanovivshegosya dvizheniya vody v otkrytykh ruslakh (On the computation of unsteady flow in open channels). *Meteorologiya i Gidrologiya*, 10, 10-18 (Leningrad); cited after Szilagyi, J. et al. (2005), *Journal of Hydrology*, 311, 219-229.
+
+30. **Ponce, V.M.** (1980, online version 2016). Linear reservoirs and numerical diffusion. https://ponce.sdsu.edu/linear_reservoirs_and_numerical_diffusion.html (the gamma response of Nash, the SSARR equation as Muskingum with `X = 0`, the Kalinin-Milyukov characteristic reach length).
 
 ---
 
