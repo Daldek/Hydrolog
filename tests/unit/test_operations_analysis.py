@@ -1690,7 +1690,7 @@ class TestRatingCurve:
                 discharges=[1.0, 2.0, 3.0, 4.0],
             )
         assert caught.value.code == "calculation_error"
-        assert caught.value.exit_code == 4
+        assert caught.value.exit_code == 13
 
     @pytest.mark.parametrize("threshold", [0.0, -1.0, float("nan")])
     def test_outlier_threshold_must_be_positive(self, threshold):

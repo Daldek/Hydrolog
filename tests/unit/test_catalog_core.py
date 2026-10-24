@@ -1307,7 +1307,7 @@ class TestPathPolicy:
             )
         error = caught.value
         assert error.code == "forbidden"
-        assert error.exit_code == 8
+        assert error.exit_code == 12
         assert error.details["option"] == "out"
         assert error.details["path"] == str((tmp_path / "evil.txt").resolve())
         assert error.details["allowed_dirs"] == [str(allowed.resolve())]

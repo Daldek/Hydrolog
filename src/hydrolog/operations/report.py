@@ -181,7 +181,8 @@ def _write(content: str, output: Path) -> None:
             temporary.write_text(content, encoding="utf-8")
     except OSError as exc:
         raise OutputError(
-            f"Cannot write the report {output}: {exc}", details={"path": str(output)}
+            f"Cannot write the report {output}: {exc}",
+            details={"path": str(output), "reason": "output_unwritable"},
         ) from exc
 
 

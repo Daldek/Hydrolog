@@ -107,8 +107,8 @@ files = ["src", "tests"]
 exclude = ['^\.claude/']
 
 [[tool.mypy.overrides]]
-# SciPy and seaborn ship neither a py.typed marker nor bundled stubs.
-module = ["scipy", "scipy.*", "seaborn", "seaborn.*"]
+# SciPy, seaborn and jsonschema ship neither a py.typed marker nor bundled stubs.
+module = ["scipy", "scipy.*", "seaborn", "seaborn.*", "jsonschema", "jsonschema.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]

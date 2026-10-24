@@ -25,7 +25,7 @@ pytest.importorskip("mcp")
 
 import anyio
 import mcp.types as types
-from jsonschema import Draft202012Validator  # type: ignore[import-untyped]
+from jsonschema import Draft202012Validator
 from mcp import Client
 from mcp.client.stdio import StdioServerParameters, stdio_client
 from mcp.shared.exceptions import MCPError
@@ -766,7 +766,7 @@ class TestPathPolicy:
         )
 
         assert document["code"] == "forbidden"
-        assert document["exit_code"] == 8
+        assert document["exit_code"] == 12
         assert document["details"]["option"] == "input_file"
         assert document["details"]["allowed_dirs"] == []
         assert "--allow-dir" in document["hint"]

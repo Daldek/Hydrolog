@@ -518,7 +518,7 @@ def test_a_stale_flow_stops_the_generator(monkeypatch):
 def test_an_error_code_without_a_description_stops_the_generator(monkeypatch):
     monkeypatch.setattr(guide_module, "_ERROR_ADVICE", {})
 
-    with pytest.raises(ValueError, match="validation_error"):
+    with pytest.raises(ValueError, match="internal_error"):
         text("agents")
 
 

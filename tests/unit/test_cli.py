@@ -496,7 +496,7 @@ class TestErrors:
         assert document["schema"] == "hydrolog-error/1"
         assert document["code"] == "not_found"
         assert document["details"]["suggestions"] == ["tc"]
-        assert document["command"] is None
+        assert "command" not in document
 
     def test_operation_id_is_not_a_command_but_is_suggested(self, capsys):
         code, document = _error(capsys, "tc_kirpich")
@@ -611,7 +611,7 @@ class TestErrors:
 
     def test_impossible_calculation(self, capsys):
         code, document = _error(capsys, "stats", "mann-kendall", "--values", "1,2")
-        assert code == 4
+        assert code == 13
         assert document["code"] == "calculation_error"
 
     def test_unwritable_output_is_an_io_error(self, capsys, tmp_path):

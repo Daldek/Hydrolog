@@ -23,14 +23,16 @@ from hydrolog.exceptions import (
 )
 
 SPEC_TABLE = {
+    "internal_error": 1,
     "validation_error": 2,
     "not_found": 3,
-    "calculation_error": 4,
-    "data_error": 7,
+    "conflict": 4,
     "missing_dependency": 6,
-    "forbidden": 8,
+    "data_error": 7,
     "io_error": 9,
-    "internal_error": 1,
+    "forbidden": 12,
+    "calculation_error": 13,
+    "cancelled": 130,
 }
 
 
@@ -243,17 +245,18 @@ class TestErrorDocument:
     def test_title_follows_language(self):
         """``lang`` selects the Polish or the English registry title."""
         exc = NotFoundError("no such command")
-        assert error_document(exc)["title"] == ERROR_CODES["not_found"].title
+        assert error_document(exc)["title"] == "Not found"
+        assert error_document(exc, lang="pl")["title"] == ERROR_CODES["not_found"].title
         assert error_document(exc, lang="pl")["title"] == "Nie znaleziono"
         assert error_document(exc, lang="en")["title"] == "Not found"
 
     def test_command_defaults_to_none_and_hint_to_none(self):
-        """Missing command and hint are explicit ``None`` values."""
+        """A missing command and a missing hint are left out of the document."""
         doc = error_document(CalculationError("no convergence"))
-        assert doc["command"] is None
-        assert doc["hint"] is None
+        assert "command" not in doc
+        assert "hint" not in doc
         assert doc["details"] == {}
-        assert doc["exit_code"] == 4
+        assert doc["exit_code"] == 13
 
     @pytest.mark.parametrize(
         "exc", [ValueError("boom"), TypeError("bad"), KeyError("k")]
