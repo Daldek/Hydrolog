@@ -1,8 +1,8 @@
 # Hydrolog
 
-> A Python library, CLI and MCP server for watershed hydrology: SCS-CN and curve numbers, design hyetographs, time of concentration, unit and runoff hydrographs, morphometry, flow statistics, hydrologic soil groups (HSG) from rasters, a Markdown report. It computes locally, with no network and no data downloads.
+> A Python library, CLI and MCP server for watershed hydrology: SCS-CN and curve numbers, design hyetographs, time of concentration, unit and runoff hydrographs, lumped flood routing, morphometry, flow statistics, hydrologic soil groups (HSG) from rasters, a Markdown report. It computes locally, with no network and no data downloads.
 
-Hydrolog is not for spatial data (DEM, land cover, SoilGrids rasters), which Kartograf provides, or for IMGW/CHMU measurement series, which IMGWTools exports to CSV.
+Hydrolog is not for spatial data (DEM, land cover, SoilGrids rasters), which Kartograf provides, for IMGW/CHMU measurement series, which IMGWTools exports to CSV, or for hydraulic modelling (water levels, inundation), which Hydraulik and HEC-RAS do.
 
 Interfaces: Python (<!-- hydrolog:python_example -->), the CLI (`hydrolog <group> <verb> --option value --json`) and the MCP server (`hydrolog mcp --allow-dir DIR`; a tool is an `operation_id`). Install with `pip install "hydrolog @ git+https://github.com/Daldek/Hydrolog.git"`; the extras are `raster`, `mcp`, `viz` and `all`.
 

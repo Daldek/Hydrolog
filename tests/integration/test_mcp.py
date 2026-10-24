@@ -218,6 +218,7 @@ class TestToolList:
         assert writing == {
             "hydrolog_commands_guide",
             "hydrolog_report_generate",
+            "hydrolog_route_lag",
             "hydrolog_soil_hsg",
         }
         for name, tool in tools.items():
@@ -696,6 +697,52 @@ class TestWriteModes:
         )
 
         assert error["code"] == "forbidden"
+
+
+class TestRouteWithoutAnOutput:
+    """A routing tool computes on a read-only server unless it has a file to plan."""
+
+    inflow = {"times_min": [0, 10, 20, 30, 40], "discharge_m3s": [0, 10, 40, 20, 0]}
+
+    def test_a_read_only_server_returns_the_routed_hydrograph(self):
+        result = call("hydrolog_route_lag", {"lag_min": 20, **self.inflow})
+
+        document = assert_valid_envelope(result)
+        assert result.is_error is False
+        assert document["check"] is False
+        assert document["result"]["schema"] == "hydrolog-route-lag/1"
+        assert document["result"]["outflow_m3s"][:6] == [0, 0, 0, 10, 40, 20]
+        assert "files" not in document["result"]
+
+    def test_a_read_only_server_plans_the_output_file(self, tmp_path):
+        target = tmp_path / "outflow.csv"
+
+        result = call(
+            "hydrolog_route_lag",
+            {"lag_min": 20, "output": str(target), **self.inflow},
+            allowed_dirs=[tmp_path],
+        )
+
+        document = envelope_of(result)
+        assert document["check"] is True
+        assert document["result"]["schema"] == "hydrolog-plan/1"
+        assert not target.exists()
+
+    def test_a_server_with_writes_writes_the_output_file(self, tmp_path):
+        target = tmp_path / "outflow.csv"
+
+        result = call(
+            "hydrolog_route_lag",
+            {"lag_min": 20, "output": str(target), **self.inflow},
+            allowed_dirs=[tmp_path],
+            allow_writes=True,
+        )
+
+        document = assert_valid_envelope(result)
+        assert document["check"] is False
+        assert document["result"]["outflow_m3s"] is None
+        assert document["result"]["files"][0]["status"] == "written"
+        assert target.read_text(encoding="utf-8").startswith("time_min,discharge_m3s")
 
 
 # --- families -------------------------------------------------------------------------

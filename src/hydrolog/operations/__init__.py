@@ -69,6 +69,7 @@ from hydrolog.operations.precip import (
     precip_hietogram,
 )
 from hydrolog.operations.report import ReportResult, report_generate
+from hydrolog.operations.route import RouteResult, route_lag
 from hydrolog.operations.scs import ScsEffectiveResult, scs_effective
 from hydrolog.operations.soil import (
     SoilTextureResult,
@@ -141,6 +142,9 @@ __all__ = [
     "HydrographRun",
     "compute_hydrograph",
     "hydrograph_generate",
+    # route
+    "RouteResult",
+    "route_lag",
     # morphometry
     "WatershedMorphometry",
     "morphometry_watershed",

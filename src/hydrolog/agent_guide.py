@@ -77,14 +77,15 @@ _GROUP_TITLES: Final[Mapping[str, str]] = {
     "tc": "Time of concentration",
     "cn": "Curve Number (TR-55)",
     "scs": "SCS-CN effective precipitation",
-    "precip": "Precipitation: hyetographs and areal precipitation",
+    "precip": "Hyetographs and areal precipitation",
     "uh": "Unit hydrographs",
     "hydrograph": "Runoff hydrograph",
+    "route": "Flood routing",
     "morphometry": "Watershed morphometry",
     "network": "River network",
     "stats": "Flow statistics",
     "hydrometrics": "Hydrometry",
-    "soil": "Soil: texture and HSG",
+    "soil": "Texture and HSG",
     "report": "Calculation report",
     "config": "Effective settings",
     "commands": "The command catalog and this guide",
@@ -132,8 +133,8 @@ _ERROR_ADVICE: Final[Mapping[str, str]] = {
     "io_error": "output cannot be written: check `details.path`",
     "forbidden": "path outside allowed directories (`details.allowed_dirs`)",
     "calculation_error": "valid input, no result: change the data",
-    "cancelled": "interrupted (Ctrl+C): nothing half written, run again",
-    "terminated": "ended by SIGTERM: nothing half written, run again",
+    "cancelled": "interrupted (Ctrl+C): nothing half written; run again",
+    "terminated": "ended by SIGTERM: nothing half written; run again",
     "internal_error": "bug in Hydrolog: report command, options, version",
 }
 
@@ -194,7 +195,7 @@ _FLOWS: Final[tuple[_Flow, ...]] = (
             ),
             _Step(
                 "time of concentration (`result.tc_min`); a field the method needs "
-                "but the file lacks is a `validation_error` listing what is missing.",
+                "but the file lacks is a `validation_error` that lists it.",
                 "tc watershed",
                 {"watershed_file": _WATERSHED, "method": "kirpich"},
             ),
@@ -220,8 +221,8 @@ _FLOWS: Final[tuple[_Flow, ...]] = (
         "`date`) that Hydrolog loads without preprocessing.",
         (
             _Step(
-                "IMGWTools (a separate tool): export one station (`CODE` from `imgw "
-                "stations find`); reliable quantiles need at least 30 years.",
+                "IMGWTools: export one station (`CODE` from `imgw stations find`); "
+                "reliable quantiles need at least 30 years.",
                 external=(
                     "imgw series export --dataset pl.imgw.hydro_daily "
                     f"--station CODE --variables Q --format csv --output {_SERIES}"
@@ -248,9 +249,9 @@ _FLOWS: Final[tuple[_Flow, ...]] = (
         "(extra `raster`).",
         (
             _Step(
-                "Kartograf (a separate tool): repeat with `--property sand` and "
-                "`--property silt`; the `files[].path` values of its `--json` result "
-                "are the raster inputs of the next step.",
+                "Kartograf: repeat with `--property sand` and `--property silt`; the "
+                "`files[].path` values of its `--json` result are the raster inputs "
+                "of the next step.",
                 external=(
                     "kartograf soil download --property clay --depth 0-5cm "
                     "--stat mean --bbox 626000,480000,628000,482000 "

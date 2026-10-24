@@ -170,7 +170,9 @@ def test_check_flag_prints_the_plan_of_check_command(command, index, capsys, tmp
 
     assert (code, err) == (0, "")
     assert json.loads(out) == expected
-    assert expected["check"] is True
+    # a route command without `output` has no file to plan and computes (ADR-0008)
+    plans = command.group != "route" or any(command.option(n).writes for n in example)
+    assert expected["check"] is plans
     assert list(tmp_path.iterdir()) == [], "a plan writes nothing"
 
 

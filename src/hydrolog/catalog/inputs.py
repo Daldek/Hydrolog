@@ -1,4 +1,4 @@
-"""Inputs from files or inline JSON: series, watershed parameters, stations (spec 6.5).
+"""Inputs from files or inline JSON: series, hydrographs, watersheds, stations.
 
 Long data must not be pasted by agents, so every operation that takes a series, a set
 of stations or a watershed accepts either inline values or a file. This module turns
@@ -12,6 +12,10 @@ both into the objects the library works with:
 * :func:`load_stations` -- inline records *or* a ``stations_file`` (columns ``name``,
   ``x``, ``y``, ``precipitation_mm``, optional ``elevation_m``) -> list of
   :class:`~hydrolog.precipitation.Station`;
+* :func:`load_hydrograph` -- inline ``times_min`` + ``discharge_m3s`` *or* an
+  ``input_file`` with a ``time_column`` and a ``value_column`` (defaults ``time_min``
+  and ``discharge_m3s``) -> :class:`~hydrolog.routing.Hydrograph`, the regular-step
+  table that the ``route`` commands take;
 * :func:`read_table` / :func:`load_records` -- the generic file reader behind them,
   for operations that need other columns (rating curve pairs, network segments...).
 
@@ -58,15 +62,19 @@ from pathlib import Path
 from typing import Any, NoReturn, get_args, get_type_hints
 
 import numpy as np
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 
 from hydrolog.exceptions import InputDataError, InvalidParameterError, NotFoundError
 from hydrolog.morphometry.watershed_params import WatershedParameters
 from hydrolog.precipitation.interpolation import Station
+from hydrolog.routing.hydrograph import Hydrograph, check_table
 
 __all__ = [
+    "DISCHARGE_COLUMN",
+    "TIME_COLUMN",
     "Series",
     "Table",
+    "load_hydrograph",
     "load_records",
     "load_series",
     "load_stations",
@@ -762,6 +770,122 @@ def load_series(
             details={"option": "dates", "reason": "required"},
         )
     return Series(values=numbers_array, dates=date_array, source="inline")
+
+
+# --- hydrograph -----------------------------------------------------------------------
+
+TIME_COLUMN = "time_min"
+"""Default time column of a hydrograph file."""
+DISCHARGE_COLUMN = "discharge_m3s"
+"""Default discharge column of a hydrograph file."""
+
+
+def _hydrograph_from_table(
+    table: Table, time_column: str | None, value_column: str | None
+) -> Hydrograph:
+    times_name = table.resolve_column(time_column or TIME_COLUMN, option="time_column")
+    values_name = table.resolve_column(
+        value_column or DISCHARGE_COLUMN, option="value_column"
+    )
+    times = table.numbers(times_name, option="time_column")
+    values = table.numbers(values_name, option="value_column")
+    problem = check_table(times, values)
+    if problem is not None:
+        details = dict(problem.details)
+        if "index" in details:
+            details["row"] = details.pop("index") + 1
+        _Source(path=table.source).fail(
+            problem.message,
+            reason=problem.reason,
+            column=times_name if problem.option == "times_min" else values_name,
+            **details,
+        )
+    return Hydrograph(times, values)
+
+
+def load_hydrograph(
+    *,
+    times_min: ArrayLike | None = None,
+    discharge_m3s: ArrayLike | None = None,
+    input_file: str | os.PathLike[str] | None = None,
+    time_column: str | None = None,
+    value_column: str | None = None,
+) -> Hydrograph:
+    """Load a discharge hydrograph from inline lists or from a file.
+
+    Exactly one source is used: the inline lists ``times_min`` and ``discharge_m3s``,
+    or ``input_file`` with the optional names of its two columns. The table must obey
+    the rules of :func:`hydrolog.routing.hydrograph.check_table` (ADR-0008): at least
+    two ordinates, a strictly increasing regular time step, finite values, discharges
+    not negative; there is no resampling and no repair.
+
+    Parameters
+    ----------
+    times_min : sequence of float, optional
+        Inline times of the ordinates [min].
+    discharge_m3s : sequence of float, optional
+        Inline discharges [m3/s], one per time.
+    input_file : str or os.PathLike, optional
+        CSV or JSON file (see :func:`read_table`); the file that a ``route`` command
+        writes with ``output`` is one.
+    time_column : str, optional
+        Column of the times [min]; default ``time_min``.
+    value_column : str, optional
+        Column of the discharges [m3/s]; default ``discharge_m3s``.
+
+    Returns
+    -------
+    Hydrograph
+        The validated table.
+
+    Raises
+    ------
+    InvalidParameterError
+        If the source is ambiguous or missing, one inline list lacks the other, a
+        column option is given with inline lists, or the inline table breaks a rule
+        (``details.option`` ``times_min`` or ``discharge_m3s``, ``details.reason`` as
+        in :func:`~hydrolog.routing.hydrograph.check_table`).
+    NotFoundError
+        If ``input_file`` does not exist.
+    InputDataError
+        If the file is malformed, lacks a column, has a bad number, or its table
+        breaks a rule (``details.reason`` as above, ``details.column`` and the
+        1-based data ``details.row``).
+    """
+    inline = times_min is not None or discharge_m3s is not None
+    if inline == (input_file is not None):
+        raise InvalidParameterError(
+            "Give either the inline lists 'times_min' and 'discharge_m3s' or "
+            "'input_file'",
+            details={
+                "option": "input_file" if input_file is not None else "times_min",
+                "reason": "one_of",
+                "groups": [["times_min", "discharge_m3s"], ["input_file"]],
+            },
+        )
+    if input_file is not None:
+        return _hydrograph_from_table(read_table(input_file), time_column, value_column)
+    for column_option, column in (
+        ("time_column", time_column),
+        ("value_column", value_column),
+    ):
+        if column is not None:
+            raise InvalidParameterError(
+                f"Option {column_option!r} applies to 'input_file', not to inline "
+                "values",
+                details={"option": column_option, "reason": "conflict"},
+            )
+    if times_min is None or discharge_m3s is None:
+        absent, other = (
+            ("times_min", "discharge_m3s")
+            if times_min is None
+            else ("discharge_m3s", "times_min")
+        )
+        raise InvalidParameterError(
+            f"Option {absent!r} is required: give it together with {other!r}",
+            details={"option": absent, "reason": "required"},
+        )
+    return Hydrograph(times_min, discharge_m3s)
 
 
 # --- watershed ------------------------------------------------------------------------

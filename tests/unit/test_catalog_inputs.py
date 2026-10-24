@@ -9,6 +9,7 @@ import pytest
 from hydrolog.catalog.inputs import (
     Series,
     Table,
+    load_hydrograph,
     load_records,
     load_series,
     load_stations,
@@ -18,6 +19,7 @@ from hydrolog.catalog.inputs import (
 from hydrolog.exceptions import InputDataError, InvalidParameterError, NotFoundError
 from hydrolog.morphometry.watershed_params import WatershedParameters
 from hydrolog.precipitation.interpolation import Station
+from hydrolog.routing import Hydrograph
 
 FIXTURES = Path(__file__).parents[1] / "fixtures"
 IMGW_EXPORT = FIXTURES / "imgwtools_series_export.csv"
@@ -1040,4 +1042,147 @@ class TestLoadStations:
         """A missing file is ``not_found``."""
         assert failure(
             lambda: load_stations(stations_file=tmp_path / "x.csv"), NotFoundError
+        )
+
+
+# --- hydrographs ----------------------------------------------------------------------
+
+FLOOD_INFLOW = FIXTURES / "flood_inflow.csv"
+
+
+class TestLoadHydrograph:
+    """The table that the ``route`` commands take: inline lists or a file."""
+
+    def test_inline_lists(self):
+        hydrograph = load_hydrograph(
+            times_min=[0, 10, 20], discharge_m3s=[1.0, 5.0, 2.0]
+        )
+
+        assert isinstance(hydrograph, Hydrograph)
+        assert hydrograph.times_min.tolist() == [0.0, 10.0, 20.0]
+        assert hydrograph.discharge_m3s.tolist() == [1.0, 5.0, 2.0]
+
+    def test_a_file_with_the_default_columns(self):
+        hydrograph = load_hydrograph(input_file=FLOOD_INFLOW)
+
+        assert len(hydrograph) == 31
+        assert hydrograph.timestep_min == 10.0
+        assert (hydrograph.peak_discharge_m3s, hydrograph.time_to_peak_min) == (
+            40.0,
+            60.0,
+        )
+
+    def test_named_columns_a_semicolon_and_a_decimal_comma(self, tmp_path):
+        path = write(
+            tmp_path,
+            "h.csv",
+            "t [min];Q [m3/s];other\n0;1,5;x\n15;4,25;y\n30;2;z\n",
+        )
+
+        hydrograph = load_hydrograph(input_file=path, time_column="t", value_column="Q")
+
+        assert hydrograph.times_min.tolist() == [0.0, 15.0, 30.0]
+        assert hydrograph.discharge_m3s.tolist() == [1.5, 4.25, 2.0]
+
+    def test_a_json_file_of_columns(self, tmp_path):
+        path = write(
+            tmp_path,
+            "h.json",
+            json.dumps({"time_min": [0, 5, 10], "discharge_m3s": [0, 2, 1]}),
+        )
+
+        assert load_hydrograph(input_file=path).discharge_m3s.tolist() == [0, 2, 1]
+
+    def test_the_table_text_of_a_hydrograph_reads_back_unchanged(self, tmp_path):
+        original = Hydrograph.from_step([0.1, 0.30000000000000004, 7.0, 3.0], 0.5)
+        path = write(tmp_path, "h.csv", original.to_table())
+
+        loaded = load_hydrograph(input_file=path)
+
+        assert loaded.times_min.tolist() == original.times_min.tolist()
+        assert loaded.discharge_m3s.tolist() == original.discharge_m3s.tolist()
+
+    @pytest.mark.parametrize(
+        ("body", "reason", "column", "row"),
+        [
+            ("0,1\n10,2\n25,3\n", "irregular_step", "time_min", 2),
+            ("0,1\n10,2\n5,3\n", "not_increasing", "time_min", 3),
+            ("0,1\n10,-2\n20,3\n", "negative", "discharge_m3s", 2),
+            ("0,1\n10,\n20,3\n", "not_finite", "discharge_m3s", 2),
+            ("0,1\n", "too_short", "time_min", None),
+            ("", "empty", None, None),
+        ],
+    )
+    def test_a_file_that_breaks_a_rule_is_a_data_error_with_the_row(
+        self, tmp_path, body, reason, column, row
+    ):
+        path = write(tmp_path, "h.csv", "time_min,discharge_m3s\n" + body)
+        if reason == "empty":
+            path = write(tmp_path, "h.csv", "")
+
+        error = failure(lambda: load_hydrograph(input_file=path))
+
+        assert error.details["reason"] == reason
+        assert error.details["path"] == str(path)
+        assert error.details.get("column") == column
+        assert error.details.get("row") == row
+
+    def test_a_missing_column_lists_the_available_ones(self, tmp_path):
+        path = write(tmp_path, "h.csv", "t,q\n0,1\n10,2\n")
+
+        error = failure(lambda: load_hydrograph(input_file=path))
+
+        assert error.details["reason"] == "missing_column"
+        assert error.details["column"] == "time_min"
+        assert error.details["available"] == ["t", "q"]
+
+    def test_a_missing_file(self, tmp_path):
+        failure(lambda: load_hydrograph(input_file=tmp_path / "x.csv"), NotFoundError)
+
+    @pytest.mark.parametrize(
+        "kwargs",
+        [
+            {},
+            {"times_min": [0, 10], "discharge_m3s": [1, 2], "input_file": "h.csv"},
+            {"input_file": "h.csv", "times_min": [0, 10]},
+        ],
+    )
+    def test_exactly_one_source(self, kwargs):
+        error = failure(lambda: load_hydrograph(**kwargs), InvalidParameterError)
+
+        assert error.details["reason"] == "one_of"
+
+    def test_an_inline_list_needs_the_other(self):
+        error = failure(
+            lambda: load_hydrograph(times_min=[0, 10]), InvalidParameterError
+        )
+
+        assert (error.details["option"], error.details["reason"]) == (
+            "discharge_m3s",
+            "required",
+        )
+
+    @pytest.mark.parametrize("column", ["time_column", "value_column"])
+    def test_a_column_option_does_not_apply_to_inline_lists(self, column):
+        error = failure(
+            lambda: load_hydrograph(
+                times_min=[0, 10], discharge_m3s=[1, 2], **{column: "x"}
+            ),
+            InvalidParameterError,
+        )
+
+        assert (error.details["option"], error.details["reason"]) == (
+            column,
+            "conflict",
+        )
+
+    def test_an_inline_table_that_breaks_a_rule_is_a_validation_error(self):
+        error = failure(
+            lambda: load_hydrograph(times_min=[0, 10, 25], discharge_m3s=[1, 2, 3]),
+            InvalidParameterError,
+        )
+
+        assert (error.details["option"], error.details["reason"]) == (
+            "times_min",
+            "irregular_step",
         )

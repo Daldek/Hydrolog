@@ -58,7 +58,7 @@ src/hydrolog/
 ├── agent_guide.py, _data/agents/   # generator and templates of AGENTS.md, llms.txt, block
 ├── exceptions.py, _errors.py       # HydrologError classes; registry generated from schemas/nogat
 ├── _settings.py                    # lang/log_level: option > env > nogat.toml > default
-├── runoff/ time/ precipitation/ morphometry/ network/ statistics/ hydrometrics/ soil/
+├── runoff/ routing/ time/ precipitation/ morphometry/ network/ statistics/ hydrometrics/ soil/
 ├── reports/ visualization/         # Markdown reports, plots (extra [viz])
 tests/{unit,integration,contract,fixtures}   schemas/nogat/ (copies of the standard)
 ```
@@ -102,3 +102,6 @@ IMGWTools (series CSV from `series export --output`); Hydrograf and Retman use H
 - AGI-4.4: `to_dict()` of a library result does not carry `schema`; the envelope adds it
   to `result` (ADR 0002).
 - AGI-5.9: no MCP resources or prompts, tools only.
+- DOC-4.2: the group `route` has one line in the command index of `AGENTS.md` instead of one
+  per command, to keep the guide within 16 KiB (ADR-0009); `commands list` and `commands schema`
+  still give every command.
