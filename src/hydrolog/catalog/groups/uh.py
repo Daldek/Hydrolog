@@ -466,11 +466,13 @@ COMMANDS: tuple[Command, ...] = (
         rules=(
             "Give exactly one of r_min and r_tc_ratio.",
             "Pass tc_min in minutes, taken from a `tc` command.",
+            "Keep timestep_min at most 2 R, else it is a validation_error.",
             "Check `notices` in the result.",
         ),
         rules_pl=(
             "Podaj dokładnie jedną z opcji r_min i r_tc_ratio.",
             "Podaj tc_min w minutach, z komendy `tc`.",
+            "Krok timestep_min najwyżej 2 R, inaczej validation_error.",
             "Sprawdź `notices` w wyniku.",
         ),
         errors=("validation_error",),

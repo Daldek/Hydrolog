@@ -1464,6 +1464,19 @@ class TestUnitHydrographs:
                 ops.uh_clark(area_km2=45.3, tc_min=120.0, **given)
             assert caught.value.details["reason"] == "one_of"
 
+    def test_clark_refuses_a_step_above_twice_the_storage_constant(self):
+        """A step longer than 2 R is a validation error naming ``timestep_min``."""
+        with pytest.raises(InvalidParameterError) as caught:
+            ops.uh_clark(area_km2=45.3, tc_min=120.0, r_min=2.0, timestep_min=5.0)
+        assert caught.value.details["option"] == "timestep_min"
+        assert caught.value.details["reason"] == "unstable_timestep"
+        assert caught.value.details["maximum"] == 4.0
+
+        envelope = ops.uh_clark(
+            area_km2=45.3, tc_min=120.0, r_min=2.0, timestep_min=4.0
+        )
+        assert min(envelope.ordinates_m3s_per_mm) >= 0.0
+
     def test_snyder_matches_the_class(self):
         """The Snyder unit hydrograph with its own lag, no external tc."""
         result = ops.uh_snyder(area_km2=100.0, length_km=15.0, centroid_length_km=8.0)

@@ -16,6 +16,10 @@ from numpy.typing import NDArray
 
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError
+from hydrolog.routing._kernels import route_linear_reservoir
+
+_STEP_TOLERANCE = 1e-9
+"""Relative excess of the time step over ``2 R`` that is still accepted (rounding)."""
 
 
 @dataclass
@@ -129,12 +133,15 @@ class ClarkIUH:
     for t <= Tc, where A_cum is the cumulative fraction of watershed area.
     This two-part formula produces a symmetric S-curve with centroid at Tc/2.
 
-    The linear reservoir routing uses the Muskingum-Cunge equation:
+    The linear reservoir routing is the Muskingum scheme with X = 0 (the continuity
+    equation on the trapezoid rule with the storage S = R * O):
 
     .. math::
         O_t = O_{t-1} + C_1 \cdot (I_t + I_{t-1} - 2 \cdot O_{t-1})
 
-    where C1 = dt / (2R + dt).
+    where C1 = dt / (2R + dt). The weight of the previous outflow,
+    (2R - dt) / (2R + dt), is negative when dt > 2R and the scheme then oscillates;
+    the time step must therefore not exceed 2R.
 
     Key properties:
     - Lag time: approximately Tc/2 + R (depends on time-area shape)
@@ -282,19 +289,7 @@ class ClarkIUH:
         NDArray[np.float64]
             Routed outflow hydrograph.
         """
-        # Routing coefficient
-        c1 = timestep_min / (2.0 * self.r_min + timestep_min)
-
-        # Initialize output array
-        outflow = np.zeros_like(inflow)
-
-        # Route through reservoir
-        for i in range(1, len(inflow)):
-            outflow[i] = outflow[i - 1] + c1 * (
-                inflow[i] + inflow[i - 1] - 2.0 * outflow[i - 1]
-            )
-
-        return outflow
+        return route_linear_reservoir(inflow, self.r_min, timestep_min)
 
     def generate(
         self,
@@ -324,7 +319,7 @@ class ClarkIUH:
         Raises
         ------
         InvalidParameterError
-            If timestep_min is not positive.
+            If timestep_min is not positive or exceeds ``2 * r_min``.
 
         Examples
         --------
@@ -378,7 +373,9 @@ class ClarkIUH:
         Raises
         ------
         InvalidParameterError
-            If timestep_min is not positive.
+            If timestep_min is not positive, or exceeds twice the storage
+            coefficient (``details.reason`` is ``"unstable_timestep"``): the linear
+            reservoir scheme would give negative ordinates.
 
         Examples
         --------
@@ -389,6 +386,19 @@ class ClarkIUH:
         if timestep_min <= 0:
             raise InvalidParameterError(
                 f"timestep_min must be positive, got {timestep_min}"
+            )
+        limit = 2.0 * self.r_min
+        if timestep_min > limit * (1.0 + _STEP_TOLERANCE):
+            raise InvalidParameterError(
+                f"timestep_min must not exceed 2 * r_min = {limit:g} min, got "
+                f"{timestep_min:g}: the linear reservoir gives negative ordinates",
+                details={
+                    "option": "timestep_min",
+                    "reason": "unstable_timestep",
+                    "maximum": limit,
+                    "value": timestep_min,
+                },
+                hint=f"Use a time step of at most {limit:g} min or a larger r_min.",
             )
 
         # Determine duration
@@ -464,7 +474,8 @@ class ClarkIUH:
         Raises
         ------
         InvalidParameterError
-            If any parameter is not positive and finite.
+            If any parameter is not positive and finite, or ``timestep_min`` exceeds
+            ``2 * r_min`` (``details.reason`` is ``"unstable_timestep"``).
 
         Notes
         -----

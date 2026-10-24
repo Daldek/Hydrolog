@@ -517,6 +517,12 @@ Two-stage model:
    where C1 = dt / (2R + dt)
 ```
 
+The scheme is the Muskingum routing with X = 0. The weight of the previous outflow,
+(2R - dt) / (2R + dt), is negative for dt > 2R and the hydrograph would oscillate, so
+`ClarkIUH` (and `uh clark`, `hydrograph generate` with `uh_model=clark`) accepts a time
+step of at most 2R; a longer one is a `validation_error` with
+`details.reason = "unstable_timestep"`.
+
 #### 3.3.5 Code Example
 
 ```python
