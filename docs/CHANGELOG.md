@@ -86,6 +86,11 @@ examples from the catalog (PL/EN). The entry point is unchanged (`hydrolog.cli.m
 - `RatingCurve.fit(h0_initial=None)` and `hydrometrics_rating_curve(h0_initial=None)`: the default H₀ starting point is chosen from the data (formerly 0.0); the `h0_initial` option no longer has a default value in the command catalog.
 - Tests: 3297 tests are collected (824 in v0.7.0): command catalog (CLI/Python parity for every example), CLI parser and rendering, MCP server (in-process client-server), serialization, `hydrolog.soil` (ports of the Kartograf tests; raster tests skipped without `rasterio`), operations layer, agent guides (byte equality), concurrent file writes (`hydrolog._atomic`), regressions of the fixes from the "Fixed" section (with numbers before and after the fix).
 
+#### Nogat standard 2.1
+- Tooling: uv and `uv.lock`, ruff (format and lint with the `D` rules) and mypy `strict` replace Black and flake8, `scripts/gate.sh` runs the gate, CI runs it on Linux, macOS and Windows; the package lives in `src/hydrolog` and ships `py.typed`; the tests are split into `tests/unit`, `tests/integration` and `tests/contract`.
+- **Breaking:** exit codes follow the shared error registry: `calculation_error` 4 → 13 and `forbidden` 8 → 12. New registry codes in use: `conflict` (4) and `cancelled` (130). `hydrolog._errors` is generated from the vendored `schemas/nogat/error_registry.json` (`scripts/generate_errors.py`).
+- **Breaking:** the error document `hydrolog-error/1` omits `hint` and `command` when there is none (formerly `null`) and its `title` is English unless `lang="pl"` is requested. An output file that cannot be written is `io_error` with `details.reason = "output_unwritable"`.
+
 ### Removed
 
 - **Breaking:** `hydrolog.cli.commands` (the old subcommands `tc`, `cn`, `scs`, `uh` with the options `--length`,

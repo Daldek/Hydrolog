@@ -257,7 +257,7 @@ def _write_hsg_geotiff(
     except OSError as exc:
         raise OutputError(
             f"Cannot write the HSG raster {output_path}: {exc}",
-            details={"path": str(output_path)},
+            details={"path": str(output_path), "reason": "output_unwritable"},
         ) from exc
 
 

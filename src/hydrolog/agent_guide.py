@@ -201,6 +201,18 @@ _ERROR_ADVICE: Final[Mapping[str, tuple[str, str]]] = {
         "of `details.allowed_dirs` (without `--allow-dir` every path option is "
         "refused)",
     ),
+    "conflict": (
+        "plik wyjściowy już istnieje: podaj inną ścieżkę albo `force`, żeby go "
+        "zastąpić (`details.paths`, `details.reason`)",
+        "the output file already exists: give another path or `force` to replace it "
+        "(`details.paths`, `details.reason`)",
+    ),
+    "cancelled": (
+        "przerwane przez użytkownika (Ctrl+C): nic nie zostało zapisane częściowo, "
+        "uruchom komendę ponownie",
+        "cancelled by the user (Ctrl+C): nothing was left half written, run the "
+        "command again",
+    ),
     "io_error": (
         "nie można zapisać pliku wyjściowego (uprawnienia, brak miejsca, katalog "
         "zamiast pliku): sprawdź `details.path`",

@@ -55,14 +55,16 @@ Błąd to dokument `hydrolog-error/1`: `{"schema", "code", "title", "message", "
 
 | Kod | Tytuł | Kod wyjścia CLI | Znaczenie i co robić |
 |---|---|---|---|
+| `internal_error` | Błąd wewnętrzny | 1 | błąd w Hydrologu: zgłoś komendę, opcje i wersję (`hydrolog --version`), nie ponawiaj |
 | `validation_error` | Nieprawidłowe dane wejściowe | 2 | zła wartość, typ albo zakres opcji, brak opcji wymaganej, nieznana opcja albo naruszona grupa `one_of`: popraw opcję z `details.option` według `details.reason` i `hint` |
 | `not_found` | Nie znaleziono | 3 | nieznana komenda (`details.suggestions` podaje podobne) albo brak pliku wejściowego (`details.path`) |
-| `calculation_error` | Błąd obliczeń | 4 | dane poprawne formalnie, ale wyniku nie da się obliczyć (brak zbieżności, za krótka seria): zmień dane lub parametry, ponowienie bez zmian nic nie da |
-| `data_error` | Niepoprawne dane | 7 | plik wejściowy nieczytelny albo błędny (zła kolumna, liczba, data, raster): `details.path`, `details.reason`, a dla tabeli `details.column`, `details.row` i `details.available` |
+| `conflict` | Konflikt stanu | 4 | plik wyjściowy już istnieje: podaj inną ścieżkę albo `force`, żeby go zastąpić (`details.paths`, `details.reason`) |
 | `missing_dependency` | Brak opcjonalnej zależności | 6 | brak dodatku opcjonalnego (`hydrolog[raster]`, `hydrolog[mcp]`, `hydrolog[visualization]`): zainstaluj go według `hint` |
-| `forbidden` | Ścieżka niedozwolona | 8 | ścieżka poza katalogami dozwolonymi serwera MCP: użyj ścieżki w jednym z `details.allowed_dirs` (bez `--allow-dir` każda opcja typu path jest odrzucana) |
+| `data_error` | Niepoprawne dane | 7 | plik wejściowy nieczytelny albo błędny (zła kolumna, liczba, data, raster): `details.path`, `details.reason`, a dla tabeli `details.column`, `details.row` i `details.available` |
 | `io_error` | Błąd systemu plików | 9 | nie można zapisać pliku wyjściowego (uprawnienia, brak miejsca, katalog zamiast pliku): sprawdź `details.path` |
-| `internal_error` | Błąd wewnętrzny | 1 | błąd w Hydrologu: zgłoś komendę, opcje i wersję (`hydrolog --version`), nie ponawiaj |
+| `forbidden` | Operacja niedozwolona | 12 | ścieżka poza katalogami dozwolonymi serwera MCP: użyj ścieżki w jednym z `details.allowed_dirs` (bez `--allow-dir` każda opcja typu path jest odrzucana) |
+| `calculation_error` | Błąd obliczeń | 13 | dane poprawne formalnie, ale wyniku nie da się obliczyć (brak zbieżności, za krótka seria): zmień dane lub parametry, ponowienie bez zmian nic nie da |
+| `cancelled` | Anulowano | 130 | przerwane przez użytkownika (Ctrl+C): nic nie zostało zapisane częściowo, uruchom komendę ponownie |
 
 ## Dane wejściowe
 

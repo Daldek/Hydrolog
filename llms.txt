@@ -12,7 +12,7 @@
 
 - Interfejsy: Python (`hydrolog.operations`, argumenty nazwane = opcje komendy), CLI `hydrolog <grupa> <komenda> --opcja wartość` (`--json` — koperta w jednej linii, `--schema` — schemat opcji) i serwer MCP `hydrolog mcp --allow-dir KATALOG` (dodatek `hydrolog[mcp]`; narzędzie = `operation_id`, np. `tc_kirpich`). Instalacja: `pip install "hydrolog @ git+https://github.com/Daldek/Hydrolog.git"`; komendy `soil hsg` i `soil hsg-stats` wymagają dodatku `hydrolog[raster]`.
 - Wynik: koperta `hydrolog-result/1` z polami `inputs`, `result`, `files` i `notices` (ostrzeżenia przekaż użytkownikowi).
-- Błąd: dokument `hydrolog-error/1` (`code`, `title`, `message`, `hint`, `details`; CLI: ostatnia linia stderr z `--json`); kody z zamkniętego rejestru (kod wyjścia CLI w nawiasie): `validation_error` (2), `not_found` (3), `calculation_error` (4), `data_error` (7), `missing_dependency` (6), `forbidden` (8), `io_error` (9), `internal_error` (1).
+- Błąd: dokument `hydrolog-error/1` (`code`, `title`, `message`, `hint`, `details`; CLI: ostatnia linia stderr z `--json`); kody z zamkniętego rejestru (kod wyjścia CLI w nawiasie): `internal_error` (1), `validation_error` (2), `not_found` (3), `conflict` (4), `missing_dependency` (6), `data_error` (7), `io_error` (9), `forbidden` (12), `calculation_error` (13), `cancelled` (130).
 - Dane wejściowe: CSV (przecinek lub średnik, nagłówek) albo JSON; kolumnę wskazujesz nazwą z jednostką albo bez (`Q` znajduje `Q [m3/s]`); zlewnia to JSON `WatershedParameters`.
 
 Grupy komend (`hydrolog commands list`; opcje i przykłady: `hydrolog commands schema --command "<komenda>"`):

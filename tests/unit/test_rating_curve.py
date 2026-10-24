@@ -124,7 +124,7 @@ class TestRatingCurveErrors:
             curve.fit()
         assert isinstance(caught.value, CalculationError)
         assert caught.value.code == "calculation_error"
-        assert caught.value.exit_code == 4
+        assert caught.value.exit_code == 13
         assert caught.value.details == {"fit": "rating curve"}
 
     def test_non_convergence_is_a_calculation_error_catchable_as_before(

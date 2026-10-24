@@ -108,7 +108,8 @@ def _write_text(text: str, target: Path) -> None:
             temporary.write_text(text, encoding="utf-8", newline="\n")
     except OSError as exc:
         raise OutputError(
-            f"Cannot write the guide {target}: {exc}", details={"path": str(target)}
+            f"Cannot write the guide {target}: {exc}",
+            details={"path": str(target), "reason": "output_unwritable"},
         ) from exc
 
 

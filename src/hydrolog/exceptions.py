@@ -1,4 +1,4 @@
-"""Exceptions and the closed error-code registry of Hydrolog.
+"""Exceptions and the error-code registry of Hydrolog.
 
 Every :class:`HydrologError` carries a machine-readable ``code`` from
 :data:`ERROR_CODES`, JSON-compatible ``details`` and an optional one-line
@@ -6,7 +6,9 @@ Every :class:`HydrologError` carries a machine-readable ``code`` from
 a raise site may pass another registered code with ``code=``. The registry maps
 every code to a Polish and an English title and to the CLI exit code, so the CLI,
 the MCP server and Python callers report the same error the same way (see
-:func:`error_document`, the ``hydrolog-error/1`` document).
+:func:`error_document`, the ``hydrolog-error/1`` document). The registry is the
+Nogat error registry (ERR-3): ``hydrolog._errors`` is generated from the copy in
+``schemas/nogat/error_registry.json``.
 
 Existing call sites such as ``raise InvalidParameterError("message")`` keep working
 unchanged: ``code``, ``details`` and ``hint`` are optional keyword-only arguments.
@@ -29,12 +31,15 @@ import os
 from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import Any, ClassVar, Final, Literal
+from typing import Any, ClassVar, Final, Literal, cast
+
+from hydrolog._errors import CODES, ErrorCodeName
 
 __all__ = [
     "ERROR_CODES",
     "ERROR_SCHEMA",
     "CalculationError",
+    "ConflictError",
     "ErrorCode",
     "ErrorSpec",
     "ForbiddenPathError",
@@ -47,16 +52,8 @@ __all__ = [
     "error_document",
 ]
 
-ErrorCode = Literal[
-    "validation_error",
-    "not_found",
-    "calculation_error",
-    "data_error",
-    "missing_dependency",
-    "forbidden",
-    "io_error",
-    "internal_error",
-]
+ErrorCode = ErrorCodeName
+"""Name of a registry code that a CLI or MCP call can end with."""
 
 ERROR_SCHEMA: Final = "hydrolog-error/1"
 """Value of the ``schema`` key of an error document."""
@@ -84,32 +81,33 @@ class ErrorSpec:
     exit_code: int
 
 
+_USED_CODES: Final = (
+    "internal_error",
+    "validation_error",
+    "not_found",
+    "conflict",
+    "missing_dependency",
+    "data_error",
+    "io_error",
+    "forbidden",
+    "calculation_error",
+    "cancelled",
+)
+"""Registry codes that Hydrolog can end a call with (ERR-1: none of its own)."""
+
 ERROR_CODES: Mapping[str, ErrorSpec] = MappingProxyType(
     {
-        spec.code: spec
-        for spec in (
-            ErrorSpec(
-                "validation_error",
-                "Nieprawidłowe dane wejściowe",
-                "Invalid input",
-                2,
-            ),
-            ErrorSpec("not_found", "Nie znaleziono", "Not found", 3),
-            ErrorSpec("calculation_error", "Błąd obliczeń", "Calculation error", 4),
-            ErrorSpec("data_error", "Niepoprawne dane", "Invalid data", 7),
-            ErrorSpec(
-                "missing_dependency",
-                "Brak opcjonalnej zależności",
-                "Missing optional dependency",
-                6,
-            ),
-            ErrorSpec("forbidden", "Ścieżka niedozwolona", "Path not allowed", 8),
-            ErrorSpec("io_error", "Błąd systemu plików", "File system error", 9),
-            ErrorSpec("internal_error", "Błąd wewnętrzny", "Internal error", 1),
+        entry.code: ErrorSpec(
+            code=cast(ErrorCode, entry.code),
+            title=entry.title_pl,
+            title_en=entry.title,
+            exit_code=entry.exit_code,
         )
+        for entry in CODES
+        if entry.code in _USED_CODES and entry.exit_code is not None
     }
 )
-"""Closed registry of error codes, keyed by code (spec section 5)."""
+"""The registry codes Hydrolog uses, keyed by code (from ``_errors``, ERR-3)."""
 
 _INTERNAL_HINT: Final = (
     "This is a bug: report it with the command, the inputs and the Hydrolog version."
@@ -199,6 +197,15 @@ class InvalidParameterError(HydrologError, ValueError):
     """
 
     default_code: ClassVar[ErrorCode] = "validation_error"
+
+
+class ConflictError(HydrologError):
+    """The operation conflicts with the current state (an output file exists).
+
+    Default code: ``conflict``.
+    """
+
+    default_code: ClassVar[ErrorCode] = "conflict"
 
 
 class CalculationError(HydrologError):
@@ -292,7 +299,7 @@ def _os_error_parts(exc: OSError) -> tuple[str, dict[str, Any]]:
 def error_document(
     exc: BaseException,
     command: str | None = None,
-    lang: Literal["pl", "en"] = "pl",
+    lang: Literal["pl", "en"] = "en",
 ) -> dict[str, Any]:
     """Describe an exception as a ``hydrolog-error/1`` document.
 
@@ -311,13 +318,15 @@ def error_document(
     command : str or None, optional
         Catalog name of the failed command (``"tc kirpich"``), if known.
     lang : {"pl", "en"}, optional
-        Language of ``title``; ``message`` and ``hint`` are English.
+        Language of ``title`` (machine output is English, AGI-9.2); ``message`` and
+        ``hint`` are always English.
 
     Returns
     -------
     dict
         ``{"schema": "hydrolog-error/1", "code", "title", "message", "hint",
-        "details", "exit_code", "command"}``; JSON-compatible.
+        "details", "exit_code", "command"}``; JSON-compatible. ``hint`` and
+        ``command`` are left out when there is none.
 
     Raises
     ------
@@ -348,13 +357,16 @@ def error_document(
         hint = _INTERNAL_HINT
         details = {"exception": type(exc).__name__}
     spec = ERROR_CODES[code]
-    return {
+    document: dict[str, Any] = {
         "schema": ERROR_SCHEMA,
         "code": code,
         "title": spec.title_en if lang == "en" else spec.title,
         "message": message,
-        "hint": hint,
-        "details": _jsonable_details(details),
-        "exit_code": spec.exit_code,
-        "command": command,
     }
+    if hint:
+        document["hint"] = hint
+    document["details"] = _jsonable_details(details)
+    document["exit_code"] = spec.exit_code
+    if command is not None:
+        document["command"] = command
+    return document
