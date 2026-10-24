@@ -3,6 +3,7 @@
 import json
 import os
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -35,7 +36,7 @@ def _command(*options: Option, examples=(), one_of=()) -> Command:
     )
 
 
-def _option(name: str, kind: str = "number", **kwargs) -> Option:
+def _option(name: str, kind: Any = "number", **kwargs: Any) -> Option:
     if kind == "choice":
         kwargs.setdefault("choices", ("a", "b"))
     return Option(name, kind, "Opis", "Description", **kwargs)

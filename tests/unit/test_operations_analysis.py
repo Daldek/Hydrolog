@@ -1892,7 +1892,7 @@ def soil_rasters(tmp_path):
     """
     rasterio = pytest.importorskip("rasterio")
     pytest.importorskip("pyproj")
-    from rasterio.transform import from_origin
+    from rasterio.transform import from_origin  # type: ignore[import-untyped]
 
     cells = [
         [(60, 880, 60), (200, 400, 400), (330, 330, 340)],

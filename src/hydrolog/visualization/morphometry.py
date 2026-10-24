@@ -6,6 +6,8 @@ and elevation distributions.
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 from numpy.typing import NDArray
 
 from hydrolog.morphometry.hypsometry import HypsometricResult
@@ -21,9 +23,9 @@ def plot_hypsometric_curve(
     show_integral: bool = True,
     show_reference: bool = True,
     title: str | None = None,
-    ax: plt.Axes | None = None,
-    figsize: tuple = (8, 8),
-) -> plt.Figure:
+    ax: Axes | None = None,
+    figsize: tuple[float, float] = (8, 8),
+) -> Figure:
     """
     Plot hypsometric curve (h/H vs a/A).
 
@@ -41,9 +43,9 @@ def plot_hypsometric_curve(
         Show reference curves for young/mature/old stages, by default True.
     title : str, optional
         Plot title.
-    ax : plt.Axes, optional
+    ax : Axes, optional
         Existing axes.
-    figsize : tuple, optional
+    figsize : tuple[float, float], optional
         Figure size, by default (8, 8).
 
     Returns
@@ -63,7 +65,7 @@ def plot_hypsometric_curve(
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
     else:
-        fig = ax.get_figure()  # type: ignore[assignment]
+        fig = ax.get_figure()  # type: ignore[assignment]  # stub allows SubFigure
         assert fig is not None
 
     # Extract data
@@ -162,9 +164,9 @@ def plot_elevation_histogram(
     elevations: NDArray[np.float64],
     bins: int = 20,
     title: str | None = None,
-    ax: plt.Axes | None = None,
-    figsize: tuple = (10, 6),
-) -> plt.Figure:
+    ax: Axes | None = None,
+    figsize: tuple[float, float] = (10, 6),
+) -> Figure:
     """
     Plot histogram of elevation distribution.
 
@@ -176,9 +178,9 @@ def plot_elevation_histogram(
         Number of histogram bins, by default 20.
     title : str, optional
         Plot title.
-    ax : plt.Axes, optional
+    ax : Axes, optional
         Existing axes.
-    figsize : tuple, optional
+    figsize : tuple[float, float], optional
         Figure size, by default (10, 6).
 
     Returns
@@ -194,7 +196,7 @@ def plot_elevation_histogram(
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
     else:
-        fig = ax.get_figure()  # type: ignore[assignment]
+        fig = ax.get_figure()  # type: ignore[assignment]  # stub allows SubFigure
         assert fig is not None
 
     elevations = np.asarray(elevations)

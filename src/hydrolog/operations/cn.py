@@ -265,7 +265,7 @@ def cn_lookup(
 
 
 def cn_list() -> CnList:
-    """The whole TR-55 table (``cn list``).
+    """Return the whole TR-55 table (``cn list``).
 
     Returns
     -------

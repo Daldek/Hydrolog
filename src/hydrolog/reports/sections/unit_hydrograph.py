@@ -165,7 +165,7 @@ def _generate_scs_section(
     peak_discharge_m3s: float,
     model_params: dict[str, Any],
     include_formulas: bool,
-) -> list:
+) -> list[str]:
     """Generate SCS-specific content."""
     lines = []
 
@@ -243,7 +243,7 @@ def _generate_nash_section(
     peak_discharge_m3s: float,
     model_params: dict[str, Any],
     include_formulas: bool,
-) -> list:
+) -> list[str]:
     """Generate Nash IUH-specific content.
 
     Supports three estimation methods via model_params["estimation_method"]:
@@ -530,7 +530,7 @@ def _generate_clark_section(
     peak_discharge_m3s: float,
     model_params: dict[str, Any],
     include_formulas: bool,
-) -> list:
+) -> list[str]:
     """Generate Clark IUH-specific content."""
     lines = []
 
@@ -642,7 +642,7 @@ def _generate_snyder_section(
     peak_discharge_m3s: float,
     model_params: dict[str, Any],
     include_formulas: bool,
-) -> list:
+) -> list[str]:
     """Generate Snyder UH-specific content.
 
     Reads the following keys from model_params (all optional; the defaults

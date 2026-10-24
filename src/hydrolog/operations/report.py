@@ -83,7 +83,7 @@ class ReportResult(JsonResultMixin):
 
 
 def _watershed_params(parameters: WatershedParameters) -> dict[str, Any]:
-    """The watershed section inputs of the report generator.
+    """Build the watershed section inputs of the report generator.
 
     Only the keys of ``generate_watershed_section`` that the generator can pass on
     (the area and the CN are passed separately).
@@ -114,7 +114,7 @@ def _watershed_params(parameters: WatershedParameters) -> dict[str, Any]:
 
 
 def _uh_params(run: HydrographRun) -> dict[str, Any]:
-    """What the report needs of the unit hydrograph model besides its result.
+    """Collect what the report needs of the unit hydrograph model besides its result.
 
     The values of the model (Nash n and K, Clark R and tc, Snyder Ct and Cp, the
     SCS lag time) are read by the report from the unit hydrograph the hydrograph was
@@ -128,7 +128,7 @@ def _uh_params(run: HydrographRun) -> dict[str, Any]:
 
 
 def _tc_inputs(run: HydrographRun) -> dict[str, Any] | None:
-    """The arguments the time of concentration method was fed with.
+    """Collect the arguments the time of concentration method was fed with.
 
     Under the names the report section reads (``TcResult.parameters`` already uses
     them; the NRCS slope is given in percent there). ``None`` when the time of
@@ -145,7 +145,7 @@ def _tc_inputs(run: HydrographRun) -> dict[str, Any] | None:
 
 
 def _curve_number(cn: float) -> Any:
-    """The CN as the report prints it: an integer value without a trailing ``.0``.
+    """Format the CN as the report prints it: an integer without a trailing ``.0``.
 
     The report generator is typed for integer curve numbers; a weighted (fractional)
     CN is passed on as it is.

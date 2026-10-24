@@ -6,6 +6,8 @@ and ordering results.
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 
 from hydrolog.network.stream_order import NetworkStatistics
 from hydrolog.visualization.styles import (
@@ -18,8 +20,8 @@ from hydrolog.visualization.styles import (
 def plot_stream_order_stats(
     stats: NetworkStatistics,
     title: str | None = None,
-    figsize: tuple = (14, 5),
-) -> plt.Figure:
+    figsize: tuple[float, float] = (14, 5),
+) -> Figure:
     """
     Plot comprehensive stream network statistics.
 
@@ -34,7 +36,7 @@ def plot_stream_order_stats(
         Network statistics from StreamNetwork.get_statistics().
     title : str, optional
         Overall figure title.
-    figsize : tuple, optional
+    figsize : tuple[float, float], optional
         Figure size, by default (14, 5).
 
     Returns
@@ -156,9 +158,9 @@ def plot_stream_order_stats(
 def plot_bifurcation_ratios(
     stats: NetworkStatistics,
     title: str | None = None,
-    ax: plt.Axes | None = None,
-    figsize: tuple = (8, 6),
-) -> plt.Figure:
+    ax: Axes | None = None,
+    figsize: tuple[float, float] = (8, 6),
+) -> Figure:
     """
     Plot bifurcation ratios by stream order.
 
@@ -168,9 +170,9 @@ def plot_bifurcation_ratios(
         Network statistics.
     title : str, optional
         Plot title.
-    ax : plt.Axes, optional
+    ax : Axes, optional
         Existing axes.
-    figsize : tuple, optional
+    figsize : tuple[float, float], optional
         Figure size, by default (8, 6).
 
     Returns
@@ -181,7 +183,7 @@ def plot_bifurcation_ratios(
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
     else:
-        fig = ax.get_figure()  # type: ignore[assignment]
+        fig = ax.get_figure()  # type: ignore[assignment]  # stub allows SubFigure
         assert fig is not None
 
     if not stats.bifurcation_ratios:

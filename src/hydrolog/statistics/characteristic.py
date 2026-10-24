@@ -161,7 +161,7 @@ class MonthlyStatistics(JsonResultMixin):
 
 def calculate_characteristic_values(
     daily_values: NDArray[np.float64],
-    dates: NDArray,
+    dates: NDArray[np.datetime64],
     parameter: str = "Q",
 ) -> CharacteristicValues:
     """Calculate second-degree characteristic values from daily data.
@@ -237,7 +237,7 @@ def calculate_characteristic_values(
 
 def calculate_daily_statistics(
     daily_values: NDArray[np.float64],
-    dates: NDArray,
+    dates: NDArray[np.datetime64],
 ) -> DailyStatistics:
     """Compute statistics for each hydrological day-of-year.
 
@@ -286,7 +286,7 @@ def calculate_daily_statistics(
 
 def calculate_monthly_statistics(
     daily_values: NDArray[np.float64],
-    dates: NDArray,
+    dates: NDArray[np.datetime64],
     confidence_level: float = 0.95,
 ) -> MonthlyStatistics:
     """Compute monthly statistics with t-Student confidence intervals.

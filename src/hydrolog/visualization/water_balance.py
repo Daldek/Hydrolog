@@ -6,6 +6,8 @@ and runoff relationships.
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 
 from hydrolog.runoff.generator import HydrographGeneratorResult
 from hydrolog.runoff.scs_cn import AMC, SCSCN
@@ -19,9 +21,9 @@ def plot_water_balance(
     result: HydrographGeneratorResult,
     style: str = "bars",
     title: str | None = None,
-    ax: plt.Axes | None = None,
-    figsize: tuple = (10, 6),
-) -> plt.Figure:
+    ax: Axes | None = None,
+    figsize: tuple[float, float] = (10, 6),
+) -> Figure:
     """
     Visualize SCS-CN water balance components.
 
@@ -33,9 +35,9 @@ def plot_water_balance(
         Visualization style: 'bars' or 'pie', by default 'bars'.
     title : str, optional
         Plot title.
-    ax : plt.Axes, optional
+    ax : Axes, optional
         Existing axes to plot on.
-    figsize : tuple, optional
+    figsize : tuple[float, float], optional
         Figure size, by default (10, 6).
 
     Returns
@@ -51,7 +53,7 @@ def plot_water_balance(
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
     else:
-        fig = ax.get_figure()  # type: ignore[assignment]
+        fig = ax.get_figure()  # type: ignore[assignment]  # stub allows SubFigure
         assert fig is not None
 
     # Extract components
@@ -75,7 +77,7 @@ def plot_water_balance(
     return fig
 
 
-def _plot_balance_bars(ax: plt.Axes, P: float, Ia: float, F: float, Pe: float) -> None:
+def _plot_balance_bars(ax: Axes, P: float, Ia: float, F: float, Pe: float) -> None:
     """Create stacked bar chart for water balance."""
     # Single stacked bar
     components = [Ia, F, Pe]
@@ -128,7 +130,7 @@ def _plot_balance_bars(ax: plt.Axes, P: float, Ia: float, F: float, Pe: float) -
     ax.set_xticks([])
 
 
-def _plot_balance_pie(ax: plt.Axes, P: float, Ia: float, F: float, Pe: float) -> None:
+def _plot_balance_pie(ax: Axes, P: float, Ia: float, F: float, Pe: float) -> None:
     """Create pie chart for water balance."""
     values = [Ia, F, Pe]
     labels = [
@@ -163,13 +165,13 @@ def _plot_balance_pie(ax: plt.Axes, P: float, Ia: float, F: float, Pe: float) ->
 
 def plot_cn_curve(
     cn: int,
-    p_range: tuple = (0, 150),
+    p_range: tuple[float, float] = (0, 150),
     amc_variants: bool = True,
     ia_coefficient: float = 0.2,
     title: str | None = None,
-    ax: plt.Axes | None = None,
-    figsize: tuple = (10, 6),
-) -> plt.Figure:
+    ax: Axes | None = None,
+    figsize: tuple[float, float] = (10, 6),
+) -> Figure:
     """
     Plot P → Pe relationship for given CN value.
 
@@ -180,7 +182,7 @@ def plot_cn_curve(
     ----------
     cn : int
         Curve Number for AMC-II conditions.
-    p_range : tuple, optional
+    p_range : tuple[float, float], optional
         Range of precipitation values [mm], by default (0, 150).
     amc_variants : bool, optional
         Show curves for AMC-I, II, III, by default True.
@@ -188,9 +190,9 @@ def plot_cn_curve(
         Initial abstraction coefficient (Ia = λ×S), by default 0.2.
     title : str, optional
         Plot title.
-    ax : plt.Axes, optional
+    ax : Axes, optional
         Existing axes.
-    figsize : tuple, optional
+    figsize : tuple[float, float], optional
         Figure size, by default (10, 6).
 
     Returns
@@ -206,7 +208,7 @@ def plot_cn_curve(
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
     else:
-        fig = ax.get_figure()  # type: ignore[assignment]
+        fig = ax.get_figure()  # type: ignore[assignment]  # stub allows SubFigure
         assert fig is not None
 
     # Generate P values

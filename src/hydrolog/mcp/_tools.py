@@ -121,7 +121,7 @@ def _input_schema(
 
 
 def _alternatives(command: Command, lang: Lang) -> str:
-    """The sentence that names the ``one_of`` alternatives."""
+    """Build the sentence that names the ``one_of`` alternatives."""
     if all(len(group) == 1 for group in command.one_of):
         names = _OR[lang].join(f"`{group[0]}`" for group in command.one_of)
         return _ONE_OPTION[lang].format(options=names)

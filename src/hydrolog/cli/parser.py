@@ -405,7 +405,7 @@ def _default_text(option: Option, lang: Lang) -> str:
 
 
 def _option_help(option: Option, lang: Lang) -> str:
-    """Description with its unit and its default, as shown in ``--help``."""
+    """Return the description with its unit and its default, as shown in ``--help``."""
     description = str(option.json_schema(lang)["description"])
     if option.default is not None:
         note = text("default_note", lang, value=_default_text(option, lang))
@@ -550,8 +550,9 @@ class CommandLine:
 
 
 def join_negative_values(arguments: Sequence[str], command: Command) -> list[str]:
-    """Glue ``--flag -5`` into ``--flag=-5`` for the flags of ``command`` that take
-    values.
+    """Glue ``--flag -5`` into ``--flag=-5``.
+
+    This applies to the flags of ``command`` that take values.
 
     argparse reads a word that starts with ``-`` as an option unless it is a plain
     negative number, so ``--values -1,2`` and ``--x -1e-3`` would fail. The word after a
@@ -589,7 +590,7 @@ def join_negative_values(arguments: Sequence[str], command: Command) -> list[str
 def _unrecognized(
     parser: CatalogParser, command: Command, extras: Sequence[str]
 ) -> UsageError:
-    """The error for words the parser did not recognize, with a spelling hint."""
+    """Build the error for words the parser did not recognize, with a spelling hint."""
     word = extras[0]
     if not word.startswith("-"):
         return UsageError(
@@ -673,7 +674,7 @@ def parse_command_line(
 def _help_parser(
     prog: str, usage: str, description: str, epilog: str, lang: Lang
 ) -> CatalogParser:
-    """A parser that only prints help (``usage`` is escaped, texts are not)."""
+    """Return a parser that only prints help (``usage`` is escaped, texts are not)."""
     return CatalogParser(
         prog=prog,
         usage=_escape(usage),

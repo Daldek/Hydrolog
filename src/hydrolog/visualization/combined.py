@@ -6,6 +6,7 @@ This module provides the classic combined plot with hietogram on top
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.figure import Figure
 from numpy.typing import NDArray
 
 from hydrolog.precipitation.hietogram import HietogramResult
@@ -21,11 +22,11 @@ from hydrolog.visualization.styles import (
 def plot_rainfall_runoff(
     hietogram: HietogramResult,
     hydrograph: HydrographResult,
-    effective_precip: NDArray[np.float64] | list | None = None,
+    effective_precip: NDArray[np.float64] | list[float] | None = None,
     title: str | None = None,
-    figsize: tuple = (12, 8),
-    height_ratios: tuple = (1, 2),
-) -> plt.Figure:
+    figsize: tuple[float, float] = (12, 8),
+    height_ratios: tuple[float, float] = (1, 2),
+) -> Figure:
     """
     Create classic rainfall-runoff plot with hietogram above and hydrograph below.
 
@@ -51,9 +52,9 @@ def plot_rainfall_runoff(
         Effective precipitation values [mm] to overlay on hietogram.
     title : str, optional
         Overall figure title.
-    figsize : tuple, optional
+    figsize : tuple[float, float], optional
         Figure size (width, height), by default (12, 8).
-    height_ratios : tuple, optional
+    height_ratios : tuple[float, float], optional
         Height ratio between panels (hietogram, hydrograph), by default (1, 2).
 
     Returns
@@ -204,7 +205,7 @@ def plot_rainfall_runoff(
 #     hietogram: HietogramResult,
 #     title: Optional[str] = None,
 #     show_water_balance: bool = True,
-#     figsize: tuple = (12, 10),
+#     figsize: tuple[float, float] = (12, 10),
 # ) -> plt.Figure:
 #     """
 #     Create comprehensive dashboard from HydrographGenerator result.
@@ -224,7 +225,7 @@ def plot_rainfall_runoff(
 #         Overall figure title.
 #     show_water_balance : bool, optional
 #         Show water balance summary, by default True.
-#     figsize : tuple, optional
+#     figsize : tuple[float, float], optional
 #         Figure size, by default (12, 10).
 
 #     Returns

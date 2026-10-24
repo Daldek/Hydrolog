@@ -94,7 +94,7 @@ class ClarkUHResult(JsonResultMixin):
 
 
 class ClarkIUH:
-    """
+    r"""
     Clark Instantaneous Unit Hydrograph (IUH).
 
     The Clark model represents watershed response through two processes:
@@ -121,10 +121,10 @@ class ClarkIUH:
     elliptically-shaped watershed (HEC-HMS standard):
 
     .. math::
-        A_{cum}(t) = \\begin{cases}
-            1.414 \\cdot (t/T_c)^{1.5} & 0 \\leq t \\leq T_c/2 \\\\
-            1 - 1.414 \\cdot (1 - t/T_c)^{1.5} & T_c/2 < t \\leq T_c
-        \\end{cases}
+        A_{cum}(t) = \begin{cases}
+            1.414 \cdot (t/T_c)^{1.5} & 0 \leq t \leq T_c/2 \\
+            1 - 1.414 \cdot (1 - t/T_c)^{1.5} & T_c/2 < t \leq T_c
+        \end{cases}
 
     for t <= Tc, where A_cum is the cumulative fraction of watershed area.
     This two-part formula produces a symmetric S-curve with centroid at Tc/2.
@@ -132,7 +132,7 @@ class ClarkIUH:
     The linear reservoir routing uses the Muskingum-Cunge equation:
 
     .. math::
-        O_t = O_{t-1} + C_1 \\cdot (I_t + I_{t-1} - 2 \\cdot O_{t-1})
+        O_t = O_{t-1} + C_1 \cdot (I_t + I_{t-1} - 2 \cdot O_{t-1})
 
     where C1 = dt / (2R + dt).
 
@@ -436,7 +436,7 @@ class ClarkIUH:
         timestep_min: float = 5.0,
         total_duration_min: float | None = None,
     ) -> ClarkUHResult:
-        """
+        r"""
         Convert IUH to D-minute Unit Hydrograph.
 
         Generates the unit hydrograph of an effective rainfall of duration D by
@@ -473,7 +473,7 @@ class ClarkIUH:
         hydrograph is
 
         .. math::
-            U_D(t) = \\frac{S(t) - S(t - D)}{D}
+            U_D(t) = \frac{S(t) - S(t - D)}{D}
 
         S is known at the grid points ``t_i = i * dt`` only (``dt`` is
         ``timestep_min``). The lagged curve S(t_i - D) is read from S by linear
@@ -483,13 +483,13 @@ class ClarkIUH:
         weighted moving average of the IUH ordinates ``u_j``:
 
         .. math::
-            U_D(t_i) = \\frac{dt}{D}\\left(\\sum_{j=i-m+1}^{i} u_j
-            + f \\, u_{i-m}\\right)
+            U_D(t_i) = \frac{dt}{D}\left(\sum_{j=i-m+1}^{i} u_j
+            + f \, u_{i-m}\right)
 
         Volume: the volume of the result is
-        :math:`\\frac{dt}{D} \\sum_i [S(t_i) - S(t_i - D)]`. For the
-        piecewise-linear S this sum is :math:`\\frac{dt}{D}\\left(f \\, S_{n-m-1}
-        + \\sum_{j=n-m}^{n-1} S_j\\right)`, which equals 1 (mm) whenever S has
+        :math:`\frac{dt}{D} \sum_i [S(t_i) - S(t_i - D)]`. For the
+        piecewise-linear S this sum is :math:`\frac{dt}{D}\left(f \, S_{n-m-1}
+        + \sum_{j=n-m}^{n-1} S_j\right)`, which equals 1 (mm) whenever S has
         reached 1 at the last ``m + 1`` grid points, for any D > 0. Only the
         part of the response that lies beyond ``total_duration_min`` is missing.
         Shifting S by the rounded number of steps instead, while dividing by D,

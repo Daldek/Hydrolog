@@ -97,6 +97,7 @@ class Notice:
     text: str
 
     def __post_init__(self) -> None:
+        """Validate the field values."""
         if self.level not in NOTICE_LEVELS:
             raise ValueError(
                 f"Unknown notice level {self.level!r}; "

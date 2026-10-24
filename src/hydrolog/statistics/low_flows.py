@@ -212,7 +212,7 @@ class LowFlowAnalysis:
     def __init__(
         self,
         daily_flows: NDArray[np.float64],
-        dates: NDArray,
+        dates: NDArray[np.datetime64],
         return_periods: NDArray[np.float64] | None = None,
     ) -> None:
         daily_flows = np.asarray(daily_flows, dtype=np.float64)

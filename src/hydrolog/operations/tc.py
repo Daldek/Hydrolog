@@ -308,7 +308,7 @@ def tc_kerby_kirpich(
 def _effective_parameters(
     watershed: WatershedParameters, method: str
 ) -> dict[str, float]:
-    """Formula arguments that ``WatershedParameters.calculate_tc`` derives.
+    """Derive formula arguments that ``WatershedParameters.calculate_tc`` derives.
 
     Taken from :meth:`WatershedParameters.tc_parameters`, the one place that
     selects them from the watershed fields (FAA and Kerby: the overland flow

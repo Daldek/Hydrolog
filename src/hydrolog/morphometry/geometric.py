@@ -2,6 +2,7 @@
 
 import math
 from dataclasses import dataclass
+from typing import Any
 
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError
@@ -93,7 +94,7 @@ class WatershedGeometry:
     """
 
     @classmethod
-    def from_dict(cls, data: dict) -> "WatershedGeometry":
+    def from_dict(cls, data: dict[str, Any]) -> "WatershedGeometry":
         """
         Create WatershedGeometry from a dictionary.
 

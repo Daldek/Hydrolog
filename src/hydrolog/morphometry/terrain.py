@@ -1,6 +1,7 @@
 """Terrain parameters for watershed analysis."""
 
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
@@ -100,7 +101,7 @@ class TerrainAnalysis:
     """
 
     @classmethod
-    def from_dict(cls, data: dict) -> "TerrainAnalysis":
+    def from_dict(cls, data: dict[str, Any]) -> "TerrainAnalysis":
         """
         Create TerrainAnalysis from a dictionary.
 

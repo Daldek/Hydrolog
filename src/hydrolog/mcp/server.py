@@ -86,9 +86,12 @@ def _checked_lang(lang: str) -> Lang:
 def _resolved_dirs(
     allowed_dirs: Sequence[str | os.PathLike[str]] | str | os.PathLike[str],
 ) -> tuple[str, ...]:
-    """Absolute, symlink-free directories (``~`` expanded, relative ones against the
-    working directory of now), without duplicates; an empty text is refused because
-    it would silently mean the working directory."""
+    """Resolve directories to absolute, symlink-free paths without duplicates.
+
+    ``~`` is expanded and relative ones are taken against the working directory of
+    now; an empty text is refused because it would silently mean the working
+    directory.
+    """
     if isinstance(allowed_dirs, str | os.PathLike):
         allowed_dirs = (allowed_dirs,)
     resolved: dict[str, None] = {}

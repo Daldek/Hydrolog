@@ -7,6 +7,8 @@ and water level frequency distributions.
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 from numpy.typing import NDArray
 
 from hydrolog.hydrometrics.rating_curve import (
@@ -52,9 +54,9 @@ def plot_frequency_curve(
     result: FrequencyAnalysisResult,
     empirical: EmpiricalFrequency | None = None,
     title: str | None = None,
-    ax: plt.Axes | None = None,
-    figsize: tuple = (10, 6),
-) -> plt.Figure:
+    ax: Axes | None = None,
+    figsize: tuple[float, float] = (10, 6),
+) -> Figure:
     """Plot exceedance probability (flood frequency) curve.
 
     Displays the theoretical fitted distribution curve on a logarithmic
@@ -68,9 +70,9 @@ def plot_frequency_curve(
         Empirical plotting positions to overlay as scatter points.
     title : str, optional
         Plot title. Auto-generated if None.
-    ax : plt.Axes, optional
+    ax : Axes, optional
         Existing axes to plot on.
-    figsize : tuple, optional
+    figsize : tuple[float, float], optional
         Figure size, by default (10, 6).
 
     Returns
@@ -89,7 +91,7 @@ def plot_frequency_curve(
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
     else:
-        fig = ax.get_figure()  # type: ignore[assignment]
+        fig = ax.get_figure()  # type: ignore[assignment]  # stub allows SubFigure
         assert fig is not None
 
     # Convert exceedance probabilities to percent
@@ -145,9 +147,9 @@ def plot_frequency_comparison(
     results: dict[str, FrequencyAnalysisResult],
     empirical: EmpiricalFrequency | None = None,
     title: str | None = None,
-    ax: plt.Axes | None = None,
-    figsize: tuple = (10, 6),
-) -> plt.Figure:
+    ax: Axes | None = None,
+    figsize: tuple[float, float] = (10, 6),
+) -> Figure:
     """Plot multiple frequency distribution curves for comparison.
 
     Parameters
@@ -158,9 +160,9 @@ def plot_frequency_comparison(
         Empirical plotting positions to overlay as scatter points.
     title : str, optional
         Plot title. Auto-generated if None.
-    ax : plt.Axes, optional
+    ax : Axes, optional
         Existing axes to plot on.
-    figsize : tuple, optional
+    figsize : tuple[float, float], optional
         Figure size, by default (10, 6).
 
     Returns
@@ -179,7 +181,7 @@ def plot_frequency_comparison(
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
     else:
-        fig = ax.get_figure()  # type: ignore[assignment]
+        fig = ax.get_figure()  # type: ignore[assignment]  # stub allows SubFigure
         assert fig is not None
 
     for i, (name, result) in enumerate(results.items()):
@@ -224,9 +226,9 @@ def plot_non_exceedance_curve(
     result: LowFlowFrequencyResult,
     empirical: EmpiricalFrequency | LowFlowEmpiricalFrequency | None = None,
     title: str | None = None,
-    ax: plt.Axes | None = None,
-    figsize: tuple = (10, 6),
-) -> plt.Figure:
+    ax: Axes | None = None,
+    figsize: tuple[float, float] = (10, 6),
+) -> Figure:
     """Plot non-exceedance probability curve for low flows.
 
     Parameters
@@ -241,9 +243,9 @@ def plot_non_exceedance_curve(
         ``1 - P``.
     title : str, optional
         Plot title. Auto-generated if None.
-    ax : plt.Axes, optional
+    ax : Axes, optional
         Existing axes to plot on.
-    figsize : tuple, optional
+    figsize : tuple[float, float], optional
         Figure size, by default (10, 6).
 
     Returns
@@ -262,7 +264,7 @@ def plot_non_exceedance_curve(
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
     else:
-        fig = ax.get_figure()  # type: ignore[assignment]
+        fig = ax.get_figure()  # type: ignore[assignment]  # stub allows SubFigure
         assert fig is not None
 
     # Non-exceedance probabilities as percent
@@ -320,9 +322,9 @@ def plot_non_exceedance_curve(
 def plot_daily_characteristics(
     daily_stats: DailyStatistics,
     title: str | None = None,
-    ax: plt.Axes | None = None,
-    figsize: tuple = (12, 6),
-) -> plt.Figure:
+    ax: Axes | None = None,
+    figsize: tuple[float, float] = (12, 6),
+) -> Figure:
     """Plot daily characteristic values over the hydrological year.
 
     Shows four lines: maximum, mean, median, and minimum flows for each
@@ -334,9 +336,9 @@ def plot_daily_characteristics(
         Per-day statistics computed from multi-year data.
     title : str, optional
         Plot title. Auto-generated if None.
-    ax : plt.Axes, optional
+    ax : Axes, optional
         Existing axes to plot on.
-    figsize : tuple, optional
+    figsize : tuple[float, float], optional
         Figure size, by default (12, 6).
 
     Returns
@@ -354,7 +356,7 @@ def plot_daily_characteristics(
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
     else:
-        fig = ax.get_figure()  # type: ignore[assignment]
+        fig = ax.get_figure()  # type: ignore[assignment]  # stub allows SubFigure
         assert fig is not None
 
     days = daily_stats.day_of_year
@@ -414,9 +416,9 @@ def plot_monthly_statistics(
     monthly_stats: MonthlyStatistics,
     show_ci: bool = True,
     title: str | None = None,
-    ax: plt.Axes | None = None,
-    figsize: tuple = (10, 6),
-) -> plt.Figure:
+    ax: Axes | None = None,
+    figsize: tuple[float, float] = (10, 6),
+) -> Figure:
     """Plot monthly mean statistics as a bar chart.
 
     Parameters
@@ -427,9 +429,9 @@ def plot_monthly_statistics(
         Show confidence interval error bars, by default True.
     title : str, optional
         Plot title. Auto-generated if None.
-    ax : plt.Axes, optional
+    ax : Axes, optional
         Existing axes to plot on.
-    figsize : tuple, optional
+    figsize : tuple[float, float], optional
         Figure size, by default (10, 6).
 
     Returns
@@ -447,7 +449,7 @@ def plot_monthly_statistics(
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
     else:
-        fig = ax.get_figure()  # type: ignore[assignment]
+        fig = ax.get_figure()  # type: ignore[assignment]  # stub allows SubFigure
         assert fig is not None
 
     x = np.arange(12)
@@ -489,11 +491,11 @@ def plot_monthly_statistics(
 
 def plot_annual_hydrographs(
     daily_flows: NDArray[np.float64],
-    dates: NDArray,
+    dates: NDArray[np.datetime64],
     title: str | None = None,
-    ax: plt.Axes | None = None,
-    figsize: tuple = (12, 6),
-) -> plt.Figure:
+    ax: Axes | None = None,
+    figsize: tuple[float, float] = (12, 6),
+) -> Figure:
     """Plot overlaid hydrographs for each hydrological year.
 
     Each hydrological year is drawn as a separate line, aligned to
@@ -507,9 +509,9 @@ def plot_annual_hydrographs(
         Corresponding dates (dtype datetime64[D]).
     title : str, optional
         Plot title. Auto-generated if None.
-    ax : plt.Axes, optional
+    ax : Axes, optional
         Existing axes to plot on.
-    figsize : tuple, optional
+    figsize : tuple[float, float], optional
         Figure size, by default (12, 6).
 
     Returns
@@ -525,7 +527,7 @@ def plot_annual_hydrographs(
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
     else:
-        fig = ax.get_figure()  # type: ignore[assignment]
+        fig = ax.get_figure()  # type: ignore[assignment]  # stub allows SubFigure
         assert fig is not None
 
     daily_flows = np.asarray(daily_flows, dtype=np.float64)
@@ -577,9 +579,9 @@ def plot_flow_histogram(
     values: NDArray[np.float64],
     bins: int = 20,
     title: str | None = None,
-    ax: plt.Axes | None = None,
-    figsize: tuple = (10, 6),
-) -> plt.Figure:
+    ax: Axes | None = None,
+    figsize: tuple[float, float] = (10, 6),
+) -> Figure:
     """Plot histogram of flow values.
 
     Parameters
@@ -590,9 +592,9 @@ def plot_flow_histogram(
         Number of histogram bins, by default 20.
     title : str, optional
         Plot title. Auto-generated if None.
-    ax : plt.Axes, optional
+    ax : Axes, optional
         Existing axes to plot on.
-    figsize : tuple, optional
+    figsize : tuple[float, float], optional
         Figure size, by default (10, 6).
 
     Returns
@@ -608,7 +610,7 @@ def plot_flow_histogram(
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
     else:
-        fig = ax.get_figure()  # type: ignore[assignment]
+        fig = ax.get_figure()  # type: ignore[assignment]  # stub allows SubFigure
         assert fig is not None
 
     values = np.asarray(values, dtype=np.float64)
@@ -660,9 +662,9 @@ def plot_low_flow_sequences(
     daily_flows: NDArray[np.float64],
     result: LowFlowAnalysisResult,
     title: str | None = None,
-    ax: plt.Axes | None = None,
-    figsize: tuple = (12, 5),
-) -> plt.Figure:
+    ax: Axes | None = None,
+    figsize: tuple[float, float] = (12, 5),
+) -> Figure:
     """Plot daily hydrograph with shaded drought (low-flow) periods.
 
     Parameters
@@ -673,9 +675,9 @@ def plot_low_flow_sequences(
         Detected low-flow sequences from threshold method.
     title : str, optional
         Plot title. Auto-generated if None.
-    ax : plt.Axes, optional
+    ax : Axes, optional
         Existing axes to plot on.
-    figsize : tuple, optional
+    figsize : tuple[float, float], optional
         Figure size, by default (12, 5).
 
     Returns
@@ -694,7 +696,7 @@ def plot_low_flow_sequences(
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
     else:
-        fig = ax.get_figure()  # type: ignore[assignment]
+        fig = ax.get_figure()  # type: ignore[assignment]  # stub allows SubFigure
         assert fig is not None
 
     daily_flows = np.asarray(daily_flows, dtype=np.float64)
@@ -749,9 +751,9 @@ def plot_rating_curve(
     rating: RatingCurve,
     result: RatingCurveResult,
     title: str | None = None,
-    ax: plt.Axes | None = None,
-    figsize: tuple = (8, 6),
-) -> plt.Figure:
+    ax: Axes | None = None,
+    figsize: tuple[float, float] = (8, 6),
+) -> Figure:
     """Plot rating curve scatter and fitted power-law curve.
 
     Parameters
@@ -762,9 +764,9 @@ def plot_rating_curve(
         Fitted rating curve parameters and statistics.
     title : str, optional
         Plot title. Auto-generated if None.
-    ax : plt.Axes, optional
+    ax : Axes, optional
         Existing axes to plot on.
-    figsize : tuple, optional
+    figsize : tuple[float, float], optional
         Figure size, by default (8, 6).
 
     Returns
@@ -783,7 +785,7 @@ def plot_rating_curve(
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
     else:
-        fig = ax.get_figure()  # type: ignore[assignment]
+        fig = ax.get_figure()  # type: ignore[assignment]  # stub allows SubFigure
         assert fig is not None
 
     h_obs = rating._h
@@ -844,9 +846,9 @@ def plot_water_level_frequency(
     freq: FrequencyDistributionResult,
     zones: WaterLevelZones | None = None,
     title: str | None = None,
-    ax: plt.Axes | None = None,
-    figsize: tuple = (10, 6),
-) -> plt.Figure:
+    ax: Axes | None = None,
+    figsize: tuple[float, float] = (10, 6),
+) -> Figure:
     """Plot water level frequency/duration curve with optional zone bands.
 
     Displays the duration (exceedance) curve as a bar chart of frequency
@@ -861,9 +863,9 @@ def plot_water_level_frequency(
         Rybczyński zone boundaries for NTW/STW/WTW shading.
     title : str, optional
         Plot title. Auto-generated if None.
-    ax : plt.Axes, optional
+    ax : Axes, optional
         Existing axes to plot on.
-    figsize : tuple, optional
+    figsize : tuple[float, float], optional
         Figure size, by default (10, 6).
 
     Returns
@@ -883,7 +885,7 @@ def plot_water_level_frequency(
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
     else:
-        fig = ax.get_figure()  # type: ignore[assignment]
+        fig = ax.get_figure()  # type: ignore[assignment]  # stub allows SubFigure
         assert fig is not None
 
     centers = freq.bin_centers

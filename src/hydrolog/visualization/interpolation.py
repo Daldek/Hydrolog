@@ -6,6 +6,8 @@ and interpolation weights.
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 
 from hydrolog.precipitation.interpolation import Station
 
@@ -15,9 +17,9 @@ def plot_stations_map(
     weights: dict[str, float] | None = None,
     title: str | None = None,
     show_values: bool = True,
-    ax: plt.Axes | None = None,
-    figsize: tuple = (10, 8),
-) -> plt.Figure:
+    ax: Axes | None = None,
+    figsize: tuple[float, float] = (10, 8),
+) -> Figure:
     """
     Plot map of precipitation stations with optional weights.
 
@@ -32,9 +34,9 @@ def plot_stations_map(
         Plot title.
     show_values : bool, optional
         Show precipitation values as labels, by default True.
-    ax : plt.Axes, optional
+    ax : Axes, optional
         Existing axes.
-    figsize : tuple, optional
+    figsize : tuple[float, float], optional
         Figure size, by default (10, 8).
 
     Returns
@@ -59,7 +61,7 @@ def plot_stations_map(
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
     else:
-        fig = ax.get_figure()  # type: ignore[assignment]
+        fig = ax.get_figure()  # type: ignore[assignment]  # stub allows SubFigure
         assert fig is not None
 
     # Extract coordinates and values

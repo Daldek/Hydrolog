@@ -5,6 +5,8 @@ This module provides functions for comparing multiple unit hydrograph models.
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 
 from hydrolog.runoff.clark_iuh import ClarkIUHResult, ClarkUHResult
 from hydrolog.runoff.nash_iuh import IUHResult, NashUHResult
@@ -32,9 +34,9 @@ def plot_uh_comparison(
     models: dict[str, UHResultType],
     title: str | None = None,
     show_table: bool = True,
-    ax: plt.Axes | None = None,
-    figsize: tuple = (12, 7),
-) -> plt.Figure:
+    ax: Axes | None = None,
+    figsize: tuple[float, float] = (12, 7),
+) -> Figure:
     """
     Compare multiple unit hydrograph models on a single plot.
 
@@ -47,9 +49,9 @@ def plot_uh_comparison(
         Plot title, by default "Porównanie hydrogramów jednostkowych".
     show_table : bool, optional
         Show comparison table below plot, by default True.
-    ax : plt.Axes, optional
+    ax : Axes, optional
         Existing axes to plot on (only for plot, not table).
-    figsize : tuple, optional
+    figsize : tuple[float, float], optional
         Figure size, by default (12, 7).
 
     Returns
@@ -91,7 +93,7 @@ def plot_uh_comparison(
             fig, ax_plot = plt.subplots(figsize=figsize)
         else:
             ax_plot = ax
-            fig = ax.get_figure()  # type: ignore[assignment]
+            fig = ax.get_figure()  # type: ignore[assignment]  # stub allows SubFigure
             assert fig is not None
         ax_table = None
 

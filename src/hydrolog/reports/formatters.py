@@ -39,7 +39,7 @@ def _low_slope_note(symbol: str, slope_m_per_m: float) -> str:
 
 
 class FormulaRenderer:
-    """
+    r"""
     Render mathematical formulas in LaTeX notation with substituted values.
 
     Each method returns a string containing both the general formula
@@ -48,7 +48,7 @@ class FormulaRenderer:
     Examples
     --------
     >>> FormulaRenderer.scs_retention(cn=72)
-    '$$S = \\\\frac{25400}{CN} - 254 = \\\\frac{25400}{72} - 254 = 98.89 \\\\text{ '
+    '$$S = \\frac{25400}{CN} - 254 = \\frac{25400}{72} - 254 = 98.89 \\text{ '
     'mm}$$'
     """
 
@@ -904,7 +904,7 @@ class FormulaRenderer:
                 f"{ct:.2f} \\cdot ({L_km:.2f} \\cdot {Lc_km:.2f})^{{0.3}} = "
             )
 
-        parts: list = [
+        parts: list[str] = [
             "**Wzory Snydera:**\n\n"
             "$$t_L = C_t \\cdot (L \\cdot L_c)^{0.3} \\text{ [h]}$$\n\n"
             "$$t_D = \\frac{t_L}{5{,}5} \\text{ [h]}$$\n\n"
@@ -1000,7 +1000,7 @@ class FormulaRenderer:
 
 
 class TableGenerator:
-    """
+    r"""
     Generate formatted Markdown tables.
 
     Examples
@@ -1009,7 +1009,7 @@ class TableGenerator:
     ...     ("Powierzchnia", "45.30", "km²"),
     ...     ("CN", "72", "-"),
     ... ])
-    '| Parametr | Wartość | Jednostka |\\n|:---------|--------:|:---------:|...'
+    '| Parametr | Wartość | Jednostka |\n|:---------|--------:|:---------:|...'
     """
 
     @staticmethod

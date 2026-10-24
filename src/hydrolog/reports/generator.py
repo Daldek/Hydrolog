@@ -616,7 +616,7 @@ class HydrologyReportGenerator:
         method: str,
         area_km2: float,
     ) -> dict[str, Any]:
-        """Inputs of the ``method`` formula, derived from watershed parameters.
+        """Derive inputs of the ``method`` formula from watershed parameters.
 
         Applies the rules of ``WatershedParameters.calculate_tc``: the length is
         the channel length, else the watershed length; the slope is the channel
@@ -709,8 +709,10 @@ class HydrologyReportGenerator:
 
 
 def _unit_hydrograph_model(unit: Any, default: str) -> str:
-    """Name of the model a unit hydrograph result belongs to (``default`` if
-    unknown)."""
+    """Return the name of the model a unit hydrograph result belongs to.
+
+    The name is ``default`` if the model is unknown.
+    """
     if isinstance(unit, UnitHydrographResult):
         return "scs"
     if isinstance(unit, NashUHResult):
@@ -723,7 +725,7 @@ def _unit_hydrograph_model(unit: Any, default: str) -> str:
 
 
 def _present(**values: Any) -> dict[str, Any]:
-    """The given values that are not None."""
+    """Return the given values that are not None."""
     return {name: value for name, value in values.items() if value is not None}
 
 

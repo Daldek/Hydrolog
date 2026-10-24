@@ -203,7 +203,7 @@ def _graph_error(
 def _build_segments(
     records: Sequence[object], path: Path | None
 ) -> tuple[list[StreamSegment], dict[int, int]]:
-    """Validated segments of the records and the row of each segment id.
+    """Validate segments of the records and return the row of each segment id.
 
     Each record has ``segment_id``, ``length_km`` and (optionally) ``upstream_ids``.
     The links between the segments are checked by ``StreamNetwork.classify``.
@@ -254,7 +254,7 @@ def _build_segments(
 
 
 def _file_records(path: str | os.PathLike[str]) -> tuple[Path, list[dict[str, Any]]]:
-    """Records ``segment_id``/``upstream_ids``/``length_km`` of a CSV or JSON file."""
+    """Read records ``segment_id``/``upstream_ids``/``length_km`` of a CSV/JSON file."""
     table = read_table(path)
     names = {
         field: table.resolve_column(field, option="segments_file")

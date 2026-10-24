@@ -101,8 +101,8 @@ def _import_raster_libs() -> tuple[Any, Any]:
         If the ``raster`` extra is not installed.
     """
     try:
-        import pyproj  # type: ignore[import-not-found]
-        import rasterio  # type: ignore[import-untyped,import-not-found]
+        import pyproj
+        import rasterio  # type: ignore[import-untyped]
     except ImportError as exc:
         raise MissingDependencyError(
             "HSG rasters need the optional packages rasterio and pyproj "
@@ -487,10 +487,10 @@ def _bbox_shares(
     InvalidParameterError
         If the bbox cannot be transformed to the raster CRS.
     """
-    from rasterio.features import (  # type: ignore[import-untyped,import-not-found]
+    from rasterio.features import (  # type: ignore[import-untyped]
         geometry_mask,
     )
-    from rasterio.transform import (  # type: ignore[import-untyped,import-not-found]
+    from rasterio.transform import (  # type: ignore[import-untyped]
         Affine,
     )
 
@@ -538,7 +538,7 @@ def _bbox_shares(
 def _checked_bbox(
     bbox: Any, bbox_crs: str | None, pyproj: Any
 ) -> tuple[float, float, float, float] | None:
-    """Validated ``bbox`` as four floats, or ``None`` when no bbox is given."""
+    """Validate ``bbox`` as four floats, or return ``None`` when no bbox is given."""
     if bbox is None:
         if bbox_crs is not None:
             raise InvalidParameterError(

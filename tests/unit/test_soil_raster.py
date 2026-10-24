@@ -13,7 +13,7 @@ import pytest
 rasterio = pytest.importorskip("rasterio")
 pyproj = pytest.importorskip("pyproj")
 
-from rasterio.transform import Affine, from_origin  # noqa: E402
+from rasterio.transform import Affine, from_origin  # type: ignore[import-untyped]  # noqa: E402
 
 from hydrolog.exceptions import (  # noqa: E402
     InputDataError,

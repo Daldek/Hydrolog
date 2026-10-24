@@ -86,7 +86,7 @@ def _encodable(value: str, stream: TextIO) -> bool:
 
 
 def _json_text(document: object, stream: TextIO, indent: int | None = None) -> str:
-    """JSON text of ``document``; escaped (``\\uXXXX``) only if ``stream`` needs it."""
+    r"""JSON text of ``document``; escaped (``\uXXXX``) only if ``stream`` needs it."""
     rendered = json.dumps(document, ensure_ascii=False, allow_nan=False, indent=indent)
     if _encodable(rendered, stream):
         return rendered
@@ -156,7 +156,7 @@ def _find_command(group: str, word: str, members: Sequence[Command]) -> Command:
 
 
 def _group_schema(group: str, lang: Lang) -> dict[str, Any]:
-    """The ``hydrolog-commands/1`` document restricted to one group."""
+    """Restrict the ``hydrolog-commands/1`` document to one group."""
     document = command_schema(lang=lang)
     document["commands"] = [
         entry
