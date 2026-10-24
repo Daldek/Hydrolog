@@ -6,7 +6,7 @@ including hietograms, hydrographs, unit hydrographs, and combined plots.
 Requirements
 ------------
 This module requires matplotlib and seaborn (optional dependencies).
-Install with: pip install hydrolog[visualization]
+Install with: pip install hydrolog[viz]
 
 Examples
 --------
@@ -15,6 +15,8 @@ Examples
 >>> fig = plot_rainfall_runoff(hietogram, hydrograph)
 >>> fig.savefig('output.png')
 """
+
+from hydrolog.exceptions import MissingDependencyError
 
 # Check for required dependencies
 try:
@@ -33,11 +35,11 @@ except ImportError:
 
 
 def _check_visualization_deps() -> None:
-    """Check if visualization dependencies are installed."""
+    """Raise ``MissingDependencyError`` if the ``viz`` extra is not installed."""
     if not HAS_MATPLOTLIB:
-        raise ImportError(
-            "Moduł visualization wymaga matplotlib. "
-            "Zainstaluj: pip install hydrolog[visualization]"
+        raise MissingDependencyError(
+            "The visualization module needs matplotlib",
+            hint="Install the extra: pip install hydrolog[viz]",
         )
 
 
