@@ -2,9 +2,11 @@
 
 The references are the elements themselves: a network with one reach must give what
 the reach gives, a junction adds, and for a linear reach the sum of the routed parts is
-the routed sum. The structure rules are the ones of the plan: a cycle, an unknown id,
-two outlets and a node that flows nowhere are errors, and neither the order of the
-nodes nor anything else but the links decides the result.
+the routed sum. The structure rules are the ones of the plan: two outlets, a node that
+flows nowhere and a bifurcation are errors, and neither the order of the nodes nor
+anything else but the links decides the result. The nodes link by reference; the rules
+that only a document can break (an unknown id, a cycle) are tested with the document
+in ``test_routing_document``.
 """
 
 import itertools
@@ -14,56 +16,58 @@ import pytest
 
 from hydrolog.exceptions import CalculationError, InvalidParameterError
 from hydrolog.routing import (
+    NODE_TYPES,
     CascadeReach,
+    Channel,
     Hydrograph,
+    Junction,
     LagReach,
     LevelPoolReach,
     MuskingumCungeReach,
     MuskingumReach,
-    NetworkNode,
+    Node,
+    Outlet,
     Reach,
+    Reservoir,
     RoutingNetwork,
+    Subcatchment,
 )
-from hydrolog.routing.network import MAX_ID_CHARS, NODE_KINDS
+from hydrolog.routing.network import MAX_ID_CHARS
 
 FLOOD = Hydrograph.from_step([0.0, 10.0, 40.0, 90.0, 60.0, 30.0, 10.0, 0.0], 10.0)
 SMALL = Hydrograph.from_step([0.0, 4.0, 12.0, 8.0, 3.0, 0.0, 0.0, 0.0], 10.0)
 
 
-def source(node_id: str, hydrograph: Hydrograph = FLOOD) -> NetworkNode:
-    return NetworkNode(node_id, "subcatchment", hydrograph=hydrograph)
+def source(node_id: str, hydrograph: Hydrograph = FLOOD) -> Subcatchment:
+    return Subcatchment(node_id, hydrograph)
 
 
-def reach(node_id: str, upstream: str, element: Reach, **options) -> NetworkNode:
-    return NetworkNode(node_id, "reach", [upstream], reach=element, **options)
+def reach(node_id: str, upstream: Node, element: Reach, **options) -> Channel:
+    return Channel(node_id, element, inflow=upstream, **options)
 
 
-def junction(node_id: str, *upstream: str) -> NetworkNode:
-    return NetworkNode(node_id, "junction", list(upstream))
+def junction(node_id: str, *upstream: Node) -> Junction:
+    return Junction(node_id, inflows=upstream)
 
 
-def outlet(upstream: str, node_id: str = "OUT") -> NetworkNode:
-    return NetworkNode(node_id, "outlet", [upstream])
+def outlet(upstream: Node, node_id: str = "OUT") -> Outlet:
+    return Outlet(node_id, inflow=upstream)
 
 
-def stream() -> list[NetworkNode]:
+def pond() -> LevelPoolReach:
+    return LevelPoolReach(
+        storage_m3=[0.0, 30000.0, 90000.0, 180000.0, 400000.0],
+        outflow_m3s=[0.0, 10.0, 40.0, 100.0, 300.0],
+    )
+
+
+def stream() -> list[Node]:
     """A tributary A through a lag reach, joined by B, then a pond, then the outlet."""
-    return [
-        source("A"),
-        source("B", SMALL),
-        reach("R1", "A", LagReach(lag_min=25.0)),
-        junction("J1", "R1", "B"),
-        NetworkNode(
-            "D",
-            "reservoir",
-            ["J1"],
-            reach=LevelPoolReach(
-                storage_m3=[0.0, 30000.0, 90000.0, 180000.0, 400000.0],
-                outflow_m3s=[0.0, 10.0, 40.0, 100.0, 300.0],
-            ),
-        ),
-        outlet("D"),
-    ]
+    a, b = source("A"), source("B", SMALL)
+    r1 = reach("R1", a, LagReach(lag_min=25.0))
+    j1 = junction("J1", r1, b)
+    d = Reservoir("D", pond(), inflow=j1)
+    return [a, b, r1, j1, d, outlet(d)]
 
 
 ELEMENTS = {
@@ -88,7 +92,7 @@ class TestOneReachNetwork:
     @pytest.mark.parametrize("model", ELEMENTS)
     def test_it_gives_what_the_single_element_gives(self, model):
         element = ELEMENTS[model]
-        network = RoutingNetwork([source("A"), reach("R", "A", element), outlet("R")])
+        network = RoutingNetwork(outlet(reach("R", source("A"), element)))
 
         result = network.route()
 
@@ -108,9 +112,9 @@ class TestOneReachNetwork:
 
     def test_the_run_options_of_a_node_reach_its_element(self):
         element = MuskingumReach(k_min=40.0, x=0.2)
-        node = reach("R", "A", element, initial_outflow_m3s=5.0, extend_min=0.0)
+        node = reach("R", source("A"), element, initial_outflow_m3s=5.0, extend_min=0.0)
 
-        result = RoutingNetwork([source("A"), node, outlet("R")]).route()
+        result = RoutingNetwork(outlet(node)).route()
 
         single = element.route(FLOOD, initial_outflow_m3s=5.0, extend_min=0.0)
         np.testing.assert_array_equal(
@@ -120,13 +124,7 @@ class TestOneReachNetwork:
 
     def test_a_reservoir_is_a_level_pool_reach(self):
         element = ELEMENTS["level-pool"]
-        network = RoutingNetwork(
-            [
-                source("A"),
-                NetworkNode("D", "reservoir", ["A"], reach=element),
-                outlet("D"),
-            ]
-        )
+        network = RoutingNetwork(outlet(Reservoir("D", element, inflow=source("A"))))
 
         result = network.route()
 
@@ -139,9 +137,8 @@ class TestOneReachNetwork:
 
 class TestJunction:
     def test_it_adds_the_hydrographs_that_flow_into_it(self):
-        network = RoutingNetwork(
-            [source("A"), source("B", SMALL), junction("J", "A", "B"), outlet("J")]
-        )
+        a, b = source("A"), source("B", SMALL)
+        network = RoutingNetwork(outlet(junction("J", a, b)))
 
         result = network.route()
 
@@ -158,12 +155,7 @@ class TestJunction:
         long = Hydrograph.from_step([0.0, 2.0, 4.0, 6.0, 4.0], 10.0)
 
         result = RoutingNetwork(
-            [
-                source("A", short),
-                source("B", long),
-                junction("J", "A", "B"),
-                outlet("J"),
-            ]
+            outlet(junction("J", source("A", short), source("B", long)))
         ).route()
 
         np.testing.assert_array_equal(
@@ -175,13 +167,14 @@ class TestJunction:
         # the cascade is linear and the sources start from zero: superposition holds
         element = CascadeReach(n=2.5, k_min=15.0)
         joined = RoutingNetwork(
-            [
-                source("A"),
-                source("B", SMALL),
-                junction("J", "A", "B"),
-                reach("R", "J", element, extend_min=300.0),
-                outlet("R"),
-            ]
+            outlet(
+                reach(
+                    "R",
+                    junction("J", source("A"), source("B", SMALL)),
+                    element,
+                    extend_min=300.0,
+                )
+            )
         ).route()
 
         parts = [
@@ -199,16 +192,9 @@ class TestJunction:
     def test_a_network_of_lags_keeps_every_cubic_metre(self):
         # a lag stores nothing, so the outlet holds the volume of the sources, each
         # held at its last value over the axis of the outlet
-        network = RoutingNetwork(
-            [
-                source("A"),
-                source("B", SMALL),
-                reach("R1", "A", LagReach(lag_min=35.0)),
-                junction("J", "R1", "B"),
-                reach("R2", "J", LagReach(lag_min=12.0)),
-                outlet("R2"),
-            ]
-        )
+        r1 = reach("R1", source("A"), LagReach(lag_min=35.0))
+        j = junction("J", r1, source("B", SMALL))
+        network = RoutingNetwork(outlet(reach("R2", j, LagReach(lag_min=12.0))))
 
         result = network.route()
 
@@ -249,6 +235,14 @@ class TestOrder:
                     hydrograph.discharge_m3s,
                 )
 
+    def test_the_outlet_alone_is_the_network(self):
+        nodes = stream()
+        by_the_outlet = RoutingNetwork(nodes[-1])
+        by_the_list = RoutingNetwork(nodes)
+
+        assert by_the_outlet.order == by_the_list.order
+        assert by_the_outlet.nodes == by_the_list.nodes
+
     def test_the_result_names_the_network_and_its_axis(self):
         result = RoutingNetwork(stream(), name="Example stream").route()
 
@@ -260,82 +254,59 @@ class TestOrder:
         assert RoutingNetwork(stream()).route().name is None
 
 
-def broken(case: str) -> list[NetworkNode]:
+class TestLinks:
+    def test_a_node_is_fed_by_a_copy_and_the_original_is_left_alone(self):
+        template = Channel("R", LagReach(lag_min=25.0))
+        a = source("A")
+
+        fed = template.with_inflows(a)
+
+        assert template.inflows == () and template.upstream == ()
+        assert fed.inflows == (a,) and fed.upstream == ("A",)
+        assert fed is not template and fed.id == "R" and fed.reach is template.reach
+
+    def test_a_node_can_be_in_two_networks(self):
+        a = source("A")
+        r = reach("R", a, LagReach(lag_min=25.0))
+
+        first = RoutingNetwork(outlet(r, "ONE"))
+        second = RoutingNetwork(outlet(r, "TWO"))
+
+        assert first.outlet == "ONE" and second.outlet == "TWO"
+        np.testing.assert_array_equal(
+            first.route().hydrographs["R"].discharge_m3s,
+            second.route().hydrographs["R"].discharge_m3s,
+        )
+
+
+def broken(case: str) -> list[Node]:
     """The nodes of a network that breaks one rule."""
-    base = {
-        "unknown": [source("A"), reach("R", "X", LagReach(10.0)), outlet("R")],
-        "two unknown": [
-            source("A"),
-            junction("J", "A", "X", "Y"),
-            outlet("J"),
-        ],
-        "cycle": [
-            source("A"),
-            reach("R2", "R1", LagReach(10.0)),
-            reach("R1", "R2", LagReach(10.0)),
-            junction("J", "A", "R1"),
-            outlet("J"),
-        ],
-        "self": [source("A"), reach("R", "R", LagReach(10.0)), outlet("R")],
-        "bifurcation": [
-            source("A"),
-            reach("R", "A", LagReach(10.0)),
-            junction("J", "A", "R"),
-            outlet("J"),
-        ],
-        "no outlet": [source("A"), reach("R", "A", LagReach(10.0))],
-        "two outlets": [
-            source("A"),
-            source("B"),
-            outlet("A", "OUT1"),
-            outlet("B", "OUT2"),
-        ],
-        "outlet with a downstream node": [
-            source("A"),
-            outlet("A"),
-            reach("R", "OUT", LagReach(10.0)),
-        ],
-        "disconnected": [
-            source("A"),
-            source("B"),
-            reach("R", "B", LagReach(10.0)),
-            outlet("A"),
-        ],
-        "duplicate": [
-            source("A"),
-            source("a", SMALL),
-            junction("J", "A", "a"),
-            outlet("J"),
-        ],
-        "empty": [],
-    }
-    return base[case]
+    a, b = source("A"), source("B")
+    if case == "bifurcation":
+        r = reach("R", a, LagReach(10.0))
+        return [a, r, outlet(junction("J", a, r))]
+    if case == "no outlet":
+        return [a, reach("R", a, LagReach(10.0))]
+    if case == "two outlets":
+        return [outlet(a, "OUT1"), outlet(b, "OUT2")]
+    if case == "outlet with a downstream node":
+        out = outlet(a)
+        return [a, out, reach("R", out, LagReach(10.0))]
+    if case == "disconnected":
+        return [a, b, reach("R", b, LagReach(10.0)), outlet(a)]
+    if case == "duplicate":
+        return [a, source("a", SMALL), outlet(junction("J", a, source("a", SMALL)))]
+    if case == "no inflow":
+        return [a, outlet(junction("J"))]
+    if case == "empty":
+        return []
+    raise KeyError(case)
 
 
 class TestStructure:
     @pytest.mark.parametrize(
         ("case", "details"),
         [
-            (
-                "unknown",
-                {
-                    "reason": "unknown_upstream",
-                    "node_id": "R",
-                    "upstream_id": "X",
-                    "n_unknown": 1,
-                },
-            ),
-            (
-                "two unknown",
-                {
-                    "reason": "unknown_upstream",
-                    "node_id": "J",
-                    "upstream_id": "X",
-                    "n_unknown": 2,
-                },
-            ),
-            ("cycle", {"reason": "cycle", "nodes": ["R1", "R2"]}),
-            ("self", {"reason": "cycle", "nodes": ["R"]}),
             (
                 "bifurcation",
                 {
@@ -362,6 +333,15 @@ class TestStructure:
                 "duplicate",
                 {"reason": "duplicate_node", "node_id": "a", "other_id": "A"},
             ),
+            (
+                "no inflow",
+                {
+                    "reason": "upstream_count",
+                    "node_id": "J",
+                    "type": "junction",
+                    "found": 0,
+                },
+            ),
             ("empty", {"reason": "empty"}),
         ],
     )
@@ -374,31 +354,38 @@ class TestStructure:
         assert caught.value.details == details
         assert caught.value.code == "validation_error"
 
-    def test_the_cycle_is_listed_in_flow_order_whatever_the_order_of_the_nodes(self):
-        for permutation in itertools.permutations(broken("cycle")):
-            with pytest.raises(InvalidParameterError) as caught:
-                RoutingNetwork(list(permutation))
-
-            assert caught.value.details["nodes"] == ["R1", "R2"]
-        assert "'R1' -> 'R2' -> 'R1'" in str(caught.value)
-
     def test_a_node_that_flows_nowhere_is_named_not_the_nodes_above_it(self):
-        nodes = [
-            source("A"),
-            source("B"),
-            reach("R1", "B", LagReach(10.0)),
-            reach("R2", "R1", LagReach(10.0)),
-            outlet("A"),
-        ]
+        a, b = source("A"), source("B")
+        r1 = reach("R1", b, LagReach(10.0))
+        r2 = reach("R2", r1, LagReach(10.0))
 
         with pytest.raises(InvalidParameterError) as caught:
-            RoutingNetwork(nodes)
+            RoutingNetwork([a, b, r1, r2, outlet(a)])
 
         assert caught.value.details == {
             "reason": "disconnected_node",
             "node_id": "R2",
             "n_disconnected": 3,
         }
+
+    def test_a_node_that_has_no_inflow_yet_is_a_template_not_a_network(self):
+        template = Channel("R", LagReach(10.0))
+
+        with pytest.raises(InvalidParameterError) as caught:
+            RoutingNetwork(outlet(template))
+
+        assert caught.value.details == {
+            "reason": "upstream_count",
+            "node_id": "R",
+            "type": "reach",
+            "found": 0,
+        }
+
+    def test_a_network_is_made_of_nodes(self):
+        with pytest.raises(InvalidParameterError) as caught:
+            RoutingNetwork(["A"])  # type: ignore[list-item]
+
+        assert caught.value.details["reason"] == "type"
 
 
 class TestNode:
@@ -419,20 +406,14 @@ class TestNode:
     )
     def test_an_id_that_cannot_name_a_file_is_refused(self, node_id):
         with pytest.raises(InvalidParameterError) as caught:
-            NetworkNode(node_id, "subcatchment", hydrograph=FLOOD)
+            Subcatchment(node_id, FLOOD)
 
         assert caught.value.details["reason"] == "invalid_id"
 
     @pytest.mark.parametrize("node_id", ["A", "R1.2", "seg-12", "_x", "Młynówka", "9"])
     def test_a_plain_id_is_accepted(self, node_id):
-        assert NetworkNode(node_id, "subcatchment", hydrograph=FLOOD).id == node_id
-        assert NetworkNode("x" * MAX_ID_CHARS, "outlet", ["A"]).id == "x" * MAX_ID_CHARS
-
-    def test_an_upstream_id_is_checked_like_an_id(self):
-        with pytest.raises(InvalidParameterError) as caught:
-            NetworkNode("J", "junction", ["A", "b/c"])
-
-        assert caught.value.details["reason"] == "invalid_id"
+        assert Subcatchment(node_id, FLOOD).id == node_id
+        assert Outlet("x" * MAX_ID_CHARS).id == "x" * MAX_ID_CHARS
 
     @pytest.mark.parametrize(
         "node_id",
@@ -451,7 +432,7 @@ class TestNode:
     )
     def test_a_windows_device_name_is_refused(self, node_id):
         with pytest.raises(InvalidParameterError) as caught:
-            NetworkNode(node_id, "subcatchment", hydrograph=FLOOD)
+            Subcatchment(node_id, FLOOD)
 
         assert caught.value.details == {"reason": "reserved_name", "node_id": node_id}
         assert "Windows" in caught.value.hint
@@ -461,99 +442,74 @@ class TestNode:
         ["console", "com0", "com10", "lpt0", "aux1", "x.con", "con-1", "_nul"],
     )
     def test_a_name_that_only_looks_like_a_device_is_accepted(self, node_id):
-        assert NetworkNode(node_id, "subcatchment", hydrograph=FLOOD).id == node_id
+        assert Subcatchment(node_id, FLOOD).id == node_id
 
-    def test_an_upstream_id_that_is_a_device_name_is_refused(self):
-        with pytest.raises(InvalidParameterError) as caught:
-            NetworkNode("J", "junction", ["A", "nul"])
-
-        assert caught.value.details["reason"] == "reserved_name"
-
-    def test_the_kinds_are_the_five_of_the_plan(self):
-        assert NODE_KINDS == (
+    def test_the_types_are_the_five_of_the_plan(self):
+        assert NODE_TYPES.names == (
             "subcatchment",
             "reach",
             "reservoir",
             "junction",
             "outlet",
         )
-        with pytest.raises(InvalidParameterError) as caught:
-            NetworkNode("A", "lake")  # type: ignore[arg-type]
-        assert caught.value.details["reason"] == "unknown_type"
-        assert caught.value.details["allowed"] == list(NODE_KINDS)
 
     @pytest.mark.parametrize(
-        ("kind", "upstream"),
+        ("node", "found"),
         [
-            ("subcatchment", ["X"]),
-            ("reach", []),
-            ("reach", ["X", "Y"]),
-            ("reservoir", []),
-            ("junction", []),
-            ("outlet", []),
-            ("outlet", ["X", "Y"]),
+            (source("N"), 1),
+            (Channel("N", LagReach(10.0)), 2),
+            (Reservoir("N", ELEMENTS["level-pool"]), 2),
+            (Outlet("N"), 2),
         ],
     )
-    def test_the_number_of_upstream_nodes_follows_the_kind(self, kind, upstream):
-        with pytest.raises(InvalidParameterError) as caught:
-            NetworkNode(
-                "N",
-                kind,
-                upstream,
-                hydrograph=FLOOD if kind == "subcatchment" else None,
-                reach=LagReach(10.0) if kind == "reach" else None,
-            )
+    def test_a_node_takes_no_more_inflows_than_its_kind(self, node, found):
+        inflows = [source("X"), source("Y")][:found]
 
-        assert caught.value.details["reason"] == "upstream_count"
-        assert caught.value.details["found"] == len(upstream)
+        with pytest.raises(InvalidParameterError) as caught:
+            node.with_inflows(*inflows)
+
+        assert caught.value.details == {
+            "reason": "upstream_count",
+            "node_id": "N",
+            "type": node.kind,
+            "found": found,
+        }
 
     def test_an_upstream_node_listed_twice_would_count_its_water_twice(self):
-        with pytest.raises(InvalidParameterError) as caught:
-            NetworkNode("J", "junction", ["A", "A"])
+        a = source("A")
 
-        assert caught.value.details["reason"] == "duplicate_upstream"
+        with pytest.raises(InvalidParameterError) as caught:
+            Junction("J", inflows=[a, a])
+
+        assert caught.value.details == {
+            "reason": "duplicate_upstream",
+            "node_id": "J",
+        }
+
+    def test_an_inflow_must_be_a_node(self):
+        with pytest.raises(InvalidParameterError) as caught:
+            Junction("J", inflows=["A"])  # type: ignore[list-item]
+
+        assert caught.value.details["reason"] == "type"
+        assert caught.value.details["field"] == "inflows"
 
     @pytest.mark.parametrize(
-        ("kind", "upstream", "options", "field", "reason"),
+        ("build", "field"),
         [
-            ("subcatchment", [], {}, "hydrograph", "missing_field"),
-            ("reach", ["A"], {}, "reach", "missing_field"),
-            (
-                "subcatchment",
-                [],
-                {"hydrograph": FLOOD, "reach": LagReach(10.0)},
-                "reach",
-                "unexpected_field",
-            ),
-            (
-                "junction",
-                ["A"],
-                {"hydrograph": FLOOD},
-                "hydrograph",
-                "unexpected_field",
-            ),
-            ("outlet", ["A"], {"extend_min": 10.0}, "extend_min", "unexpected_field"),
-            (
-                "reach",
-                ["A"],
-                {"reach": LagReach(10.0), "hydrograph": FLOOD},
-                "hydrograph",
-                "unexpected_field",
-            ),
+            (lambda: Subcatchment("A", "FLOOD"), "hydrograph"),  # type: ignore[arg-type]
+            (lambda: Channel("R", "lag"), "reach"),  # type: ignore[arg-type]
         ],
     )
-    def test_a_node_needs_what_its_kind_needs_and_takes_nothing_else(
-        self, kind, upstream, options, field, reason
-    ):
+    def test_a_value_of_the_wrong_class_is_refused(self, build, field):
         with pytest.raises(InvalidParameterError) as caught:
-            NetworkNode("N", kind, upstream, **options)
+            build()
 
-        assert caught.value.details["reason"] == reason
+        assert caught.value.details["reason"] == "type"
         assert caught.value.details["field"] == field
 
     def test_a_reservoir_routes_with_a_level_pool_only(self):
         with pytest.raises(InvalidParameterError) as caught:
-            NetworkNode("D", "reservoir", ["A"], reach=LagReach(10.0))
+            Reservoir("D", LagReach(10.0))
 
         assert caught.value.details == {
             "reason": "reservoir_model",
@@ -561,15 +517,31 @@ class TestNode:
             "model": "LagReach",
         }
 
+    @pytest.mark.parametrize(
+        ("options", "option", "reason"),
+        [
+            ({"initial_outflow_m3s": -1.0}, "initial_outflow_m3s", "minimum"),
+            ({"extend_min": -5.0}, "extend_min", "minimum"),
+            ({"extend_min": float("inf")}, "extend_min", "not_finite"),
+            ({"initial_outflow_m3s": "5"}, "initial_outflow_m3s", "type"),
+        ],
+    )
+    def test_an_invalid_run_option_names_its_node(self, options, option, reason):
+        with pytest.raises(InvalidParameterError) as caught:
+            Channel("R", LagReach(10.0), **options)
+
+        assert caught.value.details["option"] == option
+        assert caught.value.details["reason"] == reason
+        assert caught.value.details["node_id"] == "R"
+        assert "Node 'R'" in str(caught.value)
+
 
 class TestTimeAxes:
     def test_sources_with_different_steps_are_refused_not_resampled(self):
         coarse = Hydrograph.from_step([0.0, 5.0, 2.0, 0.0], 15.0)
 
         with pytest.raises(InvalidParameterError) as caught:
-            RoutingNetwork(
-                [source("A"), source("B", coarse), junction("J", "A", "B"), outlet("J")]
-            )
+            RoutingNetwork(outlet(junction("J", source("A"), source("B", coarse))))
 
         assert caught.value.details == {
             "reason": "timestep_mismatch",
@@ -581,9 +553,7 @@ class TestTimeAxes:
         late = Hydrograph.from_step([0.0, 5.0, 2.0, 0.0], 10.0, start_min=30.0)
 
         with pytest.raises(InvalidParameterError) as caught:
-            RoutingNetwork(
-                [source("A"), source("B", late), junction("J", "A", "B"), outlet("J")]
-            )
+            RoutingNetwork(outlet(junction("J", source("A"), source("B", late))))
 
         assert caught.value.details == {
             "reason": "start_mismatch",
@@ -596,12 +566,7 @@ class TestTimeAxes:
         other = Hydrograph.from_step([0.0, 3.0, 2.0, 1.0, 1.0], 10.0, start_min=600.0)
 
         result = RoutingNetwork(
-            [
-                source("A", late),
-                source("B", other),
-                junction("J", "A", "B"),
-                outlet("J"),
-            ]
+            outlet(junction("J", source("A", late), source("B", other)))
         ).route()
 
         assert result.hydrographs["J"].times_min.tolist() == [
@@ -611,16 +576,12 @@ class TestTimeAxes:
 
 class TestRoutingErrors:
     def test_a_reach_that_fails_names_its_node(self):
-        pond = LevelPoolReach(storage_m3=[0.0, 36000.0], outflow_m3s=[0.0, 10.0])
+        small_pond = LevelPoolReach(storage_m3=[0.0, 36000.0], outflow_m3s=[0.0, 10.0])
         flood = Hydrograph.from_step([0.0, 20.0, 20.0, 20.0, 20.0, 0.0], 60.0)
 
         with pytest.raises(CalculationError) as caught:
             RoutingNetwork(
-                [
-                    source("A", flood),
-                    NetworkNode("D", "reservoir", ["A"], reach=pond),
-                    outlet("D"),
-                ]
+                outlet(Reservoir("D", small_pond, inflow=source("A", flood)))
             ).route()
 
         assert caught.value.details["reason"] == "table_exceeded"
@@ -628,15 +589,12 @@ class TestRoutingErrors:
         assert "Node 'D'" in str(caught.value)
         assert caught.value.hint
 
-    def test_an_invalid_run_option_names_its_node(self):
+    def test_a_run_that_the_hydrograph_does_not_allow_names_its_node(self):
+        # an initial outflow above the table of the pond is known only to the run
+        node = Reservoir("D", ELEMENTS["level-pool"], initial_outflow_m3s=500.0)
+
         with pytest.raises(InvalidParameterError) as caught:
-            RoutingNetwork(
-                [
-                    source("A"),
-                    reach("R", "A", LagReach(10.0), initial_outflow_m3s=-1.0),
-                    outlet("R"),
-                ]
-            ).route()
+            RoutingNetwork(outlet(node.with_inflows(source("A")))).route()
 
         assert caught.value.details["option"] == "initial_outflow_m3s"
-        assert caught.value.details["node_id"] == "R"
+        assert caught.value.details["node_id"] == "D"

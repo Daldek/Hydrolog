@@ -58,6 +58,7 @@ from __future__ import annotations
 import math
 from bisect import bisect_right
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -66,7 +67,15 @@ from hydrolog.exceptions import CalculationError, InvalidParameterError
 from hydrolog.routing._checks import as_array, whole_number
 from hydrolog.routing.hydrograph import Hydrograph, TableProblem
 from hydrolog.routing.muskingum import MAX_SUBSTEPS
-from hydrolog.routing.reach import MAX_ORDINATES, Reach, ReachRun, RoutingNotice
+from hydrolog.routing.parameters import Parameter, parameter
+from hydrolog.routing.reach import (
+    MAX_ORDINATES,
+    REACH_METHODS,
+    Reach,
+    ReachRun,
+    RoutingNotice,
+    RoutingResult,
+)
 
 __all__ = ["LevelPoolReach", "check_rating", "rating_arrays", "timestep_limit_min"]
 
@@ -369,6 +378,7 @@ def _route_pool(
     return routed, where
 
 
+@REACH_METHODS.register
 class LevelPoolReach(Reach):
     """Route a hydrograph through a reservoir or a reach by storage indication.
 
@@ -441,6 +451,29 @@ class LevelPoolReach(Reach):
                 table.flags.writeable = False
         self._outflow_values = outflow.tolist()
         self._rows = np.arange(len(outflow), dtype=np.float64)
+
+    def options(self) -> dict[str, Any]:
+        """Return the tables and ``subreaches``, the arguments that rebuild it."""
+        options: dict[str, Any] = {
+            "storage_m3": self.storage_m3.tolist(),
+            "outflow_m3s": self.outflow_m3s.tolist(),
+        }
+        if self.stage_m is not None:
+            options["stage_m"] = self.stage_m.tolist()
+        options["subreaches"] = self.subreaches
+        return options
+
+    def describe(self, run: RoutingResult | None = None) -> list[Parameter]:
+        """List the parameters, and what a run used (see :meth:`Reach.describe`).
+
+        The tables are not parameters; the largest storage and the largest outflow of
+        the table, which bound the range of the pool, are listed as computed values.
+        """
+        return [
+            *super().describe(run),
+            parameter("storage_max_m3", float(self.storage_m3[-1]), "computed"),
+            parameter("outflow_max_m3s", float(self.outflow_m3s[-1]), "computed"),
+        ]
 
     def _start(self, initial_outflow_m3s: float) -> float:
         """Return the row coordinate of the state at rest with this outflow."""

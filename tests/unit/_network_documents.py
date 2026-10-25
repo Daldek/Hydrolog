@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from hydrolog.operations._network_input import SCHEMA
+from hydrolog.routing.document import SCHEMA
 
 TIMES = [0, 10, 20, 30, 40, 50, 60, 70]
 FLOOD = [0, 10, 40, 90, 60, 30, 10, 0]

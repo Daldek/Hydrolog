@@ -14,7 +14,7 @@ import numpy as np
 import pytest
 
 from hydrolog.exceptions import InputDataError, InvalidParameterError, NotFoundError
-from hydrolog.operations._network_input import SCHEMA, LoadedNetwork, load_network
+from hydrolog.operations._network_input import LoadedNetwork, load_network
 from hydrolog.routing import (
     CascadeReach,
     Hydrograph,
@@ -23,6 +23,7 @@ from hydrolog.routing import (
     MuskingumCungeReach,
     MuskingumReach,
 )
+from hydrolog.routing.document import SCHEMA
 
 from ._network_documents import (
     FLOOD,

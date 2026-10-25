@@ -59,9 +59,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Final
 
-from hydrolog.operations._network_input import SCHEMA as NETWORK_SCHEMA
 from hydrolog.operations._network_input import load_network
 from hydrolog.routing import Hydrograph, RoutingNetwork
+from hydrolog.routing.document import SCHEMA as NETWORK_SCHEMA
 
 __all__ = [
     "EXAMPLE_INFLOWS",

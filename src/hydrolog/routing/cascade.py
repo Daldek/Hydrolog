@@ -37,7 +37,7 @@ is at rest at both ends of the series.
 
 from __future__ import annotations
 
-from typing import cast
+from typing import Any, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -46,7 +46,7 @@ from scipy.special import gammainc, gammaincc
 
 from hydrolog.routing._checks import one_complete_group, positive, whole_number
 from hydrolog.routing.hydrograph import Hydrograph
-from hydrolog.routing.reach import Reach, ReachRun
+from hydrolog.routing.reach import REACH_METHODS, Reach, ReachRun
 
 __all__ = ["CascadeReach", "cascade_weights"]
 
@@ -139,6 +139,7 @@ def _convolve(
     return np.asarray(oaconvolve(series, kernel), dtype=np.float64)
 
 
+@REACH_METHODS.register
 class CascadeReach(Reach):
     """Route a hydrograph through a cascade of ``n`` equal linear reservoirs.
 
@@ -219,6 +220,21 @@ class CascadeReach(Reach):
                 / _SECONDS_PER_MINUTE
             )
             self.k_min = travel_min / self.n
+
+    def options(self) -> dict[str, Any]:
+        """Return the arguments that rebuild the element.
+
+        The time scale is ``k_min``, or the ``length_km`` and ``celerity_m_per_s`` of
+        the reach that fix it; the storage constant that follows from the latter is
+        not an option.
+        """
+        options: dict[str, Any] = {"n": self.n}
+        if self.length_km is not None and self.celerity_m_per_s is not None:
+            options["length_km"] = self.length_km
+            options["celerity_m_per_s"] = self.celerity_m_per_s
+        else:
+            options["k_min"] = self.k_min
+        return options
 
     def _run(self, inflow: Hydrograph, initial_outflow_m3s: float) -> ReachRun:
         values = inflow.discharge_m3s

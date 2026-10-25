@@ -1,30 +1,41 @@
 """Routing elements: the base class, the result and the notices of a run.
 
 A :class:`Reach` turns an inflow :class:`~hydrolog.routing.hydrograph.Hydrograph` into
-an outflow hydrograph. A subclass implements one thing, ``_run``: its recurrence on a
-given time axis. :meth:`Reach.route` does what every model shares (ADR-0008): the
-initial condition, the extension of the time axis until the outflow has settled, the
-non-negativity check and the notices, and returns a :class:`RoutingResult` with the
-volume balance.
+an outflow hydrograph. A subclass implements two things: ``_run``, its recurrence on a
+given time axis, and ``options``, the arguments that rebuild it (a document names them).
+:meth:`Reach.route` does what every model shares (ADR-0008): the initial condition, the
+extension of the time axis until the outflow has settled, the non-negativity check and
+the notices, and returns a :class:`RoutingResult` with the volume balance;
+:meth:`Reach.describe` lists the parameters of the element and, after a run, the values
+that the run used (ADR-0012).
+
+The classes of the package are registered in :data:`REACH_METHODS` under their
+``model``, the ``method`` of a reach in a ``hydrolog-network/1`` document; a new method
+is a new class that is registered there.
 """
 
 from __future__ import annotations
 
+import inspect
 import math
 from abc import ABC, abstractmethod
+from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import ClassVar, Literal
+from typing import Any, ClassVar, Literal
 
 import numpy as np
 from numpy.typing import NDArray
 
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import CalculationError, InvalidParameterError
+from hydrolog.routing._registry import Registry
 from hydrolog.routing.hydrograph import Hydrograph
+from hydrolog.routing.parameters import Parameter, ParameterSource, parameter
 
 __all__ = [
     "MAX_ORDINATES",
     "MIN_EXTENSION_STEPS",
+    "REACH_METHODS",
     "TAIL_TOLERANCE",
     "Reach",
     "ReachRun",
@@ -245,19 +256,34 @@ def _settled(inflow: Hydrograph, run: ReachRun) -> bool:
     )
 
 
+def _defaults(cls: type) -> dict[str, object]:
+    """Return the defaults of the arguments of a constructor; ``None`` is none."""
+    return {
+        name: item.default
+        for name, item in inspect.signature(cls).parameters.items()
+        if item.default is not inspect.Parameter.empty and item.default is not None
+    }
+
+
 class Reach(ABC):
     """A routing element: a hydrograph in, a hydrograph out.
 
-    Subclasses set :attr:`model` and implement :meth:`_run`; :meth:`route` is the public
-    entry point.
+    Subclasses set :attr:`model` and implement :meth:`_run` and :meth:`options`;
+    :meth:`route` is the public entry point and :meth:`describe` lists the parameters.
 
     Attributes
     ----------
     model : str
-        Name of the model, the ``model`` of its results.
+        Name of the model, the ``model`` of its results and the ``method`` of a reach
+        in a document.
+    UNITS : mapping of str to str or None
+        Units of the parameters whose name only ends like a unit (``subreaches_min`` is
+        a number); the unit of any other name follows from it
+        (:func:`~hydrolog.routing.parameters.unit_of`).
     """
 
     model: ClassVar[str]
+    UNITS: ClassVar[Mapping[str, str | None]] = {}
 
     @abstractmethod
     def _run(self, inflow: Hydrograph, initial_outflow_m3s: float) -> ReachRun:
@@ -277,6 +303,53 @@ class Reach(ABC):
         ReachRun
             The outflow at every ordinate of ``inflow`` and the storage at both ends.
         """
+
+    @abstractmethod
+    def options(self) -> dict[str, Any]:
+        """Return the arguments that rebuild the element.
+
+        Returns
+        -------
+        dict
+            The keyword arguments of the constructor that apply to this element, with
+            JSON-native values (numbers and lists): ``type(reach)(**reach.options())``
+            is an equal element. A group of arguments that the element did not use (the
+            channel section of a reach given by its celerity) is not in it.
+        """
+
+    def describe(self, run: RoutingResult | None = None) -> list[Parameter]:
+        """List the parameters of the element, and what a run used.
+
+        Parameters
+        ----------
+        run : RoutingResult, optional
+            A run of this element. With it the list holds every value that the run
+            used, the derived ones too (the number of sub-reaches, the celerity, the
+            coefficients); without it, the options only.
+
+        Returns
+        -------
+        list of Parameter
+            The options first: ``"given"``, or ``"default"`` when the value is the
+            default of the constructor; then the values that the run derived,
+            ``"computed"``. Tables (a storage-outflow relation) are not parameters and
+            are left out.
+        """
+        defaults = _defaults(type(self))
+        used: dict[str, tuple[object, ParameterSource]] = {}
+        for name, value in self.options().items():
+            if isinstance(value, bool | int | float | str):
+                source: ParameterSource = (
+                    "default" if value == defaults.get(name) else "given"
+                )
+                used[name] = (value, source)
+        if run is not None:
+            for name, value in run.parameters.items():
+                used[name] = (value, used[name][1] if name in used else "computed")
+        return [
+            parameter(name, value, source, self.UNITS)
+            for name, (value, source) in used.items()
+        ]
 
     def route(
         self,
@@ -398,3 +471,10 @@ class Reach(ABC):
                 hint="Report the parameters: a routing scheme must not do this.",
             )
         return Hydrograph(extended.times_min, np.maximum(values, 0.0))
+
+
+REACH_METHODS: Registry[Reach] = Registry(
+    "method", key="model", reason="unknown_method"
+)
+"""The routing methods by name, the ``method`` of a reach in a document: a new method
+is a new :class:`Reach` that is registered here (``@REACH_METHODS.register``)."""

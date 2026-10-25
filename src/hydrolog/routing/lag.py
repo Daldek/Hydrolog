@@ -8,13 +8,14 @@ the water in transit, ``lag`` times the inflow.
 from __future__ import annotations
 
 import math
+from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
 
 from hydrolog.routing._checks import positive
 from hydrolog.routing.hydrograph import Hydrograph
-from hydrolog.routing.reach import Reach, ReachRun, RoutingNotice
+from hydrolog.routing.reach import REACH_METHODS, Reach, ReachRun, RoutingNotice
 
 __all__ = ["LagReach"]
 
@@ -44,6 +45,7 @@ def _transit_volume(
     return (before + area) * _SECONDS_PER_MINUTE
 
 
+@REACH_METHODS.register
 class LagReach(Reach):
     """Translate a hydrograph in time without changing its shape.
 
@@ -76,6 +78,10 @@ class LagReach(Reach):
     def __init__(self, lag_min: float) -> None:
         """Create the element."""
         self.lag_min = positive(lag_min, "lag_min")
+
+    def options(self) -> dict[str, Any]:
+        """Return ``{"lag_min": ...}``, the argument that rebuilds the element."""
+        return {"lag_min": self.lag_min}
 
     def _run(self, inflow: Hydrograph, initial_outflow_m3s: float) -> ReachRun:
         values = inflow.discharge_m3s
