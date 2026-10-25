@@ -220,6 +220,7 @@ class TestToolList:
             "hydrolog_report_generate",
             "hydrolog_route_cascade",
             "hydrolog_route_lag",
+            "hydrolog_route_level_pool",
             "hydrolog_route_muskingum",
             "hydrolog_route_muskingum_cunge",
             "hydrolog_soil_hsg",

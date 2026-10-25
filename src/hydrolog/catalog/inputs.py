@@ -16,6 +16,8 @@ both into the objects the library works with:
   ``input_file`` with a ``time_column`` and a ``value_column`` (defaults ``time_min``
   and ``discharge_m3s``) -> :class:`~hydrolog.routing.Hydrograph`, the regular-step
   table that the ``route`` commands take;
+* :func:`load_rating` -- inline ``storage_m3`` + ``outflow_m3s`` (+ ``stage_m``) *or* a
+  ``rating_file`` -> :class:`Rating`, the storage-outflow table of ``route level-pool``;
 * :func:`read_table` / :func:`load_records` -- the generic file reader behind them,
   for operations that need other columns (rating curve pairs, network segments...).
 
@@ -59,7 +61,7 @@ import re
 from collections.abc import Mapping, Sequence
 from dataclasses import MISSING, dataclass, fields
 from pathlib import Path
-from typing import Any, NoReturn, get_args, get_type_hints
+from typing import Any, NamedTuple, NoReturn, get_args, get_type_hints
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -67,14 +69,18 @@ from numpy.typing import ArrayLike, NDArray
 from hydrolog.exceptions import InputDataError, InvalidParameterError, NotFoundError
 from hydrolog.morphometry.watershed_params import WatershedParameters
 from hydrolog.precipitation.interpolation import Station
+from hydrolog.routing._checks import one_complete_group
 from hydrolog.routing.hydrograph import Hydrograph, check_table
+from hydrolog.routing.level_pool import check_rating, rating_arrays
 
 __all__ = [
     "DISCHARGE_COLUMN",
     "TIME_COLUMN",
+    "Rating",
     "Series",
     "Table",
     "load_hydrograph",
+    "load_rating",
     "load_records",
     "load_series",
     "load_stations",
@@ -886,6 +892,135 @@ def load_hydrograph(
             details={"option": absent, "reason": "required"},
         )
     return Hydrograph(times_min, discharge_m3s)
+
+
+# --- storage-outflow table ------------------------------------------------------------
+
+
+class Rating(NamedTuple):
+    """A storage-outflow table: what a reservoir or a reach with storage is routed by.
+
+    Attributes
+    ----------
+    storage_m3 : numpy.ndarray
+        Storage of each row [m3].
+    outflow_m3s : numpy.ndarray
+        Outflow of each row [m3/s].
+    stage_m : numpy.ndarray or None
+        Water level of each row [m]; ``None`` when the table has none.
+    """
+
+    storage_m3: NDArray[np.float64]
+    outflow_m3s: NDArray[np.float64]
+    stage_m: NDArray[np.float64] | None
+
+
+def _stage_column(table: Table) -> str | None:
+    """Return the name of the optional stage column of a rating file, if it has one."""
+    try:
+        return table.resolve_column("stage_m", option="rating_file")
+    except InputDataError as exc:
+        if exc.details.get("reason") != "missing_column":
+            raise
+        return None
+
+
+def _rating_from_table(table: Table) -> Rating:
+    columns = {
+        "storage_m3": table.resolve_column("storage_m3", option="rating_file"),
+        "outflow_m3s": table.resolve_column("outflow_m3s", option="rating_file"),
+    }
+    stage_name = _stage_column(table)
+    if stage_name is not None:
+        columns["stage_m"] = stage_name
+    values = {
+        name: table.numbers(column, option="rating_file")
+        for name, column in columns.items()
+    }
+    problem = check_rating(
+        values["storage_m3"], values["outflow_m3s"], values.get("stage_m")
+    )
+    if problem is not None:
+        details = dict(problem.details)
+        if "index" in details:
+            details["row"] = details.pop("index") + 1
+        _Source(path=table.source).fail(
+            problem.message,
+            reason=problem.reason,
+            column=columns[problem.option],
+            **details,
+        )
+    return Rating(values["storage_m3"], values["outflow_m3s"], values.get("stage_m"))
+
+
+def load_rating(
+    *,
+    storage_m3: ArrayLike | None = None,
+    outflow_m3s: ArrayLike | None = None,
+    stage_m: ArrayLike | None = None,
+    rating_file: str | os.PathLike[str] | None = None,
+) -> Rating:
+    """Load a storage-outflow table from inline lists or from a file.
+
+    Exactly one source is used: the inline lists ``storage_m3`` and ``outflow_m3s``
+    (with an optional ``stage_m``), or ``rating_file``. The table must obey the rules
+    of :func:`hydrolog.routing.level_pool.check_rating`: at least two rows, finite
+    values, storage and outflow not negative, no column decreasing and no row
+    repeating the one before it.
+
+    Parameters
+    ----------
+    storage_m3 : sequence of float, optional
+        Inline storage of each row [m3].
+    outflow_m3s : sequence of float, optional
+        Inline outflow of each row [m3/s].
+    stage_m : sequence of float, optional
+        Inline water level of each row [m]; only with the inline lists.
+    rating_file : str or os.PathLike, optional
+        CSV or JSON file (see :func:`read_table`) with the columns ``storage_m3`` and
+        ``outflow_m3s`` and, when the table has one, ``stage_m``.
+
+    Returns
+    -------
+    Rating
+        The validated columns.
+
+    Raises
+    ------
+    InvalidParameterError
+        If the source is ambiguous or incomplete (``details.reason`` ``one_of``),
+        ``stage_m`` is given with ``rating_file`` (``details.reason`` ``conflict``),
+        or the inline table breaks a rule (``details.option`` the column,
+        ``details.reason`` as in :func:`~hydrolog.routing.level_pool.check_rating`).
+    NotFoundError
+        If ``rating_file`` does not exist.
+    InputDataError
+        If the file is malformed, lacks a column, has a bad number, or its table
+        breaks a rule (``details.reason`` as above, ``details.column`` and the
+        1-based data ``details.row``).
+    """
+    given = [
+        name
+        for name, value in (
+            ("storage_m3", storage_m3),
+            ("outflow_m3s", outflow_m3s),
+            ("rating_file", rating_file),
+        )
+        if value is not None
+    ]
+    one_complete_group(
+        given, (("storage_m3", "outflow_m3s"), ("rating_file",)), "The reservoir"
+    )
+    if rating_file is not None:
+        if stage_m is not None:
+            raise InvalidParameterError(
+                "Option 'stage_m' applies to the inline table, not to 'rating_file', "
+                "whose own column stage_m is used when it has one",
+                details={"option": "stage_m", "reason": "conflict"},
+            )
+        return _rating_from_table(read_table(rating_file))
+    assert storage_m3 is not None and outflow_m3s is not None  # the group is complete
+    return Rating(*rating_arrays(storage_m3, outflow_m3s, stage_m))
 
 
 # --- watershed ------------------------------------------------------------------------

@@ -1029,7 +1029,7 @@ print(result.outflow.time_to_peak_min, round(result.outflow.peak_discharge_m3s, 
 
 **Command.** `route cascade` takes `n` and exactly one time scale, `k_min` or `length_km` with `celerity_m_per_s` (anything else is a `validation_error`, `details.reason` `one_of`), next to the hydrograph, run and output options of `route lag`. It has no `unstable_timestep`: `parameters` hold `n`, `k_min`, the delay `lag_min = n K`, `timestep_over_k = dt / K` and the length and celerity when they were given, and the only notices are `tail_extended` and `tail_truncated`.
 
-#### 3.9.6 Level-Pool Routing, Storage Indication (`LevelPoolReach`)
+#### 3.9.6 Level-Pool Routing, Storage Indication (`LevelPoolReach`, `route level-pool`)
 
 ```
 S2/dt + O2/2 = (I1 + I2)/2 + (S1/dt - O1/2)        working curve  Y(O) = S(O)/dt + O/2
@@ -1050,6 +1050,8 @@ print(round(pond.route(flood).outflow.peak_discharge_m3s, 3))          # 6.852
 ```
 
 **Reference values.** NEH-630 example 17-1 (the channel reach of Table 17-4, `dt` = 0.5 h, 19 ordinates) is reproduced to 0.85 ft3/s (0.02 % of the 3,827 ft3/s peak), inside the 1 ft3/s of the plan but above the half unit of the print. Table 17-7 prints each average inflow rounded (4,687.5 as 4,688, and so on): those averages belong to ordinates 1 ft3/s higher at 2.5, 3.5, 4.5 and 5.5 h, and with them all 19 printed values are reproduced to 0.49 ft3/s. The storage at the peak follows from the printed 9,056 and 3,827 ft3/s. The shortest `K` of the table up to the 5,000 ft3/s peak is 0.651 h (50 to 150 ft3/s), so the limit is 78.12 min (60.83 min for the whole table) and the published step of 30 min is not divided. The other references share nothing with the code (`tests/unit/test_routing_level_pool.py`): a table of constant `K` is the linear reservoir, equal to Muskingum with `X = 0` and `N` sub-reaches to 1e-12; a tank draining through a weir has the exact solution `h = (h0^(-1/2) + C t / (2A))^(-2)`, and a tank filled by a flood is integrated with an ODE solver, both converging with second order in `dt` (the error falls by 4.0 when the step is halved); and random tables with a dead zone keep the outflow between the lowest and the highest flow of the run with the volume balance closed to 1e-9.
+
+**Command.** `route level-pool` takes the table inline (`storage_m3` with `outflow_m3s`, and optionally `stage_m`) or as a `rating_file` with those columns, exactly one of the two (anything else is a `validation_error`, `details.reason` `one_of`; a `stage_m` next to a `rating_file` is a `conflict`, the file brings its own column), and `subreaches` (default 1), next to the hydrograph, run and output options of `route lag`. The file is read after the output has been planned; `output` must not be the `rating_file`. A bad inline table is a `validation_error` and a bad file a `data_error` with the row and the column. `parameters` hold the sub-reaches and sub-steps, the longest step of the table, the peak storage and its time and, with a stage, the peak stage and its time; the notice `timestep_refined` says that the step was divided, and a flood beyond the table is a `calculation_error`.
 
 ---
 
@@ -1087,7 +1089,7 @@ print(round(pond.route(flood).outflow.peak_discharge_m3s, 3))          # 6.852
 | Muskingum routing with sub-reaches (`route muskingum`, `MuskingumReach`) | McCarthy (1938), Chow, Maidment, Mays (1988), HEC-HMS Technical Reference Manual (Muskingum model), University of Iowa Lesson 27 (worked example) | ✅ |
 | Muskingum-Cunge, constant coefficients (`route muskingum-cunge`, `MuskingumCungeReach`) | Cunge (1969), NRCS NEH Part 630 ch. 17 (2014) eq. 17-20 to 17-22, example 17-4 and appendix B, HEC-HMS Technical Reference Manual (Muskingum-Cunge model) | ✅ |
 | Cascade of linear reservoirs, exact kernel (`route cascade`, `CascadeReach`) | Nash (1957) (the IUH of `NashIUH`), Kalinin and Milyukov (1957) as presented by Ponce (linear reservoirs and numerical diffusion), Chow, Maidment, Mays (1988); weights checked against the numerical integral of the gamma density and the exact solution of the chain | ✅ |
-| Level-pool routing, storage indication (`LevelPoolReach`) | NRCS NEH Part 630 ch. 17 (2014) eq. 17-3 and example 17-1, HEC-HMS Technical Reference Manual (Modified Puls model); the step rule per segment checked on random tables and against the exact solution of a tank with a weir | ✅ |
+| Level-pool routing, storage indication (`route level-pool`, `LevelPoolReach`) | NRCS NEH Part 630 ch. 17 (2014) eq. 17-3 and example 17-1, HEC-HMS Technical Reference Manual (Modified Puls model); the step rule per segment checked on random tables and against the exact solution of a tank with a weir | ✅ |
 
 ### 4.2 Key Publications
 

@@ -7,9 +7,11 @@ import numpy as np
 import pytest
 
 from hydrolog.catalog.inputs import (
+    Rating,
     Series,
     Table,
     load_hydrograph,
+    load_rating,
     load_records,
     load_series,
     load_stations,
@@ -1185,4 +1187,99 @@ class TestLoadHydrograph:
         assert (error.details["option"], error.details["reason"]) == (
             "times_min",
             "irregular_step",
+        )
+
+
+class TestLoadRating:
+    """The table of ``route level-pool``: inline lists or a file, a stage optional."""
+
+    def test_inline_lists(self):
+        rating = load_rating(storage_m3=[0, 100, 300], outflow_m3s=[0, 2, 5])
+
+        assert isinstance(rating, Rating)
+        assert rating.storage_m3.tolist() == [0.0, 100.0, 300.0]
+        assert rating.outflow_m3s.tolist() == [0.0, 2.0, 5.0]
+        assert rating.stage_m is None
+
+    def test_an_inline_stage_goes_with_the_table(self):
+        rating = load_rating(
+            storage_m3=[0, 100], outflow_m3s=[0, 2], stage_m=[101.5, 102.25]
+        )
+
+        assert rating.stage_m is not None
+        assert rating.stage_m.tolist() == [101.5, 102.25]
+
+    def test_a_file_with_a_semicolon_a_decimal_comma_and_units_in_the_names(
+        self, tmp_path
+    ):
+        path = write(
+            tmp_path,
+            "r.csv",
+            "storage_m3 [m3];outflow_m3s [m3/s];stage_m [m]\n"
+            "0;0;100\n1000;1,5;100,5\n3000;4;101,25\n",
+        )
+
+        rating = load_rating(rating_file=path)
+
+        assert rating.storage_m3.tolist() == [0.0, 1000.0, 3000.0]
+        assert rating.outflow_m3s.tolist() == [0.0, 1.5, 4.0]
+        assert rating.stage_m is not None
+        assert rating.stage_m.tolist() == [100.0, 100.5, 101.25]
+
+    def test_a_json_file_of_columns_without_a_stage(self, tmp_path):
+        path = write(
+            tmp_path,
+            "r.json",
+            json.dumps({"storage_m3": [0, 50, 90], "outflow_m3s": [0, 1, 3]}),
+        )
+
+        rating = load_rating(rating_file=path)
+
+        assert rating.outflow_m3s.tolist() == [0.0, 1.0, 3.0]
+        assert rating.stage_m is None
+
+    @pytest.mark.parametrize(
+        ("body", "reason", "column", "row"),
+        [
+            ("0,0\n10,5\n20,4\n", "decreasing", "outflow_m3s", 3),
+            ("0,0\n10,5\n10,5\n", "repeated_row", "outflow_m3s", 3),
+            ("0,0\n,5\n20,6\n", "not_finite", "storage_m3", 2),
+            ("0,0\n10,-5\n20,6\n", "negative", "outflow_m3s", 2),
+            ("0,0\n", "too_short", "storage_m3", None),
+        ],
+    )
+    def test_a_file_that_breaks_a_rule_is_a_data_error_with_the_row(
+        self, tmp_path, body, reason, column, row
+    ):
+        path = write(tmp_path, "r.csv", "storage_m3,outflow_m3s\n" + body)
+
+        error = failure(lambda: load_rating(rating_file=path))
+
+        assert error.details["reason"] == reason
+        assert error.details["path"] == str(path)
+        assert error.details.get("column") == column
+        assert error.details.get("row") == row
+
+    def test_a_decreasing_stage_names_its_own_column(self, tmp_path):
+        path = write(
+            tmp_path, "r.csv", "storage_m3,outflow_m3s,stage_m\n0,0,5\n10,1,6\n20,2,5\n"
+        )
+
+        error = failure(lambda: load_rating(rating_file=path))
+
+        assert error.details["reason"] == "decreasing"
+        assert (error.details["column"], error.details["row"]) == ("stage_m", 3)
+
+    def test_a_missing_file(self, tmp_path):
+        failure(lambda: load_rating(rating_file=tmp_path / "r.csv"), NotFoundError)
+
+    def test_an_inline_table_that_breaks_a_rule_is_a_validation_error(self):
+        error = failure(
+            lambda: load_rating(storage_m3=[0, 10, 5], outflow_m3s=[0, 1, 2]),
+            InvalidParameterError,
+        )
+
+        assert (error.details["option"], error.details["reason"]) == (
+            "storage_m3",
+            "decreasing",
         )

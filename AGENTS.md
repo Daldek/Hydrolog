@@ -95,7 +95,7 @@ One line per command: name, `operation_id`, summary. Options, units, bounds and 
 ### [hydrograph: Runoff hydrograph][paths]
 - `hydrograph generate` (`hydrolog_hydrograph_generate`): Compute the design direct-runoff hydrograph: rainfall, SCS-CN, unit hydrograph, convolution.
 ### [route: Flood routing][paths]
-- `route cascade`, `route lag`, `route muskingum`, `route muskingum-cunge` (tools `hydrolog_route_<verb>`, `-` as `_`): route a hydrograph (`time_min`, `discharge_m3s`) through a reach, a reservoir or a river network; summaries: `commands list`.
+- `route cascade`, `route lag`, `route level-pool`, `route muskingum`, `route muskingum-cunge` (tools `hydrolog_route_<verb>`, `-` as `_`): route a hydrograph (`time_min`, `discharge_m3s`) through a reach, a reservoir or a river network; summaries: `commands list`.
 ### [morphometry: Watershed morphometry][paths]
 - `morphometry watershed` (`hydrolog_morphometry_watershed`): Compute geometric, shape and relief indicators of a watershed.
 ### [network: River network][paths]
