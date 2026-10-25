@@ -30,6 +30,10 @@ Time is in minutes and discharge in m3/s.
   hydrograph: its rainfall is a :class:`DesignStorm` or a :class:`RainfallSeries` (any
   object with the protocol will do) and its runoff :class:`CurveNumberRunoff`, that is
   :class:`~hydrolog.runoff.HydrographGenerator` as a model.
+* :class:`ControlPointNetwork` -- a network as an application picks it: the outlet
+  first, then points upstream of it (:class:`OutletPoint`, :class:`ControlPoint`), each
+  one closing its own residual area, joined by channels and confluences; it expands
+  into the nodes of a :class:`RoutingNetwork` (:meth:`ControlPointNetwork.network`).
 
 A new kind of node, a new method of a reach, a new kind of rainfall, a new runoff model
 and a new shape of a design storm are classes that are registered in
@@ -69,6 +73,7 @@ from hydrolog.routing.network import (
     Subcatchment,
 )
 from hydrolog.routing.parameters import Parameter
+from hydrolog.routing.points import ControlPoint, ControlPointNetwork, OutletPoint
 from hydrolog.routing.rainfall import (
     HIETOGRAMS,
     RAINFALL_KINDS,
@@ -95,6 +100,8 @@ __all__ = [
     "CascadeReach",
     "Channel",
     "Context",
+    "ControlPoint",
+    "ControlPointNetwork",
     "CurveNumberRunoff",
     "DesignStorm",
     "FlowState",
@@ -109,6 +116,7 @@ __all__ = [
     "NodeOutput",
     "NodeSummary",
     "Outlet",
+    "OutletPoint",
     "Parameter",
     "RainfallSeries",
     "RainfallSource",
