@@ -1,5 +1,6 @@
 """Tests of the ``route`` operations: result, outflow file, check and conflicts."""
 
+import csv
 import math
 from pathlib import Path
 
@@ -10,6 +11,7 @@ from hydrolog.catalog import run_command
 from hydrolog.catalog.envelope import Notice, OperationOutput
 from hydrolog.catalog.inputs import load_hydrograph
 from hydrolog.exceptions import (
+    CalculationError,
     ConflictError,
     InputDataError,
     InvalidParameterError,
@@ -19,6 +21,7 @@ from hydrolog.operations import (
     RouteResult,
     route_cascade,
     route_lag,
+    route_level_pool,
     route_muskingum,
     route_muskingum_cunge,
 )
@@ -26,6 +29,7 @@ from hydrolog.routing import (
     CascadeReach,
     Hydrograph,
     LagReach,
+    LevelPoolReach,
     MuskingumCungeReach,
     MuskingumReach,
 )
@@ -40,6 +44,10 @@ from ._routing_reference import (
     IOWA_TIMES_MIN,
     IOWA_TOLERANCE,
     IOWA_X,
+    NEH17_1_AVERAGE_INFLOW_CFS,
+    NEH17_1_OUTFLOW_CFS,
+    NEH17_1_ROUNDING_CFS,
+    NEH17_1_TOLERANCE_CFS,
     NEH17_4_CELERITY_FT_PER_S,
     NEH17_4_INFLOW_CFS,
     NEH17_4_LENGTH_FT,
@@ -52,6 +60,9 @@ from ._routing_reference import (
 
 FIXTURES = Path(__file__).parents[1] / "fixtures"
 FLOOD_INFLOW = FIXTURES / "flood_inflow.csv"
+NEH_INFLOW = FIXTURES / "neh17_1_inflow.csv"
+NEH_RATING = FIXTURES / "neh17_1_rating.csv"
+POND_RATING = FIXTURES / "pond_rating.csv"
 TIMES = [0.0, 10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0]
 FLOOD = [0.0, 10.0, 40.0, 90.0, 60.0, 30.0, 10.0, 0.0]
 
@@ -726,4 +737,256 @@ class TestRouteCascade:
         ]
         assert envelope["result"]["parameters"]["lag_min"] == 60.0
         assert envelope["result"]["outflow_m3s"] is None
+        assert [notice["code"] for notice in envelope["notices"]] == ["tail_extended"]
+
+
+def read_columns(path: Path) -> dict[str, list[float]]:
+    """The columns of a numeric CSV fixture, read without the code under test."""
+    with path.open(encoding="utf-8", newline="") as stream:
+        rows = list(csv.DictReader(stream))
+    return {name: [float(row[name]) for row in rows] for name in rows[0]}
+
+
+class TestRouteLevelPool:
+    def test_example_17_1_through_the_command_is_the_printed_table(self):
+        # the SI fixtures of Tables 17-4 and 17-7 (30 min, 19 ordinates, rounded to
+        # 1e-6 m3/s): the outflow is printed to 1 ft3/s
+        output = route_level_pool(
+            rating_file=NEH_RATING, input_file=NEH_INFLOW, extend_min=0.0
+        )
+
+        result = output.result
+        np.testing.assert_allclose(
+            result.outflow_m3s / CFS_M3S,
+            NEH17_1_OUTFLOW_CFS,
+            rtol=0,
+            atol=NEH17_1_TOLERANCE_CFS,
+        )
+        assert result.model == "level-pool"
+        assert result.outflow_time_to_peak_min == 180.0
+        assert result.parameters["substeps"] == 1
+        assert "stage_peak_m" not in result.parameters
+
+    def test_the_printed_average_inflows_give_the_table_to_its_rounding(self):
+        # Table 17-7 prints an average that ends in .5 rounded up, so its ordinates are
+        # 1 ft3/s above the table of inflows at 2.5, 3.5, 4.5 and 5.5 h
+        ordinates = [0.0]
+        for average in NEH17_1_AVERAGE_INFLOW_CFS[1:]:
+            ordinates.append(2.0 * average - ordinates[-1])
+        table = read_columns(NEH_RATING)
+
+        result = route_level_pool(
+            storage_m3=table["storage_m3"],
+            outflow_m3s=table["outflow_m3s"],
+            times_min=[30.0 * i for i in range(len(ordinates))],
+            discharge_m3s=[cfs * CFS_M3S for cfs in ordinates],
+            extend_min=0.0,
+        ).result
+
+        np.testing.assert_allclose(
+            result.outflow_m3s / CFS_M3S,
+            NEH17_1_OUTFLOW_CFS,
+            rtol=0,
+            atol=NEH17_1_ROUNDING_CFS,
+        )
+
+    def test_a_rating_file_gives_the_same_result_as_the_inline_table(self):
+        table = read_columns(NEH_RATING)
+        inflow = read_columns(NEH_INFLOW)
+
+        from_file = route_level_pool(rating_file=NEH_RATING, input_file=NEH_INFLOW)
+        inline_lists = route_level_pool(
+            storage_m3=table["storage_m3"],
+            outflow_m3s=table["outflow_m3s"],
+            times_min=inflow["time_min"],
+            discharge_m3s=inflow["discharge_m3s"],
+        )
+
+        assert from_file.result.to_dict() == inline_lists.result.to_dict()
+
+    def test_the_stage_of_the_file_is_reported_at_the_peak_storage(self):
+        table = read_columns(POND_RATING)
+
+        result = route_level_pool(
+            rating_file=POND_RATING, input_file=FLOOD_INFLOW
+        ).result
+
+        # the stage on the straight line of the table at the peak storage
+        assert result.parameters["stage_peak_m"] == pytest.approx(
+            np.interp(
+                result.parameters["storage_peak_m3"],
+                table["storage_m3"],
+                table["stage_m"],
+            ),
+            rel=1e-12,
+        )
+        assert (
+            result.parameters["stage_peak_time_min"]
+            == (result.parameters["storage_peak_time_min"])
+        )
+        assert abs(result.balance_error_m3) < 1e-6 * result.inflow_volume_m3
+
+    def test_a_step_too_long_for_the_table_is_divided_and_says_so(self):
+        # K = dS/dO = 3,600 s, so the step may be 2 K = 120 min: 300 min takes 3 parts
+        output = route_level_pool(
+            storage_m3=[0.0, 3600.0],
+            outflow_m3s=[0.0, 1.0],
+            times_min=[0.0, 300.0, 600.0, 900.0],
+            discharge_m3s=[0.0, 0.5, 0.5, 0.0],
+        )
+
+        assert output.result.parameters["substeps"] == 3
+        assert output.result.parameters["timestep_limit_min"] == pytest.approx(120.0)
+        assert "timestep_refined" in [notice.code for notice in output.notices]
+
+    @pytest.mark.parametrize(
+        ("options", "given", "missing"),
+        [
+            ({}, [], ["storage_m3", "outflow_m3s"]),
+            ({"storage_m3": [0.0, 1.0]}, ["storage_m3"], ["outflow_m3s"]),
+            ({"outflow_m3s": [0.0, 1.0]}, ["outflow_m3s"], ["storage_m3"]),
+            (
+                {
+                    "storage_m3": [0.0, 1.0],
+                    "outflow_m3s": [0.0, 1.0],
+                    "rating_file": str(NEH_RATING),
+                },
+                ["storage_m3", "outflow_m3s", "rating_file"],
+                None,
+            ),
+            ({"stage_m": [0.0, 1.0]}, [], ["storage_m3", "outflow_m3s"]),
+        ],
+        ids=["none", "storage only", "outflow only", "both", "stage only"],
+    )
+    def test_exactly_one_source_of_the_table_is_needed(self, options, given, missing):
+        with pytest.raises(InvalidParameterError) as caught:
+            run_command(
+                "route level-pool",
+                {**options, "times_min": TIMES, "discharge_m3s": FLOOD},
+            )
+
+        details = caught.value.details
+        assert details["reason"] == "one_of"
+        assert details["groups"] == [["storage_m3", "outflow_m3s"], ["rating_file"]]
+        assert details["given"] == given
+        assert details.get("missing") == missing
+
+    def test_a_stage_belongs_to_the_inline_table_not_to_the_file(self):
+        with pytest.raises(InvalidParameterError) as caught:
+            route_level_pool(
+                rating_file=NEH_RATING, stage_m=[0.0, 1.0], input_file=NEH_INFLOW
+            )
+
+        assert caught.value.details == {"option": "stage_m", "reason": "conflict"}
+
+    @pytest.mark.parametrize(
+        "table",
+        [
+            {"storage_m3": [0, 10, 5], "outflow_m3s": [0, 1, 2]},
+            {"storage_m3": [0, 10, 20], "outflow_m3s": [0, 2, 1]},
+            {"storage_m3": [0, 10, 10], "outflow_m3s": [0, 1, 1]},
+            {"storage_m3": [0, 10, 20], "outflow_m3s": [0, 1]},
+            {"storage_m3": [0], "outflow_m3s": [0]},
+            {"storage_m3": [0, 10], "outflow_m3s": [0, 1], "stage_m": [1, 0]},
+            {"storage_m3": [0, 10], "outflow_m3s": [0, 1], "subreaches": 0},
+        ],
+        ids=[
+            "storage decreasing",
+            "outflow decreasing",
+            "repeated row",
+            "length mismatch",
+            "one row",
+            "stage decreasing",
+            "no sub-reach",
+        ],
+    )
+    def test_the_command_and_the_class_refuse_a_table_in_the_same_words(self, table):
+        with pytest.raises(InvalidParameterError) as via_command:
+            run_command(
+                "route level-pool",
+                {**table, "times_min": TIMES, "discharge_m3s": FLOOD},
+            )
+        with pytest.raises(InvalidParameterError) as via_class:
+            LevelPoolReach(**table)
+
+        for key in ("option", "reason"):
+            assert via_class.value.details[key] == via_command.value.details[key]
+
+    def test_a_bad_rating_file_is_a_data_error_that_names_the_row(self, tmp_path):
+        path = tmp_path / "rating.csv"
+        path.write_text(
+            "storage_m3,outflow_m3s\n0,0\n100,10\n90,20\n", encoding="utf-8"
+        )
+
+        with pytest.raises(InputDataError) as caught:
+            route_level_pool(rating_file=path, input_file=FLOOD_INFLOW)
+
+        details = caught.value.details
+        assert details["reason"] == "decreasing"
+        assert (details["column"], details["row"]) == ("storage_m3", 3)
+        assert details["path"] == str(path)
+
+    def test_a_rating_file_without_a_column_is_a_data_error(self, tmp_path):
+        path = tmp_path / "rating.csv"
+        path.write_text("storage_m3,flow\n0,0\n100,10\n", encoding="utf-8")
+
+        with pytest.raises(InputDataError) as caught:
+            route_level_pool(rating_file=path, input_file=FLOOD_INFLOW)
+
+        details = caught.value.details
+        assert details["reason"] == "missing_column"
+        assert details["column"] == "outflow_m3s"
+        assert details["available"] == ["storage_m3", "flow"]
+
+    def test_the_output_must_not_be_the_rating_file(self, tmp_path):
+        rating = tmp_path / "rating.csv"
+        rating.write_bytes(NEH_RATING.read_bytes())
+        before = rating.read_bytes()
+
+        with pytest.raises(InvalidParameterError) as caught:
+            route_level_pool(
+                rating_file=rating, input_file=NEH_INFLOW, output=rating, force=True
+            )
+
+        assert caught.value.details == {
+            "option": "output",
+            "reason": "conflict",
+            "input": "rating_file",
+        }
+        assert rating.read_bytes() == before
+
+    def test_a_flood_beyond_the_table_is_a_calculation_error_and_writes_nothing(
+        self, tmp_path
+    ):
+        target = tmp_path / "out" / "outflow.csv"
+
+        with pytest.raises(CalculationError) as caught:
+            route_level_pool(
+                storage_m3=[0.0, 36000.0],
+                outflow_m3s=[0.0, 10.0],
+                times_min=[0.0, 60.0, 120.0, 180.0, 240.0, 300.0],
+                discharge_m3s=[0.0, 20.0, 20.0, 20.0, 20.0, 0.0],
+                output=target,
+            )
+
+        assert caught.value.details["reason"] == "table_exceeded"
+        assert not target.parent.exists()
+
+    def test_an_example_option_set_gives_a_valid_envelope(self, tmp_path):
+        envelope = run_command(
+            "route level-pool",
+            {
+                "rating_file": str(POND_RATING),
+                "input_file": str(FLOOD_INFLOW),
+                "output": str(tmp_path / "outflow.csv"),
+            },
+        ).to_dict()
+
+        assert envelope["result"]["schema"] == "hydrolog-route-level-pool/1"
+        assert [record["status"] for record in envelope["result"]["files"]] == [
+            "written"
+        ]
+        assert envelope["result"]["parameters"]["subreaches"] == 1
+        assert envelope["result"]["outflow_m3s"] is None
+        assert envelope["inputs"]["subreaches"] == 1
         assert [notice["code"] for notice in envelope["notices"]] == ["tail_extended"]

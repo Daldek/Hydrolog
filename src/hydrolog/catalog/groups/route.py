@@ -846,4 +846,201 @@ COMMANDS: tuple[Command, ...] = (
             },
         ),
     ),
+    Command(
+        name="route level-pool",
+        operation_id="hydrolog_route_level_pool",
+        summary_pl=(
+            "Przeprowadź hydrogram przez zbiornik z tabelą pojemność-odpływ (level "
+            "pool)."
+        ),
+        summary=(
+            "Route a hydrograph through a reservoir with a storage-outflow table "
+            "(level pool)."
+        ),
+        description_pl=(
+            "Metoda zbiornika (zmodyfikowana metoda Pulsa, NEH-630 rozdz. 17) dla "
+            "zbiornika lub odcinka z tabelą pojemność-odpływ: w treści (`storage_m3`, "
+            "`outflow_m3s`, `stage_m`) albo `rating_file`; `subreaches` to "
+            "pododcinki. "
+            "Krok dłuższy niż 2 min dS/dO jest dzielony. Zwraca szczyty, objętości, "
+            "bilans i szereg."
+        ),
+        description=(
+            "Level-pool routing (modified Puls, NEH-630 ch. 17) through a reservoir or "
+            "reach given by a storage-outflow table, inline (`storage_m3`, "
+            "`outflow_m3s`, `stage_m`) or `rating_file`; `subreaches` sets "
+            "sub-reaches. "
+            "A step above twice the shortest dS/dO is divided. Returns peaks, volumes, "
+            "balance and the series."
+        ),
+        function="hydrolog.operations.route_level_pool",
+        options=(
+            Option(
+                name="storage_m3",
+                type="number_list",
+                description_pl=(
+                    "Pojemność (woda w zbiorniku) w kolejnych wierszach tabeli [m3], "
+                    "niemalejąca, nieujemna; od stanu pustego. Razem z `outflow_m3s`, "
+                    "zamiast `rating_file`."
+                ),
+                description=(
+                    "Storage of each row of the table [m3], not decreasing, not "
+                    "negative; from the empty state. With `outflow_m3s`, instead of "
+                    "`rating_file`."
+                ),
+                minimum=0,
+                unit="m3",
+            ),
+            Option(
+                name="outflow_m3s",
+                type="number_list",
+                description_pl=(
+                    "Odpływ w kolejnych wierszach tabeli [m3/s], niemalejący, "
+                    "nieujemny; 0 poniżej korony. Tyle wartości co `storage_m3`."
+                ),
+                description=(
+                    "Outflow of each row of the table [m3/s], not decreasing, not "
+                    "negative; 0 below a crest. As many values as `storage_m3`."
+                ),
+                minimum=0,
+                unit="m3/s",
+            ),
+            Option(
+                name="stage_m",
+                type="number_list",
+                description_pl=(
+                    "Rzędna wody w kolejnych wierszach tabeli [m], niemalejąca "
+                    "(rzędna albo głębokość); tylko z tabelą w treści, podawana w "
+                    "szczycie. Tyle wartości co `storage_m3`."
+                ),
+                description=(
+                    "Water level of each row of the table [m], not decreasing (an "
+                    "elevation or a depth); only with the inline table, reported at "
+                    "the peak. As many values as `storage_m3`."
+                ),
+                unit="m",
+            ),
+            Option(
+                name="rating_file",
+                type="path",
+                path_role="input",
+                description_pl=(
+                    "Plik CSV albo JSON z tabelą pojemność-odpływ: kolumny "
+                    "`storage_m3`, `outflow_m3s` i opcjonalnie `stage_m`, wiersze od "
+                    "stanu pustego do pełnego. Zamiast tabeli w treści."
+                ),
+                description=(
+                    "CSV or JSON file with the storage-outflow table: columns "
+                    "`storage_m3`, `outflow_m3s` and optionally `stage_m`, rows from "
+                    "the empty to the full state. Instead of the inline table."
+                ),
+            ),
+            Option(
+                name="subreaches",
+                type="integer",
+                description_pl=(
+                    "Liczba pododcinków w szeregu, co najmniej 1; każdy trzyma S/N "
+                    "pojemności przy tym samym odpływie, więcej pododcinków tłumi "
+                    "mniej. 1 to zbiornik."
+                ),
+                description=(
+                    "Number of sub-reaches in series, at least 1; each holds S/N of "
+                    "the storage for the same outflow, so more of them attenuate "
+                    "less. 1 is a reservoir."
+                ),
+                default=1,
+                minimum=1,
+            ),
+            *INFLOW_OPTIONS,
+            *RUN_OPTIONS,
+            *OUTPUT_OPTIONS,
+        ),
+        one_of=INFLOW_ONE_OF,
+        examples=(
+            {
+                "rating_file": f"{_FIXTURES}/pond_rating.csv",
+                "input_file": f"{_FIXTURES}/flood_inflow.csv",
+                "output": "outflow.csv",
+            },
+            {
+                "storage_m3": [0, 30000, 90000, 180000],
+                "outflow_m3s": [0, 10, 40, 100],
+                "stage_m": [0, 0.8, 1.9, 3.4],
+                "times_min": [0, 10, 20, 30, 40, 50, 60, 70],
+                "discharge_m3s": [0, 10, 40, 90, 60, 30, 10, 0],
+            },
+        ),
+        result_schema="hydrolog-route-level-pool/1",
+        cardinality="bounded",
+        rules=(
+            "Give the table inline or as `rating_file`, rows rising from empty to "
+            "full.",
+            "A flood beyond the table is `table_exceeded`, never an extrapolation.",
+            "Read `notices`: `timestep_refined` is a divided time step.",
+        ),
+        rules_pl=(
+            "Podaj tabelę w treści albo jako `rating_file`, wiersze rosnące od stanu "
+            "pustego do pełnego.",
+            "Wezbranie poza tabelą to `table_exceeded`, nigdy ekstrapolacja.",
+            "Czytaj `notices`: `timestep_refined` to podzielony krok czasu.",
+        ),
+        errors=(
+            "validation_error",
+            "not_found",
+            "data_error",
+            "calculation_error",
+            "forbidden",
+            "io_error",
+            "conflict",
+        ),
+        example_results=(
+            {
+                "model": "level-pool",
+                "parameters": {
+                    "subreaches": 1,
+                    "substeps": 1,
+                    "timestep_limit_min": 175.862069,
+                    "storage_peak_m3": 211556.627674,
+                    "storage_peak_time_min": 120.0,
+                    "stage_peak_m": 102.64507,
+                    "stage_peak_time_min": 120.0,
+                },
+                "timestep_min": 10.0,
+                "extension_min": 770.0,
+                "inflow_peak_m3s": 40.0,
+                "outflow_peak_m3s": 18.935635,
+                "outflow_time_to_peak_min": 120.0,
+                "peak_attenuation_pct": 52.660912,
+                "peak_delay_min": 60.0,
+            },
+            {
+                "model": "level-pool",
+                "parameters": {
+                    "subreaches": 1,
+                    "substeps": 1,
+                    "timestep_limit_min": 50.0,
+                    "storage_peak_m3": 82961.628358,
+                    "storage_peak_time_min": 50.0,
+                    "stage_peak_m": 1.770963,
+                    "stage_peak_time_min": 50.0,
+                },
+                "extension_min": 300.0,
+                "inflow_peak_m3s": 90.0,
+                "outflow_peak_m3s": 36.480814,
+                "outflow_time_to_peak_min": 50.0,
+                "peak_attenuation_pct": 59.465762,
+                "peak_delay_min": 20.0,
+                "outflow_m3s": [
+                    0.0,
+                    0.909091,
+                    5.289256,
+                    18.817822,
+                    33.474043,
+                    36.480814,
+                    32.181471,
+                    25.090653,
+                ],
+            },
+        ),
+    ),
 )

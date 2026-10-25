@@ -347,6 +347,45 @@ hydrolog route cascade --n 2.5 --length-km 18 --celerity-m-per-s 1.5 \
 {"result": {"schema": "hydrolog-route-cascade/1", "model": "cascade", "parameters": {"n": 2.5, "k_min": 80.0, "lag_min": 200.0, "timestep_over_k": 0.75, "length_km": 18.0, "celerity_m_per_s": 1.5}, "extension_min": 660.0, "outflow_peak_m3s": 26.544046088994683, "outflow_time_to_peak_min": 300.0, "peak_delay_min": 180.0, "outflow_m3s": [5.0, 5.419435772176586, 8.94959612609301, 18.041114804691578, 25.403667771343876, 26.544046088994683, "..."]}}
 ```
 
+`route level-pool` sends the hydrograph through a reservoir, a pond or a reach that is given by a
+storage-outflow table, by storage indication (the modified Puls method of NEH-630 chapter 17):
+each row of the table is a state of the pool, the storage `S` [m3] it holds while it releases the
+outflow `O` [m3/s], both not decreasing from the empty state. Give the table inline
+(`--storage-m3` with `--outflow-m3s`, and `--stage-m` for the water level of each row) or as a CSV
+or JSON `--rating-file` with the columns `storage_m3`, `outflow_m3s` and, if the table has one,
+`stage_m` (the file brings its own stage, so `--stage-m` next to it is an error); neither source or
+both is an error (`details.reason` `one_of`), and so is a table that decreases or repeats a row (a
+file names the row and the column). The table has to cover the flood: one that fills the reservoir
+beyond the last row (`table_exceeded`) or empties it below the first (`table_emptied`) is a
+`calculation_error`, never an extrapolation. The pool starts at rest with the first inflow
+ordinate, or with `--initial-outflow-m3s`, which must lie inside the table. The time step must not
+exceed twice the shortest `K = dS/dO` of the table between the lowest and the highest flow of the
+run, divided by `--subreaches`; a longer step is divided (notice `timestep_refined`) and one that
+would need more than 100 parts is refused (`unstable_timestep`). `--subreaches N` routes through
+`N` pools in series, each holding `S / N`, for a channel reach whose travel time is about `N`
+steps; the default 1 is a pond. The result gives the peak storage and its time and, with a stage,
+the peak stage.
+
+The example is NEH-630 example 17-1 in SI: the channel reach of Table 17-4
+(`tests/fixtures/neh17_1_rating.csv`) with the 19 ordinates at 30 min of the inflow of Table 17-7
+(`tests/fixtures/neh17_1_inflow.csv`).
+
+```bash
+hydrolog route level-pool --rating-file tests/fixtures/neh17_1_rating.csv \
+  --input-file tests/fixtures/neh17_1_inflow.csv --extend-min 0 --json
+```
+
+```json output
+{"result": {"schema": "hydrolog-route-level-pool/1", "model": "level-pool", "parameters": {"subreaches": 1, "substeps": 1, "timestep_limit_min": 78.11998862867867, "storage_peak_m3": 364057.24683300115, "storage_peak_time_min": 180.0}, "outflow_peak_m3s": 108.34456539046381, "outflow_time_to_peak_min": 180.0, "peak_delay_min": 60.0, "outflow_m3s": [0.0, 8.224364051456476, 28.76328459115899, 53.43626436816038, 81.58471391462896, 102.50593786102928, "..."]}}
+```
+
+The outflow peaks at 3,826 ft3/s (108.34 m3/s) at 3 h, the published 3,827 ft3/s, and the largest
+difference from Table 17-7 is 0.85 ft3/s, 0.02 % of the peak; the table prints each average inflow
+rounded up from .5, and with the ordinates that give the printed averages all 19 values agree to
+0.49 ft3/s (see COMPUTATION_PATHS 3.9.6). The limit of the step is 78.12 min, so the published
+step of 30 min is not divided. The notice `tail_truncated` is correct here: the published table
+ends in the recession and `--extend-min 0` keeps its axis.
+
 In Python the classes of `hydrolog.routing` do the same on arrays; `route` returns the outflow
 with the notices, the storage at both ends and the balance.
 

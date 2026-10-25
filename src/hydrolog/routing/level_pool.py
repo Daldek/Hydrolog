@@ -68,7 +68,7 @@ from hydrolog.routing.hydrograph import Hydrograph, TableProblem
 from hydrolog.routing.muskingum import MAX_SUBSTEPS
 from hydrolog.routing.reach import MAX_ORDINATES, Reach, ReachRun, RoutingNotice
 
-__all__ = ["LevelPoolReach", "check_rating", "timestep_limit_min"]
+__all__ = ["LevelPoolReach", "check_rating", "rating_arrays", "timestep_limit_min"]
 
 _SECONDS_PER_MINUTE = 60.0
 _TOLERANCE = 1e-9
@@ -166,6 +166,46 @@ def check_rating(
             {"index": index},
         )
     return None
+
+
+def rating_arrays(
+    storage_m3: ArrayLike, outflow_m3s: ArrayLike, stage_m: ArrayLike | None = None
+) -> tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64] | None]:
+    """Return a storage-outflow table as arrays, after checking it.
+
+    Parameters
+    ----------
+    storage_m3, outflow_m3s : array_like
+        Storage [m3] and outflow [m3/s] of each row.
+    stage_m : array_like, optional
+        Water level [m] of each row.
+
+    Returns
+    -------
+    tuple
+        The three columns as new ``float64`` arrays (the stage ``None`` when not given).
+
+    Raises
+    ------
+    InvalidParameterError
+        With ``details.option`` the column (``storage_m3``, ``outflow_m3s`` or
+        ``stage_m``) and ``details.reason`` ``type`` when it holds no numbers, or the
+        rule of :func:`check_rating` that the table breaks.
+    """
+    storage = as_array(storage_m3, "storage_m3")
+    outflow = as_array(outflow_m3s, "outflow_m3s")
+    stage = None if stage_m is None else as_array(stage_m, "stage_m")
+    problem = check_rating(storage, outflow, stage)
+    if problem is not None:
+        raise InvalidParameterError(
+            f"Option {problem.option!r}: {problem.message}",
+            details={
+                "option": problem.option,
+                "reason": problem.reason,
+                **problem.details,
+            },
+        )
+    return storage, outflow, stage
 
 
 def timestep_limit_min(
@@ -391,19 +431,7 @@ class LevelPoolReach(Reach):
         subreaches: int = 1,
     ) -> None:
         """Create the element."""
-        storage = as_array(storage_m3, "storage_m3")
-        outflow = as_array(outflow_m3s, "outflow_m3s")
-        stage = None if stage_m is None else as_array(stage_m, "stage_m")
-        problem = check_rating(storage, outflow, stage)
-        if problem is not None:
-            raise InvalidParameterError(
-                f"Option {problem.option!r}: {problem.message}",
-                details={
-                    "option": problem.option,
-                    "reason": problem.reason,
-                    **problem.details,
-                },
-            )
+        storage, outflow, stage = rating_arrays(storage_m3, outflow_m3s, stage_m)
         self.subreaches = whole_number(subreaches, "subreaches")
         self.storage_m3 = storage
         self.outflow_m3s = outflow

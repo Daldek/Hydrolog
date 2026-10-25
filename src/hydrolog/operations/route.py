@@ -16,7 +16,7 @@ The functions are re-exported by :mod:`hydrolog.operations`.
 from __future__ import annotations
 
 import os
-from collections.abc import Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -26,7 +26,7 @@ from numpy.typing import NDArray
 from hydrolog._atomic import atomic_output
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.catalog.envelope import Notice, OperationOutput
-from hydrolog.catalog.inputs import load_hydrograph
+from hydrolog.catalog.inputs import load_hydrograph, load_rating
 from hydrolog.exceptions import OutputError
 from hydrolog.operations._outputs import (
     conflict_error,
@@ -37,6 +37,7 @@ from hydrolog.operations._outputs import (
 from hydrolog.routing import (
     CascadeReach,
     LagReach,
+    LevelPoolReach,
     MuskingumCungeReach,
     MuskingumReach,
     Reach,
@@ -47,6 +48,7 @@ __all__ = [
     "RouteResult",
     "route_cascade",
     "route_lag",
+    "route_level_pool",
     "route_muskingum",
     "route_muskingum_cunge",
 ]
@@ -161,7 +163,7 @@ def _write_table(text: str, output: Path) -> None:
 
 
 def _route(
-    reach: Reach,
+    reach: Reach | Callable[[], Reach],
     *,
     times_min: Sequence[float] | None,
     discharge_m3s: Sequence[float] | None,
@@ -173,8 +175,14 @@ def _route(
     output: str | os.PathLike[str] | None,
     force: bool,
     check: bool,
+    other_inputs: Mapping[str, str | os.PathLike[str] | None] | None = None,
 ) -> OperationOutput:
     """Run one element over the loaded hydrograph and deliver the result.
+
+    ``reach`` is the element, or a function that builds it when it reads a file (the
+    storage-outflow table of a reservoir): the file is read, like the hydrograph, after
+    the output has been planned. ``other_inputs`` are further input files that
+    ``output`` must not be.
 
     The order is the one of the writing commands: refuse an output that is an input,
     plan the output, answer a ``check`` with the plan, fail on a conflict, and only
@@ -184,7 +192,7 @@ def _route(
     if target is not None:
         refuse_input_as_output(
             target,
-            {"input_file": input_file},
+            {"input_file": input_file, **(other_inputs or {})},
             hint="Give another file name for the outflow hydrograph.",
         )
     plan = plan_outputs({"output": target}, force=force)
@@ -192,6 +200,7 @@ def _route(
         return plan_output(plan)
     if (error := conflict_error(plan)) is not None:
         raise error
+    element = reach() if callable(reach) else reach
     inflow = load_hydrograph(
         times_min=times_min,
         discharge_m3s=discharge_m3s,
@@ -199,7 +208,7 @@ def _route(
         time_column=time_column,
         value_column=value_column,
     )
-    run = reach.route(
+    run = element.route(
         inflow, initial_outflow_m3s=initial_outflow_m3s, extend_min=extend_min
     )
     notices = tuple(Notice(item.level, item.code, item.message) for item in run.notices)
@@ -636,4 +645,144 @@ def route_cascade(
         output=output,
         force=force,
         check=check,
+    )
+
+
+def route_level_pool(
+    *,
+    storage_m3: Sequence[float] | None = None,
+    outflow_m3s: Sequence[float] | None = None,
+    stage_m: Sequence[float] | None = None,
+    rating_file: str | os.PathLike[str] | None = None,
+    subreaches: int = 1,
+    times_min: Sequence[float] | None = None,
+    discharge_m3s: Sequence[float] | None = None,
+    input_file: str | os.PathLike[str] | None = None,
+    time_column: str | None = None,
+    value_column: str | None = None,
+    initial_outflow_m3s: float | None = None,
+    extend_min: float | None = None,
+    output: str | os.PathLike[str] | None = None,
+    force: bool = False,
+    check: bool = False,
+) -> OperationOutput:
+    """Level-pool routing of a hydrograph (``route level-pool``).
+
+    A reservoir, a pond or a reach with a tabulated storage curve is given by its
+    storage-outflow table, and the outflow follows from storage indication, the
+    modified Puls method of NEH-630 chapter 17: the working curve ``S / dt + O / 2`` is
+    read by linear interpolation (:class:`hydrolog.routing.LevelPoolReach`). Between
+    the lowest and the highest flow of the run the time step must not exceed twice the
+    shortest storage constant ``dS / dO`` of the table over the number of sub-reaches;
+    a longer step is divided into the fewest equal sub-steps that meet the rule
+    (notice ``timestep_refined``) and more than 100 parts are refused. A flood that
+    fills the reservoir beyond its table is an error, never an extrapolation. The time
+    axis is extended after the last inflow ordinate until the outflow has settled
+    (notice ``tail_extended``).
+
+    Parameters
+    ----------
+    storage_m3 : sequence of float, optional
+        Storage of each row of the table [m3], not decreasing, not negative; with
+        ``outflow_m3s``, instead of ``rating_file``.
+    outflow_m3s : sequence of float, optional
+        Outflow of each row [m3/s], not decreasing, not negative; ``0`` below a crest.
+    stage_m : sequence of float, optional
+        Water level of each row [m], not decreasing; with the inline table only (a
+        ``rating_file`` brings its own column), it is reported at the peak.
+    rating_file : str or os.PathLike, optional
+        CSV or JSON file with the columns ``storage_m3``, ``outflow_m3s`` and
+        optionally ``stage_m``, one row per state of the reservoir, instead of the
+        inline table.
+    subreaches : int, optional
+        Number of sub-reaches in series, each holding ``S / N`` of the storage for the
+        same outflow; at least 1, by default 1 (a pond or a reservoir).
+    times_min, discharge_m3s : sequence of float, optional
+        The inflow hydrograph inline: times [min] at a regular step and discharges
+        [m3/s], not negative.
+    input_file : str or os.PathLike, optional
+        CSV or JSON file with the hydrograph, instead of the inline lists.
+    time_column, value_column : str, optional
+        Columns of ``input_file``; default ``time_min`` and ``discharge_m3s``.
+    initial_outflow_m3s : float, optional
+        Outflow at the first ordinate [m3/s], >= 0, inside the table; the reservoir
+        starts at rest with it. Default the first inflow ordinate.
+    extend_min : float, optional
+        Time added after the last inflow ordinate [min], >= 0; ``0`` adds nothing.
+        Default: until the outflow has settled.
+    output : str or os.PathLike, optional
+        CSV file to write with the outflow hydrograph (``time_min``,
+        ``discharge_m3s``); an existing file is replaced only with ``force``. It must
+        not be ``input_file`` or ``rating_file``. Without it the series is in the
+        result.
+    force : bool, optional
+        Replace an existing ``output`` file, by default ``False``.
+    check : bool, optional
+        With ``output``: plan without effects and return the ``hydrolog-plan/1``
+        document of the target. Without ``output`` there is nothing to plan and the
+        result is computed as usual.
+
+    Returns
+    -------
+    OperationOutput
+        ``result`` is a :class:`RouteResult`, whose ``parameters`` hold the numbers of
+        sub-reaches and sub-steps, the longest step that meets the rule, the peak
+        storage and its time and, with a stage, the peak stage and its time; the
+        written file is listed in ``files``. With ``check`` and ``output`` the result
+        is the plan.
+
+    Raises
+    ------
+    InvalidParameterError
+        If a parameter or the inline hydrograph is not valid, both or neither source
+        of the hydrograph is given, not exactly one of the inline table and
+        ``rating_file`` is given (``details.reason`` ``one_of``), ``stage_m`` is given
+        with ``rating_file`` (``details.reason`` ``conflict``), the inline table breaks
+        a rule (``details.option`` the column), ``output`` is ``input_file`` or
+        ``rating_file``, the initial outflow is outside the table, or the time step is
+        so long for the table that more than 100 parts would be needed
+        (``details.reason`` ``unstable_timestep``).
+    NotFoundError
+        If ``input_file`` or ``rating_file`` does not exist.
+    InputDataError
+        If ``input_file`` or ``rating_file`` cannot be read or its table breaks a rule
+        (``details.reason``, ``details.column``, ``details.row``).
+    CalculationError
+        If the flood fills the reservoir beyond the last row of the table or empties
+        it below the first (``details.reason`` ``table_exceeded`` or
+        ``table_emptied``).
+    ConflictError
+        If ``output`` exists and ``force`` is not given (``details.reason``
+        ``output_exists``).
+    OutputError
+        If the output cannot be written.
+    """
+
+    def build() -> Reach:
+        rating = load_rating(
+            storage_m3=storage_m3,
+            outflow_m3s=outflow_m3s,
+            stage_m=stage_m,
+            rating_file=rating_file,
+        )
+        return LevelPoolReach(
+            storage_m3=rating.storage_m3,
+            outflow_m3s=rating.outflow_m3s,
+            stage_m=rating.stage_m,
+            subreaches=subreaches,
+        )
+
+    return _route(
+        build,
+        times_min=times_min,
+        discharge_m3s=discharge_m3s,
+        input_file=input_file,
+        time_column=time_column,
+        value_column=value_column,
+        initial_outflow_m3s=initial_outflow_m3s,
+        extend_min=extend_min,
+        output=output,
+        force=force,
+        check=check,
+        other_inputs={"rating_file": rating_file},
     )

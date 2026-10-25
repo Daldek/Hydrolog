@@ -73,6 +73,7 @@ from hydrolog.operations.route import (
     RouteResult,
     route_cascade,
     route_lag,
+    route_level_pool,
     route_muskingum,
     route_muskingum_cunge,
 )
@@ -154,6 +155,7 @@ __all__ = [
     "route_muskingum",
     "route_muskingum_cunge",
     "route_cascade",
+    "route_level_pool",
     # morphometry
     "WatershedMorphometry",
     "morphometry_watershed",
