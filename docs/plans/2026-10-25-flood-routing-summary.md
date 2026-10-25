@@ -14,7 +14,7 @@ Written: 2026-10-25. Plan: [2026-10-24-flood-routing.md](2026-10-24-flood-routin
 | 4 | `feature/routing-muskingum-cunge` | 093fd44 | 2 commits | 4,280 / 6, 94.41 % |
 | 5 | `feature/routing-cascade` | 73fbd13 | 2 commits | 4,435 / 6, 94.45 % |
 | 6 | `feature/routing-level-pool` | f45de5f | 2 commits | 4,758 / 17, 94.55 % |
-| 7 | `feature/routing-network` | 123702c, then the closing docs commit on top | 3 commits and the closing docs commit (this summary) | 5,061 / 17, 94.80 % at 123702c; the docs commit passed the gate too |
+| 7 | `feature/routing-network` | b23c8e0, then the commit of this summary on top | 3 commits, the closing docs commit and two follow-up commits (the rules of schema, ids and large results, and this summary) | 5,095 / 17, 94.81 % at b23c8e0; the summary commit passed the gate too |
 
 ```bash
 git switch develop
@@ -44,11 +44,11 @@ The results table with the figures is in the plan, section Results.
 
 ## Decisions to review
 
-- **ADR-0007 to ADR-0010**: scope, conventions (hydrograph table, initial condition, tail, stability, files), one index line for a group of six commands (a documented deviation from DOC-4.2 in `CLAUDE.md`), and the network (document, files beside it, order, `--output-dir`). ADR-0010 amends ADR-0003, which said Hydrolog has no `--output-dir`.
+- **ADR-0007 to ADR-0010**: scope, conventions (hydrograph table, initial condition, tail, stability, files), one index line for a group of six commands (a documented deviation from DOC-4.2 in `CLAUDE.md`), and the network (document, files beside it, order, `--output-dir`). ADR-0010 amends ADR-0003, which said Hydrolog has no `--output-dir`. Its amendment of 2026-10-25 records three decisions of the coordinating session: `schema` required, device-name ids refused, the `large_result` warning.
 - **`-o`** is the short flag of `--output-dir` and of no other option (AGI-3.4); the parser adds it.
 - **DEV-19.7 deviation in `CLAUDE.md`**: `--output` replaces one file through a temporary file beside it; `--output-dir` writes through `.hydrolog-incoming/<host>_<pid>_<token>/`.
-- **`hydrolog-network/1`**: `schema` may be left out of a document (when given it must match); `from` is always a list; an id names the file `<id>.csv` (letters, digits, `_`, `.`, `-`, at most 64, unique without regard to case); `value_column` names the column of `inflows_file` (default the node id); a `rating_file` must lie in the directory of `network_file` because a server checks the options of a call and not the files a document names; one outlet, no bifurcation.
-- **Series in the result**: without `--output-dir`, `route network` puts the hydrograph of every selected node (default all) into the result, so that a read-only MCP server can route. For a large network that is a large result; `nodes` limits it.
+- **`hydrolog-network/1`**: `schema` is required (AGI-4.1; without it `missing_field`, with another value `unknown_schema`); `from` is always a list; an id names the file `<id>.csv` (letters, digits, `_`, `.`, `-`, at most 64, unique without regard to case, and not a Windows device name: `con`, `prn`, `aux`, `nul`, `com1` to `com9`, `lpt1` to `lpt9`, any case, any extension, is `reserved_name`); `value_column` names the column of `inflows_file` (default the node id); a `rating_file` must lie in the directory of `network_file` because a server checks the options of a call and not the files a document names; one outlet, no bifurcation.
+- **Series in the result**: without `--output-dir`, `route network` puts the hydrograph of every selected node (default all) into the result, so that a read-only MCP server can route. For a large network that is a large result; `nodes` limits it, and a result of more than 20,000 characters (the page of DOC-1.7) carries the warning `large_result` that suggests `nodes` and `--output-dir`. The envelope does not page a command result, so the result is not cut.
 - **Defaults that decide numbers**: the outflow starts at the first inflow ordinate; the tail is extended until the outflow is within 0.1 % of the inflow peak, at most ten times the inflow duration; over a chain of reaches each cuts its tail at that tolerance, so a chain differs from one reach with sub-reaches by about 0.1 % of the peak unless `extend_min` is fixed.
 - **Guide budget**: `AGENTS.md` is 16,264 of 16,384 bytes. The next command needs another cut (DOC-1.7, D10).
 
@@ -58,12 +58,11 @@ The results table with the figures is in the plan, section Results.
 - **Not in the plan** ([2026-10-24-flood-routing.md](2026-10-24-flood-routing.md), section Not in this plan): variable-parameter Muskingum-Cunge and compound sections (R2b), `route reach-params`, `route outlet-rating`, kinematic and dynamic waves, continuous modelling.
 - **Requests to other projects** (DEV-17.5): none opened. [INTEGRATION.md](../INTEGRATION.md) describes the mapping that Hydrograf can use (subcatchment to node, `StreamSegment` to reach, confluence to junction) and the hand-off to Hydraulik (`<id>.csv` per node); a network exporter in Hydrograf and a reader in Hydraulik would be `request` issues in their repositories.
 - **Not built**: sources computed from a watershed or from rain (a subcatchment brings a hydrograph), bifurcations (refused), channel parameters estimated from geometry inside the document.
-- **Known gap**: a node id such as `con`, `nul` or `aux` passes the id rule but is a device name on Windows, so its file `<id>.csv` would misbehave there; no check exists.
 
 ## To check it
 
 ```bash
-git log --oneline chore/nogat-2.1..feature/routing-network      # 17 commits of work and the closing docs commit
+git log --oneline chore/nogat-2.1..feature/routing-network      # 17 commits of work, the closing docs commit and two follow-up commits
 scripts/gate.sh                                                   # in a checkout of any tip, about 3.5 minutes
 hydrolog route network --network-file tests/fixtures/network_flood.json \
   --inflows-file tests/fixtures/network_inflows.csv -o network_out --lang en
