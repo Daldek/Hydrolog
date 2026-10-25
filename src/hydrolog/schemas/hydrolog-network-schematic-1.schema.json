@@ -1,0 +1,305 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Daldek/Hydrolog/blob/main/src/hydrolog/schemas/hydrolog-network-schematic-1.schema.json",
+  "title": "hydrolog-network-schematic/1",
+  "description": "Schematic of a routing network in the style of a metro map (ADR-0013): the nodes on an integer grid (`x` grows downstream, to the right, `y` grows downwards), the lines of the map, the polylines of the edges (every segment at 0, 45 or 90 degrees), the place of every label and, per node, the parameters of its calculation and, with a result, its peak, time to peak, volume and notices. Written by `RoutingNetwork.schematic()` and by `route network` with `schematic`; unknown fields are allowed (AGI-4.1).",
+  "type": "object",
+  "required": [
+    "schema",
+    "outlet",
+    "timestep_min",
+    "has_result",
+    "grid",
+    "lines",
+    "nodes",
+    "edges"
+  ],
+  "properties": {
+    "schema": {
+      "const": "hydrolog-network-schematic/1"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "outlet": {
+      "$ref": "#/$defs/id"
+    },
+    "timestep_min": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "has_result": {
+      "type": "boolean"
+    },
+    "grid": {
+      "type": "object",
+      "required": [
+        "width",
+        "height"
+      ],
+      "properties": {
+        "width": {
+          "$ref": "#/$defs/count"
+        },
+        "height": {
+          "$ref": "#/$defs/count"
+        }
+      },
+      "description": "The extent of the nodes in grid units."
+    },
+    "lines": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "index",
+          "role",
+          "nodes"
+        ],
+        "properties": {
+          "index": {
+            "$ref": "#/$defs/count"
+          },
+          "role": {
+            "enum": [
+              "main",
+              "tributary"
+            ]
+          },
+          "nodes": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/$defs/id"
+            }
+          },
+          "joins": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "if": {
+          "properties": {
+            "role": {
+              "const": "tributary"
+            }
+          }
+        },
+        "then": {
+          "required": [
+            "joins"
+          ]
+        }
+      }
+    },
+    "nodes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "x",
+          "y",
+          "line",
+          "label",
+          "parameters"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/id"
+          },
+          "type": {
+            "type": "string",
+            "minLength": 1
+          },
+          "x": {
+            "$ref": "#/$defs/count"
+          },
+          "y": {
+            "$ref": "#/$defs/count"
+          },
+          "line": {
+            "$ref": "#/$defs/count"
+          },
+          "label": {
+            "type": "object",
+            "required": [
+              "text",
+              "side"
+            ],
+            "properties": {
+              "text": {
+                "type": "string",
+                "minLength": 1
+              },
+              "side": {
+                "enum": [
+                  "n",
+                  "ne",
+                  "e",
+                  "se",
+                  "s",
+                  "sw",
+                  "w",
+                  "nw"
+                ]
+              }
+            }
+          },
+          "parameters": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "name",
+                "value",
+                "unit",
+                "source"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": [
+                    "number",
+                    "string",
+                    "boolean"
+                  ]
+                },
+                "unit": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "source": {
+                  "enum": [
+                    "given",
+                    "computed",
+                    "default"
+                  ]
+                }
+              }
+            }
+          },
+          "peak_m3s": {
+            "type": "number",
+            "minimum": 0
+          },
+          "time_to_peak_min": {
+            "type": "number"
+          },
+          "volume_m3": {
+            "type": "number",
+            "minimum": 0
+          },
+          "notices": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "level",
+                "code",
+                "message"
+              ],
+              "properties": {
+                "level": {
+                  "enum": [
+                    "info",
+                    "warning"
+                  ]
+                },
+                "code": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "dependentRequired": {
+          "peak_m3s": [
+            "time_to_peak_min",
+            "volume_m3",
+            "notices"
+          ],
+          "time_to_peak_min": [
+            "peak_m3s",
+            "volume_m3",
+            "notices"
+          ],
+          "volume_m3": [
+            "peak_m3s",
+            "time_to_peak_min",
+            "notices"
+          ],
+          "notices": [
+            "peak_m3s",
+            "time_to_peak_min",
+            "volume_m3"
+          ]
+        }
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "from",
+          "to",
+          "line",
+          "points"
+        ],
+        "properties": {
+          "from": {
+            "$ref": "#/$defs/id"
+          },
+          "to": {
+            "$ref": "#/$defs/id"
+          },
+          "line": {
+            "$ref": "#/$defs/count"
+          },
+          "points": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "$ref": "#/$defs/point"
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "point": {
+      "type": "array",
+      "prefixItems": [
+        {
+          "$ref": "#/$defs/count"
+        },
+        {
+          "$ref": "#/$defs/count"
+        }
+      ],
+      "items": false,
+      "minItems": 2,
+      "description": "A point of the grid: `[x, y]`."
+    }
+  }
+}

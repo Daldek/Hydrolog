@@ -15,8 +15,9 @@ read-only MCP server, which runs every writing tool with ``check``, can still ro
 (the document ``hydrolog-network/1``, read by :mod:`hydrolog.operations._network_input`)
 and returns a :class:`NetworkRouteResult`, the summary of every node. The hydrograph of
 each node is in the result or, with ``output_dir``, in its own table ``<id>.csv``; the
-tables are written through a staging directory (DEV-19.7, ADR-0010).
-The functions are re-exported by :mod:`hydrolog.operations`.
+tables are written through a staging directory (DEV-19.7, ADR-0010). With ``schematic``
+it also draws the network as an SVG map (ADR-0013) and returns the document that the
+drawing is made of. The functions are re-exported by :mod:`hydrolog.operations`.
 """
 
 from __future__ import annotations
@@ -39,6 +40,7 @@ from hydrolog.exceptions import InvalidParameterError, OutputError
 from hydrolog.operations._network_input import load_network
 from hydrolog.operations._outputs import (
     conflict_error,
+    join_plans,
     plan_directory,
     plan_output,
     plan_outputs,
@@ -54,6 +56,7 @@ from hydrolog.routing import (
     RoutingNetwork,
     RoutingResult,
 )
+from hydrolog.routing.schematic import schematic_svg
 
 __all__ = [
     "NetworkRouteResult",
@@ -190,6 +193,10 @@ class NetworkRouteResult(JsonResultMixin):
         as given or computed, ``total_effective_mm``...). Without ``output_dir`` the
         entry of a selected node adds its hydrograph as ``times_min`` [min] and
         ``discharge_m3s`` [m3/s].
+    schematic : dict or None
+        The schematic of the network, the document ``hydrolog-network-schematic/1``
+        (:meth:`~hydrolog.routing.RoutingNetwork.schematic`) with the values of this
+        run, when ``schematic`` named a file; ``None`` otherwise.
     """
 
     name: str | None
@@ -197,6 +204,7 @@ class NetworkRouteResult(JsonResultMixin):
     outlet: str
     order: list[str]
     nodes: list[dict[str, Any]]
+    schematic: dict[str, Any] | None = None
 
 
 PAGE_CHARS = 20_000
@@ -927,20 +935,27 @@ def _selection(network: RoutingNetwork, nodes: Sequence[str] | None) -> list[str
     return list(nodes)
 
 
-def _refuse_inputs(
-    directory: Path,
-    names: Sequence[str],
+def _input_files(
     network_file: str | os.PathLike[str] | None,
     inflows_file: str | os.PathLike[str] | None,
     rating_files: Mapping[str, Path],
-) -> None:
-    """Refuse a table that would overwrite a file the network is read from."""
+) -> dict[str, str | os.PathLike[str] | None]:
+    """Return the files that the network is read from, by what to call them."""
     inputs: dict[str, str | os.PathLike[str] | None] = {
         "network_file": network_file,
         "inflows_file": inflows_file,
     }
     for node_id, path in rating_files.items():
         inputs[f"rating_file of node {node_id!r}"] = path
+    return inputs
+
+
+def _refuse_inputs(
+    directory: Path,
+    names: Sequence[str],
+    inputs: Mapping[str, str | os.PathLike[str] | None],
+) -> None:
+    """Refuse a table that would overwrite a file the network is read from."""
     for name in names:
         refuse_input_as_output(
             directory / name,
@@ -951,6 +966,39 @@ def _refuse_inputs(
         )
 
 
+def _check_main_stem(network: RoutingNetwork, main_stem: Sequence[str] | None) -> None:
+    """Refuse a main stem that is not a path of the network, before anything is done."""
+    try:
+        network.schematic(main_stem=main_stem)
+    except InvalidParameterError as exc:
+        raise InvalidParameterError(
+            str(exc),
+            details={**exc.details, "option": "main_stem"},
+            hint=exc.hint,
+        ) from exc
+
+
+def _write_schematic(text: str, target: Path, written: Sequence[Path]) -> None:
+    """Write the SVG atomically (written aside, then renamed over the target).
+
+    ``written`` are the tables that went into place before it; an error names them.
+    """
+    try:
+        with atomic_output(target) as temporary:
+            temporary.write_text(text, encoding="utf-8", newline="\n")
+    except OSError as exc:
+        details: dict[str, Any] = {"path": str(target), "reason": "output_unwritable"}
+        if written:
+            details["written"] = [str(path) for path in written]
+        raise OutputError(
+            f"Cannot write the schematic {target}: {exc}",
+            details=details,
+            hint="The tables listed in details.written were already moved into place."
+            if written
+            else None,
+        ) from exc
+
+
 def route_network(
     *,
     network: Mapping[str, Any] | None = None,
@@ -959,6 +1007,8 @@ def route_network(
     time_column: str | None = None,
     nodes: Sequence[str] | None = None,
     output_dir: str | os.PathLike[str] | None = None,
+    schematic: str | os.PathLike[str] | None = None,
+    main_stem: Sequence[str] | None = None,
     force: bool = False,
     check: bool = False,
 ) -> OperationOutput:
@@ -1002,23 +1052,35 @@ def route_network(
         Directory for the tables ``<id>.csv`` (created if missing). An existing table
         is replaced only with ``force``; no table may be an input file and the
         directory must not be, or lie in, the store of another Nogat tool.
+    schematic : str or os.PathLike, optional
+        SVG file for the schematic of the network, a drawing in the style of a metro
+        map (:meth:`~hydrolog.routing.RoutingNetwork.schematic`, ADR-0013), written
+        through a temporary file beside it; the result then holds the document
+        ``hydrolog-network-schematic/1`` as ``schematic``. It shows every node, whatever
+        ``nodes`` says. An existing file is replaced only with ``force``; it must not be
+        an input file.
+    main_stem : sequence of str, optional
+        Ids of nodes that the main stem of the schematic must pass (the head of the main
+        river, or points along it); they must lie on one path to the outlet. Only with
+        ``schematic``.
     force : bool, optional
-        Replace existing tables in ``output_dir``, by default ``False``.
+        Replace existing tables in ``output_dir`` and an existing ``schematic`` file, by
+        default ``False``.
     check : bool, optional
-        With ``output_dir``: plan without effects and return the ``hydrolog-plan/1``
-        document of the tables. Without it there is nothing to plan and the result is
-        computed as usual.
+        With ``output_dir`` or ``schematic``: plan without effects and return the
+        ``hydrolog-plan/1`` document of the files. Without either there is nothing to
+        plan and the result is computed as usual.
 
     Returns
     -------
     OperationOutput
-        ``result`` is a :class:`NetworkRouteResult`; the written tables are listed in
-        ``files`` and every notice of a node (a reach, the library warnings of a runoff
-        model) starts with the id of its node. With
-        ``check`` and ``output_dir`` the result is the plan. Without ``output_dir`` a
+        ``result`` is a :class:`NetworkRouteResult`; the written tables and the
+        schematic are listed in ``files`` and every notice of a node (a reach, the
+        library warnings of a runoff model) starts with the id of its node. With
+        ``check`` and a file to write the result is the plan. Without ``output_dir`` a
         result of more than :data:`PAGE_CHARS` characters (all the hydrographs of a
         large network) carries the warning ``large_result``, which suggests ``nodes``
-        and ``output_dir``.
+        and ``output_dir``; the schematic is not counted, it is asked for.
 
     Raises
     ------
@@ -1030,8 +1092,11 @@ def route_network(
         time axes (``timestep_mismatch``, ``start_mismatch``), a reach cannot be
         routed (``unstable_timestep``, an initial outflow outside a table...;
         ``details.node_id``), ``nodes`` names a node the network does not have
-        (``unknown_node``), or a table would overwrite an input file
-        (``details.option`` ``output_dir``).
+        (``unknown_node``), a table or the schematic would overwrite an input file
+        (``details.option`` ``output_dir`` or ``schematic``), ``main_stem`` is given
+        without ``schematic`` (``conflict``) or names nodes that are not on one path
+        to the outlet (``unknown_node``, ``main_stem_not_a_path``; ``details.option``
+        ``main_stem``).
     NotFoundError
         If a file does not exist.
     InputDataError
@@ -1042,13 +1107,20 @@ def route_network(
         (``details.reason`` ``table_exceeded`` or ``table_emptied``, with
         ``details.node_id``).
     ConflictError
-        If a table exists and ``force`` is not given (``details.reason``
-        ``output_exists``), ``nodes`` repeats an id (``duplicate_output_name``) or
-        ``output_dir`` lies in the store of another tool (``output_in_store``);
-        ``details.paths`` lists every path with that reason.
+        If a table or the schematic exists and ``force`` is not given
+        (``details.reason`` ``output_exists``), ``nodes`` repeats an id or two outputs
+        name one file (``duplicate_output_name``) or ``output_dir`` lies in the store
+        of another tool (``output_in_store``); ``details.paths`` lists every path with
+        that reason.
     OutputError
-        If the tables cannot be written.
+        If the tables or the schematic cannot be written.
     """
+    if main_stem is not None and schematic is None:
+        raise InvalidParameterError(
+            "Option 'main_stem' applies to 'schematic', which is not given",
+            details={"option": "main_stem", "reason": "conflict"},
+            hint="Give schematic, or leave out main_stem.",
+        )
     loaded = load_network(
         network=network,
         network_file=network_file,
@@ -1057,14 +1129,27 @@ def route_network(
     )
     graph = loaded.network
     selected = _selection(graph, nodes)
+    if schematic is not None:
+        _check_main_stem(graph, main_stem)
     directory = None if output_dir is None else Path(os.fspath(output_dir))
-    plan = None
+    target = None if schematic is None else Path(os.fspath(schematic))
+    inputs = _input_files(network_file, inflows_file, loaded.rating_files)
+    plans = []
     if directory is not None:
         names = [f"{node_id}.csv" for node_id in selected]
-        _refuse_inputs(
-            directory, names, network_file, inflows_file, loaded.rating_files
+        _refuse_inputs(directory, names, inputs)
+        plans.append(plan_directory("output_dir", directory, names, force=force))
+    if target is not None:
+        refuse_input_as_output(
+            target,
+            inputs,
+            hint="Give another file name for the schematic: it must not replace a "
+            "file the network is read from.",
+            option="schematic",
         )
-        plan = plan_directory("output_dir", directory, names, force=force)
+        plans.append(plan_outputs({"schematic": target}, force=force))
+    plan = join_plans(*plans) if plans else None
+    if plan is not None:
         if check:
             return plan_output(plan)
         if (error := conflict_error(plan)) is not None:
@@ -1115,7 +1200,7 @@ def route_network(
         order=list(graph.order),
         nodes=summaries,
     )
-    if directory is None or plan is None:
+    if directory is None:
         size = _json_chars(result)
         if returned and size > PAGE_CHARS:
             notices.append(
@@ -1127,14 +1212,24 @@ def route_network(
                     "hydrographs, or `output_dir` to write one table per node",
                 )
             )
-        return OperationOutput(result, tuple(notices))
-    tables = {
-        f"{node_id}.csv": run.hydrographs[node_id].to_table() for node_id in selected
-    }
-    _write_directory(directory, tables, force=force)
+    drawing = None
+    if target is not None:
+        result.schematic = graph.schematic(run, main_stem=main_stem)
+        drawing = schematic_svg(result.schematic)
+    files: list[Path] = []
+    if directory is not None:
+        tables = {
+            f"{node_id}.csv": run.hydrographs[node_id].to_table()
+            for node_id in selected
+        }
+        _write_directory(directory, tables, force=force)
+        files.extend(directory / name for name in tables)
+    if target is not None and drawing is not None:
+        _write_schematic(drawing, target, files)
+        files.append(target)
     return OperationOutput(
         result,
         tuple(notices),
-        files=tuple(directory / name for name in tables),
-        replaced=plan.replaced,
+        files=tuple(files),
+        replaced=() if plan is None else plan.replaced,
     )

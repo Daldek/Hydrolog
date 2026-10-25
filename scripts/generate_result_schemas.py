@@ -8,10 +8,11 @@ schema from the documents they produce and writes
 the top-level properties with their types, the properties that every example has as
 ``required``, and nothing about nested keys, so a new optional field keeps the version
 (AGI-4.1). The plan document ``hydrolog-plan/1`` and the command list are written by
-hand below, and so is the one document that a command reads and does not write, the
-network ``hydrolog-network/1`` of ``route network`` (its fields come from the options
-of the catalog); ``hydrolog-commands/1`` is the Nogat ``commands-1`` schema
-(``schemas/nogat/``).
+hand below, and so are two documents that a command does not write as its own result:
+the network ``hydrolog-network/1`` that ``route network`` reads (its fields come from
+the options of the catalog) and the schematic of a network
+``hydrolog-network-schematic/1`` that it returns in its result and draws as SVG;
+``hydrolog-commands/1`` is the Nogat ``commands-1`` schema (``schemas/nogat/``).
 
 Usage::
 
@@ -44,7 +45,9 @@ from hydrolog.catalog.groups.route import (
 from hydrolog.catalog.spec import Command, Option
 from hydrolog.morphometry.watershed_params import WatershedParameters
 from hydrolog.routing import HIETOGRAMS, RAINFALL_KINDS, RUNOFF_MODELS
+from hydrolog.routing._layout import LABEL_SIDES
 from hydrolog.routing.network import MAX_ID_CHARS
+from hydrolog.routing.schematic import SCHEMA as SCHEMATIC_SCHEMA
 
 ROOT = Path(__file__).resolve().parent.parent
 TARGET = ROOT / "src" / "hydrolog" / "schemas"
@@ -421,12 +424,151 @@ def _network_document(schema_id: str) -> dict[str, Any]:
     }
 
 
+def _schematic_document(schema_id: str) -> dict[str, Any]:
+    """Return the schema of the schematic of a network (ADR-0013).
+
+    Hydrolog writes the document and whoever draws it reads it, so the schema is as
+    loose as the schemas of the results: an unknown field is allowed and a new optional
+    one keeps the version (AGI-4.1).
+    """
+    identifier = {"$ref": "#/$defs/id"}
+    count = {"$ref": "#/$defs/count"}
+    notice = {
+        "type": "object",
+        "required": ["level", "code", "message"],
+        "properties": {
+            "level": {"enum": ["info", "warning"]},
+            "code": {"type": "string"},
+            "message": {"type": "string"},
+        },
+    }
+    parameter = {
+        "type": "object",
+        "required": ["name", "value", "unit", "source"],
+        "properties": {
+            "name": {"type": "string"},
+            "value": {"type": ["number", "string", "boolean"]},
+            "unit": {"type": ["string", "null"]},
+            "source": {"enum": ["given", "computed", "default"]},
+        },
+    }
+    values = ["peak_m3s", "time_to_peak_min", "volume_m3", "notices"]
+    node = {
+        "type": "object",
+        "required": ["id", "type", "x", "y", "line", "label", "parameters"],
+        "properties": {
+            "id": identifier,
+            "type": {"type": "string", "minLength": 1},
+            "x": count,
+            "y": count,
+            "line": count,
+            "label": {
+                "type": "object",
+                "required": ["text", "side"],
+                "properties": {
+                    "text": {"type": "string", "minLength": 1},
+                    "side": {"enum": list(LABEL_SIDES)},
+                },
+            },
+            "parameters": {"type": "array", "items": parameter},
+            "peak_m3s": {"type": "number", "minimum": 0},
+            "time_to_peak_min": {"type": "number"},
+            "volume_m3": {"type": "number", "minimum": 0},
+            "notices": {"type": "array", "items": notice},
+        },
+        "dependentRequired": {
+            name: [o for o in values if o != name] for name in values
+        },
+    }
+    line = {
+        "type": "object",
+        "required": ["index", "role", "nodes"],
+        "properties": {
+            "index": count,
+            "role": {"enum": ["main", "tributary"]},
+            "nodes": {"type": "array", "minItems": 1, "items": identifier},
+            "joins": identifier,
+        },
+        "if": {"properties": {"role": {"const": "tributary"}}},
+        "then": {"required": ["joins"]},
+    }
+    edge = {
+        "type": "object",
+        "required": ["from", "to", "line", "points"],
+        "properties": {
+            "from": identifier,
+            "to": identifier,
+            "line": count,
+            "points": {
+                "type": "array",
+                "minItems": 2,
+                "items": {"$ref": "#/$defs/point"},
+            },
+        },
+    }
+    return {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": f"{BASE}/hydrolog-network-schematic-1.schema.json",
+        "title": schema_id,
+        "description": (
+            "Schematic of a routing network in the style of a metro map (ADR-0013): "
+            "the nodes on an integer grid (`x` grows downstream, to the right, `y` "
+            "grows downwards), the lines of the map, the polylines of the edges (every "
+            "segment "
+            "at 0, 45 or 90 degrees), the place of every label and, per node, the "
+            "parameters of its calculation and, with a result, its peak, time to peak, "
+            "volume and notices. Written by `RoutingNetwork.schematic()` and by `route "
+            "network` with `schematic`; unknown fields are allowed (AGI-4.1)."
+        ),
+        "type": "object",
+        "required": [
+            "schema",
+            "outlet",
+            "timestep_min",
+            "has_result",
+            "grid",
+            "lines",
+            "nodes",
+            "edges",
+        ],
+        "properties": {
+            "schema": {"const": schema_id},
+            "name": {"type": "string", "minLength": 1},
+            "outlet": identifier,
+            "timestep_min": {"type": "number", "exclusiveMinimum": 0},
+            "has_result": {"type": "boolean"},
+            "grid": {
+                "type": "object",
+                "required": ["width", "height"],
+                "properties": {"width": count, "height": count},
+                "description": "The extent of the nodes in grid units.",
+            },
+            "lines": {"type": "array", "minItems": 1, "items": line},
+            "nodes": {"type": "array", "minItems": 1, "items": node},
+            "edges": {"type": "array", "items": edge},
+        },
+        "$defs": {
+            "id": {"type": "string", "minLength": 1},
+            "count": {"type": "integer", "minimum": 0},
+            "point": {
+                "type": "array",
+                "prefixItems": [count, count],
+                "items": False,
+                "minItems": 2,
+                "description": "A point of the grid: `[x, y]`.",
+            },
+        },
+    }
+
+
 def _hand_written() -> dict[str, dict[str, Any]]:
     plan_id = "hydrolog-plan/1"
     list_id = "hydrolog-command-list/1"
     network_id = "hydrolog-network/1"
+    schematic_id = SCHEMATIC_SCHEMA
     return {
         network_id: _network_document(network_id),
+        schematic_id: _schematic_document(schematic_id),
         plan_id: {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "$id": f"{BASE}/hydrolog-plan-1.schema.json",
