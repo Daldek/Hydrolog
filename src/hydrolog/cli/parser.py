@@ -547,6 +547,8 @@ def build_command_parser(command: Command, lang: Lang = "pl") -> CatalogParser:
     taken: set[str] = set(GLOBAL_FLAGS)
     for option in command.options:
         spellings = {option.flag}
+        if option.short_flag is not None:
+            spellings.add(option.short_flag)
         if option.type == "boolean":
             spellings.add("--no-" + option.flag[2:])
         clash = sorted(spellings & taken)
@@ -567,6 +569,7 @@ def build_command_parser(command: Command, lang: Lang = "pl") -> CatalogParser:
             )
         else:
             target.add_argument(
+                *([option.short_flag] if option.short_flag else []),
                 option.flag,
                 dest=_option_dest(option),
                 metavar=_metavar(option),

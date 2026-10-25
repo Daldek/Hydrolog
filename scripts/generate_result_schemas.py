@@ -140,7 +140,11 @@ def _hand_written() -> dict[str, dict[str, Any]]:
                             "path": {"type": "string"},
                             "action": {"enum": ["write", "replace", "conflict"]},
                             "reason": {
-                                "enum": ["output_exists", "duplicate_output_name"]
+                                "enum": [
+                                    "output_exists",
+                                    "duplicate_output_name",
+                                    "output_in_store",
+                                ]
                             },
                         },
                     },

@@ -9,14 +9,16 @@ renamed the shared file (the reviewers saw 16 failures in 40 pairs of calls for 
 report and 10 in 30 for the raster).
 """
 
+import os
 import sys
 import threading
+import time
 from pathlib import Path
 
 import numpy as np
 import pytest
 
-from hydrolog._atomic import atomic_output
+from hydrolog._atomic import STAGING_NAME, atomic_output, staging_directory
 from hydrolog.catalog import run_command
 from hydrolog.exceptions import HydrologError
 
@@ -214,3 +216,75 @@ class TestConcurrentWriters:
             with rasterio.open(raster) as written:
                 np.testing.assert_array_equal(written.read(1), expected)
             assert [path.name for path in raster.parent.iterdir()] == [raster.name]
+
+
+class TestStagingDirectory:
+    """A write of several files stages them first and leaves nothing of its own."""
+
+    def test_the_staging_is_a_new_directory_of_the_run_inside_the_output_directory(
+        self, tmp_path
+    ):
+        with staging_directory(tmp_path / "out") as staging:
+            assert staging.parent == tmp_path / "out" / STAGING_NAME
+            assert staging.is_dir()
+            assert list(staging.iterdir()) == []
+            host, pid, token = staging.name.rsplit("_", 2)
+            assert (pid, len(token)) == (str(os.getpid()), 8)
+            assert host
+
+    def test_it_is_removed_with_its_parent_when_the_block_ends(self, tmp_path):
+        with staging_directory(tmp_path / "out") as staging:
+            (staging / "a.csv").write_text("x", encoding="utf-8")
+
+        assert list((tmp_path / "out").iterdir()) == []  # the directory stays, empty
+
+    def test_it_is_removed_after_an_error_and_after_an_interrupt(self, tmp_path):
+        for error in (RuntimeError("boom"), KeyboardInterrupt()):
+            with (
+                pytest.raises(type(error)),
+                staging_directory(tmp_path) as staging,
+            ):
+                (staging / "a.csv").write_text("x", encoding="utf-8")
+                raise error
+
+            assert list(tmp_path.iterdir()) == []
+
+    def test_a_file_moved_into_place_stays_when_the_block_ends(self, tmp_path):
+        with staging_directory(tmp_path) as staging:
+            (staging / "a.csv").write_text("x", encoding="utf-8")
+            os.replace(staging / "a.csv", tmp_path / "a.csv")
+
+        assert [path.name for path in tmp_path.iterdir()] == ["a.csv"]
+
+    def test_two_runs_in_one_directory_do_not_meet(self, tmp_path):
+        with staging_directory(tmp_path) as first:
+            with staging_directory(tmp_path) as second:
+                assert first != second
+            assert first.is_dir()  # the other run's end does not remove its staging
+
+        assert list(tmp_path.iterdir()) == []
+
+    def test_the_leftover_of_a_killed_run_goes_after_a_day_and_a_fresh_one_stays(
+        self, tmp_path
+    ):
+        parent = tmp_path / STAGING_NAME
+        old, fresh = parent / "host_1_old", parent / "host_2_fresh"
+        for leftover in (old, fresh):
+            leftover.mkdir(parents=True)
+            (leftover / "a.csv").write_text("x", encoding="utf-8")
+        two_days_ago = time.time() - 2 * 24 * 3600.0
+        os.utime(old, (two_days_ago, two_days_ago))
+
+        with staging_directory(tmp_path):
+            assert not old.exists()
+            assert fresh.is_dir()
+
+        assert fresh.is_dir()  # still there: the parent is not empty
+
+    def test_nothing_but_the_staging_is_created_or_deleted(self, tmp_path):
+        (tmp_path / "keep.csv").write_text("x", encoding="utf-8")
+
+        with staging_directory(tmp_path):
+            pass
+
+        assert [path.name for path in tmp_path.iterdir()] == ["keep.csv"]
