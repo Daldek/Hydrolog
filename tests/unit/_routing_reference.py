@@ -61,3 +61,39 @@ NEH17_4_PEAK_TIME_H = 13.1
 # Table 17-16 at 684.18 ft3/s: A = 220.9 ft2, T = 44.6 ft, m = 1.3873
 NEH17_4_AREA_FT2 = 220.9
 NEH17_4_ROUNDING_CFS = 0.005  # half of the last printed digit of the outflow
+
+# NEH-630 chapter 17, Example 17-1, Tables 17-5 to 17-7: storage-indication routing of
+# the hydrograph of figure 17-6 through a channel reach of 10,000 ft whose storage-
+# discharge relation is Table 17-4 (storage in ft3/s-h, the unit of the text, so
+# 3,600 ft3 each), at dt = 0.5 h. The outflow of Table 17-7 is printed to 1 ft3/s, the
+# working curve S/dt + O/2 of Table 17-5 to 0.1 ft3/s, and the average inflows to 1
+# ft3/s: an average that ends in .5 (4,687.5, 4,062.5...) is printed rounded up.
+NEH17_1_STEP_MIN = 30.0
+NEH17_1_TABLE_OUTFLOW_CFS = [0, 50, 150, 300, 800, 1500, 3500, 5000, 7000, 10000]
+NEH17_1_TABLE_STORAGE_CFS_H = [
+    0.0, 71.8, 136.9, 246.9, 650.7, 1300.0, 3302.8, 4537.5, 5611.1, 7131.9,
+]  # fmt: skip
+NEH17_1_WORKING_CURVE_CFS = [
+    0.0, 168.6, 348.9, 643.9, 1701.4, 3350.0, 8355.6, 11575.0, 14722.2, 19263.9,
+]  # fmt: skip
+NEH17_1_INFLOW_CFS = [
+    0, 1250, 2500, 3750, 5000, 4375, 3750, 3125, 2500, 1875,
+    1250, 625, 0, 0, 0, 0, 0, 0, 0,
+]  # fmt: skip
+NEH17_1_AVERAGE_INFLOW_CFS = [
+    0, 625, 1875, 3125, 4375, 4688, 4063, 3438, 2813, 2188,
+    1563, 938, 313, 0, 0, 0, 0, 0, 0,
+]  # fmt: skip
+# S/dt + O/2 of each step, column 4 of Tables 17-6 and 17-7
+NEH17_1_WORKING_STATE_CFS = [
+    0, 625, 2210, 4319, 6807, 8614, 9056, 8668, 7835, 6731,
+    5443, 4045, 2580, 1407, 746, 398, 223, 143, 100,
+]  # fmt: skip
+NEH17_1_OUTFLOW_CFS = [
+    0, 290, 1016, 1887, 2881, 3620, 3827, 3645, 3292, 2851,
+    2336, 1778, 1173, 661, 348, 175, 80, 42, 30,
+]  # fmt: skip
+NEH17_1_TOLERANCE_CFS = (
+    1.0  # the R1 criterion of the plan: the table is printed rounded
+)
+NEH17_1_ROUNDING_CFS = 0.5  # half of the last printed digit of the outflow

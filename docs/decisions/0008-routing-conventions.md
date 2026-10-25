@@ -52,7 +52,19 @@ are interchangeable and a result can feed the next command or a hydraulic model.
   of the step into at most 100 parts gives a window (a short, flat reach, which is
   storage) is refused with the same reason. A scheme with an exact kernel (the cascade)
   has no window: no time step is too long for it, and it adds neither sub-reaches nor
-  sub-steps.
+  sub-steps. A level-pool table (storage and outflow not decreasing, an optional
+  stage) is routed on steps of at most twice the shortest storage constant `dS/dO` of
+  its segments between the lowest and the highest flow of the run, over the number of
+  sub-reaches: the weight of the previous outflow of the linear reservoir of that `K`
+  is then not negative and the outflow stays between those flows. NEH-630 asks for
+  `S/dt >= O/2` on the whole working curve, a mean of those constants, which does not
+  suffice: on 1,499 random tables a step just inside it let the outflow exceed the
+  inflow peak in 201 of them, by up to 24 %, and in none when the rule is applied per
+  segment. A longer step is divided (`timestep_refined`) and more than 100 parts are
+  refused (`unstable_timestep`); an initial outflow outside the table is a
+  `validation_error` (`initial_outflow_m3s`), and a flood that fills the reservoir
+  beyond the table or empties it below it a `calculation_error` (`table_exceeded`,
+  `table_emptied`), never an extrapolation.
 - **Non-negativity:** inside the window all weights are non-negative, so a
   non-negative inflow gives a non-negative outflow.
 - **Accuracy notices are not errors:** the Muskingum-Cunge accuracy limit of NEH-630 is

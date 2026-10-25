@@ -1029,6 +1029,28 @@ print(result.outflow.time_to_peak_min, round(result.outflow.peak_discharge_m3s, 
 
 **Command.** `route cascade` takes `n` and exactly one time scale, `k_min` or `length_km` with `celerity_m_per_s` (anything else is a `validation_error`, `details.reason` `one_of`), next to the hydrograph, run and output options of `route lag`. It has no `unstable_timestep`: `parameters` hold `n`, `k_min`, the delay `lag_min = n K`, `timestep_over_k = dt / K` and the length and celerity when they were given, and the only notices are `tail_extended` and `tail_truncated`.
 
+#### 3.9.6 Level-Pool Routing, Storage Indication (`LevelPoolReach`)
+
+```
+S2/dt + O2/2 = (I1 + I2)/2 + (S1/dt - O1/2)        working curve  Y(O) = S(O)/dt + O/2
+```
+
+A reservoir, a pond or a reach holds one storage for each outflow, and the table of rows `(S, O)` (with an optional stage) is its only parameter (NEH-630 chapter 17; [HEC-HMS Modified Puls](https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/channel-flow/modified-puls-model)). Continuity over a step with the trapezoid rule puts the unknown storage and outflow on one side; the outflow is read from the working curve by linear interpolation of the table, so the volume is conserved exactly (the balance error is zero to rounding unless the step was divided). The table is a polyline with both columns not decreasing; a stretch with no outflow below a crest or an invert (a dead zone) is allowed, and the pool then rests at its highest storage, full to the crest. Only differences of storage enter, so its datum is free. With `subreaches = N` the reach is `N` pools in series, each holding `S/N` for the same outflow (HEC-HMS: more of them, less attenuation).
+
+**Step rule.** Where the storage constant `K = dS/dO` of a segment is shorter than `dt/2`, the weight of the previous outflow of the linear reservoir of that `K`, `(2K - dt)/(2K + dt)`, is negative (3.9.3 with `X = 0`): the outflow overshoots, and can go negative. NEH-630 states the rule for the whole curve, `dt <= 2 S/O` (the working curve to the right of the line of equal values), and `S/O` is a mean of the `K` below it, so a table with a sharp change of slope passes it while the outflow still overshoots the inflow peak: on 1,499 random tables (a dead zone, 3 to 10 rows) a step at 0.99 of that limit gave a peak outflow above the inflow peak in 201 of them, by up to 24 %, and in none when `dt <= 2K` is applied to each segment. The library applies it per segment (`timestep_limit_min`), from the state at rest under the lowest flow of the run up to the first row that reaches the largest, so a row for overtopping far above the flood does not shorten the step; the scheme is then monotone, which is the discrete maximum principle: the outflow stays between those flows. A longer step is divided into the fewest equal sub-steps (the inflow interpolated linearly, the outflow read at the original ordinates, notice `timestep_refined`, a sampling error in the balance); more than 100 parts are `unstable_timestep`.
+
+**Initial state and range.** Every pool starts at rest with the initial outflow (the first inflow ordinate unless given), at the storage the table gives for it. An initial outflow outside the table is a `validation_error`; a flood that fills the reservoir beyond the last row or empties it below the first is a `calculation_error` (`table_exceeded`, `table_emptied`): the table is never extrapolated.
+
+```python
+from hydrolog.routing import Hydrograph, LevelPoolReach
+
+pond = LevelPoolReach(storage_m3=[0, 360000], outflow_m3s=[0, 100])   # 3,600 m3 per m3/s
+flood = Hydrograph.from_step([0.0, 5.0, 10.0, 5.0, 0.0], timestep_min=60.0)
+print(round(pond.route(flood).outflow.peak_discharge_m3s, 3))          # 6.852
+```
+
+**Reference values.** NEH-630 example 17-1 (the channel reach of Table 17-4, `dt` = 0.5 h, 19 ordinates) is reproduced to 0.85 ft3/s (0.02 % of the 3,827 ft3/s peak), inside the 1 ft3/s of the plan but above the half unit of the print. Table 17-7 prints each average inflow rounded (4,687.5 as 4,688, and so on): those averages belong to ordinates 1 ft3/s higher at 2.5, 3.5, 4.5 and 5.5 h, and with them all 19 printed values are reproduced to 0.49 ft3/s. The storage at the peak follows from the printed 9,056 and 3,827 ft3/s. The shortest `K` of the table up to the 5,000 ft3/s peak is 0.651 h (50 to 150 ft3/s), so the limit is 78.12 min (60.83 min for the whole table) and the published step of 30 min is not divided. The other references share nothing with the code (`tests/unit/test_routing_level_pool.py`): a table of constant `K` is the linear reservoir, equal to Muskingum with `X = 0` and `N` sub-reaches to 1e-12; a tank draining through a weir has the exact solution `h = (h0^(-1/2) + C t / (2A))^(-2)`, and a tank filled by a flood is integrated with an ODE solver, both converging with second order in `dt` (the error falls by 4.0 when the step is halved); and random tables with a dead zone keep the outflow between the lowest and the highest flow of the run with the volume balance closed to 1e-9.
+
 ---
 
 ## 4. Literature Verification
@@ -1065,6 +1087,7 @@ print(result.outflow.time_to_peak_min, round(result.outflow.peak_discharge_m3s, 
 | Muskingum routing with sub-reaches (`route muskingum`, `MuskingumReach`) | McCarthy (1938), Chow, Maidment, Mays (1988), HEC-HMS Technical Reference Manual (Muskingum model), University of Iowa Lesson 27 (worked example) | ✅ |
 | Muskingum-Cunge, constant coefficients (`route muskingum-cunge`, `MuskingumCungeReach`) | Cunge (1969), NRCS NEH Part 630 ch. 17 (2014) eq. 17-20 to 17-22, example 17-4 and appendix B, HEC-HMS Technical Reference Manual (Muskingum-Cunge model) | ✅ |
 | Cascade of linear reservoirs, exact kernel (`route cascade`, `CascadeReach`) | Nash (1957) (the IUH of `NashIUH`), Kalinin and Milyukov (1957) as presented by Ponce (linear reservoirs and numerical diffusion), Chow, Maidment, Mays (1988); weights checked against the numerical integral of the gamma density and the exact solution of the chain | ✅ |
+| Level-pool routing, storage indication (`LevelPoolReach`) | NRCS NEH Part 630 ch. 17 (2014) eq. 17-3 and example 17-1, HEC-HMS Technical Reference Manual (Modified Puls model); the step rule per segment checked on random tables and against the exact solution of a tank with a weir | ✅ |
 
 ### 4.2 Key Publications
 

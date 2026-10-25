@@ -405,6 +405,7 @@ hydrolog/
 │   ├── cunge.py            # MuskingumCungeReach, rise_steps
 │   ├── sections.py         # TrapezoidalSection (Manning's rating), FlowState
 │   ├── cascade.py          # CascadeReach (exact gamma kernel), cascade_weights
+│   ├── level_pool.py       # LevelPoolReach (storage indication), timestep_limit_min
 │   └── _kernels.py         # Three-point recurrences, shared with ClarkIUH
 ├── _serialization.py        # to_jsonable(), JsonResultMixin (to_dict/to_json) (v1.0.0)
 ├── agent_guide.py           # AGENTS.md / llms.txt generator from the catalog (v1.0.0)

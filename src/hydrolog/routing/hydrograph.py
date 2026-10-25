@@ -19,6 +19,7 @@ from numpy.typing import ArrayLike, NDArray
 
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError
+from hydrolog.routing._checks import as_array
 
 __all__ = ["STEP_TOLERANCE", "Hydrograph", "TableProblem", "check_table"]
 
@@ -144,16 +145,6 @@ def check_table(
     return None
 
 
-def _as_array(value: ArrayLike, option: str) -> NDArray[np.float64]:
-    try:
-        return np.array(value, dtype=np.float64)
-    except (TypeError, ValueError) as exc:
-        raise InvalidParameterError(
-            f"{option} must be a list of numbers",
-            details={"option": option, "reason": "type"},
-        ) from exc
-
-
 @dataclass(frozen=True, eq=False, init=False)
 class Hydrograph(JsonResultMixin):
     """A discharge hydrograph at a regular time step.
@@ -193,8 +184,8 @@ class Hydrograph(JsonResultMixin):
 
     def __init__(self, times_min: ArrayLike, discharge_m3s: ArrayLike) -> None:
         """Validate the table and keep read-only copies of the arrays."""
-        times = _as_array(times_min, "times_min")
-        discharge = _as_array(discharge_m3s, "discharge_m3s")
+        times = as_array(times_min, "times_min")
+        discharge = as_array(discharge_m3s, "discharge_m3s")
         problem = check_table(times, discharge)
         if problem is not None:
             raise InvalidParameterError(
@@ -230,7 +221,7 @@ class Hydrograph(JsonResultMixin):
         Hydrograph
             ``times_min = start_min + timestep_min * [0, 1, ...]``.
         """
-        discharge = _as_array(discharge_m3s, "discharge_m3s")
+        discharge = as_array(discharge_m3s, "discharge_m3s")
         return cls(start_min + timestep_min * np.arange(len(discharge)), discharge)
 
     def __len__(self) -> int:

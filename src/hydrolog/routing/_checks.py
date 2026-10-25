@@ -11,13 +11,45 @@ import math
 import numbers
 from collections.abc import Collection, Sequence
 
+import numpy as np
+from numpy.typing import ArrayLike, NDArray
+
 from hydrolog.exceptions import InvalidParameterError
 
-__all__ = ["in_range", "one_complete_group", "positive", "whole_number"]
+__all__ = ["as_array", "in_range", "one_complete_group", "positive", "whole_number"]
 
 
 def _shown(value: float) -> float | str:
     return value if math.isfinite(value) else str(value)
+
+
+def as_array(value: ArrayLike, option: str) -> NDArray[np.float64]:
+    """Return ``value`` as a new ``float64`` array.
+
+    Parameters
+    ----------
+    value : array_like
+        The list of numbers.
+    option : str
+        Its name, for the error (``details.option``).
+
+    Returns
+    -------
+    numpy.ndarray
+        A copy of the values.
+
+    Raises
+    ------
+    InvalidParameterError
+        With ``details.reason`` ``type`` when the values are not numbers.
+    """
+    try:
+        return np.array(value, dtype=np.float64)
+    except (TypeError, ValueError) as exc:
+        raise InvalidParameterError(
+            f"{option} must be a list of numbers",
+            details={"option": option, "reason": "type"},
+        ) from exc
 
 
 def positive(value: float, option: str) -> float:
