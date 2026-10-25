@@ -215,3 +215,90 @@ def test_two_builds_are_the_same_bytes(tmp_path: Path) -> None:
     assert testing.network_tables(lag_network()) == testing.network_tables(
         lag_network()
     )
+    assert json.dumps(testing.example_network_document()) == json.dumps(
+        testing.example_network_document()
+    )
+
+
+def test_the_example_network_is_read_by_the_command_and_routes_as_it_does_in_memory(
+    tmp_path: Path,
+) -> None:
+    schema = json.loads((SCHEMAS / "hydrolog-network-1.schema.json").read_text("utf-8"))
+    document = testing.example_network_document()
+    network = testing.example_network()
+    network_file = testing.write_network_document(tmp_path / "example.json", document)
+
+    printed = program(
+        "route",
+        "network",
+        "--network-file",
+        str(network_file),
+        "--nodes",
+        "OUT",
+        "--json",
+    )
+
+    result = json.loads(printed.stdout)["result"]
+    routed = network.route()
+    assert result["order"] == list(routed.order) == list(network.order)
+    assert result["timestep_min"] == 5.0
+    outlet = result["nodes"][-1]
+    assert outlet["id"] == "OUT"
+    assert outlet["discharge_m3s"] == pytest.approx(
+        list(routed.hydrographs["OUT"].discharge_m3s), rel=1e-12
+    )
+    # what the builder writes and what the library writes both pass the schema
+    Draft202012Validator(schema).validate(document)
+    Draft202012Validator(schema).validate(network.to_document())
+    assert set(routed.rainfall) == {"A", "B", "C"}
+
+
+def test_a_network_document_takes_the_time_step_and_the_rainfall_of_the_network() -> (
+    None
+):
+    made = testing.subcatchment(
+        "A", watershed=testing.watershed(), runoff=testing.curve_number_runoff()
+    )
+
+    with pytest.raises(InvalidParameterError) as without:
+        testing.network_document(made, testing.outlet("A"))
+    document = testing.network_document(
+        testing.subcatchment("B"),
+        made,
+        testing.junction("J", "A", "B"),
+        testing.outlet("J"),
+        timestep_min=10.0,
+        rainfall=testing.rainfall_series(),
+    )
+    with pytest.raises(InvalidParameterError) as step:
+        testing.network_document(
+            made,
+            testing.outlet("A"),
+            timestep_min=5.0,
+            rainfall=testing.rainfall_series(),
+        )
+
+    assert without.value.details["reason"] == "missing_field"
+    assert without.value.details["field"] == "rainfall"
+    assert document["timestep_min"] == 10.0
+    assert document["rainfall"]["kind"] == "series"
+    assert step.value.details["reason"] == "timestep_mismatch"
+
+
+@pytest.mark.parametrize(
+    "build",
+    [
+        lambda: testing.watershed(colour="red"),
+        lambda: testing.watershed(area_km2=-1.0),
+        lambda: testing.curve_number_runoff(uh_model="nash"),
+        lambda: testing.curve_number_runoff(tc_min=60.0, tc_method="kirpich"),
+        lambda: testing.design_storm(hietogram_type="block", alpha=2.0),
+        lambda: testing.design_storm(hietogram_type="no-such-shape"),
+        lambda: testing.rainfall_series([1.0], 0.0),
+    ],
+)
+def test_an_object_that_the_command_would_refuse_is_refused_when_it_is_built(
+    build,
+) -> None:
+    with pytest.raises(InvalidParameterError):
+        build()
