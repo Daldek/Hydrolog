@@ -111,21 +111,22 @@ class TestAnInlineNetwork:
         expected[: len(SMALL)] += SMALL
         np.testing.assert_allclose(result.hydrographs["J"].discharge_m3s, expected)
 
-    def test_the_schema_may_be_left_out_and_is_checked_when_given(self, tmp_path):
-        assert (
-            load_network(network={**stream(), "schema": None}).network.outlet == "OUT"
-        )
+    def test_the_schema_is_required_and_must_be_the_one_this_reads(self, tmp_path):
         assert (
             load_network(network={**stream(), "schema": SCHEMA}).network.outlet == "OUT"
         )
 
-        inline, from_file = refused(
-            {**stream(), "schema": "hydrolog-network/2"}, tmp_path
-        )
-
+        without = {key: value for key, value in stream().items() if key != "schema"}
+        inline, from_file = refused(without, tmp_path)
         for error in (inline, from_file):
-            assert error.details["reason"] == "unknown_schema"
-            assert error.details["expected"] == SCHEMA
+            assert error.details["reason"] == "missing_field"
+            assert error.details["field"] == "schema"
+
+        for wrong in ("hydrolog-network/2", None):
+            inline, from_file = refused({**stream(), "schema": wrong}, tmp_path)
+            for error in (inline, from_file):
+                assert error.details["reason"] == "unknown_schema"
+                assert error.details["expected"] == SCHEMA
 
     @pytest.mark.parametrize(
         ("method", "fields", "expected"),
@@ -224,16 +225,21 @@ class TestBadDocuments:
                 "unknown_field",
                 {"field": "color"},
             ),
-            ({"name": "x"}, "missing_field", {"field": "nodes"}),
-            ({"nodes": {"A": 1}}, "type", {"field": "nodes"}),
+            ({"schema": SCHEMA, "name": "x"}, "missing_field", {"field": "nodes"}),
+            ({"schema": SCHEMA, "nodes": {"A": 1}}, "type", {"field": "nodes"}),
             ({**stream(), "name": ""}, "type", {"field": "name"}),
-            ({"nodes": [5]}, "shape", {"index": 0}),
+            ({"schema": SCHEMA, "nodes": [5]}, "shape", {"index": 0}),
             (document({"type": "outlet"}), "missing_field", {"field": "id"}),
             (document({"id": 7, "type": "outlet"}), "invalid_id", {"index": 0}),
             (
                 document({"id": "x y", "type": "outlet", "from": ["a"]}),
                 "invalid_id",
                 {},
+            ),
+            (
+                document({"id": "Nul", "type": "outlet", "from": ["a"]}),
+                "reserved_name",
+                {"node_id": "Nul"},
             ),
             (document({"id": "A"}), "missing_field", {"node_id": "A", "field": "type"}),
             (
@@ -469,7 +475,7 @@ class TestTheSourceOfTheDocument:
 
     def test_an_inline_document_must_be_json_native(self):
         with pytest.raises(InvalidParameterError) as caught:
-            load_network(network={"nodes": [{"id": "A", "type": object()}]})
+            load_network(network=document({"id": "A", "type": object()}))
 
         assert caught.value.details["option"] == "network"
 

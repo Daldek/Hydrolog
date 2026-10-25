@@ -2,9 +2,10 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/Daldek/Hydrolog/blob/main/src/hydrolog/schemas/hydrolog-network-1.schema.json",
   "title": "hydrolog-network/1",
-  "description": "River network read by `route network` (ADR-0010): subcatchments, reaches and reservoirs, junctions and one outlet, linked by `from`. A reach has a `method` and the options of `route <method>`. `schema` may be left out.",
+  "description": "River network read by `route network` (ADR-0010): subcatchments, reaches and reservoirs, junctions and one outlet, linked by `from`. A reach has a `method` and the options of `route <method>`. `schema` is required.",
   "type": "object",
   "required": [
+    "schema",
     "nodes"
   ],
   "properties": {
@@ -28,8 +29,11 @@
     "id": {
       "type": "string",
       "pattern": "^\\w[\\w.-]*$",
+      "not": {
+        "pattern": "^([Cc][Oo][Nn]|[Pp][Rr][Nn]|[Aa][Uu][Xx]|[Nn][Uu][Ll]|([Cc][Oo][Mm]|[Ll][Pp][Tt])[1-9¹²³])(\\..*)?$"
+      },
       "maxLength": 64,
-      "description": "Names the node and its file `<id>.csv`: letters, digits, `_`, `.` and `-`, not starting with `.` or `-` and not ending with `.`; unique without regard to case."
+      "description": "Names the node and its file `<id>.csv`: letters, digits, `_`, `.` and `-`, not starting with `.` or `-` and not ending with `.`, not a device name of Windows (`con`, `prn`, `aux`, `nul`, `com1` to `com9`, `lpt1` to `lpt9`, any case, any extension); unique without regard to case."
     },
     "node": {
       "oneOf": [

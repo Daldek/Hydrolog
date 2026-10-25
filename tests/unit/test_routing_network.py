@@ -434,6 +434,41 @@ class TestNode:
 
         assert caught.value.details["reason"] == "invalid_id"
 
+    @pytest.mark.parametrize(
+        "node_id",
+        [
+            "con",
+            "CON",
+            "Prn",
+            "aux",
+            "nul",
+            "NuL.csv",
+            "com1",
+            "COM9",
+            "lpt1",
+            "Lpt9.x.y",
+        ],
+    )
+    def test_a_windows_device_name_is_refused(self, node_id):
+        with pytest.raises(InvalidParameterError) as caught:
+            NetworkNode(node_id, "subcatchment", hydrograph=FLOOD)
+
+        assert caught.value.details == {"reason": "reserved_name", "node_id": node_id}
+        assert "Windows" in caught.value.hint
+
+    @pytest.mark.parametrize(
+        "node_id",
+        ["console", "com0", "com10", "lpt0", "aux1", "x.con", "con-1", "_nul"],
+    )
+    def test_a_name_that_only_looks_like_a_device_is_accepted(self, node_id):
+        assert NetworkNode(node_id, "subcatchment", hydrograph=FLOOD).id == node_id
+
+    def test_an_upstream_id_that_is_a_device_name_is_refused(self):
+        with pytest.raises(InvalidParameterError) as caught:
+            NetworkNode("J", "junction", ["A", "nul"])
+
+        assert caught.value.details["reason"] == "reserved_name"
+
     def test_the_kinds_are_the_five_of_the_plan(self):
         assert NODE_KINDS == (
             "subcatchment",

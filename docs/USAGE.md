@@ -401,11 +401,16 @@ cannot name files); a `junction` adds the hydrographs that flow into it; the `ou
 There is one outlet, every node leads to it and a node flows into one node: a bifurcation is
 refused. The order of the nodes in the document changes nothing. A document that is wrong is a
 `data_error` (a file) or a `validation_error` (inline) with the node and the field in `details`.
-All sources have one time step and one first time; nothing is resampled.
+All sources have one time step and one first time; nothing is resampled. `schema` is required. An
+id names the file `<id>.csv`, so it must not be a Windows device name (`con`, `prn`, `aux`, `nul`,
+`com1` to `com9`, `lpt1` to `lpt9`, any case, any extension): `validation_error`, `details.reason`
+`reserved_name`.
 
 `--output-dir DIR` (`-o`) writes the hydrograph that leaves each node as `<id>.csv`, a table that
 every `route` command reads again and the hand-off to Hydraulik; `--nodes` selects the nodes
-(default all). Without a directory the hydrographs of the selected nodes are in the result. The files
+(default all). Without a directory the hydrographs of the selected nodes are in the result; when
+that is more than 20,000 characters (one page, DOC-1.7) the notice `large_result` suggests `--nodes`
+or `--output-dir`. The files
 follow the rules of section 3 and are never written over an input file. The example is the fixture
 network: two subcatchments (`A` by its id, `B` by its `value_column`), a Muskingum-Cunge reach below
 `A`, a junction, a pond with a rating file and the outlet; the series of the outlet only:

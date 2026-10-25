@@ -44,6 +44,11 @@ ROOT = Path(__file__).resolve().parent.parent
 TARGET = ROOT / "src" / "hydrolog" / "schemas"
 BASE = "https://github.com/Daldek/Hydrolog/blob/main/src/hydrolog/schemas"
 NOGAT_COMMANDS = "hydrolog-commands/1"
+_RESERVED_ID = (
+    "^([Cc][Oo][Nn]|[Pp][Rr][Nn]|[Aa][Uu][Xx]|[Nn][Uu][Ll]"
+    "|([Cc][Oo][Mm]|[Ll][Pp][Tt])[1-9\u00b9\u00b2\u00b3])(\\..*)?$"
+)
+"""Device names of Windows as an ECMA 262 pattern (no inline flags there)."""
 
 _TYPE_ORDER = ["null", "boolean", "integer", "number", "string", "array", "object"]
 
@@ -231,10 +236,10 @@ def _network_document(schema_id: str) -> dict[str, Any]:
         "description": (
             "River network read by `route network` (ADR-0010): subcatchments, reaches "
             "and reservoirs, junctions and one outlet, linked by `from`. A reach has a "
-            "`method` and the options of `route <method>`. `schema` may be left out."
+            "`method` and the options of `route <method>`. `schema` is required."
         ),
         "type": "object",
-        "required": ["nodes"],
+        "required": ["schema", "nodes"],
         "properties": {
             "schema": {"const": schema_id},
             "name": {"type": "string", "minLength": 1},
@@ -249,11 +254,14 @@ def _network_document(schema_id: str) -> dict[str, Any]:
             "id": {
                 "type": "string",
                 "pattern": r"^\w[\w.-]*$",
+                "not": {"pattern": _RESERVED_ID},
                 "maxLength": MAX_ID_CHARS,
                 "description": (
                     "Names the node and its file `<id>.csv`: letters, digits, `_`, `.` "
-                    "and `-`, not starting with `.` or `-` and not ending with `.`; "
-                    "unique without regard to case."
+                    "and `-`, not starting with `.` or `-` and not ending with `.`, "
+                    "not a device name of Windows (`con`, `prn`, `aux`, `nul`, `com1` "
+                    "to `com9`, `lpt1` to `lpt9`, any case, any extension); unique "
+                    "without regard to case."
                 ),
             },
             "node": {"oneOf": variants},
