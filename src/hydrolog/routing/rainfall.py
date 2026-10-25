@@ -77,6 +77,7 @@ __all__ = [
     "RainfallSeries",
     "RainfallSource",
     "rainfall_from_document",
+    "rainfall_to_document",
 ]
 
 _DURATION_TOLERANCE = 1e-9
@@ -223,6 +224,29 @@ def rainfall_from_document(document: object) -> RainfallSource:
     )
     cls = RAINFALL_KINDS.resolve(kind, "The rainfall", field="kind")
     return cls.from_document(fields)
+
+
+def rainfall_to_document(source: RainfallSource) -> dict[str, Any]:
+    """Write a rainfall as the object of a document, if a document can name its kind.
+
+    Parameters
+    ----------
+    source : RainfallSource
+        The rainfall; its class must be in :data:`RAINFALL_KINDS`, or the reader would
+        not find it.
+
+    Returns
+    -------
+    dict
+        The object, with its ``kind``: what :meth:`RainfallSource.to_document` returns.
+
+    Raises
+    ------
+    InvalidParameterError
+        With ``details.reason`` ``unregistered`` if the class is not in the registry.
+    """
+    RAINFALL_KINDS.name_of(source)
+    return source.to_document()
 
 
 @RAINFALL_KINDS.register

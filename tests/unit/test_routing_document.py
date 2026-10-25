@@ -420,6 +420,9 @@ class Share(Node):
     def describe(self, output=None):
         return [parameter("fraction", self.fraction, "given")]
 
+    def document_fields(self):
+        return {"fraction": self.fraction}
+
     @classmethod
     def read_document(cls, node_id, fields):
         return {"fraction": fields["fraction"]}
@@ -463,6 +466,20 @@ class TestExtending:
         )
         assert result.nodes["S"].type == "share"
         assert [p.name for p in result.nodes["S"].parameters] == ["fraction"]
+        written = network.to_document()
+        assert written["nodes"][1] == {
+            "id": "S",
+            "type": "share",
+            "from": ["A"],
+            "fraction": 0.25,
+        }
+        np.testing.assert_array_equal(
+            RoutingNetwork.from_document(written)
+            .route()
+            .hydrographs["OUT"]
+            .discharge_m3s,
+            result.hydrographs["OUT"].discharge_m3s,
+        )
 
     def test_a_new_method_of_a_reach_is_a_registry_entry_and_nothing_else(
         self, monkeypatch
@@ -476,14 +493,28 @@ class TestExtending:
             "fraction": 0.5,
         }
 
-        result = RoutingNetwork.from_document(
-            document(source("A"), node, outlet("R"))
-        ).route()
+        network = RoutingNetwork.from_document(document(source("A"), node, outlet("R")))
+        result = network.route()
 
         np.testing.assert_allclose(
             result.hydrographs["R"].discharge_m3s[: len(FLOOD)], np.array(FLOOD) * 0.5
         )
         assert result.runs["R"].model == "share-of-inflow"
+        written = network.to_document()
+        assert written["nodes"][1] == {
+            "id": "R",
+            "type": "reach",
+            "from": ["A"],
+            "method": "share-of-inflow",
+            "fraction": 0.5,
+        }
+        np.testing.assert_array_equal(
+            RoutingNetwork.from_document(written)
+            .route()
+            .hydrographs["R"]
+            .discharge_m3s,
+            result.hydrographs["R"].discharge_m3s,
+        )
 
     def test_a_class_without_a_name_is_not_registered(self):
         class Nameless(Node):
