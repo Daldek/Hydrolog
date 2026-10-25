@@ -25,7 +25,7 @@ Python 3.12 or newer: `pip install "hydrolog @ git+https://github.com/Daldek/Hyd
 
 ## Workflow rules
 
-Discover (`hydrolog commands list`, then `hydrolog commands schema --command "<name>"`), check (`--check` first for a command that writes a file: `report generate`, `soil hsg`, `commands guide`, `route` with `output`), run, read `result`, `notices` and `result.files`.
+Discover (`hydrolog commands list`, then `hydrolog commands schema --command "<name>"`), check (`--check` first for a command that writes a file: `report generate`, `soil hsg`, `commands guide`, `route` with `output` or `output_dir`), run, read `result`, `notices` and `result.files`.
 
 Rules:
 
@@ -95,7 +95,7 @@ One line per command: name, `operation_id`, summary. Options, units, bounds and 
 ### [hydrograph: Runoff hydrograph][paths]
 - `hydrograph generate` (`hydrolog_hydrograph_generate`): Compute the design direct-runoff hydrograph: rainfall, SCS-CN, unit hydrograph, convolution.
 ### [route: Flood routing][paths]
-- `route cascade`, `route lag`, `route level-pool`, `route muskingum`, `route muskingum-cunge` (tools `hydrolog_route_<verb>`, `-` as `_`): route a hydrograph (`time_min`, `discharge_m3s`) through a reach, a reservoir or a river network; summaries: `commands list`.
+- `route cascade`, `route lag`, `route level-pool`, `route muskingum`, `route muskingum-cunge`, `route network` (tools `hydrolog_route_<verb>`, `-` as `_`): route a hydrograph (`time_min`, `discharge_m3s`) through a reach, a reservoir or a river network; summaries: `commands list`.
 ### [morphometry: Watershed morphometry][paths]
 - `morphometry watershed` (`hydrolog_morphometry_watershed`): Compute geometric, shape and relief indicators of a watershed.
 ### [network: River network][paths]

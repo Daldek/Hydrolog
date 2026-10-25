@@ -173,6 +173,10 @@ _TEXTS: Final[dict[str, tuple[str, str]]] = {
         "ta sama nazwa pliku w kilku wyjściach",
         "the same file name in several outputs",
     ),
+    "plan_output_in_store": (
+        "katalog leży w magazynie innego narzędzia",
+        "the directory is in the store of another tool",
+    ),
     "plan_blocked": (
         "Uruchomienie bez --check zakończyłoby się błędem conflict (kod wyjścia 4).",
         "Running without --check would fail with the error conflict (exit code 4).",
@@ -245,6 +249,16 @@ _TEXTS: Final[dict[str, tuple[str, str]]] = {
     "conflict_duplicate_output_name_hint": (
         "Podaj osobną ścieżkę dla każdego wyjścia.",
         "Give a different path for each output.",
+    ),
+    "conflict_output_in_store": (
+        "Katalog wyjściowy leży w magazynie innego narzędzia, nic nie zapisano:",
+        "The output directory lies in the store of another tool; nothing was written:",
+    ),
+    "conflict_output_in_store_hint": (
+        "Podaj katalog poza magazynem; jego właściciel zapisuje do niego własnym "
+        "--root.",
+        "Give a directory outside the store; the tool that owns it writes into it "
+        "with its own --root.",
     ),
 }
 

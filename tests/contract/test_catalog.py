@@ -182,20 +182,29 @@ class TestExamples:
         example = dict(command.examples[0])
         if example.get("check"):
             pytest.skip("the example is a plan")
-        envelope = _run(command, _example_options(command, example, tmp_path))
-        written = [
-            record
-            for record in envelope["result"].get("files", [])
-            if Path(record["path"]).parent == tmp_path
-        ]
+        options = _example_options(command, example, tmp_path)
+        envelope = _run(command, options)
+        listed = envelope["result"].get("files", [])
         outputs = [name for name in example if _is_output(command, name)]
-        if outputs:
-            assert len(written) == len(outputs)
-            for record in written:
-                assert record["status"] == "written"
-                assert record["size_bytes"] == Path(record["path"]).stat().st_size
-        else:
-            assert envelope["result"].get("files", []) == []
+        directories = [Path(options[name]) for name in outputs if name == "output_dir"]
+        files = [name for name in outputs if name != "output_dir"]
+        beside = [r for r in listed if Path(r["path"]).parent == tmp_path]
+        inside = [r for r in listed if Path(r["path"]).parent in directories]
+        assert len(beside) == len(files)
+        assert len(beside) + len(inside) == len(listed), "a file outside the outputs"
+        for record in [*beside, *inside]:
+            assert record["status"] == "written"
+            assert record["size_bytes"] == Path(record["path"]).stat().st_size
+        for directory in directories:
+            here = {
+                Path(r["path"]).name
+                for r in inside
+                if Path(r["path"]).parent == directory
+            }
+            assert here, "a directory output lists the files it received"
+            assert set(os.listdir(directory)) == here, "nothing else is left there"
+        if not outputs:
+            assert listed == []
 
     @pytest.mark.parametrize(
         "command", [c for c in COMMANDS if c.writes], ids=lambda c: c.name

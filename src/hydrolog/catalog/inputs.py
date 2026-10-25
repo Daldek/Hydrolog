@@ -18,6 +18,9 @@ both into the objects the library works with:
   table that the ``route`` commands take;
 * :func:`load_rating` -- inline ``storage_m3`` + ``outflow_m3s`` (+ ``stage_m``) *or* a
   ``rating_file`` -> :class:`Rating`, the storage-outflow table of ``route level-pool``;
+* :func:`table_hydrograph` -- one column of a table that is already read as a
+  hydrograph, for a file that holds several (``route network``: a column per source);
+* :func:`read_json` -- a JSON document of a file (the network of ``route network``);
 * :func:`read_table` / :func:`load_records` -- the generic file reader behind them,
   for operations that need other columns (rating curve pairs, network segments...).
 
@@ -85,7 +88,9 @@ __all__ = [
     "load_series",
     "load_stations",
     "load_watershed",
+    "read_json",
     "read_table",
+    "table_hydrograph",
 ]
 
 _NUMBER = re.compile(r"[+-]?(?:\d+(?:[.,]\d*)?|[.,]\d+)(?:[eE][+-]?\d+)?")
@@ -485,6 +490,33 @@ def read_table(path: str | os.PathLike[str]) -> Table:
     return _table_from_csv(resolved, text)
 
 
+def read_json(path: str | os.PathLike[str]) -> Any:
+    """Read a JSON file, whatever its suffix.
+
+    Parameters
+    ----------
+    path : str or os.PathLike
+        File to read: UTF-8, with or without a BOM. ``NaN`` and ``Infinity`` are not
+        JSON and are rejected.
+
+    Returns
+    -------
+    object
+        The parsed document: a ``dict``, a ``list`` or a scalar.
+
+    Raises
+    ------
+    NotFoundError
+        If the file does not exist.
+    InputDataError
+        If the file cannot be read, is not UTF-8 or is not valid JSON
+        (``details.path`` and ``details.reason``; ``details.line`` and
+        ``details.column`` for a syntax error).
+    """
+    resolved = _file_path(path)
+    return _parse_json(resolved, _read_text(resolved))
+
+
 def load_records(path: str | os.PathLike[str]) -> list[dict[str, Any]]:
     """Read a CSV or JSON file as a list of records.
 
@@ -786,9 +818,34 @@ DISCHARGE_COLUMN = "discharge_m3s"
 """Default discharge column of a hydrograph file."""
 
 
-def _hydrograph_from_table(
-    table: Table, time_column: str | None, value_column: str | None
+def table_hydrograph(
+    table: Table, time_column: str | None = None, value_column: str | None = None
 ) -> Hydrograph:
+    """Read a hydrograph from two columns of a table.
+
+    Parameters
+    ----------
+    table : Table
+        A table that is already read (:func:`read_table`); it may hold many discharge
+        columns, one per hydrograph.
+    time_column : str, optional
+        Column of the times [min]; default ``time_min``.
+    value_column : str, optional
+        Column of the discharges [m3/s]; default ``discharge_m3s``.
+
+    Returns
+    -------
+    Hydrograph
+        The validated table (the rules of :func:`load_hydrograph`).
+
+    Raises
+    ------
+    InputDataError
+        If a column is missing or ambiguous, a cell is not a number, or the table
+        breaks a rule of :func:`hydrolog.routing.hydrograph.check_table`
+        (``details.path``, ``details.reason``, ``details.column`` and the 1-based data
+        ``details.row``).
+    """
     times_name = table.resolve_column(time_column or TIME_COLUMN, option="time_column")
     values_name = table.resolve_column(
         value_column or DISCHARGE_COLUMN, option="value_column"
@@ -870,7 +927,7 @@ def load_hydrograph(
             },
         )
     if input_file is not None:
-        return _hydrograph_from_table(read_table(input_file), time_column, value_column)
+        return table_hydrograph(read_table(input_file), time_column, value_column)
     for column_option, column in (
         ("time_column", time_column),
         ("value_column", value_column),

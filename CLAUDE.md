@@ -97,8 +97,10 @@ IMGWTools (series CSV from `series export --output`); Hydrograf and Retman use H
 - DEV-7.3: the tests have one relaxed mypy override (untyped test functions); `src/` is
   `strict`.
 - DEV-10.6: no `hydrolog.testing` module; no ecosystem project reads Hydrolog files yet.
-- DEV-19.7: writing commands (`--output`) replace files atomically through a temporary file
-  beside the target, not through a `.hydrolog-incoming/` staging directory (ADR 0003).
+- DEV-19.7: a command that writes one file (`--output`) replaces it atomically through a
+  temporary file beside the target, not through a `.hydrolog-incoming/` staging directory
+  (ADR 0003); `route network` (`--output-dir`, many files) does use the staging directory
+  (ADR-0010).
 - AGI-4.4: `to_dict()` of a library result does not carry `schema`; the envelope adds it
   to `result` (ADR 0002).
 - AGI-5.9: no MCP resources or prompts, tools only.

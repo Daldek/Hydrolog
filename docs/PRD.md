@@ -318,7 +318,7 @@ print(f"tc = {tc:.1f} min")
 **So that** the library, CLI, MCP server and agent guides share the same option names, units, ranges and validation
 
 **Acceptance criteria:**
-- [x] 43 commands in 15 groups, list: `hydrolog commands list`
+- [x] 44 commands in 15 groups, list: `hydrolog commands list`
 - [x] Option schema (JSON Schema) for the whole catalog or a single command: `commands schema`, `--schema`
 - [x] Result envelope `hydrolog-result/1` and error document `hydrolog-error/1` with a closed `ERROR_CODES` registry
 - [x] All result classes have `to_dict()` and `to_json()`
@@ -369,7 +369,7 @@ print(f"tc = {tc:.1f} min")
 - [x] Muskingum-Cunge with constant coefficients (the NRCS form, section or celerity, accuracy and rise-time rules): `MuskingumCungeReach`, command `route muskingum-cunge`
 - [x] Cascade of linear reservoirs with the exact kernel for any time step: `CascadeReach`, command `route cascade`
 - [x] Level-pool reservoir by storage indication from a storage-outflow table (inline or `rating_file`, optional stage, steps kept inside the limit of the table): `LevelPoolReach`, command `route level-pool`
-- [ ] River network: `route network`
+- [x] River network of subcatchments, reaches, reservoirs and junctions: `RoutingNetwork`, command `route network` (the document `hydrolog-network/1`, a hydrograph table per node in `--output-dir`)
 - [x] Hydraulics (levels, inundation, backwater, structures) stays out of scope; the documentation names Hydraulik, HEC-RAS and IMGW HD
 
 ---
@@ -513,7 +513,7 @@ print(f"tc = {tc:.1f} min")
 - [x] Tests and documentation
 
 ### v1.0.0 - Stable API, command catalog, MCP, HSG *(in preparation)*
-- [x] `catalog`, `operations` - a catalog of 43 commands and the operations layer
+- [x] `catalog`, `operations` - a catalog of 44 commands and the operations layer
 - [x] `cli` - CLI generated from the catalog (breaking change: the former syntax was removed)
 - [x] `mcp` - MCP server (`hydrolog mcp`, extra `[mcp]`)
 - [x] `agent_guide` - `AGENTS.md` and `llms.txt` generated from the catalog
@@ -525,10 +525,9 @@ print(f"tc = {tc:.1f} min")
 - [ ] Publication on PyPI
 
 ### After v1.0.0 - Flood routing *(branches `feature/routing-*`, ADR-0007)*
-- [x] `routing` and the command group `route`: `Hydrograph`, `Reach`, lag (`route lag`), Muskingum (`route muskingum`), Muskingum-Cunge (`route muskingum-cunge`), cascade of linear reservoirs (`route cascade`), level-pool reservoir (`route level-pool`) (plan: `docs/plans/2026-10-24-flood-routing.md`)
-- [ ] River network
+- [x] `routing` and the command group `route`: `Hydrograph`, `Reach`, lag (`route lag`), Muskingum (`route muskingum`), Muskingum-Cunge (`route muskingum-cunge`), cascade of linear reservoirs (`route cascade`), level-pool reservoir (`route level-pool`), river network (`route network`) (plan: `docs/plans/2026-10-24-flood-routing.md`)
 
 ---
 
 **Document version:** 1.0.0 (in preparation)
-**Last updated:** 2026-10-24
+**Last updated:** 2026-10-25

@@ -223,6 +223,7 @@ class TestToolList:
             "hydrolog_route_level_pool",
             "hydrolog_route_muskingum",
             "hydrolog_route_muskingum_cunge",
+            "hydrolog_route_network",
             "hydrolog_soil_hsg",
         }
         for name, tool in tools.items():
@@ -747,6 +748,133 @@ class TestRouteWithoutAnOutput:
         assert document["result"]["outflow_m3s"] is None
         assert document["result"]["files"][0]["status"] == "written"
         assert target.read_text(encoding="utf-8").startswith("time_min,discharge_m3s")
+
+
+class TestRouteNetwork:
+    """``hydrolog_route_network``: computes, plans a directory, writes a table each."""
+
+    network = {
+        "nodes": [
+            {
+                "id": "A",
+                "type": "subcatchment",
+                "times_min": [0, 10, 20, 30, 40],
+                "discharge_m3s": [0, 10, 40, 20, 0],
+            },
+            {"id": "R", "type": "reach", "from": ["A"], "method": "lag", "lag_min": 20},
+            {"id": "OUT", "type": "outlet", "from": ["R"]},
+        ]
+    }
+
+    def test_a_read_only_server_returns_the_routed_network(self):
+        result = call(
+            "hydrolog_route_network", {"network": self.network, "nodes": ["OUT"]}
+        )
+
+        document = assert_valid_envelope(result)
+        assert document["check"] is False
+        assert document["result"]["schema"] == "hydrolog-route-network/1"
+        assert document["result"]["outlet"] == "OUT"
+        outlet = document["result"]["nodes"][-1]
+        assert outlet["id"] == "OUT"
+        assert outlet["discharge_m3s"][:6] == [0, 0, 0, 10, 40, 20]
+        assert "files" not in document["result"]
+
+    def test_a_read_only_server_plans_the_directory(self, tmp_path):
+        out = tmp_path / "tables"
+
+        result = call(
+            "hydrolog_route_network",
+            {"network": self.network, "output_dir": str(out)},
+            allowed_dirs=[tmp_path],
+        )
+
+        document = envelope_of(result)
+        assert document["check"] is True
+        assert document["result"]["schema"] == "hydrolog-plan/1"
+        assert [t["action"] for t in document["result"]["targets"]] == ["write"] * 3
+        assert not out.exists()
+
+    def test_a_server_with_writes_writes_a_table_per_node(self, tmp_path):
+        out = tmp_path / "tables"
+
+        result = call(
+            "hydrolog_route_network",
+            {"network": self.network, "output_dir": str(out)},
+            allowed_dirs=[tmp_path],
+            allow_writes=True,
+        )
+
+        document = assert_valid_envelope(result)
+        assert document["check"] is False
+        files = document["result"]["files"]
+        assert {Path(f["path"]).name: f["status"] for f in files} == {
+            "A.csv": "written",
+            "R.csv": "written",
+            "OUT.csv": "written",
+        }
+        assert sorted(path.name for path in out.iterdir()) == [
+            "A.csv",
+            "OUT.csv",
+            "R.csv",
+        ]
+
+    def test_the_directory_must_lie_in_an_allowed_directory(self, tmp_path):
+        allowed = tmp_path / "allowed"
+        allowed.mkdir()
+
+        result = call(
+            "hydrolog_route_network",
+            {"network": self.network, "output_dir": str(tmp_path / "elsewhere")},
+            allowed_dirs=[allowed],
+            allow_writes=True,
+        )
+
+        assert error_of(result)["code"] == "forbidden"
+        assert not (tmp_path / "elsewhere").exists()
+
+    def test_a_rating_file_cannot_lead_out_of_the_directory_of_the_network_file(
+        self, tmp_path
+    ):
+        allowed = tmp_path / "allowed"
+        allowed.mkdir()
+        (tmp_path / "secret.csv").write_text(
+            "storage_m3,outflow_m3s\n0,0\n100,1\n", encoding="utf-8"
+        )
+        network = json.loads(json.dumps(self.network))
+        network["nodes"][1] = {
+            "id": "R",
+            "type": "reservoir",
+            "from": ["A"],
+            "rating_file": "../secret.csv",
+        }
+        path = allowed / "network.json"
+        path.write_text(json.dumps(network), encoding="utf-8")
+
+        result = call(
+            "hydrolog_route_network",
+            {"network_file": str(path)},
+            allowed_dirs=[allowed],
+        )
+
+        error = error_of(result)
+        assert error["code"] == "data_error"
+        assert error["details"]["reason"] == "path_outside"
+        assert error["details"]["node_id"] == "R"
+
+    def test_an_inline_network_cannot_name_a_file(self, tmp_path):
+        network = json.loads(json.dumps(self.network))
+        network["nodes"][1] = {
+            "id": "R",
+            "type": "reservoir",
+            "from": ["A"],
+            "rating_file": str(tmp_path / "pond.csv"),
+        }
+
+        error = error_of(call("hydrolog_route_network", {"network": network}))
+
+        assert error["code"] == "validation_error"
+        assert error["details"]["reason"] == "inline_file"
 
 
 # --- families -------------------------------------------------------------------------

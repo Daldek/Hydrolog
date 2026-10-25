@@ -386,6 +386,43 @@ rounded up from .5, and with the ordinates that give the printed averages all 19
 step of 30 min is not divided. The notice `tail_truncated` is correct here: the published table
 ends in the recession and `--extend-min 0` keeps its axis.
 
+`route network` routes the hydrographs of many subcatchments down a river network. The network is a
+JSON document `hydrolog-network/1`, inline (`--network`, JSON text) or in a file
+(`--network-file`): `nodes` of five types linked by `from`, the ids of the nodes that flow into a
+node. A `subcatchment` brings a hydrograph, inline (`times_min` with `discharge_m3s`) or as a column
+of `--inflows-file` (a time column, `--time-column`, by default `time_min`, and a column per
+subcatchment named by its `value_column` or else by its `id`). A `reach` has a `method` (`lag`,
+`muskingum`, `muskingum-cunge`, `cascade` or `level-pool`) and the options of `route <method>` that
+describe the element (`lag_min`; `k_min`, `x`, `subreaches`; `length_km` and `slope_m_per_m` with a
+section or a celerity; `n` with `k_min`; a table), next to `initial_outflow_m3s` and `extend_min`; a
+`reservoir` has the options of `route level-pool`, a table inline or a `rating_file` that lies beside
+the network file (a path that leads out of its directory is `path_outside`, and an inline network
+cannot name files); a `junction` adds the hydrographs that flow into it; the `outlet` is the end.
+There is one outlet, every node leads to it and a node flows into one node: a bifurcation is
+refused. The order of the nodes in the document changes nothing. A document that is wrong is a
+`data_error` (a file) or a `validation_error` (inline) with the node and the field in `details`.
+All sources have one time step and one first time; nothing is resampled.
+
+`--output-dir DIR` (`-o`) writes the hydrograph that leaves each node as `<id>.csv`, a table that
+every `route` command reads again and the hand-off to Hydraulik; `--nodes` selects the nodes
+(default all). Without a directory the hydrographs of the selected nodes are in the result. The files
+follow the rules of section 3 and are never written over an input file. The example is the fixture
+network: two subcatchments (`A` by its id, `B` by its `value_column`), a Muskingum-Cunge reach below
+`A`, a junction, a pond with a rating file and the outlet; the series of the outlet only:
+
+```bash
+hydrolog route network --network-file tests/fixtures/network_flood.json \
+  --inflows-file tests/fixtures/network_inflows.csv --nodes OUT --json
+```
+
+```json output
+{"result": {"schema": "hydrolog-route-network/1", "name": "Pond catchment", "timestep_min": 10.0, "outlet": "OUT", "order": ["A", "B", "R1", "J1", "D", "OUT"], "nodes": [{"id": "A", "type": "subcatchment", "from": [], "peak_m3s": 24.0, "time_to_peak_min": 60.0, "volume_m3": 143706.0}, {"id": "B", "type": "subcatchment", "from": [], "peak_m3s": 6.8, "time_to_peak_min": 40.0, "volume_m3": 53169.0}, {"id": "R1", "type": "reach", "from": ["A"], "peak_m3s": 22.23188918773083, "time_to_peak_min": 120.0, "model": "muskingum-cunge", "peak_attenuation_pct": 7.36712838445488, "peak_delay_min": 60.0}, {"id": "J1", "type": "junction", "from": ["R1", "B"], "peak_m3s": 25.47188918773083, "time_to_peak_min": 120.0}, {"id": "D", "type": "reservoir", "from": ["J1"], "peak_m3s": 13.863880195745784, "time_to_peak_min": 170.0, "model": "level-pool", "peak_attenuation_pct": 45.57184159538639, "peak_delay_min": 50.0}, {"id": "OUT", "type": "outlet", "from": ["D"], "peak_m3s": 13.863880195745784, "time_to_peak_min": 170.0, "times_min": [0.0, 10.0, 20.0, "..."], "discharge_m3s": [2.0, 2.101548946146755, 2.3546878578993646, "..."]}]}}
+```
+
+The outlet peaks at 13.86 m3/s at 170 min: the Muskingum-Cunge reach lowers the peak of `A` by 7.4 %
+and delays it by an hour, the junction adds `B`, and the pond lowers it by a further 45.6 % and
+delays it by 50 min.
+
 In Python the classes of `hydrolog.routing` do the same on arrays; `route` returns the outflow
 with the notices, the storage at both ends and the balance.
 
@@ -527,11 +564,19 @@ hydrolog report generate --output report.md --watershed-file tests/fixtures/wate
 
 Three commands write a file: `report generate`, `soil hsg` and `commands guide` (the agent guide
 rendered from the catalog). The `route` commands write the outflow only when they are given
-`--output` (without it `--check` has nothing to plan and computes). Every other command only
-reads. A writing command takes:
+`--output` (without it `--check` has nothing to plan and computes), and `route network` writes one
+file per node into `--output-dir`. Every other command only reads. A writing command takes:
 
 - `--output FILE`: exactly one plain file; missing directories are created. Hydrolog has no store
   and no managed directory layout.
+- `--output-dir DIR` (`route network` only, short flag `-o`): one plain file per node, `<id>.csv`;
+  the directory is created if it is missing. The plan lists every file; a directory that is, or
+  lies in, the store of another Nogat tool is a `conflict` (`details.reason` `output_in_store`: the
+  tool that owns a store writes into it with its own `--root`), and so is a node named twice in
+  `--nodes` (`duplicate_output_name`). The files are written into
+  `DIR/.hydrolog-incoming/<host>_<pid>_<token>/` and moved into place, so an error leaves no
+  partial file and the staging directory is removed; a file that appeared during the computation
+  is a conflict, not replaced.
 - `--check`: plan without effects. The result is a `hydrolog-plan/1` document whose
   `result.targets[]` lists the `option` that names each file, its absolute `path` and the
   `action`: `write` (no such file), `replace` (it exists and `--force` is given) or `conflict` (it
