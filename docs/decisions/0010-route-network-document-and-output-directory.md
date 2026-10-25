@@ -2,6 +2,9 @@
 
 - Status: accepted
 - Date: 2026-10-25
+- Amended by [ADR-0012](0012-network-objects-rainfall-and-runoff.md): the nodes of `RoutingNetwork` are typed
+  objects that link by reference (`Subcatchment`, `Channel`, `Reservoir`, `Junction`, `Outlet`, all `Node`); the
+  first version had one generic `NetworkNode`. The document and its errors are unchanged, and it gained fields.
 
 ## Context
 
@@ -88,7 +91,7 @@ Three points that the first version left open were decided by the coordinating s
   "optional" in the decision above.
 - **An id that is a device name of Windows is refused.** `con`, `prn`, `aux`, `nul`, `com1` to `com9` and
   `lpt1` to `lpt9`, in any case and with any extension (`NUL.csv` is the device too), are a
-  `validation_error` with `details.reason` `reserved_name`, from `NetworkNode` (so the library, the reader
+  `validation_error` with `details.reason` `reserved_name`, from `Node` (so the library, the reader
   and `hydrolog-network/1`, in which the id is a pattern with a `not`, agree). Reason: the id names the file
   `<id>.csv` and a file of that name misbehaves on Windows, where the tables go to Hydraulik. The
   superscript digits (`com¹` to `lpt³`) that Windows also reserves are refused too.

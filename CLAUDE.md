@@ -58,7 +58,10 @@ src/hydrolog/
 ├── agent_guide.py, _data/agents/   # generator and templates of AGENTS.md, llms.txt, block
 ├── exceptions.py, _errors.py       # HydrologError classes; registry generated from schemas/nogat
 ├── _settings.py                    # lang/log_level: option > env > nogat.toml > default
-├── runoff/ routing/ time/ precipitation/ morphometry/ network/ statistics/ hydrometrics/ soil/
+├── routing/      # reaches (lag, muskingum, cunge, cascade, level_pool); network.py (nodes, RoutingNetwork),
+│                 # points.py (ControlPointNetwork), rainfall.py, runoff.py, document.py (hydrolog-network/1)
+├── testing.py    # public builders of the files other projects read (DEV-10.6, ADR-0011, ADR-0012)
+├── runoff/ time/ precipitation/ morphometry/ network/ statistics/ hydrometrics/ soil/
 ├── reports/ visualization/         # Markdown reports, plots (extra [viz])
 tests/{unit,integration,contract,fixtures}   schemas/nogat/ (copies of the standard)
 ```

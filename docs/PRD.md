@@ -370,6 +370,8 @@ print(f"tc = {tc:.1f} min")
 - [x] Cascade of linear reservoirs with the exact kernel for any time step: `CascadeReach`, command `route cascade`
 - [x] Level-pool reservoir by storage indication from a storage-outflow table (inline or `rating_file`, optional stage, steps kept inside the limit of the table): `LevelPoolReach`, command `route level-pool`
 - [x] River network of subcatchments, reaches, reservoirs and junctions: `RoutingNetwork`, command `route network` (the document `hydrolog-network/1`, a hydrograph table per node in `--output-dir`)
+- [x] Subcatchments that make their own hydrograph from their own rainfall (`RainfallSource`: `DesignStorm`, `RainfallSeries`; `RunoffModel`: `CurveNumberRunoff` over `HydrographGenerator`), nodes, rainfall kinds, runoff models and reach methods as registered classes, `describe()` of every part, and the network written as a document, `RoutingNetwork.to_document()` (ADR-0012)
+- [x] Control points for an application that picks points on the streams: `ControlPointNetwork` (outlet first; `add_point`, `update_subcatchment`, `add_confluence`, `remove_point`; residual areas and channels given by the application) (ADR-0012)
 - [x] Hydraulics (levels, inundation, backwater, structures) stays out of scope; the documentation names Hydraulik, HEC-RAS and IMGW HD
 
 ---

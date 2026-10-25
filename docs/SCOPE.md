@@ -318,7 +318,14 @@ inundation, backwater and structures stay with Hydraulik, HEC-RAS and IMGW HD.
 - River network: `RoutingNetwork` (subcatchments, reaches by any method above, reservoirs, junctions
   that add and one outlet; the nodes are evaluated headwaters first, so the order of a document
   changes nothing; a bifurcation is refused), command `route network` over the document
-  `hydrolog-network/1`
+  `hydrolog-network/1`, which `RoutingNetwork.to_document()` also writes
+- A subcatchment is given its hydrograph or makes it from a watershed, a runoff model
+  (`CurveNumberRunoff`: SCS-CN and a unit hydrograph, as `hydrograph generate`) and a rainfall of
+  its own (`DesignStorm`, `RainfallSeries`, any `RainfallSource`); a new kind of node, rainfall,
+  runoff model or reach method is a class in a registry (ADR-0012)
+- Control points: `ControlPointNetwork` builds the network as an application picks it, outlet first,
+  point by point; the residual area and the channel of each point are given by the application
+  (Hydrolog does not compute areas and makes up no channel)
 - The outflow written by `--output` is a hydrograph table that every `route` command reads;
   `route network` writes one such table per node into `--output-dir`
 - Not in scope: variable-parameter Muskingum-Cunge and compound sections, kinematic and dynamic
