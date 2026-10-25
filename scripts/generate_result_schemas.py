@@ -8,7 +8,9 @@ schema from the documents they produce and writes
 the top-level properties with their types, the properties that every example has as
 ``required``, and nothing about nested keys, so a new optional field keeps the version
 (AGI-4.1). The plan document ``hydrolog-plan/1`` and the command list are written by
-hand below; ``hydrolog-commands/1`` is the Nogat ``commands-1`` schema
+hand below, and so is the one document that a command reads and does not write, the
+network ``hydrolog-network/1`` of ``route network`` (its fields come from the options
+of the catalog); ``hydrolog-commands/1`` is the Nogat ``commands-1`` schema
 (``schemas/nogat/``).
 
 Usage::
@@ -26,7 +28,17 @@ from pathlib import Path
 from typing import Any
 
 from hydrolog.catalog import data_commands, run_command
-from hydrolog.catalog.spec import Command
+from hydrolog.catalog.groups.route import (
+    DISCHARGE_M3S,
+    EXTEND_MIN,
+    INITIAL_OUTFLOW_M3S,
+    MODEL_METHODS,
+    TIMES_MIN,
+    VALUE_COLUMN,
+    model_options,
+)
+from hydrolog.catalog.spec import Command, Option
+from hydrolog.routing.network import MAX_ID_CHARS
 
 ROOT = Path(__file__).resolve().parent.parent
 TARGET = ROOT / "src" / "hydrolog" / "schemas"
@@ -115,10 +127,146 @@ def _documents(command: Command, scratch: Path) -> list[dict[str, Any]]:
     return documents
 
 
+def _node_fields(options: tuple[Option, ...]) -> dict[str, Any]:
+    """Return the options of the catalog as the properties of a node of a network."""
+    properties: dict[str, Any] = {}
+    for option in options:
+        schema = option.json_schema("en")
+        if option.type == "path":
+            # the path rules of a server see the options of a call, not the files that
+            # a document names, so a file of the document stays beside the document
+            schema = {
+                "type": "string",
+                "minLength": 1,
+                "description": (
+                    "File relative to the directory of the network file, and inside it."
+                ),
+            }
+        properties[option.name] = schema
+    return properties
+
+
+def _network_document(schema_id: str) -> dict[str, Any]:
+    """Return the schema of the network document (ADR-0010): one variant per node type.
+
+    A reach has a variant per method, with the options of ``route <method>``.
+    """
+    run = _node_fields((INITIAL_OUTFLOW_M3S, EXTEND_MIN))
+    sources = _node_fields((TIMES_MIN, DISCHARGE_M3S, VALUE_COLUMN))
+    sources[TIMES_MIN.name]["description"] = (
+        "Times of the ordinates [min], strictly increasing at a regular step, the same "
+        "step and first time for every subcatchment; with `discharge_m3s`."
+    )
+    sources[DISCHARGE_M3S.name]["description"] = (
+        "Discharge at each time [m3/s], not negative; as many values as `times_min`."
+    )
+    sources[VALUE_COLUMN.name]["description"] = (
+        "Column of `inflows_file` with the discharges [m3/s] of the subcatchment; "
+        "default the `id`. Not with inline discharges."
+    )
+    identifier = {"$ref": "#/$defs/id"}
+
+    def upstream(low: int, high: int | None) -> dict[str, Any]:
+        schema: dict[str, Any] = {
+            "type": "array",
+            "items": identifier,
+            "uniqueItems": True,
+            "minItems": low,
+            "description": "The ids of the nodes that flow into this one.",
+        }
+        if high is not None:
+            schema["maxItems"] = high
+        return schema
+
+    def variant(
+        title: str, kind: str, properties: dict[str, Any], required: list[str]
+    ) -> dict[str, Any]:
+        return {
+            "title": title,
+            "type": "object",
+            "required": ["id", "type", *required],
+            "properties": {"id": identifier, "type": {"const": kind}, **properties},
+            "additionalProperties": False,
+        }
+
+    source = variant(
+        "subcatchment", "subcatchment", {"from": upstream(0, 0), **sources}, []
+    )
+    source["dependentRequired"] = {
+        TIMES_MIN.name: [DISCHARGE_M3S.name],
+        DISCHARGE_M3S.name: [TIMES_MIN.name],
+    }
+    source["not"] = {"required": [VALUE_COLUMN.name, TIMES_MIN.name]}
+    variants = [source]
+    for method in MODEL_METHODS:
+        options = model_options(method)
+        required = ["from", "method", *(o.name for o in options if o.required)]
+        properties = {
+            "from": upstream(1, 1),
+            "method": {"const": method},
+            **run,
+            **_node_fields(options),
+        }
+        variants.append(variant(f"reach by {method}", "reach", properties, required))
+    variants.append(
+        variant(
+            "reservoir",
+            "reservoir",
+            {
+                "from": upstream(1, 1),
+                **run,
+                **_node_fields(model_options("level-pool")),
+            },
+            ["from"],
+        )
+    )
+    variants.append(
+        variant("junction", "junction", {"from": upstream(1, None)}, ["from"])
+    )
+    variants.append(variant("outlet", "outlet", {"from": upstream(1, 1)}, ["from"]))
+    return {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": f"{BASE}/hydrolog-network-1.schema.json",
+        "title": schema_id,
+        "description": (
+            "River network read by `route network` (ADR-0010): subcatchments, reaches "
+            "and reservoirs, junctions and one outlet, linked by `from`. A reach has a "
+            "`method` and the options of `route <method>`. `schema` may be left out."
+        ),
+        "type": "object",
+        "required": ["nodes"],
+        "properties": {
+            "schema": {"const": schema_id},
+            "name": {"type": "string", "minLength": 1},
+            "nodes": {
+                "type": "array",
+                "minItems": 1,
+                "items": {"$ref": "#/$defs/node"},
+            },
+        },
+        "additionalProperties": False,
+        "$defs": {
+            "id": {
+                "type": "string",
+                "pattern": r"^\w[\w.-]*$",
+                "maxLength": MAX_ID_CHARS,
+                "description": (
+                    "Names the node and its file `<id>.csv`: letters, digits, `_`, `.` "
+                    "and `-`, not starting with `.` or `-` and not ending with `.`; "
+                    "unique without regard to case."
+                ),
+            },
+            "node": {"oneOf": variants},
+        },
+    }
+
+
 def _hand_written() -> dict[str, dict[str, Any]]:
     plan_id = "hydrolog-plan/1"
     list_id = "hydrolog-command-list/1"
+    network_id = "hydrolog-network/1"
     return {
+        network_id: _network_document(network_id),
         plan_id: {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "$id": f"{BASE}/hydrolog-plan-1.schema.json",

@@ -335,7 +335,16 @@ print(f"Qmax: {result.peak_discharge_m3s:.2f} m³/s")
 
 ## Hydrolog 1.0.0: operations layer, command catalog and files
 
-Since v1.0.0 Hydrolog has a single command catalog (`hydrolog.catalog`, 43 commands, list: `hydrolog commands list`) from which the following are generated: the Python operations layer (`hydrolog.operations`), the `hydrolog` CLI, the MCP server (`hydrolog mcp`) and the agent guides (`AGENTS.md`, `llms.txt`). The library classes (`HydrographGenerator`, `WatershedParameters`, ...) work as before; the sections below describe the new ways of integrating.
+Since v1.0.0 Hydrolog has a single command catalog (`hydrolog.catalog`, 44 commands, list: `hydrolog commands list`) from which the following are generated: the Python operations layer (`hydrolog.operations`), the `hydrolog` CLI, the MCP server (`hydrolog mcp`) and the agent guides (`AGENTS.md`, `llms.txt`). The library classes (`HydrographGenerator`, `WatershedParameters`, ...) work as before; the sections below describe the new ways of integrating.
+
+### Flood routing over a network: Hydrograf and Hydraulik
+
+`route network` routes the hydrographs of many subcatchments down a river network. The network is the document `hydrolog-network/1` ([ADR-0010](decisions/0010-route-network-document-and-output-directory.md); JSON Schema `src/hydrolog/schemas/hydrolog-network-1.schema.json`).
+
+- **Hydrograf (a mapping it can use):** a subcatchment of the delineated watershed is a node of type `subcatchment` whose discharge is the hydrograph that `hydrograph generate` gives for it, written to a column of `inflows_file` (named by the `value_column` or else by the `id` of the node; one time step and one first time for all); a stream segment (`StreamSegment`, `upstream_ids`) is a `reach` whose `from` is the node above it and whose `method` and options Hydrograf chooses (`lag_min`; `k_min` and `x`; `length_km` and `slope_m_per_m` with a section or a celerity); a confluence is a `junction` that lists the nodes that join; a reservoir is a `reservoir` with its storage-outflow table; the last node is the `outlet`. A node `id` names a file: letters, digits, `_`, `.` and `-`, at most 64 characters, unique without regard to case. A bifurcation is refused.
+- **Hydraulik (hand-off):** `route network --output-dir DIR` writes `<id>.csv` for each node, the hydrograph that leaves the node (`time_min` in minutes at a regular step, `discharge_m3s` in m3/s), which is the inflow of a hydraulic model at that node. The `result.files[]` of the `--json` result lists the paths with their SHA-256. Hydrolog reads no file of Hydraulik.
+- A `rating_file` named by the document lies beside `network_file`; an inline network (MCP) cannot name files.
+- A network exporter in Hydrograf and a reader of the tables in Hydraulik are `request` issues in their repositories (DEV-17.5); this change opens none.
 
 ### Retman (calculation handlers)
 
@@ -502,8 +511,8 @@ cn = calculate_weighted_cn(parts)
 | HydrographGenerator | ✅ | SCS bug fixed in v0.5.1 (constant 0.208) |
 | Unit tests | ✅ | 35 tests |
 | Integration tests | ✅ | 15 tests |
-| Operations layer, command catalog, CLI, MCP (v1.0.0) | ✅ | 43 commands; `hydrolog.operations`, `hydrolog mcp` |
-| `routing` module (after v1.0.0, ADR-0007) | 🔄 | `Hydrograph`, `Reach`, `LagReach`, `MuskingumReach`, `MuskingumCungeReach`, `CascadeReach`, `LevelPoolReach`, `route lag`, `route muskingum`, `route muskingum-cunge`, `route cascade`, `route level-pool`; the network on `feature/routing-network` |
+| Operations layer, command catalog, CLI, MCP (v1.0.0) | ✅ | 44 commands; `hydrolog.operations`, `hydrolog mcp` |
+| `routing` module (after v1.0.0, ADR-0007) | 🔄 | `Hydrograph`, `Reach`, `LagReach`, `MuskingumReach`, `MuskingumCungeReach`, `CascadeReach`, `LevelPoolReach`, `RoutingNetwork`, `route lag`, `route muskingum`, `route muskingum-cunge`, `route cascade`, `route level-pool`, `route network`; complete on `feature/routing-network`, waiting for the author's merge |
 | `soil` module (HSG, v1.0.0) | ✅ | `hsg_from_rasters`, `hsg_statistics`, `soil *` commands |
 | Result serialization (v1.0.0) | ✅ | `to_dict()`/`to_json()` in all result classes |
 

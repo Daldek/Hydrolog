@@ -338,7 +338,8 @@ def refuse_input_as_output(
     for name, given in inputs.items():
         if given is not None and _is_same_file(target, Path(os.fspath(given))):
             raise InvalidParameterError(
-                f"Option {option!r} must not be the input file of {name!r}: {target}",
+                f"Option {option!r} would overwrite the input file of {name!r}: "
+                f"{target}",
                 details={"option": option, "reason": "conflict", "input": name},
                 hint=hint,
             )

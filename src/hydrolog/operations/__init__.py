@@ -70,12 +70,14 @@ from hydrolog.operations.precip import (
 )
 from hydrolog.operations.report import ReportResult, report_generate
 from hydrolog.operations.route import (
+    NetworkRouteResult,
     RouteResult,
     route_cascade,
     route_lag,
     route_level_pool,
     route_muskingum,
     route_muskingum_cunge,
+    route_network,
 )
 from hydrolog.operations.scs import ScsEffectiveResult, scs_effective
 from hydrolog.operations.soil import (
@@ -150,12 +152,14 @@ __all__ = [
     "compute_hydrograph",
     "hydrograph_generate",
     # route
+    "NetworkRouteResult",
     "RouteResult",
     "route_lag",
     "route_muskingum",
     "route_muskingum_cunge",
     "route_cascade",
     "route_level_pool",
+    "route_network",
     # morphometry
     "WatershedMorphometry",
     "morphometry_watershed",

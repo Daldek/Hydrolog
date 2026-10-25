@@ -74,7 +74,7 @@ _CONFIG_SCHEMA: Final = "hydrolog-config/1"
 _GUIDE_SCHEMA: Final = "hydrolog-guide/1"
 _ENVELOPE_KEYS: Final = ("schema", "files")
 """Keys of a result that the summary shows as sections, not as fields."""
-_CONFLICT_REASONS: Final = ("output_exists", "duplicate_output_name")
+_CONFLICT_REASONS: Final = ("output_exists", "duplicate_output_name", "output_in_store")
 
 
 def format_number(value: float) -> str:

@@ -1053,6 +1053,33 @@ print(round(pond.route(flood).outflow.peak_discharge_m3s, 3))          # 6.852
 
 **Command.** `route level-pool` takes the table inline (`storage_m3` with `outflow_m3s`, and optionally `stage_m`) or as a `rating_file` with those columns, exactly one of the two (anything else is a `validation_error`, `details.reason` `one_of`; a `stage_m` next to a `rating_file` is a `conflict`, the file brings its own column), and `subreaches` (default 1), next to the hydrograph, run and output options of `route lag`. The file is read after the output has been planned; `output` must not be the `rating_file`. A bad inline table is a `validation_error` and a bad file a `data_error` with the row and the column. `parameters` hold the sub-reaches and sub-steps, the longest step of the table, the peak storage and its time and, with a stage, the peak stage and its time; the notice `timestep_refined` says that the step was divided, and a flood beyond the table is a `calculation_error`.
 
+#### 3.9.7 Routing over a River Network (`RoutingNetwork`, `route network`)
+
+A network is a directed acyclic graph of nodes that name the nodes flowing into them (`from`, the convention of `StreamSegment.upstream_ids`): `subcatchment` (a source hydrograph), `reach` (any element above, routing the hydrograph of its upstream node), `reservoir` (a `LevelPoolReach`), `junction` (the sum of the hydrographs that flow into it) and one `outlet`. The nodes are evaluated headwaters first and, among those that are ready, the smallest id first, so neither the order of the nodes in a list or a file nor anything but the links decides the result. A node flows into one node (a bifurcation would count its water twice) and every node reaches the outlet; a cycle, an unknown id, two outlets or none and a node that flows nowhere are errors with a `details.reason`.
+
+**Time axes.** One step and one first time for all sources; nothing is resampled (ADR-0008). Their lengths may differ, and so do those of the outflows, which each reach extends until it has settled; a junction holds a shorter hydrograph at its last value, as a reach holds its inflow over the extension.
+
+```python
+from hydrolog.routing import Hydrograph, LagReach, NetworkNode, RoutingNetwork
+
+small = Hydrograph.from_step([1.0, 4.0, 1.0], timestep_min=10.0)
+large = Hydrograph.from_step([2.0, 8.0, 2.0], timestep_min=10.0)
+network = RoutingNetwork(
+    [
+        NetworkNode("A", "subcatchment", hydrograph=small),
+        NetworkNode("B", "subcatchment", hydrograph=large),
+        NetworkNode("J", "junction", upstream=["A", "B"]),
+        NetworkNode("R", "reach", upstream=["J"], reach=LagReach(lag_min=10.0)),
+        NetworkNode("OUT", "outlet", upstream=["R"]),
+    ]
+)
+print(network.route().hydrographs["OUT"].peak_discharge_m3s)           # 12.0
+```
+
+**Reference values.** No published table exists for a network, so the tests are the identities of the plan. A one-reach network equals the single command: the table it writes is the same file, byte for byte, for each of the five methods. A junction adds; the sum of the routed parts is the routed sum for a linear reach; the order of the nodes changes nothing. `N` reaches of `K / N` in series equal one `MuskingumReach` with `N` sub-reaches: exactly (1e-12) when `extend_min` fixes the extension, and to the size of the settling tolerance when the extension is automatic, because each reach cuts its tail at 0.1 % of its inflow peak (0.099 m3/s of a 90 m3/s peak over three reaches).
+
+**Command.** `route network` reads the document `hydrolog-network/1` ([ADR-0010](decisions/0010-route-network-document-and-output-directory.md)) inline or from `network_file`. A subcatchment has its discharges inline or in a column of `inflows_file`; a reach has a `method` and the options of `route <method>`, validated by their catalog declaration; a reservoir has those of `route level-pool`; a `rating_file` lies in the directory of the network file. A wrong document is a `data_error` for a file and a `validation_error` for the inline option, with the node and the field in `details`. `result.nodes[]` gives the peak, its time and the volume of every node and, for a reach or a reservoir, the figures of `route <method>`; the notices begin with the node id. `output_dir` writes `<id>.csv` for each selected node, which every `route` command reads again; without it the hydrographs of the selected nodes are in the result.
+
 ---
 
 ## 4. Literature Verification
@@ -1090,6 +1117,7 @@ print(round(pond.route(flood).outflow.peak_discharge_m3s, 3))          # 6.852
 | Muskingum-Cunge, constant coefficients (`route muskingum-cunge`, `MuskingumCungeReach`) | Cunge (1969), NRCS NEH Part 630 ch. 17 (2014) eq. 17-20 to 17-22, example 17-4 and appendix B, HEC-HMS Technical Reference Manual (Muskingum-Cunge model) | ✅ |
 | Cascade of linear reservoirs, exact kernel (`route cascade`, `CascadeReach`) | Nash (1957) (the IUH of `NashIUH`), Kalinin and Milyukov (1957) as presented by Ponce (linear reservoirs and numerical diffusion), Chow, Maidment, Mays (1988); weights checked against the numerical integral of the gamma density and the exact solution of the chain | ✅ |
 | Level-pool routing, storage indication (`route level-pool`, `LevelPoolReach`) | NRCS NEH Part 630 ch. 17 (2014) eq. 17-3 and example 17-1, HEC-HMS Technical Reference Manual (Modified Puls model); the step rule per segment checked on random tables and against the exact solution of a tank with a weir | ✅ |
+| River network of reaches, reservoirs and junctions (`route network`, `RoutingNetwork`) | Composition of the elements above in the order of the stream (the convention of `StreamSegment.upstream_ids`); no published table, the identities of the plan instead: a one-reach network equals the command, series equivalence with the sub-reaches of `MuskingumReach`, junction sums, order independence | ✅ |
 
 ### 4.2 Key Publications
 

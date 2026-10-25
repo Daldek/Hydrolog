@@ -4,7 +4,10 @@ Every command takes a hydrograph at a regular time step (``times_min`` with
 ``discharge_m3s``, or ``input_file``), routes it through one element of
 :mod:`hydrolog.routing` and returns the outflow with its summary; ``output`` writes the
 outflow as a hydrograph table that every ``route`` command reads again (ADR-0007,
-ADR-0008). The operations are in :mod:`hydrolog.operations.route`.
+ADR-0008). ``route network`` routes the hydrographs of many subcatchments down a river
+network, a document ``hydrolog-network/1`` whose reaches and reservoirs take the options
+of the other commands (:func:`model_options`), and writes one such table per node into
+``output_dir`` (ADR-0010). The operations are in :mod:`hydrolog.operations.route`.
 
 The options that all commands share are public constants (:data:`INFLOW_OPTIONS`,
 :data:`INFLOW_ONE_OF`, :data:`RUN_OPTIONS`, :data:`OUTPUT_OPTIONS`) so that a command
@@ -159,6 +162,139 @@ RUN_OPTIONS: tuple[Option, ...] = (INITIAL_OUTFLOW_M3S, EXTEND_MIN)
 
 OUTPUT_OPTIONS: tuple[Option, ...] = (OUTPUT, FORCE, CHECK)
 """The optional outflow file and its ``force`` and ``check``."""
+
+NETWORK = Option(
+    name="network",
+    type="object",
+    description_pl=(
+        "Sieć w treści, jako obiekt JSON `hydrolog-network/1`: `name` i `nodes`, lista "
+        "węzłów z `id`, `type` (subcatchment, reach, reservoir, junction, outlet) i "
+        "`from` (id węzłów powyżej). Zlewnia (subcatchment) ma `times_min` z "
+        "`discharge_m3s` albo `value_column` z `inflows_file` (domyślnie jej `id`); "
+        "odcinek (reach) ma `method` (lag, muskingum, muskingum-cunge, cascade, "
+        "level-pool) i opcje `route <method>`, zbiornik (reservoir) opcje `route "
+        "level-pool`, oba także `initial_outflow_m3s` i `extend_min`; złącze "
+        "(junction) dodaje dopływające węzły; jest dokładnie jeden outlet. Sieć w "
+        "treści nie wskazuje plików: `rating_file` wymaga `network_file`."
+    ),
+    description=(
+        "The network inline, as a JSON object `hydrolog-network/1`: `name` and "
+        "`nodes`, a list of nodes with `id`, `type` (subcatchment, reach, reservoir, "
+        "junction, outlet) and `from` (the ids of the nodes upstream). A "
+        "subcatchment has "
+        "`times_min` with `discharge_m3s`, or a `value_column` of `inflows_file` "
+        "(default its `id`); a reach has `method` (lag, muskingum, muskingum-cunge, "
+        "cascade, level-pool) and the options of `route <method>`, a reservoir those "
+        "of `route level-pool`, both also `initial_outflow_m3s` and `extend_min`; a "
+        "junction adds the nodes that flow into it; there is exactly one outlet. An "
+        "inline network names no files: a `rating_file` needs `network_file`."
+    ),
+)
+NETWORK_FILE = Option(
+    name="network_file",
+    type="path",
+    path_role="input",
+    description_pl=(
+        "Plik JSON z siecią `hydrolog-network/1`, zamiast `network`. `rating_file` "
+        "węzła jest podany względem katalogu tego pliku i musi w nim leżeć."
+    ),
+    description=(
+        "JSON file with the network `hydrolog-network/1`, instead of `network`. The "
+        "`rating_file` of a node is relative to the directory of this file and must "
+        "lie inside it."
+    ),
+)
+INFLOWS_FILE = Option(
+    name="inflows_file",
+    type="path",
+    path_role="input",
+    description_pl=(
+        "Plik CSV albo JSON z przepływami zlewni, które nie mają ich w treści: "
+        "kolumna czasu (`time_column`) i kolumna [m3/s] każdej zlewni, nazwana jej "
+        "`value_column` albo, bez niej, jej `id`."
+    ),
+    description=(
+        "CSV or JSON file with the discharges of the subcatchments that have none "
+        "inline: the time column (`time_column`) and a column [m3/s] for each "
+        "subcatchment, named by its `value_column` or else by its `id`."
+    ),
+)
+NETWORK_TIME_COLUMN = Option(
+    name="time_column",
+    type="string",
+    description_pl=(
+        "Nazwa kolumny z czasem [min] w `inflows_file`; domyślnie `time_min`."
+    ),
+    description="Name of the time column [min] in `inflows_file`; default `time_min`.",
+)
+NODES = Option(
+    name="nodes",
+    type="string_list",
+    description_pl=(
+        "Id węzłów, których hydrogramy są zwracane: zapisywane jako `<id>.csv` w "
+        "`output_dir` albo, bez niego, umieszczane w wyniku; domyślnie wszystkie."
+    ),
+    description=(
+        "Ids of the nodes whose hydrographs are returned: written as `<id>.csv` into "
+        "`output_dir` or, without it, put in the result; default all of them."
+    ),
+)
+OUTPUT_DIR = Option(
+    name="output_dir",
+    type="path",
+    path_role="output",
+    description_pl=(
+        "Katalog na hydrogram każdego wybranego węzła, `<id>.csv` (`time_min`, "
+        "`discharge_m3s`), który czyta każda komenda `route`; tworzony, jeśli go "
+        "brak. Bez niego hydrogramy są w wyniku. Istniejący plik jest zastępowany "
+        "tylko z `force`; żaden plik nie może być plikiem wejściowym, a katalog nie "
+        "może leżeć w magazynie innego narzędzia Nogat."
+    ),
+    description=(
+        "Directory for the hydrograph of each selected node, `<id>.csv` (`time_min`, "
+        "`discharge_m3s`), which every `route` command reads; created if missing. "
+        "Without it the hydrographs are in the result. An existing file is replaced "
+        "only with `force`; no file may be an input file and the directory must not "
+        "lie in the store of another Nogat tool."
+    ),
+)
+NETWORK_FORCE = Option(
+    name="force",
+    type="boolean",
+    description_pl=(
+        "Zastąp pliki `<id>.csv`, które istnieją w `output_dir`; bez tej opcji nic "
+        "nie jest nadpisywane."
+    ),
+    description=(
+        "Replace the `<id>.csv` files that exist in `output_dir`; without it nothing "
+        "is overwritten."
+    ),
+    default=False,
+)
+NETWORK_CHECK = Option(
+    name="check",
+    type="boolean",
+    description_pl=(
+        "Z `output_dir`: plan bez skutków, zwróć każdy plik z jego działaniem "
+        "(`write`, `replace` lub `conflict`), niczego nie zapisując. Bez `output_dir` "
+        "nie ma czego planować i wynik jest liczony jak zwykle."
+    ),
+    description=(
+        "With `output_dir`: plan without effects, return each file with its action "
+        "(`write`, `replace` or `conflict`) and write nothing. Without `output_dir` "
+        "there is nothing to plan and the result is computed as usual."
+    ),
+    default=False,
+)
+
+MODEL_METHODS: tuple[str, ...] = (
+    "lag",
+    "muskingum",
+    "muskingum-cunge",
+    "cascade",
+    "level-pool",
+)
+"""The routing methods, ``route <method>``: the values of ``method`` of a reach."""
 
 _ERRORS = (
     "validation_error",
@@ -1043,4 +1179,190 @@ COMMANDS: tuple[Command, ...] = (
             },
         ),
     ),
+    Command(
+        name="route network",
+        operation_id="hydrolog_route_network",
+        summary_pl=(
+            "Przeprowadź hydrogramy przez sieć rzeczną: zlewnie, odcinki, zbiorniki, "
+            "złącza."
+        ),
+        summary=(
+            "Route hydrographs down a river network: catchments, reaches, reservoirs, "
+            "junctions."
+        ),
+        description_pl=(
+            "Przeprowadza przepływy zlewni w dół sieci odcinków (lag, Muskingum, "
+            "Muskingum-Cunge, kaskada, zbiornik), zbiorników i złączy do jednego "
+            "wylotu. Sieć to dokument `hydrolog-network/1`; przepływy są w treści lub "
+            "w `inflows_file`. Jeden krok czasu dla wszystkich węzłów. Zwraca szczyty "
+            "i objętości każdego węzła."
+        ),
+        description=(
+            "Routes the discharges of subcatchments down a network of reaches (lag, "
+            "Muskingum, Muskingum-Cunge, cascade, level pool), reservoirs and "
+            "junctions to one outlet. The network is a document `hydrolog-network/1`; "
+            "discharges are inline or in `inflows_file`. Returns peaks and volumes per "
+            "node."
+        ),
+        function="hydrolog.operations.route_network",
+        options=(
+            NETWORK,
+            NETWORK_FILE,
+            INFLOWS_FILE,
+            NETWORK_TIME_COLUMN,
+            NODES,
+            OUTPUT_DIR,
+            NETWORK_FORCE,
+            NETWORK_CHECK,
+        ),
+        one_of=(("network",), ("network_file",)),
+        examples=(
+            {
+                "network_file": f"{_FIXTURES}/network_flood.json",
+                "inflows_file": f"{_FIXTURES}/network_inflows.csv",
+                "output_dir": "network_out",
+            },
+            {
+                "network": {
+                    "nodes": [
+                        {
+                            "id": "A",
+                            "type": "subcatchment",
+                            "times_min": [0, 10, 20, 30, 40, 50, 60, 70],
+                            "discharge_m3s": [0, 10, 40, 90, 60, 30, 10, 0],
+                        },
+                        {
+                            "id": "B",
+                            "type": "subcatchment",
+                            "times_min": [0, 10, 20, 30, 40, 50, 60, 70],
+                            "discharge_m3s": [0, 4, 12, 8, 3, 0, 0, 0],
+                        },
+                        {
+                            "id": "R1",
+                            "type": "reach",
+                            "from": ["A"],
+                            "method": "lag",
+                            "lag_min": 25.0,
+                        },
+                        {"id": "J1", "type": "junction", "from": ["R1", "B"]},
+                        {"id": "OUT", "type": "outlet", "from": ["J1"]},
+                    ],
+                },
+                "nodes": ["OUT"],
+            },
+        ),
+        result_schema="hydrolog-route-network/1",
+        cardinality="bounded",
+        rules=(
+            "Give `network` or `network_file`; a `rating_file` lies beside the file.",
+            "`output_dir` writes `<id>.csv` per node (`nodes` selects); `check` "
+            "plans it.",
+            "Notices begin with the node id.",
+        ),
+        rules_pl=(
+            "Podaj `network` albo `network_file`; `rating_file` leży obok pliku.",
+            "`output_dir` zapisuje `<id>.csv` każdego węzła (`nodes` wybiera); `check` "
+            "to planuje.",
+            "Uwagi zaczynają się od id węzła.",
+        ),
+        errors=(
+            "validation_error",
+            "not_found",
+            "data_error",
+            "calculation_error",
+            "forbidden",
+            "io_error",
+            "conflict",
+        ),
+        example_results=(
+            {
+                "name": "Pond catchment",
+                "timestep_min": 10.0,
+                "outlet": "OUT",
+                "order": ["A", "B", "R1", "J1", "D", "OUT"],
+                "nodes": [
+                    {"id": "A", "peak_m3s": 24.0, "time_to_peak_min": 60.0},
+                    {"id": "B", "peak_m3s": 6.8, "time_to_peak_min": 40.0},
+                    {
+                        "id": "R1",
+                        "type": "reach",
+                        "from": ["A"],
+                        "peak_m3s": 22.231889,
+                        "time_to_peak_min": 120.0,
+                        "model": "muskingum-cunge",
+                        "peak_attenuation_pct": 7.367128,
+                        "peak_delay_min": 60.0,
+                    },
+                    {"id": "J1", "peak_m3s": 25.471889, "time_to_peak_min": 120.0},
+                    {
+                        "id": "D",
+                        "type": "reservoir",
+                        "from": ["J1"],
+                        "peak_m3s": 13.86388,
+                        "time_to_peak_min": 170.0,
+                        "model": "level-pool",
+                        "peak_attenuation_pct": 45.571842,
+                        "peak_delay_min": 50.0,
+                    },
+                ],
+            },
+            {
+                "timestep_min": 10.0,
+                "outlet": "OUT",
+                "order": ["A", "B", "R1", "J1", "OUT"],
+                "nodes": [
+                    {"id": "A", "peak_m3s": 90.0, "time_to_peak_min": 30.0},
+                    {"id": "B", "peak_m3s": 12.0, "time_to_peak_min": 20.0},
+                    {
+                        "id": "R1",
+                        "model": "lag",
+                        "peak_m3s": 75.0,
+                        "peak_attenuation_pct": 16.666667,
+                        "peak_delay_min": 30.0,
+                    },
+                    {"id": "J1", "peak_m3s": 75.0, "volume_m3": 160200.0},
+                    {
+                        "id": "OUT",
+                        "type": "outlet",
+                        "peak_m3s": 75.0,
+                        "time_to_peak_min": 60.0,
+                        "times_min": [0.0, 10.0, 20.0],
+                        "discharge_m3s": [0.0, 4.0, 12.0],
+                    },
+                ],
+            },
+        ),
+    ),
 )
+
+
+def model_options(method: str) -> tuple[Option, ...]:
+    """Return the options of ``route <method>`` that describe the element.
+
+    These are the options a reach of a network takes next to ``method``
+    (``hydrolog-network/1``): the options of the command without the inflow, the run
+    (``initial_outflow_m3s`` and ``extend_min``, which every reach and reservoir of a
+    network takes) and the output, which the network supplies itself.
+
+    Parameters
+    ----------
+    method : str
+        One of :data:`MODEL_METHODS`.
+
+    Returns
+    -------
+    tuple of Option
+        The declarations, in catalog order.
+
+    Raises
+    ------
+    KeyError
+        If ``method`` is not one of :data:`MODEL_METHODS`.
+    """
+    if method not in MODEL_METHODS:
+        raise KeyError(method)
+    shared = {
+        option.name for option in (*INFLOW_OPTIONS, *RUN_OPTIONS, *OUTPUT_OPTIONS)
+    }
+    command = next(item for item in COMMANDS if item.name == f"route {method}")
+    return tuple(option for option in command.options if option.name not in shared)

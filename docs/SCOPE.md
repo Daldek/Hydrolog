@@ -166,7 +166,7 @@ Hydrolog is analogous to **Kartograf** (spatial data download) and **IMGWTools**
 
 #### 2.1.6 Module `cli` - CLI (v0.4.0, rebuilt in v1.0.0) ✅
 
-Since v1.0.0 the CLI is generated from the command catalog (`hydrolog.catalog`): 43 commands in 15 groups (list: `hydrolog commands list`). Syntax: `hydrolog <group> <command> --option value`; global flags `--json`, `--schema`, `--lang pl|en`, `-V`. The former CLI syntax (v0.4.0-v0.7.0) was removed without aliases.
+Since v1.0.0 the CLI is generated from the command catalog (`hydrolog.catalog`): 44 commands in 15 groups (list: `hydrolog commands list`). Syntax: `hydrolog <group> <command> --option value`; global flags `--json`, `--schema`, `--lang pl|en`, `-V`. The former CLI syntax (v0.4.0-v0.7.0) was removed without aliases.
 
 ```bash
 # Time of concentration
@@ -315,7 +315,12 @@ inundation, backwater and structures stay with Hydraulik, HEC-RAS and IMGW HD.
 - Level-pool: `LevelPoolReach` (storage indication, the modified Puls method, from a
   storage-outflow table with an optional stage; steps kept inside the limit of the table by
   dividing them; a flood beyond the table is an error), command `route level-pool`
-- The outflow written by `--output` is a hydrograph table that every `route` command reads
+- River network: `RoutingNetwork` (subcatchments, reaches by any method above, reservoirs, junctions
+  that add and one outlet; the nodes are evaluated headwaters first, so the order of a document
+  changes nothing; a bifurcation is refused), command `route network` over the document
+  `hydrolog-network/1`
+- The outflow written by `--output` is a hydrograph table that every `route` command reads;
+  `route network` writes one such table per node into `--output-dir`
 - Not in scope: variable-parameter Muskingum-Cunge and compound sections, kinematic and dynamic
   waves, reservoir operation (gates and release rules: the outflow is the one the table gives;
   plan `docs/plans/2026-10-24-flood-routing.md`)

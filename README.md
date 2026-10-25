@@ -7,7 +7,7 @@ Hydrolog is a watershed hydrology calculator: SCS-CN curve numbers and effective
 Hydrolog computes the standard quantities of watershed hydrology:
 
 - design direct-runoff hydrograph (peak discharge, time to peak, volume): a block, triangular, Beta or Euler type II design hyetograph (Polish hietogram), SCS-CN effective rainfall and an SCS, Nash, Clark or Snyder unit hydrograph;
-- lumped flood routing of a discharge hydrograph at a regular time step: lag (`route lag`), Muskingum with sub-reaches (`route muskingum`), Muskingum-Cunge from the slope and the channel section or celerity of the reach (`route muskingum-cunge`), a cascade of linear reservoirs with an exact kernel for any time step (`route cascade`) and a reservoir or a reach with a storage-outflow table, by storage indication (`route level-pool`); the outflow is returned or written to a CSV file that the next `route` command reads;
+- lumped flood routing of a discharge hydrograph at a regular time step: lag (`route lag`), Muskingum with sub-reaches (`route muskingum`), Muskingum-Cunge from the slope and the channel section or celerity of the reach (`route muskingum-cunge`), a cascade of linear reservoirs with an exact kernel for any time step (`route cascade`) and a reservoir or a reach with a storage-outflow table, by storage indication (`route level-pool`), and down a river network of subcatchments, reaches, reservoirs and junctions described in a JSON document (`route network`); the outflow is returned or written to a CSV file that the next `route` command reads, a network writes one file per node;
 - time of concentration (Kirpich, NRCS, Giandotti, FAA, Kerby, Kerby-Kirpich), TR-55 curve numbers (CN) and the area-weighted CN of a watershed;
 - hydrologic soil groups (HSG) from clay, sand and silt rasters such as SoilGrids;
 - watershed shape and relief indicators, river network order (Strahler, Shreve), areal precipitation (Thiessen, IDW, isohyets);
@@ -135,7 +135,7 @@ anyio.run(call_tool)
 
 ## Capabilities
 
-43 commands in 15 groups, all computed offline: no command opens a network connection or downloads data. The MCP tool is `hydrolog_` plus the command name with `_`; every command is also available as `hydrolog.run_command("<command>", **options)`.
+44 commands in 15 groups, all computed offline: no command opens a network connection or downloads data. The MCP tool is `hydrolog_` plus the command name with `_`; every command is also available as `hydrolog.run_command("<command>", **options)`.
 
 | Group | Task | CLI command | MCP tool | Python (`hydrolog.operations`) |
 |---|---|---|---|---|
@@ -163,6 +163,7 @@ anyio.run(call_tool)
 | | Level-pool (storage indication) routing of a hydrograph through a reservoir with a storage-outflow table (writes a file if an output is given) | `route level-pool` | `hydrolog_route_level_pool` | `route_level_pool` |
 | | Muskingum routing of a hydrograph over sub-reaches (writes a file if an output is given) | `route muskingum` | `hydrolog_route_muskingum` | `route_muskingum` |
 | | Muskingum-Cunge routing of a hydrograph over a reach with its section or celerity (writes a file if an output is given) | `route muskingum-cunge` | `hydrolog_route_muskingum_cunge` | `route_muskingum_cunge` |
+| | Hydrographs routed down a river network of catchments, reaches, reservoirs and junctions (writes a table per node if an output directory is given) | `route network` | `hydrolog_route_network` | `route_network` |
 | Morphometry | Geometric, shape and relief indicators | `morphometry watershed` | `hydrolog_morphometry_watershed` | `morphometry_watershed` |
 | River network | River network order statistics (Strahler, Shreve) | `network stats` | `hydrolog_network_stats` | `network_stats` |
 | Flow statistics | Characteristic values WWQ to NNQ of a daily series | `stats characteristic` | `hydrolog_stats_characteristic` | `stats_characteristic` |
@@ -188,7 +189,7 @@ anyio.run(call_tool)
 - [llms.txt](https://github.com/Daldek/Hydrolog/blob/main/llms.txt) and [AGENTS.md](https://github.com/Daldek/Hydrolog/blob/main/AGENTS.md) state the scope, the workflow, the error codes and typical flows (design hydrograph of a watershed file, flood frequency from an IMGWTools export, HSG from SoilGrids rasters); both are generated from the command catalog. `hydrolog commands guide --format agents` (or `llms`) prints them; `--format agents-md-block --inject AGENTS.md` puts a compact block into another repository's AGENTS.md.
 - The catalog is served by the tool: `hydrolog commands list` (names, operation ids, summaries) and `hydrolog commands schema --command "tc kirpich"` (options with units, bounds and allowed values, result schema, rules, examples, errors). In MCP these are the tools `hydrolog_commands_list` and `hydrolog_commands_schema`; `--schema` after any command prints its description instead of running it.
 - Work in four steps: discover, check, run, read. A result is a `hydrolog-result/1` envelope (`status` is `ok`; a failing command ends with an error instead), an error a `hydrolog-error/1` document.
-- Calculations are read-only. Three commands write one file (`report generate`, `soil hsg`, `commands guide`), and so does every `route` command that is given `--output`; they take `--output`, `--check` and `--force`: `--check` writes nothing and returns the plan, `result.targets[]` with `option`, `path` and `action` (`write`, `replace` or `conflict`); an existing file is replaced only with `--force`. A `route` command without `--output` has no file to plan: it returns the routed hydrograph, also with `--check`.
+- Calculations are read-only. Three commands write one file (`report generate`, `soil hsg`, `commands guide`), and so does every `route` command that is given `--output`; they take `--output`, `--check` and `--force`: `--check` writes nothing and returns the plan, `result.targets[]` with `option`, `path` and `action` (`write`, `replace` or `conflict`); an existing file is replaced only with `--force`. `route network` writes one table per node into the directory of `--output-dir` (`-o`) the same way: its plan lists every table, and a directory that is, or lies in, the store of another Nogat tool is refused (`conflict`, `details.reason` `output_in_store`). A `route` command without `--output`, and `route network` without `--output-dir`, has no file to plan: it returns the routed hydrographs, also with `--check`.
 
 ```bash
 hydrolog commands schema --command "tc kirpich" --json
@@ -252,7 +253,7 @@ VS Code, `.vscode/mcp.json` (key `servers`):
 ```
 
 - `--allow-dir DIR` (repeatable): the only directories in which tools read files; without it every path option is refused (`forbidden`), while commands that take values still work.
-- `--allow-writes`: lets `report generate`, `soil hsg`, `commands guide` and the `route` commands (with `output`) write inside the allowed directories; without it they run as `check` and return the plan, while a `route` command without `output` still returns the routed hydrograph.
+- `--allow-writes`: lets `report generate`, `soil hsg`, `commands guide` and the `route` commands (with `output`, `route network` with `output_dir`) write inside the allowed directories; without it they run as `check` and return the plan, while a `route` command without an output still returns the routed hydrographs.
 - `--tools FAMILIES`: comma-separated tool families, a command group (`tc`, `cn`, `scs`, `precip`, `uh`, `hydrograph`, `route`, `morphometry`, `network`, `stats`, `hydrometrics`, `soil`, `report`, `config`, `commands`) or `core`, the main tasks (`tc watershed`, `cn lookup`, `cn weighted`, `scs effective`, `hydrograph generate`, `morphometry watershed`, `stats flood-frequency`, `commands list`, `commands schema`).
 - The server speaks English only (`hydrolog mcp --lang en` is rejected). Instructions are at most 4,096 characters, each tool description at most 600; an execution error is an `isError` result that holds the `hydrolog-error/1` document.
 
@@ -273,7 +274,7 @@ An error exits with a registry code and, in both CLI modes, ends stderr with a `
 |---|---|---|---|
 | `validation_error` | 2 | missing, unknown or out-of-range option | fix the option in `details.option`, see `commands schema` |
 | `not_found` | 3 | unknown command or missing input file | check the name (`details.suggestions`) or the path |
-| `conflict` | 4 | the output file exists | give another `--output` or add `--force` |
+| `conflict` | 4 | an output file exists, or the output directory lies in the store of another Nogat tool | give another `--output` or `--output-dir`, or add `--force` |
 | `missing_dependency` | 6 | an optional extra is not installed | add the extra the error names (`raster`, `mcp` or `viz`), see Install |
 | `data_error` | 7 | malformed CSV, JSON or GeoTIFF | see `details.path` and `details.reason` |
 
@@ -296,9 +297,9 @@ except hydrolog.HydrologError as error:
 
 ## Data and licensing
 
-Hydrolog downloads nothing, opens no network connection and needs no account or key. Input is numbers or local files: CSV series (an IMGWTools export loads unchanged), JSON (watershed, stations, network segments) and GeoTIFF rasters (extra `raster`). It ships no dataset except the TR-55 curve number table of USDA NRCS. The data you pass keep the licence of their source (IMGW-PIB terms of reuse, SoilGrids CC BY 4.0); Hydrolog does not copy the attribution columns of an IMGWTools export into results, so name the source when you publish a result.
+Hydrolog downloads nothing, opens no network connection and needs no account or key. Input is numbers or local files: CSV series (an IMGWTools export loads unchanged), JSON (watershed, stations, network segments, the network of `route network`) and GeoTIFF rasters (extra `raster`). It ships no dataset except the TR-55 curve number table of USDA NRCS. The data you pass keep the licence of their source (IMGW-PIB terms of reuse, SoilGrids CC BY 4.0); Hydrolog does not copy the attribution columns of an IMGWTools export into results, so name the source when you publish a result.
 
-A command writes only to the file named by `--output` (exactly one plain file, written atomically; `commands guide --inject PATH` edits the AGENTS.md you name) and replaces an existing file only with `--force`. There is no store, cache or credential.
+A command writes only to the file named by `--output` (exactly one plain file, written atomically; `commands guide --inject PATH` edits the AGENTS.md you name) or, for `route network`, into the directory named by `--output-dir` (one table per node, each moved into place from a `.hydrolog-incoming/` staging directory that is removed afterwards), and replaces an existing file only with `--force`. There is no store, cache or credential.
 
 Settings (`lang`, `log_level`) come from, in order: the command-line option, `HYDROLOG_<KEY>`, `NOGAT_<KEY>`, `nogat.toml` (section `[hydrolog]`, then `[nogat]`) in the user config directory or at `NOGAT_CONFIG`, then the default; an invalid environment or file value is ignored. [.env.example](https://github.com/Daldek/Hydrolog/blob/main/.env.example) lists every variable: `HYDROLOG_LANG`, `NOGAT_LANG` (`pl` or `en`, default `pl`), `HYDROLOG_LOG_LEVEL`, `NOGAT_LOG_LEVEL` (`debug`, `info`, `warning` or `error`, default `warning`) and `NOGAT_CONFIG`. `hydrolog config show` prints the effective values and where each comes from:
 
