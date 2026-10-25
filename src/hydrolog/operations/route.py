@@ -33,7 +33,7 @@ from numpy.typing import NDArray
 
 from hydrolog._atomic import atomic_output, staging_directory
 from hydrolog._serialization import JsonResultMixin, to_jsonable
-from hydrolog.catalog.envelope import Notice, OperationOutput
+from hydrolog.catalog.envelope import Notice, OperationOutput, capture_warnings
 from hydrolog.catalog.inputs import load_hydrograph, load_rating
 from hydrolog.exceptions import InvalidParameterError, OutputError
 from hydrolog.operations._network_input import load_network
@@ -184,8 +184,11 @@ class NetworkRouteResult(JsonResultMixin):
         ``volume_m3`` of the hydrograph that leaves the node (a trapezoid sum). The
         entry of a ``reach`` or ``reservoir`` adds what :class:`RouteResult` reports of
         its run: ``model``, ``parameters``, ``peak_attenuation_pct``,
-        ``peak_delay_min`` and ``balance_error_m3``. Without ``output_dir`` the entry
-        of a selected node adds its hydrograph as ``times_min`` [min] and
+        ``peak_delay_min`` and ``balance_error_m3``. The entry of a subcatchment that
+        makes its hydrograph from a watershed adds ``parameters``, the numbers that its
+        rainfall and runoff model used (``total_mm``, ``area_km2``, ``cn``, ``tc_min``
+        as given or computed, ``total_effective_mm``...). Without ``output_dir`` the
+        entry of a selected node adds its hydrograph as ``times_min`` [min] and
         ``discharge_m3s`` [m3/s].
     """
 
@@ -963,14 +966,16 @@ def route_network(
 
     The network is a document ``hydrolog-network/1`` (see
     :mod:`hydrolog.operations._network_input`): subcatchments that bring a source
-    hydrograph, reaches that route the hydrograph of the node upstream by a method of
-    this group with the options of ``route <method>``, reservoirs (level pool),
-    junctions that add the hydrographs flowing into them and one outlet, linked by the
-    ids of the nodes upstream (:class:`hydrolog.routing.RoutingNetwork`). All sources
-    share one time step and nothing is resampled. The nodes are evaluated headwaters
-    first, so the order of the nodes in the document changes nothing; every reach and
-    reservoir extends its time axis until its outflow has settled (ADR-0008) and a
-    junction holds the shorter hydrographs at their last value.
+    hydrograph (given, or made from a watershed, a runoff model and a rainfall by
+    :class:`hydrolog.routing.Subcatchment`), reaches that route the hydrograph of the
+    node upstream by a method of this group with the options of ``route <method>``,
+    reservoirs (level pool), junctions that add the hydrographs flowing into them and
+    one outlet, linked by the ids of the nodes upstream
+    (:class:`hydrolog.routing.RoutingNetwork`). All sources share one time step and
+    nothing is resampled. The nodes are evaluated headwaters first, so the order of the
+    nodes in the document changes nothing; every reach and reservoir extends its time
+    axis until its outflow has settled (ADR-0008) and a junction holds the shorter
+    hydrographs at their last value.
 
     The hydrograph that leaves each node is a table (``time_min``, ``discharge_m3s``)
     that every ``route`` command reads: ``output_dir`` receives one file ``<id>.csv``
@@ -1008,7 +1013,8 @@ def route_network(
     -------
     OperationOutput
         ``result`` is a :class:`NetworkRouteResult`; the written tables are listed in
-        ``files`` and every notice of a reach starts with the id of its node. With
+        ``files`` and every notice of a node (a reach, the library warnings of a runoff
+        model) starts with the id of its node. With
         ``check`` and ``output_dir`` the result is the plan. Without ``output_dir`` a
         result of more than :data:`PAGE_CHARS` characters (all the hydrographs of a
         large network) carries the warning ``large_result``, which suggests ``nodes``
@@ -1063,7 +1069,8 @@ def route_network(
             return plan_output(plan)
         if (error := conflict_error(plan)) is not None:
             raise error
-    run = graph.route()
+    with capture_warnings() as warned:
+        run = graph.route()
     returned = set(selected) if directory is None else set()
     summaries: list[dict[str, Any]] = []
     notices: list[Notice] = []
@@ -1084,14 +1091,23 @@ def route_network(
             entry["peak_attenuation_pct"] = routed.peak_attenuation_pct
             entry["peak_delay_min"] = routed.peak_delay_min
             entry["balance_error_m3"] = routed.balance_error_m3
-            notices.extend(
-                Notice(item.level, item.code, f"{node.id}: {item.message}")
-                for item in routed.notices
-            )
+        elif node.id in run.rainfall:
+            # a subcatchment that made its hydrograph: what its rain and model used
+            entry["parameters"] = {
+                item.name: item.value
+                for item in run.nodes[node.id].parameters
+                if isinstance(item.value, int | float)
+                and not isinstance(item.value, bool)
+            }
+        notices.extend(
+            Notice(item.level, item.code, f"{node.id}: {item.message}")
+            for item in run.nodes[node.id].notices
+        )
         if node.id in returned:
             entry["times_min"] = hydrograph.times_min
             entry["discharge_m3s"] = hydrograph.discharge_m3s
         summaries.append(entry)
+    notices.extend(warned)
     result = NetworkRouteResult(
         name=graph.name,
         timestep_min=graph.timestep_min,

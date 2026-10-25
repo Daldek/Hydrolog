@@ -12,7 +12,8 @@ if TYPE_CHECKING:
     from hydrolog.morphometry.geometric import WatershedGeometry
     from hydrolog.morphometry.terrain import TerrainAnalysis
 
-_TC_METHODS = ("kirpich", "nrcs", "giandotti", "faa", "kerby", "kerby_kirpich")
+TC_METHODS = ("kirpich", "nrcs", "giandotti", "faa", "kerby", "kerby_kirpich")
+"""The methods of :meth:`WatershedParameters.calculate_tc`."""
 
 # Fields besides the always present ones that a time of concentration method cannot
 # do without, in the order they are reported. FAA and Kerby are overland flow
@@ -453,14 +454,14 @@ class WatershedParameters:
 
     def _check_tc_method(self, method: str) -> None:
         """Raise if ``method`` is unknown or a field it cannot do without is missing."""
-        if method not in _TC_METHODS:
+        if method not in TC_METHODS:
             raise InvalidParameterError(
                 f"Unknown method: '{method}'. Use 'kirpich', 'nrcs', "
                 f"'giandotti', 'faa', 'kerby', or 'kerby_kirpich'.",
                 details={
                     "option": "method",
                     "reason": "choice",
-                    "allowed": list(_TC_METHODS),
+                    "allowed": list(TC_METHODS),
                     "value": method,
                 },
             )

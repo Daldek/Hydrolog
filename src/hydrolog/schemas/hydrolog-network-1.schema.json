@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/Daldek/Hydrolog/blob/main/src/hydrolog/schemas/hydrolog-network-1.schema.json",
   "title": "hydrolog-network/1",
-  "description": "River network read by `route network` (ADR-0010): subcatchments, reaches and reservoirs, junctions and one outlet, linked by `from`. A reach has a `method` and the options of `route <method>`. `schema` is required.",
+  "description": "River network read by `route network` (ADR-0010, ADR-0012): subcatchments (with their discharges, or making them from a watershed, a runoff model and a rainfall), reaches and reservoirs, junctions and one outlet, linked by `from`. A reach has a `method` and the options of `route <method>`. `schema` is required. A `rainfall` at the top is the rain of the subcatchments that have none; `timestep_min` fixes the time step of the network.",
   "type": "object",
   "required": [
     "schema",
@@ -15,6 +15,14 @@
     "name": {
       "type": "string",
       "minLength": 1
+    },
+    "timestep_min": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Time step of the network [min]; default that of the sources, else 5."
+    },
+    "rainfall": {
+      "$ref": "#/$defs/rainfall"
     },
     "nodes": {
       "type": "array",
@@ -38,7 +46,7 @@
     "node": {
       "oneOf": [
         {
-          "title": "subcatchment",
+          "title": "subcatchment with discharges",
           "type": "object",
           "required": [
             "id",
@@ -99,6 +107,44 @@
               "times_min"
             ]
           }
+        },
+        {
+          "title": "subcatchment from rainfall",
+          "type": "object",
+          "required": [
+            "id",
+            "type",
+            "watershed",
+            "runoff"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/id"
+            },
+            "type": {
+              "const": "subcatchment"
+            },
+            "from": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/id"
+              },
+              "uniqueItems": true,
+              "minItems": 0,
+              "description": "The ids of the nodes that flow into this one.",
+              "maxItems": 0
+            },
+            "watershed": {
+              "$ref": "#/$defs/watershed"
+            },
+            "runoff": {
+              "$ref": "#/$defs/runoff"
+            },
+            "rainfall": {
+              "$ref": "#/$defs/rainfall"
+            }
+          },
+          "additionalProperties": false
         },
         {
           "title": "reach by lag",
@@ -560,6 +606,279 @@
               "minItems": 1,
               "description": "The ids of the nodes that flow into this one.",
               "maxItems": 1
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "watershed": {
+      "title": "watershed",
+      "description": "The area of a subcatchment: the fields of `WatershedParameters`, as in `hydrograph generate`. The `curve-number` runoff needs `cn` and, unless it is given `tc_min`, the fields of its `tc_method`.",
+      "type": "object",
+      "required": [
+        "area_km2",
+        "perimeter_km",
+        "length_km",
+        "elevation_min_m",
+        "elevation_max_m"
+      ],
+      "properties": {
+        "area_km2": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "perimeter_km": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "length_km": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "elevation_min_m": {
+          "type": "number"
+        },
+        "elevation_max_m": {
+          "type": "number"
+        },
+        "name": {
+          "type": "string"
+        },
+        "elevation_mean_m": {
+          "type": "number"
+        },
+        "mean_slope_m_per_m": {
+          "type": "number"
+        },
+        "channel_length_km": {
+          "type": "number"
+        },
+        "channel_slope_m_per_m": {
+          "type": "number"
+        },
+        "cn": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "source": {
+          "type": "string"
+        },
+        "crs": {
+          "type": "string"
+        },
+        "runoff_coeff": {
+          "type": "number"
+        },
+        "retardance": {
+          "type": "number"
+        },
+        "overland_length_km": {
+          "type": "number"
+        },
+        "overland_slope_m_per_m": {
+          "type": "number"
+        },
+        "Lc_km": {
+          "type": "number"
+        },
+        "manning_n": {
+          "type": "number"
+        },
+        "urban_pct": {
+          "type": "number"
+        },
+        "forest_pct": {
+          "type": "number"
+        }
+      },
+      "additionalProperties": false
+    },
+    "runoff": {
+      "oneOf": [
+        {
+          "title": "runoff curve-number",
+          "description": "The SCS Curve Number loss and a unit hydrograph, with the options of `hydrograph generate`.",
+          "type": "object",
+          "required": [
+            "model"
+          ],
+          "properties": {
+            "model": {
+              "const": "curve-number"
+            },
+            "tc_min": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "description": "Time of concentration [min]; > 0. Needed by the scs and clark models; when omitted it is computed for a watershed by `tc_method`. The nash and snyder models do not use it."
+            },
+            "tc_method": {
+              "type": "string",
+              "enum": [
+                "kirpich",
+                "nrcs",
+                "giandotti",
+                "faa",
+                "kerby",
+                "kerby_kirpich"
+              ],
+              "description": "Method for computing tc from a watershed when `tc_min` is not given; default kirpich. The watershed fields a method needs: see `tc watershed`."
+            },
+            "ia_coefficient": {
+              "type": "number",
+              "maximum": 1,
+              "exclusiveMinimum": 0,
+              "description": "Initial abstraction ratio λ (Ia = λ·S), 0 < λ <= 1; default 0.2 (the standard the CN tables are calibrated for).",
+              "default": 0.2
+            },
+            "amc": {
+              "type": "string",
+              "enum": [
+                "I",
+                "II",
+                "III"
+              ],
+              "description": "Antecedent moisture condition (AMC); default II.",
+              "default": "II"
+            },
+            "uh_model": {
+              "type": "string",
+              "enum": [
+                "scs",
+                "nash",
+                "clark",
+                "snyder"
+              ],
+              "description": "Unit hydrograph model; default scs. Model options: `nash_*`, `clark_*`, `snyder_*`.",
+              "default": "scs"
+            },
+            "nash_n": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "description": "Nash: number of reservoirs n (> 0, typically 1-10); together with `nash_k_min`. `uh nash` derives parameters by the Lutz method."
+            },
+            "nash_k_min": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "description": "Nash: storage constant K [min] (> 0, typically 10-200); together with `nash_n`."
+            },
+            "clark_r_min": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "description": "Clark: storage constant R [min] (> 0); alternative to `clark_r_tc_ratio`."
+            },
+            "clark_r_tc_ratio": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "description": "Clark: ratio R/tc (> 0, typically 0.2-1.5), R = ratio · tc; alternative to `clark_r_min`."
+            },
+            "snyder_length_km": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "description": "Snyder: main stream length L [km] (> 0); together with `snyder_centroid_length_km`."
+            },
+            "snyder_centroid_length_km": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "description": "Snyder: length from the outlet to the catchment centroid Lc [km] (> 0)."
+            },
+            "snyder_ct": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "description": "Snyder: time coefficient Ct (> 0); default 1.5."
+            },
+            "snyder_cp": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "description": "Snyder: peak coefficient Cp (> 0); default 0.6."
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "rainfall": {
+      "oneOf": [
+        {
+          "title": "design storm",
+          "description": "A depth over a duration, in the shape of a hyetograph.",
+          "type": "object",
+          "required": [
+            "kind",
+            "hietogram_type",
+            "total_mm",
+            "duration_min"
+          ],
+          "properties": {
+            "kind": {
+              "const": "design"
+            },
+            "hietogram_type": {
+              "type": "string",
+              "enum": [
+                "block",
+                "triangular",
+                "beta",
+                "euler_ii"
+              ],
+              "description": "Temporal distribution of the rainfall; `alpha`, `beta` apply to beta, `peak_position` to triangular and euler_ii."
+            },
+            "total_mm": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "description": "Total precipitation depth [mm]; > 0."
+            },
+            "duration_min": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "description": "Rainfall duration [min]; > 0 and not shorter than the time step. The hyetograph has `int(duration_min / timestep_min)` steps; when the duration is not a multiple of the step the tail is not covered (a notice reports it)."
+            },
+            "alpha": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "description": "Parameter α of the Beta distribution (shape of the rising limb), > 0; only for `beta`; default 2. The pair (2; 5) gives an early peak (convective storm), (2; 2) a symmetric one, (5; 2) a late one."
+            },
+            "beta": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "description": "Parameter β of the Beta distribution (shape of the falling limb), > 0; only for `beta`; default 5."
+            },
+            "peak_position": {
+              "type": "number",
+              "maximum": 1,
+              "exclusiveMinimum": 0,
+              "description": "Relative position of the peak within the duration, 0 < p < 1 (exclusive); only for `triangular` (default 0.5) and `euler_ii` (default 0.33)."
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "title": "rainfall series",
+          "description": "The depth of every time step. It is not resampled: the network takes its time step.",
+          "type": "object",
+          "required": [
+            "kind",
+            "depths_mm",
+            "timestep_min"
+          ],
+          "properties": {
+            "kind": {
+              "const": "series"
+            },
+            "depths_mm": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "number",
+                "minimum": 0
+              },
+              "description": "Depth of each step [mm], not negative."
+            },
+            "timestep_min": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "description": "Time step of the series [min]."
             }
           },
           "additionalProperties": false

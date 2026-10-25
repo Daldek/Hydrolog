@@ -24,6 +24,24 @@ is an error. Nothing here lists the types, the methods of a reach or any other k
 thing: each is found by its name in a registry
 (:class:`~hydrolog.routing._registry.Registry`).
 
+A subcatchment makes its own hydrograph when it has a ``watershed`` (the object of
+``WatershedParameters``), a ``runoff`` model (``model`` and its fields) and a
+``rainfall`` (``kind`` and its fields) in the place of the hydrograph::
+
+    {"id": "A", "type": "subcatchment",
+     "watershed": {"area_km2": 12.0, "perimeter_km": 18.0, "length_km": 6.0,
+                   "elevation_min_m": 210.0, "elevation_max_m": 330.0, "cn": 75},
+     "runoff": {"model": "curve-number", "tc_min": 90.0},
+     "rainfall": {"kind": "design", "hietogram_type": "euler_ii",
+                  "total_mm": 45.0, "duration_min": 60.0}}
+
+The rainfall belongs to the subcatchment; the document can also have ``rainfall`` at
+its top, which the subcatchments that have none of their own take, and ``timestep_min``
+to fix the step of the network (see :class:`~hydrolog.routing.RoutingNetwork`). The
+names of the kinds, models and shapes are those of the registries
+(:data:`~hydrolog.routing.RAINFALL_KINDS`, :data:`~hydrolog.routing.RUNOFF_MODELS`,
+:data:`~hydrolog.routing.HIETOGRAMS`).
+
 This module reads values that are in the document. A value that is in a file (a column
 of an inflows table, a rating file) is for the code that owns the files to put in the
 document first; :func:`read_network` calls its ``prepare`` for every node before the
@@ -34,12 +52,14 @@ Errors
 What is wrong with the document is an
 :class:`~hydrolog.exceptions.InvalidParameterError`. ``details.reason`` says what:
 ``shape``, ``unknown_schema``, ``unknown_field``, ``missing_field``, ``type``,
-``unknown_type``, ``unknown_method``, the reasons of the nodes and of the reaches
+``unknown_type``, ``unknown_method``, ``unknown_kind``, ``unknown_model``,
+``unknown_hietogram_type``, ``conflict``, the reasons of the nodes and of the reaches
 (``invalid_id``, ``reserved_name``, ``upstream_count``, ``duplicate_upstream``,
 ``reservoir_model``...) and the structure reasons of
 :class:`~hydrolog.routing.RoutingNetwork` (``unknown_upstream``, ``cycle``,
 ``several_downstream``, ``no_outlet``...); ``details.node_id`` names the node and
-``details.field`` the field.
+``details.field`` the field (``rainfall.total_mm`` for a field of an object inside a
+node).
 """
 
 from __future__ import annotations
@@ -51,7 +71,9 @@ from typing import Any, Final, NoReturn
 from hydrolog.exceptions import InvalidParameterError
 from hydrolog.routing._checks import shown
 from hydrolog.routing._order import ordered
+from hydrolog.routing._reading import within
 from hydrolog.routing.network import NODE_TYPES, Node, RoutingNetwork, check_unique
+from hydrolog.routing.rainfall import RainfallSource, rainfall_from_document
 
 __all__ = ["SCHEMA", "Prepare", "read_network"]
 
@@ -62,7 +84,7 @@ Prepare = Callable[[str, str, Mapping[str, Any]], Mapping[str, Any]]
 """``prepare(node_id, type, entry)``: returns the entry that is read in place of the one
 the document has (see :func:`read_network`)."""
 
-_TOP_LEVEL: Final = ("schema", "name", "nodes")
+_TOP_LEVEL: Final = ("schema", "name", "timestep_min", "rainfall", "nodes")
 
 
 def _fail(
@@ -203,4 +225,13 @@ def read_network(document: object, *, prepare: Prepare | None = None) -> Routing
         nodes[node_id] = record.cls.build(
             node_id, record.arguments, [nodes[up] for up in record.upstream]
         )
-    return RoutingNetwork(list(nodes.values()), name=name)
+    rainfall: RainfallSource | None = None
+    if document.get("rainfall") is not None:
+        with within("rainfall"):
+            rainfall = rainfall_from_document(document["rainfall"])
+    return RoutingNetwork(
+        list(nodes.values()),
+        name=name,
+        rainfall=rainfall,
+        timestep_min=document.get("timestep_min"),
+    )

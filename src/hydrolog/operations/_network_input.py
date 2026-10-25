@@ -25,7 +25,10 @@ error:
 type            fields
 ==============  =====================================================================
 subcatchment    ``times_min`` with ``discharge_m3s`` (inline), or ``value_column``
-                (the column of ``inflows_file``, by default the ``id``)
+                (the column of ``inflows_file``, by default the ``id``), or the
+                ``watershed``, ``runoff`` and ``rainfall`` that make the hydrograph
+                (:class:`~hydrolog.routing.Subcatchment`; the objects are read and
+                checked by the library, with the errors of its classes)
 reach           ``method`` (``lag``, ``muskingum``, ``muskingum-cunge``, ``cascade`` or
                 ``level-pool``), the options of ``route <method>`` that describe the
                 element (:func:`hydrolog.catalog.groups.route.model_options`, validated
@@ -101,6 +104,7 @@ __all__ = ["LoadedNetwork", "load_network"]
 _COMMON: Final = ("id", "type", "from")
 _RUN_FIELDS: Final = (INITIAL_OUTFLOW_M3S.name, EXTEND_MIN.name)
 _SOURCE_FIELDS: Final = (TIMES_MIN.name, DISCHARGE_M3S.name, VALUE_COLUMN.name)
+_MADE_FIELDS: Final = ("watershed", "runoff", "rainfall")
 _KEPT: Final = frozenset({"timestep_mismatch", "start_mismatch"})
 """Reasons of :class:`RoutingNetwork` that stay ``validation_error`` (data facts)."""
 
@@ -202,7 +206,7 @@ class _Reader:
         self._known_fields(node_id, kind, method, entry)
         fields = {key: entry[key] for key in _COMMON if key in entry}
         if kind == "subcatchment":
-            fields.update(self._hydrograph(node_id, entry))
+            fields.update(self._source(node_id, entry))
         elif kind in ("reach", "reservoir"):
             if method is not None:
                 fields["method"] = method
@@ -243,7 +247,7 @@ class _Reader:
         """Refuse a field that the type of the node does not take."""
         allowed: tuple[str, ...]
         if kind == "subcatchment":
-            allowed = (*_COMMON, *_SOURCE_FIELDS)
+            allowed = (*_COMMON, *_SOURCE_FIELDS, *_MADE_FIELDS)
         elif kind == "reach":
             assert method is not None  # _method refused a reach without one
             allowed = (
@@ -295,6 +299,32 @@ class _Reader:
             self._table = read_table(self.inflows_file)
         self.used_inflows = True
         return self._table
+
+    def _source(self, node_id: str, entry: Mapping[str, Any]) -> dict[str, Any]:
+        """Return what brings the hydrograph of a subcatchment.
+
+        The objects of a subcatchment that makes its hydrograph (``watershed``,
+        ``runoff``, ``rainfall``) go to the library as they are: it reads and checks
+        them, and has no file to read. A subcatchment that is given its discharges
+        has them inline, from the node or from ``inflows_file``.
+        """
+        made = {
+            name: entry[name] for name in _MADE_FIELDS if entry.get(name) is not None
+        }
+        if not made:
+            return self._hydrograph(node_id, entry)
+        for name in _SOURCE_FIELDS:
+            if entry.get(name) is not None:
+                self.where.fail(
+                    f"Node {node_id!r} has {name!r} and {next(iter(made))!r}: a "
+                    "subcatchment has one source",
+                    reason="conflict",
+                    node_id=node_id,
+                    field=name,
+                    hint="Give discharges (times_min with discharge_m3s, or a column "
+                    "of inflows_file), or a watershed with a runoff model.",
+                )
+        return made
 
     def _hydrograph(self, node_id: str, entry: Mapping[str, Any]) -> dict[str, Any]:
         """Return the discharges of a subcatchment, inline: from the node or a file."""
