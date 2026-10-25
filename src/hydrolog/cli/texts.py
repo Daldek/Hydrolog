@@ -153,6 +153,10 @@ _TEXTS: Final[dict[str, tuple[str, str]]] = {
     "file_written": ("zapisano", "written"),
     "file_replaced": ("zastąpiono", "replaced"),
     "file_bytes": ("{size} B", "{size} B"),
+    "schematic_summary": (
+        "węzły: {nodes}, linie: {lines}, siatka {width} × {height} (dokument: --json)",
+        "nodes: {nodes}, lines: {lines}, grid {width} x {height} (document: --json)",
+    ),
     # --- plan (--check) ------------------------------------------------------------
     "plan_title": (
         "Plan (--check): nic nie zostało zapisane.",

@@ -40,6 +40,7 @@ __all__ = [
     "OutputPlan",
     "PlannedOutput",
     "conflict_error",
+    "join_plans",
     "plan_directory",
     "plan_output",
     "plan_outputs",
@@ -230,6 +231,39 @@ def plan_directory(
         else:
             planned.append(PlannedOutput(option, path, "conflict", "output_exists"))
     return OutputPlan(tuple(planned))
+
+
+def join_plans(*plans: OutputPlan) -> OutputPlan:
+    """Join the plans of several output options into the plan of one call.
+
+    Each option is planned by itself (:func:`plan_outputs`, :func:`plan_directory`);
+    two of them may still name one file, for example an output file that is also one
+    of the tables of an output directory.
+
+    Parameters
+    ----------
+    *plans : OutputPlan
+        The plans, in the order of the options.
+
+    Returns
+    -------
+    OutputPlan
+        The targets of all the plans in order; a target whose path an earlier one has
+        (compared without regard to case, as a directory does) is a ``conflict`` with
+        ``duplicate_output_name``.
+    """
+    seen: set[str] = set()
+    targets: list[PlannedOutput] = []
+    for plan in plans:
+        for item in plan.targets:
+            key = item.path.casefold()
+            if key in seen:
+                item = PlannedOutput(
+                    item.option, item.path, "conflict", "duplicate_output_name"
+                )
+            seen.add(key)
+            targets.append(item)
+    return OutputPlan(tuple(targets))
 
 
 def _listed(paths: list[str]) -> str:

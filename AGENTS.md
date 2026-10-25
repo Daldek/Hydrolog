@@ -25,7 +25,7 @@ Python 3.12 or newer: `pip install "hydrolog @ git+https://github.com/Daldek/Hyd
 
 ## Workflow rules
 
-Discover (`hydrolog commands list`, then `hydrolog commands schema --command "<name>"`), check (`--check` first for a command that writes a file: `report generate`, `soil hsg`, `commands guide`, `route` with `output` or `output_dir`), run, read `result`, `notices` and `result.files`.
+Discover (`hydrolog commands list`, then `hydrolog commands schema --command "<name>"`), check (`--check` first for a command that writes a file: `report generate`, `soil hsg`, `commands guide`, `route` with `output`, `output_dir` or `schematic`), run, read `result`, `notices` and `result.files`.
 
 Rules:
 

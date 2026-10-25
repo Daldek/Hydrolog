@@ -20,6 +20,27 @@ from hydrolog.catalog.groups._output import FORCE
 from hydrolog.catalog.spec import Command, Option
 
 _FIXTURES = "tests/fixtures"
+_TWO_SOURCES: dict[str, object] = {
+    "schema": "hydrolog-network/1",
+    "nodes": [
+        {
+            "id": "A",
+            "type": "subcatchment",
+            "times_min": [0, 10, 20, 30, 40, 50, 60, 70],
+            "discharge_m3s": [0, 10, 40, 90, 60, 30, 10, 0],
+        },
+        {
+            "id": "B",
+            "type": "subcatchment",
+            "times_min": [0, 10, 20, 30, 40, 50, 60, 70],
+            "discharge_m3s": [0, 4, 12, 8, 3, 0, 0, 0],
+        },
+        {"id": "R1", "type": "reach", "from": ["A"], "method": "lag", "lag_min": 25.0},
+        {"id": "J1", "type": "junction", "from": ["R1", "B"]},
+        {"id": "OUT", "type": "outlet", "from": ["J1"]},
+    ],
+}
+"""Two subcatchments, a lag reach, a junction and the outlet: the inline example."""
 
 TIMES_MIN = Option(
     name="times_min",
@@ -272,16 +293,60 @@ OUTPUT_DIR = Option(
         "lie in the store of another Nogat tool."
     ),
 )
+SCHEMATIC = Option(
+    name="schematic",
+    type="path",
+    path_role="output",
+    description_pl=(
+        "Plik SVG ze schematem sieci w stylu mapy metra: linia główna prosto, "
+        "dopływy pod kątem 45° na przemian z obu stron, każdy węzeł z id i, po "
+        "obliczeniu, ze szczytem (Qp), czasem do szczytu (tp) i objętością (V). Z "
+        "plikiem wynik ma dokument `hydrolog-network-schematic/1` jako `schematic` "
+        "(węzły na siatce, łamane krawędzi, parametry i wartości węzłów), z którego "
+        "aplikacja narysuje ten sam obraz. Schemat pokazuje wszystkie węzły (`nodes` "
+        "go nie zawęża). Istniejący plik jest zastępowany tylko z `force`; nie może "
+        "być plikiem wejściowym."
+    ),
+    description=(
+        "SVG file to write with the schematic of the network in the style of a metro "
+        "map: the main stem straight, the tributaries joining it at 45 degrees on "
+        "alternating sides, each node with its id and, after the run, its peak (Qp), "
+        "time to peak (tp) and volume (V). With it the result holds the document "
+        "`hydrolog-network-schematic/1` as `schematic` (nodes on a grid, polylines of "
+        "the edges, the parameters and values of each node), from which an "
+        "application draws the same picture. It shows every node (`nodes` does not "
+        "narrow it). An existing file is replaced only with `force`; it must not be "
+        "an input file."
+    ),
+)
+MAIN_STEM = Option(
+    name="main_stem",
+    type="string_list",
+    description_pl=(
+        "Id węzłów, przez które ma przejść linia główna schematu (źródło głównej "
+        "rzeki albo punkty wzdłuż niej); muszą leżeć na jednej ścieżce do wylotu. "
+        "Domyślnie linia główna idzie od wylotu przez gałąź o największej "
+        "odwadnianej powierzchni (bez powierzchni: o największej liczbie węzłów). "
+        "Tylko z `schematic`."
+    ),
+    description=(
+        "Ids of the nodes that the main stem of the schematic must pass (the head of "
+        "the main river, or points along it); they must lie on one path to the "
+        "outlet. By default the stem follows, from the outlet, the branch that "
+        "drains the larger area (without areas: that has more nodes). Only with "
+        "`schematic`."
+    ),
+)
 NETWORK_FORCE = Option(
     name="force",
     type="boolean",
     description_pl=(
-        "Zastąp pliki `<id>.csv`, które istnieją w `output_dir`; bez tej opcji nic "
-        "nie jest nadpisywane."
+        "Zastąp pliki `<id>.csv`, które istnieją w `output_dir`, i plik `schematic`, "
+        "jeśli istnieje; bez tej opcji nic nie jest nadpisywane."
     ),
     description=(
-        "Replace the `<id>.csv` files that exist in `output_dir`; without it nothing "
-        "is overwritten."
+        "Replace the `<id>.csv` files that exist in `output_dir` and the `schematic` "
+        "file if it exists; without it nothing is overwritten."
     ),
     default=False,
 )
@@ -289,14 +354,14 @@ NETWORK_CHECK = Option(
     name="check",
     type="boolean",
     description_pl=(
-        "Z `output_dir`: plan bez skutków, zwróć każdy plik z jego działaniem "
-        "(`write`, `replace` lub `conflict`), niczego nie zapisując. Bez `output_dir` "
-        "nie ma czego planować i wynik jest liczony jak zwykle."
+        "Z `output_dir` lub `schematic`: plan bez skutków, zwróć każdy plik z jego "
+        "działaniem (`write`, `replace` lub `conflict`), niczego nie zapisując. Bez "
+        "nich nie ma czego planować i wynik jest liczony jak zwykle."
     ),
     description=(
-        "With `output_dir`: plan without effects, return each file with its action "
-        "(`write`, `replace` or `conflict`) and write nothing. Without `output_dir` "
-        "there is nothing to plan and the result is computed as usual."
+        "With `output_dir` or `schematic`: plan without effects, return each file "
+        "with its action (`write`, `replace` or `conflict`) and write nothing. "
+        "Without them there is nothing to plan and the result is computed as usual."
     ),
     default=False,
 )
@@ -1208,16 +1273,15 @@ COMMANDS: tuple[Command, ...] = (
             "Przeprowadza przepływy zlewni w dół sieci odcinków (lag, Muskingum, "
             "Muskingum-Cunge, kaskada, zbiornik), zbiorników i złączy do jednego "
             "wylotu. Sieć to dokument `hydrolog-network/1`; przepływy są w treści, w "
-            "`inflows_file` albo zlewnia liczy je z opadu (`watershed`, `runoff`, "
-            "`rainfall`). Jeden krok czasu dla wszystkich węzłów. Zwraca szczyty i "
+            "`inflows_file` albo zlewnia liczy je z opadu. Zwraca szczyty i "
             "objętości każdego węzła."
         ),
         description=(
-            "Routes subcatchment discharges down a network of reaches (lag, "
-            "Muskingum, Muskingum-Cunge, cascade, level pool), reservoirs and "
-            "junctions to one outlet. The network is a document `hydrolog-network/1`; "
-            "discharges are inline, in `inflows_file` or made from rain (watershed, "
-            "runoff, rainfall). Gives peaks and volumes per node."
+            "Routes subcatchment discharges down reaches (lag, Muskingum, "
+            "Muskingum-Cunge, cascade, level pool), reservoirs and junctions to one "
+            "outlet. The network is a document `hydrolog-network/1`; discharges are "
+            "inline, in `inflows_file` or made from rain. Gives peaks and volumes per "
+            "node."
         ),
         function="hydrolog.operations.route_network",
         options=(
@@ -1227,6 +1291,8 @@ COMMANDS: tuple[Command, ...] = (
             NETWORK_TIME_COLUMN,
             NODES,
             OUTPUT_DIR,
+            SCHEMATIC,
+            MAIN_STEM,
             NETWORK_FORCE,
             NETWORK_CHECK,
         ),
@@ -1238,32 +1304,7 @@ COMMANDS: tuple[Command, ...] = (
                 "output_dir": "network_out",
             },
             {
-                "network": {
-                    "schema": "hydrolog-network/1",
-                    "nodes": [
-                        {
-                            "id": "A",
-                            "type": "subcatchment",
-                            "times_min": [0, 10, 20, 30, 40, 50, 60, 70],
-                            "discharge_m3s": [0, 10, 40, 90, 60, 30, 10, 0],
-                        },
-                        {
-                            "id": "B",
-                            "type": "subcatchment",
-                            "times_min": [0, 10, 20, 30, 40, 50, 60, 70],
-                            "discharge_m3s": [0, 4, 12, 8, 3, 0, 0, 0],
-                        },
-                        {
-                            "id": "R1",
-                            "type": "reach",
-                            "from": ["A"],
-                            "method": "lag",
-                            "lag_min": 25.0,
-                        },
-                        {"id": "J1", "type": "junction", "from": ["R1", "B"]},
-                        {"id": "OUT", "type": "outlet", "from": ["J1"]},
-                    ],
-                },
+                "network": _TWO_SOURCES,
                 "nodes": ["OUT"],
             },
             {
@@ -1322,19 +1363,24 @@ COMMANDS: tuple[Command, ...] = (
                 },
                 "nodes": ["J1"],
             },
+            {
+                "network": _TWO_SOURCES,
+                "schematic": "network.svg",
+                "main_stem": ["A"],
+            },
         ),
         result_schema="hydrolog-route-network/1",
         cardinality="bounded",
         rules=(
             "Give `network` or `network_file`; a `rating_file` lies beside the file.",
-            "`output_dir` writes `<id>.csv` per node (`nodes` selects); `check` "
-            "plans it.",
+            "`output_dir` writes `<id>.csv` per node (`nodes` selects), `schematic` an "
+            "SVG map of the network; `check` plans both.",
             "Notices begin with the node id.",
         ),
         rules_pl=(
             "Podaj `network` albo `network_file`; `rating_file` leży obok pliku.",
-            "`output_dir` zapisuje `<id>.csv` każdego węzła (`nodes` wybiera); `check` "
-            "to planuje.",
+            "`output_dir` zapisuje `<id>.csv` każdego węzła (`nodes` wybiera), "
+            "`schematic` mapę sieci w SVG; `check` planuje oba.",
             "Uwagi zaczynają się od id węzła.",
         ),
         errors=(
@@ -1443,6 +1489,29 @@ COMMANDS: tuple[Command, ...] = (
                         "discharge_m3s": [0.0, 0.0, 0.0],
                     },
                 ],
+            },
+            {
+                "timestep_min": 10.0,
+                "outlet": "OUT",
+                "schematic": {
+                    "schema": "hydrolog-network-schematic/1",
+                    "outlet": "OUT",
+                    "has_result": True,
+                    "grid": {"width": 3, "height": 1},
+                    "lines": [
+                        {
+                            "index": 0,
+                            "role": "main",
+                            "nodes": ["A", "R1", "J1", "OUT"],
+                        },
+                        {
+                            "index": 1,
+                            "role": "tributary",
+                            "nodes": ["B"],
+                            "joins": "J1",
+                        },
+                    ],
+                },
             },
         ),
     ),

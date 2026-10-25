@@ -28,6 +28,7 @@ SHIPPED = resources.files("hydrolog") / "schemas"
 COMMANDS = data_commands()
 PLAN = "hydrolog-plan/1"
 NETWORK_DOCUMENT = "hydrolog-network/1"
+SCHEMATIC_DOCUMENT = "hydrolog-network-schematic/1"
 EXAMPLES = [
     pytest.param(command, index, id=f"{command.name}#{index}")
     for command in COMMANDS
@@ -69,7 +70,8 @@ def _repository_root(monkeypatch):
 
 
 def test_every_result_document_of_the_catalog_has_a_shipped_schema():
-    ids = {command.result_schema for command in COMMANDS} | {PLAN, NETWORK_DOCUMENT}
+    ids = {command.result_schema for command in COMMANDS}
+    ids |= {PLAN, NETWORK_DOCUMENT, SCHEMATIC_DOCUMENT}
     ids.discard(COMMANDS_SCHEMA)  # the Nogat schema commands-1 describes it
     shipped = {
         entry.name for entry in SHIPPED.iterdir() if entry.name.endswith(".schema.json")
@@ -79,7 +81,10 @@ def test_every_result_document_of_the_catalog_has_a_shipped_schema():
 
 @pytest.mark.parametrize(
     "schema_id",
-    sorted({c.result_schema for c in COMMANDS} - {COMMANDS_SCHEMA} | {PLAN}),
+    sorted(
+        {c.result_schema for c in COMMANDS} - {COMMANDS_SCHEMA}
+        | {PLAN, SCHEMATIC_DOCUMENT}
+    ),
 )
 def test_each_schema_is_valid_and_names_itself(schema_id):
     schema = _schema(schema_id)
@@ -303,3 +308,97 @@ def test_the_network_schema_and_the_loader_accept_the_same_documents():
     for document in accepted:
         assert _violations(NETWORK_DOCUMENT, document) == []
         load_network(network=document)
+
+
+# --- the schematic of a network (ADR-0013) -------------------------------------------
+
+
+def _schematic_documents() -> dict[str, dict[str, Any]]:
+    """Schematics of the example network, of a network with many inflows and a stem."""
+    from hydrolog.routing import (
+        Channel,
+        Hydrograph,
+        Junction,
+        LagReach,
+        Outlet,
+        RoutingNetwork,
+        Subcatchment,
+    )
+    from hydrolog.testing import example_network
+
+    source = Hydrograph.from_step([0.0, 4.0, 1.0], timestep_min=10.0)
+    heads = [Subcatchment(f"s{number}", source) for number in range(7)]
+    crowded = RoutingNetwork(
+        Outlet("OUT", inflow=Channel("R", LagReach(10.0), inflow=Junction("J", heads)))
+    )
+    example = example_network()
+    return {
+        "example": example.schematic(),
+        "example with its result": example.schematic(example.route()),
+        "example with a declared stem": example.schematic(main_stem=["B", "J1"]),
+        "a node with many inflows": crowded.schematic(crowded.route()),
+    }
+
+
+@pytest.mark.parametrize("name", _schematic_documents())
+def test_the_schematic_of_a_network_obeys_its_schema(name):
+    document = _schematic_documents()[name]
+
+    assert _violations(SCHEMATIC_DOCUMENT, document) == []
+    # a field added later keeps the version (AGI-4.1)
+    assert _violations(SCHEMATIC_DOCUMENT, {**document, "added_later": [1]}) == []
+
+
+def test_the_schematic_schema_refuses_a_document_that_cannot_be_drawn():
+    document = _schematic_documents()["example with its result"]
+
+    def edited(**changes: Any) -> dict[str, Any]:
+        return {**document, **changes}
+
+    first = document["nodes"][0]
+    nodes = [dict(item) for item in document["nodes"]]
+    broken = {
+        "no schema": {k: v for k, v in document.items() if k != "schema"},
+        "another version": edited(schema="hydrolog-network-schematic/2"),
+        "no edges": {k: v for k, v in document.items() if k != "edges"},
+        "a negative extent": edited(grid={"width": -1, "height": 0}),
+        "a label on a side that does not exist": edited(
+            nodes=[{**first, "label": {"text": "A", "side": "up"}}, *nodes[1:]]
+        ),
+        "a point of one number": edited(
+            edges=[{**document["edges"][0], "points": [[0, 0], [1]]}]
+        ),
+        "a point of three numbers": edited(
+            edges=[{**document["edges"][0], "points": [[0, 0], [1, 1, 1]]}]
+        ),
+        "an edge that is one point": edited(
+            edges=[{**document["edges"][0], "points": [[0, 0]]}]
+        ),
+        "a peak without a volume": edited(
+            nodes=[{k: v for k, v in first.items() if k != "volume_m3"}, *nodes[1:]]
+        ),
+        "a parameter of an unknown source": edited(
+            nodes=[
+                {
+                    **first,
+                    "parameters": [
+                        {"name": "x", "value": 1, "unit": None, "source": "guess"}
+                    ],
+                },
+                *nodes[1:],
+            ]
+        ),
+        "a tributary that joins nothing": edited(
+            lines=[
+                document["lines"][0],
+                {k: v for k, v in document["lines"][1].items() if k != "joins"},
+            ]
+        ),
+        "a position that is not on the grid": edited(
+            nodes=[{**first, "x": 0.5}, *nodes[1:]]
+        ),
+    }
+
+    assert _violations(SCHEMATIC_DOCUMENT, document) == []
+    for name, bad in broken.items():
+        assert _violations(SCHEMATIC_DOCUMENT, bad), name

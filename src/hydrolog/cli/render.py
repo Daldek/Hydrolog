@@ -72,6 +72,7 @@ _PLAN_SCHEMA: Final = "hydrolog-plan/1"
 """``schema`` of the plan of ``--check`` (``hydrolog.operations.PLAN_SCHEMA``)."""
 _CONFIG_SCHEMA: Final = "hydrolog-config/1"
 _GUIDE_SCHEMA: Final = "hydrolog-guide/1"
+_SCHEMATIC_SCHEMA: Final = "hydrolog-network-schematic/1"
 _ENVELOPE_KEYS: Final = ("schema", "files")
 """Keys of a result that the summary shows as sections, not as fields."""
 _CONFLICT_REASONS: Final = ("output_exists", "duplicate_output_name", "output_in_store")
@@ -646,6 +647,26 @@ def _config_lines(renderer: _Renderer, result: Mapping[str, Any]) -> list[str]:
     return lines
 
 
+def _summarized(renderer: _Renderer, result: Mapping[str, Any]) -> dict[str, Any]:
+    """Return the result without its envelope keys; a schematic is one line.
+
+    The document of a schematic is for a program that draws it (``--json``), and a
+    page of coordinates tells a person nothing: the summary names its size and the file
+    that holds the drawing is listed with the written files.
+    """
+    shown = {key: value for key, value in result.items() if key not in _ENVELOPE_KEYS}
+    document = shown.get("schematic")
+    if isinstance(document, Mapping) and document.get("schema") == _SCHEMATIC_SCHEMA:
+        shown["schematic"] = renderer.label(
+            "schematic_summary",
+            nodes=len(document.get("nodes", ())),
+            lines=len(document.get("lines", ())),
+            width=document.get("grid", {}).get("width", 0),
+            height=document.get("grid", {}).get("height", 0),
+        )
+    return shown
+
+
 def _generic_lines(
     renderer: _Renderer, command: Command, data: Mapping[str, Any]
 ) -> list[str]:
@@ -658,7 +679,7 @@ def _generic_lines(
         lines.extend(renderer.mapping(inputs, _INDENT, units=units))
     result = data.get("result")
     if isinstance(result, Mapping):
-        result = {k: v for k, v in result.items() if k not in _ENVELOPE_KEYS}
+        result = _summarized(renderer, result)
     lines.extend(renderer.result(result))
     return lines
 

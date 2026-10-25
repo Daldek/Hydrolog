@@ -10,7 +10,8 @@
     "timestep_min",
     "outlet",
     "order",
-    "nodes"
+    "nodes",
+    "schematic"
   ],
   "properties": {
     "schema": {
@@ -33,6 +34,12 @@
     },
     "nodes": {
       "type": "array"
+    },
+    "schematic": {
+      "type": [
+        "null",
+        "object"
+      ]
     }
   }
 }

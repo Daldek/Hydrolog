@@ -1583,6 +1583,51 @@ class RoutingNetwork:
 
         return write_network(self)
 
+    def schematic(
+        self,
+        result: NetworkResult | None = None,
+        *,
+        main_stem: str | Sequence[str] | None = None,
+    ) -> dict[str, Any]:
+        """Return the schematic of the network, a drawing in the style of a metro map.
+
+        The picture is computed here, so that every consumer draws the same one: the
+        document ``hydrolog-network-schematic/1`` holds the nodes with their places on
+        an integer grid, the polylines of the edges (every segment at 0, 45 or 90
+        degrees), the places of the labels and, per node, the parameters of its
+        calculation and, with a ``result``, its peak, time to peak and volume. The main
+        stem is a straight line, the tributaries join it at 45 degrees on alternating
+        sides, and no edges cross. :func:`~hydrolog.routing.schematic.schematic_svg`
+        draws the document as SVG (ADR-0013).
+
+        Parameters
+        ----------
+        result : NetworkResult, optional
+            The result of :meth:`route` of this network; the nodes then carry its
+            values. The layout does not depend on it.
+        main_stem : str or sequence of str, optional
+            Ids of nodes that the main stem must pass (the head of the main river, or
+            the points along it); by default the stem follows the branch with the
+            larger drained area at every node, or with more nodes when a headwater has
+            no area.
+
+        Returns
+        -------
+        dict
+            The document, JSON-native (see :mod:`hydrolog.routing.schematic`).
+
+        Raises
+        ------
+        InvalidParameterError
+            With ``details.reason`` ``result_mismatch`` (the result is of another
+            network), ``unknown_node`` or ``main_stem_not_a_path`` (``main_stem`` names
+            a node that is not in the network, or nodes that are not on one path to the
+            outlet; ``details.node_id``).
+        """
+        from hydrolog.routing.schematic import network_schematic
+
+        return network_schematic(self, result, main_stem=main_stem)
+
     @property
     def nodes(self) -> tuple[Node, ...]:
         """Tuple of Node: the nodes in the order of evaluation."""
