@@ -1,4 +1,4 @@
-"""Read the network of ``route network``: ``hydrolog-network/1`` (ADR-0010).
+"""Read the network of ``route network``: ``hydrolog-network/1`` (ADR-0010, ADR-0012).
 
 A network is a JSON object, inline (``network``) or in a file (``network_file``)::
 
@@ -16,10 +16,10 @@ A network is a JSON object, inline (``network``) or in a file (``network_file``)
     }
 
 ``schema`` is required and must be ``hydrolog-network/1`` (every machine-readable
-document has one, AGI-4.1). Every
-node has ``id``, ``type`` (the kinds of :class:`~hydrolog.routing.NetworkNode`) and
-``from``, the list of the ids that flow into it. The other fields depend on the type,
-and a field that the type does not take is an error:
+document has one, AGI-4.1). Every node has ``id``, ``type`` (the kinds of
+:data:`~hydrolog.routing.NODE_TYPES`) and ``from``, the list of the ids that flow into
+it. The other fields depend on the type, and a field that the type does not take is an
+error:
 
 ==============  =====================================================================
 type            fields
@@ -35,6 +35,12 @@ reservoir       the options of ``route level-pool``, ``initial_outflow_m3s``,
 junction        nothing more: it adds the hydrographs of its ``from``
 outlet          nothing more: the end of the network
 ==============  =====================================================================
+
+The document is read by :meth:`~hydrolog.routing.RoutingNetwork.from_document`, which
+knows the values that a document holds. This module is the front door of the command:
+it puts into the document what lives in files (a column of ``inflows_file``, a
+``rating_file``), checks every value by the catalog declaration of its option and gives
+the error the class of its source.
 
 A ``rating_file`` is relative to the directory of ``network_file`` and must lie inside
 it (after links are resolved): the path rules of a server (``--allow-dir``) see the
@@ -63,10 +69,10 @@ source of the document: it is a fact of the data, not of the document.
 from __future__ import annotations
 
 import os
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Final, NoReturn, cast
+from typing import Any, Final, NoReturn
 
 from hydrolog.catalog.groups.route import (
     DISCHARGE_M3S,
@@ -87,37 +93,16 @@ from hydrolog.catalog.inputs import (
 )
 from hydrolog.catalog.spec import Option
 from hydrolog.exceptions import InputDataError, InvalidParameterError, NotFoundError
-from hydrolog.routing import (
-    CascadeReach,
-    Hydrograph,
-    LagReach,
-    LevelPoolReach,
-    MuskingumCungeReach,
-    MuskingumReach,
-    NetworkNode,
-    Reach,
-    RoutingNetwork,
-)
-from hydrolog.routing.network import NODE_KINDS, NodeKind
+from hydrolog.routing import RoutingNetwork
+from hydrolog.routing._checks import shown
 
-__all__ = ["SCHEMA", "LoadedNetwork", "load_network"]
+__all__ = ["LoadedNetwork", "load_network"]
 
-SCHEMA: Final = "hydrolog-network/1"
-"""Value of the ``schema`` key of a network document."""
-
-_TOP_LEVEL: Final = ("schema", "name", "nodes")
 _COMMON: Final = ("id", "type", "from")
 _RUN_FIELDS: Final = (INITIAL_OUTFLOW_M3S.name, EXTEND_MIN.name)
 _SOURCE_FIELDS: Final = (TIMES_MIN.name, DISCHARGE_M3S.name, VALUE_COLUMN.name)
-_ELEMENTS: Final[dict[str, Callable[..., Reach]]] = {
-    "lag": LagReach,
-    "muskingum": MuskingumReach,
-    "muskingum-cunge": MuskingumCungeReach,
-    "cascade": CascadeReach,
-}
 _KEPT: Final = frozenset({"timestep_mismatch", "start_mismatch"})
 """Reasons of :class:`RoutingNetwork` that stay ``validation_error`` (data facts)."""
-_SHOWN_CHARS: Final = 60
 
 
 @dataclass(frozen=True)
@@ -135,12 +120,6 @@ class LoadedNetwork:
 
     network: RoutingNetwork
     rating_files: dict[str, Path] = field(default_factory=dict)
-
-
-def _shown(value: object) -> str:
-    """Return a value for a message or for ``details``, short and JSON-safe."""
-    text = value if isinstance(value, str) else repr(value)
-    return text if len(text) <= _SHOWN_CHARS else text[: _SHOWN_CHARS - 1] + "…"
 
 
 @dataclass(frozen=True)
@@ -191,7 +170,7 @@ class _Where:
 
 
 class _Reader:
-    """Turns the nodes of a document into :class:`NetworkNode` objects."""
+    """Prepares the nodes of a document: values from files, values by the catalog."""
 
     def __init__(
         self,
@@ -208,135 +187,31 @@ class _Reader:
         self.rating_files: dict[str, Path] = {}
         self._table: Table | None = None
 
-    # --- the document ---------------------------------------------------------------
-
-    def document(self, document: object) -> tuple[list[NetworkNode], str | None]:
-        """Read the whole document: the nodes and the name of the network."""
-        where = self.where
-        if not isinstance(document, Mapping):
-            where.fail(
-                f"the document must be a JSON object, not {type(document).__name__}",
-                reason="shape",
-                hint=f"A network is an object with the fields {', '.join(_TOP_LEVEL)}.",
-            )
-        for key in document:
-            if key not in _TOP_LEVEL:
-                where.fail(
-                    f"the document has the unknown field {key!r}",
-                    reason="unknown_field",
-                    field=_shown(key),
-                    allowed=list(_TOP_LEVEL),
-                    hint=f"The fields are {', '.join(_TOP_LEVEL)}.",
-                )
-        if "schema" not in document:
-            where.fail(
-                "the document has no 'schema'",
-                reason="missing_field",
-                field="schema",
-                hint=f'Every document begins with "schema": "{SCHEMA}".',
-            )
-        schema = document["schema"]
-        if schema != SCHEMA:
-            where.fail(
-                f"the schema is {_shown(schema)}, this reads {SCHEMA}",
-                reason="unknown_schema",
-                value=_shown(schema),
-                expected=SCHEMA,
-            )
-        name = document.get("name")
-        if name is not None and (not isinstance(name, str) or not name.strip()):
-            where.fail(
-                "the name of the network must be a non-blank string",
-                reason="type",
-                field="name",
-                value=_shown(name),
-            )
-        entries = document.get("nodes")
-        if entries is None:
-            where.fail(
-                "the document has no 'nodes'",
-                reason="missing_field",
-                field="nodes",
-                hint="'nodes' is the list of the nodes of the network.",
-            )
-        if not isinstance(entries, list):
-            where.fail(
-                f"'nodes' must be a list, not {type(entries).__name__}",
-                reason="type",
-                field="nodes",
-            )
-        return [self.node(index, entry) for index, entry in enumerate(entries)], name
-
     # --- one node -------------------------------------------------------------------
 
-    def node(self, index: int, entry: object) -> NetworkNode:
-        """Read one node; ``index`` is its position in the list (from 0)."""
-        where = self.where
-        if not isinstance(entry, Mapping):
-            where.fail(
-                f"node {index + 1} is not an object", reason="shape", index=index
-            )
-        node_id = entry.get("id")
-        if node_id is None:
-            where.fail(
-                f"node {index + 1} has no 'id'",
-                reason="missing_field",
-                field="id",
-                index=index,
-            )
-        if not isinstance(node_id, str):
-            where.fail(
-                f"node {index + 1} has the id {_shown(node_id)}, which is not a string",
-                reason="invalid_id",
-                node_id=_shown(node_id),
-                index=index,
-            )
-        kind = entry.get("type")
-        if kind is None:
-            where.fail(
-                f"Node {node_id!r} has no 'type'",
-                reason="missing_field",
-                node_id=node_id,
-                field="type",
-            )
-        if not isinstance(kind, str) or kind not in NODE_KINDS:
-            where.fail(
-                f"Node {node_id!r} has the unknown type {_shown(kind)}",
-                reason="unknown_type",
-                node_id=node_id,
-                value=_shown(kind),
-                allowed=list(NODE_KINDS),
-                hint=f"The types are {', '.join(NODE_KINDS)}.",
-            )
+    def prepare(
+        self, node_id: str, kind: str, entry: Mapping[str, Any]
+    ) -> dict[str, Any]:
+        """Return the node with its values in place, for the library to read.
+
+        This is the ``prepare`` of
+        :meth:`~hydrolog.routing.RoutingNetwork.from_document`: it is called for every
+        node, in the order of the document, with the node as the document has it.
+        """
         method = self._method(node_id, kind, entry)
         self._known_fields(node_id, kind, method, entry)
-        upstream = self._upstream(node_id, entry)
+        fields = {key: entry[key] for key in _COMMON if key in entry}
         if kind == "subcatchment":
-            return self._make(
-                node_id, kind, upstream, hydrograph=self._hydrograph(node_id, entry)
-            )
-        if kind in ("reach", "reservoir"):
-            element = self._element(node_id, method or "level-pool", entry)
-            return self._make(
-                node_id,
-                kind,
-                upstream,
-                reach=element,
-                initial_outflow_m3s=self._run_option(
-                    node_id, INITIAL_OUTFLOW_M3S, entry
-                ),
-                extend_min=self._run_option(node_id, EXTEND_MIN, entry),
-            )
-        return self._make(node_id, kind, upstream)
-
-    def _make(
-        self, node_id: str, kind: str, upstream: tuple[str, ...], **fields: Any
-    ) -> NetworkNode:
-        """Make the node; what the library refuses becomes an error of the document."""
-        try:
-            return NetworkNode(node_id, cast(NodeKind, kind), upstream, **fields)
-        except InvalidParameterError as exc:
-            self.where.convert(exc, node_id)
+            fields.update(self._hydrograph(node_id, entry))
+        elif kind in ("reach", "reservoir"):
+            if method is not None:
+                fields["method"] = method
+            fields.update(self._element(node_id, method or "level-pool", entry))
+            for option in (INITIAL_OUTFLOW_M3S, EXTEND_MIN):
+                value = entry.get(option.name)
+                if value is not None:
+                    fields[option.name] = float(self._normalize(node_id, option, value))
+        return fields
 
     def _method(self, node_id: str, kind: str, entry: Mapping[str, Any]) -> str | None:
         """Return the ``method`` of a reach; a reservoir routes by level pool."""
@@ -353,10 +228,10 @@ class _Reader:
             )
         if not isinstance(method, str) or method not in MODEL_METHODS:
             self.where.fail(
-                f"Node {node_id!r} has the unknown method {_shown(method)}",
+                f"Node {node_id!r} has the unknown method {shown(method)}",
                 reason="unknown_method",
                 node_id=node_id,
-                value=_shown(method),
+                value=shown(method),
                 allowed=list(MODEL_METHODS),
                 hint=f"The methods are {', '.join(MODEL_METHODS)}.",
             )
@@ -388,30 +263,13 @@ class _Reader:
         for key in entry:
             if key not in allowed:
                 self.where.fail(
-                    f"Node {node_id!r} is a {kind} and takes no {_shown(key)}",
+                    f"Node {node_id!r} is a {kind} and takes no {shown(key)}",
                     reason="unknown_field",
                     node_id=node_id,
-                    field=_shown(key),
+                    field=shown(key),
                     allowed=list(allowed),
                     hint=f"A {kind} takes {', '.join(allowed)}.",
                 )
-
-    def _upstream(self, node_id: str, entry: Mapping[str, Any]) -> tuple[str, ...]:
-        """Return the ids in ``from``, none when it is left out."""
-        listed = entry.get("from")
-        if listed is None:
-            return ()
-        if not isinstance(listed, list) or not all(
-            isinstance(item, str) for item in listed
-        ):
-            self.where.fail(
-                f"Node {node_id!r}: 'from' must be a list of node ids",
-                reason="type",
-                node_id=node_id,
-                field="from",
-                hint='Write the ids that flow into the node as a list: ["A", "B"].',
-            )
-        return tuple(listed)
 
     # --- what a node holds ----------------------------------------------------------
 
@@ -421,12 +279,6 @@ class _Reader:
             return option.normalize(value)
         except InvalidParameterError as exc:
             self.where.convert(exc, node_id)
-
-    def _run_option(
-        self, node_id: str, option: Option, entry: Mapping[str, Any]
-    ) -> float | None:
-        value = entry.get(option.name)
-        return None if value is None else float(self._normalize(node_id, option, value))
 
     def _inflows(self, node_id: str) -> Table:
         """Return the table of ``inflows_file``, read at the first need."""
@@ -444,8 +296,8 @@ class _Reader:
         self.used_inflows = True
         return self._table
 
-    def _hydrograph(self, node_id: str, entry: Mapping[str, Any]) -> Hydrograph:
-        """Return the source hydrograph of a subcatchment: inline or from a file."""
+    def _hydrograph(self, node_id: str, entry: Mapping[str, Any]) -> dict[str, Any]:
+        """Return the discharges of a subcatchment, inline: from the node or a file."""
         times = entry.get(TIMES_MIN.name)
         values = entry.get(DISCHARGE_M3S.name)
         column = entry.get(VALUE_COLUMN.name)
@@ -466,12 +318,10 @@ class _Reader:
                     node_id=node_id,
                     field=VALUE_COLUMN.name,
                 )
-            inline_times = self._normalize(node_id, TIMES_MIN, times)
-            inline_values = self._normalize(node_id, DISCHARGE_M3S, values)
-            try:
-                return Hydrograph(inline_times, inline_values)
-            except InvalidParameterError as exc:
-                self.where.convert(exc, node_id)
+            return {
+                TIMES_MIN.name: self._normalize(node_id, TIMES_MIN, times),
+                DISCHARGE_M3S.name: self._normalize(node_id, DISCHARGE_M3S, values),
+            }
         table = self._inflows(node_id)
         name = (
             node_id
@@ -479,16 +329,22 @@ class _Reader:
             else str(self._normalize(node_id, VALUE_COLUMN, column))
         )
         try:
-            return table_hydrograph(table, self.time_column, name)
+            hydrograph = table_hydrograph(table, self.time_column, name)
         except InputDataError as exc:
             raise InputDataError(
                 f"Node {node_id!r}: {exc}",
                 details={**exc.details, "node_id": node_id},
                 hint=exc.hint,
             ) from exc
+        return {
+            TIMES_MIN.name: hydrograph.times_min.tolist(),
+            DISCHARGE_M3S.name: hydrograph.discharge_m3s.tolist(),
+        }
 
-    def _element(self, node_id: str, method: str, entry: Mapping[str, Any]) -> Reach:
-        """Return the element of a reach or a reservoir from its options."""
+    def _element(
+        self, node_id: str, method: str, entry: Mapping[str, Any]
+    ) -> dict[str, Any]:
+        """Return the options of the element of a reach or a reservoir, validated."""
         options = model_options(method)
         given: dict[str, Any] = {}
         for option in options:
@@ -505,13 +361,10 @@ class _Reader:
                 )
         if method == "level-pool":
             return self._level_pool(node_id, given)
-        try:
-            return _ELEMENTS[method](**given)
-        except InvalidParameterError as exc:
-            self.where.convert(exc, node_id)
+        return given
 
-    def _level_pool(self, node_id: str, given: Mapping[str, Any]) -> LevelPoolReach:
-        """Return a level-pool element from an inline table or a rating file."""
+    def _level_pool(self, node_id: str, given: Mapping[str, Any]) -> dict[str, Any]:
+        """Return the table of a level pool, inline: from the node or a rating file."""
         name = given.get("rating_file")
         path = None if name is None else self._rating_path(node_id, name)
         try:
@@ -521,12 +374,6 @@ class _Reader:
                 stage_m=given.get("stage_m"),
                 rating_file=path,
             )
-            return LevelPoolReach(
-                storage_m3=rating.storage_m3,
-                outflow_m3s=rating.outflow_m3s,
-                stage_m=rating.stage_m,
-                subreaches=given.get("subreaches", 1),
-            )
         except InvalidParameterError as exc:
             self.where.convert(exc, node_id)
         except (InputDataError, NotFoundError) as exc:
@@ -535,12 +382,21 @@ class _Reader:
                 details={**exc.details, "node_id": node_id},
                 hint=exc.hint,
             ) from exc
+        fields: dict[str, Any] = {
+            "storage_m3": rating.storage_m3,
+            "outflow_m3s": rating.outflow_m3s,
+        }
+        if rating.stage_m is not None:
+            fields["stage_m"] = rating.stage_m
+        if "subreaches" in given:
+            fields["subreaches"] = given["subreaches"]
+        return fields
 
     def _rating_path(self, node_id: str, name: str) -> Path:
         """Resolve a ``rating_file`` against the directory of the network file."""
         if self.base is None:
             self.where.fail(
-                f"Node {node_id!r} names the rating file {_shown(name)}, which an "
+                f"Node {node_id!r} names the rating file {shown(name)}, which an "
                 "inline network cannot do",
                 reason="inline_file",
                 node_id=node_id,
@@ -551,12 +407,12 @@ class _Reader:
         resolved = Path(os.path.realpath(self.base / name))
         if not resolved.is_relative_to(self.base):
             self.where.fail(
-                f"The rating file {_shown(name)} of node {node_id!r} lies outside the "
+                f"The rating file {shown(name)} of node {node_id!r} lies outside the "
                 f"directory of the network file ({self.base})",
                 reason="path_outside",
                 node_id=node_id,
                 field="rating_file",
-                value=_shown(name),
+                value=shown(name),
                 hint="Put the rating file in the directory of the network file or "
                 "below it.",
             )
@@ -635,7 +491,14 @@ def load_network(
             details={"option": "time_column", "reason": "conflict"},
         )
     reader = _Reader(where, base, inflows_file, time_column)
-    nodes, name = reader.document(document)
+    try:
+        built = RoutingNetwork.from_document(document, prepare=reader.prepare)
+    except InvalidParameterError as exc:
+        # the reader has made the error of the document when it names the option
+        # `network`; the time axes of the data stay what they are
+        if exc.details.get("option") == "network" or exc.details.get("reason") in _KEPT:
+            raise
+        where.convert(exc)
     if inflows_file is not None and not reader.used_inflows:
         raise InvalidParameterError(
             "Option 'inflows_file' is not used: no subcatchment of the network reads "
@@ -644,10 +507,4 @@ def load_network(
             hint="Leave the inline discharges out of a subcatchment to read its "
             "column, or leave out inflows_file.",
         )
-    try:
-        built = RoutingNetwork(nodes, name=name)
-    except InvalidParameterError as exc:
-        if exc.details.get("reason") in _KEPT:
-            raise
-        where.convert(exc)
     return LoadedNetwork(built, reader.rating_files)

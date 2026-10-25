@@ -30,7 +30,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import cast
+from typing import Any, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -40,7 +40,13 @@ from hydrolog.routing._checks import one_complete_group, positive
 from hydrolog.routing._kernels import route_muskingum_cascade
 from hydrolog.routing.hydrograph import Hydrograph
 from hydrolog.routing.muskingum import MAX_SUBSTEPS
-from hydrolog.routing.reach import MAX_ORDINATES, Reach, ReachRun, RoutingNotice
+from hydrolog.routing.reach import (
+    MAX_ORDINATES,
+    REACH_METHODS,
+    Reach,
+    ReachRun,
+    RoutingNotice,
+)
 from hydrolog.routing.sections import TrapezoidalSection
 
 __all__ = ["MIN_RISE_STEPS", "MuskingumCungeReach", "rise_steps"]
@@ -125,6 +131,7 @@ class _Plan:
     notices: tuple[RoutingNotice, ...]
 
 
+@REACH_METHODS.register
 class MuskingumCungeReach(Reach):
     """Route a hydrograph through a reach with constant-coefficient Muskingum-Cunge.
 
@@ -220,6 +227,27 @@ class MuskingumCungeReach(Reach):
             if reference_discharge_m3s is None
             else positive(reference_discharge_m3s, "reference_discharge_m3s")
         )
+
+    def options(self) -> dict[str, Any]:
+        """Return the arguments that rebuild the element.
+
+        The two groups of hydraulics options are exclusive: the section (``manning_n``,
+        ``bottom_width_m``, ``side_slope_m_per_m``) or the wave (``celerity_m_per_s``,
+        ``top_width_m``); ``reference_discharge_m3s`` is in it when it was given.
+        """
+        options: dict[str, Any] = {
+            "length_km": self.length_km,
+            "slope_m_per_m": self.slope_m_per_m,
+        }
+        if isinstance(self._source, TrapezoidalSection):
+            options["manning_n"] = self._source.manning_n
+            options["bottom_width_m"] = self._source.bottom_width_m
+            options["side_slope_m_per_m"] = self._source.side_slope_m_per_m
+        else:
+            options["celerity_m_per_s"], options["top_width_m"] = self._source
+        if self.reference_discharge_m3s is not None:
+            options["reference_discharge_m3s"] = self.reference_discharge_m3s
+        return options
 
     def _hydraulics(self, reference: float) -> tuple[float, float]:
         """Return the celerity [m/s] and the top width [m] at the reference."""

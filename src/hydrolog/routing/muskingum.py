@@ -17,12 +17,19 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from typing import Any
 
 from hydrolog.exceptions import InvalidParameterError
 from hydrolog.routing._checks import in_range, positive, whole_number
 from hydrolog.routing._kernels import route_muskingum_cascade
 from hydrolog.routing.hydrograph import Hydrograph
-from hydrolog.routing.reach import MAX_ORDINATES, Reach, ReachRun, RoutingNotice
+from hydrolog.routing.reach import (
+    MAX_ORDINATES,
+    REACH_METHODS,
+    Reach,
+    ReachRun,
+    RoutingNotice,
+)
 
 __all__ = ["MAX_SUBSTEPS", "MuskingumReach", "subreach_window"]
 
@@ -83,6 +90,7 @@ class _Plan:
     notices: tuple[RoutingNotice, ...] = ()
 
 
+@REACH_METHODS.register
 class MuskingumReach(Reach):
     """Route a hydrograph through a reach with the Muskingum method.
 
@@ -129,6 +137,7 @@ class MuskingumReach(Reach):
     """
 
     model = "muskingum"
+    UNITS = {"subreaches_min": None, "subreaches_max": None}
 
     def __init__(self, k_min: float, x: float, subreaches: int | None = None) -> None:
         """Create the element."""
@@ -137,6 +146,13 @@ class MuskingumReach(Reach):
         self.subreaches = (
             None if subreaches is None else whole_number(subreaches, "subreaches")
         )
+
+    def options(self) -> dict[str, Any]:
+        """Return ``k_min``, ``x`` and, when it was given, ``subreaches``."""
+        options: dict[str, Any] = {"k_min": self.k_min, "x": self.x}
+        if self.subreaches is not None:
+            options["subreaches"] = self.subreaches
+        return options
 
     def _explicit_plan(self, count: int, step_min: float) -> _Plan:
         """Check the given number of sub-reaches against the window of the step."""

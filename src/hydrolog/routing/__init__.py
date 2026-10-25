@@ -20,11 +20,16 @@ Time is in minutes and discharge in m3/s.
 * :class:`LevelPoolReach` -- a reservoir or a reach with a storage-outflow table, by
   storage indication (the modified Puls method; :func:`timestep_limit_min`);
 * :class:`RoutingNetwork` -- the elements above composed over a river network, a
-  directed acyclic graph of :class:`NetworkNode` (sources, reaches, reservoirs,
-  junctions that add, one outlet); :meth:`RoutingNetwork.route` gives a
-  :class:`NetworkResult`, the hydrograph that leaves every node.
+  directed acyclic graph of :class:`Node` objects that link by reference
+  (:class:`Subcatchment` brings a hydrograph, :class:`Channel` routes through a
+  :class:`Reach`, :class:`Reservoir` through a level pool, :class:`Junction` adds,
+  :class:`Outlet` ends the network); :meth:`RoutingNetwork.route` gives a
+  :class:`NetworkResult`, the hydrograph, the figures and the parameters
+  (:class:`Parameter`) of every node.
 
-The recurrences shared with the Clark unit hydrograph are in
+A new kind of node and a new method of a reach are classes that are registered in
+:data:`NODE_TYPES` and :data:`REACH_METHODS`, which is how a document names them
+(ADR-0012). The recurrences shared with the Clark unit hydrograph are in
 ``hydrolog.routing._kernels``.
 
 Examples
@@ -43,24 +48,56 @@ from hydrolog.routing.hydrograph import Hydrograph
 from hydrolog.routing.lag import LagReach
 from hydrolog.routing.level_pool import LevelPoolReach, timestep_limit_min
 from hydrolog.routing.muskingum import MuskingumReach
-from hydrolog.routing.network import NetworkNode, NetworkResult, RoutingNetwork
-from hydrolog.routing.reach import Reach, RoutingNotice, RoutingResult
+from hydrolog.routing.network import (
+    NODE_TYPES,
+    Axis,
+    Channel,
+    Context,
+    Junction,
+    NetworkResult,
+    Node,
+    NodeOutput,
+    NodeSummary,
+    Outlet,
+    Reservoir,
+    RoutingNetwork,
+    Subcatchment,
+)
+from hydrolog.routing.parameters import Parameter
+from hydrolog.routing.reach import (
+    REACH_METHODS,
+    Reach,
+    RoutingNotice,
+    RoutingResult,
+)
 from hydrolog.routing.sections import FlowState, TrapezoidalSection
 
 __all__ = [
+    "NODE_TYPES",
+    "REACH_METHODS",
+    "Axis",
     "CascadeReach",
+    "Channel",
+    "Context",
     "FlowState",
     "Hydrograph",
+    "Junction",
     "LagReach",
     "LevelPoolReach",
     "MuskingumCungeReach",
     "MuskingumReach",
-    "NetworkNode",
     "NetworkResult",
+    "Node",
+    "NodeOutput",
+    "NodeSummary",
+    "Outlet",
+    "Parameter",
     "Reach",
+    "Reservoir",
     "RoutingNetwork",
     "RoutingNotice",
     "RoutingResult",
+    "Subcatchment",
     "TrapezoidalSection",
     "cascade_weights",
     "timestep_limit_min",

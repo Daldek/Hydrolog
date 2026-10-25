@@ -299,6 +299,9 @@ class TestReachTemplate:
         def __init__(self, outflow: float) -> None:
             self.outflow = outflow
 
+        def options(self):
+            return {"outflow": self.outflow}
+
         def _run(self, inflow, initial_outflow_m3s):
             return ReachRun(
                 outflow_m3s=np.full(len(inflow), self.outflow),

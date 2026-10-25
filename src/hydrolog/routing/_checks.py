@@ -16,7 +16,33 @@ from numpy.typing import ArrayLike, NDArray
 
 from hydrolog.exceptions import InvalidParameterError
 
-__all__ = ["as_array", "in_range", "one_complete_group", "positive", "whole_number"]
+__all__ = [
+    "as_array",
+    "in_range",
+    "one_complete_group",
+    "positive",
+    "shown",
+    "whole_number",
+]
+
+_SHOWN_CHARS = 60
+
+
+def shown(value: object) -> str:
+    """Return a value for a message or for ``details``: short and JSON-safe.
+
+    Parameters
+    ----------
+    value : object
+        Anything a document can hold.
+
+    Returns
+    -------
+    str
+        The string itself, else its ``repr``, cut to 60 characters with ``…``.
+    """
+    text = value if isinstance(value, str) else repr(value)
+    return text if len(text) <= _SHOWN_CHARS else text[: _SHOWN_CHARS - 1] + "…"
 
 
 def _shown(value: float) -> float | str:

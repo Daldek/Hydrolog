@@ -1055,24 +1055,20 @@ print(round(pond.route(flood).outflow.peak_discharge_m3s, 3))          # 6.852
 
 #### 3.9.7 Routing over a River Network (`RoutingNetwork`, `route network`)
 
-A network is a directed acyclic graph of nodes that name the nodes flowing into them (`from`, the convention of `StreamSegment.upstream_ids`): `subcatchment` (a source hydrograph), `reach` (any element above, routing the hydrograph of its upstream node), `reservoir` (a `LevelPoolReach`), `junction` (the sum of the hydrographs that flow into it) and one `outlet`. The nodes are evaluated headwaters first and, among those that are ready, the smallest id first, so neither the order of the nodes in a list or a file nor anything but the links decides the result. A node flows into one node (a bifurcation would count its water twice) and every node reaches the outlet; a cycle, an unknown id, two outlets or none and a node that flows nowhere are errors with a `details.reason`.
+A network is a directed acyclic graph of node objects that link by reference: a node holds the nodes that flow into it (`inflows`; in a document `from`, their ids, the convention of `StreamSegment.upstream_ids`). The classes are `Subcatchment` (type `subcatchment`, a source hydrograph), `Channel` (`reach`: any element above, routing the hydrograph of its upstream node), `Reservoir` (`reservoir`: a `LevelPoolReach`), `Junction` (`junction`: the sum of the hydrographs that flow into it) and one `Outlet` (`outlet`); `RoutingNetwork(outlet)` is the network that ends there, everything upstream of the outlet being in it. The nodes are evaluated headwaters first and, among those that are ready, the smallest id first, so neither the order of the nodes in a list or a file nor anything but the links decides the result. A node flows into one node (a bifurcation would count its water twice) and every node reaches the outlet; two outlets or none and a node that flows nowhere are errors with a `details.reason`, and in a document so are a cycle and an unknown id (objects can form neither).
 
 **Time axes.** One step and one first time for all sources; nothing is resampled (ADR-0008). Their lengths may differ, and so do those of the outflows, which each reach extends until it has settled; a junction holds a shorter hydrograph at its last value, as a reach holds its inflow over the extension.
 
 ```python
-from hydrolog.routing import Hydrograph, LagReach, NetworkNode, RoutingNetwork
+from hydrolog.routing import (
+    Channel, Hydrograph, Junction, LagReach, Outlet, RoutingNetwork, Subcatchment
+)
 
 small = Hydrograph.from_step([1.0, 4.0, 1.0], timestep_min=10.0)
 large = Hydrograph.from_step([2.0, 8.0, 2.0], timestep_min=10.0)
-network = RoutingNetwork(
-    [
-        NetworkNode("A", "subcatchment", hydrograph=small),
-        NetworkNode("B", "subcatchment", hydrograph=large),
-        NetworkNode("J", "junction", upstream=["A", "B"]),
-        NetworkNode("R", "reach", upstream=["J"], reach=LagReach(lag_min=10.0)),
-        NetworkNode("OUT", "outlet", upstream=["R"]),
-    ]
-)
+a, b = Subcatchment("A", small), Subcatchment("B", large)
+reach = Channel("R", LagReach(lag_min=10.0), inflow=Junction("J", inflows=[a, b]))
+network = RoutingNetwork(Outlet("OUT", inflow=reach))
 print(network.route().hydrographs["OUT"].peak_discharge_m3s)           # 12.0
 ```
 
