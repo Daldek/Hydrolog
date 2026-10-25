@@ -1076,6 +1076,24 @@ print(network.route().hydrographs["OUT"].peak_discharge_m3s)           # 12.0
 
 **Command.** `route network` reads the document `hydrolog-network/1` ([ADR-0010](decisions/0010-route-network-document-and-output-directory.md)) inline or from `network_file`. A subcatchment has its discharges inline or in a column of `inflows_file`; a reach has a `method` and the options of `route <method>`, validated by their catalog declaration; a reservoir has those of `route level-pool`; a `rating_file` lies in the directory of the network file. A wrong document is a `data_error` for a file and a `validation_error` for the inline option, with the node and the field in `details`. `result.nodes[]` gives the peak, its time and the volume of every node and, for a reach or a reservoir, the figures of `route <method>`; the notices begin with the node id. `output_dir` writes `<id>.csv` for each selected node, which every `route` command reads again; without it the hydrographs of the selected nodes are in the result.
 
+**Subcatchments that make their hydrograph** ([ADR-0012](decisions/0012-network-objects-rainfall-and-runoff.md)). A `Subcatchment` is one lumped, homogeneous area, with no flow paths inside. It is given its hydrograph, or makes it from a `WatershedParameters`, a `RunoffModel` and a `RainfallSource`; the path of a made one is the path of `hydrograph generate`, fed with the rain of that subcatchment:
+
+```
+rainfall.hyetograph(step)  ->  SCS-CN effective rainfall (CN of the watershed, AMC, Ia)
+                           ->  unit hydrograph (SCS, Nash, Clark or Snyder; tc given or from the watershed)
+                           ->  discharge [m3/s] at the time step of the network, from time 0
+```
+
+`DesignStorm` is a design storm (a depth over a duration in the shape of a `Hietogram`) cut at the step of the network; `RainfallSeries` is a record, never resampled (a network of another step refuses it, `timestep_mismatch`); `CurveNumberRunoff` is `HydrographGenerator` as a `RunoffModel`, with the options of the command, and its hydrograph is the generator's to the last ordinate (`assert_array_equal`, for the four unit hydrograph models). The **rainfall belongs to the subcatchment**: two of them take it from different sources, and `RoutingNetwork(..., rainfall=)` is only a default for those that have none (`missing_field` when neither exists). A network has one time step: the one given, else that of the given hydrographs and series (they must agree), else 5 min. A warning of the library on the way (a time-of-concentration formula outside its range) is a notice of the node that caused it.
+
+**Control points** ([ADR-0012](decisions/0012-network-objects-rainfall-and-runoff.md)). An application that lets its user pick points on the streams builds the network with `ControlPointNetwork`: the outlet first, then points upstream of it. A point closes its *residual* area, the contributing area minus the areas of the points picked above it (the application computes it; Hydrolog does not know areas), and the stream between two points is a channel. Every point is a junction that adds its own residual subcatchment and the outflow of the channel of each point that flows into it:
+
+```
+Q(P) = Q_residual(P) + sum over the points U that flow into P of  route(channel U->P, Q(U))
+```
+
+so `hydrographs[P]` of the result is the discharge at the point. Where another stream joins a channel `U->D`, `add_confluence` splits it into `U->C` and `C->D` (both given, never made up) and the tributary `T` flows into `C`: `Q(C) = route(U->C, Q(U)) + route(T->C, Q(T))` and `D` receives `route(C->D, Q(C))`. The stream below the confluence is routed once, for the water of both. For a **linear** reach that is the same as routing each stream through its own copy of `C->D`, because routing is linear and a sum of routed parts is the routed sum; for a **nonlinear** one it is not. In the test (`tests/unit/test_routing_points.py`: two streams of 4 and 9 m3/s peaks, each through a 10 min lag, joining above one reach) the peak below the confluence is 7.62 m3/s with a Muskingum reach whichever way it is built, 3.91 m3/s with a Muskingum-Cunge reach (the coefficients follow the inflow peak: 6 km, 1 m/s, 25 m, slope 0.001) against 5.06 m3/s when each stream is routed through its own copy, and 3.21 against 3.03 m3/s with a pond. Removing a point keeps the points above it: they flow into the point below through the two channels in series (what the stream was), or through the one that the application gives for both; two streams that meet in the removed point keep a confluence there; a confluence that is left with one stream is dropped.
+
 ---
 
 ## 4. Literature Verification
@@ -1114,6 +1132,8 @@ print(network.route().hydrographs["OUT"].peak_discharge_m3s)           # 12.0
 | Cascade of linear reservoirs, exact kernel (`route cascade`, `CascadeReach`) | Nash (1957) (the IUH of `NashIUH`), Kalinin and Milyukov (1957) as presented by Ponce (linear reservoirs and numerical diffusion), Chow, Maidment, Mays (1988); weights checked against the numerical integral of the gamma density and the exact solution of the chain | ✅ |
 | Level-pool routing, storage indication (`route level-pool`, `LevelPoolReach`) | NRCS NEH Part 630 ch. 17 (2014) eq. 17-3 and example 17-1, HEC-HMS Technical Reference Manual (Modified Puls model); the step rule per segment checked on random tables and against the exact solution of a tank with a weir | ✅ |
 | River network of reaches, reservoirs and junctions (`route network`, `RoutingNetwork`) | Composition of the elements above in the order of the stream (the convention of `StreamSegment.upstream_ids`); no published table, the identities of the plan instead: a one-reach network equals the command, series equivalence with the sub-reaches of `MuskingumReach`, junction sums, order independence | ✅ |
+| Subcatchment that makes its hydrograph from its rain (`Subcatchment(watershed=, runoff=, rainfall=)`, `CurveNumberRunoff`, `DesignStorm`, `RainfallSeries`) | The SCS-CN and unit hydrograph paths above (`HydrographGenerator`): the hydrograph of the node equals the generator's to the last ordinate for the four unit hydrograph models, and a network of such nodes routes as the network of their hydrographs | ✅ |
+| Control points (`ControlPointNetwork`) | Expansion into the nodes above, no formula of its own: the network of points equals the same nodes built by hand (document and hydrographs); a linear reach routes the same with and without a confluence, a nonlinear one (Muskingum-Cunge with the inflow peak, a pond) does not | ✅ |
 
 ### 4.2 Key Publications
 

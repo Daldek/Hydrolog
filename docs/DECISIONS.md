@@ -17,3 +17,4 @@ the Nogat standard 2.1 adoption are in the plans of [plans/](plans/).
 | [0009](decisions/0009-compact-index-line-for-large-groups.md) | One index line for a command group that would not fit the guide | accepted | 2026-10-24 |
 | [0010](decisions/0010-route-network-document-and-output-directory.md) | `route network`: the network document, one table per node, `--output-dir` | accepted | 2026-10-25 |
 | [0011](decisions/0011-public-testing-module.md) | `hydrolog.testing`: builders of the files other projects read | accepted | 2026-10-25 |
+| [0012](decisions/0012-network-objects-rainfall-and-runoff.md) | Network objects, rainfall and runoff per subcatchment, and control points | accepted | 2026-10-25 |

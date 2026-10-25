@@ -439,6 +439,182 @@ result = LagReach(lag_min=60).route(inflow)
 print(result.outflow.time_to_peak_min, result.balance_error_m3)
 ```
 
+#### Networks of objects, rainfall per subcatchment, control points
+
+In Python a network is also objects ([ADR-0012](decisions/0012-network-objects-rainfall-and-runoff.md)). The
+nodes (`Subcatchment`, `Channel` for any `Reach`, `Reservoir`, `Junction`, `Outlet`) link by reference, each
+holding the nodes that flow into it, and `RoutingNetwork(outlet)` is the network that ends there. The document
+`hydrolog-network/1` is the same graph written with ids: `RoutingNetwork.from_document` reads it and
+`to_document()` writes it, and a network read from what was written routes to the last ordinate as the first did.
+A `Subcatchment` is given its hydrograph or **makes it** from a `WatershedParameters`, a runoff model
+(`CurveNumberRunoff`, which is `HydrographGenerator` with the options of `hydrograph generate`) and **its own
+rainfall**: a `DesignStorm` (a depth over a duration in the shape of a hietogram) or a `RainfallSeries` (a record,
+never resampled). The rain belongs to the subcatchment, so two of them can take it from different sources;
+`RoutingNetwork(rainfall=...)` is only a default for those that have none, and a subcatchment that has no rain at
+all is refused (`missing_field`). The network has one time step: `timestep_min=`, else that of the given
+hydrographs and records (they must agree), else 5 min. Every part has `describe()`, and the result has, for each
+node, the peak, the time to peak, the volume, the values that the calculation used (`given`, `computed` or
+`default`, with their units) and its notices:
+
+```python
+from hydrolog.morphometry import WatershedParameters
+from hydrolog.precipitation import BlockHietogram, EulerIIHietogram
+from hydrolog.routing import (
+    Channel,
+    CurveNumberRunoff,
+    DesignStorm,
+    Junction,
+    LagReach,
+    MuskingumReach,
+    Outlet,
+    RainfallSeries,
+    RoutingNetwork,
+    Subcatchment,
+)
+
+upper = WatershedParameters(
+    area_km2=12.0, perimeter_km=18.0, length_km=6.0,
+    elevation_min_m=210.0, elevation_max_m=330.0, cn=75,
+)
+lower = WatershedParameters(
+    area_km2=5.0, perimeter_km=11.0, length_km=3.5,
+    elevation_min_m=210.0, elevation_max_m=290.0, cn=70,
+)
+model = CurveNumberRunoff(tc_method="kirpich")   # the options of hydrograph generate
+
+a = Subcatchment("A", watershed=upper, runoff=model,
+                 rainfall=DesignStorm(45.0, 60.0, EulerIIHietogram()))
+b = Subcatchment("B", watershed=lower, runoff=model,
+                 rainfall=RainfallSeries([0.0, 2.0, 5.0, 10.0, 12.0, 6.0, 3.0], timestep_min=5.0))
+c = Subcatchment("C", watershed=lower, runoff=model)   # no rain of its own: the network's
+
+j1 = Junction("J1", inflows=[Channel("R_A", LagReach(lag_min=25.0), inflow=a), b])
+j2 = Junction("J2", inflows=[Channel("R_J1", MuskingumReach(k_min=40.0, x=0.2), inflow=j1), c])
+network = RoutingNetwork(
+    Outlet("OUT", inflow=j2), rainfall=DesignStorm(30.0, 60.0, BlockHietogram())
+)
+
+result = network.route()
+print(network.order)       # ('A', 'B', 'C', 'R_A', 'J1', 'R_J1', 'J2', 'OUT')
+print({node: round(h.peak_discharge_m3s, 2) for node, h in result.hydrographs.items()})
+# {'A': 20.11, 'B': 4.35, 'C': 1.19, 'R_A': 20.11, 'J1': 20.43, 'R_J1': 18.85, 'J2': 18.89, 'OUT': 18.89}
+print({node: rain.total_mm for node, rain in result.rainfall.items()})   # A 45, B 38, C 30 (the default)
+tc = next(p for p in result.nodes["A"].parameters if p.name == "tc_min")
+print(tc.name, round(tc.value, 1), tc.unit, tc.source)                   # tc_min 71.3 min computed
+
+document = network.to_document()           # hydrolog-network/1, JSON-native
+again = RoutingNetwork.from_document(document).route()
+print(again.hydrographs["OUT"].peak_discharge_m3s == result.hydrographs["OUT"].peak_discharge_m3s)   # True
+```
+
+A new kind of node, rainfall, runoff model, shape of a storm or reach method is a class that implements the
+protocol (`Node`, `RainfallSource`, `RunoffModel`, `Hietogram`, `Reach`) and an entry in a registry (`NODE_TYPES`,
+`RAINFALL_KINDS`, `RUNOFF_MODELS`, `HIETOGRAMS`, `REACH_METHODS`); nothing else lists them, and a document names
+them by the same names.
+
+**Control points.** An application that lets its user pick points on the streams builds the network with
+`ControlPointNetwork`, outlet first. A point closes its *residual* area, the contributing area minus the areas of
+the points above it: the application computes it and gives it as a `Subcatchment`; Hydrolog does not compute or
+check areas and makes up no channel. Each edit is checked by building the network, and one that is refused
+(`InvalidParameterError`, `details.reason` `unknown_point`, `duplicate_node`, `no_inflow`, `outlet_removal`...)
+changes nothing, so the network routes after every step. `hydrographs[point]` of the result is the discharge at
+the point. The example is the workflow pick by pick: the outlet alone, two points on a stream, a tributary that
+joins it at a confluence, and the tributary taken away again.
+
+```python
+from hydrolog.morphometry import WatershedParameters
+from hydrolog.precipitation import EulerIIHietogram
+from hydrolog.routing import (
+    ControlPoint,
+    ControlPointNetwork,
+    CurveNumberRunoff,
+    DesignStorm,
+    LagReach,
+    MuskingumReach,
+    OutletPoint,
+    RainfallSeries,
+    Subcatchment,
+)
+
+storm = DesignStorm(45.0, 60.0, EulerIIHietogram())
+record = RainfallSeries([0.0, 2.0, 5.0, 10.0, 12.0, 6.0, 3.0], timestep_min=5.0)
+
+
+def residual(node_id, area_km2, rain):
+    """What the application computes: the area that drains to a point and to none above it."""
+    watershed = WatershedParameters(
+        area_km2=area_km2,
+        perimeter_km=4.5 * area_km2**0.5,
+        length_km=1.2 * area_km2**0.5,
+        elevation_min_m=210.0,
+        elevation_max_m=330.0,
+        cn=75,
+    )
+    return Subcatchment(
+        node_id, watershed=watershed, runoff=CurveNumberRunoff(tc_min=60.0), rainfall=rain
+    )
+
+
+def show(step, points):
+    result = points.route()
+    peaks = {p: round(result.hydrographs[p].peak_discharge_m3s, 2) for p in points.ids}
+    print(step, peaks)
+
+
+# 1. the outlet first: the whole catchment drains to it
+points = ControlPointNetwork(OutletPoint("OUT", residual("OUT_area", 30.0, storm)))
+show("outlet", points)                    # outlet {'OUT': 55.82}
+
+# 2. a point on the stream above it takes 18 km2 of the 30, and a second one 9 km2 of those
+points.add_point(
+    ControlPoint("P1", residual("P1_area", 18.0, storm)),
+    downstream="OUT",
+    channel=MuskingumReach(k_min=40.0, x=0.2),
+)
+points.update_subcatchment("OUT", residual("OUT_area", 12.0, storm))
+points.add_point(
+    ControlPoint("P2", residual("P2_area", 9.0, record)),     # a record, not a storm
+    downstream="P1",
+    channel=LagReach(lag_min=20.0),
+)
+points.update_subcatchment("P1", residual("P1_area", 9.0, storm))
+show("two points", points)                # two points {'OUT': 32.86, 'P1': 28.62, 'P2': 11.97}
+
+# 3. a tributary of 6 km2 joins the stream between P2 and P1, at a confluence
+points.add_confluence(
+    "C1",
+    on_channel_of="P2",
+    upstream_channel=LagReach(lag_min=10.0),
+    downstream_channel=LagReach(lag_min=10.0),
+)
+points.add_point(
+    ControlPoint("T", residual("T_area", 6.0, storm)),
+    downstream="C1",
+    channel=LagReach(lag_min=15.0),
+)
+points.update_subcatchment("P1", residual("P1_area", 3.0, storm))
+show("tributary", points)
+# tributary {'OUT': 28.54, 'P1': 25.88, 'P2': 11.97, 'C1': 21.05, 'T': 11.16}
+print(points.kind("C1"), points.upstream("C1"), points.downstream("C1"))   # confluence ('P2', 'T') P1
+
+# 4. the user drops the tributary: its area goes back to P1 and the confluence goes with it
+points.remove_point("T")
+points.update_subcatchment("P1", residual("P1_area", 9.0, storm))
+show("removed", points)                   # removed {'OUT': 32.86, 'P1': 28.62, 'P2': 11.97}
+print(points.ids, [channel.id for channel in points.channels("P2")])
+# ('OUT', 'P1', 'P2') ['P2_channel', 'C1_channel']: the two channels of the stream, in series
+
+network = points.network()                 # the RoutingNetwork of this state: immutable
+print(len(network.order), network.to_document()["nodes"][0]["id"])   # 10 OUT_area
+```
+
+A confluence splits the channel of a point into `upstream_channel` and `downstream_channel`, which the application
+gives; the stream below it is routed once for the water of both, which matters for a nonlinear reach (see
+COMPUTATION_PATHS 3.9.7). `add_point(..., upstream={id: channel})` puts a point between two others;
+`remove_point` keeps the points above the removed one, through the two channels in series or the `channel=` that
+replaces both. The state is `points.network()`, an immutable `RoutingNetwork`, and `points.network().to_document()`
+is its document.
+
 ### Morphometry and river network
 
 `morphometry watershed` returns geometry, shape indicators, elevation and slope figures from a

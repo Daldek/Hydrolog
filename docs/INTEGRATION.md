@@ -344,8 +344,63 @@ Since v1.0.0 Hydrolog has a single command catalog (`hydrolog.catalog`, 44 comma
 - **Hydrograf (a mapping it can use):** a subcatchment of the delineated watershed is a node of type `subcatchment` whose discharge is the hydrograph that `hydrograph generate` gives for it, written to a column of `inflows_file` (named by the `value_column` or else by the `id` of the node; one time step and one first time for all); a stream segment (`StreamSegment`, `upstream_ids`) is a `reach` whose `from` is the node above it and whose `method` and options Hydrograf chooses (`lag_min`; `k_min` and `x`; `length_km` and `slope_m_per_m` with a section or a celerity); a confluence is a `junction` that lists the nodes that join; a reservoir is a `reservoir` with its storage-outflow table; the last node is the `outlet`. A node `id` names a file: letters, digits, `_`, `.` and `-`, at most 64 characters, unique without regard to case. A bifurcation is refused.
 - **Hydraulik (hand-off):** `route network --output-dir DIR` writes `<id>.csv` for each node, the hydrograph that leaves the node (`time_min` in minutes at a regular step, `discharge_m3s` in m3/s), which is the inflow of a hydraulic model at that node. The `result.files[]` of the `--json` result lists the paths with their SHA-256. Hydrolog reads no file of Hydraulik.
 - A `rating_file` named by the document lies beside `network_file`; an inline network (MCP) cannot name files. The document must carry `"schema": "hydrolog-network/1"`, and an `id` must not be a Windows device name (`con`, `nul`, `aux`, `prn`, `com1` to `com9`, `lpt1` to `lpt9`), because it names the file `<id>.csv`.
-- **Tests of a consumer:** `hydrolog.testing` builds the network documents, the tables of `--output-dir`, a complete case (`build_network_fixture`) and the envelope of `precip hietogram` offline, with the real code ([ADR-0011](decisions/0011-public-testing-module.md)); test against it at the Hydrolog version you pin, not against hand-written copies of the formats (DEV-10.6).
+- **Tests of a consumer:** `hydrolog.testing` builds the network documents (also of subcatchments that make their hydrograph: `watershed`, `curve_number_runoff`, `design_storm`, `rainfall_series`), the tables of `--output-dir`, a complete case (`build_network_fixture`), a network of three subcatchments (`example_network_document`, `example_network`) and the envelope of `precip hietogram` offline, with the real code ([ADR-0011](decisions/0011-public-testing-module.md), [ADR-0012](decisions/0012-network-objects-rainfall-and-runoff.md)); test against it at the Hydrolog version you pin, not against hand-written copies of the formats (DEV-10.6).
 - A network exporter in Hydrograf and a reader of the tables in Hydraulik are `request` issues in their repositories (DEV-17.5); this change opens none.
+
+### Flood routing from Python: the control points of Hydrograf
+
+When Hydrograf calls Hydrolog as a library there is no file: it builds the network pick by pick, in the order the user works, **the outlet first, then points upstream of it** ([ADR-0012](decisions/0012-network-objects-rainfall-and-runoff.md); `ControlPointNetwork` in `hydrolog.routing`; the worked workflow is in [USAGE.md](USAGE.md), "Networks of objects, rainfall per subcatchment, control points"). The network is valid, and routes, after every step.
+
+| In Hydrograf | In Hydrolog |
+|---|---|
+| the outlet pick | `ControlPointNetwork(OutletPoint(id, subcatchment))` |
+| a pick on a stream | `add_point(ControlPoint(id, subcatchment), downstream=<the pick or confluence below it>, channel=<Reach or Channel>)` |
+| a pick between two picks | the same, with `upstream={<the pick above>: <its channel to the new pick>}` |
+| a tributary that joins the stream between two picks | `add_confluence(id, on_channel_of=<the upper pick>, upstream_channel=, downstream_channel=)`, then `add_point(..., downstream=<confluence id>)` |
+| the area that is left to a pick | `update_subcatchment(id, subcatchment)` |
+| the user removes a pick | `remove_point(id)`, with `channel=` when Hydrograf gives the one channel that replaces the two |
+| the discharge at a pick | `route().hydrographs[id]` |
+
+- **Residual areas are Hydrograf's job.** A pick closes its contributing area minus the areas of the picks above it: when a pick is added, Hydrograf gives the pick below it the smaller area (`update_subcatchment`); when one is removed, it gives the area back. Hydrolog does not know areas and checks none, and it makes up no channel: Hydrograf chooses the `Reach` of every stream (the options of `route <method>`: `lag_min`; `k_min` and `x`; a section or a celerity from the length and the slope of the stream segment) and, at a confluence, both parts of the channel that is split. Hydrolog checks the topology (one outlet, no bifurcation, no cycle), the ids and the time axis.
+- **The rainfall belongs to each subcatchment.** Hydrograf makes one `Subcatchment(id, watershed=WatershedParameters.from_dict(...), runoff=CurveNumberRunoff(...), rainfall=<source>)` per pick, with the watershed that its morphometry produces. Two picks of one network can have rain from different sources: a design storm (`DesignStorm`: a depth, a duration and a hietogram shape), a record (`RainfallSeries`) or, later, any class that implements `RainfallSource` (areal rainfall from IMGWTools, radar, PMAXTP) and is registered in `RAINFALL_KINDS` to be named in a document. `ControlPointNetwork(..., rainfall=)` is only a default for the subcatchments that have none. The network has one time step (`timestep_min=`, else that of the records, else 5 min); a record of another step is refused (`timestep_mismatch`), nothing is resampled.
+- **An edit that is refused changes nothing.** It raises `InvalidParameterError` with `details.reason` (`unknown_point`, `duplicate_node`, `no_inflow`, `not_upstream`, `outlet_removal`, `timestep_mismatch`, `missing_field`...) and the id in `details`: Hydrograf shows the message and keeps its own state.
+- **Ids.** The ids of the picks, the confluences, the subcatchments and the channels are node ids: letters, digits, `_`, `.` and `-`, at most 64 characters, unique without regard to case. A bare `Reach` is wrapped in a channel named `<id>_channel` after the pick it leaves.
+- **What comes back.** `hydrographs[id]` of the result is the discharge at the pick (`times_min`, `discharge_m3s`, peak, time to peak, volume); `nodes[id]` has for every pick, confluence, subcatchment and channel the peak, the time to peak, the volume, the `parameters` that the calculation used (`name`, `value`, `unit`, `source`: `given`, `computed` or `default`) and the `notices`; `rainfall[subcatchment_id]` the rain that was used; `runs[channel_id]` the run of a channel. `kind(id)`, `downstream(id)`, `upstream(id)`, `channels(id)` and `subcatchment(id)` give the structure for a schematic of the network. The state of the picks is Hydrograf's; `points.network().to_document()` is the `hydrolog-network/1` document of the state if a file is wanted (`route network` and `RoutingNetwork.from_document` read it).
+
+```python
+from hydrolog.morphometry import WatershedParameters
+from hydrolog.precipitation import EulerIIHietogram
+from hydrolog.routing import (
+    ControlPoint, ControlPointNetwork, CurveNumberRunoff, DesignStorm,
+    MuskingumReach, OutletPoint, RainfallSeries, Subcatchment,
+)
+
+
+def residual(point_id, watershed, rain):
+    """The residual area of a pick: the watershed dict is Hydrograf's, the rain is its own."""
+    return Subcatchment(
+        f"{point_id}_area",
+        watershed=WatershedParameters.from_dict(watershed),
+        runoff=CurveNumberRunoff(tc_method="kirpich"),
+        rainfall=rain,
+    )
+
+
+design = DesignStorm(45.0, 60.0, EulerIIHietogram())
+record = RainfallSeries([0.0, 2.0, 5.0, 10.0, 12.0, 6.0, 3.0], timestep_min=5.0)
+whole = {"area_km2": 30.0, "perimeter_km": 25.0, "length_km": 8.0,
+         "elevation_min_m": 210.0, "elevation_max_m": 330.0, "cn": 75}
+
+points = ControlPointNetwork(OutletPoint("OUT", residual("OUT", whole, design)))   # 1. the outlet
+points.add_point(                                                                   # 2. a pick above it
+    ControlPoint("P1", residual("P1", {**whole, "area_km2": 18.0}, record)),
+    downstream="OUT",
+    channel=MuskingumReach(k_min=40.0, x=0.2),
+)
+points.update_subcatchment("OUT", residual("OUT", {**whole, "area_km2": 12.0}, design))   # 30 - 18
+result = points.route()
+print(result.hydrographs["P1"].peak_discharge_m3s, result.hydrographs["OUT"].peak_discharge_m3s)
+```
 
 ### Retman (calculation handlers)
 
