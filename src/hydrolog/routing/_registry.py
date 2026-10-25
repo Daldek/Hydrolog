@@ -10,7 +10,7 @@ knows the list.
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from typing import Any
 
 from hydrolog.exceptions import InvalidParameterError
@@ -32,6 +32,9 @@ class Registry[T]:
     reason : str
         ``details.reason`` of the error of a name that is not registered
         (``"unknown_type"``...).
+    needs : sequence of str, optional
+        Methods that a class must have to be registered, so that a class that a
+        document names cannot lack the code that reads and writes it.
 
     Examples
     --------
@@ -42,11 +45,14 @@ class Registry[T]:
     'Junction'
     """
 
-    def __init__(self, what: str, *, key: str, reason: str) -> None:
+    def __init__(
+        self, what: str, *, key: str, reason: str, needs: Sequence[str] = ()
+    ) -> None:
         """Create an empty registry."""
         self.what = what
         self._key = key
         self._reason = reason
+        self._needs = tuple(needs)
         self._classes: dict[str, type[T]] = {}
 
     def register(self, cls: type[T]) -> type[T]:
@@ -93,9 +99,19 @@ class Registry[T]:
 
         Raises
         ------
+        TypeError
+            If the class lacks a method that the registry needs.
         ValueError
             If the name is taken by another class.
         """
+        lacking = [
+            method for method in self._needs if not callable(getattr(cls, method, None))
+        ]
+        if lacking:
+            raise TypeError(
+                f"{cls.__name__} cannot be a {self.what} of a document: it has no "
+                f"{', '.join(lacking)}"
+            )
         taken = self._classes.get(name)
         if taken is not None and taken is not cls:
             raise ValueError(

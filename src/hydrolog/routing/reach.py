@@ -16,7 +16,6 @@ is a new class that is registered there.
 
 from __future__ import annotations
 
-import inspect
 import math
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
@@ -28,6 +27,7 @@ from numpy.typing import NDArray
 
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import CalculationError, InvalidParameterError
+from hydrolog.routing._reading import constructor_defaults
 from hydrolog.routing._registry import Registry
 from hydrolog.routing.hydrograph import Hydrograph
 from hydrolog.routing.parameters import Parameter, ParameterSource, parameter
@@ -256,15 +256,6 @@ def _settled(inflow: Hydrograph, run: ReachRun) -> bool:
     )
 
 
-def _defaults(cls: type) -> dict[str, object]:
-    """Return the defaults of the arguments of a constructor; ``None`` is none."""
-    return {
-        name: item.default
-        for name, item in inspect.signature(cls).parameters.items()
-        if item.default is not inspect.Parameter.empty and item.default is not None
-    }
-
-
 class Reach(ABC):
     """A routing element: a hydrograph in, a hydrograph out.
 
@@ -335,7 +326,7 @@ class Reach(ABC):
             ``"computed"``. Tables (a storage-outflow relation) are not parameters and
             are left out.
         """
-        defaults = _defaults(type(self))
+        defaults = constructor_defaults(type(self))
         used: dict[str, tuple[object, ParameterSource]] = {}
         for name, value in self.options().items():
             if isinstance(value, bool | int | float | str):

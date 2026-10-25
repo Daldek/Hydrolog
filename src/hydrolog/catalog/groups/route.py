@@ -167,29 +167,41 @@ NETWORK = Option(
     name="network",
     type="object",
     description_pl=(
-        "Sieć w treści, jako obiekt JSON `hydrolog-network/1`: `schema`, `name` i "
-        "`nodes`, lista węzłów z `id` (nazwa pliku `<id>.csv`; nie con, prn, aux, nul, "
+        "Sieć w treści, jako obiekt JSON `hydrolog-network/1`: `schema`, `name`, "
+        "`timestep_min`, `rainfall` (opad zlewni, które nie mają własnego) i `nodes`, "
+        "lista węzłów z `id` (nazwa pliku `<id>.csv`; nie con, prn, aux, nul, "
         "com1-9, lpt1-9), `type` (subcatchment, reach, reservoir, junction, outlet) i "
         "`from` (id węzłów powyżej). Zlewnia (subcatchment) ma `times_min` z "
-        "`discharge_m3s` albo `value_column` z `inflows_file` (domyślnie jej `id`); "
-        "odcinek (reach) ma `method` (lag, muskingum, muskingum-cunge, cascade, "
-        "level-pool) i opcje `route <method>`, zbiornik (reservoir) opcje `route "
-        "level-pool`, oba także `initial_outflow_m3s` i `extend_min`; złącze "
-        "(junction) dodaje dopływające węzły; jest dokładnie jeden outlet. Sieć w "
-        "treści nie wskazuje plików: `rating_file` wymaga `network_file`."
+        "`discharge_m3s` albo `value_column` z `inflows_file` (domyślnie jej `id`), "
+        "albo sama liczy hydrogram: `watershed` (WatershedParameters jak w "
+        "`hydrograph generate`), `runoff` (`model` curve-number i opcje `hydrograph "
+        "generate`: `tc_min` albo `tc_method`, `uh_model`, `ia_coefficient`, `amc`...) "
+        "i `rainfall` (`kind` design: `hietogram_type`, `total_mm`, `duration_min` i "
+        "kształt; albo series: `depths_mm`, `timestep_min`); odcinek (reach) ma "
+        "`method` (lag, muskingum, muskingum-cunge, cascade, level-pool) i opcje "
+        "`route <method>`, zbiornik (reservoir) opcje `route level-pool`, oba także "
+        "`initial_outflow_m3s` i `extend_min`; złącze (junction) dodaje dopływające "
+        "węzły; jest dokładnie jeden outlet. Sieć w treści nie wskazuje plików: "
+        "`rating_file` wymaga `network_file`."
     ),
     description=(
-        "The network inline, as a JSON object `hydrolog-network/1`: `schema`, `name` "
-        "and `nodes`, a list of nodes with `id` (names the file `<id>.csv`; not con, "
-        "prn, aux, nul, com1-9, lpt1-9), `type` (subcatchment, reach, reservoir, "
-        "junction, outlet) and `from` (the ids of the nodes upstream). A "
-        "subcatchment has "
-        "`times_min` with `discharge_m3s`, or a `value_column` of `inflows_file` "
-        "(default its `id`); a reach has `method` (lag, muskingum, muskingum-cunge, "
-        "cascade, level-pool) and the options of `route <method>`, a reservoir those "
-        "of `route level-pool`, both also `initial_outflow_m3s` and `extend_min`; a "
-        "junction adds the nodes that flow into it; there is exactly one outlet. An "
-        "inline network names no files: a `rating_file` needs `network_file`."
+        "The network inline, as a JSON object `hydrolog-network/1`: `schema`, `name`, "
+        "`timestep_min`, `rainfall` (the rain of the subcatchments that have none of "
+        "their own) and `nodes`, a list of nodes with `id` (names the file "
+        "`<id>.csv`; not con, prn, aux, nul, com1-9, lpt1-9), `type` (subcatchment, "
+        "reach, reservoir, junction, outlet) and `from` (the ids of the nodes "
+        "upstream). A subcatchment has `times_min` with `discharge_m3s`, or a "
+        "`value_column` of `inflows_file` (default its `id`), or makes its own "
+        "hydrograph: `watershed` (WatershedParameters as in `hydrograph generate`), "
+        "`runoff` (`model` curve-number with the options of `hydrograph generate`: "
+        "`tc_min` or `tc_method`, `uh_model`, `ia_coefficient`, `amc`...) and "
+        "`rainfall` (`kind` design: `hietogram_type`, `total_mm`, `duration_min` and "
+        "the shape; or series: `depths_mm`, `timestep_min`); a reach has `method` "
+        "(lag, muskingum, muskingum-cunge, cascade, level-pool) and the options of "
+        "`route <method>`, a reservoir those of `route level-pool`, both also "
+        "`initial_outflow_m3s` and `extend_min`; a junction adds the nodes that flow "
+        "into it; there is exactly one outlet. An inline network names no files: a "
+        "`rating_file` needs `network_file`."
     ),
 )
 NETWORK_FILE = Option(
@@ -1195,16 +1207,17 @@ COMMANDS: tuple[Command, ...] = (
         description_pl=(
             "Przeprowadza przepływy zlewni w dół sieci odcinków (lag, Muskingum, "
             "Muskingum-Cunge, kaskada, zbiornik), zbiorników i złączy do jednego "
-            "wylotu. Sieć to dokument `hydrolog-network/1`; przepływy są w treści lub "
-            "w `inflows_file`. Jeden krok czasu dla wszystkich węzłów. Zwraca szczyty "
-            "i objętości każdego węzła."
+            "wylotu. Sieć to dokument `hydrolog-network/1`; przepływy są w treści, w "
+            "`inflows_file` albo zlewnia liczy je z opadu (`watershed`, `runoff`, "
+            "`rainfall`). Jeden krok czasu dla wszystkich węzłów. Zwraca szczyty i "
+            "objętości każdego węzła."
         ),
         description=(
-            "Routes the discharges of subcatchments down a network of reaches (lag, "
+            "Routes subcatchment discharges down a network of reaches (lag, "
             "Muskingum, Muskingum-Cunge, cascade, level pool), reservoirs and "
             "junctions to one outlet. The network is a document `hydrolog-network/1`; "
-            "discharges are inline or in `inflows_file`. Returns peaks and volumes per "
-            "node."
+            "discharges are inline, in `inflows_file` or made from rain (watershed, "
+            "runoff, rainfall). Gives peaks and volumes per node."
         ),
         function="hydrolog.operations.route_network",
         options=(
@@ -1252,6 +1265,62 @@ COMMANDS: tuple[Command, ...] = (
                     ],
                 },
                 "nodes": ["OUT"],
+            },
+            {
+                "network": {
+                    "schema": "hydrolog-network/1",
+                    "name": "Two subcatchments",
+                    "rainfall": {
+                        "kind": "design",
+                        "hietogram_type": "euler_ii",
+                        "total_mm": 45,
+                        "duration_min": 60,
+                    },
+                    "nodes": [
+                        {
+                            "id": "A",
+                            "type": "subcatchment",
+                            "watershed": {
+                                "area_km2": 12.0,
+                                "perimeter_km": 18.0,
+                                "length_km": 6.0,
+                                "elevation_min_m": 210.0,
+                                "elevation_max_m": 330.0,
+                                "cn": 75,
+                            },
+                            "runoff": {"model": "curve-number", "tc_min": 90.0},
+                        },
+                        {
+                            "id": "B",
+                            "type": "subcatchment",
+                            "watershed": {
+                                "area_km2": 5.0,
+                                "perimeter_km": 11.0,
+                                "length_km": 3.5,
+                                "elevation_min_m": 210.0,
+                                "elevation_max_m": 290.0,
+                                "cn": 70,
+                            },
+                            "runoff": {"model": "curve-number", "tc_method": "kirpich"},
+                            "rainfall": {
+                                "kind": "design",
+                                "hietogram_type": "block",
+                                "total_mm": 30,
+                                "duration_min": 60,
+                            },
+                        },
+                        {
+                            "id": "R1",
+                            "type": "reach",
+                            "from": ["A"],
+                            "method": "lag",
+                            "lag_min": 30.0,
+                        },
+                        {"id": "J1", "type": "junction", "from": ["R1", "B"]},
+                        {"id": "OUT", "type": "outlet", "from": ["J1"]},
+                    ],
+                },
+                "nodes": ["J1"],
             },
         ),
         result_schema="hydrolog-route-network/1",
@@ -1331,6 +1400,47 @@ COMMANDS: tuple[Command, ...] = (
                         "time_to_peak_min": 60.0,
                         "times_min": [0.0, 10.0, 20.0],
                         "discharge_m3s": [0.0, 4.0, 12.0],
+                    },
+                ],
+            },
+            {
+                "name": "Two subcatchments",
+                "timestep_min": 5.0,
+                "outlet": "OUT",
+                "order": ["A", "B", "R1", "J1", "OUT"],
+                "nodes": [
+                    {
+                        "id": "A",
+                        "type": "subcatchment",
+                        "peak_m3s": 16.959234,
+                        "time_to_peak_min": 95.0,
+                        "parameters": {
+                            "total_mm": 45.0,
+                            "area_km2": 12.0,
+                            "cn": 75,
+                            "tc_min": 90.0,
+                            "total_effective_mm": 6.987621,
+                        },
+                    },
+                    {
+                        "id": "B",
+                        "peak_m3s": 1.190431,
+                        "parameters": {"total_mm": 30.0, "tc_min": 44.74053},
+                    },
+                    {
+                        "id": "R1",
+                        "type": "reach",
+                        "model": "lag",
+                        "peak_m3s": 16.959234,
+                        "peak_delay_min": 30.0,
+                    },
+                    {
+                        "id": "J1",
+                        "type": "junction",
+                        "peak_m3s": 17.11801,
+                        "time_to_peak_min": 125.0,
+                        "times_min": [0.0, 5.0, 10.0],
+                        "discharge_m3s": [0.0, 0.0, 0.0],
                     },
                 ],
             },

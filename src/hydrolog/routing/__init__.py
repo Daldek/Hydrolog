@@ -25,12 +25,17 @@ Time is in minutes and discharge in m3/s.
   :class:`Reach`, :class:`Reservoir` through a level pool, :class:`Junction` adds,
   :class:`Outlet` ends the network); :meth:`RoutingNetwork.route` gives a
   :class:`NetworkResult`, the hydrograph, the figures and the parameters
-  (:class:`Parameter`) of every node.
+  (:class:`Parameter`) of every node;
+* :class:`RainfallSource` and :class:`RunoffModel` -- a subcatchment can make its own
+  hydrograph: its rainfall is a :class:`DesignStorm` or a :class:`RainfallSeries` (any
+  object with the protocol will do) and its runoff :class:`CurveNumberRunoff`, that is
+  :class:`~hydrolog.runoff.HydrographGenerator` as a model.
 
-A new kind of node and a new method of a reach are classes that are registered in
-:data:`NODE_TYPES` and :data:`REACH_METHODS`, which is how a document names them
-(ADR-0012). The recurrences shared with the Clark unit hydrograph are in
-``hydrolog.routing._kernels``.
+A new kind of node, a new method of a reach, a new kind of rainfall, a new runoff model
+and a new shape of a design storm are classes that are registered in
+:data:`NODE_TYPES`, :data:`REACH_METHODS`, :data:`RAINFALL_KINDS`, :data:`RUNOFF_MODELS`
+and :data:`HIETOGRAMS`, which is how a document names them (ADR-0012). The recurrences
+shared with the Clark unit hydrograph are in ``hydrolog.routing._kernels``.
 
 Examples
 --------
@@ -64,21 +69,34 @@ from hydrolog.routing.network import (
     Subcatchment,
 )
 from hydrolog.routing.parameters import Parameter
+from hydrolog.routing.rainfall import (
+    HIETOGRAMS,
+    RAINFALL_KINDS,
+    DesignStorm,
+    RainfallSeries,
+    RainfallSource,
+)
 from hydrolog.routing.reach import (
     REACH_METHODS,
     Reach,
     RoutingNotice,
     RoutingResult,
 )
+from hydrolog.routing.runoff import RUNOFF_MODELS, CurveNumberRunoff, RunoffModel
 from hydrolog.routing.sections import FlowState, TrapezoidalSection
 
 __all__ = [
+    "HIETOGRAMS",
     "NODE_TYPES",
+    "RAINFALL_KINDS",
     "REACH_METHODS",
+    "RUNOFF_MODELS",
     "Axis",
     "CascadeReach",
     "Channel",
     "Context",
+    "CurveNumberRunoff",
+    "DesignStorm",
     "FlowState",
     "Hydrograph",
     "Junction",
@@ -92,11 +110,14 @@ __all__ = [
     "NodeSummary",
     "Outlet",
     "Parameter",
+    "RainfallSeries",
+    "RainfallSource",
     "Reach",
     "Reservoir",
     "RoutingNetwork",
     "RoutingNotice",
     "RoutingResult",
+    "RunoffModel",
     "Subcatchment",
     "TrapezoidalSection",
     "cascade_weights",

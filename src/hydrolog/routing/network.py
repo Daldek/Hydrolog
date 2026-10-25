@@ -67,29 +67,41 @@ Two tributaries joining above a reach:
 from __future__ import annotations
 
 import copy
-import inspect
+import math
 import re
+import warnings
 from abc import ABC, abstractmethod
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Iterable, Iterator, Mapping, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, ClassVar, Final, Self
+from typing import TYPE_CHECKING, Any, ClassVar, Final, NoReturn, Self
 
 import numpy as np
 
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import CalculationError, InvalidParameterError
-from hydrolog.routing._checks import in_range, shown
+from hydrolog.morphometry.watershed_params import WatershedParameters
+from hydrolog.precipitation.hietogram import HietogramResult
+from hydrolog.routing._checks import in_range, positive, shown
 from hydrolog.routing._order import ordered
+from hydrolog.routing._reading import constructor_arguments, within
 from hydrolog.routing._registry import Registry
 from hydrolog.routing.hydrograph import STEP_TOLERANCE, Hydrograph
 from hydrolog.routing.level_pool import LevelPoolReach
 from hydrolog.routing.parameters import Parameter, parameter
-from hydrolog.routing.reach import REACH_METHODS, Reach, RoutingResult
+from hydrolog.routing.rainfall import RainfallSource, rainfall_from_document
+from hydrolog.routing.reach import REACH_METHODS, Reach, RoutingNotice, RoutingResult
+from hydrolog.routing.runoff import (
+    RunoffModel,
+    runoff_from_document,
+    watershed_from_document,
+)
 
 if TYPE_CHECKING:
     from hydrolog.routing.document import Prepare
 
 __all__ = [
+    "DEFAULT_TIMESTEP_MIN",
     "MAX_ID_CHARS",
     "NODE_TYPES",
     "Axis",
@@ -105,6 +117,10 @@ __all__ = [
     "RoutingNetwork",
     "Subcatchment",
 ]
+
+DEFAULT_TIMESTEP_MIN: Final = 5.0
+"""The time step of a network whose sources have none and none was given [min]: that
+of the command ``hydrograph generate``."""
 
 MAX_ID_CHARS: Final = 64
 """Longest node id; an id names the file of its node (``<id>.csv``)."""
@@ -206,20 +222,30 @@ def _check_fields(
             )
 
 
-def _constructor_fields(cls: type) -> tuple[tuple[str, ...], tuple[str, ...]]:
-    """Return the names of the arguments of a constructor and those it requires."""
-    arguments = [
-        item
-        for item in inspect.signature(cls).parameters.values()
-        if item.kind
-        in (inspect.Parameter.POSITIONAL_OR_KEYWORD, inspect.Parameter.KEYWORD_ONLY)
-    ]
-    return (
-        tuple(item.name for item in arguments),
-        tuple(
-            item.name for item in arguments if item.default is inspect.Parameter.empty
-        ),
-    )
+@contextmanager
+def _observed() -> Iterator[list[RoutingNotice]]:
+    """Collect the warnings that the library issues inside the block as notices.
+
+    A ``UserWarning`` (a value outside the usual range of a formula) becomes a notice of
+    level ``"warning"`` and the code ``user_warning``, once for the same text; a warning
+    of another category is issued again when the block ends. The list is filled then.
+    """
+    notices: list[RoutingNotice] = []
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        yield notices
+    seen: set[str] = set()
+    for item in caught:
+        if issubclass(item.category, UserWarning):
+            text = str(item.message).strip() or item.category.__name__
+            if text not in seen:
+                seen.add(text)
+                code = re.sub(r"(?<!^)(?=[A-Z])", "_", item.category.__name__).lower()
+                notices.append(RoutingNotice(code, text, "warning"))
+        else:
+            warnings.warn_explicit(
+                item.message, item.category, item.filename, item.lineno
+            )
 
 
 @dataclass(frozen=True)
@@ -247,9 +273,13 @@ class Context:
     ----------
     timestep_min : float
         The time step of the network [min].
+    rainfall : RainfallSource or None
+        The rainfall that the network gives a subcatchment that has none of its own
+        (``RoutingNetwork(..., rainfall=...)``); ``None`` when it has no default.
     """
 
     timestep_min: float
+    rainfall: RainfallSource | None = None
 
 
 @dataclass
@@ -262,10 +292,22 @@ class NodeOutput:
         The hydrograph that leaves the node.
     run : RoutingResult or None
         The run of the routing element of a ``Channel`` or a ``Reservoir``.
+    rainfall : HietogramResult or None
+        The rain that a ``Subcatchment`` that makes its own hydrograph took, at the
+        time step of the network.
+    source : RainfallSource or None
+        The source of that rain: the rainfall of the subcatchment or the default of
+        the network.
+    notices : tuple of RoutingNotice
+        What the calculation observed: the notices of the run of a reach, the warnings
+        of the library and the notices of the rain of a subcatchment.
     """
 
     hydrograph: Hydrograph
     run: RoutingResult | None = None
+    rainfall: HietogramResult | None = None
+    source: RainfallSource | None = None
+    notices: tuple[RoutingNotice, ...] = ()
 
 
 NODE_TYPES: Registry[Node] = Registry("type", key="kind", reason="unknown_type")
@@ -387,14 +429,26 @@ class Node(ABC):
         """Return the class, the id and the ids of the inflows."""
         return f"{type(self).__name__}({self._id!r}, inflows={list(self.upstream)})"
 
-    def axis(self) -> Axis | None:
+    def axis(self, rainfall: RainfallSource | None = None) -> Axis | None:
         """Return the time axis of the source that the node brings, if it is one.
+
+        Parameters
+        ----------
+        rainfall : RainfallSource, optional
+            The default rainfall of the network, which a node that makes its own
+            hydrograph takes when it has none.
 
         Returns
         -------
         Axis or None
             The step and the first time of the node's own hydrograph; ``None`` for a
             node that only works on its inflows.
+
+        Raises
+        ------
+        InvalidParameterError
+            With ``details.reason`` ``missing_field`` if the node needs a rainfall and
+            there is none.
         """
         return None
 
@@ -553,17 +607,39 @@ class Node(ABC):
 class Subcatchment(Node):
     """A source: the hydrograph that a lumped catchment brings into the network.
 
+    A subcatchment is one lumped, homogeneous area; it has no flow paths inside. It
+    brings its hydrograph in one of two ways:
+
+    * *given*: ``hydrograph`` is the discharge that leaves the area, computed or
+      measured elsewhere;
+    * *made*: the ``watershed`` is the area, ``runoff`` the model that turns rain into
+      discharge and ``rainfall`` the rain of this subcatchment. The rainfall belongs to
+      the subcatchment: two of them can take it from different sources. One that has
+      none takes the default of the network (``RoutingNetwork(..., rainfall=...)``), and
+      is refused by the network when that does not exist either.
+
     Parameters
     ----------
     id : str
         The id of the node (see :class:`Node`).
-    hydrograph : Hydrograph
-        The discharge that leaves the catchment [m3/s].
+    hydrograph : Hydrograph, optional
+        The discharge that leaves the catchment [m3/s]. Not with the rest.
+    watershed : WatershedParameters, optional
+        The area, with ``runoff``.
+    runoff : RunoffModel, optional
+        The model of the runoff, for example
+        :class:`~hydrolog.routing.CurveNumberRunoff`; it validates the watershed.
+    rainfall : RainfallSource, optional
+        The rain of the subcatchment, for example :class:`~hydrolog.routing.DesignStorm`
+        or :class:`~hydrolog.routing.RainfallSeries`.
 
     Raises
     ------
     InvalidParameterError
-        If the id is not valid or ``hydrograph`` is not a :class:`Hydrograph`.
+        If the id is not valid (see :class:`Node`), the source is not one of the two
+        (``details.reason`` ``missing_field`` or ``conflict``, ``details.field``), an
+        argument is of the wrong class (``type``) or the model refuses the watershed
+        (``missing_field`` of ``cn``...).
 
     Examples
     --------
@@ -575,40 +651,240 @@ class Subcatchment(Node):
 
     kind = "subcatchment"
     inflow_count = (0, 0)
+    _MADE: ClassVar[tuple[str, ...]] = ("watershed", "runoff", "rainfall")
 
-    def __init__(self, id: str, hydrograph: Hydrograph) -> None:
+    def __init__(
+        self,
+        id: str,
+        hydrograph: Hydrograph | None = None,
+        *,
+        watershed: WatershedParameters | None = None,
+        runoff: RunoffModel | None = None,
+        rainfall: RainfallSource | None = None,
+    ) -> None:
         """Create the node."""
         super().__init__(id)
-        if not isinstance(hydrograph, Hydrograph):
-            raise InvalidParameterError(
-                f"Node {id!r}: the hydrograph must be a Hydrograph, not "
-                f"{type(hydrograph).__name__}",
-                details={"reason": "type", "node_id": id, "field": "hydrograph"},
-            )
+        if hydrograph is not None:
+            self._check_given(hydrograph, watershed, runoff, rainfall)
+        else:
+            self._check_made(watershed, runoff, rainfall)
         self._hydrograph = hydrograph
+        self._watershed = watershed
+        self._runoff = runoff
+        self._rainfall = rainfall
+
+    def _fail(
+        self, message: str, reason: str, field: str, hint: str | None = None
+    ) -> NoReturn:
+        """Raise the error of the source of the node."""
+        raise InvalidParameterError(
+            f"Node {self._id!r}: {message}",
+            details={"reason": reason, "node_id": self._id, "field": field},
+            hint=hint,
+        )
+
+    def _check_given(
+        self,
+        hydrograph: object,
+        watershed: object,
+        runoff: object,
+        rainfall: object,
+    ) -> None:
+        """Check a node that is given its hydrograph: nothing makes another one."""
+        if not isinstance(hydrograph, Hydrograph):
+            self._fail(
+                f"the hydrograph must be a Hydrograph, not {type(hydrograph).__name__}",
+                "type",
+                "hydrograph",
+            )
+        for name, value in (
+            ("watershed", watershed),
+            ("runoff", runoff),
+            ("rainfall", rainfall),
+        ):
+            if value is not None:
+                self._fail(
+                    f"it has a hydrograph and a {name}, a subcatchment has one source",
+                    "conflict",
+                    name,
+                    "Give a hydrograph, or a watershed with a runoff model and a "
+                    "rainfall.",
+                )
+
+    def _check_made(self, watershed: object, runoff: object, rainfall: object) -> None:
+        """Check a node that makes its hydrograph: the area, the model, the rain."""
+        if watershed is None and runoff is None:
+            self._fail(
+                "it needs a hydrograph, or a watershed with a runoff model",
+                "missing_field",
+                "hydrograph",
+                "Give 'hydrograph', or 'watershed' and 'runoff'.",
+            )
+        for name, value, expected in (
+            ("watershed", watershed, WatershedParameters),
+            ("runoff", runoff, RunoffModel),
+            ("rainfall", rainfall, RainfallSource),
+        ):
+            if value is None:
+                if name != "rainfall":
+                    self._fail(
+                        f"it has no {name}: the runoff model and the watershed go "
+                        "together",
+                        "missing_field",
+                        name,
+                        "Give 'hydrograph', or 'watershed' and 'runoff'.",
+                    )
+            elif not isinstance(value, expected):
+                self._fail(
+                    f"{name} must be a {expected.__name__}, not {type(value).__name__}",
+                    "type",
+                    name,
+                )
+        assert isinstance(watershed, WatershedParameters)
+        assert isinstance(runoff, RunoffModel)
+        try:
+            with within("watershed"):
+                runoff.validate(watershed)
+        except InvalidParameterError as exc:
+            raise _of_node(exc, self._id) from exc
 
     @property
-    def hydrograph(self) -> Hydrograph:
-        """Hydrograph: the discharge that the node brings."""
+    def hydrograph(self) -> Hydrograph | None:
+        """Hydrograph or None: the discharge that the node was given."""
         return self._hydrograph
 
-    def axis(self) -> Axis:
-        """Return the step and the first time of the hydrograph."""
-        return Axis(self._hydrograph.timestep_min, self._hydrograph.start_min)
+    @property
+    def watershed(self) -> WatershedParameters | None:
+        """WatershedParameters or None: the area of a node that makes its hydrograph."""
+        return self._watershed
+
+    @property
+    def runoff(self) -> RunoffModel | None:
+        """RunoffModel or None: the model that makes the hydrograph of the node."""
+        return self._runoff
+
+    @property
+    def rainfall(self) -> RainfallSource | None:
+        """RainfallSource or None: the rain of the node, none for the network's."""
+        return self._rainfall
+
+    def axis(self, rainfall: RainfallSource | None = None) -> Axis:
+        """Return the step and the first time of the hydrograph.
+
+        A node that makes its hydrograph starts at 0 and has the step of its rainfall:
+        the step of a series, or none (the network's) for a design storm.
+
+        Raises
+        ------
+        InvalidParameterError
+            With ``details.reason`` ``missing_field`` and ``details.field``
+            ``rainfall`` if the node has no rainfall and the network has no default.
+        """
+        if self._hydrograph is not None:
+            return Axis(self._hydrograph.timestep_min, self._hydrograph.start_min)
+        source = self._rainfall if self._rainfall is not None else rainfall
+        if source is None:
+            self._fail(
+                "it makes its own hydrograph and has no rainfall",
+                "missing_field",
+                "rainfall",
+                "Give the subcatchment a rainfall, or the network one for all the "
+                "subcatchments that have none (RoutingNetwork(..., rainfall=...), "
+                "'rainfall' of the document).",
+            )
+        return Axis(source.timestep_min, 0.0)
 
     def evaluate(self, inflows: Sequence[Hydrograph], context: Context) -> NodeOutput:
-        """Return the hydrograph of the node."""
-        return NodeOutput(self._hydrograph)
+        """Return the hydrograph of the node: the given one, or the one it makes.
+
+        The rain is cut at the time step of the network and handed to the model with
+        the watershed. The warnings that the library issues on the way, and a storm that
+        ends before its duration, are notices of the output.
+        """
+        if self._hydrograph is not None:
+            return NodeOutput(self._hydrograph)
+        source = self._rainfall if self._rainfall is not None else context.rainfall
+        assert source is not None  # axis() refused the node without a rainfall
+        assert self._runoff is not None and self._watershed is not None
+        step = context.timestep_min
+        with _observed() as notices:
+            hyetograph = source.hyetograph(step)
+            hydrograph = self._runoff.hydrograph(hyetograph, self._watershed, step)
+        covered = hyetograph.n_steps * hyetograph.timestep_min
+        if not math.isclose(covered, hyetograph.duration_min, rel_tol=1e-9):
+            notices.append(
+                RoutingNotice(
+                    "duration_not_covered",
+                    f"The rainfall of {hyetograph.duration_min:g} min is not a "
+                    f"multiple of the time step of {hyetograph.timestep_min:g} min: "
+                    f"it has {hyetograph.n_steps} steps and covers {covered:g} min.",
+                    "warning",
+                )
+            )
+        return NodeOutput(
+            hydrograph,
+            rainfall=hyetograph,
+            source=source,
+            notices=tuple(notices),
+        )
 
     def describe(self, output: NodeOutput | None = None) -> list[Parameter]:
-        """Return no parameters: the hydrograph is the whole of the node."""
-        return []
+        """List what the rain and the runoff model used.
+
+        Nothing for a node that was given its hydrograph: the hydrograph is the whole
+        of it. For one that makes it, the parameters of the rainfall, then those of the
+        runoff model, with the values that the run derived when there is an ``output``.
+        The rainfall is the one of the node, or the default of the network that the
+        output tells.
+        """
+        if self._runoff is None or self._watershed is None:
+            return []
+        hyetograph = None if output is None else output.rainfall
+        source = self._rainfall
+        if source is None and output is not None:
+            source = output.source
+        listed = [] if source is None else source.describe(hyetograph)
+        return [*listed, *self._runoff.describe(self._watershed, hyetograph)]
 
     @classmethod
     def read_document(cls, node_id: str, fields: Mapping[str, Any]) -> dict[str, Any]:
-        """Read ``times_min`` with ``discharge_m3s``, the hydrograph inline."""
-        _check_fields(node_id, cls.kind, fields, ("times_min", "discharge_m3s"))
+        """Read ``times_min`` with ``discharge_m3s``, or ``watershed`` with ``runoff``.
+
+        A node that makes its hydrograph has ``watershed``, ``runoff`` and, unless the
+        network has one for it, ``rainfall`` (see :class:`Subcatchment`); one that is
+        given it has the hydrograph inline.
+        """
+        _check_fields(
+            node_id, cls.kind, fields, ("times_min", "discharge_m3s", *cls._MADE)
+        )
         times, values = fields.get("times_min"), fields.get("discharge_m3s")
+        made = [name for name in cls._MADE if fields.get(name) is not None]
+        if made:
+            for name, value in (("times_min", times), ("discharge_m3s", values)):
+                if value is not None:
+                    raise InvalidParameterError(
+                        f"Node {node_id!r} has {name!r} and {made[0]!r}: a "
+                        "subcatchment has one source",
+                        details={
+                            "reason": "conflict",
+                            "node_id": node_id,
+                            "field": name,
+                        },
+                        hint="Give a hydrograph, or a watershed with a runoff model.",
+                    )
+            readers = {
+                "watershed": watershed_from_document,
+                "runoff": runoff_from_document,
+                "rainfall": rainfall_from_document,
+            }
+            arguments: dict[str, Any] = {}
+            try:
+                for name in made:
+                    with within(name):
+                        arguments[name] = readers[name](fields[name])
+            except InvalidParameterError as exc:
+                raise _of_node(exc, node_id) from exc
+            return arguments
         if times is None or values is None:
             absent = "discharge_m3s" if values is None else "times_min"
             raise InvalidParameterError(
@@ -618,7 +894,8 @@ class Subcatchment(Node):
                     "node_id": node_id,
                     "field": absent,
                 },
-                hint="Give 'times_min' with 'discharge_m3s'.",
+                hint="Give 'times_min' with 'discharge_m3s', or a 'watershed' with a "
+                "'runoff' model.",
             )
         try:
             return {"hydrograph": Hydrograph(times, values)}
@@ -721,7 +998,7 @@ class Channel(Node):
             initial_outflow_m3s=self._initial_outflow_m3s,
             extend_min=self._extend_min,
         )
-        return NodeOutput(run.outflow, run=run)
+        return NodeOutput(run.outflow, run=run, notices=tuple(run.notices))
 
     def describe(self, output: NodeOutput | None = None) -> list[Parameter]:
         """List the parameters of the element and the run options.
@@ -769,7 +1046,7 @@ class Channel(Node):
         """Read ``method`` and the options of that method, and the run options."""
         method = cls._method(node_id, fields)
         element = REACH_METHODS[method]
-        names, required = _constructor_fields(element)
+        names, required = constructor_arguments(element)
         _check_fields(
             node_id, cls.kind, fields, (*cls._method_fields, *_RUN_FIELDS, *names)
         )
@@ -938,6 +1215,9 @@ class NodeSummary(JsonResultMixin):
     parameters : list of Parameter
         The values that the calculation of the node used (:meth:`Node.describe`): the
         ones given, the defaults and the ones derived by the run.
+    notices : list of RoutingNotice
+        What the calculation observed: the notices of the run of a reach, the warnings
+        of the library and the notices of the rain of a subcatchment.
     """
 
     id: str
@@ -947,6 +1227,7 @@ class NodeSummary(JsonResultMixin):
     time_to_peak_min: float
     volume_m3: float
     parameters: list[Parameter]
+    notices: list[RoutingNotice]
 
 
 @dataclass
@@ -970,9 +1251,12 @@ class NetworkResult(JsonResultMixin):
     runs : dict of str to RoutingResult
         The result of each ``Channel`` and ``Reservoir``: parameters, storage at both
         ends, volume balance and notices.
+    rainfall : dict of str to HietogramResult
+        The rain of each ``Subcatchment`` that made its own hydrograph, at the time
+        step of the network.
     nodes : dict of str to NodeSummary
-        For each node its inflows, peak, time to peak, volume and the parameters of its
-        calculation.
+        For each node its inflows, peak, time to peak, volume, the parameters of its
+        calculation and the notices.
     """
 
     name: str | None
@@ -981,6 +1265,7 @@ class NetworkResult(JsonResultMixin):
     timestep_min: float
     hydrographs: dict[str, Hydrograph]
     runs: dict[str, RoutingResult]
+    rainfall: dict[str, HietogramResult]
     nodes: dict[str, NodeSummary]
 
 
@@ -1054,18 +1339,31 @@ class RoutingNetwork:
         listed or not.
     name : str, optional
         A name for the network, reported in the result.
+    rainfall : RainfallSource, optional
+        The rainfall of every subcatchment that makes its own hydrograph and has none of
+        its own. A convenience: the rainfall belongs to the subcatchment, and a network
+        in which every such subcatchment has its own needs none.
+    timestep_min : float, optional
+        The time step of the network [min], > 0. Without it the step is that of the
+        source hydrographs and of the rainfall series (they must agree), or
+        :data:`DEFAULT_TIMESTEP_MIN` for a network whose subcatchments all make their
+        own hydrographs from design storms.
 
     Attributes
     ----------
     name : str or None
         The name of the network.
+    rainfall : RainfallSource or None
+        The default rainfall of the network.
+    given_timestep_min : float or None
+        The time step that was given, if any.
     order : tuple of str
         The ids in the order of evaluation: headwaters first, the smallest id first
         among the nodes that are ready, whatever the order of ``nodes``.
     outlet : str
         The id of the outlet.
     timestep_min : float
-        The time step of the source hydrographs [min].
+        The time step of the network [min]: that of every hydrograph.
 
     Raises
     ------
@@ -1079,12 +1377,20 @@ class RoutingNetwork:
         ``several_outlets`` (``nodes``); ``outlet_has_downstream`` (``node_id``,
         ``downstream``); ``disconnected_node`` (``node_id``: a node that feeds nothing
         and is not the outlet, ``n_disconnected``: the nodes that do not reach the
-        outlet); ``timestep_mismatch`` and ``start_mismatch`` (``nodes``, and
-        ``timesteps_min`` or ``starts_min``).
+        outlet); ``missing_field`` (``node_id``, ``field`` ``rainfall``: a subcatchment
+        that makes its hydrograph has no rainfall and the network has none);
+        ``timestep_mismatch`` (``nodes``, ``timesteps_min``: two sources, or a source
+        and the given step, have different time steps) and ``start_mismatch``
+        (``nodes``, ``starts_min``).
     """
 
     def __init__(
-        self, nodes: Node | Iterable[Node], *, name: str | None = None
+        self,
+        nodes: Node | Iterable[Node],
+        *,
+        name: str | None = None,
+        rainfall: RainfallSource | None = None,
+        timestep_min: float | None = None,
     ) -> None:
         """Check the network and put the nodes in the order of evaluation."""
         roots = [nodes] if isinstance(nodes, Node) else list(nodes)
@@ -1099,6 +1405,15 @@ class RoutingNetwork:
                     f"A network is made of nodes, not {type(root).__name__}",
                     details={"reason": "type", "value": type(root).__name__},
                 )
+        if rainfall is not None and not isinstance(rainfall, RainfallSource):
+            raise InvalidParameterError(
+                "The rainfall of a network must be a RainfallSource, not "
+                f"{type(rainfall).__name__}",
+                details={"reason": "type", "field": "rainfall"},
+            )
+        self.given_timestep_min = (
+            None if timestep_min is None else positive(timestep_min, "timestep_min")
+        )
         listed = _reachable(roots)
         check_unique([node.id for node in listed])
         by_id = {node.id: node for node in listed}
@@ -1109,6 +1424,7 @@ class RoutingNetwork:
                 raise _count_error(node.id, node.kind, found, _rule(fewest, most))
         order = ordered({node_id: node.upstream for node_id, node in by_id.items()})
         self.name = name
+        self.rainfall = rainfall
         self._nodes: dict[str, Node] = {node_id: by_id[node_id] for node_id in order}
         self.order: tuple[str, ...] = tuple(order)
         self.outlet = self._check_shape()
@@ -1124,7 +1440,8 @@ class RoutingNetwork:
         ----------
         document : mapping
             The document: ``schema`` (``"hydrolog-network/1"``), optionally ``name``,
-            and ``nodes``, each with ``id``, ``type``, ``from`` (the ids of the inflows)
+            ``timestep_min`` and ``rainfall`` (the default rainfall of the network), and
+            ``nodes``, each with ``id``, ``type``, ``from`` (the ids of the inflows)
             and the fields of its kind. Values are JSON-native.
         prepare : callable, optional
             Called as ``prepare(node_id, type, entry)`` for every node before it is
@@ -1248,35 +1565,61 @@ class RoutingNetwork:
         return outlet
 
     def _check_time_axes(self) -> float:
-        """Check that the sources share one time axis and return its step [min]."""
+        """Check that the sources share one time axis and return its step [min].
+
+        The step is the one that was given to the network, else that of the first source
+        that has one, else :data:`DEFAULT_TIMESTEP_MIN`. A source that has a step must
+        agree with it, and every source must start at the same time.
+        """
         sources = [
             (node, axis)
             for node in self._nodes.values()
-            if (axis := node.axis()) is not None
+            if (axis := node.axis(self.rainfall)) is not None
         ]
-        timed = [
-            (node, axis) for node, axis in sources if axis.timestep_min is not None
-        ]
-        first, first_axis = timed[0]
-        step = first_axis.timestep_min
-        assert step is not None  # a source with a given hydrograph has its step
-        for other, axis in timed[1:]:
-            assert axis.timestep_min is not None
+        step = self.given_timestep_min
+        keeper: Node | None = None
+        if step is None:
+            for node, axis in sources:
+                if axis.timestep_min is not None:
+                    step, keeper = axis.timestep_min, node
+                    break
+        if step is None:
+            step = DEFAULT_TIMESTEP_MIN
+        if not sources:
+            return step
+        first, first_axis = sources[0]
+        for other, axis in sources:
             found = axis.timestep_min
-            if abs(found - step) > STEP_TOLERANCE * step:
+            if (
+                found is not None
+                and other is not keeper
+                and abs(found - step) > STEP_TOLERANCE * step
+            ):
+                if keeper is None:
+                    raise InvalidParameterError(
+                        f"Node {other.id!r} has a time step of {found:g} min, not the "
+                        f"{step:g} min of the network",
+                        details={
+                            "reason": "timestep_mismatch",
+                            "nodes": [other.id],
+                            "timesteps_min": [step, found],
+                        },
+                        hint="Give the network the time step of its sources, or none; "
+                        "nothing is resampled.",
+                    )
                 raise InvalidParameterError(
-                    f"Nodes {first.id!r} and {other.id!r} have different time steps "
+                    f"Nodes {keeper.id!r} and {other.id!r} have different time steps "
                     f"({step:g} and {found:g} min)",
                     details={
                         "reason": "timestep_mismatch",
-                        "nodes": [first.id, other.id],
+                        "nodes": [keeper.id, other.id],
                         "timesteps_min": [step, found],
                     },
                     hint="Give every source hydrograph the same time step; nothing is "
                     "resampled.",
                 )
             start, begun = first_axis.start_min, axis.start_min
-            if abs(begun - start) > STEP_TOLERANCE * step:
+            if other is not first and abs(begun - start) > STEP_TOLERANCE * step:
                 raise InvalidParameterError(
                     f"Nodes {first.id!r} and {other.id!r} start at different times "
                     f"({start:g} and {begun:g} min)",
@@ -1306,9 +1649,10 @@ class RoutingNetwork:
         CalculationError
             From a reach (a flood beyond a table...), with ``details.node_id``.
         """
-        context = Context(self.timestep_min)
+        context = Context(self.timestep_min, self.rainfall)
         hydrographs: dict[str, Hydrograph] = {}
         runs: dict[str, RoutingResult] = {}
+        rainfall: dict[str, HietogramResult] = {}
         summaries: dict[str, NodeSummary] = {}
         for node in self._nodes.values():
             inflows = [hydrographs[up.id] for up in node.inflows]
@@ -1324,6 +1668,8 @@ class RoutingNetwork:
             hydrographs[node.id] = hydrograph
             if output.run is not None:
                 runs[node.id] = output.run
+            if output.rainfall is not None:
+                rainfall[node.id] = output.rainfall
             summaries[node.id] = NodeSummary(
                 id=node.id,
                 type=node.kind,
@@ -1332,6 +1678,7 @@ class RoutingNetwork:
                 time_to_peak_min=hydrograph.time_to_peak_min,
                 volume_m3=hydrograph.volume_m3,
                 parameters=node.describe(output),
+                notices=list(output.notices),
             )
         return NetworkResult(
             name=self.name,
@@ -1340,5 +1687,6 @@ class RoutingNetwork:
             timestep_min=self.timestep_min,
             hydrographs=hydrographs,
             runs=runs,
+            rainfall=rainfall,
             nodes=summaries,
         )

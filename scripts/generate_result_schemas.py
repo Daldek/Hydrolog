@@ -20,14 +20,18 @@ Usage::
 """
 
 import argparse
+import dataclasses
 import json
 import os
 import sys
 import tempfile
+import typing
 from pathlib import Path
 from typing import Any
 
 from hydrolog.catalog import data_commands, run_command
+from hydrolog.catalog.groups.hydrograph import GENERATE_OPTIONS
+from hydrolog.catalog.groups.precip import HIETOGRAM_OPTIONS
 from hydrolog.catalog.groups.route import (
     DISCHARGE_M3S,
     EXTEND_MIN,
@@ -38,6 +42,8 @@ from hydrolog.catalog.groups.route import (
     model_options,
 )
 from hydrolog.catalog.spec import Command, Option
+from hydrolog.morphometry.watershed_params import WatershedParameters
+from hydrolog.routing import HIETOGRAMS, RAINFALL_KINDS, RUNOFF_MODELS
 from hydrolog.routing.network import MAX_ID_CHARS
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -151,6 +157,122 @@ def _node_fields(options: tuple[Option, ...]) -> dict[str, Any]:
     return properties
 
 
+_RUNOFF_FIELDS = (
+    "tc_min",
+    "tc_method",
+    "ia_coefficient",
+    "amc",
+    "uh_model",
+    "nash_n",
+    "nash_k_min",
+    "clark_r_min",
+    "clark_r_tc_ratio",
+    "snyder_length_km",
+    "snyder_centroid_length_km",
+    "snyder_ct",
+    "snyder_cp",
+)
+"""The options of ``hydrograph generate`` that the ``curve-number`` runoff takes."""
+
+
+def _watershed_schema() -> dict[str, Any]:
+    """Return the schema of a ``watershed``: the fields of ``WatershedParameters``."""
+    hints = typing.get_type_hints(WatershedParameters)
+    properties: dict[str, Any] = {}
+    required: list[str] = []
+    for item in dataclasses.fields(WatershedParameters):
+        kinds = [
+            kind for kind in typing.get_args(hints[item.name]) if kind is not type(None)
+        ]
+        text = (kinds[0] if kinds else hints[item.name]) is str
+        properties[item.name] = {"type": "string" if text else "number"}
+        if item.default is dataclasses.MISSING:
+            required.append(item.name)
+    for name in ("area_km2", "perimeter_km", "length_km"):
+        properties[name]["exclusiveMinimum"] = 0
+    properties["cn"].update(minimum=0, maximum=100)
+    return {
+        "title": "watershed",
+        "description": (
+            "The area of a subcatchment: the fields of `WatershedParameters`, "
+            "as in `hydrograph generate`. The `curve-number` runoff needs `cn` and, "
+            "unless it is given `tc_min`, the fields of its `tc_method`."
+        ),
+        "type": "object",
+        "required": required,
+        "properties": properties,
+        "additionalProperties": False,
+    }
+
+
+def _runoff_schema() -> dict[str, Any]:
+    """Return the schema of a ``runoff``: one variant per model of the registry."""
+    assert RUNOFF_MODELS.names == ("curve-number",), "a runoff model has no schema"
+    chosen = {option.name: option for option in GENERATE_OPTIONS}
+    variant = {
+        "title": "runoff curve-number",
+        "description": (
+            "The SCS Curve Number loss and a unit hydrograph, with the options of "
+            "`hydrograph generate`."
+        ),
+        "type": "object",
+        "required": ["model"],
+        "properties": {
+            "model": {"const": "curve-number"},
+            **_node_fields(tuple(chosen[name] for name in _RUNOFF_FIELDS)),
+        },
+        "additionalProperties": False,
+    }
+    return {"oneOf": [variant]}
+
+
+def _rainfall_schema() -> dict[str, Any]:
+    """Return the schema of a ``rainfall``: one variant per kind of the registry."""
+    assert RAINFALL_KINDS.names == ("design", "series"), "a rainfall has no schema"
+    shape = {option.name: option for option in HIETOGRAM_OPTIONS}
+    design_fields = _node_fields(
+        tuple(shape[name] for name in ("hietogram_type", "total_mm", "duration_min"))
+        + tuple(shape[name] for name in ("alpha", "beta", "peak_position"))
+    )
+    design_fields["hietogram_type"] = {
+        **design_fields["hietogram_type"],
+        "enum": list(HIETOGRAMS.names),
+    }
+    design = {
+        "title": "design storm",
+        "description": "A depth over a duration, in the shape of a hyetograph.",
+        "type": "object",
+        "required": ["kind", "hietogram_type", "total_mm", "duration_min"],
+        "properties": {"kind": {"const": "design"}, **design_fields},
+        "additionalProperties": False,
+    }
+    series = {
+        "title": "rainfall series",
+        "description": (
+            "The depth of every time step. It is not resampled: the network takes its "
+            "time step."
+        ),
+        "type": "object",
+        "required": ["kind", "depths_mm", "timestep_min"],
+        "properties": {
+            "kind": {"const": "series"},
+            "depths_mm": {
+                "type": "array",
+                "minItems": 1,
+                "items": {"type": "number", "minimum": 0},
+                "description": "Depth of each step [mm], not negative.",
+            },
+            "timestep_min": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "description": "Time step of the series [min].",
+            },
+        },
+        "additionalProperties": False,
+    }
+    return {"oneOf": [design, series]}
+
+
 def _network_document(schema_id: str) -> dict[str, Any]:
     """Return the schema of the network document (ADR-0010): one variant per node type.
 
@@ -194,15 +316,29 @@ def _network_document(schema_id: str) -> dict[str, Any]:
             "additionalProperties": False,
         }
 
-    source = variant(
-        "subcatchment", "subcatchment", {"from": upstream(0, 0), **sources}, []
+    given = variant(
+        "subcatchment with discharges",
+        "subcatchment",
+        {"from": upstream(0, 0), **sources},
+        [],
     )
-    source["dependentRequired"] = {
+    given["dependentRequired"] = {
         TIMES_MIN.name: [DISCHARGE_M3S.name],
         DISCHARGE_M3S.name: [TIMES_MIN.name],
     }
-    source["not"] = {"required": [VALUE_COLUMN.name, TIMES_MIN.name]}
-    variants = [source]
+    given["not"] = {"required": [VALUE_COLUMN.name, TIMES_MIN.name]}
+    made = variant(
+        "subcatchment from rainfall",
+        "subcatchment",
+        {
+            "from": upstream(0, 0),
+            "watershed": {"$ref": "#/$defs/watershed"},
+            "runoff": {"$ref": "#/$defs/runoff"},
+            "rainfall": {"$ref": "#/$defs/rainfall"},
+        },
+        ["watershed", "runoff"],
+    )
+    variants = [given, made]
     for method in MODEL_METHODS:
         options = model_options(method)
         required = ["from", "method", *(o.name for o in options if o.required)]
@@ -234,15 +370,28 @@ def _network_document(schema_id: str) -> dict[str, Any]:
         "$id": f"{BASE}/hydrolog-network-1.schema.json",
         "title": schema_id,
         "description": (
-            "River network read by `route network` (ADR-0010): subcatchments, reaches "
-            "and reservoirs, junctions and one outlet, linked by `from`. A reach has a "
-            "`method` and the options of `route <method>`. `schema` is required."
+            "River network read by `route network` (ADR-0010, ADR-0012): "
+            "subcatchments (with their discharges, or making them from a watershed, a "
+            "runoff model and a rainfall), reaches and reservoirs, junctions and one "
+            "outlet, linked by `from`. A reach has a `method` and the options of "
+            "`route <method>`. `schema` is required. A `rainfall` at the top is the "
+            "rain of the subcatchments that have none; `timestep_min` fixes the time "
+            "step of the network."
         ),
         "type": "object",
         "required": ["schema", "nodes"],
         "properties": {
             "schema": {"const": schema_id},
             "name": {"type": "string", "minLength": 1},
+            "timestep_min": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "description": (
+                    "Time step of the network [min]; default that of the sources, "
+                    "else 5."
+                ),
+            },
+            "rainfall": {"$ref": "#/$defs/rainfall"},
             "nodes": {
                 "type": "array",
                 "minItems": 1,
@@ -265,6 +414,9 @@ def _network_document(schema_id: str) -> dict[str, Any]:
                 ),
             },
             "node": {"oneOf": variants},
+            "watershed": _watershed_schema(),
+            "runoff": _runoff_schema(),
+            "rainfall": _rainfall_schema(),
         },
     }
 
