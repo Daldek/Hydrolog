@@ -23,7 +23,13 @@ Documents
 :func:`network_document` build a ``hydrolog-network/1`` document that has no file: a
 network document can name files (``rating_file``) only when it is itself a file, so
 these builders make the nodes of a network that is inline or written by
-:func:`write_network_document`.
+:func:`write_network_document`. A subcatchment that makes its own hydrograph takes the
+objects that :func:`watershed`, :func:`curve_number_runoff`, :func:`design_storm` and
+:func:`rainfall_series` build (ADR-0012; each is read by the real reader of its kind
+before it is returned), and :func:`network_document` the ``timestep_min`` and the
+default ``rainfall`` of the network. :func:`example_network_document` is such a network
+of three subcatchments and :func:`example_network` the
+:class:`~hydrolog.routing.RoutingNetwork` that it makes, in memory.
 
 Files
 -----
@@ -62,6 +68,8 @@ from typing import Any, Final
 from hydrolog.operations._network_input import load_network
 from hydrolog.routing import Hydrograph, RoutingNetwork
 from hydrolog.routing.document import SCHEMA as NETWORK_SCHEMA
+from hydrolog.routing.rainfall import rainfall_from_document
+from hydrolog.routing.runoff import runoff_from_document, watershed_from_document
 
 __all__ = [
     "EXAMPLE_INFLOWS",
@@ -69,14 +77,20 @@ __all__ = [
     "NETWORK_SCHEMA",
     "NetworkFixture",
     "build_network_fixture",
+    "curve_number_runoff",
+    "design_storm",
+    "example_network",
+    "example_network_document",
     "hietogram_envelope",
     "hydrograph_table",
     "junction",
     "network_document",
     "network_tables",
     "outlet",
+    "rainfall_series",
     "reach",
     "subcatchment",
+    "watershed",
     "write_hietogram_envelope",
     "write_network_document",
     "write_network_tables",
@@ -102,8 +116,15 @@ def subcatchment(
     times_min: Sequence[float] | None = None,
     discharge_m3s: Sequence[float] | None = None,
     value_column: str | None = None,
+    watershed: Mapping[str, Any] | None = None,
+    runoff: Mapping[str, Any] | None = None,
+    rainfall: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Return a ``subcatchment`` node.
+
+    A subcatchment is given its hydrograph (``times_min`` with ``discharge_m3s``, or a
+    column of the inflows file) or makes it (``watershed``, ``runoff`` and, unless the
+    network has a ``rainfall`` for it, ``rainfall``).
 
     Parameters
     ----------
@@ -114,6 +135,10 @@ def subcatchment(
     value_column : str, optional
         Column of the inflows file that holds the discharges; without it and without
         an inline hydrograph the column is named like the node.
+    watershed, runoff, rainfall : mapping, optional
+        The objects of a subcatchment that makes its hydrograph, from
+        :func:`watershed`, :func:`curve_number_runoff`, :func:`design_storm` or
+        :func:`rainfall_series`; not with a hydrograph.
 
     Returns
     -------
@@ -127,6 +152,13 @@ def subcatchment(
         node["discharge_m3s"] = list(discharge_m3s)
     if value_column is not None:
         node["value_column"] = value_column
+    for field, value in (
+        ("watershed", watershed),
+        ("runoff", runoff),
+        ("rainfall", rainfall),
+    ):
+        if value is not None:
+            node[field] = dict(value)
     return node
 
 
@@ -166,14 +198,169 @@ def outlet(upstream: str, node_id: str = "OUT") -> dict[str, Any]:
     return {"id": node_id, "type": "outlet", "from": [upstream]}
 
 
-def _checkable(nodes: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
-    """Return a copy of ``nodes`` in which every source that reads a file is inline.
+def watershed(
+    *,
+    area_km2: float = 12.0,
+    perimeter_km: float = 18.0,
+    length_km: float = 6.0,
+    elevation_min_m: float = 210.0,
+    elevation_max_m: float = 330.0,
+    cn: float | None = 75,
+    **options: Any,
+) -> dict[str, Any]:
+    """Return the ``watershed`` of a subcatchment that makes its hydrograph.
+
+    The object of :class:`~hydrolog.morphometry.WatershedParameters`; the defaults are
+    a small catchment of 12 km2 with a curve number of 75.
+
+    Parameters
+    ----------
+    area_km2, perimeter_km, length_km : float, optional
+        Area [km2], perimeter [km] and length [km] of the area.
+    elevation_min_m, elevation_max_m : float, optional
+        Lowest and highest point [m a.s.l.].
+    cn : float, optional
+        Curve number; ``None`` leaves it out (a model that needs it then refuses the
+        subcatchment).
+    **options
+        The other fields of ``WatershedParameters`` (``name``, ``crs``...).
+
+    Returns
+    -------
+    dict
+        The object, JSON-native.
+
+    Raises
+    ------
+    hydrolog.InvalidParameterError
+        If a field is not one of the class or its value is not valid.
+    """
+    document: dict[str, Any] = {
+        "area_km2": area_km2,
+        "perimeter_km": perimeter_km,
+        "length_km": length_km,
+        "elevation_min_m": elevation_min_m,
+        "elevation_max_m": elevation_max_m,
+    }
+    if cn is not None:
+        document["cn"] = cn
+    document.update(options)
+    watershed_from_document(document)
+    return document
+
+
+def curve_number_runoff(**options: Any) -> dict[str, Any]:
+    """Return the ``runoff`` of the model ``curve-number``.
+
+    Parameters
+    ----------
+    **options
+        The options of ``hydrograph generate`` that the model takes (``tc_min`` or
+        ``tc_method``, ``ia_coefficient``, ``amc``, ``uh_model``, ``nash_n``...); none
+        gives the Kirpich time of concentration, the SCS unit hydrograph and AMC II.
+
+    Returns
+    -------
+    dict
+        The object with its ``model``, JSON-native.
+
+    Raises
+    ------
+    hydrolog.InvalidParameterError
+        If an option is not one of the model, does not apply to its unit hydrograph or
+        is out of range.
+    """
+    document: dict[str, Any] = {"model": "curve-number", **options}
+    runoff_from_document(document)
+    return document
+
+
+def design_storm(
+    *,
+    hietogram_type: str = "euler_ii",
+    total_mm: float = 40.0,
+    duration_min: float = 60.0,
+    **shape: float,
+) -> dict[str, Any]:
+    """Return a ``rainfall`` of the kind ``design``: a depth over a duration.
+
+    Parameters
+    ----------
+    hietogram_type : {"block", "triangular", "beta", "euler_ii"}, optional
+        The shape of the storm, by default ``euler_ii``.
+    total_mm : float, optional
+        Total depth [mm], by default 40.
+    duration_min : float, optional
+        Duration [min], by default 60.
+    **shape
+        ``alpha`` and ``beta`` or ``peak_position``, where the shape takes them.
+
+    Returns
+    -------
+    dict
+        The object with its ``kind``, JSON-native.
+
+    Raises
+    ------
+    hydrolog.InvalidParameterError
+        If the shape is unknown, takes no such option, or a value is out of range.
+    """
+    document: dict[str, Any] = {
+        "kind": "design",
+        "hietogram_type": hietogram_type,
+        "total_mm": total_mm,
+        "duration_min": duration_min,
+        **shape,
+    }
+    rainfall_from_document(document)
+    return document
+
+
+def rainfall_series(
+    depths_mm: Sequence[float] = (0.0, 2.0, 8.0, 12.0, 6.0, 2.0, 0.0),
+    timestep_min: float = 10.0,
+) -> dict[str, Any]:
+    """Return a ``rainfall`` of the kind ``series``: the depth of every time step.
+
+    Parameters
+    ----------
+    depths_mm : sequence of float, optional
+        The depth of rain of each step [mm], from time 0; the default has 30 mm.
+    timestep_min : float, optional
+        The time step of the record [min], by default 10; a network that has another
+        step refuses the series, nothing is resampled.
+
+    Returns
+    -------
+    dict
+        The object with its ``kind``, JSON-native.
+
+    Raises
+    ------
+    hydrolog.InvalidParameterError
+        If the depths or the step are not valid.
+    """
+    document: dict[str, Any] = {
+        "kind": "series",
+        "depths_mm": [float(depth) for depth in depths_mm],
+        "timestep_min": timestep_min,
+    }
+    rainfall_from_document(document)
+    return document
+
+
+def _checkable(document: Mapping[str, Any]) -> dict[str, Any]:
+    """Return a copy of ``document`` in which every source that reads a file is inline.
 
     A subcatchment that names a column of the inflows file has no discharges in the
     document; the loader needs them to check the rest, so such a node gets a flat
-    hydrograph on the time axis of the first inline source (or a short default one).
+    hydrograph on the time axis of the first inline source (or a short default one, at
+    the time step of the network). A subcatchment that makes its hydrograph is left as
+    it is.
     """
-    axis: list[float] = [0, 5, 10]
+    nodes: Sequence[Mapping[str, Any]] = document["nodes"]
+    step = document.get("timestep_min", 5)
+    axis: list[float] = [0, step, 2 * step]
     for node in nodes:
         if "times_min" in node and "discharge_m3s" in node:
             axis = list(node["times_min"])
@@ -181,20 +368,28 @@ def _checkable(nodes: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     checked: list[dict[str, Any]] = []
     for node in nodes:
         copy = dict(node)
-        if (
-            copy.get("type") == "subcatchment"
-            and "times_min" not in copy
-            and "discharge_m3s" not in copy
+        if copy.get("type") == "subcatchment" and not any(
+            field in copy
+            for field in (
+                "times_min",
+                "discharge_m3s",
+                "watershed",
+                "runoff",
+                "rainfall",
+            )
         ):
             copy.pop("value_column", None)
             copy["times_min"] = axis
             copy["discharge_m3s"] = [0.0] * len(axis)
         checked.append(copy)
-    return {"schema": NETWORK_SCHEMA, "nodes": checked}
+    return {**document, "nodes": checked}
 
 
 def network_document(
-    *nodes: Mapping[str, Any], name: str | None = None
+    *nodes: Mapping[str, Any],
+    name: str | None = None,
+    timestep_min: float | None = None,
+    rainfall: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Return a checked ``hydrolog-network/1`` document of ``nodes``.
 
@@ -202,7 +397,8 @@ def network_document(
     document is read by the loader of ``route network`` before it is returned, so it is
     a valid network: one outlet, no cycle, every ``from`` an id of the document, every
     field and option valid for its type. A subcatchment that reads the inflows file
-    (:func:`subcatchment` without a hydrograph) is checked as if it were inline.
+    (:func:`subcatchment` without a hydrograph or the means to make one) is checked as
+    if it were inline.
 
     Parameters
     ----------
@@ -211,6 +407,11 @@ def network_document(
         :func:`outlet`.
     name : str, optional
         Name of the network.
+    timestep_min : float, optional
+        The time step of the network [min]; without it the step of the sources.
+    rainfall : mapping, optional
+        The rainfall of every subcatchment that makes its hydrograph and has none of its
+        own, from :func:`design_storm` or :func:`rainfall_series`.
 
     Returns
     -------
@@ -225,8 +426,12 @@ def network_document(
     document: dict[str, Any] = {"schema": NETWORK_SCHEMA}
     if name is not None:
         document["name"] = name
+    if timestep_min is not None:
+        document["timestep_min"] = timestep_min
+    if rainfall is not None:
+        document["rainfall"] = dict(rainfall)
     document["nodes"] = [dict(node) for node in nodes]
-    load_network(network=_checkable(document["nodes"]))
+    load_network(network=_checkable(document))
     return document
 
 
@@ -239,6 +444,75 @@ def write_network_document(
     text = json.dumps(document, indent=2, ensure_ascii=False) + "\n"
     target.write_text(text, encoding="utf-8", newline="\n")
     return target
+
+
+def example_network_document() -> dict[str, Any]:
+    """Return the document of a network of three subcatchments that make hydrographs.
+
+    ``A`` has a design storm of its own (Euler II, 45 mm in 60 min), ``B`` a record of
+    38 mm in steps of 5 min and ``C`` none: it takes the default of the network, a block
+    storm of 30 mm in 60 min. ``A`` and ``B`` take the time of concentration from their
+    watersheds (Kirpich), ``C`` is given 60 min. ``A`` reaches the junction ``J1`` by a
+    lag reach of 25 min, where ``B`` joins it, a Muskingum reach (K 40 min, X 0.2)
+    carries them to ``J2``, where ``C`` joins, and ``OUT`` ends the network. The time
+    step is that of the record of ``B``, 5 min.
+
+    Returns
+    -------
+    dict
+        The document, JSON-native, checked by the loader of ``route network``.
+    """
+    return network_document(
+        subcatchment(
+            "A",
+            watershed=watershed(),
+            runoff=curve_number_runoff(),
+            rainfall=design_storm(total_mm=45.0),
+        ),
+        subcatchment(
+            "B",
+            watershed=watershed(
+                area_km2=5.0,
+                perimeter_km=11.0,
+                length_km=3.5,
+                elevation_max_m=290.0,
+                cn=70,
+            ),
+            runoff=curve_number_runoff(),
+            rainfall=rainfall_series([0.0, 2.0, 5.0, 10.0, 12.0, 6.0, 3.0], 5.0),
+        ),
+        subcatchment(
+            "C",
+            watershed=watershed(
+                area_km2=8.0,
+                perimeter_km=14.0,
+                length_km=4.5,
+                elevation_min_m=200.0,
+                elevation_max_m=300.0,
+                cn=72,
+            ),
+            runoff=curve_number_runoff(tc_min=60.0),
+        ),
+        reach("R_A", "A", method="lag", lag_min=25),
+        junction("J1", "R_A", "B"),
+        reach("R_J1", "J1", method="muskingum", k_min=40, x=0.2),
+        junction("J2", "R_J1", "C"),
+        outlet("J2"),
+        name="Three subcatchments",
+        rainfall=design_storm(hietogram_type="block", total_mm=30.0),
+    )
+
+
+def example_network() -> RoutingNetwork:
+    """Return the network of :func:`example_network_document`, in memory.
+
+    It is made by :meth:`RoutingNetwork.from_document
+    <hydrolog.routing.RoutingNetwork.from_document>` from the document, so it is the
+    network that a consumer reads from what it writes; ``example_network().route()``
+    is a result with every kind of value: hydrographs, the rain of the three
+    subcatchments, parameters that are given, computed and default.
+    """
+    return RoutingNetwork.from_document(example_network_document())
 
 
 # --- hydrograph tables --------------------------------------------------------------
