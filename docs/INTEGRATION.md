@@ -402,6 +402,26 @@ result = points.route()
 print(result.hydrographs["P1"].peak_discharge_m3s, result.hydrographs["OUT"].peak_discharge_m3s)
 ```
 
+### Drawing the network: the schematic for an application
+
+Hydrolog computes the picture of a network once, so that the screen of Hydrograf, a report and `route network --schematic` show the same one ([ADR-0013](decisions/0013-network-schematic.md); JSON Schema `src/hydrolog/schemas/hydrolog-network-schematic-1.schema.json`; the picture of the USAGE example is `docs/images/network-schematic.svg`). An application does not lay the network out: it asks for the document and draws it.
+
+- **Ask.** `RoutingNetwork.schematic(result=None, main_stem=None)` returns the document, JSON-native (`points.network().schematic(points.route())` for control points). Without `main_stem` the stem follows from the outlet the branch with the larger drained area (the areas of the subcatchments that make their hydrograph; a headwater that is given its hydrograph has none, and then the branch with more nodes) and the smaller id on a tie. Hydrograf knows the main river and Hydrolog does not: `main_stem="P2"` (the head of the river) or the ids of points along it (they must lie on one path to the outlet, `unknown_node` and `main_stem_not_a_path` otherwise). Over files or MCP: `route network ... --schematic FILE [--main-stem ID,...] --json` writes the SVG and returns the document as `result.schematic`.
+- **Places.** `nodes[].x` and `nodes[].y` are integers in grid units, `x` growing downstream (to the right) and `y` downwards, as on a screen; multiply both by one scale (the lines at 45 degrees stay at 45 degrees). `grid.width` and `grid.height` are the extent of the nodes: leave about one unit around them for the labels.
+- **Lines.** `edges[].points` are the corners of the polyline from `from` to `to`; draw it with round joins. `line` groups the edges and the nodes (`lines[]`: index 0 is the main stem, a tributary names the node it flows into, `joins`): colour by line, and draw the lines with the larger index first so that the main stem is on top where a line merges into it (a node with more than two inflows takes its lines at taps and they share their last stretch).
+- **Nodes and labels.** A symbol by `type` (`subcatchment`, `reach`, `reservoir`, `junction`, `outlet`; a kind that was added is a plain circle until you know it). `label.text` and `label.side` (a compass point on the screen around the node: `n` above it, centred; `ne` above it, starting at the node; `e` to its right...): the layout leaves every label one unit wide and four tenths of a unit high on that side, clear of the lines.
+- **Values.** With a result each node has `peak_m3s`, `time_to_peak_min`, `volume_m3` (the numbers of `NetworkResult.nodes`), `parameters` (`name`, `value`, `unit`, `source`: `given`, `computed` or `default`) and `notices` (`level`, `code`, `message`; a warning deserves a mark). Without one `has_result` is false and `parameters` are what is given. The layout is the same either way, and the same whatever the order of the nodes in the network document.
+- **SVG.** `hydrolog.routing.schematic.schematic_svg(document)` draws a document with the standard library, from the document alone (text in ids, symbols and units; ids longer than 16 characters are wrapped); `route network --schematic` writes it. A change of the layout is a change of a documented format and goes with a new version of the schema.
+
+```python
+schematic = points.network().schematic(points.route(), main_stem="P2")
+for edge in schematic["edges"]:
+    draw_polyline([(x * SCALE, y * SCALE) for x, y in edge["points"]], colour(edge["line"]))
+for node in schematic["nodes"]:
+    draw_symbol(node["type"], node["x"] * SCALE, node["y"] * SCALE)
+    draw_label(node["label"]["text"], node["label"]["side"], node.get("peak_m3s"))
+```
+
 ### Retman (calculation handlers)
 
 Retman calls Hydrolog through the command layer, not through the library classes.
