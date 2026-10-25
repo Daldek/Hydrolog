@@ -505,7 +505,39 @@ print(tc.name, round(tc.value, 1), tc.unit, tc.source)                   # tc_mi
 document = network.to_document()           # hydrolog-network/1, JSON-native
 again = RoutingNetwork.from_document(document).route()
 print(again.hydrographs["OUT"].peak_discharge_m3s == result.hydrographs["OUT"].peak_discharge_m3s)   # True
+
+schematic = network.schematic(result)      # hydrolog-network-schematic/1: the picture, JSON-native
+print([(node["id"], node["x"], node["y"]) for node in schematic["nodes"]])
+# [('A', 0, 1), ('B', 1, 0), ('C', 3, 2), ('R_A', 1, 1), ('J1', 2, 1), ('R_J1', 3, 1), ('J2', 4, 1), ('OUT', 5, 1)]
+from pathlib import Path
+from hydrolog.routing.schematic import schematic_svg
+Path("network.svg").write_text(schematic_svg(schematic), encoding="utf-8")   # the drawing below
 ```
+
+**The schematic.** `network.schematic(result)` draws the network like a metro map
+([ADR-0013](decisions/0013-network-schematic.md)): the main stem is a straight line (from the outlet up through the
+branch that drains the larger area, or has more nodes), the tributaries join it at 45 degrees on alternating sides,
+every segment runs at 0, 45 or 90 degrees, the nodes are on an integer grid one unit apart and no two edges cross. It
+returns the document `hydrolog-network-schematic/1`: per node its place, its label, the `parameters` of its calculation
+and, with a result, its peak, time to peak, volume and notices (the numbers of `NetworkResult`); the picture does not
+depend on the result. `schematic_svg(document)` draws it, and `main_stem=` names the nodes that the main river passes
+when it is not the larger branch. This is the picture of the example above (a diamond is a subcatchment, a ring a
+reach, a double ring a junction and a target the outlet; `Qp` is the peak in m3/s, `tp` the time to peak in min and
+`V` the volume in m3):
+
+![The schematic of the example network](images/network-schematic.svg)
+
+`A`, `R_A`, `J1`, `R_J1`, `J2` and `OUT` are the main stem, because `A` drains the largest area; `B` joins `J1` from
+above and `C` joins `J2` from below. The command line writes the same drawing and returns the document with `--json`:
+
+```bash
+hydrolog route network --network-file tests/fixtures/network_flood.json \
+  --inflows-file tests/fixtures/network_inflows.csv --schematic pond.svg --nodes OUT --json
+```
+
+`--schematic FILE` follows the rules of section 3 (`--check` plans it, an existing file is replaced only with
+`--force`); `--main-stem ID,...` declares the stem. An application that draws the document itself:
+[INTEGRATION.md](INTEGRATION.md).
 
 A new kind of node, rainfall, runoff model, shape of a storm or reach method is a class that implements the
 protocol (`Node`, `RainfallSource`, `RunoffModel`, `Hietogram`, `Reach`) and an entry in a registry (`NODE_TYPES`,

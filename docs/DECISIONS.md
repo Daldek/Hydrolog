@@ -18,3 +18,4 @@ the Nogat standard 2.1 adoption are in the plans of [plans/](plans/).
 | [0010](decisions/0010-route-network-document-and-output-directory.md) | `route network`: the network document, one table per node, `--output-dir` | accepted | 2026-10-25 |
 | [0011](decisions/0011-public-testing-module.md) | `hydrolog.testing`: builders of the files other projects read | accepted | 2026-10-25 |
 | [0012](decisions/0012-network-objects-rainfall-and-runoff.md) | Network objects, rainfall and runoff per subcatchment, and control points | accepted | 2026-10-25 |
+| [0013](decisions/0013-network-schematic.md) | The schematic of a network: a metro-style map that Hydrolog computes | accepted | 2026-10-25 |
