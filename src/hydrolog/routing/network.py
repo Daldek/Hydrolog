@@ -18,9 +18,10 @@ Outlet          one          the end of the network; its hydrograph is the resul
 
 An id still names every node (it names the results and the files): the document
 ``hydrolog-network/1`` writes the same graph with ids, ``from`` listing the ids of the
-inflows (``"type"`` of a ``Channel`` is ``"reach"``), and
-:meth:`RoutingNetwork.from_document` reads it. Nodes are immutable: a node that is not
-connected yet is fed by :meth:`Node.with_inflows`, which returns a copy.
+inflows (``"type"`` of a ``Channel`` is ``"reach"``).
+:meth:`RoutingNetwork.from_document` reads it and :meth:`RoutingNetwork.to_document`
+writes it, so a network can be saved, sent and read again. Nodes are immutable: a node
+that is not connected yet is fed by :meth:`Node.with_inflows`, which returns a copy.
 
 A network is checked when it is made, with the vocabulary of
 :class:`~hydrolog.network.StreamNetwork`: the shapes that a lumped model cannot route
@@ -84,16 +85,21 @@ from hydrolog.morphometry.watershed_params import WatershedParameters
 from hydrolog.precipitation.hietogram import HietogramResult
 from hydrolog.routing._checks import in_range, positive, shown
 from hydrolog.routing._order import ordered
-from hydrolog.routing._reading import constructor_arguments, within
+from hydrolog.routing._reading import constructor_arguments, within, without_defaults
 from hydrolog.routing._registry import Registry
 from hydrolog.routing.hydrograph import STEP_TOLERANCE, Hydrograph
 from hydrolog.routing.level_pool import LevelPoolReach
 from hydrolog.routing.parameters import Parameter, parameter
-from hydrolog.routing.rainfall import RainfallSource, rainfall_from_document
+from hydrolog.routing.rainfall import (
+    RainfallSource,
+    rainfall_from_document,
+    rainfall_to_document,
+)
 from hydrolog.routing.reach import REACH_METHODS, Reach, RoutingNotice, RoutingResult
 from hydrolog.routing.runoff import (
     RunoffModel,
     runoff_from_document,
+    runoff_to_document,
     watershed_from_document,
 )
 
@@ -321,8 +327,8 @@ class Node(ABC):
     The base of the node classes. It holds the ``id`` and the nodes that flow into the
     node (``inflows``) and is immutable: :meth:`with_inflows` returns a copy. A
     subclass sets the class attributes below, implements :meth:`evaluate`,
-    :meth:`describe` and :meth:`read_document`, and is registered in
-    :data:`NODE_TYPES`.
+    :meth:`describe`, :meth:`read_document` and :meth:`document_fields` (what a
+    document says of it, read and written), and is registered in :data:`NODE_TYPES`.
 
     Parameters
     ----------
@@ -511,6 +517,41 @@ class Node(ABC):
             With ``details.reason`` ``unknown_field``, ``missing_field``, ``type``...
             and ``details.node_id`` and ``details.field``.
         """
+
+    @abstractmethod
+    def document_fields(self) -> dict[str, Any]:
+        """Return the fields of the node in a document, besides its id and links.
+
+        The counterpart of :meth:`read_document`: what that reads from the fields of a
+        node, this writes, so that the document of a node, read, gives an equal node.
+        The values are JSON-native; a field that has its default, or was not given, is
+        left out.
+
+        Returns
+        -------
+        dict
+            The fields of the kind, in the order a document has them.
+        """
+
+    def to_document(self) -> dict[str, Any]:
+        """Return the node as an entry of a ``hydrolog-network/1`` document.
+
+        Returns
+        -------
+        dict
+            ``id``, ``type``, ``from`` (the ids of the inflows; not there for a node
+            that has none) and the fields of the kind (:meth:`document_fields`).
+
+        Raises
+        ------
+        InvalidParameterError
+            With ``details.reason`` ``unregistered`` if the class of the node is not in
+            :data:`NODE_TYPES`: a document cannot name it.
+        """
+        entry: dict[str, Any] = {"id": self._id, "type": NODE_TYPES.name_of(self)}
+        if self._inflows:
+            entry["from"] = list(self.upstream)
+        return {**entry, **self.document_fields()}
 
     @classmethod
     def read_entry(
@@ -846,6 +887,27 @@ class Subcatchment(Node):
         listed = [] if source is None else source.describe(hyetograph)
         return [*listed, *self._runoff.describe(self._watershed, hyetograph)]
 
+    def document_fields(self) -> dict[str, Any]:
+        """Return the hydrograph, or the ``watershed``, ``runoff`` and ``rainfall``.
+
+        A node that was given its hydrograph writes it as ``times_min`` with
+        ``discharge_m3s``; one that makes it writes the objects that make it, the
+        rainfall only when the node has its own.
+        """
+        if self._hydrograph is not None:
+            return {
+                "times_min": self._hydrograph.times_min.tolist(),
+                "discharge_m3s": self._hydrograph.discharge_m3s.tolist(),
+            }
+        assert self._watershed is not None and self._runoff is not None
+        fields: dict[str, Any] = {
+            "watershed": self._watershed.to_dict(),
+            "runoff": runoff_to_document(self._runoff),
+        }
+        if self._rainfall is not None:
+            fields["rainfall"] = rainfall_to_document(self._rainfall)
+        return fields
+
     @classmethod
     def read_document(cls, node_id: str, fields: Mapping[str, Any]) -> dict[str, Any]:
         """Read ``times_min`` with ``discharge_m3s``, or ``watershed`` with ``runoff``.
@@ -1024,6 +1086,28 @@ class Channel(Node):
             listed.append(parameter("extend_min", run.extension_min, "default"))
         return listed
 
+    def document_fields(self) -> dict[str, Any]:
+        """Return the ``method``, the options of the element and the run options.
+
+        An option that has the default of the constructor is left out, and so is a run
+        option that was not given. A reservoir has no ``method``: its element is a level
+        pool.
+
+        Raises
+        ------
+        InvalidParameterError
+            With ``details.reason`` ``unregistered`` if the element is of a class that
+            :data:`~hydrolog.routing.REACH_METHODS` does not know.
+        """
+        name = REACH_METHODS.name_of(self._reach)
+        fields: dict[str, Any] = {"method": name} if self._method_fields else {}
+        fields.update(without_defaults(type(self._reach), self._reach.options()))
+        if self._initial_outflow_m3s is not None:
+            fields["initial_outflow_m3s"] = self._initial_outflow_m3s
+        if self._extend_min is not None:
+            fields["extend_min"] = self._extend_min
+        return fields
+
     @classmethod
     def _method(cls, node_id: str, fields: Mapping[str, Any]) -> str:
         """Return the ``method`` of the node: a reach names it."""
@@ -1145,6 +1229,10 @@ class Junction(Node):
         """Return no parameters: a junction only adds."""
         return []
 
+    def document_fields(self) -> dict[str, Any]:
+        """Return nothing: a junction has no field of its own."""
+        return {}
+
     @classmethod
     def read_document(cls, node_id: str, fields: Mapping[str, Any]) -> dict[str, Any]:
         """Read nothing: a junction has no field of its own."""
@@ -1184,6 +1272,10 @@ class Outlet(Node):
     def describe(self, output: NodeOutput | None = None) -> list[Parameter]:
         """Return no parameters: the outlet only ends the network."""
         return []
+
+    def document_fields(self) -> dict[str, Any]:
+        """Return nothing: the outlet has no field of its own."""
+        return {}
 
     @classmethod
     def read_document(cls, node_id: str, fields: Mapping[str, Any]) -> dict[str, Any]:
@@ -1465,6 +1557,31 @@ class RoutingNetwork:
         from hydrolog.routing.document import read_network
 
         return read_network(document, prepare=prepare)
+
+    def to_document(self) -> dict[str, Any]:
+        """Return the network as a ``hydrolog-network/1`` document.
+
+        The document is JSON-native and :meth:`from_document` reads it back into a
+        network that routes the same way. The nodes are listed in the order of
+        evaluation; a field that has its default or was not given is left out, and so
+        is the ``timestep_min`` that the network took from its sources.
+
+        Returns
+        -------
+        dict
+            ``schema``, ``name``, ``timestep_min`` (when it was given), ``rainfall``
+            (the default of the network, if it has one) and ``nodes``.
+
+        Raises
+        ------
+        InvalidParameterError
+            With ``details.reason`` ``unregistered`` if a node, a reach, a rainfall or
+            the shape of a storm is of a class that no registry names: a document
+            cannot write it.
+        """
+        from hydrolog.routing.document import write_network
+
+        return write_network(self)
 
     @property
     def nodes(self) -> tuple[Node, ...]:

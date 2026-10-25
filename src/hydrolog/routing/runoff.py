@@ -79,6 +79,7 @@ __all__ = [
     "CurveNumberRunoff",
     "RunoffModel",
     "runoff_from_document",
+    "runoff_to_document",
     "watershed_from_document",
 ]
 
@@ -327,6 +328,29 @@ def runoff_from_document(document: object) -> RunoffModel:
     )
     cls = RUNOFF_MODELS.resolve(name, "The runoff", field="model")
     return cls.from_document(fields)
+
+
+def runoff_to_document(model: RunoffModel) -> dict[str, Any]:
+    """Write a runoff model as the object of a document, if a document can name it.
+
+    Parameters
+    ----------
+    model : RunoffModel
+        The model; its class must be in :data:`RUNOFF_MODELS`, or the reader would not
+        find it.
+
+    Returns
+    -------
+    dict
+        The object, with its ``model``: what :meth:`RunoffModel.to_document` returns.
+
+    Raises
+    ------
+    InvalidParameterError
+        With ``details.reason`` ``unregistered`` if the class is not in the registry.
+    """
+    RUNOFF_MODELS.name_of(model)
+    return model.to_document()
 
 
 @RUNOFF_MODELS.register

@@ -3,7 +3,9 @@
 A network is a JSON object. The document is the definition format of a network and the
 serialization of a :class:`~hydrolog.routing.RoutingNetwork`:
 :meth:`RoutingNetwork.from_document <hydrolog.routing.RoutingNetwork.from_document>`
-reads it::
+reads it, and
+:meth:`RoutingNetwork.to_document <hydrolog.routing.RoutingNetwork.to_document>`
+writes it::
 
     {
       "schema": "hydrolog-network/1",
@@ -42,6 +44,13 @@ names of the kinds, models and shapes are those of the registries
 (:data:`~hydrolog.routing.RAINFALL_KINDS`, :data:`~hydrolog.routing.RUNOFF_MODELS`,
 :data:`~hydrolog.routing.HIETOGRAMS`).
 
+:func:`write_network` is the other direction: every node writes its own fields
+(:meth:`~hydrolog.routing.Node.document_fields`, ``type`` is its registered name), the
+nodes follow in the order of evaluation and nothing that has its default is written, so
+a document that the library wrote is the canonical form of every document that makes
+the same network: written, read and written again it does not change, and the network
+that it makes routes as the first one did.
+
 This module reads values that are in the document. A value that is in a file (a column
 of an inflows table, a rating file) is for the code that owns the files to put in the
 document first; :func:`read_network` calls its ``prepare`` for every node before the
@@ -73,9 +82,13 @@ from hydrolog.routing._checks import shown
 from hydrolog.routing._order import ordered
 from hydrolog.routing._reading import within
 from hydrolog.routing.network import NODE_TYPES, Node, RoutingNetwork, check_unique
-from hydrolog.routing.rainfall import RainfallSource, rainfall_from_document
+from hydrolog.routing.rainfall import (
+    RainfallSource,
+    rainfall_from_document,
+    rainfall_to_document,
+)
 
-__all__ = ["SCHEMA", "Prepare", "read_network"]
+__all__ = ["SCHEMA", "Prepare", "read_network", "write_network"]
 
 SCHEMA: Final = "hydrolog-network/1"
 """Value of the ``schema`` key of a network document."""
@@ -235,3 +248,37 @@ def read_network(document: object, *, prepare: Prepare | None = None) -> Routing
         rainfall=rainfall,
         timestep_min=document.get("timestep_min"),
     )
+
+
+def write_network(network: RoutingNetwork) -> dict[str, Any]:
+    """Write a network as a ``hydrolog-network/1`` document.
+
+    Parameters
+    ----------
+    network : RoutingNetwork
+        The network.
+
+    Returns
+    -------
+    dict
+        The document, JSON-native: ``schema``, ``name`` and ``timestep_min`` (only what
+        was given), the default ``rainfall`` of the network and the ``nodes`` in the
+        order of evaluation, each as its class writes it
+        (:meth:`~hydrolog.routing.Node.to_document`).
+
+    Raises
+    ------
+    InvalidParameterError
+        With ``details.reason`` ``unregistered`` if a class of the network is not in
+        its registry: the document could not name it.
+    """
+    values: dict[str, Any] = {
+        "schema": SCHEMA,
+        "name": network.name,
+        "timestep_min": network.given_timestep_min,
+        "rainfall": (
+            None if network.rainfall is None else rainfall_to_document(network.rainfall)
+        ),
+        "nodes": [network.node(node_id).to_document() for node_id in network.order],
+    }
+    return {key: values[key] for key in _TOP_LEVEL if values[key] is not None}

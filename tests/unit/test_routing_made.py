@@ -763,12 +763,27 @@ class TestExtending:
             {"id": "OUT", "type": "outlet", "from": ["J"]},
         ]
 
-        result = RoutingNetwork.from_document(document(*nodes)).route()
+        network = RoutingNetwork.from_document(document(*nodes))
+        result = network.route()
 
         assert result.rainfall["A"].total_mm == 8.0
         weights = np.arange(1, 13) ** 2.0
         np.testing.assert_allclose(
             result.rainfall["B"].intensities_mm, 45.0 * weights / weights.sum()
+        )
+        written = network.to_document()
+        assert written["nodes"][0]["rainfall"] == {
+            "kind": "constant",
+            "depth_mm": 2.0,
+            "steps": 4,
+        }
+        assert written["nodes"][0]["runoff"] == {"model": "share-of-rain", "share": 0.5}
+        assert written["nodes"][1]["rainfall"]["hietogram_type"] == "growing"
+        assert written["nodes"][1]["rainfall"]["growth"] == 2.0
+        again = RoutingNetwork.from_document(written).route()
+        np.testing.assert_array_equal(
+            again.hydrographs["OUT"].discharge_m3s,
+            result.hydrographs["OUT"].discharge_m3s,
         )
 
     def test_a_kind_of_node_that_makes_hydrographs_is_still_a_subcatchment(self):
