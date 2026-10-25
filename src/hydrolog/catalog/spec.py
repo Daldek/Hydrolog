@@ -557,6 +557,15 @@ class Option:
         return "--" + self.name.replace("_", "-")
 
     @property
+    def short_flag(self) -> str | None:
+        """Str or None: the short command-line flag, ``-o`` of ``output_dir``.
+
+        AGI-3.4 reserves ``-o`` as the short form of ``--output-dir`` and of no other
+        option, so no other option has one.
+        """
+        return "-o" if self.name == "output_dir" else None
+
+    @property
     def writes(self) -> bool:
         """bool: the option is an output path (``path_role == "output"``)."""
         return self.path_role == "output"

@@ -350,3 +350,37 @@ class TestCommandHelp:
         text = build_command_parser(_command(_option("a")), "en").format_help()
         assert "-v, --verbose" in text and "-q, --quiet" in text
         assert "--lang {pl,en}" in text
+
+
+class TestShortFlag:
+    """``-o`` is the short form of ``--output-dir`` and of no other option (AGI-3.4)."""
+
+    OUTPUT_DIR = _option("output_dir", "path", path_role="output")
+
+    def test_only_output_dir_has_a_short_flag(self):
+        assert self.OUTPUT_DIR.short_flag == "-o"
+        for name in ("output", "input_file", "outdir", "o", "output_dir_2"):
+            kind = "path" if "file" in name or name.startswith("out") else "number"
+            assert _option(name, kind).short_flag is None, name
+
+    def test_the_short_and_the_long_flag_give_the_same_value(self):
+        command = _command(self.OUTPUT_DIR, _option("length_km"))
+
+        short = parse_command_line(command, ["-o", "out/dir", "--length-km", "2"])
+        long = parse_command_line(
+            command, ["--output-dir", "out/dir", "--length-km", "2"]
+        )
+
+        assert short.options == long.options
+        assert short.options["output_dir"] == "out/dir"
+
+    def test_the_help_lists_both_spellings_of_the_option(self):
+        text = build_command_parser(_command(self.OUTPUT_DIR), "en").format_help()
+
+        assert "-o" in text and "--output-dir" in text
+
+    def test_an_option_without_a_short_flag_cannot_be_abbreviated_to_one(self):
+        command = _command(_option("output", "path", path_role="output"))
+
+        with pytest.raises(UsageError):
+            parse_command_line(command, ["-o", "x.csv"])
