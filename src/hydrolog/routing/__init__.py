@@ -18,7 +18,11 @@ Time is in minutes and discharge in m3/s.
 * :class:`CascadeReach` -- a cascade of ``n`` linear reservoirs (Nash, Kalinin-Milyukov)
   with the exact kernel for a piecewise-linear inflow (:func:`cascade_weights`);
 * :class:`LevelPoolReach` -- a reservoir or a reach with a storage-outflow table, by
-  storage indication (the modified Puls method; :func:`timestep_limit_min`).
+  storage indication (the modified Puls method; :func:`timestep_limit_min`);
+* :class:`RoutingNetwork` -- the elements above composed over a river network, a
+  directed acyclic graph of :class:`NetworkNode` (sources, reaches, reservoirs,
+  junctions that add, one outlet); :meth:`RoutingNetwork.route` gives a
+  :class:`NetworkResult`, the hydrograph that leaves every node.
 
 The recurrences shared with the Clark unit hydrograph are in
 ``hydrolog.routing._kernels``.
@@ -39,6 +43,7 @@ from hydrolog.routing.hydrograph import Hydrograph
 from hydrolog.routing.lag import LagReach
 from hydrolog.routing.level_pool import LevelPoolReach, timestep_limit_min
 from hydrolog.routing.muskingum import MuskingumReach
+from hydrolog.routing.network import NetworkNode, NetworkResult, RoutingNetwork
 from hydrolog.routing.reach import Reach, RoutingNotice, RoutingResult
 from hydrolog.routing.sections import FlowState, TrapezoidalSection
 
@@ -50,7 +55,10 @@ __all__ = [
     "LevelPoolReach",
     "MuskingumCungeReach",
     "MuskingumReach",
+    "NetworkNode",
+    "NetworkResult",
     "Reach",
+    "RoutingNetwork",
     "RoutingNotice",
     "RoutingResult",
     "TrapezoidalSection",

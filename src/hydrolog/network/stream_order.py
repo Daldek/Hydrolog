@@ -4,12 +4,12 @@ This module provides methods for classifying river networks using
 various stream ordering systems (Strahler, Shreve).
 """
 
-from collections import deque
 from dataclasses import dataclass
 from enum import Enum
 
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError
+from hydrolog.network._graph import UnknownUpstream, UpstreamCycle, upstream_first
 
 
 class OrderingMethod(Enum):
@@ -153,60 +153,6 @@ class StreamNetwork:
         """Number of segments in the network."""
         return len(self.segments)
 
-    def _downstream_map(self) -> dict[int, list[int]]:
-        """Segments each segment flows into (a segment may be listed twice).
-
-        Raises
-        ------
-        InvalidParameterError
-            If a segment lists an upstream id that is not in the network.
-        """
-        downstream: dict[int, list[int]] = {seg_id: [] for seg_id in self.segments}
-        unknown: list[tuple[int, int]] = []
-        for seg_id, seg in self.segments.items():
-            for up_id in seg.upstream_ids:
-                if up_id in downstream:
-                    downstream[up_id].append(seg_id)
-                else:
-                    unknown.append((seg_id, up_id))
-        if unknown:
-            seg_id, up_id = unknown[0]
-            raise InvalidParameterError(
-                f"Segment {seg_id} lists upstream segment {up_id}, "
-                "which is not in the network",
-                details={
-                    "reason": "unknown_upstream",
-                    "segment_id": seg_id,
-                    "upstream_id": up_id,
-                    "n_unknown": len(unknown),
-                },
-                hint="Every id in upstream_ids must be the segment_id of a segment "
-                "of the network.",
-            )
-        return downstream
-
-    def _find_cycle(self, blocked: set[int]) -> list[int]:
-        """One cycle of the network, in flow order from its smallest segment id.
-
-        ``blocked`` are the segments that could not be ordered: every one of them
-        has an upstream segment that is blocked too, so walking upstream from any
-        of them must run into a cycle.
-        """
-        walk: list[int] = []
-        position: dict[int, int] = {}
-        current = min(blocked)
-        while current not in position:
-            position[current] = len(walk)
-            walk.append(current)
-            current = next(
-                up_id
-                for up_id in self.segments[current].upstream_ids
-                if up_id in blocked
-            )
-        cycle = walk[position[current] :][::-1]  # upstream walk -> flow order
-        start = cycle.index(min(cycle))
-        return cycle[start:] + cycle[:start]
-
     def classify(self, method: OrderingMethod = OrderingMethod.STRAHLER) -> None:
         """
         Classify stream network using specified ordering method.
@@ -226,31 +172,25 @@ class StreamNetwork:
             ``segments``: the segments of one cycle in flow order). Such a network
             has no order; the segments are left unchanged.
         """
-        downstream = self._downstream_map()
-
-        # Process the network from the headwaters downstream: a segment is ready
-        # when all its upstream segments have an order.
-        waiting = {
-            seg_id: len(seg.upstream_ids) for seg_id, seg in self.segments.items()
-        }
-        ready = deque(seg_id for seg_id, count in waiting.items() if count == 0)
-        orders: dict[int, int] = {}
-        while ready:
-            seg_id = ready.popleft()
-            upstream_orders = [
-                orders[up_id] for up_id in self.segments[seg_id].upstream_ids
-            ]
-            if method == OrderingMethod.STRAHLER:
-                orders[seg_id] = self._strahler_order(upstream_orders)
-            else:  # SHREVE
-                orders[seg_id] = self._shreve_order(upstream_orders)
-            for down_id in downstream[seg_id]:
-                waiting[down_id] -= 1
-                if waiting[down_id] == 0:
-                    ready.append(down_id)
-
-        if len(orders) < len(self.segments):
-            cycle = self._find_cycle(set(self.segments) - set(orders))
+        try:
+            order = upstream_first(
+                {seg_id: seg.upstream_ids for seg_id, seg in self.segments.items()}
+            )
+        except UnknownUpstream as unknown:
+            raise InvalidParameterError(
+                f"Segment {unknown.key} lists upstream segment {unknown.upstream}, "
+                "which is not in the network",
+                details={
+                    "reason": "unknown_upstream",
+                    "segment_id": unknown.key,
+                    "upstream_id": unknown.upstream,
+                    "n_unknown": unknown.count,
+                },
+                hint="Every id in upstream_ids must be the segment_id of a segment "
+                "of the network.",
+            ) from unknown
+        except UpstreamCycle as looped:
+            cycle = looped.members
             if len(cycle) == 1:
                 message = f"Segment {cycle[0]} lists itself as upstream"
             else:
@@ -261,7 +201,19 @@ class StreamNetwork:
                 details={"reason": "cycle", "segments": cycle},
                 hint="A segment flows into each segment that lists it in upstream_ids; "
                 "remove the link that closes the loop.",
-            )
+            ) from looped
+
+        # Process the network from the headwaters downstream: a segment is ready
+        # when all its upstream segments have an order.
+        orders: dict[int, int] = {}
+        for seg_id in order:
+            upstream_orders = [
+                orders[up_id] for up_id in self.segments[seg_id].upstream_ids
+            ]
+            if method == OrderingMethod.STRAHLER:
+                orders[seg_id] = self._strahler_order(upstream_orders)
+            else:  # SHREVE
+                orders[seg_id] = self._shreve_order(upstream_orders)
 
         for seg_id, seg in self.segments.items():
             seg.order = orders[seg_id]
