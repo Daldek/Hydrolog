@@ -754,6 +754,7 @@ class TestRouteNetwork:
     """``hydrolog_route_network``: computes, plans a directory, writes a table each."""
 
     network = {
+        "schema": "hydrolog-network/1",
         "nodes": [
             {
                 "id": "A",
@@ -763,7 +764,7 @@ class TestRouteNetwork:
             },
             {"id": "R", "type": "reach", "from": ["A"], "method": "lag", "lag_min": 20},
             {"id": "OUT", "type": "outlet", "from": ["R"]},
-        ]
+        ],
     }
 
     def test_a_read_only_server_returns_the_routed_network(self):
@@ -875,6 +876,15 @@ class TestRouteNetwork:
 
         assert error["code"] == "validation_error"
         assert error["details"]["reason"] == "inline_file"
+
+    def test_a_network_without_its_schema_is_refused(self):
+        network = {key: value for key, value in self.network.items() if key != "schema"}
+
+        error = error_of(call("hydrolog_route_network", {"network": network}))
+
+        assert error["code"] == "validation_error"
+        assert error["details"]["reason"] == "missing_field"
+        assert error["details"]["field"] == "schema"
 
 
 # --- families -------------------------------------------------------------------------

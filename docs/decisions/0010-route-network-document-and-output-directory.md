@@ -15,8 +15,8 @@ copy of the graph code of `StreamNetwork`.
 
 ## Decision
 
-- **The document `hydrolog-network/1`.** A JSON object with `nodes` (required), `name` and `schema`
-  (optional; `schema`, when given, must be `hydrolog-network/1`; an unknown field is an error). A node has
+- **The document `hydrolog-network/1`.** A JSON object with `schema` (required, `hydrolog-network/1`) and
+  `nodes` (required), and `name` (optional; an unknown field is an error). A node has
   `id`, `type` and `from` (the ids that flow into it) and the fields of its type: a subcatchment has
   `times_min` with `discharge_m3s`, or `value_column`; a reach has `method` and the options of
   `route <method>` that describe the element (the catalog options of that command without the inflow, the
@@ -75,3 +75,25 @@ copy of the graph code of `StreamNetwork`.
 - Not done: bifurcations, sources computed from a watershed or from rain, channel parameters estimated from
   geometry in the document (a node gives the parameters of its method) and `request` issues in the Hydrograf
   and Hydraulik repositories (DEV-17.5).
+
+## Amendment (2026-10-25, open points of the first version)
+
+Three points that the first version left open were decided by the coordinating session
+(the author has not reviewed the branch yet):
+
+- **`schema` is required.** A document without `schema` is `missing_field` (`details.field` `schema`);
+  one with another value is still `unknown_schema`. Reason: AGI-4.1, every machine-readable document has a
+  top-level `schema`, and a reader that guesses the version of a document that does not say it has nothing to
+  stand on when `hydrolog-network/2` exists. The JSON Schema lists `schema` in `required`. This replaces
+  "optional" in the decision above.
+- **An id that is a device name of Windows is refused.** `con`, `prn`, `aux`, `nul`, `com1` to `com9` and
+  `lpt1` to `lpt9`, in any case and with any extension (`NUL.csv` is the device too), are a
+  `validation_error` with `details.reason` `reserved_name`, from `NetworkNode` (so the library, the reader
+  and `hydrolog-network/1`, in which the id is a pattern with a `not`, agree). Reason: the id names the file
+  `<id>.csv` and a file of that name misbehaves on Windows, where the tables go to Hydraulik. The
+  superscript digits (`com¹` to `lpt³`) that Windows also reserves are refused too.
+- **A large result says so.** Without `--output-dir` the result holds the hydrograph of every selected node;
+  the envelope does not page the result of a command (only collections are paged), so a result of more
+  than 20,000 characters (the default page of DOC-1.7) carries the warning `large_result`, which names
+  `--nodes` and `--output-dir`. The result is not cut: a client that cannot read it all has the choice the
+  notice gives.

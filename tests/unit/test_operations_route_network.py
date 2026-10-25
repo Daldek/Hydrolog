@@ -154,6 +154,46 @@ class TestTheSummary:
             ("tail_extended", "D"),
         ]
 
+    @staticmethod
+    def long_network(steps: int) -> dict:
+        times = [10 * step for step in range(steps)]
+        wave = [
+            round(50 * np.sin(np.pi * step / steps) ** 2, 1) for step in range(steps)
+        ]
+        return document(
+            source("A", wave, times_min=times),
+            source("B", wave, times_min=times),
+            reach("R", "A"),
+            junction("J", "R", "B"),
+            outlet("J"),
+        )
+
+    def test_a_result_over_a_page_says_how_to_make_it_smaller(self):
+        output = route_network(network=self.long_network(400))
+
+        large = [n for n in output.notices if n.code == "large_result"]
+        assert [n.level for n in large] == ["warning"]
+        assert "`nodes`" in large[0].message and "`output_dir`" in large[0].message
+        size = len(output.result.to_json())  # type: ignore[union-attr]
+        assert f"{size:,}" in large[0].message
+        assert size > 20_000
+
+    def test_a_result_within_a_page_has_no_such_notice(self):
+        everything = route_network(network=self.long_network(20))
+        one_node = route_network(network=self.long_network(400), nodes=["OUT"])
+
+        assert not [n for n in everything.notices if n.code == "large_result"]
+        assert not [n for n in one_node.notices if n.code == "large_result"]
+
+    def test_a_directory_keeps_the_series_out_of_the_result_and_the_notice_away(
+        self, tmp_path
+    ):
+        output = route_network(
+            network=self.long_network(400), output_dir=tmp_path / "out"
+        )
+
+        assert not [n for n in output.notices if n.code == "large_result"]
+
     def test_the_series_of_the_selected_nodes_are_in_the_result_without_a_directory(
         self,
     ):

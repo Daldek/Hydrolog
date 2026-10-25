@@ -15,7 +15,8 @@ A network is a JSON object, inline (``network``) or in a file (``network_file``)
       ]
     }
 
-``schema`` may be left out; when it is given it must be ``hydrolog-network/1``. Every
+``schema`` is required and must be ``hydrolog-network/1`` (every machine-readable
+document has one, AGI-4.1). Every
 node has ``id``, ``type`` (the kinds of :class:`~hydrolog.routing.NetworkNode`) and
 ``from``, the list of the ids that flow into it. The other fields depend on the type,
 and a field that the type does not take is an error:
@@ -52,7 +53,8 @@ when it is inline. ``details.reason`` says what: ``shape``, ``unknown_schema``,
 (``minimum``, ``choice``...) or of the element that refuses it (``one_of``,
 ``unstable_timestep``...), and the structure reasons of
 :class:`~hydrolog.routing.RoutingNetwork` (``unknown_upstream``, ``cycle``,
-``several_downstream``, ``no_outlet``...); ``details.node_id`` names the node and
+``several_downstream``, ``no_outlet``...) and the refusal of an id that names a file
+badly (``invalid_id``, ``reserved_name``); ``details.node_id`` names the node and
 ``details.field`` the field. A time axis that the sources do not share
 (``timestep_mismatch``, ``start_mismatch``) stays a ``validation_error`` whatever the
 source of the document: it is a fact of the data, not of the document.
@@ -226,8 +228,15 @@ class _Reader:
                     allowed=list(_TOP_LEVEL),
                     hint=f"The fields are {', '.join(_TOP_LEVEL)}.",
                 )
-        schema = document.get("schema")
-        if schema is not None and schema != SCHEMA:
+        if "schema" not in document:
+            where.fail(
+                "the document has no 'schema'",
+                reason="missing_field",
+                field="schema",
+                hint=f'Every document begins with "schema": "{SCHEMA}".',
+            )
+        schema = document["schema"]
+        if schema != SCHEMA:
             where.fail(
                 f"the schema is {_shown(schema)}, this reads {SCHEMA}",
                 reason="unknown_schema",

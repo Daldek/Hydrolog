@@ -114,6 +114,11 @@ _PAYLOAD: Final[dict[str, tuple[frozenset[str], frozenset[str]]]] = {
     "junction": (frozenset(), frozenset()),
     "outlet": (frozenset(), frozenset()),
 }
+_RESERVED = re.compile(
+    r"(?:con|prn|aux|nul|(?:com|lpt)[1-9\u00b9\u00b2\u00b3])(?:\..*)?",
+    re.IGNORECASE | re.DOTALL,
+)
+"""Device names of Windows: a file so named, with any extension, is the device."""
 
 
 def _check_id(value: object, *, role: str = "id") -> str:
@@ -135,6 +140,16 @@ def _check_id(value: object, *, role: str = "id") -> str:
                 "is named after it."
             ),
         )
+    if _RESERVED.fullmatch(value):
+        raise InvalidParameterError(
+            f"Node {role} {value!r} is a reserved name",
+            details={"reason": "reserved_name", "node_id": value},
+            hint=(
+                "The file of the node is named after its id, and Windows reserves "
+                "the names con, prn, aux, nul, com1 to com9 and lpt1 to lpt9, with "
+                "any extension, whatever the case. Choose another id."
+            ),
+        )
     return value
 
 
@@ -147,7 +162,9 @@ class NetworkNode:
     id : str
         The name of the node, unique in the network without regard to case; it names
         the file of the node, so it is plain: letters, digits, ``_``, ``.`` and ``-``,
-        at most :data:`MAX_ID_CHARS` characters.
+        at most :data:`MAX_ID_CHARS` characters, and not a device name of Windows
+        (``con``, ``prn``, ``aux``, ``nul``, ``com1`` to ``com9``, ``lpt1`` to
+        ``lpt9``, in any case and with any extension).
     kind : {"subcatchment", "reach", "reservoir", "junction", "outlet"}
         What the node does (see the module docstring).
     upstream : sequence of str, optional
@@ -169,9 +186,9 @@ class NetworkNode:
     Raises
     ------
     InvalidParameterError
-        With ``details.reason`` ``invalid_id``, ``unknown_type``, ``upstream_count``,
-        ``duplicate_upstream``, ``missing_field`` or ``unexpected_field`` (and
-        ``details.node_id``).
+        With ``details.reason`` ``invalid_id``, ``reserved_name``, ``unknown_type``,
+        ``upstream_count``, ``duplicate_upstream``, ``missing_field`` or
+        ``unexpected_field`` (and ``details.node_id``).
     """
 
     id: str

@@ -21,6 +21,7 @@ The functions are re-exported by :mod:`hydrolog.operations`.
 
 from __future__ import annotations
 
+import json
 import os
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
@@ -31,7 +32,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from hydrolog._atomic import atomic_output, staging_directory
-from hydrolog._serialization import JsonResultMixin
+from hydrolog._serialization import JsonResultMixin, to_jsonable
 from hydrolog.catalog.envelope import Notice, OperationOutput
 from hydrolog.catalog.inputs import load_hydrograph, load_rating
 from hydrolog.exceptions import InvalidParameterError, OutputError
@@ -193,6 +194,15 @@ class NetworkRouteResult(JsonResultMixin):
     outlet: str
     order: list[str]
     nodes: list[dict[str, Any]]
+
+
+PAGE_CHARS = 20_000
+"""Characters of a result that a client reads whole: the default page of DOC-1.7."""
+
+
+def _json_chars(result: object) -> int:
+    """Return the length of ``result`` as the single-line JSON the envelope writes."""
+    return len(json.dumps(to_jsonable(result), ensure_ascii=False, allow_nan=False))
 
 
 def _write_table(text: str, output: Path) -> None:
@@ -965,7 +975,7 @@ def route_network(
     The hydrograph that leaves each node is a table (``time_min``, ``discharge_m3s``)
     that every ``route`` command reads: ``output_dir`` receives one file ``<id>.csv``
     per selected node, which is also the hand-off to a hydraulic model; without it the
-    hydrographs of the selected nodes are in the result.
+    hydrographs of the selected nodes are in the result (``nodes`` limits them).
 
     Parameters
     ----------
@@ -999,7 +1009,10 @@ def route_network(
     OperationOutput
         ``result`` is a :class:`NetworkRouteResult`; the written tables are listed in
         ``files`` and every notice of a reach starts with the id of its node. With
-        ``check`` and ``output_dir`` the result is the plan.
+        ``check`` and ``output_dir`` the result is the plan. Without ``output_dir`` a
+        result of more than :data:`PAGE_CHARS` characters (all the hydrographs of a
+        large network) carries the warning ``large_result``, which suggests ``nodes``
+        and ``output_dir``.
 
     Raises
     ------
@@ -1087,6 +1100,17 @@ def route_network(
         nodes=summaries,
     )
     if directory is None or plan is None:
+        size = _json_chars(result)
+        if returned and size > PAGE_CHARS:
+            notices.append(
+                Notice(
+                    "warning",
+                    "large_result",
+                    f"the result is {size:,} characters, over the {PAGE_CHARS:,} of "
+                    "a page that a client reads whole: give `nodes` to return fewer "
+                    "hydrographs, or `output_dir` to write one table per node",
+                )
+            )
         return OperationOutput(result, tuple(notices))
     tables = {
         f"{node_id}.csv": run.hydrographs[node_id].to_table() for node_id in selected

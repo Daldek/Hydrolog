@@ -202,7 +202,7 @@ def test_the_network_document_schema_is_valid_and_names_itself():
     assert schema["title"] == NETWORK_DOCUMENT
     assert schema["$id"].endswith("/" + _file_name(NETWORK_DOCUMENT))
     assert schema["properties"]["schema"] == {"const": NETWORK_DOCUMENT}
-    assert schema["required"] == ["nodes"], "schema may be left out of a document"
+    assert schema["required"] == ["schema", "nodes"]
 
 
 def test_the_fixture_network_and_the_inline_example_obey_the_network_schema():
@@ -216,6 +216,7 @@ def test_the_fixture_network_and_the_inline_example_obey_the_network_schema():
 def _stream(*nodes: dict[str, Any], **top: Any) -> dict[str, Any]:
     """A network of a source, a reach by lag and an outlet, with ``nodes`` added."""
     return {
+        "schema": NETWORK_DOCUMENT,
         "nodes": [
             {
                 "id": "A",
@@ -241,12 +242,22 @@ def _edited(node: int, **fields: Any) -> dict[str, Any]:
     return document
 
 
+def _without_schema(document: dict[str, Any]) -> dict[str, Any]:
+    return {key: value for key, value in document.items() if key != "schema"}
+
+
 # documents that the schema and the loader both refuse: field names, types and counts
 REFUSED = {
     "unknown top-level field": _stream(color="blue"),
+    "no schema": _without_schema(_stream()),
+    "null schema": _stream(schema=None),
     "other schema": _stream(schema="hydrolog-network/2"),
     "empty name": _stream(name=""),
-    "no nodes": {"name": "x"},
+    "no nodes": {"schema": NETWORK_DOCUMENT, "name": "x"},
+    **{
+        f"reserved id {name}": _edited(2, id=name)
+        for name in ("con", "CON", "Prn", "aux", "nul", "NUL.txt", "com1", "LPT9.x")
+    },
     "unknown type": _edited(0, type="river"),
     "bad id": _edited(0, id="a b"),
     "id too long": _edited(0, id="x" * 65),
@@ -281,9 +292,13 @@ def test_the_network_schema_and_the_loader_refuse_the_same_documents(name):
 def test_the_network_schema_and_the_loader_accept_the_same_documents():
     accepted = [
         _stream(),
-        _stream(name="Upper catchment", schema=NETWORK_DOCUMENT),
+        _stream(name="Upper catchment"),
         _edited(1, method="muskingum", lag_min=None, k_min=20, x=0.2, subreaches=2),
         _edited(1, extend_min=0, initial_outflow_m3s=1.5),
+        _edited(2, id="console"),
+        _edited(2, id="com10"),
+        _edited(2, id="com0"),
+        _edited(2, id="x.con"),
     ]
     for document in accepted:
         assert _violations(NETWORK_DOCUMENT, document) == []

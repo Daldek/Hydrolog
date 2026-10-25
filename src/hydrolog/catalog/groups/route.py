@@ -167,8 +167,9 @@ NETWORK = Option(
     name="network",
     type="object",
     description_pl=(
-        "Sieć w treści, jako obiekt JSON `hydrolog-network/1`: `name` i `nodes`, lista "
-        "węzłów z `id`, `type` (subcatchment, reach, reservoir, junction, outlet) i "
+        "Sieć w treści, jako obiekt JSON `hydrolog-network/1`: `schema`, `name` i "
+        "`nodes`, lista węzłów z `id` (nazwa pliku `<id>.csv`; nie con, prn, aux, nul, "
+        "com1-9, lpt1-9), `type` (subcatchment, reach, reservoir, junction, outlet) i "
         "`from` (id węzłów powyżej). Zlewnia (subcatchment) ma `times_min` z "
         "`discharge_m3s` albo `value_column` z `inflows_file` (domyślnie jej `id`); "
         "odcinek (reach) ma `method` (lag, muskingum, muskingum-cunge, cascade, "
@@ -178,8 +179,9 @@ NETWORK = Option(
         "treści nie wskazuje plików: `rating_file` wymaga `network_file`."
     ),
     description=(
-        "The network inline, as a JSON object `hydrolog-network/1`: `name` and "
-        "`nodes`, a list of nodes with `id`, `type` (subcatchment, reach, reservoir, "
+        "The network inline, as a JSON object `hydrolog-network/1`: `schema`, `name` "
+        "and `nodes`, a list of nodes with `id` (names the file `<id>.csv`; not con, "
+        "prn, aux, nul, com1-9, lpt1-9), `type` (subcatchment, reach, reservoir, "
         "junction, outlet) and `from` (the ids of the nodes upstream). A "
         "subcatchment has "
         "`times_min` with `discharge_m3s`, or a `value_column` of `inflows_file` "
@@ -1224,6 +1226,7 @@ COMMANDS: tuple[Command, ...] = (
             },
             {
                 "network": {
+                    "schema": "hydrolog-network/1",
                     "nodes": [
                         {
                             "id": "A",

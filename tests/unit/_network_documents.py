@@ -9,6 +9,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from hydrolog.operations._network_input import SCHEMA
+
 TIMES = [0, 10, 20, 30, 40, 50, 60, 70]
 FLOOD = [0, 10, 40, 90, 60, 30, 10, 0]
 SMALL = [0, 4, 12, 8, 3, 0, 0, 0]
@@ -46,8 +48,8 @@ def outlet(upstream: str, node_id: str = "OUT") -> dict[str, Any]:
 
 
 def document(*nodes: dict[str, Any], **top: Any) -> dict[str, Any]:
-    """A document of ``nodes``, in the order given."""
-    return {"nodes": list(nodes), **top}
+    """A document of ``nodes``, in the order given, with its ``schema``."""
+    return {"schema": SCHEMA, "nodes": list(nodes), **top}
 
 
 def stream(**reach_fields: Any) -> dict[str, Any]:
