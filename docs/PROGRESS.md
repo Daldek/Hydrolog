@@ -1,6 +1,6 @@
 # Hydrolog: progress
 
-Version 1.0.0.dev0 (1.0.0 is unreleased), Python >= 3.12. Branch `chore/nogat-2.1`: adoption of the Nogat standard 2.1. Updated 2026-10-25. History is in the git log and [CHANGELOG.md](CHANGELOG.md).
+Version 1.0.0.dev0 (1.0.0 is unreleased), Python >= 3.12. Branch `feature/gui`: the plan of the web GUI, on top of `feature/routing-schematic` (which continues `chore/nogat-2.1`, the adoption of the Nogat standard 2.1). Updated 2026-11-02. History is in the git log and [CHANGELOG.md](CHANGELOG.md).
 
 ## Status
 
@@ -22,6 +22,7 @@ Version 1.0.0.dev0 (1.0.0 is unreleased), Python >= 3.12. Branch `chore/nogat-2.
 | Gate and CI | done | `scripts/gate.sh` (ruff, mypy, pytest with coverage >= 80%, commit check); `.github/workflows/ci.yml` on Linux, macOS, Windows; GitHub repository settings not done (author) |
 | Documentation | in progress | README, USAGE, PRD, SCOPE, INTEGRATION, COMPUTATION_PATHS, CHANGELOG, SECURITY, CONTRIBUTING in English; `docs/CLA.md` missing; example notebooks still Polish |
 | ADRs | done | [ADR-0001 to ADR-0013](DECISIONS.md): 0001 to 0009 accepted 2026-10-24, 0010 to 0013 accepted 2026-10-25 |
+| Web GUI | planned | plan [2026-11-02-hydrolog-gui.md](plans/2026-11-02-hydrolog-gui.md), approval pending; branch `feature/gui` from `feature/routing-schematic`; standalone `hydrolog gui serve` (127.0.0.1:8070) and a hosted module of Nogat (`nogat.gui`); no code before `Approved:` |
 | Release (tag 1.0.0, PyPI, MCP Registry) | blocked | waits for the history rewrite, the rename and the author's decisions below |
 
 ## Next
@@ -39,11 +40,14 @@ Version 1.0.0.dev0 (1.0.0 is unreleased), Python >= 3.12. Branch `chore/nogat-2.
 
 10. Review `feature/routing-schematic` and merge it after `feature/routing-objects` (a linear continuation of it, [ADR-0013](decisions/0013-network-schematic.md); what it holds: the schematic of a network with its layout, document, JSON Schema and SVG, `route network --schematic` and `--main-stem`, and the description for applications in [INTEGRATION.md](INTEGRATION.md)). Nothing is merged or tagged.
 
+11. Approve or amend the GUI plan ([2026-11-02-hydrolog-gui.md](plans/2026-11-02-hydrolog-gui.md); Nogat's pointer `docs/plans/2026-11-02-hydrolog-gui.md` on its branch `plan/hydrolog-gui` orders the projects). After `Approved:`, the slices run in three waves on branches `feature/gui-<slice>` from `feature/gui`: A = S0 (catalog additions), S1 (server), S2 (frontend foundation), S2b (charts); B = S3 to S5 (sections); C = S6 (hand-off, report, print) and S7 (guide, docs). Nogat publishes the `handoff-1` schema (its N1) before S6. The service `hydrolog-gui` replaces `hydrolog-placeholder` on 127.0.0.1:8070 after wave A.
+
 ## Open questions
 
 - **History rewrite** (ADOPTION_PLAN phase 1): rewrite the Polish early history before the first tag? Touches every commit hash; only the author can decide and force-push.
 - **GitHub settings**: branch rulesets for `main` and `develop`, required checks (the CI `gate` jobs) and private vulnerability reporting (`SECURITY.md` points to it). Needs repository admin rights.
 - **`docs/CLA.md`**: the text is the author's legal wording and is not generated.
+- **The GUI behind the tunnel**: the public address that points at 127.0.0.1:8070 has no sign-in of the GUI's own (plan, D8); is it behind Cloudflare Access? Needed before the deployment through the tunnel is called done.
 - **Tags and releases** (phase 5): when to tag 1.0.0 and whether to publish GitHub release notes from the CHANGELOG.
 - **Rename to `nogat-hydrolog` and PyPI** (phase 6): date of the rename; until then the install commands use the git URL.
 - **`server.json`, MCP Registry and the README `mcp-name` comment** (REL-4): they need the PyPI name; deferred with the rename.
