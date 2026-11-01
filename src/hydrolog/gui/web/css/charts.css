@@ -1,0 +1,124 @@
+/*
+ * Charts of the Hydrolog GUI (src/charts/): the mockup's look on Nogat's tokens only.
+ * Derived colours use color-mix() on tokens; both themes follow from tokens.css,
+ * so a theme switch needs no redraw.
+ */
+
+/* Derived chart colours. Series: lines of variants and distributions. */
+:root {
+  --series-1: var(--info);
+  --series-2: var(--warn);
+  --series-3: var(--accent-green);
+  --series-4: color-mix(in srgb, var(--info) 45%, var(--surface));
+  --series-5: var(--info-ink);
+  --series-6: color-mix(in srgb, var(--info) 50%, var(--bad));
+  --rain: color-mix(in srgb, var(--info) 26%, var(--surface));
+  --rain-eff: color-mix(in srgb, var(--info) 78%, var(--surface));
+  --loss-ia: var(--line-2);
+  --loss-f: color-mix(in srgb, var(--text-3) 55%, var(--surface));
+}
+
+.chart { margin: 0 0 var(--space-3); }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart.wide { margin: 0; overflow-x: auto; }
+.chart-title { display: flex; justify-content: space-between; align-items: baseline; margin: 0 0 6px; font-size: var(--text-sm); font-weight: var(--weight-bold); color: var(--text-2); }
+.chart-title span { font-weight: var(--weight-regular); color: var(--text-3); font-size: var(--text-xs); }
+.chart svg:focus { outline: none; }
+.chart svg:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: var(--radius-sm); }
+
+/* Grid, axes, texts */
+.chart .grid line { stroke: var(--line); stroke-width: 1; }
+.chart .grid.v line { stroke-dasharray: 2 4; }
+.chart .axis { stroke: var(--line-2); stroke-width: 1; }
+.chart .tick { fill: var(--text-3); font: 10px var(--font-sans); font-variant-numeric: tabular-nums; }
+.chart .tick.sub { font-size: 10px; }
+.chart .axis-label { fill: var(--text-3); font: 10px var(--font-sans); }
+.chart .note { fill: var(--text-2); font: 10px var(--font-sans); }
+.chart.wide .tick, .chart.wide .axis-label, .chart.wide .note { font-size: var(--text-xs); }
+
+/* Series */
+.chart .ser { fill: none; stroke: var(--series-1); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; transition: opacity var(--transition); }
+.chart .ser.s1 { stroke: var(--series-1); stroke-width: 2.6; }
+.chart .ser.s2 { stroke: var(--series-2); }
+.chart .ser.s3 { stroke: var(--series-3); }
+.chart .ser.s4 { stroke: var(--series-4); stroke-dasharray: 7 4; stroke-width: 2.2; }
+.chart .ser.s5 { stroke: var(--series-5); stroke-dasharray: 7 4; stroke-width: 2.2; }
+.chart .ser.s6 { stroke: var(--series-6); stroke-dasharray: 2 3.5; stroke-width: 2.4; }
+.chart .ser.best { stroke-width: 3.2; }
+.chart .q-area { fill: color-mix(in srgb, var(--series-1) 14%, transparent); stroke: none; }
+.chart .q-area.s2 { fill: color-mix(in srgb, var(--series-2) 16%, transparent); }
+.chart .q-area.s3 { fill: color-mix(in srgb, var(--series-3) 16%, transparent); }
+.chart .q-area.s4 { fill: color-mix(in srgb, var(--series-4) 20%, transparent); }
+.chart .bars rect { fill: var(--series-1); }
+.chart .bars.s2 rect { fill: var(--series-2); }
+.chart .bars.s3 rect { fill: var(--series-3); }
+.chart .bars.s4 rect { fill: var(--series-4); }
+.chart .bars.bar-p rect { fill: var(--rain); }
+.chart .bars.bar-pe rect { fill: var(--rain-eff); }
+.chart .bars.loss-ia rect { fill: var(--loss-ia); }
+.chart .bars.loss-f rect { fill: var(--loss-f); }
+.chart .emp circle { fill: var(--surface); stroke: var(--text); stroke-width: 1.4; }
+
+/* Horizontal bars on a band axis (the tc comparison): ok, warn, bad, used */
+.chart .hbar { fill: var(--series-1); stroke-width: 0; }
+.chart .hbar.ok { fill: var(--ok); }
+.chart .hbar.warn { fill: var(--warn); }
+.chart .hbar.bad { fill: var(--bad-bg); stroke: var(--bad); stroke-width: 1.2; stroke-dasharray: 3 2; }
+.chart .hbar.used { stroke: var(--text); stroke-width: 2; stroke-dasharray: none; }
+.chart .bar-name { fill: var(--text); font: var(--weight-bold) var(--text-sm) var(--font-sans); }
+.chart .bar-sub { fill: var(--text-3); font: 10px var(--font-mono); }
+.chart .bar-val { fill: var(--text); font: var(--weight-medium) var(--text-sm) var(--font-sans); font-variant-numeric: tabular-nums; }
+
+/* Marks */
+.chart .mark-line { stroke: var(--text-3); stroke-width: 1; stroke-dasharray: 2 2; }
+.chart .peak-line { stroke: var(--text-3); stroke-width: 1; stroke-dasharray: 3 3; }
+.chart .peak-line.ref { stroke: var(--text-2); stroke-dasharray: 6 4; }
+.chart .peak-dot { fill: var(--surface); stroke: var(--series-1); stroke-width: 2; }
+.chart .peak-dot.s2 { stroke: var(--series-2); }
+.chart .peak-dot.s3 { stroke: var(--series-3); }
+.chart .peak-dot.s4 { stroke: var(--series-4); }
+.chart .peak-dot.s5 { stroke: var(--series-5); }
+.chart .peak-dot.s6 { stroke: var(--series-6); }
+.chart .peak-label { fill: var(--text); font: var(--weight-bold) var(--text-sm) var(--font-sans); font-variant-numeric: tabular-nums; }
+.chart .peak-tag { fill: var(--text); font: var(--weight-bold) var(--text-xs) var(--font-sans); font-variant-numeric: tabular-nums; paint-order: stroke; stroke: var(--surface); stroke-width: 3px; stroke-linejoin: round; }
+.chart .peak-box { fill: var(--surface); stroke: var(--line-2); }
+
+/* Readout (pointer and keys) */
+.chart .readout-line { stroke: var(--text-2); stroke-width: 1; }
+.chart .readout-dot { fill: var(--surface); stroke: var(--series-1); stroke-width: 2; }
+.chart .readout-dot.s2 { stroke: var(--series-2); }
+.chart .readout-dot.s3 { stroke: var(--series-3); }
+.chart .readout-dot.s4 { stroke: var(--series-4); }
+.chart .readout-dot.s5 { stroke: var(--series-5); }
+.chart .readout-dot.s6 { stroke: var(--series-6); }
+.chart .readout-box { fill: var(--surface); stroke: var(--line-2); }
+.chart .readout-head { fill: var(--text); font: var(--weight-bold) var(--text-xs) var(--font-sans); font-variant-numeric: tabular-nums; }
+.chart .readout-text { fill: var(--text-2); font: var(--text-xs) var(--font-sans); font-variant-numeric: tabular-nums; }
+.chart-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+
+/* Legend */
+.chart-legend { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); margin-top: var(--space-2); font-size: var(--text-xs); color: var(--text-2); align-items: center; }
+.chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.chart-legend .muted { color: var(--text-3); }
+.sw-line { display: inline-block; width: 22px; height: 0; flex: none; border-top: 3px solid var(--series-1); vertical-align: middle; }
+.sw-line.s1 { border-top-color: var(--series-1); }
+.sw-line.s2 { border-top-color: var(--series-2); }
+.sw-line.s3 { border-top-color: var(--series-3); }
+.sw-line.s4 { border-top: 3px dashed var(--series-4); }
+.sw-line.s5 { border-top: 3px dashed var(--series-5); }
+.sw-line.s6 { border-top: 3px dotted var(--series-6); }
+.sw-line.best { border-top-width: 4px; }
+.sw { width: 14px; height: 10px; flex: none; border-radius: 2px; display: inline-block; background: var(--series-1); }
+.sw.bar-p { background: var(--rain); }
+.sw.bar-pe { background: var(--rain-eff); }
+.sw.loss-ia { background: var(--loss-ia); }
+.sw.loss-f { background: var(--loss-f); }
+.sw.ok { background: var(--ok); }
+.sw.warn { background: var(--warn); }
+.sw.bad { background: repeating-linear-gradient(45deg, var(--bad-bg), var(--bad-bg) 2px, var(--bad) 2px, var(--bad) 3px); }
+.sw.used { background: transparent; border: 2px solid var(--text); }
+.sw-dot { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--text); background: var(--surface); display: inline-block; }
+
+@media (max-width: 860px) {
+  .chart.wide svg { min-width: 560px; }
+}

@@ -124,6 +124,14 @@ The web GUI enters the scope (ADR-0014; plan `docs/plans/2026-11-02-hydrolog-gui
 - The catalog form generator: numbers with units and bounds, choices with their Polish meanings, series pasted or read from a CSV in the browser, chips, JSON, session files (upload, `in/`, `out/`), `one_of` groups as „Sposób podania” panes, `requires`, `excludes`, `section` and `format` when present; errors and notices worded in Polish from their codes, the English message marked „(EN)” as the fallback.
 - „Wszystkie polecenia”: every command the server runs, by group with a search, its form, the generic result view (tiles, parameters, series as a chart and a table, records, plan targets, files, JSON) and its call.
 
+#### Web GUI: charts (`src/hydrolog/gui/web/src/charts/`, `css/charts.css`)
+Inline SVG charts of the GUI in the look of the approved mockup, coloured by Nogat's tokens only, so the theme switch needs no redraw (plan `2026-11-02-hydrolog-gui`, D12).
+- Linear, log and time axes (minutes, labelled in hours) and a Gumbel probability axis (the exceedance probability p in % on the reduced variate, labelled with p and the return period T); rounded ticks in Polish numbers (decimal comma, a non-breaking space between thousands from five digits).
+- Lines, steps, areas, bars (on the second axis a panel above the main one with the bars hanging from its top: the hyetograph above the hydrograph on one time axis), points, horizontal bars on a category axis; peak, reference-line, moment and note marks; a legend.
+- A readout by pointer and by keys (arrows, Shift or Page for ten steps, Home, End, Esc), also announced to screen readers.
+- `toPng(svg, {scale: 2})`: the chart as drawn (computed styles, current theme, no readout) as a PNG at twice its size, through a `blob:` image within the page's Content-Security-Policy.
+- `Chart` (Preact) wraps `drawChart`, which uses the DOM only, so a kit component can wrap it too.
+
 ### Changed
 
 #### Breaking changes
