@@ -1,9 +1,10 @@
 """The GUI's static files keep their contracts (GUI plan D9, D10, D16).
 
 The copies of Nogat's identity and the vendored Preact and htm are byte-identical to the
-SHA-256 their manifests record; the page loads nothing remote and has no inline script,
-style or event handler (CSP ``'self'``, D8); the (i) texts hold no scripts, inline
-styles, event attributes or remote URLs.
+SHA-256 their manifests record; the pages (the app and its guide, ``instrukcja/``) load
+nothing remote, have no inline script, style or event handler (CSP ``'self'``, D8) and
+link only files of ``web/``; the (i) texts hold no scripts, inline styles, event
+attributes or remote URLs.
 """
 
 import hashlib
@@ -20,6 +21,8 @@ NOGAT_COMMIT = "29e7e1c7ba458f0451de9c15ae7ff32988a8d943"
 # XML namespaces are names, not resources the page loads.
 NAMESPACE = re.compile(r"https?://www\.w3\.org/(2000/svg|1999/xlink|1998/Math/MathML)")
 REMOTE = re.compile(r"(?:https?:)?//[A-Za-z0-9.-]+\.[A-Za-z]{2,}[/\"'\s)]")
+PAGES = ["index.html", "instrukcja/index.html"]
+"""The HTML pages of the GUI: the app and its guide."""
 
 
 def sha256(path: Path) -> str:
@@ -90,8 +93,9 @@ def test_the_page_loads_nothing_remote() -> None:
     assert found == []
 
 
-def test_the_page_has_no_inline_script_style_or_handler() -> None:
-    page = (WEB / "index.html").read_text(encoding="utf-8")
+@pytest.mark.parametrize("name", PAGES)
+def test_the_page_has_no_inline_script_style_or_handler(name: str) -> None:
+    page = (WEB / name).read_text(encoding="utf-8")
     scripts = re.findall(r"<script\b([^>]*)>(.*?)</script>", page, flags=re.DOTALL)
 
     assert scripts and all(
@@ -102,10 +106,18 @@ def test_the_page_has_no_inline_script_style_or_handler() -> None:
     assert not re.search(r"\son[a-z]+\s*=", page)
 
 
-def test_every_local_file_the_page_links_exists() -> None:
-    page = (WEB / "index.html").read_text(encoding="utf-8")
+@pytest.mark.parametrize("name", PAGES)
+def test_every_local_file_the_page_links_exists(name: str) -> None:
+    page = (WEB / name).read_text(encoding="utf-8")
     linked = re.findall(r'(?:src|href)="([^"#?]+)"', page)
-    missing = [name for name in linked if not (WEB / name).is_file()]
+    # A link to a directory is served its index.html (StaticFiles, html=True)
+    targets = [(WEB / name).parent.joinpath(link).resolve() for link in linked]
+    missing = [
+        link
+        for link, target in zip(linked, targets, strict=True)
+        if not target.is_relative_to(WEB)
+        or not (target.is_file() or (target / "index.html").is_file())
+    ]
 
     assert linked and missing == []
 

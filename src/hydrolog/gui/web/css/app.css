@@ -1,9 +1,9 @@
 /*
  * Hydrolog GUI: the shell of Nogat's identity (top bar, rail, Dane | Wykresy | Wyniki,
- * resizers, phone sheets), controls, generated forms, results, menus and (i) popovers.
- * Ported from the approved mockup (Nogat design/mockups/hydrolog/mockup.css, ed3473c).
- * Every colour comes from ../nogat/tokens.css; derived shades use color-mix() on tokens.
- * The charts' colours and rules live in charts.css.
+ * resizers, phone sheets), controls, generated forms, results, menus, (i) popovers and the
+ * welcome dialog. Ported from the approved mockup (Nogat design/mockups/hydrolog/mockup.css,
+ * ed3473c). Every colour comes from ../nogat/tokens.css; derived shades use color-mix() on
+ * tokens. The charts' colours and rules live in charts.css.
  */
 
 :root {
@@ -718,6 +718,23 @@ pre.code .fold { color: color-mix(in srgb, var(--code-text) 55%, var(--code-bg))
 .info-pop .note { margin: var(--space-2) 0 0; }
 .sources { margin: var(--space-3) 0 0; font-size: var(--text-xs); color: var(--text-3); }
 
+/* ---------- Dialogs: the welcome (a native <dialog>, opened modal) ---------- */
+dialog.modal {
+  width: min(500px, calc(100vw - 24px)); max-height: calc(100dvh - 24px);
+  padding: 0; overflow-y: auto;
+  border: 1px solid var(--line); border-radius: var(--radius-lg);
+  background: var(--surface); color: var(--text); box-shadow: var(--shadow-lg);
+}
+dialog.modal::backdrop { background: color-mix(in srgb, var(--code-bg) 45%, transparent); }
+.modal-head { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-2) var(--space-3) var(--space-4); border-bottom: 1px solid var(--line); }
+.modal-head img { width: 24px; height: 24px; flex: none; }
+.modal-head h2 { margin: 0; font-size: var(--text-lg); }
+.modal-head .btn { margin-left: auto; }
+.modal-body { padding: var(--space-4) var(--space-4) var(--space-2); }
+.modal-foot { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); padding: var(--space-2) var(--space-4) var(--space-4); }
+.welcome .modal-body p { margin: 0 0 var(--space-3); font-size: var(--text-site); line-height: var(--line-height); }
+.welcome .check { margin: var(--space-4) 0 var(--space-2); }
+
 /* ---------- Narrow desktop: panels at their minimum ---------- */
 @media (max-width: 1240px) and (min-width: 861px) {
   :root { --left-w: 260px; --right-w: 340px; }
@@ -796,6 +813,8 @@ pre.code .fold { color: color-mix(in srgb, var(--code-text) 55%, var(--code-bg))
   .info-pop { left: 8px !important; right: 8px; top: auto !important; bottom: 66px; width: auto; max-height: 70vh; }
   .menu { left: 8px !important; right: 8px; }
   .toast { bottom: calc(58px + var(--space-3)); white-space: normal; max-width: calc(100vw - 24px); }
+  .modal-foot .btn { flex: 1 1 auto; height: var(--control-touch); }
+  .welcome .check { min-height: var(--control-touch); }
 }
 
 /* ---------- Interaction states ---------- */

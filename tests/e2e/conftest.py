@@ -2,11 +2,13 @@
 
 ``gui_server`` serves the GUI (the package's ``web/`` and its API, two workers) on a
 free port of 127.0.0.1, at ``/`` and, as a host mounts it, under ``/m/hydrolog/``.
-``new_tab(width=1440, height=900, theme="light", prefixed=False)`` opens a page in a
-fresh Chromium context (cookies of its own: a new session; Polish locale, Warsaw
-time, ``prefers-color-scheme`` of ``theme`` with the stored theme left on Auto) that
-records console errors, page errors and CSP violations (``securitypolicyviolation``):
-any of them fails the test when the tab closes. ``tab`` is ``new_tab()``.
+``new_tab(width=1440, height=900, theme="light", prefixed=False, welcome=False)`` opens
+a page in a fresh Chromium context (cookies of its own: a new session; Polish locale,
+Warsaw time, ``prefers-color-scheme`` of ``theme`` with the stored theme left on Auto)
+that records console errors, page errors and CSP violations
+(``securitypolicyviolation``): any of them fails the test when the tab closes. The
+welcome dialog of a visit covers the page, so a tab starts as a visitor who ticked „Nie
+pokazuj ponownie” unless ``welcome=True``. ``tab`` is ``new_tab()``.
 
 Pure JavaScript modules are tested in a tab, without Node::
 
@@ -52,6 +54,12 @@ document.addEventListener("securitypolicyviolation", (event) => {
     sample: event.sample,
   });
 });
+"""
+# Run before the page's scripts: the welcome dialog's „Nie pokazuj ponownie” is ticked.
+WELCOME_OFF = """
+try {
+  localStorage.setItem("hydrolog-gui/welcome/1", JSON.stringify({ hidden: true }));
+} catch (error) {}
 """
 
 
@@ -174,7 +182,8 @@ def chromium(playwright: Playwright) -> Iterator[Browser]:
 
 @pytest.fixture
 def new_tab(chromium: Browser, gui_server: Served) -> Iterator[Callable[..., Tab]]:
-    """Yield ``new_tab(width=1440, height=900, theme="light", prefixed=False)``."""
+    """Yield ``new_tab(width=1440, height=900, theme="light", prefixed=False,
+    welcome=False)``."""
     opened: list[tuple[BrowserContext, Tab]] = []
 
     def open_tab(
@@ -183,6 +192,7 @@ def new_tab(chromium: Browser, gui_server: Served) -> Iterator[Callable[..., Tab
         height: int = 900,
         theme: str = "light",
         prefixed: bool = False,
+        welcome: bool = False,
     ) -> Tab:
         context = chromium.new_context(
             viewport={"width": width, "height": height},
@@ -193,6 +203,8 @@ def new_tab(chromium: Browser, gui_server: Served) -> Iterator[Callable[..., Tab
         base = gui_server.prefixed if prefixed else gui_server.base
         tab = Tab(context.new_page(), base)
         tab.watch()
+        if not welcome:
+            tab.page.add_init_script(WELCOME_OFF)
         opened.append((context, tab))
         return tab
 

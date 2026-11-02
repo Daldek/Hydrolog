@@ -1,8 +1,8 @@
-// The shell of the GUI (design/README.md, plan D10): the top bar, the rail of the sections
-// and the sections themselves. Every registered section is loaded and mounted with the
-// shell and stays mounted (its inputs and last result survive a change of section); only
-// the active one is shown. Sections rely on that: Kalkulatory reads the watershed and the
-// tc method Hydrogram zlewni sets when it mounts.
+// The shell of the GUI (design/README.md, plan D10): the top bar, the rail of the sections,
+// the sections themselves and, standalone, the welcome dialog. Every registered section is
+// loaded and mounted with the shell and stays mounted (its inputs and last result survive a
+// change of section); only the active one is shown. Sections rely on that: Kalkulatory reads
+// the watershed and the tc method Hydrogram zlewni sets when it mounts.
 
 import { host } from "./host.js";
 import { html, useEffect, useLayoutEffect, useState } from "./html.js";
@@ -16,6 +16,7 @@ import { Rail } from "./ui/rail.js";
 import { closeSheet, sheetOpen } from "./ui/sheet.js";
 import { ToastHost } from "./ui/toast.js";
 import { TopBar } from "./ui/top-bar.js";
+import { Welcome } from "./ui/welcome.js";
 
 /** The registered sections in the order of the rail. */
 export const ORDERED = [
@@ -78,6 +79,8 @@ export function App() {
   useEffect(() => {
     installInfo();
     const onKey = (event) => {
+      // An open dialog (the welcome) takes Escape for itself
+      if (document.querySelector("dialog[open]")) return;
       if (event.key === "Escape" && sheetOpen()) closeSheet();
     };
     document.addEventListener("keydown", onKey);
@@ -94,5 +97,6 @@ export function App() {
         : html`<p class="section-note muted">${shell.noSections}</p>`}
     </main>
     <${ToastHost} />
+    ${host.embedded ? null : html`<${Welcome} />`}
   `;
 }

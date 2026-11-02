@@ -1,7 +1,7 @@
 /**
  * Texts of the shell: the top bar, the rail, the panels Dane | Wykresy | Wyniki, the phone
- * sheets and the status badge. `sections` names every section by its id (router.js), the
- * titles of GuiModule.sections (plan D4).
+ * sheets, the status badge, „Instrukcja” and the welcome dialog. `sections` names every
+ * section by its id (router.js), the titles of GuiModule.sections (plan D4).
  */
 
 export const shell = {
@@ -24,6 +24,22 @@ export const shell = {
     autoTitle: "Motyw systemowy",
     light: "Jasny",
     dark: "Ciemny",
+  },
+  guide: {
+    label: "Instrukcja",
+    title: "Okno powitalne i przewodnik użytkownika",
+  },
+  welcome: {
+    title: "Witaj w Hydrologu",
+    text: [
+      "Hydrolog szacuje, ile wody spłynie do potoku lub rzeki po silnym deszczu, jak taka fala płynie dalej korytem i jak często zdarzają się duże przepływy.",
+      "Każda sekcja zaczyna od gotowego przykładu: zmień liczby w panelu „Dane”, a wynik zobaczysz w panelu „Wyniki”.",
+      "To szacunki z uproszczonych metod, a nie prognoza ani oficjalna mapa zagrożenia powodziowego.",
+    ],
+    hide: "Nie pokazuj ponownie",
+    guide: "Otwórz instrukcję",
+    app: "Przejdź do aplikacji",
+    close: "Zamknij",
   },
   panels: {
     left: "Dane",
