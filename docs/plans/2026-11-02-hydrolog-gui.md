@@ -358,7 +358,37 @@ Decided here, open to the author's veto: the mockup's open questions 2 to 6 (the
 
 ## Results
 
-None yet.
+Done on 2026-11-02. Every slice landed on `feature/gui` as a fast-forward (rebased where needed; no merge commits, nothing merged into another branch or pushed) in the order of the table, and the gate passed after each wave. From wave B on, each slice's own tests and the whole `tests/e2e` passed in its worktree before it landed; wave A's browser tests were completed on the landed slices.
+
+| Slice | Commits | Notes |
+|---|---|---|
+| Plan | `a33a437` | |
+| S1 server | `f3f54de` | |
+| S0 catalog additions | `ee4ff6d` | ADR-0014 and ADR-0015 |
+| S2 foundation | `cad30fe` | |
+| S2b charts | `93340f5` | |
+| Glue of wave A | `47ba13a`, `91e02f6`, `d93bbb3`, `efc7416`, `888d77d` | the direct imports once S0 and S1 were both in, the web and chart tests against the landed slices, defects of the page found by its browser tests, the browser tests of the shell, Polecenia and the modules, `--no-browser` |
+| S3 Hydrogram zlewni | `82735f0`, `fdfc80e` | |
+| S4 Sieć i trasowanie | `ce9a262`, `4b2caae`, `d2ad46c` | |
+| S5 Statystyka, Kalkulatory | `fd74a16` | |
+| Glue of wave B | `5e824da`, `fe6b3a3` | the labels of the tc tile in hours and of a file over the limit; every section mounts at start, and Kalkulatory relies on it |
+| S6 hand-off, report, print | `e01815f`, `f24d8df` | `f24d8df` makes S5's Kalkulatory test wait for Hydrogram's first result (a race once S6 loaded more modules) |
+| S7 guide, docs, smoke | `f0a651d`, `01d79be` | |
+| Glue of wave C | `ea0c5ac`, `9cc1aab` | the guide, INTEGRATION, USAGE and the README describe the hand-off, the report and the print view as shipped (S7 was written before S6), with a picture of the exports; the received hand-off's comparison fits the panel Wyniki (it was 358 px wide in 343 px at 1440 px and in 283 px at 1240 px) |
+
+`docs/PROGRESS.md` followed each wave (`c1a2616`, `73f4954` and the commit of these Results). Nogat's steps are on Nogat's branches for the author's review: N1 `a01097c` (`feature/handoff-1`), the envelope `nogat-handoff/1` (`schemas/exchange/handoff-1.schema.json`), which S6 copied unchanged; N2 `33920ec` (`feature/hydrolog-gui-registry`, after N1), the registry's optional `gui` interface with `hydrolog gui serve` and the route „Open Hydrolog's GUI in the browser”. Question 2 is answered by N1 done ahead of the rest of the platform plan; question 1 stays open.
+
+Verification. `scripts/gate.sh` on `9cc1aab`: ruff format and check, mypy, pytest 6593 passed and 18 skipped with the browser tests, coverage 95.09 %, the commit check. The omp service `hydrolog-gui` (persistent; `uv run --no-sync hydrolog gui serve --no-browser --host 127.0.0.1 --port 8070` in `Hydrolog-gui`, `TMPDIR` on the data disk) was restarted after every wave; only it listens on 127.0.0.1:8070, and `curl -I` shows the headers of D8. The smoke after wave C ran in clean Chromium contexts against 127.0.0.1:8070, the tunnel's origin:
+
+- the welcome dialog on a first visit, „Otwórz instrukcję” opening the guide at „Na start” in a new tab, „Przejdź do aplikacji”;
+- Hydrogram zlewni 60,21 m³/s at 6:20 h, 1 046 213 m³, and AMC III recomputed by one run without a button: 115,23 m³/s; Sieć's schematic of 8 nodes before the run, a node's form, „Oblicz sieć” 19,1 m³/s at 2:25 h; Statystyka GEV, Q 1% = 307,3 m³/s; Kalkulatory's six tc methods (Kirpich 162,9 min); Polecenia's `uh nash`;
+- the PNG of the chart, the Markdown report, a hand-off written in one browser (AMC III) and read in another with the same result and „Wynik producenta zgodny z wynikiem Hydrologa.”, then written again equal but for `created_at`; „Raport do druku” printing in the light theme with every part open, on 4 A4 pages;
+- a 390 px phone in the dark theme: every section and the guide, nothing scrolling sideways;
+- 22 documents without a console error or warning, a page error, a CSP violation, a failed request or an HTTP status of 400 or more (the capture was checked with a deliberate CSP violation, console error and exception).
+
+Departure from the text above: the print button of D14 is „Raport do druku” (format PDF), beside „MD Raport”, not „Drukuj”.
+
+Left for the author: the review and merge of the routing branches and then of `feature/gui` (DEV-3.3; PROGRESS, Next 8 to 11), with Nogat's N1 and N2; Cloudflare Access on the tunnel's public address (question 1), until which anyone with the address can use the GUI within the limits of D7; Hydrograf's „Wczytaj z Hydrologa” and „Przenieś do Hydrologa” come with the platform's step 12 and its own plan, and the hand-off through Nogat's shell with the kit. Small follow-ups are listed in PROGRESS, Next 12.
 
 ## Not in this plan
 
