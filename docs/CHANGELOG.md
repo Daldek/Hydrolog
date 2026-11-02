@@ -132,6 +132,12 @@ Inline SVG charts of the GUI in the look of the approved mockup, coloured by Nog
 - `toPng(svg, {scale: 2})`: the chart as drawn (computed styles, current theme, no readout) as a PNG at twice its size, through a `blob:` image within the page's Content-Security-Policy.
 - `Chart` (Preact) wraps `drawChart`, which uses the DOM only, so a kit component can wrap it too.
 
+#### Web GUI: „Hydrogram zlewni” (plan [2026-11-02-hydrolog-gui](plans/2026-11-02-hydrolog-gui.md), slice S3)
+- One watershed through `hydrograph generate` in five steps (Zlewnia, Czas koncentracji, Opad, Straty SCS-CN, Model UH); the result follows every change: a valid change runs on channel `hydrogram` 250 ms after the last one, an older run is aborted and only the newest response applies, „Liczenie…” after 150 ms; invalid data run nothing and keep the last result, marked („Dane niepełne” with the field, checked against the catalog and `watershed` of `hydrolog-network-1.schema.json`); a server error stands on its field (a tc method's missing watershed fields each on theirs) or above the steps („Błąd danych”).
+- The watershed is typed, the shipped example `web/examples/kamiennik.json` (a WatershedParameters JSON, as `--watershed-file` reads it) or a WatershedParameters JSON read in the browser; fields changed from their source are marked with „przywróć”. Rainfall: PMAXTP (the depth typed for p and the duration), a design hyetograph or an own series; Nash by Lutz runs `uh nash` first and passes `nash_n` and `nash_k_min` on.
+- The hyetograph above the hydrograph, cumulative P and Pe with Ia, the convolved unit hydrograph, the table of the series, the peak, time to peak, volume and runoff coefficient, the balance of the rainfall, the parameters, applicability notes from the (i) ranges before Hydrolog's notices, and the exports: the hydrograph CSV (`time_min,discharge_m3s,precipitation_mm,effective_precipitation_mm`, read by every `route` command), the envelope, the chart as PNG and the command line (CLI, Python, MCP).
+- The (i) explanations of the tc methods, SCS-CN, the unit hydrographs and the rainfall (`web/src/labels/info/{tc,losses,uh,rain}.js`); the store's `watershed` for Kalkulatory, Statystyka's `reference` drawn on the hydrograph, and the route `#hydrogram/tc_method/<method>`.
+
 ### Changed
 
 #### Breaking changes
