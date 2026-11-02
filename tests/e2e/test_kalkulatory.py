@@ -57,10 +57,18 @@ WORDS = {
 
 
 def open_section(tab: Tab, path: str = "") -> Page:
-    """Open the section (at ``path``) with the Kamiennik watershed in the store."""
+    """Open the section (at ``path``) with the Kamiennik watershed in the store.
+
+    Hydrogram zlewni, mounted with the shell, writes its example's watershed into the
+    store when the example arrives; the store is set here only after that (its first
+    result is shown), so that write cannot follow and change the data of a comparison.
+    """
     tab.open(f"#kalkulatory{path}")
     page = tab.page
     expect(page.locator(f"{SECTION} .cmd-list .cmd-item")).to_have_count(16)
+    expect(
+        page.locator('section[data-section="hydrogram"] [data-kpi="q"] .v')
+    ).to_have_text(re.compile(r"^60,21\s*m³/s$"))
     page.evaluate(
         "async (ws) => (await import('./src/store.js')).setStore('watershed', ws)",
         KAMIENNIK,
