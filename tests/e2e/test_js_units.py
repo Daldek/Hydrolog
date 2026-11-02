@@ -714,6 +714,28 @@ def test_errors_of_the_server_in_polish(page: Any) -> None:
     assert (nothing["option"], nothing["text"]) == (None, "")
 
 
+def test_a_file_over_the_session_limit_is_refused_before_it_is_sent(page: Any) -> None:
+    got = js(
+        page,
+        """const files = await import('./src/controls/file-field.js');
+        const before = await files.refreshSession();
+        const size = before.limits.file_bytes + 1024 * 1024;
+        const big = new File([new Uint8Array(size)], 'Dopływ.csv');
+        let message = null;
+        try {
+          await files.uploadFile(big);
+        } catch (failure) {
+          message = failure.message;
+        }
+        const after = await files.refreshSession();
+        return {limit: before.limits.file_bytes, message,
+          stored: [before.files.length, after.files.length]};""",
+    )
+    assert got["limit"] == 20 * 1024 * 1024
+    assert got["message"] == "za duży (21,0 MB, najwięcej 20,0 MB)"
+    assert got["stored"] == [0, 0]
+
+
 def test_notices_in_polish(page: Any) -> None:
     got = js(
         page,

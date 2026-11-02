@@ -34,6 +34,7 @@ export const results = {
     peak_discharge_m3s_per_mm: "q_p",
     retention_mm: "S",
     runoff_coefficient: "Wsp. odpływu",
+    tc_h: "tc",
     tc_min: "tc",
     time_to_peak_min: "Do szczytu",
     total_effective_mm: "Pe",

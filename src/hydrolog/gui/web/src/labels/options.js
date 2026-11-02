@@ -174,6 +174,7 @@ export const resultFields = {
   runoff_coefficient: "Współczynnik odpływu",
   storage_end_m3: "Retencja na końcu",
   storage_start_m3: "Retencja na początku",
+  tc_h: "Czas koncentracji",
   tc_min: "Czas koncentracji",
   time_base_min: "Czas podstawy",
   time_to_peak_min: "Czas do szczytu",
@@ -242,6 +243,7 @@ export const formTexts = {
   uploading: "Wysyłanie {name}…",
   uploaded: "Wczytano {name}",
   uploadFailed: "Nie udało się wczytać pliku: {message}",
+  tooLarge: "za duży ({size}, najwięcej {limit})",
   outPrefix: "out/",
   effects: {
     readOnly: "tylko odczyt",
