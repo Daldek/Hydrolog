@@ -141,7 +141,7 @@ export function SeriesField({ field, id, value, error, required, disabled, onInp
       <textarea
         id=${id}
         rows="3"
-        spellcheck="false"
+        spellcheck=${false}
         disabled=${disabled}
         value=${value ?? ""}
         aria-invalid=${error ? "true" : "false"}
@@ -222,7 +222,7 @@ export function ChipsField({ field, id, value, error, required, disabled, onInpu
         id=${id}
         type="text"
         autocomplete="off"
-        spellcheck="false"
+        spellcheck=${false}
         disabled=${disabled}
         value=${draft}
         placeholder=${formTexts.chipsAdd}

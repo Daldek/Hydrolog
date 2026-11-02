@@ -1,8 +1,10 @@
-// Numbers and texts for people, in Polish: a decimal comma and a non-breaking space between
-// thousands from five digits (Intl.NumberFormat "pl-PL"). The GUI formats what Hydrolog
-// computed; it never computes a hydrological value itself.
+// Numbers and texts for people, in Polish: a decimal comma, a non-breaking space between
+// thousands from five digits (Intl.NumberFormat "pl-PL") and the minus sign U+2212, as the
+// charts write them. The GUI formats what Hydrolog computed; it never computes a
+// hydrological value itself.
 
 const LOCALE = "pl-PL";
+const MINUS = "\u2212";
 const formats = new Map();
 
 /**
@@ -19,7 +21,8 @@ function formatter(digits, grouping) {
     found = new Intl.NumberFormat(LOCALE, {
       minimumFractionDigits: digits,
       maximumFractionDigits: digits,
-      useGrouping: grouping,
+      // "min2": no separator in 1234, one in 12 345 (`true` means "always" in Intl v3).
+      useGrouping: grouping ? "min2" : false,
     });
     formats.set(key, found);
   }
@@ -27,7 +30,8 @@ function formatter(digits, grouping) {
 }
 
 /**
- * Format a number with a fixed count of decimals: num(60.2148, 2) gives "60,21".
+ * Format a number with a fixed count of decimals: num(60.2148, 2) gives "60,21",
+ * num(-3.5, 1) "−3,5"; a negative number rounded to zero has no sign.
  *
  * @param {number|null|undefined} value the number
  * @param {number} [digits=2] decimals
@@ -35,7 +39,8 @@ function formatter(digits, grouping) {
  */
 export function num(value, digits = 2) {
   if (typeof value !== "number" || !Number.isFinite(value)) return "–";
-  return formatter(Math.max(0, Math.min(10, digits)), true).format(value);
+  const text = formatter(Math.max(0, Math.min(10, digits)), true).format(value);
+  return text.replace("-", MINUS).replace(/^\u2212(0(,0*)?)$/, "$1");
 }
 
 /**

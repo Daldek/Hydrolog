@@ -33,6 +33,7 @@ from typing import Any, Final
 
 import hydrolog
 from hydrolog.catalog.envelope import RESULT_SCHEMA, TOOL
+from hydrolog.catalog.notices import notice
 from hydrolog.exceptions import HydrologError, error_document
 
 WORKER_MODULE: Final = "hydrolog.gui._worker"
@@ -45,8 +46,6 @@ THREAD_VARIABLES: Final[tuple[str, ...]] = (
 """Set to 1 for the workers: two processes, one thread of numerical code each."""
 START_TIMEOUT_S: Final = 120.0
 """How long a new worker may take to import its libraries [s]."""
-SUPERSEDED: Final = "superseded"
-TIMEOUT: Final = "timeout"
 
 _LOG = logging.getLogger(__name__)
 _STOP_TIMEOUT_S = 10.0
@@ -84,21 +83,12 @@ class Outcome:
 
 def superseded_notice() -> dict[str, Any]:
     """Return the notice of a run replaced by a newer one of its channel."""
-    return {
-        "level": "info",
-        "code": SUPERSEDED,
-        "message": "A newer run of the same channel replaced this one.",
-    }
+    return notice("superseded").to_dict()
 
 
 def timeout_notice(timeout_s: float) -> dict[str, Any]:
     """Return the notice of a run stopped after ``timeout_s`` seconds."""
-    return {
-        "level": "warning",
-        "code": TIMEOUT,
-        "message": f"The run took longer than {timeout_s:g} s and was stopped.",
-        "details": {"timeout_s": timeout_s},
-    }
+    return notice("timeout", timeout_s=timeout_s).to_dict()
 
 
 def cancelled(job: Job, notice: Mapping[str, Any]) -> Outcome:

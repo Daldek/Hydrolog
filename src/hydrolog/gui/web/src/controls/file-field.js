@@ -61,15 +61,19 @@ export function inputFiles(doc) {
 }
 
 /**
- * A file name the server accepts (D7): diacritics folded, other characters replaced by
- * "_", a letter or digit first, 128 characters at most.
+ * A file name the server accepts (D7): diacritics folded with the case kept
+ * ("Dopływ.csv" gives "Doplyw.csv", as the command line then names it), other characters
+ * replaced by "_", a letter or digit first, 128 characters at most.
  *
  * @param {string} name the name of the person's file
  * @returns {string} the name to upload under
  */
 export function sessionFileName(name) {
   const base = String(name).split(/[\\/]/).pop();
-  let safe = fold(base).replace(/[^A-Za-z0-9._ -]/g, "_");
+  const plain = base.replace(/[\u0080-\uffff]/g, (char) =>
+    char === char.toLowerCase() ? fold(char) : fold(char).toUpperCase(),
+  );
+  let safe = plain.replace(/[^A-Za-z0-9._ -]/g, "_");
   if (!/^[A-Za-z0-9]/.test(safe)) safe = `f${safe}`;
   if (safe.length > 128) {
     const dot = safe.lastIndexOf(".");
@@ -184,7 +188,7 @@ function OutputFile({ field, id, value, error, required, disabled, onInput }) {
           id=${id}
           type="text"
           autocomplete="off"
-          spellcheck="false"
+          spellcheck=${false}
           disabled=${disabled}
           value=${value ?? ""}
           placeholder=${defaultOutputName(field)}

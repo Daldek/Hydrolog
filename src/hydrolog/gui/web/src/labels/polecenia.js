@@ -28,6 +28,6 @@ export const polecenia = {
   running: "Hydrolog liczy…",
   cancelled: "Obliczenie anulowano.",
   rightSub: "{command}",
-  clearTitle: "Wyczyść formularz tego polecenia",
+  clearTitle: "Wyczyść dane wszystkich poleceń: wróć do przykładów z katalogu",
   exampleTitle: "Wypełnij formularz pierwszym przykładem z katalogu",
 };

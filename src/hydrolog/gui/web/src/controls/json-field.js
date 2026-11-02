@@ -42,7 +42,7 @@ export function JsonField({ field, id, value, error, required, disabled, onInput
         id=${id}
         class="json"
         rows="6"
-        spellcheck="false"
+        spellcheck=${false}
         disabled=${disabled}
         value=${value ?? ""}
         placeholder=${field.kind === "objects" ? "[ { … } ]" : "{ … }"}

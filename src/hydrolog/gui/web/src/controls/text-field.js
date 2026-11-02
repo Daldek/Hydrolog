@@ -24,7 +24,7 @@ export function TextField({ field, id, value, error, required, disabled, onInput
         id=${id}
         type="text"
         autocomplete="off"
-        spellcheck="false"
+        spellcheck=${false}
         disabled=${disabled}
         value=${value ?? ""}
         placeholder=${FORMAT_PLACEHOLDERS[field.format] || field.defaultText || example || ""}

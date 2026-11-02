@@ -24,8 +24,34 @@ export const ONE_OF_KEY = "#one_of";
 /** File names of the session's files (plan D7). */
 export const FILE_NAME = /^[A-Za-z0-9][A-Za-z0-9._ -]{0,127}$/;
 
-const DATE = /^\d{4}-\d{2}-\d{2}$/;
-const DATE_TIME = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?$/;
+const DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
+const DATE_TIME = /^(\d{4}-\d{2}-\d{2})[T ](\d{2}):(\d{2})(:(\d{2})(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?$/;
+
+/**
+ * Whether a text is a date of the calendar ("2024-02-29", not "2023-02-29" or "2024-13-01").
+ *
+ * @param {string} text the text
+ * @returns {boolean} true for a valid RRRR-MM-DD date
+ */
+function isDate(text) {
+  const found = DATE.exec(text);
+  if (!found) return false;
+  const [year, month, day] = found.slice(1).map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+}
+
+/**
+ * Whether a text is a date and a time ("2024-05-01T12:30", seconds and a zone optional).
+ *
+ * @param {string} text the text
+ * @returns {boolean} true for a valid date and time
+ */
+function isDateTime(text) {
+  const found = DATE_TIME.exec(text);
+  if (!found || !isDate(found[1])) return false;
+  return Number(found[2]) < 24 && Number(found[3]) < 60 && (found[5] === undefined || Number(found[5]) < 60);
+}
 
 /**
  * The command entry of a catalog document: a hydrolog-commands/1 document holding one
@@ -197,10 +223,10 @@ export function fieldModel(commandDoc, settings = {}) {
   }
   const byName = new Map(fields.map((field) => [field.name, field]));
   for (const field of fields) {
-    if (!isGiven(field, values[field.name])) continue;
+    if (!isSet(field, values[field.name])) continue;
     for (const name of field.excludes) {
       const other = byName.get(name);
-      if (other && !isGiven(other, values[name])) other.disabledBy = field.name;
+      if (other && !isSet(other, values[name])) other.disabledBy = field.name;
     }
   }
 
@@ -270,6 +296,19 @@ export function isGiven(field, value) {
 }
 
 /**
+ * Whether a value is set for `requires` and `excludes`: given, and for a boolean, other than
+ * its default (an unticked flag asks for nothing and excludes nothing, as it is not sent).
+ *
+ * @param {object} field a field of fieldModel
+ * @param {unknown} value its value
+ * @returns {boolean} true when the value is set
+ */
+function isSet(field, value) {
+  if (!isGiven(field, value)) return false;
+  return field.kind !== "boolean" || value !== (field.default === null ? false : Boolean(field.default));
+}
+
+/**
  * Whether a field takes part in the form now: not in a group other than the chosen one,
  * and not disabled by an `excludes` of a given field.
  *
@@ -297,7 +336,7 @@ export function isRequired(model, field, values) {
   if (field.member && model.oneOf && field.groups.includes(model.oneOf.chosen)) return true;
   return model.fields.some(
     (other) =>
-      other.requires.includes(field.name) && isActive(model, other) && isGiven(other, values[other.name]),
+      other.requires.includes(field.name) && isActive(model, other) && isSet(other, values[other.name]),
   );
 }
 
@@ -435,10 +474,10 @@ function checkField(field, value, required) {
     case "file-out":
       return FILE_NAME.test(String(value)) ? null : withReason(errorTexts.reasons.file_name, "invalid_path");
     case "text":
-      if (field.format === "date" && !DATE.test(String(value).trim())) {
+      if (field.format === "date" && !isDate(String(value).trim())) {
         return withReason(errorTexts.reasons.date, "format");
       }
-      if (field.format === "date-time" && !DATE_TIME.test(String(value).trim())) {
+      if (field.format === "date-time" && !isDateTime(String(value).trim())) {
         return withReason(errorTexts.reasons["date-time"], "format");
       }
       return null;
@@ -466,10 +505,10 @@ export function validate(model, values) {
       found[field.name] = message;
       continue;
     }
-    if (!isGiven(field, value)) continue;
+    if (!isSet(field, value)) continue;
     const given = (name) => {
       const other = model.fields.find((item) => item.name === name);
-      return other ? isActive(model, other) && isGiven(other, values[name]) : false;
+      return other ? isActive(model, other) && isSet(other, values[name]) : false;
     };
     const missing = field.requires.filter((name) => !given(name));
     if (missing.length) {
@@ -583,6 +622,7 @@ export function valuesFromCall(model, call, sessionFiles = []) {
   const words = shellWords(call);
   const fields = new Map(model.fields.map((field) => [field.name, field]));
   const values = {};
+  const named = new Set();
   for (let index = 0; index < words.length; index += 1) {
     const word = words[index];
     if (!word.startsWith("--")) continue;
@@ -599,6 +639,7 @@ export function valuesFromCall(model, call, sessionFiles = []) {
       name = name.slice(3);
       negated = true;
     }
+    named.add(name);
     const field = fields.get(name);
     if (!field) continue;
     if (field.kind === "boolean") {
@@ -614,9 +655,8 @@ export function valuesFromCall(model, call, sessionFiles = []) {
     values[name] = formValue(field, raw, sessionFiles);
   }
   if (model.oneOf) {
-    const used = model.oneOf.groups.find((group) =>
-      group.members.every((member) => isGiven(fields.get(member) || { kind: "text" }, values[member])),
-    );
+    // The group the call names, even when its input file is left empty to be uploaded.
+    const used = model.oneOf.groups.find((group) => group.members.every((member) => named.has(member)));
     if (used) values[ONE_OF_KEY] = used.index;
   }
   return values;

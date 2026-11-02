@@ -39,7 +39,7 @@ export function NumberField({ field, id, value, error, required, disabled, onInp
           type="text"
           inputmode=${field.kind === "integer" ? "numeric" : "decimal"}
           autocomplete="off"
-          spellcheck="false"
+          spellcheck=${false}
           value=${value ?? ""}
           placeholder=${numberPlaceholder(field)}
           disabled=${disabled}
