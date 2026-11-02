@@ -31,6 +31,9 @@ LAYOUT_KEY = "hydrolog-gui/layout/1"
 HEIGHT = 640
 # The page without its app: theme-init.js alone decides what the first paint shows.
 NO_APP = "**/src/main.js"
+# The registered sections in the order of the rail (app.js), and a section's title.
+REGISTERED = "async () => (await import('./src/app.js')).ORDERED.map((item) => item.id)"
+TITLE = "async (id) => (await import('./src/labels/shell.js')).shell.sections[id].title"
 
 
 def body_bg(page: Any) -> str:
@@ -114,17 +117,24 @@ def test_page_brand_rail_route_and_relative_api(
     assert answer.status == 200
     assert answer.headers["content-type"].startswith("image/svg+xml")
 
-    # Only the registered section, under its Polish names, active by default
+    # The registered sections in the order of the rail, the first active by default;
+    # Polecenia under its Polish names
+    registered = page.evaluate(REGISTERED)
     items = page.locator("nav.rail .rail-item")
-    expect(items).to_have_count(1)
-    item = items.first
-    expect(item).to_have_attribute("data-section", "polecenia")
+    expect(items).to_have_count(len(registered))
+    shown = items.evaluate_all("items => items.map((item) => item.dataset.section)")
+    assert shown == registered
+    expect(items.first).to_have_attribute("aria-current", "page")
+    first = page.locator(f'section.section[data-section="{registered[0]}"]')
+    expect(first).to_be_visible()
+    assert page.evaluate("() => location.hash") == ""
+    item = page.locator('nav.rail .rail-item[data-section="polecenia"]')
     expect(item).to_have_attribute("title", SECTION_TITLE)
     expect(item).to_have_attribute("href", "#polecenia")
-    expect(item).to_have_attribute("aria-current", "page")
     assert (item.text_content() or "").replace("\u00ad", "").strip() == "Polecenia"
+    item.click()
+    expect(item).to_have_attribute("aria-current", "page")
     expect(page.locator('section.section[data-section="polecenia"]')).to_be_visible()
-    assert page.evaluate("() => location.hash") == ""
 
     # Breadcrumbs and title follow the section and its command; the catalog came
     # from the API next to the page
@@ -142,8 +152,9 @@ def test_page_brand_rail_route_and_relative_api(
     assert all(url.startswith(base + "api/") for url in requests), requests
 
     brand.click()
-    expect(page).to_have_url(base + "#polecenia")
-    expect(item).to_have_attribute("aria-current", "page")
+    expect(page).to_have_url(base + f"#{registered[0]}")
+    expect(items.first).to_have_attribute("aria-current", "page")
+    expect(first).to_be_visible()
 
 
 def test_theme_switch_stores_and_survives_reload(tab: Tab) -> None:
@@ -403,15 +414,20 @@ def test_hash_routes_back_forward_and_unknown_section(tab: Tab) -> None:
     expect(crumb).to_have_text(re.compile(r"^scs effective · "))
 
     # An unknown section shows the first registered one, without a route of its own
+    registered = page.evaluate(REGISTERED)
+    title = page.evaluate(TITLE, registered[0])
+    first = page.locator(f'section.section[data-section="{registered[0]}"]')
     page.evaluate("() => { location.hash = '#nieznana/sekcja'; }")
-    expect(page.locator(".crumb-section")).to_have_text(SECTION_TITLE)
-    expect(page.locator('section.section[data-section="polecenia"]')).to_be_visible()
-    expect(page.locator(".rail-item")).to_have_attribute("aria-current", "page")
-    expect(crumb).to_have_text(re.compile(r"^scs effective · "))
+    expect(page.locator(".crumb-section")).to_have_text(title)
+    expect(first).to_be_visible()
+    expect(
+        page.locator(f'.rail-item[data-section="{registered[0]}"]')
+    ).to_have_attribute("aria-current", "page")
     page.go_back()
     expect(page).to_have_url(re.compile(r"#polecenia/scs/effective$"))
     expect(page.locator('section.section[data-section="polecenia"]')).to_be_visible()
+    expect(crumb).to_have_text(re.compile(r"^scs effective · "))
 
     tab.open("#nieznana")
-    expect(page.locator(".crumb-section")).to_have_text(SECTION_TITLE)
-    expect(crumb).to_have_text(re.compile(r"^scs effective · "))
+    expect(page.locator(".crumb-section")).to_have_text(title)
+    expect(first).to_be_visible()

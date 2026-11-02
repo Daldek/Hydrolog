@@ -74,7 +74,7 @@ def offered(tab: Tab) -> list[str]:
 
 def open_section(tab: Tab, command: str | None = None) -> Page:
     """Open the section (at ``command``'s hash when given) and wait for the form."""
-    tab.open(f"#polecenia/{command.replace(' ', '/')}" if command else "")
+    tab.open(f"#polecenia/{command.replace(' ', '/')}" if command else "#polecenia")
     expect(tab.page.locator(HEAD)).to_have_text(command or FIRST)
     return tab.page
 
