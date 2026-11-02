@@ -31,6 +31,8 @@ LAYOUT_KEY = "hydrolog-gui/layout/1"
 HEIGHT = 640
 # The page without its app: theme-init.js alone decides what the first paint shows.
 NO_APP = "**/src/main.js"
+POL = 'section[data-section="polecenia"]'
+"""Polecenia's section: every section's layout has panels of the same classes."""
 # The registered sections in the order of the rail (app.js), and a section's title.
 REGISTERED = "async () => (await import('./src/app.js')).ORDERED.map((item) => item.id)"
 TITLE = "async (id) => (await import('./src/labels/shell.js')).shell.sections[id].title"
@@ -145,7 +147,7 @@ def test_page_brand_rail_route_and_relative_api(
     expect(page).to_have_title(
         re.compile(rf"^Hydrolog: {SECTION_TITLE} — uh nash · \d+ polecenia")
     )
-    expect(page.locator(".view-panel.left .panel-head .sub")).to_have_text(
+    expect(page.locator(f"{POL} .view-panel.left .panel-head .sub")).to_have_text(
         re.compile(r"^katalog: \d+ polece")
     )
     assert any(url.startswith(base + "api/commands") for url in requests), requests
@@ -242,8 +244,8 @@ def test_desktop_rail_panels_and_page_fits(
     assert rail["y"] + rail["height"] == HEIGHT
 
     # Dane and Wyniki are columns at their default widths (narrower below 1240 px)
-    left = page.locator(".view-panel.left")
-    right = page.locator(".view-panel.right")
+    left = page.locator(f"{POL} .view-panel.left")
+    right = page.locator(f"{POL} .view-panel.right")
     expect(left.get_by_role("heading", name="Dane")).to_be_visible()
     expect(right.get_by_role("heading", name="Wyniki")).to_be_visible()
     expected = {1440: (300, 400), 1180: (260, 340)}[width]
@@ -256,7 +258,7 @@ def test_desktop_rail_panels_and_page_fits(
     page.get_by_role("button", name="Uruchom").click()
     expect(page.locator(".topbar .status")).to_have_attribute("data-state", "ok")
     expect(right.locator(".kpi").first).to_be_visible()
-    expect(page.locator(".chart svg").first).to_be_visible()
+    expect(page.locator(f"{POL} .chart svg").first).to_be_visible()
     # The run's chart and its live region keep the shell in place
     assert_page_fits(page)
     assert box(page.locator("header.topbar"))["y"] == 0
@@ -286,8 +288,8 @@ def test_phone_bottom_bar_and_sheets(new_tab: Callable[..., Tab], theme: str) ->
     assert box(page.locator("header.topbar"))["width"] == 390
     expect(page.locator("header.topbar .crumbs")).to_be_hidden()
 
-    left = page.locator(".view-panel.left")
-    right = page.locator(".view-panel.right")
+    left = page.locator(f"{POL} .view-panel.left")
+    right = page.locator(f"{POL} .view-panel.right")
     expect(left).to_be_hidden()
     expect(right).to_be_hidden()
     assert page.locator(".resizer").count() == 0
@@ -333,7 +335,7 @@ def test_nogat_flag_hides_bar_and_rail_before_the_app(
     page.unroute(NO_APP)
 
     page.reload()
-    expect(page.locator(".view-panel.left .panel-head .sub")).to_have_text(
+    expect(page.locator(f"{POL} .view-panel.left .panel-head .sub")).to_have_text(
         re.compile(r"^katalog: \d+ polece")
     )
     assert page.locator("header.topbar, nav.rail").count() == 0
@@ -353,8 +355,8 @@ def test_panels_resize_by_keys_within_bounds_and_keep_widths(
     tab = new_tab(width=1920, height=1000)
     tab.open("#polecenia/uh/nash")
     page = tab.page
-    left = page.locator(".view-panel.left")
-    right = page.locator(".view-panel.right")
+    left = page.locator(f"{POL} .view-panel.left")
+    right = page.locator(f"{POL} .view-panel.right")
     left_sep = page.get_by_role("separator", name="Szerokość panelu danych")
     right_sep = page.get_by_role("separator", name="Szerokość panelu wyników")
     expect(left_sep).to_have_attribute("aria-valuenow", "300")
@@ -391,7 +393,7 @@ def test_panels_resize_by_keys_within_bounds_and_keep_widths(
     # A narrower window keeps the centre at least 480 px wide
     page.set_viewport_size({"width": 1440, "height": 900})
     expect(left_sep).to_have_attribute("aria-valuenow", "492")
-    centre = box(page.locator(".view-center"))
+    centre = box(page.locator(f"{POL} .view-center"))
     assert centre["width"] >= 480
     assert box(left)["width"] == 492
     assert_page_fits(page)

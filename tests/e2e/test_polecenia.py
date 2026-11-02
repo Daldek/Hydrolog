@@ -39,9 +39,11 @@ FIRST = "uh nash"
 EXCLUDED = frozenset({"gui serve", "config show", "commands guide"})
 """Commands the server does not offer (plan D5)."""
 FLOOD_INFLOW = Path(__file__).resolve().parents[1] / "fixtures" / "flood_inflow.csv"
-HEAD = ".cmd-form .cmd-head code"
+POL = 'section[data-section="polecenia"]'
+"""The section: other sections use the same classes (lists, forms, panels)."""
+HEAD = f"{POL} .cmd-form .cmd-head code"
 BADGE = ".topbar .badge.status"
-RIGHT = ".view-panel.right"
+RIGHT = f"{POL} .view-panel.right"
 HYETOGRAPH = "2,5; 5; 12,5; 15; 8; 4; 3"
 """The third example of ``scs effective``, typed with decimal commas."""
 # The list as rendered: each group's heading and the commands under it.
@@ -81,7 +83,7 @@ def open_section(tab: Tab, command: str | None = None) -> Page:
 
 def option(page: Page, name: str) -> Locator:
     """Return the field of the option ``name`` in the form."""
-    return page.locator(f'.cmd-form [data-option="{name}"]')
+    return page.locator(f'{POL} .cmd-form [data-option="{name}"]')
 
 
 def number(page: Page, name: str) -> Locator:
@@ -91,13 +93,13 @@ def number(page: Page, name: str) -> Locator:
 
 def panes(page: Page) -> Locator:
     """Return the choices of the form's ``one_of`` panes, in catalog order."""
-    return page.locator('.cmd-form .one-of [role="radio"]')
+    return page.locator(f'{POL} .cmd-form .one-of [role="radio"]')
 
 
 def pane_options(page: Page) -> list[str]:
     """Return the options shown in the chosen ``one_of`` pane."""
     shown: list[str] = page.locator(
-        ".cmd-form .one-of .pane [data-option]"
+        f"{POL} .cmd-form .one-of .pane [data-option]"
     ).evaluate_all("fields => fields.map((field) => field.dataset.option)")
     return shown
 
@@ -160,18 +162,20 @@ def test_the_list_offers_the_servers_commands_under_polish_titles(tab: Tab) -> N
     assert names == [name for name in catalog if name not in EXCLUDED]
     assert len(names) == 43  # 46 commands less the three the GUI leaves out
 
-    items = page.locator(".cmd-list .cmd-item")
+    items = page.locator(f"{POL} .cmd-list .cmd-item")
     expect(items).to_have_count(len(names))
     # Each command under its group, the groups in catalog order, each with a title
     groups: dict[str, list[str]] = {}
     for name in names:
         groups.setdefault(name.split(" ")[0], []).append(name)
-    shown = page.locator(".cmd-list").evaluate(GROUPED)
+    shown = page.locator(f"{POL} .cmd-list").evaluate(GROUPED)
     assert [(heading.split(" · ")[0], under) for heading, under in shown] == list(
         groups.items()
     )
     assert all(heading.partition(" · ")[2] for heading, _ in shown), shown
-    expect(page.locator(".cmd-tools select option")).to_have_count(len(groups) + 1)
+    expect(page.locator(f"{POL} .cmd-tools select option")).to_have_count(
+        len(groups) + 1
+    )
     # The summaries are the catalog's Polish ones, once each command's entry is in
     summaries = [entry(name)["i18n"]["pl"]["summary"] for name in names]
     expect(items.locator("button > span")).to_have_text(summaries)
@@ -182,7 +186,7 @@ def test_the_search_folds_case_and_diacritics_and_clearing_restores_the_list(
 ) -> None:
     page = open_section(tab)
     total = len(offered(tab))
-    items = page.locator(".cmd-list .cmd-item")
+    items = page.locator(f"{POL} .cmd-list .cmd-item")
     expect(items).to_have_count(total)
     search = page.get_by_role("searchbox")
 
@@ -196,21 +200,21 @@ def test_the_search_folds_case_and_diacritics_and_clearing_restores_the_list(
         search.fill(query)
         expect(items).to_have_count(1)
         expect(items).to_have_attribute("data-command", hit)
-        expect(page.locator(".cmd-list .cmd-group")).to_have_text(
+        expect(page.locator(f"{POL} .cmd-list .cmd-group")).to_have_text(
             re.compile(f"^{hit.split(' ')[0]} · ")
         )
     search.fill("zzz-nic-takiego")
     expect(items).to_have_count(0)
-    expect(page.locator(".cmd-list .cmd-empty")).to_be_visible()
+    expect(page.locator(f"{POL} .cmd-list .cmd-empty")).to_be_visible()
     search.fill("")
     expect(items).to_have_count(total)
 
     # A group narrows the list to its commands, and back
     routes = [name for name in offered(tab) if name.startswith("route ")]
-    groups = page.locator(".cmd-tools select")
+    groups = page.locator(f"{POL} .cmd-tools select")
     groups.select_option("route")
     expect(items).to_have_count(len(routes))
-    expect(page.locator(".cmd-list .cmd-group")).to_have_count(1)
+    expect(page.locator(f"{POL} .cmd-list .cmd-group")).to_have_count(1)
     groups.select_option("")
     expect(items).to_have_count(total)
 
@@ -219,7 +223,7 @@ def test_a_command_chosen_in_the_list_is_in_the_hash_and_a_hash_opens_it(
     tab: Tab,
 ) -> None:
     page = open_section(tab)
-    lag = page.locator('.cmd-item[data-command="route lag"] button')
+    lag = page.locator(f'{POL} .cmd-item[data-command="route lag"] button')
     lag.click()
     expect(page.locator(HEAD)).to_have_text("route lag")
     assert page.evaluate("location.hash") == "#polecenia/route/lag"
@@ -229,7 +233,7 @@ def test_a_command_chosen_in_the_list_is_in_the_hash_and_a_hash_opens_it(
     page.evaluate("location.hash = '#polecenia/scs/effective'")
     expect(page.locator(HEAD)).to_have_text("scs effective")
     expect(
-        page.locator('.cmd-item[data-command="scs effective"] button')
+        page.locator(f'{POL} .cmd-item[data-command="scs effective"] button')
     ).to_have_attribute("aria-current", "true")
     expect(lag).not_to_have_attribute("aria-current", "true")
 
@@ -237,7 +241,7 @@ def test_a_command_chosen_in_the_list_is_in_the_hash_and_a_hash_opens_it(
     page.evaluate("location.hash = '#polecenia/gui/serve'")
     page.reload()
     expect(page.locator(HEAD)).to_have_text("scs effective")
-    expect(page.locator('.cmd-item[data-command="gui serve"]')).to_have_count(0)
+    expect(page.locator(f'{POL} .cmd-item[data-command="gui serve"]')).to_have_count(0)
 
 
 # --- uh nash -------------------------------------------------------------------
@@ -278,7 +282,7 @@ def test_uh_nash_checks_its_bounds_and_runs_through_the_server(tab: Tab) -> None
     expect(right.locator(".summary .kpi .v")).to_have_text(
         ["3", "30 min", "90 min", "6,797 m³/s na 1 mm"]
     )
-    expect(page.locator(".view-center .dtable tbody tr")).to_have_count(
+    expect(page.locator(f"{POL} .view-center .dtable tbody tr")).to_have_count(
         len(result["times_min"])
     )
     expect(right.locator(".chart svg")).to_be_visible()
@@ -298,7 +302,7 @@ def test_a_library_error_without_an_option_stands_above_the_form(tab: Tab) -> No
     panes(page).nth(1).click()  # Lutz
     # Every member of the chosen group is required, checked when a run is asked for
     start.click()
-    invalid = page.locator('.cmd-form [aria-invalid="true"]')
+    invalid = page.locator(f'{POL} .cmd-form [aria-invalid="true"]')
     expect(invalid).to_have_count(len(lutz_group))
     assert set(invalid.evaluate_all(OPTION_OF)) == set(lutz_group)
     expect(invalid.first).to_be_focused()
@@ -319,11 +323,11 @@ def test_a_library_error_without_an_option_stands_above_the_form(tab: Tab) -> No
     # Only the chosen group is sent: neither n nor k_min of the example
     assert set(sent(response)) == {"area_km2", "timestep_min", *lutz}
 
-    box = page.locator(".cmd-form .form-errors")
+    box = page.locator(f"{POL} .cmd-form .form-errors")
     expect(box.locator("strong")).to_have_text(error["title"])  # the server's, Polish
     expect(box.locator("li")).to_have_text(f"{error['message']} (EN)")
     above = box.bounding_box()
-    field = page.locator(".cmd-form [data-option]").first.bounding_box()
+    field = page.locator(f"{POL} .cmd-form [data-option]").first.bounding_box()
     assert above is not None and field is not None
     assert above["y"] + above["height"] <= field["y"]
     badge = page.locator(BADGE)
@@ -353,7 +357,7 @@ def test_scs_effective_under_a_prefix_sends_only_the_chosen_pane(
     expect(panes(page)).to_have_count(len(groups))
     for index, group in enumerate(groups):
         panes(page).nth(index).click()
-        expect(page.locator(".cmd-form .one-of .pane")).to_have_attribute(
+        expect(page.locator(f"{POL} .cmd-form .one-of .pane")).to_have_attribute(
             "data-pane", str(index)
         )
         assert set(group) <= set(pane_options(page))
@@ -548,7 +552,7 @@ def test_a_phone_in_the_dark_runs_a_command_through_the_sheets(
     )
     assert surface == "#161b22"  # Nogat's dark surface (tokens.css)
     assert page.evaluate(SIDEWAYS) == []
-    left = page.locator(".view-panel.left")
+    left = page.locator(f"{POL} .view-panel.left")
     right = page.locator(RIGHT)
 
     page.get_by_role("button", name="Dane", exact=True).click()
