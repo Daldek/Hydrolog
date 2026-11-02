@@ -1,6 +1,8 @@
 // The shell of the GUI (design/README.md, plan D10): the top bar, the rail of the sections
-// and the sections themselves. Every registered section stays mounted once loaded (its
-// inputs and last result survive a change of section); only the active one is shown.
+// and the sections themselves. Every registered section is loaded and mounted with the
+// shell and stays mounted (its inputs and last result survive a change of section); only
+// the active one is shown. Sections rely on that: Kalkulatory reads the watershed and the
+// tc method Hydrogram zlewni sets when it mounts.
 
 import { host } from "./host.js";
 import { html, useEffect, useLayoutEffect, useState } from "./html.js";
@@ -22,7 +24,7 @@ export const ORDERED = [
 ];
 
 /**
- * One section: loaded on first need, then kept; hidden unless active.
+ * One section: loaded and mounted with the shell, then kept; hidden unless active.
  *
  * @param {{entry: {id: string, load: () => Promise<{default: Function}>}, active: boolean,
  *   path: string[]}} props the registered section, whether it is shown, and the route's
