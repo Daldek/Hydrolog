@@ -11,12 +11,14 @@ draws them in both themes, and a theme switch recolours them without a
 redraw.
 """
 
+import re
 import struct
 from collections.abc import Callable
 from itertools import pairwise
 from typing import Any
 
 import pytest
+from playwright.sync_api import expect
 
 from tests.e2e.conftest import Tab
 
@@ -472,13 +474,19 @@ const spec = {size: "small", x: {label: "czas [h]", scale: "time", max: 300},
 
 
 def render_all(page: Any) -> None:
-    """Render the hydrograph, the unit hydrograph and the probability plot."""
+    """Render the hydrograph, the unit hydrograph and the probability plot.
+
+    ``Chart`` draws in an effect, after the render: wait until all three are drawn.
+    """
     page.evaluate(CHART_RENDER)
     for host, data in (("host", HYDROGRAPH), ("host2", UH), ("host3", PROBABILITY)):
         page.evaluate(
             f"() => {{ {data} window.__ref_{host} = {{current: null}};"
             f" window.__render('{host}', spec, window.__ref_{host}); }}"
         )
+    page.wait_for_function(
+        "() => ['host', 'host2', 'host3'].every((id) => window['__ref_' + id].current)"
+    )
 
 
 def colours(page: Any) -> dict[str, str]:
@@ -549,8 +557,8 @@ def test_chart_redraws_its_svg_in_place_and_unmounts(page: Any) -> None:
         " [t, v * 3]); window.__render('host2', spec, window.__ref_host2); }"
     )
     assert page.evaluate("window.__ref_host2.current === window.__svg")
-    labels = page.locator("#host2 text.tick[text-anchor=end]").all_text_contents()
-    assert "4" in labels
+    ticks = page.locator("#host2 text.tick[text-anchor=end]")
+    expect(ticks.filter(has_text=re.compile(r"^4$"))).to_have_count(1)
     page.evaluate("window.__unmount('host2')")
     assert page.locator("#host2 svg").count() == 0
     assert page.evaluate("window.__ref_host2.current") is None

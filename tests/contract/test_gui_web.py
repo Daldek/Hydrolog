@@ -13,6 +13,8 @@ from pathlib import Path
 
 import pytest
 
+from hydrolog.catalog import NOTICES
+
 WEB = Path(__file__).resolve().parents[2] / "src" / "hydrolog" / "gui" / "web"
 NOGAT_COMMIT = "29e7e1c7ba458f0451de9c15ae7ff32988a8d943"
 # XML namespaces are names, not resources the page loads.
@@ -100,15 +102,10 @@ def test_the_page_has_no_inline_script_style_or_handler() -> None:
     assert not re.search(r"\son[a-z]+\s*=", page)
 
 
-def test_every_local_file_the_page_links_exists_or_is_a_sibling_slices() -> None:
+def test_every_local_file_the_page_links_exists() -> None:
     page = (WEB / "index.html").read_text(encoding="utf-8")
     linked = re.findall(r'(?:src|href)="([^"#?]+)"', page)
-    # charts.css comes with the charts (plan, slice S2b).
-    missing = [
-        name
-        for name in linked
-        if not (WEB / name).is_file() and name != "css/charts.css"
-    ]
+    missing = [name for name in linked if not (WEB / name).is_file()]
 
     assert linked and missing == []
 
@@ -131,11 +128,7 @@ def test_info_texts_hold_only_trusted_markup(pattern: str) -> None:
 
 def test_every_notice_code_has_polish_text() -> None:
     """Every code of the NOTICES registry is worded in labels/notices.js (D16)."""
-    catalog = pytest.importorskip("hydrolog.catalog")
-    registry = getattr(catalog, "NOTICES", None)
-    if registry is None:
-        pytest.skip("NOTICES comes with the catalog additions (plan slice S0)")
     source = (WEB / "src" / "labels" / "notices.js").read_text(encoding="utf-8")
     worded = set(re.findall(r"^\s{4}([a-z][a-z0-9_]*):", source, flags=re.MULTILINE))
 
-    assert sorted(set(registry) - worded) == []
+    assert sorted(set(NOTICES) - worded) == []
