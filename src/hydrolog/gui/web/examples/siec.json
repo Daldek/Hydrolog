@@ -1,0 +1,119 @@
+{
+  "schema": "hydrolog-network/1",
+  "name": "Three subcatchments",
+  "rainfall": {
+    "kind": "design",
+    "hietogram_type": "block",
+    "total_mm": 30.0,
+    "duration_min": 60.0
+  },
+  "nodes": [
+    {
+      "id": "A",
+      "type": "subcatchment",
+      "watershed": {
+        "area_km2": 12.0,
+        "perimeter_km": 18.0,
+        "length_km": 6.0,
+        "elevation_min_m": 210.0,
+        "elevation_max_m": 330.0,
+        "cn": 75
+      },
+      "runoff": {
+        "model": "curve-number"
+      },
+      "rainfall": {
+        "kind": "design",
+        "hietogram_type": "euler_ii",
+        "total_mm": 45.0,
+        "duration_min": 60.0
+      }
+    },
+    {
+      "id": "B",
+      "type": "subcatchment",
+      "watershed": {
+        "area_km2": 5.0,
+        "perimeter_km": 11.0,
+        "length_km": 3.5,
+        "elevation_min_m": 210.0,
+        "elevation_max_m": 290.0,
+        "cn": 70
+      },
+      "runoff": {
+        "model": "curve-number"
+      },
+      "rainfall": {
+        "kind": "series",
+        "depths_mm": [
+          0.0,
+          2.0,
+          5.0,
+          10.0,
+          12.0,
+          6.0,
+          3.0
+        ],
+        "timestep_min": 5.0
+      }
+    },
+    {
+      "id": "C",
+      "type": "subcatchment",
+      "watershed": {
+        "area_km2": 8.0,
+        "perimeter_km": 14.0,
+        "length_km": 4.5,
+        "elevation_min_m": 200.0,
+        "elevation_max_m": 300.0,
+        "cn": 72
+      },
+      "runoff": {
+        "model": "curve-number",
+        "tc_min": 60.0
+      }
+    },
+    {
+      "id": "R_A",
+      "type": "reach",
+      "from": [
+        "A"
+      ],
+      "method": "lag",
+      "lag_min": 25
+    },
+    {
+      "id": "J1",
+      "type": "junction",
+      "from": [
+        "R_A",
+        "B"
+      ]
+    },
+    {
+      "id": "R_J1",
+      "type": "reach",
+      "from": [
+        "J1"
+      ],
+      "method": "muskingum",
+      "k_min": 40,
+      "x": 0.2
+    },
+    {
+      "id": "J2",
+      "type": "junction",
+      "from": [
+        "R_J1",
+        "C"
+      ]
+    },
+    {
+      "id": "OUT",
+      "type": "outlet",
+      "from": [
+        "J2"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,465 @@
+// The settings of the chosen node in „Dane” (plan S4, the mockup's `.node-form`): a form
+// per node type and reach method generated from hydrolog-network-1.schema.json
+// (node-model.js) with the controls of the catalog forms, the alternatives as segmented
+// choices, a storage table (or a rating file of the session) for a reservoir and a
+// level-pool reach, and a subcatchment's own hydrograph as a table. The structure (ids,
+// inflows) is shown, not edited (plan D18).
+
+import { ChoiceField, CheckField } from "../../controls/choice-field.js";
+import { inputFiles, uploadFile, useSession } from "../../controls/file-field.js";
+import { NumberField } from "../../controls/number-field.js";
+import { readTable, SeriesField } from "../../controls/series-field.js";
+import { TextField } from "../../controls/text-field.js";
+import { splitReason } from "../../controls/field.js";
+import { auto, bytes, inputText, parseNumber } from "../../format.js";
+import { html, useRef, useState } from "../../html.js";
+import { common, t } from "../../labels/common.js";
+import { describeError } from "../../labels/errors.js";
+import { siec as texts } from "../../labels/siec.js";
+import { InfoButton } from "../../ui/info-button.js";
+import { Seg } from "../../ui/seg.js";
+import { fieldOf, METHODS, nodeLayout, RAINFALLS, VARIANTS } from "./node-model.js";
+
+const CONTROLS = {
+  number: NumberField,
+  integer: NumberField,
+  choice: ChoiceField,
+  boolean: CheckField,
+  series: SeriesField,
+  text: TextField,
+};
+
+/**
+ * An id of a control from a value key ("watershed.area_km2" gives "…-watershed-area_km2").
+ *
+ * @param {string} prefix the form's prefix
+ * @param {string} key the value key
+ * @returns {string} the id
+ */
+export function controlId(prefix, key) {
+  return `${prefix}-${String(key).replace(/[^\w-]+/g, "-")}`;
+}
+
+/**
+ * The message of a problem as a field shows it.
+ *
+ * @param {string|undefined} message the problem
+ * @returns {object|null} the message
+ */
+function Problem({ message, id }) {
+  if (!message) return null;
+  const { text, reason } = splitReason(message);
+  return html`<span class="err" id=${id} role="alert">${text}${reason ? html` <span class="reason">· ${reason}</span>` : null}</span>`;
+}
+
+/**
+ * The session's input files to choose a rating file from, or a new upload.
+ *
+ * @param {{slot: object, id: string, value?: string, error?: string, onInput: (name: string)
+ *   => void}} props the slot, the control's id, the file name, the message and the handler
+ * @returns {object} the field
+ */
+function RatingFile({ slot, id, value, error, onInput }) {
+  const session = useSession();
+  const picker = useRef(null);
+  const [state, setState] = useState(null);
+  const names = inputFiles(session).map((file) => ({ name: file.path.slice(3), size: file.size_bytes }));
+  const current = typeof value === "string" ? value : "";
+  const known = names.some((file) => file.name === current);
+  const onFile = async (event) => {
+    const file = event.currentTarget.files && event.currentTarget.files[0];
+    event.currentTarget.value = "";
+    if (!file) return;
+    setState({ text: t(texts.files.uploading, { name: file.name }) });
+    try {
+      const stored = await uploadFile(file);
+      setState({ text: t(texts.files.uploaded, { name: stored.name }) });
+      onInput(stored.name);
+    } catch (failure) {
+      const text = failure && failure.doc ? describeError(failure.doc).text : String((failure && failure.message) || failure);
+      setState({ error: true, text: t(texts.files.uploadFailed, { message: text }) });
+    }
+  };
+  const field = slot.field;
+  return html`
+    <div class=${`opt opt-file${error ? " invalid" : ""}`} data-option=${field.name}>
+      <label for=${id}>
+        ${field.label ? html`<span class="lbl-text">${field.label}</span>` : null}
+        <code>${field.name}</code>
+        <span class="req">${common.required}</span>
+      </label>
+      <div class="file-row">
+        <select id=${id} value=${current} aria-invalid=${error ? "true" : "false"} onChange=${(event) => onInput(event.currentTarget.value)}>
+          <option value="">${texts.files.choose}</option>
+          ${current && !known ? html`<option value=${current}>${t(texts.files.missingOption, { name: current })}</option>` : null}
+          ${names.map((file) => html`<option value=${file.name}>${file.name} (${bytes(file.size)})</option>`)}
+        </select>
+        <button class="btn sm" type="button" onClick=${() => picker.current.click()}>${common.actions.upload}</button>
+        <input ref=${picker} type="file" hidden onChange=${onFile} />
+      </div>
+      ${state ? html`<span class=${state.error ? "err" : "file-state"} role=${state.error ? "alert" : "status"}>${state.text}</span>` : null}
+      ${current && !known ? html`<span class="err">${t(texts.files.missing, { name: current })}</span>` : null}
+      <span class="hint">${field.description}</span>
+      <${Problem} message=${error} id=${`${id}-err`} />
+    </div>
+  `;
+}
+
+/**
+ * One field of a form of Sieć, by its slot (a field and the key of its value).
+ *
+ * @param {{slot: object, values: object, problems: object, prefix: string, onValue:
+ *   (key: string, value: unknown) => void}} props the slot, the values and problems of
+ *   the form, the prefix of ids and the change handler
+ * @returns {object} the field
+ */
+export function FieldSlot({ slot, values, problems, prefix, onValue }) {
+  const id = controlId(prefix, slot.key);
+  if (slot.field.name === "rating_file") {
+    return html`<div class="slot" data-key=${slot.key}>
+      <${RatingFile} slot=${slot} id=${id} value=${values[slot.key]} error=${problems[slot.key]} onInput=${(value) => onValue(slot.key, value)} />
+    </div>`;
+  }
+  const Control = CONTROLS[slot.field.kind] || TextField;
+  return html`<div class="slot" data-key=${slot.key}>
+    <${Control}
+      field=${slot.field}
+      id=${id}
+      value=${values[slot.key]}
+      error=${problems[slot.key]}
+      required=${slot.field.required}
+      onInput=${(value) => onValue(slot.key, value)}
+    />
+  </div>`;
+}
+
+/**
+ * Fields under a summary that opens by itself when one of them has a problem.
+ *
+ * @param {{title: string, slots: object[], problems: object, children?: any}} props the
+ *   summary, the slots and the problems
+ * @returns {object|null} the details
+ */
+function More({ title, slots, problems, render, name }) {
+  const [open, setOpen] = useState(null);
+  if (!slots.length) return null;
+  const wrong = slots.some((slot) => problems[slot.key]);
+  const shown = wrong || Boolean(open);
+  return html`
+    <details class="more" data-more=${name} open=${shown} onToggle=${(event) => setOpen(event.currentTarget.open)}>
+      <summary>${title} <span class="meta">${slots.length}</span></summary>
+      ${shown ? slots.map(render) : null}
+    </details>
+  `;
+}
+
+/**
+ * A choice among alternatives as a segmented control with its title.
+ *
+ * @param {{id: string, title: string, items: Array<{value: any, label: string}>, value: any,
+ *   onChange: (value: any) => void, name: string}} props
+ * @returns {object} the choice
+ */
+export function Choice({ id, title, items, value, onChange, name }) {
+  return html`
+    <div class="field choice-row" data-choice=${name}>
+      <span class="label" id=${id}>${title}</span>
+      <${Seg} items=${items} value=${value} onChange=${onChange} labelledBy=${id} full=${true} />
+    </div>
+  `;
+}
+
+/**
+ * A table of numbers edited by cells: rows added and removed, a block pasted from a
+ * spreadsheet, or columns read from a CSV file in the browser.
+ *
+ * @param {{table: {key: string, columns: Array<{name: string, field: object}>}, rows:
+ *   string[][]|undefined, onRows: (rows: string[][]) => void, error?: string, prefix:
+ *   string, label: string}} props the table's columns, its rows, the handler, the problem,
+ *   the prefix of ids and the table's name
+ * @returns {object} the table
+ */
+export function TableEditor({ table, rows, onRows, error, prefix, label }) {
+  const list = Array.isArray(rows) && rows.length ? rows : [table.columns.map(() => "")];
+  const picker = useRef(null);
+  const [note, setNote] = useState(null);
+  const width = table.columns.length;
+  const setCell = (row, column, value) => {
+    const next = list.map((item) => [...item]);
+    next[row][column] = value;
+    onRows(next);
+  };
+  const onPaste = (row, column) => (event) => {
+    const text = event.clipboardData ? event.clipboardData.getData("text") : "";
+    if (!/[\t\n;]/.test(text)) return;
+    event.preventDefault();
+    const pasted = text
+      .replace(/\r/g, "")
+      .split("\n")
+      .filter((line) => line.trim() !== "")
+      .map((line) => line.split(/\t|;/).map((cell) => cell.trim()));
+    const next = list.map((item) => [...item]);
+    pasted.forEach((cells, offset) => {
+      const at = row + offset;
+      while (next.length <= at) next.push(table.columns.map(() => ""));
+      cells.forEach((cell, index) => {
+        if (column + index < width) next[at][column + index] = cell;
+      });
+    });
+    onRows(next);
+  };
+  const onFile = async (event) => {
+    const file = event.currentTarget.files && event.currentTarget.files[0];
+    event.currentTarget.value = "";
+    if (!file) return;
+    try {
+      const read = readTable(await file.text());
+      const header = (read.header || []).map((name) => String(name).trim());
+      const indexOf = (name, at) => {
+        const found = header.findIndex((item) => item === name || item.split(" ")[0] === name || (name === "times_min" && item === "time_min"));
+        return found >= 0 ? found : read.header ? -1 : at;
+      };
+      const indices = table.columns.map((column, at) => indexOf(column.name, at));
+      if (indices.slice(0, 2).some((index) => index < 0)) {
+        setNote({ error: true, text: t(texts.table.noColumns, { columns: table.columns.slice(0, 2).map((column) => column.name).join(", ") }) });
+        return;
+      }
+      onRows(read.rows.map((row) => indices.map((index) => (index >= 0 && row[index] !== undefined ? inputText(parseNumber(row[index])) || row[index] : ""))));
+      setNote({ text: t(texts.table.read, { name: file.name, rows: read.rows.length }) });
+    } catch (failure) {
+      setNote({ error: true, text: t(texts.table.readFailed, { message: String((failure && failure.message) || failure) }) });
+    }
+  };
+  const errorId = `${prefix}-table-err`;
+  return html`
+    <div class=${`opt table-edit${error ? " invalid" : ""}`} data-table=${table.key}>
+      <div class="table-wrap">
+        <table class="dtable cells edit" aria-label=${label} aria-describedby=${error ? errorId : undefined}>
+          <thead>
+            <tr>
+              ${table.columns.map(
+                (column) => html`<th scope="col">${column.name}${column.field.unitLabel && column.field.unitLabel !== "–" ? html`<br /><span class="u">[${column.field.unitLabel}]</span>` : null}</th>`,
+              )}
+              <th scope="col"><span class="sr-only">${texts.table.actions}</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${list.map(
+              (row, at) => html`<tr key=${at}>
+                ${table.columns.map(
+                  (column, index) => html`<td>
+                    <input
+                      type="text"
+                      inputmode="decimal"
+                      autocomplete="off"
+                      spellcheck=${false}
+                      value=${row[index] ?? ""}
+                      aria-label=${t(texts.table.cellLabel, { row: at + 1, column: column.name })}
+                      onInput=${(event) => setCell(at, index, event.currentTarget.value)}
+                      onPaste=${onPaste(at, index)}
+                    />
+                  </td>`,
+                )}
+                <td>
+                  <button
+                    class="btn ghost sm icon"
+                    type="button"
+                    aria-label=${t(texts.table.removeRow, { row: at + 1 })}
+                    title=${t(texts.table.removeRow, { row: at + 1 })}
+                    disabled=${list.length === 1}
+                    onClick=${() => onRows(list.filter((_, index) => index !== at))}
+                  >
+                    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15" /></svg>
+                  </button>
+                </td>
+              </tr>`,
+            )}
+          </tbody>
+        </table>
+      </div>
+      <div class="btn-row">
+        <button class="btn sm ghost" type="button" onClick=${() => onRows([...list, table.columns.map(() => "")])}>${texts.table.addRow}</button>
+        <button class="btn sm ghost" type="button" onClick=${() => picker.current.click()}>${texts.table.fromCsv}</button>
+        <input ref=${picker} type="file" accept=".csv,.txt,text/csv,text/plain" hidden onChange=${onFile} />
+        <span class="muted small">${t(texts.table.count, { rows: list.length })}</span>
+      </div>
+      ${note ? html`<p class=${note.error ? "err" : "note"} role=${note.error ? "alert" : "status"}>${note.text}</p>` : null}
+      <${Problem} message=${error} id=${errorId} />
+    </div>
+  `;
+}
+
+/**
+ * The structure of a node: its inflows and the node it flows into.
+ *
+ * @param {{node: object, to: string|null}} props the node and its downstream node
+ * @returns {object} the head
+ */
+function NodeHead({ node, to }) {
+  const parts = [html`<code>${node.type}</code>`];
+  if (node.from && node.from.length) parts.push(html` · ${texts.form.from} <code>${node.from.join(" + ")}</code>`);
+  if (to) parts.push(html` · ${texts.form.to} <code>${to}</code>`);
+  return html`
+    <p class="node-head"><i class=${`ng t-${node.type}`} aria-hidden="true"></i><code>${node.id}</code><span>${parts}</span></p>
+    ${node.from && node.from.length
+      ? html`<div class="field">
+          <span class="label">${texts.form.inflows} <span class="key">from</span></span>
+          <div class="chips">${node.from.map((id) => html`<span class="chip">${id}</span>`)}</div>
+        </div>`
+      : null}
+  `;
+}
+
+/**
+ * The numbers of a routing element's fields by name, for the ranges of its explanation.
+ *
+ * @param {object} values the node's values
+ * @param {string} method the method ("level-pool" for a reservoir)
+ * @returns {Object<string, number>} the numbers given
+ */
+function methodNumbers(values, method) {
+  const found = {};
+  for (const [key, value] of Object.entries(values)) {
+    if (!key.startsWith(`${method}.`) || typeof value !== "string") continue;
+    const number = parseNumber(value);
+    if (number !== null && Number.isFinite(number)) found[key.slice(method.length + 1)] = number;
+  }
+  return found;
+}
+
+/**
+ * The method of a reach: a choice among the five, with its explanation (i).
+ *
+ * @param {{id: string, value: string, values: object, onInput: (method: string) => void}}
+ *   props the control's id, the method, the node's values and the handler
+ * @returns {object} the field
+ */
+function MethodField({ id, value, values, onInput }) {
+  const field = fieldOf(
+    "method",
+    { type: "string", enum: [...METHODS] },
+    true,
+    { description: texts.method.hint, enum: Object.fromEntries(METHODS.map((method) => [method, texts.methods[method].meaning])) },
+    texts.method.label,
+  );
+  return html`
+    <div class="slot method-row" data-key="#method">
+      <${ChoiceField} field=${field} id=${id} value=${value} required=${true} onInput=${onInput} />
+      <${InfoButton} id=${`routing.${value}`} values=${methodNumbers(values, value)} />
+    </div>
+  `;
+}
+
+/**
+ * The settings of one node.
+ *
+ * @param {{forms: object, node: object, to: string|null, values: object, problems: object,
+ *   result: object|null, networkRain: string, inflowsFile: string, onChange: (values:
+ *   object) => void}} props the forms, the node's structure, its downstream node, its
+ *   values and problems, its last result, the words of the network's rainfall, the
+ *   inflows file and the change handler
+ * @returns {object} the form
+ */
+export function NodeForm({ forms, node, to, values, problems, result, networkRain, inflowsFile, onChange }) {
+  const prefix = `nf-${String(node.id).replace(/[^\w-]+/g, "-")}`;
+  const layout = nodeLayout(forms, node, values);
+  const set = (key, value) => onChange({ ...values, [key]: value });
+  const render = (slot) => html`<${FieldSlot} key=${slot.key} slot=${slot} values=${values} problems=${problems} prefix=${prefix} onValue=${set} />`;
+  const parts = [html`<${NodeHead} node=${node} to=${to} />`];
+
+  if (layout.kind === "subcatchment") {
+    parts.push(html`<${Choice}
+      id=${`${prefix}-variant`}
+      name="#variant"
+      title=${texts.form.variant}
+      items=${VARIANTS.map((variant) => ({ value: variant, label: texts.variants[variant].label }))}
+      value=${layout.variant}
+      onChange=${(variant) => set("#variant", variant)}
+    />`);
+    if (layout.variant === "rain") {
+      const tc = result && result.parameters && typeof result.parameters.tc_min === "number" ? result.parameters.tc_min : null;
+      parts.push(html`<h4 class="sub-title">${texts.form.watershed} <code>watershed</code></h4>`);
+      parts.push(layout.watershed.main.map(render));
+      parts.push(html`<${More} name="watershed" title=${texts.form.watershedMore} slots=${layout.watershed.more} problems=${problems} render=${render} />`);
+      parts.push(html`<h4 class="sub-title">${texts.form.runoff} <code>runoff</code> · <code>${layout.runoff.model}</code></h4>`);
+      parts.push(layout.runoff.main.map(render));
+      if (tc !== null && !String(values["runoff.tc_min"] ?? "").trim()) {
+        parts.push(html`<p class="note" data-note="tc">${t(texts.form.tcComputed, { tc: auto(tc) })}</p>`);
+      }
+      parts.push(layout.runoff.uh.map(render));
+      parts.push(html`<${More} name="runoff" title=${texts.form.more} slots=${layout.runoff.more} problems=${problems} render=${render} />`);
+      parts.push(html`<h4 class="sub-title">${texts.form.rainfall} <code>rainfall</code></h4>`);
+      parts.push(html`<${Choice}
+        id=${`${prefix}-rainfall`}
+        name="#rainfall"
+        title=${texts.form.rainfallKind}
+        items=${RAINFALLS.filter((kind) => layout.rainfall.choice.items.includes(kind)).map((kind) => ({ value: kind, label: texts.rainfalls.node[kind] }))}
+        value=${layout.rainfall.choice.value}
+        onChange=${(kind) => set("#rainfall", kind)}
+      />`);
+      if (layout.rainfall.choice.value === "network") parts.push(html`<p class="note" data-note="rainfall">${networkRain}</p>`);
+      parts.push(layout.rainfall.slots.map(render));
+    } else if (layout.variant === "file") {
+      parts.push(layout.file.map(render));
+      parts.push(
+        inflowsFile
+          ? html`<p class="note" data-note="inflows">${t(texts.form.fromFile, { file: inflowsFile.replace(/^in\//, ""), column: String(values.value_column || node.id) })}</p>`
+          : html`<div class="form-errors" role="alert" data-note="inflows">${texts.form.noInflowsFile}</div>`,
+      );
+    } else {
+      parts.push(html`<h4 class="sub-title">${texts.form.hydrograph}</h4>`);
+      parts.push(html`<${TableEditor}
+        table=${layout.table}
+        rows=${values[layout.table.key]}
+        onRows=${(rows) => set(layout.table.key, rows)}
+        error=${problems[layout.table.key]}
+        prefix=${prefix}
+        label=${texts.form.hydrograph}
+      />`);
+    }
+  } else if (layout.kind === "reach" || layout.kind === "reservoir") {
+    if (layout.kind === "reach") {
+      parts.push(html`<${MethodField} id=${`${prefix}-method`} value=${layout.method} values=${values} onInput=${(method) => set("#method", method)} />`);
+    } else {
+      parts.push(html`<div class="slot method-row" data-key="#method">
+        <div class="opt">
+          <span class="label-row">${texts.method.label} <code>route level-pool</code></span>
+          <span class="meaning"><code>level-pool</code> ${texts.methods["level-pool"].meaning}</span>
+        </div>
+        <${InfoButton} id="routing.level-pool" values=${methodNumbers(values, "level-pool")} />
+      </div>`);
+    }
+    parts.push(layout.main.map(render));
+    if (layout.choice) {
+      const words = texts.choices[layout.choice.id];
+      parts.push(html`<${Choice}
+        id=${`${prefix}-${layout.choice.id.slice(1)}`}
+        name=${layout.choice.id}
+        title=${words.title}
+        items=${words.groups.map((label, index) => ({ value: index, label }))}
+        value=${layout.choice.value}
+        onChange=${(index) => set(layout.choice.key, index)}
+      />`);
+    }
+    parts.push(layout.chosen.map(render));
+    if (layout.table) {
+      parts.push(html`<${TableEditor}
+        table=${layout.table}
+        rows=${values[layout.table.key]}
+        onRows=${(rows) => set(layout.table.key, rows)}
+        error=${problems[layout.table.key]}
+        prefix=${prefix}
+        label=${texts.choices["#table"].title}
+      />`);
+      parts.push(html`<p class="note">${texts.form.tableRules}</p>`);
+    }
+    parts.push(layout.after.map(render));
+    parts.push(html`<${More} name="more" title=${texts.form.more} slots=${layout.more} problems=${problems} render=${render} />`);
+    parts.push(html`<${More} name="wave" title=${texts.form.wave} slots=${layout.wave} problems=${problems} render=${render} />`);
+  } else if (layout.kind === "junction") {
+    parts.push(html`<p class="note">${texts.form.junction}</p>`);
+  } else if (layout.kind === "outlet") {
+    parts.push(html`<p class="note">${texts.form.outlet}</p>`);
+  }
+  return html`<div class="node-form" data-node-form=${node.id} data-kind=${layout.kind}>${parts}</div>`;
+}

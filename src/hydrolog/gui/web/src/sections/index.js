@@ -5,5 +5,6 @@
 /** @type {Array<{id: string, load: () => Promise<{default: Function}>}>} */
 export const SECTIONS = [
   { id: "hydrogram", load: () => import("./hydrogram/index.js") },
+  { id: "siec", load: () => import("./siec/index.js") },
   { id: "polecenia", load: () => import("./polecenia/index.js") },
 ];

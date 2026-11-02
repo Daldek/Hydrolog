@@ -480,6 +480,11 @@ body.resizing .view-center, body.resizing .view-panel { pointer-events: none; }
 .dtable.cells td { padding: 2px 4px; }
 .dtable.cells input { width: 100%; min-width: 64px; height: 26px; padding: 0 6px; border-color: transparent; font: var(--text-sm) var(--font-mono); text-align: right; background: transparent; }
 .dtable.cells input:hover { border-color: var(--line-2); }
+.sw-line.ln-main { border-top: 5px solid var(--net-main); }
+.sw-line.ln-trib { border-top: 4px solid var(--net-trib); }
+.method-row { display: flex; align-items: flex-start; gap: 6px; }
+.method-row > .opt { flex: 1; min-width: 0; }
+.file-status { display: grid; gap: 4px; margin: 0 0 var(--space-3); padding: 0; list-style: none; font-size: var(--text-sm); color: var(--text-2); }
 
 /* ---------- Results panel ---------- */
 .summary {

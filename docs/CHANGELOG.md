@@ -138,6 +138,13 @@ Inline SVG charts of the GUI in the look of the approved mockup, coloured by Nog
 - The hyetograph above the hydrograph, cumulative P and Pe with Ia, the convolved unit hydrograph, the table of the series, the peak, time to peak, volume and runoff coefficient, the balance of the rainfall, the parameters, applicability notes from the (i) ranges before Hydrolog's notices, and the exports: the hydrograph CSV (`time_min,discharge_m3s,precipitation_mm,effective_precipitation_mm`, read by every `route` command), the envelope, the chart as PNG and the command line (CLI, Python, MCP).
 - The (i) explanations of the tc methods, SCS-CN, the unit hydrographs and the rainfall (`web/src/labels/info/{tc,losses,uh,rain}.js`); the store's `watershed` for Kalkulatory, Statystyka's `reference` drawn on the hydrograph, and the route `#hydrogram/tc_method/<method>`.
 
+#### Web GUI: „Sieć i trasowanie” (plan [2026-11-02-hydrolog-gui](plans/2026-11-02-hydrolog-gui.md), slice S4)
+- The network drawn vertically from `route schematic` before any run: the sources at the top, the outlet at the bottom, the main stem straight and the tributaries at 45 degrees, each label on the side of its node without a tributary (`sections/siec/schematic.js`, a pure transform of `hydrolog-network-schematic/1`); after a run each node shows its peak and time to peak.
+- A node is chosen by a click, Enter or Space on the schematic, in the node list or in the node table (also `#siec/<id>`); its settings open in „Dane”: forms per node type and reach method generated from `hydrolog-network-1.schema.json` with the catalog's Polish help (a subcatchment from rainfall, from the inflows file or with its own hydrograph; lag, Muskingum, Muskingum-Cunge by section or celerity, a cascade by K or by length and celerity, level-pool and a reservoir with a storage table or a rating file; the network's name, time step and default rainfall). The structure is not edited.
+- Networks open from a file together with the files they read (rating tables, the inflows file), from the shipped example (`examples/siec.json`, `hydrolog.testing.example_network_document()`) or from another part of the page (`openNetwork`); „Zapisz sieć” saves the document.
+- „Oblicz sieć” writes the document to the session's `in/` and runs `route network`; „Wyniki” shows the outlet's peak, time and volume, the chosen node's inflows and outflow as a chart, its parameters and ordinates, the notices and the call; a change afterwards marks the result stale. Exports: one node's or every node's hydrograph as CSV, the network's document and the envelope as JSON, the schematic as PNG and Hydrolog's own SVG.
+- The (i) explanations of the five routing methods (`labels/info/routing.js`).
+
 ### Changed
 
 #### Breaking changes
