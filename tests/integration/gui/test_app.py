@@ -637,13 +637,7 @@ def test_a_client_that_goes_away_drops_its_queued_run():
 
 # --- the CLI line ---------------------------------------------------------------------
 
-needs_format_command = pytest.mark.skipif(
-    not hasattr(catalog, "format_command"),
-    reason="format_command arrives with the catalog additions (plan slice S0)",
-)
 
-
-@needs_format_command
 def test_the_cli_line_of_options_comes_from_the_catalog(client):
     response = client.post("/api/format/tc/kirpich", json=KIRPICH)
 
@@ -654,7 +648,6 @@ def test_the_cli_line_of_options_comes_from_the_catalog(client):
     }
 
 
-@needs_format_command
 def test_the_cli_line_shows_files_by_their_names(client):
     options = {"input_file": "in/flood.csv", "lag_min": 20, "output": "out/o.csv"}
 

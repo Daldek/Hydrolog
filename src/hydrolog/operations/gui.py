@@ -13,7 +13,6 @@ result comes only when it stops). The function is re-exported by
 from __future__ import annotations
 
 import errno
-import importlib
 import ipaddress
 import logging
 import os
@@ -174,8 +173,9 @@ def gui_serve(
         LOG.warning("%s", item.message)
     # The server is the package hydrolog.gui, imported only to serve: it imports
     # Starlette and uvicorn, which the base install lacks.
-    server = importlib.import_module("hydrolog.gui.server")
-    served = server.serve(host=host, port=port, open_browser=not no_browser)
+    from hydrolog.gui.server import serve
+
+    served = serve(host=host, port=port, open_browser=not no_browser)
     result = GuiServeResult(
         url=str(served["url"]),
         started_at=str(served["started_at"]),

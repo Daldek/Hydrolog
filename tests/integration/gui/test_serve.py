@@ -16,7 +16,6 @@ import pytest
 
 pytest.importorskip("uvicorn")
 
-from hydrolog.catalog import data_commands
 from hydrolog.exceptions import (
     ConflictError,
     InvalidParameterError,
@@ -101,13 +100,6 @@ def test_the_server_answers_and_a_signal_stops_it_with_exit_0(tmp_path, stop):
     assert list(tmp_path.iterdir()) == []  # the work root went with the server
 
 
-needs_gui_serve = pytest.mark.skipif(
-    "gui serve" not in {command.name for command in data_commands()},
-    reason="the command gui serve arrives with the catalog additions (plan slice S0)",
-)
-
-
-@needs_gui_serve
 @posix_signals
 def test_hydrolog_gui_serve_answers_and_stops_with_exit_0(tmp_path):
     with socket.socket() as probe:

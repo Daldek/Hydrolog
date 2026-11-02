@@ -22,7 +22,7 @@ import weakref
 from collections.abc import AsyncIterator, Awaitable, Callable, Mapping
 from concurrent.futures import Future
 from dataclasses import dataclass
-from importlib import import_module, resources
+from importlib import resources
 from importlib.resources.abc import Traversable
 from pathlib import Path
 from typing import Any, Final
@@ -40,7 +40,7 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 import hydrolog
 from hydrolog._errors import BY_CODE
-from hydrolog.catalog import command_schema, get_command, list_commands
+from hydrolog.catalog import command_schema, format_command, get_command, list_commands
 from hydrolog.catalog.spec import Command
 from hydrolog.exceptions import (
     ERROR_SCHEMA,
@@ -467,7 +467,6 @@ class _Gui:
                 split = split_path(value)
                 if split is not None:
                     shown[option.name] = split[1][-1]  # in/x.csv is shown as x.csv
-        format_command = import_module("hydrolog.catalog").format_command
         line = format_command(command.name, shown)
         return JSONResponse({"schema": LINE_SCHEMA, "line": line})
 
