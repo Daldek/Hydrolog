@@ -3,6 +3,8 @@
 # Windows, on Python 3.12 (required) and the newest stable Python (reported,
 # not blocking: wheels of geospatial dependencies often lag), and audits the
 # locked PyPI dependencies (DEV-13.6; informative, not a required check).
+# Chromium is installed before the gate for the browser tests of the GUI
+# (tests/e2e, Playwright).
 # Commit messages are checked once, on pull requests into develop and from
 # hotfix/* into main (DEV-4.5).
 # Actions are pinned by commit SHA; Dependabot updates them
@@ -50,6 +52,10 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
           enable-cache: true
+      - name: Chromium for the browser tests of the GUI
+        run: |
+          uv sync --locked --all-extras
+          uv run --no-sync playwright install --with-deps chromium
       - name: Gate
         shell: bash
         env:
