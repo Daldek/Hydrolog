@@ -105,8 +105,12 @@ def pane_options(page: Page) -> list[str]:
 
 
 def run(page: Page) -> Response:
-    """Press „Uruchom” and return the server's answer to the run."""
-    with page.expect_response(lambda response: "/api/run/" in response.url) as answer:
+    """Press „Uruchom” and return the server's answer to this section's run."""
+    with page.expect_response(
+        lambda response: (
+            "/api/run/" in response.url and "channel=polecenia" in response.url
+        )
+    ) as answer:
         page.get_by_role("button", name="Uruchom").click()
     return answer.value
 
