@@ -318,6 +318,13 @@ def test_a_handoff_of_hydrogram_validates_reopens_and_round_trips(
         "tp": ["6:20 h", "6:20 h"],
         "volume": ["1 046 213 m³", "1 046 213 m³"],
     }
+    # The comparison fits the panel Wyniki, at its default width and at the narrowest
+    # desktop's (1240 px, a panel of 340 px), without its columns scrolling out of sight
+    wrap = page.locator(f"{HG} [data-handoff-received] .table-wrap")
+    for width in (1440, 1240):
+        page.set_viewport_size({"width": width, "height": 900})
+        assert wrap.evaluate("(w) => w.scrollWidth <= w.clientWidth"), width
+    page.set_viewport_size({"width": 1440, "height": 900})
     again = json.loads(download(page, handoff_button(page, HG, "file"))[1])
     assert without_moment(again) == without_moment(doc)
 

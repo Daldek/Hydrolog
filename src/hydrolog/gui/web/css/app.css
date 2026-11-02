@@ -241,6 +241,10 @@ select.sel-sm { height: var(--control-sm); font-size: var(--text-sm); padding: 0
 .handoff-received { margin: 0 0 var(--space-3); }
 .handoff-received .handoff { margin-bottom: var(--space-2); }
 .handoff-received .notes { margin-bottom: 0; }
+/* The comparison fits the narrowest panel Wyniki (283 px of table at 1240 px): the row
+   names and the versions („Hydrolog 1.0.0.dev0”) may wrap, the values stay on one line */
+.handoff-received .dtable th, .handoff-received .dtable td { padding: 5px 6px; }
+.handoff-received .dtable tbody th, .handoff-received .dtable tr[data-row="version"] td { white-space: normal; }
 
 details.more { margin: var(--space-2) 0 var(--space-3); border-top: 1px dashed var(--line-2); }
 details.more > summary {
