@@ -285,6 +285,19 @@ class TestParseCommand:
         assert parsed.options == {"length_km": -2.0}
         assert format_command(*parsed) == "hydrolog tc kirpich --length-km=-2"
 
+    @pytest.mark.parametrize(
+        ("line", "value"),
+        [
+            ("hydrolog gui serve --no-browser", True),
+            ("hydrolog gui serve --no-no-browser", False),
+        ],
+    )
+    def test_a_boolean_whose_name_starts_with_no_keeps_its_own_flag(self, line, value):
+        """``--no-browser`` is the flag of ``no_browser``, not a negated ``browser``."""
+        parsed = parse_command(line)
+        assert parsed.options == {"no_browser": value}
+        assert format_command(*parsed) == line
+
     @pytest.mark.parametrize("flag", ["--help", "-h", "--version", "-V", "--schema"])
     def test_a_description_is_not_a_call(self, flag):
         with pytest.raises(UsageError) as caught:

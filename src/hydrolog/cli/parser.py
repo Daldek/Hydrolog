@@ -261,12 +261,17 @@ def _wrap_usage(words: Sequence[str], lang: Lang) -> str:
 
 
 class _BooleanAction(argparse.Action):
-    """The pair ``--flag`` / ``--no-flag`` that stores ``True`` / ``False``."""
+    """The pair ``--flag`` / ``--no-flag`` that stores ``True`` / ``False``.
+
+    The negative spelling is the one this action adds, not any flag that starts with
+    ``--no-``: ``--no-browser`` is the flag of ``no_browser`` and stores ``True``.
+    """
 
     def __init__(self, option_strings: Sequence[str], dest: str, **kwargs: Any) -> None:
         strings: list[str] = []
         for flag in option_strings:
             strings.extend((flag, "--no-" + flag[2:]))
+        self.negative = frozenset(strings[1::2])
         super().__init__(strings, dest, nargs=0, **kwargs)
 
     def __call__(
@@ -276,7 +281,7 @@ class _BooleanAction(argparse.Action):
         values: Any,
         option_string: str | None = None,
     ) -> None:
-        setattr(namespace, self.dest, not (option_string or "").startswith("--no-"))
+        setattr(namespace, self.dest, option_string not in self.negative)
 
 
 def _add_general_arguments(group: argparse._ArgumentGroup, lang: Lang) -> None:
