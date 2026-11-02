@@ -1,6 +1,6 @@
 # Hydrolog: watershed hydrology calculations for engineers, researchers and AI agents
 
-Hydrolog is a watershed hydrology calculator: SCS-CN curve numbers and effective rainfall (TR-55), design hyetographs, time of concentration, unit hydrographs and design runoff hydrographs, flood routing of a discharge hydrograph, morphometry, flow statistics, rating curves and hydrologic soil groups. Python library, CLI and MCP server; it runs offline on numbers or local CSV, JSON and GeoTIFF files.
+Hydrolog is a watershed hydrology calculator: SCS-CN curve numbers and effective rainfall (TR-55), design hyetographs, time of concentration, unit hydrographs and design runoff hydrographs, flood routing of a discharge hydrograph, morphometry, flow statistics, rating curves and hydrologic soil groups. Python library, CLI, MCP server and a web GUI in Polish; it runs offline on numbers or local CSV, JSON and GeoTIFF files.
 
 ## When to use
 
@@ -14,7 +14,7 @@ Hydrolog computes the standard quantities of watershed hydrology:
 - flow statistics of daily series: characteristic flows (Polish WWQ to NNQ), flood and low-flow frequency, Mann-Kendall trend, rating curves, water level zones;
 - a Markdown calculation report of a design hydrograph.
 
-The same commands run from Python, from a shell or a CI job, and from an AI agent over MCP; results are JSON documents.
+The same commands run from Python, from a shell or a CI job, from an AI agent over MCP and, for a person, in the web GUI; results are JSON documents.
 
 ## When not to use
 
@@ -32,14 +32,16 @@ Python 3.12 or newer. Hydrolog is not on PyPI yet, so the lines below install fr
 uv tool install "git+https://github.com/Daldek/Hydrolog.git"                           # CLI: hydrolog
 uv add "hydrolog @ git+https://github.com/Daldek/Hydrolog.git"                         # Python library
 uvx --from "hydrolog[mcp] @ git+https://github.com/Daldek/Hydrolog.git" hydrolog-mcp  # MCP server
+uv tool install "hydrolog[gui] @ git+https://github.com/Daldek/Hydrolog.git"           # CLI with the web GUI
 ```
 
-Optional dependencies are extras; add them in brackets, for example `"hydrolog[raster,mcp] @ git+https://github.com/Daldek/Hydrolog.git"`. Without extras, the library, the CLI and every command except the two raster commands run on NumPy, SciPy and platformdirs.
+Optional dependencies are extras; add them in brackets, for example `"hydrolog[raster,mcp] @ git+https://github.com/Daldek/Hydrolog.git"`. Without extras, the library, the CLI and every command except the two raster commands and `gui serve` run on NumPy, SciPy and platformdirs.
 
 | Extra | Brings | Needed for |
 |---|---|---|
 | `raster` | rasterio, pyproj | `soil hsg` and `soil hsg-stats` (GeoTIFF rasters) |
 | `mcp` | mcp >= 2.3, < 3 | the MCP server |
+| `gui` | starlette, uvicorn | the web GUI (`hydrolog gui serve`) |
 | `viz` | matplotlib, seaborn | plots in `hydrolog.visualization` (Python only, outside the command catalog) |
 | `all` | all of the above | everything |
 
@@ -259,6 +261,17 @@ VS Code, `.vscode/mcp.json` (key `servers`):
 - `--tools FAMILIES`: comma-separated tool families, a command group (`tc`, `cn`, `scs`, `precip`, `uh`, `hydrograph`, `route`, `morphometry`, `network`, `stats`, `hydrometrics`, `soil`, `report`, `config`, `commands`) or `core`, the main tasks (`tc watershed`, `cn lookup`, `cn weighted`, `scs effective`, `hydrograph generate`, `morphometry watershed`, `stats flood-frequency`, `commands list`, `commands schema`).
 - The server speaks English only (`hydrolog mcp --lang en` is rejected). Instructions are at most 4,096 characters, each tool description at most 600; an execution error is an `isError` result that holds the `hydrolog-error/1` document.
 
+## Web GUI
+
+The web GUI is Hydrolog in a browser, in Polish, for people who would rather not use a command line: open a section, change the numbers of its example and read the result. **Hydrogram zlewni** gives the runoff hydrograph of one watershed after a design storm and recomputes it after every change; **Sieć i trasowanie** draws a river network of subcatchments, reaches, reservoirs and junctions and routes it; **Statystyka przepływów** fits flood frequency distributions to annual maxima; **Kalkulatory** compares the time of concentration of six methods and holds fifteen single calculators; **Wszystkie polecenia** has a form for every command of the catalog. Every number comes from the same catalog as the CLI, and every result shows the command line that gives it. The results are estimates of simplified methods, not a forecast or a flood hazard map. A guide for users, in Polish and starting in plain words, opens from „Instrukcja” in the top bar.
+
+```sh
+hydrolog gui serve                          # http://127.0.0.1:8070/, opened in the browser; Ctrl+C stops it
+hydrolog gui serve --no-browser --port 8071
+```
+
+`--check` only reports the address and whether the port is free. The server has no sign-in: anyone who reaches it can compute and upload files (each browser session gets a work directory of its own, with limits). It listens on 127.0.0.1, this computer only. To share it, keep it there and put an authenticating reverse proxy in front of it, for example Cloudflare Access on a Cloudflare Tunnel to `127.0.0.1:8070`; `--host` with another address exposes it without a sign-in and adds the warning `exposed_without_auth`. Running it as a service, your data in the GUI and the limits: [docs/USAGE.md](https://github.com/Daldek/Hydrolog/blob/main/docs/USAGE.md#8-the-web-gui); hosting it in another app: [docs/INTEGRATION.md](https://github.com/Daldek/Hydrolog/blob/main/docs/INTEGRATION.md#web-gui-a-module-of-nogats-gui-platform).
+
 ## Related tools
 
 - [Kartograf](https://github.com/Daldek/Kartograf) downloads Polish and Czech geodata (elevation, land cover, soils); the `files[].path` values in the `--json` result of `kartograf soil download --output-dir DIR` are the clay, sand and silt rasters of `soil hsg`.
@@ -277,7 +290,7 @@ An error exits with a registry code and, in both CLI modes, ends stderr with a `
 | `validation_error` | 2 | missing, unknown or out-of-range option | fix the option in `details.option`, see `commands schema` |
 | `not_found` | 3 | unknown command or missing input file | check the name (`details.suggestions`) or the path |
 | `conflict` | 4 | an output file exists, or the output directory lies in the store of another Nogat tool | give another `--output` or `--output-dir`, or add `--force` |
-| `missing_dependency` | 6 | an optional extra is not installed | add the extra the error names (`raster`, `mcp` or `viz`), see Install |
+| `missing_dependency` | 6 | an optional extra is not installed | add the extra the error names (`raster`, `mcp`, `gui` or `viz`), see Install |
 | `data_error` | 7 | malformed CSV, JSON or GeoTIFF | see `details.path` and `details.reason` |
 
 Also `io_error` (9, output not writable), `forbidden` (12, path outside `--allow-dir`), `calculation_error` (13, valid input without a result), `internal_error` (1), `cancelled` (130) and `terminated` (143).
@@ -331,7 +344,7 @@ hydrolog config show --json
 - [Decisions](https://github.com/Daldek/Hydrolog/blob/main/docs/DECISIONS.md): architecture decision records
 - [Scope](https://github.com/Daldek/Hydrolog/blob/main/docs/SCOPE.md): what is in and out of scope
 - [Computation paths](https://github.com/Daldek/Hydrolog/blob/main/docs/COMPUTATION_PATHS.md): methods, formulas and which parameters combine
-- [Integration](https://github.com/Daldek/Hydrolog/blob/main/docs/INTEGRATION.md): files exchanged with Hydrograf, Retman, Kartograf and IMGWTools
+- [Integration](https://github.com/Daldek/Hydrolog/blob/main/docs/INTEGRATION.md): files exchanged with Hydrograf, Retman, Kartograf and IMGWTools; hosting the web GUI
 
 ## Development
 

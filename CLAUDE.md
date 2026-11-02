@@ -48,7 +48,11 @@ uv run hydrolog commands guide --format llms --output llms.txt --force
 
 Python 3.12 or newer. The tests are offline; there are no `live` tests. Coverage floor 80%.
 The browser tests of the GUI (`tests/e2e`, Playwright) run in the gate and need Chromium
-(installed as above).
+(installed as above). The GUI's user guide (`src/hydrolog/gui/web/instrukcja/`, Polish) quotes
+the numbers of the shipped examples (`data-example`, compared with the computed page by
+`tests/e2e/test_smoke.py`) and shows pictures of the page (`instrukcja/img/`: 1440 x 900 in the
+light theme, a 390 px phone in the dark one, PNG of 256 colours); a change of an example, a
+result, a label or the layout of the page updates them.
 A change that touches docs ships with its CHANGELOG entry (DOC-7.2).
 
 ## Code map
@@ -61,7 +65,7 @@ src/hydrolog/
 ├── mcp/          # MCP server (extra [mcp]): tools, instructions, calls
 ├── gui/          # web GUI (extra [gui]): server.py (serve), _app.py (Starlette app, private API),
 │                 # _runner.py, _worker.py (warm worker processes), _sessions.py (work directories);
-│                 # web/ (the page: Preact modules without a build)
+│                 # web/ (the page: Preact modules without a build; instrukcja/: the user guide)
 ├── agent_guide.py, _data/agents/   # generator and templates of AGENTS.md, llms.txt, block
 ├── exceptions.py, _errors.py       # HydrologError classes; registry generated from schemas/nogat
 ├── _settings.py                    # lang/log_level: option > env > nogat.toml > default
