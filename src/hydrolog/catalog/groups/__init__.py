@@ -11,8 +11,8 @@ Modules are imported when the catalog is first read.
 To add a group: create ``src/hydrolog/catalog/groups/<module>.py`` with ``COMMANDS`` and
 append ``"<module>"`` to :data:`GROUP_MODULES` (design order: ``tc``, ``cn``, ``scs``,
 ``precip``, ``uh``, ``hydrograph``, ``route``, ``morphometry``, ``network``,
-``stats``, ``hydrometrics``, ``soil``, ``report``, ``config``, then ``meta`` -- the
-group ``commands`` -- last).
+``stats``, ``hydrometrics``, ``soil``, ``report``, ``config``, ``gui``, then ``meta`` --
+the group ``commands`` -- last).
 """
 
 from __future__ import annotations
@@ -38,6 +38,7 @@ GROUP_MODULES: tuple[str, ...] = (
     "soil",
     "report",
     "config",
+    "gui",
     "meta",
 )
 """Names of the group modules of this package, in presentation order."""

@@ -44,7 +44,7 @@ A command returns `hydrolog-result/1`: `schema`, `tool` (`hydrolog`), `version`,
 
 - `result`: the values of the command with its own `schema`; units follow from field names (`tc_min`); `NaN` and infinities are `null`.
 - `result.files`: files the command wrote, each `{path, size_bytes, sha256, status}` with `status` `written` or `replaced`.
-- `notices`: non-fatal `{level, code, message}` entries.
+- `notices`: non-fatal `{level, code, message}` entries, values in `details`.
 - `inputs`: the options after normalization (defaults filled in, paths absolute).
 
 ## Error codes
@@ -95,7 +95,7 @@ One line per command: name, `operation_id`, summary. Options, units, bounds and 
 ### [hydrograph: Runoff hydrograph][paths]
 - `hydrograph generate` (`hydrolog_hydrograph_generate`): Compute the design direct-runoff hydrograph: rainfall, SCS-CN, unit hydrograph, convolution.
 ### [route: Flood routing][paths]
-- `route cascade`, `route lag`, `route level-pool`, `route muskingum`, `route muskingum-cunge`, `route network` (tools `hydrolog_route_<verb>`, `-` as `_`): route a hydrograph (`time_min`, `discharge_m3s`) through a reach, a reservoir or a river network; summaries: `commands list`.
+- `route cascade`, `route lag`, `route level-pool`, `route muskingum`, `route muskingum-cunge`, `route network`, `route schematic` (tools `hydrolog_route_<verb>`, `-` as `_`): route a hydrograph (`time_min`, `discharge_m3s`) through a reach, a reservoir or a river network, or lay a network out; summaries: `commands list`.
 ### [morphometry: Watershed morphometry][paths]
 - `morphometry watershed` (`hydrolog_morphometry_watershed`): Compute geometric, shape and relief indicators of a watershed.
 ### [network: River network][paths]

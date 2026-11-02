@@ -22,10 +22,13 @@ from numpy.typing import NDArray
 from scipy.stats import genextreme, kstest, lognorm, pearson3, weibull_min
 
 from hydrolog._serialization import JsonResultMixin
+from hydrolog._warnings import KsTestApproximate, ShortRecord, SmallSample
 from hydrolog.exceptions import InvalidParameterError
 from hydrolog.statistics._types import EmpiricalFrequency, compute_plotting_positions
 
 _DEFAULT_RETURN_PERIODS = np.array([2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 500.0, 1000.0])
+_MIN_RELIABLE_YEARS = 10  # below it the estimates may be unreliable
+_KZGW_MIN_YEARS = 30  # KZGW (2017): the minimum record for flood frequency analysis
 
 _AD_CRITICAL_VALUES: dict[str, float] = {
     "15%": 1.610,
@@ -159,18 +162,14 @@ class FloodFrequencyAnalysis:
         if np.any(np.isnan(annual_maxima)):
             raise InvalidParameterError("annual_maxima must not contain NaN values.")
 
-        if len(annual_maxima) < 10:
+        years = len(annual_maxima)
+        if years < _MIN_RELIABLE_YEARS:
             warnings.warn(
-                "Sample size < 10: results may be unreliable",
-                UserWarning,
-                stacklevel=2,
+                SmallSample(years=years, minimum=_MIN_RELIABLE_YEARS), stacklevel=2
             )
-        elif len(annual_maxima) < 30:
+        elif years < _KZGW_MIN_YEARS:
             warnings.warn(
-                "KZGW (2017) requires minimum 30 years of data "
-                "for flood frequency analysis",
-                UserWarning,
-                stacklevel=2,
+                ShortRecord(years=years, minimum=_KZGW_MIN_YEARS), stacklevel=2
             )
 
         self._data = np.asarray(annual_maxima, dtype=np.float64)
@@ -361,13 +360,7 @@ class FloodFrequencyAnalysis:
         """
         # K-S test
         ks_stat, ks_pval = kstest(self._data, cdf_func)
-        warnings.warn(
-            "Kolmogorov-Smirnov test critical values are invalid when "
-            "parameters are estimated from the same data. Use Anderson-"
-            "Darling or AIC for model selection.",
-            UserWarning,
-            stacklevel=3,
-        )
+        warnings.warn(KsTestApproximate(), stacklevel=3)
 
         # Anderson-Darling (manual)
         ad_stat = _anderson_darling(self._data, cdf_func)

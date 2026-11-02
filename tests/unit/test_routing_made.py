@@ -426,7 +426,7 @@ class TestWhatTheRunObserves:
             result = network.route()
 
         (notice,) = result.nodes["A"].notices
-        assert (notice.code, notice.level) == ("user_warning", "warning")
+        assert (notice.code, notice.level) == ("outside_typical_range", "warning")
         assert "outside typical range" in notice.message
         assert result.nodes["B"].notices == []
 

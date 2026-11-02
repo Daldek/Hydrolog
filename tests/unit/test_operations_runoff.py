@@ -386,9 +386,15 @@ class TestTimeOfConcentration:
     def test_run_command_notice(self):
         """Range warnings reach the envelope as notices with a stable code."""
         envelope = run_command("tc kirpich", {"length_km": 120, "slope_m_per_m": 0.023})
-        assert [(n.level, n.code) for n in envelope.notices] == [
-            ("warning", "user_warning")
-        ]
+        (notice,) = envelope.notices
+        assert (notice.level, notice.code) == ("warning", "outside_typical_range")
+        assert notice.details == {
+            "method": "kirpich",
+            "parameter": "length_km",
+            "value": 120.0,
+            "minimum": 0.001,
+            "maximum": 80.0,
+        }
 
 
 # --- cn -------------------------------------------------------------------------------
@@ -1968,8 +1974,8 @@ class TestHydrographGenerate:
         result, notices = unwrap(ops.hydrograph_generate(watershed=long_river, **STORM))
         assert result.tc_method == "kirpich"
         assert [(n.level, n.code) for n in notices] == [
-            ("warning", "user_warning"),
-            ("warning", "user_warning"),
+            ("warning", "outside_typical_range"),
+            ("warning", "outside_typical_range"),
         ]
         assert "kirpich: length_km=120.0" in notices[0].message
 

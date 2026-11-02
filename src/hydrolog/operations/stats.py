@@ -32,6 +32,7 @@ from numpy.typing import NDArray
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.catalog.envelope import Notice, OperationOutput, capture_warnings
 from hydrolog.catalog.inputs import Series, load_series
+from hydrolog.catalog.notices import notice
 from hydrolog.exceptions import CalculationError, HydrologError, InvalidParameterError
 from hydrolog.operations._analysis import (
     check_choice,
@@ -60,7 +61,7 @@ from hydrolog.statistics._hydrological_year import (
     annual_extremes,
     describe_incomplete_years,
     hydrological_year,
-    incomplete_years_message,
+    incomplete_years_details,
 )
 
 __all__ = [
@@ -289,14 +290,13 @@ def _annual_extremes(
 ) -> tuple[AnnualExtremes, list[Notice]]:
     """Maximum or minimum of every complete hydrological year of a dated series.
 
-    The notice (code ``incomplete_years``) names the years that were skipped.
+    The notice (code ``incomplete_years``) names the years that were skipped, with
+    the same template and details as the warning of the library.
     """
     extremes = annual_extremes(series.values, _dates_of(series), kind)
     notices: list[Notice] = []
     if extremes.incomplete:
-        notices.append(
-            Notice("warning", "incomplete_years", incomplete_years_message(extremes))
-        )
+        notices.append(notice("incomplete_years", **incomplete_years_details(extremes)))
     return extremes, notices
 
 
@@ -557,15 +557,7 @@ def stats_monthly(
         )
     single = [month for month in range(1, 13) if counts[month - 1] == 1]
     if single:
-        notices.append(
-            Notice(
-                "warning",
-                "single_value_month",
-                f"Month(s) {', '.join(str(month) for month in single)} hold a single "
-                "value: their standard deviation, coefficient of variation, skewness "
-                "and confidence interval are undefined (null)",
-            )
-        )
+        notices.append(notice("single_value_month", months=single))
     return OperationOutput(result, [*notices, *numeric])
 
 
@@ -615,9 +607,9 @@ def stats_flood_frequency(
     OperationOutput
         ``result`` is a :class:`FloodFrequencyResult`; the notices report removed
         missing values, skipped incomplete years (code ``incomplete_years``) and the
-        warnings of the fit (short sample: fewer than 30 years in the KZGW 2017
-        methodology, fewer than 10 years unreliable; the K-S test is not valid for
-        fitted parameters).
+        warnings of the fit: a sample of fewer than 10 years (``small_sample``) or of
+        fewer than the 30 years of the KZGW 2017 methodology (``short_record``), and
+        a K-S test that is not valid for fitted parameters (``ks_test_approximate``).
 
     Raises
     ------
@@ -734,7 +726,7 @@ def stats_low_flow(
     OperationOutput
         ``result`` is a :class:`LowFlowFrequencyAnalysis`; the notices report removed
         missing values, skipped incomplete years (code ``incomplete_years``) and the
-        warnings of the fit (fewer than 10 years: unreliable).
+        warnings of the fit (fewer than 10 years: ``small_sample``).
 
     Raises
     ------

@@ -12,11 +12,12 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from hydrolog._warnings import IncompleteYears
 from hydrolog.statistics._hydrological_year import (
     annual_extremes,
     days_in_hydrological_year,
     describe_incomplete_years,
-    incomplete_years_message,
+    incomplete_years_details,
 )
 
 
@@ -160,16 +161,19 @@ class TestExtremes:
 
 
 class TestMessages:
-    def test_the_message_lists_the_skipped_years_with_their_days(self):
+    def test_the_skipped_years_are_listed_with_their_days(self):
         dates = _days("1991-01-01", "2020-12-31")
         result = annual_extremes(np.ones(len(dates)), dates, "max")
         assert describe_incomplete_years(result) == (
             "1991 (304 of 365 days), 2021 (61 of 365 days)"
         )
-        message = incomplete_years_message(result)
-        assert "2 of 31" in message
-        assert message.endswith("1991 (304 of 365 days), 2021 (61 of 365 days)")
-        assert "\n" not in message
+        assert incomplete_years_details(result) == {
+            "skipped": 2,
+            "total": 31,
+            "years": [1991, 2021],
+            "days_with_data": [304, 61],
+            "days_in_year": [365, 365],
+        }
 
     def test_a_long_list_is_cut_after_ten_years(self):
         # one day in each of 15 calendar years: 15 incomplete hydrological years
@@ -182,4 +186,10 @@ class TestMessages:
         assert "2010 (1 of 365 days)" in listed
         assert "2011" not in listed
         assert listed.endswith(", and 5 more")
-        assert "15 of 15" in incomplete_years_message(result)
+        details = incomplete_years_details(result)
+        assert details["years"] == list(range(2001, 2016))  # the details keep all
+        message = str(IncompleteYears(**details))
+        assert message.startswith("Skipped 15 of 15 hydrological year(s)")
+        assert message.endswith(
+            ": 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, and 5 more"
+        )

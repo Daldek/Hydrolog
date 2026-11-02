@@ -115,9 +115,12 @@ def test_the_result_of_every_example_obeys_its_schema(command, index, tmp_path):
     except MissingDependencyError as exc:
         pytest.skip(f"optional extra not installed: {exc}")
 
-    assert _violations(command.result_schema, result) == []
+    # an example with `check` is a plan (`gui serve`): its document is the plan
+    schema = "hydrolog-plan/1" if example.get("check") else command.result_schema
+    assert result["schema"] == schema
+    assert _violations(schema, result) == []
     # A field added later keeps the version (AGI-4.1): unknown fields are allowed.
-    assert _violations(command.result_schema, {**result, "added_later": [1]}) == []
+    assert _violations(schema, {**result, "added_later": [1]}) == []
 
 
 FILE_COMMANDS = [

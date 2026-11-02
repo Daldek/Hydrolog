@@ -45,9 +45,14 @@ and a missing file is an ``io_error``. A file listed in ``OperationOutput.replac
 has the status ``replaced`` (it existed before), every other one ``written``.
 
 Notices are *non-fatal* observations. Anything that prevents a result is an
-exception from :mod:`hydrolog.exceptions`, not a notice. The library reports many such
-observations as Python ``UserWarning`` (short series, value outside the typical
-range...); :func:`capture_warnings` turns them into notices inside an operation::
+exception from :mod:`hydrolog.exceptions`, not a notice. Every notice has a stable
+``code`` of the registry :data:`hydrolog.catalog.notices.NOTICES` and, when its
+English ``message`` holds values, those values in ``details`` (the key appears only
+when there are any). An operation builds its notices with
+:func:`hydrolog.catalog.notices.notice`. The library reports its observations as
+warnings of :class:`hydrolog._warnings.HydrologWarning` (a ``UserWarning`` whose
+class names the code: a short sample, a value outside the typical range...);
+:func:`capture_warnings` turns them into notices inside an operation::
 
     with capture_warnings() as notices:
         result = FloodFrequencyAnalysis(maxima).fit_gev()
@@ -64,10 +69,11 @@ import re
 import threading
 import warnings
 from collections.abc import Iterable, Iterator, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Final, Literal
 
 from hydrolog._serialization import to_jsonable
+from hydrolog._warnings import HydrologWarning, warning_code
 from hydrolog.exceptions import OutputError
 
 RESULT_SCHEMA: Final = "hydrolog-result/1"
@@ -93,9 +99,15 @@ class Notice:
     level : {"info", "warning"}
         Severity.
     code : str
-        Stable machine-readable ``snake_case`` identifier (``"short_series"``).
+        Stable machine-readable ``snake_case`` identifier, a code of the registry
+        :data:`hydrolog.catalog.notices.NOTICES` (``"missing_values_removed"``).
     message : str
         Human-readable message (English).
+    details : Mapping, optional
+        The values that the message holds, under the keys that the registry lists for
+        the code (``{"missing": 2, "total": 14, "first_date": "2023-11-08"}``);
+        ``None`` when there are none. Not compared: two notices with the same level,
+        code and message are equal.
 
     Raises
     ------
@@ -107,6 +119,7 @@ class Notice:
     level: NoticeLevel
     code: str
     message: str
+    details: Mapping[str, Any] | None = field(default=None, compare=False)
 
     def __post_init__(self) -> None:
         """Validate the field values."""
@@ -120,9 +133,19 @@ class Notice:
         if not self.message.strip():
             raise ValueError("Notice message must not be empty")
 
-    def to_dict(self) -> dict[str, str]:
-        """Return ``{"level", "code", "message"}``."""
-        return {"level": self.level, "code": self.code, "message": self.message}
+    def to_dict(self) -> dict[str, Any]:
+        """Return ``{"level", "code", "message"}`` and ``details`` when there are any.
+
+        ``details`` is JSON-native (:func:`~hydrolog._serialization.to_jsonable`).
+        """
+        document: dict[str, Any] = {
+            "level": self.level,
+            "code": self.code,
+            "message": self.message,
+        }
+        if self.details:
+            document["details"] = to_jsonable(dict(self.details))
+        return document
 
 
 @dataclass(frozen=True)
@@ -184,25 +207,28 @@ class OperationOutput:
     page: Mapping[str, Any] | None = None
 
 
-def _warning_code(category: type[Warning]) -> str:
-    """``UserWarning`` -> ``user_warning``."""
-    return re.sub(r"(?<!^)(?=[A-Z])", "_", category.__name__).lower()
-
-
 @contextlib.contextmanager
 def capture_warnings(
     categories: tuple[type[Warning], ...] = (UserWarning,),
 ) -> Iterator[list[Notice]]:
     """Turn Python warnings raised inside the block into notices.
 
-    The library signals non-fatal observations (a short series, a value outside the
-    typical range...) with ``warnings.warn``. Inside this block every warning of the
-    given ``categories`` is recorded instead of printed and, when the block ends,
-    appended to the yielded list as a :class:`Notice` (level ``"warning"``, code the
-    snake_case category such as ``"user_warning"``, text the message; identical
-    warnings once). Warnings of other categories are re-issued unchanged after the
-    block. Blocks are serialized by a lock because ``warnings.catch_warnings`` changes
-    process-wide state; keep the block to the computation itself.
+    The library signals non-fatal observations (a short sample, a value outside the
+    typical range...) with ``warnings.warn`` of a
+    :class:`~hydrolog._warnings.HydrologWarning`. Inside this block every warning of
+    the given ``categories`` is recorded instead of printed and, when the block ends,
+    appended to the yielded list as a :class:`Notice`, identical ones once:
+
+    * a ``HydrologWarning`` gives the level, code, message and details of its class
+      (code ``outside_typical_range`` with ``method``, ``parameter``, ``value``...);
+    * any other warning (of NumPy, SciPy...) gives level ``"warning"``, its message
+      and the code of the requested category that it belongs to, never a class name
+      of another library: ``user_warning`` for the ``UserWarning`` family,
+      ``runtime_warning`` for ``RuntimeWarning``.
+
+    Warnings of other categories are re-issued unchanged after the block. Blocks are
+    serialized by a lock because ``warnings.catch_warnings`` changes process-wide
+    state; keep the block to the computation itself.
 
     Parameters
     ----------
@@ -217,10 +243,12 @@ def capture_warnings(
     Examples
     --------
     >>> import warnings
+    >>> from hydrolog._warnings import SmallSample
     >>> with capture_warnings() as notices:
-    ...     warnings.warn("only 5 years of data", UserWarning)
-    >>> [(n.level, n.code, n.message) for n in notices]
-    [('warning', 'user_warning', 'only 5 years of data')]
+    ...     warnings.warn(SmallSample(years=6, minimum=10))
+    ...     warnings.warn("an observation of another library", UserWarning)
+    >>> [(n.code, n.details) for n in notices]
+    [('small_sample', {'years': 6, 'minimum': 10}), ('user_warning', None)]
     """
     notices: list[Notice] = []
     with _WARNING_LOCK:
@@ -229,14 +257,24 @@ def capture_warnings(
             yield notices
         seen: dict[Notice, None] = {}
         for item in caught:
-            if issubclass(item.category, categories):
-                text = str(item.message).strip() or item.category.__name__
-                seen.setdefault(Notice("warning", _warning_code(item.category), text))
+            matched = [c for c in categories if issubclass(item.category, c)]
+            if matched:
+                seen.setdefault(_captured_notice(item, matched[0]))
             else:
                 warnings.warn_explicit(
                     item.message, item.category, item.filename, item.lineno
                 )
         notices.extend(seen)
+
+
+def _captured_notice(item: warnings.WarningMessage, category: type[Warning]) -> Notice:
+    """Return the notice of a warning captured as one of ``category`` (see above)."""
+    message = item.message
+    if isinstance(message, HydrologWarning):
+        kind = type(message)
+        return Notice(kind.level, kind.code(), str(message), message.details or None)
+    text = str(message).strip() or item.category.__name__
+    return Notice("warning", warning_code(category), text)
 
 
 def sha256_file(path: str | os.PathLike[str]) -> str:

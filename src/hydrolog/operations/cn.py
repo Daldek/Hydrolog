@@ -11,6 +11,7 @@ from typing import Any, Literal, cast, get_args
 
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.catalog.envelope import Notice, OperationOutput
+from hydrolog.catalog.notices import notice
 from hydrolog.exceptions import InvalidParameterError
 from hydrolog.operations._common import (
     check_choice,
@@ -239,20 +240,10 @@ def cn_lookup(
     applied = (condition or "fair") if conditional else None
     notices: list[Notice] = []
     if conditional and condition is None:
-        notices.append(
-            Notice(
-                "info",
-                "condition_defaulted",
-                f"No hydrologic condition given for {cover!r}: 'fair' was used.",
-            )
-        )
+        notices.append(notice("condition_defaulted", land_cover=cover))
     elif not conditional and condition is not None:
         notices.append(
-            Notice(
-                "info",
-                "condition_ignored",
-                f"{cover!r} has a single CN: condition {condition!r} was ignored.",
-            )
+            notice("condition_ignored", land_cover=cover, condition=condition)
         )
     result = CnLookup(
         cn=cn,

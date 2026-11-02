@@ -130,6 +130,12 @@
     },
     "effective_precipitation_mm": {
       "type": "array"
+    },
+    "uh_times_min": {
+      "type": "array"
+    },
+    "uh_discharge_m3s_per_mm": {
+      "type": "array"
     }
   }
 }

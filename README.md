@@ -135,7 +135,7 @@ anyio.run(call_tool)
 
 ## Capabilities
 
-44 commands in 15 groups, all computed offline: no command opens a network connection or downloads data. The MCP tool is `hydrolog_` plus the command name with `_`; every command is also available as `hydrolog.run_command("<command>", **options)`.
+46 commands in 16 groups, all computed offline: no command opens a network connection or downloads data. The MCP tool is `hydrolog_` plus the command name with `_`; every command is also available as `hydrolog.run_command("<command>", **options)`.
 
 | Group | Task | CLI command | MCP tool | Python (`hydrolog.operations`) |
 |---|---|---|---|---|
@@ -164,6 +164,7 @@ anyio.run(call_tool)
 | | Muskingum routing of a hydrograph over sub-reaches (writes a file if an output is given) | `route muskingum` | `hydrolog_route_muskingum` | `route_muskingum` |
 | | Muskingum-Cunge routing of a hydrograph over a reach with its section or celerity (writes a file if an output is given) | `route muskingum-cunge` | `hydrolog_route_muskingum_cunge` | `route_muskingum_cunge` |
 | | Hydrographs routed down a river network of catchments, reaches, reservoirs and junctions (writes a table per node if an output directory is given) | `route network` | `hydrolog_route_network` | `route_network` |
+| | The schematic of a river network, laid out without routing it | `route schematic` | `hydrolog_route_schematic` | `route_schematic` |
 | Morphometry | Geometric, shape and relief indicators | `morphometry watershed` | `hydrolog_morphometry_watershed` | `morphometry_watershed` |
 | River network | River network order statistics (Strahler, Shreve) | `network stats` | `hydrolog_network_stats` | `network_stats` |
 | Flow statistics | Characteristic values WWQ to NNQ of a daily series | `stats characteristic` | `hydrolog_stats_characteristic` | `stats_characteristic` |
@@ -180,6 +181,7 @@ anyio.run(call_tool)
 | | USDA texture class and HSG of one sample | `soil texture` | `hydrolog_soil_texture` | `soil_texture` |
 | Report | Markdown calculation report (writes a file) | `report generate` | `hydrolog_report_generate` | `report_generate` |
 | Settings | Effective settings and their sources | `config show` | `hydrolog_config_show` | `config_show` |
+| Web GUI | The web GUI, served on this computer until it is stopped (for a person, so no MCP tool) | `gui serve` | none (`hydrolog_gui_serve` is not a tool) | `gui_serve` |
 | Catalog and guides | Render AGENTS.md, llms.txt or a block (writes a file) | `commands guide` | `hydrolog_commands_guide` | `commands_guide` |
 | | List the commands | `commands list` | `hydrolog_commands_list` | `commands_list` |
 | | Options, units, rules and examples of a command | `commands schema` | `hydrolog_commands_schema` | `commands_schema` |

@@ -7,12 +7,17 @@ schema from the documents they produce and writes
 ``src/hydrolog/schemas/<kind>-<n>.schema.json``. The schemas are deliberately loose:
 the top-level properties with their types, the properties that every example has as
 ``required``, and nothing about nested keys, so a new optional field keeps the version
-(AGI-4.1). The plan document ``hydrolog-plan/1`` and the command list are written by
-hand below, and so are two documents that a command does not write as its own result:
-the network ``hydrolog-network/1`` that ``route network`` reads (its fields come from
-the options of the catalog) and the schematic of a network
-``hydrolog-network-schematic/1`` that it returns in its result and draws as SVG;
-``hydrolog-commands/1`` is the Nogat ``commands-1`` schema (``schemas/nogat/``).
+(AGI-4.1). A field added to a document after its first version is never ``required``,
+whatever the examples hold: the documents of earlier releases lack it and keep the
+version, so they must still validate. :data:`_ADDED_FIELDS` lists those fields by
+document id; a new field of an existing document goes there. The plan document
+``hydrolog-plan/1`` and the command list are written by hand below, and so are the
+network ``hydrolog-network/1`` that ``route network`` reads (its fields come from the
+options of the catalog), the schematic of a network ``hydrolog-network-schematic/1``,
+which ``route network`` returns in its result and draws as SVG and ``route schematic``
+returns as its result, and ``hydrolog-gui-serve/1``, whose only example is a plan (the
+server blocks until it is stopped); ``hydrolog-commands/1`` is the Nogat ``commands-1``
+schema (``schemas/nogat/``).
 
 Usage::
 
@@ -61,6 +66,11 @@ _RESERVED_ID = (
 
 _TYPE_ORDER = ["null", "boolean", "integer", "number", "string", "array", "object"]
 
+_ADDED_FIELDS: dict[str, tuple[str, ...]] = {
+    "hydrolog-hydrograph-generate/1": ("uh_times_min", "uh_discharge_m3s_per_mm"),
+}
+"""Fields added to a document after its first version, by id: never ``required``."""
+
 
 def _json_type(value: Any) -> str:
     if value is None:
@@ -91,7 +101,12 @@ def infer(schema_id: str, documents: list[dict[str, Any]]) -> dict[str, Any]:
     for document in documents:
         for key, value in document.items():
             types.setdefault(key, set()).add(_json_type(value))
-    required = [key for key in types if all(key in document for document in documents)]
+    added = _ADDED_FIELDS.get(schema_id, ())
+    required = [
+        key
+        for key in types
+        if key not in added and all(key in document for document in documents)
+    ]
     properties: dict[str, Any] = {}
     for key, found in types.items():
         if key == "schema":
@@ -566,20 +581,43 @@ def _hand_written() -> dict[str, dict[str, Any]]:
     list_id = "hydrolog-command-list/1"
     network_id = "hydrolog-network/1"
     schematic_id = SCHEMATIC_SCHEMA
+    serve_id = "hydrolog-gui-serve/1"
     return {
         network_id: _network_document(network_id),
         schematic_id: _schematic_document(schematic_id),
+        serve_id: {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": f"{BASE}/hydrolog-gui-serve-1.schema.json",
+            "title": serve_id,
+            "description": (
+                "Where and when `gui serve` served once it has stopped: the address of "
+                "the page and the times it started and stopped (ISO 8601, UTC; "
+                "ADR-0014)."
+            ),
+            "type": "object",
+            "required": ["schema", "url", "started_at", "stopped_at"],
+            "properties": {
+                "schema": {"const": serve_id},
+                "url": {"type": "string"},
+                "started_at": {"type": "string"},
+                "stopped_at": {"type": "string"},
+            },
+        },
         plan_id: {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "$id": f"{BASE}/hydrolog-plan-1.schema.json",
             "title": plan_id,
             "description": (
-                "Plan of a `check` run: each output file with its action (DEV-19.10)."
+                "Plan of a `check` run: each output file with its action (DEV-19.10). "
+                "The plan of `gui serve` has no targets and gives the address it would "
+                "serve on (`url`) and whether its port is free (`port_free`)."
             ),
             "type": "object",
             "required": ["schema", "targets"],
             "properties": {
                 "schema": {"const": plan_id},
+                "url": {"type": "string"},
+                "port_free": {"type": "boolean"},
                 "targets": {
                     "type": "array",
                     "items": {

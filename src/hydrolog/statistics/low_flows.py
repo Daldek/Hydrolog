@@ -39,11 +39,12 @@ from numpy.typing import NDArray
 from scipy.stats import genextreme, kstest
 
 from hydrolog._serialization import JsonResultMixin
+from hydrolog._warnings import IncompleteYears, SmallSample
 from hydrolog.exceptions import CalculationError, InvalidParameterError
 from hydrolog.statistics._hydrological_year import (
     AnnualExtremes,
     annual_extremes,
-    incomplete_years_message,
+    incomplete_years_details,
 )
 from hydrolog.statistics._types import (
     EmpiricalFrequency,
@@ -53,6 +54,7 @@ from hydrolog.statistics._types import (
 )
 
 _DEFAULT_RETURN_PERIODS = np.array([2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 500.0, 1000.0])
+_MIN_RELIABLE_YEARS = 10  # below it the estimates may be unreliable
 
 
 # ---------------------------------------------------------------------------
@@ -278,13 +280,13 @@ class LowFlowAnalysis:
         """
         extremes = self._annual_extremes()
         if extremes.incomplete:
-            warnings.warn(incomplete_years_message(extremes), UserWarning, stacklevel=2)
-        if len(extremes.years) < 10:
             warnings.warn(
-                f"Only {len(extremes.years)} year(s) of data available; "
-                "low-flow frequency estimates may be unreliable.",
-                UserWarning,
-                stacklevel=2,
+                IncompleteYears(**incomplete_years_details(extremes)), stacklevel=2
+            )
+        years = len(extremes.years)
+        if years < _MIN_RELIABLE_YEARS:
+            warnings.warn(
+                SmallSample(years=years, minimum=_MIN_RELIABLE_YEARS), stacklevel=2
             )
         return extremes.values.copy()
 

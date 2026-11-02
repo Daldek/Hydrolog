@@ -1,6 +1,8 @@
 # Plan: Hydrolog's web GUI, standalone and as a Nogat module
 
-Approved: pending
+Approved: 2026-11-02
+
+Approved by the author on 2026-11-02 ([ADR-0014](../decisions/0014-web-gui-enters-the-scope.md), [ADR-0015](../decisions/0015-catalog-additions-for-the-gui.md)), together with the choices on the mockup's open questions and the deviations: the (i) texts in the GUI now; stable notice codes now, option names in library errors later; slope in m/m with a % hint; no variants; a print view instead of a PDF output; a Polish-only UI (a deviation from DEV-2.2); the private GUI API outside AGI section 6. Nogat's N1 (the `nogat-handoff/1` schema) is approved ahead of the rest of the platform plan, and the public tunnel (to 127.0.0.1:8070) will be behind Cloudflare Access, which the author sets up; this answers the open questions 1 and 2.
 
 Requirements: DEV-17.4, DEV-15.1 to DEV-15.3, DEV-2.2, DEV-2.3, AGI-1.1, AGI-2.1, AGI-2.3, AGI-4.1 to AGI-4.3, ECO-055, HUB-1.2. Inputs: the approved mockup (Nogat `design/mockups/hydrolog/`, branch `feature/hydrolog-gui-mockup`, `ed3473c`); the author's decisions of 2026-11-01; Nogat's platform plan `docs/plans/2026-11-01-nogat-gui-platform.md` (pending; items 2, 3 and 5 to 8, steps 11 and 15); Nogat's pointer to this plan, `docs/plans/2026-11-02-hydrolog-gui.md` on Nogat's branch `plan/hydrolog-gui` (HUB-5.2, the order of the projects). No code before `Approved:`.
 

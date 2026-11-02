@@ -39,6 +39,7 @@ from hydrolog.mcp.server import main
 ROOT = Path(__file__).resolve().parents[2]
 SCHEMAS = ROOT / "schemas" / "nogat"
 COMMANDS = data_commands()
+TOOLS = [c for c in COMMANDS if c.agent_tool]
 WRITING = [c for c in COMMANDS if c.writes]
 ALWAYS_LOAD = ["hydrolog_commands_list", "hydrolog_commands_schema"]
 HEAVY_MODULES = ("numpy", "scipy", "rasterio", "matplotlib", "pandas", "pyproj")
@@ -169,11 +170,18 @@ class TestToolList:
     """``tools/list``: names (AGI-5.2), descriptions (AGI-5.3), annotations (5.4)."""
 
     @pytest.mark.parametrize("mode", MODES)
-    def test_every_catalog_command_is_one_tool_in_catalog_order(self, mode):
+    def test_every_agent_tool_of_the_catalog_is_one_tool_in_catalog_order(self, mode):
         tools, _ = listing(mode)
 
-        assert [tool.name for tool in tools] == [c.operation_id for c in COMMANDS]
+        assert [tool.name for tool in tools] == [c.operation_id for c in TOOLS]
         assert [tool.name for tool in listing(mode)[0]] == [t.name for t in tools]
+
+    def test_a_command_that_a_person_starts_is_no_tool(self, tmp_path):
+        """``gui serve`` serves until it is stopped: not for an agent (ADR-0015)."""
+        tools = tools_by_name(allowed_dirs=[tmp_path], allow_writes=True)
+
+        assert "hydrolog_gui_serve" not in tools
+        assert get_command("gui serve").agent_tool is False
 
     def test_names_are_short_lowercase_identifiers_with_the_tool_prefix(self):
         for tool in default_listing()[0]:
@@ -1141,7 +1149,7 @@ class TestColdStart:
             log.seek(0)
             report = [ln for ln in log.read().splitlines() if ln.startswith("LOADED ")]
 
-        assert len(tools) == len(COMMANDS)
+        assert len(tools) == len(TOOLS)
         assert elapsed < 5, f"start + tools/list took {elapsed:.1f} s"
         assert report, "the server did not report its modules at exit"
         assert json.loads(report[-1].removeprefix("LOADED ")) == []

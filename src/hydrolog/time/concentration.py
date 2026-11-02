@@ -2,6 +2,7 @@
 
 import warnings
 
+from hydrolog._warnings import OutsideTypicalRange
 from hydrolog.exceptions import InvalidParameterError
 
 # Typical parameter ranges for validation warnings
@@ -35,7 +36,7 @@ def _warn_if_out_of_range(
     max_val: float,
     method_name: str,
 ) -> None:
-    """Issue warning if parameter is outside typical range.
+    """Warn (:class:`~hydrolog._warnings.OutsideTypicalRange`) if outside the range.
 
     Parameters
     ----------
@@ -52,9 +53,13 @@ def _warn_if_out_of_range(
     """
     if value < min_val or value > max_val:
         warnings.warn(
-            f"{method_name}: {param_name}={value} is outside typical range "
-            f"[{min_val}, {max_val}]. Results may be unreliable.",
-            UserWarning,
+            OutsideTypicalRange(
+                method=method_name,
+                parameter=param_name,
+                value=value,
+                minimum=min_val,
+                maximum=max_val,
+            ),
             stacklevel=3,
         )
 

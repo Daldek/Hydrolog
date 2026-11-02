@@ -159,6 +159,7 @@ RICH = _command(
         _opt("watershed", "object"),
         _opt("input_file", "path"),
         _opt("out", "path", path_role="output"),
+        _opt("check", "boolean"),
         _opt("ratio", "number", default=0.5, minimum=0, maximum=1, unit="m/m"),
     ),
 )
@@ -389,7 +390,9 @@ class TestCommandDeclaration:
         assert pure.effects.writes == "none"
         assert pure.effects.destructive is False
         assert pure.check is None
-        writing = _command(options=(_opt("o", "path", path_role="output"),))
+        writing = _command(
+            options=(_opt("o", "path", path_role="output"), _opt("check", "boolean"))
+        )
         assert writing.writes is True
         assert writing.effects.read_only is False
         assert writing.effects.writes == "replace"
@@ -1349,6 +1352,7 @@ class TestEnvelope:
             "writing_operation",
             options=(
                 _opt("out", "path", required=True, path_role="output"),
+                _opt("check", "boolean"),
                 _opt("text", "string"),
             ),
         )
@@ -1388,7 +1392,10 @@ class TestEnvelope:
         """A result exposing ``output_files()`` is listed once, duplicates removed."""
         command = _command(
             "protocol_operation",
-            options=(_opt("out", "path", required=True, path_role="output"),),
+            options=(
+                _opt("out", "path", required=True, path_role="output"),
+                _opt("check", "boolean"),
+            ),
         )
         target = tmp_path / "bin.dat"
         result = run_command(command, {"out": str(target)})
@@ -1400,7 +1407,10 @@ class TestEnvelope:
         """The envelope never lists a file that is not there."""
         command = _command(
             "ghost_file_operation",
-            options=(_opt("out", "path", required=True, path_role="output"),),
+            options=(
+                _opt("out", "path", required=True, path_role="output"),
+                _opt("check", "boolean"),
+            ),
         )
         with pytest.raises(OutputError) as caught:
             run_command(command, {"out": str(tmp_path / "ghost.txt")})
@@ -1536,6 +1546,7 @@ class TestPathPolicy:
             options=(
                 _opt("input_file", "path"),
                 _opt("out", "path", path_role="output"),
+                _opt("check", "boolean"),
                 _opt("label", "string"),
             ),
         )

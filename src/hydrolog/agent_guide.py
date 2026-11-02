@@ -26,9 +26,11 @@ change of the catalog, the error registry, the templates or this module::
     hydrolog commands guide --format agents --output AGENTS.md --force
     hydrolog commands guide --format llms --output llms.txt --force
 
-The CLI lines of the flows are written by the example formatter of the command line
-(:func:`hydrolog.cli.parser.format_example`), imported when a flow is rendered, so they
-are exactly what the CLI parses.
+The CLI lines of the flows are canonical lines
+(:func:`hydrolog.catalog.format_command`), so they are exactly what the CLI parses. The
+guides describe the agent tools only: a command with ``agent_tool`` false (``gui
+serve``, which a person starts) has no line in the command index and its group is not
+listed.
 """
 
 from __future__ import annotations
@@ -41,7 +43,13 @@ from dataclasses import dataclass, field
 from importlib.resources import files
 from typing import Final, Literal, cast
 
-from hydrolog.catalog import Command, data_commands, get_command, validate_command
+from hydrolog.catalog import (
+    Command,
+    data_commands,
+    format_command,
+    get_command,
+    validate_command,
+)
 from hydrolog.exceptions import ERROR_CODES
 
 __all__ = [
@@ -96,7 +104,7 @@ _GROUP_TITLES: Final[Mapping[str, str]] = {
 _COMPACT_GROUPS: Final[Mapping[str, str]] = {
     "route": (
         "route a hydrograph (`time_min`, `discharge_m3s`) through a reach, a "
-        "reservoir or a river network"
+        "reservoir or a river network, or lay a network out"
     ),
 }
 # The rules of AGENTS.md, the block and the instructions of the MCP server.
@@ -327,10 +335,11 @@ def _table(header: Sequence[str], rows: Sequence[Sequence[str]]) -> str:
 
 
 def _groups(commands: Sequence[Command]) -> dict[str, list[Command]]:
-    """Group the commands by group, in catalog order."""
+    """Group the agent tools among ``commands`` by group, in catalog order."""
     grouped: dict[str, list[Command]] = {}
     for command in commands:
-        grouped.setdefault(command.group, []).append(command)
+        if command.agent_tool:
+            grouped.setdefault(command.group, []).append(command)
     return grouped
 
 
@@ -444,13 +453,8 @@ def _error_codes() -> str:
 
 
 def _cli_line(command: Command, options: Mapping[str, object]) -> str:
-    """Return the command line that gives ``command`` the ``options``.
-
-    The line is written the way the CLI parses it.
-    """
-    from hydrolog.cli.parser import format_example
-
-    return format_example(command, options)
+    """Return the canonical command line that gives ``command`` the ``options``."""
+    return format_command(command, options)
 
 
 def _python_call(command: Command, options: Mapping[str, object]) -> str:

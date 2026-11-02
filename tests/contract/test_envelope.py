@@ -73,12 +73,13 @@ class TestFields:
         pages = _envelope("commands list")
         assert pages["inputs"] == {"limit": 100}
 
-    def test_notices_have_level_code_and_message(self):
+    def test_notices_have_level_code_message_and_details(self):
         envelope = _envelope("cn lookup", hsg="B", land_cover="forest")
         assert envelope["notices"]
         for notice in envelope["notices"]:
-            assert sorted(notice) == ["code", "level", "message"]
+            assert sorted(notice) == ["code", "details", "level", "message"]
             assert notice["level"] in ("info", "warning")
+            assert notice["details"] == {"land_cover": "forest"}
         assert _violations("result-1", envelope) == []
 
     def test_the_json_text_is_the_dictionary(self):

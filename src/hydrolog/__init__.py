@@ -1,18 +1,21 @@
 """Hydrolog: hydrological calculations as a Python library, a CLI and an MCP server.
 
 The public API is exactly :data:`__all__` (AGI-7.1): the error classes, the error
-registry and the five functions that drive any command of the catalog
-(AGI-2.1) -- :func:`list_commands`, :func:`command_schema`, :func:`validate_command`,
-:func:`check_command` and :func:`run_command`. The calculation classes live in the
-subpackages (``hydrolog.runoff``, ``hydrolog.time``, ``hydrolog.precipitation``...)
-and the operation of each command in :mod:`hydrolog.operations`.
+registry, the five functions that drive any command of the catalog (AGI-2.1) --
+:func:`list_commands`, :func:`command_schema`, :func:`validate_command`,
+:func:`check_command` and :func:`run_command` -- and the two that write and read its
+command lines, :func:`format_command` and :func:`parse_command`. The calculation
+classes live in the subpackages (``hydrolog.runoff``, ``hydrolog.time``,
+``hydrolog.precipitation``...) and the operation of each command in
+:mod:`hydrolog.operations`.
 
 Importing the package reads no files, uses no network and imports no numerical
-library: the five functions import the catalog when they are first called.
+library: the functions import the catalog when they are first called.
 """
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
 from hydrolog.exceptions import (
@@ -29,7 +32,7 @@ from hydrolog.exceptions import (
 )
 
 if TYPE_CHECKING:
-    from hydrolog.catalog import CommandResult, Document
+    from hydrolog.catalog import CommandResult, Document, ParsedCommand
 
 __version__ = "1.0.0.dev0"
 __author__ = "Piotr de Bever"
@@ -48,7 +51,9 @@ __all__ = [
     "__version__",
     "check_command",
     "command_schema",
+    "format_command",
     "list_commands",
+    "parse_command",
     "run_command",
     "validate_command",
 ]
@@ -204,3 +209,79 @@ def run_command(command: str, /, **options: Any) -> CommandResult:
     from hydrolog.catalog import run_command as _run_command
 
     return _run_command(command, options)
+
+
+def format_command(
+    command: str,
+    options: Mapping[str, Any] | None = None,
+    run: Mapping[str, Any] | None = None,
+) -> str:
+    """Write the canonical command line of a call (AGI-2.1).
+
+    Parameters
+    ----------
+    command : str
+        Command name (``"tc kirpich"``) or ``operation_id``.
+    options : Mapping[str, Any], optional
+        The options of the call, named as in the catalog entry (JSON-native values;
+        ``None`` is "not given").
+    run : Mapping[str, Any], optional
+        Run flags: ``json``, ``verbose``, ``quiet`` (booleans) and ``lang``
+        (``"pl"`` or ``"en"``).
+
+    Returns
+    -------
+    str
+        The line, the form of every example call of the catalog.
+
+    Raises
+    ------
+    NotFoundError
+        If the command does not exist.
+    InvalidParameterError
+        If an option or a run flag is unknown or a value does not have its type
+        (``details.option`` and ``details.reason``); bounds, required options and
+        ``one_of`` groups are left to the run.
+
+    Examples
+    --------
+    >>> import hydrolog
+    >>> hydrolog.format_command("cn lookup", {"hsg": "B", "land_cover": "forest"})
+    'hydrolog cn lookup --hsg B --land-cover forest'
+    """
+    from hydrolog.catalog import format_command as _format_command
+
+    return _format_command(command, options, run)
+
+
+def parse_command(line: str | Sequence[str]) -> ParsedCommand:
+    """Read a command line into its call, as the ``hydrolog`` command line reads it.
+
+    Parameters
+    ----------
+    line : str or sequence of str
+        The line, with or without the leading ``hydrolog``; a text is split like a
+        POSIX shell line.
+
+    Returns
+    -------
+    ParsedCommand
+        ``(command, options, run)``: the catalog name, the options (JSON-native, not
+        validated) and the run flags; :func:`format_command` writes the line back.
+
+    Raises
+    ------
+    NotFoundError
+        If the line names a group or a command that does not exist.
+    InvalidParameterError
+        If the line cannot be read (``details.reason`` ``usage``, ``type``...).
+
+    Examples
+    --------
+    >>> import hydrolog
+    >>> hydrolog.parse_command("hydrolog cn lookup --hsg B --land-cover forest").options
+    {'hsg': 'B', 'land_cover': 'forest'}
+    """
+    from hydrolog.catalog import parse_command as _parse_command
+
+    return _parse_command(line)
