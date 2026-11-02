@@ -587,8 +587,9 @@ COMMANDS: tuple[Command, ...] = (
                 "Defaults to the standard duration tD = tL/5.5.",
             ),
             _total_duration(
-                "Domyślnie podstawa hydrogramu tb.",
-                "Defaults to the time base tb.",
+                "Domyślnie do końca recesji, gdy odpłynie 99,99% objętości.",
+                "Defaults to the end of the recession, when 99.99% of the volume "
+                "has run off.",
             ),
         ),
         result_schema="hydrolog-uh-snyder/1",
@@ -609,14 +610,14 @@ COMMANDS: tuple[Command, ...] = (
                 "model": "snyder",
                 "lag_time_min": 378.44,
                 "time_to_peak_min": 412.843,
-                "peak_discharge_m3s_per_mm": 2.6211,
+                "peak_discharge_m3s_per_mm": 2.61512,
                 "time_base_min": 1275.23,
             },
             {
                 "model": "snyder",
                 "lag_time_min": 361.538,
                 "time_to_peak_min": 394.405,
-                "peak_discharge_m3s_per_mm": 1.23639,
+                "peak_discharge_m3s_per_mm": 1.16802,
                 "time_base_min": 1293.74,
             },
         ),

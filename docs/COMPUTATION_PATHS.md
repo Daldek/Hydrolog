@@ -1,8 +1,8 @@
 # Computation Paths for Unit Hydrograph Models (plus HSG and the Fisher–Tippett Distribution)
 
-**Document version:** 1.3
-**Date:** 2026-10-19
-**Applies to:** Hydrolog >= 1.0.0 (sections 3.3.6, 3.4.6, 3.5, 3.6, 3.7 and 3.8 describe behaviour from v1.0.0; the rest: >= 0.6.0)
+**Document version:** 1.4
+**Date:** 2026-11-02
+**Applies to:** Hydrolog >= 1.0.0 (sections 3.3.6, 3.4.6, 3.4.7, 3.5, 3.6, 3.7 and 3.8 describe behaviour from v1.0.0; the rest: >= 0.6.0)
 
 ---
 
@@ -621,7 +621,7 @@ print(f"{uh.ordinates_m3s.sum() * 5.0 * 60.0 / 45000.0:.3f} mm")   # 1.000 mm
                             ▼
     ┌───────────────────────────────────────────────────────┐
     │                    SNYDER UH                          │
-    │              (gamma-like shape)                       │
+    │  gamma curve through (tpR, qpR), 1 mm (section 3.4.7) │
     └───────────────────────────────────────────────────────┘
 ```
 
@@ -663,6 +663,14 @@ tpR = tLR + Δt/2                         [h]
 qpR = qp × (tL / tLR)                    [m³/s/mm]
 tb = 0.556 × A / qpR                     [h]
 ```
+
+**Shape of the hydrograph (since v1.0.0, section 3.4.7):**
+```
+q(t) = qpR × [(t/tpR) × exp(1 - t/tpR)]^K          [m³/s/mm]
+Γ(K) × (e/K)^K = V / (qpR × tpR),  V = A × 1000 m³   (1 mm over A)
+```
+
+tb is the base of the triangle with the peak qpR and the volume of 1 mm: a parameter of the method (`time_base_min`), not the end of the hydrograph.
 
 #### 3.4.4 Choosing the Ct and Cp Coefficients
 
@@ -726,10 +734,34 @@ Versions < 1.0.0 called `snyder.generate(timestep_min=dt)`, i.e. the hydrograph 
 | Catchment 45 km², L = 12 km, Lc = 6 km, Ct = 1.5, Cp = 0.6, CN 72, beta rainfall 50 mm/120 min, step 5 min | before v1.0.0 (D = tD = 59.0 min) | since v1.0.0 (D = 5 min) |
 |------|------:|------:|
 | Unit hydrograph: time to peak tp [min] | 354.2 | 313.7 |
-| Unit hydrograph: peak qp [m³/s/mm] | 1.379 | 1.542 |
-| Runoff hydrograph: Qmax [m³/s] (time [min]) | 9.76 (405) | 10.90 (365) |
+| Unit hydrograph: peak qp [m³/s/mm] | 1.379 | 1.432 |
+| Runoff hydrograph: Qmax [m³/s] (time [min]) | 9.76 (405) | 10.12 (365) |
 
-For a step equal to tD the correction vanishes (tLR = tL) and the result is the same as before.
+The values since v1.0.0 include the shape of section 3.4.7, whose peak is qpR; with that shape the step alone moves Qmax from 9.71 m³/s at 405 min (D = tD) to 10.12 m³/s at 365 min (+4.3%). For a step equal to tD the correction vanishes (tLR = tL): the generator uses the hydrograph of the standard duration.
+
+#### 3.4.7 Shape of the Snyder Hydrograph and the End of Its Recession (since v1.0.0)
+
+Snyder's method gives the peak (tpR, qpR), the widths W50 and W75 and the triangular time base tb, not a curve. Versions < 1.0.0 took a gamma curve of one fixed shape (n = 3.7, `(t/k)^(n-1) × exp(-t/k)` with k = tp/(n-1)), scaled it to qp, cut it at tb and rescaled the ordinates to 1 mm. tb = 0.556 × A / qpR shrinks as Cp grows while that curve does not change, so the cut came at 4.6% of the peak for Cp = 0.6 and at 20% for Cp = 0.8 (Δt = 5 min), and from Cp ≈ 2 on at or before the peak itself. The runoff hydrograph then ended in a near-vertical drop (Hydrograf front-end test of 2026-11-01). The peak of the ordinates was not qpR either: Cp acted only through the cut (Kamiennik, Ct = 1.65: Cp 0.4 → 1.0 moves qpR 0.64 → 1.60 m³/s/mm, but the peak of the ordinates moved 1.02 → 1.22).
+
+Since v1.0.0 the ordinates are the gamma unit hydrograph through the peak (Asquith and Roussel 2007, USGS SIR 2007-5243, eq. 2 and 4):
+
+```
+q(t) = qpR × [(t/tpR) × exp(1 - t/tpR)]^K          [m³/s/mm]
+V = qpR × tpR × Γ(K) × (e/K)^K                      (volume of the curve)
+```
+
+K is the root of `Γ(K) × (e/K)^K = V / (qpR × tpR)` for V = 1 mm over A (`brentq` on ln K; the left side falls monotonically from +∞ to 0, so the root is unique). Ct thus sets the time of the peak and Cp its height: for Δt = tD, K ≈ 2.0, 2.8, 3.8 and 4.9 for Cp = 0.5, 0.6, 0.7 and 0.8 (the former fixed n = 3.7 corresponds to K = 2.7). In t/tpR the curve is proportional to the density of the gamma distribution with the shape K + 1 and the rate K, so by default the ordinates run until 99.99% of the volume has passed, `P(K + 1, K × t/tpR) = 0.9999`, where the curve is below 0.1% of the peak; they are then rescaled to 1 mm (sampling at the step). A shorter `total_duration_min` still cuts the recession. `time_base_min` stays tb. A Cp for which no hydrograph of 1 mm has the peak qpR (K outside 10⁻¹²…10¹², i.e. Cp below about 10⁻¹² or above about 10⁵) raises `InvalidParameterError`.
+
+| Kamiennik catchment (Hydrograf): A = 37.23 km², L = 15.22 km, Lc = 6.92 km, CN 67.9, PMAXTP 1 h p = 1% (46.35 mm, beta), AMC II, step 5 min | Ct 1.65, Cp 0.8: before | after | Ct 1.5, Cp 0.6: before | after |
+|------|------:|------:|------:|------:|
+| K | 2.7 | 4.16 | 2.7 | 2.41 |
+| Unit hydrograph: peak [m³/s/mm] (qpR) | 1.100 (1.282) | 1.282 | 1.140 (1.057) | 1.057 |
+| Unit hydrograph: end [min] (ordinate there, % of the peak) | 970 (20.2) | 1680 (0.04) | 1175 (4.6) | 2155 (0.03) |
+| Runoff hydrograph: Qmax [m³/s] (time [min]) | 3.852 (410) | 4.487 (410) | 3.990 (375) | 3.701 (375) |
+| Runoff hydrograph: below 1% of Qmax from [min] / end [min] | 1015 / 1025 | 1305 / 1735 | 1210 / 1230 | 1570 / 2210 |
+| Steepest 5-minute fall [% of Qmax] (time [min]) | 5.7 (995) | 1.2 (600) | 1.3 (1195) | 0.9 (600) |
+
+The volume (130,400 m³) does not change. Before the change the steepest fall was the cut-off at the end of the recession, after it it lies on the falling limb at about 70% of the peak.
 
 ---
 
@@ -1317,7 +1349,11 @@ so `hydrographs[P]` of the result is the discharge at the point. Where another s
 
 30. **Ponce, V.M.** (1980, online version 2016). Linear reservoirs and numerical diffusion. https://ponce.sdsu.edu/linear_reservoirs_and_numerical_diffusion.html (the gamma response of Nash, the SSARR equation as Muskingum with `X = 0`, the Kalinin-Milyukov characteristic reach length).
 
+### Synthetic Unit Hydrographs
+
+31. **Asquith, W.H. & Roussel, M.C.** (2007). An initial-abstraction, constant-loss model for unit hydrograph modeling for applicable watersheds in Texas. *U.S. Geological Survey Scientific Investigations Report 2007-5243* (the gamma unit hydrograph from its peak and time to peak, eq. 2 and 4). https://pubs.usgs.gov/sir/2007/5243/
+
 ---
 
-**Document version:** 1.3
-**Last updated:** 2026-10-19
+**Document version:** 1.4
+**Last updated:** 2026-11-02

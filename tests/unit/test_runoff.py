@@ -655,9 +655,9 @@ class TestHydrographGeneratorSnyderDuration:
     def test_the_unit_hydrograph_is_the_one_for_the_time_step(self, generator, storm):
         """Review case: tL = 324.7 min, tD = 59.0 min, step 5 min.
 
-        The unit hydrograph had tp = 354.2 min and a peak of 1.379 m3/s/mm (the
-        values for D = tD = 59 min); for D = 5 min tLR = 311.2 min, tpR = 313.7 min
-        and the peak is 1.542 m3/s/mm.
+        The unit hydrograph had tp = 354.2 min (the value for D = tD = 59 min); for
+        D = 5 min tLR = 311.2 min, tpR = 313.7 min and the peak is
+        qpR = 0.275 Cp A / tLR = 1.432 m3/s/mm.
         """
         unit = generator.generate(storm).unit_hydrograph_result
 
@@ -665,10 +665,10 @@ class TestHydrographGeneratorSnyderDuration:
         assert unit.standard_duration_min == pytest.approx(59.03, abs=0.01)
         assert unit.adjusted_lag_time_min == pytest.approx(311.16, abs=0.01)
         assert unit.time_to_peak_min == pytest.approx(313.66, abs=0.01)
-        assert unit.peak_discharge_m3s == pytest.approx(1.5424, abs=1e-4)
+        assert unit.peak_discharge_m3s == pytest.approx(1.4317, abs=2e-4)
 
     def test_the_peak_of_the_hydrograph_rises_and_comes_earlier(self, generator, storm):
-        """Qmax 9.76 m3/s at 405 min -> 10.90 m3/s at 365 min (+11.8 %)."""
+        """Qmax 9.71 m3/s at 405 min -> 10.12 m3/s at 365 min (+4.3 %)."""
         result = generator.generate(storm)
         standard = SnyderUH(self.AREA, self.L_KM, self.LC_KM).generate(timestep_min=5.0)
         before = convolve_discrete(
@@ -676,13 +676,13 @@ class TestHydrographGeneratorSnyderDuration:
         )
 
         assert standard.time_to_peak_min == pytest.approx(354.19, abs=0.01)
-        assert standard.peak_discharge_m3s == pytest.approx(1.3793, abs=1e-4)
-        assert before.peak_discharge_m3s == pytest.approx(9.7556, abs=1e-4)
+        assert standard.peak_discharge_m3s == pytest.approx(1.3723, abs=1e-4)
+        assert before.peak_discharge_m3s == pytest.approx(9.7053, abs=1e-4)
         assert before.time_to_peak_min == 405.0
-        assert result.peak_discharge_m3s == pytest.approx(10.9023, abs=1e-4)
+        assert result.peak_discharge_m3s == pytest.approx(10.1242, abs=1e-4)
         assert result.time_to_peak_min == 365.0
         assert result.peak_discharge_m3s / before.peak_discharge_m3s == pytest.approx(
-            1.1175, abs=1e-4
+            1.0432, abs=1e-4
         )
 
     def test_the_volume_is_the_effective_depth_over_the_area(self, generator, storm):

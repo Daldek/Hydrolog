@@ -389,7 +389,8 @@ def uh_snyder(
         Unit rainfall duration D [min]; defaults to the standard duration
         ``tD = tL / 5.5``.
     total_duration_min : float, optional
-        Length of the result [min]; defaults to the time base.
+        Length of the result [min]; defaults to the end of the recession, when
+        99.99 % of the volume has run off.
 
     Returns
     -------

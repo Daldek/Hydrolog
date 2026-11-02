@@ -447,7 +447,7 @@ COMMANDS: tuple[Command, ...] = (
                 "uh_model": "clark",
             },
             {
-                "peak_discharge_m3s": 20.6618,
+                "peak_discharge_m3s": 19.2871,
                 "time_to_peak_min": 390.0,
                 "total_volume_m3": 708968.0,
                 "runoff_coefficient": 0.141794,

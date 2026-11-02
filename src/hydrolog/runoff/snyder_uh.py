@@ -12,9 +12,15 @@ from dataclasses import dataclass
 
 import numpy as np
 from numpy.typing import NDArray
+from scipy.optimize import brentq
+from scipy.special import gammaincinv, gammaln
 
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError
+
+# Share of the unit volume beyond the default end of the hydrograph: the
+# recession is followed until 99.99 % of the 1 mm has run off.
+_TAIL_VOLUME = 1e-4
 
 
 @dataclass
@@ -37,9 +43,12 @@ class SnyderUHResult(JsonResultMixin):
     time_to_peak_min : float
         Time to peak discharge tp or tpR [min].
     peak_discharge_m3s : float
-        Peak discharge qp or qpR [m³/s per mm].
+        Largest ordinate [m³/s per mm]: qp or qpR, up to the sampling of the
+        curve at the time step.
     time_base_min : float
-        Time base of the hydrograph tb [min].
+        Time base tb = 0.556 × A / qpR [min] of the triangular hydrograph with
+        the same peak and volume (a Snyder parameter; the ordinates follow the
+        recession of the curve beyond it).
     duration_min : float
         Actual rainfall duration Δt used for generation [min].
     standard_duration_min : float
@@ -116,6 +125,19 @@ class SnyderUH:
     **Time base (from water balance):**
         tb = 0.556 × A / qpR  [hours]
 
+    tb is the base of the triangle with the peak qpR and the volume of 1 mm;
+    the hydrograph itself does not end at tb.
+
+    **Shape of the hydrograph:**
+        q(t) = qpR × [(t / tpR) × exp(1 - t / tpR)]^K  [m³/s per mm]
+
+    the gamma unit hydrograph through the peak (tpR, qpR) (Asquith and
+    Roussel 2007, eq. 2). Its volume is qpR × tpR × Γ(K) × (e/K)^K (eq. 4),
+    so K follows from the condition that the hydrograph holds 1 mm over A:
+    Ct sets the time of the peak and Cp its height, and the larger Cp the
+    narrower the hydrograph (for Δt = tD: K ≈ 2.8 for Cp = 0.6, K ≈ 4.9 for
+    Cp = 0.8). The ordinates run until 99.99 % of the volume has passed.
+
     **Hydrograph widths at 50% and 75% of peak:**
         W50 = 0.1783 / (qp/A)^1.08  [hours]
         W75 = 0.1019 / (qp/A)^1.08  [hours]
@@ -139,6 +161,9 @@ class SnyderUH:
     ----------
     Snyder, F.F. (1938). Synthetic unit-graphs.
     Bedient, P.B. & Huber, W.C. (1992). Hydrology and Floodplain Analysis.
+    Asquith, W.H. & Roussel, M.C. (2007). An initial-abstraction, constant-loss
+    model for unit hydrograph modeling for applicable watersheds in Texas.
+    U.S. Geological Survey Scientific Investigations Report 2007-5243.
 
     Examples
     --------
@@ -375,6 +400,9 @@ class SnyderUH:
         - Volume for 1 mm over A km² = A × 1000 m³
         - For triangular UH: V = 0.5 × qp × tb × 3600
         - Solving: tb = 2 × A × 1000 / (qp × 3600) = 0.556 × A / qp
+
+        tb is a parameter of the method, not the end of the hydrograph of
+        :meth:`generate`, which follows the recession of its curve.
         """
         qpR = self.peak_discharge(duration_min)
         return 0.556 * self.area_km2 / qpR
@@ -446,32 +474,59 @@ class SnyderUH:
             ratio = percent / 75.0
             return float(w75 * (1.0 / ratio))
 
+    def _shape_exponent(self, duration_min: float) -> float:
+        """
+        Exponent K of the hydrograph curve for the rainfall duration Δt.
+
+        The curve q(t) = qpR × [(t/tpR) × exp(1 - t/tpR)]^K holds the volume
+        qpR × tpR × Γ(K) × (e/K)^K (Asquith and Roussel 2007, eq. 4), and K
+        makes it 1 mm over the watershed, V = A × 1000 m³. The logarithm of
+        Γ(K) × (e/K)^K falls from +∞ to -∞ as K grows (its derivative is
+        ψ(K) - ln K < 0), so every positive qpR × tpR / V has one root.
+
+        Raises
+        ------
+        InvalidParameterError
+            If the root lies outside 1e-12 < K < 1e12, i.e. for an extreme Cp.
+        """
+        tp_s = self.time_to_peak_min(duration_min) * 60.0
+        ratio = self.peak_discharge(duration_min) * tp_s / (self.area_km2 * 1000.0)
+        target = -float(np.log(ratio))
+
+        def excess(log_k: float) -> float:
+            k = np.exp(log_k)
+            return float(gammaln(k) + k * (1.0 - log_k)) - target
+
+        try:
+            log_k = brentq(excess, np.log(1e-12), np.log(1e12), xtol=1e-12)
+        except ValueError as e:
+            raise InvalidParameterError(
+                f"cp={self.cp} gives qp·tp/V = {ratio:.3g}: no unit hydrograph "
+                f"of 1 mm has such a peak"
+            ) from e
+        return float(np.exp(log_k))
+
     def _generate_shape(
-        self, times_min: NDArray[np.float64], duration_min: float | None = None
+        self, times_min: NDArray[np.float64], duration_min: float, exponent: float
     ) -> NDArray[np.float64]:
         """
-        Generate hydrograph shape using gamma distribution approximation.
+        Ordinates of the curve through (tpR, qpR) with the exponent K.
 
-        The Snyder hydrograph shape is approximated using a gamma
-        distribution which provides a smooth, physically realistic curve.
+        q(t) = qpR × [(t/tpR) × exp(1 - t/tpR)]^K is evaluated as
+        qpR × exp(K × (ln x + 1 - x)) with x = t/tpR, the power taken relative
+        to its largest value on the time grid. That factor is about 1 when a
+        time falls near tpR, and the rescaling to 1 mm removes it anyway, but
+        it keeps a peak narrower than the time step (a huge K) from vanishing
+        in underflow.
         """
         tp_min = self.time_to_peak_min(duration_min)
         qp = self.peak_discharge(duration_min)
 
-        # Use gamma distribution approximation
-        # Shape parameter chosen to match Snyder widths
-        # n ≈ 3.7 gives good agreement with W50/W75 ratios
-        n = 3.7
-        k_min = tp_min / (n - 1) if n > 1 else tp_min
-
-        # Gamma distribution scaled to peak
         ordinates = np.zeros_like(times_min)
         mask = times_min > 0
-
-        t_over_k = times_min[mask] / k_min
-        # Gamma PDF: f(t) = (t/k)^(n-1) * exp(-t/k) / (k * Gamma(n))
-        # Normalized to peak at qp
-        ordinates[mask] = qp * ((t_over_k ** (n - 1)) * np.exp(-(t_over_k - (n - 1))))
+        x = times_min[mask] / tp_min
+        log_shape = exponent * (np.log(x) + 1.0 - x)
+        ordinates[mask] = qp * np.exp(log_shape - log_shape.max())
 
         return ordinates
 
@@ -492,8 +547,9 @@ class SnyderUH:
             Rainfall duration Δt [min]. If not specified, uses
             standard duration tD = tL/5.5.
         total_duration_min : float, optional
-            Total duration of output UH [min]. If not specified,
-            uses time_base tb.
+            Total duration of output UH [min]. If not specified, the
+            hydrograph runs to the end of its recession, when 99.99 % of its
+            volume has passed. A shorter duration cuts the recession off.
 
         Returns
         -------
@@ -503,7 +559,8 @@ class SnyderUH:
         Raises
         ------
         InvalidParameterError
-            If any parameter is not positive.
+            If any parameter is not positive, or if Cp is so extreme that no
+            unit hydrograph of 1 mm has the peak qpR at tpR.
 
         Examples
         --------
@@ -525,9 +582,18 @@ class SnyderUH:
                 f"duration_min must be positive, got {duration_min}"
             )
 
-        # Determine total duration
+        # The hydrograph runs, by default, to the end of its recession. In
+        # x = t/tpR the curve is proportional to x^K × exp(-K × x), the density
+        # of the gamma distribution with the shape K + 1 and the rate K, so the
+        # share of the volume before x is P(K + 1, K × x).
+        exponent = self._shape_exponent(duration_min)
+        tp_min = self.time_to_peak_min(duration_min)
         if total_duration_min is None:
-            total_duration_min = self.time_base_min(duration_min)
+            total_duration_min = (
+                tp_min
+                * float(gammaincinv(exponent + 1.0, 1.0 - _TAIL_VOLUME))
+                / exponent
+            )
 
         if total_duration_min <= 0:
             raise InvalidParameterError(
@@ -539,18 +605,18 @@ class SnyderUH:
         times = np.arange(n_steps, dtype=np.float64) * timestep_min
 
         # Generate hydrograph shape
-        ordinates = self._generate_shape(times, duration_min)
+        ordinates = self._generate_shape(times, duration_min, exponent)
 
-        # Normalize to conserve water volume
-        # Volume = sum of ordinates * timestep_seconds
-        # Should equal area_km2 * 1000 m³ (for 1 mm of rainfall)
+        # Normalize to conserve water volume: the sampling at the time step and
+        # the cut tail (all of the recession beyond total_duration_min) change
+        # the sum of the ordinates. Volume = sum of ordinates * timestep_seconds
+        # should equal area_km2 * 1000 m³ (for 1 mm of rainfall).
         volume_actual = np.sum(ordinates) * timestep_min * 60.0
         volume_expected = self.area_km2 * 1000.0
         if volume_actual > 0:
             ordinates = ordinates * (volume_expected / volume_actual)
 
         # Calculate peak parameters
-        tp_min = self.time_to_peak_min(duration_min)
         peak_idx = np.argmax(ordinates)
         peak_discharge = float(ordinates[peak_idx])
 

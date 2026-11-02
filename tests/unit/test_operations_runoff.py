@@ -1922,9 +1922,9 @@ class TestHydrographGenerate:
         """Snyder (1938): the unit hydrograph of D = the 5-minute step, not of tD.
 
         Review case (45 km2, L = 12 km, Lc = 6 km, CN 72, beta 50 mm / 120 min): the
-        unit hydrograph had tp = 354.2 min and qp = 1.379 m3/s/mm and the hydrograph
-        Qmax = 9.76 m3/s at 405 min (the values for the standard duration tD = 59 min).
-        For D = 5 min: tp = 313.7 min, qp = 1.542 m3/s/mm, Qmax = 10.90 m3/s at 365 min.
+        unit hydrograph of the standard duration tD = 59 min has tp = 354.2 min and
+        qp = 1.372 m3/s/mm and gives Qmax = 9.71 m3/s at 405 min. For D = 5 min:
+        tp = 313.7 min, qp = qpR = 1.432 m3/s/mm, Qmax = 10.12 m3/s at 365 min.
         """
         result, _ = unwrap(
             ops.hydrograph_generate(
@@ -1940,8 +1940,8 @@ class TestHydrographGenerate:
             )
         )
         assert result.uh_time_to_peak_min == pytest.approx(313.66, abs=0.01)
-        assert result.uh_peak_discharge_m3s_per_mm == pytest.approx(1.5424, abs=1e-4)
-        assert result.peak_discharge_m3s == pytest.approx(10.9023, abs=1e-4)
+        assert result.uh_peak_discharge_m3s_per_mm == pytest.approx(1.4317, abs=2e-4)
+        assert result.peak_discharge_m3s == pytest.approx(10.1242, abs=1e-4)
         assert result.time_to_peak_min == 365.0
 
     def test_watershed_file(self, tmp_path):
