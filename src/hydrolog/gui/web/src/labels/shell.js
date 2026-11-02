@@ -1,0 +1,65 @@
+/**
+ * Texts of the shell: the top bar, the rail, the panels Dane | Wykresy | Wyniki, the phone
+ * sheets and the status badge. `sections` names every section by its id (router.js), the
+ * titles of GuiModule.sections (plan D4).
+ */
+
+export const shell = {
+  brand: "Hydrolog",
+  home: "Hydrolog, strona główna",
+  crumbs: "Kontekst",
+  nav: "Sekcje",
+  sections: {
+    hydrogram: { title: "Hydrogram zlewni", short: "Hydrogram" },
+    siec: { title: "Sieć i trasowanie", short: "Sieć" },
+    statystyka: { title: "Statystyka przepływów", short: "Staty\u00adstyka" },
+    kalkulatory: { title: "Kalkulatory", short: "Kalku\u00adlatory" },
+    polecenia: { title: "Wszystkie polecenia", short: "Polece\u00adnia" },
+  },
+  pageTitle: "Hydrolog: {section}",
+  pageTitleContext: "Hydrolog: {section} — {context}",
+  theme: {
+    label: "Motyw",
+    auto: "Auto",
+    autoTitle: "Motyw systemowy",
+    light: "Jasny",
+    dark: "Ciemny",
+  },
+  panels: {
+    left: "Dane",
+    center: "Wykresy",
+    right: "Wyniki",
+    closeLeft: "Zamknij panel danych",
+    closeRight: "Zamknij panel wyników",
+    resizeLeft: "Szerokość panelu danych",
+    resizeRight: "Szerokość panelu wyników",
+  },
+  status: {
+    ok: { text: "Wynik aktualny", title: "Wyniki odpowiadają danym w panelu Dane" },
+    busy: { text: "Liczenie…", title: "Hydrolog liczy wynik dla zmienionych danych" },
+    stale: {
+      text: "Dane zmienione: oblicz ponownie",
+      title: "Wyniki odpowiadają poprzednim danym",
+    },
+    invalid: { text: "Dane niepełne", title: "Popraw pola oznaczone na czerwono" },
+    error: { text: "Błąd danych", title: "Hydrolog nie policzył wyniku dla tych danych" },
+  },
+  sectionLoading: "Wczytywanie sekcji…",
+  sectionFailed: "Nie udało się wczytać sekcji „{section}”: {message}",
+  noSections: "Brak sekcji do pokazania.",
+  info: {
+    open: "Objaśnienie: {title}",
+    close: "Zamknij objaśnienie",
+    ranges: "Zakres stosowania",
+    sources: "Źródła",
+    inRange: "w zakresie",
+    outOfRange: "poza zakresem",
+    noValue: "zakres",
+    range: "{label}: {range}",
+    rangeValue: "{label} = {value}: {range}",
+    between: "od {min} do {max}",
+    atLeast: "co najmniej {min}",
+    atMost: "najwyżej {max}",
+    missing: "Brak objaśnienia „{id}”.",
+  },
+};

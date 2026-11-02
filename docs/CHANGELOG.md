@@ -117,6 +117,13 @@ The web GUI enters the scope (ADR-0014; plan `docs/plans/2026-11-02-hydrolog-gui
 - `hydrolog.gui.serve(host=, port=, open_browser=)`, the standalone server of `hydrolog gui serve`: writes `Hydrolog GUI: <url>` to stderr, stops gracefully on Ctrl+C or `SIGTERM` and returns `url`, `started_at` and `stopped_at`; a port in use is a `conflict` (`port_in_use`).
 - `hydrolog.gui.gui_module()` returns the `GuiModule` (name, title, the page's directory, `index.html`, the five sections, `create_app`) that Nogat's GUI platform finds through the entry point group `nogat.gui`.
 
+#### Web GUI: the foundation (plan [2026-11-02-hydrolog-gui](plans/2026-11-02-hydrolog-gui.md), slice S2)
+- The page `src/hydrolog/gui/web/` in Polish and Nogat's identity: `tokens.css` and the marks of Hydrolog, Hydrograf and Nogat copied from Nogat `29e7e1c` with their SHA-256 in `nogat/nogat.json`; Preact 10.29.8 and htm 3.1.1 vendored byte-identical with Archiwista's files (`vendor/vendor.json`); no build, no remote resource, no inline script or style.
+- The shell: top bar (mark, breadcrumbs, status badge, theme Auto | Jasny | Ciemny stored as `nogat-theme`), the rail (a bottom bar at 860 px and below), Dane | Wykresy | Wyniki with panels resizable by drag and keys and bottom sheets on phones, `?nogat=1` hiding the top bar and rail before the first paint; every URL relative to the page, so it works under any prefix.
+- The API client, the shared store (`watershed`, `reference`, `status`, `context`), inputs kept per section in `localStorage` (`hydrolog-gui/<section>/1`), Polish numbers (`Intl.NumberFormat("pl-PL")`, a comma or a dot typed), the (i) popover and its registry, the export panel (CSV, JSON, PNG, the Markdown report, the command line with Python and MCP, files).
+- The catalog form generator: numbers with units and bounds, choices with their Polish meanings, series pasted or read from a CSV in the browser, chips, JSON, session files (upload, `in/`, `out/`), `one_of` groups as „Sposób podania” panes, `requires`, `excludes`, `section` and `format` when present; errors and notices worded in Polish from their codes, the English message marked „(EN)” as the fallback.
+- „Wszystkie polecenia”: every command the server runs, by group with a search, its form, the generic result view (tiles, parameters, series as a chart and a table, records, plan targets, files, JSON) and its call.
+
 ### Changed
 
 #### Breaking changes
