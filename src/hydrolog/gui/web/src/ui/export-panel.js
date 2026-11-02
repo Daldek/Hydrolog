@@ -1,11 +1,13 @@
 // Exports of a result (plan D14):
 //   html`<${ExportPanel} spec=${{subject, csv: () => text, json: () => obj, chart: () => svg,
-//                               cli: {command, options}, report: {command, options}, files}} />`
+//                               cli: {command, options}, report: {command, options}, print,
+//                               files}} />`
 // CSV and JSON are written in the browser, PNG is the chart shown (charts/png.js), the
 // command line comes from the server's format_command (debounced) with the paths as the
 // person gave them ("in/x.csv" shown as "x.csv"), wrapped at " --" for display and copied
 // as shown; Python and MCP show the same options. The Markdown report runs
-// `report generate` into out/<subject>.md and downloads it; files are the result's own.
+// `report generate` into out/<subject>.md and downloads it; `print: true` adds „Raport do
+// druku”, the print view of css/print.css (print.js); files are the result's own.
 
 import { api } from "../api.js";
 import { toPng } from "../charts/png.js";
@@ -15,6 +17,7 @@ import { common, t } from "../labels/common.js";
 import { describeError } from "../labels/errors.js";
 import { exportLabels as texts } from "../labels/exports.js";
 import { sessionFileName } from "../controls/file-field.js";
+import { printView } from "../print.js";
 import { Seg } from "./seg.js";
 import { toast } from "./toast.js";
 
@@ -288,7 +291,7 @@ export function FileList({ files }) {
 }
 
 /**
- * The export buttons: CSV, JSON, PNG and the Markdown report.
+ * The export buttons: CSV, JSON, PNG, the Markdown report and the print view.
  *
  * @param {{spec: object}} props the export spec
  * @returns {object} the buttons
@@ -359,6 +362,9 @@ export function ExportButtons({ spec }) {
       ${spec.report
         ? html`<button class="btn" type="button" title=${texts.report.title} disabled=${busy} onClick=${makeReport}><span class="fmt">${texts.report.format}</span>${texts.report.label}</button>`
         : null}
+      ${spec.print
+        ? html`<button class="btn" type="button" title=${texts.print.title} onClick=${printView}><span class="fmt">${texts.print.format}</span>${texts.print.label}</button>`
+        : null}
     </div>
     ${report ? html`<${FileList} files=${[{ path: report }]} />` : null}
   `;
@@ -369,7 +375,8 @@ export function ExportButtons({ spec }) {
  *
  * @param {{spec: {subject: string, csv?: () => string, json?: () => object,
  *   chart?: () => SVGSVGElement|null, cli?: {command: string, options: object},
- *   report?: {command: string, options: object}, files?: object[]}}} props the export spec
+ *   report?: {command: string, options: object}, print?: boolean, files?: object[]}}} props
+ *   the export spec
  * @returns {object} the panel
  */
 export function ExportPanel({ spec }) {

@@ -1,11 +1,12 @@
 // The exports of Sieć (plan D14): written in the browser, the hydrograph of the chosen node
 // as `time_min,discharge_m3s` (what every `route` command reads) and every node's as
 // columns of one table (an `inflows_file` of another network), the network's document
-// and the envelope of the last run as JSON, the schematic as drawn as PNG; and Hydrolog's
-// own schematic, the SVG `route network` wrote with `schematic`.
+// and the envelope of the last run as JSON, the schematic as drawn as PNG; Hydrolog's
+// own schematic, the SVG `route network` wrote with `schematic`; and the print view.
 
 import { api } from "../../api.js";
 import { t } from "../../labels/common.js";
+import { exportLabels } from "../../labels/exports.js";
 import { siec as texts } from "../../labels/siec.js";
 import { fileStem } from "./state.js";
 
@@ -61,7 +62,7 @@ export function networkCsv(result) {
  *   the drawn schematic
  * @returns {Array<{id: string, format: string, label: string, title: string,
  *   disabled?: string, text?: () => string, type?: string, name?: string,
- *   svg?: () => SVGSVGElement|null, href?: string}>} the exports
+ *   svg?: () => SVGSVGElement|null, href?: string, print?: boolean}>} the exports
  */
 export function exportItems({ state, document, valid, run, selected, schematicSvg }) {
   const stem = fileStem(state);
@@ -127,6 +128,13 @@ export function exportItems({ state, document, valid, run, selected, schematicSv
       disabled: svgFile ? null : noRun,
       href: svgFile ? api.fileUrl(svgFile.path) : null,
       name: `${stem}.svg`,
+    },
+    {
+      id: "print",
+      format: exportLabels.print.format,
+      label: exportLabels.print.label,
+      title: exportLabels.print.title,
+      print: true,
     },
   ];
 }

@@ -1,10 +1,11 @@
 // The panel „Dane” of Sieć (plan S4, the mockup's steps): 1 the network (its file, loaded
-// from the disk, the example or saved; its name, time step and default rainfall; the
-// session files it reads), 2 its nodes (a list that chooses a node, with each node's peak
-// after „Oblicz sieć”) and 3 the settings of the chosen node.
+// from the disk, a hand-off („Wczytaj z Hydrografa”), the example or saved; its name, time
+// step and default rainfall; the session files it reads), 2 its nodes (a list that chooses
+// a node, with each node's peak after „Oblicz sieć”) and 3 the settings of the chosen node.
 
 import { FileField } from "../../controls/file-field.js";
 import { num, plural } from "../../format.js";
+import { HandoffImport, HandoffOrigin } from "../../handoff/handoff-panel.js";
 import { html, useRef } from "../../html.js";
 import { t } from "../../labels/common.js";
 import { siec as texts } from "../../labels/siec.js";
@@ -81,7 +82,9 @@ function NetworkStep({ state, forms, problems, summary, needed, note, onNetwork,
         <span class="muted">${state.source && state.source.kind === "example" ? `${texts.file.example} · ` : ""}${summary}</span>
       </div>
     </div>
+    ${state.source && state.source.handoff ? html`<${HandoffOrigin} received=${state.source.handoff} small=${true} />` : null}
     <div class="btn-row">
+      <${HandoffImport} />
       <button class="btn sm" type="button" data-action="load" onClick=${() => fileInput.current.click()}>
         <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 14V4M6 8l4-4 4 4M4 16h12" /></svg>
         ${texts.file.load}

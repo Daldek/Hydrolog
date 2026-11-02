@@ -10,6 +10,7 @@ export const exportLabels = {
   json: { format: "JSON", label: "Wynik", title: "Dokument wyniku hydrolog-result/1, jak go zwrócił Hydrolog" },
   png: { format: "PNG", label: "Wykres", title: "Wykres widoczny na ekranie jako obraz PNG" },
   report: { format: "MD", label: "Raport", title: "Raport obliczeniowy w Markdown (report generate)" },
+  print: { format: "PDF", label: "Raport do druku", title: "Widok do druku na A4: wykresy, dane, wyniki, uwagi i wywołanie; PDF przez „Zapisz jako PDF” przeglądarki" },
   saved: "Zapisano {name}",
   pngFailed: "Nie udało się zapisać wykresu: {message}",
   call: {

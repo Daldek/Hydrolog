@@ -9,11 +9,14 @@
 // The section sets the store's "watershed" (the `watershed` of hydrolog-network/1, for
 // Kalkulatory), its "status" and "context", and draws the store's "reference" (a quantile
 // of Statystyka) on the hydrograph. The route #hydrogram/tc_method/<method> sets the method
-// of tc (Kalkulatory's „Użyj w Hydrogramie zlewni”).
+// of tc (Kalkulatory's „Użyj w Hydrogramie zlewni”). A hand-off of one subcatchment
+// („Wczytaj z Hydrografa”, here or in Sieć) arrives through useHandoffInbox as a patch of
+// the inputs whose `origin` names the producer.
 
 import { api } from "../../api.js";
 import { plural } from "../../format.js";
 import { withReason } from "../../forms/model.js";
+import { useHandoffInbox } from "../../handoff/handoff-panel.js";
 import { html, useCallback, useEffect, useMemo, useRef, useState } from "../../html.js";
 import { common, t } from "../../labels/common.js";
 import { describeError } from "../../labels/errors.js";
@@ -170,6 +173,7 @@ export default function Hydrogram({ path = [] }) {
 
   /** Replace inputs (a patch of the inputs; a watershed file uses it, a hand-off would too). */
   const set = useCallback((patch) => setState((old) => ({ ...normalize(old), ...patch })), []);
+  useHandoffInbox(SECTION, set);
   const setField = useCallback(
     (name, text) =>
       setState((old) => {
@@ -454,7 +458,7 @@ export default function Hydrogram({ path = [] }) {
   const right = {
     sub: run ? t(texts.results.sub, { model: modelLabel(run.inputs), amc: result.amc }) : null,
     body: html`<div class=${`result-area${dimmed}`} aria-busy=${busy ? "true" : "false"} data-hg-results="">
-      <${ResultsPanel} run=${run} spec=${spec} stale=${stale} />
+      <${ResultsPanel} run=${run} spec=${spec} stale=${stale} current=${inputs} />
     </div>`,
   };
   return html`<${ViewLayout} left=${left} center=${center} right=${right} />`;

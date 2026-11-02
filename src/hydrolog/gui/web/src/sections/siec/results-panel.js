@@ -2,7 +2,8 @@
 // every node's peak, time to peak, volume, attenuation and delay, in the order of the
 // calculation, each row choosing its node; in the panel the outlet's numbers, the chosen
 // node's chart (its inflows and its outflow) and parameters, its hydrograph as a table,
-// the notices, the exports and the call.
+// the notices, the exports (with the print view) and the call, and „Przekazanie”, the
+// hand-off nogat-handoff/1 of the network (handoff/handoff-panel.js).
 
 import { toPng } from "../../charts/png.js";
 import { Chart } from "../../charts/chart.js";
@@ -15,6 +16,8 @@ import { resultFields, options as optionLabels } from "../../labels/options.js";
 import { results as resultTexts } from "../../labels/results.js";
 import { siec as texts } from "../../labels/siec.js";
 import { unitOfName } from "../../labels/units.js";
+import { SiecHandoff } from "../../handoff/handoff-panel.js";
+import { printView } from "../../print.js";
 import { CommandLine, downloadBlob } from "../../ui/export-panel.js";
 import { DataTable } from "../../ui/table.js";
 import { toast } from "../../ui/toast.js";
@@ -236,6 +239,10 @@ function Ordinates({ node, nodes }) {
 function ExportRow({ items }) {
   const save = async (item) => {
     if (item.href) return;
+    if (item.print) {
+      printView();
+      return;
+    }
     if (item.svg) {
       const svg = item.svg();
       if (!svg) return;
@@ -323,5 +330,6 @@ export function ResultsPanel({ run, stale, selected, state, document, valid, cha
     <h3 class="group-title">${exportLabels.title}</h3>
     <${ExportRow} items=${items} />
     ${run ? html`<${CommandLine} command="route network" options=${run.options} />` : null}
+    <${SiecHandoff} state=${state} document=${document} valid=${valid} run=${run} stale=${stale} />
   `;
 }

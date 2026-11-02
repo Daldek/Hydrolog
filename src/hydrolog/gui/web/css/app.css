@@ -232,6 +232,15 @@ select.sel-sm { height: var(--control-sm); font-size: var(--text-sm); padding: 0
 .handoff > div { flex: 1; min-width: 0; }
 .handoff .btn { flex: none; }
 .handoff.sm { padding: 6px var(--space-2); font-size: var(--text-xs); }
+/* The hand-off (nogat-handoff/1): what „Wczytaj z Hydrografa” says takes the whole row
+   below the buttons; the producer's result beside Hydrolog's */
+.btn-row > .handoff-feedback { order: 1; flex: 1 0 100%; min-width: 0; margin: 0; }
+.handoff-feedback .link-btn { margin-top: 4px; }
+.handoff-feedback textarea { display: block; width: 100%; min-height: 84px; font-family: var(--font-mono); font-size: var(--text-xs); }
+.handoff-feedback .btn-row { margin: var(--space-2) 0 0; }
+.handoff-received { margin: 0 0 var(--space-3); }
+.handoff-received .handoff { margin-bottom: var(--space-2); }
+.handoff-received .notes { margin-bottom: 0; }
 
 details.more { margin: var(--space-2) 0 var(--space-3); border-top: 1px dashed var(--line-2); }
 details.more > summary {

@@ -227,11 +227,12 @@ const openers = new Set();
  * opens a network of more than one subcatchment here).
  *
  * @param {object} doc hydrolog-network/1
- * @param {{name?: string, kind?: string}} [meta] its file name and where it came from
- *   ("handoff" by default)
+ * @param {{name?: string, kind?: string, handoff?: object}} [meta] its file name, where it
+ *   came from ("handoff" by default) and, from a hand-off, its record (who wrote it, its
+ *   provenance and result: handoff/mapping.js siecReceived); kept as the state's `source`
  */
 export function openNetwork(doc, meta = {}) {
-  opened = { doc, meta: { name: meta.name || EXAMPLE_NAME, kind: meta.kind || "handoff" } };
+  opened = { doc, meta: { ...meta, name: meta.name || EXAMPLE_NAME, kind: meta.kind || "handoff" } };
   for (const listener of [...openers]) listener();
   navigate(SECTION);
 }

@@ -2,15 +2,13 @@
 // cumulative rainfall and the unit hydrograph, or the table of the series. In the panel
 // Wyniki: the peak, the time to peak, the volume and the runoff coefficient; the notes (the
 // GUI's applicability checks, then Hydrolog's notices in Polish); the balance of the
-// rainfall; the parameters of the calculation; the exports and the command line.
-//
-// Slice S6 mounts the Markdown report, the print view and the hand-off (nogat-handoff/1) in
-// ResultsPanel, after the exports (plan, step S6: "the mount lines in the results panels of
-// Hydrogram and Sieć"). `run` holds what they need ({inputs, options, envelope, lutz,
-// values}: the inputs and options of the shown result, its envelope, Lutz's estimate and
-// the values its notes checked) and `spec` the export spec (export.js); index.js holds the
-// current inputs and `load(patch)`, which replaces inputs (a watershed file uses it; a
-// hand-off would too, with `origin` naming its source).
+// rainfall; the parameters of the calculation; the exports (with the Markdown report and
+// the print view) and the command line; „Przekazanie”, the hand-off nogat-handoff/1 of
+// the shown run and a received producer's result beside it (handoff/handoff-panel.js).
+// `run` holds the shown result ({inputs, options, envelope, lutz, values}: its inputs and
+// options, its envelope, Lutz's estimate and the values its notes checked), `spec` its
+// export spec (export.js) and `current` the section's inputs now (with the record of a
+// received hand-off, `handoff`).
 
 import { Chart } from "../../charts/chart.js";
 import { richText } from "../../controls/field.js";
@@ -18,7 +16,9 @@ import { hmm, inputText, num } from "../../format.js";
 import { Notices } from "../../forms/result-view.js";
 import { html, useMemo } from "../../html.js";
 import { common, t } from "../../labels/common.js";
+import { handoffLabels } from "../../labels/handoff.js";
 import { hydrogram as texts } from "../../labels/hydrogram.js";
+import { HydrogramHandoff } from "../../handoff/handoff-panel.js";
 import { CommandLine, ExportButtons } from "../../ui/export-panel.js";
 import { DataTable } from "../../ui/table.js";
 import { cumulativeSpec, mainSpec, uhSpec } from "./charts.js";
@@ -365,11 +365,12 @@ function Part({ id, title, meta, open = true, children }) {
 /**
  * The panel Wyniki.
  *
- * @param {{run: object|null, spec: object|null, stale: object|null}} props the shown run,
- *   its export spec, and why the result is stale
+ * @param {{run: object|null, spec: object|null, stale: object|null, current?: object}}
+ *   props the shown run, its export spec, why the result is stale, and the section's
+ *   inputs now
  * @returns {object} the panel's body
  */
-export function ResultsPanel({ run, spec, stale }) {
+export function ResultsPanel({ run, spec, stale, current = null }) {
   if (!run) return html`<p class="muted">${texts.center.noResult}</p>`;
   const { envelope, inputs, values } = run;
   const result = envelope.result;
@@ -408,6 +409,9 @@ export function ResultsPanel({ run, spec, stale }) {
         <${ExportButtons} spec=${spec} />
         <${CommandLine} command=${COMMAND} options=${run.options} title=${false} />
         ${usesLutz(inputs) ? html`<p class="note">${richText(texts.results.cliNote)}</p>` : null}
+      <//>
+      <${Part} id="handoff" title=${handoffLabels.export.title} meta=${handoffLabels.export.meta}>
+        <${HydrogramHandoff} run=${run} current=${current} subject=${spec.subject} rain=${rainLabel(inputs, result)} />
       <//>
     </div>
   `;

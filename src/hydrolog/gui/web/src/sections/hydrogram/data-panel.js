@@ -1,13 +1,15 @@
 // The panel Dane of „Hydrogram zlewni”: the five steps of the calculation, numbered as the
 // chain of `hydrograph generate` (the mockup's steps): Zlewnia (also read from a
-// WatershedParameters JSON in the browser), Czas koncentracji, Opad, Straty SCS-CN and
-// Model UH. Every change goes to the section, which checks it and recomputes (plan D13);
-// the steps show what the last result gave (tc, CN after AMC, S, Ia, the UH's parameters).
+// WatershedParameters JSON in the browser, or from a hand-off with „Wczytaj z
+// Hydrografa”), Czas koncentracji, Opad, Straty SCS-CN and Model UH. Every change goes to
+// the section, which checks it and recomputes (plan D13); the steps show what the last
+// result gave (tc, CN after AMC, S, Ia, the UH's parameters).
 
 import { SeriesField } from "../../controls/series-field.js";
 import { richText, splitReason } from "../../controls/field.js";
 import { inputText, num, plural } from "../../format.js";
 import { seriesTokens } from "../../forms/model.js";
+import { HandoffImport } from "../../handoff/handoff-panel.js";
 import { html, useEffect, useRef } from "../../html.js";
 import { t } from "../../labels/common.js";
 import { hydrogram as texts } from "../../labels/hydrogram.js";
@@ -219,6 +221,7 @@ function WatershedStep({ inputs, errors, setField, onFile }) {
         </div>
       </div>
       <div class="btn-row">
+        <${HandoffImport} />
         <button class="btn sm ghost" type="button" title=${texts.watershed.fileHint} onClick=${() => fileInput.current.click()}>
           <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 3h7l3 3v11H5z" /><path d="M12 3v3h3" /></svg>
           ${texts.watershed.file}
