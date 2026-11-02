@@ -1130,6 +1130,12 @@ the GUI's address).
 | Kalkulatory | the time of concentration by six methods for the watershed of Hydrogram zlewni, and fifteen single calculators | `tc watershed` and fifteen others |
 | Wszystkie polecenia | a form for every command of the catalog | all but `gui serve`, `config show` and `commands guide` |
 
+A result leaves the page as CSV, JSON or PNG; from Hydrogram zlewni also as a Markdown report
+(`report generate`), and from Hydrogram zlewni and Sieć through a print view on A4 (a PDF by the
+browser's „Zapisz jako PDF”) and as a hand-off `nogat-handoff/1`. „Wczytaj z Hydrografa” opens a
+watershed or a network handed over that way, with the producer's result beside Hydrolog's
+([INTEGRATION.md](INTEGRATION.md#web-gui-the-hand-off-with-hydrograf-nogat-handoff1)).
+
 ### Starting it
 
 ```sh

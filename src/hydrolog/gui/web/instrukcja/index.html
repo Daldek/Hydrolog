@@ -208,7 +208,7 @@
 
   <h3>Pięć kroków panelu „Dane”</h3>
   <ol class="numbered">
-    <li><strong>Zlewnia.</strong> Parametry z przykładu (<code>examples/kamiennik.json</code>), z pliku albo wpisane ręcznie. „Plik zlewni…” czyta plik JSON zlewni w formacie WatershedParameters (np. z Hydrografa) w przeglądarce, bez wysyłania. Pole zmienione względem przykładu lub pliku jest oznaczone, a „przywróć” wraca do wartości źródła. „Parametry modeli i metod spływu” zbierają pola potrzebne tylko niektórym metodom (np. udział lasów i zabudowy, spływ po stoku). Spadki podajesz w m/m, a obok widać je w procentach.</li>
+    <li><strong>Zlewnia.</strong> Parametry z przykładu (<code>examples/kamiennik.json</code>), z pliku, z przekazania albo wpisane ręcznie. „Plik zlewni…” czyta plik JSON zlewni w formacie WatershedParameters (np. z Hydrografa) w przeglądarce, bez wysyłania, a „Wczytaj z Hydrografa” wczytuje przekazanie: zlewnię razem z opadem i modelem (<a href="#przekazanie">Przekazanie</a>). Pole zmienione względem przykładu lub pliku jest oznaczone, a „przywróć” wraca do wartości źródła. „Parametry modeli i metod spływu” zbierają pola potrzebne tylko niektórym metodom (np. udział lasów i zabudowy, spływ po stoku). Spadki podajesz w m/m, a obok widać je w procentach.</li>
     <li><strong>Czas koncentracji.</strong> Metoda: Kirpich (domyślna), NRCS, Giandotti, FAA, Kerby, Kerby–Kirpich, albo czas podany ręcznie. „Porównaj metody” otwiera porównanie wszystkich sześciu w <a href="#kalkulatory">Kalkulatorach</a>. Modele Nash i Snyder nie używają czasu koncentracji.</li>
     <li><strong>Opad.</strong> PMAXTP: wybierasz prawdopodobieństwo i czas trwania, a wysokość opadu z atlasu wpisujesz (Hydrolog niczego nie pobiera). Hietogram: wysokość i czas trwania podane ręcznie. Własna seria: wysokości opadu w kolejnych krokach, wklejone z arkusza albo wczytane z kolumny pliku CSV. Rozkład deszczu w czasie: blokowy, trójkątny, Beta albo Euler II.</li>
     <li><strong>Straty SCS-CN.</strong> CN zlewni dla przeciętnej wilgotności (AMC II), wilgotność poprzedzająca: I sucho, II przeciętnie, III mokro (CN zmienia się wtedy, jak pokazuje podpowiedź), oraz straty początkowe λ (domyślnie 0,2).</li>
@@ -236,7 +236,7 @@
     <figcaption>Przykład po „Oblicz sieć”, z wybranym odcinkiem R_A.</figcaption>
   </figure>
   <ul>
-    <li><strong>Sieć</strong> pochodzi z pliku dokumentu sieci (<code>hydrolog-network/1</code>, „Plik sieci…”) razem z plikami, które czyta („Pliki towarzyszące…”: dopływy, tabele zbiorników), albo z przykładu („Przykład”, <code>examples/siec.json</code>: trzy zlewnie, dwa odcinki, dwa złącza i wylot). „Zapisz sieć” pobiera dokument ze zmianami. Układ połączeń pochodzi z pliku: zmieniasz parametry węzłów, nie to, co z czym się łączy.</li>
+    <li><strong>Sieć</strong> pochodzi z pliku dokumentu sieci (<code>hydrolog-network/1</code>, „Plik sieci…”) razem z plikami, które czyta („Pliki towarzyszące…”: dopływy, tabele zbiorników), z przekazania („Wczytaj z Hydrografa”, zob. <a href="#przekazanie">Przekazanie</a>) albo z przykładu („Przykład”, <code>examples/siec.json</code>: trzy zlewnie, dwa odcinki, dwa złącza i wylot). „Zapisz sieć” pobiera dokument ze zmianami. Układ połączeń pochodzi z pliku: zmieniasz parametry węzłów, nie to, co z czym się łączy.</li>
     <li><strong>Schemat</strong> jest rysowany pionowo: źródła u góry, wylot na dole, linia główna prosto, dopływy z boków. Kliknij węzeł (albo przejdź do niego klawiszem <kbd>Tab</kbd> i naciśnij <kbd>Enter</kbd> lub spację): jego ustawienia otworzą się w panelu „Dane”, a wynik w panelu „Wyniki”. Te same węzły są na liście w panelu „Dane” i w widoku „Tabela węzłów”.</li>
     <li><strong>Ustawienia węzła</strong> zależą od jego rodzaju: zlewnia (powierzchnia, CN, opad), odcinek (metoda: lag, Muskingum, Muskingum-Cunge, kaskada zbiorników albo level-pool, i jej parametry), zbiornik (tabela pojemność–odpływ), złącze, wylot. Po zmianie plakietka mówi „Dane zmienione: oblicz ponownie”, a wyniki są oznaczone jako dotyczące poprzednich danych.</li>
     <li><strong>Wyniki</strong>: przy każdym węźle schematu szczyt i czas do szczytu; w panelu „Wyniki” kafelki wylotu, a dla wybranego węzła jego hydrogram (dla odcinka dopływ i odpływ), parametry i rzędne. W przykładzie wylot OUT ma szczyt <span class="ex" data-example="siec-q">19,1&nbsp;m³/s</span> po <span class="ex" data-example="siec-tp">2:25&nbsp;h</span>.</li>
@@ -315,13 +315,28 @@
   <p class="kicker">07 · Wyniki poza Hydrologiem</p>
   <h2 id="eksport-title">Eksport i przekazanie wyników</h2>
   <p>Część „Eksport” w panelu „Wyniki” zapisuje bieżący wynik na Twoim komputerze:</p>
+  <figure class="inline-figure">
+    <a href="img/eksport.png"><img src="img/eksport.png" width="400" height="703" loading="lazy" alt="Dół panelu Wyniki Hydrogramu zlewni: przyciski eksportu CSV Tabela, JSON Wynik, PNG Wykres, MD Raport i PDF Raport do druku, wywołanie hydrograph generate w wierszu poleceń, a pod nim część Przekazanie z przyciskami Plik przekazania i Do schowka oraz opisem, co zawiera przekazanie."></a>
+    <figcaption>Eksport, wywołanie i przekazanie w Hydrogramie zlewni.</figcaption>
+  </figure>
   <dl class="defs">
     <div><dt>CSV · Tabela</dt><dd>Szeregi wyniku w arkuszu kalkulacyjnym (przecinek jako separator, kropka dziesiętna, UTF-8). Hydrogram zlewni zapisuje kolumny <code>time_min,discharge_m3s,precipitation_mm,effective_precipitation_mm</code>, które czytają polecenia trasowania Hydrologa i Hydraulik. Sieć zapisuje jeden węzeł albo wszystkie węzły.</dd></div>
     <div><dt>JSON · Wynik</dt><dd>Cały wynik tak, jak go zwrócił Hydrolog; Sieć zapisuje też dokument sieci.</dd></div>
     <div><dt>PNG · Wykres</dt><dd>Widoczny wykres jako obraz; w Sieci schemat. Sieć zapisuje też schemat Hydrologa jako SVG.</dd></div>
+    <div><dt>MD · Raport</dt><dd>Hydrogram zlewni: raport obliczeniowy w Markdown, pliku tekstowym z nagłówkami i tabelami, który otworzy każdy edytor tekstu. Hydrolog pisze go poleceniem <code>report generate</code> z danymi i ustawieniami pokazanego wyniku, a przeglądarka pobiera plik.</dd></div>
+    <div><dt>PDF · Raport do druku</dt><dd>Hydrogram zlewni i Sieć: okno drukowania przeglądarki z sekcją ułożoną na kartkach A4: wykresy, wyniki, uwagi i wywołanie, a na końcu dane z ich pochodzeniem; bez przycisków, w jasnym motywie i ze wszystkimi częściami rozwiniętymi. Plik PDF zapiszesz w tym oknie, wybierając „Zapisz jako PDF”. Zwykłe drukowanie strony (<kbd>Ctrl</kbd>+<kbd>P</kbd>) daje ten sam widok.</dd></div>
     <div><dt>Wywołanie</dt><dd>Wiersz polecenia (CLI), kod Pythona albo wywołanie MCP, które powtórzą obliczenie poza przeglądarką.</dd></div>
   </dl>
-  <p class="note-box">Raport obliczeniowy w Markdown, widok do druku (PDF z okna drukowania przeglądarki) i przekazanie wyników do Hydrografa i z powrotem („Plik przekazania”, „Do schowka”, „Wczytaj z Hydrografa”) dochodzą w kolejnym etapie (po S6).</p>
+
+  <h3 id="przekazanie">Przekazanie: Hydrograf i Hydrolog</h3>
+  <p>Hydrograf wyznacza zlewnię na mapie, a Hydrolog liczy dla niej wezbranie. Dane przechodzą między nimi jako <strong>przekazanie</strong>: plik JSON w formacie <code>nogat-handoff/1</code> ekosystemu Nogat. Niesie zlewnię albo całą sieć, pochodzenie danych (np. opad PMAXTP p&nbsp;1% w 12&nbsp;h, plik zlewni albo punkt na mapie) i wynik do porównania.</p>
+  <ul>
+    <li><strong>Wysyłanie.</strong> Część „Przekazanie” na końcu panelu „Wyniki” w Hydrogramie zlewni i w Sieci: „Plik przekazania” pobiera plik <code>&lt;nazwa&gt;.handoff.json</code>, a „Do schowka” kopiuje to samo do schowka. Z Hydrogramu zlewni idzie zlewnia z opadem, stratami, modelem i wynikiem, z Sieci cała sieć, a po „Oblicz sieć” także wynik wylotu.</li>
+    <li><strong>Wczytywanie.</strong> „Wczytaj z Hydrografa” w pierwszym kroku panelu „Dane” (w Hydrogramie zlewni krok „Zlewnia”, w Sieci krok „Sieć”), a w nim „Plik przekazania…” albo „Wklej ze schowka”. Gdy przeglądarka nie daje dostępu do schowka, pojawia się pole, w które wklejasz przekazanie (<kbd>Ctrl</kbd>+<kbd>V</kbd>). Jedna zlewnia z opadem otwiera się w Hydrogramie zlewni, każda inna sieć w Sieci i trasowaniu. Karta w panelu „Dane” mówi, skąd są dane, np. „Z Hydrografa: zlewnia punktu 51,0154° N, 15,8900° E”.</li>
+    <li><strong>Porównanie.</strong> Gdy przekazanie niesie wynik, część „Przekazanie” stawia go obok wyniku Hydrologa: Qmax, czas do szczytu, objętość i wersję programu, który liczył. Wartości, które się różnią, są wyróżnione; zwykle to skutek innej wersji Hydrologa, której używa Hydrograf. Po zmianie danych porównanie przypomina, że wynik producenta dotyczy danych z przekazania. W Sieci wynik Hydrologa do porównania daje „Oblicz sieć”.</li>
+  </ul>
+  <p>Przed wczytaniem Hydrolog sprawdza przekazanie. Gdy coś się nie zgadza, niczego nie zmienia i wypisuje przyczyny (zob. <a href="#problemy">Gdy coś nie działa</a>).</p>
+  <p class="note-box">W Hydrografie przyciski „Wczytaj z Hydrologa” i „Przenieś do Hydrologa” są w przygotowaniu. Już teraz przekazanie z Hydrologa wczytasz z powrotem w Hydrologu, np. w innej przeglądarce albo na innym komputerze.</p>
   <p class="back"><a href="#toc-title">↑ Spis treści</a></p>
 </section>
 
@@ -356,6 +371,7 @@
     <div><dt>Obliczenie przerwane</dt><dd>Obliczenie dłuższe niż 30 sekund jest przerywane. Zmniejsz zadanie, np. wydłuż krok czasowy albo skróć szereg.</dd></div>
     <div><dt>Komunikat z dopiskiem (EN)</dt><dd>Hydrolog nie ma jeszcze jego polskiej wersji; treść jest po angielsku.</dd></div>
     <div><dt>Plik nie wczytuje się</dt><dd>Sprawdź rozmiar (najwyżej 20&nbsp;MB) i format: CSV z wierszem nagłówka, przecinkiem albo średnikiem jako separatorem, albo JSON.</dd></div>
+    <div><dt>„Nie wczytano przekazania”</dt><dd>Plik albo tekst ze schowka nie jest poprawnym przekazaniem <code>nogat-handoff/1</code>. Lista pod przyciskiem mówi, co i gdzie się nie zgadza, np. nieznane pole albo wartość spoza zakresu; dane sekcji się nie zmieniły. Sam plik zlewni wczytaj przyciskiem „Plik zlewni…”, a dokument sieci przyciskiem „Plik sieci…”.</dd></div>
     <div><dt>Chcesz zacząć od nowa</dt><dd><span class="key-mark" aria-hidden="true">↻</span> „Wyczyść” u dołu panelu „Dane” przywraca przykład tej sekcji.</dd></div>
   </dl>
   <p class="back"><a href="#toc-title">↑ Spis treści</a></p>
