@@ -6,5 +6,7 @@
 export const SECTIONS = [
   { id: "hydrogram", load: () => import("./hydrogram/index.js") },
   { id: "siec", load: () => import("./siec/index.js") },
+  { id: "statystyka", load: () => import("./statystyka/index.js") },
+  { id: "kalkulatory", load: () => import("./kalkulatory/index.js") },
   { id: "polecenia", load: () => import("./polecenia/index.js") },
 ];

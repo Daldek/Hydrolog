@@ -88,10 +88,10 @@ export const notices = {
       plain: "Mała próba: wynik jest niepewny.",
     },
     short_record: {
-      text: "Krótki okres obserwacji: {years} lat (zalecane co najmniej {minimum}).",
-      plain: "Krótki okres obserwacji.",
+      text: "Liczba lat w szeregu: {years}; KZGW (2017) wymaga co najmniej {minimum} lat danych do analizy częstości wezbrań.",
+      plain: "Szereg jest krótszy, niż KZGW (2017) wymaga do analizy częstości wezbrań.",
     },
-    ks_test_approximate: "Test Kołmogorowa-Smirnowa jest przybliżony: parametry dopasowano z tej samej próby.",
+    ks_test_approximate: "Wartości krytyczne testu Kołmogorowa-Smirnowa są nieważne, gdy parametry szacuje się z tych samych danych; wybieraj rozkład wg A² i AIC.",
     unknown_hietogram_type: {
       text: "Nieznany typ hietogramu {hietogram_type}; dozwolone: {allowed}.",
       plain: "Nieznany typ hietogramu.",
@@ -108,13 +108,14 @@ export const notices = {
 };
 
 /**
- * A detail value in a notice: numbers in Polish, lists joined.
+ * A detail value in a notice: numbers in Polish with four significant digits and no
+ * trailing zeros („0,082”, not „0,08200”), lists joined.
  *
  * @param {unknown} value the value
  * @returns {string} the text
  */
 function shown(value) {
-  if (typeof value === "number") return auto(value);
+  if (typeof value === "number") return auto(value).replace(/(,\d*?)0+$/, "$1").replace(/,$/, "");
   if (Array.isArray(value)) return value.map(shown).join(", ");
   return String(value);
 }
