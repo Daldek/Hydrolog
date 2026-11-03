@@ -18,7 +18,7 @@ A browser GUI, in Polish and in Nogat's visual identity, for people who compute 
 
 ## Where it starts
 
-Checked on 2026-11-01 in the `Hydrolog-routing` worktree (`feature/routing-schematic`, `5fa22b3`) unless stated otherwise.
+Checked on 2026-11-01 in the `Hydrolog-routing` worktree (`feature/routing-schematic`, `2a5ba1a`) unless stated otherwise.
 
 | Fact | Consequence |
 |---|---|
@@ -36,13 +36,13 @@ Checked on 2026-11-01 in the `Hydrolog-routing` worktree (`feature/routing-schem
 | SCOPE: "❌ REST API" (`docs/SCOPE.md:354`); no web code in `src/` | the GUI needs a scope ADR |
 | Nogat has no kit yet (`design/kit/`, platform step 2) and no `handoff-1` schema (step 1). `tokens.css` last changed at `29e7e1c`, the commit Hydrograf copied. The mockup, Hydrograf and the specimen store the theme as `nogat-theme` (`design/README.md` still says `theme`) | Hydrolog copies the tokens and marks with hashes; the hand-off schema is Nogat's step first |
 | Archiwista vendors Preact 10.29.8 and htm 3.1.1 with SHA-256 per file (`src/archiwista/web/vendor/vendor.json`), imports them by relative paths under CSP `'self'`, and runs Playwright tests (`tests/e2e/`) in its gate and CI (`playwright install --with-deps chromium firefox`) | the frontend reuses that stack and test model |
-| Hydrograf in production computes with Hydrolog 0.6.3 (`backend/requirements.txt`: `hydrolog @ git+…@v0.6.3`); its `feature/producer-heads` pins `5fa22b3` | a hand-off from Hydrograf may carry numbers of another Hydrolog version |
+| Hydrograf in production computes with Hydrolog 0.6.3 (`backend/requirements.txt`: `hydrolog @ git+…@v0.6.3`); its `feature/producer-heads` pins `2a5ba1a` | a hand-off from Hydrograf may carry numbers of another Hydrolog version |
 
 ## Decisions
 
 ### D1. Branch: `feature/gui` from `feature/routing-schematic`
 
-`feature/gui` starts at `5fa22b3` (worktree `Hydrolog-gui`); this plan is its first commit. Merging routing first needs the author's review (DEV-3.3; PROGRESS, Next 8 to 10) and the GUI need not wait for it: the stack is linear, so `feature/gui` is the next link and merges after `feature/routing-schematic` without a rebase if the routing branches merge unchanged. If the review changes them, `feature/gui` is rebased onto the new head; S0 limits its edits of routing code to `catalog/groups/route.py` and `operations/route.py` to keep that cheap. Hydrograf is not affected: production pins the tag `v0.6.3`, and `feature/producer-heads` pins `5fa22b3`, the GUI's base.
+`feature/gui` starts at `2a5ba1a` (worktree `Hydrolog-gui`); this plan is its first commit. Merging routing first needs the author's review (DEV-3.3; PROGRESS, Next 8 to 10) and the GUI need not wait for it: the stack is linear, so `feature/gui` is the next link and merges after `feature/routing-schematic` without a rebase if the routing branches merge unchanged. If the review changes them, `feature/gui` is rebased onto the new head; S0 limits its edits of routing code to `catalog/groups/route.py` and `operations/route.py` to keep that cheap. Hydrograf is not affected: production pins the tag `v0.6.3`, and `feature/producer-heads` pins `2a5ba1a`, the GUI's base.
 
 ### D2. Package and extra
 
@@ -362,23 +362,23 @@ Done on 2026-11-02. Every slice landed on `feature/gui` as a fast-forward (rebas
 
 | Slice | Commits | Notes |
 |---|---|---|
-| Plan | `a33a437` | |
-| S1 server | `f3f54de` | |
-| S0 catalog additions | `ee4ff6d` | ADR-0014 and ADR-0015 |
-| S2 foundation | `cad30fe` | |
-| S2b charts | `93340f5` | |
-| Glue of wave A | `47ba13a`, `91e02f6`, `d93bbb3`, `efc7416`, `888d77d` | the direct imports once S0 and S1 were both in, the web and chart tests against the landed slices, defects of the page found by its browser tests, the browser tests of the shell, Polecenia and the modules, `--no-browser` |
-| S3 Hydrogram zlewni | `82735f0`, `fdfc80e` | |
-| S4 Sieć i trasowanie | `ce9a262`, `4b2caae`, `d2ad46c` | |
-| S5 Statystyka, Kalkulatory | `fd74a16` | |
-| Glue of wave B | `5e824da`, `fe6b3a3` | the labels of the tc tile in hours and of a file over the limit; every section mounts at start, and Kalkulatory relies on it |
-| S6 hand-off, report, print | `e01815f`, `f24d8df` | `f24d8df` makes S5's Kalkulatory test wait for Hydrogram's first result (a race once S6 loaded more modules) |
-| S7 guide, docs, smoke | `f0a651d`, `01d79be` | |
-| Glue of wave C | `ea0c5ac`, `9cc1aab` | the guide, INTEGRATION, USAGE and the README describe the hand-off, the report and the print view as shipped (S7 was written before S6), with a picture of the exports; the received hand-off's comparison fits the panel Wyniki (it was 358 px wide in 343 px at 1440 px and in 283 px at 1240 px) |
+| Plan | `fba6ff0` | |
+| S1 server | `4b1560f` | |
+| S0 catalog additions | `49b0d18` | ADR-0014 and ADR-0015 |
+| S2 foundation | `c47baca` | |
+| S2b charts | `c7b92ae` | |
+| Glue of wave A | `ac244ef`, `3850757`, `848b73a`, `a98a957`, `e004a5d` | the direct imports once S0 and S1 were both in, the web and chart tests against the landed slices, defects of the page found by its browser tests, the browser tests of the shell, Polecenia and the modules, `--no-browser` |
+| S3 Hydrogram zlewni | `8fed313`, `e4ee1d6` | |
+| S4 Sieć i trasowanie | `6b23ac0`, `6779ee6`, `6369278` | |
+| S5 Statystyka, Kalkulatory | `a59d3be` | |
+| Glue of wave B | `d137e17`, `83ddb40` | the labels of the tc tile in hours and of a file over the limit; every section mounts at start, and Kalkulatory relies on it |
+| S6 hand-off, report, print | `03604d5`, `d2b704b` | `d2b704b` makes S5's Kalkulatory test wait for Hydrogram's first result (a race once S6 loaded more modules) |
+| S7 guide, docs, smoke | `6d93e6a`, `5a131f1` | |
+| Glue of wave C | `ff5be68`, `f2d9b04` | the guide, INTEGRATION, USAGE and the README describe the hand-off, the report and the print view as shipped (S7 was written before S6), with a picture of the exports; the received hand-off's comparison fits the panel Wyniki (it was 358 px wide in 343 px at 1440 px and in 283 px at 1240 px) |
 
-`docs/PROGRESS.md` followed each wave (`c1a2616`, `73f4954` and the commit of these Results). Nogat's steps are on Nogat's branches for the author's review: N1 `a01097c` (`feature/handoff-1`), the envelope `nogat-handoff/1` (`schemas/exchange/handoff-1.schema.json`), which S6 copied unchanged; N2 `33920ec` (`feature/hydrolog-gui-registry`, after N1), the registry's optional `gui` interface with `hydrolog gui serve` and the route „Open Hydrolog's GUI in the browser”. Question 2 is answered by N1 done ahead of the rest of the platform plan; question 1 stays open.
+`docs/PROGRESS.md` followed each wave (`9d2f0e2`, `9b9a8cf` and the commit of these Results). Nogat's steps are on Nogat's branches for the author's review: N1 `a01097c` (`feature/handoff-1`), the envelope `nogat-handoff/1` (`schemas/exchange/handoff-1.schema.json`), which S6 copied unchanged; N2 `33920ec` (`feature/hydrolog-gui-registry`, after N1), the registry's optional `gui` interface with `hydrolog gui serve` and the route „Open Hydrolog's GUI in the browser”. Question 2 is answered by N1 done ahead of the rest of the platform plan; question 1 stays open.
 
-Verification. `scripts/gate.sh` on `9cc1aab`: ruff format and check, mypy, pytest 6593 passed and 18 skipped with the browser tests, coverage 95.09 %, the commit check. The omp service `hydrolog-gui` (persistent; `uv run --no-sync hydrolog gui serve --no-browser --host 127.0.0.1 --port 8070` in `Hydrolog-gui`, `TMPDIR` on the data disk) was restarted after every wave; only it listens on 127.0.0.1:8070, and `curl -I` shows the headers of D8. The smoke after wave C ran in clean Chromium contexts against 127.0.0.1:8070, the tunnel's origin:
+Verification. `scripts/gate.sh` on `f2d9b04`: ruff format and check, mypy, pytest 6593 passed and 18 skipped with the browser tests, coverage 95.09 %, the commit check. The omp service `hydrolog-gui` (persistent; `uv run --no-sync hydrolog gui serve --no-browser --host 127.0.0.1 --port 8070` in `Hydrolog-gui`, `TMPDIR` on the data disk) was restarted after every wave; only it listens on 127.0.0.1:8070, and `curl -I` shows the headers of D8. The smoke after wave C ran in clean Chromium contexts against 127.0.0.1:8070, the tunnel's origin:
 
 - the welcome dialog on a first visit, „Otwórz instrukcję” opening the guide at „Na start” in a new tab, „Przejdź do aplikacji”;
 - Hydrogram zlewni 60,21 m³/s at 6:20 h, 1 046 213 m³, and AMC III recomputed by one run without a button: 115,23 m³/s; Sieć's schematic of 8 nodes before the run, a node's form, „Oblicz sieć” 19,1 m³/s at 2:25 h; Statystyka GEV, Q 1% = 307,3 m³/s; Kalkulatory's six tc methods (Kirpich 162,9 min); Polecenia's `uh nash`;

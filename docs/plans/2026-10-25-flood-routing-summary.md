@@ -4,17 +4,17 @@ Written: 2026-10-25. Plan: [2026-10-24-flood-routing.md](2026-10-24-flood-routin
 
 ## Merge order
 
-`chore/nogat-2.1` comes first: it is 16 commits ahead of `develop` (3069e64), tip d4f7282, and every routing branch continues it. The routing branches are one line of history, each the previous branch plus its own commits (checked with `git merge-base --is-ancestor`), so no merge can conflict.
+`chore/nogat-2.1` comes first: it is 16 commits ahead of `develop` (5e0744a), tip 8ae4a6d, and every routing branch continues it. The routing branches are one line of history, each the previous branch plus its own commits (checked with `git merge-base --is-ancestor`), so no merge can conflict.
 
 | Order | Branch | Tip | Adds | Gate at the tip (passed / skipped, coverage) |
 |---|---|---|---|---|
-| 1 | `chore/nogat-2.1` | d4f7282 | 16 commits on `develop` | (see its own PROGRESS) |
-| 2 | `feature/routing-core` | 777e5d6 | 6 commits | 4,030 / 6, 94.25 % |
-| 3 | `feature/routing-muskingum` | f8a5fa2 | 2 commits | 4,164 / 6, 94.33 % |
-| 4 | `feature/routing-muskingum-cunge` | 093fd44 | 2 commits | 4,280 / 6, 94.41 % |
-| 5 | `feature/routing-cascade` | 73fbd13 | 2 commits | 4,435 / 6, 94.45 % |
-| 6 | `feature/routing-level-pool` | f45de5f | 2 commits | 4,758 / 17, 94.55 % |
-| 7 | `feature/routing-network` | b23c8e0, then the commit of this summary on top | 3 commits, the closing docs commit and two follow-up commits (the rules of schema, ids and large results, and this summary) | 5,095 / 17, 94.81 % at b23c8e0; the summary commit passed the gate too |
+| 1 | `chore/nogat-2.1` | 8ae4a6d | 16 commits on `develop` | (see its own PROGRESS) |
+| 2 | `feature/routing-core` | baca292 | 6 commits | 4,030 / 6, 94.25 % |
+| 3 | `feature/routing-muskingum` | 9ccc2b6 | 2 commits | 4,164 / 6, 94.33 % |
+| 4 | `feature/routing-muskingum-cunge` | b7ae36c | 2 commits | 4,280 / 6, 94.41 % |
+| 5 | `feature/routing-cascade` | 6379bf0 | 2 commits | 4,435 / 6, 94.45 % |
+| 6 | `feature/routing-level-pool` | 9ab8fc0 | 2 commits | 4,758 / 17, 94.55 % |
+| 7 | `feature/routing-network` | 01d8e2e, then the commit of this summary on top | 3 commits, the closing docs commit and two follow-up commits (the rules of schema, ids and large results, and this summary) | 5,095 / 17, 94.81 % at 01d8e2e; the summary commit passed the gate too |
 
 ```bash
 git switch develop
@@ -27,7 +27,7 @@ git merge --ff-only feature/routing-level-pool
 git merge --ff-only feature/routing-network
 ```
 
-Every merge is a fast-forward in this order. `feature/routing-network` contains the five branches before it, so merging it alone after `chore/nogat-2.1` brings the whole of the work; merge the others first only to keep their names in the history, or use `--no-ff` for a merge commit per branch as `develop` has (3069e64). The skips grow from 6 to 17 at the level-pool branch because one parametrized test skips the 11 sampled tables that allow every step of the test ("the table allows any step of the test"); no test is skipped for a missing extra.
+Every merge is a fast-forward in this order. `feature/routing-network` contains the five branches before it, so merging it alone after `chore/nogat-2.1` brings the whole of the work; merge the others first only to keep their names in the history, or use `--no-ff` for a merge commit per branch as `develop` has (5e0744a). The skips grow from 6 to 17 at the level-pool branch because one parametrized test skips the 11 sampled tables that allow every step of the test ("the table allows any step of the test"); no test is skipped for a missing extra.
 
 ## What each branch holds
 

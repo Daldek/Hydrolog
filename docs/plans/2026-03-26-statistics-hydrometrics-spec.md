@@ -3,7 +3,7 @@
 **Date:** 2026-03-26
 **Version:** 0.7.0 (planned)
 **Status:** Approved
-**Origin:** Migration from IMGWTools `code/hydro_stats.py` (removed in commit `3c571c8`, 2026-01-10)
+**Origin:** Migration from IMGWTools `code/hydro_stats.py` (removed in commit `2bea370`, 2026-01-10)
 
 ---
 
@@ -11,7 +11,7 @@
 
 ### 1.1 What was removed from IMGWTools
 
-Commit `3c571c8` ("Remove legacy code") deleted `code/hydro_stats.py` (1756 lines) containing:
+Commit `2bea370` ("Remove legacy code") deleted `code/hydro_stats.py` (1756 lines) containing:
 - Hydrological characteristic values (Polish system: NNQ–WWQ)
 - Flood frequency analysis (LogNormal, GEV, Pearson III exceedance curves)
 - Low-flow frequency analysis (Fisher-Tippett non-exceedance curves)
