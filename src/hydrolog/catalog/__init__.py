@@ -13,14 +13,21 @@ Public API
 * :func:`validate_command` -- validate and normalize option values;
 * :func:`run_command` -- validate, apply the path policy, run the operation, return a
   :class:`CommandResult` (``hydrolog-result/1`` envelope);
+* :func:`format_command` and :func:`parse_command` -- the canonical command line of a
+  call and the call of a line (AGI-2.1, :mod:`~hydrolog.catalog.lines`);
 * :func:`capture_warnings` -- inside an operation, turn the library's Python warnings
-  into the :class:`Notice` objects of the envelope.
+  into the :class:`Notice` objects of the envelope;
+* :data:`NOTICES` -- the registry of every notice code Hydrolog emits
+  (:class:`NoticeSpec`: level, English template, ``details`` keys), and
+  :func:`notice`, which builds a notice from it (:mod:`~hydrolog.catalog.notices`).
 
 Submodules: :mod:`~hydrolog.catalog.spec` (declarations),
 :mod:`~hydrolog.catalog.envelope` (envelope, notices, operation return protocol),
-:mod:`~hydrolog.catalog.inputs` (series, watershed, stations from inline JSON or
-files), :mod:`~hydrolog.catalog.dispatch` (lookup, validation, running) and
-:mod:`~hydrolog.catalog.groups` (one module per command group).
+:mod:`~hydrolog.catalog.notices` (notice codes), :mod:`~hydrolog.catalog.inputs`
+(series, watershed, stations from inline JSON or files),
+:mod:`~hydrolog.catalog.dispatch` (lookup, validation, running),
+:mod:`~hydrolog.catalog.lines` (command lines) and :mod:`~hydrolog.catalog.groups`
+(one module per command group).
 
 How to add a command
 --------------------
@@ -89,24 +96,32 @@ from hydrolog.catalog.envelope import (
     OperationOutput,
     capture_warnings,
 )
+from hydrolog.catalog.lines import ParsedCommand, format_command, parse_command
+from hydrolog.catalog.notices import NOTICES, NoticeSpec, notice
 from hydrolog.catalog.spec import Command, Option
 
 __all__ = [
+    "NOTICES",
     "Command",
     "CommandResult",
     "Document",
     "FileRecord",
     "Notice",
+    "NoticeSpec",
     "OperationOutput",
     "Option",
+    "ParsedCommand",
     "capture_warnings",
     "catalog_document",
     "check_command",
     "command_schema",
     "data_commands",
+    "format_command",
     "get_command",
     "input_schema",
     "list_commands",
+    "notice",
+    "parse_command",
     "run_command",
     "validate_command",
 ]

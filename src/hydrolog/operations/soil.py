@@ -15,6 +15,7 @@ from pathlib import Path
 
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.catalog.envelope import Notice, OperationOutput
+from hydrolog.catalog.notices import notice
 from hydrolog.exceptions import InvalidParameterError
 from hydrolog.operations._outputs import conflict_error, plan_output, plan_outputs
 from hydrolog.soil import (
@@ -211,11 +212,5 @@ def soil_hsg_stats(
     )
     notices: list[Notice] = []
     if bbox is not None and result.total_area_m2 == 0:
-        notices.append(
-            Notice(
-                "warning",
-                "empty_area",
-                "bbox does not overlap the raster: all counts and areas are zero",
-            )
-        )
+        notices.append(notice("empty_area"))
     return OperationOutput(result, notices)

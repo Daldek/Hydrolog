@@ -706,6 +706,11 @@ class Command:
         Registry codes the command can raise besides ``internal_error``.
     core : bool, optional
         The command belongs to the ``core`` family of MCP tools (at most 10).
+    agent_tool : bool, optional
+        The command is a tool for agents (default): an MCP tool and a line of the
+        command index of the agent guides. ``False`` for a command that a person
+        starts, such as ``gui serve``, which serves until it is stopped; it stays in
+        ``commands list`` and ``commands schema``, but has no MCP family.
     example_results : tuple of Mapping, optional
         Excerpt of the result of each example, in the order of ``examples``.
     examples : tuple of Mapping, optional
@@ -733,6 +738,7 @@ class Command:
     rules_pl: tuple[str, ...] = ()
     errors: tuple[str, ...] = ()
     core: bool = False
+    agent_tool: bool = True
     example_results: tuple[Mapping[str, object], ...] = ()
 
     def __post_init__(self) -> None:
@@ -794,6 +800,8 @@ class Command:
         unknown_errors = sorted(set(self.errors) - set(ERROR_CODE_NAMES))
         if unknown_errors or len(set(self.errors)) != len(self.errors):
             raise bad(f"errors must be unique registry codes, got {list(self.errors)}")
+        if self.core and not self.agent_tool:
+            raise bad("a command of the core family must be an agent tool")
         budget = len(self.summary) + len(self.description) + len(" ".join(self.rules))
         if budget > MCP_DESCRIPTION_MAX_CHARS:
             raise bad(
@@ -806,6 +814,11 @@ class Command:
         if len(set(names)) != len(names):
             raise bad("option names must be unique")
         self._check_one_of(names, bad)
+        check = next((o for o in self.options if o.name == "check"), None)
+        if check is not None and check.type != "boolean":
+            raise bad("the option 'check' must be a boolean (it asks for the plan)")
+        if self.writes and check is None:
+            raise bad("a command that writes a file needs the option 'check'")
         for number, example in enumerate(self.examples):
             if not isinstance(example, Mapping):
                 raise bad(f"example #{number} must be a mapping")
@@ -849,12 +862,22 @@ class Command:
 
     @property
     def check(self) -> str | None:
-        """Return the command that plans this one (itself, with ``check``) or None."""
-        return self.name if self.writes else None
+        """Return the command that plans this one (itself, with ``check``) or None.
+
+        A command plans itself when it has the boolean option ``check``: every command
+        that writes a file, and ``gui serve``, whose plan is the address it would
+        serve on.
+        """
+        return self.name if any(o.name == "check" for o in self.options) else None
 
     @property
     def families(self) -> tuple[str, ...]:
-        """Return the MCP tool families: the group, and ``core`` where it applies."""
+        """Return the MCP tool families: the group, and ``core`` where it applies.
+
+        A command that is not an agent tool (:attr:`agent_tool`) has none.
+        """
+        if not self.agent_tool:
+            return ()
         return (self.group, "core") if self.core else (self.group,)
 
     @property

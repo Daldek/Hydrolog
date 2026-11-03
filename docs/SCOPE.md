@@ -2,8 +2,8 @@
 
 ## Hydrological Toolkit Library
 
-**Version:** 1.6
-**Date:** 2026-10-24
+**Version:** 1.7
+**Date:** 2026-11-02
 **Status:** v1.0.0 in preparation
 
 ---
@@ -12,7 +12,7 @@
 
 ### 1.1 Project Purpose
 
-**Hydrolog** is a Python library, a CLI (`hydrolog`) and an MCP server that provide tools for hydrological calculations. It is designed as an external dependency for the Hydrograf project and for other systems that need hydrological functions (including Retman and AI agents).
+**Hydrolog** is a Python library, a CLI (`hydrolog`), an MCP server and a web GUI (`hydrolog gui serve`, ADR-0014) that provide tools for hydrological calculations. It is designed as an external dependency for the Hydrograf project and for other systems that need hydrological functions (including Retman and AI agents).
 
 ### 1.2 Main Goals
 
@@ -24,7 +24,8 @@
 - Determining hydrologic soil groups (HSG) from soil texture rasters
 - Flow statistics and hydrometry
 - Lumped hydrologic flood routing: lag, Muskingum, Muskingum-Cunge, cascade of linear reservoirs, level-pool reservoir, river network (ADR-0007)
-- A single command catalog as the source of truth for the library, the CLI, the MCP server and the agent guides
+- A single command catalog as the source of truth for the library, the CLI, the MCP server, the web GUI and the agent guides
+- A browser GUI in Polish, standalone and as a module of Nogat's GUI platform, that computes through the catalog (ADR-0014)
 
 ### 1.3 Analogy
 
@@ -166,7 +167,7 @@ Hydrolog is analogous to **Kartograf** (spatial data download) and **IMGWTools**
 
 #### 2.1.6 Module `cli` - CLI (v0.4.0, rebuilt in v1.0.0) ✅
 
-Since v1.0.0 the CLI is generated from the command catalog (`hydrolog.catalog`): 44 commands in 15 groups (list: `hydrolog commands list`). Syntax: `hydrolog <group> <command> --option value`; global flags `--json`, `--schema`, `--lang pl|en`, `-V`. The former CLI syntax (v0.4.0-v0.7.0) was removed without aliases.
+Since v1.0.0 the CLI is generated from the command catalog (`hydrolog.catalog`): 46 commands in 16 groups (list: `hydrolog commands list`). Syntax: `hydrolog <group> <command> --option value`; global flags `--json`, `--schema`, `--lang pl|en`, `-V`. The former CLI syntax (v0.4.0-v0.7.0) was removed without aliases.
 
 ```bash
 # Time of concentration
@@ -203,12 +204,12 @@ Other groups: `precip`, `hydrograph`, `morphometry`, `network`, `stats`, `hydrom
 
 #### 2.1.6a Operations Layer, Command Catalog and Agent Interfaces (v1.0.0)
 
-- **Command catalog** (`hydrolog.catalog`) - a single source of truth: `Command` and `Option` declarations (English texts with Polish translations, units, ranges, `one_of` groups, examples), `data_commands()`, `command_schema()`, `validate_command()`, `run_command()`
+- **Command catalog** (`hydrolog.catalog`) - a single source of truth: `Command` and `Option` declarations (English texts with Polish translations, units, ranges, `one_of` groups, examples), `data_commands()`, `command_schema()`, `validate_command()`, `run_command()`, `format_command()`/`parse_command()` (a call as the canonical CLI line and back) and the registry of notice codes `NOTICES` (ADR-0015)
 - **Operations layer** (`hydrolog.operations`) - one public, typed function per command; it composes existing classes and contains no new hydrology
 - **Result envelope** `hydrolog-result/1` and error document `hydrolog-error/1` with a closed `ERROR_CODES` registry (CLI exit codes: 1, 2, 3, 4, 6, 7, 9, 12, 13)
 - **Serialization** - all result classes have `to_dict()` and `to_json()` (`JsonResultMixin`)
 - **Data from files** - series, stations, network segments and catchments as CSV/JSON (including the IMGWTools `export_series` export, read without conversion); `WatershedParameters` JSON is the `catchment_characteristics` format in Retman
-- **MCP server** (`hydrolog mcp`, extra `hydrolog[mcp]`) - every catalog command is a tool; file access is restricted to `--allow-dir` directories and writing needs `--allow-writes`
+- **MCP server** (`hydrolog mcp`, extra `hydrolog[mcp]`) - every catalog command is a tool except `gui serve` (`agent_tool=False`, ADR-0015); file access is restricted to `--allow-dir` directories and writing needs `--allow-writes`
 - **Agent guides** - `AGENTS.md` and `llms.txt` generated from the catalog (`hydrolog commands guide`), enforced by a byte-for-byte consistency test
 - Plots (`hydrolog.visualization`) remain Python-only, outside the command catalog
 
@@ -328,9 +329,34 @@ inundation, backwater and structures stay with Hydraulik, HEC-RAS and IMGW HD.
   (Hydrolog does not compute areas and makes up no channel)
 - The outflow written by `--output` is a hydrograph table that every `route` command reads;
   `route network` writes one such table per node into `--output-dir`
+- Schematic: `RoutingNetwork.schematic()` lays a network out as a metro-style map, the document
+  `hydrolog-network-schematic/1` (ADR-0013); `route network --schematic` draws it as SVG with the
+  values of the run, `route schematic` returns the layout without values and computes nothing
+  (ADR-0015)
 - Not in scope: variable-parameter Muskingum-Cunge and compound sections, kinematic and dynamic
   waves, reservoir operation (gates and release rules: the outflow is the one the table gives;
   plan `docs/plans/2026-10-24-flood-routing.md`)
+
+#### 2.1.12 Module `gui` - Web GUI (after v1.0.0, ADR-0014)
+
+A browser GUI in Polish and in Nogat's visual identity for people who compute with Hydrolog,
+started with `hydrolog gui serve` (extra `hydrolog[gui]`: Starlette and uvicorn; 127.0.0.1:8070 by
+default) and hosted as a module of Nogat's GUI platform through the entry point group `nogat.gui`.
+
+- Five sections: Hydrogram zlewni (one watershed, recomputed after every change), Sieć i trasowanie
+  (the network schematic and `route network`), Statystyka przepływów, Kalkulatory and Wszystkie
+  polecenia (a form generated from the catalog for every command)
+- Every value comes from the catalog (`run_command` in warm worker processes); the browser formats,
+  sums series for display and draws, and computes nothing else
+- Exports: CSV, JSON, the Markdown report (`report generate`), a print view (PDF from the browser),
+  PNG and the CLI line (`format_command`); the hand-off with Hydrograf as `nogat-handoff/1`
+  carrying `hydrolog-network/1`
+- A private server API relative to the page, generic over any `commands-1` catalog; it is not a
+  REST interface of Hydrolog (no `/api/v1`, OpenAPI or stability promise)
+- One work directory per browser session with limits; no arbitrary paths, no store, no sign-in:
+  beyond loopback the server is exposed only behind an authenticating proxy
+- Not in scope: an English UI (later), saved variants or projects, a PDF output, editing the
+  structure of a network, downloading data (PMAXTP, series)
 
 ---
 
@@ -351,13 +377,14 @@ inundation, backwater and structures stay with Hydraulik, HEC-RAS and IMGW HD.
 - ❌ Downloading land cover (→ Kartograf)
 - ❌ Downloading soil rasters (→ Kartograf `download_soil`); computing HSG from already downloaded texture rasters is in scope (module `soil`, since v1.0.0)
 - ❌ Downloading IMGW data (→ IMGWTools); Hydrolog reads a ready-made CSV/JSON file from the export
-- ❌ REST API (interfaces: Python library, CLI and MCP server)
+- ❌ A public REST API (interfaces: Python library, CLI, MCP server and the web GUI; the GUI's private server routes serve its page only and are not a REST interface, ADR-0014)
 - ❌ Database operations
 
 **Visualizations and reports:**
 - ✅ Static plots (matplotlib) - module `visualization` (since v0.5.0)
 - ✅ Markdown/LaTeX reports - module `reports` (since v0.6.0)
-- ❌ PDF export (→ external tools, e.g. Pandoc)
+- ❌ PDF export (→ external tools, e.g. Pandoc); the web GUI's print view leaves the PDF to the browser
+- ✅ Interactive charts in the web GUI (inline SVG drawn in the browser from command results, PNG export) - module `gui` (ADR-0014)
 - ❌ Interactive maps (→ client application)
 
 ---
@@ -424,6 +451,7 @@ hydrolog/
 │   ├── level_pool.py       # LevelPoolReach (storage indication), timestep_limit_min
 │   └── _kernels.py         # Three-point recurrences, shared with ClarkIUH
 ├── _serialization.py        # to_jsonable(), JsonResultMixin (to_dict/to_json) (v1.0.0)
+├── _warnings.py             # HydrologWarning: library warnings with stable codes and details (ADR-0015)
 ├── agent_guide.py           # AGENTS.md / llms.txt generator from the catalog (v1.0.0)
 ├── _data/agents/            # Agent guide templates (English)
 ├── catalog/                 # Command catalog (v1.0.0)
@@ -431,9 +459,13 @@ hydrolog/
 │   ├── envelope.py          # hydrolog-result/1 envelope, Notice
 │   ├── inputs.py            # Series, hydrographs, stations, catchments from JSON or CSV/JSON files
 │   ├── dispatch.py          # validate_command, run_command, path policy
+│   ├── lines.py             # format_command, parse_command (canonical CLI line, ADR-0015)
+│   ├── notices.py           # NOTICES registry, NoticeSpec, notice() (ADR-0015)
 │   └── groups/              # One module per command group (COMMANDS)
 ├── operations/              # One public function per catalog command (v1.0.0)
 ├── mcp/                     # MCP server (v1.0.0, [mcp] extra)
+├── gui/                     # Web GUI server and gui_module() (after v1.0.0, [gui] extra, ADR-0014)
+│   └── web/                 # Static files of the page (Preact and htm without a build)
 ├── soil/                    # HSG from soil texture (v1.0.0)
 │   ├── texture.py           # USDA texture triangle, texture → HSG (NumPy only)
 │   ├── hsg.py               # classify_hsg(), hsg_statistics_array()
@@ -493,6 +525,7 @@ hydrolog/
 **Optional (extras `pip install hydrolog[...]`):**
 - `raster`: rasterio >= 1.3 + pyproj >= 3.6 (commands `soil hsg` and `soil hsg-stats`, `hydrolog.soil.raster`)
 - `mcp`: mcp >= 2.3, < 3 (MCP server `hydrolog mcp`)
+- `gui`: starlette >= 1.10, < 2 + uvicorn >= 0.54, < 1 (web GUI `hydrolog gui serve`, ADR-0014)
 - `viz`: matplotlib >= 3.7 + seaborn >= 0.12 (module `visualization`)
 - `all`: all of the above
 
@@ -552,6 +585,7 @@ print(f"Time to peak: {result.time_to_peak_min} min")
 | **v0.7.0** | Hydrological statistics + Hydrometry | `statistics`, `hydrometrics`, `visualization.statistics` | ✅ Released |
 | **v1.0.0** | Stable API, command catalog, catalog-based CLI, MCP server, HSG, result serialization, calculation fixes | `catalog`, `operations`, `mcp`, `soil`, `cli`, `agent_guide` | 🔄 In preparation |
 | **after v1.0.0** | Flood routing | `routing` | 🔄 Branches `feature/routing-*` (ADR-0007) |
+| **after v1.0.0** | Web GUI, standalone and as a Nogat module | `gui`, `catalog` | 🔄 Branch `feature/gui` (ADR-0014, ADR-0015) |
 
 ---
 
@@ -581,6 +615,7 @@ print(f"Time to peak: {result.time_to_peak_min} min")
 | IMGWTools | IMGW data (measurement series) | No (Hydrolog reads its CSV export) |
 | rasterio, pyproj | GeoTIFF rasters for HSG | No (extra `[raster]`) |
 | mcp | MCP server | No (extra `[mcp]`) |
+| starlette, uvicorn | Web GUI server | No (extra `[gui]`) |
 
 **Hydrolog does NOT contain data download functions:**
 - PMAXTP rainfall data → downloaded by the parent application (e.g. Hydrograf via IMGWTools)
@@ -617,6 +652,6 @@ print(f"Time to peak: {result.time_to_peak_min} min")
 
 ---
 
-**Document version:** 1.6
-**Last updated:** 2026-10-24
+**Document version:** 1.7
+**Last updated:** 2026-11-02
 **Status:** v1.0.0 in preparation

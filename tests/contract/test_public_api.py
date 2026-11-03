@@ -22,10 +22,14 @@ options = hydrolog.validate_command('cn lookup', hsg='B', land_cover='forest')
 listing = hydrolog.list_commands().to_json()
 schema = hydrolog.command_schema('tc kirpich').to_dict()
 page = hydrolog.list_commands(limit=3).to_dict()
+line = hydrolog.format_command('cn lookup', {'hsg': 'B'}, run={'json': True})
+call = hydrolog.parse_command(line)
 reveal_type(result)
 reveal_type(options)
 reveal_type(listing)
 reveal_type(schema)
+reveal_type(line)
+reveal_type(call.options)
 """
 
 
@@ -90,7 +94,7 @@ class TestImport:
 
 
 class TestTypes:
-    """A consumer that calls the five functions type-checks under ``--strict``."""
+    """A consumer that calls the functions of the API type-checks under ``--strict``."""
 
     def test_consumer_snippet_passes_mypy_strict(self, tmp_path):
         from mypy import api
@@ -113,6 +117,8 @@ class TestTypes:
         revealed = [line for line in stdout.splitlines() if "Revealed type" in line]
         assert [line.split('"')[1] for line in revealed] == [
             "dict[str, Any]",
+            "dict[str, Any]",
+            "str",
             "dict[str, Any]",
             "str",
             "dict[str, Any]",

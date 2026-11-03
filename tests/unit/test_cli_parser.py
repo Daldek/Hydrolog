@@ -1,20 +1,16 @@
-"""Tests for the generated parsers: option syntax, examples and declarations."""
+"""Tests for the generated parsers: option syntax and declarations."""
 
 import json
-import os
-from pathlib import Path
 from typing import Any
 
 import pytest
 
-from hydrolog.catalog import Command, Option, get_command
+from hydrolog.catalog import Command, Option
 from hydrolog.cli.parser import (
     UsageError,
     build_command_parser,
     build_group_parser,
     build_root_parser,
-    example_arguments,
-    format_example,
     join_negative_values,
     parse_command_line,
 )
@@ -46,108 +42,6 @@ def _option(name: str, kind: Any = "number", **kwargs: Any) -> Option:
     if kind == "path":
         kwargs.setdefault("path_role", "input")
     return Option(name, kind, "Opis", "Description", **kwargs)
-
-
-class TestExamples:
-    """An example becomes command-line words that read back as the same values."""
-
-    def test_each_option_type(self):
-        command = _command(
-            _option("count", "integer"),
-            _option("length_km", "number"),
-            _option("values", "number_list"),
-            _option("names", "string_list"),
-            _option("mode", "choice"),
-            _option("input_file", "path"),
-            _option("watershed", "object"),
-            _option("parts", "object_list"),
-            _option("verbose", "boolean"),
-            _option("quiet", "boolean"),
-        )
-        words = example_arguments(
-            command,
-            {
-                "count": 5,
-                "length_km": 72.0,
-                "values": [1, 2.5, 1e-05],
-                "names": ["a", "b"],
-                "mode": "a",
-                "input_file": Path("data") / "x.csv",
-                "watershed": {"name": "Młynówka", "cn": 70},
-                "parts": [{"cn": 55}],
-                "verbose": True,
-                "quiet": False,
-            },
-        )
-        assert words == [
-            "--count",
-            "5",
-            "--length-km",
-            "72",
-            "--values",
-            "1,2.5,1e-05",
-            "--names",
-            "a,b",
-            "--mode",
-            "a",
-            "--input-file",
-            os.path.join("data", "x.csv"),
-            "--watershed",
-            '{"name":"Młynówka","cn":70}',
-            "--parts",
-            '[{"cn":55}]',
-            "--verbose",
-            "--no-quiet",
-        ]
-
-    def test_negative_values_use_the_equals_form(self):
-        command = _command(_option("offset"), _option("values", "number_list"))
-        words = example_arguments(command, {"offset": -5, "values": [-1, 2]})
-        assert words == ["--offset=-5", "--values=-1,2"]
-
-    def test_none_and_unknown_names_are_skipped(self):
-        command = _command(_option("a"), _option("b"))
-        assert example_arguments(command, {"a": None, "b": 1, "zzz": 3}) == ["--b", "1"]
-
-    def test_text_items_with_commas_are_given_as_json(self):
-        command = _command(_option("names", "string_list"))
-        assert example_arguments(command, {"names": ["a,b", "c"]}) == [
-            "--names",
-            '["a,b", "c"]',
-        ]
-        assert example_arguments(command, {"names": ["[x]", "c"]}) == [
-            "--names",
-            '["[x]", "c"]',
-        ]
-
-    def test_format_example_is_a_quoted_shell_line(self):
-        command = get_command("tc kirpich")
-        assert (
-            format_example(command, {"length_km": 8.2, "slope_m_per_m": 0.023})
-            == "hydrolog tc kirpich --length-km 8.2 --slope-m-per-m 0.023"
-        )
-        quoted = format_example(
-            get_command("cn weighted"), {"parts": [{"cn": 55, "area": 27.2}]}
-        )
-        assert quoted == 'hydrolog cn weighted --parts \'[{"cn":55,"area":27.2}]\''
-
-    @pytest.mark.parametrize(
-        ("kind", "value", "expected"),
-        [
-            ("number_list", [-1.5, 2, 3e-07], [-1.5, 2.0, 3e-07]),
-            ("string_list", ["x", "a,b", "[c]"], ["x", "a,b", "[c]"]),
-            ("string_list", ["2020-01-01", "2020-01-02"], ["2020-01-01", "2020-01-02"]),
-            ("object", {"a": [1, 2], "b": {"c": "ł"}}, {"a": [1, 2], "b": {"c": "ł"}}),
-            ("object_list", [{"a": 1}, {"b": "x y"}], [{"a": 1}, {"b": "x y"}]),
-            ("integer", 7, 7),
-            ("number", 0.1, 0.1),
-            ("path", "a b/c.csv", "a b/c.csv"),
-        ],
-    )
-    def test_values_survive_the_round_trip(self, kind, value, expected):
-        command = _command(_option("value", kind))
-        line = parse_command_line(command, example_arguments(command, {"value": value}))
-        assert line.options == {"value": expected}
 
 
 class TestParsing:
@@ -356,6 +250,7 @@ class TestShortFlag:
     """``-o`` is the short form of ``--output-dir`` and of no other option (AGI-3.4)."""
 
     OUTPUT_DIR = _option("output_dir", "path", path_role="output")
+    CHECK = _option("check", "boolean")
 
     def test_only_output_dir_has_a_short_flag(self):
         assert self.OUTPUT_DIR.short_flag == "-o"
@@ -364,7 +259,7 @@ class TestShortFlag:
             assert _option(name, kind).short_flag is None, name
 
     def test_the_short_and_the_long_flag_give_the_same_value(self):
-        command = _command(self.OUTPUT_DIR, _option("length_km"))
+        command = _command(self.OUTPUT_DIR, self.CHECK, _option("length_km"))
 
         short = parse_command_line(command, ["-o", "out/dir", "--length-km", "2"])
         long = parse_command_line(
@@ -375,12 +270,13 @@ class TestShortFlag:
         assert short.options["output_dir"] == "out/dir"
 
     def test_the_help_lists_both_spellings_of_the_option(self):
-        text = build_command_parser(_command(self.OUTPUT_DIR), "en").format_help()
+        command = _command(self.OUTPUT_DIR, self.CHECK)
+        text = build_command_parser(command, "en").format_help()
 
         assert "-o" in text and "--output-dir" in text
 
     def test_an_option_without_a_short_flag_cannot_be_abbreviated_to_one(self):
-        command = _command(_option("output", "path", path_role="output"))
+        command = _command(_option("output", "path", path_role="output"), self.CHECK)
 
         with pytest.raises(UsageError):
             parse_command_line(command, ["-o", "x.csv"])

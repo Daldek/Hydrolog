@@ -131,7 +131,7 @@ class TestTheSummary:
 
 
 class TestTheNotices:
-    def test_a_notice_begins_with_the_id_of_its_node(self):
+    def test_a_notice_begins_with_the_id_of_its_node_and_names_it_in_details(self):
         content = stream(rainfall={**RAIN, "duration_min": 62})
 
         notices = route_network(network=content).notices
@@ -139,7 +139,9 @@ class TestTheNotices:
         by_code = {notice.code: notice for notice in notices}
         assert by_code["duration_not_covered"].level == "warning"
         assert by_code["duration_not_covered"].message.startswith("A: ")
+        assert by_code["duration_not_covered"].details == {"node_id": "A"}
         assert by_code["tail_extended"].message.startswith("R: ")
+        assert by_code["tail_extended"].details == {"node_id": "R"}
 
     def test_a_warning_of_the_library_is_a_notice_and_is_not_printed(self):
         flat = {**WATERSHED, "length_km": 12.0, "elevation_max_m": 220.0}
@@ -149,12 +151,13 @@ class TestTheNotices:
             warnings.simplefilter("error")
             notices = route_network(network=content).notices
 
-        (warned,) = [notice for notice in notices if notice.code == "user_warning"]
+        (warned,) = [n for n in notices if n.code == "outside_typical_range"]
         assert warned.level == "warning"
         assert (
             warned.message.startswith("A: ")
             and "outside typical range" in warned.message
         )
+        assert warned.details == {"node_id": "A"}
 
 
 class TestTheTables:

@@ -1,6 +1,8 @@
 """MCP tools generated from the command catalog (AGI-5.2 to AGI-5.5, AGI-5.8, AGI-5.12).
 
-Every catalog command is one tool, in catalog order (deterministic):
+Every catalog command that is an agent tool (``Command.agent_tool``; not ``gui serve``,
+which a person starts and which serves until it is stopped) is one tool, in catalog
+order (deterministic):
 
 * ``name`` -- the ``operation_id`` (``hydrolog_tc_kirpich``), at most 48 characters;
 * ``description`` -- the catalog ``summary``, ``description`` and ``rules``, English,
@@ -18,7 +20,7 @@ Every catalog command is one tool, in catalog order (deterministic):
 
 Modes
 -----
-A writing command (``Command.check`` is not ``None``) runs on a server started with
+A writing command (``Command.writes``) runs on a server started with
 ``--allow-writes`` as the catalog declares it. Without it the server turns every call
 into a plan (``check`` true, ``force`` ignored, see :mod:`hydrolog.mcp._calls`), so the
 tool is read-only: ``readOnlyHint`` true, ``destructiveHint`` false, and the
@@ -135,7 +137,7 @@ def _description(command: Command) -> str:
 def _tool(command: Command, *, allow_writes: bool) -> CatalogTool:
     """Build the tool of one command for a server in the given mode."""
     effects = command.effects
-    plan_only = command.check is not None and not allow_writes
+    plan_only = command.writes and not allow_writes
     read_only = effects.read_only or plan_only
     definition = types.Tool(
         name=command.operation_id,
@@ -165,7 +167,8 @@ def catalog_tools(
     Parameters
     ----------
     commands : sequence of Command
-        Catalog commands, normally the result of :func:`select_commands`.
+        Catalog commands, normally the result of :func:`select_commands`; a command
+        that is not an agent tool (``Command.agent_tool`` false) gets no tool.
     allow_writes : bool
         Whether the server writes files (``--allow-writes``); without it a writing
         command is a plan-only, read-only tool.
@@ -177,6 +180,8 @@ def catalog_tools(
     """
     tools: dict[str, CatalogTool] = {}
     for command in commands:
+        if not command.agent_tool:
+            continue
         tool = _tool(command, allow_writes=allow_writes)
         tools[tool.definition.name] = tool
     return tools

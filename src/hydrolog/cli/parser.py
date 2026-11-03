@@ -26,10 +26,7 @@ from __future__ import annotations
 
 import argparse
 import difflib
-import json
-import os
 import re
-import shlex
 import shutil
 import textwrap
 from collections import defaultdict
@@ -37,7 +34,7 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Final, NoReturn
 
-from hydrolog._serialization import to_jsonable
+from hydrolog.catalog.lines import format_command
 from hydrolog.catalog.spec import Command, Lang, Option
 from hydrolog.cli.texts import text
 from hydrolog.cli.values import parse_option_value
@@ -52,8 +49,6 @@ __all__ = [
     "build_group_parser",
     "build_mcp_parser",
     "build_root_parser",
-    "example_arguments",
-    "format_example",
     "join_negative_values",
     "parse_command_line",
 ]
@@ -262,85 +257,21 @@ def _wrap_usage(words: Sequence[str], lang: Lang) -> str:
     return wrapped[len(lead) :]
 
 
-# --- examples -------------------------------------------------------------------------
-
-
-def _number_text(value: Any) -> str:
-    if isinstance(value, int) and not isinstance(value, bool):
-        return str(value)
-    rendered = repr(float(value))
-    return rendered[:-2] if rendered.endswith(".0") else rendered
-
-
-def _value_text(option: Option, value: Any) -> str:
-    """Command-line text that :func:`parse_option_value` turns back into ``value``."""
-    kind = option.type
-    if kind in ("number", "integer"):
-        return _number_text(value)
-    if kind == "number_list":
-        return ",".join(_number_text(item) for item in value)
-    if kind == "string_list":
-        items = [str(item) for item in value]
-        if any("," in item or not item.strip() for item in items) or (
-            items and items[0].lstrip().startswith("[")
-        ):
-            return json.dumps(items, ensure_ascii=False)
-        return ",".join(items)
-    if kind in ("object", "object_list"):
-        return json.dumps(to_jsonable(value), ensure_ascii=False, separators=(",", ":"))
-    return os.fspath(value) if isinstance(value, os.PathLike) else str(value)
-
-
-def example_arguments(command: Command, example: Mapping[str, object]) -> list[str]:
-    """Return the command-line words that give ``command`` an example's options.
-
-    Parameters
-    ----------
-    command : Command
-        The command.
-    example : Mapping[str, object]
-        Option values (JSON-native), e.g. an entry of ``Command.examples``; ``None``
-        values are skipped.
-
-    Returns
-    -------
-    list of str
-        Words to put after ``hydrolog <group> <command>``: ``--flag value`` pairs
-        (``--flag=value`` for a value that starts with ``-``) in catalog order and
-        ``--flag``/``--no-flag`` for booleans.
-    """
-    words: list[str] = []
-    for option in command.options:
-        value = example.get(option.name)
-        if value is None:
-            continue
-        if option.type == "boolean":
-            words.append(option.flag if value else "--no-" + option.flag[2:])
-            continue
-        rendered = _value_text(option, value)
-        if rendered.startswith("-"):
-            words.append(f"{option.flag}={rendered}")
-        else:
-            words.extend((option.flag, rendered))
-    return words
-
-
-def format_example(command: Command, example: Mapping[str, object]) -> str:
-    """Return an example as a shell command line (``hydrolog tc kirpich --...``)."""
-    words = ["hydrolog", *command.name.split(), *example_arguments(command, example)]
-    return shlex.join(words)
-
-
 # --- general flags --------------------------------------------------------------------
 
 
 class _BooleanAction(argparse.Action):
-    """The pair ``--flag`` / ``--no-flag`` that stores ``True`` / ``False``."""
+    """The pair ``--flag`` / ``--no-flag`` that stores ``True`` / ``False``.
+
+    The negative spelling is the one this action adds, not any flag that starts with
+    ``--no-``: ``--no-browser`` is the flag of ``no_browser`` and stores ``True``.
+    """
 
     def __init__(self, option_strings: Sequence[str], dest: str, **kwargs: Any) -> None:
         strings: list[str] = []
         for flag in option_strings:
             strings.extend((flag, "--no-" + flag[2:]))
+        self.negative = frozenset(strings[1::2])
         super().__init__(strings, dest, nargs=0, **kwargs)
 
     def __call__(
@@ -350,7 +281,7 @@ class _BooleanAction(argparse.Action):
         values: Any,
         option_string: str | None = None,
     ) -> None:
-        setattr(namespace, self.dest, not (option_string or "").startswith("--no-"))
+        setattr(namespace, self.dest, option_string not in self.negative)
 
 
 def _add_general_arguments(group: argparse._ArgumentGroup, lang: Lang) -> None:
@@ -501,7 +432,7 @@ def _command_epilog(command: Command, lang: Lang) -> str:
     if command.examples:
         lines = [text("examples", lang)]
         lines.extend(
-            "  " + format_example(command, example) for example in command.examples
+            "  " + format_command(command, example) for example in command.examples
         )
         blocks.append("\n".join(lines))
     return "\n\n".join(blocks)
@@ -759,7 +690,7 @@ def _examples_block(commands: Sequence[Command], lang: Lang) -> str:
     """Examples built from the first catalog command that has one."""
     for command in commands:
         if command.examples:
-            line = format_example(command, command.examples[0])
+            line = format_command(command, command.examples[0])
             return "\n".join(
                 (
                     text("examples", lang),

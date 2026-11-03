@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="pl" class="guide-page">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Hydrolog: instrukcja</title>
+<link rel="icon" type="image/svg+xml" href="../nogat/marks/hydrolog.svg">
+<script src="../theme-init.js"></script>
+<link rel="stylesheet" href="../nogat/tokens.css">
+<link rel="stylesheet" href="../css/app.css">
+<link rel="stylesheet" href="instrukcja.css">
+<script type="module" src="instrukcja.js"></script>
+</head>
+<body>
+<a class="skip" href="#tresc">Przejdź do treści</a>
+
+<!-- The top bar of the GUI: the mark leads back to the app, the theme is shared with it -->
+<header class="topbar">
+  <a class="brand" href="../" aria-label="Hydrolog: wróć do aplikacji">
+    <img src="../nogat/marks/hydrolog.svg" alt="" width="24" height="24">
+    <span class="name">Hydrolog</span>
+  </a>
+  <nav class="crumbs" aria-label="Kontekst">
+    <strong>Instrukcja</strong>
+  </nav>
+  <div class="top-actions">
+    <a class="btn ghost" href="../" aria-label="Wróć do aplikacji">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5L7 10l5.5 5.5"/></svg>
+      <span class="label">Wróć do aplikacji</span>
+    </a>
+    <div id="theme"></div>
+  </div>
+</header>
+
+<main class="guide" id="tresc">
+
+<div class="guide-head">
+  <p class="kicker">Przewodnik użytkownika</p>
+  <h1>Hydrolog w przeglądarce</h1>
+  <p class="lead">Ile wody spłynie po ulewie, jak fala płynie rzeką i jak często zdarzają się duże przepływy: obliczenia hydrologiczne bez instalowania programów i bez znajomości wzorów.</p>
+  <p class="note-box">To wersja rozwojowa: wygląd, funkcje i liczby mogą się jeszcze zmieniać.</p>
+</div>
+
+<nav class="guide-toc" aria-labelledby="toc-title">
+  <h2 id="toc-title">Spis treści</h2>
+  <p class="toc-hint"><strong>Pierwszy raz?</strong> Wystarczy część „Na start”: kilka minut czytania bez szczegółów technicznych. Rozdziały 01–10 opisują każdą sekcję dokładnie; wracaj do nich, gdy będą potrzebne.</p>
+  <ol class="toc">
+    <li class="toc-start">
+      <a href="#na-start"><span class="toc-num">▶</span> Na start</a>
+      <ol>
+        <li><a href="#czym-jest">Czym jest Hydrolog</a></li>
+        <li><a href="#czego-oczekiwac">Czego się spodziewać, a czego nie</a></li>
+        <li><a href="#pytania">Na jakie pytania odpowiada</a></li>
+        <li><a href="#kto">Kto może korzystać</a></li>
+        <li><a href="#trzy-kroki">Pierwszy wynik w trzech krokach</a></li>
+        <li><a href="#slowniczek">Słowniczek</a></li>
+      </ol>
+    </li>
+    <li><a href="#ekran"><span class="toc-num">01</span> Ekran i wspólne elementy</a></li>
+    <li><a href="#hydrogram"><span class="toc-num">02</span> Hydrogram zlewni</a></li>
+    <li><a href="#siec"><span class="toc-num">03</span> Sieć i trasowanie</a></li>
+    <li><a href="#statystyka"><span class="toc-num">04</span> Statystyka przepływów</a></li>
+    <li><a href="#kalkulatory"><span class="toc-num">05</span> Kalkulatory</a></li>
+    <li><a href="#polecenia"><span class="toc-num">06</span> Wszystkie polecenia</a></li>
+    <li><a href="#eksport"><span class="toc-num">07</span> Eksport i przekazanie wyników</a></li>
+    <li><a href="#telefon"><span class="toc-num">08</span> Telefon, motyw i Twoje dane</a></li>
+    <li><a href="#problemy"><span class="toc-num">09</span> Gdy coś nie działa</a></li>
+    <li><a href="#uruchomienie"><span class="toc-num">10</span> Uruchomienie u siebie</a></li>
+  </ol>
+</nav>
+
+<div class="guide-text">
+
+<!-- ============================ Na start ============================ -->
+<section class="part" id="na-start" aria-labelledby="na-start-title">
+  <p class="kicker">Na start · bez szczegółów technicznych</p>
+  <h2 id="na-start-title">Na start</h2>
+
+  <section id="czym-jest" aria-labelledby="czym-jest-title">
+    <h3 id="czym-jest-title">Czym jest Hydrolog?</h3>
+    <p>Hydrolog to kalkulator hydrologiczny w przeglądarce. Szacuje, ile wody spłynie do potoku lub rzeki po silnym deszczu i kiedy będzie jej najwięcej, jak taka fala zmienia się, płynąc dalej korytem i przez zbiorniki, oraz jak często w danej rzece zdarzają się duże przepływy.</p>
+    <p>Wystarczy przeglądarka na komputerze albo telefonie. Nie trzeba znać wzorów: Hydrolog liczy sam, a przycisk <span class="i-mark" aria-hidden="true">i</span> przy polu, metodzie lub uwadze wyjaśnia, co oznacza dana wartość, z jakiego wzoru pochodzi i w jakim zakresie warto go stosować.</p>
+    <p>Hydrolog nie ma mapy i niczego nie pobiera z internetu. Liczby opisujące zlewnię (powierzchnię, długości, spadki, CN) wpisujesz albo wczytujesz z pliku, na przykład z Hydrografa, który wyznacza zlewnię na mapie. Każda sekcja zaczyna od gotowego przykładu, więc można od razu zobaczyć, jak wygląda wynik.</p>
+  </section>
+
+  <section id="czego-oczekiwac" aria-labelledby="czego-oczekiwac-title">
+    <h3 id="czego-oczekiwac-title">Czego się spodziewać, a czego nie</h3>
+    <div class="cols">
+      <div>
+        <h4 class="col-title">Hydrolog da Ci</h4>
+        <div class="card"><strong>Szacunek wezbrania po ulewie</strong><p>Największy przepływ, czas, po jakim nadejdzie, i objętość wody, która spłynie ze zlewni.</p></div>
+        <div class="card"><strong>Obraz fali w rzece</strong><p>Jak fale z kilku zlewni łączą się, spóźniają i spłaszczają w korytach i zbiornikach.</p></div>
+        <div class="card"><strong>Statystykę przepływów</strong><p>Przepływ, który w danej rzece zdarza się średnio raz na 10 albo na 100 lat, policzony z pomiarów z wielu lat.</p></div>
+        <div class="card"><strong>Przejrzyste obliczenia</strong><p>Przy każdym wyniku: dane, uwagi o zakresie stosowania metod i polecenie, które powtórzy obliczenie poza przeglądarką.</p></div>
+      </div>
+      <div>
+        <h4 class="col-title">Hydrolog nie jest</h4>
+        <div class="card"><strong>Prognozą</strong><p>Nie korzysta z bieżących pomiarów ani prognoz pogody: nie powie, czy rzeka wyleje jutro. Ostrzeżenia hydrologiczne wydaje IMGW-PIB.</p></div>
+        <div class="card"><strong>Oficjalną mapą zagrożenia</strong><p>Nie pokazuje, które tereny zaleje woda, i nie liczy poziomu wody w rzece. Oficjalne mapy zagrożenia powodziowego publikują Wody Polskie.</p></div>
+        <div class="card"><strong>Źródłem dokładnych liczb</strong><p>Wyniki to szacunki z uproszczonych metod, zależne od danych, które podasz; prawdziwy przepływ może być wyraźnie inny. Do decyzji i projektów potrzebna jest ocena specjalisty.</p></div>
+        <div class="card"><strong>Źródłem danych</strong><p>Nie pobiera danych o terenie, opadach ani przepływach: wpisujesz je albo wczytujesz z pliku.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="pytania" aria-labelledby="pytania-title">
+    <h3 id="pytania-title">Na jakie pytania odpowiada?</h3>
+    <dl class="defs">
+      <div><dt>Ile wody popłynie potokiem po bardzo silnej ulewie i kiedy będzie jej najwięcej?</dt><dd><a href="#hydrogram">Hydrogram zlewni</a>: przepływ największy, czas do niego i objętość wody.</dd></div>
+      <div><dt>Czy wezbranie będzie większe, gdy gleba jest już mokra po wcześniejszych deszczach?</dt><dd><a href="#hydrogram">Hydrogram zlewni</a>, przełącznik wilgotności gleby przed opadem.</dd></div>
+      <div><dt>Jak zmieni się odpływ, gdy w zlewni przybędzie zabudowy albo ubędzie lasu?</dt><dd><a href="#kalkulatory">Kalkulatory</a>: liczba CN dla gleby i pokrycia terenu; nową wartość wpisujesz w Hydrogramie zlewni.</dd></div>
+      <div><dt>Jak szybko woda spływa z najdalszego miejsca zlewni?</dt><dd><a href="#kalkulatory">Kalkulatory</a>: czas koncentracji policzony sześcioma metodami.</dd></div>
+      <div><dt>Jak zmienia się fala, gdy płynie długim korytem albo przez staw lub zbiornik?</dt><dd><a href="#siec">Sieć i trasowanie</a>.</dd></div>
+      <div><dt>Jak duży przepływ zdarza się w tej rzece średnio raz na 100 lat?</dt><dd><a href="#statystyka">Statystyka przepływów</a>, z największych przepływów kolejnych lat.</dd></div>
+    </dl>
+  </section>
+
+  <section id="kto" aria-labelledby="kto-title">
+    <h3 id="kto-title">Kto może korzystać?</h3>
+    <div class="cards">
+      <div class="card"><strong>Przyrodnicy i miłośnicy przyrody</strong><p>Ile wody i jak szybko spływa po ulewie do potoku, stawu czy mokradła i co w zlewni zmieniają las, łąki, pola i zabudowa.</p></div>
+      <div class="card"><strong>Samorządy, organizacje i mieszkańcy</strong><p>Wstępny szacunek wody spływającej po ulewie, zanim zleci się dokładne obliczenia.</p></div>
+      <div class="card"><strong>Uczniowie, studenci i nauczyciele</strong><p>Metody z podręczników hydrologii na przykładzie prawdziwej zlewni, ze wzorami i źródłami pod przyciskiem <span class="i-mark" aria-hidden="true">i</span>.</p></div>
+      <div class="card"><strong>Hydrolodzy i projektanci</strong><p>Szybki pierwszy szacunek oraz wiersz polecenia, który powtórzy obliczenie w skrypcie.</p></div>
+    </div>
+  </section>
+
+  <section id="trzy-kroki" aria-labelledby="trzy-kroki-title">
+    <h3 id="trzy-kroki-title">Pierwszy wynik w trzech krokach</h3>
+    <ol class="steps-3">
+      <li class="card"><span class="number" aria-hidden="true">01</span><strong>Otwórz „Hydrogram zlewni”</strong><p>Wybierz „Hydrogram” na pasku sekcji: po lewej stronie ekranu, a na telefonie na dole. Czeka tam przykład: zlewnia potoku Kamiennik do Świerzawy (37,22&nbsp;km²) i deszcz 105&nbsp;mm w 12 godzin, taki, jaki zdarza się średnio raz na 100 lat.</p></li>
+      <li class="card"><span class="number" aria-hidden="true">02</span><strong>Przeczytaj wynik</strong><p>W panelu „Wyniki”: największy przepływ <span class="ex" data-example="hydrogram-q">60,21&nbsp;m³/s</span> nadejdzie po <span class="ex" data-example="hydrogram-tp">6:20&nbsp;h</span> od początku deszczu, a z całej ulewy spłynie <span class="ex" data-example="hydrogram-volume">1&nbsp;046&nbsp;213&nbsp;m³</span> wody. Wykres w środku pokazuje deszcz u góry i odpływ pod nim.</p></li>
+      <li class="card"><span class="number" aria-hidden="true">03</span><strong>Zmień jedną rzecz</strong><p>W panelu „Dane”, w kroku „Straty SCS-CN”, przełącz wilgotność poprzedzającą z II na III (gleba mokra po wcześniejszych deszczach). Wynik przeliczy się sam: <span class="ex" data-example="hydrogram-q-amc3">115,23&nbsp;m³/s</span>.</p></li>
+    </ol>
+    <p class="hint-box">Przycisk <span class="key-mark" aria-hidden="true">↻</span> „Wyczyść” u dołu panelu „Dane” przywraca przykład. Plakietka na górnym pasku mówi, czy wynik jest aktualny; „Instrukcja” obok niej otwiera okno powitalne z odnośnikiem do tego przewodnika. Dalej: <a href="#ekran">rozdział 01</a>.</p>
+    <p><a class="btn primary" href="../#hydrogram">Otwórz Hydrogram zlewni</a></p>
+  </section>
+
+  <section id="slowniczek" aria-labelledby="slowniczek-title">
+    <h3 id="slowniczek-title">Słowniczek</h3>
+    <dl class="defs glossary">
+      <div><dt>Zlewnia</dt><dd>Obszar, z którego woda deszczowa spływa do wybranego miejsca na rzece lub potoku. Jej granica, dział wodny, biegnie grzbietami wzniesień.</dd></div>
+      <div><dt>Przepływ</dt><dd>Ilość wody, która w ciągu sekundy płynie przez przekrój rzeki, w metrach sześciennych na sekundę (m³/s); 1&nbsp;m³ to 1000 litrów.</dd></div>
+      <div><dt>Opad projektowy</dt><dd>Umowny silny deszcz przyjmowany do obliczeń, opisany wysokością (mm), czasem trwania i prawdopodobieństwem, np. taki, który zdarza się średnio raz na 100 lat (p&nbsp;=&nbsp;1%). W Polsce takie wysokości podaje atlas PMAXTP opracowany przez IMGW-PIB.</dd></div>
+      <div><dt>Hietogram</dt><dd>Wykres opadu w czasie: ile milimetrów deszczu spada w kolejnych odstępach, np. co 10 minut.</dd></div>
+      <div><dt>Hydrogram</dt><dd>Wykres przepływu w czasie: jak po deszczu rośnie i opada ilość wody płynącej w cieku. Jego szczyt to przepływ największy, Qmax.</dd></div>
+      <div><dt>CN</dt><dd>Liczba od 0 do 100 (od ang. <i lang="en">curve number</i>) mówiąca, jak łatwo deszcz spływa po terenie zamiast wsiąkać. Zależy od gleby i pokrycia terenu: las ma małą, zabudowa dużą. Im większa, tym więcej wody spływa.</dd></div>
+      <div><dt>Czas koncentracji</dt><dd>Czas, w jakim woda spływa z najdalszego miejsca zlewni do jej wylotu. Im krótszy, tym szybciej rośnie fala.</dd></div>
+      <div><dt>Trasowanie fali</dt><dd>Obliczenie, jak fala wezbraniowa zmienia się, płynąc korytem rzeki albo przez zbiornik. Zwykle przychodzi później i jest niższa, bo część wody chwilowo zatrzymuje się po drodze.</dd></div>
+    </dl>
+  </section>
+</section>
+
+<!-- ============================ 01 Ekran ============================ -->
+<section class="part" id="ekran" aria-labelledby="ekran-title">
+  <p class="kicker">01 · Orientacja</p>
+  <h2 id="ekran-title">Ekran i wspólne elementy</h2>
+  <figure>
+    <a href="img/ekran.png"><img src="img/ekran.png" width="1440" height="900" alt="Ekran sekcji Hydrogram zlewni z przykładem Kamiennik — Świerzawa: u góry pasek z nazwą sekcji, kontekstem i plakietką „Wynik aktualny”, po lewej pasek sekcji i panel Dane z krokami obliczenia, w środku hietogram nad hydrogramem i składowe obliczenia, po prawej panel Wyniki z kafelkami Qmax 60,21 m³/s, Do szczytu 6:20 h, Objętość 1 046 213 m³ i uwagami."></a>
+    <figcaption>Hydrogram zlewni po pierwszym otwarciu. Kliknij obraz, aby zobaczyć go w pełnym rozmiarze.</figcaption>
+  </figure>
+  <dl class="defs">
+    <div><dt>Górny pasek</dt><dd>Znak Hydrologa (powrót do pierwszej sekcji), nazwa sekcji i jej kontekst (np. zlewnia i opad), plakietka stanu wyniku, „Instrukcja” (okno powitalne z odnośnikiem do tego przewodnika) i motyw: Auto, Jasny, Ciemny.</dd></div>
+    <div><dt>Pasek sekcji</dt><dd>Hydrogram, Sieć, Statystyka, Kalkulatory, Polecenia: po lewej, a na telefonie na dole. Sekcja pamięta swoje dane i ostatni wynik, gdy przechodzisz do innej.</dd></div>
+    <div><dt>Panel „Dane”</dt><dd>Po lewej: formularz, często w ponumerowanych krokach, które można zwinąć. Na dole przycisk obliczenia (w sekcjach, które go mają) i <span class="key-mark" aria-hidden="true">↻</span> „Wyczyść”, który przywraca przykład.</dd></div>
+    <div><dt>Środek</dt><dd>Wykresy i tabele; nad nimi przełącznik widoku i krótka podpowiedź.</dd></div>
+    <div><dt>Panel „Wyniki”</dt><dd>Po prawej: najważniejsze liczby w kafelkach, uwagi, tabele, eksport i wywołanie.</dd></div>
+  </dl>
+
+  <h3>Plakietka stanu wyniku</h3>
+  <ul class="states">
+    <li><span class="badge ok">Wynik aktualny</span> wyniki odpowiadają danym w panelu „Dane”.</li>
+    <li><span class="badge info">Liczenie…</span> Hydrolog liczy wynik dla zmienionych danych.</li>
+    <li><span class="badge warn">Dane zmienione: oblicz ponownie</span> wyniki pokazują poprzednie dane; naciśnij przycisk obliczenia (w Sieci, Statystyce, Kalkulatorach i Poleceniach).</li>
+    <li><span class="badge warn">Dane niepełne</span> popraw pole oznaczone na czerwono; ostatni wynik zostaje na ekranie, oznaczony jako nieaktualny.</li>
+    <li><span class="badge bad">Błąd danych</span> Hydrolog nie policzył wyniku; opis błędu stoi przy polu albo nad formularzem.</li>
+  </ul>
+
+  <h3>Objaśnienia <span class="i-mark" aria-hidden="true">i</span></h3>
+  <figure class="inline-figure">
+    <a href="img/objasnienie.png"><img src="img/objasnienie.png" width="420" height="640" loading="lazy" alt="Okienko objaśnienia „Kirpich (1940): czas koncentracji”: opis, wzór, zmienne z jednostkami i zakres stosowania, w którym długość i spadek cieku są oznaczone „w zakresie”, a powierzchnia i spadek według danych Kirpicha „poza zakresem”."></a>
+    <figcaption>Objaśnienie metody Kirpicha; zakres stosowania porównany z danymi przykładu.</figcaption>
+  </figure>
+  <p>Przycisk <span class="i-mark" aria-hidden="true">i</span> przy polu, metodzie albo uwadze otwiera objaśnienie: co to jest, wzór, zmienne z jednostkami, zakres stosowania i źródła. Zakres jest porównany z Twoimi danymi i oznaczony „w zakresie” albo „poza zakresem”. Objaśnienie zamyka <span class="key-mark" aria-hidden="true">×</span>, klawisz <kbd>Esc</kbd> albo kliknięcie obok.</p>
+
+  <h3>Uwagi, wykresy i wywołanie</h3>
+  <ul>
+    <li><strong>Uwagi</strong> w panelu „Wyniki”: komunikaty Hydrologa („Informacja”, „Uwaga”) z ich kodem, a w Hydrogramie zlewni przed nimi zakres stosowania wybranych metod. Komunikat bez polskiego tłumaczenia ma dopisek (EN).</li>
+    <li><strong>Wykresy</strong> mają odczyt wartości: najedź kursorem albo przejdź do wykresu klawiszem <kbd>Tab</kbd> i przesuwaj się strzałkami (<kbd>Shift</kbd> lub <kbd>Page Up</kbd>/<kbd>Page Down</kbd> o dziesięć kroków, <kbd>Home</kbd>, <kbd>End</kbd>, <kbd>Esc</kbd> kończy odczyt).</li>
+    <li><strong>Wywołanie</strong> to to samo obliczenie poza przeglądarką: wiersz polecenia (CLI), Python albo MCP dla asystentów AI, z przyciskiem kopiowania.</li>
+  </ul>
+
+  <h3>Szerokość paneli</h3>
+  <p>Przeciągnij krawędź panelu, aby go poszerzyć albo zwęzić. Z klawiatury: przejdź do krawędzi klawiszem <kbd>Tab</kbd> i użyj strzałek (16&nbsp;px, z <kbd>Shift</kbd> 64&nbsp;px), <kbd>Home</kbd> i <kbd>End</kbd>; <kbd>Enter</kbd> albo dwuklik przywraca szerokość domyślną. Przeglądarka zapamiętuje szerokości dla wszystkich sekcji. <span class="key-mark" aria-hidden="true">×</span> w nagłówku zamyka panel, a przycisk „Dane” lub „Wyniki” nad wykresami otwiera go z powrotem.</p>
+  <p class="back"><a href="#toc-title">↑ Spis treści</a></p>
+</section>
+
+<!-- ============================ 02 Hydrogram ============================ -->
+<section class="part" id="hydrogram" aria-labelledby="hydrogram-title">
+  <p class="kicker">02 · Sekcja</p>
+  <h2 id="hydrogram-title">Hydrogram zlewni</h2>
+  <p>Jedna zlewnia i jeden deszcz: Hydrolog liczy, jaka część opadu spłynie (metoda SCS-CN), i rozkłada ją w czasie hydrogramem jednostkowym. Wynik to hydrogram odpływu z jego szczytem, czasem do szczytu i objętością. Liczy się sam po każdej zmianie danych: nie ma przycisku obliczenia.</p>
+  <figure>
+    <a href="img/hydrogram.png"><img src="img/hydrogram.png" width="1440" height="900" loading="lazy" alt="Hydrogram zlewni po przełączeniu wilgotności poprzedzającej na III: kafelki Qmax 115,23 m³/s, Do szczytu 5:40 h, Objętość 2 111 780 m³, wsp. odpływu 0,541; w panelu Dane krok Straty SCS-CN z podpowiedzią CN 65 → 81."></a>
+    <figcaption>Ten sam przykład z mokrą glebą (AMC III): szczyt prawie dwa razy wyższy.</figcaption>
+  </figure>
+
+  <h3>Pięć kroków panelu „Dane”</h3>
+  <ol class="numbered">
+    <li><strong>Zlewnia.</strong> Parametry z przykładu (<code>examples/kamiennik.json</code>), z pliku, z przekazania albo wpisane ręcznie. „Plik zlewni…” czyta plik JSON zlewni w formacie WatershedParameters (np. z Hydrografa) w przeglądarce, bez wysyłania, a „Wczytaj z Hydrografa” wczytuje przekazanie: zlewnię razem z opadem i modelem (<a href="#przekazanie">Przekazanie</a>). Pole zmienione względem przykładu lub pliku jest oznaczone, a „przywróć” wraca do wartości źródła. „Parametry modeli i metod spływu” zbierają pola potrzebne tylko niektórym metodom (np. udział lasów i zabudowy, spływ po stoku). Spadki podajesz w m/m, a obok widać je w procentach.</li>
+    <li><strong>Czas koncentracji.</strong> Metoda: Kirpich (domyślna), NRCS, Giandotti, FAA, Kerby, Kerby–Kirpich, albo czas podany ręcznie. „Porównaj metody” otwiera porównanie wszystkich sześciu w <a href="#kalkulatory">Kalkulatorach</a>. Modele Nash i Snyder nie używają czasu koncentracji.</li>
+    <li><strong>Opad.</strong> PMAXTP: wybierasz prawdopodobieństwo i czas trwania, a wysokość opadu z atlasu wpisujesz (Hydrolog niczego nie pobiera). Hietogram: wysokość i czas trwania podane ręcznie. Własna seria: wysokości opadu w kolejnych krokach, wklejone z arkusza albo wczytane z kolumny pliku CSV. Rozkład deszczu w czasie: blokowy, trójkątny, Beta albo Euler II.</li>
+    <li><strong>Straty SCS-CN.</strong> CN zlewni dla przeciętnej wilgotności (AMC II), wilgotność poprzedzająca: I sucho, II przeciętnie, III mokro (CN zmienia się wtedy, jak pokazuje podpowiedź), oraz straty początkowe λ (domyślnie 0,2).</li>
+    <li><strong>Model UH</strong> (hydrogramu jednostkowego, który rozkłada opad efektywny w czasie): SCS, Nash (parametry metodą Lutza ze zlewni albo podane), Clark albo Snyder.</li>
+  </ol>
+  <p>Nagłówek kroku streszcza jego ustawienia, np. „162,9 min · Kirpich”, więc zwinięte kroki nadal mówią, co jest wybrane. Pole z niepoprawną wartością jest czerwone, a pod nim widać, co jest nie tak, np. „Najwyżej 100 (podano 150)”; dopóki dane są niepełne, Hydrolog nie liczy, a na ekranie zostaje ostatni wynik.</p>
+
+  <h3>Wykresy i wyniki</h3>
+  <ul>
+    <li><strong>Hietogram i hydrogram</strong> na wspólnej osi czasu: opad całkowity i efektywny u góry, przepływ pod nimi, ze szczytem opisanym na wykresie. Niżej <strong>składowe obliczenia</strong>: opad i straty narastająco oraz hydrogram jednostkowy. Widok „Tabela” pokazuje szeregi czasowe, z wyróżnionym wierszem szczytu.</li>
+    <li><strong>Kafelki</strong>: Qmax, czas do szczytu, objętość i współczynnik odpływu. W przykładzie: <span class="ex" data-example="hydrogram-q">60,21&nbsp;m³/s</span>, <span class="ex" data-example="hydrogram-tp">6:20&nbsp;h</span>, <span class="ex" data-example="hydrogram-volume">1&nbsp;046&nbsp;213&nbsp;m³</span> i <span class="ex" data-example="hydrogram-c">0,268</span>, czyli spływa nieco ponad jedna czwarta deszczu.</li>
+    <li><strong>Bilans opadu</strong>: jak opad dzieli się na straty początkowe, infiltrację i opad efektywny; <strong>Parametry obliczenia</strong>: czas koncentracji, parametry hydrogramu jednostkowego, krok.</li>
+    <li><strong>Przepływ odniesienia</strong>: wynik ze <a href="#statystyka">Statystyki przepływów</a> („Do porównania”) rysuje się jako pozioma linia na hydrogramie; „Usuń odniesienie” go zdejmuje.</li>
+  </ul>
+  <p class="back"><a href="#toc-title">↑ Spis treści</a></p>
+</section>
+
+<!-- ============================ 03 Sieć ============================ -->
+<section class="part" id="siec" aria-labelledby="siec-title">
+  <p class="kicker">03 · Sekcja</p>
+  <h2 id="siec-title">Sieć i trasowanie</h2>
+  <p>Kilka zlewni połączonych korytami, zbiornikami i złączami, aż do jednego wylotu. Hydrolog liczy hydrogram każdej zlewni, przeprowadza fale przez odcinki i zbiorniki i sumuje je w złączach. W przeciwieństwie do Hydrogramu zlewni sieć liczy się na przycisk „Oblicz sieć”.</p>
+  <figure>
+    <a href="img/siec.png"><img src="img/siec.png" width="1440" height="900" loading="lazy" alt="Sieć i trasowanie po obliczeniu przykładu: schemat pionowy ze zlewniami A, B i C, odcinkami R_A i R_J1, złączami J1 i J2 i wylotem OUT na dole, przy każdym węźle szczyt i czas do szczytu; w panelu Dane ustawienia odcinka R_A (metoda lag, 25 min), w panelu Wyniki dopływ i odpływ odcinka R_A oraz kafelki wylotu: 19,1 m³/s po 2:25 h."></a>
+    <figcaption>Przykład po „Oblicz sieć”, z wybranym odcinkiem R_A.</figcaption>
+  </figure>
+  <ul>
+    <li><strong>Sieć</strong> pochodzi z pliku dokumentu sieci (<code>hydrolog-network/1</code>, „Plik sieci…”) razem z plikami, które czyta („Pliki towarzyszące…”: dopływy, tabele zbiorników), z przekazania („Wczytaj z Hydrografa”, zob. <a href="#przekazanie">Przekazanie</a>) albo z przykładu („Przykład”, <code>examples/siec.json</code>: trzy zlewnie, dwa odcinki, dwa złącza i wylot). „Zapisz sieć” pobiera dokument ze zmianami. Układ połączeń pochodzi z pliku: zmieniasz parametry węzłów, nie to, co z czym się łączy.</li>
+    <li><strong>Schemat</strong> jest rysowany pionowo: źródła u góry, wylot na dole, linia główna prosto, dopływy z boków. Kliknij węzeł (albo przejdź do niego klawiszem <kbd>Tab</kbd> i naciśnij <kbd>Enter</kbd> lub spację): jego ustawienia otworzą się w panelu „Dane”, a wynik w panelu „Wyniki”. Te same węzły są na liście w panelu „Dane” i w widoku „Tabela węzłów”.</li>
+    <li><strong>Ustawienia węzła</strong> zależą od jego rodzaju: zlewnia (powierzchnia, CN, opad), odcinek (metoda: lag, Muskingum, Muskingum-Cunge, kaskada zbiorników albo level-pool, i jej parametry), zbiornik (tabela pojemność–odpływ), złącze, wylot. Po zmianie plakietka mówi „Dane zmienione: oblicz ponownie”, a wyniki są oznaczone jako dotyczące poprzednich danych.</li>
+    <li><strong>Wyniki</strong>: przy każdym węźle schematu szczyt i czas do szczytu; w panelu „Wyniki” kafelki wylotu, a dla wybranego węzła jego hydrogram (dla odcinka dopływ i odpływ), parametry i rzędne. W przykładzie wylot OUT ma szczyt <span class="ex" data-example="siec-q">19,1&nbsp;m³/s</span> po <span class="ex" data-example="siec-tp">2:25&nbsp;h</span>.</li>
+  </ul>
+  <p class="hint-box"><strong>Spróbuj:</strong> wybierz odcinek R_A, zmień metodę z „lag” na „Muskingum”, wpisz K&nbsp;30&nbsp;min i X&nbsp;0,2, a potem „Oblicz sieć”. Fala spłaszczy się w korycie: szczyt na wylocie spadnie do <span class="ex" data-example="siec-q-muskingum">18,0&nbsp;m³/s</span> i nadejdzie po <span class="ex" data-example="siec-tp-muskingum">2:35&nbsp;h</span>.</p>
+  <p class="back"><a href="#toc-title">↑ Spis treści</a></p>
+</section>
+
+<!-- ============================ 04 Statystyka ============================ -->
+<section class="part" id="statystyka" aria-labelledby="statystyka-title">
+  <p class="kicker">04 · Sekcja</p>
+  <h2 id="statystyka-title">Statystyka przepływów</h2>
+  <p>Z największych przepływów kolejnych lat (maksimów rocznych) Hydrolog dopasowuje rozkłady prawdopodobieństwa i podaje przepływy o zadanym okresie powtarzania, np. Q&nbsp;1%: przepływ, który zdarza się średnio raz na 100 lat. Liczy się na przycisk „Oblicz”.</p>
+  <figure>
+    <a href="img/statystyka.png"><img src="img/statystyka.png" width="1440" height="900" loading="lazy" alt="Statystyka przepływów po obliczeniu przykładu: wykres prawdopodobieństwa przewyższenia na siatce Gumbela z 26 maksimami rocznymi i czterema rozkładami; w panelu Wyniki kafelki Rozkład GEV, Q 1% 307,3 m³/s, Q 10% 196,5 m³/s, Długość 26 lat, uwagi, tabela rozkładów i kwantyli."></a>
+    <figcaption>Przykładowe maksima roczne z lat 1998–2023 po „Oblicz”.</figcaption>
+  </figure>
+  <ul>
+    <li><strong>Szereg</strong>: plik CSV wczytany do sesji („Wczytaj plik…”), z kolumnami odczytanymi z jego nagłówka, albo wartości wklejone („Wklej”). W szeregu dobowym, np. w eksporcie z IMGWTools z kolumnami daty i przepływu, wystarczy wskazać kolumnę dat: Hydrolog sam wybierze maksima z pełnych lat hydrologicznych (od listopada do października). Przykład to <code>examples/maksima_roczne.csv</code>: 26 maksimów rocznych.</li>
+    <li><strong>Rozkłady</strong>: cztery naraz, uporządkowane według kryterium AIC, albo jeden wybrany (log-normalny, GEV, Pearson III, Weibull), oraz okresy powtarzania. Okres wyróżniony trafia do kafelków, tabeli i „Do porównania”.</li>
+    <li><strong>Wyniki</strong>: wykres prawdopodobieństwa przewyższenia na siatce Gumbela (punkty to maksima, linie to rozkłady), widok „Maksima roczne” z latami, kafelki, uwagi, tabela rozkładów z miarami dopasowania i tabela kwantyli. W przykładzie najlepszy jest <span class="ex" data-example="statystyka-best">GEV</span>: Q&nbsp;1% = <span class="ex" data-example="statystyka-q1">307,3&nbsp;m³/s</span>, Q&nbsp;10% = <span class="ex" data-example="statystyka-q10">196,5&nbsp;m³/s</span>, z <span class="ex" data-example="statystyka-years">26 lat</span> danych. Uwaga przypomina, że wytyczne KZGW (2017) wymagają co najmniej 30 lat.</li>
+    <li><strong>„Do porównania”</strong> przenosi wyróżniony przepływ do <a href="#hydrogram">Hydrogramu zlewni</a>, gdzie rysuje się jako linia odniesienia.</li>
+  </ul>
+  <p>Inne analizy szeregu (niżówki, trend, przepływy charakterystyczne) są w <a href="#polecenia">Wszystkich poleceniach</a>, w grupie <code>stats</code>.</p>
+  <p class="back"><a href="#toc-title">↑ Spis treści</a></p>
+</section>
+
+<!-- ============================ 05 Kalkulatory ============================ -->
+<section class="part" id="kalkulatory" aria-labelledby="kalkulatory-title">
+  <p class="kicker">05 · Sekcja</p>
+  <h2 id="kalkulatory-title">Kalkulatory</h2>
+  <p>Szesnaście małych obliczeń w grupach: czas koncentracji, CN i straty, opad, hydrogramy jednostkowe i zlewnia. Lista ma wyszukiwarkę i wybór grupy. Formularze są wypełnione zlewnią z Hydrogramu zlewni; obliczenie uruchamia przycisk „Oblicz”.</p>
+  <figure>
+    <a href="img/kalkulatory.png"><img src="img/kalkulatory.png" width="1440" height="900" loading="lazy" alt="Kalkulatory, porównanie metod czasu koncentracji dla zlewni Kamiennik — Świerzawa: wykres słupkowy sześciu metod, zielone w zakresie, pomarańczowe z uwagą lub poza zakresem, kreskowane nie dla zlewni z korytem; w panelu Wyniki tabela metod ze słowami zakresu i uwagi Hydrologa."></a>
+    <figcaption>Porównanie sześciu metod czasu koncentracji dla zlewni przykładu.</figcaption>
+  </figure>
+  <h3>Porównanie metod czasu koncentracji</h3>
+  <p>Hydrolog liczy czas koncentracji zlewni sześcioma metodami i pokazuje, które pasują do niej według ich zakresu stosowania. Kolor słupka i słowo w tabeli mówią „w zakresie”, „poza zakresem” albo „nie dla zlewni”: FAA i Kerby liczą tylko spływ po stoku (setki metrów), a nie spływ zlewni z korytem. Obwiedziony słupek to metoda używana w Hydrogramie zlewni. Kliknij nazwę metody w tabeli i naciśnij „Użyj w Hydrogramie zlewni”, aby tam liczyć tą metodą.</p>
+  <table class="dtable guide-table">
+    <caption>Czas koncentracji zlewni przykładu (Kamiennik — Świerzawa)</caption>
+    <thead><tr><th scope="col">Metoda</th><th scope="col">tc [min]</th><th scope="col">Zakres stosowania</th></tr></thead>
+    <tbody>
+      <tr><th scope="row">Kirpich</th><td class="num"><span class="ex" data-example="tc-kirpich">162,9</span></td><td><span class="ex" data-example="tc-kirpich-range">w zakresie</span></td></tr>
+      <tr><th scope="row">NRCS (TR-55)</th><td class="num"><span class="ex" data-example="tc-nrcs">377,5</span></td><td><span class="ex" data-example="tc-nrcs-range">w zakresie</span></td></tr>
+      <tr><th scope="row">Giandotti</th><td class="num"><span class="ex" data-example="tc-giandotti">339,4</span></td><td><span class="ex" data-example="tc-giandotti-range">poza zakresem</span></td></tr>
+      <tr><th scope="row">FAA</th><td class="num"><span class="ex" data-example="tc-faa">23,8</span></td><td><span class="ex" data-example="tc-faa-range">nie dla zlewni</span></td></tr>
+      <tr><th scope="row">Kerby</th><td class="num"><span class="ex" data-example="tc-kerby">24,2</span></td><td><span class="ex" data-example="tc-kerby-range">nie dla zlewni</span></td></tr>
+      <tr><th scope="row">Kerby–Kirpich</th><td class="num"><span class="ex" data-example="tc-kerby_kirpich">187,2</span></td><td><span class="ex" data-example="tc-kerby_kirpich-range">poza zakresem</span></td></tr>
+    </tbody>
+  </table>
+  <h3>Pozostałe kalkulatory</h3>
+  <p>Każdy z piętnastu pozostałych to formularz jednego polecenia Hydrologa, np. czasu koncentracji jedną metodą, CN z tablic dla grupy gleby i pokrycia terenu (<code>cn lookup</code>), średniego CN zlewni z kilku pokryć (<code>cn weighted</code>), opadu efektywnego, hietogramu, hydrogramów jednostkowych albo wskaźników kształtu zlewni. Pola są wypełnione zlewnią z Hydrogramu zlewni i przykładem z katalogu Hydrologa; pod wynikiem jest wywołanie, które daje ten sam wynik w wierszu poleceń.</p>
+  <p class="back"><a href="#toc-title">↑ Spis treści</a></p>
+</section>
+
+<!-- ============================ 06 Polecenia ============================ -->
+<section class="part" id="polecenia" aria-labelledby="polecenia-title">
+  <p class="kicker">06 · Sekcja</p>
+  <h2 id="polecenia-title">Wszystkie polecenia</h2>
+  <p>Wszystkie obliczenia Hydrologa dostępne w przeglądarce: te same polecenia, które ma program w wierszu poleceń (<code>hydrolog</code>), pogrupowane i z wyszukiwarką. Formularz każdego polecenia powstaje z jego opisu w katalogu Hydrologa, więc zawsze odpowiada temu, co polecenie przyjmuje.</p>
+  <figure>
+    <a href="img/polecenia.png"><img src="img/polecenia.png" width="1440" height="900" loading="lazy" alt="Wszystkie polecenia z wybranym poleceniem uh nash po uruchomieniu: po lewej lista poleceń w grupach z wyszukiwarką i formularz (powierzchnia 45,3 km², grupa parametrów n i K), w środku tabela rzędnych hydrogramu jednostkowego, po prawej kafelki n, K, t_lag i q_p, parametry, wykres i wywołanie CLI."></a>
+    <figcaption>Polecenie <code>uh nash</code> z przykładem z katalogu po „Uruchom”.</figcaption>
+  </figure>
+  <ul>
+    <li><strong>Lista</strong>: wybierz grupę albo wpisz w wyszukiwarkę nazwę, metodę lub słowo z opisu (wielkość liter i polskie znaki nie mają znaczenia). Wybrane polecenie trafia do adresu strony, więc odnośnik do niego można zapisać.</li>
+    <li><strong>Formularz</strong>: pola wymagane mają znacznik „wymagane”, liczby mają jednostki i dozwolone zakresy, a wybór z kilku wartości pokazuje znaczenie wybranej. Gdy polecenie przyjmuje dane na kilka sposobów, przełącznik „Grupa parametrów” pozwala wybrać jeden. Formularz zaczyna od przykładu z katalogu.</li>
+    <li><strong>Pliki</strong>: polecenie, które czyta plik, przyjmuje plik wczytany do sesji („Wczytaj plik…”); polecenie, które zapisuje plik, pokazuje go w wynikach do pobrania.</li>
+    <li><strong>„Uruchom”</strong> liczy; wynik to kafelki, parametry, szeregi jako tabela i wykres oraz cały dokument JSON, a pod nimi wywołanie dla wiersza poleceń, Pythona i MCP.</li>
+  </ul>
+  <p class="back"><a href="#toc-title">↑ Spis treści</a></p>
+</section>
+
+<!-- ============================ 07 Eksport ============================ -->
+<section class="part" id="eksport" aria-labelledby="eksport-title">
+  <p class="kicker">07 · Wyniki poza Hydrologiem</p>
+  <h2 id="eksport-title">Eksport i przekazanie wyników</h2>
+  <p>Część „Eksport” w panelu „Wyniki” zapisuje bieżący wynik na Twoim komputerze:</p>
+  <figure class="inline-figure">
+    <a href="img/eksport.png"><img src="img/eksport.png" width="400" height="703" loading="lazy" alt="Dół panelu Wyniki Hydrogramu zlewni: przyciski eksportu CSV Tabela, JSON Wynik, PNG Wykres, MD Raport i PDF Raport do druku, wywołanie hydrograph generate w wierszu poleceń, a pod nim część Przekazanie z przyciskami Plik przekazania i Do schowka oraz opisem, co zawiera przekazanie."></a>
+    <figcaption>Eksport, wywołanie i przekazanie w Hydrogramie zlewni.</figcaption>
+  </figure>
+  <dl class="defs">
+    <div><dt>CSV · Tabela</dt><dd>Szeregi wyniku w arkuszu kalkulacyjnym (przecinek jako separator, kropka dziesiętna, UTF-8). Hydrogram zlewni zapisuje kolumny <code>time_min,discharge_m3s,precipitation_mm,effective_precipitation_mm</code>, które czytają polecenia trasowania Hydrologa i Hydraulik. Sieć zapisuje jeden węzeł albo wszystkie węzły.</dd></div>
+    <div><dt>JSON · Wynik</dt><dd>Cały wynik tak, jak go zwrócił Hydrolog; Sieć zapisuje też dokument sieci.</dd></div>
+    <div><dt>PNG · Wykres</dt><dd>Widoczny wykres jako obraz; w Sieci schemat. Sieć zapisuje też schemat Hydrologa jako SVG.</dd></div>
+    <div><dt>MD · Raport</dt><dd>Hydrogram zlewni: raport obliczeniowy w Markdown, pliku tekstowym z nagłówkami i tabelami, który otworzy każdy edytor tekstu. Hydrolog pisze go poleceniem <code>report generate</code> z danymi i ustawieniami pokazanego wyniku, a przeglądarka pobiera plik.</dd></div>
+    <div><dt>PDF · Raport do druku</dt><dd>Hydrogram zlewni i Sieć: okno drukowania przeglądarki z sekcją ułożoną na kartkach A4: wykresy, wyniki, uwagi i wywołanie, a na końcu dane z ich pochodzeniem; bez przycisków, w jasnym motywie i ze wszystkimi częściami rozwiniętymi. Plik PDF zapiszesz w tym oknie, wybierając „Zapisz jako PDF”. Zwykłe drukowanie strony (<kbd>Ctrl</kbd>+<kbd>P</kbd>) daje ten sam widok.</dd></div>
+    <div><dt>Wywołanie</dt><dd>Wiersz polecenia (CLI), kod Pythona albo wywołanie MCP, które powtórzą obliczenie poza przeglądarką.</dd></div>
+  </dl>
+
+  <h3 id="przekazanie">Przekazanie: Hydrograf i Hydrolog</h3>
+  <p>Hydrograf wyznacza zlewnię na mapie, a Hydrolog liczy dla niej wezbranie. Dane przechodzą między nimi jako <strong>przekazanie</strong>: plik JSON w formacie <code>nogat-handoff/1</code> ekosystemu Nogat. Niesie zlewnię albo całą sieć, pochodzenie danych (np. opad PMAXTP p&nbsp;1% w 12&nbsp;h, plik zlewni albo punkt na mapie) i wynik do porównania.</p>
+  <ul>
+    <li><strong>Wysyłanie.</strong> Część „Przekazanie” na końcu panelu „Wyniki” w Hydrogramie zlewni i w Sieci: „Plik przekazania” pobiera plik <code>&lt;nazwa&gt;.handoff.json</code>, a „Do schowka” kopiuje to samo do schowka. Z Hydrogramu zlewni idzie zlewnia z opadem, stratami, modelem i wynikiem, z Sieci cała sieć, a po „Oblicz sieć” także wynik wylotu.</li>
+    <li><strong>Wczytywanie.</strong> „Wczytaj z Hydrografa” w pierwszym kroku panelu „Dane” (w Hydrogramie zlewni krok „Zlewnia”, w Sieci krok „Sieć”), a w nim „Plik przekazania…” albo „Wklej ze schowka”. Gdy przeglądarka nie daje dostępu do schowka, pojawia się pole, w które wklejasz przekazanie (<kbd>Ctrl</kbd>+<kbd>V</kbd>). Jedna zlewnia z opadem otwiera się w Hydrogramie zlewni, każda inna sieć w Sieci i trasowaniu. Karta w panelu „Dane” mówi, skąd są dane, np. „Z Hydrografa: zlewnia punktu 51,0154° N, 15,8900° E”.</li>
+    <li><strong>Porównanie.</strong> Gdy przekazanie niesie wynik, część „Przekazanie” stawia go obok wyniku Hydrologa: Qmax, czas do szczytu, objętość i wersję programu, który liczył. Wartości, które się różnią, są wyróżnione; zwykle to skutek innej wersji Hydrologa, której używa Hydrograf. Po zmianie danych porównanie przypomina, że wynik producenta dotyczy danych z przekazania. W Sieci wynik Hydrologa do porównania daje „Oblicz sieć”.</li>
+  </ul>
+  <p>Przed wczytaniem Hydrolog sprawdza przekazanie. Gdy coś się nie zgadza, niczego nie zmienia i wypisuje przyczyny (zob. <a href="#problemy">Gdy coś nie działa</a>).</p>
+  <p class="note-box">W Hydrografie przyciski „Wczytaj z Hydrologa” i „Przenieś do Hydrologa” są w przygotowaniu. Już teraz przekazanie z Hydrologa wczytasz z powrotem w Hydrologu, np. w innej przeglądarce albo na innym komputerze.</p>
+  <p class="back"><a href="#toc-title">↑ Spis treści</a></p>
+</section>
+
+<!-- ============================ 08 Telefon ============================ -->
+<section class="part" id="telefon" aria-labelledby="telefon-title">
+  <p class="kicker">08 · Wygląd i dane</p>
+  <h2 id="telefon-title">Telefon, motyw i Twoje dane</h2>
+  <figure class="inline-figure phone-figure">
+    <a href="img/telefon.png"><img src="img/telefon.png" width="390" height="844" loading="lazy" alt="Hydrolog na telefonie w ciemnym motywie: panel Wyniki wysunięty od dołu nad paskiem sekcji, z kafelkami Qmax 60,21 m³/s, Do szczytu 6:20 h, Objętość 1 046 213 m³ i Wsp. odpływu 0,268 oraz uwagami."></a>
+    <figcaption>Telefon, ciemny motyw: panel „Wyniki” jako arkusz.</figcaption>
+  </figure>
+  <h3>Telefon i wąski ekran</h3>
+  <p>Do szerokości 860&nbsp;px sekcje są na pasku u dołu ekranu, a panele „Dane” i „Wyniki” wysuwają się od dołu jako arkusze: otwierają je przyciski nad wykresem, zamyka <span class="key-mark" aria-hidden="true">×</span> albo <kbd>Esc</kbd>.</p>
+  <h3>Motyw</h3>
+  <p>Przełącznik na górnym pasku: Auto (jak w systemie), Jasny albo Ciemny. Wybór obowiązuje też w tym przewodniku i na innych stronach ekosystemu Nogat pod tym samym adresem.</p>
+  <h3>Twoje dane</h3>
+  <ul>
+    <li>Dane wpisane w formularzach zostają w tej przeglądarce, osobno dla każdej sekcji, aż do „Wyczyść”. Wyniki nie są zapisywane: po ponownym otwarciu strony Hydrogram zlewni liczy wynik od nowa, a w pozostałych sekcjach wystarczy nacisnąć przycisk obliczenia.</li>
+    <li>Pliki, które wczytujesz, trafiają do katalogu Twojej sesji na serwerze Hydrologa i są usuwane po 12 godzinach bez aktywności albo po zatrzymaniu serwera. Limity: 20&nbsp;MB na plik, 100&nbsp;MB i 200 plików na sesję.</li>
+    <li>Hydrolog nie ma kont ani logowania i nie wysyła danych poza swój serwer.</li>
+  </ul>
+  <p class="back"><a href="#toc-title">↑ Spis treści</a></p>
+</section>
+
+<!-- ============================ 09 Problemy ============================ -->
+<section class="part" id="problemy" aria-labelledby="problemy-title">
+  <p class="kicker">09 · Pomoc</p>
+  <h2 id="problemy-title">Gdy coś nie działa</h2>
+  <dl class="defs">
+    <div><dt>„Dane niepełne: …”</dt><dd>Pole o tej nazwie jest puste albo ma wartość spoza zakresu; jest oznaczone na czerwono, a pod nim widać, co jest nie tak. Wynik na ekranie dotyczy poprzednich danych.</dd></div>
+    <div><dt>„Błąd danych”</dt><dd>Hydrolog odrzucił dane jako całość, np. gdy długość do środka ciężkości zlewni jest większa od długości cieku. Komunikat stoi nad formularzem albo przy polu.</dd></div>
+    <div><dt>Obliczenie przerwane</dt><dd>Obliczenie dłuższe niż 30 sekund jest przerywane. Zmniejsz zadanie, np. wydłuż krok czasowy albo skróć szereg.</dd></div>
+    <div><dt>Komunikat z dopiskiem (EN)</dt><dd>Hydrolog nie ma jeszcze jego polskiej wersji; treść jest po angielsku.</dd></div>
+    <div><dt>Plik nie wczytuje się</dt><dd>Sprawdź rozmiar (najwyżej 20&nbsp;MB) i format: CSV z wierszem nagłówka, przecinkiem albo średnikiem jako separatorem, albo JSON.</dd></div>
+    <div><dt>„Nie wczytano przekazania”</dt><dd>Plik albo tekst ze schowka nie jest poprawnym przekazaniem <code>nogat-handoff/1</code>. Lista pod przyciskiem mówi, co i gdzie się nie zgadza, np. nieznane pole albo wartość spoza zakresu; dane sekcji się nie zmieniły. Sam plik zlewni wczytaj przyciskiem „Plik zlewni…”, a dokument sieci przyciskiem „Plik sieci…”.</dd></div>
+    <div><dt>Chcesz zacząć od nowa</dt><dd><span class="key-mark" aria-hidden="true">↻</span> „Wyczyść” u dołu panelu „Dane” przywraca przykład tej sekcji.</dd></div>
+  </dl>
+  <p class="back"><a href="#toc-title">↑ Spis treści</a></p>
+</section>
+
+<!-- ============================ 10 Uruchomienie ============================ -->
+<section class="part" id="uruchomienie" aria-labelledby="uruchomienie-title">
+  <p class="kicker">10 · Dla administratora</p>
+  <h2 id="uruchomienie-title">Uruchomienie u siebie</h2>
+  <p>Hydrolog to program w Pythonie. Po instalacji z dodatkiem <code>gui</code> (polecenia instalacji są w README projektu) serwer uruchamia się poleceniem:</p>
+  <pre class="cmd"><code>hydrolog gui serve</code></pre>
+  <p>Strona otwiera się w przeglądarce pod adresem <code>127.0.0.1:8070</code>; <code>--port</code> zmienia port, <code>--no-browser</code> nie otwiera przeglądarki, a <kbd>Ctrl</kbd>+<kbd>C</kbd> zatrzymuje serwer. Hydrolog nie ma logowania: kto dotrze do serwera, może z niego korzystać. Udostępniaj go poza własnym komputerem tylko za serwerem pośredniczącym, który wymaga logowania, np. Cloudflare Access.</p>
+  <p class="back"><a href="#toc-title">↑ Spis treści</a></p>
+</section>
+
+</div>
+</main>
+</body>
+</html>

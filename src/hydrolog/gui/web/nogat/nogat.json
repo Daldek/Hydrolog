@@ -1,0 +1,25 @@
+{
+  "description": "Copies of Nogat's visual identity (DEV-15.3, plan 2026-11-02-hydrolog-gui D10). Each file is byte-identical to the listed source at the commit except where 'modified' says otherwise; change Nogat, then copy again.",
+  "source": "https://github.com/Daldek/Nogat",
+  "commit": "29e7e1c7ba458f0451de9c15ae7ff32988a8d943",
+  "files": {
+    "tokens.css": {
+      "from": "design/tokens.css",
+      "from_sha256": "8489043a1b56046d9a9cf353245319f345d49033dd92320624ced7660818c4b1",
+      "sha256": "d620ffee7294236a0b054a334a09760077ce2aa7904a08d6fca1583a9cda117a",
+      "modified": "two comment lines at the top name the commit (DEV-15.3); the rest is the source unchanged"
+    },
+    "marks/hydrolog.svg": {
+      "from": "design/marks/hydrolog.svg",
+      "sha256": "8665d339f75a7cc09b419681438df0471ed34db68e911c7050e382a7671b3c55"
+    },
+    "marks/hydrograf.svg": {
+      "from": "design/marks/hydrograf.svg",
+      "sha256": "8c6d3714cec79db59de0a9159919a64eb18875dc9218606a04b2f5cf9bfe47c8"
+    },
+    "marks/nogat.svg": {
+      "from": "design/marks/nogat.svg",
+      "sha256": "2341d50005835065bf4e42e664cbc2a0704532866ba861467d081884c22ef93c"
+    }
+  }
+}

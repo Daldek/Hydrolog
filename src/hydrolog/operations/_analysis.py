@@ -23,6 +23,7 @@ from numpy.typing import NDArray
 
 from hydrolog.catalog.envelope import Notice
 from hydrolog.catalog.inputs import Series, load_series
+from hydrolog.catalog.notices import notice
 from hydrolog.exceptions import CalculationError, InvalidParameterError
 
 __all__ = [
@@ -119,7 +120,9 @@ def drop_missing(series: Series) -> tuple[Series, list[Notice]]:
     Series
         The series without missing values (dates stay aligned).
     list of Notice
-        One ``missing_values_removed`` warning when values were removed, else empty.
+        One ``missing_values_removed`` warning when values were removed (details
+        ``missing``, ``total`` and ``first_date``, the date of the first missing value
+        or ``None`` for a series without dates), else empty.
 
     Raises
     ------
@@ -135,17 +138,17 @@ def drop_missing(series: Series) -> tuple[Series, list[Notice]]:
             details={"n_values": len(series), "n_missing": missing},
             hint="Check the value column: it holds no numbers.",
         )
-    where = ""
+    first_date: str | None = None
     if series.dates is not None:
         first = int(np.flatnonzero(np.isnan(series.values))[0])
-        where = f" (the first on {series.dates[first]})"
-    notice = Notice(
-        "warning",
+        first_date = str(series.dates[first])
+    removed = notice(
         "missing_values_removed",
-        f"{missing} of {len(series)} values are missing (NaN) and were removed "
-        f"before the analysis{where}",
+        missing=missing,
+        total=len(series),
+        first_date=first_date,
     )
-    return series.without_missing(), [notice]
+    return series.without_missing(), [removed]
 
 
 def load_valid_series(

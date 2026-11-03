@@ -216,11 +216,13 @@ def command_entry(command: Command) -> dict[str, Any]:
     dict
         ``name``, ``operation_id``, ``function``, ``summary``, ``description``,
         ``options``, ``result``, ``effects``, ``check``, ``families``, ``rules``,
-        ``examples`` (``call`` and an ``result`` excerpt), ``errors``, ``i18n`` and,
-        for alternative option groups, ``one_of`` (a Hydrolog addition: the groups,
-        each a list of option names, exactly one of which must be given completely).
+        ``examples`` (``call``, the canonical line of
+        :func:`~hydrolog.catalog.lines.format_command`, and a ``result`` excerpt),
+        ``errors``, ``i18n`` and, for alternative option groups, ``one_of`` (a
+        Hydrolog addition: the groups, each a list of option names, exactly one of
+        which must be given completely).
     """
-    from hydrolog.cli.parser import format_example
+    from hydrolog.catalog.lines import format_command
 
     alternatives = _alternative_options(command)
     effects = command.effects
@@ -247,7 +249,7 @@ def command_entry(command: Command) -> dict[str, Any]:
         "rules": list(command.rules),
         "examples": [
             {
-                "call": format_example(command, example),
+                "call": format_command(command, example),
                 "result": to_jsonable(dict(command.example_results[number])),
             }
             for number, example in enumerate(command.examples)

@@ -17,12 +17,12 @@ from hydrolog.catalog import (
     catalog_document,
     command_schema,
     data_commands,
+    format_command,
     run_command,
 )
 from hydrolog.catalog.spec import Command
 from hydrolog.cli import main as exported_main
 from hydrolog.cli.main import main
-from hydrolog.cli.parser import format_example
 from hydrolog.exceptions import (
     CalculationError,
     ForbiddenPathError,
@@ -193,7 +193,7 @@ class TestHelp:
             command = _command(name)
             _, out, _ = _run(capsys, *name.split(), "--help", "--lang", lang)
             lines = out.rstrip("\n").splitlines()
-            expected = [format_example(command, item) for item in command.examples]
+            expected = [format_command(command, item) for item in command.examples]
             assert [line.strip() for line in lines[-len(expected) :]] == expected
             assert lines[-len(expected) - 1] == (
                 "Przykłady:" if lang == "pl" else "Examples:"

@@ -285,19 +285,24 @@ class TestAnnualMinimaOfCompleteYears:
     EXPECTED = [2.0 + 0.1 * (year % 5) for year in range(1992, 2021)]
 
     def test_the_stub_years_of_a_calendar_year_series_are_skipped_and_named(self):
+        from hydrolog._warnings import IncompleteYears
         from hydrolog.statistics import LowFlowAnalysis
 
         values, dates = _calendar_year_series()
-        with pytest.warns(UserWarning) as caught:
+        with pytest.warns(IncompleteYears) as caught:
             minima = LowFlowAnalysis(values, dates).annual_minima()
         np.testing.assert_allclose(minima, self.EXPECTED)
         assert 5.0 not in minima
-        texts = [str(warning.message) for warning in caught]
-        assert any(
-            "2 of 31" in text
-            and "1991 (304 of 365 days), 2021 (61 of 365 days)" in text
-            for text in texts
-        )
+        (warning,) = [w.message for w in caught if w.category is IncompleteYears]
+        assert warning.details == {
+            "skipped": 2,
+            "total": 31,
+            "years": [1991, 2021],
+            "days_with_data": [304, 61],
+            "days_in_year": [365, 365],
+        }
+        assert str(warning).startswith("Skipped 2 of 31 hydrological year(s)")
+        assert str(warning).endswith(": 1991, 2021")
 
     def test_the_fit_equals_the_fit_of_the_complete_years_alone(self):
         import warnings
@@ -318,12 +323,15 @@ class TestAnnualMinimaOfCompleteYears:
         assert whole.to_dict() == alone.to_dict()
 
     def test_one_day_without_a_value_costs_the_year(self):
+        from hydrolog._warnings import IncompleteYears
         from hydrolog.statistics import LowFlowAnalysis
 
         values, dates = _calendar_year_series()
         values[dates == np.datetime64("2005-04-02")] = np.nan
-        with pytest.warns(UserWarning, match=r"2005 \(364 of 365 days\)"):
+        with pytest.warns(IncompleteYears, match=r": 1991, 2005, 2021$") as caught:
             minima = LowFlowAnalysis(values, dates).annual_minima()
+        (warning,) = [w.message for w in caught if w.category is IncompleteYears]
+        assert warning.details["days_with_data"] == [304, 364, 61]
         assert len(minima) == 28
         np.testing.assert_allclose(
             minima,

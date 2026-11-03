@@ -57,7 +57,9 @@ FIXTURES = REPOSITORY / "tests" / "fixtures"
 RAW = "https://raw.githubusercontent.com/Daldek/Hydrolog/main/"
 GUIDES = {"AGENTS.md": "agents", "llms.txt": "llms"}
 COMMANDS = data_commands()
-GROUPS = list(dict.fromkeys(command.group for command in COMMANDS))
+# The guides describe the agent tools; ``gui serve`` (a person starts it) is not one.
+TOOLS = [command for command in COMMANDS if command.agent_tool]
+GROUPS = list(dict.fromkeys(command.group for command in TOOLS))
 # Commands of other tools whose name looks like one of ours (group ``soil``).
 FOREIGN_COMMANDS = {"soil download"}
 
@@ -246,7 +248,7 @@ def test_the_index_names_every_command_once_in_catalog_order():
 
     assert list(by_group) == GROUPS
     for group in GROUPS:
-        commands = [c for c in COMMANDS if c.group == group]
+        commands = [c for c in TOOLS if c.group == group]
         if group in _COMPACT_GROUPS:
             assert len(by_group[group]) == 1, group
             names = re.findall(
@@ -262,6 +264,18 @@ def test_the_index_names_every_command_once_in_catalog_order():
             assert [m.groups() for m in lines if m] == [
                 (c.name, c.operation_id, c.summary) for c in commands
             ]
+
+
+def test_a_command_that_is_no_agent_tool_is_not_in_the_guides():
+    """``gui serve`` is for a person: no index line and no group (ADR-0015)."""
+    hidden = [command for command in COMMANDS if not command.agent_tool]
+    assert hidden
+    for format in GUIDE_FORMATS:
+        guide = agent_guide(format)
+        for command in hidden:
+            assert command.name not in guide, (format, command.name)
+            assert command.operation_id not in guide, (format, command.name)
+    assert "`gui`" not in agent_guide("llms")
 
 
 def test_every_compact_group_is_a_group_of_the_catalog():

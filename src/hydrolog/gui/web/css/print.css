@@ -1,0 +1,310 @@
+/*
+ * The print view (plan D14, D18 „Raport do druku”): the shown section on A4 in one column,
+ * its charts first, then the results (tiles, notes, balance, parameters, a received
+ * hand-off, the command line) and the data with their source (provenance); no controls.
+ * PDF is the browser's „Zapisz jako PDF”. Linked with media="print"; print.js gives the
+ * page the light theme and opens the section's closed parts while it prints. Tokens only.
+ */
+
+@page {
+  size: A4 portrait;
+  margin: 14mm 12mm 16mm;
+}
+
+html,
+body {
+  height: auto !important;
+  overflow: visible !important;
+  background: var(--surface) !important;
+  color: var(--text);
+}
+
+/* Colours that carry meaning print as on screen: legend swatches, the balance, marks */
+.sw,
+.sw-line,
+.dot,
+.stack,
+.b-ia,
+.b-f,
+.b-pe,
+.ng,
+.kpi.hi,
+.notes li,
+.dtable tr.peak th,
+.dtable tr.peak td,
+.dtable tr.conflict th,
+.dtable tr.conflict td {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+/* ---------- The shell as a page (only the shown section; others stay [hidden]) ---------- */
+.shell,
+.main,
+.section:not([hidden]),
+.view-layout {
+  display: block !important;
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+.duo {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+.rail,
+.resizer,
+.grip,
+.phone-only,
+.toast,
+.menu,
+.info-pop,
+dialog,
+.handoff-feedback,
+.noscript {
+  display: none !important;
+}
+
+/* The top bar heads the first page: the mark, the section and its subject, the status */
+.topbar {
+  display: flex !important;
+  position: static !important;
+  height: auto;
+  min-height: 0;
+  padding: 0 0 var(--space-2);
+  margin: 0 0 var(--space-3);
+  border-bottom: 1px solid var(--line-2);
+  background: none;
+}
+.topbar .top-actions {
+  display: none !important;
+}
+.crumbs {
+  display: flex !important;
+  flex-wrap: wrap;
+  color: var(--text-2);
+}
+.crumbs strong {
+  white-space: normal;
+  overflow: visible;
+}
+.badge .label {
+  display: inline !important;
+}
+
+/* The three parts one after another: charts, results, data */
+.view-layout {
+  display: flex !important;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.view-center {
+  order: 1;
+  display: block !important;
+  height: auto !important;
+}
+.view-panel.right {
+  order: 2;
+}
+.view-panel.left {
+  order: 3;
+}
+.view-panel {
+  position: static !important;
+  display: block !important;
+  inset: auto !important;
+  width: auto !important;
+  height: auto !important;
+  max-height: none !important;
+  transform: none !important;
+  visibility: visible !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: none !important;
+}
+.view-panel-body,
+.view-body {
+  height: auto !important;
+  overflow: visible !important;
+  padding: 0 !important;
+}
+.view-bar,
+.panel-head .btn,
+.panel-foot .btn,
+.panel-foot .foot-end {
+  display: none !important;
+}
+.panel-head {
+  min-height: 0 !important;
+  padding: var(--space-2) 0 !important;
+  margin: 0 0 var(--space-2);
+  border-bottom: 1px solid var(--line-2) !important;
+  break-after: avoid;
+}
+.panel-foot {
+  padding: var(--space-1) 0 0 !important;
+  border-top: 1px solid var(--line) !important;
+  background: none !important;
+}
+.computing .result-area,
+.result-area.computing {
+  opacity: 1 !important;
+}
+
+/* ---------- Content ---------- */
+.card {
+  box-shadow: none;
+  padding: var(--space-2) var(--space-3);
+  break-inside: avoid;
+}
+.card-head {
+  break-after: avoid;
+}
+.chart,
+.chart-box,
+.summary,
+.kpi,
+.cli,
+.handoff,
+.handoff-received,
+.notes li,
+.frow,
+.params tr,
+.dtable tr {
+  break-inside: avoid;
+}
+.chart.wide svg {
+  min-width: 0 !important;
+}
+.schem-v svg {
+  max-height: none !important;
+}
+.chart .readout-line,
+.chart .readout-dot,
+.chart .readout-box,
+.chart .readout-head,
+.chart .readout-text {
+  display: none;
+}
+/* A chart of the panel Wyniki at about its drawn size, not stretched to the page; the
+   ordinates of a node stay in its CSV */
+.view-panel .chart {
+  max-width: 460px;
+}
+details[data-more="ordinates"] {
+  display: none !important;
+}
+.table-wrap,
+.table-wrap.tall {
+  max-height: none !important;
+  overflow: visible !important;
+}
+.dtable thead th {
+  position: static !important;
+}
+.steps {
+  gap: var(--space-2);
+}
+.step {
+  break-inside: auto;
+}
+.step > summary {
+  break-after: avoid;
+}
+.step .chev,
+.step .step-num {
+  display: none;
+}
+.group-title,
+.sub-title {
+  break-after: avoid;
+}
+
+/* Data as text: values without the chrome of a field, a choice as the chosen value; the
+   fields of a step in two columns, at the height of their text (not of a phone's touch) */
+.ibox,
+input[type="text"],
+input[type="search"],
+input[type="number"],
+select,
+textarea {
+  border-color: transparent !important;
+  background: none !important;
+  box-shadow: none !important;
+  color: var(--text) !important;
+  font-size: var(--text-sm) !important;
+  appearance: none;
+}
+.ibox,
+.ibox input,
+input[type="text"],
+input[type="search"],
+select {
+  height: auto !important;
+  min-height: 0 !important;
+}
+textarea {
+  resize: none;
+}
+.view-panel.left .form {
+  columns: 2;
+  column-gap: var(--space-6);
+}
+.frow {
+  padding: 2px 0 !important;
+}
+.frow:not(.wide) {
+  grid-template-columns: minmax(0, 1fr) 110px !important;
+}
+.frow.wide {
+  column-span: all;
+}
+.summary {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
+.seg {
+  display: inline-flex !important;
+  width: auto !important;
+  border: 0 !important;
+  background: none !important;
+  padding: 0 !important;
+}
+.seg button:not(.on):not([aria-checked="true"]):not([aria-pressed="true"]) {
+  display: none !important;
+}
+.seg button {
+  flex: none !important;
+  height: auto !important;
+  background: none !important;
+  box-shadow: none !important;
+  color: var(--text) !important;
+  padding: 0 !important;
+  font-weight: var(--weight-bold);
+}
+
+/* No controls: buttons, file pickers, (i) and the links that act; of „Przekazanie” only a
+   received hand-off */
+.btn,
+.btn-row,
+.export-row,
+.info-btn,
+.cli-head,
+.chg .link-btn,
+.notes .from .link-btn,
+.card-head .link-btn,
+[data-handoff-export] ~ .note,
+details[data-part="handoff"]:not(:has(.handoff-received)),
+[data-handoff-part]:not(:has(.handoff-received)),
+input[type="file"] {
+  display: none !important;
+}
+
+/* The command line in ink, not on the dark code panel */
+pre.code {
+  background: none !important;
+  color: var(--text) !important;
+  border: 1px solid var(--line-2);
+  white-space: pre-wrap !important;
+  overflow-wrap: anywhere;
+  max-height: none !important;
+}

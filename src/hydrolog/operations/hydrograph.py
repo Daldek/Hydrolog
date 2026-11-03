@@ -19,6 +19,7 @@ from numpy.typing import NDArray
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.catalog.envelope import Notice, OperationOutput, capture_warnings
 from hydrolog.catalog.inputs import load_watershed
+from hydrolog.catalog.notices import notice
 from hydrolog.morphometry.watershed_params import WatershedParameters
 from hydrolog.operations._common import (
     check_choice,
@@ -184,6 +185,16 @@ class HydrographGenerateResult(JsonResultMixin):
         Precipitation depth of each input step [mm].
     effective_precipitation_mm : numpy.ndarray
         Effective precipitation of each input step [mm].
+    uh_times_min : numpy.ndarray
+        Time of each ordinate of the unit hydrograph [min]: 0, ``timestep_min``,
+        2 ``timestep_min``... It is the unit hydrograph that the convolution used
+        (for ``snyder`` the one for the duration of the time step).
+    uh_discharge_m3s_per_mm : numpy.ndarray
+        Ordinates of that unit hydrograph [m3/s per mm]: ``discharge_m3s`` is the
+        discrete convolution of ``effective_precipitation_mm`` with them. Their
+        largest value is ``uh_peak_discharge_m3s_per_mm`` at
+        ``uh_time_to_peak_min`` for ``nash`` and ``clark``; the ``scs`` and
+        ``snyder`` peak is the analytic one, which may fall between two ordinates.
     """
 
     peak_discharge_m3s: float
@@ -213,6 +224,10 @@ class HydrographGenerateResult(JsonResultMixin):
     discharge_m3s: NDArray[np.float64] = field(default_factory=lambda: np.empty(0))
     precipitation_mm: NDArray[np.float64] = field(default_factory=lambda: np.empty(0))
     effective_precipitation_mm: NDArray[np.float64] = field(
+        default_factory=lambda: np.empty(0)
+    )
+    uh_times_min: NDArray[np.float64] = field(default_factory=lambda: np.empty(0))
+    uh_discharge_m3s_per_mm: NDArray[np.float64] = field(
         default_factory=lambda: np.empty(0)
     )
 
@@ -455,13 +470,7 @@ def compute_hydrograph(
             tc = concentration.tc_min
             tc_parameters = concentration.parameters
         if tc is not None and not needs_tc:
-            notices.append(
-                Notice(
-                    "info",
-                    "tc_not_used",
-                    f"tc = {tc:g} min is not used by the {model} model.",
-                )
-            )
+            notices.append(notice("tc_not_used", tc_min=tc, uh_model=model))
         uh_params = _uh_parameters(
             model,
             tc,
@@ -632,7 +641,9 @@ def hydrograph_generate(
     OperationOutput
         :class:`HydrographGenerateResult` with the notices: library warnings about
         parameters outside the typical range, a non-standard ``ia_coefficient``, a
-        duration that is not a multiple of the step, an unused tc.
+        duration that is not a multiple of the step, an unused tc. The result
+        holds the ordinates of the unit hydrograph that was convolved
+        (``uh_times_min``, ``uh_discharge_m3s_per_mm``) next to the hydrograph.
 
     Raises
     ------
@@ -708,5 +719,7 @@ def hydrograph_generate(
         discharge_m3s=hydrograph.discharge_m3s,
         precipitation_mm=run.hietogram.intensities_mm,
         effective_precipitation_mm=generated.effective_precip_mm,
+        uh_times_min=np.asarray(unit.times_min, dtype=np.float64),
+        uh_discharge_m3s_per_mm=np.asarray(unit.ordinates_m3s, dtype=np.float64),
     )
     return OperationOutput(summary, run.notices)

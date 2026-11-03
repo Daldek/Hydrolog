@@ -19,6 +19,7 @@ from numpy.typing import NDArray
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.catalog.envelope import Notice, OperationOutput, capture_warnings
 from hydrolog.catalog.inputs import read_table
+from hydrolog.catalog.notices import notice
 from hydrolog.exceptions import InvalidParameterError
 from hydrolog.hydrometrics import (
     FrequencyDistributionResult,
@@ -154,12 +155,7 @@ def _rating_pairs(
     removed = int(keep.size - np.count_nonzero(keep))
     if removed:
         notices.append(
-            Notice(
-                "warning",
-                "missing_values_removed",
-                f"{removed} of {keep.size} measurement pairs have a missing value "
-                "(NaN) and were removed before the fit",
-            )
+            notice("missing_pairs_removed", missing=removed, total=int(keep.size))
         )
     return levels[keep], flows[keep], notices
 
@@ -212,7 +208,8 @@ def hydrometrics_rating_curve(
     -------
     OperationOutput
         ``result`` is a :class:`~hydrolog.hydrometrics.RatingCurveResult`; the notices
-        report pairs removed for a missing value and numerical warnings.
+        report pairs removed for a missing value (``missing_pairs_removed``) and the
+        warnings of NumPy and SciPy (``runtime_warning``, ``user_warning``).
 
     Raises
     ------

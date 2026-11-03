@@ -19,3 +19,5 @@ the Nogat standard 2.1 adoption are in the plans of [plans/](plans/).
 | [0011](decisions/0011-public-testing-module.md) | `hydrolog.testing`: builders of the files other projects read | accepted | 2026-10-25 |
 | [0012](decisions/0012-network-objects-rainfall-and-runoff.md) | Network objects, rainfall and runoff per subcatchment, and control points | accepted | 2026-10-25 |
 | [0013](decisions/0013-network-schematic.md) | The schematic of a network: a metro-style map that Hydrolog computes | accepted | 2026-10-25 |
+| [0014](decisions/0014-web-gui-enters-the-scope.md) | The web GUI enters the scope: `hydrolog.gui`, `gui serve`, hosting in Nogat, a private server API | accepted | 2026-11-02 |
+| [0015](decisions/0015-catalog-additions-for-the-gui.md) | Catalog additions for the GUI: `format_command`/`parse_command`, `NOTICES`, `route schematic`, UH ordinates, `gui serve` | accepted | 2026-11-02 |

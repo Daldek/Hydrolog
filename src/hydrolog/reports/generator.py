@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 import hydrolog
+from hydrolog._warnings import UhModelMismatch, UnknownHietogramType
 from hydrolog.exceptions import InvalidParameterError
 from hydrolog.precipitation.hietogram import HietogramResult
 from hydrolog.reports.formatters import TableGenerator
@@ -243,10 +244,10 @@ class HydrologyReportGenerator:
         _VALID_HIETOGRAM_TYPES = {"block", "triangular", "beta", "euler_ii"}
         if self.config.hietogram_type not in _VALID_HIETOGRAM_TYPES:
             warnings.warn(
-                f"ReportConfig.hietogram_type='{self.config.hietogram_type}' "
-                f"is not one of {sorted(_VALID_HIETOGRAM_TYPES)}. "
-                f"Report may contain incorrect distribution labels.",
-                UserWarning,
+                UnknownHietogramType(
+                    hietogram_type=self.config.hietogram_type,
+                    allowed=sorted(_VALID_HIETOGRAM_TYPES),
+                ),
                 stacklevel=2,
             )
 
@@ -254,10 +255,9 @@ class HydrologyReportGenerator:
         uh_model = _unit_hydrograph_model(unit, self.config.uh_model)
         if uh_model != self.config.uh_model:
             warnings.warn(
-                f"ReportConfig.uh_model='{self.config.uh_model}' is not the model "
-                f"of the unit hydrograph of the result ('{uh_model}'); the report "
-                f"documents '{uh_model}'.",
-                UserWarning,
+                UhModelMismatch(
+                    uh_model=self.config.uh_model, result_uh_model=uh_model
+                ),
                 stacklevel=2,
             )
 

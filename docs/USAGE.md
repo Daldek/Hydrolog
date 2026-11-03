@@ -1,11 +1,11 @@
 # Hydrolog usage guide
 
-Task-oriented guide to Hydrolog for the command line, Python and MCP clients. Options, units,
-ranges and allowed values are not repeated here: they come from the command catalog, the single
-source of truth of every interface (see [Finding options](#finding-options)). Installation and
-MCP client configuration are in the [README](../README.md); scope is in [SCOPE.md](SCOPE.md);
-which time-of-concentration method fits which unit hydrograph model is in
-[COMPUTATION_PATHS.md](COMPUTATION_PATHS.md).
+Task-oriented guide to Hydrolog for the command line, Python and MCP clients, and for people who
+use its web GUI ([8. The web GUI](#8-the-web-gui)). Options, units, ranges and allowed values are
+not repeated here: they come from the command catalog, the single source of truth of every
+interface (see [Finding options](#finding-options)). Installation and MCP client configuration are
+in the [README](../README.md); scope is in [SCOPE.md](SCOPE.md); which time-of-concentration method
+fits which unit hydrograph model is in [COMPUTATION_PATHS.md](COMPUTATION_PATHS.md).
 
 ## Finding options
 
@@ -1109,3 +1109,102 @@ imgw series export --dataset pl.imgw.hydro_daily --station CODE --variables Q --
 ```
 
 The agent-facing summary of these flows is in [AGENTS.md](../AGENTS.md).
+
+## 8. The web GUI
+
+In plain words: the GUI is a web page, in Polish, on which a person computes with Hydrolog without
+a command line. Each of its five sections opens with a shipped example: change the numbers in the
+panel „Dane” (data) on the left and read the result in „Wyniki” (results) on the right, with the
+charts between them. The page itself computes nothing. Every value is a run of a catalog command on
+the server, the same as `hydrolog <group> <command>`, and every result shows that call for the
+CLI, Python and MCP. The results are estimates of simplified methods, not a forecast and not an
+official flood hazard map. The guide for users, in Polish and also starting in plain words, is part
+of the page: „Instrukcja” in the top bar opens a short welcome that links it (`instrukcja/` under
+the GUI's address).
+
+| Section | What it does | Commands |
+|---|---|---|
+| Hydrogram zlewni | the design hydrograph of one watershed (the example: Kamiennik at Świerzawa), recomputed after every change | `hydrograph generate`, `uh nash` for Nash by Lutz |
+| Sieć i trasowanie | a network of subcatchments, reaches, reservoirs and junctions (the example: `hydrolog.testing.example_network_document()`), drawn as a schematic before it is routed by „Oblicz sieć” | `route schematic`, `route network` |
+| Statystyka przepływów | flood frequency of annual maxima or of a daily series (the example: 26 annual maxima, 1998 to 2023) | `stats flood-frequency` |
+| Kalkulatory | the time of concentration by six methods for the watershed of Hydrogram zlewni, and fifteen single calculators | `tc watershed` and fifteen others |
+| Wszystkie polecenia | a form for every command of the catalog | all but `gui serve`, `config show` and `commands guide` |
+
+A result leaves the page as CSV, JSON or PNG; from Hydrogram zlewni also as a Markdown report
+(`report generate`), and from Hydrogram zlewni and Sieć through a print view on A4 (a PDF by the
+browser's „Zapisz jako PDF”) and as a hand-off `nogat-handoff/1`. „Wczytaj z Hydrografa” opens a
+watershed or a network handed over that way, with the producer's result beside Hydrolog's
+([INTEGRATION.md](INTEGRATION.md#web-gui-the-hand-off-with-hydrograf-nogat-handoff1)).
+
+### Starting it
+
+```sh
+pip install "hydrolog[gui] @ git+https://github.com/Daldek/Hydrolog.git"
+hydrolog gui serve                              # http://127.0.0.1:8070/, opened in the browser
+hydrolog gui serve --no-browser --port 8071     # another port, no browser (a service)
+```
+
+The server prints `Hydrolog GUI: <url>` on stderr once it listens and serves until Ctrl+C or
+SIGTERM, which stop it gracefully: the command ends with exit code 0, and with `--json` it prints
+`hydrolog-gui-serve/1` (`url`, `started_at`, `stopped_at`). Without the extra `gui` it ends with
+`missing_dependency`. `--check` serves nothing and reports the address and whether the port is free:
+
+```bash
+hydrolog gui serve --check --json
+```
+
+```json output
+{"command": "gui serve", "check": true, "result": {"schema": "hydrolog-plan/1", "targets": [], "url": "http://127.0.0.1:8070/", "port_free": "..."}}
+```
+
+### Your data in the GUI
+
+- **Inputs stay in the browser.** Each section keeps its inputs, never its results, in the
+  browser's `localStorage` under `hydrolog-gui/<section>/1` until „Wyczyść”; the widths of the
+  panels are `hydrolog-gui/layout/1`, the choice „Nie pokazuj ponownie” of the welcome dialog
+  `hydrolog-gui/welcome/1` and the theme `nogat-theme`, which Nogat's other pages on the same
+  address share.
+- **Files go to the server.** A browser session (the cookie `hydrolog_gui`, HttpOnly,
+  SameSite=Strict) has a work directory of its own: `in/` holds the uploads and the documents the
+  page writes (the network of Sieć, for example), `out/` the files that commands write. A path
+  option takes only `in/<name>` or `out/<name>`; nothing else on the server is reachable. Limits:
+  20 MiB per file, 100 MiB and 200 files per session, 5 MiB of JSON per request and 64 sessions,
+  the least recently used idle one removed first. A session idle for 12 hours is removed, and so
+  are all of them when the server stops. `hydrolog gui serve` keeps them in a new directory of the
+  system's temporary directory (`TMPDIR`).
+- **Runs go to two worker processes.** A newer run of the same kind replaces a queued older one,
+  and a run longer than 30 seconds is stopped (the notice `timeout`).
+- **The page loads nothing from other sites.** The server sends a Content-Security-Policy of
+  `'self'` without inline scripts or styles, `X-Frame-Options: DENY` and `no-store` for its API.
+
+### Running it as a service behind a proxy
+
+The GUI has no accounts and no sign-in: anyone who reaches it can compute and upload files within
+the limits above. Keep it on `127.0.0.1` and let an authenticating reverse proxy publish it, for
+example a Cloudflare Tunnel whose public hostname points at `http://127.0.0.1:8070` together with a
+Cloudflare Access application on that hostname, or a web server that asks for a sign-in. Another
+address (`--host 0.0.0.0`) exposes the GUI without a sign-in; the command warns with
+`exposed_without_auth`. The page uses relative URLs only, so a proxy may also publish it under a
+path prefix.
+
+A systemd unit for a user `hydrolog` who installed Hydrolog with `uv tool install` (adjust the
+path of the executable):
+
+```ini
+[Unit]
+Description=Hydrolog web GUI
+After=network.target
+
+[Service]
+User=hydrolog
+ExecStart=/home/hydrolog/.local/bin/hydrolog gui serve --no-browser --host 127.0.0.1 --port 8070
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+```
+
+`systemctl stop` sends SIGTERM, which stops the server and removes the session directories.
+`curl -sI http://127.0.0.1:8070/` answers `200` with the `Content-Security-Policy` header when the
+server runs. Hosting the GUI inside another application (Nogat's GUI platform) is in
+[INTEGRATION.md](INTEGRATION.md#web-gui-a-module-of-nogats-gui-platform).

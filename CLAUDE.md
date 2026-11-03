@@ -39,12 +39,20 @@ scripts/gate.sh                    # ruff format, ruff check, mypy, pytest + cov
 uv run pytest tests/unit -q        # a part of the tests
 uv run hydrolog --help             # the CLI
 uv run hydrolog mcp --allow-dir .  # the MCP server (stdio)
+uv run hydrolog gui serve --no-browser   # the web GUI on 127.0.0.1:8070 (extra [gui])
+uv run --no-sync playwright install chromium   # once: Chromium for the browser tests
 # regenerate the guides after changing the catalog, templates or flows:
 uv run hydrolog commands guide --format agents --output AGENTS.md --force
 uv run hydrolog commands guide --format llms --output llms.txt --force
 ```
 
 Python 3.12 or newer. The tests are offline; there are no `live` tests. Coverage floor 80%.
+The browser tests of the GUI (`tests/e2e`, Playwright) run in the gate and need Chromium
+(installed as above). The GUI's user guide (`src/hydrolog/gui/web/instrukcja/`, Polish) quotes
+the numbers of the shipped examples (`data-example`, compared with the computed page by
+`tests/e2e/test_smoke.py`) and shows pictures of the page (`instrukcja/img/`: 1440 x 900 in the
+light theme, a 390 px phone in the dark one, PNG of 256 colours); a change of an example, a
+result, a label or the layout of the page updates them.
 A change that touches docs ships with its CHANGELOG entry (DOC-7.2).
 
 ## Code map
@@ -55,6 +63,9 @@ src/hydrolog/
 ├── operations/   # one public function per catalog command (+ _outputs.py: plan/force/check)
 ├── cli/          # CLI generated from the catalog; render.py (human text), texts.py (PL/EN)
 ├── mcp/          # MCP server (extra [mcp]): tools, instructions, calls
+├── gui/          # web GUI (extra [gui]): server.py (serve), _app.py (Starlette app, private API),
+│                 # _runner.py, _worker.py (warm worker processes), _sessions.py (work directories);
+│                 # web/ (the page: Preact modules without a build; instrukcja/: the user guide)
 ├── agent_guide.py, _data/agents/   # generator and templates of AGENTS.md, llms.txt, block
 ├── exceptions.py, _errors.py       # HydrologError classes; registry generated from schemas/nogat
 ├── _settings.py                    # lang/log_level: option > env > nogat.toml > default
@@ -64,7 +75,7 @@ src/hydrolog/
 ├── testing.py    # public builders of the files other projects read (DEV-10.6, ADR-0011, ADR-0012)
 ├── runoff/ time/ precipitation/ morphometry/ network/ statistics/ hydrometrics/ soil/
 ├── reports/ visualization/         # Markdown reports, plots (extra [viz])
-tests/{unit,integration,contract,fixtures}   schemas/nogat/ (copies of the standard)
+tests/{unit,integration,contract,e2e,fixtures}   schemas/nogat/ (copies of the standard)
 ```
 
 ## Documentation map
@@ -98,6 +109,7 @@ IMGWTools (series CSV from `series export --output`); Hydrograf and Retman use H
 
 - DEV-2.2, DEV-2.3: the text of `report generate` and the labels of `hydrolog.visualization`
   plots are Polish and inline in the code; only the CLI/catalog texts are translated.
+- DEV-2.2: the web GUI is Polish only; an English UI comes later (plan 2026-11-02, D9).
 - DEV-7.3: the tests have one relaxed mypy override (untyped test functions); `src/` is
   `strict`.
 - DEV-19.7: a command that writes one file (`--output`) replaces it atomically through a
@@ -107,6 +119,10 @@ IMGWTools (series CSV from `series export --output`); Hydrograf and Retman use H
 - AGI-4.4: `to_dict()` of a library result does not carry `schema`; the envelope adds it
   to `result` (ADR 0002).
 - AGI-5.9: no MCP resources or prompts, tools only.
+- AGI section 6: the HTTP routes of the GUI (`api/...` relative to the page,
+  `hydrolog.gui`) are a private API of that page, not a REST interface of Hydrolog: no
+  `/api/v1`, no OpenAPI, no stability promise; agents use the CLI, MCP and Python (plan
+  2026-11-02, D5).
 - DOC-4.2: the group `route` has one line in the command index of `AGENTS.md` instead of one
   per command, to keep the guide within 16 KiB (ADR-0009); `commands list` and `commands schema`
   still give every command.

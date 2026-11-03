@@ -17,7 +17,7 @@ Reference: IMGW-PIB; https://pl.wikipedia.org/wiki/Rok_hydrologiczny
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Literal, NamedTuple
+from typing import Any, Literal, NamedTuple
 
 import numpy as np
 from numpy.typing import NDArray
@@ -243,8 +243,8 @@ def describe_incomplete_years(extremes: AnnualExtremes) -> str:
     return listed
 
 
-def incomplete_years_message(extremes: AnnualExtremes) -> str:
-    """One-line message about the hydrological years skipped by ``annual_extremes``.
+def incomplete_years_details(extremes: AnnualExtremes) -> dict[str, Any]:
+    """Return the details of a warning about the years that were skipped.
 
     Parameters
     ----------
@@ -253,14 +253,18 @@ def incomplete_years_message(extremes: AnnualExtremes) -> str:
 
     Returns
     -------
-    str
-        For example ``"Skipped 2 of 31 hydrological year(s) that are incomplete
-        (a value is needed for every day of the year): 1991 (304 of 365 days), 2021
-        (61 of 365 days)"``.
+    dict
+        The details of :class:`~hydrolog._warnings.IncompleteYears` (notice code
+        ``incomplete_years``): ``skipped`` and ``total`` years, the skipped ``years``
+        and, in their order, ``days_with_data`` and ``days_in_year``; for example
+        ``{"skipped": 2, "total": 31, "years": [1991, 2021], "days_with_data":
+        [304, 61], "days_in_year": [365, 365]}``.
     """
-    total = len(extremes.years) + len(extremes.incomplete)
-    return (
-        f"Skipped {len(extremes.incomplete)} of {total} hydrological year(s) that "
-        f"are incomplete (a value is needed for every day of the year): "
-        f"{describe_incomplete_years(extremes)}"
-    )
+    skipped = extremes.incomplete
+    return {
+        "skipped": len(skipped),
+        "total": len(extremes.years) + len(skipped),
+        "years": [item.year for item in skipped],
+        "days_with_data": [item.days_with_data for item in skipped],
+        "days_in_year": [item.days_in_year for item in skipped],
+    }

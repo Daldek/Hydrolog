@@ -43,6 +43,7 @@ from hydrolog.operations.cn import (
     cn_weighted,
 )
 from hydrolog.operations.config import ConfigShow, config_show
+from hydrolog.operations.gui import GuiServeResult, gui_serve
 from hydrolog.operations.hydrograph import (
     HydrographGenerateResult,
     HydrographRun,
@@ -72,12 +73,14 @@ from hydrolog.operations.report import ReportResult, report_generate
 from hydrolog.operations.route import (
     NetworkRouteResult,
     RouteResult,
+    RouteSchematicResult,
     route_cascade,
     route_lag,
     route_level_pool,
     route_muskingum,
     route_muskingum_cunge,
     route_network,
+    route_schematic,
 )
 from hydrolog.operations.scs import ScsEffectiveResult, scs_effective
 from hydrolog.operations.soil import (
@@ -154,12 +157,14 @@ __all__ = [
     # route
     "NetworkRouteResult",
     "RouteResult",
+    "RouteSchematicResult",
     "route_lag",
     "route_muskingum",
     "route_muskingum_cunge",
     "route_cascade",
     "route_level_pool",
     "route_network",
+    "route_schematic",
     # morphometry
     "WatershedMorphometry",
     "morphometry_watershed",
@@ -193,6 +198,9 @@ __all__ = [
     # config
     "ConfigShow",
     "config_show",
+    # gui
+    "GuiServeResult",
+    "gui_serve",
     # commands
     "GuideDocument",
     "commands_guide",

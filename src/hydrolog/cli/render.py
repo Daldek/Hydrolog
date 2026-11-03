@@ -469,11 +469,17 @@ def _tail(renderer: _Renderer, data: Mapping[str, Any]) -> list[str]:
 
 
 def _plan_lines(renderer: _Renderer, result: Mapping[str, Any]) -> list[str]:
-    """Render the ``hydrolog-plan/1`` document: each target with its action."""
+    """Render the ``hydrolog-plan/1`` document: each target with its action.
+
+    The other fields of a plan follow the targets (``gui serve``: ``url`` and
+    ``port_free``).
+    """
     lines = [renderer.label("plan_title")]
     targets = result.get("targets") or []
+    other = {k: v for k, v in result.items() if k not in ("schema", "targets")}
+    fields = renderer.mapping(other, 0) if other else []
     if not targets:
-        return [*lines, renderer.label("plan_empty")]
+        return [*lines, renderer.label("plan_empty"), *fields]
     headers = [
         renderer.label("plan_action"),
         renderer.label("plan_option"),
@@ -489,7 +495,7 @@ def _plan_lines(renderer: _Renderer, result: Mapping[str, Any]) -> list[str]:
     lines.extend(renderer.table(headers, rows, [False] * len(headers), 0))
     if any(target["action"] == "conflict" for target in targets):
         lines.append(renderer.label("plan_blocked"))
-    return lines
+    return [*lines, *fields]
 
 
 def _command_list_lines(

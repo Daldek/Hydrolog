@@ -7,7 +7,8 @@ outflow as a hydrograph table that every ``route`` command reads again (ADR-0007
 ADR-0008). ``route network`` routes the hydrographs of many subcatchments down a river
 network, a document ``hydrolog-network/1`` whose reaches and reservoirs take the options
 of the other commands (:func:`model_options`), and writes one such table per node into
-``output_dir`` (ADR-0010). The operations are in :mod:`hydrolog.operations.route`.
+``output_dir`` (ADR-0010); ``route schematic`` lays such a network out as a schematic
+(ADR-0013) without routing it. The operations are in :mod:`hydrolog.operations.route`.
 
 The options that all commands share are public constants (:data:`INFLOW_OPTIONS`,
 :data:`INFLOW_ONE_OF`, :data:`RUN_OPTIONS`, :data:`OUTPUT_OPTIONS`) so that a command
@@ -364,6 +365,22 @@ NETWORK_CHECK = Option(
         "Without them there is nothing to plan and the result is computed as usual."
     ),
     default=False,
+)
+SCHEMATIC_MAIN_STEM = Option(
+    name="main_stem",
+    type="string_list",
+    description_pl=(
+        "Id węzłów, przez które ma przejść linia główna (źródło głównej rzeki albo "
+        "punkty wzdłuż niej); muszą leżeć na jednej ścieżce do wylotu. Domyślnie "
+        "linia główna idzie od wylotu przez gałąź o największej odwadnianej "
+        "powierzchni (bez powierzchni: o największej liczbie węzłów)."
+    ),
+    description=(
+        "Ids of the nodes that the main stem must pass (the head of the main river, "
+        "or points along it); they must lie on one path to the outlet. By default "
+        "the stem follows, from the outlet, the branch that drains the larger area "
+        "(without areas: that has more nodes)."
+    ),
 )
 
 MODEL_METHODS: tuple[str, ...] = (
@@ -1512,6 +1529,123 @@ COMMANDS: tuple[Command, ...] = (
                         },
                     ],
                 },
+            },
+        ),
+    ),
+    Command(
+        name="route schematic",
+        operation_id="hydrolog_route_schematic",
+        summary_pl=(
+            "Rozmieść sieć rzeczną na schemacie w stylu mapy metra, bez obliczania "
+            "przepływów."
+        ),
+        summary=(
+            "Lay a river network out as a schematic in the style of a metro map, "
+            "without routing it."
+        ),
+        description_pl=(
+            "Czyta sieć `hydrolog-network/1` tak jak `route network` i zwraca jej "
+            "schemat `hydrolog-network-schematic/1`: węzły na siatce, linie, łamane "
+            "krawędzi i podane parametry węzłów, bez wartości. Niczego nie oblicza i "
+            "nie zapisuje pliku."
+        ),
+        description=(
+            "Reads a network `hydrolog-network/1` as `route network` does and returns "
+            "its schematic `hydrolog-network-schematic/1`: nodes on a grid, the lines, "
+            "polylines of the edges and the given parameters of each node, without "
+            "values. Routes nothing and writes no file."
+        ),
+        function="hydrolog.operations.route_schematic",
+        options=(
+            NETWORK,
+            NETWORK_FILE,
+            INFLOWS_FILE,
+            NETWORK_TIME_COLUMN,
+            SCHEMATIC_MAIN_STEM,
+        ),
+        one_of=(("network",), ("network_file",)),
+        examples=(
+            {"network": _TWO_SOURCES, "main_stem": ["A"]},
+            {
+                "network_file": f"{_FIXTURES}/network_flood.json",
+                "inflows_file": f"{_FIXTURES}/network_inflows.csv",
+            },
+        ),
+        result_schema="hydrolog-network-schematic/1",
+        cardinality="bounded",
+        rules=(
+            "Give `network` or `network_file`; subcatchments that read a file need "
+            "`inflows_file`.",
+            "The layout is that of `route network` with `schematic`; run it for the "
+            "values.",
+        ),
+        rules_pl=(
+            "Podaj `network` albo `network_file`; zlewnie czytające plik wymagają "
+            "`inflows_file`.",
+            "Układ jest ten sam co w `route network` ze `schematic`; wartości daje "
+            "tamto polecenie.",
+        ),
+        errors=("validation_error", "not_found", "data_error", "forbidden"),
+        example_results=(
+            {
+                "outlet": "OUT",
+                "has_result": False,
+                "grid": {"width": 3, "height": 1},
+                "lines": [
+                    {"index": 0, "role": "main", "nodes": ["A", "R1", "J1", "OUT"]},
+                    {
+                        "index": 1,
+                        "role": "tributary",
+                        "nodes": ["B"],
+                        "joins": "J1",
+                    },
+                ],
+                "nodes": [
+                    {"id": "A", "type": "subcatchment", "x": 0, "y": 1, "line": 0},
+                    {"id": "B", "x": 1, "y": 0, "line": 1},
+                    {
+                        "id": "R1",
+                        "type": "reach",
+                        "parameters": [
+                            {
+                                "name": "lag_min",
+                                "value": 25.0,
+                                "unit": "min",
+                                "source": "given",
+                            }
+                        ],
+                    },
+                ],
+            },
+            {
+                "name": "Pond catchment",
+                "outlet": "OUT",
+                "has_result": False,
+                "grid": {"width": 4, "height": 1},
+                "lines": [
+                    {
+                        "index": 0,
+                        "role": "main",
+                        "nodes": ["A", "R1", "J1", "D", "OUT"],
+                    },
+                    {
+                        "index": 1,
+                        "role": "tributary",
+                        "nodes": ["B"],
+                        "joins": "J1",
+                    },
+                ],
+                "nodes": [
+                    {"id": "A", "x": 0, "y": 1},
+                    {"id": "B", "x": 1, "y": 0},
+                    {
+                        "id": "R1",
+                        "type": "reach",
+                        "parameters": [
+                            {"name": "length_km", "value": 6.0, "unit": "km"}
+                        ],
+                    },
+                ],
             },
         ),
     ),

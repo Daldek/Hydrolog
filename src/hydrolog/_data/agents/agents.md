@@ -37,7 +37,7 @@ A command returns `hydrolog-result/1`: `schema`, `tool` (`hydrolog`), `version`,
 
 - `result`: the values of the command with its own `schema`; units follow from field names (`tc_min`); `NaN` and infinities are `null`.
 - `result.files`: files the command wrote, each `{path, size_bytes, sha256, status}` with `status` `written` or `replaced`.
-- `notices`: non-fatal `{level, code, message}` entries.
+- `notices`: non-fatal `{level, code, message}` entries, values in `details`.
 - `inputs`: the options after normalization (defaults filled in, paths absolute).
 
 ## Error codes

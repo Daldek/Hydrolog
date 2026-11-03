@@ -17,7 +17,9 @@ and returns a :class:`NetworkRouteResult`, the summary of every node. The hydrog
 each node is in the result or, with ``output_dir``, in its own table ``<id>.csv``; the
 tables are written through a staging directory (DEV-19.7, ADR-0010). With ``schematic``
 it also draws the network as an SVG map (ADR-0013) and returns the document that the
-drawing is made of. The functions are re-exported by :mod:`hydrolog.operations`.
+drawing is made of. :func:`route_schematic` reads a network the same way and returns
+that document without values (:class:`RouteSchematicResult`), routing nothing and
+writing nothing. The functions are re-exported by :mod:`hydrolog.operations`.
 """
 
 from __future__ import annotations
@@ -36,6 +38,7 @@ from hydrolog._atomic import atomic_output, staging_directory
 from hydrolog._serialization import JsonResultMixin, to_jsonable
 from hydrolog.catalog.envelope import Notice, OperationOutput, capture_warnings
 from hydrolog.catalog.inputs import load_hydrograph, load_rating
+from hydrolog.catalog.notices import NOTICES, notice
 from hydrolog.exceptions import InvalidParameterError, OutputError
 from hydrolog.operations._network_input import load_network
 from hydrolog.operations._outputs import (
@@ -54,6 +57,7 @@ from hydrolog.routing import (
     MuskingumReach,
     Reach,
     RoutingNetwork,
+    RoutingNotice,
     RoutingResult,
 )
 from hydrolog.routing.schematic import schematic_svg
@@ -61,12 +65,14 @@ from hydrolog.routing.schematic import schematic_svg
 __all__ = [
     "NetworkRouteResult",
     "RouteResult",
+    "RouteSchematicResult",
     "route_cascade",
     "route_lag",
     "route_level_pool",
     "route_muskingum",
     "route_muskingum_cunge",
     "route_network",
+    "route_schematic",
 ]
 
 
@@ -207,6 +213,19 @@ class NetworkRouteResult(JsonResultMixin):
     schematic: dict[str, Any] | None = None
 
 
+class RouteSchematicResult(dict[str, Any], JsonResultMixin):
+    """The schematic of a network without values (``route schematic``).
+
+    The result is the document ``hydrolog-network-schematic/1`` itself, exactly what
+    :meth:`~hydrolog.routing.RoutingNetwork.schematic` returns without a result: a dict
+    with ``schema``, ``name`` (when the network has one), ``outlet``,
+    ``timestep_min``, ``has_result`` (``False``), ``grid``, ``lines``, ``nodes``
+    (each with its place on the grid, its label and the ``parameters`` that are
+    given) and ``edges``; :mod:`hydrolog.routing.schematic` describes the keys.
+    :meth:`to_dict` returns it as a plain dict.
+    """
+
+
 PAGE_CHARS = 20_000
 """Characters of a result that a client reads whole: the default page of DOC-1.7."""
 
@@ -267,6 +286,21 @@ def _write_directory(
         ) from exc
 
 
+def _routing_notice(item: RoutingNotice, node_id: str | None = None) -> Notice:
+    """Return the notice of a routing notice, of a network node when ``node_id``.
+
+    It keeps the level, code and English text of the routing model (an ``own_text``
+    code of :data:`~hydrolog.catalog.notices.NOTICES`; the models carry no details,
+    plan D1). A notice of a node starts with ``"<node id>: "`` and has the detail
+    ``node_id``. A code that is not in the registry (a warning of another library
+    that the network caught) becomes ``user_warning``.
+    """
+    code = item.code if item.code in NOTICES else "user_warning"
+    if node_id is None:
+        return Notice(item.level, code, item.message)
+    return Notice(item.level, code, f"{node_id}: {item.message}", {"node_id": node_id})
+
+
 def _route(
     reach: Reach | Callable[[], Reach],
     *,
@@ -316,7 +350,7 @@ def _route(
     run = element.route(
         inflow, initial_outflow_m3s=initial_outflow_m3s, extend_min=extend_min
     )
-    notices = tuple(Notice(item.level, item.code, item.message) for item in run.notices)
+    notices = tuple(_routing_notice(item) for item in run.notices)
     result = RouteResult.from_routing(run, with_series=target is None)
     if target is None:
         return OperationOutput(result, notices)
@@ -966,10 +1000,17 @@ def _refuse_inputs(
         )
 
 
-def _check_main_stem(network: RoutingNetwork, main_stem: Sequence[str] | None) -> None:
-    """Refuse a main stem that is not a path of the network, before anything is done."""
+def _schematic_of(
+    network: RoutingNetwork, main_stem: Sequence[str] | None
+) -> dict[str, Any]:
+    """Return the schematic of the network without values.
+
+    A main stem that is not a path of the network, or names a node it does not have,
+    is the error of :meth:`RoutingNetwork.schematic` with ``details.option``
+    ``main_stem``.
+    """
     try:
-        network.schematic(main_stem=main_stem)
+        return network.schematic(main_stem=main_stem)
     except InvalidParameterError as exc:
         raise InvalidParameterError(
             str(exc),
@@ -1076,7 +1117,8 @@ def route_network(
     OperationOutput
         ``result`` is a :class:`NetworkRouteResult`; the written tables and the
         schematic are listed in ``files`` and every notice of a node (a reach, the
-        library warnings of a runoff model) starts with the id of its node. With
+        library warnings of a runoff model) starts with the id of its node and has it
+        in ``details.node_id`` (the routing models give no other details). With
         ``check`` and a file to write the result is the plan. Without ``output_dir`` a
         result of more than :data:`PAGE_CHARS` characters (all the hydrographs of a
         large network) carries the warning ``large_result``, which suggests ``nodes``
@@ -1130,7 +1172,7 @@ def route_network(
     graph = loaded.network
     selected = _selection(graph, nodes)
     if schematic is not None:
-        _check_main_stem(graph, main_stem)
+        _schematic_of(graph, main_stem)  # refuse a bad main stem before any effect
     directory = None if output_dir is None else Path(os.fspath(output_dir))
     target = None if schematic is None else Path(os.fspath(schematic))
     inputs = _input_files(network_file, inflows_file, loaded.rating_files)
@@ -1185,8 +1227,7 @@ def route_network(
                 and not isinstance(item.value, bool)
             }
         notices.extend(
-            Notice(item.level, item.code, f"{node.id}: {item.message}")
-            for item in run.nodes[node.id].notices
+            _routing_notice(item, node.id) for item in run.nodes[node.id].notices
         )
         if node.id in returned:
             entry["times_min"] = hydrograph.times_min
@@ -1204,13 +1245,7 @@ def route_network(
         size = _json_chars(result)
         if returned and size > PAGE_CHARS:
             notices.append(
-                Notice(
-                    "warning",
-                    "large_result",
-                    f"the result is {size:,} characters, over the {PAGE_CHARS:,} of "
-                    "a page that a client reads whole: give `nodes` to return fewer "
-                    "hydrographs, or `output_dir` to write one table per node",
-                )
+                notice("large_result", size_chars=size, page_chars=PAGE_CHARS)
             )
     drawing = None
     if target is not None:
@@ -1233,3 +1268,68 @@ def route_network(
         files=tuple(files),
         replaced=() if plan is None else plan.replaced,
     )
+
+
+def route_schematic(
+    *,
+    network: Mapping[str, Any] | None = None,
+    network_file: str | os.PathLike[str] | None = None,
+    inflows_file: str | os.PathLike[str] | None = None,
+    time_column: str | None = None,
+    main_stem: Sequence[str] | None = None,
+) -> RouteSchematicResult:
+    """Lay a river network out as a schematic, without routing it (``route schematic``).
+
+    The network is read exactly as :func:`route_network` reads it, then
+    :meth:`~hydrolog.routing.RoutingNetwork.schematic` lays it out in the style of a
+    metro map (ADR-0013). Nothing is routed and nothing is written: the nodes carry
+    the parameters that are given, not the values of a run, and the layout is the one
+    that ``route network`` with ``schematic`` draws for the same network and
+    ``main_stem``.
+
+    Parameters
+    ----------
+    network : Mapping, optional
+        The document ``hydrolog-network/1`` inline (JSON-native values), as for
+        :func:`route_network`.
+    network_file : str or os.PathLike, optional
+        JSON file with the document, instead of ``network``.
+    inflows_file : str or os.PathLike, optional
+        CSV or JSON file with the discharges [m3/s] of the subcatchments that have
+        none inline. A network whose subcatchments read their discharges from a file
+        is checked as a whole when it is read, so it is laid out only with that file.
+    time_column : str, optional
+        Time column [min] of ``inflows_file``; default ``time_min``.
+    main_stem : sequence of str, optional
+        Ids of nodes that the main stem must pass (the head of the main river, or
+        points along it); they must lie on one path to the outlet. By default the stem
+        follows, from the outlet, the branch that drains the larger area (without
+        areas: that has more nodes).
+
+    Returns
+    -------
+    RouteSchematicResult
+        The document ``hydrolog-network-schematic/1`` with ``has_result`` ``False``.
+
+    Raises
+    ------
+    InvalidParameterError
+        If both or neither of ``network`` and ``network_file`` are given
+        (``details.reason`` ``one_of``), an inline document is wrong
+        (``details.option`` ``network``), or ``main_stem`` names a node that the
+        network does not have or nodes that are not on one path to the outlet
+        (``unknown_node``, ``main_stem_not_a_path``; ``details.option``
+        ``main_stem``).
+    NotFoundError
+        If a file does not exist.
+    InputDataError
+        If a file cannot be read, or the document in ``network_file``, a table of
+        ``inflows_file`` or a rating file is wrong (``details.path``).
+    """
+    loaded = load_network(
+        network=network,
+        network_file=network_file,
+        inflows_file=inflows_file,
+        time_column=time_column,
+    )
+    return RouteSchematicResult(_schematic_of(loaded.network, main_stem))

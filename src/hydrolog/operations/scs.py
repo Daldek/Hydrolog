@@ -16,6 +16,7 @@ from numpy.typing import NDArray
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.catalog.envelope import Notice, OperationOutput
 from hydrolog.catalog.inputs import load_series
+from hydrolog.catalog.notices import notice
 from hydrolog.exceptions import InputDataError
 from hydrolog.operations._common import check_choice, option_error, select_group
 from hydrolog.runoff import AMC, SCSCN
@@ -114,14 +115,7 @@ def ia_coefficient_notices(ia_coefficient: float) -> list[Notice]:
     """
     if ia_coefficient == _STANDARD_IA:
         return []
-    return [
-        Notice(
-            "info",
-            "ia_coefficient_nonstandard",
-            f"ia_coefficient = {ia_coefficient:g}: the standard CN tables (TR-55) "
-            "are calibrated for 0.2; other ratios need recalibrated CN values.",
-        )
-    ]
+    return [notice("ia_coefficient_nonstandard", ia_coefficient=ia_coefficient)]
 
 
 def load_precipitation_depths(

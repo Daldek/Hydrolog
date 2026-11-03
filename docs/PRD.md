@@ -374,6 +374,96 @@ print(f"tc = {tc:.1f} min")
 - [x] Control points for an application that picks points on the streams: `ControlPointNetwork` (outlet first; `add_point`, `update_subcatchment`, `add_confluence`, `remove_point`; residual areas and channels given by the application) (ADR-0012)
 - [x] Hydraulics (levels, inundation, backwater, structures) stays out of scope; the documentation names Hydraulik, HEC-RAS and IMGW HD
 
+### 2.16 Web GUI (ADR-0014)
+
+#### US-G01: Hydrograph of one watershed that follows every change
+**As** a hydrologist without code or an agent
+**I want** to enter a watershed, a design rainfall, the losses and a unit hydrograph in a browser form and see the hydrograph at once
+**So that** I can try parameters and see their effect without a compute button
+
+**Acceptance criteria:**
+- [ ] Section „Hydrogram zlewni” in five steps (watershed, also read from a `WatershedParameters` JSON; tc; rainfall; losses; UH); a valid change recomputes after 250 ms through `hydrograph generate`, and only the newest response is shown
+- [ ] The Kamiennik example shows „60,21 m³/s” at „6:20” and „1 046 213 m³”; switching the tc method, the AMC and the UH model gives the runs of the mockup
+- [ ] Charts: the hydrograph with the hyetograph, the cumulative P, F and Pe, and the unit hydrograph of the run (`uh_times_min`, `uh_discharge_m3s_per_mm`); a table, the balance, the parameters and the notices in Polish
+- [ ] An invalid value (e.g. CN 150) shows on its field and keeps the last result, marked; ten fast edits send at most two runs and show the last
+- [ ] The CLI line shown under the result, run by the CLI, gives the same peak
+
+#### US-G02: A river network drawn and routed
+**As** a hydrologist
+**I want** to open a network document, see its schematic, change the settings of a node and route it
+**So that** I get the hydrograph of every node without editing JSON by hand
+
+**Acceptance criteria:**
+- [ ] Section „Sieć i trasowanie”: the schematic from `route schematic`, drawn vertically with the outlet at the bottom, before the first run
+- [ ] A node is selected by a click, Enter or Space, or in the node table, and opens the form of its type and reach method (from `hydrolog-network-1.schema.json`), with a rating table editor
+- [ ] „Oblicz sieć” runs `route network`; the example's outlet values equal those of `route network`; a changed reach method shows its options and marks the results stale
+- [ ] Results per node (chart and parameters); the SVG schematic and the network document export
+
+#### US-G03: Flow statistics
+**As** a hydrologist
+**I want** to compute the flood frequency of a series of annual maxima in the browser
+**So that** I can read design discharges and compare them with a design hydrograph
+
+**Acceptance criteria:**
+- [ ] Section „Statystyka przepływów”: a file (columns from its header, `date_column` for daily series) or pasted values; distributions and return periods; the probability plot and tables
+- [ ] The shipped sample gives the mockup's GEV „Q1% 307,3 m³/s” and the KZGW notice in Polish (from the notice code `short_record`)
+- [ ] „Do porównania” draws a chosen quantile on the hydrograph of „Hydrogram zlewni”
+
+#### US-G04: Calculators
+**As** an engineer
+**I want** single calculations (time of concentration, CN, effective rainfall, unit hydrographs...) prefilled from my watershed
+**So that** I can check one step without building the whole hydrograph
+
+**Acceptance criteria:**
+- [ ] Section „Kalkulatory”: 16 calculators, catalog forms prefilled from the watershed of „Hydrogram zlewni”
+- [ ] The tc comparison lists six methods with the words of their applicability notices (`outside_typical_range`)
+- [ ] A calculator's CLI line and result match the CLI's
+
+#### US-G05: Every command as a generated form
+**As** a user of Hydrolog
+**I want** a form for every catalog command
+**So that** I can run any calculation in the browser, also a command added after the GUI
+
+**Acceptance criteria:**
+- [ ] Section „Wszystkie polecenia” lists the 43 commands of the GUI (all but `gui serve`, `config show` and `commands guide`) under Polish group titles, with search
+- [ ] Fields from `commands-1`: units, bounds, allowed values with their meanings, `one_of` groups, series, files; the `scs effective` and `uh nash` forms reproduce the mockup's validation and run
+- [ ] Errors placed on their field by `details.option` and worded in Polish from `code` and `reason`; an error without an option stands above the form
+- [ ] Input files upload into the session and outputs download
+
+#### US-G06: Exports and the hand-off with Hydrograf
+**As** a hydrologist who works with Hydrograf
+**I want** to take a result out of the GUI and to pass a watershed or a network between Hydrograf and Hydrolog
+**So that** I can document it and continue in the other tool without retyping
+
+**Acceptance criteria:**
+- [ ] CSV (the hydrograph table that every `route` command and Hydraulik read), JSON (the envelope), the Markdown report (`report generate`), a print view on A4 (PDF from the browser), PNG of the chart shown and the CLI line (`format_command`)
+- [ ] A hand-off from „Hydrogram zlewni” is `nogat-handoff/1` carrying `hydrolog-network/1`, validates against Nogat's schema and reopens with the same values; its payload through `route network` gives the same outlet peak
+- [ ] A hand-off with two subcatchments opens in „Sieć i trasowanie”; the producer's version and result are shown beside Hydrolog's
+
+#### US-G07: Running the GUI standalone and as a Nogat module
+**As** the user of one computer, or the operator of Nogat's GUI platform
+**I want** to start the GUI with one command, or have the platform host it
+**So that** I get the same GUI on my own machine and inside Nogat
+
+**Acceptance criteria:**
+- [ ] `hydrolog gui serve` (extra `hydrolog[gui]`) answers on 127.0.0.1:8070, `--no-browser` does not open a browser, and Ctrl+C or SIGTERM stops it with exit 0; without the extra it ends with `missing_dependency` and the hint `pip install "hydrolog[gui]"`
+- [x] `hydrolog gui serve --check` returns the plan (`hydrolog-plan/1` with `targets: []`, `url`, `port_free`) without serving; a host other than loopback adds the notice `exposed_without_auth`
+- [ ] The entry point `nogat.gui` loads `gui_module()`; the app mounted at `/m/hydrolog/` serves the page and the API
+- [ ] Every response carries the CSP and security headers of ADR-0014; cross-site writes are refused; files stay in the session's work directory within its limits
+- [ ] Both themes and the phone layout (390 px) work without console errors or CSP violations
+
+#### US-G08: The catalog behind the GUI
+**As** the GUI, or any other client of the catalog
+**I want** the CLI line of a call, stable notice codes with their values, the layout of a network and the unit hydrograph of a run
+**So that** I show and word everything from the catalog and compute nothing myself (ADR-0015)
+
+**Acceptance criteria:**
+- [x] `format_command` and `parse_command` (in `hydrolog` and `hydrolog.catalog`): every catalog example survives `format_command(parse_command(call))` and runs
+- [x] Every notice code in the registry `NOTICES` with its level, English template and `details` keys; no notice of any catalog example is `user_warning`
+- [x] `route schematic` returns `hydrolog-network-schematic/1` without values, equal to `RoutingNetwork.schematic()`
+- [x] `hydrograph generate` returns `uh_times_min` and `uh_discharge_m3s_per_mm`; the UH ordinates convolved with Pe give Q
+- [x] `gui serve` is in `commands list` and `commands schema`, absent from MCP `tools/list` and from the index of `AGENTS.md`, which stays within 16 KiB
+
 ---
 
 ## 3. Non-Functional Requirements
@@ -532,4 +622,4 @@ print(f"tc = {tc:.1f} min")
 ---
 
 **Document version:** 1.0.0 (in preparation)
-**Last updated:** 2026-10-25
+**Last updated:** 2026-11-02

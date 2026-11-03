@@ -265,9 +265,10 @@ class TestMorphometryWatershed:
         )
         assert run("morphometry watershed", watershed=WATERSHED).notices == ()
 
-    def test_slopes_of_the_file_are_not_used_and_the_notice_gives_both_values(self):
+    def test_slopes_of_the_file_are_not_used_and_each_notice_gives_both_values(self):
         """``tc watershed`` computes with the slopes of the file, this command with the
-        relief: the notice shows both numbers instead of two silent "channel slopes"."""
+        relief: a notice per slope shows both numbers instead of two silent "channel
+        slopes"."""
         data = {
             **WATERSHED,
             "mean_slope_m_per_m": 0.025,
@@ -278,15 +279,25 @@ class TestMorphometryWatershed:
         slopes = output.result.slopes
         assert slopes.watershed_slope_m_per_m == pytest.approx(370.0 / 12500.0)
         assert slopes.channel_slope_m_per_m == pytest.approx(370.0 / 14200.0)
-        (notice,) = output.notices
-        assert (notice.level, notice.code) == ("info", "slopes_from_relief")
-        for value in (
-            "watershed slope 0.0296 m/m",
-            "mean_slope_m_per_m = 0.025 m/m",
-            "channel slope 0.02606 m/m",
-            "channel_slope_m_per_m = 0.02 m/m",
-        ):
-            assert value in notice.message
+        mean, channel = output.notices
+        assert [(n.level, n.code) for n in output.notices] == [
+            ("info", "slopes_from_relief"),
+            ("info", "slopes_from_relief"),
+        ]
+        assert mean.details == {
+            "option": "mean_slope_m_per_m",
+            "given_m_per_m": 0.025,
+            "computed_m_per_m": pytest.approx(370.0 / 12500.0),
+        }
+        assert channel.details == {
+            "option": "channel_slope_m_per_m",
+            "given_m_per_m": 0.02,
+            "computed_m_per_m": pytest.approx(370.0 / 14200.0),
+        }
+        assert mean.message.startswith("mean_slope_m_per_m = 0.025 m/m is not used")
+        assert "computed from the relief, 0.0296 m/m" in mean.message
+        assert channel.message.startswith("channel_slope_m_per_m = 0.02 m/m is not")
+        assert "computed from the relief, 0.02606 m/m" in channel.message
         assert (
             tc.tc_watershed(watershed=data).result.parameters["slope_m_per_m"] == 0.02
         )
@@ -603,7 +614,11 @@ class TestImgwToolsExport:
         assert values.ssx == pytest.approx(np.mean(self.VALID_Q))
         assert [n.code for n in result.notices] == ["missing_values_removed"]
         assert "2 of 14" in result.notices[0].message
-        assert "2023-11-08" in result.notices[0].message
+        assert result.notices[0].details == {
+            "missing": 2,
+            "total": 14,
+            "first_date": "2023-11-08",
+        }
 
     def test_the_column_name_may_carry_its_unit(self):
         plain = run(
@@ -844,7 +859,10 @@ class TestCharacteristicDailyMonthly:
         ):
             assert document[field] == [None] * 12, field
         assert [n.code for n in result.notices] == ["single_value_month"]
-        assert "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12" in result.notices[0].message
+        assert result.notices[0].details == {"months": list(range(1, 13))}
+        assert result.notices[0].message.startswith(
+            "Month(s) 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, and 2 more hold a single value"
+        )
 
     def test_only_the_months_with_one_value_are_named_in_the_notice(self):
         dates = [f"2022-{month:02d}-15" for month in range(1, 13)]
@@ -857,6 +875,7 @@ class TestCharacteristicDailyMonthly:
         assert document["std_values"][:11] != [None] * 11
         assert document["std_values"][11] is None
         assert [n.code for n in result.notices] == ["single_value_month"]
+        assert result.notices[0].details == {"months": [12]}
         assert result.notices[0].message.startswith("Month(s) 12 hold a single value")
 
     @pytest.mark.parametrize("level", [0.0, 1.0, -0.2, 1.5])
@@ -981,13 +1000,17 @@ class TestFloodFrequency:
         few = run(
             "stats flood-frequency", values=[100, 120, 90, 150, 130], distribution="gev"
         )
-        texts = " | ".join(n.message for n in few.notices)
-        assert "Sample size < 10" in texts
-        assert {n.code for n in few.notices} == {"user_warning"}
+        assert {n.code for n in few.notices} == {"small_sample", "ks_test_approximate"}
+        small = next(n for n in few.notices if n.code == "small_sample")
+        assert small.level == "warning"
+        assert small.details == {"years": 5, "minimum": 10}
         twenty = run(
             "stats flood-frequency", values=list(range(100, 120)), distribution="gev"
         )
-        assert any("KZGW (2017)" in n.message for n in twenty.notices)
+        assert "small_sample" not in {n.code for n in twenty.notices}
+        short = next(n for n in twenty.notices if n.code == "short_record")
+        assert short.details == {"years": 20, "minimum": 30}
+        assert "KZGW (2017)" in short.message
 
     def test_missing_annual_maxima_are_dropped_with_a_notice(self, tmp_path):
         path = tmp_path / "maxima.csv"
@@ -1049,7 +1072,14 @@ class TestFloodFrequency:
         assert sample.incomplete_years == [1991, 2021]
         notice = next(n for n in result.notices if n.code == "incomplete_years")
         assert notice.level == "warning"
-        assert notice.message.endswith("1991 (304 of 365 days), 2021 (61 of 365 days)")
+        assert notice.message.endswith("every day of the year): 1991, 2021")
+        assert notice.details == {
+            "skipped": 2,
+            "total": 31,
+            "years": [1991, 2021],
+            "days_with_data": [304, 61],
+            "days_in_year": [365, 365],
+        }
         direct = FloodFrequencyAnalysis(np.array(sample.annual_maxima)).fit_gev()
         assert sample.distributions[0].to_dict() == direct.to_dict()
 
@@ -1067,9 +1097,11 @@ class TestFloodFrequency:
         assert 2005 not in result.result.hydrological_years
         assert result.result.n_years == 28
         assert result.result.incomplete_years == [1991, 2005, 2021]
-        texts = {n.code: n.message for n in result.notices}
-        assert "2005 (364 of 365 days)" in texts["incomplete_years"]
-        assert ("missing_values_removed" in texts) == (how == "nan value")
+        notices = {n.code: n for n in result.notices}
+        details = notices["incomplete_years"].details
+        assert details["years"] == [1991, 2005, 2021]
+        assert details["days_with_data"][1] == 364  # 2005 lacks one day
+        assert ("missing_values_removed" in notices) == (how == "nan value")
 
     def test_without_a_complete_year_the_error_names_the_incomplete_ones(self):
         values, dates = _calendar_year_series(2000, 2001)  # HY 2000 and 2002 are stubs
@@ -1100,7 +1132,8 @@ class TestFloodFrequency:
         assert document["result"]["distributions"][0]["distribution_name"] == "gev"
         assert document["result"]["hydrological_years"] is None
         assert document["result"]["incomplete_years"] is None
-        assert document["notices"][0]["code"] == "user_warning"
+        assert document["notices"][0]["code"] == "ks_test_approximate"
+        assert "details" not in document["notices"][0]
 
 
 # --- stats: low flows -----------------------------------------------------------------
@@ -1133,7 +1166,8 @@ class TestLowFlow:
         assert result.result.incomplete_years == []
         assert result.result.n_years == 3
         assert result.result.hydrological_years == [2022, 2023, 2024]
-        assert [n.code for n in result.notices] == ["user_warning"]
+        assert [n.code for n in result.notices] == ["small_sample"]
+        assert result.notices[0].details == {"years": 3, "minimum": 10}
         assert "Only 3 year(s)" in result.notices[0].message
 
     def test_annual_minima_follow_the_hydrological_year(self):
@@ -1163,9 +1197,14 @@ class TestLowFlow:
         assert sample.incomplete_years == [1991, 2021]
         assert [n.code for n in result.notices] == ["incomplete_years"]
         assert result.notices[0].level == "warning"
-        assert result.notices[0].message.endswith(
-            "1991 (304 of 365 days), 2021 (61 of 365 days)"
-        )
+        assert result.notices[0].message.endswith("every day of the year): 1991, 2021")
+        assert result.notices[0].details == {
+            "skipped": 2,
+            "total": 31,
+            "years": [1991, 2021],
+            "days_with_data": [304, 61],
+            "days_in_year": [365, 365],
+        }
         day = np.array(dates, dtype="datetime64[D]")
         whole_years = (day >= np.datetime64("1991-11-01")) & (
             day < np.datetime64("2020-11-01")
@@ -1187,9 +1226,11 @@ class TestLowFlow:
         assert 2005 not in result.result.hydrological_years
         assert result.result.n_years == 28
         assert result.result.incomplete_years == [1991, 2005, 2021]
-        texts = {n.code: n.message for n in result.notices}
-        assert "2005 (364 of 365 days)" in texts["incomplete_years"]
-        assert ("missing_values_removed" in texts) == (how == "nan value")
+        notices = {n.code: n for n in result.notices}
+        details = notices["incomplete_years"].details
+        assert details["years"] == [1991, 2005, 2021]
+        assert details["days_with_data"][1] == 364  # 2005 lacks one day
+        assert ("missing_values_removed" in notices) == (how == "nan value")
 
     def test_the_empirical_block_uses_the_convention_of_the_fitted_quantiles(self):
         """Regression: values descending with *exceedance* probabilities, so the deepest
@@ -1587,8 +1628,9 @@ class TestRatingCurve:
             h0_initial=40.0
         )
         assert result.result.n_points == 13
-        assert [n.code for n in result.notices] == ["missing_values_removed"]
-        assert "2 of 15" in result.notices[0].message
+        assert [n.code for n in result.notices] == ["missing_pairs_removed"]
+        assert result.notices[0].details == {"missing": 2, "total": 15}
+        assert "2 of 15 measurement pairs" in result.notices[0].message
 
     def test_lengths_must_match(self):
         with pytest.raises(InvalidParameterError) as caught:

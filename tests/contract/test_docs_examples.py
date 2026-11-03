@@ -415,7 +415,8 @@ def test_readme_mcp_section_names_the_tool_families() -> None:
     readme = (REPOSITORY / "README.md").read_text(encoding="utf-8")
     mcp = section(readme, "MCP server")
     commands = data_commands()
-    families = {c.group for c in commands} | {c.name for c in commands if c.core}
+    groups = {family for c in commands for family in c.families if family != "core"}
+    families = groups | {c.name for c in commands if c.core}
     assert not {name for name in families if f"`{name}`" not in mcp}
 
 

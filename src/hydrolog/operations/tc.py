@@ -2,9 +2,10 @@
 
 Each ``tc_<method>`` function wraps one static method of
 :class:`~hydrolog.time.ConcentrationTime`; :func:`tc_watershed` applies a method to
-:class:`~hydrolog.morphometry.WatershedParameters`. The library reports parameters
-outside the typical range of a formula as ``UserWarning``; the operations turn them
-into notices of the result envelope.
+:class:`~hydrolog.morphometry.WatershedParameters`. The library reports a parameter
+outside the typical range of a formula with a warning; the operations turn it into a
+notice of the result envelope (code ``outside_typical_range``, details ``method``,
+``parameter``, ``value``, ``minimum`` and ``maximum``).
 """
 
 from __future__ import annotations

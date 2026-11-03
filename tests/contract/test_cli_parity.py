@@ -21,17 +21,17 @@ from hydrolog.catalog import (
     check_command,
     command_schema,
     data_commands,
+    format_command,
     run_command,
     validate_command,
 )
 from hydrolog.catalog.document import COMMAND_LIST_SCHEMA, COMMANDS_SCHEMA
 from hydrolog.catalog.envelope import sha256_file
+from hydrolog.catalog.lines import option_arguments
 from hydrolog.cli.main import main
 from hydrolog.cli.parser import (
     GLOBAL_FLAGS,
     build_command_parser,
-    example_arguments,
-    format_example,
     parse_command_line,
 )
 from hydrolog.exceptions import (
@@ -118,7 +118,7 @@ def test_json_envelope_equals_run_command(command, index, capsys, tmp_path):
     example = _scratch_outputs(command, command.examples[index], tmp_path)
     expected = _api_envelope(command, example)
 
-    argv = [*command.name.split(), *example_arguments(command, example), "--json"]
+    argv = [*command.name.split(), *option_arguments(command, example), "--json"]
     code = main(argv)
     out, err = capsys.readouterr()
 
@@ -137,7 +137,7 @@ def test_human_summary_of_every_example(command, index, lang, capsys, tmp_path):
     result = _api_envelope(command, example)["result"]
 
     code = main(
-        [*command.name.split(), *example_arguments(command, example), "--lang", lang]
+        [*command.name.split(), *option_arguments(command, example), "--lang", lang]
     )
     out, err = capsys.readouterr()
 
@@ -164,7 +164,7 @@ def test_check_flag_prints_the_plan_of_check_command(command, index, capsys, tmp
     example = _scratch_outputs(command, command.examples[index], tmp_path)
     expected = check_command(command, example).to_dict()
 
-    argv = [*command.name.split(), *example_arguments(command, example)]
+    argv = [*command.name.split(), *option_arguments(command, example)]
     code = main([*argv, "--check", "--json"])
     out, err = capsys.readouterr()
 
@@ -179,13 +179,15 @@ def test_check_flag_prints_the_plan_of_check_command(command, index, capsys, tmp
 @pytest.mark.parametrize(("command", "index"), EXAMPLES)
 def test_example_survives_the_round_trip_through_the_command_line(command, index):
     example = command.examples[index]
-    line = parse_command_line(command, example_arguments(command, example))
+    line = parse_command_line(command, option_arguments(command, example))
     carried = {k: v for k, v in example.items() if v is not None}
     assert validate_command(command, line.options) == validate_command(command, carried)
 
 
 @pytest.mark.parametrize("command", COMMANDS, ids=lambda command: command.name)
 def test_missing_options_fail_like_run_command(command, capsys):
+    if not command.agent_tool:
+        pytest.skip("gui serve serves until it is stopped")
     try:
         run_command(command, {})
     except InvalidParameterError as exc:
@@ -222,7 +224,7 @@ def test_help_names_every_option_and_example(command, lang, capsys):
         if option.type == "boolean":
             assert "--no-" + option.flag[2:] in out
     for example in command.examples[:3]:
-        assert format_example(command, example) in out
+        assert format_command(command, example) in out
     assert command.summarize(lang) in out.replace("\n", " ")
 
 

@@ -268,16 +268,22 @@ class TestInvariants:
             assert command.effects.destructive is writes
             assert command.effects.network is False
 
-    def test_a_writing_command_is_its_own_check_and_the_others_have_none(self):
+    def test_a_command_with_check_is_its_own_check_and_the_others_have_none(self):
+        """Every writing command plans itself; ``gui serve`` plans where it serves."""
         for command in COMMANDS:
+            options = {o.name for o in command.options}
             if command.writes:
-                assert command.check == command.name
-                assert {"force", "check"} <= {o.name for o in command.options}
-                assert command.option("check").type == "boolean"
+                assert {"force", "check"} <= options, command.name
                 assert command.option("force").type == "boolean"
             else:
+                assert "force" not in options, command.name
+            if "check" in options:
+                assert command.check == command.name
+                assert command.option("check").type == "boolean"
+            else:
                 assert command.check is None
-                assert not {"force", "check"} & {o.name for o in command.options}
+        planning = [c.name for c in COMMANDS if c.check and not c.writes]
+        assert planning == ["gui serve"]
 
     def test_errors_are_registry_codes(self):
         for command in COMMANDS:

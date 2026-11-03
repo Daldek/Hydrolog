@@ -18,6 +18,7 @@ from numpy.typing import NDArray
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.catalog.envelope import Notice, OperationOutput
 from hydrolog.catalog.inputs import load_stations
+from hydrolog.catalog.notices import notice
 from hydrolog.operations._common import (
     check_choice,
     forbid_options,
@@ -233,12 +234,12 @@ def hietogram_notices(hietogram: HietogramResult) -> list[Notice]:
     if math.isclose(covered, hietogram.duration_min, rel_tol=1e-9, abs_tol=1e-9):
         return []
     return [
-        Notice(
-            "warning",
+        notice(
             "duration_not_covered",
-            f"duration_min = {hietogram.duration_min:g} is not a multiple of "
-            f"timestep_min = {hietogram.timestep_min:g}: the hyetograph has "
-            f"{hietogram.n_steps} steps and covers {covered:g} min.",
+            duration_min=hietogram.duration_min,
+            timestep_min=hietogram.timestep_min,
+            steps=hietogram.n_steps,
+            covered_min=covered,
         )
     ]
 
@@ -470,14 +471,7 @@ def precip_areal(
             gauge.station_id for gauge in gauges if gauge.station_id not in areas
         ]
         if skipped:
-            notices.append(
-                Notice(
-                    "warning",
-                    "stations_without_polygon",
-                    "Gauges without a polygon area were not used: "
-                    f"{', '.join(skipped)}.",
-                )
-            )
+            notices.append(notice("stations_without_polygon", stations=skipped))
         return OperationOutput(
             ArealPrecipitationResult(
                 method=kind,
