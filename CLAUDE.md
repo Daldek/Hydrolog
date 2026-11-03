@@ -3,7 +3,7 @@
 Hydrolog is a Python library, CLI (`hydrolog`) and MCP server for hydrological
 calculations (time of concentration, SCS-CN, unit hydrographs, flow statistics,
 hydrologic soil groups). Profile `tool` (DEV-1.1). It downloads nothing and has no
-data store: Kartograf and IMGWTools supply the input files. User documentation:
+data store: Kartograf and Obserwator supply the input files. User documentation:
 [README.md](README.md). Nogat standard 2.1:
 [DEVELOPMENT_STANDARDS](https://github.com/Daldek/Nogat/blob/main/standards/DEVELOPMENT_STANDARDS.md),
 [AGENT_INTERFACE](https://github.com/Daldek/Nogat/blob/main/standards/AGENT_INTERFACE.md),
@@ -103,7 +103,7 @@ the last commit. Change only this repository (DEV-17.5); a need in another proje
 Registry entry:
 [ecosystem.yaml](https://github.com/Daldek/Nogat/blob/main/ecosystem.yaml) (Hydrolog).
 Inputs come from Kartograf (soil rasters, `files[].path` of `--output-dir` downloads) and
-IMGWTools (series CSV from `series export --output`); Hydrograf and Retman use Hydrolog.
+Obserwator (series CSV from `series export --output`); Hydrograf and Retman use Hydrolog.
 
 ## Deviations
 

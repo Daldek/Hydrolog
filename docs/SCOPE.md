@@ -29,7 +29,7 @@
 
 ### 1.3 Analogy
 
-Hydrolog is analogous to **Kartograf** (spatial data download) and **IMGWTools** (IMGW data download) - a modular Python library with a clean API that can be used as a dependency in other projects. Since v1.0.0, like them, it exposes a single command catalog (CLI + MCP + AGENTS.md/llms.txt), but it does not depend on either of those libraries: Hydrolog downloads nothing, and data files are supplied by external tools.
+Hydrolog is analogous to **Kartograf** (spatial data download) and **Obserwator** (IMGW data download) - a modular Python library with a clean API that can be used as a dependency in other projects. Since v1.0.0, like them, it exposes a single command catalog (CLI + MCP + AGENTS.md/llms.txt), but it does not depend on either of those libraries: Hydrolog downloads nothing, and data files are supplied by external tools.
 
 ---
 
@@ -88,7 +88,7 @@ Hydrolog is analogous to **Kartograf** (spatial data download) and **IMGWTools**
 
 **Rainfall scenarios (future):**
 - ❌ Not implemented
-- PMAXTP data (IMGW maximum probable precipitation) is downloaded by the parent application (e.g. Hydrograf via IMGWTools)
+- PMAXTP data (IMGW maximum probable precipitation) is downloaded by the parent application (e.g. Hydrograf via Obserwator)
 - Hydrolog receives ready-made precipitation values
 
 ---
@@ -208,7 +208,7 @@ Other groups: `precip`, `hydrograph`, `morphometry`, `network`, `stats`, `hydrom
 - **Operations layer** (`hydrolog.operations`) - one public, typed function per command; it composes existing classes and contains no new hydrology
 - **Result envelope** `hydrolog-result/1` and error document `hydrolog-error/1` with a closed `ERROR_CODES` registry (CLI exit codes: 1, 2, 3, 4, 6, 7, 9, 12, 13)
 - **Serialization** - all result classes have `to_dict()` and `to_json()` (`JsonResultMixin`)
-- **Data from files** - series, stations, network segments and catchments as CSV/JSON (including the IMGWTools `export_series` export, read without conversion); `WatershedParameters` JSON is the `catchment_characteristics` format in Retman
+- **Data from files** - series, stations, network segments and catchments as CSV/JSON (including the Obserwator `export_series` export, read without conversion); `WatershedParameters` JSON is the `catchment_characteristics` format in Retman
 - **MCP server** (`hydrolog mcp`, extra `hydrolog[mcp]`) - every catalog command is a tool except `gui serve` (`agent_tool=False`, ADR-0015); file access is restricted to `--allow-dir` directories and writing needs `--allow-writes`
 - **Agent guides** - `AGENTS.md` and `llms.txt` generated from the catalog (`hydrolog commands guide`), enforced by a byte-for-byte consistency test
 - Plots (`hydrolog.visualization`) remain Python-only, outside the command catalog
@@ -376,7 +376,7 @@ default) and hosted as a module of Nogat's GUI platform through the entry point 
 - ❌ Downloading the digital elevation model (DEM, Polish NMT) (→ Kartograf)
 - ❌ Downloading land cover (→ Kartograf)
 - ❌ Downloading soil rasters (→ Kartograf `download_soil`); computing HSG from already downloaded texture rasters is in scope (module `soil`, since v1.0.0)
-- ❌ Downloading IMGW data (→ IMGWTools); Hydrolog reads a ready-made CSV/JSON file from the export
+- ❌ Downloading IMGW data (→ Obserwator); Hydrolog reads a ready-made CSV/JSON file from the export
 - ❌ A public REST API (interfaces: Python library, CLI, MCP server and the web GUI; the GUI's private server routes serve its page only and are not a REST interface, ADR-0014)
 - ❌ Database operations
 
@@ -529,7 +529,7 @@ hydrolog/
 - `viz`: matplotlib >= 3.7 + seaborn >= 0.12 (module `visualization`)
 - `all`: all of the above
 
-Hydrolog does not depend on Kartograf or IMGWTools; the former `spatial` extra (Kartograf) was removed in v1.0.0.
+Hydrolog does not depend on Kartograf or Obserwator; the former `spatial` extra (Kartograf) was removed in v1.0.0.
 
 ### 3.3 API Design
 
@@ -612,14 +612,14 @@ print(f"Time to peak: {result.time_to_peak_min} min")
 |------------|-----|----------|
 | NumPy | Numerical computation | Yes |
 | SciPy | Gamma function (Nash IUH), statistical distributions (`statistics`) | Yes (since v0.7.0) |
-| IMGWTools | IMGW data (measurement series) | No (Hydrolog reads its CSV export) |
+| Obserwator | IMGW data (measurement series) | No (Hydrolog reads its CSV export) |
 | rasterio, pyproj | GeoTIFF rasters for HSG | No (extra `[raster]`) |
 | mcp | MCP server | No (extra `[mcp]`) |
 | starlette, uvicorn | Web GUI server | No (extra `[gui]`) |
 
 **Hydrolog does NOT contain data download functions:**
-- PMAXTP rainfall data → downloaded by the parent application (e.g. Hydrograf via IMGWTools)
-- Measurement series → IMGWTools (`series export` to CSV)
+- PMAXTP rainfall data → downloaded by the parent application (e.g. Hydrograf via Obserwator)
+- Measurement series → Obserwator (`series export` to CSV)
 - Rasters (DEM, land cover, soil) → Kartograf; Hydrolog does not depend on Kartograf
 
 ---
