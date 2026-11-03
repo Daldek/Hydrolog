@@ -4,7 +4,7 @@ A subcatchment that makes its own runoff takes its rainfall from a *rainfall sou
 an object that gives a hyetograph at the time step of the network. The rainfall is
 a property of each subcatchment, never of the network: two subcatchments of one network
 can take it from different sources (a design storm over one, the record of a gauge over
-another, later an areal rainfall from IMGWTools, radar or PMAXTP). A default for the
+another, later an areal rainfall from Obserwator, radar or PMAXTP). A default for the
 whole network is only a convenience (``RoutingNetwork(..., rainfall=...)``); nothing
 assumes that it exists.
 

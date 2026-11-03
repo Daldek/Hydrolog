@@ -296,7 +296,7 @@ class TestStoreOfAnotherTool:
     def test_a_directory_in_a_store_refuses_every_file_with_the_store_in_the_error(
         self, tmp_path
     ):
-        (tmp_path / "imgw-store.json").write_text("{}")
+        (tmp_path / "obserwator-store.json").write_text("{}")
         (tmp_path / "A.csv").write_text("old")
 
         plan = plan_directory(

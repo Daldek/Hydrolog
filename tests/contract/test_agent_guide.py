@@ -537,15 +537,18 @@ def test_external_steps_are_lines_of_the_other_tools_with_the_documented_options
     external = [s for f in _FLOWS for s in f.steps if s.external is not None]
 
     tools = [shlex.split(step.external)[:3] for step in external]
-    assert tools == [["imgw", "series", "export"], ["kartograf", "soil", "download"]]
-    imgw = shlex.split(external[0].external)
-    assert imgw[imgw.index("--format") + 1] == "csv"
-    assert imgw[imgw.index("--output") + 1] == "/data/hydrolog/q_daily.csv"
+    assert tools == [
+        ["obserwator", "series", "export"],
+        ["kartograf", "soil", "download"],
+    ]
+    obserwator = shlex.split(external[0].external)
+    assert obserwator[obserwator.index("--format") + 1] == "csv"
+    assert obserwator[obserwator.index("--output") + 1] == "/data/hydrolog/q_daily.csv"
     kartograf = shlex.split(external[1].external)
     assert "--output-dir" in kartograf and "--json" in kartograf
 
 
-def test_the_series_of_the_imgwtools_flow_is_what_the_next_step_reads():
+def test_the_series_of_the_obserwator_flow_is_what_the_next_step_reads():
     """The exported file is the ``input_file`` of the Hydrolog step that follows."""
     flow = _FLOWS[1]
     exported = shlex.split(flow.steps[0].external)
@@ -558,7 +561,7 @@ def test_a_step_is_a_command_or_a_line_of_another_tool():
     with pytest.raises(ValueError, match="exactly one"):
         _Step("a")
     with pytest.raises(ValueError, match="exactly one"):
-        _Step("a", command="tc kirpich", external="imgw x")
+        _Step("a", command="tc kirpich", external="obserwator x")
 
 
 def test_a_stale_flow_stops_the_generator(monkeypatch):

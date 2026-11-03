@@ -605,7 +605,7 @@ class TestExistingTables:
         ("marker", "inside"),
         [
             ("kartograf-store.json", ""),
-            ("imgw-store.json", ""),
+            ("obserwator-store.json", ""),
             ("kartograf-store.json", "plain/tables"),
         ],
     )
@@ -877,7 +877,7 @@ class TestOnTheCommandLine:
         assert json.loads(lines[-1])["details"]["reason"] == "output_exists"
 
     def test_a_store_is_refused_in_both_languages(self, capsys, tmp_path):
-        (tmp_path / "imgw-store.json").write_text("{}", encoding="utf-8")
+        (tmp_path / "obserwator-store.json").write_text("{}", encoding="utf-8")
         out = tmp_path / "tables"
 
         code = main([*self.BASE, "-o", str(out), "--nodes", "OUT", "--lang", "en"])

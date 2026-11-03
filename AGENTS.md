@@ -9,7 +9,7 @@ Hydrolog is a Python library, the `hydrolog` CLI and an MCP server for watershed
 Use it to compute these quantities from numbers or from local CSV/JSON/GeoTIFF files. It runs locally: no network, no keys, no downloads. Not for:
 
 - spatial data (DEM, land cover, SoilGrids rasters): use Kartograf (`kartograf soil download`);
-- IMGW/CHMU measurement series: use IMGWTools (`imgw series export`);
+- IMGW/CHMU measurement series: use Obserwator (`obserwator series export`);
 - hydraulics (water levels, inundation, backwater): use Hydraulik or HEC-RAS; reservoir operation, water quality, groundwater (`docs/SCOPE.md`).
 
 ## Install
@@ -36,7 +36,7 @@ Rules:
 5. **Errors by code:** decide by `code`, `details.option` and `details.reason` (or the exit code), fix the argument as `hint` says and call again; never present an error as a result.
 6. **Absolute paths in allowed directories:** MCP refuses (`forbidden`) files outside `--allow-dir`, and every path option without it.
 7. **Read `notices`:** non-fatal warnings (a short series, a value outside a formula's range); pass them on with the result.
-8. **No data downloads:** Hydrolog uses no network; series come from IMGWTools, soil rasters from Kartograf.
+8. **No data downloads:** Hydrolog uses no network; series come from Obserwator, soil rasters from Kartograf.
 
 ## Result envelope
 
@@ -128,7 +128,7 @@ One line per command: name, `operation_id`, summary. Options, units, bounds and 
 
 ## Typical flows
 
-CLI lines; in MCP call the tool `operation_id` with the same options as arguments. Paths under `/data/` are examples: give your own (absolute, inside an allowed directory). `imgw` and `kartograf` lines are other tools.
+CLI lines; in MCP call the tool `operation_id` with the same options as arguments. Paths under `/data/` are examples: give your own (absolute, inside an allowed directory). `obserwator` and `kartograf` lines are other tools.
 
 ### 1. Design hydrograph of a watershed described by a JSON file
 The watershed file has the `WatershedParameters` format: `area_km2`, `perimeter_km`, `length_km`, `elevation_min_m` and `elevation_max_m` are required; `cn`, `channel_length_km`, `channel_slope_m_per_m` are optional.
@@ -136,9 +136,9 @@ The watershed file has the `WatershedParameters` format: `area_km2`, `perimeter_
 2. `hydrolog tc watershed --watershed-file /data/hydrolog/watershed.json --method kirpich` - time of concentration (`result.tc_min`); a field the method needs but the file lacks is a `validation_error` that lists it.
 3. `hydrolog hydrograph generate --watershed-file /data/hydrolog/watershed.json --tc-method kirpich --hietogram-type beta --total-mm 50 --duration-min 60` - direct runoff (Beta hyetograph, SCS-CN with `cn` from the file, SCS unit hydrograph): `peak_discharge_m3s`, `time_to_peak_min`, `total_volume_m3`.
 4. `hydrolog report generate --output /data/hydrolog/report.md --watershed-file /data/hydrolog/watershed.json --tc-method kirpich --hietogram-type beta --total-mm 50 --duration-min 60 --check` - plan of the Markdown report (action `write`, `replace` or `conflict`, nothing written); run it without `check` to write it (`result.files`).
-### 2. Flood frequency from an IMGWTools CSV export
-IMGWTools exports the daily discharge series to a CSV file (`Q [m3/s]`, `date`) that Hydrolog loads without preprocessing.
-1. `imgw series export --dataset pl.imgw.hydro_daily --station CODE --variables Q --format csv --output /data/hydrolog/q_daily.csv` - IMGWTools: export one station (`CODE` from `imgw stations find`); reliable quantiles need at least 30 years.
+### 2. Flood frequency from an Obserwator CSV export
+Obserwator exports the daily discharge series to a CSV file (`Q [m3/s]`, `date`) that Hydrolog loads without preprocessing.
+1. `obserwator series export --dataset pl.imgw.hydro_daily --station CODE --variables Q --format csv --output /data/hydrolog/q_daily.csv` - Obserwator: export one station (`CODE` from `obserwator stations find`); reliable quantiles need at least 30 years.
 2. `hydrolog stats flood-frequency --input-file /data/hydrolog/q_daily.csv --value-column Q --date-column date --distribution all --return-periods 10,50,100` - annual maxima of hydrological years (Nov-Oct); `Q` finds the column `Q [m3/s]`; result: `best_distribution`, `distributions[].quantiles`; under 30 years adds a notice.
 ### 3. Hydrologic soil groups (HSG) from SoilGrids rasters and the weighted CN
 Kartograf downloads clay, sand and silt (g/kg); Hydrolog computes the HSG (extra `raster`).

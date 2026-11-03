@@ -28,7 +28,7 @@ Files
 -----
 CSV (comma or semicolon, detected from the header; UTF-8 with or without BOM; a header
 row; quoted fields; CRLF or LF; rows without any content are skipped) and JSON. The CSV
-written by IMGWTools ``export_series``
+written by Obserwator ``export_series``
 (``date,year,Q [m3/s],Q_flag,...,attribution_source,attribution_processed``) loads
 without preprocessing. JSON may be a list of records, an object of equal-length
 columns, or a plain list of numbers (one column called ``values``); a missing JSON

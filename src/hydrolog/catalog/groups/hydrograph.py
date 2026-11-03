@@ -388,13 +388,13 @@ COMMANDS: tuple[Command, ...] = (
         description_pl=(
             "Projektowy hydrogram z hietogramu lub szeregu opadu, SCS-CN i hydrogramu "
             "jednostkowego (`uh_model`). Zlewnia: `watershed` lub `area_km2` + `cn`. "
-            "Nie do szeregów obserwowanych (IMGWTools) ani samych strat (`scs "
+            "Nie do szeregów obserwowanych (Obserwator) ani samych strat (`scs "
             "effective`). Zwraca szczyt, objętość, bilans, szeregi."
         ),
         description=(
             "Design hydrograph from a hyetograph or rainfall series, SCS-CN and a unit"
             " hydrograph (`uh_model`). Catchment: a watershed or `area_km2` + `cn`. "
-            "Not for observed series (IMGWTools) or losses only (`scs effective`). "
+            "Not for observed series (Obserwator) or losses only (`scs effective`). "
             "Returns peak, volume, balance, series."
         ),
         function="hydrolog.operations.hydrograph_generate",

@@ -128,7 +128,7 @@ _PRINCIPLES: Final[tuple[str, ...]] = (
     "outside `--allow-dir`, and every path option without it.",
     "**Read `notices`:** non-fatal warnings (a short series, a value outside a "
     "formula's range); pass them on with the result.",
-    "**No data downloads:** Hydrolog uses no network; series come from IMGWTools, "
+    "**No data downloads:** Hydrolog uses no network; series come from Obserwator, "
     "soil rasters from Kartograf.",
 )
 # What each code of the error registry means for an agent.
@@ -224,15 +224,15 @@ _FLOWS: Final[tuple[_Flow, ...]] = (
         ),
     ),
     _Flow(
-        "Flood frequency from an IMGWTools CSV export",
-        "IMGWTools exports the daily discharge series to a CSV file (`Q [m3/s]`, "
+        "Flood frequency from an Obserwator CSV export",
+        "Obserwator exports the daily discharge series to a CSV file (`Q [m3/s]`, "
         "`date`) that Hydrolog loads without preprocessing.",
         (
             _Step(
-                "IMGWTools: export one station (`CODE` from `imgw stations find`); "
-                "reliable quantiles need at least 30 years.",
+                "Obserwator: export one station (`CODE` from `obserwator stations "
+                "find`); reliable quantiles need at least 30 years.",
                 external=(
-                    "imgw series export --dataset pl.imgw.hydro_daily "
+                    "obserwator series export --dataset pl.imgw.hydro_daily "
                     f"--station CODE --variables Q --format csv --output {_SERIES}"
                 ),
             ),
@@ -312,7 +312,7 @@ _BLOCK_COMMANDS: Final[tuple[tuple[str, Mapping[str, object]], ...]] = (
     ("report generate", {**_HYDROGRAPH, "output": _REPORT, "check": True}),
     ("soil hsg-stats", {"hsg_path": _HSG}),
 )
-_EXTERNAL_TOOLS: Final = ("imgw", "kartograf")
+_EXTERNAL_TOOLS: Final = ("obserwator", "kartograf")
 
 # --- helpers
 # ---------------------------------------------------------------------------

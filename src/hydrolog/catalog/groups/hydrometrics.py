@@ -282,10 +282,10 @@ COMMANDS: tuple[Command, ...] = (
                 INPUT_FILE,
                 description_pl=(
                     "Plik CSV albo JSON ze stanami wody, np. eksport szeregu z "
-                    "IMGWTools; kolumnę wskazuje `value_column`."
+                    "Obserwatora; kolumnę wskazuje `value_column`."
                 ),
                 description=(
-                    "CSV or JSON file with water levels, e.g. an IMGWTools series "
+                    "CSV or JSON file with water levels, e.g. an Obserwator series "
                     "export; the column is named by `value_column`."
                 ),
             ),
@@ -318,7 +318,7 @@ COMMANDS: tuple[Command, ...] = (
         one_of=(("values",), ("input_file", "value_column")),
         examples=(
             {
-                "input_file": f"{_FIXTURES}/imgwtools_series_export.csv",
+                "input_file": f"{_FIXTURES}/obserwator_series_export.csv",
                 "value_column": "H",
                 "bin_width": 10,
             },

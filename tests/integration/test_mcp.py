@@ -347,7 +347,7 @@ class TestInstructions:
         assert "hydrolog_commands_schema" in instructions
         assert "check" in instructions
         assert "Kartograf" in instructions
-        assert "IMGWTools" in instructions
+        assert "Obserwator" in instructions
         assert "No allowed directory" in instructions
         assert "Read-only" in instructions
 

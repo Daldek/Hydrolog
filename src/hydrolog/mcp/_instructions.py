@@ -35,7 +35,7 @@ _FLOW: Final = (
 )
 _PROVENANCE: Final = (
     "Input data come from files you are given, usually produced by Kartograf "
-    "(terrain, land cover, soil rasters) or IMGWTools (IMGW series and stations). "
+    "(terrain, land cover, soil rasters) or Obserwator (IMGW series and stations). "
     "Their licences and provenance stay with those sources: name them when you "
     "report a result."
 )

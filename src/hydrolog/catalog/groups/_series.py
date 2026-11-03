@@ -47,11 +47,12 @@ INPUT_FILE = Option(
     path_role="input",
     description_pl=(
         "Plik CSV (przecinek lub średnik, wiersz nagłówka) albo JSON z szeregiem, np. "
-        "eksport szeregu z IMGWTools. Kolumny wskazują `value_column` i `date_column`."
+        "eksport szeregu z Obserwatora. Kolumny wskazują `value_column` i "
+        "`date_column`."
     ),
     description=(
         "CSV file (comma or semicolon, header row) or JSON file with the series, e.g. "
-        "an IMGWTools series export. The columns are named by `value_column` and "
+        "an Obserwator series export. The columns are named by `value_column` and "
         "`date_column`."
     ),
 )
