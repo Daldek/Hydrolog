@@ -9,6 +9,7 @@ end through :func:`hydrolog.catalog.run_command`.
 import inspect
 import json
 import warnings
+from typing import Any
 
 import numpy as np
 import pytest
@@ -95,7 +96,7 @@ REQUIRED_FIELDS = {
     ),
 }
 
-STATIONS = [
+STATIONS: list[dict[str, Any]] = [
     {"name": "Balice", "x": 555500.0, "y": 244300.0, "precipitation_mm": 31.2},
     {"name": "Krzeszowice", "x": 545900.0, "y": 249700.0, "precipitation_mm": 36.8},
     {"name": "Skawina", "x": 562900.0, "y": 229400.0, "precipitation_mm": 28.4},
@@ -193,8 +194,8 @@ class TestTimeOfConcentration:
             _, notices = unwrap(ops.tc_kirpich(length_km=120.0, slope_m_per_m=0.0001))
         assert leaked == []
         assert [n.level for n in notices] == ["warning", "warning"]
-        assert "length_km=120.0" in notices[0].text
-        assert "slope_m_per_m=0.0001" in notices[1].text
+        assert "length_km=120.0" in notices[0].message
+        assert "slope_m_per_m=0.0001" in notices[1].message
 
     @pytest.mark.parametrize("method", TC_METHODS)
     def test_watershed_matches_calculate_tc(self, method):
@@ -498,16 +499,19 @@ class TestWeightedCurveNumber:
         """Objects, parallel areas and parallel fractions give the same CN."""
         cns, areas = [55.0, 69.0, 98.0], [27.2, 13.6, 4.5]
         total = sum(areas)
-        expected = calculate_weighted_cn(list(zip(cns, areas)))
+        expected = calculate_weighted_cn(list(zip(cns, areas, strict=False)))
         by_parts = ops.cn_weighted(
-            parts=[{"cn": c, "area": a} for c, a in zip(cns, areas)]
+            parts=[{"cn": c, "area": a} for c, a in zip(cns, areas, strict=False)]
         )
         by_areas = ops.cn_weighted(cn_values=cns, areas=areas)
         by_fractions = ops.cn_weighted(
             cn_values=cns, fractions=[a / total for a in areas]
         )
         by_shares = ops.cn_weighted(
-            parts=[{"cn": c, "fraction": a / total} for c, a in zip(cns, areas)]
+            parts=[
+                {"cn": c, "fraction": a / total}
+                for c, a in zip(cns, areas, strict=False)
+            ]
         )
         for result in (by_parts, by_areas, by_fractions, by_shares):
             assert result.cn == pytest.approx(expected, rel=1e-12)
@@ -904,7 +908,7 @@ class TestHietogram:
         assert [(n.level, n.code) for n in notices] == [
             ("warning", "duration_not_covered")
         ]
-        assert "covers 90 min" in notices[0].text
+        assert "covers 90 min" in notices[0].message
 
     def test_values_outside_the_library_ranges_are_validation_errors(self):
         """Step longer than the duration and a peak outside (0, 1)."""
@@ -990,7 +994,7 @@ class TestArealPrecipitation:
         )
         assert sorted(result.station_weights) == ["Balice", "Skawina"]
         assert [n.code for n in notices] == ["stations_without_polygon"]
-        assert "Krzeszowice" in notices[0].text
+        assert "Krzeszowice" in notices[0].message
 
     def test_idw_at_a_point_matches_the_library(self):
         """Point interpolation with the default and a given exponent."""
@@ -1460,6 +1464,19 @@ class TestUnitHydrographs:
                 ops.uh_clark(area_km2=45.3, tc_min=120.0, **given)
             assert caught.value.details["reason"] == "one_of"
 
+    def test_clark_refuses_a_step_above_twice_the_storage_constant(self):
+        """A step longer than 2 R is a validation error naming ``timestep_min``."""
+        with pytest.raises(InvalidParameterError) as caught:
+            ops.uh_clark(area_km2=45.3, tc_min=120.0, r_min=2.0, timestep_min=5.0)
+        assert caught.value.details["option"] == "timestep_min"
+        assert caught.value.details["reason"] == "unstable_timestep"
+        assert caught.value.details["maximum"] == 4.0
+
+        envelope = ops.uh_clark(
+            area_km2=45.3, tc_min=120.0, r_min=2.0, timestep_min=4.0
+        )
+        assert min(envelope.ordinates_m3s_per_mm) >= 0.0
+
     def test_snyder_matches_the_class(self):
         """The Snyder unit hydrograph with its own lag, no external tc."""
         result = ops.uh_snyder(area_km2=100.0, length_km=15.0, centroid_length_km=8.0)
@@ -1905,9 +1922,9 @@ class TestHydrographGenerate:
         """Snyder (1938): the unit hydrograph of D = the 5-minute step, not of tD.
 
         Review case (45 km2, L = 12 km, Lc = 6 km, CN 72, beta 50 mm / 120 min): the
-        unit hydrograph had tp = 354.2 min and qp = 1.379 m3/s/mm and the hydrograph
-        Qmax = 9.76 m3/s at 405 min (the values for the standard duration tD = 59 min).
-        For D = 5 min: tp = 313.7 min, qp = 1.542 m3/s/mm, Qmax = 10.90 m3/s at 365 min.
+        unit hydrograph of the standard duration tD = 59 min has tp = 354.2 min and
+        qp = 1.372 m3/s/mm and gives Qmax = 9.71 m3/s at 405 min. For D = 5 min:
+        tp = 313.7 min, qp = qpR = 1.432 m3/s/mm, Qmax = 10.12 m3/s at 365 min.
         """
         result, _ = unwrap(
             ops.hydrograph_generate(
@@ -1923,8 +1940,8 @@ class TestHydrographGenerate:
             )
         )
         assert result.uh_time_to_peak_min == pytest.approx(313.66, abs=0.01)
-        assert result.uh_peak_discharge_m3s_per_mm == pytest.approx(1.5424, abs=1e-4)
-        assert result.peak_discharge_m3s == pytest.approx(10.9023, abs=1e-4)
+        assert result.uh_peak_discharge_m3s_per_mm == pytest.approx(1.4317, abs=2e-4)
+        assert result.peak_discharge_m3s == pytest.approx(10.1242, abs=1e-4)
         assert result.time_to_peak_min == 365.0
 
     def test_watershed_file(self, tmp_path):
@@ -1954,7 +1971,7 @@ class TestHydrographGenerate:
             ("warning", "user_warning"),
             ("warning", "user_warning"),
         ]
-        assert "kirpich: length_km=120.0" in notices[0].text
+        assert "kirpich: length_km=120.0" in notices[0].message
 
     def test_duration_not_covered_is_reported(self):
         """The truncated hyetograph is flagged exactly like ``precip hietogram``."""
@@ -2349,7 +2366,7 @@ class TestDeclarations:
     @pytest.mark.parametrize("command", _my_commands(), ids=lambda c: c.name)
     def test_python_defaults_equal_catalog_defaults(self, command):
         """An option default is the default of the operation parameter."""
-        function = getattr(ops, command.function.split(":")[1])
+        function = getattr(ops, command.function.rpartition(".")[2])
         parameters = inspect.signature(function).parameters
         for option in command.options:
             default = parameters[option.name].default
@@ -2360,10 +2377,10 @@ class TestDeclarations:
 
     def test_declared_choices_equal_the_library(self):
         """Choices typed into the declarations match the enums they mirror."""
-        assert LAND_COVERS == tuple(cover.value for cover in LandCover)
-        assert CONDITIONS == tuple(c.value for c in HydrologicCondition)
+        assert tuple(cover.value for cover in LandCover) == LAND_COVERS
+        assert tuple(c.value for c in HydrologicCondition) == CONDITIONS
         assert HSG_GROUPS == ("A", "B", "C", "D")
-        assert AMC_CLASSES == tuple(a.name for a in AMC)
+        assert tuple(a.name for a in AMC) == AMC_CLASSES
         assert set(UH_MODELS) == set(HydrographGenerator.SUPPORTED_MODELS)
         lookup = get_command("cn lookup")
         assert lookup.option("land_cover").choices == LAND_COVERS

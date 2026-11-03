@@ -1,0 +1,58 @@
+# Plan: lumped hydrologic flood routing (phases R0 to R4)
+
+Approved: 2026-10-24
+
+The approval is the author's delegation of decisions D1, D9, D10, D13 and D14 to the coordinating session on 2026-10-24 ([ADR-0007](../decisions/0007-flood-routing-enters-the-scope.md)); the author reviews the branches before anything is merged, tagged or pushed.
+
+## Goal
+
+Add flood routing to Hydrolog as a closed set of lumped hydrologic methods, each with a library class, a catalog command in the group `route`, reference tests against published values, documentation and a result envelope that follows the existing conventions (ADR-0002, ADR-0003, ADR-0005). The research is [2026-10-24-long-term-and-routing.md](2026-10-24-long-term-and-routing.md) (section 5, appendices A and B); this plan fixes what it left open for routing. Continuous (long-term) modelling is not part of this plan.
+
+## Decisions
+
+| ID | Decision |
+|---|---|
+| D1 | Lumped hydrologic routing is in scope; hydraulics stays with Hydraulik, HEC-RAS and IMGW HD ([ADR-0007](../decisions/0007-flood-routing-enters-the-scope.md)). |
+| D7 | Hydrograph table `time_min` (elapsed, strictly regular step) and `discharge_m3s`; time in minutes, discharge in m3/s, storage in m3, length in km; no resampling ([ADR-0008](../decisions/0008-routing-conventions.md)). |
+| D9 | Automatic sub-reaches or sub-steps with a notice; an explicit value outside the stability window is a `validation_error` with `details.reason = "unstable_timestep"` ([ADR-0008](../decisions/0008-routing-conventions.md)). |
+| D10 | `AGENTS.md` stays within 16 KiB: a group declared compact prints one index line instead of one per command ([ADR-0009](../decisions/0009-compact-index-line-for-large-groups.md)); no information is dropped, `commands list` and `commands schema` still give each command. |
+| D13 | Group `route`; commands `route lag`, `route muskingum`, `route muskingum-cunge`, `route cascade`, `route level-pool`, `route network`; package `hydrolog.routing`. |
+| D14 | The research report moves to `docs/plans/` (DEV-17.4). |
+
+## Interfaces fixed by this plan
+
+- **Hydrograph input** of every single-reach command: either `times_min` with `discharge_m3s` (inline lists) or `input_file` with `time_column` (default `time_min`) and `value_column` (default `discharge_m3s`); the step is regular, discharge is not negative.
+- **Result**: `hydrolog-route-<verb>/1` with the model, the effective parameters, peaks, volumes, the storage at both ends, the balance error and the extension of the time axis; the outflow series is inline (`times_min`, `outflow_m3s`) unless `output` is given.
+- **File**: `output` writes the outflow as a hydrograph table (`time_min`, `discharge_m3s`), which is again a valid input of every `route` command and the hand-off to Hydraulik; `force` and `check` as in ADR-0003. Without `output`, `check` has nothing to plan and the command computes as usual, so a read-only MCP server can still route.
+- **Initial condition**: the outflow at the first ordinate equals the inflow (steady state) unless `initial_outflow_m3s` is given.
+- **Tail**: the outflow outlasts the inflow, so the time axis is extended after the last inflow ordinate (the last inflow value is held) until the outflow is within 0.1 % of the inflow peak of that value, unless `extend_min` fixes the extension; the extension is reported (`tail_extended`, `tail_truncated`).
+
+## Steps
+
+Each model has its own branch, started from the previous one; the gate (`scripts/gate.sh`) is green before every commit.
+
+| Branch | Content | Reference tests |
+|---|---|---|
+| `feature/routing-core` | this plan and ADR-0007 to ADR-0009; `hydrolog.routing` (`Hydrograph`, `Reach`, shared kernels); `route lag`; `ClarkIUH` on the shared kernel with the step guard (finding F1) and its docstring fixed; the compact index line of the guide (D10) | identities (a shift by whole steps is exact), balance, superposition |
+| `feature/routing-muskingum` | `route muskingum` with automatic sub-reaches inside the positivity window | University of Iowa example (K = 20 h, X = 0.25); X = 0.5 with K equal to the step is a lag; X = 0 equals the Clark scheme; mean delay K and variance K^2 (1 - 2X) / N |
+| `feature/routing-muskingum-cunge` | `route muskingum-cunge`: constant coefficients (NRCS form), channel sections, accuracy check, rise-time rule | NEH-630 chapter 17, example 17-4 |
+| `feature/routing-cascade` | `route cascade`: Kalinin-Milyukov / Nash cascade with an exact kernel | exact response to piecewise-linear inflow; equals `NashIUH` |
+| `feature/routing-level-pool` | `route level-pool`: storage-indication (modified Puls) | NEH-630 chapter 17, example 17-1 |
+| `feature/routing-network` | `route network` over a `StreamNetwork`-style DAG; hydrograph CSV hand-off | one-reach network equals the single command; order independence; junction sums |
+
+## Results
+
+Filled in at the end of each branch (maximum difference from the published values).
+
+| Branch | Reference | Maximum difference |
+|---|---|---|
+| `feature/routing-core` | (identities only) | exact |
+| `feature/routing-muskingum` | University of Iowa, Lesson 27: `K` = 20 h, `X` = 0.25, `dt` = 12 h, one reach, outflow printed to 0.1 cfs | 0.049 cfs, inside the 0.05 cfs of the printing; the identities (`X = 0.5` is a lag, `X = 0` the Clark scheme, mean delay `K`, variance `K²(1 - 2X)/N`) hold to 1e-9 |
+| `feature/routing-muskingum-cunge` | NEH-630 chapter 17, example 17-4: `c` = 4.297 ft/s and `T` = 44.6 ft as printed, 37 ordinates at 0.1 h, outflow of Table 17-18 printed to 0.01 ft³/s | 0.24 ft³/s (0.04 % of the peak; 645.78 against 645.72 ft³/s at 13.1 h); the printed three-decimal coefficients (0.028, 0.355, 0.617) give the table to 0.0049 ft³/s, so the 0.24 is their rounding; from the section (15 ft, 2:1, `n` = 0.04) 2.4 ft³/s (0.4 %), the effect of Manning's celerity 2 % below `m Q / A`; `K` = 605.07 s, `X` = -0.2544 (printed -0.254), `Dg` = 1.509 (printed 1.508) |
+| `feature/routing-cascade` | no published table: the exact solution of the chain of reservoirs (matrix exponential, whole `n`), the convolution integral of the `NashIUH` density with the interpolated inflow (any `n`), the integral of `NashIUH.ordinate` against a hat, 60-digit arithmetic | outflow and storage 1e-10 of the matrix exponential (measured about 5e-13, also with an initial outflow that differs from the first inflow); 1e-8 of the convolution integral; the weights 1e-11 of the integral against a hat and 1e-13 (`dt` = `K`) to 1e-9 (`dt` = `K/100`) of 60-digit arithmetic, relative to the largest weight; a narrow pulse reproduces the IUH with an error that falls as `dt²` |
+| `feature/routing-level-pool` | NEH-630 chapter 17, example 17-1: the channel reach of Table 17-4, 19 ordinates at 0.5 h, outflow of Table 17-7 printed to 1 ft³/s; through `route level-pool` from the SI fixtures | 0.85 ft³/s (0.02 % of the peak; 3,826 against 3,827 ft³/s at 3 h), inside the 1 ft³/s of the plan; the excess over the half unit of the print is the print itself, which rounds each average inflow up from .5 (4,687.5 as 4,688): with the ordinates that give the printed averages all 19 values agree to 0.49 ft³/s; the storage at the peak agrees with the printed working state 9,056 ft³/s to 2 ft³/s·dt; the step limit is 78.12 min, so the published 30 min is not divided; independent of the code: Muskingum with `X` = 0 over 1, 3 and 6 sub-reaches (1e-12), a tank that drains through a weir and a tank that a flood fills (ODE solver), both second order in `dt`, and random tables that keep the outflow between the lowest and the highest flow of the run |
+| `feature/routing-network` | no published reference; the identities of the plan: a one-reach network writes the table of the single command byte for byte (all five methods through a document), the order of the nodes in the document changes nothing, a junction adds, the sum of the routed parts is the routed sum for a linear reach, and `N` reaches in series equal the `N` sub-reaches of one `MuskingumReach` | exact: the tables are equal byte for byte; the series equivalence agrees to 1e-12 with `extend_min` fixed and to the settling tolerance of the reaches without it (0.099 m³/s of a 90 m³/s peak over three reaches, each cutting its tail at 0.1 % of its inflow peak) |
+
+## Not in this plan
+
+Variable-parameter Muskingum-Cunge and compound sections (R2b), `route reach-params` and `route outlet-rating` (R4 beyond the level-pool command), kinematic and dynamic waves, Hydrograf and Hydraulik `request` issues (DEV-17.5), and the whole of the continuous-modelling direction.

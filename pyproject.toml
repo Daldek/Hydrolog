@@ -1,37 +1,47 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=77.0.3"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "hydrolog"
-version = "1.0.0.dev0"
-description = "Python library for hydrological calculations"
+dynamic = ["version"]
+description = "Watershed hydrology: SCS-CN, design hyetographs, time of concentration, unit hydrographs, morphometry, flow statistics, soil groups. Python library, CLI and MCP server; runs offline."
 readme = "README.md"
-license = {text = "MIT"}
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.12"
 authors = [
-    {name = "Daldek"}
+    {name = "Piotr de Bever", email = "git@debever.pl"}
 ]
 keywords = [
     "hydrology",
-    "SCS-CN",
+    "scs-cn",
+    "curve-number",
     "hydrograph",
+    "unit-hydrograph",
+    "hyetograph",
+    "time-of-concentration",
     "runoff",
     "precipitation",
-    "watershed"
+    "watershed",
+    "flow-statistics",
+    "mcp",
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
+    "Environment :: Console",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Hydrology",
+    "Typing :: Typed",
 ]
 dependencies = [
     "numpy>=1.24",
     "scipy>=1.10",
+    "platformdirs>=4.0",
 ]
 
 [project.optional-dependencies]
@@ -39,10 +49,13 @@ raster = [
     "rasterio>=1.3",
     "pyproj>=3.6",
 ]
+# Capped below 3 (DEV-6.4): the server is written against the low-level Server API of
+# MCP SDK v2, which implements MCP specification 2026-07-28; a major release may break
+# it. The "all" extra repeats the requirement.
 mcp = [
     "mcp>=2.3,<3",
 ]
-visualization = [
+viz = [
     "matplotlib>=3.7",
     "seaborn>=0.12",
 ]
@@ -53,54 +66,90 @@ all = [
     "matplotlib>=3.7",
     "seaborn>=0.12",
 ]
-dev = [
-    "pytest>=7.0",
-    "pytest-cov>=4.0",
-    "black>=23.0",
-    "mypy>=1.0",
-    "flake8>=6.0",
-    "jsonschema>=4.18",
-    "rasterio>=1.3",
-    "pyproj>=3.6",
-    "mcp>=2.3,<3",
-]
 
 [project.scripts]
 hydrolog = "hydrolog.cli.main:main"
+hydrolog-mcp = "hydrolog.mcp.server:main"
 
 [project.urls]
 Homepage = "https://github.com/Daldek/Hydrolog"
-Repository = "https://github.com/Daldek/Hydrolog.git"
+Source = "https://github.com/Daldek/Hydrolog.git"
+Documentation = "https://github.com/Daldek/Hydrolog/blob/main/docs/USAGE.md"
+Changelog = "https://github.com/Daldek/Hydrolog/blob/main/docs/CHANGELOG.md"
 Issues = "https://github.com/Daldek/Hydrolog/issues"
 
 [tool.setuptools.packages.find]
-where = ["."]
+where = ["src"]
 include = ["hydrolog*"]
 
 [tool.setuptools.package-data]
-hydrolog = ["_data/agents/*.md"]
+hydrolog = ["py.typed", "_data/agents/*.md", "schemas/*.json"]
 
-[tool.black]
+[tool.setuptools.dynamic]
+version = {attr = "hydrolog.__version__"}
+
+[dependency-groups]
+dev = [
+    "ruff>=0.8",
+    "mypy>=1.13",
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "jsonschema>=4.18",
+]
+
+[tool.ruff]
+target-version = "py312"
 line-length = 88
-target-version = ["py312"]
-include = '\.pyi?$'
+# Local Claude Code settings and temporary agent worktrees (also in .gitignore);
+# notebooks and Markdown code blocks are documentation examples.
+extend-exclude = [".claude", "*.ipynb", "*.md"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "C4", "D"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D"]
+
+[tool.ruff.format]
+quote-style = "double"
 
 [tool.mypy]
 python_version = "3.12"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = true
+strict = true
+files = ["src", "tests"]
+exclude = ['^\.claude/']
 
 [[tool.mypy.overrides]]
-# SciPy and seaborn ship neither a py.typed marker nor bundled stubs.
-module = ["scipy", "scipy.*", "seaborn", "seaborn.*"]
+# SciPy, seaborn and jsonschema ship neither a py.typed marker nor bundled stubs.
+module = ["scipy", "scipy.*", "seaborn", "seaborn.*", "jsonschema", "jsonschema.*"]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# Shortfall of the tests (DEV-7.3; a deviation listed in CLAUDE.md)
+module = ["tests", "tests.*"]
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+disallow_untyped_calls = false
+disallow_untyped_decorators = false
+disallow_any_generics = false
+warn_return_any = false
+check_untyped_defs = false
+warn_unused_ignores = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
-addopts = "-v"
+# The default run and the gate exclude `live` (DEV-10.1); `-m live` replaces it.
+addopts = "--strict-markers -m 'not live' --tb=short"
+markers = [
+    "live: real network services (none in this project); run on demand",
+    "slow: more than ~10 s or Docker",
+    "db: needs a database (none in this project)",
+]
 
 [tool.coverage.run]
 source = ["hydrolog"]

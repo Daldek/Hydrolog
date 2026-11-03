@@ -9,14 +9,16 @@ renamed the shared file (the reviewers saw 16 failures in 40 pairs of calls for 
 report and 10 in 30 for the raster).
 """
 
+import os
 import sys
 import threading
+import time
 from pathlib import Path
 
 import numpy as np
 import pytest
 
-from hydrolog._atomic import atomic_output
+from hydrolog._atomic import STAGING_NAME, atomic_output, staging_directory
 from hydrolog.catalog import run_command
 from hydrolog.exceptions import HydrologError
 
@@ -66,10 +68,12 @@ class TestAtomicOutput:
         target = tmp_path / "report.md"
         target.write_text("old", encoding="utf-8")
 
-        with pytest.raises(RuntimeError, match="boom"):
-            with atomic_output(target) as temporary:
-                temporary.write_text("partial", encoding="utf-8")
-                raise RuntimeError("boom")
+        with (
+            pytest.raises(RuntimeError, match="boom"),
+            atomic_output(target) as temporary,
+        ):
+            temporary.write_text("partial", encoding="utf-8")
+            raise RuntimeError("boom")
 
         assert target.read_text(encoding="utf-8") == "old"
         assert [path.name for path in tmp_path.iterdir()] == ["report.md"]
@@ -86,9 +90,8 @@ class TestAtomicOutput:
         blocker = tmp_path / "blocker"
         blocker.write_text("a file where a directory is needed", encoding="utf-8")
 
-        with pytest.raises(OSError):
-            with atomic_output(blocker / "report.md"):
-                pytest.fail("the block must not run")
+        with pytest.raises(OSError), atomic_output(blocker / "report.md"):
+            pytest.fail("the block must not run")
 
     def test_calls_in_several_threads_get_their_own_temporary_files(self, tmp_path):
         """All the temporary files exist at the same moment: their names differ.
@@ -155,12 +158,13 @@ def _race(command, options_of, tmp_path, *, workers=4, rounds=12):
 
 @concurrent
 class TestConcurrentWriters:
-    """Four threads write the same file at once, as MCP calls do."""
+    """Four threads replace the same file at once (``force``), as MCP calls do."""
 
     def test_report_generate(self, tmp_path):
         def options(target):
             return {
                 "output": str(target.with_suffix(".md")),
+                "force": True,
                 "area_km2": 45.0,
                 "cn": 72,
                 "tc_min": 90.0,
@@ -180,7 +184,7 @@ class TestConcurrentWriters:
     def test_commands_guide(self, tmp_path):
         errors, outputs = _race(
             "commands guide",
-            lambda target: {"format": "llms", "lang": "pl", "path": str(target)},
+            lambda target: {"format": "llms", "output": str(target), "force": True},
             tmp_path,
         )
 
@@ -198,7 +202,8 @@ class TestConcurrentWriters:
                 "clay_path": str(FIXTURES / "hsg_clay.tif"),
                 "sand_path": str(FIXTURES / "hsg_sand.tif"),
                 "silt_path": str(FIXTURES / "hsg_silt.tif"),
-                "output_path": str(target.with_suffix(".tif")),
+                "output": str(target.with_suffix(".tif")),
+                "force": True,
             }
 
         errors, outputs = _race("soil hsg", options, tmp_path)
@@ -211,3 +216,75 @@ class TestConcurrentWriters:
             with rasterio.open(raster) as written:
                 np.testing.assert_array_equal(written.read(1), expected)
             assert [path.name for path in raster.parent.iterdir()] == [raster.name]
+
+
+class TestStagingDirectory:
+    """A write of several files stages them first and leaves nothing of its own."""
+
+    def test_the_staging_is_a_new_directory_of_the_run_inside_the_output_directory(
+        self, tmp_path
+    ):
+        with staging_directory(tmp_path / "out") as staging:
+            assert staging.parent == tmp_path / "out" / STAGING_NAME
+            assert staging.is_dir()
+            assert list(staging.iterdir()) == []
+            host, pid, token = staging.name.rsplit("_", 2)
+            assert (pid, len(token)) == (str(os.getpid()), 8)
+            assert host
+
+    def test_it_is_removed_with_its_parent_when_the_block_ends(self, tmp_path):
+        with staging_directory(tmp_path / "out") as staging:
+            (staging / "a.csv").write_text("x", encoding="utf-8")
+
+        assert list((tmp_path / "out").iterdir()) == []  # the directory stays, empty
+
+    def test_it_is_removed_after_an_error_and_after_an_interrupt(self, tmp_path):
+        for error in (RuntimeError("boom"), KeyboardInterrupt()):
+            with (
+                pytest.raises(type(error)),
+                staging_directory(tmp_path) as staging,
+            ):
+                (staging / "a.csv").write_text("x", encoding="utf-8")
+                raise error
+
+            assert list(tmp_path.iterdir()) == []
+
+    def test_a_file_moved_into_place_stays_when_the_block_ends(self, tmp_path):
+        with staging_directory(tmp_path) as staging:
+            (staging / "a.csv").write_text("x", encoding="utf-8")
+            os.replace(staging / "a.csv", tmp_path / "a.csv")
+
+        assert [path.name for path in tmp_path.iterdir()] == ["a.csv"]
+
+    def test_two_runs_in_one_directory_do_not_meet(self, tmp_path):
+        with staging_directory(tmp_path) as first:
+            with staging_directory(tmp_path) as second:
+                assert first != second
+            assert first.is_dir()  # the other run's end does not remove its staging
+
+        assert list(tmp_path.iterdir()) == []
+
+    def test_the_leftover_of_a_killed_run_goes_after_a_day_and_a_fresh_one_stays(
+        self, tmp_path
+    ):
+        parent = tmp_path / STAGING_NAME
+        old, fresh = parent / "host_1_old", parent / "host_2_fresh"
+        for leftover in (old, fresh):
+            leftover.mkdir(parents=True)
+            (leftover / "a.csv").write_text("x", encoding="utf-8")
+        two_days_ago = time.time() - 2 * 24 * 3600.0
+        os.utime(old, (two_days_ago, two_days_ago))
+
+        with staging_directory(tmp_path):
+            assert not old.exists()
+            assert fresh.is_dir()
+
+        assert fresh.is_dir()  # still there: the parent is not empty
+
+    def test_nothing_but_the_staging_is_created_or_deleted(self, tmp_path):
+        (tmp_path / "keep.csv").write_text("x", encoding="utf-8")
+
+        with staging_directory(tmp_path):
+            pass
+
+        assert [path.name for path in tmp_path.iterdir()] == ["keep.csv"]

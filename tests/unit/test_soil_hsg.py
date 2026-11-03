@@ -106,7 +106,9 @@ class TestClassifyHsg:
             for clay in range(0, 101)
             for sand in range(0, 101 - clay)
         ]
-        clay, sand, silt = (np.array(axis, dtype=np.float64) for axis in zip(*points))
+        clay, sand, silt = (
+            np.array(axis, dtype=np.float64) for axis in zip(*points, strict=False)
+        )
 
         result = classify_hsg(clay, sand, silt)
 
@@ -436,7 +438,7 @@ class TestRasterExtraIsOptional:
             "assert classify_hsg([200], [400], [400]).tolist() == [2]\n"
             "assert 'rasterio' not in sys.modules and 'pyproj' not in sys.modules\n"
         )
-        env = {**os.environ, "PYTHONPATH": str(REPO_ROOT)}
+        env = {**os.environ, "PYTHONPATH": str(REPO_ROOT / "src")}
 
         result = subprocess.run(
             [sys.executable, "-c", code], env=env, capture_output=True, text=True
@@ -448,7 +450,8 @@ class TestRasterExtraIsOptional:
     def test_raster_functions_raise_missing_dependency_error(
         self, monkeypatch, tmp_path, missing
     ):
-        """Test MissingDependencyError with the install hint when the extra is absent."""
+        """Test MissingDependencyError with the install hint when the extra is
+        absent."""
         monkeypatch.setitem(sys.modules, missing, None)  # makes the import fail
 
         with pytest.raises(MissingDependencyError) as from_rasters:

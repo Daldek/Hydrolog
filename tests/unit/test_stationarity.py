@@ -65,16 +65,16 @@ class TestMannKendall:
 
     def test_empty_series_raises(self):
         """Empty series should raise InvalidParameterError."""
-        from hydrolog.statistics.stationarity import mann_kendall_test
         from hydrolog.exceptions import InvalidParameterError
+        from hydrolog.statistics.stationarity import mann_kendall_test
 
         with pytest.raises(InvalidParameterError):
             mann_kendall_test(np.array([]))
 
     def test_too_short_series_raises(self):
         """Series with < 3 values should raise InvalidParameterError."""
-        from hydrolog.statistics.stationarity import mann_kendall_test
         from hydrolog.exceptions import InvalidParameterError
+        from hydrolog.statistics.stationarity import mann_kendall_test
 
         with pytest.raises(InvalidParameterError):
             mann_kendall_test(np.array([1.0, 2.0]))

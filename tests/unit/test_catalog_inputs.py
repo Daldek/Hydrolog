@@ -7,8 +7,11 @@ import numpy as np
 import pytest
 
 from hydrolog.catalog.inputs import (
+    Rating,
     Series,
     Table,
+    load_hydrograph,
+    load_rating,
     load_records,
     load_series,
     load_stations,
@@ -18,6 +21,7 @@ from hydrolog.catalog.inputs import (
 from hydrolog.exceptions import InputDataError, InvalidParameterError, NotFoundError
 from hydrolog.morphometry.watershed_params import WatershedParameters
 from hydrolog.precipitation.interpolation import Station
+from hydrolog.routing import Hydrograph
 
 FIXTURES = Path(__file__).parents[1] / "fixtures"
 IMGW_EXPORT = FIXTURES / "imgwtools_series_export.csv"
@@ -138,7 +142,9 @@ class TestReadTableCsv:
     def test_empty_file(self, tmp_path):
         """An empty file or one with only blank lines is ``empty``."""
         for content in ("", "\n\n  \n"):
-            error = failure(lambda: read_table(write(tmp_path, "e.csv", content)))
+            error = failure(
+                lambda content=content: read_table(write(tmp_path, "e.csv", content))
+            )
             assert error.details["reason"] == "empty"
 
     def test_not_utf8_is_an_encoding_error_with_a_hint(self, tmp_path):
@@ -223,11 +229,13 @@ class TestReadTableJson:
         assert error.details["reason"] in ("shape", "empty")
 
     def test_invalid_json_reports_the_position(self, tmp_path):
-        """Syntax errors carry line and column."""
+        """Syntax errors carry line and column (as the ``json`` module counts them)."""
         path = write(tmp_path, "a.json", '{"a": [1,\n 2,]}')
         error = failure(lambda: read_table(path))
         assert error.details["reason"] == "invalid_json"
-        assert (error.details["line"], error.details["column"]) == (2, 3)
+        assert error.details["line"] == 2
+        # Python 3.13 points at the trailing comma (3), Python 3.12 at the bracket (4).
+        assert error.details["column"] in (3, 4)
 
     def test_nan_literal_is_rejected(self, tmp_path):
         """``NaN`` is not JSON; a missing value is ``null``."""
@@ -555,7 +563,9 @@ class TestLoadSeriesInline:
     def test_values_must_be_a_list_of_numbers(self):
         """Text and matrices are not value lists."""
         for values in ("1,2,3", np.zeros((2, 2)), 5):
-            error = failure(lambda: load_series(values=values), InvalidParameterError)
+            error = failure(
+                lambda values=values: load_series(values=values), InvalidParameterError
+            )
             assert error.details["option"] == "values"
             assert error.details["reason"] == "type"
 
@@ -756,7 +766,8 @@ class TestLoadSeriesArguments:
             ({"date_column": "d"}, "date_column"),
         ):
             error = failure(
-                lambda: load_series(values=[1], **kwargs), InvalidParameterError
+                lambda kwargs=kwargs: load_series(values=[1], **kwargs),
+                InvalidParameterError,
             )
             assert error.details == {"option": option, "reason": "conflict"}
 
@@ -786,7 +797,9 @@ class TestLoadWatershed:
         """Both or neither source is a validation error."""
         path = write(tmp_path, "ws.json", json.dumps(WATERSHED))
         for kwargs in ({}, {"watershed": WATERSHED, "watershed_file": path}):
-            error = failure(lambda: load_watershed(**kwargs), InvalidParameterError)
+            error = failure(
+                lambda kwargs=kwargs: load_watershed(**kwargs), InvalidParameterError
+            )
             assert error.details["reason"] == "one_of"
 
     def test_missing_required_parameters_inline(self):
@@ -1013,14 +1026,17 @@ class TestLoadStations:
         """Both or neither source is a validation error."""
         path = write(tmp_path, "s.json", json.dumps(STATION_ROWS))
         for kwargs in ({}, {"stations": STATION_ROWS, "stations_file": path}):
-            error = failure(lambda: load_stations(**kwargs), InvalidParameterError)
+            error = failure(
+                lambda kwargs=kwargs: load_stations(**kwargs), InvalidParameterError
+            )
             assert error.details["reason"] == "one_of"
 
     def test_stations_must_be_a_list(self):
         """A string or a mapping is not a list of stations."""
         for stations in ("A", {"name": "A"}):
             error = failure(
-                lambda: load_stations(stations=stations), InvalidParameterError
+                lambda stations=stations: load_stations(stations=stations),
+                InvalidParameterError,
             )
             assert error.details["reason"] == "type"
 
@@ -1028,4 +1044,242 @@ class TestLoadStations:
         """A missing file is ``not_found``."""
         assert failure(
             lambda: load_stations(stations_file=tmp_path / "x.csv"), NotFoundError
+        )
+
+
+# --- hydrographs ----------------------------------------------------------------------
+
+FLOOD_INFLOW = FIXTURES / "flood_inflow.csv"
+
+
+class TestLoadHydrograph:
+    """The table that the ``route`` commands take: inline lists or a file."""
+
+    def test_inline_lists(self):
+        hydrograph = load_hydrograph(
+            times_min=[0, 10, 20], discharge_m3s=[1.0, 5.0, 2.0]
+        )
+
+        assert isinstance(hydrograph, Hydrograph)
+        assert hydrograph.times_min.tolist() == [0.0, 10.0, 20.0]
+        assert hydrograph.discharge_m3s.tolist() == [1.0, 5.0, 2.0]
+
+    def test_a_file_with_the_default_columns(self):
+        hydrograph = load_hydrograph(input_file=FLOOD_INFLOW)
+
+        assert len(hydrograph) == 31
+        assert hydrograph.timestep_min == 10.0
+        assert (hydrograph.peak_discharge_m3s, hydrograph.time_to_peak_min) == (
+            40.0,
+            60.0,
+        )
+
+    def test_named_columns_a_semicolon_and_a_decimal_comma(self, tmp_path):
+        path = write(
+            tmp_path,
+            "h.csv",
+            "t [min];Q [m3/s];other\n0;1,5;x\n15;4,25;y\n30;2;z\n",
+        )
+
+        hydrograph = load_hydrograph(input_file=path, time_column="t", value_column="Q")
+
+        assert hydrograph.times_min.tolist() == [0.0, 15.0, 30.0]
+        assert hydrograph.discharge_m3s.tolist() == [1.5, 4.25, 2.0]
+
+    def test_a_json_file_of_columns(self, tmp_path):
+        path = write(
+            tmp_path,
+            "h.json",
+            json.dumps({"time_min": [0, 5, 10], "discharge_m3s": [0, 2, 1]}),
+        )
+
+        assert load_hydrograph(input_file=path).discharge_m3s.tolist() == [0, 2, 1]
+
+    def test_the_table_text_of_a_hydrograph_reads_back_unchanged(self, tmp_path):
+        original = Hydrograph.from_step([0.1, 0.30000000000000004, 7.0, 3.0], 0.5)
+        path = write(tmp_path, "h.csv", original.to_table())
+
+        loaded = load_hydrograph(input_file=path)
+
+        assert loaded.times_min.tolist() == original.times_min.tolist()
+        assert loaded.discharge_m3s.tolist() == original.discharge_m3s.tolist()
+
+    @pytest.mark.parametrize(
+        ("body", "reason", "column", "row"),
+        [
+            ("0,1\n10,2\n25,3\n", "irregular_step", "time_min", 2),
+            ("0,1\n10,2\n5,3\n", "not_increasing", "time_min", 3),
+            ("0,1\n10,-2\n20,3\n", "negative", "discharge_m3s", 2),
+            ("0,1\n10,\n20,3\n", "not_finite", "discharge_m3s", 2),
+            ("0,1\n", "too_short", "time_min", None),
+            ("", "empty", None, None),
+        ],
+    )
+    def test_a_file_that_breaks_a_rule_is_a_data_error_with_the_row(
+        self, tmp_path, body, reason, column, row
+    ):
+        path = write(tmp_path, "h.csv", "time_min,discharge_m3s\n" + body)
+        if reason == "empty":
+            path = write(tmp_path, "h.csv", "")
+
+        error = failure(lambda: load_hydrograph(input_file=path))
+
+        assert error.details["reason"] == reason
+        assert error.details["path"] == str(path)
+        assert error.details.get("column") == column
+        assert error.details.get("row") == row
+
+    def test_a_missing_column_lists_the_available_ones(self, tmp_path):
+        path = write(tmp_path, "h.csv", "t,q\n0,1\n10,2\n")
+
+        error = failure(lambda: load_hydrograph(input_file=path))
+
+        assert error.details["reason"] == "missing_column"
+        assert error.details["column"] == "time_min"
+        assert error.details["available"] == ["t", "q"]
+
+    def test_a_missing_file(self, tmp_path):
+        failure(lambda: load_hydrograph(input_file=tmp_path / "x.csv"), NotFoundError)
+
+    @pytest.mark.parametrize(
+        "kwargs",
+        [
+            {},
+            {"times_min": [0, 10], "discharge_m3s": [1, 2], "input_file": "h.csv"},
+            {"input_file": "h.csv", "times_min": [0, 10]},
+        ],
+    )
+    def test_exactly_one_source(self, kwargs):
+        error = failure(lambda: load_hydrograph(**kwargs), InvalidParameterError)
+
+        assert error.details["reason"] == "one_of"
+
+    def test_an_inline_list_needs_the_other(self):
+        error = failure(
+            lambda: load_hydrograph(times_min=[0, 10]), InvalidParameterError
+        )
+
+        assert (error.details["option"], error.details["reason"]) == (
+            "discharge_m3s",
+            "required",
+        )
+
+    @pytest.mark.parametrize("column", ["time_column", "value_column"])
+    def test_a_column_option_does_not_apply_to_inline_lists(self, column):
+        error = failure(
+            lambda: load_hydrograph(
+                times_min=[0, 10], discharge_m3s=[1, 2], **{column: "x"}
+            ),
+            InvalidParameterError,
+        )
+
+        assert (error.details["option"], error.details["reason"]) == (
+            column,
+            "conflict",
+        )
+
+    def test_an_inline_table_that_breaks_a_rule_is_a_validation_error(self):
+        error = failure(
+            lambda: load_hydrograph(times_min=[0, 10, 25], discharge_m3s=[1, 2, 3]),
+            InvalidParameterError,
+        )
+
+        assert (error.details["option"], error.details["reason"]) == (
+            "times_min",
+            "irregular_step",
+        )
+
+
+class TestLoadRating:
+    """The table of ``route level-pool``: inline lists or a file, a stage optional."""
+
+    def test_inline_lists(self):
+        rating = load_rating(storage_m3=[0, 100, 300], outflow_m3s=[0, 2, 5])
+
+        assert isinstance(rating, Rating)
+        assert rating.storage_m3.tolist() == [0.0, 100.0, 300.0]
+        assert rating.outflow_m3s.tolist() == [0.0, 2.0, 5.0]
+        assert rating.stage_m is None
+
+    def test_an_inline_stage_goes_with_the_table(self):
+        rating = load_rating(
+            storage_m3=[0, 100], outflow_m3s=[0, 2], stage_m=[101.5, 102.25]
+        )
+
+        assert rating.stage_m is not None
+        assert rating.stage_m.tolist() == [101.5, 102.25]
+
+    def test_a_file_with_a_semicolon_a_decimal_comma_and_units_in_the_names(
+        self, tmp_path
+    ):
+        path = write(
+            tmp_path,
+            "r.csv",
+            "storage_m3 [m3];outflow_m3s [m3/s];stage_m [m]\n"
+            "0;0;100\n1000;1,5;100,5\n3000;4;101,25\n",
+        )
+
+        rating = load_rating(rating_file=path)
+
+        assert rating.storage_m3.tolist() == [0.0, 1000.0, 3000.0]
+        assert rating.outflow_m3s.tolist() == [0.0, 1.5, 4.0]
+        assert rating.stage_m is not None
+        assert rating.stage_m.tolist() == [100.0, 100.5, 101.25]
+
+    def test_a_json_file_of_columns_without_a_stage(self, tmp_path):
+        path = write(
+            tmp_path,
+            "r.json",
+            json.dumps({"storage_m3": [0, 50, 90], "outflow_m3s": [0, 1, 3]}),
+        )
+
+        rating = load_rating(rating_file=path)
+
+        assert rating.outflow_m3s.tolist() == [0.0, 1.0, 3.0]
+        assert rating.stage_m is None
+
+    @pytest.mark.parametrize(
+        ("body", "reason", "column", "row"),
+        [
+            ("0,0\n10,5\n20,4\n", "decreasing", "outflow_m3s", 3),
+            ("0,0\n10,5\n10,5\n", "repeated_row", "outflow_m3s", 3),
+            ("0,0\n,5\n20,6\n", "not_finite", "storage_m3", 2),
+            ("0,0\n10,-5\n20,6\n", "negative", "outflow_m3s", 2),
+            ("0,0\n", "too_short", "storage_m3", None),
+        ],
+    )
+    def test_a_file_that_breaks_a_rule_is_a_data_error_with_the_row(
+        self, tmp_path, body, reason, column, row
+    ):
+        path = write(tmp_path, "r.csv", "storage_m3,outflow_m3s\n" + body)
+
+        error = failure(lambda: load_rating(rating_file=path))
+
+        assert error.details["reason"] == reason
+        assert error.details["path"] == str(path)
+        assert error.details.get("column") == column
+        assert error.details.get("row") == row
+
+    def test_a_decreasing_stage_names_its_own_column(self, tmp_path):
+        path = write(
+            tmp_path, "r.csv", "storage_m3,outflow_m3s,stage_m\n0,0,5\n10,1,6\n20,2,5\n"
+        )
+
+        error = failure(lambda: load_rating(rating_file=path))
+
+        assert error.details["reason"] == "decreasing"
+        assert (error.details["column"], error.details["row"]) == ("stage_m", 3)
+
+    def test_a_missing_file(self, tmp_path):
+        failure(lambda: load_rating(rating_file=tmp_path / "r.csv"), NotFoundError)
+
+    def test_an_inline_table_that_breaks_a_rule_is_a_validation_error(self):
+        error = failure(
+            lambda: load_rating(storage_m3=[0, 10, 5], outflow_m3s=[0, 1, 2]),
+            InvalidParameterError,
+        )
+
+        assert (error.details["option"], error.details["reason"]) == (
+            "storage_m3",
+            "decreasing",
         )
