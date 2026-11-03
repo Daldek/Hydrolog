@@ -17,7 +17,7 @@ import pytest
 from hydrolog.catalog import NOTICES
 
 WEB = Path(__file__).resolve().parents[2] / "src" / "hydrolog" / "gui" / "web"
-NOGAT_COMMIT = "29e7e1c7ba458f0451de9c15ae7ff32988a8d943"
+NOGAT_COMMIT = "d1b5820d6395d3986ed44ce90aa3911e5169d622"
 # XML namespaces are names, not resources the page loads.
 NAMESPACE = re.compile(r"https?://www\.w3\.org/(2000/svg|1999/xlink|1998/Math/MathML)")
 REMOTE = re.compile(r"(?:https?:)?//[A-Za-z0-9.-]+\.[A-Za-z]{2,}[/\"'\s)]")

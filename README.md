@@ -19,7 +19,7 @@ The same commands run from Python, from a shell or a CI job, from an AI agent ov
 ## When not to use
 
 - Downloading or preparing spatial data (digital elevation model (DEM, Polish NMT), land cover, the topographic database BDOT10k, soil rasters): use [Kartograf](https://github.com/Daldek/Kartograf). Hydrolog only reads the files it is given.
-- Measurement series and stations of IMGW-PIB (Polish Institute of Meteorology and Water Management) and CHMU (Czech Hydrometeorological Institute): use [IMGWTools](https://github.com/Daldek/IMGWTools); `imgw series export` writes the CSV that the `stats` commands read.
+- Measurement series and stations of IMGW-PIB (Polish Institute of Meteorology and Water Management) and CHMU (Czech Hydrometeorological Institute): use [Obserwator](https://github.com/Daldek/IMGWTools); `obserwator series export` writes the CSV that the `stats` commands read.
 - Watershed delineation from a DEM: use [Hydrograf](https://github.com/Daldek/Hydrograf) or a GIS; Hydrolog takes the resulting area, lengths and elevations.
 - Hydraulics (water levels, inundation mapping, backwater) and channel routing by the Saint-Venant equations: use [Hydraulik](https://github.com/Daldek/Hydraulik) (2D flood screening, research stage) or an external tool such as HEC-RAS. Hydrolog routes discharge only, with lumped hydrologic methods.
 - Reservoirs, water quality, groundwater, snowmelt, erosion, Green-Ampt infiltration: not covered ([docs/SCOPE.md](https://github.com/Daldek/Hydrolog/blob/main/docs/SCOPE.md)); use a specialised external model.
@@ -190,7 +190,7 @@ anyio.run(call_tool)
 
 ## For AI agents
 
-- [llms.txt](https://github.com/Daldek/Hydrolog/blob/main/llms.txt) and [AGENTS.md](https://github.com/Daldek/Hydrolog/blob/main/AGENTS.md) state the scope, the workflow, the error codes and typical flows (design hydrograph of a watershed file, flood frequency from an IMGWTools export, HSG from SoilGrids rasters); both are generated from the command catalog. `hydrolog commands guide --format agents` (or `llms`) prints them; `--format agents-md-block --inject AGENTS.md` puts a compact block into another repository's AGENTS.md.
+- [llms.txt](https://github.com/Daldek/Hydrolog/blob/main/llms.txt) and [AGENTS.md](https://github.com/Daldek/Hydrolog/blob/main/AGENTS.md) state the scope, the workflow, the error codes and typical flows (design hydrograph of a watershed file, flood frequency from an Obserwator export, HSG from SoilGrids rasters); both are generated from the command catalog. `hydrolog commands guide --format agents` (or `llms`) prints them; `--format agents-md-block --inject AGENTS.md` puts a compact block into another repository's AGENTS.md.
 - The catalog is served by the tool: `hydrolog commands list` (names, operation ids, summaries) and `hydrolog commands schema --command "tc kirpich"` (options with units, bounds and allowed values, result schema, rules, examples, errors). In MCP these are the tools `hydrolog_commands_list` and `hydrolog_commands_schema`; `--schema` after any command prints its description instead of running it.
 - Work in four steps: discover, check, run, read. A result is a `hydrolog-result/1` envelope (`status` is `ok`; a failing command ends with an error instead), an error a `hydrolog-error/1` document.
 - Calculations are read-only. Three commands write one file (`report generate`, `soil hsg`, `commands guide`), and so does every `route` command that is given `--output`; they take `--output`, `--check` and `--force`: `--check` writes nothing and returns the plan, `result.targets[]` with `option`, `path` and `action` (`write`, `replace` or `conflict`); an existing file is replaced only with `--force`. `route network` writes one table per node into the directory of `--output-dir` (`-o`) the same way: its plan lists every table, and a directory that is, or lies in, the store of another Nogat tool is refused (`conflict`, `details.reason` `output_in_store`). A `route` command without `--output`, and `route network` without `--output-dir`, has no file to plan: it returns the routed hydrographs, also with `--check`.
@@ -275,7 +275,7 @@ hydrolog gui serve --no-browser --port 8071
 ## Related tools
 
 - [Kartograf](https://github.com/Daldek/Kartograf) downloads Polish and Czech geodata (elevation, land cover, soils); the `files[].path` values in the `--json` result of `kartograf soil download --output-dir DIR` are the clay, sand and silt rasters of `soil hsg`.
-- [IMGWTools](https://github.com/Daldek/IMGWTools) provides IMGW-PIB and CHMU series: `imgw series export --output FILE` writes the CSV that `--input-file` of the `stats` and `hydrometrics` commands reads, and its PMAXTP design precipitation can supply `--total-mm`.
+- [Obserwator](https://github.com/Daldek/IMGWTools) provides IMGW-PIB and CHMU series: `obserwator series export --output FILE` writes the CSV that `--input-file` of the `stats` and `hydrometrics` commands reads, and its PMAXTP design precipitation can supply `--total-mm`.
 - [Hydrograf](https://github.com/Daldek/Hydrograf) is a web app for watershed delineation and design hydrographs built on Hydrolog; watersheds travel as `WatershedParameters` JSON ([docs/INTEGRATION.md](https://github.com/Daldek/Hydrolog/blob/main/docs/INTEGRATION.md)).
 - [Retman](https://github.com/Daldek/Retman) is a Polish natural-language command layer over the ecosystem tools; it is designed to drive Hydrolog through the command layer (`hydrolog.operations`).
 - [Hydraulik](https://github.com/Daldek/Hydraulik) screens 2D floods (research stage) and uses the Beta and Euler type II hyetograph classes of Hydrolog; [Nogat](https://github.com/Daldek/Nogat) holds the shared standards and the registry of these tools.
@@ -312,7 +312,7 @@ except hydrolog.HydrologError as error:
 
 ## Data and licensing
 
-Hydrolog downloads nothing, opens no network connection and needs no account or key. Input is numbers or local files: CSV series (an IMGWTools export loads unchanged), JSON (watershed, stations, network segments, the network of `route network`) and GeoTIFF rasters (extra `raster`). It ships no dataset except the TR-55 curve number table of USDA NRCS. The data you pass keep the licence of their source (IMGW-PIB terms of reuse, SoilGrids CC BY 4.0); Hydrolog does not copy the attribution columns of an IMGWTools export into results, so name the source when you publish a result.
+Hydrolog downloads nothing, opens no network connection and needs no account or key. Input is numbers or local files: CSV series (an Obserwator export loads unchanged), JSON (watershed, stations, network segments, the network of `route network`) and GeoTIFF rasters (extra `raster`). It ships no dataset except the TR-55 curve number table of USDA NRCS. The data you pass keep the licence of their source (IMGW-PIB terms of reuse, SoilGrids CC BY 4.0); Hydrolog does not copy the attribution columns of an Obserwator export into results, so name the source when you publish a result.
 
 A command writes only to the file named by `--output` (exactly one plain file, written atomically; `commands guide --inject PATH` edits the AGENTS.md you name) or, for `route network`, into the directory named by `--output-dir` (one table per node, each moved into place from a `.hydrolog-incoming/` staging directory that is removed afterwards), and replaces an existing file only with `--force`. There is no store, cache or credential.
 
@@ -344,7 +344,7 @@ hydrolog config show --json
 - [Decisions](https://github.com/Daldek/Hydrolog/blob/main/docs/DECISIONS.md): architecture decision records
 - [Scope](https://github.com/Daldek/Hydrolog/blob/main/docs/SCOPE.md): what is in and out of scope
 - [Computation paths](https://github.com/Daldek/Hydrolog/blob/main/docs/COMPUTATION_PATHS.md): methods, formulas and which parameters combine
-- [Integration](https://github.com/Daldek/Hydrolog/blob/main/docs/INTEGRATION.md): files exchanged with Hydrograf, Retman, Kartograf and IMGWTools; hosting the web GUI
+- [Integration](https://github.com/Daldek/Hydrolog/blob/main/docs/INTEGRATION.md): files exchanged with Hydrograf, Retman, Kartograf and Obserwator; hosting the web GUI
 
 ## Development
 

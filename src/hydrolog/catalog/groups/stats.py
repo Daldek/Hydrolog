@@ -21,7 +21,7 @@ from hydrolog.catalog.groups._series import (
 from hydrolog.catalog.spec import Command, Option
 
 _FIXTURES = "tests/fixtures"
-_IMGW_EXPORT = f"{_FIXTURES}/imgwtools_series_export.csv"
+_OBSERWATOR_EXPORT = f"{_FIXTURES}/obserwator_series_export.csv"
 _DAILY_FLOWS = f"{_FIXTURES}/daily_flows_3y.csv"
 _ANNUAL_MAXIMA = f"{_FIXTURES}/annual_maxima.csv"
 
@@ -132,7 +132,7 @@ COMMANDS: tuple[Command, ...] = (
         one_of=DATED_ONE_OF,
         examples=(
             {
-                "input_file": _IMGW_EXPORT,
+                "input_file": _OBSERWATOR_EXPORT,
                 "value_column": "Q",
                 "date_column": "date",
                 "parameter": "Q",

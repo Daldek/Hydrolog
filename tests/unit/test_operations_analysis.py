@@ -63,7 +63,7 @@ from hydrolog.time import ConcentrationTime
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = REPO_ROOT / "tests" / "fixtures"
-IMGW_EXPORT = FIXTURES / "imgwtools_series_export.csv"
+OBSERWATOR_EXPORT = FIXTURES / "obserwator_series_export.csv"
 DAILY_FLOWS = FIXTURES / "daily_flows_3y.csv"
 ANNUAL_MAXIMA = FIXTURES / "annual_maxima.csv"
 NETWORK_SEGMENTS = FIXTURES / "network_segments.csv"
@@ -593,8 +593,8 @@ class TestNetworkStats:
 # --- stats: series input --------------------------------------------------------------
 
 
-class TestImgwToolsExport:
-    """The IMGWTools ``export_series`` CSV loads and runs without preprocessing."""
+class TestObserwatorExport:
+    """The Obserwator ``export_series`` CSV loads and runs without preprocessing."""
 
     # 14 days from 2023-11-01 (hydrological year 2024); 2023-11-08 and -09 are missing.
     VALID_Q = [2.5, 2.7, 3.0, 3.6, 4.8, 7.1, 11.4, 7.9, 5.6, 4.4, 3.5, 3.0]
@@ -602,7 +602,7 @@ class TestImgwToolsExport:
     def test_characteristic_values(self):
         result = run(
             "stats characteristic",
-            input_file=str(IMGW_EXPORT),
+            input_file=str(OBSERWATOR_EXPORT),
             value_column="Q",
             date_column="date",
         )
@@ -623,13 +623,13 @@ class TestImgwToolsExport:
     def test_the_column_name_may_carry_its_unit(self):
         plain = run(
             "stats characteristic",
-            input_file=str(IMGW_EXPORT),
+            input_file=str(OBSERWATOR_EXPORT),
             value_column="Q",
             date_column="date",
         )
         full = run(
             "stats characteristic",
-            input_file=str(IMGW_EXPORT),
+            input_file=str(OBSERWATOR_EXPORT),
             value_column="Q [m3/s]",
             date_column="date",
             parameter="Q",
@@ -639,7 +639,7 @@ class TestImgwToolsExport:
     def test_stage_column_with_the_stage_label(self):
         result = run(
             "stats characteristic",
-            input_file=str(IMGW_EXPORT),
+            input_file=str(OBSERWATOR_EXPORT),
             value_column="H",
             date_column="date",
             parameter="H",
@@ -651,7 +651,7 @@ class TestImgwToolsExport:
     def test_daily_statistics(self):
         result = run(
             "stats daily",
-            input_file=str(IMGW_EXPORT),
+            input_file=str(OBSERWATOR_EXPORT),
             value_column="Q",
             date_column="date",
         ).result
@@ -662,7 +662,7 @@ class TestImgwToolsExport:
 
     def test_trend_test_on_the_valid_values(self):
         result = run(
-            "stats mann-kendall", input_file=str(IMGW_EXPORT), value_column="Q"
+            "stats mann-kendall", input_file=str(OBSERWATOR_EXPORT), value_column="Q"
         )
         assert result.result == mann_kendall_test(np.array(self.VALID_Q))
         assert result.notices[0].code == "missing_values_removed"
@@ -672,7 +672,7 @@ class TestImgwToolsExport:
         with pytest.raises(CalculationError) as caught:
             run(
                 "stats flood-frequency",
-                input_file=str(IMGW_EXPORT),
+                input_file=str(OBSERWATOR_EXPORT),
                 value_column="Q",
                 date_column="date",
             )
@@ -687,7 +687,7 @@ class TestImgwToolsExport:
         with pytest.raises(CalculationError) as caught:
             run(
                 "stats monthly",
-                input_file=str(IMGW_EXPORT),
+                input_file=str(OBSERWATOR_EXPORT),
                 value_column="Q",
                 date_column="date",
             )
@@ -709,7 +709,7 @@ class TestImgwToolsExport:
         with pytest.raises(CalculationError) as caught:
             run(
                 "stats low-flow-sequences",
-                input_file=str(IMGW_EXPORT),
+                input_file=str(OBSERWATOR_EXPORT),
                 value_column="Q",
                 date_column="date",
                 threshold=4.0,
@@ -723,7 +723,7 @@ class TestImgwToolsExport:
     def test_water_level_zones_of_the_stage_column(self):
         result = run(
             "hydrometrics water-level-zones",
-            input_file=str(IMGW_EXPORT),
+            input_file=str(OBSERWATOR_EXPORT),
             value_column="H",
             bin_width=10,
         )
@@ -1288,7 +1288,7 @@ class TestLowFlow:
         with pytest.raises(CalculationError) as caught:
             run(
                 "stats low-flow",
-                input_file=str(IMGW_EXPORT),
+                input_file=str(OBSERWATOR_EXPORT),
                 value_column="Q",
                 date_column="date",
             )

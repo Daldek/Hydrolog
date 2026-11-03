@@ -32,7 +32,7 @@ export const statystyka = {
   noDates: "— maksima roczne (bez dat)",
   columnHint: "Kolumny z nagłówka pliku; nazwa bez jednostki w nawiasie wystarcza.",
   dailyNote:
-    "Eksport szeregu dobowego z IMGWTools (`imgw series export`, kolumny `date` i `Q [m3/s]`) wczytuje się bez przygotowania: podaj `date_column`, a maksima zostaną wybrane z kompletnych lat hydrologicznych XI–X.",
+    "Eksport szeregu dobowego z Obserwatora (`obserwator series export`, kolumny `date` i `Q [m3/s]`) wczytuje się bez przygotowania: podaj `date_column`, a maksima zostaną wybrane z kompletnych lat hydrologicznych XI–X.",
   pasteNote: "Wklej maksima roczne w kolejności lat: z arkusza, z tekstu albo z kolumny pliku CSV.",
   distributionsMeta: "{count} · AIC",
   chosen: "Wyróżniony w wynikach",

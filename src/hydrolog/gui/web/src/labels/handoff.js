@@ -81,7 +81,7 @@ export const handoffLabels = {
     nogat: ["Nogat", "Nogatu"],
     archiwista: ["Archiwista", "Archiwisty"],
     kartograf: ["Kartograf", "Kartografa"],
-    imgwtools: ["IMGWTools", "IMGWTools"],
+    obserwator: ["Obserwator", "Obserwatora"],
     hydraulik: ["Hydraulik", "Hydraulika"],
     retman: ["Retman", "Retmana"],
   },

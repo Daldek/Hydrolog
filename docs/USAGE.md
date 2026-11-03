@@ -99,8 +99,8 @@ rasters).
 Kirpich needs the main channel length and slope; NRCS (TR-55 lag) also needs the CN. Both return
 `tc_min` and `tc_h`. Other methods: `tc giandotti`, `tc faa`, `tc kerby`, `tc kerby-kirpich`.
 `tc watershed` computes any of them from a watershed JSON file (the `WatershedParameters` format,
-see [Exchange](#7-exchange-with-kartograf-imgwtools-and-hydrograf)); a field the method needs but
-the file lacks is a `validation_error` that lists it.
+see [Exchange](#7-exchange-with-kartograf-obserwator-and-hydrograf)); a field the method needs
+but the file lacks is a `validation_error` that lists it.
 
 ```bash
 hydrolog tc nrcs --length-km 8.2 --slope-m-per-m 0.023 --cn 72 --json
@@ -669,8 +669,8 @@ hydrolog network stats --segments-file tests/fixtures/network_segments.csv --met
 
 The `stats` commands read a daily series from CSV: `--input-file`, the discharge column
 (`--value-column`) and, where the date matters, `--date-column`. A column is named without its
-unit, so `Q` finds `Q [m3/s]`. The CSV that IMGWTools writes loads without preprocessing
-([Exchange](#7-exchange-with-kartograf-imgwtools-and-hydrograf)). Hydrological years run from
+unit, so `Q` finds `Q [m3/s]`. The CSV that Obserwator writes loads without preprocessing
+([Exchange](#7-exchange-with-kartograf-obserwator-and-hydrograf)). Hydrological years run from
 November to October. A series shorter than the method needs adds a notice (reliable flood
 quantiles need at least 30 years).
 
@@ -698,7 +698,7 @@ import hydrolog
 
 envelope = hydrolog.run_command(
     "stats characteristic",
-    input_file="tests/fixtures/imgwtools_series_export.csv",
+    input_file="tests/fixtures/obserwator_series_export.csv",
     value_column="Q",
     date_column="date",
     parameter="Q",
@@ -1083,7 +1083,7 @@ NOGAT_CONFIG=./nogat.toml hydrolog config show
 results are always English; the Polish texts of the catalog are served from `i18n` of the command
 description, and the Markdown report is written in Polish.
 
-## 7. Exchange with Kartograf, IMGWTools and Hydrograf
+## 7. Exchange with Kartograf, Obserwator and Hydrograf
 
 Hydrolog downloads nothing and does not depend on the other Nogat tools: data arrives as plain
 files. Formats and the division of responsibilities are in [INTEGRATION.md](INTEGRATION.md).
@@ -1092,8 +1092,8 @@ files. Formats and the division of responsibilities are in [INTEGRATION.md](INTE
   `kartograf soil download --output-dir DIR`. The `files[].path` entries of its `--json` result
   are the `--clay-path`, `--sand-path` and `--silt-path` of `soil hsg`. Hydrolog reads plain
   files, not a Kartograf store.
-- **IMGWTools** (IMGW measurement series) writes a daily series with `imgw series export`. The CSV
-  has a `date` column and `Q [m3/s]`; pass it as `--input-file FILE --value-column Q
+- **Obserwator** (IMGW measurement series) writes a daily series with `obserwator series export`.
+  The CSV has a `date` column and `Q [m3/s]`; pass it as `--input-file FILE --value-column Q
   --date-column date` to the `stats` commands. Hydrolog ignores the attribution columns; keep them
   when you publish results.
 - **Hydrograf** (watershed delineation) produces a JSON in the `WatershedParameters` format:
@@ -1105,7 +1105,7 @@ files. Formats and the division of responsibilities are in [INTEGRATION.md](INTE
 
 ```sh
 kartograf soil download --property clay --depth 0-5cm --stat mean --bbox 626000,480000,628000,482000 --bbox-crs EPSG:2180 --output-dir data/kartograf --json
-imgw series export --dataset pl.imgw.hydro_daily --station CODE --variables Q --format csv --output q_daily.csv
+obserwator series export --dataset pl.imgw.hydro_daily --station CODE --variables Q --format csv --output q_daily.csv
 ```
 
 The agent-facing summary of these flows is in [AGENTS.md](../AGENTS.md).

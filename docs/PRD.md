@@ -331,7 +331,7 @@ print(f"tc = {tc:.1f} min")
 
 **Acceptance criteria:**
 - [x] CSV (comma or semicolon, UTF-8, header) and JSON
-- [x] An IMGWTools series export (`export_series`) is read without conversion
+- [x] An Obserwator series export (`export_series`) is read without conversion
 - [x] Catchment: `WatershedParameters` JSON (the `catchment_characteristics` format in Retman)
 
 #### US-M01: MCP server
@@ -518,7 +518,7 @@ print(f"tc = {tc:.1f} min")
 - Input data: NumPy arrays, basic Python types
 - Thread-safe (no global state)
 - Input/output operations (CSV/JSON files, GeoTIFF, report writing) only in the operations/catalog layer and in the CLI/MCP; calculation classes do not read files
-- No network access or data downloading (data is supplied by IMGWTools and Kartograf)
+- No network access or data downloading (data is supplied by Obserwator and Kartograf)
 
 ---
 

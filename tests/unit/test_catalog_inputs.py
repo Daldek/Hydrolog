@@ -24,7 +24,7 @@ from hydrolog.precipitation.interpolation import Station
 from hydrolog.routing import Hydrograph
 
 FIXTURES = Path(__file__).parents[1] / "fixtures"
-IMGW_EXPORT = FIXTURES / "imgwtools_series_export.csv"
+OBSERWATOR_EXPORT = FIXTURES / "obserwator_series_export.csv"
 
 WATERSHED = {
     "area_km2": 45.3,
@@ -278,7 +278,7 @@ class TestColumnResolution:
 
     @pytest.fixture
     def table(self):
-        return read_table(IMGW_EXPORT)
+        return read_table(OBSERWATOR_EXPORT)
 
     def test_exact_name(self, table):
         """The full header text always works."""
@@ -571,12 +571,12 @@ class TestLoadSeriesInline:
 
 
 class TestLoadSeriesFile:
-    """Series from files, including the IMGWTools export."""
+    """Series from files, including the Obserwator export."""
 
-    def test_imgwtools_export_loads_without_preprocessing(self):
-        """The CSV of ``imgwtools series export`` (units in headers, flags, CRLF)."""
+    def test_obserwator_export_loads_without_preprocessing(self):
+        """The CSV of ``obserwator series export`` (units in headers, flags, CRLF)."""
         series = load_series(
-            input_file=IMGW_EXPORT, value_column="Q [m3/s]", date_column="date"
+            input_file=OBSERWATOR_EXPORT, value_column="Q [m3/s]", date_column="date"
         )
         expected = [
             2.5,
@@ -598,12 +598,16 @@ class TestLoadSeriesFile:
         assert series.n_missing == 2
         assert str(series.dates[0]) == "2023-11-01"
         assert str(series.dates[-1]) == "2023-11-14"
-        assert series.source == str(IMGW_EXPORT)
+        assert series.source == str(OBSERWATOR_EXPORT)
 
     def test_short_column_names_work_for_the_export(self):
         """``Q`` and ``H`` stand for ``Q [m3/s]`` and ``H [cm]``."""
-        q = load_series(input_file=IMGW_EXPORT, value_column="Q", date_column="date")
-        h = load_series(input_file=IMGW_EXPORT, value_column="H", date_column="date")
+        q = load_series(
+            input_file=OBSERWATOR_EXPORT, value_column="Q", date_column="date"
+        )
+        h = load_series(
+            input_file=OBSERWATOR_EXPORT, value_column="H", date_column="date"
+        )
         assert q.values[0] == 2.5
         assert h.values[0] == 150.0
         np.testing.assert_array_equal(q.dates, h.dates)
@@ -611,7 +615,7 @@ class TestLoadSeriesFile:
     def test_missing_days_can_be_dropped_with_aligned_dates(self):
         """Empty export cells (flag ``missing``) become NaN and can be removed."""
         series = load_series(
-            input_file=IMGW_EXPORT, value_column="Q", date_column="date"
+            input_file=OBSERWATOR_EXPORT, value_column="Q", date_column="date"
         )
         clean = series.without_missing()
         assert len(clean) == 12
@@ -620,12 +624,14 @@ class TestLoadSeriesFile:
 
     def test_export_without_date_column_has_no_dates(self):
         """Dates are loaded only when asked for."""
-        series = load_series(input_file=IMGW_EXPORT, value_column="Q")
+        series = load_series(input_file=OBSERWATOR_EXPORT, value_column="Q")
         assert series.dates is None
 
     def test_missing_value_column_lists_available(self):
         """A wrong column is a data error with the columns of the file."""
-        error = failure(lambda: load_series(input_file=IMGW_EXPORT, value_column="Z"))
+        error = failure(
+            lambda: load_series(input_file=OBSERWATOR_EXPORT, value_column="Z")
+        )
         assert error.details["reason"] == "missing_column"
         assert error.details["option"] == "value_column"
         assert "date" in error.details["available"]
@@ -634,7 +640,7 @@ class TestLoadSeriesFile:
         """The same for the date column."""
         error = failure(
             lambda: load_series(
-                input_file=IMGW_EXPORT, value_column="Q", date_column="day"
+                input_file=OBSERWATOR_EXPORT, value_column="Q", date_column="day"
             )
         )
         assert error.details["option"] == "date_column"
@@ -642,7 +648,7 @@ class TestLoadSeriesFile:
     def test_non_numeric_column_is_located(self):
         """Reading a text column as values points at the first bad cell."""
         error = failure(
-            lambda: load_series(input_file=IMGW_EXPORT, value_column="Q_flag")
+            lambda: load_series(input_file=OBSERWATOR_EXPORT, value_column="Q_flag")
         )
         assert error.details["reason"] == "bad_number"
         assert error.details["row"] == 1
@@ -684,7 +690,7 @@ class TestLoadSeriesFile:
         """Operations that need dates insist on ``date_column``."""
         error = failure(
             lambda: load_series(
-                input_file=IMGW_EXPORT, value_column="Q", require_dates=True
+                input_file=OBSERWATOR_EXPORT, value_column="Q", require_dates=True
             ),
             InvalidParameterError,
         )
@@ -747,7 +753,9 @@ class TestLoadSeriesArguments:
     def test_both_sources_given(self):
         """Inline values and a file are ambiguous."""
         error = failure(
-            lambda: load_series(values=[1], input_file=IMGW_EXPORT, value_column="Q"),
+            lambda: load_series(
+                values=[1], input_file=OBSERWATOR_EXPORT, value_column="Q"
+            ),
             InvalidParameterError,
         )
         assert error.details["reason"] == "one_of"

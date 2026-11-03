@@ -670,7 +670,7 @@ def test_the_browsers_check_judges_handoffs_as_jsonschema_does(tab: Tab) -> None
         changed(producer={"tool": "hydrograf", "version": "0.9.0"}),
         changed(provenance={}),
         changed(created_at="2026-11-02T11:15:00.123+01:00"),
-        changed(payload={"schema": "imgw-pmaxtp/1", "depth_mm": 105.0}),
+        changed(payload={"schema": "obserwator-pmaxtp/1", "depth_mm": 105.0}),
         changed(result={"computed_with": {"tool": "hydrolog", "version": "0.6.3"}}),
         changed(page_title="unknown fields are allowed"),
         *[

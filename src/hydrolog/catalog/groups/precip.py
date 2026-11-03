@@ -204,13 +204,13 @@ COMMANDS: tuple[Command, ...] = (
         description_pl=(
             "Opad obszarowy [mm] z posterunków punktowych wg `method`: arithmetic, "
             "thiessen (wymaga powierzchni wieloboków), idw (punkt lub siatka) lub "
-            "isohyet. Nie do pobierania danych z posterunków (IMGWTools) ani opadu "
+            "isohyet. Nie do pobierania danych z posterunków (Obserwator) ani opadu "
             "projektowego (`precip hietogram`)."
         ),
         description=(
             "Areal precipitation [mm] from point gauges by `method`: arithmetic, "
             "thiessen (needs polygon areas), idw (point or grid) or isohyet. Not for "
-            "downloading gauge data (IMGWTools) or design rainfall (`precip "
+            "downloading gauge data (Obserwator) or design rainfall (`precip "
             "hietogram`)."
         ),
         function="hydrolog.operations.precip_areal",

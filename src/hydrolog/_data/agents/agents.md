@@ -9,7 +9,7 @@ Hydrolog is a Python library, the `hydrolog` CLI and an MCP server for watershed
 Use it to compute these quantities from numbers or from local CSV/JSON/GeoTIFF files. It runs locally: no network, no keys, no downloads. Not for:
 
 - spatial data (DEM, land cover, SoilGrids rasters): use Kartograf (`kartograf soil download`);
-- IMGW/CHMU measurement series: use IMGWTools (`imgw series export`);
+- IMGW/CHMU measurement series: use Obserwator (`obserwator series export`);
 - hydraulics (water levels, inundation, backwater): use Hydraulik or HEC-RAS; reservoir operation, water quality, groundwater (`docs/SCOPE.md`).
 
 ## Install
@@ -54,7 +54,7 @@ One line per command: name, `operation_id`, summary. Options, units, bounds and 
 
 ## Typical flows
 
-CLI lines; in MCP call the tool `operation_id` with the same options as arguments. Paths under `/data/` are examples: give your own (absolute, inside an allowed directory). `imgw` and `kartograf` lines are other tools.
+CLI lines; in MCP call the tool `operation_id` with the same options as arguments. Paths under `/data/` are examples: give your own (absolute, inside an allowed directory). `obserwator` and `kartograf` lines are other tools.
 
 <!-- hydrolog:flows -->
 
