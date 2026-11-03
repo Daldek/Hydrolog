@@ -24,7 +24,7 @@ WELCOME_KEY = "hydrolog-gui/welcome/1"
 REGISTERED = "async () => (await import('./src/app.js')).ORDERED.map((item) => item.id)"
 READY = 'section[data-section="hydrogram"] [data-kpi="q"] .v'
 """Hydrogram zlewni's peak: the app is mounted and has computed."""
-# Nogat's --bg and --surface of the dark theme (tokens.css, Nogat 29e7e1c).
+# Nogat's --bg and --surface of the dark theme (tokens.css, Nogat d1b5820).
 DARK_BG = "rgb(13, 17, 23)"
 DARK_SURFACE = "rgb(22, 27, 34)"
 

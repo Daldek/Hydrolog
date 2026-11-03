@@ -22,7 +22,7 @@ from playwright.sync_api import Request, Route, expect
 
 from tests.e2e.conftest import Tab
 
-# Nogat's tokens of both themes (tokens.css, Nogat 29e7e1c): --bg and --rail-bg.
+# Nogat's tokens of both themes (tokens.css, Nogat d1b5820): --bg and --rail-bg.
 BG = {"light": "rgb(250, 248, 248)", "dark": "rgb(13, 17, 23)"}
 RAIL_BG = {"light": "rgb(13, 17, 23)", "dark": "rgb(1, 4, 9)"}
 SECTION_TITLE = "Wszystkie polecenia"
