@@ -1,7 +1,8 @@
 """Fixtures of the browser tests: a live GUI server and watched Chromium tabs.
 
 ``gui_server`` serves the GUI (the package's ``web/`` and its API, two workers) on a
-free port of 127.0.0.1, at ``/`` and, as a host mounts it, under ``/m/hydrolog/``.
+free port of 127.0.0.1, at ``/`` and, as a host mounts it, under ``/m/hydrolog/``; the
+reports of „Zgłoś uwagę” go to a data directory of its own (``Served.data_dir``).
 ``new_tab(width=1440, height=900, theme="light", prefixed=False, welcome=False)`` opens
 a page in a fresh Chromium context (cookies of its own: a new session; Polish locale,
 Warsaw time, ``prefers-color-scheme`` of ``theme`` with the stored theme left on Auto)
@@ -24,6 +25,7 @@ import threading
 import time
 from collections.abc import AsyncIterator, Callable, Iterator
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -69,6 +71,8 @@ class Served:
 
     base: str
     """The page at the root: ``http://127.0.0.1:<port>/``."""
+    data_dir: Path
+    """The ``data_dir`` of the app: its reports are ``hydrolog/feedback.sqlite3``."""
 
     @property
     def prefixed(self) -> str:
@@ -127,7 +131,8 @@ def gui_server(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Served]:
 
     from hydrolog.gui import create_app
 
-    gui = create_app(work_root=tmp_path_factory.mktemp("gui-work"))
+    data_dir = tmp_path_factory.mktemp("gui-data")
+    gui = create_app(work_root=tmp_path_factory.mktemp("gui-work"), data_dir=data_dir)
 
     @contextlib.asynccontextmanager
     async def lifespan(app: Starlette) -> AsyncIterator[None]:
@@ -151,7 +156,7 @@ def gui_server(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Served]:
         assert thread.is_alive(), "the GUI server did not start"
         assert time.monotonic() < deadline, "the GUI server did not start in time"
         time.sleep(0.05)
-    yield Served(f"http://127.0.0.1:{port}/")
+    yield Served(f"http://127.0.0.1:{port}/", data_dir)
     server.should_exit = True
     thread.join(timeout=START_TIMEOUT_S)
     listener.close()

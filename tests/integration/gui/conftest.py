@@ -34,10 +34,14 @@ def web(tmp_path_factory):
 
 @pytest.fixture(scope="package")
 def app(web, tmp_path_factory):
-    """Yield one app (two workers) for the tests of the package."""
+    """Yield one app (two workers) for the tests of the package; reports go to a
+    data directory of the tests."""
     from hydrolog.gui import create_app
 
-    created = create_app(work_root=tmp_path_factory.mktemp("work"))
+    created = create_app(
+        work_root=tmp_path_factory.mktemp("work"),
+        data_dir=tmp_path_factory.mktemp("data"),
+    )
     yield created
     created.state.gui.close()
 

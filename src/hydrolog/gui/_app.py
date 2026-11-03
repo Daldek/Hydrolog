@@ -6,12 +6,19 @@ only: no ``/api/v1``, no OpenAPI and no stability promise (a deviation from AGI
 section 6 recorded in ``CLAUDE.md``). Every error is a ``hydrolog-error/1`` document
 with the registry's HTTP status and the Polish ``title``; a run replaced by a newer
 one or stopped by the timeout is the ``cancelled`` envelope.
+
+„Zgłoś uwagę” (Nogat plan 2026-11-03, D3): ``POST api/feedback`` stores a report of
+a GUI session in ``<data_dir>/hydrolog/feedback.sqlite3``; the admin page
+(``admin/``) reads, marks and deletes them through ``api/admin/feedback``, which
+answers only the key of ``HYDROLOG_ADMIN_API_KEY`` or ``HYDROLOG_ADMIN_API_KEY_FILE``
+in ``X-Admin-Key`` and refuses everything (``401 unauthorized``) when neither is set.
 """
 
 from __future__ import annotations
 
 import asyncio
 import contextlib
+import functools
 import hashlib
 import json
 import os
@@ -40,6 +47,12 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 import hydrolog
 from hydrolog._errors import BY_CODE
+from hydrolog._settings import (
+    ADMIN_API_KEY,
+    ADMIN_API_KEY_FILE,
+    TOOL,
+    admin_api_key,
+)
 from hydrolog.catalog import command_schema, format_command, get_command, list_commands
 from hydrolog.catalog.spec import Command
 from hydrolog.exceptions import (
@@ -52,6 +65,16 @@ from hydrolog.exceptions import (
     error_document,
 )
 from hydrolog.gui import WEB_DIR
+from hydrolog.gui._feedback import (
+    FILE_NAME,
+    ID_MAX,
+    LIST_LIMIT,
+    LIST_LIMIT_MAX,
+    REQUEST_MAX_BYTES,
+    FeedbackStore,
+    parse_read,
+    parse_report,
+)
 from hydrolog.gui._runner import Job, Outcome, Runner
 from hydrolog.gui._sessions import (
     NAME_PATTERN,
@@ -111,6 +134,98 @@ def _http_status(code: str) -> int:
 
 def _error_response(document: Mapping[str, Any]) -> JSONResponse:
     return JSONResponse(dict(document), status_code=_http_status(document["code"]))
+
+
+def _rest_error(
+    code: str,
+    message: str,
+    details: dict[str, Any],
+    *,
+    hint: str | None = None,
+    headers: Mapping[str, str] | None = None,
+) -> JSONResponse:
+    """Return the error document of a REST code of the registry (no exit code)."""
+    entry = BY_CODE[code]
+    document: dict[str, Any] = {
+        "schema": ERROR_SCHEMA,
+        "code": entry.code,
+        "title": entry.title_pl,
+        "message": message,
+    }
+    if hint:
+        document["hint"] = hint
+    document["details"] = details
+    document["exit_code"] = entry.exit_code
+    return JSONResponse(document, status_code=_http_status(code), headers=headers)
+
+
+def _admin_refusal(supplied: str | None) -> Response | None:
+    """Return the ``401`` of a request without the admin key, ``None`` with it.
+
+    The key is read on every request (a rotated key file applies at once) and
+    compared in constant time with the bytes of ``X-Admin-Key``; without a key on the
+    server the admin routes refuse every request.
+    """
+    expected = admin_api_key()
+    if expected is None:
+        return _rest_error(
+            "unauthorized",
+            "No admin key is set on the server",
+            {"reason": "admin_key_not_configured"},
+            hint=f"Start the server with {ADMIN_API_KEY} or {ADMIN_API_KEY_FILE}.",
+        )
+    if not supplied:
+        return _rest_error(
+            "unauthorized",
+            "The admin API key is missing",
+            {"reason": "admin_key_missing"},
+            hint="Send it in the X-Admin-Key header.",
+        )
+    # Starlette decodes a header as Latin-1: these are the bytes the client sent
+    if not secrets.compare_digest(supplied.encode("latin-1"), expected.encode("utf-8")):
+        return _rest_error(
+            "unauthorized",
+            "The admin API key is invalid",
+            {"reason": "admin_key_invalid"},
+            hint="Send the configured key in the X-Admin-Key header.",
+        )
+    return None
+
+
+def _query_int(
+    request: Request, name: str, default: int, *, minimum: int, maximum: int
+) -> int:
+    """Return the whole-number query parameter ``name`` within its bounds."""
+    text = request.query_params.get(name)
+    if text is None:
+        return default
+    if re.fullmatch(r"-?[0-9]{1,30}", text) is None:
+        raise InvalidParameterError(
+            f"The parameter {name} must be a whole number, got {text!r}",
+            details={
+                "parameter": name,
+                "reason": "type",
+                "expected": "integer",
+                "value": text,
+            },
+        )
+    value = int(text)
+    for reason, bound, outside in (
+        ("minimum", minimum, value < minimum),
+        ("maximum", maximum, value > maximum),
+    ):
+        if outside:
+            raise InvalidParameterError(
+                f"The parameter {name} must be {'>=' if reason == 'minimum' else '<='}"
+                f" {bound}, got {value}",
+                details={
+                    "parameter": name,
+                    "reason": reason,
+                    reason: bound,
+                    "value": value,
+                },
+            )
+    return value
 
 
 class _Guard:
@@ -258,16 +373,22 @@ def _command(request: Request, call: _Call) -> Command:
 
 
 class _Gui:
-    """The state of one app (limits, sessions, workers) and its API handlers."""
+    """The state of one app (limits, sessions, workers, reports) and its handlers."""
 
     def __init__(
-        self, *, work_root: Path | None, workers: int, run_timeout_s: float
+        self,
+        *,
+        work_root: Path | None,
+        workers: int,
+        run_timeout_s: float,
+        data_dir: Path,
     ) -> None:
         self.limits = Limits()
         self.sessions = Sessions(work_root=work_root, limits=self.limits)
         self.runner = Runner(
             workers=workers, timeout_s=run_timeout_s, cwd=self.sessions.root
         )
+        self.reports = FeedbackStore(data_dir / TOOL / FILE_NAME)
         self._finalizer = weakref.finalize(self, _close, self.runner, self.sessions)
 
     def close(self) -> None:
@@ -313,15 +434,30 @@ class _Gui:
         call.session = session
         return session
 
-    async def options(self, request: Request) -> dict[str, Any]:
-        """Return the JSON object of the request body (the options of a command)."""
+    def admin(self, handler: _Handler) -> _Handler:
+        """Wrap a handler of the admin page: it runs only with the admin key."""
+
+        async def admin(request: Request, call: _Call) -> Response:
+            refusal = _admin_refusal(request.headers.get("x-admin-key"))
+            return refusal if refusal is not None else await handler(request, call)
+
+        return admin
+
+    async def options(
+        self, request: Request, *, limit: int | None = None
+    ) -> dict[str, Any]:
+        """Return the JSON object of the request body: a command's options, a report.
+
+        ``limit`` is the largest body [bytes], by default the 5 MiB of D7.
+        """
         media_type = request.headers.get("content-type", "").partition(";")[0]
         if media_type.strip().lower() != _JSON:
             raise InvalidParameterError(
                 f"The body must be {_JSON}",
                 details={"reason": "content_type", "expected": _JSON},
             )
-        limit = self.limits.request_bytes
+        if limit is None:
+            limit = self.limits.request_bytes
         declared = _declared_length(request)
         if declared is not None and declared > limit:
             raise _too_large(limit)
@@ -340,7 +476,7 @@ class _Gui:
             ) from exc
         if not isinstance(options, dict):
             raise InvalidParameterError(
-                "The body must be a JSON object of options",
+                "The body must be a JSON object",
                 details={"reason": "type", "expected": "object"},
             )
         return options
@@ -535,6 +671,58 @@ class _Gui:
             raise _no_file(value)
         return FileResponse(path, filename=path.name)
 
+    # --- „Zgłoś uwagę” and the admin page -------------------------------------------
+
+    async def feedback(self, request: Request, call: _Call) -> Response:
+        """``POST api/feedback``: store a GUI session's report; ``{"id", "status"}``."""
+        report = parse_report(await self.options(request, limit=REQUEST_MAX_BYTES))
+        self.open_session(request, call)
+        user_agent = request.headers.get("user-agent", "")
+        number = await anyio.to_thread.run_sync(
+            functools.partial(self.reports.add, report, user_agent=user_agent)
+        )
+        return JSONResponse({"id": number, "status": "ok"})
+
+    async def feedback_list(self, request: Request, call: _Call) -> Response:
+        """``GET api/admin/feedback?limit=50&offset=0``: a page, newest first.
+
+        The answer is ``{"items", "total", "unread_count"}``; ``limit`` is 1 to 200.
+        """
+        limit = _query_int(
+            request, "limit", LIST_LIMIT, minimum=1, maximum=LIST_LIMIT_MAX
+        )
+        offset = _query_int(request, "offset", 0, minimum=0, maximum=ID_MAX)
+        listing = await anyio.to_thread.run_sync(
+            functools.partial(self.reports.listing, limit=limit, offset=offset)
+        )
+        return JSONResponse(listing)
+
+    async def feedback_mark(self, request: Request, call: _Call) -> Response:
+        """``PATCH api/admin/feedback/{id}`` with ``{"is_read": bool}``."""
+        number = request.path_params["feedback_id"]
+        is_read = parse_read(await self.options(request, limit=REQUEST_MAX_BYTES))
+        found = await anyio.to_thread.run_sync(
+            functools.partial(self.reports.set_read, number, is_read=is_read)
+        )
+        _found(found, number)
+        return JSONResponse({"status": "ok"})
+
+    async def feedback_delete(self, request: Request, call: _Call) -> Response:
+        """``DELETE api/admin/feedback/{id}``: ``{"status": "deleted"}``."""
+        number = request.path_params["feedback_id"]
+        found = await anyio.to_thread.run_sync(self.reports.delete, number)
+        _found(found, number)
+        return JSONResponse({"status": "deleted"})
+
+
+def _found(found: bool, number: int) -> None:
+    """Refuse a report that does not exist (``404``, ``feedback_not_found``)."""
+    if not found:
+        raise NotFoundError(
+            f"Feedback {number} not found",
+            details={"reason": "feedback_not_found", "feedback_id": number},
+        )
+
 
 def _close(runner: Runner, sessions: Sessions) -> None:
     runner.close()
@@ -545,16 +733,12 @@ async def _api_http_error(request: Request, exc: Exception) -> Response:
     """Turn the router's 404 and 405 under ``api/`` into error documents."""
     assert isinstance(exc, HTTPException)
     if exc.status_code == 405:
-        entry = BY_CODE["method_not_allowed"]  # a REST code: no exit code
-        document = {
-            "schema": ERROR_SCHEMA,
-            "code": entry.code,
-            "title": entry.title_pl,
-            "message": f"The method {request.method} is not allowed here",
-            "details": {"reason": "method", "method": request.method},
-            "exit_code": entry.exit_code,
-        }
-        return JSONResponse(document, status_code=405, headers=exc.headers)
+        return _rest_error(
+            "method_not_allowed",
+            f"The method {request.method} is not allowed here",
+            {"reason": "method", "method": request.method},
+            headers=exc.headers,
+        )
     missing = NotFoundError(
         f"No API route {request.url.path!r}", details={"reason": "no_route"}
     )
@@ -567,10 +751,16 @@ async def _api_defect(request: Request, exc: Exception) -> Response:
 
 
 def build_app(
-    *, work_root: Path | None, workers: int, run_timeout_s: float
+    *, work_root: Path | None, workers: int, run_timeout_s: float, data_dir: Path
 ) -> Starlette:
     """Build the app; see :func:`hydrolog.gui.create_app`."""
-    gui = _Gui(work_root=work_root, workers=workers, run_timeout_s=run_timeout_s)
+    gui = _Gui(
+        work_root=work_root,
+        workers=workers,
+        run_timeout_s=run_timeout_s,
+        data_dir=data_dir,
+    )
+    report = "/admin/feedback/{feedback_id:int}"
     api = Starlette(
         routes=[
             Route("/session", gui.endpoint(gui.session), methods=["GET"]),
@@ -586,6 +776,20 @@ def build_app(
                 "/files/{area}/{name:path}",
                 gui.endpoint(gui.file),
                 methods=["GET", "DELETE"],
+            ),
+            Route("/feedback", gui.endpoint(gui.feedback), methods=["POST"]),
+            Route(
+                "/admin/feedback",
+                gui.endpoint(gui.admin(gui.feedback_list)),
+                methods=["GET"],
+            ),
+            Route(
+                report, gui.endpoint(gui.admin(gui.feedback_mark)), methods=["PATCH"]
+            ),
+            Route(
+                report,
+                gui.endpoint(gui.admin(gui.feedback_delete)),
+                methods=["DELETE"],
             ),
         ],
         exception_handlers={HTTPException: _api_http_error, Exception: _api_defect},

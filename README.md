@@ -272,6 +272,16 @@ hydrolog gui serve --no-browser --port 8071
 
 `--check` only reports the address and whether the port is free. The server has no sign-in: anyone who reaches it can compute and upload files (each browser session gets a work directory of its own, with limits). It listens on 127.0.0.1, this computer only. To share it, keep it there and put an authenticating reverse proxy in front of it, for example Cloudflare Access on a Cloudflare Tunnel to `127.0.0.1:8070`; `--host` with another address exposes it without a sign-in and adds the warning `exposed_without_auth`. Running it as a service, your data in the GUI and the limits: [docs/USAGE.md](https://github.com/Daldek/Hydrolog/blob/main/docs/USAGE.md#8-the-web-gui); hosting it in another app: [docs/INTEGRATION.md](https://github.com/Daldek/Hydrolog/blob/main/docs/INTEGRATION.md#web-gui-a-module-of-nogats-gui-platform).
 
+**Zgłoś uwagę** (report a problem) in the top bar sends a report to whoever runs the server, as in Hydrograf: a description of up to 5,000 characters, an optional name or e-mail and, unless the person unticks them, diagnostics that the dialog shows before sending: the page's last 50 events (errors, API calls with their status and duration, changes of the section), the open section with its inputs and the browser's window; never the contents of files, cookies or keys, at most 100 kB. The reports are kept in one SQLite file, `<data_dir>/hydrolog/feedback.sqlite3`, which the first report makes (`data_dir` is `HYDROLOG_DATA_DIR`, `NOGAT_DATA_DIR`, `data_dir` of `nogat.toml` or the user data directory, `~/.local/share/nogat` on Linux; `hydrolog config show` prints it). The admin page `admin/` under the GUI's address (`http://127.0.0.1:8070/admin/`) lists them newest first, opens, marks and deletes them for the key in `HYDROLOG_ADMIN_API_KEY`, or in the file that `HYDROLOG_ADMIN_API_KEY_FILE` names; without either it refuses everyone. Read them there, or with `sqlite3`, and back the file up with SQLite's `.backup`, which is safe while the server runs:
+
+```sh
+openssl rand -hex 32 > ~/.config/hydrolog-admin.key && chmod 600 ~/.config/hydrolog-admin.key
+HYDROLOG_ADMIN_API_KEY_FILE=~/.config/hydrolog-admin.key hydrolog gui serve --no-browser
+sqlite3 ~/.local/share/nogat/hydrolog/feedback.sqlite3 \
+  "SELECT id, created_at, is_read, contact, message FROM feedback ORDER BY created_at DESC"
+sqlite3 ~/.local/share/nogat/hydrolog/feedback.sqlite3 ".backup feedback-backup.sqlite3"
+```
+
 ## Related tools
 
 - [Kartograf](https://github.com/Daldek/Kartograf) downloads Polish and Czech geodata (elevation, land cover, soils); the `files[].path` values in the `--json` result of `kartograf soil download --output-dir DIR` are the clay, sand and silt rasters of `soil hsg`.
@@ -312,11 +322,11 @@ except hydrolog.HydrologError as error:
 
 ## Data and licensing
 
-Hydrolog downloads nothing, opens no network connection and needs no account or key. Input is numbers or local files: CSV series (an Obserwator export loads unchanged), JSON (watershed, stations, network segments, the network of `route network`) and GeoTIFF rasters (extra `raster`). It ships no dataset except the TR-55 curve number table of USDA NRCS. The data you pass keep the licence of their source (IMGW-PIB terms of reuse, SoilGrids CC BY 4.0); Hydrolog does not copy the attribution columns of an Obserwator export into results, so name the source when you publish a result.
+Hydrolog downloads nothing, opens no network connection and needs no account; its only key is one you choose for the web GUI's admin page. Input is numbers or local files: CSV series (an Obserwator export loads unchanged), JSON (watershed, stations, network segments, the network of `route network`) and GeoTIFF rasters (extra `raster`). It ships no dataset except the TR-55 curve number table of USDA NRCS. The data you pass keep the licence of their source (IMGW-PIB terms of reuse, SoilGrids CC BY 4.0); Hydrolog does not copy the attribution columns of an Obserwator export into results, so name the source when you publish a result.
 
-A command writes only to the file named by `--output` (exactly one plain file, written atomically; `commands guide --inject PATH` edits the AGENTS.md you name) or, for `route network`, into the directory named by `--output-dir` (one table per node, each moved into place from a `.hydrolog-incoming/` staging directory that is removed afterwards), and replaces an existing file only with `--force`. There is no store, cache or credential.
+A command writes only to the file named by `--output` (exactly one plain file, written atomically; `commands guide --inject PATH` edits the AGENTS.md you name) or, for `route network`, into the directory named by `--output-dir` (one table per node, each moved into place from a `.hydrolog-incoming/` staging directory that is removed afterwards), and replaces an existing file only with `--force`. There is no store or cache; only the web GUI writes a file of its own, the reports of „Zgłoś uwagę” in `<data_dir>/hydrolog/feedback.sqlite3`.
 
-Settings (`lang`, `log_level`) come from, in order: the command-line option, `HYDROLOG_<KEY>`, `NOGAT_<KEY>`, `nogat.toml` (section `[hydrolog]`, then `[nogat]`) in the user config directory or at `NOGAT_CONFIG`, then the default; an invalid environment or file value is ignored. [.env.example](https://github.com/Daldek/Hydrolog/blob/main/.env.example) lists every variable: `HYDROLOG_LANG`, `NOGAT_LANG` (`pl` or `en`, default `pl`), `HYDROLOG_LOG_LEVEL`, `NOGAT_LOG_LEVEL` (`debug`, `info`, `warning` or `error`, default `warning`) and `NOGAT_CONFIG`. `hydrolog config show` prints the effective values and where each comes from:
+Settings (`lang`, `log_level`, `data_dir`) come from, in order: the command-line option, `HYDROLOG_<KEY>`, `NOGAT_<KEY>`, `nogat.toml` (section `[hydrolog]`, then `[nogat]`) in the user config directory or at `NOGAT_CONFIG`, then the default; an invalid environment or file value is ignored. [.env.example](https://github.com/Daldek/Hydrolog/blob/main/.env.example) lists every variable: `HYDROLOG_LANG`, `NOGAT_LANG` (`pl` or `en`, default `pl`), `HYDROLOG_LOG_LEVEL`, `NOGAT_LOG_LEVEL` (`debug`, `info`, `warning` or `error`, default `warning`), `HYDROLOG_DATA_DIR`, `NOGAT_DATA_DIR` (the data directory, default the user data directory of `nogat`), `NOGAT_CONFIG`, and the credential, which is read from the environment only, never from `nogat.toml`: `HYDROLOG_ADMIN_API_KEY` or `HYDROLOG_ADMIN_API_KEY_FILE` (the key of the web GUI's admin page, or a file that holds it). `hydrolog config show` prints the effective values, where each comes from and whether each credential variable is set, never its value:
 
 ```bash
 hydrolog config show --json
@@ -329,9 +339,13 @@ hydrolog config show --json
     "schema": "hydrolog-config/1",
     "settings": [
       {"key": "lang", "value": "pl", "source": "default"},
-      {"key": "log_level", "value": "warning", "source": "default"}
+      {"key": "log_level", "value": "warning", "source": "default"},
+      {"key": "data_dir", "value": "...", "source": "default"}
     ],
-    "credentials": [],
+    "credentials": [
+      {"name": "HYDROLOG_ADMIN_API_KEY", "present": false},
+      {"name": "HYDROLOG_ADMIN_API_KEY_FILE", "present": false}
+    ],
     "store": null
   }
 }

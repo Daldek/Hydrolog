@@ -6,9 +6,13 @@ before ``[nogat]``) and the built-in default. The file is ``nogat.toml`` in the 
 configuration directory (``platformdirs.user_config_path("nogat")``) or the path in
 ``NOGAT_CONFIG``; it is read with ``tomllib`` and Hydrolog works without it.
 
-Hydrolog has two settings, ``lang`` (language of human-readable output) and
-``log_level`` (verbosity of the CLI log on stderr). It reads no credentials and has no
-store or cache, so ``data_dir`` and ``cache_dir`` of the shared section are not used.
+Hydrolog has three settings: ``lang`` (language of human-readable output),
+``log_level`` (verbosity of the CLI log on stderr) and ``data_dir`` (the shared data
+directory, DEV-18.2: the web GUI keeps the reports of „Zgłoś uwagę” in
+``<data_dir>/hydrolog/feedback.sqlite3``). It has no store and no cache, so
+``cache_dir`` of the shared section is not used. Its one credential, the key of the
+web GUI's admin page, comes from the environment only (DEV-18.4):
+:func:`admin_api_key`.
 """
 
 from __future__ import annotations
@@ -24,19 +28,31 @@ from typing import Any, Final, Literal
 import platformdirs
 
 __all__ = [
+    "ADMIN_API_KEY",
+    "ADMIN_API_KEY_FILE",
+    "CREDENTIALS",
     "DEFAULTS",
     "KEYS",
     "Setting",
+    "admin_api_key",
     "config_path",
+    "credentials",
+    "default_data_dir",
     "load_file",
     "resolve_setting",
 ]
 
 TOOL: Final = "hydrolog"
-KEYS: Final = ("lang", "log_level")
+KEYS: Final = ("lang", "log_level", "data_dir")
 """Names of the settings of Hydrolog."""
 DEFAULTS: Final[Mapping[str, str]] = {"lang": "pl", "log_level": "warning"}
-"""Built-in default of each setting."""
+"""Built-in default of each setting but ``data_dir`` (:func:`default_data_dir`)."""
+ADMIN_API_KEY: Final = "HYDROLOG_ADMIN_API_KEY"
+"""The variable that holds the key of the web GUI's admin page (DEV-18.4)."""
+ADMIN_API_KEY_FILE: Final = "HYDROLOG_ADMIN_API_KEY_FILE"
+"""The variable that names a file holding that key (a secret file of a service)."""
+CREDENTIALS: Final = (ADMIN_API_KEY, ADMIN_API_KEY_FILE)
+"""The credential variables Hydrolog reads, in the order ``config show`` lists them."""
 
 SettingSource = Literal["option", "environment", "file", "default"]
 
@@ -114,10 +130,23 @@ def load_file(path: Path) -> dict[str, Any]:
         return {}
 
 
+def default_data_dir() -> str:
+    """Return the default ``data_dir``: the user data directory of ``nogat`` (DEV-18.2).
+
+    Returns
+    -------
+    str
+        ``platformdirs.user_data_path("nogat")``, e.g. ``~/.local/share/nogat``.
+    """
+    return str(platformdirs.user_data_path("nogat"))
+
+
 def _normalize(key: str, raw: object) -> str | None:
     """Return the value of ``key`` from ``raw``, or ``None`` when it is not usable."""
     if not isinstance(raw, str) or not raw.strip():
         return None
+    if key == "data_dir":
+        return str(Path(raw.strip()).expanduser())
     value = raw.strip().lower()
     if key == "lang":
         language = re.split(r"[_.\-@]", value, maxsplit=1)[0]
@@ -171,4 +200,60 @@ def resolve_setting(
             value = _normalize(key, table.get(key))
             if value is not None:
                 return Setting(key, value, "file", f"[{section}] {key}")
-    return Setting(key, DEFAULTS[key], "default")
+    return Setting(
+        key, default_data_dir() if key == "data_dir" else DEFAULTS[key], "default"
+    )
+
+
+def credentials(environ: Mapping[str, str] | None = None) -> list[dict[str, Any]]:
+    """Return each credential variable and whether it is set (DEV-18.6).
+
+    Parameters
+    ----------
+    environ : Mapping, optional
+        Environment to read; defaults to ``os.environ``.
+
+    Returns
+    -------
+    list of dict
+        ``{"name", "present"}`` for each of :data:`CREDENTIALS`, ``present`` when the
+        variable is set and not blank; never the value.
+    """
+    source = os.environ if environ is None else environ
+    return [
+        {"name": name, "present": bool(source.get(name, "").strip())}
+        for name in CREDENTIALS
+    ]
+
+
+def admin_api_key(environ: Mapping[str, str] | None = None) -> str | None:
+    """Return the key of the web GUI's admin page, or ``None`` when none is set.
+
+    The key is ``HYDROLOG_ADMIN_API_KEY``; without it, the text of the file that
+    ``HYDROLOG_ADMIN_API_KEY_FILE`` names (the secret file of a service or a
+    container). Surrounding whitespace is dropped. It is never read from
+    ``nogat.toml`` (DEV-18.4).
+
+    Parameters
+    ----------
+    environ : Mapping, optional
+        Environment to read; defaults to ``os.environ``.
+
+    Returns
+    -------
+    str or None
+        The key; ``None`` when both variables are unset or blank, or the file is
+        missing, unreadable, not UTF-8 or blank.
+    """
+    source = os.environ if environ is None else environ
+    key = source.get(ADMIN_API_KEY, "").strip()
+    if key:
+        return key
+    path = source.get(ADMIN_API_KEY_FILE, "").strip()
+    if not path:
+        return None
+    try:
+        key = Path(path).expanduser().read_text(encoding="utf-8").strip()
+    except (OSError, UnicodeDecodeError):
+        return None
+    return key or None

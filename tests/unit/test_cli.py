@@ -669,7 +669,10 @@ class TestLanguage:
         )
         assert (setting["value"], setting["source"]) == ("en", "environment")
         assert setting["detail"] == "NOGAT_LANG"
-        assert document["result"]["credentials"] == []
+        assert [item["present"] for item in document["result"]["credentials"]] == [
+            False,
+            False,
+        ]
         assert document["result"]["store"] is None
 
     def test_config_show_summary(self, capsys, tmp_path):
@@ -679,7 +682,12 @@ class TestLanguage:
         assert lines[1].split() == ["setting", "value", "source"]
         assert any(line.startswith("lang") and "default" in line for line in lines)
         assert f"Settings file: {tmp_path / 'absent.toml'} (no such file)" in lines
-        assert lines[-2:] == ["Credentials: n/a", "Data store: n/a"]
+        assert lines[-4:] == [
+            "Credentials:",
+            "  HYDROLOG_ADMIN_API_KEY: missing",
+            "  HYDROLOG_ADMIN_API_KEY_FILE: missing",
+            "Data store: n/a",
+        ]
 
     def test_invalid_lang_is_a_validation_error(self, capsys):
         code, document = _error(capsys, *KIRPICH, "--lang", "de")

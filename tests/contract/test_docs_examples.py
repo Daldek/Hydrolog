@@ -46,7 +46,8 @@ import of a module of an extra) is skipped.
 Three more checks keep the documentation in step with the code. The README Capabilities
 table lists every catalog command with its CLI name, MCP tool and Python function
 (AGI-1.1), the README MCP section names every tool family, and ``.env.example`` and the
-README list every environment variable that the settings read (DEV-18.3).
+README list every environment variable that the settings and the credentials read
+(DEV-18.3, DEV-18.4).
 """
 
 from __future__ import annotations
@@ -442,6 +443,8 @@ def test_env_example_and_readme_list_every_variable_the_settings_read() -> None:
     for key in _settings.KEYS:
         _settings.resolve_setting(key, environ=environment, file_data={})
     _settings.config_path(environment)
+    _settings.credentials(environment)
+    _settings.admin_api_key(environment)
     example = (REPOSITORY / ".env.example").read_text(encoding="utf-8")
     declared = set(re.findall(r"^([A-Z][A-Z0-9_]*)=", example, re.MULTILINE))
     assert declared == environment.read

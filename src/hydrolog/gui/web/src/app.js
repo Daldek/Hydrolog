@@ -1,8 +1,9 @@
 // The shell of the GUI (design/README.md, plan D10): the top bar, the rail of the sections,
-// the sections themselves and, standalone, the welcome dialog. Every registered section is
-// loaded and mounted with the shell and stays mounted (its inputs and last result survive a
-// change of section); only the active one is shown. Sections rely on that: Kalkulatory reads
-// the watershed and the tc method Hydrogram zlewni sets when it mounts.
+// the sections themselves and, standalone, the welcome dialog and the dialog of „Zgłoś
+// uwagę”. Every registered section is loaded and mounted with the shell and stays mounted
+// (its inputs and last result survive a change of section); only the active one is shown.
+// Sections rely on that: Kalkulatory reads the watershed and the tc method Hydrogram zlewni
+// sets when it mounts.
 
 import { host } from "./host.js";
 import { html, useEffect, useLayoutEffect, useState } from "./html.js";
@@ -11,6 +12,7 @@ import { shell } from "./labels/shell.js";
 import { routeHash, SECTION_ORDER, useRoute } from "./router.js";
 import { SECTIONS } from "./sections/index.js";
 import { SectionContext, setActiveSection } from "./store.js";
+import { FeedbackDialog } from "./ui/feedback.js";
 import { closeInfo, installInfo } from "./ui/info.js";
 import { Rail } from "./ui/rail.js";
 import { closeSheet, sheetOpen } from "./ui/sheet.js";
@@ -98,5 +100,6 @@ export function App() {
     </main>
     <${ToastHost} />
     ${host.embedded ? null : html`<${Welcome} />`}
+    ${host.embedded ? null : html`<${FeedbackDialog} />`}
   `;
 }
