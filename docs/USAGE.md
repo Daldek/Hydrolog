@@ -1040,25 +1040,32 @@ the design is in [ADR 0006](decisions/0006-mcp-server-conformance.md).
 
 ## 6. Settings
 
-Hydrolog has two settings: `lang` (language of human-readable output, `pl` or `en`; default `pl`)
-and `log_level` (verbosity of the log on stderr; default `warning`; `-v` and `-q` change it for
-one call). It needs no credentials and has no data directory or cache.
+Hydrolog has three settings: `lang` (language of human-readable output, `pl` or `en`; default `pl`),
+`log_level` (verbosity of the log on stderr; default `warning`; `-v` and `-q` change it for one
+call) and `data_dir` (the data directory the Nogat tools share; default the user data directory
+of `nogat`, `~/.local/share/nogat` on Linux). Only the web GUI uses `data_dir`: it keeps the
+reports of „Zgłoś uwagę” in `<data_dir>/hydrolog/feedback.sqlite3` ([section 8](#8-the-web-gui)).
+Hydrolog has no store or cache. Its one credential, the key of the GUI's admin page, comes from
+the environment only (`HYDROLOG_ADMIN_API_KEY`, or a file named by
+`HYDROLOG_ADMIN_API_KEY_FILE`), never from `nogat.toml`.
 
 ```bash
 hydrolog config show --json
 ```
 
 ```json output
-{"result": {"schema": "hydrolog-config/1", "settings": [{"key": "lang"}, {"key": "log_level"}]}}
+{"result": {"schema": "hydrolog-config/1", "settings": [{"key": "lang"}, {"key": "log_level"}, {"key": "data_dir"}]}}
 ```
 
 `config show` prints each setting with its value and its source (`environment`, `file` or
-`default`), the path of the settings file and whether it exists. An option of the call itself
-(`--lang en`) applies to that call only and is not reported. A setting comes from the first of:
+`default`), the path of the settings file and whether it exists, and whether each credential
+variable is set (`present`, never the value). An option of the call itself (`--lang en`)
+applies to that call only and is not reported. A setting comes from the first of:
 
 1. the command-line option (`--lang`, `-v`, `-q`);
-2. the environment variable `HYDROLOG_<KEY>` (`HYDROLOG_LANG`, `HYDROLOG_LOG_LEVEL`);
-3. the shared variable `NOGAT_<KEY>` (`NOGAT_LANG`, `NOGAT_LOG_LEVEL`);
+2. the environment variable `HYDROLOG_<KEY>` (`HYDROLOG_LANG`, `HYDROLOG_LOG_LEVEL`,
+   `HYDROLOG_DATA_DIR`);
+3. the shared variable `NOGAT_<KEY>` (`NOGAT_LANG`, `NOGAT_LOG_LEVEL`, `NOGAT_DATA_DIR`);
 4. the `[hydrolog]` table of `nogat.toml`, then its `[nogat]` table;
 5. the default.
 
@@ -1134,7 +1141,9 @@ A result leaves the page as CSV, JSON or PNG; from Hydrogram zlewni also as a Ma
 (`report generate`), and from Hydrogram zlewni and Sieć through a print view on A4 (a PDF by the
 browser's „Zapisz jako PDF”) and as a hand-off `nogat-handoff/1`. „Wczytaj z Hydrografa” opens a
 watershed or a network handed over that way, with the producer's result beside Hydrolog's
-([INTEGRATION.md](INTEGRATION.md#web-gui-the-hand-off-with-hydrograf-nogat-handoff1)).
+([INTEGRATION.md](INTEGRATION.md#web-gui-the-hand-off-with-hydrograf-nogat-handoff1)). „Zgłoś
+uwagę” in the top bar sends a report on a problem or an idea to whoever runs the server, who
+reads it on the admin page `admin/` ([below](#reports-of-users-zgłoś-uwagę)).
 
 ### Starting it
 
@@ -1176,6 +1185,70 @@ hydrolog gui serve --check --json
   and a run longer than 30 seconds is stopped (the notice `timeout`).
 - **The page loads nothing from other sites.** The server sends a Content-Security-Policy of
   `'self'` without inline scripts or styles, `X-Frame-Options: DENY` and `no-store` for its API.
+- **A report goes to whoever runs the server, and only when it is sent.** The diagnostics of
+  „Zgłoś uwagę” live in the page's memory until a report is sent with them (below).
+
+### Reports of users („Zgłoś uwagę”)
+
+„Zgłoś uwagę” in the top bar opens Hydrograf's dialog: a description (1 to 5,000 characters, with
+a counter), an optional name or e-mail (up to 200), „Dołącz dane diagnostyczne” (ticked) with
+„Pokaż co zostanie wysłane”, a preview of exactly the diagnostics that go with the report, and
+„Anuluj” or „Wyślij”; the dialog thanks and closes after 2 seconds. The diagnostics are at most
+100,000 bytes of JSON: `events`, the last 50 events of the page (JavaScript errors; API calls with
+the endpoint, method, status, duration and the error's code; changes of the section; the catalog
+documents the page reads when it loads only if they fail), `workspace`, what the person sees (the
+section, its route, the status badge, the context and the inputs the section keeps in the
+browser, a text longer than 200 characters or with lines and the rest of a list longer than 50
+replaced by their size), and `env` (the browser, its language, the window, the address, the
+theme). Never the contents of files, request bodies, cookies or keys. The address of the page
+and the browser's `User-Agent` go with every report.
+
+**Where reports are kept.** In the SQLite file `<data_dir>/hydrolog/feedback.sqlite3`
+([section 6](#6-settings); `hydrolog config show` prints `data_dir`), which the first report
+makes, with its directory (mode 0700, the file 0600). One table, `feedback`: `id`, `created_at`
+(UTC), `message`, `contact`, `page_url`, `user_agent`, `diagnostics` (JSON text) and `is_read`,
+with the limits as checks. The file is in WAL mode, so the server, the admin page and `sqlite3`
+can read it at the same time. A host that mounts the GUI chooses the directory with
+`create_app(data_dir=...)`.
+
+**The admin page.** `admin/` under the GUI's address (`http://127.0.0.1:8070/admin/`) asks for the
+key, or a file that holds it, and keeps it in the browser tab only (`sessionStorage`,
+`hydrolog-gui/admin-key/1`, until „Wyloguj”). It lists the reports newest first with the count of
+unread ones; a report opens its message, contact, page, browser, workspace, environment and events
+(and is then read), can be marked unread again or deleted. The key is `HYDROLOG_ADMIN_API_KEY`, or
+the text of the file that `HYDROLOG_ADMIN_API_KEY_FILE` names; the server reads it at every
+request, so a new key in the file applies at once. Without either, the admin page refuses everyone
+(`401 unauthorized`, `details.reason` `admin_key_not_configured`): no key is generated. A long
+random key does it, for example `openssl rand -hex 32 > admin.key`.
+
+The page's private API, for scripts as well (paths relative to the GUI's address):
+
+| Route | Request | Answer |
+|---|---|---|
+| `POST api/feedback` | `{"message", "contact", "page_url", "diagnostics"}` (JSON, at most 256 KiB) | `{"id": 7, "status": "ok"}` |
+| `GET api/admin/feedback?limit=50&offset=0` | `X-Admin-Key`; `limit` 1 to 200 | `{"items": [...], "total", "unread_count"}`, newest first |
+| `PATCH api/admin/feedback/{id}` | `X-Admin-Key`; `{"is_read": true}` | `{"status": "ok"}` |
+| `DELETE api/admin/feedback/{id}` | `X-Admin-Key` | `{"status": "deleted"}` |
+
+An error is a `hydrolog-error/1` document: `validation_error` (400; `details.parameter` and
+`details.reason`, for example `too_long` with `max_length`, or `too_large` for diagnostics over
+100,000 bytes), `unauthorized` (401; `admin_key_missing`, `admin_key_invalid` or
+`admin_key_not_configured`), `not_found` (404; `feedback_not_found`) or `io_error` (500; the
+file could not be used, `feedback_store_failed` and the like, without its path).
+
+**Reading and backing up.** Besides the admin page, `curl` with the key or `sqlite3` on the file
+read the reports; SQLite's `.backup` copies the file consistently while the server runs (a plain
+copy of the file alone can miss what is still in `feedback.sqlite3-wal`). To restore, stop the
+server and put the copy in the file's place.
+
+```sh
+curl -s -H "X-Admin-Key: $(cat admin.key)" "http://127.0.0.1:8070/api/admin/feedback?limit=50"
+sqlite3 -header -column ~/.local/share/nogat/hydrolog/feedback.sqlite3 \
+  "SELECT id, created_at, is_read, contact, substr(message, 1, 60) AS message FROM feedback ORDER BY created_at DESC"
+sqlite3 ~/.local/share/nogat/hydrolog/feedback.sqlite3 \
+  "SELECT json_extract(diagnostics, '$.workspace.section') FROM feedback WHERE id = 7"
+sqlite3 ~/.local/share/nogat/hydrolog/feedback.sqlite3 ".backup feedback-$(date +%F).sqlite3"
+```
 
 ### Running it as a service behind a proxy
 
@@ -1197,6 +1270,7 @@ After=network.target
 
 [Service]
 User=hydrolog
+Environment=HYDROLOG_ADMIN_API_KEY_FILE=/home/hydrolog/.config/hydrolog/admin.key
 ExecStart=/home/hydrolog/.local/bin/hydrolog gui serve --no-browser --host 127.0.0.1 --port 8070
 Restart=on-failure
 

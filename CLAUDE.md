@@ -40,6 +40,7 @@ uv run pytest tests/unit -q        # a part of the tests
 uv run hydrolog --help             # the CLI
 uv run hydrolog mcp --allow-dir .  # the MCP server (stdio)
 uv run hydrolog gui serve --no-browser   # the web GUI on 127.0.0.1:8070 (extra [gui])
+HYDROLOG_ADMIN_API_KEY=k HYDROLOG_DATA_DIR=/tmp/d uv run hydrolog gui serve --no-browser  # + admin/
 uv run --no-sync playwright install chromium   # once: Chromium for the browser tests
 # regenerate the guides after changing the catalog, templates or flows:
 uv run hydrolog commands guide --format agents --output AGENTS.md --force
@@ -53,6 +54,12 @@ the numbers of the shipped examples (`data-example`, compared with the computed 
 `tests/e2e/test_smoke.py`) and shows pictures of the page (`instrukcja/img/`: 1440 x 900 in the
 light theme, a 390 px phone in the dark one, PNG of 256 colours); a change of an example, a
 result, a label or the layout of the page updates them.
+„Zgłoś uwagę” (the top bar) stores reports in SQLite `<data_dir>/hydrolog/feedback.sqlite3`
+(`data_dir`: `HYDROLOG_DATA_DIR`, `NOGAT_DATA_DIR`, `nogat.toml`, else the user data directory);
+the admin page `admin/` reads them only with `HYDROLOG_ADMIN_API_KEY` or
+`HYDROLOG_ADMIN_API_KEY_FILE` set (no key: 401). Read and back up the file with `sqlite3 FILE
+"SELECT ..."` and `sqlite3 FILE ".backup COPY"`; tests give `create_app(data_dir=tmp)`, never
+the developer's data directory.
 A change that touches docs ships with its CHANGELOG entry (DOC-7.2).
 
 ## Code map
@@ -64,11 +71,13 @@ src/hydrolog/
 ├── cli/          # CLI generated from the catalog; render.py (human text), texts.py (PL/EN)
 ├── mcp/          # MCP server (extra [mcp]): tools, instructions, calls
 ├── gui/          # web GUI (extra [gui]): server.py (serve), _app.py (Starlette app, private API),
-│                 # _runner.py, _worker.py (warm worker processes), _sessions.py (work directories);
-│                 # web/ (the page: Preact modules without a build; instrukcja/: the user guide)
+│                 # _runner.py, _worker.py (warm worker processes), _sessions.py (work directories),
+│                 # _feedback.py (reports of „Zgłoś uwagę”, SQLite); web/ (the page: Preact modules
+│                 # without a build; instrukcja/: the user guide; admin/: the reports)
 ├── agent_guide.py, _data/agents/   # generator and templates of AGENTS.md, llms.txt, block
 ├── exceptions.py, _errors.py       # HydrologError classes; registry generated from schemas/nogat
-├── _settings.py                    # lang/log_level: option > env > nogat.toml > default
+├── _settings.py                    # lang/log_level/data_dir: option > env > nogat.toml > default;
+│                                   # the admin key (env only)
 ├── routing/      # reaches (lag, muskingum, cunge, cascade, level_pool); network.py (nodes, RoutingNetwork),
 │                 # points.py (ControlPointNetwork), rainfall.py, runoff.py, document.py (hydrolog-network/1),
 │                 # schematic.py, _layout.py, _svg.py (the metro-style map, hydrolog-network-schematic/1)

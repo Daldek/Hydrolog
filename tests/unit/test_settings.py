@@ -1,13 +1,17 @@
-"""Tests for the shared settings (DEV-18.1): precedence, lenient values, the file."""
+"""Tests for the shared settings (DEV-18.1): precedence, lenient values, the file,
+``data_dir`` (DEV-18.2) and the credential of the GUI's admin page (DEV-18.4)."""
 
 from __future__ import annotations
 
+import platformdirs
 import pytest
 
 from hydrolog._settings import (
     DEFAULTS,
     KEYS,
+    admin_api_key,
     config_path,
+    credentials,
     load_file,
     resolve_setting,
 )
@@ -24,12 +28,13 @@ class TestPrecedence:
 
     FILE = {"hydrolog": {"lang": "en"}, "nogat": {"lang": "pl"}}
 
-    def test_the_default_is_polish_and_warning(self):
+    def test_the_defaults_are_polish_warning_and_the_user_data_directory(self):
         assert DEFAULTS == {"lang": "pl", "log_level": "warning"}
+        expected = {**DEFAULTS, "data_dir": str(platformdirs.user_data_path("nogat"))}
         for key in KEYS:
             setting = resolve_setting(key, environ={}, file_data={})
             assert (setting.value, setting.source, setting.detail) == (
-                DEFAULTS[key],
+                expected[key],
                 "default",
                 None,
             )
@@ -92,7 +97,7 @@ class TestPrecedence:
 
     def test_an_unknown_key_is_refused(self):
         with pytest.raises(KeyError):
-            resolve_setting("data_dir", environ={}, file_data={})
+            resolve_setting("cache_dir", environ={}, file_data={})
 
     def test_the_process_environment_is_used_by_default(self, monkeypatch):
         monkeypatch.setenv("HYDROLOG_LANG", "en")
@@ -215,3 +220,86 @@ class TestConfigPath:
     def test_the_process_environment_is_the_default_source(self, tmp_path):
         """The autouse fixture points ``NOGAT_CONFIG`` at an absent file."""
         assert config_path() == tmp_path / "absent.toml"
+
+
+class TestDataDir:
+    """``data_dir``: a path, its case kept and ``~`` expanded."""
+
+    @pytest.mark.parametrize(
+        "environ",
+        [
+            {"HYDROLOG_DATA_DIR": "/Dane/Nogat", "NOGAT_DATA_DIR": "/x"},
+            {"NOGAT_DATA_DIR": "/Dane/Nogat"},
+        ],
+    )
+    def test_the_variables_give_a_path_as_written(self, environ):
+        setting = resolve_setting("data_dir", environ=environ, file_data={})
+        assert (setting.value, setting.source) == ("/Dane/Nogat", "environment")
+
+    def test_the_home_directory_is_expanded(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("HOME", str(tmp_path))
+        setting = resolve_setting(
+            "data_dir", environ={"HYDROLOG_DATA_DIR": " ~/Dane "}, file_data={}
+        )
+        assert setting.value == str(tmp_path / "Dane")
+
+    def test_the_shared_section_of_the_file_gives_it(self):
+        setting = resolve_setting(
+            "data_dir", environ={}, file_data={"nogat": {"data_dir": "/srv/Nogat"}}
+        )
+        assert (setting.value, setting.detail) == ("/srv/Nogat", "[nogat] data_dir")
+
+
+class TestCredentials:
+    """``HYDROLOG_ADMIN_API_KEY`` or the file ``HYDROLOG_ADMIN_API_KEY_FILE`` names."""
+
+    def test_config_show_learns_only_whether_each_variable_is_set(self):
+        environ = {
+            "HYDROLOG_ADMIN_API_KEY": "sekret",
+            "HYDROLOG_ADMIN_API_KEY_FILE": " ",
+        }
+        assert credentials(environ) == [
+            {"name": "HYDROLOG_ADMIN_API_KEY", "present": True},
+            {"name": "HYDROLOG_ADMIN_API_KEY_FILE", "present": False},
+        ]
+
+    def test_the_variable_gives_the_key_without_its_whitespace(self):
+        assert admin_api_key({"HYDROLOG_ADMIN_API_KEY": " sekret\n"}) == "sekret"
+
+    def test_without_the_variable_the_file_gives_it(self, tmp_path):
+        path = tmp_path / "admin.key"
+        path.write_text("z-pliku\n", encoding="utf-8")
+        environ = {
+            "HYDROLOG_ADMIN_API_KEY": " ",
+            "HYDROLOG_ADMIN_API_KEY_FILE": str(path),
+        }
+        assert admin_api_key(environ) == "z-pliku"
+
+    def test_the_variable_wins_over_the_file(self, tmp_path):
+        path = tmp_path / "admin.key"
+        path.write_text("z-pliku", encoding="utf-8")
+        environ = {
+            "HYDROLOG_ADMIN_API_KEY": "ze-zmiennej",
+            "HYDROLOG_ADMIN_API_KEY_FILE": str(path),
+        }
+        assert admin_api_key(environ) == "ze-zmiennej"
+
+    def test_the_home_directory_of_the_file_is_expanded(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("HOME", str(tmp_path))
+        (tmp_path / "admin.key").write_text("domowy", encoding="utf-8")
+        assert admin_api_key({"HYDROLOG_ADMIN_API_KEY_FILE": "~/admin.key"}) == "domowy"
+
+    @pytest.mark.parametrize("content", [None, b"", b"  \n", b"\xff\xfe\xfa"])
+    def test_a_file_without_a_usable_key_is_no_key(self, tmp_path, content):
+        path = tmp_path / "admin.key"
+        if content is not None:
+            path.write_bytes(content)
+        assert admin_api_key({"HYDROLOG_ADMIN_API_KEY_FILE": str(path)}) is None
+
+    def test_no_variable_is_no_key(self):
+        assert admin_api_key({}) is None
+
+    def test_the_file_of_the_settings_never_gives_the_key(self, tmp_path):
+        """DEV-18.4: a credential in nogat.toml is not read."""
+        path = _toml(tmp_path, '[hydrolog]\nadmin_api_key = "z-pliku-ustawien"\n')
+        assert admin_api_key({"NOGAT_CONFIG": str(path)}) is None

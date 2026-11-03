@@ -260,4 +260,17 @@ export const api = {
   async remove(path) {
     await request("DELETE", `api/files/${filePath(path)}`);
   },
+
+  /**
+   * Send a report of „Zgłoś uwagę”.
+   *
+   * @param {{message: string, contact: string|null, page_url: string, diagnostics: object|null}} report
+   *   the report
+   * @returns {Promise<{id: number, status: string}>} the id of the stored report
+   * @throws {ApiError} with the status and the hydrolog-error/1 document
+   */
+  async feedback(report) {
+    const response = await request("POST", "api/feedback", { json: report });
+    return response.json();
+  },
 };

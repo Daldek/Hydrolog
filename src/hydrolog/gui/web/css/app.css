@@ -1,9 +1,10 @@
 /*
  * Hydrolog GUI: the shell of Nogat's identity (top bar, rail, Dane | Wykresy | Wyniki,
- * resizers, phone sheets), controls, generated forms, results, menus, (i) popovers and the
- * welcome dialog. Ported from the approved mockup (Nogat design/mockups/hydrolog/mockup.css,
- * ed3473c). Every colour comes from ../nogat/tokens.css; derived shades use color-mix() on
- * tokens. The charts' colours and rules live in charts.css.
+ * resizers, phone sheets), controls, generated forms, results, menus, (i) popovers, the
+ * welcome dialog and the dialog of „Zgłoś uwagę”. Ported from the approved mockup (Nogat
+ * design/mockups/hydrolog/mockup.css, ed3473c; the dialog of „Zgłoś uwagę” from Hydrograf).
+ * Every colour comes from ../nogat/tokens.css; derived shades use color-mix() on tokens.
+ * The charts' colours and rules live in charts.css.
  */
 
 :root {
@@ -722,7 +723,7 @@ pre.code .fold { color: color-mix(in srgb, var(--code-text) 55%, var(--code-bg))
 .info-pop .note { margin: var(--space-2) 0 0; }
 .sources { margin: var(--space-3) 0 0; font-size: var(--text-xs); color: var(--text-3); }
 
-/* ---------- Dialogs: the welcome (a native <dialog>, opened modal) ---------- */
+/* ---------- Dialogs: the welcome and „Zgłoś uwagę” (native <dialog>s, opened modal) ---------- */
 dialog.modal {
   width: min(500px, calc(100vw - 24px)); max-height: calc(100dvh - 24px);
   padding: 0; overflow-y: auto;
@@ -738,6 +739,21 @@ dialog.modal::backdrop { background: color-mix(in srgb, var(--code-bg) 45%, tran
 .modal-foot { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); padding: var(--space-2) var(--space-4) var(--space-4); }
 .welcome .modal-body p { margin: 0 0 var(--space-3); font-size: var(--text-site); line-height: var(--line-height); }
 .welcome .check { margin: var(--space-4) 0 var(--space-2); }
+.feedback .intro { margin: 0 0 var(--space-3); color: var(--text-2); }
+.feedback textarea, .feedback input[type="text"] { width: 100%; }
+.feedback .counter { justify-self: end; font-size: var(--text-xs); color: var(--text-3); }
+.feedback .check { align-items: flex-start; margin: 0; }
+.feedback .check input { margin-top: 2px; }
+.preview { margin: var(--space-3) 0 0; font-size: var(--text-sm); }
+.preview summary { color: var(--text-3); cursor: pointer; }
+.preview pre {
+  max-height: 200px; overflow: auto; margin: var(--space-2) 0 0; padding: var(--space-2);
+  background: var(--surface-2); border-radius: var(--radius-md);
+  font: var(--text-xs)/var(--line-height) var(--font-mono); white-space: pre-wrap; word-break: break-word;
+}
+.feedback-status { margin: var(--space-3) 0 0; font-size: var(--text-sm); font-weight: var(--weight-bold); }
+.feedback-status.ok { color: var(--ok-ink); }
+.feedback-status.bad { color: var(--bad-ink); }
 
 /* ---------- Narrow desktop: panels at their minimum ---------- */
 @media (max-width: 1240px) and (min-width: 861px) {

@@ -48,6 +48,16 @@ export const errors = {
     session_full: "Sesja jest pełna: usuń niepotrzebne pliki",
     content_type: "Serwer przyjmuje tylko dane JSON",
     invalid_json: "Nieprawidłowy JSON żądania",
+    too_long: "Za długie: najwięcej {max_length} znaków",
+    feedback_store_failed: "Nie udało się zapisać zgłoszenia. Spróbuj ponownie później.",
+    feedback_list_failed: "Nie udało się odczytać listy zgłoszeń.",
+    feedback_update_failed: "Nie udało się zaktualizować zgłoszenia.",
+    feedback_delete_failed: "Nie udało się usunąć zgłoszenia.",
+    feedback_not_found: "Nie znaleziono zgłoszenia {feedback_id}.",
+    admin_key_missing: "Brak klucza API administratora.",
+    admin_key_invalid: "Nieprawidłowy klucz API administratora.",
+    admin_key_not_configured:
+      "Serwer nie ma klucza administratora: uruchom go z HYDROLOG_ADMIN_API_KEY albo HYDROLOG_ADMIN_API_KEY_FILE.",
   },
   kinds: { object: "obiektu", array: "listy" },
   statuses: {
@@ -125,7 +135,20 @@ export function reasonText(reason, details = {}) {
     case "session_full":
     case "content_type":
     case "invalid_json":
+    case "feedback_store_failed":
+    case "feedback_list_failed":
+    case "feedback_update_failed":
+    case "feedback_delete_failed":
+    case "admin_key_missing":
+    case "admin_key_invalid":
+    case "admin_key_not_configured":
       text = r[reason];
+      break;
+    case "too_long":
+      text = t(r.too_long, { max_length: shown(details.max_length) });
+      break;
+    case "feedback_not_found":
+      text = t(r.feedback_not_found, { feedback_id: String(details.feedback_id ?? "") });
       break;
     case "too_large":
       text = t(r.too_large, { limit: typeof details.limit_bytes === "number" ? bytes(details.limit_bytes) : "–" });

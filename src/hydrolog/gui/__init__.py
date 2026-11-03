@@ -62,7 +62,8 @@ class GuiModule:
         The sections: the fragment of the address and the Polish title.
     app : callable
         :func:`create_app`: ``app(work_root=...)`` returns the ASGI app that serves
-        ``web`` and answers ``api/...`` relative to the page, at any prefix.
+        ``web`` and answers ``api/...`` relative to the page, at any prefix
+        (``data_dir=`` places the reports of „Zgłoś uwagę”).
     """
 
     name: str
@@ -78,6 +79,7 @@ def create_app(
     work_root: Path | None = None,
     workers: int = 2,
     run_timeout_s: float = 30.0,
+    data_dir: Path | None = None,
 ) -> Starlette:
     """Create the ASGI app of the GUI: the page and the private API of plan D5.
 
@@ -95,6 +97,14 @@ def create_app(
         Number of worker processes (at least 1).
     run_timeout_s : float, optional
         Longest run [s]; a longer one kills its worker and ends ``cancelled``.
+    data_dir : Path, optional
+        The shared data directory (DEV-18.2): the reports of „Zgłoś uwagę” go to
+        ``<data_dir>/hydrolog/feedback.sqlite3``, created by the first report;
+        ``None`` (default) takes the setting ``data_dir`` (``HYDROLOG_DATA_DIR``,
+        ``NOGAT_DATA_DIR``, ``nogat.toml``, else the user data directory of
+        ``nogat``). The admin routes answer only the key of
+        ``HYDROLOG_ADMIN_API_KEY`` or ``HYDROLOG_ADMIN_API_KEY_FILE``, read on every
+        request.
 
     Returns
     -------
@@ -125,9 +135,17 @@ def create_app(
             },
         )
     require_gui_extra()
+    from hydrolog._settings import resolve_setting
     from hydrolog.gui._app import build_app
 
-    return build_app(work_root=work_root, workers=workers, run_timeout_s=run_timeout_s)
+    if data_dir is None:
+        data_dir = Path(resolve_setting("data_dir").value)
+    return build_app(
+        work_root=work_root,
+        workers=workers,
+        run_timeout_s=run_timeout_s,
+        data_dir=Path(data_dir),
+    )
 
 
 def gui_module() -> GuiModule:

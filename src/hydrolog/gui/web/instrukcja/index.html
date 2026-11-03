@@ -161,7 +161,7 @@
     <figcaption>Hydrogram zlewni po pierwszym otwarciu. Kliknij obraz, aby zobaczyć go w pełnym rozmiarze.</figcaption>
   </figure>
   <dl class="defs">
-    <div><dt>Górny pasek</dt><dd>Znak Hydrologa (powrót do pierwszej sekcji), nazwa sekcji i jej kontekst (np. zlewnia i opad), plakietka stanu wyniku, „Instrukcja” (okno powitalne z odnośnikiem do tego przewodnika) i motyw: Auto, Jasny, Ciemny.</dd></div>
+    <div><dt>Górny pasek</dt><dd>Znak Hydrologa (powrót do pierwszej sekcji), nazwa sekcji i jej kontekst (np. zlewnia i opad), plakietka stanu wyniku, „Zgłoś uwagę” (zgłoszenie błędu albo pomysłu), „Instrukcja” (okno powitalne z odnośnikiem do tego przewodnika) i motyw: Auto, Jasny, Ciemny.</dd></div>
     <div><dt>Pasek sekcji</dt><dd>Hydrogram, Sieć, Statystyka, Kalkulatory, Polecenia: po lewej, a na telefonie na dole. Sekcja pamięta swoje dane i ostatni wynik, gdy przechodzisz do innej.</dd></div>
     <div><dt>Panel „Dane”</dt><dd>Po lewej: formularz, często w ponumerowanych krokach, które można zwinąć. Na dole przycisk obliczenia (w sekcjach, które go mają) i <span class="key-mark" aria-hidden="true">↻</span> „Wyczyść”, który przywraca przykład.</dd></div>
     <div><dt>Środek</dt><dd>Wykresy i tabele; nad nimi przełącznik widoku i krótka podpowiedź.</dd></div>
@@ -357,6 +357,7 @@
     <li>Dane wpisane w formularzach zostają w tej przeglądarce, osobno dla każdej sekcji, aż do „Wyczyść”. Wyniki nie są zapisywane: po ponownym otwarciu strony Hydrogram zlewni liczy wynik od nowa, a w pozostałych sekcjach wystarczy nacisnąć przycisk obliczenia.</li>
     <li>Pliki, które wczytujesz, trafiają do katalogu Twojej sesji na serwerze Hydrologa i są usuwane po 12 godzinach bez aktywności albo po zatrzymaniu serwera. Limity: 20&nbsp;MB na plik, 100&nbsp;MB i 200 plików na sesję.</li>
     <li>Hydrolog nie ma kont ani logowania i nie wysyła danych poza swój serwer.</li>
+    <li>Zgłoszenie z „Zgłoś uwagę” zostaje na serwerze Hydrologa razem z adresem strony i nazwą przeglądarki, a dane diagnostyczne tylko wtedy, gdy pole „Dołącz dane diagnostyczne” jest zaznaczone. Nie ma w nich treści Twoich plików; „Pokaż co zostanie wysłane” pokazuje je przed wysłaniem.</li>
   </ul>
   <p class="back"><a href="#toc-title">↑ Spis treści</a></p>
 </section>
@@ -373,6 +374,7 @@
     <div><dt>Plik nie wczytuje się</dt><dd>Sprawdź rozmiar (najwyżej 20&nbsp;MB) i format: CSV z wierszem nagłówka, przecinkiem albo średnikiem jako separatorem, albo JSON.</dd></div>
     <div><dt>„Nie wczytano przekazania”</dt><dd>Plik albo tekst ze schowka nie jest poprawnym przekazaniem <code>nogat-handoff/1</code>. Lista pod przyciskiem mówi, co i gdzie się nie zgadza, np. nieznane pole albo wartość spoza zakresu; dane sekcji się nie zmieniły. Sam plik zlewni wczytaj przyciskiem „Plik zlewni…”, a dokument sieci przyciskiem „Plik sieci…”.</dd></div>
     <div><dt>Chcesz zacząć od nowa</dt><dd><span class="key-mark" aria-hidden="true">↻</span> „Wyczyść” u dołu panelu „Dane” przywraca przykład tej sekcji.</dd></div>
+    <div><dt>Coś działa źle albo masz pomysł</dt><dd>„Zgłoś uwagę” na górnym pasku: opisz, co się stało, i naciśnij „Wyślij”. Zgłoszenie trafia do osoby, która prowadzi serwer Hydrologa. Zaznaczone pole „Dołącz dane diagnostyczne” dołącza ostatnie akcje w aplikacji, błędy i dane otwartej sekcji, które pomagają odtworzyć problem.</dd></div>
   </dl>
   <p class="back"><a href="#toc-title">↑ Spis treści</a></p>
 </section>
@@ -384,6 +386,8 @@
   <p>Hydrolog to program w Pythonie. Po instalacji z dodatkiem <code>gui</code> (polecenia instalacji są w README projektu) serwer uruchamia się poleceniem:</p>
   <pre class="cmd"><code>hydrolog gui serve</code></pre>
   <p>Strona otwiera się w przeglądarce pod adresem <code>127.0.0.1:8070</code>; <code>--port</code> zmienia port, <code>--no-browser</code> nie otwiera przeglądarki, a <kbd>Ctrl</kbd>+<kbd>C</kbd> zatrzymuje serwer. Hydrolog nie ma logowania: kto dotrze do serwera, może z niego korzystać. Udostępniaj go poza własnym komputerem tylko za serwerem pośredniczącym, który wymaga logowania, np. Cloudflare Access.</p>
+  <p>Zgłoszenia z „Zgłoś uwagę” zapisują się w pliku SQLite <code>feedback.sqlite3</code> w katalogu danych (<code>~/.local/share/nogat/hydrolog/</code> albo <code>hydrolog/</code> w katalogu z <code>HYDROLOG_DATA_DIR</code>). Czyta je strona <code>admin/</code> pod adresem Hydrologa, po podaniu klucza ustawionego w zmiennej <code>HYDROLOG_ADMIN_API_KEY</code> (albo w pliku, który wskazuje <code>HYDROLOG_ADMIN_API_KEY_FILE</code>); bez klucza strona administracyjna nikogo nie wpuszcza. Kopię zapasową zrobisz w trakcie pracy serwera:</p>
+  <pre class="cmd"><code>sqlite3 feedback.sqlite3 ".backup kopia.sqlite3"</code></pre>
   <p class="back"><a href="#toc-title">↑ Spis treści</a></p>
 </section>
 

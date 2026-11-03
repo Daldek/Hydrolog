@@ -1,10 +1,10 @@
 """The GUI's static files keep their contracts (GUI plan D9, D10, D16).
 
 The copies of Nogat's identity and the vendored Preact and htm are byte-identical to the
-SHA-256 their manifests record; the pages (the app and its guide, ``instrukcja/``) load
-nothing remote, have no inline script, style or event handler (CSP ``'self'``, D8) and
-link only files of ``web/``; the (i) texts hold no scripts, inline styles, event
-attributes or remote URLs.
+SHA-256 their manifests record; the pages (the app, its guide ``instrukcja/`` and the
+admin page ``admin/``) load nothing remote, have no inline script, style or event
+handler (CSP ``'self'``, D8) and link only files of ``web/``; the (i) texts hold no
+scripts, inline styles, event attributes or remote URLs.
 """
 
 import hashlib
@@ -21,8 +21,8 @@ NOGAT_COMMIT = "d1b5820d6395d3986ed44ce90aa3911e5169d622"
 # XML namespaces are names, not resources the page loads.
 NAMESPACE = re.compile(r"https?://www\.w3\.org/(2000/svg|1999/xlink|1998/Math/MathML)")
 REMOTE = re.compile(r"(?:https?:)?//[A-Za-z0-9.-]+\.[A-Za-z]{2,}[/\"'\s)]")
-PAGES = ["index.html", "instrukcja/index.html"]
-"""The HTML pages of the GUI: the app and its guide."""
+PAGES = ["index.html", "instrukcja/index.html", "admin/index.html"]
+"""The HTML pages of the GUI: the app, its guide and the admin page."""
 
 
 def sha256(path: Path) -> str:

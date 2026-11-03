@@ -21,7 +21,7 @@ Python 3.12 or newer: `pip install "hydrolog @ git+https://github.com/Daldek/Hyd
 - Python: `hydrolog.run_command("tc kirpich", length_km=8.2, slope_m_per_m=0.023)` (keyword arguments are the options). Also `check_command`, `validate_command`, `list_commands`, `command_schema` of `hydrolog`. `run_command` returns the envelope (`to_dict()`, `to_json()`); errors raise `HydrologError` subclasses (`code`, `hint`, `details`).
 - CLI: `hydrolog <group> <verb> --option value --json`, e.g. `hydrolog tc kirpich --length-km 8.2 --slope-m-per-m 0.023 --json`. A flag is `--` and the option name with `-` for `_`; lists are comma-separated (`--return-periods 10,50,100`), objects JSON text, booleans `--flag` or `--no-flag`. `--json` prints the envelope on one line of stdout; `--lang pl|en` only changes human output.
 - MCP: `hydrolog mcp --allow-dir DIR [--allow-writes] [--tools FAMILIES]` (console script `hydrolog-mcp`). `--allow-dir` can be repeated; `--tools` selects families (a command group or `core`). A tool is named like the `operation_id`, its arguments are the options; writing needs `--allow-writes`; the path rule is below.
-- Settings: `hydrolog config show` prints the effective `lang` and `log_level` and their sources.
+- Settings: `hydrolog config show` prints the effective `lang`, `log_level`, `data_dir` and their sources.
 
 ## Workflow rules
 

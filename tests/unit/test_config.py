@@ -20,7 +20,7 @@ def _settings(result: dict) -> dict[str, dict]:
 
 
 class TestConfigShow:
-    """The report of the settings, their sources and the (absent) store."""
+    """The report of the settings, their sources, the credentials and the store."""
 
     def test_the_document_keys(self):
         result = _show()
@@ -34,6 +34,8 @@ class TestConfigShow:
         }
 
     def test_the_defaults_without_environment_or_file(self, tmp_path):
+        import platformdirs
+
         result = _show()
         assert _settings(result) == {
             "lang": {"key": "lang", "value": "pl", "source": "default", "detail": None},
@@ -43,17 +45,34 @@ class TestConfigShow:
                 "source": "default",
                 "detail": None,
             },
+            "data_dir": {
+                "key": "data_dir",
+                "value": str(platformdirs.user_data_path("nogat")),
+                "source": "default",
+                "detail": None,
+            },
         }
         assert result["config_file"] == {
             "path": str(tmp_path / "absent.toml"),
             "exists": False,
         }
 
-    def test_hydrolog_has_no_store_and_no_credentials(self):
+    def test_hydrolog_has_no_store(self):
         """Hydrolog writes only the files named by the caller."""
-        result = _show()
-        assert result["store"] is None
-        assert result["credentials"] == []
+        assert _show()["store"] is None
+
+    def test_the_admin_key_is_reported_present_never_shown(self, monkeypatch):
+        assert _show()["credentials"] == [
+            {"name": "HYDROLOG_ADMIN_API_KEY", "present": False},
+            {"name": "HYDROLOG_ADMIN_API_KEY_FILE", "present": False},
+        ]
+        monkeypatch.setenv("HYDROLOG_ADMIN_API_KEY", "sekretny-klucz")
+        document = json.loads(run_command("config show").to_json())
+        assert document["result"]["credentials"][0] == {
+            "name": "HYDROLOG_ADMIN_API_KEY",
+            "present": True,
+        }
+        assert "sekretny-klucz" not in json.dumps(document)
 
     def test_the_environment_is_reported_with_its_variable(self, monkeypatch):
         monkeypatch.setenv("HYDROLOG_LANG", "en")

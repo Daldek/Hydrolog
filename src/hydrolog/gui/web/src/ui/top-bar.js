@@ -1,13 +1,15 @@
 // The top bar of the standalone GUI (design/README.md, plan D10): Hydrolog's mark and name,
-// the breadcrumbs (section / context), the status badge, „Instrukcja” (the welcome dialog,
-// which links the guide) and the theme switch Auto, Jasny, Ciemny. Inside Nogat's shell
-// ("?nogat=1") the shell's own bar replaces it.
+// the breadcrumbs (section / context), the status badge, „Zgłoś uwagę” (the dialog of a
+// report, ui/feedback.js), „Instrukcja” (the welcome dialog, which links the guide) and the
+// theme switch Auto, Jasny, Ciemny. Inside Nogat's shell ("?nogat=1") the shell's own bar
+// replaces it.
 
 import { useTheme } from "../host.js";
 import { html, useEffect } from "../html.js";
 import { t } from "../labels/common.js";
 import { shell } from "../labels/shell.js";
 import { useStore } from "../store.js";
+import { FeedbackButton } from "./feedback.js";
 import { Seg } from "./seg.js";
 import { StatusBadge } from "./status.js";
 import { openWelcome } from "./welcome.js";
@@ -76,6 +78,7 @@ export function TopBar({ section, home }) {
       </nav>
       <${StatusBadge} />
       <div class="top-actions">
+        <${FeedbackButton} />
         <a class="btn ghost" href="instrukcja/" aria-label=${shell.guide.label} title=${shell.guide.title} aria-haspopup="dialog" onClick=${onGuide}>
           ${GUIDE_ICON()}<span class="label">${shell.guide.label}</span>
         </a>

@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from hydrolog._serialization import JsonResultMixin
-from hydrolog._settings import KEYS, config_path, resolve_setting
+from hydrolog._settings import KEYS, config_path, credentials, resolve_setting
 
 __all__ = ["ConfigShow", "config_show"]
 
@@ -24,7 +24,9 @@ class ConfigShow(JsonResultMixin):
     config_file : dict
         ``path`` of ``nogat.toml`` and whether it ``exists``.
     credentials : list of dict
-        The credentials Hydrolog reads, each with ``name`` and ``present``; none.
+        Each credential variable Hydrolog reads (the key of the web GUI's admin page:
+        ``HYDROLOG_ADMIN_API_KEY``, ``HYDROLOG_ADMIN_API_KEY_FILE``) with ``name`` and
+        ``present``; never its value.
     store : dict or None
         The store root with its source and size; ``None`` because Hydrolog writes
         no store.
@@ -45,17 +47,18 @@ def config_show() -> ConfigShow:
     Returns
     -------
     ConfigShow
-        ``settings`` (``lang``, ``log_level``), the settings file, ``credentials``
-        (none) and ``store`` (``None``).
+        ``settings`` (``lang``, ``log_level``, ``data_dir``), the settings file,
+        ``credentials`` (present or missing) and ``store`` (``None``).
 
     Examples
     --------
     >>> report = config_show()
     >>> [item["key"] for item in report.settings]
-    ['lang', 'log_level']
+    ['lang', 'log_level', 'data_dir']
     """
     path = config_path()
     return ConfigShow(
         settings=[resolve_setting(key).to_dict() for key in KEYS],
         config_file={"path": str(path), "exists": path.is_file()},
+        credentials=credentials(),
     )
