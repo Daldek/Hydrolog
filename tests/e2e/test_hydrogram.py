@@ -65,6 +65,8 @@ LUTZ_OPTIONS = {
 }
 # What the page writes in the KPI tiles (Qmax, time to peak, volume) for the mockup's
 # runs (its #hg-data, 6 tc methods x AMC I-III x 4 models), by (model, tc method, AMC).
+# Snyder's peak is the library's since its unit hydrograph peaks at qpR (the mockup's
+# 29,14 came before that fix).
 MOCKUP = {
     ("scs", "kirpich", "II"): ("60,21", "6:20", "1 046 213"),
     ("scs", "nrcs", "II"): ("43,01", "8:40", "1 046 869"),
@@ -74,7 +76,7 @@ MOCKUP = {
     ("scs", "kirpich", "I"): ("12,79", "7:30", "193 894"),
     ("clark", "kirpich", "II"): ("55,61", "6:50", "1 046 551"),
     ("nash", None, "II"): ("40,28", "8:50", "1 046 544"),
-    ("snyder", None, "II"): ("29,14", "11:00", "1 046 551"),
+    ("snyder", None, "II"): ("27,46", "11:00", "1 046 551"),
 }
 # Scroll containers that must not scroll sideways: the page and an open sheet.
 SIDEWAYS = """() => [document.documentElement,
