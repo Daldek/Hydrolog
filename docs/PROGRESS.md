@@ -1,6 +1,6 @@
 # Hydrolog: progress
 
-Version 1.0.0.dev0 (1.0.0 is unreleased), Python >= 3.12. Branch `feature/gui`: the web GUI (all three waves of its plan landed), on top of `feature/routing-schematic` (which continues `chore/nogat-2.1`, the adoption of the Nogat standard 2.1). Updated 2026-11-02. History is in the git log and [CHANGELOG.md](CHANGELOG.md).
+Version 1.0.0.dev0 (1.0.0 is unreleased), Python >= 3.12. Branch `feature/gui`: the web GUI (all three waves of its plan landed), on top of `feature/routing-schematic` (which continues `chore/nogat-2.1`, the adoption of the Nogat standard 2.1). The GUI of `feature/gui` (`cd6fa52`) is served with `hydrolog gui serve` on 127.0.0.1:8070 behind a Cloudflare tunnel; the author puts Cloudflare Access in front of it. Updated 2026-11-03. History is in the git log and [CHANGELOG.md](CHANGELOG.md).
 
 ## Status
 
@@ -42,6 +42,8 @@ Version 1.0.0.dev0 (1.0.0 is unreleased), Python >= 3.12. Branch `feature/gui`: 
 
 11. Review `feature/gui` and merge it after `feature/routing-schematic` (DEV-3.3; [plan](plans/2026-11-02-hydrolog-gui.md), D1; what it holds: the plan's Results). It is a linear continuation of `feature/routing-schematic`, so it merges without a rebase if the routing branches merge unchanged; if the review changes them, `feature/gui` is rebased onto the new head (of the routing code it edits only `catalog/groups/route.py` and `operations/route.py`). Nogat's part waits for the same review on Nogat's branches: N1, the hand-off schema `nogat-handoff/1` (`a01097c` on `feature/handoff-1`), and N2, the registry's optional `gui` interface with Hydrolog's route „Open Hydrolog's GUI in the browser” (`33920ec` on `feature/hydrolog-gui-registry`, after N1). Still to come outside this repository: Hydrograf's „Wczytaj z Hydrologa” and „Przenieś do Hydrologa” (step 12 of Nogat's platform plan, with a plan of its own) and the hand-off through Nogat's shell (with the platform's kit). Cloudflare Access in front of the tunnel is the author's (Open questions). Nothing is merged, tagged or pushed.
 
+12a. Merge `fix/snyder-recession` (`4f02ffd`, pushed; separate from this branch) into `develop` after review: the Snyder unit hydrograph runs to the end of its recession and its peak equals qpR. Hydrograf v0.8.0 pins Hydrolog at that commit. Merge order: `fix/snyder-recession` and then `feature/gui` (item 11), both into `develop` after review.
+
 12. Small follow-ups of the GUI's waves, for whoever touches the files next:
     - The docstring of `_observed` in `src/hydrolog/routing/network.py` still says a `UserWarning` becomes `user_warning` (it now gets its class's code; left for the next routing change to keep the routing branches easy to rebase). `operations/report.py` could match the hietogram-type warning by its code `unknown_hietogram_type` instead of its text.
     - S2: `useCatalog` swallows a failed GET of `api/commands/<group>/<command>`, so the form stays on „Wczytywanie…” until a reload. Nothing in the page deletes a session file (`api.remove` is unused).
@@ -57,7 +59,7 @@ Version 1.0.0.dev0 (1.0.0 is unreleased), Python >= 3.12. Branch `feature/gui`: 
 - **History rewrite** (ADOPTION_PLAN phase 1): rewrite the Polish early history before the first tag? Touches every commit hash; only the author can decide and force-push.
 - **GitHub settings**: branch rulesets for `main` and `develop`, required checks (the CI `gate` jobs) and private vulnerability reporting (`SECURITY.md` points to it). Needs repository admin rights.
 - **`docs/CLA.md`**: the text is the author's legal wording and is not generated.
-- **The GUI behind the tunnel**: the public address that points at 127.0.0.1:8070 has no sign-in of the GUI's own (plan, D8); is it behind Cloudflare Access? Needed before the deployment through the tunnel is called done.
+- **The GUI behind the tunnel**: since 2026-11-02 the GUI runs on 127.0.0.1:8070 behind a Cloudflare tunnel; it has no sign-in of its own (plan, D8), so the author enables Cloudflare Access on the public address. The deployment through the tunnel is called done once Access is on.
 - **Tags and releases** (phase 5): when to tag 1.0.0 and whether to publish GitHub release notes from the CHANGELOG.
 - **Rename to `nogat-hydrolog` and PyPI** (phase 6): date of the rename; until then the install commands use the git URL.
 - **`server.json`, MCP Registry and the README `mcp-name` comment** (REL-4): they need the PyPI name; deferred with the rename.
