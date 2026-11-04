@@ -9,7 +9,8 @@ offered: it is deprecated and has no scientific basis for the Nash model.
 
 from __future__ import annotations
 
-from hydrolog.catalog.spec import Command, Option
+from hydrolog.catalog.groups._typical import formula_ranges, typically
+from hydrolog.catalog.spec import Command, Option, RangeCheck
 
 _AREA = Option(
     name="area_km2",
@@ -125,6 +126,7 @@ COMMANDS: tuple[Command, ...] = (
             "Sprawdź `notices` w wyniku.",
         ),
         errors=("validation_error",),
+        typical_ranges=(RangeCheck("scs", "area_km2", ("area_km2",)),),
         example_results=(
             {
                 "model": "scs",
@@ -167,11 +169,12 @@ COMMANDS: tuple[Command, ...] = (
                 type="number",
                 description_pl=(
                     "Liczba zbiorników kaskady n (parametr kształtu, może być "
-                    "ułamkowa); > 0, typowo 1–10. Razem z `k_min`."
+                    f"ułamkowa); > 0, {typically('nash', 'n', 'pl')}. Razem z "
+                    "`k_min`."
                 ),
                 description=(
                     "Number of reservoirs n (shape parameter, may be fractional); "
-                    "> 0, typically 1-10. Together with `k_min`."
+                    f"> 0, {typically('nash', 'n')}. Together with `k_min`."
                 ),
                 exclusive_minimum=0,
             ),
@@ -179,12 +182,12 @@ COMMANDS: tuple[Command, ...] = (
                 name="k_min",
                 type="number",
                 description_pl=(
-                    "Stała magazynowania zbiornika K [min]; > 0, typowo 10–200. "
-                    "Razem z `n`."
+                    "Stała magazynowania zbiornika K [min]; > 0, "
+                    f"{typically('nash', 'k_min', 'pl')}. Razem z `n`."
                 ),
                 description=(
-                    "Storage constant K of a reservoir [min]; > 0, typically "
-                    "10-200. Together with `n`."
+                    "Storage constant K of a reservoir [min]; > 0, "
+                    f"{typically('nash', 'k_min')}. Together with `n`."
                 ),
                 exclusive_minimum=0,
                 unit="min",
@@ -347,6 +350,10 @@ COMMANDS: tuple[Command, ...] = (
             "Sprawdź `notices` w wyniku.",
         ),
         errors=("validation_error",),
+        typical_ranges=(
+            *formula_ranges("nash", ("n", "k_min")),
+            RangeCheck("lutz", "area_km2", ("area_km2",)),
+        ),
         example_results=(
             {
                 "model": "nash",
@@ -435,12 +442,12 @@ COMMANDS: tuple[Command, ...] = (
                 name="r_tc_ratio",
                 type="number",
                 description_pl=(
-                    "Stosunek R/tc [-]; > 0, typowo 0,2–1,5 (alternatywa dla "
-                    "`r_min`; R = stosunek · tc)."
+                    f"Stosunek R/tc [-]; > 0, {typically('clark', 'r_tc_ratio', 'pl')} "
+                    "(alternatywa dla `r_min`; R = stosunek · tc)."
                 ),
                 description=(
-                    "Ratio R/tc [-]; > 0, typically 0.2-1.5 (alternative to "
-                    "`r_min`; R = ratio · tc)."
+                    f"Ratio R/tc [-]; > 0, {typically('clark', 'r_tc_ratio')} "
+                    "(alternative to `r_min`; R = ratio · tc)."
                 ),
                 exclusive_minimum=0,
             ),
@@ -476,6 +483,7 @@ COMMANDS: tuple[Command, ...] = (
             "Sprawdź `notices` w wyniku.",
         ),
         errors=("validation_error",),
+        typical_ranges=(RangeCheck("clark", "r_tc_ratio", ("r_tc_ratio",)),),
         example_results=(
             {
                 "model": "clark",
@@ -556,11 +564,12 @@ COMMANDS: tuple[Command, ...] = (
                 name="ct",
                 type="number",
                 description_pl=(
-                    "Współczynnik czasowy Ct (SI), > 0; typowo 1,35–1,65; "
-                    "domyślnie 1,5."
+                    "Współczynnik czasowy Ct (SI), > 0; "
+                    f"{typically('snyder', 'ct', 'pl')}; domyślnie 1,5."
                 ),
                 description=(
-                    "Time coefficient Ct (SI), > 0; typically 1.35-1.65; default 1.5."
+                    f"Time coefficient Ct (SI), > 0; {typically('snyder', 'ct')}; "
+                    "default 1.5."
                 ),
                 exclusive_minimum=0,
                 default=1.5,
@@ -569,10 +578,12 @@ COMMANDS: tuple[Command, ...] = (
                 name="cp",
                 type="number",
                 description_pl=(
-                    "Współczynnik szczytowy Cp, > 0; typowo 0,4–0,8; domyślnie 0,6."
+                    f"Współczynnik szczytowy Cp, > 0; {typically('snyder', 'cp', 'pl')}"
+                    "; domyślnie 0,6."
                 ),
                 description=(
-                    "Peak coefficient Cp, > 0; typically 0.4-0.8; default 0.6."
+                    "Peak coefficient Cp, > 0; "
+                    f"{typically('snyder', 'cp')}; default 0.6."
                 ),
                 exclusive_minimum=0,
                 default=0.6,
@@ -605,6 +616,7 @@ COMMANDS: tuple[Command, ...] = (
             "Sprawdź `notices` w wyniku.",
         ),
         errors=("validation_error",),
+        typical_ranges=formula_ranges("snyder", ("ct", "cp", "area_km2")),
         example_results=(
             {
                 "model": "snyder",

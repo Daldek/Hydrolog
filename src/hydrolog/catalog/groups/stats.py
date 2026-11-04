@@ -18,7 +18,7 @@ from hydrolog.catalog.groups._series import (
     VALUE_COLUMN,
     VALUES,
 )
-from hydrolog.catalog.spec import Command, Option
+from hydrolog.catalog.spec import Command, Option, RangeCheck
 
 _FIXTURES = "tests/fixtures"
 _OBSERWATOR_EXPORT = f"{_FIXTURES}/obserwator_series_export.csv"
@@ -415,6 +415,7 @@ COMMANDS: tuple[Command, ...] = (
             _RETURN_PERIODS,
         ),
         one_of=_UNDATED_ONE_OF,
+        typical_ranges=(RangeCheck("flood_frequency", "years", result="n_years"),),
         examples=(
             {
                 "input_file": _ANNUAL_MAXIMA,

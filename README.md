@@ -70,12 +70,19 @@ hydrolog tc kirpich --length-km 8.2 --slope-m-per-m 0.023 --json
     "tc_h": 1.4328884324156776,
     "parameters": {"length_km": 8.2, "slope_m_per_m": 0.023}
   },
-  "notices": [],
+  "notices": [
+    {
+      "level": "warning",
+      "code": "outside_typical_range",
+      "message": "kirpich: slope_m_per_m=0.023 is outside typical range [0.03, 0.1]. Results may be unreliable.",
+      "details": {"method": "kirpich", "parameter": "slope_m_per_m", "field": "slope_m_per_m", "value": 0.023, "minimum": 0.03, "maximum": 0.1}
+    }
+  ],
   "inputs": {"length_km": 8.2, "slope_m_per_m": 0.023}
 }
 ```
 
-`result` is the document of the command (its own `schema`; units are in the field names), `notices` holds non-fatal warnings and `inputs` the options after normalization. A second call computes the design hydrograph of a 45.3 km2 watershed (CN 72, time of concentration 86 min, 38.5 mm of Beta-distributed rain in 60 min):
+`result` is the document of the command (its own `schema`; units are in the field names), `notices` holds non-fatal warnings (here: a slope below the 3–10 % of the watersheds Kirpich's formula comes from; `hydrolog tc kirpich --schema` lists the typical ranges a command checks, with their sources) and `inputs` the options after normalization. A second call computes the design hydrograph of a 45.3 km2 watershed (CN 72, time of concentration 86 min, 38.5 mm of Beta-distributed rain in 60 min):
 
 ```bash
 hydrolog hydrograph generate --area-km2 45.3 --cn 72 --tc-min 86 --hietogram-type beta --total-mm 38.5 --duration-min 60 --json
@@ -191,7 +198,7 @@ anyio.run(call_tool)
 ## For AI agents
 
 - [llms.txt](https://github.com/Daldek/Hydrolog/blob/main/llms.txt) and [AGENTS.md](https://github.com/Daldek/Hydrolog/blob/main/AGENTS.md) state the scope, the workflow, the error codes and typical flows (design hydrograph of a watershed file, flood frequency from an Obserwator export, HSG from SoilGrids rasters); both are generated from the command catalog. `hydrolog commands guide --format agents` (or `llms`) prints them; `--format agents-md-block --inject AGENTS.md` puts a compact block into another repository's AGENTS.md.
-- The catalog is served by the tool: `hydrolog commands list` (names, operation ids, summaries) and `hydrolog commands schema --command "tc kirpich"` (options with units, bounds and allowed values, result schema, rules, examples, errors). In MCP these are the tools `hydrolog_commands_list` and `hydrolog_commands_schema`; `--schema` after any command prints its description instead of running it.
+- The catalog is served by the tool: `hydrolog commands list` (names, operation ids, summaries) and `hydrolog commands schema --command "tc kirpich"` (options with units, bounds and allowed values, result schema, rules, examples, errors, and the typical ranges the command checks with their sources, `typical_ranges`, which only the document of one command carries). In MCP these are the tools `hydrolog_commands_list` and `hydrolog_commands_schema`; `--schema` after any command prints its description instead of running it.
 - Work in four steps: discover, check, run, read. A result is a `hydrolog-result/1` envelope (`status` is `ok`; a failing command ends with an error instead), an error a `hydrolog-error/1` document.
 - Calculations are read-only. Three commands write one file (`report generate`, `soil hsg`, `commands guide`), and so does every `route` command that is given `--output`; they take `--output`, `--check` and `--force`: `--check` writes nothing and returns the plan, `result.targets[]` with `option`, `path` and `action` (`write`, `replace` or `conflict`); an existing file is replaced only with `--force`. `route network` writes one table per node into the directory of `--output-dir` (`-o`) the same way: its plan lists every table, and a directory that is, or lies in, the store of another Nogat tool is refused (`conflict`, `details.reason` `output_in_store`). A `route` command without `--output`, and `route network` without `--output-dir`, has no file to plan: it returns the routed hydrographs, also with `--check`.
 

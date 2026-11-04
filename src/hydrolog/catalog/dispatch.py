@@ -273,14 +273,15 @@ def command_schema(command: str | Command) -> Document:
     Document
         The catalog document holding that one command: options with types, units,
         bounds, enum meanings and ``path_role``, result schema, effects, rules,
-        examples, errors and the Polish texts (``i18n.pl``).
+        examples, errors, the Polish texts (``i18n.pl``) and the typical ranges the
+        command checks (``typical_ranges``, with their sources; ADR-0017).
 
     Raises
     ------
     NotFoundError
         If ``command`` does not exist.
     """
-    return Document(catalog_document((_resolve(command),)))
+    return Document(catalog_document((_resolve(command),), typical_ranges=True))
 
 
 def list_commands(*, limit: int | None = None, cursor: str | None = None) -> Document:

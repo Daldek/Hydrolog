@@ -400,6 +400,8 @@ class TestWhatTheRunObserves:
         assert result.nodes["B"].notices == []
 
     def test_a_warning_of_the_library_is_a_notice_of_the_node_that_caused_it(self):
+        """Kirpich on 12 km2 with 10 m over 12 km: the area and the slope are outside
+        his data."""
         flat = WatershedParameters(
             area_km2=12.0,
             perimeter_km=18.0,
@@ -425,9 +427,15 @@ class TestWhatTheRunObserves:
             warnings.simplefilter("error")
             result = network.route()
 
-        (notice,) = result.nodes["A"].notices
-        assert (notice.code, notice.level) == ("outside_typical_range", "warning")
-        assert "outside typical range" in notice.message
+        notices = result.nodes["A"].notices
+        assert [(n.code, n.level) for n in notices] == [
+            ("outside_typical_range", "warning"),
+            ("outside_typical_range", "warning"),
+        ]
+        assert [n.message.split(" is outside typical range")[0] for n in notices] == [
+            "kirpich: area_km2=12.0",
+            f"kirpich: slope_m_per_m={10.0 / 12000.0}",
+        ]
         assert result.nodes["B"].notices == []
 
     def test_the_same_warning_is_one_notice_and_another_kind_is_not_swallowed(self):

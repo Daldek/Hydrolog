@@ -1,5 +1,7 @@
 """Tests for WatershedParameters and from_dict() methods."""
 
+import warnings
+
 import pytest
 
 from hydrolog._warnings import OutsideTypicalRange
@@ -10,6 +12,32 @@ from hydrolog.morphometry import (
     WatershedParameters,
 )
 from hydrolog.time import ConcentrationTime
+
+# The fields of each method inside every typical range but the area's
+KIRPICH_FIELDS = {"length_km": 0.5, "channel_slope_m_per_m": 0.05}
+NRCS_FIELDS = {"length_km": 2.0, "mean_slope_m_per_m": 0.05, "cn": 75}
+KERBY_FIELDS = {
+    "overland_length_km": 0.1,
+    "overland_slope_m_per_m": 0.005,
+    "retardance": 0.4,
+}
+KERBY_KIRPICH_FIELDS = {
+    **KERBY_FIELDS,
+    "channel_length_km": 5.0,
+    "channel_slope_m_per_m": 0.005,
+}
+
+
+def range_warnings(watershed: WatershedParameters, method: str) -> list[dict]:
+    """The details of the range warnings of ``calculate_tc``, in their order."""
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        watershed.calculate_tc(method=method)
+    return [
+        warning.message.details
+        for warning in caught
+        if isinstance(warning.message, OutsideTypicalRange)
+    ]
 
 
 class TestWatershedParameters:
@@ -617,19 +645,9 @@ class TestWatershedParametersCalculateTc:
         [
             (
                 "kirpich",
-                {"length_km": 100.0, "channel_slope_m_per_m": 0.01},
-                "length_km",
-                "length_km",
-            ),
-            (
-                "kirpich",
-                {
-                    "channel_length_km": 100.0,
-                    "length_km": 5.0,
-                    "channel_slope_m_per_m": 0.01,
-                },
-                "length_km",
-                "channel_length_km",
+                {"length_km": 6.0, "channel_slope_m_per_m": 0.2},
+                "slope_m_per_m",
+                "channel_slope_m_per_m",
             ),
             (
                 "kirpich",
@@ -644,18 +662,19 @@ class TestWatershedParametersCalculateTc:
                 "slope_m_per_m",
                 "elevation_max_m",
             ),
+            # 150 km2, below Giandotti's basins
             (
                 "giandotti",
                 {"length_km": 6.0, "elevation_min_m": 200.0, "elevation_max_m": 210.0},
-                "elevation_diff_m",
-                "elevation_max_m",
+                "area_km2",
+                "area_km2",
             ),
             (
-                "faa",
+                "kerby",
                 {
-                    "overland_length_km": 5.0,
-                    "overland_slope_m_per_m": 0.02,
-                    "runoff_coeff": 0.5,
+                    "overland_length_km": 0.5,
+                    "overland_slope_m_per_m": 0.005,
+                    "retardance": 0.4,
                 },
                 "length_km",
                 "overland_length_km",
@@ -668,15 +687,73 @@ class TestWatershedParametersCalculateTc:
         """``field`` of the warning is the watershed's field, not the argument."""
         params = WatershedParameters(area_km2=150.0, **fields)
 
-        with pytest.warns(OutsideTypicalRange) as caught:
-            params.calculate_tc(method=method)
-
         fields_of = {
-            warning.message.details["parameter"]: warning.message.details["field"]
-            for warning in caught
-            if isinstance(warning.message, OutsideTypicalRange)
+            details["parameter"]: details["field"]
+            for details in range_warnings(params, method)
         }
         assert fields_of[parameter] == field
+
+    @pytest.mark.parametrize(
+        ("method", "fields", "area_km2", "minimum", "maximum"),
+        [
+            # Kirpich (1940): 7 watersheds of 1.25-112 acres
+            ("kirpich", KIRPICH_FIELDS, 0.0049, 0.005, 0.45),
+            ("kirpich", KIRPICH_FIELDS, 0.4501, 0.005, 0.45),
+            # Mockus (1961): 24 watersheds of 1.3 acres to 9.2 mi2
+            ("nrcs", NRCS_FIELDS, 0.0049, 0.005, 24.0),
+            ("nrcs", NRCS_FIELDS, 24.01, 0.005, 24.0),
+            # Kerby (1959): watersheds below 10 acres
+            ("kerby", KERBY_FIELDS, 0.0401, 0.0, 0.04),
+            # Roussel et al. (2005): 92 Texas watersheds of 0.25-150 mi2
+            ("kerby_kirpich", KERBY_KIRPICH_FIELDS, 0.649, 0.65, 388.0),
+            ("kerby_kirpich", KERBY_KIRPICH_FIELDS, 388.1, 0.65, 388.0),
+        ],
+    )
+    def test_an_area_outside_the_data_of_the_method_warns(
+        self, method: str, fields: dict, area_km2: float, minimum: float, maximum: float
+    ) -> None:
+        """The area is no argument of these formulas: ``calculate_tc`` checks it."""
+        params = WatershedParameters(area_km2=area_km2, **fields)
+
+        assert range_warnings(params, method) == [
+            {
+                "method": method,
+                "parameter": "area_km2",
+                "field": "area_km2",
+                "value": area_km2,
+                "minimum": minimum,
+                "maximum": maximum,
+            }
+        ]
+
+    @pytest.mark.parametrize(
+        ("method", "fields", "area_km2"),
+        [
+            ("kirpich", KIRPICH_FIELDS, 0.005),
+            ("kirpich", KIRPICH_FIELDS, 0.45),
+            ("nrcs", NRCS_FIELDS, 0.005),
+            ("nrcs", NRCS_FIELDS, 24.0),
+            ("kerby", KERBY_FIELDS, 0.04),
+            ("kerby_kirpich", KERBY_KIRPICH_FIELDS, 0.65),
+            ("kerby_kirpich", KERBY_KIRPICH_FIELDS, 388.0),
+            # FAA has no range of the area
+            (
+                "faa",
+                {
+                    "overland_length_km": 0.1,
+                    "overland_slope_m_per_m": 0.005,
+                    "runoff_coeff": 0.5,
+                },
+                500.0,
+            ),
+        ],
+    )
+    def test_an_area_on_a_bound_of_the_data_does_not_warn(
+        self, method: str, fields: dict, area_km2: float
+    ) -> None:
+        params = WatershedParameters(area_km2=area_km2, **fields)
+
+        assert range_warnings(params, method) == []
 
     def test_calculate_tc_lists_only_the_missing_fields(self) -> None:
         """Fields that are set are not reported as missing."""
@@ -782,11 +859,11 @@ class TestConcentrationTimeInputsOfAWatershed:
     """What ``calculate_tc`` feeds to each formula (TR-55 land slope, overland flow).
 
     FAA (1966, 2013) and Kerby (1959) are overland flow formulas: Kerby derived his
-    for paths of up to 366 m (1200 ft; Roussel et al. 2005, TxDOT Report 0-4696-2),
-    and the library warns for FAA outside 0.015-3 km. The length and slope of the
-    channel gave a time far outside their range for every catchment with a channel.
-    The NRCS lag equation takes the average land slope Y of the watershed, not the
-    slope of the flow path (TR-55, chapter 3; NEH Part 630, chapter 15).
+    for paths of up to 366 m (1200 ft; Roussel et al. 2005, TxDOT Report 0-4696-2).
+    The length and slope of the channel timed the channel with them, far outside
+    Kerby's data, for every catchment with a channel. The NRCS lag equation takes
+    the average land slope Y of the watershed, not the slope of the flow path (TR-55,
+    chapter 3; NEH Part 630, chapter 15).
     """
 
     @pytest.fixture
@@ -801,13 +878,11 @@ class TestConcentrationTimeInputsOfAWatershed:
     def test_faa_times_the_overland_flow_not_the_channel(
         self, watershed: WatershedParameters
     ) -> None:
-        """FAA: 155.3 min (10 km "sheet flow", warned) -> 27.7 min (0.2 km)."""
-        with pytest.warns(UserWarning) as warned:
-            channel = ConcentrationTime.faa(
-                length_km=10.0, slope_m_per_m=0.02, runoff_coeff=0.5
-            )
+        """FAA: 155.3 min (10 km "sheet flow") -> 27.7 min (0.2 km)."""
+        channel = ConcentrationTime.faa(
+            length_km=10.0, slope_m_per_m=0.02, runoff_coeff=0.5
+        )
         assert channel == pytest.approx(155.27, abs=0.01)  # what it used to return
-        assert "length_km=10.0" in str(warned[0].message)
 
         tc = watershed.calculate_tc("faa")
 
@@ -836,13 +911,14 @@ class TestConcentrationTimeInputsOfAWatershed:
     def test_the_overland_flow_inputs_are_inside_the_range_of_the_formulas(
         self, watershed: WatershedParameters
     ) -> None:
-        """No range warning: the overland path is what the formulas were made for."""
-        import warnings
-
-        with warnings.catch_warnings():
-            warnings.simplefilter("error")
-            watershed.calculate_tc("faa")
-            watershed.calculate_tc("kerby")
+        """The overland path is what the formulas were made for: no input of the path
+        warns. Kerby's one warning is the 45 km2 of the watershed, his data being
+        watersheds below 10 acres."""
+        assert range_warnings(watershed, "faa") == []
+        assert [
+            (details["parameter"], details["field"])
+            for details in range_warnings(watershed, "kerby")
+        ] == [("area_km2", "area_km2")]
 
     def test_nrcs_takes_the_land_slope_before_the_channel_slope(
         self, watershed: WatershedParameters
@@ -918,8 +994,6 @@ class TestConcentrationTimeInputsOfAWatershed:
         self, watershed: WatershedParameters, method: str, expected: dict
     ) -> None:
         """``calculate_tc`` is the formula applied to ``tc_parameters``, by design."""
-        import warnings
-
         arguments = watershed.tc_parameters(method)
 
         assert arguments == pytest.approx(expected)

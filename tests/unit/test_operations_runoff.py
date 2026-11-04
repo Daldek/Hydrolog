@@ -128,13 +128,14 @@ def assert_arrays(actual, expected):
 
 # --- tc -------------------------------------------------------------------------------
 
+# Arguments inside the typical ranges of each formula
 TC_CASES = [
-    ("tc_kirpich", "kirpich", {"length_km": 8.2, "slope_m_per_m": 0.023}),
+    ("tc_kirpich", "kirpich", {"length_km": 8.2, "slope_m_per_m": 0.05}),
     ("tc_nrcs", "nrcs", {"length_km": 8.2, "slope_m_per_m": 0.023, "cn": 72}),
     (
         "tc_giandotti",
         "giandotti",
-        {"area_km2": 145.0, "length_km": 21.5, "elevation_diff_m": 320.0},
+        {"area_km2": 245.0, "length_km": 21.5, "elevation_diff_m": 320.0},
     ),
     (
         "tc_faa",
@@ -191,11 +192,13 @@ class TestTimeOfConcentration:
         """Library range warnings are reported as notices, not printed."""
         with warnings.catch_warnings(record=True) as leaked:
             warnings.simplefilter("always")
-            _, notices = unwrap(ops.tc_kirpich(length_km=120.0, slope_m_per_m=0.0001))
+            _, notices = unwrap(
+                ops.tc_kerby(length_km=0.5, slope_m_per_m=0.02, retardance=0.4)
+            )
         assert leaked == []
         assert [n.level for n in notices] == ["warning", "warning"]
-        assert "length_km=120.0" in notices[0].message
-        assert "slope_m_per_m=0.0001" in notices[1].message
+        assert "length_km=0.5" in notices[0].message
+        assert "slope_m_per_m=0.02" in notices[1].message
 
     @pytest.mark.parametrize("method", TC_METHODS)
     def test_watershed_matches_calculate_tc(self, method):
@@ -236,14 +239,19 @@ class TestTimeOfConcentration:
         assert again == pytest.approx(result.tc_min, rel=1e-12)
 
     @pytest.mark.parametrize(
-        "method, extra",
-        [("faa", {"runoff_coeff": 0.45}), ("kerby", {"retardance": 0.4})],
+        "method, extra, ranges",
+        [
+            ("faa", {"runoff_coeff": 0.45}, []),
+            # Kerby's data are watersheds below 10 acres, not 45.3 km2
+            ("kerby", {"retardance": 0.4}, [("area_km2", "area_km2")]),
+        ],
     )
     def test_overland_flow_methods_report_the_overland_path_not_the_channel(
-        self, method, extra
+        self, method, extra, ranges
     ):
         """FAA and Kerby time the overland flow (0.25 km at 0.008), not the 10.8 km
-        channel: the result is inside the range of the formulas, so no notices."""
+        channel: the path is inside the range of the formulas, so no notice is about
+        it."""
         result, notices = unwrap(
             ops.tc_watershed(watershed=FULL_WATERSHED, method=method)
         )
@@ -252,7 +260,7 @@ class TestTimeOfConcentration:
             "slope_m_per_m": 0.008,
             **extra,
         }
-        assert notices == []
+        assert [(n.details["parameter"], n.details["field"]) for n in notices] == ranges
 
     def test_nrcs_reports_the_land_slope_of_the_watershed(self):
         """TR-55: Y is the average land slope (0.025), not the channel slope (0.018)."""
@@ -384,20 +392,24 @@ class TestTimeOfConcentration:
         assert document["command"] == "tc kirpich"
         assert document["inputs"] == {"length_km": 8.2, "slope_m_per_m": 0.023}
         assert document["result"]["tc_min"] == pytest.approx(85.9733, abs=1e-4)
-        assert document["notices"] == []
+        assert [
+            (notice["code"], notice["details"]["parameter"])
+            for notice in document["notices"]
+        ] == [("outside_typical_range", "slope_m_per_m")]
 
     def test_run_command_notice(self):
-        """Range warnings reach the envelope as notices with a stable code."""
-        envelope = run_command("tc kirpich", {"length_km": 120, "slope_m_per_m": 0.023})
+        """Range warnings reach the envelope as notices with a stable code: 0.023 is
+        below the slopes of Kirpich's data, 3-10 %."""
+        envelope = run_command("tc kirpich", {"length_km": 8.2, "slope_m_per_m": 0.023})
         (notice,) = envelope.notices
         assert (notice.level, notice.code) == ("warning", "outside_typical_range")
         assert notice.details == {
             "method": "kirpich",
-            "parameter": "length_km",
-            "field": "length_km",
-            "value": 120.0,
-            "minimum": 0.001,
-            "maximum": 80.0,
+            "parameter": "slope_m_per_m",
+            "field": "slope_m_per_m",
+            "value": 0.023,
+            "minimum": 0.03,
+            "maximum": 0.1,
         }
 
 
@@ -1252,7 +1264,10 @@ class TestUnitHydrographs:
 
     def test_scs_matches_the_class(self):
         """Summary values and ordinates are SCSUnitHydrograph's."""
-        result = ops.uh_scs(area_km2=45.3, tc_min=90.0, timestep_min=5.0)
+        result, notices = unwrap(
+            ops.uh_scs(area_km2=45.3, tc_min=90.0, timestep_min=5.0)
+        )
+        assert notices == []
         expected = SCSUnitHydrograph(area_km2=45.3, tc_min=90.0).generate(
             timestep_min=5.0
         )
@@ -2044,19 +2059,26 @@ class TestHydrographGenerate:
             ops.hydrograph_generate(watershed_file=str(tmp_path / "brak.json"), **STORM)
 
     def test_library_range_warnings_become_notices(self):
-        """A tc formula outside its range warns; the hydrograph is still computed."""
-        long_river = {
-            **WATERSHED,
-            "channel_length_km": 120.0,
-            "channel_slope_m_per_m": 0.0005,
-        }
-        result, notices = unwrap(ops.hydrograph_generate(watershed=long_river, **STORM))
+        """A tc formula outside its range warns; the hydrograph is still computed.
+
+        Kirpich: 45.3 km2 is above the areas of his data and a channel slope of
+        0.0005 below their slopes."""
+        flat_river = {**WATERSHED, "channel_slope_m_per_m": 0.0005}
+        result, notices = unwrap(ops.hydrograph_generate(watershed=flat_river, **STORM))
         assert result.tc_method == "kirpich"
-        assert [(n.level, n.code) for n in notices] == [
-            ("warning", "outside_typical_range"),
-            ("warning", "outside_typical_range"),
+        assert [
+            (n.level, n.code, n.details["parameter"], n.details["field"])
+            for n in notices
+        ] == [
+            ("warning", "outside_typical_range", "area_km2", "area_km2"),
+            (
+                "warning",
+                "outside_typical_range",
+                "slope_m_per_m",
+                "channel_slope_m_per_m",
+            ),
         ]
-        assert "kirpich: length_km=120.0" in notices[0].message
+        assert "kirpich: slope_m_per_m=0.0005" in notices[1].message
 
     def test_duration_not_covered_is_reported(self):
         """The truncated hyetograph is flagged exactly like ``precip hietogram``."""
@@ -2154,15 +2176,19 @@ class TestHydrographGenerate:
             ({"tc_min": 90.0, "amc": "III", "cn": 40}, "cn", "cn"),
             # Delta t = 30 min > 0.25 tp = 0.25 (15 + 0.6 * 60) min
             ({"tc_min": 60.0, "timestep_min": 30.0}, "timestep_min", "timestep_min"),
-            # The channel length of the watershed feeds Kirpich's length_km
+            # The channel slope of the watershed feeds Kirpich's slope_m_per_m
             (
                 {
-                    "watershed": {**WATERSHED, "channel_length_km": 120.0},
+                    "watershed": {**WATERSHED, "channel_slope_m_per_m": 0.2},
                     "tc_method": "kirpich",
                 },
-                "length_km",
-                "channel_length_km",
+                "slope_m_per_m",
+                "channel_slope_m_per_m",
             ),
+            # The area of the watershed against the 24 watersheds of the NRCS lag
+            ({"watershed": WATERSHED, "tc_method": "nrcs"}, "area_km2", "area_km2"),
+            # The SCS unit hydrograph of more than 52 km2
+            ({"tc_min": 90.0, "area_km2": 60.0}, "area_km2", "area_km2"),
         ],
     )
     def test_a_value_outside_its_typical_range_is_a_notice_on_its_input(
@@ -2450,7 +2476,11 @@ class TestHydrographGenerate:
         assert run.result.peak_discharge_m3s == pytest.approx(
             expected.peak_discharge_m3s
         )
-        assert run.notices == []
+        # 45.3 km2 is above the 24 watersheds of the NRCS lag equation
+        assert [
+            (n.code, n.details["method"], n.details["parameter"], n.details["field"])
+            for n in run.notices
+        ] == [("outside_typical_range", "nrcs", "area_km2", "area_km2")]
 
     def test_compute_hydrograph_builds_a_hietogram_from_a_series(self):
         """For a series the run carries an equivalent ``HietogramResult``."""
@@ -2486,7 +2516,15 @@ class TestHydrographGenerate:
         assert max(result["discharge_m3s"]) == pytest.approx(
             result["peak_discharge_m3s"]
         )
-        assert envelope.notices == ()
+        # Kirpich on the 45.3 km2 of the example: its area and its land slope of
+        # 0.025 are outside the data of the formula
+        assert [
+            (n.code, n.details["parameter"], n.details["field"])
+            for n in envelope.notices
+        ] == [
+            ("outside_typical_range", "area_km2", "area_km2"),
+            ("outside_typical_range", "slope_m_per_m", "mean_slope_m_per_m"),
+        ]
 
     def test_run_command_rejects_a_watershed_and_area_together(self):
         """The catalog ``one_of`` refuses two complete catchment sources."""
@@ -2502,6 +2540,139 @@ class TestHydrographGenerate:
                 },
             )
         assert caught.value.details["reason"] == "one_of"
+
+
+# --- typical ranges of the models -----------------------------------------------------
+
+# One call per model with every value inside its typical ranges; a case changes one
+# option. "lutz" is ``uh nash`` with the parameters of the Lutz method.
+MODEL_CALLS = {
+    "scs": (ops.uh_scs, {"area_km2": 45.3, "tc_min": 90.0}),
+    "snyder": (
+        ops.uh_snyder,
+        {"area_km2": 100.0, "length_km": 15.0, "centroid_length_km": 8.0},
+    ),
+    "nash": (ops.uh_nash, {"area_km2": 45.3, "n": 3.0, "k_min": 30.0}),
+    "lutz": (
+        ops.uh_nash,
+        {
+            "area_km2": 45.0,
+            "lutz_length_km": 8.2,
+            "lutz_centroid_length_km": 4.5,
+            "lutz_slope_m_per_m": 0.023,
+            "lutz_manning_n": 0.035,
+        },
+    ),
+    "clark": (ops.uh_clark, {"area_km2": 45.3, "tc_min": 100.0, "r_tc_ratio": 0.5}),
+    "scs_cn_amc": (
+        ops.scs_effective,
+        {"cn": 72, "precipitation_mm": 50.0, "amc": "III"},
+    ),
+}
+
+
+def range_notices(method, option, value):
+    """The details of the ``outside_typical_range`` notices of one changed call."""
+    function, options = MODEL_CALLS[method]
+    _, notices = unwrap(function(**{**options, option: value}))
+    return [n.details for n in notices if n.code == "outside_typical_range"]
+
+
+class TestTypicalRangesOfTheModels:
+    """A value just outside a bound is a notice with the published bounds; a value on
+    a bound (bounds are included) is not."""
+
+    @pytest.mark.parametrize(
+        "method, option, value, minimum, maximum",
+        [
+            # Sorrell (2010): the NRCS unit hydrograph up to about 20 mi2
+            ("scs", "area_km2", 52.1, 0.0, 52.0),
+            # Snyder (1938): 10-10 000 mi2 of the Appalachian Highlands
+            ("snyder", "area_km2", 25.9, 26.0, 26000.0),
+            ("snyder", "area_km2", 26000.1, 26.0, 26000.0),
+            # KZGW (2017), annex 2, eq. 6.5 and 6.7
+            ("snyder", "ct", 1.349, 1.35, 1.65),
+            ("snyder", "ct", 1.651, 1.35, 1.65),
+            ("snyder", "cp", 0.399, 0.4, 0.8),
+            ("snyder", "cp", 0.801, 0.4, 0.8),
+            # A given cascade (no published range)
+            ("nash", "n", 0.999, 1.0, 10.0),
+            ("nash", "n", 10.001, 1.0, 10.0),
+            ("nash", "k_min", 9.99, 10.0, 200.0),
+            ("nash", "k_min", 200.01, 10.0, 200.0),
+            # KZGW (2017), annex 2, p. 96: the Lutz method up to 236 km2
+            ("lutz", "area_km2", 236.1, 0.0, 236.0),
+            # HEC-HMS Technical Reference Manual: R/tc 0.2-1.5
+            ("clark", "r_tc_ratio", 0.199, 0.2, 1.5),
+            ("clark", "r_tc_ratio", 1.501, 0.2, 1.5),
+            # Hawkins et al. (1985): the AMC formulas for CN 55-95
+            ("scs_cn_amc", "cn", 54.9, 55.0, 95.0),
+            ("scs_cn_amc", "cn", 95.1, 55.0, 95.0),
+        ],
+    )
+    def test_a_value_just_outside_a_range_is_a_notice_with_its_bounds(
+        self, method, option, value, minimum, maximum
+    ):
+        assert range_notices(method, option, value) == [
+            {
+                "method": method,
+                "parameter": option,
+                "field": option,
+                "value": value,
+                "minimum": minimum,
+                "maximum": maximum,
+            }
+        ]
+
+    @pytest.mark.parametrize(
+        "method, option, value",
+        [
+            ("scs", "area_km2", 52.0),
+            ("snyder", "area_km2", 26.0),
+            ("snyder", "area_km2", 26000.0),
+            ("snyder", "ct", 1.35),
+            ("snyder", "ct", 1.65),
+            ("snyder", "cp", 0.4),
+            ("snyder", "cp", 0.8),
+            ("nash", "n", 1.0),
+            ("nash", "n", 10.0),
+            ("nash", "k_min", 10.0),
+            ("nash", "k_min", 200.0),
+            ("lutz", "area_km2", 236.0),
+            ("clark", "r_tc_ratio", 0.2),
+            ("clark", "r_tc_ratio", 1.5),
+            ("scs_cn_amc", "cn", 55),
+            ("scs_cn_amc", "cn", 95),
+        ],
+    )
+    def test_a_value_on_a_bound_is_no_notice(self, method, option, value):
+        assert range_notices(method, option, value) == []
+
+    def test_the_time_step_is_at_most_a_quarter_of_the_time_to_peak(self):
+        """NEH 630 ch. 16: Δt <= 0.25 tp, here tp = Δt / 2 + 0.6 tc (SCS)."""
+        storm = {**STORM, "timestep_min": 12.0}
+
+        # tc 70 min: tp = 6 + 42 = 48 min and 0.25 tp = 12 min, the bound itself
+        bound, notices = unwrap(
+            ops.hydrograph_generate(area_km2=45.3, cn=72, tc_min=70.0, **storm)
+        )
+        assert bound.uh_time_to_peak_min == pytest.approx(48.0)
+        assert [n for n in notices if n.code == "outside_typical_range"] == []
+
+        # tc 69.9 min: tp = 47.94 min and 0.25 tp = 11.985 min, below the 12 min step
+        _, notices = unwrap(
+            ops.hydrograph_generate(area_km2=45.3, cn=72, tc_min=69.9, **storm)
+        )
+        assert [n.details for n in notices if n.code == "outside_typical_range"] == [
+            {
+                "method": "scs",
+                "parameter": "timestep_min",
+                "field": "timestep_min",
+                "value": 12.0,
+                "minimum": 0.0,
+                "maximum": pytest.approx(11.985),
+            }
+        ]
 
 
 # --- declarations ---------------------------------------------------------------------

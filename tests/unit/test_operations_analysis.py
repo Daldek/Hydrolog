@@ -1017,6 +1017,19 @@ class TestFloodFrequency:
         assert short.details == {"years": 20, "minimum": 30}
         assert "KZGW (2017)" in short.message
 
+    def test_a_record_of_30_years_is_not_short(self):
+        """KZGW (2017): a flood frequency analysis wants 30 annual maxima or more."""
+        short = run(
+            "stats flood-frequency", values=list(range(100, 129)), distribution="gev"
+        )
+        assert [n.details for n in short.notices if n.code == "short_record"] == [
+            {"years": 29, "minimum": 30}
+        ]
+        enough = run(
+            "stats flood-frequency", values=list(range(100, 130)), distribution="gev"
+        )
+        assert "short_record" not in {n.code for n in enough.notices}
+
     def test_missing_annual_maxima_are_dropped_with_a_notice(self, tmp_path):
         path = tmp_path / "maxima.csv"
         path.write_text(
@@ -2487,7 +2500,15 @@ class TestReportGenerate:
         output = tmp_path / "raport.md"
         assert [record.path for record in result.files] == [str(output)]
         assert result.files[0].sha256 == sha256_file(output)
-        assert [notice.code for notice in result.notices] == ["duration_not_covered"]
+        # Kirpich on 45.3 km2 with a channel slope of 0.021: outside his data
+        assert [
+            (notice.code, notice.details.get("parameter"), notice.details.get("field"))
+            for notice in result.notices
+        ] == [
+            ("outside_typical_range", "area_km2", "area_km2"),
+            ("outside_typical_range", "slope_m_per_m", "channel_slope_m_per_m"),
+            ("duration_not_covered", None, None),
+        ]
         document = _json_roundtrip(result)
         assert document["result"]["output_path"] == output.as_posix()
         assert document["result"]["size_bytes"] == output.stat().st_size

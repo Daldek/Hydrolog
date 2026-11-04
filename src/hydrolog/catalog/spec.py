@@ -52,6 +52,7 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Final, Literal, NoReturn, get_args
 
+from hydrolog._ranges import typical_range
 from hydrolog.exceptions import InvalidParameterError
 
 OptionType = Literal[
@@ -671,6 +672,32 @@ class Option:
 
 
 @dataclass(frozen=True)
+class RangeCheck:
+    """A typical range that a command checks, served as its ``typical_ranges``.
+
+    The bounds, the unit and the source are those of
+    :data:`hydrolog._ranges.TYPICAL_RANGES`; the declaration says where the command
+    takes the value from.
+
+    Parameters
+    ----------
+    method, parameter : str
+        The range (:func:`hydrolog._ranges.typical_range`).
+    inputs : tuple of str, optional
+        The options of the command, or the fields of its watershed, the value is
+        taken from, first choice first; empty for a value the command derives.
+    result : str or None, optional
+        The field of the result that holds the value, for a value that is not an
+        input (the length of a record).
+    """
+
+    method: str
+    parameter: str
+    inputs: tuple[str, ...] = ()
+    result: str | None = None
+
+
+@dataclass(frozen=True)
 class Command:
     """One catalog command: a function of :mod:`hydrolog.operations`.
 
@@ -702,6 +729,8 @@ class Command:
         Size class of the result (AGI-2.2).
     rules, rules_pl : tuple of str, optional
         Short imperative rules for agents (English, Polish).
+    typical_ranges : tuple of RangeCheck, optional
+        The typical ranges the command checks; a value outside one is a notice.
     errors : tuple of str, optional
         Registry codes the command can raise besides ``internal_error``.
     core : bool, optional
@@ -740,6 +769,7 @@ class Command:
     core: bool = False
     agent_tool: bool = True
     example_results: tuple[Mapping[str, object], ...] = ()
+    typical_ranges: tuple[RangeCheck, ...] = ()
 
     def __post_init__(self) -> None:
         """Validate the field values."""
@@ -786,6 +816,7 @@ class Command:
             "rules_pl",
             "errors",
             "example_results",
+            "typical_ranges",
         ):
             if not isinstance(getattr(self, field_name), tuple):
                 raise bad(f"{field_name} must be a tuple")
@@ -825,6 +856,28 @@ class Command:
             unknown = sorted(set(example) - set(names))
             if unknown:
                 raise bad(f"example #{number} uses unknown options: {unknown}")
+        self._check_typical_ranges(names, bad)
+
+    def _check_typical_ranges(
+        self, names: list[str], bad: Callable[[str], ValueError]
+    ) -> None:
+        for check in self.typical_ranges:
+            if not isinstance(check, RangeCheck):
+                raise bad("typical_ranges must hold RangeCheck instances")
+            try:
+                typical_range(check.method, check.parameter)
+            except KeyError:
+                raise bad(
+                    f"no typical range of {check.method}.{check.parameter}"
+                ) from None
+            # A watershed's fields are not options of the command
+            unknown = [
+                name
+                for name in check.inputs
+                if name not in names and "watershed" not in names
+            ]
+            if unknown:
+                raise bad(f"typical range inputs are not options: {unknown}")
 
     def _check_one_of(self, names: list[str], bad: Callable[[str], ValueError]) -> None:
         if not self.one_of:

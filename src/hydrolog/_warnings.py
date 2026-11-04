@@ -194,7 +194,8 @@ class OutsideTypicalRange(HydrologWarning):
     """A parameter of a formula or a model is outside its typical range.
 
     Details: ``method`` (the formula or the model: a time of concentration method,
-    ``scs_cn``, a unit hydrograph model), ``parameter`` (its argument, the option of
+    ``scs_cn_amc``, a unit hydrograph model, ``lutz``; the ranges are those of
+    ``hydrolog._ranges.TYPICAL_RANGES``), ``parameter`` (its argument, the option of
     the command of the formula), ``field`` (the input the value came from: the option
     of the command that was run or the field of the watershed, see
     :func:`typical_range_fields`), ``value`` and the range ``minimum``, ``maximum``

@@ -755,6 +755,19 @@ class TestSchema:
         _, out, _ = _run(capsys, "--schema")
         assert json.loads(out) == catalog_document(data_commands())
 
+    def test_only_the_schema_of_one_command_carries_its_typical_ranges(self, capsys):
+        """The documents of a group and of the catalog leave them out (ADR-0017)."""
+        _, one, _ = _run(capsys, "tc", "kirpich", "--schema")
+        (entry,) = json.loads(one)["commands"]
+        assert [
+            (served["parameter"], served["minimum"], served["maximum"])
+            for served in entry["typical_ranges"]
+        ] == [("slope_m_per_m", 0.03, 0.1)]
+        for argv in (["tc", "--schema"], ["--schema"]):
+            _, out, _ = _run(capsys, *argv)
+            entries = json.loads(out)["commands"]
+            assert [e["name"] for e in entries if "typical_ranges" in e] == [], argv
+
     def test_schema_does_not_run_the_command(self, capsys, tmp_path):
         target = tmp_path / "never.txt"
         code, out, _ = _run(capsys, *GUIDE, "--output", str(target), "--schema")

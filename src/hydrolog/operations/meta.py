@@ -81,8 +81,9 @@ def commands_schema(
     Returns
     -------
     OperationOutput
-        ``result`` is the ``hydrolog-commands/1`` document; ``page`` is set for the
-        whole catalog.
+        ``result`` is the ``hydrolog-commands/1`` document; that of one command also
+        carries the typical ranges it checks (``typical_ranges``), a page of the
+        catalog does not (ADR-0017); ``page`` is set for the whole catalog.
 
     Raises
     ------
@@ -92,7 +93,9 @@ def commands_schema(
         If ``cursor`` is not a cursor of this collection.
     """
     if command is not None:
-        return OperationOutput(catalog_document((get_command(command),)))
+        return OperationOutput(
+            catalog_document((get_command(command),), typical_ranges=True)
+        )
     selected, page = paginate(data_commands(), limit, cursor)
     return OperationOutput(catalog_document(selected), page=page)
 

@@ -28,15 +28,9 @@ from numpy.typing import NDArray
 from scipy.optimize import brentq
 from scipy.special import gamma
 
+from hydrolog._ranges import warn_if_outside
 from hydrolog._serialization import JsonResultMixin
-from hydrolog._warnings import warn_outside_typical_range
 from hydrolog.exceptions import InvalidParameterError
-
-# Typical parameters of a given (calibrated) cascade, as the description of
-# `uh nash` and the GUI's explanation of the model state them: n 1-10
-# reservoirs and K 10-200 min (catchments of a few to a few hundred km²).
-_N_RANGE = (1.0, 10.0)
-_K_RANGE_MIN = (10.0, 200.0)
 
 
 @dataclass
@@ -276,14 +270,14 @@ class NashIUH:
         Warns
         -----
         OutsideTypicalRange
-            If ``n`` or ``k_min`` is outside its typical range (method
-            ``nash``). The estimating constructors (``from_lutz``,
-            ``from_urban_regression``, ``from_tc``) do not warn: the ranges are
-            those of given parameters.
+            If ``n`` or ``k_min`` is outside its typical range (method ``nash``;
+            the ranges: :data:`hydrolog._ranges.TYPICAL_RANGES`). The estimating
+            constructors (``from_lutz``, ``from_urban_regression``, ``from_tc``)
+            do not warn about them: the ranges are those of given parameters.
         """
         self._set(n, k_min, area_km2, lutz_params)
-        warn_outside_typical_range("nash", "n", n, *_N_RANGE)
-        warn_outside_typical_range("nash", "k_min", k_min, *_K_RANGE_MIN)
+        warn_if_outside("nash", "n", n)
+        warn_if_outside("nash", "k_min", k_min)
 
     def _set(
         self,
@@ -805,6 +799,13 @@ class NashIUH:
         InvalidParameterError
             If any parameter is invalid or if N cannot be determined.
 
+        Warns
+        -----
+        OutsideTypicalRange
+            If ``area_km2`` is larger than the watersheds KZGW (2017) recommends
+            the method for (method ``lutz``; the ranges and their sources:
+            :data:`hydrolog._ranges.TYPICAL_RANGES`).
+
         Notes
         -----
         The Lutz method computes:
@@ -886,6 +887,8 @@ class NashIUH:
             )
         if area_km2 is not None and area_km2 <= 0:
             raise InvalidParameterError(f"area_km2 must be positive, got {area_km2}")
+        if area_km2 is not None:
+            warn_if_outside("lutz", "area_km2", area_km2)
 
         # Step 1: Calculate P1 parameter
         P1 = 3.989 * manning_n + 0.028

@@ -782,12 +782,12 @@
             "snyder_ct": {
               "type": "number",
               "exclusiveMinimum": 0,
-              "description": "Snyder: time coefficient Ct (> 0); default 1.5."
+              "description": "Snyder: time coefficient Ct (> 0, typically 1.35-1.65); default 1.5."
             },
             "snyder_cp": {
               "type": "number",
               "exclusiveMinimum": 0,
-              "description": "Snyder: peak coefficient Cp (> 0); default 0.6."
+              "description": "Snyder: peak coefficient Cp (> 0, typically 0.4-0.8); default 0.6."
             }
           },
           "additionalProperties": false

@@ -27,8 +27,11 @@ tc_min = 71.33 min (computed)
 retention_mm = 84.6667 mm (computed)
 initial_abstraction_mm = 16.9333 mm (computed)
 total_effective_mm = 6.98762 mm (computed)
-runoff_coefficient = 0.15528 (computed)</title>
+runoff_coefficient = 0.15528 (computed)
+[warning] outside_typical_range: kirpich: area_km2=12.0 is outside typical range [0.005, 0.45]. Results may be unreliable.
+[warning] outside_typical_range: kirpich: slope_m_per_m=0.02 is outside typical range [0.03, 0.1]. Results may be unreliable.</title>
 <polygon points="73.6,247.67 84.85,258.92 73.6,270.17 62.35,258.92" fill="#1f5fa8" stroke="#ffffff" stroke-width="2.5" stroke-linejoin="round"/>
+<circle cx="83.5" cy="249.02" r="7" fill="#d9480f" stroke="#ffffff" stroke-width="1.5"/><text x="83.5" y="252.82" font-size="10" font-weight="bold" text-anchor="middle" fill="#ffffff">!</text>
 </g>
 <g><title>B (subcatchment)
 Qp 4.35 m3/s at 55 min
@@ -46,8 +49,11 @@ tc_min = 44.7405 min (computed)
 retention_mm = 108.857 mm (computed)
 initial_abstraction_mm = 21.7714 mm (computed)
 total_effective_mm = 2.10549 mm (computed)
-runoff_coefficient = 0.0554076 (computed)</title>
+runoff_coefficient = 0.0554076 (computed)
+[warning] outside_typical_range: kirpich: area_km2=5.0 is outside typical range [0.005, 0.45]. Results may be unreliable.
+[warning] outside_typical_range: kirpich: slope_m_per_m=0.022857142857142857 is outside typical range [0.03, 0.1]. Results may be unreliable.</title>
 <polygon points="225.6,95.67 236.85,106.92 225.6,118.17 214.35,106.92" fill="#d1495b" stroke="#ffffff" stroke-width="2.5" stroke-linejoin="round"/>
+<circle cx="235.5" cy="97.02" r="7" fill="#d9480f" stroke="#ffffff" stroke-width="1.5"/><text x="235.5" y="100.82" font-size="10" font-weight="bold" text-anchor="middle" fill="#ffffff">!</text>
 </g>
 <g><title>C (subcatchment)
 Qp 1.19 m3/s at 80 min
@@ -66,8 +72,11 @@ tc_min = 44.7405 min (computed)
 retention_mm = 108.857 mm (computed)
 initial_abstraction_mm = 21.7714 mm (computed)
 total_effective_mm = 0.578289 mm (computed)
-runoff_coefficient = 0.0192763 (computed)</title>
+runoff_coefficient = 0.0192763 (computed)
+[warning] outside_typical_range: kirpich: area_km2=5.0 is outside typical range [0.005, 0.45]. Results may be unreliable.
+[warning] outside_typical_range: kirpich: slope_m_per_m=0.022857142857142857 is outside typical range [0.03, 0.1]. Results may be unreliable.</title>
 <polygon points="529.6,399.67 540.85,410.92 529.6,422.17 518.35,410.92" fill="#2e8b57" stroke="#ffffff" stroke-width="2.5" stroke-linejoin="round"/>
+<circle cx="539.5" cy="401.02" r="7" fill="#d9480f" stroke="#ffffff" stroke-width="1.5"/><text x="539.5" y="404.82" font-size="10" font-weight="bold" text-anchor="middle" fill="#ffffff">!</text>
 </g>
 <g><title>R_A (reach)
 Qp 20.1 m3/s at 110 min
