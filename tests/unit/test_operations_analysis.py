@@ -352,12 +352,17 @@ class TestMorphometryWatershed:
             run("morphometry watershed", watershed=absurd)
         assert caught.value.code == "calculation_error"
 
-    def test_incomplete_file_is_a_data_error(self, tmp_path):
-        broken = tmp_path / "broken.json"
-        broken.write_text(json.dumps({"area_km2": 10.0}), encoding="utf-8")
-        with pytest.raises(InputDataError) as caught:
-            run("morphometry watershed", watershed_file=str(broken))
-        assert caught.value.details["reason"] == "missing_field"
+    def test_a_watershed_without_the_shape_fields_names_them(self, tmp_path):
+        """Only the area is required to load; the shape indicators need more."""
+        partial = tmp_path / "partial.json"
+        partial.write_text(json.dumps({"area_km2": 10.0}), encoding="utf-8")
+        with pytest.raises(InvalidParameterError) as caught:
+            run("morphometry watershed", watershed_file=str(partial))
+        assert caught.value.details == {
+            "option": "perimeter_km",
+            "reason": "missing_field",
+            "missing": ["perimeter_km", "length_km"],
+        }
 
 
 # --- network --------------------------------------------------------------------------

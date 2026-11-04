@@ -10,10 +10,39 @@ from __future__ import annotations
 
 import math
 import numbers
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
+from contextlib import contextmanager
 from typing import Any
 
+from hydrolog._warnings import typical_range_fields
 from hydrolog.exceptions import InvalidParameterError
+
+
+@contextmanager
+def option_names(names: Mapping[str, str]) -> Iterator[None]:
+    """Name the arguments of the library by the options of the command in the block.
+
+    An :class:`~hydrolog.exceptions.InvalidParameterError` whose ``details.option`` is
+    a key of ``names`` is raised again with the option instead, and an
+    :class:`~hydrolog._warnings.OutsideTypicalRange` about such a parameter gets the
+    option as its ``field`` (:func:`~hydrolog._warnings.typical_range_fields`).
+
+    Parameters
+    ----------
+    names : Mapping of str to str
+        Argument of the library to option of the command (``{"ct": "snyder_ct"}``).
+    """
+    with typical_range_fields(names):
+        try:
+            yield
+        except InvalidParameterError as exc:
+            argument = exc.details.get("option")
+            option = names.get(argument) if isinstance(argument, str) else None
+            if option is None or option == argument:
+                raise
+            raise InvalidParameterError(
+                str(exc), details={**exc.details, "option": option}, hint=exc.hint
+            ) from exc
 
 
 def option_error(

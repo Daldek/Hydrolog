@@ -41,6 +41,7 @@ SAMPLES = {
     OutsideTypicalRange: {
         "method": "kirpich",
         "parameter": "length_km",
+        "field": "channel_length_km",
         "value": 120.0,
         "minimum": 0.001,
         "maximum": 80.0,

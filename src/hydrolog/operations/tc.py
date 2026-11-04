@@ -325,14 +325,13 @@ def _effective_parameters(
 def watershed_concentration_time(
     watershed: WatershedParameters,
     method: str = "kirpich",
-    *,
-    option: str = "watershed",
 ) -> TcResult:
     """Time of concentration of a watershed by one of the six methods.
 
     Wraps ``WatershedParameters.calculate_tc`` and reports its failures as
-    validation errors that name the missing fields. Library warnings are *not*
-    captured here (the caller owns the :func:`capture_warnings` block).
+    validation errors that name the field of the watershed in ``details.option``.
+    Library warnings are *not* captured here (the caller owns the
+    :func:`capture_warnings` block).
 
     Parameters
     ----------
@@ -340,9 +339,6 @@ def watershed_concentration_time(
         Validated watershed parameters.
     method : str, optional
         One of :data:`TC_METHODS`, by default ``"kirpich"``.
-    option : str, optional
-        Name of the option the watershed came from (``"watershed"`` or
-        ``"watershed_file"``), reported in ``details.option`` of the errors.
 
     Returns
     -------
@@ -353,9 +349,10 @@ def watershed_concentration_time(
     Raises
     ------
     InvalidParameterError
-        If ``method`` is unknown (``details.reason = "choice"``) or the watershed
+        If ``method`` is unknown (``details.reason = "choice"``), the watershed
         lacks the fields the method needs (``details.reason = "missing_field"``,
-        ``details.missing``), or the formula rejects a value.
+        ``details.option`` the first of them, ``details.missing`` all of them), or
+        the formula rejects a value (``details.option`` the field it came from).
     """
     if method not in TC_METHODS:
         raise InvalidParameterError(
@@ -376,7 +373,7 @@ def watershed_concentration_time(
                 f"Method {method!r} needs watershed parameters that are missing: "
                 f"{', '.join(missing)}",
                 details={
-                    "option": option,
+                    "option": missing[0],
                     "reason": "missing_field",
                     "method": method,
                     "missing": missing,
@@ -389,7 +386,7 @@ def watershed_concentration_time(
             ) from exc
         raise InvalidParameterError(
             str(exc),
-            details={"option": option, "reason": "invalid_value", "method": method},
+            details={"reason": "invalid_value", **exc.details, "method": method},
             hint=exc.hint,
         ) from exc
     result = _result(method, tc_min, _effective_parameters(watershed, method))
@@ -434,14 +431,14 @@ def tc_watershed(
     ------
     InvalidParameterError
         If both or neither watershed source is given, the watershed is invalid, or
-        the method needs fields the watershed lacks (``details.missing``).
+        the method needs fields the watershed lacks (``details.option`` the first
+        of them, ``details.missing`` all of them).
     NotFoundError
         If ``watershed_file`` does not exist.
     InputDataError
         If ``watershed_file`` is malformed.
     """
     parameters = load_watershed(watershed=watershed, watershed_file=watershed_file)
-    option = "watershed_file" if watershed_file is not None else "watershed"
     with capture_warnings() as notices:
-        result = watershed_concentration_time(parameters, method, option=option)
+        result = watershed_concentration_time(parameters, method)
     return OperationOutput(result, notices)

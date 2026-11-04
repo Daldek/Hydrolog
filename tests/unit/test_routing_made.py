@@ -659,9 +659,13 @@ class TestTheDocument:
             ),
             (
                 {},
-                {**made_node("A", rainfall=RAIN), "watershed": {"area_km2": 3}},
+                {
+                    **made_node("A", rainfall=RAIN),
+                    "watershed": {"area_km2": 3, "cn": 70},
+                    "runoff": {"model": "curve-number", "tc_method": "kirpich"},
+                },
                 "missing_field",
-                {"node_id": "A", "field": "watershed.perimeter_km"},
+                {"node_id": "A", "option": "watershed.channel_length_km"},
             ),
             (
                 {},
