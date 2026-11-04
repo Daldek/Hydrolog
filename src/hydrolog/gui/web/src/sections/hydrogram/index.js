@@ -41,6 +41,7 @@ import { registerInfo, registerServed } from "../../ui/info.js";
 import { Seg } from "../../ui/seg.js";
 import { status } from "../../ui/status.js";
 import { toast } from "../../ui/toast.js";
+import { RenderGuard } from "../../ui/render-guard.js";
 import { ViewLayout } from "../../ui/view-layout.js";
 import { DataPanel, durationText } from "./data-panel.js";
 import { exportSpec } from "./export.js";
@@ -173,6 +174,7 @@ export default function Hydrogram({ path = [] }) {
   const [run, setRun] = useState(null);
   const [failure, setFailure] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [broken, setBroken] = useState(null);
   const chartSvg = useRef(null);
   const outcome = useRef(null);
   const channel = useMemo(
@@ -310,6 +312,9 @@ export default function Hydrogram({ path = [] }) {
     calc = { kind: "busy", text: texts.calc.busy };
   } else if (checked !== null && inputs.uh_model === null) {
     calc = { kind: "idle", text: texts.calc.model };
+  } else if (run && broken === run) {
+    badge = status("error", common.render.badge, common.render.status);
+    calc = { kind: "bad", text: common.render.status };
   } else if (run && run.key === key) {
     badge = status("ok");
     calc = { kind: "ok", text: texts.calc.ok };
@@ -376,6 +381,7 @@ export default function Hydrogram({ path = [] }) {
     reset();
     setRun(null);
     setFailure(null);
+    setBroken(null);
     setWatershedStore(null);
   };
 
@@ -383,6 +389,8 @@ export default function Hydrogram({ path = [] }) {
   const result = run ? run.envelope.result : null;
   const version = run ? run.envelope.version : null;
   const dimmed = busy ? " computing" : "";
+  // A result that does not draw is marked, never shown as the current one (RenderGuard)
+  const onDrawError = () => setBroken(run);
 
   const left = {
     sub: texts.dataSub,
@@ -440,20 +448,24 @@ export default function Hydrogram({ path = [] }) {
       </span>
     `,
     body: html`<div class=${`result-area${dimmed}`} aria-busy=${busy ? "true" : "false"} data-hg-center="">
-      <${CenterBody}
-        run=${run}
-        tab=${tab}
-        reference=${reference}
-        chartSvg=${chartSvg}
-        onClearReference=${() => setReference(null)}
-        stale=${stale}
-      />
+      <${RenderGuard} name="center" resetKey=${run} onError=${onDrawError}>
+        <${CenterBody}
+          run=${run}
+          tab=${tab}
+          reference=${reference}
+          chartSvg=${chartSvg}
+          onClearReference=${() => setReference(null)}
+          stale=${stale}
+        />
+      <//>
     </div>`,
   };
   const right = {
     sub: run ? t(texts.results.sub, { model: modelLabel(run.inputs), amc: result.amc }) : null,
     body: html`<div class=${`result-area${dimmed}`} aria-busy=${busy ? "true" : "false"} data-hg-results="">
-      <${ResultsPanel} run=${run} spec=${spec} stale=${stale} current=${inputs} />
+      <${RenderGuard} name="results" resetKey=${run} onError=${onDrawError}>
+        <${ResultsPanel} run=${run} spec=${spec} stale=${stale} current=${inputs} />
+      <//>
     </div>`,
   };
   return html`<${ViewLayout} left=${left} center=${center} right=${right} />`;

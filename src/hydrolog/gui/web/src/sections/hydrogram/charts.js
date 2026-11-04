@@ -3,6 +3,7 @@
 // initial abstraction, and the unit hydrograph the run convolved. Every value comes from
 // the result of `hydrograph generate`; the browser only sums the series for display.
 
+import { extent } from "../../charts/scale.js";
 import { hmm, inputText, num } from "../../format.js";
 import { t } from "../../labels/common.js";
 import { hydrogram as texts } from "../../labels/hydrogram.js";
@@ -195,8 +196,7 @@ export function uhSpec(result) {
   const ordinates = result.uh_discharge_m3s_per_mm;
   if (!Array.isArray(times) || !Array.isArray(ordinates) || !ordinates.length) return null;
   const peak = result.uh_peak_discharge_m3s_per_mm;
-  const largest = Math.max(...ordinates);
-  const floor = UH_TAIL_SHARE * (typeof peak === "number" ? peak : largest);
+  const floor = UH_TAIL_SHARE * (typeof peak === "number" ? peak : (extent(ordinates)?.[1] ?? 0));
   let last = 0;
   ordinates.forEach((value, index) => {
     if (value > floor) last = index;

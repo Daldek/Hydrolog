@@ -75,6 +75,7 @@ export const errors = {
   countForms: ["błąd", "błędy", "błędów"],
   count: "{count}: popraw pola oznaczone na czerwono",
   formOk: "formularz poprawny",
+  formIncomplete: "uzupełnij pola wymagane",
 };
 
 /**

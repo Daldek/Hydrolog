@@ -22,6 +22,12 @@ export const common = {
     example: "Przykład w instrukcji",
     exampleTitle: "Rozdział instrukcji z przykładem: co wpisać i jaki wynik wyjdzie (nowa karta)",
   },
+  render: {
+    title: "Nie udało się pokazać wyniku",
+    text: "Hydrolog policzył, ale przeglądarka nie narysowała wyniku ({message}). Zmień dane albo kliknij „Wyczyść”.",
+    status: "Błąd wyświetlania: wynik nie jest pokazany",
+    badge: "Błąd wyświetlania",
+  },
   copied: "Skopiowano do schowka",
   copyFailed: "Nie udało się skopiować: zaznacz tekst i skopiuj ręcznie",
   loading: "Wczytywanie…",
