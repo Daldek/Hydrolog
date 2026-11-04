@@ -1,13 +1,14 @@
 // The mapping between the sections and hydrolog-network/1 (plan D15). „Hydrogram zlewni”
 // writes the options of its shown run as one subcatchment made from rainfall and the
 // outlet it flows to (route network computes such a node as `hydrograph generate` does,
-// so the payload gives the same peak), with where its inputs came from (provenance:
-// the PMAXTP probability and duration as typed, the watershed's source and the fields
-// changed since, Lutz's estimate of Nash's n and K) and its result; back, a payload's
-// subcatchment becomes the section's inputs, its source the watershed's origin and the
-// hand-off's record (`handoff`) what the results compare with. „Sieć i trasowanie”
-// writes its whole network with the outlet's result. Field names are Hydrolog's
-// (channel_length_km; slopes in m/m); mapping Hydrograf's names is Hydrograf's side.
+// so the payload gives the same peak), with where its inputs came from (provenance: the
+// PMAXTP point, method, probability and duration of the fetched depth, the watershed's
+// source and the fields changed since, Lutz's estimate of Nash's n and K) and its result;
+// back, a payload's subcatchment becomes the section's inputs, its source the watershed's
+// origin and the hand-off's record (`handoff`) what the results compare with. „Sieć i
+// trasowanie” writes its whole network with the outlet's result. Field names are
+// Hydrolog's (channel_length_km; slopes in m/m); mapping Hydrograf's names is Hydrograf's
+// side.
 
 import { inputText, parseNumber, plural } from "../format.js";
 import { t } from "../labels/common.js";
@@ -16,10 +17,13 @@ import { hydrogram as hydrogramTexts } from "../labels/hydrogram.js";
 import {
   LUTZ_FIELDS,
   PMAXTP_DURATIONS,
+  PMAXTP_METHODS,
   PMAXTP_PROBABILITIES,
   changedFrom,
   initialState,
   normalize,
+  pmaxtpOptions,
+  pmaxtpRecord,
   readWatershed,
   sentFields,
   sentWatershed,
@@ -110,14 +114,18 @@ export function dataKey(inputs) {
 export function rainfallKey(inputs) {
   const used = usedTexts(inputs);
   const rain = { source: inputs.rain_source };
-  if (inputs.rain_source === "pmaxtp") rain.probability = inputs.pmaxtp_probability_pct;
+  if (inputs.rain_source === "pmaxtp") {
+    rain.probability = inputs.pmaxtp_probability_pct;
+    rain.point = [inputs.pmaxtp_latitude, inputs.pmaxtp_longitude];
+    rain.method = inputs.pmaxtp_method;
+  }
   for (const name of RAIN_TEXTS) if (Object.hasOwn(used, name)) rain[name] = used[name];
   return JSON.stringify(rain);
 }
 
 /**
  * Where the rainfall came from: the hand-off's own record while the rainfall is as it
- * came, else the PMAXTP probability and duration as typed, else the person.
+ * came, else the PMAXTP depth's point, method, probability and duration, else the person.
  *
  * @param {object} inputs the section's inputs
  * @returns {object} the provenance of `rainfall`
@@ -132,6 +140,9 @@ function rainfallOrigin(inputs) {
       source: "pmaxtp",
       probability_percent: parseNumber(inputs.pmaxtp_probability_pct),
       duration_min: parseNumber(inputs.pmaxtp_duration_min),
+      latitude: parseNumber(inputs.pmaxtp_latitude),
+      longitude: parseNumber(inputs.pmaxtp_longitude),
+      method: inputs.pmaxtp_method,
     };
   }
   return { source: "user" };
@@ -225,12 +236,25 @@ function degrees(value) {
 }
 
 /**
+ * The point of an origin of the provenance, when it names one.
+ *
+ * @param {unknown} entry an origin of `provenance`
+ * @returns {{latitude: number, longitude: number}|null} the point
+ */
+function pointOf(entry) {
+  return isObject(entry) && typeof entry.latitude === "number" && typeof entry.longitude === "number" ? entry : null;
+}
+
+/**
  * The inputs of Hydrogram zlewni from a hand-off of one subcatchment (readHandoff gave
  * the target "hydrogram"): the watershed with its origin (the producer, its mark and the
- * watershed's provenance), tc, the rainfall (PMAXTP when the provenance names the
- * probability and the duration the section offers, else a design storm or the series),
- * the losses and the unit hydrograph; every other input as on a first visit. `handoff`
- * keeps what the results compare with.
+ * watershed's provenance), tc, the rainfall, the losses and the unit hydrograph; every
+ * other input as on a first visit. The rainfall is PMAXTP when the provenance names the
+ * probability and the duration the section offers and a point (the rainfall's own, else
+ * the watershed's, such as Hydrograf's outlet), else a design storm or the series. The
+ * depth handed over is remembered as fetched only when the rainfall names its point;
+ * otherwise the page fetches the depth of the point. `handoff` keeps what the results
+ * compare with, the depth handed over included.
  *
  * @param {object} doc the hand-off
  * @returns {object} the inputs, a patch of the whole state
@@ -293,6 +317,7 @@ export function hydrogramInputs(doc) {
   inputs.snyder_centroid_length_km = inputText(runoff.snyder_centroid_length_km);
   inputs.snyder_ct = inputText(runoff.snyder_ct);
   inputs.snyder_cp = inputText(runoff.snyder_cp);
+  let handed = null;
   if (rainfall.kind === "series") {
     inputs.rain_source = "series";
     inputs.values = rainfall.depths_mm.map(inputText).join("; ");
@@ -301,7 +326,10 @@ export function hydrogramInputs(doc) {
     const atlas = isObject(provenance.rainfall) && provenance.rainfall.source === "pmaxtp" ? provenance.rainfall : null;
     const probability = atlas && typeof atlas.probability_percent === "number" ? String(atlas.probability_percent) : null;
     const duration = atlas && typeof atlas.duration_min === "number" ? String(atlas.duration_min) : null;
+    const own = pointOf(atlas);
+    const spot = own || pointOf(provenance.watershed);
     const pmaxtp =
+      spot !== null &&
       probability !== null &&
       duration !== null &&
       PMAXTP_PROBABILITIES.includes(probability) &&
@@ -309,8 +337,11 @@ export function hydrogramInputs(doc) {
       Number(duration) === rainfall.duration_min;
     inputs.rain_source = pmaxtp ? "pmaxtp" : "design";
     if (pmaxtp) {
+      inputs.pmaxtp_latitude = inputText(spot.latitude);
+      inputs.pmaxtp_longitude = inputText(spot.longitude);
       inputs.pmaxtp_probability_pct = probability;
       inputs.pmaxtp_duration_min = duration;
+      inputs.pmaxtp_method = PMAXTP_METHODS.includes(atlas.method) ? atlas.method : "POT";
     }
     inputs.total_mm = inputText(rainfall.total_mm);
     inputs.duration_min = inputText(rainfall.duration_min);
@@ -319,8 +350,10 @@ export function hydrogramInputs(doc) {
     inputs.beta = inputText(rainfall.beta);
     inputs.peak_position = inputText(rainfall.peak_position);
     inputs.timestep_min = inputText(payload.timestep_min);
+    if (pmaxtp) handed = pmaxtpRecord(pmaxtpOptions(normalize(inputs)), rainfall.total_mm);
+    if (pmaxtp && own) inputs.pmaxtp_fetched = handed;
   }
-  const opened = normalize(inputs);
+  const opened = normalize({ ...inputs, pmaxtp_fetched: handed });
   inputs.handoff = { ...receivedOf(doc), key: dataKey(opened), rainfallKey: rainfallKey(opened) };
   return inputs;
 }

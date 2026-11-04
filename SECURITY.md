@@ -17,6 +17,10 @@ version and credited in the CHANGELOG unless you prefer otherwise.
 
 ## Scope
 
-Hydrolog performs calculations on local files and makes no network requests. Reports
-about path handling (the sandbox of the MCP server, `--allow-dir`), unsafe parsing of
-input files or the supply chain of the package are in scope.
+Hydrolog performs calculations on numbers and local files. It makes one kind of network
+request: when `precip pmaxtp` runs (also from the web GUI's Hydrogram zlewni under
+PMAXTP), Obserwator (extra `pmaxtp`) sends the point's latitude and longitude and the
+method (POT or AMP) to the PMAXTP API of IMGW-PIB over HTTPS; no other command, and no
+other data, goes out. Reports about path handling (the sandbox of the MCP server,
+`--allow-dir`), unsafe parsing of input files or of the PMAXTP answer, or the supply chain
+of the package (Obserwator included) are in scope.

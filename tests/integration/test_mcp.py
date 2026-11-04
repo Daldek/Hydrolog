@@ -209,7 +209,9 @@ class TestToolList:
                 annotations.open_world_hint,
             ):
                 assert isinstance(hint, bool), tool.name
-            assert annotations.open_world_hint is False
+            # Only the PMAXTP of IMGW-PIB reaches beyond this computer (ADR-0018)
+            open_world = tool.name == "hydrolog_precip_pmaxtp"
+            assert annotations.open_world_hint is open_world, tool.name
             assert annotations.idempotent_hint is True
 
     def test_a_read_only_server_reports_every_tool_read_only(self):

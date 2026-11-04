@@ -2,26 +2,30 @@
 
 Against the real server of ``gui_server``: a first visit shows the three steps empty and
 runs nothing until a model is chosen; the guide's worked example (Kamiennik at
-Świerzawa, ``tests/fixtures/kamiennik.json``, stored with ``seed_hydrogram``) shows the
-mockup's result, „60,21 m³/s” at „6:20” and „1 046 213 m³”, as the server's ``hydrograph
-generate`` computed it. Switching the tc method, AMC and the unit hydrograph model
-reproduces the mockup's runs (Nash by Lutz through ``uh nash``); only the chosen model's
-fields exist and are sent; choosing a model marks the fields it lacks, a field no model
-reads may stay empty, and a value outside its typical range is a warning on its field
-(from Hydrolog's notice) while the run goes on. A Nash unit hydrograph of years
-(n = 200, K = 1500 min) draws thinned and „Wyczyść” drops it; a result that fails to
-draw is an error in its place, never the last result. An invalid CN stands on its field
-and keeps the last result, marked; ten fast edits send at most two runs and show the
-last; the command line, run by the CLI, gives the same peak; errors stand on their field
-before the run or from the server, or above the steps. A watershed file is read in the
-browser and its changed fields are marked; the hydrograph exports as the CSV the
-``route`` commands read, the envelope and a PNG; the inputs survive a reload until
-„Wyczyść”, which empties the steps; Kalkulatory's route sets the tc method; Statystyka's
-reference is drawn; a phone in the dark theme recomputes through the sheets. The pure
-modules (the live channel, the state and what a model needs, the CSV) are tested in the
-page. The explanations (i) show exactly the typical ranges Hydrolog serves (``commands
-schema --command``), and the fields, the explanations and Wyniki give the example the
-same verdicts.
+Świerzawa, ``tests/fixtures/kamiennik.json``, stored with ``seed_hydrogram`` with its
+PMAXTP depth remembered at the mockup's 105 mm) shows the mockup's result, „60,21 m³/s”
+at „6:20” and „1 046 213 m³”, as the server's ``hydrograph generate`` computed it.
+PMAXTP fetches the depth of the point, p and the duration once (``precip pmaxtp``,
+answered from the table recorded at the outlet: 101,82 mm and „56,39 m³/s”), shows it
+read-only, kept with the inputs; a point outside the atlas stands on its field and
+an unreachable IMGW-PIB on the depth, with „Pobierz ponownie”. Switching the tc method,
+AMC and the unit hydrograph model reproduces the mockup's runs (Nash by Lutz through
+``uh nash``); only the chosen model's fields exist and are sent; choosing a model marks
+the fields it lacks, a field no model reads may stay empty, and a value outside its
+typical range is a warning on its field (from Hydrolog's notice) while the run goes on.
+A Nash unit hydrograph of years (n = 200, K = 1500 min) draws thinned and „Wyczyść”
+drops it; a result that fails to draw is an error in its place, never the last result.
+An invalid CN stands on its field and keeps the last result, marked; ten fast edits send
+at most two runs and show the last; the command line, run by the CLI, gives the same
+peak; errors stand on their field before the run or from the server, or above the
+steps. A watershed file is read in the browser and its changed fields are marked; the
+hydrograph exports as the CSV the ``route`` commands read, the envelope and a PNG; the
+inputs survive a reload until „Wyczyść”, which empties the steps; Kalkulatory's route
+sets the tc method; Statystyka's reference is drawn; a phone in the dark theme
+recomputes through the sheets. The pure modules (the live channel, the state and what a
+model needs, the CSV) are tested in the page. The explanations (i) show exactly the
+typical ranges Hydrolog serves (``commands schema --command``), and the fields, the
+explanations and Wyniki give the example the same verdicts.
 """
 
 import json
@@ -37,17 +41,31 @@ from typing import Any
 
 from playwright.sync_api import Locator, Page, Request, Route, expect
 
+from hydrolog import _pmaxtp
 from hydrolog.catalog import format_command, run_command
+from tests.conftest import recorded_pmaxtp
 from tests.e2e.conftest import KAMIENNIK as EXAMPLE
 from tests.e2e.conftest import (
+    KAMIENNIK_POINT,
+    PMAXTP_RUN,
+    PMAXTP_TABLE,
     Tab,
     input_text,
     kamiennik_inputs,
+    pmaxtp_route,
     seed_hydrogram,
 )
 
 RUN = "/api/run/hydrograph/generate"
 LUTZ = "/api/run/uh/nash"
+PMAXTP = "/api/run/precip/pmaxtp"
+FETCHED = {
+    **KAMIENNIK_POINT,
+    "duration_min": 720,
+    "probability_percent": 1,
+    "method": "POT",
+}
+"""The options of the fetch of the example's PMAXTP depth (``precip pmaxtp``)."""
 BADGE = ".topbar .badge.status"
 SECTION = 'section.section[data-section="hydrogram"]'
 LEFT = f"{SECTION} .view-panel.left"
@@ -193,11 +211,13 @@ def open_hydrogram(tab: Tab, path: str = "#hydrogram") -> Page:
 
 
 class Runs:
-    """The options of every ``hydrograph generate`` and ``uh nash`` a page sends."""
+    """The options of every ``hydrograph generate``, ``uh nash`` and ``precip pmaxtp``
+    a page sends."""
 
     def __init__(self, page: Page) -> None:
         self.generate: list[dict[str, Any]] = []
         self.lutz: list[dict[str, Any]] = []
+        self.pmaxtp: list[dict[str, Any]] = []
         page.on("request", self._record)
 
     def _record(self, request: Request) -> None:
@@ -208,6 +228,8 @@ class Runs:
             self.generate.append(body)
         elif LUTZ in request.url:
             self.lutz.append(body)
+        elif PMAXTP in request.url:
+            self.pmaxtp.append(body)
 
 
 def field(page: Page, name: str) -> Locator:
@@ -301,10 +323,13 @@ def test_a_first_visit_shows_three_empty_steps_and_runs_nothing(tab: Tab) -> Non
         ["brak danych", "brak danych", "wybierz model"]
     )
     boxes = page.locator(f'{LEFT} input[type="text"]')
-    expect(boxes).to_have_count(len(STEP_ONE) + 5)  # total, alpha, beta, Δt, λ
+    # the point, the fetched depth (read-only), alpha, beta, Δt and λ
+    expect(boxes).to_have_count(len(STEP_ONE) + 7)
     assert set(boxes.evaluate_all("items => items.map((item) => item.value)")) == {""}
+    expect(field(page, "pmaxtp_depth")).not_to_be_editable()
     expect(field(page, "pmaxtp_probability_pct")).to_have_value("")
     expect(field(page, "pmaxtp_duration_min")).to_have_value("")
+    expect(field(page, "pmaxtp_method")).to_have_value("POT")
     expect(field(page, "timestep_min")).to_have_attribute("placeholder", "5")
     models = page.locator('[aria-labelledby="hg-uh-label"] [role="radio"]')
     expect(models).to_have_text(["SCS", "Nash", "Clark", "Snyder"])
@@ -332,7 +357,7 @@ def test_a_first_visit_shows_three_empty_steps_and_runs_nothing(tab: Tab) -> Non
     field(page, "area_km2").fill("")
     expect(page.locator(f'{LEFT} [aria-invalid="true"]')).to_have_count(0)
     page.wait_for_timeout(800)
-    assert runs.generate == [] and runs.lutz == []
+    assert runs.generate == [] and runs.lutz == [] and runs.pmaxtp == []
     assert page.evaluate(STORED)["uh_model"] is None
     assert (
         page.evaluate(
@@ -353,6 +378,12 @@ def test_the_worked_example_shows_the_result_of_the_mockup(tab: Tab) -> None:
     assert envelope["result"]["total_volume_m3"] == result["total_volume_m3"]
 
     expect(kpi(page, "c")).to_have_text("0,268")
+    # The PMAXTP depth remembered with the inputs: shown read-only, not fetched again
+    expect(field(page, "pmaxtp_depth")).to_have_value("105")
+    expect(page.locator(f'{LEFT} [data-field="pmaxtp_depth"] .aux')).to_have_text(
+        "PMAXTP IMGW-PIB, metoda POT"
+    )
+    assert runs.pmaxtp == []
     expect(page.locator(".crumb-context")).to_have_text(
         "Kamiennik — Świerzawa · p 1% · 12 h"
     )
@@ -924,9 +955,10 @@ def test_requirements_follow_the_model_and_the_tc_method(tab: Tab) -> None:
         EXAMPLE,
     )
     pmaxtp = {
+        "pmaxtp_latitude": "pmaxtp",
+        "pmaxtp_longitude": "pmaxtp",
         "pmaxtp_probability_pct": "pmaxtp",
         "pmaxtp_duration_min": "pmaxtp",
-        "total_mm": "pmaxtp",
     }
     scs = {"area_km2": "scs", "cn": "losses", **pmaxtp}
     clark = {"area_km2": "clark", "cn": "losses", **pmaxtp}
@@ -1009,7 +1041,14 @@ def test_requirements_follow_the_model_and_the_tc_method(tab: Tab) -> None:
         "Lc_km": ["snyder", ["snyder_centroid_length_km"]],
     }
     assert got["snyderTyped"] == {"area_km2": "snyder", "cn": "losses", **pmaxtp}
-    rain = ["pmaxtp_probability_pct", "pmaxtp_duration_min", "total_mm"]
+    rain = [
+        "pmaxtp_latitude",
+        "pmaxtp_longitude",
+        "pmaxtp_probability_pct",
+        "pmaxtp_duration_min",
+        "pmaxtp_method",
+        "pmaxtp_depth",
+    ]
     assert got["fieldsScs"] == [
         *STEP_ONE[:2],
         "cn",
@@ -1088,7 +1127,11 @@ def test_an_invalid_cn_stands_on_its_field_and_keeps_the_last_result(tab: Tab) -
 
 
 def test_ten_fast_edits_send_at_most_two_runs_and_show_the_last(tab: Tab) -> None:
-    page = open_hydrogram(tab)
+    # The depth typed for „Hietogram” (PMAXTP's is fetched, never typed)
+    seed_hydrogram(tab, kamiennik_inputs(rain_source="design", duration_min="720"))
+    tab.open("#hydrogram")
+    page = tab.page
+    shows(page, "60,21", "6:20", "1 046 213")
     runs = Runs(page)
     badges: list[str] = []
     page.expose_function("hydrologBadge", lambda text: badges.append(text))
@@ -1322,7 +1365,8 @@ def test_the_inputs_survive_a_reload_until_cleared(tab: Tab) -> None:
     runs = Runs(page)
     page.locator(LEFT).get_by_role("button", name="Wyczyść").click()
     expect(field(page, "cn")).to_have_value("")
-    expect(field(page, "total_mm")).to_have_value("")
+    for name in ("pmaxtp_latitude", "pmaxtp_longitude", "pmaxtp_depth"):
+        expect(field(page, name)).to_have_value("")
     expect(
         page.locator('[aria-labelledby="hg-uh-label"] [aria-checked="true"]')
     ).to_have_count(0)
@@ -1340,7 +1384,7 @@ def test_the_inputs_survive_a_reload_until_cleared(tab: Tab) -> None:
     page.reload()
     expect(field(page, "area_km2")).to_have_value("")
     page.wait_for_timeout(600)
-    assert runs.generate == []
+    assert runs.generate == [] and runs.pmaxtp == []
 
 
 def test_kalkulatory_sets_the_tc_method_through_the_route(
@@ -1671,7 +1715,8 @@ def test_the_state_gives_the_options_of_the_mockups_calls(tab: Tab) -> None:
           const schema = await (
             await fetch('api/schemas/hydrolog-network-1.schema.json')
           ).json();
-          const models = s.inputModels(doc, schema);
+          const pmaxtpDoc = await (await fetch('api/commands/precip/pmaxtp')).json();
+          const models = s.inputModels(doc, schema, pmaxtpDoc);
           const read = s.readWatershed(example);
           const base = s.normalize({...stored, watershed: read.texts});
           const variant = (patch) => ({...base, ...patch});
@@ -1721,6 +1766,11 @@ def test_the_state_gives_the_options_of_the_mockups_calls(tab: Tab) -> None:
             missing: s.readWatershed({name: 'x', cn: 70}).missing,
             areaOnly: s.readWatershed({area_km2: 3}).texts,
             wrapped: s.readWatershed({watershed: example}).values.area_km2,
+            lists: [s.PMAXTP_PROBABILITIES, s.PMAXTP_DURATIONS, s.PMAXTP_METHODS],
+            fetchOptions: s.pmaxtpOptions(base),
+            otherPoint:
+              s.toOptions(variant({pmaxtp_latitude: '52,23'})).total_mm ?? null,
+            pointBad: check({pmaxtp_latitude: '60'}).errors,
           };
         }""",
         [EXAMPLE, kamiennik_inputs()],
@@ -1794,3 +1844,113 @@ def test_the_state_gives_the_options_of_the_mockups_calls(tab: Tab) -> None:
     assert got["missing"] == ["area_km2"]
     assert got["areaOnly"] == {"area_km2": "3"}
     assert got["wrapped"] == 37.22
+    # The GUI offers exactly the probabilities, durations and methods of the atlas
+    probabilities, durations, methods = got["lists"]
+    assert [float(value) for value in probabilities] == list(
+        _pmaxtp.PROBABILITIES_PERCENT
+    )
+    assert [int(value) for value in durations] == list(_pmaxtp.DURATIONS_MIN)
+    assert methods == list(_pmaxtp.METHODS)
+    assert got["fetchOptions"] == FETCHED
+    assert got["otherPoint"] is None  # the kept depth is the outlet's: fetched again
+    assert got["pointBad"] == {"pmaxtp_latitude": "Najwyżej 55 (podano 60) · maximum"}
+
+
+# --- PMAXTP --------------------------------------------------------------------
+
+
+def test_pmaxtp_fetches_the_depth_of_the_point_once_and_keeps_it(tab: Tab) -> None:
+    # The example typed, its depth not fetched yet: the recorded table answers
+    seed_hydrogram(tab, kamiennik_inputs(pmaxtp_fetched=None))
+    runs = Runs(tab.page)
+    with tab.page.expect_response(lambda answer: PMAXTP in answer.url) as answered:
+        tab.open("#hydrogram")
+    page = tab.page
+    assert answered.value.request.post_data_json == FETCHED
+    result = answered.value.json()["result"]
+    assert result["depth_mm"] == 101.82
+    depth = field(page, "pmaxtp_depth")
+    expect(depth).to_have_value("101,82")
+    expect(depth).not_to_be_editable()
+    source = page.locator(f'{LEFT} [data-field="pmaxtp_depth"] .aux')
+    expect(source).to_have_text("PMAXTP IMGW-PIB, metoda POT")
+    expect(page.locator(f'{LEFT} [data-attribution="pmaxtp"]')).to_have_text(
+        f"{result['attribution']}."
+    )
+    # The run waits for the depth and takes it: the guide's numbers
+    shows(page, "56,39", "6:20", "976 759")
+    expect(kpi(page, "c")).to_have_text("0,258")
+    assert [run["total_mm"] for run in runs.generate] == [101.82]
+    assert page.evaluate(STORED)["pmaxtp_fetched"] == {**FETCHED, "depth_mm": 101.82}
+
+    # A reload shows the kept depth without fetching it again
+    page.reload()
+    shows(page, "56,39", "6:20", "976 759")
+    expect(depth).to_have_value("101,82")
+    page.wait_for_timeout(600)
+    assert len(runs.pmaxtp) == 1
+
+    # Another probability or method fetches anew
+    table = recorded_pmaxtp(PMAXTP_TABLE)["data"]["ks"]
+    with page.expect_response(lambda answer: PMAXTP in answer.url) as again:
+        field(page, "pmaxtp_probability_pct").select_option("0.5")
+    assert again.value.request.post_data_json == {**FETCHED, "probability_percent": 0.5}
+    expect(depth).to_have_value(input_text(table["720"]["0.5"]))
+    shows_peak(page, {**KAMIENNIK, "total_mm": table["720"]["0.5"]})
+    with page.expect_response(lambda answer: PMAXTP in answer.url) as amp:
+        field(page, "pmaxtp_method").select_option("AMP")
+    assert (amp.value.request.post_data_json or {}).get("method") == "AMP"
+    expect(source).to_have_text("PMAXTP IMGW-PIB, metoda AMP")
+
+
+def test_a_point_outside_the_atlas_or_an_unreachable_imgw_stand_on_their_field(
+    tab: Tab,
+) -> None:
+    import obserwator
+
+    def failing(error: Exception) -> Callable[..., Any]:
+        def fetch_pmaxtp(*args: Any, **kwargs: Any) -> Any:
+            raise error
+
+        return fetch_pmaxtp
+
+    page = open_hydrogram(tab)
+    runs = Runs(page)
+    # A latitude outside Poland: an error at once, nothing fetched or run
+    field(page, "pmaxtp_latitude").fill("60")
+    expect(message(page, "pmaxtp_latitude")).to_have_text(
+        "Najwyżej 55 (podano 60) · maximum"
+    )
+    expect(page.locator(BADGE)).to_have_text("Dane niepełne: pmaxtp_latitude")
+    page.wait_for_timeout(600)
+    assert runs.pmaxtp == [] and runs.generate == []
+
+    # A point at sea: Obserwator refuses it and the error stands on the latitude
+    outside = obserwator.ObserwatorValidationError("outside the PMAXTP grid")
+    page.route(PMAXTP_RUN, pmaxtp_route(failing(outside)))
+    field(page, "pmaxtp_latitude").fill("54,7")
+    expect(message(page, "pmaxtp_latitude")).to_have_text(
+        "Punkt poza atlasem PMAXTP: podaj punkt w Polsce, nie na morzu · outside_pmaxtp"
+    )
+    expect(page.locator(BADGE)).to_have_text("Błąd danych")
+    expect(page.locator(f"{LEFT} .calc-state")).to_have_text(
+        "Nie pobrano wysokości opadu PMAXTP"
+    )
+    expect(page.locator(f'{LEFT} [data-retry="pmaxtp"]')).to_have_count(0)
+    expect(kpi(page, "q")).to_have_text(re.compile(r"^60,21"))  # the last, marked
+    assert runs.generate == []
+
+    # IMGW-PIB unreachable: the error stands on the depth; „Pobierz ponownie” retries
+    down = obserwator.ObserwatorConnectionError(
+        "timed out", details={"url": "https://imgw.example/", "reason": "timeout"}
+    )
+    page.route(PMAXTP_RUN, pmaxtp_route(failing(down)))
+    field(page, "pmaxtp_latitude").fill("52,23")
+    expect(message(page, "pmaxtp_depth")).to_have_text(
+        "IMGW-PIB nie odpowiedział na czas: spróbuj ponownie później · timeout"
+    )
+    page.unroute(PMAXTP_RUN)
+    with page.expect_response(lambda answer: PMAXTP in answer.url):
+        page.locator(f'{LEFT} [data-retry="pmaxtp"]').click()
+    expect(field(page, "pmaxtp_depth")).to_have_value("101,82")
+    shows(page, "56,39", "6:20", "976 759")

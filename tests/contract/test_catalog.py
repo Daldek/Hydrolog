@@ -405,7 +405,9 @@ class TestInvariants:
             assert command.effects.read_only is (not writes), command.name
             assert command.effects.writes == ("replace" if writes else "none")
             assert command.effects.destructive is writes
-            assert command.effects.network is False
+            # Only the PMAXTP of IMGW-PIB uses the network (ADR-0018)
+            network = command.name == "precip pmaxtp"
+            assert command.effects.network is network, command.name
 
     def test_a_command_with_check_is_its_own_check_and_the_others_have_none(self):
         """Every writing command plans itself; ``gui serve`` plans where it serves."""

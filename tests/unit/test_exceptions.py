@@ -27,6 +27,7 @@ SPEC_TABLE = {
     "validation_error": 2,
     "not_found": 3,
     "conflict": 4,
+    "source_unavailable": 5,
     "missing_dependency": 6,
     "data_error": 7,
     "io_error": 9,

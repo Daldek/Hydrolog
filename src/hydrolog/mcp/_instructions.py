@@ -3,8 +3,9 @@
 The text is the ``instructions`` field of the server; clients load it at the start of
 every session and truncate it at 4,096 characters (DOC-1.7, :data:`MAX_CHARS`). It
 states what the tool descriptions cannot: the relations between the tools, the order
-discover -> check -> run -> read, the limits of this server (offline, files only in the
-allowed directories, write mode, active families) and where the input data come from.
+discover -> check -> run -> read, the limits of this server (offline but for the PMAXTP
+depth of IMGW-PIB, files only in the allowed directories, write mode, active families)
+and where the input data come from.
 The rules are those of the agent guide (:func:`hydrolog.agent_guide.principles`), the
 same text as in ``AGENTS.md`` and ``llms.txt``; the names of the tools are read from
 the catalog, never typed here.
@@ -37,7 +38,7 @@ _PROVENANCE: Final = (
     "Input data come from files you are given, usually produced by Kartograf "
     "(terrain, land cover, soil rasters) or Obserwator (IMGW series and stations). "
     "Their licences and provenance stay with those sources: name them when you "
-    "report a result."
+    "report a result (IMGW-PIB for a PMAXTP depth)."
 )
 _DIRS: Final = "Allowed directories (`--allow-dir`): {dirs}."
 _NO_DIRS: Final = (

@@ -86,6 +86,7 @@ _USED_CODES: Final = (
     "validation_error",
     "not_found",
     "conflict",
+    "source_unavailable",
     "missing_dependency",
     "data_error",
     "io_error",
@@ -94,7 +95,8 @@ _USED_CODES: Final = (
     "cancelled",
     "terminated",
 )
-"""Registry codes that Hydrolog can end a call with (ERR-1: none of its own)."""
+"""Registry codes that Hydrolog can end a call with (ERR-1: none of its own);
+``source_unavailable`` is the PMAXTP of IMGW-PIB that ``precip pmaxtp`` fetches."""
 
 ERROR_CODES: Mapping[str, ErrorSpec] = MappingProxyType(
     {

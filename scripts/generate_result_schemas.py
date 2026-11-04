@@ -15,9 +15,10 @@ document id; a new field of an existing document goes there. The plan document
 network ``hydrolog-network/1`` that ``route network`` reads (its fields come from the
 options of the catalog), the schematic of a network ``hydrolog-network-schematic/1``,
 which ``route network`` returns in its result and draws as SVG and ``route schematic``
-returns as its result, and ``hydrolog-gui-serve/1``, whose only example is a plan (the
-server blocks until it is stopped); ``hydrolog-commands/1`` is the Nogat ``commands-1``
-schema (``schemas/nogat/``).
+returns as its result, ``hydrolog-gui-serve/1``, whose only example is a plan (the
+server blocks until it is stopped), and ``hydrolog-precip-pmaxtp/1``, whose example
+fetches from IMGW-PIB (the script runs offline); ``hydrolog-commands/1`` is the Nogat
+``commands-1`` schema (``schemas/nogat/``).
 
 Usage::
 
@@ -582,6 +583,7 @@ def _hand_written() -> dict[str, dict[str, Any]]:
     network_id = "hydrolog-network/1"
     schematic_id = SCHEMATIC_SCHEMA
     serve_id = "hydrolog-gui-serve/1"
+    pmaxtp_id = "hydrolog-precip-pmaxtp/1"
     return {
         network_id: _network_document(network_id),
         schematic_id: _schematic_document(schematic_id),
@@ -601,6 +603,38 @@ def _hand_written() -> dict[str, dict[str, Any]]:
                 "url": {"type": "string"},
                 "started_at": {"type": "string"},
                 "stopped_at": {"type": "string"},
+            },
+        },
+        pmaxtp_id: {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": f"{BASE}/hydrolog-precip-pmaxtp-1.schema.json",
+            "title": pmaxtp_id,
+            "description": (
+                "The PMAXTP depth of IMGW-PIB that `precip pmaxtp` fetches through "
+                "Obserwator for a point, a duration and a probability, with the "
+                "attribution IMGW-PIB prescribes (ADR-0018). Unknown fields are "
+                "allowed: adding optional fields keeps the version (AGI-4.1)."
+            ),
+            "type": "object",
+            "required": [
+                "schema",
+                "depth_mm",
+                "latitude",
+                "longitude",
+                "method",
+                "duration_min",
+                "probability_percent",
+                "attribution",
+            ],
+            "properties": {
+                "schema": {"const": pmaxtp_id},
+                "depth_mm": {"type": "number"},
+                "latitude": {"type": "number"},
+                "longitude": {"type": "number"},
+                "method": {"type": "string"},
+                "duration_min": {"type": "number"},
+                "probability_percent": {"type": "number"},
+                "attribution": {"type": "string"},
             },
         },
         plan_id: {

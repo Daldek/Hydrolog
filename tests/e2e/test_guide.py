@@ -154,7 +154,9 @@ def test_the_welcome_dialog_opens_until_it_is_hidden(
     box.uncheck()
     page.mouse.click(5, 5)
     expect(dialog).to_be_hidden()
-    assert stored(page) is None
+    page.wait_for_function(
+        "(key) => localStorage.getItem(key) === null", arg=WELCOME_KEY
+    )
     expect(page).to_have_url(tab.base)
     page.reload()
     expect(dialog).to_be_visible()

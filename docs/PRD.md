@@ -337,7 +337,7 @@ print(f"tc = {tc:.1f} min")
 #### US-M01: MCP server
 **As** a user of an MCP client (e.g. Claude Code)
 **I want** to call Hydrolog commands as tools
-**So that** the agent computes hydrology locally, without network access or keys
+**So that** the agent computes hydrology locally, without keys and without network access except for `precip pmaxtp`, whose tool fetches the PMAXTP depth of IMGW-PIB through Obserwator and says so (`openWorldHint`, ADR-0018)
 
 **Acceptance criteria:**
 - [x] `hydrolog mcp [--allow-dir DIR]... [--allow-writes] [--tools FAMILIES]` (extra `hydrolog[mcp]`); the server output is always English
@@ -383,7 +383,8 @@ print(f"tc = {tc:.1f} min")
 
 **Acceptance criteria:**
 - [ ] Section „Hydrogram zlewni” in five steps (watershed, also read from a `WatershedParameters` JSON; tc; rainfall; losses; UH); a valid change recomputes after 250 ms through `hydrograph generate`, and only the newest response is shown
-- [ ] The Kamiennik example shows „60,21 m³/s” at „6:20” and „1 046 213 m³”; switching the tc method, the AMC and the UH model gives the runs of the mockup
+- [ ] The Kamiennik example shows „60,21 m³/s” at „6:20” and „1 046 213 m³” with the typed 105 mm of the mockup; switching the tc method, the AMC and the UH model gives the runs of the mockup. Since ADR-0018 the PMAXTP depth is fetched, not typed: the guide's worked example (51,01544 / 15,88984, p 1 %, 12 h, POT) fetched 101,82 mm on 2026-11-04 and shows 56,39 m³/s at 6:20 and 976 759 m³
+- [ ] Under PMAXTP the depth comes from `precip pmaxtp` for the point, p, the duration and the method, read-only and kept with the inputs, so a reload does not fetch again; no hydrograph is computed until it is known (ADR-0018)
 - [ ] Charts: the hydrograph with the hyetograph, the cumulative P, F and Pe, and the unit hydrograph of the run (`uh_times_min`, `uh_discharge_m3s_per_mm`); a table, the balance, the parameters and the notices in Polish
 - [ ] An invalid value (e.g. CN 150) shows on its field and keeps the last result, marked; ten fast edits send at most two runs and show the last
 - [ ] The CLI line shown under the result, run by the CLI, gives the same peak
@@ -518,7 +519,7 @@ print(f"tc = {tc:.1f} min")
 - Input data: NumPy arrays, basic Python types
 - Thread-safe (no global state)
 - Input/output operations (CSV/JSON files, GeoTIFF, report writing) only in the operations/catalog layer and in the CLI/MCP; calculation classes do not read files
-- No network access or data downloading (data is supplied by Obserwator and Kartograf)
+- No data downloading and no network access, except `precip pmaxtp`, which fetches the PMAXTP depth of a point from IMGW-PIB through Obserwator (extra `pmaxtp`, ADR-0018); other data is supplied as files by Obserwator and Kartograf
 
 ---
 
@@ -554,7 +555,7 @@ print(f"tc = {tc:.1f} min")
 - [x] `precipitation.interpolation` - IDW, Thiessen, isohyets, arithmetic mean
 - [x] `network.classification` - Strahler, Shreve
 - [x] `network.parameters` - network indices (drainage density, bifurcation ratio)
-- [ ] `precipitation.scenarios` - PMAXTP integration
+- [ ] `precipitation.scenarios` - PMAXTP integration (since v1.0.0 the PMAXTP depth of a point is `precip pmaxtp`, fetched through Obserwator, ADR-0018)
 - [x] Tests and documentation (210 tests)
 
 ### v0.4.0 - CLI + advanced UH models *(completed)*
@@ -622,4 +623,4 @@ print(f"tc = {tc:.1f} min")
 ---
 
 **Document version:** 1.0.0 (in preparation)
-**Last updated:** 2026-11-02
+**Last updated:** 2026-11-04

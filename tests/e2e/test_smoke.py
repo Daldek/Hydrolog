@@ -150,7 +150,8 @@ def test_the_guides_examples_typed_give_the_guides_numbers(tab: Tab) -> None:
         "mean_slope_m_per_m": "0,082",
         "channel_length_km": "14,78",
         "channel_slope_m_per_m": "0,0142",
-        "total_mm": "105",
+        "pmaxtp_latitude": "51,01544",
+        "pmaxtp_longitude": "15,88984",
         "timestep_min": "10",
     }
     for name, value in typed.items():
@@ -160,7 +161,10 @@ def test_the_guides_examples_typed_give_the_guides_numbers(tab: Tab) -> None:
     page.locator('[aria-labelledby="hg-uh-label"]').get_by_role(
         "radio", name="SCS", exact=True
     ).click()
-    expect(right.locator('[data-kpi="q"] .v')).to_contain_text("60,21")
+    expect(right.locator('[data-kpi="q"] .v')).to_contain_text("56,39")
+    shown["hydrogram-depth"] = flat(
+        left.locator("#hg-pmaxtp_depth").input_value() + " mm"
+    )
     expect(page.locator(BADGE)).to_have_attribute("data-state", "ok")
     for name in ["q", "tp", "volume", "c"]:
         read(f"hydrogram-{name}", right.locator(f'[data-kpi="{name}"] .v'))
@@ -173,7 +177,7 @@ def test_the_guides_examples_typed_give_the_guides_numbers(tab: Tab) -> None:
     page.locator('[aria-labelledby="hg-amc-label"]').get_by_role(
         "radio", name="III", exact=True
     ).click()
-    expect(right.locator('[data-kpi="q"] .v')).not_to_contain_text("60,21")
+    expect(right.locator('[data-kpi="q"] .v')).not_to_contain_text("56,39")
     expect(page.locator(BADGE)).to_have_attribute("data-state", "ok")
     read("hydrogram-q-amc3", right.locator('[data-kpi="q"] .v'))
 

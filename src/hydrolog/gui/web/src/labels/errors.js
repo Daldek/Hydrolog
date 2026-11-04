@@ -58,7 +58,13 @@ export const errors = {
     admin_key_invalid: "Nieprawidłowy klucz API administratora.",
     admin_key_not_configured:
       "Serwer nie ma klucza administratora: uruchom go z HYDROLOG_ADMIN_API_KEY albo HYDROLOG_ADMIN_API_KEY_FILE.",
+    outside_pmaxtp: "Punkt poza atlasem PMAXTP: podaj punkt w Polsce, nie na morzu",
+    timeout: "{source} nie odpowiedział na czas: spróbuj ponownie później",
+    network: "Brak połączenia z {source}: sprawdź sieć i spróbuj ponownie",
+    http_status: "{source} odpowiedział błędem HTTP {status}: spróbuj ponownie później",
   },
+  /** The sources of data an error of `source_unavailable` names (`details.source`). */
+  sources: { "imgw-pmaxtp": "IMGW-PIB" },
   kinds: { object: "obiektu", array: "listy" },
   statuses: {
     0: "Brak połączenia z serwerem Hydrologa",
@@ -143,7 +149,15 @@ export function reasonText(reason, details = {}) {
     case "admin_key_missing":
     case "admin_key_invalid":
     case "admin_key_not_configured":
+    case "outside_pmaxtp":
       text = r[reason];
+      break;
+    case "timeout":
+    case "network":
+    case "http_status":
+      // A source the GUI does not name keeps the English message
+      if (!Object.hasOwn(errors.sources, details.source)) return null;
+      text = t(r[reason], { source: errors.sources[details.source], status: shown(details.status ?? "–") });
       break;
     case "too_long":
       text = t(r.too_long, { max_length: shown(details.max_length) });

@@ -1,7 +1,9 @@
 // The panel Dane of „Hydrogram zlewni”: the three steps of the author's flow (2026-11-04).
 // 1 Zlewnia: where the watershed came from (a WatershedParameters JSON read in the
 // browser, or a hand-off with „Wczytaj z Hydrografa”) and its basic fields, CN included.
-// 2 Hietogram: PMAXTP, a design hyetograph or a series, its shape and the time step.
+// 2 Hietogram: PMAXTP (the point, p, the duration and the method; the depth `precip
+// pmaxtp` fetched from IMGW-PIB is shown, never typed), a design hyetograph or a series,
+// its shape and the time step.
 // 3 Hydrogram: the unit hydrograph model, none chosen at first; only the chosen model's
 // block (its tc with the tc method's own fields for SCS and Clark, Clark's R, Nash by
 // Lutz with the watershed fields Lutz reads or n and K, Snyder with Lc), then the losses
@@ -27,6 +29,7 @@ import {
   AMC,
   PEAK_DEFAULTS,
   PMAXTP_DURATIONS,
+  PMAXTP_METHODS,
   PMAXTP_PROBABILITIES,
   SHAPES,
   SLOPE_FIELDS,
@@ -326,12 +329,12 @@ function WatershedStep(props) {
 }
 
 /**
- * A select of PMAXTP (the probability or the duration) in a form row, empty until chosen.
+ * A select in a form row (PMAXTP's probability, duration and method), empty until chosen.
  *
- * @param {{name: string, value: string, options: string[], label: (value: string) =>
- *   string, error?: string, keyText?: string, onChange: (value: string) => void}} props the
- *   field, its value, the values offered and their words, the message of a check, the key
- *   shown and the handler
+ * @param {{name: string, value: string, options: readonly string[], label: (value: string)
+ *   => string, error?: string, keyText?: string, onChange: (value: string) => void}} props
+ *   the field, its value, the values offered and their words, the message of a check, the
+ *   key shown and the handler
  * @returns {object} the row
  */
 function SelectRow({ name, value, options, label, error, keyText, onChange }) {
@@ -356,31 +359,34 @@ function SelectRow({ name, value, options, label, error, keyText, onChange }) {
 }
 
 /**
- * Step 2, Hietogram: PMAXTP (the depth typed for p and the duration), a design hyetograph,
- * or a series of depths; the shape of the hyetograph and the time step.
+ * Step 2, Hietogram: PMAXTP (the point, p, the duration and the method, with the depth
+ * fetched from IMGW-PIB shown read-only), a design hyetograph, or a series of depths; the
+ * shape of the hyetograph and the time step.
  *
  * @param {object} props see DataPanel
  * @returns {object} the step
  */
-function RainStep({ inputs, errors, warnings, set, valuesField, infoValues, required }) {
+function RainStep({ inputs, errors, warnings, set, valuesField, infoValues, required, pmaxtp }) {
   const source = inputs.rain_source;
   const shape = inputs.hietogram_type;
   const series = source === "series";
+  const atlas = source === "pmaxtp";
   let meta;
   if (series) {
     const steps = seriesTokens(inputs.values).length;
     meta = steps ? t(texts.rain.metaSeries, { steps: plural(steps, texts.rain.stepForms) }) : texts.empty;
   } else {
-    const total = numberOf(inputs.total_mm);
-    const duration = source === "pmaxtp" ? inputs.pmaxtp_duration_min : inputs.duration_min;
+    const total = atlas ? pmaxtp.depth : numberOf(inputs.total_mm);
+    const duration = atlas ? inputs.pmaxtp_duration_min : inputs.duration_min;
     const probability = numberOf(inputs.pmaxtp_probability_pct);
     const words = {
       total: total === null ? "–" : num(total, 1),
       duration: durationText(duration),
       p: probability === null ? "–" : inputText(probability),
     };
-    const blank = total === null && numberOf(duration) === null && (source !== "pmaxtp" || probability === null);
-    meta = blank ? texts.empty : t(source === "pmaxtp" ? texts.rain.metaPmaxtp : texts.rain.metaDesign, words);
+    const point = !isEmpty(inputs.pmaxtp_latitude) || !isEmpty(inputs.pmaxtp_longitude);
+    const blank = total === null && numberOf(duration) === null && (!atlas || (probability === null && !point));
+    meta = blank ? texts.empty : t(atlas ? texts.rain.metaPmaxtp : texts.rain.metaDesign, words);
   }
   const numberRow = (name, extra = {}) => html`<${Row}
     name=${name}
@@ -406,9 +412,11 @@ function RainStep({ inputs, errors, warnings, set, valuesField, infoValues, requ
           full=${true}
         />
       </div>
-      ${source === "pmaxtp"
+      ${atlas
         ? html`
             <div class="form">
+              ${numberRow("pmaxtp_latitude", { keyText: "latitude" })}
+              ${numberRow("pmaxtp_longitude", { keyText: "longitude" })}
               <${SelectRow}
                 name="pmaxtp_probability_pct"
                 value=${inputs.pmaxtp_probability_pct}
@@ -427,9 +435,35 @@ function RainStep({ inputs, errors, warnings, set, valuesField, infoValues, requ
                 keyText=${isEmpty(inputs.pmaxtp_duration_min) ? "duration_min" : t(texts.keyValue, { key: "duration_min", value: inputs.pmaxtp_duration_min })}
                 onChange=${(value) => set({ pmaxtp_duration_min: value })}
               />
-              ${numberRow("total_mm")}
+              <${SelectRow}
+                name="pmaxtp_method"
+                value=${inputs.pmaxtp_method}
+                options=${PMAXTP_METHODS}
+                label=${(value) => texts.rain.methods[value] || value}
+                error=${errors.pmaxtp_method}
+                keyText="method"
+                onChange=${(value) => set({ pmaxtp_method: value })}
+              />
+              <${Row}
+                name="pmaxtp_depth"
+                value=${pmaxtp.depth === null ? "" : inputText(pmaxtp.depth)}
+                error=${errors.pmaxtp_depth}
+                onInput=${() => {}}
+                readOnly=${true}
+                placeholder=${pmaxtp.busy ? texts.rain.depthFetching : texts.rain.depthPending}
+                keyText="total_mm"
+                aux=${pmaxtp.depth === null ? null : t(texts.rain.depthSource, { method: inputs.pmaxtp_method })}
+              />
             </div>
+            ${pmaxtp.onRetry
+              ? html`<div class="btn-row">
+                  <button class="btn sm ghost" type="button" data-retry="pmaxtp" title=${texts.rain.retryTitle} onClick=${pmaxtp.onRetry}>
+                    ${texts.rain.retry}
+                  </button>
+                </div>`
+              : null}
             <p class="note">${richText(texts.rain.pmaxtpNote)}</p>
+            <p class="note" data-attribution="pmaxtp">${texts.rain.attribution}</p>
           `
         : null}
       ${source === "design"
@@ -783,10 +817,13 @@ function HydrographStep(props) {
  *   string>, required: Object<string, {purpose: string}>, formError: {title: string,
  *   text: string}|null, set: (patch: object) => void, setField: (name: string, text:
  *   string) => void, onFile: (file: File) => void, result: object|null, lutz: object|null,
- *   models: object|null, infoValues: object}} props the inputs, the errors and warnings by
- *   field, what the chosen model needs (requirements), the error above the steps, the
- *   handlers (a patch of the inputs, a field of the watershed, a watershed file), the last
- *   result and Lutz's estimate, the field models and the values the (i) explanations check
+ *   models: object|null, infoValues: object, pmaxtp: {depth: number|null, busy: boolean,
+ *   onRetry: (() => void)|null}}} props the inputs, the errors and warnings by field, what
+ *   the chosen model needs (requirements), the error above the steps, the handlers (a
+ *   patch of the inputs, a field of the watershed, a watershed file), the last result and
+ *   Lutz's estimate, the field models, the values the (i) explanations check, and PMAXTP's
+ *   fetched depth (null until known), whether it is being fetched and how to fetch it again
+ *   after a failure
  * @returns {object} the panel's body
  */
 export function DataPanel(props) {

@@ -19,6 +19,11 @@ that typed them would have them; ``load_network(page)`` loads the guide's worked
 example of Sieć (``web/instrukcja/przyklady/siec.json``, eight nodes) with „Plik
 sieci…”.
 
+``precip pmaxtp`` is the one command that goes to IMGW-PIB (ADR-0018): every tab
+answers the page's runs of it in this process (``pmaxtp_route()``), Obserwator reading
+the PMAXTP table recorded at Kamiennik's outlet, so the tests stay offline; a test
+routes ``PMAXTP_RUN`` on its page to answer otherwise.
+
 Pure JavaScript modules are tested in a tab, without Node::
 
     tab.open()
@@ -36,6 +41,7 @@ from collections.abc import AsyncIterator, Callable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+from unittest import mock
 
 import pytest
 from playwright.sync_api import (
@@ -44,10 +50,13 @@ from playwright.sync_api import (
     ConsoleMessage,
     Page,
     Playwright,
+    Route,
     expect,
     sync_playwright,
 )
 from playwright.sync_api import Error as PlaywrightError
+
+from tests.conftest import recorded_fetch
 
 PREFIX = "/m/hydrolog"
 """Where the test host mounts the app, as Nogat's host would."""
@@ -93,6 +102,47 @@ GUIDE_NETWORK = (
 """The guide's worked example of Sieć (``example_network_document()``)."""
 NASH_TYPED = {"area_km2": "45,3", "n": "3", "k_min": "30"}
 """The guide's worked example of Wszystkie polecenia: ``uh nash`` by n and K."""
+PMAXTP_TABLE = FIXTURES / "pmaxtp_kamiennik_pot.json"
+"""IMGW-PIB's PMAXTP answer at Kamiennik's outlet (51.01544, 15.88984, POT), recorded
+on 2026-11-04 as Obserwator returns it: 12 h at 1 % is 101.82 mm."""
+PMAXTP_RUN = "**/api/run/precip/pmaxtp*"
+"""The page's runs of ``precip pmaxtp``."""
+KAMIENNIK_POINT = {"latitude": 51.01544, "longitude": 15.88984}
+"""Kamiennik's outlet at Świerzawa in Hydrograf (WGS84): the guide's PMAXTP point."""
+
+
+def pmaxtp_answer(
+    options: dict[str, Any], fetch: Callable[..., Any] | None = None
+) -> tuple[int, dict[str, Any]]:
+    """Return the GUI server's answer to ``precip pmaxtp`` with ``options``, made here.
+
+    The worker's own code runs in this process with Obserwator answering from
+    :data:`PMAXTP_TABLE`, or from ``fetch`` (a stand-in of ``obserwator.fetch_pmaxtp``):
+    the HTTP status and the ``hydrolog-result/1`` envelope or the ``hydrolog-error/1``
+    document the page receives, without the network.
+    """
+    import obserwator
+
+    from hydrolog.gui._app import _http_status
+    from hydrolog.gui._worker import handle
+
+    request = {"command": "precip pmaxtp", "options": options, "root": str(FIXTURES)}
+    with mock.patch.object(
+        obserwator, "fetch_pmaxtp", fetch or recorded_fetch(PMAXTP_TABLE)
+    ):
+        reply = handle(request)
+    document: dict[str, Any] = reply["document"]
+    return (_http_status(document["code"]) if reply["error"] else 200), document
+
+
+def pmaxtp_route(fetch: Callable[..., Any] | None = None) -> Callable[[Route], None]:
+    """Return a route handler that answers the page's ``precip pmaxtp`` here."""
+
+    def answer(route: Route) -> None:
+        status, document = pmaxtp_answer(route.request.post_data_json or {}, fetch)
+        route.fulfill(status=status, json=document)
+
+    return answer
 
 
 def load_network(page: Page, *files: Path) -> None:
@@ -123,9 +173,12 @@ def kamiennik_inputs(**changes: Any) -> dict[str, Any]:
     """Return Hydrogram zlewni's stored inputs of the guide's worked example.
 
     The watershed is ``kamiennik.json`` as „Plik zlewni…” reads it (the file its
-    origin), the storm PMAXTP p 1 %, 12 h, 105 mm, Beta (2; 5), Δt 10 min, the model
-    SCS with tc by Kirpich, AMC II, and Clark's R/tc 0,5: the mockup's runs. ``changes``
-    replace inputs (``watershed`` replaces the typed watershed, not its origin).
+    origin); the storm is PMAXTP at the outlet (``KAMIENNIK_POINT``), p 1 %, 12 h, POT,
+    with the depth remembered as fetched there: 105 mm, the mockup's (IMGW-PIB's atlas
+    gives 101,82 mm, which a fetch answers), the depth also typed for „Hietogram”;
+    Beta (2; 5), Δt 10 min, the model SCS with tc by Kirpich, AMC II, and Clark's R/tc
+    0,5: the mockup's runs. ``changes`` replace inputs (``watershed`` replaces the
+    typed watershed, not its origin).
     """
     inputs: dict[str, Any] = {
         "watershed": {
@@ -143,8 +196,18 @@ def kamiennik_inputs(**changes: Any) -> dict[str, Any]:
         "tc_manual": False,
         "tc_min": "",
         "rain_source": "pmaxtp",
+        "pmaxtp_latitude": input_text(KAMIENNIK_POINT["latitude"]),
+        "pmaxtp_longitude": input_text(KAMIENNIK_POINT["longitude"]),
         "pmaxtp_probability_pct": "1",
         "pmaxtp_duration_min": "720",
+        "pmaxtp_method": "POT",
+        "pmaxtp_fetched": {
+            **KAMIENNIK_POINT,
+            "duration_min": 720,
+            "probability_percent": 1,
+            "method": "POT",
+            "depth_mm": 105,
+        },
         "total_mm": "105",
         "duration_min": "",
         "hietogram_type": "beta",
@@ -334,6 +397,7 @@ def new_tab(chromium: Browser, gui_server: Served) -> Iterator[Callable[..., Tab
         base = gui_server.prefixed if prefixed else gui_server.base
         tab = Tab(context.new_page(), base)
         tab.watch()
+        context.route(PMAXTP_RUN, pmaxtp_route())
         if not welcome:
             tab.page.add_init_script(WELCOME_OFF)
         opened.append((context, tab))

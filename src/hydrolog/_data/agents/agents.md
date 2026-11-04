@@ -6,7 +6,7 @@
 
 Hydrolog is a Python library, the `hydrolog` CLI and an MCP server for watershed hydrology: SCS-CN and curve numbers (TR-55), design hyetographs, time of concentration, unit and runoff hydrographs, lumped flood routing, morphometry, flow statistics, rating curves, hydrologic soil groups (HSG) from soil rasters and a calculation report. All interfaces come from one command catalog.
 
-Use it to compute these quantities from numbers or from local CSV/JSON/GeoTIFF files. It runs locally: no network, no keys, no downloads. Not for:
+Use it on numbers or local CSV/JSON/GeoTIFF files, with no keys; only `precip pmaxtp` goes online (IMGW-PIB via Obserwator). Not for:
 
 - spatial data (DEM, land cover, SoilGrids rasters): use Kartograf (`kartograf soil download`);
 - IMGW/CHMU measurement series: use Obserwator (`obserwator series export`);
@@ -14,7 +14,7 @@ Use it to compute these quantities from numbers or from local CSV/JSON/GeoTIFF f
 
 ## Install
 
-Python 3.12 or newer: `pip install "hydrolog @ git+https://github.com/Daldek/Hydrolog.git"`. Extras: `raster` (rasterio, pyproj; `soil hsg`, `soil hsg-stats`), `mcp` (the MCP server), `viz` (plots in Python, outside the catalog), `all`.
+Python 3.12 or newer: `pip install "hydrolog @ git+https://github.com/Daldek/Hydrolog.git"`. Extras: `raster` (rasterio, pyproj; `soil hsg`, `soil hsg-stats`), `mcp` (the MCP server), `pmaxtp` (`precip pmaxtp`), `viz` (plots in Python, outside the catalog), `all`.
 
 ## Interfaces
 
@@ -70,6 +70,6 @@ Gate: `scripts/gate.sh`. To add a command (details in `src/hydrolog/catalog/__in
 
 1. Write the operation in `src/hydrolog/operations/<group>.py` and export it in `src/hydrolog/operations/__init__.py`.
 2. Declare `Command` and `Option` in `src/hydrolog/catalog/groups/<group>.py`; a new group goes into `GROUP_MODULES` in `src/hydrolog/catalog/groups/__init__.py` and its title into `_GROUP_TITLES` in `src/hydrolog/agent_guide.py`.
-3. Regenerate the guides (the CLI, MCP server and guides follow from the catalog): `hydrolog commands guide --format agents --output AGENTS.md --force` and `hydrolog commands guide --format llms --output llms.txt --force`.
+3. Regenerate the guides (the CLI and MCP server follow from the catalog): `hydrolog commands guide --format agents --output AGENTS.md --force` and `hydrolog commands guide --format llms --output llms.txt --force`.
 
 Developing this repository? Read CLAUDE.md.

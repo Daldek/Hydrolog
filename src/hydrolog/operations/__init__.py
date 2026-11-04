@@ -66,8 +66,10 @@ from hydrolog.operations.network import NetworkAnalysis, network_stats
 from hydrolog.operations.precip import (
     ArealPrecipitationResult,
     PrecipHietogramResult,
+    PrecipPmaxtpResult,
     precip_areal,
     precip_hietogram,
+    precip_pmaxtp,
 )
 from hydrolog.operations.report import ReportResult, report_generate
 from hydrolog.operations.route import (
@@ -141,8 +143,10 @@ __all__ = [
     # precip
     "ArealPrecipitationResult",
     "PrecipHietogramResult",
+    "PrecipPmaxtpResult",
     "precip_areal",
     "precip_hietogram",
+    "precip_pmaxtp",
     # uh
     "UhResult",
     "uh_clark",

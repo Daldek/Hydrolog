@@ -22,6 +22,7 @@ export const UNITS = Object.freeze({
   d: "d",
   "%": "%",
   years: "lat",
+  deg: "°",
 });
 
 /** Shown for a dimensionless value. */

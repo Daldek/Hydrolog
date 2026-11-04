@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Daldek/Hydrolog/blob/main/src/hydrolog/schemas/hydrolog-precip-pmaxtp-1.schema.json",
+  "title": "hydrolog-precip-pmaxtp/1",
+  "description": "The PMAXTP depth of IMGW-PIB that `precip pmaxtp` fetches through Obserwator for a point, a duration and a probability, with the attribution IMGW-PIB prescribes (ADR-0018). Unknown fields are allowed: adding optional fields keeps the version (AGI-4.1).",
+  "type": "object",
+  "required": [
+    "schema",
+    "depth_mm",
+    "latitude",
+    "longitude",
+    "method",
+    "duration_min",
+    "probability_percent",
+    "attribution"
+  ],
+  "properties": {
+    "schema": {
+      "const": "hydrolog-precip-pmaxtp/1"
+    },
+    "depth_mm": {
+      "type": "number"
+    },
+    "latitude": {
+      "type": "number"
+    },
+    "longitude": {
+      "type": "number"
+    },
+    "method": {
+      "type": "string"
+    },
+    "duration_min": {
+      "type": "number"
+    },
+    "probability_percent": {
+      "type": "number"
+    },
+    "attribution": {
+      "type": "string"
+    }
+  }
+}

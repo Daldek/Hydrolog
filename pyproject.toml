@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "hydrolog"
 dynamic = ["version"]
-description = "Watershed hydrology: SCS-CN, design hyetographs, time of concentration, unit hydrographs, morphometry, flow statistics, soil groups. Python library, CLI and MCP server; runs offline."
+description = "Watershed hydrology: SCS-CN, design hyetographs, time of concentration, unit hydrographs, morphometry, flow statistics, soil groups. Python library, CLI and MCP server; runs offline, except the PMAXTP depths it fetches from IMGW-PIB through Obserwator."
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
@@ -59,11 +59,21 @@ viz = [
     "matplotlib>=3.7",
     "seaborn>=0.12",
 ]
+# The PMAXTP depths of IMGW-PIB (`precip pmaxtp`, ADR-0018), fetched through Obserwator:
+# the only command that uses the network. The range admits the development version of
+# Obserwator's pending release; it is not tagged, so `[tool.uv.sources]` pins the commit
+# of Nogat's release set candidate-1 (the release pull request replaces it with a tag).
+# The "gui" and "all" extras repeat it.
+pmaxtp = [
+    "obserwator>=3.0.0.dev0,<4",
+]
 # The web GUI (`hydrolog gui serve`, the `nogat.gui` module): Starlette's routing,
-# StaticFiles and TestClient, served by uvicorn. The "all" extra repeats it.
+# StaticFiles and TestClient, served by uvicorn, and Obserwator for the PMAXTP depth of
+# „Hydrogram zlewni”. The "all" extra repeats it.
 gui = [
     "starlette>=1.10,<2",
     "uvicorn>=0.54,<1",
+    "obserwator>=3.0.0.dev0,<4",
 ]
 all = [
     "rasterio>=1.3",
@@ -73,6 +83,7 @@ all = [
     "seaborn>=0.12",
     "starlette>=1.10,<2",
     "uvicorn>=0.54,<1",
+    "obserwator>=3.0.0.dev0,<4",
 ]
 
 [project.scripts]
@@ -99,6 +110,10 @@ hydrolog = ["py.typed", "_data/agents/*.md", "schemas/*.json", "gui/web/**/*"]
 
 [tool.setuptools.dynamic]
 version = {attr = "hydrolog.__version__"}
+
+[tool.uv.sources]
+# Obserwator is not tagged yet: the commit of Nogat's release set candidate-1.
+obserwator = { git = "https://github.com/Daldek/Obserwator.git", rev = "1ee54573453473392f21e2c8bb34f76e4976e03f" }
 
 [dependency-groups]
 dev = [
@@ -163,7 +178,7 @@ python_functions = ["test_*"]
 # The default run and the gate exclude `live` (DEV-10.1); `-m live` replaces it.
 addopts = "--strict-markers -m 'not live' --tb=short"
 markers = [
-    "live: real network services (none in this project); run on demand",
+    "live: real network services (the PMAXTP of IMGW-PIB); run on demand",
     "slow: more than ~10 s or Docker",
     "db: needs a database (none in this project)",
 ]
