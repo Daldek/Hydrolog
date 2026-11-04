@@ -19,7 +19,7 @@ export const polecenia = {
   empty: "Brak poleceń dla tego wyszukiwania.",
   loading: "Wczytywanie katalogu…",
   loadFailed: "Nie udało się wczytać katalogu: {message}",
-  pick: "Wybierz polecenie z listy, aby wypełnić jego formularz.",
+  pick: "Wybierz polecenie z listy: jego formularz jest pusty, wpisz dane i naciśnij „Uruchom”.",
   formLoading: "Wczytywanie opisu polecenia…",
   hint: "Formularz, tabela i JSON z katalogu (commands schema), bez kodu dla polecenia",
   view: "Widok",
@@ -28,6 +28,5 @@ export const polecenia = {
   running: "Hydrolog liczy…",
   cancelled: "Obliczenie anulowano.",
   rightSub: "{command}",
-  clearTitle: "Wyczyść dane wszystkich poleceń: wróć do przykładów z katalogu",
-  exampleTitle: "Wypełnij formularz pierwszym przykładem z katalogu",
+  clearTitle: "Wyczyść dane wszystkich poleceń: puste formularze",
 };

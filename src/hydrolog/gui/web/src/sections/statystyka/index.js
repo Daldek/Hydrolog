@@ -1,11 +1,11 @@
 // „Statystyka przepływów”: the flood frequency analysis of annual maxima (`stats
 // flood-frequency`, plan S5). The series is a file of the session, its columns read from the
-// header (the shipped sample on a first visit), or pasted values; the form's fields are the
-// catalog's. „Oblicz” runs the command, and a second run of the same series on a dense grid
-// of return periods gives the curves of the probability plot. The result shows the best
-// distribution, the quantiles, the goodness of fit and the notices in Polish; „Do porównania”
-// hands the stressed quantile to Hydrogram zlewni (store "reference"). A change marks the
-// result stale (plan D13).
+// header, or pasted values; a first visit has neither (the guide, instrukcja/#statystyka,
+// has a worked example). The form's fields are the catalog's. „Oblicz” runs the command,
+// and a second run of the same series on a dense grid of return periods gives the curves
+// of the probability plot. The result shows the best distribution, the quantiles, the
+// goodness of fit and the notices in Polish; „Do porównania” hands the stressed quantile
+// to Hydrogram zlewni (store "reference"). A change marks the result stale (plan D13).
 
 import { api } from "../../api.js";
 import { useSession } from "../../controls/file-field.js";
@@ -34,7 +34,6 @@ import {
   COMMAND,
   CURVE_PERIODS,
   CURVES_CHANNEL,
-  ensureSample,
   formValues,
   guessDateColumn,
   guessValueColumn,
@@ -45,7 +44,6 @@ import {
   quantileAt,
   rankedMaxima,
   resolveColumn,
-  SAMPLE,
   SECTION,
   shortNumber,
   stressedPeriod,
@@ -83,10 +81,9 @@ function messageOf(error) {
 /**
  * The section „Statystyka przepływów”.
  *
- * @param {{active: boolean}} props whether the section is shown
  * @returns {object} the section
  */
-export default function Statystyka({ active }) {
+export default function Statystyka() {
   const { doc, error: docError } = useCommandDoc(COMMAND);
   const session = useSession();
   const [state, setState, reset] = usePersistentState(SECTION, initialState);
@@ -99,11 +96,9 @@ export default function Statystyka({ active }) {
   const [run, setRun] = useState(null);
   const [serverErrors, setServerErrors] = useState({});
   const [busy, setBusy] = useState(false);
-  const [sample, setSample] = useState({ busy: false, error: null });
   const sequence = useRef(0);
   const running = useRef(null);
   const chartSvg = useRef(null);
-  const sampleTried = useRef(false);
 
   const base = useMemo(() => (doc ? fieldModel(doc) : null), [doc]);
   const values = useMemo(() => formValues(state, base), [state, base]);
@@ -125,24 +120,6 @@ export default function Statystyka({ active }) {
     const text = field.default.map(inputText).join("; ");
     setState((old) => (old.values.return_periods !== undefined ? old : { ...old, values: { ...old.values, return_periods: text } }));
   }, [base, state.values.return_periods]);
-
-  const loadSample = async () => {
-    setSample({ busy: true, error: null });
-    try {
-      await ensureSample();
-      setSample({ busy: false, error: null });
-    } catch (error) {
-      setSample({ busy: false, error: messageOf(error) });
-    }
-  };
-
-  // The sample goes into the session when the section is shown without it
-  useEffect(() => {
-    if (!active || !session || sampleTried.current) return;
-    if (state.source !== "file" || path !== SAMPLE.path || file) return;
-    sampleTried.current = true;
-    loadSample();
-  }, [active, session, path, file]);
 
   // The columns of a new file: the last column of numbers, a column of dates
   useEffect(() => {
@@ -192,16 +169,6 @@ export default function Statystyka({ active }) {
     setState((old) => ({ ...old, source }));
   };
 
-  const useSampleFile = () => {
-    forget(["input_file", "value_column", "date_column"]);
-    setState((old) => ({
-      ...old,
-      source: "file",
-      values: { ...old.values, input_file: SAMPLE.path, value_column: SAMPLE.column, date_column: "" },
-    }));
-    if (!files.some((item) => item.path === SAMPLE.path)) loadSample();
-  };
-
   const focusFirstProblem = () =>
     setTimeout(() => {
       const form = document.getElementById(FORM_ID);
@@ -226,7 +193,6 @@ export default function Statystyka({ active }) {
     const table = preview.state === "ok" ? preview.table : null;
     setBusy(true);
     try {
-      if (sent.input_file === SAMPLE.path && !files.some((item) => item.path === SAMPLE.path)) await ensureSample();
       const curves = api
         .run(COMMAND, { ...sent, return_periods: [...CURVE_PERIODS] }, { channel: CURVES_CHANNEL, signal: controller.signal })
         .then((envelope) => (envelope.status === "ok" ? { result: envelope.result } : { error: texts.results.cancelled }))
@@ -278,8 +244,6 @@ export default function Statystyka({ active }) {
     setServerErrors({});
     setTouched({});
     setTried(false);
-    setSample({ busy: false, error: null });
-    sampleTried.current = false;
   };
 
   // Messages: the server's, and the form's own once a field was touched or a run asked for
@@ -370,8 +334,6 @@ export default function Statystyka({ active }) {
       onSource=${onSource}
       session=${session}
       preview=${preview}
-      sample=${sample}
-      onSample=${useSampleFile}
       periods=${periods}
       stressed=${stressed}
       onChosen=${(period) => setState((old) => ({ ...old, chosen: period }))}

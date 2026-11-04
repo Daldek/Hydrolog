@@ -28,7 +28,7 @@ import hydrolog
 from hydrolog.catalog import run_command
 from hydrolog.testing import example_network_document
 from tests.e2e.conftest import KAMIENNIK as EXAMPLE
-from tests.e2e.conftest import Tab, kamiennik_inputs, seed_hydrogram
+from tests.e2e.conftest import Tab, kamiennik_inputs, load_network, seed_hydrogram
 
 ROOT = Path(__file__).resolve().parents[2]
 HANDOFF: dict[str, Any] = json.loads(
@@ -619,6 +619,7 @@ def test_the_print_view_is_linked_and_fits_a4(new_tab: Any) -> None:
         page.locator(f'{right} details[data-part="parameters"]')
     ).not_to_have_attribute("open", "")
     page.goto(tab.base + "#siec")
+    load_network(page)
     expect(page.locator("svg.schem g.node")).to_have_count(8)
     page.locator('[data-export="print"]').click()
     # The same document (only the hash changed): Sieć's „Raport do druku” printed too

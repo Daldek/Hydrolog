@@ -11,10 +11,13 @@ that records console errors, page errors and CSP violations
 welcome dialog of a visit covers the page, so a tab starts as a visitor who ticked „Nie
 pokazuj ponownie” unless ``welcome=True``. ``tab`` is ``new_tab()``.
 
-Hydrogram zlewni starts empty; ``seed_hydrogram(tab)`` stores the inputs of the guide's
-worked example, Kamiennik at Świerzawa (``tests/fixtures/kamiennik.json`` read with
-„Plik zlewni…”, the mockup's storm, SCS with Kirpich: ``kamiennik_inputs()``), before
-the tab's first page runs, as a browser that typed them would have them.
+Every section starts empty. ``seed_hydrogram(tab)`` stores the inputs of the guide's
+worked example of Hydrogram zlewni, Kamiennik at Świerzawa
+(``tests/fixtures/kamiennik.json`` read with „Plik zlewni…”, the mockup's storm, SCS
+with Kirpich: ``kamiennik_inputs()``), before the tab's first page runs, as a browser
+that typed them would have them; ``load_network(page)`` loads the guide's worked
+example of Sieć (``web/instrukcja/przyklady/siec.json``, eight nodes) with „Plik
+sieci…”.
 
 Pure JavaScript modules are tested in a tab, without Node::
 
@@ -77,6 +80,36 @@ KAMIENNIK: dict[str, Any] = json.loads(
 WatershedParameters JSON, as ``--watershed-file`` reads it)."""
 HYDROGRAM_KEY = "hydrolog-gui/hydrogram/2"
 """Where Hydrogram zlewni keeps its inputs (``persist.js``)."""
+GUIDE_NETWORK = (
+    Path(__file__).resolve().parents[2]
+    / "src"
+    / "hydrolog"
+    / "gui"
+    / "web"
+    / "instrukcja"
+    / "przyklady"
+    / "siec.json"
+)
+"""The guide's worked example of Sieć (``example_network_document()``)."""
+NASH_TYPED = {"area_km2": "45,3", "n": "3", "k_min": "30"}
+"""The guide's worked example of Wszystkie polecenia: ``uh nash`` by n and K."""
+
+
+def load_network(page: Page, *files: Path) -> None:
+    """Load ``files`` (default: the guide's network) with Sieć's „Plik sieci…”.
+
+    Sieć must be shown; the input is the empty section's or the open network's.
+    """
+    page.locator('section[data-section="siec"] [data-input="network"]').set_input_files(
+        list(files) or [GUIDE_NETWORK]
+    )
+
+
+def type_nash(page: Page) -> None:
+    """Type the guide's example (``NASH_TYPED``) into the shown form of ``uh nash``."""
+    form = page.locator('section[data-section="polecenia"] .cmd-form')
+    for name, text in NASH_TYPED.items():
+        form.locator(f'[data-option="{name}"] input').fill(text)
 
 
 def input_text(value: float) -> str:

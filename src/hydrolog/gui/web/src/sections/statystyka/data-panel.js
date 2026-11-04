@@ -1,7 +1,7 @@
 // The panel Dane of „Statystyka przepływów”: the series (a file of the session with its
-// columns read from the header, or pasted annual maxima) and the distributions with the
-// return periods. The fields are the catalog's (forms/model.js, the generated controls), laid
-// out as the mockup's steps.
+// columns read from the header, or pasted annual maxima; before either, a hint and the
+// guide's worked example) and the distributions with the return periods. The fields are
+// the catalog's (forms/model.js, the generated controls), laid out as the mockup's steps.
 
 import { ChoiceField } from "../../controls/choice-field.js";
 import { describedBy, FieldLabel, FieldNotes, richText } from "../../controls/field.js";
@@ -16,7 +16,8 @@ import { errors as errorTexts } from "../../labels/errors.js";
 import { statystyka as texts } from "../../labels/statystyka.js";
 import { routeHash } from "../../router.js";
 import { Seg } from "../../ui/seg.js";
-import { columnOption, resolveColumn, SAMPLE, shortNumber } from "./state.js";
+import { EmptyHint } from "../../ui/empty-hint.js";
+import { columnOption, resolveColumn, shortNumber } from "./state.js";
 
 const ID = "st";
 
@@ -77,28 +78,25 @@ function ColumnField({ field, value, error, required, columns, none, onInput }) 
 }
 
 /**
- * The box naming the chosen file: its rows and columns, the sample's origin, or what went
- * wrong while reading it.
+ * The box naming the chosen file: its rows and columns, or what went wrong while reading it.
  *
- * @param {{path: string, file: object|null, preview: object, sample: object,
- *   onSample: () => void}} props the file's path, its entry in the session (null when it is
- *   not there), the columns read, the state of the sample's upload and its handler
+ * @param {{path: string, file: object|null, preview: object}} props the file's path, its
+ *   entry in the session (null when it is not there) and the columns read
  * @returns {object} the box
  */
-function FileBox({ path, file, preview, sample, onSample }) {
+function FileBox({ path, file, preview }) {
   const name = path.replace(/^in\//, "");
-  const isSample = path === SAMPLE.path;
   let line;
   let sub = null;
   if (!file) {
-    line = isSample && sample.busy ? texts.file.sampleLoading : t(texts.file.missing, { name });
+    line = t(texts.file.missing, { name });
   } else if (preview.state === "ok") {
     line = t(texts.file.summary, {
       name,
       rows: plural(preview.table.rows, texts.rowForms),
       columns: preview.table.columns.map((column) => `\`${column}\``).join(", "),
     });
-    sub = isSample ? texts.file.sample : t(texts.file.session, { size: bytes(file.size_bytes) });
+    sub = t(texts.file.session, { size: bytes(file.size_bytes) });
   } else if (preview.state === "error") {
     line = t(texts.file.unreadable, { message: preview.message });
   } else {
@@ -110,10 +108,6 @@ function FileBox({ path, file, preview, sample, onSample }) {
       <div>
         <span role="status">${richText(line)}</span>
         ${sub ? html`<span class="muted">${sub}</span>` : null}
-        ${sample.error ? html`<span class="err" role="alert">${t(texts.file.sampleFailed, { message: sample.error })}</span>` : null}
-        ${!isSample || !file
-          ? html`<button class="link-btn" type="button" title=${texts.file.useSampleTitle} disabled=${sample.busy} onClick=${onSample}>${texts.file.useSample}</button>`
-          : null}
       </div>
     </div>
   `;
@@ -130,17 +124,16 @@ const SHOWN = {
  *
  * @param {{model: object, values: object, source: "file"|"paste", errors: object,
  *   onValue: (name: string, value: any) => void, onSource: (source: string) => void,
- *   session: object|null, preview: object, sample: object, onSample: () => void,
- *   periods: number[], stressed: number|null, onChosen: (period: number) => void,
- *   seriesMeta: string|null, formId: string, onSubmit: () => void}} props the catalog's
- *   model and the form's values, the source, the messages by option, the change handlers,
- *   the session, the columns of the chosen file, the sample's upload, the return periods
- *   with the stressed one, the length of the series computed, the form's id and its submit
- *   handler
+ *   session: object|null, preview: object, periods: number[], stressed: number|null,
+ *   onChosen: (period: number) => void, seriesMeta: string|null, formId: string,
+ *   onSubmit: () => void}} props the catalog's model and the form's values, the source,
+ *   the messages by option, the change handlers, the session, the columns of the chosen
+ *   file, the return periods with the stressed one, the length of the series computed,
+ *   the form's id and its submit handler
  * @returns {object} the panel's body
  */
 export function DataPanel(props) {
-  const { model, values, source, errors, onValue, onSource, session, preview, sample, onSample, periods, stressed, onChosen, seriesMeta, formId, onSubmit } = props;
+  const { model, values, source, errors, onValue, onSource, session, preview, periods, stressed, onChosen, seriesMeta, formId, onSubmit } = props;
   const field = (name) => model.fields.find((item) => item.name === name);
   const required = (item) => isRequired(model, item, values);
   const error = (name) => (typeof errors[name] === "object" ? errors[name].text : errors[name]);
@@ -181,7 +174,9 @@ export function DataPanel(props) {
           </div>
           ${source === "file"
             ? html`
-                <${FileBox} path=${path} file=${file} preview=${preview} sample=${sample} onSample=${onSample} />
+                ${path
+                  ? html`<${FileBox} path=${path} file=${file} preview=${preview} />`
+                  : html`<${EmptyHint} text=${texts.file.empty} anchor="przyklad-statystyka" name="statystyka" />`}
                 <${FileField}
                   field=${field("input_file")}
                   id=${`${ID}-input_file`}
@@ -210,6 +205,7 @@ export function DataPanel(props) {
                 <p class="note">${richText(texts.dailyNote)}</p>
               `
             : html`
+                ${values.values ? null : html`<${EmptyHint} text=${texts.pasteEmpty} anchor="przyklad-statystyka" name="statystyka" />`}
                 <${SeriesField}
                   field=${field("values")}
                   id=${`${ID}-values`}

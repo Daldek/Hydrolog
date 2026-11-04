@@ -1,13 +1,13 @@
 // „Wszystkie polecenia”: every command of the catalog (those the GUI's server runs) as a
 // form generated from its commands-1 entry, run on its button, with the generic result
-// view (plan D11). The result is marked stale after a change („Dane zmienione: oblicz
-// ponownie”, plan D13).
+// view (plan D11). A first visit chooses no command and a form starts empty; the guide
+// (instrukcja/#polecenia) has a worked example. The result is marked stale after a change
+// („Dane zmienione: oblicz ponownie”, plan D13).
 
 import { api } from "../../api.js";
-import { useSession } from "../../controls/file-field.js";
 import { plural } from "../../format.js";
 import { CommandForm, FORM_ERROR } from "../../forms/command-form.js";
-import { fieldModel, isActive, toOptions, validate, withReason } from "../../forms/model.js";
+import { fieldModel, isActive, outputDefaults, toOptions, validate, withReason } from "../../forms/model.js";
 import { analyzeResult } from "../../forms/result-view.js";
 import { html, useEffect, useMemo, useRef, useState } from "../../html.js";
 import { common, t } from "../../labels/common.js";
@@ -20,10 +20,11 @@ import { useStore } from "../../store.js";
 import { Seg } from "../../ui/seg.js";
 import { isPhone, openPanel } from "../../ui/sheet.js";
 import { status } from "../../ui/status.js";
+import { EmptyHint } from "../../ui/empty-hint.js";
 import { ViewLayout } from "../../ui/view-layout.js";
 import { CommandList } from "./data-panel.js";
 import { CenterBody, ResultsPanel } from "./results-panel.js";
-import { FIRST_COMMAND, SECTION, firstValues, groupsOf, initialState, useCatalog } from "./state.js";
+import { SECTION, groupsOf, initialState, useCatalog } from "./state.js";
 
 const FORM_ID = "pc-form";
 
@@ -48,7 +49,6 @@ function changedNames(before, after) {
  */
 export default function Polecenia({ active, path = [] }) {
   const catalog = useCatalog();
-  const session = useSession();
   const [state, setState, reset] = usePersistentState(SECTION, initialState);
   const [, setStatus] = useStore("status");
   const [, setContext] = useStore("context");
@@ -65,18 +65,17 @@ export default function Polecenia({ active, path = [] }) {
   const names = catalog.commands ? catalog.commands.map((item) => item.name) : [];
   const routed = path.length === 2 ? `${path[0]} ${path[1]}` : null;
   let command = null;
-  for (const candidate of [routed, state.command, FIRST_COMMAND, names[0]]) {
+  for (const candidate of [routed, state.command]) {
     if (candidate && names.includes(candidate)) {
       command = candidate;
       break;
     }
   }
   const doc = command ? catalog.docs.get(command) || null : null;
-  const sessionInputs = ((session && session.files) || []).map((file) => file.path);
 
   useEffect(() => {
     if (!command || !doc || state.values[command]) return;
-    setState((old) => (old.values[command] ? old : { ...old, values: { ...old.values, [command]: firstValues(doc, sessionInputs) } }));
+    setState((old) => (old.values[command] ? old : { ...old, values: { ...old.values, [command]: outputDefaults(fieldModel(doc)) } }));
   }, [command, doc, state.values]);
   useEffect(() => {
     if (command && command !== state.command) setState((old) => ({ ...old, command }));
@@ -225,7 +224,7 @@ export default function Polecenia({ active, path = [] }) {
         : command && catalog.commands
           ? html`<p class="muted" role="status">${texts.formLoading}</p>`
           : catalog.commands
-            ? html`<p class="muted">${texts.pick}</p>`
+            ? html`<${EmptyHint} text=${texts.pick} anchor="przyklad-polecenia" name="polecenia" />`
             : null}
     `,
     foot: html`

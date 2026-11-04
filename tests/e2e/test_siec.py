@@ -1,15 +1,16 @@
 """„Sieć i trasowanie” (GUI plan S4, D13, D14, D18) in Chromium on the live server.
 
-The example network is drawn vertically from ``route schematic`` before any run: the
-sources at the top, the outlet at the bottom, each label on the side of its node
-without a tributary. „Oblicz sieć” writes the document to the session and runs
-``route network``; the outlet's and every node's values are those of the library. A
-network loaded from a file with its referenced files (an inflows file and a rating
-table) computes too, and every node type opens its form. A node is chosen by a click,
-Enter or Space on the schematic and in the node table; a changed reach method shows its
-fields and marks the result stale. The SVG of Hydrolog and the network's document
-export, the document unchanged. A phone in the dark theme shows the schematic without
-scrolling sideways.
+A first visit has no network and sends nothing: step 1 says what to load and links the
+guide's worked example; „Wyczyść” returns there. The guide's network (loaded with „Plik
+sieci…”) is drawn vertically from ``route schematic`` before any run: the sources at the
+top, the outlet at the bottom, each label on the side of its node without a tributary.
+„Oblicz sieć” writes the document to the session and runs ``route network``; the
+outlet's and every node's values are those of the library. A network loaded from a file
+with its referenced files (an inflows file and a rating table) computes too, and every
+node type opens its form. A node is chosen by a click, Enter or Space on the schematic
+and in the node table; a changed reach method shows its fields and marks the result
+stale. The SVG of Hydrolog and the network's document export, the document unchanged. A
+phone in the dark theme shows the schematic without scrolling sideways.
 """
 
 import json
@@ -21,7 +22,7 @@ from playwright.sync_api import Page, expect
 
 from hydrolog.catalog import run_command
 from hydrolog.testing import example_network_document
-from tests.e2e.conftest import Tab
+from tests.e2e.conftest import Tab, load_network
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
 BADGE = ".topbar .badge.status"
@@ -53,8 +54,9 @@ def routed(options: dict[str, Any], allowed: list[str] | None = None) -> dict[st
 
 
 def open_section(tab: Tab) -> Page:
-    """Open Sieć and wait for the schematic of the example."""
+    """Open Sieć, load the guide's network and wait for its schematic."""
     tab.open("#siec")
+    load_network(tab.page)
     expect(tab.page.locator("svg.schem g.node")).to_have_count(8)
     return tab.page
 
@@ -71,6 +73,38 @@ def centre(page: Page, node: str) -> float:
     return float(
         page.locator(NODE.format(node) + " circle.halo").get_attribute("cy") or 0
     )
+
+
+def test_a_first_visit_is_empty_and_clearing_returns_there(tab: Tab) -> None:
+    sent: list[str] = []
+    tab.page.on(
+        "request",
+        lambda request: (
+            sent.append(request.url) if "/api/run/" in request.url else None
+        ),
+    )
+    tab.open("#siec")
+    page = tab.page
+    section = page.locator('section[data-section="siec"]')
+    hint = section.locator('[data-empty="siec"]')
+    expect(hint).to_contain_text("Plik sieci…")
+    expect(hint.get_by_role("link")).to_have_attribute(
+        "href", "instrukcja/#przyklad-siec"
+    )
+    expect(section.locator('[data-schematic="empty"]')).to_be_visible()
+    expect(section.locator("[data-network-file]")).to_have_count(0)
+    expect(page.get_by_role("button", name="Oblicz sieć")).to_be_disabled()
+
+    load_network(page)
+    expect(page.locator("svg.schem g.node")).to_have_count(8)
+    page.reload()  # the network is kept
+    expect(page.locator("svg.schem g.node")).to_have_count(8)
+    section.get_by_role("button", name="Wyczyść").click()
+    expect(hint).to_be_visible()
+    expect(page.locator("svg.schem")).to_have_count(0)
+    page.reload()
+    expect(hint).to_be_visible()
+    assert not any("/api/run/route/network" in url for url in sent)
 
 
 def test_the_example_is_drawn_first_and_computes_the_librarys_values(tab: Tab) -> None:
@@ -144,13 +178,13 @@ def test_the_example_is_drawn_first_and_computes_the_librarys_values(tab: Tab) -
 
 
 def test_a_network_file_with_its_files_opens_every_node_type(tab: Tab) -> None:
-    page = open_section(tab)
-    page.locator('[data-input="network"]').set_input_files(
-        [
-            FIXTURES / "network_flood.json",
-            FIXTURES / "network_inflows.csv",
-            FIXTURES / "pond_rating.csv",
-        ]
+    tab.open("#siec")
+    page = tab.page
+    load_network(
+        page,
+        FIXTURES / "network_flood.json",
+        FIXTURES / "network_inflows.csv",
+        FIXTURES / "pond_rating.csv",
     )
     expect(page.locator('[data-network-file="network_flood.json"]')).to_be_visible()
     expect(page.locator('[data-rating="pond_rating.csv"]')).to_have_class("ok")
