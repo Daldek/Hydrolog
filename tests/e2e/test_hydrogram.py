@@ -321,6 +321,8 @@ def test_a_first_visit_shows_three_empty_steps_and_runs_nothing(tab: Tab) -> Non
     expect(page.locator(BADGE)).to_be_hidden()
     expect(page.locator(".crumb-context")).to_have_count(0)
     expect(page.locator(RIGHT)).to_contain_text("Wynik pojawi się po pierwszym")
+    hint = page.locator(f'{LEFT} [data-empty="hydrogram"]')
+    expect(hint.get_by_role("link")).to_have_attribute("href", "instrukcja/#przyklad")
 
     # A value that is not a number is an error at once, model or not; nothing runs
     field(page, "area_km2").fill("abc")

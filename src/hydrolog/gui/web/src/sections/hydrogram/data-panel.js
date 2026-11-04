@@ -19,6 +19,7 @@ import { HandoffImport } from "../../handoff/handoff-panel.js";
 import { html, useRef } from "../../html.js";
 import { t } from "../../labels/common.js";
 import { hydrogram as texts } from "../../labels/hydrogram.js";
+import { EmptyHint } from "../../ui/empty-hint.js";
 import { InfoButton } from "../../ui/info-button.js";
 import { infoRanges, infoText, rangeKey, rangeMark, rangeText, symbolOf } from "../../ui/info.js";
 import { Seg } from "../../ui/seg.js";
@@ -283,8 +284,9 @@ function WatershedStep(props) {
   const area = numberOf(fields.area_km2);
   const source = origin ? origin.label : texts.watershed.noSource;
   let meta = t(texts.watershed.metaNoArea, { source });
+  const blank = !origin && !Object.values(fields).some((text) => !isEmpty(text));
   if (area !== null) meta = t(texts.watershed.meta, { area: num(area, 2), source });
-  else if (!origin && !Object.values(fields).some((text) => !isEmpty(text))) meta = texts.empty;
+  else if (blank) meta = texts.empty;
   const onPick = (event) => {
     const file = event.currentTarget.files && event.currentTarget.files[0];
     event.currentTarget.value = "";
@@ -296,6 +298,7 @@ function WatershedStep(props) {
   };
   return html`
     <${Step} id="watershed" number=${1} title=${texts.steps.watershed} meta=${meta}>
+      ${blank ? html`<${EmptyHint} anchor="przyklad" name="hydrogram" />` : null}
       <div class="handoff" data-origin=${origin ? origin.label : ""}>
         ${origin && origin.mark
           ? html`<img src=${`nogat/marks/${origin.mark}.svg`} alt="" />`
