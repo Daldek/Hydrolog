@@ -13,6 +13,25 @@
 /** The minus sign of the labels. */
 export const MINUS = "\u2212";
 
+/**
+ * The smallest and the largest of the values a test keeps, in one pass: spreading a long
+ * series into `Math.min`/`Math.max` overflows the call stack (a long unit hydrograph).
+ *
+ * @param {Iterable<number>} values the values
+ * @param {(value: number) => boolean} [keep=Number.isFinite] which values count
+ * @returns {[number, number] | null} [smallest, largest], null when none counts
+ */
+export function extent(values, keep = Number.isFinite) {
+  let lo = Infinity;
+  let hi = -Infinity;
+  for (const value of values) {
+    if (!keep(value)) continue;
+    if (value < lo) lo = value;
+    if (value > hi) hi = value;
+  }
+  return lo <= hi ? [lo, hi] : null;
+}
+
 const FORMATTERS = new Map();
 
 /**
@@ -122,9 +141,9 @@ export function linearTicks(min, max, step) {
  */
 export function niceDomain(values, options = {}) {
   const { count = 6, zero = true, pad = 0.08 } = options;
-  const finite = values.filter(Number.isFinite);
-  let lo = finite.length ? Math.min(...finite) : 0;
-  let hi = finite.length ? Math.max(...finite) : 1;
+  const range = extent(values);
+  let lo = range ? range[0] : 0;
+  let hi = range ? range[1] : 1;
   if (zero) {
     lo = Math.min(0, lo);
     hi = Math.max(0, hi);
@@ -171,9 +190,9 @@ export function logTicks(min, max) {
  * @returns {{min: number, max: number, ticks: {value: number, label: string}[]}}
  */
 export function logDomain(values) {
-  const positive = values.filter((value) => Number.isFinite(value) && value > 0);
-  const lo = positive.length ? Math.min(...positive) : 1;
-  const hi = positive.length ? Math.max(...positive) : 10;
+  const range = extent(values, (value) => Number.isFinite(value) && value > 0);
+  const lo = range ? range[0] : 1;
+  const hi = range ? range[1] : 10;
   const min = 10 ** Math.floor(Math.log10(lo) + 1e-9);
   let max = 10 ** Math.ceil(Math.log10(hi) - 1e-9);
   if (max <= min) max = min * 10;
@@ -192,7 +211,9 @@ const TIME_STEPS = [5, 10, 15, 30, 60, 120, 180, 240, 360, 720, 1440, 2880, 1008
  */
 export function timeTicks(min, max, count = 13) {
   const span = Math.max(max - min, 1);
-  const step = TIME_STEPS.find((candidate) => span / candidate <= count - 1) ?? 10080;
+  // Beyond the steps: whole weeks, still at most `count` ticks (a unit hydrograph of months)
+  const week = TIME_STEPS.at(-1);
+  const step = TIME_STEPS.find((candidate) => span / candidate <= count - 1) ?? week * Math.ceil(span / (week * (count - 1)));
   const digits = stepDigits(step / 60);
   const ticks = [];
   for (let k = Math.ceil(min / step - 1e-9); k * step <= max + 1e-9; k += 1) {
@@ -210,9 +231,9 @@ export function timeTicks(min, max, count = 13) {
  * @returns {{min: number, max: number, step: number, ticks: {value: number, label: string}[]}}
  */
 export function timeDomain(values, options = {}) {
-  const finite = values.filter(Number.isFinite);
-  const lo = options.min ?? (finite.length ? Math.min(...finite) : 0);
-  let hi = options.max ?? (finite.length ? Math.max(...finite) : 60);
+  const range = extent(values);
+  const lo = options.min ?? (range ? range[0] : 0);
+  let hi = options.max ?? (range ? range[1] : 60);
   if (hi <= lo) hi = lo + 60;
   const { step } = timeTicks(lo, hi, options.count);
   const max = options.max ?? Math.ceil(hi / step - 1e-9) * step;
@@ -288,11 +309,11 @@ export function gumbelTicks(scale, gap = 30) {
  */
 export function gumbelDomain(values, options = {}) {
   const { pad = 0.04 } = options;
-  const variates = values
-    .filter((percent) => Number.isFinite(percent) && percent > 0 && percent < 100)
-    .map(reducedVariate);
-  let lo = variates.length ? Math.min(...variates) : reducedVariate(90);
-  let hi = variates.length ? Math.max(...variates) : reducedVariate(1);
+  const range = extent(
+    values.filter((percent) => Number.isFinite(percent) && percent > 0 && percent < 100).map(reducedVariate),
+  );
+  let lo = range ? range[0] : reducedVariate(90);
+  let hi = range ? range[1] : reducedVariate(1);
   if (hi - lo < 1) {
     lo -= 0.5;
     hi += 0.5;

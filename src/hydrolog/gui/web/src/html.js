@@ -5,7 +5,7 @@
 import htm from "../vendor/htm/htm.mjs";
 import { h } from "../vendor/preact/preact.mjs";
 
-export { Fragment, createContext, createRef, h, render } from "../vendor/preact/preact.mjs";
+export { Component, Fragment, createContext, createRef, h, render } from "../vendor/preact/preact.mjs";
 export {
   useCallback,
   useContext,

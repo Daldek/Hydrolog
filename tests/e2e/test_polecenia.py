@@ -12,8 +12,8 @@ allowed values; a library error without an option stands above the form under th
 server's Polish title. Files uploaded through a path option feed a run whose output
 downloads; a result exports CSV, JSON, a PNG twice the chart's size and its call (CLI,
 Python, MCP); the inputs, not the results, survive a reload until „Wyczyść”, which
-empties the forms; a phone in the dark theme runs a command through the sheets without
-scrolling sideways.
+returns to the first visit (no command, the bare hash, the hint); a phone in the dark
+theme runs a command through the sheets without scrolling sideways.
 """
 
 import hashlib
@@ -288,7 +288,11 @@ def test_uh_nash_checks_its_bounds_and_runs_through_the_server(tab: Tab) -> None
         expect(number(page, name)).to_have_attribute("spellcheck", "false")
     expect(panes(page).first).to_have_attribute("aria-checked", "true")
     assert set(pane_options(page)) == {"n", "k_min"}
+    # Empty required fields: not „formularz poprawny” before a run shows them
+    state = page.locator(f"{POL} .form-state")
+    expect(state).to_have_text("uzupełnij pola wymagane")
     type_nash(page)
+    expect(state).to_have_text("formularz poprawny")
 
     badge = page.locator(BADGE)
     start = page.get_by_role("button", name="Uruchom")
@@ -572,12 +576,20 @@ def test_the_inputs_survive_a_reload_until_cleared(tab: Tab) -> None:
     assert run(page).ok
     badge = page.locator(BADGE)
     expect(badge).to_have_attribute("data-state", "ok")
+    # „Wyczyść”: the first visit again, the command unchosen in the hash too
     page.get_by_role("button", name="Wyczyść").click()
-    expect(panes(page).first).to_have_attribute("aria-checked", "true")
-    expect(number(page, "area_km2")).to_have_value("")  # empty again
+    hint = page.locator(f'{POL} [data-empty="polecenia"]')
+    expect(hint).to_be_visible()
+    expect(page.locator(f"{POL} .cmd-form")).to_have_count(0)
+    expect(page.locator(f"{POL} .cmd-item button[aria-current]")).to_have_count(0)
+    assert page.evaluate("location.hash") == "#polecenia"
     expect(page.locator(f"{RIGHT} .summary")).to_have_count(0)  # its result is gone
     expect(badge).to_be_hidden()
+    expect(page.get_by_role("button", name="Uruchom")).to_be_disabled()
     page.reload()
+    expect(hint).to_be_visible()
+    # Chosen again, its form starts empty
+    page.locator(f'{POL} .cmd-item[data-command="{NASH}"] button').click()
     expect(panes(page).first).to_have_attribute("aria-checked", "true")
     expect(number(page, "area_km2")).to_have_value("")
 

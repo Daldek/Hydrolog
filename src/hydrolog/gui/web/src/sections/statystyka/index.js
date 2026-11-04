@@ -8,6 +8,7 @@
 // to Hydrogram zlewni (store "reference"). A change marks the result stale (plan D13).
 
 import { api } from "../../api.js";
+import { extent } from "../../charts/scale.js";
 import { useSession } from "../../controls/file-field.js";
 import { inputText, num, plural } from "../../format.js";
 import { FORM_ERROR } from "../../forms/command-form.js";
@@ -280,9 +281,9 @@ export default function Statystyka() {
   let context = null;
   if (result) {
     const years = plural(result.n_years, texts.yearForms);
-    const known = run.years && run.years.length ? run.years : null;
+    const known = run.years && run.years.length ? extent(run.years) : null;
     context = known
-      ? t(texts.contextRange, { file: runFile, years, first: Math.min(...known), last: Math.max(...known) })
+      ? t(texts.contextRange, { file: runFile, years, first: known[0], last: known[1] })
       : t(texts.context, { file: runFile, years });
   } else if (state.source === "file" && path) {
     const name = path.replace(/^in\//, "");

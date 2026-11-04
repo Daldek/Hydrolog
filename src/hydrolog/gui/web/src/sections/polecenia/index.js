@@ -161,12 +161,18 @@ export default function Polecenia({ active, path = [] }) {
     }
   };
 
+  // „Wyczyść”: the first visit again: no command chosen (the route too), no form, no result
   const clear = () => {
+    sequence.current += 1;
+    if (running.current) running.current.abort();
+    running.current = null;
+    setBusy(null);
     reset();
     setRuns({});
     setServerErrors({});
     setTouched({});
     setTried({});
+    navigate(SECTION, [], { replace: true });
   };
 
   // The badge: busy, an error of the server, the form's own problems, a stale result, ok
@@ -192,11 +198,10 @@ export default function Polecenia({ active, path = [] }) {
     : null;
   useEffect(() => setContext(context), [context]);
 
-  const formState = busy === command && command
-    ? texts.running
-    : visibleCount
-      ? t(errorTexts.count, { count: plural(visibleCount, errorTexts.countForms) })
-      : errorTexts.formOk;
+  let formState = errorTexts.formOk;
+  if (busy === command && command) formState = texts.running;
+  else if (visibleCount) formState = t(errorTexts.count, { count: plural(visibleCount, errorTexts.countForms) });
+  else if (!valid) formState = errorTexts.formIncomplete;
 
   const left = {
     sub: catalog.commands ? t(texts.catalog, { commands: counts.commands }) : null,

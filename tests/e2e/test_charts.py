@@ -199,6 +199,31 @@ def test_log_and_time_ticks(page: Any) -> None:
     assert (domain["min"], domain["max"]) == (0, 1440)
 
 
+def test_a_series_of_years_keeps_its_ticks_and_its_peak(page: Any) -> None:
+    # 150 001 steps of 10 min (a Nash unit hydrograph with n = 200, K = 1500 min)
+    got = page.evaluate(
+        "async () => { const s = await import('./src/charts/scale.js');"
+        " const {thinPoints} = await import('./src/charts/series.js');"
+        " const values = Array.from({length: 150001}, (_, i) => i === 29851 ? 5"
+        "  : i === 70000 ? NaN : Math.exp(-(((i - 29851) / 3000) ** 2)));"
+        " const points = values.map((y, i) => ({x: i * 10, y}));"
+        " const kept = thinPoints(points, (x) => x / 2000, 680);"
+        " return {extent: s.extent(values), ticks: s.timeTicks(0, 1500010),"
+        "  kept: kept.length, peak: kept.some((p) => p.y === 5),"
+        "  gap: kept.some((p) => Number.isNaN(p.y)),"
+        "  ends: [kept[0].x, kept.at(-1).x],"
+        "  ordered: kept.every((p, i) => i === 0 || p.x > kept[i - 1].x),"
+        "  short: thinPoints(points.slice(0, 100), (x) => x, 680).length}; }"
+    )
+    assert got["extent"] == [0, 5]  # no spread into Math.max: no stack overflow
+    ticks = got["ticks"]
+    assert ticks["step"] % 10080 == 0 and len(ticks["ticks"]) <= 13
+    assert 680 < got["kept"] <= 4 * 680  # the columns' extremes, not every step
+    assert got["peak"] and got["gap"] and got["ordered"]
+    assert got["ends"] == [0, 1500000]
+    assert got["short"] == 100  # a short series is drawn whole
+
+
 def test_the_gumbel_axis_is_linear_in_the_reduced_variate(page: Any) -> None:
     got = scale_js(
         page,

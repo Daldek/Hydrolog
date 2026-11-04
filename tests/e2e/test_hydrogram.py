@@ -8,9 +8,11 @@ generate`` computed it. Switching the tc method, AMC and the unit hydrograph mod
 reproduces the mockup's runs (Nash by Lutz through ``uh nash``); only the chosen model's
 fields exist and are sent; choosing a model marks the fields it lacks, a field no model
 reads may stay empty, and a value outside its typical range is a warning on its field
-(from Hydrolog's notice) while the run goes on. An invalid CN stands on its field and
-keeps the last result, marked; ten fast edits send at most two runs and show the last;
-the command line, run by the CLI, gives the same peak; errors stand on their field
+(from Hydrolog's notice) while the run goes on. A Nash unit hydrograph of years
+(n = 200, K = 1500 min) draws thinned and „Wyczyść” drops it; a result that fails to
+draw is an error in its place, never the last result. An invalid CN stands on its field
+and keeps the last result, marked; ten fast edits send at most two runs and show the
+last; the command line, run by the CLI, gives the same peak; errors stand on their field
 before the run or from the server, or above the steps. A watershed file is read in the
 browser and its changed fields are marked; the hydrograph exports as the CSV the
 ``route`` commands read, the envelope and a PNG; the inputs survive a reload until
@@ -33,7 +35,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from playwright.sync_api import Locator, Page, Request, expect
+from playwright.sync_api import Locator, Page, Request, Route, expect
 
 from hydrolog.catalog import format_command, run_command
 from tests.e2e.conftest import KAMIENNIK as EXAMPLE
@@ -319,6 +321,8 @@ def test_a_first_visit_shows_three_empty_steps_and_runs_nothing(tab: Tab) -> Non
     expect(page.locator(BADGE)).to_be_hidden()
     expect(page.locator(".crumb-context")).to_have_count(0)
     expect(page.locator(RIGHT)).to_contain_text("Wynik pojawi się po pierwszym")
+    hint = page.locator(f'{LEFT} [data-empty="hydrogram"]')
+    expect(hint.get_by_role("link")).to_have_attribute("href", "instrukcja/#przyklad")
 
     # A value that is not a number is an error at once, model or not; nothing runs
     field(page, "area_km2").fill("abc")
@@ -791,6 +795,86 @@ def test_a_given_nash_n_outside_its_range_to_be_verified_says_so(tab: Tab) -> No
     expect(rows.and_(page.locator('[data-range="nash.n"]'))).to_contain_text(
         "do weryfikacji"
     )
+
+
+def test_a_unit_hydrograph_of_years_draws_thinned_and_clears(tab: Tab) -> None:
+    # Nash with n = 200, K = 1500 min: Hydrolog's unit hydrograph lasts 5·n·K (~3 years)
+    seed_hydrogram(
+        tab,
+        kamiennik_inputs(
+            uh_model="nash", nash_source="given", nash_n="12", nash_k_min="300"
+        ),
+    )
+    tab.open("#hydrogram")
+    page = tab.page
+    expect(page.locator(BADGE)).to_have_text("Wynik aktualny")
+    before = kpi(page, "q").inner_text()
+    with run_of(page, nash_n=200, nash_k_min=1500) as answered:
+        field(page, "nash_n").fill("200")
+        field(page, "nash_k_min").fill("1500")
+    result = answered.value.json()["result"]
+    steps = len(result["times_min"])
+    assert len(result["uh_discharge_m3s_per_mm"]) > 100_000 and steps > 100_000
+    # The new result is shown and current (no stack overflow: the tab records errors)
+    expect(kpi(page, "q")).to_have_text(
+        re.compile(rf"^{comma(result['peak_discharge_m3s'])}\s*m³/s$")
+    )
+    assert flat(kpi(page, "q").inner_text()) != flat(before)
+    expect(page.locator(BADGE)).to_have_text("Wynik aktualny")
+    # Drawn thinned: a few points per column of the plot, not one per step
+    for chart, series in [(CENTER, "q"), (f'{CENTER} [data-chart="uh"]', "u")]:
+        line = page.locator(f'{chart} path.ser[data-series="{series}"]').first
+        expect(line).to_be_attached()
+        assert 100 < len(re.findall(r"[ML]", line.get_attribute("d") or "")) < 4_000
+    # The table keeps every step (cut on screen, whole in the exports)
+    page.locator(CENTER).get_by_role("radio", name="Tabela").click()
+    expect(page.locator(f"{CENTER} .table-more")).to_contain_text(
+        re.compile(rf"z {steps // 1000}\s{steps % 1000:03d} wiersz")
+    )
+
+    # „Wyczyść” drops the result
+    page.locator(LEFT).get_by_role("button", name="Wyczyść").click()
+    expect(kpi(page, "q")).to_have_count(0)
+    expect(page.locator(f"{CENTER} .chart")).to_have_count(0)
+    expect(page.locator(RIGHT)).to_contain_text("Wynik pojawi się po pierwszym")
+    expect(page.locator(BADGE)).to_be_hidden()
+
+
+def test_a_result_that_fails_to_draw_is_an_error_not_the_last_result(
+    tab: Tab,
+) -> None:
+    page = open_hydrogram(tab)
+
+    def broken(route: Route) -> None:
+        answer = route.fetch()
+        envelope = answer.json()
+        envelope["result"]["discharge_m3s"] = None  # the table cannot read it
+        route.fulfill(response=answer, json=envelope)
+
+    page.route(f"**{RUN}?*", broken)
+    with page.expect_response(lambda answer: RUN in answer.url):
+        field(page, "cn").fill("70")
+    center = page.locator(f'{CENTER} [data-render-error="center"]')
+    expect(center).to_contain_text("Nie udało się pokazać wyniku")
+    expect(page.locator(f"{CENTER} .chart")).to_have_count(0)  # not the last charts
+    expect(page.locator(BADGE)).to_have_text("Błąd wyświetlania")
+    expect(page.locator(f"{LEFT} .calc-state")).to_have_text(
+        "Błąd wyświetlania: wynik nie jest pokazany"
+    )
+
+    # A result that draws is current again; „Wyczyść” drops a failed one
+    page.unroute(f"**{RUN}?*")
+    field(page, "cn").fill("65")
+    shows(page, "60,21", "6:20", "1 046 213")
+    expect(center).to_have_count(0)
+    page.route(f"**{RUN}?*", broken)
+    field(page, "cn").fill("70")
+    expect(center).to_be_visible()
+    page.locator(LEFT).get_by_role("button", name="Wyczyść").click()
+    expect(center).to_have_count(0)
+    expect(kpi(page, "q")).to_have_count(0)
+    expect(page.locator(RIGHT)).to_contain_text("Wynik pojawi się po pierwszym")
+    expect(page.locator(BADGE)).to_be_hidden()
 
 
 def test_requirements_follow_the_model_and_the_tc_method(tab: Tab) -> None:

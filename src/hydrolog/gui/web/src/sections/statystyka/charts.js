@@ -4,6 +4,7 @@
 // periods of the run), the best one thicker, and the chosen quantile marked with guides to
 // both axes. Probabilities are drawn in per cent.
 
+import { extent } from "../../charts/scale.js";
 import { num } from "../../format.js";
 import { t } from "../../labels/common.js";
 import { statystyka as texts } from "../../labels/statystyka.js";
@@ -31,10 +32,10 @@ const FRAME_LIMIT = 10;
  * @returns {number} the top [m³/s]
  */
 export function frameTop(result) {
-  const largest = Math.max(...result.empirical.values_sorted);
+  const largest = extent(result.empirical.values_sorted)?.[1] ?? 0;
   const best = result.distributions.find((fit) => fit.distribution_name === result.best_distribution);
-  const quantiles = best ? best.quantiles.filter((value) => Number.isFinite(value)) : [];
-  return Math.min(Math.max(largest, ...quantiles), largest * FRAME_LIMIT);
+  const top = best ? (extent(best.quantiles)?.[1] ?? largest) : largest;
+  return Math.min(Math.max(largest, top), largest * FRAME_LIMIT);
 }
 
 /**

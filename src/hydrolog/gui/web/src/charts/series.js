@@ -111,6 +111,57 @@ export function valueAt(geometry, at, snap = 6) {
 }
 
 /**
+ * The points of a long line, area or step drawn (drawing only; the tables and exports keep
+ * every value): with more than four points per column of the plot, each column keeps its
+ * first, last, lowest and highest point and its first gap, so the drawn line and its peaks
+ * look the same with a few thousand points instead of a hundred thousand.
+ *
+ * @param {{x: number, y: number}[]} points the points in increasing x
+ * @param {(x: number) => number} place the x scale (to viewBox units)
+ * @param {number} columns the plot's width in viewBox units
+ * @returns {{x: number, y: number}[]} the points kept, in their order
+ */
+export function thinPoints(points, place, columns) {
+  if (points.length <= 4 * columns) return points;
+  const start = place(points[0].x);
+  const width = place(points.at(-1).x) - start || 1;
+  const out = [];
+  let column = -1;
+  let first;
+  let last;
+  let low;
+  let high;
+  let gap;
+  const flush = () => {
+    const kept = [first, low, high, gap, last].filter((index) => index !== null);
+    kept.sort((a, b) => a - b);
+    kept.forEach((index, at) => {
+      if (at === 0 || index !== kept[at - 1]) out.push(points[index]);
+    });
+  };
+  points.forEach((point, index) => {
+    const at = Math.min(columns - 1, Math.floor(((place(point.x) - start) / width) * columns));
+    if (at !== column) {
+      if (column >= 0) flush();
+      column = at;
+      first = index;
+      low = null;
+      high = null;
+      gap = null;
+    }
+    last = index;
+    if (!Number.isFinite(point.y)) {
+      if (gap === null) gap = index;
+      return;
+    }
+    if (low === null || point.y < points[low].y) low = index;
+    if (high === null || point.y > points[high].y) high = index;
+  });
+  flush();
+  return out;
+}
+
+/**
  * The geometry of each series of a layout: its viewBox points, values, class.
  *
  * @param {object} spec the chart spec
@@ -128,11 +179,13 @@ export function seriesGeometry(spec, layout) {
       return { series, kind, cls, axis: "y", data, row: row - data.length, px: [], py: [], values: [], xs: [] };
     }
     const axis = series.axis === "y2" && layout.y2 ? layout.y2 : layout.y;
-    const order = data
+    const sorted = data
       .map((point, at) => ({ point, at }))
       .filter(({ point }) => Number.isFinite(point.x))
       .sort((a, b) => layout.x.scale(a.point.x) - layout.x.scale(b.point.x))
       .map(({ point }) => point);
+    const thin = kind === "line" || kind === "area" || kind === "step";
+    const order = thin ? thinPoints(sorted, layout.x.scale, Math.ceil(layout.plot.right - layout.plot.left)) : sorted;
     const px = order.map((point) => layout.x.scale(point.x));
     const py = order.map((point) => (Number.isFinite(point.y) ? axis.scale(point.y) : NaN));
     let spans;
