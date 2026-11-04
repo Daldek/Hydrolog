@@ -253,7 +253,9 @@ function pointOf(entry) {
  * probability and the duration the section offers and a point (the rainfall's own, else
  * the watershed's, such as Hydrograf's outlet), else a design storm or the series. The
  * depth handed over is remembered as fetched only when the rainfall names its point;
- * otherwise the page fetches the depth of the point. `handoff` keeps what the results
+ * otherwise the page fetches the depth of the point. A hand-off without rainfall (the
+ * watershed only) leaves the probability, the duration and the model to choose, PMAXTP at
+ * the watershed's point when the provenance names one. `handoff` keeps what the results
  * compare with, the depth handed over included.
  *
  * @param {object} doc the hand-off
@@ -304,7 +306,7 @@ export function hydrogramInputs(doc) {
   inputs.tc_method = runoff.tc_method || "kirpich";
   inputs.amc = runoff.amc || "II";
   inputs.ia_coefficient = inputText(runoff.ia_coefficient);
-  inputs.uh_model = runoff.uh_model || "scs";
+  inputs.uh_model = runoff.uh_model || (isObject(rainfall) ? "scs" : null);
   const lutz =
     isObject(provenance.runoff) && provenance.runoff.method === "lutz" && LUTZ_FIELDS.every((field) => typeof sub.watershed[field] === "number");
   inputs.nash_source = inputs.uh_model === "nash" && !lutz ? "given" : "lutz";
@@ -318,7 +320,14 @@ export function hydrogramInputs(doc) {
   inputs.snyder_ct = inputText(runoff.snyder_ct);
   inputs.snyder_cp = inputText(runoff.snyder_cp);
   let handed = null;
-  if (rainfall.kind === "series") {
+  if (!isObject(rainfall)) {
+    const spot = pointOf(provenance.watershed);
+    if (spot) {
+      inputs.pmaxtp_latitude = inputText(spot.latitude);
+      inputs.pmaxtp_longitude = inputText(spot.longitude);
+    }
+    inputs.timestep_min = inputText(payload.timestep_min);
+  } else if (rainfall.kind === "series") {
     inputs.rain_source = "series";
     inputs.values = rainfall.depths_mm.map(inputText).join("; ");
     inputs.timestep_min = inputText(typeof payload.timestep_min === "number" ? payload.timestep_min : rainfall.timestep_min);

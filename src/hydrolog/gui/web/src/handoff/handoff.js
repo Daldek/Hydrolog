@@ -188,8 +188,9 @@ export function problemText(problem, doc) {
 }
 
 /**
- * What Hydrogram zlewni needs of a payload beyond its schema: a rainfall for the
- * subcatchment, and a series of rain in the network's time step.
+ * What Hydrogram zlewni needs of a payload beyond its schema: a series of rain in the
+ * network's time step. A subcatchment without rainfall (Hydrograf hands the watershed off
+ * before it has a hydrograph) opens with the rainfall still to choose.
  *
  * @param {object} payload a valid hydrolog-network/1 of one subcatchment and its outlet
  * @returns {string[]} the problems in Polish
@@ -197,9 +198,8 @@ export function problemText(problem, doc) {
 function hydrogramProblems(payload) {
   const sub = payload.nodes.find((node) => node.type === "subcatchment");
   const rainfall = sub.rainfall || payload.rainfall;
-  if (!isObject(rainfall)) return [t(texts.problems.noRainfall, { id: sub.id })];
   const step = payload.timestep_min;
-  if (rainfall.kind === "series" && typeof step === "number" && Math.abs(step - rainfall.timestep_min) > 1e-9 * step) {
+  if (isObject(rainfall) && rainfall.kind === "series" && typeof step === "number" && Math.abs(step - rainfall.timestep_min) > 1e-9 * step) {
     return [t(texts.problems.stepMismatch, { id: sub.id, network: inputText(step), series: inputText(rainfall.timestep_min) })];
   }
   return [];
