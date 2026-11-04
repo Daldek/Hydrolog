@@ -28,7 +28,7 @@
 // useHandoffInbox as a patch of the inputs whose `origin` names the producer.
 
 import { api } from "../../api.js";
-import { plural } from "../../format.js";
+import { plural, roundedText } from "../../format.js";
 import { withReason } from "../../forms/model.js";
 import { useHandoffInbox } from "../../handoff/handoff-panel.js";
 import { html, useCallback, useEffect, useMemo, useRef, useState } from "../../html.js";
@@ -430,7 +430,7 @@ export default function Hydrogram({ path = [] }) {
   let context = name;
   if (inputs.rain_source === "series") context = t(texts.context.series, { name });
   else if (inputs.rain_source === "design" && !isEmpty(inputs.total_mm) && !isEmpty(inputs.duration_min)) {
-    context = t(texts.context.design, { name, total: inputs.total_mm, duration: durationText(inputs.duration_min) });
+    context = t(texts.context.design, { name, total: roundedText(inputs.total_mm, 2), duration: durationText(inputs.duration_min) });
   } else if (inputs.rain_source === "pmaxtp" && !isEmpty(inputs.pmaxtp_probability_pct) && !isEmpty(inputs.pmaxtp_duration_min)) {
     context = t(texts.context.pmaxtp, {
       name,

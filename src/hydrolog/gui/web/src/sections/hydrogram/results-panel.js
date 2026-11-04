@@ -13,7 +13,7 @@
 
 import { Chart } from "../../charts/chart.js";
 import { richText } from "../../controls/field.js";
-import { hmm, inputText, num } from "../../format.js";
+import { hmm, inputText, num, roundedText } from "../../format.js";
 import { Notices } from "../../forms/result-view.js";
 import { html, useMemo } from "../../html.js";
 import { common, t } from "../../labels/common.js";
@@ -38,7 +38,8 @@ const ICONS = {
 const LEVELS = { warn: common.levels.warning, ok: common.levels.ok, info: common.levels.info };
 
 /**
- * The name of a run's model and tc: "SCS · Kirpich", "Nash", "Clark · tc 120 min".
+ * The name of a run's model and tc: "SCS · Kirpich", "Nash", "Clark · tc 120 min"; a tc
+ * given to more decimals (handed over exactly) shows to 0,1 min.
  *
  * @param {object} inputs the inputs of the run
  * @returns {string} the name
@@ -47,14 +48,15 @@ export function modelLabel(inputs) {
   let tc = "";
   if (usesTc(inputs.uh_model)) {
     tc = inputs.tc_manual
-      ? t(texts.center.subTcManual, { tc: inputs.tc_min })
+      ? t(texts.center.subTcManual, { tc: roundedText(inputs.tc_min, 1) })
       : t(texts.center.subTc, { method: texts.tc.names[inputs.tc_method] || inputs.tc_method });
   }
   return `${texts.uh.models[inputs.uh_model] || inputs.uh_model}${tc}`;
 }
 
 /**
- * The rainfall of a run in words: "PMAXTP p 1%, 12 h, Beta (2; 5)".
+ * The rainfall of a run in words: "PMAXTP p 1%, 12 h, Beta (2; 5)"; values given to more
+ * decimals (handed over exactly) show to 0,01.
  *
  * @param {object} inputs the inputs of the run
  * @param {object} result its result
@@ -69,20 +71,20 @@ export function rainLabel(inputs, result) {
   let shape = texts.rain.shapes[type] || type;
   if (type === "beta") {
     shape = t(texts.center.shapeBeta, {
-      alpha: isEmpty(inputs.alpha) ? "2" : inputs.alpha,
-      beta: isEmpty(inputs.beta) ? "5" : inputs.beta,
+      alpha: isEmpty(inputs.alpha) ? "2" : roundedText(inputs.alpha, 2),
+      beta: isEmpty(inputs.beta) ? "5" : roundedText(inputs.beta, 2),
     });
   } else if (Object.hasOwn(PEAK_DEFAULTS, type)) {
     shape = t(texts.center.shapePeak, {
       shape,
-      position: isEmpty(inputs.peak_position) ? inputText(PEAK_DEFAULTS[type]) : inputs.peak_position,
+      position: isEmpty(inputs.peak_position) ? inputText(PEAK_DEFAULTS[type]) : roundedText(inputs.peak_position, 2),
     });
   }
   const duration = durationText(rainDuration(inputs));
   if (inputs.rain_source === "pmaxtp") {
     return t(texts.center.rainPmaxtp, { p: inputText(Number(inputs.pmaxtp_probability_pct)), duration, shape });
   }
-  return t(texts.center.rainDesign, { total: inputs.total_mm, duration, shape });
+  return t(texts.center.rainDesign, { total: roundedText(inputs.total_mm, 2), duration, shape });
 }
 
 /**

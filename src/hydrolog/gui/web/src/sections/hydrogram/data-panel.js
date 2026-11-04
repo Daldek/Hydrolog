@@ -15,7 +15,7 @@
 
 import { SeriesField } from "../../controls/series-field.js";
 import { richText, splitReason } from "../../controls/field.js";
-import { inputText, num, plural } from "../../format.js";
+import { inputText, num, plural, roundedText } from "../../format.js";
 import { seriesTokens } from "../../forms/model.js";
 import { HandoffImport } from "../../handoff/handoff-panel.js";
 import { html, useRef } from "../../html.js";
@@ -80,7 +80,7 @@ function typicalNote(id, keys, text, plain) {
 }
 
 /**
- * A duration for people: whole hours as hours, otherwise minutes.
+ * A duration for people: whole hours as hours, otherwise minutes to 0,1 min.
  *
  * @param {number|string} minutes the duration [min]
  * @returns {string} e.g. "12 h", "90 min"
@@ -88,7 +88,7 @@ function typicalNote(id, keys, text, plain) {
 export function durationText(minutes) {
   const value = numberOf(minutes);
   if (value === null) return "–";
-  return value % 60 === 0 ? t(texts.rain.hours, { value: inputText(value / 60) }) : t(texts.rain.minutes, { value: inputText(value) });
+  return value % 60 === 0 ? t(texts.rain.hours, { value: inputText(value / 60) }) : t(texts.rain.minutes, { value: roundedText(value, 1) });
 }
 
 /**
@@ -728,7 +728,7 @@ function HydrographStep(props) {
   if (model) {
     const tc = result && result.uh_model === model && typeof result.tc_min === "number" ? result.tc_min : null;
     meta = texts.uh.models[model] || model;
-    if (usesTc(model) && inputs.tc_manual) meta += ` · ${t(texts.tc.metaManual, { tc: isEmpty(inputs.tc_min) ? "–" : inputs.tc_min })}`;
+    if (usesTc(model) && inputs.tc_manual) meta += ` · ${t(texts.tc.metaManual, { tc: isEmpty(inputs.tc_min) ? "–" : roundedText(inputs.tc_min, 1) })}`;
     else if (usesTc(model)) {
       const name = texts.tc.names[inputs.tc_method] || inputs.tc_method;
       meta += ` · ${tc === null ? name : t(texts.tc.metaMethod, { tc: num(tc, 1), method: name })}`;
