@@ -2,6 +2,7 @@
 
 import json
 import os
+from collections.abc import Callable
 from functools import cache
 from pathlib import Path
 from typing import Any
@@ -41,30 +42,20 @@ def _isolated_environment(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> No
 
 
 @cache
-def recorded_pmaxtp() -> dict[str, Any]:
-    """Return the recorded answer of :data:`PMAXTP_TABLE`."""
-    document: dict[str, Any] = json.loads(PMAXTP_TABLE.read_text(encoding="utf-8"))
+def recorded_pmaxtp(path: Path = PMAXTP_TABLE) -> dict[str, Any]:
+    """Return a recorded answer of IMGW-PIB (default :data:`PMAXTP_TABLE`)."""
+    document: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
     return document
 
 
-@pytest.fixture(autouse=True)
-def _pmaxtp_offline(
-    request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Answer Obserwator's PMAXTP fetch with the recorded table, outside ``live`` tests.
+def recorded_fetch(path: Path = PMAXTP_TABLE) -> Callable[..., Any]:
+    """Return a stand-in of ``obserwator.fetch_pmaxtp`` that answers from a recording.
 
-    ``precip pmaxtp`` is the only command that uses the network (ADR-0018); the gate
-    runs offline, so every point and method get the table of :data:`PMAXTP_TABLE`
-    with their own coordinates and method, and Hydrolog's real code reads it. A test
-    that needs another answer, or an error of Obserwator, patches
-    ``obserwator.fetch_pmaxtp`` itself.
+    Every point and method get the table recorded at ``path`` with their own
+    coordinates and method, as Obserwator returns it (``PMaXTPResult``), and Hydrolog's
+    real code reads it.
     """
-    if request.node.get_closest_marker("live") is not None:
-        return
-    try:
-        import obserwator
-    except ImportError:
-        return
+    import obserwator
 
     def fetch_pmaxtp(
         latitude: float,
@@ -75,11 +66,32 @@ def _pmaxtp_offline(
         validate_coords: bool = True,
     ) -> obserwator.PMaXTPResult:
         answer = {
-            **recorded_pmaxtp(),
+            **recorded_pmaxtp(path),
             "method": method,
             "latitude": latitude,
             "longitude": longitude,
         }
         return obserwator.PMaXTPResult.model_validate(answer)
 
-    monkeypatch.setattr(obserwator, "fetch_pmaxtp", fetch_pmaxtp)
+    return fetch_pmaxtp
+
+
+@pytest.fixture(autouse=True)
+def _pmaxtp_offline(
+    request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Answer Obserwator's PMAXTP fetch with the recorded table, outside ``live`` tests.
+
+    ``precip pmaxtp`` is the only command that uses the network (ADR-0018); the gate
+    runs offline, so every point and method get the table of :data:`PMAXTP_TABLE`
+    (:func:`recorded_fetch`). A test that needs another answer, or an error of
+    Obserwator, patches ``obserwator.fetch_pmaxtp`` itself; the browser tests answer
+    the page's requests from Kamiennik's table (``tests/e2e/conftest.py``).
+    """
+    if request.node.get_closest_marker("live") is not None:
+        return
+    try:
+        import obserwator
+    except ImportError:
+        return
+    monkeypatch.setattr(obserwator, "fetch_pmaxtp", recorded_fetch())
