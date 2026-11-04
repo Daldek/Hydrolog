@@ -110,6 +110,7 @@ export const hydrogram = {
     lutz: "Nie może być większa od długości cieku głównego ({value} km): tego wymaga metoda Lutza",
   },
   outOfRange: "Poza typowym zakresem od {minimum} do {maximum} ({method})",
+  outOfRangeUnverified: "Poza typowym zakresem od {minimum} do {maximum} ({method}); zakres do weryfikacji",
   missingField: "Metoda {method} potrzebuje tej wartości",
   missingFieldPlain: "Hydrolog potrzebuje tej wartości",
   changed: "zmieniono · {source}: {value}",
@@ -341,6 +342,7 @@ export const hydrogram = {
     explain: "objaśnienie",
     inRange: "{title}: {values} w zakresie stosowania.",
     valueItem: "{label} = {value}",
+    markedItem: "{label} = {value} ({mark})",
     timestepOk: "Krok Δt = {dt} min ≤ {share}·tp hydrogramu jednostkowego ({limit} min).",
   },
   context: {

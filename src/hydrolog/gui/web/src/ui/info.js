@@ -20,9 +20,10 @@
 // of 2026-11-04): the `typical_ranges` of a command's catalog document (`commands schema
 // --command X`), which a section registers under the explanation's id when the document
 // arrives (registerServed). A range is {method, parameter, inputs, result?, minimum,
-// maximum, unit, relative_to?, notice, source, i18n: {pl: {source}}}: its value is the
-// first of `inputs` the values hold, else `result`; with `relative_to` the bounds are
-// shares of that quantity.
+// maximum, unit, relative_to?, notice, verified, source, i18n: {pl: {source}}}: its value
+// is the first of `inputs` the values hold, else `result`; with `relative_to` the bounds
+// are shares of that quantity. A range with `verified` false has no published source yet:
+// its row is marked „do weryfikacji” (data-verified="false").
 
 import { exact } from "../format.js";
 import { t } from "../labels/common.js";
@@ -208,6 +209,17 @@ export function rangeText(range, how = {}) {
 }
 
 /**
+ * The mark of a range to be verified (`verified` false in the served `typical_ranges`: no
+ * published source yet, Hydrolog's notice `outside_unverified_range`).
+ *
+ * @param {{verified?: boolean}} range the range
+ * @returns {string} „do weryfikacji”, "" for a verified range
+ */
+export function rangeMark(range) {
+  return range && range.verified === false ? shell.info.unverified : "";
+}
+
+/**
  * The symbol of a range's parameter (or of any quantity) in an explanation.
  *
  * @param {object|null} entry the explanation
@@ -299,7 +311,10 @@ export function infoBody(entry, values = {}, found = []) {
           : `<span class="badge info">${shell.info.noValue}</span>`;
         const source = rangeSource(range) ? ` (${escape(rangeSource(range))})` : "";
         const field = state ? ` data-field="${escape(checked.field)}"` : "";
-        return `<li class="${state || "none"}" data-range="${escape(rangeKey(range))}"${field}>${badge}<span>${words}${source}</span></li>`;
+        const mark = rangeMark(range);
+        const verified = mark ? ' data-verified="false"' : "";
+        const marked = mark ? `<span class="badge warn">${mark}</span>` : "";
+        return `<li class="${state || "none"}" data-range="${escape(rangeKey(range))}"${field}${verified}>${badge}${marked}<span>${words}${source}</span></li>`;
       })
       .join("");
     parts.push(`<h3>${shell.info.ranges}</h3><ul class="range-list">${items}</ul>`);

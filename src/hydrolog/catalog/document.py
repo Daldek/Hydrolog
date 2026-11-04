@@ -219,6 +219,7 @@ def _range_entry(check: RangeCheck) -> dict[str, Any]:
     if found.relative_to is not None:
         entry["relative_to"] = found.relative_to
     entry["notice"] = found.notice
+    entry["verified"] = found.verified
     entry["source"] = found.source
     entry["i18n"] = {"pl": {"source": found.source_pl}}
     return entry

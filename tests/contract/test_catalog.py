@@ -293,6 +293,21 @@ class TestCatalogDocument:
                 },
                 "KZGW (2017)",
             ),
+            # Given parameters without a published source: kept, to be verified
+            (
+                "uh nash",
+                "nash",
+                "n",
+                {
+                    "inputs": ["n"],
+                    "minimum": 1.0,
+                    "maximum": 10.0,
+                    "unit": "-",
+                    "notice": "outside_unverified_range",
+                    "verified": False,
+                },
+                "Hydrolog",
+            ),
             # Bounds that are shares of a result field
             (
                 "hydrograph generate",
@@ -333,7 +348,8 @@ class TestCatalogDocument:
         cited: str,
     ) -> None:
         """What a client reads instead of keeping numbers (ADR-0017): the bounds, the
-        inputs the value comes from and the published source, in both languages."""
+        inputs the value comes from, the published source in both languages and whether
+        the range is verified."""
         envelope = run_command("commands schema", {"command": command}).to_dict()
         (entry,) = envelope["result"]["commands"]
         assert command_schema(command).to_dict()["commands"] == [entry]
@@ -345,6 +361,7 @@ class TestCatalogDocument:
             "method": method,
             "parameter": parameter,
             "notice": "outside_typical_range",
+            "verified": True,
             **served,
         }
         assert cited in source and cited in polish

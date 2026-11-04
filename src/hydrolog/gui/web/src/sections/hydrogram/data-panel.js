@@ -20,7 +20,7 @@ import { html, useRef } from "../../html.js";
 import { t } from "../../labels/common.js";
 import { hydrogram as texts } from "../../labels/hydrogram.js";
 import { InfoButton } from "../../ui/info-button.js";
-import { infoRanges, infoText, rangeKey, rangeText, symbolOf } from "../../ui/info.js";
+import { infoRanges, infoText, rangeKey, rangeMark, rangeText, symbolOf } from "../../ui/info.js";
 import { Seg } from "../../ui/seg.js";
 import {
   AMC,
@@ -54,8 +54,9 @@ const ICONS = {
 };
 
 /**
- * A model's note with Hydrolog's typical ranges of its parameters („typowo n od 1 do 10, K
- * od 10 do 200 min”), or its plain form while they have not arrived.
+ * A model's note with Hydrolog's typical ranges of its parameters („typowo n od 1 do 10 (do
+ * weryfikacji), K od 10 do 200 min (do weryfikacji)”: a range to be verified says so), or
+ * its plain form while they have not arrived.
  *
  * @param {string} id the explanation the ranges are registered with
  * @param {string[]} keys the ranges, "method.parameter"
@@ -67,7 +68,10 @@ function typicalNote(id, keys, text, plain) {
   const entry = infoText(id);
   const words = infoRanges(id)
     .filter((range) => keys.includes(rangeKey(range)))
-    .map((range) => `${symbolOf(entry, range.parameter)} ${rangeText(range)}`);
+    .map((range) => {
+      const mark = rangeMark(range);
+      return `${symbolOf(entry, range.parameter)} ${rangeText(range)}${mark ? ` (${mark})` : ""}`;
+    });
   return words.length ? t(text, { ranges: words.join(", ") }) : plain;
 }
 

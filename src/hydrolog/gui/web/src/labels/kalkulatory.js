@@ -125,6 +125,7 @@ export const kalkulatory = {
     },
     overland: "tylko spływ powierzchniowy, L {length} km",
     outside: "{label} = {value} poza {min}–{max}{unit}",
+    outsideUnverified: "{label} = {value} poza {min}–{max}{unit} (zakres do weryfikacji)",
     hydrolog: "Uwagi Hydrologa",
     missing: "brak pól zlewni: {fields}",
     overlandNote: "FAA i Kerby liczą czas spływu po stoku (setki metrów); dla zlewni z korytem tc daje Kerby–Kirpich albo Kirpich.",

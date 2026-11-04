@@ -9,7 +9,7 @@
 import { exact } from "../../format.js";
 import { t } from "../../labels/common.js";
 import { kalkulatory as texts } from "../../labels/kalkulatory.js";
-import { describeNotice } from "../../labels/notices.js";
+import { describeNotice, isRangeNotice } from "../../labels/notices.js";
 import { OVERLAND_ONLY, TC_METHODS } from "./state.js";
 
 /**
@@ -35,12 +35,13 @@ export function warningWords(notices) {
   for (const notice of notices) {
     if (notice.level !== "warning") continue;
     const details = notice.details || {};
-    if (notice.code === "outside_typical_range" && typeof details.value === "number") {
+    if (isRangeNotice(notice) && typeof details.value === "number") {
       const key = `${details.value}|${details.minimum}|${details.maximum}`;
       if (seen.has(key)) continue;
       seen.add(key);
       const symbol = symbolOf(details.parameter);
-      words.push(t(texts.results.outside, {
+      const label = notice.code === "outside_unverified_range" ? texts.results.outsideUnverified : texts.results.outside;
+      words.push(t(label, {
         label: symbol.label,
         value: exact(details.value),
         min: exact(details.minimum),

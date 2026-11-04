@@ -33,6 +33,7 @@ __all__ = [
     "IncompleteYears",
     "KsTestApproximate",
     "OutsideTypicalRange",
+    "OutsideUnverifiedRange",
     "ShortRecord",
     "SmallSample",
     "UhModelMismatch",
@@ -209,6 +210,24 @@ class OutsideTypicalRange(HydrologWarning):
     keys = ("method", "parameter", "field", "value", "minimum", "maximum")
 
 
+class OutsideUnverifiedRange(OutsideTypicalRange):
+    """A parameter is outside a typical range that has no published source yet.
+
+    Such a range is kept and marked as to be verified (``verified`` false in
+    ``hydrolog._ranges.TYPICAL_RANGES``; the author's decision of 2026-11-04: the given
+    parameters of the Nash cascade). The details are those of
+    :class:`OutsideTypicalRange`, ``field`` included, and a filter on that class
+    catches this one too; the code and the message say that the range awaits
+    verification.
+    """
+
+    template = (
+        "{method}: {parameter}={value} is outside typical range [{minimum}, "
+        "{maximum}], which has no published source and awaits verification. Results "
+        "may be unreliable."
+    )
+
+
 _FIELDS: ContextVar[Mapping[str, str]] = ContextVar("hydrolog_typical_range_fields")
 
 
@@ -243,9 +262,10 @@ def warn_outside_typical_range(
     minimum: float,
     maximum: float,
     *,
+    verified: bool = True,
     stacklevel: int = 2,
 ) -> None:
-    """Warn (:class:`OutsideTypicalRange`) if ``value`` is outside [minimum, maximum].
+    """Warn if ``value`` is outside [minimum, maximum].
 
     Parameters
     ----------
@@ -258,13 +278,17 @@ def warn_outside_typical_range(
         The value.
     minimum, maximum : float
         The typical range, bounds included.
+    verified : bool, optional
+        Whether the range has a published source: :class:`OutsideTypicalRange` if so
+        (the default), else :class:`OutsideUnverifiedRange`.
     stacklevel : int, optional
         As in ``warnings.warn``, counted from the caller of this function.
     """
     if minimum <= value <= maximum:
         return
+    kind = OutsideTypicalRange if verified else OutsideUnverifiedRange
     warnings.warn(
-        OutsideTypicalRange(
+        kind(
             method=method,
             parameter=parameter,
             field=_FIELDS.get({}).get(parameter, parameter),
@@ -361,6 +385,7 @@ class UhModelMismatch(HydrologWarning):
 
 LIBRARY_WARNINGS: Final[tuple[type[HydrologWarning], ...]] = (
     OutsideTypicalRange,
+    OutsideUnverifiedRange,
     SmallSample,
     ShortRecord,
     KsTestApproximate,

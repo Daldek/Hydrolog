@@ -71,6 +71,7 @@ export const shell = {
     inRange: "w zakresie",
     outOfRange: "poza zakresem",
     noValue: "zakres",
+    unverified: "do weryfikacji",
     range: "{label}: {range}",
     rangeValue: "{label} = {value}: {range}",
     between: "od {min} do {max}",

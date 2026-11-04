@@ -269,11 +269,13 @@ class NashIUH:
 
         Warns
         -----
-        OutsideTypicalRange
+        OutsideUnverifiedRange
             If ``n`` or ``k_min`` is outside its typical range (method ``nash``;
-            the ranges: :data:`hydrolog._ranges.TYPICAL_RANGES`). The estimating
-            constructors (``from_lutz``, ``from_urban_regression``, ``from_tc``)
-            do not warn about them: the ranges are those of given parameters.
+            the ranges: :data:`hydrolog._ranges.TYPICAL_RANGES`). The ranges have
+            no published source and are kept as to be verified, so the warning is
+            this subclass of ``OutsideTypicalRange``. The estimating constructors
+            (``from_lutz``, ``from_urban_regression``, ``from_tc``) do not warn
+            about them: the ranges are those of given parameters.
         """
         self._set(n, k_min, area_km2, lutz_params)
         warn_if_outside("nash", "n", n)

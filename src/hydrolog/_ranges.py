@@ -9,7 +9,9 @@ analysis has the notice ``short_record`` instead. The catalog serves the table i
 (``commands schema --command``, ADR-0017), so a client, the GUI or an agent, shows the
 same numbers and sources instead of keeping its own.
 A range without a published source is not kept (the author's decision of 2026-11-04,
-plan 2026-11-02), except the given parameters of the Nash cascade, which say so.
+plan 2026-11-02), except the given parameters of the Nash cascade: they are kept as
+to be verified (``verified`` false), and a value outside them gives the notice
+``outside_unverified_range`` (:class:`~hydrolog._warnings.OutsideUnverifiedRange`).
 
 :data:`TC_INPUTS` names the watershed fields each argument of a time of concentration
 formula is taken from, first choice first: ``WatershedParameters`` selects with it,
@@ -63,7 +65,12 @@ class TypicalRange:
         The result field the bounds are shares of (``uh_time_to_peak_min`` for the
         time step), else ``None``.
     notice : str
-        Code of the notice a value outside the range gives.
+        Code of the notice a value outside the range gives:
+        ``outside_typical_range``, ``outside_unverified_range`` for a range to be
+        verified, or ``short_record``.
+    verified : bool
+        Whether the range has a published source; one without is kept only to be
+        verified, and its notice is ``outside_unverified_range``.
     """
 
     method: str
@@ -75,9 +82,28 @@ class TypicalRange:
     source_pl: str
     relative_to: str | None = None
     notice: str = "outside_typical_range"
+    verified: bool = True
+
+    def __post_init__(self) -> None:
+        """Refuse a range whose notice does not say whether it is verified.
+
+        Raises
+        ------
+        ValueError
+            If a range to be verified has another notice than
+            ``outside_unverified_range``, or a verified one has that notice.
+        """
+        if self.verified == (self.notice == "outside_unverified_range"):
+            raise ValueError(
+                f"{self.method}.{self.parameter}: a range is outside_unverified_range "
+                "if and only if it is not verified"
+            )
 
     def check(self, value: float, *, scale: float = 1.0, stacklevel: int = 2) -> None:
         """Warn (:class:`~hydrolog._warnings.OutsideTypicalRange`) outside the range.
+
+        A range to be verified warns with the subclass
+        :class:`~hydrolog._warnings.OutsideUnverifiedRange`.
 
         Parameters
         ----------
@@ -91,10 +117,11 @@ class TypicalRange:
         Raises
         ------
         TypeError
-            If the range is not one of ``outside_typical_range`` with both bounds.
+            If the range lacks a bound, or its notice is neither
+            ``outside_typical_range`` nor ``outside_unverified_range``.
         """
         if (
-            self.notice != "outside_typical_range"
+            self.notice not in _RANGE_NOTICES
             or self.minimum is None
             or self.maximum is None
         ):
@@ -105,8 +132,13 @@ class TypicalRange:
             value,
             self.minimum * scale,
             self.maximum * scale,
+            verified=self.verified,
             stacklevel=stacklevel + 1,
         )
+
+
+_RANGE_NOTICES: Final = ("outside_typical_range", "outside_unverified_range")
+"""The notices of a value outside a two-sided range."""
 
 
 UH_MODELS: Final = ("scs", "nash", "clark", "snyder")
@@ -123,14 +155,8 @@ _KERBY_N = (
     ),
 )
 _NASH = (
-    (
-        "typical of a calibrated cascade in catchments of a few to a few hundred km² "
-        "(Hydrolog; no published range)"
-    ),
-    (
-        "typowo dla skalibrowanej kaskady w zlewniach od kilku do kilkuset km² "
-        "(Hydrolog; bez opublikowanego zakresu)"
-    ),
+    "Hydrolog; no published source, to be verified",
+    "Hydrolog; brak opublikowanego źródła, do weryfikacji",
 )
 _TIMESTEP_SHARE = 0.25
 _TIMESTEP = (
@@ -301,8 +327,26 @@ TYPICAL_RANGES: Final[tuple[TypicalRange, ...]] = (
         "Sorrell (2010), Michigan DNRE: hydrogram jednostkowy NRCS dla zlewni do ok. "
         "20 mi², na których opad jest równomierny; większą się dzieli",
     ),
-    TypicalRange("nash", "n", 1.0, 10.0, "-", *_NASH),
-    TypicalRange("nash", "k_min", 10.0, 200.0, "min", *_NASH),
+    TypicalRange(
+        "nash",
+        "n",
+        1.0,
+        10.0,
+        "-",
+        *_NASH,
+        notice="outside_unverified_range",
+        verified=False,
+    ),
+    TypicalRange(
+        "nash",
+        "k_min",
+        10.0,
+        200.0,
+        "min",
+        *_NASH,
+        notice="outside_unverified_range",
+        verified=False,
+    ),
     TypicalRange(
         "lutz",
         "area_km2",

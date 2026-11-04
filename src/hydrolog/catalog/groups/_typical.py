@@ -38,18 +38,23 @@ def typically(method: str, parameter: str, lang: Lang = "en") -> str:
     -------
     str
         ``"typically 0.03-0.1"`` or ``"typowo 0,03–0,1"``; ``"typically <= 0.366"``
-        for a range from 0.
+        for a range from 0; a range to be verified (``verified`` false) adds
+        ``", to be verified"`` or ``", do weryfikacji"``.
     """
     found = typical_range(method, parameter)
     word = "typowo" if lang == "pl" else "typically"
     if found.maximum is None:
         at_least = "≥" if lang == "pl" else ">="
-        return f"{word} {at_least} {_number(found.minimum or 0.0, lang)}"
-    top = _number(found.maximum, lang)
-    if not found.minimum:
-        return f"{word} {'≤' if lang == 'pl' else '<='} {top}"
-    dash = "–" if lang == "pl" else "-"
-    return f"{word} {_number(found.minimum, lang)}{dash}{top}"
+        text = f"{word} {at_least} {_number(found.minimum or 0.0, lang)}"
+    elif not found.minimum:
+        text = f"{word} {'≤' if lang == 'pl' else '<='} {_number(found.maximum, lang)}"
+    else:
+        dash = "–" if lang == "pl" else "-"
+        bounds = f"{_number(found.minimum, lang)}{dash}{_number(found.maximum, lang)}"
+        text = f"{word} {bounds}"
+    if found.verified:
+        return text
+    return f"{text}, {'do weryfikacji' if lang == 'pl' else 'to be verified'}"
 
 
 def formula_ranges(method: str, options: Iterable[str]) -> tuple[RangeCheck, ...]:

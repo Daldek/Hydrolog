@@ -21,7 +21,7 @@ import { inputText, parseNumber } from "../../format.js";
 import { fieldModel, parseSeries, validate, withReason } from "../../forms/model.js";
 import { t } from "../../labels/common.js";
 import { hydrogram as texts } from "../../labels/hydrogram.js";
-import { describeNotice, noticeValue } from "../../labels/notices.js";
+import { describeNotice, isRangeNotice, noticeValue } from "../../labels/notices.js";
 
 /** The key of the section's inputs and its route. */
 export const SECTION = "hydrogram";
@@ -698,8 +698,8 @@ export function watershedErrors(watershed, models, names = WATERSHED_FIELDS) {
 
 /**
  * The warnings a run's notices give the panel's fields: a value outside its typical range
- * on the field Hydrolog names (`details.field`), λ other than 0,2 on λ and a duration the
- * time step does not divide on the duration.
+ * on the field Hydrolog names (`details.field`; a range to be verified says so), λ other
+ * than 0,2 on λ and a duration the time step does not divide on the duration.
  *
  * @param {object[]} notices the notices of hydrolog-result/1
  * @param {object} inputs the inputs of the run
@@ -713,10 +713,11 @@ export function noticeWarnings(notices, inputs) {
   };
   for (const notice of notices || []) {
     const details = (notice && notice.details) || {};
-    if (notice.code === "outside_typical_range" && typeof details.field === "string") {
+    if (isRangeNotice(notice) && typeof details.field === "string") {
       const bounded = typeof details.minimum === "number" && typeof details.maximum === "number";
+      const label = notice.code === "outside_unverified_range" ? texts.outOfRangeUnverified : texts.outOfRange;
       const text = bounded
-        ? t(texts.outOfRange, { minimum: noticeValue(details.minimum), maximum: noticeValue(details.maximum), method: details.method || "" })
+        ? t(label, { minimum: noticeValue(details.minimum), maximum: noticeValue(details.maximum), method: details.method || "" })
         : describeNotice(notice).text;
       add(details.field, text, notice.code);
     } else if (notice.code === "ia_coefficient_nonstandard") {

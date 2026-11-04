@@ -1459,11 +1459,12 @@ class TestUnitHydrographs:
         }
 
     def test_nash_given_parameters_outside_their_ranges_are_noticed(self):
-        """Given n and K outside 1-10 and 10-200 min are each noticed."""
+        """Given n and K outside 1-10 and 10-200 min are each noticed as ranges to be
+        verified (no published source)."""
         _, notices = unwrap(ops.uh_nash(area_km2=45.3, n=12.0, k_min=5.0))
         assert [(n.code, n.details["field"]) for n in notices] == [
-            ("outside_typical_range", "n"),
-            ("outside_typical_range", "k_min"),
+            ("outside_unverified_range", "n"),
+            ("outside_unverified_range", "k_min"),
         ]
 
     @pytest.mark.parametrize("given", [{"r_min": 60.0}, {"r_tc_ratio": 0.5}])
@@ -2194,10 +2195,10 @@ class TestHydrographGenerate:
     def test_a_value_outside_its_typical_range_is_a_notice_on_its_input(
         self, arguments, parameter, field
     ):
-        """``outside_typical_range`` names the option or the watershed field."""
+        """A range notice names the option or the watershed field."""
         source = {} if "watershed" in arguments else {"area_km2": 45.3, "cn": 72}
         _, notices = unwrap(ops.hydrograph_generate(**{**STORM, **source, **arguments}))
-        ranges = [n.details for n in notices if n.code == "outside_typical_range"]
+        ranges = [n.details for n in notices if n.code in RANGE_CODES]
         assert [d["field"] for d in ranges if d["parameter"] == parameter] == [field]
 
     def test_tc_that_the_model_does_not_use_is_reported(self):
@@ -2571,11 +2572,15 @@ MODEL_CALLS = {
 }
 
 
+RANGE_CODES = ("outside_typical_range", "outside_unverified_range")
+"""The notices of a value outside a two-sided typical range (verified or not)."""
+
+
 def range_notices(method, option, value):
-    """The details of the ``outside_typical_range`` notices of one changed call."""
+    """The details of the range notices (:data:`RANGE_CODES`) of one changed call."""
     function, options = MODEL_CALLS[method]
     _, notices = unwrap(function(**{**options, option: value}))
-    return [n.details for n in notices if n.code == "outside_typical_range"]
+    return [n.details for n in notices if n.code in RANGE_CODES]
 
 
 class TestTypicalRangesOfTheModels:
@@ -2595,7 +2600,7 @@ class TestTypicalRangesOfTheModels:
             ("snyder", "ct", 1.651, 1.35, 1.65),
             ("snyder", "cp", 0.399, 0.4, 0.8),
             ("snyder", "cp", 0.801, 0.4, 0.8),
-            # A given cascade (no published range)
+            # A given cascade (no published source; outside_unverified_range)
             ("nash", "n", 0.999, 1.0, 10.0),
             ("nash", "n", 10.001, 1.0, 10.0),
             ("nash", "k_min", 9.99, 10.0, 200.0),

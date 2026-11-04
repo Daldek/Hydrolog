@@ -3,14 +3,15 @@
 // model checks are inside Hydrolog's typical ranges (`typical_ranges` of the served catalog
 // documents, registered with the (i) explanations, ui/info.js), listed before Hydrolog's own
 // notices. A value outside a range is never worded here: Hydrolog's notice
-// `outside_typical_range` says so, in Wyniki and on its field. Every number a note quotes
-// comes from the inputs, the result or the served ranges.
+// `outside_typical_range` (`outside_unverified_range` for a range to be verified) says so,
+// in Wyniki and on its field; a confirmation marks a range to be verified „do weryfikacji”.
+// Every number a note quotes comes from the inputs, the result or the served ranges.
 
 import { exact, inputText } from "../../format.js";
 import { t } from "../../labels/common.js";
 import { hydrogram as texts } from "../../labels/hydrogram.js";
-import { noticeValue } from "../../labels/notices.js";
-import { infoRanges, infoText, listedRanges, rangeScale, rangeState, rangeUnit, rangeValue } from "../../ui/info.js";
+import { isRangeNotice, noticeValue } from "../../labels/notices.js";
+import { infoRanges, infoText, listedRanges, rangeMark, rangeScale, rangeState, rangeUnit, rangeValue } from "../../ui/info.js";
 import { usesTc } from "./state.js";
 
 /**
@@ -36,7 +37,7 @@ function warned(notices, methods, parameter = null) {
   return (notices || []).some((notice) => {
     const details = (notice && notice.details) || {};
     return (
-      notice.code === "outside_typical_range" &&
+      isRangeNotice(notice) &&
       methods.has(details.method) &&
       (parameter === null || details.parameter === parameter)
     );
@@ -61,7 +62,9 @@ export function rangeNote(id, name, values, notices) {
   for (const { range, label } of listedRanges(infoText(id), found)) {
     const value = rangeValue(range, values);
     if (!value || rangeState(range, value.value, rangeScale(range, values)) !== "ok") continue;
-    const item = t(texts.notes.valueItem, { label, value: shown(value.value, rangeUnit(range)) });
+    const mark = rangeMark(range);
+    const words = { label, value: shown(value.value, rangeUnit(range)) };
+    const item = mark ? t(texts.notes.markedItem, { ...words, mark }) : t(texts.notes.valueItem, words);
     if (!checked.includes(item)) checked.push(item);
   }
   if (!checked.length) return null;

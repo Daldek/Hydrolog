@@ -752,12 +752,12 @@
             "nash_n": {
               "type": "number",
               "exclusiveMinimum": 0,
-              "description": "Nash: number of reservoirs n (> 0, typically 1-10); together with `nash_k_min`. `uh nash` derives parameters by the Lutz method."
+              "description": "Nash: number of reservoirs n (> 0, typically 1-10, to be verified); together with `nash_k_min`. `uh nash` derives parameters by the Lutz method."
             },
             "nash_k_min": {
               "type": "number",
               "exclusiveMinimum": 0,
-              "description": "Nash: storage constant K [min] (> 0, typically 10-200); together with `nash_n`."
+              "description": "Nash: storage constant K [min] (> 0, typically 10-200, to be verified); together with `nash_n`."
             },
             "clark_r_min": {
               "type": "number",

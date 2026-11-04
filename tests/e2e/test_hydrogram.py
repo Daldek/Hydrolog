@@ -740,6 +740,59 @@ def test_a_value_outside_its_typical_range_is_a_warning_and_runs(tab: Tab) -> No
     expect(page.locator(BADGE)).to_have_text("Wynik aktualny")
 
 
+def test_a_given_nash_n_outside_its_range_to_be_verified_says_so(tab: Tab) -> None:
+    page = open_hydrogram(tab)
+    choose(page, "hg-uh-label", "Nash")
+    choose(page, "hg-nash-source-label", "Podane n i K")
+    # The note and the confirmation quote Hydrolog's ranges of n and K, to be verified
+    expect(page.locator(f"{LEFT} p.note").filter(has_text="n i K")).to_have_text(
+        "n i K skalibrowane albo z innego źródła; typowo "
+        "n od 1 do 10 (do weryfikacji), K od 10 do 200 min (do weryfikacji)."
+    )
+    with run_of(page, uh_model="nash", nash_n=3.6, nash_k_min=82):
+        field(page, "nash_n").fill("3,6")
+        field(page, "nash_k_min").fill("82")
+    confirmed = page.locator(f'{RIGHT} [data-notes="gui"] li').filter(has_text="Nash:")
+    expect(confirmed).to_contain_text(
+        "n = 3,6 (do weryfikacji), K = 82\u00a0min (do weryfikacji)"
+    )
+
+    with run_of(page, uh_model="nash", nash_n=12) as answered:
+        field(page, "nash_n").fill("12")
+    envelope = answered.value.json()
+    assert [
+        item["details"]["field"]
+        for item in envelope["notices"]
+        if item["code"] == "outside_unverified_range"
+    ] == ["nash_n"]
+    expect(warning(page, "nash_n")).to_have_text(
+        "Poza typowym zakresem od 1 do 10 (nash); zakres do weryfikacji "
+        "· outside_unverified_range"
+    )
+    expect(warning(page, "nash_k_min")).to_have_count(0)
+    expect(
+        page.locator(f'{RIGHT} .notes li[data-code="outside_unverified_range"]')
+    ).to_contain_text("nash: n = 12 poza typowym zakresem od 1 do 10")
+    expect(confirmed).to_have_count(0)
+
+    # The explanation marks both ranges „do weryfikacji”, n outside, K inside
+    page.locator(f"{LEFT} .label-row:has(#hg-uh-label) .info-btn").click()
+    rows = page.locator(".info-pop .range-list li")
+    expect(rows.first).to_be_visible()
+    marked = rows.evaluate_all(
+        "items => Object.fromEntries(items.map((item) => [item.dataset.range,"
+        " [item.className, item.dataset.verified || null]]))"
+    )
+    assert marked == {
+        **{key: [state, None] for key, (state, _) in marked.items()},
+        "nash.n": ["warn", "false"],
+        "nash.k_min": ["ok", "false"],
+    }
+    expect(rows.and_(page.locator('[data-range="nash.n"]'))).to_contain_text(
+        "do weryfikacji"
+    )
+
+
 def test_requirements_follow_the_model_and_the_tc_method(tab: Tab) -> None:
     tab.open("#polecenia")
     got = tab.page.evaluate(
