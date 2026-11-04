@@ -1134,7 +1134,7 @@ the GUI's address).
 
 | Section | What it does | Commands |
 |---|---|---|
-| Hydrogram zlewni | the design hydrograph of one watershed (the example: Kamiennik at Świerzawa), recomputed after every change | `hydrograph generate`, `uh nash` for Nash by Lutz |
+| Hydrogram zlewni | the design hydrograph of one watershed in three steps (watershed, hyetograph, model): empty on a first visit, checked for what the chosen model needs (an empty required field is an error, a value outside its typical range a warning on its field), then recomputed after every change; the guide's worked example is Kamiennik at Świerzawa | `hydrograph generate`, `uh nash` for Nash by Lutz |
 | Sieć i trasowanie | a network of subcatchments, reaches, reservoirs and junctions (the example: `hydrolog.testing.example_network_document()`), drawn as a schematic before it is routed by „Oblicz sieć” | `route schematic`, `route network` |
 | Statystyka przepływów | flood frequency of annual maxima or of a daily series (the example: 26 annual maxima, 1998 to 2023) | `stats flood-frequency` |
 | Kalkulatory | the time of concentration by six methods for the watershed of Hydrogram zlewni, and fifteen single calculators | `tc watershed` and fifteen others |
