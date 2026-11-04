@@ -225,6 +225,7 @@ examples from the catalog (PL/EN). The entry point is unchanged (`hydrolog.cli.m
 #### Nogat standard 2.1
 - The package, tooling, error registry, settings, writing commands, MCP server and documentation follow the Nogat standard 2.1: see the "Added" sections above and the breaking entries under "Breaking changes". Deliberate deviations from the standard are listed in `CLAUDE.md`.
 - The error document `hydrolog-error/1` omits `hint` and `command` when there is none (formerly `null`) and its `title` is English unless `lang="pl"` is requested. An output file that cannot be written is `io_error` with `details.reason = "output_unwritable"`.
+- The README links to Obserwator point at its renamed repository `https://github.com/Daldek/Obserwator` (formerly `Daldek/IMGWTools`).
 
 ### Removed
 
