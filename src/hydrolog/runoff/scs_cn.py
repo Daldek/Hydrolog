@@ -7,7 +7,12 @@ import numpy as np
 from numpy.typing import NDArray
 
 from hydrolog._serialization import JsonResultMixin
+from hydrolog._warnings import warn_outside_typical_range
 from hydrolog.exceptions import InvalidParameterError
+
+_AMC_CN_RANGE = (55, 95)
+"""CN (AMC II) for which the AMC conversion formulas approximate the table of
+NEH 630 (Hawkins et al. 1985, after Ponce and Hawkins 1996)."""
 
 
 class AMC(Enum):
@@ -143,6 +148,13 @@ class SCSCN:
         int
             Adjusted CN value.
 
+        Warns
+        -----
+        OutsideTypicalRange
+            For AMC I or III, if the CN is outside 55-95, where the formulas
+            approximate the table of NEH 630 (method ``scs_cn_amc``, parameter
+            ``cn``).
+
         Notes
         -----
         Conversion formulas (Chow et al., 1988):
@@ -151,6 +163,8 @@ class SCSCN:
         - AMC-III (wet): CN_III = CN_II / (0.427 + 0.00573 * CN_II)
         """
         cn_ii = self.cn
+        if amc in (AMC.I, AMC.III):
+            warn_outside_typical_range("scs_cn_amc", "cn", cn_ii, *_AMC_CN_RANGE)
 
         if amc == AMC.II:
             return cn_ii

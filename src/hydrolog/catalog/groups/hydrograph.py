@@ -31,20 +31,21 @@ GENERATE_OPTIONS: tuple[Option, ...] = (
         name="watershed",
         type="object",
         description_pl=(
-            "Parametry zlewni jako obiekt WatershedParameters (`area_km2`, "
-            "`perimeter_km`, `length_km`, `elevation_min_m`, `elevation_max_m`, "
-            "opcjonalnie `cn`, `mean_slope_m_per_m`, `channel_length_km`, "
-            "`runoff_coeff`, `retardance`...). Dostarcza powierzchnię, CN i dane "
-            "do czasu koncentracji; parametry modeli Nash, Clark (R) i Snyder "
-            "podaje się jawnie."
+            "Parametry zlewni jako obiekt WatershedParameters (wymagane tylko "
+            "`area_km2`; `cn` i pola metody `tc_method`, np. `channel_length_km`, "
+            "`channel_slope_m_per_m`, gdy tc liczy się ze zlewni; brakujące pole "
+            "to błąd `missing_field` z nazwą pola w `details.option`). Dostarcza "
+            "powierzchnię, CN i dane do czasu koncentracji; parametry modeli Nash, "
+            "Clark (R) i Snyder podaje się jawnie."
         ),
         description=(
-            "Watershed parameters as a WatershedParameters object (`area_km2`, "
-            "`perimeter_km`, `length_km`, `elevation_min_m`, `elevation_max_m`, "
-            "optionally `cn`, `mean_slope_m_per_m`, `channel_length_km`, "
-            "`runoff_coeff`, `retardance`...). It supplies the area, the CN and "
-            "the data for the time of concentration; the parameters of the Nash, "
-            "Clark (R) and Snyder models are given explicitly."
+            "Watershed parameters as a WatershedParameters object (only `area_km2` "
+            "is required; `cn` and the fields of `tc_method`, e.g. "
+            "`channel_length_km`, `channel_slope_m_per_m`, when tc is computed from "
+            "the watershed; a missing one is `missing_field` naming the field in "
+            "`details.option`). It supplies the area, the CN and the data for the "
+            "time of concentration; the parameters of the Nash, Clark (R) and "
+            "Snyder models are given explicitly."
         ),
     ),
     Option(

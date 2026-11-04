@@ -3,7 +3,9 @@
 Wrappers over :class:`~hydrolog.runoff.SCSUnitHydrograph`,
 :class:`~hydrolog.runoff.NashIUH`, :class:`~hydrolog.runoff.ClarkIUH` and
 :class:`~hydrolog.runoff.SnyderUH`. All four return the same :class:`UhResult`: the
-unit hydrograph of the catchment in m3/s per mm of effective precipitation.
+unit hydrograph of the catchment in m3/s per mm of effective precipitation (Nash,
+Clark and Snyder in an ``OperationOutput`` with the ``outside_typical_range``
+notices of their coefficients).
 
 Nash and Clark parameters can be given in several ways; the group of options that is
 given selects the way (``NashIUH.from_tc`` is deliberately not offered: it is
@@ -18,7 +20,8 @@ import numpy as np
 from numpy.typing import NDArray
 
 from hydrolog._serialization import JsonResultMixin
-from hydrolog.operations._common import select_group
+from hydrolog.catalog.envelope import OperationOutput, capture_warnings
+from hydrolog.operations._common import option_names, select_group
 from hydrolog.runoff import (
     ClarkIUH,
     LutzCalculationResult,
@@ -34,6 +37,16 @@ __all__ = [
     "uh_scs",
     "uh_snyder",
 ]
+
+_LUTZ_OPTIONS = {
+    "L_km": "lutz_length_km",
+    "Lc_km": "lutz_centroid_length_km",
+    "slope": "lutz_slope_m_per_m",
+    "manning_n": "lutz_manning_n",
+    "urban_pct": "lutz_urban_pct",
+    "forest_pct": "lutz_forest_pct",
+}
+"""Arguments of ``NashIUH.from_lutz`` and the options of ``uh nash`` they come from."""
 
 
 @dataclass
@@ -152,7 +165,7 @@ def uh_nash(
     timestep_min: float = 5.0,
     rainfall_duration_min: float | None = None,
     total_duration_min: float | None = None,
-) -> UhResult:
+) -> OperationOutput:
     """Nash cascade unit hydrograph (``uh nash``).
 
     Give exactly one group of parameters: ``n`` with ``k_min`` (direct), the Lutz
@@ -192,16 +205,18 @@ def uh_nash(
 
     Returns
     -------
-    UhResult
-        The D-minute unit hydrograph; ``lutz`` holds the intermediate results of the
-        Lutz method.
+    OperationOutput
+        :class:`UhResult`, the D-minute unit hydrograph (``lutz`` holds the
+        intermediate results of the Lutz method), with notices for given ``n`` and
+        ``k_min`` outside their typical ranges.
 
     Raises
     ------
     InvalidParameterError
         If no or several groups of parameters are given, an option of another group
         is given, or a value is invalid (for the Lutz method also when no ``N`` can
-        be found for the inputs).
+        be found for the inputs; ``lutz_centroid_length_km`` above
+        ``lutz_length_km`` names the former in ``details.option``).
     """
     chosen = select_group(
         {
@@ -234,36 +249,39 @@ def uh_nash(
         },
     )
     cascade: NashIUH
-    if chosen == "direct":
-        assert n is not None and k_min is not None
-        cascade = NashIUH(n=n, k_min=k_min)
-    elif chosen == "lutz":
-        assert lutz_length_km is not None and lutz_centroid_length_km is not None
-        assert lutz_slope_m_per_m is not None and lutz_manning_n is not None
-        cascade = NashIUH.from_lutz(
-            L_km=lutz_length_km,
-            Lc_km=lutz_centroid_length_km,
-            slope=lutz_slope_m_per_m,
-            manning_n=lutz_manning_n,
-            urban_pct=lutz_urban_pct or 0.0,
-            forest_pct=lutz_forest_pct or 0.0,
-        )
-    else:
-        assert urban_effective_precip_mm is not None and urban_duration_h is not None
-        cascade = NashIUH.from_urban_regression(
-            area_km2=area_km2,
-            effective_precip_mm=urban_effective_precip_mm,
-            duration_h=urban_duration_h,
-            urban_fraction=urban_fraction or 0.0,
-        )
     duration = timestep_min if rainfall_duration_min is None else rainfall_duration_min
-    shape = cascade.to_unit_hydrograph(
-        area_km2=area_km2,
-        duration_min=duration,
-        timestep_min=timestep_min,
-        total_duration_min=total_duration_min,
-    )
-    return UhResult(
+    with capture_warnings() as notices, option_names(_LUTZ_OPTIONS):
+        if chosen == "direct":
+            assert n is not None and k_min is not None
+            cascade = NashIUH(n=n, k_min=k_min)
+        elif chosen == "lutz":
+            assert lutz_length_km is not None and lutz_centroid_length_km is not None
+            assert lutz_slope_m_per_m is not None and lutz_manning_n is not None
+            cascade = NashIUH.from_lutz(
+                L_km=lutz_length_km,
+                Lc_km=lutz_centroid_length_km,
+                slope=lutz_slope_m_per_m,
+                manning_n=lutz_manning_n,
+                urban_pct=lutz_urban_pct or 0.0,
+                forest_pct=lutz_forest_pct or 0.0,
+            )
+        else:
+            assert (
+                urban_effective_precip_mm is not None and urban_duration_h is not None
+            )
+            cascade = NashIUH.from_urban_regression(
+                area_km2=area_km2,
+                effective_precip_mm=urban_effective_precip_mm,
+                duration_h=urban_duration_h,
+                urban_fraction=urban_fraction or 0.0,
+            )
+        shape = cascade.to_unit_hydrograph(
+            area_km2=area_km2,
+            duration_min=duration,
+            timestep_min=timestep_min,
+            total_duration_min=total_duration_min,
+        )
+    result = UhResult(
         model="nash",
         estimation=chosen,
         area_km2=area_km2,
@@ -278,6 +296,7 @@ def uh_nash(
         times_min=shape.times_min,
         ordinates_m3s_per_mm=shape.ordinates_m3s,
     )
+    return OperationOutput(result, notices)
 
 
 def uh_clark(
@@ -289,7 +308,7 @@ def uh_clark(
     timestep_min: float = 5.0,
     rainfall_duration_min: float | None = None,
     total_duration_min: float | None = None,
-) -> UhResult:
+) -> OperationOutput:
     """Clark unit hydrograph (``uh clark``).
 
     Parameters
@@ -313,8 +332,10 @@ def uh_clark(
 
     Returns
     -------
-    UhResult
-        The D-minute unit hydrograph.
+    OperationOutput
+        :class:`UhResult`, the D-minute unit hydrograph, with a notice for an R/tc
+        outside its typical range (``field`` the option given: ``r_min`` or
+        ``r_tc_ratio``).
 
     Raises
     ------
@@ -326,23 +347,27 @@ def uh_clark(
         {"r_min": r_min, "r_tc_ratio": r_tc_ratio},
         {"r_min": ("r_min",), "r_tc_ratio": ("r_tc_ratio",)},
     )
-    if chosen == "r_min":
-        assert r_min is not None
-        reservoir = ClarkIUH(tc_min=tc_min, r_min=r_min)
-    else:
-        assert r_tc_ratio is not None
-        reservoir = ClarkIUH.from_tc_r_ratio(tc_min=tc_min, r_tc_ratio=r_tc_ratio)
-    duration = timestep_min if rainfall_duration_min is None else rainfall_duration_min
-    shape = reservoir.to_unit_hydrograph(
-        area_km2=area_km2,
-        duration_min=duration,
-        timestep_min=timestep_min,
-        total_duration_min=total_duration_min,
-    )
+    # R/tc is checked by ClarkIUH: its field is the option that gave R
+    with capture_warnings() as notices, option_names({"r_tc_ratio": chosen}):
+        if chosen == "r_min":
+            assert r_min is not None
+            reservoir = ClarkIUH(tc_min=tc_min, r_min=r_min)
+        else:
+            assert r_tc_ratio is not None
+            reservoir = ClarkIUH.from_tc_r_ratio(tc_min=tc_min, r_tc_ratio=r_tc_ratio)
+        duration = (
+            timestep_min if rainfall_duration_min is None else rainfall_duration_min
+        )
+        shape = reservoir.to_unit_hydrograph(
+            area_km2=area_km2,
+            duration_min=duration,
+            timestep_min=timestep_min,
+            total_duration_min=total_duration_min,
+        )
     parameters = {"tc_min": reservoir.tc_min, "r_min": reservoir.r_min}
     if r_tc_ratio is not None:
         parameters["r_tc_ratio"] = r_tc_ratio
-    return UhResult(
+    result = UhResult(
         model="clark",
         estimation="direct" if chosen == "r_min" else chosen,
         area_km2=area_km2,
@@ -356,6 +381,7 @@ def uh_clark(
         times_min=shape.times_min,
         ordinates_m3s_per_mm=shape.ordinates_m3s,
     )
+    return OperationOutput(result, notices)
 
 
 def uh_snyder(
@@ -368,7 +394,7 @@ def uh_snyder(
     timestep_min: float = 30.0,
     rainfall_duration_min: float | None = None,
     total_duration_min: float | None = None,
-) -> UhResult:
+) -> OperationOutput:
     """Snyder synthetic unit hydrograph (``uh snyder``).
 
     Parameters
@@ -394,28 +420,32 @@ def uh_snyder(
 
     Returns
     -------
-    UhResult
-        The unit hydrograph with ``derived["standard_duration_min"]`` and
-        ``derived["adjusted_lag_time_min"]``.
+    OperationOutput
+        :class:`UhResult`, the unit hydrograph with
+        ``derived["standard_duration_min"]`` and ``derived["adjusted_lag_time_min"]``,
+        with notices for ``ct`` and ``cp`` outside their typical ranges.
 
     Raises
     ------
     InvalidParameterError
-        If a parameter is not positive.
+        If a parameter is not positive, or no unit hydrograph of 1 mm has the peak
+        of ``cp`` (``details.option`` ``cp``).
     """
-    model = SnyderUH(
-        area_km2=area_km2,
-        L_km=length_km,
-        Lc_km=centroid_length_km,
-        ct=ct,
-        cp=cp,
-    )
-    shape = model.generate(
-        timestep_min=timestep_min,
-        duration_min=rainfall_duration_min,
-        total_duration_min=total_duration_min,
-    )
-    return UhResult(
+    names = {"L_km": "length_km", "Lc_km": "centroid_length_km"}
+    with capture_warnings() as notices, option_names(names):
+        model = SnyderUH(
+            area_km2=area_km2,
+            L_km=length_km,
+            Lc_km=centroid_length_km,
+            ct=ct,
+            cp=cp,
+        )
+        shape = model.generate(
+            timestep_min=timestep_min,
+            duration_min=rainfall_duration_min,
+            total_duration_min=total_duration_min,
+        )
+    result = UhResult(
         model="snyder",
         estimation="direct",
         area_km2=area_km2,
@@ -438,3 +468,4 @@ def uh_snyder(
         times_min=shape.times_min,
         ordinates_m3s_per_mm=shape.ordinates_m3s,
     )
+    return OperationOutput(result, notices)

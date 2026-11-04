@@ -29,7 +29,14 @@ from scipy.optimize import brentq
 from scipy.special import gamma
 
 from hydrolog._serialization import JsonResultMixin
+from hydrolog._warnings import warn_outside_typical_range
 from hydrolog.exceptions import InvalidParameterError
+
+# Typical parameters of a given (calibrated) cascade, as the description of
+# `uh nash` and the GUI's explanation of the model state them: n 1-10
+# reservoirs and K 10-200 min (catchments of a few to a few hundred km²).
+_N_RANGE = (1.0, 10.0)
+_K_RANGE_MIN = (10.0, 200.0)
 
 
 @dataclass
@@ -265,7 +272,27 @@ class NashIUH:
         ------
         InvalidParameterError
             If any parameter is not positive.
+
+        Warns
+        -----
+        OutsideTypicalRange
+            If ``n`` or ``k_min`` is outside its typical range (method
+            ``nash``). The estimating constructors (``from_lutz``,
+            ``from_urban_regression``, ``from_tc``) do not warn: the ranges are
+            those of given parameters.
         """
+        self._set(n, k_min, area_km2, lutz_params)
+        warn_outside_typical_range("nash", "n", n, *_N_RANGE)
+        warn_outside_typical_range("nash", "k_min", k_min, *_K_RANGE_MIN)
+
+    def _set(
+        self,
+        n: float,
+        k_min: float,
+        area_km2: float | None,
+        lutz_params: LutzCalculationResult | None,
+    ) -> None:
+        """Check and keep the parameters (see ``__init__``)."""
         if n <= 0:
             raise InvalidParameterError(f"n must be positive, got {n}")
         if k_min <= 0:
@@ -277,6 +304,19 @@ class NashIUH:
         self.k_min = k_min
         self.area_km2 = area_km2
         self.lutz_params = lutz_params
+
+    @classmethod
+    def _estimated(
+        cls,
+        n: float,
+        k_min: float,
+        area_km2: float | None = None,
+        lutz_params: LutzCalculationResult | None = None,
+    ) -> "NashIUH":
+        """Return a cascade a method estimated: checked, without range warnings."""
+        cascade = cls.__new__(cls)
+        cascade._set(n, k_min, area_km2, lutz_params)
+        return cascade
 
     @property
     def lag_time_min(self) -> float:
@@ -715,7 +755,7 @@ class NashIUH:
         lag_time = lag_ratio * tc_min
         k_min = lag_time / n
 
-        return cls(n=n, k_min=k_min)
+        return cls._estimated(n=n, k_min=k_min)
 
     @classmethod
     def from_lutz(
@@ -823,7 +863,15 @@ class NashIUH:
         if Lc_km <= 0:
             raise InvalidParameterError(f"Lc_km must be positive, got {Lc_km}")
         if Lc_km > L_km:
-            raise InvalidParameterError(f"Lc_km ({Lc_km}) cannot exceed L_km ({L_km})")
+            raise InvalidParameterError(
+                f"Lc_km ({Lc_km}) cannot exceed L_km ({L_km})",
+                details={
+                    "option": "Lc_km",
+                    "reason": "maximum",
+                    "maximum": L_km,
+                    "value": Lc_km,
+                },
+            )
         if slope <= 0:
             raise InvalidParameterError(f"slope must be positive, got {slope}")
         if manning_n <= 0:
@@ -917,7 +965,9 @@ class NashIUH:
             k_min=k_min,
         )
 
-        return cls(n=N, k_min=k_min, area_km2=area_km2, lutz_params=lutz_params)
+        return cls._estimated(
+            n=N, k_min=k_min, area_km2=area_km2, lutz_params=lutz_params
+        )
 
     @classmethod
     def from_urban_regression(
@@ -1083,4 +1133,4 @@ class NashIUH:
         # Convert k to minutes
         k_min = k_h * 60.0
 
-        return cls(n=N, k_min=k_min, area_km2=area_km2)
+        return cls._estimated(n=N, k_min=k_min, area_km2=area_km2)

@@ -62,7 +62,7 @@ Enable easy data exchange between Hydrograf (GIS spatial analysis) and Hydrolog 
   "title": "WatershedParameters",
   "description": "Standardized watershed parameter format for GIS ↔ Hydrolog integration",
   "type": "object",
-  "required": ["area_km2", "perimeter_km", "length_km", "elevation_min_m", "elevation_max_m"],
+  "required": ["area_km2"],
   "properties": {
     "name": {"type": "string", "description": "Watershed name"},
     "area_km2": {"type": "number", "minimum": 0, "description": "Area [km²]"},
@@ -428,7 +428,7 @@ Retman calls Hydrolog through the command layer, not through the library classes
 
 - **Operations layer:** `hydrolog.operations` - one public, typed function per command (`tc_kirpich`, `hydrograph_generate`, `stats_flood_frequency`, `soil_hsg`, ...), arguments named like the command options, NumPy-style docstrings (used by `retman-scaffold`). The function returns a result object with `to_dict()`/`to_json()`, or an `OperationOutput` (`result`, `notices`, `files`) when the command has warnings or writes files.
 - **Catalog and envelope:** `hydrolog.catalog.run_command("<group> <command>", {options})` (also `hydrolog.run_command`) validates the options, runs the operation and returns a `hydrolog-result/1` envelope (`schema`, `tool`, `version`, `command`, `check`, `status`, `result`, `notices`, `inputs`; the files written are in `result.files[]` with SHA-256; `to_dict()`, `to_json()`). Option schema (JSON Schema): `command_schema()`, `hydrolog commands schema`. Errors are `HydrologError` exceptions with `code`, `hint` and `details` (registry `ERROR_CODES`; document `hydrolog-error/1`).
-- **`catchment_characteristics`:** the proposed format is `WatershedParameters` JSON (`WatershedParameters.to_json()`; required `area_km2`, `perimeter_km`, `length_km`, `elevation_min_m`, `elevation_max_m`). The file is passed to commands as `watershed_file`, and `WatershedParameters.from_dict()` ignores the extra `schema` key (e.g. `"hydrolog-catchment/1"`) added by the catalog tools.
+- **`catchment_characteristics`:** the proposed format is `WatershedParameters` JSON (`WatershedParameters.to_json()`; only `area_km2` is required, a command that needs a missing field names it in `details.option` with `details.reason` `missing_field`). The file is passed to commands as `watershed_file`, and `WatershedParameters.from_dict()` ignores the extra `schema` key (e.g. `"hydrolog-catchment/1"`) added by the catalog tools.
 - **File inputs and outputs:** series (`input_file` + `value_column`/`date_column`), rainfall stations (`stations_file`), network segments (`segments_file`) and the watershed (`watershed_file`) as CSV/JSON; results that write files (`soil hsg` - GeoTIFF, `report generate` - Markdown; one file given by `--output`, an existing file needs `--force`) list them in `result.files[]`. Retman does not need to paste series into arguments.
 - **Versions:** the tool manifest in Retman: `supported_versions=">=1.0,<2"` (semantic versioning applies from 1.0.0: options, command names and envelope shapes do not change incompatibly within the 1.x series).
 

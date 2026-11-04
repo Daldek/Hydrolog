@@ -811,28 +811,28 @@ class TestLoadWatershed:
             assert error.details["reason"] == "one_of"
 
     def test_missing_required_parameters_inline(self):
-        """Missing keys are listed; for an inline object the error names the option."""
+        """Only the area is required; inline, the error names the option."""
         data = {
             k: v for k, v in WATERSHED.items() if k not in ("area_km2", "length_km")
         }
         error = failure(lambda: load_watershed(watershed=data), InvalidParameterError)
         assert error.details["option"] == "watershed"
         assert error.details["reason"] == "missing_field"
-        assert error.details["missing"] == ["area_km2", "length_km"]
-        assert "area_km2, perimeter_km" in error.hint
+        assert error.details["missing"] == ["area_km2"]
+        assert error.hint == "Required: area_km2."
 
     def test_missing_required_parameters_in_a_file(self, tmp_path):
         """The same problem in a file is a data error naming the file."""
-        path = write(tmp_path, "ws.json", json.dumps({"area_km2": 1.0}))
+        path = write(tmp_path, "ws.json", json.dumps({"cn": 70}))
         error = failure(lambda: load_watershed(watershed_file=path))
         assert error.code == "data_error"
         assert error.details["path"] == str(path)
-        assert error.details["missing"] == [
-            "perimeter_km",
-            "length_km",
-            "elevation_min_m",
-            "elevation_max_m",
-        ]
+        assert error.details["missing"] == ["area_km2"]
+
+    def test_a_watershed_of_an_area_alone_is_loaded(self, tmp_path):
+        """The other fields are needed only by what uses them."""
+        path = write(tmp_path, "ws.json", json.dumps({"area_km2": 1.0}))
+        assert load_watershed(watershed_file=path).to_dict() == {"area_km2": 1.0}
 
     def test_null_required_value_counts_as_missing(self):
         """``null`` for a required parameter is a missing parameter."""
@@ -869,17 +869,26 @@ class TestLoadWatershed:
         )
         assert error.details["field"] == "area_km2"
 
-    def test_invalid_values_keep_the_library_message(self, tmp_path):
-        """Range checks of ``WatershedParameters`` surface as validation/data errors."""
+    def test_invalid_values_name_the_field(self, tmp_path):
+        """Checks of ``WatershedParameters`` surface as validation/data errors with
+        the library message, the field in ``details.option`` and ``details.field``
+        and the reason of the check."""
         error = failure(
             lambda: load_watershed(watershed={**WATERSHED, "area_km2": -1}),
             InvalidParameterError,
         )
-        assert error.details == {"option": "watershed", "reason": "invalid_value"}
+        assert error.details == {
+            "option": "area_km2",
+            "reason": "exclusive_minimum",
+            "exclusive_minimum": 0,
+            "value": -1,
+            "field": "area_km2",
+        }
         assert "area_km2 must be positive" in str(error)
         path = write(tmp_path, "ws.json", json.dumps({**WATERSHED, "cn": 120}))
         error = failure(lambda: load_watershed(watershed_file=path))
-        assert error.details["reason"] == "invalid_value"
+        assert error.code == "data_error"
+        assert (error.details["field"], error.details["reason"]) == ("cn", "range")
         assert "cn must be 0-100" in str(error)
 
     def test_file_that_is_not_an_object(self, tmp_path):

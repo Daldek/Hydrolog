@@ -201,10 +201,10 @@ def outlet(upstream: str, node_id: str = "OUT") -> dict[str, Any]:
 def watershed(
     *,
     area_km2: float = 12.0,
-    perimeter_km: float = 18.0,
-    length_km: float = 6.0,
-    elevation_min_m: float = 210.0,
-    elevation_max_m: float = 330.0,
+    perimeter_km: float | None = 18.0,
+    length_km: float | None = 6.0,
+    elevation_min_m: float | None = 210.0,
+    elevation_max_m: float | None = 330.0,
     cn: float | None = 75,
     **options: Any,
 ) -> dict[str, Any]:
@@ -215,13 +215,15 @@ def watershed(
 
     Parameters
     ----------
-    area_km2, perimeter_km, length_km : float, optional
-        Area [km2], perimeter [km] and length [km] of the area.
+    area_km2 : float, optional
+        Area [km2], the only field the class requires.
+    perimeter_km, length_km : float, optional
+        Perimeter [km] and length [km] of the area; ``None`` leaves it out.
     elevation_min_m, elevation_max_m : float, optional
-        Lowest and highest point [m a.s.l.].
+        Lowest and highest point [m a.s.l.]; ``None`` leaves it out.
     cn : float, optional
         Curve number; ``None`` leaves it out (a model that needs it then refuses the
-        subcatchment).
+        subcatchment, as it refuses one without the fields of its ``tc_method``).
     **options
         The other fields of ``WatershedParameters`` (``name``, ``crs``...).
 
@@ -235,15 +237,17 @@ def watershed(
     hydrolog.InvalidParameterError
         If a field is not one of the class or its value is not valid.
     """
-    document: dict[str, Any] = {
+    given = {
         "area_km2": area_km2,
         "perimeter_km": perimeter_km,
         "length_km": length_km,
         "elevation_min_m": elevation_min_m,
         "elevation_max_m": elevation_max_m,
+        "cn": cn,
     }
-    if cn is not None:
-        document["cn"] = cn
+    document: dict[str, Any] = {
+        name: value for name, value in given.items() if value is not None
+    }
     document.update(options)
     watershed_from_document(document)
     return document

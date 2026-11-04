@@ -92,18 +92,24 @@ def _watershed_params(parameters: WatershedParameters) -> dict[str, Any]:
     """Build the watershed section inputs of the report generator.
 
     Only the keys of ``generate_watershed_section`` that the generator can pass on
-    (the area and the CN are passed separately).
+    (the area and the CN are passed separately), and only those the watershed has
+    the fields for: the width needs the length, the relief both elevations and the
+    shape indicators the perimeter and the length.
     """
-    indicators = parameters.to_geometry().get_shape_indicators()
+    has_length = parameters.length_km is not None
+    has_relief = (
+        parameters.elevation_min_m is not None
+        and parameters.elevation_max_m is not None
+    )
     values: dict[str, Any] = {
         "name": parameters.name,
         "perimeter_km": parameters.perimeter_km,
         "length_km": parameters.length_km,
-        "width_km": parameters.width_km,
+        "width_km": parameters.width_km if has_length else None,
         "elevation_min_m": parameters.elevation_min_m,
         "elevation_max_m": parameters.elevation_max_m,
         "elevation_mean_m": parameters.elevation_mean_m,
-        "relief_m": parameters.relief_m,
+        "relief_m": parameters.relief_m if has_relief else None,
         "mean_slope_percent": (
             None
             if parameters.mean_slope_m_per_m is None
@@ -111,11 +117,15 @@ def _watershed_params(parameters: WatershedParameters) -> dict[str, Any]:
         ),
         "channel_length_km": parameters.channel_length_km,
         "channel_slope_m_per_m": parameters.channel_slope_m_per_m,
-        "form_factor": indicators.form_factor,
-        "compactness": indicators.compactness_coefficient,
-        "circularity": indicators.circularity_ratio,
-        "elongation": indicators.elongation_ratio,
     }
+    if has_length and parameters.perimeter_km is not None:
+        indicators = parameters.to_geometry().get_shape_indicators()
+        values.update(
+            form_factor=indicators.form_factor,
+            compactness=indicators.compactness_coefficient,
+            circularity=indicators.circularity_ratio,
+            elongation=indicators.elongation_ratio,
+        )
     return {key: value for key, value in values.items() if value is not None}
 
 

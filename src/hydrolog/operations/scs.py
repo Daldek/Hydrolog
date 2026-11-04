@@ -14,7 +14,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from hydrolog._serialization import JsonResultMixin
-from hydrolog.catalog.envelope import Notice, OperationOutput
+from hydrolog.catalog.envelope import Notice, OperationOutput, capture_warnings
 from hydrolog.catalog.inputs import load_series
 from hydrolog.catalog.notices import notice
 from hydrolog.exceptions import InputDataError
@@ -211,8 +211,9 @@ def scs_effective(
     Returns
     -------
     OperationOutput
-        :class:`ScsEffectiveResult` and an info notice when ``ia_coefficient`` is
-        not the standard 0.2.
+        :class:`ScsEffectiveResult`, an info notice when ``ia_coefficient`` is
+        not the standard 0.2 and an ``outside_typical_range`` notice for AMC I or
+        III with a ``cn`` outside 55-95, where the conversion formulas hold.
 
     Raises
     ------
@@ -245,14 +246,17 @@ def scs_effective(
     effective: NDArray[np.float64] | None
     if precipitation_mm is not None:
         total = float(precipitation_mm)
-        outcome = calculator.effective_precipitation(total, moisture)
+        rain: float | NDArray[np.float64] = total
         effective = None
     else:
         depths = load_precipitation_depths(
             values=values, input_file=input_file, value_column=value_column
         )
         total = float(np.sum(depths))
-        outcome = calculator.effective_precipitation(depths, moisture)
+        rain = depths
+    with capture_warnings() as warned:
+        outcome = calculator.effective_precipitation(rain, moisture)
+    if precipitation_mm is None:
         effective = np.asarray(outcome.effective_mm, dtype=np.float64)
     result = ScsEffectiveResult(
         cn=float(cn),
@@ -266,4 +270,4 @@ def scs_effective(
         runoff_coefficient=outcome.total_effective_mm / total if total > 0 else 0.0,
         effective_mm=effective,
     )
-    return OperationOutput(result, ia_coefficient_notices(ia_coefficient))
+    return OperationOutput(result, [*warned, *ia_coefficient_notices(ia_coefficient)])

@@ -20,7 +20,10 @@ The module is a leaf: the library imports it, and it imports nothing of Hydrolog
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping
+import warnings
+from collections.abc import Iterator, Mapping
+from contextlib import contextmanager
+from contextvars import ContextVar
 from typing import Any, ClassVar, Final, Literal
 
 __all__ = [
@@ -35,6 +38,8 @@ __all__ = [
     "UhModelMismatch",
     "UnknownHietogramType",
     "render",
+    "typical_range_fields",
+    "warn_outside_typical_range",
     "warning_code",
 ]
 
@@ -186,17 +191,88 @@ def _restore(kind: type[HydrologWarning], details: dict[str, Any]) -> HydrologWa
 
 
 class OutsideTypicalRange(HydrologWarning):
-    """A parameter of a time of concentration formula is outside its typical range.
+    """A parameter of a formula or a model is outside its typical range.
 
-    Details: ``method`` (the formula), ``parameter`` (the option), ``value`` and the
-    range ``minimum``, ``maximum`` (in the unit of the parameter).
+    Details: ``method`` (the formula or the model: a time of concentration method,
+    ``scs_cn``, a unit hydrograph model), ``parameter`` (its argument, the option of
+    the command of the formula), ``field`` (the input the value came from: the option
+    of the command that was run or the field of the watershed, see
+    :func:`typical_range_fields`), ``value`` and the range ``minimum``, ``maximum``
+    (in the unit of the parameter).
     """
 
     template = (
         "{method}: {parameter}={value} is outside typical range [{minimum}, "
         "{maximum}]. Results may be unreliable."
     )
-    keys = ("method", "parameter", "value", "minimum", "maximum")
+    keys = ("method", "parameter", "field", "value", "minimum", "maximum")
+
+
+_FIELDS: ContextVar[Mapping[str, str]] = ContextVar("hydrolog_typical_range_fields")
+
+
+@contextmanager
+def typical_range_fields(fields: Mapping[str, str]) -> Iterator[None]:
+    """Name the inputs the parameters of :class:`OutsideTypicalRange` come from.
+
+    Inside the block a warning about the parameter ``name`` has ``field``
+    ``fields[name]``; outside every block, or for a parameter that no block names, it
+    is the parameter itself. Blocks nest, the inner one first: the time of
+    concentration of a watershed names its fields (``length_km`` is
+    ``channel_length_km``) inside ``hydrograph generate``, which names its options
+    (``ct`` is ``snyder_ct``). The names are kept in a context variable, so threads
+    and tasks do not see each other's.
+
+    Parameters
+    ----------
+    fields : Mapping of str to str
+        Parameter name to input name.
+    """
+    token = _FIELDS.set({**_FIELDS.get({}), **fields})
+    try:
+        yield
+    finally:
+        _FIELDS.reset(token)
+
+
+def warn_outside_typical_range(
+    method: str,
+    parameter: str,
+    value: float,
+    minimum: float,
+    maximum: float,
+    *,
+    stacklevel: int = 2,
+) -> None:
+    """Warn (:class:`OutsideTypicalRange`) if ``value`` is outside [minimum, maximum].
+
+    Parameters
+    ----------
+    method : str
+        The formula or the model.
+    parameter : str
+        Its argument; ``field`` is the input that :func:`typical_range_fields` names
+        for it, else the parameter.
+    value : float
+        The value.
+    minimum, maximum : float
+        The typical range, bounds included.
+    stacklevel : int, optional
+        As in ``warnings.warn``, counted from the caller of this function.
+    """
+    if minimum <= value <= maximum:
+        return
+    warnings.warn(
+        OutsideTypicalRange(
+            method=method,
+            parameter=parameter,
+            field=_FIELDS.get({}).get(parameter, parameter),
+            value=value,
+            minimum=minimum,
+            maximum=maximum,
+        ),
+        stacklevel=stacklevel + 1,
+    )
 
 
 class SmallSample(HydrologWarning):
