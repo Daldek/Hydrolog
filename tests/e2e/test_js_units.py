@@ -685,9 +685,11 @@ def test_errors_of_the_server_in_polish(page: Any) -> None:
         "amc",
         "Dozwolone wartości: I, II, III",
     )
-    # A library error without details stands above the form in English, marked.
-    assert library["option"] is None and library["english"] is True
-    assert library["text"] == "Lc_km (16.0) cannot exceed L_km (10.0)" + EN
+    # A library relation error names its field (Lc of Lutz), so it stands on it.
+    assert (library["option"], library["reason"]) == (
+        "lutz_centroid_length_km",
+        "maximum",
+    )
     assert library["title"] == INVALID
     assert (group["option"], group["reason"]) == ("precipitation_mm", "one_of")
     assert group["text"] == (
