@@ -1,7 +1,8 @@
 /**
  * Explanation (i) of the SCS-CN losses (plan D16, slice S3): the entry "losses-scs-cn" for the
  * options `cn`, `amc` and `ia_coefficient` of `hydrograph generate` and `scs effective`, in the
- * format of ui/info.js.
+ * format of ui/info.js. The typical range of the AMC conversion, with its source, is
+ * Hydrolog's (`typical_ranges`, method `scs_cn_amc`).
  */
 
 export const lossesInfo = {
@@ -66,22 +67,13 @@ export const lossesInfo = {
         unit: "–",
       },
     ],
-    ranges: [
-      {
-        option: "cn",
-        label: "CN (AMC I i III)",
-        unit: "",
-        min: 55,
-        max: 95,
-        source: "próg ostrzeżenia Hydrologu, zakres wzorów przeliczenia AMC (Hawkins i in. 1985)",
-      },
-    ],
+    symbols: { cn: "CN (AMC I i III)" },
     note:
       "<p>λ = 0,2 to standard NRCS, dla którego skalibrowano tablice CN (TR-55, NEH 630); inny λ daje " +
       "uwagę w wyniku. Proponowanej wartości 0,05 (Hawkins i in. 2002; Woodward i in. 2003) NRCS nie " +
-      "przyjęło: wymagałaby innych wartości CN. Wzory przeliczenia AMC przybliżają tabelę NEH 630 i są " +
-      "zalecane dla CN 55–95; Hydrolog stosuje je dla każdego CN, a poza tym zakresem daje uwagę. Przy " +
-      "odpływie poniżej ok. 13 mm metoda jest mniej dokładna.</p>",
+      "przyjęło: wymagałaby innych wartości CN. Wzory przeliczenia AMC przybliżają tabelę NEH 630 w " +
+      "zakresie stosowania podanym wyżej; Hydrolog stosuje je dla każdego CN, a poza tym zakresem daje uwagę. " +
+      "Przy odpływie poniżej ok. 13 mm metoda jest mniej dokładna.</p>",
     sources:
       "USDA-SCS 1986 (TR-55); USDA-NRCS 2004 (NEH 630-10); Hawkins i in. 1985 (za Ponce i Hawkins 1996); " +
       "Hawkins i in. 2002; Woodward i in. 2003; opis polecenia <code>scs effective</code>",

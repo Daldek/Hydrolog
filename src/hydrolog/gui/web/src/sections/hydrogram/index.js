@@ -8,7 +8,10 @@
 // marked („Dane niepełne” with the field); an error of the server stays on its field or
 // above the steps („Błąd danych”); Hydrolog's notices of a value outside its typical range
 // stand on their field as warnings, which never stop a run. Nash by Lutz runs `uh nash`
-// first and passes `nash_n` and `nash_k_min` on.
+// first and passes `nash_n` and `nash_k_min` on; the notices of that run stand beside those
+// of `hydrograph generate`, in Wyniki and on the fields. The typical ranges the (i)
+// explanations and the notes check are those the catalog documents of the two commands
+// serve (`typical_ranges`), registered when the documents arrive.
 //
 // The section sets the store's "watershed" (the `watershed` of hydrolog-network/1, for
 // Kalkulatory), its "status" and "context", and draws the store's "reference" (a quantile
@@ -34,7 +37,7 @@ import { shell } from "../../labels/shell.js";
 import { usePersistentState } from "../../persist.js";
 import { navigate } from "../../router.js";
 import { useStore } from "../../store.js";
-import { registerInfo } from "../../ui/info.js";
+import { registerInfo, registerServed } from "../../ui/info.js";
 import { Seg } from "../../ui/seg.js";
 import { status } from "../../ui/status.js";
 import { toast } from "../../ui/toast.js";
@@ -61,8 +64,10 @@ import {
   normalize,
   numberOf,
   panelFields,
+  rangeInfoId,
   readWatershed,
   requirements,
+  runNotices,
   toOptions,
   usesLutz,
   watershedErrors,
@@ -72,8 +77,9 @@ import {
 registerInfo({ ...tcInfo, ...lossesInfo, ...uhInfo, ...rainInfo });
 
 /**
- * The catalog document of `hydrograph generate` and the network schema, turned into the
- * models that check the inputs.
+ * The catalog documents of `hydrograph generate` and of Lutz's `uh nash`, and the network
+ * schema, turned into the models that check the inputs; the typical ranges the documents
+ * serve are registered with the (i) explanations.
  *
  * @returns {{models: object|null, error: string|null, retry: () => void}} the models (null
  *   until they arrive), a loading error and a retry
@@ -84,8 +90,15 @@ function useModels() {
   useEffect(() => {
     let alive = true;
     setState((old) => ({ ...old, error: null }));
-    Promise.all([api.command(COMMAND), api.schema(NETWORK_SCHEMA)])
-      .then(([doc, schema]) => alive && setState({ models: inputModels(doc, schema), error: null }))
+    // Lutz's range is only an explanation's: without its document the section still works
+    const lutz = api.command(LUTZ_COMMAND).catch(() => null);
+    Promise.all([api.command(COMMAND), api.schema(NETWORK_SCHEMA), lutz])
+      .then(([doc, schema, lutzDoc]) => {
+        if (!alive) return;
+        registerServed(doc, rangeInfoId);
+        registerServed(lutzDoc, (range) => (range.method === "lutz" ? rangeInfoId(range) : null));
+        setState({ models: inputModels(doc, schema), error: null });
+      })
       .catch((error) => {
         if (alive) setState({ models: null, error: error && error.doc ? describeError(error.doc).text : String(error) });
       });
@@ -194,7 +207,7 @@ export default function Hydrogram({ path = [] }) {
   }, [route]);
 
   // The checks: errors stop a run; the warnings of the shown run's notices do not
-  const shownRun = run ? { inputs: run.inputs, notices: run.envelope.notices } : null;
+  const shownRun = run ? { inputs: run.inputs, notices: runNotices(run) } : null;
   const checked = useMemo(
     () => (docs.models ? checkInputs(inputs, docs.models, shownRun) : null),
     [docs.models, inputs, run],
@@ -243,17 +256,19 @@ export default function Hydrogram({ path = [] }) {
       let stage = "generate";
       try {
         let lutz = null;
+        let lutzNotices = [];
         let options = sent.options;
         if (sent.lutz) {
           stage = "lutz";
           const first = await api.run(LUTZ_COMMAND, sent.lutz, { channel: CHANNEL, signal });
           if (first.status !== "ok") return { key: sent.key, inputs: sent.inputs, envelope: first };
           lutz = first.result;
+          lutzNotices = first.notices || [];
           options = toOptions(sent.inputs, lutz.parameters);
           stage = "generate";
         }
         const envelope = await api.run(COMMAND, options, { channel: CHANNEL, signal });
-        return { key: sent.key, inputs: sent.inputs, options, envelope, lutz };
+        return { key: sent.key, inputs: sent.inputs, options, envelope, lutz, lutzNotices };
       } catch (error) {
         if (error && error.name === "AbortError") throw error;
         const doc = error && error.doc ? error.doc : { code: "internal_error", message: String(error) };

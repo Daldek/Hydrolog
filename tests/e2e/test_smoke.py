@@ -148,6 +148,12 @@ def test_the_guides_examples_are_the_shipped_examples(tab: Tab) -> None:
     expect(page.locator(BADGE)).to_have_attribute("data-state", "ok")
     for name in ["q", "tp", "volume", "c"]:
         read(f"hydrogram-{name}", right.locator(f'[data-kpi="{name}"] .v'))
+    # The example's channel is flatter than Kirpich's data: Hydrolog's warning on it
+    outside = left.locator('[data-field="channel_slope_m_per_m"] .warn')
+    expect(outside).to_contain_text("outside_typical_range")
+    shown["hydrogram-outside"] = flat(
+        outside.evaluate("node => node.firstChild.textContent")
+    )
     page.locator('[aria-labelledby="hg-amc-label"]').get_by_role(
         "radio", name="III", exact=True
     ).click()

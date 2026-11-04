@@ -20,7 +20,7 @@ import { shell } from "../../labels/shell.js";
 import { statystyka as texts } from "../../labels/statystyka.js";
 import { usePersistentState } from "../../persist.js";
 import { useStore } from "../../store.js";
-import { registerInfo } from "../../ui/info.js";
+import { registerInfo, registerServed } from "../../ui/info.js";
 import { Seg } from "../../ui/seg.js";
 import { isPhone, openPanel } from "../../ui/sheet.js";
 import { status } from "../../ui/status.js";
@@ -106,6 +106,10 @@ export default function Statystyka({ active }) {
   const sampleTried = useRef(false);
 
   const base = useMemo(() => (doc ? fieldModel(doc) : null), [doc]);
+  // Hydrolog's range of the record's length, checked by the explanation of the analysis
+  useEffect(() => {
+    if (doc) registerServed(doc, (range) => (range.method === "flood_frequency" ? "stats-flood-frequency" : null));
+  }, [doc]);
   const values = useMemo(() => formValues(state, base), [state, base]);
   const model = useMemo(() => (doc ? fieldModel(doc, { values }) : null), [doc, values]);
   const problems = useMemo(() => (model ? validate(model, values) : {}), [model, values]);

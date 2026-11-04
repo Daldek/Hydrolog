@@ -215,10 +215,12 @@ export const hydrogram = {
     lutzNote:
       "Lutz (`uh nash`) z długości i spadku cieku głównego (krok 1) oraz Lc, n Manninga, lasów i zabudowy (powyżej); tc nie jest używany. Wynik przechodzi do `nash_n` i `nash_k_min`.",
     lutzPending: "z uh nash (Lutz)",
-    givenNote: "n i K skalibrowane albo z innego źródła; typowo n 1–10, K 10–200 min.",
+    givenNote: "n i K skalibrowane albo z innego źródła; typowo {ranges}.",
+    givenNotePlain: "n i K skalibrowane albo z innego źródła.",
     clarkKind: "Stała retencji",
     clarkKinds: { ratio: "R/tc", r: "R [min]" },
-    clarkNote: "Clark; wymaga tc oraz `clark_r_min` lub `clark_r_tc_ratio` (typowo 0,2–1,5).",
+    clarkNote: "Clark; wymaga tc oraz `clark_r_min` lub `clark_r_tc_ratio` (typowo {ranges}).",
+    clarkNotePlain: "Clark; wymaga tc oraz `clark_r_min` lub `clark_r_tc_ratio`.",
     snyderNote:
       "Snyder ma własny wzór na opóźnienie; nie podawaj mu tc. Puste L i Lc modelu biorą długość cieku głównego (krok 1) i Lc zlewni (powyżej).",
     chipTc: "tc = {value} min",
@@ -338,14 +340,8 @@ export const hydrogram = {
     rangeFrom: "zakres metody",
     explain: "objaśnienie",
     inRange: "{title}: {values} w zakresie stosowania.",
-    outOfRange: "{title}: {items}.",
-    outItem: "{label} = {value} poza zakresem {range} ({source})",
-    outItemPlain: "{label} = {value} poza zakresem {range}",
     valueItem: "{label} = {value}",
-    timestepOk: "Krok Δt = {dt} min ≤ 0,25·tp hydrogramu jednostkowego ({limit} min).",
-    timestepWarn:
-      "Krok Δt = {dt} min > 0,25·tp = {limit} min: hydrogram jednostkowy ma za mało rzędnych przed szczytem; zmniejsz krok.",
-    timestepFrom: "zakres metody · NEH 630 cz. 16",
+    timestepOk: "Krok Δt = {dt} min ≤ {share}·tp hydrogramu jednostkowego ({limit} min).",
   },
   context: {
     pmaxtp: "{name} · p {p}% · {duration}",

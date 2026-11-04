@@ -46,12 +46,12 @@ KAMIENNIK = {
 """The watershed of Hydrogram zlewni's example (web/examples/kamiennik.json)."""
 METHODS = ["kirpich", "nrcs", "giandotti", "faa", "kerby", "kerby_kirpich"]
 WORDS = {
-    "kirpich": "w zakresie",
-    "nrcs": "w zakresie",
+    "kirpich": "poza zakresem",
+    "nrcs": "poza zakresem",
     "giandotti": "poza zakresem",
     "faa": "nie dla zlewni",
     "kerby": "nie dla zlewni",
-    "kerby_kirpich": "poza zakresem",
+    "kerby_kirpich": "w zakresie",
 }
 """The range words for Kamiennik: Hydrolog's notices and the overland flow."""
 
@@ -112,8 +112,11 @@ def test_the_tc_comparison_lists_six_methods_with_their_range_words(tab: Tab) ->
         tc = f"{expected['result']['tc_min']:.1f}".replace(".", ",")
         expect(row.locator("td").first).to_have_text(tc)
         expect(row.locator("td").last).to_have_text(str(len(expected["notices"])))
+    expect(rows.first.locator(".kc-range")).to_have_text(
+        "A = 37,22 poza 0,005–0,45 km²; S = 0,0142 poza 0,03–0,1"
+    )
     expect(rows.nth(2).locator(".kc-range")).to_have_text(
-        "A = 37,22 poza 100–10\u00a0000 km²"
+        "A = 37,22 poza 170–70\u00a0000 km²"
     )
     expect(rows.nth(3).locator(".kc-range")).to_have_text(
         "tylko spływ powierzchniowy, L 0,3 km"
@@ -129,19 +132,19 @@ def test_the_tc_comparison_lists_six_methods_with_their_range_words(tab: Tab) ->
         "rects => rects.map((rect) => rect.getAttribute('class'))"
     )
     assert classes == [
-        "hbar ok used",
-        "hbar warn",
-        "hbar warn",
+        "hbar warn used",
         "hbar ok",
+        "hbar warn",
+        "hbar warn",
         "hbar bad",
         "hbar bad",
     ]
 
     # Hydrolog's notices in Polish, once each; the loop of the calls
     notices = page.locator(f'{RIGHT} .notes li[data-code="outside_typical_range"]')
-    expect(notices).to_have_count(3)
+    expect(notices).to_have_count(6)
     expect(notices.first).to_contain_text(
-        "giandotti: area_km2 = 37,22 poza typowym zakresem od 100 do 10\u00a0000."
+        "kirpich: area_km2 = 37,22 poza typowym zakresem od 0,005 do 0,45."
     )
     loop = page.locator(f"{RIGHT} .kc-loop pre")
     expect(loop).to_have_text(
@@ -164,8 +167,8 @@ def test_the_tc_comparison_lists_six_methods_with_their_range_words(tab: Tab) ->
         page.locator(f'{hydrogram} .view-panel.right [data-kpi="q"] .v')
     ).to_have_text(re.compile(r"^43,01\s*m³/s$"))
     page.go_back()
-    expect(bars.nth(3)).to_have_attribute("class", "hbar ok used")
-    expect(bars.first).to_have_attribute("class", "hbar ok")
+    expect(bars.nth(3)).to_have_attribute("class", "hbar warn used")
+    expect(bars.first).to_have_attribute("class", "hbar warn")
 
 
 def test_a_method_left_out_and_an_overland_field_changed_make_the_result_stale(

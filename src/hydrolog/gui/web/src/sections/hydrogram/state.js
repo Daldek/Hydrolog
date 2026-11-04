@@ -613,6 +613,23 @@ export function inputModels(commandDoc, schema) {
 }
 
 /**
+ * The explanation (i) that shows a typical range Hydrolog serves for `hydrograph generate`
+ * (and, for Lutz's area, for `uh nash`): the time step's, the tc method's, the losses' or
+ * the unit hydrograph model's.
+ *
+ * @param {{method: string, parameter: string}} range a range of `typical_ranges`
+ * @returns {string|null} the explanation's id, null for a range no explanation shows
+ */
+export function rangeInfoId(range) {
+  if (range.parameter === "timestep_min") return "rain-timestep";
+  if (TC_METHODS.includes(range.method)) return `tc-${range.method}`;
+  if (range.method === "scs_cn_amc") return "losses-scs-cn";
+  if (UH_MODELS.includes(range.method)) return `uh-${range.method}`;
+  if (range.method === "lutz") return "uh-nash";
+  return null;
+}
+
+/**
  * The options a setting sends, as typed: only those that apply to the chosen tc, rainfall,
  * shape and model (an option that does not apply is refused by the command).
  *
@@ -831,6 +848,32 @@ export const LUTZ_SOURCES = Object.freeze({
   timestep_min: "timestep_min",
 });
 
+/**
+ * Hydrolog's notices of a shown run, each once: those of Lutz's `uh nash` first, with the
+ * field they name (`details.field`, an option of `uh nash`) as the panel names it
+ * (LUTZ_SOURCES), then those of `hydrograph generate`.
+ *
+ * @param {{envelope: object, lutzNotices?: object[]}|null} run the shown run
+ * @returns {object[]} the notices
+ */
+export function runNotices(run) {
+  if (!run) return [];
+  const lutz = (run.lutzNotices || []).map((notice) => {
+    const details = (notice && notice.details) || {};
+    if (typeof details.field !== "string" || !Object.hasOwn(LUTZ_SOURCES, details.field)) return notice;
+    return { ...notice, details: { ...details, field: LUTZ_SOURCES[details.field] } };
+  });
+  const seen = new Set();
+  const notices = [];
+  for (const notice of [...lutz, ...((run.envelope && run.envelope.notices) || [])]) {
+    const key = JSON.stringify([notice.code, notice.message, notice.details || null]);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    notices.push(notice);
+  }
+  return notices;
+}
+
 /** The options of the result's `uh_parameters`, by the name of their field in the panel. */
 const UH_PARAMETERS = Object.freeze({
   nash_n: "n",
@@ -843,9 +886,10 @@ const UH_PARAMETERS = Object.freeze({
 });
 
 /**
- * The values the (i) explanations and the notes check, by option name: the watershed's
- * numbers and the numbers of the options in use; with a result, what it ran with (the UH's
- * parameters, λ and tc, defaults included).
+ * The values the (i) explanations and the notes check against Hydrolog's ranges, by name:
+ * the watershed's numbers and the numbers of the options in use; with a result, what it ran
+ * with (the UH's parameters, λ, tc and the time step, defaults included) and the unit
+ * hydrograph's time to peak, of which the time step's range is a share.
  *
  * @param {object} inputs the inputs
  * @param {object|null} [result] the result of `hydrograph generate` for these inputs
@@ -871,6 +915,9 @@ export function checkedValues(inputs, result = null) {
     }
     if (typeof result.ia_coefficient === "number") values.ia_coefficient = result.ia_coefficient;
     if (typeof result.tc_min === "number") values.tc_min = result.tc_min;
+    // The step it ran with (5 min when left empty) and the quantity its range is a share of
+    if (typeof result.timestep_min === "number") values.timestep_min = result.timestep_min;
+    if (typeof result.uh_time_to_peak_min === "number") values.uh_time_to_peak_min = result.uh_time_to_peak_min;
   }
   return values;
 }

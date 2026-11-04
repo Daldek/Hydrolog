@@ -14,6 +14,7 @@ import { useEffect, useRef, useState } from "../../html.js";
 import { t } from "../../labels/common.js";
 import { siec as texts } from "../../labels/siec.js";
 import { navigate } from "../../router.js";
+import { registerRanges } from "../../ui/info.js";
 import { buildForms, HELP_COMMANDS, KINDS, METHODS, networkValues, nodeValues, skeletonOf } from "./node-model.js";
 
 /** The section's id and the key of its inputs. */
@@ -174,8 +175,33 @@ export function neededFiles(state) {
   return { ratings, inflows };
 }
 
+/** The fields of a routing method whose bounds in the network's schema are its range of applicability. */
+const METHOD_RANGES = Object.freeze({ muskingum: ["x"] });
+
 /**
- * The forms of the nodes: the network's schema and the catalog's Polish help, fetched once.
+ * Register with the explanations of the routing methods ("routing.<method>") the bounds the
+ * network's schema gives the fields of METHOD_RANGES (Muskingum's X): the GUI keeps no bound
+ * of its own.
+ *
+ * @param {object} forms the forms of buildForms
+ */
+export function registerMethodRanges(forms) {
+  for (const [method, names] of Object.entries(METHOD_RANGES)) {
+    const fields = forms.methods[method];
+    if (!fields) continue;
+    const found = [];
+    for (const name of names) {
+      const field = fields.get(name);
+      if (!field || (field.min === null && field.max === null)) continue;
+      found.push({ method, parameter: name, inputs: [name], minimum: field.min, maximum: field.max, unit: "-", source: texts.method.rangeSource });
+    }
+    if (found.length) registerRanges(`routing.${method}`, found);
+  }
+}
+
+/**
+ * The forms of the nodes: the network's schema and the catalog's Polish help, fetched once;
+ * the schema's bounds of the methods' ranges go to their explanations.
  *
  * @returns {{forms: object|null, error: string|null}} the forms (null until they arrive)
  *   and a loading error
@@ -194,7 +220,9 @@ export function useForms() {
     );
     Promise.all([api.schema(SCHEMA_FILE), help])
       .then(([schema, docs]) => {
-        if (alive) setFound({ forms: buildForms(schema, new Map(docs.filter(Boolean))), error: null });
+        const forms = buildForms(schema, new Map(docs.filter(Boolean)));
+        registerMethodRanges(forms);
+        if (alive) setFound({ forms, error: null });
       })
       .catch((error) => {
         if (alive) setFound({ forms: null, error: String((error && error.message) || error) });

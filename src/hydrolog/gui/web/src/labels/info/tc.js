@@ -1,8 +1,9 @@
 /**
  * Explanations (i) of the time of concentration methods (plan D16, slice S3): the entries
  * "tc-<method>" for the six values of `tc_method` (`tc watershed --method`), in the format of
- * ui/info.js. Their ranges hold Hydrolog's warning thresholds (OutsideTypicalRange in
- * hydrolog/time/concentration.py) and the data ranges of the methods.
+ * ui/info.js. They keep the symbols of the parameters only: the typical ranges, with their
+ * sources, are Hydrolog's (`typical_ranges` of `tc watershed` and `hydrograph generate`),
+ * registered by the sections that load those documents.
  */
 
 export const tcInfo = {
@@ -35,44 +36,11 @@ export const tcInfo = {
         unit: "m/m",
       },
     ],
-    ranges: [
-      {
-        option: "channel_length_km",
-        label: "L",
-        unit: "km",
-        min: 0.001,
-        max: 80,
-        source: "próg ostrzeżenia Hydrologu",
-      },
-      {
-        option: "channel_slope_m_per_m",
-        label: "S",
-        unit: "m/m",
-        min: 0.002,
-        max: 0.15,
-        source: "próg ostrzeżenia Hydrologu",
-      },
-      {
-        option: "area_km2",
-        label: "A",
-        unit: "km²",
-        min: 0.004,
-        max: 0.45,
-        source: "dane Kirpicha: 7 małych zlewni rolniczych w Tennessee",
-      },
-      {
-        option: "channel_slope_m_per_m",
-        label: "S",
-        unit: "m/m",
-        min: 0.03,
-        max: 0.1,
-        source: "dane Kirpicha: spadki 3–10%",
-      },
-    ],
+    symbols: { area_km2: "A", length_km: "L", slope_m_per_m: "S" },
     note:
-      "<p>Progi Hydrologu to nie zakres metody: poza nimi Hydrolog liczy dalej i dodaje do wyniku " +
-      "uwagę. Bez pola zlewni wzór bierze wartość zastępczą i to ją Hydrolog sprawdza. Wg autora wzór " +
-      "stosuje się do ok. 0,8 km² (200 akrów). Dla spływu po stoku i korytem: Kerby–Kirpich.</p>",
+      "<p>Poza zakresem danych metody Hydrolog liczy dalej i dodaje do wyniku uwagę. Bez pola " +
+      "zlewni wzór bierze wartość zastępczą i to ją Hydrolog sprawdza. Dla spływu po stoku i " +
+      "korytem: Kerby–Kirpich.</p>",
     sources:
       "Kirpich 1940 (za Roussel i in. 2005); Fang i in. 2005; USDA-NRCS 2010 (NEH 630-15); Hydrolog, " +
       "<code>docs/COMPUTATION_PATHS.md</code> 3.1 i 3.7; opis polecenia <code>tc kirpich</code>",
@@ -126,45 +94,12 @@ export const tcInfo = {
         unit: "–",
       },
     ],
-    ranges: [
-      {
-        option: "channel_length_km",
-        label: "L",
-        unit: "km",
-        min: 0.03,
-        max: 30,
-        source: "próg ostrzeżenia Hydrologu",
-      },
-      {
-        option: "mean_slope_m_per_m",
-        label: "Y",
-        unit: "m/m",
-        min: 0.001,
-        max: 0.15,
-        source: "próg ostrzeżenia Hydrologu",
-      },
-      {
-        option: "cn",
-        label: "CN",
-        unit: "",
-        min: 50,
-        max: 95,
-        source: "próg ostrzeżenia Hydrologu, granica NEH 630",
-      },
-      {
-        option: "area_km2",
-        label: "A",
-        unit: "km²",
-        min: 0.005,
-        max: 24,
-        source: "dane równania: 24 zlewnie, w większości poniżej 8 km²",
-      },
-    ],
+    symbols: { area_km2: "A", length_km: "L", slope_m_per_m: "Y", cn: "CN" },
     note:
-      "<p>Wg NEH 630 równania nie stosuje się dla CN poniżej 50 i powyżej 95; granice L i spadku to " +
-      "progi Hydrologu, nie zakres metody. Y to średni spadek terenu zlewni, nie spadek cieku, dlatego " +
-      "Hydrolog bierze najpierw <code>mean_slope_m_per_m</code>. Wynik to t<sub>c</sub>, nie " +
-      "t<sub>lag</sub> (t<sub>lag</sub> = 0,6·t<sub>c</sub>).</p>",
+      "<p>Wg NEH 630 równania nie stosuje się dla CN spoza zakresu metody. Y to średni spadek " +
+      "terenu zlewni, nie spadek cieku, dlatego Hydrolog bierze najpierw " +
+      "<code>mean_slope_m_per_m</code>. Wynik to t<sub>c</sub>, nie t<sub>lag</sub> " +
+      "(t<sub>lag</sub> = 0,6·t<sub>c</sub>).</p>",
     sources:
       "Mockus 1961 (za NEH 630-15); USDA-SCS 1986 (TR-55); USDA-NRCS 2010 (NEH 630-15); Fang i in. " +
       "2005; Hydrolog, <code>docs/COMPUTATION_PATHS.md</code> 3.7 i 3.7.1; opis polecenia " +
@@ -205,37 +140,11 @@ export const tcInfo = {
         unit: "m",
       },
     ],
-    ranges: [
-      {
-        option: "area_km2",
-        label: "A",
-        unit: "km²",
-        min: 100,
-        max: 10000,
-        source: "próg ostrzeżenia Hydrologu",
-      },
-      {
-        option: "channel_length_km",
-        label: "L",
-        unit: "km",
-        min: 1,
-        max: 300,
-        source: "próg ostrzeżenia Hydrologu",
-      },
-      {
-        option: "area_km2",
-        label: "A",
-        unit: "km²",
-        min: 170,
-        max: 70000,
-        source: "kalibracja Giandottiego: 12 zlewni we Włoszech",
-      },
-    ],
+    symbols: { area_km2: "A", length_km: "L", elevation_diff_m: "ΔH" },
     note:
-      "<p>Hydrolog ostrzega też, gdy ΔH jest poza 20–3000 m; ΔH to różnica dwóch pól zlewni, więc nie ma " +
-      "go na liście zakresów. Kalibracja objęła zlewnie 170–70 000 km² (bez informacji o użytych " +
-      "wezbraniach), więc mniejsze zlewnie leżą poza nią, choć próg Hydrologu zaczyna się od 100 km². " +
-      "Bez pola zlewni wzór bierze wartość zastępczą i to ją Hydrolog sprawdza.</p>",
+      "<p>Kalibracja objęła duże zlewnie (bez informacji o użytych wezbraniach), więc zlewnie " +
+      "mniejsze od nich leżą poza zakresem metody. Bez pola zlewni wzór bierze wartość zastępczą i " +
+      "to ją Hydrolog sprawdza.</p>",
     sources:
       "Giandotti 1934 (za Grimaldi i in. 2012); Hydrolog, <code>docs/COMPUTATION_PATHS.md</code> 3.7; " +
       "opis polecenia <code>tc giandotti</code>",
@@ -280,37 +189,11 @@ export const tcInfo = {
         unit: "m/m",
       },
     ],
-    ranges: [
-      {
-        option: "overland_length_km",
-        label: "L",
-        unit: "km",
-        min: 0.015,
-        max: 3,
-        source: "próg ostrzeżenia Hydrologu",
-      },
-      {
-        option: "overland_slope_m_per_m",
-        label: "S",
-        unit: "m/m",
-        min: 0.005,
-        max: 0.1,
-        source: "próg ostrzeżenia Hydrologu",
-      },
-      {
-        option: "runoff_coeff",
-        label: "C",
-        unit: "",
-        min: 0.1,
-        max: 0.95,
-        source: "próg ostrzeżenia Hydrologu",
-      },
-    ],
+    symbols: { length_km: "L", slope_m_per_m: "S", runoff_coeff: "C" },
     note:
       "<p>Liczy tylko spływ po powierzchni na długości L; dla zlewni z korytem t<sub>c</sub> daje " +
       "Kerby–Kirpich albo Kirpich. Hydrolog nie bierze w miejsce brakujących pól długości ani spadku " +
-      "cieku. Nomogram FAA obejmuje L do 0,24 km (800 ft), spadki 0,5–2,5% i C do 0,95; dłuższe odcinki " +
-      "liczy się wzorem.</p>",
+      "cieku. Nomogram FAA obejmuje krótkie odcinki spływu; dłuższe liczy się wzorem.</p>",
     sources:
       "FAA 1966 (AC 150/5320-5A); FAA 1970; FAA 2013 (AC 150/5320-5D); Fang i in. 2005; Hydrolog, " +
       "<code>docs/COMPUTATION_PATHS.md</code> 3.7; opis polecenia <code>tc faa</code>",
@@ -355,44 +238,12 @@ export const tcInfo = {
         unit: "m/m",
       },
     ],
-    ranges: [
-      {
-        option: "overland_length_km",
-        label: "L",
-        unit: "km",
-        min: 0.01,
-        max: 0.366,
-        source: "próg ostrzeżenia Hydrologu",
-      },
-      {
-        option: "overland_slope_m_per_m",
-        label: "S",
-        unit: "m/m",
-        min: 0.001,
-        max: 0.01,
-        source: "próg ostrzeżenia Hydrologu",
-      },
-      {
-        option: "retardance",
-        label: "N",
-        unit: "",
-        min: 0.02,
-        max: 0.8,
-        source: "próg ostrzeżenia Hydrologu",
-      },
-      {
-        option: "area_km2",
-        label: "A",
-        unit: "km²",
-        max: 0.04,
-        source: "dane Kerby’ego: zlewnie poniżej 10 akrów",
-      },
-    ],
+    symbols: { area_km2: "A", length_km: "L", slope_m_per_m: "S", retardance: "N" },
     note:
-      "<p>Dane Kerby’ego: zlewnie poniżej 0,04 km² (10 akrów), spadki poniżej 1%, spływ do 0,366 km " +
-      "(1200 ft), N do 0,8; dolne granice L i spadku to progi Hydrologu. Poprawka spadku poniżej 0,002 " +
-      "pochodzi od Clevelanda i in. (2012); zakres sprawdza spadek przed poprawką. Wynik to czas spływu " +
-      "po stoku, nie t<sub>c</sub> zlewni z korytem (wtedy Kerby–Kirpich).</p>",
+      "<p>Zakres metody to dane Kerby’ego: bardzo małe zlewnie o małych spadkach i krótkim spływie " +
+      "po stoku. Poprawka spadku poniżej 0,002 pochodzi od Clevelanda i in. (2012); zakres sprawdza " +
+      "spadek przed poprawką. Wynik to czas spływu po stoku, nie t<sub>c</sub> zlewni z korytem " +
+      "(wtedy Kerby–Kirpich).</p>",
     sources:
       "Kerby 1959 (za Roussel i in. 2005); Fang i in. 2005; Cleveland i in. 2012; TxDOT 2019; Hydrolog, " +
       "<code>docs/COMPUTATION_PATHS.md</code> 3.7; opis polecenia <code>tc kerby</code>",
@@ -459,76 +310,18 @@ export const tcInfo = {
         unit: "m/m",
       },
     ],
-    ranges: [
-      {
-        option: "overland_length_km",
-        label: "L (stok)",
-        unit: "km",
-        min: 0.01,
-        max: 0.366,
-        source: "próg ostrzeżenia Hydrologu",
-      },
-      {
-        option: "overland_slope_m_per_m",
-        label: "S (stok)",
-        unit: "m/m",
-        min: 0.001,
-        max: 0.01,
-        source: "próg ostrzeżenia Hydrologu",
-      },
-      {
-        option: "retardance",
-        label: "N",
-        unit: "",
-        min: 0.02,
-        max: 0.8,
-        source: "próg ostrzeżenia Hydrologu",
-      },
-      {
-        option: "channel_length_km",
-        label: "L (koryto)",
-        unit: "km",
-        min: 0.001,
-        max: 80,
-        source: "próg ostrzeżenia Hydrologu",
-      },
-      {
-        option: "channel_slope_m_per_m",
-        label: "S (koryto)",
-        unit: "m/m",
-        min: 0.002,
-        max: 0.15,
-        source: "próg ostrzeżenia Hydrologu",
-      },
-      {
-        option: "area_km2",
-        label: "A",
-        unit: "km²",
-        min: 0.65,
-        max: 388,
-        source: "weryfikacja metody: 92 zlewnie w Teksasie",
-      },
-      {
-        option: "channel_length_km",
-        label: "L (koryto)",
-        unit: "km",
-        min: 1.6,
-        max: 80,
-        source: "weryfikacja metody: 92 zlewnie w Teksasie",
-      },
-      {
-        option: "channel_slope_m_per_m",
-        label: "S (koryto)",
-        unit: "m/m",
-        min: 0.002,
-        max: 0.02,
-        source: "weryfikacja metody: 92 zlewnie w Teksasie",
-      },
-    ],
+    symbols: {
+      area_km2: "A",
+      overland_length_km: "L (stok)",
+      overland_slope_m_per_m: "S (stok)",
+      retardance: "N",
+      channel_length_km: "L (koryto)",
+      channel_slope_m_per_m: "S (koryto)",
+    },
     note:
-      "<p>Metoda wymaga wszystkich pięciu pól zlewni. Hydrolog ostrzega osobno dla obu części: stok " +
-      "według progów Kerby’ego, koryto według progów Kirpicha. Poprawkę spadku poniżej 0,002 stosuje " +
-      "osobno do stoku i do koryta; zakresy sprawdzają spadki przed poprawką.</p>",
+      "<p>Metoda wymaga wszystkich pięciu pól zlewni. Zakres metody to dane jej weryfikacji (92 " +
+      "zlewnie w Teksasie) i dane Kerby’ego dla stoku. Poprawkę spadku poniżej 0,002 Hydrolog " +
+      "stosuje osobno do stoku i do koryta; zakresy sprawdzają spadki przed poprawką.</p>",
     sources:
       "Roussel i in. 2005; Cleveland i in. 2012; Kerby 1959; Kirpich 1940; TxDOT 2019; Hydrolog, " +
       "<code>docs/COMPUTATION_PATHS.md</code> 3.7; opis polecenia <code>tc kerby-kirpich</code>",

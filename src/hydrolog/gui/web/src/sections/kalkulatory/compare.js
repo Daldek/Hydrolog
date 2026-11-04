@@ -6,24 +6,11 @@
 // zakresie”, worded by the values it took. The ranges of each method, the data its formula
 // came from included, are in its explanation (i) beside the word.
 
-import { num } from "../../format.js";
+import { exact } from "../../format.js";
 import { t } from "../../labels/common.js";
 import { kalkulatory as texts } from "../../labels/kalkulatory.js";
 import { describeNotice } from "../../labels/notices.js";
 import { OVERLAND_ONLY, TC_METHODS } from "./state.js";
-
-/**
- * A number of a range word in its shortest exact form: 10000 gives "10 000", 0.001 "0,001".
- *
- * @param {number} value the number
- * @returns {string} the text
- */
-export function plain(value) {
-  if (typeof value !== "number" || !Number.isFinite(value)) return "–";
-  const rounded = Number(value.toPrecision(12));
-  const decimals = (String(rounded).split(".")[1] || "").length;
-  return num(rounded, Math.min(decimals, 10));
-}
 
 /**
  * The symbol and unit of a field of a method.
@@ -55,9 +42,9 @@ export function warningWords(notices) {
       const symbol = symbolOf(details.parameter);
       words.push(t(texts.results.outside, {
         label: symbol.label,
-        value: plain(details.value),
-        min: plain(details.minimum),
-        max: plain(details.maximum),
+        value: exact(details.value),
+        min: exact(details.minimum),
+        max: exact(details.maximum),
         unit: symbol.unit,
       }));
     } else {
@@ -77,7 +64,7 @@ export function parameterWords(parameters) {
   return Object.entries(parameters || {})
     .map(([name, value]) => {
       const symbol = symbolOf(name);
-      return `${symbol.label} ${plain(value)}${symbol.unit}`;
+      return `${symbol.label} ${exact(value)}${symbol.unit}`;
     })
     .join(" · ");
 }
@@ -107,7 +94,7 @@ export function methodRow(method, outcome, used) {
   let sub;
   if (OVERLAND_ONLY.includes(method)) {
     state = "bad";
-    const length = result.parameters && typeof result.parameters.length_km === "number" ? plain(result.parameters.length_km) : "–";
+    const length = result.parameters && typeof result.parameters.length_km === "number" ? exact(result.parameters.length_km) : "–";
     sub = [t(texts.results.overland, { length }), ...warnings].join("; ");
   } else if (warnings.length) {
     state = "warn";

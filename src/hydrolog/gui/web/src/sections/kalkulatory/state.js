@@ -12,6 +12,7 @@ import { useEffect, useState } from "../../html.js";
 import { describeError } from "../../labels/errors.js";
 import { kalkulatory as texts } from "../../labels/kalkulatory.js";
 import { loadState } from "../../persist.js";
+import { registerServed } from "../../ui/info.js";
 
 /** The key of the section's inputs and the prefix of its run channels. */
 export const SECTION = "kalkulatory";
@@ -175,7 +176,8 @@ export function filterCalculators(docs, group, query) {
 
 /**
  * The catalog entries of the calculators' commands and of `tc watershed`, fetched once
- * each; a failed fetch is reported by command.
+ * each; a failed fetch is reported by command. The typical ranges `tc watershed` serves are
+ * registered with the explanations of the six methods ("tc-<method>").
  *
  * @returns {{docs: Map<string, object>, errors: Map<string, string>}} the documents and the
  *   messages of the failures
@@ -188,6 +190,7 @@ export function useCatalogDocs() {
       api
         .command(name)
         .then((doc) => {
+          if (name === TC_COMMAND) registerServed(doc, (range) => (TC_METHODS.includes(range.method) ? `tc-${range.method}` : null));
           if (alive) setState((old) => ({ ...old, docs: new Map(old.docs).set(name, doc) }));
         })
         .catch((error) => {

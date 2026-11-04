@@ -45,6 +45,8 @@ export const siec = {
   method: {
     label: "Metoda",
     hint: "Zmiana metody pokazuje jej pola; pola innych metod zostają w pamięci, ale nie są wysyłane.",
+    /** The source of a method's range from the network's schema, in its explanation (i). */
+    rangeSource: "zakres metody, granice pola w schemacie hydrolog-network/1",
   },
   variants: {
     rain: { label: "Z opadu", meta: "z opadu" },

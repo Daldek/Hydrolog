@@ -179,14 +179,14 @@
 
   <h3>Objaśnienia <span class="i-mark" aria-hidden="true">i</span></h3>
   <figure class="inline-figure">
-    <a href="img/objasnienie.png"><img src="img/objasnienie.png" width="420" height="640" loading="lazy" alt="Okienko objaśnienia „Kirpich (1940): czas koncentracji”: opis, wzór, zmienne z jednostkami i zakres stosowania, w którym długość i spadek cieku są oznaczone „w zakresie”, a powierzchnia i spadek według danych Kirpicha „poza zakresem”."></a>
+    <a href="img/objasnienie.png"><img src="img/objasnienie.png" width="420" height="640" loading="lazy" alt="Okienko objaśnienia „Kirpich (1940): czas koncentracji”: opis, wzór, zmienne z jednostkami i zakres stosowania podany przez Hydrolog ze źródłem, w którym powierzchnia zlewni i spadek cieku przykładu są oznaczone „poza zakresem”."></a>
     <figcaption>Objaśnienie metody Kirpicha; zakres stosowania porównany z danymi przykładu.</figcaption>
   </figure>
-  <p>Przycisk <span class="i-mark" aria-hidden="true">i</span> przy polu, metodzie albo uwadze otwiera objaśnienie: co to jest, wzór, zmienne z jednostkami, zakres stosowania i źródła. Zakres jest porównany z Twoimi danymi i oznaczony „w zakresie” albo „poza zakresem”. Objaśnienie zamyka <span class="key-mark" aria-hidden="true">×</span>, klawisz <kbd>Esc</kbd> albo kliknięcie obok.</p>
+  <p>Przycisk <span class="i-mark" aria-hidden="true">i</span> przy polu, metodzie albo uwadze otwiera objaśnienie: co to jest, wzór, zmienne z jednostkami, zakres stosowania i źródła. Zakres stosowania, razem z publikacją, z której pochodzi, podaje Hydrolog; jest porównany z Twoimi danymi i oznaczony „w zakresie” albo „poza zakresem”. Objaśnienie zamyka <span class="key-mark" aria-hidden="true">×</span>, klawisz <kbd>Esc</kbd> albo kliknięcie obok.</p>
 
   <h3>Uwagi, wykresy i wywołanie</h3>
   <ul>
-    <li><strong>Uwagi</strong> w panelu „Wyniki”: komunikaty Hydrologa („Informacja”, „Uwaga”) z ich kodem, a w Hydrogramie zlewni przed nimi zakres stosowania wybranych metod. Komunikat bez polskiego tłumaczenia ma dopisek (EN).</li>
+    <li><strong>Uwagi</strong> w panelu „Wyniki”: komunikaty Hydrologa („Informacja”, „Uwaga”) z ich kodem, także o wartości poza typowym zakresem metody, a w Hydrogramie zlewni przed nimi potwierdzenia, że dane mieszczą się w zakresie stosowania wybranych metod. Komunikat bez polskiego tłumaczenia ma dopisek (EN).</li>
     <li><strong>Wykresy</strong> mają odczyt wartości: najedź kursorem albo przejdź do wykresu klawiszem <kbd>Tab</kbd> i przesuwaj się strzałkami (<kbd>Shift</kbd> lub <kbd>Page Up</kbd>/<kbd>Page Down</kbd> o dziesięć kroków, <kbd>Home</kbd>, <kbd>End</kbd>, <kbd>Esc</kbd> kończy odczyt).</li>
     <li><strong>Wywołanie</strong> to to samo obliczenie poza przeglądarką: wiersz polecenia (CLI), Python albo MCP dla asystentów AI, z przyciskiem kopiowania.</li>
   </ul>
@@ -212,7 +212,7 @@
     <li><strong>Hietogram.</strong> PMAXTP: wybierasz prawdopodobieństwo i czas trwania, a wysokość opadu z atlasu wpisujesz (Hydrolog niczego nie pobiera). Hietogram: wysokość i czas trwania podane ręcznie. Własna seria: wysokości opadu w kolejnych krokach, wklejone z arkusza albo wczytane z kolumny pliku CSV. Rozkład deszczu w czasie: blokowy, trójkątny, Beta albo Euler II; krok czasowy (puste pole to 5&nbsp;min).</li>
     <li><strong>Hydrogram.</strong> Model hydrogramu jednostkowego, który rozkłada opad efektywny w czasie: SCS, Nash (parametry metodą Lutza ze zlewni albo podane), Clark albo Snyder. Na początku żaden nie jest wybrany: dopiero wybór modelu uruchamia sprawdzenie danych i obliczenie. Pod wyborem widać tylko pola wybranego modelu: dla SCS i Clarka czas koncentracji (metoda Kirpich, NRCS, Giandotti, FAA, Kerby, Kerby–Kirpich albo czas podany ręcznie, a przy FAA i metodach Kerby’ego ich pola spływu po stoku), dla Nasha metodą Lutza długość do środka ciężkości, szorstkość koryta oraz udział lasów i zabudowy, dla Snydera długość do środka ciężkości i jego współczynniki. Na końcu „Straty SCS-CN”, wspólne dla wszystkich modeli: wilgotność poprzedzająca (I sucho, II przeciętnie, III mokro; CN zmienia się wtedy, jak pokazuje podpowiedź) i straty początkowe λ (puste pole to 0,2). „Porównaj metody” otwiera porównanie metod czasu koncentracji w <a href="#kalkulatory">Kalkulatorach</a>.</li>
   </ol>
-  <p>Po wyborze modelu puste pole, którego model potrzebuje, jest czerwone („Podaj wartość: potrzebna dla metody Kirpicha”) i wstrzymuje obliczenie; tak samo wartość niepoprawna, np. „Najwyżej 100 (podano 150)”, którą widać od razu. Wartość poza typowym zakresem metody jest pomarańczowa („Poza typowym zakresem od 0,002 do 0,15”): to uwaga Hydrologa, a wynik liczy się mimo niej. Pod wyborem modelu podsumowanie wymienia, czego brakuje, co poprawić i co jest poza zakresem, z odnośnikiem do każdego pola. Dopóki dane są niepełne, na ekranie zostaje ostatni wynik, oznaczony jako nieaktualny. Nagłówek kroku streszcza jego ustawienia, np. „SCS · 162,9 min · Kirpich”. Przekazanie wyniku (<a href="#przekazanie">Przekazanie</a>) wymaga pełnej zlewni: powierzchni, obwodu, długości zlewni oraz wysokości najmniejszej i największej.</p>
+  <p>Po wyborze modelu puste pole, którego model potrzebuje, jest czerwone („Podaj wartość: potrzebna dla metody Kirpicha”) i wstrzymuje obliczenie; tak samo wartość niepoprawna, np. „Najwyżej 100 (podano 150)”, którą widać od razu. Wartość poza typowym zakresem metody jest pomarańczowa, w przykładzie spadek cieku głównego („<span class="ex" data-example="hydrogram-outside">Poza typowym zakresem od 0,03 do 0,1 (kirpich)</span>”): to uwaga Hydrologa, który podaje zakres metody i jego źródło, a wynik liczy się mimo niej. Pod wyborem modelu podsumowanie wymienia, czego brakuje, co poprawić i co jest poza zakresem, z odnośnikiem do każdego pola. Dopóki dane są niepełne, na ekranie zostaje ostatni wynik, oznaczony jako nieaktualny. Nagłówek kroku streszcza jego ustawienia, np. „SCS · 162,9 min · Kirpich”. Przekazanie wyniku (<a href="#przekazanie">Przekazanie</a>) wymaga pełnej zlewni: powierzchni, obwodu, długości zlewni oraz wysokości najmniejszej i największej.</p>
 
   <h3 id="przyklad">Przykład: Kamiennik — Świerzawa</h3>
   <p>Zlewnia potoku Kamiennik do Świerzawy i deszcz, jaki zdarza się średnio raz na 100 lat. Do pierwszego wyniku wystarczą pola pogrubione; pozostałe przydają się innym metodom i modelom oraz przekazaniu.</p>
@@ -304,12 +304,12 @@
     <caption>Czas koncentracji zlewni z przykładu (Kamiennik — Świerzawa, wszystkie pola z tabeli w rozdziale 02)</caption>
     <thead><tr><th scope="col">Metoda</th><th scope="col">tc [min]</th><th scope="col">Zakres stosowania</th></tr></thead>
     <tbody>
-      <tr><th scope="row">Kirpich</th><td class="num"><span class="ex" data-example="tc-kirpich">162,9</span></td><td><span class="ex" data-example="tc-kirpich-range">w zakresie</span></td></tr>
-      <tr><th scope="row">NRCS (TR-55)</th><td class="num"><span class="ex" data-example="tc-nrcs">377,5</span></td><td><span class="ex" data-example="tc-nrcs-range">w zakresie</span></td></tr>
+      <tr><th scope="row">Kirpich</th><td class="num"><span class="ex" data-example="tc-kirpich">162,9</span></td><td><span class="ex" data-example="tc-kirpich-range">poza zakresem</span></td></tr>
+      <tr><th scope="row">NRCS (TR-55)</th><td class="num"><span class="ex" data-example="tc-nrcs">377,5</span></td><td><span class="ex" data-example="tc-nrcs-range">poza zakresem</span></td></tr>
       <tr><th scope="row">Giandotti</th><td class="num"><span class="ex" data-example="tc-giandotti">339,4</span></td><td><span class="ex" data-example="tc-giandotti-range">poza zakresem</span></td></tr>
       <tr><th scope="row">FAA</th><td class="num"><span class="ex" data-example="tc-faa">23,8</span></td><td><span class="ex" data-example="tc-faa-range">nie dla zlewni</span></td></tr>
       <tr><th scope="row">Kerby</th><td class="num"><span class="ex" data-example="tc-kerby">24,2</span></td><td><span class="ex" data-example="tc-kerby-range">nie dla zlewni</span></td></tr>
-      <tr><th scope="row">Kerby–Kirpich</th><td class="num"><span class="ex" data-example="tc-kerby_kirpich">187,2</span></td><td><span class="ex" data-example="tc-kerby_kirpich-range">poza zakresem</span></td></tr>
+      <tr><th scope="row">Kerby–Kirpich</th><td class="num"><span class="ex" data-example="tc-kerby_kirpich">187,2</span></td><td><span class="ex" data-example="tc-kerby_kirpich-range">w zakresie</span></td></tr>
     </tbody>
   </table>
   <h3>Pozostałe kalkulatory</h3>

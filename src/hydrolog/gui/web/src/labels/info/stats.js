@@ -1,8 +1,9 @@
 /**
  * Explanations (i) of „Statystyka przepływów” (plan D16): the flood frequency analysis of
  * `stats flood-frequency`, its four distributions, the measures of fit and the probability
- * plot. Trusted HTML fragments with MathML; `ranges` are checked against the values of a
- * result (`n_years`). The section registers them with registerInfo(statsInfo).
+ * plot. Trusted HTML fragments with MathML. The length of the record is checked against
+ * Hydrolog's range (`typical_ranges` of `stats flood-frequency`, the result's `n_years`),
+ * which the section registers with the explanations (registerInfo(statsInfo)).
  */
 
 export const statsInfo = {
@@ -18,9 +19,9 @@ export const statsInfo = {
       { symbol: "<math><mi>p</mi></math>", text: "prawdopodobieństwo przewyższenia w roku (p = 1% dla T = 100 lat)", unit: "–" },
       { symbol: "<math><mi>F</mi></math>", text: "dystrybuanta dopasowanego rozkładu", unit: "–" },
     ],
-    ranges: [{ option: "n_years", label: "Długość szeregu N", unit: "lat", min: 30, source: "KZGW (2017)" }],
+    symbols: { years: "Długość szeregu N" },
     note:
-      "<p>Szereg krótszy niż 30 lat daje uwagę <code>short_record</code>, krótszy niż 10 lat <code>small_sample</code>. Kwantyl dla T znacznie dłuższego niż szereg jest ekstrapolacją: jego niepewność rośnie z T.</p>",
+      "<p>Szereg krótszy niż zakres podany wyżej daje uwagę <code>short_record</code>, a bardzo krótki także <code>small_sample</code>. Kwantyl dla T znacznie dłuższego niż szereg jest ekstrapolacją: jego niepewność rośnie z T.</p>",
     sources:
       "KZGW (2017) Aktualizacja metodyki obliczania przepływów i opadów maksymalnych; Coles (2001) An Introduction to Statistical Modeling of Extreme Values; Hydrolog, <code>hydrolog.statistics.high_flows</code>",
   },
