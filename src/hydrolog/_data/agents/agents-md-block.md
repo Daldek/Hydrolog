@@ -1,7 +1,7 @@
 <!-- BEGIN hydrolog -->
 ## Hydrolog
 
-Hydrolog computes watershed hydrology locally: SCS-CN and curve numbers, design hyetographs, time of concentration, unit and runoff hydrographs, lumped flood routing, morphometry, flow statistics, hydrologic soil groups. It uses no network and downloads nothing. Not for spatial data and rasters (use Kartograf), IMGW/CHMU series (use Obserwator) or hydraulics (use Hydraulik).
+Hydrolog computes watershed hydrology locally: SCS-CN and curve numbers, design hyetographs, time of concentration, unit and runoff hydrographs, lumped flood routing, morphometry, flow statistics, hydrologic soil groups. Only `precip pmaxtp` uses the network (the PMAXTP depth of IMGW-PIB, through Obserwator). Not for spatial data and rasters (use Kartograf), IMGW/CHMU series (use Obserwator) or hydraulics (use Hydraulik).
 
 Rule: discover, check, run, read.
 

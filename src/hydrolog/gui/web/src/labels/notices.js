@@ -62,6 +62,10 @@ export const notices = {
       text: "Pominięto posterunki bez wieloboku Thiessena: {stations}.",
       plain: "Pominięto posterunki bez wieloboku Thiessena.",
     },
+    pmaxtp_attribution: {
+      text: "Wysokość opadu pochodzi z atlasu PMAXTP IMGW-PIB; podaj źródło: „{attribution}”.",
+      plain: "Wysokość opadu pochodzi z atlasu PMAXTP IMGW-PIB; podaj IMGW-PIB jako źródło.",
+    },
     ia_coefficient_nonstandard: {
       text: "λ = {ia_coefficient} różni się od 0,2, wartości, dla której skalibrowano tablice CN.",
       plain: "Współczynnik λ różni się od 0,2, wartości, dla której skalibrowano tablice CN.",

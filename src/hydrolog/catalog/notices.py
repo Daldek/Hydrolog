@@ -154,6 +154,13 @@ _SPECS: Final[tuple[NoticeSpec, ...]] = (
         ("stations",),
     ),
     NoticeSpec(
+        "pmaxtp_attribution",
+        "info",
+        "Name IMGW-PIB as the source of this PMAXTP depth, in the wording of the "
+        "result's `attribution`; terms of use: {terms_url}",
+        ("attribution", "terms_url"),
+    ),
+    NoticeSpec(
         "ia_coefficient_nonstandard",
         "info",
         "ia_coefficient = {ia_coefficient:g}: the standard CN tables (TR-55) are "

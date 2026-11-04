@@ -1,7 +1,16 @@
-"""Group ``precip``: design hyetographs and areal precipitation."""
+"""Group ``precip``: design hyetographs, PMAXTP depths and areal precipitation."""
 
 from __future__ import annotations
 
+from collections.abc import Iterable
+
+from hydrolog._pmaxtp import (
+    DURATIONS_MIN,
+    LATITUDE_RANGE,
+    LONGITUDE_RANGE,
+    METHODS,
+    PROBABILITIES_PERCENT,
+)
 from hydrolog.catalog.spec import Command, Option
 
 _HIETOGRAM_TYPES = ("block", "triangular", "beta", "euler_ii")
@@ -123,6 +132,89 @@ HIETOGRAM_OPTIONS: tuple[Option, ...] = (
     ),
 )
 
+
+def _listed(values: Iterable[float], comma: bool = False) -> str:
+    """Write the values as text: "0.01, 0.02", or "0,01; 0,02" with ``comma``."""
+    texts = [f"{value:g}" for value in values]
+    return "; ".join(t.replace(".", ",") for t in texts) if comma else ", ".join(texts)
+
+
+PMAXTP_OPTIONS: tuple[Option, ...] = (
+    Option(
+        name="latitude",
+        type="number",
+        description_pl=(
+            "Szerokość geograficzna punktu (WGS84, stopnie dziesiętne); PMAXTP "
+            "obejmuje Polskę."
+        ),
+        description=(
+            "Latitude of the point (WGS84, decimal degrees); PMAXTP covers Poland."
+        ),
+        required=True,
+        minimum=LATITUDE_RANGE[0],
+        maximum=LATITUDE_RANGE[1],
+        unit="deg",
+    ),
+    Option(
+        name="longitude",
+        type="number",
+        description_pl="Długość geograficzna punktu (WGS84, stopnie dziesiętne).",
+        description="Longitude of the point (WGS84, decimal degrees).",
+        required=True,
+        minimum=LONGITUDE_RANGE[0],
+        maximum=LONGITUDE_RANGE[1],
+        unit="deg",
+    ),
+    Option(
+        name="duration_min",
+        type="number",
+        description_pl=(
+            "Czas trwania opadu [min], jedna z wartości tablic PMAXTP: "
+            f"{_listed(DURATIONS_MIN, comma=True)}."
+        ),
+        description=(
+            "Rainfall duration [min], one of the values of the PMAXTP tables: "
+            f"{_listed(DURATIONS_MIN)}."
+        ),
+        required=True,
+        minimum=DURATIONS_MIN[0],
+        maximum=DURATIONS_MIN[-1],
+        unit="min",
+    ),
+    Option(
+        name="probability_percent",
+        type="number",
+        description_pl=(
+            "Prawdopodobieństwo przewyższenia [%], jedna z wartości tablic PMAXTP: "
+            f"{_listed(PROBABILITIES_PERCENT, comma=True)}."
+        ),
+        description=(
+            "Probability of exceedance [%], one of the values of the PMAXTP tables: "
+            f"{_listed(PROBABILITIES_PERCENT)}."
+        ),
+        required=True,
+        minimum=PROBABILITIES_PERCENT[0],
+        maximum=PROBABILITIES_PERCENT[-1],
+        unit="%",
+    ),
+    Option(
+        name="method",
+        type="choice",
+        description_pl="Metoda oszacowania PMAXTP; domyślnie POT.",
+        description="Estimation method of PMAXTP; default POT.",
+        choices=METHODS,
+        default="POT",
+        meanings={
+            "POT": "Peaks over a threshold, the method IMGW-PIB recommends.",
+            "AMP": "Annual maximum precipitation.",
+        },
+        meanings_pl={
+            "POT": "Szczyty ponad progiem, metoda zalecana przez IMGW-PIB.",
+            "AMP": "Maksima roczne opadu.",
+        },
+    ),
+)
+
 COMMANDS: tuple[Command, ...] = (
     Command(
         name="precip hietogram",
@@ -188,6 +280,61 @@ COMMANDS: tuple[Command, ...] = (
                 "beta": 5.0,
             },
             {"hietogram_type": "euler_ii", "total_mm": 38.4, "duration_min": 120.0},
+        ),
+    ),
+    Command(
+        name="precip pmaxtp",
+        operation_id="hydrolog_precip_pmaxtp",
+        summary_pl=(
+            "Pobierz z IMGW-PIB wysokość opadu PMAXTP dla punktu, czasu trwania i "
+            "prawdopodobieństwa."
+        ),
+        summary=(
+            "Fetch the PMAXTP depth of IMGW-PIB for a point, a duration and a "
+            "probability."
+        ),
+        description_pl=(
+            "Wysokość opadu maksymalnego [mm] o czasie `duration_min` i "
+            "prawdopodobieństwie przewyższenia `probability_percent` z atlasu PMAXTP "
+            "IMGW-PIB, metodą POT albo AMP. Korzysta z sieci: pobiera ją Obserwator "
+            "(dodatek `pmaxtp`). Podaj ją jako `total_mm` poleceniom `precip "
+            "hietogram` i `hydrograph generate`."
+        ),
+        description=(
+            "Maximum rainfall depth [mm] of `duration_min` at exceedance probability "
+            "`probability_percent` from the PMAXTP atlas of IMGW-PIB, by POT or AMP. "
+            "Uses the network: Obserwator fetches it (extra `pmaxtp`). Pass it as "
+            "`total_mm` of `precip hietogram` or `hydrograph generate`."
+        ),
+        function="hydrolog.operations.precip_pmaxtp",
+        options=PMAXTP_OPTIONS,
+        result_schema="hydrolog-precip-pmaxtp/1",
+        cardinality="single",
+        network=True,
+        rules=(
+            "Give a point in Poland (WGS84).",
+            "Pick duration_min and probability_percent from their descriptions.",
+            "Name IMGW-PIB as the source of the depth.",
+        ),
+        rules_pl=(
+            "Podaj punkt w Polsce (WGS84).",
+            "duration_min i probability_percent wybierz z ich opisów.",
+            "Podaj IMGW-PIB jako źródło wysokości.",
+        ),
+        errors=(
+            "validation_error",
+            "missing_dependency",
+            "source_unavailable",
+            "data_error",
+        ),
+        example_results=({"depth_mm": 39.16, "method": "POT"},),
+        examples=(
+            {
+                "latitude": 52.23,
+                "longitude": 21.01,
+                "duration_min": 60.0,
+                "probability_percent": 1.0,
+            },
         ),
     ),
     Command(

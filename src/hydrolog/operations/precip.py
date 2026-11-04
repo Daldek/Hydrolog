@@ -1,7 +1,8 @@
-"""Operations of the group ``precip``: design hyetographs and areal precipitation.
+"""Operations of the group ``precip``: design hyetographs, PMAXTP, areal precipitation.
 
-Wrappers over the hyetograph generators of :mod:`hydrolog.precipitation.hietogram`
-and the interpolation functions of :mod:`hydrolog.precipitation.interpolation`.
+Wrappers over the hyetograph generators of :mod:`hydrolog.precipitation.hietogram`, the
+PMAXTP depths of IMGW-PIB fetched through Obserwator (:mod:`hydrolog._pmaxtp`) and the
+interpolation functions of :mod:`hydrolog.precipitation.interpolation`.
 :func:`build_hietogram` and :func:`hietogram_notices` are shared with
 ``hydrograph generate``.
 """
@@ -15,6 +16,7 @@ from typing import Any, Literal, get_args
 import numpy as np
 from numpy.typing import NDArray
 
+from hydrolog._pmaxtp import ATTRIBUTION, TERMS_URL, PmaxtpMethod, fetch_depth
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.catalog.envelope import Notice, OperationOutput
 from hydrolog.catalog.inputs import load_stations
@@ -47,10 +49,12 @@ __all__ = [
     "ArealPrecipitationResult",
     "HietogramType",
     "PrecipHietogramResult",
+    "PrecipPmaxtpResult",
     "build_hietogram",
     "hietogram_notices",
     "precip_areal",
     "precip_hietogram",
+    "precip_pmaxtp",
 ]
 
 HietogramType = Literal["block", "triangular", "beta", "euler_ii"]
@@ -98,6 +102,35 @@ class PrecipHietogramResult(JsonResultMixin):
     times_min: NDArray[np.float64]
     depths_mm: NDArray[np.float64]
     intensities_mm_per_h: NDArray[np.float64]
+
+
+@dataclass
+class PrecipPmaxtpResult(JsonResultMixin):
+    """PMAXTP depth of IMGW-PIB for a point, a duration and a probability.
+
+    Attributes
+    ----------
+    depth_mm : float
+        Maximum precipitation of the duration at the probability [mm].
+    latitude, longitude : float
+        The point [degrees, WGS84].
+    method : str
+        ``"POT"`` or ``"AMP"``.
+    duration_min : float
+        Duration [min].
+    probability_percent : float
+        Probability of exceedance [%].
+    attribution : str
+        The attribution that the terms of use of IMGW-PIB prescribe, in their wording.
+    """
+
+    depth_mm: float
+    latitude: float
+    longitude: float
+    method: str
+    duration_min: float
+    probability_percent: float
+    attribution: str
 
 
 @dataclass
@@ -308,6 +341,69 @@ def precip_hietogram(
         intensities_mm_per_h=rates,
     )
     return OperationOutput(result, hietogram_notices(hietogram))
+
+
+def precip_pmaxtp(
+    *,
+    latitude: float,
+    longitude: float,
+    duration_min: float,
+    probability_percent: float,
+    method: PmaxtpMethod = "POT",
+) -> OperationOutput:
+    """PMAXTP depth of IMGW-PIB for a point (``precip pmaxtp``), fetched from the web.
+
+    Obserwator (extra ``pmaxtp``) fetches the PMAXTP table of the point from IMGW-PIB;
+    the depth is its cell of ``duration_min`` and ``probability_percent``. It is the
+    ``total_mm`` of a design hyetograph of that duration (``precip hietogram``,
+    ``hydrograph generate``).
+
+    Parameters
+    ----------
+    latitude, longitude : float
+        A point in Poland [degrees, WGS84].
+    duration_min : float
+        Duration [min], one of the PMAXTP tables: 5, 10, 15, 30, 45, 60, 90, 120, 180,
+        360, 720, 1080, 1440, 2160, 2880 or 4320.
+    probability_percent : float
+        Probability of exceedance [%], one of the PMAXTP tables: 0.01, 0.02, 0.03,
+        0.05, 0.1, 0.2, 0.3, 0.5, 1, 2, 3, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 95,
+        98, 98.5, 99, 99.5 or 99.9.
+    method : {"POT", "AMP"}, optional
+        Estimation method, by default POT (the one IMGW-PIB recommends).
+
+    Returns
+    -------
+    OperationOutput
+        :class:`PrecipPmaxtpResult` and the notice ``pmaxtp_attribution``: IMGW-PIB
+        must be named as the source of the depth.
+
+    Raises
+    ------
+    InvalidParameterError
+        If the duration, the probability or the method is not one of PMAXTP, or the
+        point lies outside the atlas (``details.option`` ``latitude``).
+    MissingDependencyError
+        If Obserwator is not installed (extra ``pmaxtp``).
+    HydrologError
+        Code ``source_unavailable`` when IMGW-PIB does not answer.
+    InputDataError
+        If the answer of IMGW-PIB cannot be read.
+    """
+    depth = fetch_depth(latitude, longitude, duration_min, probability_percent, method)
+    result = PrecipPmaxtpResult(
+        depth_mm=depth.depth_mm,
+        latitude=depth.latitude,
+        longitude=depth.longitude,
+        method=depth.method,
+        duration_min=depth.duration_min,
+        probability_percent=depth.probability_percent,
+        attribution=ATTRIBUTION,
+    )
+    attribution = notice(
+        "pmaxtp_attribution", attribution=ATTRIBUTION, terms_url=TERMS_URL
+    )
+    return OperationOutput(result, [attribution])
 
 
 _STATION_METHODS = ("arithmetic", "thiessen", "idw")

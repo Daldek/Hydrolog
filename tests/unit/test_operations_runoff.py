@@ -2707,6 +2707,7 @@ class TestDeclarations:
             "scs effective",
             "precip hietogram",
             "precip areal",
+            "precip pmaxtp",
             "uh scs",
             "uh nash",
             "uh clark",

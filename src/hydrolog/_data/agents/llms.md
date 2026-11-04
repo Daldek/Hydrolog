@@ -1,10 +1,10 @@
 # Hydrolog
 
-> A Python library, CLI and MCP server for watershed hydrology: SCS-CN and curve numbers, design hyetographs, time of concentration, unit and runoff hydrographs, lumped flood routing, morphometry, flow statistics, hydrologic soil groups (HSG) from rasters, a Markdown report. It computes locally, with no network and no data downloads.
+> A Python library, CLI and MCP server for watershed hydrology: SCS-CN and curve numbers, design hyetographs, time of concentration, unit and runoff hydrographs, lumped flood routing, morphometry, flow statistics, hydrologic soil groups (HSG) from rasters, a Markdown report. It computes locally; only `precip pmaxtp` uses the network, to fetch the PMAXTP depth of IMGW-PIB through Obserwator.
 
 Hydrolog is not for spatial data (DEM, land cover, SoilGrids rasters), which Kartograf provides, for IMGW/CHMU measurement series, which Obserwator exports to CSV, or for hydraulic modelling (water levels, inundation), which Hydraulik and HEC-RAS do.
 
-Interfaces: Python (<!-- hydrolog:python_example -->), the CLI (`hydrolog <group> <verb> --option value --json`) and the MCP server (`hydrolog mcp --allow-dir DIR`; a tool is an `operation_id`). Install with `pip install "hydrolog @ git+https://github.com/Daldek/Hydrolog.git"`; the extras are `raster`, `mcp`, `viz` and `all`.
+Interfaces: Python (<!-- hydrolog:python_example -->), the CLI (`hydrolog <group> <verb> --option value --json`) and the MCP server (`hydrolog mcp --allow-dir DIR`; a tool is an `operation_id`). Install with `pip install "hydrolog @ git+https://github.com/Daldek/Hydrolog.git"`; the extras are `raster`, `mcp`, `pmaxtp`, `viz` and `all`.
 
 Work in four steps: discover (`hydrolog commands list`, `hydrolog commands schema --command NAME`), check (`--check` for commands that write a file), run, read (`result`, `notices`, `result.files`). A result is a `hydrolog-result/1` envelope; an error is a `hydrolog-error/1` document whose `code` is one of: <!-- hydrolog:error_codes -->.
 

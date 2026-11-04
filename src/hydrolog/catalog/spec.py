@@ -94,6 +94,7 @@ ERROR_CODE_NAMES: Final[tuple[str, ...]] = (
     "forbidden",
     "io_error",
     "conflict",
+    "source_unavailable",
 )
 """Registry codes a command can declare in :attr:`Command.errors`."""
 
@@ -740,6 +741,10 @@ class Command:
         command index of the agent guides. ``False`` for a command that a person
         starts, such as ``gui serve``, which serves until it is stopped; it stays in
         ``commands list`` and ``commands schema``, but has no MCP family.
+    network : bool, optional
+        The command uses the network (``precip pmaxtp`` fetches from IMGW-PIB); every
+        other command runs offline. It is ``effects.network`` and the
+        ``openWorldHint`` of its MCP tool.
     example_results : tuple of Mapping, optional
         Excerpt of the result of each example, in the order of ``examples``.
     examples : tuple of Mapping, optional
@@ -770,6 +775,7 @@ class Command:
     agent_tool: bool = True
     example_results: tuple[Mapping[str, object], ...] = ()
     typical_ranges: tuple[RangeCheck, ...] = ()
+    network: bool = False
 
     def __post_init__(self) -> None:
         """Validate the field values."""
@@ -909,7 +915,7 @@ class Command:
             read_only=not self.writes,
             writes="replace" if self.writes else "none",
             idempotent=True,
-            network=False,
+            network=self.network,
             destructive=self.writes,
         )
 

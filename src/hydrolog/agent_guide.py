@@ -85,7 +85,7 @@ _GROUP_TITLES: Final[Mapping[str, str]] = {
     "tc": "Time of concentration",
     "cn": "Curve Number (TR-55)",
     "scs": "SCS-CN effective precipitation",
-    "precip": "Hyetographs and areal precipitation",
+    "precip": "Hyetographs, PMAXTP and areal precipitation",
     "uh": "Unit hydrographs",
     "hydrograph": "Runoff hydrograph",
     "route": "Flood routing",
@@ -128,14 +128,15 @@ _PRINCIPLES: Final[tuple[str, ...]] = (
     "outside `--allow-dir`, and every path option without it.",
     "**Read `notices`:** non-fatal warnings (a short series, a value outside a "
     "formula's range); pass them on with the result.",
-    "**No data downloads:** Hydrolog uses no network; series come from Obserwator, "
-    "soil rasters from Kartograf.",
+    "**Other sources:** series come from Obserwator, soil rasters from Kartograf; "
+    "only `{cmd:precip pmaxtp}` goes online.",
 )
 # What each code of the error registry means for an agent.
 _ERROR_ADVICE: Final[Mapping[str, str]] = {
     "validation_error": "wrong or missing option: fix `details.option` (`hint`)",
     "not_found": "unknown command (`details.suggestions`) or input file",
     "conflict": "output file exists: another `output` or `force`",
+    "source_unavailable": "IMGW-PIB did not answer: retry later",
     "missing_dependency": "optional extra missing: install it (`hint`)",
     "data_error": "malformed input file: see `details.path`, `details.reason`",
     "io_error": "output cannot be written: check `details.path`",
@@ -203,7 +204,7 @@ _FLOWS: Final[tuple[_Flow, ...]] = (
             ),
             _Step(
                 "time of concentration (`result.tc_min`); a field the method needs "
-                "but the file lacks is a `validation_error` that lists it.",
+                "and the file lacks is a `validation_error`.",
                 "tc watershed",
                 {"watershed_file": _WATERSHED, "method": "kirpich"},
             ),
@@ -215,9 +216,8 @@ _FLOWS: Final[tuple[_Flow, ...]] = (
                 _HYDROGRAPH,
             ),
             _Step(
-                "plan of the Markdown report (action `write`, `replace` or "
-                "`conflict`, nothing written); run it without `check` to write it "
-                "(`result.files`).",
+                "plan of the Markdown report (`write`, `replace` or `conflict`); run "
+                "it without `check` to write it (`result.files`).",
                 "report generate",
                 {**_HYDROGRAPH, "output": _REPORT, "check": True},
             ),
@@ -230,7 +230,7 @@ _FLOWS: Final[tuple[_Flow, ...]] = (
         (
             _Step(
                 "Obserwator: export one station (`CODE` from `obserwator stations "
-                "find`); reliable quantiles need at least 30 years.",
+                "find`).",
                 external=(
                     "obserwator series export --dataset pl.imgw.hydro_daily "
                     f"--station CODE --variables Q --format csv --output {_SERIES}"
@@ -257,9 +257,8 @@ _FLOWS: Final[tuple[_Flow, ...]] = (
         "(extra `raster`).",
         (
             _Step(
-                "Kartograf: repeat with `--property sand` and `--property silt`; the "
-                "`files[].path` values of its `--json` result are the raster inputs "
-                "of the next step.",
+                "Kartograf: repeat with `--property sand` and `silt`; its "
+                "`files[].path` are the rasters of the next step.",
                 external=(
                     "kartograf soil download --property clay --depth 0-5cm "
                     "--stat mean --bbox 626000,480000,628000,482000 "
@@ -267,8 +266,8 @@ _FLOWS: Final[tuple[_Flow, ...]] = (
                 ),
             ),
             _Step(
-                "HSG raster (GeoTIFF `uint8`: 0 no data, 1-4 are A-D) from three "
-                "rasters with the same coordinate system, grid and size.",
+                "HSG raster (GeoTIFF `uint8`: 0 no data, 1-4 A-D) from three rasters "
+                "of one grid (CRS, extent, size).",
                 "soil hsg",
                 {
                     "clay_path": _SOILGRIDS.format("clay"),
@@ -285,8 +284,7 @@ _FLOWS: Final[tuple[_Flow, ...]] = (
             ),
             _Step(
                 "area-weighted CN (`result.cn`): a part is a CN (`cn list`, `cn "
-                "lookup`) and the `area_ha` of a group from `soil hsg-stats`; "
-                "intersecting rasters with land cover happens outside Hydrolog.",
+                "lookup`) and the `area_ha` of a group from `soil hsg-stats`.",
                 "cn weighted",
                 {
                     "parts": [
