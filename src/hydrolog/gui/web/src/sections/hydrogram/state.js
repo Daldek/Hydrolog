@@ -5,12 +5,19 @@
 // and the options of `hydrograph generate` (toOptions). A first visit starts empty: no
 // watershed, no storm, no model.
 //
+// PMAXTP (ADR-0018): the person gives the point (latitude and longitude, WGS84), the
+// probability and the duration of IMGW-PIB's atlas and its method; the depth is never typed.
+// `precip pmaxtp` fetches it (pmaxtpOptions), and the depth it gave is kept with the inputs
+// as `pmaxtp_fetched` (the options it was fetched for and `depth_mm`), so a reload shows it
+// without fetching again; it is the `total_mm` of a run while the options are the same
+// (pmaxtpDepth).
+//
 // Nothing is required until a model is chosen in step 3; a value that is not a number or
 // leaves the bounds of `watershed` of hydrolog-network-1.schema.json or of the catalog
-// entry of `hydrograph generate` (forms/model.js words both) is an error at once. Once a
-// model is chosen, an empty field the model, its tc method or its rainfall reads is an
-// error; Hydrolog's notices of a value outside its typical range stand on the field they
-// name (`details.field`) as warnings, which never stop a run.
+// entries of `hydrograph generate` and `precip pmaxtp` (forms/model.js words them) is an
+// error at once. Once a model is chosen, an empty field the model, its tc method or its
+// rainfall reads is an error; Hydrolog's notices of a value outside its typical range
+// stand on the field they name (`details.field`) as warnings, which never stop a run.
 //
 // Numbers are kept as typed (texts with a decimal comma or dot), as the generated forms
 // keep them. `origin` is where the watershed came from (a file, a hand-off): {title,
@@ -18,7 +25,7 @@
 // „zmieniono” with „przywróć”.
 
 import { inputText, parseNumber } from "../../format.js";
-import { fieldModel, parseSeries, validate, withReason } from "../../forms/model.js";
+import { commandEntry, fieldModel, parseSeries, validate, withReason } from "../../forms/model.js";
 import { t } from "../../labels/common.js";
 import { hydrogram as texts } from "../../labels/hydrogram.js";
 import { describeNotice, isRangeNotice, noticeValue } from "../../labels/notices.js";
@@ -141,6 +148,9 @@ export const UNITS = Object.freeze({
   cn: "–",
   tc_min: "min",
   total_mm: "mm",
+  pmaxtp_latitude: "°",
+  pmaxtp_longitude: "°",
+  pmaxtp_depth: "mm",
   duration_min: "min",
   alpha: "–",
   beta: "–",
@@ -169,19 +179,86 @@ export const SHAPES = Object.freeze(["block", "triangular", "beta", "euler_ii"])
 /** The antecedent moisture conditions (`amc`). */
 export const AMC = Object.freeze(["I", "II", "III"]);
 
-/** Probabilities of PMAXTP [%], as the mockup offers them. */
-export const PMAXTP_PROBABILITIES = Object.freeze(["0.5", "1", "2", "5", "10", "20", "50"]);
+/** The command that fetches the depth of PMAXTP for a point (ADR-0018). */
+export const PMAXTP_COMMAND = "precip pmaxtp";
 
-/** Durations of PMAXTP [min], as the mockup offers them (1 h to 72 h). */
-export const PMAXTP_DURATIONS = Object.freeze(["60", "120", "180", "360", "720", "1440", "2880", "4320"]);
+/** The channel of the PMAXTP fetches: a newer fetch replaces an older one, never a run. */
+export const PMAXTP_CHANNEL = "hydrogram-pmaxtp";
+
+/** Probabilities of PMAXTP [%], those of IMGW-PIB's tables (`precip pmaxtp`). */
+export const PMAXTP_PROBABILITIES = Object.freeze([
+  "0.01",
+  "0.02",
+  "0.03",
+  "0.05",
+  "0.1",
+  "0.2",
+  "0.3",
+  "0.5",
+  "1",
+  "2",
+  "3",
+  "5",
+  "10",
+  "20",
+  "30",
+  "40",
+  "50",
+  "60",
+  "70",
+  "80",
+  "90",
+  "95",
+  "98",
+  "98.5",
+  "99",
+  "99.5",
+  "99.9",
+]);
+
+/** Durations of PMAXTP [min], those of IMGW-PIB's tables (5 min to 72 h). */
+export const PMAXTP_DURATIONS = Object.freeze([
+  "5",
+  "10",
+  "15",
+  "30",
+  "45",
+  "60",
+  "90",
+  "120",
+  "180",
+  "360",
+  "720",
+  "1080",
+  "1440",
+  "2160",
+  "2880",
+  "4320",
+]);
+
+/** The methods of PMAXTP: POT (Hydrolog's default, which IMGW-PIB recommends) and AMP. */
+export const PMAXTP_METHODS = Object.freeze(["POT", "AMP"]);
+
+/** The field of the panel that holds each option of `precip pmaxtp`. */
+export const PMAXTP_FIELDS = Object.freeze({
+  latitude: "pmaxtp_latitude",
+  longitude: "pmaxtp_longitude",
+  probability_percent: "pmaxtp_probability_pct",
+  duration_min: "pmaxtp_duration_min",
+  method: "pmaxtp_method",
+});
 
 /** The defaults of `peak_position` by hyetograph type (the catalog's description). */
 export const PEAK_DEFAULTS = Object.freeze({ triangular: 0.5, euler_ii: 0.33 });
 
 /** The fields of step 2 (Hietogram); every other field that is not the watershed's is step 3's. */
 const RAIN_FIELDS = new Set([
+  "pmaxtp_latitude",
+  "pmaxtp_longitude",
   "pmaxtp_probability_pct",
   "pmaxtp_duration_min",
+  "pmaxtp_method",
+  "pmaxtp_depth",
   "total_mm",
   "duration_min",
   "values",
@@ -212,8 +289,12 @@ export function initialState() {
     tc_manual: false,
     tc_min: "",
     rain_source: "pmaxtp",
+    pmaxtp_latitude: "",
+    pmaxtp_longitude: "",
     pmaxtp_probability_pct: "",
     pmaxtp_duration_min: "",
+    pmaxtp_method: "POT",
+    pmaxtp_fetched: null,
     total_mm: "",
     duration_min: "",
     hietogram_type: "beta",
@@ -259,6 +340,8 @@ export function normalize(stored) {
   if (!isPlainObject(inputs.watershed)) inputs.watershed = {};
   if (!isPlainObject(inputs.origin)) inputs.origin = null;
   if (!UH_MODELS.includes(inputs.uh_model)) inputs.uh_model = null;
+  if (!PMAXTP_METHODS.includes(inputs.pmaxtp_method)) inputs.pmaxtp_method = "POT";
+  if (!isPlainObject(inputs.pmaxtp_fetched)) inputs.pmaxtp_fetched = null;
   return inputs;
 }
 
@@ -303,13 +386,78 @@ export function rainDuration(inputs) {
 }
 
 /**
- * The field that holds the duration of the rainfall in the panel.
+ * The field of the panel that holds an option of `hydrograph generate`: under PMAXTP the
+ * duration is its select and the depth the row of the fetched depth.
  *
  * @param {object} inputs the inputs
- * @returns {string} "pmaxtp_duration_min" or "duration_min"
+ * @param {string} option the option's name
+ * @returns {string} the field
  */
-function durationField(inputs) {
-  return inputs.rain_source === "pmaxtp" ? "pmaxtp_duration_min" : "duration_min";
+export function optionField(inputs, option) {
+  if (inputs.rain_source !== "pmaxtp") return option;
+  if (option === "duration_min") return "pmaxtp_duration_min";
+  if (option === "total_mm") return "pmaxtp_depth";
+  return option;
+}
+
+/**
+ * The options of `precip pmaxtp` the inputs give: the point, the probability and the
+ * duration as numbers once all four are given (their bounds are checkInputs'), and the
+ * method.
+ *
+ * @param {object} inputs the inputs
+ * @returns {{latitude: number, longitude: number, duration_min: number,
+ *   probability_percent: number, method: string}|null} the options, null unless the rainfall
+ *   is PMAXTP with its point, probability and duration given as numbers
+ */
+export function pmaxtpOptions(inputs) {
+  if (inputs.rain_source !== "pmaxtp") return null;
+  const latitude = numberOf(inputs.pmaxtp_latitude);
+  const longitude = numberOf(inputs.pmaxtp_longitude);
+  const duration = numberOf(inputs.pmaxtp_duration_min);
+  const probability = numberOf(inputs.pmaxtp_probability_pct);
+  if (latitude === null || longitude === null || duration === null || probability === null) return null;
+  const method = PMAXTP_METHODS.includes(inputs.pmaxtp_method) ? inputs.pmaxtp_method : "POT";
+  return { latitude, longitude, duration_min: duration, probability_percent: probability, method };
+}
+
+/**
+ * The options of a PMAXTP fetch as one text, which tells two fetches apart.
+ *
+ * @param {object|null} options the options of `precip pmaxtp`, or a remembered fetch
+ * @returns {string|null} the text, null without options
+ */
+export function pmaxtpKey(options) {
+  if (!options) return null;
+  const { latitude, longitude, duration_min: duration, probability_percent: probability, method } = options;
+  return JSON.stringify([latitude, longitude, duration, probability, method || "POT"]);
+}
+
+/**
+ * The PMAXTP depth of the inputs: the one remembered with them (`pmaxtp_fetched`) while it
+ * was fetched for the same point, probability, duration and method.
+ *
+ * @param {object} inputs the inputs
+ * @returns {number|null} the depth [mm], null when it is to be fetched or the rainfall is
+ *   not PMAXTP
+ */
+export function pmaxtpDepth(inputs) {
+  const fetched = inputs.pmaxtp_fetched;
+  if (!isPlainObject(fetched) || typeof fetched.depth_mm !== "number" || !Number.isFinite(fetched.depth_mm)) return null;
+  const key = pmaxtpKey(pmaxtpOptions(inputs));
+  return key !== null && pmaxtpKey(fetched) === key ? fetched.depth_mm : null;
+}
+
+/**
+ * What the inputs keep of a fetched depth (`pmaxtp_fetched`): the options it was fetched
+ * for and the depth.
+ *
+ * @param {object} options the options of `precip pmaxtp`
+ * @param {number} depth the depth [mm]
+ * @returns {object} the record
+ */
+export function pmaxtpRecord(options, depth) {
+  return { ...options, depth_mm: depth };
 }
 
 /**
@@ -410,8 +558,9 @@ export function panelFields(inputs) {
   if (inputs.rain_source === "series") {
     names.push("values");
   } else {
-    if (inputs.rain_source === "pmaxtp") names.push("pmaxtp_probability_pct", "pmaxtp_duration_min", "total_mm");
-    else names.push("total_mm", "duration_min");
+    if (inputs.rain_source === "pmaxtp") {
+      names.push("pmaxtp_latitude", "pmaxtp_longitude", "pmaxtp_probability_pct", "pmaxtp_duration_min", "pmaxtp_method", "pmaxtp_depth");
+    } else names.push("total_mm", "duration_min");
     if (inputs.hietogram_type === "beta") names.push("alpha", "beta");
     else if (Object.hasOwn(PEAK_DEFAULTS, inputs.hietogram_type)) names.push("peak_position");
   }
@@ -504,9 +653,10 @@ export function requirements(inputs) {
   if (inputs.rain_source === "series") {
     need("values", "series");
   } else if (inputs.rain_source === "pmaxtp") {
+    need("pmaxtp_latitude", "pmaxtp");
+    need("pmaxtp_longitude", "pmaxtp");
     need("pmaxtp_probability_pct", "pmaxtp");
     need("pmaxtp_duration_min", "pmaxtp");
-    need("total_mm", "pmaxtp");
   } else {
     need("total_mm", "hietogram");
     need("duration_min", "hietogram");
@@ -597,18 +747,33 @@ export function watershedEntry(schema) {
 }
 
 /**
- * The models that check the inputs: the watershed's (from the network schema) and the
+ * The model that checks the fields of PMAXTP: the catalog entry of `precip pmaxtp` (the
+ * bounds of the point), none of them required here: what a run needs comes from
+ * requirements().
+ *
+ * @param {object} commandDoc the catalog document of `precip pmaxtp`
+ * @returns {object} the field model
+ */
+export function pmaxtpModel(commandDoc) {
+  const entry = commandEntry(commandDoc);
+  return fieldModel({ ...entry, options: (entry.options || []).map((option) => ({ ...option, required: false })) });
+}
+
+/**
+ * The models that check the inputs: the watershed's (from the network schema), the
  * options' (the catalog entry of `hydrograph generate`, without the options the section
- * gives in another way).
+ * gives in another way) and PMAXTP's (pmaxtpModel).
  *
  * @param {object} commandDoc the catalog document of `hydrograph generate`
  * @param {object} schema hydrolog-network-1.schema.json
- * @returns {{watershed: object, options: object}} the field models
+ * @param {object} pmaxtpDoc the catalog document of `precip pmaxtp`
+ * @returns {{watershed: object, options: object, pmaxtp: object}} the field models
  */
-export function inputModels(commandDoc, schema) {
+export function inputModels(commandDoc, schema, pmaxtpDoc) {
   return {
     watershed: fieldModel(watershedEntry(schema)),
     options: fieldModel(commandDoc, { hide: [...HIDDEN_OPTIONS] }),
+    pmaxtp: pmaxtpModel(pmaxtpDoc),
   };
 }
 
@@ -646,7 +811,8 @@ export function usedTexts(inputs) {
     used.values = inputs.values;
   } else {
     used.hietogram_type = inputs.hietogram_type;
-    used.total_mm = inputs.total_mm;
+    // PMAXTP's depth is the fetched one, never typed
+    used.total_mm = inputs.rain_source === "pmaxtp" ? inputText(pmaxtpDepth(inputs)) : inputs.total_mm;
     used.duration_min = rainDuration(inputs);
     if (inputs.hietogram_type === "beta") {
       used.alpha = inputs.alpha;
@@ -723,7 +889,7 @@ export function noticeWarnings(notices, inputs) {
     } else if (notice.code === "ia_coefficient_nonstandard") {
       add("ia_coefficient", describeNotice(notice).text, notice.code);
     } else if (notice.code === "duration_not_covered") {
-      add(durationField(inputs), describeNotice(notice).text, notice.code);
+      add(optionField(inputs, "duration_min"), describeNotice(notice).text, notice.code);
     }
   }
   return found;
@@ -731,28 +897,33 @@ export function noticeWarnings(notices, inputs) {
 
 /**
  * Check the inputs (plan D13, the author's three steps): the watershed's fields in the
- * panel against the network schema, the options in use against the catalog (both at once,
- * model or not), and, once a model is chosen, every field it needs (requirements) and the
- * relations Hydrolog refuses without naming a field (the highest elevation above the
- * lowest; Lutz's Lc not longer than L). The warnings are those of the newest run's notices
- * on the fields that still hold the run's values under the run's setting.
+ * panel against the network schema, the options in use against the catalog and the point
+ * of PMAXTP against `precip pmaxtp` (all at once, model or not), and, once a model is
+ * chosen, every field it needs (requirements) and the relations Hydrolog refuses without
+ * naming a field (the highest elevation above the lowest; Lutz's Lc not longer than L).
+ * The warnings are those of the newest run's notices on the fields that still hold the
+ * run's values under the run's setting.
  *
  * @param {object} inputs the inputs
- * @param {{watershed: object, options: object}} models from inputModels
+ * @param {{watershed: object, options: object, pmaxtp: object}} models from inputModels
  * @param {{inputs: object, notices: object[]}|null} [last] the newest run shown: its
  *   inputs and the notices of its result
  * @returns {{errors: Object<string, string>, warnings: Object<string, string>}} the
  *   messages by field name, in the order of the panel; no error means the inputs can run
- *   once a model is chosen
+ *   once a model is chosen (and, under PMAXTP, the depth is fetched: pmaxtpDepth)
  */
 export function checkInputs(inputs, models, last = null) {
   const shown = panelFields(inputs);
   const found = { ...watershedErrors(inputs.watershed, models, sentFields(inputs)) };
+  if (inputs.rain_source === "pmaxtp") {
+    const typed = Object.fromEntries(Object.entries(PMAXTP_FIELDS).map(([option, name]) => [option, inputs[name]]));
+    for (const [option, message] of Object.entries(validate(models.pmaxtp, typed))) found[PMAXTP_FIELDS[option]] = message;
+  }
   const used = usedTexts(inputs);
   for (const [option, message] of Object.entries(validate(models.options, used))) {
     // Snyder's L and Lc taken from the watershed: the watershed's field says what is wrong
     if (SNYDER_FALLBACK.includes(option) && isEmpty(inputs[option])) continue;
-    const name = option === "duration_min" ? durationField(inputs) : option;
+    const name = optionField(inputs, option);
     if (!found[name]) found[name] = message;
   }
   const { required } = requirements(inputs);

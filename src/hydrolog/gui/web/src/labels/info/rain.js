@@ -10,8 +10,9 @@ export const rainInfo = {
     title: "Źródło opadu: PMAXTP, hietogram albo własna seria",
     intro:
       "<p>PMAXTP: wysokość opadu P o prawdopodobieństwie przewyższenia p i czasie trwania D z atlasu " +
-      "PMAXTP (IMGW-PIB; p i D wybierasz z wartości atlasu), wpisana ręcznie albo przyniesiona z " +
-      "przekazaniem; GUI niczego nie pobiera. " +
+      "PMAXTP IMGW-PIB dla punktu zlewni (szerokość i długość geograficzna WGS84; p, D i metodę POT albo " +
+      "AMP wybierasz z wartości atlasu). Pobiera ją Hydrolog (<code>precip pmaxtp</code>, przez " +
+      "Obserwatora); nie wpisuje się jej. " +
       "Hietogram: wysokość i czas trwania podane wprost. W obu przypadkach Hydrolog rozkłada P w czasie " +
       "hietogramem projektowym (<code>hietogram_type</code>, <code>total_mm</code>, " +
       "<code>duration_min</code>; jak <code>precip hietogram</code>).</p>" +
@@ -61,8 +62,8 @@ export const rainInfo = {
       "czasów trwania. Własna seria daje hydrogram konkretnego zdarzenia, bez przypisanego " +
       "prawdopodobieństwa.</p>",
     sources:
-      "IMGW-PIB 2022 (PMAXTP); DVWK 1984 (za KZGW 2017); KZGW 2017; USGS 2018; opis polecenia " +
-      "<code>hydrograph generate</code>",
+      "IMGW-PIB 2022 (PMAXTP); DVWK 1984 (za KZGW 2017); KZGW 2017; USGS 2018; opisy poleceń " +
+      "<code>precip pmaxtp</code> i <code>hydrograph generate</code>",
   },
 
   "rain-block": {

@@ -4,14 +4,16 @@ Against the real server of ``gui_server``: „Plik przekazania” of Hydrogram z
 ``nogat-handoff/1`` (Nogat's schema, ``schemas/nogat/handoff-1.schema.json``) carrying a
 valid ``hydrolog-network/1``, whose outlet through ``route network`` peaks as the run of
 ``hydrograph generate``; opened again with „Wczytaj z Hydrografa” it gives the same
-inputs and result, and written once more the same hand-off. Nogat's own example (D15)
-opens from the clipboard with its peak, 60,21 m³/s at 6:20 and 1 046 213 m³; a network
-of two subcatchments from Hydrograf opens in Sieć and, computed, shows the producer's
-version and result beside Hydrolog's; a refused hand-off lists why. The report downloads
-as Markdown from ``report generate``; „Raport do druku” prints on A4 through
-``css/print.css`` in the light theme with every part open. The browser's check of a
-hand-off judges documents as jsonschema does, and the mapping of Hydrogram's options to
-the node computes as ``hydrograph generate`` for every setting.
+inputs and result without fetching the PMAXTP depth it names the point of, and written
+once more the same hand-off. Nogat's own example (D15) opens from the clipboard, its
+depth fetched at Hydrograf's outlet, with its peak, 60,21 m³/s at 6:20 and 1 046 213 m³;
+a network of two subcatchments from Hydrograf opens in Sieć and, computed, shows the
+producer's version and result beside Hydrolog's; a refused hand-off lists why. The
+report downloads as Markdown from ``report generate``; „Raport do druku” prints on A4
+through ``css/print.css`` in the light theme with every part open. The browser's check
+of a hand-off judges documents as jsonschema does, the mapping of Hydrogram's options to
+the node computes as ``hydrograph generate`` for every setting, and a PMAXTP rainfall
+handed without a point opens as „Hietogram”.
 """
 
 import copy
@@ -27,8 +29,18 @@ from playwright.sync_api import Locator, Page, expect
 import hydrolog
 from hydrolog.catalog import run_command
 from hydrolog.testing import example_network_document
+from tests.conftest import recorded_fetch, recorded_pmaxtp
 from tests.e2e.conftest import KAMIENNIK as EXAMPLE
-from tests.e2e.conftest import Tab, kamiennik_inputs, load_network, seed_hydrogram
+from tests.e2e.conftest import (
+    KAMIENNIK_POINT,
+    PMAXTP_RUN,
+    PMAXTP_TABLE,
+    Tab,
+    kamiennik_inputs,
+    load_network,
+    pmaxtp_route,
+    seed_hydrogram,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 HANDOFF: dict[str, Any] = json.loads(
@@ -61,6 +73,7 @@ SENT = {
 """The example's watershed as SCS with Kirpich sends it: the fields of step 1."""
 RUN = "/api/run/hydrograph/generate"
 REPORT = "/api/run/report/generate"
+PMAXTP = "/api/run/precip/pmaxtp"
 BADGE = ".topbar .badge.status"
 HG = 'section.section[data-section="hydrogram"]'
 SIEC = 'section.section[data-section="siec"]'
@@ -258,7 +271,13 @@ def test_a_handoff_of_hydrogram_validates_reopens_and_round_trips(
     }
     assert doc["subject"] == "Kamiennik — Świerzawa"
     assert doc["provenance"] == {
-        "rainfall": {"source": "pmaxtp", "probability_percent": 1, "duration_min": 720},
+        "rainfall": {
+            "source": "pmaxtp",
+            "probability_percent": 1,
+            "duration_min": 720,
+            **KAMIENNIK_POINT,
+            "method": "POT",
+        },
         "watershed": {"source": "file", "file": "kamiennik.json"},
     }
     assert doc["result"] == {
@@ -297,10 +316,16 @@ def test_a_handoff_of_hydrogram_validates_reopens_and_round_trips(
     assert routed["time_to_peak_min"] == result["time_to_peak_min"]
     assert math.isclose(routed["volume_m3"], result["total_volume_m3"], rel_tol=1e-9)
 
-    # Opened in a new browser: the same inputs, result and hand-off
+    # Opened in a new browser: the same inputs, result and hand-off; the depth handed
+    # with its point is kept, not fetched again
     saved = tmp_path / name
     saved.write_bytes(data)
     other = new_tab()
+    fetched: list[str] = []
+    other.page.on(
+        "request",
+        lambda request: fetched.append(request.url) if PMAXTP in request.url else None,
+    )
     page = open_hydrogram(other)
     load_file(page, HG, saved)
     left = f"{HG} .view-panel.left"
@@ -343,15 +368,37 @@ def test_a_handoff_of_hydrogram_validates_reopens_and_round_trips(
     page.set_viewport_size({"width": 1440, "height": 900})
     again = json.loads(download(page, handoff_button(page, HG, "file"))[1])
     assert without_moment(again) == without_moment(doc)
+    assert fetched == []
 
 
-def test_nogats_example_opens_from_the_clipboard_with_its_peak(tab: Tab) -> None:
+def test_nogats_example_opens_from_the_clipboard_with_its_peak(
+    tab: Tab, tmp_path: Path
+) -> None:
     tab.page.context.grant_permissions(["clipboard-read", "clipboard-write"])
     page = open_hydrogram(tab)
+    node = D15["payload"]["nodes"][0]
+    # The example names no point of its rainfall: the depth is fetched at Hydrograf's
+    # outlet, where IMGW-PIB is made to answer the example's 105 mm for 12 h at 1 %
+    table = copy.deepcopy(recorded_pmaxtp(PMAXTP_TABLE))
+    table["data"]["ks"]["720"]["1"] = node["rainfall"]["total_mm"]
+    answers = tmp_path / "d15_pot.json"
+    answers.write_text(json.dumps(table), encoding="utf-8")
+    page.route(PMAXTP_RUN, pmaxtp_route(recorded_fetch(answers)))
     page.evaluate("(text) => navigator.clipboard.writeText(text)", json.dumps(D15))
     load_menu(page, HG)
-    page.get_by_role("menuitem").filter(has_text="Wklej ze schowka").click()
+    with page.expect_request(lambda request: PMAXTP in request.url) as asked:
+        page.get_by_role("menuitem").filter(has_text="Wklej ze schowka").click()
     expect(page.locator(".toast")).to_contain_text("Wczytano przekazanie")
+    point = {
+        key: D15["provenance"]["watershed"][key] for key in ("latitude", "longitude")
+    }
+    assert asked.value.post_data_json == {
+        **point,
+        "duration_min": 720,
+        "probability_percent": 1,
+        "method": "POT",
+    }
+    shows(page, "60,21", "6:20", "1 046 213")
     # The example's data are the worked example's step 1 and storm: the same run
     sent = page.evaluate(
         """async () => {
@@ -373,7 +420,7 @@ def test_nogats_example_opens_from_the_clipboard_with_its_peak(tab: Tab) -> None
         "timestep_min": 10,
         "uh_model": "scs",
     }
-    shows(page, "60,21", "6:20", "1 046 213")
+    expect(page.locator("#hg-pmaxtp_depth")).to_have_value("105")
     left = f"{HG} .view-panel.left"
     origin = page.locator(f"{left} .handoff[data-origin]")
     expect(origin.locator("strong")).to_have_text(
@@ -407,6 +454,7 @@ def test_nogats_example_opens_from_the_clipboard_with_its_peak(tab: Tab) -> None
     )
     copied = json.loads(page.evaluate("() => navigator.clipboard.readText()"))
     valid(copied)
+    # Unchanged data keep the received provenance
     assert copied["provenance"] == D15["provenance"]
     assert copied["payload"]["nodes"][0]["runoff"] == node["runoff"]
     assert copied["payload"]["nodes"][0]["rainfall"] == node["rainfall"]
@@ -864,7 +912,13 @@ def test_the_mapping_computes_as_hydrograph_generate_for_every_setting(
             "rain_source": "pmaxtp",
             "pmaxtp_probability_pct": "0.5",
             "pmaxtp_duration_min": "1440",
-            "total_mm": "130",
+            "pmaxtp_fetched": {
+                **KAMIENNIK_POINT,
+                "duration_min": 1440,
+                "probability_percent": 0.5,
+                "method": "POT",
+                "depth_mm": 130,
+            },
             "hietogram_type": "euler_ii",
         },
         {
@@ -910,6 +964,30 @@ def test_the_mapping_computes_as_hydrograph_generate_for_every_setting(
             routed["volume_m3"], generated["total_volume_m3"], rel_tol=1e-9
         ), setting
         assert item["back"] == options, setting
+
+    # A hand-off whose PMAXTP rainfall names no point opens as „Hietogram” of its depth
+    pointless = page.evaluate(
+        """async ([example, stored]) => {
+          const state = await import('./src/sections/hydrogram/state.js');
+          const mapping = await import('./src/handoff/mapping.js');
+          const { buildHandoff } = await import('./src/handoff/handoff.js');
+          const watershed = state.readWatershed(example).texts;
+          const options = state.toOptions(state.normalize({ ...stored, watershed }));
+          const provenance = {
+            rainfall: { source: 'pmaxtp', probability_percent: 1, duration_min: 720 },
+            watershed: { source: 'user' },
+          };
+          const doc = buildHandoff({
+            subject: 'Kamiennik', provenance, version: 'test',
+            payload: mapping.hydrogramPayload(options, 'Kamiennik'),
+          });
+          const opened = state.normalize(mapping.hydrogramInputs(doc));
+          return { source: opened.rain_source, options, back: state.toOptions(opened) };
+        }""",
+        [EXAMPLE, kamiennik_inputs()],
+    )
+    assert pointless["source"] == "design"
+    assert pointless["back"] == pointless["options"]
 
     # Nash by Lutz: n and K of `uh nash` travel with the node, Lutz in the provenance
     nash = {"uh_model": "nash"}

@@ -13,6 +13,13 @@
 // explanations and the notes check are those the catalog documents of the two commands
 // serve (`typical_ranges`), registered when the documents arrive.
 //
+// PMAXTP (ADR-0018): once the point, p and the duration of step 2 are given and valid, the
+// section runs `precip pmaxtp` on its own channel "hydrogram-pmaxtp" (debounced as a run,
+// never superseding one) and keeps the depth with the inputs (`pmaxtp_fetched`), which is
+// the `total_mm` of the runs; a run waits for it. A point outside the atlas stands on its
+// field, any other failure (IMGW-PIB unreachable) on the row of the depth, with
+// „Pobierz ponownie”.
+//
 // The section sets the store's "watershed" (the `watershed` of hydrolog-network/1, for
 // Kalkulatory), its "status" and "context", and draws the store's "reference" (a quantile
 // of Statystyka) on the hydrograph. The route #hydrogram/tc_method/<method> sets the method
@@ -53,6 +60,9 @@ import {
   LUTZ_COMMAND,
   LUTZ_SOURCES,
   NETWORK_SCHEMA,
+  PMAXTP_CHANNEL,
+  PMAXTP_COMMAND,
+  PMAXTP_FIELDS,
   SECTION,
   TC_METHODS,
   checkInputs,
@@ -64,7 +74,12 @@ import {
   lutzOptions,
   normalize,
   numberOf,
+  optionField,
   panelFields,
+  pmaxtpDepth,
+  pmaxtpKey,
+  pmaxtpOptions,
+  pmaxtpRecord,
   rangeInfoId,
   readWatershed,
   requirements,
@@ -78,9 +93,9 @@ import {
 registerInfo({ ...tcInfo, ...lossesInfo, ...uhInfo, ...rainInfo });
 
 /**
- * The catalog documents of `hydrograph generate` and of Lutz's `uh nash`, and the network
- * schema, turned into the models that check the inputs; the typical ranges the documents
- * serve are registered with the (i) explanations.
+ * The catalog documents of `hydrograph generate`, `precip pmaxtp` and Lutz's `uh nash`,
+ * and the network schema, turned into the models that check the inputs; the typical
+ * ranges the documents serve are registered with the (i) explanations.
  *
  * @returns {{models: object|null, error: string|null, retry: () => void}} the models (null
  *   until they arrive), a loading error and a retry
@@ -93,12 +108,12 @@ function useModels() {
     setState((old) => ({ ...old, error: null }));
     // Lutz's range is only an explanation's: without its document the section still works
     const lutz = api.command(LUTZ_COMMAND).catch(() => null);
-    Promise.all([api.command(COMMAND), api.schema(NETWORK_SCHEMA), lutz])
-      .then(([doc, schema, lutzDoc]) => {
+    Promise.all([api.command(COMMAND), api.schema(NETWORK_SCHEMA), api.command(PMAXTP_COMMAND), lutz])
+      .then(([doc, schema, pmaxtpDoc, lutzDoc]) => {
         if (!alive) return;
         registerServed(doc, rangeInfoId);
         registerServed(lutzDoc, (range) => (range.method === "lutz" ? rangeInfoId(range) : null));
-        setState({ models: inputModels(doc, schema), error: null });
+        setState({ models: inputModels(doc, schema, pmaxtpDoc), error: null });
       })
       .catch((error) => {
         if (alive) setState({ models: null, error: error && error.doc ? describeError(error.doc).text : String(error) });
@@ -136,8 +151,8 @@ function wordError(doc, lutz, inputs) {
   const shown = inputs ? panelFields(inputs) : [];
   const place = (option) => {
     const name = lutz && Object.hasOwn(LUTZ_SOURCES, option) ? LUTZ_SOURCES[option] : option;
-    if (name === "duration_min" && inputs && inputs.rain_source === "pmaxtp") return "pmaxtp_duration_min";
-    return shown.includes(name) ? name : null;
+    const field = inputs ? optionField(inputs, name) : name;
+    return shown.includes(field) ? field : null;
   };
   const fields = {};
   if (described.reason === "missing_field") {
@@ -153,6 +168,19 @@ function wordError(doc, lutz, inputs) {
     return { fields, form: null, text: described.text };
   }
   return { fields, form: { title: described.title || texts.formError, text: described.text }, text: described.text };
+}
+
+/**
+ * Word an error of a PMAXTP fetch: on the field of the point it names (a point outside the
+ * atlas), else on the row of the depth (IMGW-PIB unreachable, an answer it cannot read).
+ *
+ * @param {object} doc the hydrolog-error/1 document
+ * @returns {{fields: Object<string, string>, text: string}} the messages
+ */
+function wordPmaxtpError(doc) {
+  const described = describeError(doc);
+  const field = described.option && Object.hasOwn(PMAXTP_FIELDS, described.option) ? PMAXTP_FIELDS[described.option] : "pmaxtp_depth";
+  return { fields: { [field]: withReason(described.text, described.reason || (doc && doc.code) || "") }, text: described.text };
 }
 
 /**
@@ -175,8 +203,11 @@ export default function Hydrogram({ path = [] }) {
   const [failure, setFailure] = useState(null);
   const [busy, setBusy] = useState(false);
   const [broken, setBroken] = useState(null);
+  const [pmaxtpFailure, setPmaxtpFailure] = useState(null);
+  const [pmaxtpBusy, setPmaxtpBusy] = useState(false);
   const chartSvg = useRef(null);
   const outcome = useRef(null);
+  const pmaxtpOutcome = useRef(null);
   const channel = useMemo(
     () =>
       createChannel({
@@ -185,7 +216,16 @@ export default function Hydrogram({ path = [] }) {
       }),
     [],
   );
+  const pmaxtpChannel = useMemo(
+    () =>
+      createChannel({
+        onBusy: setPmaxtpBusy,
+        onOutcome: (next) => pmaxtpOutcome.current(next),
+      }),
+    [],
+  );
   useEffect(() => () => channel.dispose(), [channel]);
+  useEffect(() => () => pmaxtpChannel.dispose(), [pmaxtpChannel]);
 
   /** Replace inputs (a patch of the inputs; a watershed file and a hand-off use it). */
   const set = useCallback((patch) => setState((old) => ({ ...normalize(old), ...patch })), []);
@@ -215,7 +255,54 @@ export default function Hydrogram({ path = [] }) {
     [docs.models, inputs, run],
   );
   const required = useMemo(() => requirements(inputs).required, [inputs]);
-  const valid = checked !== null && inputs.uh_model !== null && Object.keys(checked.errors).length === 0;
+
+  // PMAXTP's depth: remembered with the inputs, else fetched once the point, p and the
+  // duration are given and valid; a run waits for it
+  const depth = pmaxtpDepth(inputs);
+  const pmaxtpWanted =
+    checked !== null && !Object.values(PMAXTP_FIELDS).some((name) => checked.errors[name]) ? pmaxtpOptions(inputs) : null;
+  const fetchKey = pmaxtpWanted && depth === null ? pmaxtpKey(pmaxtpWanted) : null;
+  const pmaxtpFailed = pmaxtpFailure && pmaxtpFailure.key === fetchKey ? pmaxtpFailure : null;
+  const latestFetch = useRef(fetchKey);
+  latestFetch.current = fetchKey;
+
+  pmaxtpOutcome.current = (next) => {
+    // The task returns its errors; a rejection would be a fault of the GUI itself
+    const value = next.ok ? next.value : { key: latestFetch.current, error: { code: "internal_error", message: String(next.error) } };
+    if (value.error) {
+      setPmaxtpFailure({ key: value.key, ...wordPmaxtpError(value.error) });
+      return;
+    }
+    const envelope = value.envelope;
+    const result = envelope.status === "ok" ? envelope.result : null;
+    if (!result || typeof result.depth_mm !== "number") {
+      const words = (envelope.notices || []).map((notice) => describeNotice(notice).text).join(" ");
+      setPmaxtpFailure({ key: value.key, fields: { pmaxtp_depth: words }, text: words });
+      return;
+    }
+    setPmaxtpFailure(null);
+    set({ pmaxtp_fetched: pmaxtpRecord(value.options, result.depth_mm) });
+  };
+
+  useEffect(() => {
+    if (!fetchKey || pmaxtpFailed) {
+      pmaxtpChannel.cancel();
+      return;
+    }
+    const sent = { key: fetchKey, options: pmaxtpWanted };
+    pmaxtpChannel.request(async (signal) => {
+      try {
+        const envelope = await api.run(PMAXTP_COMMAND, sent.options, { channel: PMAXTP_CHANNEL, signal });
+        return { ...sent, envelope };
+      } catch (error) {
+        if (error && error.name === "AbortError") throw error;
+        return { ...sent, error: error && error.doc ? error.doc : { code: "internal_error", message: String(error) } };
+      }
+    });
+  }, [fetchKey, Boolean(pmaxtpFailed)]);
+
+  const rainReady = inputs.rain_source !== "pmaxtp" || depth !== null;
+  const valid = checked !== null && inputs.uh_model !== null && Object.keys(checked.errors).length === 0 && rainReady;
   const request = useMemo(() => {
     if (!valid) return null;
     return { inputs, options: toOptions(inputs), lutz: usesLutz(inputs) ? lutzOptions(inputs) : null };
@@ -291,12 +378,17 @@ export default function Hydrogram({ path = [] }) {
   }, [watershedKey]);
 
   const current = failure && failure.key === key ? failure : null;
-  const errors = { ...(checked ? checked.errors : {}), ...(current ? current.fields : {}) };
+  const errors = {
+    ...(checked ? checked.errors : {}),
+    ...(current ? current.fields : {}),
+    ...(pmaxtpFailed ? pmaxtpFailed.fields : {}),
+  };
   const warnings = checked ? checked.warnings : {};
   const firstProblem = checked ? Object.keys(checked.errors)[0] : null;
   let stale = null;
   if (run && firstProblem) stale = { kind: "invalid", field: fieldLabel(firstProblem) };
   else if (run && current) stale = { kind: "error", text: current.text };
+  else if (run && pmaxtpFailed) stale = { kind: "error", text: pmaxtpFailed.text };
 
   // The badge and the state under the panel Dane
   let badge = null;
@@ -307,9 +399,15 @@ export default function Hydrogram({ path = [] }) {
   } else if (current) {
     badge = status("error", undefined, current.text);
     calc = { kind: "bad", text: texts.calc.error };
+  } else if (pmaxtpFailed) {
+    badge = status("error", undefined, pmaxtpFailed.text);
+    calc = { kind: "bad", text: texts.calc.pmaxtp };
   } else if (busy) {
     badge = status("busy");
     calc = { kind: "busy", text: texts.calc.busy };
+  } else if (pmaxtpBusy) {
+    badge = status("busy", texts.calc.fetchingBadge, texts.calc.fetching);
+    calc = { kind: "busy", text: texts.calc.fetching };
   } else if (checked !== null && inputs.uh_model === null) {
     calc = { kind: "idle", text: texts.calc.model };
   } else if (run && broken === run) {
@@ -378,9 +476,11 @@ export default function Hydrogram({ path = [] }) {
   // „Wyczyść”: the steps empty, as on a first visit; Kalkulatory loses the watershed too
   const clear = () => {
     channel.cancel();
+    pmaxtpChannel.cancel();
     reset();
     setRun(null);
     setFailure(null);
+    setPmaxtpFailure(null);
     setBroken(null);
     setWatershedStore(null);
   };
@@ -388,7 +488,10 @@ export default function Hydrogram({ path = [] }) {
   const values = useMemo(() => checkedValues(inputs, run && run.key === key ? run.envelope.result : null), [inputs, run, key]);
   const result = run ? run.envelope.result : null;
   const version = run ? run.envelope.version : null;
-  const dimmed = busy ? " computing" : "";
+  const working = busy || pmaxtpBusy;
+  const dimmed = working ? " computing" : "";
+  // A failure of the source itself (not of the point) may pass: „Pobierz ponownie”
+  const onRetry = pmaxtpFailed && pmaxtpFailed.fields.pmaxtp_depth ? () => setPmaxtpFailure(null) : null;
   // A result that does not draw is marked, never shown as the current one (RenderGuard)
   const onDrawError = () => setBroken(run);
 
@@ -415,6 +518,7 @@ export default function Hydrogram({ path = [] }) {
             lutz=${run && usesLutz(inputs) ? run.lutz : null}
             models=${docs.models}
             infoValues=${values}
+            pmaxtp=${{ depth, busy: pmaxtpBusy, onRetry }}
           />`
         : docs.error
           ? null
@@ -447,7 +551,7 @@ export default function Hydrogram({ path = [] }) {
         <span>${texts.center.hint}</span>
       </span>
     `,
-    body: html`<div class=${`result-area${dimmed}`} aria-busy=${busy ? "true" : "false"} data-hg-center="">
+    body: html`<div class=${`result-area${dimmed}`} aria-busy=${working ? "true" : "false"} data-hg-center="">
       <${RenderGuard} name="center" resetKey=${run} onError=${onDrawError}>
         <${CenterBody}
           run=${run}
@@ -462,7 +566,7 @@ export default function Hydrogram({ path = [] }) {
   };
   const right = {
     sub: run ? t(texts.results.sub, { model: modelLabel(run.inputs), amc: result.amc }) : null,
-    body: html`<div class=${`result-area${dimmed}`} aria-busy=${busy ? "true" : "false"} data-hg-results="">
+    body: html`<div class=${`result-area${dimmed}`} aria-busy=${working ? "true" : "false"} data-hg-results="">
       <${RenderGuard} name="results" resetKey=${run} onError=${onDrawError}>
         <${ResultsPanel} run=${run} spec=${spec} stale=${stale} current=${inputs} />
       <//>
