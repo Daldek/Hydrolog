@@ -1,0 +1,50 @@
+{
+  "schema": "nogat-handoff/1",
+  "created_at": "2026-11-04T18:39:56Z",
+  "producer": {
+    "tool": "hydrograf",
+    "version": "0.5.0.dev0"
+  },
+  "subject": "Zlewnia 51,01679° N, 15,88923° E",
+  "provenance": {
+    "watershed": {
+      "source": "hydrograf",
+      "latitude": 51.016785552617904,
+      "longitude": 15.889229228459445
+    }
+  },
+  "payload": {
+    "schema": "hydrolog-network/1",
+    "name": "Zlewnia 51,01679° N, 15,88923° E",
+    "nodes": [
+      {
+        "id": "Z1",
+        "type": "subcatchment",
+        "watershed": {
+          "name": "Zlewnia 51,01679° N, 15,88923° E",
+          "area_km2": 134.9683,
+          "perimeter_km": 84.4609,
+          "length_km": 22.2789,
+          "elevation_min_m": 256.77,
+          "elevation_max_m": 722.68,
+          "elevation_mean_m": 418.93,
+          "mean_slope_m_per_m": 0.135824,
+          "channel_length_km": 21.3978,
+          "channel_slope_m_per_m": 0.016872,
+          "cn": 69.6,
+          "Lc_km": 13.6173
+        },
+        "runoff": {
+          "model": "curve-number"
+        }
+      },
+      {
+        "id": "OUT",
+        "type": "outlet",
+        "from": [
+          "Z1"
+        ]
+      }
+    ]
+  }
+}

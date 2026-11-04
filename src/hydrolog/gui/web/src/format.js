@@ -104,6 +104,22 @@ export function inputText(value) {
 }
 
 /**
+ * A typed number as headers and notes show it: at most `digits` decimals, written as in a
+ * field. A value handed over exactly reads short, roundedText("360,68819771080604", 1)
+ * gives "360,7", while the field and the run keep it whole; roundedText("120", 1) stays
+ * "120".
+ *
+ * @param {string|number|null|undefined} text the number as typed
+ * @param {number} digits the most decimals shown
+ * @returns {string} the text, as typed when it is no number
+ */
+export function roundedText(text, digits) {
+  const value = parseNumber(text);
+  if (value === null || Number.isNaN(value)) return String(text ?? "");
+  return inputText(Number(value.toFixed(digits)));
+}
+
+/**
  * A number in its shortest exact form, written as num writes it (a decimal comma, thousands
  * grouped): exact(70000) gives "70 000", exact(0.002) "0,002".
  *
