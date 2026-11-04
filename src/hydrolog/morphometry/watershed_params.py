@@ -6,6 +6,7 @@ import json
 from dataclasses import asdict, dataclass
 from typing import TYPE_CHECKING, Any, cast
 
+from hydrolog._ranges import TC_INPUTS, typical_ranges, warn_if_outside
 from hydrolog._warnings import typical_range_fields
 from hydrolog.exceptions import InvalidParameterError
 
@@ -44,10 +45,12 @@ _TC_METHOD_LABELS = {
 
 # The slopes a method takes, first choice first; without them the slope is the
 # relief over the length
-_TC_SLOPES: dict[str, tuple[str, str]] = {
-    "kirpich": ("channel_slope_m_per_m", "mean_slope_m_per_m"),
-    "nrcs": ("mean_slope_m_per_m", "channel_slope_m_per_m"),
+_TC_SLOPES: dict[str, tuple[str, ...]] = {
+    method: TC_INPUTS[method]["slope_m_per_m"] for method in ("kirpich", "nrcs")
 }
+
+# The lengths Kirpich, NRCS and Giandotti take, first choice first
+_TC_LENGTHS = TC_INPUTS["kirpich"]["length_km"]
 
 _OVERLAND_HINT = (
     "FAA and Kerby time the overland flow, so they need the overland flow length "
@@ -579,8 +582,8 @@ class WatershedParameters:
                 if getattr(self, name) is None
             ]
         missing = []
-        if self.channel_length_km is None and self.length_km is None:
-            missing.append("channel_length_km")
+        if all(getattr(self, name) is None for name in _TC_LENGTHS):
+            missing.append(_TC_LENGTHS[0])
         if method in _TC_SLOPES:
             relief = (
                 self.elevation_min_m is not None and self.elevation_max_m is not None
@@ -645,23 +648,23 @@ class WatershedParameters:
                 {name: name for name in names},
             )
         if method in ("faa", "kerby"):
-            # Overland flow formulas: the overland flow path, not the channel
-            coefficient = "runoff_coeff" if method == "faa" else "retardance"
+            # Overland flow formulas: the overland flow path, not the channel (the
+            # area is not an argument: calculate_tc checks it)
+            fields = {
+                name: sources[0]
+                for name, sources in TC_INPUTS[method].items()
+                if name != "area_km2"
+            }
             return (
                 {
-                    "length_km": cast(float, self.overland_length_km),
-                    "slope_m_per_m": cast(float, self.overland_slope_m_per_m),
-                    coefficient: cast(float, getattr(self, coefficient)),
+                    name: cast(float, getattr(self, field))
+                    for name, field in fields.items()
                 },
-                {
-                    "length_km": "overland_length_km",
-                    "slope_m_per_m": "overland_slope_m_per_m",
-                    coefficient: coefficient,
-                },
+                fields,
             )
 
-        length_field = (
-            "channel_length_km" if self.channel_length_km is not None else "length_km"
+        length_field = next(
+            name for name in _TC_LENGTHS if getattr(self, name) is not None
         )
         length_km = cast(float, getattr(self, length_field))
         if method == "giandotti":
@@ -776,8 +779,11 @@ class WatershedParameters:
         Warns
         -----
         OutsideTypicalRange
-            For an argument outside the typical range of the formula; its
-            ``field`` is the field the argument came from.
+            For an argument outside the typical range of the formula, and for
+            "kirpich", "nrcs", "kerby" and "kerby_kirpich" an area outside the
+            areas of the data of the method (parameter ``area_km2``); its
+            ``field`` is the field the value came from. The ranges and their
+            sources: :data:`hydrolog._ranges.TYPICAL_RANGES`.
 
         Notes
         -----
@@ -802,12 +808,12 @@ class WatershedParameters:
           AC 150/5320-5A, and 2013, AC 150/5320-5D; Kerby 1959). Kerby derived his
           formula for flow paths of up to 366 m (1200 ft; Roussel et al. 2005,
           TxDOT Report 0-4696-2; TxDOT Hydraulic Design Manual, chapter 4,
-          section 11) and the library warns for FAA outside 0.015-3 km. They are
-          fed with the overland flow length and slope, never with those of the
-          channel: ``overland_length_km`` and ``overland_slope_m_per_m`` must be
-          set, and ``runoff_coeff`` ("faa") or ``retardance`` ("kerby"). The
-          result is the overland flow time of the watershed; for a watershed with
-          a channel "kerby_kirpich" adds the channel travel time.
+          section 11). They are fed with the overland flow length and slope,
+          never with those of the channel: ``overland_length_km`` and
+          ``overland_slope_m_per_m`` must be set, and ``runoff_coeff`` ("faa") or
+          ``retardance`` ("kerby"). The result is the overland flow time of the
+          watershed; for a watershed with a channel "kerby_kirpich" adds the
+          channel travel time.
         * "kerby_kirpich": ``retardance``, ``overland_length_km``,
           ``overland_slope_m_per_m``, ``channel_length_km`` and
           ``channel_slope_m_per_m`` must be set.
@@ -832,6 +838,12 @@ class WatershedParameters:
         arguments, fields = self._tc_inputs(method)
         formula = getattr(ConcentrationTime, method)
         with typical_range_fields(fields):
+            # The area, an argument of Giandotti's formula only, against the data
+            # of the other methods
+            if "area_km2" not in arguments and any(
+                checked.parameter == "area_km2" for checked in typical_ranges(method)
+            ):
+                warn_if_outside(method, "area_km2", self.area_km2)
             try:
                 return float(formula(**arguments))
             except InvalidParameterError as exc:

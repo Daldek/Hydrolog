@@ -5,6 +5,7 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import NDArray
 
+from hydrolog._ranges import warn_if_outside
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError
 
@@ -141,11 +142,19 @@ class SCSUnitHydrograph:
         ------
         InvalidParameterError
             If any parameter is not positive.
+
+        Warns
+        -----
+        OutsideTypicalRange
+            If ``area_km2`` is larger than the watersheds the unit hydrograph is
+            applied to without dividing them (method ``scs``; the ranges and their
+            sources: :data:`hydrolog._ranges.TYPICAL_RANGES`).
         """
         if area_km2 <= 0:
             raise InvalidParameterError(f"area_km2 must be positive, got {area_km2}")
         if tc_min <= 0:
             raise InvalidParameterError(f"tc_min must be positive, got {tc_min}")
+        warn_if_outside("scs", "area_km2", area_km2)
 
         self.area_km2 = area_km2
         self.tc_min = tc_min

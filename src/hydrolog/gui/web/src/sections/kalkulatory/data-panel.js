@@ -12,6 +12,7 @@ import { html, useEffect, useRef } from "../../html.js";
 import { t } from "../../labels/common.js";
 import { kalkulatory as texts } from "../../labels/kalkulatory.js";
 import { routeHash } from "../../router.js";
+import { EmptyHint } from "../../ui/empty-hint.js";
 import { COMPARE, filterCalculators, GROUPS, OVERLAND_FIELDS, TC_METHODS } from "./state.js";
 
 /**
@@ -80,6 +81,7 @@ export function WatershedBox({ watershed, onFill, fill }) {
         <div>
           ${texts.watershed.none}
           <a href=${routeHash("hydrogram")}>${texts.watershed.open}</a>
+          <${EmptyHint} anchor="przyklad-kalkulatory" name="kalkulatory" />
         </div>
       </div>
     `;

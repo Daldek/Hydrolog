@@ -5,7 +5,8 @@ The catalog is published in three forms, all generated from the declarations in
 
 * :func:`catalog_document` -- the ``hydrolog-commands/1`` document (Nogat
   ``commands-1``, AGI-2.4): every command with its options, result, effects, rules,
-  examples, errors and Polish texts (``i18n.pl``);
+  examples, errors and Polish texts (``i18n.pl``), and in the document of one command
+  the typical ranges it checks (``typical_ranges``);
 * :func:`command_list` -- the ``hydrolog-command-list/1`` summary of ``commands list``
   (AGI-1.5: summary first, schema on demand);
 * :func:`input_schema` -- the JSON Schema (2020-12) of the options of one command,
@@ -24,8 +25,9 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Final
 
+from hydrolog._ranges import typical_range
 from hydrolog._serialization import to_jsonable
-from hydrolog.catalog.spec import Command, Lang, Option
+from hydrolog.catalog.spec import Command, Lang, Option, RangeCheck
 from hydrolog.exceptions import InvalidParameterError
 
 __all__ = [
@@ -203,13 +205,36 @@ def _option(command: Command, option: Option, alternatives: set[str]) -> dict[st
     return entry
 
 
-def command_entry(command: Command) -> dict[str, Any]:
+def _range_entry(check: RangeCheck) -> dict[str, Any]:
+    """One entry of ``typical_ranges``: the declaration with the range of the table."""
+    found = typical_range(check.method, check.parameter)
+    entry: dict[str, Any] = {
+        "method": check.method,
+        "parameter": check.parameter,
+        "inputs": list(check.inputs),
+    }
+    if check.result is not None:
+        entry["result"] = check.result
+    entry.update(minimum=found.minimum, maximum=found.maximum, unit=found.unit)
+    if found.relative_to is not None:
+        entry["relative_to"] = found.relative_to
+    entry["notice"] = found.notice
+    entry["verified"] = found.verified
+    entry["source"] = found.source
+    entry["i18n"] = {"pl": {"source": found.source_pl}}
+    return entry
+
+
+def command_entry(command: Command, *, typical_ranges: bool = False) -> dict[str, Any]:
     """Return the catalog entry of one command (Nogat ``commands-1`` ``command``).
 
     Parameters
     ----------
     command : Command
         The declaration.
+    typical_ranges : bool, optional
+        Add the ``typical_ranges`` of a command that checks typical ranges; only the
+        document of one command carries them (:func:`catalog_document`).
 
     Returns
     -------
@@ -218,9 +243,16 @@ def command_entry(command: Command) -> dict[str, Any]:
         ``options``, ``result``, ``effects``, ``check``, ``families``, ``rules``,
         ``examples`` (``call``, the canonical line of
         :func:`~hydrolog.catalog.lines.format_command`, and a ``result`` excerpt),
-        ``errors``, ``i18n`` and, for alternative option groups, ``one_of`` (a
-        Hydrolog addition: the groups, each a list of option names, exactly one of
-        which must be given completely).
+        ``errors``, ``i18n`` and two Hydrolog additions: for alternative option
+        groups, ``one_of`` (the groups, each a list of option names, exactly one of
+        which must be given completely), and with ``typical_ranges`` for a command
+        that checks typical ranges, ``typical_ranges``: each ``method``,
+        ``parameter``, ``inputs`` (the options or watershed fields the value is
+        taken from, first choice first), ``result`` (the result field that holds a
+        value that is not an input), ``minimum`` and ``maximum`` (``null`` for none;
+        shares of the result field ``relative_to`` when it is given), ``unit``,
+        ``notice`` (the code a value outside gives), ``source`` and
+        ``i18n.pl.source`` (:data:`hydrolog._ranges.TYPICAL_RANGES`, ADR-0017).
     """
     from hydrolog.catalog.lines import format_command
 
@@ -265,16 +297,29 @@ def command_entry(command: Command) -> dict[str, Any]:
     }
     if command.one_of:
         entry["one_of"] = [list(group) for group in command.one_of]
+    if typical_ranges and command.typical_ranges:
+        entry["typical_ranges"] = [
+            _range_entry(check) for check in command.typical_ranges
+        ]
     return entry
 
 
-def catalog_document(commands: Iterable[Command]) -> dict[str, Any]:
+def catalog_document(
+    commands: Iterable[Command], *, typical_ranges: bool = False
+) -> dict[str, Any]:
     """Return the ``hydrolog-commands/1`` document of ``commands``.
 
     Parameters
     ----------
     commands : iterable of Command
         The commands to describe, in catalog order.
+    typical_ranges : bool, optional
+        Give each command its ``typical_ranges`` (:func:`command_entry`). True for
+        the document of one command (``commands schema --command``,
+        ``hydrolog <group> <command> --schema``,
+        :func:`~hydrolog.catalog.command_schema`); the pages of ``commands schema``
+        and the documents of a group or of the whole catalog leave them out, so a
+        default page stays within its budget (DOC-1.7, ADR-0017).
 
     Returns
     -------
@@ -287,7 +332,10 @@ def catalog_document(commands: Iterable[Command]) -> dict[str, Any]:
         "schema": COMMANDS_SCHEMA,
         "tool": "hydrolog",
         "version": hydrolog.__version__,
-        "commands": [command_entry(command) for command in commands],
+        "commands": [
+            command_entry(command, typical_ranges=typical_ranges)
+            for command in commands
+        ],
     }
 
 

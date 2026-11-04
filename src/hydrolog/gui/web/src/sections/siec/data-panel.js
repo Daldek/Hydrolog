@@ -1,7 +1,8 @@
 // The panel „Dane” of Sieć (plan S4, the mockup's steps): 1 the network (its file, loaded
-// from the disk, a hand-off („Wczytaj z Hydrografa”), the example or saved; its name, time
-// step and default rainfall; the session files it reads), 2 its nodes (a list that chooses
-// a node, with each node's peak after „Oblicz sieć”) and 3 the settings of the chosen node.
+// from the disk or a hand-off („Wczytaj z Hydrografa”), or saved; its name, time step and
+// default rainfall; the session files it reads), 2 its nodes (a list that chooses a node,
+// with each node's peak after „Oblicz sieć”) and 3 the settings of the chosen node. Before
+// a network is open, step 1 alone: what to load, and the guide's worked example.
 
 import { FileField } from "../../controls/file-field.js";
 import { num, plural } from "../../format.js";
@@ -9,6 +10,7 @@ import { HandoffImport, HandoffOrigin } from "../../handoff/handoff-panel.js";
 import { html, useRef } from "../../html.js";
 import { t } from "../../labels/common.js";
 import { siec as texts } from "../../labels/siec.js";
+import { EmptyHint } from "../../ui/empty-hint.js";
 import { KINDS, networkLayout, RAINFALLS } from "./node-model.js";
 import { Choice, controlId, FieldSlot, NodeForm } from "./node-form.js";
 
@@ -58,12 +60,54 @@ export function networkSummary(skeleton, words) {
 }
 
 /**
+ * The note of the last load: the files read, or why a file was refused.
+ *
+ * @param {{note: {error: boolean, title?: string, lines: string[]}|null}} props the note
+ * @returns {object|null} the note
+ */
+function LoadNote({ note }) {
+  if (!note) return null;
+  return html`<div class=${note.error ? "form-errors" : "note"} role=${note.error ? "alert" : "status"} data-note="load">
+    ${note.error ? html`<strong>${note.title}</strong>` : null}
+    ${note.lines.length === 1 && !note.error ? note.lines[0] : html`<ul>${note.lines.map((line) => html`<li>${line}</li>`)}</ul>`}
+  </div>`;
+}
+
+/**
+ * Step 1 before a network is open (a first visit, or after „Wyczyść”): a hand-off or a
+ * network file with the files it reads.
+ *
+ * @param {{note: object|null, onLoad: (event: Event) => void}} props the note of the last
+ *   load and the handler of the file input
+ * @returns {object} the panel's body
+ */
+export function EmptyNetwork({ note, onLoad }) {
+  const fileInput = useRef(null);
+  return html`
+    <div class="steps">
+      <${Step} number=${1} name="network" title=${texts.steps.network}>
+        <${EmptyHint} text=${texts.file.empty} anchor="przyklad-siec" name="siec" />
+        <div class="btn-row">
+          <${HandoffImport} />
+          <button class="btn sm" type="button" data-action="load" onClick=${() => fileInput.current.click()}>
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 14V4M6 8l4-4 4 4M4 16h12" /></svg>
+            ${texts.file.load}
+          </button>
+          <input ref=${fileInput} type="file" multiple hidden data-input="network" onChange=${onLoad} />
+        </div>
+        <${LoadNote} note=${note} />
+      </${Step}>
+    </div>
+  `;
+}
+
+/**
  * Step 1: the network.
  *
  * @param {object} props see DataPanel
  * @returns {object} the step
  */
-function NetworkStep({ state, forms, problems, summary, needed, note, onNetwork, onRun, onLoad, onCompanions, onExample, onSave, canSave }) {
+function NetworkStep({ state, forms, problems, summary, needed, note, onNetwork, onRun, onLoad, onCompanions, onSave, canSave }) {
   const fileInput = useRef(null);
   const companions = useRef(null);
   const layout = networkLayout(forms, state.network);
@@ -79,7 +123,7 @@ function NetworkStep({ state, forms, problems, summary, needed, note, onNetwork,
       <svg class="file-ico" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 3h7l3 3v11H5z" /><path d="M12 3v3h3" /></svg>
       <div>
         <strong>${name}</strong>: ${texts.file.document} <code>hydrolog-network/1</code>
-        <span class="muted">${state.source && state.source.kind === "example" ? `${texts.file.example} · ` : ""}${summary}</span>
+        <span class="muted">${summary}</span>
       </div>
     </div>
     ${state.source && state.source.handoff ? html`<${HandoffOrigin} received=${state.source.handoff} small=${true} />` : null}
@@ -92,15 +136,9 @@ function NetworkStep({ state, forms, problems, summary, needed, note, onNetwork,
       <input ref=${fileInput} type="file" multiple hidden data-input="network" onChange=${onLoad} />
       <button class="btn sm ghost" type="button" data-action="companions" title=${texts.file.companionsTitle} onClick=${() => companions.current.click()}>${texts.file.companions}</button>
       <input ref=${companions} type="file" multiple hidden data-input="companions" onChange=${onCompanions} />
-      <button class="btn sm ghost" type="button" data-action="example" onClick=${onExample}>${texts.file.loadExample}</button>
       <button class="btn sm ghost" type="button" data-action="save" title=${canSave ? texts.file.saveTitle : texts.exports.invalid} disabled=${!canSave} onClick=${onSave}>${texts.file.save}</button>
     </div>
-    ${note
-      ? html`<div class=${note.error ? "form-errors" : "note"} role=${note.error ? "alert" : "status"} data-note="load">
-          ${note.error ? html`<strong>${note.title}</strong>` : null}
-          ${note.lines.length === 1 && !note.error ? note.lines[0] : html`<ul>${note.lines.map((line) => html`<li>${line}</li>`)}</ul>`}
-        </div>`
-      : null}
+    <${LoadNote} note=${note} />
     <p class="note">${texts.file.structure}</p>
     ${layout.slots.map(render)}
     <${Choice}
@@ -190,8 +228,8 @@ function NodeList({ skeleton, words, values, wrong, selected, onSelect }) {
  *   `values` (each node's result), `problems` (by node, and `network`), `summary`,
  *   `needed` (the session files), `note` (of the last load), `nodeResult` (the chosen
  *   node's result), `networkRain` (the words of the network's rainfall), and the handlers
- *   `onNetwork`, `onRun`, `onNode`, `onSelect`, `onLoad`, `onCompanions`, `onExample`,
- *   `onSave`, `canSave`
+ *   `onNetwork`, `onRun`, `onNode`, `onSelect`, `onLoad`, `onCompanions`, `onSave`,
+ *   `canSave`
  * @returns {object} the panel's body
  */
 export function DataPanel(props) {

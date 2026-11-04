@@ -82,15 +82,18 @@ COMMANDS: tuple[Command, ...] = (
         description=(
             "Returns the `hydrolog-commands/1` document: options with types, units, "
             "bounds and enum meanings, result schema, effects, rules, examples and "
-            "errors. Give `command` for one command; without it the catalog is paged "
-            "(`limit`, `cursor`). Not for choosing a command: use `commands list`."
+            "errors. Give `command` for one command, with the typical ranges it "
+            "checks and their sources (`typical_ranges`); without it the catalog is "
+            "paged (`limit`, `cursor`). Not for choosing a command: use `commands "
+            "list`."
         ),
         description_pl=(
             "Zwraca dokument `hydrolog-commands/1`: opcje z typami, jednostkami, "
             "zakresami i znaczeniami wartości, schemat wyniku, skutki, zasady, "
-            "przykłady i błędy. Z `command` dotyczy jednej komendy; bez niego katalog "
-            "jest podzielony na strony (`limit`, `cursor`). Do wyboru komendy służy "
-            "`commands list`."
+            "przykłady i błędy. Z `command` dotyczy jednej komendy i podaje "
+            "sprawdzane przez nią zakresy typowe ze źródłami (`typical_ranges`); bez "
+            "niego katalog jest podzielony na strony (`limit`, `cursor`). Do wyboru "
+            "komendy służy `commands list`."
         ),
         function="hydrolog.operations.commands_schema",
         options=(

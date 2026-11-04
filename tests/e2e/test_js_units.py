@@ -435,98 +435,23 @@ def test_options_sent_by_a_form(page: Any) -> None:
     ]
 
 
-def test_catalog_examples_fill_the_form_and_run(page: Any) -> None:
+def test_a_new_form_holds_only_the_names_of_required_outputs(page: Any) -> None:
     got = js(
         page,
-        """const lagModel = m.fieldModel(await doc('route lag'));
-        const lagCalls = (await doc('route lag')).commands[0].examples
-          .map((e) => e.call);
-        const outputs = m.fieldModel(await doc('route network')).fields
+        """const outputs = m.fieldModel(await doc('route network')).fields
           .filter((x) => x.kind === 'file-out').map(m.defaultOutputName);
-        const runs = [];
-        for (const name of ['uh nash', 'scs effective']) {
-          const catalog = await doc(name);
-          for (const example of catalog.commands[0].examples) {
-            const values = m.valuesFromCall(m.fieldModel(catalog), example.call);
-            const model = m.fieldModel(catalog, {values});
-            const options = m.toOptions(model, values);
-            const answer = await run(name, options);
-            runs.push({name, chosen: values['#one_of'],
-              problems: m.validate(model, values), options, status: answer.status,
-              outcome: answer.body.status, inputs: answer.body.inputs});
-          }
-        }
         return {
-          words: [
-            m.shellWords(`a 'b c' "d \\\\"e\\\\" \\\\$x" f\\\\ g "" ''  h`),
-            m.shellWords(`--x=1 "it's" 'a\\\\b'`),
-          ],
-          lag: [m.valuesFromCall(lagModel, lagCalls[0]),
-                m.valuesFromCall(lagModel, lagCalls[0], ['in/flood_inflow.csv']),
-                m.valuesFromCall(lagModel, lagCalls[1])],
-          own: m.valuesFromCall(lagModel, `hydrolog route lag --lag-min=12.5
-            --times-min '0,10' --discharge-m3s "1.5,2" --output dir/sub/o.csv
-            --force --no-check --unknown 3`),
-          chips: m.valuesFromCall(m.fieldModel(await doc('stats flood-frequency')),
-            'hydrolog stats flood-frequency --values 1,2'
-            + ' --dates 2020-01-01,2020-01-02'),
           outputs,
           fallback: m.defaultOutputName({name: 'report', examples: []}),
-          runs,
+          defaults: [m.outputDefaults(m.fieldModel(await doc('route lag'))),
+                     m.outputDefaults(m.fieldModel(await doc('uh nash'))),
+                     m.outputDefaults(m.fieldModel(await doc('soil hsg')))],
         };""",
     )
-    assert got["words"] == [
-        ["a", "b c", 'd "e" $x', "f g", "", "", "h"],
-        ["--x=1", "it's", "a\\b"],
-    ]
-    # route lag's first example reads a file: the form opens on „Plik”, the file
-    # left to be uploaded unless the session holds one of that name.
-    empty, held, series = got["lag"]
-    assert empty == {
-        "lag_min": "30",
-        "input_file": "",
-        "output": "outflow.csv",
-        "#one_of": 1,
-    }
-    assert held["input_file"] == "in/flood_inflow.csv" and held["#one_of"] == 1
-    assert series == {
-        "lag_min": "25",
-        "times_min": "0; 10; 20; 30; 40; 50; 60; 70",
-        "discharge_m3s": "0; 10; 40; 90; 60; 30; 10; 0",
-        "#one_of": 0,
-    }
-    assert got["own"] == {
-        "lag_min": "12,5",
-        "times_min": "0; 10",
-        "discharge_m3s": "1,5; 2",
-        "output": "o.csv",
-        "force": True,
-        "check": False,
-        "#one_of": 0,
-    }
-    assert got["chips"] == {
-        "values": "1; 2",
-        "dates": ["2020-01-01", "2020-01-02"],
-        "#one_of": 0,
-    }
     assert got["outputs"] == ["network_out", "network.svg"]
     assert got["fallback"] == "report"
-    # Every example of uh nash (one per parameter group) and scs effective goes
-    # through the form unchanged and runs on the server.
-    assert [(item["name"], item["chosen"]) for item in got["runs"]] == [
-        ("uh nash", 0),
-        ("uh nash", 1),
-        ("uh nash", 2),
-        ("scs effective", 0),
-        ("scs effective", 0),
-        ("scs effective", 1),
-    ]
-    for item in got["runs"]:
-        assert item["problems"] == {}, item
-        assert (item["status"], item["outcome"]) == (200, "ok"), item
-        assert item["inputs"].items() >= item["options"].items(), item
-    assert got["runs"][1]["options"]["lutz_urban_pct"] == 5
-    assert got["runs"][5]["options"]["values"] == [2.5, 5, 12.5, 15, 8, 4, 3]
+    # No example value: an optional output stays empty, a required one gets its name
+    assert got["defaults"] == [{}, {}, {"output": "hsg.tif"}]
 
 
 def test_requires_excludes_sections_and_dates_of_a_fixture_command(page: Any) -> None:
@@ -632,7 +557,7 @@ def test_routes_and_stored_inputs(page: Any) -> None:
         "#polecenia/a%20b%2Fc/%C5%82%23%3F/100%25",
     ]
     assert got["back"] == {"section": "polecenia", "path": ["a b/c", "ł#?", "100%"]}
-    assert got["keys"] == ["hydrolog-gui/polecenia/1", "hydrolog-gui/layout/2"]
+    assert got["keys"] == ["hydrolog-gui/polecenia/2", "hydrolog-gui/layout/2"]
     raw, back, cleared = got["stored"]
     assert raw == '{"command":"uh nash","values":{"n":"3"}}'
     assert back == {"command": "uh nash", "values": {"n": "3"}}
@@ -773,26 +698,84 @@ def test_notices_in_polish(page: Any) -> None:
 
 
 def test_ranges_of_applicability(page: Any) -> None:
+    # Ranges as Hydrolog serves them (`typical_ranges` of a command's catalog document)
     got = js(
         page,
-        """const range = {min: 0, max: 80};
+        """const range = {minimum: 0, maximum: 80};
+        const slope = {method: 'kirpich', parameter: 'slope_m_per_m',
+          inputs: ['channel_slope_m_per_m', 'mean_slope_m_per_m'], minimum: 0.03,
+          maximum: 0.1, unit: 'm/m', source: 'Kirpich (1940)'};
+        const years = {method: 'flood_frequency', parameter: 'years', inputs: [],
+          result: 'n_years', minimum: 30, maximum: null, unit: 'years', source: 'KZGW'};
+        const step = {method: 'scs', parameter: 'timestep_min',
+          inputs: ['timestep_min'], minimum: 0, maximum: 0.25, unit: 'min',
+          relative_to: 'uh_time_to_peak_min', source: 'NEH 630 ch. 16',
+          i18n: {pl: {source: 'NEH 630 rozdz. 16'}}};
+        const area = (method, minimum, maximum) => ({method, parameter: 'area_km2',
+          inputs: ['area_km2'], minimum, maximum, unit: 'km2', source: method});
         return {
           state: [info.rangeState(range, 0), info.rangeState(range, 80),
                   info.rangeState(range, 80.01), info.rangeState(range, -0.01),
-                  info.rangeState({min: 0.002}, 1e6), info.rangeState({max: 5}, -10),
+                  info.rangeState({minimum: 0.002, maximum: null}, 1e6),
+                  info.rangeState({maximum: 5}, -10),
                   info.rangeState(range, '5'), info.rangeState(range, NaN),
-                  info.rangeState(range, null)],
-          text: [info.rangeText({min: 0.002, max: 0.15, unit: 'm/m'}),
-                 info.rangeText({min: 1}), info.rangeText({max: 100, unit: '%'}),
+                  info.rangeState(range, null),
+                  info.rangeState(step, 25, 100), info.rangeState(step, 25.01, 100),
+                  info.rangeState(step, 25, null)],
+          value: [info.rangeValue(slope, {channel_slope_m_per_m: 0.0142,
+                    mean_slope_m_per_m: 0.082}),
+                  info.rangeValue(slope, {mean_slope_m_per_m: 0.082}),
+                  info.rangeValue(slope, {channel_slope_m_per_m: '0,02'}),
+                  info.rangeValue(years, {n_years: 26}),
+                  info.rangeValue(years, {})],
+          scale: [info.rangeScale(slope, {}),
+                  info.rangeScale(step, {uh_time_to_peak_min: 102.76}),
+                  info.rangeScale(step, {}),
+                  info.rangeScale(step, {uh_time_to_peak_min: 0})],
+          text: [info.rangeText(slope), info.rangeText(area('scs', 0, 52)),
+                 info.rangeText(years), info.rangeText(area('giandotti', 170, 70000)),
+                 info.rangeText({minimum: 1, maximum: 10, unit: '-'}),
+                 info.rangeText(step, {symbol: 'tp'}),
+                 info.rangeText(step, {symbol: 'tp', scale: 102.76}),
+                 info.rangeText({minimum: 0.2, maximum: 1.5, unit: 'min',
+                   relative_to: 'tc_min'}, {symbol: 'tc', scale: 100}),
                  info.rangeText({})],
+          source: [info.rangeSource(step), info.rangeSource(slope)],
+          listed: info.listedRanges({symbols: {timestep_min: 'Δt', area_km2: 'A'}}, [
+            step, {...step, method: 'nash'}, {...step, method: 'clark'},
+            area('scs', 0, 52), area('snyder', 26, 26000),
+          ]).map((item) => [info.rangeKey(item.range), item.label]),
         };""",
     )
-    assert got["state"] == ["ok", "ok", "warn", "warn", "ok", "ok", None, None, None]
+    assert got["state"] == [
+        *["ok", "ok", "warn", "warn", "ok", "ok", None, None, None],
+        *["ok", "warn", None],  # a share of 100: up to 25 inside, none without it
+    ]
+    assert got["value"] == [
+        {"field": "channel_slope_m_per_m", "value": 0.0142},
+        {"field": "mean_slope_m_per_m", "value": 0.082},
+        None,
+        {"field": "n_years", "value": 26},
+        None,
+    ]
+    assert got["scale"] == [1, 102.76, None, None]
     assert got["text"] == [
-        "od 0,002 do 0,15 m/m",
-        "co najmniej 1",
-        "najwyżej 100 %",
+        "od 0,03 do 0,1 m/m",
+        "najwyżej 52 km²",
+        "co najmniej 30 lat",
+        f"od 170 do 70{NBSP}000 km²",
+        "od 1 do 10",
+        "najwyżej 0,25·tp",
+        "najwyżej 0,25·tp = 25,69 min",
+        "od 0,2·tc do 1,5·tc (od 20 do 150 min)",
         "",
+    ]
+    assert got["source"] == ["NEH 630 rozdz. 16", "Kirpich (1940)"]
+    # The time step of three models listed once; an area of two methods names its method
+    assert got["listed"] == [
+        ["scs.timestep_min", "Δt"],
+        ["scs.area_km2", "A (scs)"],
+        ["snyder.area_km2", "A (snyder)"],
     ]
 
 

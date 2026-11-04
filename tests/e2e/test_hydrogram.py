@@ -17,7 +17,9 @@ browser and its changed fields are marked; the hydrograph exports as the CSV the
 „Wyczyść”, which empties the steps; Kalkulatory's route sets the tc method; Statystyka's
 reference is drawn; a phone in the dark theme recomputes through the sheets. The pure
 modules (the live channel, the state and what a model needs, the CSV) are tested in the
-page, and the ranges of the explanations against Hydrolog's thresholds.
+page. The explanations (i) show exactly the typical ranges Hydrolog serves (``commands
+schema --command``), and the fields, the explanations and Wyniki give the example the
+same verdicts.
 """
 
 import json
@@ -34,9 +36,6 @@ from typing import Any
 from playwright.sync_api import Locator, Page, Request, expect
 
 from hydrolog.catalog import format_command, run_command
-from hydrolog.runoff import clark_iuh, nash_iuh, scs_cn, snyder_uh
-from hydrolog.runoff.generator import TIMESTEP_SHARE_OF_TP
-from hydrolog.time import concentration
 from tests.e2e.conftest import KAMIENNIK as EXAMPLE
 from tests.e2e.conftest import (
     Tab,
@@ -117,6 +116,28 @@ SIDEWAYS = """() => [document.documentElement,
 STORED = "() => JSON.parse(localStorage.getItem('hydrolog-gui/hydrogram/2'))"
 """The inputs the page keeps."""
 IDS = "items => items.map((item) => item.id)"
+EXPLAINED = """async () => {
+  const info = await import('./src/ui/info.js');
+  const tables = await Promise.all([
+    import('./src/labels/info/tc.js').then((module) => module.tcInfo),
+    import('./src/labels/info/uh.js').then((module) => module.uhInfo),
+    import('./src/labels/info/losses.js').then((module) => module.lossesInfo),
+    import('./src/labels/info/rain.js').then((module) => module.rainInfo),
+    import('./src/labels/info/stats.js').then((module) => module.statsInfo),
+    import('./src/labels/info/routing.js').then((module) => module.routing),
+  ]);
+  const shown = {};
+  for (const id of tables.flatMap(Object.keys)) {
+    const ranges = info.infoRanges(id);
+    const body = document.createElement('div');
+    body.innerHTML = info.infoBody(info.infoText(id), {}, ranges);
+    const rows = [...body.querySelectorAll('li[data-range]')]
+      .map((row) => ({key: row.dataset.range, text: row.textContent}));
+    shown[id] = {ranges, rows};
+  }
+  return shown;
+}"""
+"""Every explanation's registered ranges and the rows its body lists, by id."""
 
 
 def flat(text: str | None) -> str:
@@ -215,6 +236,26 @@ def expected(options: dict[str, Any]) -> dict[str, Any]:
         "result"
     ]
     return result
+
+
+def served(command: str) -> list[dict[str, Any]]:
+    """Return the typical ranges Hydrolog serves for ``command`` (its catalog entry)."""
+    entry = run_command("commands schema", {"command": command}).to_dict()["result"][
+        "commands"
+    ][0]
+    found: list[dict[str, Any]] = entry["typical_ranges"]
+    return found
+
+
+def checked_field(found: dict[str, Any], values: dict[str, Any]) -> str | None:
+    """Return the field a served range checks: the first of its inputs in ``values``."""
+    return next((name for name in found["inputs"] if name in values), None)
+
+
+def leaves(found: dict[str, Any], value: float) -> bool:
+    """Return whether ``value`` lies outside the served range ``found`` (bounds in)."""
+    low, high = found["minimum"], found["maximum"]
+    return (low is not None and value < low) or (high is not None and value > high)
 
 
 def one_line(shown: str) -> str:
@@ -359,11 +400,14 @@ def test_the_worked_example_shows_the_result_of_the_mockup(tab: Tab) -> None:
         "qp 4,52 · tp 1:43"
     )
 
-    # The balance of the rainfall and the notes
+    # The balance of the rainfall and the notes: Hydrolog's notices, the example lying
+    # outside Kirpich's data (the verdicts are compared below)
     balance = page.locator(f'{RIGHT} [data-table="balance"] td:nth-child(2)')
     expect(balance).to_have_text(["105,00", "27,35", "49,53", "28,12", "136,77"])
-    notes = page.locator(f"{RIGHT} .notes li")
-    expect(notes.filter(has_text="Brak uwag Hydrologa")).to_have_count(1)
+    assert [notice["code"] for notice in envelope["notices"]] == [
+        "outside_typical_range"
+    ] * 2
+    expect(page.locator(f"{RIGHT} .notes li[data-code]")).to_have_count(2)
 
     # The table of the series: the peak row, P and Pe of the step ending at t
     page.locator(f"{CENTER} .view-bar").get_by_role("radio", name="Tabela").click()
@@ -404,7 +448,7 @@ def test_the_tc_method_amc_and_model_reproduce_the_mockups_runs(tab: Tab) -> Non
     notices = page.locator(f'{RIGHT} .notes li[data-code="outside_typical_range"]')
     expect(notices).to_have_text(re.compile(r"giandotti: area_km2 = 37,22 poza"))
     expect(warning(page, "area_km2")).to_have_text(
-        "Poza typowym zakresem od 100 do 10\u00a0000 (giandotti)"
+        "Poza typowym zakresem od 170 do 70\u00a0000 (giandotti)"
         " · outside_typical_range"
     )
     method.select_option("kerby_kirpich")
@@ -416,14 +460,9 @@ def test_the_tc_method_amc_and_model_reproduce_the_mockups_runs(tab: Tab) -> Non
             for name in ["overland_length_km", "overland_slope_m_per_m", "retardance"]
         },
     }
-    # The overland slope leaves Kerby's range: one notice, on its field
-    expect(notices).to_have_text(
-        [re.compile(r"^.*kerby_kirpich: overland_slope_m_per_m = 0,082 poza")]
-    )
-    expect(warning(page, "overland_slope_m_per_m")).to_have_text(
-        "Poza typowym zakresem od 0,001 do 0,01 (kerby_kirpich) · outside_typical_range"
-    )
-    expect(warning(page, "area_km2")).to_have_count(0)
+    # Kamiennik lies inside every range of Kerby–Kirpich: no notice, no warning
+    expect(notices).to_have_count(0)
+    expect(page.locator(f"{LEFT} [data-field] .warn")).to_have_count(0)
     method.select_option("kirpich")
     choose(page, "hg-amc-label", "III")
     check("scs", "kirpich", "III")
@@ -654,38 +693,43 @@ def test_fields_no_model_reads_may_stay_empty(tab: Tab) -> None:
 def test_a_value_outside_its_typical_range_is_a_warning_and_runs(tab: Tab) -> None:
     page = open_hydrogram(tab)
     slope = field(page, "channel_slope_m_per_m")
+    row = page.locator(f'{LEFT} [data-field="channel_slope_m_per_m"]')
     with page.expect_response(lambda answer: RUN in answer.url) as answered:
         slope.fill("0,2")
     envelope = answered.value.json()
-    notice = next(
-        item for item in envelope["notices"] if item["code"] == "outside_typical_range"
-    )
-    assert notice["details"]["field"] == "channel_slope_m_per_m"
-    row = page.locator(f'{LEFT} [data-field="channel_slope_m_per_m"]')
+    assert {
+        item["details"]["field"]: item["details"]["value"]
+        for item in envelope["notices"]
+        if item["code"] == "outside_typical_range"
+    } == {"area_km2": 37.22, "channel_slope_m_per_m": 0.2}
     expect(row).to_have_attribute("data-level", "warning")
     expect(warning(page, "channel_slope_m_per_m")).to_have_text(
-        "Poza typowym zakresem od 0,002 do 0,15 (kirpich) · outside_typical_range"
+        "Poza typowym zakresem od 0,03 do 0,1 (kirpich) · outside_typical_range"
     )
     expect(slope).to_have_attribute("aria-invalid", "false")
     # The run went on: the result is current, the notice is in Wyniki too
     shows_peak(page, {**KAMIENNIK, "watershed": {**SENT, "channel_slope_m_per_m": 0.2}})
-    expect(
-        page.locator(f'{RIGHT} .notes li[data-code="outside_typical_range"]')
-    ).to_have_text(re.compile(r"kirpich: slope_m_per_m = 0,2 poza typowym zakresem"))
+    notices = page.locator(f'{RIGHT} .notes li[data-code="outside_typical_range"]')
+    expect(notices.filter(has_text="slope_m_per_m")).to_have_text(
+        re.compile(r"kirpich: slope_m_per_m = 0,2 poza typowym zakresem")
+    )
     outside = page.locator(f'{LEFT} [data-summary="warnings"]')
     expect(outside).to_have_text(
-        "Poza typowym zakresem: Spadek cieku głównego (krok 1)"
+        "Poza typowym zakresem: Powierzchnia (krok 1), Spadek cieku głównego (krok 1)"
     )
     expect(page.locator(f'{LEFT} [data-summary="ok"]')).to_have_count(1)
     outside.get_by_role("button", name="Spadek cieku głównego").click()
     expect(slope).to_be_focused()
 
-    # Changed, the field drops the run's warning; back in range, none comes
-    slope.fill("0,0142")
+    # Changed, the field drops the run's warning; inside the range, none comes
+    slope.fill("0,05")
     expect(row.locator(".warn")).to_have_count(0)
-    shows(page, "60,21", "6:20", "1 046 213")
+    shows_peak(
+        page, {**KAMIENNIK, "watershed": {**SENT, "channel_slope_m_per_m": 0.05}}
+    )
     expect(row.locator(".warn")).to_have_count(0)
-    expect(outside).to_have_count(0)
+    expect(notices.filter(has_text="slope_m_per_m")).to_have_count(0)
+    expect(outside).to_have_text("Poza typowym zakresem: Powierzchnia (krok 1)")
 
     # A coefficient of a model: Snyder's Ct
     choose(page, "hg-uh-label", "Snyder")
@@ -694,6 +738,59 @@ def test_a_value_outside_its_typical_range_is_a_warning_and_runs(tab: Tab) -> No
         "Poza typowym zakresem od 1,35 do 1,65 (snyder) · outside_typical_range"
     )
     expect(page.locator(BADGE)).to_have_text("Wynik aktualny")
+
+
+def test_a_given_nash_n_outside_its_range_to_be_verified_says_so(tab: Tab) -> None:
+    page = open_hydrogram(tab)
+    choose(page, "hg-uh-label", "Nash")
+    choose(page, "hg-nash-source-label", "Podane n i K")
+    # The note and the confirmation quote Hydrolog's ranges of n and K, to be verified
+    expect(page.locator(f"{LEFT} p.note").filter(has_text="n i K")).to_have_text(
+        "n i K skalibrowane albo z innego źródła; typowo "
+        "n od 1 do 10 (do weryfikacji), K od 10 do 200 min (do weryfikacji)."
+    )
+    with run_of(page, uh_model="nash", nash_n=3.6, nash_k_min=82):
+        field(page, "nash_n").fill("3,6")
+        field(page, "nash_k_min").fill("82")
+    confirmed = page.locator(f'{RIGHT} [data-notes="gui"] li').filter(has_text="Nash:")
+    expect(confirmed).to_contain_text(
+        "n = 3,6 (do weryfikacji), K = 82\u00a0min (do weryfikacji)"
+    )
+
+    with run_of(page, uh_model="nash", nash_n=12) as answered:
+        field(page, "nash_n").fill("12")
+    envelope = answered.value.json()
+    assert [
+        item["details"]["field"]
+        for item in envelope["notices"]
+        if item["code"] == "outside_unverified_range"
+    ] == ["nash_n"]
+    expect(warning(page, "nash_n")).to_have_text(
+        "Poza typowym zakresem od 1 do 10 (nash); zakres do weryfikacji "
+        "· outside_unverified_range"
+    )
+    expect(warning(page, "nash_k_min")).to_have_count(0)
+    expect(
+        page.locator(f'{RIGHT} .notes li[data-code="outside_unverified_range"]')
+    ).to_contain_text("nash: n = 12 poza typowym zakresem od 1 do 10")
+    expect(confirmed).to_have_count(0)
+
+    # The explanation marks both ranges „do weryfikacji”, n outside, K inside
+    page.locator(f"{LEFT} .label-row:has(#hg-uh-label) .info-btn").click()
+    rows = page.locator(".info-pop .range-list li")
+    expect(rows.first).to_be_visible()
+    marked = rows.evaluate_all(
+        "items => Object.fromEntries(items.map((item) => [item.dataset.range,"
+        " [item.className, item.dataset.verified || null]]))"
+    )
+    assert marked == {
+        **{key: [state, None] for key, (state, _) in marked.items()},
+        "nash.n": ["warn", "false"],
+        "nash.k_min": ["ok", "false"],
+    }
+    expect(rows.and_(page.locator('[data-range="nash.n"]'))).to_contain_text(
+        "do weryfikacji"
+    )
 
 
 def test_requirements_follow_the_model_and_the_tc_method(tab: Tab) -> None:
@@ -1210,114 +1307,195 @@ def test_a_reference_of_statystyka_is_drawn_on_the_hydrograph(tab: Tab) -> None:
 # --- explanations (i) ----------------------------------------------------------
 
 
-def test_the_explanations_check_their_ranges_against_the_watershed(tab: Tab) -> None:
+def test_the_explanations_show_exactly_the_ranges_hydrolog_serves(tab: Tab) -> None:
     page = open_hydrogram(tab)
-    entry = page.evaluate(
-        "async () => (await import('./src/labels/info/tc.js')).tcInfo['tc-kirpich']"
+    # Statystyka and Sieć, mounted with the shell, register theirs once their documents
+    # arrive
+    page.evaluate("async () => { window.testInfo = await import('./src/ui/info.js'); }")
+    page.wait_for_function(
+        "() => ['stats-flood-frequency', 'routing.muskingum']"
+        ".every((id) => window.testInfo.infoRanges(id).length > 0)"
     )
-    page.locator(f"{LEFT} [data-block=tc] .info-btn").click()
+    shown: dict[str, dict[str, Any]] = page.evaluate(EXPLAINED)
+    documents = {
+        command: served(command)
+        for command in [
+            "hydrograph generate",
+            "tc watershed",
+            "uh nash",
+            "stats flood-frequency",
+        ]
+    }
+    every = [found for ranges in documents.values() for found in ranges]
+    schema = page.request.get(tab.base + "api/schemas/hydrolog-network-1.schema.json")
+    muskingum = next(
+        branch["properties"]["x"]
+        for branch in schema.json()["$defs"]["node"]["oneOf"]
+        if branch["properties"].get("method", {}).get("const") == "muskingum"
+    )
+
+    # Nothing of the GUI's own: each range is one Hydrolog serves, as it serves it, and
+    # Muskingum's X has the bounds of the network's schema
+    for info, entry in shown.items():
+        for found in entry["ranges"]:
+            if info.startswith("routing."):
+                assert (found["parameter"], found["minimum"], found["maximum"]) == (
+                    "x",
+                    muskingum["minimum"],
+                    muskingum["maximum"],
+                )
+            else:
+                assert found in every, (info, found)
+    # Nothing left out: every range of the documents the sections check (of `uh nash`
+    # Lutz's area; Nash's n and K are those of `hydrograph generate`)
+    registered = [found for entry in shown.values() for found in entry["ranges"]]
+    lutz = [found for found in documents["uh nash"] if found["method"] == "lutz"]
+    for found in [
+        *documents["hydrograph generate"],
+        *documents["tc watershed"],
+        *documents["stats flood-frequency"],
+        *lutz,
+    ]:
+        assert found in registered, found
+
+    # One row per range, with its source in Polish; the four unit hydrograph models
+    # serve one range of the time step, listed once
+    rows = {info: len(entry["rows"]) for info, entry in shown.items()}
+    assert rows == {
+        **{info: len(entry["ranges"]) for info, entry in shown.items()},
+        "rain-timestep": 1,
+    }
+    for info, entry in shown.items():
+        sources = {
+            f"{found['method']}.{found['parameter']}": found.get("i18n", {})
+            .get("pl", {})
+            .get("source", found["source"])
+            for found in entry["ranges"]
+        }
+        for row in entry["rows"]:
+            assert row["text"].endswith(f"({sources[row['key']]})"), (info, row)
+    words = {
+        row["key"]: row["text"] for entry in shown.values() for row in entry["rows"]
+    }
+    assert "A: od 0,005 do 0,45 km²" in words["kirpich.area_km2"]
+    assert "A: od 170 do 70\u00a0000 km²" in words["giandotti.area_km2"]
+    assert "Δt: najwyżej 0,25·tp (" in words["scs.timestep_min"]
+    assert "Długość szeregu N: co najmniej 30 lat" in words["flood_frequency.years"]
+    assert "X: najwyżej 0,5" in words["muskingum.x"]
+
+
+def test_the_explanations_check_hydrologs_ranges_against_the_watershed(
+    tab: Tab,
+) -> None:
+    page = open_hydrogram(tab)
     popover = page.locator(".info-pop")
-    expect(popover).to_be_visible()
-    expect(popover.locator("#info-pop-title")).to_have_text(entry["title"])
-    states: dict[str, list[str]] = {"warn": [], "ok": []}
-    for item in entry["ranges"]:
-        value = EXAMPLE.get(item["option"])
-        if value is None:
-            continue
-        low, high = item.get("min", -math.inf), item.get("max", math.inf)
-        states["warn" if value < low or value > high else "ok"].append(item["option"])
-    assert (
-        states["warn"] and states["ok"]
-    )  # Kamiennik leaves Kirpich's data, not its bounds
-    for state, options in states.items():
-        for option in set(options):
-            marked = popover.locator(f'.range-list li[data-range="{option}"]')
-            expect(marked.first).to_be_attached()
-            assert state in marked.evaluate_all(
-                "items => items.map((item) => item.className)"
-            )
+    title = popover.locator("#info-pop-title")
+    rows = popover.locator(".range-list li")
+    notes = page.locator(f'{RIGHT} [data-notes="gui"] li')
+    # The example's confirmations: SCS-CN, SCS and the time step against the unit
+    # hydrograph's time to peak (0,25 · 102,76 min); none for Kirpich, which Hydrolog's
+    # notices put outside its data
+    expect(notes).to_have_count(3)
+    expect(notes.nth(0)).to_contain_text(
+        "SCS-CN: CN (AMC I i III) = 65 w zakresie stosowania."
+    )
+    expect(notes.nth(1)).to_contain_text(
+        "SCS: A = 37,22\u00a0km² w zakresie stosowania."
+    )
+    expect(notes.nth(2)).to_contain_text(
+        "Krok Δt = 10 min ≤ 0,25·tp hydrogramu jednostkowego (25,69 min)."
+    )
+    assert set(notes.evaluate_all("items => items.map((item) => item.className)")) == {
+        "ok"
+    }
+    # The note of the time step opens its explanation: the range of the four models once
+    notes.nth(2).get_by_role("button", name="objaśnienie").click()
+    expect(title).to_have_text("Krok czasowy Δt")
+    expect(rows).to_have_count(1)
+    expect(rows).to_have_attribute("data-range", "scs.timestep_min")
+    expect(rows).to_have_attribute("data-field", "timestep_min")
+    expect(rows).to_have_class("ok")
+    expect(rows).to_contain_text("Δt = 10 min: najwyżej 0,25·tp = 25,69 min (")
     page.keyboard.press("Escape")
     expect(popover).to_be_hidden()
 
-    # The note of the method's range opens the same explanation
-    note = page.locator(f'{RIGHT} [data-notes="gui"] li.warn').first
-    expect(note).to_contain_text("Kirpich:")
+    # Kerby–Kirpich: each of its ranges checked on the field it reads, all inside
+    field(page, "tc_method").select_option("kerby_kirpich")
+    shows(page, *MOCKUP[("scs", "kerby_kirpich", "II")])
+    page.locator(f"{LEFT} [data-block=tc] .info-btn").click()
+    expect(title).to_have_text("Kerby–Kirpich: spływ po stoku i korytem")
+    ranges = [
+        found
+        for found in served("hydrograph generate")
+        if found["method"] == "kerby_kirpich"
+    ]
+    expect(rows).to_have_count(len(ranges))
+    assert rows.evaluate_all(
+        "items => items.map((item) => [item.dataset.range, item.dataset.field,"
+        " item.className])"
+    ) == [
+        [f"kerby_kirpich.{found['parameter']}", checked_field(found, EXAMPLE), "ok"]
+        for found in ranges
+    ]
+    page.keyboard.press("Escape")
+    expect(popover).to_be_hidden()
+    # Its confirmation in Wyniki opens the same explanation
+    note = notes.filter(has_text="Kerby–Kirpich:")
+    expect(note).to_contain_text("w zakresie stosowania.")
     note.get_by_role("button", name="objaśnienie").click()
-    expect(popover.locator("#info-pop-title")).to_have_text(entry["title"])
+    expect(title).to_have_text("Kerby–Kirpich: spływ po stoku i korytem")
 
 
-def test_the_ranges_of_the_explanations_are_hydrologs_thresholds(tab: Tab) -> None:
-    # The ranges the explanations and the notes check, said to be Hydrolog's warning
-    # thresholds, are the library's own: the field warnings come from those
-    kirpich = {
-        "channel_length_km": concentration._KIRPICH_LENGTH_RANGE,
-        "channel_slope_m_per_m": concentration._KIRPICH_SLOPE_RANGE,
-    }
-    kerby = {
-        "overland_length_km": concentration._KERBY_LENGTH_RANGE,
-        "overland_slope_m_per_m": concentration._KERBY_SLOPE_RANGE,
-        "retardance": concentration._KERBY_N_RANGE,
-    }
-    thresholds: dict[str, dict[str, tuple[float, float]]] = {
-        "tc-kirpich": kirpich,
-        "tc-nrcs": {
-            "channel_length_km": concentration._NRCS_LENGTH_RANGE,
-            "mean_slope_m_per_m": concentration._NRCS_SLOPE_RANGE,
-            "cn": concentration._NRCS_CN_RANGE,
-        },
-        "tc-giandotti": {
-            "area_km2": concentration._GIANDOTTI_AREA_RANGE,
-            "channel_length_km": concentration._GIANDOTTI_LENGTH_RANGE,
-        },
-        "tc-faa": {
-            "overland_length_km": concentration._FAA_LENGTH_RANGE,
-            "overland_slope_m_per_m": concentration._FAA_SLOPE_RANGE,
-            "runoff_coeff": concentration._FAA_C_RANGE,
-        },
-        "tc-kerby": kerby,
-        "tc-kerby_kirpich": {**kerby, **kirpich},
-        "losses-scs-cn": {"cn": scs_cn._AMC_CN_RANGE},
-        "uh-nash": {
-            "nash_n": nash_iuh._N_RANGE,
-            "nash_k_min": nash_iuh._K_RANGE_MIN,
-        },
-        "uh-clark": {"clark_r_tc_ratio": clark_iuh._R_TC_RANGE},
-        "uh-snyder": {
-            "snyder_ct": snyder_uh._CT_RANGE,
-            "snyder_cp": snyder_uh._CP_RANGE,
-        },
-    }
-    tab.open("#polecenia")
-    got = tab.page.evaluate(
-        """async () => {
-          const {tcInfo} = await import('./src/labels/info/tc.js');
-          const {uhInfo} = await import('./src/labels/info/uh.js');
-          const {lossesInfo} = await import('./src/labels/info/losses.js');
-          const {TIMESTEP_SHARE} = await import('./src/sections/hydrogram/notes.js');
-          const all = {...tcInfo, ...uhInfo, ...lossesInfo};
-          const hydrolog = (range) =>
-            (range.source || '').startsWith('próg ostrzeżenia Hydrologu');
-          const bounds = (range) => [range.option, range.min, range.max];
-          return {
-            share: TIMESTEP_SHARE,
-            ranges: Object.fromEntries(Object.entries(all).map(
-              ([id, entry]) => [id, (entry.ranges || []).filter(hydrolog).map(bounds)],
-            )),
-          };
-        }"""
+def test_the_fields_the_explanation_and_wyniki_agree_on_the_example(tab: Tab) -> None:
+    with tab.page.expect_response(lambda answer: RUN in answer.url) as answered:
+        page = open_hydrogram(tab)
+    # Hydrolog's verdict, twice: the ranges it serves for the methods of the run
+    # (Kirpich, SCS, SCS-CN) against the example, and the notices of the run
+    ranges = [
+        found
+        for found in served("hydrograph generate")
+        if found["method"] in {"kirpich", "scs", "scs_cn_amc"}
+        and "relative_to" not in found
+    ]
+    outside = set()
+    for found in ranges:
+        name = checked_field(found, EXAMPLE)
+        if name is not None and leaves(found, EXAMPLE[name]):
+            outside.add(name)
+    assert outside == {"area_km2", "channel_slope_m_per_m"}
+    notices = [
+        notice
+        for notice in answered.value.json()["notices"]
+        if notice["code"] == "outside_typical_range"
+    ]
+    assert {notice["details"]["field"] for notice in notices} == outside
+
+    # The fields: a warning on each of them, none elsewhere, and the summary says so
+    warned = page.locator(f"{LEFT} [data-field] .warn")
+    expect(warned).to_have_count(len(outside))
+    fields = warned.evaluate_all(
+        "items => items.map((item) => item.closest('[data-field]').dataset.field)"
     )
-    assert got["share"] == TIMESTEP_SHARE_OF_TP
-    shown = {
-        info: {option: (low, high) for option, low, high in ranges}
-        for info, ranges in got["ranges"].items()
-        if ranges
-    }
-    assert shown == {
-        info: {
-            option: (float(low), float(high)) for option, (low, high) in found.items()
-        }
-        for info, found in thresholds.items()
-    }
+    assert set(fields) == outside
+    expect(page.locator(f'{LEFT} [data-summary="warnings"] [data-goto]')).to_have_count(
+        len(outside)
+    )
+    # Wyniki: the same notices; the GUI confirms nothing of Kirpich
+    expect(
+        page.locator(f'{RIGHT} .notes li[data-code="outside_typical_range"]')
+    ).to_have_count(len(notices))
+    expect(
+        page.locator(f'{RIGHT} [data-notes="gui"] li').filter(has_text="Kirpich")
+    ).to_have_count(0)
+    # The explanation of Kirpich: outside on the same fields
+    page.locator(f"{LEFT} [data-block=tc] .info-btn").click()
+    rows = page.locator(".info-pop .range-list li")
+    expect(rows).to_have_count(sum(found["method"] == "kirpich" for found in ranges))
+    marked = rows.evaluate_all(
+        "items => items.map((item) => [item.className, item.dataset.field])"
+    )
+    assert {name for _, name in marked} == outside
+    assert {state for state, _ in marked} == {"warn"}
 
 
 # --- the phone -----------------------------------------------------------------
@@ -1418,7 +1596,7 @@ def test_the_state_gives_the_options_of_the_mockups_calls(tab: Tab) -> None:
             level: 'warning', code: 'outside_typical_range', message: '',
             details: {method: 'kirpich', parameter: 'slope_m_per_m',
               field: 'channel_slope_m_per_m', value: 0.2,
-              minimum: 0.002, maximum: 0.15},
+              minimum: 0.03, maximum: 0.1},
           };
           const steep = variant({
             watershed: {...read.texts, channel_slope_m_per_m: '0,2'},
@@ -1523,8 +1701,7 @@ def test_the_state_gives_the_options_of_the_mockups_calls(tab: Tab) -> None:
         "errors": {},
         "warnings": {
             "channel_slope_m_per_m": (
-                "Poza typowym zakresem od 0,002 do 0,15 (kirpich)"
-                " · outside_typical_range"
+                "Poza typowym zakresem od 0,03 do 0,1 (kirpich) · outside_typical_range"
             )
         },
     }

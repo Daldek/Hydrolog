@@ -1,9 +1,9 @@
 // State of „Sieć i trasowanie” (plan D9, S4): the network being edited, kept in the
-// browser under "hydrolog-gui/siec/1" (inputs only, no results): where it came from, its
+// browser under "hydrolog-gui/siec/2" (inputs only, no results): where it came from, its
 // structure (ids, types, inflows; not edited, plan D18), the values of the network and of
 // each node, the session files it reads (the inflows file and its time column) and the
-// chosen node and view. A first visit opens the shipped example (examples/siec.json,
-// hydrolog.testing.example_network_document()).
+// chosen node and view. A first visit has no network: it opens from a file or a hand-off
+// (the guide's worked example, instrukcja/#siec, is a file to load).
 //
 // Another part of the page opens a network here with openNetwork(document, {name}) (the
 // hand-off of S6); the section takes it when it is mounted, or on its first render.
@@ -14,16 +14,14 @@ import { useEffect, useRef, useState } from "../../html.js";
 import { t } from "../../labels/common.js";
 import { siec as texts } from "../../labels/siec.js";
 import { navigate } from "../../router.js";
+import { registerRanges } from "../../ui/info.js";
 import { buildForms, HELP_COMMANDS, KINDS, METHODS, networkValues, nodeValues, skeletonOf } from "./node-model.js";
 
 /** The section's id and the key of its inputs. */
 export const SECTION = "siec";
 
-/** The shipped example, relative to the page. */
-export const EXAMPLE = "examples/siec.json";
-
-/** The file name the example is known by. */
-export const EXAMPLE_NAME = "siec.json";
+/** The name of the network's document when its source gives none. */
+export const DOCUMENT_NAME = "siec.json";
 
 /** The schema of a network (GET api/schemas/…). */
 export const SCHEMA_FILE = "hydrolog-network-1.schema.json";
@@ -107,7 +105,7 @@ export function withSessionNames(doc) {
  * The state of a network document.
  *
  * @param {object} doc hydrolog-network/1 (checked with documentProblems)
- * @param {{name: string, kind: "example"|"file"|"handoff"}} source where it came from
+ * @param {{name: string, kind: "file"|"handoff"}} source where it came from
  * @param {object} [keep] inputs kept from before (the inflows file and its column)
  * @returns {object} the state
  */
@@ -136,7 +134,7 @@ export function stateOf(doc, source, keep = {}) {
  * @returns {string} e.g. "siec.json"
  */
 export function documentName(state) {
-  const name = sessionFileName((state.source && state.source.name) || EXAMPLE_NAME);
+  const name = sessionFileName((state.source && state.source.name) || DOCUMENT_NAME);
   return /\.json$/i.test(name) ? name : `${name}.json`;
 }
 
@@ -174,8 +172,33 @@ export function neededFiles(state) {
   return { ratings, inflows };
 }
 
+/** The fields of a routing method whose bounds in the network's schema are its range of applicability. */
+const METHOD_RANGES = Object.freeze({ muskingum: ["x"] });
+
 /**
- * The forms of the nodes: the network's schema and the catalog's Polish help, fetched once.
+ * Register with the explanations of the routing methods ("routing.<method>") the bounds the
+ * network's schema gives the fields of METHOD_RANGES (Muskingum's X): the GUI keeps no bound
+ * of its own.
+ *
+ * @param {object} forms the forms of buildForms
+ */
+export function registerMethodRanges(forms) {
+  for (const [method, names] of Object.entries(METHOD_RANGES)) {
+    const fields = forms.methods[method];
+    if (!fields) continue;
+    const found = [];
+    for (const name of names) {
+      const field = fields.get(name);
+      if (!field || (field.min === null && field.max === null)) continue;
+      found.push({ method, parameter: name, inputs: [name], minimum: field.min, maximum: field.max, unit: "-", source: texts.method.rangeSource });
+    }
+    if (found.length) registerRanges(`routing.${method}`, found);
+  }
+}
+
+/**
+ * The forms of the nodes: the network's schema and the catalog's Polish help, fetched once;
+ * the schema's bounds of the methods' ranges go to their explanations.
  *
  * @returns {{forms: object|null, error: string|null}} the forms (null until they arrive)
  *   and a loading error
@@ -194,7 +217,9 @@ export function useForms() {
     );
     Promise.all([api.schema(SCHEMA_FILE), help])
       .then(([schema, docs]) => {
-        if (alive) setFound({ forms: buildForms(schema, new Map(docs.filter(Boolean))), error: null });
+        const forms = buildForms(schema, new Map(docs.filter(Boolean)));
+        registerMethodRanges(forms);
+        if (alive) setFound({ forms, error: null });
       })
       .catch((error) => {
         if (alive) setFound({ forms: null, error: String((error && error.message) || error) });
@@ -204,17 +229,6 @@ export function useForms() {
     };
   }, []);
   return found;
-}
-
-/**
- * Fetch the shipped example.
- *
- * @returns {Promise<object>} hydrolog-network/1
- */
-export async function fetchExample() {
-  const response = await fetch(new URL(EXAMPLE, document.baseURI).href, { cache: "no-cache" });
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  return response.json();
 }
 
 // --- a network opened from elsewhere (the hand-off) ----------------------------------
@@ -232,7 +246,7 @@ const openers = new Set();
  *   provenance and result: handoff/mapping.js siecReceived); kept as the state's `source`
  */
 export function openNetwork(doc, meta = {}) {
-  opened = { doc, meta: { ...meta, name: meta.name || EXAMPLE_NAME, kind: meta.kind || "handoff" } };
+  opened = { doc, meta: { ...meta, name: meta.name || DOCUMENT_NAME, kind: meta.kind || "handoff" } };
   for (const listener of [...openers]) listener();
   navigate(SECTION);
 }

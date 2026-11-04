@@ -1,7 +1,9 @@
 /**
  * Explanations (i) of the unit hydrograph models (plan D16, slice S3): the entries "uh-<model>"
  * for the four values of `uh_model` of `hydrograph generate` (SCS, Nash with the Lutz method of
- * `uh nash`, Clark, Snyder), in the format of ui/info.js.
+ * `uh nash`, Clark, Snyder), in the format of ui/info.js. They keep the symbols of the
+ * parameters only: the typical ranges, with their sources, are Hydrolog's (`typical_ranges`
+ * of `hydrograph generate` and, for Lutz, of `uh nash`).
  */
 
 export const uhInfo = {
@@ -55,19 +57,11 @@ export const uhInfo = {
         unit: "–",
       },
     ],
-    ranges: [
-      {
-        option: "area_km2",
-        label: "A",
-        unit: "km²",
-        max: 52,
-        source: "zalecenie NEH 630: jednorodna zlewnia do ok. 52 km² (20 mi²)",
-      },
-    ],
+    symbols: { area_km2: "A" },
     note:
-      "<p>NEH 630 zaleca też krok Δt nie dłuższy niż 0,25·t<sub>p</sub>; Hydrolog nie sprawdza ani " +
-      "powierzchni, ani kroku. Każda metoda t<sub>c</sub> nadaje się do SCS, przy czym FAA i Kerby tylko " +
-      "dla małych zlewni bez wyraźnego koryta (dają czas spływu po stoku).</p>",
+      "<p>Krok Δt ma swój zakres względem t<sub>p</sub> (objaśnienie kroku czasowego). Każda metoda " +
+      "t<sub>c</sub> nadaje się do SCS, przy czym FAA i Kerby tylko dla małych zlewni bez wyraźnego " +
+      "koryta (dają czas spływu po stoku).</p>",
     sources:
       "Mockus 1957 (za NEH 630-16); USDA-SCS 1986 (TR-55); USDA-NRCS 2007 (NEH 630-16); Hydrolog, " +
       "<code>docs/COMPUTATION_PATHS.md</code> 3.1; opis polecenia <code>uh scs</code>",
@@ -144,8 +138,7 @@ export const uhInfo = {
       {
         symbol: "<math><msub><mi>n</mi><mi>M</mi></msub></math>",
         text:
-          "Lutz: współczynnik szorstkości Manninga koryta, typowo 0,025–0,050 dla cieków naturalnych; ze " +
-          "zlewni <code>manning_n</code>",
+          "Lutz: współczynnik szorstkości Manninga koryta; ze zlewni <code>manning_n</code>",
         unit: "s·m^(−1/3)",
       },
       {
@@ -171,31 +164,14 @@ export const uhInfo = {
         unit: "1/h",
       },
     ],
-    ranges: [
-      { option: "nash_n", label: "n", unit: "", min: 1, max: 10, source: "próg ostrzeżenia Hydrologu, typowo wg opisu polecenia uh nash" },
-      {
-        option: "nash_k_min",
-        label: "K",
-        unit: "min",
-        min: 10,
-        max: 200,
-        source: "próg ostrzeżenia Hydrologu, typowo wg opisu polecenia uh nash",
-      },
-      {
-        option: "area_km2",
-        label: "A (Lutz)",
-        unit: "km²",
-        max: 236,
-        source: "KZGW 2017: metoda Lutza w zlewniach do 236 km²",
-      },
-    ],
+    symbols: { n: "n", k_min: "K", area_km2: "A (Lutz)" },
     note:
       "<p>Zalecane: n i K skalibrowane albo z metody Lutza (zlewnie niekontrolowane). n i K z " +
       "t<sub>c</sub> przez t<sub>lag</sub> = 0,6·t<sub>c</sub> to założenie hydrogramu SCS, nie modelu " +
       "Nasha; Hydrolog oznacza tę drogę jako przestarzałą i hydrogram jej nie oferuje. Metoda Lutza " +
       "wymaga L, L<sub>c</sub> ≤ L, J i n<sub>M</sub> (U i W domyślnie 0); n szuka w przedziale 1,1–20, " +
       "a bez rozwiązania kończy się błędem. KZGW 2017 podaje ją dla niekontrolowanych zlewni " +
-      "quasi-naturalnych (uszczelnienie poniżej 5%) jako alternatywę dla modelu Snydera. Hydrogram " +
+      "quasi-naturalnych (o małym uszczelnieniu) jako alternatywę dla modelu Snydera. Hydrogram " +
       "jednostkowy dla kroku Δt powstaje z krzywej S hydrogramu chwilowego i jest skalowany " +
       "powierzchnią A.</p>",
     sources:
@@ -266,22 +242,13 @@ export const uhInfo = {
         unit: "min",
       },
     ],
-    ranges: [
-      {
-        option: "clark_r_tc_ratio",
-        label: "R/tc",
-        unit: "",
-        min: 0.2,
-        max: 1.5,
-        source: "próg ostrzeżenia Hydrologu, typowo wg HEC-HMS i praktyki inżynierskiej",
-      },
-    ],
+    symbols: { r_tc_ratio: "R/tc" },
     note:
-      "<p>R/t<sub>c</sub>: 0,2–0,4 zlewnie strome, zurbanizowane (mała retencja); 0,4–0,8 przeciętne " +
-      "naturalne; 0,8–1,5 płaskie, podmokłe (duża retencja). Krok Δt dłuższy niż 2R dałby ujemne " +
-      "rzędne, więc Hydrolog zgłasza błąd. Hydrogram jednostkowy dla kroku Δt powstaje z krzywej S " +
-      "hydrogramu chwilowego. Każda metoda t<sub>c</sub> nadaje się do modelu Clarka; FAA i Kerby – " +
-      "tylko dla małych zlewni bez wyraźnego koryta.</p>",
+      "<p>R/t<sub>c</sub> jest małe w zlewniach stromych i zurbanizowanych (mała retencja), duże w " +
+      "płaskich i podmokłych (duża retencja); źródło zakresu podaje te klasy. Krok Δt dłuższy niż " +
+      "2R dałby ujemne rzędne, więc Hydrolog zgłasza błąd. Hydrogram jednostkowy dla kroku Δt " +
+      "powstaje z krzywej S hydrogramu chwilowego. Każda metoda t<sub>c</sub> nadaje się do modelu " +
+      "Clarka; FAA i Kerby – tylko dla małych zlewni bez wyraźnego koryta.</p>",
     sources:
       "Clark 1945; USACE, HEC-HMS Technical Reference Manual; Hydrolog, " +
       "<code>docs/COMPUTATION_PATHS.md</code> 3.3; opis polecenia <code>uh clark</code>",
@@ -357,25 +324,7 @@ export const uhInfo = {
       },
       { symbol: "<math><msub><mi>t</mi><mi>b</mi></msub></math>", text: "podstawa hydrogramu", unit: "h" },
     ],
-    ranges: [
-      {
-        option: "snyder_ct",
-        label: "Ct",
-        unit: "",
-        min: 1.35,
-        max: 1.65,
-        source: "próg ostrzeżenia Hydrologu, typowo w postaci metrycznej",
-      },
-      { option: "snyder_cp", label: "Cp", unit: "", min: 0.4, max: 0.8, source: "próg ostrzeżenia Hydrologu, typowo" },
-      {
-        option: "area_km2",
-        label: "A",
-        unit: "km²",
-        min: 26,
-        max: 26000,
-        source: "dane Snydera: zlewnie Appalachów",
-      },
-    ],
+    symbols: { ct: "Ct", cp: "Cp", area_km2: "A" },
     note:
       "<p>Model nie używa t<sub>c</sub>: nie podawaj mu wyników grupy <code>tc</code>; podany " +
       "t<sub>c</sub> Hydrolog pomija z uwagą w wyniku. W hydrogramie D = krok Δt, więc opóźnienie, czas " +
@@ -384,7 +333,7 @@ export const uhInfo = {
       "obcięta na t<sub>b</sub> i unormowana do 1 mm, dlatego C<sub>p</sub> zmienia szczyt tylko " +
       "nieznacznie, przez długość podstawy. C<sub>t</sub> i C<sub>p</sub> bierze się z kalibracji w " +
       "zlewniach tego samego regionu; C<sub>t</sub> w postaci metrycznej to 0,75 × C<sub>t</sub> " +
-      "Snydera (typowe 1,35–1,65 to przeliczone 1,8–2,2).</p>",
+      "Snydera.</p>",
     sources:
       "Snyder 1938 (za Chow i in. 1988); Chow i in. 1988; USACE 2000 (HEC-HMS); Hydrolog, " +
       "<code>docs/COMPUTATION_PATHS.md</code> 3.4 i 5.2; opis polecenia <code>uh snyder</code>",

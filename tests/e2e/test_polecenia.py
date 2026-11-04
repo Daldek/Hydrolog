@@ -1,17 +1,19 @@
 """„Wszystkie polecenia” (plan D5, D7, D11, D14, D16, D17, slice S2) in Chromium.
 
 Against the real server of ``gui_server`` (its catalog, workers and session files):
-the list offers every command the server does (the catalog less ``gui serve``,
-``config show`` and ``commands guide``), by group under Polish titles, with the
-catalog's Polish summaries; its search folds case and diacritics, and a command is
-chosen in the list or by the hash. The forms of ``uh nash`` and ``scs effective``
-check the catalog's bounds and the members of the chosen ``one_of`` group before a
-run, send only that group, and show the meanings of the allowed values; a library
-error without an option stands above the form under the server's Polish title.
-Files uploaded through a path option feed a run whose output downloads; a result
-exports CSV, JSON, a PNG twice the chart's size and its call (CLI, Python, MCP); the
-inputs, not the results, survive a reload until „Wyczyść”; a phone in the dark theme
-runs a command through the sheets without scrolling sideways.
+a first visit chooses no command and sends no run, a hint says what to do and links the
+guide's worked example; the list offers every command the server does (the catalog
+less ``gui serve``, ``config show`` and ``commands guide``), by group under Polish
+titles, with the catalog's Polish summaries; its search folds case and diacritics, and
+a command is chosen in the list or by the hash. A form opens empty. The forms of ``uh
+nash`` and ``scs effective`` check the catalog's bounds and the members of the chosen
+``one_of`` group before a run, send only that group, and show the meanings of the
+allowed values; a library error without an option stands above the form under the
+server's Polish title. Files uploaded through a path option feed a run whose output
+downloads; a result exports CSV, JSON, a PNG twice the chart's size and its call (CLI,
+Python, MCP); the inputs, not the results, survive a reload until „Wyczyść”, which
+empties the forms; a phone in the dark theme runs a command through the sheets without
+scrolling sideways.
 """
 
 import hashlib
@@ -32,10 +34,10 @@ from hydrolog.catalog import (
     list_commands,
     parse_command,
 )
-from tests.e2e.conftest import Tab
+from tests.e2e.conftest import NASH_TYPED, Tab, type_nash
 
-FIRST = "uh nash"
-"""The command a first visit opens (the mockup's)."""
+NASH = "uh nash"
+"""The command of the guide's worked example (instrukcja/#przyklad-polecenia)."""
 EXCLUDED = frozenset({"gui serve", "config show", "commands guide"})
 """Commands the server does not offer (plan D5)."""
 FLOOD_INFLOW = Path(__file__).resolve().parents[1] / "fixtures" / "flood_inflow.csv"
@@ -75,9 +77,12 @@ def offered(tab: Tab) -> list[str]:
 
 
 def open_section(tab: Tab, command: str | None = None) -> Page:
-    """Open the section (at ``command``'s hash when given) and wait for the form."""
+    """Open the section at ``command``'s hash, or bare; wait for its form or hint."""
     tab.open(f"#polecenia/{command.replace(' ', '/')}" if command else "#polecenia")
-    expect(tab.page.locator(HEAD)).to_have_text(command or FIRST)
+    if command:
+        expect(tab.page.locator(HEAD)).to_have_text(command)
+    else:
+        expect(tab.page.locator(f'{POL} [data-empty="polecenia"]')).to_be_attached()
     return tab.page
 
 
@@ -151,12 +156,30 @@ def download(page: Page, trigger: Locator) -> tuple[str, bytes]:
     return started.value.suggested_filename, Path(started.value.path()).read_bytes()
 
 
-def as_typed(value: float) -> str:
-    """Write a number as the form shows it: the shortest form, a decimal comma."""
-    return repr(value).removesuffix(".0").replace(".", ",")
-
-
 # --- the list ------------------------------------------------------------------
+
+
+def test_a_first_visit_chooses_no_command_and_runs_nothing(tab: Tab) -> None:
+    runs: list[str] = []
+    tab.page.on(
+        "request",
+        lambda request: (
+            runs.append(request.url) if "/api/run/" in request.url else None
+        ),
+    )
+    page = open_section(tab)
+    hint = page.locator(f'{POL} [data-empty="polecenia"]')
+    expect(hint).to_contain_text("Wybierz polecenie z listy")
+    expect(hint.get_by_role("link")).to_have_attribute(
+        "href", "instrukcja/#przyklad-polecenia"
+    )
+    expect(page.locator(f"{POL} .cmd-form")).to_have_count(0)
+    expect(page.locator(f"{POL} .cmd-item button[aria-current]")).to_have_count(0)
+    expect(page.get_by_role("button", name="Uruchom")).to_be_disabled()
+    expect(page.locator(".crumb-context")).to_have_text(
+        re.compile(r"^\d+ polece\w+ w \d+ grupach$")
+    )
+    assert runs == []
 
 
 def test_the_list_offers_the_servers_commands_under_polish_titles(tab: Tab) -> None:
@@ -252,14 +275,20 @@ def test_a_command_chosen_in_the_list_is_in_the_hash_and_a_hash_opens_it(
 
 
 def test_uh_nash_checks_its_bounds_and_runs_through_the_server(tab: Tab) -> None:
-    page = open_section(tab)  # a first visit: uh nash, from its first example
-    example = parse_command(entry(FIRST)["examples"][0]["call"])
-    for name, value in example.options.items():
-        expect(number(page, name)).to_have_value(as_typed(value))
+    page = open_section(tab, NASH)
+    # The form opens empty: no example of the catalog in it
+    fields = page.locator(
+        f'{POL} .cmd-form input[type="text"], {POL} .cmd-form textarea'
+    )
+    assert fields.evaluate_all("items => items.map((item) => item.value)") == [""] * (
+        fields.count()
+    )
+    for name in NASH_TYPED:
         # numbers are not words: no spell-check underlines
         expect(number(page, name)).to_have_attribute("spellcheck", "false")
     expect(panes(page).first).to_have_attribute("aria-checked", "true")
     assert set(pane_options(page)) == {"n", "k_min"}
+    type_nash(page)
 
     badge = page.locator(BADGE)
     start = page.get_by_role("button", name="Uruchom")
@@ -277,7 +306,7 @@ def test_uh_nash_checks_its_bounds_and_runs_through_the_server(tab: Tab) -> None
 
     response = run(page)
     assert response.ok
-    assert sent(response) == example.options
+    assert sent(response) == {"area_km2": 45.3, "n": 3, "k_min": 30}
     result = response.json()["result"]
     expect(badge).to_have_attribute("data-state", "ok")
     expect(badge).to_have_text("Wynik aktualny")
@@ -290,18 +319,19 @@ def test_uh_nash_checks_its_bounds_and_runs_through_the_server(tab: Tab) -> None
         len(result["times_min"])
     )
     expect(right.locator(".chart svg")).to_be_visible()
-    assert one_line(call(right, "cli")) == format_command(FIRST, sent(response))
+    assert one_line(call(right, "cli")) == format_command(NASH, sent(response))
 
     # A change makes the result stale; the inputs of the result make it current again
     number(page, "timestep_min").fill("10")
     expect(badge).to_have_attribute("data-state", "stale")
-    number(page, "timestep_min").fill("5")
+    number(page, "timestep_min").fill("")
     expect(badge).to_have_attribute("data-state", "ok")
 
 
 def test_a_library_relation_error_stands_on_the_field_it_names(tab: Tab) -> None:
-    page = open_section(tab, FIRST)
-    lutz_group = entry(FIRST)["one_of"][1]
+    page = open_section(tab, NASH)
+    lutz_group = entry(NASH)["one_of"][1]
+    type_nash(page)  # n and K typed in their group, then another group chosen
     start = page.get_by_role("button", name="Uruchom")
     panes(page).nth(1).click()  # Lutz
     # Every member of the chosen group is required, checked when a run is asked for
@@ -325,8 +355,8 @@ def test_a_library_relation_error_stands_on_the_field_it_names(tab: Tab) -> None
     assert response.status == 400
     # The library names the field of the relation (Lc of Lutz)
     assert error["details"]["option"] == "lutz_centroid_length_km"
-    # Only the chosen group is sent: neither n nor k_min of the example
-    assert set(sent(response)) == {"area_km2", "timestep_min", *lutz}
+    # Only the chosen group is sent: neither n nor k_min typed in the other one
+    assert set(sent(response)) == {"area_km2", *lutz}
 
     centroid = option(page, "lutz_centroid_length_km")
     expect(number(page, "lutz_centroid_length_km")).to_have_attribute(
@@ -396,7 +426,10 @@ def test_scs_effective_under_a_prefix_sends_only_the_chosen_pane(
     expect(start).to_be_disabled()
     number(page, "cn").fill("72")
 
-    # The hyetograph pane: values with decimal commas; the example's total is not sent
+    # The hyetograph pane: values with decimal commas; a total typed in another pane is
+    # not sent
+    panes(page).nth(groups.index(["precipitation_mm"])).click()
+    number(page, "precipitation_mm").fill("50")
     panes(page).nth(groups.index(["values"])).click()
     option(page, "values").locator("textarea").fill(HYETOGRAPH)
     response = run(page)
@@ -437,7 +470,12 @@ def test_uploaded_files_feed_a_run_whose_output_downloads(tab: Tab) -> None:
     expect(source.locator("select")).to_have_value("in/Doplyw Kamiennika.csv")
     expect(source.locator("select option")).to_have_count(3)  # none, and both files
     assert session_files(tab)["in/Doplyw Kamiennika.csv"]["sha256"] == digest
-    expect(number(page, "output")).to_have_value("outflow.csv")  # the example's name
+    # The form is empty: the lag and the output's name are typed
+    expect(number(page, "lag_min")).to_have_value("")
+    expect(number(page, "output")).to_have_value("")
+    expect(number(page, "output")).to_have_attribute("placeholder", "outflow.csv")
+    number(page, "lag_min").fill("30")
+    number(page, "output").fill("outflow.csv")
 
     response = run(page)
     assert sent(response) == {
@@ -465,7 +503,8 @@ def test_uploaded_files_feed_a_run_whose_output_downloads(tab: Tab) -> None:
 
 def test_a_result_exports_csv_json_png_and_its_call(tab: Tab) -> None:
     tab.page.context.grant_permissions(["clipboard-read", "clipboard-write"])
-    page = open_section(tab, FIRST)
+    page = open_section(tab, NASH)
+    type_nash(page)
     response = run(page)
     envelope = response.json()
     options = sent(response)
@@ -496,7 +535,7 @@ def test_a_result_exports_csv_json_png_and_its_call(tab: Tab) -> None:
 
     # The command line as shown is copied; it is the options sent, formatted
     shown = call(right, "cli")
-    assert one_line(shown) == format_command(FIRST, options)
+    assert one_line(shown) == format_command(NASH, options)
     assert parse_command(one_line(shown)).options == options
     right.get_by_role("button", name="Kopiuj wywołanie").click()
     expect(page.locator(".toast")).to_have_text("Skopiowano do schowka")
@@ -506,7 +545,7 @@ def test_a_result_exports_csv_json_png_and_its_call(tab: Tab) -> None:
     exec(call(right, "py"), namespace)
     assert json.loads(json.dumps(namespace["result"].to_dict()["result"])) == result
     tool, arguments = call(right, "mcp").split("\n", 1)
-    assert tool.endswith(entry(FIRST)["operation_id"])
+    assert tool.endswith(entry(NASH)["operation_id"])
     assert json.loads(arguments) == options
 
 
@@ -514,7 +553,7 @@ def test_a_result_exports_csv_json_png_and_its_call(tab: Tab) -> None:
 
 
 def test_the_inputs_survive_a_reload_until_cleared(tab: Tab) -> None:
-    page = open_section(tab)
+    page = open_section(tab, NASH)
     urban = {"area_km2": "1,3", "urban_effective_precip_mm": "1,305"}
     panes(page).nth(2).click()  # the urban regression
     for name, text in urban.items():
@@ -524,7 +563,7 @@ def test_the_inputs_survive_a_reload_until_cleared(tab: Tab) -> None:
     expect(page.locator(f"{RIGHT} .summary")).to_be_visible()
 
     page.reload()
-    expect(page.locator(HEAD)).to_have_text(FIRST)
+    expect(page.locator(HEAD)).to_have_text(NASH)
     expect(panes(page).nth(2)).to_have_attribute("aria-checked", "true")
     for name, text in urban.items():
         expect(number(page, name)).to_have_value(text)
@@ -535,12 +574,12 @@ def test_the_inputs_survive_a_reload_until_cleared(tab: Tab) -> None:
     expect(badge).to_have_attribute("data-state", "ok")
     page.get_by_role("button", name="Wyczyść").click()
     expect(panes(page).first).to_have_attribute("aria-checked", "true")
-    expect(number(page, "area_km2")).to_have_value("45,3")  # the example again
+    expect(number(page, "area_km2")).to_have_value("")  # empty again
     expect(page.locator(f"{RIGHT} .summary")).to_have_count(0)  # its result is gone
     expect(badge).to_be_hidden()
     page.reload()
     expect(panes(page).first).to_have_attribute("aria-checked", "true")
-    expect(number(page, "area_km2")).to_have_value("45,3")
+    expect(number(page, "area_km2")).to_have_value("")
 
 
 # --- a phone -------------------------------------------------------------------
@@ -565,6 +604,7 @@ def test_a_phone_in_the_dark_runs_a_command_through_the_sheets(
     left.locator('.cmd-item[data-command="scs effective"] button').click()
     expect(page.locator(HEAD)).to_have_text("scs effective")
     expect(left).to_be_visible()  # choosing a command keeps the sheet
+    number(page, "cn").fill("72")  # the form opens empty
     panes(page).nth(1).click()
     option(page, "values").locator("textarea").fill(HYETOGRAPH)
     option(page, "amc").get_by_role("radio", name="III", exact=True).click()

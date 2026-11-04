@@ -1,24 +1,22 @@
 // State of „Wszystkie polecenia”: the catalog (the list and each command's document), the
 // groups and the search, and the inputs kept in the browser under
-// "hydrolog-gui/polecenia/1": the chosen command, the group and the search, and the
-// values of each command's form (no results). A command opened for the first time is
-// filled with its first catalog example.
+// "hydrolog-gui/polecenia/2": the chosen command, the group and the search, and the
+// values of each command's form (no results). A first visit chooses no command; a command
+// opened for the first time has an empty form (outputDefaults: only the default names of
+// its required output files).
 
 import { api } from "../../api.js";
 import { fold } from "../../format.js";
 import { useEffect, useState } from "../../html.js";
 import { describeError } from "../../labels/errors.js";
 import { groupTitle } from "../../labels/groups.js";
-import { commandEntry, defaultOutputName, fieldModel, valuesFromCall } from "../../forms/model.js";
+import { commandEntry } from "../../forms/model.js";
 
 /** The key of the section's inputs. */
 export const SECTION = "polecenia";
 
-/** The command a first visit opens (the mockup's), when the catalog has it. */
-export const FIRST_COMMAND = "uh nash";
-
 /**
- * The inputs of a first visit.
+ * The inputs of a first visit: no command chosen.
  *
  * @returns {{command: string|null, group: string, query: string, values: object}} the state
  */
@@ -131,23 +129,4 @@ export function useCatalog() {
     };
   }, []);
   return catalog;
-}
-
-/**
- * The values of a command's form opened for the first time: its first catalog example,
- * and the default name of every output file.
- *
- * @param {object} doc the command's catalog document
- * @param {string[]} [sessionFiles] the session's files ("in/<name>")
- * @returns {object} the values
- */
-export function firstValues(doc, sessionFiles = []) {
-  const entry = commandEntry(doc);
-  const model = fieldModel(doc);
-  const example = entry.examples && entry.examples[0] ? entry.examples[0].call : "";
-  const values = example ? valuesFromCall(model, example, sessionFiles) : {};
-  for (const field of model.fields) {
-    if (field.kind === "file-out" && !values[field.name] && field.required) values[field.name] = defaultOutputName(field);
-  }
-  return values;
 }

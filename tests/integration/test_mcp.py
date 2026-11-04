@@ -382,15 +382,29 @@ class TestCalls:
         assert document["result"]["cn"] == 60
 
     def test_the_default_pages_of_the_discovery_tools_fit_the_result_budget(self):
-        for tool, arguments in (
-            ("hydrolog_commands_list", {}),
-            ("hydrolog_commands_schema", {}),
-            ("hydrolog_commands_schema", {"command": "report generate"}),
-        ):
-            result = call(tool, arguments)
+        """DOC-1.7: a default page is at most 20,000 characters, a whole response at
+        most 50,000. The pages carry no ``typical_ranges``; the document of one
+        command, which does, is one whole response (ADR-0017)."""
+        for tool in ALWAYS_LOAD:
+            result = call(tool, {})
 
             assert result.is_error is False
             assert len(result.content[0].text) <= 20_000, tool
+        page = envelope_of(call("hydrolog_commands_schema", {}))["result"]
+        assert [c["name"] for c in page["commands"] if "typical_ranges" in c] == []
+
+        async def documents():
+            async with connected() as client:
+                return {
+                    command.name: await client.call_tool(
+                        "hydrolog_commands_schema", {"command": command.name}
+                    )
+                    for command in TOOLS
+                }
+
+        for name, result in anyio.run(documents).items():
+            assert result.is_error is False, name
+            assert len(result.content[0].text) <= 50_000, name
 
     def test_the_discovery_tools_page_the_catalog(self):
         first = envelope_of(call("hydrolog_commands_list", {"limit": 5}))

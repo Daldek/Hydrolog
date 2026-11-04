@@ -133,6 +133,10 @@ def test_the_welcome_dialog_opens_until_it_is_hidden(
     box.check()
     dialog.get_by_role("button", name="Przejdź do aplikacji").click()
     expect(dialog).to_be_hidden()
+    # The dialog's „close” event, which stores the choice, is dispatched after it hides
+    page.wait_for_function(
+        "(key) => localStorage.getItem(key) !== null", arg=WELCOME_KEY
+    )
     assert stored(page) == {"hidden": True}
     page.reload()
     expect(page.locator(READY)).to_have_count(3)

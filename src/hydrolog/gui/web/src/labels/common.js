@@ -16,8 +16,11 @@ export const common = {
     download: "Pobierz",
     upload: "Wczytaj plik…",
     paste: "Wklej",
-    example: "Przykład z katalogu",
     retry: "Spróbuj ponownie",
+  },
+  guide: {
+    example: "Przykład w instrukcji",
+    exampleTitle: "Rozdział instrukcji z przykładem: co wpisać i jaki wynik wyjdzie (nowa karta)",
   },
   copied: "Skopiowano do schowka",
   copyFailed: "Nie udało się skopiować: zaznacz tekst i skopiuj ręcznie",

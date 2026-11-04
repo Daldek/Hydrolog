@@ -104,6 +104,20 @@ export function inputText(value) {
 }
 
 /**
+ * A number in its shortest exact form, written as num writes it (a decimal comma, thousands
+ * grouped): exact(70000) gives "70 000", exact(0.002) "0,002".
+ *
+ * @param {number} value the number
+ * @returns {string} the text, "–" for a missing value
+ */
+export function exact(value) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "–";
+  const rounded = Number(value.toPrecision(12));
+  const decimals = (String(rounded).split(".")[1] || "").length;
+  return num(rounded, Math.min(decimals, 10));
+}
+
+/**
  * Minutes as hours and minutes: hmm(380) gives "6:20".
  *
  * @param {number} minutes time [min]

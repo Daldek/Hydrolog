@@ -1,7 +1,8 @@
 /**
  * Explanations (i) of the rainfall of „Hydrogram zlewni” (plan D16, slice S3): the source of
  * the rainfall ("rain-source"), the four design hyetographs of `hietogram_type` ("rain-<type>")
- * and the time step ("rain-timestep"), in the format of ui/info.js.
+ * and the time step ("rain-timestep", whose range against the unit hydrograph's time to peak
+ * is Hydrolog's: `typical_ranges` of `hydrograph generate`), in the format of ui/info.js.
  */
 
 export const rainInfo = {
@@ -9,7 +10,8 @@ export const rainInfo = {
     title: "Źródło opadu: PMAXTP, hietogram albo własna seria",
     intro:
       "<p>PMAXTP: wysokość opadu P o prawdopodobieństwie przewyższenia p i czasie trwania D z atlasu " +
-      "PMAXTP (IMGW-PIB), wpisana ręcznie albo przyniesiona z przekazaniem; GUI niczego nie pobiera. " +
+      "PMAXTP (IMGW-PIB; p i D wybierasz z wartości atlasu), wpisana ręcznie albo przyniesiona z " +
+      "przekazaniem; GUI niczego nie pobiera. " +
       "Hietogram: wysokość i czas trwania podane wprost. W obu przypadkach Hydrolog rozkłada P w czasie " +
       "hietogramem projektowym (<code>hietogram_type</code>, <code>total_mm</code>, " +
       "<code>duration_min</code>; jak <code>precip hietogram</code>).</p>" +
@@ -52,16 +54,6 @@ export const rainInfo = {
         unit: "–",
       },
     ],
-    ranges: [
-      {
-        option: "duration_min",
-        label: "D (PMAXTP)",
-        unit: "min",
-        min: 5,
-        max: 4320,
-        source: "czasy trwania w atlasie PMAXTP: od 5 min do 72 h",
-      },
-    ],
     note:
       "<p>Hydrogramowi przypisuje się to samo p co opadowi; to założenie metodyki, bo opad stuletni nie " +
       "zawsze wywołuje wezbranie stuletnie. Krytyczny czas trwania, dający największe wezbranie, nie jest " +
@@ -98,7 +90,6 @@ export const rainInfo = {
       },
       { symbol: "<math><mi>Δt</mi></math>", text: "krok czasowy, <code>timestep_min</code>", unit: "min" },
     ],
-    ranges: [],
     note:
       "<p>Przy tej samej sumie i czasie trwania rozkład natężenia zmienia wysokość i czas kulminacji: opad " +
       "efektywny SCS-CN liczy się od sumy narastającej, więc ten sam blok opadu daje więcej odpływu, gdy " +
@@ -151,7 +142,6 @@ export const rainInfo = {
       },
       { symbol: "<math><mi>P</mi></math>", text: "suma opadu, <code>total_mm</code>", unit: "mm" },
     ],
-    ranges: [],
     note:
       "<p>Przy p = 0,5 i parzystym n maksimum wypada w kroku tuż po połowie czasu trwania (np. w 7. " +
       "z 12). Polska metodyka (za DVWK 1984) zaleca deszcz z maksimum w środku czasu trwania.</p>",
@@ -205,7 +195,6 @@ export const rainInfo = {
       },
       { symbol: "<math><mi>P</mi></math>", text: "suma opadu, <code>total_mm</code>", unit: "mm" },
     ],
-    ranges: [],
     note:
       "<p>Para (2; 5) daje wczesne maksimum, w 0,2 czasu trwania (opad konwekcyjny), (2; 2) symetryczne, " +
       "(5; 2) późne. Przy α ≤ 1 &lt; β największa wysokość jest w pierwszym kroku, przy β ≤ 1 &lt; α – w " +
@@ -265,7 +254,6 @@ export const rainInfo = {
       },
       { symbol: "<math><mi>P</mi></math>", text: "suma opadu, <code>total_mm</code>", unit: "mm" },
     ],
-    ranges: [],
     note:
       "<p>Gdy po jednej stronie maksimum zabraknie kroków, pozostałe bloki idą po drugiej. To przybliżenie " +
       "hietogramu Eulera typu II: wagi bloków nie pochodzą z lokalnej krzywej wysokość–czas trwania, tylko " +
@@ -323,12 +311,13 @@ export const rainInfo = {
         unit: "m³/s na 1 mm",
       },
     ],
-    ranges: [],
+    symbols: { timestep_min: "Δt", uh_time_to_peak_min: "tp" },
     note:
       "<p>Gdy D nie jest wielokrotnością Δt, hietogram ma ⌊D/Δt⌋ kroków i nie pokrywa końcówki czasu " +
       "trwania (uwaga w wyniku), choć cała suma P trafia do tych kroków. Mniejszy krok lepiej oddaje " +
-      "szczyt: NEH 630 zaleca dla hydrogramu SCS Δt ≤ 0,25·t<sub>p</sub>, a w modelu Clarka Δt nie może " +
-      "przekraczać 2R. Czas do szczytu odczytuje się z dokładnością do kroku.</p>",
+      "szczyt: NEH 630 zaleca krok nie dłuższy niż część czasu do szczytu t<sub>p</sub> hydrogramu " +
+      "jednostkowego (zakres wyżej), a w modelu Clarka Δt nie może przekraczać 2R. Czas do szczytu " +
+      "odczytuje się z dokładnością do kroku.</p>",
     sources:
       "USDA-NRCS 2007 (NEH 630-16); Chow i in. 1988; Hydrolog, <code>docs/COMPUTATION_PATHS.md</code> 3.3; " +
       "opis polecenia <code>hydrograph generate</code>",

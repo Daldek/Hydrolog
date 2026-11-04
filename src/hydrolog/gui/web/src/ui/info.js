@@ -9,19 +9,30 @@
 //     intro: "<p>…</p>",                      HTML: what it is, which command and option
 //     formula: "<math display=\"block\">…</math>",          MathML, one or more
 //     vars: [{symbol: "<math>…</math>", text: "czas koncentracji", unit: "min"}],
-//     ranges: [{option: "channel_length_km", label: "L", unit: "km", min: 0, max: 80,
-//               source: "próg ostrzeżenia Hydrologu"}],   checked against the values
+//     symbols: {area_km2: "A", slope_m_per_m: "S"},  the symbol of a range's parameter
 //     note: "<p>…</p>",                       HTML, optional
 //     sources: "Kirpich 1940; Hydrolog, <code>docs/COMPUTATION_PATHS.md</code> 3.1",
 //   }
 // The fragments are trusted repository files (a contract test refuses scripts, inline
 // styles, event attributes and remote URLs in them); they are set as HTML.
+//
+// The ranges an explanation checks are Hydrolog's, never the GUI's (the author's decision
+// of 2026-11-04): the `typical_ranges` of a command's catalog document (`commands schema
+// --command X`), which a section registers under the explanation's id when the document
+// arrives (registerServed). A range is {method, parameter, inputs, result?, minimum,
+// maximum, unit, relative_to?, notice, verified, source, i18n: {pl: {source}}}: its value
+// is the first of `inputs` the values hold, else `result`; with `relative_to` the bounds
+// are shares of that quantity. A range with `verified` false has no published source yet:
+// its row is marked „do weryfikacji” (data-verified="false").
 
-import { inputText } from "../format.js";
+import { exact } from "../format.js";
 import { t } from "../labels/common.js";
+import { noticeValue } from "../labels/notices.js";
 import { shell } from "../labels/shell.js";
+import { unitLabel } from "../labels/units.js";
 
 const registry = new Map();
+const ranges = new Map();
 let popover = null;
 let anchor = null;
 let installed = false;
@@ -46,33 +57,189 @@ export function infoText(id) {
 }
 
 /**
- * A range of applicability against the current value.
+ * The key of a range: its method and parameter, "kirpich.slope_m_per_m".
  *
- * @param {{min?: number, max?: number}} range the range
- * @param {unknown} value the value of its option
- * @returns {"ok"|"warn"|null} inside, outside, or null without a number
+ * @param {{method: string, parameter: string}} range the range
+ * @returns {string} the key
  */
-export function rangeState(range, value) {
+export function rangeKey(range) {
+  return `${range.method}.${range.parameter}`;
+}
+
+/**
+ * Register the ranges an explanation checks, as Hydrolog serves them; a range of the same
+ * method and parameter replaces the one registered before.
+ *
+ * @param {string} id the explanation's id
+ * @param {object[]} found ranges of `typical_ranges`
+ */
+export function registerRanges(id, found) {
+  const kept = new Map(infoRanges(id).map((range) => [rangeKey(range), range]));
+  for (const range of found) kept.set(rangeKey(range), range);
+  ranges.set(id, [...kept.values()]);
+}
+
+/**
+ * The ranges registered for an explanation.
+ *
+ * @param {string} id the explanation's id
+ * @returns {object[]} the ranges, none before a section registered its documents
+ */
+export function infoRanges(id) {
+  return ranges.get(id) || [];
+}
+
+/**
+ * The typical ranges of a command's catalog document.
+ *
+ * @param {object|null} doc hydrolog-commands/1 of one command (`api.command`)
+ * @returns {object[]} its `typical_ranges`, none when it has none
+ */
+export function servedRanges(doc) {
+  const entry = doc && Array.isArray(doc.commands) ? doc.commands[0] : null;
+  return entry && Array.isArray(entry.typical_ranges) ? entry.typical_ranges : [];
+}
+
+/**
+ * Register the typical ranges of a command's catalog document for the explanations that
+ * check them.
+ *
+ * @param {object|null} doc hydrolog-commands/1 of one command
+ * @param {(range: object) => string|null} place the id of the explanation of a range, null
+ *   for a range no explanation shows
+ */
+export function registerServed(doc, place) {
+  const byId = new Map();
+  for (const range of servedRanges(doc)) {
+    const id = place(range);
+    if (!id) continue;
+    if (!byId.has(id)) byId.set(id, []);
+    byId.get(id).push(range);
+  }
+  for (const [id, found] of byId) registerRanges(id, found);
+}
+
+/**
+ * The value a range checks: the first of its inputs the values hold, else its result field.
+ *
+ * @param {{inputs?: string[], result?: string}} range the range
+ * @param {Object<string, unknown>} [values] the current values by name
+ * @returns {{field: string, value: number}|null} the field and its value, null without one
+ */
+export function rangeValue(range, values = {}) {
+  const names = [...(range.inputs || []), ...(range.result ? [range.result] : [])];
+  for (const name of names) {
+    const value = values[name];
+    if (typeof value === "number" && Number.isFinite(value)) return { field: name, value };
+  }
+  return null;
+}
+
+/**
+ * The quantity the bounds of a range are shares of (`relative_to`).
+ *
+ * @param {{relative_to?: string}} range the range
+ * @param {Object<string, unknown>} [values] the current values by name
+ * @returns {number|null} 1 for bounds in the parameter's unit, the quantity, or null when
+ *   the values do not hold it
+ */
+export function rangeScale(range, values = {}) {
+  if (!range.relative_to) return 1;
+  const value = values[range.relative_to];
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : null;
+}
+
+/**
+ * A range against a value, both bounds included.
+ *
+ * @param {{minimum?: number|null, maximum?: number|null}} range the range
+ * @param {unknown} value the value
+ * @param {number|null} [scale] the quantity of `relative_to` (rangeScale)
+ * @returns {"ok"|"warn"|null} inside, outside, or null without a number or a quantity
+ */
+export function rangeState(range, value, scale = 1) {
   if (typeof value !== "number" || !Number.isFinite(value)) return null;
-  if (typeof range.min === "number" && value < range.min) return "warn";
-  if (typeof range.max === "number" && value > range.max) return "warn";
+  if (typeof scale !== "number" || !Number.isFinite(scale)) return null;
+  if (typeof range.minimum === "number" && value < range.minimum * scale) return "warn";
+  if (typeof range.maximum === "number" && value > range.maximum * scale) return "warn";
   return "ok";
 }
 
 /**
- * The words of a range: „od 0,002 do 0,15 m/m”.
+ * The unit of a range as shown: "km²", "" for a dimensionless one.
  *
- * @param {{min?: number, max?: number, unit?: string}} range the range
- * @returns {string} the text
+ * @param {{unit?: string}} range the range
+ * @returns {string} the unit
  */
-export function rangeText(range) {
-  const unit = range.unit ? ` ${range.unit}` : "";
-  const min = typeof range.min === "number" ? inputText(range.min) : null;
-  const max = typeof range.max === "number" ? inputText(range.max) : null;
-  if (min !== null && max !== null) return `${t(shell.info.between, { min, max })}${unit}`;
-  if (min !== null) return `${t(shell.info.atLeast, { min })}${unit}`;
-  if (max !== null) return `${t(shell.info.atMost, { max })}${unit}`;
-  return "";
+export function rangeUnit(range) {
+  return !range.unit || range.unit === "-" ? "" : unitLabel(range.unit);
+}
+
+/**
+ * The words of a range: „od 0,03 do 0,1 m/m”, „najwyżej 52 km²” (a range from 0), „co
+ * najmniej 30 lat”; with `relative_to` the bounds are shares of its symbol, „najwyżej
+ * 0,25·tp”, followed by their value when the quantity is known, „najwyżej 0,25·tp = 47,5
+ * min”.
+ *
+ * @param {{minimum?: number|null, maximum?: number|null, unit?: string,
+ *   relative_to?: string}} range the range
+ * @param {{scale?: number|null, symbol?: string}} [how] the quantity of `relative_to`
+ *   (rangeScale) and its symbol
+ * @returns {string} the text, "" for a range without bounds
+ */
+export function rangeText(range, how = {}) {
+  const low = typeof range.minimum === "number" && range.minimum !== 0 ? range.minimum : null;
+  const high = typeof range.maximum === "number" ? range.maximum : null;
+  const words = (format) => {
+    if (low !== null && high !== null) return t(shell.info.between, { min: format(low), max: format(high) });
+    if (low !== null) return t(shell.info.atLeast, { min: format(low) });
+    if (high !== null) return t(shell.info.atMost, { max: format(high) });
+    return "";
+  };
+  const unit = rangeUnit(range);
+  const withUnit = (text) => (text && unit ? `${text} ${unit}` : text);
+  if (!range.relative_to) return withUnit(words(exact));
+  const symbol = how.symbol || range.relative_to;
+  const shares = words((share) => `${exact(share)}·${symbol}`);
+  const scale = how.scale;
+  if (!shares || typeof scale !== "number" || !Number.isFinite(scale)) return shares;
+  const bound = (share) => noticeValue(share * scale);
+  if (low !== null && high !== null) return `${shares} (${withUnit(words(bound))})`;
+  return `${shares} = ${withUnit(bound(high !== null ? high : low))}`;
+}
+
+/**
+ * The mark of a range to be verified (`verified` false in the served `typical_ranges`: no
+ * published source yet, Hydrolog's notice `outside_unverified_range`).
+ *
+ * @param {{verified?: boolean}} range the range
+ * @returns {string} „do weryfikacji”, "" for a verified range
+ */
+export function rangeMark(range) {
+  return range && range.verified === false ? shell.info.unverified : "";
+}
+
+/**
+ * The symbol of a range's parameter (or of any quantity) in an explanation.
+ *
+ * @param {object|null} entry the explanation
+ * @param {string} name the parameter
+ * @returns {string} its symbol, else the name
+ */
+export function symbolOf(entry, name) {
+  const symbols = (entry && entry.symbols) || {};
+  return Object.hasOwn(symbols, name) ? symbols[name] : name;
+}
+
+/**
+ * The source of a range, in Polish when Hydrolog gives it.
+ *
+ * @param {{source?: string, i18n?: object}} range the range
+ * @returns {string} the source
+ */
+export function rangeSource(range) {
+  const polish = range.i18n && range.i18n.pl && range.i18n.pl.source;
+  return polish || range.source || "";
 }
 
 /**
@@ -86,13 +253,38 @@ function escape(text) {
 }
 
 /**
+ * The ranges an explanation lists: each once (the four unit hydrograph models serve the same
+ * range of the time step), with its label; a parameter listed twice names its method.
+ *
+ * @param {object} entry the explanation
+ * @param {object[]} found the registered ranges
+ * @returns {Array<{range: object, label: string}>} the ranges with their labels
+ */
+export function listedRanges(entry, found) {
+  const seen = new Set();
+  const listed = [];
+  for (const range of found) {
+    const same = JSON.stringify([range.parameter, range.minimum, range.maximum, range.unit, range.relative_to || null, rangeSource(range)]);
+    if (seen.has(same)) continue;
+    seen.add(same);
+    listed.push(range);
+  }
+  const count = (parameter) => listed.filter((range) => range.parameter === parameter).length;
+  return listed.map((range) => {
+    const label = symbolOf(entry, range.parameter);
+    return { range, label: count(range.parameter) > 1 ? `${label} (${range.method})` : label };
+  });
+}
+
+/**
  * The HTML of an explanation's body.
  *
  * @param {object} entry the explanation
- * @param {Object<string, unknown>} [values] the current values by option name
+ * @param {Object<string, unknown>} [values] the current values by name
+ * @param {object[]} [found] its ranges, as Hydrolog serves them (infoRanges)
  * @returns {string} the HTML
  */
-export function infoBody(entry, values = {}) {
+export function infoBody(entry, values = {}, found = []) {
   const parts = [];
   if (entry.intro) parts.push(entry.intro);
   if (entry.formula) parts.push(`<div class="formula">${entry.formula}</div>`);
@@ -102,20 +294,27 @@ export function infoBody(entry, values = {}) {
       .join("");
     parts.push(`<table class="vars"><tbody>${rows}</tbody></table>`);
   }
-  if (Array.isArray(entry.ranges) && entry.ranges.length) {
-    const items = entry.ranges
-      .map((range) => {
-        const value = values[range.option];
-        const state = rangeState(range, value);
-        const label = escape(range.label || range.option);
+  const listed = listedRanges(entry, found);
+  if (listed.length) {
+    const items = listed
+      .map(({ range, label }) => {
+        const checked = rangeValue(range, values);
+        const scale = rangeScale(range, values);
+        const state = checked ? rangeState(range, checked.value, scale) : null;
+        const unit = rangeUnit(range);
+        const bounds = escape(rangeText(range, { scale, symbol: symbolOf(entry, range.relative_to) }));
         const words = state
-          ? t(shell.info.rangeValue, { label, value: escape(`${inputText(value)}${range.unit ? ` ${range.unit}` : ""}`), range: escape(rangeText(range)) })
-          : t(shell.info.range, { label, range: escape(rangeText(range)) });
+          ? t(shell.info.rangeValue, { label: escape(label), value: escape(`${noticeValue(checked.value)}${unit ? ` ${unit}` : ""}`), range: bounds })
+          : t(shell.info.range, { label: escape(label), range: bounds });
         const badge = state
           ? `<span class="badge ${state}">${state === "ok" ? shell.info.inRange : shell.info.outOfRange}</span>`
           : `<span class="badge info">${shell.info.noValue}</span>`;
-        const source = range.source ? ` (${escape(range.source)})` : "";
-        return `<li class="${state || "none"}" data-range="${escape(range.option)}">${badge}<span>${words}${source}</span></li>`;
+        const source = rangeSource(range) ? ` (${escape(rangeSource(range))})` : "";
+        const field = state ? ` data-field="${escape(checked.field)}"` : "";
+        const mark = rangeMark(range);
+        const verified = mark ? ' data-verified="false"' : "";
+        const marked = mark ? `<span class="badge warn">${mark}</span>` : "";
+        return `<li class="${state || "none"}" data-range="${escape(rangeKey(range))}"${field}${verified}>${badge}${marked}<span>${words}${source}</span></li>`;
       })
       .join("");
     parts.push(`<h3>${shell.info.ranges}</h3><ul class="range-list">${items}</ul>`);
@@ -200,7 +399,7 @@ export function openInfo(id, target, values = {}) {
     `<div class="ip-head"><h2 id="info-pop-title">${escape(title)}</h2>` +
     `<button class="btn ghost sm icon" type="button" data-info-close aria-label="${escape(shell.info.close)}">` +
     '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15"/></svg></button></div>' +
-    `<div class="ip-body">${entry ? infoBody(entry, values) : ""}</div>`;
+    `<div class="ip-body">${entry ? infoBody(entry, values, infoRanges(id)) : ""}</div>`;
   popover.dataset.infoId = id;
   popover.hidden = false;
   place(popover, target);

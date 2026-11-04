@@ -1,14 +1,15 @@
 // The results of „Hydrogram zlewni”. In the centre: the hyetograph above the hydrograph, the
 // cumulative rainfall and the unit hydrograph, or the table of the series. In the panel
 // Wyniki: the peak, the time to peak, the volume and the runoff coefficient; the notes (the
-// GUI's applicability checks, then Hydrolog's notices in Polish); the balance of the
-// rainfall; the parameters of the calculation; the exports (with the Markdown report and
-// the print view) and the command line; „Przekazanie”, the hand-off nogat-handoff/1 of
-// the shown run and a received producer's result beside it (handoff/handoff-panel.js).
-// `run` holds the shown result ({inputs, options, envelope, lutz, values}: its inputs and
-// options, its envelope, Lutz's estimate and the values its notes checked), `spec` its
-// export spec (export.js) and `current` the section's inputs now (with the record of a
-// received hand-off, `handoff`).
+// GUI's confirmations of Hydrolog's typical ranges, then Hydrolog's notices in Polish, those
+// of Lutz's `uh nash` included); the balance of the rainfall; the parameters of the
+// calculation; the exports (with the Markdown report and the print view) and the command
+// line; „Przekazanie”, the hand-off nogat-handoff/1 of the shown run and a received
+// producer's result beside it (handoff/handoff-panel.js). `run` holds the shown result
+// ({inputs, options, envelope, lutz, lutzNotices, values}: its inputs and options, its
+// envelope, Lutz's estimate and the notices of its run, and the values its notes checked),
+// `spec` its export spec (export.js) and `current` the section's inputs now (with the record
+// of a received hand-off, `handoff`).
 
 import { Chart } from "../../charts/chart.js";
 import { richText } from "../../controls/field.js";
@@ -24,7 +25,7 @@ import { DataTable } from "../../ui/table.js";
 import { cumulativeSpec, mainSpec, uhSpec } from "./charts.js";
 import { durationText, shortText } from "./data-panel.js";
 import { guiNotes } from "./notes.js";
-import { COMMAND, PEAK_DEFAULTS, isEmpty, rainDuration, usesLutz, usesTc } from "./state.js";
+import { COMMAND, PEAK_DEFAULTS, isEmpty, rainDuration, runNotices, usesLutz, usesTc } from "./state.js";
 
 /** Icons of the notes by level (the mockup's). */
 const ICONS = {
@@ -374,7 +375,8 @@ export function ResultsPanel({ run, spec, stale, current = null }) {
   if (!run) return html`<p class="muted">${texts.center.noResult}</p>`;
   const { envelope, inputs, values } = run;
   const result = envelope.result;
-  const notes = guiNotes({ inputs, values, result });
+  const notices = runNotices(run);
+  const notes = guiNotes({ inputs, values, result, notices });
   return html`
     <${StaleNote} stale=${stale} />
     <div class="summary" data-kpis="">
@@ -397,7 +399,7 @@ export function ResultsPanel({ run, spec, stale, current = null }) {
     </div>
     <h3 class="group-title">${texts.results.notices}</h3>
     <${GuiNotes} notes=${notes} values=${values} />
-    <${Notices} notices=${envelope.notices} />
+    <${Notices} notices=${notices} />
     <div class="steps">
       <${Part} id="balance" title=${texts.results.balance} meta=${t(texts.results.balanceMeta, { c: num(result.runoff_coefficient, 3) })}>
         <${Balance} result=${result} />

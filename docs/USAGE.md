@@ -49,15 +49,17 @@ hydrolog tc kirpich --length-km 8.2 --slope-m-per-m 0.023 --json
 ```
 
 ```json output
-{"schema": "hydrolog-result/1", "tool": "hydrolog", "command": "tc kirpich", "check": false, "status": "ok", "result": {"schema": "hydrolog-tc-kirpich/1", "method": "kirpich", "tc_min": 85.97330594494066, "tc_h": 1.4328884324156776}, "notices": [], "inputs": {"length_km": 8.2, "slope_m_per_m": 0.023}}
+{"schema": "hydrolog-result/1", "tool": "hydrolog", "command": "tc kirpich", "check": false, "status": "ok", "result": {"schema": "hydrolog-tc-kirpich/1", "method": "kirpich", "tc_min": 85.97330594494066, "tc_h": 1.4328884324156776}, "notices": [{"level": "warning", "code": "outside_typical_range", "message": "kirpich: slope_m_per_m=0.023 is outside typical range [0.03, 0.1]. Results may be unreliable.", "details": {"method": "kirpich", "parameter": "slope_m_per_m", "field": "slope_m_per_m", "value": 0.023, "minimum": 0.03, "maximum": 0.1}}], "inputs": {"length_km": 8.2, "slope_m_per_m": 0.023}}
 ```
 
 The envelope keys are `schema`, `tool`, `version`, `command`, `check`, `status`, `result`,
 `notices`, `inputs` and, for paged lists, `page`. The domain result has its own `schema`
 (`hydrolog-<group>-<command>/1`); units follow from field names (`tc_min`, `area_ha`); `NaN` and
 infinities are `null`. `inputs` echoes the options after normalisation (defaults filled in, paths
-made absolute). `notices` carries non-fatal warnings (a short series, a value outside the range of
-a formula): read it next to the result.
+made absolute). `notices` carries non-fatal warnings (a short series, a value outside the typical
+range of a formula, here a slope below the 3–10 % of Kirpich's data): read it next to the result.
+`--schema` of a command lists the typical ranges it checks, each with its source, in
+`typical_ranges`.
 
 **Errors.** A failing command prints nothing to stdout and leaves nothing half done. The last line
 of stderr is the `hydrolog-error/1` document (English): `code`, `title`, `message`, `hint`,
@@ -523,7 +525,8 @@ and, with a result, its peak, time to peak, volume and notices (the numbers of `
 depend on the result. `schematic_svg(document)` draws it, and `main_stem=` names the nodes that the main river passes
 when it is not the larger branch. This is the picture of the example above (a diamond is a subcatchment, a ring a
 reach, a double ring a junction and a target the outlet; `Qp` is the peak in m3/s, `tp` the time to peak in min and
-`V` the volume in m3):
+`V` the volume in m3; a `!` marks a node with a warning, here Kirpich's formula on areas and slopes outside its data,
+which the tooltip of the node lists):
 
 ![The schematic of the example network](images/network-schematic.svg)
 

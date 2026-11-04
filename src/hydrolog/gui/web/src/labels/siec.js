@@ -15,7 +15,7 @@ export const siec = {
   compute: "Oblicz sieć",
   computing: "Liczenie sieci…",
   lastRun: "ostatnio {time}",
-  clearTitle: "Wyczyść: wróć do przykładowej sieci (zmiany w węzłach przepadną)",
+  clearTitle: "Wyczyść: zamknij sieć (zmiany w węzłach przepadną); wczytaj ją ponownie z pliku",
   formsFailed: "Nie udało się wczytać schematu sieci: {message}",
   staleNote: "Dane zmieniły się po obliczeniu: wyniki dotyczą poprzednich danych. Naciśnij „Oblicz sieć”.",
   noResult: "Wyniki pojawią się po „Oblicz sieć”.",
@@ -45,6 +45,8 @@ export const siec = {
   method: {
     label: "Metoda",
     hint: "Zmiana metody pokazuje jej pola; pola innych metod zostają w pamięci, ale nie są wysyłane.",
+    /** The source of a method's range from the network's schema, in its explanation (i). */
+    rangeSource: "zakres metody, granice pola w schemacie hydrolog-network/1",
   },
   variants: {
     rain: { label: "Z opadu", meta: "z opadu" },
@@ -112,11 +114,10 @@ export const siec = {
   },
   file: {
     document: "dokument",
-    example: "przykład Hydrologa",
+    empty: "Wczytaj dokument sieci `hydrolog-network/1` („Plik sieci…”) razem z plikami, które czyta (dopływy, tabele zbiorników), albo przekazanie z Hydrografa. Układ połączeń pochodzi z pliku.",
     load: "Plik sieci…",
     companions: "Pliki towarzyszące…",
     companionsTitle: "Wczytaj pliki, które czyta sieć: tabele pojemność–odpływ (rating_file) i plik dopływów (inflows_file)",
-    loadExample: "Przykład",
     save: "Zapisz sieć",
     saveTitle: "Pobierz dokument sieci hydrolog-network/1 ze zmianami",
     saved: "Zapisano {name}",
@@ -124,7 +125,6 @@ export const siec = {
     loaded: "Wczytano {name}: {nodes}.",
     renamed: "Węzeł {node}: plik „{from}” jest w sesji jako „{to}”.",
     refused: "Nie wczytano {name}",
-    exampleFailed: "Nie udało się wczytać przykładowej sieci",
     notJson: "To nie jest plik JSON: {message}",
     notNetwork: "Wybierz plik JSON z siecią hydrolog-network/1.",
     notObject: "Dokument nie jest obiektem JSON.",
@@ -172,6 +172,7 @@ export const siec = {
     tributary: "dopływ",
     legend: "Przy węźle: szczyt Qp [m³/s] · czas do szczytu [h:min]",
     busy: "Układanie schematu…",
+    empty: "Schemat pojawi się po wczytaniu sieci.",
     failed: "Hydrolog nie ułożył schematu: {message}",
     invalid: "Schemat pojawi się po poprawieniu danych ({problem}).",
     files: "Schemat pojawi się po wczytaniu plików sieci: {missing}.",

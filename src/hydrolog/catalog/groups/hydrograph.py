@@ -12,10 +12,14 @@ from __future__ import annotations
 
 import dataclasses
 
+from hydrolog.catalog.groups._typical import (
+    TC_METHODS,
+    WATERSHED_TC_RANGES,
+    typically,
+)
 from hydrolog.catalog.groups.precip import HIETOGRAM_OPTIONS
-from hydrolog.catalog.spec import Command, Option
+from hydrolog.catalog.spec import Command, Option, RangeCheck
 
-_TC_METHODS = ("kirpich", "nrcs", "giandotti", "faa", "kerby", "kerby_kirpich")
 _UH_MODELS = ("scs", "nash", "clark", "snyder")
 
 _SHAPE = {option.name: option for option in HIETOGRAM_OPTIONS}
@@ -123,7 +127,7 @@ GENERATE_OPTIONS: tuple[Option, ...] = (
             "given; default kirpich. The watershed fields a method needs: see "
             "`tc watershed`."
         ),
-        choices=_TC_METHODS,
+        choices=TC_METHODS,
         meanings={
             "kirpich": "Kirpich formula (default).",
             "nrcs": "NRCS lag method (uses the CN).",
@@ -265,12 +269,12 @@ GENERATE_OPTIONS: tuple[Option, ...] = (
         name="nash_n",
         type="number",
         description_pl=(
-            "Nash: liczba zbiorników n (> 0, typowo 1–10); razem z "
-            "`nash_k_min`. Parametry z metody Lutza daje `uh nash`."
+            f"Nash: liczba zbiorników n (> 0, {typically('nash', 'n', 'pl')}); razem "
+            "z `nash_k_min`. Parametry z metody Lutza daje `uh nash`."
         ),
         description=(
-            "Nash: number of reservoirs n (> 0, typically 1-10); together with "
-            "`nash_k_min`. `uh nash` derives parameters by the Lutz method."
+            f"Nash: number of reservoirs n (> 0, {typically('nash', 'n')}); together "
+            "with `nash_k_min`. `uh nash` derives parameters by the Lutz method."
         ),
         exclusive_minimum=0,
     ),
@@ -278,11 +282,12 @@ GENERATE_OPTIONS: tuple[Option, ...] = (
         name="nash_k_min",
         type="number",
         description_pl=(
-            "Nash: stała magazynowania K [min] (> 0, typowo 10–200); razem z `nash_n`."
+            "Nash: stała magazynowania K [min] "
+            f"(> 0, {typically('nash', 'k_min', 'pl')}); razem z `nash_n`."
         ),
         description=(
-            "Nash: storage constant K [min] (> 0, typically 10-200); together "
-            "with `nash_n`."
+            "Nash: storage constant K [min] "
+            f"(> 0, {typically('nash', 'k_min')}); together with `nash_n`."
         ),
         exclusive_minimum=0,
         unit="min",
@@ -303,12 +308,12 @@ GENERATE_OPTIONS: tuple[Option, ...] = (
         name="clark_r_tc_ratio",
         type="number",
         description_pl=(
-            "Clark: stosunek R/tc (> 0, typowo 0,2–1,5), R = stosunek · tc; "
-            "alternatywa dla `clark_r_min`."
+            f"Clark: stosunek R/tc (> 0, {typically('clark', 'r_tc_ratio', 'pl')}), "
+            "R = stosunek · tc; alternatywa dla `clark_r_min`."
         ),
         description=(
-            "Clark: ratio R/tc (> 0, typically 0.2-1.5), R = ratio · tc; "
-            "alternative to `clark_r_min`."
+            f"Clark: ratio R/tc (> 0, {typically('clark', 'r_tc_ratio')}), "
+            "R = ratio · tc; alternative to `clark_r_min`."
         ),
         exclusive_minimum=0,
     ),
@@ -342,15 +347,27 @@ GENERATE_OPTIONS: tuple[Option, ...] = (
     Option(
         name="snyder_ct",
         type="number",
-        description_pl="Snyder: współczynnik czasowy Ct (> 0); domyślnie 1,5.",
-        description="Snyder: time coefficient Ct (> 0); default 1.5.",
+        description_pl=(
+            f"Snyder: współczynnik czasowy Ct (> 0, {typically('snyder', 'ct', 'pl')})"
+            "; domyślnie 1,5."
+        ),
+        description=(
+            f"Snyder: time coefficient Ct (> 0, {typically('snyder', 'ct')}); "
+            "default 1.5."
+        ),
         exclusive_minimum=0,
     ),
     Option(
         name="snyder_cp",
         type="number",
-        description_pl="Snyder: współczynnik szczytowy Cp (> 0); domyślnie 0,6.",
-        description="Snyder: peak coefficient Cp (> 0); default 0.6.",
+        description_pl=(
+            "Snyder: współczynnik szczytowy Cp "
+            f"(> 0, {typically('snyder', 'cp', 'pl')}); domyślnie 0,6."
+        ),
+        description=(
+            f"Snyder: peak coefficient Cp (> 0, {typically('snyder', 'cp')}); "
+            "default 0.6."
+        ),
         exclusive_minimum=0,
     ),
 )
@@ -362,6 +379,23 @@ GENERATE_ONE_OF: tuple[tuple[str, ...], ...] = (
     ("area_km2", "cn"),
 )
 """Alternative sources of the catchment: a watershed or ``area_km2`` + ``cn``."""
+
+GENERATE_RANGES: tuple[RangeCheck, ...] = (
+    *WATERSHED_TC_RANGES,
+    RangeCheck("scs_cn_amc", "cn", ("cn",)),
+    RangeCheck("scs", "area_km2", ("area_km2",)),
+    RangeCheck("nash", "n", ("nash_n",)),
+    RangeCheck("nash", "k_min", ("nash_k_min",)),
+    RangeCheck("clark", "r_tc_ratio", ("clark_r_tc_ratio",)),
+    RangeCheck("snyder", "ct", ("snyder_ct",)),
+    RangeCheck("snyder", "cp", ("snyder_cp",)),
+    RangeCheck("snyder", "area_km2", ("area_km2",)),
+    *(RangeCheck(model, "timestep_min", ("timestep_min",)) for model in _UH_MODELS),
+)
+"""Typical ranges of ``hydrograph generate`` (shared with ``report generate``): the
+time of concentration methods on the watershed, the CN of an AMC conversion, the
+model's parameters and area, and the time step against the unit hydrograph's time
+to peak; the inputs are the options (``cn`` and ``area_km2`` also the watershed's)."""
 
 _WATERSHED_EXAMPLE = {
     "name": "Potok Młynówka",
@@ -418,6 +452,7 @@ COMMANDS: tuple[Command, ...] = (
         ),
         errors=("validation_error", "not_found", "data_error", "forbidden"),
         core=True,
+        typical_ranges=GENERATE_RANGES,
         example_results=(
             {
                 "peak_discharge_m3s": 54.9222,

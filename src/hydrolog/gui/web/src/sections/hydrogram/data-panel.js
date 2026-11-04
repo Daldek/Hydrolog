@@ -20,6 +20,7 @@ import { html, useRef } from "../../html.js";
 import { t } from "../../labels/common.js";
 import { hydrogram as texts } from "../../labels/hydrogram.js";
 import { InfoButton } from "../../ui/info-button.js";
+import { infoRanges, infoText, rangeKey, rangeMark, rangeText, symbolOf } from "../../ui/info.js";
 import { Seg } from "../../ui/seg.js";
 import {
   AMC,
@@ -51,6 +52,28 @@ const ICONS = {
   warn: html`<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2l6.5 11.5h-13z" /><path d="M8 6.5v3.2M8 11.7v.01" /></svg>`,
   ok: html`<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" /><path d="M5 8.2l2 2 4-4.2" /></svg>`,
 };
+
+/**
+ * A model's note with Hydrolog's typical ranges of its parameters („typowo n od 1 do 10 (do
+ * weryfikacji), K od 10 do 200 min (do weryfikacji)”: a range to be verified says so), or
+ * its plain form while they have not arrived.
+ *
+ * @param {string} id the explanation the ranges are registered with
+ * @param {string[]} keys the ranges, "method.parameter"
+ * @param {string} text the note, with {ranges}
+ * @param {string} plain the note without them
+ * @returns {string} the note
+ */
+function typicalNote(id, keys, text, plain) {
+  const entry = infoText(id);
+  const words = infoRanges(id)
+    .filter((range) => keys.includes(rangeKey(range)))
+    .map((range) => {
+      const mark = rangeMark(range);
+      return `${symbolOf(entry, range.parameter)} ${rangeText(range)}${mark ? ` (${mark})` : ""}`;
+    });
+  return words.length ? t(text, { ranges: words.join(", ") }) : plain;
+}
 
 /**
  * A duration for people: whole hours as hours, otherwise minutes.
@@ -711,7 +734,9 @@ function HydrographStep(props) {
                     ${numberRow("nash_k_min", { value: estimate ? shortText(estimate.k_min) : "", readOnly: true })}`
                 : html`${numberRow("nash_n")}${numberRow("nash_k_min")}`}
             </div>
-            <p class="note">${richText(byLutz ? texts.uh.lutzNote : texts.uh.givenNote)}</p>
+            <p class="note">${richText(
+              byLutz ? texts.uh.lutzNote : typicalNote("uh-nash", ["nash.n", "nash.k_min"], texts.uh.givenNote, texts.uh.givenNotePlain),
+            )}</p>
           `
         : null}
       ${model === "clark"
@@ -727,7 +752,7 @@ function HydrographStep(props) {
               />
             </div>
             <div class="form">${inputs.clark_kind === "r" ? numberRow("clark_r_min") : numberRow("clark_r_tc_ratio")}</div>
-            <p class="note">${richText(texts.uh.clarkNote)}</p>
+            <p class="note">${richText(typicalNote("uh-clark", ["clark.r_tc_ratio"], texts.uh.clarkNote, texts.uh.clarkNotePlain))}</p>
           `
         : null}
       ${model === "snyder"

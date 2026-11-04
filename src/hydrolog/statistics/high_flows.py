@@ -16,11 +16,13 @@ from __future__ import annotations
 import warnings
 from collections import OrderedDict
 from dataclasses import dataclass
+from typing import cast
 
 import numpy as np
 from numpy.typing import NDArray
 from scipy.stats import genextreme, kstest, lognorm, pearson3, weibull_min
 
+from hydrolog._ranges import typical_range
 from hydrolog._serialization import JsonResultMixin
 from hydrolog._warnings import KsTestApproximate, ShortRecord, SmallSample
 from hydrolog.exceptions import InvalidParameterError
@@ -28,7 +30,8 @@ from hydrolog.statistics._types import EmpiricalFrequency, compute_plotting_posi
 
 _DEFAULT_RETURN_PERIODS = np.array([2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 500.0, 1000.0])
 _MIN_RELIABLE_YEARS = 10  # below it the estimates may be unreliable
-_KZGW_MIN_YEARS = 30  # KZGW (2017): the minimum record for flood frequency analysis
+# KZGW (2017): the minimum record for flood frequency analysis (one table of ranges)
+_KZGW_MIN_YEARS = int(cast(float, typical_range("flood_frequency", "years").minimum))
 
 _AD_CRITICAL_VALUES: dict[str, float] = {
     "15%": 1.610,

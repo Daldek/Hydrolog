@@ -20,7 +20,7 @@ from typing import Any
 import pytest
 from playwright.sync_api import Request, Route, expect
 
-from tests.e2e.conftest import Tab
+from tests.e2e.conftest import Tab, type_nash
 
 # Nogat's tokens of both themes (tokens.css, Nogat d1b5820): --bg and --rail-bg.
 BG = {"light": "rgb(250, 248, 248)", "dark": "rgb(13, 17, 23)"}
@@ -138,14 +138,14 @@ def test_page_brand_rail_route_and_relative_api(
     expect(item).to_have_attribute("aria-current", "page")
     expect(page.locator('section.section[data-section="polecenia"]')).to_be_visible()
 
-    # Breadcrumbs and title follow the section and its command; the catalog came
-    # from the API next to the page
+    # Breadcrumbs and title follow the section (a first visit chooses no command); the
+    # catalog came from the API next to the page
     expect(topbar.locator(".crumb-section")).to_have_text(SECTION_TITLE)
     expect(topbar.locator(".crumb-context")).to_have_text(
-        re.compile(r"^uh nash · \d+ polecenia w \d+ grupach$")
+        re.compile(r"^\d+ polecenia w \d+ grupach$")
     )
     expect(page).to_have_title(
-        re.compile(rf"^Hydrolog: {SECTION_TITLE} — uh nash · \d+ polecenia")
+        re.compile(rf"^Hydrolog: {SECTION_TITLE} — \d+ polecenia")
     )
     expect(page.locator(f"{POL} .view-panel.left .panel-head .sub")).to_have_text(
         re.compile(r"^katalog: \d+ polece")
@@ -255,6 +255,7 @@ def test_desktop_rail_panels_and_page_fits(
     expect(page.get_by_role("button", name="Dane", exact=True)).to_be_hidden()
     assert_page_fits(page)
 
+    type_nash(page)  # a form starts empty: the guide's example
     page.get_by_role("button", name="Uruchom").click()
     expect(page.locator(".topbar .status")).to_have_attribute("data-state", "ok")
     expect(right.locator(".kpi").first).to_be_visible()
@@ -311,6 +312,7 @@ def test_phone_bottom_bar_and_sheets(new_tab: Callable[..., Tab], theme: str) ->
 
     # A run from Dane swaps the sheet for Wyniki; its close button closes it
     open_left.click()
+    type_nash(page)  # a form starts empty: the guide's example
     left.get_by_role("button", name="Uruchom").click()
     expect(right).to_be_visible()
     expect(left).to_be_hidden()

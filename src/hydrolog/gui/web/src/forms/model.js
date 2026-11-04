@@ -569,136 +569,6 @@ export function toOptions(model, values) {
 }
 
 /**
- * Split a command line into words as a POSIX shell does: single quotes, double quotes and
- * backslashes.
- *
- * @param {string} line the line
- * @returns {string[]} the words
- */
-export function shellWords(line) {
-  const words = [];
-  let word = null;
-  let quote = null;
-  const text = String(line || "");
-  for (let index = 0; index < text.length; index += 1) {
-    const char = text[index];
-    if (quote === "'") {
-      if (char === "'") quote = null;
-      else word += char;
-    } else if (quote === '"') {
-      if (char === '"') quote = null;
-      else if (char === "\\" && index + 1 < text.length && '"\\$`'.includes(text[index + 1])) {
-        index += 1;
-        word += text[index];
-      } else word += char;
-    } else if (char === "'" || char === '"') {
-      quote = char;
-      word = word ?? "";
-    } else if (char === "\\" && index + 1 < text.length) {
-      index += 1;
-      if (text[index] !== "\n") word = (word ?? "") + text[index];
-    } else if (/\s/.test(char)) {
-      if (word !== null) words.push(word);
-      word = null;
-    } else {
-      word = (word ?? "") + char;
-    }
-  }
-  if (word !== null) words.push(word);
-  return words;
-}
-
-/**
- * Values of a form from a catalog example call ("hydrolog uh nash --area-km2 45.3 …"): the
- * options it gives, converted to the form's text, and the `one_of` group it uses. An input
- * file is left empty (it has to be uploaded) unless the session holds a file of that name.
- *
- * @param {object} model the result of fieldModel
- * @param {string} call the example's command line
- * @param {string[]} [sessionFiles] the session's files, "in/<name>"
- * @returns {object} the values
- */
-export function valuesFromCall(model, call, sessionFiles = []) {
-  const words = shellWords(call);
-  const fields = new Map(model.fields.map((field) => [field.name, field]));
-  const values = {};
-  const named = new Set();
-  for (let index = 0; index < words.length; index += 1) {
-    const word = words[index];
-    if (!word.startsWith("--")) continue;
-    let flag = word.slice(2);
-    let inline = null;
-    const equals = flag.indexOf("=");
-    if (equals >= 0) {
-      inline = flag.slice(equals + 1);
-      flag = flag.slice(0, equals);
-    }
-    let name = flag.replace(/-/g, "_");
-    let negated = false;
-    if (!fields.has(name) && name.startsWith("no_") && fields.has(name.slice(3))) {
-      name = name.slice(3);
-      negated = true;
-    }
-    named.add(name);
-    const field = fields.get(name);
-    if (!field) continue;
-    if (field.kind === "boolean") {
-      values[name] = !negated;
-      continue;
-    }
-    let raw = inline;
-    if (raw === null && index + 1 < words.length && !words[index + 1].startsWith("--")) {
-      index += 1;
-      raw = words[index];
-    }
-    if (raw === null) continue;
-    values[name] = formValue(field, raw, sessionFiles);
-  }
-  if (model.oneOf) {
-    // The group the call names, even when its input file is left empty to be uploaded.
-    const used = model.oneOf.groups.find((group) => group.members.every((member) => named.has(member)));
-    if (used) values[ONE_OF_KEY] = used.index;
-  }
-  return values;
-}
-
-/**
- * The form's text of one value of a command line.
- *
- * @param {object} field a field of fieldModel
- * @param {string} raw the word of the line
- * @param {string[]} sessionFiles the session's files
- * @returns {unknown} the form's value
- */
-function formValue(field, raw, sessionFiles) {
-  switch (field.kind) {
-    case "number":
-    case "integer": {
-      const number = Number(raw);
-      return Number.isFinite(number) ? inputText(number) : raw;
-    }
-    case "series":
-      return raw
-        .split(",")
-        .map((item) => {
-          const number = Number(item);
-          return Number.isFinite(number) ? inputText(number) : item;
-        })
-        .join("; ");
-    case "chips":
-      return raw.split(",").map((item) => item.trim()).filter(Boolean);
-    case "file-in": {
-      const base = raw.split(/[\\/]/).pop();
-      return sessionFiles.includes(`in/${base}`) ? `in/${base}` : "";
-    }
-    case "file-out":
-      return raw.split(/[\\/]/).pop();
-    default:
-      return raw;
-  }
-}
-
-/**
  * The default name of an output file: the basename of the first catalog example's value
  * (plan D11), else the option's name.
  *
@@ -708,6 +578,21 @@ function formValue(field, raw, sessionFiles) {
 export function defaultOutputName(field) {
   const first = field.examples.find((value) => typeof value === "string");
   return first ? first.split(/[\\/]/).pop() : field.name;
+}
+
+/**
+ * The values of a form opened for the first time: empty, but for the default name of
+ * every required output file (where the result is written, not data of the calculation).
+ *
+ * @param {object} model the result of fieldModel
+ * @returns {object} the values
+ */
+export function outputDefaults(model) {
+  const values = {};
+  for (const field of model.fields) {
+    if (field.kind === "file-out" && field.required) values[field.name] = defaultOutputName(field);
+  }
+  return values;
 }
 
 /**

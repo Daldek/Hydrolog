@@ -22,6 +22,7 @@ from hydrolog._warnings import (
     IncompleteYears,
     KsTestApproximate,
     OutsideTypicalRange,
+    OutsideUnverifiedRange,
     ShortRecord,
     SmallSample,
     UhModelMismatch,
@@ -45,6 +46,14 @@ SAMPLES = {
         "value": 120.0,
         "minimum": 0.001,
         "maximum": 80.0,
+    },
+    OutsideUnverifiedRange: {
+        "method": "nash",
+        "parameter": "n",
+        "field": "nash_n",
+        "value": 12.0,
+        "minimum": 1.0,
+        "maximum": 10.0,
     },
     SmallSample: {"years": 6, "minimum": 10},
     ShortRecord: {"years": 20, "minimum": 30},
@@ -96,6 +105,7 @@ class TestLibraryWarnings:
     def test_the_codes_of_the_classes(self):
         assert [kind.code() for kind in LIBRARY_WARNINGS] == [
             "outside_typical_range",
+            "outside_unverified_range",
             "small_sample",
             "short_record",
             "ks_test_approximate",
@@ -105,7 +115,20 @@ class TestLibraryWarnings:
         ]
 
     def test_every_subclass_is_listed(self):
-        assert set(HydrologWarning.__subclasses__()) == set(LIBRARY_WARNINGS)
+        found: set[type[HydrologWarning]] = set()
+        pending = [HydrologWarning]
+        while pending:
+            for kind in pending.pop().__subclasses__():
+                found.add(kind)
+                pending.append(kind)
+        assert found == set(LIBRARY_WARNINGS)
+
+    def test_an_unverified_range_is_caught_as_a_typical_range(self):
+        warning = OutsideUnverifiedRange(**SAMPLES[OutsideUnverifiedRange])
+        with pytest.warns(OutsideTypicalRange) as caught:
+            warnings.warn(warning, stacklevel=2)
+        assert caught[0].message is warning
+        assert OutsideUnverifiedRange.keys == OutsideTypicalRange.keys
 
     @pytest.mark.parametrize("kind", LIBRARY_WARNINGS, ids=lambda k: k.__name__)
     def test_the_registry_has_the_level_template_and_keys_of_the_class(self, kind):

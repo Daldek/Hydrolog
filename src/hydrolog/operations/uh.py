@@ -3,9 +3,9 @@
 Wrappers over :class:`~hydrolog.runoff.SCSUnitHydrograph`,
 :class:`~hydrolog.runoff.NashIUH`, :class:`~hydrolog.runoff.ClarkIUH` and
 :class:`~hydrolog.runoff.SnyderUH`. All four return the same :class:`UhResult`: the
-unit hydrograph of the catchment in m3/s per mm of effective precipitation (Nash,
-Clark and Snyder in an ``OperationOutput`` with the ``outside_typical_range``
-notices of their coefficients).
+unit hydrograph of the catchment in m3/s per mm of effective precipitation, in an
+``OperationOutput`` with the ``outside_typical_range`` notices of its parameters and
+of the area (:data:`hydrolog._ranges.TYPICAL_RANGES`).
 
 Nash and Clark parameters can be given in several ways; the group of options that is
 given selects the way (``NashIUH.from_tc`` is deliberately not offered: it is
@@ -106,7 +106,9 @@ class UhResult(JsonResultMixin):
     )
 
 
-def uh_scs(*, area_km2: float, tc_min: float, timestep_min: float = 5.0) -> UhResult:
+def uh_scs(
+    *, area_km2: float, tc_min: float, timestep_min: float = 5.0
+) -> OperationOutput:
     """SCS (NRCS) unit hydrograph (``uh scs``).
 
     Parameters
@@ -120,19 +122,22 @@ def uh_scs(*, area_km2: float, tc_min: float, timestep_min: float = 5.0) -> UhRe
 
     Returns
     -------
-    UhResult
-        ``tlag = 0.6 tc``, ``tp = D / 2 + tlag``, ``qp = 0.208 A / tp``,
-        ``tb = 5 tp`` and the ordinates.
+    OperationOutput
+        :class:`UhResult` (``tlag = 0.6 tc``, ``tp = D / 2 + tlag``,
+        ``qp = 0.208 A / tp``, ``tb = 5 tp`` and the ordinates) with an
+        ``outside_typical_range`` notice for an area larger than the watersheds the
+        unit hydrograph is applied to without dividing them.
 
     Raises
     ------
     InvalidParameterError
         If a parameter is not positive.
     """
-    shape = SCSUnitHydrograph(area_km2=area_km2, tc_min=tc_min).generate(
-        timestep_min=timestep_min
-    )
-    return UhResult(
+    with capture_warnings() as notices:
+        shape = SCSUnitHydrograph(area_km2=area_km2, tc_min=tc_min).generate(
+            timestep_min=timestep_min
+        )
+    result = UhResult(
         model="scs",
         estimation="direct",
         area_km2=area_km2,
@@ -146,6 +151,7 @@ def uh_scs(*, area_km2: float, tc_min: float, timestep_min: float = 5.0) -> UhRe
         times_min=shape.times_min,
         ordinates_m3s_per_mm=shape.ordinates_m3s,
     )
+    return OperationOutput(result, notices)
 
 
 def uh_nash(
@@ -264,6 +270,7 @@ def uh_nash(
                 manning_n=lutz_manning_n,
                 urban_pct=lutz_urban_pct or 0.0,
                 forest_pct=lutz_forest_pct or 0.0,
+                area_km2=area_km2,
             )
         else:
             assert (

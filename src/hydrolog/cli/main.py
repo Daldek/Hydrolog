@@ -253,7 +253,11 @@ def _find_command(group: str, word: str, members: Sequence[Command]) -> Command:
 
 
 def _group_schema(group: str) -> dict[str, Any]:
-    """Return the ``hydrolog-commands/1`` document restricted to one group."""
+    """Return the ``hydrolog-commands/1`` document restricted to one group.
+
+    Like the whole catalog (``hydrolog --schema``) it has no ``typical_ranges``: only
+    the document of one command carries them (ADR-0017).
+    """
     return catalog_document(
         command for command in data_commands() if command.group == group
     )
@@ -272,7 +276,7 @@ def _run_command(
     line = parse_command_line(command, invocation.rest, lang)
     reporting.json = flags.json or line.json
     if flags.schema or line.schema:
-        return _print_schema(catalog_document((command,)))
+        return _print_schema(catalog_document((command,), typical_ranges=True))
     _start_logging(reporting, flags.verbose or line.verbose, flags.quiet or line.quiet)
     options = dict(line.options)
     LOG.debug("Running %s; options: %s", command.name, ", ".join(options) or "none")

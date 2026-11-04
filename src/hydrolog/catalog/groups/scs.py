@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from hydrolog.catalog.spec import Command, Option
+from hydrolog.catalog.spec import Command, Option, RangeCheck
 
 COMMANDS: tuple[Command, ...] = (
     Command(
@@ -139,6 +139,7 @@ COMMANDS: tuple[Command, ...] = (
         ),
         errors=("validation_error", "not_found", "data_error", "forbidden"),
         core=True,
+        typical_ranges=(RangeCheck("scs_cn_amc", "cn", ("cn",)),),
         example_results=(
             {
                 "cn_adjusted": 72.0,

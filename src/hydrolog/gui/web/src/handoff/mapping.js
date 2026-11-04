@@ -26,7 +26,6 @@ import {
   usedTexts,
   usesLutz,
 } from "../sections/hydrogram/state.js";
-import { EXAMPLE as NETWORK_EXAMPLE } from "../sections/siec/state.js";
 import { MARKS, PAYLOAD_SCHEMA, buildHandoff, momentText, receivedOf, toolName } from "./handoff.js";
 import { canonical, isObject } from "./validate.js";
 
@@ -362,15 +361,13 @@ export function outletResult(result) {
 }
 
 /**
- * Where Sieć's network came from: a received hand-off's provenance, Hydrolog's example or
- * a file.
+ * Where Sieć's network came from: a received hand-off's provenance or a file.
  *
  * @param {{name: string, kind: string, handoff?: object}|null} source the network's source
  * @returns {object} the provenance
  */
 export function siecProvenance(source) {
   if (source && isObject(source.handoff) && isObject(source.handoff.provenance)) return source.handoff.provenance;
-  if (source && source.kind === "example") return { network: { source: "hydrolog", file: NETWORK_EXAMPLE } };
   if (source && source.kind === "file") return { network: { source: "file", file: String(source.name) } };
   return {};
 }

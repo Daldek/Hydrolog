@@ -3,7 +3,8 @@
  * the wave, its formula in MathML, its variables and its sources, from Hydrolog's
  * docs/COMPUTATION_PATHS.md (3.9). Ids: "routing.<method>", as the reach's method is named
  * in hydrolog-network/1; a reservoir is "routing.level-pool". Trusted repository text,
- * set as HTML by ui/info.js.
+ * set as HTML by ui/info.js. The bounds of Muskingum's X are those of the network's schema,
+ * which Sieć registers with the explanation.
  */
 
 export const routing = {
@@ -34,7 +35,7 @@ export const routing = {
       { symbol: "<math><mi>S</mi></math>", text: "woda zmagazynowana w odcinku", unit: "m³" },
       { symbol: "<math><msub><mi>C</mi><mn>0</mn></msub><mo>,</mo><msub><mi>C</mi><mn>1</mn></msub><mo>,</mo><msub><mi>C</mi><mn>2</mn></msub></math>", text: "wagi dopływu bieżącego, dopływu poprzedniego i odpływu poprzedniego", unit: "–" },
     ],
-    ranges: [{ option: "x", label: "X", min: 0, max: 0.5, source: "zakres metody" }],
+    symbols: { x: "X" },
     sources:
       "McCarthy (1938); Chow, Maidment, Mays, <i>Applied Hydrology</i> (1988), rozdz. 8; HEC-HMS, model Muskingum; Hydrolog, <code>docs/COMPUTATION_PATHS.md</code> 3.9.3",
   },

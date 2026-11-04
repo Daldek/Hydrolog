@@ -20,6 +20,7 @@ from hydrolog.catalog import (
     Command,
     catalog_document,
     check_command,
+    command_schema,
     data_commands,
     run_command,
 )
@@ -237,8 +238,146 @@ class TestCatalogDocument:
     def test_every_single_command_document_validates_too(self):
         validator = _nogat.validator("commands-1")
         for command in COMMANDS:
-            document = catalog_document((command,))
+            document = catalog_document((command,), typical_ranges=True)
             assert list(validator.iter_errors(document)) == [], command.name
+
+    @pytest.mark.parametrize(
+        ("command", "method", "parameter", "served", "cited"),
+        [
+            (
+                "tc kirpich",
+                "kirpich",
+                "slope_m_per_m",
+                {
+                    "inputs": ["slope_m_per_m"],
+                    "minimum": 0.03,
+                    "maximum": 0.1,
+                    "unit": "m/m",
+                },
+                "Kirpich (1940)",
+            ),
+            # On a watershed the inputs are its fields, first choice first
+            (
+                "tc watershed",
+                "kirpich",
+                "slope_m_per_m",
+                {
+                    "inputs": ["channel_slope_m_per_m", "mean_slope_m_per_m"],
+                    "minimum": 0.03,
+                    "maximum": 0.1,
+                    "unit": "m/m",
+                },
+                "Kirpich (1940)",
+            ),
+            (
+                "tc watershed",
+                "kirpich",
+                "area_km2",
+                {
+                    "inputs": ["area_km2"],
+                    "minimum": 0.005,
+                    "maximum": 0.45,
+                    "unit": "km2",
+                },
+                "Kirpich (1940)",
+            ),
+            (
+                "uh nash",
+                "lutz",
+                "area_km2",
+                {
+                    "inputs": ["area_km2"],
+                    "minimum": 0.0,
+                    "maximum": 236.0,
+                    "unit": "km2",
+                },
+                "KZGW (2017)",
+            ),
+            # Given parameters without a published source: kept, to be verified
+            (
+                "uh nash",
+                "nash",
+                "n",
+                {
+                    "inputs": ["n"],
+                    "minimum": 1.0,
+                    "maximum": 10.0,
+                    "unit": "-",
+                    "notice": "outside_unverified_range",
+                    "verified": False,
+                },
+                "Hydrolog",
+            ),
+            # Bounds that are shares of a result field
+            (
+                "hydrograph generate",
+                "scs",
+                "timestep_min",
+                {
+                    "inputs": ["timestep_min"],
+                    "minimum": 0.0,
+                    "maximum": 0.25,
+                    "unit": "min",
+                    "relative_to": "uh_time_to_peak_min",
+                },
+                "NEH 630",
+            ),
+            # A value of the result, no upper bound, its own notice
+            (
+                "stats flood-frequency",
+                "flood_frequency",
+                "years",
+                {
+                    "inputs": [],
+                    "result": "n_years",
+                    "minimum": 30.0,
+                    "maximum": None,
+                    "unit": "years",
+                    "notice": "short_record",
+                },
+                "KZGW (2017)",
+            ),
+        ],
+    )
+    def test_the_document_of_one_command_serves_its_typical_ranges(
+        self,
+        command: str,
+        method: str,
+        parameter: str,
+        served: dict[str, Any],
+        cited: str,
+    ) -> None:
+        """What a client reads instead of keeping numbers (ADR-0017): the bounds, the
+        inputs the value comes from, the published source in both languages and whether
+        the range is verified."""
+        envelope = run_command("commands schema", {"command": command}).to_dict()
+        (entry,) = envelope["result"]["commands"]
+        assert command_schema(command).to_dict()["commands"] == [entry]
+        found = {(r["method"], r["parameter"]): r for r in entry["typical_ranges"]}
+        served_range = dict(found[(method, parameter)])
+        source = served_range.pop("source")
+        polish = served_range.pop("i18n")["pl"]["source"]
+        assert served_range == {
+            "method": method,
+            "parameter": parameter,
+            "notice": "outside_typical_range",
+            "verified": True,
+            **served,
+        }
+        assert cited in source and cited in polish
+
+    def test_no_page_of_the_catalog_carries_typical_ranges(self) -> None:
+        """Not even a page of one command: only the document of one command does."""
+        entries: list[dict[str, Any]] = []
+        options: dict[str, Any] = {"limit": 1}
+        while True:
+            envelope = run_command("commands schema", options).to_dict()
+            entries += envelope["result"]["commands"]
+            if not envelope["page"]["truncated"]:
+                break
+            options = {"limit": 1, "cursor": envelope["page"]["next_cursor"]}
+        assert [entry["name"] for entry in entries] == [c.name for c in COMMANDS]
+        assert [entry["name"] for entry in entries if "typical_ranges" in entry] == []
 
     def test_it_lists_every_command_once_in_catalog_order(self):
         names = [entry["name"] for entry in catalog_document(COMMANDS)["commands"]]

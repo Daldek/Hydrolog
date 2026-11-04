@@ -9,7 +9,11 @@ hydrograph and writes the report. The operation is in
 from __future__ import annotations
 
 from hydrolog.catalog.groups._output import CHECK, FORCE
-from hydrolog.catalog.groups.hydrograph import GENERATE_ONE_OF, GENERATE_OPTIONS
+from hydrolog.catalog.groups.hydrograph import (
+    GENERATE_ONE_OF,
+    GENERATE_OPTIONS,
+    GENERATE_RANGES,
+)
 from hydrolog.catalog.spec import Command, Option
 
 _FIXTURES = "tests/fixtures"
@@ -98,6 +102,7 @@ COMMANDS: tuple[Command, ...] = (
             CHECK,
         ),
         one_of=GENERATE_ONE_OF,
+        typical_ranges=GENERATE_RANGES,
         examples=(
             {
                 "output": "raport.md",

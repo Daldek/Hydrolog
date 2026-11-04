@@ -1,57 +1,16 @@
-"""Time of concentration calculation methods."""
+"""Time of concentration calculation methods.
 
-from hydrolog._warnings import warn_outside_typical_range
+A formula warns (:class:`~hydrolog._warnings.OutsideTypicalRange`) for an argument
+outside the typical range of its data; the ranges and their sources are those of
+:data:`hydrolog._ranges.TYPICAL_RANGES`. The area of the watershed, which only
+Giandotti's formula takes, is checked by ``WatershedParameters.calculate_tc``.
+"""
+
+from hydrolog._ranges import warn_if_outside
 from hydrolog.exceptions import InvalidParameterError
-
-# Typical parameter ranges for validation warnings
-_KIRPICH_LENGTH_RANGE = (0.001, 80.0)  # km
-_KIRPICH_SLOPE_RANGE = (0.002, 0.15)  # m/m
-
-_NRCS_LENGTH_RANGE = (0.03, 30.0)  # km
-_NRCS_SLOPE_RANGE = (0.001, 0.15)  # m/m
-_NRCS_CN_RANGE = (50, 95)  # dimensionless
-
-_GIANDOTTI_AREA_RANGE = (100.0, 10000.0)  # km2
-_GIANDOTTI_LENGTH_RANGE = (1.0, 300.0)  # km
-_GIANDOTTI_ELEVATION_RANGE = (20.0, 3000.0)  # m
-
-_FAA_LENGTH_RANGE = (0.015, 3.0)  # km (50 ft to 10,000 ft)
-_FAA_SLOPE_RANGE = (0.005, 0.10)  # m/m (0.5% to 10%)
-_FAA_C_RANGE = (0.10, 0.95)  # dimensionless
-
-_KERBY_LENGTH_RANGE = (0.01, 0.366)  # km (approx 30 ft to 1200 ft)
-_KERBY_SLOPE_RANGE = (0.001, 0.01)  # m/m (original calibration)
-_KERBY_N_RANGE = (0.02, 0.80)  # dimensionless
 
 _KERBY_LOW_SLOPE_THRESHOLD = 0.002  # m/m
 _KERBY_LOW_SLOPE_OFFSET = 0.0005  # m/m
-
-
-def _warn_if_out_of_range(
-    value: float,
-    param_name: str,
-    min_val: float,
-    max_val: float,
-    method_name: str,
-) -> None:
-    """Warn (:class:`~hydrolog._warnings.OutsideTypicalRange`) if outside the range.
-
-    Parameters
-    ----------
-    value : float
-        The parameter value to check.
-    param_name : str
-        Name of the parameter for the warning message.
-    min_val : float
-        Minimum typical value.
-    max_val : float
-        Maximum typical value.
-    method_name : str
-        Name of the method for the warning message.
-    """
-    warn_outside_typical_range(
-        method_name, param_name, value, min_val, max_val, stacklevel=3
-    )
 
 
 def _require_positive(value: float, name: str) -> None:
@@ -139,10 +98,11 @@ class ConcentrationTime:
 
         Warns
         -----
-        UserWarning
-            If length_km > 80 km or slope_m_per_m outside 0.002-0.15.
-            The Kirpich formula was developed for small agricultural
-            watersheds (0.004-0.45 km2) with slopes 3-10% (0.03-0.10 m/m).
+        OutsideTypicalRange
+            If slope_m_per_m is outside the slopes of Kirpich's data (method
+            ``kirpich``; the ranges and their sources:
+            :data:`hydrolog._ranges.TYPICAL_RANGES`). The area of the data is
+            checked by ``WatershedParameters.calculate_tc``.
 
         Notes
         -----
@@ -178,7 +138,8 @@ class ConcentrationTime:
             tc[h] = 0.0663 * L[km]^0.77 * S^(-0.385)
 
         Original calibration data: 7 small agricultural watersheds in Tennessee,
-        areas 0.004-0.45 km² (1.25-112 acres), slopes 3-10%.
+        areas 0.005-0.45 km² (1.25-112 acres), slopes 3-10% (Kirpich 1940; Roussel
+        et al. 2005; USDA-NRCS 2010, NEH Part 630, chapter 15).
 
         References
         ----------
@@ -199,11 +160,7 @@ class ConcentrationTime:
         _require_positive(length_km, "length_km")
         _require_positive(slope_m_per_m, "slope_m_per_m")
 
-        # Warn if parameters are outside typical range
-        _warn_if_out_of_range(length_km, "length_km", *_KIRPICH_LENGTH_RANGE, "kirpich")
-        _warn_if_out_of_range(
-            slope_m_per_m, "slope_m_per_m", *_KIRPICH_SLOPE_RANGE, "kirpich"
-        )
+        warn_if_outside("kirpich", "slope_m_per_m", slope_m_per_m)
 
         # Kirpich formula: tc [minutes]
         return _kirpich_min(length_km, slope_m_per_m)
@@ -224,13 +181,11 @@ class ConcentrationTime:
         ----------
         length_km : float
             Hydraulic length of the watershed (longest flow path) [km].
-            Must be positive. Typical range: 0.03-30 km.
+            Must be positive.
         slope_m_per_m : float
             Average watershed slope [m/m]. Must be positive.
-            Typical range: 0.001-0.15.
         cn : int
             SCS Curve Number (1-100). CN=100 means no retention.
-            Recommended range for this method: 50-95.
 
         Returns
         -------
@@ -244,8 +199,12 @@ class ConcentrationTime:
 
         Warns
         -----
-        UserWarning
-            If parameters are outside typical application range.
+        OutsideTypicalRange
+            If cn is outside the CN that Mockus (1961) allows in the lag equation
+            (method ``nrcs``; the ranges and their sources:
+            :data:`hydrolog._ranges.TYPICAL_RANGES`). The area of the 24
+            watersheds of the equation is checked by
+            ``WatershedParameters.calculate_tc``.
 
         Notes
         -----
@@ -301,12 +260,7 @@ class ConcentrationTime:
                 },
             )
 
-        # Warn if parameters are outside typical range
-        _warn_if_out_of_range(length_km, "length_km", *_NRCS_LENGTH_RANGE, "nrcs")
-        _warn_if_out_of_range(
-            slope_m_per_m, "slope_m_per_m", *_NRCS_SLOPE_RANGE, "nrcs"
-        )
-        _warn_if_out_of_range(cn, "cn", *_NRCS_CN_RANGE, "nrcs")
+        warn_if_outside("nrcs", "cn", cn)
 
         # Convert input units to formula units
         length_m = length_km * 1000.0  # km -> m
@@ -335,8 +289,8 @@ class ConcentrationTime:
         """
         Calculate time of concentration using Giandotti formula.
 
-        The Giandotti formula (1934) was developed for Italian watersheds
-        and is suitable for larger catchments (> 170 km2).
+        The Giandotti formula (1934) was derived from large Italian basins
+        (Grimaldi et al. 2012).
 
         Parameters
         ----------
@@ -360,9 +314,10 @@ class ConcentrationTime:
 
         Warns
         -----
-        UserWarning
-            If area_km2 < 100 km2. The Giandotti formula was developed
-            for larger Italian mountain watersheds (> 170 km2).
+        OutsideTypicalRange
+            If area_km2 is outside the areas of Giandotti's basins (method
+            ``giandotti``; the ranges and their sources:
+            :data:`hydrolog._ranges.TYPICAL_RANGES`).
 
         Notes
         -----
@@ -403,17 +358,7 @@ class ConcentrationTime:
         _require_positive(length_km, "length_km")
         _require_positive(elevation_diff_m, "elevation_diff_m")
 
-        # Warn if parameters are outside typical range
-        _warn_if_out_of_range(area_km2, "area_km2", *_GIANDOTTI_AREA_RANGE, "giandotti")
-        _warn_if_out_of_range(
-            length_km, "length_km", *_GIANDOTTI_LENGTH_RANGE, "giandotti"
-        )
-        _warn_if_out_of_range(
-            elevation_diff_m,
-            "elevation_diff_m",
-            *_GIANDOTTI_ELEVATION_RANGE,
-            "giandotti",
-        )
+        warn_if_outside("giandotti", "area_km2", area_km2)
 
         # Giandotti formula: tc [hours]
         tc_hours = (4.0 * (area_km2**0.5) + 1.5 * length_km) / (
@@ -461,10 +406,12 @@ class ConcentrationTime:
 
         Warns
         -----
-        UserWarning
-            If parameters are outside typical application ranges:
-            length_km outside [0.015, 3.0] km, slope_m_per_m outside
-            [0.005, 0.10], or runoff_coeff outside [0.10, 0.95].
+        OutsideTypicalRange
+            If runoff_coeff is above the coefficients of the method's table (FAA
+            1970, AC 150/5320-5B, table I; method ``faa``; the ranges and their
+            sources: :data:`hydrolog._ranges.TYPICAL_RANGES`). The FAA gives no
+            limit of the length or the slope: its curves end at 800 ft and the
+            formula serves longer paths.
 
         Notes
         -----
@@ -498,6 +445,9 @@ class ConcentrationTime:
         Federal Aviation Agency (1966). Airport Drainage. Advisory Circular
         AC 150/5320-5A. US Department of Transportation.
 
+        Federal Aviation Administration (1970). Airport Drainage. Advisory
+        Circular AC 150/5320-5B. US Department of Transportation.
+
         Federal Aviation Administration (2013). Airport Drainage Design.
         Advisory Circular AC 150/5320-5D. US Department of Transportation.
 
@@ -525,10 +475,7 @@ class ConcentrationTime:
                 },
             )
 
-        # Warn if parameters are outside typical range
-        _warn_if_out_of_range(length_km, "length_km", *_FAA_LENGTH_RANGE, "faa")
-        _warn_if_out_of_range(slope_m_per_m, "slope_m_per_m", *_FAA_SLOPE_RANGE, "faa")
-        _warn_if_out_of_range(runoff_coeff, "runoff_coeff", *_FAA_C_RANGE, "faa")
+        warn_if_outside("faa", "runoff_coeff", runoff_coeff)
 
         # FAA formula: tc [minutes]
         tc_min: float = (
@@ -587,10 +534,13 @@ class ConcentrationTime:
 
         Warns
         -----
-        UserWarning
-            If parameters are outside typical application ranges:
-            length_km outside [0.01, 0.366] km, slope_m_per_m outside
-            [0.001, 0.01], or retardance outside [0.02, 0.80].
+        OutsideTypicalRange
+            If length_km, slope_m_per_m or retardance is outside Kerby's data:
+            overland flow up to 1200 ft, slopes below 1%, his table of N (method
+            ``kerby``; the ranges and their sources:
+            :data:`hydrolog._ranges.TYPICAL_RANGES`). The area of the data, below
+            10 acres, is checked by ``WatershedParameters.calculate_tc``. The
+            slope is checked before the low-slope adjustment.
 
         Notes
         -----
@@ -650,12 +600,9 @@ class ConcentrationTime:
         _require_positive(slope_m_per_m, "slope_m_per_m")
         _require_positive(retardance, "retardance")
 
-        # Warn if parameters are outside typical range
-        _warn_if_out_of_range(length_km, "length_km", *_KERBY_LENGTH_RANGE, "kerby")
-        _warn_if_out_of_range(
-            slope_m_per_m, "slope_m_per_m", *_KERBY_SLOPE_RANGE, "kerby"
-        )
-        _warn_if_out_of_range(retardance, "retardance", *_KERBY_N_RANGE, "kerby")
+        warn_if_outside("kerby", "length_km", length_km)
+        warn_if_outside("kerby", "slope_m_per_m", slope_m_per_m)
+        warn_if_outside("kerby", "retardance", retardance)
 
         # Kerby formula: tc [minutes], with the low-slope adjustment
         return _kerby_min(length_km, slope_m_per_m, retardance)
@@ -716,11 +663,14 @@ class ConcentrationTime:
 
         Warns
         -----
-        UserWarning
-            If overland parameters are outside Kerby typical ranges
-            (length > 0.366 km, slope outside 0.001-0.01, retardance
-            outside 0.02-0.80) or channel parameters are outside Kirpich
-            typical ranges (length > 80 km, slope outside 0.002-0.15).
+        OutsideTypicalRange
+            If the overland flow length or the retardance is outside Kerby's data,
+            or the channel length or slope outside the main channels of the 92
+            Texas watersheds the method was verified on (method
+            ``kerby_kirpich``; the ranges and their sources:
+            :data:`hydrolog._ranges.TYPICAL_RANGES`). The method's guidance gives
+            no range of the overland slope; the area of the watersheds is checked
+            by ``WatershedParameters.calculate_tc``.
 
         Notes
         -----
@@ -743,8 +693,8 @@ class ConcentrationTime:
         The Kerby method applies it internally, while this composite
         method applies it to the channel slope before calling Kirpich.
 
-        The method was validated by Roussel et al. (2005) on 92 Texas
-        watersheds ranging from 0.65 to 388 km².
+        The method was verified by Roussel et al. (2005) on 92 Texas
+        watersheds of 0.25-150 mi² with main channels of 1-50 mi.
 
         References
         ----------
@@ -784,39 +734,13 @@ class ConcentrationTime:
         _require_positive(channel_length_km, "channel_length_km")
         _require_positive(channel_slope_m_per_m, "channel_slope_m_per_m")
 
-        # Warn if overland params are outside Kerby typical ranges
-        _warn_if_out_of_range(
-            overland_length_km,
-            "overland_length_km",
-            *_KERBY_LENGTH_RANGE,
-            "kerby_kirpich",
-        )
-        _warn_if_out_of_range(
-            overland_slope_m_per_m,
-            "overland_slope_m_per_m",
-            *_KERBY_SLOPE_RANGE,
-            "kerby_kirpich",
-        )
-        _warn_if_out_of_range(
-            retardance,
-            "retardance",
-            *_KERBY_N_RANGE,
-            "kerby_kirpich",
-        )
-
-        # Warn if channel params are outside Kirpich typical ranges
-        _warn_if_out_of_range(
-            channel_length_km,
-            "channel_length_km",
-            *_KIRPICH_LENGTH_RANGE,
-            "kerby_kirpich",
-        )
-        _warn_if_out_of_range(
-            channel_slope_m_per_m,
-            "channel_slope_m_per_m",
-            *_KIRPICH_SLOPE_RANGE,
-            "kerby_kirpich",
-        )
+        for name, value in (
+            ("overland_length_km", overland_length_km),
+            ("retardance", retardance),
+            ("channel_length_km", channel_length_km),
+            ("channel_slope_m_per_m", channel_slope_m_per_m),
+        ):
+            warn_if_outside("kerby_kirpich", name, value)
 
         # Low-slope adjustment for channel slope (Cleveland et al. 2012)
         # Kerby already applies this internally for overland slope
