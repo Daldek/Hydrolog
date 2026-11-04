@@ -29,7 +29,7 @@
 
 ### 1.3 Analogy
 
-Hydrolog is analogous to **Kartograf** (spatial data download) and **Obserwator** (IMGW data download) - a modular Python library with a clean API that can be used as a dependency in other projects. Since v1.0.0, like them, it exposes a single command catalog (CLI + MCP + AGENTS.md/llms.txt), but it does not depend on either of those libraries: Hydrolog downloads nothing, and data files are supplied by external tools.
+Hydrolog is analogous to **Kartograf** (spatial data download) and **Obserwator** (IMGW data download) - a modular Python library with a clean API that can be used as a dependency in other projects. Since v1.0.0, like them, it exposes a single command catalog (CLI + MCP + AGENTS.md/llms.txt). It does not depend on Kartograf and depends on Obserwator only through the optional extra `pmaxtp`: Hydrolog downloads nothing but the PMAXTP depth of `precip pmaxtp`, which it fetches through Obserwator (ADR-0018), and other data files are supplied by external tools.
 
 ---
 
@@ -86,10 +86,9 @@ Hydrolog is analogous to **Kartograf** (spatial data download) and **Obserwator*
 - Arithmetic mean (`arithmetic_mean`)
 - Kriging (optional - not implemented)
 
-**Rainfall scenarios (future):**
-- ❌ Not implemented
-- PMAXTP data (IMGW maximum probable precipitation) is downloaded by the parent application (e.g. Hydrograf via Obserwator)
-- Hydrolog receives ready-made precipitation values
+**PMAXTP design depth (ADR-0018):** ✅
+- `precip pmaxtp` fetches the PMAXTP depth (IMGW-PIB's atlas of maximum precipitation) of a point in Poland, for one of its 16 durations (5 min to 72 h) and 27 probabilities (0.01 % to 99.9 %), by POT or AMP, from IMGW-PIB through Obserwator (extra `pmaxtp`); the only command that uses the network
+- The depth is the `total_mm` of `precip hietogram` and `hydrograph generate`, which do not fetch it; a depth from elsewhere is still given as `total_mm`
 
 ---
 
@@ -167,7 +166,7 @@ Hydrolog is analogous to **Kartograf** (spatial data download) and **Obserwator*
 
 #### 2.1.6 Module `cli` - CLI (v0.4.0, rebuilt in v1.0.0) ✅
 
-Since v1.0.0 the CLI is generated from the command catalog (`hydrolog.catalog`): 46 commands in 16 groups (list: `hydrolog commands list`). Syntax: `hydrolog <group> <command> --option value`; global flags `--json`, `--schema`, `--lang pl|en`, `-V`. The former CLI syntax (v0.4.0-v0.7.0) was removed without aliases.
+Since v1.0.0 the CLI is generated from the command catalog (`hydrolog.catalog`): 47 commands in 16 groups (list: `hydrolog commands list`). Syntax: `hydrolog <group> <command> --option value`; global flags `--json`, `--schema`, `--lang pl|en`, `-V`. The former CLI syntax (v0.4.0-v0.7.0) was removed without aliases.
 
 ```bash
 # Time of concentration
@@ -206,7 +205,7 @@ Other groups: `precip`, `hydrograph`, `morphometry`, `network`, `stats`, `hydrom
 
 - **Command catalog** (`hydrolog.catalog`) - a single source of truth: `Command` and `Option` declarations (English texts with Polish translations, units, ranges, `one_of` groups, examples), `data_commands()`, `command_schema()`, `validate_command()`, `run_command()`, `format_command()`/`parse_command()` (a call as the canonical CLI line and back) and the registry of notice codes `NOTICES` (ADR-0015)
 - **Operations layer** (`hydrolog.operations`) - one public, typed function per command; it composes existing classes and contains no new hydrology
-- **Result envelope** `hydrolog-result/1` and error document `hydrolog-error/1` with a closed `ERROR_CODES` registry (CLI exit codes: 1, 2, 3, 4, 6, 7, 9, 12, 13)
+- **Result envelope** `hydrolog-result/1` and error document `hydrolog-error/1` with a closed `ERROR_CODES` registry (CLI exit codes: 1, 2, 3, 4, 5, 6, 7, 9, 12, 13)
 - **Serialization** - all result classes have `to_dict()` and `to_json()` (`JsonResultMixin`)
 - **Data from files** - series, stations, network segments and catchments as CSV/JSON (including the Obserwator `export_series` export, read without conversion); `WatershedParameters` JSON is the `catchment_characteristics` format in Retman
 - **MCP server** (`hydrolog mcp`, extra `hydrolog[mcp]`) - every catalog command is a tool except `gui serve` (`agent_tool=False`, ADR-0015); file access is restricted to `--allow-dir` directories and writing needs `--allow-writes`
@@ -340,8 +339,9 @@ inundation, backwater and structures stay with Hydraulik, HEC-RAS and IMGW HD.
 #### 2.1.12 Module `gui` - Web GUI (after v1.0.0, ADR-0014)
 
 A browser GUI in Polish and in Nogat's visual identity for people who compute with Hydrolog,
-started with `hydrolog gui serve` (extra `hydrolog[gui]`: Starlette and uvicorn; 127.0.0.1:8070 by
-default) and hosted as a module of Nogat's GUI platform through the entry point group `nogat.gui`.
+started with `hydrolog gui serve` (extra `hydrolog[gui]`: Starlette, uvicorn and Obserwator;
+127.0.0.1:8070 by default) and hosted as a module of Nogat's GUI platform through the entry point
+group `nogat.gui`.
 
 - Five sections: Hydrogram zlewni (one watershed, recomputed after every change), Sieć i trasowanie
   (the network schematic and `route network`), Statystyka przepływów, Kalkulatory and Wszystkie
@@ -355,8 +355,11 @@ default) and hosted as a module of Nogat's GUI platform through the entry point 
   REST interface of Hydrolog (no `/api/v1`, OpenAPI or stability promise)
 - One work directory per browser session with limits; no arbitrary paths, no store, no sign-in:
   beyond loopback the server is exposed only behind an authenticating proxy
+- Hydrogram zlewni under PMAXTP fetches the depth for the given point, probability, duration and
+  method through `precip pmaxtp` (the server runs it; the browser never calls IMGW-PIB) and keeps
+  it with the inputs (ADR-0018)
 - Not in scope: an English UI (later), saved variants or projects, a PDF output, editing the
-  structure of a network, downloading data (PMAXTP, series)
+  structure of a network, downloading series
 
 ---
 
@@ -376,7 +379,7 @@ default) and hosted as a module of Nogat's GUI platform through the entry point 
 - ❌ Downloading the digital elevation model (DEM, Polish NMT) (→ Kartograf)
 - ❌ Downloading land cover (→ Kartograf)
 - ❌ Downloading soil rasters (→ Kartograf `download_soil`); computing HSG from already downloaded texture rasters is in scope (module `soil`, since v1.0.0)
-- ❌ Downloading IMGW data (→ Obserwator); Hydrolog reads a ready-made CSV/JSON file from the export
+- ❌ Downloading IMGW data (→ Obserwator); Hydrolog reads a ready-made CSV/JSON file from the export. The one exception is the PMAXTP depth of a point, which `precip pmaxtp` fetches through Obserwator (ADR-0018)
 - ❌ A public REST API (interfaces: Python library, CLI, MCP server and the web GUI; the GUI's private server routes serve its page only and are not a REST interface, ADR-0014)
 - ❌ Database operations
 
@@ -452,6 +455,7 @@ hydrolog/
 │   └── _kernels.py         # Three-point recurrences, shared with ClarkIUH
 ├── _serialization.py        # to_jsonable(), JsonResultMixin (to_dict/to_json) (v1.0.0)
 ├── _warnings.py             # HydrologWarning: library warnings with stable codes and details (ADR-0015)
+├── _pmaxtp.py               # PMAXTP of IMGW-PIB through Obserwator, imported lazily ([pmaxtp] extra, ADR-0018)
 ├── agent_guide.py           # AGENTS.md / llms.txt generator from the catalog (v1.0.0)
 ├── _data/agents/            # Agent guide templates (English)
 ├── catalog/                 # Command catalog (v1.0.0)
@@ -612,13 +616,12 @@ print(f"Time to peak: {result.time_to_peak_min} min")
 |------------|-----|----------|
 | NumPy | Numerical computation | Yes |
 | SciPy | Gamma function (Nash IUH), statistical distributions (`statistics`) | Yes (since v0.7.0) |
-| Obserwator | IMGW data (measurement series) | No (Hydrolog reads its CSV export) |
+| Obserwator | IMGW data: measurement series (Hydrolog reads its CSV export) and the PMAXTP depth of `precip pmaxtp` | No (extra `[pmaxtp]`, repeated in `[gui]`) |
 | rasterio, pyproj | GeoTIFF rasters for HSG | No (extra `[raster]`) |
 | mcp | MCP server | No (extra `[mcp]`) |
-| starlette, uvicorn | Web GUI server | No (extra `[gui]`) |
+| starlette, uvicorn | Web GUI server | No (extra `[gui]`, which also brings Obserwator) |
 
-**Hydrolog does NOT contain data download functions:**
-- PMAXTP rainfall data → downloaded by the parent application (e.g. Hydrograf via Obserwator)
+**Hydrolog contains one data download function, `precip pmaxtp` (the PMAXTP depth of a point, through Obserwator, ADR-0018); everything else comes as files:**
 - Measurement series → Obserwator (`series export` to CSV)
 - Rasters (DEM, land cover, soil) → Kartograf; Hydrolog does not depend on Kartograf
 
@@ -652,6 +655,6 @@ print(f"Time to peak: {result.time_to_peak_min} min")
 
 ---
 
-**Document version:** 1.7
-**Last updated:** 2026-11-02
+**Document version:** 1.8
+**Last updated:** 2026-11-04
 **Status:** v1.0.0 in preparation

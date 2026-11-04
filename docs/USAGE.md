@@ -187,6 +187,26 @@ hydrolog precip hietogram --hietogram-type beta --total-mm 50 --duration-min 30 
 {"result": {"schema": "hydrolog-precip-hietogram/1", "hietogram_type": "beta", "n_steps": 3, "times_min": [10.0, 20.0, 30.0], "parameters": {"alpha": 2.0, "beta": 5.0}}}
 ```
 
+`precip pmaxtp` fetches the PMAXTP design depth of IMGW-PIB for a point in Poland (`--latitude`,
+`--longitude`, WGS84 decimal degrees), one of the atlas's durations (`--duration-min`, 5 to 4320)
+and probabilities of exceedance (`--probability-percent`, 0.01 to 99.9; the option descriptions
+list the allowed values) and `--method` `POT` (the default) or `AMP`. It is the only command that
+uses the network: Obserwator (extra `pmaxtp`) asks IMGW-PIB for the table of the point
+([ADR-0018](decisions/0018-pmaxtp-through-obserwator.md)). Pass `result.depth_mm` as `--total-mm`
+of `precip hietogram` or `hydrograph generate`, and name IMGW-PIB as its source
+(`result.attribution`, notice `pmaxtp_attribution`). A duration or probability the atlas lacks is
+a `validation_error` before anything is sent, a point outside the atlas one with `details.reason`
+`outside_pmaxtp`, and IMGW-PIB unreachable `source_unavailable` (exit 5). IMGW-PIB may update the
+atlas, so the same call can give another depth later.
+
+```bash
+hydrolog precip pmaxtp --latitude 52.23 --longitude 21.01 --duration-min 60 --probability-percent 1 --json
+```
+
+```json output
+{"result": {"schema": "hydrolog-precip-pmaxtp/1", "depth_mm": 39.16, "method": "POT", "duration_min": 60.0, "probability_percent": 1.0}}
+```
+
 ### Unit hydrograph and runoff hydrograph
 
 `uh scs`, `uh nash`, `uh clark` and `uh snyder` return the ordinates (`ordinates_m3s_per_mm` at
@@ -1095,7 +1115,8 @@ description, and the Markdown report is written in Polish.
 
 ## 7. Exchange with Kartograf, Obserwator and Hydrograf
 
-Hydrolog downloads nothing and does not depend on the other Nogat tools: data arrives as plain
+Hydrolog does not depend on the other Nogat tools and downloads nothing, except the PMAXTP depth of
+`precip pmaxtp`, which it fetches through Obserwator (extra `pmaxtp`): other data arrives as plain
 files. Formats and the division of responsibilities are in [INTEGRATION.md](INTEGRATION.md).
 
 - **Kartograf** (spatial data) writes the clay, sand and silt rasters (SoilGrids, g/kg) of
@@ -1137,7 +1158,7 @@ the GUI's address).
 
 | Section | What it does | Commands |
 |---|---|---|
-| Hydrogram zlewni | the design hydrograph of one watershed in three steps (watershed, hyetograph, model): empty on a first visit, checked for what the chosen model needs (an empty required field is an error, a value outside its typical range a warning on its field), then recomputed after every change; the guide's worked example is Kamiennik at Świerzawa | `hydrograph generate`, `uh nash` for Nash by Lutz |
+| Hydrogram zlewni | the design hydrograph of one watershed in three steps (watershed, hyetograph, model): empty on a first visit, checked for what the chosen model needs (an empty required field is an error, a value outside its typical range a warning on its field), then recomputed after every change; under PMAXTP the depth is fetched from IMGW-PIB for the point, probability, duration and method given, not typed; the guide's worked example is Kamiennik at Świerzawa | `hydrograph generate`, `precip pmaxtp` for the PMAXTP depth, `uh nash` for Nash by Lutz |
 | Sieć i trasowanie | a network of subcatchments, reaches, reservoirs and junctions (the example: `hydrolog.testing.example_network_document()`), drawn as a schematic before it is routed by „Oblicz sieć” | `route schematic`, `route network` |
 | Statystyka przepływów | flood frequency of annual maxima or of a daily series (the example: 26 annual maxima, 1998 to 2023) | `stats flood-frequency` |
 | Kalkulatory | the time of concentration by six methods for the watershed of Hydrogram zlewni, and fifteen single calculators | `tc watershed` and fifteen others |
@@ -1175,10 +1196,11 @@ hydrolog gui serve --check --json
 ### Your data in the GUI
 
 - **Inputs stay in the browser.** Each section keeps its inputs, never its results, in the
-  browser's `localStorage` under `hydrolog-gui/<section>/1` until „Wyczyść”; the widths of the
-  panels are `hydrolog-gui/layout/1`, the choice „Nie pokazuj ponownie” of the welcome dialog
-  `hydrolog-gui/welcome/1` and the theme `nogat-theme`, which Nogat's other pages on the same
-  address share.
+  browser's `localStorage` under `hydrolog-gui/<section>/2` until „Wyczyść”; with them
+  Hydrogram zlewni keeps the PMAXTP depth it fetched (`pmaxtp_fetched`), so a reload does not
+  fetch it again. The widths of the panels are `hydrolog-gui/layout/1`, the choice „Nie pokazuj
+  ponownie” of the welcome dialog `hydrolog-gui/welcome/1` and the theme `nogat-theme`, which
+  Nogat's other pages on the same address share.
 - **Files go to the server.** A browser session (the cookie `hydrolog_gui`, HttpOnly,
   SameSite=Strict) has a work directory of its own: `in/` holds the uploads and the documents the
   page writes (the network of Sieć, for example), `out/` the files that commands write. A path
@@ -1189,6 +1211,11 @@ hydrolog gui serve --check --json
   system's temporary directory (`TMPDIR`).
 - **Runs go to two worker processes.** A newer run of the same kind replaces a queued older one,
   and a run longer than 30 seconds is stopped (the notice `timeout`).
+- **Only PMAXTP goes out, from the server.** Under PMAXTP, Hydrogram zlewni runs `precip pmaxtp`
+  on the server once the point, the probability and the duration are given (Wszystkie polecenia
+  runs it on its button): the point's coordinates and the method go to IMGW-PIB through
+  Obserwator, which the extra `gui` installs. Nothing else leaves the server, and the page itself
+  calls only its server.
 - **The page loads nothing from other sites.** The server sends a Content-Security-Policy of
   `'self'` without inline scripts or styles, `X-Frame-Options: DENY` and `no-store` for its API.
 - **A report goes to whoever runs the server, and only when it is sent.** The diagnostics of

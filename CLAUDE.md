@@ -2,8 +2,10 @@
 
 Hydrolog is a Python library, CLI (`hydrolog`) and MCP server for hydrological
 calculations (time of concentration, SCS-CN, unit hydrographs, flow statistics,
-hydrologic soil groups). Profile `tool` (DEV-1.1). It downloads nothing and has no
-data store: Kartograf and Obserwator supply the input files. User documentation:
+hydrologic soil groups). Profile `tool` (DEV-1.1). It has no data store and downloads
+nothing, except `precip pmaxtp`, the one command that uses the network: it fetches the
+PMAXTP depth of IMGW-PIB through Obserwator (extra `pmaxtp`, ADR-0018). Otherwise
+Kartograf and Obserwator supply the input files. User documentation:
 [README.md](README.md). Nogat standard 2.1:
 [DEVELOPMENT_STANDARDS](https://github.com/Daldek/Nogat/blob/main/standards/DEVELOPMENT_STANDARDS.md),
 [AGENT_INTERFACE](https://github.com/Daldek/Nogat/blob/main/standards/AGENT_INTERFACE.md),
@@ -47,7 +49,11 @@ uv run hydrolog commands guide --format agents --output AGENTS.md --force
 uv run hydrolog commands guide --format llms --output llms.txt --force
 ```
 
-Python 3.12 or newer. The tests are offline; there are no `live` tests. Coverage floor 80%.
+Python 3.12 or newer. The tests are offline: an autouse fixture of `tests/conftest.py`
+answers Obserwator's PMAXTP fetch from a recorded table, and the browser tests answer
+`api/run/precip/pmaxtp` with an envelope computed from another one. The one `live` test
+(`precip pmaxtp` against IMGW-PIB) is deselected by default and by the gate;
+`uv run pytest -m live` runs it. Coverage floor 80%.
 The browser tests of the GUI (`tests/e2e`, Playwright) run in the gate and need Chromium
 (installed as above). The GUI's user guide (`src/hydrolog/gui/web/instrukcja/`, Polish) quotes
 the numbers of the shipped examples (`data-example`, compared with the computed page by
@@ -112,7 +118,8 @@ the last commit. Change only this repository (DEV-17.5); a need in another proje
 Registry entry:
 [ecosystem.yaml](https://github.com/Daldek/Nogat/blob/main/ecosystem.yaml) (Hydrolog).
 Inputs come from Kartograf (soil rasters, `files[].path` of `--output-dir` downloads) and
-Obserwator (series CSV from `series export --output`); Hydrograf and Retman use Hydrolog.
+Obserwator (series CSV from `series export --output`; the PMAXTP depth of `precip pmaxtp`
+through its Python API); Hydrograf and Retman use Hydrolog.
 
 ## Deviations
 
