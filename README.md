@@ -19,7 +19,7 @@ The same commands run from Python, from a shell or a CI job, from an AI agent ov
 ## When not to use
 
 - Downloading or preparing spatial data (digital elevation model (DEM, Polish NMT), land cover, the topographic database BDOT10k, soil rasters): use [Kartograf](https://github.com/Daldek/Kartograf). Hydrolog only reads the files it is given.
-- Measurement series and stations of IMGW-PIB (Polish Institute of Meteorology and Water Management) and CHMU (Czech Hydrometeorological Institute): use [Obserwator](https://github.com/Daldek/IMGWTools); `obserwator series export` writes the CSV that the `stats` commands read.
+- Measurement series and stations of IMGW-PIB (Polish Institute of Meteorology and Water Management) and CHMU (Czech Hydrometeorological Institute): use [Obserwator](https://github.com/Daldek/Obserwator); `obserwator series export` writes the CSV that the `stats` commands read.
 - Watershed delineation from a DEM: use [Hydrograf](https://github.com/Daldek/Hydrograf) or a GIS; Hydrolog takes the resulting area, lengths and elevations.
 - Hydraulics (water levels, inundation mapping, backwater) and channel routing by the Saint-Venant equations: use [Hydraulik](https://github.com/Daldek/Hydraulik) (2D flood screening, research stage) or an external tool such as HEC-RAS. Hydrolog routes discharge only, with lumped hydrologic methods.
 - Reservoirs, water quality, groundwater, snowmelt, erosion, Green-Ampt infiltration: not covered ([docs/SCOPE.md](https://github.com/Daldek/Hydrolog/blob/main/docs/SCOPE.md)); use a specialised external model.
@@ -285,7 +285,7 @@ sqlite3 ~/.local/share/nogat/hydrolog/feedback.sqlite3 ".backup feedback-backup.
 ## Related tools
 
 - [Kartograf](https://github.com/Daldek/Kartograf) downloads Polish and Czech geodata (elevation, land cover, soils); the `files[].path` values in the `--json` result of `kartograf soil download --output-dir DIR` are the clay, sand and silt rasters of `soil hsg`.
-- [Obserwator](https://github.com/Daldek/IMGWTools) provides IMGW-PIB and CHMU series: `obserwator series export --output FILE` writes the CSV that `--input-file` of the `stats` and `hydrometrics` commands reads, and its PMAXTP design precipitation can supply `--total-mm`.
+- [Obserwator](https://github.com/Daldek/Obserwator) provides IMGW-PIB and CHMU series: `obserwator series export --output FILE` writes the CSV that `--input-file` of the `stats` and `hydrometrics` commands reads, and its PMAXTP design precipitation can supply `--total-mm`.
 - [Hydrograf](https://github.com/Daldek/Hydrograf) is a web app for watershed delineation and design hydrographs built on Hydrolog; watersheds travel as `WatershedParameters` JSON ([docs/INTEGRATION.md](https://github.com/Daldek/Hydrolog/blob/main/docs/INTEGRATION.md)).
 - [Retman](https://github.com/Daldek/Retman) is a Polish natural-language command layer over the ecosystem tools; it is designed to drive Hydrolog through the command layer (`hydrolog.operations`).
 - [Hydraulik](https://github.com/Daldek/Hydraulik) screens 2D floods (research stage) and uses the Beta and Euler type II hyetograph classes of Hydrolog; [Nogat](https://github.com/Daldek/Nogat) holds the shared standards and the registry of these tools.
