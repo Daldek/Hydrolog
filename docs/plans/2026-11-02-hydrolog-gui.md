@@ -401,6 +401,8 @@ The author's decision of 2026-11-04 (on the review of the hydrograph flow) super
 
 S3's acceptance „the Kamiennik example shows 60,21 m³/s” now holds for the worked example typed as the guide says. The guide's pictures of Hydrogram zlewni (`instrukcja/img/ekran.png`, `hydrogram.png`, `telefon.png`, `eksport.png`, `kalkulatory.png`) still show the five steps; no tool in the repository takes them again.
 
+**Erratum 2026-11-04 (decision 1): every section starts empty.** The author's decision of 2026-11-04 extends the above to Sieć, Statystyka, Kalkulatory and Wszystkie polecenia (superseding S4's and S5's shipped examples and D11's forms filled from the first catalog example): a first visit and „Wyczyść” show an empty section with a hint and a link to its worked example in the guide, nothing is computed until the person enters data, and the stored inputs moved to version 2. `web/examples/` is gone: `siec.json` is the guide's download (`instrukcja/przyklady/siec.json`), `maksima_roczne.csv` a test fixture.
+
 ## Not in this plan
 
 Editing the network's structure; framing the standalone server from a shell origin; the `postMessage` handshake and the hand-off through the shell (with the kit); an English UI; PMAXTP through IMGWTools and series from Archiwista; a PDF output of `report generate`; Hydrolog notices for the applicability ranges of the (i) texts; option names in library validation errors; saved variants or projects (Archiwista's, ECO-054); Hydrograf's „Wczytaj z Hydrologa” and „Przenieś do Hydrologa” (platform step 12, its own plan); Nogat's host (platform steps 8 and 9).
