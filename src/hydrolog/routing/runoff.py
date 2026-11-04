@@ -232,10 +232,10 @@ def watershed_from_document(document: object) -> WatershedParameters:
     """Read the ``watershed`` of a document: the object of ``WatershedParameters``.
 
     The fields are those of
-    :class:`~hydrolog.morphometry.WatershedParameters`: ``area_km2``, ``perimeter_km``,
-    ``length_km``, ``elevation_min_m`` and ``elevation_max_m`` are required, the rest
-    is optional. A field that the class does not have is an error (the class itself
-    ignores it).
+    :class:`~hydrolog.morphometry.WatershedParameters`: ``area_km2`` is required, the
+    rest is optional (the runoff model refuses a watershed without what it needs,
+    e.g. the fields of its ``tc_method``). A field that the class does not have is
+    an error (the class itself ignores it).
 
     Parameters
     ----------

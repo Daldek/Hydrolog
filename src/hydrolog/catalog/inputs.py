@@ -1140,7 +1140,14 @@ def _watershed_from_mapping(
     try:
         return WatershedParameters.from_dict(dict(document))
     except InvalidParameterError as exc:
-        source.fail(str(exc), reason="invalid_value")
+        # A value that the class refuses: its field is details.option (the
+        # watershed's field, as for the fields a calculation misses) and field
+        details = {key: value for key, value in exc.details.items() if key != "reason"}
+        if isinstance(details.get("option"), str):
+            details["field"] = details["option"]
+        source.fail(
+            str(exc), reason=str(exc.details.get("reason", "invalid_value")), **details
+        )
     except (TypeError, ValueError) as exc:
         source.fail(f"invalid watershed parameters: {exc}", reason="invalid_value")
 

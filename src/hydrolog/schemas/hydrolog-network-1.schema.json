@@ -617,11 +617,7 @@
       "description": "The area of a subcatchment: the fields of `WatershedParameters`, as in `hydrograph generate`. The `curve-number` runoff needs `cn` and, unless it is given `tc_min`, the fields of its `tc_method`.",
       "type": "object",
       "required": [
-        "area_km2",
-        "perimeter_km",
-        "length_km",
-        "elevation_min_m",
-        "elevation_max_m"
+        "area_km2"
       ],
       "properties": {
         "area_km2": {

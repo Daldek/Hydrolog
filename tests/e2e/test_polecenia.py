@@ -299,7 +299,7 @@ def test_uh_nash_checks_its_bounds_and_runs_through_the_server(tab: Tab) -> None
     expect(badge).to_have_attribute("data-state", "ok")
 
 
-def test_a_library_error_without_an_option_stands_above_the_form(tab: Tab) -> None:
+def test_a_library_relation_error_stands_on_the_field_it_names(tab: Tab) -> None:
     page = open_section(tab, FIRST)
     lutz_group = entry(FIRST)["one_of"][1]
     start = page.get_by_role("button", name="Uruchom")
@@ -323,17 +323,18 @@ def test_a_library_error_without_an_option_stands_above_the_form(tab: Tab) -> No
     response = run(page)
     error = response.json()
     assert response.status == 400
-    assert "option" not in error["details"]  # nothing for a field to show
+    # The library names the field of the relation (Lc of Lutz)
+    assert error["details"]["option"] == "lutz_centroid_length_km"
     # Only the chosen group is sent: neither n nor k_min of the example
     assert set(sent(response)) == {"area_km2", "timestep_min", *lutz}
 
+    centroid = option(page, "lutz_centroid_length_km")
+    expect(number(page, "lutz_centroid_length_km")).to_have_attribute(
+        "aria-invalid", "true"
+    )
+    expect(centroid.locator(".err")).not_to_have_text("")
     box = page.locator(f"{POL} .cmd-form .form-errors")
-    expect(box.locator("strong")).to_have_text(error["title"])  # the server's, Polish
-    expect(box.locator("li")).to_have_text(f"{error['message']} (EN)")
-    above = box.bounding_box()
-    field = page.locator(f"{POL} .cmd-form [data-option]").first.bounding_box()
-    assert above is not None and field is not None
-    assert above["y"] + above["height"] <= field["y"]
+    expect(box).to_have_count(0)  # nothing left for the box above the form
     badge = page.locator(BADGE)
     expect(badge).to_have_attribute("data-state", "error")
     expect(badge).to_have_text("Błąd danych")
@@ -341,7 +342,7 @@ def test_a_library_error_without_an_option_stands_above_the_form(tab: Tab) -> No
 
     # A change takes the error away; corrected data run
     number(page, "lutz_centroid_length_km").fill("2")
-    expect(box).to_have_count(0)
+    expect(centroid.locator(".err")).to_have_count(0)
     expect(start).to_be_enabled()
     assert run(page).ok
     expect(badge).to_have_attribute("data-state", "ok")

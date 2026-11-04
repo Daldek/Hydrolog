@@ -129,6 +129,7 @@ html.guide-page .topbar { position: sticky; top: 0; height: var(--header-height)
 .guide-table { width: auto; min-width: min(100%, 460px); margin: 0 0 var(--space-4); }
 .guide-table caption { margin: 0 0 var(--space-2); color: var(--text-3); font-size: var(--text-sm); text-align: left; }
 .guide-table thead th { position: static; }
+.guide-table.wrap th, .guide-table.wrap td { white-space: normal; text-align: left; }
 
 .guide-text pre.cmd {
   margin: 0 0 var(--space-3); padding: var(--space-3) var(--space-4); overflow-x: auto;

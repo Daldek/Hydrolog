@@ -1103,9 +1103,12 @@ files. Formats and the division of responsibilities are in [INTEGRATION.md](INTE
   The CSV has a `date` column and `Q [m3/s]`; pass it as `--input-file FILE --value-column Q
   --date-column date` to the `stats` commands. Hydrolog ignores the attribution columns; keep them
   when you publish results.
-- **Hydrograf** (watershed delineation) produces a JSON in the `WatershedParameters` format:
-  `area_km2`, `perimeter_km`, `length_km`, `elevation_min_m` and `elevation_max_m` are required;
-  `cn`, `channel_length_km`, `channel_slope_m_per_m` and others are optional. Give it as
+- **Hydrograf** (watershed delineation) produces a JSON in the `WatershedParameters` format.
+  Only `area_km2` is required; `perimeter_km`, `length_km`, `elevation_min_m`,
+  `elevation_max_m`, `cn`, `channel_length_km`, `channel_slope_m_per_m` and the others are
+  optional, and a calculation that needs one that is missing (the shape indicators of
+  `morphometry watershed`, the fields of a `tc_method`) ends with `validation_error`,
+  `details.reason` `missing_field` and the field in `details.option`. Give it as
   `--watershed-file` to `morphometry watershed`, `tc watershed`, `hydrograph generate` and
   `report generate`, or load it with `WatershedParameters.from_json`. A bad file is a
   `data_error` with `details.path`.
@@ -1131,7 +1134,7 @@ the GUI's address).
 
 | Section | What it does | Commands |
 |---|---|---|
-| Hydrogram zlewni | the design hydrograph of one watershed (the example: Kamiennik at Świerzawa), recomputed after every change | `hydrograph generate`, `uh nash` for Nash by Lutz |
+| Hydrogram zlewni | the design hydrograph of one watershed in three steps (watershed, hyetograph, model): empty on a first visit, checked for what the chosen model needs (an empty required field is an error, a value outside its typical range a warning on its field), then recomputed after every change; the guide's worked example is Kamiennik at Świerzawa | `hydrograph generate`, `uh nash` for Nash by Lutz |
 | Sieć i trasowanie | a network of subcatchments, reaches, reservoirs and junctions (the example: `hydrolog.testing.example_network_document()`), drawn as a schematic before it is routed by „Oblicz sieć” | `route schematic`, `route network` |
 | Statystyka przepływów | flood frequency of annual maxima or of a daily series (the example: 26 annual maxima, 1998 to 2023) | `stats flood-frequency` |
 | Kalkulatory | the time of concentration by six methods for the watershed of Hydrogram zlewni, and fifteen single calculators | `tc watershed` and fifteen others |

@@ -2,6 +2,7 @@
 
 import pytest
 
+from hydrolog._warnings import OutsideTypicalRange
 from hydrolog.exceptions import InvalidParameterError
 from hydrolog.morphometry import (
     TerrainAnalysis,
@@ -96,13 +97,47 @@ class TestWatershedParameters:
             WatershedParameters(**minimal_data)
 
     def test_validation_invalid_elevations(self, minimal_data: dict) -> None:
-        """Test validation rejects max <= min elevation."""
+        """max <= min is refused and the error names elevation_max_m."""
         minimal_data["elevation_max_m"] = 100.0  # less than min (150.0)
 
         with pytest.raises(
             InvalidParameterError, match="elevation_max_m.*must be greater"
-        ):
+        ) as caught:
             WatershedParameters(**minimal_data)
+
+        assert caught.value.details == {
+            "option": "elevation_max_m",
+            "reason": "exclusive_minimum",
+            "exclusive_minimum": 150.0,
+            "value": 100.0,
+        }
+
+    def test_only_the_area_is_required(self) -> None:
+        """A watershed of an area alone is valid; what needs a missing field says so.
+
+        One elevation without the other is not compared, and the derived values
+        raise ``missing_field`` naming the first field they miss.
+        """
+        params = WatershedParameters(area_km2=12.5, cn=75, elevation_max_m=300.0)
+
+        assert params.to_dict() == {
+            "area_km2": 12.5,
+            "cn": 75,
+            "elevation_max_m": 300.0,
+        }
+        for derived, missing in (
+            (lambda: params.width_km, ["length_km"]),
+            (lambda: params.relief_m, ["elevation_min_m"]),
+            (params.to_geometry, ["perimeter_km", "length_km"]),
+            (params.to_terrain, ["elevation_min_m", "length_km"]),
+        ):
+            with pytest.raises(InvalidParameterError) as caught:
+                derived()
+            assert caught.value.details == {
+                "option": missing[0],
+                "reason": "missing_field",
+                "missing": missing,
+            }
 
     def test_validation_invalid_cn(self, minimal_data: dict) -> None:
         """Test validation rejects CN outside 0-100 range."""
@@ -176,19 +211,10 @@ class TestWatershedParametersFromDict:
         assert params.area_km2 == 45.0
         assert not hasattr(params, "unknown_field")
 
-    def test_from_dict_missing_required_key(self) -> None:
-        """Test that from_dict raises error for missing required keys."""
-        data = {
-            "area_km2": 45.0,
-            "perimeter_km": 32.0,
-            # missing length_km
-            "elevation_min_m": 150.0,
-            "elevation_max_m": 520.0,
-        }
-
-        # Can raise either KeyError or TypeError depending on implementation
-        with pytest.raises((KeyError, TypeError)):
-            WatershedParameters.from_dict(data)
+    def test_from_dict_missing_area(self) -> None:
+        """The area is the only key the class cannot do without."""
+        with pytest.raises(TypeError):
+            WatershedParameters.from_dict({"perimeter_km": 32.0, "length_km": 12.0})
 
 
 class TestWatershedParametersFromJson:
@@ -494,11 +520,163 @@ class TestWatershedParametersCalculateTc:
 
         assert isinstance(caught.value, ValueError)
         assert caught.value.details == {
+            "option": missing[0],
             "reason": "missing_field",
             "method": method,
             "missing": missing,
         }
         assert all(name in str(caught.value) for name in missing)
+
+    @pytest.mark.parametrize(
+        ("method", "fields", "missing"),
+        [
+            ("kirpich", {}, ["channel_length_km", "channel_slope_m_per_m"]),
+            ("kirpich", {"length_km": 6.0}, ["channel_slope_m_per_m"]),
+            # one elevation is not a relief
+            (
+                "kirpich",
+                {"length_km": 6.0, "elevation_max_m": 300.0},
+                ["channel_slope_m_per_m"],
+            ),
+            ("nrcs", {"length_km": 6.0}, ["mean_slope_m_per_m", "cn"]),
+            (
+                "giandotti",
+                {"channel_length_km": 6.0},
+                ["elevation_min_m", "elevation_mean_m"],
+            ),
+            (
+                "giandotti",
+                {"channel_length_km": 6.0, "elevation_mean_m": 250.0},
+                ["elevation_min_m"],
+            ),
+        ],
+    )
+    def test_a_partial_watershed_names_the_first_choice_of_what_it_lacks(
+        self, method: str, fields: dict, missing: list[str]
+    ) -> None:
+        """A field with substitutes is missing only when they are missing too.
+
+        The first choice of the method is named; the hint names its substitutes.
+        """
+        params = WatershedParameters(area_km2=12.5, **fields)
+
+        with pytest.raises(InvalidParameterError) as caught:
+            params.calculate_tc(method=method)
+
+        assert caught.value.details["option"] == missing[0]
+        assert caught.value.details["reason"] == "missing_field"
+        assert caught.value.details["missing"] == missing
+        substitute = {
+            "channel_length_km": "else length_km",
+            "channel_slope_m_per_m": "else mean_slope_m_per_m",
+            "mean_slope_m_per_m": "else channel_slope_m_per_m",
+            "elevation_mean_m": "elevation_max_m",
+        }.get(missing[0])
+        if substitute is not None:
+            assert substitute in str(caught.value.hint)
+
+    @pytest.mark.parametrize(
+        ("method", "fields"),
+        [
+            ("kirpich", {"length_km": 6.0, "channel_slope_m_per_m": 0.01}),
+            ("kirpich", {"channel_length_km": 6.0, "mean_slope_m_per_m": 0.01}),
+            (
+                "kirpich",
+                {"length_km": 6.0, "elevation_min_m": 200.0, "elevation_max_m": 260.0},
+            ),
+            ("nrcs", {"length_km": 6.0, "channel_slope_m_per_m": 0.01, "cn": 70}),
+            (
+                "giandotti",
+                {"length_km": 6.0, "elevation_min_m": 200.0, "elevation_max_m": 260.0},
+            ),
+        ],
+    )
+    def test_a_partial_watershed_with_a_source_of_each_argument_is_timed(
+        self, method: str, fields: dict
+    ) -> None:
+        """No perimeter, no elevations: the method needs only its own fields."""
+        params = WatershedParameters(area_km2=12.5, **fields)
+
+        assert params.calculate_tc(method=method) > 0
+
+    def test_a_value_refused_by_the_formula_names_its_field(self) -> None:
+        """A channel slope of 0 is a valid field but not a Kirpich slope."""
+        params = WatershedParameters(
+            area_km2=12.5, length_km=6.0, channel_slope_m_per_m=0.0
+        )
+
+        with pytest.raises(InvalidParameterError) as caught:
+            params.calculate_tc(method="kirpich")
+
+        assert caught.value.details["option"] == "channel_slope_m_per_m"
+        assert caught.value.details["parameter"] == "slope_m_per_m"
+        assert caught.value.details["reason"] == "exclusive_minimum"
+
+    @pytest.mark.parametrize(
+        ("method", "fields", "parameter", "field"),
+        [
+            (
+                "kirpich",
+                {"length_km": 100.0, "channel_slope_m_per_m": 0.01},
+                "length_km",
+                "length_km",
+            ),
+            (
+                "kirpich",
+                {
+                    "channel_length_km": 100.0,
+                    "length_km": 5.0,
+                    "channel_slope_m_per_m": 0.01,
+                },
+                "length_km",
+                "channel_length_km",
+            ),
+            (
+                "kirpich",
+                {"length_km": 6.0, "mean_slope_m_per_m": 0.3},
+                "slope_m_per_m",
+                "mean_slope_m_per_m",
+            ),
+            # 0.6 m/m from the relief: attributed to elevation_max_m
+            (
+                "kirpich",
+                {"length_km": 1.0, "elevation_min_m": 0.0, "elevation_max_m": 600.0},
+                "slope_m_per_m",
+                "elevation_max_m",
+            ),
+            (
+                "giandotti",
+                {"length_km": 6.0, "elevation_min_m": 200.0, "elevation_max_m": 210.0},
+                "elevation_diff_m",
+                "elevation_max_m",
+            ),
+            (
+                "faa",
+                {
+                    "overland_length_km": 5.0,
+                    "overland_slope_m_per_m": 0.02,
+                    "runoff_coeff": 0.5,
+                },
+                "length_km",
+                "overland_length_km",
+            ),
+        ],
+    )
+    def test_a_typical_range_warning_names_the_field_of_the_value(
+        self, method: str, fields: dict, parameter: str, field: str
+    ) -> None:
+        """``field`` of the warning is the watershed's field, not the argument."""
+        params = WatershedParameters(area_km2=150.0, **fields)
+
+        with pytest.warns(OutsideTypicalRange) as caught:
+            params.calculate_tc(method=method)
+
+        fields_of = {
+            warning.message.details["parameter"]: warning.message.details["field"]
+            for warning in caught
+            if isinstance(warning.message, OutsideTypicalRange)
+        }
+        assert fields_of[parameter] == field
 
     def test_calculate_tc_lists_only_the_missing_fields(self) -> None:
         """Fields that are set are not reported as missing."""

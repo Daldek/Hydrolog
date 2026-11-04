@@ -7,6 +7,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from hydrolog._serialization import JsonResultMixin
+from hydrolog._warnings import warn_outside_typical_range
 from hydrolog.exceptions import InvalidParameterError
 from hydrolog.precipitation.hietogram import HietogramResult
 from hydrolog.runoff.clark_iuh import ClarkIUH
@@ -15,6 +16,13 @@ from hydrolog.runoff.nash_iuh import NashIUH
 from hydrolog.runoff.scs_cn import AMC, SCSCN
 from hydrolog.runoff.snyder_uh import SnyderUH
 from hydrolog.runoff.unit_hydrograph import SCSUnitHydrograph
+
+TIMESTEP_SHARE_OF_TP = 0.25
+"""The largest share of the unit hydrograph's time to peak a time step should have.
+
+The unit duration D (the time step) should be about 0.133 tc, 0.2 tp, and not
+more than 0.25 tp, or the peak of the hydrograph is not resolved (USDA-NRCS 2007,
+NEH Part 630, chapter 16)."""
 
 
 @dataclass
@@ -324,6 +332,13 @@ class HydrographGenerator:
         InvalidParameterError
             If precipitation data is invalid.
 
+        Warns
+        -----
+        OutsideTypicalRange
+            For a time step longer than :data:`TIMESTEP_SHARE_OF_TP` of the time to
+            peak of the unit hydrograph (method the unit hydrograph model,
+            parameter ``timestep_min``, range 0 to 0.25 tp).
+
         Examples
         --------
         >>> generator = HydrographGenerator(area_km2=45.0, cn=72, tc_min=90.0)
@@ -362,6 +377,13 @@ class HydrographGenerator:
             uh_result = self.unit_hydrograph.generate(timestep_min=dt, duration_min=dt)
         else:
             uh_result = self.unit_hydrograph.generate(timestep_min=dt)
+        warn_outside_typical_range(
+            self.uh_model,
+            "timestep_min",
+            dt,
+            0.0,
+            TIMESTEP_SHARE_OF_TP * uh_result.time_to_peak_min,
+        )
 
         # Perform convolution
         hydrograph = convolve_discrete(

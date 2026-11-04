@@ -501,17 +501,9 @@ class TestTheWatershedDocument:
         [
             ("area", "type", {}),
             (
-                {"area_km2": 12.0},
+                {"cn": 70},
                 "missing_field",
-                {
-                    "field": "perimeter_km",
-                    "missing": [
-                        "perimeter_km",
-                        "length_km",
-                        "elevation_min_m",
-                        "elevation_max_m",
-                    ],
-                },
+                {"field": "area_km2", "missing": ["area_km2"]},
             ),
             ({**COMPLETE, "colour": "green"}, "unknown_field", {"field": "colour"}),
             ({**COMPLETE, "area_km2": "12"}, "type", {"field": "area_km2"}),

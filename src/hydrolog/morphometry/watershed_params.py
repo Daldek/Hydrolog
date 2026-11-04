@@ -6,6 +6,7 @@ import json
 from dataclasses import asdict, dataclass
 from typing import TYPE_CHECKING, Any, cast
 
+from hydrolog._warnings import typical_range_fields
 from hydrolog.exceptions import InvalidParameterError
 
 if TYPE_CHECKING:
@@ -15,11 +16,12 @@ if TYPE_CHECKING:
 TC_METHODS = ("kirpich", "nrcs", "giandotti", "faa", "kerby", "kerby_kirpich")
 """The methods of :meth:`WatershedParameters.calculate_tc`."""
 
-# Fields besides the always present ones that a time of concentration method cannot
-# do without, in the order they are reported. FAA and Kerby are overland flow
+# Fields that a time of concentration method cannot do without and that have no
+# substitute, in the order they are reported. FAA and Kerby are overland flow
 # formulas: they get the overland flow length and slope, never the channel's.
+# Kirpich, NRCS and Giandotti take what they can from several fields (see
+# WatershedParameters._missing_tc_fields).
 _TC_REQUIRED_FIELDS: dict[str, tuple[str, ...]] = {
-    "nrcs": ("cn",),
     "faa": ("runoff_coeff", "overland_length_km", "overland_slope_m_per_m"),
     "kerby": ("retardance", "overland_length_km", "overland_slope_m_per_m"),
     "kerby_kirpich": (
@@ -32,10 +34,19 @@ _TC_REQUIRED_FIELDS: dict[str, tuple[str, ...]] = {
 }
 
 _TC_METHOD_LABELS = {
+    "kirpich": "Kirpich",
     "nrcs": "NRCS",
+    "giandotti": "Giandotti",
     "faa": "FAA",
     "kerby": "Kerby",
     "kerby_kirpich": "Kerby-Kirpich",
+}
+
+# The slopes a method takes, first choice first; without them the slope is the
+# relief over the length
+_TC_SLOPES: dict[str, tuple[str, str]] = {
+    "kirpich": ("channel_slope_m_per_m", "mean_slope_m_per_m"),
+    "nrcs": ("mean_slope_m_per_m", "channel_slope_m_per_m"),
 }
 
 _OVERLAND_HINT = (
@@ -45,6 +56,66 @@ _OVERLAND_HINT = (
     "kirpich."
 )
 _TC_MISSING_HINTS: dict[str, str] = {"faa": _OVERLAND_HINT, "kerby": _OVERLAND_HINT}
+
+# How a missing field of Kirpich, NRCS and Giandotti can be replaced
+_SUBSTITUTE_HINTS: dict[str, str] = {
+    "channel_length_km": "The length is channel_length_km, else length_km.",
+    "channel_slope_m_per_m": (
+        "The slope is channel_slope_m_per_m, else mean_slope_m_per_m, else the "
+        "relief (elevation_max_m - elevation_min_m) over the length."
+    ),
+    "mean_slope_m_per_m": (
+        "The slope is mean_slope_m_per_m, else channel_slope_m_per_m, else the "
+        "relief (elevation_max_m - elevation_min_m) over the length."
+    ),
+    "elevation_mean_m": (
+        "The mean elevation is elevation_mean_m, else the middle of "
+        "elevation_min_m and elevation_max_m."
+    ),
+}
+
+# Field checks of WatershedParameters, in the order they run
+_POSITIVE_FIELDS = (
+    "area_km2",
+    "perimeter_km",
+    "length_km",
+    "channel_length_km",
+    "retardance",
+    "overland_length_km",
+    "Lc_km",
+    "manning_n",
+)
+_NON_NEGATIVE_FIELDS = (
+    "mean_slope_m_per_m",
+    "channel_slope_m_per_m",
+    "overland_slope_m_per_m",
+)
+_PERCENT_FIELDS = ("cn", "urban_pct", "forest_pct")
+
+
+def _field_error(
+    name: str, message: str, reason: str, **details: object
+) -> InvalidParameterError:
+    """Return the error of the field ``name`` (``details.option``)."""
+    return InvalidParameterError(
+        message, details={"option": name, "reason": reason, **details}
+    )
+
+
+def _missing_error(
+    missing: list[str], message: str, hint: str | None = None, **details: object
+) -> InvalidParameterError:
+    """Return the error of missing fields: ``details.option`` is the first one."""
+    return InvalidParameterError(
+        message,
+        details={
+            "option": missing[0],
+            "reason": "missing_field",
+            **details,
+            "missing": missing,
+        },
+        hint=hint,
+    )
 
 
 @dataclass
@@ -59,16 +130,23 @@ class WatershedParameters:
     Parameters
     ----------
     area_km2 : float
-        Watershed area [km²]. Must be positive.
-    perimeter_km : float
-        Watershed perimeter [km]. Must be positive.
-    length_km : float
+        Watershed area [km²]. Must be positive. The only required field: a
+        calculation that needs another field that is not set raises
+        ``InvalidParameterError`` with ``details.reason == "missing_field"`` and
+        ``details.option`` the field.
+    perimeter_km : float, optional
+        Watershed perimeter [km]. Must be positive. Used by the shape indicators
+        (:meth:`to_geometry`).
+    length_km : float, optional
         Watershed length - distance from outlet to most distant point [km].
-        Must be positive.
-    elevation_min_m : float
+        Must be positive. Used by the shape indicators, the terrain analysis and,
+        without ``channel_length_km``, by the Kirpich, NRCS and Giandotti
+        concentration times.
+    elevation_min_m : float, optional
         Minimum elevation at outlet [m a.s.l.].
-    elevation_max_m : float
-        Maximum elevation in watershed [m a.s.l.].
+    elevation_max_m : float, optional
+        Maximum elevation in watershed [m a.s.l.]. Must be greater than
+        ``elevation_min_m`` when both are given.
     name : str, optional
         Watershed name for identification.
     elevation_mean_m : float, optional
@@ -118,9 +196,9 @@ class WatershedParameters:
     Attributes
     ----------
     width_km : float
-        Average watershed width = area / length [km].
+        Average watershed width = area / length [km]; needs ``length_km``.
     relief_m : float
-        Relief = elevation_max - elevation_min [m].
+        Relief = elevation_max - elevation_min [m]; needs both elevations.
 
     Examples
     --------
@@ -149,14 +227,15 @@ class WatershedParameters:
     >>> tc_min = params.calculate_tc(method="kirpich")
     """
 
-    # Required parameters
+    # Required parameter
     area_km2: float
-    perimeter_km: float
-    length_km: float
-    elevation_min_m: float
-    elevation_max_m: float
 
     # Optional parameters
+    perimeter_km: float | None = None
+    length_km: float | None = None
+    elevation_min_m: float | None = None
+    elevation_max_m: float | None = None
+
     name: str | None = None
     elevation_mean_m: float | None = None
     mean_slope_m_per_m: float | None = None
@@ -185,72 +264,74 @@ class WatershedParameters:
         self._validate()
 
     def _validate(self) -> None:
-        """Validate parameter values."""
-        if self.area_km2 <= 0:
-            raise InvalidParameterError(
-                f"area_km2 must be positive, got {self.area_km2}"
-            )
-        if self.perimeter_km <= 0:
-            raise InvalidParameterError(
-                f"perimeter_km must be positive, got {self.perimeter_km}"
-            )
-        if self.length_km <= 0:
-            raise InvalidParameterError(
-                f"length_km must be positive, got {self.length_km}"
-            )
-        if self.elevation_max_m <= self.elevation_min_m:
-            raise InvalidParameterError(
-                f"elevation_max_m ({self.elevation_max_m}) must be greater than "
-                f"elevation_min_m ({self.elevation_min_m})"
-            )
-        if self.cn is not None and not 0 <= self.cn <= 100:
-            raise InvalidParameterError(f"cn must be 0-100, got {self.cn}")
-        if self.mean_slope_m_per_m is not None and self.mean_slope_m_per_m < 0:
-            raise InvalidParameterError(
-                f"mean_slope_m_per_m must be non-negative, got "
-                f"{self.mean_slope_m_per_m}"
-            )
-        if self.channel_length_km is not None and self.channel_length_km <= 0:
-            raise InvalidParameterError(
-                f"channel_length_km must be positive, got {self.channel_length_km}"
-            )
-        if self.channel_slope_m_per_m is not None and self.channel_slope_m_per_m < 0:
-            raise InvalidParameterError(
-                f"channel_slope_m_per_m must be non-negative, got "
-                f"{self.channel_slope_m_per_m}"
-            )
-        if self.runoff_coeff is not None and (
-            self.runoff_coeff <= 0 or self.runoff_coeff > 1.0
+        """Validate parameter values.
+
+        Every error names its field in ``details.option``.
+        """
+        for name in _POSITIVE_FIELDS:
+            value = getattr(self, name)
+            if value is not None and value <= 0:
+                raise _field_error(
+                    name,
+                    f"{name} must be positive, got {value}",
+                    "exclusive_minimum",
+                    exclusive_minimum=0,
+                    value=value,
+                )
+        if (
+            self.elevation_max_m is not None
+            and self.elevation_min_m is not None
+            and self.elevation_max_m <= self.elevation_min_m
         ):
-            raise InvalidParameterError(
-                f"runoff_coeff must be in range (0, 1.0], got {self.runoff_coeff}"
+            raise _field_error(
+                "elevation_max_m",
+                f"elevation_max_m ({self.elevation_max_m}) must be greater than "
+                f"elevation_min_m ({self.elevation_min_m})",
+                "exclusive_minimum",
+                exclusive_minimum=self.elevation_min_m,
+                value=self.elevation_max_m,
             )
-        if self.retardance is not None and self.retardance <= 0:
-            raise InvalidParameterError(
-                f"retardance must be positive, got {self.retardance}"
+        for name in _NON_NEGATIVE_FIELDS:
+            value = getattr(self, name)
+            if value is not None and value < 0:
+                raise _field_error(
+                    name,
+                    f"{name} must be non-negative, got {value}",
+                    "minimum",
+                    minimum=0,
+                    value=value,
+                )
+        for name in _PERCENT_FIELDS:
+            value = getattr(self, name)
+            if value is not None and not 0 <= value <= 100:
+                raise _field_error(
+                    name,
+                    f"{name} must be 0-100, got {value}",
+                    "range",
+                    minimum=0,
+                    maximum=100,
+                    value=value,
+                )
+        if self.runoff_coeff is not None and not 0 < self.runoff_coeff <= 1.0:
+            raise _field_error(
+                "runoff_coeff",
+                f"runoff_coeff must be in range (0, 1.0], got {self.runoff_coeff}",
+                "range",
+                exclusive_minimum=0,
+                maximum=1.0,
+                value=self.runoff_coeff,
             )
-        if self.overland_length_km is not None and self.overland_length_km <= 0:
-            raise InvalidParameterError(
-                f"overland_length_km must be positive, got {self.overland_length_km}"
-            )
-        if self.overland_slope_m_per_m is not None and self.overland_slope_m_per_m < 0:
-            raise InvalidParameterError(
-                f"overland_slope_m_per_m must be non-negative, "
-                f"got {self.overland_slope_m_per_m}"
-            )
-        if self.Lc_km is not None and self.Lc_km <= 0:
-            raise InvalidParameterError(f"Lc_km must be positive, got {self.Lc_km}")
-        if self.manning_n is not None and self.manning_n <= 0:
-            raise InvalidParameterError(
-                f"manning_n must be positive, got {self.manning_n}"
-            )
-        if self.urban_pct is not None and not 0 <= self.urban_pct <= 100:
-            raise InvalidParameterError(
-                f"urban_pct must be 0-100, got {self.urban_pct}"
-            )
-        if self.forest_pct is not None and not 0 <= self.forest_pct <= 100:
-            raise InvalidParameterError(
-                f"forest_pct must be 0-100, got {self.forest_pct}"
+
+    def _require(self, *names: str, needed_for: str) -> None:
+        """Raise ``missing_field`` if one of the fields ``names`` is not set."""
+        missing = [name for name in names if getattr(self, name) is None]
+        if missing:
+            plural = len(missing) > 1
+            raise _missing_error(
+                missing,
+                f"{', '.join(missing)} {'are' if plural else 'is'} required for "
+                f"{needed_for}, and the watershed has no value",
+                hint=f"Add {', '.join(missing)} to the watershed parameters.",
             )
 
     @property
@@ -259,8 +340,14 @@ class WatershedParameters:
         Average watershed width [km].
 
         Calculated as W = A / L.
+
+        Raises
+        ------
+        InvalidParameterError
+            Without ``length_km`` (``details.reason == "missing_field"``).
         """
-        return self.area_km2 / self.length_km
+        self._require("length_km", needed_for="the width")
+        return self.area_km2 / cast(float, self.length_km)
 
     @property
     def relief_m(self) -> float:
@@ -268,8 +355,15 @@ class WatershedParameters:
         Relief (elevation difference) [m].
 
         Calculated as H = elevation_max - elevation_min.
+
+        Raises
+        ------
+        InvalidParameterError
+            Without ``elevation_min_m`` or ``elevation_max_m``
+            (``details.reason == "missing_field"``).
         """
-        return self.elevation_max_m - self.elevation_min_m
+        self._require("elevation_min_m", "elevation_max_m", needed_for="the relief")
+        return cast(float, self.elevation_max_m) - cast(float, self.elevation_min_m)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> WatershedParameters:
@@ -282,9 +376,9 @@ class WatershedParameters:
         Parameters
         ----------
         data : dict
-            Dictionary with watershed parameters. Required keys:
-            area_km2, perimeter_km, length_km, elevation_min_m, elevation_max_m.
-            Optional keys: name, elevation_mean_m, mean_slope_m_per_m,
+            Dictionary with watershed parameters. Required key: area_km2.
+            Optional keys: perimeter_km, length_km, elevation_min_m,
+            elevation_max_m, name, elevation_mean_m, mean_slope_m_per_m,
             channel_length_km, channel_slope_m_per_m, cn, source, crs,
             runoff_coeff, retardance, overland_length_km,
             overland_slope_m_per_m, Lc_km, manning_n, urban_pct, forest_pct.
@@ -296,8 +390,8 @@ class WatershedParameters:
 
         Raises
         ------
-        KeyError
-            If required keys are missing.
+        TypeError
+            If area_km2 is missing.
         InvalidParameterError
             If parameter values are invalid.
 
@@ -411,6 +505,12 @@ class WatershedParameters:
         WatershedGeometry
             Geometry object for shape indicator calculations.
 
+        Raises
+        ------
+        InvalidParameterError
+            Without ``perimeter_km`` or ``length_km``
+            (``details.reason == "missing_field"``).
+
         Examples
         --------
         >>> params = WatershedParameters(area_km2=45.0, perimeter_km=32.0,
@@ -420,10 +520,11 @@ class WatershedParameters:
         """
         from hydrolog.morphometry.geometric import WatershedGeometry
 
+        self._require("perimeter_km", "length_km", needed_for="the shape indicators")
         return WatershedGeometry(
             area_km2=self.area_km2,
-            perimeter_km=self.perimeter_km,
-            length_km=self.length_km,
+            perimeter_km=cast(float, self.perimeter_km),
+            length_km=cast(float, self.length_km),
         )
 
     def to_terrain(self) -> TerrainAnalysis:
@@ -435,6 +536,12 @@ class WatershedParameters:
         TerrainAnalysis
             Terrain analysis object for slope calculations.
 
+        Raises
+        ------
+        InvalidParameterError
+            Without ``elevation_min_m``, ``elevation_max_m`` or ``length_km``
+            (``details.reason == "missing_field"``).
+
         Examples
         --------
         >>> params = WatershedParameters(area_km2=45.0, perimeter_km=32.0,
@@ -444,13 +551,51 @@ class WatershedParameters:
         """
         from hydrolog.morphometry.terrain import TerrainAnalysis
 
+        self._require(
+            "elevation_min_m",
+            "elevation_max_m",
+            "length_km",
+            needed_for="the terrain analysis",
+        )
         return TerrainAnalysis(
-            elevation_min_m=self.elevation_min_m,
-            elevation_max_m=self.elevation_max_m,
-            length_km=self.length_km,
+            elevation_min_m=cast(float, self.elevation_min_m),
+            elevation_max_m=cast(float, self.elevation_max_m),
+            length_km=cast(float, self.length_km),
             elevation_mean_m=self.elevation_mean_m,
             channel_length_km=self.channel_length_km,
         )
+
+    def _missing_tc_fields(self, method: str) -> list[str]:
+        """Fields that ``method`` needs and the watershed does not have.
+
+        A field that has a substitute (the length, the slope, the mean elevation
+        of Kirpich, NRCS and Giandotti) is missing only when the substitutes are
+        missing too; the first choice is reported.
+        """
+        if method in _TC_REQUIRED_FIELDS:
+            return [
+                name
+                for name in _TC_REQUIRED_FIELDS[method]
+                if getattr(self, name) is None
+            ]
+        missing = []
+        if self.channel_length_km is None and self.length_km is None:
+            missing.append("channel_length_km")
+        if method in _TC_SLOPES:
+            relief = (
+                self.elevation_min_m is not None and self.elevation_max_m is not None
+            )
+            slopes = _TC_SLOPES[method]
+            if not relief and all(getattr(self, name) is None for name in slopes):
+                missing.append(slopes[0])
+        if method == "nrcs" and self.cn is None:
+            missing.append("cn")
+        if method == "giandotti":
+            if self.elevation_min_m is None:
+                missing.append("elevation_min_m")
+            if self.elevation_mean_m is None and self.elevation_max_m is None:
+                missing.append("elevation_mean_m")
+        return missing
 
     def _check_tc_method(self, method: str) -> None:
         """Raise if ``method`` is unknown or a field it cannot do without is missing."""
@@ -465,26 +610,99 @@ class WatershedParameters:
                     "value": method,
                 },
             )
-        missing = [
-            name
-            for name in _TC_REQUIRED_FIELDS.get(method, ())
-            if getattr(self, name) is None
-        ]
+        missing = self._missing_tc_fields(method)
         if missing:
             names = ", ".join(missing)
             shown = "CN" if missing == ["cn"] else names
             plural = len(missing) > 1
-            raise InvalidParameterError(
+            substitutes = [
+                _SUBSTITUTE_HINTS[name]
+                for name in missing
+                if name in _SUBSTITUTE_HINTS and method not in _TC_REQUIRED_FIELDS
+            ]
+            raise _missing_error(
+                missing,
                 f"{shown} {'are' if plural else 'is'} required for "
                 f"{_TC_METHOD_LABELS[method]} method. "
                 f"Set the {names} parameter{'s' if plural else ''}.",
-                details={
-                    "reason": "missing_field",
-                    "method": method,
-                    "missing": missing,
-                },
-                hint=_TC_MISSING_HINTS.get(method),
+                hint=" ".join(substitutes) or _TC_MISSING_HINTS.get(method),
+                method=method,
             )
+
+    def _tc_inputs(self, method: str) -> tuple[dict[str, float], dict[str, str]]:
+        """Arguments of the formula of ``method`` and the field each comes from.
+
+        A value derived from several fields is attributed to the one that is not
+        shared by the alternatives: ``elevation_max_m`` for a slope from the
+        relief and for the elevation difference from the middle of the elevation
+        range.
+        """
+        self._check_tc_method(method)
+        if method == "kerby_kirpich":
+            names = _TC_REQUIRED_FIELDS[method]
+            return (
+                {name: cast(float, getattr(self, name)) for name in names},
+                {name: name for name in names},
+            )
+        if method in ("faa", "kerby"):
+            # Overland flow formulas: the overland flow path, not the channel
+            coefficient = "runoff_coeff" if method == "faa" else "retardance"
+            return (
+                {
+                    "length_km": cast(float, self.overland_length_km),
+                    "slope_m_per_m": cast(float, self.overland_slope_m_per_m),
+                    coefficient: cast(float, getattr(self, coefficient)),
+                },
+                {
+                    "length_km": "overland_length_km",
+                    "slope_m_per_m": "overland_slope_m_per_m",
+                    coefficient: coefficient,
+                },
+            )
+
+        length_field = (
+            "channel_length_km" if self.channel_length_km is not None else "length_km"
+        )
+        length_km = cast(float, getattr(self, length_field))
+        if method == "giandotti":
+            # elevation_diff_m = mean elevation - outlet elevation
+            outlet = cast(float, self.elevation_min_m)
+            if self.elevation_mean_m is not None:
+                mean_field, elevation_mean = "elevation_mean_m", self.elevation_mean_m
+            else:
+                mean_field = "elevation_max_m"
+                elevation_mean = (outlet + cast(float, self.elevation_max_m)) / 2
+            return (
+                {
+                    "area_km2": self.area_km2,
+                    "length_km": length_km,
+                    "elevation_diff_m": elevation_mean - outlet,
+                },
+                {
+                    "area_km2": "area_km2",
+                    "length_km": length_field,
+                    "elevation_diff_m": mean_field,
+                },
+            )
+
+        # Kirpich takes the slope of the channel first; NRCS (TR-55) takes the
+        # average land slope of the watershed first
+        slope_field = next(
+            (name for name in _TC_SLOPES[method] if getattr(self, name) is not None),
+            None,
+        )
+        if slope_field is None:
+            # Calculate from relief and length
+            slope_field = "elevation_max_m"
+            slope_m_per_m = self.relief_m / (length_km * 1000)
+        else:
+            slope_m_per_m = cast(float, getattr(self, slope_field))
+        arguments = {"length_km": length_km, "slope_m_per_m": slope_m_per_m}
+        fields = {"length_km": length_field, "slope_m_per_m": slope_field}
+        if method == "nrcs":
+            arguments["cn"] = cast(float, self.cn)
+            fields["cn"] = "cn"
+        return arguments, fields
 
     def tc_parameters(self, method: str = "kirpich") -> dict[str, float]:
         """
@@ -515,7 +733,8 @@ class WatershedParameters:
         InvalidParameterError
             If the method is unknown (``details["reason"] == "choice"``) or a
             parameter the method requires is missing (``details["reason"] ==
-            "missing_field"``, ``details["missing"]`` lists all of them).
+            "missing_field"``, ``details["option"]`` the first of them,
+            ``details["missing"]`` all of them).
 
         Examples
         --------
@@ -526,54 +745,7 @@ class WatershedParameters:
         >>> params.tc_parameters("kirpich")
         {'length_km': 10.0, 'slope_m_per_m': 0.02}
         """
-        self._check_tc_method(method)
-        if method == "kerby_kirpich":
-            return {
-                "overland_length_km": cast(float, self.overland_length_km),
-                "overland_slope_m_per_m": cast(float, self.overland_slope_m_per_m),
-                "retardance": cast(float, self.retardance),
-                "channel_length_km": cast(float, self.channel_length_km),
-                "channel_slope_m_per_m": cast(float, self.channel_slope_m_per_m),
-            }
-        if method in ("faa", "kerby"):
-            # Overland flow formulas: the overland flow path, not the channel
-            overland = {
-                "length_km": cast(float, self.overland_length_km),
-                "slope_m_per_m": cast(float, self.overland_slope_m_per_m),
-            }
-            if method == "faa":
-                return {**overland, "runoff_coeff": cast(float, self.runoff_coeff)}
-            return {**overland, "retardance": cast(float, self.retardance)}
-
-        length_km = self.channel_length_km or self.length_km
-        if method == "giandotti":
-            # elevation_diff_m = mean elevation - outlet elevation
-            elevation_mean = (
-                self.elevation_mean_m
-                if self.elevation_mean_m is not None
-                else (self.elevation_min_m + self.elevation_max_m) / 2
-            )
-            return {
-                "area_km2": self.area_km2,
-                "length_km": length_km,
-                "elevation_diff_m": elevation_mean - self.elevation_min_m,
-            }
-
-        # Kirpich takes the slope of the channel first; NRCS (TR-55) takes the
-        # average land slope of the watershed first
-        slopes = (
-            (self.mean_slope_m_per_m, self.channel_slope_m_per_m)
-            if method == "nrcs"
-            else (self.channel_slope_m_per_m, self.mean_slope_m_per_m)
-        )
-        slope_m_per_m = next((value for value in slopes if value is not None), None)
-        if slope_m_per_m is None:
-            # Calculate from relief and length
-            slope_m_per_m = self.relief_m / (length_km * 1000)
-        parameters = {"length_km": length_km, "slope_m_per_m": slope_m_per_m}
-        if method == "nrcs":
-            parameters["cn"] = cast(float, self.cn)
-        return parameters
+        return self._tc_inputs(method)[0]
 
     def calculate_tc(self, method: str = "kirpich") -> float:
         """
@@ -595,10 +767,17 @@ class WatershedParameters:
         InvalidParameterError
             If the method is unknown (``details["reason"] == "choice"``), a
             parameter the method requires is missing (``details["reason"] ==
-            "missing_field"``, ``details["missing"]`` lists all of them) or a
-            value is rejected by the formula. It is also a ``ValueError``, so
-            code that caught the ``ValueError`` of earlier versions keeps
-            working.
+            "missing_field"``, ``details["option"]`` the first of them,
+            ``details["missing"]`` all of them) or a value is rejected by the
+            formula (``details["option"]`` the field it came from). It is also a
+            ``ValueError``, so code that caught the ``ValueError`` of earlier
+            versions keeps working.
+
+        Warns
+        -----
+        OutsideTypicalRange
+            For an argument outside the typical range of the formula; its
+            ``field`` is the field the argument came from.
 
         Notes
         -----
@@ -608,7 +787,7 @@ class WatershedParameters:
         * "kirpich": the length is ``channel_length_km`` if available, otherwise
           ``length_km``; the slope is ``channel_slope_m_per_m`` if available,
           otherwise ``mean_slope_m_per_m``, otherwise it is calculated from
-          relief and length.
+          relief and length (``elevation_min_m`` and ``elevation_max_m``).
         * "nrcs": ``cn`` must be set. The length is chosen as for "kirpich". The
           slope is the average land slope Y of the watershed, not the slope of
           the flow path (USDA-NRCS 1986, TR-55, chapter 3; USDA-NRCS 2010, NEH
@@ -617,7 +796,8 @@ class WatershedParameters:
         * "giandotti": the length is chosen as for "kirpich"; the elevation
           difference is ``elevation_mean_m - elevation_min_m``;
           ``elevation_mean_m`` defaults to the middle of the elevation range (also
-          when it is 0 m a.s.l., which is a valid mean elevation).
+          when it is 0 m a.s.l., which is a valid mean elevation), so it needs
+          ``elevation_min_m`` and ``elevation_mean_m`` or ``elevation_max_m``.
         * "faa" and "kerby" are overland (sheet) flow formulas (FAA 1966,
           AC 150/5320-5A, and 2013, AC 150/5320-5D; Kerby 1959). Kerby derived his
           formula for flow paths of up to 366 m (1200 ft; Roussel et al. 2005,
@@ -649,6 +829,18 @@ class WatershedParameters:
         """
         from hydrolog.time import ConcentrationTime
 
-        arguments = self.tc_parameters(method)
+        arguments, fields = self._tc_inputs(method)
         formula = getattr(ConcentrationTime, method)
-        return float(formula(**arguments))
+        with typical_range_fields(fields):
+            try:
+                return float(formula(**arguments))
+            except InvalidParameterError as exc:
+                parameter = exc.details.get("option")
+                field = fields.get(str(parameter), parameter)
+                if field == parameter:
+                    raise
+                raise InvalidParameterError(
+                    f"{exc} ({parameter} is {field} of the watershed)",
+                    details={**exc.details, "option": field, "parameter": parameter},
+                    hint=exc.hint,
+                ) from exc

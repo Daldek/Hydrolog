@@ -338,16 +338,20 @@ class TestHydrografDataValidation:
         with pytest.raises(InvalidParameterError):
             WatershedParameters.from_dict(invalid_data)
 
-    def test_missing_required_field_raises_error(self):
-        """Test that missing required field raises error."""
-        incomplete_data = {
-            "area_km2": 45.0,
-            "perimeter_km": 32.0,
-            # Missing: length_km, elevation_min_m, elevation_max_m
-        }
-
+    def test_missing_area_raises_error(self):
+        """The area is the only field a watershed cannot do without."""
         with pytest.raises(TypeError):
-            WatershedParameters.from_dict(incomplete_data)
+            WatershedParameters.from_dict({"perimeter_km": 32.0, "length_km": 12.0})
+
+    def test_a_partial_watershed_names_what_a_calculation_misses(self):
+        """Without the length the Kirpich time of concentration names the field."""
+        params = WatershedParameters.from_dict({"area_km2": 45.0, "perimeter_km": 32.0})
+
+        with pytest.raises(InvalidParameterError) as caught:
+            params.calculate_tc(method="kirpich")
+
+        assert caught.value.details["option"] == "channel_length_km"
+        assert caught.value.details["reason"] == "missing_field"
 
     def test_nrcs_without_cn_raises_error(self):
         """Test that NRCS method without CN raises error."""

@@ -1,8 +1,6 @@
 """Time of concentration calculation methods."""
 
-import warnings
-
-from hydrolog._warnings import OutsideTypicalRange
+from hydrolog._warnings import warn_outside_typical_range
 from hydrolog.exceptions import InvalidParameterError
 
 # Typical parameter ranges for validation warnings
@@ -51,17 +49,39 @@ def _warn_if_out_of_range(
     method_name : str
         Name of the method for the warning message.
     """
-    if value < min_val or value > max_val:
-        warnings.warn(
-            OutsideTypicalRange(
-                method=method_name,
-                parameter=param_name,
-                value=value,
-                minimum=min_val,
-                maximum=max_val,
-            ),
-            stacklevel=3,
+    warn_outside_typical_range(
+        method_name, param_name, value, min_val, max_val, stacklevel=3
+    )
+
+
+def _require_positive(value: float, name: str) -> None:
+    """Raise if ``value`` is not positive; ``details.option`` names the argument."""
+    if value <= 0:
+        raise InvalidParameterError(
+            f"{name} must be positive, got {value}",
+            details={
+                "option": name,
+                "reason": "exclusive_minimum",
+                "exclusive_minimum": 0,
+                "value": value,
+            },
         )
+
+
+def _kirpich_min(length_km: float, slope_m_per_m: float) -> float:
+    """Kirpich time of concentration [min] of checked arguments."""
+    return float(3.981 * (length_km**0.77) * (slope_m_per_m ** (-0.385)))
+
+
+def _kerby_min(length_km: float, slope_m_per_m: float, retardance: float) -> float:
+    """Kerby time of concentration [min] of checked arguments.
+
+    With the low-slope adjustment of Cleveland et al. (2012).
+    """
+    slope = slope_m_per_m
+    if slope < _KERBY_LOW_SLOPE_THRESHOLD:
+        slope = slope + _KERBY_LOW_SLOPE_OFFSET
+    return float(36.37 * (length_km * retardance) ** 0.467 * slope ** (-0.2335))
 
 
 class ConcentrationTime:
@@ -176,12 +196,8 @@ class ConcentrationTime:
         >>> ConcentrationTime.kirpich(length_km=8.2, slope_m_per_m=0.023)
         85.9...
         """
-        if length_km <= 0:
-            raise InvalidParameterError(f"length_km must be positive, got {length_km}")
-        if slope_m_per_m <= 0:
-            raise InvalidParameterError(
-                f"slope_m_per_m must be positive, got {slope_m_per_m}"
-            )
+        _require_positive(length_km, "length_km")
+        _require_positive(slope_m_per_m, "slope_m_per_m")
 
         # Warn if parameters are outside typical range
         _warn_if_out_of_range(length_km, "length_km", *_KIRPICH_LENGTH_RANGE, "kirpich")
@@ -190,9 +206,7 @@ class ConcentrationTime:
         )
 
         # Kirpich formula: tc [minutes]
-        tc_min: float = 3.981 * (length_km**0.77) * (slope_m_per_m ** (-0.385))
-
-        return tc_min
+        return _kirpich_min(length_km, slope_m_per_m)
 
     @staticmethod
     def nrcs(
@@ -273,14 +287,19 @@ class ConcentrationTime:
         >>> ConcentrationTime.nrcs(length_km=8.2, slope_m_per_m=0.023, cn=72)
         369.0...
         """
-        if length_km <= 0:
-            raise InvalidParameterError(f"length_km must be positive, got {length_km}")
-        if slope_m_per_m <= 0:
-            raise InvalidParameterError(
-                f"slope_m_per_m must be positive, got {slope_m_per_m}"
-            )
+        _require_positive(length_km, "length_km")
+        _require_positive(slope_m_per_m, "slope_m_per_m")
         if not 1 <= cn <= 100:
-            raise InvalidParameterError(f"cn must be in range 1-100, got {cn}")
+            raise InvalidParameterError(
+                f"cn must be in range 1-100, got {cn}",
+                details={
+                    "option": "cn",
+                    "reason": "range",
+                    "minimum": 1,
+                    "maximum": 100,
+                    "value": cn,
+                },
+            )
 
         # Warn if parameters are outside typical range
         _warn_if_out_of_range(length_km, "length_km", *_NRCS_LENGTH_RANGE, "nrcs")
@@ -380,14 +399,9 @@ class ConcentrationTime:
         ... )
         179.7...
         """
-        if area_km2 <= 0:
-            raise InvalidParameterError(f"area_km2 must be positive, got {area_km2}")
-        if length_km <= 0:
-            raise InvalidParameterError(f"length_km must be positive, got {length_km}")
-        if elevation_diff_m <= 0:
-            raise InvalidParameterError(
-                f"elevation_diff_m must be positive, got {elevation_diff_m}"
-            )
+        _require_positive(area_km2, "area_km2")
+        _require_positive(length_km, "length_km")
+        _require_positive(elevation_diff_m, "elevation_diff_m")
 
         # Warn if parameters are outside typical range
         _warn_if_out_of_range(area_km2, "area_km2", *_GIANDOTTI_AREA_RANGE, "giandotti")
@@ -497,15 +511,18 @@ class ConcentrationTime:
         >>> ConcentrationTime.faa(length_km=0.15, slope_m_per_m=0.02, runoff_coeff=0.6)
         15.8...
         """
-        if length_km <= 0:
-            raise InvalidParameterError(f"length_km must be positive, got {length_km}")
-        if slope_m_per_m <= 0:
-            raise InvalidParameterError(
-                f"slope_m_per_m must be positive, got {slope_m_per_m}"
-            )
+        _require_positive(length_km, "length_km")
+        _require_positive(slope_m_per_m, "slope_m_per_m")
         if runoff_coeff <= 0 or runoff_coeff > 1.0:
             raise InvalidParameterError(
-                f"runoff_coeff must be in range (0, 1.0], got {runoff_coeff}"
+                f"runoff_coeff must be in range (0, 1.0], got {runoff_coeff}",
+                details={
+                    "option": "runoff_coeff",
+                    "reason": "range",
+                    "exclusive_minimum": 0,
+                    "maximum": 1.0,
+                    "value": runoff_coeff,
+                },
             )
 
         # Warn if parameters are outside typical range
@@ -629,16 +646,9 @@ class ConcentrationTime:
         ... )
         24.9...
         """
-        if length_km <= 0:
-            raise InvalidParameterError(f"length_km must be positive, got {length_km}")
-        if slope_m_per_m <= 0:
-            raise InvalidParameterError(
-                f"slope_m_per_m must be positive, got {slope_m_per_m}"
-            )
-        if retardance <= 0:
-            raise InvalidParameterError(
-                f"retardance must be positive, got {retardance}"
-            )
+        _require_positive(length_km, "length_km")
+        _require_positive(slope_m_per_m, "slope_m_per_m")
+        _require_positive(retardance, "retardance")
 
         # Warn if parameters are outside typical range
         _warn_if_out_of_range(length_km, "length_km", *_KERBY_LENGTH_RANGE, "kerby")
@@ -647,15 +657,8 @@ class ConcentrationTime:
         )
         _warn_if_out_of_range(retardance, "retardance", *_KERBY_N_RANGE, "kerby")
 
-        # Low-slope adjustment (Cleveland et al. 2012)
-        slope = slope_m_per_m
-        if slope < _KERBY_LOW_SLOPE_THRESHOLD:
-            slope = slope + _KERBY_LOW_SLOPE_OFFSET
-
-        # Kerby formula: tc [minutes]
-        tc_min: float = 36.37 * (length_km * retardance) ** 0.467 * slope ** (-0.2335)
-
-        return tc_min
+        # Kerby formula: tc [minutes], with the low-slope adjustment
+        return _kerby_min(length_km, slope_m_per_m, retardance)
 
     @staticmethod
     def kerby_kirpich(
@@ -775,26 +778,11 @@ class ConcentrationTime:
         144.0
         """
         # Validate all parameters
-        if overland_length_km <= 0:
-            raise InvalidParameterError(
-                f"overland_length_km must be positive, got {overland_length_km}"
-            )
-        if overland_slope_m_per_m <= 0:
-            raise InvalidParameterError(
-                f"overland_slope_m_per_m must be positive, got {overland_slope_m_per_m}"
-            )
-        if retardance <= 0:
-            raise InvalidParameterError(
-                f"retardance must be positive, got {retardance}"
-            )
-        if channel_length_km <= 0:
-            raise InvalidParameterError(
-                f"channel_length_km must be positive, got {channel_length_km}"
-            )
-        if channel_slope_m_per_m <= 0:
-            raise InvalidParameterError(
-                f"channel_slope_m_per_m must be positive, got {channel_slope_m_per_m}"
-            )
+        _require_positive(overland_length_km, "overland_length_km")
+        _require_positive(overland_slope_m_per_m, "overland_slope_m_per_m")
+        _require_positive(retardance, "retardance")
+        _require_positive(channel_length_km, "channel_length_km")
+        _require_positive(channel_slope_m_per_m, "channel_slope_m_per_m")
 
         # Warn if overland params are outside Kerby typical ranges
         _warn_if_out_of_range(
@@ -836,15 +824,11 @@ class ConcentrationTime:
         if channel_slope_adj < _KERBY_LOW_SLOPE_THRESHOLD:
             channel_slope_adj = channel_slope_adj + _KERBY_LOW_SLOPE_OFFSET
 
-        # Overland flow component (Kerby)
-        t_overland: float = ConcentrationTime.kerby(
-            overland_length_km, overland_slope_m_per_m, retardance
-        )
-
-        # Channel flow component (Kirpich)
-        t_channel: float = ConcentrationTime.kirpich(
-            channel_length_km, channel_slope_adj
-        )
+        # Overland flow component (Kerby) and channel flow component (Kirpich),
+        # without the warnings of the two methods: those above name the arguments
+        # of this one
+        t_overland = _kerby_min(overland_length_km, overland_slope_m_per_m, retardance)
+        t_channel = _kirpich_min(channel_length_km, channel_slope_adj)
 
         tc_min: float = t_overland + t_channel
 

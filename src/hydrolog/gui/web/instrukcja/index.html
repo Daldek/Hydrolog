@@ -81,7 +81,7 @@
     <h3 id="czym-jest-title">Czym jest Hydrolog?</h3>
     <p>Hydrolog to kalkulator hydrologiczny w przeglądarce. Szacuje, ile wody spłynie do potoku lub rzeki po silnym deszczu i kiedy będzie jej najwięcej, jak taka fala zmienia się, płynąc dalej korytem i przez zbiorniki, oraz jak często w danej rzece zdarzają się duże przepływy.</p>
     <p>Wystarczy przeglądarka na komputerze albo telefonie. Nie trzeba znać wzorów: Hydrolog liczy sam, a przycisk <span class="i-mark" aria-hidden="true">i</span> przy polu, metodzie lub uwadze wyjaśnia, co oznacza dana wartość, z jakiego wzoru pochodzi i w jakim zakresie warto go stosować.</p>
-    <p>Hydrolog nie ma mapy i niczego nie pobiera z internetu. Liczby opisujące zlewnię (powierzchnię, długości, spadki, CN) wpisujesz albo wczytujesz z pliku, na przykład z Hydrografa, który wyznacza zlewnię na mapie. Każda sekcja zaczyna od gotowego przykładu, więc można od razu zobaczyć, jak wygląda wynik.</p>
+    <p>Hydrolog nie ma mapy i niczego nie pobiera z internetu. Liczby opisujące zlewnię (powierzchnię, długości, spadki, CN) wpisujesz albo wczytujesz z pliku, na przykład z Hydrografa, który wyznacza zlewnię na mapie. Hydrogram zlewni zaczyna od pustych kroków, a ten przewodnik prowadzi przez przykład krok po kroku; Sieć i Statystyka zaczynają od gotowego przykładu, więc od razu widać, jak wygląda wynik.</p>
   </section>
 
   <section id="czego-oczekiwac" aria-labelledby="czego-oczekiwac-title">
@@ -129,11 +129,11 @@
   <section id="trzy-kroki" aria-labelledby="trzy-kroki-title">
     <h3 id="trzy-kroki-title">Pierwszy wynik w trzech krokach</h3>
     <ol class="steps-3">
-      <li class="card"><span class="number" aria-hidden="true">01</span><strong>Otwórz „Hydrogram zlewni”</strong><p>Wybierz „Hydrogram” na pasku sekcji: po lewej stronie ekranu, a na telefonie na dole. Czeka tam przykład: zlewnia potoku Kamiennik do Świerzawy (37,22&nbsp;km²) i deszcz 105&nbsp;mm w 12 godzin, taki, jaki zdarza się średnio raz na 100 lat.</p></li>
-      <li class="card"><span class="number" aria-hidden="true">02</span><strong>Przeczytaj wynik</strong><p>W panelu „Wyniki”: największy przepływ <span class="ex" data-example="hydrogram-q">60,21&nbsp;m³/s</span> nadejdzie po <span class="ex" data-example="hydrogram-tp">6:20&nbsp;h</span> od początku deszczu, a z całej ulewy spłynie <span class="ex" data-example="hydrogram-volume">1&nbsp;046&nbsp;213&nbsp;m³</span> wody. Wykres w środku pokazuje deszcz u góry i odpływ pod nim.</p></li>
-      <li class="card"><span class="number" aria-hidden="true">03</span><strong>Zmień jedną rzecz</strong><p>W panelu „Dane”, w kroku „Straty SCS-CN”, przełącz wilgotność poprzedzającą z II na III (gleba mokra po wcześniejszych deszczach). Wynik przeliczy się sam: <span class="ex" data-example="hydrogram-q-amc3">115,23&nbsp;m³/s</span>.</p></li>
+      <li class="card"><span class="number" aria-hidden="true">01</span><strong>Opisz zlewnię i deszcz</strong><p>Wybierz „Hydrogram” na pasku sekcji (po lewej, a na telefonie na dole). W kroku „Zlewnia” wpisz zlewnię potoku Kamiennik do Świerzawy: powierzchnia 37,22&nbsp;km², CN 65, długość cieku głównego 14,78&nbsp;km i jego spadek 0,0142&nbsp;m/m. W kroku „Hietogram” zostaw PMAXTP, wybierz p 1% i 12&nbsp;h, wpisz wysokość 105&nbsp;mm (deszcz, jaki zdarza się średnio raz na 100 lat) i krok 10&nbsp;min.</p></li>
+      <li class="card"><span class="number" aria-hidden="true">02</span><strong>Wybierz model i przeczytaj wynik</strong><p>W kroku „Hydrogram” wybierz model SCS: Hydrolog sprawdzi dane i policzy. W panelu „Wyniki”: największy przepływ <span class="ex" data-example="hydrogram-q">60,21&nbsp;m³/s</span> nadejdzie po <span class="ex" data-example="hydrogram-tp">6:20&nbsp;h</span> od początku deszczu, a z całej ulewy spłynie <span class="ex" data-example="hydrogram-volume">1&nbsp;046&nbsp;213&nbsp;m³</span> wody. Wykres w środku pokazuje deszcz u góry i odpływ pod nim.</p></li>
+      <li class="card"><span class="number" aria-hidden="true">03</span><strong>Zmień jedną rzecz</strong><p>W kroku „Hydrogram”, w części „Straty SCS-CN”, przełącz wilgotność poprzedzającą z II na III (gleba mokra po wcześniejszych deszczach). Wynik przeliczy się sam: <span class="ex" data-example="hydrogram-q-amc3">115,23&nbsp;m³/s</span>.</p></li>
     </ol>
-    <p class="hint-box">Przycisk <span class="key-mark" aria-hidden="true">↻</span> „Wyczyść” u dołu panelu „Dane” przywraca przykład. Plakietka na górnym pasku mówi, czy wynik jest aktualny; „Instrukcja” obok niej otwiera okno powitalne z odnośnikiem do tego przewodnika. Dalej: <a href="#ekran">rozdział 01</a>.</p>
+    <p class="hint-box">Pozostałe pola kroku „Zlewnia” mogą zostać puste: model SCS z czasem koncentracji Kirpicha czyta tylko te cztery liczby. Pełne dane przykładu są w <a href="#przyklad">rozdziale 02</a>. Przycisk <span class="key-mark" aria-hidden="true">↻</span> „Wyczyść” u dołu panelu „Dane” czyści kroki. Plakietka na górnym pasku mówi, czy wynik jest aktualny; „Instrukcja” obok niej otwiera okno powitalne z odnośnikiem do tego przewodnika. Dalej: <a href="#ekran">rozdział 01</a>.</p>
     <p><a class="btn primary" href="../#hydrogram">Otwórz Hydrogram zlewni</a></p>
   </section>
 
@@ -158,12 +158,12 @@
   <h2 id="ekran-title">Ekran i wspólne elementy</h2>
   <figure>
     <a href="img/ekran.png"><img src="img/ekran.png" width="1440" height="900" alt="Ekran sekcji Hydrogram zlewni z przykładem Kamiennik — Świerzawa: u góry pasek z nazwą sekcji, kontekstem i plakietką „Wynik aktualny”, po lewej pasek sekcji i panel Dane z krokami obliczenia, w środku hietogram nad hydrogramem i składowe obliczenia, po prawej panel Wyniki z kafelkami Qmax 60,21 m³/s, Do szczytu 6:20 h, Objętość 1 046 213 m³ i uwagami."></a>
-    <figcaption>Hydrogram zlewni po pierwszym otwarciu. Kliknij obraz, aby zobaczyć go w pełnym rozmiarze.</figcaption>
+    <figcaption>Hydrogram zlewni z przykładem Kamiennik — Świerzawa (zrzut ekranu sprzed podziału na trzy kroki). Kliknij obraz, aby zobaczyć go w pełnym rozmiarze.</figcaption>
   </figure>
   <dl class="defs">
     <div><dt>Górny pasek</dt><dd>Znak Hydrologa (powrót do pierwszej sekcji), nazwa sekcji i jej kontekst (np. zlewnia i opad), plakietka stanu wyniku, „Zgłoś uwagę” (zgłoszenie błędu albo pomysłu), „Instrukcja” (okno powitalne z odnośnikiem do tego przewodnika) i motyw: Auto, Jasny, Ciemny.</dd></div>
     <div><dt>Pasek sekcji</dt><dd>Hydrogram, Sieć, Statystyka, Kalkulatory, Polecenia: po lewej, a na telefonie na dole. Sekcja pamięta swoje dane i ostatni wynik, gdy przechodzisz do innej.</dd></div>
-    <div><dt>Panel „Dane”</dt><dd>Po lewej: formularz, często w ponumerowanych krokach, które można zwinąć. Na dole przycisk obliczenia (w sekcjach, które go mają) i <span class="key-mark" aria-hidden="true">↻</span> „Wyczyść”, który przywraca przykład.</dd></div>
+    <div><dt>Panel „Dane”</dt><dd>Po lewej: formularz, często w ponumerowanych krokach, które można zwinąć. Na dole przycisk obliczenia (w sekcjach, które go mają) i <span class="key-mark" aria-hidden="true">↻</span> „Wyczyść”, który wraca do stanu pierwszej wizyty: w Hydrogramie zlewni do pustych kroków, w pozostałych sekcjach do przykładu.</dd></div>
     <div><dt>Środek</dt><dd>Wykresy i tabele; nad nimi przełącznik widoku i krótka podpowiedź.</dd></div>
     <div><dt>Panel „Wyniki”</dt><dd>Po prawej: najważniejsze liczby w kafelkach, uwagi, tabele, eksport i wywołanie.</dd></div>
   </dl>
@@ -206,15 +206,40 @@
     <figcaption>Ten sam przykład z mokrą glebą (AMC III): szczyt prawie dwa razy wyższy.</figcaption>
   </figure>
 
-  <h3>Pięć kroków panelu „Dane”</h3>
+  <h3>Trzy kroki panelu „Dane”</h3>
   <ol class="numbered">
-    <li><strong>Zlewnia.</strong> Parametry z przykładu (<code>examples/kamiennik.json</code>), z pliku, z przekazania albo wpisane ręcznie. „Plik zlewni…” czyta plik JSON zlewni w formacie WatershedParameters (np. z Hydrografa) w przeglądarce, bez wysyłania, a „Wczytaj z Hydrografa” wczytuje przekazanie: zlewnię razem z opadem i modelem (<a href="#przekazanie">Przekazanie</a>). Pole zmienione względem przykładu lub pliku jest oznaczone, a „przywróć” wraca do wartości źródła. „Parametry modeli i metod spływu” zbierają pola potrzebne tylko niektórym metodom (np. udział lasów i zabudowy, spływ po stoku). Spadki podajesz w m/m, a obok widać je w procentach.</li>
-    <li><strong>Czas koncentracji.</strong> Metoda: Kirpich (domyślna), NRCS, Giandotti, FAA, Kerby, Kerby–Kirpich, albo czas podany ręcznie. „Porównaj metody” otwiera porównanie wszystkich sześciu w <a href="#kalkulatory">Kalkulatorach</a>. Modele Nash i Snyder nie używają czasu koncentracji.</li>
-    <li><strong>Opad.</strong> PMAXTP: wybierasz prawdopodobieństwo i czas trwania, a wysokość opadu z atlasu wpisujesz (Hydrolog niczego nie pobiera). Hietogram: wysokość i czas trwania podane ręcznie. Własna seria: wysokości opadu w kolejnych krokach, wklejone z arkusza albo wczytane z kolumny pliku CSV. Rozkład deszczu w czasie: blokowy, trójkątny, Beta albo Euler II.</li>
-    <li><strong>Straty SCS-CN.</strong> CN zlewni dla przeciętnej wilgotności (AMC II), wilgotność poprzedzająca: I sucho, II przeciętnie, III mokro (CN zmienia się wtedy, jak pokazuje podpowiedź), oraz straty początkowe λ (domyślnie 0,2).</li>
-    <li><strong>Model UH</strong> (hydrogramu jednostkowego, który rozkłada opad efektywny w czasie): SCS, Nash (parametry metodą Lutza ze zlewni albo podane), Clark albo Snyder.</li>
+    <li><strong>Zlewnia.</strong> Dane zlewni wpisane ręcznie, z pliku albo z przekazania. „Plik zlewni…” czyta plik JSON zlewni w formacie WatershedParameters (np. z Hydrografa) w przeglądarce, bez wysyłania; wystarczy w nim powierzchnia. „Wczytaj z Hydrografa” wczytuje przekazanie: zlewnię razem z opadem i modelem (<a href="#przekazanie">Przekazanie</a>). Pole zmienione względem pliku jest oznaczone, a „przywróć” wraca do wartości źródła. Pola, których wybrany model nie czyta, mogą zostać puste; te, które czyta, mają dopisek „wymagane dla …”. Spadki podajesz w m/m, a obok widać je w procentach.</li>
+    <li><strong>Hietogram.</strong> PMAXTP: wybierasz prawdopodobieństwo i czas trwania, a wysokość opadu z atlasu wpisujesz (Hydrolog niczego nie pobiera). Hietogram: wysokość i czas trwania podane ręcznie. Własna seria: wysokości opadu w kolejnych krokach, wklejone z arkusza albo wczytane z kolumny pliku CSV. Rozkład deszczu w czasie: blokowy, trójkątny, Beta albo Euler II; krok czasowy (puste pole to 5&nbsp;min).</li>
+    <li><strong>Hydrogram.</strong> Model hydrogramu jednostkowego, który rozkłada opad efektywny w czasie: SCS, Nash (parametry metodą Lutza ze zlewni albo podane), Clark albo Snyder. Na początku żaden nie jest wybrany: dopiero wybór modelu uruchamia sprawdzenie danych i obliczenie. Pod wyborem widać tylko pola wybranego modelu: dla SCS i Clarka czas koncentracji (metoda Kirpich, NRCS, Giandotti, FAA, Kerby, Kerby–Kirpich albo czas podany ręcznie, a przy FAA i metodach Kerby’ego ich pola spływu po stoku), dla Nasha metodą Lutza długość do środka ciężkości, szorstkość koryta oraz udział lasów i zabudowy, dla Snydera długość do środka ciężkości i jego współczynniki. Na końcu „Straty SCS-CN”, wspólne dla wszystkich modeli: wilgotność poprzedzająca (I sucho, II przeciętnie, III mokro; CN zmienia się wtedy, jak pokazuje podpowiedź) i straty początkowe λ (puste pole to 0,2). „Porównaj metody” otwiera porównanie metod czasu koncentracji w <a href="#kalkulatory">Kalkulatorach</a>.</li>
   </ol>
-  <p>Nagłówek kroku streszcza jego ustawienia, np. „162,9 min · Kirpich”, więc zwinięte kroki nadal mówią, co jest wybrane. Pole z niepoprawną wartością jest czerwone, a pod nim widać, co jest nie tak, np. „Najwyżej 100 (podano 150)”; dopóki dane są niepełne, Hydrolog nie liczy, a na ekranie zostaje ostatni wynik.</p>
+  <p>Po wyborze modelu puste pole, którego model potrzebuje, jest czerwone („Podaj wartość: potrzebna dla metody Kirpicha”) i wstrzymuje obliczenie; tak samo wartość niepoprawna, np. „Najwyżej 100 (podano 150)”, którą widać od razu. Wartość poza typowym zakresem metody jest pomarańczowa („Poza typowym zakresem od 0,002 do 0,15”): to uwaga Hydrologa, a wynik liczy się mimo niej. Pod wyborem modelu podsumowanie wymienia, czego brakuje, co poprawić i co jest poza zakresem, z odnośnikiem do każdego pola. Dopóki dane są niepełne, na ekranie zostaje ostatni wynik, oznaczony jako nieaktualny. Nagłówek kroku streszcza jego ustawienia, np. „SCS · 162,9 min · Kirpich”. Przekazanie wyniku (<a href="#przekazanie">Przekazanie</a>) wymaga pełnej zlewni: powierzchni, obwodu, długości zlewni oraz wysokości najmniejszej i największej.</p>
+
+  <h3 id="przyklad">Przykład: Kamiennik — Świerzawa</h3>
+  <p>Zlewnia potoku Kamiennik do Świerzawy i deszcz, jaki zdarza się średnio raz na 100 lat. Do pierwszego wyniku wystarczą pola pogrubione; pozostałe przydają się innym metodom i modelom oraz przekazaniu.</p>
+  <table class="dtable guide-table wrap">
+    <caption>Dane przykładu do wpisania</caption>
+    <thead><tr><th scope="col">Krok i pole</th><th scope="col">Wartość</th></tr></thead>
+    <tbody>
+      <tr><th scope="row">1 · Nazwa</th><td>Kamiennik — Świerzawa</td></tr>
+      <tr><th scope="row"><strong>1 · Powierzchnia A</strong></th><td class="num"><strong>37,22&nbsp;km²</strong></td></tr>
+      <tr><th scope="row"><strong>1 · CN dla AMC II</strong></th><td class="num"><strong>65</strong></td></tr>
+      <tr><th scope="row">1 · Obwód P</th><td class="num">40,89&nbsp;km</td></tr>
+      <tr><th scope="row">1 · Długość zlewni L</th><td class="num">16,05&nbsp;km</td></tr>
+      <tr><th scope="row">1 · Wysokość min., maks., średnia</th><td class="num">257,3; 475,1; 363,2&nbsp;m n.p.m.</td></tr>
+      <tr><th scope="row">1 · Średni spadek zlewni</th><td class="num">0,082&nbsp;m/m</td></tr>
+      <tr><th scope="row"><strong>1 · Długość cieku głównego</strong></th><td class="num"><strong>14,78&nbsp;km</strong></td></tr>
+      <tr><th scope="row"><strong>1 · Spadek cieku głównego</strong></th><td class="num"><strong>0,0142&nbsp;m/m</strong></td></tr>
+      <tr><th scope="row"><strong>2 · PMAXTP: p, czas trwania, wysokość</strong></th><td class="num"><strong>1%, 12&nbsp;h, 105&nbsp;mm</strong></td></tr>
+      <tr><th scope="row">2 · Rozkład w czasie</th><td>Beta, α i β puste (2 i 5)</td></tr>
+      <tr><th scope="row"><strong>2 · Krok czasowy Δt</strong></th><td class="num"><strong>10&nbsp;min</strong></td></tr>
+      <tr><th scope="row"><strong>3 · Model, metoda tc, AMC</strong></th><td><strong>SCS, Kirpich, II</strong></td></tr>
+      <tr><th scope="row">3 · Nash (Lutz) i Snyder: Lc</th><td class="num">6,76&nbsp;km</td></tr>
+      <tr><th scope="row">3 · Nash (Lutz): szorstkość koryta, lasy, zabudowa</th><td class="num">0,035; 57,4%; 1%</td></tr>
+      <tr><th scope="row">3 · FAA i Kerby: spływ po stoku L, spadek stoku</th><td class="num">0,3&nbsp;km; 0,082&nbsp;m/m</td></tr>
+      <tr><th scope="row">3 · FAA: C; Kerby: N</th><td class="num">0,25; 0,4</td></tr>
+    </tbody>
+  </table>
+  <p>Wynik: Qmax 60,21&nbsp;m³/s po 6:20&nbsp;h, objętość 1&nbsp;046&nbsp;213&nbsp;m³, współczynnik odpływu 0,268 (kafelki opisuje lista poniżej). Z wilgotnością III: 115,23&nbsp;m³/s.</p>
 
   <h3>Wykresy i wyniki</h3>
   <ul>
@@ -276,7 +301,7 @@
   <h3>Porównanie metod czasu koncentracji</h3>
   <p>Hydrolog liczy czas koncentracji zlewni sześcioma metodami i pokazuje, które pasują do niej według ich zakresu stosowania. Kolor słupka i słowo w tabeli mówią „w zakresie”, „poza zakresem” albo „nie dla zlewni”: FAA i Kerby liczą tylko spływ po stoku (setki metrów), a nie spływ zlewni z korytem. Obwiedziony słupek to metoda używana w Hydrogramie zlewni. Kliknij nazwę metody w tabeli i naciśnij „Użyj w Hydrogramie zlewni”, aby tam liczyć tą metodą.</p>
   <table class="dtable guide-table">
-    <caption>Czas koncentracji zlewni przykładu (Kamiennik — Świerzawa)</caption>
+    <caption>Czas koncentracji zlewni z przykładu (Kamiennik — Świerzawa, wszystkie pola z tabeli w rozdziale 02)</caption>
     <thead><tr><th scope="col">Metoda</th><th scope="col">tc [min]</th><th scope="col">Zakres stosowania</th></tr></thead>
     <tbody>
       <tr><th scope="row">Kirpich</th><td class="num"><span class="ex" data-example="tc-kirpich">162,9</span></td><td><span class="ex" data-example="tc-kirpich-range">w zakresie</span></td></tr>
@@ -373,7 +398,7 @@
     <div><dt>Komunikat z dopiskiem (EN)</dt><dd>Hydrolog nie ma jeszcze jego polskiej wersji; treść jest po angielsku.</dd></div>
     <div><dt>Plik nie wczytuje się</dt><dd>Sprawdź rozmiar (najwyżej 20&nbsp;MB) i format: CSV z wierszem nagłówka, przecinkiem albo średnikiem jako separatorem, albo JSON.</dd></div>
     <div><dt>„Nie wczytano przekazania”</dt><dd>Plik albo tekst ze schowka nie jest poprawnym przekazaniem <code>nogat-handoff/1</code>. Lista pod przyciskiem mówi, co i gdzie się nie zgadza, np. nieznane pole albo wartość spoza zakresu; dane sekcji się nie zmieniły. Sam plik zlewni wczytaj przyciskiem „Plik zlewni…”, a dokument sieci przyciskiem „Plik sieci…”.</dd></div>
-    <div><dt>Chcesz zacząć od nowa</dt><dd><span class="key-mark" aria-hidden="true">↻</span> „Wyczyść” u dołu panelu „Dane” przywraca przykład tej sekcji.</dd></div>
+    <div><dt>Chcesz zacząć od nowa</dt><dd><span class="key-mark" aria-hidden="true">↻</span> „Wyczyść” u dołu panelu „Dane” wraca do stanu pierwszej wizyty: w Hydrogramie zlewni do pustych kroków, w pozostałych sekcjach do przykładu.</dd></div>
     <div><dt>Coś działa źle albo masz pomysł</dt><dd>„Zgłoś uwagę” na górnym pasku: opisz, co się stało, i naciśnij „Wyślij”. Zgłoszenie trafia do osoby, która prowadzi serwer Hydrologa. Zaznaczone pole „Dołącz dane diagnostyczne” dołącza ostatnie akcje w aplikacji, błędy i dane otwartej sekcji, które pomagają odtworzyć problem.</dd></div>
   </dl>
   <p class="back"><a href="#toc-title">↑ Spis treści</a></p>

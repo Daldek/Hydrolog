@@ -33,7 +33,7 @@ export const shell = {
     title: "Witaj w Hydrologu",
     text: [
       "Hydrolog szacuje, ile wody spłynie do potoku lub rzeki po silnym deszczu, jak taka fala płynie dalej korytem i jak często zdarzają się duże przepływy.",
-      "Każda sekcja zaczyna od gotowego przykładu: zmień liczby w panelu „Dane”, a wynik zobaczysz w panelu „Wyniki”.",
+      "Hydrogram zlewni zaczyna od pustych kroków: wpisz dane zlewni, opad i wybierz model; przykład krok po kroku jest w instrukcji. Sieć i Statystyka zaczynają od gotowego przykładu. Dane wpisujesz w panelu „Dane”, a wynik widać w panelu „Wyniki”.",
       "To szacunki z uproszczonych metod, a nie prognoza ani oficjalna mapa zagrożenia powodziowego.",
     ],
     hide: "Nie pokazuj ponownie",

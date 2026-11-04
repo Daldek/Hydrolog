@@ -25,6 +25,7 @@ from hydrolog.operations._common import (
     check_choice,
     forbid_options,
     option_error,
+    option_names,
     require_option,
     select_group,
 )
@@ -41,7 +42,7 @@ from hydrolog.operations.scs import (
 )
 from hydrolog.operations.tc import TC_METHODS, TcMethod, watershed_concentration_time
 from hydrolog.precipitation import HietogramResult
-from hydrolog.runoff import ClarkIUH, HydrographGenerator, HydrographGeneratorResult
+from hydrolog.runoff import HydrographGenerator, HydrographGeneratorResult
 
 __all__ = [
     "UH_MODELS",
@@ -56,6 +57,27 @@ UhModel = Literal["scs", "nash", "clark", "snyder"]
 UH_MODELS: tuple[str, ...] = get_args(UhModel)
 
 _TC_MODELS = ("scs", "clark")
+
+# The arguments of the unit hydrographs and the options of the command they come
+# from: errors and typical-range notices name the option
+_MODEL_OPTIONS: dict[str, dict[str, str]] = {
+    "nash": {"n": "nash_n", "k_min": "nash_k_min"},
+    "snyder": {
+        "L_km": "snyder_length_km",
+        "Lc_km": "snyder_centroid_length_km",
+        "ct": "snyder_ct",
+        "cp": "snyder_cp",
+    },
+}
+
+
+def _model_options(model: str, clark_r_tc_ratio: float | None) -> dict[str, str]:
+    """Argument of the unit hydrograph of ``model`` to the option it comes from."""
+    if model == "clark":
+        # R/tc is checked from R: the option that gave R
+        given = "clark_r_min" if clark_r_tc_ratio is None else "clark_r_tc_ratio"
+        return {"r_tc_ratio": given}
+    return _MODEL_OPTIONS.get(model, {})
 
 
 @dataclass
@@ -278,11 +300,9 @@ def _uh_parameters(
         if chosen == "r_min":
             return {"r": clark_r_min}
         assert tc_min is not None and clark_r_tc_ratio is not None
-        return {
-            "r": ClarkIUH.from_tc_r_ratio(
-                tc_min=tc_min, r_tc_ratio=clark_r_tc_ratio
-            ).r_min
-        }
+        # R = R/tc * tc (ClarkIUH.from_tc_r_ratio); the generator's ClarkIUH
+        # checks R/tc against its typical range
+        return {"r": clark_r_tc_ratio * tc_min}
     if model == "snyder":
         return {
             "L_km": require_option("snyder_length_km", snyder_length_km, when=when),
@@ -463,10 +483,7 @@ def compute_hydrograph(
     with capture_warnings() as warned:
         if tc is None and catchment is not None and (needs_tc or tc_method):
             method_used = tc_method or "kirpich"
-            option = "watershed_file" if watershed_file is not None else "watershed"
-            concentration = watershed_concentration_time(
-                catchment, method_used, option=option
-            )
+            concentration = watershed_concentration_time(catchment, method_used)
             tc = concentration.tc_min
             tc_parameters = concentration.parameters
         if tc is not None and not needs_tc:
@@ -513,15 +530,16 @@ def compute_hydrograph(
                 timestep_min=timestep_min,
             )
             generated = None
-        generator = HydrographGenerator(
-            area_km2=area,
-            cn=cast(int, curve_number),
-            tc_min=tc if needs_tc else None,
-            ia_coefficient=ia_coefficient,
-            uh_model=model,
-            uh_params=uh_params,
-        )
-        result = generator.generate(hietogram, amc=moisture)
+        with option_names(_model_options(model, clark_r_tc_ratio)):
+            generator = HydrographGenerator(
+                area_km2=area,
+                cn=cast(int, curve_number),
+                tc_min=tc if needs_tc else None,
+                ia_coefficient=ia_coefficient,
+                uh_model=model,
+                uh_params=uh_params,
+            )
+            result = generator.generate(hietogram, amc=moisture)
     notices.extend(ia_coefficient_notices(ia_coefficient))
     return HydrographRun(
         result=result,
@@ -581,7 +599,9 @@ def hydrograph_generate(
     Parameters
     ----------
     watershed : dict, optional
-        Inline ``WatershedParameters`` object (area, ``cn``, data for tc).
+        Inline ``WatershedParameters`` object (area, ``cn``, data for tc). Only
+        ``area_km2`` is required; the fields ``tc_method`` needs are required
+        when tc is computed from them.
     watershed_file : str, optional
         JSON file in the ``WatershedParameters.to_json()`` format.
     area_km2 : float, optional
@@ -640,10 +660,13 @@ def hydrograph_generate(
     -------
     OperationOutput
         :class:`HydrographGenerateResult` with the notices: library warnings about
-        parameters outside the typical range, a non-standard ``ia_coefficient``, a
-        duration that is not a multiple of the step, an unused tc. The result
-        holds the ordinates of the unit hydrograph that was convolved
-        (``uh_times_min``, ``uh_discharge_m3s_per_mm``) next to the hydrograph.
+        parameters outside the typical range (``outside_typical_range``, with
+        ``details.field`` the input the value came from: the field of the
+        watershed for a tc formula, else the option, e.g. ``snyder_ct``), a
+        non-standard ``ia_coefficient``, a duration that is not a multiple of the
+        step, an unused tc. The result holds the ordinates of the unit hydrograph
+        that was convolved (``uh_times_min``, ``uh_discharge_m3s_per_mm``) next to
+        the hydrograph.
 
     Raises
     ------
@@ -652,7 +675,9 @@ def hydrograph_generate(
         (``reason = "one_of"``), an option of another hyetograph type or model is
         given (``reason = "not_applicable"``), ``cn``, ``tc_min`` or a model
         parameter is missing (``reason = "required"``), a watershed lacks the fields
-        of ``tc_method`` (``details.missing``), or a value is invalid.
+        of ``tc_method`` (``reason = "missing_field"``, ``details.option`` the first
+        missing field, ``details.missing`` all of them), or a value is invalid
+        (``details.option`` the option or the field of the watershed).
     NotFoundError
         If ``watershed_file`` or ``input_file`` does not exist.
     InputDataError

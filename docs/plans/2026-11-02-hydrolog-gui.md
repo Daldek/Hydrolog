@@ -390,6 +390,17 @@ Departure from the text above: the print button of D14 is „Raport do druku” 
 
 Left for the author: the review and merge of the routing branches and then of `feature/gui` (DEV-3.3; PROGRESS, Next 8 to 11), with Nogat's N1 and N2; Cloudflare Access on the tunnel's public address (question 1), until which anyone with the address can use the GUI within the limits of D7; Hydrograf's „Wczytaj z Hydrologa” and „Przenieś do Hydrologa” come with the platform's step 12 and its own plan, and the hand-off through Nogat's shell with the kit. Small follow-ups are listed in PROGRESS, Next 12.
 
+## Erratum 2026-11-04: Hydrogram zlewni in three steps, without the example
+
+The author's decision of 2026-11-04 (on the review of the hydrograph flow) supersedes the parts of D13 and S3 below; the rest of D13 (validation as the field is typed, the 250 ms debounce, „Liczenie…”, the newest response only, Nash by Lutz first) stands.
+
+- **Steps.** The panel Dane of Hydrogram zlewni has three steps instead of the mockup's five: 1 Zlewnia (the watershed's basic fields, CN included), 2 Hietogram (the former „Opad”), 3 Hydrogram (the unit hydrograph model, none chosen at first; only the chosen model's block, with tc and the tc method's own fields for SCS and Clark and the watershed fields the model reads, then „Straty SCS-CN”, AMC and λ, common to every model). Other models' fields are not in the page and are never sent.
+- **Checks.** Nothing is required before a model is chosen; a value that is not a number or leaves a bound is an error at once. Once a model is chosen an empty field it, its tc method or its rainfall needs is an error (red, no run), a value outside its typical range a warning (amber, the run goes on) from Hydrolog's `outside_typical_range` notice and its `details.field` (Hydrolog owns the typical ranges); step 3 sums them up with a link to each field. Live recompute stays once the inputs are valid.
+- **Example.** No example prefill: a first visit and „Wyczyść” show empty steps; `web/examples/kamiennik.json` moved to `tests/fixtures/`, and the guide (`web/instrukcja/`) carries Kamiennik at Świerzawa as a worked example. The stored inputs moved to `hydrolog-gui/hydrogram/2`. The hand-off still carries a full watershed: „Przekazanie” is offered once step 1 has one.
+- **Library.** Only `area_km2` is required in a watershed (`WatershedParameters`, `hydrolog-network-1.schema.json`); a method or model that needs a missing field names it in `details.option` (branch `feature/partial-watershed`).
+
+S3's acceptance „the Kamiennik example shows 60,21 m³/s” now holds for the worked example typed as the guide says. The guide's pictures of Hydrogram zlewni (`instrukcja/img/ekran.png`, `hydrogram.png`, `telefon.png`, `eksport.png`, `kalkulatory.png`) still show the five steps; no tool in the repository takes them again.
+
 ## Not in this plan
 
 Editing the network's structure; framing the standalone server from a shell origin; the `postMessage` handshake and the hand-off through the shell (with the kit); an English UI; PMAXTP through IMGWTools and series from Archiwista; a PDF output of `report generate`; Hydrolog notices for the applicability ranges of the (i) texts; option names in library validation errors; saved variants or projects (Archiwista's, ECO-054); Hydrograf's „Wczytaj z Hydrologa” and „Przenieś do Hydrologa” (platform step 12, its own plan); Nogat's host (platform steps 8 and 9).

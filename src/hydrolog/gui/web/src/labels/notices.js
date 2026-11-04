@@ -114,9 +114,9 @@ export const notices = {
  * @param {unknown} value the value
  * @returns {string} the text
  */
-function shown(value) {
+export function noticeValue(value) {
   if (typeof value === "number") return auto(value).replace(/(,\d*?)0+$/, "$1").replace(/,$/, "");
-  if (Array.isArray(value)) return value.map(shown).join(", ");
+  if (Array.isArray(value)) return value.map(noticeValue).join(", ");
   return String(value);
 }
 
@@ -135,13 +135,13 @@ export function describeNotice(notice) {
   if (!entry) return { text: `${message} ${common.english}`.trim(), english: true };
   const details = (notice && notice.details) || {};
   const values = { message };
-  for (const [key, value] of Object.entries(details)) values[key] = shown(value);
+  for (const [key, value] of Object.entries(details)) values[key] = noticeValue(value);
   const full = typeof entry === "string" ? entry : entry.text;
   const needed = [...full.matchAll(/\{(\w+)\}/g)].map((match) => match[1]);
   const template = needed.every((key) => Object.hasOwn(values, key)) ? full : entry.plain || full;
   const english = template.includes("{message}");
   let text = t(template, values);
   if (english) text = `${text} ${common.english}`;
-  if (Object.hasOwn(details, "node_id")) text = t(notices.node, { node_id: shown(details.node_id), text });
+  if (Object.hasOwn(details, "node_id")) text = t(notices.node, { node_id: noticeValue(details.node_id), text });
   return { text, english };
 }

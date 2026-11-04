@@ -18,7 +18,7 @@ from playwright.sync_api import Page, Response, expect
 
 from hydrolog.catalog import format_command, run_command
 from hydrolog.cli.main import main
-from tests.e2e.conftest import Tab
+from tests.e2e.conftest import Tab, seed_hydrogram
 
 SECTION = 'section[data-section="kalkulatory"]'
 RIGHT = f"{SECTION} .view-panel.right"
@@ -59,10 +59,12 @@ WORDS = {
 def open_section(tab: Tab, path: str = "") -> Page:
     """Open the section (at ``path``) with the Kamiennik watershed in the store.
 
-    Hydrogram zlewni, mounted with the shell, writes its example's watershed into the
-    store when the example arrives; the store is set here only after that (its first
-    result is shown), so that write cannot follow and change the data of a comparison.
+    Hydrogram zlewni, mounted with the shell, holds the guide's worked example (stored
+    with ``seed_hydrogram``, SCS chosen, as „Użyj w Hydrogramie zlewni” needs) and
+    writes its watershed into the store; the store is set here only after its first
+    result is shown, so that write cannot follow and change the data of a comparison.
     """
+    seed_hydrogram(tab)
     tab.open(f"#kalkulatory{path}")
     page = tab.page
     expect(page.locator(f"{SECTION} .cmd-list .cmd-item")).to_have_count(16)

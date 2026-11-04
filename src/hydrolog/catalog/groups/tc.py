@@ -575,19 +575,19 @@ COMMANDS: tuple[Command, ...] = (
                 name="watershed",
                 type="object",
                 description_pl=(
-                    "Parametry zlewni jako obiekt WatershedParameters (m.in. "
-                    "`area_km2`, `perimeter_km`, `length_km`, `elevation_min_m`, "
-                    "`elevation_max_m`, opcjonalnie `cn`, `mean_slope_m_per_m`, "
-                    "`channel_length_km`, `channel_slope_m_per_m`, `runoff_coeff`, "
+                    "Parametry zlewni jako obiekt WatershedParameters (wymagane "
+                    "tylko `area_km2`; metoda bierze np. `channel_length_km` albo "
+                    "`length_km`, `channel_slope_m_per_m`, `mean_slope_m_per_m`, "
+                    "`elevation_min_m`, `elevation_max_m`, `cn`, `runoff_coeff`, "
                     "`retardance`, `overland_length_km`, "
                     "`overland_slope_m_per_m`...)."
                 ),
                 description=(
-                    "Watershed parameters as a WatershedParameters object "
-                    "(`area_km2`, `perimeter_km`, `length_km`, `elevation_min_m`, "
-                    "`elevation_max_m`, optionally `cn`, `mean_slope_m_per_m`, "
-                    "`channel_length_km`, `channel_slope_m_per_m`, `runoff_coeff`, "
-                    "`retardance`, `overland_length_km`, "
+                    "Watershed parameters as a WatershedParameters object (only "
+                    "`area_km2` is required; the method takes e.g. "
+                    "`channel_length_km` or `length_km`, `channel_slope_m_per_m`, "
+                    "`mean_slope_m_per_m`, `elevation_min_m`, `elevation_max_m`, "
+                    "`cn`, `runoff_coeff`, `retardance`, `overland_length_km`, "
                     "`overland_slope_m_per_m`...)."
                 ),
             ),

@@ -1,17 +1,25 @@
 // Inputs kept in the browser between visits: one localStorage key per section,
-// "hydrolog-gui/<section>/1", holding inputs only (no results). A missing key is a first
-// visit, which opens the shipped examples; „Wyczyść” removes the key.
+// "hydrolog-gui/<section>/<version>", holding inputs only (no results). A missing key is a
+// first visit, which opens a section's shipped example (Hydrogram zlewni starts empty);
+// „Wyczyść” removes the key. A section whose stored shape changed gets a new version in
+// VERSIONS, so what the old shape stored is no longer read.
 
 import { useCallback, useEffect, useRef, useState } from "./html.js";
+
+/**
+ * The versions of the stored shapes other than 1: Hydrogram zlewni's three steps of
+ * 2026-11-04 left the five steps with the shipped example behind.
+ */
+export const VERSIONS = Object.freeze({ hydrogram: 2 });
 
 /**
  * The storage key of a section's inputs.
  *
  * @param {string} name section or part ("polecenia", "layout")
- * @param {number} [version=1] version of the stored shape
+ * @param {number} [version] version of the stored shape (default: VERSIONS, else 1)
  * @returns {string} "hydrolog-gui/<name>/<version>"
  */
-export function storageKey(name, version = 1) {
+export function storageKey(name, version = Object.hasOwn(VERSIONS, name) ? VERSIONS[name] : 1) {
   return `hydrolog-gui/${name}/${version}`;
 }
 

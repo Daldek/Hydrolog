@@ -106,6 +106,7 @@ export const handoffLabels = {
     siec: "Zawiera sieć ({nodes}) i wynik wylotu (Qmax, czas do szczytu, objętość) do porównania.",
     siecNoResult: "Zawiera sieć ({nodes}), bez wyniku: „Oblicz sieć” dołączy wynik wylotu do porównania.",
     invalid: "Dostępne, gdy dane sieci są kompletne",
+    incomplete: "Przekazanie niesie pełną zlewnię: uzupełnij w kroku 1 pola {fields}.",
     failed: "Nie udało się przygotować przekazania: {message}",
   },
   received: {

@@ -271,7 +271,7 @@ class TestTimeOfConcentration:
             ops.tc_watershed(watershed=data, method="kerby")
         assert caught.value.code == "validation_error"
         assert caught.value.details == {
-            "option": "watershed",
+            "option": "overland_length_km",
             "reason": "missing_field",
             "method": "kerby",
             "missing": ["overland_length_km", "overland_slope_m_per_m"],
@@ -309,7 +309,7 @@ class TestTimeOfConcentration:
             ops.tc_watershed(watershed=data, method=method)
         assert caught.value.code == "validation_error"
         assert caught.value.details == {
-            "option": "watershed",
+            "option": field,
             "reason": "missing_field",
             "method": method,
             "missing": [field],
@@ -326,13 +326,13 @@ class TestTimeOfConcentration:
         assert caught.value.details["missing"] == list(REQUIRED_FIELDS["kerby_kirpich"])
         assert "retardance" in str(caught.value)
 
-    def test_watershed_file_error_names_the_file_option(self, tmp_path):
-        """The option reported is the one the watershed came from."""
+    def test_watershed_file_error_names_the_field(self, tmp_path):
+        """From a file as inline: the option reported is the missing field."""
         path = tmp_path / "zlewnia.json"
         path.write_text(json.dumps(without(FULL_WATERSHED, "cn")), encoding="utf-8")
         with pytest.raises(InvalidParameterError) as caught:
             ops.tc_watershed(watershed_file=str(path), method="nrcs")
-        assert caught.value.details["option"] == "watershed_file"
+        assert caught.value.details["option"] == "cn"
 
     def test_watershed_file_gives_the_same_result(self, tmp_path):
         """A ``WatershedParameters.to_json()`` file works like the inline object."""
@@ -361,11 +361,14 @@ class TestTimeOfConcentration:
         assert caught.value.details["allowed"] == list(TC_METHODS)
 
     def test_formula_rejection_is_a_validation_error(self):
-        """A zero channel slope passes the watershed checks but not Kirpich."""
+        """A zero channel slope passes the watershed checks but not Kirpich; the
+        error names the field the slope came from."""
         data = {**FULL_WATERSHED, "channel_slope_m_per_m": 0.0}
         with pytest.raises(InvalidParameterError) as caught:
             ops.tc_watershed(watershed=data, method="kirpich")
-        assert caught.value.details["reason"] == "invalid_value"
+        assert caught.value.details["option"] == "channel_slope_m_per_m"
+        assert caught.value.details["reason"] == "exclusive_minimum"
+        assert caught.value.details["method"] == "kirpich"
         assert "slope_m_per_m must be positive" in str(caught.value)
 
     def test_catalog_validates_before_the_formula(self):
@@ -391,6 +394,7 @@ class TestTimeOfConcentration:
         assert notice.details == {
             "method": "kirpich",
             "parameter": "length_km",
+            "field": "length_km",
             "value": 120.0,
             "minimum": 0.001,
             "maximum": 80.0,
@@ -1269,7 +1273,10 @@ class TestUnitHydrographs:
 
     def test_nash_direct_matches_the_class(self):
         """Direct n and K: the D = step unit hydrograph of ``NashIUH.generate``."""
-        result = ops.uh_nash(area_km2=45.3, n=3.0, k_min=30.0, timestep_min=5.0)
+        result, notices = unwrap(
+            ops.uh_nash(area_km2=45.3, n=3.0, k_min=30.0, timestep_min=5.0)
+        )
+        assert notices == []
         expected = NashIUH(n=3.0, k_min=30.0, area_km2=45.3).generate(timestep_min=5.0)
         assert (result.model, result.estimation) == ("nash", "direct")
         assert_arrays(result.times_min, expected.times_min)
@@ -1285,13 +1292,15 @@ class TestUnitHydrographs:
 
     def test_nash_rainfall_duration_and_total_length(self):
         """D and the length of the result are passed to ``to_unit_hydrograph``."""
-        result = ops.uh_nash(
-            area_km2=45.3,
-            n=3.0,
-            k_min=30.0,
-            timestep_min=5.0,
-            rainfall_duration_min=20.0,
-            total_duration_min=300.0,
+        result, _ = unwrap(
+            ops.uh_nash(
+                area_km2=45.3,
+                n=3.0,
+                k_min=30.0,
+                timestep_min=5.0,
+                rainfall_duration_min=20.0,
+                total_duration_min=300.0,
+            )
         )
         expected = NashIUH(n=3.0, k_min=30.0).to_unit_hydrograph(
             area_km2=45.3, duration_min=20.0, timestep_min=5.0, total_duration_min=300.0
@@ -1302,14 +1311,16 @@ class TestUnitHydrographs:
 
     def test_nash_lutz_matches_from_lutz(self):
         """Lutz estimation: n, K and the intermediate results are the library's."""
-        result = ops.uh_nash(
-            area_km2=45.0,
-            lutz_length_km=8.2,
-            lutz_centroid_length_km=4.5,
-            lutz_slope_m_per_m=0.023,
-            lutz_manning_n=0.035,
-            lutz_urban_pct=5.0,
-            lutz_forest_pct=30.0,
+        result, _ = unwrap(
+            ops.uh_nash(
+                area_km2=45.0,
+                lutz_length_km=8.2,
+                lutz_centroid_length_km=4.5,
+                lutz_slope_m_per_m=0.023,
+                lutz_manning_n=0.035,
+                lutz_urban_pct=5.0,
+                lutz_forest_pct=30.0,
+            )
         )
         cascade = NashIUH.from_lutz(
             L_km=8.2,
@@ -1329,12 +1340,14 @@ class TestUnitHydrographs:
 
     def test_nash_lutz_defaults_urban_and_forest_to_zero(self):
         """Optional shares default to the library's 0 %."""
-        result = ops.uh_nash(
-            area_km2=45.0,
-            lutz_length_km=15.0,
-            lutz_centroid_length_km=8.0,
-            lutz_slope_m_per_m=0.02,
-            lutz_manning_n=0.035,
+        result, _ = unwrap(
+            ops.uh_nash(
+                area_km2=45.0,
+                lutz_length_km=15.0,
+                lutz_centroid_length_km=8.0,
+                lutz_slope_m_per_m=0.02,
+                lutz_manning_n=0.035,
+            )
         )
         cascade = NashIUH.from_lutz(L_km=15.0, Lc_km=8.0, slope=0.02, manning_n=0.035)
         assert result.parameters["n"] == pytest.approx(cascade.n)
@@ -1342,12 +1355,14 @@ class TestUnitHydrographs:
 
     def test_nash_urban_regression_matches_the_class(self):
         """Regression estimation gives the library's N and K (docstring: N=1.621)."""
-        result = ops.uh_nash(
-            area_km2=1.3,
-            urban_effective_precip_mm=1.305,
-            urban_duration_h=0.167,
-            urban_fraction=0.05,
-            timestep_min=2.0,
+        result, _ = unwrap(
+            ops.uh_nash(
+                area_km2=1.3,
+                urban_effective_precip_mm=1.305,
+                urban_duration_h=0.167,
+                urban_fraction=0.05,
+                timestep_min=2.0,
+            )
         )
         cascade = NashIUH.from_urban_regression(
             area_km2=1.3,
@@ -1412,8 +1427,8 @@ class TestUnitHydrographs:
         assert caught.value.details["reason"] == reason
 
     def test_nash_lutz_impossible_input_is_a_validation_error(self):
-        """Lc longer than L is rejected by the library, not computed."""
-        with pytest.raises(InvalidParameterError, match="cannot exceed"):
+        """Lc longer than L is rejected by the library, naming the option of Lc."""
+        with pytest.raises(InvalidParameterError, match="cannot exceed") as caught:
             ops.uh_nash(
                 area_km2=45.0,
                 lutz_length_km=4.0,
@@ -1421,11 +1436,28 @@ class TestUnitHydrographs:
                 lutz_slope_m_per_m=0.02,
                 lutz_manning_n=0.035,
             )
+        assert caught.value.details == {
+            "option": "lutz_centroid_length_km",
+            "reason": "maximum",
+            "maximum": 4.0,
+            "value": 8.0,
+        }
+
+    def test_nash_given_parameters_outside_their_ranges_are_noticed(self):
+        """Given n and K outside 1-10 and 10-200 min are each noticed."""
+        _, notices = unwrap(ops.uh_nash(area_km2=45.3, n=12.0, k_min=5.0))
+        assert [(n.code, n.details["field"]) for n in notices] == [
+            ("outside_typical_range", "n"),
+            ("outside_typical_range", "k_min"),
+        ]
 
     @pytest.mark.parametrize("given", [{"r_min": 60.0}, {"r_tc_ratio": 0.5}])
     def test_clark_matches_the_class(self, given):
         """R directly or from R/tc: the unit hydrograph of ``ClarkIUH.generate``."""
-        result = ops.uh_clark(area_km2=45.3, tc_min=120.0, timestep_min=10.0, **given)
+        result, notices = unwrap(
+            ops.uh_clark(area_km2=45.3, tc_min=120.0, timestep_min=10.0, **given)
+        )
+        assert notices == []
         if "r_min" in given:
             reservoir = ClarkIUH(tc_min=120.0, r_min=60.0, area_km2=45.3)
         else:
@@ -1445,13 +1477,15 @@ class TestUnitHydrographs:
     @pytest.mark.parametrize("duration", [10.0, 7.0, 2.0, 12.5])
     def test_clark_rainfall_duration_is_any_positive_value(self, duration):
         """D, a multiple of the step or not, gives the class's hydrograph of 1 mm."""
-        result = ops.uh_clark(
-            area_km2=45.3,
-            tc_min=120.0,
-            r_min=60.0,
-            timestep_min=5.0,
-            rainfall_duration_min=duration,
-            total_duration_min=1200.0,
+        result, _ = unwrap(
+            ops.uh_clark(
+                area_km2=45.3,
+                tc_min=120.0,
+                r_min=60.0,
+                timestep_min=5.0,
+                rainfall_duration_min=duration,
+                total_duration_min=1200.0,
+            )
         )
         expected = ClarkIUH(tc_min=120.0, r_min=60.0).to_unit_hydrograph(
             area_km2=45.3,
@@ -1478,14 +1512,31 @@ class TestUnitHydrographs:
         assert caught.value.details["reason"] == "unstable_timestep"
         assert caught.value.details["maximum"] == 4.0
 
-        envelope = ops.uh_clark(
-            area_km2=45.3, tc_min=120.0, r_min=2.0, timestep_min=4.0
+        result, _ = unwrap(
+            ops.uh_clark(area_km2=45.3, tc_min=120.0, r_min=2.0, timestep_min=4.0)
         )
-        assert min(envelope.ordinates_m3s_per_mm) >= 0.0
+        assert min(result.ordinates_m3s_per_mm) >= 0.0
+
+    @pytest.mark.parametrize(
+        "given, field",
+        [({"r_min": 300.0}, "r_min"), ({"r_tc_ratio": 0.1}, "r_tc_ratio")],
+    )
+    def test_clark_r_tc_outside_its_range_is_noticed_on_the_given_option(
+        self, given, field
+    ):
+        """R/tc outside 0.2-1.5 names the option that gave R."""
+        _, notices = unwrap(ops.uh_clark(area_km2=45.3, tc_min=120.0, **given))
+        (notice,) = notices
+        assert notice.code == "outside_typical_range"
+        assert notice.details["parameter"] == "r_tc_ratio"
+        assert notice.details["field"] == field
 
     def test_snyder_matches_the_class(self):
         """The Snyder unit hydrograph with its own lag, no external tc."""
-        result = ops.uh_snyder(area_km2=100.0, length_km=15.0, centroid_length_km=8.0)
+        result, notices = unwrap(
+            ops.uh_snyder(area_km2=100.0, length_km=15.0, centroid_length_km=8.0)
+        )
+        assert notices == []
         model = SnyderUH(area_km2=100.0, L_km=15.0, Lc_km=8.0)
         expected = model.generate(timestep_min=30.0)
         assert (result.model, result.estimation) == ("snyder", "direct")
@@ -1508,15 +1559,17 @@ class TestUnitHydrographs:
 
     def test_snyder_coefficients_duration_and_total_length(self):
         """Ct, Cp, D and the length of the result reach the class."""
-        result = ops.uh_snyder(
-            area_km2=45.3,
-            length_km=12.5,
-            centroid_length_km=6.0,
-            ct=1.65,
-            cp=0.565,
-            timestep_min=10.0,
-            rainfall_duration_min=60.0,
-            total_duration_min=900.0,
+        result, _ = unwrap(
+            ops.uh_snyder(
+                area_km2=45.3,
+                length_km=12.5,
+                centroid_length_km=6.0,
+                ct=1.65,
+                cp=0.565,
+                timestep_min=10.0,
+                rainfall_duration_min=60.0,
+                total_duration_min=900.0,
+            )
         )
         expected = SnyderUH(
             area_km2=45.3, L_km=12.5, Lc_km=6.0, ct=1.65, cp=0.565
@@ -1531,6 +1584,32 @@ class TestUnitHydrographs:
             ops.uh_scs(area_km2=45.3, tc_min=-1.0)
         with pytest.raises(InvalidParameterError):
             ops.uh_snyder(area_km2=45.3, length_km=0.0, centroid_length_km=1.0)
+
+    def test_snyder_coefficients_outside_their_ranges_are_noticed(self):
+        """Ct outside 1.35-1.65 and Cp outside 0.4-0.8 (SI)."""
+        _, notices = unwrap(
+            ops.uh_snyder(
+                area_km2=100.0, length_km=15.0, centroid_length_km=8.0, ct=3.0, cp=0.3
+            )
+        )
+        assert [n.details for n in notices] == [
+            {
+                "method": "snyder",
+                "parameter": "ct",
+                "field": "ct",
+                "value": 3.0,
+                "minimum": 1.35,
+                "maximum": 1.65,
+            },
+            {
+                "method": "snyder",
+                "parameter": "cp",
+                "field": "cp",
+                "value": 0.3,
+                "minimum": 0.4,
+                "maximum": 0.8,
+            },
+        ]
 
     def test_run_command_nash_lutz_envelope(self):
         """The Lutz example end to end: intermediate results survive the JSON."""
@@ -1989,10 +2068,111 @@ class TestHydrographGenerate:
                 hietogram_type="block",
                 total_mm=30.0,
                 duration_min=100.0,
-                timestep_min=30.0,
+                timestep_min=15.0,
             )
         )
         assert [n.code for n in notices] == ["duration_not_covered"]
+
+    def test_a_watershed_of_an_area_and_a_cn_runs_with_a_given_tc(self):
+        """Only area_km2 is required: SCS with tc_min needs nothing else."""
+        partial, notices = unwrap(
+            ops.hydrograph_generate(
+                watershed={"area_km2": 45.3, "cn": 72}, tc_min=90.0, **STORM
+            )
+        )
+        direct, _ = unwrap(
+            ops.hydrograph_generate(area_km2=45.3, cn=72, tc_min=90.0, **STORM)
+        )
+        assert partial.peak_discharge_m3s == direct.peak_discharge_m3s
+        assert notices == []
+
+    @pytest.mark.parametrize(
+        "fields, option, missing",
+        [
+            ({}, "channel_length_km", ["channel_length_km", "channel_slope_m_per_m"]),
+            ({"length_km": 12.5}, "channel_slope_m_per_m", ["channel_slope_m_per_m"]),
+        ],
+    )
+    def test_kirpich_names_the_field_a_partial_watershed_lacks(
+        self, fields, option, missing
+    ):
+        """details.option is the watershed field (the first one missing)."""
+        with pytest.raises(InvalidParameterError) as caught:
+            ops.hydrograph_generate(
+                watershed={"area_km2": 45.3, "cn": 72, **fields},
+                tc_method="kirpich",
+                **STORM,
+            )
+        assert caught.value.code == "validation_error"
+        assert caught.value.details == {
+            "option": option,
+            "reason": "missing_field",
+            "method": "kirpich",
+            "missing": missing,
+        }
+
+    def test_a_relational_error_of_the_watershed_names_the_field(self):
+        """elevation_max_m <= elevation_min_m: details.option is elevation_max_m."""
+        with pytest.raises(InvalidParameterError) as caught:
+            ops.hydrograph_generate(
+                watershed={**WATERSHED, "elevation_max_m": 100.0},
+                tc_min=90.0,
+                **STORM,
+            )
+        assert caught.value.details["option"] == "elevation_max_m"
+        assert caught.value.details["field"] == "elevation_max_m"
+        assert caught.value.details["reason"] == "exclusive_minimum"
+
+    @pytest.mark.parametrize(
+        "arguments, parameter, field",
+        [
+            (
+                {
+                    "uh_model": "snyder",
+                    "snyder_length_km": 12.5,
+                    "snyder_centroid_length_km": 6.0,
+                    "snyder_ct": 3.0,
+                },
+                "ct",
+                "snyder_ct",
+            ),
+            (
+                {"uh_model": "nash", "nash_n": 3.0, "nash_k_min": 300.0},
+                "k_min",
+                "nash_k_min",
+            ),
+            (
+                {"tc_min": 90.0, "uh_model": "clark", "clark_r_min": 10.0},
+                "r_tc_ratio",
+                "clark_r_min",
+            ),
+            (
+                {"tc_min": 90.0, "uh_model": "clark", "clark_r_tc_ratio": 2.0},
+                "r_tc_ratio",
+                "clark_r_tc_ratio",
+            ),
+            ({"tc_min": 90.0, "amc": "III", "cn": 40}, "cn", "cn"),
+            # Delta t = 30 min > 0.25 tp = 0.25 (15 + 0.6 * 60) min
+            ({"tc_min": 60.0, "timestep_min": 30.0}, "timestep_min", "timestep_min"),
+            # The channel length of the watershed feeds Kirpich's length_km
+            (
+                {
+                    "watershed": {**WATERSHED, "channel_length_km": 120.0},
+                    "tc_method": "kirpich",
+                },
+                "length_km",
+                "channel_length_km",
+            ),
+        ],
+    )
+    def test_a_value_outside_its_typical_range_is_a_notice_on_its_input(
+        self, arguments, parameter, field
+    ):
+        """``outside_typical_range`` names the option or the watershed field."""
+        source = {} if "watershed" in arguments else {"area_km2": 45.3, "cn": 72}
+        _, notices = unwrap(ops.hydrograph_generate(**{**STORM, **source, **arguments}))
+        ranges = [n.details for n in notices if n.code == "outside_typical_range"]
+        assert [d["field"] for d in ranges if d["parameter"] == parameter] == [field]
 
     def test_tc_that_the_model_does_not_use_is_reported(self):
         """Nash and Snyder ignore tc; the notice says so instead of hiding it."""
@@ -2059,7 +2239,7 @@ class TestHydrographGenerate:
             ),
             (
                 {"watershed": WATERSHED, "tc_method": "faa", **STORM},
-                "watershed",
+                "runoff_coeff",
                 "missing_field",
             ),
             (

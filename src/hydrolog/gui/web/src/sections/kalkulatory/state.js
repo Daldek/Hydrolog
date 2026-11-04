@@ -283,13 +283,14 @@ export function comparedWatershed(watershed, overrides) {
 
 /**
  * The tc method Hydrogram zlewni uses now: its stored inputs (read only), when tc comes
- * from a method and its unit hydrograph takes tc (SCS, Clark).
+ * from a method and the chosen unit hydrograph takes tc (SCS, Clark; none is chosen on a
+ * first visit).
  *
  * @returns {string|null} the method, null when Hydrogram does not use one
  */
 export function hydrogramMethod() {
   const stored = loadState("hydrogram", null);
   if (!stored || typeof stored !== "object" || stored.tc_manual) return null;
-  if (stored.uh_model && !["scs", "clark"].includes(stored.uh_model)) return null;
+  if (!["scs", "clark"].includes(stored.uh_model)) return null;
   return TC_METHODS.includes(stored.tc_method) ? stored.tc_method : null;
 }

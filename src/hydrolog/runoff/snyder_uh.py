@@ -16,11 +16,18 @@ from scipy.optimize import brentq
 from scipy.special import gammaincinv, gammaln
 
 from hydrolog._serialization import JsonResultMixin
+from hydrolog._warnings import warn_outside_typical_range
 from hydrolog.exceptions import InvalidParameterError
 
 # Share of the unit volume beyond the default end of the hydrograph: the
 # recession is followed until 99.99 % of the 1 mm has run off.
 _TAIL_VOLUME = 1e-4
+
+# Typical coefficients: Ct 1.8-2.2 in the English units of Snyder (1938), 0.75
+# times that in SI (Chow, Maidment and Mays 1988, section 7.7); Cp 0.4-0.8
+# (Snyder 1938: 0.56-0.69; USACE 2000, HEC-HMS Technical Reference Manual).
+_CT_RANGE = (1.35, 1.65)
+_CP_RANGE = (0.4, 0.8)
 
 
 @dataclass
@@ -202,6 +209,12 @@ class SnyderUH:
         ------
         InvalidParameterError
             If any parameter is invalid.
+
+        Warns
+        -----
+        OutsideTypicalRange
+            If ``ct`` or ``cp`` is outside its typical range (method
+            ``snyder``).
         """
         if area_km2 <= 0:
             raise InvalidParameterError(f"area_km2 must be positive, got {area_km2}")
@@ -213,6 +226,8 @@ class SnyderUH:
             raise InvalidParameterError(f"ct must be positive, got {ct}")
         if cp <= 0:
             raise InvalidParameterError(f"cp must be positive, got {cp}")
+        warn_outside_typical_range("snyder", "ct", ct, *_CT_RANGE)
+        warn_outside_typical_range("snyder", "cp", cp, *_CP_RANGE)
 
         self.area_km2 = area_km2
         self.L_km = L_km
@@ -502,7 +517,8 @@ class SnyderUH:
         except ValueError as e:
             raise InvalidParameterError(
                 f"cp={self.cp} gives qp·tp/V = {ratio:.3g}: no unit hydrograph "
-                f"of 1 mm has such a peak"
+                f"of 1 mm has such a peak",
+                details={"option": "cp", "reason": "invalid_value", "value": self.cp},
             ) from e
         return float(np.exp(log_k))
 

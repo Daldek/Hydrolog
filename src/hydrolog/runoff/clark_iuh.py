@@ -15,11 +15,17 @@ import numpy as np
 from numpy.typing import NDArray
 
 from hydrolog._serialization import JsonResultMixin
+from hydrolog._warnings import warn_outside_typical_range
 from hydrolog.exceptions import InvalidParameterError
 from hydrolog.routing._kernels import route_linear_reservoir
 
 _STEP_TOLERANCE = 1e-9
 """Relative excess of the time step over ``2 R`` that is still accepted (rounding)."""
+
+_R_TC_RANGE = (0.2, 1.5)
+"""Typical R/tc: 0.2-0.4 steep, urban; 0.4-0.8 average natural; 0.8-1.5 flat,
+swampy catchments (USACE, HEC-HMS Technical Reference Manual, Clark unit
+hydrograph; engineering practice)."""
 
 
 @dataclass
@@ -180,6 +186,12 @@ class ClarkIUH:
         ------
         InvalidParameterError
             If any parameter is not positive.
+
+        Warns
+        -----
+        OutsideTypicalRange
+            If R/tc is outside its typical range 0.2-1.5 (method ``clark``,
+            parameter ``r_tc_ratio``).
         """
         if tc_min <= 0:
             raise InvalidParameterError(f"tc_min must be positive, got {tc_min}")
@@ -187,6 +199,7 @@ class ClarkIUH:
             raise InvalidParameterError(f"r_min must be positive, got {r_min}")
         if area_km2 is not None and area_km2 <= 0:
             raise InvalidParameterError(f"area_km2 must be positive, got {area_km2}")
+        warn_outside_typical_range("clark", "r_tc_ratio", r_min / tc_min, *_R_TC_RANGE)
 
         self.tc_min = tc_min
         self.r_min = r_min
