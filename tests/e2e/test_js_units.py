@@ -435,98 +435,23 @@ def test_options_sent_by_a_form(page: Any) -> None:
     ]
 
 
-def test_catalog_examples_fill_the_form_and_run(page: Any) -> None:
+def test_a_new_form_holds_only_the_names_of_required_outputs(page: Any) -> None:
     got = js(
         page,
-        """const lagModel = m.fieldModel(await doc('route lag'));
-        const lagCalls = (await doc('route lag')).commands[0].examples
-          .map((e) => e.call);
-        const outputs = m.fieldModel(await doc('route network')).fields
+        """const outputs = m.fieldModel(await doc('route network')).fields
           .filter((x) => x.kind === 'file-out').map(m.defaultOutputName);
-        const runs = [];
-        for (const name of ['uh nash', 'scs effective']) {
-          const catalog = await doc(name);
-          for (const example of catalog.commands[0].examples) {
-            const values = m.valuesFromCall(m.fieldModel(catalog), example.call);
-            const model = m.fieldModel(catalog, {values});
-            const options = m.toOptions(model, values);
-            const answer = await run(name, options);
-            runs.push({name, chosen: values['#one_of'],
-              problems: m.validate(model, values), options, status: answer.status,
-              outcome: answer.body.status, inputs: answer.body.inputs});
-          }
-        }
         return {
-          words: [
-            m.shellWords(`a 'b c' "d \\\\"e\\\\" \\\\$x" f\\\\ g "" ''  h`),
-            m.shellWords(`--x=1 "it's" 'a\\\\b'`),
-          ],
-          lag: [m.valuesFromCall(lagModel, lagCalls[0]),
-                m.valuesFromCall(lagModel, lagCalls[0], ['in/flood_inflow.csv']),
-                m.valuesFromCall(lagModel, lagCalls[1])],
-          own: m.valuesFromCall(lagModel, `hydrolog route lag --lag-min=12.5
-            --times-min '0,10' --discharge-m3s "1.5,2" --output dir/sub/o.csv
-            --force --no-check --unknown 3`),
-          chips: m.valuesFromCall(m.fieldModel(await doc('stats flood-frequency')),
-            'hydrolog stats flood-frequency --values 1,2'
-            + ' --dates 2020-01-01,2020-01-02'),
           outputs,
           fallback: m.defaultOutputName({name: 'report', examples: []}),
-          runs,
+          defaults: [m.outputDefaults(m.fieldModel(await doc('route lag'))),
+                     m.outputDefaults(m.fieldModel(await doc('uh nash'))),
+                     m.outputDefaults(m.fieldModel(await doc('soil hsg')))],
         };""",
     )
-    assert got["words"] == [
-        ["a", "b c", 'd "e" $x', "f g", "", "", "h"],
-        ["--x=1", "it's", "a\\b"],
-    ]
-    # route lag's first example reads a file: the form opens on „Plik”, the file
-    # left to be uploaded unless the session holds one of that name.
-    empty, held, series = got["lag"]
-    assert empty == {
-        "lag_min": "30",
-        "input_file": "",
-        "output": "outflow.csv",
-        "#one_of": 1,
-    }
-    assert held["input_file"] == "in/flood_inflow.csv" and held["#one_of"] == 1
-    assert series == {
-        "lag_min": "25",
-        "times_min": "0; 10; 20; 30; 40; 50; 60; 70",
-        "discharge_m3s": "0; 10; 40; 90; 60; 30; 10; 0",
-        "#one_of": 0,
-    }
-    assert got["own"] == {
-        "lag_min": "12,5",
-        "times_min": "0; 10",
-        "discharge_m3s": "1,5; 2",
-        "output": "o.csv",
-        "force": True,
-        "check": False,
-        "#one_of": 0,
-    }
-    assert got["chips"] == {
-        "values": "1; 2",
-        "dates": ["2020-01-01", "2020-01-02"],
-        "#one_of": 0,
-    }
     assert got["outputs"] == ["network_out", "network.svg"]
     assert got["fallback"] == "report"
-    # Every example of uh nash (one per parameter group) and scs effective goes
-    # through the form unchanged and runs on the server.
-    assert [(item["name"], item["chosen"]) for item in got["runs"]] == [
-        ("uh nash", 0),
-        ("uh nash", 1),
-        ("uh nash", 2),
-        ("scs effective", 0),
-        ("scs effective", 0),
-        ("scs effective", 1),
-    ]
-    for item in got["runs"]:
-        assert item["problems"] == {}, item
-        assert (item["status"], item["outcome"]) == (200, "ok"), item
-        assert item["inputs"].items() >= item["options"].items(), item
-    assert got["runs"][1]["options"]["lutz_urban_pct"] == 5
-    assert got["runs"][5]["options"]["values"] == [2.5, 5, 12.5, 15, 8, 4, 3]
+    # No example value: an optional output stays empty, a required one gets its name
+    assert got["defaults"] == [{}, {}, {"output": "hsg.tif"}]
 
 
 def test_requires_excludes_sections_and_dates_of_a_fixture_command(page: Any) -> None:
@@ -632,7 +557,7 @@ def test_routes_and_stored_inputs(page: Any) -> None:
         "#polecenia/a%20b%2Fc/%C5%82%23%3F/100%25",
     ]
     assert got["back"] == {"section": "polecenia", "path": ["a b/c", "ł#?", "100%"]}
-    assert got["keys"] == ["hydrolog-gui/polecenia/1", "hydrolog-gui/layout/2"]
+    assert got["keys"] == ["hydrolog-gui/polecenia/2", "hydrolog-gui/layout/2"]
     raw, back, cleared = got["stored"]
     assert raw == '{"command":"uh nash","values":{"n":"3"}}'
     assert back == {"command": "uh nash", "values": {"n": "3"}}

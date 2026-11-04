@@ -1,13 +1,13 @@
 // State of „Kalkulatory”: the sixteen calculators (the comparison of the methods of the time
 // of concentration and fifteen catalog commands), their entries in the catalog, and the
-// inputs kept under "hydrolog-gui/kalkulatory/1": the chosen calculator, the group and the
+// inputs kept under "hydrolog-gui/kalkulatory/2": the chosen calculator, the group and the
 // search, the methods and the overland fields of the comparison, and each command's form
-// (no results). A form opened for the first time is its first catalog example, filled with
-// the fields of the watershed of Hydrogram zlewni.
+// (no results). A form opened for the first time is empty (outputDefaults), then filled
+// with the fields of the watershed of Hydrogram zlewni when there is one.
 
 import { api } from "../../api.js";
 import { fold, inputText, parseNumber } from "../../format.js";
-import { commandEntry, defaultOutputName, fieldModel, ONE_OF_KEY, valuesFromCall } from "../../forms/model.js";
+import { commandEntry, ONE_OF_KEY } from "../../forms/model.js";
 import { useEffect, useState } from "../../html.js";
 import { describeError } from "../../labels/errors.js";
 import { kalkulatory as texts } from "../../labels/kalkulatory.js";
@@ -203,24 +203,6 @@ export function useCatalogDocs() {
     };
   }, []);
   return state;
-}
-
-/**
- * The form of a command opened for the first time: its first catalog example, and the
- * default name of every required output file.
- *
- * @param {object} doc the command's catalog document
- * @returns {object} the values
- */
-export function exampleValues(doc) {
-  const entry = commandEntry(doc);
-  const model = fieldModel(doc);
-  const example = entry.examples && entry.examples[0] ? entry.examples[0].call : "";
-  const values = example ? valuesFromCall(model, example) : {};
-  for (const field of model.fields) {
-    if (field.kind === "file-out" && !values[field.name] && field.required) values[field.name] = defaultOutputName(field);
-  }
-  return values;
 }
 
 /**

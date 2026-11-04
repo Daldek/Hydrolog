@@ -1,11 +1,12 @@
 // „Sieć i trasowanie” (plan S4; the approved mockup with the author's revisions): a river
-// network of hydrolog-network/1, drawn vertically from `route schematic` before any run
-// (the sources at the top, the outlet at the bottom); a click on a node, Enter or Space,
-// or its row in a table opens its settings in „Dane” and its result in „Wyniki”. The
-// network is computed on „Oblicz sieć” only: the document is written to the session's
-// `in/` and `route network` routes it (with the inflows file and the rating files it
-// reads); a change afterwards marks the result stale („Dane zmienione: oblicz ponownie”,
-// plan D13).
+// network of hydrolog-network/1, opened from a file or a hand-off (a first visit has none;
+// the guide, instrukcja/#siec, has a worked example to load), drawn vertically from `route
+// schematic` before any run (the sources at the top, the outlet at the bottom); a click on
+// a node, Enter or Space, or its row in a table opens its settings in „Dane” and its
+// result in „Wyniki”. The network is computed on „Oblicz sieć” only: the document is
+// written to the session's `in/` and `route network` routes it (with the inflows file and
+// the rating files it reads); a change afterwards marks the result stale („Dane zmienione:
+// oblicz ponownie”, plan D13).
 
 import { api } from "../../api.js";
 import { inputFiles, uploadFile, useSession } from "../../controls/file-field.js";
@@ -26,15 +27,13 @@ import { isPhone, openPanel } from "../../ui/sheet.js";
 import { status } from "../../ui/status.js";
 import { toast } from "../../ui/toast.js";
 import { ViewLayout } from "../../ui/view-layout.js";
-import { DataPanel, networkRainWords, networkSummary } from "./data-panel.js";
+import { DataPanel, EmptyNetwork, networkRainWords, networkSummary } from "./data-panel.js";
 import { buildDocument, nodeWords } from "./node-model.js";
 import { NodeTable, ResultsPanel } from "./results-panel.js";
 import { Schematic } from "./schematic-view.js";
 import {
   documentName,
   documentProblems,
-  EXAMPLE_NAME,
-  fetchExample,
   fileStem,
   initialState,
   neededFiles,
@@ -101,7 +100,6 @@ export default function Siec({ active, path = [] }) {
   const sequence = useRef(0);
   const running = useRef(null);
   const drawn = useRef(0);
-  const loading = useRef(false);
 
   // --- opening a network --------------------------------------------------------------
   const open = (doc, source, lines = null) => {
@@ -113,16 +111,6 @@ export default function Siec({ active, path = [] }) {
     setSchematic({ doc: null, key: null, error: null, busy: false });
     setNote(lines ? { error: false, lines } : null);
   };
-  useEffect(() => {
-    if (state.source || loading.current) return;
-    loading.current = true;
-    fetchExample()
-      .then((doc) => open(doc, { name: EXAMPLE_NAME, kind: "example" }))
-      .catch((error) => setNote({ error: true, title: texts.file.exampleFailed, lines: [String((error && error.message) || error)] }))
-      .finally(() => {
-        loading.current = false;
-      });
-  }, [state.source]);
   useOpened(({ doc, meta }) => {
     const problems = documentProblems(doc);
     if (problems.length) {
@@ -408,10 +396,11 @@ export default function Siec({ active, path = [] }) {
     sub: "hydrolog-network/1",
     body: formsProblem
       ? html`<div class="form-errors" role="alert">${formsProblem}</div>`
-      : !forms || !state.skeleton.length
-        ? html`<p class="muted" role="status">${note && note.error ? "" : common.loading}</p>
-            ${note && note.error ? html`<div class="form-errors" role="alert"><strong>${note.title}</strong><ul>${note.lines.map((line) => html`<li>${line}</li>`)}</ul></div>` : null}`
-        : html`<${DataPanel}
+      : !state.skeleton.length
+        ? html`<${EmptyNetwork} note=${note} onLoad=${onLoad} />`
+        : !forms
+          ? html`<p class="muted" role="status">${common.loading}</p>`
+          : html`<${DataPanel}
             state=${state}
             forms=${forms}
             words=${words}
@@ -435,11 +424,6 @@ export default function Siec({ active, path = [] }) {
             onSelect=${select}
             onLoad=${onLoad}
             onCompanions=${onCompanions}
-            onExample=${() => {
-              fetchExample()
-                .then((doc) => open(doc, { name: EXAMPLE_NAME, kind: "example" }, [t(texts.file.loaded, { name: EXAMPLE_NAME, nodes: plural(doc.nodes.length, texts.nodeForms) })]))
-                .catch((error) => setNote({ error: true, title: texts.file.exampleFailed, lines: [String((error && error.message) || error)] }));
-            }}
             onSave=${save}
           />`,
     foot: html`
@@ -472,6 +456,7 @@ export default function Siec({ active, path = [] }) {
       />`;
     }
     if (schematic.error) return html`<div class="form-errors" role="alert" data-schematic="error">${t(texts.schematic.failed, { message: schematic.error.text })}</div>`;
+    if (!state.skeleton.length) return html`<p class="empty-note" data-schematic="empty">${texts.schematic.empty}</p>`;
     const waiting = built && built.problems.length ? built.problems[0] : null;
     if (waiting) return html`<p class="empty-note" data-schematic="waiting">${t(texts.schematic.invalid, { problem: waiting.node ? `${waiting.node} · ${waiting.key.split(".").pop()}` : waiting.key })}</p>`;
     if (missing.length) return html`<p class="empty-note" data-schematic="waiting">${t(texts.schematic.files, { missing: missing.join("; ") })}</p>`;

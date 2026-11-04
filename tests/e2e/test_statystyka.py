@@ -1,11 +1,13 @@
 """„Statystyka przepływów” (plan S5, D13, D14, D16) in Chromium.
 
-Against the real server of ``gui_server``: a first visit uploads the shipped sample
-(the years 1998 to 2023 of ``tests/fixtures/annual_maxima.csv``) and „Oblicz” runs
-``stats flood-frequency`` on it, giving the mockup's GEV „Q 1% 307,3 m³/s”, the KZGW
-notice in Polish, the probability plot and the ranked maxima with their years; the call
-shown is the options sent. A daily series takes its date column from its header; pasted
-maxima run as ``values``; „Do porównania” hands the stressed quantile to the store.
+Against the real server of ``gui_server``: a first visit has no series and sends
+nothing, a hint names what to load and links the guide's worked example; „Wyczyść”
+returns there. The annual maxima of 1998 to 2023 (``tests/fixtures/maksima_roczne.csv``,
+those years of ``annual_maxima.csv``) uploaded and „Oblicz” run ``stats
+flood-frequency``, giving the mockup's GEV „Q 1% 307,3 m³/s”, the KZGW notice in Polish,
+the probability plot and the ranked maxima with their years; the call shown is the
+options sent. A daily series takes its date column from its header; pasted maxima run
+as ``values``; „Do porównania” hands the stressed quantile to the store.
 """
 
 import re
@@ -19,9 +21,8 @@ from hydrolog.catalog import format_command, parse_command, run_command
 from tests.e2e.conftest import Tab
 
 COMMAND = "stats flood-frequency"
-WEB = Path(__file__).resolve().parents[2] / "src" / "hydrolog" / "gui" / "web"
-SAMPLE = WEB / "examples" / "maksima_roczne.csv"
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
+MAXIMA = FIXTURES / "maksima_roczne.csv"
 SECTION = 'section[data-section="statystyka"]'
 RIGHT = f"{SECTION} .view-panel.right"
 BADGE = ".topbar .badge.status"
@@ -29,12 +30,20 @@ DEFAULT_PERIODS = [2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 500.0, 1000.0]
 
 
 def open_section(tab: Tab) -> Page:
-    """Open the section and wait for the sample's columns (a first visit uploads it)."""
+    """Open the section, upload the maxima of 1998–2023 and wait for their columns."""
     tab.open("#statystyka")
+    upload(tab.page, MAXIMA)
     expect(
         tab.page.locator(f'{SECTION} .handoff[data-file="in/maksima_roczne.csv"]')
     ).to_contain_text("26 wierszy")
     return tab.page
+
+
+def upload(page: Page, path: Path) -> None:
+    """Upload ``path`` with the file field of the series."""
+    page.locator(
+        f'{SECTION} [data-option="input_file"] input[type="file"]'
+    ).set_input_files(path)
 
 
 def compute(page: Page) -> Response:
@@ -53,11 +62,51 @@ def sent(response: Response) -> dict[str, Any]:
     return options
 
 
-def test_the_sample_gives_the_mockups_gev_quantile_and_the_kzgw_notice(
+def test_a_first_visit_is_empty_and_clearing_returns_there(tab: Tab) -> None:
+    posted: list[str] = []
+    tab.page.on(
+        "request",
+        lambda request: (
+            posted.append(request.url) if request.method == "POST" else None
+        ),
+    )
+    tab.open("#statystyka")
+    page = tab.page
+    hint = page.locator(f'{SECTION} [data-empty="statystyka"]')
+    expect(hint).to_contain_text("Wczytaj plik CSV")
+    expect(hint.get_by_role("link")).to_have_attribute(
+        "href", "instrukcja/#przyklad-statystyka"
+    )
+    expect(page.locator(f"{SECTION} #st-input_file")).to_have_value("")
+    expect(page.locator(f"{SECTION} #st-value_column")).to_have_value("")
+    expect(page.locator(f"{SECTION} .handoff[data-file]")).to_have_count(0)
+    page.locator(f"{SECTION} .step").first.get_by_role("radio", name="Wklej").click()
+    expect(page.locator(f"{SECTION} #st-values")).to_have_value("")
+    expect(hint).to_contain_text("Wklej co najmniej kilka maksimów")
+    assert posted == []  # no upload, no run
+
+    # „Oblicz” on nothing: the required field says so, nothing is sent
+    page.locator(f"{SECTION} .panel-foot .btn.primary").click()
+    expect(page.locator(f"{SECTION} #st-values")).to_have_attribute(
+        "aria-invalid", "true"
+    )
+    assert posted == []
+
+    page.locator(f"{SECTION} .step").first.get_by_role("radio", name="Plik CSV").click()
+    upload(page, MAXIMA)
+    expect(page.locator(f"{SECTION} #st-value_column")).to_have_value("Qmax")
+    page.locator(f"{SECTION} .panel-foot").get_by_role("button", name="Wyczyść").click()
+    expect(page.locator(f"{SECTION} #st-input_file")).to_have_value("")
+    expect(hint).to_be_visible()
+    page.reload()
+    expect(page.locator(f"{SECTION} #st-input_file")).to_have_value("")
+
+
+def test_the_maxima_give_the_mockups_gev_quantile_and_the_kzgw_notice(
     tab: Tab,
 ) -> None:
     page = open_section(tab)
-    lines = SAMPLE.read_text(encoding="utf-8").splitlines()
+    lines = MAXIMA.read_text(encoding="utf-8").splitlines()
     assert lines[0] == "year,Qmax [m3/s]" and len(lines) == 27
     fixture = (FIXTURES / "annual_maxima.csv").read_text(encoding="utf-8").splitlines()
     assert lines[1:] == [
@@ -74,7 +123,7 @@ def test_the_sample_gives_the_mockups_gev_quantile_and_the_kzgw_notice(
         "return_periods": DEFAULT_PERIODS,
     }
     envelope = response.json()
-    expected = run_command(COMMAND, {**options, "input_file": str(SAMPLE)}).to_dict()
+    expected = run_command(COMMAND, {**options, "input_file": str(MAXIMA)}).to_dict()
     assert envelope["result"]["distributions"] == expected["result"]["distributions"]
 
     right = page.locator(RIGHT)

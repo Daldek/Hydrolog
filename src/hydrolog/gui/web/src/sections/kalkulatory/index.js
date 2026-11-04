@@ -2,14 +2,16 @@
 // `tc watershed` once per method with the watershed of Hydrogram zlewni (store "watershed")
 // and the overland fields set here, and words each method by Hydrolog's notices; „Użyj w
 // Hydrogramie zlewni” hands the chosen method to Hydrogram (#hydrogram/tc_method/<method>).
-// The fifteen others are catalog forms (plan D11), filled from their first example and the
-// fields of the watershed (the tc commands with what `tc watershed` derives from it). Every
-// calculator computes on its button and marks its result stale after a change (plan D13).
+// The fifteen others are catalog forms (plan D11), empty when first opened and filled with
+// the fields of the watershed of Hydrogram zlewni when there is one (the tc commands with
+// what `tc watershed` derives from it). Every calculator computes on its button and marks
+// its result stale after a change (plan D13). The guide (instrukcja/#kalkulatory) has a
+// worked example.
 
 import { api } from "../../api.js";
 import { plural } from "../../format.js";
 import { FORM_ERROR } from "../../forms/command-form.js";
-import { commandEntry, fieldModel, isActive, ONE_OF_KEY, toOptions, validate, withReason } from "../../forms/model.js";
+import { commandEntry, fieldModel, isActive, ONE_OF_KEY, outputDefaults, toOptions, validate, withReason } from "../../forms/model.js";
 import { analyzeResult } from "../../forms/result-view.js";
 import { html, useEffect, useMemo, useRef, useState } from "../../html.js";
 import { common, t } from "../../labels/common.js";
@@ -34,7 +36,6 @@ import {
   comparedWatershed,
   COMPARE,
   copiedFields,
-  exampleValues,
   formFields,
   FROM_WATERSHED,
   hydrogramMethod,
@@ -167,12 +168,12 @@ export default function Kalkulatory({ active, path = [] }) {
     setFills((old) => ({ ...old, [command]: { text: t(texts.watershed.filled, { names: names.map((name) => `\`${name}\``).join(", ") }) } }));
   };
 
-  // A command opened for the first time: its first example, then the watershed's fields
-  // (now, or when the watershed arrives, unless the form was edited meanwhile)
+  // A command opened for the first time: an empty form, then the watershed's fields (now,
+  // or when the watershed arrives, unless the form was edited meanwhile)
   useEffect(() => {
     if (!isCommand || !doc) return;
     if (!state.values[current]) {
-      const first = exampleValues(doc);
+      const first = outputDefaults(fieldModel(doc));
       setState((old) => (old.values[current] ? old : { ...old, values: { ...old.values, [current]: first } }));
       if (fillable && watershed) fill(current, first);
       else if (fillable) unfilled.current.add(current);

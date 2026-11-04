@@ -1,11 +1,10 @@
 // State of „Statystyka przepływów”: the inputs of `stats flood-frequency` kept in the browser
-// under "hydrolog-gui/statystyka/1" (the form's values, the source and the return period
-// shown in the results; no results); the shipped sample (web/examples/maksima_roczne.csv),
-// uploaded into the session when it is needed; the columns of the chosen file, read in the
-// browser from its header; and the ranking of the annual maxima for display.
+// under "hydrolog-gui/statystyka/2" (the form's values, the source and the return period
+// shown in the results; no results); the columns of the chosen file, read in the browser
+// from its header; and the ranking of the annual maxima for display. A first visit starts
+// empty: no file, no values.
 
 import { api } from "../../api.js";
-import { uploadFile } from "../../controls/file-field.js";
 import { num, parseNumber } from "../../format.js";
 import { useEffect, useState } from "../../html.js";
 import { readTable } from "../../controls/series-field.js";
@@ -17,14 +16,6 @@ export const SECTION = "statystyka";
 
 /** The command of the section. */
 export const COMMAND = "stats flood-frequency";
-
-/** The shipped sample: the years 1998 to 2023 of tests/fixtures/annual_maxima.csv. */
-export const SAMPLE = Object.freeze({
-  name: "maksima_roczne.csv",
-  url: "examples/maksima_roczne.csv",
-  path: "in/maksima_roczne.csv",
-  column: "Qmax",
-});
 
 /**
  * Return periods [years] of the curves of the probability plot: a second run of the same
@@ -47,8 +38,8 @@ export const FIRST_CHOSEN = 100;
 export const DISTRIBUTION_CLASS = Object.freeze({ gev: "s1", log_normal: "s2", pearson3: "s3", weibull: "s6" });
 
 /**
- * The inputs of a first visit: the shipped sample, all four distributions; the return
- * periods are the catalog's default, set when the command's entry arrives.
+ * The inputs of a first visit: no series yet, all four distributions; the return periods
+ * are the catalog's default, set when the command's entry arrives.
  *
  * @returns {{source: "file"|"paste", values: object, chosen: number}} the state
  */
@@ -56,8 +47,8 @@ export function initialState() {
   return {
     source: "file",
     values: {
-      input_file: SAMPLE.path,
-      value_column: SAMPLE.column,
+      input_file: "",
+      value_column: "",
       date_column: "",
       values: "",
       distribution: "all",
@@ -426,26 +417,4 @@ export function useFileTable(path, sha256) {
     };
   }, [key]);
   return found;
-}
-
-let samplePending = null;
-
-/**
- * Upload the shipped sample into the session (once at a time).
- *
- * @returns {Promise<{path: string, name: string}>} the session path of the sample
- */
-export function ensureSample() {
-  if (!samplePending) {
-    samplePending = fetch(new URL(SAMPLE.url, document.baseURI).href, { credentials: "same-origin" })
-      .then((response) => {
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return response.blob();
-      })
-      .then((blob) => uploadFile(new File([blob], SAMPLE.name, { type: "text/csv" })))
-      .finally(() => {
-        samplePending = null;
-      });
-  }
-  return samplePending;
 }
