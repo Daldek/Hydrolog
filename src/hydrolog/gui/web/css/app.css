@@ -199,7 +199,17 @@ select.sel-sm { height: var(--control-sm); font-size: var(--text-sm); padding: 0
 .frow.edited .ibox { border-color: var(--accent); }
 .frow.edited .ibox .unit { background: var(--accent-soft); }
 .frow .err { grid-column: 1 / -1; color: var(--bad-ink); font-size: var(--text-xs); font-weight: var(--weight-bold); }
-.frow.invalid .ibox, .frow.invalid > input { border-color: var(--bad); box-shadow: 0 0 0 3px var(--bad-bg); }
+.frow.invalid .ibox, .frow.invalid > input, .frow.invalid > select { border-color: var(--bad); box-shadow: 0 0 0 3px var(--bad-bg); }
+/* A value outside its typical range (Hydrolog's notice): amber, the run goes on */
+.frow .warn { grid-column: 1 / -1; color: var(--warn-ink); font-size: var(--text-xs); font-weight: var(--weight-bold); }
+.frow .warn .reason { color: var(--text-3); font-weight: var(--weight-regular); font-family: var(--font-mono); }
+.frow.warning .ibox, .frow.warning > input { border-color: var(--warn); box-shadow: 0 0 0 3px var(--warn-bg); }
+/* Whom a field of step 1 is needed for once a model is chosen */
+.frow .need { grid-column: 1 / -1; color: var(--text-3); font-size: var(--text-xs); }
+.step-body .block { margin: var(--space-3) 0 0; }
+.step-body .block > .group-title { margin-top: 0; }
+.check-summary .step-ref { color: var(--text-3); font-size: var(--text-xs); white-space: nowrap; }
+.note.warn-note { color: var(--warn-ink); }
 
 .info-btn {
   width: 18px; height: 18px; flex: none; padding: 0;
@@ -347,6 +357,8 @@ html[data-host="nogat"] .main { grid-row: 1; grid-column: 1; }
 .calc-state.warn .dot { background: var(--warn); }
 .calc-state.bad { color: var(--bad-ink); }
 .calc-state.bad .dot { background: var(--bad); }
+.calc-state.idle { color: var(--text-2); }
+.calc-state.idle .dot { background: var(--text-3); }
 .result-area, [data-hg-res] { transition: opacity 0.15s; }
 .computing .result-area, .result-area.computing, .computing [data-hg-res] { opacity: 0.45; }
 @media (prefers-reduced-motion: reduce) {
@@ -531,6 +543,8 @@ body.resizing .view-center, body.resizing .view-panel { pointer-events: none; }
 .notes li.warn .lvl { color: var(--warn-ink); }
 .notes li.ok .lvl { color: var(--ok-ink); }
 .notes li.info .lvl { color: var(--info-ink); }
+.notes li.bad { border-left-color: var(--bad); background: var(--bad-bg); }
+.notes li.bad > svg, .notes li.bad .lvl { color: var(--bad-ink); }
 .notes .from { display: block; margin-top: 2px; font-size: var(--text-xs); color: var(--text-3); }
 
 .params { width: 100%; border-collapse: collapse; font-size: var(--text-base); margin: 0 0 var(--space-2); }

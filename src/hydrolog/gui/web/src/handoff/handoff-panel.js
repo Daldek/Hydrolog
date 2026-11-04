@@ -15,6 +15,7 @@ import { describeError } from "../labels/errors.js";
 import { handoffLabels as texts } from "../labels/handoff.js";
 import { siec as siecTexts } from "../labels/siec.js";
 import { navigate } from "../router.js";
+import { fieldLabel, handoffMissing } from "../sections/hydrogram/state.js";
 import { fileStem, openNetwork, withSessionNames } from "../sections/siec/state.js";
 import { copyText, downloadBlob, fileBase } from "../ui/export-panel.js";
 import { MenuButton } from "../ui/menu.js";
@@ -384,7 +385,8 @@ function ExportHandoff({ make, base, section, disabled }) {
 
 /**
  * The part „Przekazanie” of Hydrogram zlewni: a received producer's result beside the
- * shown one, and the hand-off of the shown run.
+ * shown one, and the hand-off of the shown run, offered once the run's watershed is the
+ * full one a hand-off carries (HANDOFF_FIELDS; the model may need fewer fields).
  *
  * @param {{run: object, current: object|null, subject: string, rain: string}} props the
  *   shown run ({inputs, options, envelope}), the section's current inputs (their origin and
@@ -396,6 +398,10 @@ export function HydrogramHandoff({ run, current, subject, rain }) {
   const runKey = dataKey(run.inputs);
   const inputs = current && dataKey(current) === runKey ? current : run.inputs;
   const received = current && isObject(current.handoff) ? current.handoff : null;
+  const missing = handoffMissing(run.options.watershed);
+  const incomplete = missing.length
+    ? t(texts.export.incomplete, { fields: missing.map((name) => `„${fieldLabel(name)}”`).join(", ") })
+    : null;
   return html`
     ${received
       ? html`<${ReceivedResult}
@@ -405,7 +411,13 @@ export function HydrogramHandoff({ run, current, subject, rain }) {
           state=${received.key === runKey ? "same" : "changed"}
         />`
       : null}
-    <${ExportHandoff} make=${() => hydrogramHandoff({ run, inputs, subject })} base=${fileBase(subject)} section="hydrogram" />
+    <${ExportHandoff}
+      make=${() => hydrogramHandoff({ run, inputs, subject })}
+      base=${fileBase(subject)}
+      section="hydrogram"
+      disabled=${incomplete || undefined}
+    />
+    ${incomplete ? html`<p class="note warn-note" data-handoff-incomplete="">${incomplete}</p>` : null}
     <p class="note">${texts.export.standalone}</p>
     <p class="note" data-handoff-contents="">${hydrogramContents(inputs, rain)}</p>
   `;

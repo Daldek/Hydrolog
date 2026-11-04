@@ -22,8 +22,9 @@ from tests.e2e.conftest import Tab
 
 WELCOME_KEY = "hydrolog-gui/welcome/1"
 REGISTERED = "async () => (await import('./src/app.js')).ORDERED.map((item) => item.id)"
-READY = 'section[data-section="hydrogram"] [data-kpi="q"] .v'
-"""Hydrogram zlewni's peak: the app is mounted and has computed."""
+READY = 'section[data-section="hydrogram"] .step > summary .title'
+"""The titles of Hydrogram zlewni's steps: the app is mounted (a first visit runs
+nothing until a model is chosen)."""
 # Nogat's --bg and --surface of the dark theme (tokens.css, Nogat d1b5820).
 DARK_BG = "rgb(13, 17, 23)"
 DARK_SURFACE = "rgb(22, 27, 34)"
@@ -91,7 +92,7 @@ def test_the_guides_links_and_theme_are_the_apps_under_a_prefix(
 
     page.get_by_role("link", name="Otwórz Hydrogram zlewni").click()
     expect(page).to_have_url(tab.base + "#hydrogram")
-    expect(page.locator(READY)).to_contain_text("60,21")
+    expect(page.locator(READY)).to_have_count(3)
     expect(page.locator("body")).to_have_css("background-color", DARK_BG)
     expect(
         page.get_by_role("group", name="Motyw").get_by_role(
@@ -134,7 +135,7 @@ def test_the_welcome_dialog_opens_until_it_is_hidden(
     expect(dialog).to_be_hidden()
     assert stored(page) == {"hidden": True}
     page.reload()
-    expect(page.locator(READY)).to_contain_text("60,21")
+    expect(page.locator(READY)).to_have_count(3)
     expect(dialog).to_be_hidden()
 
     # „Instrukcja” brings it back with the choice shown; unticked and closed beside it
@@ -217,5 +218,5 @@ def test_nogats_shell_gets_no_welcome_dialog(new_tab: Callable[..., Tab]) -> Non
     tab = new_tab(welcome=True)
     tab.open("?nogat=1")
     page = tab.page
-    expect(page.locator(READY)).to_contain_text("60,21")
+    expect(page.locator(READY)).to_have_count(3)
     assert page.locator("dialog").count() == 0

@@ -14,18 +14,17 @@ import { t } from "../labels/common.js";
 import { handoffLabels as texts } from "../labels/handoff.js";
 import { hydrogram as hydrogramTexts } from "../labels/hydrogram.js";
 import {
-  EXAMPLE_FILE,
   LUTZ_FIELDS,
   PMAXTP_DURATIONS,
   PMAXTP_PROBABILITIES,
-  WATERSHED_FIELDS,
   changedFrom,
   initialState,
   normalize,
   readWatershed,
+  sentFields,
+  sentWatershed,
   usedTexts,
   usesLutz,
-  watershedObject,
 } from "../sections/hydrogram/state.js";
 import { EXAMPLE as NETWORK_EXAMPLE } from "../sections/siec/state.js";
 import { MARKS, PAYLOAD_SCHEMA, buildHandoff, momentText, receivedOf, toolName } from "./handoff.js";
@@ -93,14 +92,14 @@ export function hydrogramPayload(options, name) {
 }
 
 /**
- * The data of Hydrogram's inputs as one text: the watershed and every option in use.
- * Equal texts compute the same result.
+ * The data of Hydrogram's inputs as one text: the watershed a run sends and every option
+ * in use. Equal texts compute the same result.
  *
  * @param {object} inputs the section's inputs
  * @returns {string} the text
  */
 export function dataKey(inputs) {
-  return JSON.stringify([watershedObject(inputs.watershed), usedTexts(inputs)]);
+  return JSON.stringify([sentWatershed(inputs), usedTexts(inputs)]);
 }
 
 /**
@@ -140,8 +139,8 @@ function rainfallOrigin(inputs) {
 }
 
 /**
- * Where the watershed came from: a hand-off's source, Hydrolog's example, a file or the
- * person, with the fields changed since (`changed`).
+ * Where the watershed came from: a hand-off's source, a file or the person, with the
+ * fields the run sends that changed since (`changed`).
  *
  * @param {object} inputs the section's inputs
  * @returns {object} the provenance of `watershed`
@@ -149,13 +148,11 @@ function rainfallOrigin(inputs) {
 function watershedOrigin(inputs) {
   const origin = isObject(inputs.origin) ? inputs.origin : null;
   const fields = inputs.watershed || {};
-  const changed = origin && isObject(origin.values) ? WATERSHED_FIELDS.filter((name) => changedFrom(origin, name, fields[name])) : [];
+  const changed = origin && isObject(origin.values) ? sentFields(inputs).filter((name) => changedFrom(origin, name, fields[name])) : [];
   let entry;
   if (origin && isObject(origin.provenance) && typeof origin.provenance.source === "string") {
     entry = { ...origin.provenance };
     delete entry.changed;
-  } else if (origin && origin.label === hydrogramTexts.watershed.example) {
-    entry = { source: "hydrolog", file: EXAMPLE_FILE };
   } else if (origin) {
     entry = { source: "file", file: String(origin.label) };
   } else {
@@ -337,9 +334,9 @@ export function hydrogramInputs(doc) {
  * @returns {string} the note
  */
 export function hydrogramContents(inputs, rain) {
-  const fields = Object.keys(watershedObject(inputs.watershed));
+  const fields = Object.keys(sentWatershed(inputs));
   const origin = isObject(inputs.origin) ? inputs.origin : null;
-  const changed = origin && isObject(origin.values) ? WATERSHED_FIELDS.filter((name) => changedFrom(origin, name, (inputs.watershed || {})[name])).length : 0;
+  const changed = origin && isObject(origin.values) ? sentFields(inputs).filter((name) => changedFrom(origin, name, (inputs.watershed || {})[name])).length : 0;
   return t(texts.export.hydrogram, {
     fields: plural(fields.length, hydrogramTexts.watershed.fieldForms),
     changed: changed ? t(texts.export.changed, { count: changed }) : "",

@@ -1,17 +1,23 @@
-"""„Hydrogram zlewni” (plan D13, D14, D16, slice S3) in Chromium.
+"""„Hydrogram zlewni” (plan D13, D14, D16, slice S3; the author's three steps), browser.
 
-Against the real server of ``gui_server``: a first visit opens the shipped Kamiennik
-example and shows the mockup's result, „60,21 m³/s” at „6:20” and „1 046 213 m³”, as
-the server's ``hydrograph generate`` computed it. Switching the tc method, AMC and the
-unit hydrograph model reproduces the mockup's runs (Nash by Lutz through ``uh nash``);
-an invalid CN stands on its field and keeps the last result, marked; ten fast edits
-send at most two runs and show the last; the command line, run by the CLI, gives the
-same peak; errors of the server stand on their field or above the steps. A watershed
-file is read in the browser and its changed fields are marked; the hydrograph exports
-as the CSV the ``route`` commands read, the envelope and a PNG; the inputs survive a
-reload until „Wyczyść”; Kalkulatory's route sets the tc method; Statystyka's
+Against the real server of ``gui_server``: a first visit shows the three steps empty and
+runs nothing until a model is chosen; the guide's worked example (Kamiennik at
+Świerzawa, ``tests/fixtures/kamiennik.json``, stored with ``seed_hydrogram``) shows the
+mockup's result, „60,21 m³/s” at „6:20” and „1 046 213 m³”, as the server's ``hydrograph
+generate`` computed it. Switching the tc method, AMC and the unit hydrograph model
+reproduces the mockup's runs (Nash by Lutz through ``uh nash``); only the chosen model's
+fields exist and are sent; choosing a model marks the fields it lacks, a field no model
+reads may stay empty, and a value outside its typical range is a warning on its field
+(from Hydrolog's notice) while the run goes on. An invalid CN stands on its field and
+keeps the last result, marked; ten fast edits send at most two runs and show the last;
+the command line, run by the CLI, gives the same peak; errors stand on their field
+before the run or from the server, or above the steps. A watershed file is read in the
+browser and its changed fields are marked; the hydrograph exports as the CSV the
+``route`` commands read, the envelope and a PNG; the inputs survive a reload until
+„Wyczyść”, which empties the steps; Kalkulatory's route sets the tc method; Statystyka's
 reference is drawn; a phone in the dark theme recomputes through the sheets. The pure
-modules (the live channel, the state, the CSV) are tested in the page.
+modules (the live channel, the state and what a model needs, the CSV) are tested in the
+page, and the ranges of the explanations against Hydrolog's thresholds.
 """
 
 import json
@@ -21,17 +27,24 @@ import shlex
 import struct
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 from playwright.sync_api import Locator, Page, Request, expect
 
 from hydrolog.catalog import format_command, run_command
-from tests.e2e.conftest import Tab
+from hydrolog.runoff import clark_iuh, nash_iuh, scs_cn, snyder_uh
+from hydrolog.runoff.generator import TIMESTEP_SHARE_OF_TP
+from hydrolog.time import concentration
+from tests.e2e.conftest import KAMIENNIK as EXAMPLE
+from tests.e2e.conftest import (
+    Tab,
+    input_text,
+    kamiennik_inputs,
+    seed_hydrogram,
+)
 
-WEB = Path(__file__).resolve().parents[2] / "src" / "hydrolog" / "gui" / "web"
-EXAMPLE = json.loads((WEB / "examples" / "kamiennik.json").read_text(encoding="utf-8"))
-"""The shipped example: a WatershedParameters JSON."""
 RUN = "/api/run/hydrograph/generate"
 LUTZ = "/api/run/uh/nash"
 BADGE = ".topbar .badge.status"
@@ -40,9 +53,27 @@ LEFT = f"{SECTION} .view-panel.left"
 RIGHT = f"{SECTION} .view-panel.right"
 CENTER = f"{SECTION} .view-center"
 SPACES = re.compile(r"[\s\u00a0\u202f]+")
-# The mockup's options of the Kamiennik run (its CLI line), the example's watershed.
+STEP_ONE = [
+    "name",
+    "area_km2",
+    "perimeter_km",
+    "length_km",
+    "elevation_min_m",
+    "elevation_max_m",
+    "elevation_mean_m",
+    "mean_slope_m_per_m",
+    "channel_length_km",
+    "channel_slope_m_per_m",
+    "cn",
+]
+"""The fields of the watershed in step 1, which a run sends when they hold a value."""
+LUTZ_BLOCK = ["Lc_km", "manning_n", "forest_pct", "urban_pct"]
+"""The watershed fields of Nash by Lutz's block in step 3."""
+SENT = {name: EXAMPLE[name] for name in STEP_ONE}
+"""The watershed of the example as SCS with Kirpich sends it: step 1's fields only."""
+# The mockup's options of the Kamiennik run (its CLI line).
 KAMIENNIK = {
-    "watershed": EXAMPLE,
+    "watershed": SENT,
     "tc_method": "kirpich",
     "amc": "II",
     "hietogram_type": "beta",
@@ -83,6 +114,9 @@ SIDEWAYS = """() => [document.documentElement,
   ...document.querySelectorAll('.view-panel.open .view-panel-body')]
   .filter((element) => element.scrollWidth > element.clientWidth)
   .map((element) => element.className || element.tagName)"""
+STORED = "() => JSON.parse(localStorage.getItem('hydrolog-gui/hydrogram/2'))"
+"""The inputs the page keeps."""
+IDS = "items => items.map((item) => item.id)"
 
 
 def flat(text: str | None) -> str:
@@ -104,8 +138,32 @@ def shows(page: Page, q: str, tp: str, volume: str) -> None:
     expect(page.locator(BADGE)).to_have_text("Wynik aktualny")
 
 
+def shows_peak(page: Page, options: dict[str, Any]) -> dict[str, Any]:
+    """Wait until the tiles show the peak of ``options`` computed here; return it."""
+    result = expected(options)
+    expect(kpi(page, "q")).to_have_text(
+        re.compile(rf"^{comma(result['peak_discharge_m3s'])}\s*m³/s$")
+    )
+    expect(page.locator(BADGE)).to_have_text("Wynik aktualny")
+    return result
+
+
+def run_of(page: Page, **sent: Any) -> Any:
+    """Expect the answer to the run whose options hold ``sent``."""
+    return page.expect_response(
+        lambda answer: (
+            RUN in answer.url
+            and all(
+                (answer.request.post_data_json or {}).get(key) == value
+                for key, value in sent.items()
+            )
+        )
+    )
+
+
 def open_hydrogram(tab: Tab, path: str = "#hydrogram") -> Page:
-    """Open the section on a first visit and wait for the Kamiennik result."""
+    """Open the section with the worked example stored; wait for its result."""
+    seed_hydrogram(tab)
     tab.open(path)
     shows(tab.page, "60,21", "6:20", "1 046 213")
     return tab.page
@@ -130,13 +188,18 @@ class Runs:
 
 
 def field(page: Page, name: str) -> Locator:
-    """Return the text box of the field ``name`` in the panel Dane."""
+    """Return the control of the field ``name`` in the panel Dane."""
     return page.locator(f"#hg-{name}")
 
 
 def message(page: Page, name: str) -> Locator:
-    """Return the message under the field ``name``."""
+    """Return the error under the field ``name``."""
     return page.locator(f'{LEFT} [data-field="{name}"] .err')
+
+
+def warning(page: Page, name: str) -> Locator:
+    """Return the warning under the field ``name``."""
+    return page.locator(f'{LEFT} [data-field="{name}"] .warn')
 
 
 def choose(page: Page, group: str, label: str) -> None:
@@ -171,10 +234,70 @@ def download(page: Page, trigger: Locator) -> tuple[str, bytes]:
     return started.value.suggested_filename, Path(started.value.path()).read_bytes()
 
 
+def typed(*names: str) -> dict[str, str]:
+    """Return the example's fields ``names`` as the page holds them typed."""
+    return {name: input_text(EXAMPLE[name]) for name in names}
+
+
 # --- the first visit -----------------------------------------------------------
 
 
-def test_a_first_visit_shows_the_kamiennik_result_of_the_mockup(tab: Tab) -> None:
+def test_a_first_visit_shows_three_empty_steps_and_runs_nothing(tab: Tab) -> None:
+    # The inputs of the five steps (the version 1 key) are no longer read
+    tab.page.add_init_script(
+        "try { localStorage.setItem('hydrolog-gui/hydrogram/1',"
+        " JSON.stringify({uh_model: 'scs', total_mm: '105', watershed: {cn: '65'}}));"
+        " } catch (error) {}"
+    )
+    runs = Runs(tab.page)
+    tab.open("#hydrogram")
+    page = tab.page
+    steps = page.locator(f"{LEFT} .step > summary")
+    expect(steps.locator(".title")).to_have_text(["Zlewnia", "Hietogram", "Hydrogram"])
+    expect(steps.locator(".meta")).to_have_text(
+        ["brak danych", "brak danych", "wybierz model"]
+    )
+    boxes = page.locator(f'{LEFT} input[type="text"]')
+    expect(boxes).to_have_count(len(STEP_ONE) + 5)  # total, alpha, beta, Δt, λ
+    assert set(boxes.evaluate_all("items => items.map((item) => item.value)")) == {""}
+    expect(field(page, "pmaxtp_probability_pct")).to_have_value("")
+    expect(field(page, "pmaxtp_duration_min")).to_have_value("")
+    expect(field(page, "timestep_min")).to_have_attribute("placeholder", "5")
+    models = page.locator('[aria-labelledby="hg-uh-label"] [role="radio"]')
+    expect(models).to_have_text(["SCS", "Nash", "Clark", "Snyder"])
+    expect(models.and_(page.locator('[aria-checked="true"]'))).to_have_count(0)
+    for name in ["tc_method", "snyder_ct", "nash_n", "clark_r_tc_ratio", "Lc_km"]:
+        expect(field(page, name)).to_have_count(0)
+    expect(page.locator(f'{LEFT} [aria-invalid="true"]')).to_have_count(0)
+    expect(page.locator(f"{LEFT} .frow .err, {LEFT} .frow .warn")).to_have_count(0)
+    expect(page.locator(f"{LEFT} .frow .need")).to_have_count(0)
+    expect(page.locator(f'{LEFT} [data-summary="none"]')).to_have_text(
+        re.compile(r"^Wybierz model: dopiero wtedy")
+    )
+    expect(page.locator(f"{LEFT} .calc-state")).to_have_text("Wybierz model w kroku 3")
+    expect(page.locator(BADGE)).to_be_hidden()
+    expect(page.locator(".crumb-context")).to_have_count(0)
+    expect(page.locator(RIGHT)).to_contain_text("Wynik pojawi się po pierwszym")
+
+    # A value that is not a number is an error at once, model or not; nothing runs
+    field(page, "area_km2").fill("abc")
+    expect(message(page, "area_km2")).to_have_text(re.compile(r" · type$"))
+    expect(field(page, "area_km2")).to_have_attribute("aria-invalid", "true")
+    expect(page.locator(BADGE)).to_have_text("Dane niepełne: area_km2")
+    field(page, "area_km2").fill("")
+    expect(page.locator(f'{LEFT} [aria-invalid="true"]')).to_have_count(0)
+    page.wait_for_timeout(800)
+    assert runs.generate == [] and runs.lutz == []
+    assert page.evaluate(STORED)["uh_model"] is None
+    assert (
+        page.evaluate(
+            "async () => (await import('./src/store.js')).getStore('watershed')"
+        )
+        is None
+    )
+
+
+def test_the_worked_example_shows_the_result_of_the_mockup(tab: Tab) -> None:
     runs = Runs(tab.page)
     with tab.page.expect_response(lambda answer: RUN in answer.url) as answered:
         page = open_hydrogram(tab)
@@ -191,15 +314,28 @@ def test_a_first_visit_shows_the_kamiennik_result_of_the_mockup(tab: Tab) -> Non
     expect(page.locator(f"{LEFT} .calc-state")).to_have_text(
         "Wynik aktualny · liczy się sam po każdej zmianie"
     )
-    steps = page.locator(f"{LEFT} .step > summary .meta")
-    expect(steps).to_have_text(
+    expect(page.locator(f"{LEFT} .step > summary .meta")).to_have_text(
         [
-            "37,22 km² · przykład",
-            "162,9 min · Kirpich",
+            "37,22 km² · kamiennik.json",
             "105,0 mm · 12 h · p 1%",
-            "CN 65 · AMC II",
-            "SCS",
+            "SCS · 162,9 min · Kirpich",
         ]
+    )
+    # Step 1 says which of its fields the model reads; step 3 has what it needs
+    needs = page.locator(f"{LEFT} .frow .need")
+    expect(needs).to_have_text(
+        [
+            "wymagane dla modelu SCS",
+            "wymagane dla strat SCS-CN",
+            "wymagane dla metody Kirpicha",
+            "wymagane dla metody Kirpicha",
+        ]
+    )
+    assert needs.evaluate_all(
+        "items => items.map((item) => item.closest('.frow').dataset.field)"
+    ) == ["area_km2", "cn", "channel_length_km", "channel_slope_m_per_m"]
+    expect(page.locator(f'{LEFT} [data-summary="ok"]')).to_have_text(
+        "Model ma wszystkie potrzebne dane."
     )
     expect(page.locator(f'{LEFT} [data-chips="losses"] .chip')).to_have_text(
         ["CN 65", "S = 136,8 mm", "Ia = λ·S = 27,4 mm"]
@@ -238,12 +374,11 @@ def test_a_first_visit_shows_the_kamiennik_result_of_the_mockup(tab: Tab) -> Non
     expect(rows).to_have_count(len(result["times_min"]))
     expect(rows.nth(1).locator("td").nth(1)).to_have_text("0,30")
 
-    # Kalkulatory reads the watershed from the store
+    # Kalkulatory reads the whole watershed from the store
     stored = page.evaluate(
         "async () => (await import('./src/store.js')).getStore('watershed')"
     )
-    assert stored == {key: EXAMPLE[key] for key in stored}
-    assert set(stored) == set(EXAMPLE)
+    assert stored == EXAMPLE
 
 
 # --- the mockup's runs ---------------------------------------------------------
@@ -268,9 +403,27 @@ def test_the_tc_method_amc_and_model_reproduce_the_mockups_runs(tab: Tab) -> Non
     check("scs", "giandotti", "II")
     notices = page.locator(f'{RIGHT} .notes li[data-code="outside_typical_range"]')
     expect(notices).to_have_text(re.compile(r"giandotti: area_km2 = 37,22 poza"))
+    expect(warning(page, "area_km2")).to_have_text(
+        "Poza typowym zakresem od 100 do 10\u00a0000 (giandotti)"
+        " · outside_typical_range"
+    )
     method.select_option("kerby_kirpich")
-    check("scs", "kerby_kirpich", "II")
-    expect(notices).to_have_count(2)
+    sent = check("scs", "kerby_kirpich", "II")
+    assert sent["watershed"] == {
+        **SENT,
+        **{
+            name: EXAMPLE[name]
+            for name in ["overland_length_km", "overland_slope_m_per_m", "retardance"]
+        },
+    }
+    # The overland slope leaves Kerby's range: one notice, on its field
+    expect(notices).to_have_text(
+        [re.compile(r"^.*kerby_kirpich: overland_slope_m_per_m = 0,082 poza")]
+    )
+    expect(warning(page, "overland_slope_m_per_m")).to_have_text(
+        "Poza typowym zakresem od 0,001 do 0,01 (kerby_kirpich) · outside_typical_range"
+    )
+    expect(warning(page, "area_km2")).to_have_count(0)
     method.select_option("kirpich")
     choose(page, "hg-amc-label", "III")
     check("scs", "kirpich", "III")
@@ -287,6 +440,7 @@ def test_the_tc_method_amc_and_model_reproduce_the_mockups_runs(tab: Tab) -> Non
     choose(page, "hg-uh-label", "Nash")
     sent = check("nash", None, "II")
     assert runs.lutz[-1] == LUTZ_OPTIONS
+    assert sent["watershed"] == {**SENT, **{name: EXAMPLE[name] for name in LUTZ_BLOCK}}
     parameters = run_command("uh nash", LUTZ_OPTIONS).to_dict()["result"]["parameters"]
     assert (sent["nash_n"], sent["nash_k_min"]) == (
         parameters["n"],
@@ -303,6 +457,7 @@ def test_the_tc_method_amc_and_model_reproduce_the_mockups_runs(tab: Tab) -> Non
     given = asked.value.post_data_json
     assert isinstance(given, dict)
     assert (given["nash_n"], given["nash_k_min"]) == (3.631, 82.35)
+    assert given["watershed"] == SENT
     shows(page, "40,28", "8:50", "1 046 544")
 
     choose(page, "hg-uh-label", "Snyder")
@@ -313,6 +468,398 @@ def test_the_tc_method_amc_and_model_reproduce_the_mockups_runs(tab: Tab) -> Non
     )
     choose(page, "hg-uh-label", "SCS")
     check("scs", "kirpich", "II")
+
+
+# --- what the chosen model needs -------------------------------------------------
+
+
+def test_only_the_chosen_models_fields_exist_and_are_sent(tab: Tab) -> None:
+    page = open_hydrogram(tab)
+    others = [
+        "snyder_ct",
+        "snyder_cp",
+        "snyder_length_km",
+        "nash_n",
+        "nash_k_min",
+        "clark_r_min",
+        "clark_r_tc_ratio",
+        *LUTZ_BLOCK,
+        "overland_length_km",
+        "overland_slope_m_per_m",
+        "runoff_coeff",
+        "retardance",
+    ]
+    for name in others:
+        expect(field(page, name)).to_have_count(0)
+
+    # Snyder's block: Lc of the watershed and its coefficients, no tc
+    choose(page, "hg-uh-label", "Snyder")
+    expect(field(page, "tc_method")).to_have_count(0)
+    expect(field(page, "Lc_km")).to_have_value("6,76")
+    with page.expect_request(
+        lambda request: (
+            RUN in request.url
+            and (request.post_data_json or {}).get("snyder_cp") == 0.7
+        )
+    ):
+        field(page, "snyder_ct").fill("1,4")
+        field(page, "snyder_cp").fill("0,7")
+    expect(page.locator(BADGE)).to_have_text("Wynik aktualny")
+
+    # Back to SCS: Ct and Cp are kept but not sent, nor is Lc
+    with page.expect_request(lambda request: RUN in request.url) as asked:
+        choose(page, "hg-uh-label", "SCS")
+    sent = asked.value.post_data_json
+    assert isinstance(sent, dict)
+    assert sent == KAMIENNIK
+    shows(page, "60,21", "6:20", "1 046 213")
+    for name in others:
+        expect(field(page, name)).to_have_count(0)
+    line = page.locator(f"{RIGHT} .cli pre")
+    expect(line).to_contain_text("--uh-model scs")
+    assert not re.search(r"snyder|nash|clark|Lc_km|manning", line.inner_text())
+    stored = page.evaluate(STORED)
+    assert (stored["snyder_ct"], stored["snyder_cp"]) == ("1,4", "0,7")
+
+
+def test_choosing_a_model_marks_the_fields_it_lacks(tab: Tab) -> None:
+    basic = typed("area_km2", "cn", "channel_length_km", "channel_slope_m_per_m")
+    seed_hydrogram(tab, kamiennik_inputs(watershed=basic, origin=None, uh_model=None))
+    runs = Runs(tab.page)
+    tab.open("#hydrogram")
+    page = tab.page
+    expect(page.locator(f"{LEFT} .calc-state")).to_have_text("Wybierz model w kroku 3")
+    invalid = page.locator(f'{LEFT} [aria-invalid="true"]')
+    expect(invalid).to_have_count(0)
+
+    # Nash by Lutz needs Lc and Manning's n, which the watershed lacks: exactly those
+    choose(page, "hg-uh-label", "Nash")
+    expect(invalid).to_have_count(2)
+    assert invalid.evaluate_all(IDS) == ["hg-Lc_km", "hg-manning_n"]
+    expect(message(page, "Lc_km")).to_have_text(
+        "Podaj wartość: potrzebna dla metody Lutza (uh nash) · required"
+    )
+    expect(page.locator(BADGE)).to_have_text("Dane niepełne: Lc_km")
+    expect(page.locator(f"{LEFT} .calc-state")).to_have_text(
+        "Dane niepełne: Długość do środka ciężkości"
+    )
+    missing = page.locator(f'{LEFT} [data-summary="missing"]')
+    expect(missing).to_have_text(
+        "Brakuje: Długość do środka ciężkości (krok 3), Szorstkość koryta (krok 3)"
+    )
+    missing.get_by_role("button", name="Szorstkość koryta").click()
+    expect(field(page, "manning_n")).to_be_focused()
+    # The fields of step 1 that Lutz reads say so
+    expect(page.locator(f'{LEFT} [data-field="channel_length_km"] .need')).to_have_text(
+        "wymagane dla metody Lutza (uh nash)"
+    )
+    # Lutz refuses a centroid farther than the channel is long: said before any run
+    field(page, "Lc_km").fill("20")
+    expect(message(page, "Lc_km")).to_have_text(
+        "Nie może być większa od długości cieku głównego (14,78 km): "
+        "tego wymaga metoda Lutza · maximum"
+    )
+    page.wait_for_timeout(600)
+    assert runs.generate == [] and runs.lutz == []
+
+    field(page, "Lc_km").fill("6,76")
+    field(page, "manning_n").fill("0,035")
+    expect(invalid).to_have_count(0)
+    expect(page.locator(BADGE)).to_have_text("Wynik aktualny")
+    assert runs.lutz[-1] == {
+        key: value
+        for key, value in LUTZ_OPTIONS.items()
+        if key not in {"lutz_forest_pct", "lutz_urban_pct"}
+    }
+    shows_peak(page, runs.generate[-1])
+
+    # SCS by Kirpich without a slope of the channel: the other ways are named
+    choose(page, "hg-uh-label", "SCS")
+    field(page, "channel_slope_m_per_m").fill("")
+    expect(message(page, "channel_slope_m_per_m")).to_have_text(
+        "Podaj wartość: potrzebna dla metody Kirpicha (albo „Średni spadek zlewni”, "
+        "albo „Wysokość min.” i „Wysokość maks.”) · required"
+    )
+    with page.expect_request(lambda request: RUN in request.url) as asked:
+        field(page, "mean_slope_m_per_m").fill("0,082")
+    sent = asked.value.post_data_json
+    assert isinstance(sent, dict)
+    assert "channel_slope_m_per_m" not in sent["watershed"]
+    expect(
+        page.locator(f'{LEFT} [data-field="mean_slope_m_per_m"] .need')
+    ).to_have_text("wymagane dla metody Kirpicha")
+    shows_peak(page, sent)
+
+
+def test_fields_no_model_reads_may_stay_empty(tab: Tab) -> None:
+    basic = {
+        "name": "Kamiennik — Świerzawa",
+        **typed("area_km2", "cn", "channel_length_km", "channel_slope_m_per_m"),
+    }
+    seed_hydrogram(tab, kamiennik_inputs(watershed=basic, origin=None))
+    runs = Runs(tab.page)
+    tab.open("#hydrogram")
+    page = tab.page
+    # Kirpich reads the channel alone: the mockup's result without the other fields
+    shows(page, "60,21", "6:20", "1 046 213")
+    assert runs.generate[-1]["watershed"] == {
+        "name": "Kamiennik — Świerzawa",
+        "area_km2": 37.22,
+        "channel_length_km": 14.78,
+        "channel_slope_m_per_m": 0.0142,
+        "cn": 65,
+    }
+    expect(page.locator(f'{LEFT} [aria-invalid="true"]')).to_have_count(0)
+
+    # The hand-off carries a full watershed: offered once step 1 has one
+    buttons = page.locator(f'{RIGHT} [data-handoff-export="hydrogram"] button')
+    expect(buttons).to_have_count(2)
+    for index in range(2):
+        expect(buttons.nth(index)).to_be_disabled()
+    incomplete = page.locator(f"{RIGHT} [data-handoff-incomplete]")
+    expect(incomplete).to_have_text(
+        "Przekazanie niesie pełną zlewnię: uzupełnij w kroku 1 pola „Obwód”, "
+        "„Długość zlewni”, „Wysokość min.”, „Wysokość maks.”."
+    )
+
+    # Every model runs without them: Clark, Nash with n and K, Snyder with Lc
+    with run_of(page, uh_model="clark") as answered:
+        choose(page, "hg-uh-label", "Clark")
+    shows_peak(page, answered.value.request.post_data_json)
+    choose(page, "hg-uh-label", "Nash")
+    choose(page, "hg-nash-source-label", "Podane n i K")
+    with run_of(page, uh_model="nash", nash_k_min=82) as answered:
+        field(page, "nash_n").fill("3,6")
+        field(page, "nash_k_min").fill("82")
+    shows_peak(page, answered.value.request.post_data_json)
+    choose(page, "hg-uh-label", "Snyder")
+    expect(message(page, "Lc_km")).to_have_text(
+        "Podaj wartość: potrzebna dla modelu Snydera (albo „Do środka ciężkości”) "
+        "· required"
+    )
+    with run_of(page, uh_model="snyder", snyder_centroid_length_km=6.76) as answered:
+        field(page, "Lc_km").fill("6,76")
+    shows_peak(page, answered.value.request.post_data_json)
+    allowed = {"name", "area_km2", "cn", "channel_length_km", "channel_slope_m_per_m"}
+    assert all(set(sent["watershed"]) <= allowed | {"Lc_km"} for sent in runs.generate)
+
+    # Step 1 complete: the hand-off is offered
+    for name in ["perimeter_km", "length_km", "elevation_min_m", "elevation_max_m"]:
+        field(page, name).fill(input_text(EXAMPLE[name]))
+    expect(page.locator(BADGE)).to_have_text("Wynik aktualny")
+    expect(buttons.first).to_be_enabled()
+    expect(incomplete).to_have_count(0)
+
+
+def test_a_value_outside_its_typical_range_is_a_warning_and_runs(tab: Tab) -> None:
+    page = open_hydrogram(tab)
+    slope = field(page, "channel_slope_m_per_m")
+    with page.expect_response(lambda answer: RUN in answer.url) as answered:
+        slope.fill("0,2")
+    envelope = answered.value.json()
+    notice = next(
+        item for item in envelope["notices"] if item["code"] == "outside_typical_range"
+    )
+    assert notice["details"]["field"] == "channel_slope_m_per_m"
+    row = page.locator(f'{LEFT} [data-field="channel_slope_m_per_m"]')
+    expect(row).to_have_attribute("data-level", "warning")
+    expect(warning(page, "channel_slope_m_per_m")).to_have_text(
+        "Poza typowym zakresem od 0,002 do 0,15 (kirpich) · outside_typical_range"
+    )
+    expect(slope).to_have_attribute("aria-invalid", "false")
+    # The run went on: the result is current, the notice is in Wyniki too
+    shows_peak(page, {**KAMIENNIK, "watershed": {**SENT, "channel_slope_m_per_m": 0.2}})
+    expect(
+        page.locator(f'{RIGHT} .notes li[data-code="outside_typical_range"]')
+    ).to_have_text(re.compile(r"kirpich: slope_m_per_m = 0,2 poza typowym zakresem"))
+    outside = page.locator(f'{LEFT} [data-summary="warnings"]')
+    expect(outside).to_have_text(
+        "Poza typowym zakresem: Spadek cieku głównego (krok 1)"
+    )
+    expect(page.locator(f'{LEFT} [data-summary="ok"]')).to_have_count(1)
+    outside.get_by_role("button", name="Spadek cieku głównego").click()
+    expect(slope).to_be_focused()
+
+    # Changed, the field drops the run's warning; back in range, none comes
+    slope.fill("0,0142")
+    expect(row.locator(".warn")).to_have_count(0)
+    shows(page, "60,21", "6:20", "1 046 213")
+    expect(row.locator(".warn")).to_have_count(0)
+    expect(outside).to_have_count(0)
+
+    # A coefficient of a model: Snyder's Ct
+    choose(page, "hg-uh-label", "Snyder")
+    field(page, "snyder_ct").fill("2")
+    expect(warning(page, "snyder_ct")).to_have_text(
+        "Poza typowym zakresem od 1,35 do 1,65 (snyder) · outside_typical_range"
+    )
+    expect(page.locator(BADGE)).to_have_text("Wynik aktualny")
+
+
+def test_requirements_follow_the_model_and_the_tc_method(tab: Tab) -> None:
+    tab.open("#polecenia")
+    got = tab.page.evaluate(
+        """async (example) => {
+          const s = await import('./src/sections/hydrogram/state.js');
+          const full = s.readWatershed(example).texts;
+          const pick = (...names) =>
+            Object.fromEntries(names.map((name) => [name, full[name]]));
+          const base = {...s.initialState(), watershed: full};
+          const needs = (patch) => Object.fromEntries(
+            Object.entries(s.requirements({...base, ...patch}).required).map(
+              ([name, need]) => [name, need.or ? [need.purpose, need.or] : need.purpose]
+            ),
+          );
+          const fields = (patch) => s.panelFields({...base, ...patch});
+          return {
+            none: needs({}),
+            kirpich: needs({uh_model: 'scs'}),
+            bare: needs({uh_model: 'scs', watershed: pick('area_km2', 'cn')}),
+            relief: needs({uh_model: 'clark', watershed: pick(
+              'area_km2', 'cn', 'length_km', 'elevation_min_m', 'elevation_max_m')}),
+            nrcs: needs({uh_model: 'scs', tc_method: 'nrcs'}),
+            giandotti: needs({uh_model: 'scs', tc_method: 'giandotti'}),
+            giandottiMax: needs({uh_model: 'scs', tc_method: 'giandotti',
+              watershed: pick('area_km2', 'cn', 'length_km', 'elevation_min_m',
+                'elevation_max_m')}),
+            faa: needs({uh_model: 'scs', tc_method: 'faa'}),
+            kerby: needs({uh_model: 'clark', tc_method: 'kerby', clark_kind: 'r'}),
+            kerbyKirpich: needs({uh_model: 'scs', tc_method: 'kerby_kirpich'}),
+            manual: needs({uh_model: 'clark', tc_manual: true, tc_method: 'faa'}),
+            lutz: needs({uh_model: 'nash', rain_source: 'design'}),
+            given: needs({uh_model: 'nash', nash_source: 'given',
+              rain_source: 'series'}),
+            snyder: needs({uh_model: 'snyder', watershed: pick('area_km2', 'cn')}),
+            snyderTyped: needs({uh_model: 'snyder', snyder_length_km: '12',
+              snyder_centroid_length_km: '5', watershed: pick('area_km2', 'cn')}),
+            fieldsScs: fields({uh_model: 'scs'}),
+            fieldsFaa: fields({uh_model: 'clark', tc_method: 'faa'}),
+            fieldsSnyder: fields({uh_model: 'snyder', rain_source: 'design',
+              hietogram_type: 'triangular'}),
+            sentScs: s.sentFields({...base, uh_model: 'scs'}),
+            sentLutz: s.sentFields({...base, uh_model: 'nash'}),
+          };
+        }""",
+        EXAMPLE,
+    )
+    pmaxtp = {
+        "pmaxtp_probability_pct": "pmaxtp",
+        "pmaxtp_duration_min": "pmaxtp",
+        "total_mm": "pmaxtp",
+    }
+    scs = {"area_km2": "scs", "cn": "losses", **pmaxtp}
+    clark = {"area_km2": "clark", "cn": "losses", **pmaxtp}
+    relief = ["elevation_min_m", "elevation_max_m"]
+    assert got["none"] == {}
+    assert got["kirpich"] == {
+        **scs,
+        "channel_length_km": "kirpich",
+        "channel_slope_m_per_m": "kirpich",
+    }
+    assert got["bare"] == {
+        **scs,
+        "channel_length_km": ["kirpich", ["length_km"]],
+        "channel_slope_m_per_m": ["kirpich", ["mean_slope_m_per_m", relief]],
+    }
+    assert got["relief"] == {
+        **clark,
+        "length_km": "kirpich",
+        "elevation_min_m": "kirpich",
+        "elevation_max_m": "kirpich",
+        "clark_r_tc_ratio": "clark",
+    }
+    assert got["nrcs"] == {
+        **scs,
+        "channel_length_km": "nrcs",
+        "mean_slope_m_per_m": "nrcs",
+    }
+    assert got["giandotti"] == {
+        **scs,
+        "channel_length_km": "giandotti",
+        "elevation_min_m": "giandotti",
+        "elevation_mean_m": "giandotti",
+    }
+    assert got["giandottiMax"] == {
+        **scs,
+        "length_km": "giandotti",
+        "elevation_min_m": "giandotti",
+        "elevation_max_m": "giandotti",
+    }
+    overland = {"overland_length_km": "faa", "overland_slope_m_per_m": "faa"}
+    assert got["faa"] == {**scs, **overland, "runoff_coeff": "faa"}
+    assert got["kerby"] == {
+        **clark,
+        "overland_length_km": "kerby",
+        "overland_slope_m_per_m": "kerby",
+        "retardance": "kerby",
+        "clark_r_min": "clark",
+    }
+    assert got["kerbyKirpich"] == {
+        **scs,
+        "overland_length_km": "kerby_kirpich",
+        "overland_slope_m_per_m": "kerby_kirpich",
+        "retardance": "kerby_kirpich",
+        "channel_length_km": "kerby_kirpich",
+        "channel_slope_m_per_m": "kerby_kirpich",
+    }
+    assert got["manual"] == {**clark, "tc_min": "tc_min", "clark_r_tc_ratio": "clark"}
+    assert got["lutz"] == {
+        "area_km2": "nash",
+        "cn": "losses",
+        "total_mm": "hietogram",
+        "duration_min": "hietogram",
+        "channel_length_km": "lutz",
+        "Lc_km": "lutz",
+        "channel_slope_m_per_m": "lutz",
+        "manning_n": "lutz",
+    }
+    assert got["given"] == {
+        "area_km2": "nash",
+        "cn": "losses",
+        "values": "series",
+        "nash_n": "nash",
+        "nash_k_min": "nash",
+    }
+    assert got["snyder"] == {
+        "area_km2": "snyder",
+        "cn": "losses",
+        **pmaxtp,
+        "channel_length_km": ["snyder", ["snyder_length_km"]],
+        "Lc_km": ["snyder", ["snyder_centroid_length_km"]],
+    }
+    assert got["snyderTyped"] == {"area_km2": "snyder", "cn": "losses", **pmaxtp}
+    rain = ["pmaxtp_probability_pct", "pmaxtp_duration_min", "total_mm"]
+    assert got["fieldsScs"] == [
+        *STEP_ONE[:2],
+        "cn",
+        *STEP_ONE[2:-1],
+        *rain,
+        "alpha",
+        "beta",
+        "timestep_min",
+        "ia_coefficient",
+    ]
+    assert got["fieldsFaa"][-6:] == [
+        "timestep_min",
+        "overland_length_km",
+        "overland_slope_m_per_m",
+        "runoff_coeff",
+        "clark_r_tc_ratio",
+        "ia_coefficient",
+    ]
+    assert got["fieldsSnyder"][-9:] == [
+        "duration_min",
+        "peak_position",
+        "timestep_min",
+        "Lc_km",
+        "snyder_length_km",
+        "snyder_centroid_length_km",
+        "snyder_ct",
+        "snyder_cp",
+        "ia_coefficient",
+    ]
+    assert got["sentScs"] == [*STEP_ONE, "source", "crs"]
+    assert got["sentLutz"] == [*STEP_ONE, *LUTZ_BLOCK, "source", "crs"]
 
 
 # --- live recompute ------------------------------------------------------------
@@ -329,6 +876,9 @@ def test_an_invalid_cn_stands_on_its_field_and_keeps_the_last_result(tab: Tab) -
     expect(page.locator(f"{LEFT} .calc-state")).to_have_text(
         "Dane niepełne: CN dla AMC II"
     )
+    expect(page.locator(f'{LEFT} [data-summary="invalid"]')).to_have_text(
+        "Popraw: CN dla AMC II (krok 1)"
+    )
     stale = page.locator('[data-stale="invalid"]')
     expect(stale).to_have_count(2)  # the centre and the panel Wyniki
     expect(stale.first).to_have_text(
@@ -339,16 +889,18 @@ def test_an_invalid_cn_stands_on_its_field_and_keeps_the_last_result(tab: Tab) -
     assert runs.generate == []  # invalid data run nothing
 
     cn.fill("72")
-    result = expected({**KAMIENNIK, "watershed": {**EXAMPLE, "cn": 72}})
-    expect(kpi(page, "q")).to_have_text(
-        re.compile(rf"^{comma(result['peak_discharge_m3s'])}")
-    )
-    expect(page.locator(BADGE)).to_have_text("Wynik aktualny")
+    shows_peak(page, {**KAMIENNIK, "watershed": {**SENT, "cn": 72}})
     expect(stale).to_have_count(0)
     expect(message(page, "cn")).to_have_count(0)
-    # The changed field is marked against the example, and restored
+    # The changed field is marked against the file it came from, and restored
     mark = page.locator(f'{LEFT} [data-field="cn"] .chg')
-    expect(mark).to_have_text(re.compile(r"zmieniono · przykład: 65"))
+    expect(mark).to_have_text(re.compile(r"zmieniono · kamiennik\.json: 65"))
+    expect(page.locator(f'{LEFT} [data-field="cn"]')).to_have_class(
+        re.compile(r"\bedited\b")
+    )
+    expect(page.locator(f'{LEFT} [data-field="area_km2"]')).not_to_have_class(
+        re.compile(r"\bedited\b")
+    )
     mark.get_by_role("button", name="przywróć").click()
     expect(cn).to_have_value("65")
     shows(page, "60,21", "6:20", "1 046 213")
@@ -370,10 +922,7 @@ def test_ten_fast_edits_send_at_most_two_runs_and_show_the_last(tab: Tab) -> Non
     total.fill("")
     expect(page.locator(BADGE)).to_have_text("Dane niepełne: total_mm")
     total.press_sequentially("100,123456", delay=20)  # ten edits
-    result = expected({**KAMIENNIK, "total_mm": 100.123456})
-    peak = comma(result["peak_discharge_m3s"])
-    expect(kpi(page, "q")).to_have_text(re.compile(rf"^{peak}"))
-    expect(page.locator(BADGE)).to_have_text("Wynik aktualny")
+    shows_peak(page, {**KAMIENNIK, "total_mm": 100.123456})
     page.wait_for_timeout(400)
     assert 1 <= len(runs.generate) <= 2, runs.generate
     assert runs.generate[-1]["total_mm"] == 100.123456
@@ -415,27 +964,59 @@ def test_the_cli_line_run_by_the_cli_gives_the_same_peak(tab: Tab) -> None:
 # --- errors --------------------------------------------------------------------
 
 
-def test_errors_of_the_server_stand_on_their_field_or_above_the_steps(tab: Tab) -> None:
+def test_errors_stand_on_their_field_before_or_after_the_run_or_above(tab: Tab) -> None:
     page = open_hydrogram(tab)
-    # A tc method without the fields it needs: the server names them
-    page.locator(f"{LEFT} details.more > summary").click()
-    field(page, "runoff_coeff").fill("")
-    shows(page, "60,21", "6:20", "1 046 213")
+    # A tc method's field missing: marked at once, nothing runs
     field(page, "tc_method").select_option("faa")
-    for name in ("runoff_coeff",):
-        expect(message(page, name)).to_have_text(
-            "Metoda faa potrzebuje tej wartości · missing_field"
-        )
+    shows(page, "71,57", "4:30", "1 038 431")
+    runs = Runs(page)
+    field(page, "runoff_coeff").fill("")
+    expect(message(page, "runoff_coeff")).to_have_text(
+        "Podaj wartość: potrzebna dla metody FAA · required"
+    )
+    expect(page.locator(BADGE)).to_have_text("Dane niepełne: runoff_coeff")
+    expect(page.locator(f'{LEFT} [data-summary="missing"]')).to_have_text(
+        "Brakuje: Współczynnik spływu (krok 3)"
+    )
+    page.wait_for_timeout(600)
+    assert runs.generate == []
+    field(page, "runoff_coeff").fill("0,25")
+    shows(page, "71,57", "4:30", "1 038 431")
+    field(page, "tc_method").select_option("kirpich")
+    shows(page, "60,21", "6:20", "1 046 213")
+
+    # The highest elevation not above the lowest: an error at once
+    before = len(runs.generate)
+    field(page, "elevation_max_m").fill("200")
+    expect(message(page, "elevation_max_m")).to_have_text(
+        "Musi być większa od wysokości min. (257,3 m n.p.m.) · exclusive_minimum"
+    )
+    page.wait_for_timeout(600)
+    assert len(runs.generate) == before
+    field(page, "elevation_max_m").fill("475,1")
+    shows(page, "60,21", "6:20", "1 046 213")
+
+    # An error of the server on its field: Clark's step above 2R
+    choose(page, "hg-uh-label", "Clark")
+    choose(page, "hg-clark-label", "R [min]")
+    field(page, "clark_r_min").fill("4")
+    expect(message(page, "timestep_min")).to_have_text(
+        re.compile(r" · unstable_timestep$")
+    )
     expect(page.locator(BADGE)).to_have_text("Błąd danych")
     expect(page.locator('[data-stale="error"]').first).to_have_text(
         re.compile(r"^Wynik dla poprzednich danych: Hydrolog nie policzył")
     )
-    field(page, "runoff_coeff").fill("0,25")
-    shows(page, "71,57", "4:30", "1 038 431")
+    expect(page.locator(f'{LEFT} [data-summary="invalid"]')).to_have_text(
+        "Popraw: Krok czasowy (krok 2)"
+    )
+    field(page, "clark_r_min").fill("90")
+    expect(message(page, "timestep_min")).to_have_count(0)
+    shows_peak(page, {**KAMIENNIK, "uh_model": "clark", "clark_r_min": 90})
+    choose(page, "hg-uh-label", "SCS")
+    shows(page, "60,21", "6:20", "1 046 213")
 
     # A library error without an option stands above the steps, in English marked (EN)
-    field(page, "tc_method").select_option("kirpich")
-    shows(page, "60,21", "6:20", "1 046 213")
     choose(page, "hg-rain-source-label", "Hietogram")
     field(page, "duration_min").fill("5")
     above = page.locator(f"{LEFT} [data-form-error]")
@@ -464,14 +1045,12 @@ def test_a_watershed_file_is_read_in_the_browser(tab: Tab, tmp_path: Path) -> No
     expect(page.locator(".toast")).to_have_text("Wczytano zlewnię z potok.json")
     expect(field(page, "name")).to_have_value("Potok testowy")
     expect(field(page, "area_km2")).to_have_value("20,5")
-    expect(field(page, "Lc_km")).to_have_value("")
     source = page.locator(f"{LEFT} .handoff")
     expect(source.locator("strong")).to_have_text("Z pliku: potok.json")
     expect(source.locator(".muted")).to_have_text(re.compile(r"· 18 pól$"))
-    result = expected({**KAMIENNIK, "watershed": own})
-    peak = f"{result['peak_discharge_m3s']:.2f}".replace(".", ",")
-    expect(kpi(page, "q")).to_have_text(re.compile(rf"^{peak}"))
+    shows_peak(page, {**KAMIENNIK, "watershed": {name: own[name] for name in STEP_ONE}})
     expect(page.locator(".crumb-context")).to_have_text("Potok testowy · p 1% · 12 h")
+    assert "Lc_km" not in page.evaluate(STORED)["watershed"]
 
     field(page, "perimeter_km").fill("30")
     mark = page.locator(f'{LEFT} [data-field="perimeter_km"] .chg')
@@ -480,12 +1059,12 @@ def test_a_watershed_file_is_read_in_the_browser(tab: Tab, tmp_path: Path) -> No
     expect(field(page, "perimeter_km")).to_have_value("40,89")
     expect(mark).to_have_count(0)
 
-    # A file that is not a watershed changes nothing
+    # A file without an area is not a watershed and changes nothing
     bad = tmp_path / "zle.json"
-    bad.write_text('{"area_km2": 3}', encoding="utf-8")
+    bad.write_text('{"name": "Bez powierzchni", "cn": 70}', encoding="utf-8")
     page.locator(f'{LEFT} input[type="file"]').set_input_files(str(bad))
     expect(page.locator(".toast")).to_have_text(
-        re.compile(r"^Nie udało się wczytać zlewni z zle\.json: .*perimeter_km")
+        re.compile(r"^Nie udało się wczytać zlewni z zle\.json: .*area_km2")
     )
     expect(field(page, "name")).to_have_value("Potok testowy")
 
@@ -543,47 +1122,70 @@ def test_the_inputs_survive_a_reload_until_cleared(tab: Tab) -> None:
     page = open_hydrogram(tab)
     field(page, "cn").fill("70")
     choose(page, "hg-uh-label", "Clark")
-    result = expected(
-        {
-            **KAMIENNIK,
-            "watershed": {**EXAMPLE, "cn": 70},
-            "uh_model": "clark",
-            "clark_r_tc_ratio": 0.5,
-        }
-    )
-    expect(kpi(page, "q")).to_have_text(
-        re.compile(rf"^{comma(result['peak_discharge_m3s'])}")
-    )
-    stored = page.evaluate(
-        "() => JSON.parse(localStorage.getItem('hydrolog-gui/hydrogram/1'))"
-    )
+    options = {
+        **KAMIENNIK,
+        "watershed": {**SENT, "cn": 70},
+        "uh_model": "clark",
+        "clark_r_tc_ratio": 0.5,
+    }
+    shows_peak(page, options)
+    stored = page.evaluate(STORED)
     assert stored["watershed"]["cn"] == "70" and stored["uh_model"] == "clark"
     assert "envelope" not in json.dumps(stored)  # inputs only, no results
 
     page.reload()
     expect(field(page, "cn")).to_have_value("70")
-    expect(kpi(page, "q")).to_have_text(
-        re.compile(rf"^{comma(result['peak_discharge_m3s'])}")
-    )
+    shows_peak(page, options)
+
+    # „Wyczyść” empties the steps, as on a first visit, and the store's watershed
+    runs = Runs(page)
     page.locator(LEFT).get_by_role("button", name="Wyczyść").click()
-    expect(field(page, "cn")).to_have_value("65")
-    shows(page, "60,21", "6:20", "1 046 213")
+    expect(field(page, "cn")).to_have_value("")
+    expect(field(page, "total_mm")).to_have_value("")
+    expect(
+        page.locator('[aria-labelledby="hg-uh-label"] [aria-checked="true"]')
+    ).to_have_count(0)
+    expect(page.locator(f"{LEFT} .step > summary .meta")).to_have_text(
+        ["brak danych", "brak danych", "wybierz model"]
+    )
+    expect(page.locator(BADGE)).to_be_hidden()
+    expect(page.locator(RIGHT)).to_contain_text("Wynik pojawi się po pierwszym")
+    assert (
+        page.evaluate(
+            "async () => (await import('./src/store.js')).getStore('watershed')"
+        )
+        is None
+    )
+    page.reload()
+    expect(field(page, "area_km2")).to_have_value("")
+    page.wait_for_timeout(600)
+    assert runs.generate == []
 
 
-def test_kalkulatory_sets_the_tc_method_through_the_route(tab: Tab) -> None:
+def test_kalkulatory_sets_the_tc_method_through_the_route(
+    tab: Tab, new_tab: Callable[..., Tab]
+) -> None:
+    seed_hydrogram(tab)
     tab.open("#hydrogram/tc_method/nrcs")
     page = tab.page
     shows(page, *MOCKUP[("scs", "nrcs", "II")])
     expect(field(page, "tc_method")).to_have_value("nrcs")
     expect(page).to_have_url(re.compile(r"#hydrogram$"))
-    stored = page.evaluate(
-        "() => JSON.parse(localStorage.getItem('hydrolog-gui/hydrogram/1'))"
-    )
+    stored = page.evaluate(STORED)
     assert (stored["tc_method"], stored["tc_manual"], stored["uh_model"]) == (
         "nrcs",
         False,
         "scs",
     )
+
+    # Before a model is chosen the method waits for SCS or Clark
+    fresh = new_tab()
+    fresh.open("#hydrogram/tc_method/giandotti")
+    expect(fresh.page).to_have_url(re.compile(r"#hydrogram$"))
+    expect(field(fresh.page, "tc_method")).to_have_count(0)
+    assert fresh.page.evaluate(STORED)["tc_method"] == "giandotti"
+    choose(fresh.page, "hg-uh-label", "SCS")
+    expect(field(fresh.page, "tc_method")).to_have_value("giandotti")
 
 
 def test_a_reference_of_statystyka_is_drawn_on_the_hydrograph(tab: Tab) -> None:
@@ -613,7 +1215,7 @@ def test_the_explanations_check_their_ranges_against_the_watershed(tab: Tab) -> 
     entry = page.evaluate(
         "async () => (await import('./src/labels/info/tc.js')).tcInfo['tc-kirpich']"
     )
-    page.locator(f"{LEFT} [data-step=tc] .info-btn").click()
+    page.locator(f"{LEFT} [data-block=tc] .info-btn").click()
     popover = page.locator(".info-pop")
     expect(popover).to_be_visible()
     expect(popover.locator("#info-pop-title")).to_have_text(entry["title"])
@@ -644,11 +1246,86 @@ def test_the_explanations_check_their_ranges_against_the_watershed(tab: Tab) -> 
     expect(popover.locator("#info-pop-title")).to_have_text(entry["title"])
 
 
+def test_the_ranges_of_the_explanations_are_hydrologs_thresholds(tab: Tab) -> None:
+    # The ranges the explanations and the notes check, said to be Hydrolog's warning
+    # thresholds, are the library's own: the field warnings come from those
+    kirpich = {
+        "channel_length_km": concentration._KIRPICH_LENGTH_RANGE,
+        "channel_slope_m_per_m": concentration._KIRPICH_SLOPE_RANGE,
+    }
+    kerby = {
+        "overland_length_km": concentration._KERBY_LENGTH_RANGE,
+        "overland_slope_m_per_m": concentration._KERBY_SLOPE_RANGE,
+        "retardance": concentration._KERBY_N_RANGE,
+    }
+    thresholds: dict[str, dict[str, tuple[float, float]]] = {
+        "tc-kirpich": kirpich,
+        "tc-nrcs": {
+            "channel_length_km": concentration._NRCS_LENGTH_RANGE,
+            "mean_slope_m_per_m": concentration._NRCS_SLOPE_RANGE,
+            "cn": concentration._NRCS_CN_RANGE,
+        },
+        "tc-giandotti": {
+            "area_km2": concentration._GIANDOTTI_AREA_RANGE,
+            "channel_length_km": concentration._GIANDOTTI_LENGTH_RANGE,
+        },
+        "tc-faa": {
+            "overland_length_km": concentration._FAA_LENGTH_RANGE,
+            "overland_slope_m_per_m": concentration._FAA_SLOPE_RANGE,
+            "runoff_coeff": concentration._FAA_C_RANGE,
+        },
+        "tc-kerby": kerby,
+        "tc-kerby_kirpich": {**kerby, **kirpich},
+        "losses-scs-cn": {"cn": scs_cn._AMC_CN_RANGE},
+        "uh-nash": {
+            "nash_n": nash_iuh._N_RANGE,
+            "nash_k_min": nash_iuh._K_RANGE_MIN,
+        },
+        "uh-clark": {"clark_r_tc_ratio": clark_iuh._R_TC_RANGE},
+        "uh-snyder": {
+            "snyder_ct": snyder_uh._CT_RANGE,
+            "snyder_cp": snyder_uh._CP_RANGE,
+        },
+    }
+    tab.open("#polecenia")
+    got = tab.page.evaluate(
+        """async () => {
+          const {tcInfo} = await import('./src/labels/info/tc.js');
+          const {uhInfo} = await import('./src/labels/info/uh.js');
+          const {lossesInfo} = await import('./src/labels/info/losses.js');
+          const {TIMESTEP_SHARE} = await import('./src/sections/hydrogram/notes.js');
+          const all = {...tcInfo, ...uhInfo, ...lossesInfo};
+          const hydrolog = (range) =>
+            (range.source || '').startsWith('próg ostrzeżenia Hydrologu');
+          const bounds = (range) => [range.option, range.min, range.max];
+          return {
+            share: TIMESTEP_SHARE,
+            ranges: Object.fromEntries(Object.entries(all).map(
+              ([id, entry]) => [id, (entry.ranges || []).filter(hydrolog).map(bounds)],
+            )),
+          };
+        }"""
+    )
+    assert got["share"] == TIMESTEP_SHARE_OF_TP
+    shown = {
+        info: {option: (low, high) for option, low, high in ranges}
+        for info, ranges in got["ranges"].items()
+        if ranges
+    }
+    assert shown == {
+        info: {
+            option: (float(low), float(high)) for option, (low, high) in found.items()
+        }
+        for info, found in thresholds.items()
+    }
+
+
 # --- the phone -----------------------------------------------------------------
 
 
 def test_a_phone_in_the_dark_theme_recomputes_through_the_sheets(new_tab: Any) -> None:
     tab = new_tab(width=390, height=844, theme="dark")
+    seed_hydrogram(tab)
     tab.open("#hydrogram")
     page = tab.page
     page.locator(f"{CENTER} .view-bar").get_by_role("button", name="Dane").click()
@@ -726,7 +1403,7 @@ def test_the_live_channel_debounces_and_applies_only_the_newest(tab: Tab) -> Non
 def test_the_state_gives_the_options_of_the_mockups_calls(tab: Tab) -> None:
     tab.open("#polecenia")
     got = tab.page.evaluate(
-        """async (example) => {
+        """async ([example, stored]) => {
           const s = await import('./src/sections/hydrogram/state.js');
           const doc = await (await fetch('api/commands/hydrograph/generate')).json();
           const schema = await (
@@ -734,9 +1411,18 @@ def test_the_state_gives_the_options_of_the_mockups_calls(tab: Tab) -> None:
           ).json();
           const models = s.inputModels(doc, schema);
           const read = s.readWatershed(example);
-          const base = {...s.initialState(), watershed: read.texts};
+          const base = s.normalize({...stored, watershed: read.texts});
           const variant = (patch) => ({...base, ...patch});
-          const check = (patch) => s.checkInputs(variant(patch), models);
+          const check = (patch, last) => s.checkInputs(variant(patch), models, last);
+          const slope = {
+            level: 'warning', code: 'outside_typical_range', message: '',
+            details: {method: 'kirpich', parameter: 'slope_m_per_m',
+              field: 'channel_slope_m_per_m', value: 0.2,
+              minimum: 0.002, maximum: 0.15},
+          };
+          const steep = variant({
+            watershed: {...read.texts, channel_slope_m_per_m: '0,2'},
+          });
           return {
             kamiennik: s.toOptions(base),
             nash: s.toOptions(variant({uh_model: 'nash'}), {n: 3.5, k_min: 80}),
@@ -758,27 +1444,38 @@ def test_the_state_gives_the_options_of_the_mockups_calls(tab: Tab) -> None:
             ok: check({}),
             cn: check({watershed: {...read.texts, cn: '150'}}),
             area: check({watershed: {...read.texts, area_km2: ''}}),
+            noModel: check({
+              uh_model: null, total_mm: '', watershed: {area_km2: 'abc'},
+            }),
             manualEmpty: check({tc_manual: true}),
             lutzMissing: check({
               uh_model: 'nash', watershed: {...read.texts, Lc_km: ''},
             }),
             seriesBad: check({rain_source: 'series', values: '1; x'}),
-            missing: s.readWatershed({name: 'x', area_km2: 1}).missing,
+            warned: s.checkInputs(steep, models, {inputs: steep, notices: [slope]}),
+            changed: check({}, {inputs: steep, notices: [slope]}),
+            otherModel: s.checkInputs({...steep, uh_model: 'clark'}, models,
+              {inputs: steep, notices: [slope]}),
+            missing: s.readWatershed({name: 'x', cn: 70}).missing,
+            areaOnly: s.readWatershed({area_km2: 3}).texts,
             wrapped: s.readWatershed({watershed: example}).values.area_km2,
           };
         }""",
-        EXAMPLE,
+        [EXAMPLE, kamiennik_inputs()],
     )
     assert got["kamiennik"] == KAMIENNIK
     assert got["nash"] == {
         **{key: KAMIENNIK[key] for key in KAMIENNIK if key != "tc_method"},
+        "watershed": {**SENT, **{name: EXAMPLE[name] for name in LUTZ_BLOCK}},
         "uh_model": "nash",
         "nash_n": 3.5,
         "nash_k_min": 80,
     }
     assert got["lutz"] == LUTZ_OPTIONS
     assert (got["given"]["nash_n"], got["given"]["nash_k_min"]) == (3.6, 82)
+    assert got["given"]["watershed"] == SENT
     assert "tc_method" not in got["snyder"]
+    assert got["snyder"]["watershed"] == {**SENT, "Lc_km": 6.76}
     assert {
         key: got["snyder"][key] for key in got["snyder"] if key.startswith("snyder")
     } == {
@@ -807,20 +1504,32 @@ def test_the_state_gives_the_options_of_the_mockups_calls(tab: Tab) -> None:
         "triangle",
     ):
         assert expected(got[name])["peak_discharge_m3s"] > 0, name
-    assert got["ok"] == {}
-    assert got["cn"] == {"cn": "Najwyżej 100 (podano 150) · maximum"}
-    assert got["area"] == {"area_km2": "Podaj wartość: opcja wymagana · required"}
-    assert got["manualEmpty"] == {
+    assert got["ok"] == {"errors": {}, "warnings": {}}
+    assert got["cn"]["errors"] == {"cn": "Najwyżej 100 (podano 150) · maximum"}
+    assert got["area"]["errors"] == {
+        "area_km2": "Podaj wartość: potrzebna dla modelu SCS · required"
+    }
+    assert list(got["noModel"]["errors"]) == ["area_km2"]  # a type, nothing required
+    assert got["noModel"]["errors"]["area_km2"].endswith(" · type")
+    assert got["manualEmpty"]["errors"] == {
         "tc_min": "Podaj wartość: potrzebna dla tc podanego ręcznie · required"
     }
-    assert got["lutzMissing"] == {
+    assert got["lutzMissing"]["errors"] == {
         "Lc_km": "Podaj wartość: potrzebna dla metody Lutza (uh nash) · required"
     }
-    assert list(got["seriesBad"]) == ["values"]
-    assert got["missing"] == [
-        "perimeter_km",
-        "length_km",
-        "elevation_min_m",
-        "elevation_max_m",
-    ]
+    assert list(got["seriesBad"]["errors"]) == ["values"]
+    # A run's notice stands on its field while the field and the setting are the run's
+    assert got["warned"] == {
+        "errors": {},
+        "warnings": {
+            "channel_slope_m_per_m": (
+                "Poza typowym zakresem od 0,002 do 0,15 (kirpich)"
+                " · outside_typical_range"
+            )
+        },
+    }
+    assert got["changed"]["warnings"] == {}
+    assert got["otherModel"]["warnings"] == {}
+    assert got["missing"] == ["area_km2"]
+    assert got["areaOnly"] == {"area_km2": "3"}
     assert got["wrapped"] == 37.22

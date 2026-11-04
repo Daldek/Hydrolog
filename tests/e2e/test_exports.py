@@ -27,10 +27,10 @@ from playwright.sync_api import Locator, Page, expect
 import hydrolog
 from hydrolog.catalog import run_command
 from hydrolog.testing import example_network_document
-from tests.e2e.conftest import Tab
+from tests.e2e.conftest import KAMIENNIK as EXAMPLE
+from tests.e2e.conftest import Tab, kamiennik_inputs, seed_hydrogram
 
 ROOT = Path(__file__).resolve().parents[2]
-WEB = ROOT / "src" / "hydrolog" / "gui" / "web"
 HANDOFF: dict[str, Any] = json.loads(
     (ROOT / "schemas" / "nogat" / "handoff-1.schema.json").read_text(encoding="utf-8")
 )
@@ -42,7 +42,23 @@ NETWORK: dict[str, Any] = json.loads(
 ENVELOPE_CHECK = Draft202012Validator(HANDOFF)
 NETWORK_CHECK = Draft202012Validator(NETWORK)
 D15: dict[str, Any] = HANDOFF["examples"][0]
-EXAMPLE = json.loads((WEB / "examples" / "kamiennik.json").read_text(encoding="utf-8"))
+SENT = {
+    name: EXAMPLE[name]
+    for name in [
+        "name",
+        "area_km2",
+        "perimeter_km",
+        "length_km",
+        "elevation_min_m",
+        "elevation_max_m",
+        "elevation_mean_m",
+        "mean_slope_m_per_m",
+        "channel_length_km",
+        "channel_slope_m_per_m",
+        "cn",
+    ]
+}
+"""The example's watershed as SCS with Kirpich sends it: the fields of step 1."""
 RUN = "/api/run/hydrograph/generate"
 REPORT = "/api/run/report/generate"
 BADGE = ".topbar .badge.status"
@@ -136,7 +152,8 @@ def shows(page: Page, q: str, tp: str, volume: str) -> None:
 
 
 def open_hydrogram(tab: Tab) -> Page:
-    """Open Hydrogram zlewni on a first visit and wait for the Kamiennik result."""
+    """Open Hydrogram zlewni with the guide's worked example; wait for its result."""
+    seed_hydrogram(tab)
     tab.open("#hydrogram")
     shows(tab.page, "60,21", "6:20", "1 046 213")
     return tab.page
@@ -242,7 +259,7 @@ def test_a_handoff_of_hydrogram_validates_reopens_and_round_trips(
     assert doc["subject"] == "Kamiennik — Świerzawa"
     assert doc["provenance"] == {
         "rainfall": {"source": "pmaxtp", "probability_percent": 1, "duration_min": 720},
-        "watershed": {"source": "hydrolog", "file": "examples/kamiennik.json"},
+        "watershed": {"source": "file", "file": "kamiennik.json"},
     }
     assert doc["result"] == {
         "command": "hydrograph generate",
@@ -256,7 +273,7 @@ def test_a_handoff_of_hydrogram_validates_reopens_and_round_trips(
         {
             "id": "Z1",
             "type": "subcatchment",
-            "watershed": EXAMPLE,
+            "watershed": SENT,
             "runoff": {
                 "model": "curve-number",
                 "tc_method": "kirpich",
@@ -302,7 +319,6 @@ def test_a_handoff_of_hydrogram_validates_reopens_and_round_trips(
         "area_km2": "37,22",
         "channel_length_km": "14,78",
         "channel_slope_m_per_m": "0,0142",
-        "Lc_km": "6,76",
         "cn": "65",
     }.items():
         expect(page.locator(f"#hg-{field}")).to_have_value(value)
@@ -334,15 +350,18 @@ def test_nogats_example_opens_from_the_clipboard_with_its_peak(tab: Tab) -> None
     page = open_hydrogram(tab)
     page.evaluate("(text) => navigator.clipboard.writeText(text)", json.dumps(D15))
     load_menu(page, HG)
-    with page.expect_request(
-        lambda request: (
-            RUN in request.url
-            and "Lc_km" not in (request.post_data_json or {})["watershed"]
-        )
-    ) as sent:
-        page.get_by_role("menuitem").filter(has_text="Wklej ze schowka").click()
+    page.get_by_role("menuitem").filter(has_text="Wklej ze schowka").click()
+    expect(page.locator(".toast")).to_contain_text("Wczytano przekazanie")
+    # The example's data are the worked example's step 1 and storm: the same run
+    sent = page.evaluate(
+        """async () => {
+          const s = await import('./src/sections/hydrogram/state.js');
+          const stored = localStorage.getItem('hydrolog-gui/hydrogram/2');
+          return s.toOptions(s.normalize(JSON.parse(stored)));
+        }"""
+    )
     node = D15["payload"]["nodes"][0]
-    assert sent.value.post_data_json == {
+    assert sent == {
         "watershed": {"name": "Kamiennik — Świerzawa", **node["watershed"]},
         "amc": "II",
         "tc_method": "kirpich",
@@ -364,7 +383,7 @@ def test_nogats_example_opens_from_the_clipboard_with_its_peak(tab: Tab) -> None
         "2 lis 2026, 11:15 · 11 pól · nogat-handoff/1"
     )
     expect(page.locator(f"{left} #hg-area_km2")).to_have_value("37,22")
-    expect(page.locator(f"{left} #hg-Lc_km")).to_have_value("")
+    expect(page.locator(f"{left} #hg-Lc_km")).to_have_count(0)
     expect(page.locator(".crumbs .crumb-context")).to_have_text(
         "Kamiennik — Świerzawa · p 1% · 12 h"
     )
@@ -533,7 +552,7 @@ def test_a_refused_handoff_says_why_and_changes_nothing(tab: Tab) -> None:
     )
     expect(
         page.locator(f"{HG} .view-panel.left .handoff[data-origin]")
-    ).to_have_attribute("data-origin", "przykład")
+    ).to_have_attribute("data-origin", "kamiennik.json")
     expect(page.locator("#hg-cn")).to_have_value("65")
     assert runs == []
     problems.get_by_role("button", name="Zamknij").click()
@@ -855,13 +874,13 @@ def test_the_mapping_computes_as_hydrograph_generate_for_every_setting(
         {"ia_coefficient": "0,1", "timestep_min": ""},
     ]
     mapped = page.evaluate(
-        """async ([example, settings]) => {
+        """async ([example, settings, stored]) => {
           const state = await import('./src/sections/hydrogram/state.js');
           const mapping = await import('./src/handoff/mapping.js');
           const { buildHandoff } = await import('./src/handoff/handoff.js');
           const watershed = state.readWatershed(example).texts;
           return settings.map((setting) => {
-            const start = { ...state.initialState(), watershed, ...setting };
+            const start = { ...stored, watershed, ...setting };
             const inputs = state.normalize(start);
             const options = state.toOptions(inputs);
             const payload = mapping.hydrogramPayload(options, 'Kamiennik');
@@ -873,7 +892,7 @@ def test_the_mapping_computes_as_hydrograph_generate_for_every_setting(
             return { options, payload, back: state.toOptions(opened) };
           });
         }""",
-        [EXAMPLE, settings],
+        [EXAMPLE, settings, kamiennik_inputs()],
     )
     for setting, item in zip(settings, mapped, strict=True):
         options, payload = item["options"], item["payload"]
@@ -894,22 +913,22 @@ def test_the_mapping_computes_as_hydrograph_generate_for_every_setting(
     # Nash by Lutz: n and K of `uh nash` travel with the node, Lutz in the provenance
     nash = {"uh_model": "nash"}
     lutz = page.evaluate(
-        """async ([example, setting]) => {
+        """async ([example, setting, stored]) => {
           const state = await import('./src/sections/hydrogram/state.js');
           const watershed = state.readWatershed(example).texts;
-          const start = { ...state.initialState(), watershed, ...setting };
+          const start = { ...stored, watershed, ...setting };
           return state.lutzOptions(state.normalize(start));
         }""",
-        [EXAMPLE, nash],
+        [EXAMPLE, nash, kamiennik_inputs()],
     )
     parameters = run_command("uh nash", lutz).to_dict()["result"]["parameters"]
     item = page.evaluate(
-        """async ([example, setting, parameters]) => {
+        """async ([example, setting, parameters, stored]) => {
           const state = await import('./src/sections/hydrogram/state.js');
           const mapping = await import('./src/handoff/mapping.js');
           const { buildHandoff } = await import('./src/handoff/handoff.js');
           const watershed = state.readWatershed(example).texts;
-          const start = { ...state.initialState(), watershed, ...setting };
+          const start = { ...stored, watershed, ...setting };
           const inputs = state.normalize(start);
           const options = state.toOptions(inputs, parameters);
           const provenance = mapping.hydrogramProvenance(inputs);
@@ -920,7 +939,7 @@ def test_the_mapping_computes_as_hydrograph_generate_for_every_setting(
           const source = mapping.hydrogramInputs(doc).nash_source;
           return { options, provenance, payload, source };
         }""",
-        [EXAMPLE, nash, parameters],
+        [EXAMPLE, nash, parameters, kamiennik_inputs()],
     )
     assert item["provenance"]["runoff"] == {
         "source": "hydrolog",

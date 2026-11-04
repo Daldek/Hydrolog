@@ -1,16 +1,22 @@
-// The panel Dane of „Hydrogram zlewni”: the five steps of the calculation, numbered as the
-// chain of `hydrograph generate` (the mockup's steps): Zlewnia (also read from a
-// WatershedParameters JSON in the browser, or from a hand-off with „Wczytaj z
-// Hydrografa”), Czas koncentracji, Opad, Straty SCS-CN and Model UH. Every change goes to
-// the section, which checks it and recomputes (plan D13); the steps show what the last
-// result gave (tc, CN after AMC, S, Ia, the UH's parameters).
+// The panel Dane of „Hydrogram zlewni”: the three steps of the author's flow (2026-11-04).
+// 1 Zlewnia: where the watershed came from (a WatershedParameters JSON read in the
+// browser, or a hand-off with „Wczytaj z Hydrografa”) and its basic fields, CN included.
+// 2 Hietogram: PMAXTP, a design hyetograph or a series, its shape and the time step.
+// 3 Hydrogram: the unit hydrograph model, none chosen at first; only the chosen model's
+// block (its tc with the tc method's own fields for SCS and Clark, Clark's R, Nash by
+// Lutz with the watershed fields Lutz reads or n and K, Snyder with Lc), then the losses
+// of SCS-CN common to every model. Once a model is chosen, the fields it needs are marked
+// where they live („wymagane dla …”), an empty one is an error (red), a value outside its
+// typical range a warning (amber), and step 3 sums them up with a link to each field.
+// Every change goes to the section, which checks it and recomputes (plan D13); the steps
+// show what the last result gave (tc, CN after AMC, S, Ia, the UH's parameters).
 
 import { SeriesField } from "../../controls/series-field.js";
 import { richText, splitReason } from "../../controls/field.js";
 import { inputText, num, plural } from "../../format.js";
 import { seriesTokens } from "../../forms/model.js";
 import { HandoffImport } from "../../handoff/handoff-panel.js";
-import { html, useEffect, useRef } from "../../html.js";
+import { html, useRef } from "../../html.js";
 import { t } from "../../labels/common.js";
 import { hydrogram as texts } from "../../labels/hydrogram.js";
 import { InfoButton } from "../../ui/info-button.js";
@@ -22,18 +28,29 @@ import {
   PMAXTP_PROBABILITIES,
   SHAPES,
   SLOPE_FIELDS,
+  TC_BLOCK,
   TC_METHODS,
   UH_MODELS,
   UNITS,
-  WATERSHED_MAIN,
-  WATERSHED_MORE,
+  WATERSHED_STEP,
   changedFrom,
+  fieldLabel,
   isEmpty,
   numberOf,
   originText,
+  panelFields,
+  purposeText,
+  stepOf,
   usesLutz,
   usesTc,
 } from "./state.js";
+
+/** Icons of the lines of step 3's summary. */
+const ICONS = {
+  bad: html`<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" /><path d="M8 4.8v4M8 11.2v.01" /></svg>`,
+  warn: html`<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2l6.5 11.5h-13z" /><path d="M8 6.5v3.2M8 11.7v.01" /></svg>`,
+  ok: html`<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" /><path d="M5 8.2l2 2 4-4.2" /></svg>`,
+};
 
 /**
  * A duration for people: whole hours as hours, otherwise minutes.
@@ -69,15 +86,30 @@ export function percentHint(text) {
 }
 
 /**
+ * Bring a field of the panel into view and focus it, opening its step.
+ *
+ * @param {string} name the field
+ */
+function focusField(name) {
+  const control = document.getElementById(`hg-${name}`);
+  if (!control) return;
+  const step = control.closest("details");
+  if (step && !step.open) step.open = true;
+  control.scrollIntoView({ block: "center" });
+  control.focus({ preventScroll: true });
+}
+
+/**
  * The label of a field: its Polish name, the symbol and the option's key.
  *
- * @param {{name: string, id: string, keyText?: string}} props the field, its control's id
- *   and the key shown (default: the name)
+ * @param {{name: string, id: string, keyText?: string|false}} props the field, its
+ *   control's id and the key shown (default: the name; false: none)
  * @returns {object} the label
  */
 function FieldName({ name, id, keyText }) {
   const words = texts.fields[name] || { label: name };
-  return html`<label for=${id}>${words.label}${words.symbol ? html` <i class="sym">${words.symbol}</i>` : null}<span class="key">${keyText || name}</span></label>`;
+  const key = keyText === false ? null : keyText || name;
+  return html`<label for=${id}>${words.label}${words.symbol ? html` <i class="sym">${words.symbol}</i>` : null}${key ? html`<span class="key">${key}</span>` : null}</label>`;
 }
 
 /**
@@ -106,31 +138,40 @@ function Changed({ origin, name, text, onRestore }) {
 }
 
 /**
- * The message of a check under a field.
+ * The message of a check under a field: an error (red) or a warning (amber).
  *
- * @param {{id: string, error?: string}} props the control's id and the message
+ * @param {{id: string, message?: string, warning?: boolean}} props the control's id, the
+ *   message and whether it is a warning
  * @returns {object|null} the message
  */
-function FieldError({ id, error }) {
-  if (!error) return null;
-  const message = splitReason(error);
-  return html`<span class="err" id=${`${id}-err`} role="alert">${message.text}${message.reason
-    ? html` <span class="reason">· ${message.reason}</span>`
+function FieldMessage({ id, message, warning = false }) {
+  if (!message) return null;
+  const words = splitReason(message);
+  return html`<span class=${warning ? "warn" : "err"} id=${`${id}-${warning ? "warn" : "err"}`} role=${warning ? "status" : "alert"}>${words.text}${words.reason
+    ? html` <span class="reason">· ${words.reason}</span>`
     : null}</span>`;
 }
 
 /**
  * A dense form row (the mockup's `.frow`): label with the symbol and key, the value with its
- * unit, a hint, the change mark and the message of a check.
+ * unit, a hint, whom the field is needed for, the change mark and the message of a check
+ * (an error before a warning).
  *
- * @param {{name: string, value?: string, error?: string, onInput: (text: string) => void,
- *   placeholder?: string, keyText?: string, aux?: string|null, changed?: object|null,
+ * @param {{name: string, value?: string, error?: string, warning?: string, need?: string,
+ *   onInput: (text: string) => void, placeholder?: string, keyText?: string, aux?:
+ *   string|null, origin?: object|null, onRestore?: (name: string, text: string) => void,
  *   info?: object|null, readOnly?: boolean, text?: boolean}} props the field and its parts
  * @returns {object} the row
  */
-function Row({ name, value, error, onInput, placeholder, keyText, aux, changed, info, readOnly, text }) {
+function Row({ name, value, error, warning, need, onInput, placeholder, keyText, aux, origin, onRestore, info, readOnly, text }) {
   const id = `hg-${name}`;
-  const classes = ["frow", text ? "wide" : "", changed ? "edited" : "", error ? "invalid" : ""].filter(Boolean).join(" ");
+  const edited = Boolean(origin) && changedFrom(origin, name, value);
+  const level = error ? "invalid" : warning ? "warning" : "";
+  const classes = ["frow", text ? "wide" : "", edited ? "edited" : "", level].filter(Boolean).join(" ");
+  let described;
+  if (error) described = `${id}-err`;
+  else if (warning) described = `${id}-warn`;
+  else if (need) described = `${id}-need`;
   const input = html`<input
     id=${id}
     type="text"
@@ -141,18 +182,23 @@ function Row({ name, value, error, onInput, placeholder, keyText, aux, changed, 
     placeholder=${placeholder || ""}
     readonly=${readOnly}
     aria-invalid=${error ? "true" : "false"}
-    aria-describedby=${error ? `${id}-err` : undefined}
+    aria-describedby=${described}
     onInput=${(event) => onInput(event.currentTarget.value)}
   />`;
   return html`
-    <div class=${classes} data-field=${name}>
+    <div class=${classes} data-field=${name} data-level=${level || undefined}>
       ${info
         ? html`<span class="label-row"><${FieldName} name=${name} id=${id} keyText=${keyText} />${info}</span>`
         : html`<${FieldName} name=${name} id=${id} keyText=${keyText} />`}
       ${text ? input : html`<span class="ibox">${input}<span class="unit">${UNITS[name] || "–"}</span></span>`}
       ${aux ? html`<span class="aux">${aux}</span>` : null}
-      ${changed}
-      <${FieldError} id=${id} error=${error} />
+      ${origin ? html`<${Changed} origin=${origin} name=${name} text=${value} onRestore=${onRestore} />` : null}
+      ${error
+        ? html`<${FieldMessage} id=${id} message=${error} />`
+        : warning
+          ? html`<${FieldMessage} id=${id} message=${warning} warning=${true} />`
+          : null}
+      ${!error && need ? html`<span class="need" id=${`${id}-need`}>${need}</span>` : null}
     </div>
   `;
 }
@@ -177,37 +223,53 @@ function Step({ id, number, title, meta, children }) {
 }
 
 /**
+ * A row of a field of the watershed, with its change mark and checks.
+ *
+ * @param {object} props see DataPanel, and `name` the field and `extra` more props of Row
+ * @returns {object} the row
+ */
+function WatershedRow({ name, inputs, errors, warnings, required, setField, extra = {} }) {
+  const fields = inputs.watershed || {};
+  const need = stepOf(name) === 1 && required[name] ? t(texts.need, { what: purposeText(required[name].purpose) }) : null;
+  return html`<${Row}
+    name=${name}
+    value=${fields[name]}
+    error=${errors[name]}
+    warning=${warnings[name]}
+    need=${need}
+    onInput=${(text) => setField(name, text)}
+    aux=${SLOPE_FIELDS.has(name) ? percentHint(fields[name]) : null}
+    origin=${inputs.origin}
+    onRestore=${setField}
+    ...${extra}
+  />`;
+}
+
+/**
  * Step 1, Zlewnia: where the watershed came from, a WatershedParameters JSON read in the
- * browser, and its fields (the models' and methods' ones folded).
+ * browser, and its basic fields; a field the chosen model reads says so.
  *
  * @param {object} props see DataPanel
  * @returns {object} the step
  */
-function WatershedStep({ inputs, errors, setField, onFile }) {
+function WatershedStep(props) {
+  const { inputs, onFile, infoValues } = props;
   const fileInput = useRef(null);
-  const more = useRef(null);
   const fields = inputs.watershed || {};
   const origin = inputs.origin;
-  const moreProblem = WATERSHED_MORE.some((name) => errors[name]);
-  useEffect(() => {
-    if (moreProblem && more.current) more.current.open = true;
-  }, [moreProblem]);
-  const row = (name) => html`<${Row}
-    key=${name}
-    name=${name}
-    value=${fields[name]}
-    error=${errors[name]}
-    onInput=${(text) => setField(name, text)}
-    aux=${SLOPE_FIELDS.has(name) ? percentHint(fields[name]) : null}
-    changed=${html`<${Changed} origin=${origin} name=${name} text=${fields[name]} onRestore=${setField} />`}
-  />`;
   const area = numberOf(fields.area_km2);
   const source = origin ? origin.label : texts.watershed.noSource;
-  const meta = area === null ? t(texts.watershed.metaNoArea, { source }) : t(texts.watershed.meta, { area: num(area, 2), source });
+  let meta = t(texts.watershed.metaNoArea, { source });
+  if (area !== null) meta = t(texts.watershed.meta, { area: num(area, 2), source });
+  else if (!origin && !Object.values(fields).some((text) => !isEmpty(text))) meta = texts.empty;
   const onPick = (event) => {
     const file = event.currentTarget.files && event.currentTarget.files[0];
     event.currentTarget.value = "";
     if (file) onFile(file);
+  };
+  const row = (name) => {
+    const extra = name === "cn" ? { info: html`<${InfoButton} id="losses-scs-cn" values=${infoValues} />` } : {};
+    return html`<${WatershedRow} key=${name} name=${name} ...${props} extra=${extra} />`;
   };
   return html`
     <${Step} id="watershed" number=${1} title=${texts.steps.watershed} meta=${meta}>
@@ -228,105 +290,83 @@ function WatershedStep({ inputs, errors, setField, onFile }) {
         </button>
         <input ref=${fileInput} type="file" accept=".json,application/json" hidden onChange=${onPick} />
       </div>
+      <p class="note">${texts.watershed.note}</p>
       <div class="form">
-        <${Row}
-          name="name"
-          text=${true}
-          value=${fields.name}
-          error=${errors.name}
-          onInput=${(text) => setField("name", text)}
-          changed=${html`<${Changed} origin=${origin} name="name" text=${fields.name} onRestore=${setField} />`}
-        />
-        ${WATERSHED_MAIN.map(row)}
+        <${WatershedRow} name="name" ...${props} extra=${{ text: true }} />
+        ${WATERSHED_STEP.map(row)}
       </div>
-      <details class="more" ref=${more}>
-        <summary>${texts.watershed.more} <span class="meta">${WATERSHED_MORE.length}</span></summary>
-        <p class="note">${texts.watershed.moreNote}</p>
-        <div class="form">${WATERSHED_MORE.map(row)}</div>
-      </details>
     <//>
   `;
 }
 
 /**
- * Step 2, Czas koncentracji: the method of tc, or tc typed, and what the last result gave.
+ * A select of PMAXTP (the probability or the duration) in a form row, empty until chosen.
  *
- * @param {object} props see DataPanel
- * @returns {object} the step
+ * @param {{name: string, value: string, options: string[], label: (value: string) =>
+ *   string, error?: string, keyText?: string, onChange: (value: string) => void}} props the
+ *   field, its value, the values offered and their words, the message of a check, the key
+ *   shown and the handler
+ * @returns {object} the row
  */
-function TcStep({ inputs, errors, set, result, infoValues }) {
-  const method = inputs.tc_method;
-  const used = usesTc(inputs.uh_model);
-  const model = texts.uh.models[inputs.uh_model] || inputs.uh_model;
-  const tc = result && typeof result.tc_min === "number" ? result.tc_min : null;
-  let meta;
-  if (!used) meta = t(texts.tc.metaUnused, { model });
-  else if (inputs.tc_manual) meta = t(texts.tc.metaManual, { tc: isEmpty(inputs.tc_min) ? "–" : inputs.tc_min });
-  else if (tc !== null) meta = t(texts.tc.metaMethod, { tc: num(tc, 1), method: texts.tc.names[method] });
-  else meta = t(texts.tc.metaPending, { method: texts.tc.names[method] });
+function SelectRow({ name, value, options, label, error, keyText, onChange }) {
+  const id = `hg-${name}`;
   return html`
-    <${Step} id="tc" number=${2} title=${texts.steps.tc} meta=${meta}>
-      <div class="field">
-        <span class="label-row">
-          <label for="hg-tc_method">${texts.tc.method}<span class="key">tc_method</span></label>
-          <${InfoButton} id=${`tc-${method}`} values=${infoValues} />
-        </span>
-        <select id="hg-tc_method" value=${method} disabled=${inputs.tc_manual} onChange=${(event) => set({ tc_method: event.currentTarget.value })}>
-          ${TC_METHODS.map((value) => html`<option value=${value}>${texts.tc.methods[value]}</option>`)}
-        </select>
-        <span class="hint">${texts.tc.hints[method]}</span>
-      </div>
-      <div class="result-chip" data-chip="tc">
-        <span class="k">tc</span>
-        <span class="v">${used && tc !== null ? `${num(tc, 1)} min` : used ? "–" : texts.tc.unused}</span>
-        <span class="u">${used ? (tc !== null ? t(texts.tc.chipHours, { hours: num(tc / 60, 2) }) : "") : t(texts.tc.chipUnused, { model })}</span>
-      </div>
-      <label class="check">
-        <input type="checkbox" id="hg-tc_manual" checked=${inputs.tc_manual} onChange=${(event) => set({ tc_manual: event.currentTarget.checked })} />
-        <span>${texts.tc.manual} <code>tc_min</code></span>
-      </label>
-      ${inputs.tc_manual
-        ? html`<div class="form"><${Row} name="tc_min" value=${inputs.tc_min} error=${errors.tc_min} onInput=${(text) => set({ tc_min: text })} /></div>`
-        : null}
-      <p class="note">${texts.tc.note} <a href="#kalkulatory">${texts.tc.compare}</a></p>
-    <//>
+    <div class=${`frow${error ? " invalid" : ""}`} data-field=${name} data-level=${error ? "invalid" : undefined}>
+      <${FieldName} name=${name} id=${id} keyText=${keyText} />
+      <select
+        id=${id}
+        class="sel-sm"
+        value=${value}
+        aria-invalid=${error ? "true" : "false"}
+        aria-describedby=${error ? `${id}-err` : undefined}
+        onChange=${(event) => onChange(event.currentTarget.value)}
+      >
+        <option value="" disabled hidden>${texts.rain.choose}</option>
+        ${options.map((item) => html`<option value=${item}>${label(item)}</option>`)}
+      </select>
+      <${FieldMessage} id=${id} message=${error} />
+    </div>
   `;
 }
 
 /**
- * Step 3, Opad: PMAXTP (the depth typed for p and the duration), a design hyetograph, or a
- * series of depths; the shape of the hyetograph and the time step.
+ * Step 2, Hietogram: PMAXTP (the depth typed for p and the duration), a design hyetograph,
+ * or a series of depths; the shape of the hyetograph and the time step.
  *
  * @param {object} props see DataPanel
  * @returns {object} the step
  */
-function RainStep({ inputs, errors, set, valuesField, infoValues }) {
+function RainStep({ inputs, errors, warnings, set, valuesField, infoValues, required }) {
   const source = inputs.rain_source;
   const shape = inputs.hietogram_type;
   const series = source === "series";
   let meta;
   if (series) {
     const steps = seriesTokens(inputs.values).length;
-    meta = t(texts.rain.metaSeries, { steps: plural(steps, texts.rain.stepForms) });
+    meta = steps ? t(texts.rain.metaSeries, { steps: plural(steps, texts.rain.stepForms) }) : texts.empty;
   } else {
     const total = numberOf(inputs.total_mm);
+    const duration = source === "pmaxtp" ? inputs.pmaxtp_duration_min : inputs.duration_min;
+    const probability = numberOf(inputs.pmaxtp_probability_pct);
     const words = {
       total: total === null ? "–" : num(total, 1),
-      duration: durationText(source === "pmaxtp" ? inputs.pmaxtp_duration_min : inputs.duration_min),
-      p: inputText(Number(inputs.pmaxtp_probability_pct)),
+      duration: durationText(duration),
+      p: probability === null ? "–" : inputText(probability),
     };
-    meta = t(source === "pmaxtp" ? texts.rain.metaPmaxtp : texts.rain.metaDesign, words);
+    const blank = total === null && numberOf(duration) === null && (source !== "pmaxtp" || probability === null);
+    meta = blank ? texts.empty : t(source === "pmaxtp" ? texts.rain.metaPmaxtp : texts.rain.metaDesign, words);
   }
   const numberRow = (name, extra = {}) => html`<${Row}
     name=${name}
     value=${inputs[name]}
     error=${errors[name]}
+    warning=${warnings[name]}
     onInput=${(text) => set({ [name]: text })}
     ...${extra}
   />`;
   const peakDefault = Object.hasOwn(PEAK_DEFAULTS, shape) ? inputText(PEAK_DEFAULTS[shape]) : "";
   return html`
-    <${Step} id="rain" number=${3} title=${texts.steps.rain} meta=${meta}>
+    <${Step} id="rain" number=${2} title=${texts.steps.rain} meta=${meta}>
       <div class="field">
         <span class="label-row">
           <span class="label" id="hg-rain-source-label">${texts.rain.source}</span>
@@ -343,18 +383,24 @@ function RainStep({ inputs, errors, set, valuesField, infoValues }) {
       ${source === "pmaxtp"
         ? html`
             <div class="form">
-              <div class="frow">
-                <label for="hg-pmaxtp-p">${texts.rain.probability} <i class="sym">p</i></label>
-                <select id="hg-pmaxtp-p" class="sel-sm" value=${inputs.pmaxtp_probability_pct} onChange=${(event) => set({ pmaxtp_probability_pct: event.currentTarget.value })}>
-                  ${PMAXTP_PROBABILITIES.map((value) => html`<option value=${value}>${t(texts.rain.probabilityValue, { value: inputText(Number(value)) })}</option>`)}
-                </select>
-              </div>
-              <div class="frow">
-                <label for="hg-pmaxtp-duration">${texts.fields.duration_min.label}<span class="key">${t(texts.keyValue, { key: "duration_min", value: inputs.pmaxtp_duration_min })}</span></label>
-                <select id="hg-pmaxtp-duration" class="sel-sm" value=${inputs.pmaxtp_duration_min} onChange=${(event) => set({ pmaxtp_duration_min: event.currentTarget.value })}>
-                  ${PMAXTP_DURATIONS.map((value) => html`<option value=${value}>${durationText(value)}</option>`)}
-                </select>
-              </div>
+              <${SelectRow}
+                name="pmaxtp_probability_pct"
+                value=${inputs.pmaxtp_probability_pct}
+                options=${PMAXTP_PROBABILITIES}
+                label=${(value) => t(texts.rain.probabilityValue, { value: inputText(Number(value)) })}
+                error=${errors.pmaxtp_probability_pct}
+                keyText=${false}
+                onChange=${(value) => set({ pmaxtp_probability_pct: value })}
+              />
+              <${SelectRow}
+                name="pmaxtp_duration_min"
+                value=${inputs.pmaxtp_duration_min}
+                options=${PMAXTP_DURATIONS}
+                label=${durationText}
+                error=${errors.pmaxtp_duration_min}
+                keyText=${isEmpty(inputs.pmaxtp_duration_min) ? "duration_min" : t(texts.keyValue, { key: "duration_min", value: inputs.pmaxtp_duration_min })}
+                onChange=${(value) => set({ pmaxtp_duration_min: value })}
+              />
               ${numberRow("total_mm")}
             </div>
             <p class="note">${richText(texts.rain.pmaxtpNote)}</p>
@@ -375,7 +421,7 @@ function RainStep({ inputs, errors, set, valuesField, infoValues }) {
                   id="hg-values"
                   value=${inputs.values}
                   error=${errors.values}
-                  required=${true}
+                  required=${Boolean(required.values)}
                   onInput=${(text) => set({ values: text })}
                 />`
               : null}
@@ -418,12 +464,102 @@ function RainStep({ inputs, errors, set, valuesField, infoValues }) {
 }
 
 /**
- * Step 4, Straty SCS-CN: CN of the watershed, AMC and λ, and what the last result gave.
+ * The summary of the checks under the choice of the model: the fields missing, those to
+ * correct and those outside their typical range, each a link to its field; before a
+ * choice, what choosing does.
+ *
+ * @param {{inputs: object, errors: Object<string, string>, warnings: Object<string,
+ *   string>}} props the inputs and the messages by field
+ * @returns {object} the summary
+ */
+function Summary({ inputs, errors, warnings }) {
+  if (!inputs.uh_model) return html`<p class="note" data-summary="none">${texts.uh.choose}</p>`;
+  const missing = [];
+  const invalid = [];
+  const outside = [];
+  for (const name of panelFields(inputs)) {
+    if (errors[name]) (splitReason(errors[name]).reason === "required" ? missing : invalid).push(name);
+    else if (warnings[name]) outside.push(name);
+  }
+  const link = (name, index) => html`${index ? ", " : ""}<button
+      class="link-btn"
+      type="button"
+      data-goto=${name}
+      title=${t(texts.summary.goTo, { field: fieldLabel(name), step: stepOf(name) })}
+      onClick=${() => focusField(name)}
+    >${fieldLabel(name)}</button> <span class="step-ref">(${t(texts.summary.step, { step: stepOf(name) })})</span>`;
+  const line = (kind, level, title, names) =>
+    names.length
+      ? html`<li class=${level} data-summary=${kind}>${ICONS[level]}<div><span class="lvl">${title}</span> ${names.map(link)}</div></li>`
+      : null;
+  return html`
+    <ul class="notes check-summary" data-summary="">
+      ${line("missing", "bad", texts.summary.missing, missing)}
+      ${line("invalid", "bad", texts.summary.invalid, invalid)}
+      ${missing.length || invalid.length ? null : html`<li class="ok" data-summary="ok">${ICONS.ok}<div>${texts.summary.ok}</div></li>`}
+      ${line("warnings", "warn", texts.summary.warnings, outside)}
+    </ul>
+  `;
+}
+
+/**
+ * The tc of SCS and Clark in step 3: the method (with the watershed fields of step 3 it
+ * reads), or tc typed, and what the last result gave.
  *
  * @param {object} props see DataPanel
- * @returns {object} the step
+ * @returns {object} the block
  */
-function LossStep({ inputs, errors, set, setField, result, amcField, infoValues }) {
+function TcBlock(props) {
+  const { inputs, errors, warnings, set, result, infoValues } = props;
+  const method = inputs.tc_method;
+  const tc = result && typeof result.tc_min === "number" ? result.tc_min : null;
+  return html`
+    <div class="block" data-block="tc">
+      <h4 class="group-title">${texts.blocks.tc}</h4>
+      <div class="field">
+        <span class="label-row">
+          <label for="hg-tc_method">${texts.tc.method}<span class="key">tc_method</span></label>
+          <${InfoButton} id=${`tc-${method}`} values=${infoValues} />
+        </span>
+        <select id="hg-tc_method" value=${method} disabled=${inputs.tc_manual} onChange=${(event) => set({ tc_method: event.currentTarget.value })}>
+          ${TC_METHODS.map((value) => html`<option value=${value}>${texts.tc.methods[value]}</option>`)}
+        </select>
+        <span class="hint">${texts.tc.hints[method]}</span>
+      </div>
+      ${!inputs.tc_manual && TC_BLOCK[method] && TC_BLOCK[method].length
+        ? html`<div class="form">${TC_BLOCK[method].map((name) => html`<${WatershedRow} key=${name} name=${name} ...${props} />`)}</div>`
+        : null}
+      <div class="result-chip" data-chip="tc">
+        <span class="k">tc</span>
+        <span class="v">${tc !== null ? `${num(tc, 1)} min` : "–"}</span>
+        <span class="u">${tc !== null ? t(texts.tc.chipHours, { hours: num(tc / 60, 2) }) : ""}</span>
+      </div>
+      <label class="check">
+        <input type="checkbox" id="hg-tc_manual" checked=${inputs.tc_manual} onChange=${(event) => set({ tc_manual: event.currentTarget.checked })} />
+        <span>${texts.tc.manual} <code>tc_min</code></span>
+      </label>
+      ${inputs.tc_manual
+        ? html`<div class="form"><${Row}
+            name="tc_min"
+            value=${inputs.tc_min}
+            error=${errors.tc_min}
+            warning=${warnings.tc_min}
+            onInput=${(text) => set({ tc_min: text })}
+          /></div>`
+        : null}
+      <p class="note">${texts.tc.note} <a href="#kalkulatory">${texts.tc.compare}</a></p>
+    </div>
+  `;
+}
+
+/**
+ * The losses of SCS-CN in step 3, common to every model: AMC and λ, and what the last
+ * result gave (CN after AMC, S, Ia).
+ *
+ * @param {object} props see DataPanel
+ * @returns {object} the block
+ */
+function LossesBlock({ inputs, errors, warnings, set, result, amcField }) {
   const fields = inputs.watershed || {};
   const cn = numberOf(fields.cn);
   const meaning = (value) => {
@@ -447,19 +583,10 @@ function LossStep({ inputs, errors, set, setField, result, amcField, infoValues 
   if (result && typeof result.initial_abstraction_mm === "number") {
     chips.push(t(texts.losses.chipIa, { value: num(result.initial_abstraction_mm, 1) }));
   }
-  const meta = cn === null ? t(texts.losses.metaNoCn, { amc: inputs.amc }) : t(texts.losses.meta, { cn: inputText(cn), amc: inputs.amc });
   return html`
-    <${Step} id="losses" number=${4} title=${texts.steps.losses} meta=${meta}>
-      <div class="form">
-        <${Row}
-          name="cn"
-          value=${fields.cn}
-          error=${errors.cn}
-          onInput=${(text) => setField("cn", text)}
-          info=${html`<${InfoButton} id="losses-scs-cn" values=${infoValues} />`}
-          changed=${html`<${Changed} origin=${inputs.origin} name="cn" text=${fields.cn} onRestore=${setField} />`}
-        />
-      </div>
+    <div class="block" data-block="losses">
+      <h4 class="group-title">${texts.blocks.losses}</h4>
+      <p class="note">${texts.losses.note}</p>
       <div class="field">
         <span class="label-row"><span class="label" id="hg-amc-label">${texts.losses.amc}<span class="key">amc</span></span></span>
         <${Seg}
@@ -476,24 +603,28 @@ function LossStep({ inputs, errors, set, setField, result, amcField, infoValues 
           name="ia_coefficient"
           value=${inputs.ia_coefficient}
           error=${errors.ia_coefficient}
+          warning=${warnings.ia_coefficient}
           onInput=${(text) => set({ ia_coefficient: text })}
           placeholder="0,2"
           keyText=${t(texts.keyDefault, { key: "ia_coefficient", value: "0,2" })}
         />
       </div>
       ${chips.length ? html`<div class="chips" data-chips="losses">${chips.map((text) => html`<span class="chip">${text}</span>`)}</div>` : null}
-    <//>
+    </div>
   `;
 }
 
 /**
- * Step 5, Model UH: the model and its parameters (Nash by Lutz through `uh nash`, or n and
- * K typed; Clark's R or R/tc; Snyder's L, Lc, Ct and Cp), and what the last result gave.
+ * Step 3, Hydrogram: the unit hydrograph model (none chosen at first) with the summary of
+ * the checks, the chosen model's block (tc for SCS and Clark; Clark's R or R/tc; Nash by
+ * Lutz with Lc, Manning's n, forest and urban shares, or n and K typed; Snyder's Lc of the
+ * watershed, L, Lc, Ct and Cp), the losses, and what the last result gave.
  *
  * @param {object} props see DataPanel
  * @returns {object} the step
  */
-function UhStep({ inputs, errors, set, result, lutz, infoValues }) {
+function HydrographStep(props) {
+  const { inputs, errors, warnings, set, result, lutz, infoValues } = props;
   const model = inputs.uh_model;
   const fields = inputs.watershed || {};
   const byLutz = usesLutz(inputs);
@@ -501,9 +632,11 @@ function UhStep({ inputs, errors, set, result, lutz, infoValues }) {
     name=${name}
     value=${inputs[name]}
     error=${errors[name]}
+    warning=${warnings[name]}
     onInput=${(text) => set({ [name]: text })}
     ...${extra}
   />`;
+  const watershedRow = (name) => html`<${WatershedRow} key=${name} name=${name} ...${props} />`;
   const fresh = result && result.uh_model === model ? result : null;
   const parameters = (fresh && fresh.uh_parameters) || {};
   const chips = [];
@@ -531,12 +664,22 @@ function UhStep({ inputs, errors, set, result, lutz, infoValues }) {
     if (isEmpty(inputs.nash_k_min) && estimate) patch.nash_k_min = shortText(estimate.k_min);
     set(patch);
   };
+  let meta = texts.uh.metaNone;
+  if (model) {
+    const tc = result && result.uh_model === model && typeof result.tc_min === "number" ? result.tc_min : null;
+    meta = texts.uh.models[model] || model;
+    if (usesTc(model) && inputs.tc_manual) meta += ` · ${t(texts.tc.metaManual, { tc: isEmpty(inputs.tc_min) ? "–" : inputs.tc_min })}`;
+    else if (usesTc(model)) {
+      const name = texts.tc.names[inputs.tc_method] || inputs.tc_method;
+      meta += ` · ${tc === null ? name : t(texts.tc.metaMethod, { tc: num(tc, 1), method: name })}`;
+    }
+  }
   return html`
-    <${Step} id="uh" number=${5} title=${texts.steps.uh} meta=${texts.uh.models[model] || model}>
+    <${Step} id="hydrograph" number=${3} title=${texts.steps.hydrograph} meta=${meta}>
       <div class="field">
         <span class="label-row">
           <span class="label" id="hg-uh-label">${texts.uh.model}<span class="key">uh_model</span></span>
-          <${InfoButton} id=${`uh-${model}`} values=${infoValues} />
+          ${model ? html`<${InfoButton} id=${`uh-${model}`} values=${infoValues} />` : null}
         </span>
         <${Seg}
           items=${UH_MODELS.map((value) => ({ value, label: texts.uh.models[value] }))}
@@ -546,6 +689,8 @@ function UhStep({ inputs, errors, set, result, lutz, infoValues }) {
           full=${true}
         />
       </div>
+      <${Summary} inputs=${inputs} errors=${errors} warnings=${warnings} />
+      ${usesTc(model) ? html`<${TcBlock} ...${props} />` : null}
       ${model === "scs" ? html`<p class="note">${texts.uh.scsNote}</p>` : null}
       ${model === "nash"
         ? html`
@@ -561,7 +706,8 @@ function UhStep({ inputs, errors, set, result, lutz, infoValues }) {
             </div>
             <div class="form">
               ${byLutz
-                ? html`${numberRow("nash_n", { value: estimate ? shortText(estimate.n) : "", readOnly: true, placeholder: texts.uh.lutzPending })}
+                ? html`${["Lc_km", "manning_n", "forest_pct", "urban_pct"].map(watershedRow)}
+                    ${numberRow("nash_n", { value: estimate ? shortText(estimate.n) : "", readOnly: true, placeholder: texts.uh.lutzPending })}
                     ${numberRow("nash_k_min", { value: estimate ? shortText(estimate.k_min) : "", readOnly: true })}`
                 : html`${numberRow("nash_n")}${numberRow("nash_k_min")}`}
             </div>
@@ -587,6 +733,7 @@ function UhStep({ inputs, errors, set, result, lutz, infoValues }) {
       ${model === "snyder"
         ? html`
             <div class="form">
+              ${watershedRow("Lc_km")}
               ${numberRow("snyder_length_km", { placeholder: isEmpty(fields.channel_length_km) ? "" : t(texts.fromWatershed, { value: fields.channel_length_km }) })}
               ${numberRow("snyder_centroid_length_km", { placeholder: isEmpty(fields.Lc_km) ? "" : t(texts.fromWatershed, { value: fields.Lc_km }) })}
               ${numberRow("snyder_ct", { placeholder: "1,5", keyText: t(texts.keyDefault, { key: "snyder_ct", value: "1,5" }) })}
@@ -596,20 +743,22 @@ function UhStep({ inputs, errors, set, result, lutz, infoValues }) {
           `
         : null}
       ${chips.length ? html`<div class="chips" data-chips="uh">${chips.map((text) => html`<span class="chip">${text}</span>`)}</div>` : null}
+      <${LossesBlock} ...${props} />
     <//>
   `;
 }
 
 /**
- * The panel Dane: the error the server gave without a field, then the five steps.
+ * The panel Dane: the error the server gave without a field, then the three steps.
  *
- * @param {{inputs: object, errors: Object<string, string>, formError: {title: string,
+ * @param {{inputs: object, errors: Object<string, string>, warnings: Object<string,
+ *   string>, required: Object<string, {purpose: string}>, formError: {title: string,
  *   text: string}|null, set: (patch: object) => void, setField: (name: string, text:
  *   string) => void, onFile: (file: File) => void, result: object|null, lutz: object|null,
- *   models: object|null, infoValues: object}} props the inputs, the messages by field, the
- *   error above the steps, the handlers (a patch of the inputs, a field of the watershed, a
- *   watershed file), the last result and Lutz's estimate, the field models and the values
- *   the (i) explanations check
+ *   models: object|null, infoValues: object}} props the inputs, the errors and warnings by
+ *   field, what the chosen model needs (requirements), the error above the steps, the
+ *   handlers (a patch of the inputs, a field of the watershed, a watershed file), the last
+ *   result and Lutz's estimate, the field models and the values the (i) explanations check
  * @returns {object} the panel's body
  */
 export function DataPanel(props) {
@@ -624,10 +773,8 @@ export function DataPanel(props) {
       : null}
     <div class="steps">
       <${WatershedStep} ...${props} />
-      <${TcStep} ...${props} />
       <${RainStep} ...${props} valuesField=${field("values")} />
-      <${LossStep} ...${props} amcField=${field("amc")} />
-      <${UhStep} ...${props} />
+      <${HydrographStep} ...${props} amcField=${field("amc")} />
     </div>
   `;
 }

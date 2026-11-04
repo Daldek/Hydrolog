@@ -1,17 +1,21 @@
-// „Hydrogram zlewni” (plan D13, slice S3): one watershed, `hydrograph generate` through the
-// five steps of the panel Dane; the result follows every change (no variants, no compute
-// button). A change of valid data runs on channel "hydrogram" 250 ms later (recompute.js:
-// debounce, abort, only the newest response applied); „Liczenie…” after 150 ms; invalid data
-// run nothing and keep the last result, marked („Dane niepełne” with the field); an error
-// of the server stays on its field or above the steps („Błąd danych”). Nash by Lutz runs
-// `uh nash` first and passes `nash_n` and `nash_k_min` on.
+// „Hydrogram zlewni” (plan D13, slice S3; the author's three steps of 2026-11-04): one
+// watershed, `hydrograph generate` through the three steps of the panel Dane (Zlewnia,
+// Hietogram, Hydrogram). A first visit is empty and runs nothing; the checks of what the
+// model needs start when a model is chosen in step 3. From then on the result follows every
+// change (no variants, no compute button): a change of valid data runs on channel
+// "hydrogram" 250 ms later (recompute.js: debounce, abort, only the newest response
+// applied); „Liczenie…” after 150 ms; invalid data run nothing and keep the last result,
+// marked („Dane niepełne” with the field); an error of the server stays on its field or
+// above the steps („Błąd danych”); Hydrolog's notices of a value outside its typical range
+// stand on their field as warnings, which never stop a run. Nash by Lutz runs `uh nash`
+// first and passes `nash_n` and `nash_k_min` on.
 //
 // The section sets the store's "watershed" (the `watershed` of hydrolog-network/1, for
 // Kalkulatory), its "status" and "context", and draws the store's "reference" (a quantile
 // of Statystyka) on the hydrograph. The route #hydrogram/tc_method/<method> sets the method
-// of tc (Kalkulatory's „Użyj w Hydrogramie zlewni”). A hand-off of one subcatchment
-// („Wczytaj z Hydrografa”, here or in Sieć) arrives through useHandoffInbox as a patch of
-// the inputs whose `origin` names the producer.
+// of tc (Kalkulatory's „Użyj w Hydrogramie zlewni”; it shows once SCS or Clark is chosen).
+// A hand-off of one subcatchment („Wczytaj z Hydrografa”, here or in Sieć) arrives through
+// useHandoffInbox as a patch of the inputs whose `origin` names the producer.
 
 import { api } from "../../api.js";
 import { plural } from "../../format.js";
@@ -42,30 +46,30 @@ import { CenterBody, ResultsPanel, modelLabel } from "./results-panel.js";
 import {
   CHANNEL,
   COMMAND,
-  EXAMPLE_FILE,
   LUTZ_COMMAND,
   LUTZ_SOURCES,
   NETWORK_SCHEMA,
   SECTION,
   TC_METHODS,
-  UNITS,
-  WATERSHED_FIELDS,
   checkInputs,
   checkedValues,
+  fieldLabel,
   initialState,
   inputModels,
+  isEmpty,
   lutzOptions,
   normalize,
+  numberOf,
+  panelFields,
   readWatershed,
+  requirements,
   toOptions,
   usesLutz,
+  watershedErrors,
   watershedObject,
 } from "./state.js";
 
 registerInfo({ ...tcInfo, ...lossesInfo, ...uhInfo, ...rainInfo });
-
-/** The fields of the panel a server error can stand on (`details.option`). */
-const PANEL_FIELDS = new Set([...WATERSHED_FIELDS, ...Object.keys(UNITS), "values"]);
 
 /**
  * The catalog document of `hydrograph generate` and the network schema, turned into the
@@ -93,17 +97,6 @@ function useModels() {
 }
 
 /**
- * Read the shipped example (a WatershedParameters JSON).
- *
- * @returns {Promise<object>} the parsed file
- */
-async function fetchExample() {
-  const response = await fetch(new URL(EXAMPLE_FILE, document.baseURI).href, { credentials: "same-origin", cache: "no-cache" });
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  return response.json();
-}
-
-/**
  * The count of a watershed's fields in words: „19 pól”.
  *
  * @param {object} values the fields read
@@ -114,26 +107,35 @@ function fieldCount(values) {
 }
 
 /**
- * Word an error of a run: on its field when the panel has it (a missing field of a tc
- * method on each of the fields), else above the steps.
+ * Word an error of a run: on its field when the panel shows it (every field a tc method
+ * or a model misses on its own), else above the steps.
  *
  * @param {object} doc the hydrolog-error/1 document
  * @param {boolean} lutz whether it came from Lutz's `uh nash`
+ * @param {object|null} inputs the inputs of the run
  * @returns {{fields: Object<string, string>, form: {title: string, text: string}|null,
  *   text: string}} the messages
  */
-function wordError(doc, lutz) {
+function wordError(doc, lutz, inputs) {
   const described = describeError(doc);
   const details = (doc && doc.details) || {};
+  const shown = inputs ? panelFields(inputs) : [];
+  const place = (option) => {
+    const name = lutz && Object.hasOwn(LUTZ_SOURCES, option) ? LUTZ_SOURCES[option] : option;
+    if (name === "duration_min" && inputs && inputs.rain_source === "pmaxtp") return "pmaxtp_duration_min";
+    return shown.includes(name) ? name : null;
+  };
   const fields = {};
-  if (described.option === "watershed" && described.reason === "missing_field" && Array.isArray(details.missing)) {
-    const method = typeof details.method === "string" ? details.method : "";
-    for (const name of details.missing) fields[name] = withReason(t(texts.missingField, { method }), "missing_field");
-    return { fields, form: null, text: described.text };
-  }
-  const option = lutz && described.option && Object.hasOwn(LUTZ_SOURCES, described.option) ? LUTZ_SOURCES[described.option] : described.option;
-  if (option && option !== "watershed" && PANEL_FIELDS.has(option)) {
-    fields[option] = withReason(described.text, described.reason);
+  if (described.reason === "missing_field") {
+    const missing = Array.isArray(details.missing) ? details.missing : [described.option];
+    const text = typeof details.method === "string" ? t(texts.missingField, { method: details.method }) : texts.missingFieldPlain;
+    for (const option of missing) {
+      const name = typeof option === "string" ? place(option) : null;
+      if (name) fields[name] = withReason(text, "missing_field");
+    }
+    if (Object.keys(fields).length === missing.length) return { fields, form: null, text: described.text };
+  } else if (typeof described.option === "string" && place(described.option)) {
+    fields[place(described.option)] = withReason(described.text, described.reason);
     return { fields, form: null, text: described.text };
   }
   return { fields, form: { title: described.title || texts.formError, text: described.text }, text: described.text };
@@ -158,7 +160,6 @@ export default function Hydrogram({ path = [] }) {
   const [run, setRun] = useState(null);
   const [failure, setFailure] = useState(null);
   const [busy, setBusy] = useState(false);
-  const [exampleError, setExampleError] = useState(null);
   const chartSvg = useRef(null);
   const outcome = useRef(null);
   const channel = useMemo(
@@ -171,49 +172,17 @@ export default function Hydrogram({ path = [] }) {
   );
   useEffect(() => () => channel.dispose(), [channel]);
 
-  /** Replace inputs (a patch of the inputs; a watershed file uses it, a hand-off would too). */
+  /** Replace inputs (a patch of the inputs; a watershed file and a hand-off use it). */
   const set = useCallback((patch) => setState((old) => ({ ...normalize(old), ...patch })), []);
   useHandoffInbox(SECTION, set);
   const setField = useCallback(
     (name, text) =>
       setState((old) => {
         const base = normalize(old);
-        return { ...base, watershed: { ...(base.watershed || {}), [name]: text } };
+        return { ...base, watershed: { ...base.watershed, [name]: text } };
       }),
     [],
   );
-
-  // A first visit (or „Wyczyść”) opens the shipped example
-  const needsExample = inputs.watershed === null;
-  useEffect(() => {
-    if (!needsExample) return undefined;
-    let alive = true;
-    setExampleError(null);
-    fetchExample()
-      .then((doc) => {
-        const read = readWatershed(doc);
-        if (read.missing) throw new Error(t(texts.watershed.fileNotWatershed, { missing: read.missing.join(", ") }));
-        if (!alive) return;
-        setState((old) => {
-          const base = normalize(old);
-          if (base.watershed !== null) return old;
-          const origin = {
-            label: texts.watershed.example,
-            title: t(texts.watershed.exampleTitle, { name: read.values.name || EXAMPLE_FILE }),
-            detail: t(texts.watershed.detail, { file: EXAMPLE_FILE, fields: fieldCount(read.values) }),
-            mark: null,
-            values: read.values,
-          };
-          return { ...base, watershed: read.texts, origin };
-        });
-      })
-      .catch((error) => {
-        if (alive) setExampleError(t(texts.exampleFailed, { file: EXAMPLE_FILE, message: error.message || String(error) }));
-      });
-    return () => {
-      alive = false;
-    };
-  }, [needsExample]);
 
   // Kalkulatory's „Użyj w Hydrogramie zlewni”: #hydrogram/tc_method/<method>
   const route = path.join("/");
@@ -224,11 +193,14 @@ export default function Hydrogram({ path = [] }) {
     }
   }, [route]);
 
-  const problems = useMemo(
-    () => (docs.models && inputs.watershed !== null ? checkInputs(inputs, docs.models) : null),
-    [docs.models, inputs],
+  // The checks: errors stop a run; the warnings of the shown run's notices do not
+  const shownRun = run ? { inputs: run.inputs, notices: run.envelope.notices } : null;
+  const checked = useMemo(
+    () => (docs.models ? checkInputs(inputs, docs.models, shownRun) : null),
+    [docs.models, inputs, run],
   );
-  const valid = problems !== null && Object.keys(problems).length === 0;
+  const required = useMemo(() => requirements(inputs).required, [inputs]);
+  const valid = checked !== null && inputs.uh_model !== null && Object.keys(checked.errors).length === 0;
   const request = useMemo(() => {
     if (!valid) return null;
     return { inputs, options: toOptions(inputs), lutz: usesLutz(inputs) ? lutzOptions(inputs) : null };
@@ -241,9 +213,9 @@ export default function Hydrogram({ path = [] }) {
     // The task returns its errors; a rejection would be a fault of the GUI itself
     const value = next.ok
       ? next.value
-      : { key: latestKey.current, stage: "generate", error: { code: "internal_error", message: String(next.error) } };
+      : { key: latestKey.current, stage: "generate", error: { code: "internal_error", message: String(next.error) }, inputs: null };
     if (value.error) {
-      setFailure({ key: value.key, ...wordError(value.error, value.stage === "lutz") });
+      setFailure({ key: value.key, ...wordError(value.error, value.stage === "lutz", value.inputs) });
       return;
     }
     const envelope = value.envelope;
@@ -257,7 +229,7 @@ export default function Hydrogram({ path = [] }) {
   };
 
   useEffect(() => {
-    if (!docs.models || inputs.watershed === null) return;
+    if (!docs.models) return;
     if (!request) {
       channel.cancel();
       return;
@@ -275,7 +247,7 @@ export default function Hydrogram({ path = [] }) {
         if (sent.lutz) {
           stage = "lutz";
           const first = await api.run(LUTZ_COMMAND, sent.lutz, { channel: CHANNEL, signal });
-          if (first.status !== "ok") return { key: sent.key, envelope: first };
+          if (first.status !== "ok") return { key: sent.key, inputs: sent.inputs, envelope: first };
           lutz = first.result;
           options = toOptions(sent.inputs, lutz.parameters);
           stage = "generate";
@@ -285,24 +257,28 @@ export default function Hydrogram({ path = [] }) {
       } catch (error) {
         if (error && error.name === "AbortError") throw error;
         const doc = error && error.doc ? error.doc : { code: "internal_error", message: String(error) };
-        return { key: sent.key, stage, error: doc };
+        return { key: sent.key, stage, error: doc, inputs: sent.inputs };
       }
     });
   }, [key, docs.models]);
 
-  // The store's watershed: the last valid one (Kalkulatory reads it)
-  const watershedValid = problems !== null && WATERSHED_FIELDS.every((name) => !problems[name]);
-  const watershedKey = watershedValid ? JSON.stringify(watershedObject(inputs.watershed)) : null;
+  // The store's watershed: the last valid one with an area (Kalkulatory reads it)
+  const watershedKey =
+    docs.models &&
+    numberOf(inputs.watershed.area_km2) !== null &&
+    Object.keys(watershedErrors(inputs.watershed, docs.models)).length === 0
+      ? JSON.stringify(watershedObject(inputs.watershed))
+      : null;
   useEffect(() => {
     if (watershedKey) setWatershedStore(JSON.parse(watershedKey));
   }, [watershedKey]);
 
   const current = failure && failure.key === key ? failure : null;
-  const errors = { ...(problems || {}), ...(current ? current.fields : {}) };
-  const firstProblem = problems ? Object.keys(problems)[0] : null;
-  const fieldName = (name) => (texts.fields[name] ? texts.fields[name].label : name);
+  const errors = { ...(checked ? checked.errors : {}), ...(current ? current.fields : {}) };
+  const warnings = checked ? checked.warnings : {};
+  const firstProblem = checked ? Object.keys(checked.errors)[0] : null;
   let stale = null;
-  if (run && firstProblem) stale = { kind: "invalid", field: fieldName(firstProblem) };
+  if (run && firstProblem) stale = { kind: "invalid", field: fieldLabel(firstProblem) };
   else if (run && current) stale = { kind: "error", text: current.text };
 
   // The badge and the state under the panel Dane
@@ -310,17 +286,19 @@ export default function Hydrogram({ path = [] }) {
   let calc = null;
   if (firstProblem) {
     badge = status("invalid", `${shell.status.invalid.text}: ${firstProblem}`);
-    calc = { kind: "warn", text: t(texts.calc.invalid, { field: fieldName(firstProblem) }) };
+    calc = { kind: "warn", text: t(texts.calc.invalid, { field: fieldLabel(firstProblem) }) };
   } else if (current) {
     badge = status("error", undefined, current.text);
     calc = { kind: "bad", text: texts.calc.error };
   } else if (busy) {
     badge = status("busy");
     calc = { kind: "busy", text: texts.calc.busy };
+  } else if (checked !== null && inputs.uh_model === null) {
+    calc = { kind: "idle", text: texts.calc.model };
   } else if (run && run.key === key) {
     badge = status("ok");
     calc = { kind: "ok", text: texts.calc.ok };
-  } else if (problems !== null) {
+  } else if (checked !== null) {
     calc = { kind: "ok", text: texts.calc.waiting };
     if (run) badge = status("ok");
   }
@@ -328,19 +306,21 @@ export default function Hydrogram({ path = [] }) {
   useEffect(() => setStatus(badge), [badgeKey]);
 
   // The breadcrumbs: the watershed, the probability and the duration of the rainfall
-  const name = (inputs.watershed && String(inputs.watershed.name || "").trim()) || texts.context.unnamed;
-  let context;
+  const named = String(inputs.watershed.name || "").trim();
+  const hasWatershed = Object.keys(watershedObject(inputs.watershed)).length > 0;
+  const name = named || texts.context.unnamed;
+  let context = name;
   if (inputs.rain_source === "series") context = t(texts.context.series, { name });
-  else if (inputs.rain_source === "design") {
+  else if (inputs.rain_source === "design" && !isEmpty(inputs.total_mm) && !isEmpty(inputs.duration_min)) {
     context = t(texts.context.design, { name, total: inputs.total_mm, duration: durationText(inputs.duration_min) });
-  } else {
+  } else if (inputs.rain_source === "pmaxtp" && !isEmpty(inputs.pmaxtp_probability_pct) && !isEmpty(inputs.pmaxtp_duration_min)) {
     context = t(texts.context.pmaxtp, {
       name,
       p: String(inputs.pmaxtp_probability_pct).replace(".", ","),
       duration: durationText(inputs.pmaxtp_duration_min),
     });
   }
-  useEffect(() => setContext(inputs.watershed === null ? null : context), [context, inputs.watershed === null]);
+  useEffect(() => setContext(hasWatershed ? context : null), [context, hasWatershed]);
 
   const spec = useMemo(() => {
     if (!run) return null;
@@ -375,15 +355,15 @@ export default function Hydrogram({ path = [] }) {
     }
   };
 
+  // „Wyczyść”: the steps empty, as on a first visit; Kalkulatory loses the watershed too
   const clear = () => {
     channel.cancel();
     reset();
     setRun(null);
     setFailure(null);
+    setWatershedStore(null);
   };
 
-  const ready = docs.models && inputs.watershed !== null;
-  const loadError = docs.error || exampleError;
   const values = useMemo(() => checkedValues(inputs, run && run.key === key ? run.envelope.result : null), [inputs, run, key]);
   const result = run ? run.envelope.result : null;
   const version = run ? run.envelope.version : null;
@@ -392,18 +372,18 @@ export default function Hydrogram({ path = [] }) {
   const left = {
     sub: texts.dataSub,
     body: html`
-      ${loadError
+      ${docs.error
         ? html`<div class="form-errors" role="alert">
-            <div>${loadError}</div>
-            ${docs.error
-              ? html`<button class="btn sm" type="button" onClick=${docs.retry}>${common.actions.retry}</button>`
-              : null}
+            <div>${docs.error}</div>
+            <button class="btn sm" type="button" onClick=${docs.retry}>${common.actions.retry}</button>
           </div>`
         : null}
-      ${ready
+      ${docs.models
         ? html`<${DataPanel}
             inputs=${inputs}
             errors=${errors}
+            warnings=${warnings}
+            required=${required}
             formError=${current ? current.form : null}
             set=${set}
             setField=${setField}
@@ -413,7 +393,7 @@ export default function Hydrogram({ path = [] }) {
             models=${docs.models}
             infoValues=${values}
           />`
-        : loadError
+        : docs.error
           ? null
           : html`<p class="muted" role="status">${texts.loading}</p>`}
     `,

@@ -73,15 +73,15 @@ export const lossesInfo = {
         unit: "",
         min: 55,
         max: 95,
-        source: "zakres wzorów przeliczenia AMC (Hawkins i in. 1985)",
+        source: "próg ostrzeżenia Hydrologu, zakres wzorów przeliczenia AMC (Hawkins i in. 1985)",
       },
     ],
     note:
       "<p>λ = 0,2 to standard NRCS, dla którego skalibrowano tablice CN (TR-55, NEH 630); inny λ daje " +
       "uwagę w wyniku. Proponowanej wartości 0,05 (Hawkins i in. 2002; Woodward i in. 2003) NRCS nie " +
       "przyjęło: wymagałaby innych wartości CN. Wzory przeliczenia AMC przybliżają tabelę NEH 630 i są " +
-      "zalecane dla CN 55–95; Hydrolog stosuje je dla każdego CN. Przy odpływie poniżej ok. 13 mm " +
-      "metoda jest mniej dokładna.</p>",
+      "zalecane dla CN 55–95; Hydrolog stosuje je dla każdego CN, a poza tym zakresem daje uwagę. Przy " +
+      "odpływie poniżej ok. 13 mm metoda jest mniej dokładna.</p>",
     sources:
       "USDA-SCS 1986 (TR-55); USDA-NRCS 2004 (NEH 630-10); Hawkins i in. 1985 (za Ponce i Hawkins 1996); " +
       "Hawkins i in. 2002; Woodward i in. 2003; opis polecenia <code>scs effective</code>",

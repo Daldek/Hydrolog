@@ -172,14 +172,14 @@ export const uhInfo = {
       },
     ],
     ranges: [
-      { option: "nash_n", label: "n", unit: "", min: 1, max: 10, source: "typowo, wg opisu polecenia uh nash" },
+      { option: "nash_n", label: "n", unit: "", min: 1, max: 10, source: "próg ostrzeżenia Hydrologu, typowo wg opisu polecenia uh nash" },
       {
         option: "nash_k_min",
         label: "K",
         unit: "min",
         min: 10,
         max: 200,
-        source: "typowo, wg opisu polecenia uh nash",
+        source: "próg ostrzeżenia Hydrologu, typowo wg opisu polecenia uh nash",
       },
       {
         option: "area_km2",
@@ -273,7 +273,7 @@ export const uhInfo = {
         unit: "",
         min: 0.2,
         max: 1.5,
-        source: "typowo, HEC-HMS i praktyka inżynierska",
+        source: "próg ostrzeżenia Hydrologu, typowo wg HEC-HMS i praktyki inżynierskiej",
       },
     ],
     note:
@@ -364,9 +364,9 @@ export const uhInfo = {
         unit: "",
         min: 1.35,
         max: 1.65,
-        source: "typowo, w postaci metrycznej",
+        source: "próg ostrzeżenia Hydrologu, typowo w postaci metrycznej",
       },
-      { option: "snyder_cp", label: "Cp", unit: "", min: 0.4, max: 0.8, source: "typowo" },
+      { option: "snyder_cp", label: "Cp", unit: "", min: 0.4, max: 0.8, source: "próg ostrzeżenia Hydrologu, typowo" },
       {
         option: "area_km2",
         label: "A",

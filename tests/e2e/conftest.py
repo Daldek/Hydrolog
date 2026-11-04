@@ -11,6 +11,11 @@ that records console errors, page errors and CSP violations
 welcome dialog of a visit covers the page, so a tab starts as a visitor who ticked „Nie
 pokazuj ponownie” unless ``welcome=True``. ``tab`` is ``new_tab()``.
 
+Hydrogram zlewni starts empty; ``seed_hydrogram(tab)`` stores the inputs of the guide's
+worked example, Kamiennik at Świerzawa (``tests/fixtures/kamiennik.json`` read with
+„Plik zlewni…”, the mockup's storm, SCS with Kirpich: ``kamiennik_inputs()``), before
+the tab's first page runs, as a browser that typed them would have them.
+
 Pure JavaScript modules are tested in a tab, without Node::
 
     tab.open()
@@ -20,6 +25,7 @@ Chromium is installed once: ``uv run --no-sync playwright install chromium``.
 """
 
 import contextlib
+import json
 import socket
 import threading
 import time
@@ -63,6 +69,73 @@ try {
   localStorage.setItem("hydrolog-gui/welcome/1", JSON.stringify({ hidden: true }));
 } catch (error) {}
 """
+FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
+KAMIENNIK: dict[str, Any] = json.loads(
+    (FIXTURES / "kamiennik.json").read_text(encoding="utf-8")
+)
+"""The watershed of the guide's worked example, Kamiennik at Świerzawa (a
+WatershedParameters JSON, as ``--watershed-file`` reads it)."""
+HYDROGRAM_KEY = "hydrolog-gui/hydrogram/2"
+"""Where Hydrogram zlewni keeps its inputs (``persist.js``)."""
+
+
+def input_text(value: float) -> str:
+    """Return ``value`` as the page writes a number into a field (``inputText``)."""
+    if isinstance(value, float) and value.is_integer():
+        value = int(value)
+    return str(value).replace(".", ",")
+
+
+def kamiennik_inputs(**changes: Any) -> dict[str, Any]:
+    """Return Hydrogram zlewni's stored inputs of the guide's worked example.
+
+    The watershed is ``kamiennik.json`` as „Plik zlewni…” reads it (the file its
+    origin), the storm PMAXTP p 1 %, 12 h, 105 mm, Beta (2; 5), Δt 10 min, the model
+    SCS with tc by Kirpich, AMC II, and Clark's R/tc 0,5: the mockup's runs. ``changes``
+    replace inputs (``watershed`` replaces the typed watershed, not its origin).
+    """
+    inputs: dict[str, Any] = {
+        "watershed": {
+            name: value if isinstance(value, str) else input_text(value)
+            for name, value in KAMIENNIK.items()
+        },
+        "origin": {
+            "label": "kamiennik.json",
+            "title": "Z pliku: kamiennik.json",
+            "detail": "wczytano 4 lis 2026, 10:00 · 19 pól",
+            "mark": None,
+            "values": KAMIENNIK,
+        },
+        "tc_method": "kirpich",
+        "tc_manual": False,
+        "tc_min": "",
+        "rain_source": "pmaxtp",
+        "pmaxtp_probability_pct": "1",
+        "pmaxtp_duration_min": "720",
+        "total_mm": "105",
+        "duration_min": "",
+        "hietogram_type": "beta",
+        "alpha": "2",
+        "beta": "5",
+        "peak_position": "",
+        "values": "",
+        "timestep_min": "10",
+        "amc": "II",
+        "ia_coefficient": "",
+        "uh_model": "scs",
+        "nash_source": "lutz",
+        "nash_n": "",
+        "nash_k_min": "",
+        "clark_kind": "ratio",
+        "clark_r_tc_ratio": "0,5",
+        "clark_r_min": "",
+        "snyder_length_km": "",
+        "snyder_centroid_length_km": "",
+        "snyder_ct": "",
+        "snyder_cp": "",
+    }
+    inputs.update(changes)
+    return inputs
 
 
 @dataclass(frozen=True)
@@ -120,6 +193,26 @@ class Tab:
     def _console(self, message: ConsoleMessage) -> None:
         if message.type == "error" and not message.text.startswith(FAILED_RESOURCE):
             self.console_errors.append(message.text)
+
+
+def seed_hydrogram(tab: Tab, inputs: dict[str, Any] | None = None) -> None:
+    """Store Hydrogram zlewni's inputs (default ``kamiennik_inputs()``) for the tab.
+
+    The script runs before the scripts of the tab's first page of the app and stores
+    them once per tab (a mark in ``sessionStorage``): a reload or „Wyczyść” afterwards
+    shows what the page itself stored.
+    """
+    stored = json.dumps(
+        json.dumps(inputs if inputs is not None else kamiennik_inputs())
+    )
+    tab.page.add_init_script(
+        "try {"
+        " if (!sessionStorage.getItem('hydrolog-test/seeded')) {"
+        f"  localStorage.setItem({json.dumps(HYDROGRAM_KEY)}, {stored});"
+        "  sessionStorage.setItem('hydrolog-test/seeded', '1');"
+        " }"
+        "} catch (error) {}"
+    )
 
 
 @pytest.fixture(scope="package")
