@@ -23,3 +23,4 @@ the Nogat standard 2.1 adoption are in the plans of [plans/](plans/).
 | [0015](decisions/0015-catalog-additions-for-the-gui.md) | Catalog additions for the GUI: `format_command`/`parse_command`, `NOTICES`, `route schematic`, UH ordinates, `gui serve` | accepted | 2026-11-02 |
 | [0016](decisions/0016-gui-feedback-and-data-dir.md) | Reports of the GUI's users: „Zgłoś uwagę”, `data_dir` and the admin key | accepted | 2026-11-04 |
 | [0017](decisions/0017-typical-ranges-in-the-catalog.md) | Typical ranges: one table in Hydrolog, served in the document of one command (`typical_ranges`) | accepted | 2026-11-04 |
+| [0018](decisions/0018-pmaxtp-through-obserwator.md) | PMAXTP through Obserwator: `precip pmaxtp`, the one command that uses the network | accepted | 2026-11-04 |
