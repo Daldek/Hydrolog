@@ -21,6 +21,7 @@ import contextlib
 import functools
 import hashlib
 import json
+import mimetypes
 import os
 import re
 import secrets
@@ -85,6 +86,15 @@ from hydrolog.gui._sessions import (
     relative_paths,
     split_path,
 )
+
+# The page's own types, whatever the host's registry says: on Windows it may map
+# ``.js`` to ``text/plain``, and a browser refuses a module script of that type.
+for _suffix, _type in (
+    (".js", "text/javascript"),
+    (".mjs", "text/javascript"),
+    (".css", "text/css"),
+):
+    mimetypes.add_type(_type, _suffix)
 
 COOKIE: Final = "hydrolog_gui"
 """The cookie with the session id (HttpOnly, SameSite=Strict, the page's path)."""

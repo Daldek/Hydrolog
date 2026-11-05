@@ -58,3 +58,53 @@ def test_zz_hash(tab: Tab) -> None:
             .all_inner_texts(),
         )
     print("CONSOLE", logs[-20:])
+
+
+import pytest
+
+
+@pytest.mark.parametrize("rate", [1, 4, 8, 12])
+def test_zz_hash_throttled(tab: Tab, rate: int) -> None:
+    from playwright.sync_api import expect
+
+    from tests.e2e.test_polecenia import HEAD, POL, open_section
+
+    page = tab.page
+    page.context.new_cdp_session(page).send(
+        "Emulation.setCPUThrottlingRate", {"rate": rate}
+    )
+    page = open_section(tab)
+    lag = page.locator(f'{POL} .cmd-item[data-command="route lag"] button')
+    lag.click()
+    expect(page.locator(HEAD)).to_have_text("route lag")
+    page.evaluate("location.hash = '#polecenia/scs/effective'")
+    expect(page.locator(HEAD)).to_have_text("scs effective", timeout=5000)
+
+
+def test_zz_hash_exact(tab: Tab) -> None:
+    from playwright.sync_api import expect
+
+    from tests.e2e.test_polecenia import HEAD, POL, open_section
+
+    page = open_section(tab)
+    page.evaluate(
+        "window.__h = []; addEventListener('hashchange', "
+        "e => window.__h.push([performance.now()|0, e.oldURL.split('#')[1], "
+        "e.newURL.split('#')[1], location.hash]));"
+        "const r = history.replaceState.bind(history);"
+        "history.replaceState = (s, t, u) => { window.__h.push(['replace', "
+        "performance.now()|0, String(u), new Error().stack.split('\\n').slice(1, 6)]);"
+        " r(s, t, u); };"
+    )
+    lag = page.locator(f'{POL} .cmd-item[data-command="route lag"] button')
+    lag.click()
+    expect(page.locator(HEAD)).to_have_text("route lag")
+    assert page.evaluate("location.hash") == "#polecenia/route/lag"
+    expect(lag).to_have_attribute("aria-current", "true")
+    expect(page.locator(".crumb-context")).to_contain_text("route lag")
+    page.evaluate("window.__h.push(['set', performance.now()|0])")
+    page.evaluate("location.hash = '#polecenia/scs/effective'")
+    page.wait_for_timeout(3000)
+    print("EXACT", page.evaluate("location.hash"), page.locator(HEAD).all_inner_texts())
+    print("EXACT", json.dumps(page.evaluate("window.__h"), indent=1))
+    expect(page.locator(HEAD)).to_have_text("scs effective", timeout=2000)
