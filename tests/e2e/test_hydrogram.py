@@ -751,7 +751,10 @@ def test_fields_no_model_reads_may_stay_empty(tab: Tab) -> None:
         "flow_path_length_km",
         "flow_path_slope_m_per_m",
     }
-    assert all(set(sent["watershed"]) <= allowed | {"channel_length_km", "Lc_km"} for sent in runs.generate)
+    assert all(
+        set(sent["watershed"]) <= allowed | {"channel_length_km", "Lc_km"}
+        for sent in runs.generate
+    )
 
     # Step 1 complete: the hand-off is offered
     for name in ["perimeter_km", "length_km", "elevation_min_m", "elevation_max_m"]:
@@ -981,7 +984,8 @@ def test_requirements_follow_the_model_and_the_tc_method(tab: Tab) -> None:
             given: needs({uh_model: 'nash', nash_source: 'given',
               rain_source: 'series'}),
             snyder: needs({uh_model: 'snyder', watershed: pick('area_km2', 'cn')}),
-            migrated: s.normalize({snyder_length_km: '12', snyder_centroid_length_km: '5',
+            migrated: s.normalize({
+              snyder_length_km: '12', snyder_centroid_length_km: '5',
               watershed: {Lc_km: '6'}}),
             fieldsScs: fields({uh_model: 'scs'}),
             fieldsFaa: fields({uh_model: 'clark', tc_method: 'faa'}),

@@ -1297,7 +1297,9 @@ def test_snyders_lengths_of_a_handoff_go_to_the_watersheds_fields(tab: Tab) -> N
           const { buildHandoff } = await import('./src/handoff/handoff.js');
           const opened = (watershed, runoff) => {
             const options = state.toOptions(state.normalize({
-              ...stored, uh_model: 'snyder', watershed: state.readWatershed(watershed).texts,
+              ...stored,
+              uh_model: 'snyder',
+              watershed: state.readWatershed(watershed).texts,
             }));
             const payload = mapping.hydrogramPayload(options, 'Kamiennik');
             Object.assign(payload.nodes[0].runoff, runoff);
@@ -1315,7 +1317,9 @@ def test_snyders_lengths_of_a_handoff_go_to_the_watersheds_fields(tab: Tab) -> N
           delete bare.channel_length_km;
           delete bare.Lc_km;
           return {
-            filled: opened(bare, { snyder_length_km: 12, snyder_centroid_length_km: 5 }),
+            filled: opened(
+              bare, { snyder_length_km: 12, snyder_centroid_length_km: 5 },
+            ),
             kept: opened(example, { snyder_length_km: 12 }),
           };
         }""",
@@ -1323,10 +1327,20 @@ def test_snyders_lengths_of_a_handoff_go_to_the_watersheds_fields(tab: Tab) -> N
     )
     # absent from the watershed: the runoff's L and Lc fill its fields
     filled = got["filled"]
-    assert (filled["watershed"]["channel_length_km"], filled["watershed"]["Lc_km"]) == ("12", "5")
-    assert (filled["sent"]["snyder_length_km"], filled["sent"]["snyder_centroid_length_km"]) == (12, 5)
-    # different from the watershed's: the watershed's stays, the origin says what was left out
+    assert (filled["watershed"]["channel_length_km"], filled["watershed"]["Lc_km"]) == (
+        "12",
+        "5",
+    )
+    assert (
+        filled["sent"]["snyder_length_km"],
+        filled["sent"]["snyder_centroid_length_km"],
+    ) == (12, 5)
+    # different from the watershed's: the watershed's stays, the origin names
+    # what was left out
     kept = got["kept"]
     assert kept["watershed"]["channel_length_km"] == "14,78"
     assert kept["sent"]["snyder_length_km"] == 14.78
-    assert "snyder_length_km = 12 pominięte: zlewnia ma channel_length_km = 14,78" in kept["detail"]
+    assert (
+        "snyder_length_km = 12 pominięte: zlewnia ma channel_length_km = 14,78"
+        in kept["detail"]
+    )
