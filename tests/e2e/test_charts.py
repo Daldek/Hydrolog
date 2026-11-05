@@ -182,12 +182,14 @@ def test_nice_steps_and_domains(page: Any) -> None:
 
 
 def test_log_and_time_ticks(page: Any) -> None:
-    decades, close, day, short, domain = scale_js(
+    decades, close, day, short, hour, small, domain = scale_js(
         page,
         "[s.logTicks(1, 1000).map((t) => t.label),"
         " s.logTicks(0.1, 10).map((t) => t.label),"
         " s.timeTicks(0, 1440),"
         " s.timeTicks(0, 90, 8),"
+        " s.timeTicks(0, 60),"
+        " s.timeTicks(0, 60, 8),"
         " s.timeDomain([0, 10, 1430])]",
     )
     assert decades == ["1", "10", "100", "1000"]
@@ -196,6 +198,9 @@ def test_log_and_time_ticks(page: Any) -> None:
     assert [tick["label"] for tick in day["ticks"]] == [str(h) for h in range(0, 25, 2)]
     assert short["step"] == 15
     assert [tick["label"] for tick in short["ticks"]][:3] == ["0,00", "0,25", "0,50"]
+    # A one-hour rain: tenths of an hour, not 0,1666666667
+    assert [tick["label"] for tick in hour["ticks"]][:3] == ["0,0", "0,1", "0,2"]
+    assert [tick["label"] for tick in small["ticks"]] == ["0,0", "0,2", "0,4", "0,6", "0,8", "1,0"]
     assert (domain["min"], domain["max"]) == (0, 1440)
 
 

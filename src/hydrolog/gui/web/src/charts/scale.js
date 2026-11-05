@@ -199,7 +199,8 @@ export function logDomain(values) {
   return { min, max, ticks: logTicks(min, max) };
 }
 
-const TIME_STEPS = [5, 10, 15, 30, 60, 120, 180, 240, 360, 720, 1440, 2880, 10080];
+// Steps that are whole tenths of an hour or 15 min multiples, so the labels in hours are exact
+const TIME_STEPS = [6, 12, 15, 30, 60, 120, 180, 240, 360, 720, 1440, 2880, 10080];
 
 /**
  * Return the time ticks of a domain in minutes, labelled in hours.
