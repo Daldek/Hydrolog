@@ -43,8 +43,14 @@ const RUNOFF_MAIN = ["tc_method", "tc_min", "amc", "ia_coefficient", "uh_model"]
 const UH_FIELDS = {
   nash: ["nash_n", "nash_k_min"],
   clark: ["clark_r_min", "clark_r_tc_ratio"],
-  snyder: ["snyder_length_km", "snyder_centroid_length_km", "snyder_ct", "snyder_cp"],
+  snyder: ["snyder_ct", "snyder_cp"],
 };
+
+/**
+ * Snyder's L and Lc: the runoff's options by the watershed's field they are sent from. The
+ * form shows the watershed's fields only (required under Snyder) and copies them to the runoff.
+ */
+const SNYDER_LENGTHS = Object.freeze({ snyder_length_km: "channel_length_km", snyder_centroid_length_km: "Lc_km" });
 
 /** The fields of a design storm that apply to some hietogram types only. */
 const STORM_ONLY = {
@@ -425,7 +431,12 @@ export function nodeValues(node) {
     if (node.watershed || node.runoff || node.rainfall) {
       values["#variant"] = "rain";
       spread(values, "watershed.", node.watershed);
-      spread(values, "runoff.", node.runoff, ["model"]);
+      spread(values, "runoff.", node.runoff, ["model", ...Object.keys(SNYDER_LENGTHS)]);
+      // Snyder's L and Lc of the runoff fill the watershed's fields it lacks
+      for (const [option, name] of Object.entries(SNYDER_LENGTHS)) {
+        const given = node.runoff && node.runoff[option];
+        if (given !== undefined && values[`watershed.${name}`] === undefined) values[`watershed.${name}`] = textOf(given);
+      }
       rainfallValues(values, "#rainfall", node.rainfall, "network");
     } else if (Array.isArray(node.times_min) || Array.isArray(node.discharge_m3s)) {
       values["#variant"] = "given";
@@ -587,13 +598,13 @@ export function nodeLayout(forms, node, values) {
     const variant = VARIANTS.includes(values["#variant"]) ? values["#variant"] : "rain";
     const layout = { kind: "subcatchment", variant };
     if (variant === "rain") {
-      const watershedPlaced = [...WATERSHED_MAIN];
-      layout.watershed = {
-        main: slots(forms.watershed, WATERSHED_MAIN, "watershed."),
-        more: rest(forms.watershed, watershedPlaced, "watershed."),
-      };
       const model = values["runoff.uh_model"] || (forms.runoff.get("uh_model") || {}).default || "scs";
-      const uhPlaced = Object.values(UH_FIELDS).flat();
+      const lengths = model === "snyder" ? Object.values(SNYDER_LENGTHS) : [];
+      layout.watershed = {
+        main: [...slots(forms.watershed, WATERSHED_MAIN, "watershed."), ...slots(forms.watershed, lengths, "watershed.", true)],
+        more: rest(forms.watershed, [...WATERSHED_MAIN, ...lengths], "watershed."),
+      };
+      const uhPlaced = [...Object.values(UH_FIELDS).flat(), ...Object.keys(SNYDER_LENGTHS)];
       layout.runoff = {
         model: forms.runoffModel,
         main: slots(forms.runoff, RUNOFF_MAIN, "runoff."),
@@ -813,6 +824,11 @@ export function nodeOf(forms, node, values) {
     if (layout.variant === "rain") {
       made.watershed = jsonOf([...layout.watershed.main, ...layout.watershed.more], values, "watershed.");
       made.runoff = { model: layout.runoff.model, ...jsonOf([...layout.runoff.main, ...layout.runoff.uh, ...layout.runoff.more], values, "runoff.") };
+      if (layout.runoff.uh.some((slot) => slot.key === "runoff.snyder_ct")) {
+        for (const [option, name] of Object.entries(SNYDER_LENGTHS)) {
+          if (made.watershed[name] !== undefined) made.runoff[option] = made.watershed[name];
+        }
+      }
       const rainfall = rainfallJson(layout.rainfall, values);
       if (rainfall) made.rainfall = rainfall;
     } else if (layout.variant === "given") {

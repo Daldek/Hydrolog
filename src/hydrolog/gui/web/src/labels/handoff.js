@@ -90,6 +90,7 @@ export const handoffLabels = {
     point: "zlewnia punktu {latitude} {ns}, {longitude} {ew}",
     detail: "{time} · {fields} · nogat-handoff/1",
     received: "{producer} {version} · {time} · nogat-handoff/1",
+    snyderSkipped: "{option} = {value} pominięte: zlewnia ma {field} = {kept}",
   },
   export: {
     title: "Przekazanie",

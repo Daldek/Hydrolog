@@ -19,9 +19,12 @@ import {
   PMAXTP_DURATIONS,
   PMAXTP_METHODS,
   PMAXTP_PROBABILITIES,
+  SNYDER_LENGTHS,
   changedFrom,
   initialState,
+  isEmpty,
   normalize,
+  numberOf,
   pmaxtpOptions,
   pmaxtpRecord,
   readWatershed,
@@ -286,6 +289,19 @@ export function hydrogramInputs(doc) {
           ew: where.longitude < 0 ? "W" : "E",
         })
       : null;
+  // Snyder's L and Lc are the watershed's channel_length_km and Lc_km: the runoff's fill
+  // those the watershed lacks; a different one is left out, said in the origin's detail
+  const skipped = [];
+  for (const [option, field] of Object.entries(SNYDER_LENGTHS)) {
+    const given = runoff[option];
+    if (typeof given !== "number") continue;
+    if (isEmpty(watershed[field])) {
+      watershed[field] = inputText(given);
+      values[field] = given;
+    } else if (numberOf(watershed[field]) !== given) {
+      skipped.push(t(texts.origin.snyderSkipped, { option, value: inputText(given), field, kept: watershed[field] }));
+    }
+  }
   const inputs = {
     ...initialState(),
     watershed,
@@ -295,7 +311,7 @@ export function hydrogramInputs(doc) {
       detail: t(texts.origin.detail, {
         time: momentText(doc.created_at),
         fields: plural(Object.keys(values).length, hydrogramTexts.watershed.fieldForms),
-      }),
+      }) + skipped.map((text) => ` · ${text}`).join(""),
       mark: MARKS.includes(tool) ? tool : null,
       values,
       provenance: where,
@@ -315,8 +331,6 @@ export function hydrogramInputs(doc) {
   inputs.clark_kind = typeof runoff.clark_r_min === "number" ? "r" : "ratio";
   inputs.clark_r_min = inputText(runoff.clark_r_min);
   inputs.clark_r_tc_ratio = inputText(runoff.clark_r_tc_ratio);
-  inputs.snyder_length_km = inputText(runoff.snyder_length_km);
-  inputs.snyder_centroid_length_km = inputText(runoff.snyder_centroid_length_km);
   inputs.snyder_ct = inputText(runoff.snyder_ct);
   inputs.snyder_cp = inputText(runoff.snyder_cp);
   let handed = null;

@@ -181,8 +181,6 @@ export const UNITS = Object.freeze({
   nash_k_min: "min",
   clark_r_tc_ratio: "–",
   clark_r_min: "min",
-  snyder_length_km: "km",
-  snyder_centroid_length_km: "km",
   snyder_ct: "–",
   snyder_cp: "–",
 });
@@ -291,8 +289,8 @@ const RAIN_FIELDS = new Set([
 /** The parts of the inputs a warning of a run belongs to: it stands while they are the run's. */
 const SETTING = Object.freeze(["uh_model", "tc_manual", "tc_method", "nash_source", "clark_kind", "rain_source", "hietogram_type"]);
 
-/** Snyder's options that take the watershed's channel_length_km and Lc_km when left empty. */
-const SNYDER_FALLBACK = Object.freeze(["snyder_length_km", "snyder_centroid_length_km"]);
+/** Snyder's L and Lc: the options `hydrograph generate` takes them as, by the watershed's field they come from. */
+export const SNYDER_LENGTHS = Object.freeze({ snyder_length_km: "channel_length_km", snyder_centroid_length_km: "Lc_km" });
 
 /**
  * The inputs of a first visit (and after „Wyczyść”): every field empty and no model
@@ -332,8 +330,6 @@ export function initialState() {
     clark_kind: "ratio",
     clark_r_tc_ratio: "",
     clark_r_min: "",
-    snyder_length_km: "",
-    snyder_centroid_length_km: "",
     snyder_ct: "",
     snyder_cp: "",
   };
@@ -350,7 +346,9 @@ function isPlainObject(value) {
 }
 
 /**
- * Stored inputs completed with the first visit's for keys they lack.
+ * Stored inputs completed with the first visit's for keys they lack. Snyder's L and Lc of
+ * earlier visits (own fields then) move to the watershed's channel_length_km and Lc_km
+ * when those are empty, else are dropped.
  *
  * @param {object|null} stored the stored inputs
  * @returns {object} the inputs
@@ -358,6 +356,13 @@ function isPlainObject(value) {
 export function normalize(stored) {
   const inputs = { ...initialState(), ...(isPlainObject(stored) ? stored : {}) };
   if (!isPlainObject(inputs.watershed)) inputs.watershed = {};
+  for (const [option, name] of Object.entries(SNYDER_LENGTHS)) {
+    if (!Object.hasOwn(inputs, option)) continue;
+    if (!isEmpty(inputs[option]) && isEmpty(inputs.watershed[name])) {
+      inputs.watershed = { ...inputs.watershed, [name]: String(inputs[option]) };
+    }
+    delete inputs[option];
+  }
   if (!isPlainObject(inputs.origin)) inputs.origin = null;
   if (!UH_MODELS.includes(inputs.uh_model)) inputs.uh_model = null;
   if (!PMAXTP_METHODS.includes(inputs.pmaxtp_method)) inputs.pmaxtp_method = "POT";
@@ -414,6 +419,7 @@ export function rainDuration(inputs) {
  * @returns {string} the field
  */
 export function optionField(inputs, option) {
+  if (Object.hasOwn(SNYDER_LENGTHS, option)) return SNYDER_LENGTHS[option];
   if (inputs.rain_source !== "pmaxtp") return option;
   if (option === "duration_min") return "pmaxtp_duration_min";
   if (option === "total_mm") return "pmaxtp_depth";
@@ -595,7 +601,7 @@ export function panelFields(inputs) {
     if (usesLutz(inputs)) names.push(...LUTZ_BLOCK);
     names.push("nash_n", "nash_k_min");
   }
-  if (model === "snyder") names.push("Lc_km", "snyder_length_km", "snyder_centroid_length_km", "snyder_ct", "snyder_cp");
+  if (model === "snyder") names.push("Lc_km", "snyder_ct", "snyder_cp");
   names.push("ia_coefficient");
   return names;
 }
@@ -641,8 +647,7 @@ export function handoffMissing(watershed) {
  * slope of the watershed, Giandotti the length of the main channel, the lowest and the
  * mean elevation, FAA, Kerby and Kerby–Kirpich their overland fields, Kerby–Kirpich also
  * the longest flow path), Clark R or R/tc, Nash n and K or the fields of Lutz, Snyder L
- * and Lc of the watershed unless typed for it: a need of Snyder names the watershed's
- * field with the model's own option in `or`.
+ * and Lc of the watershed (channel_length_km and Lc_km).
  *
  * @param {object} inputs the inputs
  * @returns {{model: string|null, required: Object<string, {purpose: string, or?:
@@ -684,8 +689,8 @@ export function requirements(inputs) {
     need("nash_k_min", "nash");
   }
   if (model === "snyder") {
-    if (isEmpty(inputs.snyder_length_km)) need("channel_length_km", "snyder", ["snyder_length_km"]);
-    if (isEmpty(inputs.snyder_centroid_length_km)) need("Lc_km", "snyder", ["snyder_centroid_length_km"]);
+    need("channel_length_km", "snyder");
+    need("Lc_km", "snyder");
   }
   return { model, required };
 }
@@ -821,10 +826,7 @@ export function usedTexts(inputs) {
     else used.clark_r_tc_ratio = inputs.clark_r_tc_ratio;
   } else if (inputs.uh_model === "snyder") {
     const watershed = inputs.watershed || {};
-    used.snyder_length_km = isEmpty(inputs.snyder_length_km) ? watershed.channel_length_km : inputs.snyder_length_km;
-    used.snyder_centroid_length_km = isEmpty(inputs.snyder_centroid_length_km)
-      ? watershed.Lc_km
-      : inputs.snyder_centroid_length_km;
+    for (const [option, name] of Object.entries(SNYDER_LENGTHS)) used[option] = watershed[name];
     used.snyder_ct = inputs.snyder_ct;
     used.snyder_cp = inputs.snyder_cp;
   }
@@ -911,8 +913,6 @@ export function checkInputs(inputs, models, last = null) {
   }
   const used = usedTexts(inputs);
   for (const [option, message] of Object.entries(validate(models.options, used))) {
-    // Snyder's L and Lc taken from the watershed: the watershed's field says what is wrong
-    if (SNYDER_FALLBACK.includes(option) && isEmpty(inputs[option])) continue;
     const name = optionField(inputs, option);
     if (!found[name]) found[name] = message;
   }

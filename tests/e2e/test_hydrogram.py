@@ -567,7 +567,6 @@ def test_only_the_chosen_models_fields_exist_and_are_sent(tab: Tab) -> None:
     others = [
         "snyder_ct",
         "snyder_cp",
-        "snyder_length_km",
         "nash_n",
         "nash_k_min",
         "clark_r_min",
@@ -734,14 +733,14 @@ def test_fields_no_model_reads_may_stay_empty(tab: Tab) -> None:
     shows_peak(page, answered.value.request.post_data_json)
     choose(page, "hg-uh-label", "Snyder")
     expect(message(page, "channel_length_km")).to_have_text(
-        "Podaj wartość: potrzebna dla modelu Snydera "
-        "(albo „Długość cieku” w kroku 3) · required"
+        "Podaj wartość: potrzebna dla modelu Snydera · required"
     )
     expect(message(page, "Lc_km")).to_have_text(
-        "Podaj wartość: potrzebna dla modelu Snydera (albo „Do środka ciężkości”) "
-        "· required"
+        "Podaj wartość: potrzebna dla modelu Snydera · required"
     )
-    field(page, "snyder_length_km").fill("14,78")
+    expect(field(page, "snyder_length_km")).to_have_count(0)
+    expect(field(page, "snyder_centroid_length_km")).to_have_count(0)
+    field(page, "channel_length_km").fill("14,78")
     with run_of(page, uh_model="snyder", snyder_centroid_length_km=6.76) as answered:
         field(page, "Lc_km").fill("6,76")
     shows_peak(page, answered.value.request.post_data_json)
@@ -752,7 +751,7 @@ def test_fields_no_model_reads_may_stay_empty(tab: Tab) -> None:
         "flow_path_length_km",
         "flow_path_slope_m_per_m",
     }
-    assert all(set(sent["watershed"]) <= allowed | {"Lc_km"} for sent in runs.generate)
+    assert all(set(sent["watershed"]) <= allowed | {"channel_length_km", "Lc_km"} for sent in runs.generate)
 
     # Step 1 complete: the hand-off is offered
     for name in ["perimeter_km", "length_km", "elevation_min_m", "elevation_max_m"]:
@@ -982,8 +981,8 @@ def test_requirements_follow_the_model_and_the_tc_method(tab: Tab) -> None:
             given: needs({uh_model: 'nash', nash_source: 'given',
               rain_source: 'series'}),
             snyder: needs({uh_model: 'snyder', watershed: pick('area_km2', 'cn')}),
-            snyderTyped: needs({uh_model: 'snyder', snyder_length_km: '12',
-              snyder_centroid_length_km: '5', watershed: pick('area_km2', 'cn')}),
+            migrated: s.normalize({snyder_length_km: '12', snyder_centroid_length_km: '5',
+              watershed: {Lc_km: '6'}}),
             fieldsScs: fields({uh_model: 'scs'}),
             fieldsFaa: fields({uh_model: 'clark', tc_method: 'faa'}),
             fieldsSnyder: fields({uh_model: 'snyder', rain_source: 'design',
@@ -1060,10 +1059,13 @@ def test_requirements_follow_the_model_and_the_tc_method(tab: Tab) -> None:
         "area_km2": "snyder",
         "cn": "losses",
         **pmaxtp,
-        "channel_length_km": ["snyder", ["snyder_length_km"]],
-        "Lc_km": ["snyder", ["snyder_centroid_length_km"]],
+        "channel_length_km": "snyder",
+        "Lc_km": "snyder",
     }
-    assert got["snyderTyped"] == {"area_km2": "snyder", "cn": "losses", **pmaxtp}
+    # Snyder's own L and Lc of an earlier visit fill the watershed's empty fields only
+    assert got["migrated"]["watershed"] == {"channel_length_km": "12", "Lc_km": "6"}
+    assert "snyder_length_km" not in got["migrated"]
+    assert "snyder_centroid_length_km" not in got["migrated"]
     rain = [
         "pmaxtp_latitude",
         "pmaxtp_longitude",
@@ -1090,13 +1092,11 @@ def test_requirements_follow_the_model_and_the_tc_method(tab: Tab) -> None:
         "clark_r_tc_ratio",
         "ia_coefficient",
     ]
-    assert got["fieldsSnyder"][-9:] == [
+    assert got["fieldsSnyder"][-7:] == [
         "duration_min",
         "peak_position",
         "timestep_min",
         "Lc_km",
-        "snyder_length_km",
-        "snyder_centroid_length_km",
         "snyder_ct",
         "snyder_cp",
         "ia_coefficient",

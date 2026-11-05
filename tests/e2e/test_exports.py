@@ -1286,3 +1286,47 @@ def test_the_mapping_computes_as_hydrograph_generate_for_every_setting(
         parameters["n"],
         parameters["k_min"],
     )
+
+
+def test_snyders_lengths_of_a_handoff_go_to_the_watersheds_fields(tab: Tab) -> None:
+    page = open_hydrogram(tab)
+    got = page.evaluate(
+        """async ([example, stored]) => {
+          const state = await import('./src/sections/hydrogram/state.js');
+          const mapping = await import('./src/handoff/mapping.js');
+          const { buildHandoff } = await import('./src/handoff/handoff.js');
+          const opened = (watershed, runoff) => {
+            const options = state.toOptions(state.normalize({
+              ...stored, uh_model: 'snyder', watershed: state.readWatershed(watershed).texts,
+            }));
+            const payload = mapping.hydrogramPayload(options, 'Kamiennik');
+            Object.assign(payload.nodes[0].runoff, runoff);
+            const doc = buildHandoff({
+              subject: 'Kamiennik', provenance: { watershed: { source: 'user' } },
+              version: 'test', payload,
+            });
+            const inputs = mapping.hydrogramInputs(doc);
+            return {
+              watershed: inputs.watershed, detail: inputs.origin.detail,
+              sent: state.toOptions(state.normalize(inputs)),
+            };
+          };
+          const bare = { ...example };
+          delete bare.channel_length_km;
+          delete bare.Lc_km;
+          return {
+            filled: opened(bare, { snyder_length_km: 12, snyder_centroid_length_km: 5 }),
+            kept: opened(example, { snyder_length_km: 12 }),
+          };
+        }""",
+        [EXAMPLE, kamiennik_inputs()],
+    )
+    # absent from the watershed: the runoff's L and Lc fill its fields
+    filled = got["filled"]
+    assert (filled["watershed"]["channel_length_km"], filled["watershed"]["Lc_km"]) == ("12", "5")
+    assert (filled["sent"]["snyder_length_km"], filled["sent"]["snyder_centroid_length_km"]) == (12, 5)
+    # different from the watershed's: the watershed's stays, the origin says what was left out
+    kept = got["kept"]
+    assert kept["watershed"]["channel_length_km"] == "14,78"
+    assert kept["sent"]["snyder_length_km"] == 14.78
+    assert "snyder_length_km = 12 pominięte: zlewnia ma channel_length_km = 14,78" in kept["detail"]

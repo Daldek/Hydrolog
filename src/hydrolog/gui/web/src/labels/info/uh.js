@@ -278,14 +278,14 @@ export const uhInfo = {
         symbol: "<math><mi>L</mi></math>",
         text:
           "długość cieku głównego od działu wodnego do przekroju zamykającego, " +
-          "<code>snyder_length_km</code>; w GUI puste pole bierze <code>channel_length_km</code> zlewni",
+          "<code>snyder_length_km</code>; w GUI zawsze <code>channel_length_km</code> zlewni (krok 1)",
         unit: "km",
       },
       {
         symbol: "<math><msub><mi>L</mi><mi>c</mi></msub></math>",
         text:
           "długość cieku od przekroju do punktu najbliższego środka ciężkości zlewni, " +
-          "<code>snyder_centroid_length_km</code>; w GUI puste pole bierze <code>Lc_km</code> zlewni",
+          "<code>snyder_centroid_length_km</code>; w GUI zawsze <code>Lc_km</code> zlewni",
         unit: "km",
       },
       {

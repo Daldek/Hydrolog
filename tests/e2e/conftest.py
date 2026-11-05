@@ -236,8 +236,6 @@ def kamiennik_inputs(**changes: Any) -> dict[str, Any]:
         "clark_kind": "ratio",
         "clark_r_tc_ratio": "0,5",
         "clark_r_min": "",
-        "snyder_length_km": "",
-        "snyder_centroid_length_km": "",
         "snyder_ct": "",
         "snyder_cp": "",
     }
