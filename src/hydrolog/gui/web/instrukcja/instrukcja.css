@@ -150,4 +150,6 @@ html.guide-page .topbar { position: sticky; top: 0; height: var(--header-height)
   .guide-head h1 { font-size: var(--text-xl); }
   .cols, .cards, .steps-3, .glossary { grid-template-columns: minmax(0, 1fr); }
   .guide-text .phone-figure { max-width: 220px; }
+  /* A sentence of an example would push the page sideways in a wider system font. */
+  .ex { white-space: normal; }
 }

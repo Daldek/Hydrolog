@@ -264,7 +264,12 @@ def test_a_command_chosen_in_the_list_is_in_the_hash_and_a_hash_opens_it(
     ).to_have_attribute("aria-current", "true")
     expect(lag).not_to_have_attribute("aria-current", "true")
 
-    # A command the server does not offer: its hash opens the last one chosen
+    # A command the server does not offer: its hash opens the last one chosen, once
+    # stored (an effect after the next frame, later on a slower runner)
+    page.wait_for_function(
+        "() => JSON.parse(localStorage.getItem('hydrolog-gui/polecenia/2'))"
+        "?.command === 'scs effective'"
+    )
     page.evaluate("location.hash = '#polecenia/gui/serve'")
     page.reload()
     expect(page.locator(HEAD)).to_have_text("scs effective")

@@ -713,7 +713,7 @@ class HydrologyReportGenerator:
         """Save report to file."""
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(content, encoding="utf-8")
+        path.write_text(content, encoding="utf-8", newline="\n")
 
 
 def _unit_hydrograph_model(unit: Any, default: str) -> str:
