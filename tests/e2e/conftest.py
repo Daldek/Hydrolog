@@ -155,6 +155,17 @@ def load_network(page: Page, *files: Path) -> None:
     )
 
 
+def open_part(page: Page, section: str, part: str) -> None:
+    """Open the collapsed card ``part`` (``exports``, ``handoff``) of the panel Wyniki.
+
+    ``section`` is the section's selector, e.g. ``section[data-section="siec"]``.
+    """
+    card = page.locator(f'{section} .view-panel.right details[data-part="{part}"]')
+    if card.get_attribute("open") is None:
+        card.locator("summary").click()
+    expect(card).to_have_attribute("open", "")
+
+
 def type_nash(page: Page) -> None:
     """Type the guide's example (``NASH_TYPED``) into the shown form of ``uh nash``."""
     form = page.locator('section[data-section="polecenia"] .cmd-form')

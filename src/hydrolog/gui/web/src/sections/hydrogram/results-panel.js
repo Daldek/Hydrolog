@@ -21,6 +21,7 @@ import { handoffLabels } from "../../labels/handoff.js";
 import { hydrogram as texts } from "../../labels/hydrogram.js";
 import { HydrogramHandoff } from "../../handoff/handoff-panel.js";
 import { CommandLine, ExportButtons } from "../../ui/export-panel.js";
+import { Part } from "../../ui/part.js";
 import { DataTable } from "../../ui/table.js";
 import { cumulativeSpec, mainSpec, uhSpec } from "./charts.js";
 import { durationText, shortText } from "./data-panel.js";
@@ -347,25 +348,6 @@ function Parameters({ run }) {
 }
 
 /**
- * A part of the panel Wyniki: a <details> with a title and a summary on the right.
- *
- * @param {{id: string, title: string, meta?: string, open?: boolean, children: any}} props
- *   the part
- * @returns {object} the part
- */
-function Part({ id, title, meta, open = true, children }) {
-  return html`
-    <details class="step" open=${open} data-part=${id}>
-      <summary>
-        <span class="title">${title}</span><span class="meta">${meta || ""}</span>
-        <svg class="chev" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 5l4 4 4-4" /></svg>
-      </summary>
-      <div class="step-body">${children}</div>
-    </details>
-  `;
-}
-
-/**
  * The panel Wyniki.
  *
  * @param {{run: object|null, spec: object|null, stale: object|null, current?: object}}
@@ -409,12 +391,12 @@ export function ResultsPanel({ run, spec, stale, current = null }) {
       <${Part} id="parameters" title=${texts.results.params} meta=${texts.results.paramsMeta} open=${false}>
         <${Parameters} run=${run} />
       <//>
-      <${Part} id="exports" title=${texts.results.exports} meta=${texts.results.exportsMeta}>
+      <${Part} id="exports" title=${texts.results.exports} meta=${texts.results.exportsMeta} open=${false}>
         <${ExportButtons} spec=${spec} />
         <${CommandLine} command=${COMMAND} options=${run.options} title=${false} />
         ${usesLutz(inputs) ? html`<p class="note">${richText(texts.results.cliNote)}</p>` : null}
       <//>
-      <${Part} id="handoff" title=${handoffLabels.export.title} meta=${handoffLabels.export.meta}>
+      <${Part} id="handoff" title=${handoffLabels.export.title} meta=${handoffLabels.export.meta} open=${Boolean(current && current.handoff)}>
         <${HydrogramHandoff} run=${run} current=${current} subject=${spec.subject} rain=${rainLabel(inputs, result)} />
       <//>
     </div>

@@ -12,6 +12,7 @@ import { Notices } from "../../forms/result-view.js";
 import { html, useMemo } from "../../html.js";
 import { common, t } from "../../labels/common.js";
 import { exportLabels } from "../../labels/exports.js";
+import { handoffLabels } from "../../labels/handoff.js";
 import { resultFields, options as optionLabels } from "../../labels/options.js";
 import { results as resultTexts } from "../../labels/results.js";
 import { siec as texts } from "../../labels/siec.js";
@@ -19,6 +20,7 @@ import { unitOfName } from "../../labels/units.js";
 import { SiecHandoff } from "../../handoff/handoff-panel.js";
 import { printView } from "../../print.js";
 import { CommandLine, downloadBlob } from "../../ui/export-panel.js";
+import { Part } from "../../ui/part.js";
 import { DataTable } from "../../ui/table.js";
 import { toast } from "../../ui/toast.js";
 import { inflowsOf, nodeChartSpec, outflowLabel, resultNodes } from "./charts.js";
@@ -327,9 +329,14 @@ export function ResultsPanel({ run, stale, selected, state, document, valid, cha
       ? html`<h3 class="group-title">${resultTexts.notices}</h3>
           <${Notices} notices=${run.envelope.notices} />`
       : null}
-    <h3 class="group-title">${exportLabels.title}</h3>
-    <${ExportRow} items=${items} />
-    ${run ? html`<${CommandLine} command="route network" options=${run.options} />` : null}
-    <${SiecHandoff} state=${state} document=${document} valid=${valid} run=${run} stale=${stale} />
+    <div class="steps">
+      <${Part} id="exports" title=${exportLabels.title} meta="route network" open=${false}>
+        <${ExportRow} items=${items} />
+        ${run ? html`<${CommandLine} command="route network" options=${run.options} title=${false} />` : null}
+      <//>
+      <${Part} id="handoff" title=${handoffLabels.export.title} meta=${handoffLabels.export.meta} open=${Boolean(state.source && state.source.handoff)}>
+        <${SiecHandoff} state=${state} document=${document} valid=${valid} run=${run} stale=${stale} />
+      <//>
+    </div>
   `;
 }
