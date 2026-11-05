@@ -11,9 +11,9 @@ Verbatim copies (ERR-3, AGI-4.1) of the files below, from the standard 2.1 of th
   `schemas/agent/`): the schemas of the result envelope, the error document and the
   command catalog. `tests/contract/` validates Hydrolog's documents against them.
 
-And, outside the standard, from commit `a01097c` on Nogat's branch `feature/handoff-1`
-(step N1 of Nogat's `docs/plans/2026-11-02-hydrolog-gui.md`; SHA-256
-`59018fd7f565abee6b674d1985e2eb87e8b8bf6ba6a6d34d6c15b2705bc8231a`):
+And, outside the standard, from commit `8727f6e` on Nogat's `develop` (its example
+carries the longest flow path; SHA-256
+`15c82f6a9e0107ddf1c6846f8053d7da9991c1e91679f93d5da4a2fadf6fd6e4`):
 
 - `handoff-1.schema.json` (Nogat `schemas/exchange/handoff-1.schema.json`): the
   envelope `nogat-handoff/1` of data handed between the GUIs of the ecosystem. The GUI

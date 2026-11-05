@@ -409,7 +409,7 @@ def test_a_handoff_of_hydrogram_validates_reopens_and_round_trips(
     assert fetched == []
 
 
-def test_nogats_example_opens_from_the_clipboard_and_asks_for_the_flow_path(
+def test_nogats_example_opens_from_the_clipboard_and_matches_its_result(
     tab: Tab, tmp_path: Path
 ) -> None:
     tab.page.context.grant_permissions(["clipboard-read", "clipboard-write"])
@@ -436,16 +436,9 @@ def test_nogats_example_opens_from_the_clipboard_and_asks_for_the_flow_path(
         "probability_percent": 1,
         "method": "POT",
     }
-    # The example's data are the worked example's step 1 and storm without the longest
-    # flow path, which Kirpich reads and nothing stands in for: both fields asked for
+    # The example carries the longest flow path Kirpich reads: nothing is asked for
     left = f"{HG} .view-panel.left"
-    invalid = page.locator(f'{left} [aria-invalid="true"]')
-    expect(invalid).to_have_count(2)
-    assert invalid.evaluate_all("items => items.map((item) => item.id)") == [
-        "hg-flow_path_length_km",
-        "hg-flow_path_slope_m_per_m",
-    ]
-    expect(page.locator(BADGE)).to_have_text("Dane niepełne: flow_path_length_km")
+    expect(page.locator(f'{left} [aria-invalid="true"]')).to_have_count(0)
     sent = stored_options(page)
     assert sent == {
         "watershed": {"name": "Kamiennik — Świerzawa", **node["watershed"]},
@@ -465,7 +458,7 @@ def test_nogats_example_opens_from_the_clipboard_and_asks_for_the_flow_path(
         "Z Hydrologa: zlewnia punktu 51,0154° N, 15,8900° E"
     )
     expect(origin.locator(".muted")).to_have_text(
-        "2 lis 2026, 11:15 · 11 pól · nogat-handoff/1"
+        "2 lis 2026, 11:15 · 13 pól · nogat-handoff/1"
     )
     expect(page.locator(f"{left} #hg-area_km2")).to_have_value("37,22")
     expect(page.locator(f"{left} #hg-Lc_km")).to_have_count(0)
@@ -473,47 +466,52 @@ def test_nogats_example_opens_from_the_clipboard_and_asks_for_the_flow_path(
         "Kamiennik — Świerzawa · p 1% · 12 h"
     )
 
-    # Typed, the worked example's flow path gives its result; the example's own is of
-    # the data as handed, so Hydrolog's column waits for those data
-    page.locator(f"{left} #hg-flow_path_length_km").fill("15,88")
-    page.locator(f"{left} #hg-flow_path_slope_m_per_m").fill("0,0114")
+    # Hydrolog reproduces the example's result
     shows(page, "57,88", "6:40", "1 046 713")
     expect(page.locator(f"{HG} [data-handoff-received]")).to_have_attribute(
-        "data-handoff-received", "changed"
+        "data-handoff-received", "same"
+    )
+    expect(page.locator(f"{HG} [data-handoff-verdict]")).to_have_attribute(
+        "data-handoff-verdict", "ok"
     )
     assert compared(page, HG) == {
         "version": [f"Hydrolog {hydrolog.__version__}"] * 2,
-        "q": ["60,21 m³/s", "–"],
-        "tp": ["6:20 h", "–"],
-        "volume": ["1 046 213 m³", "–"],
+        "q": ["57,88 m³/s", "57,88 m³/s"],
+        "tp": ["6:40 h", "6:40 h"],
+        "volume": ["1 046 713 m³", "1 046 713 m³"],
     }
+
+    # A changed field marks the producer's result as of the data handed
+    page.locator(f"{left} #hg-flow_path_slope_m_per_m").fill("0,0120")
+    expect(page.locator(f"{HG} [data-handoff-received]")).to_have_attribute(
+        "data-handoff-received", "changed"
+    )
     expect(page.locator(f"{HG} [data-handoff-verdict] li")).to_have_text(
         "Dane zmieniono po wczytaniu przekazania: wynik producenta dotyczy danych "
         "z przekazania."
     )
 
-    # „Do schowka” hands it on: the example with the flow path, which the watershed's
-    # provenance names as changed, and this run's result
+    # „Do schowka” hands it on with the changed field named in the provenance
     handoff_button(page, HG, "copy").click()
     expect(page.locator(".toast")).to_have_text(
         "Skopiowano przekazanie do schowka (nogat-handoff/1)"
     )
     copied = json.loads(page.evaluate("() => navigator.clipboard.readText()"))
     valid(copied)
-    changed = ["flow_path_length_km", "flow_path_slope_m_per_m"]
     assert copied["provenance"] == {
         **D15["provenance"],
-        "watershed": {**D15["provenance"]["watershed"], "changed": changed},
+        "watershed": {
+            **D15["provenance"]["watershed"],
+            "changed": ["flow_path_slope_m_per_m"],
+        },
     }
     assert copied["payload"]["nodes"][0]["watershed"] == {
         "name": "Kamiennik — Świerzawa",
         **node["watershed"],
-        "flow_path_length_km": 15.88,
-        "flow_path_slope_m_per_m": 0.0114,
+        "flow_path_slope_m_per_m": 0.012,
     }
     assert copied["payload"]["nodes"][0]["runoff"] == node["runoff"]
     assert copied["payload"]["nodes"][0]["rainfall"] == node["rainfall"]
-    assert round(copied["result"]["peak_discharge_m3s"], 4) == 57.8786
 
 
 def test_hydrografs_handoff_opens_from_the_clipboard_with_its_exact_values(

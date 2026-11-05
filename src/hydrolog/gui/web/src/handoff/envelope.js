@@ -1,5 +1,5 @@
 // The envelope nogat-handoff/1 as the browser checks it: the validation keywords of
-// Nogat's schema, schemas/nogat/handoff-1.schema.json (Nogat a01097c, copied unchanged;
+// Nogat's schema, schemas/nogat/handoff-1.schema.json (Nogat 8727f6e, copied unchanged;
 // Hydrolog never defines the envelope, plan D15), without its annotations ($schema, $id,
 // title, description, examples). The page cannot load the copy itself (it lies outside
 // the package and names remote identifiers), so tests/e2e/test_exports.py checks that
