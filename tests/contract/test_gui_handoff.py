@@ -71,8 +71,24 @@ def test_the_example_and_its_payload_validate(index: int) -> None:
 
 
 @pytest.mark.parametrize("index", range(len(EXAMPLES)))
-def test_the_payload_without_the_flow_path_is_refused(index: int) -> None:
-    payload = EXAMPLES[index]["payload"]
+def test_the_payload_gives_the_recorded_result(index: int) -> None:
+    example = EXAMPLES[index]
+    outlet = _outlet(example["payload"])
+
+    assert math.isclose(
+        outlet["peak_m3s"], example["result"]["peak_discharge_m3s"], abs_tol=5e-5
+    )
+    assert outlet["time_to_peak_min"] == example["result"]["time_to_peak_min"]
+    assert math.isclose(
+        outlet["volume_m3"], example["result"]["total_volume_m3"], abs_tol=0.05
+    )
+
+
+def test_the_payload_without_the_flow_path_is_refused() -> None:
+    payload = json.loads(json.dumps(EXAMPLES[0]["payload"]))
+    node = next(node for node in payload["nodes"] if node["type"] == "subcatchment")
+    del node["watershed"]["flow_path_length_km"]
+    del node["watershed"]["flow_path_slope_m_per_m"]
 
     with pytest.raises(InvalidParameterError) as caught:
         _outlet(payload)
@@ -85,10 +101,8 @@ def test_the_payload_without_the_flow_path_is_refused(index: int) -> None:
 
 
 def test_one_subcatchment_computes_as_hydrograph_generate() -> None:
-    payload = json.loads(json.dumps(EXAMPLES[0]["payload"]))
+    payload = EXAMPLES[0]["payload"]
     node = next(node for node in payload["nodes"] if node["type"] == "subcatchment")
-    # Kamiennik's longest flow path (tests/fixtures/kamiennik.json)
-    node["watershed"].update(flow_path_length_km=15.88, flow_path_slope_m_per_m=0.0114)
     options: dict[str, Any] = {"watershed": node["watershed"]}
     for part in (node["runoff"], node.get("rainfall", payload.get("rainfall", {}))):
         options.update(
