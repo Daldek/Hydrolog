@@ -439,6 +439,7 @@ def test_nogats_example_opens_from_the_clipboard_and_matches_its_result(
     # The example carries the longest flow path Kirpich reads: nothing is asked for
     left = f"{HG} .view-panel.left"
     expect(page.locator(f'{left} [aria-invalid="true"]')).to_have_count(0)
+    expect(page.locator("#hg-pmaxtp_depth")).to_have_value("105")
     sent = stored_options(page)
     assert sent == {
         "watershed": {"name": "Kamiennik — Świerzawa", **node["watershed"]},
@@ -452,7 +453,6 @@ def test_nogats_example_opens_from_the_clipboard_and_matches_its_result(
         "timestep_min": 10,
         "uh_model": "scs",
     }
-    expect(page.locator("#hg-pmaxtp_depth")).to_have_value("105")
     origin = page.locator(f"{left} .handoff[data-origin]")
     expect(origin.locator("strong")).to_have_text(
         "Z Hydrologa: zlewnia punktu 51,0154° N, 15,8900° E"
