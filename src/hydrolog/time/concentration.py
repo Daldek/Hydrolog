@@ -35,7 +35,7 @@ def _kirpich_min(length_km: float, slope_m_per_m: float) -> float:
 def _kerby_min(length_km: float, slope_m_per_m: float, retardance: float) -> float:
     """Kerby time of concentration [min] of checked arguments.
 
-    With the low-slope adjustment of Cleveland et al. (2012).
+    With the low-slope offset of Cleveland et al. (2012), TxDOT 0-6382-P1.
     """
     slope = slope_m_per_m
     if slope < _KERBY_LOW_SLOPE_THRESHOLD:
@@ -81,10 +81,12 @@ class ConcentrationTime:
         Parameters
         ----------
         length_km : float
-            Length of the main channel from the watershed divide
-            to the outlet [km]. Must be positive.
+            Length of the longest flow path, along the watercourse from the outlet
+            to the most remote point on the watershed divide [km]. Must be
+            positive.
         slope_m_per_m : float
-            Average slope of the main channel [m/m]. Must be positive.
+            Slope of that path: the elevation of the most remote point minus the
+            elevation of the outlet, over the length [m/m]. Must be positive.
 
         Returns
         -------
@@ -141,10 +143,26 @@ class ConcentrationTime:
         areas 0.005-0.45 km² (1.25-112 acres), slopes 3-10% (Kirpich 1940; Roussel
         et al. 2005; USDA-NRCS 2010, NEH Part 630, chapter 15).
 
+        L and S are those of Fang et al. (2005, eq. 3.14): "The channel slope Sc
+        was defined as the difference in elevation ... between the most remote
+        point in the watershed and the outlet divided by the channel length Lc".
+        Kirpich (1940) gave a graph of tc against L/sqrt(S) with L measured along
+        the watercourse from the outlet to the highest point of the basin and S
+        the drop between the two points over L (Mota and Kobiyama 2015). From a
+        DEM: the longest flow path and the elevation of its upstream end.
+
         References
         ----------
         Kirpich, Z.P. (1940). Time of concentration of small agricultural
         watersheds. Civil Engineering, 10(6), 362.
+
+        Fang, X., Cleveland, T.G., Garcia, C.A., Thompson, D.B., and Malla, R.
+        (2005). Literature review on timing parameters for hydrographs. TxDOT
+        Research Report 0-4696-1, eq. 3.14.
+
+        Mota, A.A. and Kobiyama, M. (2015). Reconsiderações sobre a fórmula de
+        Kirpich para o cálculo de tempo de concentração. Revista Brasileira de
+        Recursos Hídricos, 20(1), 55-59.
 
         Ponce, V.M. (2014). Engineering Hydrology: Principles and Practices.
         Online: https://ponce.sdsu.edu/kirpich.php
@@ -180,10 +198,11 @@ class ConcentrationTime:
         Parameters
         ----------
         length_km : float
-            Hydraulic length of the watershed (longest flow path) [km].
-            Must be positive.
+            Flow length: the longest path along which water flows from the
+            watershed divide to the outlet [km]. Must be positive.
         slope_m_per_m : float
-            Average watershed slope [m/m]. Must be positive.
+            Average land slope of the watershed Y [m/m], not the slope of the flow
+            path. Must be positive.
         cn : int
             SCS Curve Number (1-100). CN=100 means no retention.
 
@@ -208,7 +227,8 @@ class ConcentrationTime:
 
         Notes
         -----
-        Original formula (US units):
+        Original formula (US units; USDA-NRCS 2010, NEH Part 630, chapter 15,
+        eq. 15-4a, with tc = lag / 0.6 of eq. 15-3):
             tlag[h] = (L[ft]^0.8 * (S[in] + 1)^0.7) / (1900 * Y[%]^0.5)
 
         Metric conversion (this implementation):
@@ -220,9 +240,11 @@ class ConcentrationTime:
             (S[in] + 1) = (S[mm] + 25.4) / 25.4
 
         Where:
-        - L: hydraulic length [m] (converted internally from km)
+        - L: flow length, the longest flow path [m] (converted internally from km)
         - S: maximum retention = (25400/CN) - 254 [mm]
-        - Y: average watershed slope [%] (converted internally from m/m)
+        - Y: average land slope of the watershed [%] (converted internally from
+          m/m), "not to be confused with the slope of the flow path" (NEH 630,
+          p. 15-5)
 
         **Important distinction:**
         - tc (time of concentration) = time for runoff to travel from the
@@ -234,9 +256,9 @@ class ConcentrationTime:
 
         References
         ----------
-        USDA-NRCS (1986). Urban Hydrology for Small Watersheds.
-        Technical Release 55 (TR-55). Chapter 3.
-        https://www.hydrocad.net/pdf/TR-55%20Manual.pdf
+        USDA-NRCS (2010). National Engineering Handbook, Part 630 Hydrology,
+        Chapter 15: Time of Concentration (210-VI-NEH, May 2010), eq. 15-4.
+        https://directives.nrcs.usda.gov/sites/default/files2/1712930617/14081.pdf
 
         USACE HEC-HMS (2024). Technical Reference Manual - SCS Unit Hydrograph.
         https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/
@@ -386,9 +408,10 @@ class ConcentrationTime:
         Parameters
         ----------
         length_km : float
-            Overland flow length [km]. Must be positive.
+            Overland flow length, from the most remote point of the drainage area
+            to the inlet [km]. Must be positive.
         slope_m_per_m : float
-            Average overland slope [m/m]. Must be positive.
+            Slope of the overland flow surface [m/m]. Must be positive.
         runoff_coeff : float
             Rational method runoff coefficient (0 < C <= 1.0).
             Must be greater than 0 and at most 1.0.
@@ -415,7 +438,8 @@ class ConcentrationTime:
 
         Notes
         -----
-        Original formula (US units):
+        Original formula (US units; FAA 1970, AC 150/5320-5B, fig. 7 "Surface
+        flow time curves", whose curves are labelled with the slope in percent):
 
             tc [min] = 1.8 * (1.1 - C) * L[ft]^0.5 / S[%]^(1/3)
 
@@ -436,20 +460,20 @@ class ConcentrationTime:
 
         Where:
 
-        - C: rational method runoff coefficient (dimensionless)
-        - L: overland flow length
-        - S: average overland slope
+        - C: rational method runoff coefficient (dimensionless), from table I of
+          the circular
+        - L: overland flow length, the distance the "inlet time" covers "from the
+          most remote point in the drainage subarea to the inlet"
+        - S: slope of the overland flow surface
+
+        The later circulars AC 150/5320-5C (2006) and 5D (2013) do not have the
+        formula: they time the flow with the NRCS segment method.
 
         References
         ----------
-        Federal Aviation Agency (1966). Airport Drainage. Advisory Circular
-        AC 150/5320-5A. US Department of Transportation.
-
         Federal Aviation Administration (1970). Airport Drainage. Advisory
-        Circular AC 150/5320-5B. US Department of Transportation.
-
-        Federal Aviation Administration (2013). Airport Drainage Design.
-        Advisory Circular AC 150/5320-5D. US Department of Transportation.
+        Circular AC 150/5320-5B, fig. 7 and table I. US Department of
+        Transportation.
 
         Chin, D.A. (2000). Water-Resources Engineering. Prentice Hall.
 
@@ -504,9 +528,11 @@ class ConcentrationTime:
         Parameters
         ----------
         length_km : float
-            Overland flow length [km]. Must be positive.
+            Overland flow length, from the most distant point until a defined
+            channel is reached [km]. Must be positive.
         slope_m_per_m : float
-            Average overland slope [m/m]. Must be positive.
+            Slope of the terrain the overland flow runs on [m/m]. Must be
+            positive.
         retardance : float
             Kerby retardance roughness coefficient (dimensionless).
             Must be positive. Typical values:
@@ -567,7 +593,7 @@ class ConcentrationTime:
 
             tc [min] = 36.37 * (L[km] * N)^0.467 * S^(-0.2335)
 
-        Low-slope adjustment (Cleveland et al. 2012):
+        Low-slope adjustment (Cleveland et al. 2012, TxDOT 0-6382-P1):
 
             For S < 0.002: S_adj = S + 0.0005
 
@@ -582,9 +608,9 @@ class ConcentrationTime:
         Garcia, C.A. (2005). Time-parameter estimation for applicable Texas
         watersheds. TxDOT Research Report 0-4696-2.
 
-        Cleveland, T.G., Thompson, D.B., and Fang, X. (2012). Use of the
-        Kerby-Kirpich approach for Texas watersheds. TxDOT Research Report
-        0-6544-1.
+        Cleveland, T.G., Thompson, D.B., Fang, X., and Li, M.-H. (2012). Guidance
+        for estimation of time of concentration in Texas for low-slope
+        conditions. TxDOT Product 0-6382-P1, Texas Tech University.
 
         Texas Department of Transportation (2019). Hydraulic Design Manual.
         Chapter 4: Time of Concentration.
@@ -612,16 +638,16 @@ class ConcentrationTime:
         overland_length_km: float,
         overland_slope_m_per_m: float,
         retardance: float,
-        channel_length_km: float,
-        channel_slope_m_per_m: float,
+        flow_path_length_km: float,
+        flow_path_slope_m_per_m: float,
     ) -> float:
         """
         Calculate time of concentration using the Kerby-Kirpich composite method.
 
-        The Kerby-Kirpich method splits the watershed flow path into two
-        segments: overland (sheet) flow estimated with the Kerby equation
-        and channel flow estimated with the Kirpich equation. The total
-        time of concentration is the sum of both components.
+        The Kerby-Kirpich method splits the longest flow path into two segments:
+        overland (sheet) flow estimated with the Kerby equation and channel flow
+        estimated with the Kirpich equation. The total time of concentration is
+        the sum of both components.
 
         Parameters
         ----------
@@ -629,7 +655,8 @@ class ConcentrationTime:
             Overland (sheet) flow length from the hydraulically most distant
             point to the start of a defined channel [km]. Must be positive.
         overland_slope_m_per_m : float
-            Average overland slope [m/m]. Must be positive.
+            Slope of the terrain the overland flow runs on [m/m]. Must be
+            positive.
         retardance : float
             Kerby retardance roughness coefficient (dimensionless).
             Must be positive. Typical values:
@@ -645,11 +672,14 @@ class ConcentrationTime:
             Dense grass, coniferous forest, deciduous forest w/ litter 0.80
             ========================================================  =====
 
-        channel_length_km : float
-            Channel flow length from the start of the defined channel
-            to the watershed outlet [km]. Must be positive.
-        channel_slope_m_per_m : float
-            Average channel slope [m/m]. Must be positive.
+        flow_path_length_km : float
+            Length of the main channel as the method defines it: the primary
+            (longest) flow path from the watershed divide to the outlet, the
+            overland segment included [km]. Must be greater than
+            ``overland_length_km``: the channel segment is the difference.
+        flow_path_slope_m_per_m : float
+            Slope of that path: the elevation at the divide minus the elevation at
+            the outlet, over ``flow_path_length_km`` [m/m]. Must be positive.
 
         Returns
         -------
@@ -659,13 +689,15 @@ class ConcentrationTime:
         Raises
         ------
         InvalidParameterError
-            If any parameter is not positive.
+            If any parameter is not positive, or ``flow_path_length_km`` is not
+            greater than ``overland_length_km`` (``details.option``
+            ``flow_path_length_km``, ``details.reason`` ``exclusive_minimum``).
 
         Warns
         -----
         OutsideTypicalRange
             If the overland flow length or the retardance is outside Kerby's data,
-            or the channel length or slope outside the main channels of the 92
+            or the flow path length or slope outside the main channels of the 92
             Texas watersheds the method was verified on (method
             ``kerby_kirpich``; the ranges and their sources:
             :data:`hydrolog._ranges.TYPICAL_RANGES`). The method's guidance gives
@@ -674,15 +706,22 @@ class ConcentrationTime:
 
         Notes
         -----
-        The composite method treats the watershed flow path as two
-        consecutive segments:
+        The composite method treats the longest flow path as two consecutive
+        segments:
 
             tc = t_overland + t_channel
+            t_overland = Kerby(L_ov, S_ov, N)
+            t_channel = Kirpich(L_fp - L_ov, S_fp)
 
-        where t_overland is computed with the Kerby (1959) equation and
-        t_channel with the Kirpich (1940) equation.
+        where L_fp and S_fp are the length and the slope of the main channel as
+        Roussel et al. (2005, supplement) define them: "Main channel slope is
+        computed as the change in elevation from the watershed divide to the
+        watershed outlet divided by the curvilinear distance of the main channel
+        (primary flow path) between the watershed divide and the outlet", and in
+        their example "the subtraction of the overland flow length from the
+        overall main-channel length (watershed divide to outlet) is necessary".
 
-        **Low-slope adjustment** (Cleveland et al. 2012):
+        **Low-slope adjustment** (Cleveland et al. 2012, TxDOT 0-6382-P1):
 
         For slopes below 0.002 m/m, an offset of 0.0005 is added to
         prevent unreasonably large tc values on very flat terrain:
@@ -691,7 +730,7 @@ class ConcentrationTime:
 
         This adjustment is applied to **both** segments independently.
         The Kerby method applies it internally, while this composite
-        method applies it to the channel slope before calling Kirpich.
+        method applies it to the flow path slope before calling Kirpich.
 
         The method was verified by Roussel et al. (2005) on 92 Texas
         watersheds of 0.25-150 mi² with main channels of 1-50 mi.
@@ -700,11 +739,11 @@ class ConcentrationTime:
         ----------
         Roussel, M.C., Thompson, D.B., Fang, X., Cleveland, T.G., and
         Garcia, C.A. (2005). Time-parameter estimation for applicable Texas
-        watersheds. TxDOT Research Report 0-4696-2.
+        watersheds. TxDOT Research Report 0-4696-2, supplement.
 
-        Cleveland, T.G., Thompson, D.B., and Fang, X. (2012). Use of the
-        Kerby-Kirpich approach for Texas watersheds. TxDOT Research Report
-        0-6544-1.
+        Cleveland, T.G., Thompson, D.B., Fang, X., and Li, M.-H. (2012). Guidance
+        for estimation of time of concentration in Texas for low-slope
+        conditions. TxDOT Product 0-6382-P1, Texas Tech University.
 
         Texas Department of Transportation (2019). Hydraulic Design Manual.
         Chapter 4: Time of Concentration.
@@ -721,8 +760,8 @@ class ConcentrationTime:
         ...     overland_length_km=0.25,
         ...     overland_slope_m_per_m=0.008,
         ...     retardance=0.40,
-        ...     channel_length_km=5.0,
-        ...     channel_slope_m_per_m=0.005,
+        ...     flow_path_length_km=5.25,
+        ...     flow_path_slope_m_per_m=0.005,
         ... )
         >>> print(f"{tc:.1f}")
         144.0
@@ -731,28 +770,46 @@ class ConcentrationTime:
         _require_positive(overland_length_km, "overland_length_km")
         _require_positive(overland_slope_m_per_m, "overland_slope_m_per_m")
         _require_positive(retardance, "retardance")
-        _require_positive(channel_length_km, "channel_length_km")
-        _require_positive(channel_slope_m_per_m, "channel_slope_m_per_m")
+        _require_positive(flow_path_length_km, "flow_path_length_km")
+        _require_positive(flow_path_slope_m_per_m, "flow_path_slope_m_per_m")
+        if flow_path_length_km <= overland_length_km:
+            raise InvalidParameterError(
+                f"flow_path_length_km ({flow_path_length_km}) must be greater than "
+                f"overland_length_km ({overland_length_km}): the channel segment is "
+                "the flow path minus the overland segment",
+                details={
+                    "option": "flow_path_length_km",
+                    "reason": "exclusive_minimum",
+                    "exclusive_minimum": overland_length_km,
+                    "value": flow_path_length_km,
+                },
+                hint=(
+                    "Give the whole longest flow path, from the watershed divide to "
+                    "the outlet, overland segment included."
+                ),
+            )
 
         for name, value in (
             ("overland_length_km", overland_length_km),
             ("retardance", retardance),
-            ("channel_length_km", channel_length_km),
-            ("channel_slope_m_per_m", channel_slope_m_per_m),
+            ("flow_path_length_km", flow_path_length_km),
+            ("flow_path_slope_m_per_m", flow_path_slope_m_per_m),
         ):
             warn_if_outside("kerby_kirpich", name, value)
 
-        # Low-slope adjustment for channel slope (Cleveland et al. 2012)
-        # Kerby already applies this internally for overland slope
-        channel_slope_adj = channel_slope_m_per_m
-        if channel_slope_adj < _KERBY_LOW_SLOPE_THRESHOLD:
-            channel_slope_adj = channel_slope_adj + _KERBY_LOW_SLOPE_OFFSET
+        # Low-slope adjustment of the main channel slope (Cleveland et al. 2012);
+        # Kerby already applies it to the overland slope
+        channel_slope = flow_path_slope_m_per_m
+        if channel_slope < _KERBY_LOW_SLOPE_THRESHOLD:
+            channel_slope = channel_slope + _KERBY_LOW_SLOPE_OFFSET
 
-        # Overland flow component (Kerby) and channel flow component (Kirpich),
-        # without the warnings of the two methods: those above name the arguments
-        # of this one
+        # Overland flow component (Kerby) and channel flow component (Kirpich) on
+        # the rest of the flow path, without the warnings of the two methods: those
+        # above name the arguments of this one
         t_overland = _kerby_min(overland_length_km, overland_slope_m_per_m, retardance)
-        t_channel = _kirpich_min(channel_length_km, channel_slope_adj)
+        t_channel = _kirpich_min(
+            flow_path_length_km - overland_length_km, channel_slope
+        )
 
         tc_min: float = t_overland + t_channel
 

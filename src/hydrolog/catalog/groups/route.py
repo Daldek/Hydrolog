@@ -1358,6 +1358,8 @@ COMMANDS: tuple[Command, ...] = (
                                 "elevation_min_m": 210.0,
                                 "elevation_max_m": 290.0,
                                 "cn": 70,
+                                "flow_path_length_km": 3.5,
+                                "flow_path_slope_m_per_m": 0.0229,
                             },
                             "runoff": {"model": "curve-number", "tc_method": "kirpich"},
                             "rainfall": {
@@ -1487,8 +1489,8 @@ COMMANDS: tuple[Command, ...] = (
                     },
                     {
                         "id": "B",
-                        "peak_m3s": 1.190431,
-                        "parameters": {"total_mm": 30.0, "tc_min": 44.74053},
+                        "peak_m3s": 1.191303,
+                        "parameters": {"total_mm": 30.0, "tc_min": 44.70827},
                     },
                     {
                         "id": "R1",
@@ -1500,7 +1502,7 @@ COMMANDS: tuple[Command, ...] = (
                     {
                         "id": "J1",
                         "type": "junction",
-                        "peak_m3s": 17.11801,
+                        "peak_m3s": 17.11763,
                         "time_to_peak_min": 125.0,
                         "times_min": [0.0, 5.0, 10.0],
                         "discharge_m3s": [0.0, 0.0, 0.0],

@@ -117,6 +117,8 @@ def _watershed_params(parameters: WatershedParameters) -> dict[str, Any]:
         ),
         "channel_length_km": parameters.channel_length_km,
         "channel_slope_m_per_m": parameters.channel_slope_m_per_m,
+        "flow_path_length_km": parameters.flow_path_length_km,
+        "flow_path_slope_m_per_m": parameters.flow_path_slope_m_per_m,
     }
     if has_length and parameters.perimeter_km is not None:
         indicators = parameters.to_geometry().get_shape_indicators()

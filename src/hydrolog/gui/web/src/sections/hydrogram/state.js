@@ -57,6 +57,8 @@ export const WATERSHED_STEP = Object.freeze([
   "mean_slope_m_per_m",
   "channel_length_km",
   "channel_slope_m_per_m",
+  "flow_path_length_km",
+  "flow_path_slope_m_per_m",
 ]);
 
 /** Fields of the watershed only some models and tc methods read, shown in their block of step 3. */
@@ -83,6 +85,8 @@ export const WATERSHED_FIELDS = Object.freeze([
   "mean_slope_m_per_m",
   "channel_length_km",
   "channel_slope_m_per_m",
+  "flow_path_length_km",
+  "flow_path_slope_m_per_m",
   "cn",
   ...MODEL_FIELDS,
   "source",
@@ -107,6 +111,20 @@ export const LUTZ_FIELDS = Object.freeze(["channel_length_km", "Lc_km", "channel
 /** The watershed fields of Nash by Lutz shown in its block (Lutz also reads the channel of step 1). */
 const LUTZ_BLOCK = Object.freeze(["Lc_km", "manning_n", "forest_pct", "urban_pct"]);
 
+/**
+ * The watershed fields each tc method reads: those its source defines, with no substitute
+ * (WatershedParameters.calculate_tc). Besides them every model needs the area, and NRCS's CN
+ * is the losses' own.
+ */
+const TC_FIELDS = Object.freeze({
+  kirpich: ["flow_path_length_km", "flow_path_slope_m_per_m"],
+  nrcs: ["flow_path_length_km", "mean_slope_m_per_m"],
+  giandotti: ["channel_length_km", "elevation_min_m", "elevation_mean_m"],
+  faa: ["overland_length_km", "overland_slope_m_per_m", "runoff_coeff"],
+  kerby: ["overland_length_km", "overland_slope_m_per_m", "retardance"],
+  kerby_kirpich: ["overland_length_km", "overland_slope_m_per_m", "retardance", "flow_path_length_km", "flow_path_slope_m_per_m"],
+});
+
 /** The watershed fields of step 3 each tc method reads (the others are in step 1). */
 export const TC_BLOCK = Object.freeze({
   kirpich: [],
@@ -118,7 +136,7 @@ export const TC_BLOCK = Object.freeze({
 });
 
 /** Slopes in m/m, shown with a % hint (the author's choice: m/m with a % hint). */
-export const SLOPE_FIELDS = new Set(["mean_slope_m_per_m", "channel_slope_m_per_m", "overland_slope_m_per_m"]);
+export const SLOPE_FIELDS = new Set(["mean_slope_m_per_m", "channel_slope_m_per_m", "flow_path_slope_m_per_m", "overland_slope_m_per_m"]);
 
 /** Options sent as texts; every other option is a number. */
 const TEXT_OPTIONS = new Set(["tc_method", "amc", "hietogram_type", "uh_model"]);
@@ -137,6 +155,8 @@ export const UNITS = Object.freeze({
   mean_slope_m_per_m: "m/m",
   channel_length_km: "km",
   channel_slope_m_per_m: "m/m",
+  flow_path_length_km: "km",
+  flow_path_slope_m_per_m: "m/m",
   Lc_km: "km",
   manning_n: "–",
   forest_pct: "%",
@@ -616,36 +636,25 @@ export function handoffMissing(watershed) {
 /**
  * What the chosen setting needs: no model, nothing. A chosen model needs the area, CN
  * (the losses of every model), the rainfall of the chosen source, and its own inputs:
- * SCS and Clark tc (typed, or the fields of the tc method: Kirpich, NRCS and Giandotti a
- * length of the channel or else of the watershed, Kirpich and NRCS a slope, of the
- * channel or of the watershed in the method's order, or else the lowest and the highest
- * elevation; Giandotti the lowest elevation and the mean or else the highest one; FAA,
- * Kerby and Kerby–Kirpich their overland fields, Kerby–Kirpich also the channel), Clark R
- * or R/tc, Nash n and K or the fields of Lutz, Snyder L and Lc of the watershed unless
- * typed for it. A need that more fields can meet names the field (or fields) that meet
- * it, else the first field, with the other ways in `or` (an array: fields needed together).
+ * SCS and Clark tc (typed, or the fields its method's source defines, with no substitute:
+ * Kirpich the length and the slope of the longest flow path, NRCS that length and the mean
+ * slope of the watershed, Giandotti the length of the main channel, the lowest and the
+ * mean elevation, FAA, Kerby and Kerby–Kirpich their overland fields, Kerby–Kirpich also
+ * the longest flow path), Clark R or R/tc, Nash n and K or the fields of Lutz, Snyder L
+ * and Lc of the watershed unless typed for it: a need of Snyder names the watershed's
+ * field with the model's own option in `or`.
  *
  * @param {object} inputs the inputs
  * @returns {{model: string|null, required: Object<string, {purpose: string, or?:
- *   Array<string|string[]>}>}} the chosen model and the fields it needs, with whom they
- *   are needed for (a key of the labels' `requiredFor`)
+ *   string[]}>}} the chosen model and the fields it needs, with whom they are needed for
+ *   (a key of the labels' `requiredFor`)
  */
 export function requirements(inputs) {
   const model = UH_MODELS.includes(inputs.uh_model) ? inputs.uh_model : null;
   const required = {};
   if (!model) return { model, required };
-  const watershed = inputs.watershed || {};
-  const has = (name) => !isEmpty(watershed[name]);
   const need = (name, purpose, or = []) => {
     if (!Object.hasOwn(required, name)) required[name] = or.length ? { purpose, or } : { purpose };
-  };
-  // Ways to meet a need, the first one a single field: the first way given meets it, else
-  // its first field is asked for with the other ways
-  const needOne = (ways, purpose) => {
-    const fields = (way) => (Array.isArray(way) ? way : [way]);
-    const given = ways.find((way) => fields(way).every(has));
-    if (given) for (const name of fields(given)) need(name, purpose);
-    else need(ways[0], purpose, ways.slice(1));
   };
   need("area_km2", model);
   need("cn", "losses");
@@ -665,26 +674,7 @@ export function requirements(inputs) {
   if (usesTc(model) && inputs.tc_manual) need("tc_min", "tc_min");
   else if (usesTc(model)) {
     const method = TC_METHODS.includes(inputs.tc_method) ? inputs.tc_method : "kirpich";
-    const length = ["channel_length_km", "length_km"];
-    const relief = ["elevation_min_m", "elevation_max_m"];
-    if (method === "kirpich") {
-      needOne(length, method);
-      needOne(["channel_slope_m_per_m", "mean_slope_m_per_m", relief], method);
-    } else if (method === "nrcs") {
-      needOne(length, method);
-      needOne(["mean_slope_m_per_m", "channel_slope_m_per_m", relief], method);
-    } else if (method === "giandotti") {
-      needOne(length, method);
-      need("elevation_min_m", method);
-      needOne(["elevation_mean_m", "elevation_max_m"], method);
-    } else {
-      const overland = ["overland_length_km", "overland_slope_m_per_m", method === "faa" ? "runoff_coeff" : "retardance"];
-      for (const name of overland) need(name, method);
-      if (method === "kerby_kirpich") {
-        need("channel_length_km", method);
-        need("channel_slope_m_per_m", method);
-      }
-    }
+    for (const name of TC_FIELDS[method]) need(name, method);
   }
 
   if (model === "clark") need(inputs.clark_kind === "r" ? "clark_r_min" : "clark_r_tc_ratio", "clark");
@@ -934,8 +924,8 @@ export function checkInputs(inputs, models, last = null) {
   for (const [name, { purpose, or }] of Object.entries(required)) {
     if (found[name] || !isEmpty(fieldText(inputs, name))) continue;
     const what = purposeText(purpose);
-    const ways = (or || []).map((way) => (Array.isArray(way) ? way : [way]).map((other) => quoted(other, name)).join(texts.andJoin));
-    const text = ways.length ? t(texts.requiredOr, { what, others: ways.join(texts.orJoin) }) : t(texts.required, { what });
+    const others = (or || []).map((other) => quoted(other, name));
+    const text = others.length ? t(texts.requiredOr, { what, others: others.join(texts.orJoin) }) : t(texts.required, { what });
     found[name] = withReason(text, "required");
   }
   if (usesLutz(inputs) && !found.Lc_km && !found.channel_length_km) {

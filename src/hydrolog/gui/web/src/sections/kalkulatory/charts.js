@@ -59,18 +59,19 @@ export function tcTitle(count) {
 }
 
 /**
- * The line under the chart's title: the watershed sent and its main fields.
+ * The line under the chart's title: the watershed sent and its main fields, L and S of its
+ * longest flow path (Kirpich's).
  *
  * @param {object} watershed the watershed of the run
- * @returns {string} „Kamiennik — Świerzawa · A 37,22 km² · L 14,78 km · S 0,0142 m/m · CN 65”
+ * @returns {string} „Kamiennik — Świerzawa · A 37,22 km² · L 15,88 km · S 0,0114 m/m · CN 65”
  */
 export function chartSub(watershed) {
   const value = (name) => (typeof watershed[name] === "number" ? inputText(watershed[name]) : "–");
   return t(texts.chart.sub, {
     name: watershed.name || texts.watershed.unnamed,
     area: value("area_km2"),
-    length: value("channel_length_km"),
-    slope: value("channel_slope_m_per_m"),
+    length: value("flow_path_length_km"),
+    slope: value("flow_path_slope_m_per_m"),
     cn: value("cn"),
   });
 }

@@ -62,8 +62,9 @@ def _slopes_from_relief_notices(
     """Return a notice for each slope given in the file that the result does not use.
 
     ``TerrainAnalysis`` derives both slopes from the relief, so ``mean_slope_m_per_m``
-    and ``channel_slope_m_per_m`` of the watershed parameters are not used here,
-    while ``tc watershed`` and ``hydrograph generate`` use them. Each notice
+    and ``channel_slope_m_per_m`` of the watershed parameters are not used here;
+    of them, ``tc watershed`` and ``hydrograph generate`` take only the mean slope
+    (NRCS, ADR-0019). Each notice
     (``slopes_from_relief``) gives the option, its value and the computed slope.
     """
     pairs = (

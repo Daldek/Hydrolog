@@ -39,6 +39,11 @@ class TestHydrografIntegration:
             "channel_length_km": 14.2,
             "channel_slope_m_per_m": 0.018,
             "cn": 72,
+            # Hydrograf's hydraulic_length_km; the response has no elevation of the
+            # head of the path, so the slope assumes it at 440 m on the divide:
+            # (440 - 150) / 15100
+            "flow_path_length_km": 15.1,
+            "flow_path_slope_m_per_m": 0.0192,
             "source": "Hydrograf",
             "crs": "EPSG:2180",
         }
@@ -153,7 +158,7 @@ class TestHydrografIntegration:
         """Test all concentration time calculation methods."""
         params = WatershedParameters.from_dict(hydrograf_api_response)
 
-        # Kirpich (uses channel_length and channel_slope)
+        # Kirpich (uses the length and slope of the longest flow path)
         tc_kirpich = params.calculate_tc(method="kirpich")
         assert tc_kirpich > 0
 
@@ -174,11 +179,6 @@ class TestHydrografIntegration:
         """Test workflow with minimal required fields only."""
         params = WatershedParameters.from_dict(hydrograf_minimal_response)
 
-        # Should calculate slope from relief/length when not provided
-        tc_min = params.calculate_tc(method="kirpich")
-        assert tc_min > 0
-
-        # Geometry conversion should still work
         geom = params.to_geometry()
         assert geom.area_km2 == 23.5
 
@@ -232,7 +232,8 @@ class TestHydrografIntegration:
 
     def test_multiple_watersheds_batch_processing(self):
         """Test processing multiple watersheds (batch mode)."""
-        # Simulate batch response from Hydrograf
+        # Simulate batch response from Hydrograf; the head of each longest flow path
+        # is the highest point of its divide
         watersheds_data = [
             {
                 "name": "Zlewnia 1",
@@ -242,6 +243,8 @@ class TestHydrografIntegration:
                 "elevation_min_m": 100.0,
                 "elevation_max_m": 400.0,
                 "cn": 65,
+                "flow_path_length_km": 8.0,
+                "flow_path_slope_m_per_m": 300.0 / 8000.0,
             },
             {
                 "name": "Zlewnia 2",
@@ -251,6 +254,8 @@ class TestHydrografIntegration:
                 "elevation_min_m": 150.0,
                 "elevation_max_m": 600.0,
                 "cn": 75,
+                "flow_path_length_km": 15.0,
+                "flow_path_slope_m_per_m": 450.0 / 15000.0,
             },
             {
                 "name": "Zlewnia 3",
@@ -260,6 +265,8 @@ class TestHydrografIntegration:
                 "elevation_min_m": 200.0,
                 "elevation_max_m": 800.0,
                 "cn": 80,
+                "flow_path_length_km": 20.0,
+                "flow_path_slope_m_per_m": 600.0 / 20000.0,
             },
         ]
 
@@ -344,13 +351,13 @@ class TestHydrografDataValidation:
             WatershedParameters.from_dict({"perimeter_km": 32.0, "length_km": 12.0})
 
     def test_a_partial_watershed_names_what_a_calculation_misses(self):
-        """Without the length the Kirpich time of concentration names the field."""
+        """Without the flow path the Kirpich time of concentration names the field."""
         params = WatershedParameters.from_dict({"area_km2": 45.0, "perimeter_km": 32.0})
 
         with pytest.raises(InvalidParameterError) as caught:
             params.calculate_tc(method="kirpich")
 
-        assert caught.value.details["option"] == "channel_length_km"
+        assert caught.value.details["option"] == "flow_path_length_km"
         assert caught.value.details["reason"] == "missing_field"
 
     def test_nrcs_without_cn_raises_error(self):

@@ -65,8 +65,9 @@ export function CalculatorList({ docs, group, query, current, active, onGroup, o
 }
 
 /**
- * The watershed of Hydrogram zlewni: its name and main fields, a button that fills the form
- * with them, or a pointer to Hydrogram zlewni when it has none.
+ * The watershed of Hydrogram zlewni: its name and main fields (L and S of its longest flow
+ * path), a button that fills the form with them, or a pointer to Hydrogram zlewni when it
+ * has none.
  *
  * @param {{watershed: object|null, onFill?: () => void, fill?: {text?: string,
  *   error?: string}|null}} props the watershed, the fill handler (a form that takes its
@@ -94,8 +95,8 @@ export function WatershedBox({ watershed, onFill, fill }) {
         <strong>${texts.watershed.from}</strong>: ${watershed.name || texts.watershed.unnamed}
         <span class="muted">${t(texts.watershed.details, {
           area: value("area_km2"),
-          length: value("channel_length_km"),
-          slope: value("channel_slope_m_per_m"),
+          length: value("flow_path_length_km"),
+          slope: value("flow_path_slope_m_per_m"),
           cn: value("cn"),
         })}</span>
         ${fill && fill.text ? html`<span class="muted" role="status">${richText(fill.text)}</span>` : null}

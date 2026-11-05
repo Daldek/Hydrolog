@@ -218,8 +218,8 @@ class TestFormulaRenderer:
             ov_length_km=0.25,
             ov_slope_m_per_m=0.008,
             retardance=0.40,
-            ch_length_km=5.0,
-            ch_slope_m_per_m=0.005,
+            fp_length_km=5.25,
+            fp_slope_m_per_m=0.005,
             tc_ov_min=40.0,
             tc_ch_min=104.0,
             tc_total_min=144.0,
@@ -232,7 +232,7 @@ class TestFormulaRenderer:
         assert "104.0" in result
         assert "144.0" in result
         assert "0.25" in result or "0.250" in result
-        assert "5.0" in result or "5.00" in result
+        assert "5.00^{0.77}" in result  # channel segment: 5.25 - 0.25 km
 
     def test_kerby_tc_substitutes_the_slope_the_formula_used(self):
         """Below 0.002 m/m the library adds 0.0005: the report shows what it used.
@@ -263,14 +263,14 @@ class TestFormulaRenderer:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")  # the slopes are below the typical range
             tc_ov = ConcentrationTime.kerby(0.25, 0.001, 0.4)
-            tc = ConcentrationTime.kerby_kirpich(0.25, 0.001, 0.4, 5.0, 0.0015)
+            tc = ConcentrationTime.kerby_kirpich(0.25, 0.001, 0.4, 5.25, 0.0015)
 
         result = FormulaRenderer.kerby_kirpich_tc(
             ov_length_km=0.25,
             ov_slope_m_per_m=0.001,
             retardance=0.40,
-            ch_length_km=5.0,
-            ch_slope_m_per_m=0.0015,
+            fp_length_km=5.25,
+            fp_slope_m_per_m=0.0015,
             tc_ov_min=tc_ov,
             tc_ch_min=tc - tc_ov,
             tc_total_min=tc,
@@ -453,8 +453,8 @@ class TestSectionGenerators:
             overland_length_km=0.25,
             overland_slope_m_per_m=0.008,
             retardance=0.40,
-            channel_length_km=5.0,
-            channel_slope_m_per_m=0.005,
+            flow_path_length_km=5.25,
+            flow_path_slope_m_per_m=0.005,
             tc_overland_min=40.0,
             tc_channel_min=104.0,
         )
@@ -928,6 +928,10 @@ _CATCHMENT = {
     "mean_slope_m_per_m": 0.025,
     "channel_length_km": 10.8,
     "channel_slope_m_per_m": 0.018,
+    # The longest flow path: the channel plus the overland segment, its head on
+    # the divide 365.5 m above sea level (215.5 m above the outlet)
+    "flow_path_length_km": 11.05,
+    "flow_path_slope_m_per_m": 0.0195,
     "cn": 72,
     "runoff_coeff": 0.45,
     "retardance": 0.4,
@@ -1199,9 +1203,10 @@ class TestReportShowsTheInputsOfTheTimeOfConcentration:
     @pytest.mark.parametrize(
         "method, expected",
         [
-            ("kirpich", ["10.80^{0.77}", "0.0180^{-0.385}"]),
-            # NRCS: Y is the mean land slope of the watershed (2.5 %), not the channel's
-            ("nrcs", ["L = 10800 m", "Y = 2.50 %", "dla CN = 72"]),
+            ("kirpich", ["11.05^{0.77}", "0.0195^{-0.385}"]),
+            # NRCS: Y is the mean land slope of the watershed (2.5 %), not the slope
+            # of the flow path
+            ("nrcs", ["L = 11050 m", "Y = 2.50 %", "dla CN = 72"]),
             ("giandotti", ["\\sqrt{45.00}", "1.5 \\cdot 10.80", "\\sqrt{180.0}"]),
             # FAA and Kerby time the overland flow path (0.25 km at 0.008), not the
             # channel
@@ -1209,7 +1214,12 @@ class TestReportShowsTheInputsOfTheTimeOfConcentration:
             ("kerby", ["(0.250 \\cdot 0.40)^{0.467}", "0.0080^{-0.2335}"]),
             (
                 "kerby_kirpich",
-                ["(0.250 \\cdot 0.40)^{0.467}", "0.0080^{-0.2335}", "10.80^{0.77}"],
+                [
+                    "(0.250 \\cdot 0.40)^{0.467}",
+                    "0.0080^{-0.2335}",
+                    "10.80^{0.77}",
+                    "0.0195^{-0.385}",
+                ],
             ),
         ],
     )
@@ -1227,7 +1237,7 @@ class TestReportShowsTheInputsOfTheTimeOfConcentration:
         overland = ConcentrationTime.kerby(0.25, 0.008, 0.4)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            channel = ConcentrationTime.kirpich(10.8, 0.018)
+            channel = ConcentrationTime.kirpich(11.05 - 0.25, 0.0195)
         assert tc == pytest.approx(overland + channel)
 
         section = self._tc_section("kerby_kirpich")
@@ -1276,32 +1286,24 @@ class TestReportShowsTheInputsOfTheTimeOfConcentration:
         assert "## 1. Parametry Zlewni" in content
         assert "retardance" not in _section(content, 1)
 
-    def test_the_slope_falls_back_to_the_mean_slope_and_to_the_relief(self):
-        """The rules of ``calculate_tc``: channel slope, mean slope, relief/length."""
-        no_channel = {
+    def test_kirpich_has_no_substitute_for_the_flow_path(self):
+        """Without the flow path the channel is not shown as Kirpich's inputs."""
+        no_flow_path = {
             key: value
             for key, value in self._watershed_params().items()
-            if key not in ("channel_slope_m_per_m", "channel_length_km")
-        }
-        no_slopes = {
-            key: value
-            for key, value in no_channel.items()
-            if key != "mean_slope_percent"
+            if key not in ("flow_path_length_km", "flow_path_slope_m_per_m")
         }
         result, precip = _computation("scs")
 
-        def kirpich_section(watershed_params):
-            content = HydrologyReportGenerator().generate(
-                result=result,
-                hietogram=precip,
-                area_km2=45.0,
-                tc_min=90.0,
-                tc_method="kirpich",
-                watershed_params=watershed_params,
-            )
-            return _section(content, 2)
+        content = HydrologyReportGenerator().generate(
+            result=result,
+            hietogram=precip,
+            area_km2=45.0,
+            tc_min=90.0,
+            tc_method="kirpich",
+            watershed_params=no_flow_path,
+        )
 
-        assert "12.50^{0.77}" in kirpich_section(no_channel)
-        assert "0.0250^{-0.385}" in kirpich_section(no_channel)
-        relief_slope = (520.0 - 150.0) / (12.5 * 1000.0)
-        assert f"{relief_slope:.4f}^{{-0.385}}" in kirpich_section(no_slopes)
+        section = _section(content, 2)
+        assert "brak danych" in section
+        assert "^{0.77}" not in section

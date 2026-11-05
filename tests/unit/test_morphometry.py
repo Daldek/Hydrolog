@@ -746,8 +746,8 @@ class TestWatershedParameters:
             retardance=0.40,
             overland_length_km=0.25,
             overland_slope_m_per_m=0.008,
-            channel_length_km=5.0,
-            channel_slope_m_per_m=0.005,
+            flow_path_length_km=5.25,
+            flow_path_slope_m_per_m=0.005,
         )
         tc = p.calculate_tc(method="kerby_kirpich")
         assert tc > 0
@@ -757,8 +757,8 @@ class TestWatershedParameters:
         p = self._base_params(
             overland_length_km=0.25,
             overland_slope_m_per_m=0.008,
-            channel_length_km=5.0,
-            channel_slope_m_per_m=0.005,
+            flow_path_length_km=5.25,
+            flow_path_slope_m_per_m=0.005,
         )
         with pytest.raises(ValueError, match="retardance"):
             p.calculate_tc(method="kerby_kirpich")
@@ -768,8 +768,8 @@ class TestWatershedParameters:
         p = self._base_params(
             retardance=0.40,
             overland_slope_m_per_m=0.008,
-            channel_length_km=5.0,
-            channel_slope_m_per_m=0.005,
+            flow_path_length_km=5.25,
+            flow_path_slope_m_per_m=0.005,
         )
         with pytest.raises(ValueError, match="overland_length_km"):
             p.calculate_tc(method="kerby_kirpich")
@@ -779,32 +779,32 @@ class TestWatershedParameters:
         p = self._base_params(
             retardance=0.40,
             overland_length_km=0.25,
-            channel_length_km=5.0,
-            channel_slope_m_per_m=0.005,
+            flow_path_length_km=5.25,
+            flow_path_slope_m_per_m=0.005,
         )
         with pytest.raises(ValueError, match="overland_slope_m_per_m"):
             p.calculate_tc(method="kerby_kirpich")
 
-    def test_calculate_tc_kerby_kirpich_missing_channel_length(self):
-        """Kerby-Kirpich raises ValueError when channel_length_km is missing."""
+    def test_calculate_tc_kerby_kirpich_missing_flow_path_length(self):
+        """Kerby-Kirpich raises ValueError when flow_path_length_km is missing."""
         p = self._base_params(
             retardance=0.40,
             overland_length_km=0.25,
             overland_slope_m_per_m=0.008,
-            channel_slope_m_per_m=0.005,
+            flow_path_slope_m_per_m=0.005,
         )
-        with pytest.raises(ValueError, match="channel_length_km"):
+        with pytest.raises(ValueError, match="flow_path_length_km"):
             p.calculate_tc(method="kerby_kirpich")
 
-    def test_calculate_tc_kerby_kirpich_missing_channel_slope(self):
-        """Kerby-Kirpich raises ValueError when channel_slope_m_per_m is missing."""
+    def test_calculate_tc_kerby_kirpich_missing_flow_path_slope(self):
+        """Kerby-Kirpich raises ValueError when flow_path_slope_m_per_m is missing."""
         p = self._base_params(
             retardance=0.40,
             overland_length_km=0.25,
             overland_slope_m_per_m=0.008,
-            channel_length_km=5.0,
+            flow_path_length_km=5.25,
         )
-        with pytest.raises(ValueError, match="channel_slope_m_per_m"):
+        with pytest.raises(ValueError, match="flow_path_slope_m_per_m"):
             p.calculate_tc(method="kerby_kirpich")
 
     # -- calculate_tc: unknown method ------------------------------------
@@ -817,13 +817,13 @@ class TestWatershedParameters:
     # -- Existing methods still work (regression) ------------------------
     def test_calculate_tc_kirpich_still_works(self):
         """Kirpich method still works after extension."""
-        p = self._base_params(mean_slope_m_per_m=0.025)
+        p = self._base_params(flow_path_length_km=12.5, flow_path_slope_m_per_m=0.025)
         tc = p.calculate_tc(method="kirpich")
         assert tc > 0
 
     def test_calculate_tc_giandotti_still_works(self):
         """Giandotti method still works after extension."""
-        p = self._base_params()
+        p = self._base_params(channel_length_km=11.0, elevation_mean_m=330.0)
         tc = p.calculate_tc(method="giandotti")
         assert tc > 0
 

@@ -13,9 +13,10 @@ plan 2026-11-02), except the given parameters of the Nash cascade: they are kept
 to be verified (``verified`` false), and a value outside them gives the notice
 ``outside_unverified_range`` (:class:`~hydrolog._warnings.OutsideUnverifiedRange`).
 
-:data:`TC_INPUTS` names the watershed fields each argument of a time of concentration
-formula is taken from, first choice first: ``WatershedParameters`` selects with it,
-and the catalog serves it as the ``inputs`` of a range checked on a watershed.
+:data:`TC_INPUTS` names the watershed field each argument of a time of concentration
+formula is taken from, the one its source defines, with no substitute:
+``WatershedParameters`` selects with it, and the catalog serves it as the ``inputs`` of
+a range checked on a watershed.
 
 The module is a leaf: it imports only :mod:`hydrolog._warnings`, so the catalog can
 read it without the numerical libraries.
@@ -269,9 +270,9 @@ TYPICAL_RANGES: Final[tuple[TypicalRange, ...]] = (
         388.0,
         "km2",
         "Roussel et al. (2005): 92 Texas watersheds of 0.25-150 mi² (TxDOT report "
-        "0-4696-2; Cleveland et al. 2012)",
+        "0-4696-2; TxDOT 2019)",
         "Roussel i in. (2005): 92 zlewnie w Teksasie, 0,25–150 mi² (raport TxDOT "
-        "0-4696-2; Cleveland i in. 2012)",
+        "0-4696-2; TxDOT 2019)",
     ),
     TypicalRange(
         "kerby_kirpich",
@@ -287,21 +288,25 @@ TYPICAL_RANGES: Final[tuple[TypicalRange, ...]] = (
     TypicalRange("kerby_kirpich", "retardance", 0.02, 0.80, "-", *_KERBY_N),
     TypicalRange(
         "kerby_kirpich",
-        "channel_length_km",
+        "flow_path_length_km",
         1.6,
         80.0,
         "km",
-        "Roussel et al. (2005): main channels of 1-50 mi of the 92 Texas watersheds",
-        "Roussel i in. (2005): cieki główne 92 zlewni w Teksasie, 1–50 mil",
+        "Roussel et al. (2005): main channels of 1-50 mi, from the outlet to the "
+        "watershed divide, of the 92 Texas watersheds",
+        "Roussel i in. (2005): cieki główne 92 zlewni w Teksasie, 1–50 mil, od "
+        "przekroju do działu wodnego",
     ),
     TypicalRange(
         "kerby_kirpich",
-        "channel_slope_m_per_m",
+        "flow_path_slope_m_per_m",
         0.002,
         0.02,
         "m/m",
-        "Roussel et al. (2005): main channel slopes of the 92 Texas watersheds",
-        "Roussel i in. (2005): spadki cieków głównych 92 zlewni w Teksasie",
+        "Roussel et al. (2005): main channel slopes, from the watershed divide to "
+        "the outlet, of the 92 Texas watersheds",
+        "Roussel i in. (2005): spadki cieków głównych od działu wodnego do "
+        "przekroju 92 zlewni w Teksasie",
     ),
     # --- SCS-CN ------------------------------------------------------------------
     TypicalRange(
@@ -430,32 +435,31 @@ _BY_KEY: Final[Mapping[tuple[str, str], TypicalRange]] = {
     (entry.method, entry.parameter): entry for entry in TYPICAL_RANGES
 }
 
-_LENGTH = ("channel_length_km", "length_km")
 _KERBY_KIRPICH = (
     "area_km2",
     "retardance",
     "overland_length_km",
     "overland_slope_m_per_m",
-    "channel_length_km",
-    "channel_slope_m_per_m",
+    "flow_path_length_km",
+    "flow_path_slope_m_per_m",
 )
 
 TC_INPUTS: Final[Mapping[str, Mapping[str, tuple[str, ...]]]] = {
     "kirpich": {
         "area_km2": ("area_km2",),
-        "length_km": _LENGTH,
-        "slope_m_per_m": ("channel_slope_m_per_m", "mean_slope_m_per_m"),
+        "length_km": ("flow_path_length_km",),
+        "slope_m_per_m": ("flow_path_slope_m_per_m",),
     },
     "nrcs": {
         "area_km2": ("area_km2",),
-        "length_km": _LENGTH,
-        "slope_m_per_m": ("mean_slope_m_per_m", "channel_slope_m_per_m"),
+        "length_km": ("flow_path_length_km",),
+        "slope_m_per_m": ("mean_slope_m_per_m",),
         "cn": ("cn",),
     },
     "giandotti": {
         "area_km2": ("area_km2",),
-        "length_km": _LENGTH,
-        "elevation_diff_m": (),
+        "length_km": ("channel_length_km",),
+        "elevation_diff_m": ("elevation_mean_m", "elevation_min_m"),
     },
     "faa": {
         "length_km": ("overland_length_km",),
@@ -472,11 +476,14 @@ TC_INPUTS: Final[Mapping[str, Mapping[str, tuple[str, ...]]]] = {
 }
 """Watershed fields of the arguments of each time of concentration method.
 
-For each method: argument name to the fields it is taken from, first choice first
-(``area_km2`` too, though only Giandotti's formula takes it: the others are checked
-against their data on the area of the watershed). A slope of Kirpich or NRCS without
-its fields is the relief over the length, and Giandotti's elevation difference is
-always derived: they list no field.
+For each method: argument name to the field its source defines for it, without
+substitutes (``area_km2`` too, though only Giandotti's formula takes it: the others are
+checked against their data on the area of the watershed). Kirpich and NRCS take the
+longest flow path, from the watershed divide to the outlet (Kirpich with its slope,
+NRCS with the average land slope of the watershed); Giandotti the main channel and the
+mean elevation of the watershed above the outlet, the one argument made of two fields
+(``elevation_mean_m`` minus ``elevation_min_m``); Kerby-Kirpich the overland segment and
+the whole flow path, whose channel segment is the flow path minus the overland one.
 """
 
 

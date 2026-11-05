@@ -78,21 +78,27 @@ FULL_WATERSHED = {
     "retardance": 0.4,
     "overland_length_km": 0.25,
     "overland_slope_m_per_m": 0.008,
+    # The longest flow path: the 10.8 km channel and the 0.25 km overland segment,
+    # at the slope of the channel
+    "flow_path_length_km": 11.05,
+    "flow_path_slope_m_per_m": 0.018,
 }
 
-# What each method of ``WatershedParameters.calculate_tc`` cannot do without, in the
-# order the library reports it (besides the always present watershed fields). FAA and
-# Kerby time the overland flow, so they need the overland flow length and slope.
+# The fields each method of ``WatershedParameters.calculate_tc`` takes, the ones its
+# source defines, in the order the library reports them when missing (the area is
+# always present).
 REQUIRED_FIELDS = {
-    "nrcs": ("cn",),
+    "kirpich": ("flow_path_length_km", "flow_path_slope_m_per_m"),
+    "nrcs": ("flow_path_length_km", "mean_slope_m_per_m", "cn"),
+    "giandotti": ("channel_length_km", "elevation_min_m", "elevation_mean_m"),
     "faa": ("runoff_coeff", "overland_length_km", "overland_slope_m_per_m"),
     "kerby": ("retardance", "overland_length_km", "overland_slope_m_per_m"),
     "kerby_kirpich": (
         "retardance",
         "overland_length_km",
         "overland_slope_m_per_m",
-        "channel_length_km",
-        "channel_slope_m_per_m",
+        "flow_path_length_km",
+        "flow_path_slope_m_per_m",
     ),
 }
 
@@ -154,8 +160,8 @@ TC_CASES = [
             "overland_length_km": 0.25,
             "overland_slope_m_per_m": 0.008,
             "retardance": 0.4,
-            "channel_length_km": 5.0,
-            "channel_slope_m_per_m": 0.005,
+            "flow_path_length_km": 5.25,
+            "flow_path_slope_m_per_m": 0.005,
         },
     ),
 ]
@@ -210,22 +216,13 @@ class TestTimeOfConcentration:
         assert result.tc_min == pytest.approx(expected, rel=1e-12)
         assert result.watershed_name == "Potok Młynówka"
 
-    @pytest.mark.parametrize(
-        "dropped",
-        [
-            (),
-            ("channel_length_km", "channel_slope_m_per_m"),
-            ("channel_length_km", "channel_slope_m_per_m", "mean_slope_m_per_m"),
-            ("elevation_mean_m",),
-        ],
-        ids=["full", "no-channel", "relief-slope", "no-mean-elevation"],
-    )
     @pytest.mark.parametrize("method", ["kirpich", "nrcs", "giandotti", "faa", "kerby"])
-    def test_reported_parameters_reproduce_the_result(self, method, dropped):
+    def test_reported_parameters_reproduce_the_result(self, method):
         """The parameters shown are the ones the library derived from the watershed."""
-        data = without(FULL_WATERSHED, *dropped)
-        expected = quietly(WatershedParameters.from_dict(data).calculate_tc, method)
-        result, _ = unwrap(ops.tc_watershed(watershed=data, method=method))
+        expected = quietly(
+            WatershedParameters.from_dict(FULL_WATERSHED).calculate_tc, method
+        )
+        result, _ = unwrap(ops.tc_watershed(watershed=FULL_WATERSHED, method=method))
         assert result.tc_min == pytest.approx(expected, rel=1e-12)
         again = quietly(getattr(ConcentrationTime, method), **result.parameters)
         assert again == pytest.approx(expected, rel=1e-12)
@@ -262,11 +259,12 @@ class TestTimeOfConcentration:
         }
         assert [(n.details["parameter"], n.details["field"]) for n in notices] == ranges
 
-    def test_nrcs_reports_the_land_slope_of_the_watershed(self):
-        """TR-55: Y is the average land slope (0.025), not the channel slope (0.018)."""
+    def test_nrcs_reports_the_flow_path_and_the_land_slope_of_the_watershed(self):
+        """NEH 630: the longest flow path (11.05 km) and Y, the average land slope
+        (0.025), not the slope of the flow path (0.018)."""
         result, _ = unwrap(ops.tc_watershed(watershed=FULL_WATERSHED, method="nrcs"))
         assert result.parameters == {
-            "length_km": 10.8,
+            "length_km": 11.05,
             "slope_m_per_m": 0.025,
             "cn": 72.0,
         }
@@ -286,8 +284,26 @@ class TestTimeOfConcentration:
         }
         assert "kerby_kirpich" in caught.value.hint
 
+    def test_a_watershed_with_a_channel_only_has_no_kirpich(self):
+        """No substitute for the longest flow path: the channel and the watershed
+        length are there, yet both flow path fields are named, with how to measure
+        them."""
+        data = without(FULL_WATERSHED, "flow_path_length_km", "flow_path_slope_m_per_m")
+        with pytest.raises(InvalidParameterError) as caught:
+            ops.tc_watershed(watershed=data, method="kirpich")
+        assert caught.value.code == "validation_error"
+        assert caught.value.details == {
+            "option": "flow_path_length_km",
+            "reason": "missing_field",
+            "method": "kirpich",
+            "missing": ["flow_path_length_km", "flow_path_slope_m_per_m"],
+        }
+        assert caught.value.hint.startswith(
+            "The longest flow path runs from the watershed divide to the outlet"
+        )
+
     def test_a_mean_elevation_of_zero_is_a_value_not_a_missing_one(self):
-        """Giandotti: H = 0 - (-30) = 30 m; the middle of the range would give 65 m."""
+        """Giandotti: H = 0 - (-30) = 30 m; a mean elevation of 0 m a.s.l. is given."""
         data = {
             **FULL_WATERSHED,
             "elevation_min_m": -30.0,
@@ -369,12 +385,12 @@ class TestTimeOfConcentration:
         assert caught.value.details["allowed"] == list(TC_METHODS)
 
     def test_formula_rejection_is_a_validation_error(self):
-        """A zero channel slope passes the watershed checks but not Kirpich; the
+        """A zero flow path slope passes the watershed checks but not Kirpich; the
         error names the field the slope came from."""
-        data = {**FULL_WATERSHED, "channel_slope_m_per_m": 0.0}
+        data = {**FULL_WATERSHED, "flow_path_slope_m_per_m": 0.0}
         with pytest.raises(InvalidParameterError) as caught:
             ops.tc_watershed(watershed=data, method="kirpich")
-        assert caught.value.details["option"] == "channel_slope_m_per_m"
+        assert caught.value.details["option"] == "flow_path_slope_m_per_m"
         assert caught.value.details["reason"] == "exclusive_minimum"
         assert caught.value.details["method"] == "kirpich"
         assert "slope_m_per_m must be positive" in str(caught.value)
@@ -1654,8 +1670,8 @@ STORM = {
     "timestep_min": 5.0,
 }
 SERIES = [5.0, 10.0, 15.0, 10.0, 5.0, 3.0]
-# A watershed without CN (L = 12 km, land slope 2.5 %) and a 50 mm / 120 min beta
-# storm: the case of the review of the CN override (tc by NRCS).
+# A watershed without CN (longest flow path 12 km, land slope 2.5 %) and a 50 mm /
+# 120 min beta storm: the case of the review of the CN override (tc by NRCS).
 OVERRIDE_WATERSHED = {
     "name": "Zlewnia CN",
     "area_km2": 45.0,
@@ -1664,6 +1680,8 @@ OVERRIDE_WATERSHED = {
     "elevation_min_m": 150.0,
     "elevation_max_m": 520.0,
     "mean_slope_m_per_m": 0.025,
+    "flow_path_length_km": 12.0,
+    "flow_path_slope_m_per_m": 0.03,
 }
 OVERRIDE_STORM = {"hietogram_type": "beta", "total_mm": 50.0, "duration_min": 120.0}
 
@@ -1913,7 +1931,7 @@ class TestHydrographGenerate:
         assert [n.code for n in notices] == ["ia_coefficient_nonstandard"]
 
     def test_watershed_supplies_area_cn_and_kirpich_tc(self):
-        """Default tc of a watershed: Kirpich from its channel/slope data."""
+        """Default tc of a watershed: Kirpich from its longest flow path."""
         result, _ = unwrap(ops.hydrograph_generate(watershed=WATERSHED, **STORM))
         tc = WatershedParameters.from_dict(WATERSHED).calculate_tc(method="kirpich")
         expected = library_run(area=45.3, cn=72, tc=tc)
@@ -1945,7 +1963,7 @@ class TestHydrographGenerate:
     def test_cn_override_reaches_the_nrcs_time_of_concentration(self):
         """The CN next to a watershed is the CN of the whole computation.
 
-        Watershed with CN 60 in the file (L = 12 km, S = 0.025), ``cn=85`` given,
+        Watershed with CN 60 in the file (L = 12 km, Y = 0.025), ``cn=85`` given,
         beta storm of 50 mm in 120 min. The NRCS lag equation took the retention of
         the CN of the file (S = 169.3 mm) while the runoff used CN 85: tc = 657.7 min,
         Qmax = 27.64 m3/s at 440 min. With the CN of the computation (S = 44.8 mm)
@@ -2062,9 +2080,9 @@ class TestHydrographGenerate:
     def test_library_range_warnings_become_notices(self):
         """A tc formula outside its range warns; the hydrograph is still computed.
 
-        Kirpich: 45.3 km2 is above the areas of his data and a channel slope of
+        Kirpich: 45.3 km2 is above the areas of his data and a flow path slope of
         0.0005 below their slopes."""
-        flat_river = {**WATERSHED, "channel_slope_m_per_m": 0.0005}
+        flat_river = {**WATERSHED, "flow_path_slope_m_per_m": 0.0005}
         result, notices = unwrap(ops.hydrograph_generate(watershed=flat_river, **STORM))
         assert result.tc_method == "kirpich"
         assert [
@@ -2076,7 +2094,7 @@ class TestHydrographGenerate:
                 "warning",
                 "outside_typical_range",
                 "slope_m_per_m",
-                "channel_slope_m_per_m",
+                "flow_path_slope_m_per_m",
             ),
         ]
         assert "kirpich: slope_m_per_m=0.0005" in notices[1].message
@@ -2112,8 +2130,16 @@ class TestHydrographGenerate:
     @pytest.mark.parametrize(
         "fields, option, missing",
         [
-            ({}, "channel_length_km", ["channel_length_km", "channel_slope_m_per_m"]),
-            ({"length_km": 12.5}, "channel_slope_m_per_m", ["channel_slope_m_per_m"]),
+            (
+                {"length_km": 12.5, "channel_length_km": 10.8},
+                "flow_path_length_km",
+                ["flow_path_length_km", "flow_path_slope_m_per_m"],
+            ),
+            (
+                {"flow_path_length_km": 12.5},
+                "flow_path_slope_m_per_m",
+                ["flow_path_slope_m_per_m"],
+            ),
         ],
     )
     def test_kirpich_names_the_field_a_partial_watershed_lacks(
@@ -2177,14 +2203,14 @@ class TestHydrographGenerate:
             ({"tc_min": 90.0, "amc": "III", "cn": 40}, "cn", "cn"),
             # Delta t = 30 min > 0.25 tp = 0.25 (15 + 0.6 * 60) min
             ({"tc_min": 60.0, "timestep_min": 30.0}, "timestep_min", "timestep_min"),
-            # The channel slope of the watershed feeds Kirpich's slope_m_per_m
+            # The slope of the longest flow path feeds Kirpich's slope_m_per_m
             (
                 {
-                    "watershed": {**WATERSHED, "channel_slope_m_per_m": 0.2},
+                    "watershed": {**WATERSHED, "flow_path_slope_m_per_m": 0.2},
                     "tc_method": "kirpich",
                 },
                 "slope_m_per_m",
-                "channel_slope_m_per_m",
+                "flow_path_slope_m_per_m",
             ),
             # The area of the watershed against the 24 watersheds of the NRCS lag
             ({"watershed": WATERSHED, "tc_method": "nrcs"}, "area_km2", "area_km2"),
@@ -2457,10 +2483,10 @@ class TestHydrographGenerate:
         )
         tc = WatershedParameters.from_dict(WATERSHED).calculate_tc(method="nrcs")
         assert run.tc_min == pytest.approx(tc) and run.tc_method == "nrcs"
-        # NRCS takes the average land slope of the watershed (0.025), not the slope
-        # of the channel (0.018)
+        # NRCS takes the longest flow path and the average land slope of the
+        # watershed (0.025), not the slope of the flow path (0.018)
         assert run.tc_parameters == pytest.approx(
-            {"length_km": 10.8, "slope_m_per_m": 0.025, "cn": 72.0}
+            {"length_km": 11.05, "slope_m_per_m": 0.025, "cn": 72.0}
         )
         assert (run.area_km2, run.cn, run.amc, run.ia_coefficient) == (
             45.3,
@@ -2517,14 +2543,14 @@ class TestHydrographGenerate:
         assert max(result["discharge_m3s"]) == pytest.approx(
             result["peak_discharge_m3s"]
         )
-        # Kirpich on the 45.3 km2 of the example: its area and its land slope of
-        # 0.025 are outside the data of the formula
+        # Kirpich on the 45.3 km2 of the example: its area and the slope of its
+        # flow path of 0.025 are outside the data of the formula
         assert [
             (n.code, n.details["parameter"], n.details["field"])
             for n in envelope.notices
         ] == [
             ("outside_typical_range", "area_km2", "area_km2"),
-            ("outside_typical_range", "slope_m_per_m", "mean_slope_m_per_m"),
+            ("outside_typical_range", "slope_m_per_m", "flow_path_slope_m_per_m"),
         ]
 
     def test_run_command_rejects_a_watershed_and_area_together(self):

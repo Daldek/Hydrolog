@@ -67,7 +67,7 @@ def test_a_report_goes_with_the_diagnostics_its_preview_shows(
     seed_hydrogram(tab)
     tab.open("#hydrogram")
     page = tab.page
-    expect(page.locator(READY)).to_contain_text("60,21")
+    expect(page.locator(READY)).to_contain_text("57,88")
 
     found = open_dialog(page)
     assert found.evaluate("(d) => d.open && d.matches(':modal')")

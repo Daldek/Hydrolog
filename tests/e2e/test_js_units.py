@@ -703,7 +703,7 @@ def test_ranges_of_applicability(page: Any) -> None:
         page,
         """const range = {minimum: 0, maximum: 80};
         const slope = {method: 'kirpich', parameter: 'slope_m_per_m',
-          inputs: ['channel_slope_m_per_m', 'mean_slope_m_per_m'], minimum: 0.03,
+          inputs: ['flow_path_slope_m_per_m'], minimum: 0.03,
           maximum: 0.1, unit: 'm/m', source: 'Kirpich (1940)'};
         const years = {method: 'flood_frequency', parameter: 'years', inputs: [],
           result: 'n_years', minimum: 30, maximum: null, unit: 'years', source: 'KZGW'};
@@ -722,10 +722,10 @@ def test_ranges_of_applicability(page: Any) -> None:
                   info.rangeState(range, null),
                   info.rangeState(step, 25, 100), info.rangeState(step, 25.01, 100),
                   info.rangeState(step, 25, null)],
-          value: [info.rangeValue(slope, {channel_slope_m_per_m: 0.0142,
+          value: [info.rangeValue(slope, {flow_path_slope_m_per_m: 0.0114,
                     mean_slope_m_per_m: 0.082}),
                   info.rangeValue(slope, {mean_slope_m_per_m: 0.082}),
-                  info.rangeValue(slope, {channel_slope_m_per_m: '0,02'}),
+                  info.rangeValue(slope, {flow_path_slope_m_per_m: '0,02'}),
                   info.rangeValue(years, {n_years: 26}),
                   info.rangeValue(years, {})],
           scale: [info.rangeScale(slope, {}),
@@ -751,9 +751,10 @@ def test_ranges_of_applicability(page: Any) -> None:
         *["ok", "ok", "warn", "warn", "ok", "ok", None, None, None],
         *["ok", "warn", None],  # a share of 100: up to 25 inside, none without it
     ]
+    # The field the range names, never another one in its place, and only a number
     assert got["value"] == [
-        {"field": "channel_slope_m_per_m", "value": 0.0142},
-        {"field": "mean_slope_m_per_m", "value": 0.082},
+        {"field": "flow_path_slope_m_per_m", "value": 0.0114},
+        None,
         None,
         {"field": "n_years", "value": 26},
         None,

@@ -18,32 +18,10 @@ from playwright.sync_api import Page, Response, expect
 
 from hydrolog.catalog import format_command, run_command
 from hydrolog.cli.main import main
-from tests.e2e.conftest import Tab, seed_hydrogram
+from tests.e2e.conftest import KAMIENNIK, Tab, seed_hydrogram
 
 SECTION = 'section[data-section="kalkulatory"]'
 RIGHT = f"{SECTION} .view-panel.right"
-KAMIENNIK = {
-    "name": "Kamiennik — Świerzawa",
-    "area_km2": 37.22,
-    "perimeter_km": 40.89,
-    "length_km": 16.05,
-    "elevation_min_m": 257.3,
-    "elevation_max_m": 475.1,
-    "elevation_mean_m": 363.2,
-    "mean_slope_m_per_m": 0.082,
-    "channel_length_km": 14.78,
-    "channel_slope_m_per_m": 0.0142,
-    "cn": 65,
-    "runoff_coeff": 0.25,
-    "retardance": 0.4,
-    "overland_length_km": 0.3,
-    "overland_slope_m_per_m": 0.082,
-    "Lc_km": 6.76,
-    "manning_n": 0.035,
-    "urban_pct": 1.0,
-    "forest_pct": 57.4,
-}
-"""The watershed of Hydrogram zlewni's example (web/examples/kamiennik.json)."""
 METHODS = ["kirpich", "nrcs", "giandotti", "faa", "kerby", "kerby_kirpich"]
 WORDS = {
     "kirpich": "poza zakresem",
@@ -70,7 +48,7 @@ def open_section(tab: Tab, path: str = "") -> Page:
     expect(page.locator(f"{SECTION} .cmd-list .cmd-item")).to_have_count(16)
     expect(
         page.locator('section[data-section="hydrogram"] [data-kpi="q"] .v')
-    ).to_have_text(re.compile(r"^60,21\s*m³/s$"))
+    ).to_have_text(re.compile(r"^57,88\s*m³/s$"))
     page.evaluate(
         "async (ws) => (await import('./src/store.js')).setStore('watershed', ws)",
         KAMIENNIK,
@@ -113,7 +91,7 @@ def test_the_tc_comparison_lists_six_methods_with_their_range_words(tab: Tab) ->
         expect(row.locator("td").first).to_have_text(tc)
         expect(row.locator("td").last).to_have_text(str(len(expected["notices"])))
     expect(rows.first.locator(".kc-range")).to_have_text(
-        "A = 37,22 poza 0,005–0,45 km²; S = 0,0142 poza 0,03–0,1"
+        "A = 37,22 poza 0,005–0,45 km²; S = 0,0114 poza 0,03–0,1"
     )
     expect(rows.nth(2).locator(".kc-range")).to_have_text(
         "A = 37,22 poza 170–70\u00a0000 km²"
@@ -157,7 +135,7 @@ def test_the_tc_comparison_lists_six_methods_with_their_range_words(tab: Tab) ->
 
     # The chosen method goes to Hydrogram zlewni, which computes with it (the mockup's
     # run); back in Kalkulatory it is the one marked
-    rows.nth(1).get_by_role("button", name="NRCS (TR-55)", exact=True).click()
+    rows.nth(1).get_by_role("button", name="NRCS (NEH 630)", exact=True).click()
     expect(rows.nth(1)).to_have_class(re.compile(r"\bsel\b"))
     page.get_by_role("button", name="Użyj w Hydrogramie zlewni").click()
     page.wait_for_function("location.hash.startsWith('#hydrogram')")
@@ -165,7 +143,7 @@ def test_the_tc_comparison_lists_six_methods_with_their_range_words(tab: Tab) ->
     expect(page.locator(f"{hydrogram} #hg-tc_method")).to_have_value("nrcs")
     expect(
         page.locator(f'{hydrogram} .view-panel.right [data-kpi="q"] .v')
-    ).to_have_text(re.compile(r"^43,01\s*m³/s$"))
+    ).to_have_text(re.compile(r"^41,64\s*m³/s$"))
     page.go_back()
     expect(bars.nth(3)).to_have_attribute("class", "hbar warn used")
     expect(bars.first).to_have_attribute("class", "hbar warn")

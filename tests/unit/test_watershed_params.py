@@ -14,8 +14,8 @@ from hydrolog.morphometry import (
 from hydrolog.time import ConcentrationTime
 
 # The fields of each method inside every typical range but the area's
-KIRPICH_FIELDS = {"length_km": 0.5, "channel_slope_m_per_m": 0.05}
-NRCS_FIELDS = {"length_km": 2.0, "mean_slope_m_per_m": 0.05, "cn": 75}
+KIRPICH_FIELDS = {"flow_path_length_km": 0.5, "flow_path_slope_m_per_m": 0.05}
+NRCS_FIELDS = {"flow_path_length_km": 2.0, "mean_slope_m_per_m": 0.05, "cn": 75}
 KERBY_FIELDS = {
     "overland_length_km": 0.1,
     "overland_slope_m_per_m": 0.005,
@@ -23,8 +23,8 @@ KERBY_FIELDS = {
 }
 KERBY_KIRPICH_FIELDS = {
     **KERBY_FIELDS,
-    "channel_length_km": 5.0,
-    "channel_slope_m_per_m": 0.005,
+    "flow_path_length_km": 5.1,
+    "flow_path_slope_m_per_m": 0.005,
 }
 
 
@@ -416,6 +416,8 @@ class TestWatershedParametersCalculateTc:
             elevation_min_m=150.0,
             elevation_max_m=520.0,
             mean_slope_m_per_m=0.025,
+            flow_path_length_km=13.4,
+            flow_path_slope_m_per_m=0.026,
         )
 
     def test_calculate_tc_kirpich(self, params_with_slope: WatershedParameters) -> None:
@@ -424,34 +426,6 @@ class TestWatershedParametersCalculateTc:
 
         assert tc > 0
         assert isinstance(tc, float)
-
-    def test_calculate_tc_uses_channel_length(self) -> None:
-        """Test that tc uses channel_length_km when available."""
-        params = WatershedParameters(
-            area_km2=45.0,
-            perimeter_km=32.0,
-            length_km=12.0,  # watershed length
-            elevation_min_m=150.0,
-            elevation_max_m=520.0,
-            mean_slope_m_per_m=0.025,
-            channel_length_km=15.0,  # longer channel
-        )
-
-        tc_with_channel = params.calculate_tc(method="kirpich")
-
-        # Create params without channel_length
-        params_no_channel = WatershedParameters(
-            area_km2=45.0,
-            perimeter_km=32.0,
-            length_km=12.0,
-            elevation_min_m=150.0,
-            elevation_max_m=520.0,
-            mean_slope_m_per_m=0.025,
-        )
-        tc_no_channel = params_no_channel.calculate_tc(method="kirpich")
-
-        # tc should be longer with longer channel
-        assert tc_with_channel > tc_no_channel
 
     def test_calculate_tc_nrcs_requires_cn(self) -> None:
         """Test that NRCS method requires CN."""
@@ -462,6 +436,7 @@ class TestWatershedParametersCalculateTc:
             elevation_min_m=150.0,
             elevation_max_m=520.0,
             mean_slope_m_per_m=0.025,
+            flow_path_length_km=13.4,
             # no CN
         )
 
@@ -477,6 +452,7 @@ class TestWatershedParametersCalculateTc:
             elevation_min_m=150.0,
             elevation_max_m=520.0,
             mean_slope_m_per_m=0.025,
+            flow_path_length_km=13.4,
             cn=72,
         )
 
@@ -493,6 +469,7 @@ class TestWatershedParametersCalculateTc:
             elevation_min_m=150.0,
             elevation_max_m=520.0,
             elevation_mean_m=340.0,
+            channel_length_km=10.0,
         )
 
         tc = params.calculate_tc(method="giandotti")
@@ -529,13 +506,7 @@ class TestWatershedParametersCalculateTc:
             ("kerby", ["retardance", "overland_length_km", "overland_slope_m_per_m"]),
             (
                 "kerby_kirpich",
-                [
-                    "retardance",
-                    "overland_length_km",
-                    "overland_slope_m_per_m",
-                    "channel_length_km",
-                    "channel_slope_m_per_m",
-                ],
+                ["retardance", "overland_length_km", "overland_slope_m_per_m"],
             ),
         ],
     )
@@ -558,15 +529,13 @@ class TestWatershedParametersCalculateTc:
     @pytest.mark.parametrize(
         ("method", "fields", "missing"),
         [
-            ("kirpich", {}, ["channel_length_km", "channel_slope_m_per_m"]),
-            ("kirpich", {"length_km": 6.0}, ["channel_slope_m_per_m"]),
-            # one elevation is not a relief
+            ("kirpich", {}, ["flow_path_length_km", "flow_path_slope_m_per_m"]),
+            ("kirpich", {"flow_path_length_km": 6.0}, ["flow_path_slope_m_per_m"]),
             (
-                "kirpich",
-                {"length_km": 6.0, "elevation_max_m": 300.0},
-                ["channel_slope_m_per_m"],
+                "nrcs",
+                {"length_km": 6.0},
+                ["flow_path_length_km", "mean_slope_m_per_m", "cn"],
             ),
-            ("nrcs", {"length_km": 6.0}, ["mean_slope_m_per_m", "cn"]),
             (
                 "giandotti",
                 {"channel_length_km": 6.0},
@@ -579,13 +548,11 @@ class TestWatershedParametersCalculateTc:
             ),
         ],
     )
-    def test_a_partial_watershed_names_the_first_choice_of_what_it_lacks(
+    def test_a_partial_watershed_names_what_it_lacks(
         self, method: str, fields: dict, missing: list[str]
     ) -> None:
-        """A field with substitutes is missing only when they are missing too.
-
-        The first choice of the method is named; the hint names its substitutes.
-        """
+        """Every field of the method that the watershed lacks is named, the first
+        in ``details.option``."""
         params = WatershedParameters(area_km2=12.5, **fields)
 
         with pytest.raises(InvalidParameterError) as caught:
@@ -594,80 +561,102 @@ class TestWatershedParametersCalculateTc:
         assert caught.value.details["option"] == missing[0]
         assert caught.value.details["reason"] == "missing_field"
         assert caught.value.details["missing"] == missing
-        substitute = {
-            "channel_length_km": "else length_km",
-            "channel_slope_m_per_m": "else mean_slope_m_per_m",
-            "mean_slope_m_per_m": "else channel_slope_m_per_m",
-            "elevation_mean_m": "elevation_max_m",
-        }.get(missing[0])
-        if substitute is not None:
-            assert substitute in str(caught.value.hint)
 
     @pytest.mark.parametrize(
         ("method", "fields"),
         [
-            ("kirpich", {"length_km": 6.0, "channel_slope_m_per_m": 0.01}),
-            ("kirpich", {"channel_length_km": 6.0, "mean_slope_m_per_m": 0.01}),
             (
                 "kirpich",
-                {"length_km": 6.0, "elevation_min_m": 200.0, "elevation_max_m": 260.0},
+                {"flow_path_length_km": 6.0, "flow_path_slope_m_per_m": 0.01},
             ),
-            ("nrcs", {"length_km": 6.0, "channel_slope_m_per_m": 0.01, "cn": 70}),
+            (
+                "nrcs",
+                {"flow_path_length_km": 6.0, "mean_slope_m_per_m": 0.01, "cn": 70},
+            ),
             (
                 "giandotti",
-                {"length_km": 6.0, "elevation_min_m": 200.0, "elevation_max_m": 260.0},
+                {
+                    "channel_length_km": 6.0,
+                    "elevation_min_m": 200.0,
+                    "elevation_mean_m": 230.0,
+                },
             ),
         ],
     )
     def test_a_partial_watershed_with_a_source_of_each_argument_is_timed(
         self, method: str, fields: dict
     ) -> None:
-        """No perimeter, no elevations: the method needs only its own fields."""
+        """No perimeter, no watershed length: the method needs only its own fields."""
         params = WatershedParameters(area_km2=12.5, **fields)
 
         assert params.calculate_tc(method=method) > 0
 
     def test_a_value_refused_by_the_formula_names_its_field(self) -> None:
-        """A channel slope of 0 is a valid field but not a Kirpich slope."""
+        """A flow path slope of 0 is a valid field but not a Kirpich slope."""
         params = WatershedParameters(
-            area_km2=12.5, length_km=6.0, channel_slope_m_per_m=0.0
+            area_km2=12.5, flow_path_length_km=6.0, flow_path_slope_m_per_m=0.0
         )
 
         with pytest.raises(InvalidParameterError) as caught:
             params.calculate_tc(method="kirpich")
 
-        assert caught.value.details["option"] == "channel_slope_m_per_m"
+        assert caught.value.details["option"] == "flow_path_slope_m_per_m"
         assert caught.value.details["parameter"] == "slope_m_per_m"
         assert caught.value.details["reason"] == "exclusive_minimum"
+
+    @pytest.mark.parametrize("flow_path_length_km", [0.25, 0.2])
+    def test_kerby_kirpich_refuses_a_flow_path_not_longer_than_the_overland_flow(
+        self, flow_path_length_km: float
+    ) -> None:
+        """The flow path runs from the divide, the overland segment included."""
+        params = WatershedParameters(
+            area_km2=12.5,
+            retardance=0.4,
+            overland_length_km=0.25,
+            overland_slope_m_per_m=0.01,
+            flow_path_length_km=flow_path_length_km,
+            flow_path_slope_m_per_m=0.01,
+        )
+
+        with pytest.raises(InvalidParameterError) as caught:
+            params.calculate_tc(method="kerby_kirpich")
+
+        assert caught.value.details == {
+            "option": "flow_path_length_km",
+            "reason": "exclusive_minimum",
+            "exclusive_minimum": 0.25,
+            "value": flow_path_length_km,
+        }
 
     @pytest.mark.parametrize(
         ("method", "fields", "parameter", "field"),
         [
             (
                 "kirpich",
-                {"length_km": 6.0, "channel_slope_m_per_m": 0.2},
+                {"flow_path_length_km": 6.0, "flow_path_slope_m_per_m": 0.2},
                 "slope_m_per_m",
-                "channel_slope_m_per_m",
-            ),
-            (
-                "kirpich",
-                {"length_km": 6.0, "mean_slope_m_per_m": 0.3},
-                "slope_m_per_m",
-                "mean_slope_m_per_m",
-            ),
-            # 0.6 m/m from the relief: attributed to elevation_max_m
-            (
-                "kirpich",
-                {"length_km": 1.0, "elevation_min_m": 0.0, "elevation_max_m": 600.0},
-                "slope_m_per_m",
-                "elevation_max_m",
+                "flow_path_slope_m_per_m",
             ),
             # 150 km2, below Giandotti's basins
             (
                 "giandotti",
-                {"length_km": 6.0, "elevation_min_m": 200.0, "elevation_max_m": 210.0},
+                {
+                    "channel_length_km": 6.0,
+                    "elevation_min_m": 200.0,
+                    "elevation_mean_m": 205.0,
+                },
                 "area_km2",
                 "area_km2",
+            ),
+            (
+                "kerby_kirpich",
+                {
+                    **KERBY_FIELDS,
+                    "flow_path_length_km": 5.1,
+                    "flow_path_slope_m_per_m": 0.03,
+                },
+                "flow_path_slope_m_per_m",
+                "flow_path_slope_m_per_m",
             ),
             (
                 "kerby",
@@ -765,7 +754,7 @@ class TestWatershedParametersCalculateTc:
             elevation_max_m=520.0,
             retardance=0.4,
             overland_length_km=0.25,
-            channel_length_km=5.0,
+            flow_path_length_km=5.25,
         )
 
         with pytest.raises(InvalidParameterError) as caught:
@@ -773,14 +762,14 @@ class TestWatershedParametersCalculateTc:
 
         assert caught.value.details["missing"] == [
             "overland_slope_m_per_m",
-            "channel_slope_m_per_m",
+            "flow_path_slope_m_per_m",
         ]
 
     def test_calculate_tc_giandotti_with_a_mean_elevation_of_zero(self) -> None:
         """0 m a.s.l. is a mean elevation, not "mean elevation not given".
 
         The elevation difference of Giandotti is mean - outlet = 30 m. With ``or`` the
-        zero was replaced by the middle of the range (35 m): H = 65 m.
+        zero would be taken for a missing field.
         """
         params = WatershedParameters(
             area_km2=150.0,
@@ -789,6 +778,7 @@ class TestWatershedParametersCalculateTc:
             elevation_min_m=-30.0,
             elevation_max_m=100.0,
             elevation_mean_m=0.0,
+            channel_length_km=20.0,
         )
 
         tc = params.calculate_tc(method="giandotti")
@@ -797,46 +787,34 @@ class TestWatershedParametersCalculateTc:
             area_km2=150.0, length_km=20.0, elevation_diff_m=30.0
         )
         assert tc == pytest.approx(expected, rel=1e-12)
-        middle_of_range = ConcentrationTime.giandotti(
-            area_km2=150.0, length_km=20.0, elevation_diff_m=65.0
-        )
-        assert tc != pytest.approx(middle_of_range)
 
-    def test_calculate_tc_giandotti_defaults_the_mean_to_the_middle_of_the_range(
-        self,
-    ) -> None:
-        """Without a mean elevation H = (max - min) / 2."""
+    def test_calculate_tc_giandotti_requires_the_mean_elevation(self) -> None:
+        """The range of the elevations is no mean elevation: no middle of it."""
         params = WatershedParameters(
             area_km2=150.0,
             perimeter_km=60.0,
             length_km=20.0,
             elevation_min_m=100.0,
             elevation_max_m=300.0,
+            channel_length_km=20.0,
         )
 
-        expected = ConcentrationTime.giandotti(
-            area_km2=150.0, length_km=20.0, elevation_diff_m=100.0
-        )
-        assert params.calculate_tc(method="giandotti") == pytest.approx(expected)
+        with pytest.raises(InvalidParameterError) as caught:
+            params.calculate_tc(method="giandotti")
 
-    def test_calculate_tc_slope_from_relief(self) -> None:
-        """Test tc calculation with slope calculated from relief."""
-        params = WatershedParameters(
-            area_km2=45.0,
-            perimeter_km=32.0,
-            length_km=12.0,
-            elevation_min_m=150.0,
-            elevation_max_m=520.0,
-            # no slope provided - should calculate from relief/length
-        )
-
-        tc = params.calculate_tc(method="kirpich")
-
-        assert tc > 0
+        assert caught.value.details == {
+            "option": "elevation_mean_m",
+            "reason": "missing_field",
+            "method": "giandotti",
+            "missing": ["elevation_mean_m"],
+        }
 
 
 # The watershed of the review: a 10 km channel (slope 2.0 %) in a catchment with a
-# 2.5 % land slope, whose overland flow path is 200 m long (slope 1.0 %).
+# 2.5 % land slope, whose overland flow path is 200 m long (slope 1.0 %). Its
+# longest flow path from the divide is given the length and slope Kirpich and NRCS
+# took from the channel, and its mean elevation the middle of the range Giandotti
+# took, so the times of the review stand.
 REVIEW_WATERSHED = {
     "name": "Zlewnia X",
     "area_km2": 45.0,
@@ -844,6 +822,7 @@ REVIEW_WATERSHED = {
     "length_km": 12.0,
     "elevation_min_m": 150.0,
     "elevation_max_m": 520.0,
+    "elevation_mean_m": 335.0,
     "mean_slope_m_per_m": 0.025,
     "channel_length_km": 10.0,
     "channel_slope_m_per_m": 0.02,
@@ -852,18 +831,20 @@ REVIEW_WATERSHED = {
     "retardance": 0.4,
     "overland_length_km": 0.2,
     "overland_slope_m_per_m": 0.01,
+    "flow_path_length_km": 10.0,
+    "flow_path_slope_m_per_m": 0.02,
 }
 
 
 class TestConcentrationTimeInputsOfAWatershed:
-    """What ``calculate_tc`` feeds to each formula (TR-55 land slope, overland flow).
+    """What ``calculate_tc`` feeds to each formula (NRCS land slope, overland flow).
 
     FAA (1966, 2013) and Kerby (1959) are overland flow formulas: Kerby derived his
     for paths of up to 366 m (1200 ft; Roussel et al. 2005, TxDOT Report 0-4696-2).
     The length and slope of the channel timed the channel with them, far outside
     Kerby's data, for every catchment with a channel. The NRCS lag equation takes
-    the average land slope Y of the watershed, not the slope of the flow path (TR-55,
-    chapter 3; NEH Part 630, chapter 15).
+    the average land slope Y of the watershed, not the slope of the flow path
+    (USDA-NRCS 2010, NEH Part 630, chapter 15, eq. 15-4).
     """
 
     @pytest.fixture
@@ -920,14 +901,14 @@ class TestConcentrationTimeInputsOfAWatershed:
             for details in range_warnings(watershed, "kerby")
         ] == [("area_km2", "area_km2")]
 
-    def test_nrcs_takes_the_land_slope_before_the_channel_slope(
+    def test_nrcs_takes_the_land_slope_not_the_flow_path_slope(
         self, watershed: WatershedParameters
     ) -> None:
-        """NRCS: 463.9 min (Y = 2.0 % of the channel) -> 414.9 min (Y = 2.5 %)."""
-        channel_slope = ConcentrationTime.nrcs(
+        """NRCS: 414.9 min (Y = 2.5 %), not 463.9 min (2.0 % of the flow path)."""
+        flow_path_slope = ConcentrationTime.nrcs(
             length_km=10.0, slope_m_per_m=0.02, cn=72
         )
-        assert channel_slope == pytest.approx(463.85, abs=0.01)  # the former result
+        assert flow_path_slope == pytest.approx(463.85, abs=0.01)
 
         tc = watershed.calculate_tc("nrcs")
 
@@ -935,31 +916,42 @@ class TestConcentrationTimeInputsOfAWatershed:
         assert tc == pytest.approx(
             ConcentrationTime.nrcs(length_km=10.0, slope_m_per_m=0.025, cn=72)
         )
-        assert tc / channel_slope - 1 == pytest.approx(-0.106, abs=0.001)
+        assert tc / flow_path_slope - 1 == pytest.approx(-0.106, abs=0.001)
 
-    def test_kirpich_still_takes_the_channel_slope_first(
-        self, watershed: WatershedParameters
-    ) -> None:
+    def test_kirpich_takes_the_flow_path(self, watershed: WatershedParameters) -> None:
         assert watershed.calculate_tc("kirpich") == pytest.approx(
             ConcentrationTime.kirpich(length_km=10.0, slope_m_per_m=0.02)
         )
         assert watershed.calculate_tc("kirpich") == pytest.approx(105.71, abs=0.01)
 
-    def test_the_slope_falls_back_in_the_order_of_each_method(self) -> None:
-        """NRCS: mean, channel, relief; Kirpich: channel, mean, relief."""
-        no_mean = self.without("mean_slope_m_per_m")
-        no_channel = self.without("channel_slope_m_per_m")
-        neither = self.without("mean_slope_m_per_m", "channel_slope_m_per_m")
-        relief = (520.0 - 150.0) / (10.0 * 1000.0)
+    @pytest.mark.parametrize(
+        ("method", "missing"),
+        [
+            ("kirpich", ["flow_path_length_km", "flow_path_slope_m_per_m"]),
+            ("nrcs", ["flow_path_length_km"]),
+            ("kerby_kirpich", ["flow_path_length_km", "flow_path_slope_m_per_m"]),
+        ],
+    )
+    def test_a_watershed_without_the_flow_path_is_not_timed_by_its_channel(
+        self, method: str, missing: list[str]
+    ) -> None:
+        """The channel, the watershed length, the mean slope and the elevations are
+        no substitute of the longest flow path: it is missing, and the hint says how
+        it is measured."""
+        data = self.without("flow_path_length_km", "flow_path_slope_m_per_m")
 
-        assert no_mean.tc_parameters("nrcs")["slope_m_per_m"] == 0.02
-        assert no_channel.tc_parameters("nrcs")["slope_m_per_m"] == 0.025
-        assert neither.tc_parameters("nrcs")["slope_m_per_m"] == pytest.approx(relief)
-        assert no_mean.tc_parameters("kirpich")["slope_m_per_m"] == 0.02
-        assert no_channel.tc_parameters("kirpich")["slope_m_per_m"] == 0.025
-        assert neither.tc_parameters("kirpich")["slope_m_per_m"] == pytest.approx(
-            relief
-        )
+        with pytest.raises(InvalidParameterError) as caught:
+            data.calculate_tc(method)
+
+        assert caught.value.details == {
+            "option": "flow_path_length_km",
+            "reason": "missing_field",
+            "method": method,
+            "missing": missing,
+        }
+        hint = caught.value.hint or ""
+        assert "divide" in hint
+        assert "outlet" in hint
 
     @pytest.mark.parametrize(
         "method, expected",
@@ -984,8 +976,8 @@ class TestConcentrationTimeInputsOfAWatershed:
                     "overland_length_km": 0.2,
                     "overland_slope_m_per_m": 0.01,
                     "retardance": 0.4,
-                    "channel_length_km": 10.0,
-                    "channel_slope_m_per_m": 0.02,
+                    "flow_path_length_km": 10.0,
+                    "flow_path_slope_m_per_m": 0.02,
                 },
             ),
         ],
@@ -1033,16 +1025,6 @@ class TestConcentrationTimeInputsOfAWatershed:
         hint = caught.value.hint or ""
         assert "kerby_kirpich" in hint
         assert "overland_length_km" in hint
-
-    def test_a_watershed_without_a_channel_is_timed_by_its_length(self) -> None:
-        """Kirpich, NRCS and Giandotti use ``length_km`` when there is no channel."""
-        data = self.without("channel_length_km", "channel_slope_m_per_m")
-
-        assert data.tc_parameters("kirpich")["length_km"] == 12.0
-        assert data.tc_parameters("nrcs")["length_km"] == 12.0
-        assert data.tc_parameters("giandotti")["length_km"] == 12.0
-        # the overland flow formulas do not depend on the channel at all
-        assert data.tc_parameters("faa")["length_km"] == 0.2
 
 
 class TestWatershedGeometryFromDict:

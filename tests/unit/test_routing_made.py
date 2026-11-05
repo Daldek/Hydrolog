@@ -47,6 +47,8 @@ UPPER = WatershedParameters(
     elevation_min_m=210.0,
     elevation_max_m=330.0,
     cn=75,
+    flow_path_length_km=6.0,
+    flow_path_slope_m_per_m=0.02,
 )
 LOWER = WatershedParameters(
     area_km2=5.0,
@@ -55,6 +57,8 @@ LOWER = WatershedParameters(
     elevation_min_m=210.0,
     elevation_max_m=290.0,
     cn=70,
+    flow_path_length_km=3.5,
+    flow_path_slope_m_per_m=0.0229,
 )
 STORM = DesignStorm(45.0, 60.0, EulerIIHietogram())
 BLOCK = DesignStorm(30.0, 60.0, BlockHietogram())
@@ -409,6 +413,8 @@ class TestWhatTheRunObserves:
             elevation_min_m=210.0,
             elevation_max_m=220.0,
             cn=75,
+            flow_path_length_km=12.0,
+            flow_path_slope_m_per_m=10.0 / 12000.0,
         )
         network = RoutingNetwork(
             Outlet(
@@ -673,7 +679,7 @@ class TestTheDocument:
                     "runoff": {"model": "curve-number", "tc_method": "kirpich"},
                 },
                 "missing_field",
-                {"node_id": "A", "option": "watershed.channel_length_km"},
+                {"node_id": "A", "option": "watershed.flow_path_length_km"},
             ),
             (
                 {},

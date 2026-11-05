@@ -206,12 +206,16 @@ def watershed(
     elevation_min_m: float | None = 210.0,
     elevation_max_m: float | None = 330.0,
     cn: float | None = 75,
+    flow_path_length_km: float | None = 6.0,
+    flow_path_slope_m_per_m: float | None = 0.02,
     **options: Any,
 ) -> dict[str, Any]:
     """Return the ``watershed`` of a subcatchment that makes its hydrograph.
 
     The object of :class:`~hydrolog.morphometry.WatershedParameters`; the defaults are
-    a small catchment of 12 km2 with a curve number of 75.
+    a small catchment of 12 km2 with a curve number of 75 and a longest flow path of
+    6 km at 0.02 m/m, from its highest point to its outlet, which the default time of
+    concentration (Kirpich) takes.
 
     Parameters
     ----------
@@ -224,6 +228,9 @@ def watershed(
     cn : float, optional
         Curve number; ``None`` leaves it out (a model that needs it then refuses the
         subcatchment, as it refuses one without the fields of its ``tc_method``).
+    flow_path_length_km, flow_path_slope_m_per_m : float, optional
+        Length [km] and slope [m/m] of the longest flow path, from the watershed
+        divide to the outlet; ``None`` leaves it out.
     **options
         The other fields of ``WatershedParameters`` (``name``, ``crs``...).
 
@@ -244,6 +251,8 @@ def watershed(
         "elevation_min_m": elevation_min_m,
         "elevation_max_m": elevation_max_m,
         "cn": cn,
+        "flow_path_length_km": flow_path_length_km,
+        "flow_path_slope_m_per_m": flow_path_slope_m_per_m,
     }
     document: dict[str, Any] = {
         name: value for name, value in given.items() if value is not None
@@ -481,6 +490,8 @@ def example_network_document() -> dict[str, Any]:
                 length_km=3.5,
                 elevation_max_m=290.0,
                 cn=70,
+                flow_path_length_km=3.5,
+                flow_path_slope_m_per_m=0.0229,
             ),
             runoff=curve_number_runoff(),
             rainfall=rainfall_series([0.0, 2.0, 5.0, 10.0, 12.0, 6.0, 3.0], 5.0),
@@ -494,6 +505,8 @@ def example_network_document() -> dict[str, Any]:
                 elevation_min_m=200.0,
                 elevation_max_m=300.0,
                 cn=72,
+                flow_path_length_km=None,
+                flow_path_slope_m_per_m=None,
             ),
             runoff=curve_number_runoff(tc_min=60.0),
         ),

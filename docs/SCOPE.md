@@ -102,10 +102,11 @@ Hydrolog is analogous to **Kartograf** (spatial data download) and **Obserwator*
 - Kerby formula: `tc = 36.37 × (L × N)^0.467 × S^(-0.2335)`
 - Kerby-Kirpich method: `tc = t_overland(Kerby) + t_channel(Kirpich)`
 
-**Input parameters:**
-- Main stream length [km or m]
-- Stream slope [% or m/m]
-- CN (for the NRCS method)
+**Input parameters** (each method takes those its source defines, ADR-0019):
+- Length and slope of the longest flow path, from the divide to the outlet [km, m/m] (Kirpich, NRCS, Kerby-Kirpich)
+- Main channel length [km] and mean elevation above the outlet [m] (Giandotti)
+- Average land slope of the catchment [m/m] and CN (NRCS)
+- Overland flow length and slope, C or N (FAA, Kerby, Kerby-Kirpich)
 
 ---
 
@@ -144,6 +145,10 @@ Hydrolog is analogous to **Kartograf** (spatial data download) and **Obserwator*
 - `urban_pct` - percentage of built-up area [%] (Nash)
 - `forest_pct` - percentage of forest cover [%] (Nash)
 
+**WatershedParameters - fields added in v1.0.0 (ADR-0019):**
+- `flow_path_length_km` - length of the longest flow path, from the watershed divide to the outlet [km] (Kirpich, NRCS, Kerby-Kirpich)
+- `flow_path_slope_m_per_m` - slope of that path, (elevation of its head - outlet elevation) / length [m/m] (Kirpich, Kerby-Kirpich)
+
 ---
 
 #### 2.1.5 Module `network` - River Network (v0.3.0)
@@ -176,7 +181,7 @@ hydrolog tc giandotti --area-km2 100 --length-km 15 --elevation-diff-m 500
 hydrolog tc faa --length-km 0.15 --slope-m-per-m 0.02 --runoff-coeff 0.6
 hydrolog tc kerby --length-km 0.10 --slope-m-per-m 0.008 --retardance 0.40
 hydrolog tc kerby-kirpich --overland-length-km 0.25 --overland-slope-m-per-m 0.008 \
-    --retardance 0.40 --channel-length-km 5.0 --channel-slope-m-per-m 0.005
+    --retardance 0.40 --flow-path-length-km 5.25 --flow-path-slope-m-per-m 0.005
 
 # CN lookup (TR-55 tables)
 hydrolog cn lookup --hsg B --land-cover forest --condition good

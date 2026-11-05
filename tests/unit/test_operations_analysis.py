@@ -266,9 +266,8 @@ class TestMorphometryWatershed:
         assert run("morphometry watershed", watershed=WATERSHED).notices == ()
 
     def test_slopes_of_the_file_are_not_used_and_each_notice_gives_both_values(self):
-        """``tc watershed`` computes with the slopes of the file, this command with the
-        relief: a notice per slope shows both numbers instead of two silent "channel
-        slopes"."""
+        """This command computes the slopes from the relief: a notice per slope of the
+        file shows both numbers instead of two silent "channel slopes"."""
         data = {
             **WATERSHED,
             "mean_slope_m_per_m": 0.025,
@@ -298,8 +297,13 @@ class TestMorphometryWatershed:
         assert "computed from the relief, 0.0296 m/m" in mean.message
         assert channel.message.startswith("channel_slope_m_per_m = 0.02 m/m is not")
         assert "computed from the relief, 0.02606 m/m" in channel.message
+        # the time of concentration takes the given mean slope (NRCS's Y)
+        timed = {**data, "flow_path_length_km": 14.5, "cn": 72}
         assert (
-            tc.tc_watershed(watershed=data).result.parameters["slope_m_per_m"] == 0.02
+            tc.tc_watershed(watershed=timed, method="nrcs").result.parameters[
+                "slope_m_per_m"
+            ]
+            == 0.025
         )
 
     @pytest.mark.parametrize(
@@ -2163,6 +2167,8 @@ _FULL_WATERSHED = {
     "retardance": 0.4,
     "overland_length_km": 0.25,
     "overland_slope_m_per_m": 0.008,
+    "flow_path_length_km": 11.05,
+    "flow_path_slope_m_per_m": 0.018,
 }
 
 
@@ -2214,27 +2220,14 @@ def _tc_formula_fragments(method, p):
             f"({p['length_km']:.3f} \\cdot {p['retardance']:.2f})^{{0.467}}",
             f"{p['slope_m_per_m']:.4f}^{{-0.2335}}",
         ]
-    return [  # kerby_kirpich
-        f"({p['overland_length_km']:.3f} \\cdot {p['retardance']:.2f})^{{0.467}}",
+    fp, ov = p["flow_path_length_km"], p["overland_length_km"]
+    return [  # kerby_kirpich: the channel segment is the flow path minus the overland
+        f"({ov:.3f} \\cdot {p['retardance']:.2f})^{{0.467}}",
         f"{p['overland_slope_m_per_m']:.4f}^{{-0.2335}}",
-        f"{p['channel_length_km']:.2f}^{{0.77}}",
-        f"{p['channel_slope_m_per_m']:.4f}^{{-0.385}}",
+        f"L_{{ch}} = L - L_{{ov}} = {fp:.2f} - {ov:.3f} = {fp - ov:.2f}$ km",
+        f"{fp - ov:.2f}^{{0.77}}",
+        f"{p['flow_path_slope_m_per_m']:.4f}^{{-0.385}}",
     ]
-
-
-# (method, fields the watershed lacks): the arguments of a method follow what is there
-_TC_REPORT_CASES = [
-    (method, dropped)
-    for method in ("kirpich", "nrcs", "giandotti", "faa", "kerby", "kerby_kirpich")
-    for dropped in (
-        (),
-        ("channel_length_km", "channel_slope_m_per_m"),
-        ("channel_length_km", "channel_slope_m_per_m", "mean_slope_m_per_m"),
-        ("elevation_mean_m",),
-    )
-    # the composite method cannot do without the channel
-    if not (method == "kerby_kirpich" and "channel_length_km" in dropped)
-]
 
 
 class TestReportGenerate:
@@ -2500,13 +2493,13 @@ class TestReportGenerate:
         output = tmp_path / "raport.md"
         assert [record.path for record in result.files] == [str(output)]
         assert result.files[0].sha256 == sha256_file(output)
-        # Kirpich on 45.3 km2 with a channel slope of 0.021: outside his data
+        # Kirpich on 45.3 km2 with a flow path slope of 0.021: outside his data
         assert [
             (notice.code, notice.details.get("parameter"), notice.details.get("field"))
             for notice in result.notices
         ] == [
             ("outside_typical_range", "area_km2", "area_km2"),
-            ("outside_typical_range", "slope_m_per_m", "channel_slope_m_per_m"),
+            ("outside_typical_range", "slope_m_per_m", "flow_path_slope_m_per_m"),
             ("duration_not_covered", None, None),
         ]
         document = _json_roundtrip(result)
@@ -2572,18 +2565,17 @@ class TestReportGenerate:
             for t, q in zip(unit.times_min, unit.ordinates_m3s, strict=False)
         ]
 
-    @pytest.mark.parametrize("method, dropped", _TC_REPORT_CASES, ids=str)
-    def test_the_tc_section_shows_what_the_method_was_fed_with(
-        self, tmp_path, method, dropped
-    ):
-        """Whatever the watershed gives, the formula shows the derived arguments."""
-        watershed = {
-            key: value for key, value in _FULL_WATERSHED.items() if key not in dropped
-        }
-        _, text = _report(tmp_path, watershed=watershed, tc_method=method, **_DESIGN)
+    @pytest.mark.parametrize(
+        "method", ["kirpich", "nrcs", "giandotti", "faa", "kerby", "kerby_kirpich"]
+    )
+    def test_the_tc_section_shows_what_the_method_was_fed_with(self, tmp_path, method):
+        """The formula shows the arguments derived from the watershed."""
+        _, text = _report(
+            tmp_path, watershed=_FULL_WATERSHED, tc_method=method, **_DESIGN
+        )
 
         parameters = tc.tc_watershed(
-            watershed=watershed, method=method
+            watershed=_FULL_WATERSHED, method=method
         ).result.parameters
         section = _section(text, 2)
         assert "brak danych" not in section

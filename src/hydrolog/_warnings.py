@@ -239,7 +239,7 @@ def typical_range_fields(fields: Mapping[str, str]) -> Iterator[None]:
     ``fields[name]``; outside every block, or for a parameter that no block names, it
     is the parameter itself. Blocks nest, the inner one first: the time of
     concentration of a watershed names its fields (``length_km`` is
-    ``channel_length_km``) inside ``hydrograph generate``, which names its options
+    ``flow_path_length_km``) inside ``hydrograph generate``, which names its options
     (``ct`` is ``snyder_ct``). The names are kept in a context variable, so threads
     and tasks do not see each other's.
 

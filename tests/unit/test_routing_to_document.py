@@ -46,9 +46,21 @@ UPPER: dict[str, Any] = {
     "length_km": 6.0,
     "elevation_min_m": 210.0,
     "elevation_max_m": 330.0,
+    "elevation_mean_m": 262.0,
+    "channel_length_km": 5.4,
     "cn": 75,
+    "flow_path_length_km": 6.0,
+    "flow_path_slope_m_per_m": 0.02,
 }
-LOWER: dict[str, Any] = {**UPPER, "area_km2": 5.0, "length_km": 3.5, "cn": 70}
+LOWER: dict[str, Any] = {
+    **UPPER,
+    "area_km2": 5.0,
+    "length_km": 3.5,
+    "channel_length_km": 3.0,
+    "cn": 70,
+    "flow_path_length_km": 3.5,
+    "flow_path_slope_m_per_m": 0.0343,
+}
 BLOCK = {
     "kind": "design",
     "hietogram_type": "block",

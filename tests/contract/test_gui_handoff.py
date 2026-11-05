@@ -3,10 +3,12 @@
 ``schemas/nogat/handoff-1.schema.json`` is Nogat's schema copied unchanged (its SHA-256
 is the one ``schemas/nogat/README.md`` records); Hydrolog never defines the envelope.
 Its example, the complete form of D15, validates, and so does its payload against
-``hydrolog-network/1``, which the envelope leaves to its owner. Routed by
-``route network``, the payload gives the result the example carries, and its one
-subcatchment computes as ``hydrograph generate`` computes the options it maps to: the
-equivalence by which Hydrogram zlewni writes and reads a hand-off.
+``hydrolog-network/1``, which the envelope leaves to its owner. The example's watershed
+predates ADR-0019: it has the main channel but not the longest flow path that Kirpich
+takes, so ``route network`` refuses it, naming the fields, until Nogat's example gains
+them. With Kamiennik's flow path its one subcatchment computes as ``hydrograph
+generate`` computes the options it maps to: the equivalence by which Hydrogram zlewni
+writes and reads a hand-off.
 """
 
 import hashlib
@@ -20,6 +22,7 @@ import pytest
 from jsonschema import Draft202012Validator
 
 from hydrolog.catalog import run_command
+from hydrolog.exceptions import InvalidParameterError
 
 ROOT = Path(__file__).resolve().parents[2]
 COPY = ROOT / "schemas" / "nogat" / "handoff-1.schema.json"
@@ -68,19 +71,24 @@ def test_the_example_and_its_payload_validate(index: int) -> None:
 
 
 @pytest.mark.parametrize("index", range(len(EXAMPLES)))
-def test_the_payload_routed_gives_the_result_it_carries(index: int) -> None:
-    example = EXAMPLES[index]
-    outlet = _outlet(example["payload"])
-    result = example["result"]
+def test_the_payload_without_the_flow_path_is_refused(index: int) -> None:
+    payload = EXAMPLES[index]["payload"]
 
-    assert round(outlet["peak_m3s"], 4) == result["peak_discharge_m3s"]
-    assert outlet["time_to_peak_min"] == result["time_to_peak_min"]
-    assert round(outlet["volume_m3"], 1) == result["total_volume_m3"]
+    with pytest.raises(InvalidParameterError) as caught:
+        _outlet(payload)
+
+    assert caught.value.details["reason"] == "missing_field"
+    assert caught.value.details["missing"] == [
+        "flow_path_length_km",
+        "flow_path_slope_m_per_m",
+    ]
 
 
 def test_one_subcatchment_computes_as_hydrograph_generate() -> None:
-    payload = EXAMPLES[0]["payload"]
+    payload = json.loads(json.dumps(EXAMPLES[0]["payload"]))
     node = next(node for node in payload["nodes"] if node["type"] == "subcatchment")
+    # Kamiennik's longest flow path (tests/fixtures/kamiennik.json)
+    node["watershed"].update(flow_path_length_km=15.88, flow_path_slope_m_per_m=0.0114)
     options: dict[str, Any] = {"watershed": node["watershed"]}
     for part in (node["runoff"], node.get("rainfall", payload.get("rainfall", {}))):
         options.update(

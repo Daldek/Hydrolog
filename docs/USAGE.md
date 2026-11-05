@@ -98,8 +98,9 @@ rasters).
 
 ### Time of concentration
 
-Kirpich needs the main channel length and slope; NRCS (TR-55 lag) also needs the CN. Both return
-`tc_min` and `tc_h`. Other methods: `tc giandotti`, `tc faa`, `tc kerby`, `tc kerby-kirpich`.
+Kirpich needs the length and the slope of the longest flow path, from the watershed divide to the
+outlet; NRCS (the lag method of NEH 630, ch. 15) the same length, the average land slope of the
+watershed and the CN. Both return `tc_min` and `tc_h`. Other methods: `tc giandotti`, `tc faa`, `tc kerby`, `tc kerby-kirpich`.
 `tc watershed` computes any of them from a watershed JSON file (the `WatershedParameters` format,
 see [Exchange](#7-exchange-with-kartograf-obserwator-and-hydrograf)); a field the method needs
 but the file lacks is a `validation_error` that lists it.
@@ -497,10 +498,12 @@ from hydrolog.routing import (
 upper = WatershedParameters(
     area_km2=12.0, perimeter_km=18.0, length_km=6.0,
     elevation_min_m=210.0, elevation_max_m=330.0, cn=75,
+    flow_path_length_km=6.0, flow_path_slope_m_per_m=0.02,   # Kirpich's inputs
 )
 lower = WatershedParameters(
     area_km2=5.0, perimeter_km=11.0, length_km=3.5,
     elevation_min_m=210.0, elevation_max_m=290.0, cn=70,
+    flow_path_length_km=3.5, flow_path_slope_m_per_m=0.0229,
 )
 model = CurveNumberRunoff(tc_method="kirpich")   # the options of hydrograph generate
 
@@ -519,7 +522,7 @@ network = RoutingNetwork(
 result = network.route()
 print(network.order)       # ('A', 'B', 'C', 'R_A', 'J1', 'R_J1', 'J2', 'OUT')
 print({node: round(h.peak_discharge_m3s, 2) for node, h in result.hydrographs.items()})
-# {'A': 20.11, 'B': 4.35, 'C': 1.19, 'R_A': 20.11, 'J1': 20.43, 'R_J1': 18.85, 'J2': 18.89, 'OUT': 18.89}
+# {'A': 20.11, 'B': 4.36, 'C': 1.19, 'R_A': 20.11, 'J1': 20.43, 'R_J1': 18.85, 'J2': 18.89, 'OUT': 18.89}
 print({node: rain.total_mm for node, rain in result.rainfall.items()})   # A 45, B 38, C 30 (the default)
 tc = next(p for p in result.nodes["A"].parameters if p.name == "tc_min")
 print(tc.name, round(tc.value, 1), tc.unit, tc.source)                   # tc_min 71.3 min computed
@@ -1129,9 +1132,12 @@ files. Formats and the division of responsibilities are in [INTEGRATION.md](INTE
   when you publish results.
 - **Hydrograf** (watershed delineation) produces a JSON in the `WatershedParameters` format.
   Only `area_km2` is required; `perimeter_km`, `length_km`, `elevation_min_m`,
-  `elevation_max_m`, `cn`, `channel_length_km`, `channel_slope_m_per_m` and the others are
-  optional, and a calculation that needs one that is missing (the shape indicators of
-  `morphometry watershed`, the fields of a `tc_method`) ends with `validation_error`,
+  `elevation_max_m`, `cn`, `channel_length_km`, `flow_path_length_km`,
+  `flow_path_slope_m_per_m` and the others are optional, and a calculation that needs one
+  that is missing (the shape indicators of `morphometry watershed`, the fields of a
+  `tc_method`, which are those its source defines, with no substitute: Kirpich takes
+  the longest flow path, `flow_path_length_km` and `flow_path_slope_m_per_m`, Hydrograf's
+  hydraulic length and the slope of that path) ends with `validation_error`,
   `details.reason` `missing_field` and the field in `details.option`. Give it as
   `--watershed-file` to `morphometry watershed`, `tc watershed`, `hydrograph generate` and
   `report generate`, or load it with `WatershedParameters.from_json`. A bad file is a

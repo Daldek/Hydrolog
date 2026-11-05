@@ -71,9 +71,9 @@ Enable easy data exchange between Hydrograf (GIS spatial analysis) and Hydrolog 
     "elevation_min_m": {"type": "number", "description": "Minimum elevation [m a.s.l.]"},
     "elevation_max_m": {"type": "number", "description": "Maximum elevation [m a.s.l.]"},
     "elevation_mean_m": {"type": "number", "description": "Mean elevation [m a.s.l.]"},
-    "mean_slope_m_per_m": {"type": "number", "minimum": 0, "description": "Mean slope [m/m]"},
-    "channel_length_km": {"type": "number", "minimum": 0, "description": "Channel length [km]"},
-    "channel_slope_m_per_m": {"type": "number", "minimum": 0, "description": "Channel slope [m/m]"},
+    "mean_slope_m_per_m": {"type": "number", "minimum": 0, "description": "Mean land slope of the watershed [m/m] (NRCS: Y)"},
+    "channel_length_km": {"type": "number", "minimum": 0, "description": "Main channel length [km] (Giandotti)"},
+    "channel_slope_m_per_m": {"type": "number", "minimum": 0, "description": "Main channel slope [m/m]"},
     "cn": {"type": "integer", "minimum": 0, "maximum": 100, "description": "Curve Number"},
     "source": {"type": "string", "description": "Data source"},
     "crs": {"type": "string", "description": "Coordinate reference system"},
@@ -86,7 +86,11 @@ Enable easy data exchange between Hydrograf (GIS spatial analysis) and Hydrolog 
     "Lc_km": {"type": "number", "exclusiveMinimum": 0, "description": "Distance to the watershed centroid along the channel [km] (Nash/Snyder)"},
     "manning_n": {"type": "number", "exclusiveMinimum": 0, "description": "Manning's roughness coefficient (Nash)"},
     "urban_pct": {"type": "number", "minimum": 0, "maximum": 100, "description": "Percentage of urbanized area [%] (Nash)"},
-    "forest_pct": {"type": "number", "minimum": 0, "maximum": 100, "description": "Percentage of forested area [%] (Nash)"}
+    "forest_pct": {"type": "number", "minimum": 0, "maximum": 100, "description": "Percentage of forested area [%] (Nash)"},
+
+    "__comment_v100": "Optional fields added in v1.0.0 (ADR-0019)",
+    "flow_path_length_km": {"type": "number", "exclusiveMinimum": 0, "description": "Length of the longest flow path, from the watershed divide to the outlet [km] (Kirpich, NRCS, Kerby-Kirpich)"},
+    "flow_path_slope_m_per_m": {"type": "number", "minimum": 0, "description": "Slope of the longest flow path: (elevation of its head on the divide - outlet elevation) / its length [m/m] (Kirpich, Kerby-Kirpich)"}
   }
 }
 ```
@@ -136,7 +140,7 @@ s = params.to_json(indent=2)
 geom = params.to_geometry()      # WatershedGeometry
 terrain = params.to_terrain()    # TerrainAnalysis
 
-# Calculations
+# Calculations (Kirpich takes flow_path_length_km and flow_path_slope_m_per_m)
 tc = params.calculate_tc(method="kirpich")
 
 # Computed properties
@@ -257,6 +261,8 @@ class MorphometricParameters(BaseModel):
     mean_slope_m_per_m: float | None = None
     channel_length_km: float | None = None
     channel_slope_m_per_m: float | None = None
+    flow_path_length_km: float | None = None       # hydraulic_length_km
+    flow_path_slope_m_per_m: float | None = None   # (head - outlet) / length
     cn: int | None = Field(None, ge=0, le=100)
     source: str | None = "Hydrograf"
     crs: str | None = "EPSG:2180"
@@ -315,7 +321,8 @@ from hydrolog.precipitation import BetaHietogram
 # 3. Import the parameters into Hydrolog
 params = WatershedParameters.from_dict(morph_json)
 
-# 4. Compute the time of concentration
+# 4. Compute the time of concentration (Kirpich: the longest flow path,
+#    flow_path_length_km and flow_path_slope_m_per_m, ADR-0019)
 tc = params.calculate_tc(method="kirpich")
 
 # 5. Generate the hydrograph
@@ -389,7 +396,8 @@ def residual(point_id, watershed, rain):
 design = DesignStorm(45.0, 60.0, EulerIIHietogram())
 record = RainfallSeries([0.0, 2.0, 5.0, 10.0, 12.0, 6.0, 3.0], timestep_min=5.0)
 whole = {"area_km2": 30.0, "perimeter_km": 25.0, "length_km": 8.0,
-         "elevation_min_m": 210.0, "elevation_max_m": 330.0, "cn": 75}
+         "elevation_min_m": 210.0, "elevation_max_m": 330.0, "cn": 75,
+         "flow_path_length_km": 8.0, "flow_path_slope_m_per_m": 0.015}
 
 points = ControlPointNetwork(OutletPoint("OUT", residual("OUT", whole, design)))   # 1. the outlet
 points.add_point(                                                                   # 2. a pick above it
@@ -514,7 +522,7 @@ The GUI and Hydrograf exchange a watershed or a network as the envelope `nogat-h
 - **Reading.** „Wczytaj z Hydrografa” in the first step of Hydrogram zlewni and of Sieć reads a hand-off file or the clipboard, with a field to paste into where the browser gives no clipboard. The envelope is checked against the validation keywords of Nogat's schema (`web/src/handoff/envelope.js`, a copy without the annotations, which a browser test compares with the schema; copy it again when Nogat changes the schema) and the payload against `hydrolog-network-1.schema.json`. A refused hand-off lists its problems in Polish with their paths and changes nothing. Exactly one subcatchment with the outlet below it opens in Hydrogram zlewni, which refuses it with a rainfall series whose step is not the network's; any other network opens in Sieć. PMAXTP provenance (its probability and duration in the atlas, the duration the payload's) takes its point from `provenance.rainfall`, else from `provenance.watershed` (the outlet that Hydrograf names). The payload's depth is remembered without a fetch only when `provenance.rainfall` carries the point; with a point only in the watershed's provenance, Hydrogram zlewni fetches the depth for it; with no point at all the rainfall opens as a design hyetograph („Hietogram”) of the payload's depth and duration. A subcatchment without rainfall on the node or the network (Hydrograf's watershed alone, handed off before it has a hydrograph) opens with PMAXTP at the point of `provenance.watershed`, p, the duration and the unit hydrograph left to choose (an empty step 2 without a point); the depth is fetched once p and the duration are chosen.
 - **Comparing.** The producer's result is shown beside Hydrolog's own with both versions (`result.computed_with` when another tool computed it, as Hydrograf does with Hydrolog 0.6.3, else `producer`), each differing value marked; once the data differ from those handed over, a note says that the producer's result is of the data handed over.
 
-Field names are Hydrolog's (`channel_length_km`; slopes in m/m); mapping Hydrograf's own names is Hydrograf's side. Hydrograf writes the hand-off (`core/handoff.py`, from the release after its v0.5.0) with „Kopiuj do Hydrologa” (the clipboard) and „Plik przekazania” (a file) in its panel „Zlewnia”: the watershed alone after the delineation, then with the runoff, the rainfall and the result once it has a hydrograph; it does not read hand-offs. Values shown in Hydrolog's headers and notes are rounded (tc to 0,1 min), while the run uses those handed over. A hand-off through Nogat's shell, without a file or the clipboard, waits for the platform's kit.
+Field names are Hydrolog's (`channel_length_km`, `flow_path_length_km`; slopes in m/m); mapping Hydrograf's own names is Hydrograf's side (its `hydraulic_length_km` is `flow_path_length_km`, [ADR-0019](decisions/0019-tc-from-the-inputs-its-source-defines.md)). Hydrolog times a handed watershed by `runoff.tc_method` from the fields that method's source defines (Kirpich: `flow_path_length_km`, `flow_path_slope_m_per_m`; NRCS: `flow_path_length_km`, `mean_slope_m_per_m`, `cn`; Giandotti: `channel_length_km`, `elevation_mean_m`, `elevation_min_m`; FAA and Kerby: `overland_length_km`, `overland_slope_m_per_m`, `runoff_coeff` or `retardance`; Kerby-Kirpich: the overland fields, `retardance` and the flow path); a `runoff.tc_min` is a given value. Hydrograf writes the hand-off (`core/handoff.py`, from the release after its v0.5.0) with „Kopiuj do Hydrologa” (the clipboard) and „Plik przekazania” (a file) in its panel „Zlewnia”: the watershed alone after the delineation, then with the runoff, the rainfall and the result once it has a hydrograph; it does not read hand-offs. Values shown in Hydrolog's headers and notes are rounded (tc to 0,1 min), while the run uses those handed over. A hand-off through Nogat's shell, without a file or the clipboard, waits for the platform's kit.
 
 ### Obserwator: series export → `stats` commands
 

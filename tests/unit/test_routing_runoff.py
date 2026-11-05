@@ -31,6 +31,8 @@ WATERSHED = WatershedParameters(
     channel_length_km=5.0,
     channel_slope_m_per_m=0.012,
     mean_slope_m_per_m=0.03,
+    flow_path_length_km=6.0,
+    flow_path_slope_m_per_m=0.02,
 )
 RAIN = BetaHietogram().generate(total_mm=50.0, duration_min=60.0, timestep_min=5.0)
 KIRPICH = WATERSHED.calculate_tc("kirpich")
@@ -385,6 +387,8 @@ class TestWhatItUses:
             elevation_min_m=210.0,
             elevation_max_m=220.0,
             cn=75,
+            flow_path_length_km=12.0,
+            flow_path_slope_m_per_m=10.0 / 12000.0,
         )
         model = CurveNumberRunoff()
 

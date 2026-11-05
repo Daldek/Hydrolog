@@ -26,8 +26,8 @@ def generate_tc_section(
     retardance: float | None = None,
     overland_length_km: float | None = None,
     overland_slope_m_per_m: float | None = None,
-    channel_length_km: float | None = None,
-    channel_slope_m_per_m: float | None = None,
+    flow_path_length_km: float | None = None,
+    flow_path_slope_m_per_m: float | None = None,
     tc_overland_min: float | None = None,
     tc_channel_min: float | None = None,
     include_formulas: bool = True,
@@ -43,11 +43,13 @@ def generate_tc_section(
         Method used ("kirpich", "nrcs", "giandotti", "faa", "kerby",
         "kerby_kirpich").
     length_km : float, optional
-        Channel/hydraulic length [km].
+        Length of the formula [km]: the longest flow path (Kirpich, NRCS), the
+        main channel (Giandotti) or the overland flow length (FAA, Kerby).
     slope_m_per_m : float, optional
-        Channel slope [m/m].
+        Slope of the formula [m/m]: of the longest flow path (Kirpich) or of the
+        overland flow (FAA, Kerby).
     slope_percent : float, optional
-        Watershed slope [%].
+        Average land slope of the watershed [%] (NRCS).
     area_km2 : float, optional
         Watershed area [km²].
     elevation_diff_m : float, optional
@@ -61,11 +63,12 @@ def generate_tc_section(
     overland_length_km : float, optional
         Overland flow length [km] (for Kerby-Kirpich).
     overland_slope_m_per_m : float, optional
-        Average overland slope [m/m] (for Kerby-Kirpich).
-    channel_length_km : float, optional
-        Channel flow length [km] (for Kerby-Kirpich).
-    channel_slope_m_per_m : float, optional
-        Average channel slope [m/m] (for Kerby-Kirpich).
+        Slope of the terrain the overland flow runs on [m/m] (for Kerby-Kirpich).
+    flow_path_length_km : float, optional
+        Length of the longest flow path, from the divide to the outlet, the
+        overland segment included [km] (for Kerby-Kirpich).
+    flow_path_slope_m_per_m : float, optional
+        Slope of the longest flow path [m/m] (for Kerby-Kirpich).
     tc_overland_min : float, optional
         Overland flow component [min] (for Kerby-Kirpich).
     tc_channel_min : float, optional
@@ -109,14 +112,16 @@ def generate_tc_section(
                         "**Dane wejściowe:**",
                         "",
                         (
-                            f"- Długość cieku: L = {length_km:.2f} km"
+                            "- Długość najdłuższej drogi spływu: L = "
+                            f"{length_km:.2f} km"
                             if length_km
-                            else "- Długość cieku: brak danych"
+                            else "- Długość najdłuższej drogi spływu: brak danych"
                         ),
                         (
-                            f"- Spadek cieku: S = {slope_m_per_m:.4f} m/m"
+                            "- Spadek najdłuższej drogi spływu: S = "
+                            f"{slope_m_per_m:.4f} m/m"
                             if slope_m_per_m
-                            else "- Spadek cieku: brak danych"
+                            else "- Spadek najdłuższej drogi spływu: brak danych"
                         ),
                         "",
                         f"**Wynik:** $t_c$ = {tc_min:.1f} min",
@@ -139,12 +144,13 @@ def generate_tc_section(
                         "**Dane wejściowe:**",
                         "",
                         (
-                            f"- Długość hydrauliczna: L = {length_km:.2f} km"
+                            "- Długość najdłuższej drogi spływu: L = "
+                            f"{length_km:.2f} km"
                             if length_km
                             else "- Długość: brak danych"
                         ),
                         (
-                            f"- Spadek zlewni: Y = {slope_percent:.2f} %"
+                            f"- Średni spadek terenu zlewni: Y = {slope_percent:.2f} %"
                             if slope_percent
                             else "- Spadek: brak danych"
                         ),
@@ -276,8 +282,8 @@ def generate_tc_section(
                 overland_length_km is not None
                 and overland_slope_m_per_m is not None
                 and retardance is not None
-                and channel_length_km is not None
-                and channel_slope_m_per_m is not None
+                and flow_path_length_km is not None
+                and flow_path_slope_m_per_m is not None
                 and tc_overland_min is not None
                 and tc_channel_min is not None
             ):
@@ -286,8 +292,8 @@ def generate_tc_section(
                         ov_length_km=overland_length_km,
                         ov_slope_m_per_m=overland_slope_m_per_m,
                         retardance=retardance,
-                        ch_length_km=channel_length_km,
-                        ch_slope_m_per_m=channel_slope_m_per_m,
+                        fp_length_km=flow_path_length_km,
+                        fp_slope_m_per_m=flow_path_slope_m_per_m,
                         tc_ov_min=tc_overland_min,
                         tc_ch_min=tc_channel_min,
                         tc_total_min=tc_min,
@@ -314,14 +320,16 @@ def generate_tc_section(
                             else "- Współczynnik opóźnienia: brak danych"
                         ),
                         (
-                            f"- Długość koryta: L_ch = {channel_length_km:.2f} km"
-                            if channel_length_km
-                            else "- Długość koryta: brak danych"
+                            "- Długość najdłuższej drogi spływu: L = "
+                            f"{flow_path_length_km:.2f} km"
+                            if flow_path_length_km
+                            else "- Długość najdłuższej drogi spływu: brak danych"
                         ),
                         (
-                            f"- Spadek koryta: S_ch = {channel_slope_m_per_m:.4f} m/m"
-                            if channel_slope_m_per_m
-                            else "- Spadek koryta: brak danych"
+                            "- Spadek najdłuższej drogi spływu: S = "
+                            f"{flow_path_slope_m_per_m:.4f} m/m"
+                            if flow_path_slope_m_per_m
+                            else "- Spadek najdłuższej drogi spływu: brak danych"
                         ),
                         "",
                         f"**Wynik:** $t_c$ = {tc_min:.1f} min",

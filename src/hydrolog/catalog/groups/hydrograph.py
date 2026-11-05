@@ -36,8 +36,8 @@ GENERATE_OPTIONS: tuple[Option, ...] = (
         type="object",
         description_pl=(
             "Parametry zlewni jako obiekt WatershedParameters (wymagane tylko "
-            "`area_km2`; `cn` i pola metody `tc_method`, np. `channel_length_km`, "
-            "`channel_slope_m_per_m`, gdy tc liczy się ze zlewni; brakujące pole "
+            "`area_km2`; `cn` i pola metody `tc_method`, np. `flow_path_length_km`, "
+            "`flow_path_slope_m_per_m`, gdy tc liczy się ze zlewni; brakujące pole "
             "to błąd `missing_field` z nazwą pola w `details.option`). Dostarcza "
             "powierzchnię, CN i dane do czasu koncentracji; parametry modeli Nash, "
             "Clark (R) i Snyder podaje się jawnie."
@@ -45,10 +45,10 @@ GENERATE_OPTIONS: tuple[Option, ...] = (
         description=(
             "Watershed parameters as a WatershedParameters object (only `area_km2` "
             "is required; `cn` and the fields of `tc_method`, e.g. "
-            "`channel_length_km`, `channel_slope_m_per_m`, when tc is computed from "
-            "the watershed; a missing one is `missing_field` naming the field in "
-            "`details.option`). It supplies the area, the CN and the data for the "
-            "time of concentration; the parameters of the Nash, Clark (R) and "
+            "`flow_path_length_km`, `flow_path_slope_m_per_m`, when tc is computed "
+            "from the watershed; a missing one is `missing_field` naming the field "
+            "in `details.option`). It supplies the area, the CN and the data for "
+            "the time of concentration; the parameters of the Nash, Clark (R) and "
             "Snyder models are given explicitly."
         ),
     ),
@@ -406,6 +406,8 @@ _WATERSHED_EXAMPLE = {
     "elevation_max_m": 520.0,
     "mean_slope_m_per_m": 0.025,
     "cn": 72,
+    "flow_path_length_km": 12.5,
+    "flow_path_slope_m_per_m": 0.025,
 }
 
 COMMANDS: tuple[Command, ...] = (

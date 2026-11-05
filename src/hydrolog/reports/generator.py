@@ -195,10 +195,13 @@ class HydrologyReportGenerator:
             ``generate_tc_section`` (``length_km``, ``slope_m_per_m``,
             ``slope_percent``, ``area_km2``, ``elevation_diff_m``, ``cn``,
             ``runoff_coeff``, ``retardance``, ``overland_length_km``, ...). If
-            None, they are extracted from ``watershed_params`` by the rules of
-            ``WatershedParameters.calculate_tc``: length = channel length, else
-            watershed length; slope = channel slope, else mean slope, else
-            relief over length.
+            None, they are taken from ``watershed_params`` by the rules of
+            ``WatershedParameters.calculate_tc``: each the field its source
+            defines (Kirpich the longest flow path, ``flow_path_length_km`` and
+            ``flow_path_slope_m_per_m``; NRCS ``flow_path_length_km`` and
+            ``mean_slope_percent``; Giandotti ``channel_length_km`` and the mean
+            elevation above the outlet), with no substitute: an input that is
+            missing is not shown.
 
         Returns
         -------
@@ -616,34 +619,39 @@ class HydrologyReportGenerator:
         method: str,
         area_km2: float,
     ) -> dict[str, Any]:
-        """Derive inputs of the ``method`` formula from watershed parameters.
+        """Take the inputs of the ``method`` formula from the watershed parameters.
 
-        Applies the rules of ``WatershedParameters.calculate_tc``: the length is
-        the channel length, else the watershed length; the slope is the channel
-        slope, else the mean slope, else the relief over the length (NRCS takes
-        the mean slope of the watershed first: Y of TR-55 is the average land
-        slope); FAA and Kerby time the overland flow, so they take
-        ``overland_length_km`` and ``overland_slope_m_per_m``, never the channel.
+        Applies the rules of ``WatershedParameters.calculate_tc``: each input is
+        the field its source defines, with no substitute. Kirpich takes the length
+        and slope of the longest flow path; NRCS its length and the average land
+        slope of the watershed (``mean_slope_percent``); Giandotti the main
+        channel and the mean elevation above the outlet; FAA and Kerby the
+        overland flow length and slope; Kerby-Kirpich the overland fields and the
+        flow path. An input whose field is missing is left out.
         """
         if watershed_params is None:
             return {}
         values = watershed_params
-        length_km = values.get("channel_length_km") or values.get("length_km")
-        slope = _slope_m_per_m(values, length_km)
-
+        flow_path_length_km = values.get("flow_path_length_km")
         if method == "kirpich":
-            return _present(length_km=length_km, slope_m_per_m=slope)
-        if method == "nrcs":
-            land_slope = _slope_m_per_m(values, length_km, land_first=True)
             return _present(
-                length_km=length_km,
-                slope_percent=None if land_slope is None else land_slope * 100.0,
+                length_km=flow_path_length_km,
+                slope_m_per_m=values.get("flow_path_slope_m_per_m"),
+            )
+        if method == "nrcs":
+            return _present(
+                length_km=flow_path_length_km,
+                slope_percent=values.get("mean_slope_percent"),
             )
         if method == "giandotti":
+            mean_m = values.get("elevation_mean_m")
+            outlet_m = values.get("elevation_min_m")
             return _present(
                 area_km2=area_km2,
-                length_km=length_km,
-                elevation_diff_m=_mean_elevation_above_outlet_m(values),
+                length_km=values.get("channel_length_km"),
+                elevation_diff_m=(
+                    None if mean_m is None or outlet_m is None else mean_m - outlet_m
+                ),
             )
         if method == "faa":
             return _present(
@@ -662,8 +670,8 @@ class HydrologyReportGenerator:
                 overland_length_km=values.get("overland_length_km"),
                 overland_slope_m_per_m=values.get("overland_slope_m_per_m"),
                 retardance=values.get("retardance"),
-                channel_length_km=values.get("channel_length_km"),
-                channel_slope_m_per_m=values.get("channel_slope_m_per_m"),
+                flow_path_length_km=flow_path_length_km,
+                flow_path_slope_m_per_m=values.get("flow_path_slope_m_per_m"),
             )
         return {}
 
@@ -727,48 +735,3 @@ def _unit_hydrograph_model(unit: Any, default: str) -> str:
 def _present(**values: Any) -> dict[str, Any]:
     """Return the given values that are not None."""
     return {name: value for name, value in values.items() if value is not None}
-
-
-def _slope_m_per_m(
-    values: dict[str, Any], length_km: float | None, land_first: bool = False
-) -> float | None:
-    """Slope a time of concentration method is fed with (``calculate_tc`` rule).
-
-    The channel slope, else the mean slope, else the relief over the length; with
-    ``land_first`` (NRCS) the mean slope of the watershed comes before the channel
-    slope.
-    """
-    channel = values.get("channel_slope_m_per_m")
-    mean = values.get("mean_slope_percent")
-    mean = None if mean is None else float(mean) / 100.0
-    for slope in (mean, channel) if land_first else (channel, mean):
-        if slope is not None:
-            return float(slope)
-    relief_m = values.get("relief_m")
-    if (
-        relief_m is None
-        and values.get("elevation_min_m") is not None
-        and values.get("elevation_max_m") is not None
-    ):
-        relief_m = values["elevation_max_m"] - values["elevation_min_m"]
-    if relief_m is not None and length_km:
-        return float(relief_m) / (length_km * 1000.0)
-    return None
-
-
-def _mean_elevation_above_outlet_m(values: dict[str, Any]) -> float | None:
-    """Elevation difference of the Giandotti formula (``calculate_tc`` rule).
-
-    Mean elevation minus the outlet elevation; the mean elevation defaults to the
-    middle of the elevation range.
-    """
-    outlet_m = values.get("elevation_min_m")
-    if outlet_m is None:
-        return None
-    mean_m = values.get("elevation_mean_m")
-    if mean_m is None:
-        top_m = values.get("elevation_max_m")
-        if top_m is None:
-            return None
-        mean_m = (outlet_m + top_m) / 2.0
-    return float(mean_m - outlet_m)

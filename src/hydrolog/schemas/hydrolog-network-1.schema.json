@@ -687,6 +687,12 @@
         },
         "forest_pct": {
           "type": "number"
+        },
+        "flow_path_length_km": {
+          "type": "number"
+        },
+        "flow_path_slope_m_per_m": {
+          "type": "number"
         }
       },
       "additionalProperties": false
