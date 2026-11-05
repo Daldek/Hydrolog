@@ -8,8 +8,7 @@ unit hydrograph of the catchment in m3/s per mm of effective precipitation, in a
 of the area (:data:`hydrolog._ranges.TYPICAL_RANGES`).
 
 Nash and Clark parameters can be given in several ways; the group of options that is
-given selects the way (``NashIUH.from_tc`` is deliberately not offered: it is
-deprecated and not justified for the Nash model).
+given selects the way.
 """
 
 from __future__ import annotations

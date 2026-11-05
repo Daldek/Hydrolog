@@ -3,8 +3,7 @@
 Every command returns the unit hydrograph of a catchment in m3/s per mm of effective
 precipitation. Nash and Clark offer more than one way to obtain their parameters; the
 alternatives are separate ``one_of`` groups of options (decision: no ``estimation``
-option, the group that is given selects the method). ``NashIUH.from_tc`` is not
-offered: it is deprecated and has no scientific basis for the Nash model.
+option, the group that is given selects the method).
 """
 
 from __future__ import annotations

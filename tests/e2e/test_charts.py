@@ -200,7 +200,14 @@ def test_log_and_time_ticks(page: Any) -> None:
     assert [tick["label"] for tick in short["ticks"]][:3] == ["0,00", "0,25", "0,50"]
     # A one-hour rain: tenths of an hour, not 0,1666666667
     assert [tick["label"] for tick in hour["ticks"]][:3] == ["0,0", "0,1", "0,2"]
-    assert [tick["label"] for tick in small["ticks"]] == ["0,0", "0,2", "0,4", "0,6", "0,8", "1,0"]
+    assert [tick["label"] for tick in small["ticks"]] == [
+        "0,0",
+        "0,2",
+        "0,4",
+        "0,6",
+        "0,8",
+        "1,0",
+    ]
     assert (domain["min"], domain["max"]) == (0, 1440)
 
 

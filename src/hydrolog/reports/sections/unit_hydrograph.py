@@ -246,8 +246,7 @@ def _generate_nash_section(
 ) -> list[str]:
     """Generate Nash IUH-specific content.
 
-    Supports three estimation methods via model_params["estimation_method"]:
-    - "from_tc": parameters from time of concentration
+    Supports these estimation methods via model_params["estimation_method"]:
     - "from_lutz": Lutz method for ungauged catchments
     - "from_urban_regression": urban regression (Rao, Delleur, Sarma 1972)
     - None / "direct": parameters given directly
@@ -418,23 +417,7 @@ def _generate_nash_section(
         )
 
         # Estimation method formulas (rendered BEFORE model formula)
-        if estimation_method == "from_tc":
-            tc_min = model_params.get("tc_min")
-            lag_ratio = model_params.get("lag_ratio", 0.6)
-            if tc_min is not None:
-                lines.extend(
-                    [
-                        FormulaRenderer.nash_from_tc_formulas(
-                            tc_min=tc_min,
-                            n=n,
-                            lag_ratio=lag_ratio,
-                            k_min=k_min,
-                        ),
-                        "",
-                    ]
-                )
-
-        elif estimation_method == "from_lutz":
+        if estimation_method == "from_lutz":
             P1 = model_params.get("P1")
             tp_hours = model_params.get("tp_hours")
             up_per_hour = model_params.get("up_per_hour")
