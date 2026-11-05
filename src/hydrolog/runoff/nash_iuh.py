@@ -20,7 +20,6 @@ KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów
 maksymalnych. Załącznik 2, Tabela C.2.
 """
 
-import warnings
 from dataclasses import dataclass
 
 import numpy as np
@@ -274,7 +273,7 @@ class NashIUH:
             the ranges: :data:`hydrolog._ranges.TYPICAL_RANGES`). The ranges have
             no published source and are kept as to be verified, so the warning is
             this subclass of ``OutsideTypicalRange``. The estimating constructors
-            (``from_lutz``, ``from_urban_regression``, ``from_tc``) do not warn
+            (``from_lutz``, ``from_urban_regression``) do not warn
             about them: the ranges are those of given parameters.
         """
         self._set(n, k_min, area_km2, lutz_params)
@@ -648,110 +647,6 @@ class NashIUH:
         # P(a, x) = γ(a, x) / Γ(a)
         result[mask] = gammainc(self.n, t_over_k)
         return result
-
-    @classmethod
-    def from_tc(
-        cls,
-        tc_min: float,
-        n: float | None = None,
-        lag_ratio: float = 0.6,
-    ) -> "NashIUH":
-        """
-        Create NashIUH from time of concentration.
-
-        .. deprecated:: 0.6.2
-            This method will be removed in version 1.0.0.
-            Use :meth:`from_lutz` for ungauged watersheds or provide
-            n and K directly to the constructor.
-
-        .. warning::
-            This method uses the SCS relationship (lag = 0.6 × Tc) which was
-            developed for the SCS Unit Hydrograph, NOT for the Nash model.
-            There is no scientific justification for applying this relationship
-            to the Nash cascade model. The Nash model lag time (n × K) is a
-            mathematical result of the cascade, not an input parameter.
-
-        Parameters
-        ----------
-        tc_min : float
-            Time of concentration [min].
-        n : float, optional
-            Number of reservoirs. If not specified, uses n=3
-            (common default for natural watersheds).
-        lag_ratio : float, optional
-            Ratio of lag time to tc, by default 0.6 (SCS relationship).
-
-        Returns
-        -------
-        NashIUH
-            Configured Nash IUH generator.
-
-        Notes
-        -----
-        The parameters are estimated as:
-
-        - tlag = lag_ratio × tc (default: 0.6 × tc, from SCS method)
-        - K = tlag / n
-
-        **Why this method is deprecated:**
-
-        The relationship lag = 0.6 × Tc was developed by the Soil Conservation
-        Service (SCS) specifically for the SCS Dimensionless Unit Hydrograph
-        (USDA TR-55, 1986). In the Nash model, lag time = n × K is a
-        mathematical consequence of the cascade of linear reservoirs, not an
-        input parameter.
-
-        **Recommended alternatives:**
-
-        1. Use :meth:`from_lutz` for ungauged watersheds - this method was
-           developed specifically for Nash parameter estimation from
-           physiographic characteristics (Lutz, 1984; KZGW, 2017).
-
-        2. Provide n and K directly if you have calibrated values or
-           estimates from observed hydrographs (method of moments).
-
-        See Also
-        --------
-        from_lutz : Estimate parameters from physiographic characteristics.
-        NashIUH : Direct constructor with n and K parameters.
-
-        References
-        ----------
-        USDA-NRCS (1986). Urban Hydrology for Small Watersheds.
-        Technical Release 55 (TR-55). Chapter 3.
-
-        Examples
-        --------
-        >>> iuh = NashIUH.from_tc(tc_min=90.0, n=3.0)  # doctest: +SKIP
-        >>> print(f"K = {iuh.k_min:.1f} min")  # doctest: +SKIP
-        K = 18.0 min
-        """
-        warnings.warn(
-            "from_tc() is deprecated and will be removed in version 1.0.0. "
-            "This method uses the SCS relationship (lag=0.6×Tc) which is not "
-            "scientifically justified for the Nash model. "
-            "Use from_lutz() for ungauged watersheds or provide n and K directly.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-
-        if tc_min <= 0:
-            raise InvalidParameterError(f"tc_min must be positive, got {tc_min}")
-        if lag_ratio <= 0 or lag_ratio > 1:
-            raise InvalidParameterError(f"lag_ratio must be in (0, 1], got {lag_ratio}")
-
-        # Default n if not specified
-        if n is None:
-            n = 3.0
-
-        if n <= 0:
-            raise InvalidParameterError(f"n must be positive, got {n}")
-
-        # Estimate lag time and K
-        lag_time = lag_ratio * tc_min
-        k_min = lag_time / n
-
-        return cls._estimated(n=n, k_min=k_min)
 
     @classmethod
     def from_lutz(

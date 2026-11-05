@@ -1205,3 +1205,36 @@ def test_the_mapping_computes_as_hydrograph_generate_for_every_setting(
         generated["peak_discharge_m3s"],
         rel_tol=1e-9,
     )
+
+    # Hydrograf's Nash from tc (`NashIUH.from_tc`, removed) opens as the given n and K
+    # of its runoff, even with Lutz's inputs in the watershed
+    from_tc = page.evaluate(
+        """async ([payload, provenance]) => {
+          const state = await import('./src/sections/hydrogram/state.js');
+          const mapping = await import('./src/handoff/mapping.js');
+          const { buildHandoff } = await import('./src/handoff/handoff.js');
+          const doc = buildHandoff({
+            subject: 'Kamiennik', provenance, payload, version: 'test',
+          });
+          const inputs = mapping.hydrogramInputs(doc);
+          const back = state.toOptions(state.normalize(inputs));
+          return { source: inputs.nash_source, back };
+        }""",
+        [
+            item["payload"],
+            {
+                **item["provenance"],
+                "runoff": {
+                    "source": "hydrograf",
+                    "nash_estimation": "from_tc",
+                    "tc_method": "kirpich",
+                    "tc_min": 209.1,
+                },
+            },
+        ],
+    )
+    assert from_tc["source"] == "given"
+    assert (from_tc["back"]["nash_n"], from_tc["back"]["nash_k_min"]) == (
+        parameters["n"],
+        parameters["k_min"],
+    )

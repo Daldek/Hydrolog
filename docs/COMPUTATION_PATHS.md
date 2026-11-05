@@ -1,8 +1,8 @@
 # Computation Paths for Unit Hydrograph Models (plus HSG and the Fisher–Tippett Distribution)
 
-**Document version:** 1.4
-**Date:** 2026-11-02
-**Applies to:** Hydrolog >= 1.0.0 (sections 3.3.6, 3.4.6, 3.4.7, 3.5, 3.6, 3.7 and 3.8 describe behaviour from v1.0.0; the rest: >= 0.6.0)
+**Document version:** 1.5
+**Date:** 2026-11-05
+**Applies to:** Hydrolog >= 1.0.0 (sections 3.2.2, 3.3.6, 3.4.6, 3.4.7, 3.5, 3.6, 3.7 and 3.8 describe behaviour from v1.0.0; the rest: >= 0.6.0)
 
 ---
 
@@ -12,7 +12,7 @@
 
 Hydrolog implements 4 unit hydrograph models: **SCS**, **Nash**, **Clark** and **Snyder**. Each model has different input parameters and different methods for estimating them.
 
-**An incorrect combination of methods** (e.g. using the time of concentration from the Kirpich formula in the Nash model through `from_tc()`) can lead to wrong results without scientific justification.
+**An incorrect combination of methods** (e.g. turning the time of concentration from the Kirpich formula into the Nash storage constant through the SCS relation `tlag = 0.6 × Tc`) can lead to wrong results without scientific justification.
 
 This document serves as a guide that:
 - States clearly the **correct computation paths** for each model
@@ -24,13 +24,12 @@ This document serves as a guide that:
 | Model | Kirpich | NRCS | Giandotti | FAA | Kerby | Kerby-Kirpich | from_lutz() | from_urban_regression() | Directly | Own method |
 |-------|:-------:|:-------:|:---------:|:---:|:-----:|:-------------:|:-----------:|:-----------------------:|:------------:|:-------------:|
 | **SCS UH** | ✅ | ✅ | ✅ | ✅¹ | ✅¹ | ✅ | - | - | - | - |
-| **Nash IUH** | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ✅ | ✅ | ✅ | - |
+| **Nash IUH** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | - |
 | **Clark IUH** | ✅ | ✅ | ✅ | ✅¹ | ✅¹ | ✅ | - | - | ✅ | - |
 | **Snyder UH** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | - | - | ✅ | ✅ |
 
 **Legend:**
 - ✅ **OK** - correct use, confirmed by the literature
-- ⚠️ **DEPRECATED** - works, but has no scientific justification (will be removed in v1.0.0)
 - ❌ **NOT APPLICABLE** - the model does not use an external Tc
 - ✅¹ **OK with a limitation** - FAA and Kerby compute the overland flow time (flow paths of the order of hundreds of metres), so as a catchment Tc they are suitable only for small catchments without a distinct channel; for a catchment with a channel, Tc is given by Kerby-Kirpich (overland flow + channel) or by Kirpich (section 3.7)
 
@@ -250,18 +249,15 @@ print(f"Qmax = {hydrograph.peak_discharge_m3s:.2f} m³/s")
                              └──────────────────────────────┘
 ```
 
-#### 3.2.2 WARNING: from_tc() is DEPRECATED
+#### 3.2.2 No Path from Tc
+
+The Nash model takes no time of concentration. `NashIUH.from_tc()` (`tlag = 0.6 × Tc`, `K = tlag / n`),
+deprecated since v0.6.2, was removed in v1.0.0:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                   ⚠️  DEPRECATED PATH  ⚠️                           │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│  PROBLEM:                                                           │
-│  The NashIUH.from_tc() method uses the relation: tlag = 0.6 × Tc   │
-│                                                                     │
-│  This relation comes from the SCS method (TR-55, 1986) and has NO  │
-│  scientific justification for the Nash model!                      │
+│  The relation tlag = 0.6 × Tc comes from the SCS method (TR-55,    │
+│  1986) and has NO scientific justification for the Nash model.     │
 │                                                                     │
 │  In the Nash model: tlag = n × K is a MATHEMATICAL RESULT          │
 │  of the reservoir cascade, NOT an input parameter!                 │
@@ -274,17 +270,10 @@ print(f"Qmax = {hydrograph.peak_discharge_m3s:.2f} m³/s")
 │  │ Tc is the INPUT         │       │ n, K are the INPUT      │     │
 │  └─────────────────────────┘       └─────────────────────────┘     │
 │                                                                     │
-│  CONSEQUENCES OF INCORRECT USE:                                     │
-│  - Parameter K is computed from an invalid relationship            │
-│  - The IUH shape may not match the catchment characteristics       │
-│  - It cannot be verified against observed data                     │
-│                                                                     │
-│  SOLUTION:                                                          │
-│  Use NashIUH.from_lutz() or supply n and K directly                │
+│  Use NashIUH.from_lutz(), NashIUH.from_urban_regression() or       │
+│  supply n and K directly                                           │
 └─────────────────────────────────────────────────────────────────────┘
 ```
-
-**Status:** `from_tc()` will be removed in version 1.0.0
 
 #### 3.2.3 Correct Estimation Methods
 
@@ -294,7 +283,7 @@ print(f"Qmax = {hydrograph.peak_discharge_m3s:.2f} m³/s")
 | `from_urban_regression()` | ✅ OK | Regression for urbanised catchments (Rao, Delleur, Sarma 1972) |
 | Directly `n`, `K` | ✅ OK | When you have calibrated values |
 | ~~Method of moments~~ | REMOVED in v0.5.1 | Requires data from an observed hydrograph |
-| `from_tc()` | ⚠️ DEPRECATED | No scientific justification |
+| ~~`from_tc()`~~ | REMOVED in v1.0.0 | No scientific justification (SCS relation `tlag = 0.6 × Tc`) |
 
 #### 3.2.4 Lutz Method Formulas
 
@@ -405,22 +394,6 @@ generator = HydrographGenerator(
 )
 result = generator.generate(precip)
 print(f"Qmax = {result.peak_discharge_m3s:.2f} m³/s")
-```
-
-#### 3.2.7 Code Example - INCORRECT USE (DO NOT DO THIS!)
-
-```python
-from hydrolog.time import ConcentrationTime
-from hydrolog.runoff import NashIUH
-
-# ⚠️ INCORRECT - THIS WILL EMIT A DeprecationWarning!
-tc = ConcentrationTime.kirpich(length_km=8.2, slope_m_per_m=0.023)
-nash = NashIUH.from_tc(tc_min=tc, n=3.0)  # DEPRECATED!
-
-# Use from_lutz() instead:
-nash_correct = NashIUH.from_lutz(
-    L_km=8.2, Lc_km=4.5, slope=0.023, manning_n=0.035
-)
 ```
 
 ---
@@ -1146,7 +1119,6 @@ so `hydrographs[P]` of the result is the discharge at the point. Where another s
 | Nash IUH + from_lutz() | Lutz (1984), KZGW (2017) | ✅ |
 | Nash IUH + from_urban_regression() | Rao, Delleur, Sarma (1972), Banasik (2009) | ✅ |
 | Nash IUH + directly n, K | Nash (1957) | ✅ |
-| Nash IUH + from_tc() | **NO JUSTIFICATION** | ⚠️ |
 | Clark IUH + Tc (any method) | Clark (1945), HEC-HMS | ✅ |
 | Clark IUH + R/Tc ratio | HEC-HMS, engineering practice | ✅ |
 | Snyder UH + L, Lc, Ct, Cp | Snyder (1938) | ✅ |
@@ -1199,13 +1171,14 @@ so `hydrographs[P]` of the result is the discharge at the point. Where another s
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│  MISTAKE: Using ConcentrationTime.kirpich() → NashIUH.from_tc()    │
+│  MISTAKE: Deriving the Nash K from ConcentrationTime.kirpich()     │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
 │  PROBLEM:                                                           │
-│  from_tc() assumes: tlag = 0.6 × Tc                                │
+│  K = 0.6 × Tc / n assumes the SCS relation tlag = 0.6 × Tc.        │
 │  This relation is specific to the SCS method and has NO scientific │
-│  justification for the Nash model.                                  │
+│  justification for the Nash model (NashIUH.from_tc() was removed   │
+│  in v1.0.0 for this reason).                                       │
 │                                                                     │
 │  CONSEQUENCES:                                                      │
 │  - Parameter K is computed from an invalid relationship            │
@@ -1355,5 +1328,5 @@ so `hydrographs[P]` of the result is the discharge at the point. Where another s
 
 ---
 
-**Document version:** 1.4
-**Last updated:** 2026-11-02
+**Document version:** 1.5
+**Last updated:** 2026-11-05

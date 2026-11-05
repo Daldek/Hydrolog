@@ -496,52 +496,6 @@ class FormulaRenderer:
         )
 
     @staticmethod
-    def nash_from_tc_formulas(
-        tc_min: float,
-        n: float,
-        lag_ratio: float,
-        k_min: float,
-    ) -> str:
-        """
-        Render Nash IUH parameter estimation from time of concentration.
-
-        Parameters
-        ----------
-        tc_min : float
-            Time of concentration [min].
-        n : float
-            Number of reservoirs.
-        lag_ratio : float
-            Ratio of lag time to tc (SCS default: 0.6).
-        k_min : float
-            Storage coefficient K [min].
-
-        Returns
-        -------
-        str
-            LaTeX formulas with substituted values.
-        """
-        tlag_min = lag_ratio * tc_min
-        return (
-            "**Metoda estymacji parametrów (z czasu koncentracji):**\n\n"
-            "**Czas opóźnienia:**\n\n"
-            "$$t_{lag} = \\lambda \\cdot t_c$$\n\n"
-            "**Podstawienie wartości:**\n\n"
-            f"$$t_{{lag}} = {lag_ratio} \\cdot {tc_min:.1f} = "
-            f"{tlag_min:.1f} \\text{{ min}}$$\n\n"
-            "**Stała zbiornika:**\n\n"
-            "$$K = \\frac{t_{lag}}{n}$$\n\n"
-            "**Podstawienie wartości:**\n\n"
-            f"$$K = \\frac{{{tlag_min:.1f}}}{{{n:.2f}}} = "
-            f"{k_min:.1f} \\text{{ min}}$$\n\n"
-            f"- $\\lambda$ = {lag_ratio} (stosunek czasu opóźnienia do tc)\n"
-            f"- $t_c$ = {tc_min:.1f} min (czas koncentracji)\n"
-            f"- $t_{{lag}}$ = {tlag_min:.1f} min (czas opóźnienia)\n"
-            f"- $n$ = {n:.2f} (liczba zbiorników)\n"
-            f"- $K$ = {k_min:.1f} min (stała zbiornika)"
-        )
-
-    @staticmethod
     def nash_from_lutz_formulas(
         L_km: float,
         Lc_km: float,
