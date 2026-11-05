@@ -28,6 +28,8 @@ WATERSHED = {
     "elevation_min_m": 210.0,
     "elevation_max_m": 330.0,
     "cn": 75,
+    "flow_path_length_km": 6.0,
+    "flow_path_slope_m_per_m": 0.02,
 }
 RAIN = {
     "kind": "design",
@@ -146,7 +148,13 @@ class TestTheNotices:
     def test_a_warning_of_the_library_is_a_notice_and_is_not_printed(self):
         """Kirpich on 12 km2 with 10 m over 12 km: the area and the slope are outside
         his data."""
-        flat = {**WATERSHED, "length_km": 12.0, "elevation_max_m": 220.0}
+        flat = {
+            **WATERSHED,
+            "length_km": 12.0,
+            "elevation_max_m": 220.0,
+            "flow_path_length_km": 12.0,
+            "flow_path_slope_m_per_m": 10.0 / 12000.0,
+        }
         content = stream(watershed=flat, runoff={"model": "curve-number"})
 
         with warnings.catch_warnings():

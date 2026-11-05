@@ -414,8 +414,8 @@ def compute_hydrograph(
         if cn is not None:
             # The CN given next to a watershed is the CN of the catchment for the
             # whole computation. In particular the retention S of the NRCS lag
-            # equation (TR-55, chapter 3; NEH-630, chapter 15) must come from the
-            # CN the runoff is computed with, not from the one in the file.
+            # equation (NEH 630, chapter 15, eq. 15-4) must come from the CN the
+            # runoff is computed with, not from the one in the file.
             catchment = replace(catchment, cn=cast(int, cn))
         area = catchment.area_km2
         if catchment.cn is None:

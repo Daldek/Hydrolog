@@ -123,8 +123,8 @@ _SPECS: Final[tuple[NoticeSpec, ...]] = (
         "slopes_from_relief",
         "info",
         "{option} = {given_m_per_m:g} m/m is not used here: the slope is computed "
-        "from the relief, {computed_m_per_m:.4g} m/m. The commands for the time of "
-        "concentration use the given slope.",
+        "from the relief, {computed_m_per_m:.4g} m/m. Of the given slopes, the time "
+        "of concentration takes only the mean slope (NRCS).",
         ("option", "given_m_per_m", "computed_m_per_m"),
     ),
     NoticeSpec(

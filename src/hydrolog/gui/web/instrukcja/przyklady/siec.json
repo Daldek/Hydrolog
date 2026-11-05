@@ -17,7 +17,9 @@
         "length_km": 6.0,
         "elevation_min_m": 210.0,
         "elevation_max_m": 330.0,
-        "cn": 75
+        "cn": 75,
+        "flow_path_length_km": 6.0,
+        "flow_path_slope_m_per_m": 0.02
       },
       "runoff": {
         "model": "curve-number"
@@ -38,7 +40,9 @@
         "length_km": 3.5,
         "elevation_min_m": 210.0,
         "elevation_max_m": 290.0,
-        "cn": 70
+        "cn": 70,
+        "flow_path_length_km": 3.5,
+        "flow_path_slope_m_per_m": 0.0229
       },
       "runoff": {
         "model": "curve-number"

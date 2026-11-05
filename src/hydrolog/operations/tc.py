@@ -81,9 +81,11 @@ def tc_kirpich(*, length_km: float, slope_m_per_m: float) -> OperationOutput:
     Parameters
     ----------
     length_km : float
-        Main channel length from the watershed divide to the outlet [km], > 0.
+        Length of the longest flow path, from the most remote point on the
+        watershed divide to the outlet [km], > 0.
     slope_m_per_m : float
-        Mean slope of the main channel [m/m], > 0.
+        Slope of that path: the elevation of its head minus the outlet elevation,
+        over its length [m/m], > 0.
 
     Returns
     -------
@@ -105,14 +107,19 @@ def tc_kirpich(*, length_km: float, slope_m_per_m: float) -> OperationOutput:
 
 
 def tc_nrcs(*, length_km: float, slope_m_per_m: float, cn: float) -> OperationOutput:
-    """Time of concentration by the NRCS (TR-55 lag) method (``tc nrcs``).
+    """Time of concentration by the NRCS lag method (``tc nrcs``).
+
+    The lag equation of USDA-NRCS (2010), NEH Part 630, chapter 15, eq. 15-4, with
+    ``tc = lag / 0.6``.
 
     Parameters
     ----------
     length_km : float
-        Hydraulic length of the watershed [km], > 0.
+        Flow length: the longest flow path from the watershed divide to the outlet
+        [km], > 0.
     slope_m_per_m : float
-        Mean watershed slope [m/m], > 0.
+        Average land slope of the watershed Y [m/m] (not the slope of the flow
+        path), > 0.
     cn : float
         Curve Number for AMC II, 1-100 (fractional values are accepted).
 
@@ -181,9 +188,9 @@ def tc_faa(
     Parameters
     ----------
     length_km : float
-        Overland flow length [km], > 0.
+        Overland flow length, from the most remote point to the inlet [km], > 0.
     slope_m_per_m : float
-        Mean ground slope [m/m], > 0.
+        Slope of the overland flow surface [m/m], > 0.
     runoff_coeff : float
         Rational-method runoff coefficient, 0 < C <= 1.
 
@@ -220,9 +227,9 @@ def tc_kerby(
     Parameters
     ----------
     length_km : float
-        Overland flow length [km], > 0.
+        Overland flow length up to a defined channel [km], > 0.
     slope_m_per_m : float
-        Mean ground slope [m/m], > 0.
+        Slope of the terrain the overland flow runs on [m/m], > 0.
     retardance : float
         Kerby retardance coefficient N, > 0 (usually 0.02-0.80).
 
@@ -256,26 +263,29 @@ def tc_kerby_kirpich(
     overland_length_km: float,
     overland_slope_m_per_m: float,
     retardance: float,
-    channel_length_km: float,
-    channel_slope_m_per_m: float,
+    flow_path_length_km: float,
+    flow_path_slope_m_per_m: float,
 ) -> OperationOutput:
     """Time of concentration by the composite Kerby-Kirpich method.
 
     Implements ``tc kerby-kirpich``: Kerby for the overland segment plus Kirpich for
-    the channel segment.
+    the channel segment, the longest flow path minus the overland segment, at the
+    slope of the whole path (Roussel et al. 2005, supplement).
 
     Parameters
     ----------
     overland_length_km : float
         Overland flow length [km], > 0.
     overland_slope_m_per_m : float
-        Mean overland slope [m/m], > 0.
+        Slope of the terrain the overland flow runs on [m/m], > 0.
     retardance : float
         Kerby retardance coefficient N, > 0.
-    channel_length_km : float
-        Channel length from the start of the channel to the outlet [km], > 0.
-    channel_slope_m_per_m : float
-        Mean channel slope [m/m], > 0.
+    flow_path_length_km : float
+        Length of the longest flow path, from the watershed divide to the outlet,
+        the overland segment included [km], > ``overland_length_km``.
+    flow_path_slope_m_per_m : float
+        Slope of that path: the elevation of its head on the divide minus the
+        outlet elevation, over its length [m/m], > 0.
 
     Returns
     -------
@@ -286,22 +296,23 @@ def tc_kerby_kirpich(
     Raises
     ------
     InvalidParameterError
-        If a parameter is not positive.
+        If a parameter is not positive, or the flow path is not longer than the
+        overland segment.
     """
     with capture_warnings() as notices:
         tc_min = ConcentrationTime.kerby_kirpich(
             overland_length_km=overland_length_km,
             overland_slope_m_per_m=overland_slope_m_per_m,
             retardance=retardance,
-            channel_length_km=channel_length_km,
-            channel_slope_m_per_m=channel_slope_m_per_m,
+            flow_path_length_km=flow_path_length_km,
+            flow_path_slope_m_per_m=flow_path_slope_m_per_m,
         )
     parameters = {
         "overland_length_km": overland_length_km,
         "overland_slope_m_per_m": overland_slope_m_per_m,
         "retardance": retardance,
-        "channel_length_km": channel_length_km,
-        "channel_slope_m_per_m": channel_slope_m_per_m,
+        "flow_path_length_km": flow_path_length_km,
+        "flow_path_slope_m_per_m": flow_path_slope_m_per_m,
     }
     return OperationOutput(_result("kerby_kirpich", tc_min, parameters), notices)
 
@@ -312,10 +323,9 @@ def _effective_parameters(
     """Derive formula arguments that ``WatershedParameters.calculate_tc`` derives.
 
     Taken from :meth:`WatershedParameters.tc_parameters`, the one place that
-    selects them from the watershed fields (FAA and Kerby: the overland flow
-    length and slope; Kirpich: the channel slope first; NRCS: the mean slope of
-    the watershed first; Giandotti: mean elevation, by default the middle of the
-    range, minus the outlet), so the result shows what the method was fed with.
+    selects them from the watershed fields (each argument the field its source
+    defines; Giandotti's elevation difference is the mean elevation minus the
+    outlet), so the result shows what the method was fed with.
     """
     return {
         name: float(value) for name, value in watershed.tc_parameters(method).items()
@@ -410,17 +420,17 @@ def tc_watershed(
     watershed_file : str, optional
         JSON file in the ``WatershedParameters.to_json()`` format.
     method : {"kirpich", "nrcs", "giandotti", "faa", "kerby", "kerby_kirpich"}, optional
-        Formula, by default ``"kirpich"``. Length: ``channel_length_km``, else
-        ``length_km``; slope: ``channel_slope_m_per_m``, then
-        ``mean_slope_m_per_m``, then relief over length (``nrcs`` takes the mean
-        slope of the watershed first: the average land slope Y of TR-55).
-        ``nrcs`` needs ``cn``. ``faa`` and ``kerby`` time the overland flow, so
-        they use ``overland_length_km`` and ``overland_slope_m_per_m`` (not the
-        channel) and need them, besides ``runoff_coeff`` (``faa``) or
-        ``retardance`` (``kerby``); for a watershed with a channel use
-        ``kerby_kirpich``, which needs ``retardance``, ``overland_length_km``,
-        ``overland_slope_m_per_m``, ``channel_length_km`` and
-        ``channel_slope_m_per_m``.
+        Formula, by default ``"kirpich"``. Each takes the watershed fields its
+        source defines, with no substitute: ``kirpich`` the longest flow path,
+        ``flow_path_length_km`` and ``flow_path_slope_m_per_m``; ``nrcs``
+        ``flow_path_length_km``, the average land slope ``mean_slope_m_per_m`` and
+        ``cn``; ``giandotti`` ``channel_length_km``, ``elevation_mean_m`` and
+        ``elevation_min_m``; ``faa`` and ``kerby`` time the overland flow, so they
+        use ``overland_length_km`` and ``overland_slope_m_per_m`` (not the channel)
+        and ``runoff_coeff`` (``faa``) or ``retardance`` (``kerby``); for a
+        watershed with a channel use ``kerby_kirpich``, which needs ``retardance``,
+        ``overland_length_km``, ``overland_slope_m_per_m``,
+        ``flow_path_length_km`` and ``flow_path_slope_m_per_m``.
 
     Returns
     -------

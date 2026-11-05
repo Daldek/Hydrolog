@@ -27,9 +27,9 @@ SECTION_HEADERS: dict[str, str] = {
 
 TC_METHODS: dict[str, str] = {
     "kirpich": "Wzór Kirpicha (1940)",
-    "nrcs": "Równanie NRCS (USDA TR-55)",
+    "nrcs": "Równanie opóźnienia NRCS (USDA-NRCS 2010, NEH 630, rozdz. 15)",
     "giandotti": "Wzór Giandottiego (1934)",
-    "faa": "Metoda FAA (Federal Aviation Agency, 1970)",
+    "faa": "Metoda FAA (Federal Aviation Administration 1970, AC 150/5320-5B)",
     "kerby": "Wzór Kerby'ego (1959)",
     "kerby_kirpich": "Metoda złożona Kerby-Kirpich",
 }
@@ -121,14 +121,16 @@ FORMULA_EXPLANATIONS: dict[str, str] = {
         "gdzie P - opad całkowity [mm], Ia - abstrakcja początkowa [mm], "
         "S - retencja maksymalna [mm]"
     ),
-    "kirpich": "gdzie L - długość cieku [km], S - spadek cieku [m/m]",
+    "kirpich": (
+        "gdzie L - długość najdłuższej drogi spływu [km], S - spadek tej drogi [m/m]"
+    ),
     "nrcs": (
-        "gdzie L - długość hydrauliczna [m], S - retencja [mm], "
-        "Y - średni spadek zlewni [%]"
+        "gdzie L - długość najdłuższej drogi spływu [m], S - retencja [mm], "
+        "Y - średni spadek terenu zlewni [%]"
     ),
     "giandotti": (
-        "gdzie A - powierzchnia zlewni [km²], L - długość cieku [km], "
-        "H - różnica wysokości [m]"
+        "gdzie A - powierzchnia zlewni [km²], L - długość cieku głównego [km], "
+        "H - średnia wysokość zlewni minus wysokość przekroju zamykającego [m]"
     ),
     "faa": (
         "gdzie C - współczynnik spływu [-], L - długość spływu [km], "
@@ -139,8 +141,8 @@ FORMULA_EXPLANATIONS: dict[str, str] = {
         "S - spadek powierzchni [m/m]"
     ),
     "kerby_kirpich": (
-        "tc = t_ov (Kerby) + t_ch (Kirpich); "
-        "metoda złożona dla spływu powierzchniowego i korytowego"
+        "tc = t_ov (Kerby) + t_ch (Kirpich); koryto to najdłuższa droga spływu bez "
+        "spływu powierzchniowego, ze spadkiem całej drogi"
     ),
     "scs_uh_lag": "gdzie tc - czas koncentracji [min]",
     "scs_uh_tp": "gdzie D - czas trwania opadu [min], tlag - czas opóźnienia [min]",
@@ -193,7 +195,7 @@ REFERENCES: dict[str, str] = {
         "McGraw-Hill, New York."
     ),
     "faa": (
-        "Federal Aviation Agency (1970). *Airport Drainage*. "
+        "Federal Aviation Administration (1970). *Airport Drainage*. "
         "Advisory Circular AC 150/5320-5B. US Department of Transportation."
     ),
     "kerby": (
@@ -264,6 +266,8 @@ PARAMETER_LABELS: dict[str, str] = {
     "channel_length_km": "Długość cieku głównego",
     "channel_slope_m_per_m": "Spadek cieku głównego",
     "channel_slope_percent": "Spadek cieku głównego",
+    "flow_path_length_km": "Długość najdłuższej drogi spływu",
+    "flow_path_slope_m_per_m": "Spadek najdłuższej drogi spływu",
     # SCS-CN
     "cn": "Curve Number (CN)",
     "cn_ii": "CN dla AMC-II",

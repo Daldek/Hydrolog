@@ -26,7 +26,7 @@ export const kalkulatory = {
   keywords: {
     "porownanie-tc": "porównanie tc watershed kirpich nrcs giandotti faa kerby czas koncentracji",
     "tc kirpich": "kirpich",
-    "tc nrcs": "nrcs tr-55 lag",
+    "tc nrcs": "nrcs lag",
     "tc giandotti": "giandotti",
     "tc kerby-kirpich": "kerby kirpich",
     "tc faa": "faa",
@@ -55,7 +55,7 @@ export const kalkulatory = {
   },
   methods: {
     kirpich: "Kirpich",
-    nrcs: "NRCS (TR-55)",
+    nrcs: "NRCS (NEH 630)",
     giandotti: "Giandotti",
     faa: "FAA",
     kerby: "Kerby",
@@ -105,7 +105,7 @@ export const kalkulatory = {
     tcMin: "tc",
     tcH: "tc",
     codes: "Kody uwag",
-    note: "Kirpich i NRCS biorą tę samą długość (`channel_length_km`), ale inny spadek: Kirpich spadek cieku, NRCS średni spadek zlewni.",
+    note: "Kirpich i NRCS biorą tę samą długość (`flow_path_length_km`), ale inny spadek: Kirpich spadek drogi spływu, NRCS średni spadek terenu.",
   },
   results: {
     sub: "tc [min] i [h]",
@@ -151,8 +151,8 @@ export const kalkulatory = {
     retardance: { label: "N", unit: "" },
     overland_length_km: { label: "L stoku", unit: " km" },
     overland_slope_m_per_m: { label: "spadek stoku", unit: "" },
-    channel_length_km: { label: "L koryta", unit: " km" },
-    channel_slope_m_per_m: { label: "S koryta", unit: "" },
+    flow_path_length_km: { label: "L drogi spływu", unit: " km" },
+    flow_path_slope_m_per_m: { label: "S drogi spływu", unit: "" },
   },
   /** Tiles of the calculators' results (the generic choice elsewhere). */
   tiles: {

@@ -189,9 +189,10 @@ class FormulaRenderer:
         Parameters
         ----------
         length_km : float
-            Channel length [km].
+            Length of the longest flow path, from the most remote point on the
+            divide to the outlet [km].
         slope_m_per_m : float
-            Channel slope [m/m].
+            Slope of the longest flow path [m/m].
         tc_min : float
             Calculated concentration time [min].
 
@@ -205,8 +206,8 @@ class FormulaRenderer:
             "**Wzór ogólny:**\n\n"
             "$$t_c = 0.0663 \\cdot L^{0.77} \\cdot S^{-0.385} \\text{ [h]}$$\n\n"
             "gdzie:\n"
-            "- $L$ - długość cieku [km]\n"
-            "- $S$ - spadek cieku [m/m]\n\n"
+            "- $L$ - długość najdłuższej drogi spływu [km]\n"
+            "- $S$ - spadek najdłuższej drogi spływu [m/m]\n\n"
             "**Podstawienie wartości:**\n\n"
             f"$$t_c = 0.0663 \\cdot {length_km:.2f}^{{0.77}} \\cdot "
             f"{slope_m_per_m:.4f}^{{-0.385}} = {tc_h:.3f} \\text{{ h}} = "
@@ -226,9 +227,9 @@ class FormulaRenderer:
         Parameters
         ----------
         length_km : float
-            Hydraulic length [km].
+            Flow length: the longest flow path from the divide to the outlet [km].
         slope_percent : float
-            Average watershed slope [%].
+            Average land slope of the watershed [%].
         cn : int
             Curve Number.
         tc_min : float
@@ -246,9 +247,9 @@ class FormulaRenderer:
             "$$t_c = 0.01416 \\cdot L^{0.8} \\cdot (S + 25.4)^{0.7}"
             " \\cdot Y^{-0.5} \\text{ [min]}$$\n\n"
             "gdzie:\n"
-            "- $L$ - długość hydrauliczna [m]\n"
+            "- $L$ - długość najdłuższej drogi spływu [m]\n"
             "- $S$ - retencja maksymalna [mm]\n"
-            "- $Y$ - średni spadek zlewni [%]\n\n"
+            "- $Y$ - średni spadek terenu zlewni [%]\n\n"
             "**Podstawienie wartości:**\n\n"
             f"- L = {length_m:.0f} m\n"
             f"- S = {s:.2f} mm (dla CN = {cn})\n"
@@ -273,7 +274,7 @@ class FormulaRenderer:
         length_km : float
             Main channel length [km].
         elevation_diff_m : float
-            Elevation difference [m].
+            Mean watershed elevation above the outlet [m].
         tc_min : float
             Calculated concentration time [min].
 
@@ -289,7 +290,8 @@ class FormulaRenderer:
             "gdzie:\n"
             "- $A$ - powierzchnia zlewni [km²]\n"
             "- $L$ - długość cieku głównego [km]\n"
-            "- $H$ - różnica wysokości [m]\n\n"
+            "- $H$ - średnia wysokość zlewni minus wysokość przekroju zamykającego "
+            "[m]\n\n"
             "**Podstawienie wartości:**\n\n"
             f"$$t_c = \\frac{{4\\sqrt{{{area_km2:.2f}}} + 1.5 \\cdot {length_km:.2f}}}"
             f"{{0.8\\sqrt{{{elevation_diff_m:.1f}}}}} = "
@@ -311,7 +313,7 @@ class FormulaRenderer:
         length_km : float
             Overland flow length [km].
         slope_m_per_m : float
-            Average overland slope [m/m].
+            Slope of the overland flow surface [m/m].
         runoff_coeff : float
             Rational method runoff coefficient [-].
         tc_min : float
@@ -352,7 +354,7 @@ class FormulaRenderer:
         length_km : float
             Overland flow length [km].
         slope_m_per_m : float
-            Average overland slope [m/m].
+            Slope of the terrain the overland flow runs on [m/m].
         retardance : float
             Kerby retardance roughness coefficient [-].
         tc_min : float
@@ -383,8 +385,8 @@ class FormulaRenderer:
         ov_length_km: float,
         ov_slope_m_per_m: float,
         retardance: float,
-        ch_length_km: float,
-        ch_slope_m_per_m: float,
+        fp_length_km: float,
+        fp_slope_m_per_m: float,
         tc_ov_min: float,
         tc_ch_min: float,
         tc_total_min: float,
@@ -392,18 +394,21 @@ class FormulaRenderer:
         """
         Render Kerby-Kirpich composite formula: tc = tc_ov + tc_ch.
 
+        The channel segment is the longest flow path minus the overland segment,
+        at the slope of the whole path (Roussel et al. 2005, supplement).
+
         Parameters
         ----------
         ov_length_km : float
             Overland flow length [km].
         ov_slope_m_per_m : float
-            Average overland slope [m/m].
+            Slope of the terrain the overland flow runs on [m/m].
         retardance : float
             Kerby retardance roughness coefficient [-].
-        ch_length_km : float
-            Channel flow length [km].
-        ch_slope_m_per_m : float
-            Average channel slope [m/m].
+        fp_length_km : float
+            Length of the longest flow path, from the divide to the outlet [km].
+        fp_slope_m_per_m : float
+            Slope of the longest flow path [m/m].
         tc_ov_min : float
             Overland flow component (Kerby) [min].
         tc_ch_min : float
@@ -416,6 +421,7 @@ class FormulaRenderer:
         str
             LaTeX formula with substituted values.
         """
+        ch_length_km = fp_length_km - ov_length_km
         return (
             "**Metoda złożona Kerby-Kirpich:**\n\n"
             "$$t_c = t_{ov} + t_{ch}$$\n\n"
@@ -429,13 +435,17 @@ class FormulaRenderer:
             + _low_slope_note("S_{ov}", ov_slope_m_per_m)
             + "\n\n"
             "**Składnik przepływu korytowego (Kirpich):**\n\n"
+            "Koryto to najdłuższa droga spływu bez odcinka spływu powierzchniowego, "
+            f"$L_{{ch}} = L - L_{{ov}} = {fp_length_km:.2f} - {ov_length_km:.3f} = "
+            f"{ch_length_km:.2f}$ km, ze spadkiem całej drogi od działu wodnego do "
+            f"przekroju zamykającego, $S$ = {fp_slope_m_per_m:.4f} m/m.\n\n"
             "$$t_{ch} = 0.0663 \\cdot L_{ch}^{0.77}"
-            " \\cdot S_{ch}^{-0.385} \\text{ [h]}$$\n\n"
+            " \\cdot S^{-0.385} \\text{ [h]}$$\n\n"
             f"$$t_{{ch}} = 0.0663 \\cdot {ch_length_km:.2f}^{{0.77}} \\cdot "
-            f"{_low_slope_adjusted(ch_slope_m_per_m):.4f}^{{-0.385}} = "
+            f"{_low_slope_adjusted(fp_slope_m_per_m):.4f}^{{-0.385}} = "
             f"{tc_ch_min / 60:.3f} \\text{{ h}} = "
             f"{tc_ch_min:.1f} \\text{{ min}}$$"
-            + _low_slope_note("S_{ch}", ch_slope_m_per_m)
+            + _low_slope_note("S", fp_slope_m_per_m)
             + "\n\n"
             "**Wynik:**\n\n"
             f"$$t_c = {tc_ov_min:.1f} + {tc_ch_min:.1f} = "

@@ -154,7 +154,7 @@ anyio.run(call_tool)
 | | Overland flow time (Kerby) | `tc kerby` | `hydrolog_tc_kerby` | `tc_kerby` |
 | | Overland plus channel time (Kerby-Kirpich) | `tc kerby-kirpich` | `hydrolog_tc_kerby_kirpich` | `tc_kerby_kirpich` |
 | | Time of concentration (Kirpich) | `tc kirpich` | `hydrolog_tc_kirpich` | `tc_kirpich` |
-| | Time of concentration (NRCS lag, TR-55) | `tc nrcs` | `hydrolog_tc_nrcs` | `tc_nrcs` |
+| | Time of concentration (NRCS lag, NEH 630) | `tc nrcs` | `hydrolog_tc_nrcs` | `tc_nrcs` |
 | | Time of concentration of a watershed by any method | `tc watershed` | `hydrolog_tc_watershed` | `tc_watershed` |
 | Curve numbers | The whole TR-55 curve number table | `cn list` | `hydrolog_cn_list` | `cn_list` |
 | | Curve number of a soil group and land cover | `cn lookup` | `hydrolog_cn_lookup` | `cn_lookup` |

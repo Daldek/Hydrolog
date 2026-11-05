@@ -188,7 +188,7 @@ def kamiennik_inputs(**changes: Any) -> dict[str, Any]:
         "origin": {
             "label": "kamiennik.json",
             "title": "Z pliku: kamiennik.json",
-            "detail": "wczytano 4 lis 2026, 10:00 · 19 pól",
+            "detail": "wczytano 4 lis 2026, 10:00 · 21 pól",
             "mark": None,
             "values": KAMIENNIK,
         },

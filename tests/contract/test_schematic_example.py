@@ -39,6 +39,8 @@ def usage_network() -> RoutingNetwork:
         elevation_min_m=210.0,
         elevation_max_m=330.0,
         cn=75,
+        flow_path_length_km=6.0,
+        flow_path_slope_m_per_m=0.02,
     )
     lower = WatershedParameters(
         area_km2=5.0,
@@ -47,6 +49,8 @@ def usage_network() -> RoutingNetwork:
         elevation_min_m=210.0,
         elevation_max_m=290.0,
         cn=70,
+        flow_path_length_km=3.5,
+        flow_path_slope_m_per_m=0.0229,
     )
     model = CurveNumberRunoff(tc_method="kirpich")
     storm = DesignStorm(45.0, 60.0, EulerIIHietogram())

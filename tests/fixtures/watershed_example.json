@@ -9,6 +9,8 @@
   "mean_slope_m_per_m": 0.045,
   "channel_length_km": 14.2,
   "channel_slope_m_per_m": 0.021,
+  "flow_path_length_km": 14.2,
+  "flow_path_slope_m_per_m": 0.021,
   "cn": 72,
   "source": "manual"
 }

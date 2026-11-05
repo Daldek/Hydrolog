@@ -66,19 +66,23 @@ COMMANDS: tuple[Command, ...] = (
     Command(
         name="tc kirpich",
         operation_id="hydrolog_tc_kirpich",
-        summary_pl="Oblicz czas koncentracji wzorem Kirpicha (długość i spadek cieku).",
+        summary_pl=(
+            "Oblicz czas koncentracji wzorem Kirpicha (długość i spadek drogi spływu)."
+        ),
         summary="Compute time of concentration with the Kirpich formula.",
         description_pl=(
-            "Czas koncentracji tc [min, h] wzorem Kirpicha z długości cieku głównego "
-            "[km] i spadku [m/m]. Użyj dla małych zlewni rolniczych jak te z jego "
-            "danych; dla spływu powierzchniowego z korytem użyj `tc kerby-kirpich`. "
-            "Spadek spoza danych daje uwagę (`typical_ranges`)."
+            "Czas koncentracji tc [min, h] wzorem Kirpicha z długości [km] i spadku "
+            "[m/m] najdłuższej drogi spływu, od działu wodnego do przekroju. Użyj dla "
+            "małych zlewni rolniczych jak te z jego danych; dla spływu "
+            "powierzchniowego z korytem użyj `tc kerby-kirpich`. Spadek spoza danych "
+            "daje uwagę (`typical_ranges`)."
         ),
         description=(
-            "Kirpich tc [min, h] from main channel length [km] and slope [m/m]. "
-            "Use for small agricultural watersheds like those of his data; for "
-            "overland plus channel flow use `tc kerby-kirpich`. A slope outside "
-            "the data is a notice (`typical_ranges`)."
+            "Kirpich tc [min, h] from the length [km] and slope [m/m] of the longest "
+            "flow path, divide to outlet. Use for small agricultural watersheds "
+            "like those of his data; for overland plus channel flow use "
+            "`tc kerby-kirpich`. A slope outside the data is a notice "
+            "(`typical_ranges`)."
         ),
         function="hydrolog.operations.tc_kirpich",
         options=(
@@ -86,12 +90,12 @@ COMMANDS: tuple[Command, ...] = (
                 name="length_km",
                 type="number",
                 description_pl=(
-                    "Długość cieku głównego od działu wodnego do przekroju "
-                    "zamykającego [km]; > 0."
+                    "Długość najdłuższej drogi spływu, wzdłuż cieku od przekroju "
+                    "zamykającego do najdalszego punktu na dziale wodnym [km]; > 0."
                 ),
                 description=(
-                    "Main channel length from the watershed divide to the outlet "
-                    "[km]; > 0."
+                    "Length of the longest flow path, along the watercourse from the "
+                    "outlet to the most remote point on the divide [km]; > 0."
                 ),
                 required=True,
                 exclusive_minimum=0,
@@ -101,12 +105,14 @@ COMMANDS: tuple[Command, ...] = (
                 name="slope_m_per_m",
                 type="number",
                 description_pl=(
-                    "Średni spadek cieku głównego [m/m] (nie w procentach); > 0 "
-                    f"({typically('kirpich', 'slope_m_per_m', 'pl')})."
+                    "Spadek tej drogi: wysokość jej początku na dziale wodnym minus "
+                    "wysokość przekroju, przez jej długość [m/m] (nie w procentach); "
+                    f"> 0 ({typically('kirpich', 'slope_m_per_m', 'pl')})."
                 ),
                 description=(
-                    "Mean slope of the main channel [m/m] (not percent); > 0 "
-                    f"({typically('kirpich', 'slope_m_per_m')})."
+                    "Slope of that path: the elevation of its head on the divide "
+                    "minus the outlet elevation, over its length [m/m] (not percent); "
+                    f"> 0 ({typically('kirpich', 'slope_m_per_m')})."
                 ),
                 required=True,
                 exclusive_minimum=0,
@@ -140,19 +146,23 @@ COMMANDS: tuple[Command, ...] = (
     Command(
         name="tc nrcs",
         operation_id="hydrolog_tc_nrcs",
-        summary_pl="Oblicz czas koncentracji metodą NRCS (TR-55) z L, spadku i CN.",
-        summary="Compute time of concentration with the NRCS (TR-55 lag) method.",
+        summary_pl=(
+            "Oblicz czas koncentracji metodą opóźnienia NRCS (NEH 630) z L, Y i CN."
+        ),
+        summary="Compute time of concentration with the NRCS lag method (NEH 630).",
         description_pl=(
-            "Czas koncentracji tc [min, h] metodą NRCS (TR-55, czas opóźnienia / "
-            "0,6) z długości drogi hydraulicznej [km], spadku zlewni [m/m] i CN. "
-            "Użyj, gdy CN jest znane (`cn lookup`, `cn weighted`). Zwraca tc, nie "
-            "tlag (tlag = 0,6·tc). CN spoza równania daje uwagę (`typical_ranges`)."
+            "Czas koncentracji tc [min, h] równaniem opóźnienia NRCS (NEH 630, rozdz. "
+            "15; tc = opóźnienie / 0,6) z długości najdłuższej drogi spływu [km], "
+            "średniego spadku terenu zlewni [m/m] i CN. Użyj, gdy CN jest znane "
+            "(`cn lookup`, `cn weighted`). Zwraca tc, nie tlag (tlag = 0,6·tc). CN "
+            "spoza równania daje uwagę (`typical_ranges`)."
         ),
         description=(
-            "NRCS (TR-55) tc [min, h] from hydraulic length [km], watershed slope "
-            "[m/m] and CN. Use when CN is known (`cn lookup`, `cn weighted`). "
-            "Returns tc, not lag (lag = 0.6 * tc). A CN outside the equation is a "
-            "notice (`typical_ranges`)."
+            "NRCS lag tc [min, h] (NEH 630 ch. 15; tc = lag / 0.6) from the longest "
+            "flow path [km], the average land slope of the watershed [m/m] and CN. "
+            "Use when CN is known (`cn lookup`, `cn weighted`). Returns tc, not lag "
+            "(lag = 0.6 * tc). A CN outside the equation is a notice "
+            "(`typical_ranges`)."
         ),
         function="hydrolog.operations.tc_nrcs",
         options=(
@@ -160,11 +170,12 @@ COMMANDS: tuple[Command, ...] = (
                 name="length_km",
                 type="number",
                 description_pl=(
-                    "Długość drogi hydraulicznej zlewni (najdłuższej ścieżki "
-                    "spływu) [km]; > 0."
+                    "Długość spływu: najdłuższa droga spływu od działu wodnego do "
+                    "przekroju zamykającego [km]; > 0."
                 ),
                 description=(
-                    "Hydraulic length of the watershed (longest flow path) [km]; > 0."
+                    "Flow length: the longest flow path from the watershed divide to "
+                    "the outlet [km]; > 0."
                 ),
                 required=True,
                 exclusive_minimum=0,
@@ -173,8 +184,14 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="slope_m_per_m",
                 type="number",
-                description_pl="Średni spadek zlewni [m/m] (nie w procentach); > 0.",
-                description="Mean watershed slope [m/m] (not percent); > 0.",
+                description_pl=(
+                    "Średni spadek terenu zlewni Y [m/m] (nie w procentach, nie spadek "
+                    "drogi spływu); > 0."
+                ),
+                description=(
+                    "Average land slope of the watershed Y [m/m] (not percent, not "
+                    "the slope of the flow path); > 0."
+                ),
                 required=True,
                 exclusive_minimum=0,
                 unit="m/m",
@@ -314,8 +331,14 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="length_km",
                 type="number",
-                description_pl="Długość spływu powierzchniowego [km]; > 0.",
-                description="Overland flow length [km]; > 0.",
+                description_pl=(
+                    "Długość spływu powierzchniowego od najdalszego punktu do wlotu "
+                    "[km]; > 0."
+                ),
+                description=(
+                    "Overland flow length from the most remote point to the inlet "
+                    "[km]; > 0."
+                ),
                 required=True,
                 exclusive_minimum=0,
                 unit="km",
@@ -323,8 +346,13 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="slope_m_per_m",
                 type="number",
-                description_pl="Średni spadek terenu [m/m] (nie w procentach); > 0.",
-                description="Mean ground slope [m/m] (not percent); > 0.",
+                description_pl=(
+                    "Spadek powierzchni spływu powierzchniowego [m/m] (nie w "
+                    "procentach); > 0."
+                ),
+                description=(
+                    "Slope of the overland flow surface [m/m] (not percent); > 0."
+                ),
                 required=True,
                 exclusive_minimum=0,
                 unit="m/m",
@@ -398,11 +426,11 @@ COMMANDS: tuple[Command, ...] = (
                 name="length_km",
                 type="number",
                 description_pl=(
-                    "Długość spływu powierzchniowego [km]; > 0 "
-                    f"({typically('kerby', 'length_km', 'pl')})."
+                    "Długość spływu powierzchniowego do początku wyraźnego koryta "
+                    f"[km]; > 0 ({typically('kerby', 'length_km', 'pl')})."
                 ),
                 description=(
-                    "Overland flow length [km]; > 0 "
+                    "Overland flow length up to a defined channel [km]; > 0 "
                     f"({typically('kerby', 'length_km')})."
                 ),
                 required=True,
@@ -413,12 +441,12 @@ COMMANDS: tuple[Command, ...] = (
                 name="slope_m_per_m",
                 type="number",
                 description_pl=(
-                    "Średni spadek terenu [m/m] (nie w procentach); > 0 "
-                    f"({typically('kerby', 'slope_m_per_m', 'pl')})."
+                    "Spadek terenu, po którym spływa woda [m/m] (nie w procentach); "
+                    f"> 0 ({typically('kerby', 'slope_m_per_m', 'pl')})."
                 ),
                 description=(
-                    "Mean ground slope [m/m] (not percent); > 0 "
-                    f"({typically('kerby', 'slope_m_per_m')})."
+                    "Slope of the terrain the overland flow runs on [m/m] (not "
+                    f"percent); > 0 ({typically('kerby', 'slope_m_per_m')})."
                 ),
                 required=True,
                 exclusive_minimum=0,
@@ -462,17 +490,18 @@ COMMANDS: tuple[Command, ...] = (
         summary_pl="Oblicz czas koncentracji metodą Kerby–Kirpich (spływ + koryto).",
         summary="Compute time of concentration with the Kerby-Kirpich method.",
         description_pl=(
-            "Czas koncentracji tc [min, h] złożoną metodą Kerby–Kirpich: spływ "
-            "powierzchniowy (Kerby) plus koryto (Kirpich). Użyj, gdy droga spływu "
-            "ma oba odcinki; dla samego koryta użyj `tc kirpich`, dla samego "
-            "spływu `tc kerby`. Wartość spoza danych metody daje uwagę "
-            "(`typical_ranges`)."
+            "Czas koncentracji tc [min, h] złożoną metodą Kerby–Kirpich na "
+            "najdłuższej drodze spływu: spływ powierzchniowy (Kerby) plus reszta "
+            "drogi jako koryto (Kirpich, ze spadkiem całej drogi). Użyj, gdy droga "
+            "spływu ma oba odcinki; dla samego spływu użyj `tc kerby`. Wartość spoza "
+            "danych metody daje uwagę (`typical_ranges`)."
         ),
         description=(
-            "Kerby-Kirpich tc [min, h]: overland segment (Kerby) plus channel "
-            "segment (Kirpich). Use when the flow path has both; for the channel "
-            "only use `tc kirpich`, for overland flow only `tc kerby`. A value "
-            "outside the data of the method is a notice (`typical_ranges`)."
+            "Kerby-Kirpich tc [min, h] on the longest flow path: overland segment "
+            "(Kerby) plus the rest of the path as channel (Kirpich, at the slope of "
+            "the whole path). Use when the flow path has both; for overland flow "
+            "only use `tc kerby`. A value outside the data of the method is a "
+            "notice (`typical_ranges`)."
         ),
         function="hydrolog.operations.tc_kerby_kirpich",
         options=(
@@ -496,40 +525,49 @@ COMMANDS: tuple[Command, ...] = (
             Option(
                 name="overland_slope_m_per_m",
                 type="number",
-                description_pl="Średni spadek spływu powierzchniowego [m/m]; > 0.",
-                description="Mean overland slope [m/m]; > 0.",
+                description_pl=(
+                    "Spadek terenu, po którym spływa woda po stoku [m/m]; > 0."
+                ),
+                description=(
+                    "Slope of the terrain the overland flow runs on [m/m]; > 0."
+                ),
                 required=True,
                 exclusive_minimum=0,
                 unit="m/m",
             ),
             _RETARDANCE,
             Option(
-                name="channel_length_km",
+                name="flow_path_length_km",
                 type="number",
                 description_pl=(
-                    "Długość cieku od początku wyraźnego koryta do przekroju "
-                    "zamykającego [km]; > 0 "
-                    f"({typically('kerby_kirpich', 'channel_length_km', 'pl')})."
+                    "Długość najdłuższej drogi spływu od działu wodnego do przekroju "
+                    "zamykającego, z odcinkiem spływu po stoku [km]; większa niż "
+                    "`overland_length_km` "
+                    f"({typically('kerby_kirpich', 'flow_path_length_km', 'pl')})."
                 ),
                 description=(
-                    "Channel length from the start of the defined channel to the "
-                    "outlet [km]; > 0 "
-                    f"({typically('kerby_kirpich', 'channel_length_km')})."
+                    "Length of the longest flow path from the watershed divide to "
+                    "the outlet, the overland segment included [km]; greater than "
+                    "`overland_length_km` "
+                    f"({typically('kerby_kirpich', 'flow_path_length_km')})."
                 ),
                 required=True,
                 exclusive_minimum=0,
                 unit="km",
             ),
             Option(
-                name="channel_slope_m_per_m",
+                name="flow_path_slope_m_per_m",
                 type="number",
                 description_pl=(
-                    "Średni spadek koryta [m/m]; > 0 "
-                    f"({typically('kerby_kirpich', 'channel_slope_m_per_m', 'pl')})."
+                    "Spadek najdłuższej drogi spływu: wysokość jej początku na "
+                    "dziale wodnym minus wysokość przekroju, przez jej długość "
+                    "[m/m]; > 0 "
+                    f"({typically('kerby_kirpich', 'flow_path_slope_m_per_m', 'pl')})."
                 ),
                 description=(
-                    "Mean channel slope [m/m]; > 0 "
-                    f"({typically('kerby_kirpich', 'channel_slope_m_per_m')})."
+                    "Slope of the longest flow path: the elevation of its head on "
+                    "the divide minus the outlet elevation, over its length [m/m]; "
+                    f"> 0 ({typically('kerby_kirpich', 'flow_path_slope_m_per_m')})."
                 ),
                 required=True,
                 exclusive_minimum=0,
@@ -541,20 +579,20 @@ COMMANDS: tuple[Command, ...] = (
                 "overland_length_km": 0.25,
                 "overland_slope_m_per_m": 0.008,
                 "retardance": 0.4,
-                "channel_length_km": 5.0,
-                "channel_slope_m_per_m": 0.005,
+                "flow_path_length_km": 5.25,
+                "flow_path_slope_m_per_m": 0.005,
             },
         ),
         result_schema="hydrolog-tc-kerby-kirpich/1",
         cardinality="single",
         rules=(
             "Give slopes in m/m and lengths in km.",
-            "Do not count the overland length twice in the channel length.",
+            "Give the whole flow path: its channel segment is it minus the overland.",
             "Check `notices` for segments outside the formula range.",
         ),
         rules_pl=(
             "Podaj spadki w m/m, a długości w km.",
-            "Nie wliczaj długości spływu powierzchniowego do długości koryta.",
+            "Podaj całą drogę spływu: odcinek koryta to ona minus spływ po stoku.",
             "Sprawdź `notices` pod kątem odcinków poza zakresem wzoru.",
         ),
         errors=("validation_error",),
@@ -564,8 +602,8 @@ COMMANDS: tuple[Command, ...] = (
                 "overland_length_km",
                 "overland_slope_m_per_m",
                 "retardance",
-                "channel_length_km",
-                "channel_slope_m_per_m",
+                "flow_path_length_km",
+                "flow_path_slope_m_per_m",
             ),
         ),
         example_results=(
@@ -577,8 +615,8 @@ COMMANDS: tuple[Command, ...] = (
                     "overland_length_km": 0.25,
                     "overland_slope_m_per_m": 0.008,
                     "retardance": 0.4,
-                    "channel_length_km": 5.0,
-                    "channel_slope_m_per_m": 0.005,
+                    "flow_path_length_km": 5.25,
+                    "flow_path_slope_m_per_m": 0.005,
                 },
             },
         ),
@@ -607,19 +645,23 @@ COMMANDS: tuple[Command, ...] = (
                 type="object",
                 description_pl=(
                     "Parametry zlewni jako obiekt WatershedParameters (wymagane "
-                    "tylko `area_km2`; metoda bierze np. `channel_length_km` albo "
-                    "`length_km`, `channel_slope_m_per_m`, `mean_slope_m_per_m`, "
-                    "`elevation_min_m`, `elevation_max_m`, `cn`, `runoff_coeff`, "
-                    "`retardance`, `overland_length_km`, "
-                    "`overland_slope_m_per_m`...)."
+                    "tylko `area_km2`; metoda bierze pola, które definiuje jej "
+                    "źródło: Kirpich `flow_path_length_km` i "
+                    "`flow_path_slope_m_per_m`, NRCS `flow_path_length_km`, "
+                    "`mean_slope_m_per_m` i `cn`, Giandotti `channel_length_km`, "
+                    "`elevation_mean_m` i `elevation_min_m`, FAA i Kerby "
+                    "`overland_length_km`, `overland_slope_m_per_m` i "
+                    "`runoff_coeff` albo `retardance`)."
                 ),
                 description=(
                     "Watershed parameters as a WatershedParameters object (only "
-                    "`area_km2` is required; the method takes e.g. "
-                    "`channel_length_km` or `length_km`, `channel_slope_m_per_m`, "
-                    "`mean_slope_m_per_m`, `elevation_min_m`, `elevation_max_m`, "
-                    "`cn`, `runoff_coeff`, `retardance`, `overland_length_km`, "
-                    "`overland_slope_m_per_m`...)."
+                    "`area_km2` is required; a method takes the fields its source "
+                    "defines: Kirpich `flow_path_length_km` and "
+                    "`flow_path_slope_m_per_m`, NRCS `flow_path_length_km`, "
+                    "`mean_slope_m_per_m` and `cn`, Giandotti `channel_length_km`, "
+                    "`elevation_mean_m` and `elevation_min_m`, FAA and Kerby "
+                    "`overland_length_km`, `overland_slope_m_per_m` and "
+                    "`runoff_coeff` or `retardance`)."
                 ),
             ),
             Option(
@@ -639,32 +681,68 @@ COMMANDS: tuple[Command, ...] = (
                 name="method",
                 type="choice",
                 description_pl=(
-                    "Metoda obliczenia tc; domyślnie kirpich. Pola zlewni "
-                    "wymagane przez metodę podaje komenda `tc <metoda>`."
+                    "Metoda obliczenia tc; domyślnie kirpich. Każda bierze pola "
+                    "zlewni, które definiuje jej źródło, bez zastępników; brak pola "
+                    "to błąd `missing_field`."
                 ),
                 description=(
-                    "Method of computing tc; default kirpich. The watershed "
-                    "fields a method needs follow the matching `tc <method>` "
-                    "command."
+                    "Method of computing tc; default kirpich. Each takes the "
+                    "watershed fields its source defines, with no substitute; a "
+                    "missing one is `missing_field`."
                 ),
                 choices=TC_METHODS,
                 default="kirpich",
                 meanings={
-                    "kirpich": "Kirpich formula from channel length and slope.",
-                    "nrcs": "NRCS (TR-55) lag method; needs `cn`.",
-                    "giandotti": "Giandotti formula from area, length and relief.",
-                    "faa": "FAA overland flow formula; needs `runoff_coeff`.",
-                    "kerby": "Kerby overland flow formula; needs `retardance`.",
-                    "kerby_kirpich": "Composite Kerby overland plus Kirpich channel.",
+                    "kirpich": (
+                        "Kirpich from the longest flow path: `flow_path_length_km`, "
+                        "`flow_path_slope_m_per_m`."
+                    ),
+                    "nrcs": (
+                        "NRCS lag method (NEH 630): `flow_path_length_km`, "
+                        "`mean_slope_m_per_m`, `cn`."
+                    ),
+                    "giandotti": (
+                        "Giandotti: `channel_length_km`, `elevation_mean_m`, "
+                        "`elevation_min_m`."
+                    ),
+                    "faa": (
+                        "FAA overland flow: `overland_length_km`, "
+                        "`overland_slope_m_per_m`, `runoff_coeff`."
+                    ),
+                    "kerby": (
+                        "Kerby overland flow: `overland_length_km`, "
+                        "`overland_slope_m_per_m`, `retardance`."
+                    ),
+                    "kerby_kirpich": (
+                        "Kerby overland plus Kirpich channel: the Kerby fields and "
+                        "`flow_path_length_km`, `flow_path_slope_m_per_m`."
+                    ),
                 },
                 meanings_pl={
-                    "kirpich": "Wzór Kirpicha z długości i spadku cieku.",
-                    "nrcs": "Metoda NRCS (TR-55, czas opóźnienia); wymaga `cn`.",
-                    "giandotti": "Wzór Giandottiego z powierzchni, długości i relief.",
-                    "faa": "Wzór FAA spływu powierzchniowego; wymaga `runoff_coeff`.",
-                    "kerby": "Wzór Kerby'ego spływu powierzchniowego; wymaga "
-                    "`retardance`.",
-                    "kerby_kirpich": "Złożona: spływ Kerby'ego plus koryto Kirpicha.",
+                    "kirpich": (
+                        "Kirpich z najdłuższej drogi spływu: `flow_path_length_km`, "
+                        "`flow_path_slope_m_per_m`."
+                    ),
+                    "nrcs": (
+                        "Metoda opóźnienia NRCS (NEH 630): `flow_path_length_km`, "
+                        "`mean_slope_m_per_m`, `cn`."
+                    ),
+                    "giandotti": (
+                        "Giandotti: `channel_length_km`, `elevation_mean_m`, "
+                        "`elevation_min_m`."
+                    ),
+                    "faa": (
+                        "Spływ powierzchniowy FAA: `overland_length_km`, "
+                        "`overland_slope_m_per_m`, `runoff_coeff`."
+                    ),
+                    "kerby": (
+                        "Spływ powierzchniowy Kerby'ego: `overland_length_km`, "
+                        "`overland_slope_m_per_m`, `retardance`."
+                    ),
+                    "kerby_kirpich": (
+                        "Spływ Kerby'ego plus koryto Kirpicha: pola Kerby'ego oraz "
+                        "`flow_path_length_km`, `flow_path_slope_m_per_m`."
+                    ),
                 },
             ),
         ),
@@ -680,6 +758,8 @@ COMMANDS: tuple[Command, ...] = (
                     "elevation_max_m": 520.0,
                     "mean_slope_m_per_m": 0.025,
                     "cn": 72,
+                    "flow_path_length_km": 12.5,
+                    "flow_path_slope_m_per_m": 0.025,
                 },
                 "method": "nrcs",
             },

@@ -138,12 +138,14 @@ This document serves as a guide that:
 >
 > Both forms are identical: `3.981 / 60 ≈ 0.0663`. The Hydrolog implementation uses the constant **3.981** and returns the result in **minutes**.
 
+The inputs in the diagram are generic; each method takes those its source defines (section 3.7): Kirpich the length and slope of the longest flow path, NRCS that length, the average land slope Y and CN, Giandotti A, the main channel and H = mean elevation − outlet elevation.
+
 #### 3.1.2 Correct Tc Estimation Methods
 
 | Method | Status | Justification |
 |--------|--------|---------------|
 | Kirpich | ✅ OK | Tc is an input parameter of the SCS method |
-| NRCS | ✅ OK | Method developed together with the SCS UH (TR-55) |
+| NRCS | ✅ OK | Lag method of the SCS UH (NEH 630, ch. 15: L = 0.6 Tc, eq. 15-4) |
 | Giandotti | ✅ OK | Tc is an input parameter of the SCS method |
 | FAA | ✅ OK¹ | Tc is an input parameter of the SCS method (overland flow time) |
 | Kerby | ✅ OK¹ | Tc is an input parameter of the SCS method (sheet flow time, path up to 366 m) |
@@ -882,33 +884,35 @@ The same analysis in the CLI: `hydrolog stats low-flow --input-file q_dobowe.csv
 
 ### 3.7 Time of Concentration from a Catchment (`WatershedParameters.calculate_tc`, `tc watershed`; fixes in v1.0.0)
 
-`WatershedParameters.calculate_tc(method)` and the `tc watershed` command compute tc with the chosen method from the catchment fields. The formula arguments are derived from the fields by `WatershedParameters.tc_parameters(method)`; the same numbers appear in the command's `result.parameters` and in the time of concentration section of the report.
+`WatershedParameters.calculate_tc(method)` and the `tc watershed` command compute tc with the chosen method from the catchment fields. Each argument of the formula is the field the method's source defines, with no substitute ([ADR-0019](decisions/0019-tc-from-the-inputs-its-source-defines.md), `hydrolog._ranges.TC_INPUTS`): a missing field is `validation_error` with `details.reason` `missing_field` naming it, whatever other fields the catchment has. `WatershedParameters.tc_parameters(method)` returns the arguments; the same numbers appear in the command's `result.parameters` and in the time of concentration section of the report.
 
-| Method | Length | Slope | Required fields beyond the basic ones |
-|--------|--------|-------|---------------------------------------|
-| Kirpich | `channel_length_km`, otherwise `length_km` | `channel_slope_m_per_m`, then `mean_slope_m_per_m`, then H/(L·1000) | - |
-| NRCS | same as Kirpich | **`mean_slope_m_per_m`** (mean catchment terrain slope Y), then `channel_slope_m_per_m`, then H/(L·1000) | `cn` |
-| Giandotti | same as Kirpich | - (H = `elevation_mean_m` − `elevation_min_m`; without a mean: the midpoint of the range) | - |
-| FAA | **`overland_length_km`** | **`overland_slope_m_per_m`** | `runoff_coeff`, `overland_length_km`, `overland_slope_m_per_m` |
-| Kerby | **`overland_length_km`** | **`overland_slope_m_per_m`** | `retardance`, `overland_length_km`, `overland_slope_m_per_m` |
-| Kerby-Kirpich | `overland_length_km` and `channel_length_km` | `overland_slope_m_per_m` and `channel_slope_m_per_m` | `retardance`, `overland_length_km`, `overland_slope_m_per_m`, `channel_length_km`, `channel_slope_m_per_m` |
+| Method | Length | Slope and other inputs | Source |
+|--------|--------|------------------------|--------|
+| Kirpich | `flow_path_length_km`: the longest flow path, along the watercourse from the outlet to the most remote point on the divide | `flow_path_slope_m_per_m`: elevation of that point minus the outlet, over the length | Fang et al. 2005 (TxDOT 0-4696-1), eq. 3.14; Mota and Kobiyama 2015 |
+| NRCS | `flow_path_length_km` (the flow length ℓ, divide to outlet) | `mean_slope_m_per_m` (average land slope Y, not the slope of the flow path), `cn` | USDA-NRCS 2010, NEH 630 ch. 15, eq. 15-4 |
+| Giandotti | `channel_length_km` (main channel) | H = `elevation_mean_m` − `elevation_min_m` | Grimaldi et al. 2012 |
+| FAA | **`overland_length_km`** | **`overland_slope_m_per_m`** (slope of the overland surface), `runoff_coeff` (C, table I) | FAA 1970, AC 150/5320-5B, fig. 7 |
+| Kerby | **`overland_length_km`** (up to a defined channel) | **`overland_slope_m_per_m`**, `retardance` (N) | Kerby 1959 (Roussel et al. 2005) |
+| Kerby-Kirpich | `overland_length_km`; channel = `flow_path_length_km` − `overland_length_km` | `overland_slope_m_per_m`; the channel at `flow_path_slope_m_per_m`, the slope of the whole path; `retardance` | Roussel et al. 2005 (TxDOT 0-4696-2), supplement; TxDOT HDM ch. 4 s. 11; Cleveland et al. 2012 (TxDOT 0-6382-P1) |
 
-- **FAA and Kerby are formulas for overland flow time** (FAA 1966, 2013; Kerby 1959). Kerby derived his formula for flow paths up to 366 m (1200 ft; Roussel et al. 2005; TxDOT Hydraulic Design Manual, ch. 4, section 11); the FAA gives no limit of the length (its curves end at 800 ft; FAA 1970, AC 150/5320-5B). The channel length and slope therefore timed the channel with an overland flow formula, far beyond Kerby's paths, for every catchment with a channel. Since v1.0.0 FAA and Kerby take only `overland_length_km` and `overland_slope_m_per_m` and require them: missing fields are an `InvalidParameterError` (`details.missing`), with no silent substitution of the channel. The result is the overland flow time; **the tc of a catchment with a channel is given by the composite Kerby-Kirpich method**, and FAA and Kerby make sense as a catchment Tc only for small catchments without a distinct channel.
-- **NRCS**: in the TR-55 lag equation (ch. 3; NEH Part 630, ch. 15) Y is the mean terrain slope of the catchment [%], not the slope of the flow path, so `mean_slope_m_per_m` takes precedence over the channel slope (before v1.0.0 it was the other way round).
+- **The longest flow path** (`flow_path_length_km`, `flow_path_slope_m_per_m`) runs from the watershed divide to the outlet; its slope is the elevation of its head on the divide minus the outlet elevation, over its length. Hydrograf's hydraulic length is this length. Before v1.0.0 Kirpich and NRCS took the channel length, else the catchment length, and Kirpich the channel slope, else the mean slope, else the relief over the length (which equals Kirpich's S only when the most remote point is also the highest), and Giandotti took the catchment length without a channel and the middle of the elevation range without a mean.
+- **FAA and Kerby are formulas for overland flow time** (FAA 1970, AC 150/5320-5B, fig. 7; Kerby 1959). Kerby derived his formula for flow paths up to 366 m (1200 ft; Roussel et al. 2005; TxDOT Hydraulic Design Manual, ch. 4, section 11); the FAA gives no limit of the length (its curves end at 800 ft). Before v1.0.0 the channel length and slope timed the channel with an overland flow formula, far beyond Kerby's paths. The result is the overland flow time; **the tc of a catchment with a channel is given by Kerby-Kirpich (or Kirpich)**. The later circulars AC 150/5320-5C and 5D do not have the FAA formula.
+- **NRCS**: in the lag equation (NEH 630, ch. 15, eq. 15-4; TR-55 does not contain it) Y is the mean land slope of the catchment [%], "not to be confused with the slope of the flow path".
+- **Kerby-Kirpich** splits the longest flow path: Kerby on the overland segment, Kirpich on the rest of the path at the slope of the whole path, with S + 0.0005 below 0.002 on both (Cleveland et al. 2012). Hydrolog reproduces the published examples: 24.6 + 32.0 = 56.5 min against "about 57" (Roussel et al. 2005; L 5,280 ft, overland 500 ft at 2%, N 0.40, S 0.0095), and 52.1 + 86.8 = 138.9 min against "about 140" with the low-slope offset (Cleveland et al. 2012). A flow path not longer than the overland segment is `exclusive_minimum` on `flow_path_length_km`.
 
-Example (catchment: L = 12 km, channel 10 km with slope 0.02, terrain slope 0.025, CN 72, overland flow 0.2 km with slope 0.01, C = 0.5, N = 0.4):
+Example (catchment: L = 12 km, channel 10 km with slope 0.02, longest flow path 10.5 km with slope 0.019, terrain slope 0.025, CN 72, overland flow 0.2 km with slope 0.01, C = 0.5, N = 0.4):
 
 | Method | tc before v1.0.0 [min] | tc since v1.0.0 [min] | Reason |
 |--------|-----------------------:|----------------------:|--------|
 | FAA | 155.3 (warning: L = 10 km outside 0.015–3 km) | 27.7 | overland flow 0.2 km, S = 0.01 |
 | Kerby | 173.2 (two warnings) | 32.8 | as FAA |
-| NRCS | 463.9 | 414.9 | Y = 2.5% (terrain) instead of 2.0% (channel) |
-| Kirpich | 105.7 | 105.7 | unchanged |
-| Kerby-Kirpich | 138.5 | 138.5 | unchanged |
+| NRCS | 463.9 | 431.4 | the flow path (10.5 km) instead of the channel; Y = 2.5% (terrain) instead of 2.0% (channel) |
+| Kirpich | 105.7 | 111.9 | the flow path, 10.5 km at 0.019, instead of the channel, 10 km at 0.02 |
+| Kerby-Kirpich | 138.5 | 143.1 | channel = 10.5 − 0.2 km at 0.019 instead of the given channel |
 
 #### 3.7.1 `cn` Alongside a Catchment in `hydrograph generate` and `report generate`
 
-The `cn` option given alongside a catchment is the CN of the whole calculation: it overrides the catchment's `cn` both in SCS-CN and in the time of concentration by the `nrcs` method, in which the retention S = 25400/CN − 254 (TR-55, ch. 3) comes from the same CN. A catchment without `cn` also works when `cn` is given. Formerly the NRCS time of concentration took CN from the file and the effective precipitation took CN from the option. Example (CN 60 in the file, `cn` = 85, L = 12 km, Y = 2.5%, beta rainfall 50 mm/120 min): tc 657.7 → 322.1 min, Qmax 27.64 → 55.62 m³/s, time to peak 440 → 240 min.
+The `cn` option given alongside a catchment is the CN of the whole calculation: it overrides the catchment's `cn` both in SCS-CN and in the time of concentration by the `nrcs` method, in which the retention S = 25400/CN − 254 of the lag equation (NEH 630, ch. 15, eq. 15-4) comes from the same CN. A catchment without `cn` also works when `cn` is given. Formerly the NRCS time of concentration took CN from the file and the effective precipitation took CN from the option. Example (CN 60 in the file, `cn` = 85, L = 12 km, Y = 2.5%, beta rainfall 50 mm/120 min): tc 657.7 → 322.1 min, Qmax 27.64 → 55.62 m³/s, time to peak 440 → 240 min.
 
 ### 3.8 Rating Curve Q = a·(H − H₀)^b: the H₀ Starting Point (`RatingCurve`, fix in v1.0.0)
 
@@ -1108,11 +1112,11 @@ so `hydrographs[P]` of the result is the discharge at the point. Where another s
 | Computation path | Source | Status |
 |------------------|--------|:------:|
 | SCS UH + Kirpich → Tc | USDA TR-55 (1986), Kirpich (1940) | ✅ |
-| SCS UH + NRCS → Tc | USDA TR-55 (1986) | ✅ |
+| SCS UH + NRCS → Tc | USDA-NRCS (2010), NEH Part 630 ch. 15 | ✅ |
 | SCS UH + Giandotti → Tc | Giandotti (1934), TR-55 | ✅ |
-| SCS UH + FAA → Tc | FAA AC 150/5320-5D (2013), TR-55 | ✅ (small catchments without a channel) |
+| SCS UH + FAA → Tc | FAA AC 150/5320-5B (1970), TR-55 | ✅ (small catchments without a channel) |
 | SCS UH + Kerby → Tc | Kerby (1959), TR-55 | ✅ (small catchments without a channel) |
-| Clark IUH + FAA → Tc | FAA AC 150/5320-5D (2013), Clark (1945) | ✅ (small catchments without a channel) |
+| Clark IUH + FAA → Tc | FAA AC 150/5320-5B (1970), Clark (1945) | ✅ (small catchments without a channel) |
 | Clark IUH + Kerby → Tc | Kerby (1959), Clark (1945) | ✅ (small catchments without a channel) |
 | SCS UH + Kerby-Kirpich → Tc | Roussel et al. (2005), TR-55 | ✅ |
 | Clark IUH + Kerby-Kirpich → Tc | Roussel et al. (2005), Clark (1945) | ✅ |
@@ -1123,8 +1127,11 @@ so `hydrographs[P]` of the result is the discharge at the point. Where another s
 | Clark IUH + R/Tc ratio | HEC-HMS, engineering practice | ✅ |
 | Snyder UH + L, Lc, Ct, Cp | Snyder (1938) | ✅ |
 | Snyder UH in `HydrographGenerator` (D = time step: tLR, tpR, qpR) | Snyder (1938), HEC-HMS Technical Reference Manual, Chow, Maidment, Mays (1988) | ✅ |
-| NRCS from a catchment (Y = mean terrain slope of the catchment) | TR-55 (1986) ch. 3, NEH Part 630 ch. 15 (2010) | ✅ |
-| FAA, Kerby from a catchment (overland flow time from `overland_*`) | FAA AC 150/5320-5A/5D, Kerby (1959), Roussel et al. (2005), TxDOT Hydraulic Design Manual ch. 4 section 11 | ✅ |
+| Kirpich from a catchment (the longest flow path, `flow_path_length_km`, `flow_path_slope_m_per_m`) | Fang et al. (2005) eq. 3.14, Mota and Kobiyama (2015) | ✅ |
+| NRCS from a catchment (the longest flow path; Y = mean terrain slope of the catchment) | NEH Part 630 ch. 15 (2010), eq. 15-4 | ✅ |
+| Giandotti from a catchment (main channel; mean elevation − outlet) | Grimaldi et al. (2012) | ✅ |
+| Kerby-Kirpich from a catchment (channel = flow path − overland, at the slope of the flow path) | Roussel et al. (2005) supplement, TxDOT Hydraulic Design Manual ch. 4 section 11, Cleveland et al. (2012); both published examples reproduced | ✅ |
+| FAA, Kerby from a catchment (overland flow time from `overland_*`) | FAA AC 150/5320-5B (1970), Kerby (1959), Roussel et al. (2005), TxDOT Hydraulic Design Manual ch. 4 section 11 | ✅ |
 | D-minute Clark UH (S-curve, any D > 0) | Clark (1945), S-curve method (e.g. Chow, Maidment, Mays 1988) | ✅ |
 | HSG from USDA texture (class mapping) | USDA Soil Survey Manual (Handbook 18), NEH Part 630 ch. 7 (TR-55), Kartograf ADR-025 | ✅ (with a deviation for 3 classes) |
 | Distribution of annual minima (GEV for minima) | Fisher and Tippett (1928), Gumbel (1958), Coles (2001) | ✅ |
@@ -1150,10 +1157,13 @@ so `hydrographs[P]` of the result is the discharge at the point. Where another s
 | McCarthy, G.T. | 1938 | Muskingum method: wedge storage `S = K [X I + (1 - X) O]` |
 | Cunge, J.A. | 1969 | Muskingum parameters from the diffusion of the flood wave: `K = dx / c`, `X = (1 - Q / (T S0 c dx)) / 2` |
 | Kalinin, G.P. and Milyukov, P.I. | 1957 | Cascade of reservoirs for channel routing with a characteristic reach length `Δx_c = Q / (T S0 c)` |
-| FAA | 2013 | Tc formula for overland flow (AC 150/5320-5D) |
+| FAA | 1970 | Tc formula for overland flow (AC 150/5320-5B, fig. 7) |
 | Kerby, W.S. | 1959 | Tc formula for sheet flow (retardance coefficient) |
 | Giandotti, M. | 1934 | Tc formula for Italian catchments |
 | Roussel, M.C. et al. | 2005 | Composite Kerby-Kirpich method (TxDOT 0-4696-2) |
+| Fang, X. et al. | 2005 | Kirpich's L and S: the length to the most remote point and its drop (TxDOT 0-4696-1) |
+| USDA-NRCS, NEH 630 ch. 15 | 2010 | NRCS lag equation: flow length ℓ and land slope Y |
+| Cleveland, T.G. et al. | 2012 | Low-slope offset of Kerby-Kirpich (TxDOT 0-6382-P1) |
 | Rao, Delleur, Sarma | 1972 | Regression of Nash parameters for urbanised catchments |
 | Lutz, W. | 1984 | Estimation of Nash parameters from physiographic characteristics |
 | USDA TR-55 | 1986 | SCS-CN method, the relation tlag = 0.6×Tc |
@@ -1274,7 +1284,7 @@ so `hydrographs[P]` of the result is the discharge at the point. Where another s
 
 ### Technical Documentation
 
-9. **FAA** (2013). Airport Drainage Design. Advisory Circular AC 150/5320-5D. Federal Aviation Administration, U.S. Department of Transportation.
+9. **FAA** (1970). Airport Drainage. Advisory Circular AC 150/5320-5B, fig. 7 and table I. Federal Aviation Administration, U.S. Department of Transportation.
 
 10. **Kerby, W.S.** (1959). Time of concentration for overland flow. *Civil Engineering*, 29(3), 174.
 
@@ -1286,45 +1296,51 @@ so `hydrographs[P]` of the result is the discharge at the point. Where another s
 
 14. **USDA-NRCS** (1986). Urban Hydrology for Small Watersheds. Technical Release 55 (TR-55).
 
+15. **Fang, X., Cleveland, T.G., Garcia, C.A., Thompson, D.B., & Malla, R.** (2005). Literature review on timing parameters for hydrographs. *TxDOT Research Report 0-4696-1*.
+
+16. **Cleveland, T.G., Thompson, D.B., Fang, X., & Li, M.-H.** (2012). Guidance for estimation of time of concentration in Texas for low-slope conditions. *TxDOT Product 0-6382-P1*, Texas Tech University.
+
+17. **Mota, A.A. & Kobiyama, M.** (2015). Reconsiderações sobre a fórmula de Kirpich para o cálculo de tempo de concentração. *Revista Brasileira de Recursos Hídricos*, 20(1), 55-59.
+
 ### Textbooks
 
-15. **Banasik, K.** (2009). Wyznaczanie wezbrań powodziowych w małych zlewniach zurbanizowanych (Determining flood waves in small urbanised catchments). *Wyd. SGGW, Warszawa*.
+18. **Banasik, K.** (2009). Wyznaczanie wezbrań powodziowych w małych zlewniach zurbanizowanych (Determining flood waves in small urbanised catchments). *Wyd. SGGW, Warszawa*.
 
-16. **Bedient, P.B. & Huber, W.C.** (1992). *Hydrology and Floodplain Analysis*. Addison-Wesley.
+19. **Bedient, P.B. & Huber, W.C.** (1992). *Hydrology and Floodplain Analysis*. Addison-Wesley.
 
-17. **Fisher, R.A. & Tippett, L.H.C.** (1928). Limiting forms of the frequency distribution of the largest or smallest member of a sample. *Proceedings of the Cambridge Philosophical Society*, 24(2), 180-190.
+20. **Fisher, R.A. & Tippett, L.H.C.** (1928). Limiting forms of the frequency distribution of the largest or smallest member of a sample. *Proceedings of the Cambridge Philosophical Society*, 24(2), 180-190.
 
-18. **Gumbel, E.J.** (1958). *Statistics of Extremes*. Columbia University Press, New York.
+21. **Gumbel, E.J.** (1958). *Statistics of Extremes*. Columbia University Press, New York.
 
-19. **Coles, S.** (2001). *An Introduction to Statistical Modeling of Extreme Values*. Springer, London.
+22. **Coles, S.** (2001). *An Introduction to Statistical Modeling of Extreme Values*. Springer, London.
 
-20. **USDA** (1993). Soil Survey Manual. Handbook No. 18. Soil Survey Division Staff, USDA.
+23. **USDA** (1993). Soil Survey Manual. Handbook No. 18. Soil Survey Division Staff, USDA.
 
-21. **USDA-NRCS** (2007). National Engineering Handbook, Part 630 Hydrology, Chapter 7: Hydrologic Soil Groups.
+24. **USDA-NRCS** (2007). National Engineering Handbook, Part 630 Hydrology, Chapter 7: Hydrologic Soil Groups.
 
-22. **Chow, V.T., Maidment, D.R. & Mays, L.W.** (1988). *Applied Hydrology*. McGraw-Hill (S-curve method for unit hydrographs, synthetic hydrographs including Snyder's).
+25. **Chow, V.T., Maidment, D.R. & Mays, L.W.** (1988). *Applied Hydrology*. McGraw-Hill (S-curve method for unit hydrographs, synthetic hydrographs including Snyder's).
 
-23. **USDA-NRCS** (2010). National Engineering Handbook, Part 630 Hydrology, Chapter 15: Time of Concentration (lag equation: Y is the mean terrain slope of the catchment).
+26. **USDA-NRCS** (2010). National Engineering Handbook, Part 630 Hydrology, Chapter 15: Time of Concentration (lag equation 15-4: ℓ is the longest flow path from the divide to the outlet, Y the mean terrain slope of the catchment).
 
-24. **TxDOT**. Hydraulic Design Manual, Chapter 4 Hydrology, Section 11: Time of Concentration (the 1200 ft = 366 m limit for the Kerby formula; the Kerby-Kirpich method).
+27. **TxDOT**. Hydraulic Design Manual, Chapter 4 Hydrology, Section 11: Time of Concentration (the 1200 ft = 366 m limit for the Kerby formula; the Kerby-Kirpich method).
 
 ### Flood Routing
 
-25. **McCarthy, G.T.** (1938). The unit hydrograph and flood routing. Unpublished manuscript presented at the conference of the North Atlantic Division, U.S. Army Corps of Engineers, New London, Connecticut, 24 June 1938.
+28. **McCarthy, G.T.** (1938). The unit hydrograph and flood routing. Unpublished manuscript presented at the conference of the North Atlantic Division, U.S. Army Corps of Engineers, New London, Connecticut, 24 June 1938.
 
-26. **University of Iowa**. Lesson 27: Hydrologic Routing, Muskingum Method (course handout EX-L27-Muskingum-soln). https://user.engineering.uiowa.edu/~flood/handouts/EX-L27-Muskingum-soln.pdf
+29. **University of Iowa**. Lesson 27: Hydrologic Routing, Muskingum Method (course handout EX-L27-Muskingum-soln). https://user.engineering.uiowa.edu/~flood/handouts/EX-L27-Muskingum-soln.pdf
 
-27. **Cunge, J.A.** (1969). On the subject of a flood propagation computation method (Muskingum method). *Journal of Hydraulic Research*, 7(2), 205-230.
+30. **Cunge, J.A.** (1969). On the subject of a flood propagation computation method (Muskingum method). *Journal of Hydraulic Research*, 7(2), 205-230.
 
-28. **USDA-NRCS** (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (Amendment 69): example 17-4, appendices B and C. https://damtoolbox.org/images/a/a6/NEH17.pdf
+31. **USDA-NRCS** (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (Amendment 69): example 17-4, appendices B and C. https://damtoolbox.org/images/a/a6/NEH17.pdf
 
-29. **Kalinin, G.P. and Milyukov, P.I.** (1957). O raschete neustanovivshegosya dvizheniya vody v otkrytykh ruslakh (On the computation of unsteady flow in open channels). *Meteorologiya i Gidrologiya*, 10, 10-18 (Leningrad); cited after Szilagyi, J. et al. (2005), *Journal of Hydrology*, 311, 219-229.
+32. **Kalinin, G.P. and Milyukov, P.I.** (1957). O raschete neustanovivshegosya dvizheniya vody v otkrytykh ruslakh (On the computation of unsteady flow in open channels). *Meteorologiya i Gidrologiya*, 10, 10-18 (Leningrad); cited after Szilagyi, J. et al. (2005), *Journal of Hydrology*, 311, 219-229.
 
-30. **Ponce, V.M.** (1980, online version 2016). Linear reservoirs and numerical diffusion. https://ponce.sdsu.edu/linear_reservoirs_and_numerical_diffusion.html (the gamma response of Nash, the SSARR equation as Muskingum with `X = 0`, the Kalinin-Milyukov characteristic reach length).
+33. **Ponce, V.M.** (1980, online version 2016). Linear reservoirs and numerical diffusion. https://ponce.sdsu.edu/linear_reservoirs_and_numerical_diffusion.html (the gamma response of Nash, the SSARR equation as Muskingum with `X = 0`, the Kalinin-Milyukov characteristic reach length).
 
 ### Synthetic Unit Hydrographs
 
-31. **Asquith, W.H. & Roussel, M.C.** (2007). An initial-abstraction, constant-loss model for unit hydrograph modeling for applicable watersheds in Texas. *U.S. Geological Survey Scientific Investigations Report 2007-5243* (the gamma unit hydrograph from its peak and time to peak, eq. 2 and 4). https://pubs.usgs.gov/sir/2007/5243/
+34. **Asquith, W.H. & Roussel, M.C.** (2007). An initial-abstraction, constant-loss model for unit hydrograph modeling for applicable watersheds in Texas. *U.S. Geological Survey Scientific Investigations Report 2007-5243* (the gamma unit hydrograph from its peak and time to peak, eq. 2 and 4). https://pubs.usgs.gov/sir/2007/5243/
 
 ---
 

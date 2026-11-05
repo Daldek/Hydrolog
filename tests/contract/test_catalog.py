@@ -256,13 +256,14 @@ class TestCatalogDocument:
                 },
                 "Kirpich (1940)",
             ),
-            # On a watershed the inputs are its fields, first choice first
+            # On a watershed the inputs are its fields: the one the method's source
+            # defines
             (
                 "tc watershed",
                 "kirpich",
                 "slope_m_per_m",
                 {
-                    "inputs": ["channel_slope_m_per_m", "mean_slope_m_per_m"],
+                    "inputs": ["flow_path_slope_m_per_m"],
                     "minimum": 0.03,
                     "maximum": 0.1,
                     "unit": "m/m",

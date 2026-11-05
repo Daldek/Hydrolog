@@ -352,6 +352,8 @@ class TestRunning:
             "elevation_min_m": 200.0,
             "elevation_max_m": 420.0,
             "cn": 70,
+            "flow_path_length_km": 6.5,
+            "flow_path_slope_m_per_m": 0.03,
         }
         _, document = _json_run(
             capsys,

@@ -17,20 +17,23 @@ if TYPE_CHECKING:
 TC_METHODS = ("kirpich", "nrcs", "giandotti", "faa", "kerby", "kerby_kirpich")
 """The methods of :meth:`WatershedParameters.calculate_tc`."""
 
-# Fields that a time of concentration method cannot do without and that have no
-# substitute, in the order they are reported. FAA and Kerby are overland flow
-# formulas: they get the overland flow length and slope, never the channel's.
-# Kirpich, NRCS and Giandotti take what they can from several fields (see
-# WatershedParameters._missing_tc_fields).
+# The fields of each time of concentration method, in the order they are reported
+# when missing: the fields TC_INPUTS names for the arguments of its formula, which its
+# source defines, without substitutes (the area is always set). FAA and Kerby are
+# overland flow formulas: they get the overland flow length and slope, never the
+# channel's.
 _TC_REQUIRED_FIELDS: dict[str, tuple[str, ...]] = {
+    "kirpich": ("flow_path_length_km", "flow_path_slope_m_per_m"),
+    "nrcs": ("flow_path_length_km", "mean_slope_m_per_m", "cn"),
+    "giandotti": ("channel_length_km", "elevation_min_m", "elevation_mean_m"),
     "faa": ("runoff_coeff", "overland_length_km", "overland_slope_m_per_m"),
     "kerby": ("retardance", "overland_length_km", "overland_slope_m_per_m"),
     "kerby_kirpich": (
         "retardance",
         "overland_length_km",
         "overland_slope_m_per_m",
-        "channel_length_km",
-        "channel_slope_m_per_m",
+        "flow_path_length_km",
+        "flow_path_slope_m_per_m",
     ),
 }
 
@@ -43,15 +46,6 @@ _TC_METHOD_LABELS = {
     "kerby_kirpich": "Kerby-Kirpich",
 }
 
-# The slopes a method takes, first choice first; without them the slope is the
-# relief over the length
-_TC_SLOPES: dict[str, tuple[str, ...]] = {
-    method: TC_INPUTS[method]["slope_m_per_m"] for method in ("kirpich", "nrcs")
-}
-
-# The lengths Kirpich, NRCS and Giandotti take, first choice first
-_TC_LENGTHS = TC_INPUTS["kirpich"]["length_km"]
-
 _OVERLAND_HINT = (
     "FAA and Kerby time the overland flow, so they need the overland flow length "
     "and slope of the watershed (overland_length_km, overland_slope_m_per_m), not "
@@ -60,22 +54,12 @@ _OVERLAND_HINT = (
 )
 _TC_MISSING_HINTS: dict[str, str] = {"faa": _OVERLAND_HINT, "kerby": _OVERLAND_HINT}
 
-# How a missing field of Kirpich, NRCS and Giandotti can be replaced
-_SUBSTITUTE_HINTS: dict[str, str] = {
-    "channel_length_km": "The length is channel_length_km, else length_km.",
-    "channel_slope_m_per_m": (
-        "The slope is channel_slope_m_per_m, else mean_slope_m_per_m, else the "
-        "relief (elevation_max_m - elevation_min_m) over the length."
-    ),
-    "mean_slope_m_per_m": (
-        "The slope is mean_slope_m_per_m, else channel_slope_m_per_m, else the "
-        "relief (elevation_max_m - elevation_min_m) over the length."
-    ),
-    "elevation_mean_m": (
-        "The mean elevation is elevation_mean_m, else the middle of "
-        "elevation_min_m and elevation_max_m."
-    ),
-}
+_FLOW_PATH_FIELDS = ("flow_path_length_km", "flow_path_slope_m_per_m")
+_FLOW_PATH_HINT = (
+    "The longest flow path runs from the watershed divide to the outlet: "
+    "flow_path_length_km is its length [km], flow_path_slope_m_per_m the elevation "
+    "of its head on the divide minus the outlet elevation, over that length [m/m]."
+)
 
 # Field checks of WatershedParameters, in the order they run
 _POSITIVE_FIELDS = (
@@ -87,11 +71,13 @@ _POSITIVE_FIELDS = (
     "overland_length_km",
     "Lc_km",
     "manning_n",
+    "flow_path_length_km",
 )
 _NON_NEGATIVE_FIELDS = (
     "mean_slope_m_per_m",
     "channel_slope_m_per_m",
     "overland_slope_m_per_m",
+    "flow_path_slope_m_per_m",
 )
 _PERCENT_FIELDS = ("cn", "urban_pct", "forest_pct")
 
@@ -142,9 +128,8 @@ class WatershedParameters:
         (:meth:`to_geometry`).
     length_km : float, optional
         Watershed length - distance from outlet to most distant point [km].
-        Must be positive. Used by the shape indicators, the terrain analysis and,
-        without ``channel_length_km``, by the Kirpich, NRCS and Giandotti
-        concentration times.
+        Must be positive. Used by the shape indicators and the terrain analysis;
+        no time of concentration method takes it.
     elevation_min_m : float, optional
         Minimum elevation at outlet [m a.s.l.].
     elevation_max_m : float, optional
@@ -153,17 +138,18 @@ class WatershedParameters:
     name : str, optional
         Watershed name for identification.
     elevation_mean_m : float, optional
-        Area-weighted mean elevation [m a.s.l.].
+        Area-weighted mean elevation [m a.s.l.]. Giandotti's elevation difference
+        is it minus ``elevation_min_m``.
     mean_slope_m_per_m : float, optional
-        Area-weighted mean slope of the watershed [m/m]. The average land slope
-        Y of the NRCS concentration time method (TR-55); Kirpich falls back to it
-        when there is no channel slope.
+        Area-weighted mean slope of the watershed [m/m]: the average land slope Y
+        of the NRCS lag method (USDA-NRCS 2010, NEH Part 630, chapter 15), not the
+        slope of a flow path.
     channel_length_km : float, optional
-        Main channel length [km].
+        Main channel length [km]: the length of Giandotti's formula.
     channel_slope_m_per_m : float, optional
-        Main channel slope [m/m]. Used by the Kirpich method and by the channel
-        segment of Kerby-Kirpich; NRCS falls back to it when there is no mean
-        slope.
+        Main channel slope [m/m]. No time of concentration method takes it:
+        Kirpich and Kerby-Kirpich take the slope of the longest flow path,
+        ``flow_path_slope_m_per_m``.
     cn : int, optional
         SCS Curve Number (0-100).
     source : str, optional
@@ -177,11 +163,12 @@ class WatershedParameters:
         Kerby retardance roughness coefficient (0.02-0.80).
         Used by Kerby and Kerby-Kirpich concentration time methods.
     overland_length_km : float, optional
-        Overland (sheet) flow length [km]. Used by the FAA, Kerby and
-        Kerby-Kirpich methods (typically up to 0.366 km for Kerby).
+        Overland (sheet) flow length, from the most remote point to a defined
+        channel [km]. Used by the FAA, Kerby and Kerby-Kirpich methods (typically
+        up to 0.366 km for Kerby).
     overland_slope_m_per_m : float, optional
-        Average overland slope [m/m]. Used by the FAA, Kerby and Kerby-Kirpich
-        methods.
+        Slope of the terrain the overland flow runs on [m/m]. Used by the FAA,
+        Kerby and Kerby-Kirpich methods.
     Lc_km : float, optional
         Length along main stream from outlet to the point nearest
         to catchment centroid [km]. Used by Nash Lutz and Snyder methods.
@@ -195,6 +182,16 @@ class WatershedParameters:
     forest_pct : float, optional
         Percentage of forested area [%] (0-100).
         Used by Nash Lutz method.
+    flow_path_length_km : float, optional
+        Length of the longest flow path, from the watershed divide (the
+        hydraulically most distant point) to the outlet, along the flow [km]. Must
+        be positive. The flow length of the NRCS lag method, Kirpich's length and
+        the main channel length of Kerby-Kirpich (whose channel segment is this
+        length minus ``overland_length_km``).
+    flow_path_slope_m_per_m : float, optional
+        Slope of the longest flow path [m/m]: the elevation of its head on the
+        divide minus the outlet elevation, over ``flow_path_length_km``. Kirpich's
+        slope and the main channel slope of Kerby-Kirpich.
 
     Attributes
     ----------
@@ -213,6 +210,8 @@ class WatershedParameters:
     ...     "length_km": 12.5,
     ...     "elevation_min_m": 150.0,
     ...     "elevation_max_m": 520.0,
+    ...     "flow_path_length_km": 13.4,
+    ...     "flow_path_slope_m_per_m": 0.026,
     ...     "cn": 72,
     ...     "source": "Hydrograf"
     ... }
@@ -261,6 +260,10 @@ class WatershedParameters:
     manning_n: float | None = None
     urban_pct: float | None = None
     forest_pct: float | None = None
+
+    # Longest flow path (Kirpich, NRCS lag, Kerby-Kirpich concentration time)
+    flow_path_length_km: float | None = None
+    flow_path_slope_m_per_m: float | None = None
 
     def __post_init__(self) -> None:
         """Validate parameters after initialization."""
@@ -384,7 +387,8 @@ class WatershedParameters:
             elevation_max_m, name, elevation_mean_m, mean_slope_m_per_m,
             channel_length_km, channel_slope_m_per_m, cn, source, crs,
             runoff_coeff, retardance, overland_length_km,
-            overland_slope_m_per_m, Lc_km, manning_n, urban_pct, forest_pct.
+            overland_slope_m_per_m, Lc_km, manning_n, urban_pct, forest_pct,
+            flow_path_length_km, flow_path_slope_m_per_m.
 
         Returns
         -------
@@ -428,6 +432,8 @@ class WatershedParameters:
             "manning_n",
             "urban_pct",
             "forest_pct",
+            "flow_path_length_km",
+            "flow_path_slope_m_per_m",
         }
         filtered_data = {k: v for k, v in data.items() if k in known_fields}
         return cls(**filtered_data)
@@ -568,40 +574,8 @@ class WatershedParameters:
             channel_length_km=self.channel_length_km,
         )
 
-    def _missing_tc_fields(self, method: str) -> list[str]:
-        """Fields that ``method`` needs and the watershed does not have.
-
-        A field that has a substitute (the length, the slope, the mean elevation
-        of Kirpich, NRCS and Giandotti) is missing only when the substitutes are
-        missing too; the first choice is reported.
-        """
-        if method in _TC_REQUIRED_FIELDS:
-            return [
-                name
-                for name in _TC_REQUIRED_FIELDS[method]
-                if getattr(self, name) is None
-            ]
-        missing = []
-        if all(getattr(self, name) is None for name in _TC_LENGTHS):
-            missing.append(_TC_LENGTHS[0])
-        if method in _TC_SLOPES:
-            relief = (
-                self.elevation_min_m is not None and self.elevation_max_m is not None
-            )
-            slopes = _TC_SLOPES[method]
-            if not relief and all(getattr(self, name) is None for name in slopes):
-                missing.append(slopes[0])
-        if method == "nrcs" and self.cn is None:
-            missing.append("cn")
-        if method == "giandotti":
-            if self.elevation_min_m is None:
-                missing.append("elevation_min_m")
-            if self.elevation_mean_m is None and self.elevation_max_m is None:
-                missing.append("elevation_mean_m")
-        return missing
-
     def _check_tc_method(self, method: str) -> None:
-        """Raise if ``method`` is unknown or a field it cannot do without is missing."""
+        """Raise if ``method`` is unknown or a field it needs is missing."""
         if method not in TC_METHODS:
             raise InvalidParameterError(
                 f"Unknown method: '{method}'. Use 'kirpich', 'nrcs', "
@@ -613,98 +587,48 @@ class WatershedParameters:
                     "value": method,
                 },
             )
-        missing = self._missing_tc_fields(method)
+        missing = [
+            name for name in _TC_REQUIRED_FIELDS[method] if getattr(self, name) is None
+        ]
         if missing:
             names = ", ".join(missing)
             shown = "CN" if missing == ["cn"] else names
             plural = len(missing) > 1
-            substitutes = [
-                _SUBSTITUTE_HINTS[name]
-                for name in missing
-                if name in _SUBSTITUTE_HINTS and method not in _TC_REQUIRED_FIELDS
-            ]
+            hints = [_TC_MISSING_HINTS[method]] if method in _TC_MISSING_HINTS else []
+            if any(name in _FLOW_PATH_FIELDS for name in missing):
+                hints.append(_FLOW_PATH_HINT)
             raise _missing_error(
                 missing,
                 f"{shown} {'are' if plural else 'is'} required for "
                 f"{_TC_METHOD_LABELS[method]} method. "
                 f"Set the {names} parameter{'s' if plural else ''}.",
-                hint=" ".join(substitutes) or _TC_MISSING_HINTS.get(method),
+                hint=" ".join(hints) or None,
                 method=method,
             )
 
     def _tc_inputs(self, method: str) -> tuple[dict[str, float], dict[str, str]]:
         """Arguments of the formula of ``method`` and the field each comes from.
 
-        A value derived from several fields is attributed to the one that is not
-        shared by the alternatives: ``elevation_max_m`` for a slope from the
-        relief and for the elevation difference from the middle of the elevation
-        range.
+        Each argument is the field :data:`~hydrolog._ranges.TC_INPUTS` names for
+        it. Giandotti's elevation difference, the one argument made of two fields,
+        is the mean elevation minus the outlet elevation and is attributed to
+        ``elevation_mean_m``. The area is an argument of Giandotti's formula only;
+        :meth:`calculate_tc` checks it against the data of the other methods.
         """
         self._check_tc_method(method)
-        if method == "kerby_kirpich":
-            names = _TC_REQUIRED_FIELDS[method]
-            return (
-                {name: cast(float, getattr(self, name)) for name in names},
-                {name: name for name in names},
-            )
-        if method in ("faa", "kerby"):
-            # Overland flow formulas: the overland flow path, not the channel (the
-            # area is not an argument: calculate_tc checks it)
-            fields = {
-                name: sources[0]
-                for name, sources in TC_INPUTS[method].items()
-                if name != "area_km2"
-            }
-            return (
-                {
-                    name: cast(float, getattr(self, field))
-                    for name, field in fields.items()
-                },
-                fields,
-            )
-
-        length_field = next(
-            name for name in _TC_LENGTHS if getattr(self, name) is not None
-        )
-        length_km = cast(float, getattr(self, length_field))
-        if method == "giandotti":
-            # elevation_diff_m = mean elevation - outlet elevation
-            outlet = cast(float, self.elevation_min_m)
-            if self.elevation_mean_m is not None:
-                mean_field, elevation_mean = "elevation_mean_m", self.elevation_mean_m
+        arguments: dict[str, float] = {}
+        fields: dict[str, str] = {}
+        for name, sources in TC_INPUTS[method].items():
+            if name == "area_km2" and method != "giandotti":
+                continue
+            if name == "elevation_diff_m":
+                mean_m, outlet_m = (
+                    cast(float, getattr(self, source)) for source in sources
+                )
+                arguments[name] = mean_m - outlet_m
             else:
-                mean_field = "elevation_max_m"
-                elevation_mean = (outlet + cast(float, self.elevation_max_m)) / 2
-            return (
-                {
-                    "area_km2": self.area_km2,
-                    "length_km": length_km,
-                    "elevation_diff_m": elevation_mean - outlet,
-                },
-                {
-                    "area_km2": "area_km2",
-                    "length_km": length_field,
-                    "elevation_diff_m": mean_field,
-                },
-            )
-
-        # Kirpich takes the slope of the channel first; NRCS (TR-55) takes the
-        # average land slope of the watershed first
-        slope_field = next(
-            (name for name in _TC_SLOPES[method] if getattr(self, name) is not None),
-            None,
-        )
-        if slope_field is None:
-            # Calculate from relief and length
-            slope_field = "elevation_max_m"
-            slope_m_per_m = self.relief_m / (length_km * 1000)
-        else:
-            slope_m_per_m = cast(float, getattr(self, slope_field))
-        arguments = {"length_km": length_km, "slope_m_per_m": slope_m_per_m}
-        fields = {"length_km": length_field, "slope_m_per_m": slope_field}
-        if method == "nrcs":
-            arguments["cn"] = cast(float, self.cn)
-            fields["cn"] = "cn"
+                arguments[name] = cast(float, getattr(self, sources[0]))
+            fields[name] = sources[0]
         return arguments, fields
 
     def tc_parameters(self, method: str = "kirpich") -> dict[str, float]:
@@ -715,8 +639,8 @@ class WatershedParameters:
         the static method of :class:`hydrolog.time.ConcentrationTime` named like
         ``method``, so ``ConcentrationTime.<method>(**params.tc_parameters(method))``
         equals ``params.calculate_tc(method)``. They show what a concentration
-        time was computed from; the selection rules are described in the notes of
-        :meth:`calculate_tc`.
+        time was computed from; the fields of each method are listed in the notes
+        of :meth:`calculate_tc`.
 
         Parameters
         ----------
@@ -744,9 +668,10 @@ class WatershedParameters:
         >>> params = WatershedParameters(area_km2=45.0, perimeter_km=32.0,
         ...     length_km=12.0, elevation_min_m=150.0, elevation_max_m=520.0,
         ...     mean_slope_m_per_m=0.025, channel_length_km=10.0,
-        ...     channel_slope_m_per_m=0.02)
+        ...     channel_slope_m_per_m=0.02, flow_path_length_km=11.0,
+        ...     flow_path_slope_m_per_m=0.021)
         >>> params.tc_parameters("kirpich")
-        {'length_km': 10.0, 'slope_m_per_m': 0.02}
+        {'length_km': 11.0, 'slope_m_per_m': 0.021}
         """
         return self._tc_inputs(method)[0]
 
@@ -787,50 +712,58 @@ class WatershedParameters:
 
         Notes
         -----
-        The arguments of the formula come from the fields as follows
-        (:meth:`tc_parameters` returns them):
+        Each argument of the formula is the watershed field its source defines,
+        with no substitute (:data:`hydrolog._ranges.TC_INPUTS`;
+        :meth:`tc_parameters` returns them): a missing field is
+        ``missing_field``, whatever other fields the watershed has.
 
-        * "kirpich": the length is ``channel_length_km`` if available, otherwise
-          ``length_km``; the slope is ``channel_slope_m_per_m`` if available,
-          otherwise ``mean_slope_m_per_m``, otherwise it is calculated from
-          relief and length (``elevation_min_m`` and ``elevation_max_m``).
-        * "nrcs": ``cn`` must be set. The length is chosen as for "kirpich". The
-          slope is the average land slope Y of the watershed, not the slope of
-          the flow path (USDA-NRCS 1986, TR-55, chapter 3; USDA-NRCS 2010, NEH
-          Part 630, chapter 15): ``mean_slope_m_per_m`` if available, otherwise
-          ``channel_slope_m_per_m``, otherwise relief over length.
-        * "giandotti": the length is chosen as for "kirpich"; the elevation
-          difference is ``elevation_mean_m - elevation_min_m``;
-          ``elevation_mean_m`` defaults to the middle of the elevation range (also
-          when it is 0 m a.s.l., which is a valid mean elevation), so it needs
-          ``elevation_min_m`` and ``elevation_mean_m`` or ``elevation_max_m``.
-        * "faa" and "kerby" are overland (sheet) flow formulas (FAA 1966,
-          AC 150/5320-5A, and 2013, AC 150/5320-5D; Kerby 1959). Kerby derived his
-          formula for flow paths of up to 366 m (1200 ft; Roussel et al. 2005,
-          TxDOT Report 0-4696-2; TxDOT Hydraulic Design Manual, chapter 4,
-          section 11). They are fed with the overland flow length and slope,
-          never with those of the channel: ``overland_length_km`` and
-          ``overland_slope_m_per_m`` must be set, and ``runoff_coeff`` ("faa") or
-          ``retardance`` ("kerby"). The result is the overland flow time of the
-          watershed; for a watershed with a channel "kerby_kirpich" adds the
-          channel travel time.
-        * "kerby_kirpich": ``retardance``, ``overland_length_km``,
-          ``overland_slope_m_per_m``, ``channel_length_km`` and
-          ``channel_slope_m_per_m`` must be set.
+        * "kirpich": the length and the slope of the longest flow path,
+          ``flow_path_length_km`` and ``flow_path_slope_m_per_m``: the length
+          along the watercourse from the outlet to the most remote point on the
+          divide, and the elevation of that point above the outlet over that
+          length (Fang et al. 2005, TxDOT Report 0-4696-1, eq. 3.14; Mota and
+          Kobiyama 2015 on Kirpich's data).
+        * "nrcs": the flow length, the longest path from the watershed divide to
+          the outlet, ``flow_path_length_km``; the average land slope Y of the
+          watershed, not the slope of the flow path, ``mean_slope_m_per_m``; and
+          ``cn`` (USDA-NRCS 2010, NEH Part 630, chapter 15, eq. 15-4).
+        * "giandotti": the length of the main channel, ``channel_length_km``, and
+          the mean elevation of the watershed above the outlet,
+          ``elevation_mean_m - elevation_min_m`` (Grimaldi et al. 2012).
+        * "faa" and "kerby" are overland (sheet) flow formulas (FAA 1970,
+          AC 150/5320-5B, fig. 7; Kerby 1959). Kerby derived his formula for flow
+          paths of up to 366 m (1200 ft; Roussel et al. 2005, TxDOT Report
+          0-4696-2; TxDOT Hydraulic Design Manual, chapter 4, section 11). They
+          take the overland flow length and slope, never those of the channel:
+          ``overland_length_km`` and ``overland_slope_m_per_m``, and
+          ``runoff_coeff`` ("faa") or ``retardance`` ("kerby"). The result is the
+          overland flow time of the watershed; for a watershed with a channel
+          "kerby_kirpich" adds the channel travel time.
+        * "kerby_kirpich": the overland segment, ``retardance``,
+          ``overland_length_km`` and ``overland_slope_m_per_m``, and the whole
+          longest flow path, ``flow_path_length_km`` and
+          ``flow_path_slope_m_per_m``: its channel segment is the flow path minus
+          the overland one, timed at the slope of the whole path (Roussel et al.
+          2005, supplement).
 
         .. versionchanged:: 1.0.0
-            "faa" and "kerby" use the overland flow length and slope and
-            require them. They used the length and slope of the channel, so a
+            Every method takes the fields its source defines, without
+            substitutes. Kirpich and NRCS took the channel length, else the
+            watershed length, and Kirpich the channel slope, else the mean slope,
+            else the relief over the length (NRCS the mean slope first); they now
+            take the longest flow path. Giandotti took the watershed length
+            without a channel and the middle of the elevation range without a
+            mean elevation. Kerby-Kirpich took the channel length and slope; it
+            now takes the flow path. "faa" and "kerby" take the overland flow
+            length and slope: they took the length and slope of the channel, so a
             watershed with a 10 km channel was timed as a 10 km sheet flow path,
-            far outside the range of the formulas. "nrcs" takes the mean slope
-            of the watershed before the slope of the channel (it was the other
-            way round).
+            far outside the range of the formulas.
 
         Examples
         --------
         >>> params = WatershedParameters(area_km2=45.0, perimeter_km=32.0,
         ...     length_km=12.0, elevation_min_m=150.0, elevation_max_m=520.0,
-        ...     mean_slope_m_per_m=0.025)
+        ...     flow_path_length_km=13.4, flow_path_slope_m_per_m=0.026)
         >>> tc = params.calculate_tc(method="kirpich")
         """
         from hydrolog.time import ConcentrationTime

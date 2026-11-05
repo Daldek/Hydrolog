@@ -1,4 +1,4 @@
-// The (i) button of an explanation: html`<${InfoButton} id="kirpich" values=${{channel_length_km: 14.78}} />`.
+// The (i) button of an explanation: html`<${InfoButton} id="tc-kirpich" values=${{flow_path_slope_m_per_m: 0.0114}} />`.
 // ui/info.js opens the popover on its click; `values` mark the ranges ok or warn.
 
 import { html } from "../html.js";

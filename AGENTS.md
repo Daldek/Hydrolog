@@ -76,7 +76,7 @@ One line per command: name, `operation_id`, summary. Options, units, bounds and 
 - `tc kerby` (`hydrolog_tc_kerby`): Compute overland flow time with the Kerby formula.
 - `tc kerby-kirpich` (`hydrolog_tc_kerby_kirpich`): Compute time of concentration with the Kerby-Kirpich method.
 - `tc kirpich` (`hydrolog_tc_kirpich`): Compute time of concentration with the Kirpich formula.
-- `tc nrcs` (`hydrolog_tc_nrcs`): Compute time of concentration with the NRCS (TR-55 lag) method.
+- `tc nrcs` (`hydrolog_tc_nrcs`): Compute time of concentration with the NRCS lag method (NEH 630).
 - `tc watershed` (`hydrolog_tc_watershed`): Compute time of concentration by a chosen method from a watershed.
 ### [cn: Curve Number (TR-55)][paths]
 - `cn list` (`hydrolog_cn_list`): Return the whole TR-55 CN table (covers, conditions, groups A-D).
@@ -133,7 +133,7 @@ One line per command: name, `operation_id`, summary. Options, units, bounds and 
 CLI lines; in MCP call the tool `operation_id` with the same options as arguments. Paths under `/data/` are examples: give your own (absolute, inside an allowed directory). `obserwator` and `kartograf` lines are other tools.
 
 ### 1. Design hydrograph of a watershed described by a JSON file
-The watershed file has the `WatershedParameters` format: `area_km2`, `perimeter_km`, `length_km`, `elevation_min_m` and `elevation_max_m` are required; `cn`, `channel_length_km`, `channel_slope_m_per_m` are optional.
+The watershed file has the `WatershedParameters` format: only `area_km2` is required; the shape needs `perimeter_km`, `length_km`, Kirpich `flow_path_length_km`, `flow_path_slope_m_per_m`, the runoff `cn`.
 1. `hydrolog morphometry watershed --watershed-file /data/hydrolog/watershed.json` - geometric, shape and relief indicators; a bad file is a `data_error` with `details.path`.
 2. `hydrolog tc watershed --watershed-file /data/hydrolog/watershed.json --method kirpich` - time of concentration (`result.tc_min`); a field the method needs and the file lacks is a `validation_error`.
 3. `hydrolog hydrograph generate --watershed-file /data/hydrolog/watershed.json --tc-method kirpich --hietogram-type beta --total-mm 50 --duration-min 60` - direct runoff (Beta hyetograph, SCS-CN with `cn` from the file, SCS unit hydrograph): `peak_discharge_m3s`, `time_to_peak_min`, `total_volume_m3`.

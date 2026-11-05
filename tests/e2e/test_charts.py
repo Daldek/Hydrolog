@@ -366,7 +366,7 @@ def test_horizontal_bars_on_a_band_axis(page: Any) -> None:
     const spec = {x: {label: "tc [min]"}, y: {scale: "band"},
       series: [{id: "tc", data: [
       {y: "Kirpich", sub: "kirpich", x: 162.9, cls: "warn used", text: "162,9 min"},
-      {y: "NRCS (TR-55)", sub: "nrcs", x: 377.5, cls: "ok", text: "377,5 min"},
+      {y: "NRCS (NEH 630)", sub: "nrcs", x: 377.5, cls: "ok", text: "377,5 min"},
       {y: "FAA", sub: "faa", x: 23.8, cls: "bad", text: "23,8 min"}]}],
       legend: [{kind: "box", cls: "ok", label: "w zakresie"}]};
     """
@@ -376,7 +376,7 @@ def test_horizontal_bars_on_a_band_axis(page: Any) -> None:
     assert bars.nth(0).get_attribute("class") == "hbar warn used"
     assert bars.nth(0).get_attribute("x") == "160"
     names = page.locator("#host .bar-name").all_text_contents()
-    assert names == ["Kirpich", "NRCS (TR-55)", "FAA"]
+    assert names == ["Kirpich", "NRCS (NEH 630)", "FAA"]
     assert page.locator("#host .bar-val").nth(1).text_content() == "377,5 min"
     widths = [float(bars.nth(i).get_attribute("width")) for i in range(3)]
     assert widths[1] > widths[0] > widths[2]

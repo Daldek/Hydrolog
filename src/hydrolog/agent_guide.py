@@ -192,9 +192,9 @@ _HYDROGRAPH: Final = {
 _FLOWS: Final[tuple[_Flow, ...]] = (
     _Flow(
         "Design hydrograph of a watershed described by a JSON file",
-        "The watershed file has the `WatershedParameters` format: `area_km2`, "
-        "`perimeter_km`, `length_km`, `elevation_min_m` and `elevation_max_m` are "
-        "required; `cn`, `channel_length_km`, `channel_slope_m_per_m` are optional.",
+        "The watershed file has the `WatershedParameters` format: only `area_km2` "
+        "is required; the shape needs `perimeter_km`, `length_km`, Kirpich "
+        "`flow_path_length_km`, `flow_path_slope_m_per_m`, the runoff `cn`.",
         (
             _Step(
                 "geometric, shape and relief indicators; a bad file is a "

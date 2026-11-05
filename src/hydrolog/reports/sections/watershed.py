@@ -33,6 +33,8 @@ def generate_watershed_section(
     circularity: float | None = None,
     elongation: float | None = None,
     include_shape_indicators: bool = True,
+    flow_path_length_km: float | None = None,
+    flow_path_slope_m_per_m: float | None = None,
 ) -> str:
     """
     Generate watershed parameters section.
@@ -75,6 +77,10 @@ def generate_watershed_section(
         Schumm's elongation ratio.
     include_shape_indicators : bool, optional
         Include shape indicators section, by default True.
+    flow_path_length_km : float, optional
+        Length of the longest flow path, from the divide to the outlet [km].
+    flow_path_slope_m_per_m : float, optional
+        Slope of the longest flow path [m/m].
 
     Returns
     -------
@@ -190,6 +196,25 @@ def generate_watershed_section(
             (
                 PARAMETER_LABELS["channel_slope_m_per_m"],
                 f"{channel_slope_m_per_m:.4f}",
+                UNITS["slope_m_per_m"],
+            )
+        )
+
+    # Longest flow path
+    if flow_path_length_km is not None:
+        params_data.append(
+            (
+                PARAMETER_LABELS["flow_path_length_km"],
+                f"{flow_path_length_km:.2f}",
+                UNITS["length_km"],
+            )
+        )
+
+    if flow_path_slope_m_per_m is not None:
+        params_data.append(
+            (
+                PARAMETER_LABELS["flow_path_slope_m_per_m"],
+                f"{flow_path_slope_m_per_m:.4f}",
                 UNITS["slope_m_per_m"],
             )
         )

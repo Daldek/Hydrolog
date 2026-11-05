@@ -24,3 +24,4 @@ the Nogat standard 2.1 adoption are in the plans of [plans/](plans/).
 | [0016](decisions/0016-gui-feedback-and-data-dir.md) | Reports of the GUI's users: „Zgłoś uwagę”, `data_dir` and the admin key | accepted | 2026-11-04 |
 | [0017](decisions/0017-typical-ranges-in-the-catalog.md) | Typical ranges: one table in Hydrolog, served in the document of one command (`typical_ranges`) | accepted | 2026-11-04 |
 | [0018](decisions/0018-pmaxtp-through-obserwator.md) | PMAXTP through Obserwator: `precip pmaxtp`, the one command that uses the network | accepted | 2026-11-04 |
+| [0019](decisions/0019-tc-from-the-inputs-its-source-defines.md) | Time of concentration from the inputs its source defines: the longest flow path, no substitutes | accepted | 2026-11-05 |
