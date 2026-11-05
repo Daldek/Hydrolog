@@ -20,7 +20,20 @@ import { fileStem, openNetwork, withSessionNames } from "../sections/siec/state.
 import { copyText, downloadBlob, fileBase } from "../ui/export-panel.js";
 import { MenuButton } from "../ui/menu.js";
 import { toast } from "../ui/toast.js";
-import { MARKS, NETWORK_SCHEMA_FILE, compareResults, engineOf, handoffFileName, momentText, readHandoff, toolName } from "./handoff.js";
+import { uploadFile } from "../controls/file-field.js";
+import {
+  MARKS,
+  NETWORK_SCHEMA_FILE,
+  SERIES_SCHEMA_FILE,
+  compareResults,
+  engineOf,
+  handoffFileName,
+  momentText,
+  readHandoff,
+  receivedOf,
+  statystykaInputs,
+  toolName,
+} from "./handoff.js";
 import { dataKey, hydrogramContents, hydrogramHandoff, hydrogramInputs, hydrogramResult, outletResult, siecHandoff, siecReceived } from "./mapping.js";
 import { canonical, isObject } from "./validate.js";
 
@@ -96,7 +109,9 @@ function errorText(error) {
 
 /**
  * Open a hand-off: check it (the envelope against Nogat's schema, the payload against
- * hydrolog-network-1.schema.json) and hand it to the section it belongs to.
+ * hydrolog-network-1.schema.json or hydrolog-series-1.schema.json) and hand it to the
+ * section it belongs to. A station's daily series is first written into the session's
+ * files, which Statystyka przepływów reads like a file of the person's.
  *
  * @param {string} text the hand-off as text
  * @returns {Promise<{title: string, lines: string[]}|null>} why it was refused, null when
@@ -104,18 +119,33 @@ function errorText(error) {
  */
 export async function openHandoff(text) {
   let networkSchema;
+  let seriesSchema;
   try {
-    networkSchema = await api.schema(NETWORK_SCHEMA_FILE);
+    [networkSchema, seriesSchema] = await Promise.all([api.schema(NETWORK_SCHEMA_FILE), api.schema(SERIES_SCHEMA_FILE)]);
   } catch (error) {
     return { title: texts.load.refused, lines: [t(texts.load.schemaFailed, { message: errorText(error) })] };
   }
-  const read = readHandoff(text, { networkSchema });
+  const read = readHandoff(text, { networkSchema, seriesSchema });
   if (read.problems.length) return { title: texts.load.refused, lines: read.problems };
   const doc = read.doc;
   const producer = `${toolName(doc.producer.tool)} ${doc.producer.version}`;
   if (read.target === "hydrogram") {
     deliver("hydrogram", hydrogramInputs(doc));
     toast(t(texts.load.opened, { subject: doc.subject, producer }));
+  } else if (read.target === "statystyka") {
+    const inputs = statystykaInputs(doc.payload);
+    const values = { input_file: "", value_column: undefined, date_column: undefined, values: "", ...inputs.values };
+    if (inputs.csv !== null) {
+      try {
+        const file = new File([inputs.csv], `${fileBase(doc.subject)}.csv`, { type: "text/csv" });
+        values.input_file = (await uploadFile(file)).path;
+      } catch (error) {
+        return { title: texts.load.refused, lines: [t(texts.load.uploadFailed, { message: errorText(error) })] };
+      }
+    }
+    deliver("statystyka", { source: inputs.source, values, received: receivedOf(doc) });
+    const count = doc.payload.values.filter((value) => typeof value === "number").length;
+    toast(t(texts.load.openedStatystyka, { subject: doc.subject, producer, values: plural(count, texts.valueForms) }));
   } else {
     const named = withSessionNames(doc.payload);
     openNetwork(named.doc, { name: `${fileBase(doc.subject)}.json`, kind: "handoff", handoff: siecReceived(doc, named.doc) });
@@ -138,11 +168,14 @@ function capped(lines) {
 /**
  * „Wczytaj z Hydrografa”: a menu of a hand-off file and the clipboard; where the browser
  * does not give the clipboard, a field to paste into. A refused hand-off lists why below
- * the buttons. Placed in a section's row of file buttons (`.btn-row`).
+ * the buttons. Placed in a section's row of file buttons (`.btn-row`). Statystyka
+ * przepływów names Archiwista instead (`series`); any hand-off opens where it belongs.
  *
+ * @param {{series?: boolean}} [props] the texts of a station's series (Archiwista)
  * @returns {object} the button, its menu and what it says
  */
-export function HandoffImport() {
+export function HandoffImport({ series = false } = {}) {
+  const words = series ? { ...texts.load, ...texts.loadSeries } : texts.load;
   const [feedback, setFeedback] = useState(null);
   const area = useRef(null);
   const open = async (text) => {
@@ -207,7 +240,7 @@ export function HandoffImport() {
     </div>`;
   } else if (feedback && feedback.kind === "paste") {
     shown = html`<div class="handoff-feedback" data-handoff-paste="">
-      <p class="note">${texts.load.pasteHint}</p>
+      <p class="note">${words.pasteHint}</p>
       <textarea
         ref=${area}
         rows="4"
@@ -232,12 +265,12 @@ export function HandoffImport() {
   return html`
     <${MenuButton}
       className="btn sm"
-      title=${texts.load.title}
-      menuLabel=${texts.load.menu}
-      label=${html`${ICONS.load}${texts.load.button}`}
+      title=${words.title}
+      menuLabel=${words.menu}
+      label=${html`${ICONS.load}${words.button}`}
       items=${[
-        { label: texts.load.file, sub: texts.load.fileSub, onSelect: pickFile },
-        { label: texts.load.paste, sub: texts.load.pasteSub, onSelect: paste },
+        { label: words.file, sub: words.fileSub, onSelect: pickFile },
+        { label: words.paste, sub: words.pasteSub, onSelect: paste },
       ]}
     />
     ${shown}

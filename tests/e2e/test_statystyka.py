@@ -7,9 +7,13 @@ those years of ``annual_maxima.csv``) uploaded and „Oblicz” run ``stats
 flood-frequency``, giving the mockup's GEV „Q 1% 307,3 m³/s”, the KZGW notice in Polish,
 the probability plot and the ranked maxima with their years; the call shown is the
 options sent. A daily series takes its date column from its header; pasted maxima run
-as ``values``; „Do porównania” hands the stressed quantile to the store.
+as ``values``; „Do porównania” hands the stressed quantile to the store. A station's
+series handed off by Archiwista (``hydrolog-series/1``, ADR-0020) opens here with
+„Wczytaj z Archiwisty”: annual maxima as the pasted values without the missing years,
+daily values as a file of the session with its columns; annual minima are refused.
 """
 
+import json
 import re
 from collections.abc import Callable
 from pathlib import Path
@@ -263,3 +267,126 @@ def test_a_phone_in_the_dark_computes_through_the_sheets(
         "307,3 m³/s"
     )
     assert page.evaluate(sideways) == 0
+
+
+# --- a station's series handed off by Archiwista (ADR-0020) ------------------------
+
+
+def handoff(payload: dict[str, Any], subject: str) -> dict[str, Any]:
+    """Return a hand-off from Archiwista carrying ``payload``."""
+    return {
+        "schema": "nogat-handoff/1",
+        "created_at": "2026-11-05T20:00:00Z",
+        "producer": {"tool": "archiwista", "version": "0.3.0.dev0"},
+        "subject": subject,
+        "provenance": {"series": {"source": "imgw-pib", "station": "149190310"}},
+        "payload": payload,
+    }
+
+
+def open_handoff(page: Page, doc: dict[str, Any], tmp_path: Path) -> None:
+    """Open ``doc`` with „Wczytaj z Archiwisty” → „Plik przekazania…”."""
+    path = tmp_path / "seria.handoff.json"
+    path.write_text(json.dumps(doc, ensure_ascii=False), encoding="utf-8")
+    page.locator(f"{SECTION} .view-panel.left").get_by_role(
+        "button", name="Wczytaj z Archiwisty"
+    ).click()
+    with page.expect_file_chooser() as chooser:
+        page.get_by_role("menuitem").filter(has_text="Plik przekazania").click()
+    chooser.value.set_files(str(path))
+
+
+def test_annual_maxima_from_archiwista_run_as_values_without_the_missing_years(
+    tab: Tab, tmp_path: Path
+) -> None:
+    rows = [line.split(",") for line in MAXIMA.read_text("utf-8").splitlines()[1:]]
+    maxima = [float(value) for _, value in rows]
+    payload = {
+        "schema": "hydrolog-series/1",
+        "name": "Raba — Q max",
+        "variable": "Q",
+        "unit": "m3/s",
+        "step": "year",
+        "statistic": "max",
+        "year_type": "hydrological",
+        "years": [1997] + [int(year) for year, _ in rows],
+        "values": [None, *maxima],
+    }
+    tab.open("#statystyka")
+    page = tab.page
+
+    open_handoff(page, handoff(payload, "Raba — maksima roczne"), tmp_path)
+
+    expect(
+        page.locator(f'{SECTION} [data-handoff-source="archiwista"]')
+    ).to_contain_text("Z Archiwisty: Raba — maksima roczne")
+    expect(
+        page.locator(f"{SECTION} .step").first.get_by_role("radio", name="Wklej")
+    ).to_be_checked()
+    options = sent(compute(page))
+    assert options["values"] == maxima
+    expect(page.locator(f'{RIGHT} .kpi[data-key="q-100"] .v')).to_have_text(
+        "307,3 m³/s"
+    )
+    # A series typed over is the person's: the origin goes
+    page.locator(f"{SECTION} #st-values").fill("100; 120; 140")
+    expect(page.locator(f"{SECTION} [data-handoff-source]")).to_have_count(0)
+
+
+def test_a_daily_series_from_archiwista_becomes_a_session_file_with_its_columns(
+    tab: Tab, tmp_path: Path
+) -> None:
+    lines = (FIXTURES / "daily_flows_3y.csv").read_text("utf-8").splitlines()[1:]
+    days = [line.split(",") for line in lines]
+    payload = {
+        "schema": "hydrolog-series/1",
+        "name": "Raba — Q",
+        "variable": "Q",
+        "unit": "m3/s",
+        "step": "day",
+        "dates": [day for day, _ in days],
+        "values": [float(value) for _, value in days],
+    }
+    tab.open("#statystyka")
+    page = tab.page
+
+    open_handoff(page, handoff(payload, "Raba — Q dobowe"), tmp_path)
+
+    expect(page.locator(f"{SECTION} #st-input_file")).to_have_value(
+        re.compile(r"^in/Raba.*Q dobowe\.csv$")
+    )
+    expect(page.locator(f"{SECTION} #st-value_column")).to_have_value("Q")
+    expect(page.locator(f"{SECTION} #st-date_column")).to_have_value("date")
+    response = compute(page)
+    assert sent(response)["date_column"] == "date"
+    assert response.json()["result"]["hydrological_years"] == [2022, 2023, 2024]
+
+
+def test_annual_minima_and_a_short_series_are_refused_with_the_reason(
+    tab: Tab, tmp_path: Path
+) -> None:
+    minima = {
+        "schema": "hydrolog-series/1",
+        "name": "Raba — Q min",
+        "variable": "Q",
+        "unit": "m3/s",
+        "step": "year",
+        "statistic": "min",
+        "year_type": "hydrological",
+        "years": [2020, 2021],
+        "values": [1.2, 0.9],
+    }
+    tab.open("#statystyka")
+    page = tab.page
+    problems = page.locator(f"{SECTION} [data-handoff-problems] li")
+
+    open_handoff(page, handoff(minima, "Raba — minima"), tmp_path)
+    expect(problems).to_have_text([re.compile(r"^To są minima roczne")])
+
+    open_handoff(
+        page, handoff({**minima, "statistic": "max", "values": [1.2]}, "Raba"), tmp_path
+    )
+    expect(problems).to_have_text(
+        ["Szereg ma 2 dat albo lat i 1 wartości: powinno być tyle samo."]
+    )
+    expect(page.locator(f"{SECTION} [data-handoff-source]")).to_have_count(0)

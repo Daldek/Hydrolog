@@ -1174,7 +1174,10 @@ A result leaves the page as CSV, JSON or PNG; from Hydrogram zlewni also as a Ma
 (`report generate`), and from Hydrogram zlewni and Sieć through a print view on A4 (a PDF by the
 browser's „Zapisz jako PDF”) and as a hand-off `nogat-handoff/1`. „Wczytaj z Hydrografa” opens a
 watershed or a network handed over that way, with the producer's result beside Hydrolog's
-([INTEGRATION.md](INTEGRATION.md#web-gui-the-hand-off-with-hydrograf-nogat-handoff1)). „Zgłoś
+([INTEGRATION.md](INTEGRATION.md#web-gui-the-hand-off-with-hydrograf-nogat-handoff1)), and
+„Wczytaj z Archiwisty” in Statystyka przepływów opens a station's daily series or annual maxima
+handed over by Archiwista
+([INTEGRATION.md](INTEGRATION.md#web-gui-a-stations-series-from-archiwista-hydrolog-series1)). „Zgłoś
 uwagę” in the top bar sends a report on a problem or an idea to whoever runs the server, who
 reads it on the admin page `admin/` ([below](#reports-of-users-zgłoś-uwagę)).
 

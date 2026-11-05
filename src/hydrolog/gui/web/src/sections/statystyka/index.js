@@ -6,10 +6,14 @@
 // of the probability plot. The result shows the best distribution, the quantiles, the
 // goodness of fit and the notices in Polish; „Do porównania” hands the stressed quantile
 // to Hydrogram zlewni (store "reference"). A change marks the result stale (plan D13).
+// A station's series handed off by Archiwista (ADR-0020, „Wczytaj z Archiwisty”) arrives
+// through useHandoffInbox as the source and values it opens with, and the data panel names
+// where it came from until the series is changed.
 
 import { api } from "../../api.js";
 import { extent } from "../../charts/scale.js";
 import { useSession } from "../../controls/file-field.js";
+import { useHandoffInbox } from "../../handoff/handoff-panel.js";
 import { inputText, num, plural } from "../../format.js";
 import { FORM_ERROR } from "../../forms/command-form.js";
 import { fieldModel, isActive, toOptions, validate, withReason } from "../../forms/model.js";
@@ -88,6 +92,13 @@ export default function Statystyka() {
   const { doc, error: docError } = useCommandDoc(COMMAND);
   const session = useSession();
   const [state, setState, reset] = usePersistentState(SECTION, initialState);
+  // A hand-off: its series replaces the section's, the distributions and periods stay.
+  useHandoffInbox(SECTION, ({ source, values: given, received }) => {
+    setTouched({});
+    setServerErrors({});
+    setRun(null);
+    setState((old) => ({ ...old, source, values: { ...old.values, ...given }, received }));
+  });
   const [, setStatus] = useStore("status");
   const [, setContext] = useStore("context");
   const [reference, setReference] = useStore("reference");
@@ -165,13 +176,14 @@ export default function Statystyka() {
         next.value_column = undefined;
         next.date_column = undefined;
       }
-      return { ...old, values: next };
+      const series = name === "input_file" || name === "values";
+      return { ...old, values: next, received: series ? null : old.received };
     });
   };
 
   const onSource = (source) => {
     forget(["input_file", "value_column", "date_column", "values"]);
-    setState((old) => ({ ...old, source }));
+    setState((old) => ({ ...old, source, received: null }));
   };
 
   const focusFirstProblem = () =>
@@ -334,6 +346,7 @@ export default function Statystyka() {
       model=${model}
       values=${values}
       source=${state.source}
+      received=${state.received || null}
       errors=${shownErrors}
       onValue=${onValue}
       onSource=${onSource}

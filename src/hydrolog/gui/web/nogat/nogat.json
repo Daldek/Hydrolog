@@ -20,6 +20,10 @@
     "marks/nogat.svg": {
       "from": "design/marks/nogat.svg",
       "sha256": "2341d50005835065bf4e42e664cbc2a0704532866ba861467d081884c22ef93c"
+    },
+    "marks/archiwista.svg": {
+      "from": "design/marks/archiwista.svg",
+      "sha256": "5a163b2bb0470a6940b0039bada21193f6aef8f3b97ba5cd445960850e895293"
     }
   }
 }

@@ -1,11 +1,12 @@
 // The hand-off between the GUIs of the ecosystem (plan D15): `nogat-handoff/1` exactly as
 // Nogat publishes it (schemas/nogat/handoff-1.schema.json, copied unchanged), carrying
-// `hydrolog-network/1`. buildHandoff writes the envelope around a payload; readHandoff
-// reads a text: the envelope against Nogat's schema (envelope.js), the payload's kind,
-// and, given hydrolog-network-1.schema.json, the payload's content, then tells which
-// section opens it: one subcatchment made from rainfall with its outlet opens in
-// „Hydrogram zlewni”, any other network in „Sieć i trasowanie”. The producer's result is
-// for comparison only (compareResults): Hydrolog recomputes and shows both.
+// `hydrolog-network/1` or `hydrolog-series/1` (ADR-0020). buildHandoff writes the envelope
+// around a network; readHandoff reads a text: the envelope against Nogat's schema
+// (envelope.js), the payload's kind and, given its schema, the payload's content, then
+// tells which section opens it: one subcatchment made from rainfall with its outlet opens
+// in „Hydrogram zlewni”, any other network in „Sieć i trasowanie”, a station's series
+// (Archiwista) in „Statystyka przepływów”. The producer's result is for comparison only
+// (compareResults): Hydrolog recomputes and shows both.
 //
 // Pure functions without Preact, tested in the page (tests/e2e/test_exports.py).
 
@@ -18,17 +19,23 @@ import { isObject, schemaProblems } from "./validate.js";
 /** The envelope's `schema`. */
 export const HANDOFF_SCHEMA = "nogat-handoff/1";
 
-/** The only payload Hydrolog takes and writes. */
+/** The payload Hydrolog writes and takes into Hydrogram zlewni and Sieć. */
 export const PAYLOAD_SCHEMA = "hydrolog-network/1";
 
-/** The schema of the payload, GET api/schemas/… */
+/** The payload of a station's series, taken into Statystyka przepływów (ADR-0020). */
+export const SERIES_SCHEMA = "hydrolog-series/1";
+
+/** The schema of the network payload, GET api/schemas/… */
 export const NETWORK_SCHEMA_FILE = "hydrolog-network-1.schema.json";
+
+/** The schema of the series payload, GET api/schemas/… */
+export const SERIES_SCHEMA_FILE = "hydrolog-series-1.schema.json";
 
 /** The producer of the hand-offs this GUI writes. */
 export const TOOL = "hydrolog";
 
 /** The tools whose marks the page holds (nogat/marks/<tool>.svg). */
-export const MARKS = Object.freeze(["hydrograf", "hydrolog", "nogat"]);
+export const MARKS = Object.freeze(["archiwista", "hydrograf", "hydrolog", "nogat"]);
 
 /** The quantities of a result compared, with their D15 names and how they are shown. */
 export const QUANTITIES = Object.freeze([
@@ -206,18 +213,38 @@ function hydrogramProblems(payload) {
 }
 
 /**
+ * What Statystyka przepływów needs of a series beyond its schema: as many values as dates
+ * or years, some of them numbers, and annual maxima (the section computes flood
+ * quantiles; low flows are `stats low-flow` in Polecenia).
+ *
+ * @param {object} payload a valid hydrolog-series/1
+ * @returns {string[]} the problems in Polish
+ */
+function seriesProblems(payload) {
+  const keys = payload.step === "day" ? payload.dates : payload.years;
+  if (!Array.isArray(keys) || !Array.isArray(payload.values)) return [texts.problems.seriesEmpty];
+  if (keys.length !== payload.values.length) {
+    return [t(texts.problems.seriesLength, { keys: keys.length, values: payload.values.length })];
+  }
+  if (!payload.values.some((value) => typeof value === "number")) return [texts.problems.seriesEmpty];
+  if (payload.step === "year" && payload.statistic !== "max") return [texts.problems.seriesMinima];
+  return [];
+}
+
+/**
  * Read a hand-off: parse the text, check the envelope against Nogat's schema, the
- * payload's kind and, given the network schema, the payload against it, then tell the
- * section that opens it.
+ * payload's kind and, given its schema, the payload against it, then tell the section
+ * that opens it.
  *
  * @param {string} text the hand-off as text (a file's or the clipboard's)
- * @param {{networkSchema?: object|null}} [schemas] hydrolog-network-1.schema.json (the
- *   payload is not checked against it without)
- * @returns {{doc: object|null, target: "hydrogram"|"siec"|null, problems: string[]}} the
- *   document, the section that opens it (null when it cannot open) and the problems in
- *   Polish; none when it opens
+ * @param {{networkSchema?: object|null, seriesSchema?: object|null}} [schemas]
+ *   hydrolog-network-1.schema.json and hydrolog-series-1.schema.json (a payload is not
+ *   checked against its schema without it)
+ * @returns {{doc: object|null, target: "hydrogram"|"siec"|"statystyka"|null, problems:
+ *   string[]}} the document, the section that opens it (null when it cannot open) and
+ *   the problems in Polish; none when it opens
  */
-export function readHandoff(text, { networkSchema = null } = {}) {
+export function readHandoff(text, { networkSchema = null, seriesSchema = null } = {}) {
   let doc;
   try {
     doc = JSON.parse(String(text).replace(/^\uFEFF/, ""));
@@ -233,15 +260,42 @@ export function readHandoff(text, { networkSchema = null } = {}) {
   }
   const problems = schemaProblems(ENVELOPE_SCHEMA, doc).map((problem) => problemText(problem, doc));
   const payload = doc.payload;
-  if (isObject(payload) && typeof payload.schema === "string" && payload.schema !== PAYLOAD_SCHEMA) {
-    problems.push(t(texts.problems.payloadKind, { schema: payload.schema }));
-  } else if (isObject(payload) && networkSchema) {
-    for (const problem of schemaProblems(networkSchema, payload, networkSchema, ["payload"])) problems.push(problemText(problem, doc));
+  const kind = isObject(payload) && typeof payload.schema === "string" ? payload.schema : null;
+  const schema = kind === SERIES_SCHEMA ? seriesSchema : networkSchema;
+  if (kind !== null && kind !== PAYLOAD_SCHEMA && kind !== SERIES_SCHEMA) {
+    problems.push(t(texts.problems.payloadKind, { schema: kind }));
+  } else if (isObject(payload) && schema) {
+    for (const problem of schemaProblems(schema, payload, schema, ["payload"])) problems.push(problemText(problem, doc));
   }
   if (problems.length) return { doc, target: null, problems };
+  if (kind === SERIES_SCHEMA) {
+    const needs = seriesProblems(payload);
+    return { doc, target: needs.length ? null : "statystyka", problems: needs };
+  }
   const target = targetOf(payload);
   const needs = target === "hydrogram" ? hydrogramProblems(payload) : [];
   return { doc, target: needs.length ? null : target, problems: needs };
+}
+
+/**
+ * The inputs of Statystyka przepływów a series opens with: annual maxima as the pasted
+ * values (the missing years left out), daily values as a file of the session, `date` and
+ * the variable, whose columns the section then finds.
+ *
+ * @param {object} payload a hydrolog-series/1 readHandoff opened
+ * @returns {{source: "paste"|"file", values: object, csv: string|null}} the section's
+ *   source and form values, and the file's text of a daily series
+ */
+export function statystykaInputs(payload) {
+  if (payload.step === "year") {
+    const values = payload.values.filter((value) => typeof value === "number");
+    return { source: "paste", values: { values: values.map(inputText).join("; ") }, csv: null };
+  }
+  const rows = payload.dates.map((date, index) => {
+    const value = payload.values[index];
+    return `${date},${typeof value === "number" ? String(value) : ""}`;
+  });
+  return { source: "file", values: {}, csv: `date,${payload.variable}\n${rows.join("\n")}\n` };
 }
 
 /**

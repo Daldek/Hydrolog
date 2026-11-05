@@ -6,6 +6,7 @@
 import { ChoiceField } from "../../controls/choice-field.js";
 import { describedBy, FieldLabel, FieldNotes, richText } from "../../controls/field.js";
 import { FileField } from "../../controls/file-field.js";
+import { HandoffImport, HandoffOrigin } from "../../handoff/handoff-panel.js";
 import { SeriesField } from "../../controls/series-field.js";
 import { TextField } from "../../controls/text-field.js";
 import { bytes, plural } from "../../format.js";
@@ -133,7 +134,7 @@ const SHOWN = {
  * @returns {object} the panel's body
  */
 export function DataPanel(props) {
-  const { model, values, source, errors, onValue, onSource, session, preview, periods, stressed, onChosen, seriesMeta, formId, onSubmit } = props;
+  const { model, values, source, received, errors, onValue, onSource, session, preview, periods, stressed, onChosen, seriesMeta, formId, onSubmit } = props;
   const field = (name) => model.fields.find((item) => item.name === name);
   const required = (item) => isRequired(model, item, values);
   const error = (name) => (typeof errors[name] === "object" ? errors[name].text : errors[name]);
@@ -159,6 +160,8 @@ export function DataPanel(props) {
         : null}
       <div class="steps">
         <${Step} num=${1} title=${texts.steps.series} meta=${seriesMeta || rows}>
+          <div class="btn-row"><${HandoffImport} series=${true} /></div>
+          ${received ? html`<${HandoffOrigin} received=${received} small=${true} />` : null}
           <div class="field">
             <span class="label" id=${`${ID}-source-label`}>${texts.source}</span>
             <${Seg}
