@@ -261,7 +261,7 @@ export function ResultsPanel({ run, periods, stressed, spec, reference }) {
         `
       : null}
     <div class="steps">
-      <details class="step" open>
+      <details class="step" data-part="exports">
         <summary>
           <span class="title">${texts.results.export}</span><span class="meta">${COMMAND}</span>
           <svg class="chev" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 5l4 4 4-4" /></svg>

@@ -22,7 +22,7 @@ from playwright.sync_api import Page, expect
 
 from hydrolog.catalog import run_command
 from hydrolog.testing import example_network_document
-from tests.e2e.conftest import Tab, load_network
+from tests.e2e.conftest import Tab, load_network, open_part
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
 BADGE = ".topbar .badge.status"
@@ -268,6 +268,7 @@ def test_keys_choose_nodes_and_a_new_method_marks_the_result_stale(tab: Tab) -> 
 
 def test_the_svg_and_the_network_document_export(tab: Tab) -> None:
     page = open_section(tab)
+    open_part(page, 'section[data-section="siec"]', "exports")
     with page.expect_download() as saved:
         page.locator('[data-export="json-network"]').click()
     document = json.loads(Path(saved.value.path()).read_text(encoding="utf-8"))

@@ -469,7 +469,6 @@ export function SiecHandoff({ state, document, valid, run, stale }) {
   const nodes = document && Array.isArray(document.nodes) ? plural(document.nodes.length, siecTexts.nodeForms) : "";
   return html`
     <div class="handoff-part" data-handoff-part="siec">
-      <h3 class="group-title">${texts.export.title}</h3>
       ${received
         ? html`<${ReceivedResult} received=${received} own=${fresh ? outletResult(result) : null} ownVersion=${version} state=${compared} />`
         : null}

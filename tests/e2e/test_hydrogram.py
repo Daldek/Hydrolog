@@ -52,6 +52,7 @@ from tests.e2e.conftest import (
     Tab,
     input_text,
     kamiennik_inputs,
+    open_part,
     pmaxtp_route,
     seed_hydrogram,
 )
@@ -1337,6 +1338,7 @@ def test_the_hydrograph_exports_csv_json_and_png(tab: Tab, tmp_path: Path) -> No
         page = open_hydrogram(tab)
     envelope = answered.value.json()
     result = envelope["result"]
+    open_part(page, SECTION, "exports")
     buttons = page.locator(f"{RIGHT} .export-row button")
 
     name, data = download(page, buttons.filter(has_text="CSV"))

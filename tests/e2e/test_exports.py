@@ -43,6 +43,7 @@ from tests.e2e.conftest import (
     Tab,
     kamiennik_inputs,
     load_network,
+    open_part,
     pmaxtp_route,
     seed_hydrogram,
 )
@@ -214,7 +215,9 @@ def load_file(page: Page, section: str, path: Path) -> None:
 
 
 def handoff_button(page: Page, section: str, which: str) -> Locator:
-    """Return „Plik przekazania” (``file``) or „Do schowka” (``copy``) of a section."""
+    """Open „Przekazanie” of a section; return its „Plik przekazania” (``file``) or
+    „Do schowka” (``copy``)."""
+    open_part(page, section, "handoff")
     return page.locator(
         f'{section} .view-panel.right [data-handoff-export] [data-handoff="{which}"]'
     )
@@ -541,6 +544,7 @@ def test_hydrografs_handoff_opens_from_the_clipboard_with_its_exact_values(
     expect(page.locator(f"{HG} [data-handoff-received]")).to_have_attribute(
         "data-handoff-received", "same"
     )
+    expect(page.locator(f"{HG} [data-handoff-received]")).to_be_visible()
     assert compared(page, HG) == {
         "version": ["Hydrolog 1.0.0.dev0", f"Hydrolog {hydrolog.__version__}"],
         "q": ["168,91 m³/s", "168,91 m³/s"],
@@ -724,6 +728,7 @@ def test_a_network_of_two_subcatchments_opens_in_siec_beside_hydrografs_result(
     ).to_have_text("Z Hydrografa: Kamiennik — dwie zlewnie")
     received = page.locator(f"{SIEC} [data-handoff-received]")
     expect(received).to_have_attribute("data-handoff-received", "none")
+    expect(received).to_be_visible()  # „Przekazanie” opens itself for a hand-off
 
     with page.expect_response(lambda answer: "/api/run/route/network" in answer.url):
         page.get_by_role("button", name="Oblicz sieć").click()
@@ -826,6 +831,7 @@ def test_the_markdown_report_downloads_from_report_generate(tab: Tab) -> None:
     with tab.page.expect_request(lambda request: RUN in request.url) as first:
         page = open_hydrogram(tab)
     options: dict[str, Any] = first.value.post_data_json or {}
+    open_part(page, HG, "exports")
     button = page.locator(f"{HG} .view-panel.right .export-row button", has_text="MD")
     expect(button).to_have_text("MDRaport")
     with page.expect_request(lambda request: REPORT in request.url) as asked:
@@ -870,6 +876,7 @@ def test_the_print_view_is_linked_and_fits_a4(new_tab: Any) -> None:
         }"""
     )
     right = f"{HG} .view-panel.right"
+    open_part(page, HG, "exports")
     page.locator(f"{right} .export-row button", has_text="druku").click()
     assert page.evaluate("() => window.printed") == [
         {"theme": "light", "printing": "true", "closed": 0}
@@ -881,6 +888,7 @@ def test_the_print_view_is_linked_and_fits_a4(new_tab: Any) -> None:
     page.goto(tab.base + "#siec")
     load_network(page)
     expect(page.locator("svg.schem g.node")).to_have_count(8)
+    open_part(page, SIEC, "exports")
     page.locator('[data-export="print"]').click()
     # The same document (only the hash changed): Sieć's „Raport do druku” printed too
     assert (

@@ -18,7 +18,7 @@ from typing import Any
 from playwright.sync_api import Page, Response, expect
 
 from hydrolog.catalog import format_command, parse_command, run_command
-from tests.e2e.conftest import Tab
+from tests.e2e.conftest import Tab, open_part
 
 COMMAND = "stats flood-frequency"
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
@@ -222,7 +222,7 @@ def test_pasted_maxima_run_and_go_to_the_comparison(tab: Tab) -> None:
     right = page.locator(RIGHT)
     expect(right.locator('.kpi[data-key="q-50"]')).to_have_class(re.compile(r"\bhi\b"))
     expect(page.locator(".crumb-context")).to_have_text("wklejony szereg · 12 lat")
-
+    open_part(page, SECTION, "exports")
     hand = right.get_by_role("button", name="Do porównania")
     hand.click()
     expect(page.locator(".toast")).to_contain_text("Q 2% = ")
