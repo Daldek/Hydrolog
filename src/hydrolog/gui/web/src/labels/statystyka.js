@@ -22,6 +22,7 @@ export const statystyka = {
     loading: "Odczyt kolumn pliku…",
     missing: "Pliku {name} nie ma już w sesji: wczytaj go ponownie.",
     unreadable: "Nie udało się odczytać kolumn pliku: {message}",
+    session: "plik sesji · {size}",
   },
   valueColumn: "Kolumna wartości",
   dateColumn: "Kolumna dat",
