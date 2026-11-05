@@ -796,8 +796,6 @@ function HydrographStep(props) {
         ? html`
             <div class="form">
               ${watershedRow("Lc_km")}
-              ${numberRow("snyder_length_km", { placeholder: isEmpty(fields.channel_length_km) ? "" : t(texts.fromWatershed, { value: fields.channel_length_km }) })}
-              ${numberRow("snyder_centroid_length_km", { placeholder: isEmpty(fields.Lc_km) ? "" : t(texts.fromWatershed, { value: fields.Lc_km }) })}
               ${numberRow("snyder_ct", { placeholder: "1,5", keyText: t(texts.keyDefault, { key: "snyder_ct", value: "1,5" }) })}
               ${numberRow("snyder_cp", { placeholder: "0,6", keyText: t(texts.keyDefault, { key: "snyder_cp", value: "0,6" }) })}
             </div>
