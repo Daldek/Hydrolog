@@ -89,8 +89,8 @@ Enable easy data exchange between Hydrograf (GIS spatial analysis) and Hydrolog 
     "forest_pct": {"type": "number", "minimum": 0, "maximum": 100, "description": "Percentage of forested area [%] (Nash)"},
 
     "__comment_v100": "Optional fields added in v1.0.0 (ADR-0019)",
-    "flow_path_length_km": {"type": "number", "exclusiveMinimum": 0, "description": "Length of the longest flow path, from the watershed divide to the outlet [km] (Kirpich, NRCS, Kerby-Kirpich)"},
-    "flow_path_slope_m_per_m": {"type": "number", "minimum": 0, "description": "Slope of the longest flow path: (elevation of its head on the divide - outlet elevation) / its length [m/m] (Kirpich, Kerby-Kirpich)"}
+    "flow_path_length_km": {"type": "number", "exclusiveMinimum": 0, "description": "Length of the longest flow path, from the hydraulically most distant point of the watershed (usually on the divide, possibly on a ridge inside the watershed) to the outlet [km] (Kirpich, NRCS, Kerby-Kirpich)"},
+    "flow_path_slope_m_per_m": {"type": "number", "minimum": 0, "description": "Slope of the longest flow path: (elevation of its head - outlet elevation) / its length [m/m] (Kirpich, Kerby-Kirpich)"}
   }
 }
 ```

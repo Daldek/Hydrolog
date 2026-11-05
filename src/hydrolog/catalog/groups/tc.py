@@ -72,14 +72,16 @@ COMMANDS: tuple[Command, ...] = (
         summary="Compute time of concentration with the Kirpich formula.",
         description_pl=(
             "Czas koncentracji tc [min, h] wzorem Kirpicha z długości [km] i spadku "
-            "[m/m] najdłuższej drogi spływu, od działu wodnego do przekroju. Użyj dla "
+            "[m/m] najdłuższej drogi spływu, od punktu najdalszego hydraulicznie do "
+            "przekroju. Użyj dla "
             "małych zlewni rolniczych jak te z jego danych; dla spływu "
             "powierzchniowego z korytem użyj `tc kerby-kirpich`. Spadek spoza danych "
             "daje uwagę (`typical_ranges`)."
         ),
         description=(
             "Kirpich tc [min, h] from the length [km] and slope [m/m] of the longest "
-            "flow path, divide to outlet. Use for small agricultural watersheds "
+            "flow path, most distant point to outlet. Use for small agricultural "
+            "watersheds "
             "like those of his data; for overland plus channel flow use "
             "`tc kerby-kirpich`. A slope outside the data is a notice "
             "(`typical_ranges`)."
@@ -90,12 +92,14 @@ COMMANDS: tuple[Command, ...] = (
                 name="length_km",
                 type="number",
                 description_pl=(
-                    "Długość najdłuższej drogi spływu, wzdłuż cieku od przekroju "
-                    "zamykającego do najdalszego punktu na dziale wodnym [km]; > 0."
+                    "Długość najdłuższej drogi spływu, od przekroju zamykającego do "
+                    "punktu zlewni najdalszego hydraulicznie (zwykle na dziale wodnym, "
+                    "może być na grzbiecie wewnątrz zlewni) [km]; > 0."
                 ),
                 description=(
-                    "Length of the longest flow path, along the watercourse from the "
-                    "outlet to the most remote point on the divide [km]; > 0."
+                    "Length of the longest flow path, from the outlet to the "
+                    "hydraulically most distant point of the watershed (usually on "
+                    "the divide, possibly on a ridge inside it) [km]; > 0."
                 ),
                 required=True,
                 exclusive_minimum=0,
@@ -105,12 +109,12 @@ COMMANDS: tuple[Command, ...] = (
                 name="slope_m_per_m",
                 type="number",
                 description_pl=(
-                    "Spadek tej drogi: wysokość jej początku na dziale wodnym minus "
+                    "Spadek tej drogi: wysokość tego punktu minus "
                     "wysokość przekroju, przez jej długość [m/m] (nie w procentach); "
                     f"> 0 ({typically('kirpich', 'slope_m_per_m', 'pl')})."
                 ),
                 description=(
-                    "Slope of that path: the elevation of its head on the divide "
+                    "Slope of that path: the elevation of that point "
                     "minus the outlet elevation, over its length [m/m] (not percent); "
                     f"> 0 ({typically('kirpich', 'slope_m_per_m')})."
                 ),
@@ -170,12 +174,12 @@ COMMANDS: tuple[Command, ...] = (
                 name="length_km",
                 type="number",
                 description_pl=(
-                    "Długość spływu: najdłuższa droga spływu od działu wodnego do "
-                    "przekroju zamykającego [km]; > 0."
+                    "Długość spływu: najdłuższa droga spływu od punktu zlewni "
+                    "najdalszego hydraulicznie do przekroju zamykającego [km]; > 0."
                 ),
                 description=(
-                    "Flow length: the longest flow path from the watershed divide to "
-                    "the outlet [km]; > 0."
+                    "Flow length: the longest flow path from the hydraulically most "
+                    "distant point of the watershed to the outlet [km]; > 0."
                 ),
                 required=True,
                 exclusive_minimum=0,
@@ -540,14 +544,16 @@ COMMANDS: tuple[Command, ...] = (
                 name="flow_path_length_km",
                 type="number",
                 description_pl=(
-                    "Długość najdłuższej drogi spływu od działu wodnego do przekroju "
-                    "zamykającego, z odcinkiem spływu po stoku [km]; większa niż "
+                    "Długość najdłuższej drogi spływu od punktu zlewni najdalszego "
+                    "hydraulicznie do przekroju zamykającego, z odcinkiem spływu po "
+                    "stoku [km]; większa niż "
                     "`overland_length_km` "
                     f"({typically('kerby_kirpich', 'flow_path_length_km', 'pl')})."
                 ),
                 description=(
-                    "Length of the longest flow path from the watershed divide to "
-                    "the outlet, the overland segment included [km]; greater than "
+                    "Length of the longest flow path from the hydraulically most "
+                    "distant point of the watershed to the outlet, the overland "
+                    "segment included [km]; greater than "
                     "`overland_length_km` "
                     f"({typically('kerby_kirpich', 'flow_path_length_km')})."
                 ),
@@ -559,14 +565,14 @@ COMMANDS: tuple[Command, ...] = (
                 name="flow_path_slope_m_per_m",
                 type="number",
                 description_pl=(
-                    "Spadek najdłuższej drogi spływu: wysokość jej początku na "
-                    "dziale wodnym minus wysokość przekroju, przez jej długość "
+                    "Spadek najdłuższej drogi spływu: wysokość jej początku "
+                    "minus wysokość przekroju, przez jej długość "
                     "[m/m]; > 0 "
                     f"({typically('kerby_kirpich', 'flow_path_slope_m_per_m', 'pl')})."
                 ),
                 description=(
-                    "Slope of the longest flow path: the elevation of its head on "
-                    "the divide minus the outlet elevation, over its length [m/m]; "
+                    "Slope of the longest flow path: the elevation of its head "
+                    "minus the outlet elevation, over its length [m/m]; "
                     f"> 0 ({typically('kerby_kirpich', 'flow_path_slope_m_per_m')})."
                 ),
                 required=True,

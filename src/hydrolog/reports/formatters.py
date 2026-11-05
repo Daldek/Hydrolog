@@ -189,8 +189,8 @@ class FormulaRenderer:
         Parameters
         ----------
         length_km : float
-            Length of the longest flow path, from the most remote point on the
-            divide to the outlet [km].
+            Length of the longest flow path, from the hydraulically most distant
+            point of the watershed to the outlet [km].
         slope_m_per_m : float
             Slope of the longest flow path [m/m].
         tc_min : float
@@ -227,7 +227,8 @@ class FormulaRenderer:
         Parameters
         ----------
         length_km : float
-            Flow length: the longest flow path from the divide to the outlet [km].
+            Flow length: the longest flow path from the most distant point to the outlet
+            [km].
         slope_percent : float
             Average land slope of the watershed [%].
         cn : int
@@ -406,7 +407,8 @@ class FormulaRenderer:
         retardance : float
             Kerby retardance roughness coefficient [-].
         fp_length_km : float
-            Length of the longest flow path, from the divide to the outlet [km].
+            Length of the longest flow path, from the most distant point to the
+            outlet [km].
         fp_slope_m_per_m : float
             Slope of the longest flow path [m/m].
         tc_ov_min : float
@@ -437,8 +439,9 @@ class FormulaRenderer:
             "**Składnik przepływu korytowego (Kirpich):**\n\n"
             "Koryto to najdłuższa droga spływu bez odcinka spływu powierzchniowego, "
             f"$L_{{ch}} = L - L_{{ov}} = {fp_length_km:.2f} - {ov_length_km:.3f} = "
-            f"{ch_length_km:.2f}$ km, ze spadkiem całej drogi od działu wodnego do "
-            f"przekroju zamykającego, $S$ = {fp_slope_m_per_m:.4f} m/m.\n\n"
+            f"{ch_length_km:.2f}$ km, ze spadkiem całej drogi od punktu najdalszego "
+            "hydraulicznie do przekroju zamykającego, "
+            f"$S$ = {fp_slope_m_per_m:.4f} m/m.\n\n"
             "$$t_{ch} = 0.0663 \\cdot L_{ch}^{0.77}"
             " \\cdot S^{-0.385} \\text{ [h]}$$\n\n"
             f"$$t_{{ch}} = 0.0663 \\cdot {ch_length_km:.2f}^{{0.77}} \\cdot "

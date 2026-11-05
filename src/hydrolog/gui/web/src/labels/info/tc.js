@@ -23,14 +23,14 @@ export const tcInfo = {
       {
         symbol: "<math><mi>L</mi></math>",
         text:
-          "długość najdłuższej drogi spływu, wzdłuż cieku od przekroju zamykającego do najdalszego " +
-          "punktu na dziale wodnym; ze zlewni <code>flow_path_length_km</code>",
+          "długość najdłuższej drogi spływu, od przekroju zamykającego do punktu zlewni najdalszego " +
+          "hydraulicznie (zwykle na dziale wodnym, może być na grzbiecie wewnątrz zlewni); ze zlewni <code>flow_path_length_km</code>",
         unit: "km",
       },
       {
         symbol: "<math><mi>S</mi></math>",
         text:
-          "spadek tej drogi (nie w procentach): wysokość jej początku na dziale wodnym minus wysokość " +
+          "spadek tej drogi (nie w procentach): wysokość tego punktu minus wysokość " +
           "przekroju, przez L; ze zlewni <code>flow_path_slope_m_per_m</code>",
         unit: "m/m",
       },
@@ -68,7 +68,7 @@ export const tcInfo = {
       {
         symbol: "<math><mi>L</mi></math>",
         text:
-          "długość spływu: najdłuższa droga spływu od działu wodnego do przekroju zamykającego, we " +
+          "długość spływu: najdłuższa droga spływu od punktu zlewni najdalszego hydraulicznie do przekroju zamykającego, we " +
           "wzorze w metrach: 1000 × <code>flow_path_length_km</code>",
         unit: "m",
       },
@@ -301,14 +301,14 @@ export const tcInfo = {
       {
         symbol: "<math><mi>L</mi></math>",
         text:
-          "długość najdłuższej drogi spływu od działu wodnego do przekroju zamykającego, z odcinkiem po " +
+          "długość najdłuższej drogi spływu od punktu zlewni najdalszego hydraulicznie do przekroju zamykającego, z odcinkiem po " +
           "stoku; ze zlewni <code>flow_path_length_km</code>, większa niż L<sub>sp</sub>",
         unit: "km",
       },
       {
         symbol: "<math><mi>S</mi></math>",
         text:
-          "spadek całej tej drogi: wysokość jej początku na dziale wodnym minus wysokość przekroju, " +
+          "spadek całej tej drogi: wysokość jej początku (punktu najdalszego hydraulicznie) minus wysokość przekroju, " +
           "przez L; ze zlewni <code>flow_path_slope_m_per_m</code>",
         unit: "m/m",
       },

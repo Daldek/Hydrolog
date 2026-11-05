@@ -65,7 +65,7 @@ def generate_tc_section(
     overland_slope_m_per_m : float, optional
         Slope of the terrain the overland flow runs on [m/m] (for Kerby-Kirpich).
     flow_path_length_km : float, optional
-        Length of the longest flow path, from the divide to the outlet, the
+        Length of the longest flow path, from the most distant point to the outlet, the
         overland segment included [km] (for Kerby-Kirpich).
     flow_path_slope_m_per_m : float, optional
         Slope of the longest flow path [m/m] (for Kerby-Kirpich).
