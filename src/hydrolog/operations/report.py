@@ -175,7 +175,7 @@ def _write(content: str, output: Path) -> None:
     """Write the report atomically (written aside, then renamed)."""
     try:
         with atomic_output(output) as temporary:
-            temporary.write_text(content, encoding="utf-8")
+            temporary.write_text(content, encoding="utf-8", newline="\n")
     except OSError as exc:
         raise OutputError(
             f"Cannot write the report {output}: {exc}",

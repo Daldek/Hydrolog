@@ -25,9 +25,4 @@ jobs:
           uv run --no-sync playwright install --with-deps chromium
       - name: Debug tests
         shell: bash
-        run: >-
-          uv run --no-sync pytest -p no:cacheprovider -v -s --tb=short
-          tests/e2e/test_polecenia.py::test_a_command_chosen_in_the_list_is_in_the_hash_and_a_hash_opens_it
-          tests/e2e/test_zz_debug.py::test_zz_hash_exact
-          tests/e2e/test_smoke.py tests/e2e/test_polecenia.py
-          ${{ matrix.os == 'windows-latest' && 'tests/e2e' || '' }}
+        run: uv run --no-sync pytest -p no:cacheprovider -q --tb=short tests/e2e

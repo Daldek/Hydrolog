@@ -250,6 +250,15 @@ def test_a_command_chosen_in_the_list_is_in_the_hash_and_a_hash_opens_it(
     tab: Tab,
 ) -> None:
     page = open_section(tab)
+    page.evaluate(
+        "window.__h = []; addEventListener('hashchange', "
+        "e => window.__h.push(['change', performance.now()|0, "
+        "e.newURL.split('#')[1], location.hash]));"
+        "const r = history.replaceState.bind(history);"
+        "history.replaceState = (s, t, u) => { window.__h.push(['replace', "
+        "performance.now()|0, String(u), new Error().stack.split('\\n').slice(1, 8)]);"
+        " r(s, t, u); };"
+    )
     lag = page.locator(f'{POL} .cmd-item[data-command="route lag"] button')
     lag.click()
     expect(page.locator(HEAD)).to_have_text("route lag")
@@ -257,8 +266,16 @@ def test_a_command_chosen_in_the_list_is_in_the_hash_and_a_hash_opens_it(
     expect(lag).to_have_attribute("aria-current", "true")
     expect(page.locator(".crumb-context")).to_contain_text("route lag")
 
+    page.evaluate("window.__h.push(['set', performance.now()|0])")
     page.evaluate("location.hash = '#polecenia/scs/effective'")
-    expect(page.locator(HEAD)).to_have_text("scs effective")
+    try:
+        expect(page.locator(HEAD)).to_have_text("scs effective", timeout=5000)
+    except AssertionError:
+        print("DEBUGHASH", page.evaluate("location.hash"))
+        print("DEBUGHASH", json.dumps(page.evaluate("window.__h"), indent=1))
+        print("DEBUGHASH", page.evaluate("JSON.stringify(sessionStorage)")[:600])
+        print("DEBUGHASH", page.evaluate("JSON.stringify(localStorage)")[:600])
+        raise
     expect(
         page.locator(f'{POL} .cmd-item[data-command="scs effective"] button')
     ).to_have_attribute("aria-current", "true")
