@@ -577,15 +577,123 @@ def _schematic_document(schema_id: str) -> dict[str, Any]:
     }
 
 
+def _series_document(schema_id: str) -> dict[str, Any]:
+    """Return the schema of a station's series handed to the statistics (ADR-0020)."""
+    values = {
+        "description": (
+            "The values in the order of `dates` or `years`, the same length; `null` "
+            "for a missing value."
+        ),
+        "type": "array",
+        "minItems": 1,
+        "items": {"type": ["number", "null"]},
+    }
+    common = {
+        "schema": {"const": schema_id},
+        "name": {
+            "description": "What the series is, for people (the station and variable).",
+            "type": "string",
+            "minLength": 1,
+        },
+        "variable": {
+            "description": "The variable as its provider names it (`Q`, `H`).",
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
+        },
+        "unit": {"description": "Its unit (`m3/s`, `cm`).", "type": "string"},
+        "values": values,
+    }
+    return {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": f"{BASE}/hydrolog-series-1.schema.json",
+        "title": schema_id,
+        "description": (
+            "A series of one variable handed to the statistics (ADR-0020), the payload "
+            "of a `nogat-handoff/1` from Archiwista: the daily values of a station "
+            "(`step` `day`, with `dates`), whose annual extremes the statistics find, "
+            "or an annual extreme of each year (`step` `year`, with `years`, "
+            "`statistic` and `year_type`). Unknown fields are refused."
+        ),
+        "oneOf": [
+            {
+                "title": "daily values",
+                "type": "object",
+                "required": [
+                    "schema",
+                    "name",
+                    "variable",
+                    "unit",
+                    "step",
+                    "dates",
+                    "values",
+                ],
+                "properties": {
+                    **common,
+                    "step": {"const": "day"},
+                    "dates": {
+                        "description": "The days, ISO 8601 (`2024-03-02`), increasing.",
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {
+                            "type": "string",
+                            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+                        },
+                    },
+                },
+                "additionalProperties": False,
+            },
+            {
+                "title": "annual extremes",
+                "type": "object",
+                "required": [
+                    "schema",
+                    "name",
+                    "variable",
+                    "unit",
+                    "step",
+                    "statistic",
+                    "year_type",
+                    "years",
+                    "values",
+                ],
+                "properties": {
+                    **common,
+                    "step": {"const": "year"},
+                    "statistic": {
+                        "description": "Which extreme of the year: `max` or `min`.",
+                        "enum": ["max", "min"],
+                    },
+                    "year_type": {
+                        "description": (
+                            "How the years are numbered: `hydrological` (1 Nov to "
+                            "31 Oct, named after the year it ends in) or `calendar`."
+                        ),
+                        "enum": ["hydrological", "calendar"],
+                    },
+                    "years": {
+                        "description": "The years, increasing.",
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {"type": "integer"},
+                    },
+                },
+                "additionalProperties": False,
+            },
+        ],
+    }
+
+
 def _hand_written() -> dict[str, dict[str, Any]]:
     plan_id = "hydrolog-plan/1"
     list_id = "hydrolog-command-list/1"
     network_id = "hydrolog-network/1"
+    series_id = "hydrolog-series/1"
     schematic_id = SCHEMATIC_SCHEMA
     serve_id = "hydrolog-gui-serve/1"
     pmaxtp_id = "hydrolog-precip-pmaxtp/1"
     return {
         network_id: _network_document(network_id),
+        series_id: _series_document(series_id),
         schematic_id: _schematic_document(schematic_id),
         serve_id: {
             "$schema": "https://json-schema.org/draft/2020-12/schema",

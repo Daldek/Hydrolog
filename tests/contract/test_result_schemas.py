@@ -29,6 +29,7 @@ COMMANDS = data_commands()
 PLAN = "hydrolog-plan/1"
 NETWORK_DOCUMENT = "hydrolog-network/1"
 SCHEMATIC_DOCUMENT = "hydrolog-network-schematic/1"
+SERIES_DOCUMENT = "hydrolog-series/1"
 EXAMPLES = [
     pytest.param(command, index, id=f"{command.name}#{index}")
     for command in COMMANDS
@@ -71,7 +72,7 @@ def _repository_root(monkeypatch):
 
 def test_every_result_document_of_the_catalog_has_a_shipped_schema():
     ids = {command.result_schema for command in COMMANDS}
-    ids |= {PLAN, NETWORK_DOCUMENT, SCHEMATIC_DOCUMENT}
+    ids |= {PLAN, NETWORK_DOCUMENT, SCHEMATIC_DOCUMENT, SERIES_DOCUMENT}
     ids.discard(COMMANDS_SCHEMA)  # the Nogat schema commands-1 describes it
     shipped = {
         entry.name for entry in SHIPPED.iterdir() if entry.name.endswith(".schema.json")
@@ -211,6 +212,36 @@ def test_the_network_document_schema_is_valid_and_names_itself():
     assert schema["$id"].endswith("/" + _file_name(NETWORK_DOCUMENT))
     assert schema["properties"]["schema"] == {"const": NETWORK_DOCUMENT}
     assert schema["required"] == ["schema", "nodes"]
+
+
+def test_the_series_document_takes_days_or_years_and_nothing_between():
+    schema = _schema(SERIES_DOCUMENT)
+    Draft202012Validator.check_schema(schema)
+    assert schema["title"] == SERIES_DOCUMENT
+    assert schema["$id"].endswith("/" + _file_name(SERIES_DOCUMENT))
+    check = Draft202012Validator(schema)
+    days = {
+        "schema": SERIES_DOCUMENT,
+        "name": "Raba — Q",
+        "variable": "Q",
+        "unit": "m3/s",
+        "step": "day",
+        "dates": ["2024-03-01", "2024-03-02"],
+        "values": [12.5, None],
+    }
+    years = {
+        **{key: value for key, value in days.items() if key != "dates"},
+        "step": "year",
+        "statistic": "max",
+        "year_type": "hydrological",
+        "years": [2023, 2024],
+    }
+    assert list(check.iter_errors(days)) == []
+    assert list(check.iter_errors(years)) == []
+    # Days need dates, years need their statistic, and a day's series has no years
+    assert list(check.iter_errors({**days, "step": "year"}))
+    assert list(check.iter_errors({k: v for k, v in years.items() if k != "statistic"}))
+    assert list(check.iter_errors({**days, "years": [2024]}))
 
 
 def test_the_fixture_network_and_the_inline_example_obey_the_network_schema():

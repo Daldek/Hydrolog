@@ -23,11 +23,24 @@ export const handoffLabels = {
     reading: "Wczytywanie przekazania…",
     refused: "Nie wczytano przekazania",
     more: "… i {count} więcej",
-    schemaFailed: "Nie udało się pobrać schematu sieci: {message}",
+    schemaFailed: "Nie udało się pobrać schematu przekazania: {message}",
     readFailed: "Nie udało się odczytać {name}: {message}",
     empty: "Schowek jest pusty.",
     opened: "Wczytano przekazanie „{subject}” ({producer})",
     openedSiec: "Wczytano przekazanie „{subject}” ({producer}) w Sieci i trasowaniu: {nodes}",
+    openedStatystyka: "Wczytano przekazanie „{subject}” ({producer}) w Statystyce przepływów: {values}",
+    uploadFailed: "Nie udało się zapisać szeregu w plikach sesji: {message}",
+  },
+  /** „Wczytaj z Archiwisty” in Statystyka przepływów: the same reading, a station's series. */
+  loadSeries: {
+    button: "Wczytaj z Archiwisty",
+    title:
+      "Wczytaj przekazanie nogat-handoff/1 z Archiwisty: szereg dobowy stacji albo maksima roczne otworzą się tutaj",
+    menu: "Wczytaj z Archiwisty",
+    fileSub: "„Plik przekazania” z karty stacji w Archiwiście",
+    pasteSub: "„Kopiuj do Hydrologa” na karcie stacji w Archiwiście",
+    pasteHint:
+      "Przeglądarka nie dała dostępu do schowka: wklej w pole poniżej (Ctrl+V) przekazanie skopiowane przyciskiem „Kopiuj do Hydrologa” na karcie stacji w Archiwiście albo treść jego „Pliku przekazania”.",
   },
   problems: {
     notJson: "To nie jest JSON: {message}",
@@ -35,10 +48,16 @@ export const handoffLabels = {
     notHandoff: "To nie jest przekazanie nogat-handoff/1 (schema: {schema}).",
     network: "To jest sieć hydrolog-network/1: wczytaj ją w Sieci i trasowaniu przyciskiem „Plik sieci…”.",
     watershed: "To jest plik zlewni: wczytaj go w Hydrogramie zlewni przyciskiem „Plik zlewni…”.",
-    payloadKind: "Przekazanie niesie {schema}; Hydrolog przyjmuje hydrolog-network/1.",
+    payloadKind: "Przekazanie niesie {schema}; Hydrolog przyjmuje hydrolog-network/1 i hydrolog-series/1.",
+    seriesLength: "Szereg ma {keys} dat albo lat i {values} wartości: powinno być tyle samo.",
+    seriesEmpty: "Szereg nie ma żadnej wartości.",
+    seriesMinima:
+      "To są minima roczne: Statystyka przepływów liczy kwantyle przepływów maksymalnych; niskie przepływy liczy polecenie stats low-flow w Poleceniach.",
     stepMismatch: "Krok sieci {network} min różni się od kroku szeregu opadu zlewni {id} ({series} min).",
     root: "dokument",
   },
+  /** Forms of „wartość” after a number. */
+  valueForms: ["wartość", "wartości", "wartości"],
   /** Words of the checks against a JSON Schema, after the path of the value. */
   schema: {
     required: "brak pola „{name}”",
