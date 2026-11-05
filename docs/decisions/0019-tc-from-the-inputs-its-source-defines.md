@@ -46,8 +46,10 @@ be timed in Hydrolog with Hydrograf's inputs: Hydrograf's ADR-068 hands tc over 
 ## Decision
 
 - **Two fields of `WatershedParameters`** (optional, appended to the dataclass; in `from_dict`, the checks and the
-  `watershed` of `hydrolog-network/1`): `flow_path_length_km`, the length of the longest flow path from the watershed
-  divide to the outlet along the flow [km], > 0; and `flow_path_slope_m_per_m`, the elevation of its head on the divide
+  `watershed` of `hydrolog-network/1`): `flow_path_length_km`, the length of the longest flow path from the hydraulically
+  most distant point of the watershed (the cell with the greatest flow distance to the outlet; usually on the divide, but
+  possibly on a ridge between two valleys inside the watershed; NEH 630 ch. 15 p. 15-5, Fang et al. 2005 eq. 3.14) to the
+  outlet along the flow [km], > 0; and `flow_path_slope_m_per_m`, the elevation of that point
   minus the outlet elevation, over that length [m/m], ≥ 0. A slope, not the elevation of the head: it is what the
   formulas take, like the other `*_slope_m_per_m` fields. The names say what the field is; Hydrograf's
   `hydraulic_length_km` is mapped to the first.

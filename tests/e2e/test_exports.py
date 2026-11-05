@@ -440,7 +440,12 @@ def test_nogats_example_opens_from_the_clipboard_and_matches_its_result(
     left = f"{HG} .view-panel.left"
     expect(page.locator(f'{left} [aria-invalid="true"]')).to_have_count(0)
     expect(page.locator("#hg-pmaxtp_depth")).to_have_value("105")
-    sent = stored_options(page)
+    # The fetched depth reaches the stored inputs after the field: wait for it
+    for _ in range(50):
+        sent = stored_options(page)
+        if "total_mm" in sent:
+            break
+        page.wait_for_timeout(100)
     assert sent == {
         "watershed": {"name": "Kamiennik — Świerzawa", **node["watershed"]},
         "amc": "II",

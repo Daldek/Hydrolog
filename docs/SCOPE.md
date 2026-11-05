@@ -103,7 +103,7 @@ Hydrolog is analogous to **Kartograf** (spatial data download) and **Obserwator*
 - Kerby-Kirpich method: `tc = t_overland(Kerby) + t_channel(Kirpich)`
 
 **Input parameters** (each method takes those its source defines, ADR-0019):
-- Length and slope of the longest flow path, from the divide to the outlet [km, m/m] (Kirpich, NRCS, Kerby-Kirpich)
+- Length and slope of the longest flow path, from the hydraulically most distant point to the outlet [km, m/m] (Kirpich, NRCS, Kerby-Kirpich)
 - Main channel length [km] and mean elevation above the outlet [m] (Giandotti)
 - Average land slope of the catchment [m/m] and CN (NRCS)
 - Overland flow length and slope, C or N (FAA, Kerby, Kerby-Kirpich)
@@ -146,7 +146,7 @@ Hydrolog is analogous to **Kartograf** (spatial data download) and **Obserwator*
 - `forest_pct` - percentage of forest cover [%] (Nash)
 
 **WatershedParameters - fields added in v1.0.0 (ADR-0019):**
-- `flow_path_length_km` - length of the longest flow path, from the watershed divide to the outlet [km] (Kirpich, NRCS, Kerby-Kirpich)
+- `flow_path_length_km` - length of the longest flow path, from the hydraulically most distant point of the watershed to the outlet [km] (Kirpich, NRCS, Kerby-Kirpich)
 - `flow_path_slope_m_per_m` - slope of that path, (elevation of its head - outlet elevation) / length [m/m] (Kirpich, Kerby-Kirpich)
 
 ---

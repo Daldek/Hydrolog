@@ -78,7 +78,7 @@ def generate_watershed_section(
     include_shape_indicators : bool, optional
         Include shape indicators section, by default True.
     flow_path_length_km : float, optional
-        Length of the longest flow path, from the divide to the outlet [km].
+        Length of the longest flow path, from the most distant point to the outlet [km].
     flow_path_slope_m_per_m : float, optional
         Slope of the longest flow path [m/m].
 

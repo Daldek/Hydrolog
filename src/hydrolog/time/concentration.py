@@ -199,7 +199,8 @@ class ConcentrationTime:
         ----------
         length_km : float
             Flow length: the longest path along which water flows from the
-            watershed divide to the outlet [km]. Must be positive.
+            hydraulically most distant point of the watershed to the outlet [km].
+            Must be positive.
         slope_m_per_m : float
             Average land slope of the watershed Y [m/m], not the slope of the flow
             path. Must be positive.
@@ -674,11 +675,12 @@ class ConcentrationTime:
 
         flow_path_length_km : float
             Length of the main channel as the method defines it: the primary
-            (longest) flow path from the watershed divide to the outlet, the
+            (longest) flow path from the hydraulically most distant point of the
+            watershed (usually on the divide) to the outlet, the
             overland segment included [km]. Must be greater than
             ``overland_length_km``: the channel segment is the difference.
         flow_path_slope_m_per_m : float
-            Slope of that path: the elevation at the divide minus the elevation at
+            Slope of that path: the elevation of its head minus the elevation at
             the outlet, over ``flow_path_length_km`` [m/m]. Must be positive.
 
         Returns

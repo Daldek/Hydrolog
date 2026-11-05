@@ -299,7 +299,7 @@ class TestTimeOfConcentration:
             "missing": ["flow_path_length_km", "flow_path_slope_m_per_m"],
         }
         assert caught.value.hint.startswith(
-            "The longest flow path runs from the watershed divide to the outlet"
+            "The longest flow path runs from the hydraulically most distant point"
         )
 
     def test_a_mean_elevation_of_zero_is_a_value_not_a_missing_one(self):

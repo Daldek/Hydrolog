@@ -81,8 +81,8 @@ def tc_kirpich(*, length_km: float, slope_m_per_m: float) -> OperationOutput:
     Parameters
     ----------
     length_km : float
-        Length of the longest flow path, from the most remote point on the
-        watershed divide to the outlet [km], > 0.
+        Length of the longest flow path, from the hydraulically most distant
+        point of the watershed (usually on the divide) to the outlet [km], > 0.
     slope_m_per_m : float
         Slope of that path: the elevation of its head minus the outlet elevation,
         over its length [m/m], > 0.
@@ -115,8 +115,8 @@ def tc_nrcs(*, length_km: float, slope_m_per_m: float, cn: float) -> OperationOu
     Parameters
     ----------
     length_km : float
-        Flow length: the longest flow path from the watershed divide to the outlet
-        [km], > 0.
+        Flow length: the longest flow path from the hydraulically most distant
+        point of the watershed to the outlet [km], > 0.
     slope_m_per_m : float
         Average land slope of the watershed Y [m/m] (not the slope of the flow
         path), > 0.
@@ -281,10 +281,11 @@ def tc_kerby_kirpich(
     retardance : float
         Kerby retardance coefficient N, > 0.
     flow_path_length_km : float
-        Length of the longest flow path, from the watershed divide to the outlet,
-        the overland segment included [km], > ``overland_length_km``.
+        Length of the longest flow path, from the hydraulically most distant point
+        of the watershed to the outlet, the overland segment included [km],
+        > ``overland_length_km``.
     flow_path_slope_m_per_m : float
-        Slope of that path: the elevation of its head on the divide minus the
+        Slope of that path: the elevation of its head minus the
         outlet elevation, over its length [m/m], > 0.
 
     Returns

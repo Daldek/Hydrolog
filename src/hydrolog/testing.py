@@ -229,8 +229,8 @@ def watershed(
         Curve number; ``None`` leaves it out (a model that needs it then refuses the
         subcatchment, as it refuses one without the fields of its ``tc_method``).
     flow_path_length_km, flow_path_slope_m_per_m : float, optional
-        Length [km] and slope [m/m] of the longest flow path, from the watershed
-        divide to the outlet; ``None`` leaves it out.
+        Length [km] and slope [m/m] of the longest flow path, from the hydraulically
+        most distant point of the watershed to the outlet; ``None`` leaves it out.
     **options
         The other fields of ``WatershedParameters`` (``name``, ``crs``...).
 

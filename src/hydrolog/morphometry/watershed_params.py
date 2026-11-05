@@ -56,9 +56,10 @@ _TC_MISSING_HINTS: dict[str, str] = {"faa": _OVERLAND_HINT, "kerby": _OVERLAND_H
 
 _FLOW_PATH_FIELDS = ("flow_path_length_km", "flow_path_slope_m_per_m")
 _FLOW_PATH_HINT = (
-    "The longest flow path runs from the watershed divide to the outlet: "
-    "flow_path_length_km is its length [km], flow_path_slope_m_per_m the elevation "
-    "of its head on the divide minus the outlet elevation, over that length [m/m]."
+    "The longest flow path runs from the hydraulically most distant point of the "
+    "watershed (usually on the divide, possibly on a ridge inside the watershed) to "
+    "the outlet: flow_path_length_km is its length [km], flow_path_slope_m_per_m the "
+    "elevation of that point minus the outlet elevation, over that length [m/m]."
 )
 
 # Field checks of WatershedParameters, in the order they run
@@ -183,15 +184,18 @@ class WatershedParameters:
         Percentage of forested area [%] (0-100).
         Used by Nash Lutz method.
     flow_path_length_km : float, optional
-        Length of the longest flow path, from the watershed divide (the
-        hydraulically most distant point) to the outlet, along the flow [km]. Must
-        be positive. The flow length of the NRCS lag method, Kirpich's length and
-        the main channel length of Kerby-Kirpich (whose channel segment is this
-        length minus ``overland_length_km``).
+        Length of the longest flow path, from the hydraulically most distant
+        point of the watershed (the cell with the greatest flow distance to the
+        outlet; usually on the divide, possibly on a ridge inside the watershed) to
+        the outlet, along the flow [km]. Must be positive. The flow length of the
+        NRCS lag method, Kirpich's length and the main channel length of
+        Kerby-Kirpich (whose channel segment is this length minus
+        ``overland_length_km``).
     flow_path_slope_m_per_m : float, optional
-        Slope of the longest flow path [m/m]: the elevation of its head on the
-        divide minus the outlet elevation, over ``flow_path_length_km``. Kirpich's
-        slope and the main channel slope of Kerby-Kirpich.
+        Slope of the longest flow path [m/m]: the elevation of its head (that
+        most distant point) minus the outlet elevation, over
+        ``flow_path_length_km``. Kirpich's slope and the main channel slope of
+        Kerby-Kirpich.
 
     Attributes
     ----------
@@ -723,10 +727,11 @@ class WatershedParameters:
           divide, and the elevation of that point above the outlet over that
           length (Fang et al. 2005, TxDOT Report 0-4696-1, eq. 3.14; Mota and
           Kobiyama 2015 on Kirpich's data).
-        * "nrcs": the flow length, the longest path from the watershed divide to
-          the outlet, ``flow_path_length_km``; the average land slope Y of the
-          watershed, not the slope of the flow path, ``mean_slope_m_per_m``; and
-          ``cn`` (USDA-NRCS 2010, NEH Part 630, chapter 15, eq. 15-4).
+        * "nrcs": the flow length, the longest path from the hydraulically most
+          distant point of the watershed to the outlet, ``flow_path_length_km``;
+          the average land slope Y of the watershed, not the slope of the flow
+          path, ``mean_slope_m_per_m``; and ``cn`` (USDA-NRCS 2010, NEH Part 630,
+          chapter 15, eq. 15-4).
         * "giandotti": the length of the main channel, ``channel_length_km``, and
           the mean elevation of the watershed above the outlet,
           ``elevation_mean_m - elevation_min_m`` (Grimaldi et al. 2012).

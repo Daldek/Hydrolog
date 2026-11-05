@@ -98,8 +98,8 @@ rasters).
 
 ### Time of concentration
 
-Kirpich needs the length and the slope of the longest flow path, from the watershed divide to the
-outlet; NRCS (the lag method of NEH 630, ch. 15) the same length, the average land slope of the
+Kirpich needs the length and the slope of the longest flow path, from the hydraulically most distant point of
+the watershed (usually on the divide, possibly on a ridge inside it) to the outlet; NRCS (the lag method of NEH 630, ch. 15) the same length, the average land slope of the
 watershed and the CN. Both return `tc_min` and `tc_h`. Other methods: `tc giandotti`, `tc faa`, `tc kerby`, `tc kerby-kirpich`.
 `tc watershed` computes any of them from a watershed JSON file (the `WatershedParameters` format,
 see [Exchange](#7-exchange-with-kartograf-obserwator-and-hydrograf)); a field the method needs

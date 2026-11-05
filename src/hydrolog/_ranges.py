@@ -479,11 +479,12 @@ TC_INPUTS: Final[Mapping[str, Mapping[str, tuple[str, ...]]]] = {
 For each method: argument name to the field its source defines for it, without
 substitutes (``area_km2`` too, though only Giandotti's formula takes it: the others are
 checked against their data on the area of the watershed). Kirpich and NRCS take the
-longest flow path, from the watershed divide to the outlet (Kirpich with its slope,
-NRCS with the average land slope of the watershed); Giandotti the main channel and the
-mean elevation of the watershed above the outlet, the one argument made of two fields
-(``elevation_mean_m`` minus ``elevation_min_m``); Kerby-Kirpich the overland segment and
-the whole flow path, whose channel segment is the flow path minus the overland one.
+longest flow path, from the hydraulically most distant point to the outlet (Kirpich
+with its slope, NRCS with the average land slope of the watershed); Giandotti the main
+channel and the mean elevation of the watershed above the outlet, the one argument made
+of two fields (``elevation_mean_m`` minus ``elevation_min_m``); Kerby-Kirpich the
+overland segment and the whole flow path, whose channel segment is the flow path minus
+the overland one.
 """
 
 

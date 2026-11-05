@@ -349,9 +349,9 @@ export const siec = {
       channel_length_km: "Długość cieku głównego [km] (tc Giandotti; Snyder, Lutz).",
       channel_slope_m_per_m: "Spadek cieku głównego [m/m] (Nash, metoda Lutza).",
       flow_path_length_km:
-        "Długość najdłuższej drogi spływu od działu wodnego do przekroju, po drodze spływu [km] (tc: NRCS, Kirpich, Kerby–Kirpich).",
+        "Długość najdłuższej drogi spływu od punktu zlewni najdalszego hydraulicznie (zwykle na dziale wodnym, może być na grzbiecie wewnątrz zlewni) do przekroju, po drodze spływu [km] (tc: NRCS, Kirpich, Kerby–Kirpich).",
       flow_path_slope_m_per_m:
-        "Spadek najdłuższej drogi spływu: (wysokość jej początku na dziale wodnym − wysokość przekroju) / długość [m/m] (tc: Kirpich, Kerby–Kirpich).",
+        "Spadek najdłuższej drogi spływu: (wysokość jej początku − wysokość przekroju) / długość [m/m] (tc: Kirpich, Kerby–Kirpich).",
       cn: "Liczba CN dla przeciętnej wilgotności (AMC II), 0–100; potrzebna odpływowi curve-number.",
       source: "Skąd pochodzą dane zlewni, np. Hydrograf.",
       crs: "Układ współrzędnych danych, np. EPSG:2180.",
