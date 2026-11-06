@@ -4,7 +4,24 @@ import warnings
 
 import numpy as np
 import pytest
-from scipy.stats import genextreme, lognorm
+from scipy.stats import genextreme, lognorm, pearson3, skew, weibull_min
+
+# Known parameters in scipy's parametrisation of each distribution.
+_DISTRIBUTIONS = {
+    "log_normal": (lognorm, (0.5, 0.0, 50.0)),
+    "gev": (genextreme, (-0.1, 100.0, 30.0)),
+    "pearson3": (pearson3, (1.0, 100.0, 30.0)),
+    "weibull": (weibull_min, (1.5, 20.0, 50.0)),
+}
+# Fitted by all four distributions and both methods; by the L-moments the lower bound
+# of Pearson III and of Weibull lies above its smallest value.
+_FLOODS = np.array(
+    [95.0, 102.0, 110.0, 118.0, 125.0, 133.0, 140.0, 152.0, 170.0, 215.0, 290.0]
+)
+
+
+def _fit(analysis, distribution, fit_method):
+    return getattr(analysis, f"fit_{distribution}")(fit_method=fit_method)
 
 
 class TestFloodFrequencyAnalysis:
@@ -161,3 +178,118 @@ class TestFloodFrequencyAnalysis:
             FloodFrequencyAnalysis(np.arange(1.0, 21.0))
             kzgw_warnings = [x for x in w if "KZGW" in str(x.message)]
             assert len(kzgw_warnings) >= 1
+
+
+class TestFitMethods:
+    @pytest.mark.parametrize("fit_method", ["moments", "l_moments", "least_squares"])
+    @pytest.mark.parametrize("distribution", list(_DISTRIBUTIONS))
+    def test_recovers_the_parameters_of_a_large_sample(self, distribution, fit_method):
+        from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
+
+        dist, parameters = _DISTRIBUTIONS[distribution]
+        # a synthetic sample of the exact distribution: its quantiles at the middles
+        # of n equal intervals of probability
+        n = 20_000
+        sample = dist.ppf((np.arange(n) + 0.5) / n, *parameters)
+
+        result = _fit(FloodFrequencyAnalysis(sample), distribution, fit_method)
+
+        assert tuple(result.parameters.values()) == pytest.approx(
+            parameters, rel=0.01, abs=0.01
+        )
+
+    def test_sample_l_moments_of_a_case_checked_by_hand(self):
+        from hydrolog.statistics.high_flows import _sample_l_moments
+
+        # 1, 2, 3, 4, 10: l1 is the mean, 4; l2 is half the mean difference of the
+        # 10 pairs, 40 / (2 * 10) = 2; l3 is the mean of (x_k - 2 x_j + x_i) / 3 over
+        # the 10 ordered triples, 30 / (3 * 10) = 1; t3 = l3 / l2 = 0.5
+        l1, l2, t3 = _sample_l_moments(np.array([4.0, 10.0, 1.0, 3.0, 2.0]))
+
+        assert (l1, l2, t3) == pytest.approx((4.0, 2.0, 0.5))
+
+    @pytest.mark.parametrize("distribution", list(_DISTRIBUTIONS))
+    def test_moments_are_the_unbiased_moments_of_the_sample(self, distribution):
+        from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
+
+        result = _fit(FloodFrequencyAnalysis(_FLOODS), distribution, "moments")
+        dist = _DISTRIBUTIONS[distribution][0]
+        mean, variance, skewness = dist.stats(
+            *result.parameters.values(), moments="mvs"
+        )
+
+        assert float(mean) == pytest.approx(_FLOODS.mean())
+        assert float(variance) == pytest.approx(_FLOODS.var(ddof=1))
+        if distribution != "log_normal":  # two parameters: the mean and the variance
+            assert float(skewness) == pytest.approx(skew(_FLOODS, bias=False))
+
+    @pytest.mark.parametrize("distribution", list(_DISTRIBUTIONS))
+    def test_least_squares_bring_the_quantiles_closer_than_the_moments(
+        self, distribution
+    ):
+        from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
+
+        analysis = FloodFrequencyAnalysis(_FLOODS)
+        dist = _DISTRIBUTIONS[distribution][0]
+        # the Weibull plotting positions of the ascending sample
+        probabilities = np.arange(1, _FLOODS.size + 1) / (_FLOODS.size + 1)
+
+        def squares(fit_method):
+            fitted = _fit(analysis, distribution, fit_method).parameters.values()
+            quantiles = dist.ppf(probabilities, *fitted)
+            return np.sum((np.sort(_FLOODS) - quantiles) ** 2)
+
+        assert squares("least_squares") < squares("moments")
+
+    def test_a_fit_without_density_at_an_annual_maximum_ranks_last(self):
+        from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
+
+        ranked = FloodFrequencyAnalysis(_FLOODS).fit_all(fit_method="l_moments")
+
+        assert list(ranked)[2:] == ["pearson3", "weibull"]
+        assert all(np.isfinite(ranked[name].aic) for name in list(ranked)[:2])
+        for name, dist in (("pearson3", pearson3), ("weibull", weibull_min)):
+            result = ranked[name]
+            assert result.aic == np.inf
+            parameters = result.parameters.values()
+            assert dist.logpdf(_FLOODS.min(), *parameters) == -np.inf
+            assert np.all(np.isfinite(result.quantiles))
+
+    @pytest.mark.parametrize(
+        ("distribution", "fit_method", "sample", "reason"),
+        [
+            ("weibull", "moments", [0.0, *[10.0] * 8, 10.5], "out_of_range"),
+            ("weibull", "l_moments", [0.0, *[10.0] * 8, 10.5], "out_of_range"),
+            (
+                "weibull",
+                "least_squares",
+                [0.0, *[10.0] * 8, 10.5],
+                "out_of_range",
+            ),
+            ("log_normal", "l_moments", [0.0, 5.0, 6.0, 7.0], "non_positive_values"),
+            ("gev", "moments", [5.0, 5.0, 5.0, 5.0], "constant_values"),
+            ("pearson3", "l_moments", [1.0, 2.0], "too_few_values"),
+        ],
+    )
+    def test_no_parameters_is_a_calculation_error(
+        self, distribution, fit_method, sample, reason
+    ):
+        from hydrolog.exceptions import CalculationError
+        from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
+
+        analysis = FloodFrequencyAnalysis(np.array(sample))
+
+        with pytest.raises(CalculationError) as caught:
+            _fit(analysis, distribution, fit_method)
+        assert caught.value.details["reason"] == reason
+        assert caught.value.details["distribution"] == distribution
+        assert caught.value.details["fit_method"] == fit_method
+
+    def test_unknown_fit_method_raises(self):
+        from hydrolog.exceptions import InvalidParameterError
+        from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
+
+        analysis = FloodFrequencyAnalysis(_FLOODS)
+
+        with pytest.raises(InvalidParameterError):
+            analysis.fit_gev(fit_method="median")

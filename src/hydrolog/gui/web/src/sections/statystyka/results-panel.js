@@ -94,13 +94,15 @@ export function CenterBody({ run, tab, stressed, chartSvg }) {
     `;
   }
   const fits = result.distributions.length;
+  const method = result.fit_method || "mle";
   return html`
     <div class="card st-chart">
       <div class="card-head">
         <h3 class="card-title" id="st-chart-title">${texts.chart.title} <${InfoButton} id="stats-plot" /></h3>
-        <span class="card-sub">${t(texts.chart.sub, {
+        <span class="card-sub" data-fit-method=${method}>${t(texts.chart.sub, {
           count: plural(result.n_years, texts.chart.maximaForms),
           fits: plural(fits, texts.chart.fitForms),
+          method: Object.hasOwn(texts.fitMethods, method) ? texts.fitMethods[method] : method,
         })}</span>
       </div>
       <${Chart} spec=${spec} svgRef=${chartSvg} />

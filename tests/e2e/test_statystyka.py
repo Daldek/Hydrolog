@@ -168,6 +168,40 @@ def test_the_maxima_give_the_mockups_gev_quantile_and_the_kzgw_notice(
     expect(page.locator(BADGE)).to_have_attribute("data-state", "stale")
 
 
+def test_a_fit_method_recomputes_both_runs_with_it(tab: Tab) -> None:
+    page = open_section(tab)
+    sent_by_channel: dict[str, dict[str, Any]] = {}
+    page.on(
+        "request",
+        lambda request: (
+            sent_by_channel.__setitem__(
+                request.url.rsplit("channel=", 1)[-1], request.post_data_json
+            )
+            if request.method == "POST" and "channel=" in request.url
+            else None
+        ),
+    )
+    compute(page)
+    right = page.locator(RIGHT)
+    subtitle = page.locator(f"{SECTION} .st-chart .card-sub")
+    expect(subtitle).to_have_attribute("data-fit-method", "mle")
+    expect(right.locator('.kpi[data-key="q-100"] .v')).to_have_text("307,3 m³/s")
+    assert "fit_method" not in sent_by_channel["statystyka"]
+
+    page.locator(f"{SECTION} #st-fit_method").select_option("l_moments")
+    expect(page.locator(BADGE)).to_have_attribute("data-state", "stale")
+    response = compute(page)
+
+    assert sent_by_channel["statystyka"]["fit_method"] == "l_moments"
+    assert sent_by_channel["statystyka-krzywe"]["fit_method"] == "l_moments"
+    assert response.json()["result"]["fit_method"] == "l_moments"
+    expect(subtitle).to_have_attribute("data-fit-method", "l_moments")
+    expect(subtitle).to_contain_text("metodą L-momentów")
+    expect(right.locator('.kpi[data-key="q-100"] .v')).to_have_text("324,9 m³/s")
+    expect(right.locator(".cli pre")).to_contain_text("--fit-method l_moments")
+    expect(page.locator(BADGE)).to_have_attribute("data-state", "ok")
+
+
 def test_the_ranked_maxima_carry_their_years(tab: Tab) -> None:
     page = open_section(tab)
     compute(page)

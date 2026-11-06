@@ -10,7 +10,7 @@ export const statsInfo = {
   "stats-flood-frequency": {
     title: "Analiza częstości wezbrań",
     intro:
-      "<p>Polecenie <code>stats flood-frequency</code> dopasowuje do maksimów rocznych cztery rozkłady metodą największej wiarygodności i podaje kwantyle <i>Q<sub>T</sub></i> dla okresów powtarzalności <i>T</i>. Rozkłady są uporządkowane wg kryterium AIC: pierwszy jest najlepszy. Z szeregu dobowego z datami Hydrolog bierze najpierw maksima kompletnych lat hydrologicznych (XI–X); rok z brakującym dniem pomija.</p>",
+      "<p>Polecenie <code>stats flood-frequency</code> dopasowuje do maksimów rocznych cztery rozkłady wybraną metodą estymacji parametrów (domyślnie największej wiarygodności) i podaje kwantyle <i>Q<sub>T</sub></i> dla okresów powtarzalności <i>T</i>. Rozkłady są uporządkowane wg kryterium AIC: pierwszy jest najlepszy. Z szeregu dobowego z datami Hydrolog bierze najpierw maksima kompletnych lat hydrologicznych (XI–X); rok z brakującym dniem pomija.</p>",
     formula:
       '<math display="block"><msub><mi>Q</mi><mi>T</mi></msub><mo>=</mo><msup><mi>F</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup><mo>(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo>)</mo><mo>,</mo><mspace width="1em"></mspace><mi>p</mi><mo>=</mo><mfrac><mn>1</mn><mi>T</mi></mfrac></math>',
     vars: [
@@ -28,7 +28,7 @@ export const statsInfo = {
   "stats-distributions": {
     title: "Rozkłady maksimów rocznych",
     intro:
-      "<p><b>GEV</b>, uogólniony rozkład wartości ekstremalnych: położenie <i>μ</i>, skala <i>σ</i> i kształt <i>ξ</i> (ξ = 0 to rozkład Gumbela). <b>Log-normalny</b>: logarytm przepływu ma rozkład normalny; dwa parametry, położenie 0. <b>Pearson III</b>: skośność, położenie i skala. <b>Weibull</b>: kształt, położenie i skala. Parametry szacuje <code>scipy.stats</code> (<code>genextreme</code>, <code>lognorm</code>, <code>pearson3</code>, <code>weibull_min</code>) metodą największej wiarygodności; w wyniku są w <code>parameters</code>.</p>",
+      "<p><b>GEV</b>, uogólniony rozkład wartości ekstremalnych: położenie <i>μ</i>, skala <i>σ</i> i kształt <i>ξ</i> (ξ = 0 to rozkład Gumbela). <b>Log-normalny</b>: logarytm przepływu ma rozkład normalny; dwa parametry, położenie 0. <b>Pearson III</b>: skośność, położenie i skala. <b>Weibull</b>: kształt, położenie i skala. To rozkłady <code>scipy.stats</code> (<code>genextreme</code>, <code>lognorm</code>, <code>pearson3</code>, <code>weibull_min</code>); parametry szacuje wybrana metoda estymacji (domyślnie największej wiarygodności), w wyniku są w <code>parameters</code>.</p>",
     formula:
       '<math display="block"><mi>F</mi><mo>(</mo><mi>x</mi><mo>)</mo><mo>=</mo><mi>exp</mi><mrow><mo>{</mo><mo>−</mo><msup><mrow><mo>[</mo><mn>1</mn><mo>+</mo><mi>ξ</mi><mfrac><mrow><mi>x</mi><mo>−</mo><mi>μ</mi></mrow><mi>σ</mi></mfrac><mo>]</mo></mrow><mrow><mo>−</mo><mn>1</mn><mo>/</mo><mi>ξ</mi></mrow></msup><mo>}</mo></mrow></math>',
     vars: [
@@ -38,6 +38,20 @@ export const statsInfo = {
     ],
     note: "<p>Kolor linii rozkładu jest stały: GEV, log-normalny, Pearson III i Weibull mają zawsze te same linie; najlepszy według AIC jest grubszy.</p>",
     sources: "Coles (2001), rozdz. 3; Hosking i Wallis (1997) Regional Frequency Analysis; Hydrolog, <code>FloodFrequencyAnalysis</code>",
+  },
+  "stats-fit-method": {
+    title: "Metoda estymacji parametrów",
+    intro:
+      "<p>Każda metoda daje parametry tych samych czterech rozkładów; kwantyle, A², KS i AIC liczy się z nich tak samo. <b>mle</b>, największa wiarygodność: parametry, przy których próba jest najbardziej prawdopodobna. <b>moments</b>, metoda momentów: średnia, wariancja i skośność rozkładu równe tym z próby (wariancja z dzielnikiem n − 1, skośność skorygowana G1). <b>l_moments</b>, metoda L-momentów: L-momenty λ1, λ2 i L-skośność τ3 rozkładu równe tym z próby; mniej czuła na pojedyncze duże maksima. <b>least_squares</b>, najmniejsze kwadraty: najmniejsza suma kwadratów różnic między maksimami a kwantylami w położeniach Weibulla i/(n+1), od parametrów metody momentów.</p>",
+    formula:
+      '<math display="block"><msub><mi>λ</mi><mn>1</mn></msub><mo>=</mo><msub><mi>b</mi><mn>0</mn></msub><mo>,</mo><mspace width="1em"></mspace><msub><mi>λ</mi><mn>2</mn></msub><mo>=</mo><mn>2</mn><msub><mi>b</mi><mn>1</mn></msub><mo>−</mo><msub><mi>b</mi><mn>0</mn></msub><mo>,</mo><mspace width="1em"></mspace><msub><mi>τ</mi><mn>3</mn></msub><mo>=</mo><mfrac><mrow><mn>6</mn><msub><mi>b</mi><mn>2</mn></msub><mo>−</mo><mn>6</mn><msub><mi>b</mi><mn>1</mn></msub><mo>+</mo><msub><mi>b</mi><mn>0</mn></msub></mrow><msub><mi>λ</mi><mn>2</mn></msub></mfrac></math>',
+    vars: [
+      { symbol: "<math><msub><mi>b</mi><mi>r</mi></msub></math>", text: "nieobciążone momenty ważone prawdopodobieństwem próby uszeregowanej rosnąco", unit: "m³/s" },
+      { symbol: "<math><msub><mi>τ</mi><mn>3</mn></msub></math>", text: "L-skośność", unit: "–" },
+    ],
+    note:
+      "<p>Rozkład, którego metoda nie umie dopasować (np. Weibull przy skośności próby poniżej −1,14), jest pomijany z uwagą <code>distribution_left_out</code>. Rozkład, który nie obejmuje któregoś maksimum, zostaje z kwantylami, ale bez AIC (uwaga <code>outside_support</code>); przy momentach i L-momentach zdarza się to często Pearsonowi III i Weibullowi.</p>",
+    sources: "Hosking i Wallis (1997) Regional Frequency Analysis; Hydrolog, ADR-0021, <code>FloodFrequencyAnalysis</code>",
   },
   "stats-fit": {
     title: "Zgodność dopasowania: AIC, A², KS",

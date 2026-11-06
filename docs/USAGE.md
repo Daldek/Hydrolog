@@ -701,18 +701,20 @@ November to October. A series shorter than the method needs adds a notice (relia
 quantiles need at least 30 years).
 
 - `stats flood-frequency`: flood quantiles for return periods from annual maxima
-  (`--distribution all` compares several distributions); `stats low-flow`: low-flow quantiles from
-  annual minima; `stats low-flow-sequences`: drought sequences below a threshold.
+  (`--distribution all` compares several distributions; `--fit-method` estimates their parameters
+  by `mle`, the default, `moments`, `l_moments` or `least_squares`, ADR-0021); `stats low-flow`:
+  low-flow quantiles from annual minima; `stats low-flow-sequences`: drought sequences below a
+  threshold.
 - `stats characteristic`: second-degree characteristic values (WWQ ... NNQ); `stats daily` and
   `stats monthly`: day-of-year and monthly statistics.
 - `stats mann-kendall`: monotonic trend test.
 
 ```bash
-hydrolog stats flood-frequency --input-file tests/fixtures/annual_maxima.csv --value-column Qmax --distribution gev --return-periods 10,100 --json
+hydrolog stats flood-frequency --input-file tests/fixtures/annual_maxima.csv --value-column Qmax --distribution gev --fit-method l_moments --return-periods 10,100 --json
 ```
 
 ```json output
-{"result": {"schema": "hydrolog-stats-flood-frequency/1", "n_years": 35, "best_distribution": "gev"}}
+{"result": {"schema": "hydrolog-stats-flood-frequency/1", "n_years": 35, "best_distribution": "gev", "fit_method": "l_moments"}}
 ```
 
 ```bash
@@ -972,6 +974,8 @@ print(watershed.width_km, watershed.relief_m, watershed.calculate_tc(method="kir
 maxima = np.loadtxt("tests/fixtures/annual_maxima.csv", delimiter=",", skiprows=1, usecols=1)
 gev = FloodFrequencyAnalysis(maxima, return_periods=np.array([10.0, 100.0])).fit_gev()
 print(gev.distribution_name, gev.quantiles, mann_kendall_test(maxima).trend_detected)
+by_l_moments = FloodFrequencyAnalysis(maxima).fit_all(fit_method="l_moments")  # FIT_METHODS
+print([(name, fit.aic) for name, fit in by_l_moments.items()])  # sorted by AIC, inf last
 
 pairs = np.loadtxt("tests/fixtures/rating_curve_pairs.csv", delimiter=",", skiprows=1)
 fit = RatingCurve(pairs[:, 0], pairs[:, 1]).fit(h0_initial=40.0)

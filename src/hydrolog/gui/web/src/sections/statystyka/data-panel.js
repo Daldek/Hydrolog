@@ -18,6 +18,7 @@ import { statystyka as texts } from "../../labels/statystyka.js";
 import { routeHash } from "../../router.js";
 import { Seg } from "../../ui/seg.js";
 import { EmptyHint } from "../../ui/empty-hint.js";
+import { InfoButton } from "../../ui/info-button.js";
 import { columnOption, resolveColumn, shortNumber } from "./state.js";
 
 const ID = "st";
@@ -116,8 +117,8 @@ function FileBox({ path, file, preview }) {
 
 /** The options the panel shows, by the source of the series. */
 const SHOWN = {
-  file: ["input_file", "value_column", "date_column", "distribution", "return_periods"],
-  paste: ["values", "distribution", "return_periods"],
+  file: ["input_file", "value_column", "date_column", "distribution", "fit_method", "return_periods"],
+  paste: ["values", "distribution", "fit_method", "return_periods"],
 };
 
 /**
@@ -229,6 +230,16 @@ export function DataPanel(props) {
             required=${false}
             onInput=${(value) => onValue("distribution", value)}
           />
+          <${ChoiceField}
+            field=${field("fit_method")}
+            id=${`${ID}-fit_method`}
+            value=${values.fit_method}
+            error=${error("fit_method")}
+            select=${true}
+            required=${false}
+            onInput=${(value) => onValue("fit_method", value)}
+          />
+          <p class="note">${texts.fitMethodNote} <${InfoButton} id="stats-fit-method" /></p>
           <${SeriesField}
             field=${field("return_periods")}
             id=${`${ID}-return_periods`}

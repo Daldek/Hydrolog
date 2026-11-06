@@ -44,6 +44,9 @@
         "null",
         "array"
       ]
+    },
+    "fit_method": {
+      "type": "string"
     }
   }
 }

@@ -17,6 +17,8 @@ from hydrolog.statistics.characteristic import (
     calculate_monthly_statistics,
 )
 from hydrolog.statistics.high_flows import (
+    FIT_METHODS,
+    FitMethod,
     FloodFrequencyAnalysis,
     FrequencyAnalysisResult,
 )
@@ -39,6 +41,8 @@ __all__ = [
     # Flood frequency
     "FloodFrequencyAnalysis",
     "FrequencyAnalysisResult",
+    "FIT_METHODS",
+    "FitMethod",
     "EmpiricalFrequency",
     # Low-flow
     "LowFlowAnalysis",

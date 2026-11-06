@@ -18,9 +18,11 @@ import pytest
 
 from hydrolog._warnings import (
     LIBRARY_WARNINGS,
+    DistributionLeftOut,
     HydrologWarning,
     IncompleteYears,
     KsTestApproximate,
+    OutsideSupport,
     OutsideTypicalRange,
     OutsideUnverifiedRange,
     ShortRecord,
@@ -58,6 +60,13 @@ SAMPLES = {
     SmallSample: {"years": 6, "minimum": 10},
     ShortRecord: {"years": 20, "minimum": 30},
     KsTestApproximate: {},
+    DistributionLeftOut: {
+        "distribution": "weibull",
+        "fit_method": "moments",
+        "reason": "out_of_range",
+        "cause": "The method of moments cannot fit the Weibull distribution",
+    },
+    OutsideSupport: {"distribution": "pearson3", "values": [81.6, 87.2]},
     IncompleteYears: {
         "skipped": 2,
         "total": 31,
@@ -109,6 +118,8 @@ class TestLibraryWarnings:
             "small_sample",
             "short_record",
             "ks_test_approximate",
+            "distribution_left_out",
+            "outside_support",
             "incomplete_years",
             "unknown_hietogram_type",
             "uh_model_mismatch",
