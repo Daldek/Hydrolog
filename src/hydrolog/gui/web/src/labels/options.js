@@ -40,6 +40,7 @@ export const options = {
   duration_min: "Czas trwania opadu",
   elevation_diff_m: "Różnica wysokości",
   extend_min: "Wydłużenie",
+  fit_method: "Metoda estymacji parametrów",
   flow_path_length_km: "Długość najdłuższej drogi spływu",
   flow_path_slope_m_per_m: "Spadek najdłuższej drogi spływu",
   force: "Zastąp istniejące",

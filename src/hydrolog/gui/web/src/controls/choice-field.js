@@ -27,12 +27,13 @@ export function shownChoice(field, value) {
  * A choice among the catalog's values.
  *
  * @param {{field: object, id: string, value?: string, error?: string, required: boolean,
- *   disabled?: boolean, onInput: (value: string) => void}} props the field, the control's
- *   id, the value, the message of a check, whether a value is required now, and the change
- *   handler
+ *   disabled?: boolean, select?: boolean, onInput: (value: string) => void}} props the
+ *   field, the control's id, the value, the message of a check, whether a value is
+ *   required now, a select whatever the number of values (values too long for a segmented
+ *   control in a narrow panel), and the change handler
  * @returns {object} the field
  */
-export function ChoiceField({ field, id, value, error, required, disabled, onInput }) {
+export function ChoiceField({ field, id, value, error, required, disabled, select = false, onInput }) {
   const current = shownChoice(field, value);
   const optional = !required && field.default === null;
   const items = [
@@ -40,7 +41,7 @@ export function ChoiceField({ field, id, value, error, required, disabled, onInp
     ...field.choices.map((choice) => ({ value: choice.value, label: choice.value, title: choice.meaning })),
   ];
   const meaning = field.choices.find((choice) => choice.value === current);
-  const segmented = field.choices.length <= SEGMENTED_MAX;
+  const segmented = !select && field.choices.length <= SEGMENTED_MAX;
   return html`
     <div class=${`opt${error ? " invalid" : ""}`} data-option=${field.name}>
       <${FieldLabel} field=${field} id=${id} required=${required} as=${segmented ? "span" : "label"} />

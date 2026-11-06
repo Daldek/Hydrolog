@@ -33,6 +33,7 @@ export const statystyka = {
   pasteNote: "Wklej maksima roczne w kolejności lat: z arkusza, z tekstu albo z kolumny pliku CSV.",
   pasteEmpty: "Wklej co najmniej kilka maksimów rocznych, jedno na rok, oddzielone średnikami lub w osobnych wierszach.",
   distributionsMeta: "{count} · AIC",
+  fitMethodNote: "Metoda szacuje parametry każdego z rozkładów; obie tabele i krzywe wykresu liczy ta sama.",
   chosen: "Wyróżniony w wynikach",
   chosenItem: "T = {t} lat (p {p}%)",
   chosenHint: "Wyróżniony okres trafia do kafelków, tabeli i „Do porównania”.",
@@ -45,11 +46,11 @@ export const statystyka = {
   pasted: "wklejony szereg",
   view: "Widok",
   tabs: { chart: "Wykres prawdopodobieństwa", series: "Maksima roczne" },
-  hint: "Punkty: maksima roczne (położenie Weibulla i/(n+1)); linie: rozkłady dopasowane metodą największej wiarygodności",
+  hint: "Punkty: maksima roczne (położenie Weibulla i/(n+1)); linie: rozkłady dopasowane wybraną metodą estymacji",
   noResult: "Wybierz szereg i naciśnij „Oblicz”: Hydrolog dopasuje rozkłady i poda kwantyle.",
   chart: {
     title: "Krzywe prawdopodobieństwa przewyższenia",
-    sub: "{count} (punkty, położenie Weibulla i/(n+1)) i {fits} dopasowane metodą największej wiarygodności",
+    sub: "{count} (punkty, położenie Weibulla i/(n+1)) i {fits} dopasowane metodą {method}",
     maximaForms: ["maksimum roczne", "maksima roczne", "maksimów rocznych"],
     fitForms: ["rozkład", "rozkłady", "rozkładów"],
     x: "prawdopodobieństwo przewyższenia (siatka Gumbela)",
@@ -101,6 +102,13 @@ export const statystyka = {
     referenceLabel: "Q {p}% ({name})",
     referenceSource: "stats flood-frequency · {file}",
     cancelled: "Obliczenie anulowano.",
+  },
+  /** The fit methods in the instrumental case, after „metodą”: the chart's subtitle. */
+  fitMethods: {
+    mle: "największej wiarygodności",
+    moments: "momentów",
+    l_moments: "L-momentów",
+    least_squares: "najmniejszych kwadratów",
   },
   /** Names of the distributions: in tables, and in the chart's legend. */
   distributions: {
