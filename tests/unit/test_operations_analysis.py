@@ -52,6 +52,7 @@ from hydrolog.operations import (
 from hydrolog.operations.hydrograph import compute_hydrograph
 from hydrolog.soil import classify_usda_texture, texture_to_hsg
 from hydrolog.statistics import (
+    FIT_METHODS,
     FloodFrequencyAnalysis,
     LowFlowAnalysis,
     calculate_characteristic_values,
@@ -920,12 +921,13 @@ class TestFloodFrequency:
         maxima = _annual_maxima()
         periods = np.array([10.0, 50.0, 100.0])
         direct = FloodFrequencyAnalysis(maxima, periods)
-        expected = direct.fit_all()
+        expected = direct.fit_all(fit_method="mle")
         result = run(
             "stats flood-frequency",
             input_file=str(ANNUAL_MAXIMA),
             value_column="Qmax",
             return_periods=[10, 50, 100],
+            fit_method="mle",
         ).result
         assert [d.distribution_name for d in result.distributions] == list(expected)
         for fitted, reference in zip(
@@ -949,12 +951,13 @@ class TestFloodFrequency:
     )
     def test_a_single_distribution_equals_its_fit(self, name, method):
         maxima = _annual_maxima()
-        reference = getattr(FloodFrequencyAnalysis(maxima), method)()
+        reference = getattr(FloodFrequencyAnalysis(maxima), method)(fit_method="mle")
         result = run(
             "stats flood-frequency",
             input_file=str(ANNUAL_MAXIMA),
             value_column="Qmax",
             distribution=name,
+            fit_method="mle",
         ).result
         assert len(result.distributions) == 1
         assert result.best_distribution == name
@@ -1116,6 +1119,57 @@ class TestFloodFrequency:
             stats.stats_flood_frequency(values=[1.0, 2.0, 3.0], fit_method="median")
         assert caught.value.details["option"] == "fit_method"
 
+    def test_the_default_fit_method_is_l_moments(self):
+        output = run(
+            "stats flood-frequency", input_file=str(ANNUAL_MAXIMA), value_column="Qmax"
+        )
+        assert output.result.fit_method == "l_moments"
+        assert {d.fit_method for d in output.result.distributions} == {"l_moments"}
+
+    def test_all_fits_each_distribution_by_each_method_ranked_by_aic(self):
+        output = run(
+            "stats flood-frequency",
+            input_file=str(ANNUAL_MAXIMA),
+            value_column="Qmax",
+            fit_method="all",
+        )
+        result = output.result
+        assert result.fit_method == "all"
+        pairs = {(d.distribution_name, d.fit_method) for d in result.distributions}
+        assert len(result.distributions) == len(pairs) == 16
+        assert {method for _, method in pairs} == set(FIT_METHODS)
+        aics = [d.aic for d in result.distributions]
+        assert aics == sorted(aics)
+        assert result.best_distribution == result.distributions[0].distribution_name
+        items = result.to_dict()["distributions"]
+        assert all(item["fit_method"] in FIT_METHODS for item in items)
+
+    def test_all_with_one_distribution_fits_it_by_each_method(self):
+        output = run(
+            "stats flood-frequency",
+            input_file=str(ANNUAL_MAXIMA),
+            value_column="Qmax",
+            distribution="gev",
+            fit_method="all",
+        )
+        fitted = output.result.distributions
+        assert {d.distribution_name for d in fitted} == {"gev"}
+        assert sorted(d.fit_method for d in fitted) == sorted(FIT_METHODS)
+
+    def test_all_leaves_out_each_combination_without_parameters(self):
+        left_skewed = [0.5, *[10.0] * 8, 10.5]  # skewness below Weibull's -1.14
+        output = run("stats flood-frequency", values=left_skewed, fit_method="all")
+        fitted = {
+            (d.distribution_name, d.fit_method) for d in output.result.distributions
+        }
+        assert ("weibull", "mle") in fitted
+        left_out = [n for n in output.notices if n.code == "distribution_left_out"]
+        expected = {("weibull", m) for m in ("moments", "l_moments", "least_squares")}
+        assert {
+            (n.details["distribution"], n.details["fit_method"]) for n in left_out
+        } == expected
+        assert fitted.isdisjoint(expected)
+
     def test_dates_and_values_must_match(self):
         with pytest.raises(InvalidParameterError) as caught:
             stats.stats_flood_frequency(
@@ -1132,7 +1186,11 @@ class TestFloodFrequency:
         """
         values, dates = _calendar_year_series()
         result = run(
-            "stats flood-frequency", values=values, dates=dates, distribution="gev"
+            "stats flood-frequency",
+            values=values,
+            dates=dates,
+            distribution="gev",
+            fit_method="mle",
         )
         sample = result.result
         years = list(range(1992, 2021))
@@ -1150,7 +1208,9 @@ class TestFloodFrequency:
             "days_with_data": [304, 61],
             "days_in_year": [365, 365],
         }
-        direct = FloodFrequencyAnalysis(np.array(sample.annual_maxima)).fit_gev()
+        direct = FloodFrequencyAnalysis(np.array(sample.annual_maxima)).fit_gev(
+            fit_method="mle"
+        )
         assert sample.distributions[0].to_dict() == direct.to_dict()
 
     @pytest.mark.parametrize("how", ["absent date", "nan value"])

@@ -4,6 +4,7 @@
 - Date: 2026-11-06
 - Builds on: plan `docs/plans/2026-11-06-flow-statistics-feedback.md` (decision D1), the reports 4 and 12 of „Zgłoś
   uwagę”
+- Amended: 2026-11-06 (below), `fit_method` `all` and the default `l_moments` (the plan's erratum, decision D6)
 
 ## Context
 
@@ -88,3 +89,30 @@ and AIC from the parameters and ranks the distributions by AIC.
   3·10⁻⁵ (relative) of the exact relation τ3 = 6 I₁/₃(α, 2α) − 3 over the whole range.
 - **The three-parameter log-normal for the L-moments** (the generalised normal of Hosking and Wallis): each method
   would compare other distributions.
+
+## Amendment (2026-11-06, every combination and the default L-moments)
+
+The author's review of the deployed Statystyka (the plan's erratum of 2026-11-06, decision D6) changes points 1, 7 and
+8:
+
+- **`fit_method` gains `all`**: each distribution fitted by each of the four methods, as `distribution` has `all`. In
+  the library `FloodFrequencyAnalysis.fit_all(fit_method="all")` gives up to 16 results keyed
+  `"<distribution>/<fit_method>"` (`"gev/l_moments"`); with one method the keys stay the distribution names. The
+  `fit_*` of one distribution take one method, and `FIT_METHODS` still lists the four methods; `fit_all` takes
+  `distribution` too, so `stats flood-frequency --distribution gev --fit-method all` is the GEV by each method (one
+  combination asked for raises its own error, as `fit_gev` does).
+- **Every item carries its `fit_method`**: `FrequencyAnalysisResult.fit_method` is the method that gave its
+  parameters, so the items of `distributions` say which combination they are; the result's `fit_method` stays the
+  value asked for (`all` included). Both are additive in `hydrolog-stats-flood-frequency/1`.
+- **One ranking by AIC over all the items** (point 7). The AICs of the methods compare: each is the log-likelihood at
+  the method's parameters with the distribution's number of parameters. Maximum likelihood should give the lowest AIC
+  of its distribution, but scipy's `fit` is a numerical search that may stop short of the maximum: on the sample of
+  the unit tests (`_FLOODS`, 11 values) its GEV has the AIC 129.1 and the L-moments' GEV 118.6.
+- **A combination without parameters is left out** with `distribution_left_out`, whose `fit_method` names the method
+  (point 8). With `all` maximum likelihood fits each distribution, so `all` never ends with the error of none
+  remaining.
+- **The default becomes `l_moments`** in the library, the CLI, MCP and the GUI, instead of `mle` (point 1): maximum
+  likelihood is less stable on the short samples of annual maxima (the KZGW minimum is 30 years), where scipy's
+  three-parameter searches depend on their start and may end in a local optimum (above); the L-moments are linear in
+  the ordered sample, so the largest floods weigh less, and they exist whenever the mean does (Hosking and Wallis
+  1997). The default results change; the numbers the guide quotes follow.

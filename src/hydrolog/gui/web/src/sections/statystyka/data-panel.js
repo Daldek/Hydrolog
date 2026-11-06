@@ -137,6 +137,9 @@ const SHOWN = {
 export function DataPanel(props) {
   const { model, values, source, received, errors, onValue, onSource, session, preview, periods, stressed, onChosen, seriesMeta, formId, onSubmit } = props;
   const field = (name) => model.fields.find((item) => item.name === name);
+  // One method a run until the view of the combinations (plan 2026-11-06, D7): no „all”
+  const methodField = field("fit_method");
+  const oneMethod = methodField && { ...methodField, choices: methodField.choices.filter((choice) => choice.value !== "all") };
   const required = (item) => isRequired(model, item, values);
   const error = (name) => (typeof errors[name] === "object" ? errors[name].text : errors[name]);
   const path = values.input_file || "";
@@ -231,7 +234,7 @@ export function DataPanel(props) {
             onInput=${(value) => onValue("distribution", value)}
           />
           <${ChoiceField}
-            field=${field("fit_method")}
+            field=${oneMethod}
             id=${`${ID}-fit_method`}
             value=${values.fit_method}
             error=${error("fit_method")}

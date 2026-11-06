@@ -102,12 +102,7 @@ DEFAULT_RETURN_PERIODS: tuple[float, ...] = (
 Distribution = Literal["all", "log_normal", "gev", "pearson3", "weibull"]
 
 _DISTRIBUTIONS: tuple[str, ...] = ("all", "log_normal", "gev", "pearson3", "weibull")
-_FIT_METHODS: dict[str, str] = {
-    "log_normal": "fit_log_normal",
-    "gev": "fit_gev",
-    "pearson3": "fit_pearson3",
-    "weibull": "fit_weibull",
-}
+_FIT_METHOD_CHOICES: tuple[str, ...] = (*FIT_METHODS, "all")
 # Three parameters cannot be estimated from fewer than three annual values.
 _MIN_ANNUAL_VALUES = 3
 _MIN_TREND_VALUES = 3  # the Mann-Kendall test of the library needs 3 observations
@@ -136,9 +131,10 @@ class FloodFrequencyResult(JsonResultMixin):
         ``distribution_name`` of the first entry of ``distributions`` (lowest AIC).
     distributions : list of FrequencyAnalysisResult
         Fitted distributions: parameters, quantiles for the return periods with the
-        probability density at each [1/(m³/s)] and goodness of fit (K-S,
-        Anderson-Darling, AIC). All four sorted by AIC (best first) for
-        ``distribution="all"``, otherwise the one requested.
+        probability density at each [1/(m³/s)], goodness of fit (K-S,
+        Anderson-Darling, AIC) and the ``fit_method`` that gave them. One per
+        distribution requested (all four for ``distribution="all"``), each by each
+        of the four methods for ``fit_method="all"``; sorted by AIC (best first).
     empirical : EmpiricalFrequency
         Empirical frequency of the sample (Weibull plotting positions; values sorted
         descending, exceedance probabilities and return periods of exceedance).
@@ -147,8 +143,8 @@ class FloodFrequencyResult(JsonResultMixin):
         has no value (empty when every year was complete); ``None`` when the annual
         maxima were given directly.
     fit_method : str
-        Method that estimated the parameters: ``"mle"``, ``"moments"``,
-        ``"l_moments"`` or ``"least_squares"``.
+        Method requested: ``"mle"``, ``"moments"``, ``"l_moments"``,
+        ``"least_squares"`` or ``"all"`` (every item names its own).
     """
 
     n_years: int
@@ -158,7 +154,7 @@ class FloodFrequencyResult(JsonResultMixin):
     distributions: list[FrequencyAnalysisResult]
     empirical: EmpiricalFrequency
     incomplete_years: list[int] | None = None
-    fit_method: str = "mle"
+    fit_method: str = "l_moments"
 
 
 @dataclass
@@ -586,7 +582,7 @@ def stats_flood_frequency(
     date_column: str | None = None,
     distribution: Distribution = "all",
     return_periods: Sequence[float] = DEFAULT_RETURN_PERIODS,
-    fit_method: FitMethod = "mle",
+    fit_method: FitMethod | Literal["all"] = "l_moments",
 ) -> OperationOutput:
     """Flood frequency analysis (``stats flood-frequency``).
 
@@ -610,13 +606,14 @@ def stats_flood_frequency(
     date_column : str, optional
         Column of ``input_file`` with the dates; omit for annual maxima.
     distribution : {"all", "log_normal", "gev", "pearson3", "weibull"}, optional
-        Distribution to fit; ``"all"`` fits the four and sorts them by AIC, by default
-        ``"all"``.
+        Distribution to fit; ``"all"`` fits the four, by default ``"all"``. The fits
+        are sorted by AIC.
     return_periods : sequence of float, optional
         Return periods [years], each greater than 1, by default
         ``DEFAULT_RETURN_PERIODS``.
-    fit_method : {"mle", "moments", "l_moments", "least_squares"}, optional
-        Method that estimates the parameters (ADR-0021), by default ``"mle"``.
+    fit_method : {"mle", "moments", "l_moments", "least_squares", "all"}, optional
+        Method that estimates the parameters (ADR-0021), by default ``"l_moments"``;
+        ``"all"`` fits each distribution by each of the four methods.
 
     Returns
     -------
@@ -626,9 +623,10 @@ def stats_flood_frequency(
         warnings of the fit: a sample of fewer than 10 years (``small_sample``) or of
         fewer than the 30 years of the KZGW 2017 methodology (``short_record``), a
         K-S test that is not valid for fitted parameters (``ks_test_approximate``), a
-        distribution that ``fit_method`` gives no parameters of, left out of ``"all"``
-        (``distribution_left_out``), and annual maxima without density under a
-        fitted distribution, whose AIC is then null (``outside_support``).
+        combination of a distribution and a method that gives it no parameters, left
+        out when several are fitted (``distribution_left_out``), and annual maxima
+        without density under a fitted distribution, whose AIC is then null
+        (``outside_support``).
 
     Raises
     ------
@@ -643,7 +641,7 @@ def stats_flood_frequency(
         distribution requested (of none of the four for ``"all"``).
     """
     check_choice("distribution", distribution, _DISTRIBUTIONS)
-    check_choice("fit_method", fit_method, FIT_METHODS)
+    check_choice("fit_method", fit_method, _FIT_METHOD_CHOICES)
     periods = _return_periods(return_periods)
     series, notices = load_valid_series(
         values=values,
@@ -675,22 +673,16 @@ def stats_flood_frequency(
         notices.extend(year_notices)
     with capture_warnings(_NUMERIC_WARNINGS) as numeric:
         analysis = FloodFrequencyAnalysis(maxima, periods)
-        fitted: list[FrequencyAnalysisResult]
-        if distribution == "all":
-            fitted = list(
-                _fit(
-                    "the four flood frequency distributions",
-                    lambda: analysis.fit_all(fit_method=fit_method),
-                ).values()
-            )
-        else:
-            fit = getattr(analysis, _FIT_METHODS[distribution])
-            fitted = [
-                _fit(
-                    f"the {distribution} distribution",
-                    lambda: fit(fit_method=fit_method),
-                )
-            ]
+        fitted: list[FrequencyAnalysisResult] = list(
+            _fit(
+                "the four flood frequency distributions"
+                if distribution == "all"
+                else f"the {distribution} distribution",
+                lambda: analysis.fit_all(
+                    fit_method=fit_method, distribution=distribution
+                ),
+            ).values()
+        )
         empirical = analysis.empirical_frequency()
     result = FloodFrequencyResult(
         n_years=len(maxima),

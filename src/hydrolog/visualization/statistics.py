@@ -49,6 +49,14 @@ _DIST_NAMES = {
     "fisher_tippett": "Fisher-Tippett",
 }
 
+# Fit method display names (a curve of fit_all(fit_method="all"))
+_METHOD_NAMES = {
+    "mle": "największa wiarygodność",
+    "moments": "momenty",
+    "l_moments": "L-momenty",
+    "least_squares": "najmniejsze kwadraty",
+}
+
 
 def plot_frequency_curve(
     result: FrequencyAnalysisResult,
@@ -155,7 +163,8 @@ def plot_frequency_comparison(
     Parameters
     ----------
     results : dict[str, FrequencyAnalysisResult]
-        Dictionary mapping distribution names to fitted results.
+        Fitted results (``FloodFrequencyAnalysis.fit_all``); a curve is labelled by
+        its distribution and, when the results hold several fit methods, its method.
     empirical : EmpiricalFrequency, optional
         Empirical plotting positions to overlay as scatter points.
     title : str, optional
@@ -184,9 +193,13 @@ def plot_frequency_comparison(
         fig = ax.get_figure()  # type: ignore[assignment]  # stub allows SubFigure
         assert fig is not None
 
-    for i, (name, result) in enumerate(results.items()):
+    several_methods = len({result.fit_method for result in results.values()}) > 1
+    for i, result in enumerate(results.values()):
         color = PALETTE[i % len(PALETTE)]
-        dist_label = _DIST_NAMES.get(name, name)
+        dist_label = _DIST_NAMES.get(result.distribution_name, result.distribution_name)
+        if several_methods:
+            method = _METHOD_NAMES.get(result.fit_method, result.fit_method)
+            dist_label = f"{dist_label}, {method}"
         exc_pct = result.exceedance_probabilities * 100.0
         ax.plot(
             exc_pct,

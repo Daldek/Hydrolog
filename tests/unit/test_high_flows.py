@@ -24,6 +24,10 @@ def _fit(analysis, distribution, fit_method):
     return getattr(analysis, f"fit_{distribution}")(fit_method=fit_method)
 
 
+def _ranked(analysis, fit_method):
+    return list(analysis.fit_all(fit_method=fit_method).values())
+
+
 class TestFloodFrequencyAnalysis:
     @pytest.fixture
     def synthetic_gev_data(self):
@@ -310,3 +314,132 @@ class TestFitMethods:
 
         with pytest.raises(InvalidParameterError):
             analysis.fit_gev(fit_method="median")
+
+
+class TestEveryFitMethod:
+    """``fit_all(fit_method="all")``: each distribution by each method."""
+
+    def test_fits_each_distribution_by_each_method(self):
+        from hydrolog.statistics.high_flows import FIT_METHODS, FloodFrequencyAnalysis
+
+        ranked = FloodFrequencyAnalysis(_FLOODS).fit_all(fit_method="all")
+
+        assert len(ranked) == 16
+        assert set(ranked) == {
+            f"{distribution}/{method}"
+            for distribution in _DISTRIBUTIONS
+            for method in FIT_METHODS
+        }
+
+    def test_each_item_is_the_fit_of_its_own_method(self):
+        from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
+
+        ranked = FloodFrequencyAnalysis(_FLOODS).fit_all(fit_method="all")
+
+        for key, result in ranked.items():
+            assert key == f"{result.distribution_name}/{result.fit_method}"
+            single = _fit(
+                FloodFrequencyAnalysis(_FLOODS),
+                result.distribution_name,
+                result.fit_method,
+            )
+            assert result.to_dict() == single.to_dict()
+
+    def test_ranks_every_item_by_aic(self):
+        from hydrolog.statistics.high_flows import FIT_METHODS, FloodFrequencyAnalysis
+
+        analysis = FloodFrequencyAnalysis(_FLOODS)
+        ranked = analysis.fit_all(fit_method="all")
+
+        aics = [result.aic for result in ranked.values()]
+        assert aics == sorted(aics)
+        # one ranking over all items: the first item is the lowest AIC of any method,
+        # and each method's items keep the order of that method's own ranking
+        best = min(
+            (result for method in FIT_METHODS for result in _ranked(analysis, method)),
+            key=lambda result: result.aic,
+        )
+        assert next(iter(ranked.values())).to_dict() == best.to_dict()
+        for method in FIT_METHODS:
+            names = [
+                result.distribution_name
+                for result in ranked.values()
+                if result.fit_method == method
+            ]
+            assert names == [r.distribution_name for r in _ranked(analysis, method)]
+
+    def test_a_combination_without_parameters_is_left_out(self):
+        from hydrolog._warnings import DistributionLeftOut
+        from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
+
+        # skewness and L-skewness below the Weibull's (the Gumbel's) limit
+        analysis = FloodFrequencyAnalysis(np.array([1.0, *[10.0] * 8, 10.5]))
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            ranked = analysis.fit_all(fit_method="all")
+
+        left_out = {"weibull/moments", "weibull/l_moments", "weibull/least_squares"}
+        assert len(ranked) == 13
+        assert "weibull/mle" in ranked
+        assert left_out.isdisjoint(ranked)
+        notices = [
+            w.message for w in caught if isinstance(w.message, DistributionLeftOut)
+        ]
+        assert {
+            f"{notice.details['distribution']}/{notice.details['fit_method']}"
+            for notice in notices
+        } == left_out
+        assert {notice.details["reason"] for notice in notices} == {"out_of_range"}
+
+    def test_one_method_keeps_the_distribution_keys(self):
+        from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
+
+        ranked = FloodFrequencyAnalysis(_FLOODS).fit_all(fit_method="moments")
+
+        assert set(ranked) == set(_DISTRIBUTIONS)
+        assert {result.fit_method for result in ranked.values()} == {"moments"}
+
+    def test_one_distribution_by_each_method(self):
+        from hydrolog.statistics.high_flows import FIT_METHODS, FloodFrequencyAnalysis
+
+        analysis = FloodFrequencyAnalysis(_FLOODS)
+        ranked = analysis.fit_all(fit_method="all", distribution="gev")
+
+        assert set(ranked) == {f"gev/{method}" for method in FIT_METHODS}
+        every = analysis.fit_all(fit_method="all")
+        assert list(ranked) == [key for key in every if key.startswith("gev/")]
+
+    def test_one_combination_raises_its_own_error(self):
+        from hydrolog._warnings import DistributionLeftOut
+        from hydrolog.exceptions import CalculationError
+        from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
+
+        analysis = FloodFrequencyAnalysis(np.array([1.0, *[10.0] * 8, 10.5]))
+        with warnings.catch_warnings(record=True) as seen:
+            warnings.simplefilter("always")
+            with pytest.raises(CalculationError) as caught:
+                analysis.fit_all(fit_method="moments", distribution="weibull")
+        assert caught.value.details["reason"] == "out_of_range"
+        assert caught.value.details["distribution"] == "weibull"
+        assert not [w for w in seen if isinstance(w.message, DistributionLeftOut)]
+
+    def test_unknown_distribution_raises(self):
+        from hydrolog.exceptions import InvalidParameterError
+        from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
+
+        with pytest.raises(InvalidParameterError) as caught:
+            FloodFrequencyAnalysis(_FLOODS).fit_all(distribution="gumbel")
+        assert caught.value.details["option"] == "distribution"
+
+
+def test_the_default_fit_method_is_l_moments():
+    from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
+
+    analysis = FloodFrequencyAnalysis(_FLOODS)
+
+    for distribution in _DISTRIBUTIONS:
+        default = getattr(analysis, f"fit_{distribution}")()
+        assert default.fit_method == "l_moments"
+        assert default.to_dict() == _fit(analysis, distribution, "l_moments").to_dict()
+    ranked = analysis.fit_all()
+    assert {result.fit_method for result in ranked.values()} == {"l_moments"}

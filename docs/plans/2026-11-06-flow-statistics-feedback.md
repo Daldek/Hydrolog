@@ -139,3 +139,59 @@ guide `instrukcja/`, regenerated `AGENTS.md` and `llms.txt`) on the branch that 
   values and a hand-off's annual maxima have positions, not years), with the defaults (halves,
   α = 0.05); the notice joins „Uwagi”. The Statystyka pictures of the guide are to be taken again
   (PROGRESS, Next 8).
+- `feature/fit-method-all` (D6, ADR-0021 amended): `fit_method` `all` in the library
+  (`FloodFrequencyAnalysis.fit_all(fit_method="all", distribution=...)`, keys
+  `"<distribution>/<fit_method>"`) and in `stats flood-frequency` (also with one distribution);
+  every item carries `fit_method`; one AIC ranking; a combination without parameters is left out
+  with `distribution_left_out` (one combination asked for is its own error). The default is
+  `l_moments` in the library, the operation, the catalog and so the GUI; the guide's example gives
+  GEV Q 1% 324,9 m³/s (307,3 by maximum likelihood) and its Pearson III has no AIC. Beyond the
+  plan's wording: the GUI's choice field hides `all` until D7; `plot_frequency_comparison` names
+  the method of a curve when the results hold several. Found: scipy's maximum likelihood does not
+  always reach the lowest AIC of its distribution (its GEV of the unit tests' 11 values: 129.1
+  against 118.6 by the L-moments), hence the wording of D7. The Statystyka picture of the guide is
+  to be taken again (PROGRESS, Next 8).
+
+## Erratum 2026-11-06: the author's review of the deployed Statystyka
+
+The author approved the decisions reported for review (the compact `stats` line of `AGENTS.md`,
+Pettitt's change point as the first year after it, the least-squares note, the stored T = 100,
+`densities` from the library, fits outside their support kept with a null AIC) and asked for the
+following. Each item is a new branch, stacked on `feature/homogeneity-tests` in this order.
+
+### D6. Every combination of distribution and fit method (`feature/fit-method-all`, ADR-0021 amended)
+
+- `fit_method` of `stats flood-frequency` and of the library gains `all` (each distribution
+  fitted by each method, as `distribution` has `all`); every item of `distributions` carries its
+  `fit_method`; the ranking stays AIC over all items; the result's `fit_method` is the value asked
+  for. A combination the method cannot fit is left out with `distribution_left_out`, as today.
+- The default of `fit_method` becomes `l_moments` (library, CLI, MCP, GUI): maximum likelihood is
+  less stable on the short samples of annual maxima. The guide's quoted numbers follow.
+
+### D7. Combinations in the GUI (`feature/stats-combinations-view`)
+
+- Statystyka runs `fit_method=all`, `distribution=all` once; in Dane, „Rozkłady” and „Metody
+  estymacji” are multiple choices that only filter what is shown (default: every distribution,
+  L-moments only); changing them does not recompute.
+- Colour = distribution, line style = fit method (solid, dashed, dotted, dash-dot), on every
+  chart and legend; the distributions table has one row per shown combination (distribution,
+  method, AIC, …); „najlepszy” is the lowest AIC among the shown combinations (with every method
+  shown, AIC across the methods favours maximum likelihood when its search converges; scipy's
+  search may stop short of the maximum, ADR-0021 amendment: the (i) text says so).
+- „W tabeli kwantyli” can untick every row, the best one included; with none ticked the quantile
+  table says so instead of showing columns.
+
+### D8. Charts readable at every width, axes from zero, stable ranges (`feature/stats-chart-layout`)
+
+- The density and distribution-function charts stand one under the other; every Statystyka chart
+  has a maximum width and height, so a very wide window does not blow them up.
+- No axis of any GUI chart starts below 0.
+- An axis range depends only on the result, not on the active, ticked or shown combinations; the
+  density's range ignores spikes at a distribution's bound (a robust rule over the combinations'
+  peaks, recorded in the code and the (i) text); the person may set the range of each axis
+  (min/max, „Auto” restores the default).
+
+### D9. Live recompute (`feature/stats-live-recompute`)
+
+- As in Hydrogram zlewni (plan 2026-11-02, D13, extended to Statystyka): every change of an input
+  recomputes after a short debounce, the newest run wins; „Oblicz” goes.
