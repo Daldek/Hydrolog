@@ -707,7 +707,11 @@ quantiles need at least 30 years).
   quantiles from annual minima; `stats low-flow-sequences`: drought sequences below a threshold.
 - `stats characteristic`: second-degree characteristic values (WWQ ... NNQ); `stats daily` and
   `stats monthly`: day-of-year and monthly statistics.
-- `stats mann-kendall`: monotonic trend test.
+- `stats mann-kendall`: monotonic trend test; `stats homogeneity`: the homogeneity of annual maxima
+  by the Mann-Whitney U and two-sample Kolmogorov-Smirnov tests of the series split at
+  `--split-year` (default: into halves) and Pettitt's change-point test (ADR-0022). Annual maxima
+  take their years from `--year-column` (or inline `--years`), a daily series from its dates;
+  `split_year` and Pettitt's `change_point_year` are the first year of the second part.
 
 ```bash
 hydrolog stats flood-frequency --input-file tests/fixtures/annual_maxima.csv --value-column Qmax --distribution gev --fit-method l_moments --return-periods 10,100 --json
@@ -719,6 +723,14 @@ hydrolog stats flood-frequency --input-file tests/fixtures/annual_maxima.csv --v
 
 ```bash
 hydrolog stats mann-kendall --input-file tests/fixtures/annual_maxima.csv --value-column Qmax --alpha 0.05 --json
+```
+
+```bash
+hydrolog stats homogeneity --input-file tests/fixtures/annual_maxima.csv --value-column Qmax --year-column year --split-year 2000 --json
+```
+
+```json output
+{"result": {"schema": "hydrolog-stats-homogeneity/1", "n_years": 35, "split_index": 11, "split_year": 2000, "mann_whitney": {"homogeneous": true}, "pettitt": {"change_point_year": 2020, "homogeneous": true}}}
 ```
 
 ```python
@@ -965,7 +977,7 @@ import numpy as np
 from hydrolog.hydrometrics import RatingCurve
 from hydrolog.morphometry import WatershedParameters
 from hydrolog.soil import classify_usda_texture, texture_to_hsg
-from hydrolog.statistics import FloodFrequencyAnalysis, mann_kendall_test
+from hydrolog.statistics import FloodFrequencyAnalysis, homogeneity_tests, mann_kendall_test
 
 with open("tests/fixtures/watershed_example.json", encoding="utf-8") as handle:
     watershed = WatershedParameters.from_json(handle.read())
@@ -976,6 +988,9 @@ gev = FloodFrequencyAnalysis(maxima, return_periods=np.array([10.0, 100.0])).fit
 print(gev.distribution_name, gev.quantiles, mann_kendall_test(maxima).trend_detected)
 by_l_moments = FloodFrequencyAnalysis(maxima).fit_all(fit_method="l_moments")  # FIT_METHODS
 print([(name, fit.aic) for name, fit in by_l_moments.items()])  # sorted by AIC, inf last
+years = np.loadtxt("tests/fixtures/annual_maxima.csv", delimiter=",", skiprows=1, usecols=0)
+tested = homogeneity_tests(maxima, years.astype(int), split_year=2000)  # parts before / from 2000
+print(tested.mann_whitney.p_value, tested.pettitt.change_point_year, tested.pettitt.homogeneous)
 
 pairs = np.loadtxt("tests/fixtures/rating_curve_pairs.csv", delimiter=",", skiprows=1)
 fit = RatingCurve(pairs[:, 0], pairs[:, 1]).fit(h0_initial=40.0)
@@ -1170,7 +1185,7 @@ the GUI's address).
 |---|---|---|
 | Hydrogram zlewni | the design hydrograph of one watershed in three steps (watershed, hyetograph, model): empty on a first visit, checked for what the chosen model needs (an empty required field is an error, a value outside its typical range a warning on its field), then recomputed after every change; under PMAXTP the depth is fetched from IMGW-PIB for the point, probability, duration and method given, not typed; the guide's worked example is Kamiennik at Świerzawa | `hydrograph generate`, `precip pmaxtp` for the PMAXTP depth, `uh nash` for Nash by Lutz |
 | Sieć i trasowanie | a network of subcatchments, reaches, reservoirs and junctions (the example: `hydrolog.testing.example_network_document()`), drawn as a schematic before it is routed by „Oblicz sieć” | `route schematic`, `route network` |
-| Statystyka przepływów | flood frequency of annual maxima or of a daily series (the example: 26 annual maxima, 1998 to 2023) | `stats flood-frequency` |
+| Statystyka przepływów | flood frequency of annual maxima or of a daily series (the example: 26 annual maxima, 1998 to 2023) and the homogeneity of the series | `stats flood-frequency`, `stats homogeneity` |
 | Kalkulatory | the time of concentration by six methods for the watershed of Hydrogram zlewni, and fifteen single calculators | `tc watershed` and fifteen others |
 | Wszystkie polecenia | a form for every command of the catalog | all but `gui serve`, `config show` and `commands guide` |
 
