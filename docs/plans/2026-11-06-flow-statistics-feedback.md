@@ -110,3 +110,10 @@ guide `instrukcja/`, regenerated `AGENTS.md` and `llms.txt`) on the branch that 
   full curve of the plot, the others dimmed); the best one after every computation, nothing
   stored. The last ticked distribution cannot be unticked, so the quantile table always has a
   column. The Statystyka pictures of the guide are to be taken again (PROGRESS, Next 8).
+- `feature/stats-density-charts` (D3): `densities` [1/(m³/s)] in every distribution of the
+  `stats flood-frequency` result (the fitted density at each quantile; nested, so the schema is
+  unchanged) and, under the probability plot, „Gęstość prawdopodobieństwa” (a rug of the annual
+  maxima) and „Dystrybuanta” (the empirical points), highlighted as D2 and cut at the larger of
+  the largest maximum and the active distribution's Q 1%. The curves' run has 106 return periods
+  (p every 1% from 99% to 2%, finer at both ends). The charts kit gained the series kind `rug`.
+  The Statystyka pictures of the guide are to be taken again (PROGRESS, Next 8).

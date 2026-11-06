@@ -1,9 +1,10 @@
-// The results of „Statystyka przepływów”: in the centre the probability plot and the ranked
-// annual maxima, in the panel Wyniki the tiles of the active distribution, the notices in
-// Polish, the fitted distributions with their goodness of fit (a click on a row makes its
-// distribution the active one), the quantiles of the distributions ticked in their table
-// and the exports (CSV of those quantiles, the envelope as JSON, the chart as PNG, „Do
-// porównania” and the call).
+// The results of „Statystyka przepływów”: in the centre the probability plot with the density
+// and distribution-function charts, and the ranked annual maxima, in the panel Wyniki the
+// tiles of the active distribution, the notices in Polish, the fitted distributions with
+// their goodness of fit (a click on a row makes its distribution the active one), the
+// quantiles of the distributions ticked in their table and the exports (CSV of those
+// quantiles, the envelope as JSON, the probability plot as PNG, „Do porównania” and the
+// call).
 
 import { Chart } from "../../charts/chart.js";
 import { num, plural } from "../../format.js";
@@ -14,7 +15,7 @@ import { statystyka as texts } from "../../labels/statystyka.js";
 import { CommandLine, ExportButtons } from "../../ui/export-panel.js";
 import { InfoButton } from "../../ui/info-button.js";
 import { DataTable } from "../../ui/table.js";
-import { probabilitySpec } from "./charts.js";
+import { densitySpec, distributionSpec, probabilitySpec } from "./charts.js";
 import { COMMAND, DISTRIBUTION_CLASS, percentAt, quantileAt, secondPeriod, shortNumber, tickedFits } from "./state.js";
 
 /**
@@ -50,7 +51,8 @@ function quantileLabel(fit, period) {
 }
 
 /**
- * The centre: the probability plot, or the table of the ranked annual maxima.
+ * The centre: the probability plot with the density and distribution-function charts, or the
+ * table of the ranked annual maxima.
  *
  * @param {{run: object|null, tab: "chart"|"series", stressed: number|null, active: string|null,
  *   chartSvg: object}} props the last run, the tab shown, the stressed return period, the
@@ -59,9 +61,14 @@ function quantileLabel(fit, period) {
  */
 export function CenterBody({ run, tab, stressed, active, chartSvg }) {
   const result = run && run.envelope.status === "ok" ? run.envelope.result : null;
+  const curves = run && run.curves;
   const spec = useMemo(
-    () => (result ? probabilitySpec({ result, curves: run.curves, chosen: stressed, active }) : null),
-    [result, run && run.curves, stressed, active],
+    () => (result ? probabilitySpec({ result, curves, chosen: stressed, active }) : null),
+    [result, curves, stressed, active],
+  );
+  const shapes = useMemo(
+    () => (result ? { density: densitySpec({ result, curves, active }), distribution: distributionSpec({ result, curves, active }) } : null),
+    [result, curves, active],
   );
   if (!run) return html`<p class="empty-note">${texts.noResult}</p>`;
   if (!result) return html`<p class="empty-note">${texts.results.cancelled}</p>`;
@@ -98,6 +105,22 @@ export function CenterBody({ run, tab, stressed, active, chartSvg }) {
       </div>
       <${Chart} spec=${spec} svgRef=${chartSvg} />
       ${run.curvesError ? html`<p class="note">${t(texts.chart.curvesFailed, { message: run.curvesError })}</p>` : null}
+    </div>
+    <div class="card st-shape">
+      <div class="card-head">
+        <h3 class="card-title">${texts.shape.title}</h3>
+        <span class="card-sub">${texts.shape.sub}</span>
+      </div>
+      <div class="duo">
+        <div class="chart-box" data-chart="density">
+          <div class="chart-title">${texts.shape.density}</div>
+          <${Chart} spec=${shapes.density} />
+        </div>
+        <div class="chart-box" data-chart="distribution">
+          <div class="chart-title">${texts.shape.distribution}</div>
+          <${Chart} spec=${shapes.distribution} />
+        </div>
+      </div>
     </div>
   `;
 }

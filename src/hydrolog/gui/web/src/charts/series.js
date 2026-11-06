@@ -4,9 +4,10 @@
  * Series kinds: `line`, `step` (a value holds until the next point), `area`
  * (filled down to zero, with its line), `bars` (vertical; on the `y2` panel
  * they hang from its top: the hyetograph), `points` (the empirical points of
- * a probability plot) and, on a band y axis, horizontal bars (one category per
- * point, `{x: value, y: name, sub, cls, text}`). A series' `cls` (`s1` to
- * `s6`, `bar-p`, `bar-pe`, `best`, …) picks its colour in `css/charts.css`.
+ * a probability plot), `rug` (short ticks on the x axis at x values, without
+ * a y and without a readout value) and, on a band y axis, horizontal bars (one
+ * category per point, `{x: value, y: name, sub, cls, text}`). A series' `cls`
+ * (`s1` to `s6`, `bar-p`, `bar-pe`, `best`, …) picks its colour in `css/charts.css`.
  * Marks: `peak` (a dot, a guide to the axis and a boxed label), `hline` (a
  * reference value across the plot), `vline` (a moment, with a note) and
  * `note` (a text at a point).
@@ -79,7 +80,7 @@ export function areaPath(xy, base) {
 /**
  * Value of a series at an x coordinate of the viewBox: linear between points
  * (lines, areas), the last value before it (steps), the bar that contains it
- * (bars), the nearest point within `snap` (points).
+ * (bars), the nearest point within `snap` (points); a rug has none.
  *
  * @param {{kind: string, px: number[], values: number[], spans?: [number, number][]}} geometry
  *   a series' points in viewBox x (`px`, increasing) and their values
@@ -89,7 +90,7 @@ export function areaPath(xy, base) {
  */
 export function valueAt(geometry, at, snap = 6) {
   const { kind, px, values, spans } = geometry;
-  if (!px.length) return null;
+  if (!px.length || kind === "rug") return null;
   if (kind === "bars") {
     const index = spans.findIndex(([a, b]) => at >= a - 1e-6 && at < b - 1e-6);
     return index < 0 ? null : values[index];
@@ -265,7 +266,7 @@ function drawHorizontalBars(geometry, layout) {
  * @returns {SVGElement[]}
  */
 export function drawSeries(geometries, layout) {
-  const rank = { area: 0, bars: 1, hbars: 1, step: 2, line: 2, points: 3 };
+  const rank = { area: 0, bars: 1, hbars: 1, step: 2, line: 2, points: 3, rug: 3 };
   const ordered = [...geometries].sort((a, b) => (rank[a.kind] ?? 2) - (rank[b.kind] ?? 2));
   const out = [];
   for (const geometry of ordered) {
@@ -278,6 +279,13 @@ export function drawSeries(geometries, layout) {
         .filter(([x, y]) => Number.isFinite(x) && Number.isFinite(y))
         .map(([x, y]) => svgEl("circle", { cx: x, cy: y, r: layout.small ? 3 : 3.6 }));
       out.push(svgEl("g", { class: `emp ${cls}`, "data-series": series.id }, dots));
+    } else if (kind === "rug") {
+      const { bottom } = geometry.axis === "y2" ? layout.upper : layout.main;
+      const length = layout.small ? 6 : 8;
+      const ticks = geometry.px
+        .filter((x) => Number.isFinite(x))
+        .map((x) => svgEl("line", { x1: x, x2: x, y1: bottom, y2: bottom - length }));
+      out.push(svgEl("g", { class: `rug ${cls}`, "data-series": series.id }, ticks));
     } else {
       const path = kind === "step" ? stepPoints(xy) : xy;
       if (kind === "area") {

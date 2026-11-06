@@ -61,6 +61,17 @@ export const statystyka = {
     peak: "Q {p}% = {q} m³/s ({name})",
     curvesFailed: "Krzywe narysowano z kwantyli wyniku: nie udało się policzyć gęstszej siatki ({message}).",
   },
+  shape: {
+    title: "Gęstość prawdopodobieństwa i dystrybuanta",
+    sub: "Te same rozkłady względem przepływu; maksima roczne jako kreski na osi Q i punkty F = 1 − p (położenie Weibulla)",
+    density: "Gęstość prawdopodobieństwa",
+    distribution: "Dystrybuanta",
+    x: "Q [m³/s]",
+    densityY: "f(Q) [1/(m³/s)]",
+    densityUnit: "1/(m³/s)",
+    distributionY: "F(Q) = 1 − p",
+    readout: "Q = {q} m³/s",
+  },
   series: {
     title: "Maksima roczne",
     sub: "Uszeregowane malejąco z prawdopodobieństwem empirycznym",

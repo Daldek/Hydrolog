@@ -14,9 +14,9 @@
  *   `band` draws one horizontal bar per point (`{x: value, y: name, sub, cls, text}`).
  * - `y2`: the same as `y` for a panel above the main one, sharing the x axis, whose bars
  *   hang from its top (the hyetograph above the hydrograph); `share` is its part of the height.
- * - `series`: `{id, kind: "line" | "step" | "area" | "bars" | "points", data: [[x, y], …]
- *   (or `{x, y, cls}`), axis: "y" | "y2", cls: "s1"…"s6" | "bar-p" | "bar-pe" | …, label,
- *   unit, digits, width, align, readout, legend}`.
+ * - `series`: `{id, kind: "line" | "step" | "area" | "bars" | "points" | "rug", data: [[x, y], …]
+ *   (or `{x, y, cls}`; a `rug` takes x values only: short ticks on the x axis), axis: "y" | "y2",
+ *   cls: "s1"…"s6" | "bar-p" | "bar-pe" | …, label, unit, digits, width, align, readout, legend}`.
  * - `marks`: `{kind: "peak", x, y, label, cls, guides: "x" | "xy"}`, `{kind: "hline", y, label}`,
  *   `{kind: "vline", x, from, to, extend, label}`, `{kind: "note", x, y, label, dx, dy, anchor}`;
  *   `axis: "y2"` puts a mark on the upper panel.

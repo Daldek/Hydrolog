@@ -18,15 +18,22 @@ export const SECTION = "statystyka";
 export const COMMAND = "stats flood-frequency";
 
 /**
- * Return periods [years] of the curves of the probability plot: a second run of the same
- * series gives the quantiles of every distribution on this grid, from p 99,5% to 0,1%
- * (T = 100 / p), so the curves span the empirical points; the tables show the periods the
- * person chose.
+ * Exceedance probabilities p [%] of the curves: every 1% from 99% to 2% (smooth densities
+ * in the body, about the mode) and finer steps at both ends, to 99,5% and 0,1%.
  */
-export const CURVE_PERIODS = Object.freeze([
-  1.005, 1.01, 1.0204, 1.0526, 1.1111, 1.25, 1.4286, 1.6667, 2, 2.5, 3.3333, 5, 6.6667, 10,
-  14.286, 20, 33.333, 50, 66.667, 100, 200, 333.33, 500, 1000,
-]);
+const CURVE_PERCENTS = [
+  99.5,
+  ...Array.from({ length: 98 }, (_, index) => 99 - index),
+  1.5, 1, 0.7, 0.5, 0.3, 0.2, 0.1,
+];
+
+/**
+ * Return periods [years] of the curves of the three charts: a second run of the same series
+ * gives the quantiles of every distribution with their densities on this grid, from p 99,5%
+ * to 0,1% (T = 100 / p), so the curves span the empirical points; the tables show the
+ * periods the person chose.
+ */
+export const CURVE_PERIODS = Object.freeze(CURVE_PERCENTS.map((p) => 100 / p));
 
 /** The run channel of the curves (a channel of its own: it must not supersede the run). */
 export const CURVES_CHANNEL = "statystyka-krzywe";

@@ -60,6 +60,7 @@
 .chart .bars.loss-ia rect { fill: var(--loss-ia); }
 .chart .bars.loss-f rect { fill: var(--loss-f); }
 .chart .emp circle { fill: var(--surface); stroke: var(--text); stroke-width: 1.4; }
+.chart .rug line { stroke: var(--text); stroke-width: 1.4; }
 
 /* Horizontal bars on a band axis (the tc comparison): ok, warn, bad, used */
 .chart .hbar { fill: var(--series-1); stroke-width: 0; }
@@ -122,6 +123,7 @@
 .sw.bad { background: repeating-linear-gradient(45deg, var(--bad-bg), var(--bad-bg) 2px, var(--bad) 2px, var(--bad) 3px); }
 .sw.used { background: transparent; border: 2px solid var(--text); }
 .sw-dot { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--text); background: var(--surface); display: inline-block; }
+.sw-rug { width: 0; height: 10px; flex: none; border-left: 1.5px solid var(--text); display: inline-block; }
 
 @media (max-width: 860px) {
   .chart.wide svg { min-width: 560px; }

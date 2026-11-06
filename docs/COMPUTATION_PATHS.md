@@ -1107,6 +1107,8 @@ so `hydrographs[P]` of the result is the discharge at the point. Where another s
 
 `stats flood-frequency` fits the log-normal (location 0, two parameters), GEV, Pearson III and Weibull distributions to the annual maxima and ranks them by AIC. `fit_method` (default `mle`) chooses how the parameters are estimated ([ADR-0021](decisions/0021-fit-methods-of-flood-frequency.md)). Every method gives the parameters of the same scipy distributions (`lognorm` with `loc = 0`, `genextreme`, `pearson3`, `weibull_min`), and the quantiles, K-S, A² and AIC follow from them alike.
 
+Each distribution of the result also carries `densities` [1/(m³/s)]: the fitted probability density at each of its `quantiles`, in the same order (the exponential of scipy's log-density there). A quantile of T > 1 lies inside the support, where the four densities are positive. The GUI draws the density and the distribution function F = 1 − p against Q from these fields and computes nothing else.
+
 | `fit_method` | Estimator |
 |---|---|
 | `mle` | Maximum likelihood, `scipy.stats.<distribution>.fit` (the log-normal with `floc=0`) |
@@ -1122,7 +1124,7 @@ For the moments and the L-moments (and so the start of least squares) the **Weib
 
 **Least squares follows the largest values.** Its residuals are in m³/s, and the largest annual maxima lie farthest apart, so they weigh most. On the 26 annual maxima of `tests/fixtures/maksima_roczne.csv` the GEV Q 1% is 307.3 m³/s by `mle`, 309.8 by `moments`, 324.9 by `l_moments` and 517.3 by `least_squares`.
 
-**Verification** (`tests/unit/test_high_flows.py`). Every method recovers known parameters of every distribution to 1 % from a synthetic sample of 20,000 values (the quantiles at (i − 0.5)/n); the sample L-moments of 1, 2, 3, 4, 10 are λ1 = 4, λ2 = 2, τ3 = 0.5, computed by hand from the 10 pairs and 10 triples; the moments fit reproduces the sample's mean, variance (n − 1) and G1; least squares brings the quantiles closer to the sample than its start. The Pearson III approximation was checked against the exact τ3 = 6 I₁/₃(α, 2α) − 3: α within 3·10⁻⁵ (relative) over the whole range.
+**Verification** (`tests/unit/test_high_flows.py`). Every method recovers known parameters of every distribution to 1 % from a synthetic sample of 20,000 values (the quantiles at (i − 0.5)/n); the sample L-moments of 1, 2, 3, 4, 10 are λ1 = 4, λ2 = 2, τ3 = 0.5, computed by hand from the 10 pairs and 10 triples; the moments fit reproduces the sample's mean, variance (n − 1) and G1; least squares brings the quantiles closer to the sample than its start. The Pearson III approximation was checked against the exact τ3 = 6 I₁/₃(α, 2α) − 3: α within 3·10⁻⁵ (relative) over the whole range. For every distribution and method, the densities equal scipy's pdf at the quantiles (relative 10⁻¹²) and are above 0, from T = 1.01 to 1000 years.
 
 ---
 
