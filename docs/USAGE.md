@@ -700,11 +700,11 @@ unit, so `Q` finds `Q [m3/s]`. The CSV that Obserwator writes loads without prep
 November to October. A series shorter than the method needs adds a notice (reliable flood
 quantiles need at least 30 years).
 
-- `stats flood-frequency`: flood quantiles for return periods from annual maxima
-  (`--distribution all` compares several distributions; `--fit-method` estimates their parameters
-  by `mle`, the default, `moments`, `l_moments` or `least_squares`, ADR-0021); `stats low-flow`:
-  low-flow quantiles from annual minima; `stats low-flow-sequences`: drought sequences below a
-  threshold.
+- `stats flood-frequency`: flood quantiles for return periods from annual maxima, each with the
+  fitted density there (`distributions[].quantiles` and `densities`; `--distribution all`
+  compares several distributions; `--fit-method` estimates their parameters by `mle`, the
+  default, `moments`, `l_moments` or `least_squares`, ADR-0021); `stats low-flow`: low-flow
+  quantiles from annual minima; `stats low-flow-sequences`: drought sequences below a threshold.
 - `stats characteristic`: second-degree characteristic values (WWQ ... NNQ); `stats daily` and
   `stats monthly`: day-of-year and monthly statistics.
 - `stats mann-kendall`: monotonic trend test.
