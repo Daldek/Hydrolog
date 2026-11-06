@@ -100,4 +100,7 @@ guide `instrukcja/`, regenerated `AGENTS.md` and `llms.txt`) on the branch that 
 
 ## Results
 
-(filled in when the branches are done)
+- `feature/fit-methods` (D1, ADR-0021): `stats flood-frequency --fit-method` (`mle`, `moments`,
+  `l_moments`, `least_squares`), the library keyword `fit_method`, the notices
+  `distribution_left_out` and `outside_support`, „Metoda estymacji parametrów” in the GUI; the
+  Statystyka pictures of the guide are to be taken again (PROGRESS, Next 8).

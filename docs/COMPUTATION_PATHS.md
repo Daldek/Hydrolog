@@ -1,7 +1,7 @@
 # Computation Paths for Unit Hydrograph Models (plus HSG and the Fisher–Tippett Distribution)
 
-**Document version:** 1.5
-**Date:** 2026-11-05
+**Document version:** 1.6
+**Date:** 2026-11-06
 **Applies to:** Hydrolog >= 1.0.0 (sections 3.2.2, 3.3.6, 3.4.6, 3.4.7, 3.5, 3.6, 3.7 and 3.8 describe behaviour from v1.0.0; the rest: >= 0.6.0)
 
 ---
@@ -1103,6 +1103,27 @@ Q(P) = Q_residual(P) + sum over the points U that flow into P of  route(channel 
 
 so `hydrographs[P]` of the result is the discharge at the point. Where another stream joins a channel `U->D`, `add_confluence` splits it into `U->C` and `C->D` (both given, never made up) and the tributary `T` flows into `C`: `Q(C) = route(U->C, Q(U)) + route(T->C, Q(T))` and `D` receives `route(C->D, Q(C))`. The stream below the confluence is routed once, for the water of both. For a **linear** reach that is the same as routing each stream through its own copy of `C->D`, because routing is linear and a sum of routed parts is the routed sum; for a **nonlinear** one it is not. In the test (`tests/unit/test_routing_points.py`: two streams of 4 and 9 m3/s peaks, each through a 10 min lag, joining above one reach) the peak below the confluence is 7.62 m3/s with a Muskingum reach whichever way it is built, 3.91 m3/s with a Muskingum-Cunge reach (the coefficients follow the inflow peak: 6 km, 1 m/s, 25 m, slope 0.001) against 5.06 m3/s when each stream is routed through its own copy, and 3.21 against 3.03 m3/s with a pond. Removing a point keeps the points above it: they flow into the point below through the two channels in series (what the stream was), or through the one that the application gives for both; two streams that meet in the removed point keep a confluence there; a confluence that is left with one stream is dropped.
 
+### 3.10 Flood Frequency: Fit Methods (`FloodFrequencyAnalysis`, `stats flood-frequency`; ADR-0021)
+
+`stats flood-frequency` fits the log-normal (location 0, two parameters), GEV, Pearson III and Weibull distributions to the annual maxima and ranks them by AIC. `fit_method` (default `mle`) chooses how the parameters are estimated ([ADR-0021](decisions/0021-fit-methods-of-flood-frequency.md)). Every method gives the parameters of the same scipy distributions (`lognorm` with `loc = 0`, `genextreme`, `pearson3`, `weibull_min`), and the quantiles, K-S, A² and AIC follow from them alike.
+
+| `fit_method` | Estimator |
+|---|---|
+| `mle` | Maximum likelihood, `scipy.stats.<distribution>.fit` (the log-normal with `floc=0`) |
+| `moments` | The distribution's mean, standard deviation and (three parameters) skewness equal the sample's: the mean, the standard deviation with the divisor n − 1 and the adjusted skewness G1 = √(n(n − 1)) / (n − 2) · m3 / m2^(3/2). Log-normal: s² = ln(1 + Cv²), scale = mean / √(1 + Cv²); Pearson III: (G1, mean, standard deviation), scipy's own parameters; GEV: the shape c whose skewness is G1 (Brent's method), then the scale and the location from the variance and the mean |
+| `l_moments` | The distribution's λ1, λ2 and (three parameters) τ3 equal the sample's, from the unbiased probability-weighted moments of the ascending sample: λ1 = b0, λ2 = 2b1 − b0, τ3 = (6b2 − 6b1 + b0) / λ2. Log-normal: s = 2 erf⁻¹(λ2 / λ1), scale = λ1 exp(−s²/2); GEV: c solving τ3 = 2(1 − 3^−c) / (1 − 2^−c) − 3 (Brent's method), α = λ2 c / ((1 − 2^−c) Γ(1 + c)), ξ = λ1 − α (1 − Γ(1 + c)) / c; Pearson III: α = 4/γ² from \|τ3\| by the rational approximations of Hosking and Wallis (1997), γ = 2 sign(τ3) / √α, σ = λ2 √(πα) Γ(α) / Γ(α + ½), μ = λ1 |
+| `least_squares` | The minimum of Σ (x₍ⱼ₎ − Q(j / (n + 1)))² over the ascending sample and the quantiles at the Weibull plotting positions of `empirical`, by Nelder-Mead from the `moments` estimate (the scale and the log-normal and Weibull shapes searched as logarithms) |
+
+For the moments and the L-moments (and so the start of least squares) the **Weibull distribution is the GEV of the negated sample**: −X ~ GEV(c, ξ, α) with c > 0 is X ~ `weibull_min`(1/c, −ξ − α/c, α/c). It needs a sample skewness above −1.1395 or an L-skewness between −0.1699 and 1, the values of the Gumbel distribution (c = 0).
+
+**No parameters.** The methods other than `mle` need 3 values, not all equal, a sample skewness or L-skewness inside the distribution's range, and values above 0 for the log-normal. Otherwise the fit is a `calculation_error` with `details.reason` `too_few_values`, `constant_values`, `out_of_range` or `non_positive_values`. With `distribution = "all"` that distribution is left out with the notice `distribution_left_out`; the call fails only when none of the four remains.
+
+**Outside the support: AIC null.** A fitted distribution may give no density to an annual maximum, most often a lower bound of Pearson III or Weibull above the smallest one. Its log-likelihood is −∞, so its AIC is infinite (`null` in JSON) and it ranks after the fits with a finite AIC; its quantiles, K-S and A² stay, and the notice `outside_support` names the values. With the moments and the L-moments this is frequent: in trials of 300 samples of 30 and 60 years it happened in 9–81 % of the Pearson III fits and 16–91 % of the Weibull fits. Maximum likelihood can do it too: its Weibull of `tests/fixtures/maksima_roczne.csv` has the location 94.2, above the maxima 81.6 and 87.2.
+
+**Least squares follows the largest values.** Its residuals are in m³/s, and the largest annual maxima lie farthest apart, so they weigh most. On the 26 annual maxima of `tests/fixtures/maksima_roczne.csv` the GEV Q 1% is 307.3 m³/s by `mle`, 309.8 by `moments`, 324.9 by `l_moments` and 517.3 by `least_squares`.
+
+**Verification** (`tests/unit/test_high_flows.py`). Every method recovers known parameters of every distribution to 1 % from a synthetic sample of 20,000 values (the quantiles at (i − 0.5)/n); the sample L-moments of 1, 2, 3, 4, 10 are λ1 = 4, λ2 = 2, τ3 = 0.5, computed by hand from the 10 pairs and 10 triples; the moments fit reproduces the sample's mean, variance (n − 1) and G1; least squares brings the quantiles closer to the sample than its start. The Pearson III approximation was checked against the exact τ3 = 6 I₁/₃(α, 2α) − 3: α within 3·10⁻⁵ (relative) over the whole range.
+
 ---
 
 ## 4. Literature Verification
@@ -1145,6 +1166,7 @@ so `hydrographs[P]` of the result is the discharge at the point. Where another s
 | River network of reaches, reservoirs and junctions (`route network`, `RoutingNetwork`) | Composition of the elements above in the order of the stream (the convention of `StreamSegment.upstream_ids`); no published table, the identities of the plan instead: a one-reach network equals the command, series equivalence with the sub-reaches of `MuskingumReach`, junction sums, order independence | ✅ |
 | Subcatchment that makes its hydrograph from its rain (`Subcatchment(watershed=, runoff=, rainfall=)`, `CurveNumberRunoff`, `DesignStorm`, `RainfallSeries`) | The SCS-CN and unit hydrograph paths above (`HydrographGenerator`): the hydrograph of the node equals the generator's to the last ordinate for the four unit hydrograph models, and a network of such nodes routes as the network of their hydrographs | ✅ |
 | Control points (`ControlPointNetwork`) | Expansion into the nodes above, no formula of its own: the network of points equals the same nodes built by hand (document and hydrographs); a linear reach routes the same with and without a confluence, a nonlinear one (Muskingum-Cunge with the inflow peak, a pond) does not | ✅ |
+| Flood frequency fit methods (`fit_method`) | Hosking and Wallis (1997): sample L-moments, GEV and Pearson III from L-moments; moments and least squares on the same scipy distributions (ADR-0021) | ✅ |
 
 ### 4.2 Key Publications
 
@@ -1171,6 +1193,7 @@ so `hydrographs[P]` of the result is the discharge at the point. Where another s
 | Fisher, R.A. and Tippett, L.H.C. | 1928 | Limiting distributions of the smallest and largest sample value |
 | Gumbel, E.J. | 1958 | Statistics of extreme values (distribution for minima) |
 | Coles, S. | 2001 | GEV estimation by maximum likelihood (ch. 3) |
+| Hosking, J.R.M. and Wallis, J.R. | 1997 | L-moments; parameters of the GEV and Pearson III from them (`fit_method` `l_moments`) |
 | USDA Soil Survey Manual | 1993 | Texture triangle, texture classes |
 
 ---
@@ -1342,7 +1365,11 @@ so `hydrographs[P]` of the result is the discharge at the point. Where another s
 
 34. **Asquith, W.H. & Roussel, M.C.** (2007). An initial-abstraction, constant-loss model for unit hydrograph modeling for applicable watersheds in Texas. *U.S. Geological Survey Scientific Investigations Report 2007-5243* (the gamma unit hydrograph from its peak and time to peak, eq. 2 and 4). https://pubs.usgs.gov/sir/2007/5243/
 
+### Flood Frequency
+
+35. **Hosking, J.R.M. & Wallis, J.R.** (1997). *Regional Frequency Analysis: An Approach Based on L-Moments*. Cambridge University Press (sample L-moments; the GEV, Pearson III and lognormal L-moments and the estimators of their parameters).
+
 ---
 
-**Document version:** 1.5
-**Last updated:** 2026-11-05
+**Document version:** 1.6
+**Last updated:** 2026-11-06
