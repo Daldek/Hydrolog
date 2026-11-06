@@ -1,4 +1,4 @@
-"""„Statystyka przepływów” (plan S5, D13, D14, D16; 2026-11-06, D3, D4) in Chromium.
+"""„Statystyka przepływów” (plan S5, D13, D14, D16; 2026-11-06, D3, D4, D5) in Chromium.
 
 Against the real server of ``gui_server``: a first visit has no series and sends
 nothing, a hint names what to load and links the guide's worked example; „Wyczyść”
@@ -11,14 +11,19 @@ with their years; the call shown is the options sent. A distribution ticked „W
 kwantyli” adds its column of quantiles to the quantile table and the CSV, and a new
 result ticks the best one alone again. A click on a row of the distributions table (or
 Enter on it) makes that distribution the active one: the tiles, the full curve of the
-three charts and „Do porównania” follow it, the other curves dimmed, until a new result.
+three charts and „Do porównania” follow it, the other curves dimmed, until a new result;
+the density chart is scaled to it (a GEV's spike on twelve maxima clipped at the frame).
 No period is highlighted at first („brak”): no highlighted tile or row, no marked
 quantile on the charts and „Do porównania” off until one is chosen, the choice stored.
 A daily series takes its date column from its header; pasted maxima run
-as ``values``; „Do porównania” hands the stressed quantile to the store. A station's
-series handed off by Archiwista (``hydrolog-series/1``, ADR-0020) opens here with
-„Wczytaj z Archiwisty”: annual maxima as the pasted values without the missing years,
-daily values as a file of the session with its columns; annual minima are refused.
+as ``values``; „Do porównania” hands the stressed quantile to the store. „Jednorodność
+ciągu” runs ``stats homogeneity`` on the same series: the guide's pasted maxima pass
+the three tests, split by their positions; a file with a step after 2010 fails them,
+with the split and Pettitt's change point in years and the notice in Polish. A
+station's series handed off by Archiwista (``hydrolog-series/1``, ADR-0020) opens here
+with „Wczytaj z Archiwisty”: annual maxima as the pasted values without the missing
+years, daily values as a file of the session with its columns; annual minima are
+refused.
 """
 
 import json
@@ -27,6 +32,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+import pytest
 from playwright.sync_api import Locator, Page, Request, Response, expect
 
 from hydrolog.catalog import format_command, parse_command, run_command
@@ -34,10 +40,14 @@ from tests.e2e.conftest import Tab, open_part
 
 COMMAND = "stats flood-frequency"
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
+GUIDE = (
+    Path(__file__).resolve().parents[2] / "src/hydrolog/gui/web/instrukcja/index.html"
+)
 MAXIMA = FIXTURES / "maksima_roczne.csv"
 SECTION = 'section[data-section="statystyka"]'
 RIGHT = f"{SECTION} .view-panel.right"
 BADGE = ".topbar .badge.status"
+HOMOGENEITY = f'{RIGHT} [data-part="homogeneity"]'
 PROBABILITY = f"{SECTION} .view-center .st-chart .chart svg"
 DENSITY = f'{SECTION} .view-center [data-chart="density"] svg'
 DISTRIBUTION = f'{SECTION} .view-center [data-chart="distribution"] svg'
@@ -73,6 +83,15 @@ def compute(page: Page) -> Response:
         lambda response: response.url.endswith("channel=statystyka")
     ) as answer:
         page.locator(f"{SECTION} .panel-foot .btn.primary").click()
+    return answer.value
+
+
+def compute_tested(page: Page) -> Response:
+    """Press „Oblicz”; return the answer of the run of the homogeneity tests."""
+    with page.expect_response(
+        lambda response: response.url.endswith("channel=statystyka-jednorodnosc")
+    ) as answer:
+        compute(page)
     return answer.value
 
 
@@ -455,6 +474,40 @@ def test_a_daily_series_takes_its_date_column(tab: Tab) -> None:
     expect(page.locator(f'{RIGHT} .notes li[data-code="small_sample"]')).to_be_visible()
 
 
+def test_the_density_chart_is_scaled_to_the_active_distribution(tab: Tab) -> None:
+    # Twelve maxima whose GEV has a spike at its lower bound (a density of about 53
+    # against the best fit's, the log-normal's, 0,0096 at most)
+    page = open_section(tab)
+    page.locator(f"{SECTION} .step").first.get_by_role("radio", name="Wklej").click()
+    page.locator(f"{SECTION} #st-values").fill(
+        "100,9; 148,6; 130; 140,3; 133,4; 87,2; 170,9; 141,1; 315,4; 126; 177,5; 116,9"
+    )
+    result = compute(page).json()["result"]
+    assert result["best_distribution"] == "log_normal"
+    expect(page.locator(BADGE)).to_have_attribute("data-state", "ok")
+    density = page.locator(DENSITY)
+    expect(density.locator('path.ser.active[data-series="log_normal"]')).to_have_count(
+        1
+    )
+    expect(density.locator("path.ser")).to_have_count(4)
+
+    shown = density.evaluate(
+        """svg => {
+          const frame = svg.querySelector('g.grid.v line');
+          const top = Number(frame.getAttribute('y1'));
+          const bottom = Number(frame.getAttribute('y2'));
+          return [...svg.querySelectorAll('path.ser')].map((path) =>
+            [path.dataset.series, (bottom - path.getBBox().y) / (bottom - top)]);
+        }"""
+    )
+    heights = dict(shown)
+    # The active curve's peak in the upper part of the frame; the GEV's spike clipped at
+    # its top, as every other curve stays within it
+    assert heights["log_normal"] > 0.6
+    assert heights["gev"] == pytest.approx(1.0, abs=0.01)
+    assert max(heights.values()) <= 1.01
+
+
 def test_pasted_maxima_run_and_go_to_the_comparison(tab: Tab) -> None:
     page = open_section(tab)
     page.locator(f"{SECTION} .step").first.get_by_role("radio", name="Wklej").click()
@@ -495,6 +548,90 @@ def test_pasted_maxima_run_and_go_to_the_comparison(tab: Tab) -> None:
         )
         is None
     )
+
+
+def test_the_guides_series_passes_the_three_homogeneity_tests(tab: Tab) -> None:
+    found = re.search(
+        r'data-paste="statystyka-values">([^<]*)<', GUIDE.read_text(encoding="utf-8")
+    )
+    assert found
+    tab.open("#statystyka")
+    page = tab.page
+    page.locator(f"{SECTION} .step").first.get_by_role("radio", name="Wklej").click()
+    page.locator(f"{SECTION} #st-values").fill(found.group(1))
+
+    response = compute_tested(page)
+    options = sent(response)
+    assert set(options) == {"values"} and len(options["values"]) == 26
+    expected = run_command("stats homogeneity", options).to_dict()["result"]
+    assert response.json()["result"] == expected
+    panel = page.locator(HOMOGENEITY)
+    table = panel.get_by_role("region", name="Jednorodność ciągu")
+    rows = table.locator("tbody tr")
+    expect(rows).to_have_count(3)
+    expect(table.locator("thead th")).to_have_text(
+        ["Test", "Statystyka", "p", "Jednorodny"]
+    )
+    expect(rows.nth(0).locator("th, td")).to_have_text(
+        ["Mann-Whitney", "U = 94", "0,644", "✓ tak"]
+    )
+    expect(rows.nth(1).locator("th, td")).to_have_text(
+        ["Kołmogorow-Smirnow", "D = 0,308", "0,588", "✓ tak"]
+    )
+    expect(rows.nth(2).locator("th, td")).to_have_text(
+        ["Pettitt", "K = 50", "0,879", "✓ tak"]
+    )
+    # Pasted values have no years: the split and the change point are positions
+    expect(panel.locator(".note")).to_have_text(
+        "Podział: wartości 1–13 i 14–26. Najbardziej prawdopodobny punkt zmiany "
+        "(Pettitt): po 22. wartości (nieistotny przy α = 0,05). Test odrzuca "
+        "jednorodność, gdy p < α = 0,05."
+    )
+    expect(
+        page.locator(f'{RIGHT} .notes li[data-code="homogeneity_rejected"]')
+    ).to_have_count(0)
+    panel.locator('[data-info="stats-homogeneity"]').click()
+    expect(page.locator(".info-pop #info-pop-title")).to_have_text(
+        "Jednorodność ciągu: testy Manna-Whitneya, Kołmogorowa-Smirnowa i Pettitta"
+    )
+
+
+def test_a_step_in_the_series_fails_the_tests_at_its_year(
+    tab: Tab, tmp_path: Path
+) -> None:
+    path = tmp_path / "skok.csv"
+    rows = [f"{2001 + index},{50 + index}" for index in range(10)]
+    rows += [f"{2011 + index},{100 + index}" for index in range(10)]
+    path.write_text("year,Qmax [m3/s]\n" + "\n".join(rows) + "\n", encoding="utf-8")
+    tab.open("#statystyka")
+    page = tab.page
+    upload(page, path)
+    expect(page.locator(f"{SECTION} #st-value_column")).to_have_value("Qmax")
+
+    response = compute_tested(page)
+    # The file's year column goes with it: the split and the change point have years
+    assert sent(response) == {
+        "input_file": "in/skok.csv",
+        "value_column": "Qmax",
+        "year_column": "year",
+    }
+    panel = page.locator(HOMOGENEITY)
+    rows_shown = panel.get_by_role("region", name="Jednorodność ciągu")
+    expect(rows_shown.locator("tbody tr td:last-child")).to_have_text(["✗ nie"] * 3)
+    expect(rows_shown.locator("tbody tr td:nth-child(3)")).to_have_text(
+        ["< 0,001", "< 0,001", "0,002"]
+    )
+    expect(panel.locator(".note")).to_have_text(
+        "Podział od roku 2011: 10 lat wcześniej, 10 lat od 2011. Najbardziej "
+        "prawdopodobny punkt zmiany (Pettitt): 2011, pierwszy rok po zmianie. Test "
+        "odrzuca jednorodność, gdy p < α = 0,05."
+    )
+    rejected = page.locator(f'{RIGHT} .notes li[data-code="homogeneity_rejected"]')
+    expect(rejected).to_contain_text(
+        "Testy odrzucające jednorodność ciągu przy α = 0,05: Mann-Whitney, "
+        "Kołmogorow-Smirnow, Pettitt."
+    )
+    expect(rejected).not_to_contain_text("(EN)")
 
 
 def test_a_phone_in_the_dark_computes_through_the_sheets(

@@ -126,3 +126,16 @@ guide `instrukcja/`, regenerated `AGENTS.md` and `llms.txt`) on the branch that 
   default, which cannot be told apart from a chosen 100, stays highlighted until „brak” or
   „Wyczyść”. The guide's example chooses 100 before „Oblicz”; the Statystyka pictures of the guide
   are to be taken again (PROGRESS, Next 8).
+- `feature/homogeneity-tests` (D5, ADR-0022): `stats homogeneity` and
+  `hydrolog.statistics.homogeneity_tests`: Mann-Whitney U and two-sample Kolmogorov-Smirnov of the
+  series split at `split_year` (default: the first ⌊n/2⌋ values against the rest), Pettitt's K
+  with p ≈ 2·exp(−6K²/(n³ + n²)) and its change point; the split and the change point are named by
+  the first value after them (index and year), so `split_year` = `change_point_year` compares the
+  parts Pettitt found. Beyond the plan's wording: annual maxima take their years from `years`
+  (inline) or `year_column` (a file), which the series loader gained; the notice
+  `homogeneity_rejected` names the tests that reject; `AGENTS.md` names the `stats` commands on
+  one line, as those of `route` (16 KiB; a DOC-4.2 deviation in CLAUDE.md). GUI: „Jednorodność
+  ciągu” under the quantile table in Wyniki, run on the same series (a file's year column; pasted
+  values and a hand-off's annual maxima have positions, not years), with the defaults (halves,
+  α = 0.05); the notice joins „Uwagi”. The Statystyka pictures of the guide are to be taken again
+  (PROGRESS, Next 8).

@@ -1,9 +1,10 @@
 /**
  * Notices of results in Polish (plan D16): one text per stable code of Hydrolog's NOTICES
  * registry, filled from the notice's `details`. A text with values has a plain form for a
- * notice without them (`route network` gives its nodes' notices only `node_id`). A
- * contract test fails for a code without a text here; a code the GUI does not know shows
- * the English message marked „(EN)”.
+ * notice without them (`route network` gives its nodes' notices only `node_id`), and may
+ * name the codes a detail holds (`names`: detail -> code -> Polish name). A contract test
+ * fails for a code without a text here; a code the GUI does not know shows the English
+ * message marked „(EN)”.
  */
 
 import { auto } from "../format.js";
@@ -108,6 +109,11 @@ export const notices = {
       text: "Dopasowany rozkład {distribution} nie obejmuje maksimów {values}: jego AIC jest nieokreślone, rozkład jest na końcu rankingu.",
       plain: "Dopasowany rozkład nie obejmuje wszystkich maksimów: jego AIC jest nieokreślone.",
     },
+    homogeneity_rejected: {
+      text: "Testy odrzucające jednorodność ciągu przy α = {alpha}: {tests}.",
+      plain: "Test odrzuca jednorodność ciągu.",
+      names: { tests: { mann_whitney: "Mann-Whitney", kolmogorov_smirnov: "Kołmogorow-Smirnow", pettitt: "Pettitt" } },
+    },
     unknown_hietogram_type: {
       text: "Nieznany typ hietogramu {hietogram_type}; dozwolone: {allowed}.",
       plain: "Nieznany typ hietogramu.",
@@ -149,6 +155,20 @@ export function noticeValue(value) {
 }
 
 /**
+ * A detail value with its codes named: each code `names` holds, the value or an item of a
+ * list, becomes its Polish name.
+ *
+ * @param {Object<string, string>|undefined} names the names of the detail's codes
+ * @param {unknown} value the value
+ * @returns {unknown} the value with its codes named
+ */
+function named(names, value) {
+  if (!names) return value;
+  const name = (item) => (typeof item === "string" && Object.hasOwn(names, item) ? names[item] : item);
+  return Array.isArray(value) ? value.map(name) : name(value);
+}
+
+/**
  * Word a notice of a result in Polish.
  *
  * @param {{level?: string, code?: string, message?: string, details?: object}} notice a
@@ -163,7 +183,8 @@ export function describeNotice(notice) {
   if (!entry) return { text: `${message} ${common.english}`.trim(), english: true };
   const details = (notice && notice.details) || {};
   const values = { message };
-  for (const [key, value] of Object.entries(details)) values[key] = noticeValue(value);
+  const names = (typeof entry === "object" && entry.names) || {};
+  for (const [key, value] of Object.entries(details)) values[key] = noticeValue(named(names[key], value));
   const full = typeof entry === "string" ? entry : entry.text;
   const needed = [...full.matchAll(/\{(\w+)\}/g)].map((match) => match[1]);
   const template = needed.every((key) => Object.hasOwn(values, key)) ? full : entry.plain || full;

@@ -1,11 +1,12 @@
 // State of „Statystyka przepływów”: the inputs of `stats flood-frequency` kept in the browser
 // under "hydrolog-gui/statystyka/2" (the form's values, the source and the return period
 // highlighted in the results, null for „brak”; no results); the columns of the chosen file,
-// read in the browser from its header; and the ranking of the annual maxima for display. A
-// first visit starts empty: no file, no values, no highlighted period. The version stayed 2
-// when „brak” came (2026-11-06): null is one more value of the same field, and a stored 100
-// (the former first value, not told apart from a 100 chosen) stays highlighted until the
-// person picks „brak” or „Wyczyść” clears the inputs.
+// read in the browser from its header; the ranking of the annual maxima for display; and
+// the options of `stats homogeneity` for the same series. A first visit starts empty: no
+// file, no values, no highlighted period. The version stayed 2 when „brak” came
+// (2026-11-06): null is one more value of the same field, and a stored 100 (the former first
+// value, not told apart from a 100 chosen) stays highlighted until the person picks „brak”
+// or „Wyczyść” clears the inputs.
 
 import { api } from "../../api.js";
 import { num, parseNumber } from "../../format.js";
@@ -40,6 +41,15 @@ export const CURVE_PERIODS = Object.freeze(CURVE_PERCENTS.map((p) => 100 / p));
 
 /** The run channel of the curves (a channel of its own: it must not supersede the run). */
 export const CURVES_CHANNEL = "statystyka-krzywe";
+
+/** The command of the panel „Jednorodność ciągu”: the homogeneity tests of the series. */
+export const HOMOGENEITY = "stats homogeneity";
+
+/** The run channel of the homogeneity tests (its own: it must not supersede the run). */
+export const HOMOGENEITY_CHANNEL = "statystyka-jednorodnosc";
+
+/** The options of the series that `stats homogeneity` shares with the section's command. */
+const SERIES_OPTIONS = ["values", "input_file", "value_column", "date_column"];
 
 /** The period stressed when the chosen one is not among the periods: T = 100 years, p 1%. */
 const FALLBACK_PERIOD = 100;
@@ -278,6 +288,18 @@ export function guessDateColumn(table) {
 }
 
 /**
+ * The cells of a column as years, when every one is a whole year (1000 to 2999).
+ *
+ * @param {{cells: Function}} table the file's columns
+ * @param {string} column the column
+ * @returns {number[]|null} the years in file order, null when a cell is not a year
+ */
+function columnYears(table, column) {
+  const years = table.cells(column).map((cell) => parseNumber(cell === null || cell === undefined ? "" : String(cell)));
+  return years.every((year) => Number.isInteger(year) && year >= 1000 && year <= 2999) ? years : null;
+}
+
+/**
  * The years of the annual maxima of a file without dates: the column other than the
  * values whose every cell is a whole year (1000 to 2999), one per maximum.
  *
@@ -290,10 +312,41 @@ export function fileYears(table, valueColumn, count) {
   if (!table || table.rows !== count) return null;
   for (const column of table.columns) {
     if (column === valueColumn) continue;
-    const years = table.cells(column).map((cell) => parseNumber(cell === null || cell === undefined ? "" : String(cell)));
-    if (years.every((year) => Number.isInteger(year) && year >= 1000 && year <= 2999)) return years;
+    const years = columnYears(table, column);
+    if (years) return years;
   }
   return null;
+}
+
+/**
+ * The year column of a file of annual maxima, which Hydrolog takes as `year_column`: the
+ * first column other than the values whose cells are whole years, strictly increasing.
+ *
+ * @param {{columns: string[], cells: Function}} table the file's columns
+ * @param {string|null} valueColumn the value column (as resolved)
+ * @returns {string|null} the column, null when the file has none
+ */
+function yearColumn(table, valueColumn) {
+  const increasing = (years) => Boolean(years) && years.every((year, index) => index === 0 || year > years[index - 1]);
+  return table.columns.find((column) => column !== valueColumn && increasing(columnYears(table, column))) || null;
+}
+
+/**
+ * The options of `stats homogeneity` for the series of a run of the section: the pasted
+ * values, or the file with its value and date columns; the annual maxima of a file without
+ * dates also take its year column, so the split and the change point have their years.
+ *
+ * @param {object} sent the options of the run of `stats flood-frequency`
+ * @param {{columns: string[], cells: Function}|null} table the file's columns, if read
+ * @returns {object} the options
+ */
+export function homogeneityOptions(sent, table) {
+  const options = {};
+  for (const name of SERIES_OPTIONS) if (sent[name] !== undefined) options[name] = sent[name];
+  if (options.input_file === undefined || options.date_column !== undefined || !table) return options;
+  const valueColumn = options.value_column ? resolveColumn(options.value_column, table.columns) : table.columns[0];
+  const column = yearColumn(table, valueColumn);
+  return column ? { ...options, year_column: column } : options;
 }
 
 /**

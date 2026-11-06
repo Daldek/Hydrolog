@@ -1,6 +1,6 @@
 # Computation Paths for Unit Hydrograph Models (plus HSG and the Fisher–Tippett Distribution)
 
-**Document version:** 1.6
+**Document version:** 1.7
 **Date:** 2026-11-06
 **Applies to:** Hydrolog >= 1.0.0 (sections 3.2.2, 3.3.6, 3.4.6, 3.4.7, 3.5, 3.6, 3.7 and 3.8 describe behaviour from v1.0.0; the rest: >= 0.6.0)
 
@@ -1126,6 +1126,24 @@ For the moments and the L-moments (and so the start of least squares) the **Weib
 
 **Verification** (`tests/unit/test_high_flows.py`). Every method recovers known parameters of every distribution to 1 % from a synthetic sample of 20,000 values (the quantiles at (i − 0.5)/n); the sample L-moments of 1, 2, 3, 4, 10 are λ1 = 4, λ2 = 2, τ3 = 0.5, computed by hand from the 10 pairs and 10 triples; the moments fit reproduces the sample's mean, variance (n − 1) and G1; least squares brings the quantiles closer to the sample than its start. The Pearson III approximation was checked against the exact τ3 = 6 I₁/₃(α, 2α) − 3: α within 3·10⁻⁵ (relative) over the whole range. For every distribution and method, the densities equal scipy's pdf at the quantiles (relative 10⁻¹²) and are above 0, from T = 1.01 to 1000 years.
 
+### 3.11 Homogeneity of Annual Maxima (`homogeneity_tests`, `stats homogeneity`; ADR-0022)
+
+A flood frequency analysis takes the annual maxima as a sample of one distribution; a change of the catchment or of the gauge (a reservoir, a regulated reach, a moved station) breaks that. `stats homogeneity` (`hydrolog.statistics.homogeneity_tests`) checks the series with three non-parametric tests ([ADR-0022](decisions/0022-homogeneity-tests.md)). Its series is that of `stats flood-frequency`: the annual maxima of the complete hydrological years of a daily series (section 3.6.3; their hydrological years are the years), or annual maxima as values with optional years (`years` inline, `year_column` in a file: whole numbers, strictly increasing, gaps allowed).
+
+**The split.** The first part holds the values of the years before `split_year`, the second those from `split_year` on; without `split_year` the first part is the first ⌊n/2⌋ values (an odd n puts the middle value in the second part). `split_year` need not be a year of the series (a skipped incomplete year splits between its neighbours) but must leave a value in each part: from the first year + 1 to the last year. The result gives `split_index`, the number of values of the first part (the 0-based index of the first value of the second part), and `split_year`, the year of that value (`null` without years).
+
+| Test | Statistic | p-value (two-sided) |
+|---|---|---|
+| Mann-Whitney U (the two parts) | U of the first part: the pairs (x from the first part, y from the second) with x > y, a tie counting ½; about n₁n₂/2 without a difference, 0 when every value of the first part is smaller | `scipy.stats.mannwhitneyu`: exact when a part has at most 8 values and there are no ties, otherwise the normal approximation with the corrections for ties and continuity |
+| Kolmogorov-Smirnov, two samples (the two parts) | D = max \|F₁(x) − F₂(x)\|, the largest distance between the empirical distribution functions of the parts | `scipy.stats.ks_2samp`, exact for series of annual maxima |
+| Pettitt (the whole series) | U_t = Σ_{i≤t} Σ_{j>t} sgn(x_i − x_j) = 2 Σ_{i≤t} r_i − t(n + 1) for t = 1, …, n − 1 (r_i the ranks, mid-ranks for ties); K = max_t \|U_t\| | p ≈ 2 exp(−6K² / (n³ + n²)), capped at 1 (good for p ≤ 0.5) |
+
+**The change point** of Pettitt's test is the t of K (the first t if several give K), named like the split: `change_point_index` = t, the number of values before the change, and `change_point_year`, the year of the first value after the change. So `split_year = change_point_year` makes the two-sample tests compare the parts that Pettitt's test found. Pettitt (1979) and R's `trend` name the position t of the last value before the change; it is the same number as `change_point_index`, but the year given here is the next one.
+
+**The decision.** `homogeneous` is `p_value ≥ alpha` (default 0.05), as `trend_detected` of the Mann-Kendall test is `p_value < alpha`; the command adds the notice `homogeneity_rejected`, whose `details.tests` lists the tests that reject. A short series rarely rejects: split into halves, Mann-Whitney and Kolmogorov-Smirnov can reject at α = 0.05 from 8 values (4 + 4), Pettitt's test from 11, so `homogeneous` says that a test found no difference, not that there is none. The tests take the values as independent. Fewer than 3 values and all values equal are a `calculation_error` (`too_few_values`, `constant_values`: Mann-Whitney's U has no variance and Pettitt's test no change point).
+
+**Verification** (`tests/unit/test_homogeneity.py`, `tests/unit/test_operations_analysis.py`). A step in the middle of a deterministic series (golden-ratio steps) is rejected by all three tests and the same values without the step by none; Pettitt's K of 1, 3, 2, 5, 4 is 6 (U_t = −4, −4, −6, −2, counted pair by pair) with p = 2 exp(−1.44) = 0.474 and the change point after the third value, and of 2, 1, 2, 3 is 3 with mid-ranks and p capped at 1; the change point of a two-level step of 12 and 18 years is the first year of the second level, with K = 12 · 18, and as the split year it separates the levels exactly (U = 0, D = 1); U of the first part (not the smaller U), the split year, a year missing from the series, the errors and the series of a daily file are checked.
+
 ---
 
 ## 4. Literature Verification
@@ -1169,6 +1187,7 @@ For the moments and the L-moments (and so the start of least squares) the **Weib
 | Subcatchment that makes its hydrograph from its rain (`Subcatchment(watershed=, runoff=, rainfall=)`, `CurveNumberRunoff`, `DesignStorm`, `RainfallSeries`) | The SCS-CN and unit hydrograph paths above (`HydrographGenerator`): the hydrograph of the node equals the generator's to the last ordinate for the four unit hydrograph models, and a network of such nodes routes as the network of their hydrographs | ✅ |
 | Control points (`ControlPointNetwork`) | Expansion into the nodes above, no formula of its own: the network of points equals the same nodes built by hand (document and hydrographs); a linear reach routes the same with and without a confluence, a nonlinear one (Muskingum-Cunge with the inflow peak, a pond) does not | ✅ |
 | Flood frequency fit methods (`fit_method`) | Hosking and Wallis (1997): sample L-moments, GEV and Pearson III from L-moments; moments and least squares on the same scipy distributions (ADR-0021) | ✅ |
+| Homogeneity of annual maxima (`stats homogeneity`, `homogeneity_tests`): Mann-Whitney U, two-sample Kolmogorov-Smirnov, Pettitt | Mann and Whitney (1947), Smirnov (1939), Pettitt (1979); `scipy.stats.mannwhitneyu` and `ks_2samp`; Pettitt's K checked by hand on small series (ADR-0022) | ✅ |
 
 ### 4.2 Key Publications
 
@@ -1196,6 +1215,9 @@ For the moments and the L-moments (and so the start of least squares) the **Weib
 | Gumbel, E.J. | 1958 | Statistics of extreme values (distribution for minima) |
 | Coles, S. | 2001 | GEV estimation by maximum likelihood (ch. 3) |
 | Hosking, J.R.M. and Wallis, J.R. | 1997 | L-moments; parameters of the GEV and Pearson III from them (`fit_method` `l_moments`) |
+| Mann, H.B. and Whitney, D.R. | 1947 | The U test of two samples (`stats homogeneity`) |
+| Smirnov, N.V. | 1939 | The two-sample Kolmogorov-Smirnov test (`stats homogeneity`) |
+| Pettitt, A.N. | 1979 | The non-parametric change-point test and its approximate p-value (`stats homogeneity`) |
 | USDA Soil Survey Manual | 1993 | Texture triangle, texture classes |
 
 ---
@@ -1371,7 +1393,15 @@ For the moments and the L-moments (and so the start of least squares) the **Weib
 
 35. **Hosking, J.R.M. & Wallis, J.R.** (1997). *Regional Frequency Analysis: An Approach Based on L-Moments*. Cambridge University Press (sample L-moments; the GEV, Pearson III and lognormal L-moments and the estimators of their parameters).
 
+### Homogeneity
+
+36. **Mann, H.B. & Whitney, D.R.** (1947). On a test of whether one of two random variables is stochastically larger than the other. *Annals of Mathematical Statistics*, 18(1), 50-60.
+
+37. **Smirnov, N.V.** (1939). On the estimation of the discrepancy between empirical curves of distribution for two independent samples. *Bulletin Mathématique de l'Université de Moscou*, 2(2).
+
+38. **Pettitt, A.N.** (1979). A non-parametric approach to the change-point problem. *Journal of the Royal Statistical Society, Series C (Applied Statistics)*, 28(2), 126-135.
+
 ---
 
-**Document version:** 1.6
+**Document version:** 1.7
 **Last updated:** 2026-11-06

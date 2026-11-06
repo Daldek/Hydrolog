@@ -122,6 +122,7 @@ export const options = {
   snyder_cp: "Snyder: współczynnik Cp",
   snyder_ct: "Snyder: współczynnik Ct",
   snyder_length_km: "Snyder: długość cieku L",
+  split_year: "Rok podziału",
   stage_m: "Rzędna wody",
   stations: "Posterunki",
   stations_file: "Plik posterunków",
@@ -149,6 +150,8 @@ export const options = {
   watershed_file: "Plik zlewni",
   watershed_name: "Nazwa zlewni",
   x: "Współczynnik wagowy X",
+  year_column: "Kolumna lat",
+  years: "Lata",
 };
 
 /** Labels of scalar result fields by name (a field without one shows its name). */
@@ -212,6 +215,7 @@ export const oneOf = {
   "stats characteristic": { title: "Szereg", groups: ["Wartości i daty", "Plik"] },
   "stats daily": { title: "Szereg", groups: ["Wartości i daty", "Plik"] },
   "stats flood-frequency": { title: "Szereg", groups: ["Wartości", "Plik"] },
+  "stats homogeneity": { title: "Szereg", groups: ["Wartości", "Plik"] },
   "stats low-flow": { title: "Szereg", groups: ["Wartości i daty", "Plik"] },
   "stats low-flow-sequences": { title: "Szereg", groups: ["Wartości i daty", "Plik"] },
   "stats mann-kendall": { title: "Szereg", groups: ["Wartości", "Plik"] },

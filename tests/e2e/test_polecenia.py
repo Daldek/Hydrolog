@@ -177,7 +177,7 @@ def test_a_first_visit_chooses_no_command_and_runs_nothing(tab: Tab) -> None:
     expect(page.locator(f"{POL} .cmd-item button[aria-current]")).to_have_count(0)
     expect(page.get_by_role("button", name="Uruchom")).to_be_disabled()
     expect(page.locator(".crumb-context")).to_have_text(
-        re.compile(r"^\d+ polece\w+ w \d+ grupach$")
+        re.compile(r"^\d+ polece(?:nie|nia|ń) w \d+ grupach$")
     )
     assert runs == []
 
@@ -187,7 +187,7 @@ def test_the_list_offers_the_servers_commands_under_polish_titles(tab: Tab) -> N
     names = offered(tab)
     catalog = [item["name"] for item in list_commands().to_dict()["commands"]]
     assert names == [name for name in catalog if name not in EXCLUDED]
-    assert len(names) == 44  # 47 commands less the three the GUI leaves out
+    assert len(names) == 45  # 48 commands less the three the GUI leaves out
 
     items = page.locator(f"{POL} .cmd-list .cmd-item")
     expect(items).to_have_count(len(names))

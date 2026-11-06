@@ -48,6 +48,7 @@ from hydrolog.statistics import (
     calculate_characteristic_values,
     calculate_daily_statistics,
     calculate_monthly_statistics,
+    homogeneity_tests,
     mann_kendall_test,
 )
 
@@ -440,6 +441,11 @@ CASES = [
         "MannKendallResult",
         _flow_stats_nan,
         {"trend_direction": "increasing"},
+    ),
+    (
+        "HomogeneityResult",
+        lambda: homogeneity_tests(_annual_maxima()),
+        {"n_years": 40, "split_year": None, "pettitt.change_point_year": None},
     ),
     (
         "LowFlowFrequencyResult",

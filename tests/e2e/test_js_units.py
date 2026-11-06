@@ -675,6 +675,8 @@ def test_notices_in_polish(page: Any) -> None:
           {code: 'incomplete_years', message: 'm', details: {skipped: 2, total: 10,
             years: [2001, 2005]}},
           {code: 'user_warning', message: 'Careful'},
+          {code: 'homogeneity_rejected', message: 'm',
+           details: {tests: ['mann_whitney', 'pettitt'], alpha: 0.05}},
           {code: 'no_such_code', message: 'Something odd'},
         ].map(notices.describeNotice);""",
     )
@@ -693,6 +695,12 @@ def test_notices_in_polish(page: Any) -> None:
             "english": False,
         },
         {"text": "Ostrzeżenie biblioteki: Careful" + EN, "english": True},
+        # the codes of a detail by their Polish names
+        {
+            "text": "Testy odrzucające jednorodność ciągu przy α = 0,05: "
+            "Mann-Whitney, Pettitt.",
+            "english": False,
+        },
         {"text": "Something odd" + EN, "english": True},
     ]
 

@@ -3,7 +3,9 @@
 // header, or pasted values; a first visit has neither (the guide, instrukcja/#statystyka,
 // has a worked example). The form's fields are the catalog's. „Oblicz” runs the command,
 // and a second run of the same series on a dense grid of return periods gives the curves
-// of the probability plot, the density and the distribution function. The result shows the
+// of the probability plot, the density and the distribution function; a third,
+// `stats homogeneity` of the same series (with the year column of a file of annual
+// maxima), gives the panel „Jednorodność ciągu” and its notice. The result shows the
 // active distribution (the best one after every computation, another one by a click on its
 // row of the distributions table) in the tiles and on the charts, the quantiles of the
 // distributions ticked in that table (the best one after every computation), the goodness
@@ -47,6 +49,9 @@ import {
   formValues,
   guessDateColumn,
   guessValueColumn,
+  HOMOGENEITY,
+  HOMOGENEITY_CHANNEL,
+  homogeneityOptions,
   initialState,
   maximaYears,
   percentAt,
@@ -217,15 +222,20 @@ export default function Statystyka() {
     const key = runKey(sent, file);
     const table = preview.state === "ok" ? preview.table : null;
     setBusy(true);
-    try {
-      const curves = api
-        .run(COMMAND, { ...sent, return_periods: [...CURVE_PERIODS] }, { channel: CURVES_CHANNEL, signal: controller.signal })
-        .then((envelope) => (envelope.status === "ok" ? { result: envelope.result } : { error: texts.results.cancelled }))
+    // The curves and the homogeneity tests are not the result: their failure leaves it shown
+    const beside = (promise) =>
+      promise
+        .then((envelope) => (envelope.status === "ok" ? { envelope } : { error: texts.results.cancelled }))
         .catch((error) => {
           if (error && error.name === "AbortError") throw error;
           return { error: messageOf(error) };
         });
-      const [envelope, drawn] = await Promise.all([api.run(COMMAND, sent, { channel: SECTION, signal: controller.signal }), curves]);
+    try {
+      const curves = beside(
+        api.run(COMMAND, { ...sent, return_periods: [...CURVE_PERIODS] }, { channel: CURVES_CHANNEL, signal: controller.signal }),
+      );
+      const tested = beside(api.run(HOMOGENEITY, homogeneityOptions(sent, table), { channel: HOMOGENEITY_CHANNEL, signal: controller.signal }));
+      const [envelope, drawn, homogeneity] = await Promise.all([api.run(COMMAND, sent, { channel: SECTION, signal: controller.signal }), curves, tested]);
       if (mine !== sequence.current) return;
       const result = envelope.status === "ok" ? envelope.result : null;
       const column = table && sent.value_column ? resolveColumn(sent.value_column, table.columns) : null;
@@ -235,8 +245,10 @@ export default function Statystyka() {
         envelope,
         key,
         at: new Date(),
-        curves: drawn.result || null,
-        curvesError: result && !drawn.result ? drawn.error : null,
+        curves: drawn.envelope ? drawn.envelope.result : null,
+        curvesError: result && !drawn.envelope ? drawn.error : null,
+        homogeneity: homogeneity.envelope || null,
+        homogeneityError: result && !homogeneity.envelope ? homogeneity.error : null,
         years,
         ranked: result ? rankedMaxima(result, years) : [],
       });

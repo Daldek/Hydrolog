@@ -145,7 +145,7 @@ anyio.run(call_tool)
 
 ## Capabilities
 
-47 commands in 16 groups, all computed offline except `precip pmaxtp`, the only one that opens a network connection: it fetches the PMAXTP depth of IMGW-PIB through Obserwator (extra `pmaxtp`). The MCP tool is `hydrolog_` plus the command name with `_`; every command is also available as `hydrolog.run_command("<command>", **options)`.
+48 commands in 16 groups, all computed offline except `precip pmaxtp`, the only one that opens a network connection: it fetches the PMAXTP depth of IMGW-PIB through Obserwator (extra `pmaxtp`). The MCP tool is `hydrolog_` plus the command name with `_`; every command is also available as `hydrolog.run_command("<command>", **options)`.
 
 | Group | Task | CLI command | MCP tool | Python (`hydrolog.operations`) |
 |---|---|---|---|---|
@@ -181,6 +181,7 @@ anyio.run(call_tool)
 | Flow statistics | Characteristic values WWQ to NNQ of a daily series | `stats characteristic` | `hydrolog_stats_characteristic` | `stats_characteristic` |
 | | Day-of-year statistics | `stats daily` | `hydrolog_stats_daily` | `stats_daily` |
 | | Flood quantiles from annual maxima | `stats flood-frequency` | `hydrolog_stats_flood_frequency` | `stats_flood_frequency` |
+| | Homogeneity tests of annual maxima (Mann-Whitney U, Kolmogorov-Smirnov, Pettitt) | `stats homogeneity` | `hydrolog_stats_homogeneity` | `stats_homogeneity` |
 | | Low-flow quantiles from annual minima | `stats low-flow` | `hydrolog_stats_low_flow` | `stats_low_flow` |
 | | Low-flow (drought) sequences below a threshold | `stats low-flow-sequences` | `hydrolog_stats_low_flow_sequences` | `stats_low_flow_sequences` |
 | | Monotonic trend test (Mann-Kendall) | `stats mann-kendall` | `hydrolog_stats_mann_kendall` | `stats_mann_kendall` |
@@ -272,7 +273,7 @@ VS Code, `.vscode/mcp.json` (key `servers`):
 
 ## Web GUI
 
-The web GUI is Hydrolog in a browser, in Polish, for people who would rather not use a command line: open a section, change the numbers of its example and read the result. **Hydrogram zlewni** gives the runoff hydrograph of one watershed after a design storm and recomputes it after every change; under PMAXTP the storm's depth is not typed but fetched read-only by `precip pmaxtp` for the point, probability, duration and method given; **Sieć i trasowanie** draws a river network of subcatchments, reaches, reservoirs and junctions and routes it; **Statystyka przepływów** fits flood frequency distributions to annual maxima; **Kalkulatory** compares the time of concentration of six methods and holds fifteen single calculators; **Wszystkie polecenia** has a form for every command of the catalog. Every number comes from the same catalog as the CLI, and every result shows the command line that gives it. Results leave the page as CSV, JSON or PNG, a Markdown report, a print view (a PDF by the browser) or a hand-off `nogat-handoff/1`, the format in which the GUI exchanges watersheds and networks with Hydrograf. The results are estimates of simplified methods, not a forecast or a flood hazard map. A guide for users, in Polish and starting in plain words, opens from „Instrukcja” in the top bar.
+The web GUI is Hydrolog in a browser, in Polish, for people who would rather not use a command line: open a section, change the numbers of its example and read the result. **Hydrogram zlewni** gives the runoff hydrograph of one watershed after a design storm and recomputes it after every change; under PMAXTP the storm's depth is not typed but fetched read-only by `precip pmaxtp` for the point, probability, duration and method given; **Sieć i trasowanie** draws a river network of subcatchments, reaches, reservoirs and junctions and routes it; **Statystyka przepływów** fits flood frequency distributions to annual maxima and tests their homogeneity; **Kalkulatory** compares the time of concentration of six methods and holds fifteen single calculators; **Wszystkie polecenia** has a form for every command of the catalog. Every number comes from the same catalog as the CLI, and every result shows the command line that gives it. Results leave the page as CSV, JSON or PNG, a Markdown report, a print view (a PDF by the browser) or a hand-off `nogat-handoff/1`, the format in which the GUI exchanges watersheds and networks with Hydrograf. The results are estimates of simplified methods, not a forecast or a flood hazard map. A guide for users, in Polish and starting in plain words, opens from „Instrukcja” in the top bar.
 
 ```sh
 hydrolog gui serve                          # http://127.0.0.1:8070/, opened in the browser; Ctrl+C stops it

@@ -155,16 +155,18 @@ def load_valid_series(
     *,
     values: Sequence[object] | NDArray[Any] | None = None,
     dates: Sequence[object] | NDArray[Any] | None = None,
+    years: Sequence[object] | NDArray[Any] | None = None,
     input_file: str | os.PathLike[str] | None = None,
     value_column: str | None = None,
     date_column: str | None = None,
+    year_column: str | None = None,
     require_dates: bool = False,
 ) -> tuple[Series, list[Notice]]:
     """Load a series from inline values or a file and drop its missing values.
 
     Parameters
     ----------
-    values, dates, input_file, value_column, date_column
+    values, dates, years, input_file, value_column, date_column, year_column
         Source of the series, see :func:`hydrolog.catalog.inputs.load_series`.
     require_dates : bool, optional
         Require dates (inline ``dates`` or ``date_column``), by default ``False``.
@@ -172,7 +174,7 @@ def load_valid_series(
     Returns
     -------
     Series
-        Series without missing values.
+        Series without missing values (its dates or years stay aligned).
     list of Notice
         Notice about the removed missing values, if any.
 
@@ -186,9 +188,11 @@ def load_valid_series(
     series = load_series(
         values=values,
         dates=dates,
+        years=years,
         input_file=input_file,
         value_column=value_column,
         date_column=date_column,
+        year_column=year_column,
         require_dates=require_dates,
     )
     return drop_missing(series)

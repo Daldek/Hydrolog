@@ -1,12 +1,13 @@
 """Operations of the group ``stats``: statistics of hydrological series.
 
 Characteristic values, daily and monthly statistics, flood frequency, low-flow
-frequency and sequences, and the Mann-Kendall trend test. Every operation loads its
-series from inline values or from a file (:func:`hydrolog.catalog.inputs.load_series`),
-drops missing values with a notice and composes the classes of
-:mod:`hydrolog.statistics`; the library's own warnings (short series, ...) become the
-notices of the returned :class:`~hydrolog.catalog.envelope.OperationOutput`. The
-functions are re-exported by :mod:`hydrolog.operations`.
+frequency and sequences, the Mann-Kendall trend test and the homogeneity tests. Every
+operation loads its series from inline values or from a file
+(:func:`hydrolog.catalog.inputs.load_series`), drops missing values with a notice and
+composes the classes of :mod:`hydrolog.statistics`; the library's own warnings (short
+series, ...) become the notices of the returned
+:class:`~hydrolog.catalog.envelope.OperationOutput`. The functions are re-exported by
+:mod:`hydrolog.operations`.
 
 Years are the Polish hydrological years (1 November - 31 October, named after the
 calendar year in which they end), the same convention as
@@ -17,6 +18,8 @@ minima of ``stats low-flow`` are extremes of *complete* hydrological years only:
 year in which some day has no value (an absent date or a ``NaN``) is skipped and
 named in the ``incomplete_years`` notice and result field (KZGW, 2017; WMO No. 1029,
 2009). A calendar-year export therefore loses its first and last hydrological year.
+``stats homogeneity`` takes the annual maxima of a daily series the same way (the
+skipped years are named in the notice only).
 """
 
 from __future__ import annotations
@@ -48,6 +51,7 @@ from hydrolog.statistics import (
     FitMethod,
     FloodFrequencyAnalysis,
     FrequencyAnalysisResult,
+    HomogeneityResult,
     LowFlowAnalysis,
     LowFlowEmpiricalFrequency,
     LowFlowFrequencyResult,
@@ -56,6 +60,7 @@ from hydrolog.statistics import (
     calculate_characteristic_values,
     calculate_daily_statistics,
     calculate_monthly_statistics,
+    homogeneity_tests,
     mann_kendall_test,
 )
 from hydrolog.statistics._hydrological_year import (
@@ -75,6 +80,7 @@ __all__ = [
     "stats_characteristic",
     "stats_daily",
     "stats_flood_frequency",
+    "stats_homogeneity",
     "stats_low_flow",
     "stats_low_flow_sequences",
     "stats_mann_kendall",
@@ -961,3 +967,124 @@ def stats_mann_kendall(
     require_count(len(series), _MIN_TREND_VALUES, "The Mann-Kendall test")
     result: MannKendallResult = mann_kendall_test(series.values, alpha=level)
     return OperationOutput(result, notices)
+
+
+# --- homogeneity ----------------------------------------------------------------------
+
+_TESTS: tuple[str, ...] = ("mann_whitney", "kolmogorov_smirnov", "pettitt")
+
+
+def stats_homogeneity(
+    *,
+    values: Sequence[float] | None = None,
+    dates: Sequence[str] | None = None,
+    years: Sequence[int] | None = None,
+    input_file: str | os.PathLike[str] | None = None,
+    value_column: str | None = None,
+    date_column: str | None = None,
+    year_column: str | None = None,
+    split_year: int | None = None,
+    alpha: float = 0.05,
+) -> OperationOutput:
+    """Homogeneity tests of annual maxima (``stats homogeneity``, ADR-0022).
+
+    Splits the annual maxima in two at ``split_year`` (by default into halves) and
+    compares the parts with the two-sided Mann-Whitney U test and the two-sample
+    Kolmogorov-Smirnov test; Pettitt's test finds the most probable change point
+    (:func:`hydrolog.statistics.homogeneity_tests`). The series is the annual maxima
+    themselves (no dates; their years, if given, name the split and the change
+    point) or a daily series with dates, whose annual maxima of the *complete*
+    hydrological years are taken first (a year with a day without a value is skipped
+    and named in the ``incomplete_years`` notice).
+
+    Parameters
+    ----------
+    values : sequence of float, optional
+        Inline series: annual maxima, or daily values when ``dates`` is given.
+    dates : sequence of str, optional
+        ISO dates of daily ``values``; omit when ``values`` are annual maxima.
+    years : sequence of int, optional
+        Years of the annual maxima in ``values`` (whole numbers, strictly
+        increasing); not with ``dates``.
+    input_file : str or os.PathLike, optional
+        CSV or JSON file with the series (instead of ``values``).
+    value_column : str, optional
+        Column of ``input_file`` with the values.
+    date_column : str, optional
+        Column of ``input_file`` with the dates; omit for annual maxima.
+    year_column : str, optional
+        Column of ``input_file`` with the years of the annual maxima; not with
+        ``date_column``.
+    split_year : int, optional
+        First year of the second part; needs years (``years``, ``year_column`` or the
+        dates of a daily series). By default the first half of the values, ``n // 2``,
+        is the first part.
+    alpha : float, optional
+        Significance level of the tests, in (0, 1), by default 0.05.
+
+    Returns
+    -------
+    OperationOutput
+        ``result`` is a :class:`~hydrolog.statistics.HomogeneityResult`; the notices
+        report removed missing values, skipped incomplete years
+        (``incomplete_years``) and the tests that reject homogeneity at ``alpha``
+        (``homogeneity_rejected``).
+
+    Raises
+    ------
+    InvalidParameterError
+        If the series options are inconsistent, ``alpha`` is outside (0, 1), the
+        years are not whole numbers or not strictly increasing, or ``split_year`` is
+        given without years or leaves a part empty.
+    NotFoundError, InputDataError
+        If the file does not exist or cannot be read.
+    CalculationError
+        If fewer than 3 annual maxima (complete hydrological years) are available or
+        all of them are equal.
+    """
+    level = check_open_unit_interval("alpha", alpha)
+    series, notices = load_valid_series(
+        values=values,
+        dates=dates,
+        years=years,
+        input_file=input_file,
+        value_column=value_column,
+        date_column=date_column,
+        year_column=year_column,
+    )
+    labels: NDArray[np.integer] | None
+    if series.dates is None:
+        maxima, labels = series.values, series.years
+        require_count(
+            len(maxima), _MIN_ANNUAL_VALUES, "Homogeneity testing", unit="annual maxima"
+        )
+    else:
+        extremes, year_notices = _annual_extremes(series, "max")
+        _require_years(
+            extremes,
+            "Homogeneity testing",
+            advice="Annual maxima that are already extracted go without dates.",
+        )
+        maxima, labels = extremes.values, extremes.years
+        notices.extend(year_notices)
+    if split_year is not None and labels is None:
+        raise InvalidParameterError(
+            "Option 'split_year' needs the years of the annual maxima",
+            details={
+                "option": "years" if input_file is None else "year_column",
+                "reason": "required",
+            },
+            hint=(
+                "Give the years of the annual maxima (years, or year_column of the "
+                "file) or a daily series with dates, or leave out split_year to split "
+                "the series into halves."
+            ),
+        )
+    with capture_warnings(_NUMERIC_WARNINGS) as numeric:
+        result: HomogeneityResult = homogeneity_tests(
+            maxima, labels, split_year=split_year, alpha=level
+        )
+    rejected = [name for name in _TESTS if not getattr(result, name).homogeneous]
+    if rejected:
+        notices.append(notice("homogeneity_rejected", tests=rejected, alpha=level))
+    return OperationOutput(result, [*notices, *numeric])

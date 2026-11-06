@@ -183,6 +183,12 @@ _SPECS: Final[tuple[NoticeSpec, ...]] = (
         ("months",),
     ),
     NoticeSpec(
+        "homogeneity_rejected",
+        "warning",
+        "Homogeneity of the series rejected at alpha = {alpha:g} by: {tests}",
+        ("tests", "alpha"),
+    ),
+    NoticeSpec(
         "large_result",
         "warning",
         "the result is {size_chars:,} characters, over the {page_chars:,} of a page "

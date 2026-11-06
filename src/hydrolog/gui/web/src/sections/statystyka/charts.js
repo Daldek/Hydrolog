@@ -4,10 +4,11 @@
 // a rug on the Q axis), each distribution a curve through the quantiles and densities
 // Hydrolog computed (a dense grid of return periods, else the periods of the run), the
 // active one full and thick, the others dimmed, and on the probability plot the chosen
-// quantile of the active one marked with guides to both axes (none for „brak”).
+// quantile of the active one marked with guides to both axes (none for „brak”). The density
+// chart is scaled to the active distribution; the others are clipped at its frame.
 // Probabilities are drawn in per cent there; F = 1 − p is the only arithmetic of the browser.
 
-import { extent } from "../../charts/scale.js";
+import { extent, niceDomain } from "../../charts/scale.js";
 import { num } from "../../format.js";
 import { t } from "../../labels/common.js";
 import { statystyka as texts } from "../../labels/statystyka.js";
@@ -162,8 +163,32 @@ function againstQ(fit, top, value) {
 }
 
 /**
+ * A curve clipped at a ceiling: its parts above end at the crossing of the ceiling and
+ * leave a gap (a point without a value), as if the frame cut them.
+ *
+ * @param {number[][]} data the points [x, y], in the order of x
+ * @param {number} ceiling the highest value shown
+ * @returns {number[][]} the points within the ceiling, with the crossings and the gaps
+ */
+function clipped(data, ceiling) {
+  const out = [];
+  data.forEach(([x, y], index) => {
+    const previous = data[index - 1];
+    if (previous && (previous[1] <= ceiling) !== (y <= ceiling)) {
+      const [px, py] = previous;
+      out.push([px + ((ceiling - py) / (y - py)) * (x - px), ceiling]);
+    }
+    out.push(y <= ceiling ? [x, y] : [x, Number.NaN]);
+  });
+  return out;
+}
+
+/**
  * The spec of the probability density chart: the density of every distribution against Q,
- * the annual maxima as a rug on the Q axis.
+ * the annual maxima as a rug on the Q axis. The frame is the active distribution's: its
+ * largest density with the axis's headroom, so a distribution with a spike (a GEV near its
+ * bound on a short series) neither flattens it nor leaves the frame; such a curve is
+ * clipped at the top.
  *
  * @param {{result: object, curves: object|null, active: string}} input the result of the
  *   run, the result of the run on the dense grid (null when it failed) and the name of the
@@ -173,15 +198,20 @@ function againstQ(fit, top, value) {
 export function densitySpec({ result, curves, active }) {
   const fits = (curves || result).distributions || [];
   const top = shapeTop(result, fits, active);
-  const series = fits.map((fit) =>
-    curve(fit, result, active, { data: againstQ(fit, top, (index) => (fit.densities || [])[index]) }),
+  const drawn = fits.map((fit) => ({ fit, data: againstQ(fit, top, (index) => (fit.densities || [])[index]) }));
+  const own = drawn.find((item) => item.fit.distribution_name === active);
+  const peak = own ? extent(own.data.map(([, y]) => y))?.[1] : undefined;
+  // The axis's own rounding of a small chart (5 ticks, 8% headroom), fixed as its top
+  const ceiling = peak === undefined ? undefined : niceDomain([0, peak], { count: 5 }).max;
+  const series = drawn.map(({ fit, data }) =>
+    curve(fit, result, active, { data: ceiling === undefined ? data : clipped(data, ceiling) }),
   );
   series.push({ id: "maxima", kind: "rug", label: texts.chart.points, data: result.annual_maxima });
   return {
     size: "small",
     title: texts.shape.density,
     x: { label: texts.shape.x },
-    y: { label: texts.shape.densityY, unit: texts.shape.densityUnit },
+    y: { label: texts.shape.densityY, unit: texts.shape.densityUnit, ...(ceiling === undefined ? {} : { max: ceiling }) },
     series,
     legend: true,
     readout: { series: active, x: readoutQ, value: (value) => shortNumber(value) },

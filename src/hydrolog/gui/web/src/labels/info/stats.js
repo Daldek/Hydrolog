@@ -1,9 +1,10 @@
 /**
  * Explanations (i) of „Statystyka przepływów” (plan D16): the flood frequency analysis of
- * `stats flood-frequency`, its four distributions, the measures of fit and the probability
- * plot. Trusted HTML fragments with MathML. The length of the record is checked against
- * Hydrolog's range (`typical_ranges` of `stats flood-frequency`, the result's `n_years`),
- * which the section registers with the explanations (registerInfo(statsInfo)).
+ * `stats flood-frequency`, its four distributions, the measures of fit, the probability
+ * plot and the homogeneity tests of `stats homogeneity`. Trusted HTML fragments with
+ * MathML. The length of the record is checked against Hydrolog's range (`typical_ranges`
+ * of `stats flood-frequency`, the result's `n_years`), which the section registers with
+ * the explanations (registerInfo(statsInfo)).
  */
 
 export const statsInfo = {
@@ -82,5 +83,22 @@ export const statsInfo = {
       { symbol: "<math><mi>n</mi></math>", text: "liczba maksimów rocznych", unit: "–" },
     ],
     sources: "Weibull (1939); Gumbel (1958) Statistics of Extremes; Hydrolog, <code>EmpiricalFrequency</code>",
+  },
+  "stats-homogeneity": {
+    title: "Jednorodność ciągu: testy Manna-Whitneya, Kołmogorowa-Smirnowa i Pettitta",
+    intro:
+      "<p>Analiza częstości zakłada, że maksima roczne są próbą z jednego rozkładu; zmiana w zlewni albo na posterunku (zbiornik, regulacja koryta, przeniesiony wodowskaz) to założenie łamie. Polecenie <code>stats homogeneity</code> dzieli tu szereg na połowy (pierwsze ⌊n/2⌋ wartości i pozostałe) i porównuje je dwustronnymi testami. <b>Mann-Whitney</b>: <i>U</i> to liczba par z obu części, w których wartość z pierwszej jest większa (remis liczy się za ½); bez różnicy jest bliskie n₁n₂/2, a 0 znaczy, że cała pierwsza część jest mniejsza. <b>Kołmogorow-Smirnow</b> dla dwóch prób: <i>D</i> to największa odległość dystrybuant empirycznych obu części. <b>Pettitt</b> sam szuka miejsca zmiany: <i>K</i> to największe |<i>U<sub>t</sub></i>| po wszystkich podziałach <i>t</i>, a punkt zmiany to pierwszy rok po zmianie. Test odrzuca jednorodność, gdy p &lt; α = 0,05.</p>",
+    formula:
+      '<math display="block"><msub><mi>U</mi><mi>t</mi></msub><mo>=</mo><mn>2</mn><munderover><mo>∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>t</mi></munderover><msub><mi>r</mi><mi>i</mi></msub><mo>−</mo><mi>t</mi><mo>(</mo><mi>n</mi><mo>+</mo><mn>1</mn><mo>)</mo><mo>,</mo><mspace width="1em"></mspace><mi>K</mi><mo>=</mo><munder><mi>max</mi><mi>t</mi></munder><mo>|</mo><msub><mi>U</mi><mi>t</mi></msub><mo>|</mo></math><math display="block"><mi>p</mi><mo>≈</mo><mn>2</mn><mi>exp</mi><mo>(</mo><mo>−</mo><mfrac><mrow><mn>6</mn><msup><mi>K</mi><mn>2</mn></msup></mrow><mrow><msup><mi>n</mi><mn>3</mn></msup><mo>+</mo><msup><mi>n</mi><mn>2</mn></msup></mrow></mfrac><mo>)</mo></math>',
+    vars: [
+      { symbol: "<math><msub><mi>U</mi><mi>t</mi></msub></math>", text: "statystyka Pettitta podziału po t pierwszych wartościach", unit: "–" },
+      { symbol: "<math><msub><mi>r</mi><mi>i</mi></msub></math>", text: "ranga wartości i w całym szeregu (przy remisach średnia)", unit: "–" },
+      { symbol: "<math><mi>n</mi></math>", text: "liczba maksimów rocznych", unit: "–" },
+      { symbol: "<math><mi>p</mi></math>", text: "przybliżone p-value testu Pettitta (najwyżej 1, dokładne dla p ≤ 0,5)", unit: "–" },
+    ],
+    note:
+      "<p>Krótki szereg rzadko daje odrzucenie: przy podziale na połowy testy Manna-Whitneya i Kołmogorowa-Smirnowa mogą odrzucić jednorodność od 8 wartości, test Pettitta od 11. „Jednorodny” znaczy, że test nie znalazł różnicy, a nie że jej nie ma. Punkt zmiany waży, gdy test Pettitta odrzuca jednorodność. Własny rok podziału (<code>split_year</code>) i poziom istotności (<code>alpha</code>) przyjmuje polecenie <code>stats homogeneity</code> we „Wszystkich poleceniach”.</p>",
+    sources:
+      "Mann i Whitney (1947); Smirnov (1939); Pettitt (1979) A non-parametric approach to the change-point problem; Hydrolog, ADR-0022, <code>hydrolog.statistics.homogeneity</code>",
   },
 };

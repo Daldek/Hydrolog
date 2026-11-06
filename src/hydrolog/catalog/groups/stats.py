@@ -1,8 +1,8 @@
 """Group ``stats``: statistics of hydrological series.
 
 Characteristic values, daily and monthly statistics, flood frequency, low-flow
-frequency and sequences, and the Mann-Kendall trend test. The operations are in
-:mod:`hydrolog.operations.stats`.
+frequency and sequences, the Mann-Kendall trend test and the homogeneity tests. The
+operations are in :mod:`hydrolog.operations.stats`.
 """
 
 from __future__ import annotations
@@ -42,6 +42,44 @@ _RETURN_PERIODS = Option(
 
 # Series whose values are not dated: annual maxima or a series ordered in time.
 _UNDATED_ONE_OF = (("values",), ("input_file", "value_column"))
+
+# The series of annual maxima: the maxima themselves, or a daily series whose complete
+# hydrological years give them.
+_ANNUAL_VALUES = replace(
+    VALUES,
+    description_pl=(
+        "Szereg w kolejności czasowej: maksima roczne (bez `dates`) albo wartości "
+        "dobowe (z `dates`; maksima roczne są wtedy wybierane dla kompletnych lat "
+        "hydrologicznych XI–X). Długie szeregi podawaj w pliku (`input_file`)."
+    ),
+    description=(
+        "Series in time order: annual maxima (without `dates`) or daily values (with "
+        "`dates`; the annual maxima are then taken for the complete hydrological years "
+        "Nov–Oct). Give long series in a file (`input_file`)."
+    ),
+)
+_ANNUAL_DATES = replace(
+    DATES,
+    description_pl=(
+        "Daty wartości dobowych w formacie ISO `RRRR-MM-DD`, ściśle rosnące, tyle samo "
+        "co `values`; pomiń, gdy `values` to maksima roczne."
+    ),
+    description=(
+        "Dates of daily values in ISO format `YYYY-MM-DD`, strictly increasing, as "
+        "many as `values`; omit when `values` are annual maxima."
+    ),
+)
+_ANNUAL_DATE_COLUMN = replace(
+    DATE_COLUMN,
+    description_pl=(
+        "Nazwa kolumny z datami ISO w `input_file` (np. `date`); podaj dla szeregu "
+        "dobowego, pomiń dla maksimów rocznych."
+    ),
+    description=(
+        "Name of the column with ISO dates in `input_file` (e.g. `date`); give it for "
+        "a daily series, omit it for annual maxima."
+    ),
+)
 
 COMMANDS: tuple[Command, ...] = (
     Command(
@@ -350,47 +388,11 @@ COMMANDS: tuple[Command, ...] = (
         ),
         function="hydrolog.operations.stats_flood_frequency",
         options=(
-            replace(
-                VALUES,
-                description_pl=(
-                    "Szereg w kolejności czasowej: maksima roczne (bez `dates`) albo "
-                    "wartości dobowe (z `dates`; maksima roczne są wtedy wybierane dla "
-                    "kompletnych lat hydrologicznych XI–X). Długie szeregi podawaj w "
-                    "pliku (`input_file`)."
-                ),
-                description=(
-                    "Series in time order: annual maxima (without `dates`) or daily "
-                    "values (with `dates`; the annual maxima are then taken for the "
-                    "complete hydrological years Nov–Oct). Give long series in a file "
-                    "(`input_file`)."
-                ),
-            ),
-            replace(
-                DATES,
-                description_pl=(
-                    "Daty wartości dobowych w formacie ISO `RRRR-MM-DD`, ściśle "
-                    "rosnące, tyle samo co `values`; pomiń, gdy `values` to maksima "
-                    "roczne."
-                ),
-                description=(
-                    "Dates of daily values in ISO format `YYYY-MM-DD`, strictly "
-                    "increasing, as many as `values`; omit when `values` are annual "
-                    "maxima."
-                ),
-            ),
+            _ANNUAL_VALUES,
+            _ANNUAL_DATES,
             INPUT_FILE,
             VALUE_COLUMN,
-            replace(
-                DATE_COLUMN,
-                description_pl=(
-                    "Nazwa kolumny z datami ISO w `input_file` (np. `date`); podaj "
-                    "dla szeregu dobowego, pomiń dla maksimów rocznych."
-                ),
-                description=(
-                    "Name of the column with ISO dates in `input_file` (e.g. `date`); "
-                    "give it for a daily series, omit it for annual maxima."
-                ),
-            ),
+            _ANNUAL_DATE_COLUMN,
             Option(
                 name="distribution",
                 type="choice",
@@ -758,6 +760,178 @@ COMMANDS: tuple[Command, ...] = (
                     433.8,
                     470.2,
                 ],
+            },
+        ),
+    ),
+    Command(
+        name="stats homogeneity",
+        operation_id="hydrolog_stats_homogeneity",
+        summary_pl=(
+            "Zbadaj jednorodność maksimów rocznych testami Manna-Whitneya, "
+            "Kołmogorowa-Smirnowa i Pettitta"
+        ),
+        summary=(
+            "Test annual maxima for homogeneity (Mann-Whitney U, Kolmogorov-Smirnov, "
+            "Pettitt)"
+        ),
+        description_pl=(
+            "Porównuje maksima roczne sprzed i od roku `split_year` (domyślnie połowy "
+            "ciągu) dwustronnymi testami Manna-Whitneya U i Kołmogorowa-Smirnowa dla "
+            "dwóch prób; test Pettitta wskazuje najbardziej prawdopodobny punkt "
+            "zmiany. Do sprawdzenia ciągu przed `stats flood-frequency`. Lata z "
+            "brakami dni są pomijane."
+        ),
+        description=(
+            "Compares the annual maxima before and after `split_year` (default: the "
+            "halves) by the two-sided Mann-Whitney U and two-sample "
+            "Kolmogorov-Smirnov tests; Pettitt's test finds the most probable change "
+            "point. Use before `stats flood-frequency`."
+        ),
+        result_schema="hydrolog-stats-homogeneity/1",
+        rules=(
+            (
+                "Pass annual maxima (with `years` or `year_column` for `split_year`) "
+                "or a daily series with dates."
+            ),
+            (
+                "A test rejects homogeneity when `homogeneous` is false (`p_value` "
+                "below `alpha`)."
+            ),
+            (
+                "`split_year` and Pettitt's `change_point_year` are the first year of "
+                "the second part."
+            ),
+        ),
+        rules_pl=(
+            (
+                "Podaj maksima roczne (z `years` albo `year_column`, by użyć "
+                "`split_year`) albo szereg dobowy z datami."
+            ),
+            (
+                "Test odrzuca jednorodność, gdy `homogeneous` jest fałszem (`p_value` "
+                "mniejsze niż `alpha`)."
+            ),
+            (
+                "`split_year` i `change_point_year` testu Pettitta to pierwszy rok "
+                "drugiej części."
+            ),
+        ),
+        errors=(
+            "validation_error",
+            "not_found",
+            "data_error",
+            "calculation_error",
+            "forbidden",
+        ),
+        example_results=(
+            {
+                "n_years": 35,
+                "split_index": 11,
+                "split_year": 2000,
+                "mann_whitney": {"statistic": 124.0, "homogeneous": True},
+                "pettitt": {"change_point_year": 2020, "homogeneous": True},
+            },
+            {"n_years": 3, "split_index": 1, "split_year": 2023},
+            {
+                "n_years": 10,
+                "split_index": 5,
+                "split_year": None,
+                "mann_whitney": {"statistic": 0.0, "homogeneous": False},
+                "kolmogorov_smirnov": {"statistic": 1.0, "homogeneous": False},
+                "pettitt": {"change_point_index": 5, "homogeneous": True},
+            },
+        ),
+        function="hydrolog.operations.stats_homogeneity",
+        options=(
+            _ANNUAL_VALUES,
+            _ANNUAL_DATES,
+            Option(
+                name="years",
+                type="number_list",
+                description_pl=(
+                    "Lata maksimów rocznych z `values`: liczby całkowite, ściśle "
+                    "rosnące (mogą mieć luki), tyle samo co `values`; potrzebne do "
+                    "`split_year`. Nie z `dates`."
+                ),
+                description=(
+                    "Years of the annual maxima in `values`: whole numbers, strictly "
+                    "increasing (gaps allowed), as many as `values`; needed for "
+                    "`split_year`. Not with `dates`."
+                ),
+            ),
+            replace(
+                INPUT_FILE,
+                description_pl=(
+                    "Plik CSV (przecinek lub średnik, wiersz nagłówka) albo JSON z "
+                    "szeregiem. Kolumny wskazują `value_column` oraz `date_column` "
+                    "albo `year_column`."
+                ),
+                description=(
+                    "CSV file (comma or semicolon, header row) or JSON file with the "
+                    "series. The columns are named by `value_column` and "
+                    "`date_column` or `year_column`."
+                ),
+            ),
+            VALUE_COLUMN,
+            _ANNUAL_DATE_COLUMN,
+            Option(
+                name="year_column",
+                type="string",
+                description_pl=(
+                    "Nazwa kolumny z latami maksimów rocznych w `input_file` (np. "
+                    "`year`); potrzebna do `split_year`. Nie z `date_column`."
+                ),
+                description=(
+                    "Name of the column with the years of the annual maxima in "
+                    "`input_file` (e.g. `year`); needed for `split_year`. Not with "
+                    "`date_column`."
+                ),
+            ),
+            Option(
+                name="split_year",
+                type="integer",
+                description_pl=(
+                    "Pierwszy rok drugiej części: maksima wcześniejszych lat tworzą "
+                    "pierwszą część. Wymaga lat (`years`, `year_column` albo dat); "
+                    "domyślnie pierwszą część tworzy pierwsza połowa wartości (n // 2)."
+                ),
+                description=(
+                    "First year of the second part: the annual maxima of earlier years "
+                    "form the first part. Needs years (`years`, `year_column` or "
+                    "dates); by default the first half of the values (n // 2) is the "
+                    "first part."
+                ),
+            ),
+            Option(
+                name="alpha",
+                type="number",
+                description_pl=(
+                    "Poziom istotności testów z przedziału otwartego (0, 1), np. 0,05."
+                ),
+                description=(
+                    "Significance level of the tests, in the open interval (0, 1), "
+                    "e.g. 0.05."
+                ),
+                default=0.05,
+                exclusive_minimum=0,
+                maximum=1,
+            ),
+        ),
+        one_of=_UNDATED_ONE_OF,
+        examples=(
+            {
+                "input_file": _ANNUAL_MAXIMA,
+                "value_column": "Qmax",
+                "year_column": "year",
+                "split_year": 2000,
+            },
+            {
+                "input_file": _DAILY_FLOWS,
+                "value_column": "Q",
+                "date_column": "date",
+            },
+            {
+                "values": [52.0, 48.0, 55.0, 50.0, 47.0, 81.0, 86.0, 79.0, 90.0, 84.0],
             },
         ),
     ),
