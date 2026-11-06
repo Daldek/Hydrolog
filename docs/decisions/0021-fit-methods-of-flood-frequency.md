@@ -50,18 +50,20 @@ and AIC from the parameters and ranks the distributions by AIC.
    `too_few_values`, `constant_values`, `out_of_range` or `non_positive_values`, `details.distribution` and
    `details.fit_method`. The operation leaves the distribution out with a notice when it fits all four, and ends with
    the error when none remains or the one requested cannot be fitted.
-9. **A fit whose support leaves out an annual maximum stays.** Unlike maximum likelihood, the moments and the L-moments
-   may give a distribution under which an annual maximum has no density, most often a lower bound of Pearson III or
-   Weibull above the smallest annual maximum. Its quantiles, K-S and A² are kept; its log-likelihood is −∞, so its AIC is
-   infinite (`null` in JSON) and it ranks after every fit with a finite AIC; a notice names the values outside the
-   support.
+9. **A fit whose support leaves out an annual maximum stays.** The moments and the L-moments may give a distribution
+   under which an annual maximum has no density, most often a lower bound of Pearson III or Weibull above the smallest
+   annual maximum (scipy's maximum likelihood may too: its Weibull of `tests/fixtures/maksima_roczne.csv` has the
+   location 94.2, above the maxima 81.6 and 87.2). Its quantiles, K-S and A² are kept; its log-likelihood is −∞, so its
+   AIC is infinite (`null` in JSON) and it ranks after every fit with a finite AIC; a notice names the values outside
+   the support.
 10. **GUI**: a choice field „Metoda estymacji parametrów” in Dane of Statystyka; both runs (the table's and the
     curves') use it.
 
 ## Consequences
 
-- An additive change of `stats flood-frequency`: the option and the field `fit_method`, and an `aic` of `null`, which
-  only the methods other than `mle` can give. The default results are those of before.
+- An additive change of `stats flood-frequency`: the option and the field `fit_method`. An `aic` of `null` was already
+  possible (the Weibull above; the schema leaves the items of `distributions` open and the GUI shows „—” with „brak AIC
+  w wyniku”) and becomes frequent with the new methods. The default results are those of before.
 - With the moments and the L-moments, Pearson III and Weibull often rank last. In trials of 300 samples of 30 and of
   60 years drawn from GEV, log-normal, Pearson III and Weibull distributions, the fitted lower bound lay above the
   smallest annual maximum in 9-81 % of the Pearson III fits and 16-91 % of the Weibull fits (the most with the GEV
