@@ -5,6 +5,7 @@ Provides:
 - Flood frequency analysis (GEV, Log-Normal, Pearson III, Weibull)
 - Low-flow frequency analysis (Fisher-Tippett, drought sequences)
 - Mann-Kendall trend test for series stationarity
+- Homogeneity tests of a split series (Mann-Whitney U, Kolmogorov-Smirnov, Pettitt)
 """
 
 from hydrolog.statistics._types import EmpiricalFrequency, LowFlowEmpiricalFrequency
@@ -21,6 +22,12 @@ from hydrolog.statistics.high_flows import (
     FitMethod,
     FloodFrequencyAnalysis,
     FrequencyAnalysisResult,
+)
+from hydrolog.statistics.homogeneity import (
+    HomogeneityResult,
+    PettittResult,
+    TwoSampleTestResult,
+    homogeneity_tests,
 )
 from hydrolog.statistics.low_flows import (
     LowFlowAnalysis,
@@ -53,4 +60,9 @@ __all__ = [
     # Stationarity
     "mann_kendall_test",
     "MannKendallResult",
+    # Homogeneity
+    "homogeneity_tests",
+    "HomogeneityResult",
+    "TwoSampleTestResult",
+    "PettittResult",
 ]
