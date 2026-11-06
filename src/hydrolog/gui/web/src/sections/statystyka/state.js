@@ -1,10 +1,12 @@
 // State of „Statystyka przepływów”: the inputs of `stats flood-frequency` kept in the browser
 // under "hydrolog-gui/statystyka/3" (the form's values, the source, the return period
-// highlighted in the results, null for „brak”, and the combinations shown; no results); the
-// columns of the chosen file, read in the browser from its header; the ranking of the annual
-// maxima for display; the combinations of distribution and fit method shown, and the best of
-// them; and the options of `stats homogeneity` for the same series. A first visit starts
-// empty: no file, no values, no highlighted period, every distribution by L-moments only.
+// highlighted in the results, null for „brak”, the combinations shown and the axis ranges the
+// person set, as typed; no results); the columns of the chosen file, read in the browser from
+// its header; the ranking of the annual maxima for display; the combinations of distribution
+// and fit method shown, and the best of them; and the options of `stats homogeneity` for the
+// same series. A first visit starts empty: no file, no values, no highlighted period, every
+// distribution by L-moments only, every axis automatic. The axis ranges came later within
+// version 3: a store without them has every axis automatic.
 //
 // Both runs fit every distribution by every method (`distribution` and `fit_method` `all`,
 // plan 2026-11-06, D7); „Rozkłady” and „Metody estymacji” only choose the combinations shown
@@ -80,11 +82,11 @@ export const METHOD_CLASS = Object.freeze({ l_moments: "fm-lmom", mle: "fm-mle",
 
 /**
  * The inputs of a first visit: no series yet, no highlighted period („brak”), every
- * distribution shown by L-moments only; the return periods are the catalog's default, set
- * when the command's entry arrives.
+ * distribution shown by L-moments only, every axis automatic; the return periods are the
+ * catalog's default, set when the command's entry arrives.
  *
  * @returns {{source: "file"|"paste", values: object, chosen: number|null,
- *   shown: {distributions: string[], methods: string[]}}} the state
+ *   shown: {distributions: string[], methods: string[]}, axes: object}} the state
  */
 export function initialState() {
   return {
@@ -97,6 +99,7 @@ export function initialState() {
     },
     chosen: null,
     shown: { distributions: [...DISTRIBUTIONS], methods: ["l_moments"] },
+    axes: {},
   };
 }
 
@@ -112,6 +115,49 @@ export function initialState() {
  */
 export function toggled(order, ticked, value, on) {
   return order.filter((item) => (item === value ? on : ticked.includes(item)));
+}
+
+/**
+ * The axes of the charts whose range the person may set: the return period T [years] of the
+ * probability plot's Gumbel axis, Q [m³/s] of each chart and the density (the distribution
+ * function keeps 0 to 1).
+ */
+export const AXES = Object.freeze({
+  probability: Object.freeze(["t", "q"]),
+  density: Object.freeze(["q", "f"]),
+  distribution: Object.freeze(["q"]),
+});
+
+/**
+ * The range of an axis with the limits the person typed. A limit left empty, or one that is
+ * not a number, below 0 (T: not above 1 year), keeps the automatic end; limits whose range
+ * would be empty or reversed leave the whole axis automatic.
+ *
+ * @param {{min?: string, max?: string}|undefined} typed the limits typed, as text
+ * @param {[number, number]} auto the automatic range [low, high]
+ * @param {string} axis the axis: "t" (T [years]), "q" or "f" (≥ 0)
+ * @returns {{range: [number, number], wanted: [number, number], errors: {min?: string,
+ *   max?: string}}} the range drawn, the one the limits ask for (with the automatic ends of
+ *   those left out), and per end the reason a limit is left out: "number", "floor" (below 0;
+ *   T not above 1) or "order"
+ */
+export function axisLimits(typed, auto, axis) {
+  const errors = {};
+  const read = (end) => {
+    const value = parseNumber(typed?.[end] ?? "");
+    if (value === null) return null;
+    if (!Number.isFinite(value)) errors[end] = "number";
+    else if (axis === "t" ? value <= 1 : value < 0) errors[end] = "floor";
+    else return value;
+    return null;
+  };
+  const min = read("min");
+  const max = read("max");
+  const wanted = [min ?? auto[0], max ?? auto[1]];
+  if (wanted[0] < wanted[1]) return { range: wanted, wanted, errors };
+  if (max !== null) errors.max = "order";
+  if (min !== null) errors.min = "order";
+  return { range: auto, wanted, errors };
 }
 
 /**

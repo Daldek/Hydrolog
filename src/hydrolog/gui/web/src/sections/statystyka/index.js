@@ -15,7 +15,8 @@
 // and an active one no longer shown gives way to the best one. „Do porównania” hands the
 // active combination's stressed quantile to Hydrogram zlewni (store "reference"); it is off
 // while „Wyróżniony w wynikach” is „brak” (the first visit). A change of the inputs marks the
-// result stale (plan D13).
+// result stale (plan D13). „Zakres osi” under each chart sets its axis ranges without a new
+// run, stored with the inputs; „Auto” restores the ranges of the result (plan 2026-11-06, D8).
 // A station's series handed off by Archiwista (ADR-0020, „Wczytaj z Archiwisty”) arrives
 // through useHandoffInbox as the source and values it opens with, and the data panel names
 // where it came from until the series is changed.
@@ -79,6 +80,8 @@ registerInfo(statsInfo);
 
 const FORM_ID = "st-form";
 const CLOCK = new Intl.DateTimeFormat("pl-PL", { hour: "2-digit", minute: "2-digit" });
+/** The axis limits of a store from before „Zakres osi”: every axis automatic. */
+const NO_AXES = Object.freeze({});
 
 /**
  * The key of a run's inputs: its options and the content of its file.
@@ -213,6 +216,15 @@ export default function Statystyka() {
     setState((old) => {
       const order = filter === "methods" ? FIT_METHODS : DISTRIBUTIONS;
       return { ...old, shown: { ...old.shown, [filter]: toggled(order, old.shown[filter], value, on) } };
+    });
+
+  // „Zakres osi”: a limit typed for an axis of a chart, or „Auto” (axis null) for the chart
+  const onAxis = (chart, axis, end, text) =>
+    setState((old) => {
+      const axes = { ...(old.axes || {}) };
+      if (axis === null) delete axes[chart];
+      else axes[chart] = { ...axes[chart], [axis]: { ...axes[chart]?.[axis], [end]: text } };
+      return { ...old, axes };
     });
 
   const focusFirstProblem = () =>
@@ -448,7 +460,16 @@ export default function Statystyka() {
       </span>
     `,
     body: html`<div class=${`result-area${busy ? " computing" : ""}`} aria-busy=${busy ? "true" : "false"}>
-      <${CenterBody} run=${run} tab=${tab} shown=${state.shown} stressed=${runStressed} active=${active} chartSvg=${chartSvg} />
+      <${CenterBody}
+        run=${run}
+        tab=${tab}
+        shown=${state.shown}
+        stressed=${runStressed}
+        active=${active}
+        chartSvg=${chartSvg}
+        axes=${state.axes || NO_AXES}
+        onAxis=${onAxis}
+      />
     </div>`,
   };
   const right = {

@@ -17,8 +17,22 @@ import { statystyka as texts } from "../../labels/statystyka.js";
 import { CommandLine, ExportButtons } from "../../ui/export-panel.js";
 import { InfoButton } from "../../ui/info-button.js";
 import { DataTable } from "../../ui/table.js";
-import { curveClass, densitySpec, distributionSpec, methodName, namesMethods, probabilitySpec } from "./charts.js";
-import { COMMAND, FIT_METHODS, fitKey, percentAt, quantileAt, secondPeriod, shortNumber, shownFits, shownNotices, tickedFits } from "./state.js";
+import { AxisRange } from "./axis-range.js";
+import { axisRanges, curveClass, densitySpec, distributionSpec, methodName, namesMethods, probabilitySpec } from "./charts.js";
+import {
+  AXES,
+  axisLimits,
+  COMMAND,
+  FIT_METHODS,
+  fitKey,
+  percentAt,
+  quantileAt,
+  secondPeriod,
+  shortNumber,
+  shownFits,
+  shownNotices,
+  tickedFits,
+} from "./state.js";
 import { Stroke } from "./swatch.js";
 
 /** Lists in Polish: „L-momentów i największej wiarygodności”. */
@@ -109,29 +123,54 @@ function chartSub(result, fits) {
 }
 
 /**
- * The centre: the probability plot with the density and distribution-function charts, or the
- * table of the ranked annual maxima.
+ * The centre: the probability plot with the density and distribution-function charts, each
+ * with its „Zakres osi”, or the table of the ranked annual maxima.
  *
  * @param {{run: object|null, tab: "chart"|"series", shown: {distributions: string[],
- *   methods: string[]}, stressed: number|null, active: string|null, chartSvg: object}}
- *   props the last run, the tab shown, the combinations shown, the stressed return period,
- *   the key of the active combination and the ref of the chart's SVG (for PNG)
+ *   methods: string[]}, stressed: number|null, active: string|null, chartSvg: object,
+ *   axes: object, onAxis: (chart: string, axis: string|null, end?: string, text?: string) =>
+ *   void}} props the last run, the tab shown, the combinations shown, the stressed return
+ *   period, the key of the active combination, the ref of the chart's SVG (for PNG), the
+ *   axis limits typed by chart and axis, and their change handler (`axis` null: „Auto”)
  * @returns {object} the centre's body
  */
-export function CenterBody({ run, tab, shown, stressed, active, chartSvg }) {
+export function CenterBody({ run, tab, shown, stressed, active, chartSvg, axes, onAxis }) {
   const result = run && run.envelope.status === "ok" ? run.envelope.result : null;
   const curves = run && run.curves;
+  // The automatic ranges of the run, then the person's limits on them
+  const auto = useMemo(() => (result ? axisRanges(result, curves) : null), [result, curves]);
+  const limits = useMemo(() => {
+    if (!auto) return null;
+    const out = {};
+    for (const [chart, names] of Object.entries(AXES)) {
+      out[chart] = {};
+      for (const axis of names) out[chart][axis] = axisLimits(axes[chart]?.[axis], auto[chart][axis], axis);
+    }
+    return out;
+  }, [auto, axes]);
+  const ranges = useMemo(() => {
+    if (!limits) return null;
+    const out = {};
+    for (const [chart, byAxis] of Object.entries(limits)) {
+      out[chart] = Object.fromEntries(Object.entries(byAxis).map(([axis, limit]) => [axis, limit.range]));
+    }
+    return out;
+  }, [limits]);
   const spec = useMemo(
-    () => (result ? probabilitySpec({ result, curves, shown, chosen: stressed, active }) : null),
-    [result, curves, shown, stressed, active],
+    () => (result ? probabilitySpec({ result, curves, shown, chosen: stressed, active, ranges }) : null),
+    [result, curves, shown, stressed, active, ranges],
   );
   const shapes = useMemo(
     () =>
       result
-        ? { density: densitySpec({ result, curves, shown, active }), distribution: distributionSpec({ result, curves, shown, active }) }
+        ? {
+            density: densitySpec({ result, curves, shown, active, ranges }),
+            distribution: distributionSpec({ result, curves, shown, active, ranges }),
+          }
         : null,
-    [result, curves, shown, active],
+    [result, curves, shown, active, ranges],
   );
+  const control = (chart) => html`<${AxisRange} chart=${chart} typed=${axes[chart]} auto=${auto[chart]} limits=${limits[chart]} onAxis=${onAxis} />`;
   if (!run) return html`<p class="empty-note">${texts.noResult}</p>`;
   if (!result) return html`<p class="empty-note">${texts.results.cancelled}</p>`;
   if (tab === "series") {
@@ -161,6 +200,7 @@ export function CenterBody({ run, tab, shown, stressed, active, chartSvg }) {
       </div>
       <${Chart} spec=${spec} svgRef=${chartSvg} />
       ${run.curvesError ? html`<p class="note">${t(texts.chart.curvesFailed, { message: run.curvesError })}</p>` : null}
+      ${control("probability")}
     </div>
     <div class="card st-shape">
       <div class="card-head">
@@ -170,10 +210,12 @@ export function CenterBody({ run, tab, shown, stressed, active, chartSvg }) {
       <div class="chart-box" data-chart="density">
         <div class="chart-title">${texts.shape.density}</div>
         <${Chart} spec=${shapes.density} />
+        ${control("density")}
       </div>
       <div class="chart-box" data-chart="distribution">
         <div class="chart-title">${texts.shape.distribution}</div>
         <${Chart} spec=${shapes.distribution} />
+        ${control("distribution")}
       </div>
     </div>
   `;

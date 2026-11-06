@@ -85,6 +85,27 @@ export const statystyka = {
     distributionY: "F(Q) = 1 − p",
     readout: "Q = {q} m³/s",
   },
+  /** „Zakres osi” under each chart: the person's limits of its axes, „Auto” the default. */
+  axes: {
+    title: "Zakres osi",
+    auto: "automatyczny",
+    custom: "własny",
+    reset: "Auto",
+    resetTitle: "Przywróć automatyczny zakres osi tego wykresu",
+    min: "od",
+    max: "do",
+    names: { t: "Okres powtarzalności T", q: "Przepływ Q", f: "Gęstość f(Q)" },
+    units: { t: "lat", q: "m³/s", f: "1/(m³/s)" },
+    limit: "{axis}: {end}",
+    /** After the end („od: podaj liczbę”). */
+    errors: {
+      number: "podaj liczbę",
+      floor: "najmniej 0",
+      floorT: "okres musi być dłuższy niż 1 rok",
+      orderMin: "musi być mniejsze niż „do” ({other})",
+      orderMax: "musi być większe niż „od” ({other})",
+    },
+  },
   series: {
     title: "Maksima roczne",
     sub: "Uszeregowane malejąco z prawdopodobieństwem empirycznym",

@@ -113,12 +113,13 @@ function quantileTo(fit, tail) {
 }
 
 /**
- * The axis ranges of the three charts. They depend on the run alone, every combination it
+ * The automatic axis ranges of the three charts, the ones „Auto” restores when the person
+ * set others (`axisLimits` of state.js). They depend on the run alone, every combination it
  * returned (of the curves' run on the dense grid, else of the result), never on the ones
- * shown, ticked or active: a filter or a click on a row moves no axis. The p axis of the
+ * shown, ticked or active: a filter or a click on a row moves no axis. The Gumbel axis of the
  * probability plot spans the probabilities of the run (its periods, the dense grid) and of
- * the annual maxima. Every other range starts at 0 and ends at the axis's own rounding (8%
- * headroom; 7 ticks on y, 10 on x) of:
+ * the annual maxima, given as return periods T = 100 / p. Every other range starts at 0 and
+ * ends at the axis's own rounding (8% headroom; 7 ticks on y, 10 on x) of:
  * - Q of the density and distribution-function charts (x): the largest annual maximum or, if
  *   larger, the median over the combinations of Q at p = 1%;
  * - Q of the probability plot (y): the same at the rarest p of its curves (0,1% on the dense
@@ -130,17 +131,17 @@ function quantileTo(fit, tail) {
  *   they can be half of them; the median sets aside the rest (a GEV near its bound by
  *   maximum likelihood). Such a spike is cut by the frame instead of flattening every other
  *   curve;
- * - F (y): 0 to 1.
+ * - F (y): 0 to 1, not settable.
  * The median keeps a runaway combination from setting a range; a Q range still ends at most
  * at ten times the largest annual maximum. Whatever leaves a frame is cut at it.
  *
  * @param {object} result the result of the run
  * @param {object|null} curves the result of the run on the dense grid, null when it failed
- * @returns {{probability: {p: [number, number], q: number}, shape: {q: number, density: number|undefined}}}
- *   the p domain [%] (the larger first) and the top of Q [m³/s] of the probability plot; the
- *   top of Q [m³/s] and of the density [1/(m³/s)] (undefined without densities) of the others
+ * @returns {{probability: {t: [number, number], q: [number, number]}, density: {q: [number,
+ *   number], f: [number, number]}, distribution: {q: [number, number]}}} per chart and
+ *   axis (`AXES` of state.js) its range: T [years], Q [m³/s], the density [1/(m³/s)]
  */
-function axisRanges(result, curves) {
+export function axisRanges(result, curves) {
   const fits = (curves || result).distributions || [];
   const largest = extent(result.empirical.values_sorted)?.[1] ?? 0;
   const qTop = (tail, count) => {
@@ -155,10 +156,12 @@ function axisRanges(result, curves) {
     ),
   );
   const grids = [...(result.distributions || []), ...(curves?.distributions || [])].flatMap((fit) => fit.exceedance_probabilities);
-  const percents = [...grids, ...result.empirical.exceedance_prob].map((p) => p * 100);
+  const [left, right] = gumbelDomain([...grids, ...result.empirical.exceedance_prob].map((p) => p * 100));
   return {
-    probability: { p: gumbelDomain(percents), q: qTop(0, 7) },
-    shape: { q, density: peak > 0 ? niceDomain([0, DENSITY_HEADROOM * peak], { count: 7, pad: 0 }).max : undefined },
+    probability: { t: [100 / left, 100 / right], q: [0, qTop(0, 7)] },
+    // Without a density (none computed) the frame is 0 to 1
+    density: { q: [0, q], f: [0, peak > 0 ? niceDomain([0, DENSITY_HEADROOM * peak], { count: 7, pad: 0 }).max : 1] },
+    distribution: { q: [0, q] },
   };
 }
 
@@ -190,15 +193,17 @@ function legendOf(fits, maxima) {
  * The spec of the probability plot.
  *
  * @param {{result: object, curves: object|null, shown: {distributions: string[],
- *   methods: string[]}, chosen: number|null, active: string|null}} input the result of the
- *   run, the result of the run on the dense grid (null when it failed), the combinations
- *   shown, the return period to mark (null: none) and the key of the active combination
+ *   methods: string[]}, chosen: number|null, active: string|null, ranges: object}} input
+ *   the result of the run, the result of the run on the dense grid (null when it failed),
+ *   the combinations shown, the return period to mark (null: none), the key of the active
+ *   combination and the ranges drawn (`axisRanges`, with the person's limits)
  * @returns {object} the Chart spec
  */
-export function probabilitySpec({ result, curves, shown, chosen, active }) {
+export function probabilitySpec({ result, curves, shown, chosen, active, ranges }) {
   const fits = shownFits((curves || result).distributions || [], shown);
   const named = namesMethods(fits);
-  const { p: domain, q: top } = axisRanges(result, curves).probability;
+  const [shortest, longest] = ranges.probability.t;
+  const [low, top] = ranges.probability.q;
   const series = [
     {
       id: "maxima",
@@ -211,14 +216,14 @@ export function probabilitySpec({ result, curves, shown, chosen, active }) {
   ];
   for (const fit of fits) {
     const data = fit.exceedance_probabilities.map((p, index) => [p * 100, fit.quantiles[index]]).filter(([, q]) => Number.isFinite(q));
-    series.push(curve(fit, active, named, { unit: "m³/s", digits: 1, data: clipped(data, top) }));
+    series.push(curve(fit, active, named, { unit: "m³/s", digits: 1, data: clipped(data, low, top) }));
   }
   const marks = [];
   const activeFit = chosen === null ? null : result.distributions.find((fit) => fitKey(fit) === active);
   const q = activeFit ? quantileAt(activeFit, chosen) : null;
   const p = activeFit ? percentAt(activeFit, chosen) : null;
   // A quantile beyond the frame is not marked: the tiles give it
-  if (q !== null && p !== null && q >= 0 && q <= top) {
+  if (q !== null && p !== null && q >= low && q <= top && p <= 100 / shortest && p >= 100 / longest) {
     marks.push({
       kind: "peak",
       x: p,
@@ -230,8 +235,8 @@ export function probabilitySpec({ result, curves, shown, chosen, active }) {
   }
   return {
     title: texts.chart.title,
-    x: { label: texts.chart.x, scale: "gumbel", domain },
-    y: { label: texts.chart.y, unit: "m³/s", min: 0, max: top },
+    x: { label: texts.chart.x, scale: "gumbel", domain: [100 / shortest, 100 / longest] },
+    y: { label: texts.chart.y, unit: "m³/s", min: low, max: top },
     series,
     marks,
     legend: legendOf(fits, { kind: "points", label: texts.chart.points }),
@@ -283,28 +288,29 @@ function againstQ(fit, value) {
 }
 
 /**
- * A curve clipped at its frame's range of values, 0 to a top: its parts beyond end at the
- * crossing of the bound and leave a gap (a point without a value), so the readout reads
- * nothing there either.
+ * A curve clipped at its frame's range of values: its parts beyond end at the crossing of
+ * the bound and leave a gap (a point without a value), so the readout reads nothing there
+ * either.
  *
  * @param {number[][]} data the points [x, y] in the order drawn, with finite values
+ * @param {number} low the lowest value shown
  * @param {number} top the highest value shown
  * @returns {number[][]} the points within the range, with the crossings and the gaps
  */
-function clipped(data, top) {
+function clipped(data, low, top) {
   const out = [];
   data.forEach(([x, y], index) => {
     const previous = data[index - 1];
     if (previous) {
       const [px, py] = previous;
-      const crossings = [0, top]
+      const crossings = [low, top]
         .filter((bound) => (py - bound) * (y - bound) < 0)
         .map((bound) => [px + ((bound - py) / (y - py)) * (x - px), bound]);
       // From one bound to the other within a step: the nearer crossing first
       if (crossings.length === 2 && Math.abs(crossings[0][0] - px) > Math.abs(crossings[1][0] - px)) crossings.reverse();
       out.push(...crossings);
     }
-    out.push(y >= 0 && y <= top ? [x, y] : [x, Number.NaN]);
+    out.push(y >= low && y <= top ? [x, y] : [x, Number.NaN]);
   });
   return out;
 }
@@ -326,29 +332,29 @@ function smallCurve(fit, active, named, fields) {
 
 /**
  * The spec of the probability density chart: the density of every combination shown against
- * Q, the annual maxima as a rug on the Q axis, within the ranges of `axisRanges`; a curve
- * with a spike above the frame is clipped at its top.
+ * Q, the annual maxima as a rug on the Q axis, within the ranges drawn; a curve with a spike
+ * above the frame is clipped at its top.
  *
  * @param {{result: object, curves: object|null, shown: {distributions: string[],
- *   methods: string[]}, active: string|null}} input the result of the run, the result of
- *   the run on the dense grid (null when it failed), the combinations shown and the key of
- *   the active one
+ *   methods: string[]}, active: string|null, ranges: object}} input the result of the run,
+ *   the result of the run on the dense grid (null when it failed), the combinations shown,
+ *   the key of the active one and the ranges drawn (as for `probabilitySpec`)
  * @returns {object} the Chart spec
  */
-export function densitySpec({ result, curves, shown, active }) {
+export function densitySpec({ result, curves, shown, active, ranges }) {
   const fits = shownFits((curves || result).distributions || [], shown);
   const named = namesMethods(fits);
-  const { q: top, density: ceiling } = axisRanges(result, curves).shape;
-  const series = fits.map((fit) => {
-    const data = againstQ(fit, (index) => (fit.densities || [])[index]);
-    return smallCurve(fit, active, named, { data: ceiling === undefined ? data : clipped(data, ceiling) });
-  });
+  const [left, right] = ranges.density.q;
+  const [low, top] = ranges.density.f;
+  const series = fits.map((fit) =>
+    smallCurve(fit, active, named, { data: clipped(againstQ(fit, (index) => (fit.densities || [])[index]), low, top) }),
+  );
   series.push({ id: "maxima", kind: "rug", label: texts.chart.points, data: result.annual_maxima });
   return {
     size: SHAPE_SIZE,
     title: texts.shape.density,
-    x: { label: texts.shape.x, min: 0, max: top },
-    y: { label: texts.shape.densityY, unit: texts.shape.densityUnit, ...(ceiling === undefined ? {} : { min: 0, max: ceiling }) },
+    x: { label: texts.shape.x, min: left, max: right },
+    y: { label: texts.shape.densityY, unit: texts.shape.densityUnit, min: low, max: top },
     series,
     legend: legendOf(fits, { kind: "rug", label: texts.chart.points }),
     readout: { series: active, x: readoutQ, value: (value) => shortNumber(value) },
@@ -360,13 +366,13 @@ export function densitySpec({ result, curves, shown, active }) {
  * Q, the annual maxima as points at their empirical F.
  *
  * @param {{result: object, curves: object|null, shown: {distributions: string[],
- *   methods: string[]}, active: string|null}} input as for `densitySpec`
+ *   methods: string[]}, active: string|null, ranges: object}} input as for `densitySpec`
  * @returns {object} the Chart spec
  */
-export function distributionSpec({ result, curves, shown, active }) {
+export function distributionSpec({ result, curves, shown, active, ranges }) {
   const fits = shownFits((curves || result).distributions || [], shown);
   const named = namesMethods(fits);
-  const { q: top } = axisRanges(result, curves).shape;
+  const [left, right] = ranges.distribution.q;
   const series = fits.map((fit) =>
     smallCurve(fit, active, named, { digits: 3, data: againstQ(fit, (index) => 1 - fit.exceedance_probabilities[index]) }),
   );
@@ -381,7 +387,7 @@ export function distributionSpec({ result, curves, shown, active }) {
   return {
     size: SHAPE_SIZE,
     title: texts.shape.distribution,
-    x: { label: texts.shape.x, min: 0, max: top },
+    x: { label: texts.shape.x, min: left, max: right },
     y: { label: texts.shape.distributionY, min: 0, max: 1 },
     series,
     legend: legendOf(fits, { kind: "points", label: texts.chart.points }),

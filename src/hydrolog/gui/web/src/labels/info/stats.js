@@ -82,6 +82,8 @@ export const statsInfo = {
       { symbol: "<math><mi>i</mi></math>", text: "pozycja w szeregu malejącym (1 to największe maksimum)", unit: "–" },
       { symbol: "<math><mi>n</mi></math>", text: "liczba maksimów rocznych", unit: "–" },
     ],
+    note:
+      "<p>Oś gęstości sięga 1,25 mediany największych gęstości kombinacji z AIC, bez względu na to, które są pokazane i która jest aktywna, więc skok gęstości przy granicy rozkładu ucina ramka wykresu, zamiast spłaszczać pozostałe krzywe.</p>",
     sources: "Weibull (1939); Gumbel (1958) Statistics of Extremes; Hydrolog, <code>EmpiricalFrequency</code>",
   },
   "stats-homogeneity": {
