@@ -347,6 +347,17 @@ export function percentAt(fit, period) {
   return index < 0 ? null : fit.exceedance_probabilities[index] * 100;
 }
 
+/**
+ * The fits of the distributions ticked „W tabeli kwantyli”, in the order of the table.
+ *
+ * @param {object} result the result of `stats flood-frequency`
+ * @param {string[]} ticked the names of the ticked distributions
+ * @returns {object[]} the fits
+ */
+export function tickedFits(result, ticked) {
+  return result.distributions.filter((fit) => ticked.includes(fit.distribution_name));
+}
+
 const docs = new Map();
 
 /**

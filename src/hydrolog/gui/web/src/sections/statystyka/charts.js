@@ -1,8 +1,9 @@
 // The chart of „Statystyka przepływów”: the probability plot on Gumbel paper (plan D12). The
 // annual maxima are points at their empirical exceedance probability, each distribution a
 // curve through the quantiles Hydrolog computed (a dense grid of return periods, else the
-// periods of the run), the best one thicker, and the chosen quantile marked with guides to
-// both axes. Probabilities are drawn in per cent.
+// periods of the run), the active one full and thick, the others dimmed, and the chosen
+// quantile of the active one marked with guides to both axes. Probabilities are drawn in
+// per cent.
 
 import { extent } from "../../charts/scale.js";
 import { num } from "../../format.js";
@@ -24,32 +25,33 @@ export function legendName(name) {
 const FRAME_LIMIT = 10;
 
 /**
- * The top of the plot's frame: the largest annual maximum or the best distribution's
+ * The top of the plot's frame: the largest annual maximum or the active distribution's
  * largest quantile of the run, at most ten times the largest maximum. A curve that leaves
  * the frame (a fit with a runaway tail on a short series) is cut where it does.
  *
  * @param {object} result the result of the run
+ * @param {string} active the name of the active distribution
  * @returns {number} the top [m³/s]
  */
-export function frameTop(result) {
+export function frameTop(result, active) {
   const largest = extent(result.empirical.values_sorted)?.[1] ?? 0;
-  const best = result.distributions.find((fit) => fit.distribution_name === result.best_distribution);
-  const top = best ? (extent(best.quantiles)?.[1] ?? largest) : largest;
+  const fit = result.distributions.find((item) => item.distribution_name === active);
+  const top = fit ? (extent(fit.quantiles)?.[1] ?? largest) : largest;
   return Math.min(Math.max(largest, top), largest * FRAME_LIMIT);
 }
 
 /**
  * The spec of the probability plot.
  *
- * @param {{result: object, curves: object|null, chosen: number}} input the result of the
- *   run, the result of the run on the dense grid (null when it failed) and the return
- *   period to mark
+ * @param {{result: object, curves: object|null, chosen: number, active: string}} input the
+ *   result of the run, the result of the run on the dense grid (null when it failed), the
+ *   return period to mark and the name of the active distribution
  * @returns {object} the Chart spec
  */
-export function probabilitySpec({ result, curves, chosen }) {
+export function probabilitySpec({ result, curves, chosen, active }) {
   const best = result.best_distribution;
   const fits = (curves || result).distributions || [];
-  const top = frameTop(result) * 1.08;
+  const top = frameTop(result, active) * 1.08;
   const series = [
     {
       id: "maxima",
@@ -77,7 +79,7 @@ export function probabilitySpec({ result, curves, chosen }) {
     series.push({
       id: name,
       kind: "line",
-      cls: `${DISTRIBUTION_CLASS[name] || "s4"}${isBest ? " best" : ""}`,
+      cls: `${DISTRIBUTION_CLASS[name] || "s4"} ${name === active ? "active" : "dim"}`,
       label,
       unit: "m³/s",
       digits: 1,
@@ -85,17 +87,17 @@ export function probabilitySpec({ result, curves, chosen }) {
     });
   }
   const marks = [];
-  const bestFit = result.distributions.find((fit) => fit.distribution_name === best);
-  const q = bestFit ? quantileAt(bestFit, chosen) : null;
-  const p = bestFit ? percentAt(bestFit, chosen) : null;
+  const activeFit = result.distributions.find((fit) => fit.distribution_name === active);
+  const q = activeFit ? quantileAt(activeFit, chosen) : null;
+  const p = activeFit ? percentAt(activeFit, chosen) : null;
   if (q !== null && p !== null) {
     marks.push({
       kind: "peak",
       x: p,
       y: q,
       guides: "xy",
-      cls: DISTRIBUTION_CLASS[best] || "s1",
-      label: t(texts.chart.peak, { p: shortNumber(p), q: num(q, 1), name: legendName(best) }),
+      cls: DISTRIBUTION_CLASS[active] || "s1",
+      label: t(texts.chart.peak, { p: shortNumber(p), q: num(q, 1), name: legendName(active) }),
     });
   }
   return {
@@ -105,6 +107,6 @@ export function probabilitySpec({ result, curves, chosen }) {
     series,
     marks,
     legend: true,
-    readout: { series: best },
+    readout: { series: active },
   };
 }
