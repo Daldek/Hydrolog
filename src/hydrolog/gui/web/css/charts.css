@@ -153,9 +153,10 @@ svg.sw-stroke { display: inline-block; flex: none; width: 24px; height: 6px; ove
  * „Zakres osi” of the probability plot lines up under its chart.
  */
 .st-chart .chart, .st-chart .axis-range, .st-shape .chart-box { max-width: 880px; margin-inline: auto; }
-.st-chart .chart svg, .st-shape .chart svg { min-width: 560px; }
+.st-chart .chart-svg, .st-shape .chart-svg { min-width: 560px; }
 .st-shape .chart-box + .chart-box { margin-top: var(--space-4); }
 
+/* The chart's own SVG only: the swatches of its legend keep their size */
 @media (max-width: 860px) {
-  .chart.wide svg { min-width: 560px; }
+  .chart.wide .chart-svg { min-width: 560px; }
 }
