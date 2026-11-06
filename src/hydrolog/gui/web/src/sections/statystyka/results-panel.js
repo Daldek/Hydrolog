@@ -126,8 +126,8 @@ export function CenterBody({ run, tab, stressed, active, chartSvg }) {
 }
 
 /**
- * The tiles: the active distribution („najlepszy” when it is), its stressed quantile and
- * another one, the length.
+ * The tiles: the active distribution („najlepszy” when it is), its stressed quantile (none
+ * for „brak”) and another one, the length.
  *
  * @param {{result: object, active: string, stressed: number|null, second: number|null}} props
  *   the result, the active distribution and the two return periods
@@ -244,7 +244,8 @@ function Distributions({ result, stressed, second, ticked, onTick, active, onAct
 }
 
 /**
- * The quantiles of the ticked distributions, one column each, the stressed period marked.
+ * The quantiles of the ticked distributions, one column each, the stressed period marked
+ * (none for „brak”).
  *
  * @param {{fits: object[], stressed: number|null}} props the ticked fits, in the order of
  *   the distributions table, and the stressed period
@@ -291,10 +292,10 @@ function quantilesTitle(fits) {
  * @param {{run: object|null, periods: number[], stressed: number|null, ticked: string[],
  *   onTick: (name: string, on: boolean) => void, active: string|null,
  *   onActive: (name: string) => void, spec: object|null,
- *   reference: {pressed: boolean, toggle: () => void}|null}} props the last run, its return
- *   periods and the stressed one, the distributions in the quantile table and the change of
- *   one of them, the active distribution and its change, the export spec and the state of
- *   „Do porównania”
+ *   reference: {pressed: boolean, toggle: (() => void)|null}|null}} props the last run, its
+ *   return periods and the stressed one (null for „brak”), the distributions in the quantile
+ *   table and the change of one of them, the active distribution and its change, the export
+ *   spec and the state of „Do porównania” (no toggle: off until a period is highlighted)
  * @returns {object} the panel's body
  */
 export function ResultsPanel({ run, periods, stressed, ticked, onTick, active, onActive, spec, reference }) {
@@ -343,7 +344,8 @@ export function ResultsPanel({ run, periods, stressed, ticked, onTick, active, o
                   class="btn"
                   type="button"
                   aria-pressed=${reference.pressed ? "true" : "false"}
-                  title=${texts.results.referenceTitle}
+                  disabled=${!reference.toggle}
+                  title=${reference.toggle ? texts.results.referenceTitle : texts.results.referenceNone}
                   onClick=${reference.toggle}
                 >${reference.pressed ? `✓ ${texts.results.referenceOn}` : texts.results.reference}</button>
               </div>`

@@ -1,8 +1,11 @@
 // State of „Statystyka przepływów”: the inputs of `stats flood-frequency` kept in the browser
 // under "hydrolog-gui/statystyka/2" (the form's values, the source and the return period
-// shown in the results; no results); the columns of the chosen file, read in the browser
-// from its header; and the ranking of the annual maxima for display. A first visit starts
-// empty: no file, no values.
+// highlighted in the results, null for „brak”; no results); the columns of the chosen file,
+// read in the browser from its header; and the ranking of the annual maxima for display. A
+// first visit starts empty: no file, no values, no highlighted period. The version stayed 2
+// when „brak” came (2026-11-06): null is one more value of the same field, and a stored 100
+// (the former first value, not told apart from a 100 chosen) stays highlighted until the
+// person picks „brak” or „Wyczyść” clears the inputs.
 
 import { api } from "../../api.js";
 import { num, parseNumber } from "../../format.js";
@@ -38,19 +41,20 @@ export const CURVE_PERIODS = Object.freeze(CURVE_PERCENTS.map((p) => 100 / p));
 /** The run channel of the curves (a channel of its own: it must not supersede the run). */
 export const CURVES_CHANNEL = "statystyka-krzywe";
 
-/** The return period shown first: T = 100 years, p 1%. */
-export const FIRST_CHOSEN = 100;
+/** The period stressed when the chosen one is not among the periods: T = 100 years, p 1%. */
+const FALLBACK_PERIOD = 100;
 
 /** The series classes of the distributions: one colour each, whichever is best. */
 export const DISTRIBUTION_CLASS = Object.freeze({ gev: "s1", log_normal: "s2", pearson3: "s3", weibull: "s6" });
 
 /**
- * The inputs of a first visit: no series yet, all four distributions; the return periods
- * are the catalog's default, set when the command's entry arrives. `fit_method` is
- * absent until the person picks one: the field shows the catalog's default (`mle`), the
- * run sends nothing for it, and inputs stored before it existed keep their version.
+ * The inputs of a first visit: no series yet, all four distributions, no highlighted
+ * period („brak”); the return periods are the catalog's default, set when the command's
+ * entry arrives. `fit_method` is absent until the person picks one: the field shows the
+ * catalog's default (`mle`), the run sends nothing for it, and inputs stored before it
+ * existed keep their version.
  *
- * @returns {{source: "file"|"paste", values: object, chosen: number}} the state
+ * @returns {{source: "file"|"paste", values: object, chosen: number|null}} the state
  */
 export function initialState() {
   return {
@@ -62,7 +66,7 @@ export function initialState() {
       values: "",
       distribution: "all",
     },
-    chosen: FIRST_CHOSEN,
+    chosen: null,
   };
 }
 
@@ -93,17 +97,17 @@ export function periodsOf(text) {
 }
 
 /**
- * The return period the results stress: the one chosen when the periods hold it, else
- * 100 years, else the longest period.
+ * The return period the results stress: none for „brak” (null chosen), else the one chosen
+ * when the periods hold it, else 100 years, else the longest period.
  *
  * @param {number[]} periods the return periods
- * @param {number} chosen the period chosen
- * @returns {number|null} the period, null without periods
+ * @param {number|null} chosen the period chosen, null for „brak”
+ * @returns {number|null} the period, null for „brak” or without periods
  */
 export function stressedPeriod(periods, chosen) {
-  if (!periods.length) return null;
+  if (chosen === null || chosen === undefined || !periods.length) return null;
   if (periods.includes(chosen)) return chosen;
-  if (periods.includes(FIRST_CHOSEN)) return FIRST_CHOSEN;
+  if (periods.includes(FALLBACK_PERIOD)) return FALLBACK_PERIOD;
   return Math.max(...periods);
 }
 

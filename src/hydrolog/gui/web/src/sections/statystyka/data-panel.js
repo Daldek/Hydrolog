@@ -127,11 +127,11 @@ const SHOWN = {
  * @param {{model: object, values: object, source: "file"|"paste", errors: object,
  *   onValue: (name: string, value: any) => void, onSource: (source: string) => void,
  *   session: object|null, preview: object, periods: number[], stressed: number|null,
- *   onChosen: (period: number) => void, seriesMeta: string|null, formId: string,
+ *   onChosen: (period: number|null) => void, seriesMeta: string|null, formId: string,
  *   onSubmit: () => void}} props the catalog's model and the form's values, the source,
  *   the messages by option, the change handlers, the session, the columns of the chosen
- *   file, the return periods with the stressed one, the length of the series computed,
- *   the form's id and its submit handler
+ *   file, the return periods with the stressed one (null for „brak”), the length of the
+ *   series computed, the form's id and its submit handler
  * @returns {object} the panel's body
  */
 export function DataPanel(props) {
@@ -252,6 +252,13 @@ export function DataPanel(props) {
             ? html`<div class="field st-chosen">
                 <span class="label" id=${`${ID}-chosen-label`}>${texts.chosen}</span>
                 <div class="chips" role="group" aria-labelledby=${`${ID}-chosen-label`}>
+                  <button
+                    type="button"
+                    class=${`chip${stressed === null ? " on" : ""}`}
+                    aria-pressed=${stressed === null ? "true" : "false"}
+                    title=${texts.chosenNoneItem}
+                    onClick=${() => onChosen(null)}
+                  >${texts.chosenNone}</button>
                   ${periods.map(
                     (period) => html`<button
                       type="button"

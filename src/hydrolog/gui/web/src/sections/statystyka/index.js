@@ -8,8 +8,9 @@
 // row of the distributions table) in the tiles and on the charts, the quantiles of the
 // distributions ticked in that table (the best one after every computation), the goodness
 // of fit and the notices in Polish; neither choice is stored. „Do porównania” hands the
-// active distribution's stressed quantile to Hydrogram zlewni (store "reference"). A change
-// marks the result stale (plan D13).
+// active distribution's stressed quantile to Hydrogram zlewni (store "reference"); it is off
+// while „Wyróżniony w wynikach” is „brak” (the first visit). A change marks the result stale
+// (plan D13).
 // A station's series handed off by Archiwista (ADR-0020, „Wczytaj z Archiwisty”) arrives
 // through useHandoffInbox as the source and values it opens with, and the data panel names
 // where it came from until the series is changed.
@@ -318,7 +319,7 @@ export default function Statystyka() {
   }
   useEffect(() => setContext(context), [context]);
 
-  // „Do porównania”: the stressed quantile of the active distribution
+  // „Do porównania”: the stressed quantile of the active distribution; off for „brak”
   const q = fit && runStressed !== null ? quantileAt(fit, runStressed) : null;
   const p = fit && runStressed !== null ? percentAt(fit, runStressed) : null;
   let referenceState = null;
@@ -337,6 +338,8 @@ export default function Statystyka() {
         }
       },
     };
+  } else if (fit && runStressed === null) {
+    referenceState = { pressed: false, toggle: null };
   }
 
   const spec = result

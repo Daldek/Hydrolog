@@ -4,8 +4,8 @@
 // a rug on the Q axis), each distribution a curve through the quantiles and densities
 // Hydrolog computed (a dense grid of return periods, else the periods of the run), the
 // active one full and thick, the others dimmed, and on the probability plot the chosen
-// quantile of the active one marked with guides to both axes. Probabilities are drawn in
-// per cent there; F = 1 − p is the only arithmetic of the browser.
+// quantile of the active one marked with guides to both axes (none for „brak”).
+// Probabilities are drawn in per cent there; F = 1 − p is the only arithmetic of the browser.
 
 import { extent } from "../../charts/scale.js";
 import { num } from "../../format.js";
@@ -66,9 +66,9 @@ function shapeTop(result, fits, active) {
 /**
  * The spec of the probability plot.
  *
- * @param {{result: object, curves: object|null, chosen: number, active: string}} input the
- *   result of the run, the result of the run on the dense grid (null when it failed), the
- *   return period to mark and the name of the active distribution
+ * @param {{result: object, curves: object|null, chosen: number|null, active: string}} input
+ *   the result of the run, the result of the run on the dense grid (null when it failed),
+ *   the return period to mark (null: none) and the name of the active distribution
  * @returns {object} the Chart spec
  */
 export function probabilitySpec({ result, curves, chosen, active }) {
@@ -93,7 +93,7 @@ export function probabilitySpec({ result, curves, chosen, active }) {
     series.push(curve(fit, result, active, { unit: "m³/s", digits: 1, data }));
   }
   const marks = [];
-  const activeFit = result.distributions.find((fit) => fit.distribution_name === active);
+  const activeFit = chosen === null ? null : result.distributions.find((fit) => fit.distribution_name === active);
   const q = activeFit ? quantileAt(activeFit, chosen) : null;
   const p = activeFit ? percentAt(activeFit, chosen) : null;
   if (q !== null && p !== null) {
