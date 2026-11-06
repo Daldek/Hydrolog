@@ -117,3 +117,12 @@ guide `instrukcja/`, regenerated `AGENTS.md` and `llms.txt`) on the branch that 
   the largest maximum and the active distribution's Q 1%. The curves' run has 106 return periods
   (p every 1% from 99% to 2%, finer at both ends). The charts kit gained the series kind `rug`.
   The Statystyka pictures of the guide are to be taken again (PROGRESS, Next 8).
+- `feature/stats-no-chosen-period` (D4, GUI only): „brak” is the first value of „Wyróżniony w
+  wynikach” and the value of a first visit and of „Wyczyść”: no highlighted tile, no marked row of
+  the quantile table, no marked quantile on the probability plot (the density and
+  distribution-function charts never marked one) and „Do porównania” disabled with a title saying
+  why; the second Q tile (10 years) stays, unhighlighted. The stored shape did not change (`chosen`
+  may be `null`), so the key stays `hydrolog-gui/statystyka/2` and a stored 100, the former
+  default, which cannot be told apart from a chosen 100, stays highlighted until „brak” or
+  „Wyczyść”. The guide's example chooses 100 before „Oblicz”; the Statystyka pictures of the guide
+  are to be taken again (PROGRESS, Next 8).

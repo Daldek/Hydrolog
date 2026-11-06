@@ -1,17 +1,19 @@
-"""„Statystyka przepływów” (plan S5, D13, D14, D16; plan 2026-11-06, D3) in Chromium.
+"""„Statystyka przepływów” (plan S5, D13, D14, D16; 2026-11-06, D3, D4) in Chromium.
 
 Against the real server of ``gui_server``: a first visit has no series and sends
 nothing, a hint names what to load and links the guide's worked example; „Wyczyść”
 returns there. The annual maxima of 1998 to 2023 (``tests/fixtures/maksima_roczne.csv``,
-those years of ``annual_maxima.csv``) uploaded and „Oblicz” run ``stats
-flood-frequency``, giving the mockup's GEV „Q 1% 307,3 m³/s”, the KZGW notice in Polish,
-the probability plot, the density and distribution-function charts (one curve per
-distribution, a rug and the empirical points of the maxima) and the ranked maxima with
-their years; the call shown is the options sent. A distribution ticked „W tabeli
+those years of ``annual_maxima.csv``) uploaded, T = 100 highlighted and „Oblicz” run
+``stats flood-frequency``, giving the mockup's GEV „Q 1% 307,3 m³/s”, the KZGW notice
+in Polish, the probability plot, the density and distribution-function charts (one curve
+per distribution, a rug and the empirical points of the maxima) and the ranked maxima
+with their years; the call shown is the options sent. A distribution ticked „W tabeli
 kwantyli” adds its column of quantiles to the quantile table and the CSV, and a new
 result ticks the best one alone again. A click on a row of the distributions table (or
 Enter on it) makes that distribution the active one: the tiles, the full curve of the
 three charts and „Do porównania” follow it, the other curves dimmed, until a new result.
+No period is highlighted at first („brak”): no highlighted tile or row, no marked
+quantile on the charts and „Do porównania” off until one is chosen, the choice stored.
 A daily series takes its date column from its header; pasted maxima run
 as ``values``; „Do porównania” hands the stressed quantile to the store. A station's
 series handed off by Archiwista (``hydrolog-series/1``, ADR-0020) opens here with
@@ -88,6 +90,13 @@ def download(page: Page, trigger: Locator) -> tuple[str, bytes]:
     return started.value.suggested_filename, Path(started.value.path()).read_bytes()
 
 
+def highlight(page: Page, period: str) -> None:
+    """Choose ``period`` („brak” for none) in „Wyróżniony w wynikach”."""
+    page.locator(f"{SECTION} .st-chosen").get_by_role(
+        "button", name=period, exact=True
+    ).click()
+
+
 def test_a_first_visit_is_empty_and_clearing_returns_there(tab: Tab) -> None:
     posted: list[str] = []
     tab.page.on(
@@ -139,6 +148,7 @@ def test_the_maxima_give_the_mockups_gev_quantile_and_the_kzgw_notice(
         line for line in fixture[1:] if 1998 <= int(line.split(",")[0]) <= 2023
     ]
     expect(page.locator(f"{SECTION} #st-value_column")).to_have_value("Qmax")
+    highlight(page, "100")
 
     response = compute(page)
     options = sent(response)
@@ -216,6 +226,7 @@ def test_a_fit_method_recomputes_both_runs_with_it(tab: Tab) -> None:
             sent_by_channel[channel] = request.post_data_json
 
     page.on("request", record)
+    highlight(page, "100")
     compute(page)
     right = page.locator(RIGHT)
     subtitle = page.locator(f"{SECTION} .st-chart .card-sub")
@@ -250,10 +261,57 @@ def test_the_ranked_maxima_carry_their_years(tab: Tab) -> None:
     expect(rows.last.locator("th, td")).to_have_text(["26", "2020", "81,6", "96,3"])
 
 
+def test_no_period_is_highlighted_until_one_is_chosen(tab: Tab) -> None:
+    page = open_section(tab)
+    chips = page.locator(f"{SECTION} .st-chosen button")
+    expect(chips.filter(has_text="brak")).to_have_attribute("aria-pressed", "true")
+    compute(page)
+    right = page.locator(RIGHT)
+    charts = [
+        page.locator(PROBABILITY),
+        page.locator(DENSITY),
+        page.locator(DISTRIBUTION),
+    ]
+    hand = right.get_by_role("button", name="Do porównania")
+    open_part(page, SECTION, "exports")
+
+    # „brak”: no highlighted tile or row, no marked quantile, „Do porównania” off
+    expect(right.locator(".kpi.hi")).to_have_count(0)
+    expect(right.locator('.kpi[data-key="q-100"]')).to_have_count(0)
+    expect(right.locator(".dtable tr.hl")).to_have_count(0)
+    for chart in charts:
+        expect(chart.locator("path.ser")).to_have_count(4)
+        expect(chart.locator(".peak-dot, .peak-line, .peak-label")).to_have_count(0)
+    expect(hand).to_be_disabled()
+    expect(hand).to_have_attribute("title", re.compile("^Wybierz okres"))
+
+    # A period chosen: its tile, its row, its quantile on the probability plot, and it
+    # can be handed over; the choice is stored
+    highlight(page, "100")
+    expect(right.locator('.kpi[data-key="q-100"]')).to_have_class(re.compile(r"\bhi\b"))
+    expect(right.locator(".dtable tr.hl th")).to_have_text("100")
+    expect(charts[0].locator(".peak-label")).to_have_text("Q 1% = 307,3 m³/s (GEV)")
+    expect(hand).to_be_enabled()
+    page.reload()
+    expect(chips.filter(has_text=re.compile(r"^100$"))).to_have_attribute(
+        "aria-pressed", "true"
+    )
+
+    # „brak” again turns it all off
+    highlight(page, "brak")
+    compute(page)
+    open_part(page, SECTION, "exports")
+    expect(right.locator(".kpi.hi")).to_have_count(0)
+    expect(right.locator(".dtable tr.hl")).to_have_count(0)
+    expect(charts[0].locator(".peak-dot, .peak-line, .peak-label")).to_have_count(0)
+    expect(hand).to_be_disabled()
+
+
 def test_ticked_distributions_add_their_quantiles_to_the_table_and_the_csv(
     tab: Tab,
 ) -> None:
     page = open_section(tab)
+    highlight(page, "100")
     result = compute(page).json()["result"]
     fits = result["distributions"]
     assert fits[0]["distribution_name"] == result["best_distribution"] == "gev"
@@ -320,6 +378,7 @@ def test_ticked_distributions_add_their_quantiles_to_the_table_and_the_csv(
 
 def test_a_clicked_row_drives_the_tiles_the_plot_and_the_comparison(tab: Tab) -> None:
     page = open_section(tab)
+    highlight(page, "100")
     result = compute(page).json()["result"]
     other = result["distributions"][1]
     name = other["distribution_name"]
@@ -402,9 +461,7 @@ def test_pasted_maxima_run_and_go_to_the_comparison(tab: Tab) -> None:
     page.locator(f"{SECTION} #st-values").fill(
         "100,9; 148,6; 130; 140,3; 133,4; 87,2; 170,9; 141,1; 315,4; 126; 177,5; 116,9"
     )
-    page.locator(f"{SECTION} .st-chosen").get_by_role(
-        "button", name="50", exact=True
-    ).click()
+    highlight(page, "50")
     response = compute(page)
     options = sent(response)
     assert set(options) == {"values", "distribution", "return_periods"}
@@ -454,6 +511,7 @@ def test_a_phone_in_the_dark_computes_through_the_sheets(
     left = page.locator(f"{SECTION} .view-panel.left")
     expect(left).to_be_visible()
     assert page.evaluate(sideways) == 0
+    highlight(page, "100")
     left.locator(".panel-foot .btn.primary").click()
     expect(page.locator(RIGHT)).to_be_visible()
     expect(page.locator(f'{RIGHT} .kpi[data-key="q-100"] .v')).to_have_text(
@@ -516,6 +574,7 @@ def test_annual_maxima_from_archiwista_run_as_values_without_the_missing_years(
     expect(
         page.locator(f"{SECTION} .step").first.get_by_role("radio", name="Wklej")
     ).to_be_checked()
+    highlight(page, "100")
     options = sent(compute(page))
     assert options["values"] == maxima
     expect(page.locator(f'{RIGHT} .kpi[data-key="q-100"] .v')).to_have_text(
