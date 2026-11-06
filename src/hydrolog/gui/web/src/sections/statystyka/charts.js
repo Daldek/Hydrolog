@@ -62,12 +62,13 @@ function curveName(fit, named) {
 }
 
 /**
- * Whether the curves of a chart name their methods: more than one method is drawn.
+ * Whether combinations name their methods (curves, rows, columns): more than one method is
+ * among them, so a name tells them apart.
  *
- * @param {object[]} fits the combinations drawn
+ * @param {object[]} fits the combinations drawn or listed
  * @returns {boolean} whether they do
  */
-function namesMethods(fits) {
+export function namesMethods(fits) {
   return new Set(fits.map((fit) => fit.fit_method)).size > 1;
 }
 

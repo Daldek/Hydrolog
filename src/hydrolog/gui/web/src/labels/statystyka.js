@@ -97,6 +97,7 @@ export const statystyka = {
   results: {
     sub: "najlepszy: {name}",
     distribution: "Rozkład",
+    method: "Metoda",
     bestDistribution: "Najlepszy",
     length: "Długość",
     q: "Q {p}%",
@@ -116,6 +117,8 @@ export const statystyka = {
     activeHint: "Kliknięty wiersz pokazuje rozkład w kafelkach i na wykresach.",
     noneShown: "Żadnej z pokazanych kombinacji rozkładu i metody nie udało się dopasować (uwagi wyżej): pokaż inne w „Rozkłady” i „Metody estymacji”.",
     quantiles: "Kwantyle: {name}",
+    quantilesNone: "Kwantyle",
+    noneTicked: "Żaden wiersz tabeli rozkładów nie jest zaznaczony „W tabeli kwantyli”: zaznacz jeden lub więcej, by zobaczyć ich kwantyle.",
     period: "T",
     periodUnit: "lata",
     probability: "p",

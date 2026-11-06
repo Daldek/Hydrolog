@@ -16,7 +16,7 @@ import { statystyka as texts } from "../../labels/statystyka.js";
 import { CommandLine, ExportButtons } from "../../ui/export-panel.js";
 import { InfoButton } from "../../ui/info-button.js";
 import { DataTable } from "../../ui/table.js";
-import { curveClass, densitySpec, distributionSpec, methodName, probabilitySpec } from "./charts.js";
+import { curveClass, densitySpec, distributionSpec, methodName, namesMethods, probabilitySpec } from "./charts.js";
 import { COMMAND, FIT_METHODS, fitKey, percentAt, quantileAt, secondPeriod, shortNumber, shownFits, tickedFits } from "./state.js";
 import { Stroke } from "./swatch.js";
 
@@ -42,6 +42,18 @@ export function distributionName(name) {
  */
 export function fitName(fit) {
   return t(texts.combination, { name: distributionName(fit.distribution_name), method: methodName(fit.fit_method) });
+}
+
+/**
+ * The name of a combination in a table: its distribution, and its method too when the table
+ * holds more than one („GEV, L-momenty”), so that the names tell the rows apart.
+ *
+ * @param {object} fit a fitted distribution of the result
+ * @param {boolean} named whether the method is named
+ * @returns {string} the name
+ */
+function rowName(fit, named) {
+  return named ? fitName(fit) : distributionName(fit.distribution_name);
 }
 
 /**
@@ -203,9 +215,10 @@ function Tiles({ result, fit, best, stressed, second }) {
 }
 
 /**
- * The combinations shown: the box „W tabeli kwantyli”, AIC, A² against its critical value,
- * the p-value of KS and two quantiles; the best first, as Hydrolog sorts them. A click on a
- * row makes its combination the active one.
+ * The combinations shown: the method, the box „W tabeli kwantyli” (any row can leave the
+ * quantile table, the best one too), AIC, A² against its critical value, the p-value of KS
+ * and two quantiles; the best first, as Hydrolog sorts them. A click on a row makes its
+ * combination the active one.
  *
  * @param {{fits: object[], best: string|null, stressed: number|null, second: number|null,
  *   ticked: string[], onTick: (key: string, on: boolean) => void, active: string|null,
@@ -216,6 +229,7 @@ function Tiles({ result, fit, best, stressed, second }) {
  */
 function Distributions({ fits, best, stressed, second, ticked, onTick, active, onActive }) {
   const critical = adCritical(fits[0]);
+  const named = namesMethods(fits);
   const columns = [
     {
       key: "distribution_name",
@@ -224,20 +238,18 @@ function Distributions({ fits, best, stressed, second, ticked, onTick, active, o
         ? html` <span class="badge ok">${texts.results.best}</span>`
         : null}`,
     },
-    // Beside the name, in sight in a narrow panel; the last ticked one stays, so the
-    // quantile table always has a column
+    { key: "fit_method", label: texts.results.method, className: "txt", format: (method) => methodName(method) },
+    // Beside the combination, in sight in a narrow panel
     {
       key: "distribution_name",
       label: html`<span class="wrap">${texts.results.inQuantiles}</span>`,
       className: "pick",
-      format: (name, fit) => {
+      format: (_, fit) => {
         const key = fitKey(fit);
-        const on = ticked.includes(key);
         return html`<input
           type="checkbox"
-          checked=${on}
-          disabled=${on && ticked.length === 1}
-          aria-label=${t(texts.results.inQuantilesOf, { name: distributionName(name) })}
+          checked=${ticked.includes(key)}
+          aria-label=${t(texts.results.inQuantilesOf, { name: rowName(fit, named) })}
           onChange=${(event) => onTick(key, event.currentTarget.checked)}
         />`;
       },
@@ -273,7 +285,7 @@ function Distributions({ fits, best, stressed, second, ticked, onTick, active, o
     if (typeof fit.aic !== "number") found.push(texts.results.noAic);
     const limit = adCritical(fit);
     if (typeof fit.ad_statistic === "number" && limit !== null && fit.ad_statistic >= limit) found.push(texts.results.adAbove);
-    if (found.length) issues.push(t(texts.results.issues, { name: distributionName(fit.distribution_name), issues: found.join(", ") }));
+    if (found.length) issues.push(t(texts.results.issues, { name: rowName(fit, named), issues: found.join(", ") }));
   }
   return html`
     <${DataTable}
@@ -293,11 +305,12 @@ function Distributions({ fits, best, stressed, second, ticked, onTick, active, o
  * The quantiles of the ticked combinations, one column each, the stressed period marked
  * (none for „brak”).
  *
- * @param {{fits: object[], stressed: number|null}} props the ticked fits, in the order of
- *   the distributions table, and the stressed period
+ * @param {{fits: object[], named: boolean, stressed: number|null}} props the ticked fits, in
+ *   the order of the distributions table, whether their names hold the method and the
+ *   stressed period
  * @returns {object} the table
  */
-function Quantiles({ fits, stressed }) {
+function Quantiles({ fits, named, stressed }) {
   const [first] = fits;
   const rows = first.return_periods.map((period, index) => {
     const row = { period, p: first.exceedance_probabilities[index] * 100 };
@@ -311,25 +324,27 @@ function Quantiles({ fits, stressed }) {
       ...fits.map((fit) => ({
         key: fitKey(fit),
         // A long name wraps, its unit with it: the table stays within the panel
-        label: html`<span class="wrap">${t(texts.results.quantileOf, { name: distributionName(fit.distribution_name) })} <span class="u">[m³/s]</span></span>`,
+        label: html`<span class="wrap">${t(texts.results.quantileOf, { name: rowName(fit, named) })} <span class="u">[m³/s]</span></span>`,
         format: (value) => num(value, 1),
       })),
     ]}
     rows=${rows}
-    label=${quantilesTitle(fits)}
+    label=${quantilesTitle(fits, named)}
     tall=${false}
     rowClass=${(row) => (row.period === stressed ? "hl" : null)}
   />`;
 }
 
 /**
- * The title of the quantile table: „Kwantyle: GEV, Weibull”.
+ * The title of the quantile table: „Kwantyle: GEV, Weibull”, or with the methods named
+ * „Kwantyle: GEV, L-momenty; GEV, największa wiarygodność”.
  *
  * @param {object[]} fits the ticked fits
+ * @param {boolean} named whether their names hold the method
  * @returns {string} the title
  */
-function quantilesTitle(fits) {
-  return t(texts.results.quantiles, { name: fits.map((fit) => distributionName(fit.distribution_name)).join(", ") });
+function quantilesTitle(fits, named) {
+  return t(texts.results.quantiles, { name: fits.map((fit) => rowName(fit, named)).join(named ? "; " : ", ") });
 }
 
 /** The homogeneity tests in the order of the panel, as keys of the result. */
@@ -432,8 +447,22 @@ export function ResultsPanel({ run, fits, best, periods, stressed, ticked, onTic
   }
   const result = envelope.result;
   const quantileFits = tickedFits(result, ticked);
+  const named = namesMethods(fits);
   const second = secondPeriod(periods, stressed);
   const fit = fits.find((item) => fitKey(item) === active) || null;
+  // The quantile table: the ticked combinations, or a note while none is ticked
+  let quantiles = null;
+  if (quantileFits.length) {
+    quantiles = html`
+      <h3 class="group-title">${quantilesTitle(quantileFits, named)} <${InfoButton} id="stats-distributions" /></h3>
+      <${Quantiles} fits=${quantileFits} named=${named} stressed=${stressed} />
+    `;
+  } else if (fits.length) {
+    quantiles = html`
+      <h3 class="group-title">${texts.results.quantilesNone} <${InfoButton} id="stats-distributions" /></h3>
+      <p class="note">${texts.results.noneTicked}</p>
+    `;
+  }
   return html`
     <${Tiles} result=${result} fit=${fit} best=${best} stressed=${stressed} second=${second} />
     <h3 class="group-title">${texts.results.notices} <${InfoButton} id="stats-flood-frequency" values=${{ n_years: result.n_years }} /></h3>
@@ -451,12 +480,7 @@ export function ResultsPanel({ run, fits, best, periods, stressed, ticked, onTic
           onActive=${onActive}
         />`
       : html`<p class="note">${texts.results.noneShown}</p>`}
-    ${quantileFits.length
-      ? html`
-          <h3 class="group-title">${quantilesTitle(quantileFits)} <${InfoButton} id="stats-distributions" /></h3>
-          <${Quantiles} fits=${quantileFits} stressed=${stressed} />
-        `
-      : null}
+    ${quantiles}
     <${Homogeneity} run=${run} />
     <div class="steps">
       <details class="step" data-part="exports">

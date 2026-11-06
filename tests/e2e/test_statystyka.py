@@ -12,9 +12,11 @@ combination shown, a rug and the empirical points of the maxima) and the ranked 
 with their years; the call shown is the options sent. „Rozkłady” and „Metody estymacji”
 only choose the combinations shown, stored and without a request: a method added draws
 its curves in its line style (maximum likelihood dashed) and the best shown, the lowest
-AIC, becomes the active one; a distribution taken away hides its curves. A combination
+AIC, becomes the active one; a distribution taken away hides its curves. The
+distributions table has a row per combination shown with its method. A combination
 ticked „W tabeli kwantyli” adds its column of quantiles to the quantile table and the
-CSV, and a new result ticks the best one alone again. A click on a row of the
+CSV; every row can leave it, the best one too, leaving a note and a CSV of the periods
+and probabilities; a new result ticks the best one alone again. A click on a row of the
 distributions table (or Enter on it) makes that combination the active one: the tiles,
 the full curve of the three charts and „Do porównania” follow it, the other curves
 dimmed, until a new result; the density chart is scaled to it (a GEV's spike on twelve
@@ -387,6 +389,19 @@ def test_one_run_fits_every_combination_and_the_filters_only_show_them(
     expect(tile.locator(".sub")).to_have_text("największa wiarygodność")
     expect(right.locator('.kpi[data-key="q-100"] .v')).to_have_text("307,3 m³/s")
 
+    # The distributions table: a row per combination shown, its method beside it; the
+    # quantile table follows the best one, named with its method
+    table = right.get_by_role("region", name="Rozkłady")
+    expect(table.locator("thead th").nth(1)).to_have_text("Metoda")
+    expect(table.locator("tbody tr")).to_have_count(8)
+    expect(table.locator('tbody tr[aria-current="true"] td').first).to_have_text(
+        "największa wiarygodność"
+    )
+    quantiles = right.get_by_role(
+        "region", name="Kwantyle: GEV, największa wiarygodność"
+    )
+    expect(quantiles.locator("tr.hl td").nth(1)).to_have_text("307,3")
+
     # GEV taken away: its curves go and the best of the others becomes the active one
     chip(page, "distributions", "GEV").click()
     rest = shown_fits(
@@ -492,10 +507,10 @@ def test_ticked_distributions_add_their_quantiles_to_the_table_and_the_csv(
     right = page.locator(RIGHT)
     boxes = right.get_by_role("checkbox", name=re.compile(r"^W tabeli kwantyli: "))
     expect(boxes).to_have_count(4)
-    # Only the best one is ticked, and it cannot be the last one taken away
+    # Only the best one is ticked at first
     best = right.get_by_role("checkbox", name="W tabeli kwantyli: GEV")
     expect(best).to_be_checked()
-    expect(best).to_be_disabled()
+    expect(best).to_be_enabled()
     quantiles = right.get_by_role("region", name="Kwantyle: GEV")
     expect(quantiles.locator("thead th")).to_have_text(
         ["T [lata]", "p [%]", "Q GEV [m³/s]"]
@@ -537,11 +552,28 @@ def test_ticked_distributions_add_their_quantiles_to_the_table_and_the_csv(
     assert header == [
         "return_period_years",
         "exceedance_probability",
-        *(f"{fit['distribution_name']}_m3s" for fit in shown),
+        *(f"{fit['distribution_name']}_{fit['fit_method']}_m3s" for fit in shown),
     ]
     assert [float(line[0]) for line in lines] == DEFAULT_PERIODS
     for column, fit in enumerate(shown, start=2):
         assert [float(line[column]) for line in lines] == fit["quantiles"]
+
+    # Every row can leave the quantile table, the best one too: a note instead of the
+    # columns, and the CSV keeps the periods with their probabilities only
+    for fit in shown:
+        right.get_by_role(
+            "checkbox", name=f"W tabeli kwantyli: {NAMES[fit['distribution_name']]}"
+        ).uncheck()
+    expect(right.get_by_role("checkbox", checked=True)).to_have_count(0)
+    expect(right.get_by_role("region", name=re.compile(r"^Kwantyle"))).to_have_count(0)
+    expect(
+        right.get_by_text("Żaden wiersz tabeli rozkładów nie jest zaznaczony")
+    ).to_be_visible()
+    _, data = download(page, right.locator(".export-row button").filter(has_text="CSV"))
+    header, *lines = [line.split(",") for line in data.decode("utf-8").splitlines()]
+    assert header == ["return_period_years", "exceedance_probability"]
+    assert [float(line[0]) for line in lines] == DEFAULT_PERIODS
+    assert [float(line[1]) for line in lines] == fits[0]["exceedance_probabilities"]
 
     # A new result ticks the best one alone again
     compute(page)

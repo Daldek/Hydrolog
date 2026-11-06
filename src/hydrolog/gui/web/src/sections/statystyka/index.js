@@ -9,12 +9,12 @@
 // „Rozkłady” and „Metody estymacji” choose the combinations shown without a new run (plan
 // 2026-11-06, D7). The result shows the active combination (the best one shown, the lowest
 // AIC, until a click on another's row of the distributions table) in the tiles and on the
-// charts, the quantiles of the combinations ticked in that table (the best one until one is
-// ticked), the goodness of fit and the notices in Polish; neither choice is stored, and one
-// that is no longer shown gives way to the best one. „Do porównania” hands the active
-// combination's stressed quantile to Hydrogram zlewni (store "reference"); it is off while
-// „Wyróżniony w wynikach” is „brak” (the first visit). A change of the inputs marks the
-// result stale (plan D13).
+// charts, the quantiles of the combinations ticked in that table (the best one until the
+// person ticks or unticks a row; any, none included), the goodness of fit and the notices in
+// Polish; neither choice is stored, and an active one no longer shown gives way to the best
+// one. „Do porównania” hands the active combination's stressed quantile to Hydrogram zlewni
+// (store "reference"); it is off while „Wyróżniony w wynikach” is „brak” (the first visit). A
+// change of the inputs marks the result stale (plan D13).
 // A station's series handed off by Archiwista (ADR-0020, „Wczytaj z Archiwisty”) arrives
 // through useHandoffInbox as the source and values it opens with, and the data panel names
 // where it came from until the series is changed.
@@ -310,15 +310,16 @@ export default function Statystyka() {
   const visible = useMemo(() => (result ? shownFits(result.distributions, state.shown) : []), [result, state.shown]);
   const best = bestFit(visible);
   const bestKey = best ? fitKey(best) : null;
-  // The choices of this run among those shown: the ticked combinations and the active one,
-  // else the best
+  // The choices of this run: the ticked combinations (the best one until the person ticks or
+  // unticks one, then any, none included; those shown count) and the active one, else the
+  // best
   const own = picked.run === run;
   const keys = visible.map(fitKey);
-  const kept = own && picked.names ? picked.names.filter((key) => keys.includes(key)) : [];
-  const ticked = kept.length || !bestKey ? kept : [bestKey];
+  const wanted = own && picked.names !== null ? picked.names : bestKey ? [bestKey] : [];
+  const ticked = wanted.filter((key) => keys.includes(key));
   const active = own && picked.active && keys.includes(picked.active) ? picked.active : bestKey;
   const onTick = (key, on) =>
-    setPicked({ run, names: on ? [...ticked, key] : ticked.filter((item) => item !== key), active: own ? picked.active : null });
+    setPicked({ run, names: on ? [...wanted, key] : wanted.filter((item) => item !== key), active: own ? picked.active : null });
   const onActive = (key) => setPicked({ run, names: own ? picked.names : null, active: key });
   const fit = visible.find((item) => fitKey(item) === active) || null;
   const runPeriods = fit ? fit.return_periods : [];
