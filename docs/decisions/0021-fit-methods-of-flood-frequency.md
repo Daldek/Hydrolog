@@ -98,7 +98,9 @@ The author's review of the deployed Statystyka (the plan's erratum of 2026-11-06
 - **`fit_method` gains `all`**: each distribution fitted by each of the four methods, as `distribution` has `all`. In
   the library `FloodFrequencyAnalysis.fit_all(fit_method="all")` gives up to 16 results keyed
   `"<distribution>/<fit_method>"` (`"gev/l_moments"`); with one method the keys stay the distribution names. The
-  `fit_*` of one distribution take one method, and `FIT_METHODS` still lists the four methods.
+  `fit_*` of one distribution take one method, and `FIT_METHODS` still lists the four methods; `fit_all` takes
+  `distribution` too, so `stats flood-frequency --distribution gev --fit-method all` is the GEV by each method (one
+  combination asked for raises its own error, as `fit_gev` does).
 - **Every item carries its `fit_method`**: `FrequencyAnalysisResult.fit_method` is the method that gave its
   parameters, so the items of `distributions` say which combination they are; the result's `fit_method` stays the
   value asked for (`all` included). Both are additive in `hydrolog-stats-flood-frequency/1`.

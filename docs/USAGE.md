@@ -702,9 +702,10 @@ quantiles need at least 30 years).
 
 - `stats flood-frequency`: flood quantiles for return periods from annual maxima, each with the
   fitted density there (`distributions[].quantiles` and `densities`; `--distribution all`
-  compares several distributions; `--fit-method` estimates their parameters by `mle`, the
-  default, `moments`, `l_moments` or `least_squares`, ADR-0021); `stats low-flow`: low-flow
-  quantiles from annual minima; `stats low-flow-sequences`: drought sequences below a threshold.
+  compares several distributions; `--fit-method` estimates their parameters by `l_moments`, the
+  default, `mle`, `moments` or `least_squares`, and `all` fits each distribution by each method,
+  every item naming its `fit_method`, ADR-0021); `stats low-flow`: low-flow quantiles from annual
+  minima; `stats low-flow-sequences`: drought sequences below a threshold.
 - `stats characteristic`: second-degree characteristic values (WWQ ... NNQ); `stats daily` and
   `stats monthly`: day-of-year and monthly statistics.
 - `stats mann-kendall`: monotonic trend test; `stats homogeneity`: the homogeneity of annual maxima
@@ -714,11 +715,11 @@ quantiles need at least 30 years).
   `split_year` and Pettitt's `change_point_year` are the first year of the second part.
 
 ```bash
-hydrolog stats flood-frequency --input-file tests/fixtures/annual_maxima.csv --value-column Qmax --distribution gev --fit-method l_moments --return-periods 10,100 --json
+hydrolog stats flood-frequency --input-file tests/fixtures/annual_maxima.csv --value-column Qmax --distribution gev --fit-method all --return-periods 10,100 --json
 ```
 
 ```json output
-{"result": {"schema": "hydrolog-stats-flood-frequency/1", "n_years": 35, "best_distribution": "gev", "fit_method": "l_moments"}}
+{"result": {"schema": "hydrolog-stats-flood-frequency/1", "n_years": 35, "best_distribution": "gev", "fit_method": "all"}}
 ```
 
 ```bash
@@ -986,8 +987,8 @@ print(watershed.width_km, watershed.relief_m, watershed.calculate_tc(method="kir
 maxima = np.loadtxt("tests/fixtures/annual_maxima.csv", delimiter=",", skiprows=1, usecols=1)
 gev = FloodFrequencyAnalysis(maxima, return_periods=np.array([10.0, 100.0])).fit_gev()
 print(gev.distribution_name, gev.quantiles, mann_kendall_test(maxima).trend_detected)
-by_l_moments = FloodFrequencyAnalysis(maxima).fit_all(fit_method="l_moments")  # FIT_METHODS
-print([(name, fit.aic) for name, fit in by_l_moments.items()])  # sorted by AIC, inf last
+every_fit = FloodFrequencyAnalysis(maxima).fit_all(fit_method="all")  # L-moments by default
+print([(key, fit.aic) for key, fit in every_fit.items()])  # "gev/l_moments", ...: AIC order
 years = np.loadtxt("tests/fixtures/annual_maxima.csv", delimiter=",", skiprows=1, usecols=0)
 tested = homogeneity_tests(maxima, years.astype(int), split_year=2000)  # parts before / from 2000
 print(tested.mann_whitney.p_value, tested.pettitt.change_point_year, tested.pettitt.homogeneous)
