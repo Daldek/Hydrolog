@@ -61,8 +61,8 @@ export const DISTRIBUTION_CLASS = Object.freeze({ gev: "s1", log_normal: "s2", p
  * The inputs of a first visit: no series yet, all four distributions, no highlighted
  * period („brak”); the return periods are the catalog's default, set when the command's
  * entry arrives. `fit_method` is absent until the person picks one: the field shows the
- * catalog's default (`mle`), the run sends nothing for it, and inputs stored before it
- * existed keep their version.
+ * catalog's default (`l_moments`) and the run sends nothing for it, so Hydrolog's
+ * default applies (to inputs stored before the option existed too).
  *
  * @returns {{source: "file"|"paste", values: object, chosen: number|null}} the state
  */

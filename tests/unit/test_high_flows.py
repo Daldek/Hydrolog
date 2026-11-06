@@ -399,6 +399,38 @@ class TestEveryFitMethod:
         assert set(ranked) == set(_DISTRIBUTIONS)
         assert {result.fit_method for result in ranked.values()} == {"moments"}
 
+    def test_one_distribution_by_each_method(self):
+        from hydrolog.statistics.high_flows import FIT_METHODS, FloodFrequencyAnalysis
+
+        analysis = FloodFrequencyAnalysis(_FLOODS)
+        ranked = analysis.fit_all(fit_method="all", distribution="gev")
+
+        assert set(ranked) == {f"gev/{method}" for method in FIT_METHODS}
+        every = analysis.fit_all(fit_method="all")
+        assert list(ranked) == [key for key in every if key.startswith("gev/")]
+
+    def test_one_combination_raises_its_own_error(self):
+        from hydrolog._warnings import DistributionLeftOut
+        from hydrolog.exceptions import CalculationError
+        from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
+
+        analysis = FloodFrequencyAnalysis(np.array([1.0, *[10.0] * 8, 10.5]))
+        with warnings.catch_warnings(record=True) as seen:
+            warnings.simplefilter("always")
+            with pytest.raises(CalculationError) as caught:
+                analysis.fit_all(fit_method="moments", distribution="weibull")
+        assert caught.value.details["reason"] == "out_of_range"
+        assert caught.value.details["distribution"] == "weibull"
+        assert not [w for w in seen if isinstance(w.message, DistributionLeftOut)]
+
+    def test_unknown_distribution_raises(self):
+        from hydrolog.exceptions import InvalidParameterError
+        from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
+
+        with pytest.raises(InvalidParameterError) as caught:
+            FloodFrequencyAnalysis(_FLOODS).fit_all(distribution="gumbel")
+        assert caught.value.details["option"] == "distribution"
+
 
 def test_the_default_fit_method_is_l_moments():
     from hydrolog.statistics.high_flows import FloodFrequencyAnalysis

@@ -743,9 +743,12 @@ class FloodFrequencyAnalysis:
         return compute_plotting_positions(self._data, method=method)
 
     def fit_all(
-        self, *, fit_method: FitMethod | Literal["all"] = "l_moments"
+        self,
+        *,
+        fit_method: FitMethod | Literal["all"] = "l_moments",
+        distribution: str = "all",
     ) -> dict[str, FrequencyAnalysisResult]:
-        """Fit all four distributions and return results sorted by AIC.
+        """Fit the distributions and return results sorted by AIC.
 
         Parameters
         ----------
@@ -753,6 +756,8 @@ class FloodFrequencyAnalysis:
             Parameter estimation method of every distribution (see the class
             notes), by default ``"l_moments"``; ``"all"`` fits each distribution
             by each of :data:`FIT_METHODS`.
+        distribution : {"all", "log_normal", "gev", "pearson3", "weibull"}, optional
+            The distribution to fit, by default ``"all"``: the four.
 
         Returns
         -------
@@ -765,36 +770,53 @@ class FloodFrequencyAnalysis:
         Raises
         ------
         InvalidParameterError
-            If ``fit_method`` is neither ``"all"`` nor one of :data:`FIT_METHODS`.
+            If ``fit_method`` is neither ``"all"`` nor one of :data:`FIT_METHODS`, or
+            ``distribution`` is neither ``"all"`` nor one of the four.
         CalculationError
-            If the method gives parameters of none of the distributions (never with
-            ``"all"``: maximum likelihood fits each of them).
+            If the one combination asked for gives no parameters (its own error, as
+            of ``fit_<distribution>``), or the method gives parameters of none of the
+            distributions (never with ``"all"``: maximum likelihood fits each).
 
         Warns
         -----
         DistributionLeftOut
-            For each distribution a method other than ``"mle"`` gives no parameters
-            of (see the class notes); that combination is not in the result.
+            For each combination of several asked for whose method (other than
+            ``"mle"``) gives no parameters (see the class notes); that combination is
+            not in the result.
         """
+        if distribution != "all" and distribution not in _DISTRIBUTIONS:
+            allowed = ", ".join(repr(name) for name in ("all", *_DISTRIBUTIONS))
+            raise InvalidParameterError(
+                f"Unknown distribution: {distribution!r}. Use {allowed}.",
+                details={
+                    "option": "distribution",
+                    "reason": "choice",
+                    "allowed": ["all", *_DISTRIBUTIONS],
+                    "value": str(distribution),
+                },
+            )
+        names = tuple(_DISTRIBUTIONS) if distribution == "all" else (distribution,)
         methods = FIT_METHODS if fit_method == "all" else (fit_method,)
+        combinations = [(name, method) for name in names for method in methods]
         results: dict[str, FrequencyAnalysisResult] = {}
         reasons: dict[str, str] = {}
-        for name in _DISTRIBUTIONS:
-            for method in methods:
-                key = f"{name}/{method}" if fit_method == "all" else name
-                try:
-                    results[key] = getattr(self, f"fit_{name}")(fit_method=method)
-                except CalculationError as exc:
-                    reasons[key] = exc.details["reason"]
-                    warnings.warn(
-                        DistributionLeftOut(
-                            distribution=name,
-                            fit_method=method,
-                            reason=reasons[key],
-                            cause=str(exc),
-                        ),
-                        stacklevel=2,
-                    )
+        for name, method in combinations:
+            key = f"{name}/{method}" if fit_method == "all" else name
+            try:
+                results[key] = getattr(self, f"fit_{name}")(fit_method=method)
+            except CalculationError as exc:
+                if len(combinations) == 1:
+                    raise
+                reasons[key] = exc.details["reason"]
+                warnings.warn(
+                    DistributionLeftOut(
+                        distribution=name,
+                        fit_method=method,
+                        reason=reasons[key],
+                        cause=str(exc),
+                    ),
+                    stacklevel=2,
+                )
         if not results:
             raise CalculationError(
                 f"The {_METHOD_NAMES[fit_method]} fits none of the four distributions "

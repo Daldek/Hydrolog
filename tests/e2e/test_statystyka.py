@@ -4,7 +4,7 @@ Against the real server of ``gui_server``: a first visit has no series and sends
 nothing, a hint names what to load and links the guide's worked example; „Wyczyść”
 returns there. The annual maxima of 1998 to 2023 (``tests/fixtures/maksima_roczne.csv``,
 those years of ``annual_maxima.csv``) uploaded, T = 100 highlighted and „Oblicz” run
-``stats flood-frequency``, giving the mockup's GEV „Q 1% 307,3 m³/s”, the KZGW notice
+``stats flood-frequency``, giving the GEV „Q 1% 324,9 m³/s” (L-moments), the KZGW notice
 in Polish, the probability plot, the density and distribution-function charts (one curve
 per distribution, a rug and the empirical points of the maxima) and the ranked maxima
 with their years; the call shown is the options sent. A distribution ticked „W tabeli
@@ -184,7 +184,7 @@ def test_the_maxima_give_the_mockups_gev_quantile_and_the_kzgw_notice(
     right = page.locator(RIGHT)
     expect(right.locator('.kpi[data-key="distribution"] .v')).to_have_text("GEV")
     expect(right.locator('.kpi[data-key="q-100"] .k')).to_have_text("Q 1%")
-    expect(right.locator('.kpi[data-key="q-100"] .v')).to_have_text("307,3 m³/s")
+    expect(right.locator('.kpi[data-key="q-100"] .v')).to_have_text("324,9 m³/s")
     expect(right.locator('.kpi[data-key="n_years"] .v')).to_have_text("26 lat")
     kzgw = right.locator('.notes li[data-code="short_record"]')
     expect(kzgw).to_contain_text(
@@ -193,7 +193,7 @@ def test_the_maxima_give_the_mockups_gev_quantile_and_the_kzgw_notice(
     expect(kzgw).not_to_contain_text("(EN)")
     expect(right.locator('.dtable tr[aria-current="true"] th')).to_contain_text("GEV")
     expect(right.locator('.kpi[data-key="distribution"] .k')).to_have_text("Najlepszy")
-    expect(right.locator(".dtable tr.hl")).to_contain_text("307,3")
+    expect(right.locator(".dtable tr.hl")).to_contain_text("324,9")
     expect(page.locator(BADGE)).to_have_attribute("data-state", "ok")
     expect(page.locator(".crumb-context")).to_have_text(
         "maksima_roczne.csv · 26 lat (1998–2023)"
@@ -206,7 +206,7 @@ def test_the_maxima_give_the_mockups_gev_quantile_and_the_kzgw_notice(
     expect(chart.locator("path.ser")).to_have_count(4)
     expect(chart.locator('path.ser.active[data-series="gev"]')).to_have_count(1)
     expect(chart.locator("path.ser.dim")).to_have_count(3)
-    expect(chart.locator(".peak-label")).to_have_text("Q 1% = 307,3 m³/s (GEV)")
+    expect(chart.locator(".peak-label")).to_have_text("Q 1% = 324,9 m³/s (GEV)")
 
     # The density: one curve per distribution, the maxima as a rug on the Q axis; the
     # distribution function: one curve per distribution and the maxima as points
@@ -245,25 +245,35 @@ def test_a_fit_method_recomputes_both_runs_with_it(tab: Tab) -> None:
             sent_by_channel[channel] = request.post_data_json
 
     page.on("request", record)
+    # One method a run: „all” waits for the view of the combinations (plan D7)
+    methods = page.locator(f"{SECTION} #st-fit_method option")
+    expect(methods).to_have_count(4)
+    assert methods.evaluate_all("(items) => items.map((item) => item.value)") == [
+        "mle",
+        "moments",
+        "l_moments",
+        "least_squares",
+    ]
     highlight(page, "100")
     compute(page)
     right = page.locator(RIGHT)
     subtitle = page.locator(f"{SECTION} .st-chart .card-sub")
-    expect(subtitle).to_have_attribute("data-fit-method", "mle")
-    expect(right.locator('.kpi[data-key="q-100"] .v')).to_have_text("307,3 m³/s")
-    assert "fit_method" not in sent_by_channel["statystyka"]
-
-    page.locator(f"{SECTION} #st-fit_method").select_option("l_moments")
-    expect(page.locator(BADGE)).to_have_attribute("data-state", "stale")
-    response = compute(page)
-
-    assert sent_by_channel["statystyka"]["fit_method"] == "l_moments"
-    assert sent_by_channel["statystyka-krzywe"]["fit_method"] == "l_moments"
-    assert response.json()["result"]["fit_method"] == "l_moments"
     expect(subtitle).to_have_attribute("data-fit-method", "l_moments")
     expect(subtitle).to_contain_text("metodą L-momentów")
     expect(right.locator('.kpi[data-key="q-100"] .v')).to_have_text("324,9 m³/s")
-    expect(right.locator(".cli pre")).to_contain_text("--fit-method l_moments")
+    assert "fit_method" not in sent_by_channel["statystyka"]
+
+    page.locator(f"{SECTION} #st-fit_method").select_option("mle")
+    expect(page.locator(BADGE)).to_have_attribute("data-state", "stale")
+    response = compute(page)
+
+    assert sent_by_channel["statystyka"]["fit_method"] == "mle"
+    assert sent_by_channel["statystyka-krzywe"]["fit_method"] == "mle"
+    assert response.json()["result"]["fit_method"] == "mle"
+    expect(subtitle).to_have_attribute("data-fit-method", "mle")
+    expect(subtitle).to_contain_text("metodą największej wiarygodności")
+    expect(right.locator('.kpi[data-key="q-100"] .v')).to_have_text("307,3 m³/s")
+    expect(right.locator(".cli pre")).to_contain_text("--fit-method mle")
     expect(page.locator(BADGE)).to_have_attribute("data-state", "ok")
 
 
@@ -309,7 +319,7 @@ def test_no_period_is_highlighted_until_one_is_chosen(tab: Tab) -> None:
     highlight(page, "100")
     expect(right.locator('.kpi[data-key="q-100"]')).to_have_class(re.compile(r"\bhi\b"))
     expect(right.locator(".dtable tr.hl th")).to_have_text("100")
-    expect(charts[0].locator(".peak-label")).to_have_text("Q 1% = 307,3 m³/s (GEV)")
+    expect(charts[0].locator(".peak-label")).to_have_text("Q 1% = 324,9 m³/s (GEV)")
     expect(hand).to_be_enabled()
     page.reload()
     expect(chips.filter(has_text=re.compile(r"^100$"))).to_have_attribute(
@@ -371,7 +381,7 @@ def test_ticked_distributions_add_their_quantiles_to_the_table_and_the_csv(
         )
     # The highlighted period (T = 100) is still the marked row
     expect(quantiles.locator("tr.hl th")).to_have_text("100")
-    expect(quantiles.locator("tr.hl td").nth(1)).to_have_text("307,3")
+    expect(quantiles.locator("tr.hl td").nth(1)).to_have_text("324,9")
 
     open_part(page, SECTION, "exports")
     name, data = download(
@@ -652,7 +662,7 @@ def test_a_phone_in_the_dark_computes_through_the_sheets(
     left.locator(".panel-foot .btn.primary").click()
     expect(page.locator(RIGHT)).to_be_visible()
     expect(page.locator(f'{RIGHT} .kpi[data-key="q-100"] .v')).to_have_text(
-        "307,3 m³/s"
+        "324,9 m³/s"
     )
     assert page.evaluate(sideways) == 0
 
@@ -715,7 +725,7 @@ def test_annual_maxima_from_archiwista_run_as_values_without_the_missing_years(
     options = sent(compute(page))
     assert options["values"] == maxima
     expect(page.locator(f'{RIGHT} .kpi[data-key="q-100"] .v')).to_have_text(
-        "307,3 m³/s"
+        "324,9 m³/s"
     )
     # A series typed over is the person's: the origin goes
     page.locator(f"{SECTION} #st-values").fill("100; 120; 140")
