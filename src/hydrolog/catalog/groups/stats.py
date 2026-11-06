@@ -298,16 +298,17 @@ COMMANDS: tuple[Command, ...] = (
         summary=("Compute flood quantiles for return periods from annual maxima"),
         description_pl=(
             "Dopasowuje rozkłady log-normalny, GEV, Pearsona III i Weibulla do "
-            "maksimów rocznych (największa wiarygodność) i podaje kwantyle z "
-            "miarami zgodności (KS, A², AIC). Do przepływów miarodajnych z maksimów"
-            " rocznych albo szeregu dobowego; niżówki: `stats low-flow`. Lata z "
-            "brakami dni są pomijane."
+            "maksimów rocznych (największa wiarygodność, momenty, L-momenty albo "
+            "najmniejsze kwadraty) i podaje kwantyle z miarami zgodności (KS, A², "
+            "AIC). Do przepływów miarodajnych z maksimów rocznych albo szeregu "
+            "dobowego; niżówki: `stats low-flow`. Lata z brakami dni są pomijane."
         ),
         description=(
             "Fits log-normal, GEV, Pearson III and Weibull distributions to annual "
-            "maxima (maximum likelihood) and gives quantiles with goodness-of-fit "
-            "(KS, A², AIC). Use for design discharges from annual maxima or a daily"
-            " series; for low flows use `stats low-flow`."
+            "maxima (maximum likelihood, moments, L-moments or least squares) and "
+            "gives quantiles with goodness-of-fit (KS, A², AIC). Use for design "
+            "discharges from annual maxima or a daily series; for low flows use "
+            "`stats low-flow`."
         ),
         result_schema="hydrolog-stats-flood-frequency/1",
         cardinality="bounded",
@@ -411,6 +412,27 @@ COMMANDS: tuple[Command, ...] = (
                     "weibull": "Weibulla.",
                 },
                 default="all",
+            ),
+            Option(
+                name="fit_method",
+                type="choice",
+                description_pl="Metoda estymacji parametrów rozkładów.",
+                description="Method that estimates the distribution parameters.",
+                choices=("mle", "moments", "l_moments", "least_squares"),
+                meanings={
+                    "mle": "Maximum likelihood.",
+                    "moments": "Method of moments: mean, variance, skewness.",
+                    "l_moments": "Method of L-moments (Hosking and Wallis 1997).",
+                    "least_squares": "Least squares of quantiles at plotting points.",
+                },
+                meanings_pl={
+                    "mle": "Największa wiarygodność.",
+                    "moments": "Metoda momentów: średnia, wariancja, skośność.",
+                    "l_moments": "Metoda L-momentów (Hosking i Wallis 1997).",
+                    "least_squares": "Najmniejsze kwadraty kwantyli w pozycjach "
+                    "empirycznych.",
+                },
+                default="mle",
             ),
             _RETURN_PERIODS,
         ),

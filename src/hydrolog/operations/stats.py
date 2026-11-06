@@ -41,9 +41,11 @@ from hydrolog.operations._analysis import (
     require_count,
 )
 from hydrolog.statistics import (
+    FIT_METHODS,
     CharacteristicValues,
     DailyStatistics,
     EmpiricalFrequency,
+    FitMethod,
     FloodFrequencyAnalysis,
     FrequencyAnalysisResult,
     LowFlowAnalysis,
@@ -137,6 +139,9 @@ class FloodFrequencyResult(JsonResultMixin):
         Hydrological years of the daily series that were skipped because some day
         has no value (empty when every year was complete); ``None`` when the annual
         maxima were given directly.
+    fit_method : str
+        Method that estimated the parameters: ``"mle"``, ``"moments"``,
+        ``"l_moments"`` or ``"least_squares"``.
     """
 
     n_years: int
@@ -146,6 +151,7 @@ class FloodFrequencyResult(JsonResultMixin):
     distributions: list[FrequencyAnalysisResult]
     empirical: EmpiricalFrequency
     incomplete_years: list[int] | None = None
+    fit_method: str = "mle"
 
 
 @dataclass
@@ -573,6 +579,7 @@ def stats_flood_frequency(
     date_column: str | None = None,
     distribution: Distribution = "all",
     return_periods: Sequence[float] = DEFAULT_RETURN_PERIODS,
+    fit_method: FitMethod = "mle",
 ) -> OperationOutput:
     """Flood frequency analysis (``stats flood-frequency``).
 
@@ -601,6 +608,8 @@ def stats_flood_frequency(
     return_periods : sequence of float, optional
         Return periods [years], each greater than 1, by default
         ``DEFAULT_RETURN_PERIODS``.
+    fit_method : {"mle", "moments", "l_moments", "least_squares"}, optional
+        Method that estimates the parameters (ADR-0021), by default ``"mle"``.
 
     Returns
     -------
@@ -608,21 +617,26 @@ def stats_flood_frequency(
         ``result`` is a :class:`FloodFrequencyResult`; the notices report removed
         missing values, skipped incomplete years (code ``incomplete_years``) and the
         warnings of the fit: a sample of fewer than 10 years (``small_sample``) or of
-        fewer than the 30 years of the KZGW 2017 methodology (``short_record``), and
-        a K-S test that is not valid for fitted parameters (``ks_test_approximate``).
+        fewer than the 30 years of the KZGW 2017 methodology (``short_record``), a
+        K-S test that is not valid for fitted parameters (``ks_test_approximate``), a
+        distribution that ``fit_method`` gives no parameters of, left out of ``"all"``
+        (``distribution_left_out``), and annual maxima without density under a
+        fitted distribution, whose AIC is then null (``outside_support``).
 
     Raises
     ------
     InvalidParameterError
-        If the series options are inconsistent, ``distribution`` is not allowed or a
-        return period is not greater than 1.
+        If the series options are inconsistent, ``distribution`` or ``fit_method``
+        is not allowed or a return period is not greater than 1.
     NotFoundError, InputDataError
         If the file does not exist or cannot be read.
     CalculationError
-        If fewer than 3 annual maxima (complete hydrological years) are available or
-        a fit fails numerically.
+        If fewer than 3 annual maxima (complete hydrological years) are available, a
+        fit fails numerically, or ``fit_method`` gives no parameters of the
+        distribution requested (of none of the four for ``"all"``).
     """
     check_choice("distribution", distribution, _DISTRIBUTIONS)
+    check_choice("fit_method", fit_method, FIT_METHODS)
     periods = _return_periods(return_periods)
     series, notices = load_valid_series(
         values=values,
@@ -658,14 +672,16 @@ def stats_flood_frequency(
         if distribution == "all":
             fitted = list(
                 _fit(
-                    "the four flood frequency distributions", analysis.fit_all
+                    "the four flood frequency distributions",
+                    lambda: analysis.fit_all(fit_method=fit_method),
                 ).values()
             )
         else:
+            fit = getattr(analysis, _FIT_METHODS[distribution])
             fitted = [
                 _fit(
                     f"the {distribution} distribution",
-                    getattr(analysis, _FIT_METHODS[distribution]),
+                    lambda: fit(fit_method=fit_method),
                 )
             ]
         empirical = analysis.empirical_frequency()
@@ -677,6 +693,7 @@ def stats_flood_frequency(
         distributions=fitted,
         empirical=empirical,
         incomplete_years=incomplete_years,
+        fit_method=fit_method,
     )
     return OperationOutput(result, [*notices, *numeric])
 

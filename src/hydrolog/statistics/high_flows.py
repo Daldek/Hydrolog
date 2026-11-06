@@ -31,7 +31,13 @@ from scipy.stats import genextreme, kstest, lognorm, pearson3, weibull_min
 
 from hydrolog._ranges import typical_range
 from hydrolog._serialization import JsonResultMixin
-from hydrolog._warnings import KsTestApproximate, ShortRecord, SmallSample
+from hydrolog._warnings import (
+    DistributionLeftOut,
+    KsTestApproximate,
+    OutsideSupport,
+    ShortRecord,
+    SmallSample,
+)
 from hydrolog.exceptions import CalculationError, InvalidParameterError
 from hydrolog.statistics._types import EmpiricalFrequency, compute_plotting_positions
 
@@ -734,15 +740,37 @@ class FloodFrequencyAnalysis:
         InvalidParameterError
             If ``fit_method`` is not one of :data:`FIT_METHODS`.
         CalculationError
-            If a method other than ``"mle"`` gives no parameters of one of the
-            distributions.
+            If the method gives parameters of none of the distributions.
+
+        Warns
+        -----
+        DistributionLeftOut
+            For each distribution a method other than ``"mle"`` gives no parameters
+            of (see the class notes); it is not in the result.
         """
-        results: dict[str, FrequencyAnalysisResult] = {
-            "log_normal": self.fit_log_normal(fit_method=fit_method),
-            "gev": self.fit_gev(fit_method=fit_method),
-            "pearson3": self.fit_pearson3(fit_method=fit_method),
-            "weibull": self.fit_weibull(fit_method=fit_method),
-        }
+        results: dict[str, FrequencyAnalysisResult] = {}
+        reasons: dict[str, str] = {}
+        for name in ("log_normal", "gev", "pearson3", "weibull"):
+            try:
+                results[name] = getattr(self, f"fit_{name}")(fit_method=fit_method)
+            except CalculationError as exc:
+                reasons[name] = exc.details["reason"]
+                warnings.warn(
+                    DistributionLeftOut(
+                        distribution=name,
+                        fit_method=fit_method,
+                        reason=reasons[name],
+                        cause=str(exc),
+                    ),
+                    stacklevel=2,
+                )
+        if not results:
+            raise CalculationError(
+                f"The {_METHOD_NAMES[fit_method]} fits none of the four distributions "
+                "to these annual maxima",
+                details={"fit_method": fit_method, "reasons": reasons},
+                hint="Choose another fit method.",
+            )
 
         sorted_items = sorted(results.items(), key=lambda item: item[1].aic)
         return OrderedDict(sorted_items)
@@ -849,8 +877,15 @@ class FloodFrequencyAnalysis:
         ad_stat = _anderson_darling(self._data, cdf_func)
 
         # AIC
-        log_likelihood = float(np.sum(logpdf_func(self._data)))  # type: ignore[operator]
+        log_densities = np.asarray(logpdf_func(self._data))  # type: ignore[operator]
+        log_likelihood = float(np.sum(log_densities))
         aic = 2.0 * k - 2.0 * log_likelihood
+        outside = ~np.isfinite(log_densities)
+        if outside.any():
+            values = [float(value) for value in np.sort(self._data[outside])]
+            warnings.warn(
+                OutsideSupport(distribution=name, values=values), stacklevel=3
+            )
 
         exceedance = 1.0 / self._return_periods
 

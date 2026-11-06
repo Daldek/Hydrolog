@@ -1068,6 +1068,53 @@ class TestFloodFrequency:
             stats.stats_flood_frequency(values=[1.0, 2.0, 3.0], distribution="gumbel")
         assert caught.value.details["allowed"][0] == "all"
 
+    def test_a_distribution_the_method_cannot_fit_is_left_out_with_a_notice(self):
+        left_skewed = [0.5, *[10.0] * 8, 10.5]  # skewness below Weibull's -1.14
+        output = run("stats flood-frequency", values=left_skewed, fit_method="moments")
+        assert output.result.fit_method == "moments"
+        fitted = [d.distribution_name for d in output.result.distributions]
+        assert fitted == [name for name in fitted if name != "weibull"]
+        assert len(fitted) == 3
+        left_out = [n for n in output.notices if n.code == "distribution_left_out"]
+        assert [n.details["distribution"] for n in left_out] == ["weibull"]
+        assert left_out[0].details["reason"] == "out_of_range"
+        assert left_out[0].details["fit_method"] == "moments"
+
+    def test_a_method_that_fits_no_distribution_is_a_calculation_error(self):
+        with pytest.raises(CalculationError) as caught:
+            stats.stats_flood_frequency(values=[5.0] * 4, fit_method="l_moments")
+        assert caught.value.details["reasons"] == dict.fromkeys(
+            ["log_normal", "gev", "pearson3", "weibull"], "constant_values"
+        )
+
+    def test_a_single_distribution_the_method_cannot_fit_is_an_error(self):
+        with pytest.raises(CalculationError) as caught:
+            stats.stats_flood_frequency(
+                values=[0.5, *[10.0] * 8, 10.5],
+                distribution="weibull",
+                fit_method="l_moments",
+            )
+        assert caught.value.details["reason"] == "out_of_range"
+
+    def test_a_fit_without_density_at_a_maximum_has_a_null_aic_and_a_notice(self):
+        floods = [95.0, 102.0, 110.0, 118.0, 125.0, 133.0, 140.0, 152.0, 170.0]
+        floods += [215.0, 290.0]
+        output = run("stats flood-frequency", values=floods, fit_method="l_moments")
+        distributions = output.result.to_dict()["distributions"]
+        assert [d["distribution_name"] for d in distributions][2:] == [
+            "pearson3",
+            "weibull",
+        ]
+        assert [d["aic"] for d in distributions][2:] == [None, None]
+        outside = [n for n in output.notices if n.code == "outside_support"]
+        assert [n.details["distribution"] for n in outside] == ["pearson3", "weibull"]
+        assert all(95.0 in n.details["values"] for n in outside)
+
+    def test_unknown_fit_method(self):
+        with pytest.raises(InvalidParameterError) as caught:
+            stats.stats_flood_frequency(values=[1.0, 2.0, 3.0], fit_method="median")
+        assert caught.value.details["option"] == "fit_method"
+
     def test_dates_and_values_must_match(self):
         with pytest.raises(InvalidParameterError) as caught:
             stats.stats_flood_frequency(

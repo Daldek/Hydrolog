@@ -31,9 +31,11 @@ from types import MappingProxyType
 from typing import Any, Final
 
 from hydrolog._warnings import (
+    DistributionLeftOut,
     HydrologWarning,
     IncompleteYears,
     KsTestApproximate,
+    OutsideSupport,
     OutsideTypicalRange,
     OutsideUnverifiedRange,
     ShortRecord,
@@ -193,6 +195,8 @@ _SPECS: Final[tuple[NoticeSpec, ...]] = (
     _library(SmallSample),
     _library(ShortRecord),
     _library(KsTestApproximate),
+    _library(DistributionLeftOut),
+    _library(OutsideSupport),
     _library(UnknownHietogramType),
     _library(UhModelMismatch),
     NoticeSpec(

@@ -100,6 +100,14 @@ export const notices = {
       plain: "Szereg jest krótszy, niż KZGW (2017) wymaga do analizy częstości wezbrań.",
     },
     ks_test_approximate: "Wartości krytyczne testu Kołmogorowa-Smirnowa są nieważne, gdy parametry szacuje się z tych samych danych; wybieraj rozkład wg A² i AIC.",
+    distribution_left_out: {
+      text: "Rozkład {distribution} pominięty: metoda {fit_method} nie daje jego parametrów dla tej próby ({reason}).",
+      plain: "Wybrana metoda nie daje parametrów jednego z rozkładów; pominięto go.",
+    },
+    outside_support: {
+      text: "Dopasowany rozkład {distribution} nie obejmuje maksimów {values}: jego AIC jest nieokreślone, rozkład jest na końcu rankingu.",
+      plain: "Dopasowany rozkład nie obejmuje wszystkich maksimów: jego AIC jest nieokreślone.",
+    },
     unknown_hietogram_type: {
       text: "Nieznany typ hietogramu {hietogram_type}; dozwolone: {allowed}.",
       plain: "Nieznany typ hietogramu.",

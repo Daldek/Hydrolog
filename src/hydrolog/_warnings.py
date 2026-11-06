@@ -29,9 +29,11 @@ from typing import Any, ClassVar, Final, Literal
 __all__ = [
     "LIBRARY_WARNINGS",
     "MAX_LISTED",
+    "DistributionLeftOut",
     "HydrologWarning",
     "IncompleteYears",
     "KsTestApproximate",
+    "OutsideSupport",
     "OutsideTypicalRange",
     "OutsideUnverifiedRange",
     "ShortRecord",
@@ -341,6 +343,31 @@ class KsTestApproximate(HydrologWarning):
     keys = ()
 
 
+class DistributionLeftOut(HydrologWarning):
+    """A fit method gives no parameters of a distribution, which is left out.
+
+    Details: the ``distribution``, the ``fit_method``, the ``reason`` (the
+    ``details.reason`` of the fit's error) and the ``cause``, that error's message.
+    """
+
+    template = "{cause}; the distribution is left out."
+    keys = ("distribution", "fit_method", "reason", "cause")
+
+
+class OutsideSupport(HydrologWarning):
+    """Annual maxima have no density under a fitted distribution.
+
+    Details: the ``distribution`` and the annual maxima (``values``) outside its
+    support; its log-likelihood is -inf, so its AIC is infinite (null in JSON).
+    """
+
+    template = (
+        "The fitted {distribution} distribution gives no density to the annual "
+        "maxima {values}: its AIC is undefined (null) and it ranks last."
+    )
+    keys = ("distribution", "values")
+
+
 class IncompleteYears(HydrologWarning):
     """Hydrological years with a day without a value were skipped.
 
@@ -389,6 +416,8 @@ LIBRARY_WARNINGS: Final[tuple[type[HydrologWarning], ...]] = (
     SmallSample,
     ShortRecord,
     KsTestApproximate,
+    DistributionLeftOut,
+    OutsideSupport,
     IncompleteYears,
     UnknownHietogramType,
     UhModelMismatch,
