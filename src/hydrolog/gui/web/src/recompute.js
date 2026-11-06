@@ -1,8 +1,9 @@
-// Live recompute of „Hydrogram zlewni” (plan D13), a pure module without Preact: a change
-// of valid data schedules a run 250 ms later and every further change restarts the delay;
-// a newer request aborts the older one still in flight, and only the outcome of the newest
-// is reported (a sequence number). „Liczenie…” starts 150 ms after a request that has not
-// finished; invalid data cancel what is scheduled or running and keep the last result.
+// Live recompute of „Hydrogram zlewni” and „Statystyka przepływów” (plan 2026-11-02, D13;
+// plan 2026-11-06, D9), a pure module without Preact: a change of valid data schedules a run
+// 250 ms later and every further change restarts the delay; a newer request aborts the older
+// one still in flight, and only the outcome of the newest is reported (a sequence number).
+// „Liczenie…” starts 150 ms after a request that has not finished; invalid data cancel what
+// is scheduled or running and keep the last result.
 
 /** The delay of a run after the last change [ms]. */
 export const RUN_DELAY_MS = 250;

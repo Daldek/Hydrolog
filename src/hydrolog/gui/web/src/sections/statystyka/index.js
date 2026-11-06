@@ -1,10 +1,12 @@
 // „Statystyka przepływów”: the flood frequency analysis of annual maxima (`stats
 // flood-frequency`, plan S5). The series is a file of the session, its columns read from the
 // header, or pasted values; a first visit has neither (the guide, instrukcja/#statystyka,
-// has a worked example). The form's fields are the catalog's. „Oblicz” runs the command with
-// every distribution by every fit method, and a second run of the same series on a dense
+// has a worked example). The form's fields are the catalog's. The result follows every change
+// of the inputs sent (plan 2026-11-06, D9; no „Oblicz”): 250 ms after the last change of
+// valid inputs (recompute.js, as in Hydrogram zlewni: the newest run wins) the command runs
+// with every distribution by every fit method, a second run of the same series on a dense
 // grid of return periods gives the curves of the probability plot, the density and the
-// distribution function; a third, `stats homogeneity` of the same series (with the year
+// distribution function, and a third, `stats homogeneity` of the same series (with the year
 // column of a file of annual maxima), gives the panel „Jednorodność ciągu” and its notice.
 // „Rozkłady” and „Metody estymacji” choose the combinations shown without a new run (plan
 // 2026-11-06, D7). The result shows the active combination (the best one shown, the lowest
@@ -14,9 +16,10 @@
 // Polish (a notice naming a combination only while it is shown); neither choice is stored,
 // and an active one no longer shown gives way to the best one. „Do porównania” hands the
 // active combination's stressed quantile to Hydrogram zlewni (store "reference"); it is off
-// while „Wyróżniony w wynikach” is „brak” (the first visit). A change of the inputs marks the
-// result stale (plan D13). „Zakres osi” under each chart sets its axis ranges without a new
-// run, stored with the inputs; „Auto” restores the ranges of the result (plan 2026-11-06, D8).
+// while „Wyróżniony w wynikach” is „brak” (the first visit). Invalid inputs run nothing and
+// keep the last result („Dane niepełne”); an empty required field says so once touched.
+// „Zakres osi” under each chart sets its axis ranges without a new run, stored with the
+// inputs; „Auto” restores the ranges of the result (plan 2026-11-06, D8).
 // A station's series handed off by Archiwista (ADR-0020, „Wczytaj z Archiwisty”) arrives
 // through useHandoffInbox as the source and values it opens with, and the data panel names
 // where it came from until the series is changed.
@@ -35,10 +38,10 @@ import { statsInfo } from "../../labels/info/stats.js";
 import { shell } from "../../labels/shell.js";
 import { statystyka as texts } from "../../labels/statystyka.js";
 import { usePersistentState } from "../../persist.js";
+import { createChannel } from "../../recompute.js";
 import { useStore } from "../../store.js";
 import { registerInfo, registerServed } from "../../ui/info.js";
 import { Seg } from "../../ui/seg.js";
-import { isPhone, openPanel } from "../../ui/sheet.js";
 import { status } from "../../ui/status.js";
 import { toast } from "../../ui/toast.js";
 import { ViewLayout } from "../../ui/view-layout.js";
@@ -79,7 +82,6 @@ import {
 registerInfo(statsInfo);
 
 const FORM_ID = "st-form";
-const CLOCK = new Intl.DateTimeFormat("pl-PL", { hour: "2-digit", minute: "2-digit" });
 /** The axis limits of a store from before „Zakres osi”: every axis automatic. */
 const NO_AXES = Object.freeze({});
 
@@ -117,7 +119,7 @@ export default function Statystyka() {
   // A hand-off: its series replaces the section's, the distributions and periods stay.
   useHandoffInbox(SECTION, ({ source, values: given, received }) => {
     setTouched({});
-    setServerErrors({});
+    setFailure(null);
     setRun(null);
     setState((old) => ({ ...old, source, values: { ...old.values, ...given }, received }));
   });
@@ -126,13 +128,13 @@ export default function Statystyka() {
   const [reference, setReference] = useStore("reference");
   const [tab, setTab] = useState("chart");
   const [touched, setTouched] = useState({});
-  const [tried, setTried] = useState(false);
   const [run, setRun] = useState(null);
-  const [serverErrors, setServerErrors] = useState({});
+  const [failure, setFailure] = useState(null);
   const [busy, setBusy] = useState(false);
-  const sequence = useRef(0);
-  const running = useRef(null);
   const chartSvg = useRef(null);
+  const outcome = useRef(null);
+  const channel = useMemo(() => createChannel({ onBusy: setBusy, onOutcome: (next) => outcome.current(next) }), []);
+  useEffect(() => () => channel.dispose(), [channel]);
   // The combinations ticked „W tabeli kwantyli” (null: the best one) and the active one
   // (null: the best) of one run, as keys (fitKey); another run starts again
   const [picked, setPicked] = useState({ run: null, names: null, active: null });
@@ -185,16 +187,8 @@ export default function Statystyka() {
     });
   }, [preview]);
 
-  const forget = (names) => {
-    if (!Object.keys(serverErrors).length) return;
-    const left = { ...serverErrors };
-    for (const name of [...names, FORM_ERROR]) delete left[name];
-    setServerErrors(left);
-  };
-
   const onValue = (name, value) => {
     setTouched((old) => ({ ...old, [name]: true }));
-    forget([name]);
     setState((old) => {
       const next = { ...old.values, [name]: value };
       if (name === "input_file" && value !== old.values.input_file) {
@@ -207,7 +201,6 @@ export default function Statystyka() {
   };
 
   const onSource = (source) => {
-    forget(["input_file", "value_column", "date_column", "values"]);
     setState((old) => ({ ...old, source, received: null }));
   };
 
@@ -227,96 +220,90 @@ export default function Statystyka() {
       return { ...old, axes };
     });
 
-  const focusFirstProblem = () =>
-    setTimeout(() => {
-      const form = document.getElementById(FORM_ID);
-      const field = form && form.querySelector('[aria-invalid="true"]');
-      if (field) field.focus();
-    }, 0);
+  // Live recompute (plan 2026-11-06, D9; recompute.js as in Hydrogram zlewni): valid inputs,
+  // their file's columns read, run the tables, the curves and the homogeneity tests 250 ms
+  // after the last change; only the newest run's outcome is applied
+  const key = options && !(file && preview.state === "loading") ? runKey(options, file) : null;
+  const latestKey = useRef(key);
+  latestKey.current = key;
 
-  const submit = async () => {
-    if (!model) return;
-    if (!valid) {
-      setTried(true);
-      focusFirstProblem();
+  outcome.current = (next) => {
+    // The task returns its errors; a rejection would be a fault of the GUI itself
+    const value = next.ok ? next.value : { key: latestKey.current, error: { code: "internal_error", message: messageOf(next.error) } };
+    if (value.error) {
+      const described = describeError(value.error);
+      const field = described.option && model ? model.fields.find((item) => item.name === described.option) : null;
+      const message = withReason(described.text, described.reason);
+      setFailure({
+        key: value.key,
+        errors: field && isActive(model, field) ? { [described.option]: message } : { [FORM_ERROR]: { title: described.title, text: message } },
+        text: message,
+      });
       return;
     }
-    sequence.current += 1;
-    const mine = sequence.current;
-    if (running.current) running.current.abort();
-    const controller = new AbortController();
-    running.current = controller;
-    const sent = options;
-    const key = runKey(sent, file);
-    const table = preview.state === "ok" ? preview.table : null;
-    setBusy(true);
-    // The curves and the homogeneity tests are not the result: their failure leaves it shown
-    const beside = (promise) =>
-      promise
-        .then((envelope) => (envelope.status === "ok" ? { envelope } : { error: texts.results.cancelled }))
-        .catch((error) => {
-          if (error && error.name === "AbortError") throw error;
-          return { error: messageOf(error) };
-        });
-    try {
-      const curves = beside(
-        api.run(COMMAND, { ...sent, return_periods: [...CURVE_PERIODS] }, { channel: CURVES_CHANNEL, signal: controller.signal }),
-      );
-      const tested = beside(api.run(HOMOGENEITY, homogeneityOptions(sent, table), { channel: HOMOGENEITY_CHANNEL, signal: controller.signal }));
-      const [envelope, drawn, homogeneity] = await Promise.all([api.run(COMMAND, sent, { channel: SECTION, signal: controller.signal }), curves, tested]);
-      if (mine !== sequence.current) return;
-      const result = envelope.status === "ok" ? envelope.result : null;
-      const column = table && sent.value_column ? resolveColumn(sent.value_column, table.columns) : null;
-      const years = result ? maximaYears(result, table, column) : null;
-      setRun({
-        options: sent,
-        envelope,
-        key,
-        at: new Date(),
-        curves: drawn.envelope ? drawn.envelope.result : null,
-        curvesError: result && !drawn.envelope ? drawn.error : null,
-        homogeneity: homogeneity.envelope || null,
-        homogeneityError: result && !homogeneity.envelope ? homogeneity.error : null,
-        years,
-        ranked: result ? rankedMaxima(result, years) : [],
-      });
-      setServerErrors({});
-      if (isPhone()) openPanel("right");
-    } catch (error) {
-      if (error && error.name === "AbortError") return;
-      if (mine !== sequence.current) return;
-      const described = describeError(error && error.doc ? error.doc : { code: "internal_error", message: messageOf(error) });
-      const field = described.option && model.fields.find((item) => item.name === described.option);
-      const message = withReason(described.text, described.reason);
-      setServerErrors(
-        field && isActive(model, field) ? { [described.option]: message } : { [FORM_ERROR]: { title: described.title, text: message } },
-      );
-      focusFirstProblem();
-    } finally {
-      if (mine === sequence.current) {
-        setBusy(false);
-        running.current = null;
-      }
-    }
+    const { sent, table, envelope, drawn, homogeneity } = value;
+    const result = envelope.status === "ok" ? envelope.result : null;
+    const column = table && sent.value_column ? resolveColumn(sent.value_column, table.columns) : null;
+    const years = result ? maximaYears(result, table, column) : null;
+    setFailure(null);
+    setRun({
+      options: sent,
+      envelope,
+      key: value.key,
+      curves: drawn.envelope ? drawn.envelope.result : null,
+      curvesError: result && !drawn.envelope ? drawn.error : null,
+      homogeneity: homogeneity.envelope || null,
+      homogeneityError: result && !homogeneity.envelope ? homogeneity.error : null,
+      years,
+      ranked: result ? rankedMaxima(result, years) : [],
+    });
   };
+
+  useEffect(() => {
+    if (!key || (run && run.key === key) || (failure && failure.key === key)) {
+      channel.cancel();
+      return;
+    }
+    const sent = options;
+    const table = preview.state === "ok" ? preview.table : null;
+    channel.request(async (signal) => {
+      // The curves and the homogeneity tests are not the result: their failure leaves it shown
+      const beside = (promise) =>
+        promise
+          .then((envelope) => (envelope.status === "ok" ? { envelope } : { error: texts.results.cancelled }))
+          .catch((error) => {
+            if (error && error.name === "AbortError") throw error;
+            return { error: messageOf(error) };
+          });
+      try {
+        const curves = beside(api.run(COMMAND, { ...sent, return_periods: [...CURVE_PERIODS] }, { channel: CURVES_CHANNEL, signal }));
+        const tested = beside(api.run(HOMOGENEITY, homogeneityOptions(sent, table), { channel: HOMOGENEITY_CHANNEL, signal }));
+        const [envelope, drawn, homogeneity] = await Promise.all([api.run(COMMAND, sent, { channel: SECTION, signal }), curves, tested]);
+        return { key, sent, table, envelope, drawn, homogeneity };
+      } catch (error) {
+        if (error && error.name === "AbortError") throw error;
+        return { key, error: error && error.doc ? error.doc : { code: "internal_error", message: messageOf(error) } };
+      }
+    });
+  }, [key]);
 
   const clear = () => {
-    if (running.current) running.current.abort();
-    sequence.current += 1;
+    channel.cancel();
     reset();
     setRun(null);
-    setBusy(false);
-    setServerErrors({});
+    setFailure(null);
     setTouched({});
-    setTried(false);
   };
 
-  // Messages: the server's, and the form's own once a field was touched or a run asked for
-  const shownErrors = { ...serverErrors };
+  // Messages: the server's for these inputs, and the form's own; an empty required field only
+  // once touched (a first visit is empty and runs nothing)
+  const current = failure && failure.key === key ? failure : null;
+  const shownProblems = {};
   for (const [name, message] of Object.entries(problems)) {
-    if (!message.endsWith(" · required") || tried || touched[name]) shownErrors[name] = message;
+    if (!message.endsWith(" · required") || touched[name]) shownProblems[name] = message;
   }
-  const visibleCount = Object.keys(shownErrors).length;
+  const shownErrors = { ...(current ? current.errors : {}), ...shownProblems };
+  const firstProblem = Object.keys(shownProblems)[0] ?? null;
 
   const result = run && run.envelope.status === "ok" ? run.envelope.result : null;
   // The combinations shown and the best of them (the lowest AIC)
@@ -341,14 +328,31 @@ export default function Statystyka() {
   const stressed = stressedPeriod(periods, state.chosen);
   const runFile = run ? (typeof run.options.input_file === "string" ? run.options.input_file.replace(/^in\//, "") : texts.pasted) : null;
 
-  // The badge: busy, an error of the server, the form's own problems, a stale result, ok
+  // The badge and the state under the panel Dane, as in Hydrogram zlewni: the form's problems
+  // (no run, the last result kept), an error of the server, busy, ok
   let badge = null;
-  const serverMessage = Object.values(serverErrors)[0];
-  if (busy) badge = status("busy");
-  else if (serverMessage) badge = status("error", undefined, typeof serverMessage === "object" ? serverMessage.text : serverMessage);
-  else if (visibleCount) badge = status("invalid", `${shell.status.invalid.text}: ${Object.keys(shownErrors)[0]}`);
-  else if (result && run.key !== runKey(options, file)) badge = status("stale");
-  else if (result) badge = status("ok");
+  let calc;
+  if (firstProblem) {
+    badge = status("invalid", `${shell.status.invalid.text}: ${firstProblem}`);
+    calc = { kind: "warn", text: t(errorTexts.count, { count: plural(Object.keys(shownProblems).length, errorTexts.countForms) }) };
+  } else if (current) {
+    badge = status("error", undefined, current.text);
+    calc = { kind: "bad", text: texts.calc.error };
+  } else if (busy || (file && preview.state === "loading")) {
+    badge = status("busy");
+    calc = { kind: "busy", text: busy ? texts.calc.busy : texts.file.loading };
+  } else if (key && run && run.key === key) {
+    if (result) badge = status("ok");
+    calc = { kind: "ok", text: texts.calc.ok };
+  } else if (key) {
+    if (result) badge = status("ok");
+    calc = { kind: "waiting", text: texts.calc.waiting };
+  } else {
+    // Nothing to run: a first visit, or a result kept while a field it needs is empty
+    const missing = Object.keys(problems)[0];
+    if (result && missing) badge = status("invalid", `${shell.status.invalid.text}: ${missing}`);
+    calc = { kind: "idle", text: texts.calc.idle };
+  }
   const badgeKey = JSON.stringify(badge);
   useEffect(() => setStatus(badge), [badgeKey]);
 
@@ -395,14 +399,6 @@ export default function Statystyka() {
     ? exportSpec({ options: run.options, envelope: run.envelope, ticked, chartSvg: tab === "chart" ? chartSvg : null, pasted: texts.pasted })
     : null;
 
-  const footState = busy
-    ? texts.computing
-    : visibleCount
-      ? t(errorTexts.count, { count: plural(visibleCount, errorTexts.countForms) })
-      : run
-        ? t(texts.lastRun, { time: CLOCK.format(run.at) })
-        : "";
-
   let leftBody;
   if (docError) leftBody = html`<p class="err" role="alert">${docError}</p>`;
   else if (!model) leftBody = html`<p class="muted" role="status">${common.loading}</p>`;
@@ -422,9 +418,8 @@ export default function Statystyka() {
       periods=${periods}
       stressed=${stressed}
       onChosen=${(period) => setState((old) => ({ ...old, chosen: period }))}
-      seriesMeta=${result && run.key === runKey(options, file) ? plural(result.n_years, texts.yearForms) : null}
+      seriesMeta=${result && run.key === key ? plural(result.n_years, texts.yearForms) : null}
       formId=${FORM_ID}
-      onSubmit=${submit}
     />`;
   }
 
@@ -432,11 +427,9 @@ export default function Statystyka() {
     sub: COMMAND,
     body: leftBody,
     foot: html`
-      <button class="btn primary" type="submit" form=${FORM_ID} disabled=${!model || visibleCount > 0 || busy}>
-        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4l10 6-10 6z" /></svg>
-        ${texts.compute}
-      </button>
-      <span class="muted small form-state" role="status">${footState}</span>
+      <span class=${`calc-state${calc.kind !== "ok" ? ` ${calc.kind}` : ""}`} data-calc=${calc.kind} role="status">
+        <i class="dot" aria-hidden="true"></i><span>${calc.text}</span>
+      </span>
       <button class="btn ghost sm icon foot-end" type="button" aria-label=${common.actions.clear} title=${texts.clearTitle} onClick=${clear}>
         <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10a6 6 0 1 0 1.8-4.3M4 4v3.5h3.5" /></svg>
       </button>

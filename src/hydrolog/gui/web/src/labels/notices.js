@@ -9,6 +9,16 @@
 
 import { auto } from "../format.js";
 import { common, t } from "./common.js";
+import { statystyka } from "./statystyka.js";
+
+/**
+ * The distributions and fit methods of flood frequency named as Statystyka names them:
+ * „Rozkład log-normalny dopasowany metodą L-momentów”.
+ */
+const FREQUENCY_NAMES = {
+  distribution: Object.fromEntries(Object.entries(statystyka.distributions).map(([code, item]) => [code, item.name])),
+  fit_method: Object.fromEntries(Object.entries(statystyka.fitMethods).map(([code, item]) => [code, item.by])),
+};
 
 export const notices = {
   none: "Brak uwag Hydrologa (notices: 0).",
@@ -104,10 +114,12 @@ export const notices = {
     distribution_left_out: {
       text: "Rozkład {distribution} pominięty: metoda {fit_method} nie daje jego parametrów dla tej próby ({reason}).",
       plain: "Wybrana metoda nie daje parametrów jednego z rozkładów; pominięto go.",
+      names: FREQUENCY_NAMES,
     },
     outside_support: {
       text: "Rozkład {distribution} dopasowany metodą {fit_method} nie obejmuje maksimów {values}: jego AIC jest nieokreślone, rozkład jest na końcu rankingu.",
       plain: "Dopasowany rozkład nie obejmuje wszystkich maksimów: jego AIC jest nieokreślone.",
+      names: FREQUENCY_NAMES,
     },
     homogeneity_rejected: {
       text: "Testy odrzucające jednorodność ciągu przy α = {alpha}: {tests}.",

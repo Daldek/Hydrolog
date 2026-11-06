@@ -26,6 +26,9 @@
  * - `readout`: `true` or `{series, x: (x) => text, value: (value, series) => text}`: a cursor
  *   by pointer and by keys (arrows, Shift or Page for ten steps, Home, End, Esc).
  * - `size`: "wide" (760 × 432, the default), "small" (360 × 178) or `{width, height}`;
+ *   `fit: {ratio, minHeight}` draws the chart at its container's width instead (so its text
+ *   keeps its CSS size; below 500 px the small layout), `ratio` times it high, at least
+ *   `minHeight`, again when the width changes; `size` stays the fallback without a width.
  *   `title` (the aria-label) or `labelledBy` (an element's id).
  *
  * The drawing itself is `drawChart` (DOM only); this component mounts it and

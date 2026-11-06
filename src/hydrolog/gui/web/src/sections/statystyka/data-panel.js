@@ -164,16 +164,16 @@ const SHOWN = {
  *   session: object|null, preview: object, shown: {distributions: string[],
  *   methods: string[]}, onShown: (filter: "distributions"|"methods", value: string,
  *   on: boolean) => void, periods: number[], stressed: number|null,
- *   onChosen: (period: number|null) => void, seriesMeta: string|null, formId: string,
- *   onSubmit: () => void}} props the catalog's model and the form's values, the source,
- *   the messages by option, the change handlers, the session, the columns of the chosen
- *   file, the combinations shown and the change of a filter, the return periods with the
- *   stressed one (null for „brak”), the length of the series computed, the form's id and
- *   its submit handler
+ *   onChosen: (period: number|null) => void, seriesMeta: string|null, formId: string}}
+ *   props the catalog's model and the form's values, the source, the messages by option, the
+ *   change handlers, the session, the columns of the chosen file, the combinations shown and
+ *   the change of a filter, the return periods with the stressed one (null for „brak”), the
+ *   length of the series computed and the form's id (the result follows every change: no
+ *   submit)
  * @returns {object} the panel's body
  */
 export function DataPanel(props) {
-  const { model, values, source, received, errors, onValue, onSource, session, preview, shown, onShown, periods, stressed, onChosen, seriesMeta, formId, onSubmit } = props;
+  const { model, values, source, received, errors, onValue, onSource, session, preview, shown, onShown, periods, stressed, onChosen, seriesMeta, formId } = props;
   const field = (name) => model.fields.find((item) => item.name === name);
   // The catalog's Polish meaning of a value of `distribution` or `fit_method`: a chip's title
   const meaning = (name, value) => {
@@ -192,10 +192,7 @@ export function DataPanel(props) {
   const fits = shown.distributions.length * shown.methods.length;
   const rows = preview.state === "ok" && source === "file" ? plural(preview.table.rows, texts.rowForms) : null;
   return html`
-    <form id=${formId} class="st-form" novalidate onSubmit=${(event) => {
-      event.preventDefault();
-      onSubmit();
-    }}>
+    <form id=${formId} class="st-form" novalidate onSubmit=${(event) => event.preventDefault()}>
       ${loose.length
         ? html`<div class="form-errors" role="alert">
             <strong>${titled ? titled.title : errorTexts.aboveForm}</strong>

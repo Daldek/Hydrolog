@@ -42,6 +42,7 @@ import { uhInfo } from "../../labels/info/uh.js";
 import { describeNotice } from "../../labels/notices.js";
 import { shell } from "../../labels/shell.js";
 import { usePersistentState } from "../../persist.js";
+import { createChannel } from "../../recompute.js";
 import { navigate } from "../../router.js";
 import { useStore } from "../../store.js";
 import { registerInfo, registerServed } from "../../ui/info.js";
@@ -52,7 +53,6 @@ import { RenderGuard } from "../../ui/render-guard.js";
 import { ViewLayout } from "../../ui/view-layout.js";
 import { DataPanel, durationText } from "./data-panel.js";
 import { exportSpec } from "./export.js";
-import { createChannel } from "./recompute.js";
 import { CenterBody, ResultsPanel, modelLabel } from "./results-panel.js";
 import {
   CHANNEL,

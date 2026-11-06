@@ -142,10 +142,10 @@ def test_page_brand_rail_route_and_relative_api(
     # catalog came from the API next to the page
     expect(topbar.locator(".crumb-section")).to_have_text(SECTION_TITLE)
     expect(topbar.locator(".crumb-context")).to_have_text(
-        re.compile(r"^\d+ polecenia w \d+ grupach$")
+        re.compile(r"^\d+ polece(nia|ń) w \d+ grupach$")
     )
     expect(page).to_have_title(
-        re.compile(rf"^Hydrolog: {SECTION_TITLE} — \d+ polecenia")
+        re.compile(rf"^Hydrolog: {SECTION_TITLE} — \d+ polece(nia|ń)")
     )
     expect(page.locator(f"{POL} .view-panel.left .panel-head .sub")).to_have_text(
         re.compile(r"^katalog: \d+ polece")

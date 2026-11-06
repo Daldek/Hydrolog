@@ -147,15 +147,15 @@ svg.sw-stroke { display: inline-block; flex: none; width: 24px; height: 6px; ove
 
 /*
  * Statystyka: the probability plot, then the density and distribution-function charts one
- * under the other, centred in the column. Their width is bounded (so is their height: the
- * viewBox keeps its ratio, 760 × 432 and 760 × 300, at most 500 and 347 px high); below the
- * least width (318 and 221 px high) a chart scrolls sideways rather than shrinks.
- * „Zakres osi” of the probability plot lines up under its chart.
+ * under the other, centred in the column and at most 880 px wide. They are fitted to their
+ * column (`fit` of the chart spec): drawn at its width, so their text keeps its size, at most
+ * 500 and 347 px high, never squeezed nor scrolled sideways. „Zakres osi” of the probability
+ * plot lines up under its chart.
  */
 .st-chart .chart, .st-chart .axis-range, .st-shape .chart-box { max-width: 880px; margin-inline: auto; }
-.st-chart .chart svg, .st-shape .chart svg { min-width: 560px; }
 .st-shape .chart-box + .chart-box { margin-top: var(--space-4); }
 
+/* A wide chart of fixed size scrolls on a phone; the chart's own SVG only (not its swatches) */
 @media (max-width: 860px) {
-  .chart.wide svg { min-width: 560px; }
+  .chart.wide:not(.fit) .chart-svg { min-width: 560px; }
 }

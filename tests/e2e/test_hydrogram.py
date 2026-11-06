@@ -1698,7 +1698,7 @@ def test_the_live_channel_debounces_and_applies_only_the_newest(tab: Tab) -> Non
     tab.open("#polecenia")
     got = tab.page.evaluate(
         """async () => {
-          const {createChannel} = await import('./src/sections/hydrogram/recompute.js');
+          const {createChannel} = await import('./src/recompute.js');
           const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
           const log = {busy: [], outcomes: [], started: []};
           const channel = createChannel({

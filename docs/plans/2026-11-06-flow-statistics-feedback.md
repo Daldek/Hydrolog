@@ -151,6 +151,32 @@ guide `instrukcja/`, regenerated `AGENTS.md` and `llms.txt`) on the branch that 
   always reach the lowest AIC of its distribution (its GEV of the unit tests' 11 values: 129.1
   against 118.6 by the L-moments), hence the wording of D7. The Statystyka picture of the guide is
   to be taken again (PROGRESS, Next 8).
+- `feature/stats-combinations-view` (D7, GUI and the notice `outside_support`): both runs send
+  `distribution` and `fit_method` `all`; „Rozkłady” and „Metody estymacji” are stored multiple
+  choices that only filter (every distribution, L-moments only at first); colour = distribution,
+  line style = method on every chart, legend and swatch; a row per combination with the column
+  „Metoda”; „najlepszy” the lowest AIC shown; any row can leave the quantile table (none: a note,
+  a CSV of periods and probabilities); CSV columns `<distribution>_<fit_method>_m3s`. Beyond the
+  plan's wording: `outside_support` carries `fit_method` (details and message), and the notices
+  of hidden combinations stay hidden; the stored key became `hydrolog-gui/statystyka/3`, so a
+  version-2 store is not read.
+- `feature/stats-chart-layout` (D8, GUI only): the density and distribution-function charts one
+  under the other in a 760 × 300 frame, every Statystyka chart centred, at most 880 px wide and
+  scrolled below 560 px; no axis of any GUI chart starts below 0 (the chart kit's domains, the
+  series clipped at the frame, the readout within it); the ranges depend on the run only
+  (`axisRanges`: Q to the median over the combinations of Q 1%, 0,1% on the probability plot, at
+  least the largest maximum; the density to 1,25 × the median of the peaks of the combinations
+  with an AIC, since those without one, with a bound among the maxima, can be half of them;
+  stated in the code and the (i) text); „Zakres osi” under each chart (T and Q of the probability
+  plot, Q and f, Q), stored with the inputs, „Auto” restores. Beyond the plan's wording: the
+  probability plot's Q reaches the median Q 0,1% rather than Q 1%, so its curves and a T = 500 or
+  1000 mark stay in the frame; a quantile beyond the frame is not marked.
+- `feature/stats-live-recompute` (D9, GUI only): Hydrogram's live channel (`web/src/recompute.js`,
+  moved from `sections/hydrogram/`, shared) runs the three requests 250 ms after the last change
+  of valid inputs sent; filters, axis limits, active and ticked rows and the highlighted period
+  stay display-only; invalid inputs keep the last result; „Oblicz” is gone and the state under
+  Dane is Hydrogram's. The browser tests wait for the live run instead of pressing „Oblicz”. The
+  Statystyka pictures of the guide are to be taken again (PROGRESS, Next 8).
 
 ## Erratum 2026-11-06: the author's review of the deployed Statystyka
 
