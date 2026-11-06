@@ -22,6 +22,7 @@ body {
 /* Colours that carry meaning print as on screen: legend swatches, the balance, marks */
 .sw,
 .sw-line,
+.sw-stroke,
 .dot,
 .stack,
 .b-ia,

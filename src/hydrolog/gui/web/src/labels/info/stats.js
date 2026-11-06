@@ -11,7 +11,7 @@ export const statsInfo = {
   "stats-flood-frequency": {
     title: "Analiza częstości wezbrań",
     intro:
-      "<p>Polecenie <code>stats flood-frequency</code> dopasowuje do maksimów rocznych cztery rozkłady wybraną metodą estymacji parametrów (domyślnie L-momentów) i podaje kwantyle <i>Q<sub>T</sub></i> dla okresów powtarzalności <i>T</i>. Rozkłady są uporządkowane wg kryterium AIC: pierwszy jest najlepszy. Z szeregu dobowego z datami Hydrolog bierze najpierw maksima kompletnych lat hydrologicznych (XI–X); rok z brakującym dniem pomija.</p>",
+      "<p>Polecenie <code>stats flood-frequency</code> dopasowuje do maksimów rocznych cztery rozkłady wybraną metodą estymacji parametrów (domyślnie L-momentów) albo każdą z czterech metod (<code>fit_method</code> <code>all</code>) i podaje kwantyle <i>Q<sub>T</sub></i> dla okresów powtarzalności <i>T</i>. Statystyka liczy od razu każdą kombinację rozkładu i metody, a „Rozkłady” i „Metody estymacji” wybierają, które z nich pokazać. Kombinacje są uporządkowane wg kryterium AIC: najlepsza z pokazanych ma najmniejsze. Z szeregu dobowego z datami Hydrolog bierze najpierw maksima kompletnych lat hydrologicznych (XI–X); rok z brakującym dniem pomija.</p>",
     formula:
       '<math display="block"><msub><mi>Q</mi><mi>T</mi></msub><mo>=</mo><msup><mi>F</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup><mo>(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo>)</mo><mo>,</mo><mspace width="1em"></mspace><mi>p</mi><mo>=</mo><mfrac><mn>1</mn><mi>T</mi></mfrac></math>',
     vars: [
@@ -37,7 +37,7 @@ export const statsInfo = {
       { symbol: "<math><mi>σ</mi></math>", text: "parametr skali GEV (<code>scale</code>)", unit: "m³/s" },
       { symbol: "<math><mi>ξ</mi></math>", text: "parametr kształtu; <code>scipy</code> podaje <code>shape</code> = −ξ", unit: "–" },
     ],
-    note: "<p>Kolor linii rozkładu jest stały: GEV, log-normalny, Pearson III i Weibull mają zawsze te same linie; najlepszy według AIC jest grubszy.</p>",
+    note: "<p>Kolor linii to rozkład: GEV, log-normalny, Pearson III i Weibull mają zawsze te same kolory. Styl linii to metoda estymacji: ciągła L-momenty, kreskowana największa wiarygodność, kropkowana momenty, kreska-kropka najmniejsze kwadraty. Aktywna kombinacja jest grubsza, pozostałe są przygaszone.</p>",
     sources: "Coles (2001), rozdz. 3; Hosking i Wallis (1997) Regional Frequency Analysis; Hydrolog, <code>FloodFrequencyAnalysis</code>",
   },
   "stats-fit-method": {
@@ -51,7 +51,7 @@ export const statsInfo = {
       { symbol: "<math><msub><mi>τ</mi><mn>3</mn></msub></math>", text: "L-skośność", unit: "–" },
     ],
     note:
-      "<p>Rozkład, którego metoda nie umie dopasować (np. Weibull przy skośności próby poniżej −1,14), jest pomijany z uwagą <code>distribution_left_out</code>. Rozkład, który nie obejmuje któregoś maksimum, zostaje z kwantylami, ale bez AIC (uwaga <code>outside_support</code>); przy momentach i L-momentach zdarza się to często Pearsonowi III i Weibullowi.</p>",
+      "<p>Statystyka dopasowuje każdy rozkład każdą metodą w jednym obliczeniu; „Metody estymacji” wybiera, które metody pokazać, bez ponownego liczenia. Styl linii odróżnia metody: ciągła L-momenty, kreskowana największa wiarygodność, kropkowana momenty, kreska-kropka najmniejsze kwadraty. Rozkład, którego metoda nie umie dopasować (np. Weibull przy skośności próby poniżej −1,14), jest pomijany z uwagą <code>distribution_left_out</code>. Rozkład, który nie obejmuje któregoś maksimum, zostaje z kwantylami, ale bez AIC (uwaga <code>outside_support</code>); przy momentach i L-momentach zdarza się to często Pearsonowi III i Weibullowi.</p>",
     sources: "Hosking i Wallis (1997) Regional Frequency Analysis; Hydrolog, ADR-0021, <code>FloodFrequencyAnalysis</code>",
   },
   "stats-fit": {
@@ -67,7 +67,7 @@ export const statsInfo = {
       { symbol: "<math><msub><mi>x</mi><mi>i</mi></msub></math>", text: "maksima uszeregowane rosnąco", unit: "m³/s" },
     ],
     note:
-      "<p>Brak AIC (—) znaczy, że dopasowany rozkład nie obejmuje któregoś maksimum: jego wiarygodność jest zerowa, a AIC nieskończone. Tak bywa z Weibullem, gdy położenie wypada powyżej najmniejszego maksimum. Wartości krytyczne A² dotyczą rozkładu w pełni określonego, więc i ten test jest przybliżony.</p>",
+      "<p>Brak AIC (—) znaczy, że dopasowany rozkład nie obejmuje któregoś maksimum: jego wiarygodność jest zerowa, a AIC nieskończone. Tak bywa z Weibullem, gdy położenie wypada powyżej najmniejszego maksimum. Wartości krytyczne A² dotyczą rozkładu w pełni określonego, więc i ten test jest przybliżony.</p><p>Najlepsza jest pokazana kombinacja rozkładu i metody o najmniejszym AIC. AIC porównuje też metody: każde liczy się z wiarygodności przy parametrach swojej metody, a największa wiarygodność szuka parametrów, przy których ta wiarygodność jest największa, więc przy kilku pokazanych metodach zwykle wygrywa. Jej parametry szuka jednak numerycznie <code>scipy</code>, które może się zatrzymać przed maksimum; wtedy AIC innej metody tego samego rozkładu bywa mniejsze.</p>",
     sources: "Akaike (1974); Anderson i Darling (1954); Stephens (1974); Hydrolog, <code>hydrolog.statistics.high_flows</code>",
   },
   "stats-plot": {

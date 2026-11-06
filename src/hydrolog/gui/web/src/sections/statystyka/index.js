@@ -1,18 +1,21 @@
 // „Statystyka przepływów”: the flood frequency analysis of annual maxima (`stats
 // flood-frequency`, plan S5). The series is a file of the session, its columns read from the
 // header, or pasted values; a first visit has neither (the guide, instrukcja/#statystyka,
-// has a worked example). The form's fields are the catalog's. „Oblicz” runs the command,
-// and a second run of the same series on a dense grid of return periods gives the curves
-// of the probability plot, the density and the distribution function; a third,
-// `stats homogeneity` of the same series (with the year column of a file of annual
-// maxima), gives the panel „Jednorodność ciągu” and its notice. The result shows the
-// active distribution (the best one after every computation, another one by a click on its
-// row of the distributions table) in the tiles and on the charts, the quantiles of the
-// distributions ticked in that table (the best one after every computation), the goodness
-// of fit and the notices in Polish; neither choice is stored. „Do porównania” hands the
-// active distribution's stressed quantile to Hydrogram zlewni (store "reference"); it is off
-// while „Wyróżniony w wynikach” is „brak” (the first visit). A change marks the result stale
-// (plan D13).
+// has a worked example). The form's fields are the catalog's. „Oblicz” runs the command with
+// every distribution by every fit method, and a second run of the same series on a dense
+// grid of return periods gives the curves of the probability plot, the density and the
+// distribution function; a third, `stats homogeneity` of the same series (with the year
+// column of a file of annual maxima), gives the panel „Jednorodność ciągu” and its notice.
+// „Rozkłady” and „Metody estymacji” choose the combinations shown without a new run (plan
+// 2026-11-06, D7). The result shows the active combination (the best one shown, the lowest
+// AIC, until a click on another's row of the distributions table) in the tiles and on the
+// charts, the quantiles of the combinations ticked in that table (the best one until the
+// person ticks or unticks a row; any, none included), the goodness of fit and the notices in
+// Polish (a notice naming a combination only while it is shown); neither choice is stored,
+// and an active one no longer shown gives way to the best one. „Do porównania” hands the
+// active combination's stressed quantile to Hydrogram zlewni (store "reference"); it is off
+// while „Wyróżniony w wynikach” is „brak” (the first visit). A change of the inputs marks the
+// result stale (plan D13).
 // A station's series handed off by Archiwista (ADR-0020, „Wczytaj z Archiwisty”) arrives
 // through useHandoffInbox as the source and values it opens with, and the data panel names
 // where it came from until the series is changed.
@@ -40,12 +43,16 @@ import { toast } from "../../ui/toast.js";
 import { ViewLayout } from "../../ui/view-layout.js";
 import { DataPanel } from "./data-panel.js";
 import { exportSpec } from "./export.js";
-import { CenterBody, distributionName, ResultsPanel } from "./results-panel.js";
+import { CenterBody, fitName, ResultsPanel } from "./results-panel.js";
 import {
+  bestFit,
   columnOption,
   COMMAND,
   CURVE_PERIODS,
   CURVES_CHANNEL,
+  DISTRIBUTIONS,
+  FIT_METHODS,
+  fitKey,
   formValues,
   guessDateColumn,
   guessValueColumn,
@@ -61,7 +68,9 @@ import {
   resolveColumn,
   SECTION,
   shortNumber,
+  shownFits,
   stressedPeriod,
+  toggled,
   useCommandDoc,
   useFileTable,
 } from "./state.js";
@@ -121,9 +130,9 @@ export default function Statystyka() {
   const sequence = useRef(0);
   const running = useRef(null);
   const chartSvg = useRef(null);
-  // The distributions ticked „W tabeli kwantyli” and the active one (null: the best) for
-  // one run; another run starts again
-  const [picked, setPicked] = useState({ run: null, names: [], active: null });
+  // The combinations ticked „W tabeli kwantyli” (null: the best one) and the active one
+  // (null: the best) of one run, as keys (fitKey); another run starts again
+  const [picked, setPicked] = useState({ run: null, names: null, active: null });
 
   const base = useMemo(() => (doc ? fieldModel(doc) : null), [doc]);
   // Hydrolog's range of the record's length, checked by the explanation of the analysis
@@ -198,6 +207,13 @@ export default function Statystyka() {
     forget(["input_file", "value_column", "date_column", "values"]);
     setState((old) => ({ ...old, source, received: null }));
   };
+
+  // „Rozkłady” and „Metody estymacji”: what the run shows, not what it computes
+  const onShown = (filter, value, on) =>
+    setState((old) => {
+      const order = filter === "methods" ? FIT_METHODS : DISTRIBUTIONS;
+      return { ...old, shown: { ...old.shown, [filter]: toggled(order, old.shown[filter], value, on) } };
+    });
 
   const focusFirstProblem = () =>
     setTimeout(() => {
@@ -291,13 +307,22 @@ export default function Statystyka() {
   const visibleCount = Object.keys(shownErrors).length;
 
   const result = run && run.envelope.status === "ok" ? run.envelope.result : null;
-  // The choices of this run: the ticked distributions and the active one, else the best
+  // The combinations shown and the best of them (the lowest AIC)
+  const visible = useMemo(() => (result ? shownFits(result.distributions, state.shown) : []), [result, state.shown]);
+  const best = bestFit(visible);
+  const bestKey = best ? fitKey(best) : null;
+  // The choices of this run: the ticked combinations (the best one until the person ticks or
+  // unticks one, then any, none included; those shown count) and the active one, else the
+  // best
   const own = picked.run === run;
-  const ticked = result ? (own ? picked.names : [result.best_distribution]) : [];
-  const active = result ? (own && picked.active ? picked.active : result.best_distribution) : null;
-  const onTick = (name, on) => setPicked({ run, names: on ? [...ticked, name] : ticked.filter((item) => item !== name), active });
-  const onActive = (name) => setPicked({ run, names: ticked, active: name });
-  const fit = result ? result.distributions.find((item) => item.distribution_name === active) || null : null;
+  const keys = visible.map(fitKey);
+  const wanted = own && picked.names !== null ? picked.names : bestKey ? [bestKey] : [];
+  const ticked = wanted.filter((key) => keys.includes(key));
+  const active = own && picked.active && keys.includes(picked.active) ? picked.active : bestKey;
+  const onTick = (key, on) =>
+    setPicked({ run, names: on ? [...wanted, key] : wanted.filter((item) => item !== key), active: own ? picked.active : null });
+  const onActive = (key) => setPicked({ run, names: own ? picked.names : null, active: key });
+  const fit = visible.find((item) => fitKey(item) === active) || null;
   const runPeriods = fit ? fit.return_periods : [];
   const runStressed = stressedPeriod(runPeriods, state.chosen);
   const periods = periodsOf(state.values.return_periods);
@@ -336,7 +361,7 @@ export default function Statystyka() {
   const p = fit && runStressed !== null ? percentAt(fit, runStressed) : null;
   let referenceState = null;
   if (q !== null && p !== null) {
-    const label = t(texts.results.referenceLabel, { p: shortNumber(p), name: distributionName(fit.distribution_name) });
+    const label = t(texts.results.referenceLabel, { p: shortNumber(p), name: fitName(fit) });
     const pressed = Boolean(reference && reference.peak_m3s === q && reference.label === label);
     referenceState = {
       pressed,
@@ -380,6 +405,8 @@ export default function Statystyka() {
       onSource=${onSource}
       session=${session}
       preview=${preview}
+      shown=${state.shown}
+      onShown=${onShown}
       periods=${periods}
       stressed=${stressed}
       onChosen=${(period) => setState((old) => ({ ...old, chosen: period }))}
@@ -421,14 +448,17 @@ export default function Statystyka() {
       </span>
     `,
     body: html`<div class=${`result-area${busy ? " computing" : ""}`} aria-busy=${busy ? "true" : "false"}>
-      <${CenterBody} run=${run} tab=${tab} stressed=${runStressed} active=${active} chartSvg=${chartSvg} />
+      <${CenterBody} run=${run} tab=${tab} shown=${state.shown} stressed=${runStressed} active=${active} chartSvg=${chartSvg} />
     </div>`,
   };
   const right = {
-    sub: result ? t(texts.results.sub, { name: distributionName(result.best_distribution) }) : null,
+    sub: best ? t(texts.results.sub, { name: fitName(best) }) : null,
     body: html`<div class=${`result-area${busy ? " computing" : ""}`}>
       <${ResultsPanel}
         run=${run}
+        shown=${state.shown}
+        fits=${visible}
+        best=${bestKey}
         periods=${runPeriods}
         stressed=${runStressed}
         ticked=${ticked}

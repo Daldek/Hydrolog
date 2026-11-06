@@ -20,7 +20,9 @@
  * - `marks`: `{kind: "peak", x, y, label, cls, guides: "x" | "xy"}`, `{kind: "hline", y, label}`,
  *   `{kind: "vline", x, from, to, extend, label}`, `{kind: "note", x, y, label, dx, dy, anchor}`;
  *   `axis: "y2"` puts a mark on the upper panel.
- * - `legend`: `true` (the labelled series) or items `{label, kind, cls}` (`kind: "text"` a note).
+ * - `legend`: `true` (the labelled series) or items `{label, kind, cls}` (`kind: "text"` a note,
+ *   `"stroke"` a line styled as the curves are: its classes' colour and dashes, `"break"` the
+ *   start of a new line of the legend).
  * - `readout`: `true` or `{series, x: (x) => text, value: (value, series) => text}`: a cursor
  *   by pointer and by keys (arrows, Shift or Page for ten steps, Home, End, Esc).
  * - `size`: "wide" (760 × 432, the default), "small" (360 × 178) or `{width, height}`;

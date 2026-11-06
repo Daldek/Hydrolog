@@ -1,18 +1,27 @@
-"""„Statystyka przepływów” (plan S5, D13, D14, D16; 2026-11-06, D3, D4, D5) in Chromium.
+"""„Statystyka przepływów” (plan S5, D13, D14, D16; 2026-11-06, D3–D5, D7) in Chromium.
 
-Against the real server of ``gui_server``: a first visit has no series and sends
-nothing, a hint names what to load and links the guide's worked example; „Wyczyść”
-returns there. The annual maxima of 1998 to 2023 (``tests/fixtures/maksima_roczne.csv``,
+Against the real server of ``gui_server``: a first visit (inputs stored by version 2 are
+not read) has no series, shows every distribution by L-moments and sends nothing, a hint
+names what to load and links the guide's worked example; „Wyczyść” returns there. The
+annual maxima of 1998 to 2023 (``tests/fixtures/maksima_roczne.csv``,
 those years of ``annual_maxima.csv``) uploaded, T = 100 highlighted and „Oblicz” run
-``stats flood-frequency``, giving the GEV „Q 1% 324,9 m³/s” (L-moments), the KZGW notice
-in Polish, the probability plot, the density and distribution-function charts (one curve
-per distribution, a rug and the empirical points of the maxima) and the ranked maxima
-with their years; the call shown is the options sent. A distribution ticked „W tabeli
-kwantyli” adds its column of quantiles to the quantile table and the CSV, and a new
-result ticks the best one alone again. A click on a row of the distributions table (or
-Enter on it) makes that distribution the active one: the tiles, the full curve of the
-three charts and „Do porównania” follow it, the other curves dimmed, until a new result;
-the density chart is scaled to it (a GEV's spike on twelve maxima clipped at the frame).
+``stats flood-frequency`` with every distribution by every fit method, giving the GEV
+„Q 1% 324,9 m³/s” (L-moments, shown at first), the KZGW notice in Polish, the
+probability plot, the density and distribution-function charts (one curve per
+combination shown, a rug and the empirical points of the maxima) and the ranked maxima
+with their years; the call shown is the options sent. „Rozkłady” and „Metody estymacji”
+only choose the combinations shown, stored and without a request: a method added draws
+its curves in its line style (maximum likelihood dashed) and the best shown, the lowest
+AIC, becomes the active one; a distribution taken away hides its curves. A notice of a
+fit outside its support names its combination and shows only while that is shown. The
+distributions table has a row per combination shown with its method. A combination
+ticked „W tabeli kwantyli” adds its column of quantiles to the quantile table and the
+CSV; every row can leave it, the best one too, leaving a note and a CSV of the periods
+and probabilities; a new result ticks the best one alone again. A click on a row of the
+distributions table (or Enter on it) makes that combination the active one: the tiles,
+the full curve of the three charts and „Do porównania” follow it, the other curves
+dimmed, until a new result; the density chart is scaled to it (a GEV's spike on twelve
+maxima clipped at the frame).
 No period is highlighted at first („brak”): no highlighted tile or row, no marked
 quantile on the charts and „Do porównania” off until one is chosen, the choice stored.
 A daily series takes its date column from its header; pasted maxima run
@@ -27,13 +36,14 @@ refused.
 """
 
 import json
+import math
 import re
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 import pytest
-from playwright.sync_api import Locator, Page, Request, Response, expect
+from playwright.sync_api import Locator, Page, Response, expect
 
 from hydrolog.catalog import format_command, parse_command, run_command
 from tests.e2e.conftest import Tab, open_part
@@ -48,9 +58,11 @@ SECTION = 'section[data-section="statystyka"]'
 RIGHT = f"{SECTION} .view-panel.right"
 BADGE = ".topbar .badge.status"
 HOMOGENEITY = f'{RIGHT} [data-part="homogeneity"]'
-PROBABILITY = f"{SECTION} .view-center .st-chart .chart svg"
-DENSITY = f'{SECTION} .view-center [data-chart="density"] svg'
-DISTRIBUTION = f'{SECTION} .view-center [data-chart="distribution"] svg'
+PROBABILITY = f"{SECTION} .view-center .st-chart svg.chart-svg"
+DENSITY = f'{SECTION} .view-center [data-chart="density"] svg.chart-svg'
+DISTRIBUTION = f'{SECTION} .view-center [data-chart="distribution"] svg.chart-svg'
+CHARTS = [PROBABILITY, DENSITY, DISTRIBUTION]
+STORED = "() => JSON.parse(localStorage.getItem('hydrolog-gui/statystyka/3'))"
 DEFAULT_PERIODS = [2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 500.0, 1000.0]
 NAMES = {
     "gev": "GEV",
@@ -58,6 +70,29 @@ NAMES = {
     "pearson3": "Pearson III",
     "weibull": "Weibull",
 }
+
+
+def shown_fits(
+    result: dict[str, Any],
+    methods: tuple[str, ...] = ("l_moments",),
+    names: tuple[str, ...] = tuple(NAMES),
+) -> list[dict[str, Any]]:
+    """Return the fits of ``result`` the filters show, in its order (by AIC)."""
+    return [
+        fit
+        for fit in result["distributions"]
+        if fit["fit_method"] in methods and fit["distribution_name"] in names
+    ]
+
+
+def lowest_aic(fits: list[dict[str, Any]]) -> dict[str, Any]:
+    """Return the fit of the lowest AIC (none ranks last), the first of a tie."""
+    return min(fits, key=lambda fit: math.inf if fit["aic"] is None else fit["aic"])
+
+
+def key(fit: dict[str, Any]) -> str:
+    """Return the key of a fit's combination: ``gev/l_moments``."""
+    return f"{fit['distribution_name']}/{fit['fit_method']}"
 
 
 def open_section(tab: Tab) -> Page:
@@ -116,6 +151,22 @@ def highlight(page: Page, period: str) -> None:
     ).click()
 
 
+def chip(page: Page, name: str, label: str) -> Locator:
+    """Return the chip ``label`` of the filter ``name`` (distributions or methods)."""
+    return page.locator(f'{SECTION} [data-shown="{name}"]').get_by_role(
+        "button", name=label, exact=True
+    )
+
+
+def dashes(curves: Locator) -> list[str]:
+    """Return the computed stroke-dasharray of each curve ("none" when solid)."""
+    found = curves.evaluate_all(
+        "(paths) => paths.map((path) => getComputedStyle(path).strokeDasharray)"
+    )
+    assert isinstance(found, list)
+    return [str(item) for item in found]
+
+
 def test_a_first_visit_is_empty_and_clearing_returns_there(tab: Tab) -> None:
     posted: list[str] = []
     tab.page.on(
@@ -123,6 +174,12 @@ def test_a_first_visit_is_empty_and_clearing_returns_there(tab: Tab) -> None:
         lambda request: (
             posted.append(request.url) if request.method == "POST" else None
         ),
+    )
+    # The inputs of version 2 (one distribution and one method a run) are not read
+    tab.page.add_init_script(
+        "try { localStorage.setItem('hydrolog-gui/statystyka/2', JSON.stringify({"
+        "source: 'paste', values: {values: '100; 120; 140', distribution: 'gev',"
+        " fit_method: 'mle'}, chosen: 100})); } catch (error) {}"
     )
     tab.open("#statystyka")
     page = tab.page
@@ -134,6 +191,15 @@ def test_a_first_visit_is_empty_and_clearing_returns_there(tab: Tab) -> None:
     expect(page.locator(f"{SECTION} #st-input_file")).to_have_value("")
     expect(page.locator(f"{SECTION} #st-value_column")).to_have_value("")
     expect(page.locator(f"{SECTION} .handoff[data-file]")).to_have_count(0)
+    # Every distribution shown, by L-moments only; the last method shown stays
+    for label in ["GEV", "Log-normalny", "Pearson III", "Weibull"]:
+        expect(chip(page, "distributions", label)).to_have_attribute(
+            "aria-pressed", "true"
+        )
+    expect(chip(page, "methods", "L-momenty")).to_have_attribute("aria-pressed", "true")
+    expect(chip(page, "methods", "L-momenty")).to_be_disabled()
+    for label in ["Największa wiarygodność", "Momenty", "Najmniejsze kwadraty"]:
+        expect(chip(page, "methods", label)).to_have_attribute("aria-pressed", "false")
     page.locator(f"{SECTION} .step").first.get_by_role("radio", name="Wklej").click()
     expect(page.locator(f"{SECTION} #st-values")).to_have_value("")
     expect(hint).to_contain_text("Wklej co najmniej kilka maksimów")
@@ -175,6 +241,7 @@ def test_the_maxima_give_the_mockups_gev_quantile_and_the_kzgw_notice(
         "input_file": "in/maksima_roczne.csv",
         "value_column": "Qmax",
         "distribution": "all",
+        "fit_method": "all",
         "return_periods": DEFAULT_PERIODS,
     }
     envelope = response.json()
@@ -199,12 +266,14 @@ def test_the_maxima_give_the_mockups_gev_quantile_and_the_kzgw_notice(
         "maksima_roczne.csv · 26 lat (1998–2023)"
     )
 
-    # The plot: 26 points, four curves (the best one active, the others dimmed), the
-    # quantile marked
+    # The plot: 26 points, four curves of the L-moments (the best one active, the others
+    # dimmed), the quantile marked
     chart = page.locator(PROBABILITY)
     expect(chart.locator(".emp circle")).to_have_count(26)
     expect(chart.locator("path.ser")).to_have_count(4)
-    expect(chart.locator('path.ser.active[data-series="gev"]')).to_have_count(1)
+    expect(chart.locator('path.ser.active[data-series="gev/l_moments"]')).to_have_count(
+        1
+    )
     expect(chart.locator("path.ser.dim")).to_have_count(3)
     expect(chart.locator(".peak-label")).to_have_text("Q 1% = 324,9 m³/s (GEV)")
 
@@ -212,12 +281,16 @@ def test_the_maxima_give_the_mockups_gev_quantile_and_the_kzgw_notice(
     # distribution function: one curve per distribution and the maxima as points
     density = page.locator(DENSITY)
     expect(density.locator("path.ser")).to_have_count(4)
-    expect(density.locator('path.ser.active[data-series="gev"]')).to_have_count(1)
+    expect(
+        density.locator('path.ser.active[data-series="gev/l_moments"]')
+    ).to_have_count(1)
     expect(density.locator("path.ser.dim")).to_have_count(3)
     expect(density.locator('.rug[data-series="maxima"] line')).to_have_count(26)
     distribution = page.locator(DISTRIBUTION)
     expect(distribution.locator("path.ser")).to_have_count(4)
-    expect(distribution.locator('path.ser.active[data-series="gev"]')).to_have_count(1)
+    expect(
+        distribution.locator('path.ser.active[data-series="gev/l_moments"]')
+    ).to_have_count(1)
     expect(distribution.locator("path.ser.dim")).to_have_count(3)
     expect(distribution.locator(".emp circle")).to_have_count(26)
 
@@ -230,51 +303,148 @@ def test_the_maxima_give_the_mockups_gev_quantile_and_the_kzgw_notice(
     )
     assert parse_command(line).options["value_column"] == "Qmax"
 
-    # A change makes the result stale
-    page.locator(f"{SECTION} #st-distribution").select_option("gev")
+    # A change of the inputs makes the result stale
+    page.locator(f"{SECTION} #st-return_periods").fill("10; 100")
     expect(page.locator(BADGE)).to_have_attribute("data-state", "stale")
 
 
-def test_a_fit_method_recomputes_both_runs_with_it(tab: Tab) -> None:
+def test_one_run_fits_every_combination_and_the_filters_only_show_them(
+    tab: Tab,
+) -> None:
     page = open_section(tab)
-    sent_by_channel: dict[str, Any] = {}
-
-    def record(request: Request) -> None:
-        if request.method == "POST" and "channel=" in request.url:
-            channel = request.url.rsplit("channel=", 1)[-1]
-            sent_by_channel[channel] = request.post_data_json
-
-    page.on("request", record)
-    # One method a run: „all” waits for the view of the combinations (plan D7)
-    methods = page.locator(f"{SECTION} #st-fit_method option")
-    expect(methods).to_have_count(4)
-    assert methods.evaluate_all("(items) => items.map((item) => item.value)") == [
-        "mle",
-        "moments",
-        "l_moments",
-        "least_squares",
-    ]
+    runs: list[str] = []
+    page.on(
+        "request",
+        lambda request: (
+            runs.append(request.url) if "/api/run/" in request.url else None
+        ),
+    )
     highlight(page, "100")
-    compute(page)
+    with page.expect_response(
+        lambda response: response.url.endswith("channel=statystyka-krzywe")
+    ) as curves:
+        response = compute(page)
+    # Both runs: every distribution by every method, sixteen combinations
+    for answer in (response, curves.value):
+        assert {sent(answer)[name] for name in ("distribution", "fit_method")} == {
+            "all"
+        }
+    result = response.json()["result"]
+    assert len(result["distributions"]) == 16
+    expect(page.locator(BADGE)).to_have_attribute("data-state", "ok")
+    asked = len(runs)
     right = page.locator(RIGHT)
     subtitle = page.locator(f"{SECTION} .st-chart .card-sub")
-    expect(subtitle).to_have_attribute("data-fit-method", "l_moments")
-    expect(subtitle).to_contain_text("metodą L-momentów")
+    legend = page.locator(f"{SECTION} .st-chart .chart-legend")
+
+    # At first every distribution by L-moments: four solid curves a chart, a key of the
+    # colours and one of the line styles
+    for chart in CHARTS:
+        curves_drawn = page.locator(chart).locator("path.ser")
+        expect(curves_drawn).to_have_count(4)
+        expect(page.locator(chart).locator("path.ser.fm-lmom")).to_have_count(4)
+        assert dashes(curves_drawn) == ["none"] * 4
+    expect(subtitle).to_contain_text("4 rozkłady dopasowane metodą L-momentów")
+    expect(legend.locator("span:not(.legend-break)")).to_have_text(
+        [
+            "Maksima roczne",
+            "Rozkłady:",
+            "GEV",
+            "Log-normalny",
+            "Pearson III",
+            "Weibull",
+            "Metody:",
+            "L-momenty",
+        ]
+    )
     expect(right.locator('.kpi[data-key="q-100"] .v')).to_have_text("324,9 m³/s")
-    assert "fit_method" not in sent_by_channel["statystyka"]
+    # A notice per fit outside its support, each naming its combination: only those of
+    # the combinations shown
+    notices = response.json()["notices"]
+    nulls = [fit for fit in result["distributions"] if fit["aic"] is None]
+    assert sum(item["code"] == "outside_support" for item in notices) == len(nulls)
+    outside = right.locator('.notes li[data-code="outside_support"]')
+    expect(outside).to_have_count(sum(fit["aic"] is None for fit in shown_fits(result)))
 
-    page.locator(f"{SECTION} #st-fit_method").select_option("mle")
-    expect(page.locator(BADGE)).to_have_attribute("data-state", "stale")
-    response = compute(page)
-
-    assert sent_by_channel["statystyka"]["fit_method"] == "mle"
-    assert sent_by_channel["statystyka-krzywe"]["fit_method"] == "mle"
-    assert response.json()["result"]["fit_method"] == "mle"
-    expect(subtitle).to_have_attribute("data-fit-method", "mle")
-    expect(subtitle).to_contain_text("metodą największej wiarygodności")
+    # Maximum likelihood added: four dashed curves more, in the line style of its key;
+    # the best one shown is now its GEV (the lowest AIC), active with its quantile
+    chip(page, "methods", "Największa wiarygodność").click()
+    best = lowest_aic(shown_fits(result, ("l_moments", "mle")))
+    assert key(best) == "gev/mle"
+    for chart in CHARTS:
+        expect(page.locator(chart).locator("path.ser")).to_have_count(8)
+        dashed = page.locator(chart).locator("path.ser.fm-mle")
+        expect(dashed).to_have_count(4)
+        assert "none" not in dashes(dashed)
+        expect(
+            page.locator(chart).locator('path.ser.active[data-series="gev/mle"]')
+        ).to_have_count(1)
+    swatch = legend.locator("svg.sw-stroke.fm-mle line")
+    assert (
+        dashes(swatch)
+        == dashes(page.locator(PROBABILITY).locator("path.ser.fm-mle"))[:1]
+    )
+    expect(outside).to_have_count(
+        sum(fit["aic"] is None for fit in shown_fits(result, ("l_moments", "mle")))
+    )
+    expect(legend).to_contain_text("Największa wiarygodność")
+    expect(subtitle).to_contain_text(
+        "4 rozkłady dopasowane metodami L-momentów i największej wiarygodności"
+    )
+    expect(page.locator(PROBABILITY).locator(".peak-label")).to_have_text(
+        "Q 1% = 307,3 m³/s (GEV, największa wiarygodność)"
+    )
+    tile = right.locator('.kpi[data-key="distribution"]')
+    expect(tile.locator(".k")).to_have_text("Najlepszy")
+    expect(tile.locator(".v")).to_have_text("GEV")
+    expect(tile.locator(".sub")).to_have_text("największa wiarygodność")
     expect(right.locator('.kpi[data-key="q-100"] .v')).to_have_text("307,3 m³/s")
-    expect(right.locator(".cli pre")).to_contain_text("--fit-method mle")
+
+    # The distributions table: a row per combination shown, its method beside it; the
+    # quantile table follows the best one, named with its method
+    table = right.get_by_role("region", name="Rozkłady")
+    expect(table.locator("thead th").nth(1)).to_have_text("Metoda")
+    expect(table.locator("tbody tr")).to_have_count(8)
+    expect(table.locator('tbody tr[aria-current="true"] td').first).to_have_text(
+        "największa wiarygodność"
+    )
+    quantiles = right.get_by_role(
+        "region", name="Kwantyle: GEV, największa wiarygodność"
+    )
+    expect(quantiles.locator("tr.hl td").nth(1)).to_have_text("307,3")
+
+    # GEV taken away: its curves go and the best of the others becomes the active one
+    chip(page, "distributions", "GEV").click()
+    rest = shown_fits(
+        result, ("l_moments", "mle"), ("log_normal", "pearson3", "weibull")
+    )
+    best = lowest_aic(rest)
+    for chart in CHARTS:
+        expect(page.locator(chart).locator("path.ser")).to_have_count(len(rest))
+        expect(
+            page.locator(chart).locator('path.ser[data-series^="gev/"]')
+        ).to_have_count(0)
+        expect(
+            page.locator(chart).locator(f'path.ser.active[data-series="{key(best)}"]')
+        ).to_have_count(1)
+    expect(legend).not_to_contain_text("GEV")
+    expect(tile.locator(".v")).to_have_text(NAMES[best["distribution_name"]])
+
+    # Nothing was computed again and the result is not stale; the filters are stored
+    assert len(runs) == asked
     expect(page.locator(BADGE)).to_have_attribute("data-state", "ok")
+    page.wait_for_function(f"() => ({STORED})()?.shown?.distributions?.length === 3")
+    assert page.evaluate(STORED)["shown"] == {
+        "distributions": ["log_normal", "pearson3", "weibull"],
+        "methods": ["l_moments", "mle"],
+    }
+    page.reload()
+    expect(chip(page, "distributions", "GEV")).to_have_attribute(
+        "aria-pressed", "false"
+    )
+    expect(chip(page, "methods", "Największa wiarygodność")).to_have_attribute(
+        "aria-pressed", "true"
+    )
 
 
 def test_the_ranked_maxima_carry_their_years(tab: Tab) -> None:
@@ -342,15 +512,16 @@ def test_ticked_distributions_add_their_quantiles_to_the_table_and_the_csv(
     page = open_section(tab)
     highlight(page, "100")
     result = compute(page).json()["result"]
-    fits = result["distributions"]
+    # The combinations shown: every distribution by L-moments, the best one first
+    fits = shown_fits(result)
     assert fits[0]["distribution_name"] == result["best_distribution"] == "gev"
     right = page.locator(RIGHT)
     boxes = right.get_by_role("checkbox", name=re.compile(r"^W tabeli kwantyli: "))
     expect(boxes).to_have_count(4)
-    # Only the best one is ticked, and it cannot be the last one taken away
+    # Only the best one is ticked at first
     best = right.get_by_role("checkbox", name="W tabeli kwantyli: GEV")
     expect(best).to_be_checked()
-    expect(best).to_be_disabled()
+    expect(best).to_be_enabled()
     quantiles = right.get_by_role("region", name="Kwantyle: GEV")
     expect(quantiles.locator("thead th")).to_have_text(
         ["T [lata]", "p [%]", "Q GEV [m³/s]"]
@@ -392,11 +563,28 @@ def test_ticked_distributions_add_their_quantiles_to_the_table_and_the_csv(
     assert header == [
         "return_period_years",
         "exceedance_probability",
-        *(f"{fit['distribution_name']}_m3s" for fit in shown),
+        *(f"{fit['distribution_name']}_{fit['fit_method']}_m3s" for fit in shown),
     ]
     assert [float(line[0]) for line in lines] == DEFAULT_PERIODS
     for column, fit in enumerate(shown, start=2):
         assert [float(line[column]) for line in lines] == fit["quantiles"]
+
+    # Every row can leave the quantile table, the best one too: a note instead of the
+    # columns, and the CSV keeps the periods with their probabilities only
+    for fit in shown:
+        right.get_by_role(
+            "checkbox", name=f"W tabeli kwantyli: {NAMES[fit['distribution_name']]}"
+        ).uncheck()
+    expect(right.get_by_role("checkbox", checked=True)).to_have_count(0)
+    expect(right.get_by_role("region", name=re.compile(r"^Kwantyle"))).to_have_count(0)
+    expect(
+        right.get_by_text("Żaden wiersz tabeli rozkładów nie jest zaznaczony")
+    ).to_be_visible()
+    _, data = download(page, right.locator(".export-row button").filter(has_text="CSV"))
+    header, *lines = [line.split(",") for line in data.decode("utf-8").splitlines()]
+    assert header == ["return_period_years", "exceedance_probability"]
+    assert [float(line[0]) for line in lines] == DEFAULT_PERIODS
+    assert [float(line[1]) for line in lines] == fits[0]["exceedance_probabilities"]
 
     # A new result ticks the best one alone again
     compute(page)
@@ -409,9 +597,9 @@ def test_a_clicked_row_drives_the_tiles_the_plot_and_the_comparison(tab: Tab) ->
     page = open_section(tab)
     highlight(page, "100")
     result = compute(page).json()["result"]
-    other = result["distributions"][1]
-    name = other["distribution_name"]
-    assert name == "log_normal" and result["best_distribution"] == "gev"
+    other = shown_fits(result)[1]
+    name = key(other)
+    assert name == "log_normal/l_moments" and result["best_distribution"] == "gev"
     q100 = other["quantiles"][other["return_periods"].index(100.0)]
     right = page.locator(RIGHT)
     tile = right.locator('.kpi[data-key="distribution"]')
@@ -428,27 +616,29 @@ def test_a_clicked_row_drives_the_tiles_the_plot_and_the_comparison(tab: Tab) ->
     expect(rows.nth(1)).to_have_attribute("aria-current", "true")
     expect(rows.nth(0)).not_to_have_attribute("aria-current", "true")
     expect(chart.locator(f'path.ser.active[data-series="{name}"]')).to_have_count(1)
-    expect(chart.locator('path.ser.dim[data-series="gev"]')).to_have_count(1)
+    expect(chart.locator('path.ser.dim[data-series="gev/l_moments"]')).to_have_count(1)
     expect(chart.locator("path.ser.dim")).to_have_count(3)
     for shape in shapes:
         expect(shape.locator(f'path.ser.active[data-series="{name}"]')).to_have_count(1)
-        expect(shape.locator('path.ser.dim[data-series="gev"]')).to_have_count(1)
+        expect(
+            shape.locator('path.ser.dim[data-series="gev/l_moments"]')
+        ).to_have_count(1)
     expect(chart.locator(".peak-label")).to_have_text(
         f"Q 1% = {q100:.1f}".replace(".", ",") + " m³/s (Log-normalny)"
     )
 
-    # A checkbox ticks, it does not make its distribution active
+    # A checkbox ticks, it does not make its combination active
     rows.nth(2).get_by_role("checkbox").check()
     expect(rows.nth(1)).to_have_attribute("aria-current", "true")
 
-    # „Do porównania” hands the active distribution's quantile
+    # „Do porównania” hands the active combination's quantile, named with its method
     open_part(page, SECTION, "exports")
     right.get_by_role("button", name="Do porównania").click()
     reference = page.evaluate(
         "async () => (await import('./src/store.js')).getStore('reference')"
     )
     assert reference["peak_m3s"] == q100
-    assert reference["label"] == "Q 1% (log-normalny)"
+    assert reference["label"] == "Q 1% (log-normalny, L-momenty)"
 
     # The keyboard: Enter on a focused row; a new result makes the best one active again
     rows.nth(3).focus()
@@ -457,9 +647,13 @@ def test_a_clicked_row_drives_the_tiles_the_plot_and_the_comparison(tab: Tab) ->
     compute(page)
     expect(tile.locator(".k")).to_have_text("Najlepszy")
     expect(tile.locator(".v")).to_have_text("GEV")
-    expect(chart.locator('path.ser.active[data-series="gev"]')).to_have_count(1)
+    expect(chart.locator('path.ser.active[data-series="gev/l_moments"]')).to_have_count(
+        1
+    )
     for shape in shapes:
-        expect(shape.locator('path.ser.active[data-series="gev"]')).to_have_count(1)
+        expect(
+            shape.locator('path.ser.active[data-series="gev/l_moments"]')
+        ).to_have_count(1)
 
 
 def test_a_daily_series_takes_its_date_column(tab: Tab) -> None:
@@ -493,12 +687,12 @@ def test_the_density_chart_is_scaled_to_the_active_distribution(tab: Tab) -> Non
         "100,9; 148,6; 130; 140,3; 133,4; 87,2; 170,9; 141,1; 315,4; 126; 177,5; 116,9"
     )
     result = compute(page).json()["result"]
-    assert result["best_distribution"] == "log_normal"
+    assert lowest_aic(shown_fits(result))["distribution_name"] == "log_normal"
     expect(page.locator(BADGE)).to_have_attribute("data-state", "ok")
     density = page.locator(DENSITY)
-    expect(density.locator('path.ser.active[data-series="log_normal"]')).to_have_count(
-        1
-    )
+    expect(
+        density.locator('path.ser.active[data-series="log_normal/l_moments"]')
+    ).to_have_count(1)
     expect(density.locator("path.ser")).to_have_count(4)
 
     shown = density.evaluate(
@@ -513,8 +707,8 @@ def test_the_density_chart_is_scaled_to_the_active_distribution(tab: Tab) -> Non
     heights = dict(shown)
     # The active curve's peak in the upper part of the frame; the GEV's spike clipped at
     # its top, as every other curve stays within it
-    assert heights["log_normal"] > 0.6
-    assert heights["gev"] == pytest.approx(1.0, abs=0.01)
+    assert heights["log_normal/l_moments"] > 0.6
+    assert heights["gev/l_moments"] == pytest.approx(1.0, abs=0.01)
     assert max(heights.values()) <= 1.01
 
 
@@ -527,14 +721,10 @@ def test_pasted_maxima_run_and_go_to_the_comparison(tab: Tab) -> None:
     highlight(page, "50")
     response = compute(page)
     options = sent(response)
-    assert set(options) == {"values", "distribution", "return_periods"}
+    assert set(options) == {"values", "distribution", "fit_method", "return_periods"}
     assert options["values"][:2] == [100.9, 148.6]
     result = response.json()["result"]
-    best = next(
-        fit
-        for fit in result["distributions"]
-        if fit["distribution_name"] == result["best_distribution"]
-    )
+    best = lowest_aic(shown_fits(result))
     q50 = best["quantiles"][best["return_periods"].index(50.0)]
     right = page.locator(RIGHT)
     expect(right.locator('.kpi[data-key="q-50"]')).to_have_class(re.compile(r"\bhi\b"))

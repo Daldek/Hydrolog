@@ -1,12 +1,17 @@
 // State of „Statystyka przepływów”: the inputs of `stats flood-frequency` kept in the browser
-// under "hydrolog-gui/statystyka/2" (the form's values, the source and the return period
-// highlighted in the results, null for „brak”; no results); the columns of the chosen file,
-// read in the browser from its header; the ranking of the annual maxima for display; and
-// the options of `stats homogeneity` for the same series. A first visit starts empty: no
-// file, no values, no highlighted period. The version stayed 2 when „brak” came
-// (2026-11-06): null is one more value of the same field, and a stored 100 (the former first
-// value, not told apart from a 100 chosen) stays highlighted until the person picks „brak”
-// or „Wyczyść” clears the inputs.
+// under "hydrolog-gui/statystyka/3" (the form's values, the source, the return period
+// highlighted in the results, null for „brak”, and the combinations shown; no results); the
+// columns of the chosen file, read in the browser from its header; the ranking of the annual
+// maxima for display; the combinations of distribution and fit method shown, and the best of
+// them; and the options of `stats homogeneity` for the same series. A first visit starts
+// empty: no file, no values, no highlighted period, every distribution by L-moments only.
+//
+// Both runs fit every distribution by every method (`distribution` and `fit_method` `all`,
+// plan 2026-11-06, D7); „Rozkłady” and „Metody estymacji” only choose the combinations shown
+// (`shown`), so changing them recomputes nothing. The stored version became 3 then:
+// `distribution` and `fit_method` left the values and `shown` came, so a version-2 store
+// (one distribution and one method a run) is no longer read and the section opens as on a
+// first visit, whatever series, periods, distribution and method it held.
 
 import { api } from "../../api.js";
 import { num, parseNumber } from "../../format.js";
@@ -54,17 +59,32 @@ const SERIES_OPTIONS = ["values", "input_file", "value_column", "date_column"];
 /** The period stressed when the chosen one is not among the periods: T = 100 years, p 1%. */
 const FALLBACK_PERIOD = 100;
 
+/** The options of both runs: every distribution by every method; the filters choose. */
+const EVERY_COMBINATION = Object.freeze({ distribution: "all", fit_method: "all" });
+
+/** The distributions in the order of „Rozkłady” and of the legends. */
+export const DISTRIBUTIONS = Object.freeze(["gev", "log_normal", "pearson3", "weibull"]);
+
 /** The series classes of the distributions: one colour each, whichever is best. */
 export const DISTRIBUTION_CLASS = Object.freeze({ gev: "s1", log_normal: "s2", pearson3: "s3", weibull: "s6" });
 
+/** The fit methods in the order of „Metody estymacji” and of the legends, the default first. */
+export const FIT_METHODS = Object.freeze(["l_moments", "mle", "moments", "least_squares"]);
+
 /**
- * The inputs of a first visit: no series yet, all four distributions, no highlighted
- * period („brak”); the return periods are the catalog's default, set when the command's
- * entry arrives. `fit_method` is absent until the person picks one: the field shows the
- * catalog's default (`l_moments`) and the run sends nothing for it, so Hydrolog's
- * default applies (to inputs stored before the option existed too).
+ * The line-style classes of the fit methods (css/charts.css): L-moments solid, maximum
+ * likelihood dashed, moments dotted, least squares dash-dot; the colour is the
+ * distribution's.
+ */
+export const METHOD_CLASS = Object.freeze({ l_moments: "fm-lmom", mle: "fm-mle", moments: "fm-mom", least_squares: "fm-lsq" });
+
+/**
+ * The inputs of a first visit: no series yet, no highlighted period („brak”), every
+ * distribution shown by L-moments only; the return periods are the catalog's default, set
+ * when the command's entry arrives.
  *
- * @returns {{source: "file"|"paste", values: object, chosen: number|null}} the state
+ * @returns {{source: "file"|"paste", values: object, chosen: number|null,
+ *   shown: {distributions: string[], methods: string[]}}} the state
  */
 export function initialState() {
   return {
@@ -74,10 +94,24 @@ export function initialState() {
       value_column: "",
       date_column: "",
       values: "",
-      distribution: "all",
     },
     chosen: null,
+    shown: { distributions: [...DISTRIBUTIONS], methods: ["l_moments"] },
   };
+}
+
+/**
+ * A filter of the combinations shown with one value ticked or unticked, in the order of its
+ * choices.
+ *
+ * @param {readonly string[]} order every value, in the order of the choices
+ * @param {string[]} ticked the values ticked
+ * @param {string} value the value changed
+ * @param {boolean} on whether it is ticked now
+ * @returns {string[]} the values ticked
+ */
+export function toggled(order, ticked, value, on) {
+  return order.filter((item) => (item === value ? on : ticked.includes(item)));
 }
 
 /**
@@ -145,17 +179,19 @@ export function fileGroup(model) {
 }
 
 /**
- * The values of the form for the catalog's model: the inputs and the chosen `one_of` group.
+ * The values of the form for the catalog's model: the inputs, every distribution by every
+ * fit method (the filters choose what is shown) and the chosen `one_of` group.
  *
  * @param {{source: string, values: object}} state the section's inputs
  * @param {object|null} model the result of fieldModel (null before the entry arrives)
  * @returns {object} the values
  */
 export function formValues(state, model) {
-  if (!model || !model.oneOf) return { ...state.values };
+  const values = { ...state.values, ...EVERY_COMBINATION };
+  if (!model || !model.oneOf) return values;
   const file = fileGroup(model);
   const paste = model.oneOf.groups.findIndex((group) => group.index !== file);
-  return { ...state.values, [ONE_OF_KEY]: state.source === "paste" ? paste : file };
+  return { ...values, [ONE_OF_KEY]: state.source === "paste" ? paste : file };
 }
 
 /**
@@ -412,14 +448,68 @@ export function percentAt(fit, period) {
 }
 
 /**
- * The fits of the distributions ticked „W tabeli kwantyli”, in the order of the table.
+ * The key of a fitted combination of a distribution and a fit method, as the library keys
+ * the fits of every method: "gev/l_moments".
+ *
+ * @param {object} fit a fitted distribution of the result
+ * @returns {string} the key
+ */
+export function fitKey(fit) {
+  return `${fit.distribution_name}/${fit.fit_method}`;
+}
+
+/**
+ * The fits of the combinations shown: a distribution ticked in „Rozkłady” by a method ticked
+ * in „Metody estymacji”, in the result's order (by AIC, null last).
+ *
+ * @param {object[]} fits the fitted distributions of a result
+ * @param {{distributions: string[], methods: string[]}} shown the filters
+ * @returns {object[]} the fits shown
+ */
+export function shownFits(fits, shown) {
+  return fits.filter((fit) => shown.distributions.includes(fit.distribution_name) && shown.methods.includes(fit.fit_method));
+}
+
+/** The notices naming one combination in their details: a fit outside its support, one left out. */
+const COMBINATION_NOTICES = new Set(["outside_support", "distribution_left_out"]);
+
+/**
+ * The notices of a run for the combinations shown: a notice naming a combination
+ * (`details.distribution` and `details.fit_method`) only while it is shown, the others all.
+ *
+ * @param {object[]} notices the notices of the envelope
+ * @param {{distributions: string[], methods: string[]}} shown the filters
+ * @returns {object[]} the notices shown
+ */
+export function shownNotices(notices, shown) {
+  return notices.filter((notice) => {
+    if (!COMBINATION_NOTICES.has(notice.code)) return true;
+    const details = notice.details || {};
+    return shown.distributions.includes(details.distribution) && shown.methods.includes(details.fit_method);
+  });
+}
+
+/**
+ * The best of the fits shown: the lowest AIC. A fit without one (null: a maximum outside its
+ * support) ranks after every other and ties keep the result's order, as Hydrolog ranks.
+ *
+ * @param {object[]} fits the fits shown
+ * @returns {object|null} the best fit, null when none is shown
+ */
+export function bestFit(fits) {
+  const aic = (fit) => (typeof fit.aic === "number" ? fit.aic : Infinity);
+  return fits.reduce((best, fit) => (best === null || aic(fit) < aic(best) ? fit : best), null);
+}
+
+/**
+ * The fits ticked „W tabeli kwantyli”, in the order of the table.
  *
  * @param {object} result the result of `stats flood-frequency`
- * @param {string[]} ticked the names of the ticked distributions
+ * @param {string[]} ticked the keys of the ticked combinations (fitKey)
  * @returns {object[]} the fits
  */
 export function tickedFits(result, ticked) {
-  return result.distributions.filter((fit) => ticked.includes(fit.distribution_name));
+  return result.distributions.filter((fit) => ticked.includes(fitKey(fit)));
 }
 
 const docs = new Map();

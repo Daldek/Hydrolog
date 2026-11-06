@@ -391,6 +391,24 @@ class TestEveryFitMethod:
         } == left_out
         assert {notice.details["reason"] for notice in notices} == {"out_of_range"}
 
+    def test_a_fit_outside_its_support_names_its_method(self):
+        from hydrolog._warnings import OutsideSupport
+        from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
+
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            ranked = FloodFrequencyAnalysis(_FLOODS).fit_all(fit_method="all")
+
+        # One notice per fit without an AIC; the two Weibull fits leave out the same
+        # maximum, so only the method tells their notices apart
+        outside = {key for key, result in ranked.items() if not np.isfinite(result.aic)}
+        assert {"weibull/l_moments", "weibull/least_squares"} <= outside
+        notices = [w.message for w in caught if isinstance(w.message, OutsideSupport)]
+        assert sorted(
+            f"{notice.details['distribution']}/{notice.details['fit_method']}"
+            for notice in notices
+        ) == sorted(outside)
+
     def test_one_method_keeps_the_distribution_keys(self):
         from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
 

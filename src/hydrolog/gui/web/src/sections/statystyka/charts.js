@@ -1,18 +1,22 @@
 // The charts of „Statystyka przepływów”: the probability plot on Gumbel paper (plan D12), the
 // probability density and the distribution function against Q (plan 2026-11-06, D3). The
 // annual maxima are points at their empirical exceedance probability (on the density chart
-// a rug on the Q axis), each distribution a curve through the quantiles and densities
-// Hydrolog computed (a dense grid of return periods, else the periods of the run), the
-// active one full and thick, the others dimmed, and on the probability plot the chosen
-// quantile of the active one marked with guides to both axes (none for „brak”). The density
-// chart is scaled to the active distribution; the others are clipped at its frame.
+// a rug on the Q axis), each combination of a distribution and a fit method shown a curve
+// through the quantiles and densities Hydrolog computed (a dense grid of return periods,
+// else the periods of the run): the distribution's colour, the method's line style (plan
+// 2026-11-06, D7), the active one thick, the others dimmed; a legend keys the colours and
+// the line styles, and a curve's name holds its method when more than one is drawn (the
+// density and distribution-function charts then read the active curve only). On the
+// probability plot the chosen quantile of the active combination is marked with guides to
+// both axes (none for „brak”). The density chart is scaled to the active combination; the
+// other curves are clipped at its frame.
 // Probabilities are drawn in per cent there; F = 1 − p is the only arithmetic of the browser.
 
 import { extent, niceDomain } from "../../charts/scale.js";
 import { num } from "../../format.js";
 import { t } from "../../labels/common.js";
 import { statystyka as texts } from "../../labels/statystyka.js";
-import { DISTRIBUTION_CLASS, percentAt, quantileAt, shortNumber } from "./state.js";
+import { DISTRIBUTION_CLASS, DISTRIBUTIONS, FIT_METHODS, fitKey, METHOD_CLASS, percentAt, quantileAt, shortNumber, shownFits } from "./state.js";
 
 /**
  * The name of a distribution in the chart's legend.
@@ -24,21 +28,65 @@ export function legendName(name) {
   return Object.hasOwn(texts.distributions, name) ? texts.distributions[name].legend : name;
 }
 
+/**
+ * The name of a fit method in the name of a combination: „największa wiarygodność”.
+ *
+ * @param {string} method the method's name in the result
+ * @returns {string} the Polish name
+ */
+export function methodName(method) {
+  return Object.hasOwn(texts.fitMethods, method) ? texts.fitMethods[method].name : method;
+}
+
+/**
+ * The name of a fit method in „Metody estymacji” and the legends: „Największa wiarygodność”.
+ *
+ * @param {string} method the method's name in the result
+ * @returns {string} the Polish name
+ */
+export function methodLegend(method) {
+  return Object.hasOwn(texts.fitMethods, method) ? texts.fitMethods[method].legend : method;
+}
+
+/**
+ * The name of a curve on a chart: its distribution, and its method when the chart draws more
+ * than one („Log-normalny, L-momenty”), so that the names tell the curves apart.
+ *
+ * @param {object} fit a combination of the result
+ * @param {boolean} named whether the method is named
+ * @returns {string} the name
+ */
+function curveName(fit, named) {
+  const name = legendName(fit.distribution_name);
+  return named ? t(texts.combination, { name, method: methodName(fit.fit_method) }) : name;
+}
+
+/**
+ * Whether combinations name their methods (curves, rows, columns): more than one method is
+ * among them, so a name tells them apart.
+ *
+ * @param {object[]} fits the combinations drawn or listed
+ * @returns {boolean} whether they do
+ */
+export function namesMethods(fits) {
+  return new Set(fits.map((fit) => fit.fit_method)).size > 1;
+}
+
 /** The highest the plot frames, as a multiple of the largest annual maximum. */
 const FRAME_LIMIT = 10;
 
 /**
- * The top of the plot's frame: the largest annual maximum or the active distribution's
+ * The top of the plot's frame: the largest annual maximum or the active combination's
  * largest quantile of the run, at most ten times the largest maximum. A curve that leaves
  * the frame (a fit with a runaway tail on a short series) is cut where it does.
  *
  * @param {object} result the result of the run
- * @param {string} active the name of the active distribution
+ * @param {string|null} active the key of the active combination (fitKey), null for none
  * @returns {number} the top [m³/s]
  */
 export function frameTop(result, active) {
   const largest = extent(result.empirical.values_sorted)?.[1] ?? 0;
-  const fit = result.distributions.find((item) => item.distribution_name === active);
+  const fit = result.distributions.find((item) => fitKey(item) === active);
   const top = fit ? (extent(fit.quantiles)?.[1] ?? largest) : largest;
   return Math.min(Math.max(largest, top), largest * FRAME_LIMIT);
 }
@@ -48,32 +96,58 @@ const SHAPE_TAIL = 0.01;
 
 /**
  * The top of the density and distribution-function charts: the largest annual maximum or the
- * active distribution's largest quantile of p ≥ 1% on the curves, within the probability
+ * active combination's largest quantile of p ≥ 1% on the curves, within the probability
  * plot's frame. Further out the density lies on the axis and F is 1, so the body, where the
  * distributions differ, keeps the width.
  *
  * @param {object} result the result of the run
- * @param {object[]} fits the distributions drawn (of the curves' run, else of the result)
- * @param {string} active the name of the active distribution
+ * @param {object[]} fits the combinations drawn (of the curves' run, else of the result)
+ * @param {string|null} active the key of the active combination, null for none
  * @returns {number} the top [m³/s]
  */
 function shapeTop(result, fits, active) {
   const largest = extent(result.empirical.values_sorted)?.[1] ?? 0;
-  const fit = fits.find((item) => item.distribution_name === active);
+  const fit = fits.find((item) => fitKey(item) === active);
   const body = fit ? fit.quantiles.filter((_, index) => fit.exceedance_probabilities[index] >= SHAPE_TAIL - 1e-9) : [];
   return Math.min(Math.max(largest, extent(body)?.[1] ?? largest), frameTop(result, active)) * 1.08;
 }
 
 /**
+ * The legend of a chart: the annual maxima and a key of the colours (the distributions
+ * drawn), then on a line of its own a key of the line styles (the fit methods drawn), not an
+ * entry per curve.
+ *
+ * @param {object[]} fits the combinations drawn
+ * @param {object} maxima the legend item of the annual maxima
+ * @returns {object[]} the legend items
+ */
+function legendOf(fits, maxima) {
+  const names = DISTRIBUTIONS.filter((name) => fits.some((fit) => fit.distribution_name === name));
+  const methods = FIT_METHODS.filter((method) => fits.some((fit) => fit.fit_method === method));
+  const items = [maxima];
+  if (names.length) {
+    items.push({ kind: "text", label: texts.chart.keyDistributions });
+    for (const name of names) items.push({ kind: "stroke", cls: DISTRIBUTION_CLASS[name], label: legendName(name) });
+  }
+  if (methods.length) {
+    items.push({ kind: "break" }, { kind: "text", label: texts.chart.keyMethods });
+    for (const method of methods) items.push({ kind: "stroke", cls: METHOD_CLASS[method], label: methodLegend(method) });
+  }
+  return items;
+}
+
+/**
  * The spec of the probability plot.
  *
- * @param {{result: object, curves: object|null, chosen: number|null, active: string}} input
- *   the result of the run, the result of the run on the dense grid (null when it failed),
- *   the return period to mark (null: none) and the name of the active distribution
+ * @param {{result: object, curves: object|null, shown: {distributions: string[],
+ *   methods: string[]}, chosen: number|null, active: string|null}} input the result of the
+ *   run, the result of the run on the dense grid (null when it failed), the combinations
+ *   shown, the return period to mark (null: none) and the key of the active combination
  * @returns {object} the Chart spec
  */
-export function probabilitySpec({ result, curves, chosen, active }) {
-  const fits = (curves || result).distributions || [];
+export function probabilitySpec({ result, curves, shown, chosen, active }) {
+  const fits = shownFits((curves || result).distributions || [], shown);
+  const named = namesMethods(fits);
   const top = frameTop(result, active) * 1.08;
   const series = [
     {
@@ -91,10 +165,10 @@ export function probabilitySpec({ result, curves, chosen, active }) {
       const q = fit.quantiles[index];
       if (Number.isFinite(q) && Math.abs(q) <= top) data.push([p * 100, q]);
     });
-    series.push(curve(fit, result, active, { unit: "m³/s", digits: 1, data }));
+    series.push(curve(fit, active, named, { unit: "m³/s", digits: 1, data }));
   }
   const marks = [];
-  const activeFit = chosen === null ? null : result.distributions.find((fit) => fit.distribution_name === active);
+  const activeFit = chosen === null ? null : result.distributions.find((fit) => fitKey(fit) === active);
   const q = activeFit ? quantileAt(activeFit, chosen) : null;
   const p = activeFit ? percentAt(activeFit, chosen) : null;
   if (q !== null && p !== null) {
@@ -103,8 +177,8 @@ export function probabilitySpec({ result, curves, chosen, active }) {
       x: p,
       y: q,
       guides: "xy",
-      cls: DISTRIBUTION_CLASS[active] || "s1",
-      label: t(texts.chart.peak, { p: shortNumber(p), q: num(q, 1), name: legendName(active) }),
+      cls: DISTRIBUTION_CLASS[activeFit.distribution_name] || "s1",
+      label: t(texts.chart.peak, { p: shortNumber(p), q: num(q, 1), name: curveName(activeFit, named) }),
     });
   }
   return {
@@ -113,36 +187,35 @@ export function probabilitySpec({ result, curves, chosen, active }) {
     y: { label: texts.chart.y, unit: "m³/s" },
     series,
     marks,
-    legend: true,
+    legend: legendOf(fits, { kind: "points", label: texts.chart.points }),
     readout: { series: active },
   };
 }
 
 /**
- * The series of a distribution's curve: its colour, active or dimmed, its legend label (the
- * best one with its AIC).
+ * The classes of a combination's line, on the charts and in its swatches: the distribution's
+ * colour and the fit method's line style.
  *
- * @param {object} fit a distribution of the result (or of the curves' run)
- * @param {object} result the result of the run
- * @param {string} active the name of the active distribution
- * @param {{unit?: string, digits?: number, data: number[][]}} fields the rest of the series
+ * @param {object} fit a combination of the result (or of the curves' run)
+ * @returns {string} the classes
+ */
+export function curveClass(fit) {
+  return [DISTRIBUTION_CLASS[fit.distribution_name] || "s4", METHOD_CLASS[fit.fit_method]].filter(Boolean).join(" ");
+}
+
+/**
+ * The series of a combination's curve: its classes, active or dimmed, and its name.
+ *
+ * @param {object} fit a combination of the result (or of the curves' run)
+ * @param {string|null} active the key of the active combination
+ * @param {boolean} named whether its name holds the method (more than one drawn)
+ * @param {{unit?: string, digits?: number, data: number[][], readout?: boolean}} fields the
+ *   rest of the series
  * @returns {object} the series
  */
-function curve(fit, result, active, fields) {
-  const name = fit.distribution_name;
-  let label = legendName(name);
-  if (name === result.best_distribution) {
-    label = typeof fit.aic === "number"
-      ? t(texts.chart.best, { name: label, aic: num(fit.aic, 1) })
-      : t(texts.chart.bestNoAic, { name: label });
-  }
-  return {
-    id: name,
-    kind: "line",
-    cls: `${DISTRIBUTION_CLASS[name] || "s4"} ${name === active ? "active" : "dim"}`,
-    label,
-    ...fields,
-  };
+function curve(fit, active, named, fields) {
+  const key = fitKey(fit);
+  return { id: key, kind: "line", cls: `${curveClass(fit)} ${key === active ? "active" : "dim"}`, label: curveName(fit, named), ...fields };
 }
 
 /**
@@ -184,28 +257,43 @@ function clipped(data, ceiling) {
 }
 
 /**
- * The spec of the probability density chart: the density of every distribution against Q,
- * the annual maxima as a rug on the Q axis. The frame is the active distribution's: its
- * largest density with the axis's headroom, so a distribution with a spike (a GEV near its
- * bound on a short series) neither flattens it nor leaves the frame; such a curve is
- * clipped at the top.
+ * The series of a curve of a small chart (the density, the distribution function): with more
+ * than one method drawn its readout reads the active curve only, as a row for each of up to
+ * sixteen curves would not fit the small frame.
  *
- * @param {{result: object, curves: object|null, active: string}} input the result of the
- *   run, the result of the run on the dense grid (null when it failed) and the name of the
- *   active distribution
+ * @param {object} fit a combination of the curves' run (or of the result)
+ * @param {string|null} active the key of the active combination
+ * @param {boolean} named whether more than one method is drawn
+ * @param {{digits?: number, data: number[][]}} fields the rest of the series
+ * @returns {object} the series
+ */
+function smallCurve(fit, active, named, fields) {
+  return curve(fit, active, named, named && fitKey(fit) !== active ? { ...fields, readout: false } : fields);
+}
+
+/**
+ * The spec of the probability density chart: the density of every combination shown against
+ * Q, the annual maxima as a rug on the Q axis. The frame is the active combination's: its
+ * largest density with the axis's headroom, so a curve with a spike (a GEV near its bound on
+ * a short series) neither flattens it nor leaves the frame; such a curve is clipped at the
+ * top.
+ *
+ * @param {{result: object, curves: object|null, shown: {distributions: string[],
+ *   methods: string[]}, active: string|null}} input the result of the run, the result of
+ *   the run on the dense grid (null when it failed), the combinations shown and the key of
+ *   the active one
  * @returns {object} the Chart spec (small)
  */
-export function densitySpec({ result, curves, active }) {
-  const fits = (curves || result).distributions || [];
+export function densitySpec({ result, curves, shown, active }) {
+  const fits = shownFits((curves || result).distributions || [], shown);
+  const named = namesMethods(fits);
   const top = shapeTop(result, fits, active);
   const drawn = fits.map((fit) => ({ fit, data: againstQ(fit, top, (index) => (fit.densities || [])[index]) }));
-  const own = drawn.find((item) => item.fit.distribution_name === active);
+  const own = drawn.find((item) => fitKey(item.fit) === active);
   const peak = own ? extent(own.data.map(([, y]) => y))?.[1] : undefined;
   // The axis's own rounding of a small chart (5 ticks, 8% headroom), fixed as its top
   const ceiling = peak === undefined ? undefined : niceDomain([0, peak], { count: 5 }).max;
-  const series = drawn.map(({ fit, data }) =>
-    curve(fit, result, active, { data: ceiling === undefined ? data : clipped(data, ceiling) }),
-  );
+  const series = drawn.map(({ fit, data }) => smallCurve(fit, active, named, { data: ceiling === undefined ? data : clipped(data, ceiling) }));
   series.push({ id: "maxima", kind: "rug", label: texts.chart.points, data: result.annual_maxima });
   return {
     size: "small",
@@ -213,23 +301,25 @@ export function densitySpec({ result, curves, active }) {
     x: { label: texts.shape.x },
     y: { label: texts.shape.densityY, unit: texts.shape.densityUnit, ...(ceiling === undefined ? {} : { max: ceiling }) },
     series,
-    legend: true,
+    legend: legendOf(fits, { kind: "rug", label: texts.chart.points }),
     readout: { series: active, x: readoutQ, value: (value) => shortNumber(value) },
   };
 }
 
 /**
- * The spec of the distribution-function chart: F = 1 − p of every distribution against Q,
- * the annual maxima as points at their empirical F.
+ * The spec of the distribution-function chart: F = 1 − p of every combination shown against
+ * Q, the annual maxima as points at their empirical F.
  *
- * @param {{result: object, curves: object|null, active: string}} input as for `densitySpec`
+ * @param {{result: object, curves: object|null, shown: {distributions: string[],
+ *   methods: string[]}, active: string|null}} input as for `densitySpec`
  * @returns {object} the Chart spec (small)
  */
-export function distributionSpec({ result, curves, active }) {
-  const fits = (curves || result).distributions || [];
+export function distributionSpec({ result, curves, shown, active }) {
+  const fits = shownFits((curves || result).distributions || [], shown);
+  const named = namesMethods(fits);
   const top = shapeTop(result, fits, active);
   const series = fits.map((fit) =>
-    curve(fit, result, active, { digits: 3, data: againstQ(fit, top, (index) => 1 - fit.exceedance_probabilities[index]) }),
+    smallCurve(fit, active, named, { digits: 3, data: againstQ(fit, top, (index) => 1 - fit.exceedance_probabilities[index]) }),
   );
   const { values_sorted: values, exceedance_prob: exceedance } = result.empirical;
   series.push({
@@ -245,7 +335,7 @@ export function distributionSpec({ result, curves, active }) {
     x: { label: texts.shape.x },
     y: { label: texts.shape.distributionY, min: 0, max: 1 },
     series,
-    legend: true,
+    legend: legendOf(fits, { kind: "points", label: texts.chart.points }),
     readout: { series: active, x: readoutQ },
   };
 }

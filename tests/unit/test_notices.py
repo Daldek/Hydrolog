@@ -66,7 +66,11 @@ SAMPLES = {
         "reason": "out_of_range",
         "cause": "The method of moments cannot fit the Weibull distribution",
     },
-    OutsideSupport: {"distribution": "pearson3", "values": [81.6, 87.2]},
+    OutsideSupport: {
+        "distribution": "pearson3",
+        "fit_method": "l_moments",
+        "values": [81.6, 87.2],
+    },
     IncompleteYears: {
         "skipped": 2,
         "total": 31,

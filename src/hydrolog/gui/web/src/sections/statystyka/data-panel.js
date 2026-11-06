@@ -1,9 +1,9 @@
 // The panel Dane of „Statystyka przepływów”: the series (a file of the session with its
 // columns read from the header, or pasted annual maxima; before either, a hint and the
-// guide's worked example) and the distributions with the return periods. The fields are
-// the catalog's (forms/model.js, the generated controls), laid out as the mockup's steps.
+// guide's worked example), the combinations of distribution and fit method shown (filters of
+// the one run of all of them) and the return periods. The fields are the catalog's
+// (forms/model.js, the generated controls), laid out as the mockup's steps.
 
-import { ChoiceField } from "../../controls/choice-field.js";
 import { describedBy, FieldLabel, FieldNotes, richText } from "../../controls/field.js";
 import { FileField } from "../../controls/file-field.js";
 import { HandoffImport, HandoffOrigin } from "../../handoff/handoff-panel.js";
@@ -19,7 +19,9 @@ import { routeHash } from "../../router.js";
 import { Seg } from "../../ui/seg.js";
 import { EmptyHint } from "../../ui/empty-hint.js";
 import { InfoButton } from "../../ui/info-button.js";
-import { columnOption, resolveColumn, shortNumber } from "./state.js";
+import { legendName, methodLegend } from "./charts.js";
+import { columnOption, DISTRIBUTION_CLASS, DISTRIBUTIONS, FIT_METHODS, METHOD_CLASS, resolveColumn, shortNumber } from "./state.js";
+import { Stroke } from "./swatch.js";
 
 const ID = "st";
 
@@ -115,10 +117,43 @@ function FileBox({ path, file, preview }) {
   `;
 }
 
+/**
+ * A multiple choice of the combinations shown („Rozkłady”, „Metody estymacji”): a chip per
+ * value with its swatch, pressed while shown; the last one pressed stays, so something is
+ * always shown. Nothing is recomputed: the run fitted every combination.
+ *
+ * @param {{name: string, label: string, items: Array<{value: string, label: string,
+ *   cls: string, title?: string}>, ticked: string[], onToggle: (value: string, on: boolean)
+ *   => void}} props the filter's name, its label, its values (with their swatch classes and
+ *   the catalog's meanings), the values ticked and the change of one of them
+ * @returns {object} the field
+ */
+function ShownChoice({ name, label, items, ticked, onToggle }) {
+  const labelId = `${ID}-${name}-label`;
+  return html`
+    <div class="field st-shown" data-shown=${name}>
+      <span class="label" id=${labelId}>${label}</span>
+      <div class="chips" role="group" aria-labelledby=${labelId}>
+        ${items.map((item) => {
+          const on = ticked.includes(item.value);
+          return html`<button
+            type="button"
+            class=${`chip${on ? " on" : ""}`}
+            aria-pressed=${on ? "true" : "false"}
+            disabled=${on && ticked.length === 1}
+            title=${item.title}
+            onClick=${() => onToggle(item.value, !on)}
+          ><${Stroke} cls=${item.cls} />${item.label}</button>`;
+        })}
+      </div>
+    </div>
+  `;
+}
+
 /** The options the panel shows, by the source of the series. */
 const SHOWN = {
-  file: ["input_file", "value_column", "date_column", "distribution", "fit_method", "return_periods"],
-  paste: ["values", "distribution", "fit_method", "return_periods"],
+  file: ["input_file", "value_column", "date_column", "return_periods"],
+  paste: ["values", "return_periods"],
 };
 
 /**
@@ -126,20 +161,25 @@ const SHOWN = {
  *
  * @param {{model: object, values: object, source: "file"|"paste", errors: object,
  *   onValue: (name: string, value: any) => void, onSource: (source: string) => void,
- *   session: object|null, preview: object, periods: number[], stressed: number|null,
+ *   session: object|null, preview: object, shown: {distributions: string[],
+ *   methods: string[]}, onShown: (filter: "distributions"|"methods", value: string,
+ *   on: boolean) => void, periods: number[], stressed: number|null,
  *   onChosen: (period: number|null) => void, seriesMeta: string|null, formId: string,
  *   onSubmit: () => void}} props the catalog's model and the form's values, the source,
  *   the messages by option, the change handlers, the session, the columns of the chosen
- *   file, the return periods with the stressed one (null for „brak”), the length of the
- *   series computed, the form's id and its submit handler
+ *   file, the combinations shown and the change of a filter, the return periods with the
+ *   stressed one (null for „brak”), the length of the series computed, the form's id and
+ *   its submit handler
  * @returns {object} the panel's body
  */
 export function DataPanel(props) {
-  const { model, values, source, received, errors, onValue, onSource, session, preview, periods, stressed, onChosen, seriesMeta, formId, onSubmit } = props;
+  const { model, values, source, received, errors, onValue, onSource, session, preview, shown, onShown, periods, stressed, onChosen, seriesMeta, formId, onSubmit } = props;
   const field = (name) => model.fields.find((item) => item.name === name);
-  // One method a run until the view of the combinations (plan 2026-11-06, D7): no „all”
-  const methodField = field("fit_method");
-  const oneMethod = methodField && { ...methodField, choices: methodField.choices.filter((choice) => choice.value !== "all") };
+  // The catalog's Polish meaning of a value of `distribution` or `fit_method`: a chip's title
+  const meaning = (name, value) => {
+    const choice = (field(name)?.choices || []).find((item) => item.value === value);
+    return choice ? choice.meaning : undefined;
+  };
   const required = (item) => isRequired(model, item, values);
   const error = (name) => (typeof errors[name] === "object" ? errors[name].text : errors[name]);
   const path = values.input_file || "";
@@ -149,7 +189,7 @@ export function DataPanel(props) {
     .filter(([name, message]) => message && !SHOWN[source].includes(name))
     .map(([, message]) => message);
   const titled = loose.find((message) => typeof message === "object" && message.title);
-  const fits = values.distribution && values.distribution !== "all" ? 1 : 4;
+  const fits = shown.distributions.length * shown.methods.length;
   const rows = preview.state === "ok" && source === "file" ? plural(preview.table.rows, texts.rowForms) : null;
   return html`
     <form id=${formId} class="st-form" novalidate onSubmit=${(event) => {
@@ -225,24 +265,21 @@ export function DataPanel(props) {
               `}
         </${Step}>
         <${Step} num=${2} title=${texts.steps.distributions} meta=${t(texts.distributionsMeta, { count: fits })}>
-          <${ChoiceField}
-            field=${field("distribution")}
-            id=${`${ID}-distribution`}
-            value=${values.distribution}
-            error=${error("distribution")}
-            required=${false}
-            onInput=${(value) => onValue("distribution", value)}
+          <${ShownChoice}
+            name="distributions"
+            label=${texts.shown.distributions}
+            items=${DISTRIBUTIONS.map((name) => ({ value: name, label: legendName(name), cls: DISTRIBUTION_CLASS[name], title: meaning("distribution", name) }))}
+            ticked=${shown.distributions}
+            onToggle=${(value, on) => onShown("distributions", value, on)}
           />
-          <${ChoiceField}
-            field=${oneMethod}
-            id=${`${ID}-fit_method`}
-            value=${values.fit_method}
-            error=${error("fit_method")}
-            select=${true}
-            required=${false}
-            onInput=${(value) => onValue("fit_method", value)}
+          <${ShownChoice}
+            name="methods"
+            label=${texts.shown.methods}
+            items=${FIT_METHODS.map((method) => ({ value: method, label: methodLegend(method), cls: METHOD_CLASS[method], title: meaning("fit_method", method) }))}
+            ticked=${shown.methods}
+            onToggle=${(value, on) => onShown("methods", value, on)}
           />
-          <p class="note">${texts.fitMethodNote} <${InfoButton} id="stats-fit-method" /></p>
+          <p class="note">${texts.shown.note} <${InfoButton} id="stats-fit-method" /></p>
           <${SeriesField}
             field=${field("return_periods")}
             id=${`${ID}-return_periods`}

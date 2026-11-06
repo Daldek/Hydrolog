@@ -940,7 +940,8 @@ class FloodFrequencyAnalysis:
         if outside.any():
             values = [float(value) for value in np.sort(self._data[outside])]
             warnings.warn(
-                OutsideSupport(distribution=name, values=values), stacklevel=3
+                OutsideSupport(distribution=name, fit_method=fit_method, values=values),
+                stacklevel=3,
             )
 
         exceedance = 1.0 / self._return_periods
