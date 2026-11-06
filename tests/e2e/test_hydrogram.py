@@ -1438,6 +1438,8 @@ def test_kalkulatory_sets_the_tc_method_through_the_route(
     shows(page, *MOCKUP[("scs", "nrcs", "II")])
     expect(field(page, "tc_method")).to_have_value("nrcs")
     expect(page).to_have_url(re.compile(r"#hydrogram$"))
+    # The inputs are stored by an effect after the next frame, later on a slower runner
+    page.wait_for_function(f"() => ({STORED})()?.tc_method === 'nrcs'")
     stored = page.evaluate(STORED)
     assert (stored["tc_method"], stored["tc_manual"], stored["uh_model"]) == (
         "nrcs",
@@ -1450,7 +1452,7 @@ def test_kalkulatory_sets_the_tc_method_through_the_route(
     fresh.open("#hydrogram/tc_method/giandotti")
     expect(fresh.page).to_have_url(re.compile(r"#hydrogram$"))
     expect(field(fresh.page, "tc_method")).to_have_count(0)
-    assert fresh.page.evaluate(STORED)["tc_method"] == "giandotti"
+    fresh.page.wait_for_function(f"() => ({STORED})()?.tc_method === 'giandotti'")
     choose(fresh.page, "hg-uh-label", "SCS")
     expect(field(fresh.page, "tc_method")).to_have_value("giandotti")
 
