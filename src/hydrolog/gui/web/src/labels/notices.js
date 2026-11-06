@@ -108,6 +108,10 @@ export const notices = {
       text: "Dopasowany rozkład {distribution} nie obejmuje maksimów {values}: jego AIC jest nieokreślone, rozkład jest na końcu rankingu.",
       plain: "Dopasowany rozkład nie obejmuje wszystkich maksimów: jego AIC jest nieokreślone.",
     },
+    homogeneity_rejected: {
+      text: "Jednorodność ciągu odrzucona na poziomie istotności α = {alpha} przez: {tests}.",
+      plain: "Test odrzuca jednorodność ciągu.",
+    },
     unknown_hietogram_type: {
       text: "Nieznany typ hietogramu {hietogram_type}; dozwolone: {allowed}.",
       plain: "Nieznany typ hietogramu.",

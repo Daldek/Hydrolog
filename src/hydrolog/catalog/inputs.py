@@ -4,9 +4,9 @@ Long data must not be pasted by agents, so every operation that takes a series, 
 of stations or a watershed accepts either inline values or a file. This module turns
 both into the objects the library works with:
 
-* :func:`load_series` -- ``values``/``dates`` inline *or* ``input_file`` +
-  ``value_column`` (+ ``date_column``) -> :class:`Series` (NumPy arrays; dates as
-  ``datetime64[D]``);
+* :func:`load_series` -- ``values`` with ``dates`` or ``years`` inline *or*
+  ``input_file`` + ``value_column`` (+ ``date_column`` or ``year_column``) ->
+  :class:`Series` (NumPy arrays; dates as ``datetime64[D]``, years as integers);
 * :func:`load_watershed` -- an inline ``watershed`` object *or* a ``watershed_file``
   (``WatershedParameters`` JSON) -> :class:`~hydrolog.morphometry.WatershedParameters`;
 * :func:`load_stations` -- inline records *or* a ``stations_file`` (columns ``name``,
@@ -38,7 +38,8 @@ Numbers are read from ``12.5`` or ``12,5`` (decimal comma); an empty cell, ``NaN
 ``NA``, ``N/A``, ``null`` and ``none`` are missing values (``NaN``). A column name is
 matched exactly or, when unique, by its name without the ``[unit]`` suffix (``Q``
 finds ``Q [m3/s]``). Dates are ISO ``YYYY-MM-DD`` (a midnight time part is ignored)
-and must be strictly increasing in a series.
+and must be strictly increasing in a series; so must the years of annual values
+without dates, whole numbers.
 
 Errors
 ------
@@ -606,19 +607,88 @@ def _to_dates(
     return np.array(iso, dtype="datetime64[D]")
 
 
-def _check_increasing(dates: NDArray[np.datetime64], source: _Source) -> None:
-    if len(dates) < 2:
+def _check_increasing(
+    labels: NDArray[Any], source: _Source, what: str = "date"
+) -> None:
+    """Require the dates (or the years, ``what="year"``) to increase strictly."""
+    if len(labels) < 2:
         return
-    bad = np.flatnonzero(dates[1:] <= dates[:-1])
+    bad = np.flatnonzero(labels[1:] <= labels[:-1])
     if bad.size:
         row = int(bad[0]) + 2
         source.fail(
-            f"row {row}: date {dates[row - 1]} does not come after {dates[row - 2]}",
-            reason="dates_not_increasing",
-            hint="Dates of a series must be strictly increasing (sorted, unique).",
+            f"row {row}: {what} {labels[row - 1]} does not come after "
+            f"{labels[row - 2]}",
+            reason=f"{what}s_not_increasing",
+            hint=(
+                f"{what.capitalize()}s of a series must be strictly increasing "
+                "(sorted, unique)."
+            ),
             row=row,
-            value=str(dates[row - 1]),
+            value=str(labels[row - 1]),
         )
+
+
+def _to_year(cell: object) -> int | None:
+    """Return the whole number of a cell, or ``None`` if it is missing or not one."""
+    try:
+        value = _to_float(cell)
+    except ValueError:
+        return None
+    if not math.isfinite(value) or not value.is_integer():
+        return None
+    return int(value)
+
+
+def _table_years(table: Table, name: str) -> NDArray[np.int64]:
+    """Read the year column of a table: whole numbers, strictly increasing."""
+    column = table.resolve_column(name, option="year_column")
+    source = _Source(path=table.source)
+    years = np.empty(table.n_rows, dtype=np.int64)
+    for row, cell in enumerate(table.data[column]):
+        year = _to_year(cell)
+        if year is None:
+            source.fail(
+                f"row {row + 1}, column {column!r}: {_shown(cell)!r} is not a year "
+                "(a whole number)",
+                reason="bad_year",
+                column=column,
+                row=row + 1,
+                value=_shown(cell),
+            )
+        years[row] = year
+    _check_increasing(years, source, "year")
+    return years
+
+
+def _inline_years(
+    years: Sequence[object] | NDArray[Any], count: int
+) -> NDArray[np.int64]:
+    """Return the inline years of ``count`` values (whole, strictly increasing)."""
+    source = _Source(option="years")
+    if isinstance(years, str) or not isinstance(years, Sequence | np.ndarray):
+        source.fail("must be a list of whole numbers", reason="type")
+    cells = years.tolist() if isinstance(years, np.ndarray) else list(years)
+    if len(cells) != count:
+        source.fail(
+            f"{len(cells)} years for {count} values",
+            reason="length_mismatch",
+            years=len(cells),
+            values=count,
+        )
+    out = np.empty(len(cells), dtype=np.int64)
+    for index, cell in enumerate(cells):
+        year = _to_year(cell)
+        if year is None:
+            source.fail(
+                f"item {index} is not a year (a whole number): {_shown(cell)!r}",
+                reason="type",
+                index=index,
+                value=_shown(cell),
+            )
+        out[index] = year
+    _check_increasing(out, source, "year")
+    return out
 
 
 # --- series ---------------------------------------------------------------------------
@@ -626,7 +696,7 @@ def _check_increasing(dates: NDArray[np.datetime64], source: _Source) -> None:
 
 @dataclass(frozen=True, eq=False)
 class Series:
-    """A series of values with optional dates.
+    """A series of values with optional dates or years.
 
     Attributes
     ----------
@@ -636,11 +706,15 @@ class Series:
         ``datetime64[D]`` dates (strictly increasing), same length as ``values``.
     source : str
         ``"inline"`` or the path of the file the series was read from.
+    years : numpy.ndarray or None
+        ``int64`` years of annual values without dates (strictly increasing), same
+        length as ``values``; ``None`` when not given.
     """
 
     values: NDArray[np.float64]
     dates: NDArray[np.datetime64] | None
     source: str
+    years: NDArray[np.int64] | None = None
 
     def __len__(self) -> int:
         """Return the number of values."""
@@ -652,10 +726,13 @@ class Series:
         return int(np.isnan(self.values).sum())
 
     def without_missing(self) -> Series:
-        """Return the series without its missing values (dates stay aligned)."""
+        """Return the series without its missing values (dates and years aligned)."""
         keep = ~np.isnan(self.values)
         dates = None if self.dates is None else self.dates[keep]
-        return Series(values=self.values[keep], dates=dates, source=self.source)
+        years = None if self.years is None else self.years[keep]
+        return Series(
+            values=self.values[keep], dates=dates, source=self.source, years=years
+        )
 
 
 def _inline_numbers(values: Sequence[object] | NDArray[Any]) -> NDArray[np.float64]:
@@ -681,7 +758,11 @@ def _inline_numbers(values: Sequence[object] | NDArray[Any]) -> NDArray[np.float
 
 
 def _series_from_table(
-    table: Table, value_column: str | None, date_column: str | None, require_dates: bool
+    table: Table,
+    value_column: str | None,
+    date_column: str | None,
+    year_column: str | None,
+    require_dates: bool,
 ) -> Series:
     source = _Source(path=table.source)
     if value_column is None:
@@ -699,6 +780,12 @@ def _series_from_table(
     values = table.numbers(value_column, option="value_column")
     dates: NDArray[np.datetime64] | None = None
     if date_column is not None:
+        if year_column is not None:
+            raise InvalidParameterError(
+                "Option 'year_column' applies to values without dates: a daily series "
+                "takes its years from 'date_column'",
+                details={"option": "year_column", "reason": "conflict"},
+            )
         dates = table.dates(date_column, option="date_column")
         _check_increasing(dates, source)
     elif require_dates:
@@ -707,24 +794,28 @@ def _series_from_table(
             details={"option": "date_column", "reason": "required"},
             hint=f"Available columns: {_listed(table.columns)}.",
         )
+    years = None if year_column is None else _table_years(table, year_column)
     if len(values) == 0:
         source.fail("the file has no data rows", reason="empty")
-    return Series(values=values, dates=dates, source=str(table.source))
+    return Series(values=values, dates=dates, source=str(table.source), years=years)
 
 
 def load_series(
     *,
     values: Sequence[object] | NDArray[Any] | None = None,
     dates: Sequence[object] | NDArray[Any] | None = None,
+    years: Sequence[object] | NDArray[Any] | None = None,
     input_file: str | os.PathLike[str] | None = None,
     value_column: str | None = None,
     date_column: str | None = None,
+    year_column: str | None = None,
     require_dates: bool = False,
 ) -> Series:
     """Load a series from inline values or from a file.
 
-    Exactly one source is used: inline ``values`` (with optional ``dates``), or
-    ``input_file`` (with ``value_column`` and optional ``date_column``).
+    Exactly one source is used: inline ``values`` (with optional ``dates`` or
+    ``years``), or ``input_file`` (with ``value_column`` and optional ``date_column``
+    or ``year_column``).
 
     Parameters
     ----------
@@ -733,35 +824,43 @@ def load_series(
     dates : sequence of str, optional
         Inline ISO dates ``YYYY-MM-DD`` (``datetime.date`` objects and ``datetime64``
         arrays are accepted too), one per value.
+    years : sequence of int, optional
+        Inline years of annual values without dates, one per value: whole numbers,
+        strictly increasing (gaps allowed).
     input_file : str or os.PathLike, optional
         CSV or JSON file (see :func:`read_table`).
     value_column : str, optional
         Column with the values; may be omitted when the file has one column.
     date_column : str, optional
         Column with ISO dates.
+    year_column : str, optional
+        Column with the years of annual values without dates (whole numbers,
+        strictly increasing).
     require_dates : bool, optional
         Raise when no dates are given.
 
     Returns
     -------
     Series
-        Values, dates (``None`` when not given) and the source.
+        Values, dates and years (``None`` when not given) and the source.
 
     Raises
     ------
     InvalidParameterError
         If the source is ambiguous or missing, file options are mixed with inline
-        values, the lengths differ, or dates are required but absent.
+        values, years are given with dates, the lengths differ, inline years are not
+        whole numbers or not strictly increasing, or dates are required but absent.
     NotFoundError
         If ``input_file`` does not exist.
     InputDataError
-        If the file is malformed, has no data, a bad number or date, or dates that
-        are not strictly increasing.
+        If the file is malformed, has no data, a bad number, date or year, or dates
+        or years that are not strictly increasing.
     """
-    inline = values is not None or dates is not None
+    inline = values is not None or dates is not None or years is not None
     if inline == (input_file is not None):
         raise InvalidParameterError(
-            "Give either inline 'values' (with optional 'dates') or 'input_file'",
+            "Give either inline 'values' (with optional 'dates' or 'years') or "
+            "'input_file'",
             details={
                 "option": "input_file" if input_file is not None else "values",
                 "reason": "one_of",
@@ -770,18 +869,33 @@ def load_series(
         )
     if input_file is not None:
         return _series_from_table(
-            read_table(input_file), value_column, date_column, require_dates
+            read_table(input_file),
+            value_column,
+            date_column,
+            year_column,
+            require_dates,
         )
-    for option, given in (("value_column", value_column), ("date_column", date_column)):
+    for option, given in (
+        ("value_column", value_column),
+        ("date_column", date_column),
+        ("year_column", year_column),
+    ):
         if given is not None:
             raise InvalidParameterError(
                 f"Option {option!r} applies to 'input_file', not to inline values",
                 details={"option": option, "reason": "conflict"},
             )
     if values is None:
+        given_name = "dates" if dates is not None else "years"
         raise InvalidParameterError(
-            "Inline 'dates' need inline 'values'",
+            f"Inline {given_name!r} need inline 'values'",
             details={"option": "values", "reason": "required"},
+        )
+    if dates is not None and years is not None:
+        raise InvalidParameterError(
+            "Option 'years' applies to values without dates: a daily series takes its "
+            "years from 'dates'",
+            details={"option": "years", "reason": "conflict"},
         )
     numbers_array = _inline_numbers(values)
     if len(numbers_array) == 0:
@@ -807,7 +921,10 @@ def load_series(
             "Option 'dates' is required: this command needs dates",
             details={"option": "dates", "reason": "required"},
         )
-    return Series(values=numbers_array, dates=date_array, source="inline")
+    year_array = None if years is None else _inline_years(years, len(numbers_array))
+    return Series(
+        values=numbers_array, dates=date_array, source="inline", years=year_array
+    )
 
 
 # --- hydrograph -----------------------------------------------------------------------

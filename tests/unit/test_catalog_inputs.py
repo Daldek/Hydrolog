@@ -772,12 +772,78 @@ class TestLoadSeriesArguments:
         for kwargs, option in (
             ({"value_column": "Q"}, "value_column"),
             ({"date_column": "d"}, "date_column"),
+            ({"year_column": "y"}, "year_column"),
         ):
             error = failure(
                 lambda kwargs=kwargs: load_series(values=[1], **kwargs),
                 InvalidParameterError,
             )
             assert error.details == {"option": option, "reason": "conflict"}
+
+
+class TestLoadSeriesYears:
+    """Years of annual values without dates, inline or from a column."""
+
+    def test_inline_years_are_integers_aligned_with_the_values(self):
+        series = load_series(values=[1, None, 3], years=[2001, 2002.0, 2004])
+        assert series.years is not None and series.years.dtype == np.int64
+        assert series.without_missing().years.tolist() == [2001, 2004]
+
+    @pytest.mark.parametrize(
+        ("years", "reason"),
+        [
+            ([2001, 2001.5, 2003], "type"),
+            ([2001, None, 2003], "type"),
+            ([2001, 2003, 2003], "years_not_increasing"),
+            ([2001, 2002], "length_mismatch"),
+        ],
+    )
+    def test_bad_inline_years(self, years, reason):
+        error = failure(
+            lambda: load_series(values=[1, 2, 3], years=years), InvalidParameterError
+        )
+        assert (error.details["option"], error.details["reason"]) == ("years", reason)
+
+    def test_a_year_column_gives_the_years_of_the_rows(self, tmp_path):
+        path = write(tmp_path, "maxima.csv", "year,Q\n2001,10\n2002,\n2004,12\n")
+        series = load_series(input_file=path, value_column="Q", year_column="year")
+        assert series.without_missing().years.tolist() == [2001, 2004]
+
+    @pytest.mark.parametrize(
+        ("rows", "reason"),
+        [
+            ("2001,10\n2001.5,12\n", "bad_year"),
+            ("2001,10\n,12\n", "bad_year"),
+            ("2002,10\n2001,12\n", "years_not_increasing"),
+        ],
+    )
+    def test_a_bad_year_cell_is_a_data_error_with_its_row(self, tmp_path, rows, reason):
+        path = write(tmp_path, "maxima.csv", "year,Q\n" + rows)
+        error = failure(
+            lambda: load_series(input_file=path, value_column="Q", year_column="year")
+        )
+        assert (error.details["reason"], error.details["row"]) == (reason, 2)
+
+    def test_years_conflict_with_dates(self, tmp_path):
+        """A daily series takes its years from its dates."""
+        inline = failure(
+            lambda: load_series(
+                values=[1, 2], dates=["2020-01-01", "2020-01-02"], years=[2020, 2021]
+            ),
+            InvalidParameterError,
+        )
+        path = write(tmp_path, "daily.csv", "date,year,Q\n2020-01-01,2020,1\n")
+        from_file = failure(
+            lambda: load_series(
+                input_file=path,
+                value_column="Q",
+                date_column="date",
+                year_column="year",
+            ),
+            InvalidParameterError,
+        )
+        assert inline.details == {"option": "years", "reason": "conflict"}
+        assert from_file.details == {"option": "year_column", "reason": "conflict"}
 
 
 # --- watershed ------------------------------------------------------------------------

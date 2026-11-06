@@ -145,7 +145,7 @@ anyio.run(call_tool)
 
 ## Capabilities
 
-47 commands in 16 groups, all computed offline except `precip pmaxtp`, the only one that opens a network connection: it fetches the PMAXTP depth of IMGW-PIB through Obserwator (extra `pmaxtp`). The MCP tool is `hydrolog_` plus the command name with `_`; every command is also available as `hydrolog.run_command("<command>", **options)`.
+48 commands in 16 groups, all computed offline except `precip pmaxtp`, the only one that opens a network connection: it fetches the PMAXTP depth of IMGW-PIB through Obserwator (extra `pmaxtp`). The MCP tool is `hydrolog_` plus the command name with `_`; every command is also available as `hydrolog.run_command("<command>", **options)`.
 
 | Group | Task | CLI command | MCP tool | Python (`hydrolog.operations`) |
 |---|---|---|---|---|
@@ -181,6 +181,7 @@ anyio.run(call_tool)
 | Flow statistics | Characteristic values WWQ to NNQ of a daily series | `stats characteristic` | `hydrolog_stats_characteristic` | `stats_characteristic` |
 | | Day-of-year statistics | `stats daily` | `hydrolog_stats_daily` | `stats_daily` |
 | | Flood quantiles from annual maxima | `stats flood-frequency` | `hydrolog_stats_flood_frequency` | `stats_flood_frequency` |
+| | Homogeneity tests of annual maxima (Mann-Whitney U, Kolmogorov-Smirnov, Pettitt) | `stats homogeneity` | `hydrolog_stats_homogeneity` | `stats_homogeneity` |
 | | Low-flow quantiles from annual minima | `stats low-flow` | `hydrolog_stats_low_flow` | `stats_low_flow` |
 | | Low-flow (drought) sequences below a threshold | `stats low-flow-sequences` | `hydrolog_stats_low_flow_sequences` | `stats_low_flow_sequences` |
 | | Monotonic trend test (Mann-Kendall) | `stats mann-kendall` | `hydrolog_stats_mann_kendall` | `stats_mann_kendall` |

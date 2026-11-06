@@ -298,22 +298,24 @@ def test_a_compact_group_has_one_index_line_for_all_its_commands(monkeypatch):
     monkeypatch.setattr(
         guide_module,
         "_COMPACT_GROUPS",
-        {**_COMPACT_GROUPS, "stats": "compute flow statistics"},
+        {**_COMPACT_GROUPS, "tc": "compute a time of concentration"},
     )
 
     guide = agent_guide("agents")
     by_group = index_lines(section(guide, "Command index"))
 
-    stats = [c for c in COMMANDS if c.group == "stats"]
-    assert len(stats) > 1 and len(by_group["stats"]) == 1
-    line = by_group["stats"][0]
-    assert re.findall(r"`(stats [\w-]+)`", line.split(" (tools")[0]) == [
-        c.name for c in stats
+    tc = [c for c in COMMANDS if c.group == "tc"]
+    assert len(tc) > 1 and len(by_group["tc"]) == 1
+    line = by_group["tc"][0]
+    assert re.findall(r"`(tc [\w-]+)`", line.split(" (tools")[0]) == [
+        c.name for c in tc
     ]
-    assert "`hydrolog_stats_<verb>`" in line and "`commands list`" in line
-    assert line.endswith(": compute flow statistics; summaries: `commands list`.")
-    assert {k: v for k, v in by_group.items() if k != "stats"} == {
-        k: v for k, v in normal.items() if k != "stats"
+    assert "`hydrolog_tc_<verb>`" in line and "`commands list`" in line
+    assert line.endswith(
+        ": compute a time of concentration; summaries: `commands list`."
+    )
+    assert {k: v for k, v in by_group.items() if k != "tc"} == {
+        k: v for k, v in normal.items() if k != "tc"
     }
     assert len(guide.encode("utf-8")) < len(plain.encode("utf-8"))
 

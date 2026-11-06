@@ -103,13 +103,7 @@ One line per command: name, `operation_id`, summary. Options, units, bounds and 
 ### [network: River network][paths]
 - `network stats` (`hydrolog_network_stats`): Compute the order statistics of a river network (Strahler or Shreve).
 ### [stats: Flow statistics][paths]
-- `stats characteristic` (`hydrolog_stats_characteristic`): Compute second-degree characteristic values (WWQ…NNQ) of a daily series
-- `stats daily` (`hydrolog_stats_daily`): Compute day-of-year statistics over all years of a daily series
-- `stats flood-frequency` (`hydrolog_stats_flood_frequency`): Compute flood quantiles for return periods from annual maxima
-- `stats low-flow` (`hydrolog_stats_low_flow`): Compute low-flow quantiles for return periods from annual minima
-- `stats low-flow-sequences` (`hydrolog_stats_low_flow_sequences`): Detect low-flow (drought) sequences below a threshold
-- `stats mann-kendall` (`hydrolog_stats_mann_kendall`): Test a series for a monotonic trend with the Mann–Kendall test
-- `stats monthly` (`hydrolog_stats_monthly`): Compute monthly statistics with a t-Student confidence interval of the mean
+- `stats characteristic`, `stats daily`, `stats flood-frequency`, `stats homogeneity`, `stats low-flow`, `stats low-flow-sequences`, `stats mann-kendall`, `stats monthly` (tools `hydrolog_stats_<verb>`, `-` as `_`): characteristic values, daily and monthly statistics, flood and low-flow frequency, low-flow sequences, and trend and homogeneity tests of flow series; summaries: `commands list`.
 ### [hydrometrics: Hydrometry][paths]
 - `hydrometrics rating-curve` (`hydrolog_hydrometrics_rating_curve`): Fit a rating curve Q = a·(H − H₀)^b to stage–discharge pairs
 - `hydrometrics water-level-zones` (`hydrolog_hydrometrics_water_level_zones`): Delimit Rybczyński water level zones (NTW, STW, WTW) from level series

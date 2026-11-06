@@ -57,6 +57,7 @@ from hydrolog.statistics import (
     calculate_characteristic_values,
     calculate_daily_statistics,
     calculate_monthly_statistics,
+    homogeneity_tests,
     mann_kendall_test,
 )
 from hydrolog.time import ConcentrationTime
@@ -1584,6 +1585,105 @@ class TestMannKendall:
     def test_fewer_than_three_values_are_a_calculation_error(self):
         with pytest.raises(CalculationError) as caught:
             stats.stats_mann_kendall(values=[1.0, 2.0])
+        assert caught.value.details == {"count": 2, "minimum": 3}
+
+
+class TestHomogeneity:
+    """``stats homogeneity``."""
+
+    # A step after five years: Mann-Whitney and K-S reject at 0.05, Pettitt (p 0.066)
+    # only at 0.1.
+    STEP = [52.0, 48.0, 55.0, 50.0, 47.0, 81.0, 86.0, 79.0, 90.0, 84.0]
+
+    def test_annual_maxima_with_a_year_column_equal_the_library_tests(self):
+        output = run(
+            "stats homogeneity",
+            input_file=str(ANNUAL_MAXIMA),
+            value_column="Qmax",
+            year_column="year",
+            split_year=2000,
+        )
+        years = read_table(ANNUAL_MAXIMA).numbers("year").astype(np.int64)
+        assert output.result == homogeneity_tests(
+            _annual_maxima(), years, split_year=2000
+        )
+        assert output.notices == ()
+
+    def test_a_daily_series_is_tested_by_the_maxima_of_its_complete_years(self):
+        values, dates = _calendar_year_series(1991, 2020)
+        output = run("stats homogeneity", values=values, dates=dates, split_year=2001)
+        years = np.arange(1992, 2021)
+        assert output.result == homogeneity_tests(
+            10.0 + years % 7, years, split_year=2001
+        )
+        assert (output.result.split_index, output.result.split_year) == (9, 2001)
+        assert [item.code for item in output.notices] == ["incomplete_years"]
+
+    def test_the_tests_that_reject_are_named_in_a_notice(self):
+        strict = run("stats homogeneity", values=self.STEP, alpha=0.05).notices
+        loose = run("stats homogeneity", values=self.STEP, alpha=0.1).notices
+        assert [(item.code, item.details) for item in strict] == [
+            (
+                "homogeneity_rejected",
+                {"tests": ["mann_whitney", "kolmogorov_smirnov"], "alpha": 0.05},
+            )
+        ]
+        assert loose[0].details["tests"] == [
+            "mann_whitney",
+            "kolmogorov_smirnov",
+            "pettitt",
+        ]
+
+    def test_a_missing_value_leaves_out_its_year(self, tmp_path):
+        cells = [*self.STEP[:3], "", *self.STEP[3:]]
+        path = tmp_path / "maxima.csv"
+        rows = zip(range(2001, 2012), cells, strict=True)
+        path.write_text(
+            "year,Qmax\n" + "".join(f"{year},{cell}\n" for year, cell in rows),
+            encoding="utf-8",
+        )
+        output = run(
+            "stats homogeneity",
+            input_file=str(path),
+            value_column="Qmax",
+            year_column="year",
+        )
+        kept = np.array([2001, 2002, 2003, *range(2005, 2012)])
+        assert output.result == homogeneity_tests(np.array(self.STEP), kept)
+        assert output.result.pettitt.change_point_year == 2007
+        assert output.notices[0].code == "missing_values_removed"
+
+    @pytest.mark.parametrize(
+        ("series", "option"),
+        [
+            ({"values": STEP}, "years"),
+            ({"input_file": str(ANNUAL_MAXIMA), "value_column": "Qmax"}, "year_column"),
+        ],
+    )
+    def test_split_year_needs_the_years(self, series, option):
+        with pytest.raises(InvalidParameterError) as caught:
+            stats.stats_homogeneity(**series, split_year=2005)
+        assert caught.value.details == {"option": option, "reason": "required"}
+
+    def test_a_split_year_that_leaves_a_part_empty_is_refused(self):
+        with pytest.raises(InvalidParameterError) as caught:
+            stats.stats_homogeneity(
+                values=self.STEP, years=list(range(2001, 2011)), split_year=2011
+            )
+        assert (caught.value.details["option"], caught.value.details["reason"]) == (
+            "split_year",
+            "range",
+        )
+
+    @pytest.mark.parametrize("alpha", [0.0, 1.0])
+    def test_alpha_must_be_inside_zero_one(self, alpha):
+        with pytest.raises(InvalidParameterError) as caught:
+            stats.stats_homogeneity(values=self.STEP, alpha=alpha)
+        assert caught.value.details["option"] == "alpha"
+
+    def test_fewer_than_three_annual_maxima_are_a_calculation_error(self):
+        with pytest.raises(CalculationError) as caught:
+            stats.stats_homogeneity(values=[1.0, 2.0])
         assert caught.value.details == {"count": 2, "minimum": 3}
 
 

@@ -305,6 +305,14 @@ class TestSchemas:
             ("hydrolog_commands_list", {}),
             ("hydrolog_commands_schema", {"command": "tc kirpich"}),
             ("hydrolog_stats_mann_kendall", {"values": [3.0, 4.5, 4.0, 6.2, 7.9]}),
+            (
+                "hydrolog_stats_homogeneity",
+                {
+                    "values": [52.0, 48.0, 55.0, 50.0, 47.0, 81.0, 86.0, 79.0],
+                    "years": [2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008],
+                    "split_year": 2006,
+                },
+            ),
         ],
     )
     def test_the_structured_content_of_a_call_validates_against_the_output_schema(
