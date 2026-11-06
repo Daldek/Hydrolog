@@ -129,9 +129,10 @@ class FloodFrequencyResult(JsonResultMixin):
     best_distribution : str
         ``distribution_name`` of the first entry of ``distributions`` (lowest AIC).
     distributions : list of FrequencyAnalysisResult
-        Fitted distributions: parameters, quantiles for the return periods and
-        goodness of fit (K-S, Anderson-Darling, AIC). All four sorted by AIC
-        (best first) for ``distribution="all"``, otherwise the one requested.
+        Fitted distributions: parameters, quantiles for the return periods with the
+        probability density at each [1/(m³/s)] and goodness of fit (K-S,
+        Anderson-Darling, AIC). All four sorted by AIC (best first) for
+        ``distribution="all"``, otherwise the one requested.
     empirical : EmpiricalFrequency
         Empirical frequency of the sample (Weibull plotting positions; values sorted
         descending, exceedance probabilities and return periods of exceedance).

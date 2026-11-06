@@ -103,6 +103,9 @@ class FrequencyAnalysisResult(JsonResultMixin):
         Return periods *T* (years).
     quantiles : NDArray[np.float64]
         Quantile estimates for each return period.
+    densities : NDArray[np.float64]
+        Probability density of the fitted distribution at each of ``quantiles``
+        [1/(m³/s)], in the same order.
     exceedance_probabilities : NDArray[np.float64]
         Exceedance probability 1/*T* for each return period.
     ks_statistic : float
@@ -125,6 +128,7 @@ class FrequencyAnalysisResult(JsonResultMixin):
     parameters: dict[str, float]
     return_periods: NDArray[np.float64]
     quantiles: NDArray[np.float64]
+    densities: NDArray[np.float64]
     exceedance_probabilities: NDArray[np.float64]
     ks_statistic: float
     ks_p_value: float
@@ -888,12 +892,14 @@ class FloodFrequencyAnalysis:
             )
 
         exceedance = 1.0 / self._return_periods
+        densities = np.exp(np.asarray(logpdf_func(quantiles)))  # type: ignore[operator]
 
         return FrequencyAnalysisResult(
             distribution_name=name,
             parameters=params,
             return_periods=self._return_periods.copy(),
             quantiles=np.asarray(quantiles, dtype=np.float64),
+            densities=densities,
             exceedance_probabilities=exceedance,
             ks_statistic=float(ks_stat),
             ks_p_value=float(ks_pval),

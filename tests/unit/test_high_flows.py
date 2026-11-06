@@ -130,6 +130,23 @@ class TestFloodFrequencyAnalysis:
         assert len(result.return_periods) == 3
         assert len(result.quantiles) == 3
 
+    @pytest.mark.parametrize(
+        "fit_method", ["mle", "moments", "l_moments", "least_squares"]
+    )
+    @pytest.mark.parametrize("distribution", list(_DISTRIBUTIONS))
+    def test_densities_are_the_pdf_at_the_quantiles(self, distribution, fit_method):
+        from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
+
+        analysis = FloodFrequencyAnalysis(
+            _FLOODS, return_periods=np.array([1.01, 2.0, 10.0, 100.0, 1000.0])
+        )
+        result = _fit(analysis, distribution, fit_method)
+        dist, _ = _DISTRIBUTIONS[distribution]
+
+        expected = dist.pdf(result.quantiles, *result.parameters.values())
+        np.testing.assert_allclose(result.densities, expected, rtol=1e-12)
+        assert np.all(result.densities > 0.0)
+
     def test_empirical_frequency_hazen(self, synthetic_gev_data):
         from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
 
