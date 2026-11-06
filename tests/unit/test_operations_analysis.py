@@ -920,12 +920,13 @@ class TestFloodFrequency:
         maxima = _annual_maxima()
         periods = np.array([10.0, 50.0, 100.0])
         direct = FloodFrequencyAnalysis(maxima, periods)
-        expected = direct.fit_all()
+        expected = direct.fit_all(fit_method="mle")
         result = run(
             "stats flood-frequency",
             input_file=str(ANNUAL_MAXIMA),
             value_column="Qmax",
             return_periods=[10, 50, 100],
+            fit_method="mle",
         ).result
         assert [d.distribution_name for d in result.distributions] == list(expected)
         for fitted, reference in zip(
@@ -949,12 +950,13 @@ class TestFloodFrequency:
     )
     def test_a_single_distribution_equals_its_fit(self, name, method):
         maxima = _annual_maxima()
-        reference = getattr(FloodFrequencyAnalysis(maxima), method)()
+        reference = getattr(FloodFrequencyAnalysis(maxima), method)(fit_method="mle")
         result = run(
             "stats flood-frequency",
             input_file=str(ANNUAL_MAXIMA),
             value_column="Qmax",
             distribution=name,
+            fit_method="mle",
         ).result
         assert len(result.distributions) == 1
         assert result.best_distribution == name
@@ -1132,7 +1134,11 @@ class TestFloodFrequency:
         """
         values, dates = _calendar_year_series()
         result = run(
-            "stats flood-frequency", values=values, dates=dates, distribution="gev"
+            "stats flood-frequency",
+            values=values,
+            dates=dates,
+            distribution="gev",
+            fit_method="mle",
         )
         sample = result.result
         years = list(range(1992, 2021))
@@ -1150,7 +1156,9 @@ class TestFloodFrequency:
             "days_with_data": [304, 61],
             "days_in_year": [365, 365],
         }
-        direct = FloodFrequencyAnalysis(np.array(sample.annual_maxima)).fit_gev()
+        direct = FloodFrequencyAnalysis(np.array(sample.annual_maxima)).fit_gev(
+            fit_method="mle"
+        )
         assert sample.distributions[0].to_dict() == direct.to_dict()
 
     @pytest.mark.parametrize("how", ["absent date", "nan value"])

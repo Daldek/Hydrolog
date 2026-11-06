@@ -97,6 +97,8 @@ class FrequencyAnalysisResult(JsonResultMixin):
     distribution_name : str
         Distribution identifier: ``"log_normal"``, ``"gev"``,
         ``"pearson3"``, or ``"weibull"``.
+    fit_method : str
+        Method that estimated the parameters, one of :data:`FIT_METHODS`.
     parameters : dict[str, float]
         Fitted distribution parameters.
     return_periods : NDArray[np.float64]
@@ -125,6 +127,7 @@ class FrequencyAnalysisResult(JsonResultMixin):
     """
 
     distribution_name: str
+    fit_method: str
     parameters: dict[str, float]
     return_periods: NDArray[np.float64]
     quantiles: NDArray[np.float64]
@@ -476,10 +479,12 @@ class FloodFrequencyAnalysis:
 
     Notes
     -----
-    Each ``fit_*`` method takes ``fit_method`` (:data:`FIT_METHODS`). Every method
-    gives the parameters of the same scipy distributions (``lognorm`` with location
-    0, ``genextreme``, ``pearson3``, ``weibull_min``), from which the quantiles, the
-    goodness of fit and the AIC follow alike:
+    Each ``fit_*`` method takes ``fit_method`` (:data:`FIT_METHODS`), by default
+    ``"l_moments"``: maximum likelihood is less stable on the short samples of
+    annual maxima. :meth:`fit_all` also takes ``"all"``, each distribution by each
+    method. Every method gives the parameters of the same scipy distributions
+    (``lognorm`` with location 0, ``genextreme``, ``pearson3``, ``weibull_min``),
+    from which the quantiles, the goodness of fit and the AIC follow alike:
 
     - ``"mle"``: maximum likelihood, ``scipy.stats.<distribution>.fit``;
     - ``"moments"``: the distribution's mean, standard deviation and (three
@@ -516,7 +521,8 @@ class FloodFrequencyAnalysis:
     >>> data = np.array([120.0, 95.0, 150.0, 200.0, 180.0, 160.0])
     >>> ffa = FloodFrequencyAnalysis(data)  # doctest: +SKIP
     >>> result = ffa.fit_gev()  # doctest: +SKIP
-    >>> by_l_moments = ffa.fit_gev(fit_method="l_moments")  # doctest: +SKIP
+    >>> by_mle = ffa.fit_gev(fit_method="mle")  # doctest: +SKIP
+    >>> every_fit = ffa.fit_all(fit_method="all")  # doctest: +SKIP
     """
 
     def __init__(
@@ -551,14 +557,15 @@ class FloodFrequencyAnalysis:
     # ------------------------------------------------------------------
 
     def fit_log_normal(
-        self, *, fit_method: FitMethod = "mle"
+        self, *, fit_method: FitMethod = "l_moments"
     ) -> FrequencyAnalysisResult:
         """Fit a two-parameter log-normal distribution.
 
         Parameters
         ----------
         fit_method : {"mle", "moments", "l_moments", "least_squares"}, optional
-            Parameter estimation method (see the class notes), by default ``"mle"``.
+            Parameter estimation method (see the class notes), by default
+            ``"l_moments"``.
 
         Returns
         -------
@@ -587,6 +594,7 @@ class FloodFrequencyAnalysis:
 
         return self._build_result(
             name="log_normal",
+            fit_method=fit_method,
             params=params,
             k=k,
             quantiles=quantiles,
@@ -594,13 +602,16 @@ class FloodFrequencyAnalysis:
             logpdf_func=lambda x: lognorm.logpdf(x, shape, loc=0, scale=scale),
         )
 
-    def fit_gev(self, *, fit_method: FitMethod = "mle") -> FrequencyAnalysisResult:
+    def fit_gev(
+        self, *, fit_method: FitMethod = "l_moments"
+    ) -> FrequencyAnalysisResult:
         """Fit the Generalised Extreme Value distribution.
 
         Parameters
         ----------
         fit_method : {"mle", "moments", "l_moments", "least_squares"}, optional
-            Parameter estimation method (see the class notes), by default ``"mle"``.
+            Parameter estimation method (see the class notes), by default
+            ``"l_moments"``.
 
         Returns
         -------
@@ -627,6 +638,7 @@ class FloodFrequencyAnalysis:
 
         return self._build_result(
             name="gev",
+            fit_method=fit_method,
             params=params,
             k=k,
             quantiles=quantiles,
@@ -634,13 +646,16 @@ class FloodFrequencyAnalysis:
             logpdf_func=lambda x: genextreme.logpdf(x, c, loc=loc, scale=scale),
         )
 
-    def fit_pearson3(self, *, fit_method: FitMethod = "mle") -> FrequencyAnalysisResult:
+    def fit_pearson3(
+        self, *, fit_method: FitMethod = "l_moments"
+    ) -> FrequencyAnalysisResult:
         """Fit the Pearson Type III distribution.
 
         Parameters
         ----------
         fit_method : {"mle", "moments", "l_moments", "least_squares"}, optional
-            Parameter estimation method (see the class notes), by default ``"mle"``.
+            Parameter estimation method (see the class notes), by default
+            ``"l_moments"``.
 
         Returns
         -------
@@ -663,6 +678,7 @@ class FloodFrequencyAnalysis:
 
         return self._build_result(
             name="pearson3",
+            fit_method=fit_method,
             params=params,
             k=k,
             quantiles=quantiles,
@@ -670,13 +686,16 @@ class FloodFrequencyAnalysis:
             logpdf_func=lambda x: pearson3.logpdf(x, skew, loc=loc, scale=scale),
         )
 
-    def fit_weibull(self, *, fit_method: FitMethod = "mle") -> FrequencyAnalysisResult:
+    def fit_weibull(
+        self, *, fit_method: FitMethod = "l_moments"
+    ) -> FrequencyAnalysisResult:
         """Fit the Weibull minimum distribution.
 
         Parameters
         ----------
         fit_method : {"mle", "moments", "l_moments", "least_squares"}, optional
-            Parameter estimation method (see the class notes), by default ``"mle"``.
+            Parameter estimation method (see the class notes), by default
+            ``"l_moments"``.
 
         Returns
         -------
@@ -699,6 +718,7 @@ class FloodFrequencyAnalysis:
 
         return self._build_result(
             name="weibull",
+            fit_method=fit_method,
             params=params,
             k=k,
             quantiles=quantiles,
@@ -723,51 +743,58 @@ class FloodFrequencyAnalysis:
         return compute_plotting_positions(self._data, method=method)
 
     def fit_all(
-        self, *, fit_method: FitMethod = "mle"
+        self, *, fit_method: FitMethod | Literal["all"] = "l_moments"
     ) -> dict[str, FrequencyAnalysisResult]:
         """Fit all four distributions and return results sorted by AIC.
 
         Parameters
         ----------
-        fit_method : {"mle", "moments", "l_moments", "least_squares"}, optional
+        fit_method : {"mle", "moments", "l_moments", "least_squares", "all"}, optional
             Parameter estimation method of every distribution (see the class
-            notes), by default ``"mle"``.
+            notes), by default ``"l_moments"``; ``"all"`` fits each distribution
+            by each of :data:`FIT_METHODS`.
 
         Returns
         -------
         dict[str, FrequencyAnalysisResult]
-            Ordered dictionary keyed by distribution name, sorted by AIC
-            in ascending order (best fit first).
+            Ordered dictionary sorted by AIC in ascending order (best fit first),
+            keyed by the distribution name, with ``"all"`` by
+            ``"<distribution>/<fit_method>"`` (``"gev/l_moments"``). Each result
+            carries its ``fit_method``.
 
         Raises
         ------
         InvalidParameterError
-            If ``fit_method`` is not one of :data:`FIT_METHODS`.
+            If ``fit_method`` is neither ``"all"`` nor one of :data:`FIT_METHODS`.
         CalculationError
-            If the method gives parameters of none of the distributions.
+            If the method gives parameters of none of the distributions (never with
+            ``"all"``: maximum likelihood fits each of them).
 
         Warns
         -----
         DistributionLeftOut
             For each distribution a method other than ``"mle"`` gives no parameters
-            of (see the class notes); it is not in the result.
+            of (see the class notes); that combination is not in the result.
         """
+        methods = FIT_METHODS if fit_method == "all" else (fit_method,)
         results: dict[str, FrequencyAnalysisResult] = {}
         reasons: dict[str, str] = {}
-        for name in ("log_normal", "gev", "pearson3", "weibull"):
-            try:
-                results[name] = getattr(self, f"fit_{name}")(fit_method=fit_method)
-            except CalculationError as exc:
-                reasons[name] = exc.details["reason"]
-                warnings.warn(
-                    DistributionLeftOut(
-                        distribution=name,
-                        fit_method=fit_method,
-                        reason=reasons[name],
-                        cause=str(exc),
-                    ),
-                    stacklevel=2,
-                )
+        for name in _DISTRIBUTIONS:
+            for method in methods:
+                key = f"{name}/{method}" if fit_method == "all" else name
+                try:
+                    results[key] = getattr(self, f"fit_{name}")(fit_method=method)
+                except CalculationError as exc:
+                    reasons[key] = exc.details["reason"]
+                    warnings.warn(
+                        DistributionLeftOut(
+                            distribution=name,
+                            fit_method=method,
+                            reason=reasons[key],
+                            cause=str(exc),
+                        ),
+                        stacklevel=2,
+                    )
         if not results:
             raise CalculationError(
                 f"The {_METHOD_NAMES[fit_method]} fits none of the four distributions "
@@ -846,6 +873,7 @@ class FloodFrequencyAnalysis:
     def _build_result(
         self,
         name: str,
+        fit_method: str,
         params: dict[str, float],
         k: int,
         quantiles: NDArray[np.float64],
@@ -858,6 +886,8 @@ class FloodFrequencyAnalysis:
         ----------
         name : str
             Distribution identifier.
+        fit_method : str
+            Method that estimated ``params``.
         params : dict[str, float]
             Fitted parameter dictionary.
         k : int
@@ -896,6 +926,7 @@ class FloodFrequencyAnalysis:
 
         return FrequencyAnalysisResult(
             distribution_name=name,
+            fit_method=fit_method,
             parameters=params,
             return_periods=self._return_periods.copy(),
             quantiles=np.asarray(quantiles, dtype=np.float64),
