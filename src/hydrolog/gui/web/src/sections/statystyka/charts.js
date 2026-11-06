@@ -8,11 +8,11 @@
 // the line styles, and a curve's name holds its method when more than one is drawn (the
 // density and distribution-function charts then read the active curve only). On the
 // probability plot the chosen quantile of the active combination is marked with guides to
-// both axes (none for „brak”). The density chart is scaled to the active combination; the
-// other curves are clipped at its frame.
+// both axes (none for „brak”). The axis ranges depend on the run alone (`axisRanges`), never
+// on the combinations shown, ticked or active; a curve leaving a frame is clipped at it.
 // Probabilities are drawn in per cent there; F = 1 − p is the only arithmetic of the browser.
 
-import { extent, niceDomain } from "../../charts/scale.js";
+import { extent, gumbelDomain, niceDomain } from "../../charts/scale.js";
 import { num } from "../../format.js";
 import { t } from "../../labels/common.js";
 import { statystyka as texts } from "../../labels/statystyka.js";
@@ -72,27 +72,14 @@ export function namesMethods(fits) {
   return new Set(fits.map((fit) => fit.fit_method)).size > 1;
 }
 
-/** The highest the plot frames, as a multiple of the largest annual maximum. */
+/** The highest a Q range reaches, as a multiple of the largest annual maximum. */
 const FRAME_LIMIT = 10;
 
-/**
- * The top of the plot's frame: the largest annual maximum or the active combination's
- * largest quantile of the run, at most ten times the largest maximum. A curve that leaves
- * the frame (a fit with a runaway tail on a short series) is cut where it does.
- *
- * @param {object} result the result of the run
- * @param {string|null} active the key of the active combination (fitKey), null for none
- * @returns {number} the top [m³/s]
- */
-export function frameTop(result, active) {
-  const largest = extent(result.empirical.values_sorted)?.[1] ?? 0;
-  const fit = result.distributions.find((item) => fitKey(item) === active);
-  const top = fit ? (extent(fit.quantiles)?.[1] ?? largest) : largest;
-  return Math.min(Math.max(largest, top), largest * FRAME_LIMIT);
-}
-
-/** The smallest exceedance probability the density and distribution-function charts reach. */
+/** The smallest exceedance probability whose Q the density and distribution-function charts reach. */
 const SHAPE_TAIL = 0.01;
+
+/** The density's frame over the median of the combinations' largest densities. */
+const DENSITY_HEADROOM = 1.25;
 
 /**
  * The frame of the density and distribution-function charts, one under the other: as wide as
@@ -101,21 +88,78 @@ const SHAPE_TAIL = 0.01;
 const SHAPE_SIZE = { width: 760, height: 300 };
 
 /**
- * The top of the density and distribution-function charts: the largest annual maximum or the
- * active combination's largest quantile of p ≥ 1% on the curves, within the probability
- * plot's frame. Further out the density lies on the axis and F is 1, so the body, where the
- * distributions differ, keeps the width.
+ * The median of the finite values.
+ *
+ * @param {(number|null)[]} values the values (others than finite numbers are skipped)
+ * @returns {number|null} the median, null when no value is finite
+ */
+function median(values) {
+  const sorted = values.filter(Number.isFinite).sort((a, b) => a - b);
+  if (!sorted.length) return null;
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+}
+
+/**
+ * A combination's Q at the rarest exceedance probability of at least `tail` on its grid (its
+ * largest such quantile).
+ *
+ * @param {object} fit a combination of the result (or of the curves' run)
+ * @param {number} tail the smallest exceedance probability counted (0: every one)
+ * @returns {number|null} Q [m³/s], null when no finite quantile counts
+ */
+function quantileTo(fit, tail) {
+  return extent(fit.quantiles.filter((_, index) => fit.exceedance_probabilities[index] >= tail - 1e-9))?.[1] ?? null;
+}
+
+/**
+ * The axis ranges of the three charts. They depend on the run alone, every combination it
+ * returned (of the curves' run on the dense grid, else of the result), never on the ones
+ * shown, ticked or active: a filter or a click on a row moves no axis. The p axis of the
+ * probability plot spans the probabilities of the run (its periods, the dense grid) and of
+ * the annual maxima. Every other range starts at 0 and ends at the axis's own rounding (8%
+ * headroom; 7 ticks on y, 10 on x) of:
+ * - Q of the density and distribution-function charts (x): the largest annual maximum or, if
+ *   larger, the median over the combinations of Q at p = 1%;
+ * - Q of the probability plot (y): the same at the rarest p of its curves (0,1% on the dense
+ *   grid), so the curves reach its rare end;
+ * - the density (y), without the headroom: 1,25 times the median of the largest densities
+ *   within the Q range of the combinations with an AIC (of every combination when none has
+ *   one). A combination without an AIC has a bound among the annual maxima, where its
+ *   density often spikes (Weibull or Pearson III by most methods on a short series), and
+ *   they can be half of them; the median sets aside the rest (a GEV near its bound by
+ *   maximum likelihood). Such a spike is cut by the frame instead of flattening every other
+ *   curve;
+ * - F (y): 0 to 1.
+ * The median keeps a runaway combination from setting a range; a Q range still ends at most
+ * at ten times the largest annual maximum. Whatever leaves a frame is cut at it.
  *
  * @param {object} result the result of the run
- * @param {object[]} fits the combinations drawn (of the curves' run, else of the result)
- * @param {string|null} active the key of the active combination, null for none
- * @returns {number} the top [m³/s]
+ * @param {object|null} curves the result of the run on the dense grid, null when it failed
+ * @returns {{probability: {p: [number, number], q: number}, shape: {q: number, density: number|undefined}}}
+ *   the p domain [%] (the larger first) and the top of Q [m³/s] of the probability plot; the
+ *   top of Q [m³/s] and of the density [1/(m³/s)] (undefined without densities) of the others
  */
-function shapeTop(result, fits, active) {
+function axisRanges(result, curves) {
+  const fits = (curves || result).distributions || [];
   const largest = extent(result.empirical.values_sorted)?.[1] ?? 0;
-  const fit = fits.find((item) => fitKey(item) === active);
-  const body = fit ? fit.quantiles.filter((_, index) => fit.exceedance_probabilities[index] >= SHAPE_TAIL - 1e-9) : [];
-  return Math.min(Math.max(largest, extent(body)?.[1] ?? largest), frameTop(result, active)) * 1.08;
+  const qTop = (tail, count) => {
+    const typical = median(fits.map((fit) => quantileTo(fit, tail))) ?? largest;
+    return niceDomain([0, Math.min(Math.max(largest, typical), largest * FRAME_LIMIT)], { count }).max;
+  };
+  const q = qTop(SHAPE_TAIL, 10);
+  const covering = fits.filter((fit) => Number.isFinite(fit.aic));
+  const peak = median(
+    (covering.length ? covering : fits).map(
+      (fit) => extent((fit.densities || []).filter((_, index) => fit.quantiles[index] >= 0 && fit.quantiles[index] <= q))?.[1] ?? null,
+    ),
+  );
+  const grids = [...(result.distributions || []), ...(curves?.distributions || [])].flatMap((fit) => fit.exceedance_probabilities);
+  const percents = [...grids, ...result.empirical.exceedance_prob].map((p) => p * 100);
+  return {
+    probability: { p: gumbelDomain(percents), q: qTop(0, 7) },
+    shape: { q, density: peak > 0 ? niceDomain([0, DENSITY_HEADROOM * peak], { count: 7, pad: 0 }).max : undefined },
+  };
 }
 
 /**
@@ -154,7 +198,7 @@ function legendOf(fits, maxima) {
 export function probabilitySpec({ result, curves, shown, chosen, active }) {
   const fits = shownFits((curves || result).distributions || [], shown);
   const named = namesMethods(fits);
-  const top = frameTop(result, active) * 1.08;
+  const { p: domain, q: top } = axisRanges(result, curves).probability;
   const series = [
     {
       id: "maxima",
@@ -166,18 +210,15 @@ export function probabilitySpec({ result, curves, shown, chosen, active }) {
     },
   ];
   for (const fit of fits) {
-    const data = [];
-    fit.exceedance_probabilities.forEach((p, index) => {
-      const q = fit.quantiles[index];
-      if (Number.isFinite(q) && Math.abs(q) <= top) data.push([p * 100, q]);
-    });
-    series.push(curve(fit, active, named, { unit: "m³/s", digits: 1, data }));
+    const data = fit.exceedance_probabilities.map((p, index) => [p * 100, fit.quantiles[index]]).filter(([, q]) => Number.isFinite(q));
+    series.push(curve(fit, active, named, { unit: "m³/s", digits: 1, data: clipped(data, top) }));
   }
   const marks = [];
   const activeFit = chosen === null ? null : result.distributions.find((fit) => fitKey(fit) === active);
   const q = activeFit ? quantileAt(activeFit, chosen) : null;
   const p = activeFit ? percentAt(activeFit, chosen) : null;
-  if (q !== null && p !== null) {
+  // A quantile beyond the frame is not marked: the tiles give it
+  if (q !== null && p !== null && q >= 0 && q <= top) {
     marks.push({
       kind: "peak",
       x: p,
@@ -189,8 +230,8 @@ export function probabilitySpec({ result, curves, shown, chosen, active }) {
   }
   return {
     title: texts.chart.title,
-    x: { label: texts.chart.x, scale: "gumbel" },
-    y: { label: texts.chart.y, unit: "m³/s" },
+    x: { label: texts.chart.x, scale: "gumbel", domain },
+    y: { label: texts.chart.y, unit: "m³/s", min: 0, max: top },
     series,
     marks,
     legend: legendOf(fits, { kind: "points", label: texts.chart.points }),
@@ -225,39 +266,45 @@ function curve(fit, active, named, fields) {
 }
 
 /**
- * The points of a distribution's curve against Q within the plot's frame: [Q, value at Q].
+ * The points of a distribution's curve against Q: [Q, value at Q]. The chart cuts what lies
+ * beyond its Q range.
  *
  * @param {object} fit a distribution of the result (or of the curves' run)
- * @param {number} top the top of the frame [m³/s]
  * @param {(index: number) => number} value the value at an index of the quantiles
  * @returns {number[][]} the points
  */
-function againstQ(fit, top, value) {
+function againstQ(fit, value) {
   const data = [];
   fit.quantiles.forEach((q, index) => {
     const y = value(index);
-    if (Number.isFinite(q) && Math.abs(q) <= top && Number.isFinite(y)) data.push([q, y]);
+    if (Number.isFinite(q) && Number.isFinite(y)) data.push([q, y]);
   });
   return data;
 }
 
 /**
- * A curve clipped at a ceiling: its parts above end at the crossing of the ceiling and
- * leave a gap (a point without a value), as if the frame cut them.
+ * A curve clipped at its frame's range of values, 0 to a top: its parts beyond end at the
+ * crossing of the bound and leave a gap (a point without a value), so the readout reads
+ * nothing there either.
  *
- * @param {number[][]} data the points [x, y], in the order of x
- * @param {number} ceiling the highest value shown
- * @returns {number[][]} the points within the ceiling, with the crossings and the gaps
+ * @param {number[][]} data the points [x, y] in the order drawn, with finite values
+ * @param {number} top the highest value shown
+ * @returns {number[][]} the points within the range, with the crossings and the gaps
  */
-function clipped(data, ceiling) {
+function clipped(data, top) {
   const out = [];
   data.forEach(([x, y], index) => {
     const previous = data[index - 1];
-    if (previous && (previous[1] <= ceiling) !== (y <= ceiling)) {
+    if (previous) {
       const [px, py] = previous;
-      out.push([px + ((ceiling - py) / (y - py)) * (x - px), ceiling]);
+      const crossings = [0, top]
+        .filter((bound) => (py - bound) * (y - bound) < 0)
+        .map((bound) => [px + ((bound - py) / (y - py)) * (x - px), bound]);
+      // From one bound to the other within a step: the nearer crossing first
+      if (crossings.length === 2 && Math.abs(crossings[0][0] - px) > Math.abs(crossings[1][0] - px)) crossings.reverse();
+      out.push(...crossings);
     }
-    out.push(y <= ceiling ? [x, y] : [x, Number.NaN]);
+    out.push(y >= 0 && y <= top ? [x, y] : [x, Number.NaN]);
   });
   return out;
 }
@@ -279,10 +326,8 @@ function smallCurve(fit, active, named, fields) {
 
 /**
  * The spec of the probability density chart: the density of every combination shown against
- * Q, the annual maxima as a rug on the Q axis. The frame is the active combination's: its
- * largest density with the axis's headroom, so a curve with a spike (a GEV near its bound on
- * a short series) neither flattens it nor leaves the frame; such a curve is clipped at the
- * top.
+ * Q, the annual maxima as a rug on the Q axis, within the ranges of `axisRanges`; a curve
+ * with a spike above the frame is clipped at its top.
  *
  * @param {{result: object, curves: object|null, shown: {distributions: string[],
  *   methods: string[]}, active: string|null}} input the result of the run, the result of
@@ -293,19 +338,17 @@ function smallCurve(fit, active, named, fields) {
 export function densitySpec({ result, curves, shown, active }) {
   const fits = shownFits((curves || result).distributions || [], shown);
   const named = namesMethods(fits);
-  const top = shapeTop(result, fits, active);
-  const drawn = fits.map((fit) => ({ fit, data: againstQ(fit, top, (index) => (fit.densities || [])[index]) }));
-  const own = drawn.find((item) => fitKey(item.fit) === active);
-  const peak = own ? extent(own.data.map(([, y]) => y))?.[1] : undefined;
-  // The axis's own rounding of a wide chart (7 ticks, 8% headroom), fixed as its top
-  const ceiling = peak === undefined ? undefined : niceDomain([0, peak], { count: 7 }).max;
-  const series = drawn.map(({ fit, data }) => smallCurve(fit, active, named, { data: ceiling === undefined ? data : clipped(data, ceiling) }));
+  const { q: top, density: ceiling } = axisRanges(result, curves).shape;
+  const series = fits.map((fit) => {
+    const data = againstQ(fit, (index) => (fit.densities || [])[index]);
+    return smallCurve(fit, active, named, { data: ceiling === undefined ? data : clipped(data, ceiling) });
+  });
   series.push({ id: "maxima", kind: "rug", label: texts.chart.points, data: result.annual_maxima });
   return {
     size: SHAPE_SIZE,
     title: texts.shape.density,
-    x: { label: texts.shape.x },
-    y: { label: texts.shape.densityY, unit: texts.shape.densityUnit, ...(ceiling === undefined ? {} : { max: ceiling }) },
+    x: { label: texts.shape.x, min: 0, max: top },
+    y: { label: texts.shape.densityY, unit: texts.shape.densityUnit, ...(ceiling === undefined ? {} : { min: 0, max: ceiling }) },
     series,
     legend: legendOf(fits, { kind: "rug", label: texts.chart.points }),
     readout: { series: active, x: readoutQ, value: (value) => shortNumber(value) },
@@ -323,9 +366,9 @@ export function densitySpec({ result, curves, shown, active }) {
 export function distributionSpec({ result, curves, shown, active }) {
   const fits = shownFits((curves || result).distributions || [], shown);
   const named = namesMethods(fits);
-  const top = shapeTop(result, fits, active);
+  const { q: top } = axisRanges(result, curves).shape;
   const series = fits.map((fit) =>
-    smallCurve(fit, active, named, { digits: 3, data: againstQ(fit, top, (index) => 1 - fit.exceedance_probabilities[index]) }),
+    smallCurve(fit, active, named, { digits: 3, data: againstQ(fit, (index) => 1 - fit.exceedance_probabilities[index]) }),
   );
   const { values_sorted: values, exceedance_prob: exceedance } = result.empirical;
   series.push({
@@ -338,7 +381,7 @@ export function distributionSpec({ result, curves, shown, active }) {
   return {
     size: SHAPE_SIZE,
     title: texts.shape.distribution,
-    x: { label: texts.shape.x },
+    x: { label: texts.shape.x, min: 0, max: top },
     y: { label: texts.shape.distributionY, min: 0, max: 1 },
     series,
     legend: legendOf(fits, { kind: "points", label: texts.chart.points }),
