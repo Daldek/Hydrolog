@@ -119,6 +119,51 @@ function drawLegend(spec, geometries) {
   return legend;
 }
 
+/** The ids of the frames' clip paths: one per chart, unique on the page. */
+let clips = 0;
+
+/** How far a series may spill over the frame [viewBox units]: a line or a point on an edge keeps its whole stroke. */
+const SPILL = 4;
+
+/**
+ * The series of a chart cut at its frame: below an axis that starts at 0 (`niceDomain`),
+ * above a fixed maximum, beyond a fixed end of the x axis.
+ *
+ * @param {string} id the id of the frame's clip path
+ * @param {{left: number, right: number, top: number, bottom: number}} plot the frame
+ * @param {SVGElement[]} nodes the drawn series
+ * @returns {SVGElement[]} the clip path and the series within it
+ */
+function framed(id, plot, nodes) {
+  const rect = svgEl("rect", {
+    x: plot.left - SPILL,
+    y: plot.top - SPILL,
+    width: plot.right - plot.left + 2 * SPILL,
+    height: plot.bottom - plot.top + 2 * SPILL,
+  });
+  return [svgEl("defs", {}, [svgEl("clipPath", { id }, [rect])]), svgEl("g", { class: "framed", "clip-path": `url(#${id})` }, nodes)];
+}
+
+/**
+ * The first and the last index of the master's points within the frame's width (its points
+ * are in the order of x), null when none is: the readout steps over these only.
+ *
+ * @param {object} master the geometry the readout steps over
+ * @param {{left: number, right: number}} plot the frame
+ * @returns {{first: number, last: number} | null}
+ */
+function withinFrame(master, plot) {
+  let first = -1;
+  let last = -1;
+  master.px.forEach((x, at) => {
+    const middle = master.kind === "bars" ? (master.spans[at][0] + master.spans[at][1]) / 2 : x;
+    if (middle < plot.left - 0.5 || middle > plot.right + 0.5) return;
+    if (first < 0) first = at;
+    last = at;
+  });
+  return first < 0 ? null : { first, last };
+}
+
 /**
  * Draw a chart into a container.
  *
@@ -135,11 +180,14 @@ export function drawChart(container, spec) {
   const legendSlot = htmlEl("div", { class: "chart-legend-slot" });
   const live = htmlEl("div", { class: "chart-sr", "aria-live": "polite" });
   container.append(svg, legendSlot, live);
+  clips += 1;
+  const clipId = `chart-frame-${clips}`;
 
   let current = spec;
   let layout;
   let geometries;
   let master = null;
+  let shown = null;
   let index = null;
   let layer = null;
 
@@ -151,7 +199,7 @@ export function drawChart(container, spec) {
 
   function show(next) {
     if (!master || !layer) return;
-    index = Math.max(0, Math.min(master.px.length - 1, next));
+    index = Math.max(shown.first, Math.min(shown.last, next));
     const reading = readoutAt(current, layout, geometries, master, index);
     const { plot } = layout;
     const top = layout.upper ? layout.upper.top : layout.main.top;
@@ -198,6 +246,8 @@ export function drawChart(container, spec) {
     layout = chartLayout(current);
     geometries = seriesGeometry(current, layout);
     master = current.readout && !layout.band ? pickMaster(current, geometries) : null;
+    shown = master ? withinFrame(master, layout.plot) : null;
+    if (!shown) master = null;
     container.classList.toggle("wide", !layout.small);
     svg.setAttribute("viewBox", `0 0 ${layout.width} ${layout.height}`);
     if (current.title) svg.setAttribute("aria-label", current.title);
@@ -214,7 +264,7 @@ export function drawChart(container, spec) {
     layer = master ? svgEl("g", { class: "readout", visibility: "hidden" }) : null;
     svg.replaceChildren(
       ...drawGrid(layout),
-      ...drawSeries(geometries, layout),
+      ...(layout.band ? drawSeries(geometries, layout) : framed(clipId, layout.plot, drawSeries(geometries, layout))),
       ...drawMarks(current.marks, layout),
       ...drawAxes(layout),
       ...(layer ? [layer] : []),
@@ -223,7 +273,7 @@ export function drawChart(container, spec) {
     legendSlot.replaceChildren(...(current.legend ? [drawLegend(current, geometries)] : []));
     if (master && index !== null && document.activeElement === svg) show(index);
     else {
-      if (!master || index === null || index >= master.px.length) index = null;
+      if (!master || index === null || index < shown.first || index > shown.last) index = null;
       live.textContent = "";
     }
   }
@@ -232,12 +282,12 @@ export function drawChart(container, spec) {
     const matrix = svg.getScreenCTM();
     if (!matrix) return null;
     const point = new DOMPoint(clientX, clientY).matrixTransform(matrix.inverse());
-    let best = 0;
-    master.px.forEach((x, at) => {
-      const middle = master.kind === "bars" ? (master.spans[at][0] + master.spans[at][1]) / 2 : x;
+    let best = shown.first;
+    for (let at = shown.first; at <= shown.last; at += 1) {
+      const middle = master.kind === "bars" ? (master.spans[at][0] + master.spans[at][1]) / 2 : master.px[at];
       const bestMiddle = master.kind === "bars" ? (master.spans[best][0] + master.spans[best][1]) / 2 : master.px[best];
       if (Math.abs(middle - point.x) < Math.abs(bestMiddle - point.x)) best = at;
-    });
+    }
     return { index: best, x: point.x };
   }
 
@@ -257,13 +307,13 @@ export function drawChart(container, spec) {
 
   function onKeyDown(event) {
     if (!master) return;
-    const last = master.px.length - 1;
+    const { first, last } = shown;
     const step = event.shiftKey || event.key === "PageUp" || event.key === "PageDown" ? 10 : 1;
-    const from = index ?? 0;
+    const from = index ?? first;
     let next = null;
-    if (event.key === "ArrowRight" || event.key === "ArrowUp" || event.key === "PageUp") next = index === null ? 0 : from + step;
+    if (event.key === "ArrowRight" || event.key === "ArrowUp" || event.key === "PageUp") next = index === null ? first : from + step;
     else if (event.key === "ArrowLeft" || event.key === "ArrowDown" || event.key === "PageDown") next = index === null ? last : from - step;
-    else if (event.key === "Home") next = 0;
+    else if (event.key === "Home") next = first;
     else if (event.key === "End") next = last;
     else if (event.key === "Escape") {
       index = null;

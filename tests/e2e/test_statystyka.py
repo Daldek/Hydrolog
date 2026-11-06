@@ -20,8 +20,9 @@ CSV; every row can leave it, the best one too, leaving a note and a CSV of the p
 and probabilities; a new result ticks the best one alone again. A click on a row of the
 distributions table (or Enter on it) makes that combination the active one: the tiles,
 the full curve of the three charts and „Do porównania” follow it, the other curves
-dimmed, until a new result; the density chart is scaled to it (a GEV's spike on twelve
-maxima clipped at the frame).
+dimmed, until a new result. The axis ranges follow the result alone: neither the active
+combination nor the filters move them, and the density's frame ignores the spikes at a
+distribution's bound (a GEV's on twelve maxima by maximum likelihood, clipped at it).
 No period is highlighted at first („brak”): no highlighted tile or row, no marked
 quantile on the charts and „Do porównania” off until one is chosen, the choice stored.
 A daily series takes its date column from its header; pasted maxima run
@@ -678,9 +679,9 @@ def test_a_daily_series_takes_its_date_column(tab: Tab) -> None:
     expect(page.locator(f'{RIGHT} .notes li[data-code="small_sample"]')).to_be_visible()
 
 
-def test_the_density_chart_is_scaled_to_the_active_distribution(tab: Tab) -> None:
-    # Twelve maxima whose GEV has a spike at its lower bound (a density of about 53
-    # against the best fit's, the log-normal's, 0,0096 at most)
+def test_the_axis_ranges_follow_the_result_alone(tab: Tab) -> None:
+    # Twelve maxima on which several combinations have a density spike at a bound: the
+    # GEV by maximum likelihood about 53, the log-normal by L-moments 0,0089 at most
     page = open_section(tab)
     page.locator(f"{SECTION} .step").first.get_by_role("radio", name="Wklej").click()
     page.locator(f"{SECTION} #st-values").fill(
@@ -695,21 +696,45 @@ def test_the_density_chart_is_scaled_to_the_active_distribution(tab: Tab) -> Non
     ).to_have_count(1)
     expect(density.locator("path.ser")).to_have_count(4)
 
-    shown = density.evaluate(
-        """svg => {
-          const frame = svg.querySelector('g.grid.v line');
-          const top = Number(frame.getAttribute('y1'));
-          const bottom = Number(frame.getAttribute('y2'));
-          return [...svg.querySelectorAll('path.ser')].map((path) =>
-            [path.dataset.series, (bottom - path.getBBox().y) / (bottom - top)]);
-        }"""
+    def ticks() -> list[list[str]]:
+        return [
+            page.locator(chart).locator("text.tick").all_text_contents()
+            for chart in CHARTS
+        ]
+
+    def heights() -> dict[str, float]:
+        shown = density.evaluate(
+            """svg => {
+              const frame = svg.querySelector('g.grid.v line');
+              const top = Number(frame.getAttribute('y1'));
+              const bottom = Number(frame.getAttribute('y2'));
+              return [...svg.querySelectorAll('path.ser')].map((path) =>
+                [path.dataset.series, (bottom - path.getBBox().y) / (bottom - top)]);
+            }"""
+        )
+        return dict(shown)
+
+    first = ticks()
+    # No axis below 0 (a negative number starts with U+2212)
+    assert not [label for chart in first for label in chart if "\u2212" in label]
+    # The body of the curves fills the frame: the log-normal's peak in its upper part
+    assert heights()["log_normal/l_moments"] > 0.5
+    assert max(heights().values()) <= 1.01
+
+    # Another active combination moves no axis
+    rows = (
+        page.locator(RIGHT).get_by_role("region", name="Rozkłady").locator("tbody tr")
     )
-    heights = dict(shown)
-    # The active curve's peak in the upper part of the frame; the GEV's spike clipped at
-    # its top, as every other curve stays within it
-    assert heights["log_normal/l_moments"] > 0.6
-    assert heights["gev/l_moments"] == pytest.approx(1.0, abs=0.01)
-    assert max(heights.values()) <= 1.01
+    rows.nth(2).locator("th").click()
+    expect(rows.nth(2)).to_have_attribute("aria-current", "true")
+    assert ticks() == first
+
+    # Nor does a method added; the GEV's spike by maximum likelihood is cut at the top
+    chip(page, "methods", "Największa wiarygodność").click()
+    expect(density.locator('path.ser[data-series="gev/mle"]')).to_have_count(1)
+    assert ticks() == first
+    assert heights()["gev/mle"] == pytest.approx(1.0, abs=0.01)
+    assert max(heights().values()) <= 1.01
 
 
 def test_pasted_maxima_run_and_go_to_the_comparison(tab: Tab) -> None:

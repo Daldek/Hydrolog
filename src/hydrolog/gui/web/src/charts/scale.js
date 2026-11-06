@@ -132,7 +132,9 @@ export function linearTicks(min, max, step) {
  * Round a linear domain outwards to rounded ticks.
  *
  * The domain covers the values and, with `zero`, zero; `pad` adds a share of
- * the span above the largest value (the headroom of the mockup's charts).
+ * the span above the largest value (the headroom of the mockup's charts). It never
+ * starts below 0, `min` included: no quantity a chart of the GUI draws is negative,
+ * and a series below 0 is cut by the plot's frame (`drawChart`).
  *
  * @param {number[]} values the values to cover (non-finite ones are skipped)
  * @param {{count?: number, zero?: boolean, pad?: number, min?: number, max?: number}} [options]
@@ -142,20 +144,15 @@ export function linearTicks(min, max, step) {
 export function niceDomain(values, options = {}) {
   const { count = 6, zero = true, pad = 0.08 } = options;
   const range = extent(values);
-  let lo = range ? range[0] : 0;
-  let hi = range ? range[1] : 1;
-  if (zero) {
-    lo = Math.min(0, lo);
-    hi = Math.max(0, hi);
-  }
-  if (options.min !== undefined) lo = options.min;
-  if (options.max !== undefined) hi = options.max;
-  if (hi === lo) hi = lo + (lo === 0 ? 1 : Math.abs(lo) * 0.1);
+  let lo = Math.max(0, options.min ?? (range ? range[0] : 0));
+  let hi = options.max ?? (range ? range[1] : 1);
+  if (zero && options.min === undefined) lo = 0;
+  if (zero && options.max === undefined) hi = Math.max(0, hi);
+  if (hi <= lo) hi = lo + (lo === 0 ? 1 : lo * 0.1);
   if (options.max === undefined) hi += pad * (hi - lo);
-  if (options.min === undefined && lo < 0 && !zero) lo -= pad * (hi - lo);
   const step = niceStep(hi - lo, count);
   const digits = stepDigits(step);
-  const min = options.min ?? clean(Math.floor(lo / step + 1e-9) * step, digits);
+  const min = options.min === undefined ? clean(Math.floor(lo / step + 1e-9) * step, digits) : lo;
   const max = options.max ?? clean(Math.ceil(hi / step - 1e-9) * step, digits);
   return { min, max, step, ticks: linearTicks(min, max, step) };
 }
@@ -224,8 +221,8 @@ export function timeTicks(min, max, count = 13) {
 }
 
 /**
- * Round a time domain in minutes: it starts at the first value and ends at
- * the last one rounded up to the tick step.
+ * Round a time domain in minutes: it starts at the first value (never before 0) and
+ * ends at the last one rounded up to the tick step.
  *
  * @param {number[]} values the times [min]
  * @param {{min?: number, max?: number, count?: number}} [options] fixed ends
@@ -233,7 +230,7 @@ export function timeTicks(min, max, count = 13) {
  */
 export function timeDomain(values, options = {}) {
   const range = extent(values);
-  const lo = options.min ?? (range ? range[0] : 0);
+  const lo = Math.max(0, options.min ?? (range ? range[0] : 0));
   let hi = options.max ?? (range ? range[1] : 60);
   if (hi <= lo) hi = lo + 60;
   const { step } = timeTicks(lo, hi, options.count);
