@@ -73,6 +73,7 @@ export const statystyka = {
   results: {
     sub: "najlepszy rozkład: {name}",
     distribution: "Rozkład",
+    bestDistribution: "Najlepszy",
     length: "Długość",
     q: "Q {p}%",
     notices: "Uwagi",
@@ -88,6 +89,7 @@ export const statystyka = {
     adAbove: "A² powyżej wartości krytycznej",
     issues: "{name}: {issues}.",
     unit: "Q w m³/s.",
+    activeHint: "Kliknięty wiersz pokazuje rozkład w kafelkach i na wykresie.",
     quantiles: "Kwantyle: {name}",
     period: "T",
     periodUnit: "lata",

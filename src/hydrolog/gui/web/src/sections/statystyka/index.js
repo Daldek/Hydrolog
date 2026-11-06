@@ -3,10 +3,12 @@
 // header, or pasted values; a first visit has neither (the guide, instrukcja/#statystyka,
 // has a worked example). The form's fields are the catalog's. „Oblicz” runs the command,
 // and a second run of the same series on a dense grid of return periods gives the curves
-// of the probability plot. The result shows the best distribution, the quantiles of the
-// distributions ticked in its table (the best one after every computation, not stored), the
-// goodness of fit and the notices in Polish; „Do porównania” hands the stressed quantile
-// to Hydrogram zlewni (store "reference"). A change marks the result stale (plan D13).
+// of the probability plot. The result shows the active distribution (the best one after
+// every computation, another one by a click on its row of the distributions table) in the
+// tiles and on the plot, the quantiles of the distributions ticked in that table (the best
+// one after every computation), the goodness of fit and the notices in Polish; neither
+// choice is stored. „Do porównania” hands the active distribution's stressed quantile to
+// Hydrogram zlewni (store "reference"). A change marks the result stale (plan D13).
 // A station's series handed off by Archiwista (ADR-0020, „Wczytaj z Archiwisty”) arrives
 // through useHandoffInbox as the source and values it opens with, and the data panel names
 // where it came from until the series is changed.
@@ -34,7 +36,7 @@ import { toast } from "../../ui/toast.js";
 import { ViewLayout } from "../../ui/view-layout.js";
 import { DataPanel } from "./data-panel.js";
 import { exportSpec } from "./export.js";
-import { bestFit, CenterBody, distributionName, ResultsPanel } from "./results-panel.js";
+import { CenterBody, distributionName, ResultsPanel } from "./results-panel.js";
 import {
   columnOption,
   COMMAND,
@@ -112,8 +114,9 @@ export default function Statystyka() {
   const sequence = useRef(0);
   const running = useRef(null);
   const chartSvg = useRef(null);
-  // The distributions ticked „W tabeli kwantyli” for one run; another run starts again
-  const [picked, setPicked] = useState({ run: null, names: [] });
+  // The distributions ticked „W tabeli kwantyli” and the active one (null: the best) for
+  // one run; another run starts again
+  const [picked, setPicked] = useState({ run: null, names: [], active: null });
 
   const base = useMemo(() => (doc ? fieldModel(doc) : null), [doc]);
   // Hydrolog's range of the record's length, checked by the explanation of the analysis
@@ -274,14 +277,18 @@ export default function Statystyka() {
   const visibleCount = Object.keys(shownErrors).length;
 
   const result = run && run.envelope.status === "ok" ? run.envelope.result : null;
-  const fit = result ? bestFit(result) : null;
+  // The choices of this run: the ticked distributions and the active one, else the best
+  const own = picked.run === run;
+  const ticked = result ? (own ? picked.names : [result.best_distribution]) : [];
+  const active = result ? (own && picked.active ? picked.active : result.best_distribution) : null;
+  const onTick = (name, on) => setPicked({ run, names: on ? [...ticked, name] : ticked.filter((item) => item !== name), active });
+  const onActive = (name) => setPicked({ run, names: ticked, active: name });
+  const fit = result ? result.distributions.find((item) => item.distribution_name === active) || null : null;
   const runPeriods = fit ? fit.return_periods : [];
   const runStressed = stressedPeriod(runPeriods, state.chosen);
   const periods = periodsOf(state.values.return_periods);
   const stressed = stressedPeriod(periods, state.chosen);
   const runFile = run ? (typeof run.options.input_file === "string" ? run.options.input_file.replace(/^in\//, "") : texts.pasted) : null;
-  const ticked = result ? (picked.run === run ? picked.names : [result.best_distribution]) : [];
-  const onTick = (name, on) => setPicked({ run, names: on ? [...ticked, name] : ticked.filter((item) => item !== name) });
 
   // The badge: busy, an error of the server, the form's own problems, a stale result, ok
   let badge = null;
@@ -310,7 +317,7 @@ export default function Statystyka() {
   }
   useEffect(() => setContext(context), [context]);
 
-  // „Do porównania”: the stressed quantile of the best distribution
+  // „Do porównania”: the stressed quantile of the active distribution
   const q = fit && runStressed !== null ? quantileAt(fit, runStressed) : null;
   const p = fit && runStressed !== null ? percentAt(fit, runStressed) : null;
   let referenceState = null;
@@ -398,7 +405,7 @@ export default function Statystyka() {
       </span>
     `,
     body: html`<div class=${`result-area${busy ? " computing" : ""}`} aria-busy=${busy ? "true" : "false"}>
-      <${CenterBody} run=${run} tab=${tab} stressed=${runStressed} chartSvg=${chartSvg} />
+      <${CenterBody} run=${run} tab=${tab} stressed=${runStressed} active=${active} chartSvg=${chartSvg} />
     </div>`,
   };
   const right = {
@@ -410,6 +417,8 @@ export default function Statystyka() {
         stressed=${runStressed}
         ticked=${ticked}
         onTick=${onTick}
+        active=${active}
+        onActive=${onActive}
         spec=${spec}
         reference=${referenceState}
       />
