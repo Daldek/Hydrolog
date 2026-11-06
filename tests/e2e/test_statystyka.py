@@ -25,7 +25,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from playwright.sync_api import Locator, Page, Response, expect
+from playwright.sync_api import Locator, Page, Request, Response, expect
 
 from hydrolog.catalog import format_command, parse_command, run_command
 from tests.e2e.conftest import Tab, open_part
@@ -208,17 +208,14 @@ def test_the_maxima_give_the_mockups_gev_quantile_and_the_kzgw_notice(
 
 def test_a_fit_method_recomputes_both_runs_with_it(tab: Tab) -> None:
     page = open_section(tab)
-    sent_by_channel: dict[str, dict[str, Any]] = {}
-    page.on(
-        "request",
-        lambda request: (
-            sent_by_channel.__setitem__(
-                request.url.rsplit("channel=", 1)[-1], request.post_data_json
-            )
-            if request.method == "POST" and "channel=" in request.url
-            else None
-        ),
-    )
+    sent_by_channel: dict[str, Any] = {}
+
+    def record(request: Request) -> None:
+        if request.method == "POST" and "channel=" in request.url:
+            channel = request.url.rsplit("channel=", 1)[-1]
+            sent_by_channel[channel] = request.post_data_json
+
+    page.on("request", record)
     compute(page)
     right = page.locator(RIGHT)
     subtitle = page.locator(f"{SECTION} .st-chart .card-sub")
