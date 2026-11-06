@@ -444,6 +444,8 @@ body.resizing .view-center, body.resizing .view-panel { pointer-events: none; }
 .view-bar .hint svg { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
 .view-bar .end { margin-left: auto; display: flex; gap: var(--space-2); }
 .view-body { position: relative; flex: 1; min-height: 0; overflow: auto; padding: var(--space-3); display: block; }
+/* A scroll bar coming or going does not change the width a fitted chart is drawn for */
+.view-body:has(.chart.fit) { scrollbar-gutter: stable; }
 .view-body > .result-area { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-3); }
 .tab-pane { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-3); }
 .empty-note { margin: var(--space-6) auto; max-width: 420px; color: var(--text-3); font-size: var(--text-sm); text-align: center; }

@@ -190,6 +190,18 @@ export function drawChart(container, spec) {
   let shown = null;
   let index = null;
   let layer = null;
+  // The container's width a fitted chart is drawn for [CSS px]; 0 before it has one
+  let width = 0;
+
+  /**
+   * The spec as drawn: a fitted one (`fit`) takes the container's width as its viewBox's,
+   * so its text keeps its CSS size at every width, and `ratio` times it, at least
+   * `minHeight`, as its height; without a width it keeps its `size`.
+   */
+  function sized(next) {
+    if (!next.fit || !width) return next;
+    return { ...next, size: { width, height: Math.max(next.fit.minHeight ?? 0, Math.round(width * next.fit.ratio)) } };
+  }
 
   function hide() {
     layer?.replaceChildren();
@@ -243,12 +255,14 @@ export function drawChart(container, spec) {
 
   function render(nextSpec) {
     current = nextSpec;
-    layout = chartLayout(current);
+    if (current.fit && !width) width = Math.floor(container.clientWidth);
+    layout = chartLayout(sized(current));
     geometries = seriesGeometry(current, layout);
     master = current.readout && !layout.band ? pickMaster(current, geometries) : null;
     shown = master ? withinFrame(master, layout.plot) : null;
     if (!shown) master = null;
     container.classList.toggle("wide", !layout.small);
+    container.classList.toggle("fit", Boolean(current.fit));
     svg.setAttribute("viewBox", `0 0 ${layout.width} ${layout.height}`);
     if (current.title) svg.setAttribute("aria-label", current.title);
     else svg.removeAttribute("aria-label");
@@ -337,6 +351,14 @@ export function drawChart(container, spec) {
   svg.addEventListener("keydown", onKeyDown);
   svg.addEventListener("focus", onFocus);
   svg.addEventListener("blur", onBlur);
+  // A fitted chart is drawn again when its container's width changes
+  const resized = new ResizeObserver(() => {
+    const next = Math.floor(container.clientWidth);
+    if (!current.fit || !next || next === width) return;
+    width = next;
+    render(current);
+  });
+  resized.observe(container);
   render(spec);
 
   return {
@@ -348,8 +370,9 @@ export function drawChart(container, spec) {
       svg.removeEventListener("keydown", onKeyDown);
       svg.removeEventListener("focus", onFocus);
       svg.removeEventListener("blur", onBlur);
+      resized.disconnect();
       container.replaceChildren();
-      container.classList.remove("chart", "wide");
+      container.classList.remove("chart", "wide", "fit");
     },
     readout: {
       show,

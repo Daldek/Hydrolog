@@ -88,6 +88,17 @@ const DENSITY_HEADROOM = 1.25;
 const SHAPE_SIZE = { width: 760, height: 300 };
 
 /**
+ * How the charts fit their column (`fit` of the chart spec): drawn at its width with the
+ * ratio of their frames, the probability plot at least 260 px high, the others 200 px.
+ */
+const PLOT_FIT = { ratio: 432 / 760, minHeight: 260 };
+const SHAPE_FIT = { ratio: SHAPE_SIZE.height / SHAPE_SIZE.width, minHeight: 200 };
+
+/** The ticks of the axes, whatever a chart's width: the ranges are rounded to them. */
+const X_TICKS = 10;
+const Y_TICKS = 7;
+
+/**
  * The median of the finite values.
  *
  * @param {(number|null)[]} values the values (others than finite numbers are skipped)
@@ -148,7 +159,7 @@ export function axisRanges(result, curves) {
     const typical = median(fits.map((fit) => quantileTo(fit, tail))) ?? largest;
     return niceDomain([0, Math.min(Math.max(largest, typical), largest * FRAME_LIMIT)], { count }).max;
   };
-  const q = qTop(SHAPE_TAIL, 10);
+  const q = qTop(SHAPE_TAIL, X_TICKS);
   const covering = fits.filter((fit) => Number.isFinite(fit.aic));
   const peak = median(
     (covering.length ? covering : fits).map(
@@ -158,9 +169,9 @@ export function axisRanges(result, curves) {
   const grids = [...(result.distributions || []), ...(curves?.distributions || [])].flatMap((fit) => fit.exceedance_probabilities);
   const [left, right] = gumbelDomain([...grids, ...result.empirical.exceedance_prob].map((p) => p * 100));
   return {
-    probability: { t: [100 / left, 100 / right], q: [0, qTop(0, 7)] },
+    probability: { t: [100 / left, 100 / right], q: [0, qTop(0, Y_TICKS)] },
     // Without a density (none computed) the frame is 0 to 1
-    density: { q: [0, q], f: [0, peak > 0 ? niceDomain([0, DENSITY_HEADROOM * peak], { count: 7, pad: 0 }).max : 1] },
+    density: { q: [0, q], f: [0, peak > 0 ? niceDomain([0, DENSITY_HEADROOM * peak], { count: Y_TICKS, pad: 0 }).max : 1] },
     distribution: { q: [0, q] },
   };
 }
@@ -235,8 +246,9 @@ export function probabilitySpec({ result, curves, shown, chosen, active, ranges 
   }
   return {
     title: texts.chart.title,
+    fit: PLOT_FIT,
     x: { label: texts.chart.x, scale: "gumbel", domain: [100 / shortest, 100 / longest] },
-    y: { label: texts.chart.y, unit: "m³/s", min: low, max: top },
+    y: { label: texts.chart.y, unit: "m³/s", min: low, max: top, ticks: Y_TICKS },
     series,
     marks,
     legend: legendOf(fits, { kind: "points", label: texts.chart.points }),
@@ -352,9 +364,10 @@ export function densitySpec({ result, curves, shown, active, ranges }) {
   series.push({ id: "maxima", kind: "rug", label: texts.chart.points, data: result.annual_maxima });
   return {
     size: SHAPE_SIZE,
+    fit: SHAPE_FIT,
     title: texts.shape.density,
-    x: { label: texts.shape.x, min: left, max: right },
-    y: { label: texts.shape.densityY, unit: texts.shape.densityUnit, min: low, max: top },
+    x: { label: texts.shape.x, min: left, max: right, ticks: X_TICKS },
+    y: { label: texts.shape.densityY, unit: texts.shape.densityUnit, min: low, max: top, ticks: Y_TICKS },
     series,
     legend: legendOf(fits, { kind: "rug", label: texts.chart.points }),
     readout: { series: active, x: readoutQ, value: (value) => shortNumber(value) },
@@ -386,9 +399,10 @@ export function distributionSpec({ result, curves, shown, active, ranges }) {
   });
   return {
     size: SHAPE_SIZE,
+    fit: SHAPE_FIT,
     title: texts.shape.distribution,
-    x: { label: texts.shape.x, min: left, max: right },
-    y: { label: texts.shape.distributionY, min: 0, max: 1 },
+    x: { label: texts.shape.x, min: left, max: right, ticks: X_TICKS },
+    y: { label: texts.shape.distributionY, min: 0, max: 1, ticks: Y_TICKS },
     series,
     legend: legendOf(fits, { kind: "points", label: texts.chart.points }),
     readout: { series: active, x: readoutQ },
