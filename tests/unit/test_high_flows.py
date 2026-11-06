@@ -181,7 +181,7 @@ class TestFloodFrequencyAnalysis:
 
 
 class TestFitMethods:
-    @pytest.mark.parametrize("fit_method", ["moments", "l_moments"])
+    @pytest.mark.parametrize("fit_method", ["moments", "l_moments", "least_squares"])
     @pytest.mark.parametrize("distribution", list(_DISTRIBUTIONS))
     def test_recovers_the_parameters_of_a_large_sample(self, distribution, fit_method):
         from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
@@ -223,6 +223,24 @@ class TestFitMethods:
         if distribution != "log_normal":  # two parameters: the mean and the variance
             assert float(skewness) == pytest.approx(skew(_FLOODS, bias=False))
 
+    @pytest.mark.parametrize("distribution", list(_DISTRIBUTIONS))
+    def test_least_squares_bring_the_quantiles_closer_than_the_moments(
+        self, distribution
+    ):
+        from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
+
+        analysis = FloodFrequencyAnalysis(_FLOODS)
+        dist = _DISTRIBUTIONS[distribution][0]
+        # the Weibull plotting positions of the ascending sample
+        probabilities = np.arange(1, _FLOODS.size + 1) / (_FLOODS.size + 1)
+
+        def squares(fit_method):
+            fitted = _fit(analysis, distribution, fit_method).parameters.values()
+            quantiles = dist.ppf(probabilities, *fitted)
+            return np.sum((np.sort(_FLOODS) - quantiles) ** 2)
+
+        assert squares("least_squares") < squares("moments")
+
     def test_a_fit_without_density_at_an_annual_maximum_ranks_last(self):
         from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
 
@@ -242,6 +260,12 @@ class TestFitMethods:
         [
             ("weibull", "moments", [0.0, *[10.0] * 8, 10.5], "out_of_range"),
             ("weibull", "l_moments", [0.0, *[10.0] * 8, 10.5], "out_of_range"),
+            (
+                "weibull",
+                "least_squares",
+                [0.0, *[10.0] * 8, 10.5],
+                "out_of_range",
+            ),
             ("log_normal", "l_moments", [0.0, 5.0, 6.0, 7.0], "non_positive_values"),
             ("gev", "moments", [5.0, 5.0, 5.0, 5.0], "constant_values"),
             ("pearson3", "l_moments", [1.0, 2.0], "too_few_values"),

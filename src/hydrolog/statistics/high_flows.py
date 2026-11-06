@@ -1,9 +1,10 @@
 """Flood frequency analysis using parametric distributions.
 
 Fits annual maximum series to GEV, Log-Normal, Pearson Type III, and Weibull
-distributions by maximum likelihood, the method of moments or the method of
-L-moments (:data:`FIT_METHODS`).  Provides goodness-of-fit diagnostics (K-S,
-Anderson-Darling, AIC) and quantile estimates for user-defined return periods.
+distributions by maximum likelihood, the method of moments, the method of
+L-moments or least squares (:data:`FIT_METHODS`).  Provides goodness-of-fit
+diagnostics (K-S, Anderson-Darling, AIC) and quantile estimates for user-defined
+return periods.
 
 References
 ----------
@@ -24,7 +25,7 @@ from typing import Any, Final, Literal, cast, get_args
 
 import numpy as np
 from numpy.typing import NDArray
-from scipy.optimize import brentq
+from scipy.optimize import brentq, minimize
 from scipy.special import erfinv, gamma, gammaln, zeta
 from scipy.stats import genextreme, kstest, lognorm, pearson3, weibull_min
 
@@ -47,7 +48,7 @@ _AD_CRITICAL_VALUES: dict[str, float] = {
     "1%": 3.857,
 }
 
-FitMethod = Literal["mle", "moments", "l_moments"]
+FitMethod = Literal["mle", "moments", "l_moments", "least_squares"]
 FIT_METHODS: tuple[str, ...] = get_args(FitMethod)
 """Parameter estimation methods of :class:`FloodFrequencyAnalysis` (``fit_method``)."""
 
@@ -66,6 +67,7 @@ _DISTRIBUTION_NAMES: Final = {
 _METHOD_NAMES: Final = {
     "moments": "method of moments",
     "l_moments": "method of L-moments",
+    "least_squares": "method of least squares",
 }
 _MIN_VALUES: Final = 3  # the skewness and the L-skewness need three values
 # The skewness and the L-skewness of the Gumbel distribution (the GEV with shape 0):
@@ -392,6 +394,52 @@ def _by_l_moments(name: str, data: NDArray[np.float64]) -> tuple[float, float, f
     return _pearson3_from_l_moments(l1, l2, t3)
 
 
+def _by_least_squares(
+    name: str, data: NDArray[np.float64]
+) -> tuple[float, float, float]:
+    """Parameters ``(shape, loc, scale)`` of distribution ``name`` by least squares.
+
+    They minimise Σ (x(j) - Q(j / (n + 1)))² over the ascending sample x(j), Q the
+    quantile function of the distribution: the quantiles at the Weibull plotting
+    positions of :meth:`FloodFrequencyAnalysis.empirical_frequency`. Nelder-Mead
+    starts from the moments; it searches the logarithm of the scale and of the
+    log-normal and Weibull shapes, which stay positive.
+    """
+    shape, loc, scale = _by_moments(name, data)
+    ascending = np.sort(data)
+    probabilities = np.arange(1, data.size + 1) / (data.size + 1)
+    distribution = _DISTRIBUTIONS[name]
+    positive_shape = name in ("log_normal", "weibull")
+
+    def parameters(point: NDArray[np.float64]) -> tuple[float, float, float]:
+        first = float(np.exp(point[0])) if positive_shape else float(point[0])
+        if name == "log_normal":
+            return first, 0.0, float(np.exp(point[1]))
+        return first, float(point[1]), float(np.exp(point[2]))
+
+    def squares(point: NDArray[np.float64]) -> float:
+        with np.errstate(all="ignore"):
+            quantiles = distribution.ppf(probabilities, *parameters(point))
+            total = float(np.sum((ascending - quantiles) ** 2))
+        return total if np.isfinite(total) else np.inf
+
+    first = float(np.log(shape)) if positive_shape else shape
+    start = (
+        [first, float(np.log(scale))]
+        if name == "log_normal"
+        else [first, loc, float(np.log(scale))]
+    )
+    found = minimize(squares, start, method="Nelder-Mead")
+    return parameters(found.x)
+
+
+_ESTIMATORS: Final = {
+    "moments": _by_moments,
+    "l_moments": _by_l_moments,
+    "least_squares": _by_least_squares,
+}
+
+
 class FloodFrequencyAnalysis:
     """Flood frequency analysis for annual maximum series.
 
@@ -431,19 +479,25 @@ class FloodFrequencyAnalysis:
       equal the sample's, from the unbiased probability-weighted moments (Hosking
       and Wallis 1997): the log-normal by s = 2 erf⁻¹(λ2 / λ1), the GEV by the
       shape whose τ3 is the sample's, Pearson III by the approximations of Hosking
-      and Wallis.
+      and Wallis;
+    - ``"least_squares"``: the parameters minimising the sum of squared
+      differences between the ascending sample and the distribution's quantiles
+      at the Weibull plotting positions j / (n + 1), searched by Nelder-Mead from
+      the moments.
 
     For the moments and the L-moments the Weibull distribution is the GEV of the
     negated sample, which needs a sample skewness above -1.1395 or an L-skewness
-    above -0.1699 (the limits of the Gumbel distribution). These two methods need
-    3 values, not all equal, and raise :class:`CalculationError` when they give no
-    parameters, with ``details.reason``: ``too_few_values``, ``constant_values``,
-    ``out_of_range`` (the sample skewness or L-skewness outside the range of the
-    distribution) or ``non_positive_values`` (the log-normal with location 0 needs
-    values above 0). They may give a distribution whose support leaves out an
-    annual maximum, most often a lower bound of Pearson III or Weibull above the
-    smallest one (maximum likelihood rarely does): the result keeps its quantiles
-    and its AIC is infinite, so it ranks after every fit with a finite AIC.
+    above -0.1699 (the limits of the Gumbel distribution). The methods other than
+    maximum likelihood need 3 values, not all equal (least squares starts from the
+    moments and needs what they need), and raise :class:`CalculationError` when
+    they give no parameters, with ``details.reason``: ``too_few_values``,
+    ``constant_values``, ``out_of_range`` (the sample skewness or L-skewness
+    outside the range of the distribution) or ``non_positive_values`` (the
+    log-normal with location 0 needs values above 0). They may give a distribution
+    whose support leaves out an annual maximum, most often a lower bound of Pearson
+    III or Weibull above the smallest one (maximum likelihood rarely does): the
+    result keeps its quantiles and its AIC is infinite, so it ranks after every fit
+    with a finite AIC.
 
     Examples
     --------
@@ -493,7 +547,7 @@ class FloodFrequencyAnalysis:
 
         Parameters
         ----------
-        fit_method : {"mle", "moments", "l_moments"}, optional
+        fit_method : {"mle", "moments", "l_moments", "least_squares"}, optional
             Parameter estimation method (see the class notes), by default ``"mle"``.
 
         Returns
@@ -506,7 +560,7 @@ class FloodFrequencyAnalysis:
         InvalidParameterError
             If ``fit_method`` is not one of :data:`FIT_METHODS`.
         CalculationError
-            If the moments or the L-moments give no valid parameters.
+            If a method other than ``"mle"`` gives no parameters.
 
         Notes
         -----
@@ -535,7 +589,7 @@ class FloodFrequencyAnalysis:
 
         Parameters
         ----------
-        fit_method : {"mle", "moments", "l_moments"}, optional
+        fit_method : {"mle", "moments", "l_moments", "least_squares"}, optional
             Parameter estimation method (see the class notes), by default ``"mle"``.
 
         Returns
@@ -548,7 +602,7 @@ class FloodFrequencyAnalysis:
         InvalidParameterError
             If ``fit_method`` is not one of :data:`FIT_METHODS`.
         CalculationError
-            If the moments or the L-moments give no valid parameters.
+            If a method other than ``"mle"`` gives no parameters.
 
         Notes
         -----
@@ -575,7 +629,7 @@ class FloodFrequencyAnalysis:
 
         Parameters
         ----------
-        fit_method : {"mle", "moments", "l_moments"}, optional
+        fit_method : {"mle", "moments", "l_moments", "least_squares"}, optional
             Parameter estimation method (see the class notes), by default ``"mle"``.
 
         Returns
@@ -588,7 +642,7 @@ class FloodFrequencyAnalysis:
         InvalidParameterError
             If ``fit_method`` is not one of :data:`FIT_METHODS`.
         CalculationError
-            If the moments or the L-moments give no valid parameters.
+            If a method other than ``"mle"`` gives no parameters.
         """
         skew, loc, scale = self._estimate("pearson3", fit_method)
         params = {"skew": skew, "loc": loc, "scale": scale}
@@ -611,7 +665,7 @@ class FloodFrequencyAnalysis:
 
         Parameters
         ----------
-        fit_method : {"mle", "moments", "l_moments"}, optional
+        fit_method : {"mle", "moments", "l_moments", "least_squares"}, optional
             Parameter estimation method (see the class notes), by default ``"mle"``.
 
         Returns
@@ -624,7 +678,7 @@ class FloodFrequencyAnalysis:
         InvalidParameterError
             If ``fit_method`` is not one of :data:`FIT_METHODS`.
         CalculationError
-            If the moments or the L-moments give no valid parameters.
+            If a method other than ``"mle"`` gives no parameters.
         """
         shape, loc, scale = self._estimate("weibull", fit_method)
         params = {"shape": shape, "loc": loc, "scale": scale}
@@ -665,7 +719,7 @@ class FloodFrequencyAnalysis:
 
         Parameters
         ----------
-        fit_method : {"mle", "moments", "l_moments"}, optional
+        fit_method : {"mle", "moments", "l_moments", "least_squares"}, optional
             Parameter estimation method of every distribution (see the class
             notes), by default ``"mle"``.
 
@@ -680,7 +734,7 @@ class FloodFrequencyAnalysis:
         InvalidParameterError
             If ``fit_method`` is not one of :data:`FIT_METHODS`.
         CalculationError
-            If the moments or the L-moments give no valid parameters of one of the
+            If a method other than ``"mle"`` gives no parameters of one of the
             distributions.
         """
         results: dict[str, FrequencyAnalysisResult] = {
@@ -717,8 +771,8 @@ class FloodFrequencyAnalysis:
         InvalidParameterError
             If ``fit_method`` is not one of :data:`FIT_METHODS`.
         CalculationError
-            If the moments or the L-moments give no parameters (see the class notes
-            for ``details.reason``).
+            If a method other than ``"mle"`` gives no parameters (see the class
+            notes for ``details.reason``).
         """
         if fit_method not in FIT_METHODS:
             allowed = ", ".join(repr(method) for method in FIT_METHODS)
@@ -739,7 +793,7 @@ class FloodFrequencyAnalysis:
                 else distribution.fit(self._data)
             )
             return cast(tuple[float, float, float], fitted)
-        estimate = _by_moments if fit_method == "moments" else _by_l_moments
+        estimate = _ESTIMATORS[fit_method]
         try:
             parameters = estimate(name, self._data)
         except _NoParameters as exc:
