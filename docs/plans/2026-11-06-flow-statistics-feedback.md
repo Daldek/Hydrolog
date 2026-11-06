@@ -104,3 +104,9 @@ guide `instrukcja/`, regenerated `AGENTS.md` and `llms.txt`) on the branch that 
   `l_moments`, `least_squares`), the library keyword `fit_method`, the notices
   `distribution_left_out` and `outside_support`, „Metoda estymacji parametrów” in the GUI; the
   Statystyka pictures of the guide are to be taken again (PROGRESS, Next 8).
+- `feature/stats-distribution-selection` (D2, GUI only): „W tabeli kwantyli” in each row of the
+  distributions table (one Q column per ticked distribution in the quantile table and the CSV)
+  and the active distribution chosen by a click on its row (the tiles, „Do porównania” and the
+  full curve of the plot, the others dimmed); the best one after every computation, nothing
+  stored. The last ticked distribution cannot be unticked, so the quantile table always has a
+  column. The Statystyka pictures of the guide are to be taken again (PROGRESS, Next 8).
