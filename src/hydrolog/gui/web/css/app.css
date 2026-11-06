@@ -615,6 +615,9 @@ pre.code .fold { color: color-mix(in srgb, var(--code-text) 55%, var(--code-bg))
 .dtable tr.conflict th, .dtable tr.conflict td { background: var(--warn-bg); color: var(--warn-ink); }
 .dtable tbody th .sw-line { margin-right: 6px; }
 .dtable .badge { height: 18px; }
+.dtable thead .wrap { white-space: normal; }
+.dtable td.pick { text-align: center; }
+.dtable td.pick input { vertical-align: middle; }
 .dtable.edit td { font-family: var(--font-mono); }
 .dtable.edit thead th { white-space: normal; line-height: 1.2; }
 .table-more { display: flex; flex-wrap: wrap; gap: var(--space-2); }

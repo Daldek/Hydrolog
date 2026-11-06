@@ -3,7 +3,8 @@
 // header, or pasted values; a first visit has neither (the guide, instrukcja/#statystyka,
 // has a worked example). The form's fields are the catalog's. „Oblicz” runs the command,
 // and a second run of the same series on a dense grid of return periods gives the curves
-// of the probability plot. The result shows the best distribution, the quantiles, the
+// of the probability plot. The result shows the best distribution, the quantiles of the
+// distributions ticked in its table (the best one after every computation, not stored), the
 // goodness of fit and the notices in Polish; „Do porównania” hands the stressed quantile
 // to Hydrogram zlewni (store "reference"). A change marks the result stale (plan D13).
 // A station's series handed off by Archiwista (ADR-0020, „Wczytaj z Archiwisty”) arrives
@@ -111,6 +112,8 @@ export default function Statystyka() {
   const sequence = useRef(0);
   const running = useRef(null);
   const chartSvg = useRef(null);
+  // The distributions ticked „W tabeli kwantyli” for one run; another run starts again
+  const [picked, setPicked] = useState({ run: null, names: [] });
 
   const base = useMemo(() => (doc ? fieldModel(doc) : null), [doc]);
   // Hydrolog's range of the record's length, checked by the explanation of the analysis
@@ -277,6 +280,8 @@ export default function Statystyka() {
   const periods = periodsOf(state.values.return_periods);
   const stressed = stressedPeriod(periods, state.chosen);
   const runFile = run ? (typeof run.options.input_file === "string" ? run.options.input_file.replace(/^in\//, "") : texts.pasted) : null;
+  const ticked = result ? (picked.run === run ? picked.names : [result.best_distribution]) : [];
+  const onTick = (name, on) => setPicked({ run, names: on ? [...ticked, name] : ticked.filter((item) => item !== name) });
 
   // The badge: busy, an error of the server, the form's own problems, a stale result, ok
   let badge = null;
@@ -327,7 +332,7 @@ export default function Statystyka() {
   }
 
   const spec = result
-    ? exportSpec({ options: run.options, envelope: run.envelope, chartSvg: tab === "chart" ? chartSvg : null, pasted: texts.pasted })
+    ? exportSpec({ options: run.options, envelope: run.envelope, ticked, chartSvg: tab === "chart" ? chartSvg : null, pasted: texts.pasted })
     : null;
 
   const footState = busy
@@ -399,7 +404,15 @@ export default function Statystyka() {
   const right = {
     sub: result ? t(texts.results.sub, { name: distributionName(result.best_distribution) }) : null,
     body: html`<div class=${`result-area${busy ? " computing" : ""}`}>
-      <${ResultsPanel} run=${run} periods=${runPeriods} stressed=${runStressed} spec=${spec} reference=${referenceState} />
+      <${ResultsPanel}
+        run=${run}
+        periods=${runPeriods}
+        stressed=${runStressed}
+        ticked=${ticked}
+        onTick=${onTick}
+        spec=${spec}
+        reference=${referenceState}
+      />
     </div>`,
   };
   return html`<${ViewLayout} left=${left} center=${center} right=${right} />`;

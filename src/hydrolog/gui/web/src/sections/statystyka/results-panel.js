@@ -1,8 +1,8 @@
 // The results of „Statystyka przepływów”: in the centre the probability plot and the ranked
 // annual maxima, in the panel Wyniki the tiles, the notices in Polish, the fitted
-// distributions with their goodness of fit, the quantiles of the best one and the exports
-// (CSV of the quantiles, the envelope as JSON, the chart as PNG, „Do porównania” and the
-// call).
+// distributions with their goodness of fit, the quantiles of the distributions ticked in
+// their table (the best one after every computation) and the exports (CSV of those
+// quantiles, the envelope as JSON, the chart as PNG, „Do porównania” and the call).
 
 import { Chart } from "../../charts/chart.js";
 import { num, plural } from "../../format.js";
@@ -14,7 +14,7 @@ import { CommandLine, ExportButtons } from "../../ui/export-panel.js";
 import { InfoButton } from "../../ui/info-button.js";
 import { DataTable } from "../../ui/table.js";
 import { probabilitySpec } from "./charts.js";
-import { COMMAND, DISTRIBUTION_CLASS, percentAt, quantileAt, secondPeriod, shortNumber } from "./state.js";
+import { COMMAND, DISTRIBUTION_CLASS, percentAt, quantileAt, secondPeriod, shortNumber, tickedFits } from "./state.js";
 
 /**
  * The name of a distribution in the tables.
@@ -142,14 +142,15 @@ function Tiles({ result, stressed, second }) {
 }
 
 /**
- * The fitted distributions: AIC, A² against its critical value, the p-value of KS and two
- * quantiles; the best first, as Hydrolog sorts them.
+ * The fitted distributions: the box „W tabeli kwantyli”, AIC, A² against its critical
+ * value, the p-value of KS and two quantiles; the best first, as Hydrolog sorts them.
  *
- * @param {{result: object, stressed: number|null, second: number|null}} props the result
- *   and the two return periods
+ * @param {{result: object, stressed: number|null, second: number|null, ticked: string[],
+ *   onTick: (name: string, on: boolean) => void}} props the result, the two return periods,
+ *   the distributions in the quantile table and the change of one of them
  * @returns {object} the table and its note
  */
-function Distributions({ result, stressed, second }) {
+function Distributions({ result, stressed, second, ticked, onTick }) {
   const best = result.best_distribution;
   const critical = adCritical(result.distributions[0]);
   const columns = [
@@ -159,6 +160,23 @@ function Distributions({ result, stressed, second }) {
       format: (name) => html`<i class=${`sw-line ${DISTRIBUTION_CLASS[name] || "s4"}`} aria-hidden="true"></i>${distributionName(name)}${name === best
         ? html` <span class="badge ok">${texts.results.best}</span>`
         : null}`,
+    },
+    // Beside the name, in sight in a narrow panel; the last ticked one stays, so the
+    // quantile table always has a column
+    {
+      key: "distribution_name",
+      label: html`<span class="wrap">${texts.results.inQuantiles}</span>`,
+      className: "pick",
+      format: (name) => {
+        const on = ticked.includes(name);
+        return html`<input
+          type="checkbox"
+          checked=${on}
+          disabled=${on && ticked.length === 1}
+          aria-label=${t(texts.results.inQuantilesOf, { name: distributionName(name) })}
+          onChange=${(event) => onTick(name, event.currentTarget.checked)}
+        />`;
+      },
     },
     { key: "aic", label: texts.results.aic, format: (value) => (typeof value === "number" ? num(value, 1) : "—") },
     {
@@ -206,39 +224,58 @@ function Distributions({ result, stressed, second }) {
 }
 
 /**
- * The quantiles of a distribution, the stressed period marked.
+ * The quantiles of the ticked distributions, one column each, the stressed period marked.
  *
- * @param {{fit: object, stressed: number|null}} props the fit and the stressed period
+ * @param {{fits: object[], stressed: number|null}} props the ticked fits, in the order of
+ *   the distributions table, and the stressed period
  * @returns {object} the table
  */
-function Quantiles({ fit, stressed }) {
-  const rows = fit.return_periods.map((period, index) => ({
-    period,
-    p: fit.exceedance_probabilities[index] * 100,
-    q: fit.quantiles[index],
-  }));
+function Quantiles({ fits, stressed }) {
+  const [first] = fits;
+  const rows = first.return_periods.map((period, index) => {
+    const row = { period, p: first.exceedance_probabilities[index] * 100 };
+    for (const fit of fits) row[fit.distribution_name] = fit.quantiles[index];
+    return row;
+  });
   return html`<${DataTable}
     columns=${[
       { key: "period", label: texts.results.period, unit: texts.results.periodUnit, format: (value) => shortNumber(value, 6) },
       { key: "p", label: texts.results.probability, unit: "%", format: (value) => shortNumber(value) },
-      { key: "q", label: texts.results.quantile, unit: "m³/s", format: (value) => num(value, 1) },
+      ...fits.map((fit) => ({
+        key: fit.distribution_name,
+        // A long name wraps, its unit with it: the table stays within the panel
+        label: html`<span class="wrap">${t(texts.results.quantileOf, { name: distributionName(fit.distribution_name) })} <span class="u">[m³/s]</span></span>`,
+        format: (value) => num(value, 1),
+      })),
     ]}
     rows=${rows}
-    label=${t(texts.results.quantiles, { name: distributionName(fit.distribution_name) })}
+    label=${quantilesTitle(fits)}
     tall=${false}
     rowClass=${(row) => (row.period === stressed ? "hl" : null)}
   />`;
 }
 
 /**
+ * The title of the quantile table: „Kwantyle: GEV, Weibull”.
+ *
+ * @param {object[]} fits the ticked fits
+ * @returns {string} the title
+ */
+function quantilesTitle(fits) {
+  return t(texts.results.quantiles, { name: fits.map((fit) => distributionName(fit.distribution_name)).join(", ") });
+}
+
+/**
  * The panel Wyniki.
  *
- * @param {{run: object|null, periods: number[], stressed: number|null, spec: object|null,
+ * @param {{run: object|null, periods: number[], stressed: number|null, ticked: string[],
+ *   onTick: (name: string, on: boolean) => void, spec: object|null,
  *   reference: {pressed: boolean, toggle: () => void}|null}} props the last run, its return
- *   periods and the stressed one, the export spec and the state of „Do porównania”
+ *   periods and the stressed one, the distributions in the quantile table and the change of
+ *   one of them, the export spec and the state of „Do porównania”
  * @returns {object} the panel's body
  */
-export function ResultsPanel({ run, periods, stressed, spec, reference }) {
+export function ResultsPanel({ run, periods, stressed, ticked, onTick, spec, reference }) {
   if (!run) return html`<p class="muted">${texts.noResult}</p>`;
   const { envelope } = run;
   if (envelope.status !== "ok") {
@@ -248,18 +285,18 @@ export function ResultsPanel({ run, periods, stressed, spec, reference }) {
     `;
   }
   const result = envelope.result;
-  const fit = bestFit(result);
+  const fits = tickedFits(result, ticked);
   const second = secondPeriod(periods, stressed);
   return html`
     <${Tiles} result=${result} stressed=${stressed} second=${second} />
     <h3 class="group-title">${texts.results.notices} <${InfoButton} id="stats-flood-frequency" values=${{ n_years: result.n_years }} /></h3>
     <${Notices} notices=${envelope.notices || []} />
     <h3 class="group-title">${texts.results.distributions} <${InfoButton} id="stats-fit" /></h3>
-    <${Distributions} result=${result} stressed=${stressed} second=${second} />
-    ${fit
+    <${Distributions} result=${result} stressed=${stressed} second=${second} ticked=${ticked} onTick=${onTick} />
+    ${fits.length
       ? html`
-          <h3 class="group-title">${t(texts.results.quantiles, { name: distributionName(fit.distribution_name) })} <${InfoButton} id="stats-distributions" /></h3>
-          <${Quantiles} fit=${fit} stressed=${stressed} />
+          <h3 class="group-title">${quantilesTitle(fits)} <${InfoButton} id="stats-distributions" /></h3>
+          <${Quantiles} fits=${fits} stressed=${stressed} />
         `
       : null}
     <div class="steps">

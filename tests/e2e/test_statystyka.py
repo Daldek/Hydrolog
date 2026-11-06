@@ -6,7 +6,9 @@ returns there. The annual maxima of 1998 to 2023 (``tests/fixtures/maksima_roczn
 those years of ``annual_maxima.csv``) uploaded and „Oblicz” run ``stats
 flood-frequency``, giving the mockup's GEV „Q 1% 307,3 m³/s”, the KZGW notice in Polish,
 the probability plot and the ranked maxima with their years; the call shown is the
-options sent. A daily series takes its date column from its header; pasted maxima run
+options sent. A distribution ticked „W tabeli kwantyli” adds its column of quantiles to
+the quantile table and the CSV, and a new result ticks the best one alone again. A daily
+series takes its date column from its header; pasted maxima run
 as ``values``; „Do porównania” hands the stressed quantile to the store. A station's
 series handed off by Archiwista (``hydrolog-series/1``, ADR-0020) opens here with
 „Wczytaj z Archiwisty”: annual maxima as the pasted values without the missing years,
@@ -19,7 +21,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from playwright.sync_api import Page, Response, expect
+from playwright.sync_api import Locator, Page, Response, expect
 
 from hydrolog.catalog import format_command, parse_command, run_command
 from tests.e2e.conftest import Tab, open_part
@@ -31,6 +33,12 @@ SECTION = 'section[data-section="statystyka"]'
 RIGHT = f"{SECTION} .view-panel.right"
 BADGE = ".topbar .badge.status"
 DEFAULT_PERIODS = [2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 500.0, 1000.0]
+NAMES = {
+    "gev": "GEV",
+    "log_normal": "log-normalny",
+    "pearson3": "Pearson III",
+    "weibull": "Weibull",
+}
 
 
 def open_section(tab: Tab) -> Page:
@@ -64,6 +72,13 @@ def sent(response: Response) -> dict[str, Any]:
     options = response.request.post_data_json
     assert isinstance(options, dict)
     return options
+
+
+def download(page: Page, trigger: Locator) -> tuple[str, bytes]:
+    """Click ``trigger``; return the name and the bytes of the download it starts."""
+    with page.expect_download() as started:
+        trigger.click()
+    return started.value.suggested_filename, Path(started.value.path()).read_bytes()
 
 
 def test_a_first_visit_is_empty_and_clearing_returns_there(tab: Tab) -> None:
@@ -213,6 +228,74 @@ def test_the_ranked_maxima_carry_their_years(tab: Tab) -> None:
     expect(rows.first.locator("th, td")).to_have_text(["1", "2006", "315,4", "3,7"])
     expect(rows.nth(16).locator("th, td")).to_have_text(["17", "2022", "123,8", "63,0"])
     expect(rows.last.locator("th, td")).to_have_text(["26", "2020", "81,6", "96,3"])
+
+
+def test_ticked_distributions_add_their_quantiles_to_the_table_and_the_csv(
+    tab: Tab,
+) -> None:
+    page = open_section(tab)
+    result = compute(page).json()["result"]
+    fits = result["distributions"]
+    assert fits[0]["distribution_name"] == result["best_distribution"] == "gev"
+    right = page.locator(RIGHT)
+    boxes = right.get_by_role("checkbox", name=re.compile(r"^W tabeli kwantyli: "))
+    expect(boxes).to_have_count(4)
+    # Only the best one is ticked, and it cannot be the last one taken away
+    best = right.get_by_role("checkbox", name="W tabeli kwantyli: GEV")
+    expect(best).to_be_checked()
+    expect(best).to_be_disabled()
+    quantiles = right.get_by_role("region", name="Kwantyle: GEV")
+    expect(quantiles.locator("thead th")).to_have_text(
+        ["T [lata]", "p [%]", "Q GEV [m³/s]"]
+    )
+
+    # Ticked third, then second: the columns follow the distributions table
+    third, second = fits[2], fits[1]
+    for fit in (third, second):
+        right.get_by_role(
+            "checkbox", name=f"W tabeli kwantyli: {NAMES[fit['distribution_name']]}"
+        ).check()
+    shown = [fits[0], second, third]
+    title = "Kwantyle: " + ", ".join(NAMES[fit["distribution_name"]] for fit in shown)
+    expect(
+        right.get_by_role("heading", name=re.compile(rf"^{re.escape(title)} "))
+    ).to_be_visible()
+    quantiles = right.get_by_role("region", name=title)
+    expect(quantiles.locator("thead th")).to_have_text(
+        ["T [lata]", "p [%]"]
+        + [f"Q {NAMES[fit['distribution_name']]} [m³/s]" for fit in shown]
+    )
+    expect(best).to_be_enabled()
+    rows = quantiles.locator("tbody tr")
+    expect(rows).to_have_count(len(DEFAULT_PERIODS))
+    for index in range(len(DEFAULT_PERIODS)):
+        expect(rows.nth(index).locator("td").nth(-2)).to_have_text(
+            f"{second['quantiles'][index]:.1f}".replace(".", ",")
+        )
+    # The highlighted period (T = 100) is still the marked row
+    expect(quantiles.locator("tr.hl th")).to_have_text("100")
+    expect(quantiles.locator("tr.hl td").nth(1)).to_have_text("307,3")
+
+    open_part(page, SECTION, "exports")
+    name, data = download(
+        page, right.locator(".export-row button").filter(has_text="CSV")
+    )
+    assert name == "maksima_roczne-kwantyle.csv"
+    header, *lines = [line.split(",") for line in data.decode("utf-8").splitlines()]
+    assert header == [
+        "return_period_years",
+        "exceedance_probability",
+        *(f"{fit['distribution_name']}_m3s" for fit in shown),
+    ]
+    assert [float(line[0]) for line in lines] == DEFAULT_PERIODS
+    for column, fit in enumerate(shown, start=2):
+        assert [float(line[column]) for line in lines] == fit["quantiles"]
+
+    # A new result ticks the best one alone again
+    compute(page)
+    expect(right.get_by_role("checkbox", checked=True)).to_have_count(1)
+    expect(best).to_be_checked()
+    expect(right.get_by_role("region", name="Kwantyle: GEV")).to_be_visible()
 
 
 def test_a_daily_series_takes_its_date_column(tab: Tab) -> None:
