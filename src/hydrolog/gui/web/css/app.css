@@ -533,6 +533,8 @@ body.resizing .view-center, body.resizing .view-panel { pointer-events: none; }
 .kpi { padding: var(--space-2) 10px; background: var(--surface); min-width: 0; overflow: hidden; }
 .kpi .k { font-size: var(--text-xs); color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .kpi .v { font-size: var(--text-md); font-weight: var(--weight-bold); font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* A name in a tile (Statystyka's distribution, „log-normalny”) wraps rather than being cut */
+.kpi[data-key="distribution"] .v { white-space: normal; overflow-wrap: anywhere; line-height: 1.2; }
 .kpi .u { font-size: var(--text-xs); color: var(--text-2); font-weight: var(--weight-regular); }
 .kpi .sub { font-size: var(--text-xs); line-height: 1.25; color: var(--text-2); }
 @container (max-width: 380px) { .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
