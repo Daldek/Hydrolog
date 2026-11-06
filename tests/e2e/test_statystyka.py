@@ -1,13 +1,14 @@
-"""„Statystyka przepływów” (plan S5, D13, D14, D16; 2026-11-06, D3–D5, D7) in Chromium.
+"""„Statystyka przepływów” (plan S5, D13, D14, D16; 2026-11-06, D3–D5, D7–D9), Chromium.
 
 Against the real server of ``gui_server``: a first visit (inputs stored by version 2 are
 not read) has no series, shows every distribution by L-moments and sends nothing, a hint
-names what to load and links the guide's worked example; „Wyczyść” returns there. The
-annual maxima of 1998 to 2023 (``tests/fixtures/maksima_roczne.csv``,
-those years of ``annual_maxima.csv``) uploaded, T = 100 highlighted and „Oblicz” run
-``stats flood-frequency`` with every distribution by every fit method, giving the GEV
-„Q 1% 324,9 m³/s” (L-moments, shown at first), the KZGW notice in Polish, the
-probability plot, the density and distribution-function charts (one curve per
+names what to load and links the guide's worked example; „Wyczyść” returns there. With
+the annual maxima of 1998 to 2023 (``tests/fixtures/maksima_roczne.csv``, those years of
+``annual_maxima.csv``) uploaded and T = 100 highlighted, the section runs ``stats
+flood-frequency`` by itself (no „Oblicz”: every change of the inputs sent runs again 250
+ms later, a display-only choice does not) with every distribution by every fit method,
+giving the GEV „Q 1% 324,9 m³/s” (L-moments, shown at first), the KZGW notice in Polish,
+the probability plot, the density and distribution-function charts (one curve per
 combination shown, a rug and the empirical points of the maxima) and the ranked maxima
 with their years; the call shown is the options sent. „Rozkłady” and „Metody estymacji”
 only choose the combinations shown, stored and without a request: a method added draws
@@ -44,7 +45,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from playwright.sync_api import Locator, Page, Response, expect
+from playwright.sync_api import Locator, Page, Request, Response, expect
 
 from hydrolog.catalog import format_command, parse_command, run_command
 from tests.e2e.conftest import Tab, open_part
@@ -58,6 +59,7 @@ MAXIMA = FIXTURES / "maksima_roczne.csv"
 SECTION = 'section[data-section="statystyka"]'
 RIGHT = f"{SECTION} .view-panel.right"
 BADGE = ".topbar .badge.status"
+CALC = f"{SECTION} .panel-foot [data-calc]"
 HOMOGENEITY = f'{RIGHT} [data-part="homogeneity"]'
 PROBABILITY = f"{SECTION} .view-center .st-chart svg.chart-svg"
 DENSITY = f'{SECTION} .view-center [data-chart="density"] svg.chart-svg'
@@ -96,14 +98,32 @@ def key(fit: dict[str, Any]) -> str:
     return f"{fit['distribution_name']}/{fit['fit_method']}"
 
 
+# The newest request of each run channel of the section, by page (``visit``)
+RUNS: dict[Page, dict[str, Request]] = {}
+
+
+def visit(tab: Tab) -> Page:
+    """Open the section, keeping the newest request of each of its run channels."""
+    newest: dict[str, Request] = {}
+
+    def keep(request: Request) -> None:
+        if "/api/run/" in request.url and "channel=" in request.url:
+            newest[request.url.rsplit("channel=", 1)[1]] = request
+
+    tab.page.on("request", keep)
+    RUNS[tab.page] = newest
+    tab.open("#statystyka")
+    return tab.page
+
+
 def open_section(tab: Tab) -> Page:
     """Open the section, upload the maxima of 1998–2023 and wait for their columns."""
-    tab.open("#statystyka")
-    upload(tab.page, MAXIMA)
+    page = visit(tab)
+    upload(page, MAXIMA)
     expect(
-        tab.page.locator(f'{SECTION} .handoff[data-file="in/maksima_roczne.csv"]')
+        page.locator(f'{SECTION} .handoff[data-file="in/maksima_roczne.csv"]')
     ).to_contain_text("26 wierszy")
-    return tab.page
+    return page
 
 
 def upload(page: Page, path: Path) -> None:
@@ -113,22 +133,29 @@ def upload(page: Page, path: Path) -> None:
     ).set_input_files(path)
 
 
-def compute(page: Page) -> Response:
-    """Press „Oblicz”; return the answer of the run of the tables (not the curves)."""
-    with page.expect_response(
-        lambda response: response.url.endswith("channel=statystyka")
-    ) as answer:
-        page.locator(f"{SECTION} .panel-foot .btn.primary").click()
-    return answer.value
+def compute(page: Page, channel: str = "statystyka") -> Response:
+    """Wait until the result is the live run of the inputs shown; return that run's
+    answer on ``channel`` (the tables; ``statystyka-krzywe`` the curves,
+    ``statystyka-jednorodnosc`` the homogeneity tests)."""
+    expect(page.locator(CALC)).to_have_attribute("data-calc", "ok")
+    answer = RUNS[page][channel].response()
+    assert answer is not None
+    return answer
 
 
 def compute_tested(page: Page) -> Response:
-    """Press „Oblicz”; return the answer of the run of the homogeneity tests."""
-    with page.expect_response(
-        lambda response: response.url.endswith("channel=statystyka-jednorodnosc")
-    ) as answer:
-        compute(page)
-    return answer.value
+    """Wait for the live run; return the answer of its homogeneity tests."""
+    return compute(page, "statystyka-jednorodnosc")
+
+
+def rerun(page: Page, change: Callable[[], None]) -> Response:
+    """Make ``change`` of the inputs sent while a result is shown; wait for the run it
+    starts and return its answer of the tables."""
+    with page.expect_request(
+        lambda request: request.url.endswith("channel=statystyka")
+    ):
+        change()
+    return compute(page)
 
 
 def sent(response: Response) -> dict[str, Any]:
@@ -182,8 +209,7 @@ def test_a_first_visit_is_empty_and_clearing_returns_there(tab: Tab) -> None:
         "source: 'paste', values: {values: '100; 120; 140', distribution: 'gev',"
         " fit_method: 'mle'}, chosen: 100})); } catch (error) {}"
     )
-    tab.open("#statystyka")
-    page = tab.page
+    page = visit(tab)
     hint = page.locator(f'{SECTION} [data-empty="statystyka"]')
     expect(hint).to_contain_text("Wczytaj plik CSV")
     expect(hint.get_by_role("link")).to_have_attribute(
@@ -206,11 +232,15 @@ def test_a_first_visit_is_empty_and_clearing_returns_there(tab: Tab) -> None:
     expect(hint).to_contain_text("Wklej co najmniej kilka maksimów")
     assert posted == []  # no upload, no run
 
-    # „Oblicz” on nothing: the required field says so, nothing is sent
-    page.locator(f"{SECTION} .panel-foot .btn.primary").click()
-    expect(page.locator(f"{SECTION} #st-values")).to_have_attribute(
-        "aria-invalid", "true"
-    )
+    # No „Oblicz” and nothing to run: the series typed and emptied says it is required,
+    # and nothing is sent
+    expect(page.locator(f"{SECTION} .panel-foot .btn.primary")).to_have_count(0)
+    expect(page.locator(CALC)).to_have_attribute("data-calc", "idle")
+    pasted = page.locator(f"{SECTION} #st-values")
+    pasted.fill("x")
+    pasted.fill("")
+    expect(pasted).to_have_attribute("aria-invalid", "true")
+    expect(page.locator(CALC)).to_have_attribute("data-calc", "warn")
     assert posted == []
 
     page.locator(f"{SECTION} .step").first.get_by_role("radio", name="Plik CSV").click()
@@ -304,9 +334,12 @@ def test_the_maxima_give_the_mockups_gev_quantile_and_the_kzgw_notice(
     )
     assert parse_command(line).options["value_column"] == "Qmax"
 
-    # A change of the inputs makes the result stale
-    page.locator(f"{SECTION} #st-return_periods").fill("10; 100")
-    expect(page.locator(BADGE)).to_have_attribute("data-state", "stale")
+    # A change of the inputs sent runs again by itself
+    response = rerun(
+        page, lambda: page.locator(f"{SECTION} #st-return_periods").fill("10; 100")
+    )
+    assert sent(response)["return_periods"] == [10.0, 100.0]
+    expect(page.locator(BADGE)).to_have_attribute("data-state", "ok")
 
 
 def test_one_run_fits_every_combination_and_the_filters_only_show_them(
@@ -321,12 +354,10 @@ def test_one_run_fits_every_combination_and_the_filters_only_show_them(
         ),
     )
     highlight(page, "100")
-    with page.expect_response(
-        lambda response: response.url.endswith("channel=statystyka-krzywe")
-    ) as curves:
-        response = compute(page)
+    response = compute(page)
+    curves = compute(page, "statystyka-krzywe")
     # Both runs: every distribution by every method, sixteen combinations
-    for answer in (response, curves.value):
+    for answer in (response, curves):
         assert {sent(answer)[name] for name in ("distribution", "fit_method")} == {
             "all"
         }
@@ -587,8 +618,8 @@ def test_ticked_distributions_add_their_quantiles_to_the_table_and_the_csv(
     assert [float(line[0]) for line in lines] == DEFAULT_PERIODS
     assert [float(line[1]) for line in lines] == fits[0]["exceedance_probabilities"]
 
-    # A new result ticks the best one alone again
-    compute(page)
+    # A new result (of other periods) ticks the best one alone again
+    rerun(page, lambda: page.locator(f"{SECTION} #st-return_periods").fill("10; 100"))
     expect(right.get_by_role("checkbox", checked=True)).to_have_count(1)
     expect(best).to_be_checked()
     expect(right.get_by_role("region", name="Kwantyle: GEV")).to_be_visible()
@@ -641,11 +672,12 @@ def test_a_clicked_row_drives_the_tiles_the_plot_and_the_comparison(tab: Tab) ->
     assert reference["peak_m3s"] == q100
     assert reference["label"] == "Q 1% (log-normalny, L-momenty)"
 
-    # The keyboard: Enter on a focused row; a new result makes the best one active again
+    # The keyboard: Enter on a focused row; a new result (of other periods) makes the
+    # best one active again
     rows.nth(3).focus()
     page.keyboard.press("Enter")
     expect(tile.locator(".v")).to_have_text("Weibull")
-    compute(page)
+    rerun(page, lambda: page.locator(f"{SECTION} #st-return_periods").fill("10; 100"))
     expect(tile.locator(".k")).to_have_text("Najlepszy")
     expect(tile.locator(".v")).to_have_text("GEV")
     expect(chart.locator('path.ser.active[data-series="gev/l_moments"]')).to_have_count(
@@ -682,7 +714,7 @@ def test_a_daily_series_takes_its_date_column(tab: Tab) -> None:
 def test_the_axis_ranges_follow_the_result_alone(tab: Tab) -> None:
     # Twelve maxima on which several combinations have a density spike at a bound: the
     # GEV by maximum likelihood about 53, the log-normal by L-moments 0,0089 at most
-    page = open_section(tab)
+    page = visit(tab)
     page.locator(f"{SECTION} .step").first.get_by_role("radio", name="Wklej").click()
     page.locator(f"{SECTION} #st-values").fill(
         "100,9; 148,6; 130; 140,3; 133,4; 87,2; 170,9; 141,1; 315,4; 126; 177,5; 116,9"
@@ -738,7 +770,7 @@ def test_the_axis_ranges_follow_the_result_alone(tab: Tab) -> None:
 
 
 def test_pasted_maxima_run_and_go_to_the_comparison(tab: Tab) -> None:
-    page = open_section(tab)
+    page = visit(tab)
     page.locator(f"{SECTION} .step").first.get_by_role("radio", name="Wklej").click()
     page.locator(f"{SECTION} #st-values").fill(
         "100,9; 148,6; 130; 140,3; 133,4; 87,2; 170,9; 141,1; 315,4; 126; 177,5; 116,9"
@@ -780,8 +812,7 @@ def test_the_guides_series_passes_the_three_homogeneity_tests(tab: Tab) -> None:
         r'data-paste="statystyka-values">([^<]*)<', GUIDE.read_text(encoding="utf-8")
     )
     assert found
-    tab.open("#statystyka")
-    page = tab.page
+    page = visit(tab)
     page.locator(f"{SECTION} .step").first.get_by_role("radio", name="Wklej").click()
     page.locator(f"{SECTION} #st-values").fill(found.group(1))
 
@@ -828,8 +859,7 @@ def test_a_step_in_the_series_fails_the_tests_at_its_year(
     rows = [f"{2001 + index},{50 + index}" for index in range(10)]
     rows += [f"{2011 + index},{100 + index}" for index in range(10)]
     path.write_text("year,Qmax [m3/s]\n" + "\n".join(rows) + "\n", encoding="utf-8")
-    tab.open("#statystyka")
-    page = tab.page
+    page = visit(tab)
     upload(page, path)
     expect(page.locator(f"{SECTION} #st-value_column")).to_have_value("Qmax")
 
@@ -859,7 +889,7 @@ def test_a_step_in_the_series_fails_the_tests_at_its_year(
     expect(rejected).not_to_contain_text("(EN)")
 
 
-def test_a_phone_in_the_dark_computes_through_the_sheets(
+def test_a_phone_in_the_dark_recomputes_through_the_sheets(
     new_tab: Callable[..., Tab],
 ) -> None:
     tab = new_tab(width=390, height=844, theme="dark")
@@ -874,7 +904,10 @@ def test_a_phone_in_the_dark_computes_through_the_sheets(
     expect(left).to_be_visible()
     assert page.evaluate(sideways) == 0
     highlight(page, "100")
-    left.locator(".panel-foot .btn.primary").click()
+    compute(page)
+    page.locator(f"{SECTION} .view-bar").get_by_role(
+        "button", name="Wyniki", exact=True
+    ).click()
     expect(page.locator(RIGHT)).to_be_visible()
     expect(page.locator(f'{RIGHT} .kpi[data-key="q-100"] .v')).to_have_text(
         "324,9 m³/s"
@@ -925,8 +958,7 @@ def test_annual_maxima_from_archiwista_run_as_values_without_the_missing_years(
         "years": [1997] + [int(year) for year, _ in rows],
         "values": [None, *maxima],
     }
-    tab.open("#statystyka")
-    page = tab.page
+    page = visit(tab)
 
     open_handoff(page, handoff(payload, "Raba — maksima roczne"), tmp_path)
 
@@ -961,8 +993,7 @@ def test_a_daily_series_from_archiwista_becomes_a_session_file_with_its_columns(
         "dates": [day for day, _ in days],
         "values": [float(value) for _, value in days],
     }
-    tab.open("#statystyka")
-    page = tab.page
+    page = visit(tab)
 
     open_handoff(page, handoff(payload, "Raba — Q dobowe"), tmp_path)
 
@@ -990,8 +1021,7 @@ def test_annual_minima_and_a_short_series_are_refused_with_the_reason(
         "years": [2020, 2021],
         "values": [1.2, 0.9],
     }
-    tab.open("#statystyka")
-    page = tab.page
+    page = visit(tab)
     problems = page.locator(f"{SECTION} [data-handoff-problems] li")
 
     open_handoff(page, handoff(minima, "Raba — minima"), tmp_path)

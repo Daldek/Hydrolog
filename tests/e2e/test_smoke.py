@@ -213,13 +213,15 @@ def test_the_guides_examples_typed_give_the_guides_numbers(tab: Tab) -> None:
     read("siec-q-muskingum", tiles.locator('[data-tile="peak"] .v'))
     read("siec-tp-muskingum", tiles.locator('[data-tile="time"] .v'))
 
-    # Statystyka przepływów: the guide's maxima pasted, T = 100 highlighted
+    # Statystyka przepływów: the guide's maxima pasted, T = 100 highlighted; no „Oblicz”
     page = reopen(tab, "#statystyka")
     section = page.locator('section[data-section="statystyka"]')
     section.locator(".step").first.get_by_role("radio", name="Wklej").click()
     section.locator("#st-values").fill(pasted)
     section.locator(".st-chosen").get_by_role("button", name="100", exact=True).click()
-    section.locator(".panel-foot .btn.primary").click()
+    expect(section.locator(".panel-foot [data-calc]")).to_have_attribute(
+        "data-calc", "ok"
+    )
     expect(page.locator(BADGE)).to_have_attribute("data-state", "ok")
     tiles = section.locator(".view-panel.right .summary")
     for key, tile in [

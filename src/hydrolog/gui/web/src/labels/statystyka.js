@@ -47,9 +47,14 @@ export const statystyka = {
   chosenNone: "brak",
   chosenNoneItem: "Bez wyróżnionego okresu",
   chosenHint: "Wyróżniony okres trafia do kafelków, tabeli, wykresu i „Do porównania”.",
-  compute: "Oblicz",
-  computing: "Hydrolog liczy…",
-  lastRun: "ostatnio {time}",
+  /** The state under the panel Dane: the result follows every change (no „Oblicz”). */
+  calc: {
+    ok: "Wynik aktualny · liczy się sam po każdej zmianie",
+    busy: "Liczenie…",
+    waiting: "Liczy się samo po każdej zmianie",
+    idle: "Wczytaj plik albo wklej maksima roczne: wynik policzy się sam",
+    error: "Błąd danych: wynik dla poprzednich danych",
+  },
   clearTitle: "Wyczyść dane: pusty szereg",
   context: "{file} · {years}",
   contextRange: "{file} · {years} ({first}–{last})",
@@ -57,7 +62,7 @@ export const statystyka = {
   view: "Widok",
   tabs: { chart: "Wykres prawdopodobieństwa", series: "Maksima roczne" },
   hint: "Punkty: maksima roczne (położenie Weibulla i/(n+1)); linie: rozkłady (kolor) dopasowane metodami estymacji (styl linii)",
-  noResult: "Wybierz szereg i naciśnij „Oblicz”: Hydrolog dopasuje rozkłady i poda kwantyle.",
+  noResult: "Wybierz szereg: Hydrolog sam dopasuje rozkłady i poda kwantyle.",
   chart: {
     title: "Krzywe prawdopodobieństwa przewyższenia",
     sub: "{count} (punkty, położenie Weibulla i/(n+1)) i {fits} dopasowane {by}",
