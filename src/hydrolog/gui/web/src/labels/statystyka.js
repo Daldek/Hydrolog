@@ -33,7 +33,7 @@ export const statystyka = {
   pasteNote: "Wklej maksima roczne w kolejności lat: z arkusza, z tekstu albo z kolumny pliku CSV.",
   pasteEmpty: "Wklej co najmniej kilka maksimów rocznych, jedno na rok, oddzielone średnikami lub w osobnych wierszach.",
   distributionsMeta: "{count} · AIC",
-  fitMethodNote: "Metoda szacuje parametry każdego z rozkładów; obie tabele i krzywe wykresu liczy ta sama.",
+  fitMethodNote: "Metoda szacuje parametry każdego z rozkładów; obie tabele i krzywe wykresów liczy ta sama.",
   chosen: "Wyróżniony w wynikach",
   chosenItem: "T = {t} lat (p {p}%)",
   chosenNone: "brak",
