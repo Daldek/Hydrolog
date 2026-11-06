@@ -11,7 +11,8 @@ with their years; the call shown is the options sent. A distribution ticked „W
 kwantyli” adds its column of quantiles to the quantile table and the CSV, and a new
 result ticks the best one alone again. A click on a row of the distributions table (or
 Enter on it) makes that distribution the active one: the tiles, the full curve of the
-three charts and „Do porównania” follow it, the other curves dimmed, until a new result.
+three charts and „Do porównania” follow it, the other curves dimmed, until a new result;
+the density chart is scaled to it (a GEV's spike on twelve maxima clipped at the frame).
 No period is highlighted at first („brak”): no highlighted tile or row, no marked
 quantile on the charts and „Do porównania” off until one is chosen, the choice stored.
 A daily series takes its date column from its header; pasted maxima run
@@ -31,6 +32,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+import pytest
 from playwright.sync_api import Locator, Page, Request, Response, expect
 
 from hydrolog.catalog import format_command, parse_command, run_command
@@ -470,6 +472,40 @@ def test_a_daily_series_takes_its_date_column(tab: Tab) -> None:
     years = page.locator(f"{SECTION} .view-center .dtable tbody td.t")
     expect(years).to_have_text(["2024", "2022", "2023"])
     expect(page.locator(f'{RIGHT} .notes li[data-code="small_sample"]')).to_be_visible()
+
+
+def test_the_density_chart_is_scaled_to_the_active_distribution(tab: Tab) -> None:
+    # Twelve maxima whose GEV has a spike at its lower bound (a density of about 53
+    # against the best fit's, the log-normal's, 0,0096 at most)
+    page = open_section(tab)
+    page.locator(f"{SECTION} .step").first.get_by_role("radio", name="Wklej").click()
+    page.locator(f"{SECTION} #st-values").fill(
+        "100,9; 148,6; 130; 140,3; 133,4; 87,2; 170,9; 141,1; 315,4; 126; 177,5; 116,9"
+    )
+    result = compute(page).json()["result"]
+    assert result["best_distribution"] == "log_normal"
+    expect(page.locator(BADGE)).to_have_attribute("data-state", "ok")
+    density = page.locator(DENSITY)
+    expect(density.locator('path.ser.active[data-series="log_normal"]')).to_have_count(
+        1
+    )
+    expect(density.locator("path.ser")).to_have_count(4)
+
+    shown = density.evaluate(
+        """svg => {
+          const frame = svg.querySelector('g.grid.v line');
+          const top = Number(frame.getAttribute('y1'));
+          const bottom = Number(frame.getAttribute('y2'));
+          return [...svg.querySelectorAll('path.ser')].map((path) =>
+            [path.dataset.series, (bottom - path.getBBox().y) / (bottom - top)]);
+        }"""
+    )
+    heights = dict(shown)
+    # The active curve's peak in the upper part of the frame; the GEV's spike clipped at
+    # its top, as every other curve stays within it
+    assert heights["log_normal"] > 0.6
+    assert heights["gev"] == pytest.approx(1.0, abs=0.01)
+    assert max(heights.values()) <= 1.01
 
 
 def test_pasted_maxima_run_and_go_to_the_comparison(tab: Tab) -> None:
