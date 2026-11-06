@@ -128,6 +128,8 @@ through its Python API); Hydrograf and Retman use Hydrolog.
 - DEV-2.2: the web GUI is Polish only; an English UI comes later (plan 2026-11-02, D9).
 - DEV-7.3: the tests have one relaxed mypy override (untyped test functions); `src/` is
   `strict`.
+- DEV-7.7: Windows runs in CI but does not block it until its port (the author's decision
+  of 2026-11-06): paths, the home directory and file locking still differ there.
 - DEV-19.7: a command that writes one file (`--output`) replaces it atomically through a
   temporary file beside the target, not through a `.hydrolog-incoming/` staging directory
   (ADR 0003); `route network` (`--output-dir`, many files) does use the staging directory

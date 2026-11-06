@@ -3,6 +3,8 @@
 # Windows, on Python 3.12 (required) and the newest stable Python (reported,
 # not blocking: wheels of geospatial dependencies often lag), and audits the
 # locked PyPI dependencies (DEV-13.6; informative, not a required check).
+# Windows is reported, not blocking, until its port (the author's decision of
+# 2026-11-06): paths, the home directory and file locking still differ there.
 # Chromium is installed before the gate for the browser tests of the GUI
 # (tests/e2e, Playwright).
 # Commit messages are checked once, on pull requests into develop and from
@@ -33,14 +35,15 @@ jobs:
     name: gate (${{ matrix.os }}, Python ${{ matrix.python }})
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.experimental }}
-    timeout-minutes: 30
+    timeout-minutes: 45   # Windows takes about 27 minutes
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest]
         python: ["3.12"]
         experimental: [false]
         include:
+          - {os: windows-latest, python: "3.12", experimental: true}
           - {os: ubuntu-latest, python: "3.15", experimental: true}
           - {os: macos-latest, python: "3.15", experimental: true}
           - {os: windows-latest, python: "3.15", experimental: true}
