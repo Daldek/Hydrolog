@@ -27,3 +27,4 @@ the Nogat standard 2.1 adoption are in the plans of [plans/](plans/).
 | [0019](decisions/0019-tc-from-the-inputs-its-source-defines.md) | Time of concentration from the inputs its source defines: the longest flow path, no substitutes | accepted | 2026-11-05 |
 | [0020](decisions/0020-a-stations-series-through-the-handoff.md) | A station's series through the hand-off: `hydrolog-series/1` into Statystyka przepływów | accepted | 2026-11-05 |
 | [0021](decisions/0021-fit-methods-of-flood-frequency.md) | Fit methods of flood frequency: maximum likelihood, moments, L-moments and least squares | accepted | 2026-11-06 |
+| [0022](decisions/0022-homogeneity-tests.md) | Homogeneity tests of annual maxima: Mann-Whitney U, two-sample Kolmogorov-Smirnov and Pettitt | accepted | 2026-11-06 |
