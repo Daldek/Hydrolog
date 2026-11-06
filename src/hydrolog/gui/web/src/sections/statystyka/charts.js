@@ -95,6 +95,12 @@ export function frameTop(result, active) {
 const SHAPE_TAIL = 0.01;
 
 /**
+ * The frame of the density and distribution-function charts, one under the other: as wide as
+ * the probability plot's (the same text size at the same width), lower.
+ */
+const SHAPE_SIZE = { width: 760, height: 300 };
+
+/**
  * The top of the density and distribution-function charts: the largest annual maximum or the
  * active combination's largest quantile of p ≥ 1% on the curves, within the probability
  * plot's frame. Further out the density lies on the axis and F is 1, so the body, where the
@@ -257,9 +263,9 @@ function clipped(data, ceiling) {
 }
 
 /**
- * The series of a curve of a small chart (the density, the distribution function): with more
+ * The series of a curve of a low chart (the density, the distribution function): with more
  * than one method drawn its readout reads the active curve only, as a row for each of up to
- * sixteen curves would not fit the small frame.
+ * sixteen curves would not fit the low frame.
  *
  * @param {object} fit a combination of the curves' run (or of the result)
  * @param {string|null} active the key of the active combination
@@ -282,7 +288,7 @@ function smallCurve(fit, active, named, fields) {
  *   methods: string[]}, active: string|null}} input the result of the run, the result of
  *   the run on the dense grid (null when it failed), the combinations shown and the key of
  *   the active one
- * @returns {object} the Chart spec (small)
+ * @returns {object} the Chart spec
  */
 export function densitySpec({ result, curves, shown, active }) {
   const fits = shownFits((curves || result).distributions || [], shown);
@@ -291,12 +297,12 @@ export function densitySpec({ result, curves, shown, active }) {
   const drawn = fits.map((fit) => ({ fit, data: againstQ(fit, top, (index) => (fit.densities || [])[index]) }));
   const own = drawn.find((item) => fitKey(item.fit) === active);
   const peak = own ? extent(own.data.map(([, y]) => y))?.[1] : undefined;
-  // The axis's own rounding of a small chart (5 ticks, 8% headroom), fixed as its top
-  const ceiling = peak === undefined ? undefined : niceDomain([0, peak], { count: 5 }).max;
+  // The axis's own rounding of a wide chart (7 ticks, 8% headroom), fixed as its top
+  const ceiling = peak === undefined ? undefined : niceDomain([0, peak], { count: 7 }).max;
   const series = drawn.map(({ fit, data }) => smallCurve(fit, active, named, { data: ceiling === undefined ? data : clipped(data, ceiling) }));
   series.push({ id: "maxima", kind: "rug", label: texts.chart.points, data: result.annual_maxima });
   return {
-    size: "small",
+    size: SHAPE_SIZE,
     title: texts.shape.density,
     x: { label: texts.shape.x },
     y: { label: texts.shape.densityY, unit: texts.shape.densityUnit, ...(ceiling === undefined ? {} : { max: ceiling }) },
@@ -312,7 +318,7 @@ export function densitySpec({ result, curves, shown, active }) {
  *
  * @param {{result: object, curves: object|null, shown: {distributions: string[],
  *   methods: string[]}, active: string|null}} input as for `densitySpec`
- * @returns {object} the Chart spec (small)
+ * @returns {object} the Chart spec
  */
 export function distributionSpec({ result, curves, shown, active }) {
   const fits = shownFits((curves || result).distributions || [], shown);
@@ -330,7 +336,7 @@ export function distributionSpec({ result, curves, shown, active }) {
     data: values.map((q, index) => [q, 1 - exceedance[index]]),
   });
   return {
-    size: "small",
+    size: SHAPE_SIZE,
     title: texts.shape.distribution,
     x: { label: texts.shape.x },
     y: { label: texts.shape.distributionY, min: 0, max: 1 },

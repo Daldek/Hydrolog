@@ -167,15 +167,13 @@ export function CenterBody({ run, tab, shown, stressed, active, chartSvg }) {
         <h3 class="card-title">${texts.shape.title}</h3>
         <span class="card-sub">${texts.shape.sub}</span>
       </div>
-      <div class="duo">
-        <div class="chart-box" data-chart="density">
-          <div class="chart-title">${texts.shape.density}</div>
-          <${Chart} spec=${shapes.density} />
-        </div>
-        <div class="chart-box" data-chart="distribution">
-          <div class="chart-title">${texts.shape.distribution}</div>
-          <${Chart} spec=${shapes.distribution} />
-        </div>
+      <div class="chart-box" data-chart="density">
+        <div class="chart-title">${texts.shape.density}</div>
+        <${Chart} spec=${shapes.density} />
+      </div>
+      <div class="chart-box" data-chart="distribution">
+        <div class="chart-title">${texts.shape.distribution}</div>
+        <${Chart} spec=${shapes.distribution} />
       </div>
     </div>
   `;
