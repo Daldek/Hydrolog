@@ -12,7 +12,8 @@ combination shown, a rug and the empirical points of the maxima) and the ranked 
 with their years; the call shown is the options sent. „Rozkłady” and „Metody estymacji”
 only choose the combinations shown, stored and without a request: a method added draws
 its curves in its line style (maximum likelihood dashed) and the best shown, the lowest
-AIC, becomes the active one; a distribution taken away hides its curves. The
+AIC, becomes the active one; a distribution taken away hides its curves. A notice of a
+fit outside its support names its combination and shows only while that is shown. The
 distributions table has a row per combination shown with its method. A combination
 ticked „W tabeli kwantyli” adds its column of quantiles to the quantile table and the
 CSV; every row can leave it, the best one too, leaving a note and a CSV of the periods
@@ -357,6 +358,13 @@ def test_one_run_fits_every_combination_and_the_filters_only_show_them(
         ]
     )
     expect(right.locator('.kpi[data-key="q-100"] .v')).to_have_text("324,9 m³/s")
+    # A notice per fit outside its support, each naming its combination: only those of
+    # the combinations shown
+    notices = response.json()["notices"]
+    nulls = [fit for fit in result["distributions"] if fit["aic"] is None]
+    assert sum(item["code"] == "outside_support" for item in notices) == len(nulls)
+    outside = right.locator('.notes li[data-code="outside_support"]')
+    expect(outside).to_have_count(sum(fit["aic"] is None for fit in shown_fits(result)))
 
     # Maximum likelihood added: four dashed curves more, in the line style of its key;
     # the best one shown is now its GEV (the lowest AIC), active with its quantile
@@ -375,6 +383,9 @@ def test_one_run_fits_every_combination_and_the_filters_only_show_them(
     assert (
         dashes(swatch)
         == dashes(page.locator(PROBABILITY).locator("path.ser.fm-mle"))[:1]
+    )
+    expect(outside).to_have_count(
+        sum(fit["aic"] is None for fit in shown_fits(result, ("l_moments", "mle")))
     )
     expect(legend).to_contain_text("Największa wiarygodność")
     expect(subtitle).to_contain_text(

@@ -11,10 +11,11 @@
 // AIC, until a click on another's row of the distributions table) in the tiles and on the
 // charts, the quantiles of the combinations ticked in that table (the best one until the
 // person ticks or unticks a row; any, none included), the goodness of fit and the notices in
-// Polish; neither choice is stored, and an active one no longer shown gives way to the best
-// one. „Do porównania” hands the active combination's stressed quantile to Hydrogram zlewni
-// (store "reference"); it is off while „Wyróżniony w wynikach” is „brak” (the first visit). A
-// change of the inputs marks the result stale (plan D13).
+// Polish (a notice naming a combination only while it is shown); neither choice is stored,
+// and an active one no longer shown gives way to the best one. „Do porównania” hands the
+// active combination's stressed quantile to Hydrogram zlewni (store "reference"); it is off
+// while „Wyróżniony w wynikach” is „brak” (the first visit). A change of the inputs marks the
+// result stale (plan D13).
 // A station's series handed off by Archiwista (ADR-0020, „Wczytaj z Archiwisty”) arrives
 // through useHandoffInbox as the source and values it opens with, and the data panel names
 // where it came from until the series is changed.
@@ -455,6 +456,7 @@ export default function Statystyka() {
     body: html`<div class=${`result-area${busy ? " computing" : ""}`}>
       <${ResultsPanel}
         run=${run}
+        shown=${state.shown}
         fits=${visible}
         best=${bestKey}
         periods=${runPeriods}

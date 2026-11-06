@@ -1,11 +1,12 @@
 // The results of „Statystyka przepływów”: in the centre the probability plot with the density
 // and distribution-function charts, and the ranked annual maxima, in the panel Wyniki the
 // tiles of the active combination of distribution and fit method, the notices in Polish (with
-// those of the homogeneity tests), the combinations shown with their goodness of fit (a click
-// on a row makes its combination the active one), the quantiles of the combinations ticked in
-// their table, the homogeneity of the series (`stats homogeneity`: three tests, the split and
-// Pettitt's change point) and the exports (CSV of those quantiles, the envelope as JSON, the
-// probability plot as PNG, „Do porównania” and the call).
+// those of the homogeneity tests; one naming a combination only while it is shown), the
+// combinations shown with their goodness of fit (a click on a row makes its combination the
+// active one), the quantiles of the combinations ticked in their table, the homogeneity of the
+// series (`stats homogeneity`: three tests, the split and Pettitt's change point) and the
+// exports (CSV of those quantiles, the envelope as JSON, the probability plot as PNG, „Do
+// porównania” and the call).
 
 import { Chart } from "../../charts/chart.js";
 import { auto, num, plural } from "../../format.js";
@@ -17,7 +18,7 @@ import { CommandLine, ExportButtons } from "../../ui/export-panel.js";
 import { InfoButton } from "../../ui/info-button.js";
 import { DataTable } from "../../ui/table.js";
 import { curveClass, densitySpec, distributionSpec, methodName, namesMethods, probabilitySpec } from "./charts.js";
-import { COMMAND, FIT_METHODS, fitKey, percentAt, quantileAt, secondPeriod, shortNumber, shownFits, tickedFits } from "./state.js";
+import { COMMAND, FIT_METHODS, fitKey, percentAt, quantileAt, secondPeriod, shortNumber, shownFits, shownNotices, tickedFits } from "./state.js";
 import { Stroke } from "./swatch.js";
 
 /** Lists in Polish: „L-momentów i największej wiarygodności”. */
@@ -426,17 +427,19 @@ function Homogeneity({ run }) {
 /**
  * The panel Wyniki.
  *
- * @param {{run: object|null, fits: object[], best: string|null, periods: number[],
- *   stressed: number|null, ticked: string[], onTick: (key: string, on: boolean) => void,
- *   active: string|null, onActive: (key: string) => void, spec: object|null,
+ * @param {{run: object|null, shown: {distributions: string[], methods: string[]},
+ *   fits: object[], best: string|null, periods: number[], stressed: number|null,
+ *   ticked: string[], onTick: (key: string, on: boolean) => void, active: string|null,
+ *   onActive: (key: string) => void, spec: object|null,
  *   reference: {pressed: boolean, toggle: (() => void)|null}|null}} props the last run, the
+ *   filters of the combinations shown (the notices of the others stay hidden), the
  *   combinations shown and the key of the best one, its return periods and the stressed one
  *   (null for „brak”), the keys of the combinations in the quantile table and the change of
  *   one of them, the key of the active combination and its change, the export spec and the
  *   state of „Do porównania” (no toggle: off until a period is highlighted)
  * @returns {object} the panel's body
  */
-export function ResultsPanel({ run, fits, best, periods, stressed, ticked, onTick, active, onActive, spec, reference }) {
+export function ResultsPanel({ run, shown, fits, best, periods, stressed, ticked, onTick, active, onActive, spec, reference }) {
   if (!run) return html`<p class="muted">${texts.noResult}</p>`;
   const { envelope } = run;
   if (envelope.status !== "ok") {
@@ -466,7 +469,7 @@ export function ResultsPanel({ run, fits, best, periods, stressed, ticked, onTic
   return html`
     <${Tiles} result=${result} fit=${fit} best=${best} stressed=${stressed} second=${second} />
     <h3 class="group-title">${texts.results.notices} <${InfoButton} id="stats-flood-frequency" values=${{ n_years: result.n_years }} /></h3>
-    <${Notices} notices=${[...(envelope.notices || []), ...homogeneityNotices(run)]} />
+    <${Notices} notices=${[...shownNotices(envelope.notices || [], shown), ...homogeneityNotices(run)]} />
     <h3 class="group-title">${texts.results.distributions} <${InfoButton} id="stats-fit" /></h3>
     ${fits.length
       ? html`<${Distributions}

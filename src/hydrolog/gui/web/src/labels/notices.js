@@ -106,7 +106,7 @@ export const notices = {
       plain: "Wybrana metoda nie daje parametrów jednego z rozkładów; pominięto go.",
     },
     outside_support: {
-      text: "Dopasowany rozkład {distribution} nie obejmuje maksimów {values}: jego AIC jest nieokreślone, rozkład jest na końcu rankingu.",
+      text: "Rozkład {distribution} dopasowany metodą {fit_method} nie obejmuje maksimów {values}: jego AIC jest nieokreślone, rozkład jest na końcu rankingu.",
       plain: "Dopasowany rozkład nie obejmuje wszystkich maksimów: jego AIC jest nieokreślone.",
     },
     homogeneity_rejected: {

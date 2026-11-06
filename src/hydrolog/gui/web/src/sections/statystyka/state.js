@@ -470,6 +470,25 @@ export function shownFits(fits, shown) {
   return fits.filter((fit) => shown.distributions.includes(fit.distribution_name) && shown.methods.includes(fit.fit_method));
 }
 
+/** The notices naming one combination in their details: a fit outside its support, one left out. */
+const COMBINATION_NOTICES = new Set(["outside_support", "distribution_left_out"]);
+
+/**
+ * The notices of a run for the combinations shown: a notice naming a combination
+ * (`details.distribution` and `details.fit_method`) only while it is shown, the others all.
+ *
+ * @param {object[]} notices the notices of the envelope
+ * @param {{distributions: string[], methods: string[]}} shown the filters
+ * @returns {object[]} the notices shown
+ */
+export function shownNotices(notices, shown) {
+  return notices.filter((notice) => {
+    if (!COMBINATION_NOTICES.has(notice.code)) return true;
+    const details = notice.details || {};
+    return shown.distributions.includes(details.distribution) && shown.methods.includes(details.fit_method);
+  });
+}
+
 /**
  * The best of the fits shown: the lowest AIC. A fit without one (null: a maximum outside its
  * support) ranks after every other and ties keep the result's order, as Hydrolog ranks.

@@ -357,15 +357,16 @@ class DistributionLeftOut(HydrologWarning):
 class OutsideSupport(HydrologWarning):
     """Annual maxima have no density under a fitted distribution.
 
-    Details: the ``distribution`` and the annual maxima (``values``) outside its
-    support; its log-likelihood is -inf, so its AIC is infinite (null in JSON).
+    Details: the ``distribution``, the ``fit_method`` that fitted it and the annual
+    maxima (``values``) outside its support; its log-likelihood is -inf, so its AIC is
+    infinite (null in JSON).
     """
 
     template = (
-        "The fitted {distribution} distribution gives no density to the annual "
-        "maxima {values}: its AIC is undefined (null) and it ranks last."
+        "The {distribution} distribution fitted by {fit_method} gives no density to "
+        "the annual maxima {values}: its AIC is undefined (null) and it ranks last."
     )
-    keys = ("distribution", "values")
+    keys = ("distribution", "fit_method", "values")
 
 
 class IncompleteYears(HydrologWarning):
