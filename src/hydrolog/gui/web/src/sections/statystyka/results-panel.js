@@ -1,13 +1,14 @@
 // The results of „Statystyka przepływów”: in the centre the probability plot with the density
 // and distribution-function charts, and the ranked annual maxima, in the panel Wyniki the
-// tiles of the active distribution, the notices in Polish, the fitted distributions with
-// their goodness of fit (a click on a row makes its distribution the active one), the
-// quantiles of the distributions ticked in their table and the exports (CSV of those
-// quantiles, the envelope as JSON, the probability plot as PNG, „Do porównania” and the
-// call).
+// tiles of the active distribution, the notices in Polish (with those of the homogeneity
+// tests), the fitted distributions with their goodness of fit (a click on a row makes its
+// distribution the active one), the quantiles of the distributions ticked in their table,
+// the homogeneity of the series (`stats homogeneity`: three tests, the split and Pettitt's
+// change point) and the exports (CSV of those quantiles, the envelope as JSON, the
+// probability plot as PNG, „Do porównania” and the call).
 
 import { Chart } from "../../charts/chart.js";
-import { num, plural } from "../../format.js";
+import { auto, num, plural } from "../../format.js";
 import { Notices } from "../../forms/result-view.js";
 import { html, useMemo } from "../../html.js";
 import { t } from "../../labels/common.js";
@@ -286,6 +287,82 @@ function quantilesTitle(fits) {
   return t(texts.results.quantiles, { name: fits.map((fit) => distributionName(fit.distribution_name)).join(", ") });
 }
 
+/** The homogeneity tests in the order of the panel, as keys of the result. */
+const TESTS = ["mann_whitney", "kolmogorov_smirnov", "pettitt"];
+
+/**
+ * A p-value as the panel shows it: three decimals, „< 0,001” below.
+ *
+ * @param {number} value the p-value
+ * @returns {string} the text
+ */
+function pValue(value) {
+  return value < 0.001 ? texts.homogeneity.pBelow : num(value, 3);
+}
+
+/**
+ * The notices of the homogeneity tests that belong beside the section's own: the tests
+ * that reject (the series' notices are the run's already).
+ *
+ * @param {object} run the last run
+ * @returns {object[]} the notices
+ */
+function homogeneityNotices(run) {
+  const notices = (run.homogeneity && run.homogeneity.notices) || [];
+  return notices.filter((notice) => notice.code === "homogeneity_rejected");
+}
+
+/**
+ * „Jednorodność ciągu”: each test's statistic, p-value and verdict, the split and Pettitt's
+ * most probable change point, or why the tests gave nothing.
+ *
+ * @param {{run: object}} props the last run (its `homogeneity` envelope or error)
+ * @returns {object} the part
+ */
+function Homogeneity({ run }) {
+  const words = texts.homogeneity;
+  const result = run.homogeneity ? run.homogeneity.result : null;
+  const heading = html`<h3 class="group-title">${words.title} <${InfoButton} id="stats-homogeneity" /></h3>`;
+  if (!result) {
+    return html`<div data-part="homogeneity">
+      ${heading}
+      <p class="note">${t(words.failed, { message: run.homogeneityError || texts.results.cancelled })}</p>
+    </div>`;
+  }
+  const alpha = shortNumber(result.significance_level);
+  const verdict = (ok) => html`<span class=${ok ? "ok-mark" : "bad-mark"} title=${ok ? words.homogeneousTitle : words.rejectedTitle}>${ok ? "✓" : "✗"}</span> ${ok
+      ? words.homogeneous
+      : words.rejected}`;
+  const columns = [
+    { key: "name", label: words.test, format: (name) => words.tests[name] },
+    { key: "statistic", label: words.statistic, format: (value, row) => `${words.symbols[row.name]} = ${auto(value, 3)}` },
+    { key: "p_value", label: words.p, format: pValue },
+    { key: "homogeneous", label: words.verdict, format: verdict },
+  ];
+  const n = result.n_years;
+  const first = result.split_index;
+  const split =
+    result.split_year === null
+      ? t(words.splitValues, { first, next: first + 1, n })
+      : t(words.split, { year: result.split_year, first: plural(first, texts.yearForms), second: plural(n - first, texts.yearForms) });
+  const { pettitt } = result;
+  const weight = pettitt.homogeneous ? t(words.notSignificant, { alpha }) : "";
+  const change =
+    pettitt.change_point_year === null
+      ? t(words.changePointValues, { index: pettitt.change_point_index, weight })
+      : t(words.changePoint, { year: pettitt.change_point_year, weight });
+  return html`<div data-part="homogeneity">
+    ${heading}
+    <${DataTable}
+      columns=${columns}
+      rows=${TESTS.map((name) => ({ name, ...result[name] }))}
+      label=${words.title}
+      tall=${false}
+    />
+    <p class="note">${[split, change, t(words.level, { alpha })].join(" ")}</p>
+  </div>`;
+}
+
 /**
  * The panel Wyniki.
  *
@@ -313,7 +390,7 @@ export function ResultsPanel({ run, periods, stressed, ticked, onTick, active, o
   return html`
     <${Tiles} result=${result} active=${active} stressed=${stressed} second=${second} />
     <h3 class="group-title">${texts.results.notices} <${InfoButton} id="stats-flood-frequency" values=${{ n_years: result.n_years }} /></h3>
-    <${Notices} notices=${envelope.notices || []} />
+    <${Notices} notices=${[...(envelope.notices || []), ...homogeneityNotices(run)]} />
     <h3 class="group-title">${texts.results.distributions} <${InfoButton} id="stats-fit" /></h3>
     <${Distributions}
       result=${result}
@@ -330,6 +407,7 @@ export function ResultsPanel({ run, periods, stressed, ticked, onTick, active, o
           <${Quantiles} fits=${fits} stressed=${stressed} />
         `
       : null}
+    <${Homogeneity} run=${run} />
     <div class="steps">
       <details class="step" data-part="exports">
         <summary>

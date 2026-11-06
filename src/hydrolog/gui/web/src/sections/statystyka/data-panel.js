@@ -24,7 +24,7 @@ import { columnOption, resolveColumn, shortNumber } from "./state.js";
 const ID = "st";
 
 /** The other commands of the group `stats`, run in „Wszystkie polecenia”. */
-const OTHER_COMMANDS = ["stats low-flow", "stats low-flow-sequences", "stats mann-kendall", "stats characteristic", "stats monthly", "stats daily"];
+const OTHER_COMMANDS = ["stats low-flow", "stats low-flow-sequences", "stats mann-kendall", "stats homogeneity", "stats characteristic", "stats monthly", "stats daily"];
 
 /**
  * A step of the panel: a numbered, collapsible part of the calculation.

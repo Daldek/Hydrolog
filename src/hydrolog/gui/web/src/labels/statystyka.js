@@ -1,7 +1,8 @@
 /**
  * Texts of the section „Statystyka przepływów”: the flood frequency analysis of annual
  * maxima (`stats flood-frequency`) from a file or pasted values, its probability plot on
- * Gumbel paper and its tables.
+ * Gumbel paper and its tables, and the homogeneity tests of the series (`stats
+ * homogeneity`).
  */
 
 export const statystyka = {
@@ -122,6 +123,28 @@ export const statystyka = {
     referenceSource: "stats flood-frequency · {file}",
     cancelled: "Obliczenie anulowano.",
   },
+  /** The panel „Jednorodność ciągu” in Wyniki (`stats homogeneity` of the same series). */
+  homogeneity: {
+    title: "Jednorodność ciągu",
+    test: "Test",
+    statistic: "Statystyka",
+    p: "p",
+    verdict: "Jednorodny",
+    tests: { mann_whitney: "Mann-Whitney", kolmogorov_smirnov: "Kołmogorow-Smirnow", pettitt: "Pettitt" },
+    symbols: { mann_whitney: "U", kolmogorov_smirnov: "D", pettitt: "K" },
+    homogeneous: "tak",
+    rejected: "nie",
+    homogeneousTitle: "Test nie odrzuca jednorodności: p ≥ α",
+    rejectedTitle: "Test odrzuca jednorodność: p < α",
+    pBelow: "< 0,001",
+    split: "Podział od roku {year}: {first} wcześniej, {second} od {year}.",
+    splitValues: "Podział: wartości 1–{first} i {next}–{n}.",
+    changePoint: "Najbardziej prawdopodobny punkt zmiany (Pettitt): {year}, pierwszy rok po zmianie{weight}.",
+    changePointValues: "Najbardziej prawdopodobny punkt zmiany (Pettitt): po {index}. wartości{weight}.",
+    notSignificant: " (nieistotny przy α = {alpha})",
+    level: "Test odrzuca jednorodność, gdy p < α = {alpha}.",
+    failed: "Nie udało się zbadać jednorodności: {message}",
+  },
   /** The fit methods in the instrumental case, after „metodą”: the chart's subtitle. */
   fitMethods: {
     mle: "największej wiarygodności",
@@ -136,6 +159,6 @@ export const statystyka = {
     pearson3: { name: "Pearson III", legend: "Pearson III" },
     weibull: { name: "Weibull", legend: "Weibull" },
   },
-  more: "Inne analizy szeregu (niżówki, trend, wartości charakteryst.) są w „Wszystkie polecenia”:",
+  more: "Inne analizy szeregu (niżówki, trend, jednorodność z własnym rokiem podziału, wartości charakteryst.) są w „Wszystkie polecenia”:",
   moreLink: "Otwórz {command}",
 };
