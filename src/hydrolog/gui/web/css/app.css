@@ -128,6 +128,7 @@ select.sel-sm { height: var(--control-sm); font-size: var(--text-sm); padding: 0
   font: var(--text-xs) var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap;
 }
 .chip.on { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }
+.chip:not(.on) .sw-stroke { opacity: 0.45; }
 .chip.add { cursor: pointer; font-weight: var(--weight-bold); }
 .chips { display: flex; flex-wrap: wrap; gap: var(--space-1); margin: 0 0 var(--space-2); }
 .chips.edit { margin-bottom: var(--space-1); }
@@ -522,6 +523,7 @@ body.resizing .view-center, body.resizing .view-panel { pointer-events: none; }
 .kpi .k { font-size: var(--text-xs); color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .kpi .v { font-size: var(--text-md); font-weight: var(--weight-bold); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .kpi .u { font-size: var(--text-xs); color: var(--text-2); font-weight: var(--weight-regular); }
+.kpi .sub { font-size: var(--text-xs); line-height: 1.25; color: var(--text-2); }
 @container (max-width: 380px) { .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .kpi.hi { background: var(--info-bg); }
 .kpi.hi .v { color: var(--info-ink); }
@@ -614,6 +616,7 @@ pre.code .fold { color: color-mix(in srgb, var(--code-text) 55%, var(--code-bg))
 .dtable tr.peak th, .dtable tr.peak td, .dtable tr.hl th, .dtable tr.hl td { background: var(--info-bg); color: var(--info-ink); font-weight: var(--weight-bold); }
 .dtable tr.conflict th, .dtable tr.conflict td { background: var(--warn-bg); color: var(--warn-ink); }
 .dtable tbody th .sw-line { margin-right: 6px; }
+.dtable tbody th .sw-stroke { margin-right: 6px; }
 .dtable .badge { height: 18px; }
 .dtable tr.pickable { cursor: pointer; }
 .dtable tr.pickable:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }

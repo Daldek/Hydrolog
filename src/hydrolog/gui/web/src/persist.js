@@ -8,10 +8,12 @@ import { useCallback, useEffect, useRef, useState } from "./html.js";
 
 /**
  * The versions of the stored shapes other than 1: Hydrogram zlewni's three steps of
- * 2026-11-04 left the five steps with the shipped example behind, and the other sections
- * left their stored examples behind when every section started empty (2026-11-04).
+ * 2026-11-04 left the five steps with the shipped example behind, the other sections left
+ * their stored examples behind when every section started empty (2026-11-04), and
+ * Statystyka's filters of the combinations shown left one distribution and one fit method a
+ * run behind (2026-11-06).
  */
-export const VERSIONS = Object.freeze({ hydrogram: 2, siec: 2, statystyka: 2, kalkulatory: 2, polecenia: 2 });
+export const VERSIONS = Object.freeze({ hydrogram: 2, siec: 2, statystyka: 3, kalkulatory: 2, polecenia: 2 });
 
 /**
  * The storage key of a section's inputs.

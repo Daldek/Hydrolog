@@ -101,6 +101,10 @@ function swatch(item) {
   if (item.kind === "bars" || item.kind === "hbars" || item.kind === "box") return htmlEl("i", { class: `sw ${item.cls ?? ""}`.trim() });
   if (item.kind === "points") return htmlEl("i", { class: "sw-dot" });
   if (item.kind === "rug") return htmlEl("i", { class: "sw-rug" });
+  if (item.kind === "stroke") {
+    const line = svgEl("line", { x1: 1, y1: 3, x2: 23, y2: 3 });
+    return svgEl("svg", { class: `sw-stroke ${item.cls ?? ""}`.trim(), viewBox: "0 0 24 6", "aria-hidden": "true" }, [line]);
+  }
   return htmlEl("i", { class: `sw-line ${item.cls ?? "s1"}` });
 }
 
@@ -109,6 +113,7 @@ function drawLegend(spec, geometries) {
   const legend = htmlEl("div", { class: "chart-legend" });
   for (const item of items) {
     if (item.kind === "text") legend.append(htmlEl("span", { class: "muted" }, [item.label]));
+    else if (item.kind === "break") legend.append(htmlEl("span", { class: "legend-break", "aria-hidden": "true" }));
     else legend.append(htmlEl("span", {}, [swatch(item), item.label]));
   }
   return legend;
@@ -162,8 +167,9 @@ export function drawChart(container, spec) {
     const lineHeight = size + 4;
     const width = Math.max(...lines.map((line) => line.length)) * size * 0.56 + 16;
     const height = lines.length * lineHeight + 8;
+    // Right of the cursor when it fits, else left of it, never past the chart's left edge
     const right = reading.at + 10 + width <= plot.right;
-    const left = right ? reading.at + 10 : reading.at - 10 - width;
+    const left = right ? reading.at + 10 : Math.max(0, reading.at - 10 - width);
     const boxTop = top + 4;
     layer.append(svgEl("rect", { class: "readout-box", x: left, y: boxTop, width, height, rx: 4 }));
     lines.forEach((line, row) => {
@@ -175,7 +181,7 @@ export function drawChart(container, spec) {
         const measured = Math.max(...texts.map((text) => text.getComputedTextLength())) + 16;
         if (measured > 16) {
           const box = layer.querySelector(".readout-box");
-          const fitLeft = right ? reading.at + 10 : reading.at - 10 - measured;
+          const fitLeft = right ? reading.at + 10 : Math.max(0, reading.at - 10 - measured);
           box.setAttribute("width", String(c1(measured)));
           box.setAttribute("x", String(c1(fitLeft)));
           for (const text of texts) text.setAttribute("x", String(c1(fitLeft + 8)));

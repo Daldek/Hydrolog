@@ -34,7 +34,14 @@ export const statystyka = {
   pasteNote: "Wklej maksima roczne w kolejności lat: z arkusza, z tekstu albo z kolumny pliku CSV.",
   pasteEmpty: "Wklej co najmniej kilka maksimów rocznych, jedno na rok, oddzielone średnikami lub w osobnych wierszach.",
   distributionsMeta: "{count} · AIC",
-  fitMethodNote: "Metoda szacuje parametry każdego z rozkładów; obie tabele i krzywe wykresów liczy ta sama.",
+  /** „Rozkłady” and „Metody estymacji”: the combinations shown of the one run of all. */
+  shown: {
+    distributions: "Rozkłady",
+    methods: "Metody estymacji",
+    note: "Hydrolog dopasowuje każdy rozkład każdą metodą w jednym obliczeniu; wybór tylko pokazuje kombinacje (kolor linii to rozkład, jej styl to metoda) i niczego nie przelicza. Jeden rozkład i jedna metoda zostają zawsze wybrane.",
+  },
+  /** A combination of a distribution and a fit method: „GEV, L-momenty”. */
+  combination: "{name}, {method}",
   chosen: "Wyróżniony w wynikach",
   chosenItem: "T = {t} lat (p {p}%)",
   chosenNone: "brak",
@@ -49,18 +56,21 @@ export const statystyka = {
   pasted: "wklejony szereg",
   view: "Widok",
   tabs: { chart: "Wykres prawdopodobieństwa", series: "Maksima roczne" },
-  hint: "Punkty: maksima roczne (położenie Weibulla i/(n+1)); linie: rozkłady dopasowane wybraną metodą estymacji",
+  hint: "Punkty: maksima roczne (położenie Weibulla i/(n+1)); linie: rozkłady (kolor) dopasowane metodami estymacji (styl linii)",
   noResult: "Wybierz szereg i naciśnij „Oblicz”: Hydrolog dopasuje rozkłady i poda kwantyle.",
   chart: {
     title: "Krzywe prawdopodobieństwa przewyższenia",
-    sub: "{count} (punkty, położenie Weibulla i/(n+1)) i {fits} dopasowane metodą {method}",
+    sub: "{count} (punkty, położenie Weibulla i/(n+1)) i {fits} dopasowane {by}",
+    byMethod: "metodą {method}",
+    byMethods: "metodami {methods}",
+    noFits: "{count} (punkty, położenie Weibulla i/(n+1)); żadnej z pokazanych kombinacji rozkładu i metody nie udało się dopasować",
     maximaForms: ["maksimum roczne", "maksima roczne", "maksimów rocznych"],
     fitForms: ["rozkład", "rozkłady", "rozkładów"],
     x: "prawdopodobieństwo przewyższenia (siatka Gumbela)",
     y: "Q [m³/s]",
     points: "Maksima roczne",
-    best: "{name} (najlepszy, AIC {aic})",
-    bestNoAic: "{name} (najlepszy)",
+    keyDistributions: "Rozkłady:",
+    keyMethods: "Metody:",
     peak: "Q {p}% = {q} m³/s ({name})",
     curvesFailed: "Krzywe narysowano z kwantyli wyniku: nie udało się policzyć gęstszej siatki ({message}).",
   },
@@ -85,7 +95,7 @@ export const statystyka = {
     t: "T",
   },
   results: {
-    sub: "najlepszy rozkład: {name}",
+    sub: "najlepszy: {name}",
     distribution: "Rozkład",
     bestDistribution: "Najlepszy",
     length: "Długość",
@@ -103,7 +113,8 @@ export const statystyka = {
     adAbove: "A² powyżej wartości krytycznej",
     issues: "{name}: {issues}.",
     unit: "Q w m³/s.",
-    activeHint: "Kliknięty wiersz pokazuje rozkład w kafelkach i na wykresie.",
+    activeHint: "Kliknięty wiersz pokazuje rozkład w kafelkach i na wykresach.",
+    noneShown: "Żadnej z pokazanych kombinacji rozkładu i metody nie udało się dopasować (uwagi wyżej): pokaż inne w „Rozkłady” i „Metody estymacji”.",
     quantiles: "Kwantyle: {name}",
     period: "T",
     periodUnit: "lata",
@@ -145,12 +156,15 @@ export const statystyka = {
     level: "Test odrzuca jednorodność, gdy p < α = {alpha}.",
     failed: "Nie udało się zbadać jednorodności: {message}",
   },
-  /** The fit methods in the instrumental case, after „metodą”: the chart's subtitle. */
+  /**
+   * The fit methods: in „Metody estymacji” and the legends (`legend`), in the name of a
+   * combination (`name`) and after „metodą” or „metodami” (`by`: the chart's subtitle).
+   */
   fitMethods: {
-    mle: "największej wiarygodności",
-    moments: "momentów",
-    l_moments: "L-momentów",
-    least_squares: "najmniejszych kwadratów",
+    l_moments: { name: "L-momenty", legend: "L-momenty", by: "L-momentów" },
+    mle: { name: "największa wiarygodność", legend: "Największa wiarygodność", by: "największej wiarygodności" },
+    moments: { name: "momenty", legend: "Momenty", by: "momentów" },
+    least_squares: { name: "najmniejsze kwadraty", legend: "Najmniejsze kwadraty", by: "najmniejszych kwadratów" },
   },
   /** Names of the distributions: in tables, and in the chart's legend. */
   distributions: {

@@ -4,11 +4,12 @@ The pure modules (``scale.js``: numbers, ticks, the log, time and Gumbel
 scales; ``axes.js``: the layout) are tested through
 ``page.evaluate(import(…))``, without a Node toolchain (D17). ``draw.js``
 draws a hydrograph with its hyetograph and peak, a unit hydrograph, a
-probability plot and the tc comparison into the GUI's page (its policy, its
-tokens); the readout follows the keys and the pointer, and ``toPng`` gives a
-PNG twice the drawn size without breaking the policy. ``Chart`` (Preact)
-draws them in both themes, and a theme switch recolours them without a
-redraw.
+probability plot, the tc comparison and a legend of keys (line swatches styled
+as the curves, a line of their own) into the GUI's page (its policy, its
+tokens); the readout follows the keys and the pointer and stays within the
+chart, and ``toPng`` gives a PNG twice the drawn size without breaking the
+policy. ``Chart`` (Preact) draws them in both themes, and a theme switch
+recolours them without a redraw.
 """
 
 import re
@@ -384,6 +385,30 @@ def test_horizontal_bars_on_a_band_axis(page: Any) -> None:
     assert page.locator("#host .chart-legend i.sw.ok").count() == 1
 
 
+def test_a_legend_keys_line_styles_on_a_line_of_its_own(page: Any) -> None:
+    keys = """
+    const spec = {size: "small", x: {label: "Q"}, y: {label: "F"},
+      series: [{id: "a", kind: "line", cls: "s2 fm-mle", data: [[0, 0], [1, 1]]}],
+      legend: [{kind: "text", label: "Rozkłady:"},
+               {kind: "stroke", cls: "s2", label: "Log-normalny"}, {kind: "break"},
+               {kind: "text", label: "Metody:"},
+               {kind: "stroke", cls: "fm-mle", label: "Największa wiarygodność"}]};
+    """
+    draw(page, keys)
+    dashes = page.evaluate(
+        "() => ['path.ser', '.sw-stroke.s2 line', '.sw-stroke.fm-mle line']"
+        ".map((selector) => document.querySelector(`#host ${selector}`))"
+        ".map((element) => getComputedStyle(element).strokeDasharray)"
+    )
+    # A swatch draws its line as the curves are: the method's dashes, else solid
+    assert dashes[0] != "none" and dashes[2] == dashes[0] and dashes[1] == "none"
+    tops = page.evaluate(
+        "() => [...document.querySelectorAll('#host .chart-legend > span.muted')]"
+        ".map((span) => span.getBoundingClientRect().top)"
+    )
+    assert tops[1] > tops[0]  # „Metody:” starts a line of its own
+
+
 # --- readout -----------------------------------------------------------------
 
 
@@ -447,6 +472,25 @@ def test_a_probability_readout_names_the_return_period(page: Any) -> None:
         page.keyboard.press("ArrowRight")
     text = page.locator("#host .chart-sr").text_content()
     assert text.startswith("p = 1,0 % · T = 100 lat · GEV: ")
+
+
+def test_a_readout_too_wide_for_either_side_stays_within_the_chart(page: Any) -> None:
+    wide = """
+    const spec = {size: "small", x: {label: "Q"}, y: {label: "f"},
+      readout: {series: "a"},
+      series: [{id: "a", kind: "line", unit: "1/(m³/s)",
+                label: "Log-normalny, największa wiarygodność",
+                data: Array.from({length: 41}, (_, i) => [i, i * (40 - i)])}]};
+    """
+    draw(page, wide)
+    page.locator("#host svg").focus()
+    page.keyboard.press("Home")
+    page.keyboard.press("PageUp")
+    page.keyboard.press("PageUp")  # the middle, too narrow on either side for the box
+    box = page.locator("#host .readout-box")
+    left = float(box.get_attribute("x") or "nan")
+    width = float(box.get_attribute("width") or "nan")
+    assert left >= 0 and left + width <= 360
 
 
 # --- PNG ---------------------------------------------------------------------
