@@ -100,6 +100,7 @@ function legendItems(spec, geometries) {
 function swatch(item) {
   if (item.kind === "bars" || item.kind === "hbars" || item.kind === "box") return htmlEl("i", { class: `sw ${item.cls ?? ""}`.trim() });
   if (item.kind === "points") return htmlEl("i", { class: "sw-dot" });
+  if (item.kind === "rug") return htmlEl("i", { class: "sw-rug" });
   return htmlEl("i", { class: `sw-line ${item.cls ?? "s1"}` });
 }
 

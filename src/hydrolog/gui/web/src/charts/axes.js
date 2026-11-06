@@ -34,13 +34,15 @@ const PANEL_GAP = 28;
 /**
  * Return a series' points as `{x, y, cls?, label?, sub?, text?}` objects.
  *
- * @param {object} series a series of the spec; `data` holds `[x, y]` pairs or objects
+ * @param {object} series a series of the spec; `data` holds `[x, y]` pairs, objects or (a
+ *   rug) bare x values
  * @returns {{x: number | string, y: number | string, cls?: string, label?: string, sub?: string, text?: string}[]}
  */
 export function points(series) {
-  return (series.data ?? []).map((datum) =>
-    Array.isArray(datum) ? { x: datum[0], y: datum[1] } : { ...datum },
-  );
+  return (series.data ?? []).map((datum) => {
+    if (Array.isArray(datum)) return { x: datum[0], y: datum[1] };
+    return typeof datum === "number" ? { x: datum } : { ...datum };
+  });
 }
 
 /**
@@ -92,7 +94,7 @@ function extents(spec, band) {
       xs.push(point.x);
       if (width) xs.push(point.x + (series.align === "center" ? width / 2 : width));
       if (series.kind === "bars" && series.align === "center") xs.push(point.x - width / 2);
-      ys[axis].push(point.y);
+      if (series.kind !== "rug") ys[axis].push(point.y);
     }
   }
   for (const mark of spec.marks ?? []) {

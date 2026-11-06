@@ -3,12 +3,13 @@
 // header, or pasted values; a first visit has neither (the guide, instrukcja/#statystyka,
 // has a worked example). The form's fields are the catalog's. „Oblicz” runs the command,
 // and a second run of the same series on a dense grid of return periods gives the curves
-// of the probability plot. The result shows the active distribution (the best one after
-// every computation, another one by a click on its row of the distributions table) in the
-// tiles and on the plot, the quantiles of the distributions ticked in that table (the best
-// one after every computation), the goodness of fit and the notices in Polish; neither
-// choice is stored. „Do porównania” hands the active distribution's stressed quantile to
-// Hydrogram zlewni (store "reference"). A change marks the result stale (plan D13).
+// of the probability plot, the density and the distribution function. The result shows the
+// active distribution (the best one after every computation, another one by a click on its
+// row of the distributions table) in the tiles and on the charts, the quantiles of the
+// distributions ticked in that table (the best one after every computation), the goodness
+// of fit and the notices in Polish; neither choice is stored. „Do porównania” hands the
+// active distribution's stressed quantile to Hydrogram zlewni (store "reference"). A change
+// marks the result stale (plan D13).
 // A station's series handed off by Archiwista (ADR-0020, „Wczytaj z Archiwisty”) arrives
 // through useHandoffInbox as the source and values it opens with, and the data panel names
 // where it came from until the series is changed.

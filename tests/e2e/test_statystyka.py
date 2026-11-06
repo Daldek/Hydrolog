@@ -1,17 +1,18 @@
-"""„Statystyka przepływów” (plan S5, D13, D14, D16) in Chromium.
+"""„Statystyka przepływów” (plan S5, D13, D14, D16; plan 2026-11-06, D3) in Chromium.
 
 Against the real server of ``gui_server``: a first visit has no series and sends
 nothing, a hint names what to load and links the guide's worked example; „Wyczyść”
 returns there. The annual maxima of 1998 to 2023 (``tests/fixtures/maksima_roczne.csv``,
 those years of ``annual_maxima.csv``) uploaded and „Oblicz” run ``stats
 flood-frequency``, giving the mockup's GEV „Q 1% 307,3 m³/s”, the KZGW notice in Polish,
-the probability plot and the ranked maxima with their years; the call shown is the
-options sent. A distribution ticked „W tabeli kwantyli” adds its column of quantiles to
-the quantile table and the CSV, and a new result ticks the best one alone again. A click
-on a row of the distributions table (or Enter on it) makes that distribution the active
-one: the tiles, the full curve of the plot and „Do porównania” follow it, the other
-curves dimmed, until a new result. A daily series takes its date column from its
-header; pasted maxima run
+the probability plot, the density and distribution-function charts (one curve per
+distribution, a rug and the empirical points of the maxima) and the ranked maxima with
+their years; the call shown is the options sent. A distribution ticked „W tabeli
+kwantyli” adds its column of quantiles to the quantile table and the CSV, and a new
+result ticks the best one alone again. A click on a row of the distributions table (or
+Enter on it) makes that distribution the active one: the tiles, the full curve of the
+three charts and „Do porównania” follow it, the other curves dimmed, until a new result.
+A daily series takes its date column from its header; pasted maxima run
 as ``values``; „Do porównania” hands the stressed quantile to the store. A station's
 series handed off by Archiwista (``hydrolog-series/1``, ADR-0020) opens here with
 „Wczytaj z Archiwisty”: annual maxima as the pasted values without the missing years,
@@ -35,6 +36,9 @@ MAXIMA = FIXTURES / "maksima_roczne.csv"
 SECTION = 'section[data-section="statystyka"]'
 RIGHT = f"{SECTION} .view-panel.right"
 BADGE = ".topbar .badge.status"
+PROBABILITY = f"{SECTION} .view-center .st-chart .chart svg"
+DENSITY = f'{SECTION} .view-center [data-chart="density"] svg'
+DISTRIBUTION = f'{SECTION} .view-center [data-chart="distribution"] svg'
 DEFAULT_PERIODS = [2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 500.0, 1000.0]
 NAMES = {
     "gev": "GEV",
@@ -168,12 +172,25 @@ def test_the_maxima_give_the_mockups_gev_quantile_and_the_kzgw_notice(
 
     # The plot: 26 points, four curves (the best one active, the others dimmed), the
     # quantile marked
-    chart = page.locator(f"{SECTION} .view-center .chart svg")
+    chart = page.locator(PROBABILITY)
     expect(chart.locator(".emp circle")).to_have_count(26)
     expect(chart.locator("path.ser")).to_have_count(4)
     expect(chart.locator('path.ser.active[data-series="gev"]')).to_have_count(1)
     expect(chart.locator("path.ser.dim")).to_have_count(3)
     expect(chart.locator(".peak-label")).to_have_text("Q 1% = 307,3 m³/s (GEV)")
+
+    # The density: one curve per distribution, the maxima as a rug on the Q axis; the
+    # distribution function: one curve per distribution and the maxima as points
+    density = page.locator(DENSITY)
+    expect(density.locator("path.ser")).to_have_count(4)
+    expect(density.locator('path.ser.active[data-series="gev"]')).to_have_count(1)
+    expect(density.locator("path.ser.dim")).to_have_count(3)
+    expect(density.locator('.rug[data-series="maxima"] line')).to_have_count(26)
+    distribution = page.locator(DISTRIBUTION)
+    expect(distribution.locator("path.ser")).to_have_count(4)
+    expect(distribution.locator('path.ser.active[data-series="gev"]')).to_have_count(1)
+    expect(distribution.locator("path.ser.dim")).to_have_count(3)
+    expect(distribution.locator(".emp circle")).to_have_count(26)
 
     # The call is the options sent, the file as the person named it
     shown = right.locator(".cli pre")
@@ -313,7 +330,8 @@ def test_a_clicked_row_drives_the_tiles_the_plot_and_the_comparison(tab: Tab) ->
     q100 = other["quantiles"][other["return_periods"].index(100.0)]
     right = page.locator(RIGHT)
     tile = right.locator('.kpi[data-key="distribution"]')
-    chart = page.locator(f"{SECTION} .view-center .chart svg")
+    chart = page.locator(PROBABILITY)
+    shapes = [page.locator(DENSITY), page.locator(DISTRIBUTION)]
     rows = right.get_by_role("region", name="Rozkłady").locator("tbody tr")
 
     rows.nth(1).locator("th").click()
@@ -327,6 +345,9 @@ def test_a_clicked_row_drives_the_tiles_the_plot_and_the_comparison(tab: Tab) ->
     expect(chart.locator(f'path.ser.active[data-series="{name}"]')).to_have_count(1)
     expect(chart.locator('path.ser.dim[data-series="gev"]')).to_have_count(1)
     expect(chart.locator("path.ser.dim")).to_have_count(3)
+    for shape in shapes:
+        expect(shape.locator(f'path.ser.active[data-series="{name}"]')).to_have_count(1)
+        expect(shape.locator('path.ser.dim[data-series="gev"]')).to_have_count(1)
     expect(chart.locator(".peak-label")).to_have_text(
         f"Q 1% = {q100:.1f}".replace(".", ",") + " m³/s (Log-normalny)"
     )
@@ -352,6 +373,8 @@ def test_a_clicked_row_drives_the_tiles_the_plot_and_the_comparison(tab: Tab) ->
     expect(tile.locator(".k")).to_have_text("Najlepszy")
     expect(tile.locator(".v")).to_have_text("GEV")
     expect(chart.locator('path.ser.active[data-series="gev"]')).to_have_count(1)
+    for shape in shapes:
+        expect(shape.locator('path.ser.active[data-series="gev"]')).to_have_count(1)
 
 
 def test_a_daily_series_takes_its_date_column(tab: Tab) -> None:
