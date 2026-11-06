@@ -15,8 +15,10 @@ U, the two-sample Kolmogorov-Smirnov test and Pettitt's test.
 ## Decision
 
 1. **The command `stats homogeneity`** takes the series of `stats flood-frequency` (the annual maxima of the complete
-   hydrological years of a daily series, or annual maxima given as values, with or without their years), `split_year`
-   and `alpha` (default 0.05); its result is `hydrolog-stats-homogeneity/1`. The library function is
+   hydrological years of a daily series, or annual maxima given as values) and, for annual maxima, their years:
+   `years` with `values`, `year_column` with `input_file` (whole numbers, strictly increasing, gaps allowed; not with
+   `dates` or `date_column`, whose hydrological years are the years then); then `split_year` and `alpha` (default
+   0.05, in (0, 1)). Its result `hydrolog-stats-homogeneity/1` is the library's result. The library function is
    `hydrolog.statistics.homogeneity_tests(series, years=None, *, split_year=None, alpha=0.05)`; its
    `HomogeneityResult` gives `n_years` (the number of values, one a year), the split (`split_index`, `split_year`),
    `mann_whitney` and `kolmogorov_smirnov` (`TwoSampleTestResult`: `statistic`, `p_value`, `homogeneous`), `pettitt`
@@ -43,19 +45,32 @@ U, the two-sample Kolmogorov-Smirnov test and Pettitt's test.
    Mann-Whitney and Kolmogorov-Smirnov compare the parts that Pettitt's test found.
 6. **`homogeneous`** is `p_value ≥ alpha`: the test does not reject homogeneity at `alpha` (as `trend_detected` of the
    Mann-Kendall test is `p_value < alpha`).
-7. **Errors** (registry codes, `details.reason`): fewer than 3 values: `calculation_error`, `too_few_values` (`count`,
-   `minimum`); all values equal: `calculation_error`, `constant_values` (Mann-Whitney's U has no variance and Pettitt's
-   test no change point); a value that is not a finite number: `validation_error`, `not_finite`; years that are not
-   integers, not one per value or not increasing: `validation_error` with `option` `years` and `type`,
-   `length_mismatch` or `not_increasing`; `split_year` without years: `validation_error`, `option` `years`,
-   `required`; `split_year` that leaves a part empty: `validation_error`, `option` `split_year`, `range` (`minimum`,
-   `maximum`).
-8. **GUI**: a panel „Jednorodność ciągu” in Wyniki of Statystyka, run with the same series; a notice when a test
+7. **Errors** (registry codes, `details.reason`). The library: fewer than 3 values: `calculation_error`,
+   `too_few_values` (`count`, `minimum`); all values equal: `calculation_error`, `constant_values` (Mann-Whitney's U
+   has no variance and Pettitt's test no change point); a value that is not a finite number: `validation_error`,
+   `not_finite`; years that are not integers, not one per value or not increasing: `validation_error` with `option`
+   `years` and `type`, `length_mismatch` or `not_increasing`; `split_year` without years: `validation_error`,
+   `option` `years`, `required`; `split_year` that leaves a part empty: `validation_error`, `option` `split_year`,
+   `range` (`minimum`, `maximum`). The command checks its series first: fewer than 3 annual maxima end with
+   `calculation_error` (`count`, `minimum`, as `stats flood-frequency`); years that are not whole numbers (`type`, in
+   a file `bad_year`), not one per value (`length_mismatch`) or not increasing (`years_not_increasing`), and `years`
+   with `dates` or `year_column` with `date_column` (`conflict`) end with `validation_error`, from a file with
+   `data_error`; `split_year` without years ends with `validation_error`, `option` `years` (inline values) or
+   `year_column` (a file), `required`.
+8. **The notice `homogeneity_rejected`** (warning) when a test rejects homogeneity: `details.tests` lists the tests
+   that reject by their keys in the result (`mann_whitney`, `kolmogorov_smirnov`, `pettitt`), `details.alpha` the
+   level.
+9. **GUI**: a panel „Jednorodność ciągu” in Wyniki of Statystyka, run with the same series; a notice when a test
    rejects homogeneity.
 
 ## Consequences
 
-- An additive change: a new command, its schema and a library function; no other result changes.
+- An additive change: a new command, its schema, a notice code and a library function; no other result changes. The
+  series loader (`hydrolog.catalog.inputs.load_series`) gains `years` and `year_column`, which only this command
+  declares.
+- The command index of `AGENTS.md` names the `stats` commands on one line, as it does those of `route` (ADR-0009):
+  with one line per command the guide would grow to 16,504 bytes, past its 16 KiB; `commands list` still gives every
+  summary. A deviation from DOC-4.2 listed in `CLAUDE.md`.
 - A short series rarely rejects homogeneity: split into halves, Mann-Whitney and Kolmogorov-Smirnov can reject at
   α = 0.05 from 8 values (4 and 4), Pettitt's test from 11. `homogeneous` says that a test found no difference, not
   that there is none. The tests take the values as independent, as the Mann-Kendall test does.
@@ -74,6 +89,10 @@ U, the two-sample Kolmogorov-Smirnov test and Pettitt's test.
   distribution): random and slower; the approximation of Pettitt is the one of the plan and of R's `trend`.
 - **`split_year` only a year of the series**: a skipped incomplete year would be refused, though the split it means is
   clear.
+- **Years only from the dates of a daily series** (exactly the series options of `stats flood-frequency`): annual
+  maxima with a year column (`annual_maxima.csv` and `maksima_roczne.csv` of `tests/fixtures/`, the `step` `year`
+  series of the hand-off) would have no years, so no `split_year` and no year of the change point, though D5 of the
+  plan names values with optional years.
 - **min(U₁, U₂)**, the statistic of the printed tables: it loses the direction of the difference.
 - **No default split**: the halves give a first answer without a year; Pettitt's change point then suggests one.
 - **Other tests** (Buishand's range, the standard normal homogeneity test, the Wald-Wolfowitz runs test): the author
