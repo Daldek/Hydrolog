@@ -20,14 +20,17 @@ _LAND_COVERS = (
     "brush",
     "forest",
     "herbaceous",
+    "woods_grass",
     "farmstead",
     "residential_low",
     "residential_medium",
+    "residential_quarter_acre",
     "residential_high",
     "commercial",
     "industrial",
     "open_space",
     "paved",
+    "paved_road_open_ditches",
     "gravel",
     "dirt",
     "water",
@@ -44,17 +47,27 @@ _LAND_COVER_MEANINGS = {
     "brush": "Brush and shrubs.",
     "forest": "Woods.",
     "herbaceous": "Herbaceous vegetation.",
+    "woods_grass": (
+        "Woods-grass combination: orchard or tree farm (TR-55 table 2-2c, p. 2-7)."
+    ),
     "farmstead": "Farmsteads.",
     "residential_low": "Low-density residential (1-2 acre lots, 12-20% impervious).",
     "residential_medium": "Medium-density residential (1/4-1/2 acre lots, 25-38%).",
+    "residential_quarter_acre": (
+        "Residential, 1/4 acre lots, 38% impervious (TR-55 table 2-2a, p. 2-5)."
+    ),
     "residential_high": "High-density residential (<= 1/8 acre lots, 65%).",
     "commercial": "Commercial and business areas (85% impervious).",
     "industrial": "Industrial areas (72% impervious).",
     "open_space": "Parks, lawns, golf courses.",
     "paved": "Paved surfaces.",
+    "paved_road_open_ditches": (
+        "Paved streets and roads with open ditches, including right-of-way "
+        "(TR-55 table 2-2a, p. 2-5)."
+    ),
     "gravel": "Gravel roads.",
     "dirt": "Dirt roads.",
-    "water": "Water bodies (CN = 100).",
+    "water": "Water surfaces (CN = 98, NEH 630 ch. 9, p. 9-1).",
 }
 _LAND_COVER_MEANINGS_PL = {
     "fallow": "Ugór (gleba odkryta bez uprawy).",
@@ -65,17 +78,26 @@ _LAND_COVER_MEANINGS_PL = {
     "brush": "Zarośla, krzewy.",
     "forest": "Las.",
     "herbaceous": "Roślinność zielna.",
+    "woods_grass": "Las z trawą: sad lub plantacja drzew (TR-55 tabl. 2-2c, s. 2-7).",
     "farmstead": "Zabudowa zagrodowa.",
     "residential_low": "Zabudowa mieszkaniowa luźna (działki 1–2 akry, 12–20%).",
     "residential_medium": "Zabudowa średnia (działki 1/4–1/2 akra, 25–38%).",
+    "residential_quarter_acre": (
+        "Zabudowa mieszkaniowa, działki 1/4 akra, 38% uszczelnienia "
+        "(TR-55 tabl. 2-2a, s. 2-5)."
+    ),
     "residential_high": "Zabudowa mieszkaniowa gęsta (działki ≤ 1/8 akra, 65%).",
     "commercial": "Tereny handlowo-usługowe (85% uszczelnienia).",
     "industrial": "Tereny przemysłowe (72% uszczelnienia).",
     "open_space": "Parki, trawniki, pola golfowe.",
     "paved": "Nawierzchnie utwardzone.",
+    "paved_road_open_ditches": (
+        "Ulice i drogi utwardzone z rowami otwartymi, z pasem drogowym "
+        "(TR-55 tabl. 2-2a, s. 2-5)."
+    ),
     "gravel": "Drogi żwirowe.",
     "dirt": "Drogi gruntowe.",
-    "water": "Wody (CN = 100).",
+    "water": "Wody powierzchniowe (CN = 98, NEH 630 rozdz. 9, s. 9-1).",
 }
 
 _CONDITION_MEANINGS = {
@@ -155,14 +177,14 @@ COMMANDS: tuple[Command, ...] = (
                 description_pl=(
                     "Stan hydrologiczny pokrycia; dotyczy pokryć zależnych od "
                     "stanu (row_crops, small_grain, pasture, brush, forest, "
-                    "herbaceous, open_space), domyślnie fair; dla pozostałych "
-                    "jest ignorowany."
+                    "woods_grass, herbaceous, open_space), domyślnie fair; dla "
+                    "pozostałych jest ignorowany."
                 ),
                 description=(
                     "Hydrologic condition of the cover; applies to "
                     "condition-dependent covers (row_crops, small_grain, pasture, "
-                    "brush, forest, herbaceous, open_space), fair when omitted; "
-                    "ignored for the other covers."
+                    "brush, forest, woods_grass, herbaceous, open_space), fair when "
+                    "omitted; ignored for the other covers."
                 ),
                 choices=_CONDITIONS,
                 meanings=_CONDITION_MEANINGS,

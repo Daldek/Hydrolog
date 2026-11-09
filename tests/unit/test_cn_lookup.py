@@ -44,10 +44,45 @@ class TestGetCN:
         for hsg in ("A", "B", "C", "D"):
             assert get_cn(hsg, LandCover.PAVED) == 98
 
-    def test_water_bodies(self):
-        """Test water bodies have CN=100 for all HSG."""
+    def test_water_surfaces(self):
+        """Water surfaces have CN 98 for all HSG (NEH 630 ch. 9, p. 9-1)."""
         for hsg in ("A", "B", "C", "D"):
-            assert get_cn(hsg, LandCover.WATER) == 100
+            assert get_cn(hsg, LandCover.WATER) == 98
+
+    def test_paved_road_open_ditches(self):
+        """Paved streets and roads with open ditches (TR-55 table 2-2a, p. 2-5)."""
+        assert get_cn("A", LandCover.PAVED_ROAD_OPEN_DITCHES) == 83
+        assert get_cn("B", LandCover.PAVED_ROAD_OPEN_DITCHES) == 89
+        assert get_cn("C", LandCover.PAVED_ROAD_OPEN_DITCHES) == 92
+        assert get_cn("D", LandCover.PAVED_ROAD_OPEN_DITCHES) == 93
+
+    def test_residential_quarter_acre(self):
+        """Residential 1/4 acre lots, 38% impervious (TR-55 table 2-2a, p. 2-5)."""
+        assert get_cn("A", LandCover.RESIDENTIAL_QUARTER_ACRE) == 61
+        assert get_cn("B", LandCover.RESIDENTIAL_QUARTER_ACRE) == 75
+        assert get_cn("C", LandCover.RESIDENTIAL_QUARTER_ACRE) == 83
+        assert get_cn("D", LandCover.RESIDENTIAL_QUARTER_ACRE) == 87
+
+    def test_woods_grass_poor_condition(self):
+        """Woods-grass combination, poor (TR-55 table 2-2c, p. 2-7)."""
+        assert get_cn("A", LandCover.WOODS_GRASS, HydrologicCondition.POOR) == 57
+        assert get_cn("B", LandCover.WOODS_GRASS, HydrologicCondition.POOR) == 73
+        assert get_cn("C", LandCover.WOODS_GRASS, HydrologicCondition.POOR) == 82
+        assert get_cn("D", LandCover.WOODS_GRASS, HydrologicCondition.POOR) == 86
+
+    def test_woods_grass_fair_condition(self):
+        """Woods-grass combination, fair (TR-55 table 2-2c, p. 2-7)."""
+        assert get_cn("A", LandCover.WOODS_GRASS, HydrologicCondition.FAIR) == 43
+        assert get_cn("B", LandCover.WOODS_GRASS, HydrologicCondition.FAIR) == 65
+        assert get_cn("C", LandCover.WOODS_GRASS, HydrologicCondition.FAIR) == 76
+        assert get_cn("D", LandCover.WOODS_GRASS, HydrologicCondition.FAIR) == 82
+
+    def test_woods_grass_good_condition(self):
+        """Woods-grass combination, good (TR-55 table 2-2c, p. 2-7)."""
+        assert get_cn("A", LandCover.WOODS_GRASS, HydrologicCondition.GOOD) == 32
+        assert get_cn("B", LandCover.WOODS_GRASS, HydrologicCondition.GOOD) == 58
+        assert get_cn("C", LandCover.WOODS_GRASS, HydrologicCondition.GOOD) == 72
+        assert get_cn("D", LandCover.WOODS_GRASS, HydrologicCondition.GOOD) == 79
 
     def test_residential_high_density(self):
         """Test high density residential (65% impervious)."""

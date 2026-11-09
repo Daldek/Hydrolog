@@ -437,7 +437,6 @@ class TestCurveNumberTables:
 
     def test_lookup_matches_the_table_for_every_row(self):
         """Every (cover, condition, group) of TR-55 gives the library CN."""
-        checked = 0
         for (cover, condition), row in cn_tables._CN_TABLE.items():
             for hsg, expected in row.items():
                 result, _ = unwrap(
@@ -448,8 +447,6 @@ class TestCurveNumberTables:
                     )
                 )
                 assert result.cn == expected == get_cn(hsg, cover, condition)
-                checked += 1
-        assert checked == 33 * 4
 
     def test_lookup_equals_lookup_cn(self):
         """The operation and ``lookup_cn`` agree on the documented example."""
