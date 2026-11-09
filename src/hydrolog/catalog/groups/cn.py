@@ -52,7 +52,10 @@ _LAND_COVER_MEANINGS = {
     ),
     "farmstead": "Farmsteads.",
     "residential_low": "Low-density residential (1-2 acre lots, 12-20% impervious).",
-    "residential_medium": "Medium-density residential (1/4-1/2 acre lots, 25-38%).",
+    "residential_medium": (
+        "Medium-density residential, 1/3 acre lots, 30% impervious "
+        "(TR-55 table 2-2a, p. 2-5)."
+    ),
     "residential_quarter_acre": (
         "Residential, 1/4 acre lots, 38% impervious (TR-55 table 2-2a, p. 2-5)."
     ),
@@ -81,7 +84,10 @@ _LAND_COVER_MEANINGS_PL = {
     "woods_grass": "Las z trawą: sad lub plantacja drzew (TR-55 tabl. 2-2c, s. 2-7).",
     "farmstead": "Zabudowa zagrodowa.",
     "residential_low": "Zabudowa mieszkaniowa luźna (działki 1–2 akry, 12–20%).",
-    "residential_medium": "Zabudowa średnia (działki 1/4–1/2 akra, 25–38%).",
+    "residential_medium": (
+        "Zabudowa mieszkaniowa średnia, działki 1/3 akra, 30% uszczelnienia "
+        "(TR-55 tabl. 2-2a, s. 2-5)."
+    ),
     "residential_quarter_acre": (
         "Zabudowa mieszkaniowa, działki 1/4 akra, 38% uszczelnienia "
         "(TR-55 tabl. 2-2a, s. 2-5)."
