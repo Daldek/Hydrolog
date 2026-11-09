@@ -62,7 +62,7 @@ class LandCover(Enum):
     # Developed
     FARMSTEAD = "farmstead"
     RESIDENTIAL_LOW = "residential_low"  # 1-2 acre lots, 12-20% impervious
-    RESIDENTIAL_MEDIUM = "residential_medium"  # 1/4-1/2 acre, 25-38% impervious
+    RESIDENTIAL_MEDIUM = "residential_medium"  # 1/3 acre lots, 30% impervious
     RESIDENTIAL_QUARTER_ACRE = "residential_quarter_acre"  # 1/4 acre, 38% impervious
     RESIDENTIAL_HIGH = "residential_high"  # 1/8 acre or less, 65% impervious
     COMMERCIAL = "commercial"  # 85% impervious
@@ -180,7 +180,7 @@ _CN_TABLE: dict[tuple[LandCover, HydrologicCondition | None], dict[str, int]] = 
     (LandCover.FARMSTEAD, None): {"A": 59, "B": 74, "C": 82, "D": 86},
     # Developed - Residential (low density, 1-2 acre lots)
     (LandCover.RESIDENTIAL_LOW, None): {"A": 46, "B": 65, "C": 77, "D": 82},
-    # Developed - Residential (medium density, 1/4-1/2 acre)
+    # Developed - Residential, 1/3 acre lots, 30% impervious: TR-55 table 2-2a, p. 2-5
     (LandCover.RESIDENTIAL_MEDIUM, None): {"A": 57, "B": 72, "C": 81, "D": 86},
     # Developed - Residential, 1/4 acre lots, 38% impervious: TR-55 table 2-2a, p. 2-5
     (LandCover.RESIDENTIAL_QUARTER_ACRE, None): {"A": 61, "B": 75, "C": 83, "D": 87},
