@@ -51,7 +51,10 @@ _LAND_COVER_MEANINGS = {
         "Woods-grass combination: orchard or tree farm (TR-55 table 2-2c, p. 2-7)."
     ),
     "farmstead": "Farmsteads.",
-    "residential_low": "Low-density residential (1-2 acre lots, 12-20% impervious).",
+    "residential_low": (
+        "Low-density residential, 2 acre lots, 12% impervious "
+        "(TR-55 table 2-2a, p. 2-5)."
+    ),
     "residential_medium": (
         "Medium-density residential, 1/3 acre lots, 30% impervious "
         "(TR-55 table 2-2a, p. 2-5)."
@@ -83,7 +86,10 @@ _LAND_COVER_MEANINGS_PL = {
     "herbaceous": "Roślinność zielna.",
     "woods_grass": "Las z trawą: sad lub plantacja drzew (TR-55 tabl. 2-2c, s. 2-7).",
     "farmstead": "Zabudowa zagrodowa.",
-    "residential_low": "Zabudowa mieszkaniowa luźna (działki 1–2 akry, 12–20%).",
+    "residential_low": (
+        "Zabudowa mieszkaniowa luźna, działki 2 akry, 12% uszczelnienia "
+        "(TR-55 tabl. 2-2a, s. 2-5)."
+    ),
     "residential_medium": (
         "Zabudowa mieszkaniowa średnia, działki 1/3 akra, 30% uszczelnienia "
         "(TR-55 tabl. 2-2a, s. 2-5)."

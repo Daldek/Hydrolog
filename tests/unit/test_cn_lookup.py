@@ -56,6 +56,13 @@ class TestGetCN:
         assert get_cn("C", LandCover.PAVED_ROAD_OPEN_DITCHES) == 92
         assert get_cn("D", LandCover.PAVED_ROAD_OPEN_DITCHES) == 93
 
+    def test_residential_low(self):
+        """Residential 2 acre lots, 12% impervious (TR-55 table 2-2a, p. 2-5)."""
+        assert get_cn("A", LandCover.RESIDENTIAL_LOW) == 46
+        assert get_cn("B", LandCover.RESIDENTIAL_LOW) == 65
+        assert get_cn("C", LandCover.RESIDENTIAL_LOW) == 77
+        assert get_cn("D", LandCover.RESIDENTIAL_LOW) == 82
+
     def test_residential_medium(self):
         """Residential 1/3 acre lots, 30% impervious (TR-55 table 2-2a, p. 2-5)."""
         assert get_cn("A", LandCover.RESIDENTIAL_MEDIUM) == 57
