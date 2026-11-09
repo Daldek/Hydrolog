@@ -5,9 +5,12 @@ This module provides CN values for various combinations of:
 - Hydrologic Soil Group (HSG): A, B, C, D
 - Land cover type and hydrologic condition
 
-Reference:
-- USDA-NRCS TR-55: Urban Hydrology for Small Watersheds
-- National Engineering Handbook, Part 630, Chapter 9
+References (page numbers of the printed editions):
+- USDA-SCS (1986). Urban Hydrology for Small Watersheds, TR-55, 2nd ed.:
+  table 2-2a (urban areas) p. 2-5, table 2-2b (cultivated agricultural lands)
+  p. 2-6, table 2-2c (other agricultural lands) p. 2-7
+- USDA-NRCS. National Engineering Handbook, Part 630, Chapter 9 (p. 9-1: impervious
+  and water surfaces are assigned CN 98)
 """
 
 from dataclasses import dataclass
@@ -54,11 +57,13 @@ class LandCover(Enum):
     BRUSH = "brush"
     FOREST = "forest"
     HERBACEOUS = "herbaceous"
+    WOODS_GRASS = "woods_grass"  # Orchard or tree farm, 50% woods and 50% pasture
 
     # Developed
     FARMSTEAD = "farmstead"
     RESIDENTIAL_LOW = "residential_low"  # 1-2 acre lots, 12-20% impervious
     RESIDENTIAL_MEDIUM = "residential_medium"  # 1/4-1/2 acre, 25-38% impervious
+    RESIDENTIAL_QUARTER_ACRE = "residential_quarter_acre"  # 1/4 acre, 38% impervious
     RESIDENTIAL_HIGH = "residential_high"  # 1/8 acre or less, 65% impervious
     COMMERCIAL = "commercial"  # 85% impervious
     INDUSTRIAL = "industrial"  # 72% impervious
@@ -66,6 +71,7 @@ class LandCover(Enum):
 
     # Impervious
     PAVED = "paved"
+    PAVED_ROAD_OPEN_DITCHES = "paved_road_open_ditches"  # Including right-of-way
     GRAVEL = "gravel"
     DIRT = "dirt"
 
@@ -132,6 +138,25 @@ _CN_TABLE: dict[tuple[LandCover, HydrologicCondition | None], dict[str, int]] = 
     (LandCover.FOREST, HydrologicCondition.POOR): {"A": 45, "B": 66, "C": 77, "D": 83},
     (LandCover.FOREST, HydrologicCondition.FAIR): {"A": 36, "B": 60, "C": 73, "D": 79},
     (LandCover.FOREST, HydrologicCondition.GOOD): {"A": 30, "B": 55, "C": 70, "D": 77},
+    # Natural - Woods-grass combination (orchard or tree farm): TR-55 table 2-2c, p. 2-7
+    (LandCover.WOODS_GRASS, HydrologicCondition.POOR): {
+        "A": 57,
+        "B": 73,
+        "C": 82,
+        "D": 86,
+    },
+    (LandCover.WOODS_GRASS, HydrologicCondition.FAIR): {
+        "A": 43,
+        "B": 65,
+        "C": 76,
+        "D": 82,
+    },
+    (LandCover.WOODS_GRASS, HydrologicCondition.GOOD): {
+        "A": 32,
+        "B": 58,
+        "C": 72,
+        "D": 79,
+    },
     # Natural - Herbaceous (weeds, grass mix)
     (LandCover.HERBACEOUS, HydrologicCondition.POOR): {
         "A": 68,
@@ -157,6 +182,8 @@ _CN_TABLE: dict[tuple[LandCover, HydrologicCondition | None], dict[str, int]] = 
     (LandCover.RESIDENTIAL_LOW, None): {"A": 46, "B": 65, "C": 77, "D": 82},
     # Developed - Residential (medium density, 1/4-1/2 acre)
     (LandCover.RESIDENTIAL_MEDIUM, None): {"A": 57, "B": 72, "C": 81, "D": 86},
+    # Developed - Residential, 1/4 acre lots, 38% impervious: TR-55 table 2-2a, p. 2-5
+    (LandCover.RESIDENTIAL_QUARTER_ACRE, None): {"A": 61, "B": 75, "C": 83, "D": 87},
     # Developed - Residential (high density, 1/8 acre or smaller)
     (LandCover.RESIDENTIAL_HIGH, None): {"A": 77, "B": 85, "C": 90, "D": 92},
     # Developed - Commercial (85% impervious)
@@ -184,12 +211,15 @@ _CN_TABLE: dict[tuple[LandCover, HydrologicCondition | None], dict[str, int]] = 
     },
     # Impervious - Paved (parking, roads)
     (LandCover.PAVED, None): {"A": 98, "B": 98, "C": 98, "D": 98},
+    # Impervious - Streets and roads, paved; open ditches (including right-of-way):
+    # TR-55 table 2-2a, p. 2-5
+    (LandCover.PAVED_ROAD_OPEN_DITCHES, None): {"A": 83, "B": 89, "C": 92, "D": 93},
     # Impervious - Gravel roads
     (LandCover.GRAVEL, None): {"A": 76, "B": 85, "C": 89, "D": 91},
     # Impervious - Dirt roads
     (LandCover.DIRT, None): {"A": 72, "B": 82, "C": 87, "D": 89},
-    # Water
-    (LandCover.WATER, None): {"A": 100, "B": 100, "C": 100, "D": 100},
+    # Water: NEH 630 ch. 9, p. 9-1 (impervious and water surfaces are assigned CN 98)
+    (LandCover.WATER, None): {"A": 98, "B": 98, "C": 98, "D": 98},
 }
 
 
