@@ -557,12 +557,18 @@ def test_a_network_hydrolog_cannot_read_yet_stands_in_provisional_rows(
         "J2": (4, 0),
         "OUT": (5, 0),
     }
-    expect(page.get_by_role("button", name="Uporządkuj")).to_be_disabled()
+    # The rows make B → J1 run through R_A: a hint, whose text names „Uporządkuj” too
+    tidy = page.get_by_role("button", name="Uporządkuj", exact=True)
+    expect(tidy).to_be_disabled()
+    expect(page.locator('[data-list="hints"] li')).to_contain_text(
+        ["Krawędź B → J1 biegnie przez węzeł R_A"]
+    )
 
     page.locator(NODE.format("R_A")).click()
     page.locator('[data-node-form="R_A"] [data-key="lag.lag_min"] input').fill("25")
     expect(page.locator('[data-canvas="provisional"]')).to_have_count(0)
-    expect(page.get_by_role("button", name="Uporządkuj")).to_be_enabled()
+    expect(tidy).to_be_enabled()
+    expect(page.locator('[data-list="hints"] li')).to_have_count(0)
     assert canvas_cells(page) == library(example)[0]
 
 
