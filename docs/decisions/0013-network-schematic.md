@@ -2,6 +2,9 @@
 
 - Status: accepted
 - Date: 2026-10-25
+- Amended by [ADR-0023](0023-positions-and-descriptions-in-the-network.md) (2026-11-10): the picture depends on the
+  network and on the positions its document holds: the given layout drawn by rule D, `layout` and a node's
+  `description` in the document, the notice `positions_ignored`.
 - Builds on: [ADR-0012](0012-network-objects-rainfall-and-runoff.md) (`describe()` and `NetworkResult` carry the
   values that a drawing shows), [ADR-0010](0010-route-network-document-and-output-directory.md) (`route network`)
 

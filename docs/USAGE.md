@@ -429,6 +429,25 @@ id names the file `<id>.csv`, so it must not be a Windows device name (`con`, `p
 `com1` to `com9`, `lpt1` to `lpt9`, any case, any extension): `validation_error`, `details.reason`
 `reserved_name`.
 
+Every node, of any type, may also have a `description` and a `position`, and the document a
+`description` of its own at its top, after `name`
+([ADR-0023](decisions/0023-positions-and-descriptions-in-the-network.md)). A description is plain text
+for people, never read as HTML or Markdown: 1 to 500 characters, not blank, with no control
+character but the line feed `\n` (`details.reason` `type`, `empty`, `too_long`,
+`control_character`). A position is the cell of the node in the grid of the schematic,
+`{"x": ..., "y": ...}` with whole numbers from −1000 to 1000 and no other key: `x` grows downstream
+and `y` sideways (`type`, `unknown_field`, `missing_field`, `minimum`, `maximum`, with
+`details.field` `position.x` or `position.y`). Neither changes a computation: the result and the
+tables are the same with and without them. The document stays `hydrolog-network/1` and the reader
+stays strict (a misspelt field is `unknown_field`); a Hydrolog from before these fields refuses a
+document that has them. A node with both:
+
+```json
+{"id": "ZB1", "type": "reservoir", "from": ["R1"],
+ "storage_m3": [0, 50000, 120000], "outflow_m3s": [0, 2.5, 8.0],
+ "description": "Suchy zbiornik powyżej Świerzawy", "position": {"x": 2, "y": 0}}
+```
+
 `--output-dir DIR` (`-o`) writes the hydrograph that leaves each node as `<id>.csv`, a table that
 every `route` command reads again and the hand-off to Hydraulik; `--nodes` selects the nodes
 (default all). Without a directory the hydrographs of the selected nodes are in the result; when
@@ -565,10 +584,59 @@ hydrolog route network --network-file tests/fixtures/network_flood.json \
 `--force`); `--main-stem ID,...` declares the stem. An application that draws the document itself:
 [INTEGRATION.md](INTEGRATION.md).
 
+**Positions and descriptions.** A node keeps an optional `description` (`str`) and `position` (`Position(x, y)`,
+exported from `hydrolog.routing` with `MAX_DESCRIPTION_CHARS` = 500 and `MAX_POSITION` = 1000); like
+`with_inflows()`, `with_description(text)` and `with_position(Position(x, y))` or `with_position((x, y))` return a
+checked copy, and `None` removes the field. `RoutingNetwork(..., description=...)` keeps the network's own
+description. The document writes them after the fields of the node's kind, `description` then `position`, and a
+document without them is written byte for byte as before. When every node has a position and no two share a cell,
+`schematic()` draws the **given** layout: the nodes stay on their cells, moved together so that the smallest `x` and
+`y` are 0, the lines and labels are chosen as in the computed layout (`main_stem` too), and every edge follows
+**rule D**, from the positions of its two nodes alone (with `dx`, `dy` the steps from a node to the one it flows
+into): one straight segment when `dx` or `dy` is 0; for `dx > 0` a sideways leg to the row next to the lower node's,
+one 45 degree step onto its row and along that row into it; for `dx < 0` a 45 degree leg of `min(|dx|, |dy|)`, then
+straight into it. A given picture may cross itself. Rule D is how the computed layout joins its lines too, so storing
+the computed positions stores the computed picture exactly. The schematic's `layout` says which it is (`given` or
+`computed`), and a node's `description` is in its schematic and in the tooltip of its SVG symbol; the network's own
+description is in neither the schematic nor the result. Positions on some nodes only, or two nodes on one cell, give
+the computed layout and the warning `positions_ignored` (`details.reason` `partial` or `shared_cell`, `node_id`: the
+first node at fault), a Python warning of `schematic()` and a notice of `route network --schematic` and
+`route schematic`:
+
+```python
+import warnings
+from hydrolog.routing import Hydrograph, Junction, Outlet, Position, RoutingNetwork, Subcatchment
+
+flood = Hydrograph.from_step([0.0, 10.0, 40.0, 20.0, 0.0], timestep_min=30)
+upper = Subcatchment("A", flood).with_description("Górna zlewnia\nponad progiem")
+outlet = Outlet("OUT", inflow=Junction("J1", inflows=[upper, Subcatchment("B", flood)]))
+network = RoutingNetwork(outlet, description="Two headwaters")
+computed = network.schematic()
+
+document = network.to_document()          # description at the top, A's description after its fields
+cells = {node["id"]: {"x": node["x"], "y": node["y"]} for node in computed["nodes"]}
+for node in document["nodes"]:
+    node["position"] = cells[node["id"]]  # the computed cells, stored
+given = RoutingNetwork.from_document(document).schematic()
+print(given["layout"], given["edges"] == computed["edges"])   # given True
+
+placed_outlet = outlet.with_position(Position(4, 1))          # only the outlet has a cell
+with warnings.catch_warnings(record=True) as caught:
+    warnings.simplefilter("always")
+    print(RoutingNetwork(placed_outlet).schematic()["layout"])  # computed
+print(caught[0].message)   # Positions ignored at node 'A' (partial): the layout is computed
+```
+
+`hydrolog.testing.placed(node, description=..., position=(x, y))` adds both fields to a node of its builders, checked
+by the library, and `network_document(..., description=...)` gives the network its description.
+
 A new kind of node, rainfall, runoff model, shape of a storm or reach method is a class that implements the
 protocol (`Node`, `RainfallSource`, `RunoffModel`, `Hietogram`, `Reach`) and an entry in a registry (`NODE_TYPES`,
 `RAINFALL_KINDS`, `RUNOFF_MODELS`, `HIETOGRAMS`, `REACH_METHODS`); nothing else lists them, and a document names
-them by the same names.
+them by the same names. A new node type carries `description` and `position` without code of its own: the base class
+reads them (`Node.read_entry` returns a `NodeEntry(upstream, arguments, description, position)` and `Node.build`
+takes it) and writes them after `document_fields()`, and the kind's `read_document()` must not take fields of those
+names.
 
 **Control points.** An application that lets its user pick points on the streams builds the network with
 `ControlPointNetwork`, outlet first. A point closes its *residual* area, the contributing area minus the areas of
