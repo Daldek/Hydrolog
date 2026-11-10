@@ -2,6 +2,7 @@
 
 - Status: accepted
 - Date: 2026-10-24
+- Amended by [ADR-0016](0016-gui-feedback-and-data-dir.md) (2026-11-04): `data_dir` is used; one credential
 
 ## Context
 

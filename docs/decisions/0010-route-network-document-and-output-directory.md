@@ -2,7 +2,8 @@
 
 - Status: accepted
 - Date: 2026-10-25
-- Amended by [ADR-0012](0012-network-objects-rainfall-and-runoff.md): the nodes of `RoutingNetwork` are typed
+- Amends: [ADR-0003](0003-writing-commands-output-force-check.md) (`--output-dir`, the plain mode for a directory)
+- Amended by [ADR-0012](0012-network-objects-rainfall-and-runoff.md) (2026-10-25): the nodes of `RoutingNetwork` are typed
   objects that link by reference (`Subcatchment`, `Channel`, `Reservoir`, `Junction`, `Outlet`, all `Node`); the
   first version had one generic `NetworkNode`. The document and its errors are unchanged, and it gained fields.
 
