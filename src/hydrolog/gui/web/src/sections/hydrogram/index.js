@@ -1,6 +1,10 @@
 // „Hydrogram zlewni” (plan D13, slice S3; the author's three steps of 2026-11-04): one
 // watershed, `hydrograph generate` through the three steps of the panel Dane (Zlewnia,
-// Hietogram, Hydrogram). A first visit is empty and runs nothing; the checks of what the
+// Hietogram, Hydrogram), SubcatchmentSteps of steps.js, which Sieć's subcatchment panel
+// shares (plan 2026-11-10-network-wizard, D1): this host gives it the ids' prefix "hg",
+// no network (its own rainfall and time step), the shown result as `computed`, the hint
+// of the guide's example on a blank step 1, and keeps the state, the runs and the
+// channels. A first visit is empty and runs nothing; the checks of what the
 // model needs start when a model is chosen in step 3. From then on the result follows every
 // change (no variants, no compute button): a change of valid data runs on channel
 // "hydrogram" 250 ms later (recompute.js: debounce, abort, only the newest response
@@ -28,7 +32,7 @@
 // useHandoffInbox as a patch of the inputs whose `origin` names the producer.
 
 import { api } from "../../api.js";
-import { plural, roundedText } from "../../format.js";
+import { roundedText } from "../../format.js";
 import { withReason } from "../../forms/model.js";
 import { useHandoffInbox } from "../../handoff/handoff-panel.js";
 import { html, useCallback, useEffect, useMemo, useRef, useState } from "../../html.js";
@@ -50,7 +54,6 @@ import { status } from "../../ui/status.js";
 import { toast } from "../../ui/toast.js";
 import { RenderGuard } from "../../ui/render-guard.js";
 import { ViewLayout } from "../../ui/view-layout.js";
-import { DataPanel } from "./data-panel.js";
 import { exportSpec } from "./export.js";
 import { usePmaxtp } from "./pmaxtp.js";
 import { CenterBody, ResultsPanel, modelLabel } from "./results-panel.js";
@@ -75,12 +78,12 @@ import {
   optionField,
   panelFields,
   rangeInfoId,
-  readWatershed,
   requirements,
   toOptions,
   watershedErrors,
   watershedObject,
 } from "./state.js";
+import { SubcatchmentSteps, readWatershedFile } from "./steps.js";
 
 registerInfo({ ...tcInfo, ...lossesInfo, ...uhInfo });
 
@@ -112,16 +115,6 @@ function useModels() {
     };
   }, [attempt]);
   return { ...state, retry: () => setAttempt((count) => count + 1) };
-}
-
-/**
- * The count of a watershed's fields in words: „19 pól”.
- *
- * @param {object} values the fields read
- * @returns {string} the words
- */
-function fieldCount(values) {
-  return plural(Object.keys(values).length, texts.watershed.fieldForms);
 }
 
 /**
@@ -361,25 +354,7 @@ export default function Hydrogram({ path = [] }) {
 
   const onFile = async (file) => {
     try {
-      let doc;
-      try {
-        doc = JSON.parse(await file.text());
-      } catch {
-        throw new Error(texts.watershed.fileNotJson);
-      }
-      const read = readWatershed(doc);
-      if (read.missing) throw new Error(t(texts.watershed.fileNotWatershed, { missing: read.missing.join(", ") }));
-      const time = new Date().toLocaleString("pl-PL", { dateStyle: "medium", timeStyle: "short" });
-      set({
-        watershed: read.texts,
-        origin: {
-          label: file.name,
-          title: t(texts.watershed.fileTitle, { file: file.name }),
-          detail: t(texts.watershed.detailFile, { time, fields: fieldCount(read.values) }),
-          mark: null,
-          values: read.values,
-        },
-      });
+      set(await readWatershedFile(file));
       toast(t(texts.watershed.fileLoaded, { file: file.name }));
     } catch (error) {
       toast(t(texts.watershed.fileFailed, { file: file.name, message: error.message || String(error) }), "bad");
@@ -415,7 +390,8 @@ export default function Hydrogram({ path = [] }) {
           </div>`
         : null}
       ${docs.models
-        ? html`<${DataPanel}
+        ? html`<${SubcatchmentSteps}
+            prefix="hg"
             inputs=${inputs}
             errors=${errors}
             warnings=${warnings}
@@ -424,10 +400,12 @@ export default function Hydrogram({ path = [] }) {
             set=${set}
             setField=${setField}
             onFile=${onFile}
-            result=${result}
+            computed=${result}
             models=${docs.models}
             infoValues=${values}
             pmaxtp=${{ depth, busy: pmaxtpBusy, onRetry: pmaxtp.onRetry }}
+            network=${null}
+            hint=${{ anchor: "przyklad", name: "hydrogram" }}
           />`
         : docs.error
           ? null

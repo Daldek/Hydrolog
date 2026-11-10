@@ -98,7 +98,7 @@ export const WATERSHED_FIELDS = Object.freeze([
 ]);
 
 /** The fields of `watershed` that hold texts. */
-const TEXT_FIELDS = new Set(["name", "source", "crs"]);
+export const TEXT_FIELDS = new Set(["name", "source", "crs"]);
 
 /** The field of `watershed` a watershed file must have (WatershedParameters). */
 const WATERSHED_REQUIRED = Object.freeze(["area_km2"]);
@@ -117,7 +117,7 @@ export const HANDOFF_FIELDS = Object.freeze(["area_km2", "perimeter_km", "length
 const LUTZ_FIELDS = Object.freeze(["flow_path_length_km", "Lc_km", "flow_path_slope_m_per_m", "manning_n"]);
 
 /** The watershed fields of Nash by Lutz shown in its block (Lutz also reads the flow path of step 1). */
-const LUTZ_BLOCK = Object.freeze(["Lc_km", "manning_n", "forest_pct", "urban_pct"]);
+export const LUTZ_BLOCK = Object.freeze(["Lc_km", "manning_n", "forest_pct", "urban_pct"]);
 
 /**
  * The watershed fields each tc method reads: those its source defines, with no substitute

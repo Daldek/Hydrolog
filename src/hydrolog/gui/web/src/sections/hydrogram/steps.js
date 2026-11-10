@@ -1,20 +1,28 @@
-// The panel Dane of „Hydrogram zlewni”: the three steps of the author's flow (2026-11-04).
+// The three steps of a subcatchment, the author's flow of 2026-11-04, as one component with
+// two hosts (plan 2026-11-10-network-wizard, D1): Hydrogram zlewni's panel Dane (index.js)
+// and the subcatchment's panel of Sieć. The steps are driven by props only; the host keeps
+// the state, the runs and the channels, and gives an id prefix (`hg`, `sn`) so both can
+// be mounted on one page without sharing an id.
 // 1 Zlewnia: where the watershed came from (a WatershedParameters JSON read in the
-// browser, or a hand-off with „Wczytaj z Hydrografa”) and its basic fields, CN included.
-// 2 Hietogram (rain-step.js, shared with Sieć's network): PMAXTP (the point, p, the
-// duration and the method; the depth `precip pmaxtp` fetched from IMGW-PIB is shown, never
-// typed), a design hyetograph or a series, its shape and the time step.
+// browser, readWatershedFile, or a hand-off with „Wczytaj z Hydrografa”, whose opened
+// document goes to the host's `onHandoff` when it gives one) and its basic fields, CN
+// included.
+// 2 Hietogram (rain-step.js): PMAXTP (the point, p, the duration and the method; the depth
+// `precip pmaxtp` fetched from IMGW-PIB is shown, never typed), a design hyetograph or a
+// series, its shape and the time step; in Sieć first „Jak w sieci”, the network's
+// rainfall, with the network's time step shown read-only (D4).
 // 3 Hydrogram: the unit hydrograph model, none chosen at first; only the chosen model's
 // block (its tc with the tc method's own fields for SCS and Clark, Clark's R, Nash by
 // Lutz with the watershed fields Lutz reads or n and K, Snyder with Lc), then the losses
 // of SCS-CN common to every model. Once a model is chosen, the fields it needs are marked
 // where they live („wymagane dla …”), an empty one is an error (red), a value outside its
 // typical range a warning (amber), and step 3 sums them up with a link to each field.
-// Every change goes to the section, which checks it and recomputes (plan D13); the steps
-// show what the last result gave (tc, CN after AMC, S, Ia, the UH's parameters).
+// Every change goes to the host, which checks it (Hydrogram's pure functions, state.js);
+// the steps show the values a run gave (`computed`: tc, CN after AMC, S, Ia, the UH's
+// parameters, tp and Qp).
 
 import { richText, splitReason } from "../../controls/field.js";
-import { inputText, num, roundedText } from "../../format.js";
+import { inputText, num, plural, roundedText } from "../../format.js";
 import { HandoffImport } from "../../handoff/handoff-panel.js";
 import { html, useRef } from "../../html.js";
 import { t } from "../../labels/common.js";
@@ -27,6 +35,7 @@ import { RainStep } from "./rain-step.js";
 import { Row, Step, percentHint, shortText } from "./rows.js";
 import {
   AMC,
+  LUTZ_BLOCK,
   SLOPE_FIELDS,
   TC_BLOCK,
   TC_METHODS,
@@ -37,16 +46,17 @@ import {
   numberOf,
   panelFields,
   purposeText,
+  readWatershed,
   stepOf,
   usesLutz,
   usesTc,
 } from "./state.js";
 
-/** The prefix of the ids of the panel's controls. */
-const PREFIX = "hg";
-
-/** The sources of the rainfall Hydrogram zlewni offers. */
+/** The sources of the rainfall of a subcatchment on its own (Hydrogram zlewni). */
 const RAIN_KINDS = Object.freeze(["pmaxtp", "design", "series"]);
+
+/** The sources of the rainfall of a subcatchment of a network (Sieć): the network's first. */
+const NETWORK_RAIN_KINDS = Object.freeze(["network", "pmaxtp", "design", "series"]);
 
 /** Icons of the lines of step 3's summary. */
 const ICONS = {
@@ -54,6 +64,47 @@ const ICONS = {
   warn: html`<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2l6.5 11.5h-13z" /><path d="M8 6.5v3.2M8 11.7v.01" /></svg>`,
   ok: html`<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" /><path d="M5 8.2l2 2 4-4.2" /></svg>`,
 };
+
+/**
+ * The count of a watershed's fields in words: „19 pól”.
+ *
+ * @param {object} values the fields read
+ * @returns {string} the words
+ */
+function fieldCount(values) {
+  return plural(Object.keys(values).length, texts.watershed.fieldForms);
+}
+
+/**
+ * Read a watershed file (WatershedParameters JSON) chosen in step 1: its fields as typed
+ * texts and its origin, the file, which the fields' change marks compare with.
+ *
+ * @param {File} file the file chosen
+ * @returns {Promise<{watershed: Object<string, string>, origin: {label: string, title:
+ *   string, detail: string, mark: null, values: object}}>} the patch of the inputs
+ * @throws {Error} with the Polish message when the file is not JSON or not a watershed
+ */
+export async function readWatershedFile(file) {
+  let doc;
+  try {
+    doc = JSON.parse(await file.text());
+  } catch {
+    throw new Error(texts.watershed.fileNotJson);
+  }
+  const read = readWatershed(doc);
+  if (read.missing) throw new Error(t(texts.watershed.fileNotWatershed, { missing: read.missing.join(", ") }));
+  const time = new Date().toLocaleString("pl-PL", { dateStyle: "medium", timeStyle: "short" });
+  return {
+    watershed: read.texts,
+    origin: {
+      label: file.name,
+      title: t(texts.watershed.fileTitle, { file: file.name }),
+      detail: t(texts.watershed.detailFile, { time, fields: fieldCount(read.values) }),
+      mark: null,
+      values: read.values,
+    },
+  };
+}
 
 /**
  * A model's note with Hydrolog's typical ranges of its parameters („typowo n od 1 do 10 (do
@@ -78,12 +129,13 @@ function typicalNote(id, keys, text, plain) {
 }
 
 /**
- * Bring a field of the panel into view and focus it, opening its step.
+ * Bring a field of the steps into view and focus it, opening its step.
  *
+ * @param {string} prefix the host's prefix of ids
  * @param {string} name the field
  */
-function focusField(name) {
-  const control = document.getElementById(`${PREFIX}-${name}`);
+function focusField(prefix, name) {
+  const control = document.getElementById(`${prefix}-${name}`);
   if (!control) return;
   const step = control.closest("details");
   if (step && !step.open) step.open = true;
@@ -94,14 +146,15 @@ function focusField(name) {
 /**
  * A row of a field of the watershed, with its change mark and checks.
  *
- * @param {object} props see DataPanel, and `name` the field and `extra` more props of Row
+ * @param {object} props see SubcatchmentSteps, and `name` the field and `extra` more props
+ *   of Row
  * @returns {object} the row
  */
-function WatershedRow({ name, inputs, errors, warnings, required, setField, extra = {} }) {
+function WatershedRow({ prefix, name, inputs, errors, warnings, required, setField, extra = {} }) {
   const fields = inputs.watershed || {};
   const need = stepOf(name) === 1 && required[name] ? t(texts.need, { what: purposeText(required[name].purpose) }) : null;
   return html`<${Row}
-    prefix=${PREFIX}
+    prefix=${prefix}
     name=${name}
     value=${fields[name]}
     error=${errors[name]}
@@ -117,13 +170,13 @@ function WatershedRow({ name, inputs, errors, warnings, required, setField, extr
 
 /**
  * Step 1, Zlewnia: where the watershed came from, a WatershedParameters JSON read in the
- * browser, and its basic fields; a field the chosen model reads says so.
+ * browser or a hand-off, and its basic fields; a field the chosen model reads says so.
  *
- * @param {object} props see DataPanel
+ * @param {object} props see SubcatchmentSteps
  * @returns {object} the step
  */
 function WatershedStep(props) {
-  const { inputs, onFile, infoValues } = props;
+  const { inputs, onFile, onHandoff, hint, infoValues } = props;
   const fileInput = useRef(null);
   const fields = inputs.watershed || {};
   const origin = inputs.origin;
@@ -144,7 +197,7 @@ function WatershedStep(props) {
   };
   return html`
     <${Step} id="watershed" number=${1} title=${texts.steps.watershed} meta=${meta}>
-      ${blank ? html`<${EmptyHint} anchor="przyklad" name="hydrogram" />` : null}
+      ${blank && hint ? html`<${EmptyHint} anchor=${hint.anchor} name=${hint.name} />` : null}
       <div class="handoff" data-origin=${origin ? origin.label : ""}>
         ${origin && origin.mark
           ? html`<img src=${`nogat/marks/${origin.mark}.svg`} alt="" />`
@@ -155,7 +208,7 @@ function WatershedStep(props) {
         </div>
       </div>
       <div class="btn-row">
-        <${HandoffImport} />
+        ${onHandoff ? html`<${HandoffImport} onOpen=${onHandoff} />` : html`<${HandoffImport} />`}
         <button class="btn sm ghost" type="button" title=${texts.watershed.fileHint} onClick=${() => fileInput.current.click()}>
           <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 3h7l3 3v11H5z" /><path d="M12 3v3h3" /></svg>
           ${texts.watershed.file}
@@ -176,11 +229,12 @@ function WatershedStep(props) {
  * correct and those outside their typical range, each a link to its field; before a
  * choice, what choosing does.
  *
- * @param {{inputs: object, errors: Object<string, string>, warnings: Object<string,
- *   string>}} props the inputs and the messages by field
+ * @param {{prefix: string, inputs: object, errors: Object<string, string>, warnings:
+ *   Object<string, string>}} props the host's prefix of ids, the inputs and the messages
+ *   by field
  * @returns {object} the summary
  */
-function Summary({ inputs, errors, warnings }) {
+function Summary({ prefix, inputs, errors, warnings }) {
   if (!inputs.uh_model) return html`<p class="note" data-summary="none">${texts.uh.choose}</p>`;
   const missing = [];
   const invalid = [];
@@ -194,7 +248,7 @@ function Summary({ inputs, errors, warnings }) {
       type="button"
       data-goto=${name}
       title=${t(texts.summary.goTo, { field: fieldLabel(name), step: stepOf(name) })}
-      onClick=${() => focusField(name)}
+      onClick=${() => focusField(prefix, name)}
     >${fieldLabel(name)}</button> <span class="step-ref">(${t(texts.summary.step, { step: stepOf(name) })})</span>`;
   const line = (kind, level, title, names) =>
     names.length
@@ -212,24 +266,29 @@ function Summary({ inputs, errors, warnings }) {
 
 /**
  * The tc of SCS and Clark in step 3: the method (with the watershed fields of step 3 it
- * reads), or tc typed, and what the last result gave.
+ * reads), or tc typed, and what the last run gave.
  *
- * @param {object} props see DataPanel
+ * @param {object} props see SubcatchmentSteps
  * @returns {object} the block
  */
 function TcBlock(props) {
-  const { inputs, errors, warnings, set, result, infoValues } = props;
+  const { prefix, inputs, errors, warnings, set, computed, infoValues } = props;
   const method = inputs.tc_method;
-  const tc = result && typeof result.tc_min === "number" ? result.tc_min : null;
+  const tc = computed && typeof computed.tc_min === "number" ? computed.tc_min : null;
   return html`
     <div class="block" data-block="tc">
       <h4 class="group-title">${texts.blocks.tc}</h4>
       <div class="field">
         <span class="label-row">
-          <label for="hg-tc_method">${texts.tc.method}<span class="key">tc_method</span></label>
+          <label for=${`${prefix}-tc_method`}>${texts.tc.method}<span class="key">tc_method</span></label>
           <${InfoButton} id=${`tc-${method}`} values=${infoValues} />
         </span>
-        <select id="hg-tc_method" value=${method} disabled=${inputs.tc_manual} onChange=${(event) => set({ tc_method: event.currentTarget.value })}>
+        <select
+          id=${`${prefix}-tc_method`}
+          value=${method}
+          disabled=${inputs.tc_manual}
+          onChange=${(event) => set({ tc_method: event.currentTarget.value })}
+        >
           ${TC_METHODS.map((value) => html`<option value=${value}>${texts.tc.methods[value]}</option>`)}
         </select>
         <span class="hint">${texts.tc.hints[method]}</span>
@@ -243,12 +302,17 @@ function TcBlock(props) {
         <span class="u">${tc !== null ? t(texts.tc.chipHours, { hours: num(tc / 60, 2) }) : ""}</span>
       </div>
       <label class="check">
-        <input type="checkbox" id="hg-tc_manual" checked=${inputs.tc_manual} onChange=${(event) => set({ tc_manual: event.currentTarget.checked })} />
+        <input
+          type="checkbox"
+          id=${`${prefix}-tc_manual`}
+          checked=${inputs.tc_manual}
+          onChange=${(event) => set({ tc_manual: event.currentTarget.checked })}
+        />
         <span>${texts.tc.manual} <code>tc_min</code></span>
       </label>
       ${inputs.tc_manual
         ? html`<div class="form"><${Row}
-            prefix=${PREFIX}
+            prefix=${prefix}
             name="tc_min"
             value=${inputs.tc_min}
             error=${errors.tc_min}
@@ -262,54 +326,58 @@ function TcBlock(props) {
 }
 
 /**
- * The losses of SCS-CN in step 3, common to every model: AMC and λ, and what the last
- * result gave (CN after AMC, S, Ia).
+ * The losses of SCS-CN in step 3, common to every model: AMC and λ, and what the last run
+ * gave (CN after AMC, S, Ia).
  *
- * @param {object} props see DataPanel
+ * @param {object} props see SubcatchmentSteps, and `amcField` the field model of AMC
  * @returns {object} the block
  */
-function LossesBlock({ inputs, errors, warnings, set, result, amcField }) {
+function LossesBlock({ prefix, inputs, errors, warnings, set, computed, amcField }) {
   const fields = inputs.watershed || {};
   const cn = numberOf(fields.cn);
   const meaning = (value) => {
     const choice = amcField ? amcField.choices.find((item) => item.value === value) : null;
     return choice ? choice.meaning : "";
   };
-  const fresh = result && result.amc === inputs.amc && typeof result.cn_adjusted === "number" && result.cn === cn;
+  const fresh = computed && computed.amc === inputs.amc && typeof computed.cn_adjusted === "number" && computed.cn === cn;
   const hint =
-    fresh && result.cn_adjusted !== result.cn
-      ? t(texts.losses.amcAdjusted, { meaning: meaning(inputs.amc).replace(/\.$/, ""), cn: inputText(result.cn), adjusted: inputText(result.cn_adjusted) })
+    fresh && computed.cn_adjusted !== computed.cn
+      ? t(texts.losses.amcAdjusted, {
+          meaning: meaning(inputs.amc).replace(/\.$/, ""),
+          cn: inputText(computed.cn),
+          adjusted: inputText(computed.cn_adjusted),
+        })
       : meaning(inputs.amc);
   const chips = [];
-  if (result && typeof result.cn_adjusted === "number") {
+  if (computed && typeof computed.cn_adjusted === "number") {
     chips.push(
-      result.amc === "II" || result.cn_adjusted === result.cn
-        ? t(texts.losses.chipCn, { cn: inputText(result.cn_adjusted) })
-        : t(texts.losses.chipCnAdjusted, { adjusted: inputText(result.cn_adjusted), cn: inputText(result.cn), amc: result.amc }),
+      computed.amc === "II" || computed.cn_adjusted === computed.cn
+        ? t(texts.losses.chipCn, { cn: inputText(computed.cn_adjusted) })
+        : t(texts.losses.chipCnAdjusted, { adjusted: inputText(computed.cn_adjusted), cn: inputText(computed.cn), amc: computed.amc }),
     );
   }
-  if (result && typeof result.retention_mm === "number") chips.push(t(texts.losses.chipS, { value: num(result.retention_mm, 1) }));
-  if (result && typeof result.initial_abstraction_mm === "number") {
-    chips.push(t(texts.losses.chipIa, { value: num(result.initial_abstraction_mm, 1) }));
+  if (computed && typeof computed.retention_mm === "number") chips.push(t(texts.losses.chipS, { value: num(computed.retention_mm, 1) }));
+  if (computed && typeof computed.initial_abstraction_mm === "number") {
+    chips.push(t(texts.losses.chipIa, { value: num(computed.initial_abstraction_mm, 1) }));
   }
   return html`
     <div class="block" data-block="losses">
       <h4 class="group-title">${texts.blocks.losses}</h4>
       <p class="note">${texts.losses.note}</p>
       <div class="field">
-        <span class="label-row"><span class="label" id="hg-amc-label">${texts.losses.amc}<span class="key">amc</span></span></span>
+        <span class="label-row"><span class="label" id=${`${prefix}-amc-label`}>${texts.losses.amc}<span class="key">amc</span></span></span>
         <${Seg}
           items=${AMC.map((value) => ({ value, label: value, title: meaning(value) }))}
           value=${inputs.amc}
           onChange=${(value) => set({ amc: value })}
-          labelledBy="hg-amc-label"
+          labelledBy=${`${prefix}-amc-label`}
           full=${true}
         />
         <span class="hint" data-hint="amc">${hint}</span>
       </div>
       <div class="form">
         <${Row}
-          prefix=${PREFIX}
+          prefix=${prefix}
           name="ia_coefficient"
           value=${inputs.ia_coefficient}
           error=${errors.ia_coefficient}
@@ -327,20 +395,19 @@ function LossesBlock({ inputs, errors, warnings, set, result, amcField }) {
 /**
  * Step 3, Hydrogram: the unit hydrograph model (none chosen at first) with the summary of
  * the checks, the chosen model's block (tc for SCS and Clark; Clark's R or R/tc; Nash by
- * Lutz with Lc, Manning's n, forest and urban shares and, read-only, the n and K the shown
- * result estimated, or n and K typed; Snyder's Lc of the watershed, L, Lc, Ct and Cp), the
- * losses, and what the last result gave.
+ * Lutz with Lc, Manning's n, forest and urban shares and, read-only, the n and K the last
+ * run estimated, or n and K typed; Snyder's Lc of the watershed, L, Lc, Ct and Cp), the
+ * losses, and what the last run gave.
  *
- * @param {object} props see DataPanel
+ * @param {object} props see SubcatchmentSteps, and `amcField` the field model of AMC
  * @returns {object} the step
  */
 function HydrographStep(props) {
-  const { inputs, errors, warnings, set, result, infoValues } = props;
+  const { prefix, inputs, errors, warnings, set, computed, infoValues } = props;
   const model = inputs.uh_model;
-  const fields = inputs.watershed || {};
   const byLutz = usesLutz(inputs);
   const numberRow = (name, extra = {}) => html`<${Row}
-    prefix=${PREFIX}
+    prefix=${prefix}
     name=${name}
     value=${inputs[name]}
     error=${errors[name]}
@@ -349,7 +416,7 @@ function HydrographStep(props) {
     ...${extra}
   />`;
   const watershedRow = (name) => html`<${WatershedRow} key=${name} name=${name} ...${props} />`;
-  const fresh = result && result.uh_model === model ? result : null;
+  const fresh = computed && computed.uh_model === model ? computed : null;
   const parameters = (fresh && fresh.uh_parameters) || {};
   const chips = [];
   if (fresh) {
@@ -368,8 +435,8 @@ function HydrographStep(props) {
       chips.push(t(texts.uh.chipQp, { value: num(fresh.uh_peak_discharge_m3s_per_mm, 2) }));
     }
   }
-  // Lutz's n and K are those the shown result estimated (`nash_estimation`)
-  const estimate = result && result.nash_estimation === "lutz" && result.uh_parameters ? result.uh_parameters : null;
+  // Lutz's n and K are those the last run estimated (`nash_estimation`)
+  const estimate = computed && computed.nash_estimation === "lutz" && computed.uh_parameters ? computed.uh_parameters : null;
   const toGiven = () => {
     const patch = { nash_source: "given" };
     if (isEmpty(inputs.nash_n) && estimate) patch.nash_n = shortText(estimate.n);
@@ -378,7 +445,7 @@ function HydrographStep(props) {
   };
   let meta = texts.uh.metaNone;
   if (model) {
-    const tc = result && result.uh_model === model && typeof result.tc_min === "number" ? result.tc_min : null;
+    const tc = computed && computed.uh_model === model && typeof computed.tc_min === "number" ? computed.tc_min : null;
     meta = texts.uh.models[model] || model;
     if (usesTc(model) && inputs.tc_manual) meta += ` · ${t(texts.tc.metaManual, { tc: isEmpty(inputs.tc_min) ? "–" : roundedText(inputs.tc_min, 1) })}`;
     else if (usesTc(model)) {
@@ -390,35 +457,35 @@ function HydrographStep(props) {
     <${Step} id="hydrograph" number=${3} title=${texts.steps.hydrograph} meta=${meta}>
       <div class="field">
         <span class="label-row">
-          <span class="label" id="hg-uh-label">${texts.uh.model}<span class="key">uh_model</span></span>
+          <span class="label" id=${`${prefix}-uh-label`}>${texts.uh.model}<span class="key">uh_model</span></span>
           ${model ? html`<${InfoButton} id=${`uh-${model}`} values=${infoValues} />` : null}
         </span>
         <${Seg}
           items=${UH_MODELS.map((value) => ({ value, label: texts.uh.models[value] }))}
           value=${model}
           onChange=${(value) => set({ uh_model: value })}
-          labelledBy="hg-uh-label"
+          labelledBy=${`${prefix}-uh-label`}
           full=${true}
         />
       </div>
-      <${Summary} inputs=${inputs} errors=${errors} warnings=${warnings} />
+      <${Summary} prefix=${prefix} inputs=${inputs} errors=${errors} warnings=${warnings} />
       ${usesTc(model) ? html`<${TcBlock} ...${props} />` : null}
       ${model === "scs" ? html`<p class="note">${texts.uh.scsNote}</p>` : null}
       ${model === "nash"
         ? html`
             <div class="field">
-              <span class="label" id="hg-nash-source-label">${texts.uh.nashSource}</span>
+              <span class="label" id=${`${prefix}-nash-source-label`}>${texts.uh.nashSource}</span>
               <${Seg}
                 items=${["lutz", "given"].map((value) => ({ value, label: texts.uh.nashSources[value] }))}
                 value=${byLutz ? "lutz" : "given"}
                 onChange=${(value) => (value === "given" ? toGiven() : set({ nash_source: "lutz" }))}
-                labelledBy="hg-nash-source-label"
+                labelledBy=${`${prefix}-nash-source-label`}
                 full=${true}
               />
             </div>
             <div class="form">
               ${byLutz
-                ? html`${["Lc_km", "manning_n", "forest_pct", "urban_pct"].map(watershedRow)}
+                ? html`${LUTZ_BLOCK.map(watershedRow)}
                     ${numberRow("nash_n", { value: estimate ? shortText(estimate.n) : "", readOnly: true, placeholder: texts.uh.lutzPending })}
                     ${numberRow("nash_k_min", { value: estimate ? shortText(estimate.k_min) : "", readOnly: true })}`
                 : html`${numberRow("nash_n")}${numberRow("nash_k_min")}`}
@@ -431,12 +498,12 @@ function HydrographStep(props) {
       ${model === "clark"
         ? html`
             <div class="field">
-              <span class="label" id="hg-clark-label">${texts.uh.clarkKind}</span>
+              <span class="label" id=${`${prefix}-clark-label`}>${texts.uh.clarkKind}</span>
               <${Seg}
                 items=${["ratio", "r"].map((value) => ({ value, label: texts.uh.clarkKinds[value] }))}
                 value=${inputs.clark_kind === "r" ? "r" : "ratio"}
                 onChange=${(value) => set({ clark_kind: value })}
-                labelledBy="hg-clark-label"
+                labelledBy=${`${prefix}-clark-label`}
                 full=${true}
               />
             </div>
@@ -461,22 +528,30 @@ function HydrographStep(props) {
 }
 
 /**
- * The panel Dane: the error the server gave without a field, then the three steps.
+ * The three steps of a subcatchment: the error the server gave without a field, then
+ * Zlewnia, Hietogram and Hydrogram.
  *
- * @param {{inputs: object, errors: Object<string, string>, warnings: Object<string,
- *   string>, required: Object<string, {purpose: string}>, formError: {title: string,
- *   text: string}|null, set: (patch: object) => void, setField: (name: string, text:
- *   string) => void, onFile: (file: File) => void, result: object|null, models:
- *   object|null, infoValues: object, pmaxtp: {depth: number|null, busy: boolean, onRetry:
- *   (() => void)|null}}} props the inputs, the errors and warnings by field, what the
- *   chosen model needs (requirements), the error above the steps, the handlers (a patch of
- *   the inputs, a field of the watershed, a watershed file), the shown result, the field
- *   models, the values the (i) explanations check, and PMAXTP's fetched depth (null until
- *   known), whether it is being fetched and how to fetch it again after a failure
- * @returns {object} the panel's body
+ * @param {{prefix: string, inputs: object, set: (patch: object) => void, setField: (name:
+ *   string, text: string) => void, errors: Object<string, string>, warnings: Object<string,
+ *   string>, required: Object<string, {purpose: string}>, formError: {title: string, text:
+ *   string}|null, computed: object|null, models: object|null, infoValues: object, pmaxtp:
+ *   {depth: number|null, busy: boolean, onRetry: (() => void)|null}, network: {rainfall:
+ *   string, timestep_min: string, onOpen: () => void}|null, onFile: (file: File) => void,
+ *   onHandoff?: (doc: object) => ({title: string, lines: string[]}|null), hint: {anchor:
+ *   string, name: string}|null}} props the host's prefix of every id („hg”, „sn”); the
+ *   inputs and the handlers of a patch of them and of a field of the watershed; the errors
+ *   and warnings by field; what the chosen model needs (requirements); the error above the
+ *   steps; the values a run gave (fields of `hydrograph generate`'s result, any missing) or
+ *   null; the field models; the values the (i) explanations check; PMAXTP's fetched depth
+ *   (null until known), whether it is being fetched and how to fetch it again after a
+ *   failure; the network's rainfall in words, its time step and how to open it (Sieć;
+ *   null on its own); the handler of a watershed file; what „Wczytaj z Hydrografa” does
+ *   with the opened hand-off (default: it opens where it belongs); the empty hint of a
+ *   blank step 1, or null
+ * @returns {object} the steps
  */
-export function DataPanel(props) {
-  const { formError, models } = props;
+export function SubcatchmentSteps(props) {
+  const { prefix, formError, models, network } = props;
   const field = (name) => (models ? models.options.fields.find((item) => item.name === name) || null : null);
   return html`
     ${formError
@@ -489,11 +564,12 @@ export function DataPanel(props) {
       <${WatershedStep} ...${props} />
       <${RainStep}
         ...${props}
-        prefix=${PREFIX}
+        prefix=${prefix}
         number=${2}
         title=${texts.steps.rain}
-        kinds=${RAIN_KINDS}
-        timestep=${{ own: true }}
+        kinds=${network ? NETWORK_RAIN_KINDS : RAIN_KINDS}
+        timestep=${network ? { network: network.timestep_min } : { own: true }}
+        network=${network ? { words: network.rainfall, onOpen: network.onOpen } : null}
         valuesField=${field("values")}
       />
       <${HydrographStep} ...${props} amcField=${field("amc")} />
