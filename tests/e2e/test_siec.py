@@ -95,13 +95,17 @@ def with_cells(document: dict[str, Any], cells: dict[str, Cell]) -> dict[str, An
     return {**document, "nodes": nodes}
 
 
-def as_written(document: dict[str, Any]) -> dict[str, Any]:
+def as_written(
+    document: dict[str, Any],
+    unshown: frozenset[str] = frozenset({"channel_slope_m_per_m"}),
+) -> dict[str, Any]:
     """Return ``document`` as Sieć writes it once it has read it.
 
     A subcatchment made from rainfall goes through Hydrogram's inputs (plan
     2026-11-10-network-wizard, D3), which write out the choices a runoff leaves to the
     library's defaults: the model (SCS), AMC II and, for SCS and Clark without a given
-    tc, the method of tc (Kirpich).
+    tc, the method of tc (Kirpich); its watershed leaves out ``unshown``, the fields no
+    step shows for its choice (the channel's slope, which no step shows).
     """
     nodes = []
     for node in document["nodes"]:
@@ -112,6 +116,12 @@ def as_written(document: dict[str, Any]) -> dict[str, Any]:
             if runoff["uh_model"] in {"scs", "clark"} and "tc_min" not in runoff:
                 runoff.setdefault("tc_method", "kirpich")
             node = {**node, "runoff": runoff}
+            if "watershed" in node:
+                node["watershed"] = {
+                    name: value
+                    for name, value in node["watershed"].items()
+                    if name not in unshown
+                }
         nodes.append(node)
     return {**document, "nodes": nodes}
 

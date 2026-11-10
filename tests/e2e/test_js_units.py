@@ -22,7 +22,9 @@ junction, remove, rename, describe), ``editor/history.js``, the hints of
 Hydrogram's step 2 and of Sieć's network (plan 2026-11-10-network-wizard, D4) goes from
 ``rainfall`` of hydrolog-network/1 to the step's inputs and back (``mapping.js``'
 ``rainfallInputs``, ``rainfallOf``), and ``RainStep`` shows a subcatchment's „Jak w
-sieci” with the network's time step read-only.
+sieci” with the network's time step read-only. A subcatchment made from rainfall goes to
+Hydrogram's inputs and back (``subcatchmentInputs``, ``subcatchmentNode``; D3): the
+inputs of each model choice, the guide's subcatchments and a hand-off's.
 """
 
 import json
@@ -35,7 +37,10 @@ import pytest
 from hydrolog.exceptions import InvalidParameterError
 from hydrolog.routing import RoutingNetwork, structure_schematic
 from hydrolog.routing._layout import edge_route, layout
-from tests.e2e.conftest import Tab
+from hydrolog.testing import example_network_document
+from tests.e2e.conftest import FIXTURES, Tab, kamiennik_inputs
+from tests.e2e.test_siec import as_written
+from tests.e2e.test_siec_subcatchment import CHOICES, RUNOFF_VALUES
 from tests.unit._network_documents import STRUCTURE_CORPUS
 from tests.unit._schematic_checks import random_tree
 
@@ -2203,3 +2208,68 @@ def test_the_rain_step_of_a_subcatchment_shows_the_networks_rainfall(
     # The link opens the network's rainfall; another source is a patch of the inputs
     assert got["opened"] == 1
     assert got["patches"] == [{"rain_source": "pmaxtp"}]
+
+
+# A subcatchment of hydrolog-network/1 and Hydrogram's inputs (plan
+# 2026-11-10-network-wizard, D3, D11): each model choice's inputs written as a node and
+# read back, the guide's subcatchments read and written, and a hand-off's read with its
+# record and written.
+SUBCATCHMENT = """async ([stored, choices, runoff, guide, handoff]) => {
+  const mp = await import('./src/handoff/mapping.js');
+  const hs = await import('./src/sections/hydrogram/state.js');
+  const f = await import('./src/format.js');
+  const typed = Object.fromEntries(
+    Object.entries(runoff).map(([name, value]) => [name, f.inputText(value)]));
+  const inputsOf = (choice) => hs.normalize({
+    ...stored, ...typed,
+    uh_model: choice.model,
+    tc_manual: choice.tc === 'manual',
+    tc_method: choice.tc && choice.tc !== 'manual' ? choice.tc : 'kirpich',
+    clark_kind: choice.clark || 'ratio',
+    nash_source: choice.nash || 'lutz',
+  });
+  const placeOf = (node) => ({id: node.id, from: node.from,
+    description: node.description, position: node.position});
+  const sent = (inputs) => {
+    const {timestep_min, ...options} = hs.toOptions(hs.normalize(inputs));
+    return options;
+  };
+  const sub = handoff.payload.nodes.find((node) => node.type === 'subcatchment');
+  return {
+    choices: choices.map((choice) => {
+      const inputs = inputsOf(choice);
+      const node = mp.subcatchmentNode(inputs, {id: 'Z1'});
+      const back = mp.subcatchmentInputs(node);
+      return {node, again: mp.subcatchmentNode(back, {id: 'Z1'}),
+              sent: sent(inputs), back: sent(back)};
+    }),
+    guide: guide.nodes.filter((node) => node.runoff)
+      .map((node) => mp.subcatchmentNode(mp.subcatchmentInputs(node), placeOf(node))),
+    handed: mp.subcatchmentNode(
+      mp.subcatchmentInputs(sub, {origin: handoff}), placeOf(sub)),
+  };
+}"""
+
+
+def test_a_subcatchment_goes_to_hydrograms_inputs_and_back(page: Any) -> None:
+    handoff = json.loads((FIXTURES / "handoff_hydrograf.json").read_text("utf-8"))
+    guide = example_network_document()
+    got = page.evaluate(
+        SUBCATCHMENT,
+        [kamiennik_inputs(), CHOICES, RUNOFF_VALUES, guide, handoff],
+    )
+    for choice, item in zip(CHOICES, got["choices"], strict=True):
+        # A node written of a choice reads back to the same node, and its inputs send
+        # what they sent (the time step is the network's, not the node's)
+        assert item["again"] == item["node"], choice
+        assert item["back"] == item["sent"], choice
+        assert item["node"]["runoff"]["uh_model"] == choice["model"], choice
+    # The guide's subcatchments come back with the library's defaults written out
+    written = as_written(guide)
+    assert got["guide"] == [node for node in written["nodes"] if "runoff" in node]
+    # Hydrograf's subcatchment, read with its record: as handed, but for the fields no
+    # step shows for SCS (its channel's slope and Lc), its PMAXTP depth kept
+    handed = as_written(
+        handoff["payload"], frozenset({"channel_slope_m_per_m", "Lc_km"})
+    )
+    assert got["handed"] == handed["nodes"][0]

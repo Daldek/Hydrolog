@@ -476,8 +476,9 @@ def test_a_phone_in_the_dark_alternates_dane_and_the_panel(new_tab: Any) -> None
     page.get_by_role("button", name="Dane").click()
     page.get_by_role("button", name="Nowa sieć").click()
     type_network(page, "mouse")
+    # Escape closes the sheet; the tap on a cell waits until it has slid away
     page.keyboard.press("Escape")
-    expect(page.locator(f"{LEFT}.open")).to_have_count(0)
+    expect(page.locator(LEFT)).to_be_hidden()
     page.get_by_role("button", name="Dodaj element").click()
     menu_item(page, "subcatchment")
     page.mouse.click(*cell_point(page, (0, 0)))
