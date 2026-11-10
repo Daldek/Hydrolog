@@ -1,9 +1,10 @@
 // The results of Sieć (plan S4, the mockup's „Wyniki” and „Tabela węzłów”): in the centre
-// every node's peak, time to peak, volume, attenuation and delay, in the order of the
-// calculation, each row choosing its node; in the panel the outlet's numbers, the chosen
-// node's chart (its inflows and its outflow) and parameters, its hydrograph as a table,
-// the notices, the exports (with the print view) and the call, and „Przekazanie”, the
-// hand-off nogat-handoff/1 of the network (handoff/handoff-panel.js).
+// every node's kind, description, the node it flows into (plan 2026-11-10-network-editor,
+// D1), peak, time to peak, volume, attenuation and delay, in the order of the calculation,
+// each row choosing its node; in the panel the outlet's numbers, the chosen node's chart
+// (its inflows and its outflow) and parameters, its hydrograph as a table, the notices,
+// the exports (with the print view) and the call, and „Przekazanie”, the hand-off
+// nogat-handoff/1 of the network (handoff/handoff-panel.js).
 
 import { toPng } from "../../charts/png.js";
 import { Chart } from "../../charts/chart.js";
@@ -61,7 +62,11 @@ function kindText(node, words) {
 export function NodeTable({ skeleton, words, result, selected, onSelect }) {
   const nodes = result ? resultNodes(result) : new Map();
   const order = result && Array.isArray(result.order) ? result.order.filter((id) => skeleton.some((node) => node.id === id)) : skeleton.map((node) => node.id);
+  for (const node of skeleton) if (!order.includes(node.id)) order.push(node.id);
   const byId = new Map(skeleton.map((node) => [node.id, node]));
+  const below = new Map();
+  for (const node of skeleton) for (const up of node.from || []) if (!below.has(up)) below.set(up, []);
+  for (const node of skeleton) for (const up of node.from || []) below.get(up).push(node.id);
   return html`
     <div class="card" data-card="nodes">
       <div class="card-head">
@@ -74,6 +79,8 @@ export function NodeTable({ skeleton, words, result, selected, onSelect }) {
             <tr>
               <th scope="col">${texts.nodeTable.node}</th>
               <th scope="col" class="txt">${texts.nodeTable.kind}</th>
+              <th scope="col" class="txt">${texts.nodeTable.description}</th>
+              <th scope="col" class="txt">${texts.nodeTable.to}</th>
               <th scope="col">Qp <span class="u">[m³/s]</span></th>
               <th scope="col">tp <span class="u">[h:min]</span></th>
               <th scope="col">V <span class="u">[${texts.units.thousand}]</span></th>
@@ -91,6 +98,8 @@ export function NodeTable({ skeleton, words, result, selected, onSelect }) {
                   <button class="link-btn node-pick" type="button" aria-pressed=${id === selected ? "true" : "false"} onClick=${() => onSelect(id)}>${id}</button>
                 </th>
                 <td class="txt">${kindText(node, words.get(id))}</td>
+                <td class="txt desc" data-column="description">${node.description || common.empty}</td>
+                <td class="txt" data-column="to">${below.has(id) ? below.get(id).join(", ") : common.empty}</td>
                 <td>${value ? num(value.peak_m3s, 2) : common.empty}</td>
                 <td>${value ? hmm(value.time_to_peak_min) : common.empty}</td>
                 <td>${value ? num(value.volume_m3 / 1e3, 1) : common.empty}</td>

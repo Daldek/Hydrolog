@@ -236,15 +236,20 @@ def test_the_example_is_drawn_first_and_computes_the_librarys_values(tab: Tab) -
         f"{polish(outlet['peak_m3s'], 1)} · {hmm(outlet['time_to_peak_min'])}"
     )
 
-    # The node table: every node's peak, time and volume, rows in the order computed
+    # The node table: every node's kind, description, the node below, peak, time and
+    # volume, rows in the order computed
     page.get_by_role("radio", name="Tabela węzłów").click()
     rows = page.locator(".node-table tbody tr")
     expect(rows).to_have_count(8)
+    below = {"A": "R_A", "B": "J1", "C": "J2", "R_A": "J1", "J1": "R_J1"}
+    below |= {"R_J1": "J2", "J2": "OUT", "OUT": "–"}
     for node, value in expected.items():
         cells = page.locator(f'.node-table tr[data-node-row="{node}"] td')
-        expect(cells.nth(1)).to_have_text(polish(value["peak_m3s"], 2))
-        expect(cells.nth(2)).to_have_text(hmm(value["time_to_peak_min"]))
-        expect(cells.nth(3)).to_have_text(polish(value["volume_m3"] / 1000, 1))
+        expect(cells.nth(1)).to_have_text("–")
+        expect(cells.nth(2)).to_have_text(below[node])
+        expect(cells.nth(3)).to_have_text(polish(value["peak_m3s"], 2))
+        expect(cells.nth(4)).to_have_text(hmm(value["time_to_peak_min"]))
+        expect(cells.nth(5)).to_have_text(polish(value["volume_m3"] / 1000, 1))
 
     # A row chooses its node: its chart (inflow and outflow) and numbers in Wyniki
     page.locator('.node-table tr[data-node-row="R_J1"] button').click()

@@ -1,11 +1,13 @@
 // State of „Sieć i trasowanie” (plan D9, S4): the network being edited, kept in the
 // browser under "hydrolog-gui/siec/2" (inputs only, no results): where it came from, its
-// structure (ids, types, inflows, which are not edited, plan D18; and the cell of every
-// node on the canvas, plan 2026-11-10-network-editor, D3, D10), the values of the network
-// and of each node, the session files it reads (the inflows file and its time column),
-// whether its layout is provisional (rows until Hydrolog lays it out) and the chosen node
-// and view. A first visit has no network: it opens from a file or a hand-off (the guide's
-// worked example, instrukcja/#siec, is a file to load).
+// structure (ids, types, inflows, the cell of every node on the canvas and its
+// description: plan 2026-11-10-network-editor, D3, D10), the values of the network and of
+// each node, the session files it reads (the inflows file and its time column), whether
+// its layout is provisional (rows until Hydrolog lays it out), the key of the inputs as
+// they were opened or last saved (whether discarding them needs a question) and the
+// chosen node and view. A first visit has no network: „Nowa sieć” starts an empty one, or
+// it opens from a file or a hand-off (the guide's worked example, instrukcja/#siec, is a
+// file to load).
 //
 // Another part of the page opens a network here with openNetwork(document, {name}) (the
 // hand-off of S6); the section takes it when it is mounted, or on its first render.
@@ -48,7 +50,65 @@ export function initialState() {
     selected: null,
     view: "schem",
     provisional: false,
+    savedKey: null,
   };
+}
+
+/**
+ * The state of „Nowa sieć” (D10): an open network without nodes, to build on the canvas.
+ *
+ * @returns {object} the state
+ */
+export function newState() {
+  const started = { ...initialState(), source: { name: DOCUMENT_NAME, kind: "new" } };
+  return { ...started, savedKey: inputsKey(started) };
+}
+
+/**
+ * A JSON value with its keys sorted and without empty values ("", null, undefined), so
+ * that inputs that hold the same data give the same text.
+ *
+ * @param {unknown} value a value of the inputs
+ * @returns {unknown} the canonical value
+ */
+function canonical(value) {
+  if (Array.isArray(value)) return value.map(canonical);
+  if (!value || typeof value !== "object") return value;
+  const kept = {};
+  for (const key of Object.keys(value).sort()) {
+    const item = value[key];
+    if (item !== "" && item !== null && item !== undefined) kept[key] = canonical(item);
+  }
+  return kept;
+}
+
+/**
+ * The key of a network's inputs (its values, structure, positions and descriptions): equal
+ * keys hold the same network. „Wyczyść” and „Nowa sieć” ask first when the key differs
+ * from the one kept when the network was opened or saved (D10).
+ *
+ * @param {{network: object, skeleton: object[], nodes: Object<string, object>}} state the
+ *   section's inputs
+ * @returns {string} the key: the length and FNV-1a hash of the canonical JSON
+ */
+export function inputsKey(state) {
+  const text = JSON.stringify(canonical([state.network, state.skeleton, state.nodes]));
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return `${text.length.toString(36)}-${hash.toString(36)}`;
+}
+
+/**
+ * Whether the network changed since it was opened or saved (D10).
+ *
+ * @param {object} state the section's state
+ * @returns {boolean} true when discarding it needs a question
+ */
+export function changedSinceSaved(state) {
+  return Boolean(state.source) && inputsKey(state) !== state.savedKey;
 }
 
 /**
@@ -142,7 +202,7 @@ export function stateOf(doc, source, keep = {}) {
   const nodes = {};
   for (const node of doc.nodes) nodes[String(node.id)] = nodeValues(node);
   const outlet = placed.skeleton.find((node) => node.type === "outlet");
-  return {
+  const opened = {
     ...initialState(),
     source,
     network: networkValues(doc),
@@ -153,6 +213,7 @@ export function stateOf(doc, source, keep = {}) {
     selected: outlet ? outlet.id : placed.skeleton.length ? placed.skeleton[0].id : null,
     provisional: placed.provisional,
   };
+  return { ...opened, savedKey: inputsKey(opened) };
 }
 
 /**
@@ -177,16 +238,6 @@ export function placementNotes(doc, state) {
   if (dropped.length) lines.push(t(texts.canvas.dropped, { nodes: dropped.join(", ") }));
   if (moved.length) lines.push(t(texts.canvas.placed, { nodes: moved.join(", ") }));
   return lines;
-}
-
-/**
- * The structure without the cells: what the layout of Hydrolog depends on.
- *
- * @param {Array<{id: string, type: string, from: string[]|null}>} skeleton the structure
- * @returns {Array<{id: string, type: string, from: string[]|null}>} ids, types, inflows
- */
-export function structureOf(skeleton) {
-  return skeleton.map((node) => ({ id: node.id, type: node.type, from: node.from }));
 }
 
 /**

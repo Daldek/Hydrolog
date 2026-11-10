@@ -583,6 +583,46 @@ export function nearestInDirection(nodes, from, direction) {
 }
 
 /**
+ * Whether a cell lies on a route: on one of its segments, the corners included.
+ *
+ * @param {Array<[number, number]>} route the corners in grid units (edgeRoute's)
+ * @param {[number, number]} cell [x, y]
+ * @returns {boolean} true when a segment runs through the cell's centre
+ */
+export function onRoute(route, cell) {
+  const [x, y] = cell;
+  for (let index = 1; index < route.length; index += 1) {
+    const [x0, y0] = route[index - 1];
+    const [x1, y1] = route[index];
+    const cross = (x1 - x0) * (y - y0) - (y1 - y0) * (x - x0);
+    if (cross !== 0) continue;
+    if (x >= Math.min(x0, x1) && x <= Math.max(x0, x1) && y >= Math.min(y0, y1) && y <= Math.max(y0, y1)) return true;
+  }
+  return false;
+}
+
+/**
+ * The edges that run through a node other than their two (D5): a hint, not a problem, as
+ * Hydrolog draws a given layout as it is placed; „Uporządkuj” lays the network out anew.
+ *
+ * @param {{nodes: Array<{id: string, cell: [number, number]}>, edges: Array<{from: string,
+ *   to: string, route: Array<[number, number]>}>}} picture pictureOf's
+ * @returns {Array<{from: string, to: string, node: string}>} each edge with a node it runs
+ *   through, in the order of the edges and the nodes
+ */
+export function edgesThroughNodes(picture) {
+  const found = [];
+  for (const edge of picture.edges) {
+    for (const node of picture.nodes) {
+      if (node.id !== edge.from && node.id !== edge.to && onRoute(edge.route, node.cell)) {
+        found.push({ from: edge.from, to: edge.to, node: node.id });
+      }
+    }
+  }
+  return found;
+}
+
+/**
  * Where the lines of a label stand: the anchor, the x of the text and the baselines.
  *
  * @param {{cx: number, cy: number, place: string}} node a node of pictureOf

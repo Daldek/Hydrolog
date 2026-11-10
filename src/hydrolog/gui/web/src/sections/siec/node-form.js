@@ -1,9 +1,12 @@
-// The settings of the chosen node in „Dane” (plan S4, the mockup's `.node-form`): a form
-// per node type and reach method generated from hydrolog-network-1.schema.json
-// (node-model.js) with the controls of the catalog forms, the alternatives as segmented
-// choices, a storage table (or a rating file of the session) for a reservoir and a
-// level-pool reach, and a subcatchment's own hydrograph as a table. The structure (ids,
-// inflows) is shown, not edited (plan D18).
+// The settings of the chosen node in „Dane” (plan S4, the mockup's `.node-form`): its
+// structure as ordinary form controls (plan 2026-11-10-network-editor, D7, D12: the id,
+// checked as it is typed and changed on Enter or when the field is left; „Opis”;
+// „Odpływa do”, with „Wstaw złącze” where the node below takes one inflow; „Usuń węzeł”
+// and „Usuń i połącz”), then a form per node type and reach method generated from
+// hydrolog-network-1.schema.json (node-model.js) with the controls of the catalog forms,
+// the alternatives as segmented choices, a storage table (or a rating file of the
+// session) for a reservoir and a level-pool reach, and a subcatchment's own hydrograph as
+// a table.
 
 import { ChoiceField, CheckField } from "../../controls/choice-field.js";
 import { inputFiles, uploadFile, useSession } from "../../controls/file-field.js";
@@ -12,13 +15,18 @@ import { readTable, SeriesField } from "../../controls/series-field.js";
 import { TextField } from "../../controls/text-field.js";
 import { splitReason } from "../../controls/field.js";
 import { auto, bytes, inputText, parseNumber } from "../../format.js";
+import { withReason } from "../../forms/model.js";
 import { html, useRef, useState } from "../../html.js";
 import { common, t } from "../../labels/common.js";
 import { describeError } from "../../labels/errors.js";
 import { siec as texts } from "../../labels/siec.js";
 import { InfoButton } from "../../ui/info-button.js";
 import { Seg } from "../../ui/seg.js";
-import { fieldOf, METHODS, nodeLayout, RAINFALLS, VARIANTS } from "./node-model.js";
+import { JunctionOffer } from "./editor/canvas.js";
+import { canBridge } from "./editor/edits.js";
+import { foldId, idProblem, linkVerdict, receiversOf } from "./editor/graph.js";
+import { descriptionProblem, fieldOf, METHODS, nodeLayout, RAINFALLS, VARIANTS } from "./node-model.js";
+import { kindNoun, refusalText } from "./words.js";
 
 const CONTROLS = {
   number: NumberField,
@@ -311,6 +319,150 @@ function NodeHead({ node, to }) {
 }
 
 /**
+ * „Opis” of a node or of the network (D3): plain text with line breaks, checked as the
+ * library checks it.
+ *
+ * @param {{id: string, label: string, value?: string, error?: string|null, onInput: (text:
+ *   string) => void}} props the control's id, its label, the text, its problem and the
+ *   handler
+ * @returns {object} the field
+ */
+export function DescriptionField({ id, label, value, error, onInput }) {
+  const message = error ? splitReason(error) : null;
+  return html`<div class=${`opt${error ? " invalid" : ""}`} data-field="description">
+    <label for=${id}><span class="lbl-text">${label}</span> <code>description</code></label>
+    <textarea
+      id=${id}
+      rows="3"
+      spellcheck=${true}
+      value=${value || ""}
+      aria-invalid=${error ? "true" : "false"}
+      aria-describedby=${`${id}-hint${error ? ` ${id}-err` : ""}`}
+      onInput=${(event) => onInput(event.currentTarget.value)}
+    ></textarea>
+    <span class="hint" id=${`${id}-hint`}>${texts.form.descriptionHint}</span>
+    ${message
+      ? html`<span class="err" id=${`${id}-err`} role="alert">${message.text}${message.reason ? html` <span class="reason">· ${message.reason}</span>` : null}</span>`
+      : null}
+  </div>`;
+}
+
+/**
+ * The structure of a node as ordinary form controls (D7, D12: every structural edit of the
+ * canvas is also here): the id, „Opis”, „Odpływa do” (refused targets disabled with their
+ * reason; a node that takes one inflow and has it offers „Wstaw złącze”), „Usuń węzeł” and
+ * „Usuń i połącz”.
+ *
+ * @param {{node: object, to: string|null, skeleton: object[], rules: object, prefix:
+ *   string, offer: object|null, actions: object, onIdDone: (id: string) => void}} props
+ *   the node, its downstream node, the structure, the inflow rules, the prefix of ids, a
+ *   junction offered for it, the section's edits and the handler of Enter or Esc in the id
+ * @returns {object} the controls
+ */
+function NodeStructure({ node, to, skeleton, rules, prefix, offer, actions, onIdDone }) {
+  const [draft, setDraft] = useState(node.id);
+  const reason = draft === node.id ? null : idProblem(draft, skeleton, node.id);
+  const other = reason === "duplicate_node" ? (skeleton.find((item) => item.id !== node.id && foldId(item.id) === foldId(draft)) || {}).id : null;
+  const idError = reason ? withReason(t(texts.idProblems[reason], { other: other || "–" }), reason) : null;
+  const idMessage = idError ? splitReason(idError) : null;
+  const commit = () => {
+    if (draft !== node.id && !reason) actions.rename(node.id, draft);
+  };
+  const idId = `${prefix}-id`;
+  const toId = `${prefix}-to`;
+  const below = receiversOf(skeleton).get(node.id) || [];
+  const others = skeleton.filter((item) => item.id !== node.id);
+  return html`
+    <div class="node-structure" data-structure=${node.id}>
+      <div class=${`opt${idError ? " invalid" : ""}`} data-field="id">
+        <label for=${idId}><span class="lbl-text">${texts.form.id}</span> <code>id</code></label>
+        <input
+          id=${idId}
+          type="text"
+          autocomplete="off"
+          spellcheck=${false}
+          value=${draft}
+          aria-invalid=${idError ? "true" : "false"}
+          aria-describedby=${`${idId}-hint${idError ? ` ${idId}-err` : ""}`}
+          onInput=${(event) => setDraft(event.currentTarget.value)}
+          onChange=${commit}
+          onKeyDown=${(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              commit();
+              onIdDone(reason || draft === node.id ? node.id : draft);
+            } else if (event.key === "Escape") {
+              event.preventDefault();
+              setDraft(node.id);
+              onIdDone(node.id);
+            }
+          }}
+        />
+        <span class="hint" id=${`${idId}-hint`}>${texts.form.idHint}</span>
+        ${idMessage
+          ? html`<span class="err" id=${`${idId}-err`} role="alert">${idMessage.text}${idMessage.reason ? html` <span class="reason">· ${idMessage.reason}</span>` : null}</span>`
+          : null}
+      </div>
+      <${DescriptionField}
+        id=${`${prefix}-description`}
+        label=${texts.form.description}
+        value=${node.description}
+        error=${descriptionProblem(node.description)}
+        onInput=${(text) => actions.describe(node.id, text)}
+      />
+      <div class="opt" data-field="to">
+        <label for=${toId}><span class="lbl-text">${texts.form.to}</span></label>
+        <select
+          id=${toId}
+          value=${to || ""}
+          disabled=${node.type === "outlet"}
+          aria-describedby=${`${toId}-hint`}
+          onChange=${(event) => {
+            const value = event.currentTarget.value;
+            if (!value) actions.unlink(node.id, null);
+            else actions.link(node.id, value, "data");
+          }}
+        >
+          <option value="">${texts.form.toNone}</option>
+          ${others.map((item) => {
+            const verdict = linkVerdict(skeleton, rules, node.id, item.id);
+            const refused = !verdict.ok && !verdict.offer && !below.includes(item.id);
+            const label = `${item.id} (${kindNoun(item.type)})`;
+            return html`<option value=${item.id} disabled=${refused}>${refused ? `${label}: ${t(texts.canvas.refused, { reason: refusalText(verdict, skeleton, node.id, item.id) })}` : label}</option>`;
+          })}
+        </select>
+        <span class="hint" id=${`${toId}-hint`}>${texts.form.toHint}</span>
+      </div>
+      ${offer
+        ? html`<${JunctionOffer}
+            offer=${offer}
+            skeleton=${skeleton}
+            onAccept=${() => actions.insertJunction(offer.from, offer.to)}
+            onCancel=${() => actions.cancelOffer()}
+          />`
+        : null}
+      <div class="btn-row">
+        <button class="btn sm ghost" type="button" data-action="remove-node" title=${t(texts.form.removeTitle, { id: node.id })} onClick=${() => actions.remove(node.id, false)}>
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 6h10M8 6V4h4v2M6 6l1 11h6l1-11" /></svg>
+          ${texts.form.remove}
+        </button>
+        ${canBridge(skeleton, node.id)
+          ? html`<button
+              class="btn sm ghost"
+              type="button"
+              data-action="bridge-node"
+              title=${t(texts.form.bridgeTitle, { id: node.id, up: node.from[0], down: below[0] })}
+              onClick=${() => actions.remove(node.id, true)}
+            >
+              ${texts.form.bridge}
+            </button>`
+          : null}
+      </div>
+    </div>
+  `;
+}
+
+/**
  * The numbers of a routing element's fields by name, for the ranges of its explanation.
  *
  * @param {object} values the node's values
@@ -353,19 +505,33 @@ function MethodField({ id, value, values, onInput }) {
 /**
  * The settings of one node.
  *
- * @param {{forms: object, node: object, to: string|null, values: object, problems: object,
- *   result: object|null, networkRain: string, inflowsFile: string, onChange: (values:
- *   object) => void}} props the forms, the node's structure, its downstream node, its
- *   values and problems, its last result, the words of the network's rainfall, the
- *   inflows file and the change handler
+ * @param {{forms: object, node: object, to: string|null, skeleton: object[], values:
+ *   object, problems: object, result: object|null, networkRain: string, inflowsFile:
+ *   string, offer: object|null, actions: object, onIdDone: (id: string) => void,
+ *   onChange: (values: object) => void}} props the forms, the node's structure, its
+ *   downstream node, the whole structure, its values and problems, its last result, the
+ *   words of the network's rainfall, the inflows file, a junction offered for it, the
+ *   section's edits, the handler of Enter or Esc in the id and the change handler
  * @returns {object} the form
  */
-export function NodeForm({ forms, node, to, values, problems, result, networkRain, inflowsFile, onChange }) {
+export function NodeForm({ forms, node, to, skeleton, values, problems, result, networkRain, inflowsFile, offer, actions, onIdDone, onChange }) {
   const prefix = `nf-${String(node.id).replace(/[^\w-]+/g, "-")}`;
   const layout = nodeLayout(forms, node, values);
   const set = (key, value) => onChange({ ...values, [key]: value });
   const render = (slot) => html`<${FieldSlot} key=${slot.key} slot=${slot} values=${values} problems=${problems} prefix=${prefix} onValue=${set} />`;
-  const parts = [html`<${NodeHead} node=${node} to=${to} />`];
+  const parts = [
+    html`<${NodeHead} node=${node} to=${to} />`,
+    html`<${NodeStructure}
+      node=${node}
+      to=${to}
+      skeleton=${skeleton}
+      rules=${forms.inflow}
+      prefix=${prefix}
+      offer=${offer}
+      actions=${actions}
+      onIdDone=${onIdDone}
+    />`,
+  ];
 
   if (layout.kind === "subcatchment") {
     parts.push(html`<${Choice}

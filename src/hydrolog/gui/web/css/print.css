@@ -188,7 +188,11 @@ dialog,
 }
 .canvas-bar,
 .canvas-keys,
+.canvas-problems,
+.offer,
 [data-canvas="prompt"],
+[data-canvas="placing"],
+[data-canvas="linking"],
 .schem .edit-mark {
   display: none !important;
 }
