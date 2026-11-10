@@ -24,7 +24,10 @@ Hydrogram's step 2 and of Sieć's network (plan 2026-11-10-network-wizard, D4) g
 ``rainfallInputs``, ``rainfallOf``), and ``RainStep`` shows a subcatchment's „Jak w
 sieci” with the network's time step read-only. A subcatchment made from rainfall goes to
 Hydrogram's inputs and back (``subcatchmentInputs``, ``subcatchmentNode``; D3): the
-inputs of each model choice, the guide's subcatchments and a hand-off's.
+inputs of each model choice, the guide's subcatchments and a hand-off's. The origin of
+each node (D9) follows Nogat's precedence (``nodeOrigins``, a key of no node left out and
+said) and is written again by Sieć under the current ids with the changes marked
+(``siecNodeProvenance``), renamed, edited, drawn and added nodes included.
 """
 
 import json
@@ -2273,3 +2276,129 @@ def test_a_subcatchment_goes_to_hydrograms_inputs_and_back(page: Any) -> None:
         handoff["payload"], frozenset({"channel_slope_m_per_m", "Lc_km"})
     )
     assert got["handed"] == handed["nodes"][0]
+
+
+# The origin of each node of a network hand-off (plan 2026-11-10-network-wizard, D9):
+# Nogat's second example and Hydrograf's network (tests/fixtures), read and written
+# again by Sieć's state as opening, editing, renaming and adding change it.
+ORIGINS = """async ([nogat, hydrograf]) => {
+  const mp = await import('./src/handoff/mapping.js');
+  const st = await import('./src/sections/siec/state.js');
+  const ed = await import('./src/sections/siec/editor/edits.js');
+  const unknown = {...nogat, node_provenance: {...nogat.node_provenance,
+    X9: {node: {source: 'hydrograf'}}}};
+  const open = (doc) => st.stateOf(doc.payload,
+    {name: 'x.json', kind: 'handoff', handoff: mp.siecReceived(doc, doc.payload)});
+  const opened = open(nogat);
+  const plain = (nodes) => ({schema: 'hydrolog-network/1', nodes});
+  const handed = plain(nogat.payload.nodes);
+  // Z2 renamed, Z1's CN and Z3's model changed, R1 given its section, Z4 drawn
+  let state = ed.renameNode(opened, 'Z2', 'Z9');
+  const nodes = state.nodes;
+  state = {
+    ...state,
+    skeleton: [...state.skeleton, {id: 'Z4', type: 'subcatchment', from: null}],
+    nodes: {
+      ...nodes,
+      Z1: {...nodes.Z1, watershed: {...nodes.Z1.watershed, cn: '70'}},
+      Z3: {...nodes.Z3, uh_model: 'nash'},
+      Z4: {'#variant': 'rain', watershed: {area_km2: '3'}, uh_model: 'scs'},
+    },
+  };
+  const sectioned = plain(nogat.payload.nodes.map((node) => (node.id === 'R1'
+    ? {...node, manning_n: 0.035, bottom_width_m: 8} : node)));
+  const designed = {...state, network: {...state.network, rain_source: 'design'}};
+  const joined = mp.siecAddition(opened, hydrograf);
+  return {
+    origins: mp.nodeOrigins(unknown),
+    unknown: mp.unknownOrigins(unknown),
+    note: mp.unknownOriginsNote(unknown),
+    kept: mp.siecReceived(unknown, unknown.payload).node_provenance,
+    same: {provenance: mp.siecProvenance(opened),
+           nodes: mp.siecNodeProvenance(opened, handed)},
+    edited: {provenance: mp.siecProvenance(state),
+             nodes: mp.siecNodeProvenance(state, sectioned)},
+    designed: {provenance: mp.siecProvenance(designed),
+               nodes: mp.siecNodeProvenance(designed, sectioned)},
+    joined: {added: joined.added, lines: joined.lines,
+             nodes: mp.siecNodeProvenance(joined.inputs, handed)},
+    words: ['Z1', 'Z2', 'Z3', 'J1', 'R1', 'J2'].map((id) => {
+      const entry = hydrograf.node_provenance[id];
+      return mp.originWords(entry.watershed || entry.node);
+    }),
+  };
+}"""
+
+
+def test_node_origins_are_read_shown_and_written_as_nogat_orders(page: Any) -> None:
+    nogat = json.loads(
+        (FIXTURES.parents[1] / "schemas" / "nogat" / "handoff-1.schema.json").read_text(
+            "utf-8"
+        )
+    )["examples"][1]
+    hydrograf = json.loads(
+        (FIXTURES / "handoff_hydrograf_network.json").read_text("utf-8")
+    )
+    got = page.evaluate(ORIGINS, [nogat, hydrograf])
+    own = nogat["node_provenance"]
+    provenance = nogat["provenance"]
+    # A node's entry wins over provenance, input by input; J2 and OUT take provenance;
+    # a key that names no node is left out and said
+    assert got["origins"]["Z1"] == {**provenance, **own["Z1"]}
+    assert got["origins"]["R1"] == {**provenance, "node": own["R1"]["node"]}
+    assert got["origins"]["J2"] == provenance
+    assert got["origins"]["OUT"] == provenance
+    assert "X9" not in got["origins"]
+    assert got["unknown"] == ["X9"]
+    assert got["note"] == [
+        "Pominięto pochodzenie węzłów, których nie ma w sieci przekazania "
+        "(node_provenance): X9."
+    ]
+    assert got["kept"] == own
+    # Unchanged, the network's hand-off writes what it received
+    assert got["same"] == {"provenance": provenance, "nodes": own}
+    # Edited: the renamed node keeps its entry under its new id, a changed watershed
+    # or reach names its changed fields, an edited runoff is the person's, and the
+    # drawn Z4 is the person's where provenance would claim its watershed
+    assert got["edited"]["provenance"] == provenance
+    assert got["edited"]["nodes"] == {
+        "Z1": {"watershed": {**own["Z1"]["watershed"], "changed": ["cn"]}},
+        "Z9": own["Z2"],
+        "J1": own["J1"],
+        "R1": {
+            "node": {**own["R1"]["node"], "changed": ["manning_n", "bottom_width_m"]}
+        },
+        "Z3": {**own["Z3"], "runoff": {"source": "user"}},
+        "Z4": {"watershed": {"source": "user"}},
+    }
+    # Another rainfall of the network is the person's; the nodes that take it say
+    # nothing of their own
+    assert got["designed"]["provenance"] == {
+        **provenance,
+        "rainfall": {"source": "user"},
+    }
+    assert got["designed"]["nodes"] == got["edited"]["nodes"]
+    # Added to the open network, Hydrograf's subcatchments renamed on the clash keep
+    # their origins (their hand-off's provenance where they have no entry)
+    assert got["joined"]["added"] == ["Z4", "Z5", "Z6"]
+    assert got["joined"]["nodes"] == {
+        **own,
+        "Z4": hydrograf["node_provenance"]["Z1"],
+        "Z5": hydrograf["node_provenance"]["Z2"],
+        "Z6": hydrograf["node_provenance"]["Z3"],
+    }
+    # Hydrograf's elements in words
+    assert [item["what"] for item in got["words"]] == [
+        "zlewnia górna",
+        "dopływ do ujścia przy punkcie P1",
+        "przyrzecze odcinka R1",
+        "zbieg",
+        "odcinek",
+        "przekrój zamykający A",
+    ]
+    assert got["words"][4]["details"] == [
+        "długość wzdłuż spływu",
+        "spadek z NMT",
+        "NMT 281,4 → 231,66 m n.p.m.",
+        "długość kontrolna 4,87 km (BDOT10k)",
+    ]
