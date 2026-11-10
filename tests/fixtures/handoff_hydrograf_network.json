@@ -1,68 +1,507 @@
 {
   "schema": "nogat-handoff/1",
-  "created_at": "2026-11-12T09:30:00Z",
-  "producer": {"tool": "hydrograf", "version": "0.5.0.dev0"},
-  "subject": "Kamiennik — Świerzawa, sieć 3 zlewni",
+  "created_at": "2026-11-10T23:06:53Z",
+  "producer": {
+    "tool": "hydrograf",
+    "version": "0.5.0.dev0"
+  },
+  "subject": "Rzeka, sieć (8 zlewni)",
   "provenance": {
-    "watershed": {"source": "hydrograf", "point": "A", "latitude": 51.0154, "longitude": 15.89, "threshold_m2": 10000}
+    "watershed": {
+      "source": "hydrograf",
+      "point": "A",
+      "latitude": 52.33692897777793,
+      "longitude": 20.48073185493494,
+      "threshold_m2": 200000
+    }
   },
   "node_provenance": {
-    "Z1": {"watershed": {"source": "hydrograf", "element": "headwater", "point": null, "reach": null, "at_mouth": false, "latitude": 51.0391, "longitude": 15.8436}},
-    "Z2": {"watershed": {"source": "hydrograf", "element": "tributary", "point": "P1", "at_mouth": true, "latitude": 51.0402, "longitude": 15.8459}},
-    "J1": {"node": {"source": "hydrograf", "element": "confluence", "latitude": 51.0391, "longitude": 15.8436}},
+    "Z1": {
+      "watershed": {
+        "source": "hydrograf",
+        "element": "headwater",
+        "latitude": 52.349874756874335,
+        "longitude": 20.4811644832631
+      }
+    },
+    "Z2": {
+      "watershed": {
+        "source": "hydrograf",
+        "element": "tributary",
+        "point": "P3",
+        "at_mouth": true,
+        "latitude": 52.34987291629094,
+        "longitude": 20.48131129079233
+      }
+    },
+    "J1": {
+      "node": {
+        "source": "hydrograf",
+        "element": "confluence",
+        "latitude": 52.34978485573771,
+        "longitude": 20.48116147776805
+      }
+    },
     "R1": {
       "node": {
         "source": "hydrograf",
         "element": "reach",
         "length": "flow_distance",
         "slope": "nmt",
-        "upstream_elevation_m": 281.4,
-        "downstream_elevation_m": 231.66,
-        "vector_length_km": 4.87,
-        "vector_source": "bdot10k"
+        "upstream_elevation_m": 128.6,
+        "downstream_elevation_m": 123.8
       }
     },
-    "Z3": {"watershed": {"source": "hydrograf", "element": "intermediate", "reach": "R1", "latitude": 51.0154, "longitude": 15.89}},
-    "J2": {"node": {"source": "hydrograf", "element": "outlet", "point": "A", "latitude": 51.0154, "longitude": 15.89}}
+    "Z3": {
+      "watershed": {
+        "source": "hydrograf",
+        "element": "intermediate",
+        "point": "P4",
+        "reach": "R1",
+        "latitude": 52.34762722800908,
+        "longitude": 20.48108935063641
+      }
+    },
+    "J2": {
+      "node": {
+        "source": "hydrograf",
+        "element": "point",
+        "point": "P4",
+        "latitude": 52.34762722800908,
+        "longitude": 20.48108935063641
+      }
+    },
+    "R2": {
+      "node": {
+        "source": "hydrograf",
+        "element": "reach",
+        "length": "flow_distance",
+        "slope": "nmt",
+        "upstream_elevation_m": 123.8,
+        "downstream_elevation_m": 119.0
+      }
+    },
+    "Z4": {
+      "watershed": {
+        "source": "hydrograf",
+        "element": "intermediate",
+        "reach": "R2",
+        "latitude": 52.3455595006263,
+        "longitude": 20.48102023735805
+      }
+    },
+    "Z5": {
+      "watershed": {
+        "source": "hydrograf",
+        "element": "tributary",
+        "point": "P2",
+        "at_mouth": true,
+        "latitude": 52.34555766032771,
+        "longitude": 20.4811670306029
+      }
+    },
+    "J3": {
+      "node": {
+        "source": "hydrograf",
+        "element": "confluence",
+        "latitude": 52.34546959941777,
+        "longitude": 20.481017232622843
+      }
+    },
+    "R3": {
+      "node": {
+        "source": "hydrograf",
+        "element": "reach",
+        "length": "flow_distance",
+        "slope": "nmt",
+        "upstream_elevation_m": 119.0,
+        "downstream_elevation_m": 111.8
+      }
+    },
+    "Z6": {
+      "watershed": {
+        "source": "hydrograf",
+        "element": "intermediate",
+        "reach": "R3",
+        "latitude": 52.34232305617571,
+        "longitude": 20.48091207686102
+      }
+    },
+    "Z7": {
+      "watershed": {
+        "source": "hydrograf",
+        "element": "tributary",
+        "point": "P1",
+        "at_mouth": true,
+        "latitude": 52.34232489607845,
+        "longitude": 20.480765294311265
+      }
+    },
+    "J4": {
+      "node": {
+        "source": "hydrograf",
+        "element": "confluence",
+        "latitude": 52.342233154913266,
+        "longitude": 20.48090907269553
+      }
+    },
+    "R4": {
+      "node": {
+        "source": "hydrograf",
+        "element": "reach",
+        "length": "flow_distance",
+        "slope": "nmt",
+        "upstream_elevation_m": 111.8,
+        "downstream_elevation_m": 100.0
+      }
+    },
+    "Z8": {
+      "watershed": {
+        "source": "hydrograf",
+        "element": "intermediate",
+        "point": "A",
+        "reach": "R4",
+        "latitude": 52.33692897777793,
+        "longitude": 20.48073185493494
+      }
+    },
+    "J5": {
+      "node": {
+        "source": "hydrograf",
+        "element": "outlet",
+        "point": "A",
+        "latitude": 52.33692897777793,
+        "longitude": 20.48073185493494
+      }
+    }
   },
   "payload": {
     "schema": "hydrolog-network/1",
-    "name": "Kamiennik — Świerzawa, sieć 3 zlewni",
-    "description": "Sieć zlewni do przekroju A, wyznaczona przez Hydrograf w punktach kontrolnych",
+    "name": "Rzeka, sieć (8 zlewni)",
+    "description": "Sieć zlewni do przekroju zamykającego A (Rzeka), wyznaczona w Hydrografie: 8 zlewni, 4 odcinki, 5 węzłów. Opad sieci i przekroje odcinków (n Manninga, szerokość) podaje się w Hydrologu.",
     "nodes": [
       {
         "id": "Z1",
         "type": "subcatchment",
-        "description": "Zlewnia górna powyżej J1: 20,1 km²",
-        "watershed": {"name": "Zlewnia górna powyżej J1", "area_km2": 20.1, "cn": 63, "flow_path_length_km": 9.84, "flow_path_slope_m_per_m": 0.0187},
-        "runoff": {"model": "curve-number"}
+        "watershed": {
+          "name": "Zlewnia górna powyżej J1",
+          "area_km2": 0.5332,
+          "perimeter_km": 4.24,
+          "length_km": 1.4297,
+          "elevation_min_m": 128.8,
+          "elevation_max_m": 218.97,
+          "elevation_mean_m": 161.69,
+          "mean_slope_m_per_m": 0.104511,
+          "channel_length_km": 1.2183,
+          "channel_slope_m_per_m": 0.057564,
+          "cn": 61.6,
+          "overland_length_km": 0.2114,
+          "overland_slope_m_per_m": 0.094797,
+          "Lc_km": 0.4812,
+          "urban_pct": 0.0,
+          "forest_pct": 45.2,
+          "flow_path_length_km": 1.4297,
+          "flow_path_slope_m_per_m": 0.063069
+        },
+        "runoff": {
+          "model": "curve-number"
+        },
+        "description": "Zlewnia górna powyżej J1: 0,53 km²"
       },
       {
         "id": "Z2",
         "type": "subcatchment",
-        "description": "Dopływ do ujścia przy P1: 12,4 km²",
-        "watershed": {"name": "Dopływ do ujścia przy P1", "area_km2": 12.4, "cn": 68, "flow_path_length_km": 7.21, "flow_path_slope_m_per_m": 0.0236},
-        "runoff": {"model": "curve-number"}
+        "watershed": {
+          "name": "Dopływ do ujścia przy P3 (Trzeci)",
+          "area_km2": 0.4853,
+          "perimeter_km": 3.58,
+          "length_km": 1.5414,
+          "elevation_min_m": 129.0,
+          "elevation_max_m": 221.73,
+          "elevation_mean_m": 162.92,
+          "mean_slope_m_per_m": 0.105093,
+          "channel_length_km": 1.4024,
+          "channel_slope_m_per_m": 0.056567,
+          "cn": 75.0,
+          "overland_length_km": 0.139,
+          "overland_slope_m_per_m": 0.096331,
+          "Lc_km": 0.5325,
+          "urban_pct": 0.0,
+          "forest_pct": 0.0,
+          "flow_path_length_km": 1.5414,
+          "flow_path_slope_m_per_m": 0.06016
+        },
+        "runoff": {
+          "model": "curve-number"
+        },
+        "description": "Dopływ do ujścia przy P3 (Trzeci): 0,49 km²"
       },
-      {"id": "J1", "type": "junction", "from": ["Z1", "Z2"], "description": "Zbieg: dopływ P1"},
+      {
+        "id": "J1",
+        "type": "junction",
+        "from": [
+          "Z1",
+          "Z2"
+        ],
+        "description": "Zbieg: dopływ P3 (Trzeci)"
+      },
       {
         "id": "R1",
         "type": "reach",
         "method": "muskingum-cunge",
-        "from": ["J1"],
-        "length_km": 5.07,
-        "slope_m_per_m": 0.0098,
-        "description": "Odcinek od J1 do J2: 5,07 km, spadek 9,8 ‰ (NMT)"
+        "from": [
+          "J1"
+        ],
+        "length_km": 0.24,
+        "slope_m_per_m": 0.02,
+        "description": "Odcinek od J1 do J2: 0,24 km, spadek 20,00 ‰ (NMT)"
       },
       {
         "id": "Z3",
         "type": "subcatchment",
-        "description": "Przyrzecze odcinka R1: 4,72 km²",
-        "watershed": {"name": "Przyrzecze odcinka R1", "area_km2": 4.72, "cn": 66, "flow_path_length_km": 3.35, "flow_path_slope_m_per_m": 0.0311},
-        "runoff": {"model": "curve-number"}
+        "watershed": {
+          "name": "Przyrzecze odcinka R1",
+          "area_km2": 0.0916,
+          "perimeter_km": 1.58,
+          "length_km": 0.4173,
+          "elevation_min_m": 123.8,
+          "elevation_max_m": 153.3,
+          "elevation_mean_m": 137.81,
+          "mean_slope_m_per_m": 0.105995,
+          "channel_length_km": 0.25,
+          "channel_slope_m_per_m": 0.0192,
+          "cn": 77.5,
+          "overland_length_km": 0.139,
+          "overland_slope_m_per_m": 0.102662,
+          "Lc_km": 0.1185,
+          "urban_pct": 0.0,
+          "forest_pct": 34.8,
+          "flow_path_length_km": 0.4173,
+          "flow_path_slope_m_per_m": 0.067098
+        },
+        "runoff": {
+          "model": "curve-number"
+        },
+        "description": "Przyrzecze odcinka R1: 0,0916 km²"
       },
-      {"id": "J2", "type": "junction", "from": ["R1", "Z3"], "description": "Przekrój zamykający A"},
-      {"id": "OUT", "type": "outlet", "from": ["J2"]}
+      {
+        "id": "J2",
+        "type": "junction",
+        "from": [
+          "R1",
+          "Z3"
+        ],
+        "description": "Punkt P4 (Wodowskaz)"
+      },
+      {
+        "id": "R2",
+        "type": "reach",
+        "method": "muskingum-cunge",
+        "from": [
+          "J2"
+        ],
+        "length_km": 0.24,
+        "slope_m_per_m": 0.02,
+        "description": "Odcinek od J2 do J3: 0,24 km, spadek 20,00 ‰ (NMT)"
+      },
+      {
+        "id": "Z4",
+        "type": "subcatchment",
+        "watershed": {
+          "name": "Przyrzecze odcinka R2",
+          "area_km2": 0.0825,
+          "perimeter_km": 1.52,
+          "length_km": 0.4373,
+          "elevation_min_m": 119.2,
+          "elevation_max_m": 150.0,
+          "elevation_mean_m": 132.78,
+          "mean_slope_m_per_m": 0.107596,
+          "channel_length_km": 0.23,
+          "channel_slope_m_per_m": 0.01913,
+          "cn": 92.0,
+          "overland_length_km": 0.189,
+          "overland_slope_m_per_m": 0.101958,
+          "Lc_km": 0.1388,
+          "urban_pct": 0.0,
+          "forest_pct": 11.6,
+          "flow_path_length_km": 0.4373,
+          "flow_path_slope_m_per_m": 0.070432
+        },
+        "runoff": {
+          "model": "curve-number"
+        },
+        "description": "Przyrzecze odcinka R2: 0,0825 km²"
+      },
+      {
+        "id": "Z5",
+        "type": "subcatchment",
+        "watershed": {
+          "name": "Dopływ do ujścia przy P2",
+          "area_km2": 0.4369,
+          "perimeter_km": 3.36,
+          "length_km": 1.3414,
+          "elevation_min_m": 119.4,
+          "elevation_max_m": 192.14,
+          "elevation_mean_m": 147.02,
+          "mean_slope_m_per_m": 0.105653,
+          "channel_length_km": 1.1724,
+          "channel_slope_m_per_m": 0.048047,
+          "cn": 76.1,
+          "overland_length_km": 0.169,
+          "overland_slope_m_per_m": 0.097041,
+          "Lc_km": 0.5207,
+          "urban_pct": 0.0,
+          "forest_pct": 0.0,
+          "flow_path_length_km": 1.3414,
+          "flow_path_slope_m_per_m": 0.054227
+        },
+        "runoff": {
+          "model": "curve-number"
+        },
+        "description": "Dopływ do ujścia przy P2: 0,44 km²"
+      },
+      {
+        "id": "J3",
+        "type": "junction",
+        "from": [
+          "R2",
+          "Z4",
+          "Z5"
+        ],
+        "description": "Zbieg: dopływ P2"
+      },
+      {
+        "id": "R3",
+        "type": "reach",
+        "method": "muskingum-cunge",
+        "from": [
+          "J3"
+        ],
+        "length_km": 0.36,
+        "slope_m_per_m": 0.02,
+        "description": "Odcinek od J3 do J4: 0,36 km, spadek 20,00 ‰ (NMT)"
+      },
+      {
+        "id": "Z6",
+        "type": "subcatchment",
+        "watershed": {
+          "name": "Przyrzecze odcinka R3",
+          "area_km2": 0.1512,
+          "perimeter_km": 2.24,
+          "length_km": 0.5749,
+          "elevation_min_m": 112.0,
+          "elevation_max_m": 165.01,
+          "elevation_mean_m": 130.76,
+          "mean_slope_m_per_m": 0.106366,
+          "channel_length_km": 0.36,
+          "channel_slope_m_per_m": 0.019444,
+          "cn": 73.1,
+          "overland_length_km": 0.1866,
+          "overland_slope_m_per_m": 0.09582,
+          "Lc_km": 0.1622,
+          "urban_pct": 0.0,
+          "forest_pct": 26.0,
+          "flow_path_length_km": 0.5749,
+          "flow_path_slope_m_per_m": 0.092207
+        },
+        "runoff": {
+          "model": "curve-number"
+        },
+        "description": "Przyrzecze odcinka R3: 0,15 km²"
+      },
+      {
+        "id": "Z7",
+        "type": "subcatchment",
+        "watershed": {
+          "name": "Dopływ do ujścia przy P1 (Pierwszy)",
+          "area_km2": 1.2032,
+          "perimeter_km": 6.02,
+          "length_km": 2.1512,
+          "elevation_min_m": 112.2,
+          "elevation_max_m": 217.47,
+          "elevation_mean_m": 154.25,
+          "mean_slope_m_per_m": 0.103697,
+          "channel_length_km": 1.6682,
+          "channel_slope_m_per_m": 0.035847,
+          "cn": 34.4,
+          "overland_length_km": 0.693,
+          "overland_slope_m_per_m": 0.095916,
+          "Lc_km": 0.8831,
+          "urban_pct": 0.0,
+          "forest_pct": 100.0,
+          "flow_path_length_km": 2.1512,
+          "flow_path_slope_m_per_m": 0.048935
+        },
+        "runoff": {
+          "model": "curve-number"
+        },
+        "description": "Dopływ do ujścia przy P1 (Pierwszy): 1,20 km²"
+      },
+      {
+        "id": "J4",
+        "type": "junction",
+        "from": [
+          "R3",
+          "Z6",
+          "Z7"
+        ],
+        "description": "Zbieg: dopływ P1 (Pierwszy)"
+      },
+      {
+        "id": "R4",
+        "type": "reach",
+        "method": "muskingum-cunge",
+        "from": [
+          "J4"
+        ],
+        "length_km": 0.59,
+        "slope_m_per_m": 0.02,
+        "description": "Odcinek od J4 do J5: 0,59 km, spadek 20,00 ‰ (NMT)"
+      },
+      {
+        "id": "Z8",
+        "type": "subcatchment",
+        "watershed": {
+          "name": "Przyrzecze odcinka R4",
+          "area_km2": 0.7561,
+          "perimeter_km": 4.64,
+          "length_km": 1.2549,
+          "elevation_min_m": 100.0,
+          "elevation_max_m": 193.27,
+          "elevation_mean_m": 142.49,
+          "mean_slope_m_per_m": 0.104326,
+          "channel_length_km": 0.59,
+          "channel_slope_m_per_m": 0.02,
+          "cn": 64.4,
+          "overland_length_km": 0.1666,
+          "overland_slope_m_per_m": 0.095618,
+          "Lc_km": 0.2527,
+          "urban_pct": 0.0,
+          "forest_pct": 35.8,
+          "flow_path_length_km": 1.2549,
+          "flow_path_slope_m_per_m": 0.074325
+        },
+        "runoff": {
+          "model": "curve-number"
+        },
+        "description": "Przyrzecze odcinka R4: 0,76 km²"
+      },
+      {
+        "id": "J5",
+        "type": "junction",
+        "from": [
+          "R4",
+          "Z8"
+        ],
+        "description": "Przekrój zamykający A (Rzeka)"
+      },
+      {
+        "id": "OUT",
+        "type": "outlet",
+        "from": [
+          "J5"
+        ]
+      }
     ]
   }
 }

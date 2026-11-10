@@ -2279,7 +2279,7 @@ def test_a_subcatchment_goes_to_hydrograms_inputs_and_back(page: Any) -> None:
 
 
 # The origin of each node of a network hand-off (plan 2026-11-10-network-wizard, D9):
-# Nogat's second example and Hydrograf's network (tests/fixtures), read and written
+# Nogat's second example and Hydrograf's own network (tests/fixtures), read and written
 # again by Sieć's state as opening, editing, renaming and adding change it.
 ORIGINS = """async ([nogat, hydrograf]) => {
   const mp = await import('./src/handoff/mapping.js');
@@ -2322,10 +2322,13 @@ ORIGINS = """async ([nogat, hydrograf]) => {
                nodes: mp.siecNodeProvenance(designed, sectioned)},
     joined: {added: joined.added, lines: joined.lines,
              nodes: mp.siecNodeProvenance(joined.inputs, handed)},
-    words: ['Z1', 'Z2', 'Z3', 'J1', 'R1', 'J2'].map((id) => {
+    words: ['Z1', 'Z2', 'Z3', 'J1', 'R1', 'J2', 'J5'].map((id) => {
       const entry = hydrograf.node_provenance[id];
       return mp.originWords(entry.watershed || entry.node);
     }),
+    // Where a line of BDOT10k runs along a reach, Hydrograf adds its check length
+    checked: mp.originWords({...hydrograf.node_provenance.R1.node,
+      vector_length_km: 0.36, vector_source: 'bdot10k'}),
   };
 }"""
 
@@ -2380,25 +2383,32 @@ def test_node_origins_are_read_shown_and_written_as_nogat_orders(page: Any) -> N
     assert got["designed"]["nodes"] == got["edited"]["nodes"]
     # Added to the open network, Hydrograf's subcatchments renamed on the clash keep
     # their origins (their hand-off's provenance where they have no entry)
-    assert got["joined"]["added"] == ["Z4", "Z5", "Z6"]
+    subcatchments = [
+        node["id"]
+        for node in hydrograf["payload"]["nodes"]
+        if node["type"] == "subcatchment"
+    ]
+    assert got["joined"]["added"] == ["Z4", "Z5", "Z6", "Z7", "Z8", "Z9", "Z10", "Z11"]
     assert got["joined"]["nodes"] == {
         **own,
-        "Z4": hydrograf["node_provenance"]["Z1"],
-        "Z5": hydrograf["node_provenance"]["Z2"],
-        "Z6": hydrograf["node_provenance"]["Z3"],
+        **{
+            new: hydrograf["node_provenance"][old]
+            for new, old in zip(got["joined"]["added"], subcatchments, strict=True)
+        },
     }
     # Hydrograf's elements in words
     assert [item["what"] for item in got["words"]] == [
         "zlewnia górna",
-        "dopływ do ujścia przy punkcie P1",
+        "dopływ do ujścia przy punkcie P3",
         "przyrzecze odcinka R1",
         "zbieg",
         "odcinek",
+        "punkt kontrolny P4",
         "przekrój zamykający A",
     ]
     assert got["words"][4]["details"] == [
         "długość wzdłuż spływu",
         "spadek z NMT",
-        "NMT 281,4 → 231,66 m n.p.m.",
-        "długość kontrolna 4,87 km (BDOT10k)",
+        "NMT 128,6 → 123,8 m n.p.m.",
     ]
+    assert got["checked"]["details"][-1] == "długość kontrolna 0,36 km (BDOT10k)"
