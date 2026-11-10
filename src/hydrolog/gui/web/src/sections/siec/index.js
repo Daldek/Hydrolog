@@ -15,6 +15,11 @@
 // serves „Uporządkuj”; once the values are complete too Hydrolog checks the whole network
 // (`route schematic`, 300 ms after the last change). A click on a node, Enter or Space,
 // or its row in a table opens its settings in „Dane” and its result in „Wyniki”.
+// The network's rainfall comes first, in step 1 (plan 2026-11-10-network-wizard, D4): „Nowa
+// sieć” opens there and the empty canvas says so; a PMAXTP depth is fetched on the channel
+// "siec-pmaxtp" (usePmaxtp, as Hydrogram zlewni fetches its own) and kept with the
+// network's values, and a subcatchment that has neither its own rainfall nor the network's
+// is a problem of its node („Brak opadu”) before „Oblicz sieć”.
 // The network is computed on „Oblicz sieć” only: the document, positions and descriptions
 // included, is written to the session's `in/` and `route network` routes it (with the
 // inflows file and the rating files it reads); a change of the structure or the values
@@ -24,6 +29,7 @@
 // since it was opened or saved (D10).
 
 import { api } from "../../api.js";
+import { splitReason } from "../../controls/field.js";
 import { inputFiles, uploadFile, useSession } from "../../controls/file-field.js";
 import { plural } from "../../format.js";
 import { siecAddition } from "../../handoff/mapping.js";
@@ -31,6 +37,7 @@ import { html, useEffect, useMemo, useRef, useState } from "../../html.js";
 import { common, t } from "../../labels/common.js";
 import { describeError } from "../../labels/errors.js";
 import { handoffLabels as handoffTexts } from "../../labels/handoff.js";
+import { hydrogram as rainTexts } from "../../labels/hydrogram.js";
 import { routing } from "../../labels/info/routing.js";
 import { siec as texts } from "../../labels/siec.js";
 import { shell } from "../../labels/shell.js";
@@ -41,18 +48,21 @@ import { ConfirmDialog } from "../../ui/confirm.js";
 import { downloadBlob } from "../../ui/export-panel.js";
 import { registerInfo } from "../../ui/info.js";
 import { Seg } from "../../ui/seg.js";
-import { closePanel, isPhone, openPanel } from "../../ui/sheet.js";
+import { isPhone, openPanel } from "../../ui/sheet.js";
 import { status } from "../../ui/status.js";
 import { toast } from "../../ui/toast.js";
 import { ViewLayout } from "../../ui/view-layout.js";
+import { usePmaxtp } from "../hydrogram/pmaxtp.js";
+import { PMAXTP_FIELDS, pmaxtpKey, pmaxtpOptions } from "../hydrogram/state.js";
 import { DataPanel, EmptyNetwork, networkRainWords, networkSummary } from "./data-panel.js";
 import { NetworkCanvas } from "./editor/canvas.js";
 import { addNode, canBridge, cellBeside, connect, describeNode, disconnect, insertJunction, placeAll, removeNode, renameNode } from "./editor/edits.js";
 import { graphProblems, linkVerdict, problemNodes, receiversOf, structureKey } from "./editor/graph.js";
 import { createHistory } from "./editor/history.js";
-import { buildDocument, nodeWords } from "./node-model.js";
+import { nodeWords, withoutPicture } from "./node-model.js";
 import { NodeTable, ResultsPanel } from "./results-panel.js";
 import {
+  buildDocument,
   changedSinceSaved,
   documentName,
   documentProblems,
@@ -61,6 +71,7 @@ import {
   inputsKey,
   neededFiles,
   newState,
+  NO_RAINFALL_KEY,
   placementNotes,
   placeSkeleton,
   SECTION,
@@ -68,7 +79,6 @@ import {
   structureDocument,
   useForms,
   useOpened,
-  withoutPicture,
   withSessionNames,
 } from "./state.js";
 import { kindNoun, problemText, refusalText } from "./words.js";
@@ -83,6 +93,15 @@ export const SCHEMATIC_CHANNEL = "siec-schematic";
 
 /** The channel of Hydrolog's layout of the structure alone (ADR-0025). */
 export const LAYOUT_CHANNEL = "siec-layout";
+
+/** The channel of the fetches of the depth of the network's PMAXTP (plan 2026-11-10-network-wizard, D4). */
+export const PMAXTP_CHANNEL = "siec-pmaxtp";
+
+/** The choices of the network's rainfall: each a step of the history of its own (D9). */
+const RAIN_CHOICES = new Set(["rain_source", "hietogram_type"]);
+
+/** The fields of the network's PMAXTP that must pass their checks before its depth is fetched. */
+const PMAXTP_NAMES = new Set(Object.values(PMAXTP_FIELDS));
 
 /** The most steps the history keeps (D9). */
 export const HISTORY_STEPS = 100;
@@ -118,7 +137,8 @@ function changedKeys(before, after) {
 
 /**
  * The key under which typing into one field stays one step of the history (D9): the
- * field's own; a choice (a key with "#", but not the rows of a table) is a step of its own.
+ * field's own; a choice (a key with "#", but not the rows of a table, and the source and
+ * the shape of the network's rainfall) is a step of its own.
  *
  * @param {string} prefix whose field ("network", a node's id)
  * @param {string[]} keys the keys the edit changed
@@ -128,6 +148,7 @@ function mergeKey(prefix, keys) {
   if (keys.length !== 1) return null;
   const [key] = keys;
   if (key.includes("#") && !/#(rows|hydrograph)$/.test(key)) return null;
+  if (prefix === "network" && RAIN_CHOICES.has(key)) return null;
   return `value:${prefix}:${key}`;
 }
 
@@ -217,6 +238,7 @@ export default function Siec({ active, path = [] }) {
 
   // --- opening a network --------------------------------------------------------------
   const begin = (next) => {
+    pmaxtp.reset();
     update(next);
     history.current.reset(stepOf(next));
     setRun(null);
@@ -342,12 +364,37 @@ export default function Siec({ active, path = [] }) {
     () => new Map(state.skeleton.map((node) => [node.id, nodeWords(node, state.nodes[node.id] || {})])),
     [shape, state.nodes],
   );
+  // The depth of the network's PMAXTP (D4): remembered with its values, else fetched on
+  // "siec-pmaxtp" once the point, p and the duration pass their checks. A fetched depth
+  // belongs to every step of the history with the same options, so an undo does not fetch
+  // it again, and fetching it keeps a network as it was opened or saved.
+  const network = state.network;
+  const pmaxtp = usePmaxtp(network, {
+    channel: PMAXTP_CHANNEL,
+    valid: Boolean(built) && !built.problems.some((item) => item.node === null && PMAXTP_NAMES.has(item.key)),
+    onDepth: (record) => {
+      const fetched = (values) => (pmaxtpKey(pmaxtpOptions(values)) === pmaxtpKey(record) ? { ...values, pmaxtp_fetched: record } : values);
+      const base = latest.current;
+      const next = { ...base, network: fetched(base.network) };
+      if (next.network === base.network) return;
+      history.current.rewrite((step) => {
+        const kept = fetched(step.network);
+        return kept === step.network ? step : { ...step, network: kept };
+      });
+      const clean = inputsKey(base) === base.savedKey;
+      update(clean ? { ...next, savedKey: inputsKey(next) } : next);
+    },
+  });
+  // Its document lacks the depth while it is fetched or after a failure, which stands on
+  // its field as a problem of the network
+  const depthMissing = network.rain_source === "pmaxtp" && pmaxtpOptions(network) !== null && pmaxtp.depth === null;
   // A missing value is shown once its field was touched or „Oblicz sieć” was tried; any
   // other problem at once (as in the catalog forms)
-  const visible = useMemo(
-    () => (built ? built.problems.filter((item) => tried || !item.message.endsWith(" · required") || touched.has(`${item.node}|${item.key}`)) : []),
-    [built, touched, tried],
-  );
+  const visible = useMemo(() => {
+    const shown = built ? built.problems.filter((item) => tried || !item.message.endsWith(" · required") || touched.has(`${item.node}|${item.key}`)) : [];
+    const failed = pmaxtp.failed ? Object.entries(pmaxtp.failed.fields).map(([key, message]) => ({ node: null, key, message })) : [];
+    return [...shown, ...failed];
+  }, [built, touched, tried, pmaxtp.failed]);
   const problems = useMemo(() => {
     const found = { network: {}, nodes: {} };
     for (const item of visible) {
@@ -371,7 +418,7 @@ export default function Siec({ active, path = [] }) {
       ? [t(texts.files.inflowsGone, { name: state.inflowsFile.replace(/^in\//, "") })]
       : []),
   ];
-  const valid = Boolean(built) && built.problems.length === 0 && structure.length === 0;
+  const valid = Boolean(built) && built.problems.length === 0 && structure.length === 0 && !depthMissing;
   const ready = valid && missing.length === 0;
   const runOptions = (stem, name) => {
     const options = { network_file: `in/${name}` };
@@ -497,6 +544,13 @@ export default function Siec({ active, path = [] }) {
     });
     const fields = new Map();
     for (const item of visible) {
+      // „Brak opadu” (D4) says itself what to do: the network's rainfall or the node's own
+      if (item.node !== null && item.key === NO_RAINFALL_KEY) {
+        const text = t(texts.problems.node, { id: item.node, message: splitReason(item.message).text });
+        list.push({ key: `rainfall-${item.node}`, reason: "missing_field", text, node: item.node });
+        mark(item.node, text);
+        continue;
+      }
       if (!fields.has(item.node)) fields.set(item.node, []);
       fields.get(item.node).push(item.key.split(".").pop());
     }
@@ -579,8 +633,7 @@ export default function Siec({ active, path = [] }) {
     // first is chosen, so „Dane” shows where it came from
     addHandoff(doc) {
       const base = latest.current;
-      if (!forms) return { title: handoffTexts.add.refused, lines: [common.loading] };
-      const found = siecAddition(base, doc, forms);
+      const found = siecAddition(base, doc);
       if (!found.added.length) return { title: handoffTexts.add.refused, lines: found.lines };
       const [first] = found.added;
       apply({ ...found.inputs, selected: first, provisional: false });
@@ -750,6 +803,7 @@ export default function Siec({ active, path = [] }) {
   // --- starting, saving and discarding (D10) ----------------------------------------------
   const clear = () => {
     reset();
+    pmaxtp.reset();
     latest.current = initialState();
     history.current.reset(stepOf(latest.current));
     setRun(null);
@@ -762,12 +816,12 @@ export default function Siec({ active, path = [] }) {
     setTried(false);
     if (active) navigate(SECTION, [], { replace: true });
   };
-  // A new network is built on the canvas: a phone shows it instead of „Dane”
+  // A new network starts at its rainfall in step 1 (plan 2026-11-10-network-wizard, D4):
+  // „Dane” shows it, on a phone too, and the empty canvas says what comes next
   const startNew = () => {
     begin(newState());
     setNote({ error: false, lines: [texts.file.started] });
     if (active) navigate(SECTION, [], { replace: true });
-    if (isPhone()) closePanel("left");
   };
   const askClear = () => (changedSinceSaved(latest.current) ? setAsking("clear") : clear());
   const askNew = () => (changedSinceSaved(latest.current) ? setAsking("new") : startNew());
@@ -786,13 +840,16 @@ export default function Siec({ active, path = [] }) {
   const firstProblem = visible.length ? visible[0] : null;
   let badge = null;
   if (busy) badge = status("busy");
+  else if (pmaxtp.busy) badge = status("busy", rainTexts.calc.fetchingBadge, rainTexts.calc.fetching);
   else if (shownFailure) badge = status("error", undefined, shownFailure.text);
   else if (firstStructure) {
     const at = problemNodes(firstStructure)[0];
     const where = at ? `${at} · ${firstStructure.reason}` : firstStructure.reason;
     badge = status("invalid", `${shell.status.invalid.text}: ${where}`, problemText(firstStructure, rules));
   } else if (firstProblem) {
-    const where = firstProblem.node ? `${firstProblem.node} · ${firstProblem.key.split(".").pop()}` : firstProblem.key;
+    // „Brak opadu” names the library's field (`missing_field` `rainfall`), not the choice
+    const field = firstProblem.key === NO_RAINFALL_KEY ? "rainfall" : firstProblem.key.split(".").pop();
+    const where = firstProblem.node ? `${firstProblem.node} · ${field}` : firstProblem.key;
     badge = status("invalid", `${shell.status.invalid.text}: ${where}`, firstProblem.message);
   } else if (missing.length) badge = status("invalid", `${shell.status.invalid.text}: ${texts.files.short}`, missing[0]);
   else if (run && run.envelope.status === "ok" && run.key !== currentKey) badge = status("stale");
@@ -826,7 +883,8 @@ export default function Siec({ active, path = [] }) {
             needed=${needed}
             note=${note}
             nodeResult=${nodeResult}
-            networkRain=${networkRainWords(state.network)}
+            networkRain=${networkRainWords(network, pmaxtp.depth)}
+            pmaxtp=${{ depth: pmaxtp.depth, busy: pmaxtp.busy, onRetry: pmaxtp.onRetry }}
             canSave=${state.skeleton.length > 0}
             complete=${valid}
             offer=${offer && offer.where === "data" ? offer : null}
@@ -851,7 +909,7 @@ export default function Siec({ active, path = [] }) {
             onIdDone=${idDone}
           />`,
     foot: html`
-      <button class="btn primary" type="button" data-action="compute" disabled=${!built || !state.skeleton.length || busy} onClick=${compute}>
+      <button class="btn primary" type="button" data-action="compute" disabled=${!built || !state.skeleton.length || busy || pmaxtp.busy} onClick=${compute}>
         <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4l10 6-10 6z" /></svg>
         ${texts.compute}
       </button>

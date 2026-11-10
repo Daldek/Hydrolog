@@ -7,7 +7,9 @@
 // storage table in the document or in a file) and the Polish labels and help (the
 // catalog's Polish descriptions of the same options of `route <method>` and `hydrograph
 // generate`). A property of the schema the GUI does not place goes under the node's more
-// fields, so a new field shows without a change here.
+// fields, so a new field shows without a change here. The network's own rainfall is not a
+// form of the schema: it is Hydrogram's step 2 (state.js networkInputs, buildDocument; plan
+// 2026-11-10-network-wizard, D4).
 //
 // A node's values are what a person typed, flat by key: "watershed.area_km2",
 // "runoff.tc_method", "muskingum.k_min" (a reach keeps the fields of each method apart, so
@@ -35,7 +37,7 @@ export const METHODS = Object.freeze(["lag", "muskingum", "muskingum-cunge", "ca
 /** The ways a subcatchment brings its hydrograph. */
 export const VARIANTS = Object.freeze(["rain", "file", "given"]);
 
-/** The rainfall of a subcatchment or of the network: none (the network's), a storm, a series. */
+/** The rainfall of a subcatchment: the network's („Jak w sieci”), a storm of its own, a series. */
 export const RAINFALLS = Object.freeze(["network", "design", "series"]);
 
 /** The fields of a watershed shown first; the others are under „Pozostałe pola zlewni”. */
@@ -464,21 +466,6 @@ export function nodeValues(node) {
 }
 
 /**
- * The values of the network's own fields: its name, time step and default rainfall.
- *
- * @param {object} doc hydrolog-network/1
- * @returns {object} the values
- */
-export function networkValues(doc) {
-  const values = {};
-  if (typeof doc.name === "string") values.name = doc.name;
-  if (typeof doc.description === "string") values.description = doc.description;
-  if (typeof doc.timestep_min === "number") values.timestep_min = textOf(doc.timestep_min);
-  rainfallValues(values, "#rainfall", doc.rainfall, "network");
-  return values;
-}
-
-/**
  * The structure of a network: each node's id, type, inflows, the cell of its position
  * when it is one, and its description (plan 2026-11-10-network-editor, D3).
  *
@@ -518,6 +505,33 @@ export function descriptionProblem(text) {
   return null;
 }
 
+/**
+ * A network document without what changes no computation (plan 2026-11-10-network-editor,
+ * D3, D11): the nodes' positions and descriptions and the network's description. The key
+ * that marks a result stale is made of it, and Hydrolog lays it out anew.
+ *
+ * @param {object} document hydrolog-network/1
+ * @returns {object} the document without them
+ */
+export function withoutPicture(document) {
+  const { description: _network, ...rest } = document;
+  return { ...rest, nodes: document.nodes.map(({ position: _cell, description: _text, ...node }) => node) };
+}
+
+/**
+ * Whether a node takes the network's rainfall: a subcatchment made from rainfall without
+ * one of its own („Jak w sieci”, its default; plan 2026-11-10-network-wizard, D4).
+ *
+ * @param {{type: string}} node the node's structure
+ * @param {object} values the node's values
+ * @returns {boolean} true when the node computes with the network's rainfall
+ */
+export function takesNetworkRainfall(node, values) {
+  if (node.type !== "subcatchment") return false;
+  const variant = VARIANTS.includes(values["#variant"]) ? values["#variant"] : "rain";
+  return variant === "rain" && values["#rainfall"] !== "design" && values["#rainfall"] !== "series";
+}
+
 // --- what a form shows ---------------------------------------------------------------
 
 /**
@@ -555,7 +569,7 @@ function rest(fields, placed, prefix) {
 }
 
 /**
- * The parts of the rainfall of a subcatchment or of the network.
+ * The parts of the rainfall of a subcatchment.
  *
  * @param {object} forms the forms of buildForms
  * @param {object} values the values
@@ -888,30 +902,26 @@ export function nodeOf(forms, node, values) {
 }
 
 /**
- * The layout of the network's own fields: name, time step, default rainfall.
+ * The layout of the network's own fields of the schema: its name and time step (its
+ * rainfall is Hydrogram's step 2, not a form of the schema).
  *
  * @param {object} forms the forms of buildForms
- * @param {object} values the network's values
- * @returns {{slots: Slot[], rainfall: object}} the slots and the rainfall part
+ * @returns {{slots: Slot[]}} the slots
  */
-export function networkLayout(forms, values) {
-  return {
-    slots: slots(forms.network, [...forms.network.keys()], ""),
-    rainfall: rainfallPart(forms, values, "#rainfall"),
-  };
+export function networkLayout(forms) {
+  return { slots: slots(forms.network, [...forms.network.keys()], "") };
 }
 
 /**
- * The problems of the network's own fields by key.
+ * The problems of the network's own fields of the schema by key.
  *
  * @param {object} forms the forms of buildForms
  * @param {object} values the network's values
  * @returns {Object<string, string>} messages by value key
  */
 export function networkProblems(forms, values) {
-  const layout = networkLayout(forms, values);
   const found = {};
-  for (const slot of [...layout.slots, ...layout.rainfall.slots]) {
+  for (const slot of networkLayout(forms).slots) {
     const message = slotProblem(slot, values[slot.key]);
     if (message) found[slot.key] = message;
   }
@@ -919,53 +929,15 @@ export function networkProblems(forms, values) {
 }
 
 /**
- * The network's default rainfall as its document writes it: the rainfall a subcatchment
- * without its own takes (a hand-off's own top rainfall is compared with it, D10).
+ * The network's own fields of the schema as its document writes them: its name and time
+ * step, those given.
  *
  * @param {object} forms the forms of buildForms
  * @param {object} values the network's values
- * @returns {object|null} the rainfall of hydrolog-network/1, null without one
+ * @returns {object} the fields by name
  */
-export function networkRainfall(forms, values) {
-  return rainfallJson(networkLayout(forms, values).rainfall, values);
-}
-
-/**
- * The document of the network: its own fields (its name and description first, ADR-0023)
- * and every node, in the order of its structure.
- *
- * @param {object} forms the forms of buildForms
- * @param {{network: object, skeleton: object[], nodes: Object<string, object>}} state the
- *   network's values, its structure and the values of each node
- * @returns {{document: object, problems: Array<{node: string|null, key: string,
- *   message: string}>}} hydrolog-network/1 and every problem of the values and the
- *   descriptions (the structure is graph.js's)
- */
-export function buildDocument(forms, state) {
-  const problems = [];
-  for (const [key, message] of Object.entries(networkProblems(forms, state.network))) {
-    problems.push({ node: null, key, message });
-  }
-  const ownDescription = descriptionProblem(state.network.description);
-  if (ownDescription) problems.push({ node: null, key: "description", message: ownDescription });
-  const document = { schema: "hydrolog-network/1" };
-  const own = jsonOf(networkLayout(forms, state.network).slots, state.network, "");
-  if (own.name !== undefined) document.name = own.name;
-  const description = state.network.description;
-  if (typeof description === "string" && description.trim()) document.description = description;
-  if (own.timestep_min !== undefined) document.timestep_min = own.timestep_min;
-  const rainfall = networkRainfall(forms, state.network);
-  if (rainfall) document.rainfall = rainfall;
-  document.nodes = state.skeleton.map((node) => {
-    const values = state.nodes[node.id] || {};
-    for (const [key, message] of Object.entries(nodeProblems(forms, node, values))) {
-      problems.push({ node: node.id, key, message });
-    }
-    const text = descriptionProblem(node.description);
-    if (text) problems.push({ node: node.id, key: "description", message: text });
-    return nodeOf(forms, node, values);
-  });
-  return { document, problems };
+export function networkFields(forms, values) {
+  return jsonOf(networkLayout(forms).slots, values, "");
 }
 
 // --- words of a node ----------------------------------------------------------------

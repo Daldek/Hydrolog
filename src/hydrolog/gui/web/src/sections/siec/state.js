@@ -1,5 +1,5 @@
 // State of „Sieć i trasowanie” (plan D9, S4): the network being edited, kept in the
-// browser under "hydrolog-gui/siec/2" (inputs only, no results): where it came from, its
+// browser under "hydrolog-gui/siec/3" (inputs only, no results): where it came from, its
 // structure (ids, types, inflows, the cell of every node on the canvas and its
 // description: plan 2026-11-10-network-editor, D3, D10; and `origin`, the record of the
 // hand-off a subcatchment was added from, which no document carries), the values of the
@@ -10,18 +10,44 @@
 // one, or it opens from a file or a hand-off (the guide's worked example, instrukcja/#siec,
 // is a file to load).
 //
+// The network's values are its name, description and time step and its rainfall as the
+// inputs of Hydrogram's step 2 (plan 2026-11-10-network-wizard, D4: `rain_source` "none",
+// "pmaxtp", "design" or "series" and their fields, the PMAXTP depth fetched kept as
+// `pmaxtp_fetched`); version 3 of the stored shape, version 2 is not read. buildDocument
+// writes the document of the inputs: the top `rainfall` is what a run of `hydrograph
+// generate` takes (handoff/mapping.js rainfallOf), and a subcatchment made from rainfall
+// that has neither its own rainfall nor the network's is a problem of its node.
+//
 // Another part of the page opens a network here with openNetwork(document, {name}) (the
 // hand-off of S6); the section takes it when it is mounted, or on its first render.
 
 import { api } from "../../api.js";
 import { sessionFileName } from "../../controls/file-field.js";
+import { inputText } from "../../format.js";
+import { withReason } from "../../forms/model.js";
+import { rainfallInputs, rainfallOf } from "../../handoff/mapping.js";
+import { isObject } from "../../handoff/validate.js";
 import { useEffect, useRef, useState } from "../../html.js";
 import { t } from "../../labels/common.js";
 import { siec as texts } from "../../labels/siec.js";
 import { navigate } from "../../router.js";
-import { registerRanges } from "../../ui/info.js";
+import { registerRanges, registerServed } from "../../ui/info.js";
+import { COMMAND, PMAXTP_COMMAND, initialRain, inputModels, rainChecks, rangeInfoId } from "../hydrogram/state.js";
 import { cellOf, isArea, placeMissing, provisionalRows } from "./editor/geometry.js";
-import { buildForms, HELP_COMMANDS, KINDS, METHODS, networkValues, nodeValues, skeletonOf } from "./node-model.js";
+import {
+  buildForms,
+  descriptionProblem,
+  HELP_COMMANDS,
+  KINDS,
+  METHODS,
+  networkFields,
+  networkProblems,
+  nodeOf,
+  nodeProblems,
+  nodeValues,
+  skeletonOf,
+  takesNetworkRainfall,
+} from "./node-model.js";
 
 /** The section's id and the key of its inputs. */
 export const SECTION = "siec";
@@ -31,6 +57,9 @@ export const DOCUMENT_NAME = "siec.json";
 
 /** The schema of a network (GET api/schemas/…). */
 export const SCHEMA_FILE = "hydrolog-network-1.schema.json";
+
+/** The key of a node's problem „Brak opadu” (buildDocument): its choice of the rainfall. */
+export const NO_RAINFALL_KEY = "#rainfall";
 
 /** A node's id as hydrolog-network-1.schema.json's `$defs.id` reads it (Python's `\w`). */
 const ID = /^[\p{L}\p{N}_][\p{L}\p{N}_.-]*$/u;
@@ -56,13 +85,34 @@ export function initialState() {
 }
 
 /**
- * The state of „Nowa sieć” (D10): an open network without nodes, to build on the canvas.
+ * The state of „Nowa sieć” (D10): an open network without nodes, to build on the canvas,
+ * whose rainfall starts as Hydrogram's step 2 does (PMAXTP, nothing given).
  *
  * @returns {object} the state
  */
 export function newState() {
-  const started = { ...initialState(), source: { name: DOCUMENT_NAME, kind: "new" } };
+  const started = { ...initialState(), source: { name: DOCUMENT_NAME, kind: "new" }, network: initialRain() };
   return { ...started, savedKey: inputsKey(started) };
+}
+
+/**
+ * The network's own values from its document: its name, description and time step, and
+ * its rainfall as the inputs of Hydrogram's step 2 (rainfallInputs; plan
+ * 2026-11-10-network-wizard, D4): with the PMAXTP record of a hand-off's provenance, the
+ * way Hydrogram zlewni reads a hand-off; „Brak” without one. A series without the
+ * document's time step gives the step its own.
+ *
+ * @param {object} doc hydrolog-network/1
+ * @param {object|null} [provenance] the provenance of the hand-off it came in
+ * @returns {object} the values
+ */
+export function networkInputs(doc, provenance = null) {
+  const rain = rainfallInputs(isObject(doc.rainfall) ? doc.rainfall : null, provenance);
+  const values = { ...initialRain(), ...rain };
+  if (typeof doc.name === "string") values.name = doc.name;
+  if (typeof doc.description === "string") values.description = doc.description;
+  values.timestep_min = typeof doc.timestep_min === "number" ? inputText(doc.timestep_min) : rain.timestep_min || "";
+  return values;
 }
 
 /**
@@ -195,7 +245,8 @@ export function placeSkeleton(skeleton) {
  * The state of a network document.
  *
  * @param {object} doc hydrolog-network/1 (checked with documentProblems)
- * @param {{name: string, kind: "file"|"handoff"}} source where it came from
+ * @param {{name: string, kind: "file"|"handoff", handoff?: object}} source where it came
+ *   from (a hand-off's record, whose provenance gives the PMAXTP origin of the rainfall)
  * @param {object} [keep] inputs kept from before (the inflows file and its column)
  * @returns {object} the state
  */
@@ -207,7 +258,7 @@ export function stateOf(doc, source, keep = {}) {
   const opened = {
     ...initialState(),
     source,
-    network: networkValues(doc),
+    network: networkInputs(doc, source && isObject(source.handoff) ? source.handoff.provenance : null),
     skeleton: placed.skeleton,
     nodes,
     inflowsFile: keep.inflowsFile || "",
@@ -243,16 +294,49 @@ export function placementNotes(doc, state) {
 }
 
 /**
- * A network document without what changes no computation (plan 2026-11-10-network-editor,
- * D3, D11): the nodes' positions and descriptions and the network's description. The key
- * that marks a result stale is made of it, and Hydrolog lays it out anew.
+ * The document of the network: its own fields (its name and description first, ADR-0023),
+ * its rainfall (rainfallOf: what a run of `hydrograph generate` takes) and every node, in
+ * the order of its structure.
  *
- * @param {object} document hydrolog-network/1
- * @returns {object} the document without them
+ * @param {object} forms the forms of useForms (`rain`: the models of Hydrogram's step 2)
+ * @param {{network: object, skeleton: object[], nodes: Object<string, object>}} state the
+ *   network's values, its structure and the values of each node
+ * @returns {{document: object, problems: Array<{node: string|null, key: string,
+ *   message: string}>}} hydrolog-network/1 and every problem of the values and the
+ *   descriptions (the structure is graph.js's): the network's own fields, its rainfall
+ *   (rainChecks), each node's values and description, and „Brak opadu” of a subcatchment
+ *   that takes the network's rainfall when the network has none (the library's
+ *   `missing_field` `rainfall`)
  */
-export function withoutPicture(document) {
-  const { description: _network, ...rest } = document;
-  return { ...rest, nodes: document.nodes.map(({ position: _cell, description: _text, ...node }) => node) };
+export function buildDocument(forms, state) {
+  const network = state.network;
+  const problems = [];
+  const add = (node, found) => {
+    for (const [key, message] of Object.entries(found)) problems.push({ node, key, message });
+  };
+  add(null, networkProblems(forms, network));
+  const ownDescription = descriptionProblem(network.description);
+  if (ownDescription) problems.push({ node: null, key: "description", message: ownDescription });
+  add(null, rainChecks(network, forms.rain));
+  const document = { schema: "hydrolog-network/1" };
+  const own = networkFields(forms, network);
+  if (own.name !== undefined) document.name = own.name;
+  const description = network.description;
+  if (typeof description === "string" && description.trim()) document.description = description;
+  if (own.timestep_min !== undefined) document.timestep_min = own.timestep_min;
+  const rainfall = rainfallOf(network);
+  if (rainfall) document.rainfall = rainfall;
+  document.nodes = state.skeleton.map((node) => {
+    const values = state.nodes[node.id] || {};
+    add(node.id, nodeProblems(forms, node, values));
+    if (!rainfall && takesNetworkRainfall(node, values)) {
+      problems.push({ node: node.id, key: NO_RAINFALL_KEY, message: withReason(texts.form.noRainfall, "missing_field") });
+    }
+    const text = descriptionProblem(node.description);
+    if (text) problems.push({ node: node.id, key: "description", message: text });
+    return nodeOf(forms, node, values);
+  });
+  return { document, problems };
 }
 
 /**
@@ -350,7 +434,10 @@ export function registerMethodRanges(forms) {
 
 /**
  * The forms of the nodes: the network's schema and the catalog's Polish help, fetched once;
- * the schema's bounds of the methods' ranges go to their explanations.
+ * the schema's bounds of the methods' ranges go to their explanations. With them `rain`,
+ * the models that check the network's rainfall as Hydrogram's step 2 (inputModels of the
+ * catalog documents of `hydrograph generate` and `precip pmaxtp`), whose typical ranges go
+ * to the explanations of the rainfall.
  *
  * @returns {{forms: object|null, error: string|null}} the forms (null until they arrive)
  *   and a loading error
@@ -367,10 +454,11 @@ export function useForms() {
           .catch(() => null),
       ),
     );
-    Promise.all([api.schema(SCHEMA_FILE), help])
-      .then(([schema, docs]) => {
-        const forms = buildForms(schema, new Map(docs.filter(Boolean)));
+    Promise.all([api.schema(SCHEMA_FILE), api.command(COMMAND), api.command(PMAXTP_COMMAND), help])
+      .then(([schema, generate, pmaxtp, docs]) => {
+        const forms = { ...buildForms(schema, new Map(docs.filter(Boolean))), rain: inputModels(generate, schema, pmaxtp) };
         registerMethodRanges(forms);
+        registerServed(generate, rangeInfoId);
         if (alive) setFound({ forms, error: null });
       })
       .catch((error) => {

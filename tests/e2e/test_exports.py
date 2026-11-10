@@ -54,6 +54,7 @@ from tests.e2e.conftest import (
 from tests.e2e.conftest import KAMIENNIK as EXAMPLE
 from tests.e2e.test_siec import NODE, canvas_cells, compute, polish
 from tests.e2e.test_siec_editor import drag_link, said
+from tests.e2e.test_siec_rainfall import requests_to
 
 ROOT = Path(__file__).resolve().parents[2]
 HANDOFF: dict[str, Any] = json.loads(
@@ -716,7 +717,16 @@ def test_a_network_of_two_subcatchments_opens_in_siec_beside_hydrografs_result(
     valid(handed)
     path = tmp_path / "dwie.handoff.json"
     path.write_text(json.dumps(handed, ensure_ascii=False), encoding="utf-8")
+    # The network's rainfall is PMAXTP at the watershed's point (the record names none
+    # of its own): the depth is fetched there once, on Sieć's channel, where IMGW-PIB is
+    # made to answer the payload's 105 mm for 12 h at 1 %
+    table = copy.deepcopy(recorded_pmaxtp(PMAXTP_TABLE))
+    table["data"]["ks"]["720"]["1"] = TWO["rainfall"]["total_mm"]
+    answers = tmp_path / "two_pot.json"
+    answers.write_text(json.dumps(table), encoding="utf-8")
     page = open_hydrogram(tab)
+    page.route(PMAXTP_RUN, pmaxtp_route(recorded_fetch(answers)))
+    fetches = requests_to(page, PMAXTP)
     load_file(page, HG, path)
 
     expect(page).to_have_url(re.compile(r"#siec$"))
@@ -735,6 +745,18 @@ def test_a_network_of_two_subcatchments_opens_in_siec_beside_hydrografs_result(
     received = page.locator(f"{SIEC} [data-handoff-received]")
     expect(received).to_have_attribute("data-handoff-received", "none")
     expect(received).to_be_visible()  # „Przekazanie” opens itself for a hand-off
+    depth = page.locator("#siec-net-pmaxtp_depth")
+    expect(depth).to_have_value("105")
+    assert [request.url.rsplit("?", 1)[1] for request in fetches] == [
+        "channel=siec-pmaxtp"
+    ]
+    assert fetches[0].post_data_json == {
+        "latitude": 51.0154,
+        "longitude": 15.89,
+        "duration_min": 720,
+        "probability_percent": 1,
+        "method": "POT",
+    }
 
     with page.expect_response(lambda answer: "/api/run/route/network" in answer.url):
         page.get_by_role("button", name="Oblicz sieć").click()
@@ -1419,11 +1441,9 @@ def test_snyders_lengths_of_a_handoff_go_to_the_watersheds_fields(tab: Tab) -> N
 # by each case returned with its notes, rainfall choices and the network's step.
 ADDITION = """async ([d15, two]) => {
   const h = await import('./src/handoff/handoff.js');
-  const { siecAddition } = await import('./src/handoff/mapping.js');
-  const nm = await import('./src/sections/siec/node-model.js');
+  const { rainfallInputs, siecAddition } = await import('./src/handoff/mapping.js');
   const url = 'api/schemas/hydrolog-network-1.schema.json';
   const schema = await (await fetch(url)).json();
-  const forms = nm.buildForms(schema);
   const text = JSON.stringify(d15);
   const read = (into) =>
     h.readHandoff(text, { networkSchema: schema, into }).target;
@@ -1441,8 +1461,8 @@ ADDITION = """async ([d15, two]) => {
   const handed = (payload, subject = 'Dwie zlewnie') =>
     ({ ...two, subject, payload });
   const add = (inputs, payload, subject) =>
-    siecAddition(inputs, handed(payload, subject), forms);
-  const rain = nm.networkValues({ rainfall: two.payload.rainfall });
+    siecAddition(inputs, handed(payload, subject));
+  const rain = rainfallInputs(two.payload.rainfall);
   const same = add(network({ timestep_min: '10', ...rain }), two.payload);
   const other = add(network({ timestep_min: '5' }), two.payload);
   const fresh = add(empty, two.payload);

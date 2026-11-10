@@ -18,7 +18,11 @@ of the structure alone that Sieć sends Hydrolog to lay out (``state.js``'
 links and ids, and finds the problem ``RoutingNetwork.from_document`` raises on each
 document of a one-problem corpus; ``editor/edits.js``' new edits (add, connect, a
 junction, remove, rename, describe), ``editor/history.js``, the hints of
-``editor/geometry.js`` and ``words.js`` are checked on small networks.
+``editor/geometry.js`` and ``words.js`` are checked on small networks. The rainfall of
+Hydrogram's step 2 and of Sieć's network (plan 2026-11-10-network-wizard, D4) goes from
+``rainfall`` of hydrolog-network/1 to the step's inputs and back (``mapping.js``'
+``rainfallInputs``, ``rainfallOf``), and ``RainStep`` shows a subcatchment's „Jak w
+sieci” with the network's time step read-only.
 """
 
 import json
@@ -2025,3 +2029,177 @@ def test_the_work_kept_per_structure_equals_the_plain_one(page: Any) -> None:
     # The labels' crowding through the index counts what the plain count counts
     assert got["crowded"] > 300
     assert got["counts"] is True
+
+
+# The rainfall of step 2 and of Sieć's network (plan 2026-11-10-network-wizard, D4):
+# `rainfall` of hydrolog-network/1 to the inputs of the step and back.
+RAINFALL = """const mp = await import('./src/handoff/mapping.js');
+const hs = await import('./src/sections/hydrogram/state.js');
+const of = (patch) => ({...hs.initialRain(), ...patch});
+const design = {kind: 'design', hietogram_type: 'block', total_mm: 30,
+                duration_min: 60};
+const series = {kind: 'series', depths_mm: [1.5, 2, 0.5], timestep_min: 10};
+const storm = {kind: 'design', hietogram_type: 'beta', total_mm: 105, duration_min: 720,
+               alpha: 2, beta: 5};
+const own = {rainfall: {source: 'pmaxtp', latitude: 51.0154, longitude: 15.89,
+                        probability_percent: 1, duration_min: 720, method: 'AMP'}};
+const shed = {rainfall: {source: 'pmaxtp', probability_percent: 1, duration_min: 720},
+              watershed: {source: 'hydrograf', latitude: 51.0154, longitude: 15.89}};
+const back = (rainfall, origin) => mp.rainfallInputs(rainfall, origin);
+const again = (rainfall, origin) => mp.rainfallOf(of(back(rainfall, origin)));
+return {
+  design: back(design), series: back(series), none: back(null),
+  noneAtShed: back(null, shed), own: back(storm, own), shed: back(storm, shed),
+  otherDuration: back({...storm, duration_min: 60}, own).rain_source,
+  noPoint: back(storm, {rainfall: {...shed.rainfall}}).rain_source,
+  round: [again(design), again(series), again(storm, own), again(storm)],
+  unfetched: again(storm, shed),
+  kinds: ['none', 'network'].map((source) => mp.rainfallOf(of({rain_source: source}))),
+};"""
+
+
+def test_a_rainfall_goes_to_the_steps_inputs_and_back(page: Any) -> None:
+    got = js(page, RAINFALL)
+    shape = {"hietogram_type": "block", "alpha": "", "beta": "", "peak_position": ""}
+    assert got["design"] == {
+        "rain_source": "design",
+        "total_mm": "30",
+        "duration_min": "60",
+        **shape,
+    }
+    # A series keeps its step as the time step
+    assert got["series"] == {
+        "rain_source": "series",
+        "values": "1,5; 2; 0,5",
+        "timestep_min": "10",
+    }
+    # No rainfall is „Brak”, with the watershed's point ready for PMAXTP
+    assert got["none"] == {"rain_source": "none"}
+    assert got["noneAtShed"] == {
+        "rain_source": "none",
+        "pmaxtp_latitude": "51,0154",
+        "pmaxtp_longitude": "15,89",
+    }
+    # PMAXTP: the record's own point keeps the depth as fetched there
+    pmaxtp = {
+        "rain_source": "pmaxtp",
+        "pmaxtp_latitude": "51,0154",
+        "pmaxtp_longitude": "15,89",
+        "pmaxtp_probability_pct": "1",
+        "pmaxtp_duration_min": "720",
+        "total_mm": "105",
+        "duration_min": "720",
+        "hietogram_type": "beta",
+        "alpha": "2",
+        "beta": "5",
+        "peak_position": "",
+    }
+    assert got["own"] == {
+        **pmaxtp,
+        "pmaxtp_method": "AMP",
+        "pmaxtp_fetched": {
+            "latitude": 51.0154,
+            "longitude": 15.89,
+            "duration_min": 720,
+            "probability_percent": 1,
+            "method": "AMP",
+            "depth_mm": 105,
+        },
+    }
+    # The watershed's point only: the page fetches the depth there
+    assert got["shed"] == {**pmaxtp, "pmaxtp_method": "POT"}
+    # Another duration, or no point at all: a design hyetograph
+    assert got["otherDuration"] == "design"
+    assert got["noPoint"] == "design"
+    # Back to the document: the same rainfall, PMAXTP's depth as its total
+    design = {"kind": "design", "hietogram_type": "block"}
+    assert got["round"] == [
+        {**design, "total_mm": 30, "duration_min": 60},
+        {"kind": "series", "depths_mm": [1.5, 2, 0.5], "timestep_min": 10},
+        {
+            "kind": "design",
+            "hietogram_type": "beta",
+            "total_mm": 105,
+            "duration_min": 720,
+            "alpha": 2,
+            "beta": 5,
+        },
+        {
+            "kind": "design",
+            "hietogram_type": "beta",
+            "total_mm": 105,
+            "duration_min": 720,
+            "alpha": 2,
+            "beta": 5,
+        },
+    ]
+    # PMAXTP before its fetch has no depth yet
+    assert got["unfetched"] == {
+        "kind": "design",
+        "hietogram_type": "beta",
+        "duration_min": 720,
+        "alpha": 2,
+        "beta": 5,
+    }
+    # „Brak” and „Jak w sieci” are no rainfall of their own
+    assert got["kinds"] == [None, None]
+
+
+# RainStep for a subcatchment in Sieć: „Jak w sieci” with the network's rainfall in
+# words and its link, and the network's time step shown read-only.
+RAIN_STEP = """const hs = await import('./src/sections/hydrogram/state.js');
+const { html, render } = await import('./src/html.js');
+const { RainStep } = await import('./src/sections/hydrogram/rain-step.js');
+const host = document.createElement('div');
+document.body.append(host);
+let opened = 0;
+let patches = [];
+render(html`<${RainStep} prefix="sn" title="Hietogram"
+  kinds=${['network', 'pmaxtp', 'design', 'series']}
+  inputs=${{...hs.initialRain(), rain_source: 'network'}}
+  errors=${{}} warnings=${{}} required=${{}} set=${(patch) => patches.push(patch)}
+  pmaxtp=${{depth: null, busy: false, onRetry: null}} timestep=${{network: '10'}}
+  network=${{words: 'Opad sieci z kroku 1 · Hietogram: 30 mm · 1 h.',
+             onOpen: () => { opened += 1; }}}
+  infoValues=${{}} valuesField=${null} />`, host);
+const step = host.querySelector('#sn-timestep_min');
+host.querySelector('[data-goto="network-rain"]').click();
+host.querySelector('[role="radio"][aria-checked="false"]').click();
+const got = {
+  part: host.querySelector('[data-rain-part]').dataset.rainPart,
+  title: host.querySelector('#sn-rain-title').textContent,
+  radios: [...host.querySelectorAll('[role="radio"]')].map((radio) =>
+    [radio.textContent.trim(), radio.getAttribute('aria-checked')]),
+  note: host.querySelector('[data-rain="network"]').textContent.trim(),
+  step: [step.value, step.readOnly,
+         step.closest('[data-field]').querySelector('.key').textContent],
+  fields: ['pmaxtp_latitude', 'total_mm', 'values']
+    .filter((name) => host.querySelector(`#sn-${name}`)),
+  opened, patches,
+};
+render(null, host);
+host.remove();
+return got;"""
+
+
+def test_the_rain_step_of_a_subcatchment_shows_the_networks_rainfall(
+    page: Any,
+) -> None:
+    got = js(page, RAIN_STEP)
+    assert got["part"] == "sn"
+    assert got["title"] == "Hietogramjak w sieci"
+    assert got["radios"] == [
+        ["Jak w sieci", "true"],
+        ["PMAXTP", "false"],
+        ["Hietogram", "false"],
+        ["Własna seria", "false"],
+    ]
+    assert got["note"] == (
+        "Opad sieci z kroku 1 · Hietogram: 30 mm · 1 h. Opad sieci w kroku 1"
+    )
+    # Δt is the network's, shown and not edited; no field of an own rainfall
+    assert got["step"] == ["10", True, "timestep_min · krok sieci"]
+    assert got["fields"] == []
+    # The link opens the network's rainfall; another source is a patch of the inputs
+    assert got["opened"] == 1
+    assert got["patches"] == [{"rain_source": "pmaxtp"}]

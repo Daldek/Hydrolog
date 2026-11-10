@@ -516,15 +516,16 @@ function MethodField({ id, value, values, onInput }) {
  * The settings of one node.
  *
  * @param {{forms: object, node: object, to: string|null, skeleton: object[], values:
- *   object, problems: object, result: object|null, networkRain: string, inflowsFile:
- *   string, offer: object|null, actions: object, onIdDone: (id: string) => void,
- *   onChange: (values: object) => void}} props the forms, the node's structure, its
- *   downstream node, the whole structure, its values and problems, its last result, the
- *   words of the network's rainfall, the inflows file, a junction offered for it, the
- *   section's edits, the handler of Enter or Esc in the id and the change handler
+ *   object, problems: object, result: object|null, networkRain: string|null,
+ *   onNetworkRain: () => void, inflowsFile: string, offer: object|null, actions: object,
+ *   onIdDone: (id: string) => void, onChange: (values: object) => void}} props the forms,
+ *   the node's structure, its downstream node, the whole structure, its values and
+ *   problems, its last result, the words of the network's rainfall (null without one) and
+ *   what shows it in step 1, the inflows file, a junction offered for it, the section's
+ *   edits, the handler of Enter or Esc in the id and the change handler
  * @returns {object} the form
  */
-export function NodeForm({ forms, node, to, skeleton, values, problems, result, networkRain, inflowsFile, offer, actions, onIdDone, onChange }) {
+export function NodeForm({ forms, node, to, skeleton, values, problems, result, networkRain, onNetworkRain, inflowsFile, offer, actions, onIdDone, onChange }) {
   const prefix = `nf-${String(node.id).replace(/[^\w-]+/g, "-")}`;
   const layout = nodeLayout(forms, node, values);
   const set = (key, value) => onChange({ ...values, [key]: value });
@@ -573,7 +574,14 @@ export function NodeForm({ forms, node, to, skeleton, values, problems, result, 
         value=${layout.rainfall.choice.value}
         onChange=${(kind) => set("#rainfall", kind)}
       />`);
-      if (layout.rainfall.choice.value === "network") parts.push(html`<p class="note" data-note="rainfall">${networkRain}</p>`);
+      // „Jak w sieci” (the default): the network's rainfall in words, with a way to it; a
+      // network without one is the node's problem „Brak opadu”
+      if (layout.rainfall.choice.value === "network") {
+        parts.push(html`<p class="note" data-note="rainfall">
+          ${networkRain ? html`${networkRain} ` : null}<button class="link-btn" type="button" data-goto="network-rain" onClick=${onNetworkRain}>${texts.form.networkRainOpen}</button>
+        </p>`);
+      }
+      parts.push(html`<${Problem} message=${problems[layout.rainfall.choice.key]} id=${`${prefix}-rainfall-err`} />`);
       parts.push(layout.rainfall.slots.map(render));
     } else if (layout.variant === "file") {
       parts.push(layout.file.map(render));

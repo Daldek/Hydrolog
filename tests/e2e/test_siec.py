@@ -607,7 +607,7 @@ def test_inputs_stored_before_the_canvas_are_laid_out_like_a_file(tab: Tab) -> N
     page = open_section(tab)
     page.evaluate(
         """() => {
-          const key = 'hydrolog-gui/siec/2';
+          const key = 'hydrolog-gui/siec/3';
           const stored = JSON.parse(localStorage.getItem(key));
           delete stored.provisional;
           stored.skeleton = stored.skeleton.map(({position, ...node}) => node);

@@ -6,9 +6,11 @@
 // came from (provenance: the PMAXTP point, method, probability and duration of the fetched
 // depth, the watershed's source and the fields changed since) and its result; back, a
 // payload's subcatchment becomes the section's inputs, its source the watershed's origin
-// and the hand-off's record (`handoff`) what the results compare with. „Sieć i
-// trasowanie” writes its whole network with the outlet's result, and adds a hand-off's
-// subcatchments to its open network („Dodaj zlewnię z Hydrografa”, plan
+// and the hand-off's record (`handoff`) what the results compare with. A rainfall of the
+// document and the inputs of step 2 map both ways in one place (rainfallOf, rainfallInputs;
+// plan 2026-11-10-network-wizard, D4), which Hydrogram zlewni and Sieć's network share.
+// „Sieć i trasowanie” writes its whole network with the outlet's result, and adds a
+// hand-off's subcatchments to its open network („Dodaj zlewnię z Hydrografa”, plan
 // 2026-11-10-network-editor, D10). Field names are Hydrolog's (channel_length_km; slopes
 // in m/m); mapping Hydrograf's names is Hydrograf's side.
 
@@ -22,20 +24,22 @@ import {
   PMAXTP_PROBABILITIES,
   SNYDER_LENGTHS,
   changedFrom,
+  hasOwnRainfall,
+  initialRain,
   initialState,
   isEmpty,
   normalize,
   numberOf,
   pmaxtpOptions,
   pmaxtpRecord,
+  rainOptions,
   readWatershed,
   sentFields,
   sentWatershed,
   usedTexts,
 } from "../sections/hydrogram/state.js";
 import { cellBeside, freeId } from "../sections/siec/editor/edits.js";
-import { MAX_DESCRIPTION_CHARS, networkRainfall, networkValues, nodeValues } from "../sections/siec/node-model.js";
-import { withoutPicture } from "../sections/siec/state.js";
+import { MAX_DESCRIPTION_CHARS, nodeValues, withoutPicture } from "../sections/siec/node-model.js";
 import { MARKS, PAYLOAD_SCHEMA, buildHandoff, momentText, receivedOf, toolName } from "./handoff.js";
 import { canonical, isObject } from "./validate.js";
 
@@ -81,13 +85,7 @@ const RAIN_TEXTS = Object.freeze(["values", ...DESIGN_OPTIONS, "timestep_min"]);
 export function hydrogramPayload(options, name) {
   const runoff = { model: "curve-number" };
   for (const option of RUNOFF_OPTIONS) if (options[option] !== undefined) runoff[option] = options[option];
-  let rainfall;
-  if (Array.isArray(options.values)) {
-    rainfall = { kind: "series", depths_mm: [...options.values], timestep_min: options.timestep_min ?? DEFAULT_TIMESTEP_MIN };
-  } else {
-    rainfall = { kind: "design" };
-    for (const option of DESIGN_OPTIONS) if (options[option] !== undefined) rainfall[option] = options[option];
-  }
+  const rainfall = Array.isArray(options.values) ? seriesRainfall(options.values, options.timestep_min) : designRainfall(options);
   const payload = { schema: PAYLOAD_SCHEMA };
   if (name) payload.name = name;
   if (options.timestep_min !== undefined) payload.timestep_min = options.timestep_min;
@@ -96,6 +94,46 @@ export function hydrogramPayload(options, name) {
     { id: OUTLET_ID, type: "outlet", from: [SUBCATCHMENT_ID] },
   ];
   return payload;
+}
+
+/**
+ * A design storm of hydrolog-network/1 from options of `hydrograph generate`: its shape,
+ * depth and duration and the shape's own parameters, those given.
+ *
+ * @param {object} options the options
+ * @returns {object} the `rainfall` of kind design
+ */
+function designRainfall(options) {
+  const rainfall = { kind: "design" };
+  for (const option of DESIGN_OPTIONS) if (options[option] !== undefined) rainfall[option] = options[option];
+  return rainfall;
+}
+
+/**
+ * A series of depths of hydrolog-network/1 at a time step.
+ *
+ * @param {number[]} values the depths [mm]
+ * @param {number|null|undefined} step the time step [min] (DEFAULT_TIMESTEP_MIN without one)
+ * @returns {object} the `rainfall` of kind series
+ */
+function seriesRainfall(values, step) {
+  return { kind: "series", depths_mm: [...values], timestep_min: step ?? DEFAULT_TIMESTEP_MIN };
+}
+
+/**
+ * The `rainfall` of hydrolog-network/1 of the inputs of step 2 (plan
+ * 2026-11-10-network-wizard, D4): what a run of `hydrograph generate` takes, a design storm
+ * (PMAXTP's with the fetched depth as `total_mm`, which it lacks until then) or a series at
+ * the inputs' time step.
+ *
+ * @param {object} inputs the inputs of the rainfall (initialRain)
+ * @returns {object|null} the rainfall, null for „Brak” and „Jak w sieci”
+ */
+export function rainfallOf(inputs) {
+  if (!hasOwnRainfall(inputs)) return null;
+  const options = rainOptions(inputs);
+  if (inputs.rain_source === "series") return seriesRainfall(options.values || [], numberOf(inputs.timestep_min));
+  return designRainfall(options);
 }
 
 /**
@@ -256,14 +294,11 @@ function pointOf(entry) {
  * Nash by Lutz, which estimates n and K from the watershed it brings; one with n and K
  * opens with them given, also one written before `nash_estimation` (plan
  * 2026-11-10-network-wizard, D6), whose n and K were Lutz's estimates (`provenance.runoff`
- * of `uh nash`). The rainfall is PMAXTP when the provenance names the probability and the
- * duration the section offers and a point (the rainfall's own, else the watershed's, such
- * as Hydrograf's outlet), else a design storm or the series. The depth handed over is
- * remembered as fetched only when the rainfall names its point; otherwise the page fetches
- * the depth of the point. A hand-off without rainfall (the watershed only) leaves the
- * probability, the duration and the model to choose, PMAXTP at the watershed's point when
- * the provenance names one. `handoff` keeps what the results compare with, the depth
- * handed over included.
+ * of `uh nash`). The rainfall is read by rainfallInputs; a hand-off without rainfall (the
+ * watershed only) leaves the probability, the duration and the model to choose, PMAXTP at
+ * the watershed's point when the provenance names one. The time step is the payload's,
+ * else a series' own. `handoff` keeps what the results compare with, the depth handed over
+ * included.
  *
  * @param {object} doc the hand-off
  * @returns {object} the inputs, a patch of the whole state
@@ -335,51 +370,78 @@ export function hydrogramInputs(doc) {
   inputs.clark_r_tc_ratio = inputText(runoff.clark_r_tc_ratio);
   inputs.snyder_ct = inputText(runoff.snyder_ct);
   inputs.snyder_cp = inputText(runoff.snyder_cp);
-  let handed = null;
+  const rain = rainfallInputs(rainfall, provenance);
+  Object.assign(inputs, rain);
+  // Hydrogram zlewni has no „Brak”: without a rainfall, PMAXTP waits for its fields
+  if (inputs.rain_source === "none") inputs.rain_source = "pmaxtp";
+  inputs.timestep_min = typeof payload.timestep_min === "number" ? inputText(payload.timestep_min) : rain.timestep_min || "";
+  const handed = isObject(rainfall) && inputs.rain_source === "pmaxtp" ? pmaxtpRecord(pmaxtpOptions(normalize(inputs)), rainfall.total_mm) : null;
+  const opened = normalize({ ...inputs, pmaxtp_fetched: handed });
+  inputs.handoff = { ...receivedOf(doc), key: dataKey(opened), rainfallKey: rainfallKey(opened) };
+  return inputs;
+}
+
+/**
+ * The inputs of step 2 of a `rainfall` of hydrolog-network/1 (a subcatchment's or a
+ * network's; plan 2026-11-10-network-wizard, D4), as Hydrogram zlewni reads a hand-off: a
+ * design storm is PMAXTP when its origin's record (`rainfall` of the provenance, of
+ * `source` pmaxtp) names the probability and the duration the section offers and a point
+ * (its own, else the watershed's, such as Hydrograf's outlet) and the duration is the
+ * rainfall's, else a design hyetograph; its depth is remembered as fetched only when the
+ * record names its own point, otherwise the page fetches the depth of the point. A series
+ * gives its depths and its step as `timestep_min`. Without a rainfall: „Brak”, with the
+ * watershed's point for PMAXTP when the origin names one.
+ *
+ * @param {object|null} rainfall the `rainfall`, or null
+ * @param {object|null} [origin] where it came from: a hand-off's `provenance`, whose
+ *   `rainfall` and `watershed` are read
+ * @returns {object} the inputs it gives, a patch of initialRain()
+ */
+export function rainfallInputs(rainfall, origin = null) {
+  const provenance = isObject(origin) ? origin : {};
+  const inputs = {};
   if (!isObject(rainfall)) {
+    inputs.rain_source = "none";
     const spot = pointOf(provenance.watershed);
     if (spot) {
       inputs.pmaxtp_latitude = inputText(spot.latitude);
       inputs.pmaxtp_longitude = inputText(spot.longitude);
     }
-    inputs.timestep_min = inputText(payload.timestep_min);
-  } else if (rainfall.kind === "series") {
-    inputs.rain_source = "series";
-    inputs.values = rainfall.depths_mm.map(inputText).join("; ");
-    inputs.timestep_min = inputText(typeof payload.timestep_min === "number" ? payload.timestep_min : rainfall.timestep_min);
-  } else {
-    const atlas = isObject(provenance.rainfall) && provenance.rainfall.source === "pmaxtp" ? provenance.rainfall : null;
-    const probability = atlas && typeof atlas.probability_percent === "number" ? String(atlas.probability_percent) : null;
-    const duration = atlas && typeof atlas.duration_min === "number" ? String(atlas.duration_min) : null;
-    const own = pointOf(atlas);
-    const spot = own || pointOf(provenance.watershed);
-    const pmaxtp =
-      spot !== null &&
-      probability !== null &&
-      duration !== null &&
-      PMAXTP_PROBABILITIES.includes(probability) &&
-      PMAXTP_DURATIONS.includes(duration) &&
-      Number(duration) === rainfall.duration_min;
-    inputs.rain_source = pmaxtp ? "pmaxtp" : "design";
-    if (pmaxtp) {
-      inputs.pmaxtp_latitude = inputText(spot.latitude);
-      inputs.pmaxtp_longitude = inputText(spot.longitude);
-      inputs.pmaxtp_probability_pct = probability;
-      inputs.pmaxtp_duration_min = duration;
-      inputs.pmaxtp_method = PMAXTP_METHODS.includes(atlas.method) ? atlas.method : "POT";
-    }
-    inputs.total_mm = inputText(rainfall.total_mm);
-    inputs.duration_min = inputText(rainfall.duration_min);
-    inputs.hietogram_type = rainfall.hietogram_type;
-    inputs.alpha = inputText(rainfall.alpha);
-    inputs.beta = inputText(rainfall.beta);
-    inputs.peak_position = inputText(rainfall.peak_position);
-    inputs.timestep_min = inputText(payload.timestep_min);
-    if (pmaxtp) handed = pmaxtpRecord(pmaxtpOptions(normalize(inputs)), rainfall.total_mm);
-    if (pmaxtp && own) inputs.pmaxtp_fetched = handed;
+    return inputs;
   }
-  const opened = normalize({ ...inputs, pmaxtp_fetched: handed });
-  inputs.handoff = { ...receivedOf(doc), key: dataKey(opened), rainfallKey: rainfallKey(opened) };
+  if (rainfall.kind === "series") {
+    inputs.rain_source = "series";
+    inputs.values = (Array.isArray(rainfall.depths_mm) ? rainfall.depths_mm : []).map(inputText).join("; ");
+    inputs.timestep_min = inputText(rainfall.timestep_min);
+    return inputs;
+  }
+  const atlas = isObject(provenance.rainfall) && provenance.rainfall.source === "pmaxtp" ? provenance.rainfall : null;
+  const probability = atlas && typeof atlas.probability_percent === "number" ? String(atlas.probability_percent) : null;
+  const duration = atlas && typeof atlas.duration_min === "number" ? String(atlas.duration_min) : null;
+  const own = pointOf(atlas);
+  const spot = own || pointOf(provenance.watershed);
+  const pmaxtp =
+    spot !== null &&
+    probability !== null &&
+    duration !== null &&
+    PMAXTP_PROBABILITIES.includes(probability) &&
+    PMAXTP_DURATIONS.includes(duration) &&
+    Number(duration) === rainfall.duration_min;
+  inputs.rain_source = pmaxtp ? "pmaxtp" : "design";
+  if (pmaxtp) {
+    inputs.pmaxtp_latitude = inputText(spot.latitude);
+    inputs.pmaxtp_longitude = inputText(spot.longitude);
+    inputs.pmaxtp_probability_pct = probability;
+    inputs.pmaxtp_duration_min = duration;
+    inputs.pmaxtp_method = PMAXTP_METHODS.includes(atlas.method) ? atlas.method : "POT";
+  }
+  inputs.total_mm = inputText(rainfall.total_mm);
+  inputs.duration_min = inputText(rainfall.duration_min);
+  inputs.hietogram_type = rainfall.hietogram_type;
+  inputs.alpha = inputText(rainfall.alpha);
+  inputs.beta = inputText(rainfall.beta);
+  inputs.peak_position = inputText(rainfall.peak_position);
+  if (pmaxtp && own) inputs.pmaxtp_fetched = pmaxtpRecord(pmaxtpOptions({ ...initialRain(), ...inputs }), rainfall.total_mm);
   return inputs;
 }
 
@@ -454,7 +516,7 @@ export function siecHandoff({ subject, source, document, result = null, version,
 /**
  * What Sieć keeps of a hand-off it opens: the record and its document as one text, to
  * tell whether the network was changed since; the text leaves out the nodes' positions
- * and descriptions, which change no computation (siec/state.js withoutPicture).
+ * and descriptions, which change no computation (siec/node-model.js withoutPicture).
  *
  * @param {object} doc the hand-off
  * @param {object} payload its network as Sieć opens it (session names of its files)
@@ -502,19 +564,18 @@ function addedOrigin(doc) {
  * hand-off's outlet and its other nodes stay out. The network keeps its time step (one
  * without a step and without nodes takes the hand-off's); a subcatchment's own rainfall
  * comes with it, and a rainfall at the hand-off's top becomes the own rainfall of each
- * subcatchment made from rainfall without one when the network's rainfall differs.
+ * subcatchment made from rainfall without one when the network's rainfall differs (both
+ * compared as the network's document writes them, rainfallOf).
  *
  * @param {{network: object, skeleton: object[], nodes: Object<string, object>}} inputs
  *   Sieć's inputs
  * @param {object} doc the hand-off (readHandoff opened it; its payload is
  *   hydrolog-network/1)
- * @param {object} forms the forms of node-model.js buildForms (the rainfalls are compared
- *   as the network's document writes them)
  * @returns {{inputs: object, added: string[], lines: string[]}} the new inputs (the same
  *   when nothing was added), the ids added and what the addition did, in Polish: the
  *   first line says what was added, or why nothing was
  */
-export function siecAddition(inputs, doc, forms) {
+export function siecAddition(inputs, doc) {
   const words = texts.add;
   const payload = doc.payload;
   const nodes = (Array.isArray(payload.nodes) ? payload.nodes : []).filter(isObject);
@@ -538,8 +599,7 @@ export function siecAddition(inputs, doc, forms) {
     }
   }
   const top = isObject(payload.rainfall) ? payload.rainfall : null;
-  const ownRainfall =
-    top !== null && canonical(networkRainfall(forms, network)) !== canonical(networkRainfall(forms, networkValues({ rainfall: top })));
+  const ownRainfall = top !== null && canonical(rainfallOf(network)) !== canonical(rainfallOf(rainfallInputs(top)));
   const origin = addedOrigin(doc);
   const description = descriptionOf(doc.subject);
   let skeleton = inputs.skeleton;

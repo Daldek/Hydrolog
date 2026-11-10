@@ -72,11 +72,11 @@ CELL_POINT = """([x, y]) => {
   return [point.x, point.y];
 }"""
 """Where on the screen the centre of a cell of the canvas is, scrolled into the card."""
-STRUCTURE = """() => JSON.parse(localStorage.getItem('hydrolog-gui/siec/2')).skeleton
+STRUCTURE = """() => JSON.parse(localStorage.getItem('hydrolog-gui/siec/3')).skeleton
   .map((node) => [node.id, node.type, node.from])"""
 """The structure the section keeps: each node's id, type and inflows."""
 STORED = """() => {
-  const stored = JSON.parse(localStorage.getItem('hydrolog-gui/siec/2'));
+  const stored = JSON.parse(localStorage.getItem('hydrolog-gui/siec/3'));
   const skeleton = stored ? stored.skeleton : [];
   const ids = (nodes) => nodes.sort().join(' ');
   const drawn = [...document.querySelectorAll('svg.schem g.node')]
@@ -215,14 +215,16 @@ def typed(value: Any) -> str:
 
 
 def type_network(page: Page, how: str) -> None:
-    """Type the guide's name and default rainfall of the network in step 1."""
+    """Type the guide's name and rainfall of the network in step 1 („Opad sieci”)."""
     step = page.locator(f'{SECTION} [data-step="network"]')
     fill(page, step, "name", guide()["name"], how)
-    choice = step.locator('[data-choice="#rainfall"]')
-    press(page, choice.get_by_role("radio", name="Projektowy"), how)
-    for name, value in guide()["rainfall"].items():
-        if name != "kind":
-            fill(page, step, f"rainfall.design.{name}", typed(value), how)
+    rain = step.locator('[data-rain-part="siec-net"]')
+    rainfall = guide()["rainfall"]
+    assert rainfall["hietogram_type"] == "block"
+    press(page, rain.get_by_role("radio", name="Hietogram", exact=True), how)
+    press(page, rain.get_by_role("radio", name="Blokowy", exact=True), how)
+    for name in ("total_mm", "duration_min"):
+        rain.locator(f"#siec-net-{name}").fill(input_text(rainfall[name]))
 
 
 def type_node(page: Page, guide_id: str, node: str, how: str) -> None:
@@ -846,7 +848,9 @@ def test_a_draft_is_saved_and_reopened(tab: Tab, tmp_path: Path) -> None:
         " dopóki nie poprawisz problemów"
     )
     assert draft["description"] == "Szkic sieci\nw dwóch wierszach"
-    assert list(draft)[:3] == ["schema", "description", "nodes"]
+    # The description first; the network's rainfall (PMAXTP, nothing given yet) before
+    # the nodes
+    assert list(draft)[:4] == ["schema", "description", "rainfall", "nodes"]
     z1 = next(node for node in draft["nodes"] if node["id"] == "Z1")
     assert list(z1)[-2:] == ["description", "position"]
     assert z1["description"] == "Zlewnia górna"
@@ -1041,8 +1045,11 @@ def test_a_phone_in_the_dark_theme_edits_through_the_menus(new_tab: Any) -> None
     page = tab.page
     page.get_by_role("button", name="Dane").click()
     page.get_by_role("button", name="Nowa sieć").click()
-    # „Dane” closes: the new network is built on the canvas
-    expect(page.locator(f"{SECTION} .view-panel.left")).to_be_hidden()
+    # „Dane” stays open at step 1, the network's rainfall first; Escape shows the canvas
+    left = page.locator(f"{SECTION} .view-panel.left")
+    expect(left.locator('[data-rain-part="siec-net"]')).to_be_visible()
+    page.keyboard.press("Escape")
+    expect(left).to_be_hidden()
     expect(page.locator('[data-canvas="empty"]')).to_be_visible()
     # The palette is a menu: an element, then a tap on a cell
     expect(page.locator('[data-palette="outlet"]')).to_be_hidden()
