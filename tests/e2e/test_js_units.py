@@ -8,15 +8,21 @@ and the options of a run, and honours ``requires``, ``excludes``, ``section`` an
 examples go through the form to ``api/run`` and run. ``router.js``,
 ``persist.js``, ``labels/errors.js`` and ``labels/notices.js`` (on errors of the
 real server), ``ui/info.js``, Polecenia's ``state.js`` and
-``forms/result-view.js`` (on real envelopes) follow.
+``forms/result-view.js`` (on real envelopes) follow. The geometry of Sieć's canvas
+(plan 2026-11-10-network-editor, D5, D6, D10: ``editor/geometry.js``) draws rule D
+and ranks the lines as the library does, computed here in Python, and its edits
+(``editor/edits.js``) share the nodes they do not change.
 """
 
 import math
+import random
 from typing import Any
 
 import pytest
 
+from hydrolog.routing._layout import edge_route, layout
 from tests.e2e.conftest import Tab
+from tests.unit._schematic_checks import random_tree
 
 NBSP = "\u00a0"
 MINUS = "\u2212"
@@ -903,3 +909,186 @@ def test_result_view_of_real_runs(page: Any) -> None:
     assert got["cells"] == ['"a,b"', '"say ""hi"""', '"x\ny"', "", "1.5"]
     empty = got["empty"]
     assert (empty["schema"], empty["series"], empty["scalars"]) == (None, [], [])
+
+
+# --- Sieć's canvas: editor/geometry.js, editor/edits.js -----------------------
+
+
+GEOMETRY = "const g = await import('./src/sections/siec/editor/geometry.js');"
+# The guide's network at the cells of the library's layout (the ids of its nodes, their
+# inflows and cells: x downstream, y sideways).
+GUIDE_CELLS = """const guide = [
+  {id: 'A', from: null, cell: [0, 1]},
+  {id: 'B', from: null, cell: [1, 0]},
+  {id: 'C', from: null, cell: [3, 2]},
+  {id: 'R_A', from: ['A'], cell: [1, 1]},
+  {id: 'J1', from: ['R_A', 'B'], cell: [2, 1]},
+  {id: 'R_J1', from: ['J1'], cell: [3, 1]},
+  {id: 'J2', from: ['R_J1', 'C'], cell: [4, 1]},
+  {id: 'OUT', from: ['J2'], cell: [5, 1]},
+];"""
+
+
+def test_rule_d_of_the_canvas_is_the_librarys(page: Any) -> None:
+    cells = [(x, y) for x in range(-3, 4) for y in range(-3, 4)]
+    pairs = [[start, end] for start in cells for end in cells if start != end]
+    got = page.evaluate(
+        f"""async (pairs) => {{ {GEOMETRY}
+          return pairs.map(([start, end]) => g.edgeRoute(start, end)); }}""",
+        pairs,
+    )
+    expected = [
+        [list(corner) for corner in edge_route(start, end)] for start, end in pairs
+    ]
+    assert got == expected
+
+
+def test_the_canvas_ranks_the_lines_as_the_library_does(page: Any) -> None:
+    cases = []
+    for seed in range(40):
+        root, inflows = random_tree(
+            3 + 3 * seed, seed, fan_in=1 + seed % 5, deep=(seed % 4) / 4
+        )
+        heads = [node for node, ups in inflows.items() if not ups]
+        chance = random.Random(seed)
+        areas = {node: round(chance.uniform(0.5, 50), 2) for node in heads}
+        weighed = areas if seed % 2 else {}
+        drawn = layout(root, inflows, weight=weighed or None)
+        skeleton = []
+        for node, ups in inflows.items():
+            kind = "junction" if ups else "subcatchment"
+            skeleton.append(
+                {"id": node, "type": "outlet" if node == root else kind, "from": ups}
+            )
+        lines = {
+            node: {"main": line.index == 0, "joins": line.joins}
+            for line in drawn.lines
+            for node in line.nodes
+        }
+        cases.append({"skeleton": skeleton, "areas": weighed, "lines": lines})
+    got = page.evaluate(
+        f"""async (cases) => {{ {GEOMETRY}
+          return cases.map(({{skeleton, areas}}) => Object.fromEntries(
+            g.linesOf(skeleton, new Map(Object.entries(areas))))); }}""",
+        cases,
+    )
+    # The main stem and the node each tributary joins, so the colours and the sides of
+    # the labels are the library's, with areas and with counts of nodes
+    assert got == [case["lines"] for case in cases]
+
+
+def test_free_cells_provisional_rows_and_the_cells_of_an_opened_network(
+    page: Any,
+) -> None:
+    got = js(
+        page,
+        f"""{GEOMETRY} {GUIDE_CELLS}
+        const taken = (...cells) => new Set(cells.map(g.cellKey));
+        const looped = [
+          {{id: 'A', from: ['B']}}, {{id: 'B', from: ['A']}}, {{id: 'C', from: null}},
+          {{id: 'D', from: ['C', 'A']}},
+        ];
+        const opened = g.placeMissing([
+          {{id: 'A', from: null, position: {{x: 0, y: 0}}}},
+          {{id: 'B', from: null, position: {{x: 0, y: 0}}}},
+          {{id: 'J', from: ['A', 'B'], position: {{x: 1, y: 0}}}},
+          {{id: 'OUT', from: ['J']}},
+        ]);
+        const answer = await fetch('api/schemas/hydrolog-network-1.schema.json');
+        const schema = await answer.json();
+        return {{
+          free: [
+            g.freeCell(taken(), [2, 3], 'up'),
+            g.freeCell(taken([2, 3]), [2, 3], 'up'),
+            g.freeCell(taken([2, 3], [1, 3]), [2, 3], 'up'),
+            g.freeCell(taken([2, 3], [1, 2], [1, 3], [1, 4]), [2, 3], 'up'),
+            g.freeCell(taken([2, 3]), [2, 3], 'down'),
+            g.freeCell(taken([-1000, 0]), [-1000, 0], 'up'),
+          ],
+          rows: Object.fromEntries(g.provisionalRows(guide)),
+          looped: Object.fromEntries(g.provisionalRows(looped)),
+          opened: {{cells: Object.fromEntries(opened.cells), moved: opened.moved}},
+          read: [{{x: 2, y: -3}}, {{x: 2.5, y: 0}}, {{x: 1001, y: 0}}, {{x: 1}},
+                 {{x: 1, y: 2, z: 3}}, [1, 2], null].map(g.cellOf),
+          snapped: [[0, 0], [54, 36], [56, 38], [-56, -38], [1e6, -1e6]]
+            .map(g.cellAt),
+          bound: [g.MAX_POSITION, schema.$defs.position.properties.x.maximum,
+                  schema.$defs.position.properties.y.minimum],
+        }};""",
+    )
+    # The cell itself when free; else upstream first, straight before diagonal, the
+    # right before the left, then level, then downstream; never off the grid
+    assert got["free"] == [[2, 3], [1, 3], [1, 4], [2, 4], [3, 3], [-1000, 1]]
+    # Rows by the longest distance from a headwater, centred, in the order of the
+    # document; a cycle and what is below it go on the row after the last
+    assert got["rows"] == {
+        "A": [0, -1],
+        "B": [0, 0],
+        "C": [0, 1],
+        "R_A": [1, 0],
+        "J1": [2, 0],
+        "R_J1": [3, 0],
+        "J2": [4, 0],
+        "OUT": [5, 0],
+    }
+    assert got["looped"] == {"A": [1, -1], "B": [1, 0], "C": [0, 0], "D": [1, 1]}
+    # A shared cell stays with the first node; the others go beside a neighbour
+    assert got["opened"] == {
+        "cells": {"A": [0, 0], "B": [0, 1], "J": [1, 0], "OUT": [2, 0]},
+        "moved": ["B", "OUT"],
+    }
+    assert got["read"] == [[2, -3], None, None, None, None, None, None]
+    assert got["snapped"] == [[0, 0], [0, 0], [1, 1], [-1, -1], [-1000, 1000]]
+    bound = got["bound"]
+    assert bound == [1000, 1000, -1000]
+
+
+def test_the_arrow_keys_go_to_the_nearest_node_that_way(page: Any) -> None:
+    got = js(
+        page,
+        f"""{GEOMETRY} {GUIDE_CELLS}
+        return [['OUT', 'up'], ['J2', 'up'], ['R_J1', 'right'], ['J1', 'left'],
+                ['A', 'up'], ['A', 'down'], ['B', 'right'], ['C', 'left'],
+                ['C', 'right']]
+          .map(([from, way]) => g.nearestInDirection(guide, from, way));""",
+    )
+    # Straight ahead before diagonal, within 45 degrees before the rest; or nothing
+    assert got == ["J2", "R_J1", "C", "B", None, "R_A", "R_A", "R_J1", None]
+
+
+def test_moves_share_the_nodes_they_do_not_change(page: Any) -> None:
+    got = js(
+        page,
+        """const e = await import('./src/sections/siec/editor/edits.js');
+        const inputs = {network: {name: 'x'}, nodes: {A: {}}, selected: 'A',
+          skeleton: [
+            {id: 'A', type: 'subcatchment', from: null, position: {x: 0, y: 0}},
+            {id: 'B', type: 'subcatchment', from: null, position: {x: 0, y: 1}},
+            {id: 'OUT', type: 'outlet', from: ['A', 'B'], position: {x: 1, y: 0}},
+          ]};
+        const moved = e.moveNode(inputs, 'A', {x: -1, y: 0});
+        const placed = e.placeAll(inputs,
+          {A: {x: 5, y: 5}, OUT: {x: 6, y: 5}, Z: {x: 0, y: 0}});
+        const same = (next) => next === inputs;
+        return {
+          moved: moved.skeleton.map((node) => node.position),
+          shared: [moved.skeleton[1] === inputs.skeleton[1],
+                   moved.skeleton[2] === inputs.skeleton[2],
+                   moved.nodes === inputs.nodes, moved.network === inputs.network,
+                   moved.selected],
+          before: inputs.skeleton[0].position,
+          refused: [same(e.moveNode(inputs, 'A', {x: 0, y: 1})),
+                    same(e.moveNode(inputs, 'Z', {x: 3, y: 3})),
+                    same(e.moveNode(inputs, 'A', {x: 1001, y: 0})),
+                    same(e.moveNode(inputs, 'A', {x: 0.5, y: 0}))],
+          placed: placed.skeleton.map((node) => node.position),
+          kept: placed.skeleton[1] === inputs.skeleton[1],
+        };""",
+    )
+    assert got["moved"] == [{"x": -1, "y": 0}, {"x": 0, "y": 1}, {"x": 1, "y": 0}]
+    assert got["shared"] == [True, True, True, True, "A"]
+    assert got["before"] == {"x": 0, "y": 0}
+    # A taken cell, an unknown node or a cell off the grid leaves the inputs as they are
+    assert got["refused"] == [True, True, True, True]
+    assert got["placed"] == [{"x": 5, "y": 5}, {"x": 0, "y": 1}, {"x": 6, "y": 5}]
+    assert got["kept"] is True

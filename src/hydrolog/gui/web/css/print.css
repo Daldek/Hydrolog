@@ -178,8 +178,19 @@ dialog,
 .chart.wide svg {
   min-width: 0 !important;
 }
-.schem-v svg {
+.canvas-scroll {
   max-height: none !important;
+  overflow: visible !important;
+}
+.schem {
+  max-width: 100% !important;
+  height: auto !important;
+}
+.canvas-bar,
+.canvas-keys,
+[data-canvas="prompt"],
+.schem .edit-mark {
+  display: none !important;
 }
 .chart .readout-line,
 .chart .readout-dot,

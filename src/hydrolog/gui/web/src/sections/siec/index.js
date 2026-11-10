@@ -1,12 +1,16 @@
 // „Sieć i trasowanie” (plan S4; the approved mockup with the author's revisions): a river
 // network of hydrolog-network/1, opened from a file or a hand-off (a first visit has none;
-// the guide, instrukcja/#siec, has a worked example to load), drawn vertically from `route
-// schematic` before any run (the sources at the top, the outlet at the bottom); a click on
-// a node, Enter or Space, or its row in a table opens its settings in „Dane” and its
-// result in „Wyniki”. The network is computed on „Oblicz sieć” only: the document is
-// written to the session's `in/` and `route network` routes it (with the inflows file and
-// the rating files it reads); a change afterwards marks the result stale („Dane zmienione:
-// oblicz ponownie”, plan D13).
+// the guide, instrukcja/#siec, has a worked example to load), drawn vertically on the
+// canvas of „Schemat sieci” from the section's own inputs (plan 2026-11-10-network-editor,
+// D1, D6: the sources at the top, the outlet at the bottom, every node on the cell of its
+// position). A network opened without positions takes Hydrolog's layout (`route
+// schematic`) as soon as Hydrolog can read it, and stands in provisional rows until then;
+// a person moves nodes on the canvas, and „Uporządkuj” brings Hydrolog's layout back. A
+// click on a node, Enter or Space, or its row in a table opens its settings in „Dane” and
+// its result in „Wyniki”. The network is computed on „Oblicz sieć” only: the document,
+// positions included, is written to the session's `in/` and `route network` routes it
+// (with the inflows file and the rating files it reads); a change afterwards marks the
+// result stale („Dane zmienione: oblicz ponownie”, plan D13), a move never does.
 
 import { api } from "../../api.js";
 import { inputFiles, uploadFile, useSession } from "../../controls/file-field.js";
@@ -28,29 +32,37 @@ import { status } from "../../ui/status.js";
 import { toast } from "../../ui/toast.js";
 import { ViewLayout } from "../../ui/view-layout.js";
 import { DataPanel, EmptyNetwork, networkRainWords, networkSummary } from "./data-panel.js";
+import { NetworkCanvas } from "./editor/canvas.js";
+import { placeAll } from "./editor/edits.js";
 import { buildDocument, nodeWords } from "./node-model.js";
 import { NodeTable, ResultsPanel } from "./results-panel.js";
-import { Schematic } from "./schematic-view.js";
 import {
   documentName,
   documentProblems,
   fileStem,
   initialState,
   neededFiles,
+  placementNotes,
+  placeSkeleton,
   SECTION,
   stateOf,
+  structureOf,
   useForms,
   useOpened,
+  withoutPicture,
   withSessionNames,
 } from "./state.js";
 
 registerInfo(routing);
 
-/** Delay of the schematic after the last change of the network's layout [ms]. */
+/** Delay of Hydrolog's layout after the last change of the network's structure [ms]. */
 export const SCHEMATIC_DELAY_MS = 300;
 
-/** The channel of the schematic's runs (the network's runs use the section's). */
+/** The channel of the layout's runs (the network's runs use the section's). */
 export const SCHEMATIC_CHANNEL = "siec-schematic";
+
+/** Hydrolog's layout before it is asked for. */
+const NO_LAYOUT = Object.freeze({ key: null, positions: null, error: null, busy: false });
 
 /**
  * An error of the server in Polish, with the node and field it names.
@@ -87,7 +99,7 @@ export default function Siec({ active, path = [] }) {
   const [state, setState, reset] = usePersistentState(SECTION, initialState);
   const [, setStatus] = useStore("status");
   const [, setContext] = useStore("context");
-  const [schematic, setSchematic] = useState({ doc: null, key: null, error: null, busy: false });
+  const [schematic, setSchematic] = useState(NO_LAYOUT);
   const [run, setRun] = useState(null);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState(null);
@@ -102,15 +114,21 @@ export default function Siec({ active, path = [] }) {
   const drawn = useRef(0);
 
   // --- opening a network --------------------------------------------------------------
-  const open = (doc, source, lines = null) => {
-    setState(stateOf(doc, source));
+  const open = (doc, source, lines) => {
+    const opened = stateOf(doc, source);
+    setState(opened);
     setRun(null);
     setFailure(null);
     setTouched(new Set());
     setTried(false);
-    setSchematic({ doc: null, key: null, error: null, busy: false });
-    setNote(lines ? { error: false, lines } : null);
+    setSchematic(NO_LAYOUT);
+    setNote({ error: false, lines: [...lines, ...placementNotes(doc, opened)] });
   };
+  // Inputs stored before the canvas have no positions: they are laid out like a file
+  // without them
+  useEffect(() => {
+    if (state.skeleton.some((node) => !node.position)) setState((old) => ({ ...old, ...placeSkeleton(old.skeleton) }));
+  }, [state.skeleton]);
   useOpened(({ doc, meta }) => {
     const problems = documentProblems(doc);
     if (problems.length) {
@@ -245,17 +263,18 @@ export default function Siec({ active, path = [] }) {
   };
   const name = documentName(state);
   const stem = fileStem(state);
-  const currentKey = built ? JSON.stringify([built.document, runOptions(stem, name)]) : null;
+  // A move never marks the result stale: the key leaves the positions out (D11)
+  const currentKey = built ? JSON.stringify([withoutPicture(built.document), runOptions(stem, name)]) : null;
   const layoutKey = ready
     ? JSON.stringify([
-        state.skeleton,
+        structureOf(state.skeleton),
         state.skeleton.map((node) => (words.get(node.id) || {}).area ?? null),
         runOptions(stem, name),
         needed.ratings,
       ])
     : null;
 
-  // --- the schematic, before any run ----------------------------------------------------
+  // --- Hydrolog's layout: its check of the network, the cells of „Uporządkuj” -----------
   useEffect(() => {
     if (!layoutKey || layoutKey === schematic.key) return undefined;
     const controller = new AbortController();
@@ -263,24 +282,27 @@ export default function Siec({ active, path = [] }) {
       drawn.current += 1;
       const mine = drawn.current;
       setSchematic((old) => ({ ...old, busy: true }));
-      // Inline, so the session holds no file until „Oblicz sieć”; a network that reads
-      // rating files needs its document in "in/" beside them
+      // Without the positions, so Hydrolog lays the network out itself; inline, so the
+      // session holds no file until „Oblicz sieć”; a network that reads rating files
+      // needs its document in "in/" beside them
+      const plain = withoutPicture(built.document);
       const options = { ...runOptions(stem, name) };
       delete options.schematic;
       delete options.force;
       try {
         if (needed.ratings.length) {
-          await api.upload(new Blob([`${JSON.stringify(built.document, null, 2)}\n`], { type: "application/json" }), name);
+          await api.upload(new Blob([`${JSON.stringify(plain, null, 2)}\n`], { type: "application/json" }), name);
         } else {
           delete options.network_file;
-          options.network = built.document;
+          options.network = plain;
         }
         const envelope = await api.run("route schematic", options, { channel: SCHEMATIC_CHANNEL, signal: controller.signal });
         if (mine !== drawn.current || envelope.status !== "ok") return;
-        setSchematic({ doc: envelope.result, key: layoutKey, error: null, busy: false });
+        const positions = Object.fromEntries(envelope.result.nodes.map((node) => [node.id, { x: node.x, y: node.y }]));
+        setSchematic({ key: layoutKey, positions, error: null, busy: false });
       } catch (error) {
         if ((error && error.name === "AbortError") || mine !== drawn.current) return;
-        setSchematic((old) => ({ ...old, key: layoutKey, error: runFailure(error), busy: false }));
+        setSchematic({ key: layoutKey, positions: null, error: runFailure(error), busy: false });
       }
     }, SCHEMATIC_DELAY_MS);
     return () => {
@@ -288,6 +310,20 @@ export default function Siec({ active, path = [] }) {
       controller.abort();
     };
   }, [layoutKey]);
+  const layout = schematic.key === layoutKey ? schematic.positions : null;
+  // Provisional rows give way to Hydrolog's layout once it can read the network (D10);
+  // this is part of opening, not an edit
+  useEffect(() => {
+    if (state.provisional && layout) setState((old) => ({ ...placeAll(old, layout), provisional: false }));
+  }, [state.provisional, layout]);
+  const tidy = () => {
+    if (layout) setState((old) => ({ ...placeAll(old, layout), provisional: false }));
+  };
+  const shownRefusal = schematic.key === layoutKey && schematic.error ? schematic.error.text : null;
+  let tidyBlocked = null;
+  if (!ready) tidyBlocked = texts.canvas.tidyWaiting;
+  else if (shownRefusal) tidyBlocked = t(texts.schematic.failed, { message: shownRefusal });
+  else if (!layout) tidyBlocked = texts.canvas.tidyBusy;
 
   // --- choosing a node ------------------------------------------------------------------
   const select = (id, fromPicture = true) => {
@@ -359,7 +395,7 @@ export default function Siec({ active, path = [] }) {
     setRun(null);
     setFailure(null);
     setNote(null);
-    setSchematic({ doc: null, key: null, error: null, busy: false });
+    setSchematic(NO_LAYOUT);
   };
 
   const save = () => {
@@ -443,24 +479,27 @@ export default function Siec({ active, path = [] }) {
   };
 
   const view = state.view === "table" ? "table" : "schem";
-  const schematicBody = () => {
-    if (schematic.doc) {
-      return html`<${Schematic}
-        schematic=${schematic.doc}
-        words=${words}
-        values=${values}
-        selected=${state.selected}
-        onSelect=${select}
-        svgRef=${schematicSvg}
-        titleId="siec-schem-title"
-      />`;
-    }
-    if (schematic.error) return html`<div class="form-errors" role="alert" data-schematic="error">${t(texts.schematic.failed, { message: schematic.error.text })}</div>`;
+  // The canvas, once every node has a cell; a network opened without positions that
+  // Hydrolog can read waits for its layout instead of showing the provisional rows first
+  const waiting =
+    state.skeleton.some((node) => !node.position) ||
+    (state.provisional && ((!forms && !formsError) || (ready && !layout && !shownRefusal)));
+  const canvas = () => {
     if (!state.skeleton.length) return html`<p class="empty-note" data-schematic="empty">${texts.schematic.empty}</p>`;
-    const waiting = built && built.problems.length ? built.problems[0] : null;
-    if (waiting) return html`<p class="empty-note" data-schematic="waiting">${t(texts.schematic.invalid, { problem: waiting.node ? `${waiting.node} · ${waiting.key.split(".").pop()}` : waiting.key })}</p>`;
-    if (missing.length) return html`<p class="empty-note" data-schematic="waiting">${t(texts.schematic.files, { missing: missing.join("; ") })}</p>`;
-    return html`<p class="empty-note" role="status" data-schematic="busy">${texts.schematic.busy}</p>`;
+    if (waiting) return html`<p class="empty-note" role="status" data-schematic="busy">${texts.schematic.busy}</p>`;
+    return html`<${NetworkCanvas}
+      inputs=${state}
+      words=${words}
+      values=${values}
+      selected=${state.selected}
+      tidy=${{ blocked: tidyBlocked }}
+      refusal=${shownRefusal}
+      onTidy=${tidy}
+      onEdit=${(next) => setState({ ...next, provisional: false })}
+      onSelect=${select}
+      svgRef=${schematicSvg}
+      titleId="siec-schem-title"
+    />`;
   };
   const center = {
     label: texts.schematic.title,
@@ -486,7 +525,7 @@ export default function Siec({ active, path = [] }) {
               <h3 class="card-title" id="siec-schem-title">${texts.schematic.title}</h3>
               <span class="card-sub">${texts.schematic.sub}</span>
             </div>
-            <div class=${`chart schem-v${schematic.busy ? " drawing" : ""}`}>${schematicBody()}</div>
+            ${canvas()}
             <div class="chart-legend">
               ${["subcatchment", "reach", "junction", "reservoir", "outlet"].map(
                 (kind) => html`<span><i class=${`ng t-${kind}`} aria-hidden="true"></i>${texts.kinds[kind].noun}</span>`,

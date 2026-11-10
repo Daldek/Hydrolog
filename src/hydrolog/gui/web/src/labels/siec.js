@@ -1,17 +1,17 @@
 /**
  * Texts of „Sieć i trasowanie” (plan S4): the network, its nodes and their forms, the
- * schematic, the results and the exports. Field labels and help add to the shared ones of
- * labels/options.js and to the catalog's Polish descriptions (node-model.js reads them),
- * by the part of a node: `watershed`, `runoff`, `rainfall`, `reach` (every routing
- * method and a reservoir), `given` (a subcatchment's own discharges), `network`, and
- * `any`.
+ * canvas of the schematic (plan 2026-11-10-network-editor), the results and the exports.
+ * Field labels and help add to the shared ones of labels/options.js and to the catalog's
+ * Polish descriptions (node-model.js reads them), by the part of a node: `watershed`,
+ * `runoff`, `rainfall`, `reach` (every routing method and a reservoir), `given` (a
+ * subcatchment's own discharges), `network`, and `any`.
  */
 
 export const siec = {
   context: "{name} · {nodes}",
   nodeForms: ["węzeł", "węzły", "węzłów"],
   nodeTitle: "{kind} {id}",
-  hint: "Kliknij węzeł: ustawienia w panelu Dane, wynik w panelu Wyniki",
+  hint: "Kliknij węzeł: ustawienia w panelu Dane, wynik w panelu Wyniki; przeciągnij go, by przesunąć",
   compute: "Oblicz sieć",
   computing: "Liczenie sieci…",
   lastRun: "ostatnio {time}",
@@ -164,7 +164,7 @@ export const siec = {
   },
   schematic: {
     title: "Schemat sieci",
-    sub: "hydrolog-network-schematic/1 z route schematic: źródła u góry, wylot na dole, dopływy z obu stron linii głównej",
+    sub: "źródła u góry, wylot na dole; węzeł przesuwasz o pola siatki, „Uporządkuj” przywraca układ Hydrologa",
     area: "{area} km²",
     values: "{peak} · {time}",
     result: "Qp {peak} m³/s po {time} h, V {volume} tys. m³",
@@ -173,9 +173,51 @@ export const siec = {
     legend: "Przy węźle: szczyt Qp [m³/s] · czas do szczytu [h:min]",
     busy: "Układanie schematu…",
     empty: "Schemat pojawi się po wczytaniu sieci.",
-    failed: "Hydrolog nie ułożył schematu: {message}",
-    invalid: "Schemat pojawi się po poprawieniu danych ({problem}).",
-    files: "Schemat pojawi się po wczytaniu plików sieci: {missing}.",
+    failed: "Hydrolog nie może ułożyć tej sieci: {message}",
+  },
+  /** The canvas of the schematic: its tools, keys, marks and what the live region says. */
+  canvas: {
+    tools: "Narzędzia schematu",
+    tidy: "Uporządkuj",
+    tidyTitle: "Ustaw węzły tak, jak układa je Hydrolog (route schematic)",
+    tidyWaiting: "Uporządkuj działa, gdy Hydrolog może odczytać sieć: uzupełnij dane węzłów i pliki",
+    tidyBusy: "Hydrolog układa sieć…",
+    tidied: "Uporządkowano schemat: węzły stoją tak, jak układa je Hydrolog.",
+    move: "Przesuń",
+    moveTitle: "Przesuń wybrany węzeł: potem kliknij wolne pole schematu (albo Shift ze strzałką)",
+    moveNone: "Najpierw wybierz węzeł, który chcesz przesunąć",
+    moveCancel: "Przerwij",
+    prompt: "Kliknij wolne pole, na które ma przejść {id}; Esc przerywa.",
+    moveStopped: "Przerwano przesuwanie {id}.",
+    moved: "Przesunięto {id}.",
+    movedTo: "Przesunięto {id} {direction}.",
+    directions: { up: "w górę", down: "w dół", left: "w lewo", right: "w prawo" },
+    taken: "Nie można przesunąć {id}: to pole zajmuje {other}.",
+    edge: "Nie można przesunąć {id} dalej: to skraj siatki.",
+    zoomIn: "Powiększ",
+    zoomInTitle: "Powiększ schemat (+)",
+    zoomOut: "Pomniejsz",
+    zoomOutTitle: "Pomniejsz schemat (−)",
+    fit: "Dopasuj",
+    fitTitle: "Pokaż całą sieć w oknie schematu",
+    zoomed: "Powiększenie {percent} %.",
+    fitted: "Schemat dopasowany do okna.",
+    keys: "Skróty",
+    keysTitle: "Klawisze schematu (także ?)",
+    /** The keys of the canvas, while one of its nodes has the focus: [keys, what they do]. */
+    keyList: [
+      ["Strzałki", "najbliższy węzeł w tym kierunku"],
+      ["Enter, Spacja", "wybierz węzeł: ustawienia w panelu Dane"],
+      ["Shift + strzałka", "przesuń węzeł o jedno pole"],
+      ["+, −", "powiększ, pomniejsz"],
+      ["?", "pokaż albo ukryj te skróty"],
+      ["Esc", "przerwij przesuwanie"],
+    ],
+    described:
+      "Strzałki: najbliższy węzeł w tym kierunku. Enter albo Spacja: wybierz węzeł. Shift ze strzałką: przesuń węzeł o jedno pole. Plus i minus: powiększenie. Znak zapytania: lista skrótów.",
+    provisional: "Układ tymczasowy: węzły stoją w rzędach według odległości od źródeł. Hydrolog ułoży sieć, gdy odczyta jej dane.",
+    dropped: "Pominięto nieprawidłowe położenie węzłów: {nodes}.",
+    placed: "Węzły bez położenia albo na zajętym polu ustawiono obok sąsiadów: {nodes}.",
   },
   nodeTable: {
     title: "Wyniki węzłów",
@@ -236,7 +278,7 @@ export const siec = {
     result: "Wynik",
     resultTitle: "Dokument wyniku hydrolog-result/1 ostatniego obliczenia",
     png: "Schemat",
-    pngTitle: "Schemat sieci tak, jak go widać, jako obraz PNG",
+    pngTitle: "Schemat sieci tak, jak go widać, bez zaznaczeń edycji, jako obraz PNG",
     svg: "Schemat Hydrologa",
     svgTitle: "Schemat narysowany przez Hydrolog (route network --schematic) jako SVG",
     afterRun: "Dostępne po „Oblicz sieć”",

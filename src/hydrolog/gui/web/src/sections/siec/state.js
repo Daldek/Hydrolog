@@ -1,9 +1,11 @@
 // State of „Sieć i trasowanie” (plan D9, S4): the network being edited, kept in the
 // browser under "hydrolog-gui/siec/2" (inputs only, no results): where it came from, its
-// structure (ids, types, inflows; not edited, plan D18), the values of the network and of
-// each node, the session files it reads (the inflows file and its time column) and the
-// chosen node and view. A first visit has no network: it opens from a file or a hand-off
-// (the guide's worked example, instrukcja/#siec, is a file to load).
+// structure (ids, types, inflows, which are not edited, plan D18; and the cell of every
+// node on the canvas, plan 2026-11-10-network-editor, D3, D10), the values of the network
+// and of each node, the session files it reads (the inflows file and its time column),
+// whether its layout is provisional (rows until Hydrolog lays it out) and the chosen node
+// and view. A first visit has no network: it opens from a file or a hand-off (the guide's
+// worked example, instrukcja/#siec, is a file to load).
 //
 // Another part of the page opens a network here with openNetwork(document, {name}) (the
 // hand-off of S6); the section takes it when it is mounted, or on its first render.
@@ -15,6 +17,7 @@ import { t } from "../../labels/common.js";
 import { siec as texts } from "../../labels/siec.js";
 import { navigate } from "../../router.js";
 import { registerRanges } from "../../ui/info.js";
+import { cellOf, placeMissing, provisionalRows } from "./editor/geometry.js";
 import { buildForms, HELP_COMMANDS, KINDS, METHODS, networkValues, nodeValues, skeletonOf } from "./node-model.js";
 
 /** The section's id and the key of its inputs. */
@@ -44,6 +47,7 @@ export function initialState() {
     timeColumn: "",
     selected: null,
     view: "schem",
+    provisional: false,
   };
 }
 
@@ -102,6 +106,30 @@ export function withSessionNames(doc) {
 }
 
 /**
+ * A structure with a cell for every node (plan 2026-11-10-network-editor, D10): as it is
+ * when every node has a cell of its own; in rows by the longest distance from a headwater,
+ * and provisional, when no node has one (Hydrolog's layout replaces them once it can read
+ * the network); otherwise the cells it has, and the free cell nearest a neighbour for every
+ * node without one or on a taken cell.
+ *
+ * @param {Array<{id: string, from: string[]|null, position?: {x: number, y: number}}>}
+ *   skeleton the structure, with the valid positions it has
+ * @returns {{skeleton: object[], provisional: boolean}} the structure with every node's
+ *   position, and whether they are provisional rows
+ */
+export function placeSkeleton(skeleton) {
+  const provisional = !skeleton.some((node) => node.position);
+  const cells = provisional ? provisionalRows(skeleton) : placeMissing(skeleton).cells;
+  return {
+    skeleton: skeleton.map((node) => {
+      const [x, y] = cells.get(node.id);
+      return node.position && node.position.x === x && node.position.y === y ? node : { ...node, position: { x, y } };
+    }),
+    provisional,
+  };
+}
+
+/**
  * The state of a network document.
  *
  * @param {object} doc hydrolog-network/1 (checked with documentProblems)
@@ -110,20 +138,68 @@ export function withSessionNames(doc) {
  * @returns {object} the state
  */
 export function stateOf(doc, source, keep = {}) {
-  const skeleton = skeletonOf(doc);
+  const placed = placeSkeleton(skeletonOf(doc));
   const nodes = {};
   for (const node of doc.nodes) nodes[String(node.id)] = nodeValues(node);
-  const outlet = skeleton.find((node) => node.type === "outlet");
+  const outlet = placed.skeleton.find((node) => node.type === "outlet");
   return {
     ...initialState(),
     source,
     network: networkValues(doc),
-    skeleton,
+    skeleton: placed.skeleton,
     nodes,
     inflowsFile: keep.inflowsFile || "",
     timeColumn: keep.timeColumn || "",
-    selected: outlet ? outlet.id : skeleton.length ? skeleton[0].id : null,
+    selected: outlet ? outlet.id : placed.skeleton.length ? placed.skeleton[0].id : null,
+    provisional: placed.provisional,
   };
+}
+
+/**
+ * What opening a document did to its positions, for the note of the load (D10): the
+ * nodes whose position is not a cell of the grid, and, when the document had positions,
+ * the nodes placed anew (without a position, or on a cell a node before them took).
+ *
+ * @param {object} doc hydrolog-network/1 as it was opened
+ * @param {object} state its state (stateOf)
+ * @returns {string[]} the lines of the note, in Polish
+ */
+export function placementNotes(doc, state) {
+  const dropped = [];
+  const moved = [];
+  doc.nodes.forEach((node, index) => {
+    const given = cellOf(node.position);
+    if (node.position !== undefined && !given) dropped.push(String(node.id));
+    const now = state.skeleton[index].position;
+    if (!state.provisional && (!given || given[0] !== now.x || given[1] !== now.y)) moved.push(String(node.id));
+  });
+  const lines = [];
+  if (dropped.length) lines.push(t(texts.canvas.dropped, { nodes: dropped.join(", ") }));
+  if (moved.length) lines.push(t(texts.canvas.placed, { nodes: moved.join(", ") }));
+  return lines;
+}
+
+/**
+ * The structure without the cells: what the layout of Hydrolog depends on.
+ *
+ * @param {Array<{id: string, type: string, from: string[]|null}>} skeleton the structure
+ * @returns {Array<{id: string, type: string, from: string[]|null}>} ids, types, inflows
+ */
+export function structureOf(skeleton) {
+  return skeleton.map((node) => ({ id: node.id, type: node.type, from: node.from }));
+}
+
+/**
+ * A network document without what changes no computation (plan 2026-11-10-network-editor,
+ * D3, D11): the nodes' positions and descriptions and the network's description. The key
+ * that marks a result stale is made of it, and Hydrolog lays it out anew.
+ *
+ * @param {object} document hydrolog-network/1
+ * @returns {object} the document without them
+ */
+export function withoutPicture(document) {
+  const { description: _network, ...rest } = document;
+  return { ...rest, nodes: document.nodes.map(({ position: _cell, description: _text, ...node }) => node) };
 }
 
 /**

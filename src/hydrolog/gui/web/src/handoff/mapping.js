@@ -33,6 +33,7 @@ import {
   usedTexts,
   usesLutz,
 } from "../sections/hydrogram/state.js";
+import { withoutPicture } from "../sections/siec/state.js";
 import { MARKS, PAYLOAD_SCHEMA, buildHandoff, momentText, receivedOf, toolName } from "./handoff.js";
 import { canonical, isObject } from "./validate.js";
 
@@ -451,12 +452,13 @@ export function siecHandoff({ subject, source, document, result = null, version,
 
 /**
  * What Sieć keeps of a hand-off it opens: the record and its document as one text, to
- * tell whether the network was changed since.
+ * tell whether the network was changed since; the text leaves out the nodes' positions
+ * and descriptions, which change no computation (siec/state.js withoutPicture).
  *
  * @param {object} doc the hand-off
  * @param {object} payload its network as Sieć opens it (session names of its files)
  * @returns {object} the record
  */
 export function siecReceived(doc, payload) {
-  return { ...receivedOf(doc), key: canonical(payload) };
+  return { ...receivedOf(doc), key: canonical(withoutPicture(payload)) };
 }

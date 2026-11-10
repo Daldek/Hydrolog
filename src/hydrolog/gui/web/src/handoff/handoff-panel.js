@@ -16,7 +16,7 @@ import { handoffLabels as texts } from "../labels/handoff.js";
 import { siec as siecTexts } from "../labels/siec.js";
 import { navigate } from "../router.js";
 import { fieldLabel, handoffMissing } from "../sections/hydrogram/state.js";
-import { fileStem, openNetwork, withSessionNames } from "../sections/siec/state.js";
+import { fileStem, openNetwork, withoutPicture, withSessionNames } from "../sections/siec/state.js";
 import { copyText, downloadBlob, fileBase } from "../ui/export-panel.js";
 import { MenuButton } from "../ui/menu.js";
 import { toast } from "../ui/toast.js";
@@ -495,7 +495,7 @@ export function SiecHandoff({ state, document, valid, run, stale }) {
   const subject = String((document && document.name) || "").trim() || fileStem(state);
   const received = state.source && isObject(state.source.handoff) ? state.source.handoff : null;
   let compared = "same";
-  if (received && (!document || received.key !== canonical(document))) compared = "changed";
+  if (received && (!document || received.key !== canonical(withoutPicture(document)))) compared = "changed";
   else if (!result) compared = "none";
   else if (stale) compared = "stale";
   const ready = Boolean(document) && valid && Boolean(version);

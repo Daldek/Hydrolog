@@ -33,7 +33,8 @@ from playwright.sync_api import Locator, Page, expect
 
 import hydrolog
 from hydrolog.catalog import run_command
-from hydrolog.testing import example_network_document
+from hydrolog.routing import RoutingNetwork
+from hydrolog.testing import example_network_document, placed
 from tests.conftest import recorded_fetch, recorded_pmaxtp
 from tests.e2e.conftest import (
     FIXTURES,
@@ -751,12 +752,16 @@ def test_a_network_of_two_subcatchments_opens_in_siec_beside_hydrografs_result(
         f"ten wynik to Hydrolog {hydrolog.__version__}."
     )
 
-    # Written again from Sieć: the same network, its provenance and Hydrolog's outlet
+    # Written again from Sieć: the same network at the cells of Hydrolog's layout (the
+    # canvas opened it there), its provenance and Hydrolog's outlet
     name, data = download(page, handoff_button(page, SIEC, "file"))
     assert name == "Kamiennik — dwie zlewnie.handoff.json"
     doc = json.loads(data)
     valid(doc)
-    assert doc["payload"] == TWO
+    layout = RoutingNetwork.from_document(TWO).schematic()["nodes"]
+    cells = {node["id"]: (node["x"], node["y"]) for node in layout}
+    nodes = [placed(node, position=cells[node["id"]]) for node in TWO["nodes"]]
+    assert doc["payload"] == {**TWO, "nodes": nodes}
     assert doc["provenance"] == handed["provenance"]
     assert doc["producer"] == {
         "tool": "hydrolog",

@@ -20,6 +20,7 @@ import { fieldModel, toOptions, validate, withReason } from "../../forms/model.j
 import { t } from "../../labels/common.js";
 import { reasonText } from "../../labels/errors.js";
 import { siec as texts } from "../../labels/siec.js";
+import { cellOf } from "./editor/geometry.js";
 
 /** The node types the forms know (hydrolog-network/1). */
 export const KINDS = Object.freeze(["subcatchment", "reach", "reservoir", "junction", "outlet"]);
@@ -472,18 +473,25 @@ export function networkValues(doc) {
 }
 
 /**
- * The structure of a network: each node's id, type and inflows (not edited, plan D18).
+ * The structure of a network: each node's id, type, inflows (not edited, plan D18) and
+ * the cell of its position when it is one (plan 2026-11-10-network-editor, D3).
  *
  * @param {object} doc hydrolog-network/1
- * @returns {Array<{id: string, type: string, from: string[]|null}>} the nodes in document
- *   order; `from` is null where the document has none
+ * @returns {Array<{id: string, type: string, from: string[]|null,
+ *   position?: {x: number, y: number}}>} the nodes in document order; `from` is null
+ *   where the document has none, `position` is left out where it is missing or invalid
  */
 export function skeletonOf(doc) {
-  return (doc.nodes || []).map((node) => ({
-    id: String(node.id),
-    type: String(node.type),
-    from: Array.isArray(node.from) ? node.from.map(String) : null,
-  }));
+  return (doc.nodes || []).map((node) => {
+    const made = {
+      id: String(node.id),
+      type: String(node.type),
+      from: Array.isArray(node.from) ? node.from.map(String) : null,
+    };
+    const cell = cellOf(node.position);
+    if (cell) made.position = { x: cell[0], y: cell[1] };
+    return made;
+  });
 }
 
 // --- what a form shows ---------------------------------------------------------------
@@ -811,10 +819,12 @@ function rainfallJson(layout, values) {
 }
 
 /**
- * The node of the document made of the values (they are checked with nodeProblems).
+ * The node of the document made of the values (they are checked with nodeProblems), its
+ * position last, after the fields of its kind (the canonical order of ADR-0023).
  *
  * @param {object} forms the forms of buildForms
- * @param {{id: string, type: string, from: string[]|null}} node the node's structure
+ * @param {{id: string, type: string, from: string[]|null,
+ *   position?: {x: number, y: number}}} node the node's structure
  * @param {object} values the node's values
  * @returns {object} the node of hydrolog-network/1
  */
@@ -847,6 +857,7 @@ export function nodeOf(forms, node, values) {
     if (layout.table) Object.assign(made, tableJson(layout.table, values[layout.table.key]));
     Object.assign(made, jsonOf(layout.wave, values, ""));
   }
+  if (node.position) made.position = { x: node.position.x, y: node.position.y };
   return made;
 }
 
