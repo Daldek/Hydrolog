@@ -348,13 +348,24 @@ export function placeMissing(skeleton) {
 }
 
 /**
+ * Whether a value is an area that weighs a branch of the layout: a positive number, as
+ * the library takes a headwater's `watershed.area_km2` (ADR-0013, ADR-0025).
+ *
+ * @param {unknown} value the area [km²], or anything
+ * @returns {boolean} true for a finite number above 0
+ */
+export function isArea(value) {
+  return typeof value === "number" && Number.isFinite(value) && value > 0;
+}
+
+/**
  * The lines of the picture as the library ranks them (ADR-0013, rules 1 and 2): the
  * inflows of a node ranked by the area that drains through them when every headwater has
- * an area, else by their count of nodes, ties to the smaller id; the main stem runs from
- * the outlet up through the best inflow of every node, and a tributary starts at any other
- * inflow and joins the node it flows into. In a network that is not one tree below one
- * outlet (a file being mended), the nodes that do not reach the first outlet are on lines
- * that join nothing.
+ * an area (isArea), else by their count of nodes, ties to the smaller id; the main stem
+ * runs from the outlet up through the best inflow of every node, and a tributary starts
+ * at any other inflow and joins the node it flows into. In a network that is not one tree
+ * below one outlet (a file being mended), the nodes that do not reach the first outlet
+ * are on lines that join nothing.
  *
  * @param {Array<{id: string, type: string, from: string[]|null}>} skeleton the structure
  * @param {Map<string, number|null>} areas the area of a subcatchment [km²], or null when
@@ -367,7 +378,7 @@ export function linesOf(skeleton, areas) {
   const below = new Map();
   for (const node of skeleton) for (const up of inflows.get(node.id)) if (!below.has(up)) below.set(up, node.id);
   const heads = skeleton.filter((node) => !inflows.get(node.id).length);
-  const weighed = heads.every((node) => typeof areas.get(node.id) === "number");
+  const weighed = heads.every((node) => isArea(areas.get(node.id)));
   const size = new Map();
   const drained = new Map();
   const visiting = new Set();

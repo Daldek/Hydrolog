@@ -20,7 +20,7 @@ import { t } from "../../labels/common.js";
 import { siec as texts } from "../../labels/siec.js";
 import { navigate } from "../../router.js";
 import { registerRanges } from "../../ui/info.js";
-import { cellOf, placeMissing, provisionalRows } from "./editor/geometry.js";
+import { cellOf, isArea, placeMissing, provisionalRows } from "./editor/geometry.js";
 import { buildForms, HELP_COMMANDS, KINDS, METHODS, networkValues, nodeValues, skeletonOf } from "./node-model.js";
 
 /** The section's id and the key of its inputs. */
@@ -169,9 +169,10 @@ export function withSessionNames(doc) {
 /**
  * A structure with a cell for every node (plan 2026-11-10-network-editor, D10): as it is
  * when every node has a cell of its own; in rows by the longest distance from a headwater,
- * and provisional, when no node has one (Hydrolog's layout replaces them once it can read
- * the network); otherwise the cells it has, and the free cell nearest a neighbour for every
- * node without one or on a taken cell.
+ * and provisional, when no node has one (Hydrolog's layout of the structure replaces them
+ * once the structure has no problem, plan 2026-11-10-network-wizard, D8); otherwise the
+ * cells it has, and the free cell nearest a neighbour for every node without one or on a
+ * taken cell.
  *
  * @param {Array<{id: string, from: string[]|null, position?: {x: number, y: number}}>}
  *   skeleton the structure, with the valid positions it has
@@ -252,6 +253,29 @@ export function placementNotes(doc, state) {
 export function withoutPicture(document) {
   const { description: _network, ...rest } = document;
   return { ...rest, nodes: document.nodes.map(({ position: _cell, description: _text, ...node }) => node) };
+}
+
+/**
+ * The document of which Hydrolog lays out the structure alone (`route schematic
+ * --structure-only`, ADR-0025; plan 2026-11-10-network-wizard, D8): each node's id, type
+ * and inflows, and the area of each subcatchment that has a positive one, which weighs
+ * the branches as in the library. Nothing else: the layout must not wait for the values.
+ *
+ * @param {Array<{id: string, type: string, from: string[]|null}>} skeleton the structure
+ * @param {Map<string, number|null>} areas the area of a subcatchment [km²] (nodeWords)
+ * @returns {object} hydrolog-network/1 with the structure only
+ */
+export function structureDocument(skeleton, areas) {
+  return {
+    schema: "hydrolog-network/1",
+    nodes: skeleton.map((node) => {
+      const made = { id: node.id, type: node.type };
+      if (node.from && node.from.length) made.from = [...node.from];
+      const area = areas.get(node.id);
+      if (node.type === "subcatchment" && isArea(area)) made.watershed = { area_km2: area };
+      return made;
+    }),
+  };
 }
 
 /**

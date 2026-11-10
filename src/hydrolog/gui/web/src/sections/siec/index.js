@@ -8,10 +8,13 @@
 // subcatchments of a hand-off („Dodaj zlewnię z Hydrografa”, D10), and every edit is a
 // step of the history („Cofnij”, „Ponów”, D9). The structure is checked in the browser
 // after every edit with the library's reasons (editor/graph.js, D8) and the problems mark
-// their nodes; once the structure and the values are complete Hydrolog checks the
-// network too (`route schematic`, 300 ms after the last change), and its layout places a
-// network opened without positions and serves „Uporządkuj”. A click on a node, Enter or
-// Space, or its row in a table opens its settings in „Dane” and its result in „Wyniki”.
+// their nodes. As soon as the structure has no problem Hydrolog lays it out
+// (`route schematic --structure-only`, ADR-0025; plan 2026-11-10-network-wizard, D8:
+// 300 ms after a change of the structure or of a subcatchment's area, whatever values the
+// nodes still miss), and that layout places a network opened without positions and
+// serves „Uporządkuj”; once the values are complete too Hydrolog checks the whole network
+// (`route schematic`, 300 ms after the last change). A click on a node, Enter or Space,
+// or its row in a table opens its settings in „Dane” and its result in „Wyniki”.
 // The network is computed on „Oblicz sieć” only: the document, positions and descriptions
 // included, is written to the session's `in/` and `route network` routes it (with the
 // inflows file and the rating files it reads); a change of the structure or the values
@@ -62,6 +65,7 @@ import {
   placeSkeleton,
   SECTION,
   stateOf,
+  structureDocument,
   useForms,
   useOpened,
   withoutPicture,
@@ -71,17 +75,23 @@ import { kindNoun, problemText, refusalText } from "./words.js";
 
 registerInfo(routing);
 
-/** Delay of Hydrolog's layout after the last change of the network's structure [ms]. */
+/** Delay of Hydrolog's layout and check after the last change of the network [ms]. */
 export const SCHEMATIC_DELAY_MS = 300;
 
-/** The channel of the layout's runs (the network's runs use the section's). */
+/** The channel of Hydrolog's check of a complete network (the runs use the section's). */
 export const SCHEMATIC_CHANNEL = "siec-schematic";
+
+/** The channel of Hydrolog's layout of the structure alone (ADR-0025). */
+export const LAYOUT_CHANNEL = "siec-layout";
 
 /** The most steps the history keeps (D9). */
 export const HISTORY_STEPS = 100;
 
-/** Hydrolog's layout before it is asked for. */
-const NO_LAYOUT = Object.freeze({ key: null, positions: null, error: null, busy: false });
+/** Hydrolog's check of the complete network before it is asked for. */
+const NO_CHECK = Object.freeze({ key: null, error: null });
+
+/** Hydrolog's layout of the structure before it is asked for. */
+const NO_LAYOUT = Object.freeze({ key: null, positions: null, error: null });
 
 /**
  * The part of the state the history keeps (D9): the network's values, its structure and
@@ -159,7 +169,8 @@ export default function Siec({ active, path = [] }) {
   const [state, setState, reset] = usePersistentState(SECTION, initialState);
   const [, setStatus] = useStore("status");
   const [, setContext] = useStore("context");
-  const [schematic, setSchematic] = useState(NO_LAYOUT);
+  const [check, setCheck] = useState(NO_CHECK);
+  const [laidOut, setLaidOut] = useState(NO_LAYOUT);
   const [run, setRun] = useState(null);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState(null);
@@ -174,7 +185,8 @@ export default function Siec({ active, path = [] }) {
   const chartSvg = useRef(null);
   const sequence = useRef(0);
   const running = useRef(null);
-  const drawn = useRef(0);
+  const checked = useRef(0);
+  const arranged = useRef(0);
   const renaming = useRef(null);
   // The newest state, also between an edit and its render, and the history of the edits
   const latest = useRef(state);
@@ -211,7 +223,8 @@ export default function Siec({ active, path = [] }) {
     setFailure(null);
     setTouched(new Set());
     setTried(false);
-    setSchematic(NO_LAYOUT);
+    setCheck(NO_CHECK);
+    setLaidOut(NO_LAYOUT);
     setOffer(null);
   };
   const open = (doc, source, lines) => {
@@ -373,21 +386,27 @@ export default function Siec({ active, path = [] }) {
   // Neither a move nor a description marks the result stale: the key leaves them out (D11)
   const currentKey = built ? JSON.stringify([withoutPicture(built.document), runOptions(stem, name)]) : null;
   // Hydrolog checks the complete network after every change of what it computes (D8,
-  // point 3), so its verdict is never older than the values; its layout is of the same
-  // document
-  const layoutKey = ready ? JSON.stringify([currentKey, needed.ratings]) : null;
+  // point 3), so its verdict is never older than the values
+  const checkKey = ready ? JSON.stringify([currentKey, needed.ratings]) : null;
+  // Hydrolog lays out the structure as soon as the browser's checks find no problem in
+  // it, whatever values the nodes still miss (plan 2026-11-10-network-wizard, D8); a move,
+  // a description or a value other than a subcatchment's area changes nothing of it
+  const areas = useMemo(() => new Map([...words].map(([id, word]) => [id, word.area])), [words]);
+  const shaped = Boolean(forms && state.source) && structure.length === 0;
+  const layoutKey = useMemo(
+    () => (shaped ? JSON.stringify(structureDocument(state.skeleton, areas)) : null),
+    [shaped, shape, areas],
+  );
 
-  // --- Hydrolog's layout: its check of the network, the cells of „Uporządkuj” -----------
+  // --- Hydrolog's check of the complete network ----------------------------------------
   useEffect(() => {
-    if (!layoutKey || layoutKey === schematic.key) return undefined;
+    if (!checkKey || checkKey === check.key) return undefined;
     const controller = new AbortController();
     const timer = setTimeout(async () => {
-      drawn.current += 1;
-      const mine = drawn.current;
-      setSchematic((old) => ({ ...old, busy: true }));
-      // Without the positions, so Hydrolog lays the network out itself; inline, so the
-      // session holds no file until „Oblicz sieć”; a network that reads rating files
-      // needs its document in "in/" beside them
+      checked.current += 1;
+      const mine = checked.current;
+      // Inline, so the session holds no file until „Oblicz sieć”; a network that reads
+      // rating files needs its document in "in/" beside them
       const plain = withoutPicture(built.document);
       const options = { ...runOptions(stem, name) };
       delete options.schematic;
@@ -400,12 +419,36 @@ export default function Siec({ active, path = [] }) {
           options.network = plain;
         }
         const envelope = await api.run("route schematic", options, { channel: SCHEMATIC_CHANNEL, signal: controller.signal });
-        if (mine !== drawn.current || envelope.status !== "ok") return;
-        const positions = Object.fromEntries(envelope.result.nodes.map((node) => [node.id, { x: node.x, y: node.y }]));
-        setSchematic({ key: layoutKey, positions, error: null, busy: false });
+        if (mine !== checked.current || envelope.status !== "ok") return;
+        setCheck({ key: checkKey, error: null });
       } catch (error) {
-        if ((error && error.name === "AbortError") || mine !== drawn.current) return;
-        setSchematic({ key: layoutKey, positions: null, error: runFailure(error, rules), busy: false });
+        if ((error && error.name === "AbortError") || mine !== checked.current) return;
+        setCheck({ key: checkKey, error: runFailure(error, rules) });
+      }
+    }, SCHEMATIC_DELAY_MS);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [checkKey]);
+  const refusal = check.key === checkKey && check.error ? check.error : null;
+
+  // --- Hydrolog's layout of the structure: the cells of „Uporządkuj” ---------------------
+  useEffect(() => {
+    if (!layoutKey || layoutKey === laidOut.key) return undefined;
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      arranged.current += 1;
+      const mine = arranged.current;
+      const options = { network: JSON.parse(layoutKey), structure_only: true };
+      try {
+        const envelope = await api.run("route schematic", options, { channel: LAYOUT_CHANNEL, signal: controller.signal });
+        if (mine !== arranged.current || envelope.status !== "ok") return;
+        const positions = Object.fromEntries(envelope.result.nodes.map((node) => [node.id, { x: node.x, y: node.y }]));
+        setLaidOut({ key: layoutKey, positions, error: null });
+      } catch (error) {
+        if ((error && error.name === "AbortError") || mine !== arranged.current) return;
+        setLaidOut({ key: layoutKey, positions: null, error: runFailure(error, rules) });
       }
     }, SCHEMATIC_DELAY_MS);
     return () => {
@@ -413,9 +456,11 @@ export default function Siec({ active, path = [] }) {
       controller.abort();
     };
   }, [layoutKey]);
-  const layout = schematic.key === layoutKey ? schematic.positions : null;
-  // Provisional rows give way to Hydrolog's layout once it can read the network (D10);
-  // this is part of opening, not an edit: every step of the history takes the cells too
+  const layout = laidOut.key === layoutKey ? laidOut.positions : null;
+  const misfit = laidOut.key === layoutKey && laidOut.error ? laidOut.error : null;
+  // Provisional rows give way to Hydrolog's layout once the structure has no problem
+  // (D10); this is part of opening, not an edit: every step of the history takes the
+  // cells too
   useEffect(() => {
     if (!state.provisional || !layout) return;
     const base = latest.current;
@@ -427,10 +472,9 @@ export default function Siec({ active, path = [] }) {
   const tidy = () => {
     if (layout) apply({ ...placeAll(latest.current, layout), provisional: false });
   };
-  const refusal = schematic.key === layoutKey && schematic.error ? schematic.error : null;
   let tidyBlocked = null;
-  if (!ready) tidyBlocked = texts.canvas.tidyWaiting;
-  else if (refusal) tidyBlocked = t(texts.schematic.failed, { message: refusal.text });
+  if (!shaped) tidyBlocked = texts.canvas.tidyWaiting;
+  else if (misfit) tidyBlocked = t(texts.schematic.failed, { message: misfit.text });
   else if (!layout) tidyBlocked = texts.canvas.tidyBusy;
 
   // --- the problems on the canvas (D8) ---------------------------------------------------
@@ -462,13 +506,20 @@ export default function Siec({ active, path = [] }) {
       list.push({ key: `fields-${node}`, reason: "fields", text, node });
       if (node !== null) mark(node, text);
     }
-    if (refusal) {
-      const text = t(texts.problems.hydrolog, { message: refusal.text });
-      list.push({ key: "hydrolog", reason: refusal.reason || "hydrolog", text, node: refusal.node });
-      if (refusal.node) mark(refusal.node, refusal.text);
+    // Hydrolog's refusals: of the complete network, and of the structure alone when it
+    // says something else (the two read the structure with one check)
+    const refusals = [
+      ["hydrolog", refusal],
+      ["hydrolog-layout", misfit && (!refusal || misfit.text !== refusal.text) ? misfit : null],
+    ];
+    for (const [key, found] of refusals) {
+      if (!found) continue;
+      const text = t(texts.problems.hydrolog, { message: found.text });
+      list.push({ key, reason: found.reason || "hydrolog", text, node: found.node });
+      if (found.node) mark(found.node, found.text);
     }
     return { list, marks, loops };
-  }, [structure, visible, refusal, rules]);
+  }, [structure, visible, refusal, misfit, rules]);
 
   // --- choosing a node ------------------------------------------------------------------
   const choose = (id) => {
@@ -704,7 +755,8 @@ export default function Siec({ active, path = [] }) {
     setRun(null);
     setFailure(null);
     setNote(null);
-    setSchematic(NO_LAYOUT);
+    setCheck(NO_CHECK);
+    setLaidOut(NO_LAYOUT);
     setOffer(null);
     setTouched(new Set());
     setTried(false);
@@ -815,11 +867,12 @@ export default function Siec({ active, path = [] }) {
   };
 
   const view = state.view === "table" ? "table" : "schem";
-  // The canvas, once every node has a cell; a network opened without positions that
-  // Hydrolog can read waits for its layout instead of showing the provisional rows first
+  // The canvas, once every node has a cell; a network opened without positions whose
+  // structure has no problem waits for Hydrolog's layout instead of showing the
+  // provisional rows first
   const waiting =
     state.skeleton.some((node) => !node.position) ||
-    (state.provisional && ((!forms && !formsError) || (ready && !layout && !refusal)));
+    (state.provisional && ((!forms && !formsError) || (shaped && !layout && !misfit)));
   const canvas = () => {
     if (!state.source) return html`<p class="empty-note" data-schematic="empty">${texts.schematic.empty}</p>`;
     if (waiting || !forms) return html`<p class="empty-note" role="status" data-schematic="busy">${texts.schematic.busy}</p>`;

@@ -10,7 +10,9 @@ examples go through the form to ``api/run`` and run. ``router.js``,
 real server), ``ui/info.js``, Polecenia's ``state.js`` and
 ``forms/result-view.js`` (on real envelopes) follow. The geometry of Sieć's canvas
 (plan 2026-11-10-network-editor, D5, D6, D10: ``editor/geometry.js``) draws rule D
-and ranks the lines as the library does, computed here in Python, and its edits
+and ranks the lines as the library does, computed here in Python, also on the document
+of the structure alone that Sieć sends Hydrolog to lay out (``state.js``'
+``structureDocument``, ADR-0025: only positive areas weigh), and its edits
 (``editor/edits.js``) share the nodes they do not change. Sieć's editor follows:
 ``editor/graph.js`` reports every structure reason with the library's details, judges
 links and ids, and finds the problem ``RoutingNetwork.from_document`` raises on each
@@ -27,7 +29,7 @@ from typing import Any
 import pytest
 
 from hydrolog.exceptions import InvalidParameterError
-from hydrolog.routing import RoutingNetwork
+from hydrolog.routing import RoutingNetwork, structure_schematic
 from hydrolog.routing._layout import edge_route, layout
 from tests.e2e.conftest import Tab
 from tests.unit._network_documents import STRUCTURE_CORPUS
@@ -984,6 +986,92 @@ def test_the_canvas_ranks_the_lines_as_the_library_does(page: Any) -> None:
     # The main stem and the node each tributary joins, so the colours and the sides of
     # the labels are the library's, with areas and with counts of nodes
     assert got == [case["lines"] for case in cases]
+
+
+def test_the_structure_sent_to_hydrolog_ranks_the_lines_as_the_canvas(
+    page: Any,
+) -> None:
+    cases: list[dict[str, Any]] = []
+    for seed in range(24):
+        root, inflows = random_tree(
+            4 + 2 * seed, seed, fan_in=1 + seed % 4, deep=(seed % 4) / 4
+        )
+        heads = sorted(node for node, ups in inflows.items() if not ups)
+        chance = random.Random(seed)
+        areas: dict[str, float] = {
+            node: round(chance.uniform(0.5, 50), 2) for node in heads
+        }
+        # Every head with a positive area, or one head with 0, a negative one or none
+        odd = heads[seed % len(heads)]
+        if seed % 4 == 1:
+            areas[odd] = 0
+        elif seed % 4 == 2:
+            areas[odd] = -3.5
+        elif seed % 4 == 3:
+            del areas[odd]
+        kinds = {1: "reach"}
+        skeleton = [
+            {
+                "id": node,
+                "type": kinds.get(len(ups), "junction") if ups else "subcatchment",
+                "from": list(ups) or None,
+            }
+            for node, ups in inflows.items()
+        ]
+        skeleton.append({"id": "END", "type": "outlet", "from": [root]})
+        cases.append({"skeleton": skeleton, "areas": areas})
+    got = page.evaluate(
+        f"""async (cases) => {{ {GEOMETRY}
+          const s = await import('./src/sections/siec/state.js');
+          return cases.map(({{skeleton, areas}}) => {{
+            const known = new Map(Object.entries(areas));
+            return {{
+              document: s.structureDocument(skeleton, known),
+              lines: Object.fromEntries(g.linesOf(skeleton, known)),
+            }};
+          }}); }}""",
+        cases,
+    )
+
+    for case, found in zip(cases, got, strict=True):
+        # The document: ids, types, links and the positive areas only
+        expected = [
+            {
+                "id": node["id"],
+                "type": node["type"],
+                **({"from": node["from"]} if node["from"] else {}),
+                **(
+                    {"watershed": {"area_km2": case["areas"][node["id"]]}}
+                    if case["areas"].get(node["id"], 0) > 0
+                    else {}
+                ),
+            }
+            for node in case["skeleton"]
+        ]
+        assert found["document"] == {"schema": "hydrolog-network/1", "nodes": expected}
+        # The library's lines of the structure with every area as given, 0 and
+        # negative ones included, are the canvas's
+        given = {
+            "schema": "hydrolog-network/1",
+            "nodes": [
+                {
+                    **{key: value for key, value in node.items() if value is not None},
+                    **(
+                        {"watershed": {"area_km2": case["areas"][node["id"]]}}
+                        if node["id"] in case["areas"]
+                        else {}
+                    ),
+                }
+                for node in case["skeleton"]
+            ],
+        }
+        drawn = structure_schematic(given)
+        lines = {
+            node: {"main": line["role"] == "main", "joins": line.get("joins")}
+            for line in drawn["lines"]
+            for node in line["nodes"]
+        }
+        assert found["lines"] == lines
 
 
 def test_free_cells_provisional_rows_and_the_cells_of_an_opened_network(
