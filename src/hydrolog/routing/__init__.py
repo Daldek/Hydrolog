@@ -36,6 +36,8 @@ Time is in minutes and discharge in m3/s.
   first, then points upstream of it (:class:`OutletPoint`, :class:`ControlPoint`), each
   one closing its own residual area, joined by channels and confluences; it expands
   into the nodes of a :class:`RoutingNetwork` (:meth:`ControlPointNetwork.network`).
+* :func:`structure_schematic` -- the schematic of the structure of a network document
+  alone (ids, types, links), a draft whose values are not complete yet (ADR-0025).
 
 A new kind of node, a new method of a reach, a new kind of rainfall, a new runoff model
 and a new shape of a design storm are classes that are registered in
@@ -93,6 +95,7 @@ from hydrolog.routing.reach import (
     RoutingResult,
 )
 from hydrolog.routing.runoff import RUNOFF_MODELS, CurveNumberRunoff, RunoffModel
+from hydrolog.routing.schematic import structure_schematic
 from hydrolog.routing.sections import FlowState, TrapezoidalSection
 
 __all__ = [
@@ -137,5 +140,6 @@ __all__ = [
     "Subcatchment",
     "TrapezoidalSection",
     "cascade_weights",
+    "structure_schematic",
     "timestep_limit_min",
 ]

@@ -484,7 +484,7 @@ def _network_document(schema_id: str) -> dict[str, Any]:
 
 
 def _schematic_document(schema_id: str) -> dict[str, Any]:
-    """Return the schema of the schematic of a network (ADR-0013).
+    """Return the schema of the schematic of a network (ADR-0013, ADR-0025).
 
     Hydrolog writes the document and whoever draws it reads it, so the schema is as
     loose as the schemas of the results: an unknown field is allowed and a new optional
@@ -587,13 +587,14 @@ def _schematic_document(schema_id: str) -> dict[str, Any]:
             "peak, time to peak, volume and notices. The nodes are at their given "
             "positions (`layout` `given`, rule D, ADR-0023; the edges may cross) or "
             "laid out (`computed`). Written by `RoutingNetwork.schematic()` and by "
-            "`route network` with `schematic`; unknown fields are allowed (AGI-4.1)."
+            "`route network` with `schematic`, and for the structure of a draft alone "
+            "by `structure_schematic()` and `route schematic` with `structure_only` "
+            "(ADR-0025); unknown fields are allowed (AGI-4.1)."
         ),
         "type": "object",
         "required": [
             "schema",
             "outlet",
-            "timestep_min",
             "has_result",
             "grid",
             "lines",
@@ -604,7 +605,15 @@ def _schematic_document(schema_id: str) -> dict[str, Any]:
             "schema": {"const": schema_id},
             "name": {"type": "string", "minLength": 1},
             "outlet": identifier,
-            "timestep_min": {"type": "number", "exclusiveMinimum": 0},
+            "timestep_min": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "description": (
+                    "The time step of the network [min]: always in the schematic of a "
+                    "network; in that of a structure only when its document gives it "
+                    "(ADR-0025)."
+                ),
+            },
             "has_result": {"type": "boolean"},
             "layout": {
                 "enum": ["given", "computed"],
@@ -612,6 +621,14 @@ def _schematic_document(schema_id: str) -> dict[str, Any]:
                     "`given`: the nodes are at the positions of the network document "
                     "and the edges follow rule D (ADR-0023); `computed`: the layout of "
                     "ADR-0013. A document without it is computed."
+                ),
+            },
+            "structure_only": {
+                "type": "boolean",
+                "description": (
+                    "`true`: the schematic of the structure of a document alone (its "
+                    "ids, types and links, ADR-0025): the layout is computed and the "
+                    "nodes have no parameters. Absent in the schematic of a network."
                 ),
             },
             "grid": {
@@ -624,6 +641,11 @@ def _schematic_document(schema_id: str) -> dict[str, Any]:
             "nodes": {"type": "array", "minItems": 1, "items": node},
             "edges": {"type": "array", "items": edge},
         },
+        "if": {
+            "properties": {"structure_only": {"const": True}},
+            "required": ["structure_only"],
+        },
+        "else": {"required": ["timestep_min"]},
         "$defs": {
             "id": {"type": "string", "minLength": 1},
             "count": {"type": "integer", "minimum": 0},

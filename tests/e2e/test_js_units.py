@@ -30,7 +30,7 @@ from hydrolog.exceptions import InvalidParameterError
 from hydrolog.routing import RoutingNetwork
 from hydrolog.routing._layout import edge_route, layout
 from tests.e2e.conftest import Tab
-from tests.unit._network_documents import document, junction, outlet, reach, source
+from tests.unit._network_documents import STRUCTURE_CORPUS
 from tests.unit._schematic_checks import random_tree
 
 NBSP = "\u00a0"
@@ -1318,114 +1318,9 @@ def test_a_typed_id_is_checked_as_the_library_would(page: Any) -> None:
     ]
 
 
-# The one-problem corpus (plan D8, D13): each document has one structural problem
-# where one is possible (a network without an outlet and a link out of the outlet leave
-# a node that flows nowhere) and every field complete, as the library checks the fields
-# before the structure; the reason is the one the library raises.
-CORPUS: list[tuple[str, dict[str, Any], str]] = [
-    ("no nodes", document(), "empty"),
-    ("an id with a space", document(source("A B"), outlet("A B")), "invalid_id"),
-    (
-        "an invalid id in from",
-        document(source("A"), junction("J", "A", "bad id"), outlet("J")),
-        "invalid_id",
-    ),
-    ("a device name", document(source("con"), outlet("con")), "reserved_name"),
-    (
-        "a device name in from",
-        document(source("A"), junction("J", "A", "LPT1.txt"), outlet("J")),
-        "reserved_name",
-    ),
-    (
-        "ids that differ in case",
-        document(source("A"), source("a"), junction("J", "A", "a"), outlet("J")),
-        "duplicate_node",
-    ),
-    (
-        "ids equal when folded",
-        document(
-            source("STRASSE"),
-            source("straße"),
-            junction("J", "STRASSE", "straße"),
-            outlet("J"),
-        ),
-        "duplicate_node",
-    ),
-    (
-        "an unknown inflow",
-        document(source("A"), junction("J", "A", "X"), outlet("J")),
-        "unknown_upstream",
-    ),
-    (
-        "a repeated inflow",
-        document(source("A"), junction("J", "A", "A"), outlet("J")),
-        "duplicate_upstream",
-    ),
-    (
-        "a reach with two inflows",
-        document(
-            source("A"),
-            source("B"),
-            reach("R", "A", **{"from": ["A", "B"]}),
-            outlet("R"),
-        ),
-        "upstream_count",
-    ),
-    (
-        "a subcatchment with an inflow",
-        document(source("A"), source("B", **{"from": ["A"]}), outlet("B")),
-        "upstream_count",
-    ),
-    (
-        "a junction without inflows",
-        document(source("A"), junction("J"), junction("K", "A", "J"), outlet("K")),
-        "upstream_count",
-    ),
-    (
-        "a node that flows into two",
-        document(
-            source("A"), junction("J1", "A"), junction("J2", "A", "J1"), outlet("J2")
-        ),
-        "several_downstream",
-    ),
-    (
-        "a loop beside the stream",
-        document(
-            source("A"),
-            junction("J1", "A", "J2"),
-            junction("J2", "J1"),
-            source("B"),
-            outlet("B"),
-        ),
-        "cycle",
-    ),
-    (
-        "a node that flows into itself",
-        document(source("A"), junction("S", "S"), outlet("A")),
-        "cycle",
-    ),
-    ("no outlet", document(source("A"), junction("J", "A")), "no_outlet"),
-    (
-        "two outlets",
-        document(source("A"), source("B"), outlet("A", "O1"), outlet("B", "O2")),
-        "several_outlets",
-    ),
-    (
-        "a link out of the outlet",
-        document(source("A"), outlet("A", "O1"), junction("J", "O1")),
-        "outlet_has_downstream",
-    ),
-    (
-        "a node that flows nowhere",
-        document(source("A"), source("B"), outlet("A")),
-        "disconnected_node",
-    ),
-]
-
-
 def test_the_canvas_finds_the_problem_the_library_raises(page: Any) -> None:
     raised = []
-    for name, doc, _ in CORPUS:
+    for name, doc, _ in STRUCTURE_CORPUS:
         with pytest.raises(InvalidParameterError) as error:
             RoutingNetwork.from_document(doc)
         details = error.value.details
@@ -1439,13 +1334,13 @@ def test_the_canvas_finds_the_problem_the_library_raises(page: Any) -> None:
           found: docs.map((doc) => gr.graphProblems(nm.skeletonOf(doc), rules)
             .map((problem) => [problem.reason, problem.node_id ?? null])),
         }; }""",
-        [doc for _, doc, _ in CORPUS],
+        [doc for _, doc, _ in STRUCTURE_CORPUS],
     )
 
     # The library raises the reason each document was made for, and together they are
     # every reason the canvas reports
     assert [(name, reason) for name, reason, _ in raised] == [
-        (name, reason) for name, _, reason in CORPUS
+        (name, reason) for name, _, reason in STRUCTURE_CORPUS
     ]
     assert {reason for _, reason, _ in raised} == set(got["reasons"])
     # The canvas lists the library's problem on the library's node

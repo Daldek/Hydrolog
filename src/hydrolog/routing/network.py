@@ -39,7 +39,10 @@ not reach the outlet (``disconnected_node``). A document can also hold an id tha
 listed but not in the network (``unknown_upstream``) or a cycle (``cycle``, the nodes
 in flow order); objects cannot. The nodes are evaluated headwaters first, and among the
 nodes that are ready the smallest id first, so neither the order of the nodes in a
-list nor in a file changes anything.
+list nor in a file changes anything. The checks of the graph are two functions,
+:func:`check_links` (one node of a document) and :func:`check_graph` (the whole graph),
+which the reader of a document's structure alone shares (ADR-0025): a draft whose
+structure is wrong is refused there for the reason the network would give.
 
 **Time axes.** One time step for the whole network: the source hydrographs must have the
 same step and the same first time (``timestep_mismatch``, ``start_mismatch``); nothing
@@ -943,22 +946,7 @@ class Node(ABC):
             takes another number of them (``upstream_count``) or an id is listed twice
             (``duplicate_upstream``).
         """
-        listed = fields.get("from")
-        upstream: tuple[str, ...] = ()
-        if listed is not None:
-            if not isinstance(listed, list) or not all(
-                isinstance(item, str) for item in listed
-            ):
-                raise InvalidParameterError(
-                    f"Node {node_id!r}: 'from' must be a list of node ids",
-                    details={
-                        "reason": "type",
-                        "node_id": node_id,
-                        "field": "from",
-                    },
-                    hint='Write the ids that flow into the node as a list: ["A", "B"].',
-                )
-            upstream = tuple(listed)
+        upstream = upstream_from_document(fields.get("from"), node_id)
         arguments = cls.read_document(node_id, fields)
         description = fields.get("description")
         position = fields.get("position")
@@ -968,18 +956,7 @@ class Node(ABC):
             None if description is None else check_description(description, node_id),
             None if position is None else position_from_document(position, node_id),
         )
-        _check_id(node_id)
-        for item in upstream:
-            _check_id(item, role="upstream id")
-        fewest, most = cls.inflow_count
-        if len(upstream) < fewest or (most is not None and len(upstream) > most):
-            raise _count_error(node_id, cls.kind, len(upstream), _rule(fewest, most))
-        if len(set(upstream)) != len(upstream):
-            raise InvalidParameterError(
-                f"Node {node_id!r} lists an upstream node twice: its water would be "
-                "counted twice",
-                details={"reason": "duplicate_upstream", "node_id": node_id},
-            )
+        check_links(node_id, cls, upstream)
         return entry
 
     @classmethod
@@ -1760,6 +1737,77 @@ def _reachable(roots: Sequence[Node]) -> list[Node]:
     return queue
 
 
+def upstream_from_document(value: object, node_id: str) -> tuple[str, ...]:
+    """Read the ``from`` of a node of a document: the ids that flow into it.
+
+    Parameters
+    ----------
+    value : object
+        The value of ``from``; ``None`` for a node that lists none.
+    node_id : str
+        The id of the node, for the error.
+
+    Returns
+    -------
+    tuple of str
+        The ids in the order listed; empty without ``from``.
+
+    Raises
+    ------
+    InvalidParameterError
+        With ``details.reason`` ``type`` (``details.field`` ``from``) if the value is
+        not a list of strings.
+    """
+    if value is None:
+        return ()
+    if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+        raise InvalidParameterError(
+            f"Node {node_id!r}: 'from' must be a list of node ids",
+            details={"reason": "type", "node_id": node_id, "field": "from"},
+            hint='Write the ids that flow into the node as a list: ["A", "B"].',
+        )
+    return tuple(value)
+
+
+def check_links(node_id: str, kind: type[Node], upstream: Sequence[str]) -> None:
+    """Refuse the links of one node of a document that no network can have.
+
+    The first part of the one check of a network's structure, shared by the reader of
+    the network (:meth:`Node.read_entry`) and the reader of its structure alone
+    (:func:`~hydrolog.routing.document.read_structure`, ADR-0025), so the two give the
+    same reasons; :func:`check_graph` is the second part.
+
+    Parameters
+    ----------
+    node_id : str
+        The id of the node.
+    kind : type
+        The class of the node (its ``kind`` and ``inflow_count``).
+    upstream : sequence of str
+        The ids that flow into it (its ``from``).
+
+    Raises
+    ------
+    InvalidParameterError
+        With ``details.reason`` ``invalid_id`` or ``reserved_name`` (the node's id, or
+        an id it lists), ``upstream_count`` (``type``, ``found``: the kind takes
+        another number of inflows) or ``duplicate_upstream`` (an id listed twice);
+        always ``details.node_id``.
+    """
+    _check_id(node_id)
+    for item in upstream:
+        _check_id(item, role="upstream id")
+    fewest, most = kind.inflow_count
+    if len(upstream) < fewest or (most is not None and len(upstream) > most):
+        raise _count_error(node_id, kind.kind, len(upstream), _rule(fewest, most))
+    if len(set(upstream)) != len(upstream):
+        raise InvalidParameterError(
+            f"Node {node_id!r} lists an upstream node twice: its water would be "
+            "counted twice",
+            details={"reason": "duplicate_upstream", "node_id": node_id},
+        )
+
+
 def check_unique(ids: Iterable[str]) -> None:
     """Refuse two ids that are equal without regard to case: an id names a file.
 
@@ -1789,6 +1837,143 @@ def check_unique(ids: Iterable[str]) -> None:
                 hint="Every node needs its own id: it names the file of the node.",
             )
         folded[node_id.casefold()] = node_id
+
+
+def _no_nodes() -> InvalidParameterError:
+    """Return the error of a network without nodes (``empty``)."""
+    return InvalidParameterError(
+        "A network needs at least one node", details={"reason": "empty"}
+    )
+
+
+def check_graph(
+    nodes: Sequence[tuple[str, type[Node], Sequence[str]]],
+) -> tuple[list[str], str]:
+    """Check the graph of a network; return its order of evaluation and its outlet.
+
+    The second part of the one check of a network's structure, shared by
+    :class:`RoutingNetwork` and the reader of a document's structure alone
+    (:func:`~hydrolog.routing.document.read_structure`, ADR-0025), so the two give the
+    same reasons for the same graph; :func:`check_links` is the first part.
+
+    Parameters
+    ----------
+    nodes : sequence of tuple
+        Every node as ``(id, kind, upstream)``: its id, its class (``kind``,
+        ``inflow_count`` and ``terminal``) and the ids that flow into it.
+
+    Returns
+    -------
+    order : list of str
+        The ids in the order of evaluation: headwaters first, and among the nodes
+        that are ready the smallest id first.
+    outlet : str
+        The id of the outlet.
+
+    Raises
+    ------
+    InvalidParameterError
+        The first problem, with ``details.reason`` and its facts: ``empty``;
+        ``duplicate_node`` (``node_id``, ``other_id``); ``upstream_count``
+        (``node_id``, ``type``, ``found``); ``unknown_upstream`` (``node_id``,
+        ``upstream_id``, ``n_unknown``) or ``cycle`` (``nodes``, in flow order);
+        ``several_downstream`` (``node_id``, ``downstream``); ``no_outlet``;
+        ``several_outlets`` (``nodes``); ``outlet_has_downstream`` (``node_id``,
+        ``downstream``); ``disconnected_node`` (``node_id``: a node that feeds
+        nothing and is not the outlet, ``n_disconnected``: the nodes that do not
+        reach the outlet).
+    """
+    if not nodes:
+        raise _no_nodes()
+    check_unique([node_id for node_id, _, _ in nodes])
+    for node_id, kind, listed in nodes:
+        fewest, most = kind.inflow_count
+        if len(listed) < fewest or (most is not None and len(listed) > most):
+            raise _count_error(node_id, kind.kind, len(listed), _rule(fewest, most))
+    upstream = {node_id: tuple(listed) for node_id, _, listed in nodes}
+    order = ordered(upstream)
+    kinds = {node_id: kind for node_id, kind, _ in nodes}
+    terminal = [node_id for node_id in order if kinds[node_id].terminal]
+    return order, _outlet(order, upstream, terminal)
+
+
+def _outlet(
+    order: Sequence[str],
+    upstream: Mapping[str, Sequence[str]],
+    terminal: Sequence[str],
+) -> str:
+    """Check what a lumped model needs of the shape of a graph; return its outlet.
+
+    ``order`` is the order of evaluation, ``upstream`` the ids that flow into each node
+    and ``terminal`` the nodes of a kind that ends a network, in that order.
+    """
+    downstream: dict[str, list[str]] = {node_id: [] for node_id in order}
+    for node_id in order:
+        for listed in upstream[node_id]:
+            downstream[listed].append(node_id)
+    for node_id, receivers in downstream.items():
+        if len(receivers) > 1:
+            raise InvalidParameterError(
+                f"Node {node_id!r} flows into {len(receivers)} nodes "
+                f"({', '.join(map(repr, receivers))}): a bifurcation would count "
+                "its water twice",
+                details={
+                    "reason": "several_downstream",
+                    "node_id": node_id,
+                    "downstream": receivers,
+                },
+                hint="A node flows into one node; bifurcations are not routed.",
+            )
+    if not terminal:
+        raise InvalidParameterError(
+            "The network has no outlet",
+            details={"reason": "no_outlet"},
+            hint="Add a node of type outlet that lists the last node.",
+        )
+    if len(terminal) > 1:
+        raise InvalidParameterError(
+            f"The network has {len(terminal)} outlets "
+            f"({', '.join(map(repr, terminal))}), it needs one",
+            details={"reason": "several_outlets", "nodes": list(terminal)},
+            hint="Join the streams in a junction above a single outlet.",
+        )
+    outlet = terminal[0]
+    if downstream[outlet]:
+        raise InvalidParameterError(
+            f"The outlet {outlet!r} is listed as upstream by "
+            f"{', '.join(map(repr, downstream[outlet]))}",
+            details={
+                "reason": "outlet_has_downstream",
+                "node_id": outlet,
+                "downstream": downstream[outlet],
+            },
+            hint="Nothing flows out of the outlet.",
+        )
+    reached = {outlet}
+    pending = [outlet]
+    while pending:
+        for listed in upstream[pending.pop()]:
+            if listed not in reached:
+                reached.add(listed)
+                pending.append(listed)
+    disconnected = [node_id for node_id in order if node_id not in reached]
+    if disconnected:
+        # every node that does not reach the outlet ends in a node that feeds nothing
+        # and is not the outlet: that is the one to name
+        dead_end = next(node_id for node_id in disconnected if not downstream[node_id])
+        raise InvalidParameterError(
+            f"Node {dead_end!r} flows nowhere: it is not listed by any node and is "
+            f"not the outlet ({len(disconnected)} nodes do not reach the outlet "
+            f"{outlet!r})",
+            details={
+                "reason": "disconnected_node",
+                "node_id": dead_end,
+                "n_disconnected": len(disconnected),
+            },
+            hint="Make the node an inflow of the node it flows into (the `from` "
+            "of that node in a document).",
+        )
+    return outlet
 
 
 class RoutingNetwork:
@@ -1868,10 +2053,7 @@ class RoutingNetwork:
         """Check the network and put the nodes in the order of evaluation."""
         roots = [nodes] if isinstance(nodes, Node) else list(nodes)
         if not roots:
-            raise InvalidParameterError(
-                "A network needs at least one node",
-                details={"reason": "empty"},
-            )
+            raise _no_nodes()
         for root in roots:
             if not isinstance(root, Node):
                 raise InvalidParameterError(
@@ -1891,19 +2073,15 @@ class RoutingNetwork:
             None if timestep_min is None else positive(timestep_min, "timestep_min")
         )
         listed = _reachable(roots)
-        check_unique([node.id for node in listed])
+        order, outlet = check_graph(
+            [(node.id, type(node), node.upstream) for node in listed]
+        )
         by_id = {node.id: node for node in listed}
-        for node in listed:
-            fewest, most = node.inflow_count
-            found = len(node.inflows)
-            if found < fewest or (most is not None and found > most):
-                raise _count_error(node.id, node.kind, found, _rule(fewest, most))
-        order = ordered({node_id: node.upstream for node_id, node in by_id.items()})
         self.name = name
         self.rainfall = rainfall
         self._nodes: dict[str, Node] = {node_id: by_id[node_id] for node_id in order}
         self.order: tuple[str, ...] = tuple(order)
-        self.outlet = self._check_shape()
+        self.outlet = outlet
         self.timestep_min = self._check_time_axes()
 
     @classmethod
@@ -2051,79 +2229,6 @@ class RoutingNetwork:
             If the network has no such node.
         """
         return self._nodes[node_id]
-
-    def _check_shape(self) -> str:
-        """Check what a lumped model needs of a network and return the outlet's id."""
-        downstream: dict[str, list[str]] = {node_id: [] for node_id in self._nodes}
-        for node in self._nodes.values():
-            for listed in node.upstream:
-                downstream[listed].append(node.id)
-        for node_id, receivers in downstream.items():
-            if len(receivers) > 1:
-                raise InvalidParameterError(
-                    f"Node {node_id!r} flows into {len(receivers)} nodes "
-                    f"({', '.join(map(repr, receivers))}): a bifurcation would count "
-                    "its water twice",
-                    details={
-                        "reason": "several_downstream",
-                        "node_id": node_id,
-                        "downstream": receivers,
-                    },
-                    hint="A node flows into one node; bifurcations are not routed.",
-                )
-        outlets = [n.id for n in self._nodes.values() if n.terminal]
-        if not outlets:
-            raise InvalidParameterError(
-                "The network has no outlet",
-                details={"reason": "no_outlet"},
-                hint="Add a node of type outlet that lists the last node.",
-            )
-        if len(outlets) > 1:
-            raise InvalidParameterError(
-                f"The network has {len(outlets)} outlets "
-                f"({', '.join(map(repr, outlets))}), it needs one",
-                details={"reason": "several_outlets", "nodes": outlets},
-                hint="Join the streams in a junction above a single outlet.",
-            )
-        outlet = outlets[0]
-        if downstream[outlet]:
-            raise InvalidParameterError(
-                f"The outlet {outlet!r} is listed as upstream by "
-                f"{', '.join(map(repr, downstream[outlet]))}",
-                details={
-                    "reason": "outlet_has_downstream",
-                    "node_id": outlet,
-                    "downstream": downstream[outlet],
-                },
-                hint="Nothing flows out of the outlet.",
-            )
-        reached = {outlet}
-        pending = [outlet]
-        while pending:
-            for listed in self._nodes[pending.pop()].upstream:
-                if listed not in reached:
-                    reached.add(listed)
-                    pending.append(listed)
-        disconnected = [node_id for node_id in self._nodes if node_id not in reached]
-        if disconnected:
-            # every node that does not reach the outlet ends in a node that feeds
-            # nothing and is not the outlet: that is the one to name
-            dead_end = next(
-                node_id for node_id in disconnected if not downstream[node_id]
-            )
-            raise InvalidParameterError(
-                f"Node {dead_end!r} flows nowhere: it is not listed by any node and is "
-                f"not the outlet ({len(disconnected)} nodes do not reach the outlet "
-                f"{outlet!r})",
-                details={
-                    "reason": "disconnected_node",
-                    "node_id": dead_end,
-                    "n_disconnected": len(disconnected),
-                },
-                hint="Make the node an inflow of the node it flows into (the `from` "
-                "of that node in a document).",
-            )
-        return outlet
 
     def _check_time_axes(self) -> float:
         """Check that the sources share one time axis and return its step [min].

@@ -100,8 +100,9 @@ from hydrolog.catalog.spec import Option
 from hydrolog.exceptions import InputDataError, InvalidParameterError, NotFoundError
 from hydrolog.routing import RoutingNetwork
 from hydrolog.routing._checks import shown
+from hydrolog.routing.document import NetworkStructure, read_structure
 
-__all__ = ["LoadedNetwork", "load_network"]
+__all__ = ["LoadedNetwork", "load_network", "load_structure"]
 
 _COMMON: Final = ("id", "type", "from", "description", "position")
 """The fields of every node; the library checks the description and the position."""
@@ -541,3 +542,45 @@ def load_network(
             "column, or leave out inflows_file.",
         )
     return LoadedNetwork(built, reader.rating_files)
+
+
+def load_structure(
+    *,
+    network: Mapping[str, Any] | None = None,
+    network_file: str | os.PathLike[str] | None = None,
+) -> NetworkStructure:
+    """Read and check the structure of a network document alone (ADR-0025).
+
+    The ids, types and links of the nodes and the areas of the headwaters
+    (:func:`~hydrolog.routing.document.read_structure`); no other field is read or
+    checked, and no file that the document names is opened.
+
+    Parameters
+    ----------
+    network : Mapping, optional
+        The document inline: JSON-native values (numbers, strings, lists, objects).
+    network_file : str or os.PathLike, optional
+        JSON file with the document, instead of ``network``.
+
+    Returns
+    -------
+    NetworkStructure
+        The structure, checked.
+
+    Raises
+    ------
+    InvalidParameterError
+        If both or neither of ``network`` and ``network_file`` are given
+        (``details.reason`` ``one_of``) or the structure of the inline document is
+        wrong (``details.option`` ``network``, the reasons of the structure).
+    NotFoundError
+        If the file does not exist.
+    InputDataError
+        If the file cannot be read or the structure of its document is wrong
+        (``details.path``).
+    """
+    document, where, _ = _document(network, network_file)
+    try:
+        return read_structure(document)
+    except InvalidParameterError as exc:
+        where.convert(exc)
