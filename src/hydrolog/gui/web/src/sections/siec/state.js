@@ -1,13 +1,14 @@
 // State of „Sieć i trasowanie” (plan D9, S4): the network being edited, kept in the
 // browser under "hydrolog-gui/siec/2" (inputs only, no results): where it came from, its
 // structure (ids, types, inflows, the cell of every node on the canvas and its
-// description: plan 2026-11-10-network-editor, D3, D10), the values of the network and of
-// each node, the session files it reads (the inflows file and its time column), whether
-// its layout is provisional (rows until Hydrolog lays it out), the key of the inputs as
-// they were opened or last saved (whether discarding them needs a question) and the
-// chosen node and view. A first visit has no network: „Nowa sieć” starts an empty one, or
-// it opens from a file or a hand-off (the guide's worked example, instrukcja/#siec, is a
-// file to load).
+// description: plan 2026-11-10-network-editor, D3, D10; and `origin`, the record of the
+// hand-off a subcatchment was added from, which no document carries), the values of the
+// network and of each node, the session files it reads (the inflows file and its time
+// column), whether its layout is provisional (rows until Hydrolog lays it out), the key of
+// the inputs as they were opened or last saved (whether discarding them needs a question)
+// and the chosen node and view. A first visit has no network: „Nowa sieć” starts an empty
+// one, or it opens from a file or a hand-off (the guide's worked example, instrukcja/#siec,
+// is a file to load).
 //
 // Another part of the page opens a network here with openNetwork(document, {name}) (the
 // hand-off of S6); the section takes it when it is mounted, or on its first render.

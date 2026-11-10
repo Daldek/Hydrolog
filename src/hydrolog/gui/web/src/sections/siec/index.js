@@ -4,7 +4,8 @@
 // instrukcja/#siec, has a worked example to load), and drawn vertically from the
 // section's own inputs (D1, D6: the sources at the top, the outlet at the bottom, every
 // node on the cell of its position). The person adds elements, connects, disconnects,
-// removes, renames and describes them on the canvas or in „Dane” (D7), and every edit is a
+// removes, renames and describes them on the canvas or in „Dane” (D7), adds the
+// subcatchments of a hand-off („Dodaj zlewnię z Hydrografa”, D10), and every edit is a
 // step of the history („Cofnij”, „Ponów”, D9). The structure is checked in the browser
 // after every edit with the library's reasons (editor/graph.js, D8) and the problems mark
 // their nodes; once the structure and the values are complete Hydrolog checks the
@@ -22,9 +23,11 @@
 import { api } from "../../api.js";
 import { inputFiles, uploadFile, useSession } from "../../controls/file-field.js";
 import { plural } from "../../format.js";
+import { siecAddition } from "../../handoff/mapping.js";
 import { html, useEffect, useMemo, useRef, useState } from "../../html.js";
 import { common, t } from "../../labels/common.js";
 import { describeError } from "../../labels/errors.js";
+import { handoffLabels as handoffTexts } from "../../labels/handoff.js";
 import { routing } from "../../labels/info/routing.js";
 import { siec as texts } from "../../labels/siec.js";
 import { shell } from "../../labels/shell.js";
@@ -42,7 +45,7 @@ import { ViewLayout } from "../../ui/view-layout.js";
 import { DataPanel, EmptyNetwork, networkRainWords, networkSummary } from "./data-panel.js";
 import { NetworkCanvas } from "./editor/canvas.js";
 import { addNode, canBridge, cellBeside, connect, describeNode, disconnect, insertJunction, placeAll, removeNode, renameNode } from "./editor/edits.js";
-import { graphProblems, linkVerdict, problemNodes, receiversOf } from "./editor/graph.js";
+import { graphProblems, linkVerdict, problemNodes, receiversOf, structureKey } from "./editor/graph.js";
 import { createHistory } from "./editor/history.js";
 import { buildDocument, nodeWords } from "./node-model.js";
 import { NodeTable, ResultsPanel } from "./results-panel.js";
@@ -315,13 +318,16 @@ export default function Siec({ active, path = [] }) {
     () => (forms && state.source ? buildDocument(forms, state) : null),
     [forms, state.source, state.network, state.skeleton, state.nodes],
   );
+  // The structure's problems and the nodes' words stay while only the cells and the
+  // descriptions change (a move): they are kept per structure key
+  const shape = useMemo(() => structureKey(state.skeleton), [state.skeleton]);
   const structure = useMemo(
     () => (forms && state.source ? graphProblems(state.skeleton, forms.inflow) : []),
-    [forms, state.source, state.skeleton],
+    [forms, state.source, shape],
   );
   const words = useMemo(
     () => new Map(state.skeleton.map((node) => [node.id, nodeWords(node, state.nodes[node.id] || {})])),
-    [state.skeleton, state.nodes],
+    [shape, state.nodes],
   );
   // A missing value is shown once its field was touched or „Oblicz sieć” was tried; any
   // other problem at once (as in the catalog forms)
@@ -517,6 +523,20 @@ export default function Siec({ active, path = [] }) {
         return null;
       }
       return actions.add(type, cell, null);
+    },
+    // „Dodaj zlewnię z Hydrografa” (D10): the hand-off's subcatchments, one step; the
+    // first is chosen, so „Dane” shows where it came from
+    addHandoff(doc) {
+      const base = latest.current;
+      if (!forms) return { title: handoffTexts.add.refused, lines: [common.loading] };
+      const found = siecAddition(base, doc, forms);
+      if (!found.added.length) return { title: handoffTexts.add.refused, lines: found.lines };
+      const [first] = found.added;
+      apply({ ...found.inputs, selected: first, provisional: false });
+      if (active) navigate(SECTION, [first], { replace: true });
+      setNote({ error: false, lines: found.lines });
+      toast(found.lines[0]);
+      return null;
     },
     link(from, to, where = "canvas") {
       const base = latest.current;

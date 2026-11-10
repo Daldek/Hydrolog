@@ -6,9 +6,10 @@
 // source and the fields changed since, Lutz's estimate of Nash's n and K) and its result;
 // back, a payload's subcatchment becomes the section's inputs, its source the watershed's
 // origin and the hand-off's record (`handoff`) what the results compare with. „Sieć i
-// trasowanie” writes its whole network with the outlet's result. Field names are
-// Hydrolog's (channel_length_km; slopes in m/m); mapping Hydrograf's names is Hydrograf's
-// side.
+// trasowanie” writes its whole network with the outlet's result, and adds a hand-off's
+// subcatchments to its open network („Dodaj zlewnię z Hydrografa”, plan
+// 2026-11-10-network-editor, D10). Field names are Hydrolog's (channel_length_km; slopes
+// in m/m); mapping Hydrograf's names is Hydrograf's side.
 
 import { inputText, parseNumber, plural } from "../format.js";
 import { t } from "../labels/common.js";
@@ -33,6 +34,8 @@ import {
   usedTexts,
   usesLutz,
 } from "../sections/hydrogram/state.js";
+import { cellBeside, freeId } from "../sections/siec/editor/edits.js";
+import { MAX_DESCRIPTION_CHARS, networkRainfall, networkValues, nodeValues } from "../sections/siec/node-model.js";
 import { withoutPicture } from "../sections/siec/state.js";
 import { MARKS, PAYLOAD_SCHEMA, buildHandoff, momentText, receivedOf, toolName } from "./handoff.js";
 import { canonical, isObject } from "./validate.js";
@@ -461,4 +464,121 @@ export function siecHandoff({ subject, source, document, result = null, version,
  */
 export function siecReceived(doc, payload) {
   return { ...receivedOf(doc), key: canonical(withoutPicture(payload)) };
+}
+
+/**
+ * A text as the description of a node (ADR-0023): its control characters but the line
+ * feed as spaces, at most MAX_DESCRIPTION_CHARS characters.
+ *
+ * @param {string} text the text (a hand-off's subject)
+ * @returns {string} the description, "" for a blank text
+ */
+function descriptionOf(text) {
+  const plain = String(text)
+    .replace(/[\u0000-\u0009\u000b-\u001f\u007f-\u009f]/gu, " ")
+    .trim();
+  return [...plain].slice(0, MAX_DESCRIPTION_CHARS).join("").trimEnd();
+}
+
+/**
+ * Where a subcatchment added from a hand-off came from (D10), kept beside its structure
+ * and shown in „Dane”: who wrote the hand-off and when, its subject and provenance; the
+ * hand-off's result, of its outlet, stays out.
+ *
+ * @param {object} doc the hand-off
+ * @returns {{subject: string, created_at: string, producer: object, provenance: object}}
+ *   the origin
+ */
+function addedOrigin(doc) {
+  const { result: _result, ...origin } = receivedOf(doc);
+  return origin;
+}
+
+/**
+ * „Dodaj zlewnię z Hydrografa” (plan 2026-11-10-network-editor, D10): Sieć's inputs with
+ * the subcatchments of a hand-off added, unconnected, in the order of its document. Each
+ * keeps its id unless the library would refuse it in the network (then its stem with the
+ * first free number: `Z1` becomes `Z2`; edits.js freeId), stands on the free cell right of
+ * the top row, is described by its own description or else the hand-off's subject, and
+ * keeps its values and, as `origin` beside its structure, the hand-off's record. The
+ * hand-off's outlet and its other nodes stay out. The network keeps its time step (one
+ * without a step and without nodes takes the hand-off's); a subcatchment's own rainfall
+ * comes with it, and a rainfall at the hand-off's top becomes the own rainfall of each
+ * subcatchment made from rainfall without one when the network's rainfall differs.
+ *
+ * @param {{network: object, skeleton: object[], nodes: Object<string, object>}} inputs
+ *   Sieć's inputs
+ * @param {object} doc the hand-off (readHandoff opened it; its payload is
+ *   hydrolog-network/1)
+ * @param {object} forms the forms of node-model.js buildForms (the rainfalls are compared
+ *   as the network's document writes them)
+ * @returns {{inputs: object, added: string[], lines: string[]}} the new inputs (the same
+ *   when nothing was added), the ids added and what the addition did, in Polish: the
+ *   first line says what was added, or why nothing was
+ */
+export function siecAddition(inputs, doc, forms) {
+  const words = texts.add;
+  const payload = doc.payload;
+  const nodes = (Array.isArray(payload.nodes) ? payload.nodes : []).filter(isObject);
+  const subcatchments = nodes.filter((node) => node.type === "subcatchment");
+  const skipped = nodes.filter((node) => node.type !== "subcatchment" && node.type !== "outlet").map((node) => String(node.id));
+  const notes = [];
+  let network = inputs.network;
+  const step = typeof payload.timestep_min === "number" ? payload.timestep_min : null;
+  if (step !== null) {
+    const typed = String(network.timestep_min ?? "").trim();
+    const own = parseNumber(typed);
+    if (typed) {
+      if (!(Number.isFinite(own) && Math.abs(own - step) <= 1e-9 * step)) {
+        notes.push(t(words.stepKept, { network: typed, handoff: inputText(step) }));
+      }
+    } else if (!inputs.skeleton.length) {
+      network = { ...network, timestep_min: inputText(step) };
+      notes.push(t(words.stepTaken, { handoff: inputText(step) }));
+    } else {
+      notes.push(t(words.stepNone, { handoff: inputText(step) }));
+    }
+  }
+  const top = isObject(payload.rainfall) ? payload.rainfall : null;
+  const ownRainfall =
+    top !== null && canonical(networkRainfall(forms, network)) !== canonical(networkRainfall(forms, networkValues({ rainfall: top })));
+  const origin = addedOrigin(doc);
+  const description = descriptionOf(doc.subject);
+  let skeleton = inputs.skeleton;
+  const values = { ...inputs.nodes };
+  const added = [];
+  const renamed = [];
+  const rained = [];
+  for (const node of subcatchments) {
+    const cell = cellBeside(skeleton, null);
+    if (!cell) break;
+    const own = String(node.id);
+    const id = freeId(skeleton, own, "subcatchment");
+    let source = node;
+    if (ownRainfall && !isObject(node.rainfall) && (isObject(node.watershed) || isObject(node.runoff))) {
+      source = { ...node, rainfall: top };
+      rained.push(id);
+    }
+    const nodeVals = nodeValues(source);
+    if (id !== own && nodeVals["#variant"] === "file" && !String(nodeVals.value_column ?? "").trim()) nodeVals.value_column = own;
+    const made = { id, type: "subcatchment", from: null, position: { x: cell[0], y: cell[1] } };
+    const text = typeof node.description === "string" && node.description.trim() ? node.description : description;
+    if (text) made.description = text;
+    made.origin = origin;
+    skeleton = [...skeleton, made];
+    values[id] = nodeVals;
+    added.push(id);
+    if (id !== own) renamed.push({ from: own, to: id });
+  }
+  if (!added.length) return { inputs, added, lines: [subcatchments.length ? words.full : words.none] };
+  const producer = `${toolName(doc.producer.tool)} ${doc.producer.version}`;
+  const lines = [
+    t(words.added, { count: plural(added.length, words.forms), subject: doc.subject, producer, nodes: added.join(", ") }),
+    ...renamed.map((item) => t(words.renamed, item)),
+  ];
+  if (added.length < subcatchments.length) lines.push(words.full);
+  if (skipped.length) lines.push(t(words.skipped, { nodes: skipped.join(", ") }));
+  lines.push(...notes);
+  if (rained.length) lines.push(t(words.ownRainfall, { nodes: rained.join(", ") }));
+  return { inputs: { ...inputs, network, skeleton, nodes: values }, added, lines };
 }

@@ -42,6 +42,29 @@ export const handoffLabels = {
     pasteHint:
       "Przeglądarka nie dała dostępu do schowka: wklej w pole poniżej (Ctrl+V) przekazanie skopiowane przyciskiem „Kopiuj do Hydrologa” na karcie stacji w Archiwiście albo treść jego „Pliku przekazania”.",
   },
+  /** „Wczytaj z Hydrografa” in Sieć i trasowanie: every network opens there (plan 2026-11-10-network-editor, D10). */
+  loadSiec: {
+    title: "Wczytaj przekazanie nogat-handoff/1: sieć otworzy się tutaj, także jedna zlewnia z wylotem",
+  },
+  /** „Dodaj zlewnię z Hydrografa” in Sieć i trasowanie: a hand-off's subcatchments added to the open network (D10). */
+  add: {
+    button: "Dodaj zlewnię z Hydrografa",
+    title: "Dodaj do otwartej sieci zlewnie z przekazania nogat-handoff/1, bez jego wylotu; połączysz je na schemacie",
+    menu: "Dodaj zlewnię z Hydrografa",
+    refused: "Nie dodano zlewni",
+    series: "To przekazanie niesie szereg stacji (hydrolog-series/1): zlewnię dodasz z przekazania sieci hydrolog-network/1.",
+    none: "Przekazanie nie ma zlewni do dodania.",
+    full: "Na schemacie nie ma wolnego pola na zlewnię.",
+    /** Forms of „zlewnia” after „Dodano” and a number (the accusative). */
+    forms: ["zlewnię", "zlewnie", "zlewni"],
+    added: "Dodano {count} z przekazania „{subject}” ({producer}): {nodes}.",
+    renamed: "Zlewnia {from} z przekazania ma w sieci id {to}.",
+    skipped: "Pominięto węzły przekazania inne niż zlewnie: {nodes}.",
+    stepKept: "Sieć zostaje przy swoim kroku czasowym {network} min; przekazanie ma krok {handoff} min.",
+    stepTaken: "Krok czasowy sieci: {handoff} min, jak w przekazaniu.",
+    stepNone: "Sieć nie podaje kroku czasowego i tak zostaje; przekazanie ma krok {handoff} min.",
+    ownRainfall: "Opad przekazania różni się od opadu sieci, więc jest opadem własnym: {nodes}.",
+  },
   problems: {
     notJson: "To nie jest JSON: {message}",
     notObject: "Przekazanie nie jest obiektem JSON.",

@@ -919,6 +919,18 @@ export function networkProblems(forms, values) {
 }
 
 /**
+ * The network's default rainfall as its document writes it: the rainfall a subcatchment
+ * without its own takes (a hand-off's own top rainfall is compared with it, D10).
+ *
+ * @param {object} forms the forms of buildForms
+ * @param {object} values the network's values
+ * @returns {object|null} the rainfall of hydrolog-network/1, null without one
+ */
+export function networkRainfall(forms, values) {
+  return rainfallJson(networkLayout(forms, values).rainfall, values);
+}
+
+/**
  * The document of the network: its own fields (its name and description first, ADR-0023)
  * and every node, in the order of its structure.
  *
@@ -942,7 +954,7 @@ export function buildDocument(forms, state) {
   const description = state.network.description;
   if (typeof description === "string" && description.trim()) document.description = description;
   if (own.timestep_min !== undefined) document.timestep_min = own.timestep_min;
-  const rainfall = rainfallJson(networkLayout(forms, state.network).rainfall, state.network);
+  const rainfall = networkRainfall(forms, state.network);
   if (rainfall) document.rainfall = rainfall;
   document.nodes = state.skeleton.map((node) => {
     const values = state.nodes[node.id] || {};

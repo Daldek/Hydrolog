@@ -32,6 +32,30 @@ export function nextId(skeleton, type) {
 }
 
 /**
+ * The id of a node that comes with an id of its own (D10: a hand-off's subcatchment): that
+ * id when the library would take it in the structure, else its stem (the id without its
+ * last digits) with the first free number from 2 (`Z1` becomes `Z2`, `Dolna` `Dolna2`),
+ * else nextId's.
+ *
+ * @param {Array<{id: string}>} skeleton the structure
+ * @param {string} id the node's own id
+ * @param {string} type the node's type
+ * @returns {string} the id
+ */
+export function freeId(skeleton, id, type) {
+  if (!idProblem(id, skeleton)) return id;
+  const stem = String(id).replace(/\d+$/u, "");
+  const taken = new Set(skeleton.map((node) => foldId(node.id)));
+  for (let number = 2; stem; number += 1) {
+    const next = `${stem}${number}`;
+    if (taken.has(foldId(next))) continue;
+    if (!idProblem(next, skeleton)) return next;
+    break;
+  }
+  return nextId(skeleton, type);
+}
+
+/**
  * The keys of the cells the nodes stand on.
  *
  * @param {Array<{position?: {x: number, y: number}}>} skeleton the structure

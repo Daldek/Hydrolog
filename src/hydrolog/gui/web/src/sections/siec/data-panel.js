@@ -1,16 +1,18 @@
 // The panel „Dane” of Sieć (plan S4, the mockup's steps; plan 2026-11-10-network-editor,
 // D7, D10): 1 the network (a new one, its file loaded from the disk or a hand-off
-// („Wczytaj z Hydrografa”), or saved as a network or a draft; its name, description, time
-// step and default rainfall; the session files it reads), 2 its nodes (a list that
-// chooses a node, with each node's peak after „Oblicz sieć”, and „Dodaj węzeł”) and 3
-// the chosen node: its id, description and downstream link, and its settings. Before a
-// network is open, step 1 alone: a new network, what to load, and the guide's worked
-// example. A field that commits (`change`) closes its step of the history.
+// („Wczytaj z Hydrografa”, which opens every network here), the subcatchments of a
+// hand-off added to it („Dodaj zlewnię z Hydrografa”), or saved as a network or a draft;
+// its name, description, time step and default rainfall; the session files it reads), 2
+// its nodes (a list that chooses a node, with each node's peak after „Oblicz sieć”, and
+// „Dodaj węzeł”) and 3 the chosen node: where it came from when a hand-off added it, its
+// id, description and downstream link, and its settings. Before a network is open, step 1
+// alone: a new network, what to load, and the guide's worked example. A field that
+// commits (`change`) closes its step of the history.
 
 import { FileField } from "../../controls/file-field.js";
 import { num, plural } from "../../format.js";
-import { HandoffImport, HandoffOrigin } from "../../handoff/handoff-panel.js";
-import { html, useRef } from "../../html.js";
+import { HandoffAdd, HandoffImport, HandoffOrigin } from "../../handoff/handoff-panel.js";
+import { Component, html, useRef } from "../../html.js";
 import { t } from "../../labels/common.js";
 import { siec as texts } from "../../labels/siec.js";
 import { EmptyHint } from "../../ui/empty-hint.js";
@@ -93,7 +95,7 @@ export function EmptyNetwork({ note, onLoad, onNew }) {
         <${EmptyHint} text=${texts.file.empty} anchor="przyklad-siec" name="siec" />
         <div class="btn-row">
           <${NewButton} onNew=${onNew} />
-          <${HandoffImport} />
+          <${HandoffImport} into="siec" />
           <button class="btn sm" type="button" data-action="load" onClick=${() => fileInput.current.click()}>
             <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 14V4M6 8l4-4 4 4M4 16h12" /></svg>
             ${texts.file.load}
@@ -125,7 +127,7 @@ function NewButton({ onNew }) {
  * @param {object} props see DataPanel
  * @returns {object} the step
  */
-function NetworkStep({ state, forms, problems, summary, needed, note, onNetwork, onRun, onLoad, onCompanions, onSave, onNew, canSave, complete }) {
+function NetworkStep({ state, forms, problems, summary, needed, note, actions, onNetwork, onRun, onLoad, onCompanions, onSave, onNew, canSave, complete }) {
   const fileInput = useRef(null);
   const companions = useRef(null);
   const layout = networkLayout(forms, state.network);
@@ -147,7 +149,8 @@ function NetworkStep({ state, forms, problems, summary, needed, note, onNetwork,
     ${state.source && state.source.handoff ? html`<${HandoffOrigin} received=${state.source.handoff} small=${true} />` : null}
     <div class="btn-row">
       <${NewButton} onNew=${onNew} />
-      <${HandoffImport} />
+      <${HandoffImport} into="siec" />
+      <${HandoffAdd} onAdd=${actions.addHandoff} />
       <button class="btn sm" type="button" data-action="load" onClick=${() => fileInput.current.click()}>
         <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 14V4M6 8l4-4 4 4M4 16h12" /></svg>
         ${texts.file.load}
@@ -229,6 +232,32 @@ function NetworkStep({ state, forms, problems, summary, needed, note, onNetwork,
 }
 
 /**
+ * A node of the list: a button that chooses it (the list's one handler takes its click),
+ * drawn again only when what it shows changes (`look`), so a network of hundreds of nodes
+ * redraws the rows an edit touched.
+ *
+ * @param {{look: string, id: string, type: string, meta: string, on: boolean, wrong:
+ *   boolean, peak: string}} props what it shows as one text; the node's id, type and
+ *   description, whether it is chosen, whether its values have a problem, and its peak
+ */
+class NodeItem extends Component {
+  shouldComponentUpdate(next) {
+    return next.look !== this.props.look;
+  }
+
+  render({ id, type, meta, on, wrong, peak }) {
+    return html`<li>
+      <button type="button" class=${on ? "sel" : ""} data-node=${id} aria-pressed=${on ? "true" : "false"}>
+        <i class=${`ng t-${type}`} aria-hidden="true"></i>
+        <code>${id}</code>
+        <span>${meta}</span>
+        ${wrong ? html`<span class="nq bad-mark" title=${texts.list.wrong}>!</span>` : html`<span class="nq">${peak}</span>`}
+      </button>
+    </li>`;
+  }
+}
+
+/**
  * Step 2: the list of nodes, a node chosen by its button, and „Dodaj węzeł” (D7: an
  * element of the five types beside the chosen node, unconnected).
  *
@@ -238,23 +267,21 @@ function NetworkStep({ state, forms, problems, summary, needed, note, onNetwork,
  * @returns {object} the list
  */
 function NodeList({ skeleton, words, values, wrong, selected, onSelect, onAdd }) {
+  const choose = (event) => {
+    const button = event.target.closest("button[data-node]");
+    if (button && event.currentTarget.contains(button)) onSelect(button.dataset.node);
+  };
   return html`
     ${skeleton.length
-      ? html`<ul class="node-list" aria-label=${texts.list.label}>
+      ? html`<ul class="node-list" aria-label=${texts.list.label} onClick=${choose}>
           ${skeleton.map((node) => {
             const on = node.id === selected;
             const value = values ? values.get(node.id) : null;
-            const word = words.get(node.id) || { meta: "" };
-            return html`<li key=${node.id}>
-              <button type="button" class=${on ? "sel" : ""} data-node=${node.id} aria-pressed=${on ? "true" : "false"} onClick=${() => onSelect(node.id)}>
-                <i class=${`ng t-${node.type}`} aria-hidden="true"></i>
-                <code>${node.id}</code>
-                <span>${word.meta || texts.kinds[node.type].noun}</span>
-                ${wrong.has(node.id)
-                  ? html`<span class="nq bad-mark" title=${texts.list.wrong}>!</span>`
-                  : html`<span class="nq">${value ? num(value.peak_m3s, 1) : ""}</span>`}
-              </button>
-            </li>`;
+            const meta = (words.get(node.id) || { meta: "" }).meta || texts.kinds[node.type].noun;
+            const bad = wrong.has(node.id);
+            const peak = value ? num(value.peak_m3s, 1) : "";
+            const look = JSON.stringify([node.id, node.type, meta, on, bad, peak]);
+            return html`<${NodeItem} key=${node.id} look=${look} id=${node.id} type=${node.type} meta=${meta} on=${on} wrong=${bad} peak=${peak} />`;
           })}
         </ul>`
       : html`<p class="muted" data-list="empty">${texts.list.empty}</p>`}
@@ -318,6 +345,7 @@ export function DataPanel(props) {
       </${Step}>
       ${node
         ? html`<${Step} number=${3} name="node" title=${word ? word.title : node.id} meta=${word ? word.meta : ""}>
+            ${node.origin ? html`<${HandoffOrigin} received=${node.origin} small=${true} />` : null}
             <${NodeForm}
               key=${node.id}
               forms=${forms}

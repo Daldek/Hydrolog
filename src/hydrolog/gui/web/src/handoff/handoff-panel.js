@@ -2,7 +2,9 @@
 // exists, D4). „Wczytaj z Hydrografa” (HandoffImport, beside a section's own file
 // button) reads a hand-off from a file or the clipboard and opens it where it belongs: one
 // subcatchment in „Hydrogram zlewni” (deliver → useHandoffInbox, which the section
-// listens with), a network in „Sieć i trasowanie” (its openNetwork). The part
+// listens with), a network in „Sieć i trasowanie” (its openNetwork); read in Sieć, every
+// network opens there, and „Dodaj zlewnię z Hydrografa” (HandoffAdd) adds a hand-off's
+// subcatchments to the open network (plan 2026-11-10-network-editor, D10). The part
 // „Przekazanie” of the panel Wyniki (HydrogramHandoff, SiecHandoff) writes one („Plik
 // przekazania”, „Do schowka”) and shows a received producer's result beside Hydrolog's
 // own, with the versions that computed them. Nothing here runs or writes at mount.
@@ -42,6 +44,7 @@ export const MAX_PROBLEMS = 8;
 
 const ICONS = {
   load: html`<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 14V4M6 8l4-4 4 4M4 16h12" /></svg>`,
+  add: html`<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12" /></svg>`,
   save: html`<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v10M6 9l4 4 4-4M4 16h12" /></svg>`,
   copy: html`<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2" /><path d="M13 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2" /></svg>`,
   file: html`<svg class="file-ico" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 3h7l3 3v11H5z" /><path d="M12 3v3h3" /></svg>`,
@@ -108,24 +111,38 @@ function errorText(error) {
 }
 
 /**
+ * The schemas a hand-off's payload is checked against: hydrolog-network-1.schema.json and
+ * hydrolog-series-1.schema.json.
+ *
+ * @param {string} refused the title of a refusal
+ * @returns {Promise<{schemas: {networkSchema: object, seriesSchema: object}|null, refusal:
+ *   {title: string, lines: string[]}|null}>} the schemas, or why they are missing
+ */
+async function payloadSchemas(refused) {
+  try {
+    const [networkSchema, seriesSchema] = await Promise.all([api.schema(NETWORK_SCHEMA_FILE), api.schema(SERIES_SCHEMA_FILE)]);
+    return { schemas: { networkSchema, seriesSchema }, refusal: null };
+  } catch (error) {
+    return { schemas: null, refusal: { title: refused, lines: [t(texts.load.schemaFailed, { message: errorText(error) })] } };
+  }
+}
+
+/**
  * Open a hand-off: check it (the envelope against Nogat's schema, the payload against
  * hydrolog-network-1.schema.json or hydrolog-series-1.schema.json) and hand it to the
- * section it belongs to. A station's daily series is first written into the session's
- * files, which Statystyka przepływów reads like a file of the person's.
+ * section it belongs to, or to Sieć for every network when Sieć reads it (`into`). A
+ * station's daily series is first written into the session's files, which Statystyka
+ * przepływów reads like a file of the person's.
  *
  * @param {string} text the hand-off as text
+ * @param {{into?: "siec"|null}} [options] the section that reads it (readHandoff)
  * @returns {Promise<{title: string, lines: string[]}|null>} why it was refused, null when
  *   it opened
  */
-export async function openHandoff(text) {
-  let networkSchema;
-  let seriesSchema;
-  try {
-    [networkSchema, seriesSchema] = await Promise.all([api.schema(NETWORK_SCHEMA_FILE), api.schema(SERIES_SCHEMA_FILE)]);
-  } catch (error) {
-    return { title: texts.load.refused, lines: [t(texts.load.schemaFailed, { message: errorText(error) })] };
-  }
-  const read = readHandoff(text, { networkSchema, seriesSchema });
+export async function openHandoff(text, { into = null } = {}) {
+  const found = await payloadSchemas(texts.load.refused);
+  if (found.refusal) return found.refusal;
+  const read = readHandoff(text, { ...found.schemas, into });
   if (read.problems.length) return { title: texts.load.refused, lines: read.problems };
   const doc = read.doc;
   const producer = `${toolName(doc.producer.tool)} ${doc.producer.version}`;
@@ -155,6 +172,26 @@ export async function openHandoff(text) {
 }
 
 /**
+ * „Dodaj zlewnię z Hydrografa” (plan 2026-11-10-network-editor, D10): check a hand-off as
+ * openHandoff does and give its document to Sieć, which adds its subcatchments to the
+ * open network; a station's series is refused.
+ *
+ * @param {string} text the hand-off as text
+ * @param {(doc: object) => ({title: string, lines: string[]}|null)} onAdd Sieć's
+ *   addition: null when it added them, else why not
+ * @returns {Promise<{title: string, lines: string[]}|null>} why nothing was added, null
+ *   when the subcatchments were
+ */
+export async function addHandoff(text, onAdd) {
+  const found = await payloadSchemas(texts.add.refused);
+  if (found.refusal) return found.refusal;
+  const read = readHandoff(text, { ...found.schemas, into: "siec" });
+  if (read.problems.length) return { title: texts.add.refused, lines: read.problems };
+  if (read.target !== "siec") return { title: texts.add.refused, lines: [texts.add.series] };
+  return onAdd(read.doc);
+}
+
+/**
  * The lines of a refusal, at most MAX_PROBLEMS and how many more.
  *
  * @param {string[]} lines the problems
@@ -166,21 +203,23 @@ function capped(lines) {
 }
 
 /**
- * „Wczytaj z Hydrografa”: a menu of a hand-off file and the clipboard; where the browser
- * does not give the clipboard, a field to paste into. A refused hand-off lists why below
- * the buttons. Placed in a section's row of file buttons (`.btn-row`). Statystyka
- * przepływów names Archiwista instead (`series`); any hand-off opens where it belongs.
+ * A button that reads a hand-off: a menu of a hand-off file and the clipboard; where the
+ * browser does not give the clipboard, a field to paste into. A refused hand-off lists why
+ * below the buttons. Placed in a section's row of file buttons (`.btn-row`).
  *
- * @param {{series?: boolean}} [props] the texts of a station's series (Archiwista)
+ * @param {{name: string, words: object, icon: object, read: (text: string) =>
+ *   Promise<{title: string, lines: string[]}|null>}} props the reader's name (its
+ *   feedback's `data-handoff-reader`), its texts (labels/handoff.js `load` and what
+ *   replaces them), the button's icon and what reading does: null when it was done, else
+ *   why not
  * @returns {object} the button, its menu and what it says
  */
-export function HandoffImport({ series = false } = {}) {
-  const words = series ? { ...texts.load, ...texts.loadSeries } : texts.load;
+function HandoffReader({ name, words, icon, read }) {
   const [feedback, setFeedback] = useState(null);
   const area = useRef(null);
   const open = async (text) => {
     setFeedback({ kind: "busy" });
-    const refusal = await openHandoff(text);
+    const refusal = await read(text);
     setFeedback(refusal ? { kind: "problems", ...refusal } : null);
   };
   useEffect(() => {
@@ -204,7 +243,7 @@ export function HandoffImport({ series = false } = {}) {
         try {
           text = await file.text();
         } catch (error) {
-          setFeedback({ kind: "problems", title: texts.load.refused, lines: [t(texts.load.readFailed, { name: file.name, message: errorText(error) })] });
+          setFeedback({ kind: "problems", title: words.refused, lines: [t(texts.load.readFailed, { name: file.name, message: errorText(error) })] });
           return;
         }
         await open(text);
@@ -226,20 +265,20 @@ export function HandoffImport({ series = false } = {}) {
       return;
     }
     if (!text.trim()) {
-      setFeedback({ kind: "problems", title: texts.load.refused, lines: [texts.load.empty] });
+      setFeedback({ kind: "problems", title: words.refused, lines: [texts.load.empty] });
       return;
     }
     await open(text);
   };
   let shown = null;
   if (feedback && feedback.kind === "problems") {
-    shown = html`<div class="form-errors handoff-feedback" role="alert" data-handoff-problems="">
+    shown = html`<div class="form-errors handoff-feedback" role="alert" data-handoff-problems="" data-handoff-reader=${name}>
       <strong>${feedback.title}</strong>
       <ul>${capped(feedback.lines).map((line) => html`<li>${line}</li>`)}</ul>
       <button class="link-btn" type="button" onClick=${() => setFeedback(null)}>${common.actions.close}</button>
     </div>`;
   } else if (feedback && feedback.kind === "paste") {
-    shown = html`<div class="handoff-feedback" data-handoff-paste="">
+    shown = html`<div class="handoff-feedback" data-handoff-paste="" data-handoff-reader=${name}>
       <p class="note">${words.pasteHint}</p>
       <textarea
         ref=${area}
@@ -260,14 +299,14 @@ export function HandoffImport({ series = false } = {}) {
       </div>
     </div>`;
   } else if (feedback && feedback.kind === "busy") {
-    shown = html`<p class="note handoff-feedback" role="status">${texts.load.reading}</p>`;
+    shown = html`<p class="note handoff-feedback" role="status" data-handoff-reader=${name}>${texts.load.reading}</p>`;
   }
   return html`
     <${MenuButton}
       className="btn sm"
       title=${words.title}
       menuLabel=${words.menu}
-      label=${html`${ICONS.load}${words.button}`}
+      label=${html`${icon}${words.button}`}
       items=${[
         { label: words.file, sub: words.fileSub, onSelect: pickFile },
         { label: words.paste, sub: words.pasteSub, onSelect: paste },
@@ -275,6 +314,35 @@ export function HandoffImport({ series = false } = {}) {
     />
     ${shown}
   `;
+}
+
+/**
+ * „Wczytaj z Hydrografa”: a hand-off read from a file or the clipboard opens where it
+ * belongs (openHandoff). Statystyka przepływów names Archiwista instead (`series`); Sieć
+ * opens every network itself (`into`, plan 2026-11-10-network-editor, D10).
+ *
+ * @param {{series?: boolean, into?: "siec"|null}} [props] the texts of a station's series
+ *   (Archiwista), and the section that reads it
+ * @returns {object} the button, its menu and what it says
+ */
+export function HandoffImport({ series = false, into = null } = {}) {
+  let words = texts.load;
+  if (series) words = { ...texts.load, ...texts.loadSeries };
+  else if (into === "siec") words = { ...texts.load, ...texts.loadSiec };
+  return html`<${HandoffReader} name="load" words=${words} icon=${ICONS.load} read=${(text) => openHandoff(text, { into })} />`;
+}
+
+/**
+ * „Dodaj zlewnię z Hydrografa” in Sieć (plan 2026-11-10-network-editor, D10): a hand-off
+ * read from a file or the clipboard gives its subcatchments to the open network
+ * (addHandoff).
+ *
+ * @param {{onAdd: (doc: object) => ({title: string, lines: string[]}|null)}} props Sieć's
+ *   addition: null when it added them, else why not
+ * @returns {object} the button, its menu and what it says
+ */
+export function HandoffAdd({ onAdd }) {
+  return html`<${HandoffReader} name="add" words=${{ ...texts.load, ...texts.add }} icon=${ICONS.add} read=${(text) => addHandoff(text, onAdd)} />`;
 }
 
 // --- a received producer's result ----------------------------------------------------
