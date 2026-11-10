@@ -379,13 +379,75 @@ export function linkVerdict(skeleton, rules, from, to) {
   if (from === to) return { ok: false, reason: "cycle", nodes: [from] };
   const source = skeleton.find((node) => node.id === from);
   const target = skeleton.find((node) => node.id === to);
+  return judged(rules, from, source, target, () => pathDown(receiversOf(skeleton), to, from));
+}
+
+/**
+ * A verdict of linkVerdict, the structure's own work given.
+ *
+ * @param {Object<string, {fewest: number, most: number|null}>} rules inflowRules's
+ * @param {string} from the node that would flow
+ * @param {object|undefined} source its node
+ * @param {object|undefined} target the node it would flow into
+ * @param {() => string[]|null} loop the path down from the target to `from`, if any
+ * @returns {{ok: true}|{ok: false, reason: string, nodes?: string[], offer?: "junction"}}
+ *   the verdict
+ */
+function judged(rules, from, source, target, loop) {
   if (!source || !target) return { ok: false, reason: "unknown_upstream" };
   if (source.type === "outlet") return { ok: false, reason: "outlet_has_downstream" };
   const rule = rules[target.type] || { fewest: 0, most: null };
   if (rule.most === 0) return { ok: false, reason: "upstream_count" };
-  const loop = pathDown(receiversOf(skeleton), to, from);
-  if (loop) return { ok: false, reason: "cycle", nodes: [from, ...loop.slice(0, -1)] };
+  const path = loop();
+  if (path) return { ok: false, reason: "cycle", nodes: [from, ...path.slice(0, -1)] };
   const others = (target.from || []).filter((up) => up !== from);
   if (rule.most !== null && others.length + 1 > rule.most) return { ok: false, reason: "upstream_count", offer: "junction" };
   return { ok: true };
+}
+
+/**
+ * linkVerdict of a node towards every other node at once (the targets of a link: „Odpływa
+ * do”, the canvas while linking): the receivers and the nodes upstream of `from` are found
+ * once, so a structure of n nodes costs about n steps, not n².
+ *
+ * @param {Array<{id: string, type: string, from: string[]|null}>} skeleton the structure
+ * @param {Object<string, {fewest: number, most: number|null}>} rules inflowRules's
+ * @param {string} from the node that would flow
+ * @returns {Map<string, {ok: true}|{ok: false, reason: string, nodes?: string[], offer?:
+ *   "junction"}>} the verdict by the id of every node but `from`, equal to linkVerdict's
+ */
+export function linkVerdicts(skeleton, rules, from) {
+  const source = skeleton.find((node) => node.id === from);
+  const inflows = inflowsOf(skeleton);
+  const receivers = receiversOf(skeleton);
+  // The nodes `from` can be reached from downstream: a link into one closes a cycle
+  const upstream = new Set();
+  const queue = inflows.has(from) ? [from] : [];
+  for (let at = 0; at < queue.length; at += 1) {
+    for (const up of inflows.get(queue[at])) {
+      if (up !== from && !upstream.has(up)) {
+        upstream.add(up);
+        queue.push(up);
+      }
+    }
+  }
+  const verdicts = new Map();
+  for (const node of skeleton) {
+    if (node.id === from || verdicts.has(node.id)) continue;
+    const loop = () => (upstream.has(node.id) ? pathDown(receivers, node.id, from) : null);
+    verdicts.set(node.id, judged(rules, from, source, node, loop));
+  }
+  return verdicts;
+}
+
+/**
+ * The structure as one text: the ids, types and inflows, without the positions, the
+ * descriptions and anything else. Equal keys have the same problems and the same links,
+ * so the work of this module is kept per key (a move changes no key).
+ *
+ * @param {Array<{id: string, type: string, from: string[]|null}>} skeleton the structure
+ * @returns {string} the key
+ */
+export function structureKey(skeleton) {
+  return JSON.stringify(skeleton.map((node) => [node.id, node.type, node.from]));
 }

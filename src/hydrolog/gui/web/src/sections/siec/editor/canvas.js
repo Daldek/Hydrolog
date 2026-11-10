@@ -27,7 +27,7 @@
 // selection, problems, the drop and the verdict) hide while the PNG is copied.
 
 import { hmm, num } from "../../../format.js";
-import { html, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "../../../html.js";
+import { Component, html, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "../../../html.js";
 import { t } from "../../../labels/common.js";
 import { siec as texts } from "../../../labels/siec.js";
 import { placeBelow } from "../../../ui/menu.js";
@@ -47,7 +47,7 @@ import {
   ROW,
   stepCell,
 } from "./geometry.js";
-import { linkVerdict, receiversOf } from "./graph.js";
+import { linkVerdict, linkVerdicts, receiversOf, structureKey } from "./graph.js";
 
 /** The zoom levels of „+” and „−” (1 draws a cell 110 by 74 px). */
 export const ZOOMS = Object.freeze([0.25, 0.33, 0.5, 0.67, 0.8, 1, 1.25, 1.5, 2]);
@@ -147,6 +147,94 @@ export function nodeName(node, words, value, notes = {}) {
   for (const text of notes.problems || []) parts.push(t(texts.problems.named, { text }));
   for (const text of notes.hints || []) parts.push(text);
   return parts.join(" · ");
+}
+
+/**
+ * A node of the canvas: a button (D12) with its glyph, label, problem mark and handle. It
+ * is drawn again only when what it shows changes (`look`, all of it as one text), so an
+ * edit of a network of hundreds of nodes redraws the nodes it touched, not every node.
+ *
+ * @param {{look: string, node: object, lines: Array<{cls: string, text: string}>, name:
+ *   string, classes: string, problems: number, focusable: boolean, on: boolean}} props
+ *   what it shows as one text; the node of pictureOf, its label's lines, its accessible
+ *   name, its classes, its problems' count, whether it is the node the keys reach and
+ *   whether it is chosen
+ */
+class CanvasNode extends Component {
+  shouldComponentUpdate(next) {
+    return next.look !== this.props.look;
+  }
+
+  render({ node, lines, name, classes, problems, focusable, on }) {
+    const placed = labelLines(node, lines.length);
+    return html`
+      <g
+        class=${classes}
+        data-node=${node.id}
+        data-x=${node.cell[0]}
+        data-y=${node.cell[1]}
+        data-place=${node.place}
+        data-problems=${problems ? String(problems) : undefined}
+        tabindex=${focusable ? "0" : "-1"}
+        role="button"
+        aria-pressed=${on ? "true" : "false"}
+        aria-label=${name}
+      >
+        <title>${name}</title>
+        <circle class="halo" cx=${node.cx} cy=${node.cy} r=${HALO} />
+        <${Glyph} node=${node} />
+        ${lines.map(
+          (item, index) => html`<text class=${item.cls} x=${placed.x} y=${placed.ys[index]} text-anchor=${placed.anchor}>${item.text}</text>`,
+        )}
+        ${problems
+          ? html`<g class="mark edit-mark" aria-hidden="true">
+              <circle class="mark-bg" cx=${node.cx + 14} cy=${node.cy - 14} r="8" />
+              <text class="mark-t" x=${node.cx + 14} y=${node.cy - 10} text-anchor="middle">${texts.problems.mark}</text>
+            </g>`
+          : null}
+        ${node.type !== "outlet"
+          ? html`<g class="handle edit-mark" data-handle=${node.id} aria-hidden="true">
+              <title>${t(texts.canvas.handle, { id: node.id })}</title>
+              <circle class="handle-hit" cx=${node.cx} cy=${node.cy + HANDLE_DY} r=${HANDLE_R} />
+              <circle class="handle-dot" cx=${node.cx} cy=${node.cy + HANDLE_DY} r="5" />
+            </g>`
+          : null}
+      </g>
+    `;
+  }
+}
+
+/**
+ * A line of the picture, an edge by rule D, drawn again only when it changes (`look`).
+ *
+ * @param {{look: string, edge: {key: string, line: string}, classes: string}} props what
+ *   it shows as one text, the edge with its key and points, and its classes
+ */
+class CanvasLine extends Component {
+  shouldComponentUpdate(next) {
+    return next.look !== this.props.look;
+  }
+
+  render({ edge, classes }) {
+    return html`<polyline class=${classes} data-edge=${edge.key} points=${edge.line} />`;
+  }
+}
+
+/**
+ * The hit line of an edge (24 px wide, D12) with its name: a click chooses the link. It is
+ * drawn again only when the edge changes (`look`).
+ *
+ * @param {{look: string, edge: {from: string, to: string, key: string, line: string}}}
+ *   props what it shows as one text, and the edge
+ */
+class CanvasHit extends Component {
+  shouldComponentUpdate(next) {
+    return next.look !== this.props.look;
+  }
+
+  render({ edge }) {
+    return html`<polyline class="ln-hit" data-link=${edge.key} points=${edge.line}><title>${t(texts.canvas.linkName, edge)}</title></polyline>`;
+  }
 }
 
 /**
@@ -359,7 +447,9 @@ export function NetworkCanvas({
   const owners = useMemo(() => new Map(picture.nodes.map((node) => [cellKey(node.cell), node.id])), [picture]);
   const byId = useMemo(() => new Map(picture.nodes.map((node) => [node.id, node])), [picture]);
   const structure = useMemo(() => new Map(skeleton.map((node) => [node.id, node])), [skeleton]);
-  const receivers = useMemo(() => receiversOf(skeleton), [skeleton]);
+  // What depends on the structure alone stays while only cells and descriptions change
+  const shape = useMemo(() => structureKey(skeleton), [skeleton]);
+  const receivers = useMemo(() => receiversOf(skeleton), [shape]);
   const through = useMemo(() => edgesThroughNodes(picture), [picture]);
   const hintsOf = useMemo(() => {
     const found = new Map();
@@ -373,21 +463,23 @@ export function NetworkCanvas({
   const box = picture.nodes.length
     ? pictureBox(picture, new Map([...labels].map(([node, lines]) => [node, lines.map((item) => item.text)])), 1)
     : EMPTY_BOX;
-  const edges = [...picture.edges].sort((a, b) => Number(a.main) - Number(b.main));
+  // The edges with their keys and lines, the tributaries under the main stem, and those
+  // that run through a node, kept while the picture stays
+  const edges = useMemo(
+    () =>
+      [...picture.edges]
+        .sort((a, b) => Number(a.main) - Number(b.main))
+        .map((edge) => ({ ...edge, key: `${edge.from}>${edge.to}`, line: edge.points.map((point) => point.join(",")).join(" ") })),
+    [picture],
+  );
+  const throughEdges = useMemo(() => new Set(through.map((item) => `${item.from}>${item.to}`)), [through]);
   const scale = zoom === null ? 1 : zoom;
   const roving = byId.has(focusId) ? focusId : byId.has(selected) ? selected : picture.nodes.length ? picture.nodes[0].id : null;
   const targets = useMemo(() => {
     if (!linking) return new Set();
-    return new Set(
-      skeleton
-        .filter((node) => {
-          if (node.id === linking.from) return false;
-          const found = linkVerdict(skeleton, rules, linking.from, node.id);
-          return found.ok || Boolean(found.offer);
-        })
-        .map((node) => node.id),
-    );
-  }, [linking, skeleton, rules]);
+    const verdicts = linkVerdicts(skeleton, rules, linking.from);
+    return new Set([...verdicts].filter(([, found]) => found.ok || Boolean(found.offer)).map(([id]) => id));
+  }, [linking, shape, rules]);
 
   const setSvg = useCallback(
     (element) => {
@@ -621,11 +713,7 @@ export function NetworkCanvas({
       say(t(texts.canvas.refused, { reason: t(texts.refusals.outlet_has_downstream, { from: node }) }));
       return;
     }
-    const allowed = skeleton.some((other) => {
-      if (other.id === node) return false;
-      const found = linkVerdict(skeleton, rules, node, other.id);
-      return found.ok || Boolean(found.offer);
-    });
+    const allowed = [...linkVerdicts(skeleton, rules, node).values()].some((found) => found.ok || Boolean(found.offer));
     if (!allowed) {
       say(t(texts.canvas.noTargets, { id: node }));
       return;
@@ -1270,28 +1358,16 @@ export function NetworkCanvas({
           ${picked
             ? edges
                 .filter((edge) => edge.from === picked.from && edge.to === picked.to)
-                .map((edge) => html`<polyline key="picked" class="ln-pick edit-mark" points=${edge.points.map((point) => point.join(",")).join(" ")} />`)
+                .map((edge) => html`<polyline key="picked" class="ln-pick edit-mark" points=${edge.line} />`)
             : null}
           ${edges.map((edge) => {
-            const key = `${edge.from}>${edge.to}`;
-            const extra = `${problems.loops.has(key) ? " loop" : ""}${through.some((item) => item.from === edge.from && item.to === edge.to) ? " through" : ""}`;
-            return html`<polyline
-              key=${key}
-              class=${`ln ${edge.main ? "main" : "trib"}${extra}`}
-              data-edge=${key}
-              points=${edge.points.map((point) => point.join(",")).join(" ")}
-            />`;
+            const extra = `${problems.loops.has(edge.key) ? " loop" : ""}${throughEdges.has(edge.key) ? " through" : ""}`;
+            const classes = `ln ${edge.main ? "main" : "trib"}${extra}`;
+            return html`<${CanvasLine} key=${edge.key} look=${`${classes}|${edge.line}`} edge=${edge} classes=${classes} />`;
           })}
         </g>
         <g class="hits edit-mark">
-          ${edges.map(
-            (edge) => html`<polyline
-              key=${`${edge.from}>${edge.to}`}
-              class="ln-hit"
-              data-link=${`${edge.from}>${edge.to}`}
-              points=${edge.points.map((point) => point.join(",")).join(" ")}
-            ><title>${t(texts.canvas.linkName, edge)}</title></polyline>`,
-          )}
+          ${edges.map((edge) => html`<${CanvasHit} key=${edge.key} look=${`${edge.key}|${edge.line}`} edge=${edge} />`)}
         </g>
         ${through.map((item) => {
           const node = byId.get(item.node);
@@ -1299,48 +1375,26 @@ export function NetworkCanvas({
         })}
         ${picture.nodes.map((node) => {
           const lines = labels.get(node.id);
-          const placed = labelLines(node, lines.length);
           const value = values ? values.get(node.id) : undefined;
           const own = structure.get(node.id) || {};
           const wrong = marks.get(node.id) || [];
           const name = nodeName(node, words.get(node.id), value, { description: own.description, problems: wrong, hints: hintsOf.get(node.id) });
           const on = node.id === selected;
           const target = linking && targets.has(node.id);
-          return html`
-            <g
-              key=${node.id}
-              class=${`node t-${node.type}${on ? " sel" : ""}${target ? " target" : ""}${linking && linking.from === node.id ? " source" : ""}${wrong.length ? " wrong" : ""}`}
-              data-node=${node.id}
-              data-x=${node.cell[0]}
-              data-y=${node.cell[1]}
-              data-place=${node.place}
-              data-problems=${wrong.length ? String(wrong.length) : undefined}
-              tabindex=${node.id === roving ? "0" : "-1"}
-              role="button"
-              aria-pressed=${on ? "true" : "false"}
-              aria-label=${name}
-            >
-              <title>${name}</title>
-              <circle class="halo" cx=${node.cx} cy=${node.cy} r=${HALO} />
-              <${Glyph} node=${node} />
-              ${lines.map(
-                (item, index) => html`<text class=${item.cls} x=${placed.x} y=${placed.ys[index]} text-anchor=${placed.anchor}>${item.text}</text>`,
-              )}
-              ${wrong.length
-                ? html`<g class="mark edit-mark" aria-hidden="true">
-                    <circle class="mark-bg" cx=${node.cx + 14} cy=${node.cy - 14} r="8" />
-                    <text class="mark-t" x=${node.cx + 14} y=${node.cy - 10} text-anchor="middle">${texts.problems.mark}</text>
-                  </g>`
-                : null}
-              ${node.type !== "outlet"
-                ? html`<g class="handle edit-mark" data-handle=${node.id} aria-hidden="true">
-                    <title>${t(texts.canvas.handle, { id: node.id })}</title>
-                    <circle class="handle-hit" cx=${node.cx} cy=${node.cy + HANDLE_DY} r=${HANDLE_R} />
-                    <circle class="handle-dot" cx=${node.cx} cy=${node.cy + HANDLE_DY} r="5" />
-                  </g>`
-                : null}
-            </g>
-          `;
+          const classes = `node t-${node.type}${on ? " sel" : ""}${target ? " target" : ""}${linking && linking.from === node.id ? " source" : ""}${wrong.length ? " wrong" : ""}`;
+          const focusable = node.id === roving;
+          const look = JSON.stringify([classes, node.cell, node.place, lines, name, wrong.length, focusable, on]);
+          return html`<${CanvasNode}
+            key=${node.id}
+            look=${look}
+            node=${node}
+            lines=${lines}
+            name=${name}
+            classes=${classes}
+            problems=${wrong.length}
+            focusable=${focusable}
+            on=${on}
+          />`;
         })}
         <line class="link-line edit-mark" ref=${line} x1="0" y1="0" x2="0" y2="0" data-state="off" aria-hidden="true" />
         <g class="verdict edit-mark" ref=${verdict} data-state="off" aria-hidden="true">

@@ -16,7 +16,7 @@ import { TextField } from "../../controls/text-field.js";
 import { splitReason } from "../../controls/field.js";
 import { auto, bytes, inputText, parseNumber } from "../../format.js";
 import { withReason } from "../../forms/model.js";
-import { html, useRef, useState } from "../../html.js";
+import { html, useMemo, useRef, useState } from "../../html.js";
 import { common, t } from "../../labels/common.js";
 import { describeError } from "../../labels/errors.js";
 import { siec as texts } from "../../labels/siec.js";
@@ -24,7 +24,7 @@ import { InfoButton } from "../../ui/info-button.js";
 import { Seg } from "../../ui/seg.js";
 import { JunctionOffer } from "./editor/canvas.js";
 import { canBridge } from "./editor/edits.js";
-import { foldId, idProblem, linkVerdict, receiversOf } from "./editor/graph.js";
+import { foldId, idProblem, linkVerdicts, receiversOf, structureKey } from "./editor/graph.js";
 import { descriptionProblem, fieldOf, METHODS, nodeLayout, RAINFALLS, VARIANTS } from "./node-model.js";
 import { kindNoun, refusalText } from "./words.js";
 
@@ -370,8 +370,23 @@ function NodeStructure({ node, to, skeleton, rules, prefix, offer, actions, onId
   };
   const idId = `${prefix}-id`;
   const toId = `${prefix}-to`;
-  const below = receiversOf(skeleton).get(node.id) || [];
-  const others = skeleton.filter((item) => item.id !== node.id);
+  // „Odpływa do”: the nodes below it and every target with its verdict, kept while the
+  // structure stays (a move, a description or a value changes nothing here)
+  const shape = useMemo(() => structureKey(skeleton), [skeleton]);
+  const { below, targets } = useMemo(() => {
+    const down = receiversOf(skeleton).get(node.id) || [];
+    const verdicts = linkVerdicts(skeleton, rules, node.id);
+    const listed = skeleton
+      .filter((item) => item.id !== node.id)
+      .map((item) => {
+        const verdict = verdicts.get(item.id);
+        const refused = !verdict.ok && !verdict.offer && !down.includes(item.id);
+        const label = `${item.id} (${kindNoun(item.type)})`;
+        const reason = refused ? refusalText(verdict, skeleton, node.id, item.id) : null;
+        return { id: item.id, refused, text: refused ? `${label}: ${t(texts.canvas.refused, { reason })}` : label };
+      });
+    return { below: down, targets: listed };
+  }, [shape, rules, node.id]);
   return html`
     <div class="node-structure" data-structure=${node.id}>
       <div class=${`opt${idError ? " invalid" : ""}`} data-field="id">
@@ -424,12 +439,7 @@ function NodeStructure({ node, to, skeleton, rules, prefix, offer, actions, onId
           }}
         >
           <option value="">${texts.form.toNone}</option>
-          ${others.map((item) => {
-            const verdict = linkVerdict(skeleton, rules, node.id, item.id);
-            const refused = !verdict.ok && !verdict.offer && !below.includes(item.id);
-            const label = `${item.id} (${kindNoun(item.type)})`;
-            return html`<option value=${item.id} disabled=${refused}>${refused ? `${label}: ${t(texts.canvas.refused, { reason: refusalText(verdict, skeleton, node.id, item.id) })}` : label}</option>`;
-          })}
+          ${targets.map((item) => html`<option value=${item.id} disabled=${item.refused}>${item.text}</option>`)}
         </select>
         <span class="hint" id=${`${toId}-hint`}>${texts.form.toHint}</span>
       </div>

@@ -457,25 +457,95 @@ export function segmentTouches(a, b, box) {
 }
 
 /**
+ * Add a value to the list of a key.
+ *
+ * @param {Map<string, unknown[]>} lists the lists by key
+ * @param {string} key the key
+ * @param {unknown} value the value
+ */
+function listUnder(lists, key, value) {
+  const list = lists.get(key);
+  if (list) list.push(value);
+  else lists.set(key, [value]);
+}
+
+/**
+ * Where a picture's nodes and lines stand, for crowding: the nodes by their cell, and each
+ * segment of an edge under every unit square of the grid (keyed by its lower corner) that
+ * a step of it of at most one unit touches. A label's box then meets a few squares instead
+ * of the whole picture, and crowding counts the same.
+ *
+ * @param {Array<{id: string, col: number, row: number}>} nodes every node
+ * @param {Array<{points: Array<[number, number]>}>} edges every edge, in grid units
+ * @returns {{nodes: Map<string, string[]>, segments: Array<Array<[number, number]>>,
+ *   squares: Map<string, number[]>}} the ids by cell, the segments, and the indices of the
+ *   segments by square
+ */
+export function crowdIndex(nodes, edges) {
+  const byCell = new Map();
+  for (const node of nodes) listUnder(byCell, `${node.col},${node.row}`, node.id);
+  const segments = [];
+  const squares = new Map();
+  for (const edge of edges) {
+    for (let index = 1; index < edge.points.length; index += 1) {
+      const [a, b] = [edge.points[index - 1], edge.points[index]];
+      const at = segments.push([a, b]) - 1;
+      const steps = Math.max(1, Math.ceil(Math.max(Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1]))));
+      const seen = new Set();
+      for (let step = 0; step < steps; step += 1) {
+        const p = [a[0] + ((b[0] - a[0]) * step) / steps, a[1] + ((b[1] - a[1]) * step) / steps];
+        const q = [a[0] + ((b[0] - a[0]) * (step + 1)) / steps, a[1] + ((b[1] - a[1]) * (step + 1)) / steps];
+        for (let col = Math.floor(Math.min(p[0], q[0])); col <= Math.floor(Math.max(p[0], q[0])); col += 1) {
+          for (let row = Math.floor(Math.min(p[1], q[1])); row <= Math.floor(Math.max(p[1], q[1])); row += 1) {
+            const key = `${col},${row}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            listUnder(squares, key, at);
+          }
+        }
+      }
+    }
+  }
+  return { nodes: byCell, segments, squares };
+}
+
+/**
  * How many lines and other nodes lie where a label of a node would stand.
  *
  * @param {{id: string, col: number, row: number}} node the node
  * @param {string} place one of PLACES
- * @param {Array<{id: string, col: number, row: number}>} nodes every node
+ * @param {Array<{id: string, col: number, row: number}>} nodes every node (on whole cells)
  * @param {Array<{points: Array<[number, number]>}>} edges every edge, in grid units
+ * @param {object|null} [index] crowdIndex of the nodes and edges: the same count, without
+ *   going through every node and line
  * @returns {number} the count
  */
-export function crowding(node, place, nodes, edges) {
+export function crowding(node, place, nodes, edges, index = null) {
   const [c0, c1, r0, r1] = BOXES[place];
   const box = [node.col + c0, node.col + c1, node.row + r0, node.row + r1];
   let count = 0;
+  if (index) {
+    for (let col = Math.ceil(box[0]); col <= Math.floor(box[1]); col += 1) {
+      for (let row = Math.ceil(box[2]); row <= Math.floor(box[3]); row += 1) {
+        for (const id of index.nodes.get(`${col},${row}`) || []) if (id !== node.id) count += 1;
+      }
+    }
+    const near = new Set();
+    for (let col = Math.floor(box[0]); col <= Math.floor(box[1]); col += 1) {
+      for (let row = Math.floor(box[2]); row <= Math.floor(box[3]); row += 1) {
+        for (const at of index.squares.get(`${col},${row}`) || []) near.add(at);
+      }
+    }
+    for (const at of near) if (segmentTouches(index.segments[at][0], index.segments[at][1], box)) count += 1;
+    return count;
+  }
   for (const other of nodes) {
     if (other.id === node.id) continue;
     if (other.col >= box[0] && other.col <= box[1] && other.row >= box[2] && other.row <= box[3]) count += 1;
   }
   for (const edge of edges) {
-    for (let index = 1; index < edge.points.length; index += 1) {
-      if (segmentTouches(edge.points[index - 1], edge.points[index], box)) count += 1;
+    for (let at = 1; at < edge.points.length; at += 1) {
+      if (segmentTouches(edge.points[at - 1], edge.points[at], box)) count += 1;
     }
   }
   return count;
@@ -490,15 +560,16 @@ export function crowding(node, place, nodes, edges) {
  *   on the main stem)
  * @param {Array<{id: string, col: number, row: number}>} nodes every node
  * @param {Array<{points: Array<[number, number]>}>} edges every edge, in grid units
+ * @param {object|null} [index] crowdIndex of the nodes and edges (crowding)
  * @returns {string} one of PLACES
  */
-export function labelPlace(node, preferred, nodes, edges) {
+export function labelPlace(node, preferred, nodes, edges, index = null) {
   const other = preferred === "right" ? "left" : "right";
   const order = [preferred, other, `${preferred}-below`, `${other}-below`];
   let best = order[0];
   let fewest = Infinity;
   for (const place of order) {
-    const count = crowding(node, place, nodes, edges);
+    const count = crowding(node, place, nodes, edges, index);
     if (count < fewest) {
       best = place;
       fewest = count;
@@ -538,6 +609,7 @@ export function pictureOf(skeleton, areas) {
     return { id: node.id, col, row };
   });
   const gridEdges = edges.map((edge) => ({ points: edge.route.map(transpose) }));
+  const crowd = crowdIndex(grid, gridEdges);
   const columns = new Map(grid.map((node) => [node.id, node.col]));
   const nodes = placed.map((node, index) => {
     const line = lines.get(node.id);
@@ -545,7 +617,7 @@ export function pictureOf(skeleton, areas) {
     const preferred = parent !== null && grid[index].col < parent ? "left" : "right";
     const cell = cells.get(node.id);
     const [cx, cy] = centreOf(cell);
-    return { id: node.id, type: node.type, cell, cx, cy, main: line.main, place: labelPlace(grid[index], preferred, grid, gridEdges) };
+    return { id: node.id, type: node.type, cell, cx, cy, main: line.main, place: labelPlace(grid[index], preferred, grid, gridEdges, crowd) };
   });
   return { nodes, edges };
 }
