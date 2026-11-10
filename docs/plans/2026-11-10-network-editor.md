@@ -1,8 +1,10 @@
 # Plan: an editor of the river network in „Sieć i trasowanie”, after HEC-HMS
 
-Approved: pending
+Approved: 2026-11-10
 
-Requested by the author on 2026-11-10: a graphical editor of the network in the GUI, modelled on the basin model editor of HEC-HMS, in which the person adds elements, connects each to the element below it and describes each one (its id, a description, its parameters). Today „Sieć i trasowanie” opens a network from a file, a hand-off or the guide's example, draws it from `route schematic` and edits the parameters of its nodes; the structure is shown and never edited (the GUI plan's D18 and S4). This plan supersedes those two points; the rest of [2026-11-02-hydrolog-gui.md](2026-11-02-hydrolog-gui.md) stands. It is on the branch `plan/network-editor` from `develop` `759d7ef`. The decisions below are the agent's, for the author's review; each open question at the end has a recommended answer.
+Approved by the author on 2026-11-10 with the answers to the eight open questions of the first version, recorded under [The author's decisions](#the-authors-decisions) and in the decisions they touch: positions snapped to ADR-0013's grid (Q1); the new fields optional in `hydrolog-network/1`, no `/2` (Q2); a description is plain text of up to 500 characters with line breaks and no Markdown, for every node and for the whole network (Q3, D3); the id is the name (Q4); „Zapisz szkic” (Q5); „Uporządkuj” before every parameter is given is not in this plan (Q6); „Wstaw złącze” (Q7); no background map for now, with no decision on where it would go (Q8, D15). ADR-0023 records the decisions with stage E1.
+
+Requested by the author on 2026-11-10: a graphical editor of the network in the GUI, modelled on the basin model editor of HEC-HMS, in which the person adds elements, connects each to the element below it and describes each one (its id, a description, its parameters). Today „Sieć i trasowanie” opens a network from a file, a hand-off or the guide's example, draws it from `route schematic` and edits the parameters of its nodes; the structure is shown and never edited (the GUI plan's D18 and S4). This plan supersedes those two points; the rest of [2026-11-02-hydrolog-gui.md](2026-11-02-hydrolog-gui.md) stands. It is on the branch `plan/network-editor` from `develop` `759d7ef`. The decisions below are the agent's; the author approved them and answered the open questions at the end.
 
 Requirements: DEV-17.4 (a change of the public documents `hydrolog-network/1` and `hydrolog-network-schematic/1` starts with a plan), DOC-8.1 (ADR-0023), AGI-4.1 (optional fields keep the version), DEV-15.1 to DEV-15.3, DEV-2.3 (Polish texts through the label modules; the Polish-only deviation from DEV-2.2 in `CLAUDE.md` stands), DOC-7.2, HUB-5.2 (D4: no project but Hydrolog changes). Inputs: [ADR-0010](../decisions/0010-route-network-document-and-output-directory.md), [ADR-0012](../decisions/0012-network-objects-rainfall-and-runoff.md), [ADR-0013](../decisions/0013-network-schematic.md), [ADR-0014](../decisions/0014-web-gui-enters-the-scope.md); the GUI plan (D8, D9, D12, D16, D17, D18, S4); Nogat's `design/README.md` (WCAG 2.2 AA contrast, never colour alone, the focus ring); the HEC-HMS User's Manual ([source, junction, diversion and sink elements][hms-elements], [reach elements][hms-reach]). No code before `Approved:`.
 
@@ -62,13 +64,13 @@ The palette has five buttons, each with its kind's glyph and Polish name as in t
   - `position`: `{"x": …, "y": …}`, the cell of the node in ADR-0013's grid (`x` grows downstream, `y` sideways; the canvas shows `x` downwards), integers from −1000 to 1000, these two keys only. Reasons: `type`, `unknown_field`, `missing_field` (`field` `position.x`), `minimum`, `maximum`.
 - Neither changes a computation: the result, the tables and `describe()` are the same with and without them, byte for byte (D13).
 - The canonical form writes them after the fields of the kind, `description` then `position`, and only when given; a document without them is written as today.
-- If the author agrees (Q3), the network gets the same optional `description` at its top.
+- The network has the same optional `description` at its top (Q3), with the same rules and reasons (`details.field` `description`, no `node_id`), written after `name`. `RoutingNetwork(..., description=...)` keeps it as `description`, like `name`; the result and the schematic do not carry it.
 - The version stays `/1` (AGI-4.1, as ADR-0012 did); a `/2` would break Retman's recognition (the exact `schema`) and Hydrograf's payload for a change that alters no meaning. A Hydrolog older than E1 refuses a document that has the new fields (`unknown_field`), as every Hydrolog before ADR-0012 refused `watershed`; older documents read as before everywhere. The reader stays strict (ADR-0010): a misspelt field is still an error, not something ignored.
 
 ### D4. The library and the consumers
 
 - `Node` gains `description` and `position` (a `Position(x, y)` exported from `hydrolog.routing`) and the copies `with_description()` and `with_position()`, like `with_inflows()`, which check the values with D3's reasons and `details.node_id`. They live on the base class and are read and written in one place (`Node.read_entry`, `Node.to_document`; `_COMMON` of `routing/network.py` and of `operations/_network_input.py`), so every registered type, one from another package too, carries them without code of its own.
-- `RoutingNetwork.from_document` and `to_document`, `read_network` and `write_network` keep them; `route network`, `route schematic` and the MCP tools read them. No catalog option changes, so `AGENTS.md` and `llms.txt` stay; the JSON Schema of `/1` is regenerated with both properties in every node branch. The result `hydrolog-route-network/1` and `ControlPointNetwork` do not change. `hydrolog.testing` keeps in step with the format (DEV-10.6: Retman reads these files): `placed(node, *, description=None, position=None)` adds the fields to a node of its builders, and `network_document` checks them through the real loader.
+- `RoutingNetwork.from_document` and `to_document`, `read_network` and `write_network` keep them; `route network`, `route schematic` and the MCP tools read them. No catalog option changes, so `AGENTS.md` and `llms.txt` stay; the JSON Schema of `/1` is regenerated with both properties in every node branch and the `description` at its top. The result `hydrolog-route-network/1` and `ControlPointNetwork` do not change. `hydrolog.testing` keeps in step with the format (DEV-10.6: Retman reads these files): `placed(node, *, description=None, position=None)` adds the fields to a node of its builders, `network_document(..., description=None)` gives the network its description, and `network_document` checks them through the real loader.
 - HUB-5.2: Hydrolog owns the document and the change is additive. Hydrograf keeps writing `/1` hand-offs without the fields, and its test against the schema keeps passing. Retman keeps recognising the file and reads the fields once its release set takes a Hydrolog with E1. A hand-off written by Sieć may carry the fields; only Hydrolog reads such hand-offs today (Hydrograf reads none until the platform's step 12). No other project has to change, so no Nogat plan is needed. After E1 lands, Nogat's registry entry of `hydrolog-network/1` in `ecosystem.yaml` may name the optional positions and descriptions, on Nogat's own branch (producers first).
 
 ### D5. The picture of a placed network
@@ -172,16 +174,16 @@ The editor meets WCAG 2.2 AA, the level of Nogat's identity:
 
 ADR-0023 (positions and descriptions in the network document; the placed picture and rule D; the editor's structure checks in the browser) with „Amended by” lines in ADR-0010, ADR-0012, ADR-0013 and ADR-0014, and [DECISIONS.md](../DECISIONS.md). [USAGE.md](../USAGE.md): the document's new fields and section 8 of the GUI. [INTEGRATION.md](../INTEGRATION.md): the network document, the schematic's `layout` and given positions, and the hand-off payload. [README.md](../../README.md): the paragraph on the GUI. [PRD.md](../PRD.md): US-G02 revised and a new story for building a network. [SCOPE.md](../SCOPE.md): the GUI module edits networks. The guide `web/instrukcja/` (building a network, the keys, the table of D2; the pictures `siec.png` and `telefon.png` taken again, as `CLAUDE.md` says). The GUI plan's erratum (D1). [CHANGELOG.md](../CHANGELOG.md) for each stage and [PROGRESS.md](../PROGRESS.md).
 
-### D15. A later stage: the background map
+### D15. Deferred: the background map
 
-HEC-HMS shows a map of the basin behind its elements. It is not in this plan. In Hydrolog it would need:
+HEC-HMS shows a map of the basin behind its elements. It is not in this plan. A map behind the network would need:
 
 - a location per node in geographic coordinates (e.g. an optional `location` with WGS84 `lon` and `lat`), separate from `position`, so that the schematic stays a schematic; Hydrograf's provenance already carries the point of an outlet;
 - a basemap: tiles from an origin that the CSP has to allow (`img-src`, `connect-src`), with its attribution; Nogat's platform plan gives its kit a `basemaps.json` of shared basemaps, attributions and the origins a CSP must allow;
 - a vendored map library, or Hydrograf's map;
 - the boundaries of the subcatchments and the streams, which only Hydrograf has: Hydrolog has no spatial data ([SCOPE.md](../SCOPE.md)).
 
-Recommended (Q8): the map belongs to Hydrograf, whose control points (the platform's step 18: the outlet first, a `hydrolog-network/1` of residual subcatchments, the schematic beside the map) produce the network, which the hand-off brings to this editor. A map in Hydrolog's GUI would be a plan and an ADR of its own.
+Deferred (Q8): the author decided on 2026-11-10 that there is no background map for now, and did not decide where one would go. The list above is what it would need wherever it goes; a map is a plan and an ADR of its own.
 
 ## Interfaces fixed by this plan
 
@@ -194,6 +196,10 @@ class Position(NamedTuple):   # a cell of ADR-0013's grid: x grows downstream, y
     y: int
 MAX_DESCRIPTION_CHARS: Final = 500
 MAX_POSITION: Final = 1000      # |x| and |y| at most
+class RoutingNetwork:
+    def __init__(self, nodes, *, name=None, description: str | None = None,
+                 rainfall=None, timestep_min=None) -> None: ...
+    description: str | None     # the network's own description (Q3)
 class Node:
     @property
     def description(self) -> str | None: ...
@@ -204,6 +210,8 @@ class Node:
 # hydrolog.testing (DEV-10.6)
 def placed(node: Mapping[str, Any], *, description: str | None = None,
            position: tuple[int, int] | None = None) -> dict[str, Any]: ...
+def network_document(*nodes, name=None, description: str | None = None,
+                     timestep_min=None, rainfall=None) -> dict[str, Any]: ...
 ```
 
 A node of `hydrolog-network/1` with both fields:
@@ -247,11 +255,11 @@ html`<${NetworkCanvas} inputs=${inputs} problems=${problems} values=${values}
 
 ## Steps
 
-Producers before consumers inside Hydrolog: the document and the picture (E1), then the canvas (E2), the editing (E3), the hand-off (E4), the guide and the docs (E5). Each stage is shippable alone and has its own branch, started from the previous stage's (E1 from `develop`), with the gate green before every commit and its own `docs/CHANGELOG.md` entry; the stages merge into `develop` in order, only with the author's approval (DEV-3.3). Sizes are in sessions.
+Producers before consumers inside Hydrolog: the document and the picture (E1), then the canvas (E2), the editing (E3), the hand-off (E4), the guide and the docs (E5). Each stage is shippable alone and has its own branch, started from the previous stage's (E1 from this plan's branch `plan/network-editor`), with the gate green before every commit and its own `docs/CHANGELOG.md` entry; the stages merge into `develop` in order, only with the author's approval (DEV-3.3). Sizes are in sessions.
 
 | Stage | Owns | Provides | Acceptance | Size | After |
 |---|---|---|---|---|---|
-| **E1** the document and the picture (`feature/network-document-layout`) | `routing/{network,document,schematic,_layout,_svg,__init__}.py`, `operations/{_network_input,route}.py`, `catalog/notices.py`, `testing.py`, `scripts/generate_result_schemas.py` and the two regenerated schemas, `web/src/labels/notices.js` (the notice's text), ADR-0023 and the „Amended by” lines, `docs/DECISIONS.md`, `docs/USAGE.md`, `docs/INTEGRATION.md`, their tests | D3 to D5, the Python interfaces | the round trip keeps both fields and an older document is written byte for byte; the reasons of D3; routing byte for byte the same with and without the fields; `hydrolog route network --network-file placed.json --schematic placed.svg` draws the given cells; the property test of rule D on random trees; `positions_ignored` for partial and shared positions; `testing.placed` nodes pass `network_document` | 1-1.5 | the plan |
+| **E1** the document and the picture (`feat/network-editor-e1`) | `routing/{network,document,schematic,_layout,_svg,__init__}.py`, `operations/{_network_input,route}.py`, `catalog/notices.py`, `testing.py`, `scripts/generate_result_schemas.py` and the two regenerated schemas, `web/src/labels/notices.js` (the notice's text), ADR-0023 and the „Amended by” lines, `docs/DECISIONS.md`, `docs/USAGE.md`, `docs/INTEGRATION.md`, their tests | D3 to D5, the Python interfaces | the round trip keeps both fields and an older document is written byte for byte; the reasons of D3; routing byte for byte the same with and without the fields; `hydrolog route network --network-file placed.json --schematic placed.svg` draws the given cells; the property test of rule D on random trees; `positions_ignored` for partial and shared positions; `testing.placed` nodes pass `network_document` | 1-1.5 | the plan |
 | **E2** the canvas (`feature/network-canvas`) | `web/src/sections/siec/editor/{geometry,canvas}.js`, `siec/{index,state,schematic,schematic-view}.js` (the last two give way), `web/src/labels/siec.js`, `web/css/app.css`, `tests/e2e/test_siec.py`, `tests/e2e/test_js_units.py` | the canvas drawn from the inputs, arrow keys between nodes, moves by drag, Shift+arrows and „Przesuń”, „Uporządkuj”, the zoom, the provisional rows, the PNG without editing marks | the guide's network opens at the library's positions; a move survives a reload and a saved and reopened file; „Uporządkuj” brings back the library's positions; the edges equal the library's rule D for the same positions; a move does not mark the result stale; a 300-node network moves without visible delay (smoke); 390 px in the dark theme | 1.5-2 | E1 |
 | **E3** the editing (`feature/network-editing`) | `editor/{graph,edits,history}.js`, `siec/{index,state,data-panel,node-form,node-model,results-panel,export}.js`, `web/src/labels/siec.js`, `web/css/app.css`, `tests/e2e/test_siec_editor.py`, `tests/e2e/test_js_units.py`, the contract test of the texts of reasons, the GUI plan's erratum | D7 to D11: the palette, links, „Wstaw złącze”, deleting, renaming, „Opis”, the problems on the canvas, undo and redo, „Nowa sieć”, „Zapisz szkic”, the questions before discarding | the guide's three-subcatchment network built from empty by mouse, with the guide's parameters, gives the outlet values of the guide's file (the library's numbers); the same by keyboard only and without any drag; each refusal says its reason; problems appear and go as edits make and mend them; undo to the start and redo to the end give the same document; a rename updates `from` and keeps the inflows column; a draft saved and reopened | 2-2.5 | E2 |
 | **E4** the hand-off (`feature/network-handoff-editing`) | `web/src/handoff/{handoff,handoff-panel}.js`, the hand-off parts of `siec/`, `tests/e2e/test_exports.py` | D10's hand-off: open in Sieć, „Dodaj zlewnię z Hydrografa” | Nogat's example hand-off opens in Sieć from Sieć; two hand-offs become `Z1` and `Z2`, which the person joins in a junction above the outlet and computes; the hand-off written from Sieć validates against Nogat's schema and `/1` and reopens with its positions | 0.5-1 | E3 |
@@ -278,16 +286,18 @@ About 6.5 to 8 sessions, all on the critical path except E5's text, which can st
 | HEC-HMS's feature set pulls the stages wider | stages that do not end | D2 and „Not in this plan” fix the edges |
 | A longer gate | slower CI | the editor's browser tests in two files; the pure modules in `test_js_units.py` |
 
-## Open questions for the author
+## The author's decisions
 
-1. **Placement**: snapped to ADR-0013's grid, or free? Recommended: snapped. Free placement needs fractional positions and another edge rule, the computed picture could no longer be stored exactly, and the keys would move by an arbitrary step.
-2. **Version**: optional fields in `hydrolog-network/1`, or `hydrolog-network/2`? Recommended: `/1` (AGI-4.1, ADR-0012's precedent); a `/2` breaks Retman's recognition and Hydrograf's payload for nothing that changes a meaning.
-3. **Descriptions**: plain text of up to 500 characters, line breaks allowed, no Markdown; and the same `description` for the network at its top? Recommended: yes to both.
-4. **Names**: is the id the element's name, as in HEC-HMS (letters with Polish diacritics, digits, `_`, `.`, `-`, no spaces), or does a node get a display name besides it? Recommended: the id; the description holds any other words.
-5. **An incomplete network**: save it as „Zapisz szkic”, or save complete networks only? Recommended: the draft. Nothing is lost, `route network` refuses the file with the first missing value named, and the GUI reopens it.
-6. **„Uporządkuj” before every parameter is given**: recommended not in this plan. The layout needs a network that the library can read, and the person places the nodes meanwhile. The alternative is a `route schematic` option that lays out the structure alone: a catalog option, an amendment of ADR-0013 and a `timestep_min` that such a schematic cannot know.
-7. **A second inflow into a reach, a reservoir or the outlet**: offer „Wstaw złącze”, or only refuse with the reason? Recommended: offer it; HEC-HMS users expect a reach to take several inflows.
-8. **The background map**: in Hydrograf, on its control points, or in a later stage of Hydrolog (D15)? Recommended: Hydrograf.
+The author answered the open questions of the first version on 2026-11-10, when approving the plan:
+
+1. **Placement**: snapped to ADR-0013's grid, as recommended. Free placement would need fractional positions and another edge rule, the computed picture could no longer be stored exactly, and the keys would move by an arbitrary step.
+2. **Version**: optional fields in `hydrolog-network/1`, no `hydrolog-network/2` (AGI-4.1, ADR-0012's precedent; D3). A `/2` would break Retman's recognition and Hydrograf's payload for nothing that changes a meaning.
+3. **Descriptions**: plain text of up to 500 characters, line breaks allowed, no Markdown; and a `description` for the whole network too, at its top (D3).
+4. **Names**: the id is the element's name, as in HEC-HMS (letters with Polish diacritics, digits, `_`, `.`, `-`, no spaces); the description holds any other words, and a node gets no display name besides its id.
+5. **An incomplete network**: saved by „Zapisz szkic” (D10). Nothing is lost, `route network` refuses the file with the first missing value named, and the GUI reopens it.
+6. **„Uporządkuj” before every parameter is given**: not in this plan. The layout needs a network that the library can read, and the person places the nodes meanwhile; a `route schematic` option that lays out the structure alone would need a catalog option, an amendment of ADR-0013 and a `timestep_min` that such a schematic cannot know.
+7. **A second inflow into a reach, a reservoir or the outlet**: „Wstaw złącze” is offered (D7); HEC-HMS users expect a reach to take several inflows.
+8. **The background map**: none for now. Where one would go, in Hydrograf on its control points or in a later stage of Hydrolog, is not decided: it is deferred (D15).
 
 ## Not in this plan
 
