@@ -1,7 +1,8 @@
 /**
- * Texts of the shell: the top bar, the rail, the panels Dane | Wykresy | Wyniki, the phone
- * sheets, the status badge, „Instrukcja” and the welcome dialog. `sections` names every
- * section by its id (router.js), the titles of GuiModule.sections (plan D4).
+ * Texts of the shell: the top bar, the rail, the panels Dane | Wykresy | Wyniki and the
+ * second left panel beside Dane (ViewLayout's `detail`, plan 2026-11-10-network-wizard D2),
+ * the phone sheets, the status badge, „Instrukcja” and the welcome dialog. `sections` names
+ * every section by its id (router.js), the titles of GuiModule.sections (plan D4).
  */
 
 export const shell = {
@@ -46,9 +47,12 @@ export const shell = {
     center: "Wykresy",
     right: "Wyniki",
     closeLeft: "Zamknij panel danych",
+    closeDetail: "Zamknij panel",
     closeRight: "Zamknij panel wyników",
     resizeLeft: "Szerokość panelu danych",
+    resizeDetail: "Szerokość panelu",
     resizeRight: "Szerokość panelu wyników",
+    backToLeft: "← Dane",
   },
   status: {
     ok: { text: "Wynik aktualny", title: "Wyniki odpowiadają danym w panelu Dane" },

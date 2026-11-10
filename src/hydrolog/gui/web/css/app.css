@@ -11,6 +11,7 @@
   --net-main: var(--info);
   --net-trib: color-mix(in srgb, var(--info) 50%, var(--surface));
   --left-w: 300px;
+  --detail-w: 300px;
   --right-w: 400px;
 }
 
@@ -322,11 +323,13 @@ html[data-host="nogat"] .main { grid-row: 1; grid-column: 1; }
 .section { height: 100%; min-height: 0; }
 .section-note { margin: var(--space-6); font-size: var(--text-sm); }
 
-/* ---------- View layout: Dane | Wykresy | Wyniki ---------- */
+/* ---------- View layout: Dane | panel | Wykresy | Wyniki ---------- */
+/* The panel beside Dane (ViewLayout's detail, plan 2026-11-10-network-wizard D2): its
+   column is 0px wide in a layout without it */
 .view-layout {
   position: relative;
   display: grid;
-  grid-template-columns: var(--left-w) minmax(0, 1fr) var(--right-w);
+  grid-template-columns: var(--left-w) var(--detail-w) minmax(0, 1fr) var(--right-w);
   grid-template-rows: minmax(0, 1fr);
   height: 100%;
 }
@@ -338,7 +341,8 @@ html[data-host="nogat"] .main { grid-row: 1; grid-column: 1; }
   background: var(--surface);
 }
 .view-panel.left { grid-column: 1; border-right: 1px solid var(--line); }
-.view-panel.right { grid-column: 3; border-left: 1px solid var(--line); }
+.view-panel.detail { grid-column: 2; border-right: 1px solid var(--line); }
+.view-panel.right { grid-column: 4; border-left: 1px solid var(--line); }
 /* position: relative keeps absolutely positioned nodes (.sr-only, .chart-sr) inside the scroller */
 .view-panel-body { position: relative; flex: 1; min-height: 0; overflow-y: auto; padding: var(--space-3) 14px var(--space-6); }
 .panel-foot {
@@ -376,6 +380,7 @@ html[data-host="nogat"] .main { grid-row: 1; grid-column: 1; }
 .panel-head h2 { margin: 0; font-size: var(--text-md); font-weight: var(--weight-bold); }
 .panel-head .sub { min-width: 0; color: var(--text-3); font-size: var(--text-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .panel-head .btn { margin-left: auto; }
+.panel-head .btn.back { margin-left: 0; }
 .grip { display: none; }
 
 .resizer {
@@ -385,7 +390,8 @@ html[data-host="nogat"] .main { grid-row: 1; grid-column: 1; }
   cursor: col-resize; touch-action: none; outline: none;
 }
 .resizer.r-left { grid-column: 1; justify-self: end; margin-right: -5px; }
-.resizer.r-right { grid-column: 3; justify-self: start; margin-left: -5px; }
+.resizer.r-detail { grid-column: 2; justify-self: end; margin-right: -5px; }
+.resizer.r-right { grid-column: 4; justify-self: start; margin-left: -5px; }
 .resizer::before {
   content: ""; position: absolute; top: 0; bottom: 0; left: 4px; width: 2px;
   border-radius: 2px; background: transparent; transition: background 0.15s;
@@ -433,7 +439,7 @@ body.resizing .view-center, body.resizing .view-panel { pointer-events: none; }
 }
 
 /* ---------- Centre ---------- */
-.view-center { grid-row: 1; grid-column: 2; position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.view-center { grid-row: 1; grid-column: 3; position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .view-bar {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
   min-height: 46px; padding: 7px var(--space-3);
@@ -888,7 +894,7 @@ dialog.modal::backdrop { background: color-mix(in srgb, var(--code-bg) 45%, tran
 
 /* ---------- Narrow desktop: panels at their minimum ---------- */
 @media (max-width: 1240px) and (min-width: 861px) {
-  :root { --left-w: 260px; --right-w: 340px; }
+  :root { --left-w: 260px; --detail-w: 260px; --right-w: 340px; }
   .view-bar .hint { display: none; }
   .crumbs .crumb-context { max-width: 220px; }
 }
