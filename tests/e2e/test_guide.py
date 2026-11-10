@@ -225,4 +225,6 @@ def test_nogats_shell_gets_no_welcome_dialog(new_tab: Callable[..., Tab]) -> Non
     tab.open("?nogat=1")
     page = tab.page
     expect(page.locator(READY)).to_have_count(3)
-    assert page.locator("dialog").count() == 0
+    # The shell's own chrome replaces the welcome and the feedback dialogs; Sieć's
+    # question before a loss (ui/confirm.js) stays, closed until it asks
+    assert page.locator("dialog:not(.confirm)").count() == 0
