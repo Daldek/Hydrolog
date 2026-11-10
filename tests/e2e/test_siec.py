@@ -2,13 +2,14 @@
 
 A first visit has no network and sends nothing: step 1 says what to load and links the
 guide's worked example; „Wyczyść” returns there. The guide's network (loaded with „Plik
-sieci…”) opens on the canvas at the cells of Hydrolog's layout from its first picture on,
-never in provisional rows first, drawn vertically: the sources at the top, the outlet at
-the bottom, every edge by rule D as the library draws it, each label on the side of its
-node without a tributary. A node moves by a drag, by Shift with an arrow key and by
-„Przesuń” and a click; the move survives a reload and a saved and reopened file, never
-marks the result stale, and „Uporządkuj” brings Hydrolog's layout back. The arrow keys
-go between nodes and the zoom follows „+” and „−”, all without a mouse. A network whose
+sieci…”) opens on the canvas at the cells of Hydrolog's layout from its first picture
+on, never in provisional rows first, drawn vertically: the sources at the top, the
+outlet at the bottom, every edge by rule D as the library draws it, each label on the
+side of its node without a tributary. A node moves by a drag, by Shift with an arrow key
+and by „Przesuń” and a click; the move survives a reload and a saved and reopened file,
+never marks the result stale, and „Uporządkuj” brings Hydrolog's layout back. The arrow
+keys go between nodes and the zoom follows „+” and „−”, all without a mouse. A network
+whose
 nodes miss values opens at the layout of its structure (``route schematic
 --structure-only``, ADR-0025), also from its first picture on; a structural problem
 stands in provisional rows until it is mended, and inputs stored before the canvas are
@@ -65,7 +66,8 @@ DRAWN = """(() => {
     if (window.hydrologDrawn.at(-1) !== cells) window.hydrologDrawn.push(cells);
   };
   new MutationObserver(record).observe(document, {
-    subtree: true, childList: true, attributes: true, attributeFilter: ['data-x', 'data-y'],
+    subtree: true, childList: true, attributes: true,
+    attributeFilter: ['data-x', 'data-y'],
   });
 })();"""
 """Record every picture of the canvas in the page: the cells of its nodes each time they
@@ -158,7 +160,7 @@ def canvas_routes(page: Page) -> dict[str, list[Cell]]:
 
 
 def watch_drawn(page: Page) -> None:
-    """Record from now on every picture the canvas of this document draws (``DRAWN``)."""
+    """Record every picture the canvas of this document draws from now on (DRAWN)."""
     page.evaluate(f"() => {{ {DRAWN} }}")
 
 
@@ -170,7 +172,7 @@ def first_drawn(page: Page) -> dict[str, Cell]:
 
 
 def open_section(tab: Tab) -> Page:
-    """Open Sieć, load the guide's network and wait for its canvas, watched (``DRAWN``)."""
+    """Open Sieć, load the guide's network and wait for its watched canvas (DRAWN)."""
     tab.open("#siec")
     watch_drawn(tab.page)
     load_network(tab.page)
