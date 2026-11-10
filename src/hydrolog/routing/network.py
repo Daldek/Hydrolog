@@ -23,6 +23,13 @@ inflows (``"type"`` of a ``Channel`` is ``"reach"``).
 writes it, so a network can be saved, sent and read again. Nodes are immutable: a node
 that is not connected yet is fed by :meth:`Node.with_inflows`, which returns a copy.
 
+A node can also carry a ``description``, plain text for people, and a ``position``, its
+cell in the grid of the schematic (:class:`Position`), and the network a
+``description`` of its own (ADR-0023). Both are copies of the node again
+(:meth:`Node.with_description`, :meth:`Node.with_position`), the document keeps them,
+and neither changes a calculation: the schematic draws the positions
+(:meth:`RoutingNetwork.schematic`).
+
 A network is checked when it is made, with the vocabulary of
 :class:`~hydrolog.network.StreamNetwork`: the shapes that a lumped model cannot route
 are errors: a node that flows into two nodes (``several_downstream``: a bifurcation
@@ -69,13 +76,15 @@ from __future__ import annotations
 
 import copy
 import math
+import numbers
 import re
+import unicodedata
 import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, ClassVar, Final, NoReturn, Self
+from typing import TYPE_CHECKING, Any, ClassVar, Final, NamedTuple, NoReturn, Self
 
 import numpy as np
 
@@ -108,7 +117,9 @@ if TYPE_CHECKING:
 
 __all__ = [
     "DEFAULT_TIMESTEP_MIN",
+    "MAX_DESCRIPTION_CHARS",
     "MAX_ID_CHARS",
+    "MAX_POSITION",
     "NODE_TYPES",
     "Axis",
     "Channel",
@@ -116,9 +127,11 @@ __all__ = [
     "Junction",
     "NetworkResult",
     "Node",
+    "NodeEntry",
     "NodeOutput",
     "NodeSummary",
     "Outlet",
+    "Position",
     "Reservoir",
     "RoutingNetwork",
     "Subcatchment",
@@ -131,14 +144,280 @@ of the command ``hydrograph generate``."""
 MAX_ID_CHARS: Final = 64
 """Longest node id; an id names the file of its node (``<id>.csv``)."""
 
+MAX_DESCRIPTION_CHARS: Final = 500
+"""Longest description of a node or of a network [characters] (ADR-0023)."""
+
+MAX_POSITION: Final = 1000
+"""Largest ``|x|`` and ``|y|`` of the position of a node [grid cells] (ADR-0023)."""
+
 _ID = re.compile(r"\w[\w.-]*")
-_COMMON: Final = ("id", "type", "from")
+_COMMON: Final = ("id", "type", "from", "description", "position")
+"""The fields of every node, read and written by :class:`Node` whatever its kind."""
 _RUN_FIELDS: Final = ("initial_outflow_m3s", "extend_min")
 _RESERVED = re.compile(
     r"(?:con|prn|aux|nul|(?:com|lpt)[1-9\u00b9\u00b2\u00b3])(?:\..*)?",
     re.IGNORECASE | re.DOTALL,
 )
 """Device names of Windows: a file so named, with any extension, is the device."""
+_POSITION_HINT: Final = (
+    "A position is the cell of the node in the grid of the schematic: "
+    '{"x": ..., "y": ...}, whole numbers from '
+    f"{-MAX_POSITION} to {MAX_POSITION}, x downstream and y sideways."
+)
+
+
+class Position(NamedTuple):
+    """The cell of a node in the grid of the schematic (ADR-0013, ADR-0023).
+
+    The grid is that of the computed picture: ``x`` grows downstream and ``y``
+    sideways (downwards on a screen), in whole cells from ``-MAX_POSITION`` to
+    :data:`MAX_POSITION`. A network whose every node has a cell of its own is drawn
+    where its nodes are (:meth:`RoutingNetwork.schematic`).
+
+    Attributes
+    ----------
+    x : int
+        The column; it grows downstream.
+    y : int
+        The row; it grows sideways.
+    """
+
+    x: int
+    y: int
+
+
+def check_description(value: object, node_id: str | None = None) -> str:
+    """Return ``value`` when it can be a description: plain text for people.
+
+    A description is a string of 1 to :data:`MAX_DESCRIPTION_CHARS` characters (code
+    points) that is not blank and holds no control character but the line feed. It is
+    shown as text, never read as HTML or Markdown, and changes no calculation
+    (ADR-0023).
+
+    Parameters
+    ----------
+    value : object
+        The description.
+    node_id : str, optional
+        The id of the node it describes; ``None`` for the description of the network.
+
+    Returns
+    -------
+    str
+        The description, unchanged.
+
+    Raises
+    ------
+    InvalidParameterError
+        With ``details.field`` ``description``, the ``node_id`` of a node and
+        ``details.reason`` ``type`` (not a string), ``empty`` (blank), ``too_long``
+        (``details.max_length``, ``details.length``) or ``control_character``
+        (``details.character``, e.g. ``U+0009`` for a tab).
+    """
+    subject = (
+        "The description of the network"
+        if node_id is None
+        else f"Node {node_id!r}: the description"
+    )
+
+    def refuse(message: str, reason: str, hint: str, **facts: object) -> NoReturn:
+        details: dict[str, object] = {"reason": reason, "field": "description"}
+        if node_id is not None:
+            details["node_id"] = node_id
+        raise InvalidParameterError(
+            f"{subject} {message}", details={**details, **facts}, hint=hint
+        )
+
+    if not isinstance(value, str):
+        refuse(
+            f"must be text, not {type(value).__name__}",
+            "type",
+            "A description is plain text: a string.",
+        )
+    if not value.strip():
+        refuse(
+            "is blank",
+            "empty",
+            "Leave the description out rather than give a blank one.",
+        )
+    if len(value) > MAX_DESCRIPTION_CHARS:
+        refuse(
+            f"has {len(value)} characters, more than {MAX_DESCRIPTION_CHARS}",
+            "too_long",
+            f"A description has at most {MAX_DESCRIPTION_CHARS} characters.",
+            max_length=MAX_DESCRIPTION_CHARS,
+            length=len(value),
+        )
+    for char in value:
+        if char != "\n" and unicodedata.category(char) == "Cc":
+            code = f"U+{ord(char):04X}"
+            refuse(
+                f"holds the control character {code}",
+                "control_character",
+                "A description breaks its lines with a line feed and holds no other "
+                "control character (a tab, a carriage return...).",
+                character=code,
+            )
+    return value
+
+
+def _coordinate(value: object, axis: str, node_id: str) -> int:
+    """Return a coordinate of a position: a whole number of cells within the grid."""
+    field = f"position.{axis}"
+    number: int | None = None
+    if not isinstance(value, bool):
+        if isinstance(value, numbers.Integral):
+            number = int(value)
+        elif isinstance(value, numbers.Real) and float(value).is_integer():
+            number = int(float(value))
+    if number is None:
+        raise InvalidParameterError(
+            f"Node {node_id!r}: {field} must be a whole number of cells, got "
+            f"{shown(value)}",
+            details={
+                "reason": "type",
+                "node_id": node_id,
+                "field": field,
+                "value": shown(value),
+            },
+            hint=_POSITION_HINT,
+        )
+    for reason, bound, beyond in (
+        ("minimum", -MAX_POSITION, number < -MAX_POSITION),
+        ("maximum", MAX_POSITION, number > MAX_POSITION),
+    ):
+        if beyond:
+            raise InvalidParameterError(
+                f"Node {node_id!r}: {field} is {number}, beyond the {reason} {bound}",
+                details={
+                    "reason": reason,
+                    "node_id": node_id,
+                    "field": field,
+                    reason: bound,
+                    "value": number,
+                },
+                hint=_POSITION_HINT,
+            )
+    return number
+
+
+def _position_type(node_id: str, what: str) -> InvalidParameterError:
+    """Return the error of a position that is not a pair of coordinates."""
+    return InvalidParameterError(
+        f"Node {node_id!r}: the position must be {what}",
+        details={"reason": "type", "node_id": node_id, "field": "position"},
+        hint=_POSITION_HINT,
+    )
+
+
+def check_position(value: object, node_id: str) -> Position:
+    """Return ``value`` as a :class:`Position` when it is a cell of the grid.
+
+    Parameters
+    ----------
+    value : object
+        ``(x, y)``: a :class:`Position`, a tuple or a list of two whole numbers from
+        ``-MAX_POSITION`` to :data:`MAX_POSITION`.
+    node_id : str
+        The id of the node, for the error.
+
+    Returns
+    -------
+    Position
+        The cell.
+
+    Raises
+    ------
+    InvalidParameterError
+        With ``details.node_id``, ``details.field`` (``position`` or ``position.x``...)
+        and ``details.reason`` ``type`` (not a pair of whole numbers), ``minimum`` or
+        ``maximum``.
+    """
+    if not isinstance(value, tuple | list) or len(value) != 2:
+        raise _position_type(node_id, "a pair (x, y)")
+    return Position(
+        _coordinate(value[0], "x", node_id), _coordinate(value[1], "y", node_id)
+    )
+
+
+def position_from_document(value: object, node_id: str) -> Position:
+    """Read the ``position`` of a node of a document: ``{"x": ..., "y": ...}``.
+
+    Parameters
+    ----------
+    value : object
+        The field as the document has it.
+    node_id : str
+        The id of the node.
+
+    Returns
+    -------
+    Position
+        The cell.
+
+    Raises
+    ------
+    InvalidParameterError
+        With ``details.node_id``, ``details.field`` (``position`` or
+        ``position.x``...) and ``details.reason`` ``type`` (not an object, or a
+        coordinate that is not a whole number), ``unknown_field`` (a key but ``x`` and
+        ``y``), ``missing_field``, ``minimum`` or ``maximum`` (beyond
+        :data:`MAX_POSITION`).
+    """
+    if not isinstance(value, Mapping):
+        raise _position_type(node_id, f"an object, not {type(value).__name__}")
+    for key in value:
+        if key not in ("x", "y"):
+            raise InvalidParameterError(
+                f"Node {node_id!r}: a position takes no {shown(key)}",
+                details={
+                    "reason": "unknown_field",
+                    "node_id": node_id,
+                    "field": f"position.{shown(key)}",
+                    "allowed": ["x", "y"],
+                },
+                hint=_POSITION_HINT,
+            )
+    for axis in ("x", "y"):
+        if value.get(axis) is None:
+            raise InvalidParameterError(
+                f"Node {node_id!r}: the position has no {axis!r}",
+                details={
+                    "reason": "missing_field",
+                    "node_id": node_id,
+                    "field": f"position.{axis}",
+                },
+                hint=_POSITION_HINT,
+            )
+    return Position(
+        _coordinate(value["x"], "x", node_id), _coordinate(value["y"], "y", node_id)
+    )
+
+
+def position_to_document(position: Position) -> dict[str, int]:
+    """Return a position as the document writes it: ``{"x": ..., "y": ...}``."""
+    return {"x": position.x, "y": position.y}
+
+
+class NodeEntry(NamedTuple):
+    """A node of a document as :meth:`Node.read_entry` reads it, for :meth:`Node.build`.
+
+    Attributes
+    ----------
+    upstream : tuple of str
+        The ids in ``from``.
+    arguments : dict
+        The keyword arguments of the constructor (:meth:`Node.read_document`).
+    description : str or None
+        The ``description`` of the node.
+    position : Position or None
+        The ``position`` of the node.
+    """
+
+    upstream: tuple[str, ...]
+    arguments: dict[str, Any]
+    description: str | None = None
+    position: Position | None = None
 
 
 def _check_id(value: object, *, role: str = "id") -> str:
@@ -329,6 +608,10 @@ class Node(ABC):
     subclass sets the class attributes below, implements :meth:`evaluate`,
     :meth:`describe`, :meth:`read_document` and :meth:`document_fields` (what a
     document says of it, read and written), and is registered in :data:`NODE_TYPES`.
+    Every node, whatever its kind, can also carry a :attr:`description` and a
+    :attr:`position` (ADR-0023): the copies :meth:`with_description` and
+    :meth:`with_position` give them, the base class reads and writes them in a document
+    (:meth:`read_entry`, :meth:`to_document`), and they change no calculation.
 
     Parameters
     ----------
@@ -364,6 +647,8 @@ class Node(ABC):
     kind: ClassVar[str]
     inflow_count: ClassVar[tuple[int, int | None]] = (1, 1)
     terminal: ClassVar[bool] = False
+    _description: str | None = None
+    _position: Position | None = None
 
     def __init__(self, id: str, inflows: Iterable[Node] = ()) -> None:
         """Check the id and the inflows."""
@@ -429,6 +714,71 @@ class Node(ABC):
         """
         clone = copy.copy(self)
         clone._inflows = self._checked(tuple(inflows))
+        return clone
+
+    @property
+    def description(self) -> str | None:
+        """Str or None: plain text that describes the node, for people (ADR-0023)."""
+        return self._description
+
+    @property
+    def position(self) -> Position | None:
+        """Position or None: the cell of the node in the grid of the schematic."""
+        return self._position
+
+    def with_description(self, description: str | None) -> Self:
+        """Return a copy of the node with a description.
+
+        Parameters
+        ----------
+        description : str or None
+            Plain text of 1 to :data:`MAX_DESCRIPTION_CHARS` characters that is not
+            blank, its lines broken by line feeds (:func:`check_description`);
+            ``None`` removes the description.
+
+        Returns
+        -------
+        Node
+            A node of the same class with the same fields and inflows.
+
+        Raises
+        ------
+        InvalidParameterError
+            With ``details.node_id``, ``details.field`` ``description`` and
+            ``details.reason`` ``type``, ``empty``, ``too_long`` or
+            ``control_character``.
+        """
+        clone = copy.copy(self)
+        clone._description = (
+            None if description is None else check_description(description, self._id)
+        )
+        return clone
+
+    def with_position(self, position: Position | tuple[int, int] | None) -> Self:
+        """Return a copy of the node at a cell of the grid of the schematic.
+
+        Parameters
+        ----------
+        position : Position, tuple of int or None
+            ``(x, y)``: whole numbers from ``-MAX_POSITION`` to :data:`MAX_POSITION`,
+            ``x`` downstream and ``y`` sideways; ``None`` removes the position.
+
+        Returns
+        -------
+        Node
+            A node of the same class with the same fields and inflows.
+
+        Raises
+        ------
+        InvalidParameterError
+            With ``details.node_id``, ``details.field`` (``position`` or
+            ``position.x``...) and ``details.reason`` ``type`` (not a pair of whole
+            numbers), ``minimum`` or ``maximum``.
+        """
+        clone = copy.copy(self)
+        clone._position = (
+            None if position is None else check_position(position, self._id)
+        )
         return clone
 
     def __repr__(self) -> str:
@@ -503,8 +853,10 @@ class Node(ABC):
         node_id : str
             The id of the node.
         fields : mapping
-            The node as the document has it: ``id``, ``type``, ``from`` and the fields
-            of this kind. A value of ``None`` is a field that is not given.
+            The node as the document has it: ``id``, ``type``, ``from``, the
+            ``description`` and ``position`` that every node may have (the base class
+            reads them: the kind takes no field of these names) and the fields of this
+            kind. A value of ``None`` is a field that is not given.
 
         Returns
         -------
@@ -521,6 +873,9 @@ class Node(ABC):
     @abstractmethod
     def document_fields(self) -> dict[str, Any]:
         """Return the fields of the node in a document, besides its id and links.
+
+        The fields that every node has (``description``, ``position``) are the base
+        class's (:meth:`to_document`), not the kind's.
 
         The counterpart of :meth:`read_document`: what that reads from the fields of a
         node, this writes, so that the document of a node, read, gives an equal node.
@@ -540,7 +895,9 @@ class Node(ABC):
         -------
         dict
             ``id``, ``type``, ``from`` (the ids of the inflows; not there for a node
-            that has none) and the fields of the kind (:meth:`document_fields`).
+            that has none), the fields of the kind (:meth:`document_fields`) and then
+            ``description`` and ``position`` (``{"x": ..., "y": ...}``) when the node
+            has them.
 
         Raises
         ------
@@ -551,13 +908,16 @@ class Node(ABC):
         entry: dict[str, Any] = {"id": self._id, "type": NODE_TYPES.name_of(self)}
         if self._inflows:
             entry["from"] = list(self.upstream)
-        return {**entry, **self.document_fields()}
+        entry.update(self.document_fields())
+        if self._description is not None:
+            entry["description"] = self._description
+        if self._position is not None:
+            entry["position"] = position_to_document(self._position)
+        return entry
 
     @classmethod
-    def read_entry(
-        cls, node_id: str, fields: Mapping[str, Any]
-    ) -> tuple[tuple[str, ...], dict[str, Any]]:
-        """Read a node of a document: the ids of its inflows and its arguments.
+    def read_entry(cls, node_id: str, fields: Mapping[str, Any]) -> NodeEntry:
+        """Read a node of a document: the ids of its inflows, its arguments, the rest.
 
         Parameters
         ----------
@@ -568,17 +928,20 @@ class Node(ABC):
 
         Returns
         -------
-        tuple
-            The ids in ``from`` and the arguments of the constructor
-            (:meth:`read_document`).
+        NodeEntry
+            The ids in ``from``, the arguments of the constructor
+            (:meth:`read_document`) and the ``description`` and ``position`` of the
+            node.
 
         Raises
         ------
         InvalidParameterError
-            If a field is not valid (:meth:`read_document`), an id is not
-            (``invalid_id``, ``reserved_name``), ``from`` is not a list of ids
-            (``type``), the kind takes another number of them (``upstream_count``) or
-            an id is listed twice (``duplicate_upstream``).
+            If a field is not valid (:meth:`read_document`, and for ``description``
+            and ``position`` the reasons of :func:`check_description` and
+            :func:`position_from_document`), an id is not (``invalid_id``,
+            ``reserved_name``), ``from`` is not a list of ids (``type``), the kind
+            takes another number of them (``upstream_count``) or an id is listed twice
+            (``duplicate_upstream``).
         """
         listed = fields.get("from")
         upstream: tuple[str, ...] = ()
@@ -597,6 +960,14 @@ class Node(ABC):
                 )
             upstream = tuple(listed)
         arguments = cls.read_document(node_id, fields)
+        description = fields.get("description")
+        position = fields.get("position")
+        entry = NodeEntry(
+            upstream,
+            arguments,
+            None if description is None else check_description(description, node_id),
+            None if position is None else position_from_document(position, node_id),
+        )
         _check_id(node_id)
         for item in upstream:
             _check_id(item, role="upstream id")
@@ -609,20 +980,19 @@ class Node(ABC):
                 "counted twice",
                 details={"reason": "duplicate_upstream", "node_id": node_id},
             )
-        return upstream, arguments
+        return entry
 
     @classmethod
-    def build(
-        cls, node_id: str, arguments: Mapping[str, Any], inflows: Sequence[Node]
-    ) -> Node:
+    def build(cls, node_id: str, entry: NodeEntry, inflows: Sequence[Node]) -> Node:
         """Make a node from what :meth:`read_entry` read and the nodes that flow in.
 
         Parameters
         ----------
         node_id : str
             The id of the node.
-        arguments : mapping
-            The keyword arguments of the constructor.
+        entry : NodeEntry
+            What the document says of the node: the keyword arguments of the
+            constructor, its description and its position.
         inflows : sequence of Node
             The nodes that flow into it.
 
@@ -637,11 +1007,15 @@ class Node(ABC):
             If the constructor refuses a value; ``details.node_id`` names the node.
         """
         try:
-            return cls(node_id, **arguments).with_inflows(*inflows)
+            node = cls(node_id, **entry.arguments).with_inflows(*inflows)
         except InvalidParameterError as exc:
             if exc.details.get("node_id") == node_id:
                 raise
             raise _of_node(exc, node_id) from exc
+        # a new node, and the values were checked when they were read
+        node._description = entry.description
+        node._position = entry.position
+        return node
 
 
 @NODE_TYPES.register
@@ -1431,6 +1805,9 @@ class RoutingNetwork:
         listed or not.
     name : str, optional
         A name for the network, reported in the result.
+    description : str, optional
+        Plain text that describes the network, for people (:func:`check_description`,
+        ADR-0023); it is kept in the document and changes no calculation.
     rainfall : RainfallSource, optional
         The rainfall of every subcatchment that makes its own hydrograph and has none of
         its own. A convenience: the rainfall belongs to the subcatchment, and a network
@@ -1445,6 +1822,8 @@ class RoutingNetwork:
     ----------
     name : str or None
         The name of the network.
+    description : str or None
+        The description of the network.
     rainfall : RainfallSource or None
         The default rainfall of the network.
     given_timestep_min : float or None
@@ -1473,7 +1852,8 @@ class RoutingNetwork:
         that makes its hydrograph has no rainfall and the network has none);
         ``timestep_mismatch`` (``nodes``, ``timesteps_min``: two sources, or a source
         and the given step, have different time steps) and ``start_mismatch``
-        (``nodes``, ``starts_min``).
+        (``nodes``, ``starts_min``); ``details.field`` ``description`` with the reasons
+        of :func:`check_description` for the description of the network.
     """
 
     def __init__(
@@ -1481,6 +1861,7 @@ class RoutingNetwork:
         nodes: Node | Iterable[Node],
         *,
         name: str | None = None,
+        description: str | None = None,
         rainfall: RainfallSource | None = None,
         timestep_min: float | None = None,
     ) -> None:
@@ -1503,6 +1884,9 @@ class RoutingNetwork:
                 f"{type(rainfall).__name__}",
                 details={"reason": "type", "field": "rainfall"},
             )
+        self.description = (
+            None if description is None else check_description(description)
+        )
         self.given_timestep_min = (
             None if timestep_min is None else positive(timestep_min, "timestep_min")
         )
@@ -1532,9 +1916,10 @@ class RoutingNetwork:
         ----------
         document : mapping
             The document: ``schema`` (``"hydrolog-network/1"``), optionally ``name``,
-            ``timestep_min`` and ``rainfall`` (the default rainfall of the network), and
-            ``nodes``, each with ``id``, ``type``, ``from`` (the ids of the inflows)
-            and the fields of its kind. Values are JSON-native.
+            ``description``, ``timestep_min`` and ``rainfall`` (the default rainfall of
+            the network), and ``nodes``, each with ``id``, ``type``, ``from`` (the ids
+            of the inflows), the fields of its kind and, optionally, ``description``
+            and ``position``. Values are JSON-native.
         prepare : callable, optional
             Called as ``prepare(node_id, type, entry)`` for every node before it is
             read, to return the entry that is read instead (a front door that takes
@@ -1569,8 +1954,9 @@ class RoutingNetwork:
         Returns
         -------
         dict
-            ``schema``, ``name``, ``timestep_min`` (when it was given), ``rainfall``
-            (the default of the network, if it has one) and ``nodes``.
+            ``schema``, ``name``, ``description``, ``timestep_min`` (when it was
+            given), ``rainfall`` (the default of the network, if it has one) and
+            ``nodes``.
 
         Raises
         ------
@@ -1594,11 +1980,16 @@ class RoutingNetwork:
         The picture is computed here, so that every consumer draws the same one: the
         document ``hydrolog-network-schematic/1`` holds the nodes with their places on
         an integer grid, the polylines of the edges (every segment at 0, 45 or 90
-        degrees), the places of the labels and, per node, the parameters of its
-        calculation and, with a ``result``, its peak, time to peak and volume. The main
-        stem is a straight line, the tributaries join it at 45 degrees on alternating
-        sides, and no edges cross. :func:`~hydrolog.routing.schematic.schematic_svg`
-        draws the document as SVG (ADR-0013).
+        degrees), the places of the labels and, per node, its description, the
+        parameters of its calculation and, with a ``result``, its peak, time to peak
+        and volume. When every node has a :attr:`~Node.position` and no two share a
+        cell, the nodes are where their positions put them and the edges follow rule D
+        (``layout`` ``given``, ADR-0023). Otherwise the layout is computed (``layout``
+        ``computed``, ADR-0013): the main stem is a straight line, the tributaries join
+        it at 45 degrees on alternating sides, and no edges cross; positions on some
+        nodes only, or two nodes on one cell, give the warning
+        :class:`~hydrolog._warnings.PositionsIgnored` (``positions_ignored``).
+        :func:`~hydrolog.routing.schematic.schematic_svg` draws the document as SVG.
 
         Parameters
         ----------
@@ -1609,7 +2000,7 @@ class RoutingNetwork:
             Ids of nodes that the main stem must pass (the head of the main river, or
             the points along it); by default the stem follows the branch with the
             larger drained area at every node, or with more nodes when a headwater has
-            no area.
+            no area. It ranks the lines (their colours) of a given layout too.
 
         Returns
         -------
@@ -1623,6 +2014,14 @@ class RoutingNetwork:
             network), ``unknown_node`` or ``main_stem_not_a_path`` (``main_stem`` names
             a node that is not in the network, or nodes that are not on one path to the
             outlet; ``details.node_id``).
+
+        Warns
+        -----
+        PositionsIgnored
+            When some nodes have a position and another has none (``reason``
+            ``partial``) or two nodes share a cell (``shared_cell``); ``node_id`` names
+            the first node at fault in the order of evaluation, and the layout is
+            computed.
         """
         from hydrolog.routing.schematic import network_schematic
 

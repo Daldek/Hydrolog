@@ -55,7 +55,7 @@ math { font-size: 1.08em; }
   transition: background var(--transition), border-color var(--transition);
 }
 .btn:hover { background: var(--surface-2); }
-.btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.btn:disabled, .btn[aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 .btn.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
 .btn.primary:disabled { opacity: 0.5; }
@@ -471,12 +471,32 @@ body.resizing .view-center, body.resizing .view-panel { pointer-events: none; }
 .axis-range .axis-end.invalid .ibox { border-color: var(--bad); box-shadow: 0 0 0 3px var(--bad-bg); }
 .axis-range .err { flex-basis: 100%; margin: 0; color: var(--bad-ink); font-size: var(--text-xs); font-weight: var(--weight-bold); }
 
-/* Network schematic: metro-map style, drawn vertically (sources at the top) */
-.schem-v svg { display: block; width: 100%; max-width: 520px; max-height: max(560px, calc(100vh - 230px)); margin: 0 auto; }
-.schem .ln { stroke-linecap: round; }
+/* Network schematic, the canvas of Sieć: metro-map style, drawn vertically (sources at the
+   top); the picture scrolls in its card, a dragged node follows the pointer by its
+   transform attribute, and the marks of editing hide while the PNG is copied (.exporting) */
+.canvas-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); margin: 0 0 var(--space-2); }
+.canvas-bar .btn[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.canvas-zoom { display: inline-flex; align-items: center; gap: 2px; }
+.canvas-keys {
+  display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 2px var(--space-3);
+  margin: 0 0 var(--space-2); padding: var(--space-2) var(--space-3); list-style: none;
+  border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface-2); font-size: var(--text-sm);
+}
+.canvas-keys li { display: contents; }
+.canvas-keys kbd { font: var(--weight-bold) var(--text-xs) var(--font-mono); color: var(--text); white-space: nowrap; }
+.canvas-keys span { color: var(--text-2); }
+.canvas-note { margin: 0 0 var(--space-2); }
+.canvas-scroll { overflow: auto; max-height: max(560px, calc(100vh - 230px)); scrollbar-gutter: stable; }
+.canvas-scroll > svg { display: block; margin: 0 auto; }
+.schem { user-select: none; -webkit-user-select: none; }
+.schem:focus { outline: none; }
+.schem.fit { max-width: 100%; height: auto; }
+.schem .ln { fill: none; stroke-linecap: round; stroke-linejoin: round; }
 .schem .ln.main { stroke: var(--net-main); stroke-width: 7; }
 .schem .ln.trib { stroke: var(--net-trib); stroke-width: 6; }
-.schem .node { cursor: pointer; outline: none; }
+.schem .node { cursor: grab; outline: none; touch-action: none; scroll-margin: 24px; }
+.schem[data-drag], .schem[data-drag] .node { cursor: grabbing; }
+.schem.moving, .schem.moving .node { cursor: crosshair; }
 .schem .glyph { fill: var(--surface); stroke: var(--text); stroke-width: 2.5; }
 .schem .t-subcatchment .glyph { fill: var(--accent-green); stroke: var(--surface); stroke-width: 2; }
 .schem .t-reach .glyph { fill: var(--surface); stroke: var(--text); stroke-width: 2; }
@@ -485,13 +505,85 @@ body.resizing .view-center, body.resizing .view-panel { pointer-events: none; }
 .schem .halo { fill: transparent; stroke: none; }
 .schem .node:hover .glyph, .schem .node:focus-visible .glyph { stroke: var(--accent); }
 .schem .node:focus-visible .halo { stroke: var(--focus); stroke-width: 2; stroke-dasharray: 4 3; }
-.schem .node.sel .halo { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
-.schem .node.sel .glyph { stroke: var(--accent); stroke-width: 3.5; }
-.schem .node.sel.t-subcatchment .glyph { stroke: var(--accent); stroke-width: 2.5; }
+.schem:not(.exporting) .node.sel .halo { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+.schem:not(.exporting) .node.sel .glyph { stroke: var(--accent); stroke-width: 3.5; }
+.schem:not(.exporting) .node.sel.t-subcatchment .glyph { stroke: var(--accent); stroke-width: 2.5; }
+.schem .node[data-drag] .halo { stroke: var(--accent); stroke-width: 2; stroke-dasharray: 4 3; }
 .schem .lbl-id { fill: var(--text); font: var(--weight-bold) var(--text-sm) var(--font-sans); paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; }
 .schem .lbl-m { fill: var(--text-2); font: var(--text-xs) var(--font-sans); paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; }
 .schem .lbl-v { fill: var(--text); font: var(--weight-medium) var(--text-xs) var(--font-sans); font-variant-numeric: tabular-nums; paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; }
-.schem .node.sel .lbl-id, .schem .node.sel .lbl-v { fill: var(--accent); }
+.schem:not(.exporting) .node.sel .lbl-id, .schem:not(.exporting) .node.sel .lbl-v { fill: var(--accent); }
+.schem .drop-cell { pointer-events: none; }
+.schem .drop-cell rect { fill: none; stroke: var(--accent); stroke-width: 2; stroke-dasharray: 6 4; }
+.schem .drop-cell[data-state="off"] { display: none; }
+.schem .drop-cell[data-state="taken"] rect { stroke: var(--bad-ink); }
+.schem .drop-cell .drop-no { display: none; fill: var(--bad-ink); font: var(--weight-bold) 16px var(--font-sans); }
+.schem .drop-cell[data-state="taken"] .drop-no { display: inline; }
+.schem.exporting .edit-mark { display: none; }
+/* The editing of the canvas (plan 2026-11-10-network-editor, E3): the palette (a menu
+   „Dodaj element” on a phone), the handles, the links, the problems („!” in the error
+   colour, never alone: the name and the list say it), the verdict of a link being made,
+   the hint of an edge through a node, the offer of a junction; every mark of editing is
+   an .edit-mark, hidden in the PNG */
+.canvas-palette { display: inline-flex; flex-wrap: wrap; gap: 2px; }
+.canvas-palette .btn { touch-action: none; }
+.palette-item .ng, .menu-kind .ng { margin-right: 4px; }
+.palette-menu { display: none; }
+.canvas-sep { align-self: stretch; width: 1px; margin: 2px; background: var(--line); }
+.menu-kind { display: inline-flex; align-items: center; gap: 4px; }
+.schem.linking, .schem.linking .node { cursor: crosshair; }
+.schem .handle { display: none; cursor: crosshair; }
+.schem .node.sel .handle, .schem .node:hover .handle, .schem .node:focus-visible .handle, .schem .node.source .handle { display: inline; }
+.schem .handle-hit { fill: transparent; }
+.schem .handle-dot { fill: var(--surface); stroke: var(--accent); stroke-width: 2.5; }
+.schem .ln.loop { stroke-dasharray: 10 7; }
+.schem .ln-hit { fill: none; stroke: transparent; stroke-width: 24; stroke-linecap: round; stroke-linejoin: round; pointer-events: stroke; cursor: pointer; }
+.schem .ln-pick { fill: none; stroke: var(--accent); stroke-opacity: 0.4; stroke-width: 16; stroke-linecap: round; stroke-linejoin: round; }
+.schem .through-mark { fill: none; stroke: var(--warn-ink); stroke-width: 2; stroke-dasharray: 2 4; pointer-events: none; }
+.schem .mark-bg { fill: var(--bad-ink); }
+.schem .mark-t { fill: var(--surface); font: var(--weight-bold) 12px var(--font-sans); pointer-events: none; }
+.schem .node.source .halo { stroke: var(--accent); stroke-width: 2; }
+.schem .node.target .halo { stroke: var(--accent); stroke-width: 2; stroke-dasharray: 3 3; }
+.schem .link-line { stroke: var(--accent); stroke-width: 3; stroke-dasharray: 6 4; pointer-events: none; }
+.schem .link-line[data-state="off"] { display: none; }
+.schem .verdict { pointer-events: none; }
+.schem .verdict[data-state="off"] { display: none; }
+.schem .verdict circle { fill: var(--surface); stroke: var(--bad-ink); stroke-width: 2.5; }
+.schem .verdict text { display: none; font: var(--weight-bold) 14px var(--font-sans); }
+.schem .verdict[data-state="ok"] circle, .schem .verdict[data-state="offer"] circle { stroke: var(--ok-ink); }
+.schem .verdict[data-state="ok"] .verdict-ok, .schem .verdict[data-state="offer"] .verdict-ok { display: inline; fill: var(--ok-ink); }
+.schem .verdict[data-state="no"] .verdict-no { display: inline; fill: var(--bad-ink); }
+.canvas-problems {
+  max-height: 180px; overflow: auto; margin: 0 0 var(--space-2); padding: var(--space-2) var(--space-3);
+  border: 1px solid color-mix(in srgb, var(--bad) 45%, var(--line)); border-left: 3px solid var(--bad);
+  border-radius: var(--radius-md); background: var(--bad-bg); font-size: var(--text-sm);
+}
+.canvas-problems .problems-title { margin: 0 0 4px; font-size: var(--text-sm); color: var(--bad-ink); }
+.canvas-problems ul { display: grid; gap: 2px; margin: 0 0 var(--space-2); padding: 0; list-style: none; }
+.canvas-problems ul:last-child { margin-bottom: 0; }
+.canvas-problems li { display: flex; align-items: baseline; color: var(--text); }
+.canvas-problems .link-btn { display: inline-flex; align-items: baseline; text-align: left; color: var(--text); }
+.canvas-problems .link-btn:hover { color: var(--accent); }
+.problem-mark {
+  display: inline-grid; place-items: center; flex: none; width: 16px; height: 16px; margin-right: 6px;
+  border-radius: 50%; font: var(--weight-bold) 11px/1 var(--font-sans); color: var(--surface);
+}
+.problem-mark.bad { background: var(--bad-ink); }
+.problem-mark.hint { background: var(--warn-ink); }
+.offer {
+  margin: 0 0 var(--space-2); padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: var(--radius-md);
+  background: var(--accent-soft); font-size: var(--text-sm);
+}
+.offer p { margin: 4px 0 var(--space-2); }
+.node-structure { display: grid; gap: var(--space-2); margin: 0 0 var(--space-3); }
+.node-structure select { width: 100%; }
+.opt[data-field="description"] textarea { min-height: 64px; font: var(--text-sm)/1.5 var(--font-sans); }
+dialog.confirm .modal-body p { margin: 0 0 var(--space-3); line-height: var(--line-height); }
+@media (max-width: 860px) {
+  .canvas-palette { display: none; }
+  .palette-menu { display: inline-flex; }
+}
 .ng { display: inline-block; width: 12px; height: 12px; flex: none; border: 2px solid var(--text); background: var(--surface); }
 .ng.t-subcatchment { width: 10px; height: 10px; border: 0; background: var(--accent-green); transform: rotate(45deg); margin: 0 1px; }
 .ng.t-reach { width: 6px; height: 13px; border-width: 1.5px; border-radius: 2px; margin: 0 3px; }
@@ -852,7 +944,7 @@ dialog.modal::backdrop { background: color-mix(in srgb, var(--code-bg) 45%, tran
   .view-bar .seg { flex: none; }
   .view-body { padding: var(--space-2); }
   .card { padding: var(--space-3); }
-  .schem-v svg { max-height: none; }
+  .canvas-scroll { max-height: none; }
   .view-bar > .phone-only:first-child { order: 0; }
   .view-bar .end { order: 1; }
   .view-bar .seg { order: 2; }

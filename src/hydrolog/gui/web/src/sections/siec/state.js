@@ -1,9 +1,14 @@
 // State of „Sieć i trasowanie” (plan D9, S4): the network being edited, kept in the
 // browser under "hydrolog-gui/siec/2" (inputs only, no results): where it came from, its
-// structure (ids, types, inflows; not edited, plan D18), the values of the network and of
-// each node, the session files it reads (the inflows file and its time column) and the
-// chosen node and view. A first visit has no network: it opens from a file or a hand-off
-// (the guide's worked example, instrukcja/#siec, is a file to load).
+// structure (ids, types, inflows, the cell of every node on the canvas and its
+// description: plan 2026-11-10-network-editor, D3, D10; and `origin`, the record of the
+// hand-off a subcatchment was added from, which no document carries), the values of the
+// network and of each node, the session files it reads (the inflows file and its time
+// column), whether its layout is provisional (rows until Hydrolog lays it out), the key of
+// the inputs as they were opened or last saved (whether discarding them needs a question)
+// and the chosen node and view. A first visit has no network: „Nowa sieć” starts an empty
+// one, or it opens from a file or a hand-off (the guide's worked example, instrukcja/#siec,
+// is a file to load).
 //
 // Another part of the page opens a network here with openNetwork(document, {name}) (the
 // hand-off of S6); the section takes it when it is mounted, or on its first render.
@@ -15,6 +20,7 @@ import { t } from "../../labels/common.js";
 import { siec as texts } from "../../labels/siec.js";
 import { navigate } from "../../router.js";
 import { registerRanges } from "../../ui/info.js";
+import { cellOf, placeMissing, provisionalRows } from "./editor/geometry.js";
 import { buildForms, HELP_COMMANDS, KINDS, METHODS, networkValues, nodeValues, skeletonOf } from "./node-model.js";
 
 /** The section's id and the key of its inputs. */
@@ -44,7 +50,66 @@ export function initialState() {
     timeColumn: "",
     selected: null,
     view: "schem",
+    provisional: false,
+    savedKey: null,
   };
+}
+
+/**
+ * The state of „Nowa sieć” (D10): an open network without nodes, to build on the canvas.
+ *
+ * @returns {object} the state
+ */
+export function newState() {
+  const started = { ...initialState(), source: { name: DOCUMENT_NAME, kind: "new" } };
+  return { ...started, savedKey: inputsKey(started) };
+}
+
+/**
+ * A JSON value with its keys sorted and without empty values ("", null, undefined), so
+ * that inputs that hold the same data give the same text.
+ *
+ * @param {unknown} value a value of the inputs
+ * @returns {unknown} the canonical value
+ */
+function canonical(value) {
+  if (Array.isArray(value)) return value.map(canonical);
+  if (!value || typeof value !== "object") return value;
+  const kept = {};
+  for (const key of Object.keys(value).sort()) {
+    const item = value[key];
+    if (item !== "" && item !== null && item !== undefined) kept[key] = canonical(item);
+  }
+  return kept;
+}
+
+/**
+ * The key of a network's inputs (its values, structure, positions and descriptions): equal
+ * keys hold the same network. „Wyczyść” and „Nowa sieć” ask first when the key differs
+ * from the one kept when the network was opened or saved (D10).
+ *
+ * @param {{network: object, skeleton: object[], nodes: Object<string, object>}} state the
+ *   section's inputs
+ * @returns {string} the key: the length and FNV-1a hash of the canonical JSON
+ */
+export function inputsKey(state) {
+  const text = JSON.stringify(canonical([state.network, state.skeleton, state.nodes]));
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return `${text.length.toString(36)}-${hash.toString(36)}`;
+}
+
+/**
+ * Whether the network changed since it was opened or saved (D10).
+ *
+ * @param {object} state the section's state
+ * @returns {boolean} true when discarding it needs a question
+ */
+export function changedSinceSaved(state) {
+  return Boolean(state.source) && inputsKey(state) !== state.savedKey;
 }
 
 /**
@@ -102,6 +167,30 @@ export function withSessionNames(doc) {
 }
 
 /**
+ * A structure with a cell for every node (plan 2026-11-10-network-editor, D10): as it is
+ * when every node has a cell of its own; in rows by the longest distance from a headwater,
+ * and provisional, when no node has one (Hydrolog's layout replaces them once it can read
+ * the network); otherwise the cells it has, and the free cell nearest a neighbour for every
+ * node without one or on a taken cell.
+ *
+ * @param {Array<{id: string, from: string[]|null, position?: {x: number, y: number}}>}
+ *   skeleton the structure, with the valid positions it has
+ * @returns {{skeleton: object[], provisional: boolean}} the structure with every node's
+ *   position, and whether they are provisional rows
+ */
+export function placeSkeleton(skeleton) {
+  const provisional = !skeleton.some((node) => node.position);
+  const cells = provisional ? provisionalRows(skeleton) : placeMissing(skeleton).cells;
+  return {
+    skeleton: skeleton.map((node) => {
+      const [x, y] = cells.get(node.id);
+      return node.position && node.position.x === x && node.position.y === y ? node : { ...node, position: { x, y } };
+    }),
+    provisional,
+  };
+}
+
+/**
  * The state of a network document.
  *
  * @param {object} doc hydrolog-network/1 (checked with documentProblems)
@@ -110,20 +199,59 @@ export function withSessionNames(doc) {
  * @returns {object} the state
  */
 export function stateOf(doc, source, keep = {}) {
-  const skeleton = skeletonOf(doc);
+  const placed = placeSkeleton(skeletonOf(doc));
   const nodes = {};
   for (const node of doc.nodes) nodes[String(node.id)] = nodeValues(node);
-  const outlet = skeleton.find((node) => node.type === "outlet");
-  return {
+  const outlet = placed.skeleton.find((node) => node.type === "outlet");
+  const opened = {
     ...initialState(),
     source,
     network: networkValues(doc),
-    skeleton,
+    skeleton: placed.skeleton,
     nodes,
     inflowsFile: keep.inflowsFile || "",
     timeColumn: keep.timeColumn || "",
-    selected: outlet ? outlet.id : skeleton.length ? skeleton[0].id : null,
+    selected: outlet ? outlet.id : placed.skeleton.length ? placed.skeleton[0].id : null,
+    provisional: placed.provisional,
   };
+  return { ...opened, savedKey: inputsKey(opened) };
+}
+
+/**
+ * What opening a document did to its positions, for the note of the load (D10): the
+ * nodes whose position is not a cell of the grid, and, when the document had positions,
+ * the nodes placed anew (without a position, or on a cell a node before them took).
+ *
+ * @param {object} doc hydrolog-network/1 as it was opened
+ * @param {object} state its state (stateOf)
+ * @returns {string[]} the lines of the note, in Polish
+ */
+export function placementNotes(doc, state) {
+  const dropped = [];
+  const moved = [];
+  doc.nodes.forEach((node, index) => {
+    const given = cellOf(node.position);
+    if (node.position !== undefined && !given) dropped.push(String(node.id));
+    const now = state.skeleton[index].position;
+    if (!state.provisional && (!given || given[0] !== now.x || given[1] !== now.y)) moved.push(String(node.id));
+  });
+  const lines = [];
+  if (dropped.length) lines.push(t(texts.canvas.dropped, { nodes: dropped.join(", ") }));
+  if (moved.length) lines.push(t(texts.canvas.placed, { nodes: moved.join(", ") }));
+  return lines;
+}
+
+/**
+ * A network document without what changes no computation (plan 2026-11-10-network-editor,
+ * D3, D11): the nodes' positions and descriptions and the network's description. The key
+ * that marks a result stale is made of it, and Hydrolog lays it out anew.
+ *
+ * @param {object} document hydrolog-network/1
+ * @returns {object} the document without them
+ */
+export function withoutPicture(document) {
+  const { description: _network, ...rest } = document;
+  return { ...rest, nodes: document.nodes.map(({ position: _cell, description: _text, ...node }) => node) };
 }
 
 /**

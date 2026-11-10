@@ -314,6 +314,21 @@ class TestBadDocuments:
                 "conflict",
                 {"node_id": "A", "field": "value_column"},
             ),
+            (
+                document(source("A", position={"x": 1001, "y": 0}), outlet("A")),
+                "maximum",
+                {"node_id": "A", "field": "position.x", "maximum": 1000},
+            ),
+            (
+                document(source("A"), {**outlet("A"), "description": "a\tb"}),
+                "control_character",
+                {"node_id": "OUT", "field": "description", "character": "U+0009"},
+            ),
+            (
+                document(source("A"), outlet("A"), description="   "),
+                "empty",
+                {"node_id": None, "field": "description"},
+            ),
         ],
     )
     def test_a_field_that_is_wrong_names_the_node_and_the_field(

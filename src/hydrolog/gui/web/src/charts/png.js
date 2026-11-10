@@ -5,7 +5,9 @@
  * image has no access to the page's stylesheets, so the current theme's
  * colours go with it), serialized, loaded as an Image from a `blob:` URL
  * (`img-src 'self' data: blob:` of the page's policy) and drawn on a canvas
- * filled with the theme's `--surface`.
+ * filled with the theme's `--surface`. While the styles are read the SVG has
+ * the class `exporting`, under which a picture hides what is not part of it
+ * (the selection and the other marks of editing on Sieć's canvas).
  */
 
 /** The properties that carry a chart's look. */
@@ -63,7 +65,12 @@ export function svgText(svg) {
   const width = Math.max(1, Math.round(box.width));
   const height = Math.max(1, Math.round(box.height));
   const clone = svg.cloneNode(true);
-  inlineStyles(svg, clone);
+  svg.classList.add("exporting");
+  try {
+    inlineStyles(svg, clone);
+  } finally {
+    svg.classList.remove("exporting");
+  }
   clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
   clone.setAttribute("width", String(width));
   clone.setAttribute("height", String(height));

@@ -52,7 +52,7 @@ from hydrolog.catalog.spec import Command, Option
 from hydrolog.morphometry.watershed_params import WatershedParameters
 from hydrolog.routing import HIETOGRAMS, RAINFALL_KINDS, RUNOFF_MODELS
 from hydrolog.routing._layout import LABEL_SIDES
-from hydrolog.routing.network import MAX_ID_CHARS
+from hydrolog.routing.network import MAX_DESCRIPTION_CHARS, MAX_ID_CHARS, MAX_POSITION
 from hydrolog.routing.schematic import SCHEMA as SCHEMATIC_SCHEMA
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -64,6 +64,9 @@ _RESERVED_ID = (
     "|([Cc][Oo][Mm]|[Ll][Pp][Tt])[1-9\u00b9\u00b2\u00b3])(\\..*)?$"
 )
 """Device names of Windows as an ECMA 262 pattern (no inline flags there)."""
+_CONTROL = r"[\u0000-\u0009\u000b-\u001f\u007f-\u009f]"
+"""Control characters but the line feed, as an ECMA 262 class (escapes, not the
+characters themselves)."""
 
 _TYPE_ORDER = ["null", "boolean", "integer", "number", "string", "array", "object"]
 
@@ -332,7 +335,13 @@ def _network_document(schema_id: str) -> dict[str, Any]:
             "title": title,
             "type": "object",
             "required": ["id", "type", *required],
-            "properties": {"id": identifier, "type": {"const": kind}, **properties},
+            "properties": {
+                "id": identifier,
+                "type": {"const": kind},
+                **properties,
+                "description": {"$ref": "#/$defs/description"},
+                "position": {"$ref": "#/$defs/position"},
+            },
             "additionalProperties": False,
         }
 
@@ -396,13 +405,16 @@ def _network_document(schema_id: str) -> dict[str, Any]:
             "outlet, linked by `from`. A reach has a `method` and the options of "
             "`route <method>`. `schema` is required. A `rainfall` at the top is the "
             "rain of the subcatchments that have none; `timestep_min` fixes the time "
-            "step of the network."
+            "step of the network. Every node may have a `description` and a "
+            "`position` in the grid of the schematic, and the network a `description` "
+            "(ADR-0023); they change no calculation."
         ),
         "type": "object",
         "required": ["schema", "nodes"],
         "properties": {
             "schema": {"const": schema_id},
             "name": {"type": "string", "minLength": 1},
+            "description": {"$ref": "#/$defs/description"},
             "timestep_min": {
                 "type": "number",
                 "exclusiveMinimum": 0,
@@ -431,6 +443,36 @@ def _network_document(schema_id: str) -> dict[str, Any]:
                     "not a device name of Windows (`con`, `prn`, `aux`, `nul`, `com1` "
                     "to `com9`, `lpt1` to `lpt9`, any case, any extension); unique "
                     "without regard to case."
+                ),
+            },
+            "description": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": MAX_DESCRIPTION_CHARS,
+                "pattern": r"\S",
+                "not": {"pattern": _CONTROL},
+                "description": (
+                    "Plain text for people, never read as HTML or Markdown: not "
+                    f"blank, at most {MAX_DESCRIPTION_CHARS} characters, lines broken "
+                    "by a line feed and no other control character."
+                ),
+            },
+            "position": {
+                "type": "object",
+                "required": ["x", "y"],
+                "properties": {
+                    axis: {
+                        "type": "integer",
+                        "minimum": -MAX_POSITION,
+                        "maximum": MAX_POSITION,
+                    }
+                    for axis in ("x", "y")
+                },
+                "additionalProperties": False,
+                "description": (
+                    "The cell of the node in the grid of the schematic (ADR-0013): `x` "
+                    "grows downstream, `y` sideways. A network whose every node has a "
+                    "cell of its own is drawn where its nodes are (ADR-0023)."
                 ),
             },
             "node": {"oneOf": variants},
@@ -487,6 +529,14 @@ def _schematic_document(schema_id: str) -> dict[str, Any]:
                     "side": {"enum": list(LABEL_SIDES)},
                 },
             },
+            "description": {
+                "type": "string",
+                "minLength": 1,
+                "description": (
+                    "The description of the node: plain text for people, shown as "
+                    "text and never as markup (ADR-0023)."
+                ),
+            },
             "parameters": {"type": "array", "items": parameter},
             "peak_m3s": {"type": "number", "minimum": 0},
             "time_to_peak_min": {"type": "number"},
@@ -532,10 +582,12 @@ def _schematic_document(schema_id: str) -> dict[str, Any]:
             "the nodes on an integer grid (`x` grows downstream, to the right, `y` "
             "grows downwards), the lines of the map, the polylines of the edges (every "
             "segment "
-            "at 0, 45 or 90 degrees), the place of every label and, per node, the "
-            "parameters of its calculation and, with a result, its peak, time to peak, "
-            "volume and notices. Written by `RoutingNetwork.schematic()` and by `route "
-            "network` with `schematic`; unknown fields are allowed (AGI-4.1)."
+            "at 0, 45 or 90 degrees), the place of every label and, per node, its "
+            "description, the parameters of its calculation and, with a result, its "
+            "peak, time to peak, volume and notices. The nodes are at their given "
+            "positions (`layout` `given`, rule D, ADR-0023; the edges may cross) or "
+            "laid out (`computed`). Written by `RoutingNetwork.schematic()` and by "
+            "`route network` with `schematic`; unknown fields are allowed (AGI-4.1)."
         ),
         "type": "object",
         "required": [
@@ -554,6 +606,14 @@ def _schematic_document(schema_id: str) -> dict[str, Any]:
             "outlet": identifier,
             "timestep_min": {"type": "number", "exclusiveMinimum": 0},
             "has_result": {"type": "boolean"},
+            "layout": {
+                "enum": ["given", "computed"],
+                "description": (
+                    "`given`: the nodes are at the positions of the network document "
+                    "and the edges follow rule D (ADR-0023); `computed`: the layout of "
+                    "ADR-0013. A document without it is computed."
+                ),
+            },
             "grid": {
                 "type": "object",
                 "required": ["width", "height"],

@@ -334,9 +334,9 @@ inundation, backwater and structures stay with Hydraulik, HEC-RAS and IMGW HD.
 - The outflow written by `--output` is a hydrograph table that every `route` command reads;
   `route network` writes one such table per node into `--output-dir`
 - Schematic: `RoutingNetwork.schematic()` lays a network out as a metro-style map, the document
-  `hydrolog-network-schematic/1` (ADR-0013); `route network --schematic` draws it as SVG with the
-  values of the run, `route schematic` returns the layout without values and computes nothing
-  (ADR-0015)
+  `hydrolog-network-schematic/1` (ADR-0013), or draws the cells that the `position` of every node
+  gives (ADR-0023); `route network --schematic` draws it as SVG with the values of the run,
+  `route schematic` returns the layout without values and computes nothing (ADR-0015)
 - Not in scope: variable-parameter Muskingum-Cunge and compound sections, kinematic and dynamic
   waves, reservoir operation (gates and release rules: the outflow is the one the table gives;
   plan `docs/plans/2026-10-24-flood-routing.md`)
@@ -349,10 +349,14 @@ started with `hydrolog gui serve` (extra `hydrolog[gui]`: Starlette, uvicorn and
 group `nogat.gui`.
 
 - Five sections: Hydrogram zlewni (one watershed, recomputed after every change), Sieć i trasowanie
-  (the network schematic and `route network`), Statystyka przepływów, Kalkulatory and Wszystkie
-  polecenia (a form generated from the catalog for every command)
+  (an editor of the network after HEC-HMS's basin model editor: elements placed on a canvas,
+  linked, renamed, described and given their parameters, with undo; the network document keeps
+  the positions and descriptions; `route network`), Statystyka przepływów, Kalkulatory and
+  Wszystkie polecenia (a form generated from the catalog for every command)
 - Every value comes from the catalog (`run_command` in warm worker processes); the browser formats,
-  sums series for display and draws, and computes nothing else
+  sums series for display, draws, and checks the structure of a network while it is edited with
+  the library's rules and reasons (Hydrolog confirms every complete network), and computes nothing
+  else
 - Exports: CSV, JSON, the Markdown report (`report generate`), a print view (PDF from the browser),
   PNG and the CLI line (`format_command`); the hand-off with Hydrograf as `nogat-handoff/1`
   carrying `hydrolog-network/1`
@@ -363,8 +367,9 @@ group `nogat.gui`.
 - Hydrogram zlewni under PMAXTP fetches the depth for the given point, probability, duration and
   method through `precip pmaxtp` (the server runs it; the browser never calls IMGW-PIB) and keeps
   it with the inputs (ADR-0018)
-- Not in scope: an English UI (later), saved variants or projects, a PDF output, editing the
-  structure of a network, downloading series
+- Not in scope: an English UI (later), saved variants or projects, a PDF output, downloading
+  series; in the network editor a background map, diversions and withdrawals, and choosing,
+  copying or moving several nodes at once (plan `docs/plans/2026-11-10-network-editor.md`)
 
 ---
 

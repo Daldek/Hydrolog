@@ -5,7 +5,8 @@
 // (envelope.js), the payload's kind and, given its schema, the payload's content, then
 // tells which section opens it: one subcatchment made from rainfall with its outlet opens
 // in „Hydrogram zlewni”, any other network in „Sieć i trasowanie”, a station's series
-// (Archiwista) in „Statystyka przepływów”. The producer's result is for comparison only
+// (Archiwista) in „Statystyka przepływów”; read in Sieć, every network opens there (plan
+// 2026-11-10-network-editor, D10). The producer's result is for comparison only
 // (compareResults): Hydrolog recomputes and shows both.
 //
 // Pure functions without Preact, tested in the page (tests/e2e/test_exports.py).
@@ -234,17 +235,19 @@ function seriesProblems(payload) {
 /**
  * Read a hand-off: parse the text, check the envelope against Nogat's schema, the
  * payload's kind and, given its schema, the payload against it, then tell the section
- * that opens it.
+ * that opens it: targetOf's, or Sieć for every network when Sieć reads it (`into`).
  *
  * @param {string} text the hand-off as text (a file's or the clipboard's)
- * @param {{networkSchema?: object|null, seriesSchema?: object|null}} [schemas]
- *   hydrolog-network-1.schema.json and hydrolog-series-1.schema.json (a payload is not
- *   checked against its schema without it)
+ * @param {{networkSchema?: object|null, seriesSchema?: object|null, into?: "siec"|null}}
+ *   [options] hydrolog-network-1.schema.json and hydrolog-series-1.schema.json (a
+ *   payload is not checked against its schema without it), and the section that reads
+ *   it: "siec" opens a network there even when it holds one subcatchment (plan
+ *   2026-11-10-network-editor, D10); a series still goes to Statystyka przepływów
  * @returns {{doc: object|null, target: "hydrogram"|"siec"|"statystyka"|null, problems:
  *   string[]}} the document, the section that opens it (null when it cannot open) and
  *   the problems in Polish; none when it opens
  */
-export function readHandoff(text, { networkSchema = null, seriesSchema = null } = {}) {
+export function readHandoff(text, { networkSchema = null, seriesSchema = null, into = null } = {}) {
   let doc;
   try {
     doc = JSON.parse(String(text).replace(/^\uFEFF/, ""));
@@ -272,7 +275,7 @@ export function readHandoff(text, { networkSchema = null, seriesSchema = null } 
     const needs = seriesProblems(payload);
     return { doc, target: needs.length ? null : "statystyka", problems: needs };
   }
-  const target = targetOf(payload);
+  const target = into === "siec" ? "siec" : targetOf(payload);
   const needs = target === "hydrogram" ? hydrogramProblems(payload) : [];
   return { doc, target: needs.length ? null : target, problems: needs };
 }

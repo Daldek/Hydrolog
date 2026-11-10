@@ -25,6 +25,7 @@ from hydrolog._warnings import (
     OutsideSupport,
     OutsideTypicalRange,
     OutsideUnverifiedRange,
+    PositionsIgnored,
     ShortRecord,
     SmallSample,
     UhModelMismatch,
@@ -83,6 +84,7 @@ SAMPLES = {
         "allowed": ["beta", "block", "euler_ii", "triangular"],
     },
     UhModelMismatch: {"uh_model": "scs", "result_uh_model": "nash"},
+    PositionsIgnored: {"reason": "partial", "node_id": "R3"},
 }
 
 
@@ -127,6 +129,7 @@ class TestLibraryWarnings:
             "incomplete_years",
             "unknown_hietogram_type",
             "uh_model_mismatch",
+            "positions_ignored",
         ]
 
     def test_every_subclass_is_listed(self):

@@ -40,15 +40,26 @@ function clampOwn(side, width) {
   return Math.min(LIMITS[side].max, Math.max(LIMITS[side].min, width));
 }
 
+/** The CSS default widths read, by panel and the window's width (a media query sets them). */
+const defaults = new Map();
+
 /**
- * The default width of a panel: the CSS variable --left-w or --right-w.
+ * The default width of a panel: the CSS variable --left-w or --right-w of the root. It is
+ * read once per width of the window: reading a computed style while the page has changed
+ * makes the browser restyle it there and then, which a network of hundreds of nodes pays
+ * on every render.
  *
  * @param {"left"|"right"} side the panel
  * @returns {number} the width [px]
  */
 function cssDefault(side) {
+  const key = `${side}:${window.innerWidth}`;
+  if (defaults.has(key)) return defaults.get(key);
   const value = parseInt(getComputedStyle(document.documentElement).getPropertyValue(`--${side}-w`), 10);
-  return Number.isNaN(value) ? LIMITS[side].min : value;
+  // Not yet styled (no value): the bound now, the CSS's value once it is there
+  if (Number.isNaN(value)) return LIMITS[side].min;
+  defaults.set(key, value);
+  return value;
 }
 
 /**

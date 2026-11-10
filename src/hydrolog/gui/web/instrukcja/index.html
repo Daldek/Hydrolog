@@ -259,17 +259,73 @@
 <section class="part" id="siec" aria-labelledby="siec-title">
   <p class="kicker">03 · Sekcja</p>
   <h2 id="siec-title">Sieć i trasowanie</h2>
-  <p>Kilka zlewni połączonych korytami, zbiornikami i złączami, aż do jednego wylotu. Hydrolog liczy hydrogram każdej zlewni, przeprowadza fale przez odcinki i zbiorniki i sumuje je w złączach. W przeciwieństwie do Hydrogramu zlewni sieć liczy się na przycisk „Oblicz sieć”.</p>
+  <p>Kilka zlewni połączonych korytami, zbiornikami i złączami, aż do jednego wylotu. Sieć budujesz na schemacie, podobnie jak model zlewni w programie HEC-HMS: dodajesz elementy, łączysz każdy z elementem poniżej, nadajesz im nazwy i opisy, a parametry wpisujesz w panelu „Dane”. Hydrolog liczy hydrogram każdej zlewni, przeprowadza fale przez odcinki i zbiorniki i sumuje je w złączach. W przeciwieństwie do Hydrogramu zlewni sieć liczy się na przycisk „Oblicz sieć”.</p>
   <figure>
-    <a href="img/siec.png"><img src="img/siec.png" width="1440" height="900" loading="lazy" alt="Sieć i trasowanie po obliczeniu przykładu: schemat pionowy ze zlewniami A, B i C, odcinkami R_A i R_J1, złączami J1 i J2 i wylotem OUT na dole, przy każdym węźle szczyt i czas do szczytu; w panelu Dane ustawienia odcinka R_A (metoda lag, 25 min), w panelu Wyniki dopływ i odpływ odcinka R_A oraz kafelki wylotu: 19,1 m³/s po 2:25 h."></a>
-    <figcaption>Przykład po „Oblicz sieć”, z wybranym odcinkiem R_A.</figcaption>
+    <a href="img/siec.png"><img src="img/siec.png" width="1440" height="900" loading="lazy" alt="Sieć i trasowanie po obliczeniu przykładu: nad schematem paleta elementów Zlewnia, Odcinek, Zbiornik, Złącze i Wylot oraz przyciski Cofnij, Ponów, Uporządkuj, Przesuń, Węzeł…, pomniejszenie, powiększenie, Dopasuj i Skróty; schemat pionowy ze zlewniami A, B i C, odcinkami R_A i R_J1, złączami J1 i J2 i wylotem OUT na dole, przy każdym węźle szczyt i czas do szczytu; w panelu Dane wybrany odcinek R_A z polami Id węzła, Opis i Odpływa do (J1) oraz metodą lag 25 min, w panelu Wyniki dopływ i odpływ odcinka R_A oraz kafelki wylotu: 19,1 m³/s po 2:25 h."></a>
+    <figcaption>Przykład po „Oblicz sieć”, z wybranym odcinkiem R_A; nad schematem paleta i narzędzia edycji.</figcaption>
   </figure>
   <ul>
-    <li><strong>Sieć</strong> pochodzi z pliku dokumentu sieci (<code>hydrolog-network/1</code>, „Plik sieci…”) razem z plikami, które czyta („Pliki towarzyszące…”: dopływy, tabele zbiorników), albo z przekazania („Wczytaj z Hydrografa”, zob. <a href="#przekazanie">Przekazanie</a>). Na początku sekcja jest pusta: nie ma sieci ani schematu. „Zapisz sieć” pobiera dokument ze zmianami. Układ połączeń pochodzi z pliku: zmieniasz parametry węzłów, nie to, co z czym się łączy.</li>
-    <li><strong>Schemat</strong> jest rysowany pionowo: źródła u góry, wylot na dole, linia główna prosto, dopływy z boków. Kliknij węzeł (albo przejdź do niego klawiszem <kbd>Tab</kbd> i naciśnij <kbd>Enter</kbd> lub spację): jego ustawienia otworzą się w panelu „Dane”, a wynik w panelu „Wyniki”. Te same węzły są na liście w panelu „Dane” i w widoku „Tabela węzłów”.</li>
-    <li><strong>Ustawienia węzła</strong> zależą od jego rodzaju: zlewnia (powierzchnia, CN, opad), odcinek (metoda: lag, Muskingum, Muskingum-Cunge, kaskada zbiorników albo level-pool, i jej parametry), zbiornik (tabela pojemność–odpływ), złącze, wylot. Po zmianie plakietka mówi „Dane zmienione: oblicz ponownie”, a wyniki są oznaczone jako dotyczące poprzednich danych.</li>
+    <li><strong>Sieć</strong> zaczynasz w kroku „Sieć” panelu „Dane”: „Nowa sieć” otwiera pusty schemat, „Plik sieci…” wczytuje dokument sieci (<code>hydrolog-network/1</code>) razem z plikami, które czyta („Pliki towarzyszące…”: dopływy, tabele zbiorników), a „Wczytaj z Hydrografa” otwiera przekazanie (zob. <a href="#przekazanie">Przekazanie</a>). Na początku sekcja jest pusta. W tym samym kroku są nazwa i opis sieci, jej krok czasowy i opad domyślny zlewni.</li>
+    <li><strong>Schemat</strong> jest rysowany pionowo: źródła u góry, wylot na dole. Węzeł stoi na tym polu siatki, na które go postawisz; sieć z pliku bez położeń węzłów Hydrolog układa sam: linia główna prosto, dopływy z boków. Kliknij węzeł: jego ustawienia otworzą się w panelu „Dane”, a wynik w panelu „Wyniki”. Te same węzły są na liście w kroku „Węzły” i w widoku „Tabela węzłów”, z opisem i węzłem, do którego odpływają.</li>
+    <li><strong>Ustawienia węzła</strong> (krok 3): id, opis, „Odpływa do” i parametry zależne od rodzaju węzła: zlewnia (powierzchnia, CN, opad), odcinek (metoda: lag, Muskingum, Muskingum-Cunge, kaskada zbiorników albo level-pool, i jej parametry), zbiornik (tabela pojemność–odpływ), złącze, wylot. Po zmianie parametru, id albo połączeń plakietka mówi „Dane zmienione: oblicz ponownie”, a wyniki są oznaczone jako dotyczące poprzednich danych. Przesunięcie węzła i opis nie zmieniają wyniku.</li>
     <li><strong>Wyniki</strong>: przy każdym węźle schematu szczyt i czas do szczytu; w panelu „Wyniki” kafelki wylotu, a dla wybranego węzła jego hydrogram (dla odcinka dopływ i odpływ), parametry i rzędne.</li>
   </ul>
+
+  <h3 id="elementy-sieci">Elementy sieci</h3>
+  <p>Paleta nad schematem ma pięć elementów. Odpowiadają elementom modelu zlewni HEC-HMS; źródło HEC-HMS zastępuje zlewnia z podanym hydrogramem, a rozdziału wody Hydrolog nie ma.</p>
+  <table class="dtable guide-table wrap">
+    <caption>Elementy palety i ich odpowiedniki w HEC-HMS</caption>
+    <thead><tr><th scope="col">Element</th><th scope="col">W HEC-HMS</th><th scope="col">Co robi</th><th scope="col">Dopływy</th></tr></thead>
+    <tbody>
+      <tr><th scope="row">Zlewnia</th><td>Subbasin, Source</td><td>daje hydrogram: z opadu, podany (czasy i przepływy) albo z kolumny pliku dopływów</td><td>żadnego</td></tr>
+      <tr><th scope="row">Odcinek</th><td>Reach</td><td>przesuwa i spłaszcza falę: lag, Muskingum, Muskingum-Cunge, kaskada zbiorników albo level-pool</td><td>dokładnie jeden</td></tr>
+      <tr><th scope="row">Zbiornik</th><td>Reservoir</td><td>zatrzymuje część fali według krzywej pojemność–odpływ</td><td>dokładnie jeden</td></tr>
+      <tr><th scope="row">Złącze</th><td>Junction</td><td>sumuje dopływy</td><td>co najmniej jeden</td></tr>
+      <tr><th scope="row">Wylot</th><td>Sink</td><td>koniec sieci: jego hydrogram jest wynikiem; w sieci jest dokładnie jeden</td><td>dokładnie jeden</td></tr>
+      <tr><th scope="row">brak</th><td>Diversion</td><td>rozdziału nie ma: każdy węzeł odpływa do jednego węzła poniżej, więc woda nie dzieli się na dwie drogi</td><td>–</td></tr>
+    </tbody>
+  </table>
+  <p>Nowy element dostaje id <code>Z1</code>, <code>R1</code>, <code>ZB1</code> albo <code>J1</code> z pierwszym wolnym numerem, a wylot <code>OUT</code>; możesz je zmienić. Id jest nazwą węzła i jego pliku wyników: litery (także polskie), cyfry, <code>_</code>, <code>.</code> i <code>-</code>, bez spacji, do 64 znaków, różne bez względu na wielkość liter. Inne słowa wpisz w „Opis”: zwykły tekst do 500 znaków, także w kilku wierszach.</p>
+
+  <h3 id="budowanie-sieci">Budowanie sieci</h3>
+  <figure class="card-figure">
+    <a href="img/siec-edycja.png"><img src="img/siec-edycja.png" width="652" height="700" loading="lazy" alt="Schemat sieci w trakcie edycji: lista „Problemy sieci (1)” z problemem „Węzeł C nie odpływa do żadnego węzła: połącz go z węzłem poniżej.”, zlewnia C ze znakiem „!” z boku schematu, a nad schematem pytanie „Wstawić złącze?”: R_J1 przyjmuje jeden dopływ i ma już J1, złącze nad R_J1 zbierze J1 i C; przyciski Wstaw złącze i Anuluj."></a>
+    <figcaption>Problem na schemacie i pytanie o złącze po przeciągnięciu uchwytu C na odcinek R_J1.</figcaption>
+  </figure>
+  <dl class="defs">
+    <div><dt>Dodawanie</dt><dd>Przeciągnij element z palety na wolne pole schematu albo kliknij element, a potem wolne pole. Najwygodniej zacząć od wylotu i dodawać elementy nad nim. Klawisz <kbd>D</kbd> na węźle (albo „Dodaj dopływ…” w menu węzła) stawia nowy element na wolnym polu nad nim i od razu łączy go z tym węzłem. „Dodaj węzeł” w kroku „Węzły” stawia element obok wybranego węzła, bez połączeń.</dd></div>
+    <div><dt>Łączenie</dt><dd>Każdy węzeł poza wylotem odpływa do jednego węzła poniżej. Przeciągnij uchwyt (kółko pod węzłem) na węzeł, do którego ma odpływać; w trakcie cel pokazuje „✓” albo „⊘” z przyczyną. Bez przeciągania: „Połącz z…” w menu węzła i kliknięcie celu, klawisz <kbd>P</kbd> i strzałki, albo pole „Odpływa do” w ustawieniach węzła. Nowe połączenie zastępuje dotychczasowe. Pętli, dopływu do zlewni ani odpływu z wylotu nie da się zrobić, a komunikat mówi dlaczego. Drugi dopływ do odcinka, zbiornika albo wylotu, które przyjmują jeden, kończy się pytaniem „Wstawić złącze?”: złącze nad tym węzłem zbierze oba dopływy.</dd></div>
+    <div><dt>Odłączanie i usuwanie</dt><dd>Kliknij połączenie i naciśnij <kbd>Delete</kbd>, albo wybierz „Odłącz” (<kbd>O</kbd>) w menu węzła, albo „brak” w polu „Odpływa do”. „Usuń” (<kbd>Delete</kbd> albo „Usuń węzeł” w ustawieniach) usuwa węzeł z jego połączeniami, a „Usuń i połącz” dodatkowo łączy jego jedyny dopływ z węzłem poniżej.</dd></div>
+    <div><dt>Id i opis</dt><dd>„Zmień id” w menu węzła albo <kbd>F2</kbd> przenosi do pola „Id węzła”. Nowe id obowiązuje po <kbd>Enter</kbd> albo po wyjściu z pola, a połączenia innych węzłów idą za nim; zlewnia, która czytała kolumnę pliku dopływów pod dawnym id, czyta ją dalej. „Opis” węzła i „Opis sieci” (krok „Sieć”) nie zmieniają obliczeń; opis węzła widać w jego podpowiedzi i w „Tabeli węzłów”.</dd></div>
+    <div><dt>Przesuwanie i układ</dt><dd>Przeciągnij węzeł na wolne pole, naciśnij <kbd>Shift</kbd> ze strzałką albo wybierz „Przesuń” i kliknij wolne pole. „Uporządkuj” ustawia węzły tak, jak układa je Hydrolog; działa, gdy Hydrolog może odczytać sieć, czyli gdy węzły mają komplet danych. Do tego czasu sieć z pliku bez położeń stoi w rzędach oznaczonych „Układ tymczasowy”. „−”, „+” i „Dopasuj” zmieniają powiększenie.</dd></div>
+    <div><dt>Problemy</dt><dd>Po każdej zmianie strona sprawdza budowę sieci tak, jak sprawdza ją Hydrolog: lista „Problemy sieci” nad schematem wymienia wszystkie problemy naraz (np. węzeł, który nigdzie nie odpływa, pętlę, brak wylotu, niepełne dane węzła), węzeł z problemem ma znak „!”, a kliknięcie problemu wybiera jego węzeł. Gdy lista nie jest pusta, „Oblicz sieć” niczego nie liczy, tylko wybiera węzeł pierwszego problemu. Gdy krawędź biegnie przez inny węzeł, mówi o tym wskazówka: obliczeń to nie zmienia, a „Uporządkuj” rozkłada sieć bez takich przejść.</dd></div>
+    <div><dt>Cofnij i ponów</dt><dd>„Cofnij” i „Ponów” (<kbd>Ctrl</kbd>+<kbd>Z</kbd>; <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd> albo <kbd>Ctrl</kbd>+<kbd>Y</kbd>) cofają i przywracają do 100 zmian: dodanie, połączenie, przesunięcie, zmianę id albo parametru. Sieć zostaje w przeglądarce po ponownym otwarciu strony, historia zmian nie.</dd></div>
+    <div><dt>Zapisywanie</dt><dd>„Zapisz sieć” pobiera dokument sieci z położeniami i opisami węzłów: otwarty ponownie wygląda tak samo, a schemat, który rysuje z niego Hydrolog (<code>route network --schematic</code>, „Schemat Hydrologa” w eksporcie), jest tym samym obrazem. Sieć z problemami zapisuje ten sam przycisk jako „Zapisz szkic”: Hydrolog policzy ją dopiero po poprawieniu problemów, a strona otworzy ją jak każdy plik. „Wyczyść” i „Nowa sieć” pytają, zanim zamkną sieć zmienioną od otwarcia albo zapisu.</dd></div>
+    <div><dt>Zlewnia z Hydrografa</dt><dd>„Dodaj zlewnię z Hydrografa” w kroku „Sieć” dodaje do otwartej sieci zlewnie z przekazania, bez jego wylotu, na wolnych polach górnego rzędu schematu; potem połącz je z siecią. Id, które sieć już ma, dostaje kolejny numer (<code>Z1</code> staje się <code>Z2</code>), a opisem zlewni zostaje temat przekazania. Sieć zachowuje swój krok czasowy, a opad przekazania, inny niż opad sieci, staje się opadem tej zlewni.</dd></div>
+  </dl>
+
+  <h3 id="klawisze-schematu">Klawisze schematu</h3>
+  <p>Schemat jest jednym przystankiem klawisza <kbd>Tab</kbd>; dalej między węzłami przechodzą strzałki. Litery i znaki z tabeli działają tylko wtedy, gdy schemat ma fokus, a w polu tekstowym działa zwykłe cofanie przeglądarki. Tę samą listę pokazuje przycisk „Skróty” albo klawisz <kbd>?</kbd>. Całą sieć zbudujesz samą klawiaturą: <kbd>Enter</kbd> na elemencie palety stawia go obok wybranego węzła.</p>
+  <table class="dtable guide-table wrap">
+    <caption>Klawisze, gdy fokus jest na węźle schematu</caption>
+    <thead><tr><th scope="col">Klawisze</th><th scope="col">Działanie</th></tr></thead>
+    <tbody>
+      <tr><th scope="row">strzałki</th><td>najbliższy węzeł w tym kierunku</td></tr>
+      <tr><th scope="row"><kbd>Enter</kbd>, spacja</th><td>wybierz węzeł: ustawienia w panelu „Dane”</td></tr>
+      <tr><th scope="row"><kbd>Shift</kbd> + strzałka</th><td>przesuń węzeł o jedno pole</td></tr>
+      <tr><th scope="row"><kbd>D</kbd></th><td>dodaj dopływ: menu rodzajów elementu</td></tr>
+      <tr><th scope="row"><kbd>P</kbd></th><td>połącz z węzłem poniżej: strzałki wybierają cel, <kbd>Enter</kbd> łączy</td></tr>
+      <tr><th scope="row"><kbd>O</kbd></th><td>odłącz od węzła poniżej</td></tr>
+      <tr><th scope="row"><kbd>Delete</kbd></th><td>usuń węzeł albo wybrane połączenie</td></tr>
+      <tr><th scope="row"><kbd>F2</kbd></th><td>zmień id: pole w panelu „Dane”</td></tr>
+      <tr><th scope="row"><kbd>Shift</kbd>+<kbd>F10</kbd>, klawisz menu</th><td>menu węzła (także prawy przycisk myszy, długie dotknięcie albo „Węzeł…”)</td></tr>
+      <tr><th scope="row"><kbd>Ctrl</kbd>+<kbd>Z</kbd></th><td>cofnij</td></tr>
+      <tr><th scope="row"><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd>, <kbd>Ctrl</kbd>+<kbd>Y</kbd></th><td>ponów</td></tr>
+      <tr><th scope="row"><kbd>+</kbd>, <kbd>−</kbd></th><td>powiększ, pomniejsz</td></tr>
+      <tr><th scope="row"><kbd>?</kbd></th><td>pokaż albo ukryj listę skrótów</td></tr>
+      <tr><th scope="row"><kbd>Esc</kbd></th><td>przerwij przesuwanie, dodawanie albo łączenie</td></tr>
+    </tbody>
+  </table>
 
   <h3 id="przyklad-siec">Przykład: trzy zlewnie</h3>
   <p>Pobierz plik przykładu <a href="przyklady/siec.json" download="siec.json"><code>siec.json</code></a>. W sekcji Sieć naciśnij „Plik sieci…” i wybierz pobrany plik: na schemacie pojawi się osiem węzłów. Sieć nie czyta innych plików, więc „Pliki towarzyszące…” nie są potrzebne.</p>
@@ -277,8 +333,8 @@
     <caption>Węzły sieci z pliku przykładu</caption>
     <thead><tr><th scope="col">Węzeł</th><th scope="col">Dane</th></tr></thead>
     <tbody>
-      <tr><th scope="row">A · zlewnia</th><td>12&nbsp;km², CN 75; własny opad: Euler II, 45&nbsp;mm w 60&nbsp;min</td></tr>
-      <tr><th scope="row">B · zlewnia</th><td>5&nbsp;km², CN 70; własny opad: seria co 5&nbsp;min (0; 2; 5; 10; 12; 6; 3&nbsp;mm)</td></tr>
+      <tr><th scope="row">A · zlewnia</th><td>12&nbsp;km², CN 75, najdłuższa droga spływu 6&nbsp;km o spadku 0,02&nbsp;m/m; własny opad: Euler II, 45&nbsp;mm w 60&nbsp;min</td></tr>
+      <tr><th scope="row">B · zlewnia</th><td>5&nbsp;km², CN 70, najdłuższa droga spływu 3,5&nbsp;km o spadku 0,0229&nbsp;m/m; własny opad: szereg co 5&nbsp;min (0; 2; 5; 10; 12; 6; 3&nbsp;mm)</td></tr>
       <tr><th scope="row">C · zlewnia</th><td>8&nbsp;km², CN 72, tc 60&nbsp;min; opad sieci: blokowy, 30&nbsp;mm w 60&nbsp;min</td></tr>
       <tr><th scope="row">R_A · odcinek</th><td>z A, metoda lag, 25&nbsp;min</td></tr>
       <tr><th scope="row">J1 · złącze</th><td>R_A i B</td></tr>
@@ -287,6 +343,7 @@
     </tbody>
   </table>
   <p>Naciśnij „Oblicz sieć”. Wynik: wylot OUT ma szczyt <span class="ex" data-example="siec-q">19,1&nbsp;m³/s</span> po <span class="ex" data-example="siec-tp">2:25&nbsp;h</span>.</p>
+  <p><strong>Ta sama sieć od zera.</strong> Naciśnij „Nowa sieć” i postaw z palety osiem elementów tak jak na obrazku: u góry zlewnię A, pod nią odcinek R_A, złącze J1, odcinek R_J1, złącze J2 i wylot OUT, zlewnię B z boku nad J1, a zlewnię C z boku nad J2. Zmień ich id na te z tabeli i połącz każdy węzeł z węzłem poniżej. W kroku „Sieć” wybierz opad domyślny „Projektowy”: blokowy, 30&nbsp;mm w 60&nbsp;min. Potem wybieraj kolejno zlewnie i odcinki i wpisz ich dane z tabeli (długość i spadek drogi spływu są w „Pozostałych polach zlewni”). „Oblicz sieć” da ten sam wynik, a „Zapisz sieć” zapisze plik, który otworzy się w tym samym układzie.</p>
   <p class="hint-box"><strong>Spróbuj:</strong> wybierz odcinek R_A, zmień metodę z „lag” na „Muskingum”, wpisz K&nbsp;30&nbsp;min i X&nbsp;0,2, a potem „Oblicz sieć”. Fala spłaszczy się w korycie: szczyt na wylocie spadnie do <span class="ex" data-example="siec-q-muskingum">18,0&nbsp;m³/s</span> i nadejdzie po <span class="ex" data-example="siec-tp-muskingum">2:35&nbsp;h</span>.</p>
   <p class="back"><a href="#toc-title">↑ Spis treści</a></p>
 </section>
@@ -391,7 +448,7 @@
   <p>Hydrograf wyznacza zlewnię na mapie, a Hydrolog liczy dla niej wezbranie. Dane przechodzą między nimi jako <strong>przekazanie</strong>: plik JSON w formacie <code>nogat-handoff/1</code> ekosystemu Nogat. Niesie zlewnię albo całą sieć, pochodzenie danych (np. opad PMAXTP p&nbsp;1% w 12&nbsp;h z punktem, dla którego pobrano wysokość, plik zlewni albo punkt na mapie) i wynik do porównania.</p>
   <ul>
     <li><strong>Wysyłanie.</strong> Część „Przekazanie” na końcu panelu „Wyniki” w Hydrogramie zlewni i w Sieci: „Plik przekazania” pobiera plik <code>&lt;nazwa&gt;.handoff.json</code>, a „Do schowka” kopiuje to samo do schowka. Z Hydrogramu zlewni idzie zlewnia z opadem, stratami, modelem i wynikiem, z Sieci cała sieć, a po „Oblicz sieć” także wynik wylotu.</li>
-    <li><strong>Wczytywanie.</strong> „Wczytaj z Hydrografa” w pierwszym kroku panelu „Dane” (w Hydrogramie zlewni krok „Zlewnia”, w Sieci krok „Sieć”), a w nim „Plik przekazania…” albo „Wklej ze schowka”. Gdy przeglądarka nie daje dostępu do schowka, pojawia się pole, w które wklejasz przekazanie (<kbd>Ctrl</kbd>+<kbd>V</kbd>). Jedna zlewnia, z opadem albo bez, otwiera się w Hydrogramie zlewni, każda inna sieć w Sieci i trasowaniu. Karta w panelu „Dane” mówi, skąd są dane, np. „Z Hydrografa: zlewnia punktu 51,0154° N, 15,8900° E”. Opad PMAXTP otwiera się z punktem opadu, a bez niego z punktem zlewni: gdy przekazanie podaje punkt opadu, jego wysokość zostaje taka, jak w przekazaniu; w przeciwnym razie Hydrolog pobiera wysokość dla punktu zlewni. Przekazanie bez żadnego punktu otwiera opad jako „Hietogram” z wysokością i czasem trwania z przekazania. Sama zlewnia, bez opadu (tak Hydrograf przekazuje zlewnię, zanim policzy hydrogram), otwiera się z opadem PMAXTP w punkcie zlewni i bez modelu: wybierz prawdopodobieństwo i czas trwania w kroku „Hietogram”, a Hydrolog pobierze wysokość opadu, i model w kroku „Hydrogram”. Bez punktu zlewni krok „Hietogram” zostaje pusty.</li>
+    <li><strong>Wczytywanie.</strong> „Wczytaj z Hydrografa” w pierwszym kroku panelu „Dane” (w Hydrogramie zlewni krok „Zlewnia”, w Sieci krok „Sieć”), a w nim „Plik przekazania…” albo „Wklej ze schowka”. Gdy przeglądarka nie daje dostępu do schowka, pojawia się pole, w które wklejasz przekazanie (<kbd>Ctrl</kbd>+<kbd>V</kbd>). Jedna zlewnia, z opadem albo bez, otwiera się w Hydrogramie zlewni, każda inna sieć w Sieci i trasowaniu; „Wczytaj z Hydrografa” w Sieci otwiera tam każde przekazanie, także jedną zlewnię z wylotem. Zlewnie z przekazania do otwartej sieci dodaje „Dodaj zlewnię z Hydrografa” (zob. <a href="#budowanie-sieci">Budowanie sieci</a>). Karta w panelu „Dane” mówi, skąd są dane, np. „Z Hydrografa: zlewnia punktu 51,0154° N, 15,8900° E”. Opad PMAXTP otwiera się z punktem opadu, a bez niego z punktem zlewni: gdy przekazanie podaje punkt opadu, jego wysokość zostaje taka, jak w przekazaniu; w przeciwnym razie Hydrolog pobiera wysokość dla punktu zlewni. Przekazanie bez żadnego punktu otwiera opad jako „Hietogram” z wysokością i czasem trwania z przekazania. Sama zlewnia, bez opadu (tak Hydrograf przekazuje zlewnię, zanim policzy hydrogram), otwiera się z opadem PMAXTP w punkcie zlewni i bez modelu: wybierz prawdopodobieństwo i czas trwania w kroku „Hietogram”, a Hydrolog pobierze wysokość opadu, i model w kroku „Hydrogram”. Bez punktu zlewni krok „Hietogram” zostaje pusty.</li>
     <li><strong>Porównanie.</strong> Gdy przekazanie niesie wynik, część „Przekazanie” rozwija się sama i stawia go obok wyniku Hydrologa: Qmax, czas do szczytu, objętość i wersję programu, który liczył. Wartości, które się różnią, są wyróżnione; zwykle to skutek innej wersji Hydrologa, której używa Hydrograf. Po zmianie danych porównanie przypomina, że wynik producenta dotyczy danych z przekazania. W Sieci wynik Hydrologa do porównania daje „Oblicz sieć”.</li>
   </ul>
   <p>Przed wczytaniem Hydrolog sprawdza przekazanie. Gdy coś się nie zgadza, niczego nie zmienia i wypisuje przyczyny (zob. <a href="#problemy">Gdy coś nie działa</a>).</p>
@@ -404,16 +461,17 @@
   <p class="kicker">08 · Wygląd i dane</p>
   <h2 id="telefon-title">Telefon, motyw i Twoje dane</h2>
   <figure class="inline-figure phone-figure">
-    <a href="img/telefon.png"><img src="img/telefon.png" width="390" height="844" loading="lazy" alt="Hydrolog na telefonie w ciemnym motywie: panel Wyniki wysunięty od dołu nad paskiem sekcji, z kafelkami Qmax 54,20 m³/s, Do szczytu 6:40 h, Objętość 977 225 m³ i Wsp. odpływu 0,258 oraz uwagami."></a>
-    <figcaption>Telefon, ciemny motyw: panel „Wyniki” jako arkusz.</figcaption>
+    <a href="img/telefon.png"><img src="img/telefon.png" width="390" height="844" loading="lazy" alt="Sieć i trasowanie na telefonie w ciemnym motywie, po obliczeniu przykładu: nad schematem przyciski Dane i Wyniki, przełącznik Schemat i Tabela węzłów, a w karcie Schemat sieci przyciski Dodaj element, Cofnij, Ponów, Uporządkuj, Przesuń, Węzeł…, powiększenie, Dopasuj i Skróty; schemat od zlewni A u góry do wylotu OUT ze szczytem 19,1 m³/s po 2:25 h, na dole pasek sekcji."></a>
+    <figcaption>Telefon, ciemny motyw: Sieć z narzędziami schematu; panele „Dane” i „Wyniki” otwierają przyciski nad nim.</figcaption>
   </figure>
   <h3>Telefon i wąski ekran</h3>
   <p>Do szerokości 860&nbsp;px sekcje są na pasku u dołu ekranu, a panele „Dane” i „Wyniki” wysuwają się od dołu jako arkusze: otwierają je przyciski nad wykresem, zamyka <span class="key-mark" aria-hidden="true">×</span> albo <kbd>Esc</kbd>.</p>
+  <p>W Sieci paleta elementów jest na telefonie menu „Dodaj element”. Węzły przesuwasz palcem, menu węzła otwiera długie dotknięcie albo „Węzeł…”, a połączenia robisz także w polu „Odpływa do” w ustawieniach węzła; przesunięcie palcem po pustym miejscu przewija schemat.</p>
   <h3>Motyw</h3>
   <p>Przełącznik na górnym pasku: Auto (jak w systemie), Jasny albo Ciemny. Wybór obowiązuje też w tym przewodniku i na innych stronach ekosystemu Nogat pod tym samym adresem.</p>
   <h3>Twoje dane</h3>
   <ul>
-    <li>Dane wpisane w formularzach zostają w tej przeglądarce, osobno dla każdej sekcji, aż do „Wyczyść”; w Hydrogramie zlewni także pobrana wysokość opadu PMAXTP. Wyniki nie są zapisywane: po ponownym otwarciu strony Hydrogram zlewni liczy wynik od nowa, a w pozostałych sekcjach wystarczy nacisnąć przycisk obliczenia.</li>
+    <li>Dane wpisane w formularzach zostają w tej przeglądarce, osobno dla każdej sekcji, aż do „Wyczyść”; w Hydrogramie zlewni także pobrana wysokość opadu PMAXTP, w Sieci także położenia i opisy węzłów (bez historii „Cofnij”). Wyniki nie są zapisywane: po ponownym otwarciu strony Hydrogram zlewni liczy wynik od nowa, a w pozostałych sekcjach wystarczy nacisnąć przycisk obliczenia.</li>
     <li>Pliki, które wczytujesz, trafiają do katalogu Twojej sesji na serwerze Hydrologa i są usuwane po 12 godzinach bez aktywności albo po zatrzymaniu serwera. Limity: 20&nbsp;MB na plik, 100&nbsp;MB i 200 plików na sesję.</li>
     <li>Hydrolog nie ma kont ani logowania. Poza swój serwer wysyła tylko punkt opadu PMAXTP (szerokość i długość geograficzną) z metodą atlasu do IMGW-PIB, gdy pobiera wysokość opadu; innych danych nie wysyła.</li>
     <li>Zgłoszenie z „Zgłoś uwagę” zostaje na serwerze Hydrologa razem z adresem strony i nazwą przeglądarki, a dane diagnostyczne tylko wtedy, gdy pole „Dołącz dane diagnostyczne” jest zaznaczone. Nie ma w nich treści Twoich plików; „Pokaż co zostanie wysłane” pokazuje je przed wysłaniem.</li>
@@ -428,6 +486,9 @@
   <dl class="defs">
     <div><dt>„Dane niepełne: …”</dt><dd>Pole o tej nazwie jest puste albo ma wartość spoza zakresu; jest oznaczone na czerwono, a pod nim widać, co jest nie tak. Wynik na ekranie dotyczy poprzednich danych.</dd></div>
     <div><dt>„Błąd danych”</dt><dd>Hydrolog odrzucił dane jako całość, np. gdy długość do środka ciężkości zlewni jest większa od długości cieku. Komunikat stoi nad formularzem albo przy polu.</dd></div>
+    <div><dt>„Problemy sieci (n)”</dt><dd>Budowa sieci w Sieci nie pozwala jej policzyć, np. węzeł nigdzie nie odpływa, sieć nie ma wylotu albo węzeł ma niepełne dane. Lista nad schematem wymienia wszystkie problemy, a kliknięcie problemu wybiera jego węzeł (zob. <a href="#budowanie-sieci">Budowanie sieci</a>). Sieć z problemami zapiszesz przyciskiem „Zapisz szkic”.</dd></div>
+    <div><dt>„Nie można…”</dt><dd>Schemat odrzucił połączenie, dodanie albo przesunięcie i podaje przyczynę: pętlę, dopływ do zlewni, odpływ z wylotu albo zajęte pole. Sieć się nie zmieniła.</dd></div>
+    <div><dt>„Uporządkuj” nie działa, „Układ tymczasowy”</dt><dd>Hydrolog układa sieć dopiero wtedy, gdy może ją odczytać: uzupełnij dane węzłów i wczytaj pliki, które sieć czyta. Do tego czasu węzły stoją w rzędach według odległości od źródeł albo tam, gdzie je postawisz.</dd></div>
     <div><dt>Obliczenie przerwane</dt><dd>Obliczenie dłuższe niż 30 sekund jest przerywane. Zmniejsz zadanie, np. wydłuż krok czasowy albo skróć szereg.</dd></div>
     <div><dt>„Nie pobrano wysokości opadu PMAXTP”</dt><dd>Punkt poza atlasem (poza Polską albo na morzu) jest oznaczony przy szerokości geograficznej: popraw punkt. Gdy IMGW-PIB nie odpowiada, komunikat stoi przy wysokości opadu: sprawdź połączenie z internetem i naciśnij „Pobierz ponownie”. Wynik na ekranie dotyczy poprzednich danych.</dd></div>
     <div><dt>Komunikat z dopiskiem (EN)</dt><dd>Hydrolog nie ma jeszcze jego polskiej wersji; treść jest po angielsku.</dd></div>

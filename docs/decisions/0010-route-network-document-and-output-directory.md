@@ -6,6 +6,8 @@
 - Amended by [ADR-0012](0012-network-objects-rainfall-and-runoff.md) (2026-10-25): the nodes of `RoutingNetwork` are typed
   objects that link by reference (`Subcatchment`, `Channel`, `Reservoir`, `Junction`, `Outlet`, all `Node`); the
   first version had one generic `NetworkNode`. The document and its errors are unchanged, and it gained fields.
+- Amended by [ADR-0023](0023-positions-and-descriptions-in-the-network.md) (2026-11-10): a node may have `description`
+  and `position`, and the document a `description` at its top; the reader stays strict.
 
 ## Context
 

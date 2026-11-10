@@ -7,20 +7,29 @@ on a map, a report, ``route network --schematic``. The picture is the document
 SVG with nothing but the standard library. A consumer that draws it itself needs the
 document alone.
 
-The picture follows the rules of :mod:`hydrolog.routing._layout`: the **main stem**
-(from the outlet up through the branch with the largest drained area, or with the most
-nodes when a headwater has no area, or through the nodes that the caller declares) is a
+The picture follows the rules of :mod:`hydrolog.routing._layout`. When every node of
+the network has a position (:attr:`Node.position <hydrolog.routing.Node.position>`) and
+no two share a cell, the **given** layout keeps them where they are, moved together so
+that the smallest ``x`` and ``y`` are 0, and draws every edge by rule D from the
+positions of its two ends (ADR-0023): a picture that a person arranged, which may cross
+itself. Otherwise the layout is **computed** (ADR-0013): the **main stem** (from the
+outlet up through the branch with the largest drained area, or with the most nodes
+when a headwater has no area, or through the nodes that the caller declares) is a
 straight horizontal line, the **tributaries** join it and each other at 45 degrees, on
 alternating sides, and every segment of every line runs at 0, 45 or 90 degrees. The
-nodes are on the integer grid, one unit apart along a line. The layout depends on the
-network and never on a result, so a network has one picture whether or not it was
-routed.
+nodes are on the integer grid, one unit apart along a line. A network whose nodes have
+positions on some nodes only, or two on one cell, is computed with the warning
+:class:`~hydrolog._warnings.PositionsIgnored` (code ``positions_ignored``, ``reason``
+``partial`` or ``shared_cell``, ``node_id``). The lines are ranked the same way in both
+layouts. The layout depends on the network and never on a result, so a network has one
+picture whether or not it was routed.
 
 The document
 ------------
 ``schema``, ``name`` (when the network has one), ``outlet``, ``timestep_min``,
-``has_result`` (whether the nodes carry the values of a result), ``grid`` (``width``
-and ``height`` of the picture in grid units: the nodes have ``0 <= x <= width`` and
+``has_result`` (whether the nodes carry the values of a result), ``layout`` (``given``
+or ``computed``; a document without it is computed), ``grid`` (``width`` and
+``height`` of the picture in grid units: the nodes have ``0 <= x <= width`` and
 ``0 <= y <= height``), and three lists:
 
 ``lines``
@@ -36,7 +45,9 @@ and ``height`` of the picture in grid units: the nodes have ``0 <= x <= width`` 
     ``side``: where the label goes, as a compass point on the screen around the node,
     ``n`` above it and ``e`` to its right; a label is at most one unit wide and four
     tenths of a unit high, so the labels of nodes in neighbouring rows do not overlap)
-    and ``parameters``, the values of the calculation of the node
+    and, when the node has one, its ``description`` (plain text for people, which a
+    drawing shows as text and never as markup), then ``parameters``, the values of
+    the calculation of the node
     (:meth:`Node.describe <hydrolog.routing.Node.describe>`: ``name``, ``value``,
     ``unit``, ``source``). With a result every node also has ``peak_m3s``,
     ``time_to_peak_min`` and ``volume_m3`` of the hydrograph that leaves it, the
@@ -46,10 +57,10 @@ and ``height`` of the picture in grid units: the nodes have ``0 <= x <= width`` 
 ``edges``
     One per node but the outlet, from the node to the node it flows into: ``from``,
     ``to``, ``line`` (that of ``from``) and ``points``, the corners of the polyline
-    from the position of ``from`` to that of ``to`` (a list of ``[x, y]``). No two
-    edges cross or touch except at a node they both end at; the edges that flow into a
-    node that has more than two inflows run along the line before it for their last
-    stretch and share that stretch.
+    from the position of ``from`` to that of ``to`` (a list of ``[x, y]``). In a
+    computed layout no two edges cross or touch except at a node they both end at, and
+    the edges that flow into a node that has more than two inflows run along the line
+    before it for their last stretch and share that stretch.
 
 Examples
 --------
@@ -69,12 +80,14 @@ True
 
 from __future__ import annotations
 
+import warnings
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, Final
 
 from hydrolog._serialization import to_jsonable
+from hydrolog._warnings import PositionsIgnored
 from hydrolog.exceptions import InvalidParameterError
-from hydrolog.routing._layout import Layout, layout
+from hydrolog.routing._layout import Layout, Point, given_layout, layout
 from hydrolog.routing._svg import schematic_svg
 
 if TYPE_CHECKING:
@@ -129,6 +142,32 @@ def _check_result(network: RoutingNetwork, result: NetworkResult) -> None:
         )
 
 
+def _given(network: RoutingNetwork) -> dict[str, Point] | None:
+    """Return the cells of the nodes when the network is drawn where they are.
+
+    Every node needs a position and a cell of its own. A network in which no node has
+    one is laid out without a word; otherwise the first node at fault in the order of
+    evaluation, one without a position (``partial``) or on the cell of a node before it
+    (``shared_cell``), is named by the warning ``positions_ignored``, and the layout is
+    computed.
+    """
+    nodes = network.nodes
+    if all(node.position is None for node in nodes):
+        return None
+    cells: dict[Point, str] = {}
+    for node in nodes:
+        if node.position is None:
+            reason = "partial"
+        elif (node.position.x, node.position.y) in cells:
+            reason = "shared_cell"
+        else:
+            cells[(node.position.x, node.position.y)] = node.id
+            continue
+        warnings.warn(PositionsIgnored(reason=reason, node_id=node.id), stacklevel=4)
+        return None
+    return {node_id: cell for cell, node_id in cells.items()}
+
+
 def _node_entries(
     network: RoutingNetwork, drawn: Layout, result: NetworkResult | None
 ) -> list[dict[str, Any]]:
@@ -144,6 +183,8 @@ def _node_entries(
             "line": drawn.line_of[node.id],
             "label": {"text": node.id, "side": drawn.labels[node.id]},
         }
+        if node.description is not None:
+            entry["description"] = node.description
         if result is None:
             entry["parameters"] = node.describe()
         else:
@@ -181,12 +222,14 @@ def network_schematic(
         river (a headwater) or the points along it. They must lie on one path to the
         outlet; the stem follows that path and, above its farthest node, the branch
         with the larger area (or more nodes). Without it the stem follows the larger
-        branch at every node, from the outlet.
+        branch at every node, from the outlet. It ranks the lines of a given layout
+        too.
 
     Returns
     -------
     dict
-        The document (see the module docstring), JSON-native.
+        The document (see the module docstring), JSON-native: ``layout`` ``given``
+        when every node has a position and a cell of its own, else ``computed``.
 
     Raises
     ------
@@ -195,15 +238,25 @@ def network_schematic(
         this network), ``unknown_node`` or ``main_stem_not_a_path``
         (``details.node_id``), or ``type`` (``main_stem`` is not a string or a list of
         strings).
+
+    Warns
+    -----
+    PositionsIgnored
+        When some nodes have positions and another has none (``reason`` ``partial``)
+        or two nodes share a cell (``shared_cell``); the layout is then computed.
     """
     if result is not None:
         _check_result(network, result)
     inflows = {node.id: node.upstream for node in network.nodes}
-    drawn = layout(
-        network.outlet,
-        inflows,
-        weight=_weights(network),
-        main_stem=_declared(main_stem),
+    declared = _declared(main_stem)
+    weight = _weights(network)
+    given = _given(network)
+    drawn = (
+        layout(network.outlet, inflows, weight=weight, main_stem=declared)
+        if given is None
+        else given_layout(
+            network.outlet, inflows, given, weight=weight, main_stem=declared
+        )
     )
     downstream = {up: node for node, ups in inflows.items() for up in ups}
     edges = [
@@ -223,6 +276,7 @@ def network_schematic(
         outlet=network.outlet,
         timestep_min=network.timestep_min,
         has_result=result is not None,
+        layout="computed" if given is None else "given",
         grid={"width": drawn.width, "height": drawn.height},
         lines=[
             {

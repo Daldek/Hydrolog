@@ -8,11 +8,13 @@ made of, with the values of the run, and a main stem can be declared.
 
 import json
 import os
+import warnings
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import pytest
 
+from hydrolog._warnings import PositionsIgnored
 from hydrolog.catalog import check_command, run_command
 from hydrolog.cli.main import main
 from hydrolog.exceptions import (
@@ -434,3 +436,88 @@ class TestTheEnvelopeAndTheCommandLine:
 
         assert code == 2
         assert "'main_stem'" in capsys.readouterr().err
+
+
+class TestThePositionsOfTheNodes:
+    CELLS = {"A": (3, 10), "B": (4, 8), "R": (4, 10), "J": (5, 10), "OUT": (6, 10)}
+
+    def placed(self, tmp_path, cells) -> Path:
+        network = confluence()
+        for node in network["nodes"]:
+            if node["id"] in cells:
+                x, y = cells[node["id"]]
+                node["position"] = {"x": x, "y": y}
+        return written(tmp_path, network, "placed.json")
+
+    def run(self, *arguments):
+        with warnings.catch_warnings(record=True) as seen:
+            warnings.simplefilter("always")
+            code = main(["route", "network", *arguments, "--json"])
+        assert not [item for item in seen if item.category is PositionsIgnored]
+        return code
+
+    def test_a_network_with_every_node_placed_is_drawn_where_its_nodes_are(
+        self, capsys, tmp_path
+    ):
+        source_file = self.placed(tmp_path, self.CELLS)
+        target = tmp_path / "placed.svg"
+
+        code = self.run("--network-file", str(source_file), "--schematic", str(target))
+
+        out = capsys.readouterr()
+        assert (code, out.err) == (0, "")
+        envelope = json.loads(out.out)
+        drawn = envelope["result"]["schematic"]
+        assert drawn["layout"] == "given"
+        assert {node["id"]: (node["x"], node["y"]) for node in drawn["nodes"]} == {
+            node: (x - 3, y - 8) for node, (x, y) in self.CELLS.items()
+        }
+        assert target.read_text(encoding="utf-8") == schematic_svg(drawn)
+        assert "positions_ignored" not in [
+            notice["code"] for notice in envelope["notices"]
+        ]
+
+    def test_positions_of_some_nodes_are_a_notice_of_the_envelope(
+        self, capsys, tmp_path
+    ):
+        cells = {node: cell for node, cell in self.CELLS.items() if node != "B"}
+        source_file = self.placed(tmp_path, cells)
+
+        code = self.run(
+            "--network-file",
+            str(source_file),
+            "--schematic",
+            str(tmp_path / "placed.svg"),
+        )
+
+        out = capsys.readouterr()
+        assert (code, out.err) == (0, "")
+        envelope = json.loads(out.out)
+        assert envelope["result"]["schematic"]["layout"] == "computed"
+        assert [
+            (notice["level"], notice["details"])
+            for notice in envelope["notices"]
+            if notice["code"] == "positions_ignored"
+        ] == [("warning", {"reason": "partial", "node_id": "B"})]
+
+    def test_route_schematic_gives_the_same_notice(self, tmp_path):
+        cells = {**self.CELLS, "J": self.CELLS["B"]}
+        source_file = self.placed(tmp_path, cells)
+
+        with warnings.catch_warnings(record=True) as seen:
+            warnings.simplefilter("always")
+            envelope = run_command(
+                "route schematic", {"network_file": str(source_file)}
+            ).to_dict()
+
+        assert not [item for item in seen if item.category is PositionsIgnored]
+        assert envelope["result"]["layout"] == "computed"
+        assert envelope["notices"] == [
+            {
+                "level": "warning",
+                "code": "positions_ignored",
+                "message": "Positions ignored at node 'J' (shared_cell): "
+                "the layout is computed",
+                "details": {"reason": "shared_cell", "node_id": "J"},
+            }
+        ]

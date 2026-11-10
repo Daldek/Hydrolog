@@ -144,3 +144,25 @@ def test_every_notice_code_has_polish_text() -> None:
     worded = set(re.findall(r"^\s{4}([a-z][a-z0-9_]*):", source, flags=re.MULTILINE))
 
     assert sorted(set(NOTICES) - worded) == []
+
+
+def test_every_structure_reason_has_polish_text() -> None:
+    """Every structure reason of Sieć's editor is worded in labels/siec.js (D8)."""
+    graph = WEB / "src" / "sections" / "siec" / "editor" / "graph.js"
+    listed = re.search(
+        r"export const REASONS = Object\.freeze\(\[(.*?)\]\);",
+        graph.read_text(encoding="utf-8"),
+        flags=re.DOTALL,
+    )
+    labels = (WEB / "src" / "labels" / "siec.js").read_text(encoding="utf-8")
+    block = re.search(
+        r"^  reasons: \{\n(.*?)^  \},", labels, flags=re.DOTALL | re.MULTILINE
+    )
+    assert listed and block
+    reasons = re.findall(r'"([a-z_]+)"', listed.group(1))
+    worded = set(
+        re.findall(r"^\s{4}([a-z][a-z0-9_]*):", block.group(1), flags=re.MULTILINE)
+    )
+
+    assert "cycle" in reasons
+    assert sorted(set(reasons) - worded) == []

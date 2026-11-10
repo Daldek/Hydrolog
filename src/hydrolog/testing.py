@@ -26,10 +26,12 @@ these builders make the nodes of a network that is inline or written by
 :func:`write_network_document`. A subcatchment that makes its own hydrograph takes the
 objects that :func:`watershed`, :func:`curve_number_runoff`, :func:`design_storm` and
 :func:`rainfall_series` build (ADR-0012; each is read by the real reader of its kind
-before it is returned), and :func:`network_document` the ``timestep_min`` and the
-default ``rainfall`` of the network. :func:`example_network_document` is such a network
-of three subcatchments and :func:`example_network` the
-:class:`~hydrolog.routing.RoutingNetwork` that it makes, in memory.
+before it is returned), and :func:`network_document` the ``timestep_min``, the
+default ``rainfall`` and the ``description`` of the network. :func:`placed` gives a
+node the ``description`` and the ``position`` that every node may have (ADR-0023).
+:func:`example_network_document` is such a network of three subcatchments and
+:func:`example_network` the :class:`~hydrolog.routing.RoutingNetwork` that it makes,
+in memory.
 
 Files
 -----
@@ -68,6 +70,11 @@ from typing import Any, Final
 from hydrolog.operations._network_input import load_network
 from hydrolog.routing import Hydrograph, RoutingNetwork
 from hydrolog.routing.document import SCHEMA as NETWORK_SCHEMA
+from hydrolog.routing.network import (
+    check_description,
+    check_position,
+    position_to_document,
+)
 from hydrolog.routing.rainfall import rainfall_from_document
 from hydrolog.routing.runoff import runoff_from_document, watershed_from_document
 
@@ -87,6 +94,7 @@ __all__ = [
     "network_document",
     "network_tables",
     "outlet",
+    "placed",
     "rainfall_series",
     "reach",
     "subcatchment",
@@ -196,6 +204,58 @@ def junction(node_id: str, *upstream: str) -> dict[str, Any]:
 def outlet(upstream: str, node_id: str = "OUT") -> dict[str, Any]:
     """Return the ``outlet`` node that ends the network after ``upstream``."""
     return {"id": node_id, "type": "outlet", "from": [upstream]}
+
+
+def placed(
+    node: Mapping[str, Any],
+    *,
+    description: str | None = None,
+    position: tuple[int, int] | None = None,
+) -> dict[str, Any]:
+    """Return ``node`` with a ``description`` and a ``position`` (ADR-0023).
+
+    These are the fields that every node may have, whatever its type; they change no
+    calculation. They follow the fields of the node's type, ``description`` then
+    ``position``, as the library writes them, and each is checked by the real code of
+    the library before it is returned.
+
+    Parameters
+    ----------
+    node : mapping
+        A node from :func:`subcatchment`, :func:`reach`, :func:`junction` or
+        :func:`outlet` (or from this function: what it has already is kept unless
+        given again).
+    description : str, optional
+        Plain text for people of at most 500 characters, not blank; lines are broken
+        by line feeds and no other control character is allowed.
+    position : tuple of int, optional
+        ``(x, y)``, the cell of the node in the grid of the schematic: ``x`` grows
+        downstream and ``y`` sideways, whole numbers from -1000 to 1000. A network
+        whose every node has a cell of its own is drawn where its nodes are.
+
+    Returns
+    -------
+    dict
+        A copy of the node with the fields.
+
+    Raises
+    ------
+    hydrolog.InvalidParameterError
+        If the description or the position is not valid (``details.reason``,
+        ``details.field``, ``details.node_id``).
+    """
+    node_id = str(node.get("id"))
+    given: dict[str, Any] = {
+        "description": node.get("description"),
+        "position": node.get("position"),
+    }
+    if description is not None:
+        given["description"] = check_description(description, node_id)
+    if position is not None:
+        given["position"] = position_to_document(check_position(position, node_id))
+    entry = {key: value for key, value in node.items() if key not in given}
+    entry.update({key: value for key, value in given.items() if value is not None})
+    return entry
 
 
 def watershed(
@@ -401,6 +461,7 @@ def _checkable(document: Mapping[str, Any]) -> dict[str, Any]:
 def network_document(
     *nodes: Mapping[str, Any],
     name: str | None = None,
+    description: str | None = None,
     timestep_min: float | None = None,
     rainfall: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -417,9 +478,12 @@ def network_document(
     ----------
     *nodes : mapping
         Nodes from :func:`subcatchment`, :func:`reach`, :func:`junction` and
-        :func:`outlet`.
+        :func:`outlet`, with :func:`placed` or without.
     name : str, optional
         Name of the network.
+    description : str, optional
+        Plain text that describes the network, for people (the rules of the
+        description of a node, :func:`placed`).
     timestep_min : float, optional
         The time step of the network [min]; without it the step of the sources.
     rainfall : mapping, optional
@@ -439,6 +503,8 @@ def network_document(
     document: dict[str, Any] = {"schema": NETWORK_SCHEMA}
     if name is not None:
         document["name"] = name
+    if description is not None:
+        document["description"] = description
     if timestep_min is not None:
         document["timestep_min"] = timestep_min
     if rainfall is not None:

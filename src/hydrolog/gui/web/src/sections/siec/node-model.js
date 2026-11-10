@@ -20,6 +20,11 @@ import { fieldModel, toOptions, validate, withReason } from "../../forms/model.j
 import { t } from "../../labels/common.js";
 import { reasonText } from "../../labels/errors.js";
 import { siec as texts } from "../../labels/siec.js";
+import { cellOf } from "./editor/geometry.js";
+import { inflowRules } from "./editor/graph.js";
+
+/** The longest description of a node or of the network [characters] (ADR-0023). */
+export const MAX_DESCRIPTION_CHARS = 500;
 
 /** The node types the forms know (hydrolog-network/1). */
 export const KINDS = Object.freeze(["subcatchment", "reach", "reservoir", "junction", "outlet"]);
@@ -296,7 +301,9 @@ export function buildForms(schema, docs = new Map()) {
     }
     return fields;
   };
-  const structural = ["id", "type", "from", "method", "schema", "nodes"];
+  // the description and the position of a node or the network (ADR-0023) are not
+  // parameters: the forms leave them out
+  const structural = ["id", "type", "from", "method", "schema", "nodes", "description", "position"];
   const methods = {};
   for (const branch of read.branches) {
     if (branch.type === "reach" && branch.method) {
@@ -330,6 +337,7 @@ export function buildForms(schema, docs = new Map()) {
     given: givenBranch ? group(givenBranch, "given", ["route lag"], structural) : new Map(),
     rainRequired: rainBranch ? rainBranch.required : [],
     run: new Map(run.map((field) => [field.name, field])),
+    inflow: inflowRules(schema),
   };
 }
 
@@ -403,7 +411,7 @@ function rainfallValues(values, key, rainfall, none) {
  */
 function elementValues(values, method, node) {
   const prefix = `${method}.`;
-  const skip = ["id", "type", "from", "method", ...WAVE];
+  const skip = ["id", "type", "from", "method", "description", "position", ...WAVE];
   for (const name of WAVE) if (Object.hasOwn(node, name)) values[name] = textOf(node[name]);
   if (method === "level-pool") {
     values[`${prefix}#table`] = typeof node.rating_file === "string" ? 1 : 0;
@@ -464,24 +472,50 @@ export function nodeValues(node) {
 export function networkValues(doc) {
   const values = {};
   if (typeof doc.name === "string") values.name = doc.name;
+  if (typeof doc.description === "string") values.description = doc.description;
   if (typeof doc.timestep_min === "number") values.timestep_min = textOf(doc.timestep_min);
   rainfallValues(values, "#rainfall", doc.rainfall, "network");
   return values;
 }
 
 /**
- * The structure of a network: each node's id, type and inflows (not edited, plan D18).
+ * The structure of a network: each node's id, type, inflows, the cell of its position
+ * when it is one, and its description (plan 2026-11-10-network-editor, D3).
  *
  * @param {object} doc hydrolog-network/1
- * @returns {Array<{id: string, type: string, from: string[]|null}>} the nodes in document
- *   order; `from` is null where the document has none
+ * @returns {Array<{id: string, type: string, from: string[]|null,
+ *   position?: {x: number, y: number}, description?: string}>} the nodes in document
+ *   order; `from` is null where the document has none or an empty list, `position` is
+ *   left out where it is missing or invalid, `description` where it is not a string
  */
 export function skeletonOf(doc) {
-  return (doc.nodes || []).map((node) => ({
-    id: String(node.id),
-    type: String(node.type),
-    from: Array.isArray(node.from) ? node.from.map(String) : null,
-  }));
+  return (doc.nodes || []).map((node) => {
+    const made = {
+      id: String(node.id),
+      type: String(node.type),
+      from: Array.isArray(node.from) && node.from.length ? node.from.map(String) : null,
+    };
+    const cell = cellOf(node.position);
+    if (cell) made.position = { x: cell[0], y: cell[1] };
+    if (typeof node.description === "string") made.description = node.description;
+    return made;
+  });
+}
+
+/**
+ * The problem of a description (D3) as the library would refuse it: more than
+ * MAX_DESCRIPTION_CHARS characters, or a control character other than the line feed. A
+ * blank description is no problem here: it is left out of the document.
+ *
+ * @param {string|undefined} text the description
+ * @returns {string|null} the message with its reason, null when it can be written
+ */
+export function descriptionProblem(text) {
+  if (typeof text !== "string" || !text.trim()) return null;
+  const length = [...text].length;
+  if (length > MAX_DESCRIPTION_CHARS) return withReason(t(texts.descriptionProblems.too_long, { length }), "too_long");
+  if (/[\u0000-\u0009\u000b-\u001f\u007f-\u009f]/u.test(text)) return withReason(texts.descriptionProblems.control_character, "control_character");
+  return null;
 }
 
 // --- what a form shows ---------------------------------------------------------------
@@ -809,16 +843,19 @@ function rainfallJson(layout, values) {
 }
 
 /**
- * The node of the document made of the values (they are checked with nodeProblems).
+ * The node of the document made of the values (they are checked with nodeProblems), its
+ * description and position last, after the fields of its kind (the canonical order of
+ * ADR-0023).
  *
  * @param {object} forms the forms of buildForms
- * @param {{id: string, type: string, from: string[]|null}} node the node's structure
+ * @param {{id: string, type: string, from: string[]|null, description?: string,
+ *   position?: {x: number, y: number}}} node the node's structure
  * @param {object} values the node's values
  * @returns {object} the node of hydrolog-network/1
  */
 export function nodeOf(forms, node, values) {
   const made = { id: node.id, type: node.type };
-  if (node.from) made.from = [...node.from];
+  if (node.from && node.from.length) made.from = [...node.from];
   const layout = nodeLayout(forms, node, values);
   if (layout.kind === "subcatchment") {
     if (layout.variant === "rain") {
@@ -845,6 +882,8 @@ export function nodeOf(forms, node, values) {
     if (layout.table) Object.assign(made, tableJson(layout.table, values[layout.table.key]));
     Object.assign(made, jsonOf(layout.wave, values, ""));
   }
+  if (typeof node.description === "string" && node.description.trim()) made.description = node.description;
+  if (node.position) made.position = { x: node.position.x, y: node.position.y };
   return made;
 }
 
@@ -880,32 +919,50 @@ export function networkProblems(forms, values) {
 }
 
 /**
- * The document of the network: its own fields and every node, in the order of its
- * structure.
+ * The network's default rainfall as its document writes it: the rainfall a subcatchment
+ * without its own takes (a hand-off's own top rainfall is compared with it, D10).
+ *
+ * @param {object} forms the forms of buildForms
+ * @param {object} values the network's values
+ * @returns {object|null} the rainfall of hydrolog-network/1, null without one
+ */
+export function networkRainfall(forms, values) {
+  return rainfallJson(networkLayout(forms, values).rainfall, values);
+}
+
+/**
+ * The document of the network: its own fields (its name and description first, ADR-0023)
+ * and every node, in the order of its structure.
  *
  * @param {object} forms the forms of buildForms
  * @param {{network: object, skeleton: object[], nodes: Object<string, object>}} state the
  *   network's values, its structure and the values of each node
  * @returns {{document: object, problems: Array<{node: string|null, key: string,
- *   message: string}>}} hydrolog-network/1 and every problem (the document is complete
- *   only without problems)
+ *   message: string}>}} hydrolog-network/1 and every problem of the values and the
+ *   descriptions (the structure is graph.js's)
  */
 export function buildDocument(forms, state) {
   const problems = [];
   for (const [key, message] of Object.entries(networkProblems(forms, state.network))) {
     problems.push({ node: null, key, message });
   }
+  const ownDescription = descriptionProblem(state.network.description);
+  if (ownDescription) problems.push({ node: null, key: "description", message: ownDescription });
   const document = { schema: "hydrolog-network/1" };
   const own = jsonOf(networkLayout(forms, state.network).slots, state.network, "");
   if (own.name !== undefined) document.name = own.name;
+  const description = state.network.description;
+  if (typeof description === "string" && description.trim()) document.description = description;
   if (own.timestep_min !== undefined) document.timestep_min = own.timestep_min;
-  const rainfall = rainfallJson(networkLayout(forms, state.network).rainfall, state.network);
+  const rainfall = networkRainfall(forms, state.network);
   if (rainfall) document.rainfall = rainfall;
   document.nodes = state.skeleton.map((node) => {
     const values = state.nodes[node.id] || {};
     for (const [key, message] of Object.entries(nodeProblems(forms, node, values))) {
       problems.push({ node: node.id, key, message });
     }
+    const text = descriptionProblem(node.description);
+    if (text) problems.push({ node: node.id, key: "description", message: text });
     return nodeOf(forms, node, values);
   });
   return { document, problems };

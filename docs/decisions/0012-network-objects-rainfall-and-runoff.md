@@ -3,6 +3,9 @@
 - Status: accepted
 - Date: 2026-10-25
 - Amends: [ADR-0010](0010-route-network-document-and-output-directory.md) (the nodes of `RoutingNetwork`)
+- Amended by [ADR-0023](0023-positions-and-descriptions-in-the-network.md) (2026-11-10): every node, of any type,
+  has an optional `description` and `position`, read and written by the base class `Node`; `Node.read_entry` returns a
+  `NodeEntry` and `Node.build` takes it.
 
 ## Context
 

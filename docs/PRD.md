@@ -391,14 +391,14 @@ print(f"tc = {tc:.1f} min")
 
 #### US-G02: A river network drawn and routed
 **As** a hydrologist
-**I want** to open a network document, see its schematic, change the settings of a node and route it
+**I want** to open a network document or build one, see its schematic, change the settings of a node and route it
 **So that** I get the hydrograph of every node without editing JSON by hand
 
 **Acceptance criteria:**
-- [ ] Section „Sieć i trasowanie”: the schematic from `route schematic`, drawn vertically with the outlet at the bottom, before the first run
-- [ ] A node is selected by a click, Enter or Space, or in the node table, and opens the form of its type and reach method (from `hydrolog-network-1.schema.json`), with a rating table editor
-- [ ] „Oblicz sieć” runs `route network`; the example's outlet values equal those of `route network`; a changed reach method shows its options and marks the results stale
-- [ ] Results per node (chart and parameters); the SVG schematic and the network document export
+- [ ] Section „Sieć i trasowanie”: the schematic drawn vertically with the outlet at the bottom by the page from its own inputs, also for an incomplete network and before the first run; a document with a `position` for every node opens as placed, one without takes Hydrolog's layout (`route schematic`) once the library can read it (ADR-0023)
+- [ ] A node is chosen by a click, the arrow keys and Enter or Space, in the node list or in the node table (with „Opis” and „Odpływa do”), and opens the form of its type and reach method (from `hydrolog-network-1.schema.json`), with a rating table editor
+- [ ] „Oblicz sieć” runs `route network`; the example's outlet values equal those of `route network`; a changed reach method shows its options and marks the results stale, and so do a link and a rename, while a move and a description do not
+- [ ] Results per node (chart and parameters); the SVG schematic draws the picture of the canvas, and the exported network document keeps the positions and descriptions
 
 #### US-G03: Flow statistics
 **As** a hydrologist
@@ -464,6 +464,20 @@ print(f"tc = {tc:.1f} min")
 - [x] `route schematic` returns `hydrolog-network-schematic/1` without values, equal to `RoutingNetwork.schematic()`
 - [x] `hydrograph generate` returns `uh_times_min` and `uh_discharge_m3s_per_mm`; the UH ordinates convolved with Pe give Q
 - [x] `gui serve` is in `commands list` and `commands schema`, absent from MCP `tools/list` and from the index of `AGENTS.md`, which stays within 16 KiB
+
+#### US-G09: Building a network as in HEC-HMS
+**As** a hydrologist who knows the basin model editor of HEC-HMS
+**I want** to place the elements of a network, connect each to the one below it, name and describe them and give their parameters in the browser
+**So that** I build a network for `route network` without writing `hydrolog-network/1` by hand (plan `docs/plans/2026-11-10-network-editor.md`, ADR-0023)
+
+**Acceptance criteria:**
+- [ ] „Nowa sieć” opens an empty canvas; its palette adds „Zlewnia”, „Odcinek”, „Zbiornik”, „Złącze” and „Wylot” (Hydrolog's five node types; HEC-HMS's source is a subcatchment given its hydrograph, its diversion has no counterpart)
+- [ ] The guide's three-subcatchment network built from empty by the mouse, by the keyboard alone and without any drag gives the outlet values of the guide's file
+- [ ] After every edit the structure is checked with the library's reasons (`cycle`, `upstream_count`, `no_outlet`, `disconnected_node`...), every problem at once, marked on its node and listed in „Problemy sieci”; a refused link says its reason, a second inflow into a reach, a reservoir or the outlet offers „Wstaw złącze”, and Hydrolog confirms every complete network (`route schematic`)
+- [ ] Ids are checked as the library checks them and every `from` follows a rename; a description is plain text of up to 500 characters; „Usuń i połącz” bridges a removed node; „Cofnij” and „Ponów” go through 100 steps
+- [ ] „Zapisz sieć” (or „Zapisz szkic” for a network with problems) downloads `hydrolog-network/1` with the positions and descriptions; it reopens as placed and `route network --schematic` draws the same picture
+- [ ] „Dodaj zlewnię z Hydrografa” adds the subcatchments of a hand-off to the open network (`Z1` becomes `Z2`); the hand-off written from Sieć validates against Nogat's schema and `/1` and reopens with its positions
+- [ ] WCAG 2.2 AA: every action by the keyboard and by a single pointer without dragging, the keys listed by „Skróty”; a 390 px phone and both themes without console errors
 
 ---
 

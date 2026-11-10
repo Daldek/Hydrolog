@@ -18,8 +18,10 @@ A network is a JSON object, inline (``network``) or in a file (``network_file``)
 ``schema`` is required and must be ``hydrolog-network/1`` (every machine-readable
 document has one, AGI-4.1). Every node has ``id``, ``type`` (the kinds of
 :data:`~hydrolog.routing.NODE_TYPES`) and ``from``, the list of the ids that flow into
-it. The other fields depend on the type, and a field that the type does not take is an
-error:
+it, and may have a ``description`` and a ``position`` in the grid of the schematic,
+which the library reads for every type (ADR-0023); the document may have a
+``description`` at its top. The other fields depend on the type, and a field that the
+type does not take is an error:
 
 ==============  =====================================================================
 type            fields
@@ -101,7 +103,8 @@ from hydrolog.routing._checks import shown
 
 __all__ = ["LoadedNetwork", "load_network"]
 
-_COMMON: Final = ("id", "type", "from")
+_COMMON: Final = ("id", "type", "from", "description", "position")
+"""The fields of every node; the library checks the description and the position."""
 _RUN_FIELDS: Final = (INITIAL_OUTFLOW_M3S.name, EXTEND_MIN.name)
 _SOURCE_FIELDS: Final = (TIMES_MIN.name, DISCHARGE_M3S.name, VALUE_COLUMN.name)
 _MADE_FIELDS: Final = ("watershed", "runoff", "rainfall")

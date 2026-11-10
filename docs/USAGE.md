@@ -429,6 +429,26 @@ id names the file `<id>.csv`, so it must not be a Windows device name (`con`, `p
 `com1` to `com9`, `lpt1` to `lpt9`, any case, any extension): `validation_error`, `details.reason`
 `reserved_name`.
 
+Every node, of any type, may also have a `description` and a `position`, and the document a
+`description` of its own at its top, after `name`
+([ADR-0023](decisions/0023-positions-and-descriptions-in-the-network.md)). A description is plain text
+for people, never read as HTML or Markdown: 1 to 500 characters, not blank, with no control
+character but the line feed `\n` (`details.reason` `type`, `empty`, `too_long`,
+`control_character`). A position is the cell of the node in the grid of the schematic,
+`{"x": ..., "y": ...}` with whole numbers from −1000 to 1000 and no other key: `x` grows downstream
+and `y` sideways (`type`, `unknown_field`, `missing_field`, `minimum`, `maximum`, with
+`details.field` `position.x` or `position.y`). Neither changes a computation: the result and the
+tables are the same with and without them. The document stays `hydrolog-network/1` and the reader
+stays strict (a misspelt field is `unknown_field`); a Hydrolog from before these fields refuses a
+document that has them. The GUI's editor of the network writes both: the cell each node is placed
+on and the description typed in „Opis” ([section 8](#building-a-network-in-sieć)). A node with both:
+
+```json
+{"id": "ZB1", "type": "reservoir", "from": ["R1"],
+ "storage_m3": [0, 50000, 120000], "outflow_m3s": [0, 2.5, 8.0],
+ "description": "Suchy zbiornik powyżej Świerzawy", "position": {"x": 2, "y": 0}}
+```
+
 `--output-dir DIR` (`-o`) writes the hydrograph that leaves each node as `<id>.csv`, a table that
 every `route` command reads again and the hand-off to Hydraulik; `--nodes` selects the nodes
 (default all). Without a directory the hydrographs of the selected nodes are in the result; when
@@ -565,10 +585,59 @@ hydrolog route network --network-file tests/fixtures/network_flood.json \
 `--force`); `--main-stem ID,...` declares the stem. An application that draws the document itself:
 [INTEGRATION.md](INTEGRATION.md).
 
+**Positions and descriptions.** A node keeps an optional `description` (`str`) and `position` (`Position(x, y)`,
+exported from `hydrolog.routing` with `MAX_DESCRIPTION_CHARS` = 500 and `MAX_POSITION` = 1000); like
+`with_inflows()`, `with_description(text)` and `with_position(Position(x, y))` or `with_position((x, y))` return a
+checked copy, and `None` removes the field. `RoutingNetwork(..., description=...)` keeps the network's own
+description. The document writes them after the fields of the node's kind, `description` then `position`, and a
+document without them is written byte for byte as before. When every node has a position and no two share a cell,
+`schematic()` draws the **given** layout: the nodes stay on their cells, moved together so that the smallest `x` and
+`y` are 0, the lines and labels are chosen as in the computed layout (`main_stem` too), and every edge follows
+**rule D**, from the positions of its two nodes alone (with `dx`, `dy` the steps from a node to the one it flows
+into): one straight segment when `dx` or `dy` is 0; for `dx > 0` a sideways leg to the row next to the lower node's,
+one 45 degree step onto its row and along that row into it; for `dx < 0` a 45 degree leg of `min(|dx|, |dy|)`, then
+straight into it. A given picture may cross itself. Rule D is how the computed layout joins its lines too, so storing
+the computed positions stores the computed picture exactly. The schematic's `layout` says which it is (`given` or
+`computed`), and a node's `description` is in its schematic and in the tooltip of its SVG symbol; the network's own
+description is in neither the schematic nor the result. Positions on some nodes only, or two nodes on one cell, give
+the computed layout and the warning `positions_ignored` (`details.reason` `partial` or `shared_cell`, `node_id`: the
+first node at fault), a Python warning of `schematic()` and a notice of `route network --schematic` and
+`route schematic`:
+
+```python
+import warnings
+from hydrolog.routing import Hydrograph, Junction, Outlet, Position, RoutingNetwork, Subcatchment
+
+flood = Hydrograph.from_step([0.0, 10.0, 40.0, 20.0, 0.0], timestep_min=30)
+upper = Subcatchment("A", flood).with_description("Górna zlewnia\nponad progiem")
+outlet = Outlet("OUT", inflow=Junction("J1", inflows=[upper, Subcatchment("B", flood)]))
+network = RoutingNetwork(outlet, description="Two headwaters")
+computed = network.schematic()
+
+document = network.to_document()          # description at the top, A's description after its fields
+cells = {node["id"]: {"x": node["x"], "y": node["y"]} for node in computed["nodes"]}
+for node in document["nodes"]:
+    node["position"] = cells[node["id"]]  # the computed cells, stored
+given = RoutingNetwork.from_document(document).schematic()
+print(given["layout"], given["edges"] == computed["edges"])   # given True
+
+placed_outlet = outlet.with_position(Position(4, 1))          # only the outlet has a cell
+with warnings.catch_warnings(record=True) as caught:
+    warnings.simplefilter("always")
+    print(RoutingNetwork(placed_outlet).schematic()["layout"])  # computed
+print(caught[0].message)   # Positions ignored at node 'A' (partial): the layout is computed
+```
+
+`hydrolog.testing.placed(node, description=..., position=(x, y))` adds both fields to a node of its builders, checked
+by the library, and `network_document(..., description=...)` gives the network its description.
+
 A new kind of node, rainfall, runoff model, shape of a storm or reach method is a class that implements the
 protocol (`Node`, `RainfallSource`, `RunoffModel`, `Hietogram`, `Reach`) and an entry in a registry (`NODE_TYPES`,
 `RAINFALL_KINDS`, `RUNOFF_MODELS`, `HIETOGRAMS`, `REACH_METHODS`); nothing else lists them, and a document names
-them by the same names.
+them by the same names. A new node type carries `description` and `position` without code of its own: the base class
+reads them (`Node.read_entry` returns a `NodeEntry(upstream, arguments, description, position)` and `Node.build`
+takes it) and writes them after `document_fields()`, and the kind's `read_document()` must not take fields of those
+names.
 
 **Control points.** An application that lets its user pick points on the streams builds the network with
 `ControlPointNetwork`, outlet first. A point closes its *residual* area, the contributing area minus the areas of
@@ -1173,19 +1242,19 @@ The agent-facing summary of these flows is in [AGENTS.md](../AGENTS.md).
 ## 8. The web GUI
 
 In plain words: the GUI is a web page, in Polish, on which a person computes with Hydrolog without
-a command line. Each of its five sections opens with a shipped example: change the numbers in the
-panel „Dane” (data) on the left and read the result in „Wyniki” (results) on the right, with the
-charts between them. The page itself computes nothing. Every value is a run of a catalog command on
-the server, the same as `hydrolog <group> <command>`, and every result shows that call for the
-CLI, Python and MCP. The results are estimates of simplified methods, not a forecast and not an
-official flood hazard map. The guide for users, in Polish and also starting in plain words, is part
-of the page: „Instrukcja” in the top bar opens a short welcome that links it (`instrukcja/` under
-the GUI's address).
+a command line. Each of its five sections starts empty: enter or load the data in the panel
+„Dane” (data) on the left and read the result in „Wyniki” (results) on the right, with the charts
+between them; the guide has a worked example for each section. The page itself computes nothing.
+Every value is a run of a catalog command on the server, the same as `hydrolog <group> <command>`,
+and every result shows that call for the CLI, Python and MCP. The results are estimates of
+simplified methods, not a forecast and not an official flood hazard map. The guide for users, in
+Polish and also starting in plain words, is part of the page: „Instrukcja” in the top bar opens a
+short welcome that links it (`instrukcja/` under the GUI's address).
 
 | Section | What it does | Commands |
 |---|---|---|
 | Hydrogram zlewni | the design hydrograph of one watershed in three steps (watershed, hyetograph, model): empty on a first visit, checked for what the chosen model needs (an empty required field is an error, a value outside its typical range a warning on its field), then recomputed after every change; under PMAXTP the depth is fetched from IMGW-PIB for the point, probability, duration and method given, not typed; the guide's worked example is Kamiennik at Świerzawa | `hydrograph generate`, `precip pmaxtp` for the PMAXTP depth, `uh nash` for Nash by Lutz |
-| Sieć i trasowanie | a network of subcatchments, reaches, reservoirs and junctions (the example: `hydrolog.testing.example_network_document()`), drawn as a schematic before it is routed by „Oblicz sieć” | `route schematic`, `route network` |
+| Sieć i trasowanie | a network of subcatchments, reaches, reservoirs, junctions and an outlet, built on a canvas as in HEC-HMS's basin model editor or opened from a file or a hand-off, checked as it is edited and routed by „Oblicz sieć” ([below](#building-a-network-in-sieć)); the guide's worked example is `hydrolog.testing.example_network_document()` | `route schematic` (the layout and Hydrolog's check), `route network` |
 | Statystyka przepływów | flood frequency of annual maxima or of a daily series (the example: 26 annual maxima, 1998 to 2023) and the homogeneity of the series | `stats flood-frequency`, `stats homogeneity` |
 | Kalkulatory | the time of concentration by six methods for the watershed of Hydrogram zlewni, and fifteen single calculators | `tc watershed` and fifteen others |
 | Wszystkie polecenia | a form for every command of the catalog | all but `gui serve`, `config show` and `commands guide` |
@@ -1200,6 +1269,47 @@ handed over by Archiwista
 ([INTEGRATION.md](INTEGRATION.md#web-gui-a-stations-series-from-archiwista-hydrolog-series1)). „Zgłoś
 uwagę” in the top bar sends a report on a problem or an idea to whoever runs the server, who
 reads it on the admin page `admin/` ([below](#reports-of-users-zgłoś-uwagę)).
+
+### Building a network in Sieć
+
+„Schemat sieci” in the centre of Sieć i trasowanie is an editor of `hydrolog-network/1`, after
+the basin model editor of HEC-HMS (plan `docs/plans/2026-11-10-network-editor.md`,
+[ADR-0023](decisions/0023-positions-and-descriptions-in-the-network.md)). The browser draws the
+network from its own inputs and never waits for the library, so an incomplete network has a
+picture too; Hydrolog still computes every value.
+
+- **Elements.** The palette has Hydrolog's five node types: „Zlewnia” (`subcatchment`, also
+  HEC-HMS's source when it is given its hydrograph or reads a column of the inflows file),
+  „Odcinek” (`reach`), „Zbiornik” (`reservoir`), „Złącze” (`junction`) and „Wylot” (`outlet`).
+  HEC-HMS's diversion has no counterpart: a node flows into one node below it (ADR-0010). A new
+  element takes the id `Z1`, `R1`, `ZB1` or `J1` with the first free number, the outlet `OUT`.
+- **Editing.** An element is placed by a drag from the palette or a click and a cell; a node is
+  linked to the node below it by a drag from its handle, by `P` and the arrow keys, by „Połącz z…”
+  of the node menu or by „Odpływa do” in „Dane”. Nodes are moved, removed („Usuń i połącz” links
+  a removed node's one inflow to the node below it), renamed (the id is checked as the library
+  checks it, and every `from` follows) and described (`description`, plain text of up to 500
+  characters). „Cofnij” and „Ponów” go through up to 100 steps in memory. Every action has keys
+  and a way without dragging; the guide lists the keys.
+- **Checks.** After every edit the browser checks the structure with the library's reasons
+  (`empty`, `invalid_id`, `reserved_name`, `duplicate_node`, `unknown_upstream`,
+  `duplicate_upstream`, `upstream_count` by the `from` bounds of the schema, `several_downstream`,
+  `cycle`, `no_outlet`, `several_outlets`, `outlet_has_downstream`, `disconnected_node`), marks
+  each node at fault and lists every problem in „Problemy sieci”; a link that would make a cycle,
+  an inflow into a subcatchment or an outflow from the outlet is refused with its reason, and a
+  second inflow into a reach, a reservoir or the outlet offers „Wstaw złącze”. Once the structure
+  and the values are complete, `route schematic` confirms the network 300 ms after the last
+  change, and its refusal joins the list.
+- **Positions.** Each node stands on a cell of ADR-0013's grid, kept as its `position`. A
+  document with a position for every node opens as placed; one without positions takes
+  Hydrolog's layout (`route schematic`) as soon as the library can read it, and until then
+  stands in provisional rows. „Uporządkuj” puts every node where Hydrolog lays it out. A move or
+  a description never marks a result stale; a structural edit or a rename does.
+- **Files.** „Zapisz sieć” downloads the document with every `position` and `description` and
+  the network's own `description`; `route network --schematic` draws the same picture from it,
+  and the GUI reopens it as it was placed. A network with problems is saved by „Zapisz szkic”,
+  the same file, which `route network` refuses until the problems are fixed. „Dodaj zlewnię z
+  Hydrografa” adds the subcatchments of a hand-off to the open network
+  ([INTEGRATION.md](INTEGRATION.md#web-gui-the-hand-off-with-hydrograf-nogat-handoff1)).
 
 ### Starting it
 
@@ -1227,9 +1337,10 @@ hydrolog gui serve --check --json
 - **Inputs stay in the browser.** Each section keeps its inputs, never its results, in the
   browser's `localStorage` under `hydrolog-gui/<section>/2` until „Wyczyść”; with them
   Hydrogram zlewni keeps the PMAXTP depth it fetched (`pmaxtp_fetched`), so a reload does not
-  fetch it again. The widths of the panels are `hydrolog-gui/layout/1`, the choice „Nie pokazuj
-  ponownie” of the welcome dialog `hydrolog-gui/welcome/1` and the theme `nogat-theme`, which
-  Nogat's other pages on the same address share.
+  fetch it again, and Sieć the positions and descriptions of its nodes (its history of „Cofnij”
+  stays in the page's memory). The widths of the panels are `hydrolog-gui/layout/1`, the choice
+  „Nie pokazuj ponownie” of the welcome dialog `hydrolog-gui/welcome/1` and the theme
+  `nogat-theme`, which Nogat's other pages on the same address share.
 - **Files go to the server.** A browser session (the cookie `hydrolog_gui`, HttpOnly,
   SameSite=Strict) has a work directory of its own: `in/` holds the uploads and the documents the
   page writes (the network of Sieć, for example), `out/` the files that commands write. A path

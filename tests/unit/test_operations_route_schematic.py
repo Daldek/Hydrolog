@@ -51,13 +51,14 @@ class TestTheDocument:
         assert result == {"schema": SCHEMA, **loaded.network.schematic()}
         assert result["name"] == "Pond catchment"
 
-    def test_the_function_returns_the_document_itself(self):
-        result = route_schematic(network=_TWO_SOURCES)
+    def test_the_function_returns_the_document_with_the_notices_of_its_layout(self):
+        output = route_schematic(network=_TWO_SOURCES)
         expected = load_network(network=_TWO_SOURCES).network.schematic()
 
-        assert isinstance(result, RouteSchematicResult)
-        assert result.to_dict() == expected
-        assert type(result.to_dict()) is dict
+        assert isinstance(output.result, RouteSchematicResult)
+        assert output.result.to_dict() == expected
+        assert type(output.result.to_dict()) is dict
+        assert list(output.notices) == []
 
     def test_a_network_without_its_inflows_is_refused(self):
         with pytest.raises(InputDataError) as caught:

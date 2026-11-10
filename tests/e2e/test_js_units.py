@@ -8,15 +8,30 @@ and the options of a run, and honours ``requires``, ``excludes``, ``section`` an
 examples go through the form to ``api/run`` and run. ``router.js``,
 ``persist.js``, ``labels/errors.js`` and ``labels/notices.js`` (on errors of the
 real server), ``ui/info.js``, Polecenia's ``state.js`` and
-``forms/result-view.js`` (on real envelopes) follow.
+``forms/result-view.js`` (on real envelopes) follow. The geometry of Sieć's canvas
+(plan 2026-11-10-network-editor, D5, D6, D10: ``editor/geometry.js``) draws rule D
+and ranks the lines as the library does, computed here in Python, and its edits
+(``editor/edits.js``) share the nodes they do not change. Sieć's editor follows:
+``editor/graph.js`` reports every structure reason with the library's details, judges
+links and ids, and finds the problem ``RoutingNetwork.from_document`` raises on each
+document of a one-problem corpus; ``editor/edits.js``' new edits (add, connect, a
+junction, remove, rename, describe), ``editor/history.js``, the hints of
+``editor/geometry.js`` and ``words.js`` are checked on small networks.
 """
 
+import json
 import math
+import random
 from typing import Any
 
 import pytest
 
+from hydrolog.exceptions import InvalidParameterError
+from hydrolog.routing import RoutingNetwork
+from hydrolog.routing._layout import edge_route, layout
 from tests.e2e.conftest import Tab
+from tests.unit._network_documents import document, junction, outlet, reach, source
+from tests.unit._schematic_checks import random_tree
 
 NBSP = "\u00a0"
 MINUS = "\u2212"
@@ -903,3 +918,1127 @@ def test_result_view_of_real_runs(page: Any) -> None:
     assert got["cells"] == ['"a,b"', '"say ""hi"""', '"x\ny"', "", "1.5"]
     empty = got["empty"]
     assert (empty["schema"], empty["series"], empty["scalars"]) == (None, [], [])
+
+
+# --- Sieć's canvas: editor/geometry.js, editor/edits.js -----------------------
+
+
+GEOMETRY = "const g = await import('./src/sections/siec/editor/geometry.js');"
+# The guide's network at the cells of the library's layout (the ids of its nodes, their
+# inflows and cells: x downstream, y sideways).
+GUIDE_CELLS = """const guide = [
+  {id: 'A', from: null, cell: [0, 1]},
+  {id: 'B', from: null, cell: [1, 0]},
+  {id: 'C', from: null, cell: [3, 2]},
+  {id: 'R_A', from: ['A'], cell: [1, 1]},
+  {id: 'J1', from: ['R_A', 'B'], cell: [2, 1]},
+  {id: 'R_J1', from: ['J1'], cell: [3, 1]},
+  {id: 'J2', from: ['R_J1', 'C'], cell: [4, 1]},
+  {id: 'OUT', from: ['J2'], cell: [5, 1]},
+];"""
+
+
+def test_rule_d_of_the_canvas_is_the_librarys(page: Any) -> None:
+    cells = [(x, y) for x in range(-3, 4) for y in range(-3, 4)]
+    pairs = [[start, end] for start in cells for end in cells if start != end]
+    got = page.evaluate(
+        f"""async (pairs) => {{ {GEOMETRY}
+          return pairs.map(([start, end]) => g.edgeRoute(start, end)); }}""",
+        pairs,
+    )
+    expected = [
+        [list(corner) for corner in edge_route(start, end)] for start, end in pairs
+    ]
+    assert got == expected
+
+
+def test_the_canvas_ranks_the_lines_as_the_library_does(page: Any) -> None:
+    cases = []
+    for seed in range(40):
+        root, inflows = random_tree(
+            3 + 3 * seed, seed, fan_in=1 + seed % 5, deep=(seed % 4) / 4
+        )
+        heads = [node for node, ups in inflows.items() if not ups]
+        chance = random.Random(seed)
+        areas = {node: round(chance.uniform(0.5, 50), 2) for node in heads}
+        weighed = areas if seed % 2 else {}
+        drawn = layout(root, inflows, weight=weighed or None)
+        skeleton = []
+        for node, ups in inflows.items():
+            kind = "junction" if ups else "subcatchment"
+            skeleton.append(
+                {"id": node, "type": "outlet" if node == root else kind, "from": ups}
+            )
+        lines = {
+            node: {"main": line.index == 0, "joins": line.joins}
+            for line in drawn.lines
+            for node in line.nodes
+        }
+        cases.append({"skeleton": skeleton, "areas": weighed, "lines": lines})
+    got = page.evaluate(
+        f"""async (cases) => {{ {GEOMETRY}
+          return cases.map(({{skeleton, areas}}) => Object.fromEntries(
+            g.linesOf(skeleton, new Map(Object.entries(areas))))); }}""",
+        cases,
+    )
+    # The main stem and the node each tributary joins, so the colours and the sides of
+    # the labels are the library's, with areas and with counts of nodes
+    assert got == [case["lines"] for case in cases]
+
+
+def test_free_cells_provisional_rows_and_the_cells_of_an_opened_network(
+    page: Any,
+) -> None:
+    got = js(
+        page,
+        f"""{GEOMETRY} {GUIDE_CELLS}
+        const taken = (...cells) => new Set(cells.map(g.cellKey));
+        const looped = [
+          {{id: 'A', from: ['B']}}, {{id: 'B', from: ['A']}}, {{id: 'C', from: null}},
+          {{id: 'D', from: ['C', 'A']}},
+        ];
+        const opened = g.placeMissing([
+          {{id: 'A', from: null, position: {{x: 0, y: 0}}}},
+          {{id: 'B', from: null, position: {{x: 0, y: 0}}}},
+          {{id: 'J', from: ['A', 'B'], position: {{x: 1, y: 0}}}},
+          {{id: 'OUT', from: ['J']}},
+        ]);
+        const answer = await fetch('api/schemas/hydrolog-network-1.schema.json');
+        const schema = await answer.json();
+        return {{
+          free: [
+            g.freeCell(taken(), [2, 3], 'up'),
+            g.freeCell(taken([2, 3]), [2, 3], 'up'),
+            g.freeCell(taken([2, 3], [1, 3]), [2, 3], 'up'),
+            g.freeCell(taken([2, 3], [1, 2], [1, 3], [1, 4]), [2, 3], 'up'),
+            g.freeCell(taken([2, 3]), [2, 3], 'down'),
+            g.freeCell(taken([-1000, 0]), [-1000, 0], 'up'),
+          ],
+          rows: Object.fromEntries(g.provisionalRows(guide)),
+          looped: Object.fromEntries(g.provisionalRows(looped)),
+          opened: {{cells: Object.fromEntries(opened.cells), moved: opened.moved}},
+          read: [{{x: 2, y: -3}}, {{x: 2.5, y: 0}}, {{x: 1001, y: 0}}, {{x: 1}},
+                 {{x: 1, y: 2, z: 3}}, [1, 2], null].map(g.cellOf),
+          snapped: [[0, 0], [54, 36], [56, 38], [-56, -38], [1e6, -1e6]]
+            .map(g.cellAt),
+          bound: [g.MAX_POSITION, schema.$defs.position.properties.x.maximum,
+                  schema.$defs.position.properties.y.minimum],
+        }};""",
+    )
+    # The cell itself when free; else upstream first, straight before diagonal, the
+    # right before the left, then level, then downstream; never off the grid
+    assert got["free"] == [[2, 3], [1, 3], [1, 4], [2, 4], [3, 3], [-1000, 1]]
+    # Rows by the longest distance from a headwater, centred, in the order of the
+    # document; a cycle and what is below it go on the row after the last
+    assert got["rows"] == {
+        "A": [0, -1],
+        "B": [0, 0],
+        "C": [0, 1],
+        "R_A": [1, 0],
+        "J1": [2, 0],
+        "R_J1": [3, 0],
+        "J2": [4, 0],
+        "OUT": [5, 0],
+    }
+    assert got["looped"] == {"A": [1, -1], "B": [1, 0], "C": [0, 0], "D": [1, 1]}
+    # A shared cell stays with the first node; the others go beside a neighbour
+    assert got["opened"] == {
+        "cells": {"A": [0, 0], "B": [0, 1], "J": [1, 0], "OUT": [2, 0]},
+        "moved": ["B", "OUT"],
+    }
+    assert got["read"] == [[2, -3], None, None, None, None, None, None]
+    assert got["snapped"] == [[0, 0], [0, 0], [1, 1], [-1, -1], [-1000, 1000]]
+    bound = got["bound"]
+    assert bound == [1000, 1000, -1000]
+
+
+def test_the_arrow_keys_go_to_the_nearest_node_that_way(page: Any) -> None:
+    got = js(
+        page,
+        f"""{GEOMETRY} {GUIDE_CELLS}
+        return [['OUT', 'up'], ['J2', 'up'], ['R_J1', 'right'], ['J1', 'left'],
+                ['A', 'up'], ['A', 'down'], ['B', 'right'], ['C', 'left'],
+                ['C', 'right']]
+          .map(([from, way]) => g.nearestInDirection(guide, from, way));""",
+    )
+    # Straight ahead before diagonal, within 45 degrees before the rest; or nothing
+    assert got == ["J2", "R_J1", "C", "B", None, "R_A", "R_A", "R_J1", None]
+
+
+def test_moves_share_the_nodes_they_do_not_change(page: Any) -> None:
+    got = js(
+        page,
+        """const e = await import('./src/sections/siec/editor/edits.js');
+        const inputs = {network: {name: 'x'}, nodes: {A: {}}, selected: 'A',
+          skeleton: [
+            {id: 'A', type: 'subcatchment', from: null, position: {x: 0, y: 0}},
+            {id: 'B', type: 'subcatchment', from: null, position: {x: 0, y: 1}},
+            {id: 'OUT', type: 'outlet', from: ['A', 'B'], position: {x: 1, y: 0}},
+          ]};
+        const moved = e.moveNode(inputs, 'A', {x: -1, y: 0});
+        const placed = e.placeAll(inputs,
+          {A: {x: 5, y: 5}, OUT: {x: 6, y: 5}, Z: {x: 0, y: 0}});
+        const same = (next) => next === inputs;
+        return {
+          moved: moved.skeleton.map((node) => node.position),
+          shared: [moved.skeleton[1] === inputs.skeleton[1],
+                   moved.skeleton[2] === inputs.skeleton[2],
+                   moved.nodes === inputs.nodes, moved.network === inputs.network,
+                   moved.selected],
+          before: inputs.skeleton[0].position,
+          refused: [same(e.moveNode(inputs, 'A', {x: 0, y: 1})),
+                    same(e.moveNode(inputs, 'Z', {x: 3, y: 3})),
+                    same(e.moveNode(inputs, 'A', {x: 1001, y: 0})),
+                    same(e.moveNode(inputs, 'A', {x: 0.5, y: 0}))],
+          placed: placed.skeleton.map((node) => node.position),
+          kept: placed.skeleton[1] === inputs.skeleton[1],
+        };""",
+    )
+    assert got["moved"] == [{"x": -1, "y": 0}, {"x": 0, "y": 1}, {"x": 1, "y": 0}]
+    assert got["shared"] == [True, True, True, True, "A"]
+    assert got["before"] == {"x": 0, "y": 0}
+    # A taken cell, an unknown node or a cell off the grid leaves the inputs as they are
+    assert got["refused"] == [True, True, True, True]
+    assert got["placed"] == [{"x": 5, "y": 5}, {"x": 0, "y": 1}, {"x": 6, "y": 5}]
+    assert got["kept"] is True
+
+
+# --- Sieć's editor: editor/graph.js, edits.js, history.js, words.js -----------
+
+
+# The structure module with the inflow rules of the real schema the page loads.
+GRAPH = """const gr = await import('./src/sections/siec/editor/graph.js');
+const schema = await (await fetch('api/schemas/hydrolog-network-1.schema.json')).json();
+const rules = gr.inflowRules(schema);
+"""
+# Structure nodes by type: `s('C', 'A')` is a subcatchment C that lists A in `from`;
+# `at(node, x, y)` places a node on a cell.
+NODES = """const node = (type) => (id, ...from) =>
+  ({id, type, from: from.length ? from : null});
+const s = node('subcatchment');
+const r = node('reach');
+const zb = node('reservoir');
+const j = node('junction');
+const o = node('outlet');
+const at = (made, x, y) => ({...made, position: {x, y}});
+const froms = (inputs) =>
+  Object.fromEntries(inputs.skeleton.map((n) => [n.id, n.from]));
+"""
+EDITS = "const e = await import('./src/sections/siec/editor/edits.js');\n"
+HISTORY = (
+    "const {createHistory} = await import('./src/sections/siec/editor/history.js');\n"
+)
+
+
+def test_inflow_rules_come_from_the_schema(page: Any) -> None:
+    got = js(page, GRAPH + "return rules;")
+
+    assert got == {
+        "subcatchment": {"fewest": 0, "most": 0},
+        "reach": {"fewest": 1, "most": 1},
+        "reservoir": {"fewest": 1, "most": 1},
+        "junction": {"fewest": 1, "most": None},
+        "outlet": {"fewest": 1, "most": 1},
+    }
+
+
+def test_the_structure_reports_every_reason_with_its_details(page: Any) -> None:
+    got = js(
+        page,
+        GRAPH
+        + NODES
+        + """const long = 'A'.repeat(65);
+        const problems = (skeleton) => gr.graphProblems(skeleton, rules);
+        return {
+          complete: problems([s('A'), s('B'), r('R', 'A'), j('J', 'R', 'B'),
+                              o('OUT', 'J')]),
+          empty: problems([]),
+          invalid: problems([s('A B'), s('A.'), s(long),
+                             j('J', 'A B', 'A.', long, 'bad id'), o('OUT', 'J')]),
+          reserved: problems([s('con'), s('LPT1.txt'), s('com\u00b9'),
+                              j('J', 'con', 'LPT1.txt', 'com\u00b9', 'nul'),
+                              o('OUT', 'J')]),
+          duplicate: problems([s('A'), s('a'), s('STRASSE'), s('straße'),
+                               j('J', 'A', 'a', 'STRASSE', 'straße'), o('OUT', 'J')]),
+          unknown: problems([s('A'), j('J', 'A', 'X'), o('OUT', 'J')]),
+          repeated: problems([s('A'), j('J', 'A', 'A'), o('OUT', 'J')]),
+          count: problems([s('A'), s('B'), s('C', 'A'), r('R1', 'B', 'C'), r('R2'),
+                           j('J0'), j('J', 'R1', 'R2', 'J0'), o('OUT', 'J')]),
+          several: problems([s('A'), j('J1', 'A'), j('J2', 'A', 'J1'), o('OUT', 'J2')]),
+          cycles: problems([s('A'), j('J', 'A', 'P'), o('OUT', 'J'), j('K', 'L'),
+                            j('L', 'M'), j('M', 'K'), j('P', 'K'), j('S', 'S')]),
+          noOutlet: problems([s('A'), j('J', 'A')]),
+          outlets: problems([s('A'), s('B'), o('O2', 'B'), o('O1', 'A')]),
+          outletDown: problems([s('A'), o('OUT', 'A'), j('J', 'OUT')]),
+          disconnected: problems([s('A'), s('B'), j('J'), o('OUT', 'A')]),
+          first: problems([s('A B'), o('O1', 'A B'), s('C'), o('O2', 'C')]),
+          marked: [
+            {reason: 'cycle', nodes: ['K', 'M', 'L']},
+            {reason: 'invalid_id', node_id: 'bad id', listed_by: 'J'},
+            {reason: 'several_outlets', nodes: ['O1', 'O2']},
+            {reason: 'no_outlet'},
+            {reason: 'disconnected_node', node_id: 'B'},
+          ].map(gr.problemNodes),
+        };""",
+    )
+
+    def problem(reason: str, node_id: str, **details: Any) -> dict[str, Any]:
+        return {"reason": reason, "node_id": node_id, **details}
+
+    assert got["complete"] == []
+    assert got["empty"] == [{"reason": "empty"}]
+    # A space, a trailing dot, 65 characters; an invalid id in `from` names its lister
+    assert got["invalid"] == [
+        problem("invalid_id", "A B"),
+        problem("invalid_id", "A."),
+        problem("invalid_id", "A" * 65),
+        problem("invalid_id", "bad id", listed_by="J"),
+    ]
+    assert got["reserved"] == [
+        problem("reserved_name", "con"),
+        problem("reserved_name", "LPT1.txt"),
+        problem("reserved_name", "com\u00b9"),
+        problem("reserved_name", "nul", listed_by="J"),
+    ]
+    # Without regard to case, ß folded to ss as Python's casefold does; the earlier one
+    # is the other
+    assert got["duplicate"] == [
+        problem("duplicate_node", "a", other_id="A"),
+        problem("duplicate_node", "straße", other_id="STRASSE"),
+    ]
+    assert got["unknown"] == [problem("unknown_upstream", "J", upstream_id="X")]
+    assert got["repeated"] == [problem("duplicate_upstream", "J")]
+    assert got["count"] == [
+        problem("upstream_count", "C", type="subcatchment", found=1),
+        problem("upstream_count", "R1", type="reach", found=2),
+        problem("upstream_count", "R2", type="reach", found=0),
+        problem("upstream_count", "J0", type="junction", found=0),
+    ]
+    assert got["several"] == [
+        problem("several_downstream", "A", downstream=["J1", "J2"])
+    ]
+    # Each cycle in flow order (K flows into M, M into L) from its smallest id; a
+    # self-loop; P below the cycle, and what P flows into, are in none
+    assert got["cycles"] == [
+        problem("several_downstream", "K", downstream=["M", "P"]),
+        {"reason": "cycle", "nodes": ["K", "M", "L"]},
+        {"reason": "cycle", "nodes": ["S"]},
+    ]
+    assert got["noOutlet"] == [
+        {"reason": "no_outlet"},
+        problem("disconnected_node", "J"),
+    ]
+    assert got["outlets"] == [{"reason": "several_outlets", "nodes": ["O2", "O1"]}]
+    assert got["outletDown"] == [
+        problem("outlet_has_downstream", "OUT", downstream=["J"]),
+        problem("disconnected_node", "J"),
+    ]
+    # Every node but the outlet that flows nowhere, in the order of the structure
+    assert got["disconnected"] == [
+        problem("disconnected_node", "B"),
+        problem("upstream_count", "J", type="junction", found=0),
+        problem("disconnected_node", "J"),
+    ]
+    # The problems of the whole network come first
+    assert got["first"] == [
+        {"reason": "several_outlets", "nodes": ["O1", "O2"]},
+        problem("invalid_id", "A B"),
+    ]
+    # A cycle marks its nodes, an id in `from` its lister, the whole network none
+    assert got["marked"] == [["K", "M", "L"], ["J"], [], [], ["B"]]
+
+
+def test_a_link_is_judged_before_it_is_made(page: Any) -> None:
+    got = js(
+        page,
+        GRAPH
+        + NODES
+        + """const skeleton = [s('A'), s('B'), s('C'), r('R', 'A'), j('K', 'R'),
+          zb('ZB', 'B'), j('J', 'K', 'ZB'), o('OUT', 'J'), r('R2')];
+        const verdict = ([from, to]) => gr.linkVerdict(skeleton, rules, from, to);
+        return {
+          ok: [['C', 'R2'], ['A', 'R'], ['R', 'R2'], ['C', 'J'], ['C', 'K']]
+            .map(verdict),
+          cycle: [['J', 'J'], ['J', 'R'], ['K', 'R']].map(verdict),
+          outlet: verdict(['OUT', 'R2']),
+          source: verdict(['R2', 'C']),
+          offer: [['C', 'R'], ['C', 'ZB'], ['C', 'OUT']].map(verdict),
+        };""",
+    )
+
+    # A free reach, the link already made, a node that moves its link, two junctions
+    assert got["ok"] == [{"ok": True}] * 5
+    # A self link and the loops, in flow order from the node that would flow
+    assert got["cycle"] == [
+        {"ok": False, "reason": "cycle", "nodes": ["J"]},
+        {"ok": False, "reason": "cycle", "nodes": ["J", "R", "K"]},
+        {"ok": False, "reason": "cycle", "nodes": ["K", "R"]},
+    ]
+    assert got["outlet"] == {"ok": False, "reason": "outlet_has_downstream"}
+    assert got["source"] == {"ok": False, "reason": "upstream_count"}
+    # A second inflow of a reach, a reservoir or the outlet: a junction is offered
+    assert (
+        got["offer"]
+        == [{"ok": False, "reason": "upstream_count", "offer": "junction"}] * 3
+    )
+
+
+def test_a_typed_id_is_checked_as_the_library_would(page: Any) -> None:
+    got = js(
+        page,
+        GRAPH
+        + NODES
+        + """const skeleton = [s('z1'), s('A'), s('STRASSE')];
+        return [
+          ['Z2', null], ['a b', null], ['', null], ['-x', null], ['x.', null],
+          ['ł_1.b-2', null], ['A'.repeat(64), null], ['A'.repeat(65), null],
+          ['con', null], ['Aux.txt', null], ['COM10', null],
+          ['Z1', null], ['a', null], ['straße', null], ['Z1', 'z1'], ['a', 'z1'],
+        ].map(([id, self]) => gr.idProblem(id, skeleton, self));""",
+    )
+
+    assert got == [
+        None,
+        "invalid_id",
+        "invalid_id",
+        "invalid_id",
+        "invalid_id",
+        None,
+        None,
+        "invalid_id",
+        "reserved_name",
+        "reserved_name",
+        None,
+        "duplicate_node",
+        "duplicate_node",
+        "duplicate_node",
+        # The node itself is no duplicate: z1 can become Z1
+        None,
+        "duplicate_node",
+    ]
+
+
+# The one-problem corpus (plan D8, D13): each document has one structural problem
+# where one is possible (a network without an outlet and a link out of the outlet leave
+# a node that flows nowhere) and every field complete, as the library checks the fields
+# before the structure; the reason is the one the library raises.
+CORPUS: list[tuple[str, dict[str, Any], str]] = [
+    ("no nodes", document(), "empty"),
+    ("an id with a space", document(source("A B"), outlet("A B")), "invalid_id"),
+    (
+        "an invalid id in from",
+        document(source("A"), junction("J", "A", "bad id"), outlet("J")),
+        "invalid_id",
+    ),
+    ("a device name", document(source("con"), outlet("con")), "reserved_name"),
+    (
+        "a device name in from",
+        document(source("A"), junction("J", "A", "LPT1.txt"), outlet("J")),
+        "reserved_name",
+    ),
+    (
+        "ids that differ in case",
+        document(source("A"), source("a"), junction("J", "A", "a"), outlet("J")),
+        "duplicate_node",
+    ),
+    (
+        "ids equal when folded",
+        document(
+            source("STRASSE"),
+            source("straße"),
+            junction("J", "STRASSE", "straße"),
+            outlet("J"),
+        ),
+        "duplicate_node",
+    ),
+    (
+        "an unknown inflow",
+        document(source("A"), junction("J", "A", "X"), outlet("J")),
+        "unknown_upstream",
+    ),
+    (
+        "a repeated inflow",
+        document(source("A"), junction("J", "A", "A"), outlet("J")),
+        "duplicate_upstream",
+    ),
+    (
+        "a reach with two inflows",
+        document(
+            source("A"),
+            source("B"),
+            reach("R", "A", **{"from": ["A", "B"]}),
+            outlet("R"),
+        ),
+        "upstream_count",
+    ),
+    (
+        "a subcatchment with an inflow",
+        document(source("A"), source("B", **{"from": ["A"]}), outlet("B")),
+        "upstream_count",
+    ),
+    (
+        "a junction without inflows",
+        document(source("A"), junction("J"), junction("K", "A", "J"), outlet("K")),
+        "upstream_count",
+    ),
+    (
+        "a node that flows into two",
+        document(
+            source("A"), junction("J1", "A"), junction("J2", "A", "J1"), outlet("J2")
+        ),
+        "several_downstream",
+    ),
+    (
+        "a loop beside the stream",
+        document(
+            source("A"),
+            junction("J1", "A", "J2"),
+            junction("J2", "J1"),
+            source("B"),
+            outlet("B"),
+        ),
+        "cycle",
+    ),
+    (
+        "a node that flows into itself",
+        document(source("A"), junction("S", "S"), outlet("A")),
+        "cycle",
+    ),
+    ("no outlet", document(source("A"), junction("J", "A")), "no_outlet"),
+    (
+        "two outlets",
+        document(source("A"), source("B"), outlet("A", "O1"), outlet("B", "O2")),
+        "several_outlets",
+    ),
+    (
+        "a link out of the outlet",
+        document(source("A"), outlet("A", "O1"), junction("J", "O1")),
+        "outlet_has_downstream",
+    ),
+    (
+        "a node that flows nowhere",
+        document(source("A"), source("B"), outlet("A")),
+        "disconnected_node",
+    ),
+]
+
+
+def test_the_canvas_finds_the_problem_the_library_raises(page: Any) -> None:
+    raised = []
+    for name, doc, _ in CORPUS:
+        with pytest.raises(InvalidParameterError) as error:
+            RoutingNetwork.from_document(doc)
+        details = error.value.details
+        raised.append((name, details["reason"], details.get("node_id")))
+    got = page.evaluate(
+        "async (docs) => { "
+        + GRAPH
+        + """const nm = await import('./src/sections/siec/node-model.js');
+        return {
+          reasons: gr.REASONS,
+          found: docs.map((doc) => gr.graphProblems(nm.skeletonOf(doc), rules)
+            .map((problem) => [problem.reason, problem.node_id ?? null])),
+        }; }""",
+        [doc for _, doc, _ in CORPUS],
+    )
+
+    # The library raises the reason each document was made for, and together they are
+    # every reason the canvas reports
+    assert [(name, reason) for name, reason, _ in raised] == [
+        (name, reason) for name, _, reason in CORPUS
+    ]
+    assert {reason for _, reason, _ in raised} == set(got["reasons"])
+    # The canvas lists the library's problem on the library's node
+    missed = [
+        (name, reason, node_id)
+        for (name, reason, node_id), found in zip(raised, got["found"], strict=True)
+        if [reason, node_id] not in found
+    ]
+    assert missed == []
+
+
+def test_new_elements_get_free_ids_and_cells(page: Any) -> None:
+    got = js(
+        page,
+        EDITS
+        + NODES
+        + """const placed = [at(s('A'), 0, 0), at(s('B'), 0, 1), at(r('R', 'A'), 1, 0),
+          at(o('OUT', 'R'), 2, 0)];
+        return {
+          ids: [
+            e.nextId([], 'subcatchment'), e.nextId([s('z1')], 'subcatchment'),
+            e.nextId([s('z1'), s('Z3')], 'subcatchment'), e.nextId([], 'outlet'),
+            e.nextId([o('out')], 'outlet'), e.nextId([o('OUT'), o('OUT2')], 'outlet'),
+            e.nextId([], 'reservoir'), e.nextId([], 'junction'),
+            e.nextId([r('R1')], 'reach'),
+          ],
+          beside: [e.cellBeside(placed, 'A'), e.cellBeside(placed, 'R'),
+                   e.cellBeside(placed, null), e.cellBeside([], null),
+                   e.cellBeside([s('A')], 'A')],
+          above: [e.cellAbove(placed, 'R'), e.cellAbove(placed, 'OUT'),
+                  e.cellAbove(placed, 'A'), e.cellAbove([], 'A')],
+        };""",
+    )
+
+    # The first number free without regard to case; the outlet is OUT, then OUT2
+    assert got["ids"] == ["Z1", "Z2", "Z2", "OUT", "OUT2", "OUT3", "ZB1", "J1", "R2"]
+    # Right of the node, else the nearest free cell upstream first; without the node,
+    # right of the top row; [0, 0] in an empty network
+    assert got["beside"] == [[-1, 1], [1, 1], [0, 2], [0, 0], [0, 0]]
+    assert got["above"] == [[-1, 0], [0, -1], [-1, 0], [0, 0]]
+
+
+def test_adding_and_linking_share_the_nodes_they_do_not_change(page: Any) -> None:
+    got = js(
+        page,
+        EDITS
+        + NODES
+        + """const inputs = {network: {name: 'x'}, selected: 'A',
+          nodes: {A: {area_km2: '2'}, B: {}, R: {}, J: {}, OUT: {}},
+          skeleton: [at(s('A'), 0, 0), at(s('B'), 0, 2), at(r('R', 'A'), 1, 0),
+                     at(j('J', 'R'), 2, 0), at(o('OUT', 'J'), 3, 0)]};
+        const same = (next) => next === inputs;
+        const find = (from, id) => from.skeleton.find((n) => n.id === id);
+        const kept = (next, ...ids) =>
+          ids.map((id) => find(next, id) === find(inputs, id));
+        const added = e.addNode(inputs, 'reach', {x: 1, y: 2});
+        const linked = e.connect(inputs, 'B', 'J');
+        const moved = e.connect(inputs, 'A', 'J');
+        const split = {network: {}, nodes: {}, selected: null,
+          skeleton: [s('A'), j('J1', 'A'), j('J2', 'A', 'J1'), o('OUT', 'J2')]};
+        const one = e.disconnect(split, 'A', 'J2');
+        return {
+          added: [added.skeleton.length, added.skeleton.at(-1), added.nodes.R1],
+          addedKept: [...kept(added, 'A', 'B', 'R', 'J', 'OUT'),
+                      added.nodes.A === inputs.nodes.A,
+                      added.network === inputs.network,
+                      added.selected],
+          addRefused: [same(e.addNode(inputs, 'reach', {x: 0, y: 2})),
+                       same(e.addNode(inputs, 'weir', {x: 5, y: 5})),
+                       same(e.addNode(inputs, 'reach', {x: 1001, y: 0})),
+                       same(e.addNode(inputs, 'reach', {x: 0.5, y: 0}))],
+          linked: froms(linked),
+          linkedKept: [...kept(linked, 'A', 'B', 'R', 'OUT'),
+                       linked.nodes === inputs.nodes],
+          moved: froms(moved),
+          movedKept: kept(moved, 'A', 'B', 'OUT'),
+          relinked: froms(e.connect(linked, 'B', 'R')),
+          connectRefused: [same(e.connect(inputs, 'A', 'R')),
+                           same(e.connect(inputs, 'A', 'A')),
+                           same(e.connect(inputs, 'A', 'X')),
+                           same(e.connect(inputs, 'X', 'J'))],
+          all: froms(e.disconnect(split, 'A')),
+          one: froms(one),
+          oneKept: one.skeleton[1] === split.skeleton[1],
+          disconnectRefused: [e.disconnect(split, 'OUT') === split,
+                              e.disconnect(split, 'A', 'OUT') === split],
+        };""",
+    )
+
+    # The new node comes last, unconnected, with empty values
+    assert got["added"] == [
+        6,
+        {"id": "R1", "type": "reach", "from": None, "position": {"x": 1, "y": 2}},
+        {},
+    ]
+    assert got["addedKept"] == [True] * 7 + ["A"]
+    # A taken cell, an unknown type and cells off the grid add nothing
+    assert got["addRefused"] == [True] * 4
+    # A link goes to the end of the target's inflows
+    assert got["linked"] == {
+        "A": None,
+        "B": None,
+        "R": ["A"],
+        "J": ["R", "B"],
+        "OUT": ["J"],
+    }
+    assert got["linkedKept"] == [True] * 5
+    # The source's old link moves; a list left empty is null
+    assert got["moved"] == {
+        "A": None,
+        "B": None,
+        "R": None,
+        "J": ["R", "A"],
+        "OUT": ["J"],
+    }
+    assert got["movedKept"] == [True] * 3
+    assert got["relinked"] == {
+        "A": None,
+        "B": None,
+        "R": ["A", "B"],
+        "J": ["R"],
+        "OUT": ["J"],
+    }
+    # A link already made, a self link or an unknown node change nothing
+    assert got["connectRefused"] == [True] * 4
+    # Every link of a node that flows into two, or the one link named
+    assert got["all"] == {"A": None, "J1": None, "J2": ["J1"], "OUT": ["J2"]}
+    assert got["one"] == {"A": None, "J1": ["A"], "J2": ["J1"], "OUT": ["J2"]}
+    assert got["oneKept"] is True
+    assert got["disconnectRefused"] == [True, True]
+
+
+def test_a_junction_takes_the_second_inflow_of_a_node_that_takes_one(
+    page: Any,
+) -> None:
+    got = js(
+        page,
+        EDITS
+        + NODES
+        + """const inputs = {network: {}, selected: null,
+          nodes: {A: {}, B: {}, J1: {}, R: {lag_min: '25'}, OUT: {}},
+          skeleton: [at(s('A'), 0, 0), at(s('B'), 0, 2), at(j('J1', 'B'), 1, 2),
+                     at(r('R', 'A'), 2, 0), at(o('OUT', 'R'), 3, 0)]};
+        const into = e.insertJunction(inputs, 'B', 'R');
+        const below = e.insertJunction(inputs, 'B', 'OUT');
+        const same = (next) => next === inputs;
+        return {
+          into: into.skeleton,
+          values: [into.nodes.J2, Object.keys(into.nodes)],
+          kept: [into.skeleton[0] === inputs.skeleton[0],
+                 into.skeleton[1] === inputs.skeleton[1],
+                 into.skeleton[5] === inputs.skeleton[4],
+                 into.nodes.R === inputs.nodes.R],
+          below: below.skeleton,
+          refused: [same(e.insertJunction(inputs, 'B', 'B')),
+                    same(e.insertJunction(inputs, 'B', 'X')),
+                    same(e.insertJunction(inputs, 'X', 'R'))],
+        };""",
+    )
+
+    def placed(
+        node_id: str, kind: str, upstream: list[str] | None, x: int, y: int
+    ) -> dict[str, Any]:
+        return {
+            "id": node_id,
+            "type": kind,
+            "from": upstream,
+            "position": {"x": x, "y": y},
+        }
+
+    # The junction J2 stands before the target, on the free cell above it, takes the
+    # target's inflow and the source; the source's other link goes
+    assert got["into"] == [
+        placed("A", "subcatchment", None, 0, 0),
+        placed("B", "subcatchment", None, 0, 2),
+        placed("J1", "junction", None, 1, 2),
+        placed("J2", "junction", ["A", "B"], 1, 0),
+        placed("R", "reach", ["J2"], 2, 0),
+        placed("OUT", "outlet", ["R"], 3, 0),
+    ]
+    assert got["values"] == [{}, ["A", "B", "J1", "R", "OUT", "J2"]]
+    assert got["kept"] == [True] * 4
+    # Above the outlet stands R: the junction takes the nearest free cell upstream
+    assert got["below"] == [
+        placed("A", "subcatchment", None, 0, 0),
+        placed("B", "subcatchment", None, 0, 2),
+        placed("J1", "junction", None, 1, 2),
+        placed("R", "reach", ["A"], 2, 0),
+        placed("J2", "junction", ["R", "B"], 1, 0),
+        placed("OUT", "outlet", ["J2"], 3, 0),
+    ]
+    assert got["refused"] == [True] * 3
+
+
+def test_a_removed_node_takes_its_links_and_values(page: Any) -> None:
+    got = js(
+        page,
+        EDITS
+        + NODES
+        + """const inputs = {network: {}, selected: null,
+          nodes: {A: {}, R: {lag_min: '25'}, B: {}, J: {}, OUT: {}},
+          skeleton: [s('A'), r('R', 'A'), s('B'), j('J', 'R', 'B'), o('OUT', 'J')]};
+        const view = (next) => [froms(next), Object.keys(next.nodes)];
+        const bridged = e.removeNode(inputs, 'R', {bridge: true});
+        return {
+          can: ['A', 'R', 'B', 'J', 'OUT', 'X']
+            .map((id) => e.canBridge(inputs.skeleton, id)),
+          removed: view(e.removeNode(inputs, 'R')),
+          bridged: view(bridged),
+          kept: [bridged.skeleton[0] === inputs.skeleton[0],
+                 bridged.skeleton[3] === inputs.skeleton[4]],
+          unbridged: view(e.removeNode(inputs, 'J', {bridge: true})),
+          refused: e.removeNode(inputs, 'X') === inputs,
+        };""",
+    )
+
+    # Only a node with one inflow that flows into one node can be bridged
+    assert got["can"] == [False, True, False, False, False, False]
+    assert got["removed"] == [
+        {"A": None, "B": None, "J": ["B"], "OUT": ["J"]},
+        ["A", "B", "J", "OUT"],
+    ]
+    # The inflow takes the removed node's place in the node below it
+    assert got["bridged"] == [
+        {"A": None, "B": None, "J": ["A", "B"], "OUT": ["J"]},
+        ["A", "B", "J", "OUT"],
+    ]
+    assert got["kept"] == [True, True]
+    # A junction of two cannot be bridged: it is removed, the outlet left without inflow
+    assert got["unbridged"] == [
+        {"A": None, "R": ["A"], "B": None, "OUT": None},
+        ["A", "R", "B", "OUT"],
+    ]
+    assert got["refused"] is True
+
+
+def test_a_renamed_node_keeps_its_links_values_and_column(page: Any) -> None:
+    got = js(
+        page,
+        EDITS
+        + NODES
+        + """const inputs = {network: {}, selected: 'Z1',
+          nodes: {Z1: {'#variant': 'file'},
+                  Z2: {'#variant': 'file', value_column: 'Q2'},
+                  Z3: {'#variant': 'rain', area_km2: '2'}, R: {lag_min: '25'}, J: {},
+                  OUT: {}},
+          skeleton: [s('Z1'), s('Z2'), s('Z3'), r('R', 'Z1'), j('J', 'R', 'Z2', 'Z3'),
+                     o('OUT', 'J')]};
+        const view = (next, id) => ({froms: froms(next), keys: Object.keys(next.nodes),
+                                     values: next.nodes[id], selected: next.selected});
+        const mid = e.renameNode(inputs, 'Z2', 'Mid');
+        const lower = e.renameNode(inputs, 'R', 'r');
+        return {
+          top: view(e.renameNode(inputs, 'Z1', 'Top'), 'Top'),
+          mid: view(mid, 'Mid'),
+          midShared: mid.nodes.Mid === inputs.nodes.Z2,
+          rain: view(e.renameNode(inputs, 'Z3', 'Deszcz'), 'Deszcz'),
+          lower: view(lower, 'r'),
+          lowerKept: lower.skeleton[0] === inputs.skeleton[0],
+          refused: [['Z1', 'a b'], ['Z1', 'con'], ['Z1', 'z2'], ['Z1', 'j'],
+                    ['Z1', 'Z1'],
+                    ['Z1', ''], ['X', 'Y']]
+            .map(([id, next]) => e.renameNode(inputs, id, next) === inputs),
+        };""",
+    )
+
+    def froms(renamed: dict[str, str]) -> dict[str, list[str] | None]:
+        name = {node: renamed.get(node, node) for node in ["Z1", "Z2", "Z3", "R", "J"]}
+        return {
+            name["Z1"]: None,
+            name["Z2"]: None,
+            name["Z3"]: None,
+            name["R"]: [name["Z1"]],
+            name["J"]: [name["R"], name["Z2"], name["Z3"]],
+            "OUT": ["J"],
+        }
+
+    # The links follow, the values keep their place, the chosen node follows, and a
+    # subcatchment that read its column by its id keeps that column
+    assert got["top"] == {
+        "froms": froms({"Z1": "Top"}),
+        "keys": ["Top", "Z2", "Z3", "R", "J", "OUT"],
+        "values": {"#variant": "file", "value_column": "Z1"},
+        "selected": "Top",
+    }
+    assert got["mid"] == {
+        "froms": froms({"Z2": "Mid"}),
+        "keys": ["Z1", "Mid", "Z3", "R", "J", "OUT"],
+        "values": {"#variant": "file", "value_column": "Q2"},
+        "selected": "Z1",
+    }
+    assert got["midShared"] is True
+    assert got["rain"] == {
+        "froms": froms({"Z3": "Deszcz"}),
+        "keys": ["Z1", "Z2", "Deszcz", "R", "J", "OUT"],
+        "values": {"#variant": "rain", "area_km2": "2"},
+        "selected": "Z1",
+    }
+    # Only the case changes: the node is no duplicate of itself
+    assert got["lower"] == {
+        "froms": froms({"R": "r"}),
+        "keys": ["Z1", "Z2", "Z3", "r", "J", "OUT"],
+        "values": {"lag_min": "25"},
+        "selected": "Z1",
+    }
+    assert got["lowerKept"] is True
+    # Invalid, reserved and duplicate ids, the same id and an unknown node
+    assert got["refused"] == [True] * 7
+
+
+def test_a_description_is_set_and_a_blank_one_removed(page: Any) -> None:
+    got = js(
+        page,
+        EDITS
+        + NODES
+        + """const inputs = {network: {}, nodes: {}, selected: null,
+          skeleton: [s('A'), o('OUT', 'A')]};
+        const described = e.describeNode(inputs, 'A', 'Lewy dopływ\\nz łąk');
+        const cleared = e.describeNode(described, 'A', '  \\n ');
+        return {
+          described: described.skeleton[0],
+          kept: described.skeleton[1] === inputs.skeleton[1],
+          cleared: [cleared.skeleton[0], 'description' in cleared.skeleton[0]],
+          same: [e.describeNode(described, 'A', 'Lewy dopływ\\nz łąk') === described,
+                 e.describeNode(inputs, 'A', ' ') === inputs,
+                 e.describeNode(inputs, 'X', 'opis') === inputs],
+        };""",
+    )
+
+    assert got["described"] == {
+        "id": "A",
+        "type": "subcatchment",
+        "from": None,
+        "description": "Lewy dopływ\nz łąk",
+    }
+    assert got["kept"] is True
+    assert got["cleared"] == [{"id": "A", "type": "subcatchment", "from": None}, False]
+    assert got["same"] == [True, True, True]
+
+
+def test_the_history_steps_merges_and_seals(page: Any) -> None:
+    got = js(
+        page,
+        HISTORY
+        + """const [s0, s1, s2, s3, s4] = [0, 1, 2, 3, 4].map((n) => ({n}));
+        const n = (inputs) => (inputs ? inputs.n : null);
+        const fresh = createHistory();
+        const first = [fresh.push(s0), fresh.steps, n(fresh.current)];
+        const order = createHistory();
+        order.reset(s0);
+        const start = [order.steps, order.canUndo, order.canRedo, n(order.current)];
+        const pushed = [order.push(s1), order.push(s2), order.push(s2), order.steps];
+        const back = [n(order.undo()), n(order.undo()), n(order.undo()), order.canUndo,
+                      order.canRedo];
+        const forth = [n(order.redo()), n(order.redo()), n(order.redo()), order.steps];
+        order.undo();
+        const cleared = [order.push(s3), order.canRedo, n(order.redo()), order.steps,
+                         n(order.undo()), n(order.undo())];
+        const merged = createHistory();
+        merged.reset(s0);
+        merged.push(s1, {merge: 'field:A:area', at: 0});
+        const joined = [merged.push(s2, {merge: 'field:A:area', at: 5}), merged.steps,
+                        n(merged.current)];
+        merged.seal();
+        merged.push(s3, {merge: 'field:A:area', at: 6});
+        merged.push(s4, {merge: 'field:A:cn', at: 7});
+        const split = [merged.steps, n(merged.undo()), n(merged.undo()),
+                       n(merged.undo())];
+        const moves = createHistory();
+        moves.reset(s0);
+        const key = {merge: 'move:A', within: 1000};
+        moves.push(s1, {...key, at: 10000});
+        moves.push(s2, {...key, at: 10900});
+        const inside = [moves.steps, n(moves.current)];
+        moves.push(s3, {...key, at: 11901});
+        moves.push(s4, {...key, at: 12901});
+        const outside = [moves.steps, n(moves.undo()), n(moves.undo())];
+        const undone = createHistory();
+        undone.reset(s0);
+        undone.push(s1, {merge: 'k'});
+        undone.push(s2, {merge: 'other'});
+        undone.undo();
+        undone.push(s3, {merge: 'k'});
+        const afterUndo = [undone.steps, n(undone.undo())];
+        const redone = createHistory();
+        redone.reset(s0);
+        redone.push(s1, {merge: 'k'});
+        redone.undo();
+        redone.redo();
+        redone.push(s2, {merge: 'k'});
+        const afterRedo = [redone.steps, n(redone.undo())];
+        return {first, start, pushed, back, forth, cleared, joined, split, inside,
+                outside, afterUndo, afterRedo};""",
+    )
+
+    # The first push starts the history; it is not a step
+    assert got["first"] == [False, 0, 0]
+    assert got["start"] == [0, False, False, 0]
+    # Pushing the current inputs again is no step
+    assert got["pushed"] == [True, True, False, 2]
+    assert got["back"] == [1, 0, None, False, True]
+    assert got["forth"] == [1, 2, None, 2]
+    # A step after an undo clears what could be redone
+    assert got["cleared"] == [True, False, None, 2, 1, 0]
+    # The same key replaces the open step until it is sealed; another key is a new step
+    assert got["joined"] == [True, 1, 2]
+    assert got["split"] == [3, 3, 2, 0]
+    # Moves within 1000 ms are one step, 1001 ms apart two
+    assert got["inside"] == [1, 2]
+    assert got["outside"] == [2, 2, 0]
+    # Undo and redo seal the step they reach: the next edit is a step of its own
+    assert got["afterUndo"] == [2, 1]
+    assert got["afterRedo"] == [2, 1]
+
+
+def test_the_history_keeps_its_limit_and_rewrites_every_step(page: Any) -> None:
+    got = js(
+        page,
+        HISTORY
+        + """const filled = (history) => {
+          history.reset({n: 0});
+          for (let step = 1; step <= 150; step += 1) history.push({n: step});
+          const steps = history.steps;
+          let undone = 0;
+          while (history.undo() !== null) undone += 1;
+          return [steps, undone, history.current.n];
+        };
+        const told = createHistory();
+        told.reset({n: 0});
+        told.push({n: 1});
+        told.push({n: 2});
+        told.undo();
+        told.rewrite((inputs) => ({...inputs, tidy: true}));
+        return {
+          limited: filled(createHistory({limit: 100})),
+          small: filled(createHistory({limit: 3})),
+          plain: filled(createHistory()),
+          rewritten: [told.current, told.undo(), told.redo(), told.redo(),
+                      told.canRedo],
+        };""",
+    )
+
+    # 150 steps, 100 kept: the oldest state left is the one after step 50
+    assert got["limited"] == [100, 100, 50]
+    assert got["small"] == [3, 3, 147]
+    assert got["plain"] == [100, 100, 50]
+    # The steps before and after the current one are rewritten alike
+    assert got["rewritten"] == [
+        {"n": 1, "tidy": True},
+        {"n": 0, "tidy": True},
+        {"n": 1, "tidy": True},
+        {"n": 2, "tidy": True},
+        False,
+    ]
+
+
+def test_routes_through_cells_and_edges_through_nodes(page: Any) -> None:
+    got = js(
+        page,
+        GEOMETRY
+        + GUIDE_CELLS
+        + """const routes = {
+          straight: [[[0, 0], [3, 0]],
+                     [[0, 0], [2, 0], [3, 0], [4, 0], [1, 1], [-1, 0]]],
+          diagonal: [[[0, 0], [2, 2]], [[1, 1], [2, 2], [1, 0], [3, 3]]],
+          corners: [[[0, 0], [0, 2], [2, 4]],
+                    [[0, 1], [0, 2], [1, 3], [2, 4], [1, 2], [0, 3]]],
+        };
+        const through = [
+          {id: 'A', type: 'subcatchment', from: null, position: {x: 0, y: 0}},
+          {id: 'B', type: 'subcatchment', from: null, position: {x: 1, y: 0}},
+          {id: 'OUT', type: 'outlet', from: ['A', 'B'], position: {x: 2, y: 0}},
+        ];
+        const kind = (n) =>
+          (n.id === 'OUT' ? 'outlet' : n.from ? 'junction' : 'subcatchment');
+        const placed = guide.map((n) => ({id: n.id, type: kind(n), from: n.from,
+                                          position: {x: n.cell[0], y: n.cell[1]}}));
+        return {
+          on: Object.fromEntries(Object.entries(routes).map(([name, [route, cells]]) =>
+            [name, cells.map((cell) => g.onRoute(route, cell))])),
+          through: g.edgesThroughNodes(g.pictureOf(through, new Map())),
+          guide: g.edgesThroughNodes(g.pictureOf(placed, new Map())),
+        };""",
+    )
+
+    # On a segment, its ends and corners included; never beside or beyond it
+    assert got["on"] == {
+        "straight": [True, True, True, False, False, False],
+        "diagonal": [True, True, False, False],
+        "corners": [True, True, True, True, False, False],
+    }
+    assert got["through"] == [{"from": "A", "to": "OUT", "node": "B"}]
+    # The library's layout runs no edge through a node
+    assert got["guide"] == []
+
+
+def test_every_reason_and_refusal_is_worded(page: Any) -> None:
+    got = js(
+        page,
+        GRAPH
+        + NODES
+        + """const w = await import('./src/sections/siec/words.js');
+        const details = {node_id: 'X', other_id: 'Y', upstream_id: 'U',
+                         nodes: ['A', 'B'],
+                         downstream: ['D'], type: 'reach', found: 2};
+        const skeleton = [s('Z9'), s('Z8'), r('R7', 'Z9'), j('K4', 'R7'), j('J5', 'K4'),
+                          o('OUT1', 'J5'), r('R6')];
+        const refuse = (from, to) =>
+          w.refusalText(gr.linkVerdict(skeleton, rules, from, to), skeleton, from, to);
+        return {
+          texts: gr.REASONS.map((reason) =>
+            [reason, w.problemText({reason, ...details}, rules)]),
+          refusals: {cycle: refuse('J5', 'R7'), outlet: refuse('OUT1', 'R6'),
+                     source: refuse('R6', 'Z8'), full: refuse('Z8', 'R7')},
+        };""",
+    )
+
+    texts = dict(got["texts"])
+    unworded = [
+        reason
+        for reason, text in got["texts"]
+        if not isinstance(text, str) or not text.strip() or "{" in text
+    ]
+    assert unworded == []
+    assert "A → B → A" in texts["cycle"]
+    assert "X" in texts["upstream_count"] and "2" in texts["upstream_count"]
+    refusals = got["refusals"]
+    assert "J5 → R7 → K4 → J5" in refusals["cycle"]
+    assert "OUT1" in refusals["outlet"]
+    assert "Z8" in refusals["source"]
+    assert "R7" in refusals["full"] and "Z9" in refusals["full"]
+
+
+def scattered_network(size: int, seed: int) -> list[dict[str, Any]]:
+    """Return the structure of a random tree whose nodes stand on random free cells."""
+    root, inflows = random_tree(size, seed, fan_in=3, deep=0.4)
+    rng = random.Random(seed)
+    side = int(math.sqrt(size)) + 4
+    cells = rng.sample([(x, y) for x in range(side) for y in range(side)], len(inflows))
+    nodes = []
+    for (node, ups), (x, y) in zip(inflows.items(), cells, strict=True):
+        kind = "outlet" if node == root else "junction" if ups else "subcatchment"
+        nodes.append(
+            {
+                "id": node,
+                "type": kind,
+                "from": ups or None,
+                "position": {"x": x, "y": y},
+            }
+        )
+    return nodes
+
+
+def test_the_work_kept_per_structure_equals_the_plain_one(page: Any) -> None:
+    # A network of 300 nodes on random cells: lines cross and run through nodes
+    nodes = scattered_network(300, 11)
+    # and a loop: a junction's first inflow lists the junction, whose links are refused
+    # with the loop named
+    junction = next(node for node in nodes if node["type"] == "junction")
+    up = next(at for at, node in enumerate(nodes) if node["id"] == junction["from"][0])
+    nodes[up] = {**nodes[up], "from": [*(nodes[up]["from"] or []), junction["id"]]}
+    got = js(
+        page,
+        GEOMETRY
+        + GRAPH
+        + f"const nodes = {json.dumps(nodes)};\n"
+        + """const sources = nodes.filter((n, at) => at % 15 === 0).map((n) => n.id);
+        const links = sources.every((from) => {
+          const all = gr.linkVerdicts(nodes, rules, from);
+          const one = (to) => gr.linkVerdict(nodes, rules, from, to);
+          return nodes.every((n) => n.id === from
+            || JSON.stringify(all.get(n.id)) === JSON.stringify(one(n.id)));
+        });
+        const picture = g.pictureOf(nodes, new Map());
+        const grid = picture.nodes.map((n) =>
+          ({id: n.id, col: n.cell[1], row: n.cell[0]}));
+        const lines = picture.edges.map((e) =>
+          ({points: e.route.map(([x, y]) => [y, x])}));
+        const index = g.crowdIndex(grid, lines);
+        let crowded = 0;
+        const counts = grid.every((n) => g.PLACES.every((place) => {
+          const plain = g.crowding(n, place, grid, lines);
+          crowded += plain;
+          return g.crowding(n, place, grid, lines, index) === plain;
+        }));
+        const loops = gr.graphProblems(nodes, rules)
+          .filter((p) => p.reason === 'cycle').length;
+        return {links, counts, crowded, loops, sources: sources.length};""",
+    )
+    assert got["loops"] == 1
+    assert got["sources"] == 20
+    # The verdicts of every target at once are linkVerdict's, one by one
+    assert got["links"] is True
+    # The labels' crowding through the index counts what the plain count counts
+    assert got["crowded"] > 300
+    assert got["counts"] is True
