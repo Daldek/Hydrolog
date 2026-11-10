@@ -1007,6 +1007,8 @@ def test_the_browsers_check_judges_handoffs_as_jsonschema_does(tab: Tab) -> None
         changed(payload={"schema": "obserwator-pmaxtp/1", "depth_mm": 105.0}),
         changed(result={"computed_with": {"tool": "hydrolog", "version": "0.6.3"}}),
         changed(page_title="unknown fields are allowed"),
+        HANDOFF["examples"][1],
+        changed(node_provenance={"Z1.a-2": {"node": {"source": "hydrograf"}}}),
         *[
             without(key)
             for key in (
@@ -1038,6 +1040,13 @@ def test_the_browsers_check_judges_handoffs_as_jsonschema_does(tab: Tab) -> None
         changed(result={"peak_discharge_m3s": "60,2"}),
         changed(result={"computed_with": {"tool": "hydrolog"}}),
         changed(result={"command": ""}),
+        changed(node_provenance={}),
+        changed(node_provenance={"Z1": {}}),
+        changed(node_provenance={"Z1": {"Watershed": {"source": "hydrograf"}}}),
+        changed(node_provenance={"Z1": {"watershed": {"element": "headwater"}}}),
+        changed(node_provenance={"Z1": {"watershed": "hydrograf"}}),
+        changed(node_provenance={"": {"node": {"source": "hydrograf"}}}),
+        changed(node_provenance=[]),
         [],
     ]
     judged = page.evaluate(
@@ -1049,7 +1058,7 @@ def test_the_browsers_check_judges_handoffs_as_jsonschema_does(tab: Tab) -> None
         envelopes,
     )
     assert judged == [ENVELOPE_CHECK.is_valid(doc) for doc in envelopes]
-    assert judged.count(True) == 8
+    assert judged.count(True) == 10
 
     base = D15["payload"]
 

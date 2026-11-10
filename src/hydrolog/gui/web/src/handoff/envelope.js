@@ -1,5 +1,5 @@
 // The envelope nogat-handoff/1 as the browser checks it: the validation keywords of
-// Nogat's schema, schemas/nogat/handoff-1.schema.json (Nogat 8727f6e, copied unchanged;
+// Nogat's schema, schemas/nogat/handoff-1.schema.json (Nogat 8848c26, copied unchanged;
 // Hydrolog never defines the envelope, plan D15), without its annotations ($schema, $id,
 // title, description, examples). The page cannot load the copy itself (it lies outside
 // the package and names remote identifiers), so tests/e2e/test_exports.py checks that
@@ -35,6 +35,12 @@ export const ENVELOPE_SCHEMA = deepFreeze({
       propertyNames: { pattern: "^[a-z][a-z0-9_]*$" },
       additionalProperties: { $ref: "#/$defs/origin" },
     },
+    node_provenance: {
+      type: "object",
+      minProperties: 1,
+      propertyNames: { minLength: 1 },
+      additionalProperties: { $ref: "#/$defs/node_inputs" },
+    },
     payload: { $ref: "#/$defs/payload" },
     result: { $ref: "#/$defs/result" },
   },
@@ -53,6 +59,12 @@ export const ENVELOPE_SCHEMA = deepFreeze({
       type: "object",
       required: ["source"],
       properties: { source: { type: "string", pattern: "^[a-z][a-z0-9_-]*$" } },
+    },
+    node_inputs: {
+      type: "object",
+      minProperties: 1,
+      propertyNames: { pattern: "^[a-z][a-z0-9_]*$" },
+      additionalProperties: { $ref: "#/$defs/origin" },
     },
     payload: {
       type: "object",

@@ -2,13 +2,14 @@
 
 ``schemas/nogat/handoff-1.schema.json`` is Nogat's schema copied unchanged (its SHA-256
 is the one ``schemas/nogat/README.md`` records); Hydrolog never defines the envelope.
-Its example, the complete form of D15, validates, and so does its payload against
-``hydrolog-network/1``, which the envelope leaves to its owner. The example's watershed
-predates ADR-0019: it has the main channel but not the longest flow path that Kirpich
-takes, so ``route network`` refuses it, naming the fields, until Nogat's example gains
-them. With Kamiennik's flow path its one subcatchment computes as ``hydrograph
-generate`` computes the options it maps to: the equivalence by which Hydrogram zlewni
-writes and reads a hand-off.
+Its examples validate, and so do their payloads against ``hydrolog-network/1``, which
+the envelope leaves to its owner. The first, the complete form of D15, gives the result
+it records, and its one subcatchment computes as ``hydrograph generate`` computes the
+options it maps to: the equivalence by which Hydrogram zlewni writes and reads a
+hand-off. The second, a network of Hydrograf with the origin of each node
+(``node_provenance``, plan 2026-11-10-network-wizard, D9), names only nodes of its
+payload, and its payload lacks only the section of its reach, which Hydrograf leaves to
+the person in Sieć (Manning's n and the bottom width).
 """
 
 import hashlib
@@ -70,7 +71,9 @@ def test_the_example_and_its_payload_validate(index: int) -> None:
     assert _errors(network, example["payload"]) == []
 
 
-@pytest.mark.parametrize("index", range(len(EXAMPLES)))
+@pytest.mark.parametrize(
+    "index", [index for index, example in enumerate(EXAMPLES) if "result" in example]
+)
 def test_the_payload_gives_the_recorded_result(index: int) -> None:
     example = EXAMPLES[index]
     outlet = _outlet(example["payload"])
@@ -118,3 +121,18 @@ def test_one_subcatchment_computes_as_hydrograph_generate() -> None:
     )
     assert generated["time_to_peak_min"] == outlet["time_to_peak_min"]
     assert math.isclose(generated["total_volume_m3"], outlet["volume_m3"], rel_tol=1e-9)
+
+
+def test_the_network_example_names_its_nodes_and_lacks_a_section() -> None:
+    example = next(item for item in EXAMPLES if "node_provenance" in item)
+    payload = json.loads(json.dumps(example["payload"]))
+    ids = {node["id"] for node in payload["nodes"]}
+
+    assert set(example["node_provenance"]) <= ids
+    with pytest.raises(InvalidParameterError) as caught:
+        _outlet(payload)
+    assert caught.value.details["node_id"] == "R1"
+    assert caught.value.details["missing"] == ["manning_n", "bottom_width_m"]
+    reach = next(node for node in payload["nodes"] if node["id"] == "R1")
+    reach.update(manning_n=0.035, bottom_width_m=8.0)
+    assert _outlet(payload)["peak_m3s"] > 0
