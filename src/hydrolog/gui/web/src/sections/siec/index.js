@@ -1110,11 +1110,12 @@ export default function Siec({ active, path = [] }) {
 
   const view = state.view === "table" ? "table" : "schem";
   // The canvas, once every node has a cell; a network opened without positions whose
-  // structure has no problem waits for Hydrolog's layout instead of showing the
-  // provisional rows first
+  // structure has no problem waits until Hydrolog's layout has placed it, instead of
+  // showing the provisional rows first: the render in which the layout arrives still
+  // holds them, and the effect above replaces them only after it
   const waiting =
     state.skeleton.some((node) => !node.position) ||
-    (state.provisional && ((!forms && !formsError) || (shaped && !layout && !misfit)));
+    (state.provisional && ((!forms && !formsError) || (shaped && !misfit)));
   const canvas = () => {
     if (!state.source) return html`<p class="empty-note" data-schematic="empty">${texts.schematic.empty}</p>`;
     if (waiting || !forms) return html`<p class="empty-note" role="status" data-schematic="busy">${texts.schematic.busy}</p>`;
