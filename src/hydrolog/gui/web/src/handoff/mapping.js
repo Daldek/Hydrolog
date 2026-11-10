@@ -207,10 +207,12 @@ function handedOrigin(record, values, notes) {
  * `nash_estimation` and n and K given otherwise (also a node written before
  * `nash_estimation`, whose n and K were Lutz's estimates: D6), and its own rainfall
  * (rainfallInputs). Without one, or with one that writes as the network's rainfall does
- * (`networkRainfall`, D10), it is „Jak w sieci” (`rain_source` "network"), PMAXTP left at
- * the watershed's point when the origin names one. With `origin`, the record of the
- * hand-off it came in, the watershed's origin names the producer (Hydrogram's step 1 marks
- * the fields changed since) and the rainfall's PMAXTP record is read from its provenance.
+ * (`networkRainfall`, D10; compared as the document gives it, whatever PMAXTP record its
+ * origin adds, as „Dodaj zlewnię z Hydrografa” compared it before), it is „Jak w sieci”
+ * (`rain_source` "network"), PMAXTP left at the watershed's point when the origin names
+ * one. With `origin`, the record of the hand-off it came in, the watershed's origin names
+ * the producer (Hydrogram's step 1 marks the fields changed since) and the rainfall's
+ * PMAXTP record is read from its provenance.
  *
  * @param {object} node a subcatchment of hydrolog-network/1 with a watershed, a runoff or
  *   a rainfall
@@ -256,7 +258,7 @@ export function subcatchmentInputs(node, { origin = null, networkRainfall = null
   inputs.snyder_cp = inputText(given.snyder_cp);
   const rainfall = isObject(node.rainfall) ? node.rainfall : null;
   const read = rainfallInputs(rainfall, provenance);
-  const same = rainfall !== null && isObject(networkRainfall) && canonical(rainfallOf({ ...initialRain(), ...read })) === canonical(networkRainfall);
+  const same = rainfall !== null && isObject(networkRainfall) && canonical(rainfallOf({ ...initialRain(), ...rainfallInputs(rainfall) })) === canonical(networkRainfall);
   if (rainfall === null || same) Object.assign(inputs, rainfallInputs(null, provenance), { rain_source: "network" });
   else Object.assign(inputs, read);
   return inputs;
