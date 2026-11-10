@@ -226,7 +226,7 @@ A node of `hydrolog-network/1` with both fields:
 
 ```json
 {"level": "warning", "code": "positions_ignored",
- "message": "Node 'R3' has no position: the layout is computed",
+ "message": "Positions ignored at node 'R3' (partial): the layout is computed",
  "details": {"reason": "partial", "node_id": "R3"}}
 ```
 
