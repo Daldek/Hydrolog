@@ -395,8 +395,9 @@ print(f"tc = {tc:.1f} min")
 **So that** I get the hydrograph of every node without editing JSON by hand
 
 **Acceptance criteria:**
-- [ ] Section „Sieć i trasowanie”: the schematic drawn vertically with the outlet at the bottom by the page from its own inputs, also for an incomplete network and before the first run; a document with a `position` for every node opens as placed, one without takes Hydrolog's layout (`route schematic`) once the library can read it (ADR-0023)
-- [ ] A node is chosen by a click, the arrow keys and Enter or Space, in the node list or in the node table (with „Opis” and „Odpływa do”), and opens the form of its type and reach method (from `hydrolog-network-1.schema.json`), with a rating table editor
+- [ ] Section „Sieć i trasowanie”: the schematic drawn vertically with the outlet at the bottom by the page from its own inputs, also for an incomplete network and before the first run; a document with a `position` for every node opens as placed, one without takes Hydrolog's layout of its structure (`route schematic --structure-only`) as soon as the structure has no problem, whatever values the nodes miss (ADR-0023, ADR-0025)
+- [ ] The network's time step and rainfall come first, in step 1 „Sieć” (Hydrogram zlewni's step 2: PMAXTP fetched for a point and kept, a design hyetograph or a series); a subcatchment takes it („Jak w sieci”) unless it has its own, and one with neither is the problem „Brak opadu” of its node (plan `docs/plans/2026-11-10-network-wizard.md`, A2)
+- [ ] A node is chosen by a click, the arrow keys and Enter or Space, in the node list or in the node table (with „Opis” and „Odpływa do”), and opens its settings in „Dane”: a reach or a reservoir the form of its type and method (from `hydrolog-network-1.schema.json`), with a rating table editor; a subcatchment made from rainfall its panel beside „Dane”, Hydrogram zlewni's three steps with the same fields, order, checks and (i) explanations, mapped to the node by the one mapping of Hydrogram zlewni's hand-off (A1, A3)
 - [ ] „Oblicz sieć” runs `route network`; the example's outlet values equal those of `route network`; a changed reach method shows its options and marks the results stale, and so do a link and a rename, while a move and a description do not
 - [ ] Results per node (chart and parameters); the SVG schematic draws the picture of the canvas, and the exported network document keeps the positions and descriptions
 
@@ -471,13 +472,25 @@ print(f"tc = {tc:.1f} min")
 **So that** I build a network for `route network` without writing `hydrolog-network/1` by hand (plan `docs/plans/2026-11-10-network-editor.md`, ADR-0023)
 
 **Acceptance criteria:**
-- [ ] „Nowa sieć” opens an empty canvas; its palette adds „Zlewnia”, „Odcinek”, „Zbiornik”, „Złącze” and „Wylot” (Hydrolog's five node types; HEC-HMS's source is a subcatchment given its hydrograph, its diversion has no counterpart)
-- [ ] The guide's three-subcatchment network built from empty by the mouse, by the keyboard alone and without any drag gives the outlet values of the guide's file
+- [ ] „Nowa sieć” opens step 1 with the time step and „Opad sieci” first and an empty canvas that asks for the rainfall before the elements; its palette adds „Zlewnia”, „Odcinek”, „Zbiornik”, „Złącze” and „Wylot” (Hydrolog's five node types; HEC-HMS's source is a subcatchment given its hydrograph, its diversion has no counterpart)
+- [ ] The guide's three-subcatchment network built from empty by the mouse, by the keyboard alone and without any drag, each subcatchment in its panel, gives the outlet values of the guide's file; „Uporządkuj” lays its structure out before any value is given (ADR-0025)
 - [ ] After every edit the structure is checked with the library's reasons (`cycle`, `upstream_count`, `no_outlet`, `disconnected_node`...), every problem at once, marked on its node and listed in „Problemy sieci”; a refused link says its reason, a second inflow into a reach, a reservoir or the outlet offers „Wstaw złącze”, and Hydrolog confirms every complete network (`route schematic`)
 - [ ] Ids are checked as the library checks them and every `from` follows a rename; a description is plain text of up to 500 characters; „Usuń i połącz” bridges a removed node; „Cofnij” and „Ponów” go through 100 steps
 - [ ] „Zapisz sieć” (or „Zapisz szkic” for a network with problems) downloads `hydrolog-network/1` with the positions and descriptions; it reopens as placed and `route network --schematic` draws the same picture
 - [ ] „Dodaj zlewnię z Hydrografa” adds the subcatchments of a hand-off to the open network (`Z1` becomes `Z2`); the hand-off written from Sieć validates against Nogat's schema and `/1` and reopens with its positions
-- [ ] WCAG 2.2 AA: every action by the keyboard and by a single pointer without dragging, the keys listed by „Skróty”; a 390 px phone and both themes without console errors
+- [ ] WCAG 2.2 AA: every action by the keyboard and by a single pointer without dragging, the keys listed by „Skróty”; a 390 px phone, on which the subcatchment's panel and „Dane” alternate, and both themes without console errors
+
+#### US-G10: A network delineated by Hydrograf opens ready
+**As** a hydrologist who delineates a network at control points in Hydrograf
+**I want** it to open in Sieć laid out, with the origin of each node, and to keep those origins when I hand it on
+**So that** I give only what Hydrograf leaves to Hydrolog (the network's rainfall, the section of each reach) and still know where every value came from (plan `docs/plans/2026-11-10-network-wizard.md`, A6; Nogat's `node_provenance`)
+
+**Acceptance criteria:**
+- [ ] A hand-off of a network opens in Sieć at the structure's layout, its subcatchments through the mapping of Hydrogram zlewni's inputs, every node with its origin by Nogat's precedence (the node's own `node_provenance` entry, else the hand-off's `provenance`); a key that names no node is left out, named in the load's note, and the network still opens
+- [ ] A subcatchment's panel names its watershed's element in Hydrograf's words (headwater, tributary at a point or at its mouth, the reach of an intermediate subcatchment) with its outlet's place and the fields changed since, and the origins of its rainfall and runoff; a reach, a junction and the outlet show theirs in „Dane” (how the length and the slope were measured, the check length of the vector line)
+- [ ] A reach handed over without its section is marked until Manning's n and the width are given; then the network computes
+- [ ] The hand-off written from Sieć carries `node_provenance` under the current ids, with `changed` for edited fields and `{"source": "user"}` for an edited rainfall or runoff and for nodes made in Sieć; it validates against Nogat's schema and reopens with the same origins
+- [ ] Hydrograf's own hand-off of a network, as its `POST /api/delineate-network` writes it (`tests/fixtures/handoff_hydrograf_network.json`), opens so
 
 ---
 

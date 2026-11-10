@@ -1332,8 +1332,8 @@ short welcome that links it (`instrukcja/` under the GUI's address).
 
 | Section | What it does | Commands |
 |---|---|---|
-| Hydrogram zlewni | the design hydrograph of one watershed in three steps (watershed, hyetograph, model): empty on a first visit, checked for what the chosen model needs (an empty required field is an error, a value outside its typical range a warning on its field), then recomputed after every change; under PMAXTP the depth is fetched from IMGW-PIB for the point, probability, duration and method given, not typed; the guide's worked example is Kamiennik at Świerzawa | `hydrograph generate`, `precip pmaxtp` for the PMAXTP depth, `uh nash` for Nash by Lutz |
-| Sieć i trasowanie | a network of subcatchments, reaches, reservoirs, junctions and an outlet, built on a canvas as in HEC-HMS's basin model editor or opened from a file or a hand-off, checked as it is edited and routed by „Oblicz sieć” ([below](#building-a-network-in-sieć)); the guide's worked example is `hydrolog.testing.example_network_document()` | `route schematic` (the layout and Hydrolog's check), `route network` |
+| Hydrogram zlewni | the design hydrograph of one watershed in three steps (watershed, hyetograph, model): empty on a first visit, checked for what the chosen model needs (an empty required field is an error, a value outside its typical range a warning on its field), then recomputed after every change; under PMAXTP the depth is fetched from IMGW-PIB for the point, probability, duration and method given, not typed; Nash by Lutz estimates n and K in the same run; the guide's worked example is Kamiennik at Świerzawa | `hydrograph generate` (with `nash_estimation` for Nash by Lutz), `precip pmaxtp` for the PMAXTP depth |
+| Sieć i trasowanie | a network of subcatchments, reaches, reservoirs, junctions and an outlet, built on a canvas as in HEC-HMS's basin model editor or opened from a file or a hand-off: the network's rainfall first, then the elements, then each subcatchment in Hydrogram zlewni's three steps; checked as it is edited and routed by „Oblicz sieć” ([below](#building-a-network-in-sieć)); the guide's worked example is `hydrolog.testing.example_network_document()` | `route schematic` (the layout of the structure and Hydrolog's check), `route network`, `precip pmaxtp` for a PMAXTP depth |
 | Statystyka przepływów | flood frequency of annual maxima or of a daily series (the example: 26 annual maxima, 1998 to 2023) and the homogeneity of the series | `stats flood-frequency`, `stats homogeneity` |
 | Kalkulatory | the time of concentration by six methods for the watershed of Hydrogram zlewni, and fifteen single calculators | `tc watershed` and fifteen others |
 | Wszystkie polecenia | a form for every command of the catalog | all but `gui serve`, `config show` and `commands guide` |
@@ -1353,10 +1353,20 @@ reads it on the admin page `admin/` ([below](#reports-of-users-zgłoś-uwagę)).
 
 „Schemat sieci” in the centre of Sieć i trasowanie is an editor of `hydrolog-network/1`, after
 the basin model editor of HEC-HMS (plan `docs/plans/2026-11-10-network-editor.md`,
-[ADR-0023](decisions/0023-positions-and-descriptions-in-the-network.md)). The browser draws the
-network from its own inputs and never waits for the library, so an incomplete network has a
-picture too; Hydrolog still computes every value.
+[ADR-0023](decisions/0023-positions-and-descriptions-in-the-network.md)), and the network is
+entered in the order a hydrologist thinks of it: its rainfall first, then the elements on the
+canvas, then each subcatchment's data in the order its method needs them (plan
+`docs/plans/2026-11-10-network-wizard.md`). The browser draws the network from its own inputs
+and never waits for the library, so an incomplete network has a picture too; Hydrolog still
+computes every value.
 
+- **The network first.** Step 1 „Sieć” of „Dane” holds the network's name and description,
+  then its time step („Krok czasowy Δt”, `timestep_min`) and „Opad sieci”, Hydrogram zlewni's
+  step 2 bound to the network: „Brak” (a network of given hydrographs needs none), PMAXTP (the
+  depth fetched by `precip pmaxtp` for the point, p, the duration and the method, and kept with
+  the inputs), a design hyetograph, or a series at Δt. It is the document's top `rainfall`, as
+  a run of `hydrograph generate` takes it. „Nowa sieć” opens this step, and the empty canvas
+  asks for the rainfall first and the elements then; nothing is locked.
 - **Elements.** The palette has Hydrolog's five node types: „Zlewnia” (`subcatchment`, also
   HEC-HMS's source when it is given its hydrograph or reads a column of the inflows file),
   „Odcinek” (`reach`), „Zbiornik” (`reservoir`), „Złącze” (`junction`) and „Wylot” (`outlet`).
@@ -1378,6 +1388,23 @@ picture too; Hydrolog still computes every value.
   second inflow into a reach, a reservoir or the outlet offers „Wstaw złącze”. Once the structure
   and the values are complete, `route schematic` confirms the network 300 ms after the last
   change, and its refusal joins the list.
+- **Subcatchments.** Choosing a subcatchment made from rainfall opens its panel beside „Dane”
+  („Zlewnia Z1”, the second left panel of the layout; ✕ closes it and keeps the node chosen,
+  Enter on the node moves the focus into it): Hydrogram zlewni's own three steps, with the same
+  fields, order, checks and (i) explanations. „Zlewnia” has the watershed, „Plik zlewni…” and
+  „Wczytaj z Hydrografa”, which reads a hand-off of one watershed into the chosen node (its id,
+  links and place stay); „Hietogram” starts at „Jak w sieci”, the network's rainfall in words,
+  and takes PMAXTP, a design hyetograph or a series as the node's own `rainfall`, at the
+  network's Δt; „Hydrogram” asks for the unit hydrograph model first and then shows only its
+  fields (Nash by Lutz writes `nash_estimation`). One mapping turns these inputs into the node
+  and back (`subcatchmentNode`, `subcatchmentInputs` in `web/src/handoff/mapping.js`), the same
+  that makes Hydrogram zlewni's hand-off, and a field that the choice does not show is neither
+  saved nor sent. A subcatchment without a model, or with neither its own rainfall nor the
+  network's („Brak opadu”), is a problem of its node. After „Oblicz sieć” the panel shows the
+  values of that run (tc, the CN after AMC, the unit hydrograph's parameters) while the node is
+  unchanged. A subcatchment given its hydrograph („Podany”) or reading its column of the inflows
+  file („Z pliku”) keeps its small form in „Dane”, and so do the other nodes. On a phone the
+  panel and „Dane” alternate („Dane zlewni →”, „← Dane”).
 - **Positions.** Each node stands on a cell of ADR-0013's grid, kept as its `position`. A
   document with a position for every node opens as placed; one without positions takes
   Hydrolog's layout of its structure (`route schematic --structure-only`, ADR-0025) as soon as
@@ -1391,6 +1418,19 @@ picture too; Hydrolog still computes every value.
   the same file, which `route network` refuses until the problems are fixed. „Dodaj zlewnię z
   Hydrografa” adds the subcatchments of a hand-off to the open network
   ([INTEGRATION.md](INTEGRATION.md#web-gui-the-hand-off-with-hydrograf-nogat-handoff1)).
+- **Hand-offs and the origin of each node.** A hand-off of a network, such as one Hydrograf
+  delineates at control points, opens laid out: its top rainfall as the network's, each
+  subcatchment through the mapping above, and every node with its origin by Nogat's precedence
+  (the node's own entry of `node_provenance`, else the hand-off's `provenance`; a key that names
+  no node is left out and named in the load's note). A subcatchment's panel shows the origin of
+  its watershed in step 1 (Hydrograf's element, such as „przyrzecze odcinka R1”, with the
+  fields changed since), of its rainfall in step 2 and of its runoff in step 3; a reach, a
+  junction or the outlet shows its origin in step 3 of „Dane” (how the length and the slope
+  were measured, the NMT at the ends, the check length of the vector line). A reach handed
+  over without its section is marked until Manning's n and the width are given. The origins
+  follow a node through a rename, and Sieć's own hand-off writes them again as `node_provenance`
+  under the current ids, with `changed` for the edited fields of a watershed or a reach and
+  `{"source": "user"}` for an edited rainfall or runoff and for a node made in Sieć.
 
 ### Starting it
 
@@ -1416,11 +1456,12 @@ hydrolog gui serve --check --json
 ### Your data in the GUI
 
 - **Inputs stay in the browser.** Each section keeps its inputs, never its results, in the
-  browser's `localStorage` under `hydrolog-gui/<section>/2` until „Wyczyść”; with them
-  Hydrogram zlewni keeps the PMAXTP depth it fetched (`pmaxtp_fetched`), so a reload does not
-  fetch it again, and Sieć the positions and descriptions of its nodes (its history of „Cofnij”
-  stays in the page's memory). The widths of the panels are `hydrolog-gui/layout/1`, the choice
-  „Nie pokazuj ponownie” of the welcome dialog `hydrolog-gui/welcome/1` and the theme
+  browser's `localStorage` under `hydrolog-gui/<section>/<version>` until „Wyczyść” (Sieć's
+  version is 3 since its network wizard, and version 2 is not read); with them Hydrogram zlewni
+  and Sieć keep the PMAXTP depths they fetched (`pmaxtp_fetched`), so a reload does not fetch
+  them again, and Sieć the positions, descriptions and origins of its nodes (its history of
+  „Cofnij” stays in the page's memory). The widths of the panels are `hydrolog-gui/layout/1`,
+  the choice „Nie pokazuj ponownie” of the welcome dialog `hydrolog-gui/welcome/1` and the theme
   `nogat-theme`, which Nogat's other pages on the same address share.
 - **Files go to the server.** A browser session (the cookie `hydrolog_gui`, HttpOnly,
   SameSite=Strict) has a work directory of its own: `in/` holds the uploads and the documents the
@@ -1432,11 +1473,12 @@ hydrolog gui serve --check --json
   system's temporary directory (`TMPDIR`).
 - **Runs go to two worker processes.** A newer run of the same kind replaces a queued older one,
   and a run longer than 30 seconds is stopped (the notice `timeout`).
-- **Only PMAXTP goes out, from the server.** Under PMAXTP, Hydrogram zlewni runs `precip pmaxtp`
-  on the server once the point, the probability and the duration are given (Wszystkie polecenia
-  runs it on its button): the point's coordinates and the method go to IMGW-PIB through
-  Obserwator, which the extra `gui` installs. Nothing else leaves the server, and the page itself
-  calls only its server.
+- **Only PMAXTP goes out, from the server.** Under PMAXTP, Hydrogram zlewni and Sieć (the
+  network's rainfall, or a subcatchment's own) run `precip pmaxtp` on the server once the
+  point, the probability and the duration are given (Wszystkie polecenia runs it on its
+  button): the point's coordinates and the method go to IMGW-PIB through Obserwator, which the
+  extra `gui` installs. Nothing else leaves the server, and the page itself calls only its
+  server.
 - **The page loads nothing from other sites.** The server sends a Content-Security-Policy of
   `'self'` without inline scripts or styles, `X-Frame-Options: DENY` and `no-store` for its API.
 - **A report goes to whoever runs the server, and only when it is sent.** The diagnostics of
