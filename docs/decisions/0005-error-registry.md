@@ -2,6 +2,8 @@
 
 - Status: accepted
 - Date: 2026-10-24
+- Amended by [ADR-0018](0018-pmaxtp-through-obserwator.md) (2026-11-04): `ERROR_CODES` gains the registry code
+  `source_unavailable`
 
 ## Context
 

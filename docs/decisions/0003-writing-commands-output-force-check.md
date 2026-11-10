@@ -2,6 +2,8 @@
 
 - Status: accepted
 - Date: 2026-10-24
+- Amended by [ADR-0010](0010-route-network-document-and-output-directory.md) (2026-10-25): `--output-dir`, the plain
+  mode of DEV section 19 for a directory (`route network`)
 
 ## Context
 

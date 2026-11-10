@@ -2,6 +2,7 @@
 
 - Status: accepted
 - Date: 2026-10-24
+- Amended by [ADR-0015](0015-catalog-additions-for-the-gui.md) (2026-11-02): a catalog command that is not an MCP tool
 
 ## Decision
 

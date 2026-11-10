@@ -2,6 +2,9 @@
 
 - Status: accepted
 - Date: 2026-11-02
+- Amended by [ADR-0016](0016-gui-feedback-and-data-dir.md) (2026-11-04): the private API gains the report routes and
+  an admin page; by [ADR-0018](0018-pmaxtp-through-obserwator.md) (2026-11-04): Hydrogram zlewni fetches the PMAXTP
+  depth instead of asking for it
 - Builds on: [ADR-0002](0002-result-envelope-and-domain-documents.md) (the envelope that every run of the GUI returns),
   [ADR-0013](0013-network-schematic.md) (the schematic that the GUI draws)
 
