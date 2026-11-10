@@ -24,10 +24,10 @@ Hydrogram's step 2 and of Sieć's network (plan 2026-11-10-network-wizard, D4) g
 ``rainfallInputs``, ``rainfallOf``), and ``RainStep`` shows a subcatchment's „Jak w
 sieci” with the network's time step read-only. A subcatchment made from rainfall goes to
 Hydrogram's inputs and back (``subcatchmentInputs``, ``subcatchmentNode``; D3): the
-inputs of each model choice, the guide's subcatchments and a hand-off's. The origin of
-each node (D9) follows Nogat's precedence (``nodeOrigins``, a key of no node left out and
-said) and is written again by Sieć under the current ids with the changes marked
-(``siecNodeProvenance``), renamed, edited, drawn and added nodes included.
+inputs of each model choice, the guide's subcatchments and a hand-off's. The origin
+of each node (D9) follows Nogat's precedence (``nodeOrigins``, a key of no node left
+out and said) and is written again by Sieć under the current ids with the changes
+marked (``siecNodeProvenance``), renamed, edited, drawn and added nodes included.
 """
 
 import json
