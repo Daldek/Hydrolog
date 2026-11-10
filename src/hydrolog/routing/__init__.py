@@ -31,7 +31,8 @@ Time is in minutes and discharge in m3/s.
 * :class:`RainfallSource` and :class:`RunoffModel` -- a subcatchment can make its own
   hydrograph: its rainfall is a :class:`DesignStorm` or a :class:`RainfallSeries` (any
   object with the protocol will do) and its runoff :class:`CurveNumberRunoff`, that is
-  :class:`~hydrolog.runoff.HydrographGenerator` as a model.
+  :class:`~hydrolog.runoff.HydrographGenerator` as a model, with Nash's n and K given
+  or estimated from the watershed (:data:`NASH_ESTIMATIONS`, ADR-0024).
 * :class:`ControlPointNetwork` -- a network as an application picks it: the outlet
   first, then points upstream of it (:class:`OutletPoint`, :class:`ControlPoint`), each
   one closing its own residual area, joined by channels and confluences; it expands
@@ -92,13 +93,19 @@ from hydrolog.routing.reach import (
     RoutingNotice,
     RoutingResult,
 )
-from hydrolog.routing.runoff import RUNOFF_MODELS, CurveNumberRunoff, RunoffModel
+from hydrolog.routing.runoff import (
+    NASH_ESTIMATIONS,
+    RUNOFF_MODELS,
+    CurveNumberRunoff,
+    RunoffModel,
+)
 from hydrolog.routing.sections import FlowState, TrapezoidalSection
 
 __all__ = [
     "HIETOGRAMS",
     "MAX_DESCRIPTION_CHARS",
     "MAX_POSITION",
+    "NASH_ESTIMATIONS",
     "NODE_TYPES",
     "RAINFALL_KINDS",
     "REACH_METHODS",

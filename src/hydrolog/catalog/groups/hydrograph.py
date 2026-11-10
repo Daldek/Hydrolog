@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import dataclasses
 
+from hydrolog._ranges import NASH_INPUTS
 from hydrolog.catalog.groups._typical import (
     TC_METHODS,
     WATERSHED_TC_RANGES,
@@ -21,6 +22,9 @@ from hydrolog.catalog.groups.precip import HIETOGRAM_OPTIONS
 from hydrolog.catalog.spec import Command, Option, RangeCheck
 
 _UH_MODELS = ("scs", "nash", "clark", "snyder")
+
+NASH_ESTIMATIONS = ("lutz",)
+"""The values of ``nash_estimation``: how Nash's n and K are estimated."""
 
 _SHAPE = {option.name: option for option in HIETOGRAM_OPTIONS}
 
@@ -39,8 +43,9 @@ GENERATE_OPTIONS: tuple[Option, ...] = (
             "`area_km2`; `cn` i pola metody `tc_method`, np. `flow_path_length_km`, "
             "`flow_path_slope_m_per_m`, gdy tc liczy się ze zlewni; brakujące pole "
             "to błąd `missing_field` z nazwą pola w `details.option`). Dostarcza "
-            "powierzchnię, CN i dane do czasu koncentracji; parametry modeli Nash, "
-            "Clark (R) i Snyder podaje się jawnie."
+            "powierzchnię, CN, dane do czasu koncentracji i do `nash_estimation`; "
+            "parametry modeli Clark (R) i Snyder oraz podane n i K Nasha podaje się "
+            "jawnie."
         ),
         description=(
             "Watershed parameters as a WatershedParameters object (only `area_km2` "
@@ -48,8 +53,9 @@ GENERATE_OPTIONS: tuple[Option, ...] = (
             "`flow_path_length_km`, `flow_path_slope_m_per_m`, when tc is computed "
             "from the watershed; a missing one is `missing_field` naming the field "
             "in `details.option`). It supplies the area, the CN and the data for "
-            "the time of concentration; the parameters of the Nash, Clark (R) and "
-            "Snyder models are given explicitly."
+            "the time of concentration and for `nash_estimation`; the parameters of "
+            "the Clark (R) and Snyder models and given Nash n and K are given "
+            "explicitly."
         ),
     ),
     Option(
@@ -251,14 +257,16 @@ GENERATE_OPTIONS: tuple[Option, ...] = (
         choices=_UH_MODELS,
         meanings={
             "scs": "SCS dimensionless unit hydrograph; needs tc.",
-            "nash": "Nash cascade; needs `nash_n` and `nash_k_min`.",
+            "nash": "Nash cascade; needs `nash_n` and `nash_k_min`, or "
+            "`nash_estimation`.",
             "clark": "Clark; needs tc and `clark_r_min` or `clark_r_tc_ratio`.",
             "snyder": "Snyder; needs `snyder_length_km` and "
             "`snyder_centroid_length_km`, no tc.",
         },
         meanings_pl={
             "scs": "Bezwymiarowy hydrogram SCS; wymaga tc.",
-            "nash": "Kaskada Nasha; wymaga `nash_n` i `nash_k_min`.",
+            "nash": "Kaskada Nasha; wymaga `nash_n` i `nash_k_min` albo "
+            "`nash_estimation`.",
             "clark": "Clark; wymaga tc oraz `clark_r_min` lub `clark_r_tc_ratio`.",
             "snyder": "Snyder; wymaga `snyder_length_km` i "
             "`snyder_centroid_length_km`, bez tc.",
@@ -270,11 +278,11 @@ GENERATE_OPTIONS: tuple[Option, ...] = (
         type="number",
         description_pl=(
             f"Nash: liczba zbiorników n (> 0, {typically('nash', 'n', 'pl')}); razem "
-            "z `nash_k_min`. Parametry z metody Lutza daje `uh nash`."
+            "z `nash_k_min`, zamiast `nash_estimation`."
         ),
         description=(
             f"Nash: number of reservoirs n (> 0, {typically('nash', 'n')}); together "
-            "with `nash_k_min`. `uh nash` derives parameters by the Lutz method."
+            "with `nash_k_min`, instead of `nash_estimation`."
         ),
         exclusive_minimum=0,
     ),
@@ -291,6 +299,36 @@ GENERATE_OPTIONS: tuple[Option, ...] = (
         ),
         exclusive_minimum=0,
         unit="min",
+    ),
+    Option(
+        name="nash_estimation",
+        type="choice",
+        description_pl=(
+            "Nash: estymacja n i K ze zlewni zamiast podanych `nash_n` i `nash_k_min`"
+            "; lutz: metoda Lutza (1984, za KZGW 2017) z pól zlewni: L i J "
+            "najdłuższej drogi spływu (`flow_path_length_km`, "
+            "`flow_path_slope_m_per_m`), `Lc_km`, `manning_n` oraz `urban_pct` i "
+            "`forest_pct` (bez nich 0). Wymaga `watershed` lub `watershed_file`."
+        ),
+        description=(
+            "Nash: how n and K are estimated from the watershed instead of being "
+            "given (`nash_n`, `nash_k_min`); lutz: the Lutz method (1984, after KZGW "
+            "2017) from the watershed fields: L and J of the longest flow path "
+            "(`flow_path_length_km`, `flow_path_slope_m_per_m`), `Lc_km`, "
+            "`manning_n`, and `urban_pct` and `forest_pct` (0 without them). Needs "
+            "`watershed` or `watershed_file`."
+        ),
+        choices=NASH_ESTIMATIONS,
+        meanings={
+            "lutz": "Lutz (1984, after KZGW 2017): n and K from the main stream "
+            "from the divide (the longest flow path), Lc, Manning's n and the urban "
+            "and forest shares.",
+        },
+        meanings_pl={
+            "lutz": "Lutz (1984, za KZGW 2017): n i K z cieku głównego od działu "
+            "wodnego (najdłuższej drogi spływu), Lc, n Manninga oraz udziału "
+            "terenów zurbanizowanych i lasów.",
+        },
     ),
     Option(
         name="clark_r_min",
@@ -386,6 +424,7 @@ GENERATE_RANGES: tuple[RangeCheck, ...] = (
     RangeCheck("scs", "area_km2", ("area_km2",)),
     RangeCheck("nash", "n", ("nash_n",)),
     RangeCheck("nash", "k_min", ("nash_k_min",)),
+    RangeCheck("lutz", "area_km2", NASH_INPUTS["lutz"]["area_km2"]),
     RangeCheck("clark", "r_tc_ratio", ("clark_r_tc_ratio",)),
     RangeCheck("snyder", "ct", ("snyder_ct",)),
     RangeCheck("snyder", "cp", ("snyder_cp",)),
@@ -394,8 +433,10 @@ GENERATE_RANGES: tuple[RangeCheck, ...] = (
 )
 """Typical ranges of ``hydrograph generate`` (shared with ``report generate``): the
 time of concentration methods on the watershed, the CN of an AMC conversion, the
-model's parameters and area, and the time step against the unit hydrograph's time
-to peak; the inputs are the options (``cn`` and ``area_km2`` also the watershed's)."""
+model's parameters and area (Lutz's area with ``nash_estimation`` ``lutz``), and the
+time step against the unit hydrograph's time to peak; the inputs are the options
+(``cn`` and ``area_km2`` also the watershed's). Nash's n and K are checked when they
+are given, not when Lutz estimated them: their ranges are those of given values."""
 
 _WATERSHED_EXAMPLE = {
     "name": "Potok Młynówka",
@@ -491,6 +532,14 @@ COMMANDS: tuple[Command, ...] = (
                 "runoff_coefficient": 0.141794,
                 "uh_model": "snyder",
             },
+            {
+                "peak_discharge_m3s": 22.171,
+                "time_to_peak_min": 180.0,
+                "total_volume_m3": 321161.0,
+                "uh_model": "nash",
+                "nash_estimation": "lutz",
+                "uh_parameters": {"n": 3.70061, "k_min": 56.5989},
+            },
         ),
         examples=(
             {
@@ -541,6 +590,20 @@ COMMANDS: tuple[Command, ...] = (
                 "uh_model": "snyder",
                 "snyder_length_km": 15.0,
                 "snyder_centroid_length_km": 8.0,
+            },
+            {
+                "watershed": {
+                    **_WATERSHED_EXAMPLE,
+                    "Lc_km": 6.0,
+                    "manning_n": 0.035,
+                    "forest_pct": 40.0,
+                },
+                "hietogram_type": "beta",
+                "total_mm": 50.0,
+                "duration_min": 60.0,
+                "timestep_min": 10.0,
+                "uh_model": "nash",
+                "nash_estimation": "lutz",
             },
         ),
     ),

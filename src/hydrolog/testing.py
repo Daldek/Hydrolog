@@ -329,8 +329,11 @@ def curve_number_runoff(**options: Any) -> dict[str, Any]:
     ----------
     **options
         The options of ``hydrograph generate`` that the model takes (``tc_min`` or
-        ``tc_method``, ``ia_coefficient``, ``amc``, ``uh_model``, ``nash_n``...); none
-        gives the Kirpich time of concentration, the SCS unit hydrograph and AMC II.
+        ``tc_method``, ``ia_coefficient``, ``amc``, ``uh_model``, ``nash_n``...,
+        ``nash_estimation``: ``"lutz"`` estimates Nash's n and K from the
+        watershed, whose ``Lc_km`` and ``manning_n`` it then needs besides the
+        longest flow path); none gives the Kirpich time of concentration, the SCS
+        unit hydrograph and AMC II.
 
     Returns
     -------

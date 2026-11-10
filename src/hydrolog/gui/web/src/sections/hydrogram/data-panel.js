@@ -677,14 +677,15 @@ function LossesBlock({ inputs, errors, warnings, set, result, amcField }) {
 /**
  * Step 3, Hydrogram: the unit hydrograph model (none chosen at first) with the summary of
  * the checks, the chosen model's block (tc for SCS and Clark; Clark's R or R/tc; Nash by
- * Lutz with Lc, Manning's n, forest and urban shares, or n and K typed; Snyder's Lc of the
- * watershed, L, Lc, Ct and Cp), the losses, and what the last result gave.
+ * Lutz with Lc, Manning's n, forest and urban shares and, read-only, the n and K the shown
+ * result estimated, or n and K typed; Snyder's Lc of the watershed, L, Lc, Ct and Cp), the
+ * losses, and what the last result gave.
  *
  * @param {object} props see DataPanel
  * @returns {object} the step
  */
 function HydrographStep(props) {
-  const { inputs, errors, warnings, set, result, lutz, infoValues } = props;
+  const { inputs, errors, warnings, set, result, infoValues } = props;
   const model = inputs.uh_model;
   const fields = inputs.watershed || {};
   const byLutz = usesLutz(inputs);
@@ -706,7 +707,6 @@ function HydrographStep(props) {
     if (model === "nash") {
       if (typeof parameters.n === "number") chips.push(t(texts.uh.chipN, { value: shortText(parameters.n) }));
       if (typeof parameters.k_min === "number") chips.push(t(texts.uh.chipK, { value: shortText(parameters.k_min) }));
-      if (byLutz && lutz && typeof lutz.lag_time_min === "number") chips.push(t(texts.uh.chipLag, { value: num(lutz.lag_time_min, 1) }));
     }
     if (model === "snyder") {
       if (typeof parameters.ct === "number") chips.push(t(texts.uh.chipCt, { value: inputText(parameters.ct) }));
@@ -717,7 +717,8 @@ function HydrographStep(props) {
       chips.push(t(texts.uh.chipQp, { value: num(fresh.uh_peak_discharge_m3s_per_mm, 2) }));
     }
   }
-  const estimate = lutz && lutz.parameters ? lutz.parameters : null;
+  // Lutz's n and K are those the shown result estimated (`nash_estimation`)
+  const estimate = result && result.nash_estimation === "lutz" && result.uh_parameters ? result.uh_parameters : null;
   const toGiven = () => {
     const patch = { nash_source: "given" };
     if (isEmpty(inputs.nash_n) && estimate) patch.nash_n = shortText(estimate.n);
@@ -814,14 +815,13 @@ function HydrographStep(props) {
  * @param {{inputs: object, errors: Object<string, string>, warnings: Object<string,
  *   string>, required: Object<string, {purpose: string}>, formError: {title: string,
  *   text: string}|null, set: (patch: object) => void, setField: (name: string, text:
- *   string) => void, onFile: (file: File) => void, result: object|null, lutz: object|null,
- *   models: object|null, infoValues: object, pmaxtp: {depth: number|null, busy: boolean,
- *   onRetry: (() => void)|null}}} props the inputs, the errors and warnings by field, what
- *   the chosen model needs (requirements), the error above the steps, the handlers (a
- *   patch of the inputs, a field of the watershed, a watershed file), the last result and
- *   Lutz's estimate, the field models, the values the (i) explanations check, and PMAXTP's
- *   fetched depth (null until known), whether it is being fetched and how to fetch it again
- *   after a failure
+ *   string) => void, onFile: (file: File) => void, result: object|null, models:
+ *   object|null, infoValues: object, pmaxtp: {depth: number|null, busy: boolean, onRetry:
+ *   (() => void)|null}}} props the inputs, the errors and warnings by field, what the
+ *   chosen model needs (requirements), the error above the steps, the handlers (a patch of
+ *   the inputs, a field of the watershed, a watershed file), the shown result, the field
+ *   models, the values the (i) explanations check, and PMAXTP's fetched depth (null until
+ *   known), whether it is being fetched and how to fetch it again after a failure
  * @returns {object} the panel's body
  */
 export function DataPanel(props) {

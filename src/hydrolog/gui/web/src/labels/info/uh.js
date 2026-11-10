@@ -1,9 +1,9 @@
 /**
  * Explanations (i) of the unit hydrograph models (plan D16, slice S3): the entries "uh-<model>"
- * for the four values of `uh_model` of `hydrograph generate` (SCS, Nash with the Lutz method of
- * `uh nash`, Clark, Snyder), in the format of ui/info.js. They keep the symbols of the
- * parameters only: the typical ranges, with their sources, are Hydrolog's (`typical_ranges`
- * of `hydrograph generate` and, for Lutz, of `uh nash`).
+ * for the four values of `uh_model` of `hydrograph generate` (SCS, Nash with n and K given or
+ * estimated by Lutz from the watershed, `nash_estimation`, Clark, Snyder), in the format of
+ * ui/info.js. They keep the symbols of the parameters only: the typical ranges, with their
+ * sources, are Hydrolog's (`typical_ranges` of `hydrograph generate`, Lutz's area among them).
  */
 
 export const uhInfo = {
@@ -71,9 +71,10 @@ export const uhInfo = {
     title: "Nash: kaskada zbiorników liniowych",
     intro:
       "<p>Zlewnia jako n jednakowych zbiorników liniowych o stałej K, połączonych szeregowo (Nash 1957). " +
-      "W hydrogramie <code>uh_model = nash</code> z <code>nash_n</code> i <code>nash_k_min</code>: " +
-      "podanymi (skalibrowanymi) albo policzonymi metodą Lutza przez <code>uh nash</code> z pól zlewni; " +
-      "t<sub>c</sub> nie jest używany.</p>",
+      "W hydrogramie <code>uh_model = nash</code> z <code>nash_n</code> i <code>nash_k_min</code> " +
+      "podanymi (skalibrowanymi) albo z <code>nash_estimation = lutz</code>: wtedy <code>hydrograph " +
+      "generate</code> szacuje n i K metodą Lutza z pól zlewni w tym samym obliczeniu; t<sub>c</sub> " +
+      "nie jest używany.</p>",
     formula:
       "<math display='block'><mi>u</mi><mrow><mo>(</mo><mi>t</mi><mo>)</mo></mrow><mo>=</mo><mfrac>" +
       "<mn>1</mn><mrow><mi>K</mi><mo>·</mo><mi mathvariant='normal'>Γ</mi><mrow><mo>(</mo><mi>n</mi>" +
@@ -119,8 +120,8 @@ export const uhInfo = {
       {
         symbol: "<math><mi>L</mi></math>",
         text:
-          "Lutz: długość cieku głównego od działu wodnego do przekroju zamykającego; ze zlewni " +
-          "<code>channel_length_km</code>",
+          "Lutz: długość cieku głównego od działu wodnego do przekroju zamykającego, czyli najdłuższej " +
+          "drogi spływu; ze zlewni <code>flow_path_length_km</code>",
         unit: "km",
       },
       {
@@ -132,7 +133,9 @@ export const uhInfo = {
       },
       {
         symbol: "<math><mi>J</mi></math>",
-        text: "Lutz: średni spadek cieku głównego; ze zlewni <code>channel_slope_m_per_m</code>",
+        text:
+          "Lutz: średni spadek cieku głównego od działu wodnego do przekroju zamykającego, czyli " +
+          "najdłuższej drogi spływu; ze zlewni <code>flow_path_slope_m_per_m</code>",
         unit: "m/m",
       },
       {
@@ -176,7 +179,8 @@ export const uhInfo = {
       "powierzchnią A.</p>",
     sources:
       "Nash 1957; Lutz 1984 (za KZGW 2017); KZGW 2017; Chow i in. 1988; Hydrolog, " +
-      "<code>docs/COMPUTATION_PATHS.md</code> 3.2 i 5.1; opis polecenia <code>uh nash</code>",
+      "<code>docs/COMPUTATION_PATHS.md</code> 3.2 i 5.1; opis opcji <code>nash_estimation</code> " +
+      "polecenia <code>hydrograph generate</code>",
   },
 
   "uh-clark": {

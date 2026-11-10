@@ -19,13 +19,20 @@ from hydrolog.catalog import OperationOutput, data_commands, get_command, run_co
 from hydrolog.catalog.groups.hydrograph import GENERATE_ONE_OF, GENERATE_OPTIONS
 from hydrolog.exceptions import InputDataError, InvalidParameterError, NotFoundError
 from hydrolog.morphometry import WatershedParameters
+from hydrolog.morphometry.watershed_params import (
+    NASH_ESTIMATIONS as LIBRARY_NASH_ESTIMATIONS,
+)
 from hydrolog.operations._common import check_choice, select_group
 from hydrolog.operations.cn import (
     CONDITIONS,
     HSG_GROUPS,
     LAND_COVERS,
 )
-from hydrolog.operations.hydrograph import UH_MODELS, compute_hydrograph
+from hydrolog.operations.hydrograph import (
+    NASH_ESTIMATIONS,
+    UH_MODELS,
+    compute_hydrograph,
+)
 from hydrolog.operations.precip import AREAL_METHODS, HIETOGRAM_TYPES
 from hydrolog.operations.scs import AMC_CLASSES
 from hydrolog.operations.tc import TC_METHODS, watershed_concentration_time
@@ -42,6 +49,7 @@ from hydrolog.precipitation import (
     isohyet_method,
     thiessen_polygons,
 )
+from hydrolog.routing import NASH_ESTIMATIONS as ROUTING_NASH_ESTIMATIONS
 from hydrolog.runoff import (
     AMC,
     SCSCN,
@@ -2778,6 +2786,8 @@ class TestDeclarations:
         assert generate.option("amc").choices == AMC_CLASSES
         assert generate.option("uh_model").choices == UH_MODELS
         assert generate.option("tc_method").choices == TC_METHODS
+        assert generate.option("nash_estimation").choices == NASH_ESTIMATIONS
+        assert NASH_ESTIMATIONS == LIBRARY_NASH_ESTIMATIONS == ROUTING_NASH_ESTIMATIONS
         assert generate.option("hietogram_type").choices == HIETOGRAM_TYPES
         assert get_command("tc watershed").option("method").choices == TC_METHODS
         assert get_command("precip areal").option("method").choices == AREAL_METHODS

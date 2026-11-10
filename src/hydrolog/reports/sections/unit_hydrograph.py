@@ -389,9 +389,14 @@ def _generate_nash_section(
     # Show estimation-specific input parameters
     if estimation_method == "from_lutz":
         lutz_inputs = [
-            ("L_km", "Długość cieku L", "km", ".3f"),
+            (
+                "L_km",
+                "Długość cieku głównego od działu wodnego (najdłuższej drogi spływu) L",
+                "km",
+                ".3f",
+            ),
             ("Lc_km", "Odległość do centroidu Lc", "km", ".3f"),
-            ("slope", "Spadek cieku Jg", "", ".4f"),
+            ("slope", "Spadek cieku głównego (najdłuższej drogi spływu) Jg", "", ".4f"),
             ("manning_n", "Współczynnik Manninga n", "", ".3f"),
         ]
         lines.append("")

@@ -99,7 +99,6 @@ export function timestepNote(model, result, notices) {
  * @param {{inputs: object, values: Object<string, unknown>, result: object|null,
  *   notices?: object[]}} run the inputs, the current values by name (the watershed's fields
  *   and the options), the result of `hydrograph generate` and Hydrolog's notices of the run
- *   (Lutz's `uh nash` included)
  * @returns {Array<{level: "ok"|"info", text: string, from: string, info?: string}>} the notes
  */
 export function guiNotes({ inputs, values, result, notices = [] }) {

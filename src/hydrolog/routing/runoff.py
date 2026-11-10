@@ -16,7 +16,8 @@ in :data:`RUNOFF_MODELS`. One is in the package:
   hydrograph (``scs``, ``nash``, ``clark`` or ``snyder``), by
   :class:`~hydrolog.runoff.HydrographGenerator`, with the fields of the command
   ``hydrograph generate``. The watershed gives the area, the CN and, when the time of
-  concentration is not given, the data that a formula of it needs.
+  concentration is not given, the data that a formula of it needs, and when Nash's n
+  and K are estimated (``nash_estimation``), the data of the estimation.
 
 The watershed of a document is the object of ``WatershedParameters.to_dict()``; see
 :func:`watershed_from_document`.
@@ -56,7 +57,11 @@ from typing import (
 )
 
 from hydrolog.exceptions import InvalidParameterError
-from hydrolog.morphometry.watershed_params import TC_METHODS, WatershedParameters
+from hydrolog.morphometry.watershed_params import (
+    NASH_ESTIMATIONS,
+    TC_METHODS,
+    WatershedParameters,
+)
 from hydrolog.precipitation.hietogram import HietogramResult
 from hydrolog.routing._checks import in_range, one_complete_group, positive, shown
 from hydrolog.routing._reading import (
@@ -72,9 +77,11 @@ from hydrolog.routing.hydrograph import STEP_TOLERANCE, Hydrograph
 from hydrolog.routing.parameters import Parameter, ParameterSource, parameter
 
 if TYPE_CHECKING:
+    from hydrolog.runoff.nash_iuh import NashIUH
     from hydrolog.runoff.scs_cn import AMC
 
 __all__ = [
+    "NASH_ESTIMATIONS",
     "RUNOFF_MODELS",
     "CurveNumberRunoff",
     "RunoffModel",
@@ -363,7 +370,8 @@ class CurveNumberRunoff:
     given (``tc_min``) or computed from the watershed by a formula (``tc_method``,
     ``kirpich`` unless another one is chosen), and only the models ``scs`` and
     ``clark`` use it. The parameters of the other models are given by their fields:
-    ``nash_n`` and ``nash_k_min``, ``clark_r_min`` or ``clark_r_tc_ratio``,
+    ``nash_n`` and ``nash_k_min`` (or estimated from the watershed by
+    ``nash_estimation``), ``clark_r_min`` or ``clark_r_tc_ratio``,
     ``snyder_length_km`` and ``snyder_centroid_length_km`` (``snyder_ct`` and
     ``snyder_cp`` are optional). A field that does not belong to the chosen
     ``uh_model`` is refused.
@@ -384,7 +392,14 @@ class CurveNumberRunoff:
     uh_model : {"scs", "nash", "clark", "snyder"}, optional
         Unit hydrograph model, by default ``"scs"``.
     nash_n, nash_k_min : float, optional
-        Nash parameters ``n`` and ``K`` [min], > 0; both for ``nash``.
+        Nash parameters ``n`` and ``K`` [min], > 0; both for ``nash``, unless
+        ``nash_estimation`` is given.
+    nash_estimation : {"lutz"}, optional
+        For ``nash``, instead of ``nash_n`` and ``nash_k_min``: estimate them from the
+        watershed; ``lutz`` is the Lutz method (Lutz 1984, after KZGW 2017) with the
+        fields of :meth:`~hydrolog.morphometry.WatershedParameters.nash_parameters`:
+        L and J of the longest flow path, ``Lc_km``, ``manning_n``, and ``urban_pct``
+        and ``forest_pct`` (0 when not set).
     clark_r_min : float, optional
         Clark storage constant ``R`` [min], > 0; for ``clark``, exactly one of it and
         ``clark_r_tc_ratio``.
@@ -399,11 +414,13 @@ class CurveNumberRunoff:
     ------
     InvalidParameterError
         With ``details.option`` and ``details.reason``: ``choice`` (``uh_model``,
-        ``amc``, ``tc_method``), ``conflict`` (``tc_min`` with ``tc_method``),
+        ``amc``, ``tc_method``, ``nash_estimation``), ``conflict`` (``tc_min`` with
+        ``tc_method``, ``nash_estimation`` with ``nash_n`` or ``nash_k_min``),
         ``not_applicable`` (a field of another ``uh_model``, or a time of concentration
-        for a model that has none), ``required`` (a field that the model needs),
-        ``one_of`` (the two Clark fields), or the reason of a value (``type``,
-        ``exclusive_minimum``, ``maximum``...).
+        for a model that has none), ``required`` (a field that the model needs; for
+        ``nash`` without an estimation ``nash_n`` first), ``one_of`` (the two Clark
+        fields), or the reason of a value (``type``, ``exclusive_minimum``,
+        ``maximum``...).
 
     Examples
     --------
@@ -425,6 +442,7 @@ class CurveNumberRunoff:
         uh_model: str = "scs",
         nash_n: float | None = None,
         nash_k_min: float | None = None,
+        nash_estimation: str | None = None,
         clark_r_min: float | None = None,
         clark_r_tc_ratio: float | None = None,
         snyder_length_km: float | None = None,
@@ -443,6 +461,11 @@ class CurveNumberRunoff:
             None if tc_method is None else _choice("tc_method", tc_method, TC_METHODS)
         )
         self._check_tc()
+        self._nash_estimation = (
+            None
+            if nash_estimation is None
+            else _choice("nash_estimation", nash_estimation, NASH_ESTIMATIONS)
+        )
         given = {
             "nash_n": nash_n,
             "nash_k_min": nash_k_min,
@@ -499,6 +522,24 @@ class CurveNumberRunoff:
                         f"Option {name!r} does not apply when uh_model is {model!r}",
                         f"These options belong to uh_model {other!r}.",
                     )
+        if self._nash_estimation is not None:
+            if model != "nash":
+                raise _option_error(
+                    "nash_estimation",
+                    "not_applicable",
+                    f"Option 'nash_estimation' does not apply when uh_model is "
+                    f"{model!r}",
+                    "It estimates the n and K of uh_model 'nash'.",
+                )
+            if any(name in self._uh for name in _UH_OPTIONS["nash"]):
+                raise _option_error(
+                    "nash_estimation",
+                    "conflict",
+                    "Give nash_n and nash_k_min or nash_estimation, not both",
+                    "nash_estimation estimates n and K from the watershed; nash_n "
+                    "and nash_k_min are values.",
+                )
+            return
         if model == "clark":
             one_complete_group(
                 self._uh, [["clark_r_min"], ["clark_r_tc_ratio"]], "The clark model"
@@ -510,6 +551,10 @@ class CurveNumberRunoff:
                         name,
                         "required",
                         f"Option {name!r} is required when uh_model is {model!r}",
+                        "Give nash_n and nash_k_min, or nash_estimation (lutz) to "
+                        "estimate them from the watershed."
+                        if model == "nash"
+                        else None,
                     )
 
     # --- what the model is -----------------------------------------------------------
@@ -540,6 +585,11 @@ class CurveNumberRunoff:
         return self._tc_method
 
     @property
+    def nash_estimation(self) -> str | None:
+        """Str or None: how Nash's n and K are estimated from the watershed."""
+        return self._nash_estimation
+
+    @property
     def _needs_tc(self) -> bool:
         """Whether the unit hydrograph model uses a time of concentration."""
         return self._uh_model in _NEEDS_TC
@@ -554,15 +604,19 @@ class CurveNumberRunoff:
     def validate(self, watershed: WatershedParameters) -> None:
         """Refuse a watershed that the model cannot work with.
 
-        A watershed without a CN, or without what the formula of the time of
-        concentration needs, is refused.
+        A watershed without a CN, without what the formula of the time of
+        concentration needs, or without what the estimation of Nash's n and K needs,
+        is refused.
 
         Raises
         ------
         InvalidParameterError
             With ``details.reason`` ``type`` (not a ``WatershedParameters``),
             ``missing_field`` (``details.field`` ``cn``, or ``details.missing`` the
-            fields of the formula) or ``minimum`` (a CN below 1).
+            fields of the formula or of the estimation, which also gives
+            ``details.method``), ``minimum`` (a CN below 1), or the reason of a field
+            that the estimation refuses (``maximum`` on ``Lc_km`` longer than the
+            flow path).
         """
         if not isinstance(watershed, WatershedParameters):
             raise _option_error(
@@ -589,6 +643,8 @@ class CurveNumberRunoff:
             )
         if self._needs_tc and self._tc_min is None:
             watershed.tc_parameters(self._formula)
+        if self._nash_estimation is not None:
+            watershed.nash_parameters(self._nash_estimation)
 
     def _time_of_concentration(self, watershed: WatershedParameters) -> float | None:
         """Return the time of concentration that the unit hydrograph uses [min]."""
@@ -598,9 +654,27 @@ class CurveNumberRunoff:
             return self._tc_min
         return watershed.calculate_tc(self._formula)
 
-    def _uh_params(self, tc_min: float | None) -> dict[str, Any]:
+    def _estimate(self, watershed: WatershedParameters) -> NashIUH:
+        """Return the Nash cascade that ``nash_estimation`` estimates for the area."""
+        from hydrolog.runoff.nash_iuh import NashIUH
+
+        assert self._nash_estimation is not None
+        return NashIUH.from_lutz(**watershed.nash_parameters(self._nash_estimation))
+
+    def _uh_params(
+        self, tc_min: float | None, watershed: WatershedParameters
+    ) -> dict[str, Any]:
         """Return ``uh_params`` of :class:`~hydrolog.runoff.HydrographGenerator`."""
         if self._uh_model == "nash":
+            if self._nash_estimation is not None:
+                # an estimate is not checked against the ranges of given n and K
+                cascade = self._estimate(watershed)
+                return {
+                    "n": cascade.n,
+                    "k": cascade.k_min,
+                    "k_unit": "min",
+                    "estimated": True,
+                }
             return {
                 "n": self._uh["nash_n"],
                 "k": self._uh["nash_k_min"],
@@ -675,7 +749,7 @@ class CurveNumberRunoff:
             tc_min=tc_min,
             ia_coefficient=self._ia_coefficient,
             uh_model=self._uh_model,
-            uh_params=self._uh_params(tc_min),
+            uh_params=self._uh_params(tc_min, watershed),
         )
         result = generator.generate(rainfall, amc=self._moisture())
         return Hydrograph(result.hydrograph.times_min, result.hydrograph.discharge_m3s)
@@ -696,9 +770,10 @@ class CurveNumberRunoff:
         The options are ``"given"``, or ``"default"`` when they are the defaults of the
         constructor (the formula of the time of concentration, the Snyder coefficients,
         ``ia_coefficient``, ``amc``, ``uh_model``). From the watershed come the area
-        and the CN (``"given"``), the time of concentration of a formula, the CN of the
-        moisture condition, the retention and the initial abstraction (``"computed"``);
-        with the rain too, the effective depth and the runoff coefficient.
+        and the CN (``"given"``), the time of concentration of a formula, Nash's n and
+        K of ``nash_estimation`` (``nash_n``, ``nash_k_min``), the CN of the moisture
+        condition, the retention and the initial abstraction (``"computed"``); with the
+        rain too, the effective depth and the runoff coefficient.
         """
         from hydrolog.runoff.scs_cn import SCSCN
 
@@ -736,6 +811,15 @@ class CurveNumberRunoff:
                     add("tc_min", tc_min, "computed")
         for name, value in self._uh.items():
             add(name, value, "given")
+        if self._nash_estimation is not None:
+            add("nash_estimation", self._nash_estimation, "given")
+            if watershed is not None:
+                with warnings.catch_warnings():
+                    # the run has told the caller of an area outside Lutz's range
+                    warnings.simplefilter("ignore")
+                    cascade = self._estimate(watershed)
+                add("nash_n", cascade.n, "computed")
+                add("nash_k_min", cascade.k_min, "computed")
         if self._uh_model == "snyder":
             for name, value in (("snyder_ct", _SNYDER_CT), ("snyder_cp", _SNYDER_CP)):
                 if name not in self._uh:
@@ -778,6 +862,7 @@ class CurveNumberRunoff:
             "amc": self._amc,
             "uh_model": self._uh_model,
             **self._uh,
+            "nash_estimation": self._nash_estimation,
         }
         given = {name: value for name, value in values.items() if value is not None}
         ordered = {

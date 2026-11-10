@@ -72,7 +72,9 @@ export const GROUPS = Object.freeze(["tc", "cn", "precip", "uh", "morphometry"])
 /**
  * The options a calculator takes from the watershed of Hydrogram zlewni, as copies of its
  * fields (option: field). The six tc commands take what `tc watershed` itself derives from
- * the watershed (its `parameters`); `morphometry watershed` takes the whole watershed.
+ * the watershed (its `parameters`); `morphometry watershed` takes the whole watershed;
+ * `uh nash` takes Lutz's L and J of the longest flow path, as `nash_estimation` of
+ * `hydrograph generate` does.
  */
 export const FROM_WATERSHED = Object.freeze({
   "scs effective": { cn: "cn" },
@@ -81,9 +83,9 @@ export const FROM_WATERSHED = Object.freeze({
   "uh snyder": { area_km2: "area_km2", length_km: "channel_length_km", centroid_length_km: "Lc_km" },
   "uh nash": {
     area_km2: "area_km2",
-    lutz_length_km: "channel_length_km",
+    lutz_length_km: "flow_path_length_km",
     lutz_centroid_length_km: "Lc_km",
-    lutz_slope_m_per_m: "channel_slope_m_per_m",
+    lutz_slope_m_per_m: "flow_path_slope_m_per_m",
     lutz_manning_n: "manning_n",
     lutz_urban_pct: "urban_pct",
     lutz_forest_pct: "forest_pct",

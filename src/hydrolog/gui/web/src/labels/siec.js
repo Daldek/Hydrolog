@@ -549,12 +549,13 @@ export const siec = {
       elevation_max_m: "Najwyższy punkt zlewni [m n.p.m.].",
       elevation_mean_m: "Średnia wysokość zlewni [m n.p.m.] (tc Giandotti: ΔH = średnia − najmniejsza).",
       mean_slope_m_per_m: "Średni spadek terenu zlewni [m/m] (tc NRCS: Y).",
-      channel_length_km: "Długość cieku głównego [km] (tc Giandotti; Snyder, Lutz).",
-      channel_slope_m_per_m: "Spadek cieku głównego [m/m] (Nash, metoda Lutza).",
+      channel_length_km: "Długość cieku głównego [km] (tc Giandotti; Snyder).",
+      channel_slope_m_per_m:
+        "Spadek cieku głównego [m/m]; żadna metoda go nie czyta (Kirpich, Kerby–Kirpich i Lutz biorą spadek najdłuższej drogi spływu).",
       flow_path_length_km:
-        "Długość najdłuższej drogi spływu od punktu zlewni najdalszego hydraulicznie (zwykle na dziale wodnym, może być na grzbiecie wewnątrz zlewni) do przekroju, po drodze spływu [km] (tc: NRCS, Kirpich, Kerby–Kirpich).",
+        "Długość najdłuższej drogi spływu od punktu zlewni najdalszego hydraulicznie (zwykle na dziale wodnym, może być na grzbiecie wewnątrz zlewni) do przekroju, po drodze spływu [km] (tc: NRCS, Kirpich, Kerby–Kirpich; Nash, metoda Lutza).",
       flow_path_slope_m_per_m:
-        "Spadek najdłuższej drogi spływu: (wysokość jej początku − wysokość przekroju) / długość [m/m] (tc: Kirpich, Kerby–Kirpich).",
+        "Spadek najdłuższej drogi spływu: (wysokość jej początku − wysokość przekroju) / długość [m/m] (tc: Kirpich, Kerby–Kirpich; Nash, metoda Lutza).",
       cn: "Liczba CN dla przeciętnej wilgotności (AMC II), 0–100; potrzebna odpływowi curve-number.",
       source: "Skąd pochodzą dane zlewni, np. Hydrograf.",
       crs: "Układ współrzędnych danych, np. EPSG:2180.",

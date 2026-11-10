@@ -71,7 +71,11 @@ characters themselves)."""
 _TYPE_ORDER = ["null", "boolean", "integer", "number", "string", "array", "object"]
 
 _ADDED_FIELDS: dict[str, tuple[str, ...]] = {
-    "hydrolog-hydrograph-generate/1": ("uh_times_min", "uh_discharge_m3s_per_mm"),
+    "hydrolog-hydrograph-generate/1": (
+        "uh_times_min",
+        "uh_discharge_m3s_per_mm",
+        "nash_estimation",
+    ),
     "hydrolog-stats-flood-frequency/1": ("fit_method",),
 }
 """Fields added to a document after its first version, by id: never ``required``."""
@@ -188,6 +192,7 @@ _RUNOFF_FIELDS = (
     "uh_model",
     "nash_n",
     "nash_k_min",
+    "nash_estimation",
     "clark_r_min",
     "clark_r_tc_ratio",
     "snyder_length_km",
@@ -218,8 +223,9 @@ def _watershed_schema() -> dict[str, Any]:
         "title": "watershed",
         "description": (
             "The area of a subcatchment: the fields of `WatershedParameters`, "
-            "as in `hydrograph generate`. The `curve-number` runoff needs `cn` and, "
-            "unless it is given `tc_min`, the fields of its `tc_method`."
+            "as in `hydrograph generate`. The `curve-number` runoff needs `cn`, "
+            "unless it is given `tc_min` the fields of its `tc_method`, and with "
+            "`nash_estimation` the fields of the estimation."
         ),
         "type": "object",
         "required": required,

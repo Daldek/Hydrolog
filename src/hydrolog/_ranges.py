@@ -16,7 +16,8 @@ to be verified (``verified`` false), and a value outside them gives the notice
 :data:`TC_INPUTS` names the watershed field each argument of a time of concentration
 formula is taken from, the one its source defines, with no substitute:
 ``WatershedParameters`` selects with it, and the catalog serves it as the ``inputs`` of
-a range checked on a watershed.
+a range checked on a watershed. :data:`NASH_INPUTS` does the same for the estimation of
+Nash's n and K from a watershed (Lutz).
 
 The module is a leaf: it imports only :mod:`hydrolog._warnings`, so the catalog can
 read it without the numerical libraries.
@@ -31,6 +32,7 @@ from typing import Final
 from hydrolog._warnings import warn_outside_typical_range
 
 __all__ = [
+    "NASH_INPUTS",
     "TC_INPUTS",
     "TYPICAL_RANGES",
     "UH_MODELS",
@@ -485,6 +487,30 @@ channel and the mean elevation of the watershed above the outlet, the one argume
 of two fields (``elevation_mean_m`` minus ``elevation_min_m``); Kerby-Kirpich the
 overland segment and the whole flow path, whose channel segment is the flow path minus
 the overland one.
+"""
+
+NASH_INPUTS: Final[Mapping[str, Mapping[str, tuple[str, ...]]]] = {
+    "lutz": {
+        "L_km": ("flow_path_length_km",),
+        "Lc_km": ("Lc_km",),
+        "slope": ("flow_path_slope_m_per_m",),
+        "manning_n": ("manning_n",),
+        "urban_pct": ("urban_pct",),
+        "forest_pct": ("forest_pct",),
+        "area_km2": ("area_km2",),
+    },
+}
+"""Watershed fields of the arguments of each estimation of Nash's n and K.
+
+For each method of ``nash_estimation``: argument of the estimating constructor
+(``NashIUH.from_lutz``) to the field its source defines for it, without substitutes.
+Lutz (1984, after KZGW 2017) takes the main stream from the divide to the outlet: its
+length L and its mean slope J are those of the longest flow path, as Kirpich's are
+(ADR-0019, ADR-0024), not of the channel, which ends at the channel head. Lc is the
+length along the stream from the outlet to the point nearest the centroid, n_M the
+Manning coefficient of the channel, U and W the urbanized and forested shares (0 when
+the watershed has none), and the area scales the unit hydrograph and is checked against
+the watersheds the method is recommended for.
 """
 
 

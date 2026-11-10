@@ -27,6 +27,7 @@ from hydrolog.operations._outputs import (
 )
 from hydrolog.operations.hydrograph import (
     HydrographRun,
+    NashEstimation,
     UhModel,
     compute_hydrograph,
 )
@@ -136,11 +137,27 @@ def _uh_params(run: HydrographRun) -> dict[str, Any]:
 
     The values of the model (Nash n and K, Clark R and tc, Snyder Ct and Cp, the
     SCS lag time) are read by the report from the unit hydrograph the hydrograph was
-    computed with; the Snyder stream lengths are not part of that result.
+    computed with; the Snyder stream lengths and the steps of Lutz's estimation of
+    Nash's n and K (``nash_estimation``) are not part of that result.
     """
     if run.uh_model == "snyder":
         return {
             key: run.uh_params[key] for key in ("L_km", "Lc_km") if key in run.uh_params
+        }
+    if run.lutz is not None:
+        lutz = run.lutz
+        return {
+            "estimation_method": "from_lutz",
+            "L_km": lutz.L_km,
+            "Lc_km": lutz.Lc_km,
+            "slope": lutz.slope,
+            "manning_n": lutz.manning_n,
+            "urban_pct": lutz.urban_pct,
+            "forest_pct": lutz.forest_pct,
+            "P1": lutz.P1,
+            "tp_hours": lutz.tp_hours,
+            "up_per_hour": lutz.up_per_hour,
+            "f_N": lutz.f_N_target,
         }
     return {}
 
@@ -211,6 +228,7 @@ def report_generate(
     uh_model: UhModel = "scs",
     nash_n: float | None = None,
     nash_k_min: float | None = None,
+    nash_estimation: NashEstimation | None = None,
     clark_r_min: float | None = None,
     clark_r_tc_ratio: float | None = None,
     snyder_length_km: float | None = None,
@@ -274,6 +292,9 @@ def report_generate(
         Unit hydrograph model, by default ``"scs"``.
     nash_n, nash_k_min : float, optional
         Nash model: number of reservoirs and storage constant [min].
+    nash_estimation : {"lutz"}, optional
+        Nash model: estimate n and K from the watershed by Lutz instead of giving
+        them; the unit hydrograph section then shows the steps of the estimation.
     clark_r_min, clark_r_tc_ratio : float, optional
         Clark model: storage coefficient [min], or its ratio to the time of
         concentration.
@@ -357,6 +378,7 @@ def report_generate(
         uh_model=uh_model,
         nash_n=nash_n,
         nash_k_min=nash_k_min,
+        nash_estimation=nash_estimation,
         clark_r_min=clark_r_min,
         clark_r_tc_ratio=clark_r_tc_ratio,
         snyder_length_km=snyder_length_km,

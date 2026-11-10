@@ -1,11 +1,12 @@
 // The mapping between the sections and hydrolog-network/1 (plan D15). „Hydrogram zlewni”
 // writes the options of its shown run as one subcatchment made from rainfall and the
 // outlet it flows to (route network computes such a node as `hydrograph generate` does,
-// so the payload gives the same peak), with where its inputs came from (provenance: the
-// PMAXTP point, method, probability and duration of the fetched depth, the watershed's
-// source and the fields changed since, Lutz's estimate of Nash's n and K) and its result;
-// back, a payload's subcatchment becomes the section's inputs, its source the watershed's
-// origin and the hand-off's record (`handoff`) what the results compare with. „Sieć i
+// so the payload gives the same peak; Nash by Lutz goes as `nash_estimation`, so whoever
+// computes the node estimates n and K again from its watershed), with where its inputs
+// came from (provenance: the PMAXTP point, method, probability and duration of the fetched
+// depth, the watershed's source and the fields changed since) and its result; back, a
+// payload's subcatchment becomes the section's inputs, its source the watershed's origin
+// and the hand-off's record (`handoff`) what the results compare with. „Sieć i
 // trasowanie” writes its whole network with the outlet's result, and adds a hand-off's
 // subcatchments to its open network („Dodaj zlewnię z Hydrografa”, plan
 // 2026-11-10-network-editor, D10). Field names are Hydrolog's (channel_length_km; slopes
@@ -16,7 +17,6 @@ import { t } from "../labels/common.js";
 import { handoffLabels as texts } from "../labels/handoff.js";
 import { hydrogram as hydrogramTexts } from "../labels/hydrogram.js";
 import {
-  LUTZ_FIELDS,
   PMAXTP_DURATIONS,
   PMAXTP_METHODS,
   PMAXTP_PROBABILITIES,
@@ -32,7 +32,6 @@ import {
   sentFields,
   sentWatershed,
   usedTexts,
-  usesLutz,
 } from "../sections/hydrogram/state.js";
 import { cellBeside, freeId } from "../sections/siec/editor/edits.js";
 import { MAX_DESCRIPTION_CHARS, networkRainfall, networkValues, nodeValues } from "../sections/siec/node-model.js";
@@ -56,6 +55,7 @@ const RUNOFF_OPTIONS = Object.freeze([
   "uh_model",
   "nash_n",
   "nash_k_min",
+  "nash_estimation",
   "clark_r_min",
   "clark_r_tc_ratio",
   "snyder_length_km",
@@ -70,14 +70,11 @@ const DESIGN_OPTIONS = Object.freeze(["hietogram_type", "total_mm", "duration_mi
 /** The typed values that make the rainfall, for telling whether it changed. */
 const RAIN_TEXTS = Object.freeze(["values", ...DESIGN_OPTIONS, "timestep_min"]);
 
-/** Where Hydrogram's Nash parameters come from when Lutz estimated them. */
-const LUTZ_ORIGIN = Object.freeze({ source: "hydrolog", command: "uh nash", method: "lutz" });
-
 /**
  * The options of a run of `hydrograph generate` as hydrolog-network/1: one subcatchment
  * made from rainfall and the outlet.
  *
- * @param {object} options the options the run sent (with Lutz's n and K when it used them)
+ * @param {object} options the options the run sent
  * @param {string} [name] the network's name (the subject)
  * @returns {object} the payload
  */
@@ -181,8 +178,8 @@ function watershedOrigin(inputs) {
 
 /**
  * Where the inputs of Hydrogram's payload came from (`provenance` of nogat-handoff/1): the
- * rainfall, the watershed and, for Nash by Lutz, the runoff; the other records of a
- * received hand-off while its data are unchanged.
+ * rainfall and the watershed; the other records of a received hand-off while its data are
+ * unchanged.
  *
  * @param {object} inputs the inputs of the run
  * @returns {object} the provenance
@@ -193,7 +190,6 @@ export function hydrogramProvenance(inputs) {
   if (received && received.key === dataKey(inputs) && isObject(received.provenance)) Object.assign(provenance, received.provenance);
   provenance.rainfall = rainfallOrigin(inputs);
   provenance.watershed = watershedOrigin(inputs);
-  if (usesLutz(inputs)) provenance.runoff = { ...LUTZ_ORIGIN };
   return provenance;
 }
 
@@ -256,14 +252,18 @@ function pointOf(entry) {
  * The inputs of Hydrogram zlewni from a hand-off of one subcatchment (readHandoff gave
  * the target "hydrogram"): the watershed with its origin (the producer, its mark and the
  * watershed's provenance), tc, the rainfall, the losses and the unit hydrograph; every
- * other input as on a first visit. The rainfall is PMAXTP when the provenance names the
- * probability and the duration the section offers and a point (the rainfall's own, else
- * the watershed's, such as Hydrograf's outlet), else a design storm or the series. The
- * depth handed over is remembered as fetched only when the rainfall names its point;
- * otherwise the page fetches the depth of the point. A hand-off without rainfall (the
- * watershed only) leaves the probability, the duration and the model to choose, PMAXTP at
- * the watershed's point when the provenance names one. `handoff` keeps what the results
- * compare with, the depth handed over included.
+ * other input as on a first visit. Nash's runoff with `nash_estimation` "lutz" opens as
+ * Nash by Lutz, which estimates n and K from the watershed it brings; one with n and K
+ * opens with them given, also one written before `nash_estimation` (plan
+ * 2026-11-10-network-wizard, D6), whose n and K were Lutz's estimates (`provenance.runoff`
+ * of `uh nash`). The rainfall is PMAXTP when the provenance names the probability and the
+ * duration the section offers and a point (the rainfall's own, else the watershed's, such
+ * as Hydrograf's outlet), else a design storm or the series. The depth handed over is
+ * remembered as fetched only when the rainfall names its point; otherwise the page fetches
+ * the depth of the point. A hand-off without rainfall (the watershed only) leaves the
+ * probability, the duration and the model to choose, PMAXTP at the watershed's point when
+ * the provenance names one. `handoff` keeps what the results compare with, the depth
+ * handed over included.
  *
  * @param {object} doc the hand-off
  * @returns {object} the inputs, a patch of the whole state
@@ -327,11 +327,9 @@ export function hydrogramInputs(doc) {
   inputs.amc = runoff.amc || "II";
   inputs.ia_coefficient = inputText(runoff.ia_coefficient);
   inputs.uh_model = runoff.uh_model || (isObject(rainfall) ? "scs" : null);
-  const lutz =
-    isObject(provenance.runoff) && provenance.runoff.method === "lutz" && LUTZ_FIELDS.every((field) => typeof sub.watershed[field] === "number");
-  inputs.nash_source = inputs.uh_model === "nash" && !lutz ? "given" : "lutz";
-  inputs.nash_n = lutz ? "" : inputText(runoff.nash_n);
-  inputs.nash_k_min = lutz ? "" : inputText(runoff.nash_k_min);
+  inputs.nash_source = inputs.uh_model === "nash" && runoff.nash_estimation !== "lutz" ? "given" : "lutz";
+  inputs.nash_n = inputText(runoff.nash_n);
+  inputs.nash_k_min = inputText(runoff.nash_k_min);
   inputs.clark_kind = typeof runoff.clark_r_min === "number" ? "r" : "ratio";
   inputs.clark_r_min = inputText(runoff.clark_r_min);
   inputs.clark_r_tc_ratio = inputText(runoff.clark_r_tc_ratio);

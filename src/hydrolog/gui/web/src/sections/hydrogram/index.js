@@ -7,11 +7,11 @@
 // applied); „Liczenie…” after 150 ms; invalid data run nothing and keep the last result,
 // marked („Dane niepełne” with the field); an error of the server stays on its field or
 // above the steps („Błąd danych”); Hydrolog's notices of a value outside its typical range
-// stand on their field as warnings, which never stop a run. Nash by Lutz runs `uh nash`
-// first and passes `nash_n` and `nash_k_min` on; the notices of that run stand beside those
-// of `hydrograph generate`, in Wyniki and on the fields. The typical ranges the (i)
-// explanations and the notes check are those the catalog documents of the two commands
-// serve (`typical_ranges`), registered when the documents arrive.
+// stand on their field as warnings, which never stop a run. Nash by Lutz sends
+// `nash_estimation: "lutz"` with the watershed: the one run of `hydrograph generate`
+// estimates n and K from it (plan 2026-11-10-network-wizard, D6). The typical ranges the
+// (i) explanations and the notes check are those the catalog document of `hydrograph
+// generate` serves (`typical_ranges`, Lutz's area among them), registered when it arrives.
 //
 // PMAXTP (ADR-0018): once the point, p and the duration of step 2 are given and valid, the
 // section runs `precip pmaxtp` on its own channel "hydrogram-pmaxtp" (debounced as a run,
@@ -57,8 +57,6 @@ import { CenterBody, ResultsPanel, modelLabel } from "./results-panel.js";
 import {
   CHANNEL,
   COMMAND,
-  LUTZ_COMMAND,
-  LUTZ_SOURCES,
   NETWORK_SCHEMA,
   PMAXTP_CHANNEL,
   PMAXTP_COMMAND,
@@ -71,7 +69,6 @@ import {
   initialState,
   inputModels,
   isEmpty,
-  lutzOptions,
   normalize,
   numberOf,
   optionField,
@@ -83,9 +80,7 @@ import {
   rangeInfoId,
   readWatershed,
   requirements,
-  runNotices,
   toOptions,
-  usesLutz,
   watershedErrors,
   watershedObject,
 } from "./state.js";
@@ -93,9 +88,9 @@ import {
 registerInfo({ ...tcInfo, ...lossesInfo, ...uhInfo, ...rainInfo });
 
 /**
- * The catalog documents of `hydrograph generate`, `precip pmaxtp` and Lutz's `uh nash`,
- * and the network schema, turned into the models that check the inputs; the typical
- * ranges the documents serve are registered with the (i) explanations.
+ * The catalog documents of `hydrograph generate` and `precip pmaxtp` and the network
+ * schema, turned into the models that check the inputs; the typical ranges the document of
+ * `hydrograph generate` serves are registered with the (i) explanations.
  *
  * @returns {{models: object|null, error: string|null, retry: () => void}} the models (null
  *   until they arrive), a loading error and a retry
@@ -106,13 +101,10 @@ function useModels() {
   useEffect(() => {
     let alive = true;
     setState((old) => ({ ...old, error: null }));
-    // Lutz's range is only an explanation's: without its document the section still works
-    const lutz = api.command(LUTZ_COMMAND).catch(() => null);
-    Promise.all([api.command(COMMAND), api.schema(NETWORK_SCHEMA), api.command(PMAXTP_COMMAND), lutz])
-      .then(([doc, schema, pmaxtpDoc, lutzDoc]) => {
+    Promise.all([api.command(COMMAND), api.schema(NETWORK_SCHEMA), api.command(PMAXTP_COMMAND)])
+      .then(([doc, schema, pmaxtpDoc]) => {
         if (!alive) return;
         registerServed(doc, rangeInfoId);
-        registerServed(lutzDoc, (range) => (range.method === "lutz" ? rangeInfoId(range) : null));
         setState({ models: inputModels(doc, schema, pmaxtpDoc), error: null });
       })
       .catch((error) => {
@@ -140,18 +132,16 @@ function fieldCount(values) {
  * or a model misses on its own), else above the steps.
  *
  * @param {object} doc the hydrolog-error/1 document
- * @param {boolean} lutz whether it came from Lutz's `uh nash`
  * @param {object|null} inputs the inputs of the run
  * @returns {{fields: Object<string, string>, form: {title: string, text: string}|null,
  *   text: string}} the messages
  */
-function wordError(doc, lutz, inputs) {
+function wordError(doc, inputs) {
   const described = describeError(doc);
   const details = (doc && doc.details) || {};
   const shown = inputs ? panelFields(inputs) : [];
   const place = (option) => {
-    const name = lutz && Object.hasOwn(LUTZ_SOURCES, option) ? LUTZ_SOURCES[option] : option;
-    const field = inputs ? optionField(inputs, name) : name;
+    const field = inputs ? optionField(inputs, option) : option;
     return shown.includes(field) ? field : null;
   };
   const fields = {};
@@ -249,7 +239,7 @@ export default function Hydrogram({ path = [] }) {
   }, [route]);
 
   // The checks: errors stop a run; the warnings of the shown run's notices do not
-  const shownRun = run ? { inputs: run.inputs, notices: runNotices(run) } : null;
+  const shownRun = run ? { inputs: run.inputs, notices: run.envelope.notices || [] } : null;
   const checked = useMemo(
     () => (docs.models ? checkInputs(inputs, docs.models, shownRun) : null),
     [docs.models, inputs, run],
@@ -305,19 +295,17 @@ export default function Hydrogram({ path = [] }) {
   const valid = checked !== null && inputs.uh_model !== null && Object.keys(checked.errors).length === 0 && rainReady;
   const request = useMemo(() => {
     if (!valid) return null;
-    return { inputs, options: toOptions(inputs), lutz: usesLutz(inputs) ? lutzOptions(inputs) : null };
+    return { inputs, options: toOptions(inputs) };
   }, [valid, inputs]);
-  const key = request ? JSON.stringify([request.options, request.lutz]) : null;
+  const key = request ? JSON.stringify(request.options) : null;
   const latestKey = useRef(key);
   latestKey.current = key;
 
   outcome.current = (next) => {
     // The task returns its errors; a rejection would be a fault of the GUI itself
-    const value = next.ok
-      ? next.value
-      : { key: latestKey.current, stage: "generate", error: { code: "internal_error", message: String(next.error) }, inputs: null };
+    const value = next.ok ? next.value : { key: latestKey.current, error: { code: "internal_error", message: String(next.error) }, inputs: null };
     if (value.error) {
-      setFailure({ key: value.key, ...wordError(value.error, value.stage === "lutz", value.inputs) });
+      setFailure({ key: value.key, ...wordError(value.error, value.inputs) });
       return;
     }
     const envelope = value.envelope;
@@ -342,26 +330,13 @@ export default function Hydrogram({ path = [] }) {
     }
     const sent = { ...request, key };
     channel.request(async (signal) => {
-      let stage = "generate";
       try {
-        let lutz = null;
-        let lutzNotices = [];
-        let options = sent.options;
-        if (sent.lutz) {
-          stage = "lutz";
-          const first = await api.run(LUTZ_COMMAND, sent.lutz, { channel: CHANNEL, signal });
-          if (first.status !== "ok") return { key: sent.key, inputs: sent.inputs, envelope: first };
-          lutz = first.result;
-          lutzNotices = first.notices || [];
-          options = toOptions(sent.inputs, lutz.parameters);
-          stage = "generate";
-        }
-        const envelope = await api.run(COMMAND, options, { channel: CHANNEL, signal });
-        return { key: sent.key, inputs: sent.inputs, options, envelope, lutz, lutzNotices };
+        const envelope = await api.run(COMMAND, sent.options, { channel: CHANNEL, signal });
+        return { key: sent.key, inputs: sent.inputs, options: sent.options, envelope };
       } catch (error) {
         if (error && error.name === "AbortError") throw error;
         const doc = error && error.doc ? error.doc : { code: "internal_error", message: String(error) };
-        return { key: sent.key, stage, error: doc, inputs: sent.inputs };
+        return { key: sent.key, error: doc, inputs: sent.inputs };
       }
     });
   }, [key, docs.models]);
@@ -515,7 +490,6 @@ export default function Hydrogram({ path = [] }) {
             setField=${setField}
             onFile=${onFile}
             result=${result}
-            lutz=${run && usesLutz(inputs) ? run.lutz : null}
             models=${docs.models}
             infoValues=${values}
             pmaxtp=${{ depth, busy: pmaxtpBusy, onRetry }}

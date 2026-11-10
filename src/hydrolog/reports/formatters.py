@@ -529,11 +529,12 @@ class FormulaRenderer:
         Parameters
         ----------
         L_km : float
-            Main stream length [km].
+            Main stream length from the divide to the outlet [km] (the longest flow
+            path of a watershed).
         Lc_km : float
             Length to catchment centroid along stream [km].
         slope : float
-            Average main stream slope [-].
+            Average main stream slope [-] (that of the longest flow path).
         manning_n : float
             Manning's roughness coefficient [-].
         urban_pct : float
@@ -572,9 +573,9 @@ class FormulaRenderer:
             "L_c}{J_g^{1{,}5}}\\right)^{0{,}26}"
             " \\cdot e^{-0{,}016 U} \\cdot e^{0{,}004 W} \\quad [\\text{h}]$$\n\n"
             "gdzie:\n"
-            f"- $L$ = {L_km:.3f} km (długość cieku)\n"
+            f"- $L$ = {L_km:.3f} km (długość cieku głównego od działu wodnego)\n"
             f"- $L_c$ = {Lc_km:.3f} km (odległość do centroidu zlewni)\n"
-            f"- $J_g$ = {slope:.4f} (spadek cieku, {slope_pct:.2f}%)\n"
+            f"- $J_g$ = {slope:.4f} (spadek cieku głównego, {slope_pct:.2f}%)\n"
             f"- $U$ = {urban_pct:.1f}% (tereny zurbanizowane)\n"
             f"- $W$ = {forest_pct:.1f}% (tereny leśne)\n\n"
             f"$$t_p = {P1:.4f} \\cdot \\left(\\frac{{{L_km:.3f} \\cdot {Lc_km:.3f}}}"

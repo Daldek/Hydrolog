@@ -42,12 +42,19 @@ from hydrolog.operations.scs import (
 )
 from hydrolog.operations.tc import TC_METHODS, TcMethod, watershed_concentration_time
 from hydrolog.precipitation import HietogramResult
-from hydrolog.runoff import HydrographGenerator, HydrographGeneratorResult
+from hydrolog.runoff import (
+    HydrographGenerator,
+    HydrographGeneratorResult,
+    LutzCalculationResult,
+    NashIUH,
+)
 
 __all__ = [
+    "NASH_ESTIMATIONS",
     "UH_MODELS",
     "HydrographGenerateResult",
     "HydrographRun",
+    "NashEstimation",
     "UhModel",
     "compute_hydrograph",
     "hydrograph_generate",
@@ -55,6 +62,8 @@ __all__ = [
 
 UhModel = Literal["scs", "nash", "clark", "snyder"]
 UH_MODELS: tuple[str, ...] = get_args(UhModel)
+NashEstimation = Literal["lutz"]
+NASH_ESTIMATIONS: tuple[str, ...] = get_args(NashEstimation)
 
 _TC_MODELS = ("scs", "clark")
 
@@ -119,14 +128,20 @@ class HydrographRun:
         ``"scs"``, ``"nash"``, ``"clark"`` or ``"snyder"``.
     uh_params : dict
         ``uh_params`` passed to :class:`HydrographGenerator`: Nash ``n``, ``k``,
-        ``k_unit`` (``"min"``), Clark ``r``, Snyder ``L_km``, ``Lc_km``, ``ct``,
-        ``cp``; empty for SCS.
+        ``k_unit`` (``"min"``) and, for an estimate, ``estimated``; Clark ``r``,
+        Snyder ``L_km``, ``Lc_km``, ``ct``, ``cp``; empty for SCS.
     hietogram_type : str or None
         ``"block"``, ``"triangular"``, ``"beta"`` or ``"euler_ii"`` when the
         hyetograph was generated, ``None`` for a precipitation series.
     watershed : WatershedParameters or None
         The watershed parameters when a watershed was given, with the ``cn`` option
         applied (the ``cn`` the runoff and the NRCS time of concentration used).
+    nash_estimation : str or None
+        How Nash's ``n`` and ``K`` were estimated from the watershed (``"lutz"``);
+        ``None`` when they were given or the model is not Nash.
+    lutz : LutzCalculationResult or None
+        The steps of Lutz's estimation (``NashIUH.lutz_params``) when
+        ``nash_estimation`` is ``"lutz"``, else ``None``.
     """
 
     result: HydrographGeneratorResult
@@ -143,6 +158,8 @@ class HydrographRun:
     hietogram_type: str | None
     watershed: WatershedParameters | None
     tc_parameters: dict[str, float] | None = None
+    nash_estimation: str | None = None
+    lutz: LutzCalculationResult | None = None
 
 
 @dataclass
@@ -187,8 +204,12 @@ class HydrographGenerateResult(JsonResultMixin):
         Type of the generated hyetograph; ``None`` for a precipitation series.
     uh_model : str
         Unit hydrograph model.
+    nash_estimation : str or None
+        How Nash's n and K were estimated from the watershed (``"lutz"``);
+        ``None`` when they were given or the model is not Nash.
     uh_parameters : dict of str to float
-        Model parameters (names as in the ``uh`` commands).
+        Model parameters (names as in the ``uh`` commands); for Nash the estimated
+        ``n`` and ``k_min`` when ``nash_estimation`` is set.
     uh_time_to_peak_min : float
         Time to peak of the unit hydrograph [min]. For the ``snyder`` model it is
         tpR of the unit hydrograph for the duration of the time step.
@@ -237,6 +258,7 @@ class HydrographGenerateResult(JsonResultMixin):
     tc_method: str | None
     hietogram_type: str | None
     uh_model: str
+    nash_estimation: str | None
     uh_parameters: dict[str, float]
     uh_time_to_peak_min: float
     uh_peak_discharge_m3s_per_mm: float
@@ -260,6 +282,7 @@ def _uh_parameters(
     *,
     nash_n: float | None,
     nash_k_min: float | None,
+    estimate: NashIUH | None,
     clark_r_min: float | None,
     clark_r_tc_ratio: float | None,
     snyder_length_km: float | None,
@@ -267,7 +290,11 @@ def _uh_parameters(
     snyder_ct: float | None,
     snyder_cp: float | None,
 ) -> dict[str, Any]:
-    """``uh_params`` of :class:`HydrographGenerator` for the chosen model."""
+    """``uh_params`` of :class:`HydrographGenerator` for the chosen model.
+
+    ``estimate`` is the Nash cascade that ``nash_estimation`` estimated from the
+    watershed, else ``None``.
+    """
     given = {
         "nash": {"nash_n": nash_n, "nash_k_min": nash_k_min},
         "clark": {"clark_r_min": clark_r_min, "clark_r_tc_ratio": clark_r_tc_ratio},
@@ -287,8 +314,26 @@ def _uh_parameters(
             )
     when = f"uh_model is {model!r}"
     if model == "nash":
+        if estimate is not None:
+            # an estimate: the generator does not check it against the ranges of
+            # given n and K
+            return {
+                "n": estimate.n,
+                "k": estimate.k_min,
+                "k_unit": "min",
+                "estimated": True,
+            }
+        if nash_n is None:
+            raise option_error(
+                "nash_n",
+                "required",
+                f"Option 'nash_n' is required when {when}, unless nash_estimation "
+                "is given",
+                hint="Give nash_n and nash_k_min, or nash_estimation (lutz) to "
+                "estimate them from the watershed.",
+            )
         return {
-            "n": require_option("nash_n", nash_n, when=when),
+            "n": nash_n,
             "k": require_option("nash_k_min", nash_k_min, when=when),
             "k_unit": "min",
         }
@@ -358,6 +403,7 @@ def compute_hydrograph(
     uh_model: UhModel = "scs",
     nash_n: float | None = None,
     nash_k_min: float | None = None,
+    nash_estimation: NashEstimation | None = None,
     clark_r_min: float | None = None,
     clark_r_tc_ratio: float | None = None,
     snyder_length_km: float | None = None,
@@ -390,6 +436,8 @@ def compute_hydrograph(
     moisture = to_amc(amc)
     if tc_method is not None:
         check_choice("tc_method", tc_method, TC_METHODS)
+    if nash_estimation is not None:
+        check_choice("nash_estimation", nash_estimation, NASH_ESTIMATIONS)
 
     source = select_group(
         {
@@ -450,6 +498,31 @@ def compute_hydrograph(
             "is given",
             hint="Give tc_min, or a watershed (with tc_method) to compute it.",
         )
+    if nash_estimation is not None:
+        if model != "nash":
+            raise option_error(
+                "nash_estimation",
+                "not_applicable",
+                f"Option 'nash_estimation' does not apply when uh_model is {model!r}",
+                hint="It estimates the n and K of uh_model 'nash'.",
+            )
+        if nash_n is not None or nash_k_min is not None:
+            raise option_error(
+                "nash_estimation",
+                "conflict",
+                "Give nash_n and nash_k_min or nash_estimation, not both",
+                hint="nash_estimation estimates n and K from the watershed; nash_n "
+                "and nash_k_min are values.",
+            )
+        if catchment is None:
+            raise option_error(
+                "nash_estimation",
+                "not_applicable",
+                "Option 'nash_estimation' estimates n and K from a watershed, but "
+                "none was given",
+                hint="Give a watershed (watershed or watershed_file), or nash_n and "
+                "nash_k_min.",
+            )
 
     chosen = select_group(
         {
@@ -480,6 +553,7 @@ def compute_hydrograph(
     tc: float | None = tc_min
     method_used: str | None = None
     tc_parameters: dict[str, float] | None = None
+    estimate: NashIUH | None = None
     with capture_warnings() as warned:
         if tc is None and catchment is not None and (needs_tc or tc_method):
             method_used = tc_method or "kirpich"
@@ -488,11 +562,17 @@ def compute_hydrograph(
             tc_parameters = concentration.parameters
         if tc is not None and not needs_tc:
             notices.append(notice("tc_not_used", tc_min=tc, uh_model=model))
+        if nash_estimation is not None:
+            assert catchment is not None
+            # Lutz from the fields its source defines (NASH_INPUTS); an estimate is
+            # never checked against the ranges of given n and K, only its area is
+            estimate = NashIUH.from_lutz(**catchment.nash_parameters(nash_estimation))
         uh_params = _uh_parameters(
             model,
             tc,
             nash_n=nash_n,
             nash_k_min=nash_k_min,
+            estimate=estimate,
             clark_r_min=clark_r_min,
             clark_r_tc_ratio=clark_r_tc_ratio,
             snyder_length_km=snyder_length_km,
@@ -556,6 +636,8 @@ def compute_hydrograph(
         hietogram_type=generated,
         watershed=catchment,
         tc_parameters=tc_parameters,
+        nash_estimation=nash_estimation,
+        lutz=None if estimate is None else estimate.lutz_params,
     )
 
 
@@ -582,6 +664,7 @@ def hydrograph_generate(
     uh_model: UhModel = "scs",
     nash_n: float | None = None,
     nash_k_min: float | None = None,
+    nash_estimation: NashEstimation | None = None,
     clark_r_min: float | None = None,
     clark_r_tc_ratio: float | None = None,
     snyder_length_km: float | None = None,
@@ -643,7 +726,16 @@ def hydrograph_generate(
     uh_model : {"scs", "nash", "clark", "snyder"}, optional
         Unit hydrograph model, by default ``"scs"``.
     nash_n, nash_k_min : float, optional
-        Nash parameters n and K [min] (required for ``nash``).
+        Nash parameters n and K [min] (for ``nash`` both, or ``nash_estimation``).
+    nash_estimation : {"lutz"}, optional
+        For ``nash``: estimate n and K from the watershed instead of giving them;
+        ``lutz`` is the Lutz method (Lutz 1984, after KZGW 2017,
+        :meth:`~hydrolog.runoff.NashIUH.from_lutz`) with the fields
+        :meth:`~hydrolog.morphometry.WatershedParameters.nash_parameters` takes:
+        L and J of the longest flow path (``flow_path_length_km``,
+        ``flow_path_slope_m_per_m``), ``Lc_km``, ``manning_n``, ``urban_pct`` and
+        ``forest_pct`` (0 when not set). The estimate is not checked against the
+        typical ranges of given n and K; the area is checked against Lutz's.
     clark_r_min : float, optional
         Clark storage constant R [min]; exactly one of ``clark_r_min`` and
         ``clark_r_tc_ratio`` for ``clark``.
@@ -662,22 +754,28 @@ def hydrograph_generate(
         :class:`HydrographGenerateResult` with the notices: library warnings about
         parameters outside the typical range (``outside_typical_range``, with
         ``details.field`` the input the value came from: the field of the
-        watershed for a tc formula, else the option, e.g. ``snyder_ct``), a
-        non-standard ``ia_coefficient``, a duration that is not a multiple of the
-        step, an unused tc. The result holds the ordinates of the unit hydrograph
-        that was convolved (``uh_times_min``, ``uh_discharge_m3s_per_mm``) next to
-        the hydrograph.
+        watershed for a tc formula or Lutz's area, else the option, e.g.
+        ``snyder_ct``), a non-standard ``ia_coefficient``, a duration that is not
+        a multiple of the step, an unused tc. The result holds the ordinates of the
+        unit hydrograph that was convolved (``uh_times_min``,
+        ``uh_discharge_m3s_per_mm``) next to the hydrograph, and with
+        ``nash_estimation`` the estimated n and K in ``uh_parameters``.
 
     Raises
     ------
     InvalidParameterError
         If the catchment or precipitation source is ambiguous or incomplete
         (``reason = "one_of"``), an option of another hyetograph type or model is
-        given (``reason = "not_applicable"``), ``cn``, ``tc_min`` or a model
-        parameter is missing (``reason = "required"``), a watershed lacks the fields
-        of ``tc_method`` (``reason = "missing_field"``, ``details.option`` the first
-        missing field, ``details.missing`` all of them), or a value is invalid
-        (``details.option`` the option or the field of the watershed).
+        given (``reason = "not_applicable"``, also ``nash_estimation`` without a
+        watershed), ``tc_min`` with ``tc_method`` or ``nash_estimation`` with
+        ``nash_n`` or ``nash_k_min`` (``reason = "conflict"``), ``cn``, ``tc_min``
+        or a model parameter is missing (``reason = "required"``; Nash without n
+        and K or an estimation on ``nash_n``), a watershed lacks the fields of
+        ``tc_method`` or ``nash_estimation`` (``reason = "missing_field"``,
+        ``details.option`` the first missing field, ``details.missing`` all of
+        them; for an estimation also ``details.method``), or a value is invalid
+        (``details.option`` the option or the field of the watershed; Lutz's
+        ``Lc_km`` longer than ``flow_path_length_km`` is ``"maximum"``).
     NotFoundError
         If ``watershed_file`` or ``input_file`` does not exist.
     InputDataError
@@ -705,6 +803,7 @@ def hydrograph_generate(
         uh_model=uh_model,
         nash_n=nash_n,
         nash_k_min=nash_k_min,
+        nash_estimation=nash_estimation,
         clark_r_min=clark_r_min,
         clark_r_tc_ratio=clark_r_tc_ratio,
         snyder_length_km=snyder_length_km,
@@ -735,6 +834,7 @@ def hydrograph_generate(
         tc_method=run.tc_method,
         hietogram_type=run.hietogram_type,
         uh_model=run.uh_model,
+        nash_estimation=run.nash_estimation,
         uh_parameters=_public_uh_parameters(run.uh_model, run.uh_params, run.tc_min),
         uh_time_to_peak_min=unit.time_to_peak_min,
         uh_peak_discharge_m3s_per_mm=unit.peak_discharge_m3s,
