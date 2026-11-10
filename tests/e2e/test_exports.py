@@ -49,6 +49,8 @@ from tests.e2e.conftest import (
     seed_hydrogram,
 )
 from tests.e2e.conftest import KAMIENNIK as EXAMPLE
+from tests.e2e.test_siec import NODE, canvas_cells, compute, polish
+from tests.e2e.test_siec_editor import drag_link, said
 
 ROOT = Path(__file__).resolve().parents[2]
 HANDOFF: dict[str, Any] = json.loads(
@@ -1349,3 +1351,216 @@ def test_snyders_lengths_of_a_handoff_go_to_the_watersheds_fields(tab: Tab) -> N
         "snyder_length_km = 12 pominięte: zlewnia ma channel_length_km = 14,78"
         in kept["detail"]
     )
+
+
+# --- Sieć: a hand-off opened and added (plan 2026-11-10-network-editor, D10, E4) ------
+
+
+# The pure part of „Dodaj zlewnię z Hydrografa”: readHandoff's target in Sieć and
+# siecAddition on a network of Z1, Dolna and OUT (or an empty one), the structure added
+# by each case returned with its notes, rainfall choices and the network's step.
+ADDITION = """async ([d15, two]) => {
+  const h = await import('./src/handoff/handoff.js');
+  const { siecAddition } = await import('./src/handoff/mapping.js');
+  const nm = await import('./src/sections/siec/node-model.js');
+  const url = 'api/schemas/hydrolog-network-1.schema.json';
+  const schema = await (await fetch(url)).json();
+  const forms = nm.buildForms(schema);
+  const text = JSON.stringify(d15);
+  const read = (into) =>
+    h.readHandoff(text, { networkSchema: schema, into }).target;
+  const empty = { network: {}, skeleton: [], nodes: {} };
+  const at = (x, y) => ({ x, y });
+  const network = (values) => ({
+    network: values,
+    skeleton: [
+      { id: 'Z1', type: 'subcatchment', from: null, position: at(0, 0) },
+      { id: 'Dolna', type: 'subcatchment', from: null, position: at(0, 1) },
+      { id: 'OUT', type: 'outlet', from: ['Z1'], position: at(1, 0) },
+    ],
+    nodes: { Z1: {}, Dolna: {}, OUT: {} },
+  });
+  const handed = (payload, subject = 'Dwie zlewnie') =>
+    ({ ...two, subject, payload });
+  const add = (inputs, payload, subject) =>
+    siecAddition(inputs, handed(payload, subject), forms);
+  const rain = nm.networkValues({ rainfall: two.payload.rainfall });
+  const same = add(network({ timestep_min: '10', ...rain }), two.payload);
+  const other = add(network({ timestep_min: '5' }), two.payload);
+  const fresh = add(empty, two.payload);
+  const renamed = { ...two.payload, nodes: two.payload.nodes.map((n) =>
+    n.id === 'Z2' ? { ...n, id: 'Dolna', description: 'Własny opis' } : n) };
+  const own = add(network({}), renamed, 'Zlewnie\\tz Hydrografa');
+  const filed = add(network({}), { ...two.payload, nodes: [
+    { id: 'Z1', type: 'subcatchment' },
+    { id: 'OUT', type: 'outlet', from: ['Z1'] },
+  ] });
+  const none = add(network({}), { ...two.payload, nodes: [
+    { id: 'R9', type: 'reach', from: ['Q'], method: 'lag', lag_min: 5 },
+  ] });
+  const pick = (found) => ({
+    added: found.added,
+    lines: found.lines,
+    skeleton: found.inputs.skeleton
+      .filter((n) => found.added.includes(n.id))
+      .map((n) => [n.id, n.position, n.description || null,
+                   n.origin ? n.origin.subject : null]),
+    rainfall: found.added.map((id) => found.inputs.nodes[id]['#rainfall']),
+    step: found.inputs.network.timestep_min ?? null,
+  });
+  return {
+    targets: [read(null), read('siec')],
+    same: pick(same),
+    other: pick(other),
+    fresh: pick(fresh),
+    own: pick(own),
+    column: filed.inputs.nodes[filed.added[0]],
+    none: pick(none),
+  };
+}"""
+
+
+def add_file(page: Page, path: Path) -> None:
+    """Add a hand-off's subcatchments with „Dodaj zlewnię z Hydrografa” in Sieć."""
+    page.locator(f"{SIEC} .view-panel.left").get_by_role(
+        "button", name="Dodaj zlewnię z Hydrografa"
+    ).click()
+    with page.expect_file_chooser() as chooser:
+        page.get_by_role("menuitem").filter(has_text="Plik przekazania").click()
+    chooser.value.set_files(str(path))
+
+
+def test_handoffs_open_and_join_in_siec_and_the_written_one_reopens(
+    tab: Tab, tmp_path: Path
+) -> None:
+    hydrograf = json.loads(HYDROGRAF.read_text(encoding="utf-8"))
+    d15 = tmp_path / "d15.handoff.json"
+    d15.write_text(json.dumps(D15, ensure_ascii=False), encoding="utf-8")
+    tab.open("#siec")
+    page = tab.page
+    # Nogat's example, one subcatchment and its outlet, opens in Sieć when Sieć reads it
+    load_file(page, SIEC, d15)
+    expect(page.locator("svg.schem g.node")).to_have_count(2)
+    expect(page).to_have_url(re.compile(r"#siec"))
+    expect(page.locator(".toast")).to_have_text(
+        "Wczytano przekazanie „Kamiennik — Świerzawa” (Hydrolog 1.0.0.dev0) "
+        "w Sieci i trasowaniu: 2 węzły"
+    )
+    # Hydrograf's hand-off adds its Z1 as Z2, without its outlet, in the top row
+    add_file(page, HYDROGRAF)
+    expect(page.locator("svg.schem g.node")).to_have_count(3)
+    expect(page.locator(f'{SIEC} [data-note="load"] li')).to_have_text(
+        [
+            f"Dodano 1 zlewnię z przekazania „{hydrograf['subject']}” "
+            "(Hydrograf 0.5.0.dev0): Z2.",
+            "Zlewnia Z1 z przekazania ma w sieci id Z2.",
+            "Sieć zostaje przy swoim kroku czasowym 10 min; przekazanie ma krok 5 min.",
+        ]
+    )
+    expect(page.locator(NODE.format("Z2"))).to_have_attribute("aria-pressed", "true")
+    origin = page.locator(
+        f'{SIEC} [data-step="node"] [data-handoff-source="hydrograf"]'
+    )
+    expect(origin.locator("strong")).to_have_text(
+        f"Z Hydrografa: {hydrograf['subject']}"
+    )
+    cells = canvas_cells(page)
+    assert cells["Z2"] == (cells["Z1"][0], cells["Z1"][1] + 1)
+    # Joined in a junction above the outlet and computed
+    drag_link(page, "Z2", "OUT")
+    page.locator(".offer").get_by_role("button", name="Wstaw złącze").click()
+    said(page, "Wstawiono złącze J1: Z1, Z2 odpływają przez nie do OUT.")
+    compute(page)
+    cells = canvas_cells(page)
+
+    # The hand-off written from Sieć: both subcatchments as handed, placed and described
+    name, data = download(page, handoff_button(page, SIEC, "file"))
+    assert name == "Kamiennik — Świerzawa.handoff.json"
+    doc = json.loads(data)
+    valid(doc)
+    expected = [
+        placed(D15["payload"]["nodes"][0], position=cells["Z1"]),
+        placed(
+            {"id": "J1", "type": "junction", "from": ["Z1", "Z2"]},
+            position=cells["J1"],
+        ),
+        placed({"id": "OUT", "type": "outlet", "from": ["J1"]}, position=cells["OUT"]),
+        placed(
+            {**hydrograf["payload"]["nodes"][0], "id": "Z2"},
+            description=hydrograf["subject"],
+            position=cells["Z2"],
+        ),
+    ]
+    assert doc["payload"]["nodes"] == expected
+    assert doc["payload"]["timestep_min"] == 10
+    assert doc["provenance"] == D15["provenance"]
+    computed = outlet(doc["payload"])
+    assert math.isclose(
+        doc["result"]["peak_discharge_m3s"], computed["peak_m3s"], rel_tol=1e-9
+    )
+    expect(page.locator('[data-tiles="network"] [data-tile="peak"] .v')).to_have_text(
+        f"{polish(computed['peak_m3s'], 1)} m³/s"
+    )
+    # and reopened from Sieć at its positions
+    written = tmp_path / name
+    written.write_bytes(data)
+    load_file(page, SIEC, written)
+    expect(page.locator(".toast")).to_contain_text("w Sieci i trasowaniu: 4 węzły")
+    expect(page.locator(NODE.format("J1"))).to_be_attached()
+    assert canvas_cells(page) == cells
+    expect(page.locator(NODE.format("Z2"))).to_have_attribute(
+        "aria-label", re.compile(re.escape(hydrograf["subject"]))
+    )
+
+
+def test_a_handoff_adds_its_subcatchments_as_the_plan_says(tab: Tab) -> None:
+    tab.open("#siec")
+    page = tab.page
+    got = page.evaluate(ADDITION, [D15, {**D15, "payload": TWO}])
+    # Elsewhere one subcatchment goes to Hydrogram zlewni; Sieć opens it itself
+    assert got["targets"] == ["hydrogram", "siec"]
+    subject = "Dwie zlewnie"
+    producer = f"Hydrolog {D15['producer']['version']}"
+    # The network's rainfall equals the hand-off's: the nodes take the network's
+    assert got["same"] == {
+        "added": ["Z2", "Z3"],
+        "lines": [
+            f"Dodano 2 zlewnie z przekazania „{subject}” ({producer}): Z2, Z3.",
+            "Zlewnia Z1 z przekazania ma w sieci id Z2.",
+            "Zlewnia Z2 z przekazania ma w sieci id Z3.",
+            "Pominięto węzły przekazania inne niż zlewnie: R1, J1.",
+        ],
+        "skeleton": [
+            ["Z2", {"x": 0, "y": 2}, subject, subject],
+            ["Z3", {"x": 0, "y": 3}, subject, subject],
+        ],
+        "rainfall": ["network", "network"],
+        "step": "10",
+    }
+    # Another rainfall and time step: the network keeps its own and says so
+    assert got["other"]["lines"][4:] == [
+        "Sieć zostaje przy swoim kroku czasowym 5 min; przekazanie ma krok 10 min.",
+        "Opad przekazania różni się od opadu sieci, więc jest opadem własnym: Z2, Z3.",
+    ]
+    assert got["other"]["rainfall"] == ["design", "design"]
+    # An empty network takes the hand-off's step; its ids are free
+    assert got["fresh"]["added"] == ["Z1", "Z2"]
+    assert got["fresh"]["step"] == "10"
+    assert got["fresh"]["skeleton"][0][1] == {"x": 0, "y": 0}
+    assert "Krok czasowy sieci: 10 min, jak w przekazaniu." in got["fresh"]["lines"]
+    # A taken id keeps its stem; an own description stays; a subject becomes valid text
+    assert got["own"]["added"] == ["Z2", "Dolna2"]
+    assert [row[2] for row in got["own"]["skeleton"]] == [
+        "Zlewnie z Hydrografa",
+        "Własny opis",
+    ]
+    # A renamed subcatchment that reads the inflows file keeps its column
+    assert got["column"] == {"#variant": "file", "value_column": "Z1"}
+    # Nothing to add: said so
+    assert got["none"] == {
+        "added": [],
+        "lines": ["Przekazanie nie ma zlewni do dodania."],
+        "skeleton": [],
+        "rainfall": [],
+        "step": None,
+    }

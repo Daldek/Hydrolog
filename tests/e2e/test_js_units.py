@@ -19,6 +19,7 @@ junction, remove, rename, describe), ``editor/history.js``, the hints of
 ``editor/geometry.js`` and ``words.js`` are checked on small networks.
 """
 
+import json
 import math
 import random
 from typing import Any
@@ -1976,3 +1977,68 @@ def test_every_reason_and_refusal_is_worded(page: Any) -> None:
     assert "OUT1" in refusals["outlet"]
     assert "Z8" in refusals["source"]
     assert "R7" in refusals["full"] and "Z9" in refusals["full"]
+
+
+def scattered_network(size: int, seed: int) -> list[dict[str, Any]]:
+    """Return the structure of a random tree whose nodes stand on random free cells."""
+    root, inflows = random_tree(size, seed, fan_in=3, deep=0.4)
+    rng = random.Random(seed)
+    side = int(math.sqrt(size)) + 4
+    cells = rng.sample([(x, y) for x in range(side) for y in range(side)], len(inflows))
+    nodes = []
+    for (node, ups), (x, y) in zip(inflows.items(), cells, strict=True):
+        kind = "outlet" if node == root else "junction" if ups else "subcatchment"
+        nodes.append(
+            {
+                "id": node,
+                "type": kind,
+                "from": ups or None,
+                "position": {"x": x, "y": y},
+            }
+        )
+    return nodes
+
+
+def test_the_work_kept_per_structure_equals_the_plain_one(page: Any) -> None:
+    # A network of 300 nodes on random cells: lines cross and run through nodes
+    nodes = scattered_network(300, 11)
+    # and a loop: a junction's first inflow lists the junction, whose links are refused
+    # with the loop named
+    junction = next(node for node in nodes if node["type"] == "junction")
+    up = next(at for at, node in enumerate(nodes) if node["id"] == junction["from"][0])
+    nodes[up] = {**nodes[up], "from": [*(nodes[up]["from"] or []), junction["id"]]}
+    got = js(
+        page,
+        GEOMETRY
+        + GRAPH
+        + f"const nodes = {json.dumps(nodes)};\n"
+        + """const sources = nodes.filter((n, at) => at % 15 === 0).map((n) => n.id);
+        const links = sources.every((from) => {
+          const all = gr.linkVerdicts(nodes, rules, from);
+          const one = (to) => gr.linkVerdict(nodes, rules, from, to);
+          return nodes.every((n) => n.id === from
+            || JSON.stringify(all.get(n.id)) === JSON.stringify(one(n.id)));
+        });
+        const picture = g.pictureOf(nodes, new Map());
+        const grid = picture.nodes.map((n) =>
+          ({id: n.id, col: n.cell[1], row: n.cell[0]}));
+        const lines = picture.edges.map((e) =>
+          ({points: e.route.map(([x, y]) => [y, x])}));
+        const index = g.crowdIndex(grid, lines);
+        let crowded = 0;
+        const counts = grid.every((n) => g.PLACES.every((place) => {
+          const plain = g.crowding(n, place, grid, lines);
+          crowded += plain;
+          return g.crowding(n, place, grid, lines, index) === plain;
+        }));
+        const loops = gr.graphProblems(nodes, rules)
+          .filter((p) => p.reason === 'cycle').length;
+        return {links, counts, crowded, loops, sources: sources.length};""",
+    )
+    assert got["loops"] == 1
+    assert got["sources"] == 20
+    # The verdicts of every target at once are linkVerdict's, one by one
+    assert got["links"] is True
+    # The labels' crowding through the index counts what the plain count counts
+    assert got["crowded"] > 300
+    assert got["counts"] is True
