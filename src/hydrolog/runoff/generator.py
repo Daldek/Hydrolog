@@ -108,6 +108,9 @@ class HydrographGenerator:
     - n : float - Number of reservoirs (shape parameter)
     - k : float - Storage constant [hours or minutes, see k_unit]
     - k_unit : str - Unit for k: "hours" (default) or "min"
+    - estimated : bool, optional - n and k are the estimate of a method (Lutz:
+      ``NashIUH.from_lutz``), not given values: they are not checked against the
+      typical ranges of given parameters (default False)
 
     Example: ``uh_params={"n": 3.0, "k": 0.8, "k_unit": "hours"}``
 
@@ -251,6 +254,9 @@ class HydrographGenerator:
             # Convert k to minutes if in hours
             k_min = k * 60.0 if k_unit == "hours" else k
 
+            if self.uh_params.get("estimated", False):
+                # an estimate is not checked against the ranges of given values
+                return NashIUH._estimated(n=n, k_min=k_min, area_km2=self.area_km2)
             return NashIUH(n=n, k_min=k_min, area_km2=self.area_km2)
 
         elif self.uh_model == "clark":

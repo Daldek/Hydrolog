@@ -708,7 +708,7 @@
     },
     "watershed": {
       "title": "watershed",
-      "description": "The area of a subcatchment: the fields of `WatershedParameters`, as in `hydrograph generate`. The `curve-number` runoff needs `cn` and, unless it is given `tc_min`, the fields of its `tc_method`.",
+      "description": "The area of a subcatchment: the fields of `WatershedParameters`, as in `hydrograph generate`. The `curve-number` runoff needs `cn`, unless it is given `tc_min` the fields of its `tc_method`, and with `nash_estimation` the fields of the estimation.",
       "type": "object",
       "required": [
         "area_km2"
@@ -852,12 +852,19 @@
             "nash_n": {
               "type": "number",
               "exclusiveMinimum": 0,
-              "description": "Nash: number of reservoirs n (> 0, typically 1-10, to be verified); together with `nash_k_min`. `uh nash` derives parameters by the Lutz method."
+              "description": "Nash: number of reservoirs n (> 0, typically 1-10, to be verified); together with `nash_k_min`, instead of `nash_estimation`."
             },
             "nash_k_min": {
               "type": "number",
               "exclusiveMinimum": 0,
               "description": "Nash: storage constant K [min] (> 0, typically 10-200, to be verified); together with `nash_n`."
+            },
+            "nash_estimation": {
+              "type": "string",
+              "enum": [
+                "lutz"
+              ],
+              "description": "Nash: how n and K are estimated from the watershed instead of being given (`nash_n`, `nash_k_min`); lutz: the Lutz method (1984, after KZGW 2017) from the watershed fields: L and J of the longest flow path (`flow_path_length_km`, `flow_path_slope_m_per_m`), `Lc_km`, `manning_n`, and `urban_pct` and `forest_pct` (0 without them). Needs `watershed` or `watershed_file`."
             },
             "clark_r_min": {
               "type": "number",

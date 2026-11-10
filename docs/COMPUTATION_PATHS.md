@@ -398,6 +398,30 @@ result = generator.generate(precip)
 print(f"Qmax = {result.peak_discharge_m3s:.2f} m³/s")
 ```
 
+#### 3.2.7 Lutz from a Watershed: `nash_estimation` (ADR-0024)
+
+`hydrograph generate`, `report generate` and the `curve-number` runoff of a network
+(`hydrolog-network/1`) estimate n and K by Lutz from the watershed when given
+`nash_estimation: "lutz"` instead of `nash_n` and `nash_k_min`, in the same run. Each input
+is the watershed field the method defines (`hydrolog._ranges.NASH_INPUTS`,
+`WatershedParameters.nash_parameters("lutz")`), with no substitute:
+
+| Symbol | Field | Note |
+|--------|-------|------|
+| L | `flow_path_length_km` | the main stream from the divide to the outlet: the longest flow path (ADR-0019), not the channel, which ends at the channel head |
+| Lc | `Lc_km` | along the stream to the point nearest the centroid; not longer than L (`maximum` on `Lc_km`) |
+| Jg | `flow_path_slope_m_per_m` | the mean slope of that stream, > 0 |
+| n_M | `manning_n` | Manning's coefficient of the channel |
+| U, W | `urban_pct`, `forest_pct` | 0 when the watershed has none |
+| A | `area_km2` | scales the unit hydrograph; above 236 km2 the notice `outside_typical_range` (method `lutz`, KZGW 2017) |
+
+The estimate is the one of `NashIUH.from_lutz`, so one run equals `uh nash` with the same L, Lc,
+J, n_M, U and W followed by `hydrograph generate` with its n and K, to the last ordinate. Unlike
+given n and K, the estimate is not checked against their ranges (`outside_unverified_range`):
+those are ranges of given values. The report prints Lutz's inputs and steps in its unit
+hydrograph section, and a network node lists `nash_estimation` (given) and `nash_n`,
+`nash_k_min` (computed). A missing field is `missing_field` with `details.method` `lutz`.
+
 ---
 
 ### 3.3 Clark IUH

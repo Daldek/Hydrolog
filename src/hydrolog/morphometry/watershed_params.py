@@ -6,7 +6,7 @@ import json
 from dataclasses import asdict, dataclass
 from typing import TYPE_CHECKING, Any, cast
 
-from hydrolog._ranges import TC_INPUTS, typical_ranges, warn_if_outside
+from hydrolog._ranges import NASH_INPUTS, TC_INPUTS, typical_ranges, warn_if_outside
 from hydrolog._warnings import typical_range_fields
 from hydrolog.exceptions import InvalidParameterError
 
@@ -16,6 +16,9 @@ if TYPE_CHECKING:
 
 TC_METHODS = ("kirpich", "nrcs", "giandotti", "faa", "kerby", "kerby_kirpich")
 """The methods of :meth:`WatershedParameters.calculate_tc`."""
+
+NASH_ESTIMATIONS = ("lutz",)
+"""The estimations of Nash's n and K of :meth:`WatershedParameters.nash_parameters`."""
 
 # The fields of each time of concentration method, in the order they are reported
 # when missing: the fields TC_INPUTS names for the arguments of its formula, which its
@@ -61,6 +64,15 @@ _FLOW_PATH_HINT = (
     "the outlet: flow_path_length_km is its length [km], flow_path_slope_m_per_m the "
     "elevation of that point minus the outlet elevation, over that length [m/m]."
 )
+
+# The fields each estimation of Nash's n and K needs, in the order they are reported
+# when missing; the others it reads, the shares of urban and forest areas, are 0 when
+# the watershed has none (by the argument of the estimating constructor)
+_NASH_REQUIRED_FIELDS: dict[str, tuple[str, ...]] = {
+    "lutz": ("flow_path_length_km", "Lc_km", "flow_path_slope_m_per_m", "manning_n"),
+}
+_NASH_DEFAULTS: dict[str, float] = {"urban_pct": 0.0, "forest_pct": 0.0}
+_NASH_METHOD_LABELS = {"lutz": "the Lutz estimation of Nash's n and K"}
 
 # Field checks of WatershedParameters, in the order they run
 _POSITIVE_FIELDS = (
@@ -148,9 +160,10 @@ class WatershedParameters:
     channel_length_km : float, optional
         Main channel length [km]: the length of Giandotti's formula.
     channel_slope_m_per_m : float, optional
-        Main channel slope [m/m]. No time of concentration method takes it:
-        Kirpich and Kerby-Kirpich take the slope of the longest flow path,
-        ``flow_path_slope_m_per_m``.
+        Main channel slope [m/m]. No calculation takes it: Kirpich and
+        Kerby-Kirpich take the slope of the longest flow path,
+        ``flow_path_slope_m_per_m``, and so does Lutz's estimation of Nash's n and K
+        (:meth:`nash_parameters`), whose stream runs to the divide.
     cn : int, optional
         SCS Curve Number (0-100).
     source : str, optional
@@ -172,30 +185,31 @@ class WatershedParameters:
         Kerby and Kerby-Kirpich methods.
     Lc_km : float, optional
         Length along main stream from outlet to the point nearest
-        to catchment centroid [km]. Used by Nash Lutz and Snyder methods.
+        to catchment centroid [km]. Lutz's Lc (:meth:`nash_parameters`).
     manning_n : float, optional
         Manning's roughness coefficient for main channel.
         Typical values: 0.025-0.050 for natural streams.
-        Used by Nash Lutz method.
+        Lutz's n_M (:meth:`nash_parameters`).
     urban_pct : float, optional
         Percentage of urbanized area [%] (0-100).
-        Used by Nash Lutz method.
+        Lutz's U (:meth:`nash_parameters`; 0 when not set).
     forest_pct : float, optional
         Percentage of forested area [%] (0-100).
-        Used by Nash Lutz method.
+        Lutz's W (:meth:`nash_parameters`; 0 when not set).
     flow_path_length_km : float, optional
         Length of the longest flow path, from the hydraulically most distant
         point of the watershed (the cell with the greatest flow distance to the
         outlet; usually on the divide, possibly on a ridge inside the watershed) to
         the outlet, along the flow [km]. Must be positive. The flow length of the
-        NRCS lag method, Kirpich's length and the main channel length of
+        NRCS lag method, Kirpich's length, the main channel length of
         Kerby-Kirpich (whose channel segment is this length minus
-        ``overland_length_km``).
+        ``overland_length_km``) and Lutz's L, the main stream from the divide
+        (:meth:`nash_parameters`).
     flow_path_slope_m_per_m : float, optional
         Slope of the longest flow path [m/m]: the elevation of its head (that
         most distant point) minus the outlet elevation, over
-        ``flow_path_length_km``. Kirpich's slope and the main channel slope of
-        Kerby-Kirpich.
+        ``flow_path_length_km``. Kirpich's slope, the main channel slope of
+        Kerby-Kirpich and Lutz's J (:meth:`nash_parameters`).
 
     Attributes
     ----------
@@ -794,3 +808,115 @@ class WatershedParameters:
                     details={**exc.details, "option": field, "parameter": parameter},
                     hint=exc.hint,
                 ) from exc
+
+    def nash_parameters(self, method: str = "lutz") -> dict[str, float]:
+        """
+        Arguments of an estimation of Nash's n and K derived from the fields.
+
+        These are exactly the keyword arguments of the estimating constructor of
+        :class:`hydrolog.runoff.NashIUH` named after ``method``:
+        ``NashIUH.from_lutz(**params.nash_parameters("lutz"))`` is the cascade Lutz
+        estimates for the watershed, the one the ``nash_estimation`` of
+        ``hydrograph generate``, ``report generate`` and the ``curve-number`` runoff
+        of a network uses. Each argument is the watershed field its source defines
+        for it (:data:`hydrolog._ranges.NASH_INPUTS`), with no substitute.
+
+        Parameters
+        ----------
+        method : str, optional
+            The estimation: "lutz" (Lutz 1984, after KZGW 2017), the default.
+
+        Returns
+        -------
+        dict of str to float
+            ``L_km`` (``flow_path_length_km``), ``Lc_km``, ``slope``
+            (``flow_path_slope_m_per_m``), ``manning_n``, ``urban_pct`` and
+            ``forest_pct`` (0 when the watershed has none) and ``area_km2``.
+
+        Raises
+        ------
+        InvalidParameterError
+            If the method is unknown (``details["reason"] == "choice"``), a field
+            the method requires is missing (``details["reason"] ==
+            "missing_field"``, ``details["option"]`` the first of them,
+            ``details["missing"]`` all of them, ``details["method"]`` the method),
+            ``Lc_km`` is longer than ``flow_path_length_km`` (``"maximum"`` on
+            ``Lc_km``) or ``flow_path_slope_m_per_m`` is 0 (``"exclusive_minimum"``
+            on it): Lutz's formula needs Lc <= L and J > 0.
+
+        Notes
+        -----
+        Lutz takes the main stream from the divide to the outlet (KZGW 2017,
+        annex 2, table C.2): its length L and its mean slope J are the length and
+        the slope of the longest flow path, ``flow_path_length_km`` and
+        ``flow_path_slope_m_per_m``, as Kirpich's are (ADR-0019, ADR-0024), not
+        the channel's, which ends at the channel head. Lc is ``Lc_km``, the
+        Manning coefficient of the channel n_M ``manning_n``, the urbanized and
+        forested shares U and W ``urban_pct`` and ``forest_pct``.
+
+        Examples
+        --------
+        >>> params = WatershedParameters(area_km2=37.22, flow_path_length_km=15.88,
+        ...     flow_path_slope_m_per_m=0.0114, Lc_km=6.76, manning_n=0.035,
+        ...     forest_pct=57.4, urban_pct=1.0)
+        >>> params.nash_parameters("lutz")["L_km"]
+        15.88
+        """
+        if method not in NASH_ESTIMATIONS:
+            raise InvalidParameterError(
+                f"Unknown estimation of Nash's n and K: '{method}'. Use 'lutz'.",
+                details={
+                    "option": "method",
+                    "reason": "choice",
+                    "allowed": list(NASH_ESTIMATIONS),
+                    "value": method,
+                },
+            )
+        missing = [
+            name
+            for name in _NASH_REQUIRED_FIELDS[method]
+            if getattr(self, name) is None
+        ]
+        if missing:
+            names = ", ".join(missing)
+            plural = len(missing) > 1
+            hints = [_FLOW_PATH_HINT] if set(missing) & set(_FLOW_PATH_FIELDS) else []
+            raise _missing_error(
+                missing,
+                f"{names} {'are' if plural else 'is'} required for "
+                f"{_NASH_METHOD_LABELS[method]}. "
+                f"Set the {names} parameter{'s' if plural else ''}.",
+                hint=" ".join(
+                    [
+                        "Lutz takes the main stream from the divide to the outlet: "
+                        "its length and slope are those of the longest flow path.",
+                        *hints,
+                    ]
+                ),
+                method=method,
+            )
+        arguments: dict[str, float] = {}
+        for name, sources in NASH_INPUTS[method].items():
+            value = getattr(self, sources[0])
+            arguments[name] = _NASH_DEFAULTS[name] if value is None else float(value)
+        length, centroid = arguments["L_km"], arguments["Lc_km"]
+        if centroid > length:
+            raise _field_error(
+                "Lc_km",
+                f"Lc_km ({centroid:g}) cannot exceed flow_path_length_km "
+                f"({length:g}): Lutz's Lc runs along the main stream, whose length "
+                "is L",
+                "maximum",
+                maximum=length,
+                value=centroid,
+            )
+        if arguments["slope"] <= 0:
+            raise _field_error(
+                "flow_path_slope_m_per_m",
+                "flow_path_slope_m_per_m must be positive for Lutz's estimation, "
+                f"got {arguments['slope']:g}",
+                "exclusive_minimum",
+                exclusive_minimum=0,
+                value=arguments["slope"],
+            )
+        return arguments

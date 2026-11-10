@@ -104,6 +104,12 @@
     "uh_model": {
       "type": "string"
     },
+    "nash_estimation": {
+      "type": [
+        "null",
+        "string"
+      ]
+    },
     "uh_parameters": {
       "type": "object"
     },

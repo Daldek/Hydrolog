@@ -285,6 +285,25 @@ def _without_schema(document: dict[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in document.items() if key != "schema"}
 
 
+def _estimated(estimation: object) -> dict[str, Any]:
+    """The stream with its source made from rain, Nash's n and K estimated by
+    ``estimation`` (ADR-0024)."""
+    from hydrolog import testing
+
+    return _edited(
+        0,
+        times_min=None,
+        discharge_m3s=None,
+        watershed=testing.watershed(Lc_km=3.0, manning_n=0.04),
+        runoff={
+            "model": "curve-number",
+            "uh_model": "nash",
+            "nash_estimation": estimation,
+        },
+        rainfall=testing.design_storm(),
+    )
+
+
 # documents that the schema and the loader both refuse: field names, types and counts
 REFUSED = {
     "unknown top-level field": _stream(color="blue"),
@@ -327,6 +346,9 @@ REFUSED = {
     "a description too long": _edited(0, description="x" * 501),
     "a description with a tab": _edited(0, description="a\tb"),
     "an empty description of the network": _stream(description=""),
+    # Nash's n and K estimated from the watershed (ADR-0024)
+    "an estimation of Nash that is not lutz": _estimated("urban_regression"),
+    "an estimation of Nash that is not a string": _estimated(1),
 }
 
 
@@ -399,6 +421,7 @@ def test_the_network_schema_and_the_loader_accept_the_same_documents():
         _placed_every_kind(),
         _edited(0, position={"x": 2.0, "y": -1000}, description="a\nb"),
         _edited(0, position={"x": 1000, "y": 0}, description="é" * 500),
+        _estimated("lutz"),
     ]
     for document in accepted:
         assert _violations(NETWORK_DOCUMENT, document) == []

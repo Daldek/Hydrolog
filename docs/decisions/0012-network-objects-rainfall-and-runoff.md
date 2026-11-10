@@ -6,6 +6,8 @@
 - Amended by [ADR-0023](0023-positions-and-descriptions-in-the-network.md) (2026-11-10): every node, of any type,
   has an optional `description` and `position`, read and written by the base class `Node`; `Node.read_entry` returns a
   `NodeEntry` and `Node.build` takes it.
+- Amended by [ADR-0024](0024-nash-by-lutz-from-the-watershed.md) (2026-11-10): the `curve-number` runoff has an
+  optional `nash_estimation` (`lutz`): Nash's n and K estimated from the watershed instead of given.
 
 ## Context
 
