@@ -263,7 +263,7 @@ Producers before consumers inside Hydrolog: the document and the picture (E1), t
 | **E2** the canvas (`feat/network-editor-e2`) | `web/src/sections/siec/editor/{geometry,canvas}.js`, `siec/{index,state,schematic,schematic-view}.js` (the last two give way), `web/src/labels/siec.js`, `web/css/app.css`, `tests/e2e/test_siec.py`, `tests/e2e/test_js_units.py` | the canvas drawn from the inputs, arrow keys between nodes, moves by drag, Shift+arrows and „Przesuń”, „Uporządkuj”, the zoom, the provisional rows, the PNG without editing marks | the guide's network opens at the library's positions; a move survives a reload and a saved and reopened file; „Uporządkuj” brings back the library's positions; the edges equal the library's rule D for the same positions; a move does not mark the result stale; a 300-node network moves without visible delay (smoke); 390 px in the dark theme | 1.5-2 | E1 |
 | **E3** the editing (`feat/network-editor-e3`) | `editor/{graph,edits,history}.js`, `siec/{index,state,data-panel,node-form,node-model,results-panel,export}.js`, `web/src/labels/siec.js`, `web/css/app.css`, `tests/e2e/test_siec_editor.py`, `tests/e2e/test_js_units.py`, the contract test of the texts of reasons, the GUI plan's erratum | D7 to D11: the palette, links, „Wstaw złącze”, deleting, renaming, „Opis”, the problems on the canvas, undo and redo, „Nowa sieć”, „Zapisz szkic”, the questions before discarding | the guide's three-subcatchment network built from empty by mouse, with the guide's parameters, gives the outlet values of the guide's file (the library's numbers); the same by keyboard only and without any drag; each refusal says its reason; problems appear and go as edits make and mend them; undo to the start and redo to the end give the same document; a rename updates `from` and keeps the inflows column; a draft saved and reopened | 2-2.5 | E2 |
 | **E4** the hand-off (`feat/network-editor-e4`) | `web/src/handoff/{handoff,handoff-panel}.js`, the hand-off parts of `siec/`, `tests/e2e/test_exports.py` | D10's hand-off: open in Sieć, „Dodaj zlewnię z Hydrografa” | Nogat's example hand-off opens in Sieć from Sieć; two hand-offs become `Z1` and `Z2`, which the person joins in a junction above the outlet and computes; the hand-off written from Sieć validates against Nogat's schema and `/1` and reopens with its positions | 0.5-1 | E3 |
-| **E5** the guide and the docs (`docs/network-editor`) | `web/instrukcja/`, `README.md`, `docs/{USAGE,PRD,SCOPE,CHANGELOG,PROGRESS}.md`, `tests/e2e/test_smoke.py` | D14 | the guide describes the shipped editor and its keys, its numbers match the computed page; every section opens without console errors at 1440 and 390 px in both themes | 1 | E4 |
+| **E5** the guide and the docs (`feat/network-editor-e5`) | `web/instrukcja/`, `README.md`, `docs/{USAGE,PRD,SCOPE,CHANGELOG,PROGRESS}.md`, `tests/e2e/test_smoke.py` | D14 | the guide describes the shipped editor and its keys, its numbers match the computed page; every section opens without console errors at 1440 and 390 px in both themes | 1 | E4 |
 
 About 6.5 to 8 sessions, all on the critical path except E5's text, which can start with E4.
 
@@ -298,6 +298,34 @@ The author answered the open questions of the first version on 2026-11-10, when 
 6. **„Uporządkuj” before every parameter is given**: not in this plan. The layout needs a network that the library can read, and the person places the nodes meanwhile; a `route schematic` option that lays out the structure alone would need a catalog option, an amendment of ADR-0013 and a `timestep_min` that such a schematic cannot know.
 7. **A second inflow into a reach, a reservoir or the outlet**: „Wstaw złącze” is offered (D7); HEC-HMS users expect a reach to take several inflows.
 8. **The background map**: none for now. Where one would go, in Hydrograf on its control points or in a later stage of Hydrolog, is not decided: it is deferred (D15).
+
+## Results
+
+Every stage is done, each on its own branch stacked on the previous one and pushed; none is merged. The merges into `develop`, in the order E1 to E5, wait for the author's approval (DEV-3.3), with the full gate on the head of E5 first; then the omp service `hydrolog-gui` is restarted on `develop` and the smoke of [Deployment for the author](#deployment-for-the-author) is run. The plan is closed once the merges are in.
+
+| Stage | Branch | Commits | Notes |
+|---|---|---|---|
+| Plan | `plan/network-editor` | `b61d66b`, `c309707` | the author's answers recorded, `Approved: 2026-11-10` |
+| E1 the document and the picture | `feat/network-editor-e1` | `46c743f`, `5a78b4d`, `a39d799`, `3991a89` | ADR-0023 with „Amended by” lines in ADR-0010, 0012, 0013 and 0014; `route_schematic` returns an `OperationOutput` (its notices), and `Node.read_entry` returns a `NodeEntry` (CHANGELOG, Changed) |
+| E2 the canvas | `feat/network-editor-e2` | `5782a24`, `7e719a4` | `siec/schematic.js` and `schematic-view.js` removed; a 300-node drag moves under 1 ms per pointer event |
+| E3 the editing | `feat/network-editor-e3` | `dbd4de9`, `d2727ec`, `6cbda96`, `fdfccd0`, `efc4a95` | the GUI plan's erratum of 2026-11-10; Hydrolog's check (`route schematic`) runs after every change of the computed document, and its refusal moved into „Problemy sieci” |
+| E4 the hand-off | `feat/network-editor-e4` | `f5ec5be`, `3fe2128`, `6bda843`, `e2ddeca` | an added subcatchment keeps the hand-off's record in the page only, not in the hand-offs Sieć writes; the 300-node smoke led to memoising the canvas, the node list and „Odpływa do” (a move, a link and an add paint in about 35–90 ms) |
+| E5 the guide and the docs | `feat/network-editor-e5` | `d636379`, `11bb55f` and the commit of these Results | the guide's chapter 03 (the elements beside HEC-HMS's, building, the keys, the example built from „Nowa sieć”), 07 to 09; `siec.png` and `telefon.png` taken again, `siec-edycja.png` new; USAGE section 8, README, PRD (US-G02, US-G09), SCOPE, INTEGRATION, CHANGELOG, PROGRESS; `11bb55f` lets the browser test of Nogat's shell find E3's closed question dialog (it asked for no `<dialog>` at all and failed since E3) |
+
+Departures from the text above:
+
+- E5's branch is `feat/network-editor-e5`, like the other stages', not `docs/network-editor`.
+- `telefon.png` showed Hydrogram zlewni's results; it is now Sieć on the phone, with the canvas's tools, and chapter 08 says how the editor works there.
+- The guide's example table names the flow paths of A and B, so that the table alone builds the network from „Nowa sieć” (with only the table's fields the outlet is the file's 19.1 m³/s at 2:25 h, checked through `route network` and in the browser).
+- `test_smoke.py` did not change: the guide quotes no new number, and E3's browser tests build the guide's network from empty by mouse, by keyboard and without a drag.
+- INTEGRATION said that every change of the schematic's layout takes a new version of its schema; it now says that the optional fields of D5 keep `/1` (AGI-4.1, as D5 decided).
+
+Left, none of it blocking the merge:
+
+- „Wstaw złącze” puts the junction on the free cell above its target, upstream first; with a node directly above the target the junction lands above that node and an edge runs through it (a hint) until „Uporządkuj” (E3's rule).
+- At 300 nodes the first subcatchment added after loading takes about 136–144 ms to paint (a cold first mount of its form); every section re-renders on a change of the route (`SectionHost` in `app.js`), which a further cut needs to change.
+- Not covered by the browser tests: the long press on touch, „Dodaj węzeł” of step 2 (its cell is unit-tested), Shift+F10 and the Menu key, and the history's limit in the page (unit-tested). The node menu can cover part of the picture.
+- The guide's pictures are still taken by hand (Playwright and a reduction to 256 colours); no tool in the repository takes them.
 
 ## Not in this plan
 
