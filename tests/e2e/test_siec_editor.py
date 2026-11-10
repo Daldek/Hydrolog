@@ -6,6 +6,9 @@ for the guide's file: by the mouse (the palette dragged onto cells, the handles 
 onto the nodes below, the node menu of a right click), by the keyboard alone (no
 ``page.mouse`` call: Enter on the palette, ``D`` and its menu, ``P`` and the arrows, F2)
 and without any drag (a palette item and a cell, „Węzeł…” and „Połącz z…” with a click).
+Built by the keyboard without any value, its structure is tidied by „Uporządkuj” at the
+cells of ``structure_schematic``, laid out on the channel ``siec-layout`` with
+``structure_only`` (ADR-0025) and never computed.
 Each refusal says its reason: a cycle, an inflow into a subcatchment, a link out of the
 outlet, a second inflow into a reach (which offers „Wstaw złącze”), a node that takes no
 more inflows, a taken cell and the ids the library refuses. The problems of the
@@ -15,7 +18,7 @@ document; a rename updates every ``from`` and keeps the column of the inflows fi
 draft is saved and reopened; „Wyczyść” and „Nowa sieć” ask before a changed network is
 lost; descriptions are shown, kept, saved and never mark the result stale; a link is
 removed by a click and Delete, ``O`` or „Usuń i połącz”. A phone in the dark theme edits
-through the menus.
+through the menus and tidies a structure of two nodes.
 """
 
 import json
@@ -26,6 +29,7 @@ from typing import Any
 from playwright.sync_api import Page, expect
 
 from hydrolog.catalog import run_command
+from hydrolog.routing import structure_schematic
 from hydrolog.testing import example_network_document
 from tests.e2e.conftest import Tab, input_text, load_network
 from tests.e2e.test_siec import (
@@ -330,7 +334,11 @@ def test_the_guides_network_built_by_mouse_gives_its_outlet_values(tab: Tab) -> 
     assert canvas_cells(page) == cells
 
 
-def test_the_same_network_built_by_the_keyboard_alone(tab: Tab) -> None:
+def build_by_keys(tab: Tab) -> tuple[Page, dict[str, str]]:
+    """Build the guide's structure from „Nowa sieć” by the keyboard alone.
+
+    Returns the page and the id each of the guide's nodes has on it.
+    """
     tab.open("#siec")
     page = tab.page
     page.get_by_role("button", name="Nowa sieć").focus()
@@ -384,9 +392,58 @@ def test_the_same_network_built_by_the_keyboard_alone(tab: Tab) -> None:
     built = structure(page)
     for node, (kind, ups) in guide_structure().items():
         assert built[ids[node]] == (kind, [ids[up] for up in ups] if ups else None)
+    return page, ids
 
+
+def test_the_same_network_built_by_the_keyboard_alone(tab: Tab) -> None:
+    page, ids = build_by_keys(tab)
     type_guide(page, ids, "keys")
     computes_the_guides_values(page, "keys")
+
+
+def structure_cells(page: Page) -> dict[str, Cell]:
+    """Return the cells of the library's layout of the structure the section keeps."""
+    nodes = []
+    for node, kind, ups in page.evaluate(STRUCTURE):
+        nodes.append({"id": node, "type": kind, **({"from": ups} if ups else {})})
+    drawn = structure_schematic({"schema": "hydrolog-network/1", "nodes": nodes})
+    return {node["id"]: (node["x"], node["y"]) for node in drawn["nodes"]}
+
+
+def test_uporzadkuj_lays_out_a_structure_without_any_parameter(tab: Tab) -> None:
+    sent: list[tuple[str, Any]] = []
+    tab.page.on(
+        "request",
+        lambda request: (
+            sent.append((request.url, request.post_data_json))
+            if "/api/run/" in request.url
+            else None
+        ),
+    )
+    page, _ = build_by_keys(tab)
+    expect(page.locator('[data-list="problems"]')).to_have_count(0)
+    tidy = page.get_by_role("button", name="Uporządkuj", exact=True)
+    expect(tidy).to_be_enabled()
+    # Z3 one cell aside, by keys
+    before = canvas_cells(page)
+    page.locator(NODE.format("Z3")).focus()
+    page.keyboard.press("Shift+ArrowRight")
+    expect(page.locator(NODE.format("Z3"))).not_to_have_attribute(
+        "data-y", str(before["Z3"][1])
+    )
+
+    press(page, tidy, "keys")
+    said(page, "Uporządkowano schemat: węzły stoją tak, jak układa je Hydrolog.")
+    assert canvas_cells(page) == structure_cells(page)
+    # Laid out by the structure alone, on its own channel; nothing was computed
+    laid = [
+        options
+        for url, options in sent
+        if "/api/run/route/schematic?channel=siec-layout" in url
+    ]
+    assert laid
+    assert all(options["structure_only"] is True for options in laid)
+    assert not any("/api/run/route/network" in url for url, _ in sent)
 
 
 def test_the_same_network_built_without_any_drag(tab: Tab) -> None:
@@ -1006,7 +1063,15 @@ def test_a_phone_in_the_dark_theme_edits_through_the_menus(new_tab: Any) -> None
     said(page, "Połączono Z1 → OUT.")
     assert structure(page) == {"OUT": ("outlet", ["Z1"]), "Z1": ("subcatchment", None)}
     assert page.evaluate(SIDEWAYS) == []
-    # „Odpływa do” in „Dane” takes the link away
+    # Z1 aside by „Przesuń” and a tap; „Uporządkuj” takes it back without any value
+    page.get_by_role("button", name="Przesuń").click()
+    page.mouse.click(*cell_point(page, (0, 1)))
+    expect(page.locator(NODE.format("Z1"))).to_have_attribute("data-y", "1")
+    tidy = page.get_by_role("button", name="Uporządkuj", exact=True)
+    tidy.click()
+    said(page, "Uporządkowano schemat: węzły stoją tak, jak układa je Hydrolog.")
+    assert canvas_cells(page) == structure_cells(page)
+    # „Odpływa do” in „Dane” takes the link away; two outlets leave nothing to tidy
     page.locator(NODE.format("Z1")).click()
     expect(page.locator(f"{SECTION} .view-panel.left")).to_be_visible()
     page.locator(
@@ -1014,3 +1079,4 @@ def test_a_phone_in_the_dark_theme_edits_through_the_menus(new_tab: Any) -> None
     ).select_option("")
     assert structure(page)["OUT"] == ("outlet", None)
     assert page.evaluate(SIDEWAYS) == []
+    expect(tidy).to_be_disabled()

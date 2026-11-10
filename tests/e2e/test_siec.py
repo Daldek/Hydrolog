@@ -8,15 +8,17 @@ it, each label on the side of its node without a tributary. A node moves by a dr
 Shift with an arrow key and by „Przesuń” and a click; the move survives a reload and a
 saved and reopened file, never marks the result stale, and „Uporządkuj” brings
 Hydrolog's layout back. The arrow keys go between nodes and the zoom follows „+” and
-„−”, all without a mouse. A network Hydrolog cannot read yet stands in provisional rows
-until it can, and inputs stored before the canvas are laid out like a file without
-positions. The PNG leaves out the marks of editing. „Oblicz sieć” writes the document,
-positions included, to the session and runs ``route network``; the outlet's and every
-node's values are those of the library. A network loaded from a file with its
-referenced files (an inflows file and a rating table) computes too, and every node type
-opens its form. A node is chosen by a click, Enter or Space on the canvas and in the
-node table; a changed reach method shows its fields and marks the result stale. The SVG
-of Hydrolog and the network's document export, the document with the positions shown.
+„−”, all without a mouse. A network whose nodes miss values opens at the layout of its
+structure (``route schematic --structure-only``, ADR-0025); a structural problem stands
+in provisional rows until it is mended, and inputs stored before the canvas are laid
+out like a file without positions. The PNG leaves out the marks of editing. „Oblicz
+sieć” writes the document, positions included, to the session and runs ``route
+network``; the outlet's and every node's values are those of the library. A network
+loaded from a file with its referenced files (an inflows file and a rating table)
+computes too, and every node type opens its form. A node is chosen by a click, Enter
+or Space on the canvas and in the node table; a changed reach method shows its fields
+and marks the result stale. The SVG of Hydrolog and the network's document export, the
+document with the positions shown.
 A phone in the dark theme shows the canvas without scrolling sideways.
 """
 
@@ -530,7 +532,7 @@ def test_przesun_and_a_click_move_the_chosen_node_without_a_drag(tab: Tab) -> No
     expect(page.locator(SAID)).to_have_text("Przerwano przesuwanie B.")
 
 
-def test_a_network_hydrolog_cannot_read_yet_stands_in_provisional_rows(
+def test_a_network_with_incomplete_nodes_opens_at_hydrologs_layout(
     tab: Tab, tmp_path: Path
 ) -> None:
     example = example_network_document()
@@ -545,30 +547,59 @@ def test_a_network_hydrolog_cannot_read_yet_stands_in_provisional_rows(
     tab.open("#siec")
     page = tab.page
     load_network(page, tmp_path / "siec.json")
-    expect(page.locator('[data-canvas="provisional"]')).to_be_visible()
-    # Rows by the longest distance from a headwater, side by side in the file's order
-    assert canvas_cells(page) == {
-        "A": (0, -1),
-        "B": (0, 0),
-        "C": (0, 1),
-        "R_A": (1, 0),
-        "J1": (2, 0),
-        "R_J1": (3, 0),
-        "J2": (4, 0),
-        "OUT": (5, 0),
-    }
-    # The rows make B → J1 run through R_A: a hint, whose text names „Uporządkuj” too
+    expect(page.locator("svg.schem g.node")).to_have_count(8)
+    # The layout of the structure alone: R_A's missing lag does not hold it back
+    assert canvas_cells(page) == library(example)[0]
+    expect(page.locator('[data-canvas="provisional"]')).to_have_count(0)
     tidy = page.get_by_role("button", name="Uporządkuj", exact=True)
-    expect(tidy).to_be_disabled()
-    expect(page.locator('[data-list="hints"] li')).to_contain_text(
-        ["Krawędź B → J1 biegnie przez węzeł R_A"]
+    expect(tidy).to_be_enabled()
+    expect(tidy).to_have_attribute(
+        "title",
+        "Ustaw węzły tak, jak układa je Hydrolog (route schematic --structure-only)",
     )
 
-    page.locator(NODE.format("R_A")).click()
-    page.locator('[data-node-form="R_A"] [data-key="lag.lag_min"] input').fill("25")
+
+def test_a_structural_problem_stands_in_provisional_rows_until_mended(
+    tab: Tab, tmp_path: Path
+) -> None:
+    example = example_network_document()
+    # B is listed by nobody: J1 takes R_A alone
+    broken = {
+        **example,
+        "nodes": [
+            {**node, "from": ["R_A"]} if node["id"] == "J1" else node
+            for node in example["nodes"]
+        ],
+    }
+    (tmp_path / "siec.json").write_text(json.dumps(broken), encoding="utf-8")
+    tab.open("#siec")
+    page = tab.page
+    load_network(page, tmp_path / "siec.json")
+    expect(page.locator('[data-canvas="provisional"]')).to_be_visible()
+    expect(
+        page.locator('[data-list="problems"] li[data-problem="disconnected_node"]')
+    ).to_contain_text("B")
+    tidy = page.get_by_role("button", name="Uporządkuj", exact=True)
+    expect(tidy).to_be_disabled()
+    expect(tidy).to_have_attribute(
+        "title",
+        "Uporządkuj działa, gdy budowa sieci nie ma problemów (lista „Problemy sieci”"
+        " nad schematem); dane węzłów nie są potrzebne",
+    )
+
+    # B → J1 by „Węzeł…” and „Połącz z…”: the structure is the guide's again
+    page.locator(NODE.format("B")).click()
+    page.get_by_role("button", name="Węzeł…").click()
+    page.locator('[data-canvas-menu] [data-item="link"]').click()
+    page.locator(NODE.format("J1")).click()
+    expect(page.locator(SAID)).to_have_text("Połączono B → J1.")
+    expect(page.locator('[data-list="problems"] li')).to_have_count(0)
     expect(page.locator('[data-canvas="provisional"]')).to_have_count(0)
     expect(tidy).to_be_enabled()
-    expect(page.locator('[data-list="hints"] li')).to_have_count(0)
+    tidy.click()
+    expect(page.locator(SAID)).to_have_text(
+        "Uporządkowano schemat: węzły stoją tak, jak układa je Hydrolog."
+    )
     assert canvas_cells(page) == library(example)[0]
 
 

@@ -24,13 +24,21 @@ positions on some nodes only, or two on one cell, is computed with the warning
 layouts. The layout depends on the network and never on a result, so a network has one
 picture whether or not it was routed.
 
+:func:`structure_schematic` lays out the **structure** of a document alone (ADR-0025):
+the ids, types and links of its nodes and the areas of its headwaters, checked with the
+reasons of the network, whatever values the nodes miss. Its layout is always computed,
+and for a document that makes a network it is the computed layout of that network.
+
 The document
 ------------
-``schema``, ``name`` (when the network has one), ``outlet``, ``timestep_min``,
-``has_result`` (whether the nodes carry the values of a result), ``layout`` (``given``
-or ``computed``; a document without it is computed), ``grid`` (``width`` and
-``height`` of the picture in grid units: the nodes have ``0 <= x <= width`` and
-``0 <= y <= height``), and three lists:
+``schema``, ``name`` (when the network has one), ``outlet``, ``timestep_min`` (always
+for a network; for a structure only when its document gives it), ``has_result``
+(whether the nodes carry the values of a result), ``layout`` (``given`` or
+``computed``; a document without it is computed), ``structure_only`` (``true`` in the
+schematic of a structure alone, whose nodes have empty ``parameters`` and no
+``description``; absent otherwise), ``grid`` (``width`` and ``height`` of the picture
+in grid units: the nodes have ``0 <= x <= width`` and ``0 <= y <= height``), and three
+lists:
 
 ``lines``
     The lines of the map, the main stem first (``role`` ``main``; the others are
@@ -81,7 +89,7 @@ True
 from __future__ import annotations
 
 import warnings
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Final
 
 from hydrolog._serialization import to_jsonable
@@ -89,11 +97,12 @@ from hydrolog._warnings import PositionsIgnored
 from hydrolog.exceptions import InvalidParameterError
 from hydrolog.routing._layout import Layout, Point, given_layout, layout
 from hydrolog.routing._svg import schematic_svg
+from hydrolog.routing.document import NetworkStructure, read_structure
 
 if TYPE_CHECKING:
     from hydrolog.routing.network import NetworkResult, RoutingNetwork
 
-__all__ = ["SCHEMA", "network_schematic", "schematic_svg"]
+__all__ = ["SCHEMA", "network_schematic", "schematic_svg", "structure_schematic"]
 
 SCHEMA: Final = "hydrolog-network-schematic/1"
 """Value of the ``schema`` key of the document."""
@@ -168,21 +177,26 @@ def _given(network: RoutingNetwork) -> dict[str, Point] | None:
     return {node_id: cell for cell, node_id in cells.items()}
 
 
+def _placed(node_id: str, kind: str, drawn: Layout) -> dict[str, Any]:
+    """Return the start of a node's entry: its id, type, cell, line and label."""
+    x, y = drawn.positions[node_id]
+    return {
+        "id": node_id,
+        "type": kind,
+        "x": x,
+        "y": y,
+        "line": drawn.line_of[node_id],
+        "label": {"text": node_id, "side": drawn.labels[node_id]},
+    }
+
+
 def _node_entries(
     network: RoutingNetwork, drawn: Layout, result: NetworkResult | None
 ) -> list[dict[str, Any]]:
     """Return the entries of ``nodes`` of the document."""
     entries: list[dict[str, Any]] = []
     for node in network.nodes:
-        x, y = drawn.positions[node.id]
-        entry: dict[str, Any] = {
-            "id": node.id,
-            "type": node.kind,
-            "x": x,
-            "y": y,
-            "line": drawn.line_of[node.id],
-            "label": {"text": node.id, "side": drawn.labels[node.id]},
-        }
+        entry = _placed(node.id, node.kind, drawn)
         if node.description is not None:
             entry["description"] = node.description
         if result is None:
@@ -199,6 +213,39 @@ def _node_entries(
             ]
         entries.append(entry)
     return entries
+
+
+def _lines(drawn: Layout) -> list[dict[str, Any]]:
+    """Return the entries of ``lines`` of the document."""
+    return [
+        {
+            "index": line.index,
+            "role": "main" if line.parent is None else "tributary",
+            "nodes": list(line.nodes),
+            **({} if line.joins is None else {"joins": line.joins}),
+        }
+        for line in drawn.lines
+    ]
+
+
+def _edges(
+    order: Sequence[str],
+    outlet: str,
+    inflows: Mapping[str, Sequence[str]],
+    drawn: Layout,
+) -> list[dict[str, Any]]:
+    """Return the entries of ``edges`` of the document, in the order of evaluation."""
+    downstream = {up: node for node, ups in inflows.items() for up in ups}
+    return [
+        {
+            "from": node_id,
+            "to": downstream[node_id],
+            "line": drawn.line_of[node_id],
+            "points": [list(point) for point in drawn.routes[node_id]],
+        }
+        for node_id in order
+        if node_id != outlet
+    ]
 
 
 def network_schematic(
@@ -258,17 +305,6 @@ def network_schematic(
             network.outlet, inflows, given, weight=weight, main_stem=declared
         )
     )
-    downstream = {up: node for node, ups in inflows.items() for up in ups}
-    edges = [
-        {
-            "from": node.id,
-            "to": downstream[node.id],
-            "line": drawn.line_of[node.id],
-            "points": [list(point) for point in drawn.routes[node.id]],
-        }
-        for node in network.nodes
-        if node.id != network.outlet
-    ]
     document: dict[str, Any] = {"schema": SCHEMA}
     if network.name is not None:
         document["name"] = network.name
@@ -278,17 +314,120 @@ def network_schematic(
         has_result=result is not None,
         layout="computed" if given is None else "given",
         grid={"width": drawn.width, "height": drawn.height},
-        lines=[
-            {
-                "index": line.index,
-                "role": "main" if line.parent is None else "tributary",
-                "nodes": list(line.nodes),
-                **({} if line.joins is None else {"joins": line.joins}),
-            }
-            for line in drawn.lines
-        ],
+        lines=_lines(drawn),
         nodes=_node_entries(network, drawn, result),
-        edges=edges,
+        edges=_edges(network.order, network.outlet, inflows, drawn),
     )
     converted: dict[str, Any] = to_jsonable(document)
     return converted
+
+
+def schematic_of(
+    structure: NetworkStructure, *, main_stem: str | Sequence[str] | None = None
+) -> dict[str, Any]:
+    """Return the schematic of a structure that :func:`read_structure` read.
+
+    The document of :func:`structure_schematic`, for a structure already read (the
+    command ``route schematic`` reads it first, to tell the errors of the document
+    from those of ``main_stem``).
+
+    Parameters
+    ----------
+    structure : NetworkStructure
+        The structure (:func:`~hydrolog.routing.document.read_structure`).
+    main_stem : str or sequence of str, optional
+        As for :func:`structure_schematic`.
+
+    Returns
+    -------
+    dict
+        The document, JSON-native.
+
+    Raises
+    ------
+    InvalidParameterError
+        As :func:`structure_schematic`, for ``main_stem``.
+    """
+    drawn = layout(
+        structure.outlet,
+        structure.upstream,
+        weight=structure.areas,
+        main_stem=_declared(main_stem),
+    )
+    document: dict[str, Any] = {"schema": SCHEMA}
+    if structure.name is not None:
+        document["name"] = structure.name
+    document["outlet"] = structure.outlet
+    if structure.timestep_min is not None:
+        document["timestep_min"] = structure.timestep_min
+    document.update(
+        has_result=False,
+        layout="computed",
+        structure_only=True,
+        grid={"width": drawn.width, "height": drawn.height},
+        lines=_lines(drawn),
+        nodes=[
+            {**_placed(node_id, structure.kinds[node_id], drawn), "parameters": []}
+            for node_id in structure.order
+        ],
+        edges=_edges(structure.order, structure.outlet, structure.upstream, drawn),
+    )
+    converted: dict[str, Any] = to_jsonable(document)
+    return converted
+
+
+def structure_schematic(
+    document: Mapping[str, Any], *, main_stem: str | Sequence[str] | None = None
+) -> dict[str, Any]:
+    """Return the schematic of the structure of a network document (ADR-0025).
+
+    The layout of a draft: of the document ``hydrolog-network/1`` only ``schema``,
+    ``name``, ``timestep_min``, each node's ``id``, ``type`` and ``from`` and each
+    headwater's ``watershed.area_km2`` are read
+    (:func:`~hydrolog.routing.document.read_structure`), and the structure is checked
+    with the reasons of the network; any other field may be missing or wrong. The
+    layout is always computed (ADR-0013), whatever positions the nodes have. For a
+    document that :meth:`RoutingNetwork.from_document
+    <hydrolog.routing.RoutingNetwork.from_document>` reads, the nodes, lines, edges,
+    labels and grid are those of the computed layout of :meth:`RoutingNetwork.schematic
+    <hydrolog.routing.RoutingNetwork.schematic>` with the same ``main_stem``.
+
+    Parameters
+    ----------
+    document : mapping
+        The document ``hydrolog-network/1``, which may be a draft; values are
+        JSON-native.
+    main_stem : str or sequence of str, optional
+        The ids of nodes that the main stem must pass, as for
+        :meth:`RoutingNetwork.schematic <hydrolog.routing.RoutingNetwork.schematic>`.
+
+    Returns
+    -------
+    dict
+        The document ``hydrolog-network-schematic/1``, JSON-native, with
+        ``structure_only`` ``true`` after ``layout`` (``computed``), ``has_result``
+        ``false``, every node's ``parameters`` empty and no node ``description``;
+        ``name`` and ``timestep_min`` only when the document gives a non-blank name and
+        a positive step.
+
+    Raises
+    ------
+    InvalidParameterError
+        If the structure is wrong, with the reasons of
+        :func:`~hydrolog.routing.document.read_structure` and ``details.node_id``;
+        with ``details.reason`` ``unknown_node`` or ``main_stem_not_a_path``
+        (``details.node_id``), or ``type`` (``main_stem`` is not a string or a list of
+        strings).
+
+    Examples
+    --------
+    >>> draft = {"schema": "hydrolog-network/1", "nodes": [
+    ...     {"id": "A", "type": "subcatchment"},
+    ...     {"id": "B", "type": "subcatchment"},
+    ...     {"id": "J", "type": "junction", "from": ["A", "B"]},
+    ...     {"id": "OUT", "type": "outlet", "from": ["J"]}]}
+    >>> drawn = structure_schematic(draft)
+    >>> drawn["structure_only"], [(n["id"], n["x"], n["y"]) for n in drawn["nodes"]]
+    (True, [('A', 0, 1), ('B', 0, 0), ('J', 1, 1), ('OUT', 2, 1)])
+    """
+    return schematic_of(read_structure(document), main_stem=main_stem)

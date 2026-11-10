@@ -10,7 +10,9 @@ examples go through the form to ``api/run`` and run. ``router.js``,
 real server), ``ui/info.js``, Polecenia's ``state.js`` and
 ``forms/result-view.js`` (on real envelopes) follow. The geometry of Sieć's canvas
 (plan 2026-11-10-network-editor, D5, D6, D10: ``editor/geometry.js``) draws rule D
-and ranks the lines as the library does, computed here in Python, and its edits
+and ranks the lines as the library does, computed here in Python, also on the document
+of the structure alone that Sieć sends Hydrolog to lay out (``state.js``'
+``structureDocument``, ADR-0025: only positive areas weigh), and its edits
 (``editor/edits.js``) share the nodes they do not change. Sieć's editor follows:
 ``editor/graph.js`` reports every structure reason with the library's details, judges
 links and ids, and finds the problem ``RoutingNetwork.from_document`` raises on each
@@ -27,10 +29,10 @@ from typing import Any
 import pytest
 
 from hydrolog.exceptions import InvalidParameterError
-from hydrolog.routing import RoutingNetwork
+from hydrolog.routing import RoutingNetwork, structure_schematic
 from hydrolog.routing._layout import edge_route, layout
 from tests.e2e.conftest import Tab
-from tests.unit._network_documents import document, junction, outlet, reach, source
+from tests.unit._network_documents import STRUCTURE_CORPUS
 from tests.unit._schematic_checks import random_tree
 
 NBSP = "\u00a0"
@@ -986,6 +988,92 @@ def test_the_canvas_ranks_the_lines_as_the_library_does(page: Any) -> None:
     assert got == [case["lines"] for case in cases]
 
 
+def test_the_structure_sent_to_hydrolog_ranks_the_lines_as_the_canvas(
+    page: Any,
+) -> None:
+    cases: list[dict[str, Any]] = []
+    for seed in range(24):
+        root, inflows = random_tree(
+            4 + 2 * seed, seed, fan_in=1 + seed % 4, deep=(seed % 4) / 4
+        )
+        heads = sorted(node for node, ups in inflows.items() if not ups)
+        chance = random.Random(seed)
+        areas: dict[str, float] = {
+            node: round(chance.uniform(0.5, 50), 2) for node in heads
+        }
+        # Every head with a positive area, or one head with 0, a negative one or none
+        odd = heads[seed % len(heads)]
+        if seed % 4 == 1:
+            areas[odd] = 0
+        elif seed % 4 == 2:
+            areas[odd] = -3.5
+        elif seed % 4 == 3:
+            del areas[odd]
+        kinds = {1: "reach"}
+        skeleton = [
+            {
+                "id": node,
+                "type": kinds.get(len(ups), "junction") if ups else "subcatchment",
+                "from": list(ups) or None,
+            }
+            for node, ups in inflows.items()
+        ]
+        skeleton.append({"id": "END", "type": "outlet", "from": [root]})
+        cases.append({"skeleton": skeleton, "areas": areas})
+    got = page.evaluate(
+        f"""async (cases) => {{ {GEOMETRY}
+          const s = await import('./src/sections/siec/state.js');
+          return cases.map(({{skeleton, areas}}) => {{
+            const known = new Map(Object.entries(areas));
+            return {{
+              document: s.structureDocument(skeleton, known),
+              lines: Object.fromEntries(g.linesOf(skeleton, known)),
+            }};
+          }}); }}""",
+        cases,
+    )
+
+    for case, found in zip(cases, got, strict=True):
+        # The document: ids, types, links and the positive areas only
+        expected = [
+            {
+                "id": node["id"],
+                "type": node["type"],
+                **({"from": node["from"]} if node["from"] else {}),
+                **(
+                    {"watershed": {"area_km2": case["areas"][node["id"]]}}
+                    if case["areas"].get(node["id"], 0) > 0
+                    else {}
+                ),
+            }
+            for node in case["skeleton"]
+        ]
+        assert found["document"] == {"schema": "hydrolog-network/1", "nodes": expected}
+        # The library's lines of the structure with every area as given, 0 and
+        # negative ones included, are the canvas's
+        given = {
+            "schema": "hydrolog-network/1",
+            "nodes": [
+                {
+                    **{key: value for key, value in node.items() if value is not None},
+                    **(
+                        {"watershed": {"area_km2": case["areas"][node["id"]]}}
+                        if node["id"] in case["areas"]
+                        else {}
+                    ),
+                }
+                for node in case["skeleton"]
+            ],
+        }
+        drawn = structure_schematic(given)
+        lines = {
+            node: {"main": line["role"] == "main", "joins": line.get("joins")}
+            for line in drawn["lines"]
+            for node in line["nodes"]
+        }
+        assert found["lines"] == lines
+
+
 def test_free_cells_provisional_rows_and_the_cells_of_an_opened_network(
     page: Any,
 ) -> None:
@@ -1318,114 +1406,9 @@ def test_a_typed_id_is_checked_as_the_library_would(page: Any) -> None:
     ]
 
 
-# The one-problem corpus (plan D8, D13): each document has one structural problem
-# where one is possible (a network without an outlet and a link out of the outlet leave
-# a node that flows nowhere) and every field complete, as the library checks the fields
-# before the structure; the reason is the one the library raises.
-CORPUS: list[tuple[str, dict[str, Any], str]] = [
-    ("no nodes", document(), "empty"),
-    ("an id with a space", document(source("A B"), outlet("A B")), "invalid_id"),
-    (
-        "an invalid id in from",
-        document(source("A"), junction("J", "A", "bad id"), outlet("J")),
-        "invalid_id",
-    ),
-    ("a device name", document(source("con"), outlet("con")), "reserved_name"),
-    (
-        "a device name in from",
-        document(source("A"), junction("J", "A", "LPT1.txt"), outlet("J")),
-        "reserved_name",
-    ),
-    (
-        "ids that differ in case",
-        document(source("A"), source("a"), junction("J", "A", "a"), outlet("J")),
-        "duplicate_node",
-    ),
-    (
-        "ids equal when folded",
-        document(
-            source("STRASSE"),
-            source("straße"),
-            junction("J", "STRASSE", "straße"),
-            outlet("J"),
-        ),
-        "duplicate_node",
-    ),
-    (
-        "an unknown inflow",
-        document(source("A"), junction("J", "A", "X"), outlet("J")),
-        "unknown_upstream",
-    ),
-    (
-        "a repeated inflow",
-        document(source("A"), junction("J", "A", "A"), outlet("J")),
-        "duplicate_upstream",
-    ),
-    (
-        "a reach with two inflows",
-        document(
-            source("A"),
-            source("B"),
-            reach("R", "A", **{"from": ["A", "B"]}),
-            outlet("R"),
-        ),
-        "upstream_count",
-    ),
-    (
-        "a subcatchment with an inflow",
-        document(source("A"), source("B", **{"from": ["A"]}), outlet("B")),
-        "upstream_count",
-    ),
-    (
-        "a junction without inflows",
-        document(source("A"), junction("J"), junction("K", "A", "J"), outlet("K")),
-        "upstream_count",
-    ),
-    (
-        "a node that flows into two",
-        document(
-            source("A"), junction("J1", "A"), junction("J2", "A", "J1"), outlet("J2")
-        ),
-        "several_downstream",
-    ),
-    (
-        "a loop beside the stream",
-        document(
-            source("A"),
-            junction("J1", "A", "J2"),
-            junction("J2", "J1"),
-            source("B"),
-            outlet("B"),
-        ),
-        "cycle",
-    ),
-    (
-        "a node that flows into itself",
-        document(source("A"), junction("S", "S"), outlet("A")),
-        "cycle",
-    ),
-    ("no outlet", document(source("A"), junction("J", "A")), "no_outlet"),
-    (
-        "two outlets",
-        document(source("A"), source("B"), outlet("A", "O1"), outlet("B", "O2")),
-        "several_outlets",
-    ),
-    (
-        "a link out of the outlet",
-        document(source("A"), outlet("A", "O1"), junction("J", "O1")),
-        "outlet_has_downstream",
-    ),
-    (
-        "a node that flows nowhere",
-        document(source("A"), source("B"), outlet("A")),
-        "disconnected_node",
-    ),
-]
-
-
 def test_the_canvas_finds_the_problem_the_library_raises(page: Any) -> None:
     raised = []
-    for name, doc, _ in CORPUS:
+    for name, doc, _ in STRUCTURE_CORPUS:
         with pytest.raises(InvalidParameterError) as error:
             RoutingNetwork.from_document(doc)
         details = error.value.details
@@ -1439,13 +1422,13 @@ def test_the_canvas_finds_the_problem_the_library_raises(page: Any) -> None:
           found: docs.map((doc) => gr.graphProblems(nm.skeletonOf(doc), rules)
             .map((problem) => [problem.reason, problem.node_id ?? null])),
         }; }""",
-        [doc for _, doc, _ in CORPUS],
+        [doc for _, doc, _ in STRUCTURE_CORPUS],
     )
 
     # The library raises the reason each document was made for, and together they are
     # every reason the canvas reports
     assert [(name, reason) for name, reason, _ in raised] == [
-        (name, reason) for name, _, reason in CORPUS
+        (name, reason) for name, _, reason in STRUCTURE_CORPUS
     ]
     assert {reason for _, reason, _ in raised} == set(got["reasons"])
     # The canvas lists the library's problem on the library's node

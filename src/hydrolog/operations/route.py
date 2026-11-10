@@ -19,10 +19,11 @@ tables are written through a staging directory (DEV-19.7, ADR-0010). With ``sche
 it also draws the network as an SVG map (ADR-0013) and returns the document that the
 drawing is made of. :func:`route_schematic` reads a network the same way and returns
 that document without values (:class:`RouteSchematicResult`), routing nothing and
-writing nothing. A schematic is drawn at the positions of the nodes when every node
-has one of its own (ADR-0023); positions on some nodes only, or two nodes on one cell,
-give the notice ``positions_ignored`` and the computed layout. The functions are
-re-exported by :mod:`hydrolog.operations`.
+writing nothing; with ``structure_only`` it reads the structure alone, a draft whose
+values may be missing, and lays it out (ADR-0025). A schematic is drawn at the positions
+of the nodes when every node has one of its own (ADR-0023); positions on some nodes
+only, or two nodes on one cell, give the notice ``positions_ignored`` and the computed
+layout. The functions are re-exported by :mod:`hydrolog.operations`.
 """
 
 from __future__ import annotations
@@ -43,7 +44,7 @@ from hydrolog.catalog.envelope import Notice, OperationOutput, capture_warnings
 from hydrolog.catalog.inputs import load_hydrograph, load_rating
 from hydrolog.catalog.notices import NOTICES, notice
 from hydrolog.exceptions import InvalidParameterError, OutputError
-from hydrolog.operations._network_input import load_network
+from hydrolog.operations._network_input import load_network, load_structure
 from hydrolog.operations._outputs import (
     conflict_error,
     join_plans,
@@ -64,7 +65,7 @@ from hydrolog.routing import (
     RoutingNotice,
     RoutingResult,
 )
-from hydrolog.routing.schematic import schematic_svg
+from hydrolog.routing.schematic import schematic_of, schematic_svg
 
 __all__ = [
     "NetworkRouteResult",
@@ -226,8 +227,11 @@ class RouteSchematicResult(dict[str, Any], JsonResultMixin):
     ``timestep_min``, ``has_result`` (``False``), ``layout`` (``given`` or
     ``computed``), ``grid``, ``lines``, ``nodes`` (each with its place on the grid, its
     label, its ``description`` when it has one and the ``parameters`` that are given)
-    and ``edges``; :mod:`hydrolog.routing.schematic` describes the keys.
-    :meth:`to_dict` returns it as a plain dict.
+    and ``edges``; with ``structure_only`` the schematic of the structure alone
+    (:func:`~hydrolog.routing.structure_schematic`: ``structure_only`` ``true``, empty
+    ``parameters``, ``timestep_min`` only when the document gives it).
+    :mod:`hydrolog.routing.schematic` describes the keys. :meth:`to_dict` returns it as
+    a plain dict.
     """
 
 
@@ -1021,12 +1025,15 @@ def _schematic_of(
         with capture_warnings() as notices:
             document = network.schematic(result, main_stem=main_stem)
     except InvalidParameterError as exc:
-        raise InvalidParameterError(
-            str(exc),
-            details={**exc.details, "option": "main_stem"},
-            hint=exc.hint,
-        ) from exc
+        raise _of_main_stem(exc) from exc
     return document, notices
+
+
+def _of_main_stem(exc: InvalidParameterError) -> InvalidParameterError:
+    """Return the error of a layout as the error of the option ``main_stem``."""
+    return InvalidParameterError(
+        str(exc), details={**exc.details, "option": "main_stem"}, hint=exc.hint
+    )
 
 
 def _write_schematic(text: str, target: Path, written: Sequence[Path]) -> None:
@@ -1290,6 +1297,7 @@ def route_schematic(
     inflows_file: str | os.PathLike[str] | None = None,
     time_column: str | None = None,
     main_stem: Sequence[str] | None = None,
+    structure_only: bool = False,
 ) -> OperationOutput:
     """Lay a river network out as a schematic, without routing it (``route schematic``).
 
@@ -1299,6 +1307,9 @@ def route_schematic(
     metro map (ADR-0013). Nothing is routed and nothing is written: the nodes carry the
     parameters that are given, not the values of a run, and the layout is the one that
     ``route network`` with ``schematic`` draws for the same network and ``main_stem``.
+    With ``structure_only`` only the structure is read and laid out
+    (:func:`~hydrolog.routing.structure_schematic`, ADR-0025): a draft whose nodes miss
+    values is laid out as soon as its structure is right.
 
     Parameters
     ----------
@@ -1311,6 +1322,7 @@ def route_schematic(
         CSV or JSON file with the discharges [m3/s] of the subcatchments that have
         none inline. A network whose subcatchments read their discharges from a file
         is checked as a whole when it is read, so it is laid out only with that file.
+        Not with ``structure_only``.
     time_column : str, optional
         Time column [min] of ``inflows_file``; default ``time_min``.
     main_stem : sequence of str, optional
@@ -1318,6 +1330,11 @@ def route_schematic(
         points along it); they must lie on one path to the outlet. By default the stem
         follows, from the outlet, the branch that drains the larger area (without
         areas: that has more nodes). It ranks the lines of a given layout too.
+    structure_only : bool, optional
+        Read of the document only ``schema``, ``name``, ``timestep_min``, each node's
+        ``id``, ``type`` and ``from`` and each headwater's ``watershed.area_km2``,
+        check the structure with the reasons of the network and lay it out, whatever
+        the other fields hold; positions are ignored. Default ``False``.
 
     Returns
     -------
@@ -1326,23 +1343,45 @@ def route_schematic(
         (:class:`RouteSchematicResult`) with ``has_result`` ``False``; the notice
         ``positions_ignored`` (``reason`` ``partial`` or ``shared_cell``, ``node_id``)
         says that the positions of the nodes could not be drawn and the layout is
-        computed.
+        computed. With ``structure_only`` the document has ``structure_only`` ``true``
+        and the computed layout, every node's ``parameters`` are empty and
+        ``timestep_min`` is there only when the document gives it.
 
     Raises
     ------
     InvalidParameterError
         If both or neither of ``network`` and ``network_file`` are given
         (``details.reason`` ``one_of``), an inline document is wrong
-        (``details.option`` ``network``), or ``main_stem`` names a node that the
+        (``details.option`` ``network``), ``main_stem`` names a node that the
         network does not have or nodes that are not on one path to the outlet
         (``unknown_node``, ``main_stem_not_a_path``; ``details.option``
-        ``main_stem``).
+        ``main_stem``), or ``structure_only`` is given with ``inflows_file`` or
+        ``time_column`` (``details.reason`` ``conflict``: no file is read).
     NotFoundError
         If a file does not exist.
     InputDataError
         If a file cannot be read, or the document in ``network_file``, a table of
         ``inflows_file`` or a rating file is wrong (``details.path``).
     """
+    if structure_only:
+        for option, value in (
+            ("inflows_file", inflows_file),
+            ("time_column", time_column),
+        ):
+            if value is not None:
+                raise InvalidParameterError(
+                    f"Option {option!r} does not apply with 'structure_only', which "
+                    "reads no file",
+                    details={"option": option, "reason": "conflict"},
+                    hint="Leave out inflows_file and time_column: the structure is "
+                    "laid out without the discharges.",
+                )
+        structure = load_structure(network=network, network_file=network_file)
+        try:
+            drawn = schematic_of(structure, main_stem=main_stem)
+        except InvalidParameterError as exc:
+            raise _of_main_stem(exc) from exc
+        return OperationOutput(RouteSchematicResult(drawn), [])
     loaded = load_network(
         network=network,
         network_file=network_file,

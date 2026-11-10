@@ -433,7 +433,9 @@ def test_the_network_schema_and_the_loader_accept_the_same_documents():
 
 def _schematic_documents() -> dict[str, dict[str, Any]]:
     """Schematics of the example network, of a network with many inflows and a stem,
-    of a network drawn where its nodes are and of one written before ADR-0023."""
+    of a network drawn where its nodes are, of one written before ADR-0023 and of the
+    structure of a draft alone, with and without its time step (ADR-0025)."""
+    from hydrolog.catalog.groups.route import _DRAFT
     from hydrolog.routing import (
         Channel,
         Hydrograph,
@@ -442,6 +444,7 @@ def _schematic_documents() -> dict[str, dict[str, Any]]:
         Outlet,
         RoutingNetwork,
         Subcatchment,
+        structure_schematic,
     )
     from hydrolog.testing import example_network
 
@@ -462,6 +465,10 @@ def _schematic_documents() -> dict[str, dict[str, Any]]:
         "a node with many inflows": crowded.schematic(crowded.route()),
         "a network drawn where its nodes are": placed.schematic(placed.route()),
         "a schematic without a layout": older,
+        "the structure of a draft": structure_schematic(_DRAFT),
+        "the structure of a draft with its step": structure_schematic(
+            {**_DRAFT, "name": "Draft", "timestep_min": 10}
+        ),
     }
 
 
@@ -533,6 +540,13 @@ def test_the_schematic_schema_refuses_a_document_that_cannot_be_drawn():
         "an empty description of a node": edited(
             nodes=[{**first, "description": ""}, *nodes[1:]]
         ),
+        "the schematic of a network without its step": {
+            k: v for k, v in document.items() if k != "timestep_min"
+        },
+        "the schematic of a structure that is not one": {
+            k: v for k, v in edited(structure_only=False).items() if k != "timestep_min"
+        },
+        "a structure that is no boolean": edited(structure_only="yes"),
     }
 
     assert _violations(SCHEMATIC_DOCUMENT, document) == []

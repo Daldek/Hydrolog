@@ -2,12 +2,11 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/Daldek/Hydrolog/blob/main/src/hydrolog/schemas/hydrolog-network-schematic-1.schema.json",
   "title": "hydrolog-network-schematic/1",
-  "description": "Schematic of a routing network in the style of a metro map (ADR-0013): the nodes on an integer grid (`x` grows downstream, to the right, `y` grows downwards), the lines of the map, the polylines of the edges (every segment at 0, 45 or 90 degrees), the place of every label and, per node, its description, the parameters of its calculation and, with a result, its peak, time to peak, volume and notices. The nodes are at their given positions (`layout` `given`, rule D, ADR-0023; the edges may cross) or laid out (`computed`). Written by `RoutingNetwork.schematic()` and by `route network` with `schematic`; unknown fields are allowed (AGI-4.1).",
+  "description": "Schematic of a routing network in the style of a metro map (ADR-0013): the nodes on an integer grid (`x` grows downstream, to the right, `y` grows downwards), the lines of the map, the polylines of the edges (every segment at 0, 45 or 90 degrees), the place of every label and, per node, its description, the parameters of its calculation and, with a result, its peak, time to peak, volume and notices. The nodes are at their given positions (`layout` `given`, rule D, ADR-0023; the edges may cross) or laid out (`computed`). Written by `RoutingNetwork.schematic()` and by `route network` with `schematic`, and for the structure of a draft alone by `structure_schematic()` and `route schematic` with `structure_only` (ADR-0025); unknown fields are allowed (AGI-4.1).",
   "type": "object",
   "required": [
     "schema",
     "outlet",
-    "timestep_min",
     "has_result",
     "grid",
     "lines",
@@ -27,7 +26,8 @@
     },
     "timestep_min": {
       "type": "number",
-      "exclusiveMinimum": 0
+      "exclusiveMinimum": 0,
+      "description": "The time step of the network [min]: always in the schematic of a network; in that of a structure only when its document gives it (ADR-0025)."
     },
     "has_result": {
       "type": "boolean"
@@ -38,6 +38,10 @@
         "computed"
       ],
       "description": "`given`: the nodes are at the positions of the network document and the edges follow rule D (ADR-0023); `computed`: the layout of ADR-0013. A document without it is computed."
+    },
+    "structure_only": {
+      "type": "boolean",
+      "description": "`true`: the schematic of the structure of a document alone (its ids, types and links, ADR-0025): the layout is computed and the nodes have no parameters. Absent in the schematic of a network."
     },
     "grid": {
       "type": "object",
@@ -289,6 +293,21 @@
         }
       }
     }
+  },
+  "if": {
+    "properties": {
+      "structure_only": {
+        "const": true
+      }
+    },
+    "required": [
+      "structure_only"
+    ]
+  },
+  "else": {
+    "required": [
+      "timestep_min"
+    ]
   },
   "$defs": {
     "id": {

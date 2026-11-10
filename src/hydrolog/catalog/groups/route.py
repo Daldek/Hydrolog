@@ -8,7 +8,8 @@ ADR-0008). ``route network`` routes the hydrographs of many subcatchments down a
 network, a document ``hydrolog-network/1`` whose reaches and reservoirs take the options
 of the other commands (:func:`model_options`), and writes one such table per node into
 ``output_dir`` (ADR-0010); ``route schematic`` lays such a network out as a schematic
-(ADR-0013) without routing it. The operations are in :mod:`hydrolog.operations.route`.
+(ADR-0013) without routing it, or with ``structure_only`` the structure of a draft
+alone (ADR-0025). The operations are in :mod:`hydrolog.operations.route`.
 
 The options that all commands share are public constants (:data:`INFLOW_OPTIONS`,
 :data:`INFLOW_ONE_OF`, :data:`RUN_OPTIONS`, :data:`OUTPUT_OPTIONS`) so that a command
@@ -42,6 +43,17 @@ _TWO_SOURCES: dict[str, object] = {
     ],
 }
 """Two subcatchments, a lag reach, a junction and the outlet: the inline example."""
+_DRAFT: dict[str, object] = {
+    "schema": "hydrolog-network/1",
+    "nodes": [
+        {"id": "A", "type": "subcatchment"},
+        {"id": "B", "type": "subcatchment"},
+        {"id": "R1", "type": "reach", "from": ["A"]},
+        {"id": "J1", "type": "junction", "from": ["R1", "B"]},
+        {"id": "OUT", "type": "outlet", "from": ["J1"]},
+    ],
+}
+"""The structure of the inline example without any value: a draft."""
 
 TIMES_MIN = Option(
     name="times_min",
@@ -381,6 +393,30 @@ SCHEMATIC_MAIN_STEM = Option(
         "the stem follows, from the outlet, the branch that drains the larger area "
         "(without areas: that has more nodes)."
     ),
+)
+STRUCTURE_ONLY = Option(
+    name="structure_only",
+    type="boolean",
+    description_pl=(
+        "Ułóż samą strukturę sieci, także szkicu bez parametrów: odczytaj tylko "
+        "`schema`, `name`, `timestep_min`, `id`, `type` i `from` każdego węzła oraz "
+        "`watershed.area_km2` zlewni, do których nic nie dopływa, sprawdź strukturę "
+        "tak jak `route network` i ułóż ją (zawsze układ obliczony, położenia węzłów "
+        "pominięte), cokolwiek mają pozostałe pola. Wynik ma `structure_only` true, "
+        "puste `parameters` węzłów i `timestep_min` tylko, gdy sieć go podaje. Nie z "
+        "`inflows_file` ani `time_column`."
+    ),
+    description=(
+        "Lay out the structure of the network alone, a draft without parameters too: "
+        "read only `schema`, `name`, `timestep_min`, each node's `id`, `type` and "
+        "`from` and the `watershed.area_km2` of the subcatchments that nothing flows "
+        "into, check the structure as `route network` does and lay it out (always "
+        "computed, the positions of the nodes ignored), whatever the other fields "
+        "hold. The result has `structure_only` true, empty `parameters` of the nodes "
+        "and `timestep_min` only when the network gives it. Not with `inflows_file` "
+        "or `time_column`."
+    ),
+    default=False,
 )
 
 MODEL_METHODS: tuple[str, ...] = (
@@ -1564,6 +1600,7 @@ COMMANDS: tuple[Command, ...] = (
             INFLOWS_FILE,
             NETWORK_TIME_COLUMN,
             SCHEMATIC_MAIN_STEM,
+            STRUCTURE_ONLY,
         ),
         one_of=(("network",), ("network_file",)),
         examples=(
@@ -1572,6 +1609,7 @@ COMMANDS: tuple[Command, ...] = (
                 "network_file": f"{_FIXTURES}/network_flood.json",
                 "inflows_file": f"{_FIXTURES}/network_inflows.csv",
             },
+            {"network": _DRAFT, "structure_only": True},
         ),
         result_schema="hydrolog-network-schematic/1",
         cardinality="bounded",
@@ -1580,12 +1618,14 @@ COMMANDS: tuple[Command, ...] = (
             "`inflows_file`.",
             "The layout is that of `route network` with `schematic`; run it for the "
             "values.",
+            "`structure_only` lays out a draft by its ids, types and links alone.",
         ),
         rules_pl=(
             "Podaj `network` albo `network_file`; zlewnie czytające plik wymagają "
             "`inflows_file`.",
             "Układ jest ten sam co w `route network` ze `schematic`; wartości daje "
             "tamto polecenie.",
+            "`structure_only` układa szkic z samych id, typów i połączeń węzłów.",
         ),
         errors=("validation_error", "not_found", "data_error", "forbidden"),
         example_results=(
@@ -1646,6 +1686,32 @@ COMMANDS: tuple[Command, ...] = (
                         "parameters": [
                             {"name": "length_km", "value": 6.0, "unit": "km"}
                         ],
+                    },
+                ],
+            },
+            {
+                "outlet": "OUT",
+                "has_result": False,
+                "layout": "computed",
+                "structure_only": True,
+                "grid": {"width": 3, "height": 1},
+                "lines": [
+                    {"index": 0, "role": "main", "nodes": ["A", "R1", "J1", "OUT"]},
+                    {
+                        "index": 1,
+                        "role": "tributary",
+                        "nodes": ["B"],
+                        "joins": "J1",
+                    },
+                ],
+                "nodes": [
+                    {
+                        "id": "A",
+                        "type": "subcatchment",
+                        "x": 0,
+                        "y": 1,
+                        "line": 0,
+                        "parameters": [],
                     },
                 ],
             },

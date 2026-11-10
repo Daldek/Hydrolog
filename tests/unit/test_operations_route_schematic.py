@@ -1,17 +1,23 @@
-"""``route schematic``: the schematic of a network without routing it (ADR-0013)."""
+"""``route schematic``: the schematic of a network without routing it (ADR-0013).
+
+With ``structure_only`` the command lays out the structure of a draft alone (ADR-0025):
+it reads no file but the document, and refuses ``inflows_file`` and ``time_column``.
+"""
 
 from __future__ import annotations
 
+import json
 import shutil
 from pathlib import Path
 
 import pytest
 
 from hydrolog.catalog import get_command, run_command
-from hydrolog.catalog.groups.route import _TWO_SOURCES
+from hydrolog.catalog.groups.route import _DRAFT, _TWO_SOURCES
 from hydrolog.exceptions import InputDataError, InvalidParameterError
 from hydrolog.operations import RouteSchematicResult, route_schematic
 from hydrolog.operations._network_input import load_network
+from hydrolog.routing import structure_schematic
 
 FIXTURES = Path(__file__).parents[1] / "fixtures"
 FIXTURE_NETWORK = FIXTURES / "network_flood.json"
@@ -117,3 +123,73 @@ class TestNoEffects:
         assert command.effects.destructive is False
         assert command.check is None
         assert "check" not in {option.name for option in command.options}
+
+
+class TestTheStructureOnly:
+    def test_a_file_that_reads_files_is_laid_out_without_them(self, tmp_path):
+        content = json.loads(FIXTURE_NETWORK.read_text(encoding="utf-8"))
+        network = tmp_path / "network.json"
+        network.write_text(json.dumps(content), encoding="utf-8")
+
+        result = _result({"network_file": str(network), "structure_only": True})
+
+        # Its subcatchments read inflows_file and its reservoir a rating file, which
+        # are not there: the structure needs neither
+        assert result == structure_schematic(content)
+        assert result["structure_only"] is True
+        assert result["name"] == "Pond catchment"
+
+    def test_an_inline_draft_without_values_is_laid_out(self):
+        output = route_schematic(network=_DRAFT, structure_only=True)
+
+        assert output.result.to_dict() == structure_schematic(_DRAFT)
+        assert list(output.notices) == []
+        assert all(node["parameters"] == [] for node in output.result["nodes"])
+
+    @pytest.mark.parametrize(
+        ("options", "option"),
+        [
+            ({"inflows_file": str(FIXTURE_INFLOWS)}, "inflows_file"),
+            ({"time_column": "time_min"}, "time_column"),
+        ],
+    )
+    def test_a_file_of_discharges_is_a_conflict(self, options, option):
+        with pytest.raises(InvalidParameterError) as caught:
+            route_schematic(network=_DRAFT, structure_only=True, **options)
+
+        assert caught.value.details == {"option": option, "reason": "conflict"}
+
+    def test_a_problem_of_the_structure_is_the_error_of_the_document(self, tmp_path):
+        looped = {
+            **_DRAFT,
+            "nodes": [
+                {"id": "A", "type": "subcatchment"},
+                {"id": "J1", "type": "junction", "from": ["A", "J2"]},
+                {"id": "J2", "type": "junction", "from": ["J1"]},
+                {"id": "OUT", "type": "outlet", "from": ["J2"]},
+            ],
+        }
+        network = tmp_path / "network.json"
+        network.write_text(json.dumps(looped), encoding="utf-8")
+
+        with pytest.raises(InvalidParameterError) as inline:
+            route_schematic(network=looped, structure_only=True)
+        with pytest.raises(InputDataError) as written:
+            route_schematic(network_file=network, structure_only=True)
+
+        assert (inline.value.details["option"], inline.value.details["reason"]) == (
+            "network",
+            "cycle",
+        )
+        assert written.value.details["path"] == str(network)
+        assert written.value.details["reason"] == "cycle"
+
+    def test_a_main_stem_that_is_not_a_path_is_refused_as_the_option(self):
+        with pytest.raises(InvalidParameterError) as caught:
+            run_command(
+                "route schematic",
+                {"network": _DRAFT, "structure_only": True, "main_stem": ["A", "B"]},
+            )
+
+        assert caught.value.details["option"] == "main_stem"
+        assert caught.value.details["reason"] == "main_stem_not_a_path"

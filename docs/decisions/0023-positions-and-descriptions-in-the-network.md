@@ -2,6 +2,9 @@
 
 - Status: accepted
 - Date: 2026-11-10
+- Amended by [ADR-0025](0025-the-structure-alone-in-the-schematic.md) (2026-11-10): Sieć's „Uporządkuj” and the
+  opening of a network without positions take the layout of the structure alone (`route schematic
+  --structure-only`); the library still confirms every complete network.
 - Amends: [ADR-0010](0010-route-network-document-and-output-directory.md) (a node of `hydrolog-network/1` may have
   `description` and `position`, and the document a `description` at its top; the reader stays strict),
   [ADR-0012](0012-network-objects-rainfall-and-runoff.md) (the fields that every node has are read and written by the
