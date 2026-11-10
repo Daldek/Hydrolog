@@ -384,8 +384,9 @@ function ProblemList({ problems, hints, onChoose }) {
  *   {list: object[], marks: Map<string, string[]>, loops: Set<string>}, history:
  *   {canUndo: boolean, canRedo: boolean}, tidy: {blocked: string|null}, offer: object|null,
  *   onTidy: () => void, onEdit: (inputs: object, options?: object) => void, onSelect: (id:
- *   string) => void, actions: object, onRename: (id: string) => void, say: (text: string)
- *   => void, svgRef?: {current: SVGSVGElement|null}, titleId: string}} props the
+ *   string, fromPicture?: boolean, enter?: boolean) => void, actions: object, onRename:
+ *   (id: string) => void, say: (text: string) => void, svgRef?: {current:
+ *   SVGSVGElement|null}, titleId: string}} props the
  *   section's inputs (the structure with every node's position, and whether the layout is
  *   provisional), each node's description and result (null before „Oblicz sieć”), the
  *   chosen node, the inflow rules of the schema (graph.js inflowRules), the problems (the
@@ -1097,7 +1098,9 @@ export function NetworkCanvas({
       case " ":
         if (!node) return;
         event.preventDefault();
-        onSelect(node);
+        // Enter is the key of a node's parameters: a subcatchment's panel takes the focus
+        // (plan 2026-11-10-network-wizard, D2); Space only chooses
+        onSelect(node, true, event.key === "Enter");
         return;
       case "d":
       case "D":

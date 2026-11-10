@@ -4,7 +4,9 @@
 // subcatchment in „Hydrogram zlewni” (deliver → useHandoffInbox, which the section
 // listens with), a network in „Sieć i trasowanie” (its openNetwork); read in Sieć, every
 // network opens there, and „Dodaj zlewnię z Hydrografa” (HandoffAdd) adds a hand-off's
-// subcatchments to the open network (plan 2026-11-10-network-editor, D10). The part
+// subcatchments to the open network (plan 2026-11-10-network-editor, D10). Given a caller
+// (`onOpen`), it hands the checked hand-off of one watershed to it instead: Sieć's
+// subcatchment panel fills its node (plan 2026-11-10-network-wizard, D10). The part
 // „Przekazanie” of the panel Wyniki (HydrogramHandoff, SiecHandoff) writes one („Plik
 // przekazania”, „Do schowka”) and shows a received producer's result beside Hydrolog's
 // own, with the versions that computed them. Nothing here runs or writes at mount.
@@ -193,6 +195,31 @@ export async function addHandoff(text, onAdd) {
 }
 
 /**
+ * „Wczytaj z Hydrografa” for a caller that takes one watershed (plan
+ * 2026-11-10-network-wizard, D10: a subcatchment's panel in Sieć): check a hand-off as
+ * openHandoff does and hand the document of one subcatchment to `onOpen`; a network is
+ * refused with the two ways to take it, a station's series as what it is.
+ *
+ * @param {string} text the hand-off as text
+ * @param {(doc: object) => ({title: string, lines: string[]}|null)} onOpen the caller's
+ *   reading: null when it took the watershed, else why not
+ * @returns {Promise<{title: string, lines: string[]}|null>} why it was refused, null when
+ *   the caller took it
+ */
+export async function handoffFor(text, onOpen) {
+  const found = await payloadSchemas(texts.fill.refused);
+  if (found.refusal) return found.refusal;
+  const read = readHandoff(text, found.schemas);
+  if (read.problems.length) return { title: texts.fill.refused, lines: read.problems };
+  if (read.target === "statystyka") return { title: texts.fill.refused, lines: [texts.fill.series] };
+  if (read.target !== "hydrogram") {
+    const nodes = Array.isArray(read.doc.payload.nodes) ? read.doc.payload.nodes.length : 0;
+    return { title: texts.fill.refused, lines: [t(texts.fill.network, { nodes: plural(nodes, siecTexts.nodeForms) })] };
+  }
+  return onOpen(read.doc);
+}
+
+/**
  * The lines of a refusal, at most MAX_PROBLEMS and how many more.
  *
  * @param {string[]} lines the problems
@@ -320,13 +347,18 @@ function HandoffReader({ name, words, icon, read }) {
 /**
  * „Wczytaj z Hydrografa”: a hand-off read from a file or the clipboard opens where it
  * belongs (openHandoff). Statystyka przepływów names Archiwista instead (`series`); Sieć
- * opens every network itself (`into`, plan 2026-11-10-network-editor, D10).
+ * opens every network itself (`into`, plan 2026-11-10-network-editor, D10); a caller that
+ * takes one watershed gets it (`onOpen`, handoffFor; plan 2026-11-10-network-wizard, D10).
  *
- * @param {{series?: boolean, into?: "siec"|null}} [props] the texts of a station's series
- *   (Archiwista), and the section that reads it
+ * @param {{series?: boolean, into?: "siec"|null, onOpen?: ((doc: object) => ({title:
+ *   string, lines: string[]}|null))|null}} [props] the texts of a station's series
+ *   (Archiwista), the section that reads it, and the caller of one watershed
  * @returns {object} the button, its menu and what it says
  */
-export function HandoffImport({ series = false, into = null } = {}) {
+export function HandoffImport({ series = false, into = null, onOpen = null } = {}) {
+  if (onOpen) {
+    return html`<${HandoffReader} name="fill" words=${{ ...texts.load, ...texts.fill }} icon=${ICONS.load} read=${(text) => handoffFor(text, onOpen)} />`;
+  }
   let words = texts.load;
   if (series) words = { ...texts.load, ...texts.loadSeries };
   else if (into === "siec") words = { ...texts.load, ...texts.loadSiec };

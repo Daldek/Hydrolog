@@ -7,9 +7,10 @@
 // hyetograph or a series at the network's step); the session files it reads), 2 its nodes
 // (a list that chooses a node, with each node's peak after „Oblicz sieć”, and „Dodaj
 // węzeł”) and 3 the chosen node: where it came from when a hand-off added it, its id,
-// description and downstream link, and its settings. Before a network is open, step 1
-// alone: a new network, what to load, and the guide's worked example. A field that
-// commits (`change`) closes its step of the history.
+// description and downstream link, and its settings; a subcatchment made from rainfall
+// has its data in its own panel beside this one (D1, D2: „Dane zlewni →”). Before a
+// network is open, step 1 alone: a new network, what to load, and the guide's worked
+// example. A field that commits (`change`) closes its step of the history.
 
 import { FileField } from "../../controls/file-field.js";
 import { num, plural } from "../../format.js";
@@ -339,18 +340,17 @@ function NodeList({ skeleton, words, values, wrong, selected, onSelect, onAdd })
  *
  * @param {object} props the section's state and handlers: `state`, `forms`, `words`,
  *   `values` (each node's result), `problems` (by node, and `network`), `summary`,
- *   `needed` (the session files), `note` (of the last load), `nodeResult` (the chosen
- *   node's result), `networkRain` (the words of the network's rainfall, null without one),
- *   `pmaxtp` (the depth of the network's PMAXTP, whether it is being fetched and how to
- *   fetch it again: usePmaxtp), `canSave` (whether there is a node to save), `complete`
- *   (whether it is a network or a draft), `offer` (a junction offered in „Odpływa do”),
- *   `actions` (the section's edits of the structure), and the handlers `onNetwork`,
- *   `onRun`, `onNode`, `onCommit` (a field committed), `onSelect`, `onLoad`,
+ *   `needed` (the session files), `note` (of the last load), `pmaxtp` (the depth of the
+ *   network's PMAXTP, whether it is being fetched and how to fetch it again: usePmaxtp),
+ *   `canSave` (whether there is a node to save), `complete` (whether it is a network or a
+ *   draft), `offer` (a junction offered in „Odpływa do”), `actions` (the section's edits
+ *   of the structure), and the handlers `onNetwork`, `onRun`, `onNode`, `onCommit` (a
+ *   field committed), `onSelect`, `onPanel` (the chosen subcatchment's panel), `onLoad`,
  *   `onCompanions`, `onSave`, `onNew`, `onIdDone`
  * @returns {object} the panel's body
  */
 export function DataPanel(props) {
-  const { state, forms, words, values, problems, onSelect, onNode, onCommit, nodeResult, networkRain, actions, offer, onIdDone } = props;
+  const { state, forms, words, values, problems, onSelect, onNode, onCommit, onPanel, actions, offer, onIdDone } = props;
   const node = state.skeleton.find((item) => item.id === state.selected) || null;
   const to = node ? (state.skeleton.find((item) => item.from && item.from.includes(node.id)) || {}).id || null : null;
   const wrong = new Set(Object.keys(problems.nodes).filter((id) => Object.keys(problems.nodes[id]).length));
@@ -389,9 +389,7 @@ export function DataPanel(props) {
               skeleton=${state.skeleton}
               values=${state.nodes[node.id] || {}}
               problems=${problems.nodes[node.id] || {}}
-              result=${nodeResult}
-              networkRain=${networkRain}
-              onNetworkRain=${showNetworkRain}
+              onPanel=${onPanel}
               inflowsFile=${state.inflowsFile}
               offer=${offer && offer.from === node.id ? offer : null}
               actions=${actions}
@@ -420,7 +418,7 @@ export function networkRainWords(network, depth) {
 
 /**
  * Bring the network's rainfall in step 1 into view and focus its source, opening the step
- * („Pokaż w kroku 1” of a subcatchment that takes it).
+ * („Opad sieci w kroku 1” of a subcatchment that takes it).
  */
 export function showNetworkRain() {
   const part = document.getElementById(`${NETWORK_PREFIX}-rain`);

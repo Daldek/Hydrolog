@@ -95,6 +95,27 @@ def with_cells(document: dict[str, Any], cells: dict[str, Cell]) -> dict[str, An
     return {**document, "nodes": nodes}
 
 
+def as_written(document: dict[str, Any]) -> dict[str, Any]:
+    """Return ``document`` as Sieć writes it once it has read it.
+
+    A subcatchment made from rainfall goes through Hydrogram's inputs (plan
+    2026-11-10-network-wizard, D3), which write out the choices a runoff leaves to the
+    library's defaults: the model (SCS), AMC II and, for SCS and Clark without a given
+    tc, the method of tc (Kirpich).
+    """
+    nodes = []
+    for node in document["nodes"]:
+        if node["type"] == "subcatchment" and "runoff" in node:
+            runoff = {**node["runoff"]}
+            runoff.setdefault("uh_model", "scs")
+            runoff.setdefault("amc", "II")
+            if runoff["uh_model"] in {"scs", "clark"} and "tc_min" not in runoff:
+                runoff.setdefault("tc_method", "kirpich")
+            node = {**node, "runoff": runoff}
+        nodes.append(node)
+    return {**document, "nodes": nodes}
+
+
 def canvas_cells(page: Page) -> dict[str, Cell]:
     """Return the cell of every node of the canvas."""
     return {node: (x, y) for node, (x, y) in page.evaluate(CELLS).items()}
@@ -362,7 +383,7 @@ def test_the_svg_and_the_network_document_export(tab: Tab) -> None:
         page.locator('[data-export="json-network"]').click()
     document = json.loads(Path(saved.value.path()).read_text(encoding="utf-8"))
     example = example_network_document()
-    assert document == with_cells(example, library(example)[0])
+    assert document == as_written(with_cells(example, library(example)[0]))
 
     compute(page)
     with page.expect_download() as drawing:
@@ -411,7 +432,7 @@ def test_a_dragged_node_keeps_its_cell_after_a_reload_and_in_a_saved_file(
         page.get_by_role("button", name="Zapisz sieć").click()
     saved.value.save_as(tmp_path / "siec.json")
     document = json.loads((tmp_path / "siec.json").read_text(encoding="utf-8"))
-    assert document == with_cells(example_network_document(), moved)
+    assert document == as_written(with_cells(example_network_document(), moved))
     page.locator('section[data-section="siec"]').get_by_role(
         "button", name="Wyczyść"
     ).click()
@@ -461,6 +482,13 @@ def test_the_keys_go_between_nodes_move_them_and_zoom_without_a_mouse(
     page.keyboard.press("Enter")
     expect(page.locator(NODE.format("C"))).to_have_attribute("aria-pressed", "true")
     expect(page.locator('[data-node-form="C"]')).to_be_visible()
+    # Enter on a subcatchment takes the focus to its panel's first step (plan
+    # 2026-11-10-network-wizard, D2); on the canvas again, Space chooses and stays
+    panel = page.locator('section[data-section="siec"] .view-panel.detail')
+    expect(panel.locator('[data-step="watershed"] > summary')).to_be_focused()
+    page.locator(NODE.format("C")).focus()
+    page.keyboard.press(" ")
+    assert page.evaluate(focused) == "C"
 
     # Shift with an arrow moves the node one cell; a taken cell refuses
     x, y = cells["C"]
@@ -477,16 +505,23 @@ def test_the_keys_go_between_nodes_move_them_and_zoom_without_a_mouse(
     page.keyboard.press("Shift+ArrowDown")
     expect(page.locator(NODE.format("C"))).to_have_attribute("data-x", str(x + 1))
 
-    # The zoom: „+” and „−” step through the levels, „Dopasuj” fits the picture again
+    # The zoom: „+” and „−” step through the levels from the fitted scale (the panel of
+    # C narrows the canvas), „Dopasuj” fits the picture again
     expect(canvas).to_have_attribute("data-zoom", "fit")
     width = float(canvas.get_attribute("width") or 0)
+    fitted = page.evaluate("() => document.querySelector('svg.schem').getScreenCTM().a")
+    levels = page.evaluate(
+        "async () => (await import('./src/sections/siec/editor/canvas.js')).ZOOMS"
+    )
+    up = next(level for level in levels if level > fitted * 1.01)
     page.keyboard.press("+")
-    expect(canvas).to_have_attribute("data-zoom", "1.25")
-    assert float(canvas.get_attribute("width") or 0) == round(width * 1.25)
+    expect(canvas).to_have_attribute("data-zoom", str(up))
+    assert float(canvas.get_attribute("width") or 0) == round(width * up)
+    down = levels[levels.index(up) - 2]
     page.keyboard.press("-")
     page.keyboard.press("-")
-    expect(canvas).to_have_attribute("data-zoom", "0.8")
-    expect(page.locator(SAID)).to_have_text("Powiększenie 80 %.")
+    expect(canvas).to_have_attribute("data-zoom", str(down))
+    expect(page.locator(SAID)).to_have_text(f"Powiększenie {round(down * 100)} %.")
     page.keyboard.press("?")
     expect(page.locator('[data-canvas="keys-list"]')).to_be_visible()
     expect(page.locator('[data-canvas="keys-list"]')).to_contain_text(
@@ -676,9 +711,10 @@ def test_a_phone_in_the_dark_theme_shows_the_schematic(new_tab: Any) -> None:
     page.mouse.click(*screen_point(page, "OUT", (0, -1)))
     expect(page.locator(NODE.format("OUT"))).to_have_attribute("data-y", str(y - 1))
     assert page.evaluate(SIDEWAYS) == []
+    # A subcatchment chosen shows its panel's sheet; its settings stay in „Dane”
     page.locator(NODE.format("B")).click()
     expect(
-        page.locator('section[data-section="siec"] .view-panel.left')
+        page.locator('section[data-section="siec"] .view-panel.detail')
     ).to_be_visible()
     expect(page.locator('[data-node-form="B"]')).to_be_attached()
     assert page.evaluate(SIDEWAYS) == []

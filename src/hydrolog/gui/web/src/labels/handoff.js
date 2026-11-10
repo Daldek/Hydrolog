@@ -65,6 +65,20 @@ export const handoffLabels = {
     stepNone: "Sieć nie podaje kroku czasowego i tak zostaje; przekazanie ma krok {handoff} min.",
     ownRainfall: "Opad przekazania różni się od opadu sieci, więc jest opadem własnym: {nodes}.",
   },
+  /**
+   * „Wczytaj z Hydrografa” in a subcatchment's panel of Sieć: a hand-off of one watershed
+   * fills the chosen node (plan 2026-11-10-network-wizard, D10).
+   */
+  fill: {
+    title:
+      "Wczytaj przekazanie nogat-handoff/1 jednej zlewni do tej zlewni sieci: jej dane, model i opad; id, połączenia, położenie i opis węzła zostają",
+    refused: "Nie wczytano zlewni",
+    network:
+      "To przekazanie niesie sieć ({nodes}): wczytasz ją przyciskiem „Wczytaj z Hydrografa” w kroku 1 panelu Dane (zastąpi otwartą sieć), a jej zlewnie dodasz przyciskiem „Dodaj zlewnię z Hydrografa”.",
+    series: "To przekazanie niesie szereg stacji (hydrolog-series/1), nie zlewnię.",
+    filled: "Wczytano zlewnię {id} z przekazania „{subject}” ({producer}).",
+    ownRainfall: "Opad przekazania różni się od opadu sieci, więc jest opadem własnym zlewni {id}.",
+  },
   problems: {
     notJson: "To nie jest JSON: {message}",
     notObject: "Przekazanie nie jest obiektem JSON.",

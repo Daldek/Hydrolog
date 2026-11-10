@@ -1,11 +1,13 @@
 /**
  * Texts of „Sieć i trasowanie” (plan S4): the network, its nodes and their forms, the
  * canvas of the schematic and its editing (plan 2026-11-10-network-editor: the palette,
- * the links, the problems of the structure, undo and redo), the results and the exports.
- * Field labels and help add to the shared ones of labels/options.js and to the catalog's
- * Polish descriptions (node-model.js reads them), by the part of a node: `watershed`,
- * `runoff`, `rainfall`, `reach` (every routing method and a reservoir), `given` (a
- * subcatchment's own discharges), `network`, and `any`.
+ * the links, the problems of the structure, undo and redo), the panel of a subcatchment
+ * made from rainfall (plan 2026-11-10-network-wizard, D1, D2: Hydrogram zlewni's steps,
+ * whose own texts are labels/hydrogram.js), the results and the exports. Field labels and
+ * help add to the shared ones of labels/options.js and to the catalog's Polish
+ * descriptions (node-model.js reads them), by the part of a node: `reach` (every routing
+ * method and a reservoir), `given` (a subcatchment's own discharges and its column of the
+ * inflows file), `network`, and `any`.
  */
 
 export const siec = {
@@ -54,9 +56,6 @@ export const siec = {
     file: { label: "Z pliku", meta: "przepływy z pliku dopływów" },
     given: { label: "Podany", meta: "hydrogram podany" },
   },
-  rainfalls: {
-    node: { network: "Jak w sieci", design: "Projektowy", series: "Szereg" },
-  },
   choices: {
     "#section": { title: "Koryto", groups: ["Przekrój", "Prędkość fali"] },
     "#k": { title: "Skala czasu", groups: ["Stała K", "Długość i prędkość"] },
@@ -75,22 +74,21 @@ export const siec = {
     to: "do",
     inflows: "Dopływ z",
     variant: "Hydrogram zlewni",
-    watershed: "Zlewnia",
-    watershedMore: "Pozostałe pola zlewni",
-    runoff: "Odpływ",
-    rainfall: "Opad",
-    rainfallKind: "Opad zlewni",
     networkRainfall: "Opad sieci",
     networkStep: "Krok sieci: domyślnie krok źródeł, a bez nich 5 min. Szereg opadu sieci ma ten krok.",
     hydrograph: "Hydrogram zlewni (podany)",
     more: "Więcej pól",
     wave: "Początek i koniec fali",
-    tcComputed: "tc = {tc} min z ostatniego obliczenia (metodą tc_method).",
     fromFile: "Przepływy z pliku dopływów {file}, kolumna „{column}”.",
     noInflowsFile: "Wskaż plik dopływów (inflows_file) w kroku 1.",
     networkRain: "Opad sieci z kroku 1 · {source}: {words}.",
-    networkRainOpen: "Pokaż w kroku 1",
+    noNetworkRain: "Sieć nie ma opadu („Brak” w kroku 1): ustaw opad sieci albo własny opad zlewni.",
     noRainfall: "Brak opadu: ustaw opad sieci w kroku 1 albo własny opad zlewni",
+    noModel: "Wybierz model hydrogramu jednostkowego w kroku 3 panelu zlewni",
+    noDepth: "Wysokość opadu PMAXTP zlewni pobierze się po otwarciu jej panelu",
+    inPanel: "Dane zlewni z opadu (zlewnia, hietogram i hydrogram) są w jej panelu obok, w trzech krokach jak w Hydrogramie zlewni.",
+    openPanel: "Dane zlewni →",
+    openPanelTitle: "Pokaż panel zlewni {id}: jej dane w trzech krokach",
     tableRules: "Od stanu pustego, kolumny niemalejące; tabela nie jest ekstrapolowana (table_exceeded). stage_m: rzędna albo głębokość, podawana w szczycie.",
     junction: "Złącze sumuje hydrogramy dopływów w każdym kroku; nie ma innych parametrów.",
     outlet: "Jedyny wylot sieci: jego hydrogram jest wynikiem route network; schemat prowadzi od niego linię główną.",
@@ -109,6 +107,18 @@ export const siec = {
     removeTitle: "Usuń węzeł {id} z jego połączeniami („Cofnij” go przywraca)",
     bridge: "Usuń i połącz",
     bridgeTitle: "Usuń {id}, a jego dopływ {up} połącz z {down}",
+  },
+  /** The panel of a subcatchment made from rainfall beside „Dane” (plan 2026-11-10-network-wizard, D1, D2). */
+  panel: {
+    sub: "dane zlewni",
+    calc: {
+      model: "Wybierz model w kroku 3",
+      invalid: "Dane niepełne: {field}",
+      fetching: "Pobieranie wysokości opadu z IMGW-PIB…",
+      noRainfall: "Brak opadu: ustaw opad sieci albo własny",
+      ok: "Dane kompletne · wynik po „Oblicz sieć”",
+      computed: "Dane kompletne · w panelu wartości ostatniego obliczenia sieci",
+    },
   },
   table: {
     empty: "Podaj co najmniej jeden wiersz tabeli",
@@ -143,7 +153,7 @@ export const siec = {
     newNetwork: "Nowa sieć",
     newTitle: "Zacznij pustą sieć i zbuduj ją na schemacie z palety elementów",
     started: "Nowa sieć: najpierw podaj krok czasowy i opad sieci (krok 1), potem przeciągnij elementy z palety na schemat i połącz je, zaczynając od wylotu.",
-    structure: "Węzły i połączenia budujesz na schemacie (paleta, uchwyt pod węzłem, menu węzła) albo w ustawieniach węzła w kroku 3; parametry podajesz w formularzu węzła.",
+    structure: "Węzły i połączenia budujesz na schemacie (paleta, uchwyt pod węzłem, menu węzła) albo w ustawieniach węzła w kroku 3; parametry podajesz w ustawieniach węzła, a dane zlewni w jej panelu obok.",
     loaded: "Wczytano {name}: {nodes}.",
     renamed: "Węzeł {node}: plik „{from}” jest w sesji jako „{to}”.",
     refused: "Nie wczytano {name}",
@@ -233,7 +243,8 @@ export const siec = {
     /** The keys of the canvas, while one of its nodes has the focus: [keys, what they do]. */
     keyList: [
       ["Strzałki", "najbliższy węzeł w tym kierunku"],
-      ["Enter, Spacja", "wybierz węzeł: ustawienia w panelu Dane"],
+      ["Enter", "wybierz węzeł: ustawienia w panelu Dane; przy zlewni przejdź do jej panelu"],
+      ["Spacja", "wybierz węzeł"],
       ["Shift + strzałka", "przesuń węzeł o jedno pole"],
       ["D", "dodaj dopływ: menu typów elementu"],
       ["P", "połącz z węzłem poniżej: strzałki wybierają cel, Enter łączy"],
@@ -248,7 +259,7 @@ export const siec = {
       ["Esc", "przerwij przesuwanie, dodawanie albo łączenie"],
     ],
     described:
-      "Strzałki: najbliższy węzeł w tym kierunku. Enter albo Spacja: wybierz węzeł. Shift ze strzałką: przesuń węzeł o jedno pole. D: dodaj dopływ. P: połącz z węzłem poniżej. O: odłącz. Delete: usuń. F2: zmień id. Shift F10: menu węzła. Control Z: cofnij, Control Y: ponów. Plus i minus: powiększenie. Znak zapytania: lista skrótów.",
+      "Strzałki: najbliższy węzeł w tym kierunku. Enter: wybierz węzeł, przy zlewni przejdź do jej panelu. Spacja: wybierz węzeł. Shift ze strzałką: przesuń węzeł o jedno pole. D: dodaj dopływ. P: połącz z węzłem poniżej. O: odłącz. Delete: usuń. F2: zmień id. Shift F10: menu węzła. Control Z: cofnij, Control Y: ponów. Plus i minus: powiększenie. Znak zapytania: lista skrótów.",
     empty: "Sieć jest pusta. Najpierw podaj opad sieci w kroku 1 „Sieć”, potem umieść elementy: przeciągnij element z palety na schemat albo kliknij element, a potem pole schematu. Zacznij od wylotu; dopływ węzła dodaje klawisz D albo menu węzła.",
     undo: "Cofnij",
     undoTitle: "Cofnij ostatnią zmianę sieci (Ctrl+Z)",
@@ -496,33 +507,6 @@ export const siec = {
   labels: {
     any: {},
     network: { name: "Nazwa sieci", timestep_min: "Krok czasowy" },
-    watershed: {
-      name: "Nazwa",
-      area_km2: "Powierzchnia A",
-      perimeter_km: "Obwód",
-      length_km: "Długość zlewni",
-      elevation_min_m: "Wysokość najmniejsza",
-      elevation_max_m: "Wysokość największa",
-      elevation_mean_m: "Wysokość średnia",
-      mean_slope_m_per_m: "Średni spadek zlewni",
-      channel_length_km: "Długość cieku głównego",
-      channel_slope_m_per_m: "Spadek cieku głównego",
-      flow_path_length_km: "Długość najdłuższej drogi spływu",
-      flow_path_slope_m_per_m: "Spadek najdłuższej drogi spływu",
-      cn: "CN dla AMC II",
-      source: "Źródło danych",
-      crs: "Układ współrzędnych",
-      Lc_km: "Długość do środka ciężkości Lc",
-      urban_pct: "Tereny zurbanizowane",
-      forest_pct: "Lasy",
-    },
-    runoff: {
-      tc_min: "tc podany ręcznie",
-      amc: "Wilgotność poprzedzająca",
-      ia_coefficient: "Straty początkowe λ",
-      uh_model: "Hydrogram jednostkowy",
-    },
-    rainfall: { duration_min: "Czas trwania", depths_mm: "Wysokości opadu", timestep_min: "Krok szeregu" },
     reach: {
       length_km: "Długość odcinka",
       slope_m_per_m: "Spadek dna",
@@ -540,38 +524,6 @@ export const siec = {
     network: {
       name: "Nazwa sieci, np. zlewni z przekrojem zamykającym; opcjonalna.",
       timestep_min: "Krok czasowy sieci [min], > 0; domyślnie krok źródeł, a bez nich 5 min.",
-    },
-    watershed: {
-      name: "Nazwa zlewni; opcjonalna.",
-      area_km2: "Powierzchnia zlewni [km²], > 0.",
-      perimeter_km: "Obwód zlewni [km], > 0.",
-      length_km: "Długość zlewni [km], > 0 (wskaźniki kształtu).",
-      elevation_min_m: "Najniższy punkt zlewni [m n.p.m.].",
-      elevation_max_m: "Najwyższy punkt zlewni [m n.p.m.].",
-      elevation_mean_m: "Średnia wysokość zlewni [m n.p.m.] (tc Giandotti: ΔH = średnia − najmniejsza).",
-      mean_slope_m_per_m: "Średni spadek terenu zlewni [m/m] (tc NRCS: Y).",
-      channel_length_km: "Długość cieku głównego [km] (tc Giandotti; Snyder).",
-      channel_slope_m_per_m:
-        "Spadek cieku głównego [m/m]; żadna metoda go nie czyta (Kirpich, Kerby–Kirpich i Lutz biorą spadek najdłuższej drogi spływu).",
-      flow_path_length_km:
-        "Długość najdłuższej drogi spływu od punktu zlewni najdalszego hydraulicznie (zwykle na dziale wodnym, może być na grzbiecie wewnątrz zlewni) do przekroju, po drodze spływu [km] (tc: NRCS, Kirpich, Kerby–Kirpich; Nash, metoda Lutza).",
-      flow_path_slope_m_per_m:
-        "Spadek najdłuższej drogi spływu: (wysokość jej początku − wysokość przekroju) / długość [m/m] (tc: Kirpich, Kerby–Kirpich; Nash, metoda Lutza).",
-      cn: "Liczba CN dla przeciętnej wilgotności (AMC II), 0–100; potrzebna odpływowi curve-number.",
-      source: "Skąd pochodzą dane zlewni, np. Hydrograf.",
-      crs: "Układ współrzędnych danych, np. EPSG:2180.",
-      runoff_coeff: "Współczynnik odpływu C (tc FAA).",
-      retardance: "Współczynnik retardacji N (tc: Kerby, Kerby–Kirpich).",
-      overland_length_km: "Długość spływu po stoku [km] (tc: FAA, Kerby, Kerby–Kirpich).",
-      overland_slope_m_per_m: "Spadek stoku [m/m] (tc: FAA, Kerby, Kerby–Kirpich).",
-      Lc_km: "Długość od przekroju zamykającego do środka ciężkości zlewni [km].",
-      manning_n: "Szorstkość Manninga koryta [s/m^(1/3)].",
-      urban_pct: "Udział terenów zurbanizowanych [%].",
-      forest_pct: "Udział lasów [%].",
-    },
-    rainfall: {
-      depths_mm: "Wysokość opadu w kolejnych krokach [mm], nieujemna; szereg nie jest przepróbkowywany.",
-      timestep_min: "Krok szeregu opadu [min]; sieć przyjmuje ten krok.",
     },
     reach: {
       rating_file: "Plik CSV albo JSON z kolumnami storage_m3, outflow_m3s i opcjonalnie stage_m; leży w sesji obok dokumentu sieci.",

@@ -7,7 +7,8 @@ point, p and duration on the channel ``siec-pmaxtp``, kept with the stored input
 (``hydrolog-gui/siec/3``) and not fetched again after a reload. A subcatchment made from
 rainfall in a network without a rainfall („Brak”) is the problem „Brak opadu” of its
 node, and „Oblicz sieć” sends nothing until the network has a rainfall. Every section
-mounted with Sieć's network open, a subcatchment chosen, keeps the page's ids unique.
+mounted with Sieć's network open, a subcatchment chosen (its panel beside „Dane”, stage
+W4), keeps the page's ids unique.
 """
 
 import re
@@ -17,6 +18,7 @@ from playwright.sync_api import Page, Request, expect
 from tests.e2e.conftest import KAMIENNIK_POINT, Tab, input_text
 from tests.e2e.test_siec import BADGE, NODE
 from tests.e2e.test_siec_editor import (
+    PANEL,
     SECTION,
     drag_link,
     drop,
@@ -142,9 +144,8 @@ def test_a_subcatchment_without_any_rainfall_is_a_problem_of_its_node(
         "Z1: Brak opadu: ustaw opad sieci w kroku 1 albo własny opad zlewni"
     )
     expect(page.locator(NODE.format("Z1"))).to_have_class(re.compile(r"\bwrong\b"))
-    # The node's „Jak w sieci” points at step 1
-    form = page.locator('[data-node-form="Z1"]')
-    expect(form.locator('[data-goto="network-rain"]')).to_be_visible()
+    # The node's „Jak w sieci” in its panel points at step 1
+    expect(page.locator(f'{PANEL} [data-goto="network-rain"]')).to_be_visible()
     # „Oblicz sieć” sends nothing
     runs = requests_to(page, ROUTE)
     page.get_by_role("button", name="Oblicz sieć").click()
@@ -170,11 +171,13 @@ def test_every_section_with_the_network_open_keeps_ids_unique(tab: Tab) -> None:
     page = start(tab)
     expect(page.locator(RAIN)).to_be_visible()
     assert page.evaluate(DUPLICATES) == []
-    # A subcatchment chosen: its form beside „Opad sieci”; Hydrogram's step 2 mounted
+    # A subcatchment chosen: its panel with Hydrogram's steps beside „Opad sieci”, and
+    # Hydrogram zlewni's own steps mounted
     drop(page, "subcatchment", (0, 0))
     said(page, "Dodano Z1 (zlewnia).")
     page.locator(NODE.format("Z1")).click()
     expect(page.locator('[data-node-form="Z1"]')).to_be_visible()
+    expect(page.locator(f"{PANEL} #sn-rain-source-label")).to_be_visible()
     hydrogram = page.locator('section[data-section="hydrogram"]')
     expect(hydrogram.locator("#hg-rain-source-label")).to_be_attached()
     assert page.evaluate(DUPLICATES) == []

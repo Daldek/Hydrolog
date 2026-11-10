@@ -13,26 +13,41 @@
 // The network's values are its name, description and time step and its rainfall as the
 // inputs of Hydrogram's step 2 (plan 2026-11-10-network-wizard, D4: `rain_source` "none",
 // "pmaxtp", "design" or "series" and their fields, the PMAXTP depth fetched kept as
-// `pmaxtp_fetched`); version 3 of the stored shape, version 2 is not read. buildDocument
-// writes the document of the inputs: the top `rainfall` is what a run of `hydrograph
-// generate` takes (handoff/mapping.js rainfallOf), and a subcatchment made from rainfall
-// that has neither its own rainfall nor the network's is a problem of its node.
+// `pmaxtp_fetched`; handoff/mapping.js networkInputs). A subcatchment made from rainfall
+// keeps Hydrogram's inputs as its values (D3: `watershed`, `tc_method`, `uh_model`,
+// `rain_source` with „Jak w sieci” as "network"…, beside its `#variant`; mapping.js
+// siecValues), any other node the values of its form (node-model.js); version 3 of the
+// stored shape, version 2 is not read. buildDocument writes the document of the inputs: the
+// top `rainfall` is what a run of `hydrograph generate` takes (rainfallOf), each such
+// subcatchment the node of its inputs (siecSubcatchment) checked by Hydrogram's own checks
+// (subcatchmentProblems), and a subcatchment made from rainfall that has neither its own
+// rainfall nor the network's is a problem of its node.
 //
 // Another part of the page opens a network here with openNetwork(document, {name}) (the
 // hand-off of S6); the section takes it when it is mounted, or on its first render.
 
 import { api } from "../../api.js";
 import { sessionFileName } from "../../controls/file-field.js";
-import { inputText } from "../../format.js";
 import { withReason } from "../../forms/model.js";
-import { rainfallInputs, rainfallOf } from "../../handoff/mapping.js";
+import { networkInputs, rainfallOf, siecInputs, siecSubcatchment, siecValues } from "../../handoff/mapping.js";
 import { isObject } from "../../handoff/validate.js";
 import { useEffect, useRef, useState } from "../../html.js";
 import { t } from "../../labels/common.js";
 import { siec as texts } from "../../labels/siec.js";
 import { navigate } from "../../router.js";
 import { registerRanges, registerServed } from "../../ui/info.js";
-import { COMMAND, PMAXTP_COMMAND, initialRain, inputModels, rainChecks, rangeInfoId } from "../hydrogram/state.js";
+import {
+  COMMAND,
+  PMAXTP_COMMAND,
+  checkInputs,
+  initialRain,
+  inputModels,
+  pmaxtpDepth,
+  pmaxtpOptions,
+  rainChecks,
+  rangeInfoId,
+  usesLutz,
+} from "../hydrogram/state.js";
 import { cellOf, isArea, placeMissing, provisionalRows } from "./editor/geometry.js";
 import {
   buildForms,
@@ -44,9 +59,8 @@ import {
   networkProblems,
   nodeOf,
   nodeProblems,
-  nodeValues,
   skeletonOf,
-  takesNetworkRainfall,
+  variantOf,
 } from "./node-model.js";
 
 /** The section's id and the key of its inputs. */
@@ -59,7 +73,7 @@ export const DOCUMENT_NAME = "siec.json";
 export const SCHEMA_FILE = "hydrolog-network-1.schema.json";
 
 /** The key of a node's problem „Brak opadu” (buildDocument): its choice of the rainfall. */
-export const NO_RAINFALL_KEY = "#rainfall";
+export const NO_RAINFALL_KEY = "rain_source";
 
 /** A node's id as hydrolog-network-1.schema.json's `$defs.id` reads it (Python's `\w`). */
 const ID = /^[\p{L}\p{N}_][\p{L}\p{N}_.-]*$/u;
@@ -93,26 +107,6 @@ export function initialState() {
 export function newState() {
   const started = { ...initialState(), source: { name: DOCUMENT_NAME, kind: "new" }, network: initialRain() };
   return { ...started, savedKey: inputsKey(started) };
-}
-
-/**
- * The network's own values from its document: its name, description and time step, and
- * its rainfall as the inputs of Hydrogram's step 2 (rainfallInputs; plan
- * 2026-11-10-network-wizard, D4): with the PMAXTP record of a hand-off's provenance, the
- * way Hydrogram zlewni reads a hand-off; „Brak” without one. A series without the
- * document's time step gives the step its own.
- *
- * @param {object} doc hydrolog-network/1
- * @param {object|null} [provenance] the provenance of the hand-off it came in
- * @returns {object} the values
- */
-export function networkInputs(doc, provenance = null) {
-  const rain = rainfallInputs(isObject(doc.rainfall) ? doc.rainfall : null, provenance);
-  const values = { ...initialRain(), ...rain };
-  if (typeof doc.name === "string") values.name = doc.name;
-  if (typeof doc.description === "string") values.description = doc.description;
-  values.timestep_min = typeof doc.timestep_min === "number" ? inputText(doc.timestep_min) : rain.timestep_min || "";
-  return values;
 }
 
 /**
@@ -253,7 +247,7 @@ export function placeSkeleton(skeleton) {
 export function stateOf(doc, source, keep = {}) {
   const placed = placeSkeleton(skeletonOf(doc));
   const nodes = {};
-  for (const node of doc.nodes) nodes[String(node.id)] = nodeValues(node);
+  for (const node of doc.nodes) nodes[String(node.id)] = siecValues(node);
   const outlet = placed.skeleton.find((node) => node.type === "outlet");
   const opened = {
     ...initialState(),
@@ -294,19 +288,71 @@ export function placementNotes(doc, state) {
 }
 
 /**
+ * The problems of a subcatchment made from rainfall (plan 2026-11-10-network-wizard, D1),
+ * each with the field of its panel: Hydrogram zlewni's own checks of its inputs
+ * (checkInputs: the bounds, the relations, and, once a model is chosen, every field the
+ * model, its tc method and its own rainfall need), which stand at once as they do there
+ * (`shown`); a model not chosen yet (Hydrogram runs nothing before one is) and an own
+ * PMAXTP depth not fetched yet, which wait for „Oblicz sieć” like a missing value.
+ *
+ * @param {object} forms the forms of useForms (`rain`: the models of Hydrogram's checks)
+ * @param {object} inputs the subcatchment's inputs (siecInputs)
+ * @returns {Array<{key: string, message: string, shown?: boolean}>} the problems
+ */
+export function subcatchmentProblems(forms, inputs) {
+  const found = [];
+  if (!inputs.uh_model) found.push({ key: "uh_model", message: withReason(texts.form.noModel, "required") });
+  const errors = checkInputs(inputs, forms.rain).errors;
+  for (const [key, message] of Object.entries(errors)) found.push({ key, message, shown: true });
+  if (pmaxtpOptions(inputs) !== null && pmaxtpDepth(inputs) === null && !errors.pmaxtp_depth) {
+    found.push({ key: "pmaxtp_depth", message: withReason(texts.form.noDepth, "required") });
+  }
+  return found;
+}
+
+/**
+ * The values a run of the network gave a subcatchment, named as the result of `hydrograph
+ * generate` that Hydrogram's steps show read-only (plan 2026-11-10-network-wizard, D1):
+ * tc, the CN after AMC, S, Ia, λ and the unit hydrograph's parameters, from the node's
+ * `parameters` in the result of `route network`, with the model and AMC of the inputs it
+ * ran with.
+ *
+ * @param {Object<string, number>} parameters the node's parameters in the result
+ * @param {object} inputs the subcatchment's inputs of that run (siecInputs)
+ * @returns {object} the values
+ */
+export function nodeComputed(parameters, inputs) {
+  const value = (name) => (typeof parameters[name] === "number" ? parameters[name] : undefined);
+  const uh = { tc_min: value("tc_min"), r_min: value("clark_r_min"), n: value("nash_n"), k_min: value("nash_k_min"), ct: value("snyder_ct"), cp: value("snyder_cp") };
+  return {
+    tc_min: value("tc_min"),
+    amc: inputs.amc,
+    cn: value("cn"),
+    cn_adjusted: value("cn_adjusted") ?? value("cn"),
+    retention_mm: value("retention_mm"),
+    initial_abstraction_mm: value("initial_abstraction_mm"),
+    ia_coefficient: value("ia_coefficient"),
+    uh_model: inputs.uh_model,
+    uh_parameters: Object.fromEntries(Object.entries(uh).filter(([, number]) => number !== undefined)),
+    nash_estimation: usesLutz(inputs) ? "lutz" : null,
+  };
+}
+
+/**
  * The document of the network: its own fields (its name and description first, ADR-0023),
  * its rainfall (rainfallOf: what a run of `hydrograph generate` takes) and every node, in
- * the order of its structure.
+ * the order of its structure: a subcatchment made from rainfall as its inputs make it
+ * (siecSubcatchment), any other node as its form does (nodeOf).
  *
  * @param {object} forms the forms of useForms (`rain`: the models of Hydrogram's step 2)
  * @param {{network: object, skeleton: object[], nodes: Object<string, object>}} state the
  *   network's values, its structure and the values of each node
  * @returns {{document: object, problems: Array<{node: string|null, key: string,
- *   message: string}>}} hydrolog-network/1 and every problem of the values and the
- *   descriptions (the structure is graph.js's): the network's own fields, its rainfall
- *   (rainChecks), each node's values and description, and „Brak opadu” of a subcatchment
- *   that takes the network's rainfall when the network has none (the library's
- *   `missing_field` `rainfall`)
+ *   message: string, shown?: boolean}>}} hydrolog-network/1 and every problem of the
+ *   values and the descriptions (the structure is graph.js's): the network's own fields,
+ *   its rainfall (rainChecks), each node's values (a subcatchment's subcatchmentProblems)
+ *   and description, and „Brak opadu” of a subcatchment that takes the network's rainfall
+ *   when the network has none (the library's `missing_field` `rainfall`)
  */
 export function buildDocument(forms, state) {
   const network = state.network;
@@ -328,13 +374,19 @@ export function buildDocument(forms, state) {
   if (rainfall) document.rainfall = rainfall;
   document.nodes = state.skeleton.map((node) => {
     const values = state.nodes[node.id] || {};
-    add(node.id, nodeProblems(forms, node, values));
-    if (!rainfall && takesNetworkRainfall(node, values)) {
-      problems.push({ node: node.id, key: NO_RAINFALL_KEY, message: withReason(texts.form.noRainfall, "missing_field") });
+    const rain = node.type === "subcatchment" && variantOf(values) === "rain";
+    if (rain) {
+      const inputs = siecInputs(values);
+      for (const item of subcatchmentProblems(forms, inputs)) problems.push({ node: node.id, ...item });
+      if (!rainfall && inputs.rain_source === "network") {
+        problems.push({ node: node.id, key: NO_RAINFALL_KEY, message: withReason(texts.form.noRainfall, "missing_field") });
+      }
+    } else {
+      add(node.id, nodeProblems(forms, node, values));
     }
     const text = descriptionProblem(node.description);
     if (text) problems.push({ node: node.id, key: "description", message: text });
-    return nodeOf(forms, node, values);
+    return rain ? siecSubcatchment(values, network, node) : nodeOf(forms, node, values);
   });
   return { document, problems };
 }

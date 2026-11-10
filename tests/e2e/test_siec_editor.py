@@ -89,6 +89,18 @@ STORED = """() => {
 """Whether the stored structure is the one drawn (it is stored after a render)."""
 INFLOW_MENU = ["subcatchment", "reach", "reservoir", "junction"]
 """The items of the menu of `D`, in order (an outlet is never an inflow)."""
+PANEL = f"{SECTION} .view-panel.detail"
+"""The panel of the chosen subcatchment made from rainfall beside „Dane”: Hydrogram
+zlewni's three steps (plan 2026-11-10-network-wizard, D1, D2)."""
+MODELS = {"scs": "SCS", "nash": "Nash", "clark": "Clark", "snyder": "Snyder"}
+"""The unit hydrograph models as step 3 of the panel names them."""
+SHAPES = {
+    "block": "Blokowy",
+    "triangular": "Trójkątny",
+    "beta": "Beta",
+    "euler_ii": "Euler II",
+}
+"""The hyetograph types as step 2 of the panel names them."""
 
 Cell = tuple[int, int]
 
@@ -227,33 +239,59 @@ def type_network(page: Page, how: str) -> None:
         rain.locator(f"#siec-net-{name}").fill(input_text(rainfall[name]))
 
 
-def type_node(page: Page, guide_id: str, node: str, how: str) -> None:
-    """Type the guide's values of ``guide_id`` into the form of the chosen ``node``."""
-    form = page.locator(f'[data-node-form="{node}"]')
-    source = guide_node(guide_id)
-    if source["type"] == "reach":
-        fill(page, form, "#method", source["method"], how)
-        for name, value in source.items():
-            if name not in {"id", "type", "from", "method"}:
-                fill(page, form, f"{source['method']}.{name}", typed(value), how)
-        return
-    more = form.locator('details[data-more="watershed"]')
+def type_subcatchment(page: Page, source: dict[str, Any], node: str, how: str) -> None:
+    """Type a subcatchment of the guide into its panel, Hydrogram zlewni's three steps.
+
+    Step 1 its watershed, step 2 its own rainfall (none: „Jak w sieci”), step 3 the
+    model its runoff reads to (SCS when it names none) and tc when it is given.
+    """
+    panel = page.locator(PANEL)
+    expect(panel.locator("h2")).to_have_text(f"Zlewnia {node}")
     for name, value in source["watershed"].items():
-        if name not in {"area_km2", "cn"} and more.get_attribute("open") is None:
-            press(page, more.locator("summary"), how)
-        fill(page, form, f"watershed.{name}", typed(value), how)
-    for name, value in source["runoff"].items():
-        if name != "model":
-            fill(page, form, f"runoff.{name}", typed(value), how)
+        panel.locator(f"#sn-{name}").fill(typed(value))
     rainfall = source.get("rainfall")
     if rainfall:
-        kind = rainfall["kind"]
-        label = "Projektowy" if kind == "design" else "Szereg"
-        choice = form.locator('[data-choice="#rainfall"]')
-        press(page, choice.get_by_role("radio", name=label), how)
-        for name, value in rainfall.items():
-            if name != "kind":
-                fill(page, form, f"rainfall.{kind}.{name}", typed(value), how)
+        sources = panel.locator('[aria-labelledby="sn-rain-source-label"]')
+        if rainfall["kind"] == "series":
+            press(
+                page, sources.get_by_role("radio", name="Własna seria", exact=True), how
+            )
+            panel.locator("#sn-values").fill(typed(rainfall["depths_mm"]))
+        else:
+            press(page, sources.get_by_role("radio", name="Hietogram", exact=True), how)
+            shapes = panel.locator('[aria-labelledby="sn-shape-label"]')
+            shape = SHAPES[rainfall["hietogram_type"]]
+            press(page, shapes.get_by_role("radio", name=shape, exact=True), how)
+            for name in ("total_mm", "duration_min"):
+                panel.locator(f"#sn-{name}").fill(typed(rainfall[name]))
+    runoff = source["runoff"]
+    model = MODELS[runoff.get("uh_model", "scs")]
+    models = panel.locator('[aria-labelledby="sn-uh-label"]')
+    press(page, models.get_by_role("radio", name=model, exact=True), how)
+    if "tc_min" in runoff:
+        manual = panel.locator("#sn-tc_manual")
+        if how == "keys":
+            manual.focus()
+            page.keyboard.press("Space")
+        else:
+            manual.check()
+        panel.locator("#sn-tc_min").fill(typed(runoff["tc_min"]))
+
+
+def type_node(page: Page, guide_id: str, node: str, how: str) -> None:
+    """Type the guide's values of ``guide_id`` into the chosen ``node``.
+
+    A reach into its form in „Dane”, a subcatchment into its panel.
+    """
+    source = guide_node(guide_id)
+    if source["type"] == "subcatchment":
+        type_subcatchment(page, source, node, how)
+        return
+    form = page.locator(f'[data-node-form="{node}"]')
+    fill(page, form, "#method", source["method"], how)
+    for name, value in source.items():
+        if name not in {"id", "type", "from", "method"}:
+            fill(page, form, f"{source['method']}.{name}", typed(value), how)
 
 
 def type_guide(page: Page, ids: dict[str, str], how: str) -> None:
@@ -1078,8 +1116,11 @@ def test_a_phone_in_the_dark_theme_edits_through_the_menus(new_tab: Any) -> None
     tidy.click()
     said(page, "Uporządkowano schemat: węzły stoją tak, jak układa je Hydrolog.")
     assert canvas_cells(page) == structure_cells(page)
-    # „Odpływa do” in „Dane” takes the link away; two outlets leave nothing to tidy
+    # A tap on the subcatchment shows its panel's sheet, „← Dane” the sheet of „Dane”,
+    # where „Odpływa do” takes the link away; two outlets leave nothing to tidy
     page.locator(NODE.format("Z1")).click()
+    expect(page.locator(f"{PANEL}.open")).to_be_visible()
+    page.locator(PANEL).get_by_role("button", name="← Dane", exact=True).click()
     expect(page.locator(f"{SECTION} .view-panel.left")).to_be_visible()
     page.locator(
         f'{SECTION} [data-structure="Z1"] [data-field="to"] select'
