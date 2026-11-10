@@ -6,15 +6,18 @@
 // bound to the network (plan 2026-11-10-network-wizard, D4: „Brak”, PMAXTP, a design
 // hyetograph or a series at the network's step); the session files it reads), 2 its nodes
 // (a list that chooses a node, with each node's peak after „Oblicz sieć”, and „Dodaj
-// węzeł”) and 3 the chosen node: where it came from when a hand-off added it, its id,
-// description and downstream link, and its settings; a subcatchment made from rainfall
-// has its data in its own panel beside this one (D1, D2: „Dane zlewni →”). Before a
-// network is open, step 1 alone: a new network, what to load, and the guide's worked
-// example. A field that commits (`change`) closes its step of the history.
+// węzeł”) and 3 the chosen node: where it came from when it came in a hand-off (plan
+// 2026-11-10-network-wizard, D9: its own origin in Hydrograf's words of its element, else
+// the hand-off's record, the network's origin), its id, description and downstream link,
+// and its settings; a subcatchment made from rainfall has its data in its own panel beside
+// this one (D1, D2: „Dane zlewni →”). Before a network is open, step 1 alone: a new
+// network, what to load, and the guide's worked example. A field that commits (`change`)
+// closes its step of the history.
 
 import { FileField } from "../../controls/file-field.js";
 import { num, plural } from "../../format.js";
-import { HandoffAdd, HandoffImport, HandoffOrigin } from "../../handoff/handoff-panel.js";
+import { nodeOriginCard } from "../../handoff/mapping.js";
+import { HandoffAdd, HandoffImport, HandoffOrigin, OriginCard } from "../../handoff/handoff-panel.js";
 import { Component, html, useRef } from "../../html.js";
 import { t } from "../../labels/common.js";
 import { hydrogram as rainTexts } from "../../labels/hydrogram.js";
@@ -339,7 +342,8 @@ function NodeList({ skeleton, words, values, wrong, selected, onSelect, onAdd })
  * The panel „Dane” of Sieć.
  *
  * @param {object} props the section's state and handlers: `state`, `forms`, `words`,
- *   `values` (each node's result), `problems` (by node, and `network`), `summary`,
+ *   `values` (each node's result), `origins` (where each node's inputs came from:
+ *   handoff/mapping.js siecOrigins), `problems` (by node, and `network`), `summary`,
  *   `needed` (the session files), `note` (of the last load), `pmaxtp` (the depth of the
  *   network's PMAXTP, whether it is being fetched and how to fetch it again: usePmaxtp),
  *   `canSave` (whether there is a node to save), `complete` (whether it is a network or a
@@ -350,7 +354,7 @@ function NodeList({ skeleton, words, values, wrong, selected, onSelect, onAdd })
  * @returns {object} the panel's body
  */
 export function DataPanel(props) {
-  const { state, forms, words, values, problems, onSelect, onNode, onCommit, onPanel, actions, offer, onIdDone } = props;
+  const { state, forms, words, values, origins, problems, onSelect, onNode, onCommit, onPanel, actions, offer, onIdDone } = props;
   const node = state.skeleton.find((item) => item.id === state.selected) || null;
   const to = node ? (state.skeleton.find((item) => item.from && item.from.includes(node.id)) || {}).id || null : null;
   const wrong = new Set(Object.keys(problems.nodes).filter((id) => Object.keys(problems.nodes[id]).length));
@@ -362,6 +366,7 @@ export function DataPanel(props) {
     .filter(Boolean)
     .join(" · ");
   const word = node ? words.get(node.id) : null;
+  const card = node ? nodeOriginCard(node, (origins || {})[node.id]) : null;
   return html`
     <div class="steps" onChange=${onCommit}>
       <${Step} number=${1} name="network" title=${texts.steps.network} meta=${plural(state.skeleton.length, texts.nodeForms)}>
@@ -380,7 +385,11 @@ export function DataPanel(props) {
       </${Step}>
       ${node
         ? html`<${Step} number=${3} name="node" title=${word ? word.title : node.id} meta=${word ? word.meta : ""}>
-            ${node.origin ? html`<${HandoffOrigin} received=${node.origin} small=${true} />` : null}
+            ${node.origin
+              ? card
+                ? html`<${OriginCard} card=${card} input=${node.type === "subcatchment" ? "watershed" : "node"} />`
+                : html`<${HandoffOrigin} received=${node.origin} small=${true} />`
+              : null}
             <${NodeForm}
               key=${node.id}
               forms=${forms}

@@ -753,7 +753,15 @@ def test_a_network_of_two_subcatchments_opens_in_siec_beside_hydrografs_result(
         "data-network-file", "Kamiennik — dwie zlewnie.json"
     )
     expect(
-        page.locator(f'{left} [data-handoff-source="hydrograf"] strong')
+        page.locator(
+            f'{left} [data-step="network"] [data-handoff-source="hydrograf"] strong'
+        )
+    ).to_have_text("Z Hydrografa: Kamiennik — dwie zlewnie")
+    # The outlet, without an origin of its own, shows the network's
+    expect(
+        page.locator(
+            f'{left} [data-step="node"] [data-handoff-source="hydrograf"] strong'
+        )
     ).to_have_text("Z Hydrografa: Kamiennik — dwie zlewnie")
     received = page.locator(f"{SIEC} [data-handoff-received]")
     expect(received).to_have_attribute("data-handoff-received", "none")

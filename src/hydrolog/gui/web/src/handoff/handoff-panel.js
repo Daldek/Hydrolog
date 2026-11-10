@@ -39,7 +39,17 @@ import {
   statystykaInputs,
   toolName,
 } from "./handoff.js";
-import { dataKey, hydrogramContents, hydrogramHandoff, hydrogramInputs, hydrogramResult, outletResult, siecHandoff, siecReceived } from "./mapping.js";
+import {
+  dataKey,
+  hydrogramContents,
+  hydrogramHandoff,
+  hydrogramInputs,
+  hydrogramResult,
+  outletResult,
+  siecHandoff,
+  siecReceived,
+  unknownOriginsNote,
+} from "./mapping.js";
 import { canonical, isObject } from "./validate.js";
 
 /** The most problems of a refused hand-off listed. */
@@ -135,7 +145,8 @@ async function payloadSchemas(refused) {
  * hydrolog-network-1.schema.json or hydrolog-series-1.schema.json) and hand it to the
  * section it belongs to, or to Sieć for every network when Sieć reads it (`into`). A
  * station's daily series is first written into the session's files, which Statystyka
- * przepływów reads like a file of the person's.
+ * przepływów reads like a file of the person's. A network takes the origins of its nodes
+ * (node_provenance) to Sieć, and a key that names no node is said in the load's note.
  *
  * @param {string} text the hand-off as text
  * @param {{into?: "siec"|null}} [options] the section that reads it (readHandoff)
@@ -168,7 +179,12 @@ export async function openHandoff(text, { into = null } = {}) {
     toast(t(texts.load.openedStatystyka, { subject: doc.subject, producer, values: plural(count, texts.valueForms) }));
   } else {
     const named = withSessionNames(doc.payload);
-    openNetwork(named.doc, { name: `${fileBase(doc.subject)}.json`, kind: "handoff", handoff: siecReceived(doc, named.doc) });
+    openNetwork(named.doc, {
+      name: `${fileBase(doc.subject)}.json`,
+      kind: "handoff",
+      handoff: siecReceived(doc, named.doc),
+      notes: unknownOriginsNote(doc),
+    });
     toast(t(texts.load.openedSiec, { subject: doc.subject, producer, nodes: plural(named.doc.nodes.length, siecTexts.nodeForms) }));
   }
   return null;
@@ -410,6 +426,26 @@ export function HandoffOrigin({ received, small = false }) {
 }
 
 /**
+ * Where an input of a node came from (plan 2026-11-10-network-wizard, D9): a card of
+ * mapping.js (originCard), in a node's panel or in „Dane”.
+ *
+ * @param {{card: {tool: string, title: string, detail: string}, input: string}} props the
+ *   card and the input it tells (`watershed`, `runoff`, `rainfall`, `node`)
+ * @returns {object} the card
+ */
+export function OriginCard({ card, input }) {
+  return html`
+    <div class="handoff sm" data-handoff-source=${card.tool} data-origin-input=${input}>
+      <${Mark} tool=${card.tool} />
+      <div>
+        <strong>${card.title}</strong>
+        <span class="muted">${card.detail}</span>
+      </div>
+    </div>
+  `;
+}
+
+/**
  * The producer's result beside Hydrolog's own: the versions that computed them and each
  * quantity, a differing one marked, and what the comparison means.
  *
@@ -607,7 +643,7 @@ export function SiecHandoff({ state, document, valid, run, stale }) {
         ? html`<${ReceivedResult} received=${received} own=${fresh ? outletResult(result) : null} ownVersion=${version} state=${compared} />`
         : null}
       <${ExportHandoff}
-        make=${ready ? () => siecHandoff({ subject, source: state.source, document, result: fresh ? result : null, version }) : null}
+        make=${ready ? () => siecHandoff({ subject, state, document, result: fresh ? result : null, version }) : null}
         base=${fileBase(subject)}
         section="siec"
         disabled=${ready ? undefined : texts.export.invalid}

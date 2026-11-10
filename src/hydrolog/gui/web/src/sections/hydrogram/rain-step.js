@@ -170,19 +170,20 @@ function ShapeFields({ prefix, inputs, set, infoValues, row }) {
  *   string>, warnings: Object<string, string>, required: Object<string, object>, set:
  *   (patch: object) => void, pmaxtp: {depth: number|null, busy: boolean, onRetry: (() =>
  *   void)|null}, timestep?: {own: true}|{network: string}|null, network?: {words: string,
- *   onOpen: () => void}, infoValues: object, valuesField: object|null, number?: number,
- *   title: string}} props the host's prefix of ids; the sources offered, of "none"
- *   („Brak”), "network" („Jak w sieci”), "pmaxtp", "design" and "series"; the inputs and
- *   their errors and warnings by field; what the rainfall needs; the handler of a patch of
- *   the inputs; PMAXTP's fetched depth (null until known), whether it is being fetched and
- *   how to fetch it again after a failure; the time step: the step's own field, the
- *   network's shown, or none; with "network", the network's rainfall in words and how to
- *   open it; the values the (i) explanations check; the field model of the series; and the
- *   frame
+ *   onOpen: () => void}, origin?: object|null, infoValues: object, valuesField:
+ *   object|null, number?: number, title: string}} props the host's prefix of ids; the
+ *   sources offered, of "none" („Brak”), "network" („Jak w sieci”), "pmaxtp", "design" and
+ *   "series"; the inputs and their errors and warnings by field; what the rainfall needs;
+ *   the handler of a patch of the inputs; PMAXTP's fetched depth (null until known),
+ *   whether it is being fetched and how to fetch it again after a failure; the time step:
+ *   the step's own field, the network's shown, or none; with "network", the network's
+ *   rainfall in words and how to open it; where the rainfall came from, shown first (a
+ *   subcatchment of Sieć that came in a hand-off, plan 2026-11-10-network-wizard, D9); the
+ *   values the (i) explanations check; the field model of the series; and the frame
  * @returns {object} the step
  */
 export function RainStep(props) {
-  const { prefix, kinds, inputs, errors, warnings, required, set, pmaxtp, timestep, network, infoValues, valuesField, number, title } = props;
+  const { prefix, kinds, inputs, errors, warnings, required, set, pmaxtp, timestep, network, origin, infoValues, valuesField, number, title } = props;
   const source = inputs.rain_source;
   const row = (name, extra = {}) => html`<${Row}
     prefix=${prefix}
@@ -211,6 +212,7 @@ export function RainStep(props) {
     });
   }
   const body = html`
+    ${origin || null}
     <div class="field">
       <span class="label-row">
         <span class="label" id=${`${prefix}-rain-source-label`}>${texts.rain.source}</span>

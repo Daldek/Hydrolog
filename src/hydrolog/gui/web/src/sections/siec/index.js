@@ -28,6 +28,8 @@
 // Hydrografa” of its step 1 fills the node from a hand-off of one watershed (D10). Choosing
 // a node opens or changes the panel without moving the focus, Enter on a subcatchment moves
 // it to the panel's first step, and ✕ closes the panel while the node stays chosen.
+// A node that came in a hand-off shows where its inputs came from (D9: handoff/mapping.js
+// siecOrigins): a subcatchment in its panel's steps, any other node in „Dane”'s step 3.
 // The network is computed on „Oblicz sieć” only: the document, positions and descriptions
 // included, is written to the session's `in/` and `route network` routes it (with the
 // inflows file and the rating files it reads); a change of the structure or the values
@@ -41,7 +43,7 @@ import { splitReason } from "../../controls/field.js";
 import { inputFiles, uploadFile, useSession } from "../../controls/file-field.js";
 import { plural } from "../../format.js";
 import { withReason } from "../../forms/model.js";
-import { siecAddition, siecFill, siecInputs } from "../../handoff/mapping.js";
+import { panelOrigins, siecAddition, siecFill, siecInputs, siecOrigins } from "../../handoff/mapping.js";
 import { canonical } from "../../handoff/validate.js";
 import { html, useEffect, useMemo, useRef, useState } from "../../html.js";
 import { common, t } from "../../labels/common.js";
@@ -309,13 +311,14 @@ export default function Siec({ active, path = [] }) {
     history.current.reset(stepOf(placed));
   }, [state.skeleton]);
   useOpened(({ doc, meta }) => {
+    const { notes = [], ...source } = meta;
     const problems = documentProblems(doc);
     if (problems.length) {
-      setNote({ error: true, title: t(texts.file.refused, { name: meta.name }), lines: problems });
+      setNote({ error: true, title: t(texts.file.refused, { name: source.name }), lines: problems });
       return;
     }
     const named = withSessionNames(doc);
-    open(named.doc, meta, [t(texts.file.loaded, { name: meta.name, nodes: plural(doc.nodes.length, texts.nodeForms) })]);
+    open(named.doc, source, [t(texts.file.loaded, { name: source.name, nodes: plural(doc.nodes.length, texts.nodeForms) }), ...notes]);
   });
 
   // Uploads the companions of a network (rating files, the inflows file) into "in/"
@@ -397,6 +400,9 @@ export default function Siec({ active, path = [] }) {
     () => (forms && state.source ? buildDocument(forms, state) : null),
     [forms, state.source, state.network, state.skeleton, state.nodes],
   );
+  // Where each node's inputs came from as they stand (plan 2026-11-10-network-wizard, D9):
+  // its panel and „Dane” show the received ones
+  const origins = useMemo(() => siecOrigins(state, built ? built.document : null), [state.source, state.network, state.skeleton, state.nodes, built]);
   // The structure's problems and the nodes' words stay while only the cells and the
   // descriptions change (a move): they are kept per structure key
   const shape = useMemo(() => structureKey(state.skeleton), [state.skeleton]);
@@ -1056,6 +1062,7 @@ export default function Siec({ active, path = [] }) {
             forms=${forms}
             words=${words}
             values=${values}
+            origins=${origins}
             problems=${problems}
             summary=${networkSummary(state.skeleton, words)}
             needed=${needed}
@@ -1233,6 +1240,7 @@ export default function Siec({ active, path = [] }) {
           infoValues=${checkedValues(panelInputs, computed)}
           pmaxtp=${{ depth: nodePmaxtp.depth, busy: nodePmaxtp.busy, onRetry: nodePmaxtp.onRetry }}
           network=${{ rainfall: networkRainWords(network, pmaxtp.depth) || texts.form.noNetworkRain, timestep_min: String(network.timestep_min ?? ""), onOpen: showRain }}
+          origins=${panelOrigins(panelNode, origins[id])}
           onFile=${nodeFile(id)}
           onHandoff=${(doc) => actions.fill(id, doc)}
           hint=${null}

@@ -19,11 +19,13 @@
 // typical range a warning (amber), and step 3 sums them up with a link to each field.
 // Every change goes to the host, which checks it (Hydrogram's pure functions, state.js);
 // the steps show the values a run gave (`computed`: tc, CN after AMC, S, Ia, the UH's
-// parameters, tp and Qp).
+// parameters, tp and Qp) and, given by the host, where the rainfall and the runoff came
+// from (`origins`: a subcatchment of Sieć that came in a hand-off, plan
+// 2026-11-10-network-wizard, D9; the watershed's origin is the inputs' own, step 1's).
 
 import { richText, splitReason } from "../../controls/field.js";
 import { inputText, num, plural, roundedText } from "../../format.js";
-import { HandoffImport } from "../../handoff/handoff-panel.js";
+import { HandoffImport, OriginCard } from "../../handoff/handoff-panel.js";
 import { html, useRef } from "../../html.js";
 import { t } from "../../labels/common.js";
 import { hydrogram as texts } from "../../labels/hydrogram.js";
@@ -455,6 +457,7 @@ function HydrographStep(props) {
   }
   return html`
     <${Step} id="hydrograph" number=${3} title=${texts.steps.hydrograph} meta=${meta}>
+      ${props.origins && props.origins.runoff ? html`<${OriginCard} card=${props.origins.runoff} input="runoff" />` : null}
       <div class="field">
         <span class="label-row">
           <span class="label" id=${`${prefix}-uh-label`}>${texts.uh.model}<span class="key">uh_model</span></span>
@@ -536,22 +539,25 @@ function HydrographStep(props) {
  *   string>, required: Object<string, {purpose: string}>, formError: {title: string, text:
  *   string}|null, computed: object|null, models: object|null, infoValues: object, pmaxtp:
  *   {depth: number|null, busy: boolean, onRetry: (() => void)|null}, network: {rainfall:
- *   string, timestep_min: string, onOpen: () => void}|null, onFile: (file: File) => void,
- *   onHandoff?: (doc: object) => ({title: string, lines: string[]}|null), hint: {anchor:
- *   string, name: string}|null}} props the host's prefix of every id („hg”, „sn”); the
- *   inputs and the handlers of a patch of them and of a field of the watershed; the errors
- *   and warnings by field; what the chosen model needs (requirements); the error above the
- *   steps; the values a run gave (fields of `hydrograph generate`'s result, any missing) or
- *   null; the field models; the values the (i) explanations check; PMAXTP's fetched depth
- *   (null until known), whether it is being fetched and how to fetch it again after a
- *   failure; the network's rainfall in words, its time step and how to open it (Sieć;
- *   null on its own); the handler of a watershed file; what „Wczytaj z Hydrografa” does
- *   with the opened hand-off (default: it opens where it belongs); the empty hint of a
- *   blank step 1, or null
+ *   string, timestep_min: string, onOpen: () => void}|null, origins?: {rainfall:
+ *   object|null, runoff: object|null}|null, onFile: (file: File) => void, onHandoff?: (doc:
+ *   object) => ({title: string, lines: string[]}|null), hint: {anchor: string, name:
+ *   string}|null}} props the host's prefix of every id („hg”, „sn”); the inputs and the
+ *   handlers of a patch of them and of a field of the watershed; the errors and warnings
+ *   by field; what the chosen model needs (requirements); the error above the steps; the
+ *   values a run gave (fields of `hydrograph generate`'s result, any missing) or null; the
+ *   field models; the values the (i) explanations check; PMAXTP's fetched depth (null
+ *   until known), whether it is being fetched and how to fetch it again after a failure;
+ *   the network's rainfall in words, its time step and how to open it (Sieć; null on its
+ *   own); the cards of where the rainfall and the runoff came from (handoff/mapping.js
+ *   originCard; Sieć's node that came in a hand-off), shown first in steps 2 and 3; the
+ *   handler of a watershed file; what „Wczytaj z Hydrografa” does with the opened
+ *   hand-off (default: it opens where it belongs); the empty hint of a blank step 1, or
+ *   null
  * @returns {object} the steps
  */
 export function SubcatchmentSteps(props) {
-  const { prefix, formError, models, network } = props;
+  const { prefix, formError, models, network, origins } = props;
   const field = (name) => (models ? models.options.fields.find((item) => item.name === name) || null : null);
   return html`
     ${formError
@@ -570,6 +576,7 @@ export function SubcatchmentSteps(props) {
         kinds=${network ? NETWORK_RAIN_KINDS : RAIN_KINDS}
         timestep=${network ? { network: network.timestep_min } : { own: true }}
         network=${network ? { words: network.rainfall, onOpen: network.onOpen } : null}
+        origin=${origins && origins.rainfall ? html`<${OriginCard} card=${origins.rainfall} input="rainfall" />` : null}
         valuesField=${field("values")}
       />
       <${HydrographStep} ...${props} amcField=${field("amc")} />

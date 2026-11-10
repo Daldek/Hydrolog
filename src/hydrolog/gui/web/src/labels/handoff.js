@@ -30,6 +30,7 @@ export const handoffLabels = {
     openedSiec: "Wczytano przekazanie „{subject}” ({producer}) w Sieci i trasowaniu: {nodes}",
     openedStatystyka: "Wczytano przekazanie „{subject}” ({producer}) w Statystyce przepływów: {values}",
     uploadFailed: "Nie udało się zapisać szeregu w plikach sesji: {message}",
+    unknownNodes: "Pominięto pochodzenie węzłów, których nie ma w sieci przekazania (node_provenance): {nodes}.",
   },
   /** „Wczytaj z Archiwisty” in Statystyka przepływów: the same reading, a station's series. */
   loadSeries: {
@@ -141,12 +142,41 @@ export const handoffLabels = {
     hydraulik: ["Hydraulik", "Hydraulika"],
     retman: ["Retman", "Retmana"],
   },
+  /**
+   * Where data came from: a hand-off's record and the origins of its provenance and of each
+   * node (node_provenance; plan 2026-11-10-network-wizard, D9), with the words of
+   * Hydrograf's elements of a network (its plan 2026-11-10-network-delineation, D14).
+   */
   origin: {
     title: "Z {producer}: {subject}",
     point: "zlewnia punktu {latitude} {ns}, {longitude} {ew}",
+    place: "{latitude} {ns}, {longitude} {ew}",
     detail: "{time} · {fields} · nogat-handoff/1",
     received: "{producer} {version} · {time} · nogat-handoff/1",
     snyderSkipped: "{option} = {value} pominięte: zlewnia ma {field} = {kept}",
+    elements: {
+      headwater: "zlewnia górna",
+      tributary: "dopływ",
+      intermediate: "przyrzecze",
+      reach: "odcinek",
+      confluence: "zbieg",
+      point: "punkt kontrolny",
+      outlet: "przekrój zamykający",
+    },
+    ofPoint: "do punktu {point}",
+    atMouth: "do ujścia przy punkcie {point}",
+    ofReach: "odcinka {reach}",
+    lengths: { flow_distance: "długość wzdłuż spływu" },
+    slopes: { nmt: "spadek z NMT", minimum: "spadek minimalny" },
+    ends: "NMT {upstream} → {downstream} m n.p.m.",
+    vector: "długość kontrolna {length} km ({source})",
+    vectorSources: { bdot10k: "BDOT10k", mphp: "MPHP" },
+    pmaxtp: "PMAXTP p {p}%, {duration}",
+    interpolations: { thiessen: "Thiessen", idw: "IDW" },
+    tc: "tc: {method}",
+    user: "wpisane ręcznie",
+    file: "plik {file}",
+    changed: "zmienione: {fields}",
   },
   export: {
     title: "Przekazanie",

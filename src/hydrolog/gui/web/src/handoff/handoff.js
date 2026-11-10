@@ -1,13 +1,14 @@
 // The hand-off between the GUIs of the ecosystem (plan D15): `nogat-handoff/1` exactly as
 // Nogat publishes it (schemas/nogat/handoff-1.schema.json, copied unchanged), carrying
 // `hydrolog-network/1` or `hydrolog-series/1` (ADR-0020). buildHandoff writes the envelope
-// around a network; readHandoff reads a text: the envelope against Nogat's schema
-// (envelope.js), the payload's kind and, given its schema, the payload's content, then
-// tells which section opens it: one subcatchment made from rainfall with its outlet opens
-// in „Hydrogram zlewni”, any other network in „Sieć i trasowanie”, a station's series
-// (Archiwista) in „Statystyka przepływów”; read in Sieć, every network opens there (plan
-// 2026-11-10-network-editor, D10). The producer's result is for comparison only
-// (compareResults): Hydrolog recomputes and shows both.
+// around a network, with the origin of each node where `provenance` does not give it
+// (`node_provenance`, plan 2026-11-10-network-wizard, D9); readHandoff reads a text: the
+// envelope against Nogat's schema (envelope.js), the payload's kind and, given its schema,
+// the payload's content, then tells which section opens it: one subcatchment made from
+// rainfall with its outlet opens in „Hydrogram zlewni”, any other network in „Sieć i
+// trasowanie”, a station's series (Archiwista) in „Statystyka przepływów”; read in Sieć,
+// every network opens there (plan 2026-11-10-network-editor, D10). The producer's result
+// is for comparison only (compareResults): Hydrolog recomputes and shows both.
 //
 // Pure functions without Preact, tested in the page (tests/e2e/test_exports.py).
 
@@ -58,15 +59,16 @@ export function stamp(date = new Date()) {
 /**
  * Write a hand-off (nogat-handoff/1) with Hydrolog as its producer.
  *
- * @param {{subject: string, provenance?: object, payload: object, result?: object|null,
- *   page?: string, version: string, createdAt?: string}} parts what is handed off (the
- *   watershed's or network's name), where its inputs came from, the hydrolog-network/1
- *   document, Hydrolog's result of it (peak_discharge_m3s, time_to_peak_min,
- *   total_volume_m3, command), the page to return to ("#hydrogram"), Hydrolog's version
- *   and the moment (now)
+ * @param {{subject: string, provenance?: object, nodeProvenance?: object|null, payload:
+ *   object, result?: object|null, page?: string, version: string, createdAt?: string}}
+ *   parts what is handed off (the watershed's or network's name), where its inputs came
+ *   from, where the inputs of each node came from where `provenance` does not say it
+ *   (`node_provenance`, left out when empty), the hydrolog-network/1 document, Hydrolog's
+ *   result of it (peak_discharge_m3s, time_to_peak_min, total_volume_m3, command), the
+ *   page to return to ("#hydrogram"), Hydrolog's version and the moment (now)
  * @returns {object} the document
  */
-export function buildHandoff({ subject, provenance = {}, payload, result = null, page, version, createdAt }) {
+export function buildHandoff({ subject, provenance = {}, nodeProvenance = null, payload, result = null, page, version, createdAt }) {
   const producer = { tool: TOOL, version: String(version) };
   if (page) producer.page = page;
   const doc = {
@@ -75,8 +77,9 @@ export function buildHandoff({ subject, provenance = {}, payload, result = null,
     producer,
     subject: String(subject),
     provenance: provenance || {},
-    payload,
   };
+  if (nodeProvenance && Object.keys(nodeProvenance).length) doc.node_provenance = nodeProvenance;
+  doc.payload = payload;
   if (result && Object.keys(result).length) doc.result = result;
   return doc;
 }

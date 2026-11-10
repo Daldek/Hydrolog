@@ -1,8 +1,10 @@
 // State of „Sieć i trasowanie” (plan D9, S4): the network being edited, kept in the
-// browser under "hydrolog-gui/siec/3" (inputs only, no results): where it came from, its
-// structure (ids, types, inflows, the cell of every node on the canvas and its
-// description: plan 2026-11-10-network-editor, D3, D10; and `origin`, the record of the
-// hand-off a subcatchment was added from, which no document carries), the values of the
+// browser under "hydrolog-gui/siec/3" (inputs only, no results): where it came from (with
+// the key of its rainfall as it was opened, which tells whether the received origin of the
+// rainfall still holds), its structure (ids, types, inflows, the cell of every node on the
+// canvas and its description: plan 2026-11-10-network-editor, D3, D10; and `origin`, the
+// record of the hand-off a node came in with the origins of its inputs and the node as it
+// came, which no document carries: plan 2026-11-10-network-wizard, D9), the values of the
 // network and of each node, the session files it reads (the inflows file and its time
 // column), whether its layout is provisional (rows until Hydrolog lays it out), the key of
 // the inputs as they were opened or last saved (whether discarding them needs a question)
@@ -29,7 +31,7 @@
 import { api } from "../../api.js";
 import { sessionFileName } from "../../controls/file-field.js";
 import { withReason } from "../../forms/model.js";
-import { networkInputs, rainfallOf, siecInputs, siecSubcatchment, siecValues } from "../../handoff/mapping.js";
+import { cameRainfallKey, networkInputs, networkRainfallKey, rainfallOf, siecInputs, siecNodes, siecSubcatchment } from "../../handoff/mapping.js";
 import { isObject } from "../../handoff/validate.js";
 import { useEffect, useRef, useState } from "../../html.js";
 import { t } from "../../labels/common.js";
@@ -236,24 +238,29 @@ export function placeSkeleton(skeleton) {
 }
 
 /**
- * The state of a network document.
+ * The state of a network document. A network that came in a hand-off keeps the origin of
+ * each node beside its structure (handoff/mapping.js siecNodes: the hand-off's record, the
+ * node's own origins and the node as it came; plan 2026-11-10-network-wizard, D9), and its
+ * source keeps the key of its rainfall as it was opened.
  *
  * @param {object} doc hydrolog-network/1 (checked with documentProblems)
  * @param {{name: string, kind: "file"|"handoff", handoff?: object}} source where it came
- *   from (a hand-off's record, whose provenance gives the PMAXTP origin of the rainfall)
+ *   from (a hand-off's record, whose provenance gives the PMAXTP origin of the rainfall and
+ *   whose node_provenance the origins of the nodes)
  * @param {object} [keep] inputs kept from before (the inflows file and its column)
  * @returns {object} the state
  */
 export function stateOf(doc, source, keep = {}) {
   const placed = placeSkeleton(skeletonOf(doc));
-  const nodes = {};
-  for (const node of doc.nodes) nodes[String(node.id)] = siecValues(node);
+  const received = source && isObject(source.handoff) ? source.handoff : null;
+  const { values: nodes, origins } = siecNodes(doc, received);
+  const network = networkInputs(doc, received ? received.provenance : null);
   const outlet = placed.skeleton.find((node) => node.type === "outlet");
   const opened = {
     ...initialState(),
-    source,
-    network: networkInputs(doc, source && isObject(source.handoff) ? source.handoff.provenance : null),
-    skeleton: placed.skeleton,
+    source: { ...source, rainfallKey: cameRainfallKey(network, isObject(doc.rainfall) ? doc.rainfall : null, networkRainfallKey) },
+    network,
+    skeleton: placed.skeleton.map((node) => (origins[node.id] ? { ...node, origin: origins[node.id] } : node)),
     nodes,
     inflowsFile: keep.inflowsFile || "",
     timeColumn: keep.timeColumn || "",
@@ -533,9 +540,11 @@ const openers = new Set();
  * opens a network of more than one subcatchment here).
  *
  * @param {object} doc hydrolog-network/1
- * @param {{name?: string, kind?: string, handoff?: object}} [meta] its file name, where it
- *   came from ("handoff" by default) and, from a hand-off, its record (who wrote it, its
- *   provenance and result: handoff/mapping.js siecReceived); kept as the state's `source`
+ * @param {{name?: string, kind?: string, handoff?: object, notes?: string[]}} [meta] its
+ *   file name, where it came from ("handoff" by default) and, from a hand-off, its record
+ *   (who wrote it, its provenance, the origins of its nodes and its result:
+ *   handoff/mapping.js siecReceived), kept as the state's `source`; and the lines the
+ *   load's note adds (a key of node_provenance that names no node)
  */
 export function openNetwork(doc, meta = {}) {
   opened = { doc, meta: { ...meta, name: meta.name || DOCUMENT_NAME, kind: meta.kind || "handoff" } };
