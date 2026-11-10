@@ -1,9 +1,9 @@
 // The panel Dane of „Hydrogram zlewni”: the three steps of the author's flow (2026-11-04).
 // 1 Zlewnia: where the watershed came from (a WatershedParameters JSON read in the
 // browser, or a hand-off with „Wczytaj z Hydrografa”) and its basic fields, CN included.
-// 2 Hietogram: PMAXTP (the point, p, the duration and the method; the depth `precip
-// pmaxtp` fetched from IMGW-PIB is shown, never typed), a design hyetograph or a series,
-// its shape and the time step.
+// 2 Hietogram (rain-step.js, shared with Sieć's network): PMAXTP (the point, p, the
+// duration and the method; the depth `precip pmaxtp` fetched from IMGW-PIB is shown, never
+// typed), a design hyetograph or a series, its shape and the time step.
 // 3 Hydrogram: the unit hydrograph model, none chosen at first; only the chosen model's
 // block (its tc with the tc method's own fields for SCS and Clark, Clark's R, Nash by
 // Lutz with the watershed fields Lutz reads or n and K, Snyder with Lc), then the losses
@@ -13,10 +13,8 @@
 // Every change goes to the section, which checks it and recomputes (plan D13); the steps
 // show what the last result gave (tc, CN after AMC, S, Ia, the UH's parameters).
 
-import { SeriesField } from "../../controls/series-field.js";
 import { richText, splitReason } from "../../controls/field.js";
-import { inputText, num, plural, roundedText } from "../../format.js";
-import { seriesTokens } from "../../forms/model.js";
+import { inputText, num, roundedText } from "../../format.js";
 import { HandoffImport } from "../../handoff/handoff-panel.js";
 import { html, useRef } from "../../html.js";
 import { t } from "../../labels/common.js";
@@ -25,30 +23,30 @@ import { EmptyHint } from "../../ui/empty-hint.js";
 import { InfoButton } from "../../ui/info-button.js";
 import { infoRanges, infoText, rangeKey, rangeMark, rangeText, symbolOf } from "../../ui/info.js";
 import { Seg } from "../../ui/seg.js";
+import { RainStep } from "./rain-step.js";
+import { Row, Step, percentHint, shortText } from "./rows.js";
 import {
   AMC,
-  PEAK_DEFAULTS,
-  PMAXTP_DURATIONS,
-  PMAXTP_METHODS,
-  PMAXTP_PROBABILITIES,
-  SHAPES,
   SLOPE_FIELDS,
   TC_BLOCK,
   TC_METHODS,
   UH_MODELS,
-  UNITS,
   WATERSHED_STEP,
-  changedFrom,
   fieldLabel,
   isEmpty,
   numberOf,
-  originText,
   panelFields,
   purposeText,
   stepOf,
   usesLutz,
   usesTc,
 } from "./state.js";
+
+/** The prefix of the ids of the panel's controls. */
+const PREFIX = "hg";
+
+/** The sources of the rainfall Hydrogram zlewni offers. */
+const RAIN_KINDS = Object.freeze(["pmaxtp", "design", "series"]);
 
 /** Icons of the lines of step 3's summary. */
 const ICONS = {
@@ -80,173 +78,17 @@ function typicalNote(id, keys, text, plain) {
 }
 
 /**
- * A duration for people: whole hours as hours, otherwise minutes to 0,1 min.
- *
- * @param {number|string} minutes the duration [min]
- * @returns {string} e.g. "12 h", "90 min"
- */
-export function durationText(minutes) {
-  const value = numberOf(minutes);
-  if (value === null) return "–";
-  return value % 60 === 0 ? t(texts.rain.hours, { value: inputText(value / 60) }) : t(texts.rain.minutes, { value: roundedText(value, 1) });
-}
-
-/**
- * A number shown with four significant digits as an input would hold it ("3,631").
- *
- * @param {number|null|undefined} value the number
- * @returns {string} the text, "" without a number
- */
-export function shortText(value) {
-  return typeof value === "number" && Number.isFinite(value) ? inputText(Number(value.toPrecision(4))) : "";
-}
-
-/**
- * A slope in m/m as percent, for the hint beside the field: "= 1,42 %".
- *
- * @param {unknown} text the slope as typed [m/m]
- * @returns {string|null} the hint, null without a number
- */
-export function percentHint(text) {
-  const value = numberOf(text);
-  return value === null ? null : t(texts.percent, { value: inputText(Number((value * 100).toPrecision(6))) });
-}
-
-/**
  * Bring a field of the panel into view and focus it, opening its step.
  *
  * @param {string} name the field
  */
 function focusField(name) {
-  const control = document.getElementById(`hg-${name}`);
+  const control = document.getElementById(`${PREFIX}-${name}`);
   if (!control) return;
   const step = control.closest("details");
   if (step && !step.open) step.open = true;
   control.scrollIntoView({ block: "center" });
   control.focus({ preventScroll: true });
-}
-
-/**
- * The label of a field: its Polish name, the symbol and the option's key.
- *
- * @param {{name: string, id: string, keyText?: string|false}} props the field, its
- *   control's id and the key shown (default: the name; false: none)
- * @returns {object} the label
- */
-function FieldName({ name, id, keyText }) {
-  const words = texts.fields[name] || { label: name };
-  const key = keyText === false ? null : keyText || name;
-  return html`<label for=${id}>${words.label}${words.symbol ? html` <i class="sym">${words.symbol}</i>` : null}${key ? html`<span class="key">${key}</span>` : null}</label>`;
-}
-
-/**
- * The mark of a field changed from where the watershed came from, with „przywróć”.
- *
- * @param {{origin: object|null, name: string, text: unknown, onRestore: (name: string, text:
- *   string) => void}} props the origin, the field, its typed value and the handler
- * @returns {object|null} the mark
- */
-function Changed({ origin, name, text, onRestore }) {
-  if (!changedFrom(origin, name, text)) return null;
-  const before = originText(origin, name);
-  const shown = before === null ? "–" : before;
-  return html`
-    <span class="chg">
-      <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M13.5 3.5l3 3L7 16H4v-3z" /></svg>
-      ${t(texts.changed, { source: origin.label, value: shown })}
-      <button
-        class="link-btn"
-        type="button"
-        title=${t(texts.restoreTitle, { value: shown, source: origin.label })}
-        onClick=${() => onRestore(name, before === null ? "" : before)}
-      >${texts.restore}</button>
-    </span>
-  `;
-}
-
-/**
- * The message of a check under a field: an error (red) or a warning (amber).
- *
- * @param {{id: string, message?: string, warning?: boolean}} props the control's id, the
- *   message and whether it is a warning
- * @returns {object|null} the message
- */
-function FieldMessage({ id, message, warning = false }) {
-  if (!message) return null;
-  const words = splitReason(message);
-  return html`<span class=${warning ? "warn" : "err"} id=${`${id}-${warning ? "warn" : "err"}`} role=${warning ? "status" : "alert"}>${words.text}${words.reason
-    ? html` <span class="reason">· ${words.reason}</span>`
-    : null}</span>`;
-}
-
-/**
- * A dense form row (the mockup's `.frow`): label with the symbol and key, the value with its
- * unit, a hint, whom the field is needed for, the change mark and the message of a check
- * (an error before a warning).
- *
- * @param {{name: string, value?: string, error?: string, warning?: string, need?: string,
- *   onInput: (text: string) => void, placeholder?: string, keyText?: string, aux?:
- *   string|null, origin?: object|null, onRestore?: (name: string, text: string) => void,
- *   info?: object|null, readOnly?: boolean, text?: boolean}} props the field and its parts
- * @returns {object} the row
- */
-function Row({ name, value, error, warning, need, onInput, placeholder, keyText, aux, origin, onRestore, info, readOnly, text }) {
-  const id = `hg-${name}`;
-  const edited = Boolean(origin) && changedFrom(origin, name, value);
-  const level = error ? "invalid" : warning ? "warning" : "";
-  const classes = ["frow", text ? "wide" : "", edited ? "edited" : "", level].filter(Boolean).join(" ");
-  let described;
-  if (error) described = `${id}-err`;
-  else if (warning) described = `${id}-warn`;
-  else if (need) described = `${id}-need`;
-  const input = html`<input
-    id=${id}
-    type="text"
-    inputmode=${text ? undefined : "decimal"}
-    autocomplete="off"
-    spellcheck=${false}
-    value=${value ?? ""}
-    placeholder=${placeholder || ""}
-    readonly=${readOnly}
-    aria-invalid=${error ? "true" : "false"}
-    aria-describedby=${described}
-    onInput=${(event) => onInput(event.currentTarget.value)}
-  />`;
-  return html`
-    <div class=${classes} data-field=${name} data-level=${level || undefined}>
-      ${info
-        ? html`<span class="label-row"><${FieldName} name=${name} id=${id} keyText=${keyText} />${info}</span>`
-        : html`<${FieldName} name=${name} id=${id} keyText=${keyText} />`}
-      ${text ? input : html`<span class="ibox">${input}<span class="unit">${UNITS[name] || "–"}</span></span>`}
-      ${aux ? html`<span class="aux">${aux}</span>` : null}
-      ${origin ? html`<${Changed} origin=${origin} name=${name} text=${value} onRestore=${onRestore} />` : null}
-      ${error
-        ? html`<${FieldMessage} id=${id} message=${error} />`
-        : warning
-          ? html`<${FieldMessage} id=${id} message=${warning} warning=${true} />`
-          : null}
-      ${!error && need ? html`<span class="need" id=${`${id}-need`}>${need}</span>` : null}
-    </div>
-  `;
-}
-
-/**
- * One step of the calculation: a numbered <details>, open at first.
- *
- * @param {{id: string, number: number, title: string, meta?: string, children: any}} props
- *   the step's id, number, title, the summary on the right and the body
- * @returns {object} the step
- */
-function Step({ id, number, title, meta, children }) {
-  return html`
-    <details class="step" open data-step=${id}>
-      <summary>
-        <span class="step-num">${number}</span><span class="title">${title}</span><span class="meta">${meta || ""}</span>
-        <svg class="chev" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 5l4 4 4-4" /></svg>
-      </summary>
-      <div class="step-body">${children}</div>
-    </details>
-  `;
 }
 
 /**
@@ -259,6 +101,7 @@ function WatershedRow({ name, inputs, errors, warnings, required, setField, extr
   const fields = inputs.watershed || {};
   const need = stepOf(name) === 1 && required[name] ? t(texts.need, { what: purposeText(required[name].purpose) }) : null;
   return html`<${Row}
+    prefix=${PREFIX}
     name=${name}
     value=${fields[name]}
     error=${errors[name]}
@@ -323,201 +166,6 @@ function WatershedStep(props) {
       <div class="form">
         <${WatershedRow} name="name" ...${props} extra=${{ text: true }} />
         ${WATERSHED_STEP.map(row)}
-      </div>
-    <//>
-  `;
-}
-
-/**
- * A select in a form row (PMAXTP's probability, duration and method), empty until chosen.
- *
- * @param {{name: string, value: string, options: readonly string[], label: (value: string)
- *   => string, error?: string, keyText?: string, onChange: (value: string) => void}} props
- *   the field, its value, the values offered and their words, the message of a check, the
- *   key shown and the handler
- * @returns {object} the row
- */
-function SelectRow({ name, value, options, label, error, keyText, onChange }) {
-  const id = `hg-${name}`;
-  return html`
-    <div class=${`frow${error ? " invalid" : ""}`} data-field=${name} data-level=${error ? "invalid" : undefined}>
-      <${FieldName} name=${name} id=${id} keyText=${keyText} />
-      <select
-        id=${id}
-        class="sel-sm"
-        value=${value}
-        aria-invalid=${error ? "true" : "false"}
-        aria-describedby=${error ? `${id}-err` : undefined}
-        onChange=${(event) => onChange(event.currentTarget.value)}
-      >
-        <option value="" disabled hidden>${texts.rain.choose}</option>
-        ${options.map((item) => html`<option value=${item}>${label(item)}</option>`)}
-      </select>
-      <${FieldMessage} id=${id} message=${error} />
-    </div>
-  `;
-}
-
-/**
- * Step 2, Hietogram: PMAXTP (the point, p, the duration and the method, with the depth
- * fetched from IMGW-PIB shown read-only), a design hyetograph, or a series of depths; the
- * shape of the hyetograph and the time step.
- *
- * @param {object} props see DataPanel
- * @returns {object} the step
- */
-function RainStep({ inputs, errors, warnings, set, valuesField, infoValues, required, pmaxtp }) {
-  const source = inputs.rain_source;
-  const shape = inputs.hietogram_type;
-  const series = source === "series";
-  const atlas = source === "pmaxtp";
-  let meta;
-  if (series) {
-    const steps = seriesTokens(inputs.values).length;
-    meta = steps ? t(texts.rain.metaSeries, { steps: plural(steps, texts.rain.stepForms) }) : texts.empty;
-  } else {
-    const total = atlas ? pmaxtp.depth : numberOf(inputs.total_mm);
-    const duration = atlas ? inputs.pmaxtp_duration_min : inputs.duration_min;
-    const probability = numberOf(inputs.pmaxtp_probability_pct);
-    const words = {
-      total: total === null ? "–" : num(total, 1),
-      duration: durationText(duration),
-      p: probability === null ? "–" : inputText(probability),
-    };
-    const point = !isEmpty(inputs.pmaxtp_latitude) || !isEmpty(inputs.pmaxtp_longitude);
-    const blank = total === null && numberOf(duration) === null && (!atlas || (probability === null && !point));
-    meta = blank ? texts.empty : t(atlas ? texts.rain.metaPmaxtp : texts.rain.metaDesign, words);
-  }
-  const numberRow = (name, extra = {}) => html`<${Row}
-    name=${name}
-    value=${inputs[name]}
-    error=${errors[name]}
-    warning=${warnings[name]}
-    onInput=${(text) => set({ [name]: text })}
-    ...${extra}
-  />`;
-  const peakDefault = Object.hasOwn(PEAK_DEFAULTS, shape) ? inputText(PEAK_DEFAULTS[shape]) : "";
-  return html`
-    <${Step} id="rain" number=${2} title=${texts.steps.rain} meta=${meta}>
-      <div class="field">
-        <span class="label-row">
-          <span class="label" id="hg-rain-source-label">${texts.rain.source}</span>
-          <${InfoButton} id="rain-source" values=${infoValues} />
-        </span>
-        <${Seg}
-          items=${["pmaxtp", "design", "series"].map((value) => ({ value, label: texts.rain.sources[value] }))}
-          value=${source}
-          onChange=${(value) => set({ rain_source: value })}
-          labelledBy="hg-rain-source-label"
-          full=${true}
-        />
-      </div>
-      ${atlas
-        ? html`
-            <div class="form">
-              ${numberRow("pmaxtp_latitude", { keyText: "latitude" })}
-              ${numberRow("pmaxtp_longitude", { keyText: "longitude" })}
-              <${SelectRow}
-                name="pmaxtp_probability_pct"
-                value=${inputs.pmaxtp_probability_pct}
-                options=${PMAXTP_PROBABILITIES}
-                label=${(value) => t(texts.rain.probabilityValue, { value: inputText(Number(value)) })}
-                error=${errors.pmaxtp_probability_pct}
-                keyText=${false}
-                onChange=${(value) => set({ pmaxtp_probability_pct: value })}
-              />
-              <${SelectRow}
-                name="pmaxtp_duration_min"
-                value=${inputs.pmaxtp_duration_min}
-                options=${PMAXTP_DURATIONS}
-                label=${durationText}
-                error=${errors.pmaxtp_duration_min}
-                keyText=${isEmpty(inputs.pmaxtp_duration_min) ? "duration_min" : t(texts.keyValue, { key: "duration_min", value: inputs.pmaxtp_duration_min })}
-                onChange=${(value) => set({ pmaxtp_duration_min: value })}
-              />
-              <${SelectRow}
-                name="pmaxtp_method"
-                value=${inputs.pmaxtp_method}
-                options=${PMAXTP_METHODS}
-                label=${(value) => texts.rain.methods[value] || value}
-                error=${errors.pmaxtp_method}
-                keyText="method"
-                onChange=${(value) => set({ pmaxtp_method: value })}
-              />
-              <${Row}
-                name="pmaxtp_depth"
-                value=${pmaxtp.depth === null ? "" : inputText(pmaxtp.depth)}
-                error=${errors.pmaxtp_depth}
-                onInput=${() => {}}
-                readOnly=${true}
-                placeholder=${pmaxtp.busy ? texts.rain.depthFetching : texts.rain.depthPending}
-                keyText="total_mm"
-                aux=${pmaxtp.depth === null ? null : t(texts.rain.depthSource, { method: inputs.pmaxtp_method })}
-              />
-            </div>
-            ${pmaxtp.onRetry
-              ? html`<div class="btn-row">
-                  <button class="btn sm ghost" type="button" data-retry="pmaxtp" title=${texts.rain.retryTitle} onClick=${pmaxtp.onRetry}>
-                    ${texts.rain.retry}
-                  </button>
-                </div>`
-              : null}
-            <p class="note">${richText(texts.rain.pmaxtpNote)}</p>
-            <p class="note" data-attribution="pmaxtp">${texts.rain.attribution}</p>
-          `
-        : null}
-      ${source === "design"
-        ? html`
-            <div class="form">${numberRow("total_mm")}${numberRow("duration_min")}</div>
-            <p class="note">${richText(texts.rain.designNote)}</p>
-          `
-        : null}
-      ${series
-        ? html`
-            <p class="note">${richText(texts.rain.seriesNote)}</p>
-            ${valuesField
-              ? html`<${SeriesField}
-                  field=${valuesField}
-                  id="hg-values"
-                  value=${inputs.values}
-                  error=${errors.values}
-                  required=${Boolean(required.values)}
-                  onInput=${(text) => set({ values: text })}
-                />`
-              : null}
-          `
-        : html`
-            <div class="field">
-              <span class="label-row">
-                <span class="label" id="hg-shape-label">${texts.rain.shape}<span class="key">hietogram_type</span></span>
-                <${InfoButton} id=${`rain-${shape}`} values=${infoValues} />
-              </span>
-              <${Seg}
-                items=${SHAPES.map((value) => ({ value, label: texts.rain.shapes[value] }))}
-                value=${shape}
-                onChange=${(value) => set({ hietogram_type: value })}
-                labelledBy="hg-shape-label"
-                full=${true}
-              />
-            </div>
-            ${shape === "beta"
-              ? html`<div class="form">${numberRow("alpha", { placeholder: "2" })}${numberRow("beta", { placeholder: "5" })}</div>
-                  <p class="note">${texts.rain.betaNote}</p>`
-              : null}
-            ${Object.hasOwn(PEAK_DEFAULTS, shape)
-              ? html`<div class="form">${numberRow("peak_position", {
-                  placeholder: peakDefault,
-                  keyText: t(texts.keyDefault, { key: "peak_position", value: peakDefault }),
-                })}</div>`
-              : null}
-            ${shape === "block" ? html`<p class="note">${texts.rain.blockNote}</p>` : null}
-          `}
-      <div class="form">
-        ${numberRow("timestep_min", {
-          placeholder: "5",
-          keyText: t(texts.keyDefault, { key: "timestep_min", value: "5" }),
-          info: html`<${InfoButton} id="rain-timestep" values=${infoValues} />`,
-        })}
       </div>
     <//>
   `;
@@ -600,6 +248,7 @@ function TcBlock(props) {
       </label>
       ${inputs.tc_manual
         ? html`<div class="form"><${Row}
+            prefix=${PREFIX}
             name="tc_min"
             value=${inputs.tc_min}
             error=${errors.tc_min}
@@ -660,6 +309,7 @@ function LossesBlock({ inputs, errors, warnings, set, result, amcField }) {
       </div>
       <div class="form">
         <${Row}
+          prefix=${PREFIX}
           name="ia_coefficient"
           value=${inputs.ia_coefficient}
           error=${errors.ia_coefficient}
@@ -690,6 +340,7 @@ function HydrographStep(props) {
   const fields = inputs.watershed || {};
   const byLutz = usesLutz(inputs);
   const numberRow = (name, extra = {}) => html`<${Row}
+    prefix=${PREFIX}
     name=${name}
     value=${inputs[name]}
     error=${errors[name]}
@@ -836,7 +487,15 @@ export function DataPanel(props) {
       : null}
     <div class="steps">
       <${WatershedStep} ...${props} />
-      <${RainStep} ...${props} valuesField=${field("values")} />
+      <${RainStep}
+        ...${props}
+        prefix=${PREFIX}
+        number=${2}
+        title=${texts.steps.rain}
+        kinds=${RAIN_KINDS}
+        timestep=${{ own: true }}
+        valuesField=${field("values")}
+      />
       <${HydrographStep} ...${props} amcField=${field("amc")} />
     </div>
   `;

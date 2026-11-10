@@ -23,8 +23,8 @@ import { CommandLine, ExportButtons } from "../../ui/export-panel.js";
 import { Part } from "../../ui/part.js";
 import { DataTable } from "../../ui/table.js";
 import { cumulativeSpec, mainSpec, uhSpec } from "./charts.js";
-import { durationText, shortText } from "./data-panel.js";
 import { guiNotes } from "./notes.js";
+import { durationText, shortText } from "./rows.js";
 import { COMMAND, PEAK_DEFAULTS, isEmpty, rainDuration, usesLutz, usesTc } from "./state.js";
 
 /** Icons of the notes by level (the mockup's). */

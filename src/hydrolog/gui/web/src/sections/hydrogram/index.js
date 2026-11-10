@@ -14,11 +14,11 @@
 // generate` serves (`typical_ranges`, Lutz's area among them), registered when it arrives.
 //
 // PMAXTP (ADR-0018): once the point, p and the duration of step 2 are given and valid, the
-// section runs `precip pmaxtp` on its own channel "hydrogram-pmaxtp" (debounced as a run,
-// never superseding one) and keeps the depth with the inputs (`pmaxtp_fetched`), which is
-// the `total_mm` of the runs; a run waits for it. A point outside the atlas stands on its
-// field, any other failure (IMGW-PIB unreachable) on the row of the depth, with
-// „Pobierz ponownie”.
+// section runs `precip pmaxtp` on its own channel "hydrogram-pmaxtp" (usePmaxtp of
+// pmaxtp.js, which Sieć's network shares) and keeps the depth with the inputs
+// (`pmaxtp_fetched`), which is the `total_mm` of the runs; a run waits for it. A point
+// outside the atlas stands on its field, any other failure (IMGW-PIB unreachable) on the
+// row of the depth, with „Pobierz ponownie”.
 //
 // The section sets the store's "watershed" (the `watershed` of hydrolog-network/1, for
 // Kalkulatory), its "status" and "context", and draws the store's "reference" (a quantile
@@ -36,7 +36,6 @@ import { common, t } from "../../labels/common.js";
 import { describeError } from "../../labels/errors.js";
 import { hydrogram as texts } from "../../labels/hydrogram.js";
 import { lossesInfo } from "../../labels/info/losses.js";
-import { rainInfo } from "../../labels/info/rain.js";
 import { tcInfo } from "../../labels/info/tc.js";
 import { uhInfo } from "../../labels/info/uh.js";
 import { describeNotice } from "../../labels/notices.js";
@@ -51,9 +50,11 @@ import { status } from "../../ui/status.js";
 import { toast } from "../../ui/toast.js";
 import { RenderGuard } from "../../ui/render-guard.js";
 import { ViewLayout } from "../../ui/view-layout.js";
-import { DataPanel, durationText } from "./data-panel.js";
+import { DataPanel } from "./data-panel.js";
 import { exportSpec } from "./export.js";
+import { usePmaxtp } from "./pmaxtp.js";
 import { CenterBody, ResultsPanel, modelLabel } from "./results-panel.js";
+import { durationText } from "./rows.js";
 import {
   CHANNEL,
   COMMAND,
@@ -73,10 +74,6 @@ import {
   numberOf,
   optionField,
   panelFields,
-  pmaxtpDepth,
-  pmaxtpKey,
-  pmaxtpOptions,
-  pmaxtpRecord,
   rangeInfoId,
   readWatershed,
   requirements,
@@ -85,7 +82,7 @@ import {
   watershedObject,
 } from "./state.js";
 
-registerInfo({ ...tcInfo, ...lossesInfo, ...uhInfo, ...rainInfo });
+registerInfo({ ...tcInfo, ...lossesInfo, ...uhInfo });
 
 /**
  * The catalog documents of `hydrograph generate` and `precip pmaxtp` and the network
@@ -161,19 +158,6 @@ function wordError(doc, inputs) {
 }
 
 /**
- * Word an error of a PMAXTP fetch: on the field of the point it names (a point outside the
- * atlas), else on the row of the depth (IMGW-PIB unreachable, an answer it cannot read).
- *
- * @param {object} doc the hydrolog-error/1 document
- * @returns {{fields: Object<string, string>, text: string}} the messages
- */
-function wordPmaxtpError(doc) {
-  const described = describeError(doc);
-  const field = described.option && Object.hasOwn(PMAXTP_FIELDS, described.option) ? PMAXTP_FIELDS[described.option] : "pmaxtp_depth";
-  return { fields: { [field]: withReason(described.text, described.reason || (doc && doc.code) || "") }, text: described.text };
-}
-
-/**
  * The section „Hydrogram zlewni”.
  *
  * @param {{path: string[]}} props the route's path ("tc_method", "<method>" sets the method
@@ -193,11 +177,8 @@ export default function Hydrogram({ path = [] }) {
   const [failure, setFailure] = useState(null);
   const [busy, setBusy] = useState(false);
   const [broken, setBroken] = useState(null);
-  const [pmaxtpFailure, setPmaxtpFailure] = useState(null);
-  const [pmaxtpBusy, setPmaxtpBusy] = useState(false);
   const chartSvg = useRef(null);
   const outcome = useRef(null);
-  const pmaxtpOutcome = useRef(null);
   const channel = useMemo(
     () =>
       createChannel({
@@ -206,16 +187,7 @@ export default function Hydrogram({ path = [] }) {
       }),
     [],
   );
-  const pmaxtpChannel = useMemo(
-    () =>
-      createChannel({
-        onBusy: setPmaxtpBusy,
-        onOutcome: (next) => pmaxtpOutcome.current(next),
-      }),
-    [],
-  );
   useEffect(() => () => channel.dispose(), [channel]);
-  useEffect(() => () => pmaxtpChannel.dispose(), [pmaxtpChannel]);
 
   /** Replace inputs (a patch of the inputs; a watershed file and a hand-off use it). */
   const set = useCallback((patch) => setState((old) => ({ ...normalize(old), ...patch })), []);
@@ -248,48 +220,14 @@ export default function Hydrogram({ path = [] }) {
 
   // PMAXTP's depth: remembered with the inputs, else fetched once the point, p and the
   // duration are given and valid; a run waits for it
-  const depth = pmaxtpDepth(inputs);
-  const pmaxtpWanted =
-    checked !== null && !Object.values(PMAXTP_FIELDS).some((name) => checked.errors[name]) ? pmaxtpOptions(inputs) : null;
-  const fetchKey = pmaxtpWanted && depth === null ? pmaxtpKey(pmaxtpWanted) : null;
-  const pmaxtpFailed = pmaxtpFailure && pmaxtpFailure.key === fetchKey ? pmaxtpFailure : null;
-  const latestFetch = useRef(fetchKey);
-  latestFetch.current = fetchKey;
-
-  pmaxtpOutcome.current = (next) => {
-    // The task returns its errors; a rejection would be a fault of the GUI itself
-    const value = next.ok ? next.value : { key: latestFetch.current, error: { code: "internal_error", message: String(next.error) } };
-    if (value.error) {
-      setPmaxtpFailure({ key: value.key, ...wordPmaxtpError(value.error) });
-      return;
-    }
-    const envelope = value.envelope;
-    const result = envelope.status === "ok" ? envelope.result : null;
-    if (!result || typeof result.depth_mm !== "number") {
-      const words = (envelope.notices || []).map((notice) => describeNotice(notice).text).join(" ");
-      setPmaxtpFailure({ key: value.key, fields: { pmaxtp_depth: words }, text: words });
-      return;
-    }
-    setPmaxtpFailure(null);
-    set({ pmaxtp_fetched: pmaxtpRecord(value.options, result.depth_mm) });
-  };
-
-  useEffect(() => {
-    if (!fetchKey || pmaxtpFailed) {
-      pmaxtpChannel.cancel();
-      return;
-    }
-    const sent = { key: fetchKey, options: pmaxtpWanted };
-    pmaxtpChannel.request(async (signal) => {
-      try {
-        const envelope = await api.run(PMAXTP_COMMAND, sent.options, { channel: PMAXTP_CHANNEL, signal });
-        return { ...sent, envelope };
-      } catch (error) {
-        if (error && error.name === "AbortError") throw error;
-        return { ...sent, error: error && error.doc ? error.doc : { code: "internal_error", message: String(error) } };
-      }
-    });
-  }, [fetchKey, Boolean(pmaxtpFailed)]);
+  const pmaxtp = usePmaxtp(inputs, {
+    channel: PMAXTP_CHANNEL,
+    valid: checked !== null && !Object.values(PMAXTP_FIELDS).some((name) => checked.errors[name]),
+    onDepth: (record) => set({ pmaxtp_fetched: record }),
+  });
+  const depth = pmaxtp.depth;
+  const pmaxtpFailed = pmaxtp.failed;
+  const pmaxtpBusy = pmaxtp.busy;
 
   const rainReady = inputs.rain_source !== "pmaxtp" || depth !== null;
   const valid = checked !== null && inputs.uh_model !== null && Object.keys(checked.errors).length === 0 && rainReady;
@@ -451,11 +389,10 @@ export default function Hydrogram({ path = [] }) {
   // „Wyczyść”: the steps empty, as on a first visit; Kalkulatory loses the watershed too
   const clear = () => {
     channel.cancel();
-    pmaxtpChannel.cancel();
+    pmaxtp.reset();
     reset();
     setRun(null);
     setFailure(null);
-    setPmaxtpFailure(null);
     setBroken(null);
     setWatershedStore(null);
   };
@@ -465,8 +402,6 @@ export default function Hydrogram({ path = [] }) {
   const version = run ? run.envelope.version : null;
   const working = busy || pmaxtpBusy;
   const dimmed = working ? " computing" : "";
-  // A failure of the source itself (not of the point) may pass: „Pobierz ponownie”
-  const onRetry = pmaxtpFailed && pmaxtpFailed.fields.pmaxtp_depth ? () => setPmaxtpFailure(null) : null;
   // A result that does not draw is marked, never shown as the current one (RenderGuard)
   const onDrawError = () => setBroken(run);
 
@@ -492,7 +427,7 @@ export default function Hydrogram({ path = [] }) {
             result=${result}
             models=${docs.models}
             infoValues=${values}
-            pmaxtp=${{ depth, busy: pmaxtpBusy, onRetry }}
+            pmaxtp=${{ depth, busy: pmaxtpBusy, onRetry: pmaxtp.onRetry }}
           />`
         : docs.error
           ? null

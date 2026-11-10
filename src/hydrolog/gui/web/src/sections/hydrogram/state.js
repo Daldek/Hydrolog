@@ -19,6 +19,13 @@
 // rainfall reads is an error; Hydrolog's notices of a value outside its typical range
 // stand on the field they name (`details.field`) as warnings, which never stop a run.
 //
+// The rainfall of step 2 is shared (plan 2026-11-10-network-wizard, D4): Sieć keeps its
+// network's rainfall in the same inputs (initialRain), where `rain_source` also takes
+// "none" („Brak”) and, for a subcatchment, "network" („Jak w sieci”), neither of which makes
+// a rainfall of its own (hasOwnRainfall); rainRequirements, rainTexts, rainChecks and
+// rainOptions are the parts of requirements, usedTexts, checkInputs and toOptions that
+// concern it.
+//
 // Numbers are kept as typed (texts with a decimal comma or dot), as the generated forms
 // keep them. `origin` is where the watershed came from (a file, a hand-off): {title,
 // detail, label, mark, values}; a field that differs from `origin.values` is marked
@@ -307,6 +314,29 @@ export function initialState() {
     tc_method: "kirpich",
     tc_manual: false,
     tc_min: "",
+    ...initialRain(),
+    amc: "II",
+    ia_coefficient: "",
+    uh_model: null,
+    nash_source: "lutz",
+    nash_n: "",
+    nash_k_min: "",
+    clark_kind: "ratio",
+    clark_r_tc_ratio: "",
+    clark_r_min: "",
+    snyder_ct: "",
+    snyder_cp: "",
+  };
+}
+
+/**
+ * The inputs of step 2 (Hietogram) of a first visit, and of a new network in Sieć: PMAXTP
+ * with POT and nothing fetched, the Beta shape, every number empty, and the time step.
+ *
+ * @returns {object} the inputs of the rainfall and the time step
+ */
+export function initialRain() {
+  return {
     rain_source: "pmaxtp",
     pmaxtp_latitude: "",
     pmaxtp_longitude: "",
@@ -322,17 +352,6 @@ export function initialState() {
     peak_position: "",
     values: "",
     timestep_min: "",
-    amc: "II",
-    ia_coefficient: "",
-    uh_model: null,
-    nash_source: "lutz",
-    nash_n: "",
-    nash_k_min: "",
-    clark_kind: "ratio",
-    clark_r_tc_ratio: "",
-    clark_r_min: "",
-    snyder_ct: "",
-    snyder_cp: "",
   };
 }
 
@@ -400,6 +419,17 @@ export function usesTc(model) {
  */
 export function usesLutz(inputs) {
   return inputs.uh_model === "nash" && inputs.nash_source !== "given";
+}
+
+/**
+ * Whether the inputs make a rainfall of their own: PMAXTP, a design hyetograph or a series
+ * of depths; not „Brak” of Sieć's network or „Jak w sieci” of a subcatchment in it.
+ *
+ * @param {object} inputs the inputs
+ * @returns {boolean} true when `rain_source` is "pmaxtp", "design" or "series"
+ */
+export function hasOwnRainfall(inputs) {
+  return inputs.rain_source === "pmaxtp" || inputs.rain_source === "design" || inputs.rain_source === "series";
 }
 
 /**
@@ -667,17 +697,7 @@ export function requirements(inputs) {
   need("area_km2", model);
   need("cn", "losses");
 
-  if (inputs.rain_source === "series") {
-    need("values", "series");
-  } else if (inputs.rain_source === "pmaxtp") {
-    need("pmaxtp_latitude", "pmaxtp");
-    need("pmaxtp_longitude", "pmaxtp");
-    need("pmaxtp_probability_pct", "pmaxtp");
-    need("pmaxtp_duration_min", "pmaxtp");
-  } else {
-    need("total_mm", "hietogram");
-    need("duration_min", "hietogram");
-  }
+  for (const [name, { purpose }] of Object.entries(rainRequirements(inputs))) need(name, purpose);
 
   if (usesTc(model) && inputs.tc_manual) need("tc_min", "tc_min");
   else if (usesTc(model)) {
@@ -696,6 +716,23 @@ export function requirements(inputs) {
     need("Lc_km", "snyder");
   }
   return { model, required };
+}
+
+/**
+ * What the rainfall of the chosen source needs: a series its depths, PMAXTP the point, p and
+ * the duration, a design hyetograph its depth and duration; „Brak” and „Jak w sieci” nothing.
+ *
+ * @param {object} inputs the inputs
+ * @returns {Object<string, {purpose: string}>} the fields, with whom they are needed for (a
+ *   key of the labels' `requiredFor`)
+ */
+export function rainRequirements(inputs) {
+  const source = inputs.rain_source;
+  const needs = (names, purpose) => Object.fromEntries(names.map((name) => [name, { purpose }]));
+  if (source === "series") return needs(["values"], "series");
+  if (source === "pmaxtp") return needs(["pmaxtp_latitude", "pmaxtp_longitude", "pmaxtp_probability_pct", "pmaxtp_duration_min"], "pmaxtp");
+  if (source === "design") return needs(["total_mm", "duration_min"], "hietogram");
+  return {};
 }
 
 /**
@@ -806,20 +843,7 @@ export function usedTexts(inputs) {
     if (inputs.tc_manual) used.tc_min = inputs.tc_min;
     else used.tc_method = inputs.tc_method;
   }
-  if (inputs.rain_source === "series") {
-    used.values = inputs.values;
-  } else {
-    used.hietogram_type = inputs.hietogram_type;
-    // PMAXTP's depth is the fetched one, never typed
-    used.total_mm = inputs.rain_source === "pmaxtp" ? inputText(pmaxtpDepth(inputs)) : inputs.total_mm;
-    used.duration_min = rainDuration(inputs);
-    if (inputs.hietogram_type === "beta") {
-      used.alpha = inputs.alpha;
-      used.beta = inputs.beta;
-    } else if (Object.hasOwn(PEAK_DEFAULTS, inputs.hietogram_type)) {
-      used.peak_position = inputs.peak_position;
-    }
-  }
+  Object.assign(used, rainTexts(inputs));
   used.timestep_min = inputs.timestep_min;
   if (inputs.uh_model) used.uh_model = inputs.uh_model;
   if (usesLutz(inputs)) {
@@ -835,6 +859,34 @@ export function usedTexts(inputs) {
     for (const [option, name] of Object.entries(SNYDER_LENGTHS)) used[option] = watershed[name];
     used.snyder_ct = inputs.snyder_ct;
     used.snyder_cp = inputs.snyder_cp;
+  }
+  return used;
+}
+
+/**
+ * The options of `hydrograph generate` that make the rainfall of the inputs, as typed: a
+ * series of depths, or the shape, the depth (PMAXTP's is the fetched one, never typed) and
+ * the duration of a design storm with the shape's own parameters; nothing for „Brak” and
+ * „Jak w sieci”. The time step is not among them: it is the run's, or the network's.
+ *
+ * @param {object} inputs the inputs
+ * @returns {Object<string, string>} the typed values by option name
+ */
+export function rainTexts(inputs) {
+  const used = {};
+  if (inputs.rain_source === "series") {
+    used.values = inputs.values;
+  } else if (inputs.rain_source === "pmaxtp" || inputs.rain_source === "design") {
+    used.hietogram_type = inputs.hietogram_type;
+    // PMAXTP's depth is the fetched one, never typed
+    used.total_mm = inputs.rain_source === "pmaxtp" ? inputText(pmaxtpDepth(inputs)) : inputs.total_mm;
+    used.duration_min = rainDuration(inputs);
+    if (inputs.hietogram_type === "beta") {
+      used.alpha = inputs.alpha;
+      used.beta = inputs.beta;
+    } else if (Object.hasOwn(PEAK_DEFAULTS, inputs.hietogram_type)) {
+      used.peak_position = inputs.peak_position;
+    }
   }
   return used;
 }
@@ -912,16 +964,8 @@ export function noticeWarnings(notices, inputs) {
  */
 export function checkInputs(inputs, models, last = null) {
   const shown = panelFields(inputs);
-  const found = { ...watershedErrors(inputs.watershed, models, sentFields(inputs)) };
-  if (inputs.rain_source === "pmaxtp") {
-    const typed = Object.fromEntries(Object.entries(PMAXTP_FIELDS).map(([option, name]) => [option, inputs[name]]));
-    for (const [option, message] of Object.entries(validate(models.pmaxtp, typed))) found[PMAXTP_FIELDS[option]] = message;
-  }
-  const used = usedTexts(inputs);
-  for (const [option, message] of Object.entries(validate(models.options, used))) {
-    const name = optionField(inputs, option);
-    if (!found[name]) found[name] = message;
-  }
+  const found = { ...watershedErrors(inputs.watershed, models, sentFields(inputs)), ...pmaxtpErrors(inputs, models) };
+  addOptionErrors(found, inputs, models, usedTexts(inputs));
   const { required } = requirements(inputs);
   const quoted = (other, name) => {
     const step = stepOf(other);
@@ -959,6 +1003,60 @@ export function checkInputs(inputs, models, last = null) {
 }
 
 /**
+ * The errors of PMAXTP's point, probability, duration and method against the catalog entry
+ * of `precip pmaxtp`, when the rainfall is PMAXTP.
+ *
+ * @param {object} inputs the inputs
+ * @param {{pmaxtp: object}} models from inputModels
+ * @returns {Object<string, string>} a message by field name
+ */
+function pmaxtpErrors(inputs, models) {
+  const found = {};
+  if (inputs.rain_source !== "pmaxtp") return found;
+  const typed = Object.fromEntries(Object.entries(PMAXTP_FIELDS).map(([option, name]) => [option, inputs[name]]));
+  for (const [option, message] of Object.entries(validate(models.pmaxtp, typed))) found[PMAXTP_FIELDS[option]] = message;
+  return found;
+}
+
+/**
+ * Add the errors of options as typed, checked against the catalog entry of `hydrograph
+ * generate`, to the fields of the panel that hold them (optionField), where those have
+ * none yet.
+ *
+ * @param {Object<string, string>} found the messages by field name so far, extended
+ * @param {object} inputs the inputs
+ * @param {{options: object}} models from inputModels
+ * @param {Object<string, string>} used the typed values by option name
+ */
+function addOptionErrors(found, inputs, models, used) {
+  for (const [option, message] of Object.entries(validate(models.options, used))) {
+    const name = optionField(inputs, option);
+    if (!found[name]) found[name] = message;
+  }
+}
+
+/**
+ * Check a rainfall alone with checkInputs' rules (Sieć's network, plan
+ * 2026-11-10-network-wizard, D4): PMAXTP's point, p, duration and method against `precip
+ * pmaxtp`, the options of the rainfall against `hydrograph generate`, and every field the
+ * chosen source needs (rainRequirements), at once: no model is waited for. The time step is
+ * the host's own field.
+ *
+ * @param {object} inputs the inputs of the rainfall (initialRain)
+ * @param {{options: object, pmaxtp: object}} models from inputModels
+ * @returns {Object<string, string>} a message by field name, in the order of step 2
+ */
+export function rainChecks(inputs, models) {
+  const found = pmaxtpErrors(inputs, models);
+  addOptionErrors(found, inputs, models, rainTexts(inputs));
+  for (const [name, { purpose }] of Object.entries(rainRequirements(inputs))) {
+    if (!found[name] && isEmpty(inputs[name])) found[name] = withReason(t(texts.required, { what: purposeText(purpose) }), "required");
+  }
+  const order = [...RAIN_FIELDS];
+  return Object.fromEntries(Object.entries(found).sort(([a], [b]) => order.indexOf(a) - order.indexOf(b)));
+}
+
+/**
  * The options of `hydrograph generate` for valid inputs (checked with checkInputs, a model
  * chosen).
  *
@@ -966,8 +1064,30 @@ export function checkInputs(inputs, models, last = null) {
  * @returns {object} the options
  */
 export function toOptions(inputs) {
-  const options = { watershed: sentWatershed(inputs) };
-  for (const [name, text] of Object.entries(usedTexts(inputs))) {
+  return { watershed: sentWatershed(inputs), ...parsedOptions(usedTexts(inputs)) };
+}
+
+/**
+ * The options of `hydrograph generate` that make the rainfall of the inputs (rainTexts),
+ * as a run sends them.
+ *
+ * @param {object} inputs the inputs
+ * @returns {object} the options, none for „Brak” and „Jak w sieci”
+ */
+export function rainOptions(inputs) {
+  return parsedOptions(rainTexts(inputs));
+}
+
+/**
+ * Typed options as a run sends them: numbers parsed, a series as its numbers, the texts of
+ * choices as they are, and nothing for an empty one.
+ *
+ * @param {Object<string, string>} typed the typed values by option name
+ * @returns {object} the options
+ */
+function parsedOptions(typed) {
+  const options = {};
+  for (const [name, text] of Object.entries(typed)) {
     if (isEmpty(text)) continue;
     if (name === "values") options.values = parseSeries(text).values;
     else if (TEXT_OPTIONS.has(name)) options[name] = String(text);

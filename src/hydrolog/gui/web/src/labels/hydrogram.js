@@ -180,7 +180,11 @@ export const hydrogram = {
   },
   rain: {
     source: "Źródło opadu",
-    sources: { pmaxtp: "PMAXTP", design: "Hietogram", series: "Własna seria" },
+    sources: { none: "Brak", network: "Jak w sieci", pmaxtp: "PMAXTP", design: "Hietogram", series: "Własna seria" },
+    noneNote:
+      "Sieć bez opadu: zlewnia z opadu potrzebuje wtedy własnego opadu; zlewnie z hydrogramem podanym albo z pliku dopływów nie potrzebują żadnego.",
+    networkOpen: "Opad sieci w kroku 1",
+    timestepNetwork: "{key} · krok sieci",
     probability: "Prawdopodobieństwo",
     choose: "wybierz",
     pmaxtpNote:
@@ -203,6 +207,8 @@ export const hydrogram = {
     metaPmaxtp: "{total} mm · {duration} · p {p}%",
     metaDesign: "{total} mm · {duration}",
     metaSeries: "własna seria · {steps}",
+    metaNone: "brak opadu",
+    metaNetwork: "jak w sieci",
     stepForms: ["krok", "kroki", "kroków"],
     hours: "{value} h",
     minutes: "{value} min",
