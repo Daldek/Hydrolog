@@ -149,7 +149,6 @@ def test_the_guides_examples_typed_give_the_guides_numbers(tab: Tab) -> None:
         "elevation_mean_m": "363,2",
         "mean_slope_m_per_m": "0,082",
         "channel_length_km": "14,78",
-        "channel_slope_m_per_m": "0,0142",
         "flow_path_length_km": "15,88",
         "flow_path_slope_m_per_m": "0,0114",
         "pmaxtp_latitude": "51,01544",

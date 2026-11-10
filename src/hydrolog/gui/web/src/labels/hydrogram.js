@@ -49,7 +49,6 @@ export const hydrogram = {
     elevation_mean_m: { label: "Wysokość średnia" },
     mean_slope_m_per_m: { label: "Średni spadek zlewni" },
     channel_length_km: { label: "Długość cieku głównego" },
-    channel_slope_m_per_m: { label: "Spadek cieku głównego" },
     flow_path_length_km: { label: "Długość najdłuższej drogi spływu", symbol: "L" },
     flow_path_slope_m_per_m: { label: "Spadek najdłuższej drogi spływu", symbol: "S" },
     Lc_km: { label: "Długość do środka ciężkości", symbol: "Lc" },

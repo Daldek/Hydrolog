@@ -87,7 +87,6 @@ SENT = {
         "elevation_mean_m",
         "mean_slope_m_per_m",
         "channel_length_km",
-        "channel_slope_m_per_m",
         "flow_path_length_km",
         "flow_path_slope_m_per_m",
         "cn",

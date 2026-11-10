@@ -49,7 +49,13 @@ export const COMMAND = "hydrograph generate";
 /** The schema whose `watershed` bounds the watershed's fields (plan D13). */
 export const NETWORK_SCHEMA = "hydrolog-network-1.schema.json";
 
-/** Fields of the watershed in step 1, in the order of the panel. */
+/**
+ * Fields of the watershed in step 1, in the order of the panel. The channel's slope
+ * (`channel_slope_m_per_m`) is not among them: no calculation reads it (Kirpich,
+ * Kerby–Kirpich and Lutz take the longest flow path's), so a value that came with a
+ * watershed stays in the inputs and is neither shown nor sent (plan
+ * 2026-11-10-network-wizard, erratum of 2026-11-10).
+ */
 export const WATERSHED_STEP = Object.freeze([
   "area_km2",
   "cn",
@@ -60,7 +66,6 @@ export const WATERSHED_STEP = Object.freeze([
   "elevation_mean_m",
   "mean_slope_m_per_m",
   "channel_length_km",
-  "channel_slope_m_per_m",
   "flow_path_length_km",
   "flow_path_slope_m_per_m",
 ]);
@@ -144,7 +149,7 @@ export const TC_BLOCK = Object.freeze({
 });
 
 /** Slopes in m/m, shown with a % hint (the author's choice: m/m with a % hint). */
-export const SLOPE_FIELDS = new Set(["mean_slope_m_per_m", "channel_slope_m_per_m", "flow_path_slope_m_per_m", "overland_slope_m_per_m"]);
+export const SLOPE_FIELDS = new Set(["mean_slope_m_per_m", "flow_path_slope_m_per_m", "overland_slope_m_per_m"]);
 
 /** Options sent as texts; every other option is a number. */
 const TEXT_OPTIONS = new Set(["tc_method", "amc", "hietogram_type", "uh_model", "nash_estimation"]);
@@ -162,7 +167,6 @@ export const UNITS = Object.freeze({
   elevation_mean_m: texts.units.elevation,
   mean_slope_m_per_m: "m/m",
   channel_length_km: "km",
-  channel_slope_m_per_m: "m/m",
   flow_path_length_km: "km",
   flow_path_slope_m_per_m: "m/m",
   Lc_km: "km",
