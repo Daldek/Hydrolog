@@ -316,7 +316,65 @@ REFUSED = {
     "an upstream list that is a string": _edited(1, **{"from": "A"}),
     "an outlet with a parameter": _edited(2, lag_min=10),
     "an outlet with two upstream nodes": _edited(2, **{"from": ["R", "A"]}),
+    # the description and the position of a node, and of the network (ADR-0023)
+    "a position beyond the grid": _edited(0, position={"x": 1001, "y": 0}),
+    "a position without y": _edited(0, position={"x": 1}),
+    "a position with another key": _edited(0, position={"x": 0, "y": 0, "z": 0}),
+    "a position with a fraction": _edited(0, position={"x": 0.5, "y": 0}),
+    "a position that is a list": _edited(0, position=[0, 0]),
+    "an empty description": _edited(0, description=""),
+    "a blank description": _edited(0, description=" \n "),
+    "a description too long": _edited(0, description="x" * 501),
+    "a description with a tab": _edited(0, description="a\tb"),
+    "an empty description of the network": _stream(description=""),
 }
+
+
+def _placed_every_kind() -> dict[str, Any]:
+    """A network of every kind of node, each with a description and a position."""
+    from hydrolog import testing
+
+    pond = {"storage_m3": [0, 30000, 90000], "outflow_m3s": [0, 10, 40]}
+    nodes = [
+        testing.subcatchment(
+            "A", times_min=[0, 10, 20, 30], discharge_m3s=[0, 5, 2, 0]
+        ),
+        testing.subcatchment(
+            "B",
+            watershed=testing.watershed(),
+            runoff=testing.curve_number_runoff(tc_min=60.0),
+            rainfall=testing.design_storm(),
+        ),
+        testing.reach("R1", "A", lag_min=20),
+        testing.reach("R2", "R1", method="muskingum", k_min=40, x=0.2),
+        testing.reach(
+            "R3",
+            "R2",
+            method="muskingum-cunge",
+            length_km=8,
+            slope_m_per_m=0.001,
+            celerity_m_per_s=1.2,
+            top_width_m=25,
+            reference_discharge_m3s=10,
+        ),
+        testing.reach("R4", "R3", method="cascade", n=3, k_min=20),
+        testing.reach("R5", "R4", method="level-pool", **pond),
+        {"id": "D", "type": "reservoir", "from": ["R5"], **pond},
+        testing.junction("J", "D", "B"),
+        testing.outlet("J"),
+    ]
+    return testing.network_document(
+        *(
+            testing.placed(
+                node,
+                description=f"The node {node['id']}\nof the river",
+                position=(x, 0),
+            )
+            for x, node in enumerate(nodes)
+        ),
+        name="Every kind",
+        description="Every kind of node, placed",
+    )
 
 
 @pytest.mark.parametrize("name", REFUSED)
@@ -338,6 +396,9 @@ def test_the_network_schema_and_the_loader_accept_the_same_documents():
         _edited(2, id="com10"),
         _edited(2, id="com0"),
         _edited(2, id="x.con"),
+        _placed_every_kind(),
+        _edited(0, position={"x": 2.0, "y": -1000}, description="a\nb"),
+        _edited(0, position={"x": 1000, "y": 0}, description="é" * 500),
     ]
     for document in accepted:
         assert _violations(NETWORK_DOCUMENT, document) == []
@@ -348,7 +409,8 @@ def test_the_network_schema_and_the_loader_accept_the_same_documents():
 
 
 def _schematic_documents() -> dict[str, dict[str, Any]]:
-    """Schematics of the example network, of a network with many inflows and a stem."""
+    """Schematics of the example network, of a network with many inflows and a stem,
+    of a network drawn where its nodes are and of one written before ADR-0023."""
     from hydrolog.routing import (
         Channel,
         Hydrograph,
@@ -366,12 +428,25 @@ def _schematic_documents() -> dict[str, dict[str, Any]]:
         Outlet("OUT", inflow=Channel("R", LagReach(10.0), inflow=Junction("J", heads)))
     )
     example = example_network()
+    placed = RoutingNetwork.from_document(_placed_every_kind())
+    older = {
+        key: value for key, value in example.schematic().items() if key != "layout"
+    }
     return {
         "example": example.schematic(),
         "example with its result": example.schematic(example.route()),
         "example with a declared stem": example.schematic(main_stem=["B", "J1"]),
         "a node with many inflows": crowded.schematic(crowded.route()),
+        "a network drawn where its nodes are": placed.schematic(placed.route()),
+        "a schematic without a layout": older,
     }
+
+
+def test_a_placed_network_gives_a_schematic_with_its_layout_and_descriptions():
+    drawn = _schematic_documents()["a network drawn where its nodes are"]
+
+    assert drawn["layout"] == "given"
+    assert all(node["description"].startswith("The node ") for node in drawn["nodes"])
 
 
 @pytest.mark.parametrize("name", _schematic_documents())
@@ -430,6 +505,10 @@ def test_the_schematic_schema_refuses_a_document_that_cannot_be_drawn():
         ),
         "a position that is not on the grid": edited(
             nodes=[{**first, "x": 0.5}, *nodes[1:]]
+        ),
+        "a layout that is neither given nor computed": edited(layout="manual"),
+        "an empty description of a node": edited(
+            nodes=[{**first, "description": ""}, *nodes[1:]]
         ),
     }
 

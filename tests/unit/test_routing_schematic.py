@@ -5,17 +5,21 @@ edges crossing or overlapping, the main stem straight and the larger branch, the
 tributaries on alternating sides and one unit apart. ``_schematic_checks`` looks at the
 cells of the picture without using the layout, on random trees of every shape. The
 document is judged against the result it carries: its values are those of the
-``NetworkResult``, and the picture is the same whether or not there is one.
+``NetworkResult``, and the picture is the same whether or not there is one. A network
+whose nodes all have cells of their own is drawn where they are (ADR-0023): every edge
+by rule D, which also gives every edge of a computed picture from its two ends.
 """
 
 import json
 import random
+import warnings
 
 import pytest
 
+from hydrolog._warnings import PositionsIgnored
 from hydrolog.exceptions import InvalidParameterError
 from hydrolog.routing import RoutingNetwork
-from hydrolog.routing._layout import LABEL_SIDES, layout
+from hydrolog.routing._layout import LABEL_SIDES, edge_route, given_layout, layout
 from hydrolog.routing.schematic import SCHEMA
 from hydrolog.testing import example_network, example_network_document
 
@@ -429,3 +433,197 @@ def test_the_picture_of_a_network_is_right_and_has_every_node_once(
     assert document["grid"]["width"] == max(node["x"] for node in document["nodes"])
     assert document["grid"]["height"] == max(node["y"] for node in document["nodes"])
     assert sum(len(line["nodes"]) for line in document["lines"]) == len(nodes)
+
+
+# --- rule D and the given layout (ADR-0023) ------------------------------------------
+
+
+def flows_into(inflows):
+    return {up: node for node, ups in inflows.items() for up in ups}
+
+
+def ranks(picture):
+    return [(line.index, line.nodes, line.joins, line.parent) for line in picture.lines]
+
+
+@pytest.mark.parametrize(
+    ("start", "end", "corners"),
+    [
+        ((0, 0), (3, 0), ((0, 0), (3, 0))),
+        ((2, 0), (2, 3), ((2, 0), (2, 3))),
+        ((0, 3), (4, 0), ((0, 3), (0, 1), (1, 0), (4, 0))),
+        ((0, 1), (1, 0), ((0, 1), (1, 0))),
+        ((0, 0), (1, 2), ((0, 0), (0, 1), (1, 2))),
+        ((0, 2), (3, 1), ((0, 2), (1, 1), (3, 1))),
+        ((3, 0), (0, 2), ((3, 0), (1, 2), (0, 2))),
+        ((2, 0), (0, 3), ((2, 0), (0, 2), (0, 3))),
+        ((2, 2), (0, 0), ((2, 2), (0, 0))),
+        ((3, 1), (0, 1), ((3, 1), (0, 1))),
+    ],
+)
+def test_rule_d_draws_an_edge_from_its_two_ends(start, end, corners):
+    assert edge_route(start, end) == corners
+
+
+@pytest.mark.parametrize(("size", "seed", "fan_in", "deep"), SHAPES)
+def test_the_cells_of_a_computed_picture_give_the_same_picture_again(
+    size, seed, fan_in, deep
+):
+    root, inflows, picture = drawn(size, seed, fan_in, deep)
+
+    for node, below in flows_into(inflows).items():
+        assert (
+            edge_route(picture.positions[node], picture.positions[below])
+            == (picture.routes[node])
+        )
+    assert given_layout(root, inflows, picture.positions) == picture
+
+
+@pytest.mark.parametrize(("size", "seed", "fan_in", "deep"), SHAPES[::4])
+def test_the_cells_give_the_same_picture_with_areas_and_a_declared_stem(
+    size, seed, fan_in, deep
+):
+    root, inflows = random_tree(size, seed, fan_in=fan_in, deep=deep)
+    chance = random.Random(seed)
+    heads = sorted(node for node, ups in inflows.items() if not ups and node != root)
+    weight = {node: chance.uniform(0.5, 5.0) for node in heads}
+    options = {"weight": weight, "main_stem": [chance.choice(heads)]}
+
+    picture = layout(root, inflows, **options)
+
+    assert given_layout(root, inflows, picture.positions, **options) == picture
+
+
+def test_the_given_cells_are_moved_together_to_the_origin():
+    root, inflows, picture = drawn(30, 2, 3, 0.5)
+    shifted = {node: (x - 7, y + 12) for node, (x, y) in picture.positions.items()}
+
+    assert given_layout(root, inflows, shifted) == picture
+
+
+def test_a_line_on_several_rows_has_no_row():
+    inflows = {"OUT": ["J"], "J": ["a", "t"], "a": ["b"], "b": [], "t": []}
+    cells = {"b": (0, 0), "a": (1, 1), "J": (2, 1), "OUT": (3, 1), "t": (1, 3)}
+
+    picture = given_layout("OUT", inflows, cells)
+
+    stem, tributary = picture.lines
+    assert (stem.nodes, stem.row) == (("b", "a", "J", "OUT"), None)
+    assert (tributary.nodes, tributary.row) == (("t",), 3)
+    assert picture.routes["b"] == ((0, 0), (1, 1))
+    assert picture.routes["t"] == ((1, 3), (1, 2), (2, 1))
+
+
+@pytest.mark.parametrize(("size", "seed", "fan_in", "deep"), SHAPES[::6])
+def test_other_cells_keep_the_lines_of_the_computed_picture(size, seed, fan_in, deep):
+    root, inflows, computed = drawn(size, seed, fan_in, deep)
+    nodes = sorted(computed.positions)
+    random.Random(seed).shuffle(nodes)
+    cells = {node: (index % 5, index // 5 - 2) for index, node in enumerate(nodes)}
+
+    picture = given_layout(root, inflows, cells)
+
+    assert ranks(picture) == ranks(computed)
+    assert picture.line_of == computed.line_of
+    assert picture.positions == {node: (x, y + 2) for node, (x, y) in cells.items()}
+    for node, below in flows_into(inflows).items():
+        assert picture.routes[node] == edge_route(
+            picture.positions[node], picture.positions[below]
+        )
+    assert set(picture.labels.values()) <= set(LABEL_SIDES)
+
+
+def test_a_given_layout_needs_a_cell_of_its_own_for_every_node():
+    inflows = {"OUT": ["a", "b"], "a": [], "b": []}
+
+    with pytest.raises(ValueError, match="'b' has no position"):
+        given_layout("OUT", inflows, {"OUT": (1, 0), "a": (0, 0)})
+    with pytest.raises(ValueError, match="share a cell"):
+        given_layout("OUT", inflows, {"OUT": (1, 0), "a": (0, 0), "b": (0, 0)})
+
+
+# --- the document of a network with positions (ADR-0023) ----------------------------
+
+CELLS = {
+    "A": (-2, 5),
+    "B": (-1, 3),
+    "C": (1, 7),
+    "R_A": (-1, 5),
+    "J1": (0, 4),
+    "R_J1": (1, 4),
+    "J2": (2, 5),
+    "OUT": (4, 5),
+}
+
+
+def placed_network(cells, descriptions=(), description=None):
+    document = example_network_document()
+    for node in document["nodes"]:
+        if node["id"] in descriptions:
+            node["description"] = dict(descriptions)[node["id"]]
+        if node["id"] in cells:
+            x, y = cells[node["id"]]
+            node["position"] = {"x": x, "y": y}
+    if description is not None:
+        document["description"] = description
+    return RoutingNetwork.from_document(document)
+
+
+def test_a_network_without_positions_is_computed_without_a_warning():
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        document = example_network().schematic()
+
+    assert document["layout"] == "computed"
+    assert list(document)[list(document).index("has_result") + 1] == "layout"
+
+
+def test_a_network_with_every_node_placed_is_drawn_where_its_nodes_are():
+    network = placed_network(
+        CELLS, {"B": "Upper brook\nfrom the forest"}, description="The whole river"
+    )
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        document = network.schematic(network.route())
+
+    moved = {node: (x + 2, y - 3) for node, (x, y) in CELLS.items()}
+    assert document["layout"] == "given"
+    assert {node["id"]: (node["x"], node["y"]) for node in document["nodes"]} == moved
+    assert document["grid"] == {"width": 6, "height": 4}
+    for edge in document["edges"]:
+        assert edge["points"] == [
+            list(point) for point in edge_route(moved[edge["from"]], moved[edge["to"]])
+        ]
+    assert document["lines"] == example_network().schematic()["lines"]
+    nodes = {node["id"]: node for node in document["nodes"]}
+    keys = list(nodes["B"])
+    assert keys[keys.index("label") + 1] == "description"
+    assert nodes["B"]["description"] == "Upper brook\nfrom the forest"
+    assert all("description" not in nodes[node] for node in nodes if node != "B")
+    assert "description" not in document
+
+
+def test_positions_of_some_nodes_are_ignored_with_a_warning_naming_the_first_without():
+    cells = {node: cell for node, cell in CELLS.items() if node not in ("R_A", "C")}
+    network = placed_network(cells)
+
+    with pytest.warns(PositionsIgnored) as caught:
+        document = network.schematic()
+
+    assert document == example_network().schematic()
+    assert [item.message.details for item in caught] == [  # type: ignore[union-attr]
+        {"reason": "partial", "node_id": "C"}
+    ]
+
+
+def test_two_nodes_on_one_cell_are_ignored_with_a_warning_naming_the_later():
+    network = placed_network({**CELLS, "B": CELLS["J2"]})
+
+    with pytest.warns(PositionsIgnored) as caught:
+        document = network.schematic()
+
+    assert document["layout"] == "computed"
+    assert [item.message.details for item in caught] == [  # type: ignore[union-attr]
+        {"reason": "shared_cell", "node_id": "J2"}
+    ]

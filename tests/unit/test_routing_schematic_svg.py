@@ -159,6 +159,22 @@ def test_a_long_id_is_wrapped_and_the_tooltip_keeps_all_of_it():
     assert float(root.get("width")) < 2.5 * float(short.get("width"))
 
 
+def test_a_description_is_escaped_in_the_tooltip_on_the_line_after_the_id():
+    described = node("A", "subcatchment", description="Upper <b>&</b> brook\nforest")
+    nodes = [described, node("OUT", "outlet", x=1)]
+
+    svg = schematic_svg(document(nodes))
+
+    assert "Upper &lt;b&gt;&amp;&lt;/b&gt; brook" in svg
+    assert "<b>" not in svg
+    tooltip = next(drawn(svg).iter(f"{SVG}g")).find(f"{SVG}title").text
+    assert tooltip.split("\n")[:3] == [
+        "A (subcatchment)",
+        "Upper <b>&</b> brook",
+        "forest",
+    ]
+
+
 def test_a_warning_is_marked_on_its_node_and_an_info_is_not():
     warned = node(
         "A", notices=[{"level": "warning", "code": "w", "message": "careful"}]

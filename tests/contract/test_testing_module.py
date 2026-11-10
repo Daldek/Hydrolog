@@ -204,6 +204,61 @@ def test_a_network_that_the_command_would_refuse_is_refused_when_it_is_built() -
     assert nothing.value.details["reason"] == "no_outlet"
 
 
+def test_placed_nodes_validate_and_the_command_draws_them_where_they_are(
+    tmp_path: Path,
+) -> None:
+    schema = json.loads((SCHEMAS / "hydrolog-network-1.schema.json").read_text("utf-8"))
+    cells = {"A": (0, 2), "B": (1, 0), "R": (1, 2), "J": (2, 2), "OUT": (3, 2)}
+    nodes = [
+        testing.placed(
+            node, description=f"Node {node['id']}", position=cells[node["id"]]
+        )
+        for node in lag_network()["nodes"]
+    ]
+
+    document = testing.network_document(
+        *nodes, name="Inline", description="Two sources\nand a lag"
+    )
+
+    Draft202012Validator(schema).validate(document)
+    assert [list(node)[-2:] for node in document["nodes"]] == [
+        ["description", "position"]
+    ] * len(cells)
+    network_file = testing.write_network_document(tmp_path / "placed.json", document)
+    printed = program(
+        "route",
+        "network",
+        "--network-file",
+        str(network_file),
+        "--schematic",
+        str(tmp_path / "placed.svg"),
+        "--json",
+    )
+    drawn = json.loads(printed.stdout)["result"]["schematic"]
+    assert drawn["layout"] == "given"
+    assert {node["id"]: (node["x"], node["y"]) for node in drawn["nodes"]} == cells
+    assert {node["id"]: node["description"] for node in drawn["nodes"]} == {
+        node_id: f"Node {node_id}" for node_id in cells
+    }
+
+
+@pytest.mark.parametrize(
+    ("fields", "reason"),
+    [
+        ({"position": (1001, 0)}, "maximum"),
+        ({"position": (0, 0.5)}, "type"),
+        ({"description": ""}, "empty"),
+        ({"description": "a\tb"}, "control_character"),
+    ],
+)
+def test_placed_refuses_what_the_command_would_refuse(fields, reason) -> None:
+    with pytest.raises(InvalidParameterError) as refused:
+        testing.placed(testing.outlet("J"), **fields)
+
+    assert refused.value.details["reason"] == reason
+    assert refused.value.details["node_id"] == "OUT"
+
+
 def test_two_builds_are_the_same_bytes(tmp_path: Path) -> None:
     first = testing.build_network_fixture(tmp_path / "first")
     second = testing.build_network_fixture(tmp_path / "second")
