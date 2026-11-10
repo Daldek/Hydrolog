@@ -124,6 +124,7 @@ html.guide-page .topbar { position: sticky; top: 0; height: var(--header-height)
 }
 .guide-text figcaption { margin: var(--space-2) 0 0; color: var(--text-3); font-size: var(--text-sm); }
 .guide-text .inline-figure { max-width: 360px; }
+.guide-text .card-figure { max-width: 652px; }
 .guide-text .phone-figure { max-width: 240px; }
 
 .guide-table { width: auto; min-width: min(100%, 460px); margin: 0 0 var(--space-4); }
