@@ -39,9 +39,6 @@ export const CHANNEL = "hydrogram";
 /** The command the section runs. */
 export const COMMAND = "hydrograph generate";
 
-/** The command that estimates Nash's n and K by Lutz (plan D13). */
-export const LUTZ_COMMAND = "uh nash";
-
 /** The schema whose `watershed` bounds the watershed's fields (plan D13). */
 export const NETWORK_SCHEMA = "hydrolog-network-1.schema.json";
 
@@ -105,10 +102,14 @@ const WATERSHED_REQUIRED = Object.freeze(["area_km2"]);
  */
 export const HANDOFF_FIELDS = Object.freeze(["area_km2", "perimeter_km", "length_km", "elevation_min_m", "elevation_max_m"]);
 
-/** The watershed fields Lutz's estimation of n and K needs (plan D13, `uh nash`). */
-export const LUTZ_FIELDS = Object.freeze(["channel_length_km", "Lc_km", "channel_slope_m_per_m", "manning_n"]);
+/**
+ * The watershed fields Lutz's estimation of n and K needs (`nash_estimation` of `hydrograph
+ * generate`): L and J of the main stream from the divide to the outlet, which are the
+ * length and the slope of the longest flow path, then Lc and Manning's n.
+ */
+const LUTZ_FIELDS = Object.freeze(["flow_path_length_km", "Lc_km", "flow_path_slope_m_per_m", "manning_n"]);
 
-/** The watershed fields of Nash by Lutz shown in its block (Lutz also reads the channel of step 1). */
+/** The watershed fields of Nash by Lutz shown in its block (Lutz also reads the flow path of step 1). */
 const LUTZ_BLOCK = Object.freeze(["Lc_km", "manning_n", "forest_pct", "urban_pct"]);
 
 /**
@@ -139,7 +140,7 @@ export const TC_BLOCK = Object.freeze({
 export const SLOPE_FIELDS = new Set(["mean_slope_m_per_m", "channel_slope_m_per_m", "flow_path_slope_m_per_m", "overland_slope_m_per_m"]);
 
 /** Options sent as texts; every other option is a number. */
-const TEXT_OPTIONS = new Set(["tc_method", "amc", "hietogram_type", "uh_model"]);
+const TEXT_OPTIONS = new Set(["tc_method", "amc", "hietogram_type", "uh_model", "nash_estimation"]);
 
 /** Options of `hydrograph generate` the section gives in another way (or not at all). */
 export const HIDDEN_OPTIONS = Object.freeze(["watershed", "watershed_file", "area_km2", "cn", "input_file", "value_column"]);
@@ -391,7 +392,8 @@ export function usesTc(model) {
 }
 
 /**
- * Whether Nash's n and K come from Lutz's method (`uh nash`) before the run.
+ * Whether Nash's n and K are estimated by Lutz from the watershed, in the run itself
+ * (`nash_estimation` "lutz" of `hydrograph generate`).
  *
  * @param {object} inputs the inputs
  * @returns {boolean} true for Nash by Lutz
@@ -646,8 +648,9 @@ export function handoffMissing(watershed) {
  * Kirpich the length and the slope of the longest flow path, NRCS that length and the mean
  * slope of the watershed, Giandotti the length of the main channel, the lowest and the
  * mean elevation, FAA, Kerby and Kerby–Kirpich their overland fields, Kerby–Kirpich also
- * the longest flow path), Clark R or R/tc, Nash n and K or the fields of Lutz, Snyder L
- * and Lc of the watershed (channel_length_km and Lc_km).
+ * the longest flow path), Clark R or R/tc, Nash n and K or the fields of Lutz (the length
+ * and the slope of the longest flow path, Lc and Manning's n), Snyder L and Lc of the
+ * watershed (channel_length_km and Lc_km).
  *
  * @param {object} inputs the inputs
  * @returns {{model: string|null, required: Object<string, {purpose: string, or?:
@@ -773,9 +776,9 @@ export function inputModels(commandDoc, schema, pmaxtpDoc) {
 }
 
 /**
- * The explanation (i) that shows a typical range Hydrolog serves for `hydrograph generate`
- * (and, for Lutz's area, for `uh nash`): the time step's, the tc method's, the losses' or
- * the unit hydrograph model's.
+ * The explanation (i) that shows a typical range Hydrolog serves for `hydrograph generate`:
+ * the time step's, the tc method's, the losses', the unit hydrograph model's, or Lutz's
+ * area (Nash's).
  *
  * @param {{method: string, parameter: string}} range a range of `typical_ranges`
  * @returns {string|null} the explanation's id, null for a range no explanation shows
@@ -791,7 +794,8 @@ export function rangeInfoId(range) {
 
 /**
  * The options a setting sends, as typed: only those that apply to the chosen tc, rainfall,
- * shape and model (an option that does not apply is refused by the command).
+ * shape and model (an option that does not apply is refused by the command); Nash by Lutz
+ * sends `nash_estimation` instead of n and K.
  *
  * @param {object} inputs the inputs
  * @returns {Object<string, string>} the typed values by option name
@@ -818,7 +822,9 @@ export function usedTexts(inputs) {
   }
   used.timestep_min = inputs.timestep_min;
   if (inputs.uh_model) used.uh_model = inputs.uh_model;
-  if (inputs.uh_model === "nash" && !usesLutz(inputs)) {
+  if (usesLutz(inputs)) {
+    used.nash_estimation = "lutz";
+  } else if (inputs.uh_model === "nash") {
     used.nash_n = inputs.nash_n;
     used.nash_k_min = inputs.nash_k_min;
   } else if (inputs.uh_model === "clark") {
@@ -892,9 +898,9 @@ export function noticeWarnings(notices, inputs) {
  * panel against the network schema, the options in use against the catalog and the point
  * of PMAXTP against `precip pmaxtp` (all at once, model or not), and, once a model is
  * chosen, every field it needs (requirements) and the relations Hydrolog refuses without
- * naming a field (the highest elevation above the lowest; Lutz's Lc not longer than L).
- * The warnings are those of the newest run's notices on the fields that still hold the
- * run's values under the run's setting.
+ * naming a field (the highest elevation above the lowest; Lutz's Lc not longer than L, the
+ * longest flow path). The warnings are those of the newest run's notices on the fields
+ * that still hold the run's values under the run's setting.
  *
  * @param {object} inputs the inputs
  * @param {{watershed: object, options: object, pmaxtp: object}} models from inputModels
@@ -928,9 +934,9 @@ export function checkInputs(inputs, models, last = null) {
     const text = others.length ? t(texts.requiredOr, { what, others: others.join(texts.orJoin) }) : t(texts.required, { what });
     found[name] = withReason(text, "required");
   }
-  if (usesLutz(inputs) && !found.Lc_km && !found.channel_length_km) {
+  if (usesLutz(inputs) && !found.Lc_km && !found.flow_path_length_km) {
     const lc = numberOf((inputs.watershed || {}).Lc_km);
-    const length = numberOf((inputs.watershed || {}).channel_length_km);
+    const length = numberOf((inputs.watershed || {}).flow_path_length_km);
     if (lc !== null && length !== null && lc > length) {
       found.Lc_km = withReason(t(texts.relation.lutz, { value: inputText(length) }), "maximum");
     }
@@ -957,11 +963,9 @@ export function checkInputs(inputs, models, last = null) {
  * chosen).
  *
  * @param {object} inputs the inputs
- * @param {{n: number, k_min: number}|null} [lutz] Nash's parameters by Lutz, when the
- *   model is Nash by Lutz
  * @returns {object} the options
  */
-export function toOptions(inputs, lutz = null) {
+export function toOptions(inputs) {
   const options = { watershed: sentWatershed(inputs) };
   for (const [name, text] of Object.entries(usedTexts(inputs))) {
     if (isEmpty(text)) continue;
@@ -969,71 +973,7 @@ export function toOptions(inputs, lutz = null) {
     else if (TEXT_OPTIONS.has(name)) options[name] = String(text);
     else options[name] = parseNumber(text);
   }
-  if (usesLutz(inputs) && lutz) {
-    options.nash_n = lutz.n;
-    options.nash_k_min = lutz.k_min;
-  }
   return options;
-}
-
-/**
- * The options of `uh nash` that estimate Nash's n and K by Lutz from the watershed.
- *
- * @param {object} inputs valid inputs of Nash by Lutz
- * @returns {object} the options
- */
-export function lutzOptions(inputs) {
-  const watershed = watershedObject(inputs.watershed);
-  const options = {
-    area_km2: watershed.area_km2,
-    lutz_length_km: watershed.channel_length_km,
-    lutz_centroid_length_km: watershed.Lc_km,
-    lutz_slope_m_per_m: watershed.channel_slope_m_per_m,
-    lutz_manning_n: watershed.manning_n,
-  };
-  if (watershed.forest_pct !== undefined) options.lutz_forest_pct = watershed.forest_pct;
-  if (watershed.urban_pct !== undefined) options.lutz_urban_pct = watershed.urban_pct;
-  const step = numberOf(inputs.timestep_min);
-  if (step !== null) options.timestep_min = step;
-  return options;
-}
-
-/** The watershed field each option of Lutz's `uh nash` run comes from. */
-export const LUTZ_SOURCES = Object.freeze({
-  area_km2: "area_km2",
-  lutz_length_km: "channel_length_km",
-  lutz_centroid_length_km: "Lc_km",
-  lutz_slope_m_per_m: "channel_slope_m_per_m",
-  lutz_manning_n: "manning_n",
-  lutz_forest_pct: "forest_pct",
-  lutz_urban_pct: "urban_pct",
-  timestep_min: "timestep_min",
-});
-
-/**
- * Hydrolog's notices of a shown run, each once: those of Lutz's `uh nash` first, with the
- * field they name (`details.field`, an option of `uh nash`) as the panel names it
- * (LUTZ_SOURCES), then those of `hydrograph generate`.
- *
- * @param {{envelope: object, lutzNotices?: object[]}|null} run the shown run
- * @returns {object[]} the notices
- */
-export function runNotices(run) {
-  if (!run) return [];
-  const lutz = (run.lutzNotices || []).map((notice) => {
-    const details = (notice && notice.details) || {};
-    if (typeof details.field !== "string" || !Object.hasOwn(LUTZ_SOURCES, details.field)) return notice;
-    return { ...notice, details: { ...details, field: LUTZ_SOURCES[details.field] } };
-  });
-  const seen = new Set();
-  const notices = [];
-  for (const notice of [...lutz, ...((run.envelope && run.envelope.notices) || [])]) {
-    const key = JSON.stringify([notice.code, notice.message, notice.details || null]);
-    if (seen.has(key)) continue;
-    seen.add(key);
-    notices.push(notice);
-  }
-  return notices;
 }
 
 /** The options of the result's `uh_parameters`, by the name of their field in the panel. */
@@ -1051,7 +991,9 @@ const UH_PARAMETERS = Object.freeze({
  * The values the (i) explanations and the notes check against Hydrolog's ranges, by name:
  * the watershed's numbers and the numbers of the options in use; with a result, what it ran
  * with (the UH's parameters, λ, tc and the time step, defaults included) and the unit
- * hydrograph's time to peak, of which the time step's range is a share.
+ * hydrograph's time to peak, of which the time step's range is a share. Nash's n and K
+ * that Lutz estimated are left out: as Hydrolog, the GUI checks only given ones against
+ * their ranges.
  *
  * @param {object} inputs the inputs
  * @param {object|null} [result] the result of `hydrograph generate` for these inputs
@@ -1072,7 +1014,9 @@ export function checkedValues(inputs, result = null) {
   }
   if (result) {
     const parameters = result.uh_parameters || {};
+    const estimated = result.nash_estimation === "lutz";
     for (const [name, key] of Object.entries(UH_PARAMETERS)) {
+      if (estimated && (name === "nash_n" || name === "nash_k_min")) continue;
       if (typeof parameters[key] === "number") values[name] = parameters[key];
     }
     if (typeof result.ia_coefficient === "number") values.ia_coefficient = result.ia_coefficient;

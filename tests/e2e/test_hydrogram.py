@@ -9,10 +9,12 @@ PMAXTP fetches the depth of the point, p and the duration once (``precip pmaxtp`
 answered from the table recorded at the outlet: 101,82 mm and „54,20 m³/s”), shows it
 read-only, kept with the inputs; a point outside the atlas stands on its field and
 an unreachable IMGW-PIB on the depth, with „Pobierz ponownie”. Switching the tc method,
-AMC and the unit hydrograph model reproduces the mockup's runs (Nash by Lutz through
-``uh nash``); only the chosen model's fields exist and are sent; choosing a model marks
-the fields it lacks, a field no model reads may stay empty, and a value outside its
-typical range is a warning on its field (from Hydrolog's notice) while the run goes on.
+AMC and the unit hydrograph model reproduces the mockup's runs (Nash by Lutz in one run
+of ``hydrograph generate`` with ``nash_estimation``, which shows the peak that ``uh
+nash`` followed by ``hydrograph generate`` gave); only the chosen model's fields exist
+and are sent; choosing a model marks the fields it lacks, a field no model reads may
+stay empty, and a value outside its typical range is a warning on its field (from
+Hydrolog's notice) while the run goes on.
 A Nash unit hydrograph of years (n = 200, K = 1500 min) draws thinned and „Wyczyść”
 drops it; a result that fails to draw is an error in its place, never the last result.
 An invalid CN stands on its field and keeps the last result, marked; ten fast edits send
@@ -108,19 +110,22 @@ KAMIENNIK = {
 }
 LUTZ_OPTIONS = {
     "area_km2": 37.22,
-    "lutz_length_km": 14.78,
+    "lutz_length_km": 15.88,
     "lutz_centroid_length_km": 6.76,
-    "lutz_slope_m_per_m": 0.0142,
+    "lutz_slope_m_per_m": 0.0114,
     "lutz_manning_n": 0.035,
     "lutz_forest_pct": 57.4,
     "lutz_urban_pct": 1.0,
     "timestep_min": 10,
 }
+"""The example's Nash by Lutz as ``uh nash`` takes it (L and J of the longest flow path,
+which ``nash_estimation`` reads): the first of the two runs the page made before."""
 # What the page writes in the KPI tiles (Qmax, time to peak, volume) for the mockup's
 # runs (its #hg-data, 6 tc methods x AMC I-III x 4 models), by (model, tc method, AMC),
 # as Hydrolog computes them: tc from the inputs each method's source defines (Kirpich
 # and NRCS from the longest flow path), Snyder's peak since its unit hydrograph peaks at
-# qpR (the mockup's tc and Snyder's 29,14 came before those changes).
+# qpR, Nash by Lutz from L and J of the longest flow path (the mockup's tc and Snyder's
+# 29,14 came before those changes).
 MOCKUP = {
     ("scs", "kirpich", "II"): ("57,88", "6:40", "1 046 713"),
     ("scs", "nrcs", "II"): ("41,64", "9:00", "1 046 957"),
@@ -129,7 +134,7 @@ MOCKUP = {
     ("scs", "kirpich", "III"): ("111,08", "6:00", "2 112 788"),
     ("scs", "kirpich", "I"): ("12,19", "7:50", "193 986"),
     ("clark", "kirpich", "II"): ("52,74", "7:10", "1 046 551"),
-    ("nash", None, "II"): ("40,28", "8:50", "1 046 544"),
+    ("nash", None, "II"): ("37,48", "9:10", "1 046 543"),
     ("snyder", None, "II"): ("27,46", "11:00", "1 046 551"),
 }
 # Scroll containers that must not scroll sideways: the page and an open sheet.
@@ -294,6 +299,11 @@ def one_line(shown: str) -> str:
 def comma(value: float, digits: int = 2) -> str:
     """Return ``value`` with ``digits`` decimals and a comma, as the page writes it."""
     return f"{value:.{digits}f}".replace(".", ",")
+
+
+def short(value: float) -> str:
+    """Return ``value`` to four significant digits, as the page shows n and K."""
+    return input_text(float(f"{value:.4g}"))
 
 
 def download(page: Page, trigger: Locator) -> tuple[str, bytes]:
@@ -525,29 +535,47 @@ def test_the_tc_method_amc_and_model_reproduce_the_mockups_runs(tab: Tab) -> Non
     choose(page, "hg-uh-label", "Clark")
     assert check("clark", "kirpich", "II")["clark_r_tc_ratio"] == 0.5
 
-    # Nash by Lutz: `uh nash` first, its n and K go on
+    # Nash by Lutz: one run of `hydrograph generate` estimates n and K from the
+    # watershed (`nash_estimation`), with no `uh nash` before it
     choose(page, "hg-uh-label", "Nash")
     sent = check("nash", None, "II")
-    assert runs.lutz[-1] == LUTZ_OPTIONS
+    assert runs.lutz == []
+    assert sent["nash_estimation"] == "lutz"
+    assert not {"nash_n", "nash_k_min"} & set(sent)
     assert sent["watershed"] == {**SENT, **{name: EXAMPLE[name] for name in LUTZ_BLOCK}}
+    # The peak shown is the library's, and the one the two runs of before gave: `uh
+    # nash` by Lutz, then `hydrograph generate` with its n and K
+    result = shows_peak(page, sent)
     parameters = run_command("uh nash", LUTZ_OPTIONS).to_dict()["result"]["parameters"]
-    assert (sent["nash_n"], sent["nash_k_min"]) == (
-        parameters["n"],
-        parameters["k_min"],
+    before = expected(
+        {
+            **{key: value for key, value in sent.items() if key != "nash_estimation"},
+            "nash_n": parameters["n"],
+            "nash_k_min": parameters["k_min"],
+        }
     )
-    expect(field(page, "nash_n")).to_have_value("3,631")
-    expect(field(page, "nash_k_min")).to_have_value("82,35")
+    assert comma(before["peak_discharge_m3s"]) == comma(result["peak_discharge_m3s"])
+    assert before["time_to_peak_min"] == result["time_to_peak_min"]
+    # n and K, read-only, are the shown result's
+    for name, key in [("nash_n", "n"), ("nash_k_min", "k_min")]:
+        expect(field(page, name)).to_have_value(short(result["uh_parameters"][key]))
+        expect(field(page, name)).not_to_be_editable()
     expect(page.locator(f"{RIGHT} .notes li").first).to_have_text(
         re.compile("Model Nash nie używa tc")
     )
+    # Estimated n and K are not checked against the ranges of given ones, by Hydrolog
+    # or the page: Nash's confirmation names Lutz's area only
+    expect(
+        page.locator(f'{RIGHT} [data-notes="gui"] li').filter(has_text="Nash:")
+    ).to_contain_text("Nash: A (Lutz) = 37,22\u00a0km² w zakresie stosowania.")
     # n and K typed instead: the copy of Lutz's, rounded as shown
     with page.expect_request(lambda request: RUN in request.url) as asked:
         choose(page, "hg-nash-source-label", "Podane n i K")
     given = asked.value.post_data_json
     assert isinstance(given, dict)
-    assert (given["nash_n"], given["nash_k_min"]) == (3.631, 82.35)
-    assert given["watershed"] == SENT
-    shows(page, "40,28", "8:50", "1 046 544")
+    assert (given["nash_n"], given["nash_k_min"]) == (3.61, 92.13)
+    assert "nash_estimation" not in given and given["watershed"] == SENT
+    shows_peak(page, given)
 
     choose(page, "hg-uh-label", "Snyder")
     sent = check("snyder", None, "II")
@@ -620,50 +648,34 @@ def test_choosing_a_model_marks_the_fields_it_lacks(tab: Tab) -> None:
     invalid = page.locator(f'{LEFT} [aria-invalid="true"]')
     expect(invalid).to_have_count(0)
 
-    # Nash by Lutz needs Lc and Manning's n, which the watershed lacks: exactly those
+    # Nash by Lutz reads L and J of the longest flow path, for which the channel the
+    # watershed gives does not stand in, then Lc and Manning's n: exactly those
     choose(page, "hg-uh-label", "Nash")
-    expect(invalid).to_have_count(2)
-    assert invalid.evaluate_all(IDS) == ["hg-Lc_km", "hg-manning_n"]
-    expect(message(page, "Lc_km")).to_have_text(
-        "Podaj wartość: potrzebna dla metody Lutza (uh nash) · required"
+    expect(invalid).to_have_count(4)
+    assert invalid.evaluate_all(IDS) == [
+        "hg-flow_path_length_km",
+        "hg-flow_path_slope_m_per_m",
+        "hg-Lc_km",
+        "hg-manning_n",
+    ]
+    expect(message(page, "flow_path_length_km")).to_have_text(
+        "Podaj wartość: potrzebna dla metody Lutza · required"
     )
-    expect(page.locator(BADGE)).to_have_text("Dane niepełne: Lc_km")
+    expect(page.locator(BADGE)).to_have_text("Dane niepełne: flow_path_length_km")
     expect(page.locator(f"{LEFT} .calc-state")).to_have_text(
-        "Dane niepełne: Długość do środka ciężkości"
+        "Dane niepełne: Długość najdłuższej drogi spływu"
     )
     missing = page.locator(f'{LEFT} [data-summary="missing"]')
     expect(missing).to_have_text(
-        "Brakuje: Długość do środka ciężkości (krok 3), Szorstkość koryta (krok 3)"
+        "Brakuje: Długość najdłuższej drogi spływu (krok 1), Spadek najdłuższej drogi"
+        " spływu (krok 1), Długość do środka ciężkości (krok 3), Szorstkość koryta"
+        " (krok 3)"
     )
     missing.get_by_role("button", name="Szorstkość koryta").click()
     expect(field(page, "manning_n")).to_be_focused()
-    # The fields of step 1 that Lutz reads say so
-    expect(page.locator(f'{LEFT} [data-field="channel_length_km"] .need')).to_have_text(
-        "wymagane dla metody Lutza (uh nash)"
-    )
-    # Lutz refuses a centroid farther than the channel is long: said before any run
-    field(page, "Lc_km").fill("20")
-    expect(message(page, "Lc_km")).to_have_text(
-        "Nie może być większa od długości cieku głównego (14,78 km): "
-        "tego wymaga metoda Lutza · maximum"
-    )
-    page.wait_for_timeout(600)
-    assert runs.generate == [] and runs.lutz == []
-
-    field(page, "Lc_km").fill("6,76")
-    field(page, "manning_n").fill("0,035")
-    expect(invalid).to_have_count(0)
-    expect(page.locator(BADGE)).to_have_text("Wynik aktualny")
-    assert runs.lutz[-1] == {
-        key: value
-        for key, value in LUTZ_OPTIONS.items()
-        if key not in {"lutz_forest_pct", "lutz_urban_pct"}
-    }
-    shows_peak(page, runs.generate[-1])
 
     # SCS by Kirpich reads the longest flow path, nothing in its place: with the channel
     # given, its length and slope are asked for, no other way named, and nothing runs
-    before = len(runs.generate)
     choose(page, "hg-uh-label", "SCS")
     expect(invalid).to_have_count(2)
     assert invalid.evaluate_all(IDS) == [
@@ -675,7 +687,7 @@ def test_choosing_a_model_marks_the_fields_it_lacks(tab: Tab) -> None:
     )
     expect(page.locator(BADGE)).to_have_text("Dane niepełne: flow_path_length_km")
     page.wait_for_timeout(600)
-    assert len(runs.generate) == before
+    assert runs.generate == []
     field(page, "flow_path_length_km").fill("15,88")
     with page.expect_request(lambda request: RUN in request.url) as asked:
         field(page, "flow_path_slope_m_per_m").fill("0,0114")
@@ -686,6 +698,45 @@ def test_choosing_a_model_marks_the_fields_it_lacks(tab: Tab) -> None:
         sent["watershed"]["flow_path_slope_m_per_m"],
     ) == (15.88, 0.0114)
     shows_peak(page, sent)
+
+    # Back to Nash by Lutz: Lc and Manning's n are left; the fields of step 1 that Lutz
+    # reads say so, the channel's do not
+    choose(page, "hg-uh-label", "Nash")
+    expect(invalid).to_have_count(2)
+    assert invalid.evaluate_all(IDS) == ["hg-Lc_km", "hg-manning_n"]
+    needs = page.locator(f"{LEFT} .frow .need")
+    expect(needs).to_have_text(
+        [
+            "wymagane dla modelu Nasha",
+            "wymagane dla strat SCS-CN",
+            "wymagane dla metody Lutza",
+            "wymagane dla metody Lutza",
+        ]
+    )
+    assert needs.evaluate_all(
+        "items => items.map((item) => item.closest('.frow').dataset.field)"
+    ) == ["area_km2", "cn", "flow_path_length_km", "flow_path_slope_m_per_m"]
+    # Lutz refuses a centroid farther than the flow path is long: said before any run
+    before = len(runs.generate)
+    field(page, "manning_n").fill("0,035")
+    field(page, "Lc_km").fill("20")
+    expect(message(page, "Lc_km")).to_have_text(
+        "Nie może być większa od długości najdłuższej drogi spływu (15,88 km): "
+        "tego wymaga metoda Lutza · maximum"
+    )
+    page.wait_for_timeout(600)
+    assert len(runs.generate) == before
+
+    # Lc given: one run of `hydrograph generate` estimates n and K, none of `uh nash`
+    with page.expect_request(lambda request: RUN in request.url) as asked:
+        field(page, "Lc_km").fill("6,76")
+    sent = asked.value.post_data_json
+    assert isinstance(sent, dict)
+    assert sent["nash_estimation"] == "lutz"
+    assert not {"nash_n", "nash_k_min"} & set(sent)
+    expect(invalid).to_have_count(0)
+    shows_peak(page, sent)
+    assert runs.lutz == []
 
 
 def test_fields_no_model_reads_may_stay_empty(tab: Tab) -> None:
@@ -1047,9 +1098,9 @@ def test_requirements_follow_the_model_and_the_tc_method(tab: Tab) -> None:
         "cn": "losses",
         "total_mm": "hietogram",
         "duration_min": "hietogram",
-        "channel_length_km": "lutz",
+        "flow_path_length_km": "lutz",
         "Lc_km": "lutz",
-        "channel_slope_m_per_m": "lutz",
+        "flow_path_slope_m_per_m": "lutz",
         "manning_n": "lutz",
     }
     assert got["given"] == {
@@ -1198,6 +1249,10 @@ def test_the_cli_line_run_by_the_cli_gives_the_same_peak(tab: Tab) -> None:
             }""",
             arg=line,
         )
+        # Nash by Lutz (the example's choice): the command estimates n and K itself
+        if model == "Nash":
+            assert "--nash-estimation lutz" in line
+            assert not re.search(r"--nash-(n|k-min) ", line)
         words = shlex.split(line)
         done = subprocess.run(
             [sys.executable, "-m", "hydrolog.cli", *words[1:], "--json"],
@@ -1491,12 +1546,7 @@ def test_the_explanations_show_exactly_the_ranges_hydrolog_serves(tab: Tab) -> N
     shown: dict[str, dict[str, Any]] = page.evaluate(EXPLAINED)
     documents = {
         command: served(command)
-        for command in [
-            "hydrograph generate",
-            "tc watershed",
-            "uh nash",
-            "stats flood-frequency",
-        ]
+        for command in ["hydrograph generate", "tc watershed", "stats flood-frequency"]
     }
     every = [found for ranges in documents.values() for found in ranges]
     schema = page.request.get(tab.base + "api/schemas/hydrolog-network-1.schema.json")
@@ -1518,17 +1568,22 @@ def test_the_explanations_show_exactly_the_ranges_hydrolog_serves(tab: Tab) -> N
                 )
             else:
                 assert found in every, (info, found)
-    # Nothing left out: every range of the documents the sections check (of `uh nash`
-    # Lutz's area; Nash's n and K are those of `hydrograph generate`)
+    # Nothing left out: every range of the documents the sections check
     registered = [found for entry in shown.values() for found in entry["ranges"]]
-    lutz = [found for found in documents["uh nash"] if found["method"] == "lutz"]
     for found in [
         *documents["hydrograph generate"],
         *documents["tc watershed"],
         *documents["stats flood-frequency"],
-        *lutz,
     ]:
         assert found in registered, found
+    # Lutz's area, which `hydrograph generate` serves, in Nash's explanation
+    lutz = [
+        found for found in documents["hydrograph generate"] if found["method"] == "lutz"
+    ]
+    assert lutz
+    assert lutz == [
+        found for found in shown["uh-nash"]["ranges"] if found["method"] == "lutz"
+    ]
 
     # One row per range, with its source in Polish; the four unit hydrograph models
     # serve one range of the time step, listed once
@@ -1776,8 +1831,7 @@ def test_the_state_gives_the_options_of_the_mockups_calls(tab: Tab) -> None:
           });
           return {
             kamiennik: s.toOptions(base),
-            nash: s.toOptions(variant({uh_model: 'nash'}), {n: 3.5, k_min: 80}),
-            lutz: s.lutzOptions(variant({uh_model: 'nash'})),
+            nash: s.toOptions(variant({uh_model: 'nash'})),
             given: s.toOptions(variant({
               uh_model: 'nash', nash_source: 'given', nash_n: '3,6', nash_k_min: '82',
             })),
@@ -1802,6 +1856,10 @@ def test_the_state_gives_the_options_of_the_mockups_calls(tab: Tab) -> None:
             lutzMissing: check({
               uh_model: 'nash', watershed: {...read.texts, Lc_km: ''},
             }),
+            // Lc against L, the longest flow path (15,88 km), not the channel (14,78)
+            lutzLc: ['15', '16'].map((lc) => check({
+              uh_model: 'nash', watershed: {...read.texts, Lc_km: lc},
+            }).errors),
             seriesBad: check({rain_source: 'series', values: '1; x'}),
             warned: s.checkInputs(steep, models, {inputs: steep, notices: [slope]}),
             changed: check({}, {inputs: steep, notices: [slope]}),
@@ -1824,10 +1882,8 @@ def test_the_state_gives_the_options_of_the_mockups_calls(tab: Tab) -> None:
         **{key: KAMIENNIK[key] for key in KAMIENNIK if key != "tc_method"},
         "watershed": {**SENT, **{name: EXAMPLE[name] for name in LUTZ_BLOCK}},
         "uh_model": "nash",
-        "nash_n": 3.5,
-        "nash_k_min": 80,
+        "nash_estimation": "lutz",
     }
-    assert got["lutz"] == LUTZ_OPTIONS
     assert (got["given"]["nash_n"], got["given"]["nash_k_min"]) == (3.6, 82)
     assert got["given"]["watershed"] == SENT
     assert "tc_method" not in got["snyder"]
@@ -1871,8 +1927,15 @@ def test_the_state_gives_the_options_of_the_mockups_calls(tab: Tab) -> None:
         "tc_min": "Podaj wartość: potrzebna dla tc podanego ręcznie · required"
     }
     assert got["lutzMissing"]["errors"] == {
-        "Lc_km": "Podaj wartość: potrzebna dla metody Lutza (uh nash) · required"
+        "Lc_km": "Podaj wartość: potrzebna dla metody Lutza · required"
     }
+    assert got["lutzLc"] == [
+        {},
+        {
+            "Lc_km": "Nie może być większa od długości najdłuższej drogi spływu"
+            " (15,88 km): tego wymaga metoda Lutza · maximum"
+        },
+    ]
     assert list(got["seriesBad"]["errors"]) == ["values"]
     # A run's notice stands on its field while the field and the setting are the run's
     assert got["warned"] == {

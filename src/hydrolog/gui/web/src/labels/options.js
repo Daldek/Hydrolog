@@ -81,6 +81,7 @@ export const options = {
   method: "Metoda",
   min_duration_days: "Najkrótszy ciąg",
   n: "Liczba zbiorników n",
+  nash_estimation: "Estymacja n i K",
   nash_k_min: "Nash: stała K",
   nash_n: "Nash: liczba zbiorników n",
   network: "Sieć",

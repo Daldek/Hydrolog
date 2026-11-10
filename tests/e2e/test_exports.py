@@ -18,7 +18,9 @@ hand-off lists why. The report downloads as Markdown from ``report generate``; �
 do druku” prints on A4 through ``css/print.css`` in the light theme with every part
 open. The browser's check of a hand-off judges documents as jsonschema does, the mapping
 of Hydrogram's options to the node computes as ``hydrograph generate`` for every
-setting, and a PMAXTP rainfall handed without a point opens as „Hietogram”.
+setting, and a PMAXTP rainfall handed without a point opens as „Hietogram”. The
+hand-off of Nash by Lutz carries ``nash_estimation`` instead of n and K, and one written
+before it, with Lutz's n and K of ``uh nash``, opens with them given.
 """
 
 import copy
@@ -42,6 +44,7 @@ from tests.e2e.conftest import (
     PMAXTP_RUN,
     PMAXTP_TABLE,
     Tab,
+    input_text,
     kamiennik_inputs,
     load_network,
     open_part,
@@ -1121,6 +1124,7 @@ def test_the_mapping_computes_as_hydrograph_generate_for_every_setting(
             "nash_n": "3,2",
             "nash_k_min": "41,5",
         },
+        {"uh_model": "nash"},
         {"uh_model": "snyder"},
         {
             "rain_source": "design",
@@ -1216,53 +1220,13 @@ def test_the_mapping_computes_as_hydrograph_generate_for_every_setting(
     assert pointless["source"] == "design"
     assert pointless["back"] == pointless["options"]
 
-    # Nash by Lutz: n and K of `uh nash` travel with the node, Lutz in the provenance
-    nash = {"uh_model": "nash"}
-    lutz = page.evaluate(
-        """async ([example, setting, stored]) => {
-          const state = await import('./src/sections/hydrogram/state.js');
-          const watershed = state.readWatershed(example).texts;
-          const start = { ...stored, watershed, ...setting };
-          return state.lutzOptions(state.normalize(start));
-        }""",
-        [EXAMPLE, nash, kamiennik_inputs()],
-    )
-    parameters = run_command("uh nash", lutz).to_dict()["result"]["parameters"]
-    item = page.evaluate(
-        """async ([example, setting, parameters, stored]) => {
-          const state = await import('./src/sections/hydrogram/state.js');
-          const mapping = await import('./src/handoff/mapping.js');
-          const { buildHandoff } = await import('./src/handoff/handoff.js');
-          const watershed = state.readWatershed(example).texts;
-          const start = { ...stored, watershed, ...setting };
-          const inputs = state.normalize(start);
-          const options = state.toOptions(inputs, parameters);
-          const provenance = mapping.hydrogramProvenance(inputs);
-          const payload = mapping.hydrogramPayload(options, 'Kamiennik');
-          const doc = buildHandoff({
-            subject: 'Kamiennik', provenance, payload, version: 'test',
-          });
-          const source = mapping.hydrogramInputs(doc).nash_source;
-          return { options, provenance, payload, source };
-        }""",
-        [EXAMPLE, nash, parameters, kamiennik_inputs()],
-    )
-    assert item["provenance"]["runoff"] == {
-        "source": "hydrolog",
-        "command": "uh nash",
-        "method": "lutz",
-    }
-    assert item["payload"]["nodes"][0]["runoff"]["nash_n"] == parameters["n"]
-    assert item["source"] == "lutz"
-    generated = run_command("hydrograph generate", item["options"]).to_dict()["result"]
-    assert math.isclose(
-        outlet(item["payload"])["peak_m3s"],
-        generated["peak_discharge_m3s"],
-        rel_tol=1e-9,
-    )
-
     # Hydrograf's Nash from tc (`NashIUH.from_tc`, removed) opens as the given n and K
     # of its runoff, even with Lutz's inputs in the watershed
+    lutz = mapped[settings.index({"uh_model": "nash"})]
+    payload = copy.deepcopy(lutz["payload"])
+    runoff = payload["nodes"][0]["runoff"]
+    del runoff["nash_estimation"]
+    runoff.update(nash_n=3.2, nash_k_min=41.5)
     from_tc = page.evaluate(
         """async ([payload, provenance]) => {
           const state = await import('./src/sections/hydrogram/state.js');
@@ -1276,9 +1240,9 @@ def test_the_mapping_computes_as_hydrograph_generate_for_every_setting(
           return { source: inputs.nash_source, back };
         }""",
         [
-            item["payload"],
+            payload,
             {
-                **item["provenance"],
+                "watershed": {"source": "user"},
                 "runoff": {
                     "source": "hydrograf",
                     "nash_estimation": "from_tc",
@@ -1289,9 +1253,103 @@ def test_the_mapping_computes_as_hydrograph_generate_for_every_setting(
         ],
     )
     assert from_tc["source"] == "given"
-    assert (from_tc["back"]["nash_n"], from_tc["back"]["nash_k_min"]) == (
+    assert (from_tc["back"]["nash_n"], from_tc["back"]["nash_k_min"]) == (3.2, 41.5)
+    assert "nash_estimation" not in from_tc["back"]
+
+
+def test_a_handoff_of_nash_by_lutz_carries_the_estimation_not_n_and_k(
+    tab: Tab, tmp_path: Path
+) -> None:
+    seed_hydrogram(tab, kamiennik_inputs(uh_model="nash"))
+    with tab.page.expect_response(lambda answer: RUN in answer.url) as answered:
+        tab.open("#hydrogram")
+    page = tab.page
+    sent: dict[str, Any] = answered.value.request.post_data_json or {}
+    result = answered.value.json()["result"]
+    assert sent["nash_estimation"] == "lutz"
+    expect(page.locator(BADGE)).to_have_text("Wynik aktualny")
+
+    # The node says how n and K are estimated, without them, and the provenance names
+    # no `uh nash`; `route network` estimates them again from the node's watershed
+    _, data = download(page, handoff_button(page, HG, "file"))
+    doc = json.loads(data)
+    valid(doc)
+    assert doc["payload"]["nodes"][0]["runoff"] == {
+        "model": "curve-number",
+        "amc": "II",
+        "uh_model": "nash",
+        "nash_estimation": "lutz",
+    }
+    assert set(doc["provenance"]) == {"rainfall", "watershed"}
+    routed = outlet(doc["payload"])
+    assert math.isclose(routed["peak_m3s"], result["peak_discharge_m3s"], rel_tol=1e-9)
+    assert routed["time_to_peak_min"] == result["time_to_peak_min"]
+
+    # A hand-off written before `nash_estimation` carries the n and K that `uh nash`
+    # estimated by Lutz (from the main channel then), named in its provenance: they open
+    # as given, the same numbers
+    parameters = run_command(
+        "uh nash",
+        {
+            "area_km2": EXAMPLE["area_km2"],
+            "lutz_length_km": EXAMPLE["channel_length_km"],
+            "lutz_centroid_length_km": EXAMPLE["Lc_km"],
+            "lutz_slope_m_per_m": EXAMPLE["channel_slope_m_per_m"],
+            "lutz_manning_n": EXAMPLE["manning_n"],
+            "lutz_forest_pct": EXAMPLE["forest_pct"],
+            "lutz_urban_pct": EXAMPLE["urban_pct"],
+            "timestep_min": 10,
+        },
+    ).to_dict()["result"]["parameters"]
+    given = {key: value for key, value in sent.items() if key != "nash_estimation"}
+    given.update(nash_n=parameters["n"], nash_k_min=parameters["k_min"])
+    before = run_command("hydrograph generate", given).to_dict()["result"]
+    old = copy.deepcopy(doc)
+    runoff = old["payload"]["nodes"][0]["runoff"]
+    del runoff["nash_estimation"]
+    runoff.update(nash_n=parameters["n"], nash_k_min=parameters["k_min"])
+    old["provenance"]["runoff"] = {
+        "source": "hydrolog",
+        "command": "uh nash",
+        "method": "lutz",
+    }
+    old["result"] = {
+        "command": "hydrograph generate",
+        **{
+            key: before[key]
+            for key in ("peak_discharge_m3s", "time_to_peak_min", "total_volume_m3")
+        },
+    }
+    valid(old)
+    saved = tmp_path / "przed.handoff.json"
+    saved.write_text(json.dumps(old), encoding="utf-8")
+    with page.expect_request(
+        lambda request: (
+            RUN in request.url and "nash_n" in (request.post_data_json or {})
+        )
+    ) as asked:
+        load_file(page, HG, saved)
+    chosen = page.locator(
+        '[aria-labelledby="hg-nash-source-label"] [aria-checked="true"]'
+    )
+    expect(chosen).to_have_text("Podane n i K")
+    expect(page.locator("#hg-nash_n")).to_have_value(input_text(parameters["n"]))
+    expect(page.locator("#hg-nash_k_min")).to_have_value(
+        input_text(parameters["k_min"])
+    )
+    resent = asked.value.post_data_json
+    assert isinstance(resent, dict)
+    assert (resent["nash_n"], resent["nash_k_min"]) == (
         parameters["n"],
         parameters["k_min"],
+    )
+    assert "nash_estimation" not in resent
+    minutes = int(before["time_to_peak_min"])
+    shows(
+        page,
+        f"{before['peak_discharge_m3s']:.2f}".replace(".", ","),
+        f"{minutes // 60}:{minutes % 60:02d}",
+        f"{before['total_volume_m3']:,.0f}".replace(",", " "),
     )
 
 

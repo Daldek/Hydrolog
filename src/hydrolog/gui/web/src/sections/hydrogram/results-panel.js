@@ -1,15 +1,14 @@
 // The results of „Hydrogram zlewni”. In the centre: the hyetograph above the hydrograph, the
 // cumulative rainfall and the unit hydrograph, or the table of the series. In the panel
 // Wyniki: the peak, the time to peak, the volume and the runoff coefficient; the notes (the
-// GUI's confirmations of Hydrolog's typical ranges, then Hydrolog's notices in Polish, those
-// of Lutz's `uh nash` included); the balance of the rainfall; the parameters of the
-// calculation; the exports (with the Markdown report and the print view) and the command
-// line; „Przekazanie”, the hand-off nogat-handoff/1 of the shown run and a received
+// GUI's confirmations of Hydrolog's typical ranges, then Hydrolog's notices in Polish); the
+// balance of the rainfall; the parameters of the calculation (Nash's n and K as given or as
+// Lutz estimated them); the exports (with the Markdown report and the print view) and the
+// command line; „Przekazanie”, the hand-off nogat-handoff/1 of the shown run and a received
 // producer's result beside it (handoff/handoff-panel.js). `run` holds the shown result
-// ({inputs, options, envelope, lutz, lutzNotices, values}: its inputs and options, its
-// envelope, Lutz's estimate and the notices of its run, and the values its notes checked),
-// `spec` its export spec (export.js) and `current` the section's inputs now (with the record
-// of a received hand-off, `handoff`).
+// ({inputs, options, envelope, values}: its inputs, the options it sent, its envelope and
+// the values its notes checked), `spec` its export spec (export.js) and `current` the
+// section's inputs now (with the record of a received hand-off, `handoff`).
 
 import { Chart } from "../../charts/chart.js";
 import { richText } from "../../controls/field.js";
@@ -26,7 +25,7 @@ import { DataTable } from "../../ui/table.js";
 import { cumulativeSpec, mainSpec, uhSpec } from "./charts.js";
 import { durationText, shortText } from "./data-panel.js";
 import { guiNotes } from "./notes.js";
-import { COMMAND, PEAK_DEFAULTS, isEmpty, rainDuration, runNotices, usesLutz, usesTc } from "./state.js";
+import { COMMAND, PEAK_DEFAULTS, isEmpty, rainDuration, usesLutz, usesTc } from "./state.js";
 
 /** Icons of the notes by level (the mockup's). */
 const ICONS = {
@@ -301,7 +300,7 @@ function Balance({ result }) {
  * @returns {object} the table
  */
 function Parameters({ run }) {
-  const { inputs, lutz } = run;
+  const { inputs } = run;
   const result = run.envelope.result;
   const parameters = result.uh_parameters || {};
   const rows = [];
@@ -318,7 +317,6 @@ function Parameters({ run }) {
     const by = usesLutz(inputs) ? ` · ${texts.results.paramSyms.lutz}` : "";
     rows.push(["n", rowTexts.n, `n${by}`, shortText(parameters.n), "–"]);
     rows.push(["k", rowTexts.k, `K${by}`, shortText(parameters.k_min), "min"]);
-    if (usesLutz(inputs) && lutz && typeof lutz.lag_time_min === "number") rows.push(["lag", rowTexts.lag, "t_lag = n·K", num(lutz.lag_time_min, 1), "min"]);
   }
   if (result.uh_model === "snyder") {
     rows.push(["snyderL", rowTexts.snyderL, "L", inputText(parameters.length_km), "km"]);
@@ -359,7 +357,7 @@ export function ResultsPanel({ run, spec, stale, current = null }) {
   if (!run) return html`<p class="muted">${texts.center.noResult}</p>`;
   const { envelope, inputs, values } = run;
   const result = envelope.result;
-  const notices = runNotices(run);
+  const notices = envelope.notices || [];
   const notes = guiNotes({ inputs, values, result, notices });
   return html`
     <${StaleNote} stale=${stale} />
@@ -394,7 +392,6 @@ export function ResultsPanel({ run, spec, stale, current = null }) {
       <${Part} id="exports" title=${texts.results.exports} meta=${texts.results.exportsMeta} open=${false}>
         <${ExportButtons} spec=${spec} />
         <${CommandLine} command=${COMMAND} options=${run.options} title=${false} />
-        ${usesLutz(inputs) ? html`<p class="note">${richText(texts.results.cliNote)}</p>` : null}
       <//>
       <${Part} id="handoff" title=${handoffLabels.export.title} meta=${handoffLabels.export.meta} open=${Boolean(current && current.handoff)}>
         <${HydrogramHandoff} run=${run} current=${current} subject=${spec.subject} rain=${rainLabel(inputs, result)} />
