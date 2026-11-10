@@ -230,6 +230,8 @@ The author's decision of 2026-11-04: with PMAXTP a person gives the point, the p
 
 ### Changed
 
+- Obserwator pin (extra `pmaxtp`, `[tool.uv.sources]`) moved from candidate-1 `1ee5457` to commit `f9f4ee7927ba520d3e82d3e289872090ae24e2ec` of Nogat's release set candidate-2; `uv.lock` updated.
+
 - GUI: the cards „Eksport” and „Przekazanie” of the panel Wyniki (Hydrogram zlewni, Sieć; „Eksport” also in Statystyka) are collapsed by default; „Przekazanie” opens itself when a received hand-off brings a producer's result to compare.
 
 #### Breaking changes

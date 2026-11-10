@@ -113,7 +113,7 @@ version = {attr = "hydrolog.__version__"}
 
 [tool.uv.sources]
 # Obserwator is not tagged yet: the commit of Nogat's release set candidate-1.
-obserwator = { git = "https://github.com/Daldek/Obserwator.git", rev = "1ee54573453473392f21e2c8bb34f76e4976e03f" }
+obserwator = { git = "https://github.com/Daldek/Obserwator.git", rev = "f9f4ee7927ba520d3e82d3e289872090ae24e2ec" }
 
 [dependency-groups]
 dev = [
