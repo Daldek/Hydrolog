@@ -328,6 +328,16 @@ Left, none of it blocking the merge:
 - Not covered by the browser tests: the long press on touch, „Dodaj węzeł” of step 2 (its cell is unit-tested), Shift+F10 and the Menu key, and the history's limit in the page (unit-tested). The node menu can cover part of the picture.
 - The guide's pictures are still taken by hand (Playwright and a reduction to 256 colours); no tool in the repository takes them.
 
+## Erratum 2026-11-10: the subcatchment in Hydrogram's three steps, „Uporządkuj” on the structure alone
+
+The author's decisions of 2026-11-10 (A1 to A6 of the plan [2026-11-10-network-wizard.md](2026-11-10-network-wizard.md); ADR-0024 and ADR-0025 come with its stages W1 and W2) supersede the author's decision 6 above („Uporządkuj” before every parameter is given is not in this plan) and „a layout of the structure alone (Q6)” under „Not in this plan”; D10's provisional rows of a network the library cannot read yet, „until „Uporządkuj” works”; and the parameters of a subcatchment made from rainfall „in the existing node form” (the Goal, D7's row „parameters”, E3). The rest of this plan stands.
+
+- **„Uporządkuj”** (W2): `route schematic` with `structure_only` lays out the structure alone (the ids, the types, the links, and the headwaters' areas when every one has one), so „Uporządkuj” and a network opened without positions take the library's layout before any parameter is given; the provisional rows remain only while the structure has a problem. The full `route schematic` stays the library's check of a complete network (D8, point 3).
+- **The network's rainfall** (W3): step 1 „Sieć” gives the time step and the network's rainfall first, with Hydrogram zlewni's fields of step 2 (PMAXTP fetched, a design hyetograph or a series); a subcatchment takes it („Jak w sieci”) unless it has its own.
+- **The subcatchment** (W4): choosing a subcatchment made from rainfall opens a second panel beside „Dane” with Hydrogram zlewni's three steps (Zlewnia, Hietogram, Hydrogram: the model first, then only its fields), „Wczytaj z Hydrografa” for that node included; on a phone the two panels alternate. Sieć's own form of such a subcatchment, with its „Pozostałe pola zlewni”, is removed, and `handoff/mapping.js` maps the steps to the node and back; „Podany” and „Z pliku” keep their forms in „Dane”.
+- **Nash by Lutz** (W1): the `curve-number` runoff of `hydrolog-network/1` takes `nash_estimation: "lutz"`, and the library estimates n and K from the node's watershed.
+- **Hand-offs** (W5): a network handed over by Hydrograf opens laid out, with the origin of each node (Nogat's `node_provenance`), which Sieć writes back into its own hand-off.
+
 ## Not in this plan
 
 The background map (D15); a layout of the structure alone (Q6); diversions and withdrawals (D2); choosing several nodes, copying and pasting, moving groups; a display name besides the id (Q4); bends stored in the document; an English UI; the editor in Nogat's kit (the platform's `<nogat-schematic>` takes the pure modules later); Hydrograf reading Hydrolog's hand-off (the platform's step 12).
