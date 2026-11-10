@@ -1,6 +1,7 @@
 # Plan: an editor of the river network in „Sieć i trasowanie”, after HEC-HMS
 
 Approved: 2026-11-10
+Closed: 2026-11-10
 
 Approved by the author on 2026-11-10 with the answers to the eight open questions of the first version, recorded under [The author's decisions](#the-authors-decisions) and in the decisions they touch: positions snapped to ADR-0013's grid (Q1); the new fields optional in `hydrolog-network/1`, no `/2` (Q2); a description is plain text of up to 500 characters with line breaks and no Markdown, for every node and for the whole network (Q3, D3); the id is the name (Q4); „Zapisz szkic” (Q5); „Uporządkuj” before every parameter is given is not in this plan (Q6); „Wstaw złącze” (Q7); no background map for now, with no decision on where it would go (Q8, D15). ADR-0023 records the decisions with stage E1.
 
@@ -301,7 +302,7 @@ The author answered the open questions of the first version on 2026-11-10, when 
 
 ## Results
 
-Every stage is done, each on its own branch stacked on the previous one and pushed; none is merged. The merges into `develop`, in the order E1 to E5, wait for the author's approval (DEV-3.3), with the full gate on the head of E5 first; then the omp service `hydrolog-gui` is restarted on `develop` and the smoke of [Deployment for the author](#deployment-for-the-author) is run. The plan is closed once the merges are in.
+Every stage is done, each on its own branch stacked on the previous one. With the author's approval (DEV-3.3) the stack was merged into `develop` at `2ca7e7a` (merge of `feat/network-editor-e5`, which holds E1 to E4) on 2026-11-10, after the full gate on that head: 7360 passed in 772 s. The omp service `hydrolog-gui` (127.0.0.1:8070) was restarted at `2ca7e7a` the same day and the editor checked there in a browser ([Deployment for the author](#deployment-for-the-author)). The plan is closed.
 
 | Stage | Branch | Commits | Notes |
 |---|---|---|---|
