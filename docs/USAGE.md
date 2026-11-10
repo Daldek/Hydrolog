@@ -631,6 +631,40 @@ print(caught[0].message)   # Positions ignored at node 'A' (partial): the layout
 `hydrolog.testing.placed(node, description=..., position=(x, y))` adds both fields to a node of its builders, checked
 by the library, and `network_document(..., description=...)` gives the network its description.
 
+**The structure alone.** A draft whose nodes still miss their values is laid out by `structure_schematic(document)`
+([ADR-0025](decisions/0025-the-structure-alone-in-the-schematic.md)): of the document it reads only `schema`, `name`,
+`timestep_min`, each node's `id`, `type` and `from` and each headwater's `watershed.area_km2`, checks the structure
+with the reasons and details of `RoutingNetwork.from_document` (one shared check of the graph) and returns the
+computed layout, positions ignored, whatever the other fields hold. The areas weigh the branches only when every
+headwater has a positive one. The document is `hydrolog-network-schematic/1` with `structure_only` `true`, empty
+`parameters` and `timestep_min` only when the draft gives it; for a document that makes a network, its picture is
+the computed picture of that network. `main_stem=` works as in `schematic()`:
+
+```python
+from hydrolog.routing import structure_schematic
+
+draft = {"schema": "hydrolog-network/1", "nodes": [
+    {"id": "A", "type": "subcatchment", "watershed": {"area_km2": 12.0}},
+    {"id": "B", "type": "subcatchment"},                 # no area, no discharges yet
+    {"id": "R1", "type": "reach", "from": ["A"]},          # no method yet
+    {"id": "J1", "type": "junction", "from": ["R1", "B"]},
+    {"id": "OUT", "type": "outlet", "from": ["J1"]},
+]}
+drawn = structure_schematic(draft)
+print({node["id"]: (node["x"], node["y"]) for node in drawn["nodes"]})
+# {'A': (0, 1), 'B': (1, 0), 'R1': (1, 1), 'J1': (2, 1), 'OUT': (3, 1)}: A's branch has more nodes
+```
+
+On the command line (and as the MCP tool, with `network` inline) `route schematic --structure-only` does the same
+with `--network-file` and `--main-stem`; it reads no file the document names, so `--inflows-file` and
+`--time-column` with it are refused (`conflict`). The network of the command line above, whose subcatchments read
+their discharges from the inflows file, is laid out without that file (without the option `route schematic`
+refuses it, `missing_field`):
+
+```bash
+hydrolog route schematic --network-file tests/fixtures/network_flood.json --structure-only --json
+```
+
 A new kind of node, rainfall, runoff model, shape of a storm or reach method is a class that implements the
 protocol (`Node`, `RainfallSource`, `RunoffModel`, `Hietogram`, `Reach`) and an entry in a registry (`NODE_TYPES`,
 `RAINFALL_KINDS`, `RUNOFF_MODELS`, `HIETOGRAMS`, `REACH_METHODS`); nothing else lists them, and a document names
@@ -1301,9 +1335,11 @@ picture too; Hydrolog still computes every value.
   change, and its refusal joins the list.
 - **Positions.** Each node stands on a cell of ADR-0013's grid, kept as its `position`. A
   document with a position for every node opens as placed; one without positions takes
-  Hydrolog's layout (`route schematic`) as soon as the library can read it, and until then
-  stands in provisional rows. „Uporządkuj” puts every node where Hydrolog lays it out. A move or
-  a description never marks a result stale; a structural edit or a rename does.
+  Hydrolog's layout of its structure (`route schematic --structure-only`, ADR-0025) as soon as
+  the structure has no problem, whatever values the nodes still miss, and until then stands in
+  provisional rows. „Uporządkuj” puts every node where Hydrolog lays the structure out, also in
+  a network built from „Nowa sieć” before any value is given. A move or a description never
+  marks a result stale; a structural edit or a rename does.
 - **Files.** „Zapisz sieć” downloads the document with every `position` and `description` and
   the network's own `description`; `route network --schematic` draws the same picture from it,
   and the GUI reopens it as it was placed. A network with problems is saved by „Zapisz szkic”,

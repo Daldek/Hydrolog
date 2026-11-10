@@ -5,6 +5,9 @@
 - Amended by [ADR-0023](0023-positions-and-descriptions-in-the-network.md) (2026-11-10): the picture depends on the
   network and on the positions its document holds: the given layout drawn by rule D, `layout` and a node's
   `description` in the document, the notice `positions_ignored`.
+- Amended by [ADR-0025](0025-the-structure-alone-in-the-schematic.md) (2026-11-10): the structure of a document is
+  laid out alone (`structure_schematic`), whatever values its nodes miss; such a schematic has `structure_only`,
+  empty `parameters` and `timestep_min` only when the document gives it.
 - Builds on: [ADR-0012](0012-network-objects-rainfall-and-runoff.md) (`describe()` and `NetworkResult` carry the
   values that a drawing shows), [ADR-0010](0010-route-network-document-and-output-directory.md) (`route network`)
 
