@@ -296,7 +296,9 @@ export function buildForms(schema, docs = new Map()) {
     }
     return fields;
   };
-  const structural = ["id", "type", "from", "method", "schema", "nodes"];
+  // the description and the position of a node or the network (ADR-0023) are not
+  // parameters: the forms leave them out
+  const structural = ["id", "type", "from", "method", "schema", "nodes", "description", "position"];
   const methods = {};
   for (const branch of read.branches) {
     if (branch.type === "reach" && branch.method) {
@@ -403,7 +405,7 @@ function rainfallValues(values, key, rainfall, none) {
  */
 function elementValues(values, method, node) {
   const prefix = `${method}.`;
-  const skip = ["id", "type", "from", "method", ...WAVE];
+  const skip = ["id", "type", "from", "method", "description", "position", ...WAVE];
   for (const name of WAVE) if (Object.hasOwn(node, name)) values[name] = textOf(node[name]);
   if (method === "level-pool") {
     values[`${prefix}#table`] = typeof node.rating_file === "string" ? 1 : 0;

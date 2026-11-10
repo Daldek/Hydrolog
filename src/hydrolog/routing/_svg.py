@@ -6,6 +6,8 @@ legend. Everything is plain SVG made with the standard library, so the text is t
 on every machine: no timestamps, no random ids, numbers rounded the same way. The text
 of the drawing is language-neutral: the ids of the nodes, the symbols ``Qp``, ``tp`` and
 ``V`` with their units, and the names of the kinds of node as the document has them.
+A node's description, the words of the person who described it, is part of the text
+that a viewer shows over the node, escaped like every text: never markup.
 
 The scale is chosen from the labels: a label must fit in one unit of the grid in width
 and in four tenths of a unit in height, which is the room that the layout gives it.
@@ -160,6 +162,9 @@ def _label_lines(node: Mapping[str, Any]) -> list[tuple[str, float, bool]]:
 def _tooltip(node: Mapping[str, Any]) -> str:
     """Return the text that a viewer shows when the pointer rests on a node."""
     lines = [f"{node['id']} ({node['type']})"]
+    description = node.get("description")
+    if description is not None:
+        lines.append(str(description))
     if "peak_m3s" in node:
         peak = _discharge(node["peak_m3s"])
         lines.append(f"Qp {peak} m3/s at {node['time_to_peak_min']:g} min")
@@ -374,8 +379,9 @@ def schematic_svg(document: Mapping[str, Any]) -> str:
         colours of their line (the main stem in blue), a symbol for every kind of node,
         each node's id and, when the document has a result, its ``Qp`` (peak discharge,
         m3/s), ``tp`` (time to peak, min) and ``V`` (volume, m3); a node that has a
-        warning carries a mark, and the parameters and notices of a node are the text
-        that a viewer shows over it. The text is the same on every machine.
+        warning carries a mark, and the description, the parameters and the notices of a
+        node are the text that a viewer shows over it. The text is the same on every
+        machine.
 
     Examples
     --------

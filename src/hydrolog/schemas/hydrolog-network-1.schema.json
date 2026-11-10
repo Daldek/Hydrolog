@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/Daldek/Hydrolog/blob/main/src/hydrolog/schemas/hydrolog-network-1.schema.json",
   "title": "hydrolog-network/1",
-  "description": "River network read by `route network` (ADR-0010, ADR-0012): subcatchments (with their discharges, or making them from a watershed, a runoff model and a rainfall), reaches and reservoirs, junctions and one outlet, linked by `from`. A reach has a `method` and the options of `route <method>`. `schema` is required. A `rainfall` at the top is the rain of the subcatchments that have none; `timestep_min` fixes the time step of the network.",
+  "description": "River network read by `route network` (ADR-0010, ADR-0012): subcatchments (with their discharges, or making them from a watershed, a runoff model and a rainfall), reaches and reservoirs, junctions and one outlet, linked by `from`. A reach has a `method` and the options of `route <method>`. `schema` is required. A `rainfall` at the top is the rain of the subcatchments that have none; `timestep_min` fixes the time step of the network. Every node may have a `description` and a `position` in the grid of the schematic, and the network a `description` (ADR-0023); they change no calculation.",
   "type": "object",
   "required": [
     "schema",
@@ -15,6 +15,9 @@
     "name": {
       "type": "string",
       "minLength": 1
+    },
+    "description": {
+      "$ref": "#/$defs/description"
     },
     "timestep_min": {
       "type": "number",
@@ -42,6 +45,37 @@
       },
       "maxLength": 64,
       "description": "Names the node and its file `<id>.csv`: letters, digits, `_`, `.` and `-`, not starting with `.` or `-` and not ending with `.`, not a device name of Windows (`con`, `prn`, `aux`, `nul`, `com1` to `com9`, `lpt1` to `lpt9`, any case, any extension); unique without regard to case."
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500,
+      "pattern": "\\S",
+      "not": {
+        "pattern": "[\\u0000-\\u0009\\u000b-\\u001f\\u007f-\\u009f]"
+      },
+      "description": "Plain text for people, never read as HTML or Markdown: not blank, at most 500 characters, lines broken by a line feed and no other control character."
+    },
+    "position": {
+      "type": "object",
+      "required": [
+        "x",
+        "y"
+      ],
+      "properties": {
+        "x": {
+          "type": "integer",
+          "minimum": -1000,
+          "maximum": 1000
+        },
+        "y": {
+          "type": "integer",
+          "minimum": -1000,
+          "maximum": 1000
+        }
+      },
+      "additionalProperties": false,
+      "description": "The cell of the node in the grid of the schematic (ADR-0013): `x` grows downstream, `y` sideways. A network whose every node has a cell of its own is drawn where its nodes are (ADR-0023)."
     },
     "node": {
       "oneOf": [
@@ -90,6 +124,12 @@
               "type": "string",
               "minLength": 1,
               "description": "Column of `inflows_file` with the discharges [m3/s] of the subcatchment; default the `id`. Not with inline discharges."
+            },
+            "description": {
+              "$ref": "#/$defs/description"
+            },
+            "position": {
+              "$ref": "#/$defs/position"
             }
           },
           "additionalProperties": false,
@@ -142,6 +182,12 @@
             },
             "rainfall": {
               "$ref": "#/$defs/rainfall"
+            },
+            "description": {
+              "$ref": "#/$defs/description"
+            },
+            "position": {
+              "$ref": "#/$defs/position"
             }
           },
           "additionalProperties": false
@@ -190,6 +236,12 @@
               "type": "number",
               "exclusiveMinimum": 0,
               "description": "Lag [min]: how much later the outflow repeats the inflow; > 0. A lag that is not a whole number of time steps is interpolated (`lag_interpolated`)."
+            },
+            "description": {
+              "$ref": "#/$defs/description"
+            },
+            "position": {
+              "$ref": "#/$defs/position"
             }
           },
           "additionalProperties": false
@@ -250,6 +302,12 @@
               "type": "integer",
               "minimum": 1,
               "description": "Number of equal sub-reaches of K/N, at least 1; default K/step rounded. Each keeps the weights non-negative for 2KX/step <= N <= 2K(1-X)/step."
+            },
+            "description": {
+              "$ref": "#/$defs/description"
+            },
+            "position": {
+              "$ref": "#/$defs/position"
             }
           },
           "additionalProperties": false
@@ -334,6 +392,12 @@
               "type": "number",
               "exclusiveMinimum": 0,
               "description": "Reference discharge [m3/s] at which the celerity and the width are taken; > 0; default the inflow peak."
+            },
+            "description": {
+              "$ref": "#/$defs/description"
+            },
+            "position": {
+              "$ref": "#/$defs/position"
             }
           },
           "additionalProperties": false
@@ -397,6 +461,12 @@
               "type": "number",
               "exclusiveMinimum": 0,
               "description": "Flood-wave celerity [m/s]; > 0. With `length_km`."
+            },
+            "description": {
+              "$ref": "#/$defs/description"
+            },
+            "position": {
+              "$ref": "#/$defs/position"
             }
           },
           "additionalProperties": false
@@ -476,6 +546,12 @@
               "minimum": 1,
               "description": "Number of sub-reaches in series, at least 1; each holds S/N of the storage for the same outflow, so more of them attenuate less. 1 is a reservoir.",
               "default": 1
+            },
+            "description": {
+              "$ref": "#/$defs/description"
+            },
+            "position": {
+              "$ref": "#/$defs/position"
             }
           },
           "additionalProperties": false
@@ -551,6 +627,12 @@
               "minimum": 1,
               "description": "Number of sub-reaches in series, at least 1; each holds S/N of the storage for the same outflow, so more of them attenuate less. 1 is a reservoir.",
               "default": 1
+            },
+            "description": {
+              "$ref": "#/$defs/description"
+            },
+            "position": {
+              "$ref": "#/$defs/position"
             }
           },
           "additionalProperties": false
@@ -578,6 +660,12 @@
               "uniqueItems": true,
               "minItems": 1,
               "description": "The ids of the nodes that flow into this one."
+            },
+            "description": {
+              "$ref": "#/$defs/description"
+            },
+            "position": {
+              "$ref": "#/$defs/position"
             }
           },
           "additionalProperties": false
@@ -606,6 +694,12 @@
               "minItems": 1,
               "description": "The ids of the nodes that flow into this one.",
               "maxItems": 1
+            },
+            "description": {
+              "$ref": "#/$defs/description"
+            },
+            "position": {
+              "$ref": "#/$defs/position"
             }
           },
           "additionalProperties": false

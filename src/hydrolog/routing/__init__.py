@@ -25,7 +25,9 @@ Time is in minutes and discharge in m3/s.
   :class:`Reach`, :class:`Reservoir` through a level pool, :class:`Junction` adds,
   :class:`Outlet` ends the network); :meth:`RoutingNetwork.route` gives a
   :class:`NetworkResult`, the hydrograph, the figures and the parameters
-  (:class:`Parameter`) of every node;
+  (:class:`Parameter`) of every node; a node can carry a description and its
+  :class:`Position` in the grid of the schematic, and the network a description
+  (ADR-0023);
 * :class:`RainfallSource` and :class:`RunoffModel` -- a subcatchment can make its own
   hydrograph: its rainfall is a :class:`DesignStorm` or a :class:`RainfallSeries` (any
   object with the protocol will do) and its runoff :class:`CurveNumberRunoff`, that is
@@ -58,6 +60,8 @@ from hydrolog.routing.lag import LagReach
 from hydrolog.routing.level_pool import LevelPoolReach, timestep_limit_min
 from hydrolog.routing.muskingum import MuskingumReach
 from hydrolog.routing.network import (
+    MAX_DESCRIPTION_CHARS,
+    MAX_POSITION,
     NODE_TYPES,
     Axis,
     Channel,
@@ -68,6 +72,7 @@ from hydrolog.routing.network import (
     NodeOutput,
     NodeSummary,
     Outlet,
+    Position,
     Reservoir,
     RoutingNetwork,
     Subcatchment,
@@ -92,6 +97,8 @@ from hydrolog.routing.sections import FlowState, TrapezoidalSection
 
 __all__ = [
     "HIETOGRAMS",
+    "MAX_DESCRIPTION_CHARS",
+    "MAX_POSITION",
     "NODE_TYPES",
     "RAINFALL_KINDS",
     "REACH_METHODS",
@@ -118,6 +125,7 @@ __all__ = [
     "Outlet",
     "OutletPoint",
     "Parameter",
+    "Position",
     "RainfallSeries",
     "RainfallSource",
     "Reach",

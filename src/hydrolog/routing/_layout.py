@@ -34,6 +34,19 @@ The rules, in the order the layout applies them:
 5. **Labels.** The label of a node goes to the first of the eight compass points around
    it where it lies on no line, no other node and no other label.
 
+**Given positions** (ADR-0023). :func:`given_layout` draws a tree at the cells that the
+caller gives (the positions that a person chose): the nodes stay there, moved together
+so that the smallest ``x`` and ``y`` are 0, the lines are ranked and the labels placed
+by rules 1, 2 and 5, and every edge follows **rule D** (:func:`edge_route`), which
+draws the edge from a node to the node that it flows into from the two cells alone:
+one straight segment when they share a column or a row; downstream, a sideways leg to
+the row next to the other node's, one step at 45 degrees onto that row and the rest
+along it (the join and the taps of rules 3 and 4); upstream, 45 degrees from the node
+as far as the steps allow, then straight on. Rule D gives every edge of :func:`layout`
+from the positions of its two ends, so the computed picture, given back as positions,
+is drawn again exactly. A given picture may cross itself or run an edge through a
+node: it is the arrangement of whoever placed the nodes.
+
 Nothing here depends on a calculation: the input is ids and numbers, the output is
 cells, so every consumer that draws it draws the same picture.
 """
@@ -47,7 +60,7 @@ from typing import Final
 
 from hydrolog.exceptions import InvalidParameterError
 
-__all__ = ["LABEL_SIDES", "Layout", "Line", "layout"]
+__all__ = ["LABEL_SIDES", "Layout", "Line", "edge_route", "given_layout", "layout"]
 
 Point = tuple[int, int]
 Box = tuple[float, float, float, float]
@@ -96,15 +109,17 @@ class Line:
         for the main stem.
     parent : int or None
         The index of the line that ``joins`` is on; ``None`` for the main stem.
-    row : int
-        The ``y`` of the nodes of the line.
+    row : int or None
+        The ``y`` of the nodes of the line when they are on one row, as they always
+        are in a computed layout; ``None`` for a line of a given layout whose nodes
+        are on several rows.
     """
 
     index: int
     nodes: tuple[str, ...]
     joins: str | None
     parent: int | None
-    row: int
+    row: int | None
 
 
 @dataclass(frozen=True)
@@ -196,6 +211,11 @@ class _Tree:
             )
         nodes.reverse()
         return nodes
+
+    def side_inflows(self, nodes: Sequence[str], position: int) -> list[str]:
+        """Return the inflows of a node of a line that are not the line itself."""
+        before = nodes[position - 1] if position > 0 else None
+        return [up for up in self.inflows[nodes[position]] if up != before]
 
     def path_to_root(self, node: str) -> list[str]:
         """Return ``node`` and every node below it down to the root."""
@@ -327,6 +347,127 @@ def layout(
     return drawing.finish()
 
 
+def given_layout(
+    root: str,
+    inflows: Mapping[str, Sequence[str]],
+    positions: Mapping[str, Point],
+    *,
+    weight: Mapping[str, float] | None = None,
+    main_stem: Sequence[str] = (),
+) -> Layout:
+    """Draw a tree of flow at the cells that are given (ADR-0023).
+
+    The nodes stay in their cells, moved together so that the smallest ``x`` and
+    ``y`` are 0, every edge follows rule D (:func:`edge_route`), and the lines are those
+    of :func:`layout` for the same tree, ``weight`` and ``main_stem``: the same nodes,
+    ranks and indices, so the same colours. Each label takes the first free place, as
+    in :func:`layout`. Edges may cross, and an edge may run through a node.
+
+    Parameters
+    ----------
+    root, inflows, weight, main_stem
+        As in :func:`layout`.
+    positions : mapping of str to tuple of int
+        The cell ``(x, y)`` of every node of the tree, each a cell of its own; ``x``
+        grows downstream and ``y`` downwards.
+
+    Returns
+    -------
+    Layout
+        The positions moved to the origin, the polyline of every edge, the lines (a
+        line's ``row`` is ``None`` when its nodes are on several rows) and the place of
+        every label.
+
+    Raises
+    ------
+    InvalidParameterError
+        As :func:`layout`, for ``main_stem``.
+    ValueError
+        If ``inflows`` is not a tree below ``root``, or a node of the tree has no
+        position or shares its cell with another.
+    """
+    tree = _Tree(root, inflows, weight)
+    forced = _declared_path(tree, main_stem)
+    missing = [node for node in tree.nodes if node not in positions]
+    if missing:
+        raise ValueError(f"{missing[0]!r} has no position")
+    cells = [positions[node] for node in tree.nodes]
+    if len(set(cells)) != len(cells):
+        raise ValueError("two nodes share a cell")
+    left = min(x for x, _ in cells)
+    top = min(y for _, y in cells)
+    moved = {
+        node: (positions[node][0] - left, positions[node][1] - top)
+        for node in tree.nodes
+    }
+    routes = {
+        node: edge_route(moved[node], moved[below])
+        for node, below in tree.flows_into.items()
+        if below is not None
+    }
+    lines, line_of = _ranked_lines(tree, forced, moved)
+    return Layout(
+        positions=moved,
+        routes=routes,
+        lines=lines,
+        line_of=line_of,
+        labels=_Labels(moved, routes).place(tree.nodes),
+        width=max(x for x, _ in moved.values()),
+        height=max(y for _, y in moved.values()),
+    )
+
+
+def _join_order(
+    tree: _Tree, nodes: Sequence[str], slots: int
+) -> list[tuple[str, str, int]]:
+    """List the tributaries of a line in the order they are drawn: (node, head, tap).
+
+    Headwaters first, so that a tributary downstream passes outside the ones upstream
+    of it; at one node the taps come first and the node itself last. ``slots`` is how
+    many tributaries a node or a tap takes: two on the main stem, one on another line.
+    """
+    order: list[tuple[str, str, int]] = []
+    for position, node in enumerate(nodes):
+        sides = tree.side_inflows(nodes, position)
+        groups = [sides[i : i + slots] for i in range(0, len(sides), slots)]
+        for tap in range(len(groups) - 1, -1, -1):
+            order.extend((node, top, tap) for top in groups[tap])
+    return order
+
+
+def _ranked_lines(
+    tree: _Tree, forced: Mapping[str, str], positions: Mapping[str, Point]
+) -> tuple[tuple[Line, ...], dict[str, int]]:
+    """Return the lines of :func:`layout` for a tree, with the rows of ``positions``.
+
+    The lines are made in the order that :func:`layout` draws them (the main stem,
+    then depth first every tributary in the order of :func:`_join_order`), so they
+    have its nodes and indices.
+    """
+    made: list[tuple[list[str], int | None, str | None]] = [
+        (tree.chain(tree.root, forced), None, None)
+    ]
+    stack = [(0, iter(_join_order(tree, made[0][0], slots=2)))]
+    while stack:
+        parent, joins = stack[-1]
+        join = next(joins, None)
+        if join is None:
+            stack.pop()
+            continue
+        node, head, _ = join
+        nodes = tree.chain(head)
+        made.append((nodes, parent, node))
+        stack.append((len(made) - 1, iter(_join_order(tree, nodes, slots=1))))
+    lines: list[Line] = []
+    line_of: dict[str, int] = {}
+    for index, (members, above, joined) in enumerate(made):
+        rows = {positions[member][1] for member in members}
+        row = next(iter(rows)) if len(rows) == 1 else None
+        lines.append(Line(index, tuple(members), joined, above, row))
+        line_of.update(dict.fromkeys(members, index))
+    return tuple(lines), line_of
+
+
 def _declared_path(tree: _Tree, declared: Sequence[str]) -> dict[str, str]:
     """Return for each node below the farthest declared node the node it must follow."""
     if not declared:
@@ -371,11 +512,6 @@ class _Drawing:
 
     # --- the nodes of a line -------------------------------------------------------
 
-    def side_inflows(self, nodes: Sequence[str], position: int) -> list[str]:
-        """Return the inflows of a node of a line that are not the line itself."""
-        before = nodes[position - 1] if position > 0 else None
-        return [up for up in self.tree.inflows[nodes[position]] if up != before]
-
     def columns(self, nodes: Sequence[str], last: int, slots: int) -> list[int]:
         """Return the ``x`` of the nodes of a line whose last node is at ``last``.
 
@@ -385,7 +521,7 @@ class _Drawing:
         """
         columns = [last] * len(nodes)
         for position in range(len(nodes) - 1, 0, -1):
-            taps = _taps(len(self.side_inflows(nodes, position)), slots)
+            taps = _taps(len(self.tree.side_inflows(nodes, position)), slots)
             columns[position - 1] = columns[position] - 1 - taps
         return columns
 
@@ -415,25 +551,22 @@ class _Drawing:
     def joins_of(self, line: _Placed) -> list[_Join]:
         """List the tributaries of a line in the order that they are drawn.
 
-        Headwaters first, so that a tributary downstream passes outside the ones
-        upstream of it; at one node the taps come first and the node itself last. On
-        the main stem the sides alternate along the list, the first above; every
-        other line takes its tributaries on the side that points away from its parent.
+        The order is that of :func:`_join_order`. On the main stem the sides alternate
+        along the list, the first above; every other line takes its tributaries on the
+        side that points away from its parent.
         """
         stem = line.parent is None
-        slots = 2 if stem else 1
-        joins: list[_Join] = []
-        for position, node in enumerate(line.nodes):
-            sides = self.side_inflows(line.nodes, position)
-            groups = [sides[i : i + slots] for i in range(0, len(sides), slots)]
-            for tap in range(len(groups) - 1, -1, -1):
-                for top in groups[tap]:
-                    if stem:
-                        side = ABOVE if len(joins) % 2 == 0 else BELOW
-                    else:
-                        side = line.side
-                    joins.append(_Join(line, node, top, tap, side))
-        return joins
+        order = _join_order(self.tree, line.nodes, 2 if stem else 1)
+        return [
+            _Join(
+                line,
+                node,
+                top,
+                tap,
+                (ABOVE if number % 2 == 0 else BELOW) if stem else line.side,
+            )
+            for number, (node, top, tap) in enumerate(order)
+        ]
 
     def draw_tributaries(self, stem: _Placed) -> None:
         """Draw every tributary of the main stem and of the lines that they start."""
@@ -526,6 +659,54 @@ def _straight(route: Sequence[Point]) -> list[Point]:
             kept.append(route[index])
     kept.append(route[-1])
     return kept
+
+
+def edge_route(start: Point, end: Point) -> tuple[Point, ...]:
+    """Return the corners of the edge from ``start`` to the node it flows into (rule D).
+
+    With ``dx`` and ``dy`` the steps from ``start`` to ``end`` in grid units (ADR-0023):
+
+    1. ``dx`` or ``dy`` is 0: one straight segment;
+    2. ``dx > 0``: a sideways leg of ``|dy| - 1`` to the row next to that of ``end``,
+       one step at 45 degrees onto that row, then along it into ``end``
+       (``dx - 1``): the join of a tributary of :func:`layout`;
+    3. ``dx < 0`` (``end`` upstream of ``start``): 45 degrees from ``start`` for
+       ``min(|dx|, |dy|)`` steps, then straight into ``end``.
+
+    A stretch of length 0 is left out, so no corner lies on a straight line between
+    its neighbours, and every segment runs at 0, 45 or 90 degrees.
+
+    Parameters
+    ----------
+    start, end : tuple of int
+        The cells ``(x, y)`` of the node and of the node that it flows into; ``x``
+        grows downstream and ``y`` downwards.
+
+    Returns
+    -------
+    tuple of tuple of int
+        The corners, from ``start`` to ``end``.
+
+    Examples
+    --------
+    >>> edge_route((0, 0), (3, 0))
+    ((0, 0), (3, 0))
+    >>> edge_route((0, 3), (4, 0))
+    ((0, 3), (0, 1), (1, 0), (4, 0))
+    >>> edge_route((3, 0), (0, 2))
+    ((3, 0), (1, 2), (0, 2))
+    """
+    (x0, y0), (x1, y1) = start, end
+    dx, dy = x1 - x0, y1 - y0
+    if dx == 0 or dy == 0:
+        return (start, end)
+    step = 1 if dy > 0 else -1
+    if dx > 0:
+        corners = [start, (x0, y1 - step), (x0 + 1, y1), end]
+    else:
+        diagonal = min(-dx, abs(dy))
+        corners = [start, (x0 - diagonal, y0 + step * diagonal), end]
+    return tuple(_straight(corners))
 
 
 # --- labels ------------------------------------------------------------------------

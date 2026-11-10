@@ -26,6 +26,16 @@ is an error. Nothing here lists the types, the methods of a reach or any other k
 thing: each is found by its name in a registry
 (:class:`~hydrolog.routing._registry.Registry`).
 
+Every node may also have a ``description``, plain text for people of at most 500
+characters, and a ``position``, its cell in the grid of the schematic
+(``{"x": 2, "y": 0}``), and the document a ``description`` of the network at its top
+(ADR-0023). :class:`~hydrolog.routing.Node` reads and writes them for every kind of
+node, after the fields of the kind, and they change no calculation::
+
+    {"id": "ZB1", "type": "reservoir", "from": ["R1"],
+     "storage_m3": [0, 50000, 120000], "outflow_m3s": [0, 2.5, 8.0],
+     "description": "Suchy zbiornik powyżej Świerzawy", "position": {"x": 2, "y": 0}}
+
 A subcatchment makes its own hydrograph when it has a ``watershed`` (the object of
 ``WatershedParameters``), a ``runoff`` model (``model`` and its fields) and a
 ``rainfall`` (``kind`` and its fields) in the place of the hydrograph::
@@ -64,11 +74,12 @@ What is wrong with the document is an
 ``unknown_type``, ``unknown_method``, ``unknown_kind``, ``unknown_model``,
 ``unknown_hietogram_type``, ``conflict``, the reasons of the nodes and of the reaches
 (``invalid_id``, ``reserved_name``, ``upstream_count``, ``duplicate_upstream``,
-``reservoir_model``...) and the structure reasons of
-:class:`~hydrolog.routing.RoutingNetwork` (``unknown_upstream``, ``cycle``,
+``reservoir_model``...), those of a description (``empty``, ``too_long``,
+``control_character``) and of a position (``minimum``, ``maximum``), and the structure
+reasons of :class:`~hydrolog.routing.RoutingNetwork` (``unknown_upstream``, ``cycle``,
 ``several_downstream``, ``no_outlet``...); ``details.node_id`` names the node and
 ``details.field`` the field (``rainfall.total_mm`` for a field of an object inside a
-node).
+node, ``position.x`` for a coordinate).
 """
 
 from __future__ import annotations
@@ -81,7 +92,14 @@ from hydrolog.exceptions import InvalidParameterError
 from hydrolog.routing._checks import shown
 from hydrolog.routing._order import ordered
 from hydrolog.routing._reading import within
-from hydrolog.routing.network import NODE_TYPES, Node, RoutingNetwork, check_unique
+from hydrolog.routing.network import (
+    NODE_TYPES,
+    Node,
+    NodeEntry,
+    RoutingNetwork,
+    check_description,
+    check_unique,
+)
 from hydrolog.routing.rainfall import (
     RainfallSource,
     rainfall_from_document,
@@ -97,7 +115,14 @@ Prepare = Callable[[str, str, Mapping[str, Any]], Mapping[str, Any]]
 """``prepare(node_id, type, entry)``: returns the entry that is read in place of the one
 the document has (see :func:`read_network`)."""
 
-_TOP_LEVEL: Final = ("schema", "name", "timestep_min", "rainfall", "nodes")
+_TOP_LEVEL: Final = (
+    "schema",
+    "name",
+    "description",
+    "timestep_min",
+    "rainfall",
+    "nodes",
+)
 
 
 def _fail(
@@ -111,12 +136,11 @@ def _fail(
 
 @dataclass(frozen=True)
 class _Record:
-    """A node as the document says it: the class, the id, the inflows and the fields."""
+    """A node as the document says it: the class, the id and what it reads."""
 
     cls: type[Node]
     id: str
-    upstream: tuple[str, ...]
-    arguments: dict[str, Any]
+    entry: NodeEntry
 
 
 def _read_entry(index: int, entry: object, prepare: Prepare | None) -> _Record:
@@ -148,8 +172,7 @@ def _read_entry(index: int, entry: object, prepare: Prepare | None) -> _Record:
         )
     cls = NODE_TYPES.resolve(kind, f"Node {node_id!r}", node_id=node_id)
     fields = entry if prepare is None else prepare(node_id, cls.kind, entry)
-    upstream, arguments = cls.read_entry(node_id, fields)
-    return _Record(cls, node_id, upstream, arguments)
+    return _Record(cls, node_id, cls.read_entry(node_id, fields))
 
 
 def read_network(document: object, *, prepare: Prepare | None = None) -> RoutingNetwork:
@@ -213,6 +236,9 @@ def read_network(document: object, *, prepare: Prepare | None = None) -> Routing
             field="name",
             value=shown(name),
         )
+    description = document.get("description")
+    if description is not None:
+        check_description(description)
     entries = document.get("nodes")
     if entries is None:
         _fail(
@@ -233,10 +259,10 @@ def read_network(document: object, *, prepare: Prepare | None = None) -> Routing
     check_unique([record.id for record in records])
     by_id = {record.id: record for record in records}
     nodes: dict[str, Node] = {}
-    for node_id in ordered({record.id: record.upstream for record in records}):
+    for node_id in ordered({record.id: record.entry.upstream for record in records}):
         record = by_id[node_id]
         nodes[node_id] = record.cls.build(
-            node_id, record.arguments, [nodes[up] for up in record.upstream]
+            node_id, record.entry, [nodes[up] for up in record.entry.upstream]
         )
     rainfall: RainfallSource | None = None
     if document.get("rainfall") is not None:
@@ -245,6 +271,7 @@ def read_network(document: object, *, prepare: Prepare | None = None) -> Routing
     return RoutingNetwork(
         list(nodes.values()),
         name=name,
+        description=description,
         rainfall=rainfall,
         timestep_min=document.get("timestep_min"),
     )
@@ -261,9 +288,9 @@ def write_network(network: RoutingNetwork) -> dict[str, Any]:
     Returns
     -------
     dict
-        The document, JSON-native: ``schema``, ``name`` and ``timestep_min`` (only what
-        was given), the default ``rainfall`` of the network and the ``nodes`` in the
-        order of evaluation, each as its class writes it
+        The document, JSON-native: ``schema``, ``name``, ``description`` and
+        ``timestep_min`` (only what was given), the default ``rainfall`` of the network
+        and the ``nodes`` in the order of evaluation, each as its class writes it
         (:meth:`~hydrolog.routing.Node.to_document`).
 
     Raises
@@ -275,6 +302,7 @@ def write_network(network: RoutingNetwork) -> dict[str, Any]:
     values: dict[str, Any] = {
         "schema": SCHEMA,
         "name": network.name,
+        "description": network.description,
         "timestep_min": network.given_timestep_min,
         "rainfall": (
             None if network.rainfall is None else rainfall_to_document(network.rainfall)

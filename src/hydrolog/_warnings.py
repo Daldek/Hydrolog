@@ -36,6 +36,7 @@ __all__ = [
     "OutsideSupport",
     "OutsideTypicalRange",
     "OutsideUnverifiedRange",
+    "PositionsIgnored",
     "ShortRecord",
     "SmallSample",
     "UhModelMismatch",
@@ -411,6 +412,23 @@ class UhModelMismatch(HydrologWarning):
     keys = ("uh_model", "result_uh_model")
 
 
+class PositionsIgnored(HydrologWarning):
+    """The positions of a network's nodes cannot be drawn: its layout is computed.
+
+    The schematic of a network is drawn at the positions of its nodes when every node
+    has one and no two share a cell (ADR-0023); otherwise it is laid out as if none had
+    one (ADR-0013). Details: the ``reason``, ``partial`` (``node_id`` has no position,
+    while another node has one) or ``shared_cell`` (``node_id`` is on the cell of a
+    node before it in the order of evaluation), and the ``node_id`` of the first node
+    at fault.
+    """
+
+    template = (
+        "Positions ignored at node {node_id!r} ({reason}): the layout is computed"
+    )
+    keys = ("reason", "node_id")
+
+
 LIBRARY_WARNINGS: Final[tuple[type[HydrologWarning], ...]] = (
     OutsideTypicalRange,
     OutsideUnverifiedRange,
@@ -422,5 +440,6 @@ LIBRARY_WARNINGS: Final[tuple[type[HydrologWarning], ...]] = (
     IncompleteYears,
     UnknownHietogramType,
     UhModelMismatch,
+    PositionsIgnored,
 )
 """Every warning class of the library, one per code."""

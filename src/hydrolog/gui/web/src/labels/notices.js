@@ -134,6 +134,16 @@ export const notices = {
       text: "Model hydrogramu jednostkowego {uh_model} różni się od użytego w wyniku: {result_uh_model}.",
       plain: "Model hydrogramu jednostkowego różni się od użytego w wyniku.",
     },
+    positions_ignored: {
+      text: "{reason}; schemat ułożono automatycznie, bez podanych położeń węzłów.",
+      plain: "Podanych położeń węzłów nie użyto: schemat ułożono automatycznie.",
+      names: {
+        reason: {
+          partial: "nie ma położenia, choć inne węzły je mają",
+          shared_cell: "zajmuje tę samą komórkę siatki co inny węzeł",
+        },
+      },
+    },
     exposed_without_auth: {
       text: "Serwer słucha na {host} bez logowania: udostępniaj {url} tylko za bramką z uwierzytelnianiem.",
       plain: "Serwer słucha poza komputerem bez logowania: udostępniaj go tylko za bramką z uwierzytelnianiem.",

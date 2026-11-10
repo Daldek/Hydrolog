@@ -19,7 +19,10 @@ tables are written through a staging directory (DEV-19.7, ADR-0010). With ``sche
 it also draws the network as an SVG map (ADR-0013) and returns the document that the
 drawing is made of. :func:`route_schematic` reads a network the same way and returns
 that document without values (:class:`RouteSchematicResult`), routing nothing and
-writing nothing. The functions are re-exported by :mod:`hydrolog.operations`.
+writing nothing. A schematic is drawn at the positions of the nodes when every node
+has one of its own (ADR-0023); positions on some nodes only, or two nodes on one cell,
+give the notice ``positions_ignored`` and the computed layout. The functions are
+re-exported by :mod:`hydrolog.operations`.
 """
 
 from __future__ import annotations
@@ -55,6 +58,7 @@ from hydrolog.routing import (
     LevelPoolReach,
     MuskingumCungeReach,
     MuskingumReach,
+    NetworkResult,
     Reach,
     RoutingNetwork,
     RoutingNotice,
@@ -219,9 +223,10 @@ class RouteSchematicResult(dict[str, Any], JsonResultMixin):
     The result is the document ``hydrolog-network-schematic/1`` itself, exactly what
     :meth:`~hydrolog.routing.RoutingNetwork.schematic` returns without a result: a dict
     with ``schema``, ``name`` (when the network has one), ``outlet``,
-    ``timestep_min``, ``has_result`` (``False``), ``grid``, ``lines``, ``nodes``
-    (each with its place on the grid, its label and the ``parameters`` that are
-    given) and ``edges``; :mod:`hydrolog.routing.schematic` describes the keys.
+    ``timestep_min``, ``has_result`` (``False``), ``layout`` (``given`` or
+    ``computed``), ``grid``, ``lines``, ``nodes`` (each with its place on the grid, its
+    label, its ``description`` when it has one and the ``parameters`` that are given)
+    and ``edges``; :mod:`hydrolog.routing.schematic` describes the keys.
     :meth:`to_dict` returns it as a plain dict.
     """
 
@@ -1001,22 +1006,27 @@ def _refuse_inputs(
 
 
 def _schematic_of(
-    network: RoutingNetwork, main_stem: Sequence[str] | None
-) -> dict[str, Any]:
-    """Return the schematic of the network without values.
+    network: RoutingNetwork,
+    main_stem: Sequence[str] | None,
+    result: NetworkResult | None = None,
+) -> tuple[dict[str, Any], list[Notice]]:
+    """Return the schematic of the network and the notices of its layout.
 
-    A main stem that is not a path of the network, or names a node it does not have,
-    is the error of :meth:`RoutingNetwork.schematic` with ``details.option``
-    ``main_stem``.
+    The notice is ``positions_ignored`` when the positions of the nodes cannot be drawn
+    (ADR-0023). A main stem that is not a path of the network, or names a node it does
+    not have, is the error of :meth:`RoutingNetwork.schematic` with
+    ``details.option`` ``main_stem``.
     """
     try:
-        return network.schematic(main_stem=main_stem)
+        with capture_warnings() as notices:
+            document = network.schematic(result, main_stem=main_stem)
     except InvalidParameterError as exc:
         raise InvalidParameterError(
             str(exc),
             details={**exc.details, "option": "main_stem"},
             hint=exc.hint,
         ) from exc
+    return document, notices
 
 
 def _write_schematic(text: str, target: Path, written: Sequence[Path]) -> None:
@@ -1122,7 +1132,9 @@ def route_network(
         ``check`` and a file to write the result is the plan. Without ``output_dir`` a
         result of more than :data:`PAGE_CHARS` characters (all the hydrographs of a
         large network) carries the warning ``large_result``, which suggests ``nodes``
-        and ``output_dir``; the schematic is not counted, it is asked for.
+        and ``output_dir``; the schematic is not counted, it is asked for. A schematic
+        of a network whose positions cannot be drawn carries the warning
+        ``positions_ignored`` (``reason``, ``node_id``) and the computed layout.
 
     Raises
     ------
@@ -1249,7 +1261,8 @@ def route_network(
             )
     drawing = None
     if target is not None:
-        result.schematic = graph.schematic(run, main_stem=main_stem)
+        result.schematic, laid_out = _schematic_of(graph, main_stem, run)
+        notices.extend(laid_out)
         drawing = schematic_svg(result.schematic)
     files: list[Path] = []
     if directory is not None:
@@ -1277,15 +1290,15 @@ def route_schematic(
     inflows_file: str | os.PathLike[str] | None = None,
     time_column: str | None = None,
     main_stem: Sequence[str] | None = None,
-) -> RouteSchematicResult:
+) -> OperationOutput:
     """Lay a river network out as a schematic, without routing it (``route schematic``).
 
     The network is read exactly as :func:`route_network` reads it, then
-    :meth:`~hydrolog.routing.RoutingNetwork.schematic` lays it out in the style of a
-    metro map (ADR-0013). Nothing is routed and nothing is written: the nodes carry
-    the parameters that are given, not the values of a run, and the layout is the one
-    that ``route network`` with ``schematic`` draws for the same network and
-    ``main_stem``.
+    :meth:`~hydrolog.routing.RoutingNetwork.schematic` lays it out: at the positions of
+    its nodes when every node has one of its own (ADR-0023), else in the style of a
+    metro map (ADR-0013). Nothing is routed and nothing is written: the nodes carry the
+    parameters that are given, not the values of a run, and the layout is the one that
+    ``route network`` with ``schematic`` draws for the same network and ``main_stem``.
 
     Parameters
     ----------
@@ -1304,12 +1317,16 @@ def route_schematic(
         Ids of nodes that the main stem must pass (the head of the main river, or
         points along it); they must lie on one path to the outlet. By default the stem
         follows, from the outlet, the branch that drains the larger area (without
-        areas: that has more nodes).
+        areas: that has more nodes). It ranks the lines of a given layout too.
 
     Returns
     -------
-    RouteSchematicResult
-        The document ``hydrolog-network-schematic/1`` with ``has_result`` ``False``.
+    OperationOutput
+        ``result`` is the document ``hydrolog-network-schematic/1``
+        (:class:`RouteSchematicResult`) with ``has_result`` ``False``; the notice
+        ``positions_ignored`` (``reason`` ``partial`` or ``shared_cell``, ``node_id``)
+        says that the positions of the nodes could not be drawn and the layout is
+        computed.
 
     Raises
     ------
@@ -1332,4 +1349,5 @@ def route_schematic(
         inflows_file=inflows_file,
         time_column=time_column,
     )
-    return RouteSchematicResult(_schematic_of(loaded.network, main_stem))
+    document, notices = _schematic_of(loaded.network, main_stem)
+    return OperationOutput(RouteSchematicResult(document), notices)
