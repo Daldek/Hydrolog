@@ -2,6 +2,9 @@
 
 import importlib.util
 import json
+import os
+import subprocess
+import sys
 from types import ModuleType
 
 import pytest
@@ -43,6 +46,33 @@ def test_error_module_equals_the_generator_output():
 
     module = _nogat.ROOT / "src" / "hydrolog" / "_errors.py"
     assert module.read_text(encoding="utf-8") == generated
+
+
+def test_the_generator_gives_ruff_utf8_whatever_the_locale():
+    """The module has non-ASCII text (§); ruff gets it as UTF-8 under any locale.
+
+    Windows' locale encoding (cp1252) gave ruff bytes that are not UTF-8 and it failed.
+    Python's UTF-8 mode off, with the ASCII locale ``C`` outside Windows, gives a locale
+    encoding other than UTF-8 on every platform.
+    """
+    environ = {
+        **os.environ,
+        "LC_ALL": "C",
+        "PYTHONCOERCECLOCALE": "0",
+        "PYTHONUTF8": "0",
+    }
+    script = _nogat.ROOT / "scripts" / "generate_errors.py"
+
+    done = subprocess.run(
+        [sys.executable, str(script), "--check"],
+        capture_output=True,
+        encoding="utf-8",
+        errors="replace",
+        env=environ,
+        check=False,
+    )
+
+    assert done.returncode == 0, done.stdout + done.stderr
 
 
 def test_error_module_carries_every_code_and_outcome_of_the_registry():

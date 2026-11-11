@@ -164,11 +164,6 @@ def _read_text(path: Path) -> str:
             hint="Check the path; a relative path is resolved against the working "
             "directory.",
         ) from exc
-    except (IsADirectoryError, NotADirectoryError) as exc:
-        raise InputDataError(
-            f"{path} is not a file",
-            details={"path": str(path), "reason": "not_a_file"},
-        ) from exc
     except UnicodeDecodeError as exc:
         raise InputDataError(
             f"{path}: not valid UTF-8 text (byte {exc.start})",
@@ -176,6 +171,13 @@ def _read_text(path: Path) -> str:
             hint="Save the file as UTF-8 (with or without BOM).",
         ) from exc
     except OSError as exc:
+        # Windows refuses to open a directory with PermissionError
+        not_a_file = isinstance(exc, IsADirectoryError | NotADirectoryError)
+        if not_a_file or os.path.isdir(path):
+            raise InputDataError(
+                f"{path} is not a file",
+                details={"path": str(path), "reason": "not_a_file"},
+            ) from exc
         raise InputDataError(
             f"{path} cannot be read: {exc.strerror or exc}",
             details={"path": str(path), "reason": "unreadable"},
