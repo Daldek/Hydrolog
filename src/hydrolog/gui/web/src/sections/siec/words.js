@@ -3,6 +3,7 @@
 // details (`reason`, `node_id`, `other_id`, `upstream_id`, `nodes`, `downstream`, `type`,
 // `found`) in Polish, and why a link or a new inflow is refused, after „Nie można: ”.
 
+import { inputText, num } from "../../format.js";
 import { t } from "../../labels/common.js";
 import { siec as texts } from "../../labels/siec.js";
 
@@ -53,6 +54,7 @@ export function loopWords(nodes) {
 export function problemText(problem, rules = {}) {
   const reason = problem.reason;
   if (!Object.hasOwn(texts.reasons, reason)) return null;
+  if (reason === "unstable_timestep") return unstableText(problem);
   const nodes = Array.isArray(problem.nodes) ? problem.nodes.map(String) : [];
   return t(texts.reasons[reason], {
     node: problem.node_id ?? "–",
@@ -63,6 +65,74 @@ export function problemText(problem, rules = {}) {
     found: problem.found ?? "–",
     rule: ruleWords(problem.type ? rules[problem.type] : undefined),
   });
+}
+
+/**
+ * Whether `unstable_timestep` is Muskingum-Cunge's refusal of a reach at every time step
+ * (routing/cunge.py `_grid`: its details give the celerity and the diffusion length).
+ *
+ * @param {object} details the error's details
+ * @returns {boolean} true when no time step can route the reach
+ */
+export function unroutable(details) {
+  return Number.isFinite(details.diffusion_length_m) && Number.isFinite(details.celerity_m_per_s) && Number.isFinite(details.length_m);
+}
+
+/**
+ * Whether `unstable_timestep` is Muskingum-Cunge's refusal of a step that would have to be
+ * divided into so many parts that the hydrograph gets too many ordinates (its details give
+ * the parts and the most ordinates): a longer step, not another method, mends it.
+ *
+ * @param {object} details the error's details
+ * @returns {boolean} true for that refusal
+ */
+export function tooManyOrdinates(details) {
+  return !unroutable(details) && Number.isFinite(details.substeps) && Number.isFinite(details.maximum) && Number.isFinite(details.timestep_min);
+}
+
+/**
+ * Why a node cannot be routed at its time step, truthfully by the details: a reach too
+ * short or too flat for Muskingum-Cunge at any step, a step that would need too many
+ * ordinates, otherwise a step too long for the method's parameters; each says where the
+ * network's step is set.
+ *
+ * @param {object} details the error's details (`node_id` and the method's numbers)
+ * @returns {string} the words
+ */
+function unstableText(details) {
+  const words = texts.unstable;
+  const node = details.node_id ?? "–";
+  if (unroutable(details)) {
+    return t(words.flat, {
+      node,
+      length: num(details.length_m, 1),
+      celerity: num(details.celerity_m_per_s, 2),
+      diffusion: num(details.diffusion_length_m, 0),
+      step: words.step,
+    });
+  }
+  if (tooManyOrdinates(details)) {
+    return t(words.ordinates, {
+      node,
+      timestep: inputText(details.timestep_min),
+      substeps: details.substeps,
+      maximum: num(details.maximum, 0),
+      step: words.step,
+    });
+  }
+  return t(texts.reasons.unstable_timestep, { node, step: words.step });
+}
+
+/**
+ * The lag that stands in for a reach Muskingum-Cunge cannot route: the wave's travel time
+ * along it, length / celerity, in whole minutes and at least 1 min.
+ *
+ * @param {object} details the error's details
+ * @returns {number|null} the lag [min], or null when the details give no length and celerity
+ */
+export function lagMinutes(details) {
+  if (!unroutable(details) || !(details.length_m > 0) || !(details.celerity_m_per_s > 0)) return null;
+  return Math.max(1, Math.round(details.length_m / details.celerity_m_per_s / 60));
 }
 
 /**

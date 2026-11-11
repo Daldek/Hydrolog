@@ -477,7 +477,7 @@ export const siec = {
   reasons: {
     table_exceeded: "Węzeł {node}: fala wypełnia zbiornik ponad ostatni wiersz tabeli pojemność–odpływ; rozszerz tabelę.",
     table_emptied: "Węzeł {node}: zbiornik opróżnia się poniżej pierwszego wiersza tabeli pojemność–odpływ.",
-    unstable_timestep: "Węzeł {node}: krok czasowy jest za długi dla parametrów tej metody.",
+    unstable_timestep: "Węzeł {node}: krok czasowy jest za długi dla parametrów tej metody. {step}",
     timestep_mismatch: "Źródła sieci mają różne kroki czasowe; wszystkie zlewnie muszą mieć ten sam krok.",
     start_mismatch: "Hydrogramy źródeł zaczynają się w różnych chwilach.",
     missing_field: "Węzeł {node}: brak wymaganego pola.",
@@ -503,6 +503,29 @@ export const siec = {
     irregular_step: "Węzeł {node}: czasy hydrogramu nie mają stałego kroku.",
     not_increasing: "Węzeł {node}: czasy hydrogramu nie rosną.",
     too_short: "Węzeł {node}: hydrogram ma za mało rzędnych.",
+  },
+  /**
+   * Why a reach cannot be routed at its time step, by the details of `unstable_timestep`,
+   * and the one-click changes of its method („Oblicz sieć” again after the lag).
+   */
+  unstable: {
+    step: "Krok czasowy sieci jest w kroku 1 „Sieć”, w polu „Krok czasowy”; puste pole to krok domyślny (krok źródeł, a bez nich 5 min).",
+    flat:
+      "Węzeł {node}: odcinek {length} m jest za krótki albo za płaski dla metody Muskingum-Cunge (prędkość fali {celerity} m/s, " +
+      "długość dyfuzji {diffusion} m): przy żadnym kroku czasowym i żadnym podziale odcinka wagi metody nie są nieujemne, więc " +
+      "zmiana kroku nie pomoże. Taki odcinek działa jak zbiornik: zamień go na opóźnienie (lag) albo zbiornik (level-pool). {step}",
+    ordinates:
+      "Węzeł {node}: przy kroku {timestep} min odcinek wymaga podziału kroku na {substeps} części, co daje za dużo rzędnych " +
+      "(najwyżej {maximum}): wydłuż krok czasowy albo skróć hydrogram. {step}",
+    lag: "Zamień na opóźnienie (lag) {lag} min",
+    lagTitle: "Odcinek {node} przenosi falę bez zmiany kształtu z opóźnieniem {lag} min (czas przepływu {length} m z prędkością fali {celerity} m/s), po czym sieć liczy się od nowa",
+    lagTyped: "Zamień na opóźnienie (lag)",
+    lagTypedTitle: "Odcinek {node} przenosi falę bez zmiany kształtu z wpisanym opóźnieniem, po czym sieć liczy się od nowa",
+    lagField: "Opóźnienie [min]",
+    levelPool: "Zamień na zbiornik (level-pool)",
+    levelPoolTitle: "Odcinek {node} jako zbiornik: podaj w „Dane” jego tabelę pojemność–odpływ",
+    lagApplied: "Węzeł {node}: opóźnienie (lag) {lag} min zamiast metody {method}.",
+    levelPoolApplied: "Węzeł {node}: zbiornik (level-pool); podaj jego tabelę pojemność–odpływ.",
   },
   labels: {
     any: {},

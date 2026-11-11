@@ -8,9 +8,9 @@
 
 import { toPng } from "../../charts/png.js";
 import { Chart } from "../../charts/chart.js";
-import { auto, hmm, num } from "../../format.js";
+import { auto, hmm, inputText, num, parseNumber } from "../../format.js";
 import { Notices } from "../../forms/result-view.js";
-import { html, useMemo } from "../../html.js";
+import { html, useMemo, useState } from "../../html.js";
 import { common, t } from "../../labels/common.js";
 import { exportLabels } from "../../labels/exports.js";
 import { handoffLabels } from "../../labels/handoff.js";
@@ -289,16 +289,54 @@ function ExportRow({ items }) {
 }
 
 /**
+ * The one-click changes of method of a reach Hydrolog refused at its time step (reachFix):
+ * a lag of the wave's travel time, or of a typed value when the error does not give it, and
+ * a level-pool storage.
+ *
+ * @param {{fix: object, onLag: (fix: object, minutes: number) => void, onLevelPool: (fix:
+ *   object) => void}} props the offer and its actions
+ * @returns {object} the buttons
+ */
+function ReachFix({ fix, onLag, onLevelPool }) {
+  const words = texts.unstable;
+  const [typed, setTyped] = useState("");
+  const minutes = parseNumber(typed);
+  const usable = Number.isFinite(minutes) && minutes > 0;
+  const lagWords = { node: fix.node, lag: inputText(fix.lag), length: num(fix.length_m, 1), celerity: num(fix.celerity_m_per_s, 2) };
+  return html`
+    <div class="btn-row reach-fix" data-fix=${fix.node}>
+      ${fix.lag !== null
+        ? html`<button class="btn sm" type="button" data-fix-action="lag" title=${t(words.lagTitle, lagWords)} onClick=${() => onLag(fix, fix.lag)}>
+            ${t(words.lag, lagWords)}
+          </button>`
+        : html`<label class="reach-fix-lag">
+              <span>${words.lagField}</span>
+              <input type="text" inputmode="decimal" size="5" data-fix-field="lag_min" value=${typed} onInput=${(event) => setTyped(event.currentTarget.value)} />
+            </label>
+            <button class="btn sm" type="button" data-fix-action="lag" disabled=${!usable} title=${t(words.lagTypedTitle, lagWords)} onClick=${() => onLag(fix, minutes)}>
+              ${words.lagTyped}
+            </button>`}
+      ${fix.levelPool
+        ? html`<button class="btn sm ghost" type="button" data-fix-action="level-pool" title=${t(words.levelPoolTitle, lagWords)} onClick=${() => onLevelPool(fix)}>
+            ${words.levelPool}
+          </button>`
+        : null}
+    </div>
+  `;
+}
+
+/**
  * The panel Wyniki.
  *
  * @param {{run: object|null, stale: boolean, selected: string|null, state: object,
  *   document: object|null, valid: boolean, chartSvg: object, schematicSvg: object,
- *   error: object|null}} props the last run and whether the data changed since, the
- *   chosen node, the section's state, the network's document and whether it is complete,
- *   the refs of the node's chart and of the schematic, and the last error
+ *   error: object|null, fix: object|null, onLag: Function, onLevelPool: Function}} props
+ *   the last run and whether the data changed since, the chosen node, the section's state,
+ *   the network's document and whether it is complete, the refs of the node's chart and of
+ *   the schematic, the last error and the changes of method it offers (ReachFix)
  * @returns {object} the panel's body
  */
-export function ResultsPanel({ run, stale, selected, state, document, valid, chartSvg, schematicSvg, error }) {
+export function ResultsPanel({ run, stale, selected, state, document, valid, chartSvg, schematicSvg, error, fix, onLag, onLevelPool }) {
   const result = run && run.envelope.status === "ok" ? run.envelope.result : null;
   const nodes = useMemo(() => (result ? resultNodes(result) : new Map()), [result]);
   const node = result && selected ? nodes.get(selected) : null;
@@ -309,6 +347,7 @@ export function ResultsPanel({ run, stale, selected, state, document, valid, cha
       ? html`<div class="form-errors" role="alert" data-error="run">
           <strong>${error.title}</strong>
           <ul><li>${error.text}${error.node ? html` <span class="reason">· ${t(texts.errorNode, { id: error.node })}</span>` : null}</li></ul>
+          ${fix ? html`<${ReachFix} key=${fix.node} fix=${fix} onLag=${onLag} onLevelPool=${onLevelPool} />` : null}
         </div>`
       : null}
     ${result && stale
