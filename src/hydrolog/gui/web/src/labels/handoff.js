@@ -145,7 +145,9 @@ export const handoffLabels = {
   /**
    * Where data came from: a hand-off's record and the origins of its provenance and of each
    * node (node_provenance; plan 2026-11-10-network-wizard, D9), with the words of
-   * Hydrograf's elements of a network (its plan 2026-11-10-network-delineation, D14).
+   * Hydrograf's elements of a network (its plan 2026-11-10-network-delineation, D14). A
+   * headwater is a „dopływ”, as Hydrograf shows and names it (its ADR-080, amended
+   * 2026-11-11): which branch of a junction is the headwater changes nothing here.
    */
   origin: {
     title: "Z {producer}: {subject}",
@@ -155,7 +157,7 @@ export const handoffLabels = {
     received: "{producer} {version} · {time} · nogat-handoff/1",
     snyderSkipped: "{option} = {value} pominięte: zlewnia ma {field} = {kept}",
     elements: {
-      headwater: "zlewnia górna",
+      headwater: "dopływ",
       tributary: "dopływ",
       intermediate: "przyrzecze",
       reach: "odcinek",
