@@ -313,7 +313,9 @@ inundation, backwater and structures stay with Hydraulik, HEC-RAS and IMGW HD.
   whole number fits), command `route muskingum`
 - Muskingum-Cunge: `MuskingumCungeReach` with constant coefficients (the NRCS form: `K = dx / c`,
   `X` from the diffusion of the wave, distance steps inside the positivity window, the rise-time
-  rule), `TrapezoidalSection` (Manning's rating), command `route muskingum-cunge`
+  rule; a reach with no such grid routed as linear reservoirs with the warning
+  `diffusion_dominated`, ADR-0026), `TrapezoidalSection` (Manning's rating), command
+  `route muskingum-cunge`
 - Cascade of linear reservoirs: `CascadeReach` (Nash, Kalinin-Milyukov; the exact response to the
   piecewise-linear inflow from the incomplete gamma function, so no window of stable steps and no
   sub-steps), command `route cascade`

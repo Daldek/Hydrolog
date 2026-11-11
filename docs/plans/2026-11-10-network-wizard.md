@@ -292,6 +292,8 @@ Left, none of it blocking the merge:
 - A non-integer CN on the canvas is written with four significant digits („CN 61,60”), the page's rule for numbers; Hydrograf hands over CNs with one decimal.
 - In a network of eighteen nodes the middle of a node's box can fall between its mark and its label, so the browser tests choose nodes there by the keyboard.
 
+After the close (2026-11-11): the origin `headwater` reads „dopływ” since `be189b0` (Hydrograf's ADR-080 amended), so „zlewnia górna” above is the word of `3b28b15`; the recorded `tests/fixtures/handoff_hydrograf_network.json` keeps Hydrograf's name of that time („Zlewnia górna powyżej J1”).
+
 ## Not in this plan
 
 The settings of reaches, reservoirs, junctions and the outlet in the second panel (they stay in „Dane”); a live hydrograph of the chosen subcatchment in Sieć (Sieć computes on „Oblicz sieć”); urban regression as a value of `nash_estimation`; Snyder's L and Lc read by the library from the watershed (the runoff keeps its own fields, which the mapping fills); an areal reduction of the network's rainfall or one PMAXTP point per subcatchment beyond „Własny opad”; reading the stored inputs of version 2; Hydrograf's network delineation (its plan) and Nogat's schema (Nogat's plan); the background map (the editor's D15).
