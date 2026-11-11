@@ -8,7 +8,7 @@
 
 import { toPng } from "../../charts/png.js";
 import { Chart } from "../../charts/chart.js";
-import { auto, hmm, inputText, num, parseNumber } from "../../format.js";
+import { auto, hmm, num, parseNumber } from "../../format.js";
 import { Notices } from "../../forms/result-view.js";
 import { html, useMemo, useState } from "../../html.js";
 import { common, t } from "../../labels/common.js";
@@ -26,6 +26,7 @@ import { DataTable } from "../../ui/table.js";
 import { toast } from "../../ui/toast.js";
 import { inflowsOf, nodeChartSpec, outflowLabel, resultNodes } from "./charts.js";
 import { exportItems } from "./export.js";
+import { reservoirsText } from "./words.js";
 
 /**
  * A volume for people: thousands of m³ in the table, millions in a tile.
@@ -155,6 +156,7 @@ function parameterRow(name, value) {
   if (name === "balance_error_m3" && typeof value === "number") shown = num(value, 1);
   else if (typeof value === "number") shown = auto(value);
   else if (typeof value === "boolean") shown = value ? common.yes : common.no;
+  else if (name === "scheme" && Object.hasOwn(texts.schemes, value)) shown = texts.schemes[value];
   // "subreaches_min" is the fewest sub-reaches, a count, not minutes
   const unit = name.startsWith("subreaches") ? "" : unitOfName(name) || "";
   return { name, sym: label ? name : null, label, value: shown, unit };
@@ -290,8 +292,7 @@ function ExportRow({ items }) {
 
 /**
  * The one-click changes of method of a reach Hydrolog refused at its time step (reachFix):
- * a lag of the wave's travel time, or of a typed value when the error does not give it, and
- * a level-pool storage.
+ * a lag of a typed value and a level-pool storage.
  *
  * @param {{fix: object, onLag: (fix: object, minutes: number) => void, onLevelPool: (fix:
  *   object) => void}} props the offer and its actions
@@ -302,26 +303,43 @@ function ReachFix({ fix, onLag, onLevelPool }) {
   const [typed, setTyped] = useState("");
   const minutes = parseNumber(typed);
   const usable = Number.isFinite(minutes) && minutes > 0;
-  const lagWords = { node: fix.node, lag: inputText(fix.lag), length: num(fix.length_m, 1), celerity: num(fix.celerity_m_per_s, 2) };
+  const fixWords = { node: fix.node };
   return html`
     <div class="btn-row reach-fix" data-fix=${fix.node}>
-      ${fix.lag !== null
-        ? html`<button class="btn sm" type="button" data-fix-action="lag" title=${t(words.lagTitle, lagWords)} onClick=${() => onLag(fix, fix.lag)}>
-            ${t(words.lag, lagWords)}
-          </button>`
-        : html`<label class="reach-fix-lag">
-              <span>${words.lagField}</span>
-              <input type="text" inputmode="decimal" size="5" data-fix-field="lag_min" value=${typed} onInput=${(event) => setTyped(event.currentTarget.value)} />
-            </label>
-            <button class="btn sm" type="button" data-fix-action="lag" disabled=${!usable} title=${t(words.lagTypedTitle, lagWords)} onClick=${() => onLag(fix, minutes)}>
-              ${words.lagTyped}
-            </button>`}
+      <label class="reach-fix-lag">
+        <span>${words.lagField}</span>
+        <input type="text" inputmode="decimal" size="5" data-fix-field="lag_min" value=${typed} onInput=${(event) => setTyped(event.currentTarget.value)} />
+      </label>
+      <button class="btn sm" type="button" data-fix-action="lag" disabled=${!usable} title=${t(words.lagTypedTitle, fixWords)} onClick=${() => onLag(fix, minutes)}>
+        ${words.lagTyped}
+      </button>
       ${fix.levelPool
-        ? html`<button class="btn sm ghost" type="button" data-fix-action="level-pool" title=${t(words.levelPoolTitle, lagWords)} onClick=${() => onLevelPool(fix)}>
+        ? html`<button class="btn sm ghost" type="button" data-fix-action="level-pool" title=${t(words.levelPoolTitle, fixWords)} onClick=${() => onLevelPool(fix)}>
             ${words.levelPool}
           </button>`
         : null}
     </div>
+  `;
+}
+
+/**
+ * The warning of a Muskingum-Cunge reach that Hydrolog routed as linear reservoirs
+ * (reservoirsText), above its chart; nothing for another node.
+ *
+ * @param {{node: object, timestep: number}} props the node of the result and the network's
+ *   step [min]
+ * @returns {object|null} the note
+ */
+function ReservoirsNote({ node, timestep }) {
+  const text = reservoirsText(node.id, node.parameters, timestep);
+  if (!text) return null;
+  return html`
+    <ul class="notes" data-reservoirs=${node.id}>
+      <li class="warn" role="status">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" /><path d="M8 4.5v4M8 11v.01" /></svg>
+        <div><span class="lvl">${common.levels.warning}</span> ${text}</div>
+      </li>
+    </ul>
   `;
 }
 
@@ -364,6 +382,7 @@ export function ResultsPanel({ run, stale, selected, state, document, valid, cha
       ? html`
           <h3 class="group-title" data-result-node=${node.id}>${t(texts.selectedNode, { id: node.id })}</h3>
           <div class="node-res" data-node-res=${node.id}>
+            <${ReservoirsNote} node=${node} timestep=${result.timestep_min} />
             <div class="chart-title" id=${`siec-res-${node.id}`}>${t(texts.chart.heading, { id: node.id, what: texts.chart.what[node.type] || "" })}</div>
             ${spec ? html`<${Chart} key=${node.id} spec=${spec} svgRef=${chartSvg} class="node-chart" />` : null}
             <${NodeNumbers} node=${node} nodes=${nodes} />

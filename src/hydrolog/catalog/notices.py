@@ -273,6 +273,13 @@ _SPECS: Final[tuple[NoticeSpec, ...]] = (
         "was routed on a grid inside the limit.",
     ),
     _own_text(
+        "diffusion_dominated",
+        "warning",
+        "No Muskingum-Cunge grid keeps the weights non-negative on this time step: the "
+        "reach was routed as linear reservoirs that keep the travel time and the "
+        "spread of the diffusion wave, so its attenuation is approximate.",
+    ),
+    _own_text(
         "tail_truncated",
         "warning",
         "The outflow had not settled to within 0.1 % of the inflow peak at the end of "

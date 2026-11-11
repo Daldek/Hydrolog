@@ -105,7 +105,7 @@ import {
   useOpened,
   withSessionNames,
 } from "./state.js";
-import { kindNoun, lagMinutes, problemText, refusalText, tooManyOrdinates } from "./words.js";
+import { kindNoun, problemText, refusalText, tooManyOrdinates } from "./words.js";
 
 registerInfo(routing);
 
@@ -225,30 +225,21 @@ export function runFailure(error, rules = {}) {
 
 /**
  * The changes of method a run's refusal of a reach at its time step (`unstable_timestep`)
- * offers: a lag of the wave's travel time when the error gives the reach's length and
- * celerity, else of a typed value, and a level-pool storage unless the reach is one. None
+ * offers: a lag of a typed value, and a level-pool storage unless the reach is one. None
  * for another node, nor when the step would need too many ordinates (a longer step mends
- * that).
+ * that). A Muskingum-Cunge reach without a grid is no refusal: Hydrolog routes it as
+ * linear reservoirs and says so in the result (ADR-0026).
  *
  * @param {object|null} failure the shown failure (runFailure)
  * @param {object} state the section's state (its skeleton and the nodes' values)
- * @returns {{node: string, method: string, lag: number|null, length_m: number|null,
- *   celerity_m_per_s: number|null, levelPool: boolean}|null} the offer
+ * @returns {{node: string, method: string, levelPool: boolean}|null} the offer
  */
 export function reachFix(failure, state) {
   if (!failure || failure.reason !== "unstable_timestep" || !failure.node) return null;
   const node = state.skeleton.find((item) => item.id === failure.node);
   if (!node || node.type !== "reach" || tooManyOrdinates(failure.details)) return null;
   const method = (state.nodes[node.id] || {})["#method"] || "";
-  const lag = lagMinutes(failure.details);
-  return {
-    node: node.id,
-    method,
-    lag,
-    length_m: lag === null ? null : failure.details.length_m,
-    celerity_m_per_s: lag === null ? null : failure.details.celerity_m_per_s,
-    levelPool: method !== "level-pool",
-  };
+  return { node: node.id, method, levelPool: method !== "level-pool" };
 }
 
 /**
@@ -1014,7 +1005,7 @@ export default function Siec({ active, path = [] }) {
     }
   };
 
-  // A reach refused at every time step changes its method in one click (reachFix): a lag
+  // A reach refused at its time step changes its method in one click (reachFix): a lag
   // computes the network again in the render that builds its document, a level-pool
   // storage waits in „Dane” for its table
   const recompute = useRef(false);

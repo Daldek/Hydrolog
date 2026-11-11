@@ -312,9 +312,11 @@ reservoir, the most attenuation) to 0.5 (none). The reach is divided into `--sub
 sub-reaches of `K/N`, and more of them attenuate less; without `--subreaches` the number is `K`
 over the time step, rounded. The weights of a sub-reach stay non-negative only while
 `|2KX| <= step <= 2K(1 - X)`: a `--subreaches` outside that window is an error
-(`details.reason` `unstable_timestep`, the window in `details.minimum` and `details.maximum`),
-and when no whole number of sub-reaches is inside it the time step is divided into sub-steps
-(notice `substeps_added`; `balance_error_m3` is then the sampling error of the trapezoid rule).
+(`details.reason` `unstable_timestep`, the window in `details.minimum` and `details.maximum`,
+and the steps on which the given number fits, `2KX / N` to `2K(1 - X) / N`, in
+`details.minimum_timestep_min` and `details.maximum_timestep_min`), and when no whole number of
+sub-reaches is inside it the time step is divided into sub-steps (notice `substeps_added`;
+`balance_error_m3` is then the sampling error of the trapezoid rule).
 
 ```bash
 hydrolog route muskingum --k-min 1200 --x 0.25 --subreaches 1 --extend-min 0 \
@@ -340,12 +342,17 @@ of two groups: a channel section (`--manning-n` with `--bottom-width-m` and `--s
 (`--celerity-m-per-s` with `--top-width-m`, for example from a hydraulic model); both groups or
 neither is an error (`details.reason` `one_of`). The steps are those of NRCS,
 `dx_c = (c dt + Q / (T S0 c)) / 2`, changed so that every weight stays non-negative (notice
-`subreaches_adjusted`; `substeps_added` when the time step has to be divided); a reach so short and
-flat that it acts as storage is refused (`unstable_timestep`; use a reservoir method). A
-hydrograph that rises from 5 % of its peak to the peak in fewer than 10 steps is interpolated to a
-shorter step (`timestep_refined`). Every step inside the non-negative window meets the accuracy
-limit of NEH-630, so `accuracy_limit` only reports that the NRCS step was beyond it and was
-replaced.
+`subreaches_adjusted`; `substeps_added` when the time step has to be divided). A hydrograph that
+rises from 5 % of its peak to the peak in fewer than 10 steps is interpolated to a shorter step
+(`timestep_refined`). Every step inside the non-negative window meets the accuracy limit of
+NEH-630, so `accuracy_limit` only reports that the NRCS step was beyond it and was replaced. A
+reach for which no division of the reach or of the step gives non-negative weights (typically
+its diffusion length `D = Q / (T S0 c)` is long against `c dt`: a flat, short or narrow reach)
+is routed as `n = L / D` (rounded, at least 1) linear reservoirs of `K = L / (n c)`, which keep
+the travel time `L / c` of the diffusion wave and nearly its spread, with the warning
+`diffusion_dominated`; its `parameters` have `scheme` `linear_reservoir`, `n`, `k_min` (one
+reservoir), `lag_min` and `diffusion_length_m`, and its attenuation is approximate (ADR-0026).
+Only a grid that would give more than a million ordinates is refused (`unstable_timestep`).
 
 The example is NEH-630 example 17-4 in SI: `L` = 2,600 ft, `S0` = 0.00091, and `c` = 4.297 ft/s and
 `T` = 44.6 ft as printed in the text; the inflow is the 37 ordinates of Table 17-18 in m3/s

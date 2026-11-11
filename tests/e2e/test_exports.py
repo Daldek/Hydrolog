@@ -44,7 +44,6 @@ from playwright.sync_api import Locator, Page, expect
 
 import hydrolog
 from hydrolog.catalog import run_command
-from hydrolog.exceptions import InvalidParameterError
 from hydrolog.routing import RoutingNetwork, structure_schematic
 from hydrolog.testing import example_network_document, placed
 from tests.conftest import recorded_fetch, recorded_pmaxtp
@@ -1888,29 +1887,27 @@ def test_a_phone_in_the_dark_shows_the_origin_of_each_node(new_tab: Any) -> None
     assert page.evaluate(SIDEWAYS) == []
 
 
-HYDROGRAF_SHORT_REACH = FIXTURES / "handoff_hydrograf_network_short_reach.json"
-"""Hydrograf's network hand-off of Wojcieszów Kaczawa (``POST /api/delineate-network``
-of the kaczawa2 instance, 2026-11-11), as it wrote it: point P2 lies 50.4 m above the
-confluence of P3's tributary, so the reach R1 between them is 50.4 m long with the
-minimum slope 0.0001, which Muskingum-Cunge cannot route at any time step. No
-``timestep_min``, no rainfall, reaches without their section."""
+HYDROGRAF_LOWLAND = FIXTURES / "handoff_hydrograf_network_nysa_szalona.json"
+"""Hydrograf's network hand-off of the Nysa Szalona above point A (``POST
+/api/delineate-network`` of the kaczawa2 instance, 2026-11-11), as it wrote it: 18
+subcatchments and 9 reaches of lowland slopes (R2 7.70 km at 2.78 per mille, R5 7.1 m).
+With a 60 mm, 120 min block rain and n 0.05 with a 5 m bottom, Muskingum-Cunge has no
+grid of non-negative weights for R2 on the default 5 min step (diffusion length 6.7 km
+against the 7.7 km reach), which Hydrolog refused until ADR-0026. No ``timestep_min``,
+no rainfall, reaches without their section."""
 
 
-def test_a_reach_too_flat_for_muskingum_cunge_offers_a_lag_that_computes(
+def test_a_lowland_reach_without_a_grid_computes_as_a_reservoir_and_says_so(
     tab: Tab, tmp_path: Path
 ) -> None:
-    hydrograf = json.loads(HYDROGRAF_SHORT_REACH.read_text(encoding="utf-8"))
+    hydrograf = json.loads(HYDROGRAF_LOWLAND.read_text(encoding="utf-8"))
     nodes = hydrograf["payload"]["nodes"]
     reaches = [node["id"] for node in nodes if node["type"] == "reach"]
     assert "timestep_min" not in hydrograf["payload"]
     tab.open("#siec")
     page = tab.page
-    load_file(page, SIEC, HYDROGRAF_SHORT_REACH)
+    load_file(page, SIEC, HYDROGRAF_LOWLAND)
     expect(page.locator("svg.schem g.node")).to_have_count(len(nodes))
-    # Without the hand-off's step the network's field is empty with the default shown
-    step = page.locator("#siec-net-timestep_min")
-    expect(step).to_have_value("")
-    expect(step).to_have_attribute("placeholder", "5")
 
     rain = page.locator(f'{SIEC} [data-rain-part="siec-net"]')
     rain.get_by_role("radio", name="Hietogram", exact=True).click()
@@ -1920,53 +1917,52 @@ def test_a_reach_too_flat_for_muskingum_cunge_offers_a_lag_that_computes(
     for reach in reaches:
         choose(page, reach)
         form = page.locator(f'[data-node-form="{reach}"]')
-        form.locator('[data-key="muskingum-cunge.manning_n"] input').fill("0,04")
+        form.locator('[data-key="muskingum-cunge.manning_n"] input').fill("0,05")
         form.locator('[data-key="muskingum-cunge.bottom_width_m"] input').fill("5")
     with page.expect_request(lambda sent: "/api/run/route/network" in sent.url) as run:
         page.get_by_role("button", name="Oblicz sieć").click()
-    expect(page.locator(BADGE)).to_have_attribute("data-state", "error")
+    expect(page.locator(BADGE)).to_have_attribute("data-state", "ok")
+    expect(page.locator(f'{SIEC} [data-error="run"]')).to_have_count(0)
 
-    # The library refuses R1 at every step; the wave's travel time along it is the lag
+    # The library routes the network the page sent: R2, whose diffusion length is long
+    # against the 5 min step, is one linear reservoir of L / c
     name = (run.value.post_data_json or {})["network_file"]
     sent = json.loads(page.request.get(tab.base + f"api/files/{name}").text())
     (tmp_path / "siec.json").write_text(json.dumps(sent), encoding="utf-8")
-    with pytest.raises(InvalidParameterError) as refused:
-        run_command("route network", {"network_file": str(tmp_path / "siec.json")})
-    details = refused.value.details
-    assert details["node_id"] == "R1" and details["reason"] == "unstable_timestep"
-    lag = max(1, round(details["length_m"] / details["celerity_m_per_s"] / 60))
-    error = page.locator(f'{SIEC} [data-error="run"]')
-    expect(error.locator("li")).to_contain_text(
-        "Węzeł R1: odcinek 50,4 m jest za krótki albo za płaski dla metody "
-        f"Muskingum-Cunge (prędkość fali {polish(details['celerity_m_per_s'], 2)} m/s"
+    envelope = run_command(
+        "route network", {"network_file": str(tmp_path / "siec.json")}
+    ).to_dict()
+    r2 = next(node for node in envelope["result"]["nodes"] if node["id"] == "R2")
+    parameters = r2["parameters"]
+    assert (parameters["scheme"], parameters["n"]) == ("linear_reservoir", 1)
+    length_m = parameters["length_km"] * 1000.0
+    assert parameters["diffusion_length_m"] < length_m
+    assert parameters["k_min"] == pytest.approx(
+        length_m / parameters["celerity_m_per_s"] / 60.0
     )
-    expect(error.locator("li")).to_contain_text("więc zmiana kroku nie pomoże")
-    expect(error.locator("li")).to_contain_text(
-        "Krok czasowy sieci jest w kroku 1 „Sieć”, w polu „Krok czasowy”; puste pole "
-        "to krok domyślny"
-    )
-    expect(error.locator("li")).to_contain_text("· węzeł R1")
-    expect(error.locator('[data-fix-action="level-pool"]')).to_have_text(
-        "Zamień na zbiornik (level-pool)"
-    )
-    fix = error.locator('[data-fix-action="lag"]')
-    expect(fix).to_have_text(f"Zamień na opóźnienie (lag) {lag} min")
-
-    # One click: R1 is a lag of that many minutes and the network computes
-    with page.expect_response(lambda answer: "/api/run/route/network" in answer.url):
-        fix.click()
-    expect(page.locator(BADGE)).to_have_attribute("data-state", "ok")
-    expect(error).to_have_count(0)
-    form = page.locator('[data-node-form="R1"]')
-    expect(form.locator('[data-key="#method"] select')).to_have_value("lag")
-    expect(form.locator('[data-key="lag.lag_min"] input')).to_have_value(str(lag))
-    again = json.loads(page.request.get(tab.base + f"api/files/{name}").text())
-    reach = next(node for node in again["nodes"] if node["id"] == "R1")
-    assert {key: reach[key] for key in ("method", "lag_min", "from")} == {
-        "method": "lag",
-        "lag_min": lag,
-        "from": ["Z1"],
+    warned = {
+        notice["details"]["node_id"]
+        for notice in envelope["notices"]
+        if notice["code"] == "diffusion_dominated"
     }
-    assert "length_km" not in reach
-    others = {node["id"]: node for node in again["nodes"] if node["id"] != "R1"}
-    assert others == {node["id"]: node for node in sent["nodes"] if node["id"] != "R1"}
+    assert "R2" in warned
+
+    # Wyniki: R2 chosen says why it is a reservoir, its scheme is in its parameters and
+    # the notices name it
+    choose(page, "R2")
+    note = page.locator(f'{SIEC} [data-reservoirs="R2"]')
+    expect(note).to_contain_text(
+        "Odcinek R2 trasowano jako zbiornik liniowy o K = "
+        f"{polish(parameters['k_min'], 2)} min, bo przy kroku 5 min metoda "
+        "Muskingum-Cunge nie daje nieujemnych wag dla żadnego podziału odcinka "
+        f"L = {polish(length_m, 1)} m ani kroku (długość dyfuzji D = "
+        f"{polish(parameters['diffusion_length_m'], 0)} m, prędkość fali "
+        f"{polish(parameters['celerity_m_per_s'], 2)} m/s). Wynik jest przybliżony."
+    )
+    scheme = page.locator(f'{SIEC} [data-params="R2"] [data-param="scheme"] td')
+    expect(scheme.first).to_have_text("zbiorniki liniowe")
+    expect(
+        page.locator(
+            f"{SIEC} .notes li", has_text="Węzeł R2: Metoda Muskingum-Cunge nie daje"
+        )
+    ).to_have_count(1)

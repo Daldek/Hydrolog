@@ -1993,15 +1993,12 @@ def refusal_details(reach: Any, step_min: float = 5.0) -> dict[str, Any]:
     return {**details, "node_id": "R1"}
 
 
-def test_a_refusal_at_the_time_step_says_why_and_the_lag_that_stands_in(
-    page: Any,
-) -> None:
-    flat = refusal_details(
-        MuskingumCungeReach(0.0504, 0.0001, manning_n=0.04, bottom_width_m=5)
-    )
-    tiny = refusal_details(
-        MuskingumCungeReach(0.005, 0.0001, manning_n=0.04, bottom_width_m=5)
-    )
+def test_a_refusal_at_the_time_step_says_why_and_which_steps_fit(page: Any) -> None:
+    # K = 60 min and X = 0.2 on a 5 min step: 5 to 19 sub-reaches fit, and 2 of them
+    # fit the steps from 2KX / 2 = 12 to 2K(1 - X) / 2 = 48 min
+    short = refusal_details(MuskingumReach(k_min=60, x=0.2, subreaches=2))
+    # K = 25 min and X = 0.5 on a 10 min step: no whole number fits
+    empty = refusal_details(MuskingumReach(k_min=25, x=0.5, subreaches=1), 10.0)
     window = refusal_details(MuskingumReach(k_min=60, x=0.2, subreaches=100))
     # routing/cunge.py's refusal of more than MAX_ORDINATES ordinates (a million: too
     # many to build here)
@@ -2018,11 +2015,16 @@ def test_a_refusal_at_the_time_step_says_why_and_the_lag_that_stands_in(
         """const w = await import('./src/sections/siec/words.js');
         const cases = arguments_;
         return Object.fromEntries(Object.entries(cases).map(([name, details]) =>
-          [name, {text: w.problemText(details), lag: w.lagMinutes(details),
+          [name, {text: w.problemText(details), short: w.stepTooShort(details),
                   ordinates: w.tooManyOrdinates(details)}]));""".replace(
             "arguments_",
             json.dumps(
-                {"flat": flat, "tiny": tiny, "window": window, "ordinates": ordinates}
+                {
+                    "short": short,
+                    "empty": empty,
+                    "window": window,
+                    "ordinates": ordinates,
+                }
             ),
         ),
     )
@@ -2032,22 +2034,92 @@ def test_a_refusal_at_the_time_step_says_why_and_the_lag_that_stands_in(
         "to krok domyślny"
     )
     assert all(step in case["text"] for case in got.values())
-    assert got["flat"]["text"].startswith(
-        "Węzeł R1: odcinek 50,4 m jest za krótki albo za płaski dla metody "
-        "Muskingum-Cunge"
+    assert got["short"]["text"].startswith(
+        "Węzeł R1: krok czasowy 5 min jest za krótki przy liczbie pododcinków 2 "
+        "(Muskingum): wagi metody są nieujemne przy kroku od 12 do 48 min. Wydłuż krok "
+        "czasowy sieci albo zmień liczbę pododcinków (przy tym kroku od 5 do 19)."
     )
-    assert "zmiana kroku nie pomoże" in got["flat"]["text"]
-    # The wave's travel time in whole minutes, at least one
-    assert got["flat"]["lag"] == max(1, round(50.4 / flat["celerity_m_per_s"] / 60))
-    assert got["tiny"]["lag"] == 1
-    assert got["window"]["lag"] is None and got["ordinates"]["lag"] is None
+    assert got["empty"]["text"].startswith(
+        "Węzeł R1: krok czasowy 10 min jest za krótki przy liczbie pododcinków 1"
+    )
+    assert "(puste pole dobiera ją do kroku)" in got["empty"]["text"]
     assert got["window"]["text"].startswith(
         "Węzeł R1: krok czasowy jest za długi dla parametrów tej metody."
     )
     assert got["ordinates"]["text"].startswith(
         "Węzeł R1: przy kroku 0,5 min odcinek wymaga podziału kroku na 60 części"
     )
+    assert [case["short"] for case in got.values()] == [True, True, False, False]
     assert [case["ordinates"] for case in got.values()] == [False, False, False, True]
+
+
+def reservoir_parameters(reach: Any, step_min: float) -> dict[str, Any]:
+    """Return the parameters of the library's run of a flood through ``reach``."""
+    flows = [0.0, *(100.0 * index / 30 for index in range(1, 31)), 50.0, 0.0, 0.0]
+    result = reach.route(Hydrograph.from_step(flows, step_min))
+    return dict(result.parameters)
+
+
+def test_a_reach_routed_as_reservoirs_says_why_by_its_diffusion_length(
+    page: Any,
+) -> None:
+    # D = 100 / (60 * 0.0002 * 1) = 8333 m against a 100 m reach
+    longer = reservoir_parameters(
+        MuskingumCungeReach(0.1, 0.0002, celerity_m_per_s=1.0, top_width_m=60.0), 60.0
+    )
+    # D = 100 / (10 * 0.001 * 2) = 5000 m against a 6 km reach: one reservoir
+    shorter = reservoir_parameters(
+        MuskingumCungeReach(6.0, 0.001, celerity_m_per_s=2.0, top_width_m=10.0), 2.0
+    )
+    # the same against 16.5 km: three reservoirs of L / (3 c)
+    many = reservoir_parameters(
+        MuskingumCungeReach(16.5, 0.001, celerity_m_per_s=2.0, top_width_m=10.0), 2.0
+    )
+    gridded = reservoir_parameters(
+        MuskingumCungeReach(10.0, 0.001, celerity_m_per_s=2.0, top_width_m=10.0), 2.0
+    )
+    assert [case.get("n") for case in (longer, shorter, many, gridded)] == [
+        1,
+        1,
+        3,
+        None,
+    ]
+    got = js(
+        page,
+        """const w = await import('./src/sections/siec/words.js');
+        const cases = arguments_;
+        return Object.fromEntries(Object.entries(cases).map(
+          ([name, [parameters, step]]) =>
+            [name, w.reservoirsText('R1', parameters, step)]));""".replace(
+            "arguments_",
+            json.dumps(
+                {
+                    "longer": [longer, 60],
+                    "shorter": [shorter, 2],
+                    "many": [many, 2],
+                    "gridded": [gridded, 2],
+                }
+            ),
+        ),
+    )
+
+    assert got["longer"] == (
+        "Odcinek R1 trasowano jako zbiornik liniowy o K = 1,667 min, bo długość "
+        "dyfuzji D = 8333 m przekracza długość odcinka L = 100,0 m: przy kroku 60 "
+        "min metoda Muskingum-Cunge nie daje nieujemnych wag dla żadnego podziału "
+        "odcinka ani kroku (X byłoby ujemne; prędkość fali 1,00 m/s). Wynik jest "
+        "przybliżony."
+    )
+    assert got["shorter"] == (
+        "Odcinek R1 trasowano jako zbiornik liniowy o K = 50 min, bo przy kroku 2 min "
+        "metoda Muskingum-Cunge nie daje nieujemnych wag dla żadnego podziału odcinka "
+        "L = 6000,0 m ani kroku (długość dyfuzji D = 5000 m, prędkość fali 2,00 m/s). "
+        "Wynik jest przybliżony."
+    )
+    assert got["many"].startswith(
+        "Odcinek R1 trasowano jako kaskadę 3 zbiorników liniowych o K = 45,83 min każdy"
+    )
+    assert got["gridded"] is None
 
 
 def scattered_network(size: int, seed: int) -> list[dict[str, Any]]:

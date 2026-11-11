@@ -65,6 +65,7 @@ from hydrolog.routing import (
     RoutingNotice,
     RoutingResult,
 )
+from hydrolog.routing.parameters import ParameterValue
 from hydrolog.routing.schematic import schematic_of, schematic_svg
 
 __all__ = [
@@ -94,9 +95,10 @@ class RouteResult(JsonResultMixin):
     ----------
     model : str
         ``"lag"``, ``"muskingum"``...
-    parameters : dict of str to float
+    parameters : dict of str to float, int, str or bool
         The parameters the model used, including the ones it derived (lag in steps,
-        coefficients, number of sub-reaches...).
+        coefficients, number of sub-reaches...); text only for the ``scheme`` of a
+        Muskingum-Cunge reach routed without a grid.
     timestep_min : float
         Time step of the hydrograph [min].
     extension_min : float
@@ -123,7 +125,7 @@ class RouteResult(JsonResultMixin):
     """
 
     model: str
-    parameters: dict[str, float]
+    parameters: dict[str, ParameterValue]
     timestep_min: float
     extension_min: float
     inflow_peak_m3s: float
@@ -590,7 +592,11 @@ def route_muskingum_cunge(
     where its weights would be negative; a rise from 5 % of the peak to the peak in
     fewer than 10 time steps divides the time step (notice ``timestep_refined``); the
     notice ``accuracy_limit`` says that the NRCS grid was beyond the accuracy limit of
-    NEH-630 and was replaced.
+    NEH-630 and was replaced. A reach with no grid of non-negative weights is routed as
+    ``n = L / D`` (rounded, at least 1) linear reservoirs of ``K = L / (n c)`` with the
+    warning ``diffusion_dominated``; ``parameters`` then have ``scheme``
+    ``linear_reservoir``, ``n``, ``k_min``, ``lag_min`` and ``diffusion_length_m``
+    (ADR-0026).
 
     Parameters
     ----------
@@ -649,9 +655,9 @@ def route_muskingum_cunge(
         If a parameter or the inline hydrograph is not valid, both or neither source
         of the hydrograph is given, not exactly one group of hydraulics options is
         given (``details.reason`` ``one_of``), ``output`` is ``input_file``, the
-        inflow is zero everywhere and no ``reference_discharge_m3s`` is given, or no
-        division of the reach keeps the weights non-negative (``details.reason``
-        ``unstable_timestep``; a short or flat reach is storage: ``route level-pool``).
+        inflow is zero everywhere and no ``reference_discharge_m3s`` is given, or the
+        grid needs so many sub-steps that the hydrograph would have more than a
+        million ordinates (``details.reason`` ``unstable_timestep``).
     NotFoundError
         If ``input_file`` does not exist.
     InputDataError

@@ -30,7 +30,12 @@ from hydrolog.exceptions import CalculationError, InvalidParameterError
 from hydrolog.routing._reading import constructor_defaults
 from hydrolog.routing._registry import Registry
 from hydrolog.routing.hydrograph import Hydrograph
-from hydrolog.routing.parameters import Parameter, ParameterSource, parameter
+from hydrolog.routing.parameters import (
+    Parameter,
+    ParameterSource,
+    ParameterValue,
+    parameter,
+)
 
 __all__ = [
     "MAX_ORDINATES",
@@ -91,9 +96,10 @@ class ReachRun:
     storage_steady_m3 : float
         Water the element would hold at rest under the final inflow ordinate [m3]; the
         run has released its inflow when the end storage has come back to it.
-    parameters : dict of str to float
+    parameters : dict of str to float, int, str or bool
         The parameters the run used, including the ones the model derived (the number
-        of sub-reaches, the coefficients...).
+        of sub-reaches, the coefficients...), mostly numbers; a name such as the
+        ``scheme`` of a Muskingum-Cunge reach routed without a grid is text.
     notices : tuple of RoutingNotice
         Observations of the model (an interpolated lag, added sub-reaches...).
     """
@@ -102,7 +108,7 @@ class ReachRun:
     storage_start_m3: float
     storage_end_m3: float
     storage_steady_m3: float
-    parameters: dict[str, float]
+    parameters: dict[str, ParameterValue]
     notices: tuple[RoutingNotice, ...] = ()
 
 
@@ -114,7 +120,7 @@ class RoutingResult(JsonResultMixin):
     ----------
     model : str
         Name of the model (``"lag"``, ``"muskingum"``...).
-    parameters : dict of str to float
+    parameters : dict of str to float, int, str or bool
         The parameters used, including the derived ones.
     inflow : Hydrograph
         The inflow as given.
@@ -128,7 +134,7 @@ class RoutingResult(JsonResultMixin):
     """
 
     model: str
-    parameters: dict[str, float]
+    parameters: dict[str, ParameterValue]
     inflow: Hydrograph
     outflow: Hydrograph
     storage_start_m3: float
