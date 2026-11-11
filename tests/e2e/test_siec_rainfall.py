@@ -112,10 +112,11 @@ def test_the_networks_pmaxtp_depth_is_fetched_once_and_kept(tab: Tab) -> None:
         "channel=siec-pmaxtp"
     ]
     assert fetches[0].post_data_json == options
-    stored = page.evaluate(
-        "(key) => JSON.parse(localStorage.getItem(key)).network.pmaxtp_fetched", STORED
-    )
-    assert stored == {**options, "depth_mm": 101.82}
+    # The section keeps its state by an effect after the next frame, later on a slower
+    # runner: wait for the fetched depth to be kept
+    fetched = "(key) => JSON.parse(localStorage.getItem(key))?.network?.pmaxtp_fetched"
+    page.wait_for_function(f"(key) => ({fetched})(key)?.depth_mm != null", arg=STORED)
+    assert page.evaluate(fetched, STORED) == {**options, "depth_mm": 101.82}
     # Remembered with the inputs: a reload shows it without a fetch
     page.reload()
     expect(depth).to_have_value("101,82")

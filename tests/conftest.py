@@ -41,6 +41,17 @@ def _isolated_environment(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> No
     monkeypatch.setenv("NOGAT_CONFIG", str(tmp_path / "absent.toml"))
 
 
+@pytest.fixture
+def home(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
+    """Make ``tmp_path`` the home directory that ``~`` stands for, and return it.
+
+    ``os.path.expanduser`` reads ``HOME`` on POSIX and ``USERPROFILE`` on Windows.
+    """
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    return tmp_path
+
+
 @cache
 def recorded_pmaxtp(path: Path = PMAXTP_TABLE) -> dict[str, Any]:
     """Return a recorded answer of IMGW-PIB (default :data:`PMAXTP_TABLE`)."""

@@ -181,7 +181,8 @@ def rename(page: Page, new: str, keys: bool = False) -> None:
     field = page.locator(f'{SECTION} [data-field="id"] input')
     expect(field).to_be_focused()
     if keys:
-        page.keyboard.press("Control+a")
+        # Select all is Meta+A on macOS, where Control+A moves to the start of the line
+        page.keyboard.press("ControlOrMeta+a")
         page.keyboard.type(new)
     else:
         field.fill(new)

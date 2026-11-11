@@ -116,7 +116,11 @@ def test_a_file_that_is_not_a_database_fails_without_its_path(path, call, reason
         ("page_url", "u" * 501),
         ("user_agent", "a" * 501),
         ("diagnostics", "{not json"),
-        ("diagnostics", '{"a":"' + "d" * 99_993 + '"}'),
+        # An id of its own: pytest puts the test's id into an environment variable,
+        # which Windows limits to 32 767 characters
+        pytest.param(
+            "diagnostics", '{"a":"' + "d" * 99_993 + '"}', id="diagnostics-too_large"
+        ),
         ("is_read", 2),
     ],
 )

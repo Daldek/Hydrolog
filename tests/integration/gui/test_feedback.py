@@ -190,10 +190,13 @@ def test_the_largest_report_within_the_limits_is_stored(client, admin):
         (b'{"message": "x"}', "text/plain", "content_type"),
         (b'{"message": ', "application/json", "invalid_json"),
         (b'["message"]', "application/json", "type"),
-        (
+        # An id of its own: pytest puts the test's id into an environment variable,
+        # which Windows limits to 32 767 characters
+        pytest.param(
             json.dumps({"message": "x", "pad": "p" * 300_000}).encode(),
             "application/json",
             "too_large",
+            id="too_large",
         ),
     ],
 )

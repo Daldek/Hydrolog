@@ -1062,7 +1062,7 @@ class TestValidateCommand:
         result = validate_command(
             RICH, {"length_km": 1, "input_file": Path("rel/x.csv")}
         )
-        assert result["input_file"] == "rel/x.csv"
+        assert result["input_file"] == str(Path("rel/x.csv"))
 
     def test_number_list(self):
         """List items are validated with the option's bounds and report their index."""
@@ -1571,11 +1571,10 @@ class TestPathPolicy:
         run_command(self._path_command(), {"input_file": "a/../b.csv"})
         assert CALLS[0]["input_file"] == str(tmp_path.resolve() / "b.csv")
 
-    def test_home_directory_is_expanded(self, tmp_path, monkeypatch):
+    def test_home_directory_is_expanded(self, home):
         """``~`` means the home directory."""
-        monkeypatch.setenv("HOME", str(tmp_path))
         run_command(self._path_command(), {"input_file": "~/x.csv"})
-        assert CALLS[0]["input_file"] == str(tmp_path.resolve() / "x.csv")
+        assert CALLS[0]["input_file"] == str(home.resolve() / "x.csv")
 
     def test_no_policy_allows_any_path(self, tmp_path):
         """Without ``allowed_dirs`` every path is accepted."""

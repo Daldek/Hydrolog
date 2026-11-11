@@ -54,6 +54,13 @@ SIDEWAYS = """() => [document.documentElement,
 CELLS = """() => Object.fromEntries(
   [...document.querySelectorAll('svg.schem g.node')].map((node) =>
     [node.dataset.node, [Number(node.dataset.x), Number(node.dataset.y)]]))"""
+KEPT = """(cells) => {
+  const kept = JSON.parse(localStorage.getItem('hydrolog-gui/siec/3')).skeleton;
+  const at = Object.fromEntries(kept.map((node) => [node.id, node.position]));
+  return Object.entries(cells).every(([node, [x, y]]) =>
+    at[node] && at[node].x === x && at[node].y === y);
+}"""
+"""Whether the section's state kept in the browser has each node in its given cell."""
 ROUTES = """() => Object.fromEntries(
   [...document.querySelectorAll('svg.schem polyline.ln')].map((line) =>
     [line.dataset.edge, line.getAttribute('points').split(' ')
@@ -504,6 +511,9 @@ def test_uporzadkuj_brings_back_hydrologs_layout(tab: Tab) -> None:
         "Uporządkowano schemat: węzły stoją tak, jak układa je Hydrolog."
     )
     assert canvas_cells(page) == cells
+    # The section keeps its state by an effect after the next frame, later on a slower
+    # runner: the reload waits for the cells to be kept
+    page.wait_for_function(KEPT, arg=cells)
     page.reload()
     expect(page.locator("svg.schem g.node")).to_have_count(8)
     assert canvas_cells(page) == cells
