@@ -1883,7 +1883,7 @@ def test_a_phone_in_the_dark_shows_the_origin_of_each_node(new_tab: Any) -> None
     page.locator(f'{left} .node-list button[data-node="Z1"]').click()
     expect(page.locator(f"{panel}.open")).to_be_visible()
     expect(page.locator(f"{panel} .handoff[data-origin] strong")).to_have_text(
-        "Z Hydrografa: zlewnia górna"
+        "Z Hydrografa: dopływ"
     )
     assert page.evaluate(SIDEWAYS) == []
 

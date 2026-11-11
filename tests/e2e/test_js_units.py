@@ -2474,7 +2474,7 @@ def test_node_origins_are_read_shown_and_written_as_nogat_orders(page: Any) -> N
     }
     # Hydrograf's elements in words
     assert [item["what"] for item in got["words"]] == [
-        "zlewnia górna",
+        "dopływ",
         "dopływ do ujścia przy punkcie P3",
         "przyrzecze odcinka R1",
         "zbieg",
