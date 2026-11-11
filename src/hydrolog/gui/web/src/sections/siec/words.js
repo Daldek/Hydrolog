@@ -5,6 +5,7 @@
 
 import { inputText, num } from "../../format.js";
 import { t } from "../../labels/common.js";
+import { noticeValue } from "../../labels/notices.js";
 import { siec as texts } from "../../labels/siec.js";
 
 /**
@@ -68,31 +69,40 @@ export function problemText(problem, rules = {}) {
 }
 
 /**
- * Whether `unstable_timestep` is Muskingum-Cunge's refusal of a reach at every time step
- * (routing/cunge.py `_grid`: its details give the celerity and the diffusion length).
- *
- * @param {object} details the error's details
- * @returns {boolean} true when no time step can route the reach
- */
-export function unroutable(details) {
-  return Number.isFinite(details.diffusion_length_m) && Number.isFinite(details.celerity_m_per_s) && Number.isFinite(details.length_m);
-}
-
-/**
- * Whether `unstable_timestep` is Muskingum-Cunge's refusal of a step that would have to be
- * divided into so many parts that the hydrograph gets too many ordinates (its details give
- * the parts and the most ordinates): a longer step, not another method, mends it.
+ * Whether `unstable_timestep` is a refusal of a step that would have to be divided into so
+ * many parts that the hydrograph gets too many ordinates (Muskingum-Cunge, Muskingum: the
+ * details give the parts and the most ordinates): a longer step, not another method, mends
+ * it.
  *
  * @param {object} details the error's details
  * @returns {boolean} true for that refusal
  */
 export function tooManyOrdinates(details) {
-  return !unroutable(details) && Number.isFinite(details.substeps) && Number.isFinite(details.maximum) && Number.isFinite(details.timestep_min);
+  return Number.isFinite(details.substeps) && Number.isFinite(details.maximum) && Number.isFinite(details.timestep_min);
 }
 
 /**
- * Why a node cannot be routed at its time step, truthfully by the details: a reach too
- * short or too flat for Muskingum-Cunge at any step, a step that would need too many
+ * Whether `unstable_timestep` is Muskingum's refusal of sub-reaches whose weights need a
+ * longer step than the network's (fewer than the window's least number): the details give
+ * the window of the step for that number (routing/muskingum.py `_explicit_plan`).
+ *
+ * @param {object} details the error's details
+ * @returns {boolean} true for that refusal
+ */
+export function stepTooShort(details) {
+  return (
+    details.option === "subreaches" &&
+    Number.isFinite(details.value) &&
+    Number.isFinite(details.minimum) &&
+    details.value < details.minimum &&
+    Number.isFinite(details.minimum_timestep_min) &&
+    Number.isFinite(details.maximum_timestep_min)
+  );
+}
+
+/**
+ * Why a node cannot be routed at its time step, truthfully by the details: a step too short
+ * for the sub-reaches (with the steps that fit them), a step that would need too many
  * ordinates, otherwise a step too long for the method's parameters; each says where the
  * network's step is set.
  *
@@ -102,12 +112,15 @@ export function tooManyOrdinates(details) {
 function unstableText(details) {
   const words = texts.unstable;
   const node = details.node_id ?? "–";
-  if (unroutable(details)) {
-    return t(words.flat, {
+  if (stepTooShort(details)) {
+    const fits = details.minimum <= details.maximum;
+    return t(words.short, {
       node,
-      length: num(details.length_m, 1),
-      celerity: num(details.celerity_m_per_s, 2),
-      diffusion: num(details.diffusion_length_m, 0),
+      timestep: inputText(details.timestep_min),
+      count: details.value,
+      shortest: noticeValue(details.minimum_timestep_min),
+      longest: noticeValue(details.maximum_timestep_min),
+      choice: fits ? t(words.shortCounts, { minimum: details.minimum, maximum: details.maximum }) : words.shortEmpty,
       step: words.step,
     });
   }
@@ -124,15 +137,29 @@ function unstableText(details) {
 }
 
 /**
- * The lag that stands in for a reach Muskingum-Cunge cannot route: the wave's travel time
- * along it, length / celerity, in whole minutes and at least 1 min.
+ * Why a Muskingum-Cunge reach of a result was routed as linear reservoirs (ADR-0026: no
+ * grid of non-negative weights on the step), from its parameters: the reservoirs and their
+ * K, the length, the celerity and the diffusion length; null for any other node.
  *
- * @param {object} details the error's details
- * @returns {number|null} the lag [min], or null when the details give no length and celerity
+ * @param {string} id the node
+ * @param {object|undefined} parameters the node's parameters in the result
+ * @param {number} timestep the network's step [min]
+ * @returns {string|null} the note
  */
-export function lagMinutes(details) {
-  if (!unroutable(details) || !(details.length_m > 0) || !(details.celerity_m_per_s > 0)) return null;
-  return Math.max(1, Math.round(details.length_m / details.celerity_m_per_s / 60));
+export function reservoirsText(id, parameters, timestep) {
+  if (!parameters || parameters.scheme !== "linear_reservoir") return null;
+  const words = texts.reservoirs;
+  const length = parameters.length_km * 1000;
+  const diffusion = parameters.diffusion_length_m;
+  const k = noticeValue(parameters.k_min);
+  return t(diffusion > length ? words.longer : words.shorter, {
+    node: id,
+    what: parameters.n === 1 ? t(words.one, { k }) : t(words.many, { n: parameters.n, k }),
+    length: num(length, 1),
+    diffusion: num(diffusion, 0),
+    celerity: num(parameters.celerity_m_per_s, 2),
+    step: inputText(timestep),
+  });
 }
 
 /**

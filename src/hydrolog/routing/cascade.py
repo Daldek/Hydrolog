@@ -46,6 +46,7 @@ from scipy.special import gammainc, gammaincc
 
 from hydrolog.routing._checks import one_complete_group, positive, whole_number
 from hydrolog.routing.hydrograph import Hydrograph
+from hydrolog.routing.parameters import ParameterValue
 from hydrolog.routing.reach import REACH_METHODS, Reach, ReachRun
 
 __all__ = ["CascadeReach", "cascade_weights"]
@@ -284,7 +285,7 @@ class CascadeReach(Reach):
         storage_end = k * (float(segments.sum()) + held)
 
         lag = n * k
-        parameters = {
+        parameters: dict[str, ParameterValue] = {
             "n": n,
             "k_min": k,
             "lag_min": lag,

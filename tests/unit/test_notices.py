@@ -224,6 +224,7 @@ class TestRegistry:
             "substeps_added",
             "subreaches_adjusted",
             "accuracy_limit",
+            "diffusion_dominated",
             "tail_truncated",
         }
 

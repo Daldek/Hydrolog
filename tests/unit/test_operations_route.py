@@ -559,24 +559,28 @@ class TestRouteMuskingumCunge:
         for key in ("option", "reason"):
             assert via_class.value.details[key] == via_command.value.details[key]
 
-    def test_a_short_flat_reach_is_a_validation_error_that_names_storage_routing(self):
-        with pytest.raises(InvalidParameterError) as caught:
-            run_command(
-                "route muskingum-cunge",
-                {
-                    "length_km": 0.1,
-                    "slope_m_per_m": 0.0002,
-                    "celerity_m_per_s": 1.0,
-                    "top_width_m": 60.0,
-                    "reference_discharge_m3s": 200.0,
-                    "times_min": TIMES,
-                    "discharge_m3s": FLOOD,
-                },
-            )
+    def test_a_short_flat_reach_is_routed_as_a_reservoir_with_a_warning(self):
+        # D = 200 / (60 * 0.0002 * 1) = 16,667 m against a 100 m reach: no grid
+        envelope = run_command(
+            "route muskingum-cunge",
+            {
+                "length_km": 0.1,
+                "slope_m_per_m": 0.0002,
+                "celerity_m_per_s": 1.0,
+                "top_width_m": 60.0,
+                "reference_discharge_m3s": 200.0,
+                "times_min": TIMES,
+                "discharge_m3s": FLOOD,
+            },
+        ).to_dict()
 
-        assert caught.value.code == "validation_error"
-        assert caught.value.details["reason"] == "unstable_timestep"
-        assert "level-pool" in caught.value.hint
+        parameters = envelope["result"]["parameters"]
+        assert (parameters["scheme"], parameters["n"]) == ("linear_reservoir", 1)
+        assert parameters["k_min"] == pytest.approx(100.0 / 60.0)
+        warning = envelope["notices"][0]
+        assert (warning["level"], warning["code"]) == ("warning", "diffusion_dominated")
+        assert "details" not in warning
+        assert min(envelope["result"]["outflow_m3s"]) >= 0.0
 
     def test_an_example_option_set_gives_a_valid_envelope(self, tmp_path):
         envelope = run_command(

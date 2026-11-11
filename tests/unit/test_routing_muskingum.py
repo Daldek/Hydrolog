@@ -390,6 +390,22 @@ class TestSubreaches:
         assert details["timestep_min"] == 10.0
         assert "3 to 9" in caught.value.hint
 
+    @pytest.mark.parametrize("count", [1, 2, 10, 50])
+    def test_the_refusal_gives_the_steps_on_which_the_number_fits(self, count):
+        # N sub-reaches of K / N fit the steps 2KX / N to 2K(1 - X) / N = 24 / N to
+        # 96 / N min; both ends route the same flood with that N
+        reach = MuskingumReach(k_min=60.0, x=0.2, subreaches=count)
+
+        with pytest.raises(InvalidParameterError) as caught:
+            reach.route(flood())
+
+        details = caught.value.details
+        steps = (details["minimum_timestep_min"], details["maximum_timestep_min"])
+        assert steps == pytest.approx((24.0 / count, 96.0 / count))
+        for step in steps:
+            moved = Hydrograph.from_step(flood().discharge_m3s, step)
+            assert reach.route(moved).parameters["subreaches"] == count
+
     def test_the_border_of_the_window_is_inside_it(self):
         for count in (3, 9):
             result = MuskingumReach(k_min=60.0, x=0.2, subreaches=count).route(flood())

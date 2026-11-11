@@ -2,6 +2,9 @@
 
 - Status: accepted
 - Date: 2026-10-24
+- Amended by [ADR-0026](0026-a-reach-without-a-muskingum-cunge-grid.md) (2026-11-11): a Muskingum-Cunge reach for
+  which no division of the step into at most 100 parts gives a window is routed as `n = L / D` linear reservoirs of
+  `L / (n c)` with the warning `diffusion_dominated`, no longer refused
 
 ## Context
 

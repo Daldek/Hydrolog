@@ -155,19 +155,31 @@ class MuskingumReach(Reach):
         return options
 
     def _explicit_plan(self, count: int, step_min: float) -> _Plan:
-        """Check the given number of sub-reaches against the window of the step."""
+        """Check the given number of sub-reaches against the window of the step.
+
+        The refusal also gives the window of the step for those sub-reaches,
+        ``2 K X / N`` to ``2 K (1 - X) / N`` (``minimum_timestep_min`` and
+        ``maximum_timestep_min``).
+        """
         lowest, highest = subreach_window(self.k_min, self.x, step_min)
         if lowest <= count <= highest:
             return _Plan(count, 1)
+        shortest = 2.0 * self.k_min * self.x / count
+        longest = 2.0 * self.k_min * (1.0 - self.x) / count
+        steps = f"a step of {shortest:g} to {longest:g} min"
         if lowest <= highest:
             problem = (
                 f"the weights stay non-negative only for {_reaches(lowest, highest)}"
             )
-            hint = f"Give {_reaches(lowest, highest)}, or leave subreaches out."
+            hint = (
+                f"Give {_reaches(lowest, highest)}, leave subreaches out, or use "
+                f"{steps}."
+            )
         else:
             problem = "no whole number of sub-reaches keeps the weights non-negative"
             hint = (
-                "Leave subreaches out and the step is divided, or use a shorter step."
+                "Leave subreaches out and the step is divided, or use "
+                f"{steps} for {_reaches(count)}."
             )
         raise InvalidParameterError(
             f"Option 'subreaches': {count} sub-reaches of K / N = "
@@ -180,6 +192,8 @@ class MuskingumReach(Reach):
                 "minimum": lowest,
                 "maximum": highest,
                 "timestep_min": step_min,
+                "minimum_timestep_min": shortest,
+                "maximum_timestep_min": longest,
             },
             hint=hint,
         )

@@ -472,6 +472,28 @@ export const siec = {
     stage_peak_m: "Najwyższa rzędna",
     stage_peak_time_min: "Czas najwyższej rzędnej",
     timestep_over_k: "Krok / K",
+    scheme: "Schemat obliczeń",
+    diffusion_length_m: "Długość dyfuzji D",
+  },
+  /** The values of `scheme`: how a Muskingum-Cunge reach without a grid was routed. */
+  schemes: {
+    linear_reservoir: "zbiorniki liniowe",
+  },
+  /**
+   * A Muskingum-Cunge reach routed as linear reservoirs (ADR-0026), in its result: the
+   * reservoirs, then why, by its diffusion length against its length.
+   */
+  reservoirs: {
+    one: "zbiornik liniowy o K = {k} min",
+    many: "kaskadę {n} zbiorników liniowych o K = {k} min każdy",
+    longer:
+      "Odcinek {node} trasowano jako {what}, bo długość dyfuzji D = {diffusion} m przekracza długość odcinka L = {length} m: " +
+      "przy kroku {step} min metoda Muskingum-Cunge nie daje nieujemnych wag dla żadnego podziału odcinka ani kroku " +
+      "(X byłoby ujemne; prędkość fali {celerity} m/s). Wynik jest przybliżony.",
+    shorter:
+      "Odcinek {node} trasowano jako {what}, bo przy kroku {step} min metoda Muskingum-Cunge nie daje nieujemnych wag " +
+      "dla żadnego podziału odcinka L = {length} m ani kroku (długość dyfuzji D = {diffusion} m, prędkość fali {celerity} m/s). " +
+      "Wynik jest przybliżony.",
   },
   /** The errors of a network in Polish by `details.reason` (the rest: labels/errors.js). */
   reasons: {
@@ -510,15 +532,14 @@ export const siec = {
    */
   unstable: {
     step: "Krok czasowy sieci jest w kroku 1 „Sieć”, w polu „Krok czasowy”; puste pole to krok domyślny (krok źródeł, a bez nich 5 min).",
-    flat:
-      "Węzeł {node}: odcinek {length} m jest za krótki albo za płaski dla metody Muskingum-Cunge (prędkość fali {celerity} m/s, " +
-      "długość dyfuzji {diffusion} m): przy żadnym kroku czasowym i żadnym podziale odcinka wagi metody nie są nieujemne, więc " +
-      "zmiana kroku nie pomoże. Taki odcinek działa jak zbiornik: zamień go na opóźnienie (lag) albo zbiornik (level-pool). {step}",
+    short:
+      "Węzeł {node}: krok czasowy {timestep} min jest za krótki przy liczbie pododcinków {count} (Muskingum): wagi metody są " +
+      "nieujemne przy kroku od {shortest} do {longest} min. Wydłuż krok czasowy sieci albo zmień liczbę pododcinków ({choice}). {step}",
+    shortCounts: "przy tym kroku od {minimum} do {maximum}",
+    shortEmpty: "puste pole dobiera ją do kroku",
     ordinates:
       "Węzeł {node}: przy kroku {timestep} min odcinek wymaga podziału kroku na {substeps} części, co daje za dużo rzędnych " +
       "(najwyżej {maximum}): wydłuż krok czasowy albo skróć hydrogram. {step}",
-    lag: "Zamień na opóźnienie (lag) {lag} min",
-    lagTitle: "Odcinek {node} przenosi falę bez zmiany kształtu z opóźnieniem {lag} min (czas przepływu {length} m z prędkością fali {celerity} m/s), po czym sieć liczy się od nowa",
     lagTyped: "Zamień na opóźnienie (lag)",
     lagTypedTitle: "Odcinek {node} przenosi falę bez zmiany kształtu z wpisanym opóźnieniem, po czym sieć liczy się od nowa",
     lagField: "Opóźnienie [min]",

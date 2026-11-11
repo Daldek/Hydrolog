@@ -899,13 +899,15 @@ COMMANDS: tuple[Command, ...] = (
             "Give one group: `manning_n` with `bottom_width_m`, or `celerity_m_per_s` "
             "with `top_width_m`.",
             "Read `notices`: `subreaches_adjusted`, `substeps_added`, "
-            "`timestep_refined`, `accuracy_limit`.",
+            "`timestep_refined`, `accuracy_limit`; `diffusion_dominated` (a reach "
+            "without a grid, routed as linear reservoirs: `parameters.scheme`).",
         ),
         rules_pl=(
             "Podaj jedną grupę: `manning_n` z `bottom_width_m` albo "
             "`celerity_m_per_s` z `top_width_m`.",
             "Czytaj `notices`: `subreaches_adjusted`, `substeps_added`, "
-            "`timestep_refined`, `accuracy_limit`.",
+            "`timestep_refined`, `accuracy_limit`; `diffusion_dominated` (odcinek bez "
+            "siatki, trasowany jako zbiorniki liniowe: `parameters.scheme`).",
         ),
         errors=_ERRORS,
         example_results=(

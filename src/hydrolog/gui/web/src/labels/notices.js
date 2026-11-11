@@ -38,6 +38,9 @@ export const notices = {
     substeps_added: "Dodano kroki pośrednie, aby obliczenie było stabilne.",
     subreaches_adjusted: "Zmieniono liczbę pododcinków, aby obliczenie było stabilne.",
     accuracy_limit: "Przy tych parametrach dokładność metody jest ograniczona.",
+    diffusion_dominated:
+      "Metoda Muskingum-Cunge nie daje przy tym kroku nieujemnych wag dla żadnego podziału odcinka: odcinek trasowano jako " +
+      "zbiorniki liniowe (ich liczba n i stała K są w parametrach odcinka); wynik jest przybliżony.",
     // Operations
     missing_values_removed: {
       text: "Usunięto {missing} z {total} wartości bez danych (pierwsza: {first_date}).",

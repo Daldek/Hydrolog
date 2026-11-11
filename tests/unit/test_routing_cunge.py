@@ -456,28 +456,6 @@ class TestGrid:
         assert result.parameters["c_outflow"] >= 0.0
         assert result.outflow.discharge_m3s.min() >= 0.0
 
-    def test_a_reach_too_short_and_flat_for_any_step_is_refused_with_a_remedy(self):
-        reach = MuskingumCungeReach(
-            length_km=0.1,
-            slope_m_per_m=0.0002,
-            celerity_m_per_s=1.0,
-            top_width_m=60.0,
-            reference_discharge_m3s=200.0,
-        )
-
-        with pytest.raises(InvalidParameterError) as caught:
-            reach.route(triangle(200.0, 12, 24, 60.0))
-
-        details = caught.value.details
-        assert (details["option"], details["reason"]) == (
-            "times_min",
-            "unstable_timestep",
-        )
-        assert details["maximum_substeps"] == MAX_SUBSTEPS
-        assert details["length_m"] == pytest.approx(100.0)
-        assert details["diffusion_length_m"] == pytest.approx(200.0 / (60.0 * 0.0002))
-        assert "route level-pool" in caught.value.hint
-
     def test_a_divided_series_beyond_the_ordinate_limit_is_refused(self):
         reach = MuskingumCungeReach(
             length_km=2.0,
@@ -494,32 +472,44 @@ class TestGrid:
         assert caught.value.details["reason"] == "unstable_timestep"
         assert caught.value.details["substeps"] == 2
 
-    def test_every_routed_reach_has_non_negative_weights_inside_the_limit(self):
+    def test_every_reach_routes_on_a_grid_of_non_negative_weights_or_as_reservoirs(
+        self,
+    ):
         rng = np.random.default_rng(11)
-        routed = refused = 0
+        gridded = reservoirs = 0
         for _ in range(300):
+            length_km = float(10 ** rng.uniform(-1.5, 1.8))
+            slope = float(10 ** rng.uniform(-4, -1.5))
+            celerity = float(10 ** rng.uniform(-0.5, 0.8))
+            top_width = float(10 ** rng.uniform(0.5, 2.2))
+            reference = float(10 ** rng.uniform(0, 3))
             reach = MuskingumCungeReach(
-                length_km=float(10 ** rng.uniform(-1.5, 1.8)),
-                slope_m_per_m=float(10 ** rng.uniform(-4, -1.5)),
-                celerity_m_per_s=float(10 ** rng.uniform(-0.5, 0.8)),
-                top_width_m=float(10 ** rng.uniform(0.5, 2.2)),
-                reference_discharge_m3s=float(10 ** rng.uniform(0, 3)),
+                length_km=length_km,
+                slope_m_per_m=slope,
+                celerity_m_per_s=celerity,
+                top_width_m=top_width,
+                reference_discharge_m3s=reference,
             )
             inflow = triangle(
                 10.0,
-                int(rng.integers(10, 30)),
+                int(rng.integers(5, 30)),
                 30,
                 float(rng.choice([5.0, 15.0, 60.0])),
             )
 
-            try:
-                result = reach.route(inflow, extend_min=0.0)
-            except InvalidParameterError as error:
-                assert error.details["reason"] == "unstable_timestep"
-                refused += 1
-                continue
-            routed += 1
+            result = reach.route(inflow, extend_min=0.0)
+
             parameters = result.parameters
+            assert result.outflow.discharge_m3s.min() >= 0.0
+            diffusion = reference / (top_width * slope * celerity)
+            exists = has_grid(length_km * 1000.0, celerity, diffusion, inflow)
+            assert ("scheme" not in parameters) == exists, parameters
+            if not exists:
+                reservoirs += 1
+                assert parameters["scheme"] == "linear_reservoir"
+                assert codes(result)[0] == "diffusion_dominated"
+                continue
+            gridded += 1
             weights = (
                 parameters["c_current"],
                 parameters["c_previous"],
@@ -529,9 +519,147 @@ class TestGrid:
             assert parameters["grid_reynolds_number"] <= parameters[
                 "grid_reynolds_limit"
             ] * (1.0 + 1e-9), parameters
-            assert result.outflow.discharge_m3s.min() >= 0.0
-        assert routed > 100
-        assert refused >= 1
+            assert "diffusion_dominated" not in codes(result)
+        assert gridded > 100
+        assert reservoirs > 10
+
+
+def has_grid(length_m: float, celerity: float, diffusion: float, inflow) -> bool:
+    """Whether a division of the reach and of the step keeps every weight >= 0.
+
+    Every whole number of distance steps on every sub-step the planner may take (from
+    the division of the NEH-630 rise rule to ``MAX_SUBSTEPS``), against the window
+    ``|c dt - D| <= dx <= c dt + D`` to rounding.
+    """
+    rise = rise_steps(inflow.discharge_m3s)
+    first = 1
+    if 0 < rise < MIN_RISE_STEPS:
+        first = min(math.ceil(MIN_RISE_STEPS / rise), MAX_SUBSTEPS)
+    for substeps in range(first, MAX_SUBSTEPS + 1):
+        wave = celerity * inflow.timestep_min * 60.0 / substeps
+        count = 1
+        while length_m / count >= abs(wave - diffusion) * (1.0 - 1e-9):
+            if length_m / count <= (wave + diffusion) * (1.0 + 1e-9):
+                return True
+            count += 1
+    return False
+
+
+def moments(hydrograph: Hydrograph) -> tuple[float, float]:
+    """The centroid [min] and the variance [min2] of the ordinates in time."""
+    times, flows = hydrograph.times_min, hydrograph.discharge_m3s
+    centroid = float((times * flows).sum() / flows.sum())
+    return centroid, float(((times - centroid) ** 2 * flows).sum() / flows.sum())
+
+
+class TestWithoutAGrid:
+    """ADR-0026: a reach no grid routes is ``n = L / D`` linear reservoirs of L/(nc)."""
+
+    def test_a_reach_far_shorter_than_its_diffusion_length_is_one_reservoir(self):
+        # D = Q / (T S0 c) = 16,667 m against L = 100 m: X would be about -83
+        reach = MuskingumCungeReach(
+            length_km=0.1,
+            slope_m_per_m=0.0002,
+            celerity_m_per_s=1.0,
+            top_width_m=60.0,
+            reference_discharge_m3s=200.0,
+        )
+
+        result = reach.route(triangle(200.0, 12, 24, 60.0))
+
+        assert result.model == "muskingum-cunge"
+        parameters = result.parameters
+        assert parameters["scheme"] == "linear_reservoir"
+        assert parameters["n"] == 1
+        assert parameters["k_min"] == pytest.approx(100.0 / 60.0)
+        assert parameters["lag_min"] == pytest.approx(100.0 / 60.0)
+        assert parameters["diffusion_length_m"] == pytest.approx(200.0 / 0.012)
+        assert not {"x", "subreaches", "substeps", "c_current"} & set(parameters)
+        warning = result.notices[0]
+        assert (warning.code, warning.level) == ("diffusion_dominated", "warning")
+
+    def test_the_reservoirs_keep_the_travel_time_and_their_own_spread(self):
+        # c = 2 m/s, D = 100 / (10 * 0.001 * 2) = 5000 m, L = 16.5 km = 3.3 D: no
+        # whole division is within c dt = 240 m of D, so 3 reservoirs of L / (3 c)
+        reach = MuskingumCungeReach(
+            length_km=16.5,
+            slope_m_per_m=0.001,
+            celerity_m_per_s=2.0,
+            top_width_m=10.0,
+            reference_discharge_m3s=100.0,
+        )
+        inflow = triangle(100.0, 30, 60, 2.0)
+
+        result = reach.route(inflow, extend_min=6000.0)
+
+        k_min = 16_500.0 / (3 * 2.0) / 60.0
+        assert (result.parameters["n"], result.parameters["k_min"]) == (
+            3,
+            pytest.approx(k_min),
+        )
+        # the exact kernel of the cascade: the delay n K = L / c and the variance
+        # n K^2, plus dt^2 / 6 of the inflow drawn as straight lines between ordinates
+        centre_in, spread_in = moments(inflow)
+        centre_out, spread_out = moments(result.outflow)
+        assert centre_out - centre_in == pytest.approx(16_500.0 / 2.0 / 60.0)
+        assert spread_out - spread_in == pytest.approx(3 * k_min**2 + 2.0**2 / 6)
+
+    @pytest.mark.parametrize(
+        ("ratio", "count"), [(0.3, 1), (1.4, 1), (1.6, 2), (2.6, 3), (3.3, 3)]
+    )
+    def test_the_number_of_reservoirs_is_the_length_over_the_diffusion_length(
+        self, ratio, count
+    ):
+        # D = 100 / (40 * 0.001 * 0.5) = 5000 m; a slow wave on a 0.5 min step
+        # (c dt = 15 m) bridges no gap between D and a whole division of the reach
+        reach = MuskingumCungeReach(
+            length_km=5.0 * ratio,
+            slope_m_per_m=0.001,
+            celerity_m_per_s=0.5,
+            top_width_m=40.0,
+            reference_discharge_m3s=100.0,
+        )
+
+        result = reach.route(triangle(100.0, 20, 40, 0.5), extend_min=0.0)
+
+        assert result.parameters["n"] == count
+        assert result.parameters["k_min"] == pytest.approx(
+            5000.0 * ratio / (count * 0.5) / 60.0
+        )
+
+    def test_the_volume_balance_closes_and_the_outflow_is_not_negative(self):
+        reach = MuskingumCungeReach(
+            length_km=7.7006,
+            slope_m_per_m=0.002778,
+            manning_n=0.05,
+            bottom_width_m=5.0,
+        )
+        inflow = triangle(180.0, 30, 90, 5.0)
+
+        released = reach.route(inflow, extend_min=3000.0)
+        settled = reach.route(inflow)
+
+        assert released.parameters["scheme"] == "linear_reservoir"
+        assert released.outflow.discharge_m3s.min() >= 0.0
+        assert released.volume_out_m3 == pytest.approx(released.volume_in_m3, rel=1e-9)
+        assert abs(released.balance_error_m3) <= 1e-9 * released.volume_in_m3
+        assert abs(settled.balance_error_m3) <= 1e-6 * settled.volume_in_m3
+
+    def test_a_short_rise_does_not_divide_the_step_of_the_reservoirs(self):
+        # the kernel is exact for any step: the rise rule of NEH-630 is not applied
+        reach = MuskingumCungeReach(
+            length_km=0.1,
+            slope_m_per_m=0.0002,
+            celerity_m_per_s=1.0,
+            top_width_m=60.0,
+            reference_discharge_m3s=200.0,
+        )
+        inflow = triangle(200.0, 3, 24, 60.0)
+
+        result = reach.route(inflow, extend_min=0.0)
+
+        assert codes(result) == ["diffusion_dominated"]
+        assert np.array_equal(result.outflow.times_min, inflow.times_min)
 
 
 class TestParameters:

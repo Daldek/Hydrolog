@@ -13,7 +13,7 @@ the Nogat standard 2.1 adoption are in the plans of [plans/](plans/).
 | [0005](decisions/0005-error-registry.md) | Adopt the shared error registry | accepted, amended by [0018](decisions/0018-pmaxtp-through-obserwator.md) | 2026-10-24 |
 | [0006](decisions/0006-mcp-server-conformance.md) | MCP server conformance with AGI section 5 | accepted, amended by [0015](decisions/0015-catalog-additions-for-the-gui.md) | 2026-10-24 |
 | [0007](decisions/0007-flood-routing-enters-the-scope.md) | Lumped hydrologic flood routing enters the scope | accepted | 2026-10-24 |
-| [0008](decisions/0008-routing-conventions.md) | Routing conventions: hydrograph table, initial condition, tail, stability | accepted | 2026-10-24 |
+| [0008](decisions/0008-routing-conventions.md) | Routing conventions: hydrograph table, initial condition, tail, stability | accepted, amended by [0026](decisions/0026-a-reach-without-a-muskingum-cunge-grid.md) | 2026-10-24 |
 | [0009](decisions/0009-compact-index-line-for-large-groups.md) | One index line for a command group that would not fit the guide | accepted, amended by [0015](decisions/0015-catalog-additions-for-the-gui.md) | 2026-10-24 |
 | [0010](decisions/0010-route-network-document-and-output-directory.md) | `route network`: the network document, one table per node, `--output-dir` | accepted, amended by [0012](decisions/0012-network-objects-rainfall-and-runoff.md) and [0023](decisions/0023-positions-and-descriptions-in-the-network.md) | 2026-10-25 |
 | [0011](decisions/0011-public-testing-module.md) | `hydrolog.testing`: builders of the files other projects read | accepted | 2026-10-25 |
@@ -31,3 +31,4 @@ the Nogat standard 2.1 adoption are in the plans of [plans/](plans/).
 | [0023](decisions/0023-positions-and-descriptions-in-the-network.md) | Positions and descriptions in the network: the given picture, rule D and the editor's structure checks | accepted, amended by [0025](decisions/0025-the-structure-alone-in-the-schematic.md) | 2026-11-10 |
 | [0024](decisions/0024-nash-by-lutz-from-the-watershed.md) | Nash's n and K estimated from the watershed: `nash_estimation` (Lutz) in the command, the report and the network | accepted | 2026-11-10 |
 | [0025](decisions/0025-the-structure-alone-in-the-schematic.md) | The structure alone in the schematic: `route schematic --structure-only` and „Uporządkuj” before the values | accepted | 2026-11-10 |
+| [0026](decisions/0026-a-reach-without-a-muskingum-cunge-grid.md) | A reach without a Muskingum-Cunge grid: linear reservoirs with a warning, not a refusal | accepted | 2026-11-11 |

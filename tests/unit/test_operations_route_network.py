@@ -145,6 +145,29 @@ class TestTheSummary:
         ]
         assert all(notice.message.startswith("R: ") for notice in notices)
 
+    def test_a_reach_without_a_grid_computes_and_its_node_says_why(self):
+        # D = 90 / (60 * 0.0002 * 1) = 7500 m against a 100 m reach: no grid
+        content = stream(
+            method="muskingum-cunge",
+            lag_min=None,
+            length_km=0.1,
+            slope_m_per_m=0.0002,
+            celerity_m_per_s=1.0,
+            top_width_m=60.0,
+        )
+        del content["nodes"][1]["lag_min"]
+
+        output = route_network(network=content)
+
+        reach_ = next(node for node in output.result.nodes if node["id"] == "R")
+        assert reach_["model"] == "muskingum-cunge"
+        assert reach_["parameters"]["scheme"] == "linear_reservoir"
+        assert reach_["parameters"]["n"] == 1
+        warning = output.notices[0]
+        assert (warning.level, warning.code) == ("warning", "diffusion_dominated")
+        assert warning.details == {"node_id": "R"}
+        assert warning.message.startswith("R: ")
+
     def test_each_reach_of_the_fixture_gives_its_own_notices(self):
         notices = fixture().notices
 

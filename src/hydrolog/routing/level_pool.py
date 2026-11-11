@@ -67,7 +67,7 @@ from hydrolog.exceptions import CalculationError, InvalidParameterError
 from hydrolog.routing._checks import as_array, whole_number
 from hydrolog.routing.hydrograph import Hydrograph, TableProblem
 from hydrolog.routing.muskingum import MAX_SUBSTEPS
-from hydrolog.routing.parameters import Parameter, parameter
+from hydrolog.routing.parameters import Parameter, ParameterValue, parameter
 from hydrolog.routing.reach import (
     MAX_ORDINATES,
     REACH_METHODS,
@@ -668,7 +668,7 @@ class LevelPoolReach(Reach):
         outflow = np.array(series)
 
         steady = _position(self._outflow_values, float(fine.discharge_m3s[-1]))
-        parameters: dict[str, float] = {
+        parameters: dict[str, ParameterValue] = {
             "subreaches": reaches,
             "substeps": plan.substeps,
         }
