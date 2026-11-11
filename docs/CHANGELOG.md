@@ -276,6 +276,7 @@ The author's decision of 2026-11-04: with PMAXTP a person gives the point, the p
 - Docs: ADR-0024 (amends ADR-0012), [COMPUTATION_PATHS.md](COMPUTATION_PATHS.md) 3.2.7, [USAGE.md](USAGE.md), [INTEGRATION.md](INTEGRATION.md), the GUI plan's erratum of D13, the wizard plan's answers to its questions Q1 and Q2.
 
 ### Changed
+- GUI user guide: refreshed the Hydrograf network hand-off chapter against a live network (confluence and point IDs, outlet `O`, headwater and intermediate subcatchments, node provenance), corrected the statistics file action and retook the changed network, statistics and command-catalogue screenshots as indexed PNGs; the worked example fixture and its numbers remain unchanged.
 
 - Obserwator pin (extra `pmaxtp`, `[tool.uv.sources]`) moved from candidate-1 `1ee5457` to commit `f9f4ee7927ba520d3e82d3e289872090ae24e2ec` of Nogat's release set candidate-2; `uv.lock` updated.
 
