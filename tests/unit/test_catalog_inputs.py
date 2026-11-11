@@ -188,6 +188,18 @@ class TestReadTableCsv:
         assert error.code == "data_error"
         assert error.details == {"path": str(path), "reason": "unreadable"}
 
+    def test_a_directory_refused_as_windows_does_is_not_a_file(
+        self, tmp_path, monkeypatch
+    ):
+        """Windows refuses to open a directory with ``PermissionError``."""
+
+        def deny(self, *args, **kwargs):
+            raise PermissionError(13, "Permission denied", str(self))
+
+        monkeypatch.setattr(Path, "open", deny)
+        error = failure(lambda: read_table(tmp_path))
+        assert error.details == {"path": str(tmp_path), "reason": "not_a_file"}
+
 
 class TestReadTableJson:
     """JSON shapes."""

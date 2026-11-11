@@ -10,7 +10,6 @@ report and 10 in 30 for the raster).
 """
 
 import os
-import sys
 import threading
 import time
 from pathlib import Path
@@ -18,16 +17,12 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from hydrolog import _atomic
 from hydrolog._atomic import STAGING_NAME, atomic_output, staging_directory
 from hydrolog.catalog import run_command
 from hydrolog.exceptions import HydrologError
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
-
-concurrent = pytest.mark.skipif(
-    sys.platform == "win32",
-    reason="renaming over a file that another thread is reading is refused on Windows",
-)
 
 
 class TestAtomicOutput:
@@ -128,6 +123,59 @@ class TestAtomicOutput:
         assert target.read_text() in {f"writer-{n}" for n in range(workers)}
 
 
+class TestRefusedReplacement:
+    """Windows refuses a move over a file that another writer holds, for a moment."""
+
+    @staticmethod
+    def refusing(monkeypatch, times):
+        """Make ``os.replace`` refuse ``times`` times, as Windows does.
+
+        Returns the targets of its calls.
+        """
+        calls = []
+        replace = os.replace
+
+        def refuse(source, target):
+            calls.append(target)
+            if len(calls) <= times:
+                raise PermissionError(13, "Access is denied", str(target))
+            replace(source, target)
+
+        monkeypatch.setattr(_atomic.os, "replace", refuse)
+        return calls
+
+    def test_windows_waits_until_the_other_writer_is_done(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(_atomic, "_WINDOWS", True)
+        calls = self.refusing(monkeypatch, times=3)
+        target = tmp_path / "report.md"
+        target.write_text("old", encoding="utf-8")
+
+        with atomic_output(target) as temporary:
+            temporary.write_text("new", encoding="utf-8")
+
+        assert len(calls) == 4
+        assert target.read_text(encoding="utf-8") == "new"
+        assert [path.name for path in tmp_path.iterdir()] == ["report.md"]
+
+    @pytest.mark.parametrize("windows", [True, False])
+    def test_a_lasting_refusal_is_raised_and_keeps_the_old_file(
+        self, tmp_path, monkeypatch, windows
+    ):
+        """On Windows after the patience, elsewhere at once."""
+        monkeypatch.setattr(_atomic, "_WINDOWS", windows)
+        monkeypatch.setattr(_atomic, "_REPLACE_PATIENCE_S", 0.05)
+        calls = self.refusing(monkeypatch, times=1000)
+        target = tmp_path / "report.md"
+        target.write_text("old", encoding="utf-8")
+
+        with pytest.raises(PermissionError), atomic_output(target) as temporary:
+            temporary.write_text("new", encoding="utf-8")
+
+        assert (len(calls) > 1) is windows
+        assert target.read_text(encoding="utf-8") == "old"
+        assert [path.name for path in tmp_path.iterdir()] == ["report.md"]
+
+
 def _race(command, options_of, tmp_path, *, workers=4, rounds=12):
     """Errors of ``workers`` threads that run ``command`` on one output at once.
 
@@ -156,7 +204,6 @@ def _race(command, options_of, tmp_path, *, workers=4, rounds=12):
     return errors, outputs
 
 
-@concurrent
 class TestConcurrentWriters:
     """Four threads replace the same file at once (``force``), as MCP calls do."""
 

@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import platformdirs
 import pytest
 
@@ -198,13 +200,12 @@ class TestConfigPath:
     """Where ``nogat.toml`` is looked for."""
 
     def test_nogat_config_names_the_file(self):
-        assert str(config_path({"NOGAT_CONFIG": "/tmp/x/nogat.toml"})) == (
+        assert config_path({"NOGAT_CONFIG": "/tmp/x/nogat.toml"}) == Path(
             "/tmp/x/nogat.toml"
         )
 
-    def test_the_home_directory_is_expanded(self, monkeypatch, tmp_path):
-        monkeypatch.setenv("HOME", str(tmp_path))
-        assert config_path({"NOGAT_CONFIG": "~/n.toml"}) == tmp_path / "n.toml"
+    def test_the_home_directory_is_expanded(self, home):
+        assert config_path({"NOGAT_CONFIG": "~/n.toml"}) == home / "n.toml"
 
     @pytest.mark.parametrize("value", ["", "   "])
     def test_a_blank_variable_falls_back_to_the_user_directory(self, value):
@@ -223,7 +224,10 @@ class TestConfigPath:
 
 
 class TestDataDir:
-    """``data_dir``: a path, its case kept and ``~`` expanded."""
+    """``data_dir``: a path in the platform's notation, its case kept, ``~`` expanded.
+
+    Windows writes ``/Dane/Nogat`` as ``\\Dane\\Nogat``.
+    """
 
     @pytest.mark.parametrize(
         "environ",
@@ -234,20 +238,21 @@ class TestDataDir:
     )
     def test_the_variables_give_a_path_as_written(self, environ):
         setting = resolve_setting("data_dir", environ=environ, file_data={})
-        assert (setting.value, setting.source) == ("/Dane/Nogat", "environment")
+        expected = str(Path("/Dane/Nogat"))
+        assert (setting.value, setting.source) == (expected, "environment")
 
-    def test_the_home_directory_is_expanded(self, monkeypatch, tmp_path):
-        monkeypatch.setenv("HOME", str(tmp_path))
+    def test_the_home_directory_is_expanded(self, home):
         setting = resolve_setting(
             "data_dir", environ={"HYDROLOG_DATA_DIR": " ~/Dane "}, file_data={}
         )
-        assert setting.value == str(tmp_path / "Dane")
+        assert setting.value == str(home / "Dane")
 
     def test_the_shared_section_of_the_file_gives_it(self):
         setting = resolve_setting(
             "data_dir", environ={}, file_data={"nogat": {"data_dir": "/srv/Nogat"}}
         )
-        assert (setting.value, setting.detail) == ("/srv/Nogat", "[nogat] data_dir")
+        expected = str(Path("/srv/Nogat"))
+        assert (setting.value, setting.detail) == (expected, "[nogat] data_dir")
 
 
 class TestCredentials:
@@ -284,9 +289,8 @@ class TestCredentials:
         }
         assert admin_api_key(environ) == "ze-zmiennej"
 
-    def test_the_home_directory_of_the_file_is_expanded(self, monkeypatch, tmp_path):
-        monkeypatch.setenv("HOME", str(tmp_path))
-        (tmp_path / "admin.key").write_text("domowy", encoding="utf-8")
+    def test_the_home_directory_of_the_file_is_expanded(self, home):
+        (home / "admin.key").write_text("domowy", encoding="utf-8")
         assert admin_api_key({"HYDROLOG_ADMIN_API_KEY_FILE": "~/admin.key"}) == "domowy"
 
     @pytest.mark.parametrize("content", [None, b"", b"  \n", b"\xff\xfe\xfa"])

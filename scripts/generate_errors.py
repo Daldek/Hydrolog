@@ -111,7 +111,7 @@ def _formatted(text: str) -> str:
         [sys.executable, "-m", "ruff", "format", "--stdin-filename", str(MODULE), "-"],
         input=text,
         capture_output=True,
-        text=True,
+        encoding="utf-8",  # ruff reads and writes UTF-8 whatever the locale's encoding
         check=True,
         cwd=ROOT,
     )

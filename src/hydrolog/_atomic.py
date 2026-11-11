@@ -20,6 +20,7 @@ import re
 import secrets
 import shutil
 import socket
+import sys
 import time
 from collections.abc import Iterator
 from pathlib import Path
@@ -31,6 +32,9 @@ STAGING_NAME: Final = ".hydrolog-incoming"
 """Name of the directory, inside the output directory, that holds the staging of a
 write (DEV-19.7)."""
 _STALE_SECONDS: Final = 24 * 3600.0
+_WINDOWS: Final = sys.platform == "win32"
+_REPLACE_PATIENCE_S: Final = 1.0
+"""How long a move over a file that Windows refuses is tried again [s]."""
 
 
 @contextlib.contextmanager
@@ -45,7 +49,8 @@ def atomic_output(target: str | os.PathLike[str]) -> Iterator[Path]:
 
     The name of the temporary file holds a random token: every call gets its own file
     even when several threads or processes write the same ``target`` at once. Each
-    of them replaces ``target`` with its complete content; the last one wins.
+    of them replaces ``target`` with its complete content; the last one wins (on
+    Windows too, see :func:`_replace`).
 
     Parameters
     ----------
@@ -75,10 +80,32 @@ def atomic_output(target: str | os.PathLike[str]) -> Iterator[Path]:
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
         yield temporary
-        os.replace(temporary, path)
+        _replace(temporary, path)
     finally:
         with contextlib.suppress(OSError):
             temporary.unlink()
+
+
+def _replace(source: Path, target: Path) -> None:
+    """Move ``source`` over ``target``, waiting out another writer on Windows.
+
+    Windows refuses to replace a file while another thread or process replaces it or
+    holds it open (``PermissionError``, access denied) and lets it as soon as that one
+    is done, so there the move is tried again, with growing pauses, for up to
+    :data:`_REPLACE_PATIENCE_S`; a refusal that lasts longer is raised. Elsewhere a
+    rename replaces an open file and a ``PermissionError`` is final.
+    """
+    deadline = time.monotonic() + _REPLACE_PATIENCE_S
+    pause = 0.001
+    while True:
+        try:
+            os.replace(source, target)
+            return
+        except PermissionError:
+            if not _WINDOWS or time.monotonic() >= deadline:
+                raise
+        time.sleep(pause)
+        pause = min(2 * pause, 0.05)
 
 
 def _remove_stale(parent: Path) -> None:

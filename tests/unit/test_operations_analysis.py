@@ -2710,7 +2710,7 @@ class TestReportGenerate:
             ("duration_not_covered", None, None),
         ]
         document = _json_roundtrip(result)
-        assert document["result"]["output_path"] == output.as_posix()
+        assert document["result"]["output_path"] == str(output)
         assert document["result"]["size_bytes"] == output.stat().st_size
 
     def test_the_standard_ia_coefficient_is_accepted(self, tmp_path):

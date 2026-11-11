@@ -123,7 +123,12 @@ def test_the_worker_process_speaks_its_protocol(session):
         process.kill()
         process.wait()
 
-    assert ready == {"ready": True, "pid": process.pid}
+    assert ready["ready"] is True
+    # The worker gives its own process id: the process started here, unless that is the
+    # python.exe of a Windows venv, a launcher that runs the interpreter as its child
+    base = getattr(sys, "_base_executable", sys.executable)
+    if sys.platform != "win32" or sys.executable == base:
+        assert ready["pid"] == process.pid
     assert reply["error"] is False
     assert reply["document"]["command"] == "tc kirpich"
     assert code == 0
