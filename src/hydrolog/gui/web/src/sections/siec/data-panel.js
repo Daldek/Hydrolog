@@ -2,23 +2,40 @@
 // D7, D10): 1 the network (a new one, its file loaded from the disk or a hand-off
 // („Wczytaj z Hydrografa”, which opens every network here), the subcatchments of a
 // hand-off added to it („Dodaj zlewnię z Hydrografa”), or saved as a network or a draft;
-// its name, description, time step and default rainfall; the session files it reads), 2
-// its nodes (a list that chooses a node, with each node's peak after „Oblicz sieć”, and
-// „Dodaj węzeł”) and 3 the chosen node: where it came from when a hand-off added it, its
-// id, description and downstream link, and its settings. Before a network is open, step 1
-// alone: a new network, what to load, and the guide's worked example. A field that
-// commits (`change`) closes its step of the history.
+// its name and description, then its time step and its rainfall, Hydrogram zlewni's step 2
+// bound to the network (plan 2026-11-10-network-wizard, D4: „Brak”, PMAXTP, a design
+// hyetograph or a series at the network's step); the session files it reads), 2 its nodes
+// (a list that chooses a node, with each node's peak after „Oblicz sieć”, and „Dodaj
+// węzeł”) and 3 the chosen node: where it came from when it came in a hand-off (plan
+// 2026-11-10-network-wizard, D9: its own origin in Hydrograf's words of its element, else
+// the hand-off's record, the network's origin), its id, description and downstream link,
+// and its settings; a subcatchment made from rainfall has its data in its own panel beside
+// this one (D1, D2: „Dane zlewni →”). Before a network is open, step 1 alone: a new
+// network, what to load, and the guide's worked example. A field that commits (`change`)
+// closes its step of the history.
 
 import { FileField } from "../../controls/file-field.js";
 import { num, plural } from "../../format.js";
-import { HandoffAdd, HandoffImport, HandoffOrigin } from "../../handoff/handoff-panel.js";
+import { nodeOriginCard } from "../../handoff/mapping.js";
+import { HandoffAdd, HandoffImport, HandoffOrigin, OriginCard } from "../../handoff/handoff-panel.js";
 import { Component, html, useRef } from "../../html.js";
 import { t } from "../../labels/common.js";
+import { hydrogram as rainTexts } from "../../labels/hydrogram.js";
 import { siec as texts } from "../../labels/siec.js";
 import { EmptyHint } from "../../ui/empty-hint.js";
+import { InfoButton } from "../../ui/info-button.js";
 import { MenuButton } from "../../ui/menu.js";
-import { descriptionProblem, KINDS, networkLayout, RAINFALLS } from "./node-model.js";
-import { Choice, controlId, DescriptionField, FieldSlot, NodeForm } from "./node-form.js";
+import { RainStep, rainWords } from "../hydrogram/rain-step.js";
+import { Row } from "../hydrogram/rows.js";
+import { checkedValues, hasOwnRainfall, rainRequirements } from "../hydrogram/state.js";
+import { descriptionProblem, KINDS, networkLayout } from "./node-model.js";
+import { controlId, DescriptionField, FieldSlot, NodeForm } from "./node-form.js";
+
+/** The prefix of the ids of step 1's controls. */
+const NETWORK_PREFIX = "siec-net";
+
+/** The sources of the network's rainfall (plan 2026-11-10-network-wizard, D4). */
+const RAIN_KINDS = Object.freeze(["none", "pmaxtp", "design", "series"]);
 
 /**
  * A step of the panel: a numbered, collapsible section.
@@ -127,13 +144,16 @@ function NewButton({ onNew }) {
  * @param {object} props see DataPanel
  * @returns {object} the step
  */
-function NetworkStep({ state, forms, problems, summary, needed, note, actions, onNetwork, onRun, onLoad, onCompanions, onSave, onNew, canSave, complete }) {
+function NetworkStep({ state, forms, problems, summary, needed, note, actions, pmaxtp, onNetwork, onRun, onLoad, onCompanions, onSave, onNew, canSave, complete }) {
   const fileInput = useRef(null);
   const companions = useRef(null);
-  const layout = networkLayout(forms, state.network);
-  const prefix = "siec-net";
-  const set = (key, value) => onNetwork({ ...state.network, [key]: value });
-  const render = (slot) => html`<${FieldSlot} key=${slot.key} slot=${slot} values=${state.network} problems=${problems} prefix=${prefix} onValue=${set} />`;
+  const layout = networkLayout(forms);
+  const prefix = NETWORK_PREFIX;
+  const network = state.network;
+  const set = (key, value) => onNetwork({ ...network, [key]: value });
+  const render = (slot) => html`<${FieldSlot} key=${slot.key} slot=${slot} values=${network} problems=${problems} prefix=${prefix} onValue=${set} />`;
+  const values = checkedValues(network);
+  const valuesField = forms.rain.options.fields.find((field) => field.name === "values") || null;
   const name = (state.source && state.source.name) || "";
   const inflows = forms.run.get("inflows_file");
   const timeColumn = forms.run.get("time_column");
@@ -176,20 +196,37 @@ function NetworkStep({ state, forms, problems, summary, needed, note, actions, o
     <${DescriptionField}
       id=${controlId(prefix, "description")}
       label=${texts.form.networkDescription}
-      value=${state.network.description}
-      error=${problems.description || descriptionProblem(state.network.description)}
+      value=${network.description}
+      error=${problems.description || descriptionProblem(network.description)}
       onInput=${(text) => set("description", text)}
     />
-    ${layout.slots.filter((slot) => slot.key !== "name").map(render)}
-    <${Choice}
-      id=${`${prefix}-rainfall`}
-      name="#rainfall"
+    <div class="form">
+      <${Row}
+        prefix=${prefix}
+        name="timestep_min"
+        value=${network.timestep_min}
+        error=${problems.timestep_min}
+        onInput=${(text) => set("timestep_min", text)}
+        placeholder="5"
+        info=${html`<${InfoButton} id="rain-timestep" values=${values} />`}
+      />
+    </div>
+    <p class="note">${texts.form.networkStep}</p>
+    ${layout.slots.filter((slot) => slot.key !== "name" && slot.key !== "timestep_min").map(render)}
+    <${RainStep}
+      prefix=${prefix}
       title=${texts.form.networkRainfall}
-      items=${RAINFALLS.filter((kind) => layout.rainfall.choice.items.includes(kind)).map((kind) => ({ value: kind, label: texts.rainfalls.network[kind] }))}
-      value=${layout.rainfall.choice.value}
-      onChange=${(kind) => set("#rainfall", kind)}
+      kinds=${RAIN_KINDS}
+      inputs=${network}
+      errors=${problems}
+      warnings=${{}}
+      required=${rainRequirements(network)}
+      set=${(patch) => onNetwork({ ...network, ...patch })}
+      pmaxtp=${pmaxtp}
+      timestep=${null}
+      infoValues=${values}
+      valuesField=${valuesField}
     />
-    ${layout.rainfall.slots.map(render)}
     <h4 class="sub-title">${texts.files.title}</h4>
     ${inflows && (needsInflows || state.inflowsFile)
       ? html`
@@ -305,17 +342,19 @@ function NodeList({ skeleton, words, values, wrong, selected, onSelect, onAdd })
  * The panel „Dane” of Sieć.
  *
  * @param {object} props the section's state and handlers: `state`, `forms`, `words`,
- *   `values` (each node's result), `problems` (by node, and `network`), `summary`,
- *   `needed` (the session files), `note` (of the last load), `nodeResult` (the chosen
- *   node's result), `networkRain` (the words of the network's rainfall), `canSave`
- *   (whether there is a node to save), `complete` (whether it is a network or a draft),
- *   `offer` (a junction offered in „Odpływa do”), `actions` (the section's edits of the
- *   structure), and the handlers `onNetwork`, `onRun`, `onNode`, `onCommit` (a field
- *   committed), `onSelect`, `onLoad`, `onCompanions`, `onSave`, `onNew`, `onIdDone`
+ *   `values` (each node's result), `origins` (where each node's inputs came from:
+ *   handoff/mapping.js siecOrigins), `problems` (by node, and `network`), `summary`,
+ *   `needed` (the session files), `note` (of the last load), `pmaxtp` (the depth of the
+ *   network's PMAXTP, whether it is being fetched and how to fetch it again: usePmaxtp),
+ *   `canSave` (whether there is a node to save), `complete` (whether it is a network or a
+ *   draft), `offer` (a junction offered in „Odpływa do”), `actions` (the section's edits
+ *   of the structure), and the handlers `onNetwork`, `onRun`, `onNode`, `onCommit` (a
+ *   field committed), `onSelect`, `onPanel` (the chosen subcatchment's panel), `onLoad`,
+ *   `onCompanions`, `onSave`, `onNew`, `onIdDone`
  * @returns {object} the panel's body
  */
 export function DataPanel(props) {
-  const { state, forms, words, values, problems, onSelect, onNode, onCommit, nodeResult, networkRain, actions, offer, onIdDone } = props;
+  const { state, forms, words, values, origins, problems, onSelect, onNode, onCommit, onPanel, actions, offer, onIdDone } = props;
   const node = state.skeleton.find((item) => item.id === state.selected) || null;
   const to = node ? (state.skeleton.find((item) => item.from && item.from.includes(node.id)) || {}).id || null : null;
   const wrong = new Set(Object.keys(problems.nodes).filter((id) => Object.keys(problems.nodes[id]).length));
@@ -327,6 +366,7 @@ export function DataPanel(props) {
     .filter(Boolean)
     .join(" · ");
   const word = node ? words.get(node.id) : null;
+  const card = node ? nodeOriginCard(node, (origins || {})[node.id]) : null;
   return html`
     <div class="steps" onChange=${onCommit}>
       <${Step} number=${1} name="network" title=${texts.steps.network} meta=${plural(state.skeleton.length, texts.nodeForms)}>
@@ -345,7 +385,11 @@ export function DataPanel(props) {
       </${Step}>
       ${node
         ? html`<${Step} number=${3} name="node" title=${word ? word.title : node.id} meta=${word ? word.meta : ""}>
-            ${node.origin ? html`<${HandoffOrigin} received=${node.origin} small=${true} />` : null}
+            ${node.origin
+              ? card
+                ? html`<${OriginCard} card=${card} input=${node.type === "subcatchment" ? "watershed" : "node"} />`
+                : html`<${HandoffOrigin} received=${node.origin} small=${true} />`
+              : null}
             <${NodeForm}
               key=${node.id}
               forms=${forms}
@@ -354,8 +398,7 @@ export function DataPanel(props) {
               skeleton=${state.skeleton}
               values=${state.nodes[node.id] || {}}
               problems=${problems.nodes[node.id] || {}}
-              result=${nodeResult}
-              networkRain=${networkRain}
+              onPanel=${onPanel}
               inflowsFile=${state.inflowsFile}
               offer=${offer && offer.from === node.id ? offer : null}
               actions=${actions}
@@ -369,20 +412,29 @@ export function DataPanel(props) {
 }
 
 /**
- * The words of the network's default rainfall for the subcatchments that take it.
+ * The network's rainfall in words for the subcatchments that take it („Jak w sieci”): its
+ * source and the summary of its step.
  *
  * @param {object} network the network's values
- * @returns {string} e.g. „Opad sieci (rainfall w kroku 1): projektowy, block, 30 mm, 60 min.”
+ * @param {number|null} depth the depth of its PMAXTP [mm], null while unknown
+ * @returns {string|null} e.g. „Opad sieci z kroku 1 · Hietogram: 30 mm · 1 h.”, null when
+ *   the network has no rainfall („Brak”)
  */
-export function networkRainWords(network) {
-  const kind = network["#rainfall"];
-  if (kind === "design") {
-    return t(texts.form.networkDesign, {
-      type: network["rainfall.design.hietogram_type"] || "–",
-      total: network["rainfall.design.total_mm"] || "–",
-      duration: network["rainfall.design.duration_min"] || "–",
-    });
-  }
-  if (kind === "series") return texts.form.networkSeries;
-  return texts.form.networkNone;
+export function networkRainWords(network, depth) {
+  if (!hasOwnRainfall(network)) return null;
+  return t(texts.form.networkRain, { source: rainTexts.rain.sources[network.rain_source], words: rainWords(network, depth) });
+}
+
+/**
+ * Bring the network's rainfall in step 1 into view and focus its source, opening the step
+ * („Opad sieci w kroku 1” of a subcatchment that takes it).
+ */
+export function showNetworkRain() {
+  const part = document.getElementById(`${NETWORK_PREFIX}-rain`);
+  if (!part) return;
+  const step = part.closest("details");
+  if (step && !step.open) step.open = true;
+  part.scrollIntoView({ block: "start" });
+  const source = part.querySelector('[role="radio"][aria-checked="true"]') || part.querySelector('[role="radio"]');
+  if (source) source.focus({ preventScroll: true });
 }

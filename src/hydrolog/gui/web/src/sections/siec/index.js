@@ -15,6 +15,21 @@
 // serves „Uporządkuj”; once the values are complete too Hydrolog checks the whole network
 // (`route schematic`, 300 ms after the last change). A click on a node, Enter or Space,
 // or its row in a table opens its settings in „Dane” and its result in „Wyniki”.
+// The network's rainfall comes first, in step 1 (plan 2026-11-10-network-wizard, D4): „Nowa
+// sieć” opens there and the empty canvas says so; a PMAXTP depth is fetched on the channel
+// "siec-pmaxtp" (usePmaxtp, as Hydrogram zlewni fetches its own) and kept with the
+// network's values, and a subcatchment that has neither its own rainfall nor the network's
+// is a problem of its node („Brak opadu”) before „Oblicz sieć”.
+// A chosen subcatchment made from rainfall opens its panel beside „Dane” (D1, D2: the
+// layout's `detail`; on a phone the two sheets alternate): Hydrogram zlewni's own three
+// steps (SubcatchmentSteps) on the node's inputs, checked by Hydrogram's checks, with the
+// values the last „Oblicz sieć” gave the node while it is unchanged since and the warnings
+// of its notices; its own PMAXTP depth is fetched on "siec-node-pmaxtp", and „Wczytaj z
+// Hydrografa” of its step 1 fills the node from a hand-off of one watershed (D10). Choosing
+// a node opens or changes the panel without moving the focus, Enter on a subcatchment moves
+// it to the panel's first step, and ✕ closes the panel while the node stays chosen.
+// A node that came in a hand-off shows where its inputs came from (D9: handoff/mapping.js
+// siecOrigins): a subcatchment in its panel's steps, any other node in „Dane”'s step 3.
 // The network is computed on „Oblicz sieć” only: the document, positions and descriptions
 // included, is written to the session's `in/` and `route network` routes it (with the
 // inflows file and the rating files it reads); a change of the structure or the values
@@ -24,13 +39,17 @@
 // since it was opened or saved (D10).
 
 import { api } from "../../api.js";
+import { splitReason } from "../../controls/field.js";
 import { inputFiles, uploadFile, useSession } from "../../controls/file-field.js";
 import { plural } from "../../format.js";
-import { siecAddition } from "../../handoff/mapping.js";
+import { withReason } from "../../forms/model.js";
+import { panelOrigins, siecAddition, siecFill, siecInputs, siecOrigins } from "../../handoff/mapping.js";
+import { canonical } from "../../handoff/validate.js";
 import { html, useEffect, useMemo, useRef, useState } from "../../html.js";
 import { common, t } from "../../labels/common.js";
 import { describeError } from "../../labels/errors.js";
 import { handoffLabels as handoffTexts } from "../../labels/handoff.js";
+import { hydrogram as rainTexts } from "../../labels/hydrogram.js";
 import { routing } from "../../labels/info/routing.js";
 import { siec as texts } from "../../labels/siec.js";
 import { shell } from "../../labels/shell.js";
@@ -41,18 +60,32 @@ import { ConfirmDialog } from "../../ui/confirm.js";
 import { downloadBlob } from "../../ui/export-panel.js";
 import { registerInfo } from "../../ui/info.js";
 import { Seg } from "../../ui/seg.js";
-import { closePanel, isPhone, openPanel } from "../../ui/sheet.js";
+import { isPhone, openPanel } from "../../ui/sheet.js";
 import { status } from "../../ui/status.js";
 import { toast } from "../../ui/toast.js";
 import { ViewLayout } from "../../ui/view-layout.js";
-import { DataPanel, EmptyNetwork, networkRainWords, networkSummary } from "./data-panel.js";
+import { usePmaxtp } from "../hydrogram/pmaxtp.js";
+import {
+  PMAXTP_FIELDS,
+  checkInputs,
+  checkedValues,
+  fieldLabel,
+  panelFields,
+  pmaxtpDepth,
+  pmaxtpKey,
+  pmaxtpOptions,
+  requirements,
+} from "../hydrogram/state.js";
+import { SubcatchmentSteps, readWatershedFile } from "../hydrogram/steps.js";
+import { DataPanel, EmptyNetwork, networkRainWords, networkSummary, showNetworkRain } from "./data-panel.js";
 import { NetworkCanvas } from "./editor/canvas.js";
 import { addNode, canBridge, cellBeside, connect, describeNode, disconnect, insertJunction, placeAll, removeNode, renameNode } from "./editor/edits.js";
 import { graphProblems, linkVerdict, problemNodes, receiversOf, structureKey } from "./editor/graph.js";
 import { createHistory } from "./editor/history.js";
-import { buildDocument, nodeWords } from "./node-model.js";
+import { nodeWords, variantOf, withoutPicture } from "./node-model.js";
 import { NodeTable, ResultsPanel } from "./results-panel.js";
 import {
+  buildDocument,
   changedSinceSaved,
   documentName,
   documentProblems,
@@ -61,6 +94,8 @@ import {
   inputsKey,
   neededFiles,
   newState,
+  NO_RAINFALL_KEY,
+  nodeComputed,
   placementNotes,
   placeSkeleton,
   SECTION,
@@ -68,7 +103,6 @@ import {
   structureDocument,
   useForms,
   useOpened,
-  withoutPicture,
   withSessionNames,
 } from "./state.js";
 import { kindNoun, problemText, refusalText } from "./words.js";
@@ -83,6 +117,36 @@ export const SCHEMATIC_CHANNEL = "siec-schematic";
 
 /** The channel of Hydrolog's layout of the structure alone (ADR-0025). */
 export const LAYOUT_CHANNEL = "siec-layout";
+
+/** The channel of the fetches of the depth of the network's PMAXTP (plan 2026-11-10-network-wizard, D4). */
+export const PMAXTP_CHANNEL = "siec-pmaxtp";
+
+/** The channel of the fetches of the PMAXTP depth of the chosen subcatchment's own rainfall (D1). */
+export const NODE_PMAXTP_CHANNEL = "siec-node-pmaxtp";
+
+/** The prefix of the ids of the subcatchment's panel (D1): the steps of Hydrogram zlewni are „hg”. */
+const PANEL_PREFIX = "sn";
+
+/** The choices of the network's rainfall: each a step of the history of its own (D9). */
+const RAIN_CHOICES = new Set(["rain_source", "hietogram_type"]);
+
+/** The choices of a subcatchment's steps: each a step of the history of its own (D9). */
+const STEP_CHOICES = new Set([
+  "uh_model",
+  "tc_method",
+  "tc_manual",
+  "nash_source",
+  "clark_kind",
+  "amc",
+  "rain_source",
+  "hietogram_type",
+  "pmaxtp_probability_pct",
+  "pmaxtp_duration_min",
+  "pmaxtp_method",
+]);
+
+/** The fields of the network's PMAXTP that must pass their checks before its depth is fetched. */
+const PMAXTP_NAMES = new Set(Object.values(PMAXTP_FIELDS));
 
 /** The most steps the history keeps (D9). */
 export const HISTORY_STEPS = 100;
@@ -118,7 +182,8 @@ function changedKeys(before, after) {
 
 /**
  * The key under which typing into one field stays one step of the history (D9): the
- * field's own; a choice (a key with "#", but not the rows of a table) is a step of its own.
+ * field's own; a choice (a key with "#", but not the rows of a table, and the source and
+ * the shape of the network's rainfall) is a step of its own.
  *
  * @param {string} prefix whose field ("network", a node's id)
  * @param {string[]} keys the keys the edit changed
@@ -128,6 +193,7 @@ function mergeKey(prefix, keys) {
   if (keys.length !== 1) return null;
   const [key] = keys;
   if (key.includes("#") && !/#(rows|hydrograph)$/.test(key)) return null;
+  if (prefix === "network" && RAIN_CHOICES.has(key)) return null;
   return `value:${prefix}:${key}`;
 }
 
@@ -181,6 +247,7 @@ export default function Siec({ active, path = [] }) {
   const [said, setSaid] = useState(null);
   const [offer, setOffer] = useState(null);
   const [asking, setAsking] = useState(null);
+  const [closed, setClosed] = useState(null);
   const schematicSvg = useRef(null);
   const chartSvg = useRef(null);
   const sequence = useRef(0);
@@ -217,6 +284,7 @@ export default function Siec({ active, path = [] }) {
 
   // --- opening a network --------------------------------------------------------------
   const begin = (next) => {
+    pmaxtp.reset();
     update(next);
     history.current.reset(stepOf(next));
     setRun(null);
@@ -243,13 +311,14 @@ export default function Siec({ active, path = [] }) {
     history.current.reset(stepOf(placed));
   }, [state.skeleton]);
   useOpened(({ doc, meta }) => {
+    const { notes = [], ...source } = meta;
     const problems = documentProblems(doc);
     if (problems.length) {
-      setNote({ error: true, title: t(texts.file.refused, { name: meta.name }), lines: problems });
+      setNote({ error: true, title: t(texts.file.refused, { name: source.name }), lines: problems });
       return;
     }
     const named = withSessionNames(doc);
-    open(named.doc, meta, [t(texts.file.loaded, { name: meta.name, nodes: plural(doc.nodes.length, texts.nodeForms) })]);
+    open(named.doc, source, [t(texts.file.loaded, { name: source.name, nodes: plural(doc.nodes.length, texts.nodeForms) }), ...notes]);
   });
 
   // Uploads the companions of a network (rating files, the inflows file) into "in/"
@@ -331,6 +400,9 @@ export default function Siec({ active, path = [] }) {
     () => (forms && state.source ? buildDocument(forms, state) : null),
     [forms, state.source, state.network, state.skeleton, state.nodes],
   );
+  // Where each node's inputs came from as they stand (plan 2026-11-10-network-wizard, D9):
+  // its panel and „Dane” show the received ones
+  const origins = useMemo(() => siecOrigins(state, built ? built.document : null), [state.source, state.network, state.skeleton, state.nodes, built]);
   // The structure's problems and the nodes' words stay while only the cells and the
   // descriptions change (a move): they are kept per structure key
   const shape = useMemo(() => structureKey(state.skeleton), [state.skeleton]);
@@ -342,12 +414,89 @@ export default function Siec({ active, path = [] }) {
     () => new Map(state.skeleton.map((node) => [node.id, nodeWords(node, state.nodes[node.id] || {})])),
     [shape, state.nodes],
   );
+  // The depth of the network's PMAXTP (D4): remembered with its values, else fetched on
+  // "siec-pmaxtp" once the point, p and the duration pass their checks. A fetched depth
+  // belongs to every step of the history with the same options, so an undo does not fetch
+  // it again, and fetching it keeps a network as it was opened or saved.
+  const network = state.network;
+  const pmaxtp = usePmaxtp(network, {
+    channel: PMAXTP_CHANNEL,
+    valid: Boolean(built) && !built.problems.some((item) => item.node === null && PMAXTP_NAMES.has(item.key)),
+    onDepth: (record) => {
+      const fetched = (values) => (pmaxtpKey(pmaxtpOptions(values)) === pmaxtpKey(record) ? { ...values, pmaxtp_fetched: record } : values);
+      const base = latest.current;
+      const next = { ...base, network: fetched(base.network) };
+      if (next.network === base.network) return;
+      history.current.rewrite((step) => {
+        const kept = fetched(step.network);
+        return kept === step.network ? step : { ...step, network: kept };
+      });
+      const clean = inputsKey(base) === base.savedKey;
+      update(clean ? { ...next, savedKey: inputsKey(next) } : next);
+    },
+  });
+  // The chosen subcatchment made from rainfall has its panel (D1): Hydrogram zlewni's steps
+  // on its inputs, checked by Hydrogram's checks with the warnings of its notices in the
+  // last run while its fields are as they were then
+  const chosen = state.skeleton.find((node) => node.id === state.selected) || null;
+  const chosenValues = chosen ? state.nodes[chosen.id] || {} : null;
+  const panelNode = chosen && chosen.type === "subcatchment" && variantOf(chosenValues) === "rain" ? chosen : null;
+  const panelInputs = useMemo(() => siecInputs(panelNode ? chosenValues : {}), [panelNode, chosenValues]);
+  const panelRun = run && run.envelope.status === "ok" && panelNode && run.nodes[panelNode.id] ? run : null;
+  const panelChecks = useMemo(() => {
+    if (!forms || !panelNode) return null;
+    const last = panelRun
+      ? {
+          inputs: siecInputs(panelRun.nodes[panelNode.id]),
+          notices: (panelRun.envelope.notices || []).filter((notice) => notice.details && notice.details.node_id === panelNode.id),
+        }
+      : null;
+    return checkInputs(panelInputs, forms.rain, last);
+  }, [forms, panelNode, panelInputs, panelRun]);
+  // Its own PMAXTP depth (D4: „Własny opad”): remembered with its inputs, else fetched on
+  // "siec-node-pmaxtp"; a depth belongs to every subcatchment with the same options in
+  // every step of the history, and fetching it keeps a network as it was opened or saved
+  const nodePmaxtp = usePmaxtp(panelInputs, {
+    channel: NODE_PMAXTP_CHANNEL,
+    valid: panelChecks !== null && !Object.values(PMAXTP_FIELDS).some((name) => panelChecks.errors[name]),
+    onDepth: (record) => {
+      const key = pmaxtpKey(record);
+      const fetched = (nodes) => {
+        let next = nodes;
+        for (const [id, values] of Object.entries(nodes)) {
+          const inputs = siecInputs(values);
+          if (variantOf(values) !== "rain" || pmaxtpKey(pmaxtpOptions(inputs)) !== key || pmaxtpDepth(inputs) !== null) continue;
+          if (next === nodes) next = { ...nodes };
+          next[id] = { ...values, pmaxtp_fetched: record };
+        }
+        return next;
+      };
+      const base = latest.current;
+      const next = { ...base, nodes: fetched(base.nodes) };
+      if (next.nodes === base.nodes) return;
+      history.current.rewrite((step) => {
+        const kept = fetched(step.nodes);
+        return kept === step.nodes ? step : { ...step, nodes: kept };
+      });
+      const clean = inputsKey(base) === base.savedKey;
+      update(clean ? { ...next, savedKey: inputsKey(next) } : next);
+    },
+  });
+  // Its document lacks the depth while it is fetched or after a failure, which stands on
+  // its field as a problem of the network
+  const depthMissing = network.rain_source === "pmaxtp" && pmaxtpOptions(network) !== null && pmaxtp.depth === null;
   // A missing value is shown once its field was touched or „Oblicz sieć” was tried; any
-  // other problem at once (as in the catalog forms)
-  const visible = useMemo(
-    () => (built ? built.problems.filter((item) => tried || !item.message.endsWith(" · required") || touched.has(`${item.node}|${item.key}`)) : []),
-    [built, touched, tried],
-  );
+  // other problem at once (as in the catalog forms), and a subcatchment's Hydrogram checks
+  // at once, as Hydrogram zlewni shows them once a model is chosen (`shown`)
+  const visible = useMemo(() => {
+    const shown = built
+      ? built.problems.filter((item) => tried || item.shown || !item.message.endsWith(" · required") || touched.has(`${item.node}|${item.key}`))
+      : [];
+    const failed = pmaxtp.failed ? Object.entries(pmaxtp.failed.fields).map(([key, message]) => ({ node: null, key, message })) : [];
+    const nodeFailed =
+      nodePmaxtp.failed && panelNode ? Object.entries(nodePmaxtp.failed.fields).map(([key, message]) => ({ node: panelNode.id, key, message })) : [];
+    return [...shown, ...failed, ...nodeFailed];
+  }, [built, touched, tried, pmaxtp.failed, nodePmaxtp.failed, panelNode]);
   const problems = useMemo(() => {
     const found = { network: {}, nodes: {} };
     for (const item of visible) {
@@ -361,6 +510,31 @@ export default function Siec({ active, path = [] }) {
     if (changed.length) setTouched((old) => new Set([...old, ...changed.map((key) => `${node}|${key}`)]));
     return changed;
   };
+  // The edits of the subcatchment's panel (D1): a patch of its inputs, a field of its
+  // watershed, a watershed file; typing into one field stays one step of the history until
+  // it commits, and a choice is a step of its own (D9)
+  const editNode = (id, change, merge) => {
+    const base = latest.current;
+    const before = siecInputs(base.nodes[id] || {});
+    const next = change(before);
+    touch(id, before, next);
+    apply({ ...base, nodes: { ...base.nodes, [id]: next } }, { merge });
+  };
+  const nodeSet = (id) => (patch) => {
+    const keys = Object.keys(patch);
+    const merge = keys.length === 1 && !STEP_CHOICES.has(keys[0]) ? `value:${id}:${keys[0]}` : null;
+    editNode(id, (inputs) => ({ ...inputs, ...patch }), merge);
+  };
+  const nodeSetField = (id) => (name, text) =>
+    editNode(id, (inputs) => ({ ...inputs, watershed: { ...inputs.watershed, [name]: text } }), `value:${id}:watershed.${name}`);
+  const nodeFile = (id) => async (file) => {
+    try {
+      nodeSet(id)(await readWatershedFile(file));
+      toast(t(rainTexts.watershed.fileLoaded, { file: file.name }));
+    } catch (error) {
+      toast(t(rainTexts.watershed.fileFailed, { file: file.name, message: error.message || String(error) }), "bad");
+    }
+  };
   const sessionNames = new Set(inputFiles(session).map((file) => file.path.slice(3)));
   const needed = neededFiles(state);
   needed.ratings = needed.ratings.map((item) => ({ ...item, present: sessionNames.has(item.name) }));
@@ -371,7 +545,7 @@ export default function Siec({ active, path = [] }) {
       ? [t(texts.files.inflowsGone, { name: state.inflowsFile.replace(/^in\//, "") })]
       : []),
   ];
-  const valid = Boolean(built) && built.problems.length === 0 && structure.length === 0;
+  const valid = Boolean(built) && built.problems.length === 0 && structure.length === 0 && !depthMissing;
   const ready = valid && missing.length === 0;
   const runOptions = (stem, name) => {
     const options = { network_file: `in/${name}` };
@@ -497,6 +671,13 @@ export default function Siec({ active, path = [] }) {
     });
     const fields = new Map();
     for (const item of visible) {
+      // „Brak opadu” (D4) says itself what to do: the network's rainfall or the node's own
+      if (item.node !== null && item.key === NO_RAINFALL_KEY) {
+        const text = t(texts.problems.node, { id: item.node, message: splitReason(item.message).text });
+        list.push({ key: `rainfall-${item.node}`, reason: "missing_field", text, node: item.node });
+        mark(item.node, text);
+        continue;
+      }
       if (!fields.has(item.node)) fields.set(item.node, []);
       fields.get(item.node).push(item.key.split(".").pop());
     }
@@ -522,15 +703,53 @@ export default function Siec({ active, path = [] }) {
   }, [structure, visible, refusal, misfit, rules]);
 
   // --- choosing a node ------------------------------------------------------------------
+  // A choice opens the panel of a subcatchment made from rainfall again after its ✕ (D2)
   const choose = (id) => {
+    setClosed(null);
     if (latest.current.selected !== id) update({ ...latest.current, selected: id });
     if (active) navigate(SECTION, id ? [id] : [], { replace: true });
   };
-  const select = (id, fromPicture = true) => {
-    if (!latest.current.skeleton.some((node) => node.id === id)) return;
+  // The focus to the first step of the subcatchment's panel (Enter on it, „Dane zlewni →”);
+  // a phone's sheet cannot take it while it is still hidden, so again once it has slid in
+  const focusPanel = () =>
+    setTimeout(() => {
+      const panel = document.querySelector('section.section[data-section="siec"] .view-panel.detail');
+      const first = panel && panel.querySelector("[data-step] > summary");
+      if (!first) return;
+      first.focus();
+      if (document.activeElement === first) return;
+      const slid = (event) => {
+        if (event.target !== panel) return;
+        panel.removeEventListener("transitionend", slid);
+        first.focus();
+      };
+      panel.addEventListener("transitionend", slid);
+    }, 0);
+  // A click, the arrows or the list open or change the panel without moving the focus;
+  // Enter on a subcatchment moves it there (D2). The subcatchment's panel takes its place
+  // back from „Wyniki” in a narrow window and takes the left sheet on a phone; any other
+  // node shows „Dane” on a phone when it was chosen on the picture.
+  const select = (id, fromPicture = true, enter = false) => {
+    const base = latest.current;
+    const node = base.skeleton.find((item) => item.id === id);
+    if (!node) return;
     choose(id);
-    if (fromPicture && isPhone()) openPanel("left");
+    const panel = node.type === "subcatchment" && variantOf(base.nodes[id] || {}) === "rain";
+    if (panel) openPanel("detail");
+    else if (fromPicture && isPhone()) openPanel("left");
+    if (panel && enter) focusPanel();
     setScrollTo(id);
+  };
+  // „Dane zlewni →” in „Dane”'s step 3: the subcatchment's panel, open and in focus
+  const showPanel = () => {
+    setClosed(null);
+    openPanel("detail");
+    focusPanel();
+  };
+  // „Opad sieci w kroku 1” of the panel: „Dane” (its sheet on a phone) at the network's rainfall
+  const showRain = () => {
+    openPanel("left");
+    setTimeout(showNetworkRain, 0);
   };
   useEffect(() => {
     const id = path[0];
@@ -579,12 +798,23 @@ export default function Siec({ active, path = [] }) {
     // first is chosen, so „Dane” shows where it came from
     addHandoff(doc) {
       const base = latest.current;
-      if (!forms) return { title: handoffTexts.add.refused, lines: [common.loading] };
-      const found = siecAddition(base, doc, forms);
+      const found = siecAddition(base, doc);
       if (!found.added.length) return { title: handoffTexts.add.refused, lines: found.lines };
       const [first] = found.added;
       apply({ ...found.inputs, selected: first, provisional: false });
       if (active) navigate(SECTION, [first], { replace: true });
+      setNote({ error: false, lines: found.lines });
+      toast(found.lines[0]);
+      return null;
+    },
+    // „Wczytaj z Hydrografa” in the panel (plan 2026-11-10-network-wizard, D10): the
+    // hand-off's watershed fills the subcatchment, which keeps its id, links, position and
+    // description; one step
+    fill(id, doc) {
+      const base = latest.current;
+      if (!base.skeleton.some((node) => node.id === id)) return null;
+      const found = siecFill(base, id, doc);
+      apply(found.inputs);
       setNote({ error: false, lines: found.lines });
       toast(found.lines[0]);
       return null;
@@ -706,9 +936,14 @@ export default function Siec({ active, path = [] }) {
   // --- „Oblicz sieć” ----------------------------------------------------------------------
   const focusProblem = () =>
     setTimeout(() => {
-      const panel = document.querySelector('section.section[data-section="siec"] .view-panel.left');
-      const field = panel && panel.querySelector('[aria-invalid="true"], .err');
-      if (field && typeof field.focus === "function") field.focus();
+      const section = document.querySelector('section.section[data-section="siec"]');
+      for (const panel of section ? section.querySelectorAll(".view-panel.detail, .view-panel.left") : []) {
+        const field = panel.querySelector('[aria-invalid="true"], .err');
+        if (field && typeof field.focus === "function") {
+          field.focus();
+          return;
+        }
+      }
     }, 0);
   const compute = async () => {
     if (!built) return;
@@ -726,12 +961,15 @@ export default function Siec({ active, path = [] }) {
     running.current = controller;
     const options = runOptions(stem, name);
     const key = currentKey;
+    // What the panel compares and reads the run with: its document and the nodes' inputs
+    const sent = built.document;
+    const nodes = state.nodes;
     setBusy(true);
     try {
       await api.upload(new Blob([`${JSON.stringify(built.document, null, 2)}\n`], { type: "application/json" }), name);
       const envelope = await api.run("route network", options, { channel: SECTION, signal: controller.signal });
       if (mine !== sequence.current) return;
-      setRun({ envelope, options, key, at: new Date() });
+      setRun({ envelope, options, key, at: new Date(), document: sent, nodes });
       setFailure(null);
       if (isPhone()) openPanel("right");
     } catch (error) {
@@ -750,6 +988,7 @@ export default function Siec({ active, path = [] }) {
   // --- starting, saving and discarding (D10) ----------------------------------------------
   const clear = () => {
     reset();
+    pmaxtp.reset();
     latest.current = initialState();
     history.current.reset(stepOf(latest.current));
     setRun(null);
@@ -762,12 +1001,12 @@ export default function Siec({ active, path = [] }) {
     setTried(false);
     if (active) navigate(SECTION, [], { replace: true });
   };
-  // A new network is built on the canvas: a phone shows it instead of „Dane”
+  // A new network starts at its rainfall in step 1 (plan 2026-11-10-network-wizard, D4):
+  // „Dane” shows it, on a phone too, and the empty canvas says what comes next
   const startNew = () => {
     begin(newState());
     setNote({ error: false, lines: [texts.file.started] });
     if (active) navigate(SECTION, [], { replace: true });
-    if (isPhone()) closePanel("left");
   };
   const askClear = () => (changedSinceSaved(latest.current) ? setAsking("clear") : clear());
   const askNew = () => (changedSinceSaved(latest.current) ? setAsking("new") : startNew());
@@ -786,13 +1025,16 @@ export default function Siec({ active, path = [] }) {
   const firstProblem = visible.length ? visible[0] : null;
   let badge = null;
   if (busy) badge = status("busy");
+  else if (pmaxtp.busy || nodePmaxtp.busy) badge = status("busy", rainTexts.calc.fetchingBadge, rainTexts.calc.fetching);
   else if (shownFailure) badge = status("error", undefined, shownFailure.text);
   else if (firstStructure) {
     const at = problemNodes(firstStructure)[0];
     const where = at ? `${at} · ${firstStructure.reason}` : firstStructure.reason;
     badge = status("invalid", `${shell.status.invalid.text}: ${where}`, problemText(firstStructure, rules));
   } else if (firstProblem) {
-    const where = firstProblem.node ? `${firstProblem.node} · ${firstProblem.key.split(".").pop()}` : firstProblem.key;
+    // „Brak opadu” names the library's field (`missing_field` `rainfall`), not the choice
+    const field = firstProblem.key === NO_RAINFALL_KEY ? "rainfall" : firstProblem.key.split(".").pop();
+    const where = firstProblem.node ? `${firstProblem.node} · ${field}` : firstProblem.key;
     badge = status("invalid", `${shell.status.invalid.text}: ${where}`, firstProblem.message);
   } else if (missing.length) badge = status("invalid", `${shell.status.invalid.text}: ${texts.files.short}`, missing[0]);
   else if (run && run.envelope.status === "ok" && run.key !== currentKey) badge = status("stale");
@@ -806,7 +1048,6 @@ export default function Siec({ active, path = [] }) {
   // --- the parts of the layout -------------------------------------------------------------
   const result = run && run.envelope.status === "ok" ? run.envelope.result : null;
   const values = useMemo(() => (result ? new Map(result.nodes.map((node) => [node.id, node])) : null), [result]);
-  const nodeResult = values && state.selected ? values.get(state.selected) || null : null;
   const formsProblem = formsError ? t(texts.formsFailed, { message: formsError }) : null;
   const left = {
     sub: "hydrolog-network/1",
@@ -821,12 +1062,13 @@ export default function Siec({ active, path = [] }) {
             forms=${forms}
             words=${words}
             values=${values}
+            origins=${origins}
             problems=${problems}
             summary=${networkSummary(state.skeleton, words)}
             needed=${needed}
             note=${note}
-            nodeResult=${nodeResult}
-            networkRain=${networkRainWords(state.network)}
+            onPanel=${showPanel}
+            pmaxtp=${{ depth: pmaxtp.depth, busy: pmaxtp.busy, onRetry: pmaxtp.onRetry }}
             canSave=${state.skeleton.length > 0}
             complete=${valid}
             offer=${offer && offer.where === "data" ? offer : null}
@@ -851,7 +1093,7 @@ export default function Siec({ active, path = [] }) {
             onIdDone=${idDone}
           />`,
     foot: html`
-      <button class="btn primary" type="button" data-action="compute" disabled=${!built || !state.skeleton.length || busy} onClick=${compute}>
+      <button class="btn primary" type="button" data-action="compute" disabled=${!built || !state.skeleton.length || busy || pmaxtp.busy || nodePmaxtp.busy} onClick=${compute}>
         <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4l10 6-10 6z" /></svg>
         ${texts.compute}
       </button>
@@ -868,11 +1110,12 @@ export default function Siec({ active, path = [] }) {
 
   const view = state.view === "table" ? "table" : "schem";
   // The canvas, once every node has a cell; a network opened without positions whose
-  // structure has no problem waits for Hydrolog's layout instead of showing the
-  // provisional rows first
+  // structure has no problem waits until Hydrolog's layout has placed it, instead of
+  // showing the provisional rows first: the render in which the layout arrives still
+  // holds them, and the effect above replaces them only after it
   const waiting =
     state.skeleton.some((node) => !node.position) ||
-    (state.provisional && ((!forms && !formsError) || (shaped && !layout && !misfit)));
+    (state.provisional && ((!forms && !formsError) || (shaped && !misfit)));
   const canvas = () => {
     if (!state.source) return html`<p class="empty-note" data-schematic="empty">${texts.schematic.empty}</p>`;
     if (waiting || !forms) return html`<p class="empty-note" role="status" data-schematic="busy">${texts.schematic.busy}</p>`;
@@ -951,9 +1194,68 @@ export default function Siec({ active, path = [] }) {
       />
     </div>`,
   };
+
+  // --- the subcatchment's panel (plan 2026-11-10-network-wizard, D1, D2, D10) ---------------
+  let detail = null;
+  if (panelNode && forms && panelChecks && closed !== panelNode.id) {
+    const id = panelNode.id;
+    // What the last run gave the node, while its node of the document is as it was then
+    const plain = (node) => {
+      const { position: _cell, description: _text, ...rest } = node;
+      return canonical(rest);
+    };
+    const now = built ? built.document.nodes.find((node) => node.id === id) : null;
+    const then = panelRun ? panelRun.document.nodes.find((node) => node.id === id) : null;
+    const routed = now && then && plain(now) === plain(then) && values ? values.get(id) : null;
+    const computed = routed && routed.parameters ? nodeComputed(routed.parameters, siecInputs(panelRun.nodes[id])) : null;
+    // Hydrolog's refusal of the node stands on its field when the panel shows it, else above
+    // the steps
+    const errors = { ...panelChecks.errors, ...(nodePmaxtp.failed ? nodePmaxtp.failed.fields : {}) };
+    const told = [shownFailure, refusal].find((found) => found && found.node === id) || null;
+    let formError = null;
+    if (told && told.field && panelFields(panelInputs).includes(told.field)) errors[told.field] = withReason(told.text, told.reason || "");
+    else if (told) formError = { title: told.title, text: told.text };
+    const firstError = Object.keys(errors)[0] || null;
+    const noRain = Boolean(built) && built.problems.some((item) => item.node === id && item.key === NO_RAINFALL_KEY);
+    let calc = { kind: "ok", text: computed ? texts.panel.calc.computed : texts.panel.calc.ok };
+    if (!panelInputs.uh_model) calc = { kind: "idle", text: texts.panel.calc.model };
+    else if (firstError) calc = { kind: "warn", text: t(texts.panel.calc.invalid, { field: fieldLabel(firstError) }) };
+    else if (nodePmaxtp.busy) calc = { kind: "busy", text: texts.panel.calc.fetching };
+    else if (noRain) calc = { kind: "warn", text: texts.panel.calc.noRainfall };
+    detail = {
+      title: (words.get(id) || {}).title || id,
+      sub: texts.panel.sub,
+      body: html`<div class="node-panel" data-node-panel=${id} onChange=${() => history.current.seal()}>
+        <${SubcatchmentSteps}
+          key=${id}
+          prefix=${PANEL_PREFIX}
+          inputs=${panelInputs}
+          set=${nodeSet(id)}
+          setField=${nodeSetField(id)}
+          errors=${errors}
+          warnings=${panelChecks.warnings}
+          required=${requirements(panelInputs).required}
+          formError=${formError}
+          computed=${computed}
+          models=${forms.rain}
+          infoValues=${checkedValues(panelInputs, computed)}
+          pmaxtp=${{ depth: nodePmaxtp.depth, busy: nodePmaxtp.busy, onRetry: nodePmaxtp.onRetry }}
+          network=${{ rainfall: networkRainWords(network, pmaxtp.depth) || texts.form.noNetworkRain, timestep_min: String(network.timestep_min ?? ""), onOpen: showRain }}
+          origins=${panelOrigins(panelNode, origins[id])}
+          onFile=${nodeFile(id)}
+          onHandoff=${(doc) => actions.fill(id, doc)}
+          hint=${null}
+        />
+      </div>`,
+      foot: html`<span class=${`calc-state${calc.kind === "ok" ? "" : ` ${calc.kind}`}`} data-calc=${calc.kind} role="status">
+        <i class="dot" aria-hidden="true"></i><span>${calc.text}</span>
+      </span>`,
+      onClose: () => setClosed(id),
+    };
+  }
   const question = asking === "new" ? "new" : "clear";
   return html`
-    <${ViewLayout} left=${left} center=${center} right=${right} />
+    <${ViewLayout} left=${left} detail=${detail} center=${center} right=${right} />
     <${ConfirmDialog}
       open=${asking !== null}
       name=${question}

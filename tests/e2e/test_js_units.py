@@ -18,7 +18,16 @@ of the structure alone that Sieć sends Hydrolog to lay out (``state.js``'
 links and ids, and finds the problem ``RoutingNetwork.from_document`` raises on each
 document of a one-problem corpus; ``editor/edits.js``' new edits (add, connect, a
 junction, remove, rename, describe), ``editor/history.js``, the hints of
-``editor/geometry.js`` and ``words.js`` are checked on small networks.
+``editor/geometry.js`` and ``words.js`` are checked on small networks. The rainfall of
+Hydrogram's step 2 and of Sieć's network (plan 2026-11-10-network-wizard, D4) goes from
+``rainfall`` of hydrolog-network/1 to the step's inputs and back (``mapping.js``'
+``rainfallInputs``, ``rainfallOf``), and ``RainStep`` shows a subcatchment's „Jak w
+sieci” with the network's time step read-only. A subcatchment made from rainfall goes to
+Hydrogram's inputs and back (``subcatchmentInputs``, ``subcatchmentNode``; D3): the
+inputs of each model choice, the guide's subcatchments and a hand-off's. The origin
+of each node (D9) follows Nogat's precedence (``nodeOrigins``, a key of no node left
+out and said) and is written again by Sieć under the current ids with the changes
+marked (``siecNodeProvenance``), renamed, edited, drawn and added nodes included.
 """
 
 import json
@@ -31,7 +40,10 @@ import pytest
 from hydrolog.exceptions import InvalidParameterError
 from hydrolog.routing import RoutingNetwork, structure_schematic
 from hydrolog.routing._layout import edge_route, layout
-from tests.e2e.conftest import Tab
+from hydrolog.testing import example_network_document
+from tests.e2e.conftest import FIXTURES, Tab, kamiennik_inputs
+from tests.e2e.test_siec import as_written
+from tests.e2e.test_siec_subcatchment import CHOICES, RUNOFF_VALUES
 from tests.unit._network_documents import STRUCTURE_CORPUS
 from tests.unit._schematic_checks import random_tree
 
@@ -2025,3 +2037,378 @@ def test_the_work_kept_per_structure_equals_the_plain_one(page: Any) -> None:
     # The labels' crowding through the index counts what the plain count counts
     assert got["crowded"] > 300
     assert got["counts"] is True
+
+
+# The rainfall of step 2 and of Sieć's network (plan 2026-11-10-network-wizard, D4):
+# `rainfall` of hydrolog-network/1 to the inputs of the step and back.
+RAINFALL = """const mp = await import('./src/handoff/mapping.js');
+const hs = await import('./src/sections/hydrogram/state.js');
+const of = (patch) => ({...hs.initialRain(), ...patch});
+const design = {kind: 'design', hietogram_type: 'block', total_mm: 30,
+                duration_min: 60};
+const series = {kind: 'series', depths_mm: [1.5, 2, 0.5], timestep_min: 10};
+const storm = {kind: 'design', hietogram_type: 'beta', total_mm: 105, duration_min: 720,
+               alpha: 2, beta: 5};
+const own = {rainfall: {source: 'pmaxtp', latitude: 51.0154, longitude: 15.89,
+                        probability_percent: 1, duration_min: 720, method: 'AMP'}};
+const shed = {rainfall: {source: 'pmaxtp', probability_percent: 1, duration_min: 720},
+              watershed: {source: 'hydrograf', latitude: 51.0154, longitude: 15.89}};
+const back = (rainfall, origin) => mp.rainfallInputs(rainfall, origin);
+const again = (rainfall, origin) => mp.rainfallOf(of(back(rainfall, origin)));
+return {
+  design: back(design), series: back(series), none: back(null),
+  noneAtShed: back(null, shed), own: back(storm, own), shed: back(storm, shed),
+  otherDuration: back({...storm, duration_min: 60}, own).rain_source,
+  noPoint: back(storm, {rainfall: {...shed.rainfall}}).rain_source,
+  round: [again(design), again(series), again(storm, own), again(storm)],
+  unfetched: again(storm, shed),
+  kinds: ['none', 'network'].map((source) => mp.rainfallOf(of({rain_source: source}))),
+};"""
+
+
+def test_a_rainfall_goes_to_the_steps_inputs_and_back(page: Any) -> None:
+    got = js(page, RAINFALL)
+    shape = {"hietogram_type": "block", "alpha": "", "beta": "", "peak_position": ""}
+    assert got["design"] == {
+        "rain_source": "design",
+        "total_mm": "30",
+        "duration_min": "60",
+        **shape,
+    }
+    # A series keeps its step as the time step
+    assert got["series"] == {
+        "rain_source": "series",
+        "values": "1,5; 2; 0,5",
+        "timestep_min": "10",
+    }
+    # No rainfall is „Brak”, with the watershed's point ready for PMAXTP
+    assert got["none"] == {"rain_source": "none"}
+    assert got["noneAtShed"] == {
+        "rain_source": "none",
+        "pmaxtp_latitude": "51,0154",
+        "pmaxtp_longitude": "15,89",
+    }
+    # PMAXTP: the record's own point keeps the depth as fetched there
+    pmaxtp = {
+        "rain_source": "pmaxtp",
+        "pmaxtp_latitude": "51,0154",
+        "pmaxtp_longitude": "15,89",
+        "pmaxtp_probability_pct": "1",
+        "pmaxtp_duration_min": "720",
+        "total_mm": "105",
+        "duration_min": "720",
+        "hietogram_type": "beta",
+        "alpha": "2",
+        "beta": "5",
+        "peak_position": "",
+    }
+    assert got["own"] == {
+        **pmaxtp,
+        "pmaxtp_method": "AMP",
+        "pmaxtp_fetched": {
+            "latitude": 51.0154,
+            "longitude": 15.89,
+            "duration_min": 720,
+            "probability_percent": 1,
+            "method": "AMP",
+            "depth_mm": 105,
+        },
+    }
+    # The watershed's point only: the page fetches the depth there
+    assert got["shed"] == {**pmaxtp, "pmaxtp_method": "POT"}
+    # Another duration, or no point at all: a design hyetograph
+    assert got["otherDuration"] == "design"
+    assert got["noPoint"] == "design"
+    # Back to the document: the same rainfall, PMAXTP's depth as its total
+    design = {"kind": "design", "hietogram_type": "block"}
+    assert got["round"] == [
+        {**design, "total_mm": 30, "duration_min": 60},
+        {"kind": "series", "depths_mm": [1.5, 2, 0.5], "timestep_min": 10},
+        {
+            "kind": "design",
+            "hietogram_type": "beta",
+            "total_mm": 105,
+            "duration_min": 720,
+            "alpha": 2,
+            "beta": 5,
+        },
+        {
+            "kind": "design",
+            "hietogram_type": "beta",
+            "total_mm": 105,
+            "duration_min": 720,
+            "alpha": 2,
+            "beta": 5,
+        },
+    ]
+    # PMAXTP before its fetch has no depth yet
+    assert got["unfetched"] == {
+        "kind": "design",
+        "hietogram_type": "beta",
+        "duration_min": 720,
+        "alpha": 2,
+        "beta": 5,
+    }
+    # „Brak” and „Jak w sieci” are no rainfall of their own
+    assert got["kinds"] == [None, None]
+
+
+# RainStep for a subcatchment in Sieć: „Jak w sieci” with the network's rainfall in
+# words and its link, and the network's time step shown read-only.
+RAIN_STEP = """const hs = await import('./src/sections/hydrogram/state.js');
+const { html, render } = await import('./src/html.js');
+const { RainStep } = await import('./src/sections/hydrogram/rain-step.js');
+const host = document.createElement('div');
+document.body.append(host);
+let opened = 0;
+let patches = [];
+render(html`<${RainStep} prefix="sn" title="Hietogram"
+  kinds=${['network', 'pmaxtp', 'design', 'series']}
+  inputs=${{...hs.initialRain(), rain_source: 'network'}}
+  errors=${{}} warnings=${{}} required=${{}} set=${(patch) => patches.push(patch)}
+  pmaxtp=${{depth: null, busy: false, onRetry: null}} timestep=${{network: '10'}}
+  network=${{words: 'Opad sieci z kroku 1 · Hietogram: 30 mm · 1 h.',
+             onOpen: () => { opened += 1; }}}
+  infoValues=${{}} valuesField=${null} />`, host);
+const step = host.querySelector('#sn-timestep_min');
+host.querySelector('[data-goto="network-rain"]').click();
+host.querySelector('[role="radio"][aria-checked="false"]').click();
+const got = {
+  part: host.querySelector('[data-rain-part]').dataset.rainPart,
+  title: host.querySelector('#sn-rain-title').textContent,
+  radios: [...host.querySelectorAll('[role="radio"]')].map((radio) =>
+    [radio.textContent.trim(), radio.getAttribute('aria-checked')]),
+  note: host.querySelector('[data-rain="network"]').textContent.trim(),
+  step: [step.value, step.readOnly,
+         step.closest('[data-field]').querySelector('.key').textContent],
+  fields: ['pmaxtp_latitude', 'total_mm', 'values']
+    .filter((name) => host.querySelector(`#sn-${name}`)),
+  opened, patches,
+};
+render(null, host);
+host.remove();
+return got;"""
+
+
+def test_the_rain_step_of_a_subcatchment_shows_the_networks_rainfall(
+    page: Any,
+) -> None:
+    got = js(page, RAIN_STEP)
+    assert got["part"] == "sn"
+    assert got["title"] == "Hietogramjak w sieci"
+    assert got["radios"] == [
+        ["Jak w sieci", "true"],
+        ["PMAXTP", "false"],
+        ["Hietogram", "false"],
+        ["Własna seria", "false"],
+    ]
+    assert got["note"] == (
+        "Opad sieci z kroku 1 · Hietogram: 30 mm · 1 h. Opad sieci w kroku 1"
+    )
+    # Δt is the network's, shown and not edited; no field of an own rainfall
+    assert got["step"] == ["10", True, "timestep_min · krok sieci"]
+    assert got["fields"] == []
+    # The link opens the network's rainfall; another source is a patch of the inputs
+    assert got["opened"] == 1
+    assert got["patches"] == [{"rain_source": "pmaxtp"}]
+
+
+# A subcatchment of hydrolog-network/1 and Hydrogram's inputs (plan
+# 2026-11-10-network-wizard, D3, D11): each model choice's inputs written as a node and
+# read back, the guide's subcatchments read and written, and a hand-off's read with its
+# record and written.
+SUBCATCHMENT = """async ([stored, choices, runoff, guide, handoff]) => {
+  const mp = await import('./src/handoff/mapping.js');
+  const hs = await import('./src/sections/hydrogram/state.js');
+  const f = await import('./src/format.js');
+  const typed = Object.fromEntries(
+    Object.entries(runoff).map(([name, value]) => [name, f.inputText(value)]));
+  const inputsOf = (choice) => hs.normalize({
+    ...stored, ...typed,
+    uh_model: choice.model,
+    tc_manual: choice.tc === 'manual',
+    tc_method: choice.tc && choice.tc !== 'manual' ? choice.tc : 'kirpich',
+    clark_kind: choice.clark || 'ratio',
+    nash_source: choice.nash || 'lutz',
+  });
+  const placeOf = (node) => ({id: node.id, from: node.from,
+    description: node.description, position: node.position});
+  const sent = (inputs) => {
+    const {timestep_min, ...options} = hs.toOptions(hs.normalize(inputs));
+    return options;
+  };
+  const sub = handoff.payload.nodes.find((node) => node.type === 'subcatchment');
+  return {
+    choices: choices.map((choice) => {
+      const inputs = inputsOf(choice);
+      const node = mp.subcatchmentNode(inputs, {id: 'Z1'});
+      const back = mp.subcatchmentInputs(node);
+      return {node, again: mp.subcatchmentNode(back, {id: 'Z1'}),
+              sent: sent(inputs), back: sent(back)};
+    }),
+    guide: guide.nodes.filter((node) => node.runoff)
+      .map((node) => mp.subcatchmentNode(mp.subcatchmentInputs(node), placeOf(node))),
+    handed: mp.subcatchmentNode(
+      mp.subcatchmentInputs(sub, {origin: handoff}), placeOf(sub)),
+  };
+}"""
+
+
+def test_a_subcatchment_goes_to_hydrograms_inputs_and_back(page: Any) -> None:
+    handoff = json.loads((FIXTURES / "handoff_hydrograf.json").read_text("utf-8"))
+    guide = example_network_document()
+    got = page.evaluate(
+        SUBCATCHMENT,
+        [kamiennik_inputs(), CHOICES, RUNOFF_VALUES, guide, handoff],
+    )
+    for choice, item in zip(CHOICES, got["choices"], strict=True):
+        # A node written of a choice reads back to the same node, and its inputs send
+        # what they sent (the time step is the network's, not the node's)
+        assert item["again"] == item["node"], choice
+        assert item["back"] == item["sent"], choice
+        assert item["node"]["runoff"]["uh_model"] == choice["model"], choice
+    # The guide's subcatchments come back with the library's defaults written out
+    written = as_written(guide)
+    assert got["guide"] == [node for node in written["nodes"] if "runoff" in node]
+    # Hydrograf's subcatchment, read with its record: as handed, but for the fields no
+    # step shows for SCS (its channel's slope and Lc), its PMAXTP depth kept
+    handed = as_written(
+        handoff["payload"], frozenset({"channel_slope_m_per_m", "Lc_km"})
+    )
+    assert got["handed"] == handed["nodes"][0]
+
+
+# The origin of each node of a network hand-off (plan 2026-11-10-network-wizard, D9):
+# Nogat's second example and Hydrograf's own network (tests/fixtures), read and written
+# again by Sieć's state as opening, editing, renaming and adding change it.
+ORIGINS = """async ([nogat, hydrograf]) => {
+  const mp = await import('./src/handoff/mapping.js');
+  const st = await import('./src/sections/siec/state.js');
+  const ed = await import('./src/sections/siec/editor/edits.js');
+  const unknown = {...nogat, node_provenance: {...nogat.node_provenance,
+    X9: {node: {source: 'hydrograf'}}}};
+  const open = (doc) => st.stateOf(doc.payload,
+    {name: 'x.json', kind: 'handoff', handoff: mp.siecReceived(doc, doc.payload)});
+  const opened = open(nogat);
+  const plain = (nodes) => ({schema: 'hydrolog-network/1', nodes});
+  const handed = plain(nogat.payload.nodes);
+  // Z2 renamed, Z1's CN and Z3's model changed, R1 given its section, Z4 drawn
+  let state = ed.renameNode(opened, 'Z2', 'Z9');
+  const nodes = state.nodes;
+  state = {
+    ...state,
+    skeleton: [...state.skeleton, {id: 'Z4', type: 'subcatchment', from: null}],
+    nodes: {
+      ...nodes,
+      Z1: {...nodes.Z1, watershed: {...nodes.Z1.watershed, cn: '70'}},
+      Z3: {...nodes.Z3, uh_model: 'nash'},
+      Z4: {'#variant': 'rain', watershed: {area_km2: '3'}, uh_model: 'scs'},
+    },
+  };
+  const sectioned = plain(nogat.payload.nodes.map((node) => (node.id === 'R1'
+    ? {...node, manning_n: 0.035, bottom_width_m: 8} : node)));
+  const designed = {...state, network: {...state.network, rain_source: 'design'}};
+  const joined = mp.siecAddition(opened, hydrograf);
+  return {
+    origins: mp.nodeOrigins(unknown),
+    unknown: mp.unknownOrigins(unknown),
+    note: mp.unknownOriginsNote(unknown),
+    kept: mp.siecReceived(unknown, unknown.payload).node_provenance,
+    same: {provenance: mp.siecProvenance(opened),
+           nodes: mp.siecNodeProvenance(opened, handed)},
+    edited: {provenance: mp.siecProvenance(state),
+             nodes: mp.siecNodeProvenance(state, sectioned)},
+    designed: {provenance: mp.siecProvenance(designed),
+               nodes: mp.siecNodeProvenance(designed, sectioned)},
+    joined: {added: joined.added, lines: joined.lines,
+             nodes: mp.siecNodeProvenance(joined.inputs, handed)},
+    words: ['Z1', 'Z2', 'Z3', 'J1', 'R1', 'J2', 'J5'].map((id) => {
+      const entry = hydrograf.node_provenance[id];
+      return mp.originWords(entry.watershed || entry.node);
+    }),
+    // Where a line of BDOT10k runs along a reach, Hydrograf adds its check length
+    checked: mp.originWords({...hydrograf.node_provenance.R1.node,
+      vector_length_km: 0.36, vector_source: 'bdot10k'}),
+  };
+}"""
+
+
+def test_node_origins_are_read_shown_and_written_as_nogat_orders(page: Any) -> None:
+    nogat = json.loads(
+        (FIXTURES.parents[1] / "schemas" / "nogat" / "handoff-1.schema.json").read_text(
+            "utf-8"
+        )
+    )["examples"][1]
+    hydrograf = json.loads(
+        (FIXTURES / "handoff_hydrograf_network.json").read_text("utf-8")
+    )
+    got = page.evaluate(ORIGINS, [nogat, hydrograf])
+    own = nogat["node_provenance"]
+    provenance = nogat["provenance"]
+    # A node's entry wins over provenance, input by input; J2 and OUT take provenance;
+    # a key that names no node is left out and said
+    assert got["origins"]["Z1"] == {**provenance, **own["Z1"]}
+    assert got["origins"]["R1"] == {**provenance, "node": own["R1"]["node"]}
+    assert got["origins"]["J2"] == provenance
+    assert got["origins"]["OUT"] == provenance
+    assert "X9" not in got["origins"]
+    assert got["unknown"] == ["X9"]
+    assert got["note"] == [
+        "Pominięto pochodzenie węzłów, których nie ma w sieci przekazania "
+        "(node_provenance): X9."
+    ]
+    assert got["kept"] == own
+    # Unchanged, the network's hand-off writes what it received
+    assert got["same"] == {"provenance": provenance, "nodes": own}
+    # Edited: the renamed node keeps its entry under its new id, a changed watershed
+    # or reach names its changed fields, an edited runoff is the person's, and the
+    # drawn Z4 is the person's where provenance would claim its watershed
+    assert got["edited"]["provenance"] == provenance
+    assert got["edited"]["nodes"] == {
+        "Z1": {"watershed": {**own["Z1"]["watershed"], "changed": ["cn"]}},
+        "Z9": own["Z2"],
+        "J1": own["J1"],
+        "R1": {
+            "node": {**own["R1"]["node"], "changed": ["manning_n", "bottom_width_m"]}
+        },
+        "Z3": {**own["Z3"], "runoff": {"source": "user"}},
+        "Z4": {"watershed": {"source": "user"}},
+    }
+    # Another rainfall of the network is the person's; the nodes that take it say
+    # nothing of their own
+    assert got["designed"]["provenance"] == {
+        **provenance,
+        "rainfall": {"source": "user"},
+    }
+    assert got["designed"]["nodes"] == got["edited"]["nodes"]
+    # Added to the open network, Hydrograf's subcatchments renamed on the clash keep
+    # their origins (their hand-off's provenance where they have no entry)
+    subcatchments = [
+        node["id"]
+        for node in hydrograf["payload"]["nodes"]
+        if node["type"] == "subcatchment"
+    ]
+    assert got["joined"]["added"] == ["Z4", "Z5", "Z6", "Z7", "Z8", "Z9", "Z10", "Z11"]
+    assert got["joined"]["nodes"] == {
+        **own,
+        **{
+            new: hydrograf["node_provenance"][old]
+            for new, old in zip(got["joined"]["added"], subcatchments, strict=True)
+        },
+    }
+    # Hydrograf's elements in words
+    assert [item["what"] for item in got["words"]] == [
+        "zlewnia górna",
+        "dopływ do ujścia przy punkcie P3",
+        "przyrzecze odcinka R1",
+        "zbieg",
+        "odcinek",
+        "punkt kontrolny P4",
+        "przekrój zamykający A",
+    ]
+    assert got["words"][4]["details"] == [
+        "długość wzdłuż spływu",
+        "spadek z NMT",
+        "NMT 128,6 → 123,8 m n.p.m.",
+    ]
+    assert got["checked"]["details"][-1] == "długość kontrolna 0,36 km (BDOT10k)"

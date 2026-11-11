@@ -149,7 +149,6 @@ def test_the_guides_examples_typed_give_the_guides_numbers(tab: Tab) -> None:
         "elevation_mean_m": "363,2",
         "mean_slope_m_per_m": "0,082",
         "channel_length_km": "14,78",
-        "channel_slope_m_per_m": "0,0142",
         "flow_path_length_km": "15,88",
         "flow_path_slope_m_per_m": "0,0114",
         "pmaxtp_latitude": "51,01544",
@@ -183,6 +182,34 @@ def test_the_guides_examples_typed_give_the_guides_numbers(tab: Tab) -> None:
     expect(right.locator('[data-kpi="q"] .v')).not_to_contain_text("54,20")
     expect(page.locator(BADGE)).to_have_attribute("data-state", "ok")
     read("hydrogram-q-amc3", right.locator('[data-kpi="q"] .v'))
+    # Nash by Lutz at AMC II: n and K estimated from the watershed in the same run,
+    # shown read-only, and the slower peak they give. Lc and Manning's n are needed,
+    # the shares of forest and urban areas are not: typed last, Lc starts the one run
+    page.locator('[aria-labelledby="hg-amc-label"]').get_by_role(
+        "radio", name="II", exact=True
+    ).click()
+    page.locator('[aria-labelledby="hg-uh-label"]').get_by_role(
+        "radio", name="Nash", exact=True
+    ).click()
+    page.locator('[aria-labelledby="hg-nash-source-label"]').get_by_role(
+        "radio", name="Metoda Lutza", exact=True
+    ).click()
+    lutz = {
+        "forest_pct": "57,4",
+        "urban_pct": "1",
+        "manning_n": "0,035",
+        "Lc_km": "6,76",
+    }
+    for name, value in lutz.items():
+        left.locator(f"#hg-{name}").fill(value)
+    expect(left.locator("#hg-nash_n")).not_to_have_value("")
+    expect(page.locator(BADGE)).to_have_attribute("data-state", "ok")
+    shown["hydrogram-lutz-n"] = flat(left.locator("#hg-nash_n").input_value())
+    shown["hydrogram-lutz-k"] = flat(
+        left.locator("#hg-nash_k_min").input_value() + " min"
+    )
+    read("hydrogram-lutz-q", right.locator('[data-kpi="q"] .v'))
+    read("hydrogram-lutz-tp", right.locator('[data-kpi="tp"] .v'))
 
     # Sieć i trasowanie: the guide's file, then its reach R_A by Muskingum
     page = reopen(tab, "#siec")

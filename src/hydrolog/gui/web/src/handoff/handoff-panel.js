@@ -4,7 +4,9 @@
 // subcatchment in „Hydrogram zlewni” (deliver → useHandoffInbox, which the section
 // listens with), a network in „Sieć i trasowanie” (its openNetwork); read in Sieć, every
 // network opens there, and „Dodaj zlewnię z Hydrografa” (HandoffAdd) adds a hand-off's
-// subcatchments to the open network (plan 2026-11-10-network-editor, D10). The part
+// subcatchments to the open network (plan 2026-11-10-network-editor, D10). Given a caller
+// (`onOpen`), it hands the checked hand-off of one watershed to it instead: Sieć's
+// subcatchment panel fills its node (plan 2026-11-10-network-wizard, D10). The part
 // „Przekazanie” of the panel Wyniki (HydrogramHandoff, SiecHandoff) writes one („Plik
 // przekazania”, „Do schowka”) and shows a received producer's result beside Hydrolog's
 // own, with the versions that computed them. Nothing here runs or writes at mount.
@@ -18,7 +20,8 @@ import { handoffLabels as texts } from "../labels/handoff.js";
 import { siec as siecTexts } from "../labels/siec.js";
 import { navigate } from "../router.js";
 import { fieldLabel, handoffMissing } from "../sections/hydrogram/state.js";
-import { fileStem, openNetwork, withoutPicture, withSessionNames } from "../sections/siec/state.js";
+import { withoutPicture } from "../sections/siec/node-model.js";
+import { fileStem, openNetwork, withSessionNames } from "../sections/siec/state.js";
 import { copyText, downloadBlob, fileBase } from "../ui/export-panel.js";
 import { MenuButton } from "../ui/menu.js";
 import { toast } from "../ui/toast.js";
@@ -36,7 +39,17 @@ import {
   statystykaInputs,
   toolName,
 } from "./handoff.js";
-import { dataKey, hydrogramContents, hydrogramHandoff, hydrogramInputs, hydrogramResult, outletResult, siecHandoff, siecReceived } from "./mapping.js";
+import {
+  dataKey,
+  hydrogramContents,
+  hydrogramHandoff,
+  hydrogramInputs,
+  hydrogramResult,
+  outletResult,
+  siecHandoff,
+  siecReceived,
+  unknownOriginsNote,
+} from "./mapping.js";
 import { canonical, isObject } from "./validate.js";
 
 /** The most problems of a refused hand-off listed. */
@@ -132,7 +145,8 @@ async function payloadSchemas(refused) {
  * hydrolog-network-1.schema.json or hydrolog-series-1.schema.json) and hand it to the
  * section it belongs to, or to Sieć for every network when Sieć reads it (`into`). A
  * station's daily series is first written into the session's files, which Statystyka
- * przepływów reads like a file of the person's.
+ * przepływów reads like a file of the person's. A network takes the origins of its nodes
+ * (node_provenance) to Sieć, and a key that names no node is said in the load's note.
  *
  * @param {string} text the hand-off as text
  * @param {{into?: "siec"|null}} [options] the section that reads it (readHandoff)
@@ -165,7 +179,12 @@ export async function openHandoff(text, { into = null } = {}) {
     toast(t(texts.load.openedStatystyka, { subject: doc.subject, producer, values: plural(count, texts.valueForms) }));
   } else {
     const named = withSessionNames(doc.payload);
-    openNetwork(named.doc, { name: `${fileBase(doc.subject)}.json`, kind: "handoff", handoff: siecReceived(doc, named.doc) });
+    openNetwork(named.doc, {
+      name: `${fileBase(doc.subject)}.json`,
+      kind: "handoff",
+      handoff: siecReceived(doc, named.doc),
+      notes: unknownOriginsNote(doc),
+    });
     toast(t(texts.load.openedSiec, { subject: doc.subject, producer, nodes: plural(named.doc.nodes.length, siecTexts.nodeForms) }));
   }
   return null;
@@ -189,6 +208,31 @@ export async function addHandoff(text, onAdd) {
   if (read.problems.length) return { title: texts.add.refused, lines: read.problems };
   if (read.target !== "siec") return { title: texts.add.refused, lines: [texts.add.series] };
   return onAdd(read.doc);
+}
+
+/**
+ * „Wczytaj z Hydrografa” for a caller that takes one watershed (plan
+ * 2026-11-10-network-wizard, D10: a subcatchment's panel in Sieć): check a hand-off as
+ * openHandoff does and hand the document of one subcatchment to `onOpen`; a network is
+ * refused with the two ways to take it, a station's series as what it is.
+ *
+ * @param {string} text the hand-off as text
+ * @param {(doc: object) => ({title: string, lines: string[]}|null)} onOpen the caller's
+ *   reading: null when it took the watershed, else why not
+ * @returns {Promise<{title: string, lines: string[]}|null>} why it was refused, null when
+ *   the caller took it
+ */
+export async function handoffFor(text, onOpen) {
+  const found = await payloadSchemas(texts.fill.refused);
+  if (found.refusal) return found.refusal;
+  const read = readHandoff(text, found.schemas);
+  if (read.problems.length) return { title: texts.fill.refused, lines: read.problems };
+  if (read.target === "statystyka") return { title: texts.fill.refused, lines: [texts.fill.series] };
+  if (read.target !== "hydrogram") {
+    const nodes = Array.isArray(read.doc.payload.nodes) ? read.doc.payload.nodes.length : 0;
+    return { title: texts.fill.refused, lines: [t(texts.fill.network, { nodes: plural(nodes, siecTexts.nodeForms) })] };
+  }
+  return onOpen(read.doc);
 }
 
 /**
@@ -319,13 +363,18 @@ function HandoffReader({ name, words, icon, read }) {
 /**
  * „Wczytaj z Hydrografa”: a hand-off read from a file or the clipboard opens where it
  * belongs (openHandoff). Statystyka przepływów names Archiwista instead (`series`); Sieć
- * opens every network itself (`into`, plan 2026-11-10-network-editor, D10).
+ * opens every network itself (`into`, plan 2026-11-10-network-editor, D10); a caller that
+ * takes one watershed gets it (`onOpen`, handoffFor; plan 2026-11-10-network-wizard, D10).
  *
- * @param {{series?: boolean, into?: "siec"|null}} [props] the texts of a station's series
- *   (Archiwista), and the section that reads it
+ * @param {{series?: boolean, into?: "siec"|null, onOpen?: ((doc: object) => ({title:
+ *   string, lines: string[]}|null))|null}} [props] the texts of a station's series
+ *   (Archiwista), the section that reads it, and the caller of one watershed
  * @returns {object} the button, its menu and what it says
  */
-export function HandoffImport({ series = false, into = null } = {}) {
+export function HandoffImport({ series = false, into = null, onOpen = null } = {}) {
+  if (onOpen) {
+    return html`<${HandoffReader} name="fill" words=${{ ...texts.load, ...texts.fill }} icon=${ICONS.load} read=${(text) => handoffFor(text, onOpen)} />`;
+  }
   let words = texts.load;
   if (series) words = { ...texts.load, ...texts.loadSeries };
   else if (into === "siec") words = { ...texts.load, ...texts.loadSiec };
@@ -371,6 +420,26 @@ export function HandoffOrigin({ received, small = false }) {
       <div>
         <strong>${t(texts.origin.title, { producer: toolName(tool, true), subject: received.subject })}</strong>
         <span class="muted">${t(texts.origin.received, { producer: toolName(tool), version: received.producer.version, time: momentText(received.created_at) })}</span>
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Where an input of a node came from (plan 2026-11-10-network-wizard, D9): a card of
+ * mapping.js (originCard), in a node's panel or in „Dane”.
+ *
+ * @param {{card: {tool: string, title: string, detail: string}, input: string}} props the
+ *   card and the input it tells (`watershed`, `runoff`, `rainfall`, `node`)
+ * @returns {object} the card
+ */
+export function OriginCard({ card, input }) {
+  return html`
+    <div class="handoff sm" data-handoff-source=${card.tool} data-origin-input=${input}>
+      <${Mark} tool=${card.tool} />
+      <div>
+        <strong>${card.title}</strong>
+        <span class="muted">${card.detail}</span>
       </div>
     </div>
   `;
@@ -574,7 +643,7 @@ export function SiecHandoff({ state, document, valid, run, stale }) {
         ? html`<${ReceivedResult} received=${received} own=${fresh ? outletResult(result) : null} ownVersion=${version} state=${compared} />`
         : null}
       <${ExportHandoff}
-        make=${ready ? () => siecHandoff({ subject, source: state.source, document, result: fresh ? result : null, version }) : null}
+        make=${ready ? () => siecHandoff({ subject, state, document, result: fresh ? result : null, version }) : null}
         base=${fileBase(subject)}
         section="siec"
         disabled=${ready ? undefined : texts.export.invalid}

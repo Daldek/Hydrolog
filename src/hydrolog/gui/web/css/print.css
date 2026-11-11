@@ -93,7 +93,7 @@ dialog,
   display: inline !important;
 }
 
-/* The three parts one after another: charts, results, data */
+/* The parts one after another: charts, results, data (and a subcatchment's panel of Sieć) */
 .view-layout {
   display: flex !important;
   flex-direction: column;
@@ -109,6 +109,9 @@ dialog,
 }
 .view-panel.left {
   order: 3;
+}
+.view-panel.detail {
+  order: 4;
 }
 .view-panel {
   position: static !important;
@@ -263,7 +266,8 @@ select {
 textarea {
   resize: none;
 }
-.view-panel.left .form {
+.view-panel.left .form,
+.view-panel.detail .form {
   columns: 2;
   column-gap: var(--space-6);
 }

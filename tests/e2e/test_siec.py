@@ -2,16 +2,18 @@
 
 A first visit has no network and sends nothing: step 1 says what to load and links the
 guide's worked example; „Wyczyść” returns there. The guide's network (loaded with „Plik
-sieci…”) opens on the canvas at the cells of Hydrolog's layout, drawn vertically: the
-sources at the top, the outlet at the bottom, every edge by rule D as the library draws
-it, each label on the side of its node without a tributary. A node moves by a drag, by
-Shift with an arrow key and by „Przesuń” and a click; the move survives a reload and a
-saved and reopened file, never marks the result stale, and „Uporządkuj” brings
-Hydrolog's layout back. The arrow keys go between nodes and the zoom follows „+” and
-„−”, all without a mouse. A network whose nodes miss values opens at the layout of its
-structure (``route schematic --structure-only``, ADR-0025); a structural problem stands
-in provisional rows until it is mended, and inputs stored before the canvas are laid
-out like a file without positions. The PNG leaves out the marks of editing. „Oblicz
+sieci…”) opens on the canvas at the cells of Hydrolog's layout from its first picture
+on, never in provisional rows first, drawn vertically: the sources at the top, the
+outlet at the bottom, every edge by rule D as the library draws it, each label on the
+side of its node without a tributary. A node moves by a drag, by Shift with an arrow key
+and by „Przesuń” and a click; the move survives a reload and a saved and reopened file,
+never marks the result stale, and „Uporządkuj” brings Hydrolog's layout back. The arrow
+keys go between nodes and the zoom follows „+” and „−”, all without a mouse. A network
+whose
+nodes miss values opens at the layout of its structure (``route schematic
+--structure-only``, ADR-0025), also from its first picture on; a structural problem
+stands in provisional rows until it is mended, and inputs stored before the canvas are
+laid out like a file without positions. The PNG leaves out the marks of editing. „Oblicz
 sieć” writes the document, positions included, to the session and runs ``route
 network``; the outlet's and every node's values are those of the library. A network
 loaded from a file with its referenced files (an inflows file and a rating table)
@@ -54,6 +56,23 @@ ROUTES = """() => Object.fromEntries(
   [...document.querySelectorAll('svg.schem polyline.ln')].map((line) =>
     [line.dataset.edge, line.getAttribute('points').split(' ')
       .map((point) => point.split(',').map(Number))]))"""
+DRAWN = """(() => {
+  window.hydrologDrawn = [];
+  const record = () => {
+    const nodes = [...document.querySelectorAll('svg.schem g.node')];
+    if (!nodes.length) return;
+    const cells = JSON.stringify(Object.fromEntries(nodes.map((node) =>
+      [node.dataset.node, [Number(node.dataset.x), Number(node.dataset.y)]])));
+    if (window.hydrologDrawn.at(-1) !== cells) window.hydrologDrawn.push(cells);
+  };
+  new MutationObserver(record).observe(document, {
+    subtree: true, childList: true, attributes: true,
+    attributeFilter: ['data-x', 'data-y'],
+  });
+})();"""
+"""Record every picture of the canvas in the page: the cells of its nodes each time they
+change. A MutationObserver runs before the browser paints, so no picture escapes it, not
+even one that a later render replaces before the next frame."""
 
 Cell = tuple[int, int]
 
@@ -95,6 +114,37 @@ def with_cells(document: dict[str, Any], cells: dict[str, Cell]) -> dict[str, An
     return {**document, "nodes": nodes}
 
 
+def as_written(
+    document: dict[str, Any],
+    unshown: frozenset[str] = frozenset({"channel_slope_m_per_m"}),
+) -> dict[str, Any]:
+    """Return ``document`` as Sieć writes it once it has read it.
+
+    A subcatchment made from rainfall goes through Hydrogram's inputs (plan
+    2026-11-10-network-wizard, D3), which write out the choices a runoff leaves to the
+    library's defaults: the model (SCS), AMC II and, for SCS and Clark without a given
+    tc, the method of tc (Kirpich); its watershed leaves out ``unshown``, the fields no
+    step shows for its choice (the channel's slope, which no step shows).
+    """
+    nodes = []
+    for node in document["nodes"]:
+        if node["type"] == "subcatchment" and "runoff" in node:
+            runoff = {**node["runoff"]}
+            runoff.setdefault("uh_model", "scs")
+            runoff.setdefault("amc", "II")
+            if runoff["uh_model"] in {"scs", "clark"} and "tc_min" not in runoff:
+                runoff.setdefault("tc_method", "kirpich")
+            node = {**node, "runoff": runoff}
+            if "watershed" in node:
+                node["watershed"] = {
+                    name: value
+                    for name, value in node["watershed"].items()
+                    if name not in unshown
+                }
+        nodes.append(node)
+    return {**document, "nodes": nodes}
+
+
 def canvas_cells(page: Page) -> dict[str, Cell]:
     """Return the cell of every node of the canvas."""
     return {node: (x, y) for node, (x, y) in page.evaluate(CELLS).items()}
@@ -109,9 +159,22 @@ def canvas_routes(page: Page) -> dict[str, list[Cell]]:
     return found
 
 
+def watch_drawn(page: Page) -> None:
+    """Record every picture the canvas of this document draws from now on (DRAWN)."""
+    page.evaluate(f"() => {{ {DRAWN} }}")
+
+
+def first_drawn(page: Page) -> dict[str, Cell]:
+    """Return the cells of the first picture the canvas drew since it was watched."""
+    drawn = page.evaluate("() => window.hydrologDrawn")
+    assert drawn, "the canvas drew nothing while it was watched"
+    return {node: (x, y) for node, (x, y) in json.loads(drawn[0]).items()}
+
+
 def open_section(tab: Tab) -> Page:
-    """Open Sieć, load the guide's network and wait for its canvas."""
+    """Open Sieć, load the guide's network and wait for its watched canvas (DRAWN)."""
     tab.open("#siec")
+    watch_drawn(tab.page)
     load_network(tab.page)
     expect(tab.page.locator("svg.schem g.node")).to_have_count(8)
     return tab.page
@@ -195,11 +258,13 @@ def test_the_example_is_drawn_first_and_computes_the_librarys_values(tab: Tab) -
     )
     page = open_section(tab)
 
-    # At the cells of Hydrolog's layout, every edge by rule D as the library draws it;
-    # turned: the sources on top, the outlet at the bottom
+    # At the cells of Hydrolog's layout from the first picture on, never in provisional
+    # rows first; every edge by rule D as the library draws it; turned: the sources on
+    # top, the outlet at the bottom
     assert any("/api/run/route/schematic" in url for url in runs)
     assert not any("/api/run/route/network" in url for url in runs)
     hydrolog_cells, hydrolog_routes = library(example_network_document())
+    assert first_drawn(page) == hydrolog_cells
     assert canvas_cells(page) == hydrolog_cells
     assert canvas_routes(page) == hydrolog_routes
     heights = {
@@ -362,7 +427,7 @@ def test_the_svg_and_the_network_document_export(tab: Tab) -> None:
         page.locator('[data-export="json-network"]').click()
     document = json.loads(Path(saved.value.path()).read_text(encoding="utf-8"))
     example = example_network_document()
-    assert document == with_cells(example, library(example)[0])
+    assert document == as_written(with_cells(example, library(example)[0]))
 
     compute(page)
     with page.expect_download() as drawing:
@@ -411,7 +476,7 @@ def test_a_dragged_node_keeps_its_cell_after_a_reload_and_in_a_saved_file(
         page.get_by_role("button", name="Zapisz sieć").click()
     saved.value.save_as(tmp_path / "siec.json")
     document = json.loads((tmp_path / "siec.json").read_text(encoding="utf-8"))
-    assert document == with_cells(example_network_document(), moved)
+    assert document == as_written(with_cells(example_network_document(), moved))
     page.locator('section[data-section="siec"]').get_by_role(
         "button", name="Wyczyść"
     ).click()
@@ -461,6 +526,13 @@ def test_the_keys_go_between_nodes_move_them_and_zoom_without_a_mouse(
     page.keyboard.press("Enter")
     expect(page.locator(NODE.format("C"))).to_have_attribute("aria-pressed", "true")
     expect(page.locator('[data-node-form="C"]')).to_be_visible()
+    # Enter on a subcatchment takes the focus to its panel's first step (plan
+    # 2026-11-10-network-wizard, D2); on the canvas again, Space chooses and stays
+    panel = page.locator('section[data-section="siec"] .view-panel.detail')
+    expect(panel.locator('[data-step="watershed"] > summary')).to_be_focused()
+    page.locator(NODE.format("C")).focus()
+    page.keyboard.press(" ")
+    assert page.evaluate(focused) == "C"
 
     # Shift with an arrow moves the node one cell; a taken cell refuses
     x, y = cells["C"]
@@ -477,16 +549,23 @@ def test_the_keys_go_between_nodes_move_them_and_zoom_without_a_mouse(
     page.keyboard.press("Shift+ArrowDown")
     expect(page.locator(NODE.format("C"))).to_have_attribute("data-x", str(x + 1))
 
-    # The zoom: „+” and „−” step through the levels, „Dopasuj” fits the picture again
+    # The zoom: „+” and „−” step through the levels from the fitted scale (the panel of
+    # C narrows the canvas), „Dopasuj” fits the picture again
     expect(canvas).to_have_attribute("data-zoom", "fit")
     width = float(canvas.get_attribute("width") or 0)
+    fitted = page.evaluate("() => document.querySelector('svg.schem').getScreenCTM().a")
+    levels = page.evaluate(
+        "async () => (await import('./src/sections/siec/editor/canvas.js')).ZOOMS"
+    )
+    up = next(level for level in levels if level > fitted * 1.01)
     page.keyboard.press("+")
-    expect(canvas).to_have_attribute("data-zoom", "1.25")
-    assert float(canvas.get_attribute("width") or 0) == round(width * 1.25)
+    expect(canvas).to_have_attribute("data-zoom", str(up))
+    assert float(canvas.get_attribute("width") or 0) == round(width * up)
+    down = levels[levels.index(up) - 2]
     page.keyboard.press("-")
     page.keyboard.press("-")
-    expect(canvas).to_have_attribute("data-zoom", "0.8")
-    expect(page.locator(SAID)).to_have_text("Powiększenie 80 %.")
+    expect(canvas).to_have_attribute("data-zoom", str(down))
+    expect(page.locator(SAID)).to_have_text(f"Powiększenie {round(down * 100)} %.")
     page.keyboard.press("?")
     expect(page.locator('[data-canvas="keys-list"]')).to_be_visible()
     expect(page.locator('[data-canvas="keys-list"]')).to_contain_text(
@@ -546,9 +625,12 @@ def test_a_network_with_incomplete_nodes_opens_at_hydrologs_layout(
     (tmp_path / "siec.json").write_text(json.dumps(incomplete), encoding="utf-8")
     tab.open("#siec")
     page = tab.page
+    watch_drawn(page)
     load_network(page, tmp_path / "siec.json")
     expect(page.locator("svg.schem g.node")).to_have_count(8)
-    # The layout of the structure alone: R_A's missing lag does not hold it back
+    # The layout of the structure alone, R_A's missing lag notwithstanding, from the
+    # first picture on: no provisional rows before it
+    assert first_drawn(page) == library(example)[0]
     assert canvas_cells(page) == library(example)[0]
     expect(page.locator('[data-canvas="provisional"]')).to_have_count(0)
     tidy = page.get_by_role("button", name="Uporządkuj", exact=True)
@@ -607,15 +689,17 @@ def test_inputs_stored_before_the_canvas_are_laid_out_like_a_file(tab: Tab) -> N
     page = open_section(tab)
     page.evaluate(
         """() => {
-          const key = 'hydrolog-gui/siec/2';
+          const key = 'hydrolog-gui/siec/3';
           const stored = JSON.parse(localStorage.getItem(key));
           delete stored.provisional;
           stored.skeleton = stored.skeleton.map(({position, ...node}) => node);
           localStorage.setItem(key, JSON.stringify(stored));
         }"""
     )
+    page.add_init_script(DRAWN)
     page.reload()
     expect(page.locator("svg.schem g.node")).to_have_count(8)
+    assert first_drawn(page) == library(example_network_document())[0]
     assert canvas_cells(page) == library(example_network_document())[0]
     expect(page.locator('[data-canvas="provisional"]')).to_have_count(0)
 
@@ -676,9 +760,10 @@ def test_a_phone_in_the_dark_theme_shows_the_schematic(new_tab: Any) -> None:
     page.mouse.click(*screen_point(page, "OUT", (0, -1)))
     expect(page.locator(NODE.format("OUT"))).to_have_attribute("data-y", str(y - 1))
     assert page.evaluate(SIDEWAYS) == []
+    # A subcatchment chosen shows its panel's sheet; its settings stay in „Dane”
     page.locator(NODE.format("B")).click()
     expect(
-        page.locator('section[data-section="siec"] .view-panel.left')
+        page.locator('section[data-section="siec"] .view-panel.detail')
     ).to_be_visible()
     expect(page.locator('[data-node-form="B"]')).to_be_attached()
     assert page.evaluate(SIDEWAYS) == []

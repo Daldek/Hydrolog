@@ -85,7 +85,6 @@ STEP_ONE = [
     "elevation_mean_m",
     "mean_slope_m_per_m",
     "channel_length_km",
-    "channel_slope_m_per_m",
     "flow_path_length_km",
     "flow_path_slope_m_per_m",
     "cn",
@@ -639,7 +638,7 @@ def test_only_the_chosen_models_fields_exist_and_are_sent(tab: Tab) -> None:
 
 
 def test_choosing_a_model_marks_the_fields_it_lacks(tab: Tab) -> None:
-    basic = typed("area_km2", "cn", "channel_length_km", "channel_slope_m_per_m")
+    basic = typed("area_km2", "cn", "channel_length_km")
     seed_hydrogram(tab, kamiennik_inputs(watershed=basic, origin=None, uh_model=None))
     runs = Runs(tab.page)
     tab.open("#hydrogram")

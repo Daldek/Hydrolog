@@ -325,9 +325,10 @@ inundation, backwater and structures stay with Hydraulik, HEC-RAS and IMGW HD.
   changes nothing; a bifurcation is refused), command `route network` over the document
   `hydrolog-network/1`, which `RoutingNetwork.to_document()` also writes
 - A subcatchment is given its hydrograph or makes it from a watershed, a runoff model
-  (`CurveNumberRunoff`: SCS-CN and a unit hydrograph, as `hydrograph generate`) and a rainfall of
-  its own (`DesignStorm`, `RainfallSeries`, any `RainfallSource`); a new kind of node, rainfall,
-  runoff model or reach method is a class in a registry (ADR-0012)
+  (`CurveNumberRunoff`: SCS-CN and a unit hydrograph, as `hydrograph generate`; Nash's n and K
+  given or estimated by Lutz from the watershed, ADR-0024) and a rainfall of its own or the
+  network's (`DesignStorm`, `RainfallSeries`, any `RainfallSource`); a new kind of node,
+  rainfall, runoff model or reach method is a class in a registry (ADR-0012)
 - Control points: `ControlPointNetwork` builds the network as an application picks it, outlet first,
   point by point; the residual area and the channel of each point are given by the application
   (Hydrolog does not compute areas and makes up no channel)
@@ -336,7 +337,8 @@ inundation, backwater and structures stay with Hydraulik, HEC-RAS and IMGW HD.
 - Schematic: `RoutingNetwork.schematic()` lays a network out as a metro-style map, the document
   `hydrolog-network-schematic/1` (ADR-0013), or draws the cells that the `position` of every node
   gives (ADR-0023); `route network --schematic` draws it as SVG with the values of the run,
-  `route schematic` returns the layout without values and computes nothing (ADR-0015)
+  `route schematic` returns the layout without values and computes nothing (ADR-0015), also of
+  the structure alone of a draft whose nodes miss their values (`--structure-only`, ADR-0025)
 - Not in scope: variable-parameter Muskingum-Cunge and compound sections, kinematic and dynamic
   waves, reservoir operation (gates and release rules: the outflow is the one the table gives;
   plan `docs/plans/2026-10-24-flood-routing.md`)
@@ -350,9 +352,12 @@ group `nogat.gui`.
 
 - Five sections: Hydrogram zlewni (one watershed, recomputed after every change), Sieć i trasowanie
   (an editor of the network after HEC-HMS's basin model editor: elements placed on a canvas,
-  linked, renamed, described and given their parameters, with undo; the network document keeps
-  the positions and descriptions; `route network`), Statystyka przepływów, Kalkulatory and
-  Wszystkie polecenia (a form generated from the catalog for every command)
+  linked, renamed, described and given their parameters, with undo; the network's rainfall first,
+  then the elements, then each subcatchment in Hydrogram zlewni's three steps in a panel beside
+  the data; a network handed over by Hydrograf opens laid out, with the origin of each node; the
+  network document keeps the positions and descriptions; `route network`), Statystyka
+  przepływów, Kalkulatory and Wszystkie polecenia (a form generated from the catalog for every
+  command)
 - Every value comes from the catalog (`run_command` in warm worker processes); the browser formats,
   sums series for display, draws, and checks the structure of a network while it is edited with
   the library's rules and reasons (Hydrolog confirms every complete network), and computes nothing
@@ -364,12 +369,15 @@ group `nogat.gui`.
   REST interface of Hydrolog (no `/api/v1`, OpenAPI or stability promise)
 - One work directory per browser session with limits; no arbitrary paths, no store, no sign-in:
   beyond loopback the server is exposed only behind an authenticating proxy
-- Hydrogram zlewni under PMAXTP fetches the depth for the given point, probability, duration and
-  method through `precip pmaxtp` (the server runs it; the browser never calls IMGW-PIB) and keeps
-  it with the inputs (ADR-0018)
+- Hydrogram zlewni and Sieć under PMAXTP fetch the depth for the given point, probability,
+  duration and method through `precip pmaxtp` (the server runs it; the browser never calls
+  IMGW-PIB) and keep it with the inputs (ADR-0018)
 - Not in scope: an English UI (later), saved variants or projects, a PDF output, downloading
   series; in the network editor a background map, diversions and withdrawals, and choosing,
-  copying or moving several nodes at once (plan `docs/plans/2026-11-10-network-editor.md`)
+  copying or moving several nodes at once (plan `docs/plans/2026-11-10-network-editor.md`); in
+  Sieć a live hydrograph of the chosen subcatchment, an areal reduction of the network's
+  rainfall or a PMAXTP point per subcatchment beyond its own rainfall, and urban regression as a
+  way of estimating Nash's n and K (plan `docs/plans/2026-11-10-network-wizard.md`)
 
 ---
 

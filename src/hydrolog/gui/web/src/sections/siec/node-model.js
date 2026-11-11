@@ -1,19 +1,23 @@
-// The forms of the network's nodes (plan D9, S4), a pure module without Preact or the
-// DOM. Fields, types, bounds, defaults and what is required come from
+// The forms of the network's nodes in „Dane” (plan D9, S4), a pure module without Preact
+// or the DOM. Fields, types, bounds, defaults and what is required come from
 // hydrolog-network-1.schema.json: every node type and reach method is a branch of its
-// `node`, a subcatchment from rainfall nests `watershed`, `runoff` and `rainfall`. The GUI
-// adds the order of the fields, the alternatives the schema states in words (a channel by
-// its section or by the wave's celerity, a cascade by K or by length and celerity, a
-// storage table in the document or in a file) and the Polish labels and help (the
-// catalog's Polish descriptions of the same options of `route <method>` and `hydrograph
-// generate`). A property of the schema the GUI does not place goes under the node's more
-// fields, so a new field shows without a change here.
+// `node`. The GUI adds the order of the fields, the alternatives the schema states in words
+// (a channel by its section or by the wave's celerity, a cascade by K or by length and
+// celerity, a storage table in the document or in a file) and the Polish labels and help
+// (the catalog's Polish descriptions of the same options of `route <method>`). A property of
+// the schema the GUI does not place goes under the node's more fields, so a new field
+// shows without a change here. A subcatchment made from rainfall has no form here: its
+// values are Hydrogram's inputs, entered in Hydrogram zlewni's three steps in its own panel
+// and mapped to the document by handoff/mapping.js (plan 2026-11-10-network-wizard, D1,
+// D3); neither is the network's own rainfall, Hydrogram's step 2 (D4). A subcatchment given
+// its hydrograph („Podany”) or reading its column of the inflows file („Z pliku”) keeps its
+// small form.
 //
-// A node's values are what a person typed, flat by key: "watershed.area_km2",
-// "runoff.tc_method", "muskingum.k_min" (a reach keeps the fields of each method apart, so
-// switching methods back restores them), "initial_outflow_m3s"; choices are keys starting
-// with "#": "#variant" (a subcatchment: rain, file, given), "#method", "#rainfall",
-// "<method>.#section" and the like; tables are lists of rows of text.
+// A node's values here are what a person typed, flat by key: "muskingum.k_min" (a reach
+// keeps the fields of each method apart, so switching methods back restores them),
+// "initial_outflow_m3s", "value_column"; choices are keys starting with "#": "#variant" (a
+// subcatchment: rain, file, given), "#method", "<method>.#section" and the like; tables are
+// lists of rows of text.
 
 import { auto, inputText, num, parseNumber } from "../../format.js";
 import { fieldModel, toOptions, validate, withReason } from "../../forms/model.js";
@@ -32,37 +36,19 @@ export const KINDS = Object.freeze(["subcatchment", "reach", "reservoir", "junct
 /** The routing methods of a reach. */
 export const METHODS = Object.freeze(["lag", "muskingum", "muskingum-cunge", "cascade", "level-pool"]);
 
-/** The ways a subcatchment brings its hydrograph. */
+/** The ways a subcatchment brings its hydrograph; "rain" (from rainfall) by default. */
 export const VARIANTS = Object.freeze(["rain", "file", "given"]);
 
-/** The rainfall of a subcatchment or of the network: none (the network's), a storm, a series. */
-export const RAINFALLS = Object.freeze(["network", "design", "series"]);
-
-/** The fields of a watershed shown first; the others are under „Pozostałe pola zlewni”. */
-const WATERSHED_MAIN = ["name", "area_km2", "cn"];
-
-/** The fields of the curve-number runoff shown first. */
-const RUNOFF_MAIN = ["tc_method", "tc_min", "amc", "ia_coefficient", "uh_model"];
-
-/** The fields of each unit hydrograph model (shown for the chosen model only). */
-const UH_FIELDS = {
-  nash: ["nash_n", "nash_k_min"],
-  clark: ["clark_r_min", "clark_r_tc_ratio"],
-  snyder: ["snyder_ct", "snyder_cp"],
-};
-
 /**
- * Snyder's L and Lc: the runoff's options by the watershed's field they are sent from. The
- * form shows the watershed's fields only (required under Snyder) and copies them to the runoff.
+ * The way a subcatchment brings its hydrograph, by its values: "rain" unless it was
+ * chosen otherwise.
+ *
+ * @param {object} values the node's values
+ * @returns {"rain"|"file"|"given"} the variant
  */
-const SNYDER_LENGTHS = Object.freeze({ snyder_length_km: "channel_length_km", snyder_centroid_length_km: "Lc_km" });
-
-/** The fields of a design storm that apply to some hietogram types only. */
-const STORM_ONLY = {
-  alpha: ["beta"],
-  beta: ["beta"],
-  peak_position: ["triangular", "euler_ii"],
-};
+export function variantOf(values) {
+  return VARIANTS.includes(values["#variant"]) ? values["#variant"] : "rain";
+}
 
 /** The fields every routing element shares, under „Początek i koniec fali”. */
 const WAVE = ["initial_outflow_m3s", "extend_min"];
@@ -109,7 +95,6 @@ export const HELP_COMMANDS = Object.freeze([
   "route muskingum-cunge",
   "route cascade",
   "route level-pool",
-  "hydrograph generate",
   "route network",
 ]);
 
@@ -168,11 +153,9 @@ function resolve(schema, node) {
  * The branches of the network schema the forms use.
  *
  * @param {object} schema hydrolog-network-1.schema.json
- * @returns {{network: {properties: object, required: string[]}, branches: object[],
- *   watershed: {properties: object, required: string[]}, runoff: object[],
- *   rainfall: object[]}} the network's own fields; each node branch with its `type`,
- *   `method` (a reach) or `variant` (a subcatchment: "rain" or "given"), properties and
- *   required fields; the watershed; the runoff models; the rainfall kinds
+ * @returns {{network: {properties: object, required: string[]}, branches: object[]}} the
+ *   network's own fields, and each node branch with its `type`, `method` (a reach) or
+ *   `variant` (a subcatchment: "rain" or "given"), properties and required fields
  */
 export function readSchema(schema) {
   const defs = schema.$defs || {};
@@ -188,21 +171,7 @@ export function readSchema(schema) {
     if (type === "subcatchment") variant = base.required.includes("watershed") ? "rain" : "given";
     return { ...base, type, method, variant };
   });
-  const runoff = (resolve(schema, defs.runoff).oneOf || []).map((item) => {
-    const base = branchOf(item);
-    return { ...base, model: base.properties.model ? base.properties.model.const : null };
-  });
-  const rainfall = (resolve(schema, defs.rainfall).oneOf || []).map((item) => {
-    const base = branchOf(item);
-    return { ...base, kind: base.properties.kind ? base.properties.kind.const : null };
-  });
-  return {
-    network: branchOf(schema),
-    branches,
-    watershed: branchOf(resolve(schema, defs.watershed)),
-    runoff,
-    rainfall,
-  };
+  return { network: branchOf(schema), branches };
 }
 
 /**
@@ -281,14 +250,15 @@ function needed(field) {
 }
 
 /**
- * The forms of every node type from the schema and the catalog's help.
+ * The forms of every node type from the schema and the catalog's help (a subcatchment
+ * made from rainfall has none: Hydrogram's steps).
  *
  * @param {object} schema hydrolog-network-1.schema.json
  * @param {Map<string, object>} [docs] catalog documents of HELP_COMMANDS by name
- * @returns {object} the forms: `network`, `watershed`, `runoff`, `rainfall` (by kind),
- *   `methods` (by method), `reservoir`, `given` (a subcatchment's own discharges), each a
- *   map of fields by name with the schema's order, and `run`, the options of `route
- *   network` the section sets (`inflows_file`, `time_column`)
+ * @returns {object} the forms: `network`, `methods` (by method), `reservoir`, `given` (a
+ *   subcatchment's own discharges and its column of the inflows file), each a map of
+ *   fields by name with the schema's order, `run`, the options of `route network` the
+ *   section sets (`inflows_file`, `time_column`), and `inflow`, the inflow rules
  */
 export function buildForms(schema, docs = new Map()) {
   const read = readSchema(schema);
@@ -312,12 +282,6 @@ export function buildForms(schema, docs = new Map()) {
   }
   const reservoirBranch = read.branches.find((branch) => branch.type === "reservoir");
   const givenBranch = read.branches.find((branch) => branch.type === "subcatchment" && branch.variant === "given");
-  const rainBranch = read.branches.find((branch) => branch.type === "subcatchment" && branch.variant === "rain");
-  const rainfall = {};
-  for (const branch of read.rainfall) {
-    if (branch.kind) rainfall[branch.kind] = group(branch, "rainfall", ["hydrograph generate"], ["kind"]);
-  }
-  const curveNumber = read.runoff.find((branch) => branch.model === "curve-number") || read.runoff[0];
   const runHelp = (name) => helpOf(docs, ["route network"], "run", name).description;
   const run = fieldModel({
     name: "siec",
@@ -328,14 +292,9 @@ export function buildForms(schema, docs = new Map()) {
   }).fields;
   return {
     network: group(read.network, "network", [], structural.concat(["rainfall"])),
-    watershed: group(read.watershed, "watershed", [], []),
-    runoff: curveNumber ? group(curveNumber, "runoff", ["hydrograph generate"], ["model"]) : new Map(),
-    runoffModel: curveNumber ? curveNumber.model : "curve-number",
-    rainfall,
     methods,
     reservoir: reservoirBranch ? group(reservoirBranch, "reach", ["route level-pool"], structural) : new Map(),
     given: givenBranch ? group(givenBranch, "given", ["route lag"], structural) : new Map(),
-    rainRequired: rainBranch ? rainBranch.required : [],
     run: new Map(run.map((field) => [field.name, field])),
     inflow: inflowRules(schema),
   };
@@ -362,7 +321,7 @@ export function textOf(value) {
  * Put an object's fields into values under a prefix.
  *
  * @param {object} values the values being filled
- * @param {string} prefix e.g. "watershed."
+ * @param {string} prefix e.g. "muskingum."
  * @param {object} source the object
  * @param {string[]} [skip] fields left out
  */
@@ -383,23 +342,6 @@ function rowsOf(columns) {
   return Array.from({ length }, (_, index) =>
     columns.map((column) => (Array.isArray(column) && index < column.length ? textOf(column[index]) : "")),
   );
-}
-
-/**
- * The values of a rainfall object under a prefix, and its kind.
- *
- * @param {object} values the values being filled
- * @param {string} key the key of the choice ("#rainfall")
- * @param {object|undefined} rainfall the document's rainfall
- * @param {string} none the choice without a rainfall
- */
-function rainfallValues(values, key, rainfall, none) {
-  if (rainfall && typeof rainfall === "object") {
-    values[key] = rainfall.kind === "series" ? "series" : "design";
-    spread(values, `rainfall.${values[key]}.`, rainfall, ["kind"]);
-  } else {
-    values[key] = none;
-  }
 }
 
 /**
@@ -428,7 +370,10 @@ function elementValues(values, method, node) {
 }
 
 /**
- * The values of a node of the document.
+ * The values of a node of the document that has a form here: a subcatchment given its
+ * hydrograph (its table) or reading its column of the inflows file, a reach (its method's
+ * fields), a reservoir; none for a junction and the outlet. A subcatchment made from
+ * rainfall is handoff/mapping.js's (siecValues: Hydrogram's inputs).
  *
  * @param {object} node a node of hydrolog-network/1
  * @returns {object} its values
@@ -436,17 +381,7 @@ function elementValues(values, method, node) {
 export function nodeValues(node) {
   const values = {};
   if (node.type === "subcatchment") {
-    if (node.watershed || node.runoff || node.rainfall) {
-      values["#variant"] = "rain";
-      spread(values, "watershed.", node.watershed);
-      spread(values, "runoff.", node.runoff, ["model", ...Object.keys(SNYDER_LENGTHS)]);
-      // Snyder's L and Lc of the runoff fill the watershed's fields it lacks
-      for (const [option, name] of Object.entries(SNYDER_LENGTHS)) {
-        const given = node.runoff && node.runoff[option];
-        if (given !== undefined && values[`watershed.${name}`] === undefined) values[`watershed.${name}`] = textOf(given);
-      }
-      rainfallValues(values, "#rainfall", node.rainfall, "network");
-    } else if (Array.isArray(node.times_min) || Array.isArray(node.discharge_m3s)) {
+    if (Array.isArray(node.times_min) || Array.isArray(node.discharge_m3s)) {
       values["#variant"] = "given";
       values["#hydrograph"] = rowsOf([node.times_min, node.discharge_m3s]);
     } else {
@@ -460,21 +395,6 @@ export function nodeValues(node) {
   } else if (node.type === "reservoir") {
     elementValues(values, "level-pool", node);
   }
-  return values;
-}
-
-/**
- * The values of the network's own fields: its name, time step and default rainfall.
- *
- * @param {object} doc hydrolog-network/1
- * @returns {object} the values
- */
-export function networkValues(doc) {
-  const values = {};
-  if (typeof doc.name === "string") values.name = doc.name;
-  if (typeof doc.description === "string") values.description = doc.description;
-  if (typeof doc.timestep_min === "number") values.timestep_min = textOf(doc.timestep_min);
-  rainfallValues(values, "#rainfall", doc.rainfall, "network");
   return values;
 }
 
@@ -518,6 +438,19 @@ export function descriptionProblem(text) {
   return null;
 }
 
+/**
+ * A network document without what changes no computation (plan 2026-11-10-network-editor,
+ * D3, D11): the nodes' positions and descriptions and the network's description. The key
+ * that marks a result stale is made of it, and Hydrolog lays it out anew.
+ *
+ * @param {object} document hydrolog-network/1
+ * @returns {object} the document without them
+ */
+export function withoutPicture(document) {
+  const { description: _network, ...rest } = document;
+  return { ...rest, nodes: document.nodes.map(({ position: _cell, description: _text, ...node }) => node) };
+}
+
 // --- what a form shows ---------------------------------------------------------------
 
 /**
@@ -552,26 +485,6 @@ function slots(fields, names, prefix, required = false) {
 function rest(fields, placed, prefix) {
   const left = [...fields.keys()].filter((name) => !placed.includes(name));
   return slots(fields, left, prefix);
-}
-
-/**
- * The parts of the rainfall of a subcatchment or of the network.
- *
- * @param {object} forms the forms of buildForms
- * @param {object} values the values
- * @param {string} key the key of the choice ("#rainfall")
- * @returns {{choice: {key: string, items: string[], value: string}, slots: Slot[]}} the
- *   choice of the kind and the slots of the chosen kind
- */
-function rainfallPart(forms, values, key) {
-  const kinds = RAINFALLS.filter((kind) => kind === "network" || forms.rainfall[kind]);
-  const chosen = kinds.includes(values[key]) ? values[key] : "network";
-  if (chosen === "network") return { choice: { key, items: kinds, value: chosen }, slots: [] };
-  const fields = forms.rainfall[chosen];
-  const prefix = `rainfall.${chosen}.`;
-  const type = values[`${prefix}hietogram_type`];
-  const shown = [...fields.keys()].filter((name) => !Object.hasOwn(STORM_ONLY, name) || STORM_ONLY[name].includes(type));
-  return { choice: { key, items: kinds, value: chosen }, slots: slots(fields, shown, prefix) };
 }
 
 /**
@@ -620,7 +533,8 @@ function elementParts(fields, method, values) {
 }
 
 /**
- * What the form of a node shows now: its choices, its slots by part, and its tables.
+ * What the form of a node shows now: its choices, its slots by part, and its tables; a
+ * subcatchment made from rainfall only its variant (its data are Hydrogram's steps).
  *
  * @param {object} forms the forms of buildForms
  * @param {{id: string, type: string, from: string[]|null}} node the node's structure
@@ -629,26 +543,11 @@ function elementParts(fields, method, values) {
  */
 export function nodeLayout(forms, node, values) {
   if (node.type === "subcatchment") {
-    const variant = VARIANTS.includes(values["#variant"]) ? values["#variant"] : "rain";
+    const variant = variantOf(values);
     const layout = { kind: "subcatchment", variant };
-    if (variant === "rain") {
-      const model = values["runoff.uh_model"] || (forms.runoff.get("uh_model") || {}).default || "scs";
-      const lengths = model === "snyder" ? Object.values(SNYDER_LENGTHS) : [];
-      layout.watershed = {
-        main: [...slots(forms.watershed, WATERSHED_MAIN, "watershed."), ...slots(forms.watershed, lengths, "watershed.", true)],
-        more: rest(forms.watershed, [...WATERSHED_MAIN, ...lengths], "watershed."),
-      };
-      const uhPlaced = [...Object.values(UH_FIELDS).flat(), ...Object.keys(SNYDER_LENGTHS)];
-      layout.runoff = {
-        model: forms.runoffModel,
-        main: slots(forms.runoff, RUNOFF_MAIN, "runoff."),
-        uh: slots(forms.runoff, UH_FIELDS[model] || [], "runoff."),
-        more: rest(forms.runoff, [...RUNOFF_MAIN, ...uhPlaced], "runoff."),
-      };
-      layout.rainfall = rainfallPart(forms, values, "#rainfall");
-    } else if (variant === "file") {
+    if (variant === "file") {
       layout.file = slots(forms.given, ["value_column"], "");
-    } else {
+    } else if (variant === "given") {
       layout.table = {
         key: "#hydrograph",
         columns: ["times_min", "discharge_m3s"]
@@ -675,9 +574,6 @@ export function nodeLayout(forms, node, values) {
 export function layoutSlots(layout) {
   const found = [];
   if (layout.kind === "subcatchment") {
-    if (layout.watershed) found.push(...layout.watershed.main, ...layout.watershed.more);
-    if (layout.runoff) found.push(...layout.runoff.main, ...layout.runoff.uh, ...layout.runoff.more);
-    if (layout.rainfall) found.push(...layout.rainfall.slots);
     if (layout.file) found.push(...layout.file);
   } else if (layout.kind === "reach" || layout.kind === "reservoir") {
     found.push(...layout.main, ...layout.chosen, ...layout.after, ...layout.wave, ...layout.more);
@@ -830,22 +726,10 @@ function tableJson(table, rows) {
 }
 
 /**
- * The rainfall object of values, or null for the network's own (or none).
- *
- * @param {object} layout the rainfall part of a layout
- * @param {object} values the values
- * @returns {object|null} the rainfall
- */
-function rainfallJson(layout, values) {
-  const kind = layout.choice.value;
-  if (kind === "network") return null;
-  return { kind, ...jsonOf(layout.slots, values, `rainfall.${kind}.`) };
-}
-
-/**
- * The node of the document made of the values (they are checked with nodeProblems), its
- * description and position last, after the fields of its kind (the canonical order of
- * ADR-0023).
+ * The node of the document made of the values of its form (they are checked with
+ * nodeProblems), its description and position last, after the fields of its kind (the
+ * canonical order of ADR-0023). A subcatchment made from rainfall is handoff/mapping.js's
+ * (siecSubcatchment, from Hydrogram's inputs).
  *
  * @param {object} forms the forms of buildForms
  * @param {{id: string, type: string, from: string[]|null, description?: string,
@@ -858,20 +742,10 @@ export function nodeOf(forms, node, values) {
   if (node.from && node.from.length) made.from = [...node.from];
   const layout = nodeLayout(forms, node, values);
   if (layout.kind === "subcatchment") {
-    if (layout.variant === "rain") {
-      made.watershed = jsonOf([...layout.watershed.main, ...layout.watershed.more], values, "watershed.");
-      made.runoff = { model: layout.runoff.model, ...jsonOf([...layout.runoff.main, ...layout.runoff.uh, ...layout.runoff.more], values, "runoff.") };
-      if (layout.runoff.uh.some((slot) => slot.key === "runoff.snyder_ct")) {
-        for (const [option, name] of Object.entries(SNYDER_LENGTHS)) {
-          if (made.watershed[name] !== undefined) made.runoff[option] = made.watershed[name];
-        }
-      }
-      const rainfall = rainfallJson(layout.rainfall, values);
-      if (rainfall) made.rainfall = rainfall;
-    } else if (layout.variant === "given") {
+    if (layout.variant === "given") {
       const columns = tableJson(layout.table, values[layout.table.key]);
       Object.assign(made, columns);
-    } else {
+    } else if (layout.variant === "file") {
       Object.assign(made, jsonOf(layout.file, values, ""));
     }
   } else if (layout.kind === "reach" || layout.kind === "reservoir") {
@@ -888,30 +762,26 @@ export function nodeOf(forms, node, values) {
 }
 
 /**
- * The layout of the network's own fields: name, time step, default rainfall.
+ * The layout of the network's own fields of the schema: its name and time step (its
+ * rainfall is Hydrogram's step 2, not a form of the schema).
  *
  * @param {object} forms the forms of buildForms
- * @param {object} values the network's values
- * @returns {{slots: Slot[], rainfall: object}} the slots and the rainfall part
+ * @returns {{slots: Slot[]}} the slots
  */
-export function networkLayout(forms, values) {
-  return {
-    slots: slots(forms.network, [...forms.network.keys()], ""),
-    rainfall: rainfallPart(forms, values, "#rainfall"),
-  };
+export function networkLayout(forms) {
+  return { slots: slots(forms.network, [...forms.network.keys()], "") };
 }
 
 /**
- * The problems of the network's own fields by key.
+ * The problems of the network's own fields of the schema by key.
  *
  * @param {object} forms the forms of buildForms
  * @param {object} values the network's values
  * @returns {Object<string, string>} messages by value key
  */
 export function networkProblems(forms, values) {
-  const layout = networkLayout(forms, values);
   const found = {};
-  for (const slot of [...layout.slots, ...layout.rainfall.slots]) {
+  for (const slot of networkLayout(forms).slots) {
     const message = slotProblem(slot, values[slot.key]);
     if (message) found[slot.key] = message;
   }
@@ -919,53 +789,15 @@ export function networkProblems(forms, values) {
 }
 
 /**
- * The network's default rainfall as its document writes it: the rainfall a subcatchment
- * without its own takes (a hand-off's own top rainfall is compared with it, D10).
+ * The network's own fields of the schema as its document writes them: its name and time
+ * step, those given.
  *
  * @param {object} forms the forms of buildForms
  * @param {object} values the network's values
- * @returns {object|null} the rainfall of hydrolog-network/1, null without one
+ * @returns {object} the fields by name
  */
-export function networkRainfall(forms, values) {
-  return rainfallJson(networkLayout(forms, values).rainfall, values);
-}
-
-/**
- * The document of the network: its own fields (its name and description first, ADR-0023)
- * and every node, in the order of its structure.
- *
- * @param {object} forms the forms of buildForms
- * @param {{network: object, skeleton: object[], nodes: Object<string, object>}} state the
- *   network's values, its structure and the values of each node
- * @returns {{document: object, problems: Array<{node: string|null, key: string,
- *   message: string}>}} hydrolog-network/1 and every problem of the values and the
- *   descriptions (the structure is graph.js's)
- */
-export function buildDocument(forms, state) {
-  const problems = [];
-  for (const [key, message] of Object.entries(networkProblems(forms, state.network))) {
-    problems.push({ node: null, key, message });
-  }
-  const ownDescription = descriptionProblem(state.network.description);
-  if (ownDescription) problems.push({ node: null, key: "description", message: ownDescription });
-  const document = { schema: "hydrolog-network/1" };
-  const own = jsonOf(networkLayout(forms, state.network).slots, state.network, "");
-  if (own.name !== undefined) document.name = own.name;
-  const description = state.network.description;
-  if (typeof description === "string" && description.trim()) document.description = description;
-  if (own.timestep_min !== undefined) document.timestep_min = own.timestep_min;
-  const rainfall = networkRainfall(forms, state.network);
-  if (rainfall) document.rainfall = rainfall;
-  document.nodes = state.skeleton.map((node) => {
-    const values = state.nodes[node.id] || {};
-    for (const [key, message] of Object.entries(nodeProblems(forms, node, values))) {
-      problems.push({ node: node.id, key, message });
-    }
-    const text = descriptionProblem(node.description);
-    if (text) problems.push({ node: node.id, key: "description", message: text });
-    return nodeOf(forms, node, values);
-  });
-  return { document, problems };
+export function networkFields(forms, values) {
+  return jsonOf(networkLayout(forms).slots, values, "");
 }
 
 // --- words of a node ----------------------------------------------------------------
@@ -987,10 +819,11 @@ export function nodeWords(node, values) {
   let short = "";
   let area = null;
   if (node.type === "subcatchment") {
-    const variant = VARIANTS.includes(values["#variant"]) ? values["#variant"] : "rain";
+    const variant = variantOf(values);
     if (variant === "rain") {
-      area = number("watershed.area_km2");
-      const cn = number("watershed.cn");
+      const watershed = values.watershed && typeof values.watershed === "object" ? values.watershed : {};
+      area = parseNumber(watershed.area_km2);
+      const cn = parseNumber(watershed.cn);
       short = Number.isFinite(cn) ? t(texts.meta.cn, { cn: auto(cn) }) : "";
       const parts = Number.isFinite(area) ? [t(texts.meta.area, { area: num(area, 2) })] : [];
       if (short) parts.push(short);

@@ -20,7 +20,12 @@ open. The browser's check of a hand-off judges documents as jsonschema does, the
 of Hydrogram's options to the node computes as ``hydrograph generate`` for every
 setting, and a PMAXTP rainfall handed without a point opens as „Hietogram”. The
 hand-off of Nash by Lutz carries ``nash_estimation`` instead of n and K, and one written
-before it, with Lutz's n and K of ``uh nash``, opens with them given.
+before it, with Lutz's n and K of ``uh nash``, opens with them given. Hydrograf's own
+network hand-off (``handoff_hydrograf_network.json``, written by its endpoint) opens in
+Sieć at the structure's layout from its first picture on, with the origin of each node
+(plan 2026-11-10-network-wizard, D9) and a key of no node said; completed and computed,
+the hand-off Sieć writes carries ``node_provenance`` under the current ids with the
+changes marked and reopens with the same origins, on a phone in the dark theme too.
 """
 
 import copy
@@ -35,7 +40,7 @@ from playwright.sync_api import Locator, Page, expect
 
 import hydrolog
 from hydrolog.catalog import run_command
-from hydrolog.routing import RoutingNetwork
+from hydrolog.routing import RoutingNetwork, structure_schematic
 from hydrolog.testing import example_network_document, placed
 from tests.conftest import recorded_fetch, recorded_pmaxtp
 from tests.e2e.conftest import (
@@ -52,8 +57,18 @@ from tests.e2e.conftest import (
     seed_hydrogram,
 )
 from tests.e2e.conftest import KAMIENNIK as EXAMPLE
-from tests.e2e.test_siec import NODE, canvas_cells, compute, polish
+from tests.e2e.test_siec import (
+    NODE,
+    SIDEWAYS,
+    as_written,
+    canvas_cells,
+    compute,
+    first_drawn,
+    polish,
+    watch_drawn,
+)
 from tests.e2e.test_siec_editor import drag_link, said
+from tests.e2e.test_siec_rainfall import requests_to
 
 ROOT = Path(__file__).resolve().parents[2]
 HANDOFF: dict[str, Any] = json.loads(
@@ -86,7 +101,6 @@ SENT = {
         "elevation_mean_m",
         "mean_slope_m_per_m",
         "channel_length_km",
-        "channel_slope_m_per_m",
         "flow_path_length_km",
         "flow_path_slope_m_per_m",
         "cn",
@@ -455,8 +469,15 @@ def test_nogats_example_opens_from_the_clipboard_and_matches_its_result(
         if "total_mm" in sent:
             break
         page.wait_for_timeout(100)
+    # The example's channel slope stays in the inputs, neither shown nor sent: no step
+    # shows it (plan 2026-11-10-network-wizard, erratum of 2026-11-10)
+    shown = {
+        name: value
+        for name, value in node["watershed"].items()
+        if name != "channel_slope_m_per_m"
+    }
     assert sent == {
-        "watershed": {"name": "Kamiennik — Świerzawa", **node["watershed"]},
+        "watershed": {"name": "Kamiennik — Świerzawa", **shown},
         "amc": "II",
         "tc_method": "kirpich",
         "hietogram_type": "beta",
@@ -467,6 +488,13 @@ def test_nogats_example_opens_from_the_clipboard_and_matches_its_result(
         "timestep_min": 10,
         "uh_model": "scs",
     }
+    kept = page.evaluate(
+        "() => JSON.parse(localStorage.getItem('hydrolog-gui/hydrogram/2')).watershed"
+    )
+    assert kept["channel_slope_m_per_m"] == input_text(
+        node["watershed"]["channel_slope_m_per_m"]
+    )
+    expect(page.locator("#hg-channel_slope_m_per_m")).to_have_count(0)
     origin = page.locator(f"{left} .handoff[data-origin]")
     expect(origin.locator("strong")).to_have_text(
         "Z Hydrologa: zlewnia punktu 51,0154° N, 15,8900° E"
@@ -521,7 +549,7 @@ def test_nogats_example_opens_from_the_clipboard_and_matches_its_result(
     }
     assert copied["payload"]["nodes"][0]["watershed"] == {
         "name": "Kamiennik — Świerzawa",
-        **node["watershed"],
+        **shown,
         "flow_path_slope_m_per_m": 0.012,
     }
     assert copied["payload"]["nodes"][0]["runoff"] == node["runoff"]
@@ -716,7 +744,16 @@ def test_a_network_of_two_subcatchments_opens_in_siec_beside_hydrografs_result(
     valid(handed)
     path = tmp_path / "dwie.handoff.json"
     path.write_text(json.dumps(handed, ensure_ascii=False), encoding="utf-8")
+    # The network's rainfall is PMAXTP at the watershed's point (the record names none
+    # of its own): the depth is fetched there once, on Sieć's channel, where IMGW-PIB is
+    # made to answer the payload's 105 mm for 12 h at 1 %
+    table = copy.deepcopy(recorded_pmaxtp(PMAXTP_TABLE))
+    table["data"]["ks"]["720"]["1"] = TWO["rainfall"]["total_mm"]
+    answers = tmp_path / "two_pot.json"
+    answers.write_text(json.dumps(table), encoding="utf-8")
     page = open_hydrogram(tab)
+    page.route(PMAXTP_RUN, pmaxtp_route(recorded_fetch(answers)))
+    fetches = requests_to(page, PMAXTP)
     load_file(page, HG, path)
 
     expect(page).to_have_url(re.compile(r"#siec$"))
@@ -730,11 +767,31 @@ def test_a_network_of_two_subcatchments_opens_in_siec_beside_hydrografs_result(
         "data-network-file", "Kamiennik — dwie zlewnie.json"
     )
     expect(
-        page.locator(f'{left} [data-handoff-source="hydrograf"] strong')
+        page.locator(
+            f'{left} [data-step="network"] [data-handoff-source="hydrograf"] strong'
+        )
+    ).to_have_text("Z Hydrografa: Kamiennik — dwie zlewnie")
+    # The outlet, without an origin of its own, shows the network's
+    expect(
+        page.locator(
+            f'{left} [data-step="node"] [data-handoff-source="hydrograf"] strong'
+        )
     ).to_have_text("Z Hydrografa: Kamiennik — dwie zlewnie")
     received = page.locator(f"{SIEC} [data-handoff-received]")
     expect(received).to_have_attribute("data-handoff-received", "none")
     expect(received).to_be_visible()  # „Przekazanie” opens itself for a hand-off
+    depth = page.locator("#siec-net-pmaxtp_depth")
+    expect(depth).to_have_value("105")
+    assert [request.url.rsplit("?", 1)[1] for request in fetches] == [
+        "channel=siec-pmaxtp"
+    ]
+    assert fetches[0].post_data_json == {
+        "latitude": 51.0154,
+        "longitude": 15.89,
+        "duration_min": 720,
+        "probability_percent": 1,
+        "method": "POT",
+    }
 
     with page.expect_response(lambda answer: "/api/run/route/network" in answer.url):
         page.get_by_role("button", name="Oblicz sieć").click()
@@ -765,8 +822,9 @@ def test_a_network_of_two_subcatchments_opens_in_siec_beside_hydrografs_result(
     valid(doc)
     layout = RoutingNetwork.from_document(TWO).schematic()["nodes"]
     cells = {node["id"]: (node["x"], node["y"]) for node in layout}
-    nodes = [placed(node, position=cells[node["id"]]) for node in TWO["nodes"]]
-    assert doc["payload"] == {**TWO, "nodes": nodes}
+    written = as_written(TWO)
+    nodes = [placed(node, position=cells[node["id"]]) for node in written["nodes"]]
+    assert doc["payload"] == {**written, "nodes": nodes}
     assert doc["provenance"] == handed["provenance"]
     assert doc["producer"] == {
         "tool": "hydrolog",
@@ -971,6 +1029,8 @@ def test_the_browsers_check_judges_handoffs_as_jsonschema_does(tab: Tab) -> None
         changed(payload={"schema": "obserwator-pmaxtp/1", "depth_mm": 105.0}),
         changed(result={"computed_with": {"tool": "hydrolog", "version": "0.6.3"}}),
         changed(page_title="unknown fields are allowed"),
+        HANDOFF["examples"][1],
+        changed(node_provenance={"Z1.a-2": {"node": {"source": "hydrograf"}}}),
         *[
             without(key)
             for key in (
@@ -1002,6 +1062,13 @@ def test_the_browsers_check_judges_handoffs_as_jsonschema_does(tab: Tab) -> None
         changed(result={"peak_discharge_m3s": "60,2"}),
         changed(result={"computed_with": {"tool": "hydrolog"}}),
         changed(result={"command": ""}),
+        changed(node_provenance={}),
+        changed(node_provenance={"Z1": {}}),
+        changed(node_provenance={"Z1": {"Watershed": {"source": "hydrograf"}}}),
+        changed(node_provenance={"Z1": {"watershed": {"element": "headwater"}}}),
+        changed(node_provenance={"Z1": {"watershed": "hydrograf"}}),
+        changed(node_provenance={"": {"node": {"source": "hydrograf"}}}),
+        changed(node_provenance=[]),
         [],
     ]
     judged = page.evaluate(
@@ -1013,7 +1080,7 @@ def test_the_browsers_check_judges_handoffs_as_jsonschema_does(tab: Tab) -> None
         envelopes,
     )
     assert judged == [ENVELOPE_CHECK.is_valid(doc) for doc in envelopes]
-    assert judged.count(True) == 8
+    assert judged.count(True) == 10
 
     base = D15["payload"]
 
@@ -1169,7 +1236,7 @@ def test_the_mapping_computes_as_hydrograph_generate_for_every_setting(
             const start = { ...stored, watershed, ...setting };
             const inputs = state.normalize(start);
             const options = state.toOptions(inputs);
-            const payload = mapping.hydrogramPayload(options, 'Kamiennik');
+            const payload = mapping.hydrogramPayload(inputs, 'Kamiennik');
             const provenance = mapping.hydrogramProvenance(inputs);
             const doc = buildHandoff({
               subject: 'Kamiennik', provenance, payload, version: 'test',
@@ -1203,14 +1270,15 @@ def test_the_mapping_computes_as_hydrograph_generate_for_every_setting(
           const mapping = await import('./src/handoff/mapping.js');
           const { buildHandoff } = await import('./src/handoff/handoff.js');
           const watershed = state.readWatershed(example).texts;
-          const options = state.toOptions(state.normalize({ ...stored, watershed }));
+          const inputs = state.normalize({ ...stored, watershed });
+          const options = state.toOptions(inputs);
           const provenance = {
             rainfall: { source: 'pmaxtp', probability_percent: 1, duration_min: 720 },
             watershed: { source: 'user' },
           };
           const doc = buildHandoff({
             subject: 'Kamiennik', provenance, version: 'test',
-            payload: mapping.hydrogramPayload(options, 'Kamiennik'),
+            payload: mapping.hydrogramPayload(inputs, 'Kamiennik'),
           });
           const opened = state.normalize(mapping.hydrogramInputs(doc));
           return { source: opened.rain_source, options, back: state.toOptions(opened) };
@@ -1361,12 +1429,12 @@ def test_snyders_lengths_of_a_handoff_go_to_the_watersheds_fields(tab: Tab) -> N
           const mapping = await import('./src/handoff/mapping.js');
           const { buildHandoff } = await import('./src/handoff/handoff.js');
           const opened = (watershed, runoff) => {
-            const options = state.toOptions(state.normalize({
+            const given = state.normalize({
               ...stored,
               uh_model: 'snyder',
               watershed: state.readWatershed(watershed).texts,
-            }));
-            const payload = mapping.hydrogramPayload(options, 'Kamiennik');
+            });
+            const payload = mapping.hydrogramPayload(given, 'Kamiennik');
             Object.assign(payload.nodes[0].runoff, runoff);
             const doc = buildHandoff({
               subject: 'Kamiennik', provenance: { watershed: { source: 'user' } },
@@ -1419,11 +1487,9 @@ def test_snyders_lengths_of_a_handoff_go_to_the_watersheds_fields(tab: Tab) -> N
 # by each case returned with its notes, rainfall choices and the network's step.
 ADDITION = """async ([d15, two]) => {
   const h = await import('./src/handoff/handoff.js');
-  const { siecAddition } = await import('./src/handoff/mapping.js');
-  const nm = await import('./src/sections/siec/node-model.js');
+  const { rainfallInputs, siecAddition } = await import('./src/handoff/mapping.js');
   const url = 'api/schemas/hydrolog-network-1.schema.json';
   const schema = await (await fetch(url)).json();
-  const forms = nm.buildForms(schema);
   const text = JSON.stringify(d15);
   const read = (into) =>
     h.readHandoff(text, { networkSchema: schema, into }).target;
@@ -1441,8 +1507,8 @@ ADDITION = """async ([d15, two]) => {
   const handed = (payload, subject = 'Dwie zlewnie') =>
     ({ ...two, subject, payload });
   const add = (inputs, payload, subject) =>
-    siecAddition(inputs, handed(payload, subject), forms);
-  const rain = nm.networkValues({ rainfall: two.payload.rainfall });
+    siecAddition(inputs, handed(payload, subject));
+  const rain = rainfallInputs(two.payload.rainfall);
   const same = add(network({ timestep_min: '10', ...rain }), two.payload);
   const other = add(network({ timestep_min: '5' }), two.payload);
   const fresh = add(empty, two.payload);
@@ -1463,7 +1529,7 @@ ADDITION = """async ([d15, two]) => {
       .filter((n) => found.added.includes(n.id))
       .map((n) => [n.id, n.position, n.description || null,
                    n.origin ? n.origin.subject : null]),
-    rainfall: found.added.map((id) => found.inputs.nodes[id]['#rainfall']),
+    rainfall: found.added.map((id) => found.inputs.nodes[id].rain_source),
     step: found.inputs.network.timestep_min ?? null,
   });
   return {
@@ -1531,20 +1597,25 @@ def test_handoffs_open_and_join_in_siec_and_the_written_one_reopens(
     compute(page)
     cells = canvas_cells(page)
 
-    # The hand-off written from Sieć: both subcatchments as handed, placed and described
+    # The hand-off written from Sieć: both subcatchments as handed, placed and
+    # described, each without the watershed's fields no step shows for its choice
+    # (Hydrograf's Lc under SCS)
     name, data = download(page, handoff_button(page, SIEC, "file"))
     assert name == "Kamiennik — Świerzawa.handoff.json"
     doc = json.loads(data)
     valid(doc)
+    handed = as_written(
+        hydrograf["payload"], frozenset({"channel_slope_m_per_m", "Lc_km"})
+    )
     expected = [
-        placed(D15["payload"]["nodes"][0], position=cells["Z1"]),
+        placed(as_written(D15["payload"])["nodes"][0], position=cells["Z1"]),
         placed(
             {"id": "J1", "type": "junction", "from": ["Z1", "Z2"]},
             position=cells["J1"],
         ),
         placed({"id": "OUT", "type": "outlet", "from": ["J1"]}, position=cells["OUT"]),
         placed(
-            {**hydrograf["payload"]["nodes"][0], "id": "Z2"},
+            {**handed["nodes"][0], "id": "Z2"},
             description=hydrograf["subject"],
             position=cells["Z2"],
         ),
@@ -1600,7 +1671,8 @@ def test_a_handoff_adds_its_subcatchments_as_the_plan_says(tab: Tab) -> None:
         "Sieć zostaje przy swoim kroku czasowym 5 min; przekazanie ma krok 10 min.",
         "Opad przekazania różni się od opadu sieci, więc jest opadem własnym: Z2, Z3.",
     ]
-    assert got["other"]["rainfall"] == ["design", "design"]
+    # as Hydrogram zlewni reads it: PMAXTP at the provenance's point of the watershed
+    assert got["other"]["rainfall"] == ["pmaxtp", "pmaxtp"]
     # An empty network takes the hand-off's step; its ids are free
     assert got["fresh"]["added"] == ["Z1", "Z2"]
     assert got["fresh"]["step"] == "10"
@@ -1622,3 +1694,190 @@ def test_a_handoff_adds_its_subcatchments_as_the_plan_says(tab: Tab) -> None:
         "rainfall": [],
         "step": None,
     }
+
+
+HYDROGRAF_NETWORK = FIXTURES / "handoff_hydrograf_network.json"
+"""Hydrograf's own network hand-off, as its ``POST /api/delineate-network`` wrote it
+(Hydrograf ``feat/network-delineation-api`` ``5586edb``, ``core/handoff.py``
+``build_network_handoff``) on the synthetic DEM of its tests: A at the outlet, P1 to P3
+at the mouths of three tributaries and the gauge P4 on the main river. Eight
+subcatchments, four reaches without their section, five junctions and OUT; no rainfall;
+the origin of every node but OUT in Hydrograf's words."""
+
+
+def choose(page: Page, node: str) -> None:
+    """Choose ``node`` on the canvas by the keyboard: its focus and Space.
+
+    In a network of this size the middle of a node's box can fall between its mark and
+    its label, where a click goes to the canvas.
+    """
+    page.locator(NODE.format(node)).focus()
+    page.keyboard.press("Space")
+    expect(page.locator(NODE.format(node))).to_have_attribute("aria-pressed", "true")
+
+
+def node_card(page: Page, node: str) -> Locator:
+    """Choose ``node``; return the card of its origin in „Dane”."""
+    choose(page, node)
+    return page.locator(f'{SIEC} .view-panel.left [data-step="node"] .handoff')
+
+
+def place(origin: dict[str, Any]) -> str:
+    """Return the place of an origin in the north-east quarter as the page writes it."""
+    return f"{polish(origin['latitude'], 4)}° N, {polish(origin['longitude'], 4)}° E"
+
+
+def test_hydrografs_network_opens_with_the_origin_of_each_node_and_hands_it_on(
+    tab: Tab, tmp_path: Path
+) -> None:
+    hydrograf = json.loads(HYDROGRAF_NETWORK.read_text(encoding="utf-8"))
+    single = json.loads(HYDROGRAF.read_text(encoding="utf-8"))
+    nodes = hydrograf["payload"]["nodes"]
+    reaches = [node["id"] for node in nodes if node["type"] == "reach"]
+    own = hydrograf["node_provenance"]
+    handed = copy.deepcopy(hydrograf)
+    handed["node_provenance"]["X9"] = {"node": {"source": "hydrograf"}}
+    valid(handed)
+    path = tmp_path / "siec.handoff.json"
+    path.write_text(json.dumps(handed, ensure_ascii=False), encoding="utf-8")
+    tab.open("#siec")
+    page = tab.page
+    watch_drawn(page)
+    load_file(page, SIEC, path)
+
+    # Laid out by the structure from the first picture on, the reaches' missing sections
+    # notwithstanding; a key of no node is said and left out
+    expect(page.locator("svg.schem g.node")).to_have_count(len(nodes))
+    drawn = structure_schematic(hydrograf["payload"])["nodes"]
+    cells = {node["id"]: (node["x"], node["y"]) for node in drawn}
+    assert first_drawn(page) == cells
+    assert canvas_cells(page) == cells
+    expect(page.locator('[data-canvas="provisional"]')).to_have_count(0)
+    expect(page.locator(f'{SIEC} [data-note="load"] li').nth(1)).to_have_text(
+        "Pominięto pochodzenie węzłów, których nie ma w sieci przekazania "
+        "(node_provenance): X9."
+    )
+    # Each node shows its own origin; OUT, which has none, the network's
+    received = "Hydrograf 0.5.0.dev0 · 11 lis 2026, 00:06 · nogat-handoff/1"
+    card = page.locator(f'{SIEC} .view-panel.left [data-step="node"] .handoff')
+    expect(card.locator("strong")).to_have_text(f"Z Hydrografa: {hydrograf['subject']}")
+    expect(card).not_to_have_attribute("data-origin-input", "node")
+    titles = {
+        "J5": ("przekrój zamykający A", place(own["J5"]["node"])),
+        "J2": ("punkt kontrolny P4", place(own["J2"]["node"])),
+        "J1": ("zbieg", place(own["J1"]["node"])),
+        "R1": (
+            "odcinek",
+            "długość wzdłuż spływu · spadek z NMT · NMT 128,6 → 123,8 m n.p.m.",
+        ),
+        "Z2": ("dopływ do ujścia przy punkcie P3", place(own["Z2"]["watershed"])),
+        "Z3": ("przyrzecze odcinka R1", place(own["Z3"]["watershed"])),
+    }
+    for node, (title, detail) in titles.items():
+        card = node_card(page, node)
+        expect(card.locator("strong")).to_have_text(f"Z Hydrografa: {title}")
+        expect(card.locator(".muted")).to_have_text(f"{detail} · {received}")
+    # A subcatchment's panel names its watershed's element in step 1; the hand-off
+    # names no rainfall or runoff of its own
+    panel = f"{SIEC} .view-panel.detail"
+    expect(page.locator(f"{panel} .handoff[data-origin] strong")).to_have_text(
+        "Z Hydrografa: przyrzecze odcinka R1"
+    )
+    expect(page.locator(f"{panel} [data-origin-input]")).to_have_count(0)
+
+    # With the network's rainfall only the reaches lack values: „Oblicz sieć” marks
+    # them until their sections are given, then the network computes
+    rain = page.locator(f'{SIEC} [data-rain-part="siec-net"]')
+    rain.get_by_role("radio", name="Hietogram", exact=True).click()
+    rain.get_by_role("radio", name="Blokowy", exact=True).click()
+    page.locator("#siec-net-total_mm").fill("30")
+    page.locator("#siec-net-duration_min").fill("60")
+    page.get_by_role("button", name="Oblicz sieć").click()
+    expect(page.locator(BADGE)).to_have_attribute("data-state", "invalid")
+    wrong = page.locator("svg.schem g.node.wrong")
+    expect(wrong).to_have_count(len(reaches))
+    marked = wrong.evaluate_all("nodes => nodes.map((node) => node.dataset.node)")
+    assert sorted(marked) == reaches
+    for reach in reaches:
+        choose(page, reach)
+        form = page.locator(f'[data-node-form="{reach}"]')
+        form.locator('[data-key="muskingum-cunge.manning_n"] input').fill("0,035")
+        form.locator('[data-key="muskingum-cunge.bottom_width_m"] input').fill("8")
+    expect(wrong).to_have_count(0)
+    card = node_card(page, "R1")
+    expect(card.locator(".muted")).to_contain_text(
+        "zmienione: manning_n, bottom_width_m"
+    )
+    # Z1's CN edited; Hydrograf's single watershed added on a clash as Z9 and joined
+    choose(page, "Z1")
+    page.locator(f"{panel} #sn-cn").fill("70")
+    add_file(page, HYDROGRAF)
+    expect(page.locator(f'{SIEC} [data-note="load"] li').nth(1)).to_have_text(
+        "Zlewnia Z1 z przekazania ma w sieci id Z9."
+    )
+    to = page.locator(f'{SIEC} [data-structure="Z9"] [data-field="to"] select')
+    to.select_option("J2")
+    said(page, "Połączono Z9 → J2.")
+    compute(page)
+
+    # The hand-off written from Sieć: the received origins under the current ids, the
+    # changed fields named, the added node with its hand-off's provenance, the
+    # network's rainfall the person's; it validates and reopens with the same origins
+    name, data = download(page, handoff_button(page, SIEC, "file"))
+    doc = json.loads(data)
+    valid(doc)
+    assert doc["provenance"] == {
+        **hydrograf["provenance"],
+        "rainfall": {"source": "user"},
+    }
+    sectioned = {
+        reach: {
+            "node": {**own[reach]["node"], "changed": ["manning_n", "bottom_width_m"]}
+        }
+        for reach in reaches
+    }
+    assert doc["node_provenance"] == {
+        **own,
+        "Z1": {"watershed": {**own["Z1"]["watershed"], "changed": ["cn"]}},
+        **sectioned,
+        "Z9": single["provenance"],
+    }
+    written = tmp_path / name
+    written.write_bytes(data)
+    load_file(page, SIEC, written)
+    expect(page.locator("svg.schem g.node")).to_have_count(len(nodes) + 1)
+    card = node_card(page, "R1")
+    expect(card.locator("strong")).to_have_text("Z Hydrologa: odcinek")
+    expect(card.locator(".muted")).to_contain_text(
+        "zmienione: manning_n, bottom_width_m"
+    )
+    _, again = download(page, handoff_button(page, SIEC, "file"))
+    reopened = json.loads(again)
+    assert reopened["provenance"] == doc["provenance"]
+    assert reopened["node_provenance"] == doc["node_provenance"]
+
+
+def test_a_phone_in_the_dark_shows_the_origin_of_each_node(new_tab: Any) -> None:
+    hydrograf = json.loads(HYDROGRAF_NETWORK.read_text(encoding="utf-8"))
+    tab = new_tab(width=390, height=844, theme="dark")
+    tab.open("#siec")
+    page = tab.page
+    left = f"{SIEC} .view-panel.left"
+    panel = f"{SIEC} .view-panel.detail"
+    page.get_by_role("button", name="Dane").click()
+    load_file(page, SIEC, HYDROGRAF_NETWORK)
+    expect(page.locator("svg.schem g.node")).to_have_count(
+        len(hydrograf["payload"]["nodes"])
+    )
+    # A reach chosen in the list shows its origin in „Dane”'s step 3
+    page.locator(f'{left} .node-list button[data-node="R1"]').click()
+    card = page.locator(f'{left} [data-step="node"] [data-origin-input="node"]')
+    expect(card.locator("strong")).to_have_text("Z Hydrografa: odcinek")
+    assert page.evaluate(SIDEWAYS) == []
+    # A subcatchment's sheet names its element in step 1
+    page.locator(f'{left} .node-list button[data-node="Z1"]').click()
+    expect(page.locator(f"{panel}.open")).to_be_visible()
+    expect(page.locator(f"{panel} .handoff[data-origin] strong")).to_have_text(
+        "Z Hydrografa: zlewnia górna"
+    )
+    assert page.evaluate(SIDEWAYS) == []

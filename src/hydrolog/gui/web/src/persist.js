@@ -9,11 +9,12 @@ import { useCallback, useEffect, useRef, useState } from "./html.js";
 /**
  * The versions of the stored shapes other than 1: Hydrogram zlewni's three steps of
  * 2026-11-04 left the five steps with the shipped example behind, the other sections left
- * their stored examples behind when every section started empty (2026-11-04), and
- * Statystyka's filters of the combinations shown left one distribution and one fit method a
- * run behind (2026-11-06).
+ * their stored examples behind when every section started empty (2026-11-04), Statystyka's
+ * filters of the combinations shown left one distribution and one fit method a run behind
+ * (2026-11-06), and Sieć's network rainfall as Hydrogram's step 2 left its rainfall of the
+ * schema's form behind (plan 2026-11-10-network-wizard, D3, D4).
  */
-export const VERSIONS = Object.freeze({ hydrogram: 2, siec: 2, statystyka: 3, kalkulatory: 2, polecenia: 2 });
+export const VERSIONS = Object.freeze({ hydrogram: 2, siec: 3, statystyka: 3, kalkulatory: 2, polecenia: 2 });
 
 /**
  * The storage key of a section's inputs.

@@ -5,8 +5,11 @@
 // and „Usuń i połącz”), then a form per node type and reach method generated from
 // hydrolog-network-1.schema.json (node-model.js) with the controls of the catalog forms,
 // the alternatives as segmented choices, a storage table (or a rating file of the
-// session) for a reservoir and a level-pool reach, and a subcatchment's own hydrograph as
-// a table.
+// session) for a reservoir and a level-pool reach. A subcatchment chooses here how it
+// brings its hydrograph: given as a table („Podany”), its column of the inflows file („Z
+// pliku”), or from rainfall, whose data are Hydrogram zlewni's three steps in the
+// subcatchment's own panel beside „Dane” („Dane zlewni →”; plan 2026-11-10-network-wizard,
+// D1, D2).
 
 import { ChoiceField, CheckField } from "../../controls/choice-field.js";
 import { inputFiles, uploadFile, useSession } from "../../controls/file-field.js";
@@ -14,7 +17,7 @@ import { NumberField } from "../../controls/number-field.js";
 import { readTable, SeriesField } from "../../controls/series-field.js";
 import { TextField } from "../../controls/text-field.js";
 import { splitReason } from "../../controls/field.js";
-import { auto, bytes, inputText, parseNumber } from "../../format.js";
+import { bytes, inputText, parseNumber } from "../../format.js";
 import { withReason } from "../../forms/model.js";
 import { html, useMemo, useRef, useState } from "../../html.js";
 import { common, t } from "../../labels/common.js";
@@ -25,7 +28,7 @@ import { Seg } from "../../ui/seg.js";
 import { JunctionOffer } from "./editor/canvas.js";
 import { canBridge } from "./editor/edits.js";
 import { foldId, idProblem, linkVerdicts, receiversOf, structureKey } from "./editor/graph.js";
-import { descriptionProblem, fieldOf, METHODS, nodeLayout, RAINFALLS, VARIANTS } from "./node-model.js";
+import { descriptionProblem, fieldOf, METHODS, nodeLayout, VARIANTS } from "./node-model.js";
 import { kindNoun, refusalText } from "./words.js";
 
 const CONTROLS = {
@@ -516,15 +519,15 @@ function MethodField({ id, value, values, onInput }) {
  * The settings of one node.
  *
  * @param {{forms: object, node: object, to: string|null, skeleton: object[], values:
- *   object, problems: object, result: object|null, networkRain: string, inflowsFile:
- *   string, offer: object|null, actions: object, onIdDone: (id: string) => void,
- *   onChange: (values: object) => void}} props the forms, the node's structure, its
- *   downstream node, the whole structure, its values and problems, its last result, the
- *   words of the network's rainfall, the inflows file, a junction offered for it, the
- *   section's edits, the handler of Enter or Esc in the id and the change handler
+ *   object, problems: object, inflowsFile: string, offer: object|null, actions: object,
+ *   onPanel: () => void, onIdDone: (id: string) => void, onChange: (values: object) =>
+ *   void}} props the forms, the node's structure, its downstream node, the whole
+ *   structure, its values and problems, the inflows file, a junction offered for it, the
+ *   section's edits, what shows the panel of a subcatchment made from rainfall, the
+ *   handler of Enter or Esc in the id and the change handler
  * @returns {object} the form
  */
-export function NodeForm({ forms, node, to, skeleton, values, problems, result, networkRain, inflowsFile, offer, actions, onIdDone, onChange }) {
+export function NodeForm({ forms, node, to, skeleton, values, problems, inflowsFile, offer, actions, onPanel, onIdDone, onChange }) {
   const prefix = `nf-${String(node.id).replace(/[^\w-]+/g, "-")}`;
   const layout = nodeLayout(forms, node, values);
   const set = (key, value) => onChange({ ...values, [key]: value });
@@ -553,28 +556,15 @@ export function NodeForm({ forms, node, to, skeleton, values, problems, result, 
       onChange=${(variant) => set("#variant", variant)}
     />`);
     if (layout.variant === "rain") {
-      const tc = result && result.parameters && typeof result.parameters.tc_min === "number" ? result.parameters.tc_min : null;
-      parts.push(html`<h4 class="sub-title">${texts.form.watershed} <code>watershed</code></h4>`);
-      parts.push(layout.watershed.main.map(render));
-      parts.push(html`<${More} name="watershed" title=${texts.form.watershedMore} slots=${layout.watershed.more} problems=${problems} render=${render} />`);
-      parts.push(html`<h4 class="sub-title">${texts.form.runoff} <code>runoff</code> · <code>${layout.runoff.model}</code></h4>`);
-      parts.push(layout.runoff.main.map(render));
-      if (tc !== null && !String(values["runoff.tc_min"] ?? "").trim()) {
-        parts.push(html`<p class="note" data-note="tc">${t(texts.form.tcComputed, { tc: auto(tc) })}</p>`);
-      }
-      parts.push(layout.runoff.uh.map(render));
-      parts.push(html`<${More} name="runoff" title=${texts.form.more} slots=${layout.runoff.more} problems=${problems} render=${render} />`);
-      parts.push(html`<h4 class="sub-title">${texts.form.rainfall} <code>rainfall</code></h4>`);
-      parts.push(html`<${Choice}
-        id=${`${prefix}-rainfall`}
-        name="#rainfall"
-        title=${texts.form.rainfallKind}
-        items=${RAINFALLS.filter((kind) => layout.rainfall.choice.items.includes(kind)).map((kind) => ({ value: kind, label: texts.rainfalls.node[kind] }))}
-        value=${layout.rainfall.choice.value}
-        onChange=${(kind) => set("#rainfall", kind)}
-      />`);
-      if (layout.rainfall.choice.value === "network") parts.push(html`<p class="note" data-note="rainfall">${networkRain}</p>`);
-      parts.push(layout.rainfall.slots.map(render));
+      // Its data are Hydrogram's steps in its own panel (D1, D2); on a phone the panels
+      // alternate, and this is the way there
+      parts.push(html`<p class="note" data-note="panel">${texts.form.inPanel}</p>`);
+      parts.push(html`<div class="btn-row">
+        <button class="btn sm" type="button" data-action="open-panel" title=${t(texts.form.openPanelTitle, { id: node.id })} onClick=${onPanel}>
+          ${texts.form.openPanel}
+        </button>
+      </div>`);
+      parts.push(html`<${Problem} message=${problems.rain_source} id=${`${prefix}-rainfall-err`} />`);
     } else if (layout.variant === "file") {
       parts.push(layout.file.map(render));
       parts.push(

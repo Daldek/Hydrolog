@@ -11,14 +11,15 @@ Verbatim copies (ERR-3, AGI-4.1) of the files below, from the standard 2.1 of th
   `schemas/agent/`): the schemas of the result envelope, the error document and the
   command catalog. `tests/contract/` validates Hydrolog's documents against them.
 
-And, outside the standard, from commit `8727f6e` on Nogat's `develop` (its example
-carries the longest flow path; SHA-256
-`15c82f6a9e0107ddf1c6846f8053d7da9991c1e91679f93d5da4a2fadf6fd6e4`):
+And, outside the standard, from commit `8848c26` on Nogat's `develop` (the optional
+`node_provenance`, the origin of each node of a network, and a second example that
+carries it; Nogat's `docs/plans/2026-11-10-node-provenance-in-handoff.md`; SHA-256
+`84c6856d1148acdc08bf79600c8cdab03674e81fe1f30eb7abeb66629b5742ed`):
 
 - `handoff-1.schema.json` (Nogat `schemas/exchange/handoff-1.schema.json`): the
   envelope `nogat-handoff/1` of data handed between the GUIs of the ecosystem. The GUI
-  writes and reads it with the payload `hydrolog-network/1`
-  (`src/hydrolog/gui/web/src/handoff/`). `tests/contract/test_gui_handoff.py`
+  writes and reads it with the payload `hydrolog-network/1` and the origin of each of
+  its nodes (`src/hydrolog/gui/web/src/handoff/`). `tests/contract/test_gui_handoff.py`
   validates hand-offs against this copy; the browser checks them against its validation
   keywords (`handoff/envelope.js`, which `tests/e2e/test_exports.py` compares with the
   copy).

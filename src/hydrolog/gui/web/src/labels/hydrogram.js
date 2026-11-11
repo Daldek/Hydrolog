@@ -49,7 +49,6 @@ export const hydrogram = {
     elevation_mean_m: { label: "Wysokość średnia" },
     mean_slope_m_per_m: { label: "Średni spadek zlewni" },
     channel_length_km: { label: "Długość cieku głównego" },
-    channel_slope_m_per_m: { label: "Spadek cieku głównego" },
     flow_path_length_km: { label: "Długość najdłuższej drogi spływu", symbol: "L" },
     flow_path_slope_m_per_m: { label: "Spadek najdłuższej drogi spływu", symbol: "S" },
     Lc_km: { label: "Długość do środka ciężkości", symbol: "Lc" },
@@ -180,7 +179,11 @@ export const hydrogram = {
   },
   rain: {
     source: "Źródło opadu",
-    sources: { pmaxtp: "PMAXTP", design: "Hietogram", series: "Własna seria" },
+    sources: { none: "Brak", network: "Jak w sieci", pmaxtp: "PMAXTP", design: "Hietogram", series: "Własna seria" },
+    noneNote:
+      "Sieć bez opadu: zlewnia z opadu potrzebuje wtedy własnego opadu; zlewnie z hydrogramem podanym albo z pliku dopływów nie potrzebują żadnego.",
+    networkOpen: "Opad sieci w kroku 1",
+    timestepNetwork: "{key} · krok sieci",
     probability: "Prawdopodobieństwo",
     choose: "wybierz",
     pmaxtpNote:
@@ -203,6 +206,8 @@ export const hydrogram = {
     metaPmaxtp: "{total} mm · {duration} · p {p}%",
     metaDesign: "{total} mm · {duration}",
     metaSeries: "własna seria · {steps}",
+    metaNone: "brak opadu",
+    metaNetwork: "jak w sieci",
     stepForms: ["krok", "kroki", "kroków"],
     hours: "{value} h",
     minutes: "{value} min",
