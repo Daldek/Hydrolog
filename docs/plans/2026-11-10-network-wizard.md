@@ -1,6 +1,7 @@
 # Plan: a network wizard in „Sieć i trasowanie”: the network's rainfall first, each subcatchment in Hydrogram's three steps
 
 Approved: 2026-11-10
+Closed: 2026-11-11
 
 Approved by the author on 2026-11-10 with the decisions A1 to A6 on how Sieć takes the data of a subcatchment, recorded under [The author's decisions](#the-authors-decisions): the subcatchment's panel is Hydrogram zlewni's own three steps beside „Dane” (A1), the network's rainfall comes first (A2), Sieć's own subcatchment form goes and `handoff/mapping.js` is the one mapping, proved by a contract test (A3), „Uporządkuj” works on the structure alone (A4), the `curve-number` runoff of `hydrolog-network/1` estimates Nash's n and K by Lutz (A5), and Hydrograf's network hand-offs open ready with the origin of each node (A6). They correct the network editor plan [2026-11-10-network-editor.md](2026-11-10-network-editor.md) (merged at `2ca7e7a`, closed at `055a433`), whose erratum of 2026-11-10 names what is superseded; the rest of that plan and of [2026-11-02-hydrolog-gui.md](2026-11-02-hydrolog-gui.md) stands. The decisions D1 to D12 below settle what A1 to A6 leave open; they are the agent's, taken by the author's delegated authority within A1 to A6. The plan is on the branch `plan/network-wizard` from `develop` `055a433`. No code before `Approved:`.
 
@@ -266,7 +267,7 @@ The coordinator's decision of 2026-11-10 by delegated authority, on W4's contrac
 
 ## Results
 
-Every stage is implemented, each on its own branch stacked on the previous one. W1 and W2 were merged into `develop` with the author's approval (DEV-3.3) on 2026-11-10 (`5ff2a83`, `930915d`), since Hydrograf's network delineation pins them; W3 to W6 are pushed and not merged: the coordinator merges them into `develop` together after the full gate and restarts the GUI on :8070 ([Deployment for the author](#deployment-for-the-author)). The plan closes with that merge.
+Every stage is done, each on its own branch stacked on the previous one. W1 and W2 were merged into `develop` with the author's approval (DEV-3.3) on 2026-11-10 (`5ff2a83`, `930915d`), since Hydrograf's network delineation pins them; W3 to W6 were merged into `develop` at `3b28b15` (merge of `feat/network-wizard-w6`, which holds W3 to W5) on 2026-11-11, after the full gate on that head: 7659 passed in 881 s. The omp service `hydrolog-gui` (127.0.0.1:8070) was restarted at `3b28b15` the same day and the wizard checked there in a browser ([Deployment for the author](#deployment-for-the-author)). The plan is closed.
 
 | Stage | Branch | Commits | Notes |
 |---|---|---|---|
