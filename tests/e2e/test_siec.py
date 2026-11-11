@@ -21,7 +21,9 @@ computes too, and every node type opens its form. A node is chosen by a click, E
 or Space on the canvas and in the node table; a changed reach method shows its fields
 and marks the result stale. The SVG of Hydrolog and the network's document export, the
 document with the positions shown.
-A phone in the dark theme shows the canvas without scrolling sideways.
+A phone in the dark theme shows the canvas without scrolling sideways. A reach refused
+at the network's step says where the step is set and changes in one click to a typed
+lag, which computes, or to a level-pool storage, which waits for its table.
 """
 
 import json
@@ -767,3 +769,46 @@ def test_a_phone_in_the_dark_theme_shows_the_schematic(new_tab: Any) -> None:
     ).to_be_visible()
     expect(page.locator('[data-node-form="B"]')).to_be_attached()
     assert page.evaluate(SIDEWAYS) == []
+
+
+def test_a_reach_refused_at_its_step_takes_a_typed_lag_or_a_storage(tab: Tab) -> None:
+    page = open_section(tab)
+    error = page.locator('section[data-section="siec"] [data-error="run"]')
+    form = page.locator('[data-node-form="R_A"]')
+
+    def refuse() -> None:
+        # 100 sub-reaches of K = 60 min are outside the window of the network's step
+        page.locator(NODE.format("R_A")).focus()
+        page.keyboard.press(" ")
+        form.locator('[data-key="#method"] select').select_option("muskingum")
+        form.locator('[data-key="muskingum.k_min"] input').fill("60")
+        form.locator('[data-key="muskingum.x"] input').fill("0,2")
+        form.locator('[data-key="muskingum.subreaches"] input').fill("100")
+        page.get_by_role("button", name="Oblicz sieć").click()
+        expect(page.locator(BADGE)).to_have_attribute("data-state", "error")
+
+    refuse()
+    expect(error.locator("li")).to_contain_text(
+        "Węzeł R_A: krok czasowy jest za długi dla parametrów tej metody. Krok czasowy "
+        "sieci jest w kroku 1 „Sieć”, w polu „Krok czasowy”"
+    )
+    # The error gives no travel time: the lag is typed
+    lag = error.locator('[data-fix-action="lag"]')
+    expect(lag).to_have_text("Zamień na opóźnienie (lag)")
+    expect(lag).to_be_disabled()
+    error.locator('[data-fix-field="lag_min"]').fill("0")
+    expect(lag).to_be_disabled()
+    error.locator('[data-fix-field="lag_min"]').fill("12,5")
+    with page.expect_response(lambda answer: "/api/run/route/network" in answer.url):
+        lag.click()
+    expect(page.locator(BADGE)).to_have_attribute("data-state", "ok")
+    sent = json.loads(page.request.get(tab.base + "api/files/in/siec.json").text())
+    reach = next(node for node in sent["nodes"] if node["id"] == "R_A")
+    assert (reach["method"], reach["lag_min"]) == ("lag", 12.5)
+
+    # A storage instead waits for its table in „Dane”
+    refuse()
+    error.locator('[data-fix-action="level-pool"]').click()
+    expect(form.locator('[data-key="#method"] select')).to_have_value("level-pool")
+    expect(error).to_have_count(0)
+    expect(page.locator(BADGE)).to_have_attribute("data-state", "invalid")

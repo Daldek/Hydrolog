@@ -41,7 +41,7 @@
 import { api } from "../../api.js";
 import { splitReason } from "../../controls/field.js";
 import { inputFiles, uploadFile, useSession } from "../../controls/file-field.js";
-import { plural } from "../../format.js";
+import { inputText, plural } from "../../format.js";
 import { withReason } from "../../forms/model.js";
 import { panelOrigins, siecAddition, siecFill, siecInputs, siecOrigins } from "../../handoff/mapping.js";
 import { canonical } from "../../handoff/validate.js";
@@ -105,7 +105,7 @@ import {
   useOpened,
   withSessionNames,
 } from "./state.js";
-import { kindNoun, problemText, refusalText } from "./words.js";
+import { kindNoun, lagMinutes, problemText, refusalText, tooManyOrdinates } from "./words.js";
 
 registerInfo(routing);
 
@@ -203,7 +203,7 @@ function mergeKey(prefix, keys) {
  * @param {unknown} error an ApiError or anything thrown
  * @param {object} [rules] the inflow rules of the schema (the words of upstream_count)
  * @returns {{title: string, text: string, node: string|null, field: string|null, reason:
- *   string|null}} the error
+ *   string|null, details: object}} the error
  */
 export function runFailure(error, rules = {}) {
   const doc = error && error.doc ? error.doc : { code: "internal_error", message: String((error && error.message) || error) };
@@ -219,6 +219,35 @@ export function runFailure(error, rules = {}) {
     node: typeof details.node_id === "string" ? details.node_id : null,
     field,
     reason,
+    details,
+  };
+}
+
+/**
+ * The changes of method a run's refusal of a reach at its time step (`unstable_timestep`)
+ * offers: a lag of the wave's travel time when the error gives the reach's length and
+ * celerity, else of a typed value, and a level-pool storage unless the reach is one. None
+ * for another node, nor when the step would need too many ordinates (a longer step mends
+ * that).
+ *
+ * @param {object|null} failure the shown failure (runFailure)
+ * @param {object} state the section's state (its skeleton and the nodes' values)
+ * @returns {{node: string, method: string, lag: number|null, length_m: number|null,
+ *   celerity_m_per_s: number|null, levelPool: boolean}|null} the offer
+ */
+export function reachFix(failure, state) {
+  if (!failure || failure.reason !== "unstable_timestep" || !failure.node) return null;
+  const node = state.skeleton.find((item) => item.id === failure.node);
+  if (!node || node.type !== "reach" || tooManyOrdinates(failure.details)) return null;
+  const method = (state.nodes[node.id] || {})["#method"] || "";
+  const lag = lagMinutes(failure.details);
+  return {
+    node: node.id,
+    method,
+    lag,
+    length_m: lag === null ? null : failure.details.length_m,
+    celerity_m_per_s: lag === null ? null : failure.details.celerity_m_per_s,
+    levelPool: method !== "level-pool",
   };
 }
 
@@ -985,6 +1014,36 @@ export default function Siec({ active, path = [] }) {
     }
   };
 
+  // A reach refused at every time step changes its method in one click (reachFix): a lag
+  // computes the network again in the render that builds its document, a level-pool
+  // storage waits in „Dane” for its table
+  const recompute = useRef(false);
+  useEffect(() => {
+    if (!recompute.current || busy) return;
+    recompute.current = false;
+    compute();
+  });
+  const changeMethod = (id, patch) => {
+    const base = latest.current;
+    const before = base.nodes[id] || {};
+    const next = { ...before, ...patch };
+    touch(id, before, next);
+    apply({ ...base, nodes: { ...base.nodes, [id]: next } });
+  };
+  const methodName = (method) => (Object.hasOwn(texts.methods, method) ? texts.methods[method].short : method || "–");
+  const fixLag = (fix, minutes) => {
+    changeMethod(fix.node, { "#method": "lag", "lag.lag_min": inputText(minutes) });
+    toast(t(texts.unstable.lagApplied, { node: fix.node, lag: inputText(minutes), method: methodName(fix.method) }));
+    recompute.current = true;
+  };
+  const fixLevelPool = (fix) => {
+    changeMethod(fix.node, { "#method": "level-pool" });
+    toast(t(texts.unstable.levelPoolApplied, { node: fix.node }));
+    setTried(true);
+    if (isPhone()) openPanel("left");
+    focusProblem();
+  };
+
   // --- starting, saving and discarding (D10) ----------------------------------------------
   const clear = () => {
     reset();
@@ -1191,6 +1250,9 @@ export default function Siec({ active, path = [] }) {
         chartSvg=${chartSvg}
         schematicSvg=${schematicSvg}
         error=${shownFailure}
+        fix=${reachFix(shownFailure, state)}
+        onLag=${fixLag}
+        onLevelPool=${fixLevelPool}
       />
     </div>`,
   };

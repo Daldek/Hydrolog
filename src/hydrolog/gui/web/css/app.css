@@ -812,6 +812,9 @@ pre.code .fold { color: color-mix(in srgb, var(--code-text) 55%, var(--code-bg))
   border-radius: var(--radius-md); background: var(--bad-bg); color: var(--bad-ink); font-size: var(--text-sm);
 }
 .form-errors ul { margin: 4px 0 0; padding-left: 18px; }
+.form-errors .reach-fix { margin: var(--space-2) 0 0; }
+.reach-fix-lag { display: inline-flex; align-items: center; gap: 6px; color: var(--text); }
+.reach-fix-lag input { width: 6em; }
 .opt .label-row { font-size: var(--text-sm); }
 .opt .lbl code { font-weight: var(--weight-bold); color: var(--text); }
 .choice { display: grid; gap: 2px; }

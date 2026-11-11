@@ -38,7 +38,13 @@ from typing import Any
 import pytest
 
 from hydrolog.exceptions import InvalidParameterError
-from hydrolog.routing import RoutingNetwork, structure_schematic
+from hydrolog.routing import (
+    Hydrograph,
+    MuskingumCungeReach,
+    MuskingumReach,
+    RoutingNetwork,
+    structure_schematic,
+)
 from hydrolog.routing._layout import edge_route, layout
 from hydrolog.testing import example_network_document
 from tests.e2e.conftest import FIXTURES, Tab, kamiennik_inputs
@@ -1972,6 +1978,76 @@ def test_every_reason_and_refusal_is_worded(page: Any) -> None:
     assert "OUT1" in refusals["outlet"]
     assert "Z8" in refusals["source"]
     assert "R7" in refusals["full"] and "Z9" in refusals["full"]
+
+
+def refusal_details(reach: Any, step_min: float = 5.0) -> dict[str, Any]:
+    """Return the details of the library's refusal of a small flood by ``reach``."""
+    times = [step_min * index for index in range(40)]
+    flows = [
+        10.0 * math.sin(math.pi * min(index, 20) / 20) + 0.1 for index in range(40)
+    ]
+    with pytest.raises(InvalidParameterError) as refused:
+        reach.route(Hydrograph(times_min=times, discharge_m3s=flows))
+    details: dict[str, Any] = refused.value.details
+    assert details["reason"] == "unstable_timestep"
+    return {**details, "node_id": "R1"}
+
+
+def test_a_refusal_at_the_time_step_says_why_and_the_lag_that_stands_in(
+    page: Any,
+) -> None:
+    flat = refusal_details(
+        MuskingumCungeReach(0.0504, 0.0001, manning_n=0.04, bottom_width_m=5)
+    )
+    tiny = refusal_details(
+        MuskingumCungeReach(0.005, 0.0001, manning_n=0.04, bottom_width_m=5)
+    )
+    window = refusal_details(MuskingumReach(k_min=60, x=0.2, subreaches=100))
+    # routing/cunge.py's refusal of more than MAX_ORDINATES ordinates (a million: too
+    # many to build here)
+    ordinates = {
+        "option": "times_min",
+        "reason": "unstable_timestep",
+        "timestep_min": 0.5,
+        "substeps": 60,
+        "maximum": 1_000_000,
+        "node_id": "R1",
+    }
+    got = js(
+        page,
+        """const w = await import('./src/sections/siec/words.js');
+        const cases = arguments_;
+        return Object.fromEntries(Object.entries(cases).map(([name, details]) =>
+          [name, {text: w.problemText(details), lag: w.lagMinutes(details),
+                  ordinates: w.tooManyOrdinates(details)}]));""".replace(
+            "arguments_",
+            json.dumps(
+                {"flat": flat, "tiny": tiny, "window": window, "ordinates": ordinates}
+            ),
+        ),
+    )
+
+    step = (
+        "Krok czasowy sieci jest w kroku 1 „Sieć”, w polu „Krok czasowy”; puste pole "
+        "to krok domyślny"
+    )
+    assert all(step in case["text"] for case in got.values())
+    assert got["flat"]["text"].startswith(
+        "Węzeł R1: odcinek 50,4 m jest za krótki albo za płaski dla metody "
+        "Muskingum-Cunge"
+    )
+    assert "zmiana kroku nie pomoże" in got["flat"]["text"]
+    # The wave's travel time in whole minutes, at least one
+    assert got["flat"]["lag"] == max(1, round(50.4 / flat["celerity_m_per_s"] / 60))
+    assert got["tiny"]["lag"] == 1
+    assert got["window"]["lag"] is None and got["ordinates"]["lag"] is None
+    assert got["window"]["text"].startswith(
+        "Węzeł R1: krok czasowy jest za długi dla parametrów tej metody."
+    )
+    assert got["ordinates"]["text"].startswith(
+        "Węzeł R1: przy kroku 0,5 min odcinek wymaga podziału kroku na 60 części"
+    )
+    assert [case["ordinates"] for case in got.values()] == [False, False, False, True]
 
 
 def scattered_network(size: int, seed: int) -> list[dict[str, Any]]:
