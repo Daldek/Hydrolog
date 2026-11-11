@@ -27,7 +27,7 @@ A single source of truth for the library, the CLI, the MCP server and the agent 
 - An Obserwator (formerly IMGWTools) series export (`export_series` CSV) is read without preprocessing; `WatershedParameters` JSON is the proposed `catchment_characteristics` format in Retman.
 
 #### `hydrolog.soil` - Hydrologic soil groups (HSG)
-Rules moved from Kartograf 0.8.0 (`kartograf.hydrology.hsg`, ADR-025); Kartograf stays responsible for downloading rasters (`download_soil`).
+Rules moved from Kartograf 0.8.0 (`kartograf.hydrology.hsg`, Kartograf ADR-025); Kartograf stays responsible for downloading rasters (`download_soil`).
 - `texture`: USDA texture classification (12 classes) from clay, sand and silt content (`classify_usda_texture`, `classify_usda_texture_array`), `TEXTURE_TO_HSG`, `texture_to_hsg` (NumPy only).
 - `hsg`: `classify_hsg`, `hsg_statistics_array`, `HsgStatistics`, `HSG_CODES` (`uint8` GeoTIFF: 0 - no data, 1-4 are A-D).
 - `raster` (`hydrolog[raster]` extra: `rasterio>=1.3`, `pyproj>=3.6`): `hsg_from_rasters()` (clay, sand and silt rasters → HSG GeoTIFF) and `hsg_statistics()` (group areas, optionally within a `bbox` rectangle).

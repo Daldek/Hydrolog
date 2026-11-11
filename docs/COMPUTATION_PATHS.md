@@ -766,7 +766,7 @@ The volume (130,400 m³) does not change. Before the change the steepest fall wa
 
 ### 3.5 Hydrologic Soil Groups (HSG) and Area-Weighted CN (`hydrolog.soil`, since v1.0.0)
 
-HSG (A-D) is one of the two factors of the CN number (the other is land cover). The `hydrolog.soil` module determines HSG from clay, sand and silt content; the rules and mapping were transferred from Kartograf 0.8.0 (`kartograf.hydrology.hsg`, ADR-025), and Kartograf remains responsible for downloading rasters (`download_soil`).
+HSG (A-D) is one of the two factors of the CN number (the other is land cover). The `hydrolog.soil` module determines HSG from clay, sand and silt content; the rules and mapping were transferred from Kartograf 0.8.0 (`kartograf.hydrology.hsg`, Kartograf ADR-025), and Kartograf remains responsible for downloading rasters (`download_soil`).
 
 #### 3.5.1 Data Flow Diagram
 

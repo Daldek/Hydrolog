@@ -64,7 +64,7 @@ Hydrolog is analogous to **Kartograf** (spatial data download) and **Obserwator*
 - Time series: time vs discharge
 
 **Hydrologic soil groups (HSG) - module `soil` (v1.0.0):**
-- USDA texture class from clay, sand and silt content (12 classes) and its assignment to HSG A-D (rules from Kartograf 0.8.0, ADR-025)
+- USDA texture class from clay, sand and silt content (12 classes) and its assignment to HSG A-D (rules from Kartograf 0.8.0, Kartograf ADR-025)
 - HSG raster (GeoTIFF `uint8`: 0 - no data, 1-4 are A-D) from clay, sand and silt rasters (e.g. SoilGrids in g/kg) and group areas over the whole catchment or within a bbox rectangle (extra `hydrolog[raster]`)
 - USDA-NRCS CN tables for HSG + land cover combinations (`runoff.cn_lookup`) and area-weighted CN (`cn weighted`)
 - Downloading soil rasters remains out of scope (Kartograf `download_soil`)

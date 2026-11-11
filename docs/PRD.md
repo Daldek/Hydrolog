@@ -352,7 +352,7 @@ print(f"tc = {tc:.1f} min")
 **Acceptance criteria:**
 - [x] `hydrolog.soil`: USDA texture class and HSG (NumPy only), `hsg_from_rasters`, `hsg_statistics` (extra `hydrolog[raster]`)
 - [x] Commands `soil texture`, `soil hsg`, `soil hsg-stats`
-- [x] Rules consistent with Kartograf 0.8.0 (ADR-025); Hydrolog does not depend on Kartograf
+- [x] Rules consistent with Kartograf 0.8.0 (Kartograf ADR-025); Hydrolog does not depend on Kartograf
 
 ### 2.15 Flood routing (ADR-0007)
 

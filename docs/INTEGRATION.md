@@ -577,7 +577,7 @@ Hydrolog computes discharge only: water levels, inundation and backwater are hyd
 
 ### Hydrograf: migrating HSG from Kartograf to Hydrolog
 
-Until now the hydrologic soil groups were computed by Kartograf (`HSGCalculator`, `calculate_hsg`; in Hydrograf: `backend/core/cn_calculator.py` and `scripts/bootstrap.py`). Since Hydrolog 1.0.0, HSG calculation belongs to Hydrolog (module `hydrolog.soil`; the rules and the texture → HSG mapping were moved from Kartograf 0.8.0, ADR-025), and Kartograf is left with raster download only (`download_soil`). Hydrolog does not depend on Kartograf (the former `hydrolog[spatial]` extra was removed).
+Until now the hydrologic soil groups were computed by Kartograf (`HSGCalculator`, `calculate_hsg`; in Hydrograf: `backend/core/cn_calculator.py` and `scripts/bootstrap.py`). Since Hydrolog 1.0.0, HSG calculation belongs to Hydrolog (module `hydrolog.soil`; the rules and the texture → HSG mapping were moved from Kartograf 0.8.0, Kartograf ADR-025), and Kartograf is left with raster download only (`download_soil`). Hydrolog does not depend on Kartograf (the former `hydrolog[spatial]` extra was removed).
 
 Existing path in Hydrograf:
 
