@@ -25,7 +25,7 @@ REGISTERED = "async () => (await import('./src/app.js')).ORDERED.map((item) => i
 READY = 'section[data-section="hydrogram"] .step > summary .title'
 """The titles of Hydrogram zlewni's steps: the app is mounted (a first visit runs
 nothing until a model is chosen)."""
-# Nogat's --bg and --surface of the dark theme (tokens.css, Nogat d1b5820).
+# Nogat's --bg and --surface of the dark theme (tokens.css, Nogat 7786271).
 DARK_BG = "rgb(13, 17, 23)"
 DARK_SURFACE = "rgb(22, 27, 34)"
 

@@ -6,7 +6,9 @@
   an admin page; by [ADR-0018](0018-pmaxtp-through-obserwator.md) (2026-11-04): Hydrogram zlewni fetches the PMAXTP
   depth instead of asking for it; by [ADR-0023](0023-positions-and-descriptions-in-the-network.md) (2026-11-10): Sieć
   becomes the editor of the network's structure and checks the structure in the browser with the library's reason
-  codes, the library confirming every complete network
+  codes, the library confirming every complete network; by [ADR-0027](0027-nogats-gui-kit-the-app-menu-and-the-handoff.md)
+  (2026-11-12): `GET api/session` gives the deployment's GUI addresses (`[nogat] gui`) for Nogat's app menu, and
+  the hand-off goes through Nogat's kit
 - Builds on: [ADR-0002](0002-result-envelope-and-domain-documents.md) (the envelope that every run of the GUI returns),
   [ADR-0013](0013-network-schematic.md) (the schematic that the GUI draws)
 

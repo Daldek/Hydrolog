@@ -79,7 +79,8 @@ src/hydrolog/
 ├── gui/          # web GUI (extra [gui]): server.py (serve), _app.py (Starlette app, private API),
 │                 # _runner.py, _worker.py (warm worker processes), _sessions.py (work directories),
 │                 # _feedback.py (reports of „Zgłoś uwagę”, SQLite); web/ (the page: Preact modules
-│                 # without a build; instrukcja/: the user guide; admin/: the reports)
+│                 # without a build; instrukcja/: the user guide; admin/: the reports; nogat/: Nogat's
+│                 # tokens, marks and GUI kit, copied byte for byte, ADR-0027)
 ├── agent_guide.py, _data/agents/   # generator and templates of AGENTS.md, llms.txt, block
 ├── exceptions.py, _errors.py       # HydrologError classes; registry generated from schemas/nogat
 ├── _settings.py                    # lang/log_level/data_dir: option > env > nogat.toml > default;

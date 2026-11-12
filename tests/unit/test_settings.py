@@ -1,5 +1,6 @@
 """Tests for the shared settings (DEV-18.1): precedence, lenient values, the file,
-``data_dir`` (DEV-18.2) and the credential of the GUI's admin page (DEV-18.4)."""
+``data_dir`` (DEV-18.2), the credential of the GUI's admin page (DEV-18.4) and the
+GUI addresses of the app menu (DEV-15.4)."""
 
 from __future__ import annotations
 
@@ -14,6 +15,7 @@ from hydrolog._settings import (
     admin_api_key,
     config_path,
     credentials,
+    gui_addresses,
     load_file,
     resolve_setting,
 )
@@ -307,3 +309,31 @@ class TestCredentials:
         """DEV-18.4: a credential in nogat.toml is not read."""
         path = _toml(tmp_path, '[hydrolog]\nadmin_api_key = "z-pliku-ustawien"\n')
         assert admin_api_key({"NOGAT_CONFIG": str(path)}) is None
+
+
+class TestGuiAddresses:
+    """``[nogat] gui``: the deployment's GUIs for Nogat's app menu, no default."""
+
+    def test_the_table_of_the_file(self, tmp_path):
+        path = _toml(
+            tmp_path,
+            "[nogat]\n"
+            'gui = { hydrolog = "http://127.0.0.1:8070/", hydrograf = "/h/" }\n',
+        )
+        assert gui_addresses({"NOGAT_CONFIG": str(path)}) == {
+            "hydrolog": "http://127.0.0.1:8070/",
+            "hydrograf": "/h/",
+        }
+
+    @pytest.mark.parametrize(
+        "data",
+        [
+            {},
+            {"nogat": {"lang": "pl"}},
+            {"nogat": "gui"},
+            {"nogat": {"gui": "http://127.0.0.1:8080/"}},
+            {"hydrolog": {"gui": {"hydrograf": "http://127.0.0.1:8080/"}}},
+        ],
+    )
+    def test_no_table_in_nogat_is_no_menu(self, data):
+        assert gui_addresses({}, file_data=data) is None

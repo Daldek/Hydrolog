@@ -1,10 +1,11 @@
-"""The GUI's static files keep their contracts (GUI plan D9, D10, D16).
+"""The GUI's static files keep their contracts (GUI plan D9, D10, D16; ADR-0027).
 
-The copies of Nogat's identity and the vendored Preact and htm are byte-identical to the
-SHA-256 their manifests record; the pages (the app, its guide ``instrukcja/`` and the
-admin page ``admin/``) load nothing remote, have no inline script, style or event
-handler (CSP ``'self'``, D8) and link only files of ``web/``; the (i) texts hold no
-scripts, inline styles, event attributes or remote URLs.
+The copies of Nogat's identity and kit and the vendored Preact and htm are
+byte-identical to the SHA-256 their manifests record, and every file of ``web/nogat/``
+is recorded in one of them; the pages (the app, its guide ``instrukcja/`` and the admin
+page ``admin/``) load nothing remote, have no inline script, style or event handler
+(CSP ``'self'``, D8) and link only files of ``web/``; the (i) texts hold no scripts,
+inline styles, event attributes or remote URLs.
 """
 
 import hashlib
@@ -17,7 +18,9 @@ import pytest
 from hydrolog.catalog import NOTICES
 
 WEB = Path(__file__).resolve().parents[2] / "src" / "hydrolog" / "gui" / "web"
-NOGAT_COMMIT = "d1b5820d6395d3986ed44ce90aa3911e5169d622"
+NOGAT_COMMIT = "7786271caba188a4b3bf8a1af7bb5dc944f3b50b"
+GUIS = ("archiwista", "hydrograf", "hydrolog", "obserwator")
+"""The GUIs of Nogat's app menu (``GUIS`` of ``nogat-app-menu.js``): each has a mark."""
 # XML namespaces are names, not resources the page loads.
 NAMESPACE = re.compile(r"https?://www\.w3\.org/(2000/svg|1999/xlink|1998/Math/MathML)")
 REMOTE = re.compile(r"(?:https?:)?//[A-Za-z0-9.-]+\.[A-Za-z]{2,}[/\"'\s)]")
@@ -49,9 +52,33 @@ def test_nogat_copies_match_their_manifest() -> None:
     }
     assert set(manifest["files"]) >= {
         "tokens.css",
-        "marks/hydrolog.svg",
-        "marks/hydrograf.svg",
         "marks/nogat.svg",
+        *(f"marks/{name}.svg" for name in GUIS),
+    }
+
+
+def test_the_kit_matches_its_own_manifest() -> None:
+    """The kit's files are Nogat's, byte for byte (DEV-15.6): ``nogat-kit.json``."""
+    kit = json.loads((WEB / "nogat" / "nogat-kit.json").read_text(encoding="utf-8"))
+
+    assert {name: sha256(WEB / "nogat" / name) for name in kit["files"]} == kit["files"]
+
+
+def test_every_file_of_the_nogat_folder_is_a_recorded_copy() -> None:
+    folder = WEB / "nogat"
+    manifest = json.loads((folder / "nogat.json").read_text(encoding="utf-8"))
+    kit = json.loads((folder / "nogat-kit.json").read_text(encoding="utf-8"))
+    present = {
+        path.relative_to(folder).as_posix()
+        for path in folder.rglob("*")
+        if path.is_file()
+    }
+
+    assert present == {
+        "nogat.json",
+        "nogat-kit.json",
+        *manifest["files"],
+        *kit["files"],
     }
 
 

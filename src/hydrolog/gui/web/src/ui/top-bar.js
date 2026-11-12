@@ -1,11 +1,13 @@
 // The top bar of the standalone GUI (design/README.md, plan D10): Hydrolog's mark and name,
 // the breadcrumbs (section / context), the status badge, „Zgłoś uwagę” (the dialog of a
-// report, ui/feedback.js), „Instrukcja” (the welcome dialog, which links the guide) and the
-// theme switch Auto, Jasny, Ciemny. Inside Nogat's shell ("?nogat=1") the shell's own bar
-// replaces it.
+// report, ui/feedback.js), „Instrukcja” (the welcome dialog, which links the guide),
+// Nogat's app menu „Aplikacje” (DEV-15.4, ADR-0027) and the theme switch Auto, Jasny,
+// Ciemny. Inside Nogat's shell ("?nogat=1") the shell's own bar replaces it.
 
+import "../../nogat/nogat-app-menu.js";
+import { useSession } from "../controls/file-field.js";
 import { useTheme } from "../host.js";
-import { html, useEffect } from "../html.js";
+import { html, useEffect, useRef } from "../html.js";
 import { t } from "../labels/common.js";
 import { shell } from "../labels/shell.js";
 import { useStore } from "../store.js";
@@ -50,6 +52,24 @@ export function ThemeSwitch() {
 }
 
 /**
+ * Nogat's app menu (`<nogat-app-menu>`, a copy of Nogat's kit): the GUIs of the
+ * deployment's `[nogat] gui` table of nogat.toml, which the server gives in the session's
+ * `gui`. The element draws nothing while the table names no GUI but Hydrolog.
+ *
+ * @returns {object} the element
+ */
+export function AppMenu() {
+  const session = useSession();
+  const menu = useRef(null);
+  const apps = (session && session.gui) || null;
+  const key = JSON.stringify(apps);
+  useEffect(() => {
+    if (menu.current) menu.current.apps = apps;
+  }, [key]);
+  return html`<nogat-app-menu ref=${menu} current="hydrolog" marks="nogat/marks/"></nogat-app-menu>`;
+}
+
+/**
  * The top bar.
  *
  * @param {{section: string|null, home: string}} props the active section's id and the
@@ -82,6 +102,7 @@ export function TopBar({ section, home }) {
         <a class="btn ghost" href="instrukcja/" aria-label=${shell.guide.label} title=${shell.guide.title} aria-haspopup="dialog" onClick=${onGuide}>
           ${GUIDE_ICON()}<span class="label">${shell.guide.label}</span>
         </a>
+        <${AppMenu} />
         <${ThemeSwitch} />
       </div>
     </header>

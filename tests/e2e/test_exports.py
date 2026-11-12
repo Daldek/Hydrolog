@@ -14,18 +14,22 @@ its hydrograph gives Hydrograf's result again with the exact values it handed, a
 watershed alone opens with PMAXTP at Hydrograf's outlet, the probability, the duration
 and the model left to choose. A network of two subcatchments from Hydrograf opens in
 Sieć and, computed, shows the producer's version and result beside Hydrolog's; a refused
-hand-off lists why. The report downloads as Markdown from ``report generate``; „Raport
-do druku” prints on A4 through ``css/print.css`` in the light theme with every part
-open. The browser's check of a hand-off judges documents as jsonschema does, the mapping
-of Hydrogram's options to the node computes as ``hydrograph generate`` for every
-setting, and a PMAXTP rainfall handed without a point opens as „Hietogram”. The
-hand-off of Nash by Lutz carries ``nash_estimation`` instead of n and K, and one written
-before it, with Lutz's n and K of ``uh nash``, opens with them given. Hydrograf's own
-network hand-off (``handoff_hydrograf_network.json``, written by its endpoint) opens in
-Sieć at the structure's layout from its first picture on, with the origin of each node
-(plan 2026-11-10-network-wizard, D9) and a key of no node said; completed and computed,
-the hand-off Sieć writes carries ``node_provenance`` under the current ids with the
-changes marked and reopens with the same origins, on a phone in the dark theme too.
+hand-off lists why. Writing and reading go through Nogat's kit (ADR-0027): the file is
+named after the subject, and a copy the browser refuses goes selected into a field. The
+report downloads as Markdown from ``report generate``; „Raport do druku” prints on A4
+through ``css/print.css`` in the light theme with every part open. The browser's check
+of a hand-off (the kit's for the envelope, Hydrolog's for the payload) judges documents
+as jsonschema does, the mapping of Hydrogram's options to the node computes as
+``hydrograph generate`` for every setting, and a PMAXTP rainfall handed without a point
+opens as „Hietogram”. The hand-off of Nash by Lutz carries ``nash_estimation`` instead
+of n and K, and one written before it, with Lutz's n and K of ``uh nash``, opens with
+them given.
+Hydrograf's own network hand-off (``handoff_hydrograf_network.json``, written by its
+endpoint) opens in Sieć at the structure's layout from its first picture on, with the
+origin of each node (plan 2026-11-10-network-wizard, D9) and a key of no node said;
+completed and computed, the hand-off Sieć writes carries ``node_provenance`` under the
+current ids with the changes marked and reopens with the same origins, on a phone in
+the dark theme too.
 Hydrograf's network of Wojcieszów Kaczawa, whose 50 m reach with the minimum slope
 Muskingum-Cunge cannot route at any step, opens with the network's step empty at its
 default and, refused, says why and offers a lag of the wave's travel time that computes.
@@ -240,7 +244,7 @@ def load_file(page: Page, section: str, path: Path) -> None:
 
 def handoff_button(page: Page, section: str, which: str) -> Locator:
     """Open „Przekazanie” of a section; return its „Plik przekazania” (``file``) or
-    „Do schowka” (``copy``)."""
+    „Kopiuj do Hydrologa” (``copy``)."""
     open_part(page, section, "handoff")
     return page.locator(
         f'{section} .view-panel.right [data-handoff-export] [data-handoff="{which}"]'
@@ -335,6 +339,27 @@ def test_a_handoff_of_hydrogram_validates_reopens_and_round_trips(
         "page": "#hydrogram",
     }
     assert doc["subject"] == "Kamiennik — Świerzawa"
+    # A copy the browser refuses goes selected into a field for Ctrl+C (Nogat's kit)
+    page.evaluate(
+        "() => { navigator.clipboard.writeText = () =>"
+        " Promise.reject(new DOMException('refused', 'NotAllowedError')); }"
+    )
+    handoff_button(page, HG, "copy").click()
+    by_hand = page.locator(f'{HG} [data-handoff-by-hand="shown"]')
+    expect(by_hand.locator(".note")).to_have_text(
+        "Przeglądarka nie pozwoliła skopiować: tekst przekazania jest zaznaczony, "
+        "naciśnij Ctrl+C."
+    )
+    copy_field = by_hand.locator("textarea")
+    expect(copy_field).to_be_focused()
+    text, selected = copy_field.evaluate(
+        "(area) => [area.value,"
+        " area.value.slice(area.selectionStart, area.selectionEnd)]"
+    )
+    assert selected == text
+    assert without_moment(json.loads(text)) == without_moment(doc)
+    by_hand.get_by_role("button", name="Zamknij").click()
+    expect(copy_field).to_be_hidden()
     assert doc["provenance"] == {
         "rainfall": {
             "source": "pmaxtp",
@@ -537,11 +562,9 @@ def test_nogats_example_opens_from_the_clipboard_and_matches_its_result(
         "z przekazania."
     )
 
-    # „Do schowka” hands it on with the changed field named in the provenance
+    # „Kopiuj do Hydrologa” hands it on with the changed field named in the provenance
     handoff_button(page, HG, "copy").click()
-    expect(page.locator(".toast")).to_have_text(
-        "Skopiowano przekazanie do schowka (nogat-handoff/1)"
-    )
+    expect(page.locator(".toast")).to_have_text("Skopiowano przekazanie do schowka.")
     copied = json.loads(page.evaluate("() => navigator.clipboard.readText()"))
     valid(copied)
     assert copied["provenance"] == {
@@ -866,7 +889,7 @@ def test_a_refused_handoff_says_why_and_changes_nothing(tab: Tab) -> None:
     expect(problems.locator("strong")).to_have_text("Nie wczytano przekazania")
     expect(problems.locator("li")).to_have_text(
         [
-            "producer.tool: niepoprawny zapis",
+            "producer.tool: niezgodne ze wzorem ^[a-z][a-z0-9]*$",
             "payload.nodes[0] (Z1).watershed.cn: musi być ≤ 100",
             "payload.nodes[0] (Z1).watershed: nieznane pole „lc_km”",
         ]
@@ -880,7 +903,7 @@ def test_a_refused_handoff_says_why_and_changes_nothing(tab: Tab) -> None:
     ).click()
     expect(problems.locator("li")).to_have_text(
         [
-            "To nie jest przekazanie nogat-handoff/1 (schema: hydrolog-network/1).",
+            "To nie jest przekazanie nogat-handoff/1.",
             (
                 "To jest sieć hydrolog-network/1: wczytaj ją w Sieci i trasowaniu "
                 "przyciskiem „Plik sieci…”."
@@ -1077,9 +1100,9 @@ def test_the_browsers_check_judges_handoffs_as_jsonschema_does(tab: Tab) -> None
     ]
     judged = page.evaluate(
         """async (docs) => {
-          const { schemaProblems } = await import('./src/handoff/validate.js');
+          const { validate } = await import('./nogat/nogat-handoff.js');
           const { ENVELOPE_SCHEMA } = await import('./src/handoff/envelope.js');
-          return docs.map((doc) => schemaProblems(ENVELOPE_SCHEMA, doc).length === 0);
+          return docs.map((doc) => validate(doc, ENVELOPE_SCHEMA).length === 0);
         }""",
         envelopes,
     )
