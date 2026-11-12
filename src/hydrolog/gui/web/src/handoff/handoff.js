@@ -2,16 +2,18 @@
 // Nogat publishes it (schemas/nogat/handoff-1.schema.json, copied unchanged), carrying
 // `hydrolog-network/1` or `hydrolog-series/1` (ADR-0020). buildHandoff writes the envelope
 // around a network, with the origin of each node where `provenance` does not give it
-// (`node_provenance`, plan 2026-11-10-network-wizard, D9); readHandoff reads a text: the
-// envelope against Nogat's schema (envelope.js), the payload's kind and, given its schema,
-// the payload's content, then tells which section opens it: one subcatchment made from
-// rainfall with its outlet opens in „Hydrogram zlewni”, any other network in „Sieć i
-// trasowanie”, a station's series (Archiwista) in „Statystyka przepływów”; read in Sieć,
-// every network opens there (plan 2026-11-10-network-editor, D10). The producer's result
-// is for comparison only (compareResults): Hydrolog recomputes and shows both.
+// (`node_provenance`, plan 2026-11-10-network-wizard, D9); readHandoff reads a text: Nogat's
+// kit parses it and checks the envelope against the schema's keywords (nogat-handoff.js
+// with envelope.js, DEV-15.5, ADR-0027), Hydrolog the payload's kind and, given its schema,
+// the payload's content (validate.js), then tells which section opens it: one subcatchment
+// made from rainfall with its outlet opens in „Hydrogram zlewni”, any other network in
+// „Sieć i trasowanie”, a station's series (Archiwista) in „Statystyka przepływów”; read in
+// Sieć, every network opens there (plan 2026-11-10-network-editor, D10). The producer's
+// result is for comparison only (compareResults): Hydrolog recomputes and shows both.
 //
 // Pure functions without Preact, tested in the page (tests/e2e/test_exports.py).
 
+import { readHandoff as readEnvelope } from "../../nogat/nogat-handoff.js";
 import { hmm, inputText, num } from "../format.js";
 import { t } from "../labels/common.js";
 import { handoffLabels as texts } from "../labels/handoff.js";
@@ -37,7 +39,7 @@ export const SERIES_SCHEMA_FILE = "hydrolog-series-1.schema.json";
 export const TOOL = "hydrolog";
 
 /** The tools whose marks the page holds (nogat/marks/<tool>.svg). */
-export const MARKS = Object.freeze(["archiwista", "hydrograf", "hydrolog", "nogat"]);
+export const MARKS = Object.freeze(["archiwista", "hydrograf", "hydrolog", "nogat", "obserwator"]);
 
 /** The quantities of a result compared, with their D15 names and how they are shown. */
 export const QUANTITIES = Object.freeze([
@@ -85,16 +87,6 @@ export function buildHandoff({ subject, provenance = {}, nodeProvenance = null, 
 }
 
 /**
- * The file name of a hand-off: "<subject>.handoff.json".
- *
- * @param {string} base the base of the section's file names (export-panel's fileBase)
- * @returns {string} the name
- */
-export function handoffFileName(base) {
-  return `${base}.handoff.json`;
-}
-
-/**
  * The section a payload opens in: one subcatchment made from rainfall (a watershed and its
  * runoff) and the outlet it flows to open in Hydrogram zlewni, anything else in Sieć.
  *
@@ -108,18 +100,6 @@ export function targetOf(payload) {
   const outlet = nodes.find((node) => isObject(node) && node.type === "outlet");
   if (!sub || !outlet) return "siec";
   return Array.isArray(outlet.from) && outlet.from.length === 1 && outlet.from[0] === sub.id ? "hydrogram" : "siec";
-}
-
-/**
- * A value as a problem shows it.
- *
- * @param {unknown} value the value
- * @returns {string} the text
- */
-function shown(value) {
-  if (typeof value === "number") return inputText(value);
-  if (typeof value === "string") return value;
-  return JSON.stringify(value === undefined ? null : value);
 }
 
 /**
@@ -148,54 +128,57 @@ export function pathText(path, doc) {
 }
 
 /**
- * A problem of validate.js in Polish, after the path of its value.
+ * A JSON Pointer of the kit's problems ("/payload/nodes/0") as pathText's path: a token
+ * that indexes an array becomes its number.
+ *
+ * @param {string} pointer the pointer, "" for the whole document
+ * @param {unknown} doc the document it points into
+ * @returns {Array<string|number>} the path
+ */
+function pointerPath(pointer, doc) {
+  const path = [];
+  let at = doc;
+  for (const token of pointer.split("/").slice(1)) {
+    const key = token.replaceAll("~1", "/").replaceAll("~0", "~");
+    const part = Array.isArray(at) && /^\d+$/.test(key) ? Number(key) : key;
+    path.push(part);
+    at = at !== null && typeof at === "object" ? at[part] : undefined;
+  }
+  return path;
+}
+
+/**
+ * A problem of validate.js in the kit's words, after the path of its value; a bound is a
+ * Polish number.
  *
  * @param {{path: Array<string|number>, keyword: string, params: object}} problem the problem
  * @param {unknown} doc the document the path is in
  * @returns {string} e.g. „payload.nodes[0] (Z1).watershed: nieznane pole „lc_km””
  */
 export function problemText(problem, doc) {
-  const words = texts.schema;
-  const params = problem.params || {};
-  let what;
-  switch (problem.keyword) {
-    case "required":
-      what = t(words.required, { name: params.name });
-      break;
-    case "additionalProperties":
-      what = t(words.additional, { name: params.name });
-      break;
-    case "type":
-      what = t(words.type, { type: params.types.map((type) => words.types[type] || type).join(words.or) });
-      break;
-    case "const":
-      what = t(words.const, { value: shown(params.value) });
-      break;
-    case "enum":
-      what = t(words.enum, { allowed: params.allowed.map(shown).join(", ") });
-      break;
-    case "minimum":
-    case "maximum":
-    case "exclusiveMinimum":
-    case "exclusiveMaximum":
-    case "maxLength":
-    case "minItems":
-    case "maxItems":
-      what = t(words[problem.keyword], { limit: shown(params.limit) });
-      break;
-    case "minLength":
-      what = params.limit === 1 ? words.minLength : t(words.minLengthOf, { limit: params.limit });
-      break;
-    case "dependentRequired":
-      what = t(words.dependentRequired, { name: params.name, needed: params.needed });
-      break;
-    case "propertyNames":
-      what = t(words.propertyName, { name: params.name });
-      break;
-    default:
-      what = words[problem.keyword] || words.not;
+  const params = { ...problem.params };
+  if (typeof params.limit === "number") params.limit = inputText(params.limit);
+  return `${pathText(problem.path, doc)}: ${texts.keywords[problem.keyword](params)}`;
+}
+
+/**
+ * What a text that is not a hand-off is, when Hydrolog opens it elsewhere: a network
+ * document (Sieć's „Plik sieci…”) or a watershed (Hydrogram's „Plik zlewni…”).
+ *
+ * @param {string} text the text the kit refused
+ * @returns {string[]} where it opens, none when Hydrolog does not know it
+ */
+function elsewhere(text) {
+  let doc;
+  try {
+    doc = JSON.parse(text);
+  } catch {
+    return [];
   }
-  return `${pathText(problem.path, doc)}: ${what}`;
+  if (!isObject(doc)) return [];
+  if (doc.schema === PAYLOAD_SCHEMA) return [texts.problems.network];
+  if (typeof doc.area_km2 === "number" || isObject(doc.watershed)) return [texts.problems.watershed];
+  return [];
 }
 
 /**
@@ -236,9 +219,11 @@ function seriesProblems(payload) {
 }
 
 /**
- * Read a hand-off: parse the text, check the envelope against Nogat's schema, the
- * payload's kind and, given its schema, the payload against it, then tell the section
- * that opens it: targetOf's, or Sieć for every network when Sieć reads it (`into`).
+ * Read a hand-off: Nogat's kit parses the text (a leading byte order mark dropped) and
+ * checks the envelope against Nogat's schema; Hydrolog checks the payload's kind and,
+ * given its schema, the payload against it, then tells the section that opens it:
+ * targetOf's, or Sieć for every network when Sieć reads it (`into`). A text that is not a
+ * hand-off says where Hydrolog opens it, when it knows.
  *
  * @param {string} text the hand-off as text (a file's or the clipboard's)
  * @param {{networkSchema?: object|null, seriesSchema?: object|null, into?: "siec"|null}}
@@ -247,24 +232,17 @@ function seriesProblems(payload) {
  *   it: "siec" opens a network there even when it holds one subcatchment (plan
  *   2026-11-10-network-editor, D10); a series still goes to Statystyka przepływów
  * @returns {{doc: object|null, target: "hydrogram"|"siec"|"statystyka"|null, problems:
- *   string[]}} the document, the section that opens it (null when it cannot open) and
- *   the problems in Polish; none when it opens
+ *   string[]}} the hand-off (null when the text is none), the section that opens it (null
+ *   when it cannot open) and the problems in Polish; none when it opens
  */
 export function readHandoff(text, { networkSchema = null, seriesSchema = null, into = null } = {}) {
-  let doc;
-  try {
-    doc = JSON.parse(String(text).replace(/^\uFEFF/, ""));
-  } catch (error) {
-    return { doc: null, target: null, problems: [t(texts.problems.notJson, { message: error.message })] };
+  const plain = String(text).replace(/^\uFEFF/, "");
+  const read = readEnvelope(plain, ENVELOPE_SCHEMA);
+  const doc = read.doc;
+  if (doc === null) {
+    return { doc: null, target: null, problems: [...read.problems.map((problem) => problem.message), ...elsewhere(plain)] };
   }
-  if (!isObject(doc)) return { doc: null, target: null, problems: [texts.problems.notObject] };
-  if (doc.schema !== HANDOFF_SCHEMA) {
-    const problems = [t(texts.problems.notHandoff, { schema: shown(doc.schema) })];
-    if (doc.schema === PAYLOAD_SCHEMA) problems.push(texts.problems.network);
-    else if (typeof doc.area_km2 === "number" || isObject(doc.watershed)) problems.push(texts.problems.watershed);
-    return { doc, target: null, problems };
-  }
-  const problems = schemaProblems(ENVELOPE_SCHEMA, doc).map((problem) => problemText(problem, doc));
+  const problems = read.problems.map((problem) => `${pathText(pointerPath(problem.path, doc), doc)}: ${problem.message}`);
   const payload = doc.payload;
   const kind = isObject(payload) && typeof payload.schema === "string" ? payload.schema : null;
   const schema = kind === SERIES_SCHEMA ? seriesSchema : networkSchema;

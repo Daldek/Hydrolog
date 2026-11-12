@@ -37,7 +37,7 @@ HOSTS = """
   }
 }
 """
-# Nogat's tokens of both themes (tokens.css, Nogat d1b5820): --info, --surface.
+# Nogat's tokens of both themes (tokens.css, Nogat 7786271): --info, --surface.
 INFO = {"light": "rgb(29, 78, 216)", "dark": "rgb(88, 166, 255)"}
 SURFACE = {"light": "rgb(255, 255, 255)", "dark": "rgb(22, 27, 34)"}
 

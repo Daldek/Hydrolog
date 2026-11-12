@@ -2,21 +2,23 @@
  * Texts of the hand-off between the GUIs (plan D15, nogat-handoff/1 carrying
  * hydrolog-network/1): reading a hand-off from a file or the clipboard, the problems found
  * in it, the received producer's result beside Hydrolog's own, and writing one from
- * Hydrogram zlewni and Sieć i trasowanie.
+ * Hydrogram zlewni and Sieć i trasowanie. The labels, messages and problem words every GUI
+ * shares come from Nogat's kit (`TEXTS` of nogat-handoff.js, DEV-15.5, ADR-0027).
  */
+
+import { TEXTS as KIT, guiName } from "../../nogat/nogat-handoff.js";
 
 export const handoffLabels = {
   load: {
-    button: "Wczytaj z Hydrografa",
+    button: KIT.loadFrom("hydrograf"),
     title: "Wczytaj przekazanie nogat-handoff/1: jedna zlewnia otworzy się w Hydrogramie zlewni, sieć w Sieci i trasowaniu",
-    menu: "Wczytaj z Hydrografa",
-    file: "Plik przekazania…",
-    fileSub: "„Plik przekazania” z Hydrografa",
-    paste: "Wklej ze schowka",
-    pasteSub: "„Kopiuj do Hydrologa” w Hydrografie",
+    menu: KIT.loadFrom("hydrograf"),
+    file: KIT.openFile,
+    fileSub: `„${KIT.file}” z ${guiName("hydrograf", "genitive")}`,
+    paste: KIT.paste,
+    pasteSub: `„${KIT.copyTo("hydrolog")}” w Hydrografie`,
     pasteTitle: "Wklej przekazanie",
-    pasteHint:
-      "Przeglądarka nie dała dostępu do schowka: wklej w pole poniżej (Ctrl+V) przekazanie skopiowane przyciskiem „Kopiuj do Hydrologa” w Hydrografie albo treść jego „Pliku przekazania”.",
+    pasteHint: `${KIT.pasteByHand} Przekazanie kopiuje w Hydrografie przycisk „${KIT.copyTo("hydrolog")}”; nada się też treść jego „Pliku przekazania”.`,
     pasteLabel: "Przekazanie nogat-handoff/1 (JSON)",
     pasteOpen: "Wczytaj",
     pasteCancel: "Anuluj",
@@ -34,14 +36,13 @@ export const handoffLabels = {
   },
   /** „Wczytaj z Archiwisty” in Statystyka przepływów: the same reading, a station's series. */
   loadSeries: {
-    button: "Wczytaj z Archiwisty",
+    button: KIT.loadFrom("archiwista"),
     title:
       "Wczytaj przekazanie nogat-handoff/1 z Archiwisty: szereg dobowy stacji albo maksima roczne otworzą się tutaj",
-    menu: "Wczytaj z Archiwisty",
-    fileSub: "„Plik przekazania” z karty stacji w Archiwiście",
-    pasteSub: "„Kopiuj do Hydrologa” na karcie stacji w Archiwiście",
-    pasteHint:
-      "Przeglądarka nie dała dostępu do schowka: wklej w pole poniżej (Ctrl+V) przekazanie skopiowane przyciskiem „Kopiuj do Hydrologa” na karcie stacji w Archiwiście albo treść jego „Pliku przekazania”.",
+    menu: KIT.loadFrom("archiwista"),
+    fileSub: `„${KIT.file}” z karty stacji w Archiwiście`,
+    pasteSub: `„${KIT.copyTo("hydrolog")}” na karcie stacji w Archiwiście`,
+    pasteHint: `${KIT.pasteByHand} Przekazanie kopiuje przycisk „${KIT.copyTo("hydrolog")}” na karcie stacji w Archiwiście; nada się też treść jego „Pliku przekazania”.`,
   },
   /** „Wczytaj z Hydrografa” in Sieć i trasowanie: every network opens there (plan 2026-11-10-network-editor, D10). */
   loadSiec: {
@@ -81,9 +82,6 @@ export const handoffLabels = {
     ownRainfall: "Opad przekazania różni się od opadu sieci, więc jest opadem własnym zlewni {id}.",
   },
   problems: {
-    notJson: "To nie jest JSON: {message}",
-    notObject: "Przekazanie nie jest obiektem JSON.",
-    notHandoff: "To nie jest przekazanie nogat-handoff/1 (schema: {schema}).",
     network: "To jest sieć hydrolog-network/1: wczytaj ją w Sieci i trasowaniu przyciskiem „Plik sieci…”.",
     watershed: "To jest plik zlewni: wczytaj go w Hydrogramie zlewni przyciskiem „Plik zlewni…”.",
     payloadKind: "Przekazanie niesie {schema}; Hydrolog przyjmuje hydrolog-network/1 i hydrolog-series/1.",
@@ -96,41 +94,8 @@ export const handoffLabels = {
   },
   /** Forms of „wartość” after a number. */
   valueForms: ["wartość", "wartości", "wartości"],
-  /** Words of the checks against a JSON Schema, after the path of the value. */
-  schema: {
-    required: "brak pola „{name}”",
-    additional: "nieznane pole „{name}”",
-    type: "oczekiwano: {type}",
-    types: {
-      object: "obiekt",
-      array: "lista",
-      string: "tekst",
-      number: "liczba",
-      integer: "liczba całkowita",
-      boolean: "tak lub nie",
-      null: "null",
-    },
-    or: " albo ",
-    const: "oczekiwano „{value}”",
-    enum: "wartość spoza listy: {allowed}",
-    minimum: "musi być ≥ {limit}",
-    maximum: "musi być ≤ {limit}",
-    exclusiveMinimum: "musi być > {limit}",
-    exclusiveMaximum: "musi być < {limit}",
-    minLength: "nie może być pusty",
-    minLengthOf: "co najmniej {limit} znaków",
-    maxLength: "najwyżej {limit} znaków",
-    pattern: "niepoprawny zapis",
-    minItems: "co najmniej {limit} elementów",
-    maxItems: "najwyżej {limit} elementów",
-    uniqueItems: "elementy się powtarzają",
-    minProperties: "nie może być pusty",
-    dependentRequired: "„{name}” wymaga pola „{needed}”",
-    not: "niedozwolona wartość albo połączenie pól",
-    propertyName: "niepoprawna nazwa „{name}”",
-    oneOf: "nie pasuje do żadnego wariantu",
-    oneOfMany: "pasuje do więcej niż jednego wariantu",
-  },
+  /** The words of a problem against a JSON Schema, after the path of the value: the kit's. */
+  keywords: KIT.keywords,
   /** Names of the tools of the ecosystem: as a subject and after „z” (genitive). */
   tools: {
     hydrograf: ["Hydrograf", "Hydrografa"],
@@ -183,13 +148,15 @@ export const handoffLabels = {
   export: {
     title: "Przekazanie",
     meta: "nogat-handoff/1",
-    file: "Plik przekazania",
+    file: KIT.file,
     fileTitle: "Pobierz przekazanie nogat-handoff/1 (dane, ich pochodzenie i wynik do porównania)",
-    copy: "Do schowka",
+    copy: KIT.copyTo("hydrolog"),
     copyTitle: "Skopiuj przekazanie nogat-handoff/1 do schowka",
-    copied: "Skopiowano przekazanie do schowka (nogat-handoff/1)",
-    saved: "Zapisano {name}",
-    standalone: "Samodzielnie: przez plik albo schowek; wczytasz go z powrotem w Hydrologu przyciskiem „Wczytaj z Hydrografa”, np. w innej przeglądarce.",
+    copied: KIT.copied,
+    copyByHand: KIT.copyByHand,
+    copyLabel: "Przekazanie nogat-handoff/1 (JSON) do skopiowania",
+    saved: KIT.saved,
+    standalone: `Samodzielnie: przez plik albo schowek; wczytasz go z powrotem w Hydrologu przyciskiem „${KIT.loadFrom("hydrograf")}”, np. w innej przeglądarce.`,
     hydrogram: "Zawiera zlewnię ({fields}{changed}), opad ({rain}), straty, model i wynik (Qmax, czas do szczytu, objętość) do porównania.",
     changed: ", zmienione: {count}",
     siec: "Zawiera sieć ({nodes}) i wynik wylotu (Qmax, czas do szczytu, objętość) do porównania.",

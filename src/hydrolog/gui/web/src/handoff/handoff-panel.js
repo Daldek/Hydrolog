@@ -8,9 +8,13 @@
 // (`onOpen`), it hands the checked hand-off of one watershed to it instead: Sieć's
 // subcatchment panel fills its node (plan 2026-11-10-network-wizard, D10). The part
 // „Przekazanie” of the panel Wyniki (HydrogramHandoff, SiecHandoff) writes one („Plik
-// przekazania”, „Do schowka”) and shows a received producer's result beside Hydrolog's
-// own, with the versions that computed them. Nothing here runs or writes at mount.
+// przekazania”, „Kopiuj do Hydrologa”) and shows a received producer's result beside
+// Hydrolog's own, with the versions that computed them. The file, the clipboard and the
+// download are Nogat's kit (nogat-handoff.js, DEV-15.5, ADR-0027): the file is named after
+// the subject, and a copy the browser refuses goes selected into a field for Ctrl+C.
+// Nothing here runs or writes at mount.
 
+import { copyHandoff, downloadHandoff, readClipboard, readFile } from "../../nogat/nogat-handoff.js";
 import { api } from "../api.js";
 import { plural } from "../format.js";
 import { html, useEffect, useRef, useState } from "../html.js";
@@ -22,7 +26,7 @@ import { navigate } from "../router.js";
 import { fieldLabel, handoffMissing } from "../sections/hydrogram/state.js";
 import { withoutPicture } from "../sections/siec/node-model.js";
 import { fileStem, openNetwork, withSessionNames } from "../sections/siec/state.js";
-import { copyText, downloadBlob, fileBase } from "../ui/export-panel.js";
+import { fileBase } from "../ui/export-panel.js";
 import { MenuButton } from "../ui/menu.js";
 import { toast } from "../ui/toast.js";
 import { uploadFile } from "../controls/file-field.js";
@@ -32,7 +36,6 @@ import {
   SERIES_SCHEMA_FILE,
   compareResults,
   engineOf,
-  handoffFileName,
   momentText,
   readHandoff,
   receivedOf,
@@ -285,7 +288,7 @@ function HandoffReader({ name, words, icon, read }) {
         if (!file) return;
         let text;
         try {
-          text = await file.text();
+          text = await readFile(file);
         } catch (error) {
           setFeedback({ kind: "problems", title: words.refused, lines: [t(texts.load.readFailed, { name: file.name, message: errorText(error) })] });
           return;
@@ -298,12 +301,7 @@ function HandoffReader({ name, words, icon, read }) {
     input.click();
   };
   const paste = async () => {
-    let text = null;
-    try {
-      if (navigator.clipboard && typeof navigator.clipboard.readText === "function") text = await navigator.clipboard.readText();
-    } catch {
-      text = null;
-    }
+    const text = await readClipboard();
     if (text === null) {
       setFeedback({ kind: "paste" });
       return;
@@ -509,38 +507,48 @@ export function ReceivedResult({ received, own, ownVersion, state }) {
 // --- writing -------------------------------------------------------------------------
 
 /**
- * „Plik przekazania” and „Do schowka” for a hand-off made on demand.
+ * „Plik przekazania” and „Kopiuj do Hydrologa” for a hand-off made on demand, through
+ * Nogat's kit: the file `<subject>.handoff.json`, and the clipboard, or where the browser
+ * gives none or refuses, the text selected in a field below the buttons for Ctrl+C.
  *
- * @param {{make: (() => object)|null, base: string, section: string, disabled?: string}}
- *   props the maker of the document (null while it cannot be made), the base of the file
- *   name, the section, and why the buttons are off
- * @returns {object} the buttons
+ * @param {{make: (() => object)|null, section: string, disabled?: string}} props the maker
+ *   of the document (null while it cannot be made), the section, and why the buttons are
+ *   off
+ * @returns {object} the buttons and the field of a copy by hand
  */
-function ExportHandoff({ make, base, section, disabled }) {
+function ExportHandoff({ make, section, disabled }) {
   const off = disabled || !make;
-  const text = () => `${JSON.stringify(make(), null, 2)}\n`;
-  const save = () => {
+  const field = useRef(null);
+  const [byHand, setByHand] = useState(false);
+  const made = () => {
     try {
-      const name = handoffFileName(base);
-      downloadBlob(new Blob([text()], { type: "application/json" }), name);
-      toast(t(texts.export.saved, { name }));
+      return make();
     } catch (error) {
       toast(t(texts.export.failed, { message: errorText(error) }), "bad");
+      return null;
     }
   };
-  const copy = () => {
-    let written;
-    try {
-      written = text();
-    } catch (error) {
-      toast(t(texts.export.failed, { message: errorText(error) }), "bad");
+  const save = () => {
+    const doc = made();
+    if (doc) toast(texts.export.saved(downloadHandoff(doc)));
+  };
+  const copy = async () => {
+    const doc = made();
+    if (!doc) return;
+    if ((await copyHandoff(doc, field.current)) === "field") {
+      setByHand(true);
       return;
     }
-    copyText(written).then(
-      () => toast(texts.export.copied),
-      () => toast(common.copyFailed, "bad"),
-    );
+    field.current.hidden = true;
+    setByHand(false);
+    toast(texts.export.copied);
   };
+  const done = () => {
+    field.current.hidden = true;
+    setByHand(false);
+  };
+  // The kit shows the field (`hidden` off) before it selects the text, so the field is
+  // never inside a hidden box; Preact leaves `hidden` alone after the first render.
   return html`
     <div class="btn-row" data-handoff-export=${section}>
       <button class="btn" type="button" data-handoff="file" title=${off ? disabled : texts.export.fileTitle} disabled=${Boolean(off)} onClick=${save}>
@@ -549,6 +557,13 @@ function ExportHandoff({ make, base, section, disabled }) {
       <button class="btn" type="button" data-handoff="copy" title=${off ? disabled : texts.export.copyTitle} disabled=${Boolean(off)} onClick=${copy}>
         ${ICONS.copy}${texts.export.copy}
       </button>
+    </div>
+    <div class="handoff-feedback" data-handoff-by-hand=${byHand ? "shown" : "none"}>
+      ${byHand ? html`<p class="note" role="status">${texts.export.copyByHand}</p>` : null}
+      <textarea ref=${field} rows="4" hidden aria-label=${texts.export.copyLabel} spellcheck="false"></textarea>
+      ${byHand
+        ? html`<div class="btn-row"><button class="btn sm ghost" type="button" onClick=${done}>${common.actions.close}</button></div>`
+        : null}
     </div>
   `;
 }
@@ -583,7 +598,6 @@ export function HydrogramHandoff({ run, current, subject, rain }) {
       : null}
     <${ExportHandoff}
       make=${() => hydrogramHandoff({ run, inputs, subject })}
-      base=${fileBase(subject)}
       section="hydrogram"
       disabled=${incomplete || undefined}
     />
@@ -644,7 +658,6 @@ export function SiecHandoff({ state, document, valid, run, stale }) {
         : null}
       <${ExportHandoff}
         make=${ready ? () => siecHandoff({ subject, state, document, result: fresh ? result : null, version }) : null}
-        base=${fileBase(subject)}
         section="siec"
         disabled=${ready ? undefined : texts.export.invalid}
       />

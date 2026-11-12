@@ -1,12 +1,12 @@
 {
-  "description": "Copies of Nogat's visual identity (DEV-15.3, plan 2026-11-02-hydrolog-gui D10). Each file is byte-identical to the listed source at the commit except where 'modified' says otherwise; change Nogat, then copy again.",
+  "description": "Copies of Nogat's visual identity (DEV-15.3, DEV-15.6; plan 2026-11-02-hydrolog-gui D10). Each file is byte-identical to the listed source at the commit except where 'modified' says otherwise; change Nogat, then copy again. Nogat's GUI kit (design/kit/: nogat-app-menu.js, nogat-app-menu.css, nogat-handoff.js) is copied beside them with its own manifest, nogat-kit.json, which holds the SHA-256 of each of its files (ADR-0027).",
   "source": "https://github.com/Daldek/Nogat",
-  "commit": "d1b5820d6395d3986ed44ce90aa3911e5169d622",
+  "commit": "7786271caba188a4b3bf8a1af7bb5dc944f3b50b",
   "files": {
     "tokens.css": {
       "from": "design/tokens.css",
       "from_sha256": "9a18d2533dafaf55602abbe922bd9c4785cbec1a528214bb5ea265b54b9e4069",
-      "sha256": "5e74a6e1c096ebc667c72c731231139ac9563dd20391cbde823e75a65f8d9c8e",
+      "sha256": "6f713b17c324f9dba1adbeece4a7aa35b351d75fc02751fbc1f94cf74da45f38",
       "modified": "two comment lines at the top name the commit (DEV-15.3); the rest is the source unchanged"
     },
     "marks/hydrolog.svg": {
@@ -24,6 +24,10 @@
     "marks/archiwista.svg": {
       "from": "design/marks/archiwista.svg",
       "sha256": "5a163b2bb0470a6940b0039bada21193f6aef8f3b97ba5cd445960850e895293"
+    },
+    "marks/obserwator.svg": {
+      "from": "design/marks/obserwator.svg",
+      "sha256": "b1b7616d947d71c9b046a89eacefa53abde9332dae32e114153a1878a729d40c"
     }
   }
 }

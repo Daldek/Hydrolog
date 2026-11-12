@@ -12,7 +12,8 @@ directory, DEV-18.2: the web GUI keeps the reports of „Zgłoś uwagę” in
 ``<data_dir>/hydrolog/feedback.sqlite3``). It has no store and no cache, so
 ``cache_dir`` of the shared section is not used. Its one credential, the key of the
 web GUI's admin page, comes from the environment only (DEV-18.4):
-:func:`admin_api_key`.
+:func:`admin_api_key`. The web GUI's app menu lists the deployment's GUIs from the
+shared table ``gui`` of ``[nogat]`` (DEV-15.4): :func:`gui_addresses`.
 """
 
 from __future__ import annotations
@@ -38,6 +39,7 @@ __all__ = [
     "config_path",
     "credentials",
     "default_data_dir",
+    "gui_addresses",
     "load_file",
     "resolve_setting",
 ]
@@ -257,3 +259,43 @@ def admin_api_key(environ: Mapping[str, str] | None = None) -> str | None:
     except (OSError, UnicodeDecodeError):
         return None
     return key or None
+
+
+def gui_addresses(
+    environ: Mapping[str, str] | None = None,
+    file_data: Mapping[str, Any] | None = None,
+) -> dict[str, str] | None:
+    """Return the deployment's GUI addresses: the table ``gui`` of ``[nogat]``.
+
+    The table names each GUI of the ecosystem by its registry name in lower case and
+    gives its address, absolute or a path on the same origin (DEV-15.4, DEV-18.1),
+    e.g. ``hydrograf = "http://127.0.0.1:8080/"``. The web GUI's app menu lists them;
+    it has no default, so without the table the menu is not drawn. The table describes
+    the deployment, so only ``[nogat]`` gives it: no environment variable and no
+    ``[hydrolog]`` table.
+
+    Parameters
+    ----------
+    environ : Mapping, optional
+        Environment to read (``NOGAT_CONFIG``); defaults to ``os.environ``.
+    file_data : Mapping, optional
+        Parsed ``nogat.toml``; defaults to the file at :func:`config_path`.
+
+    Returns
+    -------
+    dict or None
+        Name -> address for each entry whose name and address are strings, the address
+        not blank (surrounding whitespace dropped), in the file's order; ``None`` when
+        the file is missing or unusable or gives no table ``gui`` in ``[nogat]``.
+    """
+    source = os.environ if environ is None else environ
+    data = load_file(config_path(source)) if file_data is None else file_data
+    shared = data.get("nogat")
+    table = shared.get("gui") if isinstance(shared, Mapping) else None
+    if not isinstance(table, Mapping):
+        return None
+    return {
+        name: address.strip()
+        for name, address in table.items()
+        if isinstance(name, str) and isinstance(address, str) and address.strip()
+    }

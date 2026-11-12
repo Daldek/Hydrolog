@@ -1272,7 +1272,10 @@ applies to that call only and is not reported. A setting comes from the first of
 
 `nogat.toml` is the settings file the Nogat tools share. Its path is `NOGAT_CONFIG`, else
 `nogat.toml` in the user configuration directory of `nogat` (`config show` prints it). A missing,
-broken or non-UTF-8 file is ignored, so it never stops a calculation.
+broken or non-UTF-8 file is ignored, so it never stops a calculation. Besides the settings, the web
+GUI reads its table `gui` of `[nogat]`, the addresses of the deployment's GUIs for „Aplikacje”
+([section 8](#the-other-guis-aplikacje)); it is no setting of Hydrolog, so `config show` leaves it
+out.
 
 ```toml
 [nogat]
@@ -1354,7 +1357,8 @@ watershed or a network handed over that way, with the producer's result beside H
 handed over by Archiwista
 ([INTEGRATION.md](INTEGRATION.md#web-gui-a-stations-series-from-archiwista-hydrolog-series1)). „Zgłoś
 uwagę” in the top bar sends a report on a problem or an idea to whoever runs the server, who
-reads it on the admin page `admin/` ([below](#reports-of-users-zgłoś-uwagę)).
+reads it on the admin page `admin/` ([below](#reports-of-users-zgłoś-uwagę)), and „Aplikacje”
+leads to the other GUIs of the deployment ([below](#the-other-guis-aplikacje)).
 
 ### Building a network in Sieć
 
@@ -1458,6 +1462,21 @@ hydrolog gui serve --check --json
 
 ```json output
 {"command": "gui serve", "check": true, "result": {"schema": "hydrolog-plan/1", "targets": [], "url": "http://127.0.0.1:8070/", "port_free": "..."}}
+```
+
+### The other GUIs („Aplikacje”)
+
+„Aplikacje” in the top bar, left of the theme switch, is Nogat's app menu (DEV-15.4): it lists the
+GUIs of the ecosystem that the deployment names in the table `gui` of `[nogat]` in `nogat.toml`
+([section 6](#6-settings)), one key per GUI in lower case (`archiwista`, `hydrograf`, `hydrolog`,
+`obserwator`) with its address, absolute or a path on the page's own origin. An entry opens its
+GUI in a tab of its own, named `nogat-<name>`, and Hydrolog is marked as the current one.
+Without the table, or with Hydrolog alone in it, the button is not drawn; there is no default.
+The server reads the file at every page load, so a changed address needs no restart.
+
+```toml
+[nogat]
+gui = { hydrolog = "http://127.0.0.1:8070/", hydrograf = "http://127.0.0.1:8080/", archiwista = "http://127.0.0.1:8090/" }
 ```
 
 ### Your data in the GUI

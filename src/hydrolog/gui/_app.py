@@ -53,6 +53,7 @@ from hydrolog._settings import (
     ADMIN_API_KEY_FILE,
     TOOL,
     admin_api_key,
+    gui_addresses,
 )
 from hydrolog.catalog import command_schema, format_command, get_command, list_commands
 from hydrolog.catalog.spec import Command
@@ -522,9 +523,15 @@ class _Gui:
     # --- routes ---------------------------------------------------------------------
 
     async def session(self, request: Request, call: _Call) -> Response:
-        """``GET api/session``: ``hydrolog-gui-session/1``."""
+        """``GET api/session``: ``hydrolog-gui-session/1``.
+
+        ``gui`` is the deployment's table of GUI addresses (``[nogat] gui`` of
+        ``nogat.toml``, read at every request; ``None`` without it), which the page
+        gives Nogat's app menu (DEV-15.4, ADR-0027).
+        """
         session = self.open_session(request, call)
         files = await anyio.to_thread.run_sync(session.files)
+        gui = await anyio.to_thread.run_sync(gui_addresses)
         limits = {**self.limits.to_dict(), "run_timeout_s": self.runner.timeout_s}
         return JSONResponse(
             {
@@ -533,6 +540,7 @@ class _Gui:
                 "limits": limits,
                 "used_bytes": sum(item["size_bytes"] for item in files),
                 "files": files,
+                "gui": gui,
             }
         )
 

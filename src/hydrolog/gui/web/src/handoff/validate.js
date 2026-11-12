@@ -1,15 +1,17 @@
 // A check of a JSON value against a JSON Schema of draft 2020-12, with the keywords that
-// Nogat's nogat-handoff/1 and Hydrolog's hydrolog-network-1.schema.json use: type, const,
-// enum, the bounds of numbers, strings and arrays, pattern, required, properties,
-// additionalProperties, propertyNames, minProperties, dependentRequired, items,
+// Hydrolog's payloads, hydrolog-network-1.schema.json and hydrolog-series-1.schema.json,
+// use: type, const, enum, the bounds of numbers, strings and arrays, pattern, required,
+// properties, additionalProperties, propertyNames, minProperties, dependentRequired, items,
 // uniqueItems, not, allOf, anyOf, oneOf and local $ref. Annotations (title, description,
 // default, examples, format) check nothing, as in jsonschema without a format checker;
-// `\w` in a pattern means a Unicode word character, as in Python's `re`.
+// `\w` in a pattern means a Unicode word character, as in Python's `re` (a node id „Ś1”).
 //
-// A problem names the path of the value, the keyword it breaks and the keyword's values;
-// handoff.js words it in Polish. Where no branch of a oneOf fits an object, the problems
-// are those of the branch its constants (`type`, `method`, `model`, `kind`) choose, or
-// the constant that chooses none.
+// Nogat's kit checks the envelope (nogat-handoff.js `readHandoff`, ADR-0027); the payload
+// stays here, since the kit's `validate` reads `\w` as ASCII and names no problem inside a
+// oneOf. A problem names the path of the value, the keyword it breaks and the keyword's
+// values in the kit's names, so the kit's TEXTS word it (handoff.js problemText). Where no
+// branch of a oneOf fits an object, the problems are those of the branch its constants
+// (`type`, `method`, `model`, `kind`) choose, or the constant that chooses none.
 
 /**
  * A problem of a value.
@@ -196,7 +198,7 @@ function checkOneOf(schema, value, root, path, out) {
   const passing = results.filter((problems) => problems.length === 0).length;
   if (passing === 1) return;
   if (passing > 1) {
-    out.push({ path, keyword: "oneOfMany", params: {} });
+    out.push({ path, keyword: "oneOf", params: { count: passing } });
     return;
   }
   if (isObject(value)) {
@@ -219,7 +221,7 @@ function checkOneOf(schema, value, root, path, out) {
         }
       }
       if (Object.hasOwn(value, name)) out.push({ path: [...path, name], keyword: "enum", params: { allowed } });
-      else out.push({ path, keyword: "required", params: { name } });
+      else out.push({ path, keyword: "required", params: { property: name } });
       return;
     }
     const best = pool.reduce((a, b) => (far[b.index] < far[a.index] ? b : a));
@@ -228,7 +230,7 @@ function checkOneOf(schema, value, root, path, out) {
   }
   let closest = 0;
   for (let index = 1; index < results.length; index += 1) if (far[index] < far[closest]) closest = index;
-  out.push(...(results[closest].length ? results[closest] : [{ path, keyword: "oneOf", params: {} }]));
+  out.push(...(results[closest].length ? results[closest] : [{ path, keyword: "oneOf", params: { count: 0 } }]));
 }
 
 /**
@@ -250,7 +252,7 @@ function check(schema, value, root, path, out) {
   if (schema.type !== undefined) {
     const types = Array.isArray(schema.type) ? schema.type : [schema.type];
     if (!types.some((type) => hasType(value, type))) {
-      out.push({ path, keyword: "type", params: { types } });
+      out.push({ path, keyword: "type", params: { expected: types } });
       return;
     }
   }
@@ -284,17 +286,17 @@ function check(schema, value, root, path, out) {
   }
   if (isObject(value)) {
     for (const name of Array.isArray(schema.required) ? schema.required : []) {
-      if (!Object.hasOwn(value, name)) out.push({ path, keyword: "required", params: { name } });
+      if (!Object.hasOwn(value, name)) out.push({ path, keyword: "required", params: { property: name } });
     }
     const properties = isObject(schema.properties) ? schema.properties : {};
     for (const [name, item] of Object.entries(value)) {
       if (Object.hasOwn(properties, name)) check(properties[name], item, root, [...path, name], out);
-      else if (schema.additionalProperties === false) out.push({ path, keyword: "additionalProperties", params: { name } });
+      else if (schema.additionalProperties === false) out.push({ path, keyword: "additionalProperties", params: { property: name } });
       else if (schema.additionalProperties !== undefined) check(schema.additionalProperties, item, root, [...path, name], out);
     }
     if (schema.propertyNames !== undefined) {
       for (const name of Object.keys(value)) {
-        if (schemaProblems(schema.propertyNames, name, root, path).length) out.push({ path, keyword: "propertyNames", params: { name } });
+        if (schemaProblems(schema.propertyNames, name, root, path).length) out.push({ path, keyword: "propertyNames", params: { property: name } });
       }
     }
     if (typeof schema.minProperties === "number" && Object.keys(value).length < schema.minProperties) {
@@ -304,7 +306,7 @@ function check(schema, value, root, path, out) {
       for (const [name, needed] of Object.entries(schema.dependentRequired)) {
         if (!Object.hasOwn(value, name)) continue;
         for (const other of needed) {
-          if (!Object.hasOwn(value, other)) out.push({ path, keyword: "dependentRequired", params: { name, needed: other } });
+          if (!Object.hasOwn(value, other)) out.push({ path, keyword: "dependentRequired", params: { property: name, missing: other } });
         }
       }
     }
@@ -317,7 +319,7 @@ function check(schema, value, root, path, out) {
     const results = schema.anyOf.map((branch) => schemaProblems(branch, value, root, path));
     if (!results.some((problems) => problems.length === 0)) {
       const closest = results.reduce((a, b) => (distance(b, path.length) < distance(a, path.length) ? b : a));
-      out.push(...(closest.length ? closest : [{ path, keyword: "oneOf", params: {} }]));
+      out.push(...(closest.length ? closest : [{ path, keyword: "anyOf", params: {} }]));
     }
   }
   if (Array.isArray(schema.oneOf)) checkOneOf(schema, value, root, path, out);

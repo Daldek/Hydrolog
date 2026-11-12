@@ -1,9 +1,11 @@
-"""The shell of the GUI (plan D4, D9, D10, D17) against the live server.
+"""The shell of the GUI (plan D4, D9, D10, D17; ADR-0027) against the live server.
 
 The page works at ``/`` and under a host's prefix with every request relative
 to it; the top bar carries Hydrolog's mark, name and the breadcrumbs, the rail
-lists only the registered sections. The theme switch Auto, Jasny, Ciemny sets
-``data-theme`` on ``<html>`` and the ``nogat-theme`` key, which
+lists only the registered sections. Nogat's app menu „Aplikacje”, left of the
+theme switch, lists the GUIs of ``[nogat] gui`` of ``nogat.toml`` with their
+marks and is not drawn without the table. The theme switch Auto, Jasny, Ciemny
+sets ``data-theme`` on ``<html>`` and the ``nogat-theme`` key, which
 ``theme-init.js`` applies before the app (as it does ``?nogat=1``, hiding the
 top bar and the rail). In both themes, at 1440, 1180 and 390 px, nothing
 scrolls sideways: a 64 px rail and the panels Dane | Wyniki on a desktop, a
@@ -15,14 +17,16 @@ forward.
 import json
 import re
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
+from urllib.parse import urljoin
 
 import pytest
 from playwright.sync_api import Request, Route, expect
 
 from tests.e2e.conftest import Tab, type_nash
 
-# Nogat's tokens of both themes (tokens.css, Nogat d1b5820): --bg and --rail-bg.
+# Nogat's tokens of both themes (tokens.css, Nogat 7786271): --bg and --rail-bg.
 BG = {"light": "rgb(250, 248, 248)", "dark": "rgb(13, 17, 23)"}
 RAIL_BG = {"light": "rgb(13, 17, 23)", "dark": "rgb(1, 4, 9)"}
 SECTION_TITLE = "Wszystkie polecenia"
@@ -157,6 +161,76 @@ def test_page_brand_rail_route_and_relative_api(
     expect(page).to_have_url(base + f"#{registered[0]}")
     expect(items.first).to_have_attribute("aria-current", "page")
     expect(first).to_be_visible()
+
+
+@pytest.mark.parametrize(
+    ("prefixed", "width"), [(False, 1440), (True, 1440), (False, 390)]
+)
+def test_the_app_menu_lists_the_guis_of_nogat_toml(
+    new_tab: Callable[..., Tab],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    prefixed: bool,
+    width: int,
+) -> None:
+    tab = new_tab(prefixed=prefixed, width=width, height=844 if width < 861 else 900)
+    page = tab.page
+    menu = page.locator("header.topbar nogat-app-menu")
+    # Without the table of nogat.toml (the tests' NOGAT_CONFIG names no file) the
+    # session gives none and the menu is not drawn
+    with page.expect_response(
+        lambda answer: answer.url.endswith("/api/session")
+    ) as got:
+        tab.open()
+    assert got.value.json()["gui"] is None
+    expect(menu).to_be_hidden()
+
+    settings = tmp_path / "nogat.toml"
+    settings.write_text(
+        "[nogat]\n"
+        'gui = { hydrolog = "http://127.0.0.1:8070/", '
+        'hydrograf = "https://hydrograf.example/", archiwista = "/archiwista/" }\n',
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("NOGAT_CONFIG", str(settings))
+    page.reload()
+    button = menu.get_by_role("button", name="Aplikacje")
+    expect(button).to_be_visible()
+    # Left of the theme switch, the last of the top bar's actions
+    after = page.locator("header.topbar .top-actions > nogat-app-menu + *")
+    expect(after).to_have_attribute("aria-label", "Motyw")
+    assert after.evaluate("(element) => element.nextElementSibling === null")
+
+    button.click()
+    expect(button).to_have_attribute("aria-expanded", "true")
+    expect(menu.locator(".nogat-app-menu-item")).to_have_count(3)
+    current = menu.locator(".nogat-app-menu-item.current")
+    expect(current).to_have_attribute("aria-current", "page")
+    expect(current.locator("strong")).to_have_text("Hydrolog")
+    links = menu.locator("a.nogat-app-menu-item")
+    assert links.evaluate_all(
+        "(links) => links.map((link) => [link.href, link.target])"
+    ) == [
+        ["https://hydrograf.example/", "nogat-hydrograf"],
+        [urljoin(tab.base, "/archiwista/"), "nogat-archiwista"],
+    ]
+    marks = menu.locator(".nogat-app-menu-item img")
+    expect(marks).to_have_count(3)
+    for index in range(3):
+        expect(marks.nth(index)).to_have_js_property("complete", True)
+        assert marks.nth(index).evaluate("(img) => img.naturalWidth") > 0
+    # Nothing scrolls sideways: the theme switch keeps its room in the top bar of a
+    # phone, and the list, a sheet on a phone, stays on the screen
+    assert page.evaluate(
+        "() => document.documentElement.scrollWidth <= window.innerWidth"
+    )
+    theme = box(after)
+    assert theme["x"] + theme["width"] <= width
+    listed = box(menu.locator(".nogat-app-menu-list"))
+    assert listed["x"] >= 0 and listed["x"] + listed["width"] <= width
+    page.keyboard.press("Escape")
+    expect(button).to_have_attribute("aria-expanded", "false")
+    expect(button).to_be_focused()
 
 
 def test_theme_switch_stores_and_survives_reload(tab: Tab) -> None:

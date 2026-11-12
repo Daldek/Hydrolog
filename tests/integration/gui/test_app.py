@@ -114,6 +114,7 @@ def test_a_first_request_starts_a_session_with_its_cookie(client):
         },
         "used_bytes": 0,
         "files": [],
+        "gui": None,
     }
     cookie = session_cookie(response)
     name, _, attributes = cookie.partition(";")
@@ -139,6 +140,27 @@ def test_the_cookie_keeps_the_session_and_its_files(client):
         }
     ]
     assert response.json()["used_bytes"] == len(FLOOD)
+
+
+def test_the_session_gives_the_gui_addresses_of_nogat_toml(
+    client, tmp_path, monkeypatch
+):
+    """``[nogat] gui`` for Nogat's app menu (DEV-15.4), read at every request."""
+    settings = tmp_path / "nogat.toml"
+    settings.write_text(
+        "[nogat]\n"
+        'gui = { hydrograf = " https://hydrograf.example/ ", archiwista = "/a/",'
+        ' kartograf = 8060, obserwator = "" }\n',
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("NOGAT_CONFIG", str(settings))
+
+    assert client.get("/api/session").json()["gui"] == {
+        "hydrograf": "https://hydrograf.example/",
+        "archiwista": "/a/",
+    }
+    settings.write_text('[nogat]\nlang = "pl"\n', encoding="utf-8")
+    assert client.get("/api/session").json()["gui"] is None
 
 
 def test_an_unknown_cookie_gets_a_new_session(client):
