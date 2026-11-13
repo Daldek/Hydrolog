@@ -1,9 +1,9 @@
 """The regulamin of a public GUI: the kit's template filled as Nogat's README says.
 
 Nogat ``design/README.md`` (DEV-15.7): blocks first (a listed block keeps its lines
-without its markers, any other goes with them; ``imgw-terms`` follows the IMGW-PIB
-blocks), then fields (HTML-escaped; every one needs a value, only
-``processor_transfer``, ``processor_cookie`` and ``mail_transfer`` may be empty).
+without its markers, any other goes with them), then fields (HTML-escaped; every one
+needs a value, only ``processor_transfer``, ``processor_cookie`` and ``mail_transfer``
+may be empty).
 """
 
 import re
@@ -29,9 +29,6 @@ SMALL = """<h1>{{service_name}}</h1>
 <!-- /block -->
 <!-- block: pmaxtp -->
 <p>PMAXTP</p>
-<!-- /block -->
-<!-- block: imgw-terms -->
-<p>Warunki IMGW-PIB</p>
 <!-- /block -->
 <!-- block: chmi -->
 <p>CHMI</p>
@@ -76,22 +73,6 @@ def test_listed_blocks_stay_without_their_markers_and_the_others_go():
     for dropped in ("IMGW-PIB", "PMAXTP", "OSM"):
         assert dropped not in page
     assert "<!--" not in page
-
-
-@pytest.mark.parametrize(
-    ("listed", "kept"),
-    [
-        ([], False),
-        (["chmi"], False),
-        (["osm", "chmi"], False),
-        (["imgw"], True),
-        (["pmaxtp"], True),
-        (["imgw-hydro"], True),  # a block this template lacks still keeps it
-        (["chmi", "pmaxtp"], True),
-    ],
-)
-def test_the_imgw_terms_follow_any_imgw_block(listed, kept):
-    assert ("Warunki IMGW-PIB" in fill(SMALL, VALUES, listed)) is kept
 
 
 def test_the_values_are_html_escaped_and_trimmed():

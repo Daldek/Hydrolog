@@ -1,8 +1,8 @@
 // The providers' lines on screen (Nogat DEV-20.5, ECO-064): one strip per view, Nogat's
 // kit element <nogat-sources> at the foot of a section's centre (ViewLayout's `sources`).
 // It shows the short lines (IMGW-PIB's S and P, PMAXTP's PS and PP, ČHMÚ's short form)
-// and „Źródła i warunki”, which opens the kit's dialog with every line, the notice of the
-// terms of use and, on a public GUI, „Regulamin serwisu”; without lines it is not drawn.
+// and „Źródła i warunki”, which opens the kit's dialog with every line, the links to the
+// providers' terms and, on a public GUI, „Regulamin serwisu”; without lines it is not drawn.
 // A view gives the union of the lines of the data it shows (its inputs' and its last
 // run's, attribution.js mergeLines); the strip orders them as GET api/session's sets do
 // and keeps them as the section's "sources" in the store, from which the welcome dialog

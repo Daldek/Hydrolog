@@ -16,7 +16,7 @@ fetched. The errors of Obserwator become Hydrolog's registry codes: a point outs
 atlas is a ``validation_error`` of ``latitude`` (or of the coordinate Obserwator names),
 an unreachable server ``source_unavailable`` and an answer that cannot be read
 ``data_error``. A depth of PMAXTP must name its source: the lines its terms prescribe
-are in :mod:`hydrolog._attribution` (PS, PP, M and the notice N, RK; ADR-0028).
+are in :mod:`hydrolog._attribution` (PS, PP, M and the terms link RK; ADR-0028).
 
 The module is a leaf: it imports only :mod:`hydrolog.exceptions`, so the catalog can
 read its values without Obserwator or the numerical libraries.
