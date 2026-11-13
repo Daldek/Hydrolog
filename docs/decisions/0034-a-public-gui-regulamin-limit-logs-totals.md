@@ -5,6 +5,8 @@
 - Amends: [ADR-0004](0004-settings-and-config-show.md) (two settings), [ADR-0014](0014-web-gui-enters-the-scope.md)
   (the session of the private API), [ADR-0016](0016-gui-feedback-and-data-dir.md) (the report and its file),
   [ADR-0027](0027-nogats-gui-kit-the-app-menu-and-the-handoff.md) (kit 0.4.0)
+- Amended by [ADR-0037](0037-nogats-logs-in-gui-serve.md) (2026-11-13): the access log is Nogat's, in every run of
+  `gui serve`, in files under `<state_dir>/hydrolog/logs`; no `X-Request-Id`
 
 ## Context
 

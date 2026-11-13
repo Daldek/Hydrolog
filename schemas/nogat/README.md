@@ -24,5 +24,13 @@ drift` reports each copy as current, behind or modified.
   `tests/contract/test_gui_handoff.py` validates hand-offs against this copy; the browser
   checks the envelope against its validation keywords (`handoff/envelope.js`, which
   `tests/e2e/test_exports.py` compares with the copy).
+- `record-1.schema.json` (Nogat `schemas/log/record-1.schema.json` at `a41d971` of Nogat's
+  `develop`, ECO-066; SHA-256
+  `cac452bd338054916d7837820053b0a5ed8f5a076a33f95ed0448ded170984d0`): `nogat-log/1`, one record
+  of the logs of `hydrolog gui serve` (DEV-12.4 to DEV-12.9), written by Nogat's reference module
+  `standards/reference/nogat_logging.py`, which is copied from the same commit, unchanged, to
+  `src/hydrolog/gui/nogat_logging.py` (SHA-256
+  `66964a5167ab8edd40f5bcae4462bf685bbe2e34456e8bead6722fe8cf0d32b7`).
+  `tests/integration/gui/test_serve.py` and `test_public.py` validate the records against this copy.
 
 Do not edit these files; copy them again when the standard changes.

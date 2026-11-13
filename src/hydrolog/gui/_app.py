@@ -19,7 +19,9 @@ in ``X-Admin-Key`` and refuses everything (``401 unauthorized``) when neither is
 
 A deployment with ``[nogat.operator]`` in ``nogat.toml`` is public (Nogat DEV-15.7 to
 DEV-15.11, :mod:`hydrolog.gui._public`): the app serves ``regulamin.html``, limits the
-requests of each address, writes its access log and counts its use in daily totals.
+requests of each address and counts its use in daily totals. Given a
+:class:`~hydrolog.gui.nogat_logging.ServerLog`, public or not, it writes the access log
+of Nogat DEV-12.4 with :class:`~hydrolog.gui.nogat_logging.AccessLog`, outermost.
 """
 
 from __future__ import annotations
@@ -112,6 +114,7 @@ from hydrolog.gui._sessions import (
     relative_paths,
     split_path,
 )
+from hydrolog.gui.nogat_logging import AccessLog, ServerLog
 
 # The page's own types, whatever the host's registry says: on Windows it may map
 # ``.js`` to ``text/plain``, and a browser refuses a module script of that type.
@@ -166,6 +169,12 @@ _PATHS = ["in/<name>", "out/<name>"]
 _LOG = logging.getLogger(__name__)
 TEND_S: Final = 10.0
 """How often a public GUI forgets ended windows and rewrites its totals when due [s]."""
+QUIET: Final = (
+    r"^/(css|src|vendor|nogat)/|^/theme-init\.js$|^/api/(commands|schemas)(/|$)"
+)
+"""The static content of the access log (Nogat DEV-12.5): the page's files and the
+catalog documents, the same for every client, are logged only when answered with 400
+or more."""
 
 
 def _route_path(scope: Scope) -> str:
@@ -930,6 +939,7 @@ def build_app(
     run_timeout_s: float,
     data_dir: Path,
     config: Mapping[str, Any] | None = None,
+    log: ServerLog | None = None,
 ) -> Starlette:
     """Build the app; see :func:`hydrolog.gui.create_app`."""
     gui = _Gui(
@@ -1010,6 +1020,8 @@ def build_app(
                 secure=_secure_request,
             ),
         )
+    if log is not None:
+        middleware.insert(0, Middleware(AccessLog, log=log, quiet=QUIET))
     app = Starlette(
         routes=[
             Route(f"/{TERMS_PAGE}", regulamin, methods=["GET"]),

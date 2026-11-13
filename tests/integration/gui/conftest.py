@@ -11,7 +11,9 @@ Starlette is imported inside the fixtures: without the ``gui`` extra the test mo
 skip themselves (``pytest.importorskip``).
 """
 
+import os
 from pathlib import Path
+from unittest import mock
 
 import pytest
 
@@ -44,13 +46,24 @@ def web(tmp_path_factory):
 @pytest.fixture(scope="package")
 def app(web, tmp_path_factory):
     """Yield one app (two workers) for the tests of the package; reports go to a
-    data directory of the tests."""
+    data directory of the tests.
+
+    Built before any test's own isolation (``tests/conftest.py``), so it reads no
+    setting of the developer's machine: a ``nogat.toml`` with ``[nogat.operator]``
+    would make it public, with its request limit."""
     from hydrolog.gui import create_app
 
-    created = create_app(
-        work_root=tmp_path_factory.mktemp("work"),
-        data_dir=tmp_path_factory.mktemp("data"),
-    )
+    data_dir = tmp_path_factory.mktemp("data")
+    settings = {
+        name: value
+        for name, value in os.environ.items()
+        if not name.startswith(("HYDROLOG_", "NOGAT_"))
+    }
+    settings["NOGAT_CONFIG"] = str(data_dir / "absent.toml")
+    with mock.patch.dict(os.environ, settings, clear=True):
+        created = create_app(
+            work_root=tmp_path_factory.mktemp("work"), data_dir=data_dir
+        )
     yield created
     created.state.gui.close()
 

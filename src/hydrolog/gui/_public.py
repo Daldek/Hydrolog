@@ -1,4 +1,4 @@
-"""The rules of a public GUI (Nogat DEV-15.7 to DEV-15.11): limit, access log, totals.
+"""The rules of a public GUI (Nogat DEV-15.7 to DEV-15.11): limit and totals.
 
 A deployment that sets ``[nogat.operator]`` opens the GUI to anyone (:class:`Public`);
 the app then wraps every request in :class:`PublicGuard`:
@@ -11,10 +11,9 @@ the app then wraps every request in :class:`PublicGuard`:
   limit a request gets ``429`` with ``Retry-After``: an API route the
   ``hydrolog-error/1`` of ``rate_limited``, a page „Zbyt wiele żądań. Spróbuj ponownie
   za <n> s.”. An address stays in memory for its window only and is never written.
-* **Access log** (DEV-15.10): one JSON line per request on the logger
-  ``hydrolog.gui.access``: the time, a random request id (also the response header
-  ``X-Request-Id``), the method, the path with its query, the status, the size of the
-  body, the duration and the ``User-Agent``; never the client's address.
+* **Access log**: not this module's. ``hydrolog gui serve`` writes it in every run,
+  public or not, with :class:`hydrolog.gui.nogat_logging.AccessLog` outside this
+  guard (Nogat DEV-12.4 to DEV-12.9).
 * **Daily totals** (DEV-15.11): :class:`DailyStats` keeps the day's distinct visitors
   as HMAC-SHA-256 of the address and the ``User-Agent`` under a 32-byte salt drawn at
   start and at 00:00 UTC, in memory only, and the day's counts; it rewrites the day's
@@ -60,7 +59,6 @@ from hydrolog._settings import (
 from hydrolog.gui._terms import Terms, TermsError, load_terms
 
 __all__ = [
-    "ACCESS_LOGGER",
     "STATS_FILE",
     "STATS_KEYS",
     "DailyStats",
@@ -73,8 +71,6 @@ __all__ = [
     "load_public",
 ]
 
-ACCESS_LOGGER: Final = "hydrolog.gui.access"
-"""The logger of the access log (one JSON line per request, no client address)."""
 STATS_FILE: Final = "stats.jsonl"
 """The file of the daily totals in ``<data_dir>/hydrolog``."""
 STATS_KEYS: Final[tuple[str, ...]] = (
@@ -87,9 +83,7 @@ STATS_KEYS: Final[tuple[str, ...]] = (
 """The totals of a day, in the order of DEV-15.11."""
 FLUSH_S: Final = 300.0
 """How often the day's line is rewritten while it changes [s] (DEV-15.11: <= 600)."""
-REQUEST_ID_HEADER: Final = "x-request-id"
 
-_ACCESS = logging.getLogger(ACCESS_LOGGER)
 _LOG = logging.getLogger(__name__)
 _CATALOG = ("/api/commands", "/api/schemas/")
 _READS = frozenset({"GET", "HEAD"})
@@ -412,7 +406,10 @@ class Upkeep:
 
 
 class PublicGuard:
-    """The request limit, the access log and the visitors of a public GUI.
+    """The request limit and the visitors of a public GUI.
+
+    The access log is not its own: :class:`hydrolog.gui.nogat_logging.AccessLog`,
+    outside it, records its answers too (Nogat DEV-12.8).
 
     Parameters
     ----------
@@ -443,45 +440,27 @@ class PublicGuard:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
-        started = time.perf_counter()
-        request_id = secrets.token_hex(8)
         method = str(scope["method"])
         route = _route(scope)
-        user_agent = Headers(scope=scope).get("user-agent", "")
-        sent = {"status": 0, "size": 0}
         stats = self.upkeep.stats
+        status = 0
 
         async def watched(message: Message) -> None:
+            nonlocal status
             if message["type"] == "http.response.start":
-                sent["status"] = int(message["status"])
-                MutableHeaders(scope=message)[REQUEST_ID_HEADER] = request_id
-            elif message["type"] == "http.response.body":
-                sent["size"] += len(message.get("body", b""))
+                status = int(message["status"])
             await send(message)
 
-        try:
-            if is_counted(method, route):
-                address = str((scope.get("client") or ("",))[0] or "")
-                wait = self.upkeep.limiter.hit(address)
-                if wait is not None:
-                    await self._refuse(scope, receive, watched, route, wait)
-                    return
-                stats.visit(address, user_agent)
-            await self.app(scope, receive, watched)
-            if sent["status"] in (200, 304) and is_page(method, route):
-                stats.count("page_views")
-        finally:
-            line = {
-                "time": datetime.now(UTC).isoformat(timespec="milliseconds"),
-                "request_id": request_id,
-                "method": method,
-                "path": _path_with_query(scope),
-                "status": sent["status"],
-                "size": sent["size"],
-                "duration_ms": round((time.perf_counter() - started) * 1000.0, 1),
-                "user_agent": user_agent,
-            }
-            _ACCESS.info("%s", json.dumps(line, ensure_ascii=False))
+        if is_counted(method, route):
+            address = str((scope.get("client") or ("",))[0] or "")
+            wait = self.upkeep.limiter.hit(address)
+            if wait is not None:
+                await self._refuse(scope, receive, send, route, wait)
+                return
+            stats.visit(address, Headers(scope=scope).get("user-agent", ""))
+        await self.app(scope, receive, watched)
+        if status in (200, 304) and is_page(method, route):
+            stats.count("page_views")
         await self.upkeep.tend()
 
     async def _refuse(
@@ -494,16 +473,6 @@ class PublicGuard:
         response.headers["retry-after"] = str(wait)
         self._secure(response.headers, scope)
         await response(scope, receive, send)
-
-
-def _path_with_query(scope: Scope) -> str:
-    """Return the path as requested, with its query (no client, no headers)."""
-    raw = scope.get("raw_path")
-    path = (
-        raw.decode("latin-1") if isinstance(raw, bytes) and raw else str(scope["path"])
-    )
-    query = scope.get("query_string", b"").decode("latin-1")
-    return f"{path}?{query}" if query else path
 
 
 def load_public(file_data: Mapping[str, Any] | None) -> Public | None:

@@ -41,6 +41,7 @@ class TestConfigShow:
             "lang",
             "log_level",
             "data_dir",
+            "state_dir",
             "request_limit",
             "request_window",
         ]
@@ -55,6 +56,12 @@ class TestConfigShow:
             "data_dir": {
                 "key": "data_dir",
                 "value": str(platformdirs.user_data_path("nogat")),
+                "source": "default",
+                "detail": None,
+            },
+            "state_dir": {
+                "key": "state_dir",
+                "value": str(platformdirs.user_state_path("nogat")),
                 "source": "default",
                 "detail": None,
             },
