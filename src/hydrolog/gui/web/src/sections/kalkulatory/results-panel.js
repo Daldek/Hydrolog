@@ -2,8 +2,9 @@
 // the parameters each took, in the panel Wyniki the methods with their range words, the
 // notices of Hydrolog, „Użyj w Hydrogramie zlewni”, the CSV and the shell loop of the six
 // calls. A calculator's command: the generic result view of the catalog (tables, tiles, the
-// chart, the call, the notices and the exports), the centre and the panel ending with the
-// providers' lines of its envelope (attribution.js, Nogat DEV-20.5), none without them.
+// chart, the call, the notices and the exports), the panel ending with the full providers'
+// lines of its envelope, on paper only (attribution.js, Nogat DEV-20.5; on screen the
+// view's strip, ui/sources.js), none without them.
 
 import { api, downloadBlob } from "../../api.js";
 import { Attribution, linesOf } from "../../attribution.js";
@@ -213,8 +214,7 @@ export function CompareResults({ run, rows, selected, onSelect, onUse, usable })
  */
 export function CommandCenter({ run, tab }) {
   if (!run) return html`<p class="empty-note">${texts.noResultCommand}</p>`;
-  const footer = html`<${Attribution} lines=${linesOf(run.envelope)} />`;
-  if (tab === "json") return html`<${ResultJson} envelope=${run.envelope} />${footer}`;
+  if (tab === "json") return html`<${ResultJson} envelope=${run.envelope} />`;
   const { analysis } = run;
   const tables = analysis.series.length + analysis.records.length + (analysis.targets ? 1 : 0);
   return html`
@@ -227,7 +227,6 @@ export function CommandCenter({ run, tab }) {
           <div class="card-head"><h3 class="card-title">${resultTexts.parameters}</h3></div>
           <${ResultSummary} analysis=${analysis} inputs=${run.envelope.inputs} showTiles=${false} />
         </div>`}
-    ${footer}
   `;
 }
 

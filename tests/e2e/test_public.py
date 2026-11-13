@@ -4,11 +4,11 @@ A server whose ``nogat.toml`` names the operator (``[nogat.operator]``) is publi
 section of the standalone shell shows the footer with the statement of DEV-15.8 and the
 link „Regulamin”, which opens the filled regulamin in a new tab (the page's session
 lives in its memory only); the app menu ends with „Regulamin”, and the guide shows the
-same footer. On a desktop the footer is one thin row under the main area, on a phone it
-sits above the bottom rail; neither covers the rest. A server that is not public has
-neither footer nor ``regulamin.html``, and Nogat's shell (``?nogat=1``) has its own
-chrome. Over the request limit a page answers 429 with ``Retry-After`` and says when to
-try again.
+same footer, its link in a new tab too. On a desktop the footer is one thin row under
+the main area, on a phone it sits above the bottom rail; neither covers the rest. A
+server that is not public has neither footer nor ``regulamin.html``, and Nogat's shell
+(``?nogat=1``) has its own chrome. Over the request limit a page answers 429 with
+``Retry-After`` and says when to try again.
 """
 
 import re
@@ -130,8 +130,9 @@ def test_the_guide_shows_the_footer_of_a_public_gui(
     expect(footer).to_contain_text(STATEMENT)
     link = footer.get_by_role("link", name="Regulamin", exact=True)
     expect(link).to_have_attribute("href", public_server.url("regulamin.html"))
-    link.click()
-    check_regulamin(page)
+    with page.context.expect_page() as opened:
+        link.click()
+    check_regulamin(opened.value)
 
 
 def test_a_gui_that_is_not_public_has_no_footer_and_no_regulamin(

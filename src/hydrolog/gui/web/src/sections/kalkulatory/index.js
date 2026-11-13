@@ -9,6 +9,7 @@
 // worked example.
 
 import { api } from "../../api.js";
+import { linesOf } from "../../attribution.js";
 import { plural } from "../../format.js";
 import { FORM_ERROR } from "../../forms/command-form.js";
 import { commandEntry, fieldModel, isActive, ONE_OF_KEY, outputDefaults, toOptions, validate, withReason } from "../../forms/model.js";
@@ -515,5 +516,5 @@ export default function Kalkulatory({ active, path = [] }) {
           />
         </div>`,
       };
-  return html`<${ViewLayout} left=${left} center=${center} right=${right} />`;
+  return html`<${ViewLayout} left=${left} center=${center} right=${right} sources=${run ? linesOf(run.envelope) : null} />`;
 }

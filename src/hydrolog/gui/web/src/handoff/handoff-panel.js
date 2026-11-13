@@ -415,7 +415,8 @@ function Mark({ tool }) {
 }
 
 /**
- * Who handed the data off and when, with the providers' lines of its data when given.
+ * Who handed the data off and when, with the providers' lines of its data when given (on
+ * paper; on screen the view's strip shows them, ui/sources.js).
  *
  * @param {{received: object, small?: boolean, lines?: {attribution: string[],
  *   terms_notice: string[]}|null}} props the record of the hand-off, and the lines shown

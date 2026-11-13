@@ -60,6 +60,8 @@ from tests.e2e.conftest import (
     open_part,
     pmaxtp_route,
     seed_hydrogram,
+    sources_listed,
+    sources_shown,
 )
 
 RUN = "/api/run/hydrograph/generate"
@@ -2006,9 +2008,14 @@ def test_pmaxtp_fetches_the_depth_of_the_point_once_and_keeps_it(tab: Tab) -> No
     expect(depth).not_to_be_editable()
     source = page.locator(f'{LEFT} [data-field="pmaxtp_depth"] .aux')
     expect(source).to_have_text("PMAXTP IMGW-PIB, metoda POT")
-    # The answer's providers' lines stand visibly under the depth, every one verbatim
-    shown = page.locator(f'{LEFT} [data-attribution="pmaxtp"] p')
-    expect(shown).to_have_text([*lines["attribution"], *lines["terms_notice"]])
+    # The answer's providers' lines go to the view's strip (PS and PP shown, every line
+    # verbatim in its dialog) and under the depth on paper only
+    assert sources_shown(page, SECTION) == lines["attribution"][:2]
+    assert sources_listed(page, SECTION) == [
+        *lines["attribution"],
+        *lines["terms_notice"],
+    ]
+    expect(page.locator(f'{LEFT} [data-attribution="pmaxtp"]')).to_be_hidden()
     # The run waits for the depth and takes it with its lines: the guide's numbers
     shows(page, "54,20", "6:40", "977 225")
     expect(kpi(page, "c")).to_have_text("0,258")

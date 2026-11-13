@@ -30,7 +30,7 @@
 // reads. The views and exports show and carry the lines of the run's envelope.
 
 import { api } from "../../api.js";
-import { NO_LINES, receivedLines, withAttribution } from "../../attribution.js";
+import { NO_LINES, linesOf, mergeLines, receivedLines, withAttribution } from "../../attribution.js";
 import { extent } from "../../charts/scale.js";
 import { useSession } from "../../controls/file-field.js";
 import { useHandoffInbox } from "../../handoff/handoff-panel.js";
@@ -498,5 +498,6 @@ export default function Statystyka() {
       />
     </div>`,
   };
-  return html`<${ViewLayout} left=${left} center=${center} right=${right} />`;
+  const sources = mergeLines(lines, run ? linesOf(run.envelope) : undefined);
+  return html`<${ViewLayout} left=${left} center=${center} right=${right} sources=${sources} />`;
 }

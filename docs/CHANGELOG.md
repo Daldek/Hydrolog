@@ -11,6 +11,12 @@ First release of the stable API (1.0.0, not yet released; `develop` carries 1.0.
 
 ### Added
 
+#### The GUI: one strip of the providers' lines per view (Nogat DEV-20.5, ECO-064, kit 0.5.1; ADR-0035)
+- Each section's view shows the providers' lines of its data once, in Nogat's `<nogat-sources>` under the centre: 12 px, the short lines only (IMGW-PIB's source and „przetworzone”, PMAXTP's two, ČHMÚ's „Źródło: ČHMÚ, CC BY 4.0”) and „Źródła i warunki”, which opens a dialog with every line, the terms notice and, on a public GUI, „Regulamin serwisu”. The part „Źródła danych” under the charts and at the end of „Wyniki”, and the lines under a PMAXTP depth and in a received hand-off's card, are no longer on screen: a view of Hydrogram zlewni with a PMAXTP depth goes from 56 lines in three blocks to 4 lines at 1440 px (54 to 6 at 390 px). They still print in full, as before; the CSV, JSON, PNG, report and hand-off are unchanged.
+- The welcome dialog lists the lines of the data the page shows (the kit's `fillSources`), and nothing on a first visit with every section empty.
+- The guide: „Źródła danych” and the step „Hietogram” describe the strip, its dialog and the welcome; the pictures `ekran.png`, `hydrogram.png` and `eksport.png` are retaken.
+- Nogat's GUI kit 0.5.1 (copied byte for byte from Nogat `9940bb8`): `nogat-sources.js` and `.css` are new, and the regulamin's links of the app menu and the sources dialog open a new tab; the footer's „Regulamin” on the guide's page opens a new tab too (DEV-15.7).
+
 #### The GUI's guide: „Analiza szeregów stacji” (Nogat steps H1 to H4; ADR-0029 to ADR-0033)
 - A new chapter 07 of `instrukcja/` (chapters 07 to 10 become 08 to 11): the input of the station analyses (Obserwator's daily export, IMGW-PIB's half-year file, Archiwista's hand-off in „Statystyka przepływów”), what each command of `stats`, `hydrometrics rating-curve` and `meteo` computes, `commands batch` left out of the GUI, the defaults (the whole record, the 30-year notice, the reference period of normals, missing days), the methods' sources by name, and a worked example: `stats regime` of the synthetic station `przyklady/stacja.csv` (the fixture `station_daily.csv`), whose numbers the browser smoke test compares with the page.
 

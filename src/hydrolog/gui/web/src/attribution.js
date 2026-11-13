@@ -6,8 +6,9 @@
 // hand-off names without them, of GET api/session (`attribution`, every provider's set).
 // A section keeps the lines of its sources and passes them as the command option
 // `attribution` of every run made from those data, so the server answers the canonical
-// lines; the views and exports then take the run's. Attribution shows them visibly
-// (never only in a tooltip) under a result, the addresses as links; csvWithLines adds the
+// lines; the views and exports then take the run's. On screen a view shows them in its one
+// strip (ui/sources.js, Nogat ECO-064); Attribution writes them in full, the addresses as
+// links, under a result for the print view; csvWithLines adds the
 // columns of DEV-20.5 to a CSV, footerLines gives the rows drawn under a PNG
 // (charts/png.js), linesFields the fields of a JSON document or hand-off.
 
@@ -291,8 +292,9 @@ function linked(line) {
 }
 
 /**
- * The providers' lines under a result: the attribution lines, then the notice of the terms
- * of use, every line visible and verbatim, the addresses as links; nothing without lines.
+ * The providers' full lines under a result, for the print view (the screen hides them and
+ * shows the view's strip): the attribution lines, then the notice of the terms of use,
+ * every line verbatim, the addresses as links; nothing without lines.
  *
  * @param {{lines: {attribution: string[], terms_notice: string[]}|null, name?: string,
  *   compact?: boolean}} props the lines, the footer's name (its `data-attribution`) and

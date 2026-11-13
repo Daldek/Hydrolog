@@ -24,7 +24,8 @@ worked example of Hydrogram zlewni, Kamiennik at Świerzawa
 with Kirpich: ``kamiennik_inputs()``), before the tab's first page runs, as a browser
 that typed them would have them; ``load_network(page)`` loads the guide's worked
 example of Sieć (``web/instrukcja/przyklady/siec.json``, eight nodes) with „Plik
-sieci…”.
+sieci…”. ``sources_shown(page, section)`` gives the lines a view's strip of the
+providers' lines shows, ``sources_listed(page, section)`` those its dialog lists.
 
 ``precip pmaxtp`` is the one command that goes to IMGW-PIB (ADR-0018): every tab
 answers the page's runs of it in this process (``pmaxtp_route()``), Obserwator reading
@@ -173,6 +174,34 @@ def open_part(page: Page, section: str, part: str) -> None:
     if card.get_attribute("open") is None:
         card.locator("summary").click()
     expect(card).to_have_attribute("open", "")
+
+
+def sources_shown(page: Page, section: str) -> list[str]:
+    """Return the lines the strip of ``section``'s view shows (Nogat's <nogat-sources>).
+
+    ``section`` is the section's selector; the strip is visible, under the centre.
+    """
+    strip = page.locator(f"{section} .view-center nogat-sources")
+    expect(strip).to_be_visible()
+    expect(strip.get_by_role("button", name="Źródła i warunki")).to_be_visible()
+    return [
+        line.strip() for line in strip.locator(".nogat-sources-line").all_inner_texts()
+    ]
+
+
+def sources_listed(page: Page, section: str) -> list[str]:
+    """Return every line the dialog of ``section``'s strip lists, then close it.
+
+    Its attribution lines, then its terms notice, as „Źródła i warunki” shows them.
+    """
+    strip = page.locator(f"{section} .view-center nogat-sources")
+    strip.get_by_role("button", name="Źródła i warunki").click()
+    dialog = strip.locator("dialog")
+    expect(dialog).to_be_visible()
+    listed = [item.strip() for item in dialog.locator("li").all_inner_texts()]
+    dialog.get_by_role("button", name="Zamknij").click()
+    expect(dialog).to_be_hidden()
+    return listed
 
 
 def type_nash(page: Page) -> None:

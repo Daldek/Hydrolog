@@ -2,12 +2,16 @@
 // „Nie pokazuj ponownie” is ticked (stored as "hydrolog-gui/welcome/1") and again from
 // „Instrukcja” in the top bar. A native <dialog> opened with showModal(): the page behind
 // it is inert, Escape or a click beside it closes it, and every way out keeps the choice of
-// the checkbox. „Otwórz instrukcję” opens the guide (instrukcja/) in a new tab. The shell
+// the checkbox. „Otwórz instrukcję” opens the guide (instrukcja/) in a new tab. Below the
+// sentences stand the providers' lines of the data the page shows (sources.js
+// WelcomeSources: the content of the strips' „Źródła i warunki”), only while it shows some,
+// so a first visit, with every section empty, sees the sentences alone. The shell
 // mounts it only standalone: inside Nogat's shell there is no top bar to reopen it.
 
 import { html, useEffect, useId, useRef, useState } from "../html.js";
 import { shell } from "../labels/shell.js";
 import { clearState, loadState, saveState } from "../persist.js";
+import { WelcomeSources } from "./sources.js";
 
 /** The stored part ("hydrolog-gui/welcome/1"): {hidden: true} once the box is ticked. */
 const PART = "welcome";
@@ -99,6 +103,7 @@ export function Welcome() {
       </div>
       <div class="modal-body">
         <div id=${`${id}-text`}>${texts.text.map((sentence) => html`<p>${sentence}</p>`)}</div>
+        <${WelcomeSources} />
         <label class="check">
           <input type="checkbox" ref=${box} checked=${hidden} onChange=${(event) => setHidden(event.currentTarget.checked)} />
           <span>${texts.hide}</span>

@@ -469,5 +469,6 @@ export default function Hydrogram({ path = [] }) {
       <//>
     </div>`,
   };
-  return html`<${ViewLayout} left=${left} center=${center} right=${right} />`;
+  const sources = mergeLines(lines, run ? linesOf(run.envelope) : undefined);
+  return html`<${ViewLayout} left=${left} center=${center} right=${right} sources=${sources} />`;
 }

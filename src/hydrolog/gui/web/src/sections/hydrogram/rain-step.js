@@ -3,7 +3,8 @@
 // 2026-11-10-network-wizard, D4): the source of the rainfall among the host's `kinds`, then
 // its fields. PMAXTP gives the point, p, the duration and the method, with the depth that
 // `precip pmaxtp` fetched shown read-only (usePmaxtp; never typed) and the providers' lines
-// of the depth under the atlas's note (attribution.js, Nogat DEV-20.2); a design hyetograph
+// of the depth under the atlas's note, on paper (attribution.js, Nogat DEV-20.2; on screen
+// the view's strip, ui/sources.js); a design hyetograph
 // its depth and duration; both the shape of the hyetograph. A series gives its depths in
 // steps of the time step. Sieć adds „Brak” (its network without a rainfall, which a network
 // of given hydrographs needs) and, for a subcatchment, „Jak w sieci” (the network's rainfall

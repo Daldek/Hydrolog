@@ -4,8 +4,9 @@
 // each row choosing its node; in the panel the outlet's numbers, the chosen node's chart
 // (its inflows and its outflow) and parameters, its hydrograph as a table, the notices,
 // the exports (with the print view) and the call, and „Przekazanie”, the hand-off
-// nogat-handoff/1 of the network (handoff/handoff-panel.js); at its end the providers'
-// lines of the run's envelope (attribution.js, Nogat DEV-20.5), none without them.
+// nogat-handoff/1 of the network (handoff/handoff-panel.js); at its end the full providers'
+// lines of the run's envelope, on paper only (attribution.js, Nogat DEV-20.5; on screen
+// the view's strip, ui/sources.js), none without them.
 
 import { api, downloadBlob } from "../../api.js";
 import { Attribution, linesOf } from "../../attribution.js";

@@ -5,6 +5,7 @@
 // („Dane zmienione: oblicz ponownie”, plan D13).
 
 import { api } from "../../api.js";
+import { linesOf } from "../../attribution.js";
 import { plural } from "../../format.js";
 import { CommandForm, FORM_ERROR } from "../../forms/command-form.js";
 import { fieldModel, isActive, outputDefaults, toOptions, validate, withReason } from "../../forms/model.js";
@@ -270,5 +271,5 @@ export default function Polecenia({ active, path = [] }) {
       <${ResultsPanel} run=${run} chartSvg=${chartSvg} />
     </div>`,
   };
-  return html`<${ViewLayout} left=${left} center=${center} right=${right} />`;
+  return html`<${ViewLayout} left=${left} center=${center} right=${right} sources=${run ? linesOf(run.envelope) : null} />`;
 }

@@ -7,8 +7,12 @@
 //                          ok | busy | stale | invalid | error.
 //   useStore("context")    the context of the breadcrumbs and the page title, e.g.
 //                          "Kamiennik — Świerzawa · p 1% · 12 h".
-// "status" and "context" belong to a section: inside a section (SectionContext) they are
-// that section's; outside, the top bar reads the active section's.
+//   useStore("sources")    the providers' lines of the data a section's view shows
+//                          ({attribution, terms_notice}; ui/sources.js), which the welcome
+//                          dialog lists (sectionValues).
+// "status", "context" and "sources" belong to a section: inside a section
+// (SectionContext) they are that section's; outside, the top bar reads the active
+// section's.
 
 import { createContext, useCallback, useContext, useEffect, useState } from "./html.js";
 
@@ -16,10 +20,10 @@ import { createContext, useCallback, useContext, useEffect, useState } from "./h
 export const SectionContext = createContext(null);
 
 /** Keys of the shared values. */
-export const STORE_KEYS = Object.freeze(["watershed", "reference", "status", "context"]);
+export const STORE_KEYS = Object.freeze(["watershed", "reference", "status", "context", "sources"]);
 
 /** Keys whose value belongs to a section. */
-const PER_SECTION = new Set(["status", "context"]);
+const PER_SECTION = new Set(["status", "context", "sources"]);
 
 const shared = new Map([
   ["watershed", null],
@@ -64,7 +68,7 @@ export function subscribe(key, listener) {
  * Read a shared value.
  *
  * @param {string} key one of STORE_KEYS
- * @param {string|null} [section] for "status" and "context": the section (default: the
+ * @param {string|null} [section] for a key of a section: the section (default: the
  *   active one)
  * @returns {any} the value, null when unset
  */
@@ -78,11 +82,23 @@ export function getStore(key, section = null) {
 }
 
 /**
+ * The values a key of a section has in every section that set one.
+ *
+ * @param {string} key one of the keys that belong to a section
+ * @returns {any[]} the values, in the order the sections set them first
+ */
+export function sectionValues(key) {
+  known(key);
+  if (!PER_SECTION.has(key)) throw new Error(`"${key}" does not belong to a section`);
+  return [...bySection.get(key).values()];
+}
+
+/**
  * Set a shared value.
  *
  * @param {string} key one of STORE_KEYS
  * @param {any} value the new value (null clears it)
- * @param {string|null} [section] for "status" and "context": the section it belongs to
+ * @param {string|null} [section] for a key of a section: the section it belongs to
  */
 export function setStore(key, value, section = null) {
   known(key);

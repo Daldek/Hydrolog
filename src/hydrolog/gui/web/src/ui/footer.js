@@ -2,9 +2,9 @@
 // is, verbatim, and the link „Regulamin” to the regulamin the server fills
 // (regulamin.html beside the page). Only a public GUI has it: the session's `terms` is null
 // on a local run, and then nothing is drawn, so the layout stays as it was (the guide's
-// pictures are taken that way). The link opens a new tab: the page's session lives in its
-// memory only, and leaving the page would end it. The guide's page draws the same footer
-// (instrukcja.js) from GET ../api/terms.
+// pictures are taken that way). The link opens a new tab, as every link to the regulamin
+// does (DEV-15.7): the page's session lives in its memory only, and leaving the page would
+// end it. The guide's page draws the same footer (instrukcja.js) from GET ../api/terms.
 
 import { useSession } from "../controls/file-field.js";
 import { html } from "../html.js";
@@ -24,16 +24,15 @@ export function termsOf(doc) {
 /**
  * The footer with the statement and „Regulamin”.
  *
- * @param {{terms: string, newTab?: boolean}} props the regulamin's address, and whether
- *   the link opens a new tab (the app's page; the guide holds no session)
+ * @param {{terms: string}} props the regulamin's address
  * @returns {object} the <footer>
  */
-export function TermsFooter({ terms, newTab = true }) {
+export function TermsFooter({ terms }) {
   return html`
     <footer class="app-footer" aria-label=${shell.footer.label}>
       <p>
         <span>${shell.footer.statement}</span>${" "}
-        <a href=${terms} target=${newTab ? "_blank" : undefined} rel=${newTab ? "noopener" : undefined}>${shell.footer.terms}</a>
+        <a href=${terms} target="_blank" rel="noopener">${shell.footer.terms}</a>
       </p>
     </footer>
   `;
