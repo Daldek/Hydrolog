@@ -1052,6 +1052,54 @@ def test_result_view_of_real_runs(page: Any) -> None:
     assert got["thresholds"] == ["Poziom progowy", "Próg niżówkowy"]
 
 
+def test_result_view_draws_months_and_years_as_the_x_axis(page: Any) -> None:
+    got = js(
+        page,
+        """const days = Array.from({length: 730},
+          (_, i) => new Date(Date.UTC(2018, 10, 1 + i)).toISOString().slice(0, 10));
+        const flows = days.map((day) => 1 + Number(day.slice(5, 7)));
+        const regime = await run('stats regime', {values: flows, dates: days});
+        const a = rv.analyzeResult(regime.body);
+        const [group] = a.series;
+        const spec = rv.seriesChartSpec(group);
+        const code = a.objects.find((o) => o.key === 'regime_type').rows[0];
+        const years = rv.analyzeResult({command: 'stats low-flow', result: {
+          hydrological_years: [2019, 2020, 2021], annual_minima: [1.5, 1.2, 1.8],
+          incomplete_years: [2018, 2022, 2023]}});
+        return {
+          x: [group.x.name, group.x.kind, group.x.values],
+          ys: group.ys.map((y) => [y.key, y.unit]),
+          ticks: spec.x.labels.map((tick) => [tick.value, tick.label]),
+          first: spec.series[0].data[0],
+          readout: spec.readout.x(4),
+          tiles: rv.headline(a, regime.body.inputs,
+            ['regime_type.code', 'spring_share', 'annual_mean'])
+            .map((t) => [t.path, t.label, t.unit]),
+          code: [code.key, code.label],
+          years: years.series.map((g) => [g.x.name, g.ys.map((y) => y.key)]),
+        };""",
+    )
+    november_first = [11, 12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    # The months are the x axis, in the order of the hydrological year, never a series
+    assert got["x"] == ["months", "months", november_first]
+    assert got["ys"] == [["monthly_mean", "m³/s"], ["parde", None]]
+    names = ["sty", "lut", "mar", "kwi", "maj", "cze"]
+    names += ["lip", "sie", "wrz", "paź", "lis", "gru"]
+    assert got["ticks"] == [
+        [step, names[month - 1]] for step, month in enumerate(november_first, 1)
+    ]
+    assert got["first"][0] == 1
+    assert got["readout"] == "luty"
+    assert got["tiles"] == [
+        ["regime_type.code", "Typ reżimu (kod)", None],
+        ["spring_share", "Udział marca i kwietnia", None],
+        ["annual_mean", "Średni przepływ", "m³/s"],
+    ]
+    assert got["code"] == ["code", "Typ reżimu (kod)"]
+    # The years of annual values are their x axis; a list of other years is not drawn
+    assert got["years"] == [["hydrological_years", ["annual_minima"]]]
+
+
 # --- Sieć's canvas: editor/geometry.js, editor/edits.js -----------------------
 
 

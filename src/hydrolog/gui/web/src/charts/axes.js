@@ -143,6 +143,12 @@ function xAxis(axisSpec, values, range, small) {
         : logDomain(values);
     return { ...domain, scale: logScale([domain.min, domain.max], range) };
   }
+  if (options.labels) {
+    const min = options.min ?? options.labels[0].value;
+    const max = options.max ?? options.labels[options.labels.length - 1].value;
+    const ticks = options.labels.filter((tick) => tick.value >= min && tick.value <= max);
+    return { min, max, ticks, scale: linearScale([min, max], range) };
+  }
   const domain = niceDomain(values, {
     count: options.ticks ?? (small ? 6 : 10),
     zero: options.zero ?? false,

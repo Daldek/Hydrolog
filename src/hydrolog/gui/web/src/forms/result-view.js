@@ -9,9 +9,9 @@ import { html, useMemo } from "../html.js";
 import { common, t } from "../labels/common.js";
 import { exportLabels } from "../labels/exports.js";
 import { describeNotice, notices as noticeTexts } from "../labels/notices.js";
-import { commandOptions, resultFields, options as optionLabels } from "../labels/options.js";
+import { commandOptions, commandResultFields, resultFields, options as optionLabels } from "../labels/options.js";
 import { results as texts } from "../labels/results.js";
-import { NO_UNIT, unitOfName } from "../labels/units.js";
+import { NO_UNIT, fieldUnit } from "../labels/units.js";
 import { richText } from "../controls/field.js";
 import { FileList } from "../ui/export-panel.js";
 import { DataTable } from "../ui/table.js";
@@ -22,15 +22,18 @@ export const JSON_FOLD = 8;
 /**
  * The label of a result field: the GUI's Polish name, else none. A field named as an
  * option of the command that gave the result takes the command's own label of that
- * option first (`stats threshold-events`: `threshold` „Poziom progowy”).
+ * option first (`stats threshold-events`: `threshold` „Poziom progowy”), then the
+ * command's own label of a result field (`stats regime`: `code`), then the shared ones.
  *
  * @param {string} key the field's name
  * @param {string|null} [command] the command of the result, e.g. "stats threshold-events"
  * @returns {string|null} the label
  */
 export function fieldLabel(key, command = null) {
-  const own = command && Object.hasOwn(commandOptions, command) ? commandOptions[command] : null;
-  if (own && Object.hasOwn(own, key)) return own[key];
+  for (const labels of [commandOptions, commandResultFields]) {
+    const own = command && Object.hasOwn(labels, command) ? labels[command] : null;
+    if (own && Object.hasOwn(own, key)) return own[key];
+  }
   if (Object.hasOwn(resultFields, key)) return resultFields[key];
   if (Object.hasOwn(optionLabels, key)) return optionLabels[key];
   return null;
@@ -47,15 +50,85 @@ function isTimeKey(key) {
 }
 
 /**
+ * Top-level arrays that are the x axis of the arrays of their length, never a series
+ * of their own: calendar months, exceedance percentages, durations, thresholds,
+ * percentiles, the scales of SPI and the years of annual values.
+ */
+const AXES = [
+  "months",
+  "exceedance_percents",
+  "curve_exceedance_percents",
+  "durations_days",
+  "thresholds_mm",
+  "percentiles",
+  "scales_months",
+  "hydrological_years",
+  "years",
+];
+
+/**
+ * Whether an array lists years ("incomplete_years"): never a series, an axis only as
+ * one of AXES.
+ *
+ * @param {string} name the field's name
+ * @returns {boolean} true for a list of years
+ */
+function isYearList(name) {
+  return /(^|_)years$/.test(name);
+}
+
+/** Calendar months in the order of a hydrological year (November to October). */
+const HYDROLOGICAL_MONTHS = [11, 12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+/**
+ * Arrays without an axis of their own whose items are months, with the months' order:
+ * the mean monthly volumes (November first) and the monthly normals of SPI (January
+ * first).
+ */
+const MONTH_SERIES = {
+  monthly_mean_volume_m3: HYDROLOGICAL_MONTHS,
+  months_normal_mm: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+};
+
+/** Arrays without an axis of their own whose items are the days of a hydrological year. */
+const DAY_SERIES = ["cumulative_volume_m3", "mean_cumulative_volume_m3", "series_baseflow"];
+
+/**
+ * The x axis of a group of arrays of one length: a time, an array of AXES, else the
+ * months or days its arrays are known to run over (an axis of no field of the result,
+ * `implied`), else none.
+ *
+ * @param {object[]} group the arrays, each `{key, name, values}`
+ * @param {object[]} ys the arrays drawn against it
+ * @returns {object|null} the axis, `kind` "months" for calendar months
+ */
+function groupAxis(group, ys) {
+  const time = group.find((array) => isTimeKey(array.name));
+  if (time) return time;
+  const listed = AXES.map((name) => group.find((array) => array.key === name)).find(Boolean);
+  if (listed) return listed.name === "months" ? { ...listed, kind: "months" } : listed;
+  if (!ys.length) return null;
+  const months = ys.map((array) => MONTH_SERIES[array.name]);
+  if (months[0] && months.every((order) => order === months[0]) && months[0].length === ys[0].values.length) {
+    return { key: "month", name: "month", values: months[0], kind: "months", implied: true, label: texts.month };
+  }
+  if (ys.every((array) => DAY_SERIES.includes(array.name))) {
+    return { key: "day", name: "day", values: ys[0].values.map((_, index) => index + 1), implied: true, label: texts.day };
+  }
+  return null;
+}
+
+/**
  * A field of a result as a row.
  *
  * @param {string} key the field's name
  * @param {unknown} value its value
  * @param {string|null} command the command of the result
+ * @param {string|null} parameter the result's parameter ("Q", "H", "T")
  * @returns {{key: string, label: string|null, value: unknown, unit: string|null}} the row
  */
-function row(key, value, command) {
-  return { key, label: fieldLabel(key, command), value, unit: typeof value === "number" ? unitOfName(key) : null };
+function row(key, value, command, parameter) {
+  return { key, label: fieldLabel(key, command), value, unit: typeof value === "number" ? fieldUnit(key, command, parameter) : null };
 }
 
 /**
@@ -77,8 +150,9 @@ function isScalar(value) {
  * @returns {{schema: string|null, status: string|null, notices: object[], scalars: object[],
  *   objects: object[], series: object[], records: object[], files: object[],
  *   targets: object[]|null}} its parts: top-level scalars, nested objects of scalars, groups
- *   of numeric arrays of one length (each with its time axis when it has one), arrays of
- *   records, written files and the targets of a plan
+ *   of numeric arrays of one length (each with its x axis when it has one: a time, months,
+ *   days or another array of the result, see groupAxis; lists of years are neither),
+ *   arrays of records, written files and the targets of a plan
  */
 export function analyzeResult(envelope) {
   const empty = {
@@ -95,6 +169,7 @@ export function analyzeResult(envelope) {
   const result = envelope && envelope.result;
   if (!result || typeof result !== "object" || Array.isArray(result)) return empty;
   const command = envelope.command || null;
+  const parameter = typeof result.parameter === "string" ? result.parameter : null;
   const found = { ...empty, schema: result.schema || null };
   if (Array.isArray(result.targets)) found.targets = result.targets;
   if (Array.isArray(result.files)) found.files = result.files;
@@ -109,7 +184,7 @@ export function analyzeResult(envelope) {
   for (const [key, value] of Object.entries(result)) {
     if (key === "schema" || key === "files" || key === "targets" || value === null) continue;
     if (isScalar(value)) {
-      found.scalars.push(row(key, value, command));
+      found.scalars.push(row(key, value, command, parameter));
     } else if (collect(key, value, null)) {
       // a numeric array, grouped below
     } else if (Array.isArray(value) && value.length && value.every((item) => item && typeof item === "object" && !Array.isArray(item))) {
@@ -123,7 +198,7 @@ export function analyzeResult(envelope) {
     } else if (value && typeof value === "object" && !Array.isArray(value)) {
       const rows = [];
       for (const [name, item] of Object.entries(value)) {
-        if (isScalar(item)) rows.push(row(name, item, command));
+        if (isScalar(item)) rows.push(row(name, item, command, parameter));
         else collect(name, item, key);
       }
       if (rows.length) found.objects.push({ key, label: fieldLabel(key, command), rows });
@@ -135,13 +210,15 @@ export function analyzeResult(envelope) {
     byLength.get(array.values.length).push(array);
   }
   for (const [length, group] of byLength) {
-    const axis = group.find((array) => isTimeKey(array.name)) || null;
-    const ys = group.filter((array) => array !== axis);
+    const data = group.filter((array) => !isYearList(array.name) && !isTimeKey(array.name) && !AXES.includes(array.key));
+    const axis = groupAxis(group, data);
+    const ys = data.filter((array) => array !== axis);
     if (!ys.length) continue;
+    const unit = (array) => fieldUnit(array.name, command, parameter);
     found.series.push({
       length,
-      x: axis ? { ...axis, label: fieldLabel(axis.name, command), unit: unitOfName(axis.name) } : null,
-      ys: ys.map((array) => ({ ...array, label: fieldLabel(array.name, command), unit: unitOfName(array.name) })),
+      x: axis ? { label: fieldLabel(axis.name, command), unit: axis.implied ? null : unit(axis), ...axis } : null,
+      ys: ys.map((array) => ({ ...array, label: fieldLabel(array.name, command), unit: unit(array) })),
     });
   }
   return found;
@@ -149,8 +226,8 @@ export function analyzeResult(envelope) {
 
 /**
  * The scalars shown as tiles: the fields named by `keys` ("lag_time_min",
- * "parameters.n"), else the first four numbers that are not echoes of the inputs, those of
- * the result itself before those of its nested objects.
+ * "parameters.n"; a short text too, "mean_date"), else the first four numbers that are
+ * not echoes of the inputs, those of the result itself before those of its nested objects.
  *
  * @param {object} analysis the result of analyzeResult
  * @param {object} [inputs] the envelope's inputs
@@ -158,16 +235,13 @@ export function analyzeResult(envelope) {
  * @returns {object[]} the rows of the tiles
  */
 export function headline(analysis, inputs = {}, keys = null) {
-  const isNumber = (item) => typeof item.value === "number";
-  const top = analysis.scalars.filter(isNumber).map((item) => ({ ...item, path: item.key }));
-  const nested = analysis.objects.flatMap((object) =>
-    object.rows.filter(isNumber).map((item) => ({ ...item, path: `${object.key}.${item.key}` })),
-  );
+  const top = analysis.scalars.map((item) => ({ ...item, path: item.key }));
+  const nested = analysis.objects.flatMap((object) => object.rows.map((item) => ({ ...item, path: `${object.key}.${item.key}` })));
   if (keys && keys.length) {
-    const all = [...top, ...nested];
+    const all = [...top, ...nested].filter((item) => typeof item.value === "number" || typeof item.value === "string");
     return keys.map((key) => all.find((item) => item.path === key)).filter(Boolean);
   }
-  const fresh = (item) => !(Object.hasOwn(inputs || {}, item.key) && inputs[item.key] === item.value);
+  const fresh = (item) => typeof item.value === "number" && !(Object.hasOwn(inputs || {}, item.key) && inputs[item.key] === item.value);
   return [...top.filter(fresh), ...nested.filter(fresh)].slice(0, 4);
 }
 
@@ -244,31 +318,44 @@ export function resultCsv(analysis) {
 
 /**
  * A group of series as a Chart spec (charts/chart.js): lines against the time axis (in
- * hours) or the step.
+ * hours), the months (one step each, named, in the group's order: November first in a
+ * hydrological year), another axis of the group or the step.
  *
  * @param {object} group a group of analyzeResult's `series`
  * @param {{size?: string}} [how] the chart's size ("wide", the default, or "small")
  * @returns {object} the spec
  */
 export function seriesChartSpec(group, how = {}) {
-  const xs = group.x ? group.x.values : Array.from({ length: group.length }, (_, index) => index + 1);
+  const months = group.x && group.x.kind === "months" ? group.x.values : null;
+  const steps = Array.from({ length: group.length }, (_, index) => index + 1);
+  const xs = group.x && !months ? group.x.values : steps;
   const name = (array) => array.label || array.name;
   const time = Boolean(group.x) && group.x.unit === "min";
   const unit = group.ys[0].unit ? ` [${group.ys[0].unit}]` : "";
+  let x = {
+    label: time ? texts.timeAxis : group.x ? `${name(group.x)}${group.x.unit ? ` [${group.x.unit}]` : ""}` : texts.index,
+    scale: time ? "time" : "linear",
+  };
+  if (months) {
+    x = {
+      label: texts.month,
+      scale: "linear",
+      min: 0.5,
+      max: group.length + 0.5,
+      labels: months.map((month, index) => ({ value: index + 1, label: texts.months[month - 1] })),
+    };
+  }
   return {
-    x: {
-      label: time ? texts.timeAxis : group.x ? `${name(group.x)}${group.x.unit ? ` [${group.x.unit}]` : ""}` : texts.index,
-      scale: time ? "time" : "linear",
-    },
+    x,
     y: { label: group.ys.length === 1 ? `${name(group.ys[0])}${unit}` : unit.trim() },
     series: group.ys.slice(0, 6).map((array) => ({
       id: array.key,
       kind: "line",
-      data: xs.map((x, index) => [x, array.values[index]]),
+      data: xs.map((at, index) => [at, array.values[index]]),
       label: name(array),
     })),
     legend: group.ys.length > 1,
-    readout: true,
+    readout: months ? { x: (at) => texts.monthNames[months[Math.round(at) - 1] - 1] } : true,
     size: how.size || "wide",
     title: group.ys.map(name).join(", "),
   };
@@ -324,6 +411,22 @@ function rowName(item) {
 }
 
 /**
+ * The name of a tile: the symbol the result gives its field (`labels` of
+ * `stats characteristic`: "SWQ"), its short name, its label or its name.
+ *
+ * @param {object} item the row of the tile
+ * @param {object} analysis the result of analyzeResult
+ * @returns {string} the name
+ */
+function tileName(item, analysis) {
+  const symbols = analysis.objects.find((object) => object.key === "labels");
+  const symbol = item.path === item.key && symbols ? symbols.rows.find((row) => row.key === item.key) : null;
+  if (symbol && typeof symbol.value === "string") return symbol.value;
+  if (Object.hasOwn(texts.tiles, item.key)) return texts.tiles[item.key];
+  return item.label || item.key;
+}
+
+/**
  * The tiles and the table of a result's scalars.
  *
  * @param {{analysis: object, inputs?: object, keys?: string[], showTiles?: boolean}} props
@@ -335,13 +438,15 @@ export function ResultSummary({ analysis, inputs, keys, showTiles = true }) {
   const tiles = showTiles ? headline(analysis, inputs, keys) : [];
   const tables = [{ key: null, label: null, rows: analysis.scalars }, ...analysis.objects];
   if (!tiles.length && !analysis.scalars.length && !analysis.objects.length) return null;
+  const codeName = (item) => (Object.hasOwn(texts.codes, item.path) ? texts.codes[item.path][item.value] || null : null);
   return html`
     ${tiles.length
       ? html`<div class="summary">
           ${tiles.map(
             (item, index) => html`<div class=${`kpi${index === tiles.length - 1 ? " hi" : ""}`} data-key=${item.path}>
-              <div class="k" title=${item.label ? `${item.label} (${item.path})` : item.path}>${Object.hasOwn(texts.tiles, item.key) ? texts.tiles[item.key] : item.label || item.key}</div>
-              <div class="v">${auto(item.value)}${item.unit ? html` <span class="u">${item.unit}</span>` : null}</div>
+              <div class="k" title=${item.label ? `${item.label} (${item.path})` : item.path}>${tileName(item, analysis)}</div>
+              <div class="v">${typeof item.value === "number" ? auto(item.value) : item.value}${item.unit ? html` <span class="u">${item.unit}</span>` : null}</div>
+              ${codeName(item) ? html`<div class="sub">${codeName(item)}</div>` : null}
             </div>`,
           )}
         </div>`
@@ -381,7 +486,7 @@ export function ResultSeries({ group, chart = true, table = true, svgRef, size =
   const name = (array) => array.label || array.name;
   const title = group.ys.map(name).join(", ");
   const sub = t(texts.seriesSub, {
-    names: [group.x, ...group.ys].filter(Boolean).map((array) => array.name).join(", "),
+    names: [group.x && !group.x.implied ? group.x : null, ...group.ys].filter(Boolean).map((array) => array.name).join(", "),
     rows: plural(group.length, texts.rowForms),
   });
   if (bare) {
@@ -393,12 +498,15 @@ export function ResultSeries({ group, chart = true, table = true, svgRef, size =
     `;
   }
   const xs = group.x ? group.x.values : Array.from({ length: group.length }, (_, index) => index + 1);
+  const months = group.x && group.x.kind === "months";
+  let xLabel = texts.index;
+  if (group.x) xLabel = group.x.implied ? group.x.label : html`<code>${group.x.name}</code>`;
   const columns = [
     {
       key: "x",
-      label: group.x ? html`<code>${group.x.name}</code>` : texts.index,
+      label: xLabel,
       unit: group.x ? group.x.unit : null,
-      format: (value) => num(value, group.x ? columnDecimals(group.x.values) : 0),
+      format: months ? (value) => texts.monthNames[value - 1] : (value) => num(value, group.x ? columnDecimals(group.x.values) : 0),
     },
   ];
   if (group.x && group.x.unit === "min") {

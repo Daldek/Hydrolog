@@ -7,9 +7,11 @@
  * ```
  *
  * The spec:
- * - `x`: `{label, scale: "linear" | "log" | "time" | "gumbel", min, max, domain, digits, short}`;
+ * - `x`: `{label, scale: "linear" | "log" | "time" | "gumbel", min, max, domain, digits, short, labels}`;
  *   `time` takes minutes and labels hours; `gumbel` takes the exceedance probability [%]
- *   (`domain: [99, 0.1]` fixes its ends) and labels p and T = 100 / p.
+ *   (`domain: [99, 0.1]` fixes its ends) and labels p and T = 100 / p; `labels`
+ *   (`[{value, label}]`, linear only) are the ticks, named (the months of a year), and
+ *   span the axis from the first to the last unless `min` or `max` fixes an end.
  * - `y`: `{label, unit, scale: "linear" | "log" | "band", min, max, zero, pad, ticks, digits}`;
  *   `band` draws one horizontal bar per point (`{x: value, y: name, sub, cls, text}`).
  * - `y2`: the same as `y` for a panel above the main one, sharing the x axis, whose bars
