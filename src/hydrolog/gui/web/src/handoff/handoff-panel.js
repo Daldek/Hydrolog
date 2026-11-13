@@ -186,6 +186,8 @@ export async function openHandoff(text, { into = null } = {}) {
       }
     }
     deliver("statystyka", { source: inputs.source, values, received: { ...receivedOf(doc), ...linesFields(lines) } });
+    // A station's series opened is one of the anonymous daily totals (DEV-15.11).
+    api.count("station");
     const count = doc.payload.values.filter((value) => typeof value === "number").length;
     toast(t(texts.load.openedStatystyka, { subject: doc.subject, producer, values: plural(count, texts.valueForms) }));
   } else {
@@ -541,7 +543,10 @@ function ExportHandoff({ make, section, disabled }) {
   };
   const save = () => {
     const doc = made();
-    if (doc) toast(texts.export.saved(downloadHandoff(doc)));
+    if (!doc) return;
+    toast(texts.export.saved(downloadHandoff(doc)));
+    // The kit saves the file itself, so the download is counted here (DEV-15.11).
+    api.count("download");
   };
   const copy = async () => {
     const doc = made();

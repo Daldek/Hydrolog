@@ -121,17 +121,33 @@ def test_vendored_libraries_match_their_manifest() -> None:
 
 
 def test_the_page_loads_nothing_remote() -> None:
-    # nogat.json records where the copies came from; the page never reads it.
+    # nogat.json records where the copies came from; the page never reads it. The
+    # regulamin's template (nogat-terms.html) links the providers' sites and UODO for a
+    # reader to follow; what it loads, its two stylesheets, is local (below).
     found = [
         f"{path.relative_to(WEB)}: {match.group(0)}"
         for path in own_files(".html", ".css", ".js", ".json", ".svg")
-        if path.name != "nogat.json"
+        if path.name not in ("nogat.json", "nogat-terms.html")
         for match in REMOTE.finditer(
             NAMESPACE.sub("", path.read_text(encoding="utf-8"))
         )
     ]
 
     assert found == []
+
+
+def test_the_regulamin_loads_only_its_local_stylesheets() -> None:
+    """The template of the regulamin (DEV-15.7) has no script and loads only the two
+    stylesheets its fields name, ``tokens.css`` and the kit's ``nogat-terms.css``."""
+    page = (WEB / "nogat" / "nogat-terms.html").read_text(encoding="utf-8")
+
+    assert "<script" not in page
+    assert "<style" not in page
+    assert not re.search(r"\sstyle\s*=", page)
+    assert re.findall(r"<(?:link|img|iframe|object|embed)\b[^>]*>", page) == [
+        '<link rel="stylesheet" href="{{tokens_href}}">',
+        '<link rel="stylesheet" href="{{kit_href}}nogat-terms.css">',
+    ]
 
 
 @pytest.mark.parametrize("name", PAGES)

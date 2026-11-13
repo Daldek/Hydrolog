@@ -1,5 +1,5 @@
 {
-  "description": "Copies of Nogat's visual identity (DEV-15.3, DEV-15.6; plan 2026-11-02-hydrolog-gui D10). Each file is byte-identical to the listed source at the commit except where 'modified' says otherwise; change Nogat, then copy again. Nogat's GUI kit (design/kit/: nogat-app-menu.js, nogat-app-menu.css, nogat-handoff.js) is copied beside them with its own manifest, nogat-kit.json, which holds the SHA-256 of each of its files (ADR-0027).",
+  "description": "Copies of Nogat's visual identity (DEV-15.3, DEV-15.6; plan 2026-11-02-hydrolog-gui D10). Each file is byte-identical to the listed source at the commit except where 'modified' says otherwise; change Nogat, then copy again. Nogat's GUI kit (design/kit/: nogat-app-menu.js, nogat-app-menu.css, nogat-handoff.js, and the regulamin's template nogat-terms.md, nogat-terms.html, nogat-terms.css) is copied beside them with its own manifest, nogat-kit.json, which holds its version and the SHA-256 of each of its files (ADR-0027, ADR-0034).",
   "source": "https://github.com/Daldek/Nogat",
   "commit": "7786271caba188a4b3bf8a1af7bb5dc944f3b50b",
   "files": {

@@ -32,6 +32,7 @@ from hydrolog.catalog import run_command
 from hydrolog.routing import structure_schematic
 from hydrolog.testing import example_network_document
 from tests.e2e.conftest import Tab, input_text, load_network
+from tests.e2e.test_session import session_text
 from tests.e2e.test_siec import (
     BADGE,
     NODE,
@@ -857,9 +858,7 @@ def test_a_rename_updates_from_and_keeps_the_inflows_column(tab: Tab) -> None:
     expect(page.locator('[data-tile="peak"] .v')).to_have_text(
         f"{polish(expected['OUT']['peak_m3s'], 1)} m³/s"
     )
-    sent = json.loads(
-        page.request.get(tab.base + "api/files/in/network_flood.json").text()
-    )
+    sent = json.loads(session_text(page, "in/network_flood.json"))
     nodes = {node["id"]: node for node in sent["nodes"]}
     assert nodes["Gorna"]["value_column"] == "A"
     assert nodes["R1"]["from"] == ["Gorna"]

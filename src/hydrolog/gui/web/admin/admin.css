@@ -60,9 +60,6 @@ html.admin-page .topbar { position: sticky; top: 0; height: var(--header-height)
   border-radius: var(--radius-sm); background: var(--surface-2);
   font-size: var(--text-xs); white-space: pre-wrap; word-break: break-word;
 }
-.report-events { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
-.report-events td { padding: var(--space-1) var(--space-2); border-bottom: 1px solid var(--line); vertical-align: top; }
-.report-events td:first-child, .report-events td:nth-child(2) { white-space: nowrap; color: var(--text-2); }
 
 @media (max-width: 860px) {
   .admin { padding: var(--space-3); }
@@ -70,5 +67,4 @@ html.admin-page .topbar { position: sticky; top: 0; height: var(--header-height)
   .reports-card { padding: var(--space-3); }
   .report-head { flex-wrap: wrap; }
   .report-toggle { flex-basis: 100%; }
-  .report-events td:first-child, .report-events td:nth-child(2) { white-space: normal; }
 }

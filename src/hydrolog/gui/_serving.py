@@ -1,8 +1,17 @@
-"""uvicorn for :func:`hydrolog.gui.server.serve` (imported with the ``gui`` extra)."""
+"""uvicorn for :func:`hydrolog.gui.server.serve` (imported with the ``gui`` extra).
+
+uvicorn writes no access log of its own (it names the client); a public GUI writes
+its own, without the client's address, as JSON lines on standard error (Nogat
+DEV-15.10), which the service manager keeps (journald: 14 days, ``docs/USAGE.md``).
+Behind a proxy uvicorn takes the client's address from ``X-Forwarded-For`` only when
+the connection comes from ``FORWARDED_ALLOW_IPS`` (``127.0.0.1`` by default: a proxy
+on the same machine, such as ``cloudflared``).
+"""
 
 from __future__ import annotations
 
 import contextlib
+import logging
 import signal
 import socket
 import sys
@@ -59,6 +68,30 @@ class _Server(uvicorn.Server):
             ).start()
 
 
+@contextlib.contextmanager
+def _access_log(app: Starlette) -> Iterator[None]:
+    """Send the access log of a public GUI to standard error while it serves."""
+    gui = getattr(app.state, "gui", None)
+    if getattr(gui, "public", None) is None:
+        yield
+        return
+    from hydrolog.gui._public import ACCESS_LOGGER
+
+    logger = logging.getLogger(ACCESS_LOGGER)
+    handler = logging.StreamHandler(sys.stderr)
+    handler.setFormatter(logging.Formatter("%(message)s"))
+    previous = (logger.level, logger.propagate)
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+    logger.propagate = False
+    try:
+        yield
+    finally:
+        logger.removeHandler(handler)
+        logger.setLevel(previous[0])
+        logger.propagate = previous[1]
+
+
 def run(
     app: Starlette, listener: socket.socket, *, url: str, open_browser: bool
 ) -> None:
@@ -67,7 +100,9 @@ def run(
         app,
         log_config=None,
         access_log=False,
+        proxy_headers=True,
         lifespan="on",
         timeout_graceful_shutdown=_GRACE_S,
     )
-    _Server(config, url=url, open_browser=open_browser).run(sockets=[listener])
+    with _access_log(app):
+        _Server(config, url=url, open_browser=open_browser).run(sockets=[listener])

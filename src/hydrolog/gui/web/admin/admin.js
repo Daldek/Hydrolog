@@ -132,15 +132,12 @@ function refusalText(error) {
  * A moment of a report in the browser's time zone, "3.11.2026, 10:15".
  *
  * @param {string} iso ISO 8601
- * @param {boolean} [timeOnly] only the time, "10:15:30"
  * @returns {string} the text
  */
-function when(iso, timeOnly = false) {
+function when(iso) {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return String(iso ?? "");
-  return timeOnly
-    ? date.toLocaleTimeString("pl-PL")
-    : date.toLocaleString("pl-PL", { dateStyle: "short", timeStyle: "short" });
+  return date.toLocaleString("pl-PL", { dateStyle: "short", timeStyle: "short" });
 }
 
 /**
@@ -202,43 +199,28 @@ function Auth({ refusal, onKey }) {
 }
 
 /**
- * The details of a report: the message, the contact, the page, the browser, the
- * workspace and the environment of the diagnostics, and their events.
+ * The details of a report: the message and the context the page added to it (Nogat
+ * DEV-15.12): the view, the station, the app version and the view's parameters as JSON.
  *
  * @param {{item: object}} props the report
  * @returns {object} the details
  */
 function Details({ item }) {
-  const diagnostics = item.diagnostics && typeof item.diagnostics === "object" ? item.diagnostics : null;
-  const events = diagnostics && Array.isArray(diagnostics.events) ? diagnostics.events : [];
+  const context = item.context && typeof item.context === "object" ? item.context : null;
+  const meta = (label, value) =>
+    value === null || value === undefined || value === "" ? null : html`<p class="report-meta">${t(label, { value: String(value) })}</p>`;
   return html`
     <div class="report-details">
       <p class="report-message">${item.message}</p>
-      ${item.contact ? html`<p class="report-meta">${t(texts.contact, { value: item.contact })}</p>` : null}
-      ${item.page_url ? html`<p class="report-meta">${t(texts.url, { value: item.page_url })}</p>` : null}
-      ${item.user_agent ? html`<p class="report-meta">${t(texts.browser, { value: item.user_agent })}</p>` : null}
-      ${diagnostics && diagnostics.workspace
-        ? html`<h2>${texts.workspace}</h2><pre class="report-data">${JSON.stringify(diagnostics.workspace, null, 2)}</pre>`
-        : null}
-      ${diagnostics && diagnostics.env
-        ? html`<h2>${texts.environment}</h2><pre class="report-data">${JSON.stringify(diagnostics.env, null, 2)}</pre>`
-        : null}
-      <h2>${texts.events}</h2>
-      ${events.length
-        ? html`<table class="report-events">
-            <tbody>
-              ${events.map(
-                (event, index) => html`
-                  <tr key=${index}>
-                    <td class="num">${when(event && event.t, true)}</td>
-                    <td>${String((event && event.type) ?? "")}</td>
-                    <td><pre class="report-data">${JSON.stringify((event && event.data) ?? {})}</pre></td>
-                  </tr>
-                `,
-              )}
-            </tbody>
-          </table>`
-        : html`<p class="muted small">${texts.noEvents}</p>`}
+      ${context
+        ? html`
+            ${meta(texts.view, context.view)}
+            ${meta(texts.station, context.station)}
+            ${meta(texts.version, context.app_version)}
+            <h2>${texts.parameters}</h2>
+            <pre class="report-data">${JSON.stringify(context.parameters ?? {}, null, 2)}</pre>
+          `
+        : html`<p class="muted small">${texts.noContext}</p>`}
     </div>
   `;
 }

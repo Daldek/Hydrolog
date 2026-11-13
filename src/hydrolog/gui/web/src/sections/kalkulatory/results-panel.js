@@ -5,7 +5,7 @@
 // chart, the call, the notices and the exports), the centre and the panel ending with the
 // providers' lines of its envelope (attribution.js, Nogat DEV-20.5), none without them.
 
-import { api } from "../../api.js";
+import { api, downloadBlob } from "../../api.js";
 import { Attribution, linesOf } from "../../attribution.js";
 import { Chart } from "../../charts/chart.js";
 import { richText } from "../../controls/field.js";
@@ -24,7 +24,7 @@ import { describeError } from "../../labels/errors.js";
 import { exportLabels } from "../../labels/exports.js";
 import { kalkulatory as texts } from "../../labels/kalkulatory.js";
 import { results as resultTexts } from "../../labels/results.js";
-import { CommandLine, copyText, downloadBlob, ExportButtons, FileList, LINE_DELAY_MS } from "../../ui/export-panel.js";
+import { CommandLine, copyText, ExportButtons, FileList, LINE_DELAY_MS } from "../../ui/export-panel.js";
 import { InfoButton } from "../../ui/info-button.js";
 import { DataTable } from "../../ui/table.js";
 import { toast } from "../../ui/toast.js";

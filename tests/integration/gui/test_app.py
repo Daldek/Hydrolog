@@ -8,6 +8,7 @@ a prefix of a host. The runs use the real worker and catalog.
 import asyncio
 import hashlib
 import json
+import re
 import threading
 import time
 from concurrent.futures import Future
@@ -38,6 +39,9 @@ FIXTURES = Path(__file__).resolve().parents[2] / "fixtures"
 FLOOD = (FIXTURES / "flood_inflow.csv").read_bytes()
 KIRPICH = {"length_km": 8.2, "slope_m_per_m": 0.023}
 MIB = 2**20
+SESSION_HEADER = "X-Hydrolog-Session"
+SESSION_ID = re.compile(r"[A-Za-z0-9_-]{43}")
+"""An id of 256 random bits (``secrets.token_urlsafe(32)``)."""
 CSP = (
     "default-src 'self'; script-src 'self'; style-src 'self'; "
     "img-src 'self' data: blob:; connect-src 'self'; font-src 'self'; "
@@ -87,29 +91,33 @@ def run(client, command, options, query=""):
     return client.post(f"/api/run/{command.replace(' ', '/')}{query}", json=options)
 
 
-def session_cookie(response):
-    cookies = response.headers.get_list("set-cookie")
-    assert len(cookies) == 1, cookies
-    return cookies[0]
+def session_id(response):
+    """Return the id of the session a response started (its ``X-Hydrolog-Session``)."""
+    started = response.headers.get(SESSION_HEADER)
+    assert started is not None, response.headers
+    assert SESSION_ID.fullmatch(started), started
+    return started
 
 
 # --- the session ----------------------------------------------------------------------
 
 
-def test_a_first_request_starts_a_session_with_its_cookie(client):
+def test_a_first_request_starts_a_session_and_names_it_in_the_header(client):
+    """No cookie (ADR-0034): the id comes in ``X-Hydrolog-Session`` and in ``id``."""
     response = client.get("/api/session")
 
     assert response.status_code == 200
     assert response.json() == {
         "schema": "hydrolog-gui-session/1",
         "version": hydrolog.__version__,
+        "id": session_id(response),
         "limits": {
             "file_bytes": 20 * MIB,
             "session_bytes": 100 * MIB,
             "session_files": 200,
             "request_bytes": 5 * MIB,
             "sessions": 64,
-            "idle_s": 43200.0,
+            "idle_s": 3600.0,
             "name_pattern": "^[A-Za-z0-9][A-Za-z0-9._ -]{0,127}$",
             "run_timeout_s": 30.0,
         },
@@ -117,23 +125,19 @@ def test_a_first_request_starts_a_session_with_its_cookie(client):
         "files": [],
         "gui": None,
         "attribution": provider_lines(),
+        "terms": None,
+        "operator_email": None,
     }
-    cookie = session_cookie(response)
-    name, _, attributes = cookie.partition(";")
-    assert name.startswith("hydrolog_gui=")
-    assert {part.strip().lower() for part in attributes.split(";")} == {
-        "httponly",
-        "path=/",
-        "samesite=strict",
-    }
+    assert "set-cookie" not in response.headers
 
 
-def test_the_cookie_keeps_the_session_and_its_files(client):
-    upload(client, "flood.csv", FLOOD)
+def test_the_header_keeps_the_session_and_its_files(client):
+    started = session_id(upload(client, "flood.csv", FLOOD))
 
     response = client.get("/api/session")
 
-    assert "set-cookie" not in response.headers
+    assert SESSION_HEADER not in response.headers  # no new session
+    assert response.json()["id"] == started
     assert response.json()["files"] == [
         {
             "path": "in/flood.csv",
@@ -142,6 +146,36 @@ def test_the_cookie_keeps_the_session_and_its_files(client):
         }
     ]
     assert response.json()["used_bytes"] == len(FLOOD)
+
+
+def test_no_response_sets_a_cookie(client):
+    """The page, a session, a file, a run, a download and the end of the session."""
+    responses = [
+        client.get("/"),
+        client.get("/src/main.js"),
+        client.get("/api/session"),
+        upload(client, "x.csv", b"x"),
+        run(client, "tc kirpich", KIRPICH),
+        client.get("/api/files/in/x.csv"),
+        client.get("/api/files/in/missing.csv"),
+        client.get("/api/terms"),
+        client.delete("/api/session"),
+    ]
+
+    assert [r.status_code for r in responses] == [
+        200,
+        200,
+        200,
+        201,
+        200,
+        200,
+        404,
+        200,
+        204,
+    ]
+    for response in responses:
+        assert "set-cookie" not in response.headers, response.url
+    assert not client.cookies
 
 
 def test_the_session_gives_the_gui_addresses_of_nogat_toml(
@@ -165,14 +199,65 @@ def test_the_session_gives_the_gui_addresses_of_nogat_toml(
     assert client.get("/api/session").json()["gui"] is None
 
 
-def test_an_unknown_cookie_gets_a_new_session(client):
-    response = client.get(
-        "/api/session", headers={"cookie": "hydrolog_gui=" + "A" * 43}
-    )
+@pytest.mark.parametrize(
+    "value", ["A" * 43, "A" * 42, "A" * 44, "../" + "A" * 40, "A" * 42 + "!", " "]
+)
+def test_an_unknown_or_malformed_session_gets_a_new_one(client, value):
+    response = client.get("/api/session", headers={SESSION_HEADER: value})
 
-    cookie = session_cookie(response)
-    assert cookie.startswith("hydrolog_gui=")
-    assert not cookie.startswith("hydrolog_gui=" + "A" * 43)
+    started = session_id(response)
+    assert started != value
+    assert response.json()["id"] == started
+
+
+def test_files_without_the_session_header_are_not_found(client, app):
+    upload(client, "x.csv", b"x")
+    bare = TestClient(app)
+
+    error(bare.get("/api/files/in/x.csv"), 404, "not_found", "no_file")
+    error(bare.delete("/api/files/in/x.csv"), 404, "not_found", "no_file")
+    assert client.get("/api/files/in/x.csv").content == b"x"
+
+
+def test_a_session_files_are_not_readable_with_another_sessions_id(app, page_client):
+    owner, other = page_client(app), page_client(app)
+    upload(owner, "x.csv", b"owner")
+    upload(other, "y.csv", b"other")
+
+    error(other.get("/api/files/in/x.csv"), 404, "not_found", "no_file")
+    error(other.delete("/api/files/in/x.csv"), 404, "not_found", "no_file")
+    assert owner.get("/api/files/in/x.csv").content == b"owner"
+    assert [f["path"] for f in other.get("/api/session").json()["files"]] == [
+        "in/y.csv"
+    ]
+
+
+def test_ending_a_session_deletes_its_files(client, app):
+    """``DELETE api/session``, which the page sends when it is closed or reloaded."""
+    started = session_id(upload(client, "x.csv", b"x"))
+    directory = app.state.gui.sessions.get(started).directory
+
+    ended = client.delete("/api/session")
+
+    assert ended.status_code == 204
+    assert ended.content == b""
+    assert not directory.exists()
+    error(client.get("/api/files/in/x.csv"), 404, "not_found", "no_file")
+    again = client.get("/api/session")
+    assert session_id(again) != started
+    assert again.json()["files"] == []
+
+
+def test_ending_no_session_or_a_busy_one_deletes_nothing(client, app):
+    """No session is still ``204``; a session with a run going on is kept."""
+    assert TestClient(app).delete("/api/session").status_code == 204
+    started = session_id(upload(client, "x.csv", b"x"))
+    session = app.state.gui.sessions.get(started)
+
+    with session.use():
+        assert client.delete("/api/session").status_code == 204
+
+    assert client.get("/api/files/in/x.csv").content == b"x"
 
 
 # --- the catalog ----------------------------------------------------------------------
@@ -482,7 +567,7 @@ def test_a_session_holds_at_most_200_files(client):
 
 def test_a_full_session_takes_no_upload_and_no_writing_run(client, app):
     upload(client, "flood.csv", FLOOD)
-    session = app.state.gui.sessions.get(client.cookies.get("hydrolog_gui"))
+    session = app.state.gui.sessions.get(client.headers[SESSION_HEADER])
     with (session.directory / "in" / "big.bin").open("wb") as stream:
         stream.truncate(100 * MIB - len(FLOOD))  # sparse: the session is full
 
@@ -501,14 +586,14 @@ def test_a_full_session_takes_no_upload_and_no_writing_run(client, app):
     assert upload(client, "x.csv", b"1").status_code == 201
 
 
-def test_a_65th_session_replaces_the_least_recently_used_idle_one(app):
-    first = TestClient(app)
-    upload(first, "x.csv", b"x")
+def test_a_65th_session_replaces_the_least_recently_used_idle_one(app, page_client):
+    first = page_client(app)
+    replaced = session_id(upload(first, "x.csv", b"x"))
     for _ in range(64):
         TestClient(app).get("/api/session")
 
     error(first.get("/api/files/in/x.csv"), 404, "not_found")
-    assert "hydrolog_gui=" in session_cookie(first.get("/api/session"))
+    assert session_id(first.get("/api/session")) != replaced
 
 
 # --- headers and cross-site requests --------------------------------------------------
@@ -596,11 +681,11 @@ def test_reads_from_other_sites_are_answered(client):
 
 def test_a_newer_run_of_a_channel_replaces_the_queued_older_one(slow_app):
     app = slow_app(workers=1)
-    cookie = TestClient(app).get("/api/session").cookies["hydrolog_gui"]
+    shared = session_id(TestClient(app).get("/api/session"))
     answers = {}
 
     def post(key, length_km, channel):
-        client = TestClient(app, cookies={"hydrolog_gui": cookie})
+        client = TestClient(app, headers={SESSION_HEADER: shared})
         started = time.monotonic()
         options = {"length_km": length_km, "slope_m_per_m": 0.02}
         answers[key] = (run(client, "tc kirpich", options, f"?channel={channel}"),)
@@ -684,7 +769,9 @@ def test_the_cli_line_shows_files_by_their_names(client):
 # --- the app in a host, its lifespan --------------------------------------------------
 
 
-def test_a_host_serves_the_page_and_the_api_under_its_prefix(web, tmp_path):
+def test_a_host_serves_the_page_and_the_api_under_its_prefix(
+    web, tmp_path, page_client
+):
     gui = create_app(work_root=tmp_path / "work", workers=1)
     host = Starlette(
         routes=[
@@ -692,13 +779,14 @@ def test_a_host_serves_the_page_and_the_api_under_its_prefix(web, tmp_path):
             Mount("/m/hydrolog", app=gui),
         ]
     )
-    client = TestClient(host)
+    client = page_client(host)
     try:
         page = client.get("/m/hydrolog/")
         script = client.get("/m/hydrolog/src/main.js")
         session = client.get("/m/hydrolog/api/session")
         uploaded = client.put("/m/hydrolog/api/files/in/flood.csv", content=FLOOD)
         downloaded = client.get("/m/hydrolog/api/files/in/flood.csv")
+        listed = client.get("/m/hydrolog/api/session")
         computed = client.post("/m/hydrolog/api/run/tc/kirpich", json=KIRPICH)
         missing = client.get("/m/hydrolog/api/nope")
         own = client.get("/")
@@ -708,9 +796,13 @@ def test_a_host_serves_the_page_and_the_api_under_its_prefix(web, tmp_path):
     assert page.text == (web / "index.html").read_text(encoding="utf-8")
     assert page.headers["content-security-policy"] == CSP
     assert script.status_code == 200
-    assert "path=/m/hydrolog/" in session_cookie(session).lower()
+    started = session_id(session)
+    assert session.json()["id"] == started
+    assert SESSION_HEADER not in uploaded.headers  # the header kept the session
     assert uploaded.status_code == 201
     assert downloaded.content == FLOOD
+    assert listed.json()["id"] == started
+    assert [f["path"] for f in listed.json()["files"]] == ["in/flood.csv"]
     assert ok(computed)["status"] == "ok"
     error(missing, 404, "not_found")
     assert missing.headers["cache-control"] == "no-store"

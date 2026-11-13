@@ -37,6 +37,13 @@ class TestConfigShow:
         import platformdirs
 
         result = _show()
+        assert [item["key"] for item in result["settings"]] == [
+            "lang",
+            "log_level",
+            "data_dir",
+            "request_limit",
+            "request_window",
+        ]
         assert _settings(result) == {
             "lang": {"key": "lang", "value": "pl", "source": "default", "detail": None},
             "log_level": {
@@ -51,10 +58,44 @@ class TestConfigShow:
                 "source": "default",
                 "detail": None,
             },
+            "request_limit": {
+                "key": "request_limit",
+                "value": "300",
+                "source": "default",
+                "detail": None,
+            },
+            "request_window": {
+                "key": "request_window",
+                "value": "60",
+                "source": "default",
+                "detail": None,
+            },
         }
         assert result["config_file"] == {
             "path": str(tmp_path / "absent.toml"),
             "exists": False,
+        }
+
+    def test_the_request_limit_is_reported_with_its_source(self, tmp_path, monkeypatch):
+        path = tmp_path / "nogat.toml"
+        path.write_text(
+            "[nogat]\nrequest_limit = 0\n[hydrolog]\nrequest_limit = 120\n",
+            encoding="utf-8",
+        )
+        monkeypatch.setenv("NOGAT_CONFIG", str(path))
+        monkeypatch.setenv("NOGAT_REQUEST_WINDOW", "30")
+        settings = _settings(_show())
+        assert settings["request_limit"] == {
+            "key": "request_limit",
+            "value": "120",
+            "source": "file",
+            "detail": "[hydrolog] request_limit",
+        }
+        assert settings["request_window"] == {
+            "key": "request_window",
+            "value": "30",
+            "source": "environment",
+            "detail": "NOGAT_REQUEST_WINDOW",
         }
 
     def test_hydrolog_has_no_store(self):

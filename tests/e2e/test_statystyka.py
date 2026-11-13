@@ -33,8 +33,9 @@ the three tests, split by their positions; a file with a step after 2010 fails t
 with the split and Pettitt's change point in years and the notice in Polish. A
 station's series handed off by Archiwista (``hydrolog-series/1``, ADR-0020) opens here
 with „Wczytaj z Archiwisty”: annual maxima as the pasted values without the missing
-years, daily values as a file of the session with its columns; annual minima are
-refused.
+years, daily values as a file of the session with its columns (read with the session's
+header, also under the host's prefix) and one ``POST api/stats/station``; annual minima
+are refused.
 """
 
 import json
@@ -527,6 +528,11 @@ def test_no_period_is_highlighted_until_one_is_chosen(tab: Tab) -> None:
     expect(chips.filter(has_text=re.compile(r"^100$"))).to_have_attribute(
         "aria-pressed", "true"
     )
+    # The reload began a new session without the file: it is uploaded again
+    upload(page, MAXIMA)
+    expect(
+        page.locator(f'{SECTION} .handoff[data-file="in/maksima_roczne.csv"]')
+    ).to_contain_text("26 wierszy")
 
     # „brak” again turns it all off
     highlight(page, "brak")
@@ -979,8 +985,9 @@ def test_annual_maxima_from_archiwista_run_as_values_without_the_missing_years(
     expect(page.locator(f"{SECTION} [data-handoff-source]")).to_have_count(0)
 
 
+@pytest.mark.parametrize("prefixed", [False, True], ids=["root", "prefixed"])
 def test_a_daily_series_from_archiwista_becomes_a_session_file_with_its_columns(
-    tab: Tab, tmp_path: Path
+    new_tab: Callable[..., Tab], tmp_path: Path, prefixed: bool
 ) -> None:
     lines = (FIXTURES / "daily_flows_3y.csv").read_text("utf-8").splitlines()[1:]
     days = [line.split(",") for line in lines]
@@ -993,10 +1000,19 @@ def test_a_daily_series_from_archiwista_becomes_a_session_file_with_its_columns(
         "dates": [day for day, _ in days],
         "values": [float(value) for _, value in days],
     }
-    page = visit(tab)
+    page = visit(new_tab(prefixed=prefixed))
+    counted: list[Request] = []
+    page.on(
+        "request",
+        lambda request: (
+            counted.append(request) if "/api/stats/" in request.url else None
+        ),
+    )
 
-    open_handoff(page, handoff(payload, "Raba — Q dobowe"), tmp_path)
+    with page.expect_response(lambda answer: "/api/stats/station" in answer.url):
+        open_handoff(page, handoff(payload, "Raba — Q dobowe"), tmp_path)
 
+    # The columns are read from the session file (fetched with the session's header)
     expect(page.locator(f"{SECTION} #st-input_file")).to_have_value(
         re.compile(r"^in/Raba.*Q dobowe\.csv$")
     )
@@ -1005,6 +1021,10 @@ def test_a_daily_series_from_archiwista_becomes_a_session_file_with_its_columns(
     response = compute(page)
     assert sent(response)["date_column"] == "date"
     assert response.json()["result"]["hydrological_years"] == [2022, 2023, 2024]
+    # The station's series opened is counted once, the session file is no download
+    assert [(request.method, request.url.split("/api/")[1]) for request in counted] == [
+        ("POST", "stats/station")
+    ]
 
 
 def test_annual_minima_and_a_short_series_are_refused_with_the_reason(

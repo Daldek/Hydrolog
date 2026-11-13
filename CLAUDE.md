@@ -60,12 +60,16 @@ the numbers of the shipped examples (`data-example`, compared with the computed 
 `tests/e2e/test_smoke.py`) and shows pictures of the page (`instrukcja/img/`: 1440 x 900 in the
 light theme, a 390 px phone in the dark one, PNG of 256 colours); a change of an example, a
 result, a label or the layout of the page updates them.
-„Zgłoś uwagę” (the top bar) stores reports in SQLite `<data_dir>/hydrolog/feedback.sqlite3`
-(`data_dir`: `HYDROLOG_DATA_DIR`, `NOGAT_DATA_DIR`, `nogat.toml`, else the user data directory);
-the admin page `admin/` reads them only with `HYDROLOG_ADMIN_API_KEY` or
-`HYDROLOG_ADMIN_API_KEY_FILE` set (no key: 401). Read and back up the file with `sqlite3 FILE
-"SELECT ..."` and `sqlite3 FILE ".backup COPY"`; tests give `create_app(data_dir=tmp)`, never
-the developer's data directory.
+„Zgłoś uwagę” (the top bar) stores reports, a text and the page's context, never a contact,
+in SQLite `<data_dir>/hydrolog/feedback.sqlite3` (version 2; `data_dir`: `HYDROLOG_DATA_DIR`,
+`NOGAT_DATA_DIR`, `nogat.toml`, else the user data directory); the admin page `admin/` reads
+them only with `HYDROLOG_ADMIN_API_KEY` or `HYDROLOG_ADMIN_API_KEY_FILE` set (no key: 401).
+Read and back up the file with `sqlite3 FILE "SELECT ..."` and `sqlite3 FILE ".backup COPY"`;
+tests give `create_app(data_dir=tmp, config={...})`, never the developer's data directory or
+`nogat.toml`. With `[nogat.operator]` the GUI is public (ADR-0034, `gui/_public.py`,
+`gui/_terms.py`): the regulamin at `regulamin.html`, a request limit, an access log without
+IP addresses, `stats.jsonl`; the e2e fixtures `public_server` and `limited_server` serve one.
+The page has no cookie: its session is the header `X-Hydrolog-Session`, kept in its memory.
 A change that touches docs ships with its CHANGELOG entry (DOC-7.2).
 
 ## Code map

@@ -599,7 +599,8 @@ const tables = new Map();
 
 /**
  * The columns of a session file, read in the browser from its bytes (fetched once per
- * content): the header and, for the table of annual maxima, the cells.
+ * content, with the session's header): the header and, for the table of annual maxima, the
+ * cells.
  *
  * @param {string|null} path "in/<name>", null for none
  * @param {string|null} sha256 the file's digest in the session (null when it is not there)
@@ -619,11 +620,8 @@ export function useFileTable(path, sha256) {
     }
     let alive = true;
     setFound({ state: "loading" });
-    fetch(api.fileUrl(path), { credentials: "same-origin", cache: "no-store" })
-      .then((response) => {
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return response.text();
-      })
+    api
+      .fileText(path)
       .then((text) => {
         const table = readColumns(text);
         tables.set(key, table);

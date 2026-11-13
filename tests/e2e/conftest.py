@@ -2,14 +2,21 @@
 
 ``gui_server`` serves the GUI (the package's ``web/`` and its API, two workers) on a
 free port of 127.0.0.1, at ``/`` and, as a host mounts it, under ``/m/hydrolog/``; the
-reports of „Zgłoś uwagę” go to a data directory of its own (``Served.data_dir``).
-``new_tab(width=1440, height=900, theme="light", prefixed=False, welcome=False)`` opens
-a page in a fresh Chromium context (cookies of its own: a new session; Polish locale,
-Warsaw time, ``prefers-color-scheme`` of ``theme`` with the stored theme left on Auto)
-that records console errors, page errors and CSP violations
-(``securitypolicyviolation``): any of them fails the test when the tab closes. The
-welcome dialog of a visit covers the page, so a tab starts as a visitor who ticked „Nie
-pokazuj ponownie” unless ``welcome=True``. ``tab`` is ``new_tab()``.
+reports of „Zgłoś uwagę” go to a data directory of its own (``Served.data_dir``). It is
+a local run: no ``[nogat.operator]``, so no regulamin and no request limit.
+``public_server`` is a public GUI (``OPERATOR`` in its own ``nogat.toml``: the
+regulamin, the footer, the operator's address in „Zgłoś uwagę”, the daily totals in
+``<data_dir>/hydrolog/stats.jsonl``) with a limit no test reaches; ``limited_server``,
+one per test, is public with 3 counted requests in 60 s.
+``new_tab(width=1440, height=900, theme="light", prefixed=False, welcome=False,
+server="default")`` opens a page of ``gui_server`` (``server="public"``:
+``public_server``, ``"limited"``: ``limited_server``) in a fresh Chromium context (a
+new session: the page keeps it in its memory; Polish locale, Warsaw time,
+``prefers-color-scheme`` of ``theme`` with the stored theme left on Auto) that records
+console errors, page errors and CSP violations (``securitypolicyviolation``): any of
+them fails the test when the tab closes. The welcome dialog of a visit covers the page,
+so a tab starts as a visitor who ticked „Nie pokazuj ponownie” unless ``welcome=True``.
+``tab`` is ``new_tab()``.
 
 Every section starts empty. ``seed_hydrogram(tab)`` stores the inputs of the guide's
 worked example of Hydrogram zlewni, Kamiennik at Świerzawa
@@ -33,7 +40,9 @@ Chromium is installed once: ``uv run --no-sync playwright install chromium``.
 """
 
 import contextlib
+import datetime
 import json
+import os
 import socket
 import threading
 import time
@@ -320,17 +329,70 @@ def seed_hydrogram(tab: Tab, inputs: dict[str, Any] | None = None) -> None:
     )
 
 
-@pytest.fixture(scope="package")
-def gui_server(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Served]:
-    """Serve the GUI on a free port at ``/`` and under ``/m/hydrolog/``."""
+OPERATOR: dict[str, Any] = {
+    "name": "Jan Testowy",
+    "email": "kontakt@example.org",
+    "terms_effective": datetime.date(2026, 11, 20),
+    "processor": "Cloudflare, Inc.",
+    "processor_transfer": (
+        "Dane mogą być przekazywane do USA na podstawie decyzji Komisji Europejskiej "
+        "w sprawie EU-U.S. Data Privacy Framework."
+    ),
+    "processor_cookie": "",
+    "mail_provider": "iCloud Mail (Apple)",
+    "mail_transfer": "Mogą być przetwarzane poza Europejskim Obszarem Gospodarczym.",
+}
+"""``[nogat.operator]`` of the public test servers (Nogat DEV-18.1)."""
+
+
+def public_config(base: str, **hydrolog: Any) -> dict[str, Any]:
+    """Return the ``nogat.toml`` of a public server at ``base``: the operator, the
+    GUIs Hydrolog and Hydrograf (so the app menu is drawn) and ``[hydrolog]``."""
+    return {
+        "nogat": {
+            "gui": {"hydrolog": base, "hydrograf": "https://hydrograf.example/"},
+            "operator": dict(OPERATOR),
+        },
+        "hydrolog": hydrolog,
+    }
+
+
+@contextlib.contextmanager
+def serving(
+    tmp_path_factory: pytest.TempPathFactory,
+    *,
+    public: dict[str, Any] | None = None,
+    workers: int = 2,
+) -> Iterator[Served]:
+    """Serve a GUI on a free port at ``/`` and under ``/m/hydrolog/`` until the block
+    ends; ``public`` makes it public with those ``[hydrolog]`` settings."""
     import uvicorn
     from starlette.applications import Starlette
     from starlette.routing import Mount
 
     from hydrolog.gui import create_app
 
+    listener = socket.socket()
+    listener.bind(("127.0.0.1", 0))
+    port = listener.getsockname()[1]
+    base = f"http://127.0.0.1:{port}/"
     data_dir = tmp_path_factory.mktemp("gui-data")
-    gui = create_app(work_root=tmp_path_factory.mktemp("gui-work"), data_dir=data_dir)
+    # Built before any test's own isolation (tests/conftest.py): the app reads no
+    # setting of the developer's machine. A local server reads [nogat] gui at every
+    # request, from the NOGAT_CONFIG a test sets; a public one has its own nogat.toml.
+    settings = {
+        name: value
+        for name, value in os.environ.items()
+        if not name.startswith(("HYDROLOG_", "NOGAT_"))
+    }
+    settings["NOGAT_CONFIG"] = str(data_dir / "absent.toml")
+    with mock.patch.dict(os.environ, settings, clear=True):
+        gui = create_app(
+            work_root=tmp_path_factory.mktemp("gui-work"),
+            data_dir=data_dir,
+            workers=workers,
+            config=None if public is None else public_config(base, **public),
+        )
 
     @contextlib.asynccontextmanager
     async def lifespan(app: Starlette) -> AsyncIterator[None]:
@@ -340,9 +402,6 @@ def gui_server(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Served]:
     host = Starlette(
         routes=[Mount(PREFIX, app=gui), Mount("/", app=gui)], lifespan=lifespan
     )
-    listener = socket.socket()
-    listener.bind(("127.0.0.1", 0))
-    port = listener.getsockname()[1]
     config = uvicorn.Config(host, log_config=None, access_log=False, lifespan="on")
     server = uvicorn.Server(config)
     thread = threading.Thread(
@@ -354,10 +413,41 @@ def gui_server(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Served]:
         assert thread.is_alive(), "the GUI server did not start"
         assert time.monotonic() < deadline, "the GUI server did not start in time"
         time.sleep(0.05)
-    yield Served(f"http://127.0.0.1:{port}/", data_dir)
-    server.should_exit = True
-    thread.join(timeout=START_TIMEOUT_S)
-    listener.close()
+    try:
+        yield Served(base, data_dir)
+    finally:
+        server.should_exit = True
+        thread.join(timeout=START_TIMEOUT_S)
+        listener.close()
+
+
+@pytest.fixture(scope="package")
+def gui_server(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Served]:
+    """Serve the GUI on a free port at ``/`` and under ``/m/hydrolog/``: a local run,
+    without ``[nogat.operator]`` (no regulamin, no limit)."""
+    with serving(tmp_path_factory) as served:
+        yield served
+
+
+@pytest.fixture(scope="package")
+def public_server(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Served]:
+    """Serve a public GUI (``[nogat.operator]`` set: its regulamin, the footer, the
+    operator's address in „Zgłoś uwagę”) with a limit no test reaches."""
+    with serving(
+        tmp_path_factory, public={"request_limit": 100_000, "request_window": 60}
+    ) as served:
+        yield served
+
+
+@pytest.fixture
+def limited_server(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Served]:
+    """Serve a public GUI of its own whose limit is 3 counted requests in 60 s."""
+    with serving(
+        tmp_path_factory,
+        public={"request_limit": 3, "request_window": 60},
+        workers=1,
+    ) as served:
+        yield served
 
 
 @pytest.fixture(scope="package")
@@ -384,10 +474,19 @@ def chromium(playwright: Playwright) -> Iterator[Browser]:
 
 
 @pytest.fixture
-def new_tab(chromium: Browser, gui_server: Served) -> Iterator[Callable[..., Tab]]:
+def new_tab(
+    chromium: Browser, request: pytest.FixtureRequest
+) -> Iterator[Callable[..., Tab]]:
     """Yield ``new_tab(width=1440, height=900, theme="light", prefixed=False,
-    welcome=False)``."""
+    welcome=False, server="default")``; ``server`` is ``"default"`` (``gui_server``,
+    a local run), ``"public"`` (``public_server``) or ``"limited"``
+    (``limited_server``)."""
     opened: list[tuple[BrowserContext, Tab]] = []
+    servers = {
+        "default": "gui_server",
+        "public": "public_server",
+        "limited": "limited_server",
+    }
 
     def open_tab(
         *,
@@ -396,14 +495,16 @@ def new_tab(chromium: Browser, gui_server: Served) -> Iterator[Callable[..., Tab
         theme: str = "light",
         prefixed: bool = False,
         welcome: bool = False,
+        server: str = "default",
     ) -> Tab:
+        served: Served = request.getfixturevalue(servers[server])
         context = chromium.new_context(
             viewport={"width": width, "height": height},
             locale="pl-PL",
             timezone_id="Europe/Warsaw",
             color_scheme="dark" if theme == "dark" else "light",
         )
-        base = gui_server.prefixed if prefixed else gui_server.base
+        base = served.prefixed if prefixed else served.base
         tab = Tab(context.new_page(), base)
         tab.watch()
         context.route(PMAXTP_RUN, pmaxtp_route())

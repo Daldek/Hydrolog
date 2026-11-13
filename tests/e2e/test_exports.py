@@ -65,6 +65,7 @@ from tests.e2e.conftest import (
     seed_hydrogram,
 )
 from tests.e2e.conftest import KAMIENNIK as EXAMPLE
+from tests.e2e.test_session import session_text
 from tests.e2e.test_siec import (
     NODE,
     SIDEWAYS,
@@ -941,9 +942,10 @@ def test_the_markdown_report_downloads_from_report_generate(tab: Tab) -> None:
     assert report.startswith("# Raport Hydrologiczny: Kamiennik — Świerzawa\n")
     assert f"Hydrolog v{hydrolog.__version__}" in report
     assert "57.88" in report
-    expect(page.locator(f"{HG} .view-panel.right .file-list a")).to_have_attribute(
-        "download", "Kamiennik _ Swierzawa.md"
-    )
+    # The report stays listed: fetched again with the session's header, the same file
+    listed = page.locator(f"{HG} .view-panel.right .file-list button")
+    expect(listed).to_have_attribute("data-file", "out/Kamiennik _ Swierzawa.md")
+    assert download(page, listed) == (name, data)
 
 
 def test_the_print_view_is_linked_and_fits_a4(new_tab: Any) -> None:
@@ -1950,7 +1952,7 @@ def test_a_lowland_reach_without_a_grid_computes_as_a_reservoir_and_says_so(
     # The library routes the network the page sent: R2, whose diffusion length is long
     # against the 5 min step, is one linear reservoir of L / c
     name = (run.value.post_data_json or {})["network_file"]
-    sent = json.loads(page.request.get(tab.base + f"api/files/{name}").text())
+    sent = json.loads(session_text(page, name))
     (tmp_path / "siec.json").write_text(json.dumps(sent), encoding="utf-8")
     envelope = run_command(
         "route network", {"network_file": str(tmp_path / "siec.json")}

@@ -2,11 +2,11 @@
 // as `time_min,discharge_m3s` (what every `route` command reads) and every node's as
 // columns of one table (an `inflows_file` of another network), the network's document
 // and the envelope of the last run as JSON, the schematic as drawn as PNG; Hydrolog's
-// own schematic, the SVG `route network` wrote with `schematic`; and the print view. The
+// own schematic, the SVG `route network` wrote with `schematic` (a session file, fetched
+// with the session's header, api.downloadFile); and the print view. The
 // CSVs carry the run's providers' lines in their two trailing columns, the document and
 // the PNG the network's (Nogat DEV-20.5).
 
-import { api } from "../../api.js";
 import { csvWithLines, footerLines, linesFields, linesOf } from "../../attribution.js";
 import { t } from "../../labels/common.js";
 import { exportLabels } from "../../labels/exports.js";
@@ -65,8 +65,8 @@ export function networkCsv(result) {
  *   chosen node, the drawn schematic and the providers' lines of the network (siecLines)
  * @returns {Array<{id: string, format: string, label: string, title: string,
  *   disabled?: string, text?: () => string, type?: string, name?: string,
- *   svg?: () => SVGSVGElement|null, footer?: string[], href?: string, print?: boolean}>} the
- *   exports
+ *   svg?: () => SVGSVGElement|null, footer?: string[], file?: string, print?: boolean}>}
+ *   the exports (`file`: a session file, "out/<name>")
  */
 export function exportItems({ state, document, valid, run, selected, schematicSvg, lines = null }) {
   const stem = fileStem(state);
@@ -132,7 +132,7 @@ export function exportItems({ state, document, valid, run, selected, schematicSv
       label: texts.exports.svg,
       title: texts.exports.svgTitle,
       disabled: svgFile ? null : noRun,
-      href: svgFile ? api.fileUrl(svgFile.path) : null,
+      file: svgFile ? svgFile.path : null,
       name: `${stem}.svg`,
     },
     {

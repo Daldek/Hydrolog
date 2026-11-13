@@ -1,9 +1,11 @@
 """Tests for the shared settings (DEV-18.1): precedence, lenient values, the file,
-``data_dir`` (DEV-18.2), the credential of the GUI's admin page (DEV-18.4) and the
-GUI addresses of the app menu (DEV-15.4)."""
+``data_dir`` (DEV-18.2), the credential of the GUI's admin page (DEV-18.4), the
+GUI addresses of the app menu (DEV-15.4), the request limit of a public GUI
+(DEV-15.9) and its operator (DEV-15.7)."""
 
 from __future__ import annotations
 
+from datetime import date
 from pathlib import Path
 
 import platformdirs
@@ -17,6 +19,7 @@ from hydrolog._settings import (
     credentials,
     gui_addresses,
     load_file,
+    operator_table,
     resolve_setting,
 )
 
@@ -32,8 +35,15 @@ class TestPrecedence:
 
     FILE = {"hydrolog": {"lang": "en"}, "nogat": {"lang": "pl"}}
 
-    def test_the_defaults_are_polish_warning_and_the_user_data_directory(self):
-        assert DEFAULTS == {"lang": "pl", "log_level": "warning"}
+    def test_the_defaults_are_polish_warning_the_user_data_directory_and_300_in_60(
+        self,
+    ):
+        assert DEFAULTS == {
+            "lang": "pl",
+            "log_level": "warning",
+            "request_limit": "300",
+            "request_window": "60",
+        }
         expected = {**DEFAULTS, "data_dir": str(platformdirs.user_data_path("nogat"))}
         for key in KEYS:
             setting = resolve_setting(key, environ={}, file_data={})
@@ -337,3 +347,134 @@ class TestGuiAddresses:
     )
     def test_no_table_in_nogat_is_no_menu(self, data):
         assert gui_addresses({}, file_data=data) is None
+
+
+class TestRequestLimit:
+    """``request_limit`` (1 to 1 000 000) and ``request_window`` (1 to 86 400 s):
+    whole numbers, a TOML integer or digits; anything else is ignored (DEV-15.9)."""
+
+    @pytest.mark.parametrize(
+        ("key", "environ", "detail"),
+        [
+            (
+                "request_limit",
+                {"HYDROLOG_REQUEST_LIMIT": "500"},
+                "HYDROLOG_REQUEST_LIMIT",
+            ),
+            ("request_limit", {"NOGAT_REQUEST_LIMIT": "500"}, "NOGAT_REQUEST_LIMIT"),
+            (
+                "request_window",
+                {"HYDROLOG_REQUEST_WINDOW": "500", "NOGAT_REQUEST_WINDOW": "9"},
+                "HYDROLOG_REQUEST_WINDOW",
+            ),
+            (
+                "request_window",
+                {"NOGAT_REQUEST_WINDOW": " 500 "},
+                "NOGAT_REQUEST_WINDOW",
+            ),
+        ],
+    )
+    def test_the_variables_give_it(self, key, environ, detail):
+        setting = resolve_setting(
+            key, environ=environ, file_data={"hydrolog": {key: 7}}
+        )
+        assert (setting.value, setting.source, setting.detail) == (
+            "500",
+            "environment",
+            detail,
+        )
+
+    @pytest.mark.parametrize("key", ["request_limit", "request_window"])
+    def test_the_tool_section_wins_over_the_shared_one(self, key):
+        data = {"hydrolog": {key: 120}, "nogat": {key: 30}}
+        setting = resolve_setting(key, environ={}, file_data=data)
+        assert (setting.value, setting.detail) == ("120", f"[hydrolog] {key}")
+
+    @pytest.mark.parametrize(
+        ("raw", "expected"),
+        [(120, "120"), ("120", "120"), (" 120 ", "120"), ("0120", "120"), (1, "1")],
+    )
+    def test_an_integer_or_digits_are_a_count(self, raw, expected):
+        setting = resolve_setting(
+            "request_limit", environ={}, file_data={"nogat": {"request_limit": raw}}
+        )
+        assert (setting.value, setting.source) == (expected, "file")
+
+    @pytest.mark.parametrize(
+        ("key", "largest"),
+        [("request_limit", 1_000_000), ("request_window", 86_400)],
+    )
+    def test_each_has_a_largest_value(self, key, largest):
+        def value(raw):
+            return resolve_setting(
+                key, environ={}, file_data={"nogat": {key: raw}}
+            ).value
+
+        assert value(largest) == str(largest)
+        assert value(largest + 1) == DEFAULTS[key]
+        assert value(str(largest + 1)) == DEFAULTS[key]
+
+    @pytest.mark.parametrize(
+        "raw",
+        [
+            0,
+            -5,
+            True,
+            False,
+            1.5,
+            60.0,
+            "0",
+            "-5",
+            "+5",
+            "1.5",
+            "1e3",
+            "abc",
+            "",
+            " ",
+            "٣٠",
+            None,
+            [60],
+        ],
+    )
+    @pytest.mark.parametrize("key", ["request_limit", "request_window"])
+    def test_anything_else_is_ignored(self, key, raw):
+        """The next source applies: here ``[nogat]``, after the variables."""
+        environ = {f"HYDROLOG_{key.upper()}": raw} if isinstance(raw, str) else {}
+        data = {"hydrolog": {key: raw}, "nogat": {key: 42}}
+        setting = resolve_setting(key, environ=environ, file_data=data)
+        assert (setting.value, setting.detail) == ("42", f"[nogat] {key}")
+
+
+class TestOperatorTable:
+    """``[nogat.operator]``: the operator of a public GUI, only from ``[nogat]``."""
+
+    def test_the_table_of_the_file_as_toml_gives_it(self, tmp_path):
+        path = _toml(
+            tmp_path,
+            '[nogat.operator]\nname = "Jan Kowalski"\nterms_effective = 2026-11-20\n',
+        )
+        assert operator_table({"NOGAT_CONFIG": str(path)}) == {
+            "name": "Jan Kowalski",
+            "terms_effective": date(2026, 11, 20),
+        }
+
+    def test_the_process_environment_names_the_file(self, tmp_path, monkeypatch):
+        path = _toml(tmp_path, '[nogat.operator]\nemail = "a@example.org"\n')
+        monkeypatch.setenv("NOGAT_CONFIG", str(path))
+        assert operator_table() == {"email": "a@example.org"}
+
+    @pytest.mark.parametrize(
+        "data",
+        [
+            {},
+            {"nogat": {"lang": "pl"}},
+            {"nogat": "operator"},
+            {"nogat": {"operator": "Jan Kowalski"}},
+            {"hydrolog": {"operator": {"name": "Jan Kowalski"}}},
+        ],
+    )
+    def test_no_table_in_nogat_is_no_operator(self, data):
+        assert operator_table({}, file_data=data) is None
+
+    def test_a_missing_file_is_no_operator(self, tmp_path):
+        assert operator_table({"NOGAT_CONFIG": str(tmp_path / "absent.toml")}) is None

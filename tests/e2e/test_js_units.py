@@ -8,7 +8,8 @@ and the options of a run, and honours ``requires``, ``excludes``, ``section`` an
 examples go through the form to ``api/run`` and run. ``router.js``,
 ``persist.js``, ``labels/errors.js`` and ``labels/notices.js`` (on errors of the
 real server), ``ui/info.js``, Polecenia's ``state.js`` and
-``forms/result-view.js`` (on real envelopes) follow. The geometry of Sieć's canvas
+``forms/result-view.js`` (on real envelopes) follow; ``context.js`` builds the context
+of a report of „Zgłoś uwagę” (Nogat DEV-15.12). The geometry of Sieć's canvas
 (plan 2026-11-10-network-editor, D5, D6, D10: ``editor/geometry.js``) draws rule D
 and ranks the lines as the library does, computed here in Python, also on the document
 of the structure alone that Sieć sends Hydrolog to lay out (``state.js``'
@@ -619,6 +620,84 @@ def test_routes_and_stored_inputs(page: Any) -> None:
     assert back == {"command": "uh nash", "values": {"n": "3"}}
     assert cleared == "first"  # „Wyczyść”: a first visit again
     assert got["broken"] == "first"
+
+
+def test_the_context_of_a_report_names_the_view_station_inputs_and_version(
+    page: Any,
+) -> None:
+    got = js(
+        page,
+        """const c = await import('./src/context.js');
+        const store = await import('./src/store.js');
+        const before = store.getActiveSection();
+        // The active section, its address (no hashchange: the shell stays), its inputs
+        const at = (section, hash, stored, version = '1.2.3') => {
+          history.replaceState(null, '', hash);
+          persist.saveState(section, stored);
+          store.setActiveSection(section);
+          const context = c.feedbackContext(version);
+          return {context, bytes: c.jsonBytes(context)};
+        };
+        const received = {subject: 'Kłodzko (Nysa Kłodzka)',
+          producer: {tool: 'archiwista'}};
+        const huge = Object.fromEntries(Array.from({length: 50}, (_, i) =>
+          [`f${i}`, Array.from({length: 50}, () => 'x'.repeat(200))]));
+        const result = {
+          route: at('polecenia', '#polecenia/uh/nash',
+                    {command: 'uh nash', values: {n: '3', series: '1\\n2'}}),
+          station: at('statystyka', '#hydrogram', {source: 'file', received}),
+          noStation: at('hydrogram', '#hydrogram', {received}, null),
+          long: at('kalkulatory', '#kalkulatory', {v: 1}, 'v'.repeat(80)),
+          huge: at('kalkulatory', '#kalkulatory', huge),
+          inputs: c.summarize({
+            total_mm: '105', method: 'beta', ok: true, n: 2.5,
+            pasted: '12.5\\n13.1', long: 'q'.repeat(201),
+            list: Array.from({length: 60}, (_, i) => i),
+          }),
+          agent: navigator.userAgent,
+          href: location.href,
+        };
+        store.setActiveSection(before);
+        return result;""",
+    )
+
+    assert got["route"]["context"] == {
+        "view": "polecenia/uh/nash",
+        "station": None,
+        "parameters": {
+            "command": "uh nash",
+            "values": {"n": "3", "series": "[tekst: 3 znaków]"},
+        },
+        "app_version": "1.2.3",
+    }
+    # A station only of a series handed off to Statystyka; the view is the section's
+    # own when the address is of another one
+    station = got["station"]["context"]
+    assert (station["view"], station["station"]) == (
+        "statystyka",
+        "Kłodzko (Nysa Kłodzka)",
+    )
+    no_station = got["noStation"]["context"]
+    assert (no_station["station"], no_station["app_version"]) == (None, "")
+    assert got["long"]["context"]["app_version"] == "v" * 50
+    # Over the server's limit the parameters give way to a mark
+    assert got["huge"]["context"]["parameters"] == {"…": "[pominięto: za duże]"}
+    assert got["huge"]["bytes"] <= 100_000
+    for case in ("route", "station", "noStation", "long", "huge"):
+        context = got[case]["context"]
+        assert set(context) == {"view", "station", "parameters", "app_version"}
+        text = json.dumps(context)
+        assert got["agent"] not in text
+        assert got["href"].split("#")[0] not in text
+    assert got["inputs"] == {
+        "total_mm": "105",
+        "method": "beta",
+        "ok": True,
+        "n": 2.5,
+        "pasted": "[tekst: 9 znaków]",
+        "long": "[tekst: 201 znaków]",
+        "list": [*range(50), "[i 10 więcej]"],
+    }
 
 
 def test_errors_of_the_server_in_polish(page: Any) -> None:

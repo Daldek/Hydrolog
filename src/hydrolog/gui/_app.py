@@ -7,11 +7,19 @@ section 6 recorded in ``CLAUDE.md``). Every error is a ``hydrolog-error/1`` docu
 with the registry's HTTP status and the Polish ``title``; a run replaced by a newer
 one or stopped by the timeout is the ``cancelled`` envelope.
 
-„Zgłoś uwagę” (Nogat plan 2026-11-03, D3): ``POST api/feedback`` stores a report of
-a GUI session in ``<data_dir>/hydrolog/feedback.sqlite3``; the admin page
+A browser session is named by the header ``X-Hydrolog-Session``, which the page keeps
+in its memory only: no cookie (ADR-0034). A request that needs a session and names
+none, or an unknown one, starts one, whose id the answer gives in the same header.
+
+„Zgłoś uwagę” (Nogat DEV-15.12): ``POST api/feedback`` stores a report, its text and
+the context the page adds, in ``<data_dir>/hydrolog/feedback.sqlite3``; the admin page
 (``admin/``) reads, marks and deletes them through ``api/admin/feedback``, which
 answers only the key of ``HYDROLOG_ADMIN_API_KEY`` or ``HYDROLOG_ADMIN_API_KEY_FILE``
 in ``X-Admin-Key`` and refuses everything (``401 unauthorized``) when neither is set.
+
+A deployment with ``[nogat.operator]`` in ``nogat.toml`` is public (Nogat DEV-15.7 to
+DEV-15.11, :mod:`hydrolog.gui._public`): the app serves ``regulamin.html``, limits the
+requests of each address, writes its access log and counts its use in daily totals.
 """
 
 from __future__ import annotations
@@ -21,6 +29,7 @@ import contextlib
 import functools
 import hashlib
 import json
+import logging
 import mimetypes
 import os
 import re
@@ -41,7 +50,13 @@ from starlette.datastructures import Headers, MutableHeaders
 from starlette.exceptions import HTTPException
 from starlette.middleware import Middleware
 from starlette.requests import ClientDisconnect, Request
-from starlette.responses import FileResponse, JSONResponse, PlainTextResponse, Response
+from starlette.responses import (
+    FileResponse,
+    HTMLResponse,
+    JSONResponse,
+    PlainTextResponse,
+    Response,
+)
 from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
@@ -78,6 +93,15 @@ from hydrolog.gui._feedback import (
     parse_read,
     parse_report,
 )
+from hydrolog.gui._public import (
+    STATS_FILE,
+    DailyStats,
+    Public,
+    PublicGuard,
+    RateLimiter,
+    Upkeep,
+    load_public,
+)
 from hydrolog.gui._runner import Job, Outcome, Runner
 from hydrolog.gui._sessions import (
     NAME_PATTERN,
@@ -98,8 +122,15 @@ for _suffix, _type in (
 ):
     mimetypes.add_type(_type, _suffix)
 
-COOKIE: Final = "hydrolog_gui"
-"""The cookie with the session id (HttpOnly, SameSite=Strict, the page's path)."""
+SESSION_HEADER: Final = "X-Hydrolog-Session"
+"""The header that names a browser session, both ways (no cookie, ADR-0034)."""
+TERMS_PAGE: Final = "regulamin.html"
+"""The address of the regulamin beside the page (Nogat DEV-15.7)."""
+STATS_EVENTS: Final[Mapping[str, str]] = {
+    "station": "stations_opened",
+    "download": "downloads",
+}
+"""What the page counts itself (``POST api/stats/{event}``): event -> daily total."""
 EXCLUDED: Final = frozenset(
     {"gui serve", "config show", "commands guide", "commands batch"}
 )
@@ -132,6 +163,9 @@ _REFUSED_SITES = frozenset({"cross-site", "same-site"})
 _CHANNEL = re.compile(CHANNEL_PATTERN)
 _JSON = "application/json"
 _PATHS = ["in/<name>", "out/<name>"]
+_LOG = logging.getLogger(__name__)
+TEND_S: Final = 10.0
+"""How often a public GUI forgets ended windows and rewrites its totals when due [s]."""
 
 
 def _route_path(scope: Scope) -> str:
@@ -243,6 +277,26 @@ def _query_int(
     return value
 
 
+def _is_api(scope: Scope) -> bool:
+    """Tell whether a request is under ``api/``.
+
+    Ask before the router runs: a ``Mount`` changes the scope's ``root_path``.
+    """
+    return _route_path(scope).startswith(_API + "/")
+
+
+def _secure(headers: MutableHeaders, api: bool) -> None:
+    """Set the security headers of every response and its ``Cache-Control`` (D8)."""
+    for name, value in SECURITY_HEADERS:
+        headers[name] = value
+    headers["cache-control"] = "no-store" if api else "no-cache"
+
+
+def _secure_request(headers: MutableHeaders, scope: Scope) -> None:
+    """:func:`_secure` for the answer to a request no router has seen (a ``429``)."""
+    _secure(headers, _is_api(scope))
+
+
 class _Guard:
     """Security headers of every response and the refusal of cross-site writes (D8).
 
@@ -258,17 +312,14 @@ class _Guard:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
-        cache = "no-store" if _route_path(scope).startswith(_API + "/") else "no-cache"
         started = False
+        api = _is_api(scope)
 
         async def guarded(message: Message) -> None:
             nonlocal started
             if message["type"] == "http.response.start":
                 started = True
-                headers = MutableHeaders(scope=message)
-                for name, value in SECURITY_HEADERS:
-                    headers[name] = value
-                headers["cache-control"] = cache
+                _secure(MutableHeaders(scope=message), api)
             await send(message)
 
         site = Headers(scope=scope).get("sec-fetch-site", "").lower()
@@ -290,9 +341,19 @@ class _Guard:
             raise
 
 
+def _rate_limited(wait: int) -> Response:
+    """Return the ``429`` of an API route over the request limit (Nogat DEV-15.9)."""
+    return _rest_error(
+        "rate_limited",
+        f"Too many requests from this address; try again in {wait} s",
+        {"reason": "rate_limited", "retry_after_s": wait},
+        hint=f"Wait {wait} s before the next request.",
+    )
+
+
 @dataclass
 class _Call:
-    """What an API request has found out, for its error document and its cookie."""
+    """What an API request has found out, for its error document and its session."""
 
     command: str | None = None
     session: Session | None = None
@@ -388,7 +449,10 @@ def _command(request: Request, call: _Call) -> Command:
 
 
 class _Gui:
-    """The state of one app (limits, sessions, workers, reports) and its handlers."""
+    """The state of one app and its handlers.
+
+    The limits, the sessions, the workers, the reports and the deployment.
+    """
 
     def __init__(
         self,
@@ -397,6 +461,7 @@ class _Gui:
         workers: int,
         run_timeout_s: float,
         data_dir: Path,
+        config: Mapping[str, Any] | None,
     ) -> None:
         self.limits = Limits()
         self.sessions = Sessions(work_root=work_root, limits=self.limits)
@@ -404,16 +469,36 @@ class _Gui:
             workers=workers, timeout_s=run_timeout_s, cwd=self.sessions.root
         )
         self.reports = FeedbackStore(data_dir / TOOL / FILE_NAME)
-        self._finalizer = weakref.finalize(self, _close, self.runner, self.sessions)
+        self.config = config
+        self.public: Public | None = load_public(config)
+        self.stats: DailyStats | None = None
+        self.upkeep: Upkeep | None = None
+        if self.public is not None:
+            self.stats = DailyStats(data_dir / TOOL / STATS_FILE)
+            limiter = RateLimiter(
+                self.public.request_limit, self.public.request_window_s
+            )
+            self.upkeep = Upkeep(limiter, self.stats)
+        self._finalizer = weakref.finalize(
+            self, _close, self.runner, self.sessions, self.stats
+        )
 
     def close(self) -> None:
-        """Stop the workers and remove the sessions (once; also at exit)."""
+        """Stop the workers, remove the sessions, write the day's totals (once).
+
+        Also run at exit.
+        """
         self._finalizer()
+
+    def count(self, total: str) -> None:
+        """Add one to a daily total of a public GUI (nothing otherwise)."""
+        if self.stats is not None:
+            self.stats.count(total)
 
     # --- plumbing -------------------------------------------------------------------
 
     def endpoint(self, handler: _Handler) -> Callable[[Request], Awaitable[Response]]:
-        """Wrap a handler: errors become documents, a new session gets its cookie."""
+        """Wrap a handler: errors become documents, a new session gets its header."""
 
         async def endpoint(request: Request) -> Response:
             call = _Call()
@@ -427,22 +512,18 @@ class _Gui:
             except ClientDisconnect:  # nobody reads the answer
                 response = Response(status_code=400)
             if call.created and call.session is not None:
-                root = str(request.scope.get("root_path", "")).removesuffix(_API)
-                response.set_cookie(
-                    COOKIE,
-                    call.session.id,
-                    path=root.rstrip("/") + "/",
-                    secure=request.url.scheme == "https",
-                    httponly=True,
-                    samesite="strict",
-                )
+                response.headers[SESSION_HEADER] = call.session.id
             return response
 
         return endpoint
 
     def open_session(self, request: Request, call: _Call) -> Session:
-        """Return the request's session, starting one if it has none."""
-        session = self.sessions.get(request.cookies.get(COOKIE))
+        """Return the request's session, starting one if it names none (or not one).
+
+        A session the server does not know (ended, swept, of a previous run) is no
+        session: a new one starts, and the answer names it.
+        """
+        session = self.sessions.get(request.headers.get(SESSION_HEADER))
         if session is None:
             session = self.sessions.create()
             call.created = True
@@ -526,31 +607,88 @@ class _Gui:
 
     # --- routes ---------------------------------------------------------------------
 
+    def terms_document(self) -> dict[str, Any]:
+        """Return ``terms`` and ``operator_email`` of the deployment.
+
+        ``terms`` is the regulamin's address beside the page, ``None`` when the GUI
+        serves none; ``operator_email`` is ``[nogat.operator] email`` of a public
+        deployment.
+        """
+        public = self.public
+        return {
+            "terms": TERMS_PAGE if public is not None and public.terms else None,
+            "operator_email": None if public is None else public.operator_email,
+        }
+
     async def session(self, request: Request, call: _Call) -> Response:
         """``GET api/session``: ``hydrolog-gui-session/1``.
 
+        ``id`` is the session's id, which the page sends back in ``X-Hydrolog-Session``.
         ``gui`` is the deployment's table of GUI addresses (``[nogat] gui`` of
         ``nogat.toml``, read at every request; ``None`` without it), which the page
         gives Nogat's app menu (DEV-15.4, ADR-0027). ``attribution`` is the complete
         lines of each provider Hydrolog knows (``imgw``, ``imgw_hydro``, ``pmaxtp``,
         ``chmi``: ``attribution`` and ``terms_notice``), by which the page names the
-        provider of a hand-off that carries no lines of its own (ADR-0028).
+        provider of a hand-off that carries no lines of its own (ADR-0028). ``terms``
+        and ``operator_email`` are those of :meth:`terms_document` (Nogat DEV-15.7,
+        DEV-15.12).
         """
         session = self.open_session(request, call)
         files = await anyio.to_thread.run_sync(session.files)
-        gui = await anyio.to_thread.run_sync(gui_addresses)
+        gui = await anyio.to_thread.run_sync(self.gui_table)
         limits = {**self.limits.to_dict(), "run_timeout_s": self.runner.timeout_s}
         return JSONResponse(
             {
                 "schema": SESSION_SCHEMA,
                 "version": hydrolog.__version__,
+                "id": session.id,
                 "limits": limits,
                 "used_bytes": sum(item["size_bytes"] for item in files),
                 "files": files,
                 "gui": gui,
                 "attribution": provider_lines(),
+                **self.terms_document(),
             }
         )
+
+    def gui_table(self) -> dict[str, str] | None:
+        """Return ``[nogat] gui`` of the app's settings, else of the file now."""
+        return gui_addresses(file_data=self.config)
+
+    async def end_session(self, request: Request, call: _Call) -> Response:
+        """``DELETE api/session``: ``204``; the session and its files are deleted.
+
+        The page sends it when it is closed or reloaded, so the files it gave stay
+        on the server only while it is open (Nogat regulamin § 8 ust. 7).
+        """
+        session = self.sessions.get(request.headers.get(SESSION_HEADER))
+        if session is not None and not session.busy:
+            await anyio.to_thread.run_sync(self.sessions.remove, session)
+        return Response(status_code=204)
+
+    async def terms(self, request: Request, call: _Call) -> Response:
+        """``GET api/terms``: ``{"terms", "operator_email"}`` for the guide's footer."""
+        return JSONResponse(self.terms_document())
+
+    async def stats_event(self, request: Request, call: _Call) -> Response:
+        """``POST api/stats/{event}``: ``204``, one more of a daily total.
+
+        ``station``: a station's series the page opened; ``download``: a file it
+        saved. Nothing is counted when the GUI is not public.
+        """
+        event = request.path_params["event"]
+        total = STATS_EVENTS.get(event)
+        if total is None:
+            raise NotFoundError(
+                f"No total {event!r}",
+                details={
+                    "reason": "no_total",
+                    "value": event,
+                    "allowed": [*STATS_EVENTS],
+                },
+            )
+        self.count(total)
+        return Response(status_code=204)
 
     async def commands(self, request: Request, call: _Call) -> Response:
         """``GET api/commands``: the command list without the excluded commands."""
@@ -617,6 +755,8 @@ class _Gui:
             return Response(status_code=400)
         if outcome.error:
             return _error_response(outcome.document)
+        if check == "false" and outcome.document.get("status") == "ok":
+            self.count("analyses_run")
         return JSONResponse(outcome.document)
 
     async def line(self, request: Request, call: _Call) -> Response:
@@ -680,7 +820,7 @@ class _Gui:
         split = split_path(value)
         if split is None:
             raise _outside(value)
-        session = self.sessions.get(request.cookies.get(COOKIE))
+        session = self.sessions.get(request.headers.get(SESSION_HEADER))
         if session is None:
             raise _no_file(value)
         call.session = session
@@ -700,13 +840,15 @@ class _Gui:
     # --- „Zgłoś uwagę” and the admin page -------------------------------------------
 
     async def feedback(self, request: Request, call: _Call) -> Response:
-        """``POST api/feedback``: store a GUI session's report; ``{"id", "status"}``."""
-        report = parse_report(await self.options(request, limit=REQUEST_MAX_BYTES))
-        self.open_session(request, call)
-        user_agent = request.headers.get("user-agent", "")
-        number = await anyio.to_thread.run_sync(
-            functools.partial(self.reports.add, report, user_agent=user_agent)
+        """``POST api/feedback``: store a report; ``{"id", "status"}``.
+
+        The body is ``{"message", "context"}`` and nothing else (Nogat DEV-15.12).
+        """
+        report = parse_report(
+            await self.options(request, limit=REQUEST_MAX_BYTES),
+            app_version=hydrolog.__version__,
         )
+        number = await anyio.to_thread.run_sync(self.reports.add, report)
         return JSONResponse({"id": number, "status": "ok"})
 
     async def feedback_list(self, request: Request, call: _Call) -> Response:
@@ -750,9 +892,11 @@ def _found(found: bool, number: int) -> None:
         )
 
 
-def _close(runner: Runner, sessions: Sessions) -> None:
+def _close(runner: Runner, sessions: Sessions, stats: DailyStats | None) -> None:
     runner.close()
     sessions.close()
+    if stats is not None:
+        stats.flush()
 
 
 async def _api_http_error(request: Request, exc: Exception) -> Response:
@@ -777,7 +921,12 @@ async def _api_defect(request: Request, exc: Exception) -> Response:
 
 
 def build_app(
-    *, work_root: Path | None, workers: int, run_timeout_s: float, data_dir: Path
+    *,
+    work_root: Path | None,
+    workers: int,
+    run_timeout_s: float,
+    data_dir: Path,
+    config: Mapping[str, Any] | None = None,
 ) -> Starlette:
     """Build the app; see :func:`hydrolog.gui.create_app`."""
     gui = _Gui(
@@ -785,11 +934,15 @@ def build_app(
         workers=workers,
         run_timeout_s=run_timeout_s,
         data_dir=data_dir,
+        config=config,
     )
     report = "/admin/feedback/{feedback_id:int}"
     api = Starlette(
         routes=[
             Route("/session", gui.endpoint(gui.session), methods=["GET"]),
+            Route("/session", gui.endpoint(gui.end_session), methods=["DELETE"]),
+            Route("/terms", gui.endpoint(gui.terms), methods=["GET"]),
+            Route("/stats/{event}", gui.endpoint(gui.stats_event), methods=["POST"]),
             Route("/commands", gui.endpoint(gui.commands), methods=["GET"]),
             Route(
                 "/commands/{group}/{verb}", gui.endpoint(gui.describe), methods=["GET"]
@@ -821,21 +974,57 @@ def build_app(
         exception_handlers={HTTPException: _api_http_error, Exception: _api_defect},
     )
 
+    async def regulamin(request: Request) -> Response:
+        """``regulamin.html``: the filled regulamin of a public deployment, else 404."""
+        page = None if gui.public is None else gui.public.terms
+        if page is None:
+            return PlainTextResponse("Not Found", status_code=404)
+        return HTMLResponse(page)
+
     @contextlib.asynccontextmanager
     async def lifespan(app: Starlette) -> AsyncIterator[None]:
         gui.runner.start()
+        tending = None
+        if gui.upkeep is not None:
+            tending = asyncio.ensure_future(_tend(gui.upkeep))
         try:
             yield
         finally:
+            if tending is not None:
+                tending.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await tending
             await anyio.to_thread.run_sync(gui.close)
 
+    middleware = [Middleware(_Guard)]
+    if gui.upkeep is not None:
+        middleware.insert(
+            0,
+            Middleware(
+                PublicGuard,
+                upkeep=gui.upkeep,
+                refusal=_rate_limited,
+                secure=_secure_request,
+            ),
+        )
     app = Starlette(
         routes=[
+            Route(f"/{TERMS_PAGE}", regulamin, methods=["GET"]),
             Mount(_API, app=api),
             Mount("/", app=StaticFiles(directory=WEB_DIR, html=True, check_dir=False)),
         ],
-        middleware=[Middleware(_Guard)],
+        middleware=middleware,
         lifespan=lifespan,
     )
     app.state.gui = gui
     return app
+
+
+async def _tend(upkeep: Upkeep) -> None:
+    """Tend the limit and the totals every :data:`TEND_S` seconds until cancelled."""
+    while True:
+        await asyncio.sleep(TEND_S)
+        try:
+            await upkeep.tend()
+        except Exception:  # the next round tries again
+            _LOG.exception("The upkeep of the public GUI failed")

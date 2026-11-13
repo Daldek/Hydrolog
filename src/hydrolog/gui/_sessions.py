@@ -1,12 +1,14 @@
 """Browser sessions of the GUI server: work directories, file names and limits.
 
-Plan 2026-11-02, D7. A browser session is a random id in the cookie ``hydrolog_gui``
-and a directory ``<work root>/<id>/`` (mode 0700) holding ``in/`` (uploads and the
-documents the page writes) and ``out/`` (what commands write). A path that the page
-gives a command is ``in/<name>`` or ``out/<name>``; :func:`check_name` is the rule of
-``<name>``. :class:`Sessions` keeps at most :attr:`Limits.sessions` of them: a new one
-removes the least recently used idle session, and a session idle for
-:attr:`Limits.idle_s` is removed by :meth:`Sessions.sweep`.
+Plan 2026-11-02, D7; ADR-0034. A browser session is a random id, which the page keeps
+in its memory only and sends in the header ``X-Hydrolog-Session`` (no cookie), and a
+directory ``<work root>/<id>/`` (mode 0700) holding ``in/`` (uploads and the documents
+the page writes) and ``out/`` (what commands write). A path that the page gives a
+command is ``in/<name>`` or ``out/<name>``; :func:`check_name` is the rule of
+``<name>``. The files serve the person's computations only: the page ends its session
+when it is closed or reloaded, a session idle for :attr:`Limits.idle_s` is removed by
+:meth:`Sessions.sweep`, and :class:`Sessions` keeps at most :attr:`Limits.sessions` of
+them: a new one removes the least recently used idle session.
 
 Nothing here knows HTTP; :mod:`hydrolog.gui._app` turns the errors raised here into
 ``hydrolog-error/1`` responses.
@@ -75,7 +77,7 @@ class Limits:
     session_files: int = 200
     request_bytes: int = 5 * MIB
     sessions: int = 64
-    idle_s: float = 12 * 3600.0
+    idle_s: float = 3600.0
 
     def to_dict(self) -> dict[str, Any]:
         """Return the limits as the ``limits`` of ``hydrolog-gui-session/1``."""
@@ -193,7 +195,7 @@ class Session:
     Attributes
     ----------
     id : str
-        The random id, the value of the cookie.
+        The random id, which the page sends in ``X-Hydrolog-Session``.
     directory : Path
         ``<work root>/<id>``, resolved; ``in/`` and ``out/`` are inside.
     last_used : float

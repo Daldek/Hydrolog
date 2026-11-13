@@ -1,8 +1,10 @@
 // The top bar of the standalone GUI (design/README.md, plan D10): Hydrolog's mark and name,
 // the breadcrumbs (section / context), the status badge, „Zgłoś uwagę” (the dialog of a
 // report, ui/feedback.js), „Instrukcja” (the welcome dialog, which links the guide),
-// Nogat's app menu „Aplikacje” (DEV-15.4, ADR-0027) and the theme switch Auto, Jasny,
-// Ciemny. Inside Nogat's shell ("?nogat=1") the shell's own bar replaces it.
+// Nogat's app menu „Aplikacje” (DEV-15.4, ADR-0027; „Regulamin” at its end on a public GUI,
+// DEV-15.7) and the theme switch Auto, Jasny, Ciemny. Inside Nogat's shell ("?nogat=1") the
+// shell's own bar replaces it. Links that leave the app open a new tab: the page's session
+// lives in its memory only, and leaving the page would end it.
 
 import "../../nogat/nogat-app-menu.js";
 import { useSession } from "../controls/file-field.js";
@@ -11,6 +13,7 @@ import { html, useEffect, useRef } from "../html.js";
 import { t } from "../labels/common.js";
 import { shell } from "../labels/shell.js";
 import { useStore } from "../store.js";
+import { termsOf } from "./footer.js";
 import { FeedbackButton } from "./feedback.js";
 import { Seg } from "./seg.js";
 import { StatusBadge } from "./status.js";
@@ -27,7 +30,7 @@ const GUIDE_ICON = () => html`<svg viewBox="0 0 20 20" aria-hidden="true"><path 
 
 /**
  * „Instrukcja”: a plain click opens the welcome dialog; a click with a modifier or the
- * middle button follows the link to the guide, as a link does.
+ * middle button follows the link to the guide, in a new tab, as a link does.
  *
  * @param {MouseEvent} event the click
  */
@@ -52,9 +55,24 @@ export function ThemeSwitch() {
 }
 
 /**
+ * The link „Regulamin” the menu draws (from its `terms` attribute) opens a new tab, as
+ * every link that leaves the app does; the kit's element, copied byte for byte, draws it
+ * as a plain link, so its target is set as it is followed.
+ *
+ * @param {MouseEvent} event a click in the menu (capture)
+ */
+function termsInNewTab(event) {
+  const link = event.target instanceof Element ? event.target.closest("a.nogat-app-menu-terms") : null;
+  if (!link) return;
+  link.target = "_blank";
+  link.rel = "noopener";
+}
+
+/**
  * Nogat's app menu (`<nogat-app-menu>`, a copy of Nogat's kit): the GUIs of the
  * deployment's `[nogat] gui` table of nogat.toml, which the server gives in the session's
- * `gui`. The element draws nothing while the table names no GUI but Hydrolog.
+ * `gui`, and, on a public GUI, „Regulamin” (its `terms` attribute: the session's `terms`).
+ * The element draws nothing while the table names no GUI but Hydrolog.
  *
  * @returns {object} the element
  */
@@ -62,11 +80,18 @@ export function AppMenu() {
   const session = useSession();
   const menu = useRef(null);
   const apps = (session && session.gui) || null;
+  const terms = termsOf(session);
   const key = JSON.stringify(apps);
   useEffect(() => {
     if (menu.current) menu.current.apps = apps;
   }, [key]);
-  return html`<nogat-app-menu ref=${menu} current="hydrolog" marks="nogat/marks/"></nogat-app-menu>`;
+  useEffect(() => {
+    const element = menu.current;
+    if (!element) return undefined;
+    element.addEventListener("click", termsInNewTab, true);
+    return () => element.removeEventListener("click", termsInNewTab, true);
+  }, []);
+  return html`<nogat-app-menu ref=${menu} current="hydrolog" marks="nogat/marks/" terms=${terms || undefined}></nogat-app-menu>`;
 }
 
 /**
@@ -99,7 +124,7 @@ export function TopBar({ section, home }) {
       <${StatusBadge} />
       <div class="top-actions">
         <${FeedbackButton} />
-        <a class="btn ghost" href="instrukcja/" aria-label=${shell.guide.label} title=${shell.guide.title} aria-haspopup="dialog" onClick=${onGuide}>
+        <a class="btn ghost" href="instrukcja/" target="_blank" rel="noopener" aria-label=${shell.guide.label} title=${shell.guide.title} aria-haspopup="dialog" onClick=${onGuide}>
           ${GUIDE_ICON()}<span class="label">${shell.guide.label}</span>
         </a>
         <${AppMenu} />

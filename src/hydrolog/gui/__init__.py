@@ -19,10 +19,10 @@ Importing this package does not import Starlette or uvicorn; :func:`create_app` 
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING, Any, Final
 
 from hydrolog.gui._extra import require_gui_extra
 from hydrolog.gui.server import serve
@@ -80,6 +80,7 @@ def create_app(
     workers: int = 2,
     run_timeout_s: float = 30.0,
     data_dir: Path | None = None,
+    config: Mapping[str, Any] | None = None,
 ) -> Starlette:
     """Create the ASGI app of the GUI: the page and the private API of plan D5.
 
@@ -99,12 +100,20 @@ def create_app(
         Longest run [s]; a longer one kills its worker and ends ``cancelled``.
     data_dir : Path, optional
         The shared data directory (DEV-18.2): the reports of „Zgłoś uwagę” go to
-        ``<data_dir>/hydrolog/feedback.sqlite3``, created by the first report;
-        ``None`` (default) takes the setting ``data_dir`` (``HYDROLOG_DATA_DIR``,
+        ``<data_dir>/hydrolog/feedback.sqlite3``, created by the first report, and a
+        public GUI's daily totals to ``<data_dir>/hydrolog/stats.jsonl``; ``None``
+        (default) takes the setting ``data_dir`` (``HYDROLOG_DATA_DIR``,
         ``NOGAT_DATA_DIR``, ``nogat.toml``, else the user data directory of
         ``nogat``). The admin routes answer only the key of
         ``HYDROLOG_ADMIN_API_KEY`` or ``HYDROLOG_ADMIN_API_KEY_FILE``, read on every
         request.
+    config : Mapping, optional
+        The parsed ``nogat.toml`` to use; ``None`` (default) reads the file
+        (``NOGAT_CONFIG`` or the user configuration directory): at the start for
+        ``[nogat.operator]`` (with it the GUI is public: its regulamin, the request
+        limit ``request_limit`` in ``request_window`` seconds, the access log and the
+        daily totals; Nogat DEV-15.7 to DEV-15.12), at every request for
+        ``[nogat] gui``.
 
     Returns
     -------
@@ -139,12 +148,13 @@ def create_app(
     from hydrolog.gui._app import build_app
 
     if data_dir is None:
-        data_dir = Path(resolve_setting("data_dir").value)
+        data_dir = Path(resolve_setting("data_dir", file_data=config).value)
     return build_app(
         work_root=work_root,
         workers=workers,
         run_timeout_s=run_timeout_s,
         data_dir=Path(data_dir),
+        config=config,
     )
 
 
