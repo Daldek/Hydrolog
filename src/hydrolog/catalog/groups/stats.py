@@ -1,9 +1,10 @@
 """Group ``stats``: statistics of hydrological series.
 
-Characteristic values, events beyond a level, duration curves, runoff volumes, daily
-and monthly statistics, flood frequency, low-flow frequency and sequences, the
-Mann-Kendall trend test and the homogeneity tests. The operations are in
-:mod:`hydrolog.operations.stats`.
+Characteristic values, events beyond a level, duration curves, runoff volumes, the
+flow regime, the seasonality of annual extremes, the harmonics of the annual cycle,
+baseflow, daily and monthly statistics, flood frequency, low-flow frequency and
+sequences, the Mann-Kendall trend test with Sen's slope and the homogeneity tests. The
+operations are in :mod:`hydrolog.operations.stats`.
 """
 
 from __future__ import annotations
@@ -633,6 +634,384 @@ COMMANDS: tuple[Command, ...] = (
         ),
     ),
     Command(
+        name="stats regime",
+        operation_id="hydrolog_stats_regime",
+        summary_pl=(
+            "Oblicz reżim odpływu: współczynniki Pardégo, typ reżimu Dynowskiej i "
+            "sezonowość"
+        ),
+        summary=(
+            "Compute the flow regime: Pardé coefficients, Dynowska's regime type and "
+            "seasonality"
+        ),
+        description_pl=(
+            "Średni przepływ każdego miesiąca (XI–X) przez średni przepływ roczny "
+            "(współczynniki Pardégo), typ reżimu Dynowskiej (1997) 1–5 wg kryteriów "
+            "Wrzesińskiego (2018), udział marca i kwietnia w objętości rocznej i "
+            "wskaźnik sezonowości Walsha i Lawlera (1981). Wymaga dobowych "
+            "przepływów z datami i wartości w każdym miesiącu; statystyki miesięczne: "
+            "`stats monthly`."
+        ),
+        description=(
+            "Mean flow of each month (Nov–Oct) over the mean annual flow (Pardé's "
+            "coefficients), Dynowska's (1997) regime type 1–5 by Wrzesiński's (2018) "
+            "criteria, the March–April share of the annual volume and Walsh and "
+            "Lawler's (1981) seasonality index. Needs daily discharge with dates and "
+            "values in every month; for monthly statistics use `stats monthly`."
+        ),
+        result_schema="hydrolog-stats-regime/1",
+        rules=(
+            "Give daily discharge in m³/s with dates.",
+            "`regime_type.code`: 1–3 nival (weak, moderate, strong), 4 nival-pluvial, "
+            "5 pluvio-nival.",
+        ),
+        rules_pl=(
+            "Podaj dobowe przepływy w m³/s z datami.",
+            "`regime_type.code`: 1–3 niwalny (słabo, średnio, silnie wykształcony), 4 "
+            "niwalno-pluwialny, 5 pluwialno-niwalny.",
+        ),
+        errors=_STATION_ERRORS,
+        example_results=(
+            {
+                "first_year": 2019,
+                "last_year": 2023,
+                "period_years": 5,
+                "months": [11, 12, 1],
+                "annual_mean": 5.60134,
+                "parde": [0.399357, 0.604441, 0.962386],
+                "regime_type": {
+                    "code": 4,
+                    "criteria": {
+                        "spring_month": 3,
+                        "spring_coefficient": 1.88309,
+                        "summer_month": 6,
+                        "summer_coefficient": 1.4504,
+                    },
+                },
+                "spring_share": 0.281121,
+                "seasonality_index": 0.48876,
+            },
+        ),
+        function="hydrolog.operations.stats_regime",
+        options=(*DATED_OPTIONS, *PERIOD_OPTIONS, ATTRIBUTION),
+        one_of=DATED_ONE_OF,
+        examples=(
+            {
+                "input_file": _STATION_DAILY,
+                "value_column": "Q",
+                "date_column": "date",
+            },
+        ),
+    ),
+    Command(
+        name="stats seasonality",
+        operation_id="hydrolog_stats_seasonality",
+        summary_pl=(
+            "Oblicz średni termin i koncentrację dat maksimów albo minimów rocznych"
+        ),
+        summary=(
+            "Compute the mean date and concentration of the annual maxima or minima"
+        ),
+        description_pl=(
+            "Daty maksimum (albo minimum) rocznego każdego pełnego roku "
+            "hydrologicznego (XI–X) albo z pliku półroczy IMGW-PIB jako kąty na roku: "
+            "średni termin, koncentracja r (0 rozproszone, 1 jeden dzień; Bayliss i "
+            "Jones 1993, Burn 1997) i udziały półrocza zimowego (XI–IV) i letniego "
+            "(V–X). Same wartości: `stats characteristic`."
+        ),
+        description=(
+            "Dates of the annual maximum (or minimum) of each complete hydrological "
+            "year (Nov–Oct) or of IMGW-PIB's half-year file as angles on the year: "
+            "their mean date, concentration r (0 spread, 1 one day; Bayliss and Jones "
+            "1993, Burn 1997) and the shares of the winter (Nov–Apr) and summer "
+            "(May–Oct) half-years. For the values use `stats characteristic`."
+        ),
+        result_schema="hydrolog-stats-seasonality/1",
+        cardinality="bounded",
+        rules=(
+            "Give a daily series with dates or `half_year_file`.",
+            "A daily series skips years with a missing day.",
+            "`mean_day` counts from 1 January.",
+        ),
+        rules_pl=(
+            "Podaj szereg dobowy z datami albo `half_year_file`.",
+            "Szereg dobowy pomija lata z brakującym dniem.",
+            "`mean_day` liczy się od 1 stycznia.",
+        ),
+        errors=_STATION_ERRORS,
+        example_results=(
+            {
+                "source": "daily",
+                "statistic": "max",
+                "period_years": 3,
+                "extremes": [{"year": 2019, "value": 66.83, "date": "2019-05-22"}],
+                "mean_day": 188.385,
+                "mean_date": "07-07",
+                "concentration": 0.679086,
+                "winter_share": 0.0,
+            },
+            {
+                "source": "half_years",
+                "statistic": "min",
+                "period_years": 5,
+                "extremes": [{"year": 2019, "value": 0.54, "date": "2019-09-21"}],
+                "mean_date": "09-21",
+                "concentration": 0.959527,
+            },
+        ),
+        function="hydrolog.operations.stats_seasonality",
+        options=(
+            *DATED_OPTIONS,
+            HALF_YEAR_FILE,
+            Option(
+                name="parameter",
+                type="choice",
+                description_pl=("Zmienna szeregu; wskazuje kolumny `half_year_file`."),
+                description=(
+                    "The variable of the series; it picks the columns of "
+                    "`half_year_file`."
+                ),
+                choices=("Q", "H", "T"),
+                meanings={
+                    "Q": "Discharge.",
+                    "H": "Stage.",
+                    "T": "Water temperature.",
+                },
+                meanings_pl={
+                    "Q": "Przepływ.",
+                    "H": "Stan wody.",
+                    "T": "Temperatura wody.",
+                },
+                default="Q",
+            ),
+            Option(
+                name="statistic",
+                type="choice",
+                description_pl="Ekstremum roczne, którego daty są badane.",
+                description="The annual extreme whose dates are studied.",
+                choices=("max", "min"),
+                meanings={
+                    "max": "Annual maxima (floods).",
+                    "min": "Annual minima (low flows).",
+                },
+                meanings_pl={
+                    "max": "Maksima roczne (wezbrania).",
+                    "min": "Minima roczne (niżówki).",
+                },
+                default="max",
+            ),
+            *PERIOD_OPTIONS,
+            ATTRIBUTION,
+        ),
+        one_of=(*DATED_ONE_OF, ("half_year_file",)),
+        examples=(
+            {
+                "input_file": _STATION_DAILY,
+                "value_column": "Q",
+                "date_column": "date",
+            },
+            {
+                "half_year_file": _STATION_HALF_YEARS,
+                "parameter": "Q",
+                "statistic": "min",
+            },
+        ),
+    ),
+    Command(
+        name="stats harmonics",
+        operation_id="hydrolog_stats_harmonics",
+        summary_pl=(
+            "Dopasuj harmoniki cyklu rocznego szeregu dobowego (średnia, amplituda, "
+            "termin maksimum)"
+        ),
+        summary=(
+            "Fit harmonics of the annual cycle of a daily series (mean, amplitude, "
+            "day of maximum)"
+        ),
+        description_pl=(
+            "Metoda najmniejszych kwadratów: średnia i 1–4 harmoniki o okresie "
+            "365,25 d na dniu roku hydrologicznego (1 = 1 XI) dla całego okresu i "
+            "każdego roku z co najmniej 300 wartościami: amplituda harmoniki, dzień "
+            "jej pierwszego maksimum i udział w wariancji. Do cyklu rocznego "
+            "temperatury wody lub powietrza albo przepływu; średnie dobowe: `stats "
+            "daily`."
+        ),
+        description=(
+            "Least squares fit of the mean and 1–4 harmonics of period 365.25 d on "
+            "the day of the hydrological year (1 = 1 Nov), over the period and in "
+            "each year with 300 or more values: each harmonic's amplitude, day of its "
+            "first maximum and share of the variance. Use for the annual cycle of "
+            "water or air temperature or flow; for daily means use `stats daily`."
+        ),
+        result_schema="hydrolog-stats-harmonics/1",
+        cardinality="bounded",
+        rules=(
+            "Give a daily series with dates.",
+            "`phase_day` counts from 1 November; amplitudes are in the series' unit.",
+        ),
+        rules_pl=(
+            "Podaj szereg dobowy z datami.",
+            "`phase_day` liczy się od 1 listopada; amplitudy są w jednostce szeregu.",
+        ),
+        errors=_STATION_ERRORS,
+        example_results=(
+            {
+                "n_harmonics": 2,
+                "period_days": 365.25,
+                "period_years": 5,
+                "period": {
+                    "mean": 9.61454,
+                    "harmonics": [{"amplitude": 8.89921, "phase_day": 268.62}],
+                    "r_squared": 0.991154,
+                    "n_values": 1811,
+                },
+                "years": [
+                    {
+                        "year": 2019,
+                        "mean": 9.55694,
+                        "harmonics": [{"amplitude": 8.95614}],
+                        "n_values": 365,
+                    }
+                ],
+            },
+        ),
+        function="hydrolog.operations.stats_harmonics",
+        options=(
+            *DATED_OPTIONS,
+            Option(
+                name="harmonics",
+                type="integer",
+                description_pl=(
+                    "Liczba harmonik cyklu rocznego, od 1 do 4 (2: roczna i półroczna)."
+                ),
+                description=(
+                    "Number of harmonics of the annual cycle, 1 to 4 (2: the annual "
+                    "and the half-year one)."
+                ),
+                default=2,
+                minimum=1,
+                maximum=4,
+            ),
+            *PERIOD_OPTIONS,
+            ATTRIBUTION,
+        ),
+        one_of=DATED_ONE_OF,
+        examples=(
+            {
+                "input_file": _STATION_DAILY,
+                "value_column": "T",
+                "date_column": "date",
+                "harmonics": 2,
+            },
+        ),
+    ),
+    Command(
+        name="stats baseflow",
+        operation_id="hydrolog_stats_baseflow",
+        summary_pl=(
+            "Wydziel przepływ podziemny filtrem Lyne'a i Hollicka: wskaźnik BFI i "
+            "stała recesji"
+        ),
+        summary=(
+            "Separate baseflow with the Lyne–Hollick filter: baseflow index and "
+            "recession constant"
+        ),
+        description_pl=(
+            "Filtr cyfrowy Lyne'a i Hollicka (3 przejścia, odbicie 30 dni na końcach; "
+            "Nathan i McMahon 1990, Ladson i in. 2013) na każdym ciągłym odcinku co "
+            "najmniej 60 dni przepływów dobowych: wskaźnik BFI = ΣQb/ΣQ okresu i lat z "
+            "300 dniami, stała recesji k (mediana Q(t+1)/Q(t) spadków od 5 dni; "
+            "Tallaksen 1995) i dobowy przepływ podziemny jednego roku."
+        ),
+        description=(
+            "Lyne and Hollick's digital filter (3 passes, 30 days reflected at each "
+            "end; Nathan and McMahon 1990, Ladson et al. 2013) on each gapless span "
+            "of 60 or more days of daily discharge: the baseflow index BFI = ΣQb/ΣQ "
+            "of the period and of each year with 300 days, the recession constant k "
+            "(median Q(t+1)/Q(t) of falls of 5 days or more; Tallaksen 1995) and the "
+            "daily baseflow of one year."
+        ),
+        result_schema="hydrolog-stats-baseflow/1",
+        cardinality="bounded",
+        rules=(
+            "Give daily discharge in m³/s with dates.",
+            "`series_year` defaults to the last complete year.",
+        ),
+        rules_pl=(
+            "Podaj dobowe przepływy w m³/s z datami.",
+            "`series_year` to domyślnie ostatni pełny rok.",
+        ),
+        errors=_STATION_ERRORS,
+        example_results=(
+            {
+                "alpha": 0.925,
+                "bfi": 0.659483,
+                "days": 1811,
+                "spans": 3,
+                "years": [{"year": 2019, "bfi": 0.644608, "days": 365}],
+                "recession": {"k": 0.901895, "segments": 17},
+                "series_year": 2023,
+                "series_dates": ["2022-11-01"],
+            },
+        ),
+        function="hydrolog.operations.stats_baseflow",
+        options=(
+            *DATED_OPTIONS,
+            *PERIOD_OPTIONS,
+            Option(
+                name="alpha",
+                type="number",
+                description_pl=(
+                    "Parametr filtru α z przedziału otwartego (0, 1); 0,925 dla "
+                    "przepływów dobowych (Nathan i McMahon 1990)."
+                ),
+                description=(
+                    "Filter parameter α, in the open interval (0, 1); 0.925 for daily "
+                    "flows (Nathan and McMahon 1990)."
+                ),
+                default=0.925,
+                exclusive_minimum=0,
+                maximum=1,
+            ),
+            Option(
+                name="passes",
+                type="integer",
+                description_pl=(
+                    "Liczba przejść filtru, nieparzysta, co najmniej 3 (naprzód, "
+                    "wstecz, naprzód)."
+                ),
+                description=(
+                    "Number of passes of the filter, odd, at least 3 (forward, "
+                    "backward, forward)."
+                ),
+                default=3,
+                minimum=3,
+            ),
+            Option(
+                name="series_year",
+                type="integer",
+                description_pl=(
+                    "Rok hydrologiczny dobowego przepływu podziemnego w wyniku; "
+                    "domyślnie ostatni pełny rok okresu."
+                ),
+                description=(
+                    "Hydrological year of the daily baseflow in the result; by "
+                    "default the last complete year of the period."
+                ),
+                minimum=1,
+            ),
+            ATTRIBUTION,
+        ),
+        one_of=DATED_ONE_OF,
+        examples=(
+            {
+                "input_file": _STATION_DAILY,
+                "value_column": "Q",
+                "date_column": "date",
+            },
+        ),
+    ),
+    Command(
         name="stats daily",
         operation_id="hydrolog_stats_daily",
         summary_pl=("Oblicz statystyki dobowe z wielolecia szeregu dobowego"),
@@ -1192,30 +1571,36 @@ COMMANDS: tuple[Command, ...] = (
         name="stats mann-kendall",
         operation_id="hydrolog_stats_mann_kendall",
         summary_pl=(
-            "Zbadaj istnienie monotonicznego trendu w szeregu testem Manna–Kendalla"
+            "Zbadaj trend monotoniczny szeregu testem Manna–Kendalla i oszacuj "
+            "nachylenie Sena"
         ),
-        summary=("Test a series for a monotonic trend with the Mann–Kendall test"),
+        summary=(
+            "Test a series for a monotonic trend (Mann–Kendall) and estimate Sen's "
+            "slope"
+        ),
         description_pl=(
-            "Nieparametryczny test Manna–Kendalla: statystyka S, Z, dwustronne "
-            "p-value i kierunek trendu. Do oceny stacjonarności maksimów rocznych "
-            "przed `stats flood-frequency`. Wymaga co najmniej 3 wartości w "
-            "kolejności czasowej; NaN jest pomijane. Wariancja bez poprawki na "
-            "powtórzenia (test nieco zachowawczy)."
+            "Nieparametryczny test Manna–Kendalla (S, Z, dwustronne p-value, kierunek "
+            "trendu) z nachyleniem Sena, wyrazem wolnym Conovera i przedziałem ufności "
+            "nachylenia 1 − alpha wg Gilberta. Do trendów wartości rocznych i oceny "
+            "stacjonarności przed `stats flood-frequency`. NaN jest pomijane. "
+            "Wariancja bez poprawki na powtórzenia (test nieco zachowawczy)."
         ),
         description=(
-            "Non-parametric Mann–Kendall test: S statistic, Z, two-sided p-value "
-            "and trend direction. Use to check stationarity of annual maxima before"
-            " `stats flood-frequency`. Needs 3 or more values in time order; NaN is"
-            " skipped. Variance has no tie correction (slightly conservative)."
+            "Non-parametric Mann–Kendall test (S, Z, two-sided p-value, trend "
+            "direction) with Sen's slope, Conover's intercept and Gilbert's 1 − alpha "
+            "confidence interval of the slope. Use for trends of annual values and to "
+            "check stationarity before `stats flood-frequency`. NaN is skipped. "
+            "Variance has no tie correction (slightly conservative)."
         ),
         result_schema="hydrolog-stats-mann-kendall/1",
         rules=(
-            "Pass values in time order, at least 3.",
+            "Pass values in time order, at least 3; `years` make the slope per year.",
             "A trend is detected when `p_value` is below `alpha`.",
             "Check `notices` for skipped missing values.",
         ),
         rules_pl=(
-            "Podaj wartości w kolejności czasowej, co najmniej 3.",
+            "Podaj wartości w kolejności czasowej, co najmniej 3; z `years` nachylenie "
+            "jest na rok.",
             "Trend jest wykryty, gdy `p_value` jest mniejsze niż `alpha`.",
             "Sprawdź `notices` pod kątem pominiętych braków danych.",
         ),
@@ -1240,6 +1625,20 @@ COMMANDS: tuple[Command, ...] = (
                 "trend_detected": True,
                 "trend_direction": "increasing",
                 "significance_level": 0.05,
+                "sen_slope": 17.5778,
+            },
+            {
+                "s_statistic": -6.0,
+                "sen_slope": -0.08,
+                "sen_intercept": 290.48,
+                "sen_slope_lower": -1.36255,
+                "sen_slope_upper": 1.31075,
+            },
+            {
+                "s_statistic": 4.0,
+                "sen_slope": 0.958333,
+                "sen_slope_lower": None,
+                "sen_slope_upper": None,
             },
         ),
         function="hydrolog.operations.stats_mann_kendall",
@@ -1255,29 +1654,56 @@ COMMANDS: tuple[Command, ...] = (
                     "Give long series in a file (`input_file`)."
                 ),
             ),
+            Option(
+                name="years",
+                type="number_list",
+                description_pl=(
+                    "Lata wartości z `values`: liczby całkowite, ściśle rosnące (mogą "
+                    "mieć luki), tyle samo co `values`. Nachylenie Sena jest wtedy na "
+                    "rok, bez nich na krok szeregu."
+                ),
+                description=(
+                    "Years of the `values`: whole numbers, strictly increasing (gaps "
+                    "allowed), as many as `values`. Sen's slope is then per year, "
+                    "without them per step of the series."
+                ),
+            ),
             replace(
                 INPUT_FILE,
                 description_pl=(
                     "Plik CSV (przecinek lub średnik, wiersz nagłówka) albo JSON z "
-                    "szeregiem; wiersze w kolejności czasowej. Kolumnę wskazuje "
-                    "`value_column`."
+                    "szeregiem; wiersze w kolejności czasowej. Kolumny wskazują "
+                    "`value_column` i `year_column`."
                 ),
                 description=(
                     "CSV file (comma or semicolon, header row) or JSON file with the "
-                    "series; rows in time order. The column is named by "
-                    "`value_column`."
+                    "series; rows in time order. The columns are named by "
+                    "`value_column` and `year_column`."
                 ),
             ),
             VALUE_COLUMN,
             Option(
+                name="year_column",
+                type="string",
+                description_pl=(
+                    "Nazwa kolumny z latami wartości w `input_file` (np. `year`): "
+                    "nachylenie Sena jest wtedy na rok."
+                ),
+                description=(
+                    "Name of the column with the years of the values in `input_file` "
+                    "(e.g. `year`): Sen's slope is then per year."
+                ),
+            ),
+            Option(
                 name="alpha",
                 type="number",
                 description_pl=(
-                    "Poziom istotności testu z przedziału otwartego (0, 1), np. 0,05."
+                    "Poziom istotności testu z przedziału otwartego (0, 1), np. 0,05; "
+                    "przedział ufności nachylenia obejmuje 1 − alpha."
                 ),
                 description=(
                     "Significance level of the test, in the open interval (0, 1), "
-                    "e.g. 0.05."
+                    "e.g. 0.05; the confidence interval of the slope covers 1 − alpha."
                 ),
                 default=0.05,
                 exclusive_minimum=0,
@@ -1306,6 +1732,12 @@ COMMANDS: tuple[Command, ...] = (
                     470.2,
                 ],
             },
+            {
+                "input_file": _ANNUAL_MAXIMA,
+                "value_column": "Qmax",
+                "year_column": "year",
+            },
+            {"values": [3.0, 4.5, 4.0, 6.2], "years": [2021, 2022, 2023, 2024]},
         ),
     ),
     Command(

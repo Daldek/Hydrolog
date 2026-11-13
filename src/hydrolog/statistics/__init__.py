@@ -6,13 +6,24 @@ Provides:
 - Events and days beyond a level (threshold level method)
 - Duration curves and class frequencies
 - Runoff volumes
+- The flow regime (Pardé's coefficients, Dynowska's types), the seasonality of annual
+  extremes (circular statistics of their dates) and the harmonics of the annual cycle
+- Baseflow (Lyne and Hollick's filter) and the recession constant
 - Flood frequency analysis (GEV, Log-Normal, Pearson III, Weibull)
 - Low-flow frequency analysis (Fisher-Tippett, drought sequences)
-- Mann-Kendall trend test for series stationarity
+- Mann-Kendall trend test for series stationarity, with Sen's slope
 - Homogeneity tests of a split series (Mann-Whitney U, Kolmogorov-Smirnov, Pettitt)
 """
 
 from hydrolog.statistics._types import EmpiricalFrequency, LowFlowEmpiricalFrequency
+from hydrolog.statistics.baseflow import (
+    BaseflowSeparation,
+    BaseflowYear,
+    RecessionConstant,
+    baseflow_separation,
+    lyne_hollick_filter,
+    recession_constant,
+)
 from hydrolog.statistics.characteristic import (
     CHARACTERISTIC_KEYS,
     CharacteristicValues,
@@ -48,6 +59,14 @@ from hydrolog.statistics.events import (
     threshold_events,
     threshold_runs,
 )
+from hydrolog.statistics.harmonics import (
+    AnnualCycle,
+    Harmonic,
+    HarmonicFit,
+    HarmonicYear,
+    annual_cycle,
+    harmonic_fit,
+)
 from hydrolog.statistics.high_flows import (
     FIT_METHODS,
     FitMethod,
@@ -67,7 +86,29 @@ from hydrolog.statistics.low_flows import (
     LowFlowSequence,
     fit_fisher_tippett_minima,
 )
-from hydrolog.statistics.stationarity import MannKendallResult, mann_kendall_test
+from hydrolog.statistics.regime import (
+    FlowRegime,
+    RegimeCriteria,
+    RegimeType,
+    dynowska_regime_type,
+    flow_regime,
+    seasonality_index,
+)
+from hydrolog.statistics.seasonality import (
+    CircularMean,
+    DatedExtreme,
+    ExtremeSeasonality,
+    circular_mean_date,
+    daily_extremes,
+    extreme_seasonality,
+    half_year_extremes,
+)
+from hydrolog.statistics.stationarity import (
+    MannKendallResult,
+    SenSlope,
+    mann_kendall_test,
+    sen_slope,
+)
 from hydrolog.statistics.volumes import (
     DAY_SECONDS,
     MonthVolume,
@@ -115,6 +156,35 @@ __all__ = [
     "RunoffVolumes",
     "YearVolume",
     "runoff_volumes",
+    # Regime
+    "FlowRegime",
+    "RegimeCriteria",
+    "RegimeType",
+    "dynowska_regime_type",
+    "flow_regime",
+    "seasonality_index",
+    # Seasonality of annual extremes
+    "CircularMean",
+    "DatedExtreme",
+    "ExtremeSeasonality",
+    "circular_mean_date",
+    "daily_extremes",
+    "extreme_seasonality",
+    "half_year_extremes",
+    # Harmonics of the annual cycle
+    "AnnualCycle",
+    "Harmonic",
+    "HarmonicFit",
+    "HarmonicYear",
+    "annual_cycle",
+    "harmonic_fit",
+    # Baseflow
+    "BaseflowSeparation",
+    "BaseflowYear",
+    "RecessionConstant",
+    "baseflow_separation",
+    "lyne_hollick_filter",
+    "recession_constant",
     # Flood frequency
     "FloodFrequencyAnalysis",
     "FrequencyAnalysisResult",
@@ -131,6 +201,8 @@ __all__ = [
     # Stationarity
     "mann_kendall_test",
     "MannKendallResult",
+    "SenSlope",
+    "sen_slope",
     # Homogeneity
     "homogeneity_tests",
     "HomogeneityResult",

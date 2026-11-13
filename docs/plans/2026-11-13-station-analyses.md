@@ -375,6 +375,45 @@ for the author.
   line of the batch's output is the envelope of its call with that call's own lines, the batch's
   envelope has the union of the lines of its calls, and the lines of IMGW-PIB's half-year file reach the
   results of the three frequency commands.
+- S3, `feature/station-regime` (D11; ADR-0031): as decided, with six details fixed in the code: the
+  baseflow filter is the standard of Ladson et al. (2013) and their published code (each pass starts
+  its quickflow at its first value and keeps it unclipped, a baseflow below 0 becomes 0 after the
+  last pass), not the prototype's filter clamped to [0, Q], because only the standard reproduces the
+  published BFI of the Bass River at Loch (0.1965759; the prototype gives 0.0944); Sen's intercept is
+  Conover's median(x) − b · median(t) and the interval Gilbert's with interpolated ranks at
+  1 − `alpha` (95 % with the default `alpha`), as `_meteo_proto` and not `_hydro_proto`; the monthly
+  lists of `stats regime` run from November to October; `stats seasonality` also takes `parameter` T;
+  `series_year` of `stats baseflow` defaults to the last complete year of the period (the rule of
+  `cumulative_year`); the years left out of the yearly values and the half-year extremes without a
+  date have the notices `short_years_left_out` and `undated_extremes`. Dynowska's criteria were
+  checked against Wrzesiński (2017, 2018) and Perz (2019); her Atlas sheet was not available, so the
+  summer months June to August and "nearly equal" = 0.95 stay the mockup's reading. Published
+  examples in `tests/unit/test_station_regime.py`: Gilbert's (1987) Example 16.5 (slope 5.5, 90 %
+  interval 2.6 to 9.3) and Exercises 16.1–16.3 (S = 12, Var(S) = 44.3, slopes 0.33 and 0.23, interval
+  0 to 0.94), the types of Wrzesiński's (2018) Table 1, the bounds 0 and 11/6 of Walsh and Lawler's
+  index, and the BFIs that Ladson et al. publish with their code (0.1965759, and 0.1411197 for two
+  spans parted by missing days); no published example with dates was found for the circular mean,
+  which is checked on hand computations. The four new commands take `attribution`, and an Obserwator
+  export with its attribution columns gives `attribution` and `terms_notice` in the envelope of each
+  (`tests/unit/test_attribution.py`). `AGENTS.md`: 16,320 of 16,384 bytes. The mockup's
+  numbers reproduced on Kłodzko (150160180, 1951–2025 without hydrological year 1997) and Słupsk
+  (154170010; water temperature 1984–2025), exported from the demo store on 2026-11-13
+  (`pl.imgw.hydro_daily`, `pl.imgw.hydro_semiannual`), by a check outside the repository: the regime
+  of Kłodzko in 1951–2025 and 1971–2015 and of Słupsk (34 values per case, largest relative
+  difference 4.5e-15; type 4 at Kłodzko in both periods, as Perz (2019) found for 1971–2015, type 1
+  at Słupsk), the seasonality of the maxima and minima of Q and H from the half-years and the daily
+  series (122 to 306 values per case, 1.9e-16), the water temperature of Słupsk in 1984–2025 and
+  2001–2020 (the yearly maximum with its date and the mean, the days at or above 15, 20, 25 °C and
+  below 1 °C, the harmonics of each year and of the period; 1,128 values, equal), the trends of the
+  annual values of Kłodzko and Słupsk (2,292 annual values, 108 values of the tests, 18 Sen's slopes;
+  equal) and the baseflow (the days, spans, years, means, recession and default year; 94 to 232
+  values per case, equal). Differences by decision: Kłodzko's BFI is 0.663 against the prototype's
+  0.585 (yearly +0.035 to +0.122) and Słupsk's 0.871 against 0.782 (+0.038 to +0.164), and with the
+  prototype's filter in its place all 1,455 BFIs and daily baseflows are equal; Sen's intercept
+  differs from `_hydro_proto`'s by up to 1.4e-2 and the interval by 3e-3 to 3.6e-2 (at 0.05), while
+  slope, intercept and interval equal `_meteo_proto`'s; `mean_date` is `MM-DD` where the mockup writes
+  „8 VI”; the period of 365.25 d against the meteorological prototype's 365 d changes Słupsk's
+  amplitude by 0.0002 °C and the day of the maximum by 0.11 d.
 
 ## Risks
 

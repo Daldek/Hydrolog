@@ -205,6 +205,20 @@ _SPECS: Final[tuple[NoticeSpec, ...]] = (
         ("count", "total", "years"),
     ),
     NoticeSpec(
+        "short_years_left_out",
+        "info",
+        "{count} hydrological year(s) of the period have fewer than {minimum} days "
+        "with a value to use and no values of their own: {years}",
+        ("count", "minimum", "years"),
+    ),
+    NoticeSpec(
+        "undated_extremes",
+        "warning",
+        "{count} annual extreme(s) have no date in the half-year file and were left "
+        "out: {years}",
+        ("count", "years"),
+    ),
+    NoticeSpec(
         "large_result",
         "warning",
         "the result is {size_chars:,} characters, over the {page_chars:,} of a page "

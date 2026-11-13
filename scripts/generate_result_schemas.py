@@ -108,6 +108,12 @@ _ADDED_FIELDS: dict[str, tuple[str, ...]] = {
         "reference_level",
         "reference_discharge_m3s",
     ),
+    "hydrolog-stats-mann-kendall/1": (
+        "sen_slope",
+        "sen_intercept",
+        "sen_slope_lower",
+        "sen_slope_upper",
+    ),
 }
 """Fields added to a document after its first version, by id: never ``required``."""
 

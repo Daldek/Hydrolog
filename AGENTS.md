@@ -103,7 +103,7 @@ One line per command: name, `operation_id`, summary. Options, units, bounds and 
 ### [network: River network][paths]
 - `network stats` (`hydrolog_network_stats`): Compute the order statistics of a river network (Strahler or Shreve).
 ### [stats: Flow statistics][paths]
-- `stats characteristic`, `stats daily`, `stats duration-curve`, `stats flood-frequency`, `stats homogeneity`, `stats low-flow`, `stats low-flow-sequences`, `stats mann-kendall`, `stats monthly`, `stats runoff-volume`, `stats threshold-events` (tools `hydrolog_stats_<verb>`, `-` as `_`): characteristic values, threshold events, duration curves, runoff volumes, daily and monthly statistics, flood and low-flow frequency, low-flow sequences, trend and homogeneity tests of station series; summaries: `commands list`.
+- `stats baseflow`, `stats characteristic`, `stats daily`, `stats duration-curve`, `stats flood-frequency`, `stats harmonics`, `stats homogeneity`, `stats low-flow`, `stats low-flow-sequences`, `stats mann-kendall`, `stats monthly`, `stats regime`, `stats runoff-volume`, `stats seasonality`, `stats threshold-events` (tools `hydrolog_stats_<verb>`, `-` as `_`): characteristic values, threshold events, duration curves, runoff volumes, daily and monthly statistics, flood and low-flow frequency, low-flow sequences, trend and homogeneity tests of station series; summaries: `commands list`.
 ### [hydrometrics: Hydrometry][paths]
 - `hydrometrics rating-curve` (`hydrolog_hydrometrics_rating_curve`): Fit a rating curve Q = a·(H − H₀)^b to stage–discharge pairs
 - `hydrometrics water-level-zones` (`hydrolog_hydrometrics_water_level_zones`): Delimit Rybczyński water level zones (NTW, STW, WTW) from level series

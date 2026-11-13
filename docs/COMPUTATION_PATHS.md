@@ -1,7 +1,7 @@
 # Computation Paths for Unit Hydrograph Models (plus HSG and the Fisher–Tippett Distribution)
 
-**Document version:** 1.7
-**Date:** 2026-11-06
+**Document version:** 1.9
+**Date:** 2026-11-13
 **Applies to:** Hydrolog >= 1.0.0 (sections 3.2.2, 3.3.6, 3.4.6, 3.4.7, 3.5, 3.6, 3.7 and 3.8 describe behaviour from v1.0.0; the rest: >= 0.6.0)
 
 ---
@@ -1172,6 +1172,34 @@ A flood frequency analysis takes the annual maxima as a sample of one distributi
 
 **Verification** (`tests/unit/test_homogeneity.py`, `tests/unit/test_operations_analysis.py`). A step in the middle of a deterministic series (golden-ratio steps) is rejected by all three tests and the same values without the step by none; Pettitt's K of 1, 3, 2, 5, 4 is 6 (U_t = −4, −4, −6, −2, counted pair by pair) with p = 2 exp(−1.44) = 0.474 and the change point after the third value, and of 2, 1, 2, 3 is 3 with mid-ranks and p capped at 1; the change point of a two-level step of 12 and 18 years is the first year of the second level, with K = 12 · 18, and as the split year it separates the levels exactly (U = 0, D = 1); U of the first part (not the smaller U), the split year, a year missing from the series, the errors and the series of a daily file are checked.
 
+### 3.12 Regime, Seasonality, Harmonics, Trends and Baseflow of a Station (`stats regime`, `stats seasonality`, `stats harmonics`, `stats mann-kendall`, `stats baseflow`; plan 2026-11-13, D11; ADR-0031)
+
+These commands describe a station's daily series over a reference period: the hydrological years `first_year` to `last_year` (November to October, the whole record by default). A result that characterises the period names it (`first_year`, `last_year`, `period_years`) and carries the notice `short_reference_period` when it has fewer than 30 years (plan D1). They give the numbers of the prototypes of Obserwator's GUI mockup (`_hydro_proto.py`) on the same series, except where a step below names a difference.
+
+**Regime (`stats regime`, `flow_regime`).** The mean flow Q̄ₘ of each calendar month is the mean of its days with a value over the period, the mean annual flow Q̄ the mean of all days with a value; Pardé's coefficient is Kₘ = Q̄ₘ / Q̄ (Pardé, 1933). The lists `monthly_mean` and `parde` run from November to October. The monthly volumes Vₘ = Q̄ₘ dₘ (dₘ the days of the month, 28.25 for February) give `spring_share` = (V_III + V_IV) / Σ V and Walsh and Lawler's (1981) seasonality index SI = Σ \|Vₘ − R/12\| / R, R = Σ V: 0 for equal months, 11/6 ≈ 1.83 when one month holds the whole volume. Dynowska's (1997) type is read from the coefficients of the spring month, the larger of March and April, and of the summer month, the largest of June to August, with the criteria as Wrzesiński (2018, p. 250; the same words in Wrzesiński, 2017, p. 255) states them:
+
+| `code` | Type | Criterion (Wrzesiński, 2018) | Test |
+|---|---|---|---|
+| 5 | pluvio-nival | the summer month's mean flow is higher than or nearly equal to the spring month's (both as a rule 130–180 % of the annual mean) | summer ≥ 0.95 · spring, tested first |
+| 4 | nival-pluvial | the spring month as a rule 130–180 %, a clear summer rise to at least 100 % of the annual mean | summer ≥ 1.00 |
+| 1 | nival, weakly developed | the spring month at most 130 % | spring ≤ 1.30 |
+| 2 | nival, moderately developed | the spring month 130–180 % | spring ≤ 1.80 |
+| 3 | nival, strongly developed | the spring month above 180 % | spring > 1.80 |
+
+The sources name neither the months nor a number for "nearly equal": the spring month as March or April follows Perz (2019, p. 79), who applies Dynowska's criteria to the rivers of the Kłodzko basin; June to August and 0.95 are Hydrolog's reading (the mockup's `REGIME_RULE`), and the "as a rule 130–180 %" of types 4 and 5 is not tested. Dynowska's (1997) Atlas sheet itself was not available; the criteria were checked against Wrzesiński (2017, 2018) and Perz (2019). `regime_type.criteria` gives the two months, their coefficients and the limits. The mean coefficients of each type in Wrzesiński's (2018) Table 1 give that type, and Kłodzko's discharge of 1971–2015 gives type 4, as Perz (2019) found for the same years.
+
+**Seasonality of annual extremes (`stats seasonality`).** The annual maxima (`statistic` `max`) or minima of the complete hydrological years of a daily series, dated by the first day of the extreme (a year with a day without a value is skipped, notice `incomplete_years`), or IMGW-PIB's from `half_year_file`: the larger of the two half-year maxima (the winter one on a tie), the smaller of the minima, with that half-year's date, as `stats characteristic` takes them (a year without both half-years has none; an extreme without a date is left out, notice `undated_extremes`). Each date is an angle on the circle of its calendar year, θ = 2π (d − 0.5) / L, d the day of the year (1 = 1 January) and L = 365 or 366; the mean of the unit vectors, x̄ = Σ cos θ / n, ȳ = Σ sin θ / n, points to the mean date, `mean_day` = atan2(ȳ, x̄) / 2π · 365.25 + 0.5 (`mean_date` its `MM-DD` in a common year), and its length r = √(x̄² + ȳ²), `concentration`, is 1 when every extreme falls on one day and near 0 when they spread over the year (Bayliss and Jones, 1993; Burn, 1997). With a concentration near 0 the mean date says little. `winter_share` and `summer_share` are the shares of the extremes dated in November–April and May–October.
+
+**Harmonics of the annual cycle (`stats harmonics`, `annual_cycle`).** Least squares fit of x(t) = A₀ + Σₖ [aₖ cos(2πkt/P) + bₖ sin(2πkt/P)], k = 1 … K (`harmonics`, 1 to 4, default 2), with t the day of the hydrological year counted from 0 on 1 November and P = 365.25 d (Wilks, 2011, section 9.4). Each harmonic gives its `amplitude` Cₖ = √(aₖ² + bₖ²), its `phase_day` = φₖ P / (2πk) + 1 with φₖ = atan2(bₖ, aₖ), the day of the hydrological year of its first maximum, and its `explained_variance`, what it adds to the R² of the harmonics before it (the coefficients of the whole fit, cut after harmonic k); `r_squared` is the R² of all K. `period` fits every day of the period (the mean annual cycle), `years` each hydrological year with at least 300 days with a value (the others are named in the notice `short_years_left_out`). The command serves any daily variable: water temperature (H14), air temperature (M12), discharge. The mockup's meteorological prototype (`_meteo_proto.harmonic_fit`) puts t at the middle of the day as a fraction of its own calendar year and reads the peaks on 365 days; on the water temperature of Słupsk (1984–2025) the difference is 0.0002 °C in the amplitudes, 0.11 day in the day of the first maximum and 3·10⁻⁵ in the explained variance.
+
+**Trends with Sen's slope (`stats mann-kendall`, `sen_slope`).** The Mann-Kendall test itself (S, its variance without the correction for ties, the continuity-corrected Z and the two-sided p-value) is unchanged. Sen's (1968) slope is the median of the N' slopes (xⱼ − xᵢ) / (tⱼ − tᵢ) of the pairs tᵢ < tⱼ, with t the `years` (`year_column` in a file) or, without them, the steps 0, 1, 2 … of the series, a missing value keeping its step. The intercept is Conover's (1980) median(x) − slope · median(t), the value of the line at t = 0 (year 0 with years). The 100 (1 − alpha) % confidence interval follows Gilbert (1987, section 16.5): C = z₁₋α/₂ √Var(S) with the test's Var(S) (no correction for ties), M₁ = (N' − C)/2, M₂ = (N' + C)/2, the limits are the M₁-th and the (M₂ + 1)-th of the ordered slopes, interpolated linearly between ranks as in Gilbert's Example 16.5 and his program (appendix B), and `null` when such a rank is outside 1 … N' (fewer than 5 values at alpha 0.05). The mockup's `_hydro_proto.sen_slope` differs, as the plan's sources do not: its intercept is median(x − slope · t), its limits are truncated ranks and its interval is always 95 %; `_meteo_proto.sen_slope` gives Hydrolog's numbers.
+
+**Baseflow (`stats baseflow`, `baseflow_separation`).** The recursive digital filter of Lyne and Hollick (1979), qₜ = α qₜ₋₁ + (1 + α)/2 (Qₜ − Qₜ₋₁) and bₜ = Qₜ − qₜ when qₜ > 0, else Qₜ, with `alpha` 0.925 and `passes` 3 (forward, backward, forward, each on the baseflow of the pass before; Nathan and McMahon, 1990), in the standard of Ladson et al. (2013) and their published code: each span is reflected by 30 days at both ends (Q₃₀ … Q₁ before it, Qₙ₋₂ … Qₙ₋₃₁ after it), each pass starts its quickflow at the first value of its input and keeps it unclipped, negative too, as the state of the next day, and a baseflow below 0 becomes 0 after the last pass. A series with gaps is filtered on each gapless span of at least 60 days (`spans`, `days`). `bfi` = Σ b / Σ Q over the days filtered, of the period and of each year with at least 300 of them (`years`); `series_baseflow` gives every day of `series_year`, by default the last complete year of the period (as `cumulative_year` of `stats runoff-volume`). The recession constant k is the median of the ratios Q(t+1) / Q(t) over the recession segments, runs of at least 5 daily falls (a missing day ends one; Tallaksen, 1995), and `half_life_days` = ln 2 / (−ln k). The mockup's `_hydro_proto.lyne_hollick` clips the quickflow to 0 … Q at every step and starts each pass at 0: on Ladson's Bass River example (α = 0.98) it gives a BFI of 0.094 instead of the published 0.197, and on Kłodzko's record (1951–2025) 0.585 instead of 0.663; with that filter swapped in, Hydrolog's command gives the mockup's numbers to the last digit.
+
+**Water temperature (H15)** needs no command of its own: the days at or above 15, 20 and 25 °C and below 1 °C are `stats threshold-events` on the series of T (one call per level), the yearly maximum with its date the first degree of `stats characteristic` with `parameter` T, the annual cycle `stats harmonics`.
+
+**Verification** (`tests/unit/test_station_regime.py`; the mockup's numbers by a check outside the repository, plan 2026-11-13, Results). Sen's slope, interval and S reproduce Gilbert's (1987) Example 16.5 (5.5, 2.6 to 9.3 with two values in one time period) and Exercises 16.1–16.3 (S = 12, Var(S) = 44.3, slope 0.33 and 0.23, interval 0 to 0.94); the mean Pardé coefficients of Wrzesiński's (2018) Table 1 give types 1 to 5; the filter reproduces the BFIs that Ladson et al. (2013) publish with their code for the Bass River at Loch (0.1965759) and for its two spans parted by missing days (0.1411197); an exact two-harmonic sinusoid is recovered (amplitudes, days of the maxima, R² = 1); the seasonality index takes its bounds 0 and 11/6; Pardé's coefficients, the spring share, the circular mean of dates and the recession constant of an exponential recession are checked against hand computations.
+
 ---
 
 ## 4. Literature Verification
@@ -1216,6 +1244,11 @@ A flood frequency analysis takes the annual maxima as a sample of one distributi
 | Control points (`ControlPointNetwork`) | Expansion into the nodes above, no formula of its own: the network of points equals the same nodes built by hand (document and hydrographs); a linear reach routes the same with and without a confluence, a nonlinear one (Muskingum-Cunge with the inflow peak, a pond) does not | ✅ |
 | Flood frequency fit methods (`fit_method`) | Hosking and Wallis (1997): sample L-moments, GEV and Pearson III from L-moments; moments and least squares on the same scipy distributions (ADR-0021) | ✅ |
 | Homogeneity of annual maxima (`stats homogeneity`, `homogeneity_tests`): Mann-Whitney U, two-sample Kolmogorov-Smirnov, Pettitt | Mann and Whitney (1947), Smirnov (1939), Pettitt (1979); `scipy.stats.mannwhitneyu` and `ks_2samp`; Pettitt's K checked by hand on small series (ADR-0022) | ✅ |
+| Flow regime (`stats regime`): Pardé's coefficients, Dynowska's types, the seasonality index | Pardé (1933); Dynowska (1997) with the criteria of Wrzesiński (2017, 2018) and the spring months of Perz (2019); Walsh and Lawler (1981); the types of Wrzesiński's (2018) Table 1 reproduced | ✅ (the summer months and "nearly equal" = 0.95 are Hydrolog's reading) |
+| Seasonality of annual extremes (`stats seasonality`): circular mean date and concentration | Bayliss and Jones (1993), Burn (1997) | ✅ |
+| Harmonics of the annual cycle (`stats harmonics`) | Wilks (2011), section 9.4; an exact sinusoid recovered | ✅ |
+| Sen's slope, Conover's intercept, Gilbert's interval (`stats mann-kendall`) | Sen (1968), Conover (1980), Gilbert (1987) section 16.5; Example 16.5 and Exercises 16.1–16.3 reproduced | ✅ |
+| Baseflow by the Lyne and Hollick filter, recession constant (`stats baseflow`) | Lyne and Hollick (1979), Nathan and McMahon (1990), Ladson et al. (2013) (their published BFIs reproduced), Tallaksen (1995) | ✅ |
 
 ### 4.2 Key Publications
 
@@ -1429,7 +1462,41 @@ A flood frequency analysis takes the annual maxima as a sample of one distributi
 
 38. **Pettitt, A.N.** (1979). A non-parametric approach to the change-point problem. *Journal of the Royal Statistical Society, Series C (Applied Statistics)*, 28(2), 126-135.
 
+### Regime, Seasonality, Trends and Baseflow
+
+39. **Pardé, M.** (1933). *Fleuves et rivières*. Armand Colin, Paris.
+
+40. **Dynowska, I.** (1997). Reżim odpływu rzecznego (River runoff regime). In: *Atlas Rzeczypospolitej Polskiej*. Główny Geodeta Kraju, Warszawa.
+
+41. **Wrzesiński, D.** (2017). Typologia reżimu odpływu rzek w Polsce w podejściu nadzorowanym i nienadzorowanym (A typology of the river regime in Poland in supervised and unsupervised approaches). *Badania Fizjograficzne, Seria A – Geografia Fizyczna*, 8 (A68), 253-264. doi:10.14746/bfg.2017.8.19
+
+42. **Wrzesiński, D.** (2018). Typologia reżimu odpływu rzek w Polsce w różnych fazach oscylacji północnoatlantyckiej (A typology of the river regime in Poland in the phases of the North Atlantic Oscillation). *Badania Fizjograficzne, Seria A – Geografia Fizyczna*, 9 (A69), 249-261 (the criteria of Dynowska's types on p. 250, Table 1 on pp. 253-254). doi:10.14746/bfg.2018.9.19
+
+43. **Perz, A.** (2019). Cechy reżimu odpływu rzek Kotliny Kłodzkiej (Features of the runoff regime of the rivers of the Kłodzko Basin). *Badania Fizjograficzne, Seria A – Geografia Fizyczna*, 10 (A70), 65-83 (the spring month, March or April, p. 79). doi:10.14746/bfg.2019.10.6
+
+44. **Walsh, R.P.D. & Lawler, D.M.** (1981). Rainfall seasonality: description, spatial patterns and change through time. *Weather*, 36(7), 201-208.
+
+45. **Bayliss, A.C. & Jones, R.C.** (1993). Peaks-over-threshold flood database: summary statistics and seasonality. *Report No. 121*, Institute of Hydrology, Wallingford.
+
+46. **Burn, D.H.** (1997). Catchment similarity for regional flood frequency analysis using seasonality measures. *Journal of Hydrology*, 202(1-4), 212-230.
+
+47. **Wilks, D.S.** (2011). *Statistical Methods in the Atmospheric Sciences*, 3rd ed. Academic Press, Oxford (section 9.4, harmonic analysis).
+
+48. **Sen, P.K.** (1968). Estimates of the regression coefficient based on Kendall's tau. *Journal of the American Statistical Association*, 63(324), 1379-1389.
+
+49. **Conover, W.J.** (1980). *Practical Nonparametric Statistics*, 2nd ed. Wiley, New York.
+
+50. **Gilbert, R.O.** (1987). *Statistical Methods for Environmental Pollution Monitoring*. Van Nostrand Reinhold, New York (chapter 16: section 16.5, Example 16.5, Exercises 16.1-16.3 and their answers on p. 224, the program of appendix B).
+
+51. **Lyne, V. & Hollick, M.** (1979). Stochastic time-variable rainfall-runoff modelling. *Hydrology and Water Resources Symposium*, Institution of Engineers Australia, Perth.
+
+52. **Nathan, R.J. & McMahon, T.A.** (1990). Evaluation of automated techniques for base flow and recession analyses. *Water Resources Research*, 26(7), 1465-1473.
+
+53. **Ladson, A.R., Brown, R., Neal, B. & Nathan, R.** (2013). A standard approach to baseflow separation using the Lyne and Hollick filter. *Australasian Journal of Water Resources*, 17(1), 25-34. doi:10.7158/13241583.2013.11465417; the authors' code and example: https://github.com/TonyLadson/BaseflowSeparation_LyneHollick
+
+54. **Tallaksen, L.M.** (1995). A review of baseflow recession analysis. *Journal of Hydrology*, 165(1-4), 349-370.
+
 ---
 
-**Document version:** 1.8
-**Last updated:** 2026-11-06
+**Document version:** 1.9
+**Last updated:** 2026-11-13

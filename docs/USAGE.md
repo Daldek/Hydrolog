@@ -864,11 +864,23 @@ quantiles need at least 30 years).
   minima; `stats low-flow-sequences`: drought sequences below a threshold.
 - `stats characteristic`: second-degree characteristic values (WWQ ... NNQ); `stats daily` and
   `stats monthly`: day-of-year and monthly statistics.
-- `stats mann-kendall`: monotonic trend test; `stats homogeneity`: the homogeneity of annual maxima
+- `stats mann-kendall`: monotonic trend test with Sen's slope, Conover's intercept and Gilbert's
+  1 - alpha interval of the slope (per year with `--year-column` or inline `--years`, otherwise
+  per step); `stats homogeneity`: the homogeneity of annual maxima
   by the Mann-Whitney U and two-sample Kolmogorov-Smirnov tests of the series split at
   `--split-year` (default: into halves) and Pettitt's change-point test (ADR-0022). Annual maxima
   take their years from `--year-column` (or inline `--years`), a daily series from its dates;
   `split_year` and Pettitt's `change_point_year` are the first year of the second part.
+- The regime of a station (plan 2026-11-13, D11; `--first-year`, `--last-year` choose the
+  hydrological years): `stats regime`: Pardé's coefficients of the months (XI-X), Dynowska's
+  regime type (`regime_type.code` 1-5), the March-April share of the volume and the seasonality
+  index; `stats seasonality`: the mean date and the concentration of the annual maxima
+  (`--statistic min`: minima) of the complete years or of IMGW-PIB's `--half-year-file`;
+  `stats harmonics`: the mean, amplitudes and days of maximum of the annual cycle (water or air
+  temperature, flow) over the period and per year; `stats baseflow`: the Lyne-Hollick baseflow,
+  the baseflow index of the period and of each year and the recession constant. The water
+  temperature days at or above 15, 20, 25 °C and below 1 °C are `stats threshold-events` on the
+  `T` column.
 
 ```bash
 hydrolog stats flood-frequency --input-file tests/fixtures/annual_maxima.csv --value-column Qmax --distribution gev --fit-method all --return-periods 10,100 --json
@@ -888,6 +900,22 @@ hydrolog stats homogeneity --input-file tests/fixtures/annual_maxima.csv --value
 
 ```json output
 {"result": {"schema": "hydrolog-stats-homogeneity/1", "n_years": 35, "split_index": 11, "split_year": 2000, "mann_whitney": {"homogeneous": true}, "pettitt": {"change_point_year": 2020, "homogeneous": true}}}
+```
+
+```bash
+hydrolog stats regime --input-file tests/fixtures/station_daily.csv --value-column Q --date-column date --json
+```
+
+```json output
+{"result": {"schema": "hydrolog-stats-regime/1", "period_years": 5, "regime_type": {"code": 4, "criteria": {"spring_month": 3, "summer_month": 6}}}}
+```
+
+```bash
+hydrolog stats baseflow --input-file tests/fixtures/station_daily.csv --value-column Q --date-column date --json
+```
+
+```json output
+{"result": {"schema": "hydrolog-stats-baseflow/1", "days": 1811, "spans": 3, "series_year": 2023}}
 ```
 
 ```python

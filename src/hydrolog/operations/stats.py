@@ -1,12 +1,14 @@
 """Operations of the group ``stats``: statistics of hydrological series.
 
-Characteristic values, events beyond a level, duration curves, runoff volumes, daily
-and monthly statistics, flood frequency, low-flow frequency and sequences, the
-Mann-Kendall trend test and the homogeneity tests. Every operation loads its series
-from inline values or from a file (:func:`hydrolog.catalog.inputs.load_series`),
-drops missing values with a notice or keeps them as gaps in the record, and composes
-the classes of :mod:`hydrolog.statistics`; the library's own warnings (short series,
-...) become the notices of the returned
+Characteristic values, events beyond a level, duration curves, runoff volumes, the
+flow regime, the seasonality of annual extremes, the harmonics of the annual cycle,
+baseflow, daily and monthly statistics, flood frequency, low-flow frequency and
+sequences, the Mann-Kendall trend test with Sen's slope and the homogeneity tests.
+Every operation loads its series from inline values or from a file
+(:func:`hydrolog.catalog.inputs.load_series`), drops missing values with a notice or
+keeps them as gaps in the record, and composes the classes of
+:mod:`hydrolog.statistics`; the library's own warnings (short series, ...) become the
+notices of the returned
 :class:`~hydrolog.catalog.envelope.OperationOutput`. The functions are re-exported by
 :mod:`hydrolog.operations`.
 
@@ -24,8 +26,9 @@ year in which some day has no value (an absent date or a ``NaN``) is skipped and
 named in the ``incomplete_years`` notice and result field (KZGW, 2017; WMO No. 1029,
 2009). A calendar-year export therefore loses its first and last hydrological year.
 ``stats homogeneity`` takes the annual maxima of a daily series the same way (the
-skipped years are named in the notice only). The characteristic values keep a year
-with missing days and name it (``years_with_missing_days``).
+skipped years are named in the notice only), and so does ``stats seasonality`` for
+the dates of its extremes. The characteristic values keep a year with missing days
+and name it (``years_with_missing_days``).
 """
 
 from __future__ import annotations
@@ -49,6 +52,7 @@ from hydrolog.operations._analysis import (
     check_choice,
     check_open_unit_interval,
     check_years,
+    drop_missing,
     load_valid_series,
     reference_period_notices,
     require_count,
@@ -58,12 +62,17 @@ from hydrolog.operations._analysis import (
 from hydrolog.statistics import (
     DEFAULT_PERCENTS,
     FIT_METHODS,
+    AnnualCycle,
+    BaseflowSeparation,
     CharacteristicValues,
     DailyStatistics,
+    DatedExtreme,
     DurationCurve,
     EmpiricalFrequency,
+    ExtremeSeasonality,
     FitMethod,
     FloodFrequencyAnalysis,
+    FlowRegime,
     FrequencyAnalysisResult,
     HalfYearExtremes,
     HalfYearValues,
@@ -75,14 +84,20 @@ from hydrolog.statistics import (
     MonthlyStatistics,
     RunoffVolumes,
     ThresholdEvents,
+    annual_cycle,
     annual_extremes_from_half_years,
+    baseflow_separation,
     calculate_characteristic_values,
     calculate_daily_statistics,
     calculate_monthly_statistics,
     characteristic_values_from_half_years,
+    daily_extremes,
     duration_curve,
     exceedance_values,
+    extreme_seasonality,
     fit_fisher_tippett_minima,
+    flow_regime,
+    half_year_extremes,
     homogeneity_tests,
     mann_kendall_test,
     runoff_volumes,
@@ -97,6 +112,15 @@ from hydrolog.statistics._hydrological_year import (
     on_daily_calendar,
 )
 from hydrolog.statistics._types import compute_non_exceedance_positions
+from hydrolog.statistics.baseflow import (
+    BASEFLOW_ALPHA,
+    BASEFLOW_PASSES,
+    MIN_SPAN_DAYS,
+)
+from hydrolog.statistics.baseflow import (
+    MIN_YEAR_DAYS as BASEFLOW_MIN_YEAR_DAYS,
+)
+from hydrolog.statistics.harmonics import MAX_HARMONICS, MIN_YEAR_VALUES
 from hydrolog.statistics.volumes import DAY_SECONDS
 
 __all__ = [
@@ -107,16 +131,20 @@ __all__ = [
     "LowFlowFrequencyAnalysis",
     "LowFlowSequencesResult",
     "LowFlowYear",
+    "stats_baseflow",
     "stats_characteristic",
     "stats_daily",
     "stats_duration_curve",
     "stats_flood_frequency",
+    "stats_harmonics",
     "stats_homogeneity",
     "stats_low_flow",
     "stats_low_flow_sequences",
     "stats_mann_kendall",
     "stats_monthly",
+    "stats_regime",
     "stats_runoff_volume",
+    "stats_seasonality",
     "stats_threshold_events",
 ]
 
@@ -1789,34 +1817,549 @@ def stats_runoff_volume(
     return OperationOutput(result, notices)
 
 
+# --- regime, seasonality, harmonics, baseflow -----------------------------------------
+
+
+def _years_left_out(series: Series, kept: Sequence[int], minimum: int) -> list[Notice]:
+    """Return the notice of the years with a value that ``years`` leaves out."""
+    present = hydrological_year(_dates_of(series)[~np.isnan(series.values)])
+    left_out = sorted(set(present.tolist()) - set(kept))
+    if not left_out:
+        return []
+    return [
+        notice(
+            "short_years_left_out",
+            count=len(left_out),
+            minimum=minimum,
+            years=left_out,
+        )
+    ]
+
+
+def stats_regime(
+    *,
+    values: Sequence[float] | None = None,
+    dates: Sequence[str] | None = None,
+    input_file: str | os.PathLike[str] | None = None,
+    value_column: str | None = None,
+    date_column: str | None = None,
+    first_year: int | None = None,
+    last_year: int | None = None,
+    attribution: list[str] | None = None,
+) -> OperationOutput:
+    """Flow regime of a daily discharge series (``stats regime``).
+
+    The mean flow of each month (November to October) over the mean annual flow,
+    Pardé's coefficients, Dynowska's (1997) regime type by the criteria of
+    Wrzesiński (2018), the March–April share of the annual volume and Walsh and
+    Lawler's (1981) seasonality index of the monthly volumes
+    (:func:`hydrolog.statistics.flow_regime`).
+
+    Parameters
+    ----------
+    values : sequence of float, optional
+        Inline daily discharges [m³/s] in time order; needs ``dates``.
+    dates : sequence of str, optional
+        ISO dates ``YYYY-MM-DD``, strictly increasing, one per value.
+    input_file : str or os.PathLike, optional
+        CSV or JSON file with the series (instead of ``values`` and ``dates``).
+    value_column : str, optional
+        Column of ``input_file`` with the discharges.
+    date_column : str, optional
+        Column of ``input_file`` with the dates.
+    first_year, last_year : int, optional
+        First and last hydrological year of the period, by default those of the
+        record.
+    attribution : list of str, optional
+        Lines of the providers of the discharges (ADR-0028); the envelope carries
+        them, with those of ``input_file``.
+
+    Returns
+    -------
+    OperationOutput
+        ``result`` is a :class:`~hydrolog.statistics.FlowRegime`; the notices report
+        removed missing values and a period shorter than 30 years
+        (``short_reference_period``).
+
+    Raises
+    ------
+    InvalidParameterError
+        If the series options are inconsistent or ``first_year`` is after
+        ``last_year``.
+    NotFoundError, InputDataError
+        If the file does not exist or cannot be read.
+    CalculationError
+        If every value is missing, the period has no value, a calendar month of the
+        period has no value (``details.reason`` ``missing_months``) or the mean flow
+        is not positive (``non_positive_mean``).
+    """
+    cite(attribution)
+    series, notices = load_valid_series(
+        values=values,
+        dates=dates,
+        input_file=input_file,
+        value_column=value_column,
+        date_column=date_column,
+        require_dates=True,
+    )
+    series = select_years(series, first_year, last_year)
+    dates_array = _dates_of(series)
+    months = dates_array.astype("datetime64[M]").astype(np.int64) % 12 + 1
+    absent = [month for month in range(1, 13) if not (months == month).any()]
+    if absent:
+        raise CalculationError(
+            "The regime needs values in every calendar month; no values in "
+            f"month(s): {', '.join(str(month) for month in absent)}",
+            details={"reason": "missing_months", "months": absent},
+            hint="Provide a series that covers at least one full year.",
+        )
+    mean = float(np.mean(series.values))
+    if not mean > 0:
+        raise CalculationError(
+            f"The mean flow of the period is {mean:g}: Pardé's coefficients need a "
+            "positive mean",
+            details={"reason": "non_positive_mean", "mean": mean},
+            hint="Give a discharge series.",
+        )
+    result: FlowRegime = flow_regime(series.values, dates_array)
+    notices.extend(
+        reference_period_notices(
+            result.period_years, result.first_year, result.last_year
+        )
+    )
+    return OperationOutput(result, notices)
+
+
+def stats_seasonality(
+    *,
+    values: Sequence[float] | None = None,
+    dates: Sequence[str] | None = None,
+    input_file: str | os.PathLike[str] | None = None,
+    value_column: str | None = None,
+    date_column: str | None = None,
+    half_year_file: str | os.PathLike[str] | None = None,
+    parameter: Literal["Q", "H", "T"] = "Q",
+    statistic: Literal["max", "min"] = "max",
+    first_year: int | None = None,
+    last_year: int | None = None,
+    attribution: list[str] | None = None,
+) -> OperationOutput:
+    """Seasonality of the annual maxima or minima (``stats seasonality``).
+
+    The dates of the annual extremes as angles on the year: their mean date and
+    concentration (Bayliss and Jones, 1993; Burn, 1997) and their shares in the
+    winter (XI-IV) and the summer (V-X) half-year
+    (:func:`hydrolog.statistics.extreme_seasonality`). The extremes are those of the
+    complete hydrological years of a daily series (a year with a day without a value
+    is skipped and named in the ``incomplete_years`` notice), or IMGW-PIB's: the
+    larger of the half-year maxima, the smaller of the minima
+    (:func:`hydrolog.statistics.half_year_extremes`).
+
+    Parameters
+    ----------
+    values : sequence of float, optional
+        Inline daily values in time order; needs ``dates``.
+    dates : sequence of str, optional
+        ISO dates ``YYYY-MM-DD``, strictly increasing, one per value.
+    input_file : str or os.PathLike, optional
+        CSV or JSON file with the series (instead of ``values`` and ``dates``).
+    value_column : str, optional
+        Column of ``input_file`` with the values.
+    date_column : str, optional
+        Column of ``input_file`` with the dates.
+    half_year_file : str or os.PathLike, optional
+        Obserwator's export of IMGW-PIB's half-year characteristics
+        (``pl.imgw.hydro_semiannual``), instead of a daily series.
+    parameter : {"Q", "H", "T"}, optional
+        The variable, by default ``"Q"``; it picks the columns of ``half_year_file``.
+    statistic : {"max", "min"}, optional
+        The annual maxima (default) or minima.
+    first_year, last_year : int, optional
+        First and last hydrological year of the period, by default those of the
+        record.
+    attribution : list of str, optional
+        Lines of the providers of the series (ADR-0028); the envelope carries them,
+        with those of ``input_file`` or ``half_year_file``.
+
+    Returns
+    -------
+    OperationOutput
+        ``result`` is a :class:`~hydrolog.statistics.ExtremeSeasonality`; the notices
+        report removed missing values, skipped incomplete years
+        (``incomplete_years``), extremes without a date (``undated_extremes``) and a
+        period shorter than 30 years (``short_reference_period``).
+
+    Raises
+    ------
+    InvalidParameterError
+        If the series options are inconsistent (a daily series with
+        ``half_year_file``), an option is not allowed or ``first_year`` is after
+        ``last_year``.
+    NotFoundError, InputDataError
+        If a file does not exist or cannot be read.
+    CalculationError
+        If every value is missing, the period has no value or no dated annual
+        extreme (``details.reason`` ``no_complete_years``, ``no_dated_extremes``).
+    """
+    cite(attribution)
+    check_choice("parameter", parameter, _PARAMETERS)
+    check_choice("statistic", statistic, ("max", "min"))
+    check_years(first_year, last_year)
+    notices: list[Notice]
+    extremes: list[DatedExtreme]
+    if half_year_file is not None:
+        half = _half_years_of_period(
+            half_year_file,
+            parameter,
+            first_year,
+            last_year,
+            values=values,
+            dates=dates,
+            input_file=input_file,
+            value_column=value_column,
+            date_column=date_column,
+        )
+        extremes, undated = half_year_extremes(half, statistic)
+        notices = []
+        if undated:
+            notices.append(
+                notice("undated_extremes", count=len(undated), years=undated)
+            )
+        if not extremes:
+            raise CalculationError(
+                f"The half-year file has no dated annual {statistic}imum of "
+                f"{parameter} in the period",
+                details={
+                    "reason": "no_dated_extremes",
+                    "first_year": first_year,
+                    "last_year": last_year,
+                },
+                hint=(
+                    f"An annual {statistic}imum needs both half-years and the date "
+                    f"column {parameter}_{statistic}_start."
+                ),
+            )
+        source = "half_years"
+    else:
+        series, notices = load_valid_series(
+            values=values,
+            dates=dates,
+            input_file=input_file,
+            value_column=value_column,
+            date_column=date_column,
+            require_dates=True,
+        )
+        series = select_years(series, first_year, last_year)
+        extremes, annual = daily_extremes(series.values, _dates_of(series), statistic)
+        if annual.incomplete:
+            notices.append(
+                notice("incomplete_years", **incomplete_years_details(annual))
+            )
+        if not extremes:
+            raise CalculationError(
+                "The period has no complete hydrological year: "
+                f"{describe_incomplete_years(annual)}",
+                details={
+                    "reason": "no_complete_years",
+                    "incomplete_years": annual.incomplete_years,
+                },
+                hint=(
+                    "A hydrological year counts only with a value for every day of "
+                    "it; fill the gaps or choose other years."
+                ),
+            )
+        source = "daily"
+    result: ExtremeSeasonality = extreme_seasonality(
+        extremes, statistic=statistic, parameter=parameter, source=source
+    )
+    notices.extend(
+        reference_period_notices(
+            result.period_years, result.first_year, result.last_year
+        )
+    )
+    return OperationOutput(result, notices)
+
+
+def stats_harmonics(
+    *,
+    values: Sequence[float] | None = None,
+    dates: Sequence[str] | None = None,
+    input_file: str | os.PathLike[str] | None = None,
+    value_column: str | None = None,
+    date_column: str | None = None,
+    harmonics: int = 2,
+    first_year: int | None = None,
+    last_year: int | None = None,
+    attribution: list[str] | None = None,
+) -> OperationOutput:
+    """Harmonics of the annual cycle of a daily series (``stats harmonics``).
+
+    Least squares fit of the mean and ``harmonics`` harmonics of the year (period
+    365.25 days) on the day of the hydrological year, over the whole period (the mean
+    annual cycle) and in each hydrological year with at least 300 days with a value
+    (:func:`hydrolog.statistics.annual_cycle`). Any daily variable: water or air
+    temperature, discharge, stage.
+
+    Parameters
+    ----------
+    values : sequence of float, optional
+        Inline daily values in time order; needs ``dates``.
+    dates : sequence of str, optional
+        ISO dates ``YYYY-MM-DD``, strictly increasing, one per value.
+    input_file : str or os.PathLike, optional
+        CSV or JSON file with the series (instead of ``values`` and ``dates``).
+    value_column : str, optional
+        Column of ``input_file`` with the values.
+    date_column : str, optional
+        Column of ``input_file`` with the dates.
+    harmonics : int, optional
+        Number of harmonics, 1 to 4, by default 2.
+    first_year, last_year : int, optional
+        First and last hydrological year of the period, by default those of the
+        record.
+    attribution : list of str, optional
+        Lines of the providers of the series (ADR-0028); the envelope carries them,
+        with those of ``input_file``.
+
+    Returns
+    -------
+    OperationOutput
+        ``result`` is a :class:`~hydrolog.statistics.AnnualCycle`; the notices report
+        removed missing values, years with too few values for a fit of their own
+        (``short_years_left_out``) and a period shorter than 30 years
+        (``short_reference_period``).
+
+    Raises
+    ------
+    InvalidParameterError
+        If the series options are inconsistent, ``harmonics`` is not 1 to 4 or
+        ``first_year`` is after ``last_year``.
+    NotFoundError, InputDataError
+        If the file does not exist or cannot be read.
+    CalculationError
+        If every value is missing, the period has no value or fewer than
+        ``4 harmonics + 2`` values (``details.reason`` ``too_few_values``).
+    """
+    cite(attribution)
+    if isinstance(harmonics, bool) or not 1 <= harmonics <= MAX_HARMONICS:
+        raise InvalidParameterError(
+            f"Option 'harmonics': must be 1 to {MAX_HARMONICS}, got {harmonics!r}",
+            details={
+                "option": "harmonics",
+                "reason": "range",
+                "minimum": 1,
+                "maximum": MAX_HARMONICS,
+                "value": str(harmonics),
+            },
+        )
+    series, notices = load_valid_series(
+        values=values,
+        dates=dates,
+        input_file=input_file,
+        value_column=value_column,
+        date_column=date_column,
+        require_dates=True,
+    )
+    series = select_years(series, first_year, last_year)
+    needed = 4 * harmonics + 2
+    if len(series) < needed:
+        raise CalculationError(
+            f"A fit of {harmonics} harmonic(s) needs at least {needed} values, got "
+            f"{len(series)}",
+            details={
+                "reason": "too_few_values",
+                "count": len(series),
+                "minimum": needed,
+            },
+            hint="Provide a longer series or fewer harmonics.",
+        )
+    result: AnnualCycle = annual_cycle(series.values, _dates_of(series), harmonics)
+    notices.extend(
+        _years_left_out(series, [row.year for row in result.years], MIN_YEAR_VALUES)
+    )
+    notices.extend(
+        reference_period_notices(
+            result.period_years, result.first_year, result.last_year
+        )
+    )
+    return OperationOutput(result, notices)
+
+
+def stats_baseflow(
+    *,
+    values: Sequence[float] | None = None,
+    dates: Sequence[str] | None = None,
+    input_file: str | os.PathLike[str] | None = None,
+    value_column: str | None = None,
+    date_column: str | None = None,
+    first_year: int | None = None,
+    last_year: int | None = None,
+    alpha: float = BASEFLOW_ALPHA,
+    passes: int = BASEFLOW_PASSES,
+    series_year: int | None = None,
+    attribution: list[str] | None = None,
+) -> OperationOutput:
+    """Baseflow by the Lyne and Hollick filter (``stats baseflow``).
+
+    The filter of Lyne and Hollick (1979) passed forward, backward and forward over
+    each gapless span of at least 60 days of the daily discharge (Nathan and McMahon,
+    1990), in the standard of Ladson et al. (2013): the baseflow index of the period
+    and of each year with at least 300 days with a baseflow, the recession constant
+    (Tallaksen, 1995) and the daily baseflow of one year
+    (:func:`hydrolog.statistics.baseflow_separation`).
+
+    Parameters
+    ----------
+    values : sequence of float, optional
+        Inline daily discharges [m³/s] in time order; needs ``dates``.
+    dates : sequence of str, optional
+        ISO dates ``YYYY-MM-DD``, strictly increasing, one per value.
+    input_file : str or os.PathLike, optional
+        CSV or JSON file with the series (instead of ``values`` and ``dates``).
+    value_column : str, optional
+        Column of ``input_file`` with the discharges.
+    date_column : str, optional
+        Column of ``input_file`` with the dates.
+    first_year, last_year : int, optional
+        First and last hydrological year of the period, by default those of the
+        record.
+    alpha : float, optional
+        Filter parameter in (0, 1), by default 0.925.
+    passes : int, optional
+        Odd number of passes, at least 3, by default 3.
+    series_year : int, optional
+        Hydrological year of the daily baseflow in the result, by default the last
+        complete year of the period (or the last year with a baseflow).
+    attribution : list of str, optional
+        Lines of the providers of the discharges (ADR-0028); the envelope carries
+        them, with those of ``input_file``.
+
+    Returns
+    -------
+    OperationOutput
+        ``result`` is a :class:`~hydrolog.statistics.BaseflowSeparation`; the notices
+        report years with too few days for an index of their own
+        (``short_years_left_out``) and a period shorter than 30 years
+        (``short_reference_period``).
+
+    Raises
+    ------
+    InvalidParameterError
+        If the series options are inconsistent, ``alpha`` is outside (0, 1),
+        ``passes`` is not an odd number of at least 3, ``first_year`` is after
+        ``last_year`` or ``series_year`` has no value in the period.
+    NotFoundError, InputDataError
+        If the file does not exist or cannot be read.
+    CalculationError
+        If every value is missing, the period has no value or no gapless span of 60
+        days (``details.reason`` ``no_gapless_span``).
+    """
+    cite(attribution)
+    level = check_open_unit_interval("alpha", alpha)
+    if isinstance(passes, bool) or passes < 3 or passes % 2 == 0:
+        raise InvalidParameterError(
+            f"Option 'passes': must be an odd number of at least 3, got {passes!r}",
+            details={"option": "passes", "reason": "odd", "value": str(passes)},
+            hint="Use 3 (forward, backward, forward), 5, 7 ...",
+        )
+    series = require_values(
+        load_series(
+            values=values,
+            dates=dates,
+            input_file=input_file,
+            value_column=value_column,
+            date_column=date_column,
+            require_dates=True,
+        )
+    )
+    series = select_years(series, first_year, last_year)
+    dates_array = _dates_of(series)
+    if series_year is not None:
+        known = hydrological_year(dates_array[~np.isnan(series.values)])
+        if series_year not in set(known.tolist()):
+            raise InvalidParameterError(
+                f"Option 'series_year': {series_year} has no value in the period",
+                details={
+                    "option": "series_year",
+                    "reason": "range",
+                    "minimum": int(known.min()),
+                    "maximum": int(known.max()),
+                },
+                hint="Choose a hydrological year of the period that has values.",
+            )
+    _, daily = on_daily_calendar(series.values, dates_array)
+    padded = np.concatenate(([False], np.isfinite(daily), [False]))
+    edges = np.diff(padded.astype(np.int8))
+    longest = int(np.max(np.flatnonzero(edges == -1) - np.flatnonzero(edges == 1)))
+    if longest < MIN_SPAN_DAYS:
+        raise CalculationError(
+            f"The filter needs a gapless span of at least {MIN_SPAN_DAYS} days; the "
+            f"longest has {longest}",
+            details={
+                "reason": "no_gapless_span",
+                "longest_days": longest,
+                "minimum": MIN_SPAN_DAYS,
+            },
+            hint="Fill the gaps of the series or choose other years.",
+        )
+    result: BaseflowSeparation = baseflow_separation(
+        series.values,
+        dates_array,
+        alpha=level,
+        passes=passes,
+        series_year=series_year,
+    )
+    notices = _years_left_out(
+        series, [row.year for row in result.years], BASEFLOW_MIN_YEAR_DAYS
+    )
+    notices.extend(
+        reference_period_notices(
+            result.period_years, result.first_year, result.last_year
+        )
+    )
+    return OperationOutput(result, notices)
+
+
 # --- trend ----------------------------------------------------------------------------
 
 
 def stats_mann_kendall(
     *,
     values: Sequence[float] | None = None,
+    years: Sequence[int] | None = None,
     input_file: str | os.PathLike[str] | None = None,
     value_column: str | None = None,
+    year_column: str | None = None,
     alpha: float = 0.05,
     attribution: list[str] | None = None,
 ) -> OperationOutput:
-    """Mann-Kendall trend test (``stats mann-kendall``).
+    """Mann-Kendall trend test with Sen's slope (``stats mann-kendall``).
 
     Non-parametric test for a monotonic trend in a series ordered in time (Mann,
     1945; Kendall, 1975): the S statistic, its variance (without the correction for
     ties, so the test is slightly conservative), the continuity-corrected Z score and
-    the two-sided p-value (:func:`hydrolog.statistics.mann_kendall_test`).
+    the two-sided p-value, with Sen's (1968) slope, Conover's (1980) intercept and
+    the 100 (1 - alpha) % confidence interval of the slope (Gilbert, 1987) built on
+    that variance (:func:`hydrolog.statistics.mann_kendall_test`). The slope is per
+    year with the years of the values, otherwise per step of the series (a missing
+    value keeps its step).
 
     Parameters
     ----------
     values : sequence of float, optional
         Inline series in time order, e.g. annual maxima.
+    years : sequence of int, optional
+        Years of the inline ``values`` (whole numbers, strictly increasing, gaps
+        allowed).
     input_file : str or os.PathLike, optional
         CSV or JSON file with the series (instead of ``values``); rows in time order.
     value_column : str, optional
         Column of ``input_file`` with the values.
+    year_column : str, optional
+        Column of ``input_file`` with the years of the values.
     alpha : float, optional
-        Significance level, in (0, 1), by default 0.05.
+        Significance level, in (0, 1), by default 0.05; the confidence interval of
+        the slope covers 1 - alpha.
     attribution : list of str, optional
         Lines of the providers of the series (ADR-0028); the envelope carries them,
         with those of ``input_file``.
@@ -1830,7 +2373,8 @@ def stats_mann_kendall(
     Raises
     ------
     InvalidParameterError
-        If the series options are inconsistent or ``alpha`` is outside (0, 1).
+        If the series options are inconsistent, the years are not whole numbers
+        increasing strictly or ``alpha`` is outside (0, 1).
     NotFoundError, InputDataError
         If the file does not exist or cannot be read.
     CalculationError
@@ -1838,11 +2382,20 @@ def stats_mann_kendall(
     """
     cite(attribution)
     level = check_open_unit_interval("alpha", alpha)
-    series, notices = load_valid_series(
-        values=values, input_file=input_file, value_column=value_column
+    series = load_series(
+        values=values,
+        years=years,
+        input_file=input_file,
+        value_column=value_column,
+        year_column=year_column,
     )
+    steps = np.arange(len(series)) if series.years is None else series.years
+    times = steps[~np.isnan(series.values)].astype(np.float64)
+    series, notices = drop_missing(series)
     require_count(len(series), _MIN_TREND_VALUES, "The Mann-Kendall test")
-    result: MannKendallResult = mann_kendall_test(series.values, alpha=level)
+    result: MannKendallResult = mann_kendall_test(
+        series.values, alpha=level, times=times
+    )
     return OperationOutput(result, notices)
 
 

@@ -412,6 +412,10 @@ STATION_ANALYSES = [
     pytest.param("stats threshold-events", {"level": 7.0}, id="threshold-events"),
     pytest.param("stats duration-curve", {}, id="duration-curve"),
     pytest.param("stats runoff-volume", {}, id="runoff-volume"),
+    pytest.param("stats regime", {}, id="regime"),
+    pytest.param("stats seasonality", {"statistic": "min"}, id="seasonality"),
+    pytest.param("stats harmonics", {"harmonics": 1}, id="harmonics"),
+    pytest.param("stats baseflow", {}, id="baseflow"),
 ]
 """The commands of the station analyses (plan 2026-11-13) and their own options."""
 

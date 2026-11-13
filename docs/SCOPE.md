@@ -171,7 +171,7 @@ Hydrolog is analogous to **Kartograf** (spatial data download) and **Obserwator*
 
 #### 2.1.6 Module `cli` - CLI (v0.4.0, rebuilt in v1.0.0) ✅
 
-Since v1.0.0 the CLI is generated from the command catalog (`hydrolog.catalog`): 52 commands in 16 groups (list: `hydrolog commands list`). Syntax: `hydrolog <group> <command> --option value`; global flags `--json`, `--schema`, `--lang pl|en`, `-V`. The former CLI syntax (v0.4.0-v0.7.0) was removed without aliases.
+Since v1.0.0 the CLI is generated from the command catalog (`hydrolog.catalog`): 56 commands in 16 groups (list: `hydrolog commands list`). Syntax: `hydrolog <group> <command> --option value`; global flags `--json`, `--schema`, `--lang pl|en`, `-V`. The former CLI syntax (v0.4.0-v0.7.0) was removed without aliases.
 
 ```bash
 # Time of concentration
@@ -284,7 +284,9 @@ The module requires optional dependencies: `pip install hydrolog[viz]`
 - Frequency analysis of maximum flows (LogNormal, GEV, Pearson III, Weibull)
 - Frequency analysis of minimum flows (Fisher-Tippett)
 - Detection of low-flow sequences (threshold method)
-- Mann-Kendall trend test (stationarity check)
+- Flow regime (Pardé's coefficients, Dynowska's types, Walsh and Lawler's seasonality index), the seasonality of annual maxima and minima (circular statistics of their dates) and the harmonics of the annual cycle
+- Baseflow separation (the Lyne and Hollick filter, Ladson et al. 2013), the baseflow index and the recession constant
+- Mann-Kendall trend test (stationarity check) with Sen's slope, Conover's intercept and Gilbert's confidence interval of the slope
 - Goodness-of-fit tests: Kolmogorov-Smirnov, Anderson-Darling
 - Akaike information criterion (AIC)
 

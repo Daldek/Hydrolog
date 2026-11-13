@@ -137,6 +137,14 @@ export const notices = {
       text: "{count} z {total} lat hydrologicznych ma dni bez danych; ich wartości skrajne weszły do obliczeń i mogą być łagodniejsze od rzeczywistych: {years}.",
       plain: "Niektóre lata mają dni bez danych; ich wartości skrajne mogą być łagodniejsze od rzeczywistych.",
     },
+    short_years_left_out: {
+      text: "{count} lat hydrologicznych okresu ma mniej niż {minimum} dni z danymi do obliczeń i nie ma własnych wartości: {years}.",
+      plain: "Niektóre lata mają za mało dni z danymi, by mieć własne wartości.",
+    },
+    undated_extremes: {
+      text: "{count} ekstremów rocznych nie ma daty w pliku półroczy i pominięto je: {years}.",
+      plain: "Ekstrema roczne bez daty pominięto.",
+    },
     unknown_hietogram_type: {
       text: "Nieznany typ hietogramu {hietogram_type}; dozwolone: {allowed}.",
       plain: "Nieznany typ hietogramu.",

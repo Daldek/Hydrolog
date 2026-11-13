@@ -680,7 +680,9 @@ class TestObserwatorExport:
         result = run(
             "stats mann-kendall", input_file=str(OBSERWATOR_EXPORT), value_column="Q"
         )
-        assert result.result == mann_kendall_test(np.array(self.VALID_Q))
+        # The two missing days keep their steps: Sen's slope is per row of the file.
+        steps = np.array([0, 1, 2, 3, 4, 5, 6, 9, 10, 11, 12, 13], dtype=float)
+        assert result.result == mann_kendall_test(np.array(self.VALID_Q), times=steps)
         assert result.notices[0].code == "missing_values_removed"
 
     def test_a_partial_year_is_no_annual_maximum_for_flood_frequency(self):
