@@ -123,11 +123,13 @@ def test_vendored_libraries_match_their_manifest() -> None:
 def test_the_page_loads_nothing_remote() -> None:
     # nogat.json records where the copies came from; the page never reads it. The
     # regulamin's template (nogat-terms.html) links the providers' sites and UODO for a
-    # reader to follow; what it loads, its two stylesheets, is local (below).
+    # reader to follow; what it loads, its two stylesheets, is local (below). The kit's
+    # nogat-sources.js holds the providers' lines and links them (DEV-20.4); it loads
+    # nothing.
     found = [
         f"{path.relative_to(WEB)}: {match.group(0)}"
         for path in own_files(".html", ".css", ".js", ".json", ".svg")
-        if path.name not in ("nogat.json", "nogat-terms.html")
+        if path.name not in ("nogat.json", "nogat-terms.html", "nogat-sources.js")
         for match in REMOTE.finditer(
             NAMESPACE.sub("", path.read_text(encoding="utf-8"))
         )

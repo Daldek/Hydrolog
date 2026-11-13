@@ -1,13 +1,15 @@
-"""The providers' lines in the GUI (Nogat DEV-20, ECO-060), browser.
+"""The providers' lines in the GUI (Nogat DEV-20, ECO-060, ECO-064), browser.
 
 Against the real server of ``gui_server``: Statystyka przepływów opened from
-Archiwista's hand-off of a station's series shows IMGW-PIB's attribution and terms
-notice visibly with the result, from the hand-off's own lines and, for an older hand-off
-without them, from the provider its provenance names; Hydrogram zlewni with a PMAXTP
-depth shows PMAXTP's lines under its results, carries them into the CSV (DEV-20.5's two
-columns), the hand-off, the print view and the PNG (taller by its footer); a result
-without provider data has no footer and a CSV without those columns. The lines come from
-``hydrolog._attribution``, the one source of them.
+Archiwista's hand-off of a station's series shows IMGW-PIB's lines in the view's one
+strip, from the hand-off's own lines and, for an older hand-off without them, from the
+provider its provenance names; Hydrogram zlewni with a PMAXTP depth shows PMAXTP's lines
+in its strip, carries them in full into the CSV (DEV-20.5's two columns), the hand-off,
+the print view and the PNG (taller by its footer), and the welcome dialog lists them; a
+result without provider data has no strip, a CSV without those columns and a welcome
+dialog of its sentences alone. The strip shows the short lines (S, P, PS, PP) and
+„Źródła i warunki”, whose dialog lists every line; no full block stands on screen. The
+lines come from ``hydrolog._attribution``, the one source of them.
 """
 
 import csv
@@ -20,7 +22,13 @@ from typing import Any
 from playwright.sync_api import Page, expect
 
 from hydrolog._attribution import provider_lines
-from tests.e2e.conftest import Tab, open_part, seed_hydrogram
+from tests.e2e.conftest import (
+    Tab,
+    open_part,
+    seed_hydrogram,
+    sources_listed,
+    sources_shown,
+)
 from tests.e2e.test_exports import download, handoff_button
 from tests.e2e.test_hydrogram import MOCKUP, shows
 from tests.e2e.test_statystyka import (
@@ -37,13 +45,6 @@ HG = 'section.section[data-section="hydrogram"]'
 SETS = provider_lines()
 IMGW = SETS["imgw"]
 PMAXTP = SETS["pmaxtp"]
-
-
-def footer_rows(page: Page, where: str) -> list[str]:
-    """Return the visible lines of the footer „Źródła danych” in ``where``."""
-    footer = page.locator(f'{where} footer.attribution[data-attribution="result"]')
-    expect(footer).to_be_visible()
-    return [row.strip() for row in footer.locator("p").all_inner_texts()]
 
 
 def maxima_payload() -> dict[str, Any]:
@@ -94,15 +95,17 @@ def test_statystyka_from_archiwista_shows_imgws_lines_with_the_result(
         envelope = response.json()
         assert envelope["attribution"] == IMGW["attribution"]
         assert envelope["terms_notice"] == IMGW["terms_notice"]
-        # Visible with the result (S, P, N, RD), in the centre and in the panel Wyniki
-        assert footer_rows(page, f"{SECTION} .view-center") == expected
-        assert footer_rows(page, RIGHT) == expected
-        # And in the card of the hand-off in the panel Dane
+        # One strip under the centre: IMGW-PIB's S and P, every line in its dialog
+        assert sources_shown(page, SECTION) == IMGW["attribution"]
+        assert sources_listed(page, SECTION) == expected
+        # No full block on screen: not under the results, nor in the hand-off's card
+        expect(page.locator(f"{SECTION} footer.attribution:visible")).to_have_count(0)
         card = page.locator(
             f'{SECTION} [data-handoff-source="archiwista"] '
             '[data-attribution="handoff"] p'
         )
         expect(card).to_have_text(expected)
+        expect(card.first).to_be_hidden()
         # The quantiles' CSV carries them in its two trailing columns
         open_part_statystyka(page)
         _, data = download(
@@ -143,12 +146,14 @@ def test_hydrogram_with_pmaxtp_shows_and_carries_pmaxtps_lines(
     shows(page, *MOCKUP[("scs", "kirpich", "II")])
     assert (sent.value.post_data_json or {})["attribution"] == expected
     right = f"{HG} .view-panel.right"
-    assert footer_rows(page, f"{HG} .view-center") == expected
-    assert footer_rows(page, right) == expected
-    links = page.locator(
-        f'{right} footer.attribution a[href="https://klimat.imgw.pl/opady-maksymalne"]'
-    )
-    expect(links.first).to_be_visible()
+    # The strip shows PS and PP; the monograph and the terms are in its dialog
+    assert sources_shown(page, HG) == PMAXTP["attribution"][:2]
+    assert sources_listed(page, HG) == expected
+    strip = page.locator(f"{HG} .view-center nogat-sources")
+    expect(
+        strip.locator('a[href="https://klimat.imgw.pl/opady-maksymalne"]').first
+    ).to_be_visible()
+    expect(page.locator(f"{HG} footer.attribution:visible")).to_have_count(0)
 
     # CSV: the hydrograph with DEV-20.5's two columns, one line per cell from the top
     open_part(page, HG, "exports")
@@ -182,11 +187,32 @@ def test_hydrogram_with_pmaxtp_shows_and_carries_pmaxtps_lines(
     assert doc["attribution"] == PMAXTP["attribution"]
     assert doc["terms_notice"] == PMAXTP["terms_notice"]
 
-    # On paper: the lines once, at the end of the results
+    # On paper: the full lines, at the end of the results and under the depth; no strip
     page.emulate_media(media="print")
     expect(page.locator(f"{right} footer.attribution")).to_be_visible()
-    expect(page.locator(f"{HG} .view-center footer.attribution")).to_be_hidden()
+    printed = page.locator(f'{right} footer.attribution[data-attribution="result"] p')
+    expect(printed).to_have_text(expected)
+    expect(page.locator(f'{HG} [data-attribution="pmaxtp"]')).to_be_visible()
+    expect(strip).to_be_hidden()
     page.emulate_media(media="screen")
+
+    # The welcome dialog, opened from „Instrukcja”, lists the lines of the page's data
+    page.get_by_role("link", name="Instrukcja", exact=True).click()
+    welcome = page.locator("dialog.welcome")
+    expect(welcome).to_be_visible()
+    listed = welcome.locator("[data-welcome-sources] li")
+    expect(listed).to_have_text(expected)
+
+
+def test_the_welcome_of_a_first_visit_has_its_sentences_alone(
+    new_tab: Any,
+) -> None:
+    tab = new_tab(welcome=True)
+    tab.open()
+    welcome = tab.page.get_by_role("dialog", name="Witaj w Hydrologu")
+    expect(welcome).to_be_visible()
+    expect(welcome.locator("[data-welcome-sources]")).to_have_count(0)
+    expect(tab.page.locator("nogat-sources:visible")).to_have_count(0)
 
 
 def test_a_result_without_provider_data_has_no_footer_and_no_columns(tab: Tab) -> None:
@@ -199,6 +225,7 @@ def test_a_result_without_provider_data_has_no_footer_and_no_columns(tab: Tab) -
     assert "attribution" not in (response.request.post_data_json or {})
     assert "attribution" not in response.json()
     expect(page.locator(f"{SECTION} footer.attribution")).to_have_count(0)
+    expect(page.locator(f"{SECTION} nogat-sources")).to_be_hidden()
     open_part_statystyka(page)
     _, data = download(
         page, page.locator(f"{RIGHT} .export-row button", has_text="CSV")

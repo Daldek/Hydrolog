@@ -1,6 +1,6 @@
 // The layout of a section, Dane | Wykresy | Wyniki (design/README.md, plan D10):
 //   html`<${ViewLayout} left=${{title, sub, body, foot}} detail=${{title, sub, body, foot,
-//     onClose}} center=${{bar, body}} right=${{title, body}} />`
+//     onClose}} center=${{bar, body}} right=${{title, body}} sources=${lines} />`
 // The side panels resize by dragging or by keys (arrows 16 px, Shift 64 px, Home, End,
 // Enter or a double click for the default width), left 260-560 px (300) and right
 // 340-720 px (400), keeping the centre at least 480 px; the widths are shared by every
@@ -16,11 +16,14 @@
 // staying open for the other sections. On a phone the panel is the sheet "detail", which
 // alternates with Dane's: its „← Dane” shows Dane's sheet, its ✕ closes the sheet, and
 // without a `detail` that sheet shows Dane.
+// `sources` is the providers' lines of the data the view shows ({attribution,
+// terms_notice}; none: null): the view's one strip of them under the centre (sources.js).
 
 import { html, useEffect, useLayoutEffect, useRef, useState } from "../html.js";
 import { shell } from "../labels/shell.js";
 import { loadState, saveState } from "../persist.js";
 import { closePanel, closeSheet, openPanel, togglePanel, usePanels } from "./sheet.js";
+import { Sources } from "./sources.js";
 
 /** Bounds of the side panels [px]. */
 export const LIMITS = Object.freeze({
@@ -268,12 +271,13 @@ let layoutCounter = 0;
  *
  * @param {{left: {title?: any, sub?: any, body: any, foot?: any}, detail?: {title: any,
  *   sub?: any, body: any, foot?: any, onClose: () => void}|null, center: {bar?: any,
- *   body: any, label?: string}, right?: {title?: any, sub?: any, body: any, foot?: any}}}
- *   props the panel Dane, the second left panel (none: null), the centre (its bar and
- *   body) and the panel Wyniki
+ *   body: any, label?: string}, right?: {title?: any, sub?: any, body: any, foot?: any},
+ *   sources?: {attribution: string[], terms_notice: string[]}|null}} props the panel
+ *   Dane, the second left panel (none: null), the centre (its bar and body), the panel
+ *   Wyniki and the providers' lines of the view's data (none: null)
  * @returns {object} the layout
  */
-export function ViewLayout({ left, detail, center, right }) {
+export function ViewLayout({ left, detail, center, right, sources = null }) {
   const panels = usePanels();
   const box = useRef(null);
   const [ids] = useState(() => {
@@ -433,6 +437,7 @@ export function ViewLayout({ left, detail, center, right }) {
           ${right ? html`<div class="end">${openButton("right", right.title || shell.panels.right)}</div>` : null}
         </div>
         <div class="view-body">${center.body}</div>
+        <${Sources} lines=${sources} />
       </section>
       ${right && open.right && !panels.phone
         ? html`<${Resizer} side="right" ...${sizes.right} onWidth=${onWidth("right")} />`

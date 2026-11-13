@@ -41,7 +41,7 @@
 // document; the views and exports of a run show and carry the run's lines.
 
 import { api, downloadBlob } from "../../api.js";
-import { Attribution, linesFields, linesOf, withAttribution } from "../../attribution.js";
+import { linesFields, linesOf, mergeLines, withAttribution } from "../../attribution.js";
 import { splitReason } from "../../controls/field.js";
 import { inputFiles, uploadFile, useSession } from "../../controls/file-field.js";
 import { inputText, plural } from "../../format.js";
@@ -1231,7 +1231,6 @@ export default function Siec({ active, path = [] }) {
             </div>
           </div>`
         : html`<${NodeTable} skeleton=${state.skeleton} words=${words} result=${result} selected=${state.selected} onSelect=${(id) => select(id, false)} />`}
-      ${run ? html`<${Attribution} lines=${linesOf(run.envelope)} />` : null}
       <p class="sr-only" role="status" aria-live="polite" data-canvas="said">${said ? html`<span key=${said.count}>${said.text}</span>` : null}</p>
     </div>`,
   };
@@ -1317,7 +1316,13 @@ export default function Siec({ active, path = [] }) {
   }
   const question = asking === "new" ? "new" : "clear";
   return html`
-    <${ViewLayout} left=${left} detail=${detail} center=${center} right=${right} />
+    <${ViewLayout}
+      left=${left}
+      detail=${detail}
+      center=${center}
+      right=${right}
+      sources=${mergeLines(lines, run ? linesOf(run.envelope) : undefined)}
+    />
     <${ConfirmDialog}
       open=${asking !== null}
       name=${question}

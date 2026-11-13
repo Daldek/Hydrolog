@@ -62,6 +62,7 @@ body {
 .info-pop,
 dialog,
 .handoff-feedback,
+.view-sources,
 .axis-range,
 .noscript {
   display: none !important;
@@ -182,13 +183,10 @@ dialog,
 .chart.wide svg {
   min-width: 0 !important;
 }
-/* The providers' lines (Nogat DEV-20.5) on paper once, at the end of the results: the
-   centre's copy, which the screen shows under the charts, is left out */
+/* The providers' lines (Nogat DEV-20.5) on paper in full, at the end of the results and
+   under the data they came with; the screen shows the view's strip instead (app.css) */
 .attribution {
   break-inside: avoid;
-}
-.view-center .attribution {
-  display: none !important;
 }
 .attribution a {
   color: var(--text);

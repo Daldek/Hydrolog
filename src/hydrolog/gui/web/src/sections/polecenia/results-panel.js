@@ -1,6 +1,7 @@
 // The results of „Wszystkie polecenia”: in the centre the tables (or the JSON) of the last
-// run, in the panel Wyniki its tiles, chart, call, notices and exports; both end with the
-// providers' lines of the run's envelope (attribution.js, Nogat DEV-20.5), none without.
+// run, in the panel Wyniki its tiles, chart, call, notices and exports, ending with the
+// full providers' lines of the run's envelope, on paper only (attribution.js, Nogat
+// DEV-20.5; on screen the view's strip, ui/sources.js), none without.
 
 import { Attribution, linesOf } from "../../attribution.js";
 import { html } from "../../html.js";
@@ -31,8 +32,7 @@ const TILES = {
  */
 export function CenterBody({ run, tab }) {
   if (!run) return html`<p class="empty-note">${texts.noResult}</p>`;
-  const footer = html`<${Attribution} lines=${linesOf(run.envelope)} />`;
-  if (tab === "json") return html`<${ResultJson} envelope=${run.envelope} />${footer}`;
+  if (tab === "json") return html`<${ResultJson} envelope=${run.envelope} />`;
   const { analysis } = run;
   const tables = analysis.series.length + analysis.records.length + (analysis.targets ? 1 : 0);
   return html`
@@ -45,7 +45,6 @@ export function CenterBody({ run, tab }) {
           <div class="card-head"><h3 class="card-title">${resultTexts.parameters}</h3></div>
           <${ResultSummary} analysis=${analysis} inputs=${run.envelope.inputs} showTiles=${false} />
         </div>`}
-    ${footer}
   `;
 }
 

@@ -14,7 +14,7 @@ if (place) render(html`<${ThemeSwitch} />`, place);
 
 /**
  * Draw the footer of a public GUI under the guide: the regulamin's address is relative to
- * the app's page, one level up. The guide holds no session, so the link stays in the tab.
+ * the app's page, one level up.
  */
 async function drawFooter() {
   const footer = document.getElementById("footer");
@@ -27,7 +27,7 @@ async function drawFooter() {
   } catch {
     // No answer: the page stays without the footer, as on a GUI that is not public
   }
-  if (terms) render(html`<${TermsFooter} terms=${new URL(terms, app).href} newTab=${false} />`, footer);
+  if (terms) render(html`<${TermsFooter} terms=${new URL(terms, app).href} />`, footer);
 }
 
 drawFooter();

@@ -46,7 +46,7 @@ __all__ = [
 ]
 
 TEMPLATE: Final = WEB_DIR / "nogat" / "nogat-terms.html"
-"""The kit's template of the regulamin (Nogat kit 0.4.0, regulamin 1.0)."""
+"""The kit's template of the regulamin (Nogat kit 0.5.1, regulamin 1.0)."""
 PAGE: Final = "regulamin.html"
 """The address of the filled regulamin, relative to the GUI's page."""
 BLOCKS: Final[tuple[str, ...]] = ("imgw", "pmaxtp", "chmi")

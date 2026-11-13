@@ -467,6 +467,9 @@ body.resizing .view-center, body.resizing .view-panel { pointer-events: none; }
 /* A scroll bar coming or going does not change the width a fitted chart is drawn for */
 .view-body:has(.chart.fit) { scrollbar-gutter: stable; }
 .view-body > .result-area { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-3); }
+/* The view's one strip of the providers' lines (ui/sources.js, Nogat DEV-20.5, ECO-064):
+   under the centre, the kit's <nogat-sources> styles its content (nogat-sources.css) */
+.view-sources { flex: none; padding: var(--space-1) var(--space-3); background: var(--surface); border-top: 1px solid var(--line); }
 .tab-pane { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-3); }
 .empty-note { margin: var(--space-6) auto; max-width: 420px; color: var(--text-3); font-size: var(--text-sm); text-align: center; }
 
@@ -677,9 +680,10 @@ dialog.confirm .modal-body p { margin: 0 0 var(--space-3); line-height: var(--li
 .notes li.bad > svg, .notes li.bad .lvl { color: var(--bad-ink); }
 .notes .from { display: block; margin-top: 2px; font-size: var(--text-xs); color: var(--text-3); }
 
-/* The providers' lines under a result (attribution.js, Nogat DEV-20.5): visible and
-   legible, the attribution, then the terms notice; inside a part of a panel without the
-   heading (`compact`) */
+/* The full providers' lines under a result and under the data they came with
+   (attribution.js, Nogat DEV-20.5): the attribution, then the terms notice; inside a part
+   of a panel without the heading (`compact`). Printed only: on screen the view's strip
+   stands for them */
 .attribution {
   margin: var(--space-4) 0 0; padding: var(--space-2) 0 0; border-top: 1px solid var(--line);
   font-size: var(--text-sm); line-height: 1.4; color: var(--text-2);
@@ -689,6 +693,7 @@ dialog.confirm .modal-body p { margin: 0 0 var(--space-3); line-height: var(--li
 .attribution .attribution-terms { margin-top: var(--space-2); }
 .attribution.compact { margin: var(--space-1) 0 var(--space-2); padding: 0; border-top: 0; }
 .handoff .attribution.compact { margin: var(--space-1) 0 0; }
+@media screen { .attribution { display: none; } }
 
 .params { width: 100%; border-collapse: collapse; font-size: var(--text-base); margin: 0 0 var(--space-2); }
 .params th, .params td { padding: 6px 0; border-bottom: 1px solid var(--line); text-align: left; font-weight: var(--weight-regular); vertical-align: baseline; }
@@ -906,6 +911,10 @@ dialog.modal::backdrop { background: color-mix(in srgb, var(--code-bg) 45%, tran
 .modal-foot { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); padding: var(--space-2) var(--space-4) var(--space-4); }
 .welcome .modal-body p { margin: 0 0 var(--space-3); font-size: var(--text-site); line-height: var(--line-height); }
 .welcome .check { margin: var(--space-4) 0 var(--space-2); }
+/* The providers' lines of the data on the page (sources.js WelcomeSources): the kit's
+   content (nogat-sources.css) below the sentences, in the size of the strips' dialog */
+.welcome-sources { padding-top: var(--space-1); border-top: 1px solid var(--line); font-size: var(--text-base); line-height: var(--line-height); }
+.welcome .welcome-sources p { margin: var(--space-2) 0 0; font-size: inherit; }
 .feedback .intro { margin: 0 0 var(--space-3); color: var(--text-2); }
 .feedback textarea { width: 100%; }
 .feedback .counter { justify-self: end; font-size: var(--text-xs); color: var(--text-3); }
