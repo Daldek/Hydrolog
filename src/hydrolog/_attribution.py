@@ -4,13 +4,14 @@ Hydrolog computes with data of IMGW-PIB and ČHMÚ: the PMAXTP depth that ``prec
 pmaxtp`` fetches, and the station series that Obserwator exports or Archiwista hands
 off. Their terms bind every product made with the data, so a result, a file Hydrolog
 writes and every view of the GUI carry, verbatim, the lines below (Nogat's standard,
-DEV-20.1 to DEV-20.7, decision ECO-060). This module is their one source in Hydrolog.
+DEV-20.1 to DEV-20.7, decisions ECO-060 and ECO-065). This module is their one source in
+Hydrolog.
 
 Attribution lines, in the order of DEV-20.4:
 
 * :data:`IMGW_SOURCE` (S) and :data:`IMGW_PROCESSED` (P): data of
-  danepubliczne.imgw.pl (archives, station series) and of hydro.imgw.pl, which adds
-  :data:`IMGW_HYDRO` (H); §5 ust. 3 and 4 of the IMGW-PIB terms;
+  danepubliczne.imgw.pl (archives, station series) and of hydro.imgw.pl; §5 ust. 3 and 4
+  of the IMGW-PIB terms;
 * :data:`PMAXTP_SOURCE` (PS), :data:`PMAXTP_PROCESSED` (PP) and the monograph
   :data:`PMAXTP_MONOGRAPH` (M): data of the PMAXTP project, whose own terms replace S
   and P (ust. 1 and 2);
@@ -19,16 +20,20 @@ Attribution lines, in the order of DEV-20.4:
   the fact of a modification; a producer's own CP (Obserwator's "normalizacja i zmiana
   formatu") is kept before Hydrolog's.
 
-The terms notice (DEV-20.7), in its order: :data:`IMGW_TERMS` (N) and the terms that
-apply, :data:`TERMS_DANEPUBLICZNE` (RD), :data:`TERMS_HYDRO` (RH),
-:data:`TERMS_PMAXTP` (RK).
+The terms lines (DEV-20.7), a link to each terms that apply, in their order:
+:data:`TERMS_DANEPUBLICZNE` (RD), :data:`TERMS_HYDRO` (RH), :data:`TERMS_PMAXTP` (RK);
+none for ČHMÚ, whose C links its licence. No product restates the terms (ECO-065).
 
 Hydrolog processes every input it computes with, so a product always has the processed
 line of its provider: :class:`Attribution` turns the providers found in an input into
 their complete lines. It recognises the lines it knows (a final full stop and the
 surrounding blanks ignored; a ČHMÚ credit by its beginning, whatever its producer's
 wording after it) and carries any other line verbatim, after the known ones, so no
-producer's line is ever dropped.
+producer's line is ever dropped. The lines Nogat retired (ECO-065) are read as what they
+stood for, so an input or an ``ATTRIBUTION.txt`` written before gives the current lines:
+the line of hydro.imgw.pl (H) names its provider, the old „Regulamin: <address>” of a
+known terms becomes its new line, and IMGW-PIB's summary of its terms (N) and any other
+„Regulamin: …” line are dropped.
 
 A command collects the lines of its run: :func:`~hydrolog.catalog.run_command` opens
 :func:`collecting`, the readers of input files :func:`cite` the lines a file carries
@@ -46,6 +51,7 @@ from __future__ import annotations
 
 import contextlib
 import contextvars
+import re
 from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Final, Literal, get_args
@@ -56,10 +62,8 @@ __all__ = [
     "CHMI_PROCESSED",
     "CHMI_SOURCE",
     "CSV_COLUMNS",
-    "IMGW_HYDRO",
     "IMGW_PROCESSED",
     "IMGW_SOURCE",
-    "IMGW_TERMS",
     "PMAXTP_MONOGRAPH",
     "PMAXTP_PROCESSED",
     "PMAXTP_SOURCE",
@@ -80,6 +84,7 @@ __all__ = [
     "lines_of_columns",
     "lines_of_document",
     "provider_lines",
+    "retired_lines",
 ]
 
 Provider = Literal["imgw", "imgw_hydro", "pmaxtp", "chmi"]
@@ -99,10 +104,7 @@ IMGW_SOURCE: Final = f"Źródłem pochodzenia danych jest {_IMGW}"
 """S: the source of IMGW-PIB's data (§5 ust. 3 of the terms)."""
 IMGW_PROCESSED: Final = f"Dane {_IMGW_GENITIVE} zostały przetworzone"
 """P: the data of IMGW-PIB were processed (§5 ust. 4 of the terms)."""
-IMGW_HYDRO: Final = (
-    "Dane pochodzą z serwisu hydrologicznego IMGW-PIB https://hydro.imgw.pl"
-)
-"""H: the data come from IMGW-PIB's hydrological service."""
+_HYDRO_TERMS_PAGE: Final = "https://hydro.imgw.pl/#/regulamin"
 PMAXTP_SOURCE: Final = f"{IMGW_SOURCE}, dane pochodzą ze strony {_PMAXTP_PAGE}"
 """PS: the source of PMAXTP's data and the project's address (ust. 1 of its terms)."""
 PMAXTP_PROCESSED: Final = (
@@ -124,18 +126,13 @@ CHMI_PROCESSED: Final = (
     "Dane ČHMÚ zostały przetworzone (obliczenia hydrologiczne programem Hydrolog)"
 )
 """CP: what Hydrolog did with ČHMÚ's data (CC BY 4.0, §3(a)(1)(B))."""
-IMGW_TERMS: Final = (
-    "Dane IMGW-PIB można wykorzystywać nieodpłatnie do celów prywatnych "
-    "(niezarobkowych). Wykorzystanie w działalności gospodarczej, na stronach z "
-    "reklamami lub do celów wymienionych w regulaminie (m.in. planowanie w "
-    "gospodarowaniu wodami, art. 317 Prawa wodnego) wymaga umowy z IMGW-PIB."
+TERMS_DANEPUBLICZNE: Final = (
+    "Regulamin danych IMGW-PIB: https://danepubliczne.imgw.pl/regulations"
 )
-"""N: the notice of IMGW-PIB's terms of use (DEV-20.7)."""
-TERMS_DANEPUBLICZNE: Final = "Regulamin: https://danepubliczne.imgw.pl/regulations"
 """RD: the terms of danepubliczne.imgw.pl."""
-TERMS_HYDRO: Final = "Regulamin: https://hydro.imgw.pl/#/regulamin"
+TERMS_HYDRO: Final = f"Regulamin serwisu hydrologicznego IMGW-PIB: {_HYDRO_TERMS_PAGE}"
 """RH: the terms of hydro.imgw.pl."""
-TERMS_PMAXTP: Final = f"Regulamin: {_PMAXTP_PAGE}"
+TERMS_PMAXTP: Final = f"Regulamin danych PMAXTP: {_PMAXTP_PAGE}"
 """RK: the terms of PMAXTP, a dialog on the project's page."""
 PMAXTP_TERMS_URL: Final = _PMAXTP_PAGE
 """The page of PMAXTP whose dialog holds its terms."""
@@ -156,37 +153,56 @@ _CHMI_CREDIT: Final = "Źródło danych: Český hydrometeorologický ústav (Č
 """How every ČHMÚ credit begins, whatever its producer wrote after it."""
 _CHMI_MODIFIED: Final = "Dane ČHMÚ zostały przetworzone"
 """How every statement of a modification of ČHMÚ's data begins."""
-_TERMS_PREFIX: Final = "Regulamin:"
-"""How the address of a provider's terms begins."""
+_TERMS_LINE: Final = re.compile(r"Regulamin [^:]+: \S")
+"""The form of every terms line, „Regulamin <whose terms>: <address>” (DEV §20)."""
+_RETIRED_TERMS_PREFIX: Final = "Regulamin: "
+"""How a terms line began before ECO-065, without whose terms it links."""
+_RETIRED_PROVIDER_OF: Final[Mapping[str, str]] = {
+    "Dane pochodzą z serwisu hydrologicznego IMGW-PIB https://hydro.imgw.pl": (
+        "imgw_hydro"
+    ),
+}
+"""H, retired by ECO-065, and the provider it names."""
+_RETIRED_TERMS: Final[Mapping[str, str]] = {
+    "Regulamin: https://danepubliczne.imgw.pl/regulations": TERMS_DANEPUBLICZNE,
+    f"Regulamin: {_HYDRO_TERMS_PAGE}": TERMS_HYDRO,
+    f"Regulamin: {_PMAXTP_PAGE}": TERMS_PMAXTP,
+}
+"""The terms lines of before ECO-065 and the lines that replace them."""
+_RETIRED_NOTICE: Final = (
+    "Dane IMGW-PIB można wykorzystywać nieodpłatnie do celów prywatnych "
+    "(niezarobkowych). Wykorzystanie w działalności gospodarczej, na stronach z "
+    "reklamami lub do celów wymienionych w regulaminie (m.in. planowanie w "
+    "gospodarowaniu wodami, art. 317 Prawa wodnego) wymaga umowy z IMGW-PIB."
+)
+"""N, IMGW-PIB's terms summarised, retired by ECO-065: recognised only to be dropped."""
 
 _LINES: Final[Mapping[str, tuple[str, ...]]] = {
     "imgw": (IMGW_SOURCE, IMGW_PROCESSED),
-    "imgw_hydro": (IMGW_SOURCE, IMGW_PROCESSED, IMGW_HYDRO),
+    "imgw_hydro": (IMGW_SOURCE, IMGW_PROCESSED),
     "pmaxtp": (PMAXTP_SOURCE, PMAXTP_PROCESSED, PMAXTP_MONOGRAPH),
     "chmi": (CHMI_SOURCE, CHMI_PROCESSED),
 }
 _TERMS: Final[Mapping[str, tuple[str, ...]]] = {
-    "imgw": (IMGW_TERMS, TERMS_DANEPUBLICZNE),
-    "imgw_hydro": (IMGW_TERMS, TERMS_HYDRO),
-    "pmaxtp": (IMGW_TERMS, TERMS_PMAXTP),
+    "imgw": (TERMS_DANEPUBLICZNE,),
+    "imgw_hydro": (TERMS_HYDRO,),
+    "pmaxtp": (TERMS_PMAXTP,),
     "chmi": (),
 }
 _ORDER: Final = (
     IMGW_SOURCE,
     IMGW_PROCESSED,
-    IMGW_HYDRO,
     PMAXTP_SOURCE,
     PMAXTP_PROCESSED,
     PMAXTP_MONOGRAPH,
     CHMI_SOURCE,
 )
 """The known attribution lines before the ČHMÚ modifications (DEV-20.4)."""
-_TERMS_ORDER: Final = (IMGW_TERMS, TERMS_DANEPUBLICZNE, TERMS_HYDRO, TERMS_PMAXTP)
+_TERMS_ORDER: Final = (TERMS_DANEPUBLICZNE, TERMS_HYDRO, TERMS_PMAXTP)
 """The known terms lines, in the order of DEV-20.7."""
 _PROVIDER_OF: Final[Mapping[str, str]] = {
     IMGW_SOURCE: "imgw",
     IMGW_PROCESSED: "imgw",
-    IMGW_HYDRO: "imgw_hydro",
     PMAXTP_SOURCE: "pmaxtp",
     PMAXTP_PROCESSED: "pmaxtp",
     PMAXTP_MONOGRAPH: "pmaxtp",
@@ -200,8 +216,16 @@ def _key(line: str) -> str:
     return line.strip().removesuffix(".").rstrip()
 
 
-_KNOWN: Final[Mapping[str, str]] = {_key(line): line for line in _PROVIDER_OF}
-_KNOWN_TERMS: Final[Mapping[str, str]] = {_key(line): line for line in _TERMS_ORDER}
+_KNOWN: Final[Mapping[str, str]] = {
+    _key(line): provider
+    for line, provider in (*_PROVIDER_OF.items(), *_RETIRED_PROVIDER_OF.items())
+}
+"""The provider each known attribution line names, by its recognised form."""
+_KNOWN_TERMS: Final[Mapping[str, str]] = {
+    **{_key(line): line for line in _TERMS_ORDER},
+    **{_key(old): line for old, line in _RETIRED_TERMS.items()},
+}
+"""The current terms line each known terms line stands for, by its recognised form."""
 
 
 def _split(lines: Iterable[object]) -> Iterator[str]:
@@ -280,7 +304,8 @@ class Attribution:
         has every element the licence asks for); a statement of a modification of
         ČHMÚ's data other than Hydrolog's is kept. A known terms line is a terms line
         wherever it is given; any other line is kept verbatim, as a terms line when it
-        is given in ``terms`` or begins with ``Regulamin:``.
+        is given in ``terms`` or has the form „Regulamin <whose terms>: <address>”. A
+        line retired by ECO-065 is read as what it stood for (see the module).
 
         Parameters
         ----------
@@ -304,15 +329,17 @@ class Attribution:
         for line, is_terms in given:
             key = _key(line)
             if key in _KNOWN:
-                providers.add(_PROVIDER_OF[_KNOWN[key]])
+                providers.add(_KNOWN[key])
             elif key in _KNOWN_TERMS:
                 known_terms.add(_KNOWN_TERMS[key])
+            elif key == _key(_RETIRED_NOTICE) or line.startswith(_RETIRED_TERMS_PREFIX):
+                continue  # N, or the bare address of a terms Hydrolog does not know
             elif line.startswith(_CHMI_CREDIT):
                 providers.add("chmi")
             elif line.startswith(_CHMI_MODIFIED):
                 providers.add("chmi")
                 others.append(line)
-            elif is_terms or line.startswith(_TERMS_PREFIX):
+            elif is_terms or _TERMS_LINE.match(line):
                 other_terms.append(line)
             else:
                 others.append(line)
@@ -351,8 +378,6 @@ class Attribution:
     def terms_notice(self) -> tuple[str, ...]:
         """Tuple of str: the terms notice, in the order of DEV-20.7."""
         known = set(self.terms).union(*(_TERMS[name] for name in self.providers))
-        if known - {IMGW_TERMS}:
-            known.add(IMGW_TERMS)  # an address of IMGW-PIB's terms comes with N
         return _union(
             (line for line in _TERMS_ORDER if line in known), self.other_terms
         )
@@ -388,6 +413,26 @@ def provider_lines() -> dict[str, dict[str, list[str]]]:
             "terms_notice": list(Attribution(providers=frozenset({name})).terms_notice),
         }
         for name in PROVIDERS
+    }
+
+
+def retired_lines() -> dict[str, str | None]:
+    """Return the lines retired by ECO-065, each with the line that replaces it.
+
+    For a client that keeps lines Hydrolog gave before (the GUI's kept PMAXTP depth, an
+    older hand-off) and shows them without a run, which would replace them.
+
+    Returns
+    -------
+    dict
+        ``{retired line: its current line, or None when it is dropped}``: H and N
+        go (S and P stand beside H), the old addresses of RD, RH and RK become the
+        new ones.
+    """
+    return {
+        **dict.fromkeys(_RETIRED_PROVIDER_OF),
+        _RETIRED_NOTICE: None,
+        **_RETIRED_TERMS,
     }
 
 

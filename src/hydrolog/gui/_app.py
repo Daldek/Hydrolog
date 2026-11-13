@@ -62,7 +62,7 @@ from starlette.staticfiles import StaticFiles
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 import hydrolog
-from hydrolog._attribution import provider_lines
+from hydrolog._attribution import provider_lines, retired_lines
 from hydrolog._errors import BY_CODE
 from hydrolog._settings import (
     ADMIN_API_KEY,
@@ -629,9 +629,11 @@ class _Gui:
         gives Nogat's app menu (DEV-15.4, ADR-0027). ``attribution`` is the complete
         lines of each provider Hydrolog knows (``imgw``, ``imgw_hydro``, ``pmaxtp``,
         ``chmi``: ``attribution`` and ``terms_notice``), by which the page names the
-        provider of a hand-off that carries no lines of its own (ADR-0028). ``terms``
-        and ``operator_email`` are those of :meth:`terms_document` (Nogat DEV-15.7,
-        DEV-15.12).
+        provider of a hand-off that carries no lines of its own (ADR-0028).
+        ``retired_lines`` maps each line Nogat retired (ECO-065) to its current line or
+        ``None``, by which the page shows a kept depth's or an older hand-off's lines as
+        a run would give them (ADR-0036). ``terms`` and ``operator_email`` are those of
+        :meth:`terms_document` (Nogat DEV-15.7, DEV-15.12).
         """
         session = self.open_session(request, call)
         files = await anyio.to_thread.run_sync(session.files)
@@ -647,6 +649,7 @@ class _Gui:
                 "files": files,
                 "gui": gui,
                 "attribution": provider_lines(),
+                "retired_lines": retired_lines(),
                 **self.terms_document(),
             }
         )

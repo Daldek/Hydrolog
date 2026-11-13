@@ -388,7 +388,7 @@ def precip_pmaxtp(
     -------
     OperationOutput
         :class:`PrecipPmaxtpResult`, the notice ``pmaxtp_attribution`` and the lines
-        of PMAXTP (attribution PS, PP, M; terms notice N, RK; ADR-0028), which every
+        of PMAXTP (attribution PS, PP, M; the terms link RK; ADR-0028), which every
         product of the depth carries.
 
     Raises

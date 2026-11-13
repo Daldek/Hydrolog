@@ -426,7 +426,7 @@ class CommandResult:
         The attribution lines the providers' terms require for the data of the run
         (``attribution`` of the envelope; Nogat DEV-20.6).
     terms_notice : tuple of str, optional
-        The notice of IMGW-PIB's terms of use and the addresses of the terms that apply
+        The links to the terms that apply to the data, one line each
         (``terms_notice`` of the envelope; Nogat DEV-20.7).
     """
 

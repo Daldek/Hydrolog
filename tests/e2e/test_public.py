@@ -27,11 +27,10 @@ STATEMENT = (
 )
 FOOTER = "footer.app-footer"
 SECTIONS = ["hydrogram", "siec", "statystyka", "kalkulatory", "polecenia"]
-# The blocks Hydrolog keeps (pmaxtp, imgw, chmi; imgw-terms follows from IMGW-PIB's)
+# The blocks Hydrolog keeps (imgw, pmaxtp, chmi)
 BLOCKS = [
     "IMGW-PIB: dane publiczne",
     "IMGW-PIB: opady maksymalne PMAXTP",
-    "Warunki korzystania z danych IMGW-PIB",
     "ČHMÚ",
 ]
 

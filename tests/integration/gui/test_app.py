@@ -27,7 +27,7 @@ from starlette.testclient import TestClient
 
 import hydrolog
 from hydrolog import catalog
-from hydrolog._attribution import provider_lines
+from hydrolog._attribution import provider_lines, retired_lines
 from hydrolog.catalog import command_schema, data_commands
 from hydrolog.exceptions import ERROR_CODES, InvalidParameterError
 from hydrolog.gui import create_app
@@ -125,6 +125,7 @@ def test_a_first_request_starts_a_session_and_names_it_in_the_header(client):
         "files": [],
         "gui": None,
         "attribution": provider_lines(),
+        "retired_lines": retired_lines(),
         "terms": None,
         "operator_email": None,
     }

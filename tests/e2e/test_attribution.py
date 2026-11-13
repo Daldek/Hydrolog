@@ -24,6 +24,7 @@ from playwright.sync_api import Page, expect
 from hydrolog._attribution import provider_lines
 from tests.e2e.conftest import (
     Tab,
+    kamiennik_inputs,
     open_part,
     seed_hydrogram,
     sources_listed,
@@ -114,7 +115,7 @@ def test_statystyka_from_archiwista_shows_imgws_lines_with_the_result(
         rows = list(csv.reader(io.StringIO(data.decode("utf-8"))))
         assert rows[0][-2:] == ["attribution", "terms_notice"]
         assert [row[-2] for row in rows[1:3]] == IMGW["attribution"]
-        assert [row[-1] for row in rows[1:3]] == IMGW["terms_notice"]
+        assert [row[-1] for row in rows[1:3] if row[-1]] == IMGW["terms_notice"]
 
 
 def open_part_statystyka(page: Page) -> None:
@@ -170,7 +171,7 @@ def test_hydrogram_with_pmaxtp_shows_and_carries_pmaxtps_lines(
         "terms_notice",
     ]
     assert [row[4] for row in rows[1:4]] == PMAXTP["attribution"]
-    assert [row[5] for row in rows[1:3]] == PMAXTP["terms_notice"]
+    assert [row[5] for row in rows[1:3] if row[5]] == PMAXTP["terms_notice"]
     assert {row[4] for row in rows[4:]} == {""}
 
     # PNG: the chart with the lines drawn below, so taller than the chart alone
@@ -202,6 +203,34 @@ def test_hydrogram_with_pmaxtp_shows_and_carries_pmaxtps_lines(
     expect(welcome).to_be_visible()
     listed = welcome.locator("[data-welcome-sources] li")
     expect(listed).to_have_text(expected)
+
+
+def test_a_depth_kept_with_retired_lines_shows_the_current_ones(new_tab: Any) -> None:
+    """A depth the browser kept before Nogat ECO-065 holds N and „Regulamin: …”."""
+    expected = [*PMAXTP["attribution"], *PMAXTP["terms_notice"]]
+    kept = {
+        **kamiennik_inputs()["pmaxtp_fetched"],
+        "attribution": PMAXTP["attribution"],
+        "terms_notice": [
+            "Dane IMGW-PIB można wykorzystywać nieodpłatnie do celów prywatnych "
+            "(niezarobkowych). Wykorzystanie w działalności gospodarczej, na "
+            "stronach z reklamami lub do celów wymienionych w regulaminie (m.in. "
+            "planowanie w gospodarowaniu wodami, art. 317 Prawa wodnego) wymaga "
+            "umowy z IMGW-PIB.",
+            "Regulamin: https://klimat.imgw.pl/opady-maksymalne",
+        ],
+    }
+    tab = new_tab()
+    seed_hydrogram(tab, kamiennik_inputs(pmaxtp_fetched=kept))
+    tab.open("#hydrogram")
+    page = tab.page
+    shows(page, *MOCKUP[("scs", "kirpich", "II")])
+
+    assert sources_listed(page, HG) == expected
+    page.emulate_media(media="print")
+    printed = page.locator(f'{HG} [data-attribution="pmaxtp"] p')
+    expect(printed).to_have_text(expected)
+    page.emulate_media(media="screen")
 
 
 def test_the_welcome_of_a_first_visit_has_its_sentences_alone(

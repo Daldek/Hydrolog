@@ -13,10 +13,8 @@ import hydrolog
 from hydrolog._attribution import (
     CHMI_PROCESSED,
     CHMI_SOURCE,
-    IMGW_HYDRO,
     IMGW_PROCESSED,
     IMGW_SOURCE,
-    IMGW_TERMS,
     PMAXTP_MONOGRAPH,
     PMAXTP_PROCESSED,
     PMAXTP_SOURCE,
@@ -38,6 +36,13 @@ OBSERWATOR_CHMI_PROCESSED = (
     "Dane ČHMÚ zostały przetworzone (normalizacja i zmiana formatu)"
 )
 """What Obserwator writes it did with ČHMÚ's data."""
+RETIRED_NOTICE = (
+    "Dane IMGW-PIB można wykorzystywać nieodpłatnie do celów prywatnych "
+    "(niezarobkowych). Wykorzystanie w działalności gospodarczej, na stronach z "
+    "reklamami lub do celów wymienionych w regulaminie (m.in. planowanie w "
+    "gospodarowaniu wodami, art. 317 Prawa wodnego) wymaga umowy z IMGW-PIB."
+)
+"""N, IMGW-PIB's terms summarised, which products carried before Nogat ECO-065."""
 
 
 class TestTheLines:
@@ -51,9 +56,6 @@ class TestTheLines:
         assert IMGW_PROCESSED == (
             "Dane Instytutu Meteorologii i Gospodarki Wodnej – Państwowego Instytutu "
             "Badawczego zostały przetworzone"
-        )
-        assert IMGW_HYDRO == (
-            "Dane pochodzą z serwisu hydrologicznego IMGW-PIB https://hydro.imgw.pl"
         )
 
     def test_pmaxtp(self):
@@ -82,18 +84,16 @@ class TestTheLines:
         )
         assert CHMI_PROCESSED.startswith("Dane ČHMÚ zostały przetworzone (")
 
-    def test_the_terms_notice(self):
-        assert IMGW_TERMS == (
-            "Dane IMGW-PIB można wykorzystywać nieodpłatnie do celów prywatnych "
-            "(niezarobkowych). Wykorzystanie w działalności gospodarczej, na stronach "
-            "z reklamami lub do celów wymienionych w regulaminie (m.in. planowanie w "
-            "gospodarowaniu wodami, art. 317 Prawa wodnego) wymaga umowy z IMGW-PIB."
-        )
+    def test_the_terms_lines(self):
         assert TERMS_DANEPUBLICZNE == (
-            "Regulamin: https://danepubliczne.imgw.pl/regulations"
+            "Regulamin danych IMGW-PIB: https://danepubliczne.imgw.pl/regulations"
         )
-        assert TERMS_HYDRO == "Regulamin: https://hydro.imgw.pl/#/regulamin"
-        assert TERMS_PMAXTP == "Regulamin: https://klimat.imgw.pl/opady-maksymalne"
+        assert TERMS_HYDRO == (
+            "Regulamin serwisu hydrologicznego IMGW-PIB: https://hydro.imgw.pl/#/regulamin"
+        )
+        assert TERMS_PMAXTP == (
+            "Regulamin danych PMAXTP: https://klimat.imgw.pl/opady-maksymalne"
+        )
 
 
 class TestRecognition:
@@ -103,19 +103,19 @@ class TestRecognition:
         attribution = Attribution.from_lines([IMGW_SOURCE])
 
         assert attribution.lines == (IMGW_SOURCE, IMGW_PROCESSED)
-        assert attribution.terms_notice == (IMGW_TERMS, TERMS_DANEPUBLICZNE)
+        assert attribution.terms_notice == (TERMS_DANEPUBLICZNE,)
 
     def test_pmaxtps_source_line_brings_its_own_lines_not_imgws(self):
         attribution = Attribution.from_lines([PMAXTP_SOURCE])
 
         assert attribution.lines == (PMAXTP_SOURCE, PMAXTP_PROCESSED, PMAXTP_MONOGRAPH)
-        assert attribution.terms_notice == (IMGW_TERMS, TERMS_PMAXTP)
+        assert attribution.terms_notice == (TERMS_PMAXTP,)
 
-    def test_hydro_imgw_pl_adds_its_line_and_its_terms(self):
+    def test_hydro_imgw_pl_takes_imgws_lines_and_its_own_terms(self):
         attribution = Attribution.of("imgw_hydro")
 
-        assert attribution.lines == (IMGW_SOURCE, IMGW_PROCESSED, IMGW_HYDRO)
-        assert attribution.terms_notice == (IMGW_TERMS, TERMS_HYDRO)
+        assert attribution.lines == (IMGW_SOURCE, IMGW_PROCESSED)
+        assert attribution.terms_notice == (TERMS_HYDRO,)
 
     def test_a_final_full_stop_and_blanks_do_not_hide_a_line(self):
         attribution = Attribution.from_lines([f"  {IMGW_SOURCE}. "])
@@ -155,24 +155,45 @@ class TestRecognition:
             CHMI_PROCESSED,
             "Inny dostawca danych",
         )
-        assert attribution.terms_notice == (
-            IMGW_TERMS,
-            TERMS_DANEPUBLICZNE,
-            TERMS_PMAXTP,
-        )
+        assert attribution.terms_notice == (TERMS_DANEPUBLICZNE, TERMS_PMAXTP)
 
     def test_terms_lines_given_with_the_lines_are_sorted_out(self):
-        """The option takes both kinds mixed; an unknown address stays a terms line."""
-        attribution = Attribution.from_lines(
-            [TERMS_PMAXTP, "Regulamin: https://example.org/terms", PMAXTP_SOURCE]
-        )
+        """The option takes both kinds mixed; an unknown terms link stays one."""
+        other = "Regulamin serwisu Przykład: https://example.org/terms"
+        attribution = Attribution.from_lines([TERMS_PMAXTP, other, PMAXTP_SOURCE])
 
         assert attribution.lines == (PMAXTP_SOURCE, PMAXTP_PROCESSED, PMAXTP_MONOGRAPH)
-        assert attribution.terms_notice == (
-            IMGW_TERMS,
-            TERMS_PMAXTP,
-            "Regulamin: https://example.org/terms",
-        )
+        assert attribution.terms_notice == (TERMS_PMAXTP, other)
+
+    @pytest.mark.parametrize(
+        ("retired", "lines", "terms"),
+        [
+            (
+                "Dane pochodzą z serwisu hydrologicznego IMGW-PIB https://hydro.imgw.pl",
+                (IMGW_SOURCE, IMGW_PROCESSED),
+                (TERMS_HYDRO,),
+            ),
+            (RETIRED_NOTICE, (), ()),
+            (
+                "Regulamin: https://danepubliczne.imgw.pl/regulations",
+                (),
+                (TERMS_DANEPUBLICZNE,),
+            ),
+            ("Regulamin: https://hydro.imgw.pl/#/regulamin", (), (TERMS_HYDRO,)),
+            ("Regulamin: https://klimat.imgw.pl/opady-maksymalne", (), (TERMS_PMAXTP,)),
+            ("Regulamin: https://example.org/terms", (), ()),
+        ],
+    )
+    def test_a_line_retired_by_eco_065_is_read_as_what_it_stood_for(
+        self, retired, lines, terms
+    ):
+        """H names hydro.imgw.pl, an old address its new line, N and others go."""
+        for given in (
+            Attribution.from_lines([retired]),
+            Attribution.from_lines([], [retired]),
+        ):
+            assert given.lines == lines
+            assert given.terms_notice == terms
 
     def test_no_line_is_no_attribution(self):
         attribution = Attribution.from_lines(["", "   ", None])
@@ -185,7 +206,7 @@ class TestRecognition:
 
         assert lines["imgw"] == {
             "attribution": [IMGW_SOURCE, IMGW_PROCESSED],
-            "terms_notice": [IMGW_TERMS, TERMS_DANEPUBLICZNE],
+            "terms_notice": [TERMS_DANEPUBLICZNE],
         }
         assert lines["pmaxtp"]["attribution"][2] == PMAXTP_MONOGRAPH
         assert lines["chmi"] == {
@@ -204,8 +225,8 @@ class TestFiles:
 
         assert text.splitlines() == [
             "time_min,discharge_m3s,attribution,terms_notice",
-            f'0,0.5,{IMGW_SOURCE},"{IMGW_TERMS}"',
-            f"10,2.5,{IMGW_PROCESSED},{TERMS_DANEPUBLICZNE}",
+            f"0,0.5,{IMGW_SOURCE},{TERMS_DANEPUBLICZNE}",
+            f"10,2.5,{IMGW_PROCESSED},",
             "20,1.0,,",
         ]
 
@@ -243,7 +264,6 @@ class TestFiles:
             PMAXTP_SOURCE,
             PMAXTP_PROCESSED,
             PMAXTP_MONOGRAPH,
-            IMGW_TERMS,
             TERMS_PMAXTP,
         ]
         assert merged.splitlines() == [
@@ -252,11 +272,35 @@ class TestFiles:
             PMAXTP_SOURCE,
             PMAXTP_PROCESSED,
             PMAXTP_MONOGRAPH,
-            IMGW_TERMS,
             TERMS_DANEPUBLICZNE,
             TERMS_PMAXTP,
         ]
         assert attribution_text(Attribution.of("imgw"), merged) == merged
+
+    def test_attribution_txt_written_before_eco_065_merges_into_the_current_lines(self):
+        """A run directory's file keeps no retired line once Hydrolog writes to it."""
+        before = "\n".join(
+            [
+                PMAXTP_SOURCE,
+                PMAXTP_PROCESSED,
+                PMAXTP_MONOGRAPH,
+                RETIRED_NOTICE,
+                "Regulamin: https://klimat.imgw.pl/opady-maksymalne",
+                "",
+            ]
+        )
+
+        merged = attribution_text(Attribution.of("imgw"), before)
+
+        assert merged.splitlines() == [
+            IMGW_SOURCE,
+            IMGW_PROCESSED,
+            PMAXTP_SOURCE,
+            PMAXTP_PROCESSED,
+            PMAXTP_MONOGRAPH,
+            TERMS_DANEPUBLICZNE,
+            TERMS_PMAXTP,
+        ]
 
 
 def _observer_export(path: Path, *, lines: list[str], terms: list[str]) -> Path:
@@ -290,7 +334,7 @@ class TestResults:
         export = _observer_export(
             tmp_path / "q_daily.csv",
             lines=[IMGW_SOURCE, IMGW_PROCESSED],
-            terms=[IMGW_TERMS, TERMS_DANEPUBLICZNE],
+            terms=[TERMS_DANEPUBLICZNE],
         )
 
         envelope = hydrolog.run_command(
@@ -301,7 +345,7 @@ class TestResults:
         ).to_dict()
 
         assert envelope["attribution"] == [IMGW_SOURCE, IMGW_PROCESSED]
-        assert envelope["terms_notice"] == [IMGW_TERMS, TERMS_DANEPUBLICZNE]
+        assert envelope["terms_notice"] == [TERMS_DANEPUBLICZNE]
         assert envelope["result"]["n_years"] == 3
 
     def test_an_export_with_obserwators_two_columns_only_gets_the_terms(self):
@@ -314,7 +358,7 @@ class TestResults:
         ).to_dict()
 
         assert envelope["attribution"] == [IMGW_SOURCE, IMGW_PROCESSED]
-        assert envelope["terms_notice"] == [IMGW_TERMS, TERMS_DANEPUBLICZNE]
+        assert envelope["terms_notice"] == [TERMS_DANEPUBLICZNE]
 
     def test_a_chmi_export_carries_its_credit_and_both_modifications(self, tmp_path):
         export = _observer_export(
@@ -360,7 +404,7 @@ class TestResults:
             PMAXTP_PROCESSED,
             PMAXTP_MONOGRAPH,
         ]
-        assert envelope["terms_notice"] == [IMGW_TERMS, TERMS_PMAXTP]
+        assert envelope["terms_notice"] == [TERMS_PMAXTP]
 
     def test_the_command_line_takes_the_lines_as_a_json_array(self, capsys):
         code = main(
@@ -404,7 +448,7 @@ class TestResults:
         assert code == 0
         sources = out.index("Data sources:")
         assert out.index(f"  {IMGW_SOURCE}\n") > sources
-        assert out.index(f"  {TERMS_DANEPUBLICZNE}") > out.index(f"  {IMGW_TERMS}")
+        assert out.index(f"  {TERMS_DANEPUBLICZNE}") > out.index(f"  {IMGW_PROCESSED}")
         assert "Notices:" not in out or out.index("Notices:") > sources
 
 
@@ -428,7 +472,7 @@ class TestStationAnalyses:
         export = _observer_export(
             tmp_path / "q_daily.csv",
             lines=[IMGW_SOURCE, IMGW_PROCESSED],
-            terms=[IMGW_TERMS, TERMS_DANEPUBLICZNE],
+            terms=[TERMS_DANEPUBLICZNE],
         )
 
         envelope = hydrolog.run_command(
@@ -440,7 +484,7 @@ class TestStationAnalyses:
         ).to_dict()
 
         assert envelope["attribution"] == [IMGW_SOURCE, IMGW_PROCESSED]
-        assert envelope["terms_notice"] == [IMGW_TERMS, TERMS_DANEPUBLICZNE]
+        assert envelope["terms_notice"] == [TERMS_DANEPUBLICZNE]
 
     @pytest.mark.parametrize(("command", "options"), STATION_ANALYSES)
     def test_a_series_given_inline_takes_the_option(self, command, options):
@@ -457,14 +501,14 @@ class TestStationAnalyses:
         ).to_dict()
 
         assert envelope["attribution"] == [IMGW_SOURCE, IMGW_PROCESSED]
-        assert envelope["terms_notice"] == [IMGW_TERMS, TERMS_DANEPUBLICZNE]
+        assert envelope["terms_notice"] == [TERMS_DANEPUBLICZNE]
 
     def test_a_batch_line_has_its_own_calls_lines_the_batch_all(self, tmp_path):
         """A line carries the lines of its own call only; the batch's envelope all."""
         _observer_export(
             tmp_path / "q_daily.csv",
             lines=[IMGW_SOURCE, IMGW_PROCESSED],
-            terms=[IMGW_TERMS, TERMS_DANEPUBLICZNE],
+            terms=[TERMS_DANEPUBLICZNE],
         )
         calls = [
             {
@@ -497,10 +541,10 @@ class TestStationAnalyses:
         ]
         assert "attribution" not in lines[0]
         assert lines[1]["attribution"] == [IMGW_SOURCE, IMGW_PROCESSED]
-        assert lines[1]["terms_notice"] == [IMGW_TERMS, TERMS_DANEPUBLICZNE]
+        assert lines[1]["terms_notice"] == [TERMS_DANEPUBLICZNE]
         assert "attribution" not in lines[2]
         assert envelope["attribution"] == [IMGW_SOURCE, IMGW_PROCESSED]
-        assert envelope["terms_notice"] == [IMGW_TERMS, TERMS_DANEPUBLICZNE]
+        assert envelope["terms_notice"] == [TERMS_DANEPUBLICZNE]
 
 
 def _observer_climate_export(path: Path, *, lines: list[str], terms: list[str]) -> Path:
@@ -545,7 +589,7 @@ class TestMeteo:
         export = _observer_climate_export(
             tmp_path / "meteo_daily.csv",
             lines=[IMGW_SOURCE, IMGW_PROCESSED],
-            terms=[IMGW_TERMS, TERMS_DANEPUBLICZNE],
+            terms=[TERMS_DANEPUBLICZNE],
         )
 
         envelope = hydrolog.run_command(
@@ -553,7 +597,7 @@ class TestMeteo:
         ).to_dict()
 
         assert envelope["attribution"] == [IMGW_SOURCE, IMGW_PROCESSED]
-        assert envelope["terms_notice"] == [IMGW_TERMS, TERMS_DANEPUBLICZNE]
+        assert envelope["terms_notice"] == [TERMS_DANEPUBLICZNE]
 
     @pytest.mark.parametrize(("command", "options"), METEO)
     def test_a_file_without_lines_takes_the_option(self, command, options):
@@ -566,7 +610,7 @@ class TestMeteo:
         ).to_dict()
 
         assert envelope["attribution"] == [IMGW_SOURCE, IMGW_PROCESSED]
-        assert envelope["terms_notice"] == [IMGW_TERMS, TERMS_DANEPUBLICZNE]
+        assert envelope["terms_notice"] == [TERMS_DANEPUBLICZNE]
 
 
 class TestFilesOfCommands:
@@ -615,7 +659,7 @@ class TestFilesOfCommands:
         assert text.endswith(
             "## Źródła danych\n\n"
             f"- {PMAXTP_SOURCE}\n- {PMAXTP_PROCESSED}\n- {PMAXTP_MONOGRAPH}\n\n"
-            f"- {IMGW_TERMS}\n- {TERMS_PMAXTP}\n"
+            f"- {TERMS_PMAXTP}\n"
         )
         assert envelope.result.sections[-1] == "Źródła danych"
 
@@ -660,14 +704,13 @@ class TestFilesOfCommands:
             PMAXTP_SOURCE,
             PMAXTP_PROCESSED,
             PMAXTP_MONOGRAPH,
-            IMGW_TERMS,
             TERMS_DANEPUBLICZNE,
             TERMS_PMAXTP,
         ]
         outlet = read_table(out / f"{envelope['result']['outlet']}.csv")
         assert outlet.attribution.to_dict() == Attribution.of("pmaxtp").to_dict()
         svg = (tmp_path / "siec.svg").read_text(encoding="utf-8")
-        assert ">Regulamin: https://klimat.imgw.pl/opady-maksymalne</text>" in svg
+        assert f">{TERMS_PMAXTP}</text>" in svg
         assert envelope["attribution"][0] == PMAXTP_SOURCE
 
     def test_a_network_without_a_providers_data_writes_no_attribution_file(

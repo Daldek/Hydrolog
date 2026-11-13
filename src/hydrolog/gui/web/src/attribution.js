@@ -1,6 +1,7 @@
 // The lines the data providers' terms require on everything made with their data (Nogat
-// DEV-20, ECO-060): the attribution lines of IMGW-PIB, PMAXTP and ČHMÚ and the notice of
-// IMGW-PIB's terms of use. The page never writes the lines itself: they come from the
+// DEV-20, ECO-060, ECO-065): the attribution lines of IMGW-PIB, PMAXTP and ČHMÚ and the
+// links to IMGW-PIB's terms (PMAXTP's among them). The page never writes the lines
+// itself: they come from the
 // server, in the `attribution` and `terms_notice` of a result (hydrolog-result/1), of a
 // hand-off (nogat-handoff/1), of a fetched PMAXTP depth, and, for the provider an older
 // hand-off names without them, of GET api/session (`attribution`, every provider's set).
@@ -12,6 +13,7 @@
 // columns of DEV-20.5 to a CSV, footerLines gives the rows drawn under a PNG
 // (charts/png.js), linesFields the fields of a JSON document or hand-off.
 
+import { useSession } from "./controls/file-field.js";
 import { fold } from "./format.js";
 import { html } from "./html.js";
 import { attributionLabels as texts } from "./labels/attribution.js";
@@ -89,9 +91,11 @@ export function mergeLines(...sets) {
 }
 
 /**
- * Lines in the order the providers' sets of GET api/session give (DEV-20.4: S, P, H, PS,
- * PP, M, C, CP; DEV-20.7: N, RD, RH, RK), a line the sets do not hold after them in its
- * first order: the order of lines merged in the page without a run of the server.
+ * Lines in the order the providers' sets of GET api/session give (DEV-20.4: S, P, PS, PP,
+ * M, C, CP; DEV-20.7: RD, RH, RK), a line the sets do not hold after them in its
+ * first order: the order of lines merged in the page without a run of the server. A line
+ * Nogat retired (ECO-065: H, N, „Regulamin: <address>”), kept with a depth or carried by
+ * an older hand-off, becomes the line the session's `retired_lines` names, or goes.
  *
  * @param {{attribution: string[], terms_notice: string[]}} lines the lines
  * @param {object|null} session hydrolog-gui-session/1
@@ -99,10 +103,12 @@ export function mergeLines(...sets) {
  */
 export function orderLines(lines, session) {
   const sets = isObject(session) && isObject(session.attribution) ? Object.values(session.attribution) : [];
+  const retired = isObject(session) && isObject(session.retired_lines) ? session.retired_lines : {};
+  const current = (line) => (Object.hasOwn(retired, line) ? (retired[line] === null ? [] : [retired[line]]) : [line]);
   const sorted = (field) => {
     const order = [...new Set(sets.flatMap((set) => linesOf(set)[field]))];
     const rank = (line) => (order.includes(line) ? order.indexOf(line) : order.length);
-    return [...lines[field]].sort((a, b) => rank(a) - rank(b));
+    return [...new Set(lines[field].flatMap(current))].sort((a, b) => rank(a) - rank(b));
   };
   return { attribution: sorted("attribution"), terms_notice: sorted("terms_notice") };
 }
@@ -293,8 +299,9 @@ function linked(line) {
 
 /**
  * The providers' full lines under a result, for the print view (the screen hides them and
- * shows the view's strip): the attribution lines, then the notice of the terms of use,
- * every line verbatim, the addresses as links; nothing without lines.
+ * shows the view's strip): the attribution lines, then the links to the providers' terms,
+ * every line verbatim, the addresses as links, a retired line as orderLines gives it;
+ * nothing without lines.
  *
  * @param {{lines: {attribution: string[], terms_notice: string[]}|null, name?: string,
  *   compact?: boolean}} props the lines, the footer's name (its `data-attribution`) and
@@ -303,13 +310,15 @@ function linked(line) {
  * @returns {object|null} the footer
  */
 export function Attribution({ lines, name = "result", compact = false }) {
+  const session = useSession();
   if (!hasLines(lines)) return null;
+  const shown = orderLines(lines, session);
   const rows = (items) => items.map((line) => html`<p>${linked(line)}</p>`);
   return html`
     <footer class=${compact ? "attribution compact" : "attribution"} data-attribution=${name} aria-label=${texts.title}>
       ${compact ? null : html`<h3 class="group-title">${texts.title}</h3>`}
-      ${lines.attribution.length ? html`<div class="attribution-lines">${rows(lines.attribution)}</div>` : null}
-      ${lines.terms_notice.length ? html`<div class="attribution-terms">${rows(lines.terms_notice)}</div>` : null}
+      ${shown.attribution.length ? html`<div class="attribution-lines">${rows(shown.attribution)}</div>` : null}
+      ${shown.terms_notice.length ? html`<div class="attribution-terms">${rows(shown.terms_notice)}</div>` : null}
     </footer>
   `;
 }

@@ -8,8 +8,9 @@ Nogat's ``design/README.md`` says, in two steps (reference: ``fill`` of Nogat's
 
 1. Blocks. The lines between ``<!-- block: <name> -->`` and ``<!-- /block -->`` stay,
    without the two marker lines, for the blocks of Hydrolog's data sources
-   (:data:`BLOCKS`); every other block goes with its markers. ``imgw-terms`` follows
-   from the IMGW-PIB blocks.
+   (:data:`BLOCKS`); every other block goes with its markers. Each source block holds
+   the provider's required lines and the link to its terms, never a summary of them
+   (Nogat DEV-20.7, ECO-065).
 2. Fields. Every ``{{name}}`` becomes its value, HTML-escaped. Every field needs a
    value, non-empty but for :data:`OPTIONAL`.
 
@@ -46,13 +47,11 @@ __all__ = [
 ]
 
 TEMPLATE: Final = WEB_DIR / "nogat" / "nogat-terms.html"
-"""The kit's template of the regulamin (Nogat kit 0.5.1, regulamin 1.0)."""
+"""The kit's template of the regulamin (Nogat kit 0.6.0, regulamin 1.0)."""
 PAGE: Final = "regulamin.html"
 """The address of the filled regulamin, relative to the GUI's page."""
 BLOCKS: Final[tuple[str, ...]] = ("imgw", "pmaxtp", "chmi")
 """The blocks of Hydrolog's data sources (Nogat ``design/README.md``)."""
-IMGW_BLOCKS: Final = frozenset({"imgw", "imgw-hydro", "pmaxtp"})
-"""The blocks of IMGW-PIB data, each of which keeps ``imgw-terms``."""
 OPTIONAL: Final = frozenset({"processor_transfer", "processor_cookie", "mail_transfer"})
 """The fields whose value may be empty (each is a whole sentence or nothing)."""
 OPERATOR_FIELDS: Final[Mapping[str, str]] = {
@@ -105,14 +104,6 @@ class Terms:
     operator_email: str
 
 
-def _kept(listed: Iterable[str]) -> set[str]:
-    """Return the blocks kept for ``listed``, ``imgw-terms`` with any IMGW-PIB one."""
-    kept = set(listed)
-    if kept & IMGW_BLOCKS:
-        kept.add("imgw-terms")
-    return kept
-
-
 def fill(template: str, values: Mapping[str, str], listed: Iterable[str]) -> str:
     """Return the template with its blocks chosen and its fields filled.
 
@@ -124,7 +115,7 @@ def fill(template: str, values: Mapping[str, str], listed: Iterable[str]) -> str
         A value for every field of the template; only :data:`OPTIONAL` ones may be
         empty.
     listed : iterable of str
-        The blocks to keep (``imgw-terms`` follows from the IMGW-PIB ones).
+        The blocks to keep.
 
     Returns
     -------
@@ -136,7 +127,7 @@ def fill(template: str, values: Mapping[str, str], listed: Iterable[str]) -> str
     TermsError
         When a field has no value, an empty one it may not have, or a ``{{`` is left.
     """
-    keep = _kept(listed)
+    keep = set(listed)
     missing = sorted(
         name
         for name in set(_PLACEHOLDER.findall(template))

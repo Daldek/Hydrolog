@@ -12,11 +12,12 @@ drift` reports each copy as current, behind or modified.
 - `result-1.schema.json`, `error-1.schema.json`, `commands-1.schema.json` (Nogat
   `schemas/agent/`): the schemas of the result envelope, the error document and the
   command catalog. `tests/contract/` validates Hydrolog's documents against them.
-- `handoff-1.schema.json` (Nogat `schemas/exchange/handoff-1.schema.json` at `edd559b` of Nogat's
-  branch `fix/provider-attribution`, which added the optional `attribution` and `terms_notice`,
-  the providers' lines of DEV §20, to the envelope and its examples; `8848c26` had added
-  `node_provenance`, the origin of each node of a network; SHA-256
-  `7d69384bafe92c02c2008b4e822b9d7b80f5b382817dc3dbce213c6726ecd958`): the envelope
+- `handoff-1.schema.json` (Nogat `schemas/exchange/handoff-1.schema.json` at `b29eada` of Nogat's
+  `develop`, whose ECO-065 made `terms_notice` the links to the providers' terms only, RD, RH
+  and RK, in its description and examples; `edd559b` had added the optional `attribution` and
+  `terms_notice`, the providers' lines of DEV §20, and `8848c26` `node_provenance`, the origin
+  of each node of a network; SHA-256
+  `c26ce043b292284fa7e8f995589fee09fd5ffa046efb61c4b3736619b8b71d08`): the envelope
   `nogat-handoff/1` of data handed between the GUIs of the ecosystem. The GUI writes and reads
   it with the payload `hydrolog-network/1` and the origin of each of its nodes
   (`src/hydrolog/gui/web/src/handoff/`, through Nogat's kit `web/nogat/nogat-handoff.js`).

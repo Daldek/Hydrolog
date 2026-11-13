@@ -75,7 +75,7 @@ class TestDepth:
         assert result["attribution"] == _attribution.PMAXTP_SOURCE
 
     def test_the_envelope_carries_the_lines_of_pmaxtps_terms(self):
-        """PS, PP and the monograph M, then N and PMAXTP's terms (Nogat DEV-20.2)."""
+        """PS, PP and the monograph M, then the link to PMAXTP's terms (DEV §20)."""
         envelope = _run(duration_min=60, probability_percent=1)
 
         assert envelope["attribution"] == [
@@ -84,8 +84,7 @@ class TestDepth:
             _attribution.PMAXTP_MONOGRAPH,
         ]
         assert envelope["terms_notice"] == [
-            _attribution.IMGW_TERMS,
-            "Regulamin: https://klimat.imgw.pl/opady-maksymalne",
+            "Regulamin danych PMAXTP: https://klimat.imgw.pl/opady-maksymalne"
         ]
         assert list(envelope)[6:9] == ["result", "attribution", "terms_notice"]
 

@@ -156,7 +156,6 @@ def test_the_regulamin_is_the_kits_template_filled_for_the_deployment(
         "<h3>IMGW-PIB: dane publiczne</h3>",
         "https://danepubliczne.imgw.pl",
         "<h3>ČHMÚ</h3>",
-        "<h3>Warunki korzystania z danych IMGW-PIB</h3>",
     ):
         assert expected in page, expected
     for absent in (
@@ -168,6 +167,7 @@ def test_the_regulamin_is_the_kits_template_filled_for_the_deployment(
         "ČÚZK",
         "SoilGrids",
         "IMGW-PIB: serwis hydrologiczny",
+        "Warunki korzystania z danych IMGW-PIB",
         "{{",
         "<!-- block",
         "<!-- /block",
