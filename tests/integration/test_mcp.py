@@ -226,6 +226,7 @@ class TestToolList:
 
         writing = {c.operation_id for c in WRITING}
         assert writing == {
+            "hydrolog_commands_batch",
             "hydrolog_commands_guide",
             "hydrolog_report_generate",
             "hydrolog_route_cascade",

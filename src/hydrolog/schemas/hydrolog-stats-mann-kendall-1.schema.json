@@ -38,6 +38,24 @@
     },
     "significance_level": {
       "type": "number"
+    },
+    "sen_slope": {
+      "type": "number"
+    },
+    "sen_intercept": {
+      "type": "number"
+    },
+    "sen_slope_lower": {
+      "type": [
+        "null",
+        "number"
+      ]
+    },
+    "sen_slope_upper": {
+      "type": [
+        "null",
+        "number"
+      ]
     }
   }
 }

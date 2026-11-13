@@ -8,7 +8,7 @@ Interfaces: Python (`hydrolog.run_command("tc kirpich", length_km=8.2, slope_m_p
 
 Work in four steps: discover (`hydrolog commands list`, `hydrolog commands schema --command NAME`), check (`--check` for commands that write a file), run, read (`result`, `notices`, `result.files`). A result is a `hydrolog-result/1` envelope; an error is a `hydrolog-error/1` document whose `code` is one of: `internal_error` (1), `validation_error` (2), `not_found` (3), `conflict` (4), `source_unavailable` (5), `missing_dependency` (6), `data_error` (7), `io_error` (9), `forbidden` (12), `calculation_error` (13), `cancelled` (130), `terminated` (143).
 
-Command groups: `tc`, `cn`, `scs`, `precip`, `uh`, `hydrograph`, `route`, `morphometry`, `network`, `stats`, `hydrometrics`, `soil`, `report`, `config`, `commands`.
+Command groups: `tc`, `cn`, `scs`, `precip`, `uh`, `hydrograph`, `route`, `morphometry`, `network`, `stats`, `hydrometrics`, `meteo`, `soil`, `report`, `config`, `commands`.
 
 ## Documentation
 

@@ -3,17 +3,18 @@
 Against the real server of ``gui_server`` (its catalog, workers and session files):
 a first visit chooses no command and sends no run, a hint says what to do and links the
 guide's worked example; the list offers every command the server does (the catalog
-less ``gui serve``, ``config show`` and ``commands guide``), by group under Polish
-titles, with the catalog's Polish summaries; its search folds case and diacritics, and
-a command is chosen in the list or by the hash. A form opens empty. The forms of ``uh
-nash`` and ``scs effective`` check the catalog's bounds and the members of the chosen
-``one_of`` group before a run, send only that group, and show the meanings of the
-allowed values; a library error without an option stands above the form under the
-server's Polish title. Files uploaded through a path option feed a run whose output
-downloads; a result exports CSV, JSON, a PNG twice the chart's size and its call (CLI,
-Python, MCP); the inputs, not the results, survive a reload until „Wyczyść”, which
-returns to the first visit (no command, the bare hash, the hint); a phone in the dark
-theme runs a command through the sheets without scrolling sideways.
+less ``gui serve``, ``config show``, ``commands guide`` and ``commands batch``), by
+group under Polish titles, with the catalog's Polish summaries; its search folds case
+and diacritics, and a command is chosen in the list or by the hash. A form opens
+empty. The forms of ``uh nash`` and ``scs effective`` check the catalog's bounds and
+the members of the chosen ``one_of`` group before a run, send only that group, and
+show the meanings of the allowed values; a library error without an option stands
+above the form under the server's Polish title. Files uploaded through a path option
+feed a run whose output downloads; a result exports CSV, JSON, a PNG twice the chart's
+size and its call (CLI, Python, MCP); the inputs, not the results, survive a reload
+until „Wyczyść”, which returns to the first visit (no command, the bare hash, the
+hint); a phone in the dark theme runs a command through the sheets without scrolling
+sideways.
 """
 
 import hashlib
@@ -38,7 +39,7 @@ from tests.e2e.conftest import NASH_TYPED, Tab, type_nash
 
 NASH = "uh nash"
 """The command of the guide's worked example (instrukcja/#przyklad-polecenia)."""
-EXCLUDED = frozenset({"gui serve", "config show", "commands guide"})
+EXCLUDED = frozenset({"gui serve", "config show", "commands guide", "commands batch"})
 """Commands the server does not offer (plan D5)."""
 FLOOD_INFLOW = Path(__file__).resolve().parents[1] / "fixtures" / "flood_inflow.csv"
 POL = 'section[data-section="polecenia"]'
@@ -187,7 +188,7 @@ def test_the_list_offers_the_servers_commands_under_polish_titles(tab: Tab) -> N
     names = offered(tab)
     catalog = [item["name"] for item in list_commands().to_dict()["commands"]]
     assert names == [name for name in catalog if name not in EXCLUDED]
-    assert len(names) == 45  # 48 commands less the three the GUI leaves out
+    assert len(names) == 58  # 62 commands less the four the GUI leaves out
 
     items = page.locator(f"{POL} .cmd-list .cmd-item")
     expect(items).to_have_count(len(names))

@@ -35,6 +35,9 @@ reason                 meaning (extra ``details`` keys)
 
 A command that does not exist is a :class:`~hydrolog.exceptions.NotFoundError`; a path
 outside ``allowed_dirs`` is a :class:`~hydrolog.exceptions.ForbiddenPathError`.
+
+While an operation runs, :func:`call_allowed_dirs` gives the ``allowed_dirs`` of its
+call, so that ``commands batch`` applies the same path policy to the calls it runs.
 """
 
 from __future__ import annotations
@@ -44,6 +47,7 @@ import importlib
 import itertools
 import os
 from collections.abc import Callable, Mapping, Sequence
+from contextvars import ContextVar
 from pathlib import Path
 from typing import Any, cast
 
@@ -63,6 +67,11 @@ from hydrolog.exceptions import (
     InvalidParameterError,
     NotFoundError,
 )
+
+_ALLOWED_DIRS: ContextVar[tuple[str, ...] | None] = ContextVar(
+    "hydrolog_allowed_dirs", default=None
+)
+"""The ``allowed_dirs`` of the call whose operation is running (``None``: any path)."""
 
 # --- catalog --------------------------------------------------------------------------
 
@@ -489,8 +498,34 @@ def run_command(
     normalized = validate_command(command, options)
     resolved = _apply_path_policy(command, normalized, allowed_dirs)
     function = _load_function(command.function)
-    with collecting() as cited:
-        output = function(**resolved)
+    if isinstance(allowed_dirs, str | os.PathLike):
+        allowed_dirs = [allowed_dirs]
+    token = _ALLOWED_DIRS.set(
+        None
+        if allowed_dirs is None
+        else tuple(os.fspath(item) for item in allowed_dirs)
+    )
+    try:
+        with collecting() as cited:
+            output = function(**resolved)
+    finally:
+        _ALLOWED_DIRS.reset(token)
     return CommandResult.from_output(
         command.name, resolved, output, command.result_schema, cited.value
     )
+
+
+def call_allowed_dirs() -> tuple[str, ...] | None:
+    """Return the ``allowed_dirs`` of the call whose operation is running.
+
+    :func:`run_command` sets them for the time of the operation; an operation that
+    runs other commands (``commands batch``) passes them on, so the path policy of
+    MCP's ``--allow-dir`` covers those calls too.
+
+    Returns
+    -------
+    tuple of str or None
+        The directories (as given to :func:`run_command`), or ``None`` outside an
+        operation and for a call without a restriction.
+    """
+    return _ALLOWED_DIRS.get()

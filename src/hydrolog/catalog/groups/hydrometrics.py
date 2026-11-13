@@ -8,7 +8,15 @@ from __future__ import annotations
 from dataclasses import replace
 
 from hydrolog.catalog.groups._attribution import ATTRIBUTION
-from hydrolog.catalog.groups._series import INPUT_FILE, VALUE_COLUMN, VALUES
+from hydrolog.catalog.groups._series import (
+    DATE_COLUMN,
+    DATES,
+    FIRST_YEAR,
+    INPUT_FILE,
+    LAST_YEAR,
+    VALUE_COLUMN,
+    VALUES,
+)
 from hydrolog.catalog.spec import Command, Option
 
 _FIXTURES = "tests/fixtures"
@@ -22,37 +30,26 @@ COMMANDS: tuple[Command, ...] = (
         description_pl=(
             "Potęgowa krzywa przepływu nieliniową metodą najmniejszych kwadratów ze"
             " stanów H (cm albo m) i przepływów Q [m³/s], z opcjonalnym usuwaniem "
-            "odstających. Do budowy zależności stan–przepływ; strefy stanów: "
-            "`hydrometrics water-level-zones`. Wymaga co najmniej 3 par; pary z NaN"
-            " są pomijane."
+            "odstających; pary z datami (szereg dobowy) także dla wybranych lat i "
+            "krzywe kolejnych okresów. Strefy stanów: `hydrometrics "
+            "water-level-zones`. Wymaga co najmniej 3 par; pary z NaN są pomijane."
         ),
         description=(
             "Power-law rating curve by non-linear least squares from water level H "
-            "(cm or m) and discharge Q [m³/s], with optional outlier removal. Use "
-            "to build a stage–discharge relation; for level zones use `hydrometrics"
-            " water-level-zones`. Needs 3 or more pairs; NaN pairs are skipped."
+            "(cm or m) and discharge Q [m³/s], with optional outlier removal; dated "
+            "pairs (a daily series) also for chosen years and as the curves of "
+            "successive periods. For level zones use `hydrometrics "
+            "water-level-zones`. Needs 3 or more pairs; NaN pairs are skipped."
         ),
         result_schema="hydrolog-hydrometrics-rating-curve/1",
         rules=(
-            (
-                "Pass levels and discharges as equal-length lists, or a file with two "
-                "columns."
-            ),
-            (
-                "Check `r_squared`, `n_outliers_removed` and `notices` before using the"
-                " curve."
-            ),
+            "Pass levels and discharges as equal-length lists, or a file's columns.",
+            "Check `r_squared`, `n_outliers_removed` and `notices` before use.",
             "`h0` is in the unit of the levels; discharge is in m³/s.",
         ),
         rules_pl=(
-            (
-                "Podaj stany i przepływy jako listy równej długości albo plik z dwiema "
-                "kolumnami."
-            ),
-            (
-                "Sprawdź `r_squared`, `n_outliers_removed` i `notices` przed użyciem "
-                "krzywej."
-            ),
+            "Podaj stany i przepływy jako listy równej długości albo kolumny pliku.",
+            "Sprawdź `r_squared`, `n_outliers_removed` i `notices` przed użyciem.",
             "`h0` jest w jednostce stanów; przepływ w m³/s.",
         ),
         errors=(
@@ -87,6 +84,24 @@ COMMANDS: tuple[Command, ...] = (
                 "n_points": 6,
                 "n_outliers_removed": 0,
             },
+            {
+                "a": 0.0121598,
+                "b": 1.62512,
+                "h0": 37.8168,
+                "n_points": 1446,
+                "first_year": 2020,
+                "last_year": 2023,
+                "reference_level": 75.0,
+                "reference_discharge_m3s": 4.345,
+                "periods": [
+                    {
+                        "first_year": 2020,
+                        "last_year": 2020,
+                        "n_pairs": 366,
+                        "discharge_at_reference_m3s": 4.33883,
+                    }
+                ],
+            },
         ),
         function="hydrolog.operations.hydrometrics_rating_curve",
         options=(
@@ -108,6 +123,19 @@ COMMANDS: tuple[Command, ...] = (
                 description_pl="Przepływy Q zmierzone przy stanach `water_levels`.",
                 description="Discharges Q measured at the levels `water_levels`.",
                 unit="m3/s",
+            ),
+            replace(
+                DATES,
+                description_pl=(
+                    "Daty par w formacie ISO `RRRR-MM-DD`, tyle samo co "
+                    "`water_levels`; potrzebne do `first_year`, `last_year` i "
+                    "`years_per_period`."
+                ),
+                description=(
+                    "Dates of the pairs in ISO format `YYYY-MM-DD`, as many as "
+                    "`water_levels`; needed by `first_year`, `last_year` and "
+                    "`years_per_period`."
+                ),
             ),
             replace(
                 INPUT_FILE,
@@ -144,6 +172,18 @@ COMMANDS: tuple[Command, ...] = (
                 description=(
                     "Name of the discharge column in `input_file` (e.g. `Q`; the "
                     "name without the unit in square brackets is enough)."
+                ),
+            ),
+            replace(
+                DATE_COLUMN,
+                description_pl=(
+                    "Nazwa kolumny z datami par w `input_file` (np. `date` eksportu "
+                    "szeregu z Obserwatora); potrzebna do lat i okresów."
+                ),
+                description=(
+                    "Name of the column with the dates of the pairs in `input_file` "
+                    "(e.g. `date` of an Obserwator series export); needed by the years "
+                    "and periods."
                 ),
             ),
             Option(
@@ -191,6 +231,24 @@ COMMANDS: tuple[Command, ...] = (
                 default=2.0,
                 exclusive_minimum=0,
             ),
+            FIRST_YEAR,
+            LAST_YEAR,
+            Option(
+                name="years_per_period",
+                type="integer",
+                description_pl=(
+                    "Dopasuj też krzywą każdego okresu tylu lat hydrologicznych "
+                    "(okresy od lat r z (r − 1) mod n = 0, np. 1951–1960); okres z "
+                    "mniej niż 30 parami nie ma krzywej. Wymaga dat."
+                ),
+                description=(
+                    "Also fit the curve of each period of this many hydrological "
+                    "years (periods start at the years y with (y − 1) mod n = 0, "
+                    "e.g. 1951–1960); a period with fewer than 30 pairs has no "
+                    "curve. Needs dates."
+                ),
+                minimum=1,
+            ),
             ATTRIBUTION,
         ),
         one_of=(
@@ -213,6 +271,14 @@ COMMANDS: tuple[Command, ...] = (
             {
                 "water_levels": [-10, 5, 20, 40, 80, 120],
                 "discharges": [0.5, 1.2, 2.5, 4.8, 10.1, 17.3],
+            },
+            {
+                "input_file": f"{_FIXTURES}/station_daily.csv",
+                "level_column": "H",
+                "discharge_column": "Q",
+                "date_column": "date",
+                "first_year": 2020,
+                "years_per_period": 2,
             },
         ),
     ),

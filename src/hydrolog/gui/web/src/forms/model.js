@@ -11,6 +11,7 @@ import { inputText, parseNumber } from "../format.js";
 import { t } from "../labels/common.js";
 import { errors as errorTexts, reasonText } from "../labels/errors.js";
 import {
+  commandOptions,
   formTexts,
   ONE_OF_TITLE,
   oneOf as oneOfLabels,
@@ -162,8 +163,9 @@ function shownValue(value) {
  *
  * @param {object} commandDoc a hydrolog-commands/1 document of one command, or its entry
  * @param {{labels?: Object<string, string>, hide?: string[], values?: object}} [settings]
- *   label overrides by option name, options the caller supplies itself (not shown, not
- *   checked, not sent), and the current values (the chosen group, `excludes`)
+ *   label overrides by option name (before the command's own labels and the shared
+ *   ones), options the caller supplies itself (not shown, not checked, not sent), and
+ *   the current values (the chosen group, `excludes`)
  * @returns {{command: object, fields: object[], groups: object[], oneOf: object|null}}
  *   the entry; the fields in catalog order; the sections of the form (`main`, sections
  *   named by the catalog, `more` „Opcje dodatkowe”), each listing field names and, in
@@ -174,7 +176,8 @@ export function fieldModel(commandDoc, settings = {}) {
   const entry = commandEntry(commandDoc);
   const hide = new Set(settings.hide || []);
   const values = settings.values || {};
-  const labels = { ...optionLabels, ...(settings.labels || {}) };
+  const own = Object.hasOwn(commandOptions, entry.name) ? commandOptions[entry.name] : {};
+  const labels = { ...optionLabels, ...own, ...(settings.labels || {}) };
   const membership = paneMembership(entry);
   const examplesByName = new Map();
   for (const option of entry.options || []) {

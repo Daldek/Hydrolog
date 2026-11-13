@@ -47,6 +47,9 @@
     },
     "fit_method": {
       "type": "string"
+    },
+    "source": {
+      "type": "string"
     }
   }
 }

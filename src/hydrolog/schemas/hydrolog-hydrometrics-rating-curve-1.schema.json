@@ -38,6 +38,36 @@
     },
     "n_outliers_removed": {
       "type": "integer"
+    },
+    "first_year": {
+      "type": [
+        "null",
+        "integer"
+      ]
+    },
+    "last_year": {
+      "type": [
+        "null",
+        "integer"
+      ]
+    },
+    "periods": {
+      "type": [
+        "null",
+        "array"
+      ]
+    },
+    "reference_level": {
+      "type": [
+        "null",
+        "number"
+      ]
+    },
+    "reference_discharge_m3s": {
+      "type": [
+        "null",
+        "number"
+      ]
     }
   }
 }

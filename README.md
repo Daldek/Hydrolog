@@ -1,6 +1,7 @@
 # Hydrolog: watershed hydrology calculations for engineers, researchers and AI agents
 
-Hydrolog is a watershed hydrology calculator: SCS-CN curve numbers and effective rainfall (TR-55), design hyetographs, time of concentration, unit hydrographs and design runoff hydrographs, flood routing of a discharge hydrograph, morphometry, flow statistics, rating curves and hydrologic soil groups. Python library, CLI, MCP server and a web GUI in Polish; it runs offline on numbers or local CSV, JSON and GeoTIFF files, except `precip pmaxtp`, which fetches the PMAXTP design rainfall depth of IMGW-PIB through Obserwator.
+Hydrolog is a watershed hydrology calculator: SCS-CN curve numbers and effective rainfall (TR-55), design hyetographs, time of concentration, unit hydrographs and design runoff hydrographs, flood routing of a discharge hydrograph, morphometry, flow statistics, rating curves, the meteorological statistics of a weather station and hydrologic soil groups. Python library, CLI, MCP server and a web GUI in Polish; it runs offline on numbers or local CSV, JSON and GeoTIFF files, except `precip pmaxtp`, which fetches the PMAXTP design rainfall depth of IMGW-PIB through Obserwator.
+
 
 ## When to use
 
@@ -11,7 +12,9 @@ Hydrolog computes the standard quantities of watershed hydrology:
 - time of concentration (Kirpich, NRCS, Giandotti, FAA, Kerby, Kerby-Kirpich), TR-55 curve numbers (CN) and the area-weighted CN of a watershed;
 - hydrologic soil groups (HSG) from clay, sand and silt rasters such as SoilGrids;
 - watershed shape and relief indicators, river network order (Strahler, Shreve), areal precipitation (Thiessen, IDW, isohyets);
-- flow statistics of daily series: characteristic flows (Polish WWQ to NNQ), flood and low-flow frequency, Mann-Kendall trend, rating curves, water level zones;
+- flow statistics of daily series: characteristic flows (Polish WWQ to NNQ), flood and low-flow frequency, Mann-Kendall trend with Sen's slope, the flow regime, the season of floods and low flows, the annual cycle, baseflow, rating curves, water level zones;
+- meteorological statistics of a weather station's daily series: precipitation sums and normals (of the analysed years or of a reference period such as 1991-2020, `--reference-first-year`, `--reference-last-year`), maxima, wet days, intensity, heavy precipitation, dry and wet spells (`--min-duration-days` shortens their list), SPI, air temperature indices and degree days, snow cover, Sielianinov's hydrothermal coefficient;
+
 - a Markdown calculation report of a design hydrograph.
 
 The same commands run from Python, from a shell or a CI job, from an AI agent over MCP and, for a person, in the web GUI; results are JSON documents.
@@ -19,7 +22,8 @@ The same commands run from Python, from a shell or a CI job, from an AI agent ov
 ## When not to use
 
 - Downloading or preparing spatial data (digital elevation model (DEM, Polish NMT), land cover, the topographic database BDOT10k, soil rasters): use [Kartograf](https://github.com/Daldek/Kartograf). Hydrolog only reads the files it is given.
-- Measurement series and stations of IMGW-PIB (Polish Institute of Meteorology and Water Management) and CHMU (Czech Hydrometeorological Institute): use [Obserwator](https://github.com/Daldek/Obserwator); `obserwator series export` writes the CSV that the `stats` commands read.
+- Measurement series and stations of IMGW-PIB (Polish Institute of Meteorology and Water Management) and CHMU (Czech Hydrometeorological Institute): use [Obserwator](https://github.com/Daldek/Obserwator); `obserwator series export` writes the CSV that the `stats` and `meteo` commands read.
+
 - Watershed delineation from a DEM: use [Hydrograf](https://github.com/Daldek/Hydrograf) or a GIS; Hydrolog takes the resulting area, lengths and elevations.
 - Hydraulics (water levels, inundation mapping, backwater) and channel routing by the Saint-Venant equations: use [Hydraulik](https://github.com/Daldek/Hydraulik) (2D flood screening, research stage) or an external tool such as HEC-RAS. Hydrolog routes discharge only, with lumped hydrologic methods.
 - Reservoirs, water quality, groundwater, snowmelt, erosion, Green-Ampt infiltration: not covered ([docs/SCOPE.md](https://github.com/Daldek/Hydrolog/blob/main/docs/SCOPE.md)); use a specialised external model.
@@ -145,7 +149,8 @@ anyio.run(call_tool)
 
 ## Capabilities
 
-48 commands in 16 groups, all computed offline except `precip pmaxtp`, the only one that opens a network connection: it fetches the PMAXTP depth of IMGW-PIB through Obserwator (extra `pmaxtp`). The MCP tool is `hydrolog_` plus the command name with `_`; every command is also available as `hydrolog.run_command("<command>", **options)`.
+62 commands in 17 groups, all computed offline except `precip pmaxtp`, the only one that opens a network connection: it fetches the PMAXTP depth of IMGW-PIB through Obserwator (extra `pmaxtp`). The MCP tool is `hydrolog_` plus the command name with `_`; every command is also available as `hydrolog.run_command("<command>", **options)`.
+
 
 | Group | Task | CLI command | MCP tool | Python (`hydrolog.operations`) |
 |---|---|---|---|---|
@@ -178,23 +183,38 @@ anyio.run(call_tool)
 | | The schematic of a river network, laid out without routing it | `route schematic` | `hydrolog_route_schematic` | `route_schematic` |
 | Morphometry | Geometric, shape and relief indicators | `morphometry watershed` | `hydrolog_morphometry_watershed` | `morphometry_watershed` |
 | River network | River network order statistics (Strahler, Shreve) | `network stats` | `hydrolog_network_stats` | `network_stats` |
-| Flow statistics | Characteristic values WWQ to NNQ of a daily series | `stats characteristic` | `hydrolog_stats_characteristic` | `stats_characteristic` |
+| Flow statistics | Baseflow by the Lyne-Hollick filter, the baseflow index and the recession constant | `stats baseflow` | `hydrolog_stats_baseflow` | `stats_baseflow` |
+| | Characteristic values of the first and second degree (WQ to NQ, WWQ to NNQ, WWW to NNW) of a daily series or IMGW-PIB's half-years | `stats characteristic` | `hydrolog_stats_characteristic` | `stats_characteristic` |
 | | Day-of-year statistics | `stats daily` | `hydrolog_stats_daily` | `stats_daily` |
-| | Flood quantiles from annual maxima | `stats flood-frequency` | `hydrolog_stats_flood_frequency` | `stats_flood_frequency` |
+| | Duration curve with class frequencies and the modal class | `stats duration-curve` | `hydrolog_stats_duration_curve` | `stats_duration_curve` |
+| | Flood quantiles from annual maxima, a daily series or IMGW-PIB's half-years | `stats flood-frequency` | `hydrolog_stats_flood_frequency` | `stats_flood_frequency` |
+| | Harmonics of the annual cycle of a daily series (mean, amplitude, day of maximum) | `stats harmonics` | `hydrolog_stats_harmonics` | `stats_harmonics` |
 | | Homogeneity tests of annual maxima (Mann-Whitney U, Kolmogorov-Smirnov, Pettitt) | `stats homogeneity` | `hydrolog_stats_homogeneity` | `stats_homogeneity` |
-| | Low-flow quantiles from annual minima | `stats low-flow` | `hydrolog_stats_low_flow` | `stats_low_flow` |
-| | Low-flow (drought) sequences below a threshold | `stats low-flow-sequences` | `hydrolog_stats_low_flow_sequences` | `stats_low_flow_sequences` |
-| | Monotonic trend test (Mann-Kendall) | `stats mann-kendall` | `hydrolog_stats_mann_kendall` | `stats_mann_kendall` |
+| | Low-flow quantiles from annual minima of a daily series or IMGW-PIB's half-years | `stats low-flow` | `hydrolog_stats_low_flow` | `stats_low_flow` |
+| | Low-flow (drought) sequences below a threshold, across gaps, with yearly summaries | `stats low-flow-sequences` | `hydrolog_stats_low_flow_sequences` | `stats_low_flow_sequences` |
+| | Monotonic trend test (Mann-Kendall) with Sen's slope and its confidence interval | `stats mann-kendall` | `hydrolog_stats_mann_kendall` | `stats_mann_kendall` |
 | | Monthly statistics with confidence interval | `stats monthly` | `hydrolog_stats_monthly` | `stats_monthly` |
-| Hydrometry | Rating curve Q = a(H - H0)^b | `hydrometrics rating-curve` | `hydrolog_hydrometrics_rating_curve` | `hydrometrics_rating_curve` |
+| | Flow regime: Pardé coefficients, Dynowska's regime type, seasonality index | `stats regime` | `hydrolog_stats_regime` | `stats_regime` |
+| | Annual and monthly runoff volumes, the cumulative volume of a year | `stats runoff-volume` | `hydrolog_stats_runoff_volume` | `stats_runoff_volume` |
+| | Mean date and concentration of the annual maxima or minima | `stats seasonality` | `hydrolog_stats_seasonality` | `stats_seasonality` |
+| | Events and days above or below a threshold | `stats threshold-events` | `hydrolog_stats_threshold_events` | `stats_threshold_events` |
+| Hydrometry | Rating curve Q = a(H - H0)^b, also of dated pairs by range of years and period | `hydrometrics rating-curve` | `hydrolog_hydrometrics_rating_curve` | `hydrometrics_rating_curve` |
 | | Water level zones NTW, STW, WTW (Rybczyński) | `hydrometrics water-level-zones` | `hydrolog_hydrometrics_water_level_zones` | `hydrometrics_water_level_zones` |
+| Meteorological statistics | Sielianinov's hydrothermal coefficient of the months April to September and of the warm season | `meteo hydrothermal` | `hydrolog_meteo_hydrothermal` | `meteo_hydrothermal` |
+| | Precipitation statistics: sums and normals, maxima, days, intensity, heavy precipitation, regime | `meteo precipitation` | `hydrolog_meteo_precipitation` | `meteo_precipitation` |
+| | Snow cover of each winter: days, largest depth, first and last day, fresh snow | `meteo snow` | `hydrolog_meteo_snow` | `meteo_snow` |
+| | Dry or wet spells of daily precipitation | `meteo spells` | `hydrolog_meteo_spells` | `meteo_spells` |
+| | Standardized precipitation index (SPI) of several scales, relative precipitation of months and years | `meteo spi` | `hydrolog_meteo_spi` | `meteo_spi` |
+| | Air temperature statistics: means and normals, characteristic days, degree days, daily range | `meteo temperature` | `hydrolog_meteo_temperature` | `meteo_temperature` |
+
 | Soil | HSG GeoTIFF from clay, sand and silt rasters (writes a file) | `soil hsg` | `hydrolog_soil_hsg` | `soil_hsg` |
 | | Area and share of HSG A-D in an HSG raster | `soil hsg-stats` | `hydrolog_soil_hsg_stats` | `soil_hsg_stats` |
 | | USDA texture class and HSG of one sample | `soil texture` | `hydrolog_soil_texture` | `soil_texture` |
 | Report | Markdown calculation report (writes a file) | `report generate` | `hydrolog_report_generate` | `report_generate` |
 | Settings | Effective settings and their sources | `config show` | `hydrolog_config_show` | `config_show` |
 | Web GUI | The web GUI, served on this computer until it is stopped (for a person, so no MCP tool) | `gui serve` | none (`hydrolog_gui_serve` is not a tool) | `gui_serve` |
-| Catalog and guides | Render AGENTS.md, llms.txt or a block (writes a file) | `commands guide` | `hydrolog_commands_guide` | `commands_guide` |
+| Catalog and guides | Run the catalog calls of a JSON Lines file in one process (writes a file) | `commands batch` | `hydrolog_commands_batch` | `commands_batch` |
+| | Render AGENTS.md, llms.txt or a block (writes a file) | `commands guide` | `hydrolog_commands_guide` | `commands_guide` |
 | | List the commands | `commands list` | `hydrolog_commands_list` | `commands_list` |
 | | Options, units, rules and examples of a command | `commands schema` | `hydrolog_commands_schema` | `commands_schema` |
 
@@ -202,8 +222,8 @@ anyio.run(call_tool)
 
 - [llms.txt](https://github.com/Daldek/Hydrolog/blob/main/llms.txt) and [AGENTS.md](https://github.com/Daldek/Hydrolog/blob/main/AGENTS.md) state the scope, the workflow, the error codes and typical flows (design hydrograph of a watershed file, flood frequency from an Obserwator export, HSG from SoilGrids rasters); both are generated from the command catalog. `hydrolog commands guide --format agents` (or `llms`) prints them; `--format agents-md-block --inject AGENTS.md` puts a compact block into another repository's AGENTS.md.
 - The catalog is served by the tool: `hydrolog commands list` (names, operation ids, summaries) and `hydrolog commands schema --command "tc kirpich"` (options with units, bounds and allowed values, result schema, rules, examples, errors, and the typical ranges the command checks with their sources, `typical_ranges`, which only the document of one command carries). In MCP these are the tools `hydrolog_commands_list` and `hydrolog_commands_schema`; `--schema` after any command prints its description instead of running it.
-- Work in four steps: discover, check, run, read. A result is a `hydrolog-result/1` envelope (`status` is `ok`; a failing command ends with an error instead), an error a `hydrolog-error/1` document.
-- Calculations are read-only. Three commands write one file (`report generate`, `soil hsg`, `commands guide`), and so does every `route` command that is given `--output`; they take `--output`, `--check` and `--force`: `--check` writes nothing and returns the plan, `result.targets[]` with `option`, `path` and `action` (`write`, `replace` or `conflict`); an existing file is replaced only with `--force`. `route network` writes one table per node into the directory of `--output-dir` (`-o`) the same way: its plan lists every table, and a directory that is, or lies in, the store of another Nogat tool is refused (`conflict`, `details.reason` `output_in_store`). A `route` command without `--output`, and `route network` without `--output-dir`, has no file to plan: it returns the routed hydrographs, also with `--check`.
+- Work in four steps: discover, check, run, read. A result is a `hydrolog-result/1` envelope (`status` is `ok`; a failing command ends with an error instead, and `commands batch` with failed calls is `partial` or `failed` with an `items` entry per call, exit 10 or 11), an error a `hydrolog-error/1` document.
+- Calculations are read-only. Four commands write one file (`report generate`, `soil hsg`, `commands guide`, `commands batch`), and so does every `route` command that is given `--output`; they take `--output`, `--check` and `--force`: `--check` writes nothing and returns the plan, `result.targets[]` with `option`, `path` and `action` (`write`, `replace` or `conflict`); an existing file is replaced only with `--force`. `route network` writes one table per node into the directory of `--output-dir` (`-o`) the same way: its plan lists every table, and a directory that is, or lies in, the store of another Nogat tool is refused (`conflict`, `details.reason` `output_in_store`). A `route` command without `--output`, and `route network` without `--output-dir`, has no file to plan: it returns the routed hydrographs, also with `--check`.
 
 ```bash
 hydrolog commands schema --command "tc kirpich" --json
@@ -267,8 +287,9 @@ VS Code, `.vscode/mcp.json` (key `servers`):
 ```
 
 - `--allow-dir DIR` (repeatable): the only directories in which tools read files; without it every path option is refused (`forbidden`), while commands that take values still work.
-- `--allow-writes`: lets `report generate`, `soil hsg`, `commands guide` and the `route` commands (with `output`, `route network` with `output_dir`) write inside the allowed directories; without it they run as `check` and return the plan, while a `route` command without an output still returns the routed hydrographs.
-- `--tools FAMILIES`: comma-separated tool families, a command group (`tc`, `cn`, `scs`, `precip`, `uh`, `hydrograph`, `route`, `morphometry`, `network`, `stats`, `hydrometrics`, `soil`, `report`, `config`, `commands`) or `core`, the main tasks (`tc watershed`, `cn lookup`, `cn weighted`, `scs effective`, `hydrograph generate`, `morphometry watershed`, `stats flood-frequency`, `commands list`, `commands schema`).
+- `--allow-writes`: lets `report generate`, `soil hsg`, `commands guide`, `commands batch` (whose calls keep the server's `--allow-dir`) and the `route` commands (with `output`, `route network` with `output_dir`) write inside the allowed directories; without it they run as `check` and return the plan, while a `route` command without an output still returns the routed hydrographs.
+- `--tools FAMILIES`: comma-separated tool families, a command group (`tc`, `cn`, `scs`, `precip`, `uh`, `hydrograph`, `route`, `morphometry`, `network`, `stats`, `hydrometrics`, `meteo`, `soil`, `report`, `config`, `commands`) or `core`, the main tasks (`tc watershed`, `cn lookup`, `cn weighted`, `scs effective`, `hydrograph generate`, `morphometry watershed`, `stats flood-frequency`, `commands list`, `commands schema`).
+
 - The server speaks English only (`hydrolog mcp --lang en` is rejected). Instructions are at most 4,096 characters, each tool description at most 600; an execution error is an `isError` result that holds the `hydrolog-error/1` document.
 
 ## Web GUI
@@ -295,7 +316,7 @@ sqlite3 ~/.local/share/nogat/hydrolog/feedback.sqlite3 ".backup feedback-backup.
 ## Related tools
 
 - [Kartograf](https://github.com/Daldek/Kartograf) downloads Polish and Czech geodata (elevation, land cover, soils); the `files[].path` values in the `--json` result of `kartograf soil download --output-dir DIR` are the clay, sand and silt rasters of `soil hsg`.
-- [Obserwator](https://github.com/Daldek/Obserwator) provides IMGW-PIB and CHMU series: `obserwator series export --output FILE` writes the CSV that `--input-file` of the `stats` and `hydrometrics` commands reads; `precip pmaxtp` (extra `pmaxtp`) fetches the PMAXTP design precipitation of a point through it, the `--total-mm` of a design storm.
+- [Obserwator](https://github.com/Daldek/Obserwator) provides IMGW-PIB and CHMU series: `obserwator series export --output FILE` writes the CSV that `--input-file` of the `stats`, `hydrometrics` and `meteo` commands reads; `precip pmaxtp` (extra `pmaxtp`) fetches the PMAXTP design precipitation of a point through it, the `--total-mm` of a design storm.
 - [Hydrograf](https://github.com/Daldek/Hydrograf) is a web app for watershed delineation and design hydrographs built on Hydrolog; watersheds travel as `WatershedParameters` JSON, and watersheds and the networks it delineates at control points as hand-offs `nogat-handoff/1` with the origin of each node ([docs/INTEGRATION.md](https://github.com/Daldek/Hydrolog/blob/main/docs/INTEGRATION.md)).
 - [Retman](https://github.com/Daldek/Retman) is a Polish natural-language command layer over the ecosystem tools; it is designed to drive Hydrolog through the command layer (`hydrolog.operations`).
 - [Hydraulik](https://github.com/Daldek/Hydraulik) screens 2D floods (research stage) and uses the Beta and Euler type II hyetograph classes of Hydrolog; [Nogat](https://github.com/Daldek/Nogat) holds the shared standards and the registry of these tools.

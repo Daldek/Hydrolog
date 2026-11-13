@@ -45,6 +45,7 @@ from hydrolog.statistics._hydrological_year import (
     AnnualExtremes,
     annual_extremes,
     incomplete_years_details,
+    on_daily_calendar,
 )
 from hydrolog.statistics._types import (
     EmpiricalFrequency,
@@ -52,6 +53,7 @@ from hydrolog.statistics._types import (
     compute_non_exceedance_positions,
     compute_plotting_positions,
 )
+from hydrolog.statistics.events import threshold_runs
 
 _DEFAULT_RETURN_PERIODS = np.array([2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 500.0, 1000.0])
 _MIN_RELIABLE_YEARS = 10  # below it the estimates may be unreliable
@@ -122,14 +124,20 @@ class LowFlowSequence(JsonResultMixin):
         Index in the original daily flow array where the sequence ends
         (inclusive).
     duration_days : int
-        Total length of the sequence in days.
+        Total length of the sequence in days (calendar days, bridged gaps
+        included).
     min_flow : float
         Minimum flow observed during the sequence.
     mean_flow : float
-        Mean flow observed during the sequence.
+        Mean flow of the days of the sequence that have a value.
     deficit_volume : float
         Cumulative deficit: ``sum(threshold - Q[i])`` for all days where
         ``Q[i] < threshold`` within the sequence window.
+    missing_days : int
+        Days of the sequence without a value (a ``NaN`` or an absent date).
+    open_start, open_end : bool
+        The day before the first (after the last) has no value: the sequence may
+        have begun earlier (lasted longer).
     """
 
     start_index: int
@@ -138,6 +146,9 @@ class LowFlowSequence(JsonResultMixin):
     min_flow: float
     mean_flow: float
     deficit_volume: float
+    missing_days: int = 0
+    open_start: bool = False
+    open_end: bool = False
 
 
 @dataclass
@@ -338,41 +349,7 @@ class LowFlowAnalysis:
         by maximum likelihood; for short records (a few tens of years) the shape,
         and with it the quantiles of rare droughts, is very uncertain.
         """
-        minima = self.annual_minima()
-        # min(x) = -max(-x): the minima-type GEV is the maxima-type GEV of -x.
-        negated = -minima
-
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", UserWarning)
-            c, loc_negated, scale = genextreme.fit(negated)
-        fitted = genextreme(c, loc=loc_negated, scale=scale)
-
-        # ``0.0 - x`` instead of ``-x``: an all-zero record must give 0.0, not -0.0.
-        params: dict[str, float] = {
-            "shape": float(c),
-            "loc": float(0.0 - loc_negated),
-            "scale": float(scale),
-        }
-
-        # Non-exceedance probability p = 1/T of the minima = exceedance
-        # probability of the negated series; isf stays accurate for tiny p.
-        p = 1.0 / self._return_periods
-        quantiles = 0.0 - fitted.isf(p)
-
-        # K-S test (informational; invalid when parameters estimated from data).
-        # The statistic is the same for a sample and its mirror image.
-        ks_stat, ks_pval = kstest(negated, fitted.cdf)
-
-        return LowFlowFrequencyResult(
-            distribution_name="fisher_tippett",
-            parameters=params,
-            return_periods=self._return_periods.copy(),
-            quantiles=np.asarray(quantiles, dtype=np.float64),
-            non_exceedance_probabilities=p,
-            ks_statistic=float(ks_stat),
-            ks_p_value=float(ks_pval),
-            ks_valid=False,
-        )
+        return _fisher_tippett(self.annual_minima(), self._return_periods)
 
     def empirical_frequency(self, method: str = "weibull") -> EmpiricalFrequency:
         """Compute empirical plotting positions for annual minima.
@@ -458,6 +435,11 @@ class LowFlowAnalysis:
         (i.e. gap < max_gap_days).  After merging, only sequences whose
         total duration meets or exceeds *min_duration_days* are retained.
 
+        The flows are laid on the calendar of their dates: a day whose date is
+        absent or whose flow is ``NaN`` has no value, is never below the threshold
+        and counts as a gap day (:func:`hydrolog.statistics.threshold_runs`), so a
+        series with gaps in the record has its sequences across them.
+
         Parameters
         ----------
         threshold : float
@@ -480,76 +462,50 @@ class LowFlowAnalysis:
             deficit = Σ max(threshold − Q[i], 0)  for i in sequence window
 
         This includes gap days (which contribute zero deficit if Q > threshold)
-        when two runs are merged.
+        when two runs are merged; days without a value contribute nothing. The
+        minimum and the mean are those of the days with a value.
 
         Raises
         ------
         InvalidParameterError
-            If threshold <= 0 or min_duration_days < 1.
+            If threshold <= 0, min_duration_days < 1 or the dates do not increase
+            strictly.
         """
-        from hydrolog.exceptions import InvalidParameterError
-
         if threshold <= 0:
             raise InvalidParameterError(f"threshold must be positive, got {threshold}")
         if min_duration_days < 1:
             raise InvalidParameterError(
                 f"min_duration_days must be >= 1, got {min_duration_days}"
             )
+        dates = np.asarray(self._dates).astype("datetime64[D]")
+        if np.any(dates[1:] <= dates[:-1]):
+            raise InvalidParameterError("the dates must increase strictly")
 
-        below: NDArray[np.bool_] = self._flows < threshold
-
-        # ------------------------------------------------------------------
-        # 1.  Find all contiguous runs of True (below-threshold days)
-        #     using np.diff to locate transition points.
-        # ------------------------------------------------------------------
-        # Pad with False so that runs touching the boundaries are detected.
-        padded = np.concatenate(([False], below, [False]))
-        diff = np.diff(padded.astype(np.int8))
-
-        # Indices where a run starts (0→1) and ends (1→0) in the *original*
-        # (unpadded) array.
-        starts: NDArray[np.intp] = np.where(diff == 1)[0]  # already offset-corrected
-        ends: NDArray[np.intp] = np.where(diff == -1)[0] - 1  # inclusive end
-
-        if len(starts) == 0:
-            return LowFlowAnalysisResult(threshold=threshold)
-
-        # ------------------------------------------------------------------
-        # 2.  Merge runs separated by a gap < max_gap_days.
-        # ------------------------------------------------------------------
-        merged_starts: list[int] = [int(starts[0])]
-        merged_ends: list[int] = [int(ends[0])]
-
-        for i in range(1, len(starts)):
-            gap = int(starts[i]) - int(merged_ends[-1]) - 1  # number of gap days
-            if gap < max_gap_days:
-                # Extend the current merged event to cover this run
-                merged_ends[-1] = int(ends[i])
-            else:
-                merged_starts.append(int(starts[i]))
-                merged_ends.append(int(ends[i]))
-
-        # ------------------------------------------------------------------
-        # 3.  Build LowFlowSequence objects; filter by min_duration_days.
-        # ------------------------------------------------------------------
+        _, flows = on_daily_calendar(self._flows, dates)
+        present = ~np.isnan(flows)
+        with np.errstate(invalid="ignore"):
+            below = present & (flows < threshold)
+        starts, ends = threshold_runs(
+            below, min_duration_days=min_duration_days, max_gap_days=max_gap_days
+        )
+        # The calendar day of each flow, to give the positions in the given arrays.
+        offsets = (dates - dates[0]).astype(np.int64)
+        last = flows.size - 1
         sequences: list[LowFlowSequence] = []
-
-        for s, e in zip(merged_starts, merged_ends, strict=False):
-            duration = e - s + 1
-            if duration < min_duration_days:
-                continue
-
-            segment = self._flows[s : e + 1]
-            deficit = float(np.sum(np.maximum(threshold - segment, 0.0)))
-
+        for start, end in zip(starts.tolist(), ends.tolist(), strict=True):
+            window = flows[start : end + 1]
+            known = window[~np.isnan(window)]
             sequences.append(
                 LowFlowSequence(
-                    start_index=s,
-                    end_index=e,
-                    duration_days=duration,
-                    min_flow=float(segment.min()),
-                    mean_flow=float(segment.mean()),
-                    deficit_volume=deficit,
+                    start_index=int(np.searchsorted(offsets, start)),
+                    end_index=int(np.searchsorted(offsets, end)),
+                    duration_days=end - start + 1,
+                    min_flow=float(known.min()),
+                    mean_flow=float(known.mean()),
+                    deficit_volume=float(np.sum(np.maximum(threshold - known, 0.0))),
+                    missing_days=int(window.size - known.size),
+                    open_start=start == 0 or not bool(present[start - 1]),
+                    open_end=end == last or not bool(present[end + 1]),
                 )
             )
 
@@ -587,3 +543,85 @@ class LowFlowAnalysis:
                 "without gaps.",
             )
         return extremes
+
+
+def fit_fisher_tippett_minima(
+    minima: NDArray[np.float64],
+    return_periods: NDArray[np.float64] | None = None,
+) -> LowFlowFrequencyResult:
+    """Fit the Fisher-Tippett distribution of smallest values to annual minima.
+
+    The fit of :meth:`LowFlowAnalysis.fit_fisher_tippett` for minima that are
+    already known, such as the smaller of IMGW-PIB's half-year minima: maximum
+    likelihood of :data:`scipy.stats.genextreme` on the negated minima, the quantile
+    of return period ``T`` at the non-exceedance probability ``1 / T``.
+
+    Parameters
+    ----------
+    minima : NDArray[np.float64]
+        Annual minima in the unit of the series.
+    return_periods : NDArray[np.float64] or None, optional
+        Return periods [years]; by default 2, 5, 10, 20, 50, 100, 500 and 1000.
+
+    Returns
+    -------
+    LowFlowFrequencyResult
+        The fitted parameters, the low-flow quantiles and the K-S statistics.
+
+    Warns
+    -----
+    UserWarning
+        If fewer than 10 minima are given (``small_sample``).
+    """
+    sample = np.asarray(minima, dtype=np.float64)
+    if sample.size < _MIN_RELIABLE_YEARS:
+        warnings.warn(
+            SmallSample(years=int(sample.size), minimum=_MIN_RELIABLE_YEARS),
+            stacklevel=2,
+        )
+    periods = (
+        np.asarray(return_periods, dtype=np.float64)
+        if return_periods is not None
+        else _DEFAULT_RETURN_PERIODS.copy()
+    )
+    return _fisher_tippett(sample, periods)
+
+
+def _fisher_tippett(
+    minima: NDArray[np.float64], periods: NDArray[np.float64]
+) -> LowFlowFrequencyResult:
+    """Return the maximum-likelihood fit of :func:`fit_fisher_tippett_minima`."""
+    # min(x) = -max(-x): the minima-type GEV is the maxima-type GEV of -x.
+    negated = -np.asarray(minima, dtype=np.float64)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        c, loc_negated, scale = genextreme.fit(negated)
+    fitted = genextreme(c, loc=loc_negated, scale=scale)
+
+    # ``0.0 - x`` instead of ``-x``: an all-zero record must give 0.0, not -0.0.
+    params: dict[str, float] = {
+        "shape": float(c),
+        "loc": float(0.0 - loc_negated),
+        "scale": float(scale),
+    }
+
+    # Non-exceedance probability p = 1/T of the minima = exceedance
+    # probability of the negated series; isf stays accurate for tiny p.
+    p = 1.0 / periods
+    quantiles = 0.0 - fitted.isf(p)
+
+    # K-S test (informational; invalid when parameters estimated from data).
+    # The statistic is the same for a sample and its mirror image.
+    ks_stat, ks_pval = kstest(negated, fitted.cdf)
+
+    return LowFlowFrequencyResult(
+        distribution_name="fisher_tippett",
+        parameters=params,
+        return_periods=periods.copy(),
+        quantiles=np.asarray(quantiles, dtype=np.float64),
+        non_exceedance_probabilities=p,
+        ks_statistic=float(ks_stat),
+        ks_p_value=float(ks_pval),
+        ks_valid=False,
+    )

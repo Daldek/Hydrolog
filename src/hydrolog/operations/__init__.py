@@ -51,15 +51,28 @@ from hydrolog.operations.hydrograph import (
     hydrograph_generate,
 )
 from hydrolog.operations.hydrometrics import (
+    RatingCurveAnalysis,
+    RatingPeriod,
     WaterLevelAnalysis,
     hydrometrics_rating_curve,
     hydrometrics_water_level_zones,
 )
 from hydrolog.operations.meta import (
+    BatchFailure,
+    BatchResult,
     GuideDocument,
+    commands_batch,
     commands_guide,
     commands_list,
     commands_schema,
+)
+from hydrolog.operations.meteo import (
+    meteo_hydrothermal,
+    meteo_precipitation,
+    meteo_snow,
+    meteo_spells,
+    meteo_spi,
+    meteo_temperature,
 )
 from hydrolog.operations.morphometry import WatershedMorphometry, morphometry_watershed
 from hydrolog.operations.network import NetworkAnalysis, network_stats
@@ -93,17 +106,26 @@ from hydrolog.operations.soil import (
 )
 from hydrolog.operations.stats import (
     FloodFrequencyResult,
+    HomogeneityAnalysis,
     LowFlowEvent,
     LowFlowFrequencyAnalysis,
     LowFlowSequencesResult,
+    LowFlowYear,
+    stats_baseflow,
     stats_characteristic,
     stats_daily,
+    stats_duration_curve,
     stats_flood_frequency,
+    stats_harmonics,
     stats_homogeneity,
     stats_low_flow,
     stats_low_flow_sequences,
     stats_mann_kendall,
     stats_monthly,
+    stats_regime,
+    stats_runoff_volume,
+    stats_seasonality,
+    stats_threshold_events,
 )
 from hydrolog.operations.tc import (
     TcResult,
@@ -178,21 +200,39 @@ __all__ = [
     "network_stats",
     # stats
     "FloodFrequencyResult",
+    "HomogeneityAnalysis",
     "LowFlowEvent",
     "LowFlowFrequencyAnalysis",
     "LowFlowSequencesResult",
+    "LowFlowYear",
+    "stats_baseflow",
     "stats_characteristic",
     "stats_daily",
+    "stats_duration_curve",
     "stats_flood_frequency",
+    "stats_harmonics",
     "stats_homogeneity",
     "stats_low_flow",
     "stats_low_flow_sequences",
     "stats_mann_kendall",
     "stats_monthly",
+    "stats_regime",
+    "stats_runoff_volume",
+    "stats_seasonality",
+    "stats_threshold_events",
     # hydrometrics
+    "RatingCurveAnalysis",
+    "RatingPeriod",
     "WaterLevelAnalysis",
     "hydrometrics_rating_curve",
     "hydrometrics_water_level_zones",
+    # meteo
+    "meteo_hydrothermal",
+    "meteo_precipitation",
+    "meteo_snow",
+    "meteo_spells",
+    "meteo_spi",
+    "meteo_temperature",
     # soil
     "SoilTextureResult",
     "soil_hsg",
@@ -208,7 +248,10 @@ __all__ = [
     "GuiServeResult",
     "gui_serve",
     # commands
+    "BatchFailure",
+    "BatchResult",
     "GuideDocument",
+    "commands_batch",
     "commands_guide",
     "commands_list",
     "commands_schema",

@@ -864,11 +864,23 @@ quantiles need at least 30 years).
   minima; `stats low-flow-sequences`: drought sequences below a threshold.
 - `stats characteristic`: second-degree characteristic values (WWQ ... NNQ); `stats daily` and
   `stats monthly`: day-of-year and monthly statistics.
-- `stats mann-kendall`: monotonic trend test; `stats homogeneity`: the homogeneity of annual maxima
+- `stats mann-kendall`: monotonic trend test with Sen's slope, Conover's intercept and Gilbert's
+  1 - alpha interval of the slope (per year with `--year-column` or inline `--years`, otherwise
+  per step); `stats homogeneity`: the homogeneity of annual maxima
   by the Mann-Whitney U and two-sample Kolmogorov-Smirnov tests of the series split at
   `--split-year` (default: into halves) and Pettitt's change-point test (ADR-0022). Annual maxima
   take their years from `--year-column` (or inline `--years`), a daily series from its dates;
   `split_year` and Pettitt's `change_point_year` are the first year of the second part.
+- The regime of a station (plan 2026-11-13, D11; `--first-year`, `--last-year` choose the
+  hydrological years): `stats regime`: Pardé's coefficients of the months (XI-X), Dynowska's
+  regime type (`regime_type.code` 1-5), the March-April share of the volume and the seasonality
+  index; `stats seasonality`: the mean date and the concentration of the annual maxima
+  (`--statistic min`: minima) of the complete years or of IMGW-PIB's `--half-year-file`;
+  `stats harmonics`: the mean, amplitudes and days of maximum of the annual cycle (water or air
+  temperature, flow) over the period and per year; `stats baseflow`: the Lyne-Hollick baseflow,
+  the baseflow index of the period and of each year and the recession constant. The water
+  temperature days at or above 15, 20, 25 °C and below 1 °C are `stats threshold-events` on the
+  `T` column.
 
 ```bash
 hydrolog stats flood-frequency --input-file tests/fixtures/annual_maxima.csv --value-column Qmax --distribution gev --fit-method all --return-periods 10,100 --json
@@ -890,6 +902,22 @@ hydrolog stats homogeneity --input-file tests/fixtures/annual_maxima.csv --value
 {"result": {"schema": "hydrolog-stats-homogeneity/1", "n_years": 35, "split_index": 11, "split_year": 2000, "mann_whitney": {"homogeneous": true}, "pettitt": {"change_point_year": 2020, "homogeneous": true}}}
 ```
 
+```bash
+hydrolog stats regime --input-file tests/fixtures/station_daily.csv --value-column Q --date-column date --json
+```
+
+```json output
+{"result": {"schema": "hydrolog-stats-regime/1", "period_years": 5, "regime_type": {"code": 4, "criteria": {"spring_month": 3, "summer_month": 6}}}}
+```
+
+```bash
+hydrolog stats baseflow --input-file tests/fixtures/station_daily.csv --value-column Q --date-column date --json
+```
+
+```json output
+{"result": {"schema": "hydrolog-stats-baseflow/1", "n_values": 1811, "n_spans": 3, "series_year": 2023}}
+```
+
 ```python
 import hydrolog
 
@@ -902,6 +930,84 @@ envelope = hydrolog.run_command(
 )
 print(envelope.to_dict()["result"]["wwx"], [n.code for n in envelope.notices])
 ```
+
+`stats flood-frequency`, `stats low-flow` and `stats homogeneity` also read Obserwator's export
+of IMGW-PIB's half-year characteristics (`--half-year-file`, `pl.imgw.hydro_semiannual`; the
+columns of `--parameter` Q or H): the annual maximum is the larger of the winter and summer
+maxima of a year with both (the minimum the smaller of the minima), a year with one half-year
+only is named in `incomplete_years`, and `result.source` says where the values come from.
+`--first-year` and `--last-year` choose the hydrological years of a daily series or of the file.
+
+```bash
+hydrolog stats flood-frequency --half-year-file tests/fixtures/station_half_years.csv --first-year 2020 --last-year 2023 --json
+```
+
+### Many calls in one process: `commands batch`
+
+A station's analyses are tens of calls; `commands batch` runs them in one process (the imports
+once). Each line of `--input-file` is a call, `{"command": "<group> <verb>", "options": {...}}`;
+line i of `--output` is what `--json` prints for call i alone: its `hydrolog-result/1` envelope,
+or its `hydrolog-error/1` document. A failed call does not stop the others; relative paths are
+taken from the directory of the input file. A batch runs offline and writes only its output: a
+call of `precip pmaxtp` (the network), a call that gives an output option (`output`,
+`output_dir`, `schematic`) and a call of `commands batch` or `gui serve` get a `validation_error`
+line (`not_in_batch`). The batch's own envelope counts the calls
+(`n_calls`, `n_ok`, `n_failed`, `failed`) and lists each line in `items`; with a failed call its
+`status` is `partial` (exit 10), with every call failed `failed` (exit 11). The calls of
+`tests/fixtures/station_batch.jsonl`, one per line:
+
+```text
+{"command": "stats characteristic", "options": {"input_file": "station_daily.csv", "value_column": "Q", "date_column": "date"}}
+{"command": "stats flood-frequency", "options": {"half_year_file": "station_half_years.csv", "return_periods": [10, 100]}}
+```
+
+```bash
+hydrolog commands batch --input-file tests/fixtures/station_batch.jsonl --output results.jsonl --check --json
+```
+
+### Meteorological statistics from an Obserwator export
+
+The `meteo` commands read a station's daily export (`obserwator series export --dataset
+pl.imgw.meteo_climate_daily`, `pl.imgw.meteo_precip_daily` or `cz.chmi.meteo_daily`) as it is: the
+columns `date`, `P`, `P_flag`, `Tmax`, `Tmin`, `Tmean`, `snow_cover` and `fresh_snow` are found by
+their names (`--precipitation-column` and the like change them). `meteo precipitation` and
+`meteo temperature` take one `--index` per call; years are calendar years unless `--year-type
+hydrological`, and `--first-year`/`--last-year` choose the period (the whole record by default).
+Accumulated totals (`P_flag` `accumulated`) count in the monthly sums and are missing days for
+the daily statistics; months and years follow the missing-data rules of WMO-No. 1203.
+The normals of `meteo precipitation` (`--index sums`, `heavy`, `seasonality`), `meteo spi` and
+`meteo temperature --index means` are those of the period unless `--reference-first-year` and
+`--reference-last-year` choose another reference, such as the standard normal 1991-2020: the
+years of the period keep their own values, and only the baselines come from the reference (the
+normals with the percentages of normal and the anomalies, the percentiles of `heavy`, the gamma
+fits of the SPI). `meteo spells` lists every spell; `--min-duration-days` lists only the longer
+ones (the yearly and period summaries still count every spell), which keeps the result of a long
+record small.
+The export's attribution columns (`attribution_source`, `attribution_processed`) are not data:
+Hydrolog carries their lines into the result's `attribution` and `terms_notice` (ADR-0028); show
+them when you publish results. Values given inline take theirs with `--attribution '[...]'`.
+
+```bash
+hydrolog meteo precipitation --index sums --input-file tests/fixtures/meteo_daily.csv --first-year 2019 --last-year 2021 --json
+hydrolog meteo precipitation --index maxima --input-file tests/fixtures/meteo_daily.csv --durations-days 2,3,5,10
+hydrolog meteo precipitation --index sums --input-file tests/fixtures/meteo_daily.csv --first-year 2022 --last-year 2023 --reference-first-year 2019 --reference-last-year 2021
+hydrolog meteo spells --input-file tests/fixtures/meteo_daily.csv --kind dry --threshold-mm 1 --min-duration-days 10
+hydrolog meteo spi --input-file tests/fixtures/meteo_daily.csv --scales-months 1,3,6,12
+hydrolog meteo temperature --index days --input-file tests/fixtures/meteo_daily.csv
+hydrolog meteo snow --input-file tests/fixtures/meteo_daily.csv
+hydrolog meteo hydrothermal --input-file tests/fixtures/meteo_daily.csv
+```
+
+```python
+import hydrolog
+
+envelope = hydrolog.run_command(
+    "meteo precipitation", index="sums", input_file="tests/fixtures/meteo_daily.csv"
+)
+print(envelope.to_dict()["result"]["period"]["normal_mm"])   # 683.35
+```
+
+The quantiles of the annual maxima are `stats flood-frequency` on the values of `--index maxima`.
 
 ### Rating curve
 

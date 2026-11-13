@@ -21,6 +21,10 @@ both into the objects the library works with:
 * :func:`table_hydrograph` -- one column of a table that is already read as a
   hydrograph, for a file that holds several (``route network``: a column per source);
 * :func:`read_json` -- a JSON document of a file (the network of ``route network``);
+* :func:`load_half_years` -- IMGW-PIB's half-year characteristics of one variable from
+  Obserwator's export of ``pl.imgw.hydro_semiannual`` ->
+  :class:`~hydrolog.statistics.HalfYearValues`;
+* :func:`parse_dates` -- a list of inline ISO dates, not necessarily increasing;
 * :func:`read_table` / :func:`load_records` -- the generic file reader behind them,
   for operations that need other columns (rating curve pairs, network segments...).
 
@@ -76,7 +80,7 @@ import re
 from collections.abc import Mapping, Sequence
 from dataclasses import MISSING, dataclass, fields
 from pathlib import Path
-from typing import Any, NamedTuple, NoReturn, get_args, get_type_hints
+from typing import TYPE_CHECKING, Any, NamedTuple, NoReturn, get_args, get_type_hints
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -95,19 +99,25 @@ from hydrolog.routing._checks import one_complete_group
 from hydrolog.routing.hydrograph import Hydrograph, check_table
 from hydrolog.routing.level_pool import check_rating, rating_arrays
 
+if TYPE_CHECKING:
+    from hydrolog.statistics.characteristic import HalfYearValues
+
 __all__ = [
     "DISCHARGE_COLUMN",
     "TIME_COLUMN",
     "Rating",
     "Series",
     "Table",
+    "load_half_years",
     "load_hydrograph",
     "load_rating",
     "load_records",
     "load_series",
     "load_stations",
     "load_watershed",
+    "parse_dates",
     "read_json",
+    "read_json_lines",
     "read_table",
     "table_hydrograph",
 ]
@@ -566,6 +576,55 @@ def read_json(path: str | os.PathLike[str]) -> Any:
     return document
 
 
+def read_json_lines(path: str | os.PathLike[str]) -> list[Any]:
+    r"""Read a JSON Lines file: one JSON value per line.
+
+    Lines end with ``\n`` (``\r\n`` too); a final line end does not start another
+    line. A line that is not JSON is not an error here: its item is the
+    :class:`json.JSONDecodeError` (or ``ValueError`` for ``NaN`` and ``Infinity``),
+    so that a caller can answer each line on its own (``commands batch``).
+
+    Parameters
+    ----------
+    path : str or os.PathLike
+        File to read: UTF-8, with or without a BOM.
+
+    Returns
+    -------
+    list
+        One item per line: the parsed value, or the exception of a line that is not
+        JSON.
+
+    Raises
+    ------
+    NotFoundError
+        If the file does not exist.
+    InputDataError
+        If the file cannot be read, is not UTF-8 or has no line (``details.reason``
+        ``empty``).
+    """
+    resolved = _file_path(path)
+    text = _read_text(resolved)
+    lines = text.split("\n")
+    if lines[-1] == "":
+        lines.pop()
+    if not lines:
+        raise InputDataError(
+            f"{resolved}: the file has no line",
+            details={"path": str(resolved), "reason": "empty"},
+            hint="Write one JSON value per line.",
+        )
+    items: list[Any] = []
+    for line in lines:
+        try:
+            items.append(
+                json.loads(line.removesuffix("\r"), parse_constant=_reject_constant)
+            )
+        except ValueError as exc:  # json.JSONDecodeError is a ValueError
+            items.append(exc)
+    return items
+
+
 def load_records(path: str | os.PathLike[str]) -> list[dict[str, Any]]:
     """Read a CSV or JSON file as a list of records.
 
@@ -973,6 +1032,199 @@ def load_series(
     return Series(
         values=numbers_array, dates=date_array, source="inline", years=year_array
     )
+
+
+# --- IMGW-PIB's half-year characteristics ---------------------------------------------
+
+_HALF_YEAR_PERIODS = ("winter", "summer", "annual")
+_DATE_TIME = re.compile(
+    r"(\d{4})-(\d{2})-(\d{2})"
+    r"(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)?"
+)
+
+
+def _extreme_date(cell: object, source: _Source, column: str, row: int) -> str | None:
+    """Return the ISO date of an extreme's start; its time is dropped."""
+    if cell is None:
+        return None
+    text = str(cell).strip()
+    if text.lower() in _MISSING_TOKENS:
+        return None
+    match = _DATE_TIME.fullmatch(text)
+    if match:
+        try:
+            return dt.date(*(int(part) for part in match.groups())).isoformat()
+        except ValueError:
+            pass
+    source.fail(
+        f"row {row + 1}, column {column!r}: {_shown(cell)!r} is not an ISO date",
+        reason="bad_date",
+        hint="The dates of the extremes look like 2024-02-29 or 2024-02-29T06:00:00.",
+        column=column,
+        row=row + 1,
+        value=_shown(cell),
+    )
+
+
+def _optional_column(table: Table, name: str) -> str | None:
+    """Return the column ``name`` of a table, or ``None`` when it has none."""
+    try:
+        return table.resolve_column(name, option="half_year_file")
+    except InputDataError as exc:
+        if exc.details.get("reason") == "missing_column":
+            return None
+        raise
+
+
+def load_half_years(path: str | os.PathLike[str], parameter: str) -> HalfYearValues:
+    """Read IMGW-PIB's half-year characteristics of one variable.
+
+    The file is Obserwator's export of ``pl.imgw.hydro_semiannual`` (CSV or JSON): a
+    row per hydrological year and period, with the columns ``year`` (the hydrological
+    year), ``period`` (``winter`` for XI-IV, ``summer`` for V-X, ``annual``) and, for
+    the variable ``P``, ``P_min``, ``P_mean`` and ``P_max`` (found without the unit
+    suffix) and, when present, ``P_min_start`` and ``P_max_start``, the date (and time)
+    of each extreme. The ``annual`` row gives the annual mean; its extremes are taken
+    from the half-years by
+    :func:`hydrolog.statistics.characteristic_values_from_half_years`. Other columns
+    are ignored.
+
+    Parameters
+    ----------
+    path : str or os.PathLike
+        The file.
+    parameter : str
+        The variable: ``"Q"``, ``"H"`` or ``"T"``.
+
+    Returns
+    -------
+    HalfYearValues
+        The values by year, ascending; ``NaN`` and ``None`` where missing.
+
+    Raises
+    ------
+    NotFoundError
+        If the file does not exist.
+    InputDataError
+        If the file is malformed or lacks a column (``missing_column``), a year is not
+        a whole number (``bad_year``), a period is not one of the three
+        (``bad_period``), a year and period appear twice (``duplicate_period``) or a
+        cell is not a number or a date.
+    """
+    from hydrolog.statistics.characteristic import HalfYearPart, HalfYearValues
+
+    table = read_table(path)
+    source = _Source(path=table.source)
+    year_column = table.resolve_column("year", option="half_year_file")
+    period_column = table.resolve_column("period", option="half_year_file")
+    numbers = {
+        stat: table.numbers(f"{parameter}_{stat}", option="half_year_file")
+        for stat in ("min", "mean", "max")
+    }
+    starts = {
+        stat: _optional_column(table, f"{parameter}_{stat}_start")
+        for stat in ("min", "max")
+    }
+    rows: dict[tuple[int, str], int] = {}
+    for row in range(table.n_rows):
+        cell = table.data[year_column][row]
+        year = _to_year(cell)
+        if year is None:
+            source.fail(
+                f"row {row + 1}, column {year_column!r}: {_shown(cell)!r} is not a "
+                "year (a whole number)",
+                reason="bad_year",
+                column=year_column,
+                row=row + 1,
+                value=_shown(cell),
+            )
+        label = table.data[period_column][row]
+        period = str(label).strip().lower() if label is not None else ""
+        if period not in _HALF_YEAR_PERIODS:
+            source.fail(
+                f"row {row + 1}, column {period_column!r}: {_shown(label)!r} is not "
+                "winter, summer or annual",
+                reason="bad_period",
+                column=period_column,
+                row=row + 1,
+                value=_shown(label),
+            )
+        if (year, period) in rows:
+            source.fail(
+                f"row {row + 1}: the {period} values of {year} appear twice",
+                reason="duplicate_period",
+                row=row + 1,
+                value=f"{year} {period}",
+            )
+        rows[(year, period)] = row
+    if not rows:
+        source.fail("the file has no data rows", reason="empty")
+    years = sorted({year for year, _ in rows})
+
+    def values(period: str, stat: str) -> NDArray[np.float64]:
+        out = np.full(len(years), np.nan)
+        for at, year in enumerate(years):
+            row = rows.get((year, period))
+            if row is not None:
+                out[at] = numbers[stat][row]
+        return out
+
+    def dates(period: str, stat: str) -> tuple[str | None, ...]:
+        column = starts[stat]
+        out: list[str | None] = []
+        for year in years:
+            row = rows.get((year, period))
+            if column is None or row is None or math.isnan(numbers[stat][row]):
+                out.append(None)
+            else:
+                out.append(_extreme_date(table.data[column][row], source, column, row))
+        return tuple(out)
+
+    def part(period: str) -> HalfYearPart:
+        return HalfYearPart(
+            min=values(period, "min"),
+            mean=values(period, "mean"),
+            max=values(period, "max"),
+            min_dates=dates(period, "min"),
+            max_dates=dates(period, "max"),
+        )
+
+    return HalfYearValues(
+        years=np.array(years, dtype=np.int64),
+        winter=part("winter"),
+        summer=part("summer"),
+        annual_mean=values("annual", "mean"),
+    )
+
+
+def parse_dates(
+    dates: Sequence[object] | NDArray[Any], *, option: str = "dates"
+) -> NDArray[np.datetime64]:
+    """Read a list of inline ISO dates; they need not increase.
+
+    Parameters
+    ----------
+    dates : sequence of str
+        ISO dates ``YYYY-MM-DD`` (``datetime.date`` objects and ``datetime64`` arrays
+        are accepted too).
+    option : str, optional
+        The option that gave them, for ``details.option``.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``datetime64[D]`` dates.
+
+    Raises
+    ------
+    InvalidParameterError
+        If ``dates`` is not a list or an item is not an ISO date.
+    """
+    source = _Source(option=option)
+    if isinstance(dates, str) or not isinstance(dates, Sequence | np.ndarray):
+        source.fail("must be a list of ISO dates", reason="type")
+    cells = dates.tolist() if isinstance(dates, np.ndarray) else list(dates)
+    return _to_dates(cells, source, None)
 
 
 # --- hydrograph -----------------------------------------------------------------------

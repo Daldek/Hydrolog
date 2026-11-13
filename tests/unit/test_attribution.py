@@ -408,6 +408,167 @@ class TestResults:
         assert "Notices:" not in out or out.index("Notices:") > sources
 
 
+STATION_ANALYSES = [
+    pytest.param("stats threshold-events", {"threshold": 7.0}, id="threshold-events"),
+    pytest.param("stats duration-curve", {}, id="duration-curve"),
+    pytest.param("stats runoff-volume", {}, id="runoff-volume"),
+    pytest.param("stats regime", {}, id="regime"),
+    pytest.param("stats seasonality", {"statistic": "min"}, id="seasonality"),
+    pytest.param("stats harmonics", {"harmonics": 1}, id="harmonics"),
+    pytest.param("stats baseflow", {}, id="baseflow"),
+]
+"""The commands of the station analyses (plan 2026-11-13) and their own options."""
+
+
+class TestStationAnalyses:
+    """The station analyses carry the lines of the series they read (ADR-0028)."""
+
+    @pytest.mark.parametrize(("command", "options"), STATION_ANALYSES)
+    def test_an_obserwator_export_gives_its_lines(self, tmp_path, command, options):
+        export = _observer_export(
+            tmp_path / "q_daily.csv",
+            lines=[IMGW_SOURCE, IMGW_PROCESSED],
+            terms=[IMGW_TERMS, TERMS_DANEPUBLICZNE],
+        )
+
+        envelope = hydrolog.run_command(
+            command,
+            input_file=str(export),
+            value_column="Q",
+            date_column="date",
+            **options,
+        ).to_dict()
+
+        assert envelope["attribution"] == [IMGW_SOURCE, IMGW_PROCESSED]
+        assert envelope["terms_notice"] == [IMGW_TERMS, TERMS_DANEPUBLICZNE]
+
+    @pytest.mark.parametrize(("command", "options"), STATION_ANALYSES)
+    def test_a_series_given_inline_takes_the_option(self, command, options):
+        """A handed-off series has no file: its source line comes as `attribution`."""
+        rows = (FIXTURES / "daily_flows_3y.csv").read_text("utf-8").splitlines()[1:]
+        dates, values = zip(*(row.split(",") for row in rows), strict=True)
+
+        envelope = hydrolog.run_command(
+            command,
+            values=[float(value) for value in values],
+            dates=list(dates),
+            attribution=[IMGW_SOURCE],
+            **options,
+        ).to_dict()
+
+        assert envelope["attribution"] == [IMGW_SOURCE, IMGW_PROCESSED]
+        assert envelope["terms_notice"] == [IMGW_TERMS, TERMS_DANEPUBLICZNE]
+
+    def test_a_batch_line_has_its_own_calls_lines_the_batch_all(self, tmp_path):
+        """A line carries the lines of its own call only; the batch's envelope all."""
+        _observer_export(
+            tmp_path / "q_daily.csv",
+            lines=[IMGW_SOURCE, IMGW_PROCESSED],
+            terms=[IMGW_TERMS, TERMS_DANEPUBLICZNE],
+        )
+        calls = [
+            {
+                "command": "tc kirpich",
+                "options": {"length_km": 8.2, "slope_m_per_m": 0.02},
+            },
+            {
+                "command": "stats runoff-volume",
+                "options": {
+                    "input_file": "q_daily.csv",
+                    "value_column": "Q",
+                    "date_column": "date",
+                },
+            },
+            {
+                "command": "tc kirpich",
+                "options": {"length_km": 4.1, "slope_m_per_m": 0.01},
+            },
+        ]
+        batch = tmp_path / "calls.jsonl"
+        batch.write_text("".join(json.dumps(c) + "\n" for c in calls), "utf-8")
+
+        envelope = hydrolog.run_command(
+            "commands batch", input_file=str(batch), output=str(tmp_path / "out.jsonl")
+        ).to_dict()
+
+        lines = [
+            json.loads(line)
+            for line in (tmp_path / "out.jsonl").read_text("utf-8").splitlines()
+        ]
+        assert "attribution" not in lines[0]
+        assert lines[1]["attribution"] == [IMGW_SOURCE, IMGW_PROCESSED]
+        assert lines[1]["terms_notice"] == [IMGW_TERMS, TERMS_DANEPUBLICZNE]
+        assert "attribution" not in lines[2]
+        assert envelope["attribution"] == [IMGW_SOURCE, IMGW_PROCESSED]
+        assert envelope["terms_notice"] == [IMGW_TERMS, TERMS_DANEPUBLICZNE]
+
+
+def _observer_climate_export(path: Path, *, lines: list[str], terms: list[str]) -> Path:
+    """Write ``meteo_daily.csv`` as Obserwator's climate export, with its lines.
+
+    The columns of the lines are those of :func:`_observer_export` (DEV-20.5).
+    """
+    rows = (FIXTURES / "meteo_daily.csv").read_text(encoding="utf-8").splitlines()
+    out = [
+        rows[0] + ",attribution_source,attribution_processed,attribution,terms_notice"
+    ]
+    for number, row in enumerate(rows[1:]):
+        pair = lines[:2] if number == 0 else ["", ""]
+        line = lines[number] if number < len(lines) else ""
+        term = terms[number] if number < len(terms) else ""
+        cells = [*pair, line, term]
+        out.append(
+            ",".join([row, *(f'"{cell}"' if "," in cell else cell for cell in cells)])
+        )
+    path.write_text("\r\n".join(out) + "\r\n", encoding="utf-8")
+    return path
+
+
+METEO = [
+    pytest.param("meteo precipitation", {"index": "sums"}, id="precipitation"),
+    pytest.param("meteo spells", {}, id="spells"),
+    pytest.param("meteo spi", {"scales_months": [1]}, id="spi"),
+    pytest.param("meteo temperature", {"index": "means"}, id="temperature"),
+    pytest.param("meteo snow", {}, id="snow"),
+    pytest.param("meteo hydrothermal", {}, id="hydrothermal"),
+]
+"""The commands of the group ``meteo`` and their own options."""
+
+
+class TestMeteo:
+    """The statistics of a meteorological station carry the lines of its export."""
+
+    @pytest.mark.parametrize(("command", "options"), METEO)
+    def test_an_obserwator_climate_export_gives_its_lines(
+        self, tmp_path, command, options
+    ):
+        export = _observer_climate_export(
+            tmp_path / "meteo_daily.csv",
+            lines=[IMGW_SOURCE, IMGW_PROCESSED],
+            terms=[IMGW_TERMS, TERMS_DANEPUBLICZNE],
+        )
+
+        envelope = hydrolog.run_command(
+            command, input_file=str(export), **options
+        ).to_dict()
+
+        assert envelope["attribution"] == [IMGW_SOURCE, IMGW_PROCESSED]
+        assert envelope["terms_notice"] == [IMGW_TERMS, TERMS_DANEPUBLICZNE]
+
+    @pytest.mark.parametrize(("command", "options"), METEO)
+    def test_a_file_without_lines_takes_the_option(self, command, options):
+        """A handed-off series without its lines gets its source line as the option."""
+        envelope = hydrolog.run_command(
+            command,
+            input_file=str(FIXTURES / "meteo_daily.csv"),
+            attribution=[IMGW_SOURCE],
+            **options,
+        ).to_dict()
+
+        assert envelope["attribution"] == [IMGW_SOURCE, IMGW_PROCESSED]
+        assert envelope["terms_notice"] == [IMGW_TERMS, TERMS_DANEPUBLICZNE]
+
+
 class TestFilesOfCommands:
     """Files Hydrolog writes carry the lines of their data (DEV-20.5)."""
 

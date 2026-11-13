@@ -52,7 +52,7 @@ SECURITY_HEADERS = {
     "cross-origin-resource-policy": "same-origin",
     "permissions-policy": "camera=(), microphone=(), geolocation=()",
 }
-EXCLUDED = ("gui serve", "config show", "commands guide")
+EXCLUDED = ("gui serve", "config show", "commands guide", "commands batch")
 RESULT = validator("result-1")
 ERROR = validator("error-1")
 TITLES_PL = {code: spec.title for code, spec in ERROR_CODES.items()}

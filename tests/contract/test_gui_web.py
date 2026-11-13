@@ -5,7 +5,8 @@ byte-identical to the SHA-256 their manifests record, and every file of ``web/no
 is recorded in one of them; the pages (the app, its guide ``instrukcja/`` and the admin
 page ``admin/``) load nothing remote, have no inline script, style or event handler
 (CSP ``'self'``, D8) and link only files of ``web/``; the (i) texts hold no scripts,
-inline styles, event attributes or remote URLs.
+inline styles, event attributes or remote URLs; every option and every ``one_of`` group
+of the commands the GUI offers has a Polish label.
 """
 
 import hashlib
@@ -26,10 +27,23 @@ NAMESPACE = re.compile(r"https?://www\.w3\.org/(2000/svg|1999/xlink|1998/Math/Ma
 REMOTE = re.compile(r"(?:https?:)?//[A-Za-z0-9.-]+\.[A-Za-z]{2,}[/\"'\s)]")
 PAGES = ["index.html", "instrukcja/index.html", "admin/index.html"]
 """The HTML pages of the GUI: the app, its guide and the admin page."""
+OPTION_LABELS = WEB / "src" / "labels" / "options.js"
+"""The Polish labels of the generated forms: options, a command's own, ``one_of``."""
 
 
 def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def js_object(source: str, name: str) -> str:
+    """The body of the top-level ``export const <name> = {...};`` of a labels file."""
+    found = re.search(
+        rf"^export const {name} = \{{\n(.*?)^\}};",
+        source,
+        flags=re.DOTALL | re.MULTILINE,
+    )
+    assert found, name
+    return found.group(1)
 
 
 def own_files(*suffixes: str) -> list[Path]:
@@ -193,3 +207,54 @@ def test_every_structure_reason_has_polish_text() -> None:
 
     assert "cycle" in reasons
     assert sorted(set(reasons) - worded) == []
+
+
+def test_every_option_and_one_of_group_of_the_gui_has_a_polish_label() -> None:
+    """Every option of every command of „Wszystkie polecenia” has a Polish label, shared
+    (``options``) or the command's own (``commandOptions``), and every ``one_of`` choice
+    of two or more groups names each of its groups (``oneOf``), so no form shows a bare
+    option name (``labels/options.js``)."""
+    pytest.importorskip("starlette")
+    from hydrolog import command_schema, list_commands
+    from hydrolog.gui._app import EXCLUDED
+
+    source = OPTION_LABELS.read_text(encoding="utf-8")
+    key = re.compile(r"\b([a-z][a-z0-9_]*):")
+    shared = set(
+        re.findall(r"^  ([a-z][a-z0-9_]*):", js_object(source, "options"), re.MULTILINE)
+    )
+    own = {
+        command: set(key.findall(body))
+        for command, body in re.findall(
+            r'^  "([^"]+)": \{(.*?)\},$',
+            js_object(source, "commandOptions"),
+            flags=re.DOTALL | re.MULTILINE,
+        )
+    }
+    named = {
+        command: re.findall(r'"([^"]+)"', groups)
+        for command, groups in re.findall(
+            r'^  "([^"]+)": \{ title: "[^"]+", groups: \[(.*?)\] \},$',
+            js_object(source, "oneOf"),
+            flags=re.MULTILINE,
+        )
+    }
+    unlabelled: list[str] = []
+    unnamed: list[str] = []
+    for item in list_commands().to_dict()["commands"]:
+        name = item["name"]
+        if name in EXCLUDED:
+            continue
+        entry = command_schema(name).to_dict()["commands"][0]
+        labelled = shared | own.get(name, set())
+        unlabelled += [
+            f"{name}: {option['name']}"
+            for option in entry.get("options", [])
+            if option["name"] not in labelled
+        ]
+        groups = entry.get("one_of") or []
+        if len(groups) >= 2 and len(named.get(name, [])) != len(groups):
+            unnamed.append(name)
+
+    assert unlabelled == []
+    assert unnamed == []

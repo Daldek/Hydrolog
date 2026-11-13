@@ -93,23 +93,36 @@ _GROUP_TITLES: Final[Mapping[str, str]] = {
     "network": "River network",
     "stats": "Flow statistics",
     "hydrometrics": "Hydrometry",
+    "meteo": "Meteorological statistics",
     "soil": "Texture and HSG",
     "report": "Calculation report",
     "config": "Effective settings",
     "commands": "The command catalog and this guide",
 }
 # Groups whose index entry is one line that names every command instead of one line per
-# command (ADR-0009; `stats` since ADR-0022): group -> what its commands do, one clause.
+# command (ADR-0009; `stats` since ADR-0022, `hydrometrics` and `meteo` since the plan
+# 2026-11-13, D2, and `tc` since ADR-0032): group -> what its commands do, one clause.
 # They are listed here only to keep AGENTS.md within its budget; ``commands list`` still
 # gives each summary.
 _COMPACT_GROUPS: Final[Mapping[str, str]] = {
+    "tc": (
+        "time of concentration or overland flow time by the FAA, Giandotti, Kerby, "
+        "Kerby-Kirpich, Kirpich or NRCS lag formula, or by a chosen one from a "
+        "watershed"
+    ),
     "route": (
         "route a hydrograph (`time_min`, `discharge_m3s`) through a reach, a "
         "reservoir or a river network, or lay a network out"
     ),
     "stats": (
-        "characteristic values, daily and monthly statistics, flood and low-flow "
-        "frequency, low-flow sequences, and trend and homogeneity tests of flow series"
+        "characteristic values, threshold events, duration curves, runoff volumes, "
+        "daily and monthly statistics, flood and low-flow frequency, low-flow "
+        "sequences, trend and homogeneity tests of station series"
+    ),
+    "hydrometrics": "rating curves of stage-discharge pairs, water level zones",
+    "meteo": (
+        "precipitation, spells, SPI, air temperature, snow cover and the "
+        "hydrothermal coefficient of a weather station's daily series"
     ),
 }
 # The rules of AGENTS.md, the block and the instructions of the MCP server.

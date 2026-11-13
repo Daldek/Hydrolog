@@ -54,6 +54,7 @@ from hydrolog.soil import classify_usda_texture, texture_to_hsg
 from hydrolog.statistics import (
     FIT_METHODS,
     FloodFrequencyAnalysis,
+    HomogeneityResult,
     LowFlowAnalysis,
     calculate_characteristic_values,
     calculate_daily_statistics,
@@ -623,7 +624,11 @@ class TestObserwatorExport:
         assert values.wwx == values.nwx == 11.4
         assert values.nnx == 2.5
         assert values.ssx == pytest.approx(np.mean(self.VALID_Q))
-        assert [n.code for n in result.notices] == ["missing_values_removed"]
+        assert [n.code for n in result.notices] == [
+            "missing_values_removed",
+            "years_with_missing_days",
+            "short_reference_period",
+        ]
         assert "2 of 14" in result.notices[0].message
         assert result.notices[0].details == {
             "missing": 2,
@@ -645,7 +650,7 @@ class TestObserwatorExport:
             date_column="date",
             parameter="Q",
         )
-        assert plain.result == full.result
+        assert plain.result.to_dict() == full.result.to_dict()
 
     def test_stage_column_with_the_stage_label(self):
         result = run(
@@ -675,7 +680,9 @@ class TestObserwatorExport:
         result = run(
             "stats mann-kendall", input_file=str(OBSERWATOR_EXPORT), value_column="Q"
         )
-        assert result.result == mann_kendall_test(np.array(self.VALID_Q))
+        # The two missing days keep their steps: Sen's slope is per row of the file.
+        steps = np.array([0, 1, 2, 3, 4, 5, 6, 9, 10, 11, 12, 13], dtype=float)
+        assert result.result == mann_kendall_test(np.array(self.VALID_Q), times=steps)
         assert result.notices[0].code == "missing_values_removed"
 
     def test_a_partial_year_is_no_annual_maximum_for_flood_frequency(self):
@@ -715,21 +722,6 @@ class TestObserwatorExport:
             10,
             12,
         ]
-
-    def test_missing_days_stop_the_sequence_detection(self):
-        with pytest.raises(CalculationError) as caught:
-            run(
-                "stats low-flow-sequences",
-                input_file=str(OBSERWATOR_EXPORT),
-                value_column="Q",
-                date_column="date",
-                threshold=4.0,
-            )
-        assert caught.value.details == {
-            "reason": "missing_values",
-            "n_missing": 2,
-            "first_missing_date": "2023-11-08",
-        }
 
     def test_water_level_zones_of_the_stage_column(self):
         result = run(
@@ -820,7 +812,7 @@ class TestCharacteristicDailyMonthly:
             date_column="date",
         )
         assert result.result == direct
-        assert result.notices == ()
+        assert [n.code for n in result.notices] == ["short_reference_period"]
         assert direct.period_years == 3
 
     def test_daily_statistics_equal_the_library(self):
@@ -1557,15 +1549,6 @@ class TestLowFlowSequences:
         assert result.sequences == []
         assert result.max_duration_days == 0
 
-    def test_dates_must_be_consecutive_days(self):
-        values, dates = _sequence_series()
-        del values[10], dates[10]
-        with pytest.raises(CalculationError) as caught:
-            run("stats low-flow-sequences", values=values, dates=dates, threshold=3.0)
-        assert caught.value.details["reason"] == "date_gap"
-        assert caught.value.details["after"] == "2023-01-10"
-        assert caught.value.details["next"] == "2023-01-12"
-
     @pytest.mark.parametrize(
         ("options", "option"),
         [({"threshold": 0.0}, "threshold"), ({"threshold": -1.0}, "threshold")],
@@ -1648,6 +1631,12 @@ class TestMannKendall:
         assert caught.value.details == {"count": 2, "minimum": 3}
 
 
+def _tests_of(result: HomogeneityResult) -> HomogeneityResult:
+    """Return the library's tests in a command's result (it adds ``source``...)."""
+    names = [item.name for item in dataclasses.fields(HomogeneityResult)]
+    return HomogeneityResult(**{name: getattr(result, name) for name in names})
+
+
 class TestHomogeneity:
     """``stats homogeneity``."""
 
@@ -1664,7 +1653,7 @@ class TestHomogeneity:
             split_year=2000,
         )
         years = read_table(ANNUAL_MAXIMA).numbers("year").astype(np.int64)
-        assert output.result == homogeneity_tests(
+        assert _tests_of(output.result) == homogeneity_tests(
             _annual_maxima(), years, split_year=2000
         )
         assert output.notices == ()
@@ -1673,7 +1662,7 @@ class TestHomogeneity:
         values, dates = _calendar_year_series(1991, 2020)
         output = run("stats homogeneity", values=values, dates=dates, split_year=2001)
         years = np.arange(1992, 2021)
-        assert output.result == homogeneity_tests(
+        assert _tests_of(output.result) == homogeneity_tests(
             10.0 + years % 7, years, split_year=2001
         )
         assert (output.result.split_index, output.result.split_year) == (9, 2001)
@@ -1709,7 +1698,7 @@ class TestHomogeneity:
             year_column="year",
         )
         kept = np.array([2001, 2002, 2003, *range(2005, 2012)])
-        assert output.result == homogeneity_tests(np.array(self.STEP), kept)
+        assert _tests_of(output.result) == homogeneity_tests(np.array(self.STEP), kept)
         assert output.result.pettitt.change_point_year == 2007
         assert output.notices[0].code == "missing_values_removed"
 
@@ -1769,7 +1758,7 @@ class TestRatingCurve:
             h0_initial=40.0,
             remove_outliers=True,
         )
-        assert result.result == direct
+        assert _fitted(result.result) == direct
         assert result.notices == ()
 
     def test_inline_pairs_equal_the_file(self):
@@ -1828,7 +1817,7 @@ class TestRatingCurve:
             remove_outliers=True,
             outlier_std=10.0,
         ).result
-        assert result == direct
+        assert _fitted(result) == direct
         assert result.n_outliers_removed == 0
         assert result.n_points == 15
 
@@ -1853,7 +1842,7 @@ class TestRatingCurve:
         )
         keep = np.ones(len(levels), dtype=bool)
         keep[[3, 6]] = False
-        assert result.result == RatingCurve(levels[keep], flows[keep]).fit(
+        assert _fitted(result.result) == RatingCurve(levels[keep], flows[keep]).fit(
             h0_initial=40.0
         )
         assert result.result.n_points == 13
@@ -2942,3 +2931,17 @@ class TestReportGenerate:
         assert set(reference) <= set(parameters)
         for name, parameter in reference.items():
             assert parameters[name].default == parameter.default, name
+
+
+def _fitted(result):
+    """The curve of a rating-curve result as the library's own result."""
+    import dataclasses
+
+    from hydrolog.hydrometrics import RatingCurveResult
+
+    return RatingCurveResult(
+        **{
+            field.name: getattr(result, field.name)
+            for field in dataclasses.fields(RatingCurveResult)
+        }
+    )

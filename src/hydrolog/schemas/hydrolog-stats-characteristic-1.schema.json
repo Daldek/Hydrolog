@@ -66,6 +66,33 @@
     },
     "parameter": {
       "type": "string"
+    },
+    "labels": {
+      "type": "object"
+    },
+    "first_degree_labels": {
+      "type": "object"
+    },
+    "source": {
+      "type": "string"
+    },
+    "first_year": {
+      "type": "integer"
+    },
+    "last_year": {
+      "type": "integer"
+    },
+    "winter": {
+      "type": "object"
+    },
+    "summer": {
+      "type": "object"
+    },
+    "years": {
+      "type": "array"
+    },
+    "incomplete_years": {
+      "type": "array"
     }
   }
 }
