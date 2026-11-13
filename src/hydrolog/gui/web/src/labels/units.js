@@ -81,3 +81,48 @@ export function unitOfName(name) {
   }
   return null;
 }
+
+/** The unit of a station series' values by its parameter (`parameter` of a result). */
+export const PARAMETER_UNITS = Object.freeze({ Q: "m³/s", H: "cm", T: "°C" });
+
+/**
+ * Result fields in the unit of the series (PARAMETER_UNITS), by command, each with what
+ * follows that unit ("·d" for a sum of daily deficits).
+ */
+export const SERIES_FIELDS = Object.freeze({
+  "stats characteristic": Object.freeze(
+    Object.fromEntries(["wwx", "swx", "zwx", "nwx", "wsx", "ssx", "zsx", "nsx", "wnx", "snx", "znx", "nnx"].map((key) => [key, ""])),
+  ),
+  "stats low-flow-sequences": Object.freeze({ threshold: "", total_deficit: "·d" }),
+});
+
+/**
+ * Units of result fields their names do not give, by command; null for a field whose
+ * suffix would give a wrong one (a count of spells named "_days", the variance `var_s`).
+ */
+export const FIELD_UNITS = Object.freeze({
+  "hydrometrics rating-curve": Object.freeze({ std_residuals: "m³/s" }),
+  "stats mann-kendall": Object.freeze({ var_s: null }),
+  "stats regime": Object.freeze({ annual_mean: "m³/s", monthly_mean: "m³/s" }),
+  "meteo spells": Object.freeze({ mean_spells_10_days: null, mean_spells_15_days: null, mean_spells_20_days: null }),
+  "meteo temperature": Object.freeze({ growing_degree_days: "°C·d", heating_degree_days: "°C·d" }),
+});
+
+/**
+ * The unit of a field of a command's result: the command's own (FIELD_UNITS), the
+ * series' unit for a field in it (SERIES_FIELDS), else the name's suffix.
+ *
+ * @param {string} name the field's name
+ * @param {string|null} [command] the command of the result
+ * @param {string|null} [parameter] the result's parameter ("Q", "H", "T")
+ * @returns {string|null} the display unit, null without one
+ */
+export function fieldUnit(name, command = null, parameter = null) {
+  const own = command && Object.hasOwn(FIELD_UNITS, command) ? FIELD_UNITS[command] : null;
+  if (own && Object.hasOwn(own, name)) return own[name];
+  const series = command && Object.hasOwn(SERIES_FIELDS, command) ? SERIES_FIELDS[command] : null;
+  if (series && Object.hasOwn(series, name)) {
+    return parameter && Object.hasOwn(PARAMETER_UNITS, parameter) ? `${PARAMETER_UNITS[parameter]}${series[name]}` : null;
+  }
+  return unitOfName(name);
+}

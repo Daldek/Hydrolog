@@ -6,13 +6,16 @@ is recorded in one of them; the pages (the app, its guide ``instrukcja/`` and th
 page ``admin/``) load nothing remote, have no inline script, style or event handler
 (CSP ``'self'``, D8) and link only files of ``web/``; the (i) texts hold no scripts,
 inline styles, event attributes or remote URLs; every option and every ``one_of`` group
-of the commands the GUI offers has a Polish label.
+of the commands the GUI offers has a Polish label, and so does every field of the
+results of the station commands.
 """
 
 import hashlib
 import json
+import math
 import re
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -276,3 +279,101 @@ def test_every_option_and_one_of_group_of_the_gui_has_a_polish_label() -> None:
 
     assert unlabelled == []
     assert unnamed == []
+
+
+STATION_COMMANDS = (
+    "hydrometrics rating-curve",
+    "stats baseflow",
+    "stats characteristic",
+    "stats duration-curve",
+    "stats harmonics",
+    "stats low-flow-sequences",
+    "stats mann-kendall",
+    "stats regime",
+    "stats runoff-volume",
+    "stats seasonality",
+    "stats threshold-events",
+    "meteo hydrothermal",
+    "meteo precipitation",
+    "meteo snow",
+    "meteo spells",
+    "meteo spi",
+    "meteo temperature",
+)
+"""The commands of the station analyses (plan 2026-11-13) in „Wszystkie polecenia”."""
+
+
+def shown_fields(result: dict[str, Any]) -> set[str]:
+    """The names the result view (``forms/result-view.js``) labels: scalars, objects of
+    scalars and their fields, numeric arrays (lists of years are not shown)."""
+
+    def scalar(value: Any) -> bool:
+        if isinstance(value, bool):
+            return True
+        if isinstance(value, int | float):
+            return math.isfinite(value)
+        return isinstance(value, str) and len(value) <= 80
+
+    def numbers(value: Any) -> bool:
+        return (
+            isinstance(value, list)
+            and bool(value)
+            and all(isinstance(item, int | float) for item in value)
+            and not any(isinstance(item, bool) for item in value)
+        )
+
+    names: set[str] = set()
+    for key, value in result.items():
+        if key in ("schema", "files", "targets") or value is None:
+            continue
+        if scalar(value) or numbers(value):
+            names.add(key)
+        elif isinstance(value, dict):
+            inner = {
+                name for name, item in value.items() if scalar(item) or numbers(item)
+            }
+            names |= inner | ({key} if inner else set())
+    return {name for name in names if not re.search(r"(^|_)years$", name)}
+
+
+@pytest.mark.parametrize("command", STATION_COMMANDS)
+def test_every_result_field_of_a_station_command_has_a_polish_label(
+    command: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Every scalar, object and series the result view shows of a station command's
+    example results has a Polish label (``resultFields``, the command's own
+    ``commandResultFields`` or ``commandOptions``, or an option's), so no tile or row
+    shows a bare field name (``labels/options.js``)."""
+    from hydrolog import parse_command
+    from hydrolog.catalog import catalog_document, data_commands, run_command
+
+    source = OPTION_LABELS.read_text(encoding="utf-8")
+    shared = {
+        name
+        for block in ("options", "resultFields")
+        for name in re.findall(
+            r"^  ([a-z][a-z0-9_]*):", js_object(source, block), re.MULTILINE
+        )
+    }
+    own = set()
+    for block in ("commandOptions", "commandResultFields"):
+        for name, body in re.findall(
+            r'^  "([^"]+)": \{(.*?)\},$',
+            js_object(source, block),
+            flags=re.DOTALL | re.MULTILINE,
+        ):
+            if name == command:
+                own |= set(re.findall(r"\b([a-z][a-z0-9_]*):", body))
+    (entry,) = [
+        item
+        for item in catalog_document(data_commands())["commands"]
+        if item["name"] == command
+    ]
+    monkeypatch.chdir(WEB.parents[3])  # examples name their inputs from the repository
+    fields: set[str] = set()
+    for example in entry["examples"]:
+        options = parse_command(example["call"]).options
+        fields |= shown_fields(run_command(command, options).to_dict()["result"])
+
+    assert fields, command
+    assert sorted(fields - shared - own) == []
