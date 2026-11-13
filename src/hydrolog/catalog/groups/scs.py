@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from hydrolog.catalog.groups._attribution import ATTRIBUTION
 from hydrolog.catalog.spec import Command, Option, RangeCheck
 
 COMMANDS: tuple[Command, ...] = (
@@ -123,6 +124,7 @@ COMMANDS: tuple[Command, ...] = (
                 maximum=1,
                 default=0.2,
             ),
+            ATTRIBUTION,
         ),
         one_of=(("precipitation_mm",), ("values",), ("input_file",)),
         result_schema="hydrolog-scs-effective/1",

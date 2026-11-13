@@ -11,6 +11,7 @@ export const options = {
   area_fractions: "Udziały stref między izohietami",
   area_km2: "Powierzchnia zlewni",
   areas: "Powierzchnie części",
+  attribution: "Źródła danych (wiersze przypisania)",
   bbox: "Prostokąt bbox",
   bbox_crs: "Układ współrzędnych bbox",
   beta: "Parametr β",

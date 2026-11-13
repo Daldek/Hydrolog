@@ -7,7 +7,7 @@ the Nogat standard 2.1 adoption are in the plans of [plans/](plans/).
 | ID | Title | Status | Date |
 |---|---|---|---|
 | [0001](decisions/0001-catalog-english-and-operation-ids.md) | English catalog, Polish in `i18n.pl`, `hydrolog_` operation ids | accepted, amended by [0015](decisions/0015-catalog-additions-for-the-gui.md) | 2026-10-24 |
-| [0002](decisions/0002-result-envelope-and-domain-documents.md) | Result envelope and domain documents | accepted, amended by [0015](decisions/0015-catalog-additions-for-the-gui.md) | 2026-10-24 |
+| [0002](decisions/0002-result-envelope-and-domain-documents.md) | Result envelope and domain documents | accepted, amended by [0015](decisions/0015-catalog-additions-for-the-gui.md) and [0028](decisions/0028-the-providers-lines-in-every-product.md) | 2026-10-24 |
 | [0003](decisions/0003-writing-commands-output-force-check.md) | Writing commands: `--output`, `--force`, `--check` | accepted, amended by [0010](decisions/0010-route-network-document-and-output-directory.md) | 2026-10-24 |
 | [0004](decisions/0004-settings-and-config-show.md) | Shared settings and `config show` | accepted, amended by [0016](decisions/0016-gui-feedback-and-data-dir.md) | 2026-10-24 |
 | [0005](decisions/0005-error-registry.md) | Adopt the shared error registry | accepted, amended by [0018](decisions/0018-pmaxtp-through-obserwator.md) | 2026-10-24 |
@@ -23,7 +23,7 @@ the Nogat standard 2.1 adoption are in the plans of [plans/](plans/).
 | [0015](decisions/0015-catalog-additions-for-the-gui.md) | Catalog additions for the GUI: `format_command`/`parse_command`, `NOTICES`, `route schematic`, UH ordinates, `gui serve` | accepted, amended by [0017](decisions/0017-typical-ranges-in-the-catalog.md) and [0025](decisions/0025-the-structure-alone-in-the-schematic.md) | 2026-11-02 |
 | [0016](decisions/0016-gui-feedback-and-data-dir.md) | Reports of the GUI's users: „Zgłoś uwagę”, `data_dir` and the admin key | accepted | 2026-11-04 |
 | [0017](decisions/0017-typical-ranges-in-the-catalog.md) | Typical ranges: one table in Hydrolog, served in the document of one command (`typical_ranges`) | accepted, amended by [0019](decisions/0019-tc-from-the-inputs-its-source-defines.md) | 2026-11-04 |
-| [0018](decisions/0018-pmaxtp-through-obserwator.md) | PMAXTP through Obserwator: `precip pmaxtp`, the one command that uses the network | accepted | 2026-11-04 |
+| [0018](decisions/0018-pmaxtp-through-obserwator.md) | PMAXTP through Obserwator: `precip pmaxtp`, the one command that uses the network | accepted, amended by [0028](decisions/0028-the-providers-lines-in-every-product.md) | 2026-11-04 |
 | [0019](decisions/0019-tc-from-the-inputs-its-source-defines.md) | Time of concentration from the inputs its source defines: the longest flow path, no substitutes | accepted | 2026-11-05 |
 | [0020](decisions/0020-a-stations-series-through-the-handoff.md) | A station's series through the hand-off: `hydrolog-series/1` into Statystyka przepływów | accepted | 2026-11-05 |
 | [0021](decisions/0021-fit-methods-of-flood-frequency.md) | Fit methods of flood frequency: maximum likelihood, moments, L-moments and least squares | accepted, amended 2026-11-06 (its own amendment, `all` and the default `l_moments`) | 2026-11-06 |
@@ -33,3 +33,4 @@ the Nogat standard 2.1 adoption are in the plans of [plans/](plans/).
 | [0025](decisions/0025-the-structure-alone-in-the-schematic.md) | The structure alone in the schematic: `route schematic --structure-only` and „Uporządkuj” before the values | accepted | 2026-11-10 |
 | [0026](decisions/0026-a-reach-without-a-muskingum-cunge-grid.md) | A reach without a Muskingum-Cunge grid: linear reservoirs with a warning, not a refusal | accepted | 2026-11-11 |
 | [0027](decisions/0027-nogats-gui-kit-the-app-menu-and-the-handoff.md) | Nogat's GUI kit: the app menu „Aplikacje” from `[nogat] gui` and the shared hand-off | accepted | 2026-11-12 |
+| [0028](decisions/0028-the-providers-lines-in-every-product.md) | The providers' lines in every product: `attribution` and `terms_notice` | accepted | 2026-11-13 |

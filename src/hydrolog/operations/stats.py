@@ -32,6 +32,7 @@ from typing import Any, Literal
 import numpy as np
 from numpy.typing import NDArray
 
+from hydrolog._attribution import cite
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.catalog.envelope import Notice, OperationOutput, capture_warnings
 from hydrolog.catalog.inputs import Series, load_series
@@ -377,6 +378,7 @@ def stats_characteristic(
     value_column: str | None = None,
     date_column: str | None = None,
     parameter: Literal["Q", "H"] = "Q",
+    attribution: list[str] | None = None,
 ) -> OperationOutput:
     """Second-degree characteristic values (``stats characteristic``).
 
@@ -400,6 +402,9 @@ def stats_characteristic(
         Column of ``input_file`` with the dates.
     parameter : {"Q", "H"}, optional
         Label of the series: discharge ``"Q"`` or stage ``"H"``, by default ``"Q"``.
+    attribution : list of str, optional
+        Lines of the providers of the series (ADR-0028); the envelope carries them,
+        with those of ``input_file``.
 
     Returns
     -------
@@ -416,6 +421,7 @@ def stats_characteristic(
     CalculationError
         If every value is missing.
     """
+    cite(attribution)
     check_choice("parameter", parameter, ("Q", "H"))
     series, notices = load_valid_series(
         values=values,
@@ -438,6 +444,7 @@ def stats_daily(
     input_file: str | os.PathLike[str] | None = None,
     value_column: str | None = None,
     date_column: str | None = None,
+    attribution: list[str] | None = None,
 ) -> OperationOutput:
     """Statistics per day of the hydrological year (``stats daily``).
 
@@ -457,6 +464,9 @@ def stats_daily(
         Column of ``input_file`` with the values.
     date_column : str, optional
         Column of ``input_file`` with the dates.
+    attribution : list of str, optional
+        Lines of the providers of the series (ADR-0028); the envelope carries them,
+        with those of ``input_file``.
 
     Returns
     -------
@@ -473,6 +483,7 @@ def stats_daily(
     CalculationError
         If every value is missing.
     """
+    cite(attribution)
     series, notices = load_valid_series(
         values=values,
         dates=dates,
@@ -495,6 +506,7 @@ def stats_monthly(
     value_column: str | None = None,
     date_column: str | None = None,
     confidence_level: float = 0.95,
+    attribution: list[str] | None = None,
 ) -> OperationOutput:
     """Monthly statistics with a confidence interval (``stats monthly``).
 
@@ -518,6 +530,9 @@ def stats_monthly(
         Column of ``input_file`` with the dates.
     confidence_level : float, optional
         Confidence level of the interval, in (0, 1), by default 0.95.
+    attribution : list of str, optional
+        Lines of the providers of the series (ADR-0028); the envelope carries them,
+        with those of ``input_file``.
 
     Returns
     -------
@@ -538,6 +553,7 @@ def stats_monthly(
         If every value is missing or a calendar month has no value
         (``details.missing_months``).
     """
+    cite(attribution)
     confidence = check_open_unit_interval("confidence_level", confidence_level)
     series, notices = load_valid_series(
         values=values,
@@ -583,6 +599,7 @@ def stats_flood_frequency(
     distribution: Distribution = "all",
     return_periods: Sequence[float] = DEFAULT_RETURN_PERIODS,
     fit_method: FitMethod | Literal["all"] = "l_moments",
+    attribution: list[str] | None = None,
 ) -> OperationOutput:
     """Flood frequency analysis (``stats flood-frequency``).
 
@@ -614,6 +631,9 @@ def stats_flood_frequency(
     fit_method : {"mle", "moments", "l_moments", "least_squares", "all"}, optional
         Method that estimates the parameters (ADR-0021), by default ``"l_moments"``;
         ``"all"`` fits each distribution by each of the four methods.
+    attribution : list of str, optional
+        Lines of the providers of the series (ADR-0028), e.g. those of the hand-off
+        it came from; the envelope carries them, with those of ``input_file``.
 
     Returns
     -------
@@ -640,6 +660,7 @@ def stats_flood_frequency(
         fit fails numerically, or ``fit_method`` gives no parameters of the
         distribution requested (of none of the four for ``"all"``).
     """
+    cite(attribution)
     check_choice("distribution", distribution, _DISTRIBUTIONS)
     check_choice("fit_method", fit_method, _FIT_METHOD_CHOICES)
     periods = _return_periods(return_periods)
@@ -708,6 +729,7 @@ def stats_low_flow(
     value_column: str | None = None,
     date_column: str | None = None,
     return_periods: Sequence[float] = DEFAULT_RETURN_PERIODS,
+    attribution: list[str] | None = None,
 ) -> OperationOutput:
     """Low-flow frequency analysis (``stats low-flow``).
 
@@ -736,6 +758,9 @@ def stats_low_flow(
     return_periods : sequence of float, optional
         Return periods [years], each greater than 1, by default
         ``DEFAULT_RETURN_PERIODS``.
+    attribution : list of str, optional
+        Lines of the providers of the series (ADR-0028); the envelope carries them,
+        with those of ``input_file``.
 
     Returns
     -------
@@ -754,6 +779,7 @@ def stats_low_flow(
     CalculationError
         If the series has fewer than 3 complete hydrological years or the fit fails.
     """
+    cite(attribution)
     periods = _return_periods(return_periods)
     series, notices = load_valid_series(
         values=values,
@@ -796,6 +822,7 @@ def stats_low_flow_sequences(
     threshold: float,
     min_duration_days: int = 5,
     max_gap_days: int = 4,
+    attribution: list[str] | None = None,
 ) -> OperationOutput:
     """Low-flow sequences by the threshold level method (``stats low-flow-sequences``).
 
@@ -823,6 +850,9 @@ def stats_low_flow_sequences(
         Shortest sequence reported [days], at least 1, by default 5.
     max_gap_days : int, optional
         Gaps shorter than this [days] between two runs are bridged, by default 4.
+    attribution : list of str, optional
+        Lines of the providers of the series (ADR-0028); the envelope carries them,
+        with those of ``input_file``.
 
     Returns
     -------
@@ -840,6 +870,7 @@ def stats_low_flow_sequences(
         If the series has missing values or its dates are not consecutive days
         (``details.reason``: ``missing_values`` or ``date_gap``).
     """
+    cite(attribution)
     series = load_series(
         values=values,
         dates=dates,
@@ -918,6 +949,7 @@ def stats_mann_kendall(
     input_file: str | os.PathLike[str] | None = None,
     value_column: str | None = None,
     alpha: float = 0.05,
+    attribution: list[str] | None = None,
 ) -> OperationOutput:
     """Mann-Kendall trend test (``stats mann-kendall``).
 
@@ -936,6 +968,9 @@ def stats_mann_kendall(
         Column of ``input_file`` with the values.
     alpha : float, optional
         Significance level, in (0, 1), by default 0.05.
+    attribution : list of str, optional
+        Lines of the providers of the series (ADR-0028); the envelope carries them,
+        with those of ``input_file``.
 
     Returns
     -------
@@ -952,6 +987,7 @@ def stats_mann_kendall(
     CalculationError
         If fewer than 3 values are left.
     """
+    cite(attribution)
     level = check_open_unit_interval("alpha", alpha)
     series, notices = load_valid_series(
         values=values, input_file=input_file, value_column=value_column
@@ -977,6 +1013,7 @@ def stats_homogeneity(
     year_column: str | None = None,
     split_year: int | None = None,
     alpha: float = 0.05,
+    attribution: list[str] | None = None,
 ) -> OperationOutput:
     """Homogeneity tests of annual maxima (``stats homogeneity``, ADR-0022).
 
@@ -1013,6 +1050,9 @@ def stats_homogeneity(
         is the first part.
     alpha : float, optional
         Significance level of the tests, in (0, 1), by default 0.05.
+    attribution : list of str, optional
+        Lines of the providers of the series (ADR-0028); the envelope carries them,
+        with those of ``input_file``.
 
     Returns
     -------
@@ -1034,6 +1074,7 @@ def stats_homogeneity(
         If fewer than 3 annual maxima (complete hydrological years) are available or
         all of them are equal.
     """
+    cite(attribution)
     level = check_open_unit_interval("alpha", alpha)
     series, notices = load_valid_series(
         values=values,

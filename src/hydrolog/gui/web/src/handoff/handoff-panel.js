@@ -8,14 +8,19 @@
 // (`onOpen`), it hands the checked hand-off of one watershed to it instead: Sieć's
 // subcatchment panel fills its node (plan 2026-11-10-network-wizard, D10). The part
 // „Przekazanie” of the panel Wyniki (HydrogramHandoff, SiecHandoff) writes one („Plik
-// przekazania”, „Kopiuj do Hydrologa”) and shows a received producer's result beside
-// Hydrolog's own, with the versions that computed them. The file, the clipboard and the
-// download are Nogat's kit (nogat-handoff.js, DEV-15.5, ADR-0027): the file is named after
-// the subject, and a copy the browser refuses goes selected into a field for Ctrl+C.
-// Nothing here runs or writes at mount.
+// przekazania”, „Kopiuj do Hydrologa”) with the providers' lines of its data and shows a
+// received producer's result beside Hydrolog's own, with the versions that computed them.
+// A station's series keeps the lines of its hand-off, or, of an older one without them,
+// the set GET api/session gives for the provider its provenance names (attribution.js
+// receivedLines); its daily values go into the session as a CSV with the lines in their
+// two columns. The file, the clipboard and the download are Nogat's kit
+// (nogat-handoff.js, DEV-15.5, ADR-0027): the file is named after the subject, and a copy
+// the browser refuses goes selected into a field for Ctrl+C. Nothing here runs or writes
+// at mount.
 
 import { copyHandoff, downloadHandoff, readClipboard, readFile } from "../../nogat/nogat-handoff.js";
 import { api } from "../api.js";
+import { Attribution, NO_LINES, linesFields, linesOf, receivedLines } from "../attribution.js";
 import { plural } from "../format.js";
 import { html, useEffect, useRef, useState } from "../html.js";
 import { common, t } from "../labels/common.js";
@@ -29,7 +34,7 @@ import { fileStem, openNetwork, withSessionNames } from "../sections/siec/state.
 import { fileBase } from "../ui/export-panel.js";
 import { MenuButton } from "../ui/menu.js";
 import { toast } from "../ui/toast.js";
-import { uploadFile } from "../controls/file-field.js";
+import { refreshSession, uploadFile } from "../controls/file-field.js";
 import {
   MARKS,
   NETWORK_SCHEMA_FILE,
@@ -147,9 +152,11 @@ async function payloadSchemas(refused) {
  * Open a hand-off: check it (the envelope against Nogat's schema, the payload against
  * hydrolog-network-1.schema.json or hydrolog-series-1.schema.json) and hand it to the
  * section it belongs to, or to Sieć for every network when Sieć reads it (`into`). A
- * station's daily series is first written into the session's files, which Statystyka
- * przepływów reads like a file of the person's. A network takes the origins of its nodes
- * (node_provenance) to Sieć, and a key that names no node is said in the load's note.
+ * station's series takes its providers' lines (its own, or the set of the provider an
+ * older hand-off names, from GET api/session), and its daily values are first written
+ * into the session's files with them, which Statystyka przepływów reads like a file of the
+ * person's. A network takes the origins of its nodes (node_provenance) to Sieć, and a key
+ * that names no node is said in the load's note.
  *
  * @param {string} text the hand-off as text
  * @param {{into?: "siec"|null}} [options] the section that reads it (readHandoff)
@@ -167,7 +174,8 @@ export async function openHandoff(text, { into = null } = {}) {
     deliver("hydrogram", hydrogramInputs(doc));
     toast(t(texts.load.opened, { subject: doc.subject, producer }));
   } else if (read.target === "statystyka") {
-    const inputs = statystykaInputs(doc.payload);
+    const lines = receivedLines(doc, null) ?? receivedLines(doc, await refreshSession()) ?? NO_LINES;
+    const inputs = statystykaInputs(doc.payload, lines);
     const values = { input_file: "", value_column: undefined, date_column: undefined, values: "", ...inputs.values };
     if (inputs.csv !== null) {
       try {
@@ -177,7 +185,7 @@ export async function openHandoff(text, { into = null } = {}) {
         return { title: texts.load.refused, lines: [t(texts.load.uploadFailed, { message: errorText(error) })] };
       }
     }
-    deliver("statystyka", { source: inputs.source, values, received: receivedOf(doc) });
+    deliver("statystyka", { source: inputs.source, values, received: { ...receivedOf(doc), ...linesFields(lines) } });
     const count = doc.payload.values.filter((value) => typeof value === "number").length;
     toast(t(texts.load.openedStatystyka, { subject: doc.subject, producer, values: plural(count, texts.valueForms) }));
   } else {
@@ -405,12 +413,14 @@ function Mark({ tool }) {
 }
 
 /**
- * Who handed the data off and when.
+ * Who handed the data off and when, with the providers' lines of its data when given.
  *
- * @param {{received: object, small?: boolean}} props the record of the hand-off
+ * @param {{received: object, small?: boolean, lines?: {attribution: string[],
+ *   terms_notice: string[]}|null}} props the record of the hand-off, and the lines shown
+ *   in the card (receivedLines; none by default)
  * @returns {object} the card
  */
-export function HandoffOrigin({ received, small = false }) {
+export function HandoffOrigin({ received, small = false, lines = null }) {
   const tool = received.producer.tool;
   return html`
     <div class=${small ? "handoff sm" : "handoff"} data-handoff-source=${tool}>
@@ -418,6 +428,7 @@ export function HandoffOrigin({ received, small = false }) {
       <div>
         <strong>${t(texts.origin.title, { producer: toolName(tool, true), subject: received.subject })}</strong>
         <span class="muted">${t(texts.origin.received, { producer: toolName(tool), version: received.producer.version, time: momentText(received.created_at) })}</span>
+        <${Attribution} lines=${lines} name="handoff" compact=${true} />
       </div>
     </div>
   `;
@@ -631,14 +642,17 @@ function useCatalogVersion(command) {
 
 /**
  * The part „Przekazanie” of Sieć: a received producer's result beside the outlet's, and
- * the hand-off of the network (with the outlet's result when the last run is of it).
+ * the hand-off of the network (with the outlet's result when the last run is of it), with
+ * the run's providers' lines then, else the section's.
  *
  * @param {{state: object, document: object|null, valid: boolean, run: object|null,
- *   stale: boolean}} props the section's state, the network's document and whether it is
- *   complete, the last run and whether the data changed since
+ *   stale: boolean, lines: {attribution: string[], terms_notice: string[]}|null}} props
+ *   the section's state, the network's document and whether it is complete, the last run
+ *   and whether the data changed since, and the lines of the network's data (siecLines;
+ *   null while they are not known)
  * @returns {object} the part
  */
-export function SiecHandoff({ state, document, valid, run, stale }) {
+export function SiecHandoff({ state, document, valid, run, stale, lines }) {
   const catalogVersion = useCatalogVersion("route network");
   const result = run && run.envelope.status === "ok" ? run.envelope.result : null;
   const fresh = Boolean(result) && !stale;
@@ -649,15 +663,16 @@ export function SiecHandoff({ state, document, valid, run, stale }) {
   if (received && (!document || received.key !== canonical(withoutPicture(document)))) compared = "changed";
   else if (!result) compared = "none";
   else if (stale) compared = "stale";
-  const ready = Boolean(document) && valid && Boolean(version);
+  const ready = Boolean(document) && valid && Boolean(version) && lines !== null;
   const nodes = document && Array.isArray(document.nodes) ? plural(document.nodes.length, siecTexts.nodeForms) : "";
+  const handed = fresh ? linesOf(run.envelope) : lines;
   return html`
     <div class="handoff-part" data-handoff-part="siec">
       ${received
         ? html`<${ReceivedResult} received=${received} own=${fresh ? outletResult(result) : null} ownVersion=${version} state=${compared} />`
         : null}
       <${ExportHandoff}
-        make=${ready ? () => siecHandoff({ subject, state, document, result: fresh ? result : null, version }) : null}
+        make=${ready ? () => siecHandoff({ subject, state, document, result: fresh ? result : null, lines: handed, version }) : null}
         section="siec"
         disabled=${ready ? undefined : texts.export.invalid}
       />

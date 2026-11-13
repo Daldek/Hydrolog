@@ -6,8 +6,10 @@
 // active one), the quantiles of the combinations ticked in their table, the homogeneity of the
 // series (`stats homogeneity`: three tests, the split and Pettitt's change point) and the
 // exports (CSV of those quantiles, the envelope as JSON, the probability plot as PNG, „Do
-// porównania” and the call).
+// porównania” and the call). Both end with the providers' lines of the run's envelope
+// (attribution.js, Nogat DEV-20.5), none without them.
 
+import { Attribution, linesOf } from "../../attribution.js";
 import { Chart } from "../../charts/chart.js";
 import { auto, num, plural } from "../../format.js";
 import { Notices } from "../../forms/result-view.js";
@@ -190,6 +192,7 @@ export function CenterBody({ run, tab, shown, stressed, active, chartSvg, axes, 
         </div>
         <${DataTable} columns=${columns} rows=${run.ranked} label=${texts.series.title} />
       </div>
+      <${Attribution} lines=${linesOf(run.envelope)} />
     `;
   }
   return html`
@@ -218,6 +221,7 @@ export function CenterBody({ run, tab, shown, stressed, active, chartSvg, axes, 
         ${control("distribution")}
       </div>
     </div>
+    <${Attribution} lines=${linesOf(run.envelope)} />
   `;
 }
 
@@ -549,5 +553,6 @@ export function ResultsPanel({ run, shown, fits, best, periods, stressed, ticked
         </div>
       </details>
     </div>
+    <${Attribution} lines=${linesOf(envelope)} />
   `;
 }

@@ -36,9 +36,12 @@
 // afterwards marks the result stale („Dane zmienione: oblicz ponownie”, plan D13), a move
 // or a description never does (D11). „Zapisz sieć” saves a complete network, „Zapisz
 // szkic” an incomplete one; „Wyczyść” and „Nowa sieć” ask first when the network changed
-// since it was opened or saved (D10).
+// since it was opened or saved (D10). The providers' lines of the network's data (state.js
+// siecLines) go to `route network` as its option `attribution` and into the saved
+// document; the views and exports of a run show and carry the run's lines.
 
 import { api } from "../../api.js";
+import { Attribution, linesFields, linesOf, withAttribution } from "../../attribution.js";
 import { splitReason } from "../../controls/field.js";
 import { inputFiles, uploadFile, useSession } from "../../controls/file-field.js";
 import { inputText, plural } from "../../format.js";
@@ -99,6 +102,7 @@ import {
   placementNotes,
   placeSkeleton,
   SECTION,
+  siecLines,
   stateOf,
   structureDocument,
   useForms,
@@ -565,15 +569,18 @@ export default function Siec({ active, path = [] }) {
       ? [t(texts.files.inflowsGone, { name: state.inflowsFile.replace(/^in\//, "") })]
       : []),
   ];
+  // The providers' lines of the network's data (null while a kept PMAXTP depth waits for
+  // GET api/session: nothing is computed before)
+  const lines = useMemo(() => siecLines(state, session), [state.source, state.network, state.skeleton, state.nodes, session]);
   const valid = Boolean(built) && built.problems.length === 0 && structure.length === 0 && !depthMissing;
-  const ready = valid && missing.length === 0;
+  const ready = valid && missing.length === 0 && lines !== null;
   const runOptions = (stem, name) => {
     const options = { network_file: `in/${name}` };
     if (needed.inflows.length && state.inflowsFile) options.inflows_file = state.inflowsFile;
     if (options.inflows_file && String(state.timeColumn || "").trim()) options.time_column = String(state.timeColumn).trim();
     options.schematic = `out/${stem}.svg`;
     options.force = true;
-    return options;
+    return withAttribution(options, lines);
   };
   const name = documentName(state);
   const stem = fileStem(state);
@@ -605,6 +612,7 @@ export default function Siec({ active, path = [] }) {
       const options = { ...runOptions(stem, name) };
       delete options.schematic;
       delete options.force;
+      delete options.attribution;
       try {
         if (needed.ratings.length) {
           await api.upload(new Blob([`${JSON.stringify(plain, null, 2)}\n`], { type: "application/json" }), name);
@@ -1064,7 +1072,7 @@ export default function Siec({ active, path = [] }) {
   const save = () => {
     if (!built || !state.skeleton.length) return;
     const file = `${stem}.json`;
-    downloadBlob(new Blob([`${JSON.stringify(built.document, null, 2)}\n`], { type: "application/json" }), file);
+    downloadBlob(new Blob([`${JSON.stringify({ ...built.document, ...linesFields(lines) }, null, 2)}\n`], { type: "application/json" }), file);
     update({ ...latest.current, savedKey: inputsKey(latest.current) });
     toast(valid ? t(texts.file.saved, { name: file }) : t(texts.file.draftSaved, { name: file, count: problemCount }));
   };
@@ -1118,7 +1126,7 @@ export default function Siec({ active, path = [] }) {
             needed=${needed}
             note=${note}
             onPanel=${showPanel}
-            pmaxtp=${{ depth: pmaxtp.depth, busy: pmaxtp.busy, onRetry: pmaxtp.onRetry }}
+            pmaxtp=${{ depth: pmaxtp.depth, lines: pmaxtp.lines, busy: pmaxtp.busy, onRetry: pmaxtp.onRetry }}
             canSave=${state.skeleton.length > 0}
             complete=${valid}
             offer=${offer && offer.where === "data" ? offer : null}
@@ -1224,6 +1232,7 @@ export default function Siec({ active, path = [] }) {
             </div>
           </div>`
         : html`<${NodeTable} skeleton=${state.skeleton} words=${words} result=${result} selected=${state.selected} onSelect=${(id) => select(id, false)} />`}
+      ${run ? html`<${Attribution} lines=${linesOf(run.envelope)} />` : null}
       <p class="sr-only" role="status" aria-live="polite" data-canvas="said">${said ? html`<span key=${said.count}>${said.text}</span>` : null}</p>
     </div>`,
   };
@@ -1237,6 +1246,7 @@ export default function Siec({ active, path = [] }) {
         selected=${state.selected}
         state=${state}
         document=${built ? built.document : null}
+        lines=${lines}
         valid=${valid}
         chartSvg=${chartSvg}
         schematicSvg=${schematicSvg}
@@ -1292,7 +1302,7 @@ export default function Siec({ active, path = [] }) {
           computed=${computed}
           models=${forms.rain}
           infoValues=${checkedValues(panelInputs, computed)}
-          pmaxtp=${{ depth: nodePmaxtp.depth, busy: nodePmaxtp.busy, onRetry: nodePmaxtp.onRetry }}
+          pmaxtp=${{ depth: nodePmaxtp.depth, lines: nodePmaxtp.lines, busy: nodePmaxtp.busy, onRetry: nodePmaxtp.onRetry }}
           network=${{ rainfall: networkRainWords(network, pmaxtp.depth) || texts.form.noNetworkRain, timestep_min: String(network.timestep_min ?? ""), onOpen: showRain }}
           origins=${panelOrigins(panelNode, origins[id])}
           onFile=${nodeFile(id)}

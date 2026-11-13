@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 
+from hydrolog.catalog.groups._attribution import ATTRIBUTION
 from hydrolog.catalog.groups._series import (
     DATE_COLUMN,
     DATED_ONE_OF,
@@ -166,6 +167,7 @@ COMMANDS: tuple[Command, ...] = (
                 },
                 default="Q",
             ),
+            ATTRIBUTION,
         ),
         one_of=DATED_ONE_OF,
         examples=(
@@ -227,7 +229,7 @@ COMMANDS: tuple[Command, ...] = (
             },
         ),
         function="hydrolog.operations.stats_daily",
-        options=DATED_OPTIONS,
+        options=(*DATED_OPTIONS, ATTRIBUTION),
         one_of=DATED_ONE_OF,
         examples=(
             {
@@ -316,6 +318,7 @@ COMMANDS: tuple[Command, ...] = (
                 exclusive_minimum=0,
                 maximum=1,
             ),
+            ATTRIBUTION,
         ),
         one_of=DATED_ONE_OF,
         examples=(
@@ -440,6 +443,7 @@ COMMANDS: tuple[Command, ...] = (
                 default="l_moments",
             ),
             _RETURN_PERIODS,
+            ATTRIBUTION,
         ),
         one_of=_UNDATED_ONE_OF,
         typical_ranges=(RangeCheck("flood_frequency", "years", result="n_years"),),
@@ -509,7 +513,7 @@ COMMANDS: tuple[Command, ...] = (
             },
         ),
         function="hydrolog.operations.stats_low_flow",
-        options=(*DATED_OPTIONS, _RETURN_PERIODS),
+        options=(*DATED_OPTIONS, _RETURN_PERIODS, ATTRIBUTION),
         one_of=DATED_ONE_OF,
         examples=(
             {
@@ -634,6 +638,7 @@ COMMANDS: tuple[Command, ...] = (
                 minimum=0,
                 unit="d",
             ),
+            ATTRIBUTION,
         ),
         one_of=DATED_ONE_OF,
         examples=(
@@ -742,6 +747,7 @@ COMMANDS: tuple[Command, ...] = (
                 exclusive_minimum=0,
                 maximum=1,
             ),
+            ATTRIBUTION,
         ),
         one_of=_UNDATED_ONE_OF,
         examples=(
@@ -919,6 +925,7 @@ COMMANDS: tuple[Command, ...] = (
                 exclusive_minimum=0,
                 maximum=1,
             ),
+            ATTRIBUTION,
         ),
         one_of=_UNDATED_ONE_OF,
         examples=(

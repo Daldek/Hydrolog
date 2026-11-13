@@ -11,6 +11,7 @@ from hydrolog._pmaxtp import (
     METHODS,
     PROBABILITIES_PERCENT,
 )
+from hydrolog.catalog.groups._attribution import ATTRIBUTION
 from hydrolog.catalog.spec import Command, Option
 
 _HIETOGRAM_TYPES = ("block", "triangular", "beta", "euler_ii")
@@ -239,7 +240,7 @@ COMMANDS: tuple[Command, ...] = (
             " type are rejected."
         ),
         function="hydrolog.operations.precip_hietogram",
-        options=HIETOGRAM_OPTIONS,
+        options=(*HIETOGRAM_OPTIONS, ATTRIBUTION),
         result_schema="hydrolog-precip-hietogram/1",
         cardinality="bounded",
         rules=(
@@ -314,12 +315,14 @@ COMMANDS: tuple[Command, ...] = (
         rules=(
             "Give a point in Poland (WGS84).",
             "Pick duration_min and probability_percent from their descriptions.",
-            "Name IMGW-PIB as the source of the depth.",
+            "Show attribution and terms_notice with the depth; give them as "
+            "attribution to the command that takes it.",
         ),
         rules_pl=(
             "Podaj punkt w Polsce (WGS84).",
             "duration_min i probability_percent wybierz z ich opisów.",
-            "Podaj IMGW-PIB jako źródło wysokości.",
+            "Pokaż attribution i terms_notice z wysokością; podaj je jako attribution "
+            "poleceniu, które ją przyjmie.",
         ),
         errors=(
             "validation_error",
@@ -530,6 +533,7 @@ COMMANDS: tuple[Command, ...] = (
                 minimum=0,
                 maximum=1,
             ),
+            ATTRIBUTION,
         ),
         result_schema="hydrolog-precip-areal/1",
         cardinality="single",

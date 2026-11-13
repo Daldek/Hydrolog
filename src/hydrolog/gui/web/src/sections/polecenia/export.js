@@ -1,6 +1,8 @@
 // The export spec of „Wszystkie polecenia” (plan D14): the table shown as CSV, the envelope
-// as JSON, the chart as PNG, the command line of the run and the files it wrote.
+// as JSON, the chart as PNG, the command line of the run and the files it wrote; the CSV and
+// the PNG carry the providers' lines of the envelope (Nogat DEV-20.5).
 
+import { linesOf } from "../../attribution.js";
 import { resultCsv } from "../../forms/result-view.js";
 
 /**
@@ -19,5 +21,6 @@ export function exportSpec({ command, options, envelope, analysis, chartSvg }) {
     chart: analysis.series.length ? () => chartSvg.current : undefined,
     cli: { command, options },
     files: analysis.files,
+    lines: linesOf(envelope),
   };
 }

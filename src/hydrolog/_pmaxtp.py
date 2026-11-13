@@ -15,8 +15,8 @@ another value is a ``validation_error`` that lists the allowed ones, before anyt
 fetched. The errors of Obserwator become Hydrolog's registry codes: a point outside the
 atlas is a ``validation_error`` of ``latitude`` (or of the coordinate Obserwator names),
 an unreachable server ``source_unavailable`` and an answer that cannot be read
-``data_error``. A depth of IMGW-PIB must name its source: :data:`ATTRIBUTION` is the
-wording the terms of use of IMGW-PIB prescribe.
+``data_error``. A depth of PMAXTP must name its source: the lines its terms prescribe
+are in :mod:`hydrolog._attribution` (PS, PP, M and the notice N, RK; ADR-0028).
 
 The module is a leaf: it imports only :mod:`hydrolog.exceptions`, so the catalog can
 read its values without Obserwator or the numerical libraries.
@@ -35,7 +35,6 @@ from hydrolog.exceptions import (
 )
 
 __all__ = [
-    "ATTRIBUTION",
     "DURATIONS_MIN",
     "EXTRA",
     "INSTALL_HINT",
@@ -43,7 +42,6 @@ __all__ = [
     "LONGITUDE_RANGE",
     "METHODS",
     "PROBABILITIES_PERCENT",
-    "TERMS_URL",
     "TIMEOUT_S",
     "PmaxtpDepth",
     "PmaxtpMethod",
@@ -107,13 +105,6 @@ LATITUDE_RANGE: Final = (49.0, 55.0)
 """The latitudes of Poland that Obserwator accepts [degrees, WGS84]."""
 LONGITUDE_RANGE: Final = (14.0, 24.5)
 """The longitudes of Poland that Obserwator accepts [degrees, WGS84]."""
-ATTRIBUTION: Final = (
-    "Źródłem pochodzenia danych jest Instytut Meteorologii i Gospodarki Wodnej – "
-    "Państwowy Instytut Badawczy"
-)
-"""The attribution that the terms of use of IMGW-PIB prescribe, in their wording."""
-TERMS_URL: Final = "https://danepubliczne.imgw.pl/regulations"
-"""The terms of use of the public data of IMGW-PIB."""
 EXTRA: Final = "pmaxtp"
 """The extra of Hydrolog that installs Obserwator."""
 INSTALL_HINT: Final = 'pip install "hydrolog[pmaxtp]"'

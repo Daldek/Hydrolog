@@ -27,8 +27,16 @@
 //
 // Another part of the page opens a network here with openNetwork(document, {name}) (the
 // hand-off of S6); the section takes it when it is mounted, or on its first render.
+//
+// The providers' lines of the network's data (siecLines; attribution.js, Nogat DEV-20):
+// those its document or hand-off came with (kept in `source`), those of the hand-off a node
+// came in (its `origin`), and those of every PMAXTP depth in use (the network's rainfall's
+// and a subcatchment's own). „Oblicz sieć” passes them as the option `attribution`, and the
+// network's document saved or exported carries them as its `attribution` and
+// `terms_notice`.
 
 import { api } from "../../api.js";
+import { linesFields, linesOf, mergeLines, orderLines } from "../../attribution.js";
 import { sessionFileName } from "../../controls/file-field.js";
 import { withReason } from "../../forms/model.js";
 import { cameRainfallKey, networkInputs, networkRainfallKey, rainfallOf, siecInputs, siecNodes, siecSubcatchment } from "../../handoff/mapping.js";
@@ -45,6 +53,7 @@ import {
   initialRain,
   inputModels,
   pmaxtpDepth,
+  pmaxtpLines,
   pmaxtpOptions,
   rainChecks,
   rangeInfoId,
@@ -241,7 +250,8 @@ export function placeSkeleton(skeleton) {
  * The state of a network document. A network that came in a hand-off keeps the origin of
  * each node beside its structure (handoff/mapping.js siecNodes: the hand-off's record, the
  * node's own origins and the node as it came; plan 2026-11-10-network-wizard, D9), and its
- * source keeps the key of its rainfall as it was opened.
+ * source keeps the key of its rainfall as it was opened and the providers' lines the
+ * document came with.
  *
  * @param {object} doc hydrolog-network/1 (checked with documentProblems)
  * @param {{name: string, kind: "file"|"handoff", handoff?: object}} source where it came
@@ -258,7 +268,11 @@ export function stateOf(doc, source, keep = {}) {
   const outlet = placed.skeleton.find((node) => node.type === "outlet");
   const opened = {
     ...initialState(),
-    source: { ...source, rainfallKey: cameRainfallKey(network, isObject(doc.rainfall) ? doc.rainfall : null, networkRainfallKey) },
+    source: {
+      ...source,
+      ...linesFields(linesOf(doc)),
+      rainfallKey: cameRainfallKey(network, isObject(doc.rainfall) ? doc.rainfall : null, networkRainfallKey),
+    },
     network,
     skeleton: placed.skeleton.map((node) => (origins[node.id] ? { ...node, origin: origins[node.id] } : node)),
     nodes,
@@ -268,6 +282,29 @@ export function stateOf(doc, source, keep = {}) {
     provisional: placed.provisional,
   };
   return { ...opened, savedKey: inputsKey(opened) };
+}
+
+/**
+ * The providers' lines of the network's data: its document's and its hand-off's (`source`),
+ * those of the hand-off each node came in, and those of every PMAXTP depth in use (the
+ * network's rainfall's and each subcatchment's own: pmaxtpLines), in the order of the
+ * providers' sets of GET api/session.
+ *
+ * @param {object} state the section's state
+ * @param {object|null} session hydrolog-gui-session/1, null while it has not arrived
+ * @returns {{attribution: string[], terms_notice: string[]}|null} the lines, null while
+ *   a depth kept without its lines waits for the session
+ */
+export function siecLines(state, session) {
+  const source = isObject(state.source) ? state.source : {};
+  const sets = [linesOf(source), linesOf(source.handoff), pmaxtpLines(state.network || {}, session)];
+  for (const node of state.skeleton) {
+    sets.push(linesOf(node.origin));
+    const values = state.nodes[node.id] || {};
+    if (node.type === "subcatchment" && variantOf(values) === "rain") sets.push(pmaxtpLines(siecInputs(values), session));
+  }
+  const merged = mergeLines(...sets);
+  return merged === null ? null : orderLines(merged, session);
 }
 
 /**

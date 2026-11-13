@@ -16,6 +16,7 @@ from typing import Any, Literal, cast, get_args
 import numpy as np
 from numpy.typing import NDArray
 
+from hydrolog._attribution import cite
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.catalog.envelope import Notice, OperationOutput, capture_warnings
 from hydrolog.catalog.inputs import load_watershed
@@ -410,10 +411,12 @@ def compute_hydrograph(
     snyder_centroid_length_km: float | None = None,
     snyder_ct: float | None = None,
     snyder_cp: float | None = None,
+    attribution: list[str] | None = None,
 ) -> HydrographRun:
     """Compute a design hydrograph and return the whole run.
 
-    The parameters are those of :func:`hydrograph_generate`, which documents them.
+    The parameters are those of :func:`hydrograph_generate`, which documents them;
+    ``attribution`` is cited for the run (:func:`hydrolog._attribution.cite`).
     Library warnings are captured inside (a ``capture_warnings`` block holds a
     non-reentrant lock: do not call this function from inside another one).
 
@@ -432,6 +435,7 @@ def compute_hydrograph(
     InputDataError
         If a file is malformed.
     """
+    cite(attribution)
     model = check_choice("uh_model", uh_model, UH_MODELS)
     moisture = to_amc(amc)
     if tc_method is not None:
@@ -671,6 +675,7 @@ def hydrograph_generate(
     snyder_centroid_length_km: float | None = None,
     snyder_ct: float | None = None,
     snyder_cp: float | None = None,
+    attribution: list[str] | None = None,
 ) -> OperationOutput:
     """Design direct-runoff hydrograph of a catchment (``hydrograph generate``).
 
@@ -747,6 +752,10 @@ def hydrograph_generate(
         Snyder coefficients, defaults 1.5 and 0.6. The unit hydrograph is that
         for rainfall of the duration of the time step (adjusted lag tLR, time to
         peak tpR and peak qpR), as the convolution requires.
+    attribution : list of str, optional
+        Lines of the providers of the rainfall (ADR-0028), e.g. those of
+        ``precip pmaxtp`` whose depth is ``total_mm``; the envelope carries them,
+        with those of ``input_file``.
 
     Returns
     -------
@@ -810,6 +819,7 @@ def hydrograph_generate(
         snyder_centroid_length_km=snyder_centroid_length_km,
         snyder_ct=snyder_ct,
         snyder_cp=snyder_cp,
+        attribution=attribution,
     )
     generated = run.result
     hydrograph = generated.hydrograph

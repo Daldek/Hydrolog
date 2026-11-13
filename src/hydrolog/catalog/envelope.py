@@ -21,7 +21,11 @@ and Python callers share (Nogat ``result-1``, AGI-4.2)::
 writes files lists them in ``result["files"]`` as ``{path, size_bytes, sha256,
 status}`` (DEV-19.19, status ``written`` or ``replaced``). ``inputs`` (the normalized
 options of the call) is a Hydrolog addition; ``page`` appears for paginated
-collections. ``status`` is always ``"ok"``: a failing command raises (see
+collections. A run with data of IMGW-PIB or ČHMÚ (the PMAXTP depth, a station series
+of a file, lines given in the option ``attribution``) has ``attribution`` and
+``terms_notice`` after ``result``: the lines the providers' terms require on every
+product (Nogat DEV-20.6, DEV-20.7, ADR-0028; :mod:`hydrolog._attribution`), absent
+without such data. ``status`` is always ``"ok"``: a failing command raises (see
 :func:`hydrolog.exceptions.error_document`) and leaves no partial state, and
 Hydrolog has no batch commands, so there are no ``items``.
 
@@ -34,8 +38,8 @@ An operation (a function of :mod:`hydrolog.operations`) returns either
    files, except the files named by the optional ``output_files()`` method below; or
 2. **an** :class:`OperationOutput` -- ``OperationOutput(result, notices, files)``:
    the wrapper carries the result together with the non-fatal :class:`Notice`
-   objects (short series, values removed, extrapolation...) and the paths of the
-   files the operation wrote.
+   objects (short series, values removed, extrapolation...), the paths of the
+   files the operation wrote and the attribution of the providers of its own data.
 
 A result object may additionally expose ``output_files()`` returning an iterable of
 paths it wrote; these are added to ``result["files"]`` after the files of the
@@ -72,6 +76,7 @@ from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Final, Literal
 
+from hydrolog._attribution import Attribution
 from hydrolog._serialization import to_jsonable
 from hydrolog._warnings import HydrologWarning, warning_code
 from hydrolog.exceptions import OutputError
@@ -197,6 +202,10 @@ class OperationOutput:
         The result is the plan of a ``check`` run, nothing was written.
     page : Mapping, optional
         ``{"total", "next_cursor", "truncated"}`` of a paginated collection.
+    attribution : Attribution, optional
+        The lines of the providers of data the operation obtained itself (the PMAXTP
+        depth of ``precip pmaxtp``); the lines of its input files and of its option
+        ``attribution`` are collected by :func:`~hydrolog.catalog.run_command`.
     """
 
     result: Any
@@ -205,6 +214,7 @@ class OperationOutput:
     replaced: Sequence[str | os.PathLike[str]] = ()
     check: bool = False
     page: Mapping[str, Any] | None = None
+    attribution: Attribution = field(default_factory=Attribution)
 
 
 @contextlib.contextmanager
@@ -345,6 +355,12 @@ class CommandResult:
         The run was a plan without effects.
     page : Mapping, optional
         Pagination of a collection result.
+    attribution : tuple of str, optional
+        The attribution lines the providers' terms require for the data of the run
+        (``attribution`` of the envelope; Nogat DEV-20.6).
+    terms_notice : tuple of str, optional
+        The notice of IMGW-PIB's terms of use and the addresses of the terms that apply
+        (``terms_notice`` of the envelope; Nogat DEV-20.7).
     """
 
     command: str
@@ -355,6 +371,8 @@ class CommandResult:
     notices: tuple[Notice, ...] = ()
     check: bool = False
     page: Mapping[str, Any] | None = None
+    attribution: tuple[str, ...] = ()
+    terms_notice: tuple[str, ...] = ()
 
     @property
     def status(self) -> Literal["ok"]:
@@ -368,6 +386,7 @@ class CommandResult:
         inputs: Mapping[str, Any],
         output: object,
         result_schema: str,
+        attribution: Attribution | None = None,
     ) -> CommandResult:
         """Build the envelope from what an operation returned.
 
@@ -382,11 +401,15 @@ class CommandResult:
             (see the module docstring for the protocol).
         result_schema : str
             Id of the domain document of the command.
+        attribution : Attribution, optional
+            The lines the run collected (input files, the option ``attribution``);
+            merged with those of an :class:`OperationOutput`.
 
         Returns
         -------
         CommandResult
-            Envelope with the unwrapped result, the notices and the written files.
+            Envelope with the unwrapped result, the notices, the written files and the
+            providers' lines.
 
         Raises
         ------
@@ -399,6 +422,7 @@ class CommandResult:
         check = False
         page: Mapping[str, Any] | None = None
         result = output
+        cited = attribution or Attribution()
         if isinstance(output, OperationOutput):
             result = output.result
             notices = tuple(output.notices)
@@ -406,6 +430,7 @@ class CommandResult:
             replaced.extend(output.replaced)
             check = output.check
             page = output.page
+            cited = output.attribution | cited
         reporter = getattr(result, "output_files", None)
         if callable(reporter):
             paths.extend(reporter())
@@ -418,6 +443,8 @@ class CommandResult:
             notices=notices,
             check=check,
             page=page,
+            attribution=cited.lines,
+            terms_notice=cited.terms_notice,
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -429,6 +456,7 @@ class CommandResult:
             ``schema``, ``tool``, ``version``, ``command``, ``check``, ``status``,
             ``result`` (via :func:`~hydrolog._serialization.to_jsonable`, a document
             with its ``schema`` first and, when files were written, ``files``),
+            ``attribution`` and ``terms_notice`` when the run had a provider's data,
             ``notices``, ``inputs`` and, for a collection, ``page``.
 
         Raises
@@ -456,9 +484,13 @@ class CommandResult:
             "check": self.check,
             "status": self.status,
             "result": domain,
-            "notices": [notice.to_dict() for notice in self.notices],
-            "inputs": to_jsonable(dict(self.inputs)),
         }
+        if self.attribution:
+            envelope["attribution"] = list(self.attribution)
+        if self.terms_notice:
+            envelope["terms_notice"] = list(self.terms_notice)
+        envelope["notices"] = [notice.to_dict() for notice in self.notices]
+        envelope["inputs"] = to_jsonable(dict(self.inputs))
         if self.page is not None:
             envelope["page"] = to_jsonable(dict(self.page))
         return envelope

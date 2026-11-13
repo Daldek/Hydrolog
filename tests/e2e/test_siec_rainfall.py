@@ -15,6 +15,7 @@ import re
 
 from playwright.sync_api import Page, Request, expect
 
+from hydrolog._attribution import provider_lines
 from tests.e2e.conftest import KAMIENNIK_POINT, Tab, input_text
 from tests.e2e.test_siec import BADGE, NODE
 from tests.e2e.test_siec_editor import (
@@ -116,7 +117,11 @@ def test_the_networks_pmaxtp_depth_is_fetched_once_and_kept(tab: Tab) -> None:
     # runner: wait for the fetched depth to be kept
     fetched = "(key) => JSON.parse(localStorage.getItem(key))?.network?.pmaxtp_fetched"
     page.wait_for_function(f"(key) => ({fetched})(key)?.depth_mm != null", arg=STORED)
-    assert page.evaluate(fetched, STORED) == {**options, "depth_mm": 101.82}
+    pmaxtp = provider_lines()["pmaxtp"]  # the answer's lines are kept with the depth
+    assert page.evaluate(fetched, STORED) == {**options, "depth_mm": 101.82, **pmaxtp}
+    expect(page.locator(f'{RAIN} [data-attribution="pmaxtp"] p')).to_have_text(
+        [*pmaxtp["attribution"], *pmaxtp["terms_notice"]]
+    )
     # Remembered with the inputs: a reload shows it without a fetch
     page.reload()
     expect(depth).to_have_value("101,82")

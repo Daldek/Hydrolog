@@ -2,9 +2,12 @@
 // as `time_min,discharge_m3s` (what every `route` command reads) and every node's as
 // columns of one table (an `inflows_file` of another network), the network's document
 // and the envelope of the last run as JSON, the schematic as drawn as PNG; Hydrolog's
-// own schematic, the SVG `route network` wrote with `schematic`; and the print view.
+// own schematic, the SVG `route network` wrote with `schematic`; and the print view. The
+// CSVs carry the run's providers' lines in their two trailing columns, the document and
+// the PNG the network's (Nogat DEV-20.5).
 
 import { api } from "../../api.js";
+import { csvWithLines, footerLines, linesFields, linesOf } from "../../attribution.js";
 import { t } from "../../labels/common.js";
 import { exportLabels } from "../../labels/exports.js";
 import { siec as texts } from "../../labels/siec.js";
@@ -57,19 +60,21 @@ export function networkCsv(result) {
  * The exports of the section now: what each saves, and whether it can.
  *
  * @param {{state: object, document: object|null, valid: boolean, run: object|null,
- *   selected: string|null, schematicSvg: {current: SVGSVGElement|null}}} at the state,
- *   the network's document and whether it is complete, the last run, the chosen node and
- *   the drawn schematic
+ *   selected: string|null, schematicSvg: {current: SVGSVGElement|null}, lines: object|null}}
+ *   at the state, the network's document and whether it is complete, the last run, the
+ *   chosen node, the drawn schematic and the providers' lines of the network (siecLines)
  * @returns {Array<{id: string, format: string, label: string, title: string,
  *   disabled?: string, text?: () => string, type?: string, name?: string,
- *   svg?: () => SVGSVGElement|null, href?: string, print?: boolean}>} the exports
+ *   svg?: () => SVGSVGElement|null, footer?: string[], href?: string, print?: boolean}>} the
+ *   exports
  */
-export function exportItems({ state, document, valid, run, selected, schematicSvg }) {
+export function exportItems({ state, document, valid, run, selected, schematicSvg, lines = null }) {
   const stem = fileStem(state);
   const result = run && run.envelope.status === "ok" ? run.envelope.result : null;
   const node = result && selected ? (result.nodes || []).find((item) => item.id === selected) : null;
   const svgFile = result && Array.isArray(result.files) ? result.files.find((file) => /\.svg$/i.test(String(file.path))) : null;
   const noRun = texts.exports.afterRun;
+  const ran = run ? linesOf(run.envelope) : null;
   return [
     {
       id: "csv-node",
@@ -77,7 +82,7 @@ export function exportItems({ state, document, valid, run, selected, schematicSv
       label: selected ? t(texts.exports.node, { id: selected }) : texts.exports.nodeNone,
       title: texts.exports.nodeTitle,
       disabled: node && Array.isArray(node.times_min) ? null : noRun,
-      text: () => nodeCsv(node),
+      text: () => csvWithLines(nodeCsv(node), ran),
       type: "text/csv;charset=utf-8",
       name: `${stem}-${selected}.csv`,
     },
@@ -87,7 +92,7 @@ export function exportItems({ state, document, valid, run, selected, schematicSv
       label: texts.exports.all,
       title: texts.exports.allTitle,
       disabled: result ? null : noRun,
-      text: () => networkCsv(result),
+      text: () => csvWithLines(networkCsv(result), ran),
       type: "text/csv;charset=utf-8",
       name: `${stem}-wezly.csv`,
     },
@@ -97,7 +102,7 @@ export function exportItems({ state, document, valid, run, selected, schematicSv
       label: texts.exports.network,
       title: texts.exports.networkTitle,
       disabled: document && valid ? null : texts.exports.invalid,
-      text: () => `${JSON.stringify(document, null, 2)}\n`,
+      text: () => `${JSON.stringify({ ...document, ...linesFields(lines) }, null, 2)}\n`,
       type: "application/json",
       name: `${stem}.json`,
     },
@@ -118,6 +123,7 @@ export function exportItems({ state, document, valid, run, selected, schematicSv
       title: texts.exports.pngTitle,
       disabled: schematicSvg.current ? null : texts.exports.noSchematic,
       svg: () => schematicSvg.current,
+      footer: footerLines(lines),
       name: `${stem}.png`,
     },
     {

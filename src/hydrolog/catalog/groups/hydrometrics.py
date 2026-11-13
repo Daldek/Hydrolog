@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 
+from hydrolog.catalog.groups._attribution import ATTRIBUTION
 from hydrolog.catalog.groups._series import INPUT_FILE, VALUE_COLUMN, VALUES
 from hydrolog.catalog.spec import Command, Option
 
@@ -190,6 +191,7 @@ COMMANDS: tuple[Command, ...] = (
                 default=2.0,
                 exclusive_minimum=0,
             ),
+            ATTRIBUTION,
         ),
         one_of=(
             ("water_levels", "discharges"),
@@ -314,6 +316,7 @@ COMMANDS: tuple[Command, ...] = (
                 default=10.0,
                 exclusive_minimum=0,
             ),
+            ATTRIBUTION,
         ),
         one_of=(("values",), ("input_file", "value_column")),
         examples=(

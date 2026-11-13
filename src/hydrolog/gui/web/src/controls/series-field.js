@@ -177,7 +177,8 @@ export function SeriesField({ field, id, value, error, required, disabled, onInp
 }
 
 /**
- * A list of texts as chips: Enter or a comma adds the typed text, × removes a chip.
+ * A list of texts as chips: Enter or a comma adds the typed text, × removes a chip. The
+ * lines of `attribution` hold commas: there only Enter adds a line.
  *
  * @param {{field: object, id: string, value?: string[], error?: string, required: boolean,
  *   disabled?: boolean, onInput: (items: string[]) => void}} props the field, the control's
@@ -188,16 +189,17 @@ export function SeriesField({ field, id, value, error, required, disabled, onInp
 export function ChipsField({ field, id, value, error, required, disabled, onInput }) {
   const items = Array.isArray(value) ? value : [];
   const [draft, setDraft] = useState("");
+  const whole = field.name === "attribution";
   const add = (text) => {
     const words = String(text)
-      .split(",")
+      .split(whole ? /\r?\n/ : /,|\r?\n/)
       .map((word) => word.trim())
       .filter(Boolean);
     if (words.length) onInput([...items, ...words.filter((word) => !items.includes(word))]);
     setDraft("");
   };
   const onKeyDown = (event) => {
-    if (event.key === "Enter" || event.key === ",") {
+    if (event.key === "Enter" || (event.key === "," && !whole)) {
       event.preventDefault();
       add(draft);
     } else if (event.key === "Backspace" && draft === "" && items.length) {

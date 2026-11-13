@@ -47,6 +47,7 @@ from starlette.staticfiles import StaticFiles
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 import hydrolog
+from hydrolog._attribution import provider_lines
 from hydrolog._errors import BY_CODE
 from hydrolog._settings import (
     ADMIN_API_KEY,
@@ -527,7 +528,10 @@ class _Gui:
 
         ``gui`` is the deployment's table of GUI addresses (``[nogat] gui`` of
         ``nogat.toml``, read at every request; ``None`` without it), which the page
-        gives Nogat's app menu (DEV-15.4, ADR-0027).
+        gives Nogat's app menu (DEV-15.4, ADR-0027). ``attribution`` is the complete
+        lines of each provider Hydrolog knows (``imgw``, ``imgw_hydro``, ``pmaxtp``,
+        ``chmi``: ``attribution`` and ``terms_notice``), by which the page names the
+        provider of a hand-off that carries no lines of its own (ADR-0028).
         """
         session = self.open_session(request, call)
         files = await anyio.to_thread.run_sync(session.files)
@@ -541,6 +545,7 @@ class _Gui:
                 "used_bytes": sum(item["size_bytes"] for item in files),
                 "files": files,
                 "gui": gui,
+                "attribution": provider_lines(),
             }
         )
 

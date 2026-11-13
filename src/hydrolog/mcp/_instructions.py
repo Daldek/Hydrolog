@@ -37,8 +37,9 @@ _FLOW: Final = (
 _PROVENANCE: Final = (
     "Input data come from files you are given, usually produced by Kartograf "
     "(terrain, land cover, soil rasters) or Obserwator (IMGW series and stations). "
-    "Their licences and provenance stay with those sources: name them when you "
-    "report a result (IMGW-PIB for a PMAXTP depth)."
+    "A result with data of IMGW-PIB or ČHMÚ has `attribution` and `terms_notice`: "
+    "show those lines verbatim with the result, and give them as `attribution` to "
+    "the next command that takes its values (e.g. a PMAXTP depth as `total_mm`)."
 )
 _DIRS: Final = "Allowed directories (`--allow-dir`): {dirs}."
 _NO_DIRS: Final = (

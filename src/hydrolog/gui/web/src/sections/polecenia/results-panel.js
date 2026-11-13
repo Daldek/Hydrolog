@@ -1,6 +1,8 @@
 // The results of „Wszystkie polecenia”: in the centre the tables (or the JSON) of the last
-// run, in the panel Wyniki its tiles, chart, call, notices and exports.
+// run, in the panel Wyniki its tiles, chart, call, notices and exports; both end with the
+// providers' lines of the run's envelope (attribution.js, Nogat DEV-20.5), none without.
 
+import { Attribution, linesOf } from "../../attribution.js";
 import { html } from "../../html.js";
 import { polecenia as texts } from "../../labels/polecenia.js";
 import { results as resultTexts } from "../../labels/results.js";
@@ -29,7 +31,8 @@ const TILES = {
  */
 export function CenterBody({ run, tab }) {
   if (!run) return html`<p class="empty-note">${texts.noResult}</p>`;
-  if (tab === "json") return html`<${ResultJson} envelope=${run.envelope} />`;
+  const footer = html`<${Attribution} lines=${linesOf(run.envelope)} />`;
+  if (tab === "json") return html`<${ResultJson} envelope=${run.envelope} />${footer}`;
   const { analysis } = run;
   const tables = analysis.series.length + analysis.records.length + (analysis.targets ? 1 : 0);
   return html`
@@ -42,6 +45,7 @@ export function CenterBody({ run, tab }) {
           <div class="card-head"><h3 class="card-title">${resultTexts.parameters}</h3></div>
           <${ResultSummary} analysis=${analysis} inputs=${run.envelope.inputs} showTiles=${false} />
         </div>`}
+    ${footer}
   `;
 }
 
@@ -71,5 +75,6 @@ export function ResultsPanel({ run, chartSvg }) {
     <${Notices} notices=${analysis.notices} />
     <${ExportButtons} spec=${spec} />
     <${FileList} files=${analysis.files} />
+    <${Attribution} lines=${linesOf(envelope)} />
   `;
 }

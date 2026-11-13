@@ -1,6 +1,8 @@
 // The exports of „Kalkulatory” (plan D14): the tc comparison as CSV and as the shell loop of
-// its six calls, and a calculator's result as CSV, JSON, PNG and its call.
+// its six calls, and a calculator's result as CSV, JSON, PNG and its call, the CSV and the
+// PNG with the providers' lines of its envelope (Nogat DEV-20.5).
 
+import { linesOf } from "../../attribution.js";
 import { csvCell, resultCsv } from "../../forms/result-view.js";
 import { wrapLine } from "../../ui/export-panel.js";
 
@@ -61,5 +63,6 @@ export function exportSpec({ command, options, envelope, analysis, chartSvg }) {
     chart: analysis.series.length ? () => chartSvg.current : undefined,
     cli: { command, options },
     files: analysis.files,
+    lines: linesOf(envelope),
   };
 }

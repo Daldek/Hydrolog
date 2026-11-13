@@ -16,6 +16,7 @@
 // first visit, whatever series, periods, distribution and method it held.
 
 import { api } from "../../api.js";
+import { LINE_COLUMNS } from "../../attribution.js";
 import { num, parseNumber } from "../../format.js";
 import { useEffect, useState } from "../../html.js";
 import { readTable } from "../../controls/series-field.js";
@@ -55,8 +56,11 @@ export const HOMOGENEITY = "stats homogeneity";
 /** The run channel of the homogeneity tests (its own: it must not supersede the run). */
 export const HOMOGENEITY_CHANNEL = "statystyka-jednorodnosc";
 
-/** The options of the series that `stats homogeneity` shares with the section's command. */
-const SERIES_OPTIONS = ["values", "input_file", "value_column", "date_column"];
+/**
+ * The options of the series that `stats homogeneity` shares with the section's command,
+ * the providers' lines of the series (`attribution`) among them.
+ */
+const SERIES_OPTIONS = ["values", "input_file", "value_column", "date_column", "attribution"];
 
 /** The period stressed when the chosen one is not among the periods: T = 100 years, p 1%. */
 const FALLBACK_PERIOD = 100;
@@ -282,7 +286,9 @@ export function resolveColumn(value, columns) {
 
 /**
  * Read the columns of a series file in the browser: a CSV with a header (comma, semicolon
- * or tab) or a JSON document (records, columns or a list of numbers), as Hydrolog reads it.
+ * or tab) or a JSON document (records, columns or a list of numbers), as Hydrolog reads it:
+ * the columns of the providers' lines (attribution.js LINE_COLUMNS: DEV-20.5's and
+ * Obserwator's) are not data and are left out.
  *
  * @param {string} text the file's text
  * @returns {{columns: string[], rows: number, cells: (column: string) => unknown[]}} the
@@ -292,6 +298,7 @@ export function resolveColumn(value, columns) {
 export function readColumns(text) {
   const source = String(text || "").replace(/^\ufeff/, "");
   const start = source.trimStart()[0];
+  const data = (name) => !LINE_COLUMNS.includes(name);
   if (start === "[" || start === "{") {
     const doc = JSON.parse(source);
     if (Array.isArray(doc) && doc.every((item) => typeof item === "number" || item === null)) {
@@ -300,12 +307,12 @@ export function readColumns(text) {
     if (Array.isArray(doc)) {
       const columns = [];
       for (const record of doc) {
-        if (record && typeof record === "object") for (const key of Object.keys(record)) if (!columns.includes(key)) columns.push(key);
+        if (record && typeof record === "object") for (const key of Object.keys(record)) if (data(key) && !columns.includes(key)) columns.push(key);
       }
       return { columns, rows: doc.length, cells: (column) => doc.map((record) => (record ? record[column] : null)) };
     }
     if (doc && typeof doc === "object") {
-      const columns = Object.keys(doc).filter((key) => Array.isArray(doc[key]));
+      const columns = Object.keys(doc).filter((key) => data(key) && Array.isArray(doc[key]));
       const rows = columns.length ? doc[columns[0]].length : 0;
       return { columns, rows, cells: (column) => doc[column] || [] };
     }
@@ -313,12 +320,12 @@ export function readColumns(text) {
   }
   const table = readTable(source);
   if (!table.header) throw new Error("CSV");
-  const columns = table.header.map((name) => name.trim());
+  const names = table.header.map((name) => name.trim());
   return {
-    columns,
+    columns: names.filter(data),
     rows: table.rows.length,
     cells: (column) => {
-      const index = columns.indexOf(column);
+      const index = names.indexOf(column);
       return table.rows.map((row) => (index >= 0 ? row[index] : undefined));
     },
   };

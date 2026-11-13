@@ -13,6 +13,7 @@ from typing import Literal, cast, get_args
 import numpy as np
 from numpy.typing import NDArray
 
+from hydrolog._attribution import cite
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.catalog.envelope import Notice, OperationOutput, capture_warnings
 from hydrolog.catalog.inputs import load_series
@@ -186,6 +187,7 @@ def scs_effective(
     value_column: str | None = None,
     amc: Amc = "II",
     ia_coefficient: float = 0.2,
+    attribution: list[str] | None = None,
 ) -> OperationOutput:
     """Effective precipitation by the SCS-CN method (``scs effective``).
 
@@ -207,6 +209,9 @@ def scs_effective(
         Antecedent moisture condition, by default ``"II"``.
     ia_coefficient : float, optional
         Initial abstraction ratio, 0 < ratio <= 1, by default 0.2.
+    attribution : list of str, optional
+        Lines of the providers of the precipitation (ADR-0028), e.g. those of
+        ``precip pmaxtp``; the envelope carries them, with those of ``input_file``.
 
     Returns
     -------
@@ -226,6 +231,7 @@ def scs_effective(
     NotFoundError
         If ``input_file`` does not exist.
     """
+    cite(attribution)
     select_group(
         {
             "precipitation_mm": precipitation_mm,

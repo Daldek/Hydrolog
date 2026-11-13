@@ -11,7 +11,7 @@ from typing import Any
 import obserwator
 import pytest
 
-from hydrolog import _pmaxtp
+from hydrolog import _attribution, _pmaxtp
 from hydrolog.catalog import get_command, run_command
 from hydrolog.cli.main import main
 from hydrolog.exceptions import (
@@ -72,7 +72,22 @@ class TestDepth:
         assert (result["latitude"], result["longitude"]) == (52.23, 21.01)
         assert (result["method"], result["duration_min"]) == ("POT", 60.0)
         assert result["probability_percent"] == 1.0
-        assert result["attribution"] == _pmaxtp.ATTRIBUTION
+        assert result["attribution"] == _attribution.PMAXTP_SOURCE
+
+    def test_the_envelope_carries_the_lines_of_pmaxtps_terms(self):
+        """PS, PP and the monograph M, then N and PMAXTP's terms (Nogat DEV-20.2)."""
+        envelope = _run(duration_min=60, probability_percent=1)
+
+        assert envelope["attribution"] == [
+            _attribution.PMAXTP_SOURCE,
+            _attribution.PMAXTP_PROCESSED,
+            _attribution.PMAXTP_MONOGRAPH,
+        ]
+        assert envelope["terms_notice"] == [
+            _attribution.IMGW_TERMS,
+            "Regulamin: https://klimat.imgw.pl/opady-maksymalne",
+        ]
+        assert list(envelope)[6:9] == ["result", "attribution", "terms_notice"]
 
     @pytest.mark.parametrize(
         ("duration", "probability", "key"),
@@ -102,13 +117,13 @@ class TestDepth:
         assert calls == [{**WARSAW, "method": "AMP", "timeout": _pmaxtp.TIMEOUT_S}]
         assert _pmaxtp.TIMEOUT_S < 30
 
-    def test_the_notice_names_imgw_pib_as_the_source(self):
+    def test_the_notice_points_to_the_lines_and_pmaxtps_terms(self):
         (notice,) = _run(duration_min=60, probability_percent=1)["notices"]
 
         assert (notice["level"], notice["code"]) == ("info", "pmaxtp_attribution")
         assert notice["details"] == {
-            "attribution": _pmaxtp.ATTRIBUTION,
-            "terms_url": _pmaxtp.TERMS_URL,
+            "attribution": _attribution.PMAXTP_SOURCE,
+            "terms_url": "https://klimat.imgw.pl/opady-maksymalne",
         }
 
     def test_the_command_is_the_one_that_uses_the_network(self):

@@ -8,11 +8,12 @@
 // `nash_estimation`, so whoever computes the node estimates n and K again from its
 // watershed), with where its inputs came from (provenance: the PMAXTP point, method,
 // probability and duration of the fetched depth, the watershed's source and the fields
-// changed since) and its result; back, a payload's subcatchment becomes the section's
-// inputs, its source the watershed's origin and the hand-off's record (`handoff`) what the
-// results compare with. „Sieć i trasowanie” keeps the same inputs as the values of each such
-// subcatchment (siecValues, siecSubcatchment), so a node of Sieć and Hydrogram's hand-off
-// cannot differ. A rainfall of the document and the inputs of step 2 map both ways too
+// changed since), the providers' lines of its run and its result; back, a payload's
+// subcatchment becomes the section's inputs, its source the watershed's origin and the
+// hand-off's record (`handoff`, with its lines) what the results compare with. „Sieć i
+// trasowanie” keeps the same inputs as the values of each such subcatchment (siecValues,
+// siecSubcatchment), so a node of Sieć and Hydrogram's hand-off cannot differ. A rainfall
+// of the document and the inputs of step 2 map both ways too
 // (rainfallOf, rainfallInputs; D4), which Hydrogram zlewni and Sieć's network share. Sieć
 // writes its whole network with the outlet's result, adds a hand-off's subcatchments to its
 // open network („Dodaj zlewnię z Hydrografa”, plan 2026-11-10-network-editor, D10) and
@@ -21,9 +22,11 @@
 // inputs came from (D9): Nogat's `node_provenance` with its precedence over `provenance`
 // (nodeOrigins), shown in the node's panel in Hydrograf's words of its elements
 // (originWords) and written again under the node's current id with the inputs changed since
-// marked (siecNodeProvenance). Field names are Hydrolog's (channel_length_km; slopes in m/m);
-// mapping Hydrograf's names is Hydrograf's side.
+// marked (siecNodeProvenance); the record a node keeps of its hand-off holds the hand-off's
+// lines, which Sieć carries on. Field names are Hydrolog's (channel_length_km; slopes in
+// m/m); mapping Hydrograf's names is Hydrograf's side.
 
+import { linesOf } from "../attribution.js";
 import { inputText, parseNumber, plural } from "../format.js";
 import { t } from "../labels/common.js";
 import { handoffLabels as texts } from "../labels/handoff.js";
@@ -435,7 +438,8 @@ export function hydrogramResult(result) {
 }
 
 /**
- * The hand-off of Hydrogram's shown run.
+ * The hand-off of Hydrogram's shown run, with the providers' lines of its envelope (the
+ * PMAXTP depth's and a received hand-off's, which the run was given).
  *
  * @param {{run: {inputs: object, options: object, envelope: object}, inputs?: object,
  *   subject: string, createdAt?: string}} parts the run, the inputs whose provenance it
@@ -446,6 +450,7 @@ export function hydrogramHandoff({ run, inputs = run.inputs, subject, createdAt 
   return buildHandoff({
     subject,
     provenance: hydrogramProvenance(inputs),
+    lines: linesOf(run.envelope),
     payload: hydrogramPayload(run.inputs, subject),
     result: hydrogramResult(run.envelope.result),
     page: "#hydrogram",
@@ -839,19 +844,22 @@ export function siecNodeProvenance(state, document = null) {
 
 /**
  * The hand-off of Sieć's network (D9), with the outlet's result when the last run is of
- * this very document: its provenance (siecProvenance) and the origins of its nodes
- * (siecNodeProvenance).
+ * this very document: its provenance (siecProvenance), the origins of its nodes
+ * (siecNodeProvenance) and the providers' lines of its data.
  *
  * @param {{subject: string, state: object, document: object, result?: object|null,
- *   version: string, createdAt?: string}} parts the subject, Sieć's inputs, the network's
- *   document, the result of its run (route network) and Hydrolog's version
+ *   lines?: {attribution: string[], terms_notice: string[]}|null, version: string,
+ *   createdAt?: string}} parts the subject, Sieć's inputs, the network's document, the
+ *   result of its run (route network), the lines (the run's with its result, else the
+ *   section's: siec/state.js siecLines) and Hydrolog's version
  * @returns {object} nogat-handoff/1
  */
-export function siecHandoff({ subject, state, document, result = null, version, createdAt }) {
+export function siecHandoff({ subject, state, document, result = null, lines = null, version, createdAt }) {
   return buildHandoff({
     subject,
     provenance: siecProvenance(state),
     nodeProvenance: siecNodeProvenance(state, document),
+    lines,
     payload: document,
     result: result ? outletResult(result) : null,
     page: "#siec",

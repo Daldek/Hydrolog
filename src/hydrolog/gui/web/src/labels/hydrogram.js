@@ -188,7 +188,6 @@ export const hydrogram = {
     choose: "wybierz",
     pmaxtpNote:
       "Podaj punkt zlewni (np. jej ujście) w stopniach dziesiętnych WGS84, p i czas trwania z tablic atlasu: wysokość opadu pobierze Hydrolog z atlasu PMAXTP IMGW-PIB (`precip pmaxtp`, przez Obserwatora). Nie wpisuje się jej; pobrana zostaje zapamiętana z danymi.",
-    attribution: "Źródłem pochodzenia danych jest Instytut Meteorologii i Gospodarki Wodnej – Państwowy Instytut Badawczy.",
     methods: { POT: "POT (zalecana)", AMP: "AMP" },
     depthSource: "PMAXTP IMGW-PIB, metoda {method}",
     depthPending: "po podaniu punktu, p i czasu",

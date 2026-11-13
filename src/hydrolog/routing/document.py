@@ -54,6 +54,12 @@ names of the kinds, models and shapes are those of the registries
 (:data:`~hydrolog.routing.RAINFALL_KINDS`, :data:`~hydrolog.routing.RUNOFF_MODELS`,
 :data:`~hydrolog.routing.HIETOGRAMS`).
 
+A document whose values hold data of IMGW-PIB or ČHMÚ (a PMAXTP depth of a rainfall)
+may carry at its top the lines the providers' terms require, ``attribution`` and
+``terms_notice``, each a list of non-empty strings (Nogat DEV-20.6, ADR-0028). They
+change no calculation and are not part of the network: the command that reads the
+document carries them into its result and files.
+
 :func:`write_network` is the other direction: every node writes its own fields
 (:meth:`~hydrolog.routing.Node.document_fields`, ``type`` is its registered name), the
 nodes follow in the order of evaluation and nothing that has its default is written, so
@@ -132,6 +138,8 @@ _TOP_LEVEL: Final = (
     "rainfall",
     "nodes",
 )
+_LINES: Final = ("attribution", "terms_notice")
+"""The fields of the providers' lines, read and checked here, carried by the caller."""
 
 
 def _fail(
@@ -141,6 +149,22 @@ def _fail(
     raise InvalidParameterError(
         message, details={"reason": reason, **details}, hint=hint
     )
+
+
+def _check_lines(top: Mapping[str, Any], key: str) -> None:
+    """Refuse an ``attribution`` or ``terms_notice`` that is not a list of lines."""
+    lines = top.get(key)
+    if lines is None:
+        return
+    if not isinstance(lines, list) or not all(
+        isinstance(line, str) and line.strip() for line in lines
+    ):
+        _fail(
+            f"{key} must be a list of non-empty strings, got {shown(lines)!r}",
+            reason="type",
+            field=key,
+            value=shown(lines),
+        )
 
 
 @dataclass(frozen=True)
@@ -271,14 +295,16 @@ def read_network(document: object, *, prepare: Prepare | None = None) -> Routing
     """
     top = _object(document)
     for key in top:
-        if key not in _TOP_LEVEL:
+        if key not in _TOP_LEVEL and key not in _LINES:
             _fail(
                 f"the document has the unknown field {shown(key)!r}",
                 reason="unknown_field",
                 field=shown(key),
-                allowed=list(_TOP_LEVEL),
-                hint=f"The fields are {', '.join(_TOP_LEVEL)}.",
+                allowed=[*_TOP_LEVEL, *_LINES],
+                hint=f"The fields are {', '.join((*_TOP_LEVEL, *_LINES))}.",
             )
+    for key in _LINES:
+        _check_lines(top, key)
     _check_schema(top)
     name = top.get("name")
     if name is not None and (not isinstance(name, str) or not name.strip()):

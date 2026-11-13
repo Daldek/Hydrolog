@@ -413,7 +413,10 @@ def _network_document(schema_id: str) -> dict[str, Any]:
             "rain of the subcatchments that have none; `timestep_min` fixes the time "
             "step of the network. Every node may have a `description` and a "
             "`position` in the grid of the schematic, and the network a `description` "
-            "(ADR-0023); they change no calculation."
+            "(ADR-0023); they change no calculation. A network of data of IMGW-PIB or "
+            "ČHMÚ (a PMAXTP depth) may carry `attribution` and `terms_notice`, the "
+            "lines their terms require (ADR-0028), which `route network` carries into "
+            "its result and files."
         ),
         "type": "object",
         "required": ["schema", "nodes"],
@@ -430,6 +433,20 @@ def _network_document(schema_id: str) -> dict[str, Any]:
                 ),
             },
             "rainfall": {"$ref": "#/$defs/rainfall"},
+            "attribution": {
+                "$ref": "#/$defs/lines",
+                "description": (
+                    "The attribution lines of the data providers, verbatim (Nogat "
+                    "DEV-20.6)."
+                ),
+            },
+            "terms_notice": {
+                "$ref": "#/$defs/lines",
+                "description": (
+                    "The notice of IMGW-PIB's terms of use and the addresses of the "
+                    "terms, verbatim (Nogat DEV-20.7)."
+                ),
+            },
             "nodes": {
                 "type": "array",
                 "minItems": 1,
@@ -438,6 +455,10 @@ def _network_document(schema_id: str) -> dict[str, Any]:
         },
         "additionalProperties": False,
         "$defs": {
+            "lines": {
+                "type": "array",
+                "items": {"type": "string", "pattern": r"\S"},
+            },
             "id": {
                 "type": "string",
                 "pattern": r"^\w[\w.-]*$",
@@ -809,8 +830,10 @@ def _hand_written() -> dict[str, dict[str, Any]]:
             "description": (
                 "The PMAXTP depth of IMGW-PIB that `precip pmaxtp` fetches through "
                 "Obserwator for a point, a duration and a probability, with the "
-                "attribution IMGW-PIB prescribes (ADR-0018). Unknown fields are "
-                "allowed: adding optional fields keeps the version (AGI-4.1)."
+                "source line the terms of PMAXTP prescribe (ADR-0018, ADR-0028); the "
+                "envelope's `attribution` and `terms_notice` have every line. Unknown "
+                "fields are allowed: adding optional fields keeps the version "
+                "(AGI-4.1)."
             ),
             "type": "object",
             "required": [

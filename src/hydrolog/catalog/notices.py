@@ -159,8 +159,9 @@ _SPECS: Final[tuple[NoticeSpec, ...]] = (
     NoticeSpec(
         "pmaxtp_attribution",
         "info",
-        "Name IMGW-PIB as the source of this PMAXTP depth, in the wording of the "
-        "result's `attribution`; terms of use: {terms_url}",
+        "Every product of this PMAXTP depth carries the lines of the envelope's "
+        "`attribution` and `terms_notice` (give them as `attribution` to the command "
+        "the depth goes to); PMAXTP's terms: {terms_url}",
         ("attribution", "terms_url"),
     ),
     NoticeSpec(

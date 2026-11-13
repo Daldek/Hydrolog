@@ -26,6 +26,7 @@ from starlette.testclient import TestClient
 
 import hydrolog
 from hydrolog import catalog
+from hydrolog._attribution import provider_lines
 from hydrolog.catalog import command_schema, data_commands
 from hydrolog.exceptions import ERROR_CODES, InvalidParameterError
 from hydrolog.gui import create_app
@@ -115,6 +116,7 @@ def test_a_first_request_starts_a_session_with_its_cookie(client):
         "used_bytes": 0,
         "files": [],
         "gui": None,
+        "attribution": provider_lines(),
     }
     cookie = session_cookie(response)
     name, _, attributes = cookie.partition(";")

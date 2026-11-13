@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/Daldek/Hydrolog/blob/main/src/hydrolog/schemas/hydrolog-precip-pmaxtp-1.schema.json",
   "title": "hydrolog-precip-pmaxtp/1",
-  "description": "The PMAXTP depth of IMGW-PIB that `precip pmaxtp` fetches through Obserwator for a point, a duration and a probability, with the attribution IMGW-PIB prescribes (ADR-0018). Unknown fields are allowed: adding optional fields keeps the version (AGI-4.1).",
+  "description": "The PMAXTP depth of IMGW-PIB that `precip pmaxtp` fetches through Obserwator for a point, a duration and a probability, with the source line the terms of PMAXTP prescribe (ADR-0018, ADR-0028); the envelope's `attribution` and `terms_notice` have every line. Unknown fields are allowed: adding optional fields keeps the version (AGI-4.1).",
   "type": "object",
   "required": [
     "schema",

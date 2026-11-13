@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from hydrolog._atomic import atomic_output
+from hydrolog._attribution import Attribution, current
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.catalog.envelope import Notice, OperationOutput, capture_warnings
 from hydrolog.exceptions import InvalidParameterError, OutputError
@@ -41,6 +42,8 @@ __all__ = ["ReportResult", "report_generate"]
 _TC_GIVEN_LABEL = "wartość zadana"
 _SERIES_LABEL = "opad zadany szeregiem"
 _SECTION_PREFIX = "## "
+_SOURCES_TITLE = "Źródła danych"
+"""The closing section of the providers' lines (Nogat DEV-20.5, ADR-0028)."""
 
 
 @dataclass
@@ -188,6 +191,22 @@ def _curve_number(cn: float) -> Any:
     return int(cn) if float(cn).is_integer() else cn
 
 
+def _with_sources(content: str, attribution: Attribution) -> str:
+    """Return the report with the closing section of the providers' lines.
+
+    Each attribution line, then each line of the terms notice, verbatim as an item of
+    a list, under the title :data:`_SOURCES_TITLE`, after the last section; the
+    report is unchanged without lines.
+    """
+    if not attribution:
+        return content
+    blocks = [content.rstrip("\n"), f"{_SECTION_PREFIX}{_SOURCES_TITLE}"]
+    for lines in (attribution.lines, attribution.terms_notice):
+        if lines:
+            blocks.append("\n".join(f"- {line}" for line in lines))
+    return "\n\n".join(blocks) + "\n"
+
+
 def _write(content: str, output: Path) -> None:
     """Write the report atomically (written aside, then renamed)."""
     try:
@@ -235,6 +254,7 @@ def report_generate(
     snyder_centroid_length_km: float | None = None,
     snyder_ct: float | None = None,
     snyder_cp: float | None = None,
+    attribution: list[str] | None = None,
     include_formulas: bool = True,
     include_tables: bool = True,
     max_table_rows: int = 50,
@@ -244,12 +264,15 @@ def report_generate(
     """Markdown calculation report of a design hydrograph (``report generate``).
 
     Computes the design hydrograph exactly as ``hydrograph generate`` does (the
-    parameters from ``watershed`` to ``snyder_cp`` are those of
+    parameters from ``watershed`` to ``attribution`` are those of
     :func:`hydrolog.operations.hydrograph.hydrograph_generate`) and writes the
     calculation report (:class:`hydrolog.reports.HydrologyReportGenerator`): header,
     watershed parameters (when a watershed is given), time of concentration,
     hyetograph, SCS-CN effective precipitation, unit hydrograph, convolution, result
     characteristics and water balance, with LaTeX formulas and time series tables.
+    A report of data of IMGW-PIB or ČHMÚ (the option ``attribution``, an input file
+    that carries their lines) ends with the section „Źródła danych”: the lines the
+    providers' terms require and the terms notice (ADR-0028).
 
     The report documents the computation that was performed: the unit hydrograph
     section shows the ordinates and the parameters of the model that was used, the
@@ -301,6 +324,10 @@ def report_generate(
     snyder_length_km, snyder_centroid_length_km, snyder_ct, snyder_cp : float, optional
         Snyder model: stream length and length to the centroid [km] and the
         coefficients Ct and Cp.
+    attribution : list of str, optional
+        Lines of the providers of the rainfall (ADR-0028), e.g. those of
+        ``precip pmaxtp`` whose depth is ``total_mm``; the report, like the envelope,
+        carries them, with those of ``input_file``.
     include_formulas : bool, optional
         Include the LaTeX formulas, by default ``True``.
     include_tables : bool, optional
@@ -385,6 +412,7 @@ def report_generate(
         snyder_centroid_length_km=snyder_centroid_length_km,
         snyder_ct=snyder_ct,
         snyder_cp=snyder_cp,
+        attribution=attribution,
     )
     catchment = run.watershed
     title = watershed_name or (catchment.name if catchment else None) or "Zlewnia"
@@ -421,6 +449,7 @@ def report_generate(
         for notice in warned
         if not (series_given and "ReportConfig.hietogram_type" in notice.message)
     ]
+    content = _with_sources(content, current())
     _write(content, target)
     result = run.result
     summary = ReportResult(

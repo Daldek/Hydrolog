@@ -16,6 +16,7 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
+from hydrolog._attribution import cite
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.catalog.envelope import Notice, OperationOutput, capture_warnings
 from hydrolog.catalog.inputs import read_table
@@ -170,6 +171,7 @@ def hydrometrics_rating_curve(
     h0_initial: float | None = None,
     remove_outliers: bool = False,
     outlier_std: float = 2.0,
+    attribution: list[str] | None = None,
 ) -> OperationOutput:
     """Power-law rating curve Q = a (H - H0)^b (``hydrometrics rating-curve``).
 
@@ -203,6 +205,9 @@ def hydrometrics_rating_curve(
     outlier_std : float, optional
         Residual threshold of the outliers in standard deviations, positive, by
         default 2.0.
+    attribution : list of str, optional
+        Lines of the providers of the pairs (ADR-0028); the envelope carries them,
+        with those of ``input_file``.
 
     Returns
     -------
@@ -221,6 +226,7 @@ def hydrometrics_rating_curve(
     CalculationError
         If fewer than 3 pairs are left or the fit does not converge.
     """
+    cite(attribution)
     if not math.isfinite(outlier_std) or outlier_std <= 0:
         raise InvalidParameterError(
             f"Option 'outlier_std': must be a positive number, got {outlier_std!r}",
@@ -252,6 +258,7 @@ def hydrometrics_water_level_zones(
     input_file: str | os.PathLike[str] | None = None,
     value_column: str | None = None,
     bin_width: float = 10.0,
+    attribution: list[str] | None = None,
 ) -> OperationOutput:
     """Rybczyński water level zones (``hydrometrics water-level-zones``).
 
@@ -273,6 +280,9 @@ def hydrometrics_water_level_zones(
     bin_width : float, optional
         Width of the histogram classes, in the unit of the levels, positive, by
         default 10.0.
+    attribution : list of str, optional
+        Lines of the providers of the levels (ADR-0028); the envelope carries them,
+        with those of ``input_file``.
 
     Returns
     -------
@@ -290,6 +300,7 @@ def hydrometrics_water_level_zones(
     CalculationError
         If every value is missing.
     """
+    cite(attribution)
     if not math.isfinite(bin_width) or bin_width <= 0:
         raise InvalidParameterError(
             f"Option 'bin_width': must be a positive number, got {bin_width!r}",

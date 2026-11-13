@@ -4,8 +4,10 @@
 // each row choosing its node; in the panel the outlet's numbers, the chosen node's chart
 // (its inflows and its outflow) and parameters, its hydrograph as a table, the notices,
 // the exports (with the print view) and the call, and „Przekazanie”, the hand-off
-// nogat-handoff/1 of the network (handoff/handoff-panel.js).
+// nogat-handoff/1 of the network (handoff/handoff-panel.js); at its end the providers'
+// lines of the run's envelope (attribution.js, Nogat DEV-20.5), none without them.
 
+import { Attribution, linesOf } from "../../attribution.js";
 import { toPng } from "../../charts/png.js";
 import { Chart } from "../../charts/chart.js";
 import { auto, hmm, num, parseNumber } from "../../format.js";
@@ -260,7 +262,7 @@ function ExportRow({ items }) {
       const svg = item.svg();
       if (!svg) return;
       try {
-        downloadBlob(await toPng(svg, { scale: 2 }), item.name);
+        downloadBlob(await toPng(svg, { scale: 2, footer: item.footer || [] }), item.name);
         toast(t(exportLabels.saved, { name: item.name }));
       } catch (error) {
         toast(t(exportLabels.pngFailed, { message: String((error && error.message) || error) }), "bad");
@@ -347,19 +349,20 @@ function ReservoirsNote({ node, timestep }) {
  * The panel Wyniki.
  *
  * @param {{run: object|null, stale: boolean, selected: string|null, state: object,
- *   document: object|null, valid: boolean, chartSvg: object, schematicSvg: object,
- *   error: object|null, fix: object|null, onLag: Function, onLevelPool: Function}} props
- *   the last run and whether the data changed since, the chosen node, the section's state,
- *   the network's document and whether it is complete, the refs of the node's chart and of
+ *   document: object|null, lines: object|null, valid: boolean, chartSvg: object,
+ *   schematicSvg: object, error: object|null, fix: object|null, onLag: Function,
+ *   onLevelPool: Function}} props the last run and whether the data changed since, the
+ *   chosen node, the section's state, the network's document and the providers' lines of
+ *   its data (siecLines) and whether it is complete, the refs of the node's chart and of
  *   the schematic, the last error and the changes of method it offers (ReachFix)
  * @returns {object} the panel's body
  */
-export function ResultsPanel({ run, stale, selected, state, document, valid, chartSvg, schematicSvg, error, fix, onLag, onLevelPool }) {
+export function ResultsPanel({ run, stale, selected, state, document, lines, valid, chartSvg, schematicSvg, error, fix, onLag, onLevelPool }) {
   const result = run && run.envelope.status === "ok" ? run.envelope.result : null;
   const nodes = useMemo(() => (result ? resultNodes(result) : new Map()), [result]);
   const node = result && selected ? nodes.get(selected) : null;
   const spec = useMemo(() => (result && selected ? nodeChartSpec(result, selected) : null), [result, selected]);
-  const items = exportItems({ state, document, valid, run, selected, schematicSvg });
+  const items = exportItems({ state, document, valid, run, selected, schematicSvg, lines });
   return html`
     ${error
       ? html`<div class="form-errors" role="alert" data-error="run">
@@ -402,8 +405,9 @@ export function ResultsPanel({ run, stale, selected, state, document, valid, cha
         ${run ? html`<${CommandLine} command="route network" options=${run.options} title=${false} />` : null}
       <//>
       <${Part} id="handoff" title=${handoffLabels.export.title} meta=${handoffLabels.export.meta} open=${Boolean(state.source && state.source.handoff)}>
-        <${SiecHandoff} state=${state} document=${document} valid=${valid} run=${run} stale=${stale} />
+        <${SiecHandoff} state=${state} document=${document} valid=${valid} run=${run} stale=${stale} lines=${lines} />
       <//>
     </div>
+    ${run ? html`<${Attribution} lines=${linesOf(run.envelope)} />` : null}
   `;
 }

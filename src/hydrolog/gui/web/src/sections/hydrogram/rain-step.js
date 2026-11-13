@@ -2,15 +2,17 @@
 // 2026-11-04), and the same step bound to a network in Sieć (plan
 // 2026-11-10-network-wizard, D4): the source of the rainfall among the host's `kinds`, then
 // its fields. PMAXTP gives the point, p, the duration and the method, with the depth that
-// `precip pmaxtp` fetched shown read-only (usePmaxtp; never typed); a design hyetograph its
-// depth and duration; both the shape of the hyetograph. A series gives its depths in steps
-// of the time step. Sieć adds „Brak” (its network without a rainfall, which a network of
-// given hydrographs needs) and, for a subcatchment, „Jak w sieci” (the network's rainfall in
-// words, with a link to it). The time step is the step's own (Hydrogram zlewni), the
+// `precip pmaxtp` fetched shown read-only (usePmaxtp; never typed) and the providers' lines
+// of the depth under the atlas's note (attribution.js, Nogat DEV-20.2); a design hyetograph
+// its depth and duration; both the shape of the hyetograph. A series gives its depths in
+// steps of the time step. Sieć adds „Brak” (its network without a rainfall, which a network
+// of given hydrographs needs) and, for a subcatchment, „Jak w sieci” (the network's rainfall
+// in words, with a link to it). The time step is the step's own (Hydrogram zlewni), the
 // network's shown read-only (a subcatchment in Sieć), or the host's field before the step
 // (Sieć's network). Hydrogram zlewni shows it as its numbered step 2; Sieć's network as a
 // part of its step 1, „Opad sieci”.
 
+import { Attribution } from "../../attribution.js";
 import { richText } from "../../controls/field.js";
 import { SeriesField } from "../../controls/series-field.js";
 import { inputText, num, plural } from "../../format.js";
@@ -60,7 +62,8 @@ export function rainWords(inputs, depth) {
 
 /**
  * The fields of PMAXTP: the point, p, the duration and the method, the fetched depth
- * (read-only), „Pobierz ponownie” after a failure of the source, and the atlas's notes.
+ * (read-only), „Pobierz ponownie” after a failure of the source, the atlas's note and the
+ * providers' lines of the depth.
  *
  * @param {object} props see RainStep, and `row` the step's number row
  * @returns {object} the fields
@@ -120,7 +123,7 @@ function PmaxtpFields({ prefix, inputs, errors, set, pmaxtp, row }) {
         </div>`
       : null}
     <p class="note">${richText(texts.rain.pmaxtpNote)}</p>
-    <p class="note" data-attribution="pmaxtp">${texts.rain.attribution}</p>
+    <${Attribution} lines=${pmaxtp.lines} name="pmaxtp" compact=${true} />
   `;
 }
 
@@ -168,13 +171,14 @@ function ShapeFields({ prefix, inputs, set, infoValues, row }) {
  *
  * @param {{prefix: string, kinds: string[], inputs: object, errors: Object<string,
  *   string>, warnings: Object<string, string>, required: Object<string, object>, set:
- *   (patch: object) => void, pmaxtp: {depth: number|null, busy: boolean, onRetry: (() =>
- *   void)|null}, timestep?: {own: true}|{network: string}|null, network?: {words: string,
- *   onOpen: () => void}, origin?: object|null, infoValues: object, valuesField:
- *   object|null, number?: number, title: string}} props the host's prefix of ids; the
- *   sources offered, of "none" („Brak”), "network" („Jak w sieci”), "pmaxtp", "design" and
- *   "series"; the inputs and their errors and warnings by field; what the rainfall needs;
- *   the handler of a patch of the inputs; PMAXTP's fetched depth (null until known),
+ *   (patch: object) => void, pmaxtp: {depth: number|null, lines: {attribution: string[],
+ *   terms_notice: string[]}|null, busy: boolean, onRetry: (() => void)|null}, timestep?:
+ *   {own: true}|{network: string}|null, network?: {words: string, onOpen: () => void},
+ *   origin?: object|null, infoValues: object, valuesField: object|null, number?: number,
+ *   title: string}} props the host's prefix of ids; the sources offered, of "none"
+ *   („Brak”), "network" („Jak w sieci”), "pmaxtp", "design" and "series"; the inputs and
+ *   their errors and warnings by field; what the rainfall needs; the handler of a patch of
+ *   the inputs; PMAXTP's fetched depth (null until known), its providers' lines (usePmaxtp),
  *   whether it is being fetched and how to fetch it again after a failure; the time step:
  *   the step's own field, the network's shown, or none; with "network", the network's
  *   rainfall in words and how to open it; where the rainfall came from, shown first (a
