@@ -539,6 +539,7 @@ examples from the catalog (PL/EN). The entry point is unchanged (`hydrolog.cli.m
 
 ### Fixed
 
+- **Web GUI: `alpha` of `stats mann-kendall` and `stats homogeneity` read „Parametr α”** (the author's decision of 2026-11-13): there it is the significance level of the test, not a parameter of a formula, as `alpha` is in the beta hyetograph (`precip hietogram`, `hydrograph generate`, `report generate`) and in the filter of `stats baseflow`. The two tests now label it „Poziom istotności α”; the option, its values and the results are unchanged.
 - **Web GUI on Windows did not start**: the page's scripts came as `text/plain` where the Windows registry maps `.js` so, and the browser refuses a module script of that type; the GUI now serves `.js`, `.mjs` and `.css` with their own types on every platform.
 - **Reports on Windows had CRLF line ends**: `report generate` and `HydrologyReportGenerator` write UTF-8 with `"\n"` line ends on every platform, like every other file Hydrolog writes.
 - **Files written by parallel calls on Windows** (`report generate`, `soil hsg`, `commands guide --output`): Windows refuses to replace a file while another thread or process replaces it or holds it open, so of calls that wrote the same output at once some could end with `OutputError` (`io_error`, `output_unwritable`, „Access is denied”); in the test of the shared writer 5 of 8 threads writing one file were refused. The move over the target now waits out such a refusal for up to a second, so the last call wins on Windows as it does on Linux and macOS; elsewhere nothing changes.

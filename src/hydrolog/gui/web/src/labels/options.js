@@ -216,8 +216,9 @@ export const options = {
 export const commandOptions = {
   "stats baseflow": { alpha: "Parametr filtru α" },
   "stats flood-frequency": { parameter: "Wielkość pliku półrocznego" },
-  "stats homogeneity": { parameter: "Wielkość pliku półrocznego" },
+  "stats homogeneity": { alpha: "Poziom istotności α", parameter: "Wielkość pliku półrocznego" },
   "stats low-flow": { parameter: "Wielkość pliku półrocznego" },
+  "stats mann-kendall": { alpha: "Poziom istotności α" },
   "stats threshold-events": { threshold: "Poziom progowy", min_duration_days: "Najkrótszy epizod" },
   "meteo hydrothermal": { precipitation_mm: "Opad dobowy" },
   "meteo precipitation": { precipitation_mm: "Opad dobowy" },
