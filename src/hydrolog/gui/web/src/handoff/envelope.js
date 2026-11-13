@@ -1,10 +1,12 @@
 // The envelope nogat-handoff/1 as the browser checks it: the validation keywords of
-// Nogat's schema, schemas/nogat/handoff-1.schema.json (Nogat 8848c26, copied unchanged;
-// Hydrolog never defines the envelope, plan D15), without its annotations ($schema, $id,
-// title, description, examples). The page cannot load the copy itself (it lies outside
-// the package and names remote identifiers), so tests/e2e/test_exports.py checks that
-// these keywords are the copy's, and that handoff/validate.js judges documents as
-// jsonschema judges them against the copy. Copy the schema again, then these keywords.
+// Nogat's schema, schemas/nogat/handoff-1.schema.json (Nogat edd559b on branch
+// fix/provider-attribution, which added the optional `attribution` and `terms_notice`;
+// copied unchanged; Hydrolog never defines the envelope, plan D15), without its
+// annotations ($schema, $id, title, description, examples). The page cannot load the copy
+// itself (it lies outside the package and names remote identifiers), so
+// tests/e2e/test_exports.py checks that these keywords are the copy's, and that
+// handoff/validate.js judges documents as jsonschema judges them against the copy. Copy
+// the schema again, then these keywords.
 
 /**
  * Freeze an object and everything in it.
@@ -41,6 +43,8 @@ export const ENVELOPE_SCHEMA = deepFreeze({
       propertyNames: { minLength: 1 },
       additionalProperties: { $ref: "#/$defs/node_inputs" },
     },
+    attribution: { type: "array", minItems: 1, uniqueItems: true, items: { type: "string", minLength: 1 } },
+    terms_notice: { type: "array", minItems: 1, uniqueItems: true, items: { type: "string", minLength: 1 } },
     payload: { $ref: "#/$defs/payload" },
     result: { $ref: "#/$defs/result" },
   },

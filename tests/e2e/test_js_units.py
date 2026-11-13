@@ -305,7 +305,11 @@ def test_fields_and_panes_of_real_commands(page: Any) -> None:
         {"value": "III", "meaning": "Mokro przed opadem; CN podwyższone."},
     ]
     assert fields["ia_coefficient"]["defaultText"] == "0,2"
-    assert panes == [["main", None, ["cn", "#one_of", "amc", "ia_coefficient"]]]
+    # The providers' lines of the data given inline (`attribution`) are optional
+    assert panes == [
+        ["main", None, ["cn", "#one_of", "amc", "ia_coefficient"]],
+        ["more", "Opcje dodatkowe", ["attribution"]],
+    ]
     assert one_of["title"] == "Opad"
     assert one_of["groups"] == [
         ["Suma", ["precipitation_mm"]],
@@ -318,7 +322,11 @@ def test_fields_and_panes_of_real_commands(page: Any) -> None:
     assert fields["force"]["kind"] == "boolean"
     assert panes == [
         ["main", None, ["lag_min", "#one_of", "output", "force", "check"]],
-        ["more", "Opcje dodatkowe", ["initial_outflow_m3s", "extend_min"]],
+        [
+            "more",
+            "Opcje dodatkowe",
+            ["initial_outflow_m3s", "extend_min", "attribution"],
+        ],
     ]
     assert one_of["groups"] == [
         ["Szereg", ["times_min", "discharge_m3s"]],
@@ -334,7 +342,7 @@ def test_fields_and_panes_of_real_commands(page: Any) -> None:
     assert panes[1] == [
         "more",
         "Opcje dodatkowe",
-        ["inflows_file", "time_column", "nodes", "main_stem"],
+        ["inflows_file", "time_column", "nodes", "main_stem", "attribution"],
     ]
 
     subreaches = got["musk"]["subreaches"]

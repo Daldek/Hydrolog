@@ -1,15 +1,19 @@
 // Exports of a result (plan D14):
 //   html`<${ExportPanel} spec=${{subject, csv: () => text, json: () => obj, chart: () => svg,
 //                               cli: {command, options}, report: {command, options}, print,
-//                               files}} />`
+//                               files, lines}} />`
 // CSV and JSON are written in the browser, PNG is the chart shown (charts/png.js), the
 // command line comes from the server's format_command (debounced) with the paths as the
 // person gave them ("in/x.csv" shown as "x.csv"), wrapped at " --" for display and copied
 // as shown; Python and MCP show the same options. The Markdown report runs
 // `report generate` into out/<subject>.md and downloads it; `print: true` adds „Raport do
-// druku”, the print view of css/print.css (print.js); files are the result's own.
+// druku”, the print view of css/print.css (print.js); files are the result's own. `lines`,
+// the providers' lines of the result (attribution.js, Nogat DEV-20.5), go into the CSV as
+// its two trailing columns and under the PNG's chart; the JSON has them already, and the
+// report gets them from the option `attribution` of the result's options.
 
 import { api } from "../api.js";
+import { csvWithLines, footerLines } from "../attribution.js";
 import { toPng } from "../charts/png.js";
 import { bytes } from "../format.js";
 import { html, useEffect, useState } from "../html.js";
@@ -291,7 +295,8 @@ export function FileList({ files }) {
 }
 
 /**
- * The export buttons: CSV, JSON, PNG, the Markdown report and the print view.
+ * The export buttons: CSV, JSON, PNG, the Markdown report and the print view; the CSV and
+ * the PNG carry the spec's `lines`.
  *
  * @param {{spec: object}} props the export spec
  * @returns {object} the buttons
@@ -302,7 +307,7 @@ export function ExportButtons({ spec }) {
   const [report, setReport] = useState(null);
   const saveCsv = () => {
     const name = `${base}.csv`;
-    downloadBlob(new Blob([spec.csv()], { type: "text/csv;charset=utf-8" }), name);
+    downloadBlob(new Blob([csvWithLines(spec.csv(), spec.lines || null)], { type: "text/csv;charset=utf-8" }), name);
     toast(t(texts.saved, { name }));
   };
   const saveJson = () => {
@@ -314,7 +319,7 @@ export function ExportButtons({ spec }) {
     const svg = spec.chart();
     if (!svg) return;
     try {
-      const blob = await toPng(svg, { scale: 2 });
+      const blob = await toPng(svg, { scale: 2, footer: footerLines(spec.lines || null) });
       const name = `${base}.png`;
       downloadBlob(blob, name);
       toast(t(texts.saved, { name }));
@@ -375,8 +380,8 @@ export function ExportButtons({ spec }) {
  *
  * @param {{spec: {subject: string, csv?: () => string, json?: () => object,
  *   chart?: () => SVGSVGElement|null, cli?: {command: string, options: object},
- *   report?: {command: string, options: object}, print?: boolean, files?: object[]}}} props
- *   the export spec
+ *   report?: {command: string, options: object}, print?: boolean, files?: object[],
+ *   lines?: {attribution: string[], terms_notice: string[]}}}} props the export spec
  * @returns {object} the panel
  */
 export function ExportPanel({ spec }) {

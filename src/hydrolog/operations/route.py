@@ -6,7 +6,9 @@ Every command of the group takes a discharge hydrograph at a regular time step
 model used, peaks, volumes, the storage at both ends, the balance error and the
 extension of the time axis (ADR-0008). The outflow series is in the result unless
 ``output`` names a file; the file holds the same series as a hydrograph table
-(``time_min``, ``discharge_m3s``), a valid input of every ``route`` command.
+(``time_min``, ``discharge_m3s``), a valid input of every ``route`` command, and, when
+the inflow carries data of IMGW-PIB or ČHMÚ, the columns ``attribution`` and
+``terms_notice`` of their lines (Nogat DEV-20.5, ADR-0028).
 
 Without ``output`` a command has nothing to plan, so ``check`` computes as usual: a
 read-only MCP server, which runs every writing tool with ``check``, can still route.
@@ -15,9 +17,11 @@ read-only MCP server, which runs every writing tool with ``check``, can still ro
 (the document ``hydrolog-network/1``, read by :mod:`hydrolog.operations._network_input`)
 and returns a :class:`NetworkRouteResult`, the summary of every node. The hydrograph of
 each node is in the result or, with ``output_dir``, in its own table ``<id>.csv``; the
-tables are written through a staging directory (DEV-19.7, ADR-0010). With ``schematic``
-it also draws the network as an SVG map (ADR-0013) and returns the document that the
-drawing is made of. :func:`route_schematic` reads a network the same way and returns
+tables are written through a staging directory (DEV-19.7, ADR-0010) and carry the
+providers' lines like the table of ``output``. With ``schematic``
+it also draws the network as an SVG map (ADR-0013), the providers' lines under it, and
+returns the document that the drawing is made of. :func:`route_schematic` reads a
+network the same way and returns
 that document without values (:class:`RouteSchematicResult`), routing nothing and
 writing nothing; with ``structure_only`` it reads the structure alone, a draft whose
 values may be missing, and lays it out (ADR-0025). A schematic is drawn at the positions
@@ -39,6 +43,13 @@ import numpy as np
 from numpy.typing import NDArray
 
 from hydrolog._atomic import atomic_output, staging_directory
+from hydrolog._attribution import (
+    ATTRIBUTION_FILE,
+    attribution_text,
+    cite,
+    csv_with_attribution,
+    current,
+)
 from hydrolog._serialization import JsonResultMixin, to_jsonable
 from hydrolog.catalog.envelope import Notice, OperationOutput, capture_warnings
 from hydrolog.catalog.inputs import load_hydrograph, load_rating
@@ -258,6 +269,41 @@ def _write_table(text: str, output: Path) -> None:
         ) from exc
 
 
+def _footer() -> tuple[str, ...]:
+    """Return the lines under a schematic: those the run has met (ADR-0028)."""
+    lines = current()
+    return (*lines.lines, *lines.terms_notice)
+
+
+def _write_attribution(directory: Path, written: Sequence[Path]) -> Path | None:
+    """Write ``ATTRIBUTION.txt`` of the run's lines into ``directory`` (DEV-20.5).
+
+    Nothing without lines; an existing file keeps its lines, merged with the run's
+    (each once, in order), and is replaced atomically. Returns the file, or ``None``.
+    """
+    lines = current()
+    if not lines:
+        return None
+    path = directory / ATTRIBUTION_FILE
+    try:
+        existing = path.read_text(encoding="utf-8") if path.is_file() else ""
+        with atomic_output(path) as temporary:
+            temporary.write_text(
+                attribution_text(lines, existing), encoding="utf-8", newline="\n"
+            )
+    except (OSError, UnicodeDecodeError) as exc:
+        raise OutputError(
+            f"Cannot write {path}: {exc}",
+            details={
+                "path": str(path),
+                "reason": "output_unwritable",
+                "written": [str(item) for item in written],
+            },
+            hint="The tables listed in details.written were already moved into place.",
+        ) from exc
+    return path
+
+
 def _write_directory(
     directory: Path, tables: Mapping[str, str], *, force: bool
 ) -> None:
@@ -326,6 +372,7 @@ def _route(
     force: bool,
     check: bool,
     other_inputs: Mapping[str, str | os.PathLike[str] | None] | None = None,
+    attribution: Sequence[str] | None = None,
 ) -> OperationOutput:
     """Run one element over the loaded hydrograph and deliver the result.
 
@@ -337,6 +384,8 @@ def _route(
     The order is the one of the writing commands: refuse an output that is an input,
     plan the output, answer a ``check`` with the plan, fail on a conflict, and only
     then read and compute. A ``check`` without ``output`` has no plan: it computes.
+    ``attribution`` is cited for the run once it computes; the table of ``output``
+    carries every line the run has met (:func:`hydrolog._attribution.current`).
     """
     target = None if output is None else Path(os.fspath(output))
     if target is not None:
@@ -350,6 +399,7 @@ def _route(
         return plan_output(plan)
     if (error := conflict_error(plan)) is not None:
         raise error
+    cite(attribution)
     element = reach() if callable(reach) else reach
     inflow = load_hydrograph(
         times_min=times_min,
@@ -365,7 +415,7 @@ def _route(
     result = RouteResult.from_routing(run, with_series=target is None)
     if target is None:
         return OperationOutput(result, notices)
-    _write_table(run.outflow.to_table(), target)
+    _write_table(csv_with_attribution(run.outflow.to_table(), current()), target)
     return OperationOutput(result, notices, files=(target,), replaced=plan.replaced)
 
 
@@ -382,6 +432,7 @@ def route_lag(
     output: str | os.PathLike[str] | None = None,
     force: bool = False,
     check: bool = False,
+    attribution: list[str] | None = None,
 ) -> OperationOutput:
     """Lag routing of a hydrograph (``route lag``).
 
@@ -417,6 +468,9 @@ def route_lag(
         With ``output``: plan without effects and return the ``hydrolog-plan/1``
         document of the target. Without ``output`` there is nothing to plan and the
         result is computed as usual.
+    attribution : list of str, optional
+        Lines of the providers of the inflow (ADR-0028); the envelope and the table of
+        ``output`` carry them, with those of ``input_file``.
 
     Returns
     -------
@@ -452,6 +506,7 @@ def route_lag(
         output=output,
         force=force,
         check=check,
+        attribution=attribution,
     )
 
 
@@ -470,6 +525,7 @@ def route_muskingum(
     output: str | os.PathLike[str] | None = None,
     force: bool = False,
     check: bool = False,
+    attribution: list[str] | None = None,
 ) -> OperationOutput:
     """Muskingum routing of a hydrograph (``route muskingum``).
 
@@ -515,6 +571,9 @@ def route_muskingum(
         With ``output``: plan without effects and return the ``hydrolog-plan/1``
         document of the target. Without ``output`` there is nothing to plan and the
         result is computed as usual.
+    attribution : list of str, optional
+        Lines of the providers of the inflow (ADR-0028); the envelope and the table of
+        ``output`` carry them, with those of ``input_file``.
 
     Returns
     -------
@@ -553,6 +612,7 @@ def route_muskingum(
         output=output,
         force=force,
         check=check,
+        attribution=attribution,
     )
 
 
@@ -576,6 +636,7 @@ def route_muskingum_cunge(
     output: str | os.PathLike[str] | None = None,
     force: bool = False,
     check: bool = False,
+    attribution: list[str] | None = None,
 ) -> OperationOutput:
     """Muskingum-Cunge routing of a hydrograph (``route muskingum-cunge``).
 
@@ -642,6 +703,9 @@ def route_muskingum_cunge(
         With ``output``: plan without effects and return the ``hydrolog-plan/1``
         document of the target. Without ``output`` there is nothing to plan and the
         result is computed as usual.
+    attribution : list of str, optional
+        Lines of the providers of the inflow (ADR-0028); the envelope and the table of
+        ``output`` carry them, with those of ``input_file``.
 
     Returns
     -------
@@ -690,6 +754,7 @@ def route_muskingum_cunge(
         output=output,
         force=force,
         check=check,
+        attribution=attribution,
     )
 
 
@@ -709,6 +774,7 @@ def route_cascade(
     output: str | os.PathLike[str] | None = None,
     force: bool = False,
     check: bool = False,
+    attribution: list[str] | None = None,
 ) -> OperationOutput:
     """Cascade-of-reservoirs routing of a hydrograph (``route cascade``).
 
@@ -757,6 +823,9 @@ def route_cascade(
         With ``output``: plan without effects and return the ``hydrolog-plan/1``
         document of the target. Without ``output`` there is nothing to plan and the
         result is computed as usual.
+    attribution : list of str, optional
+        Lines of the providers of the inflow (ADR-0028); the envelope and the table of
+        ``output`` carry them, with those of ``input_file``.
 
     Returns
     -------
@@ -799,6 +868,7 @@ def route_cascade(
         output=output,
         force=force,
         check=check,
+        attribution=attribution,
     )
 
 
@@ -819,6 +889,7 @@ def route_level_pool(
     output: str | os.PathLike[str] | None = None,
     force: bool = False,
     check: bool = False,
+    attribution: list[str] | None = None,
 ) -> OperationOutput:
     """Level-pool routing of a hydrograph (``route level-pool``).
 
@@ -875,6 +946,9 @@ def route_level_pool(
         With ``output``: plan without effects and return the ``hydrolog-plan/1``
         document of the target. Without ``output`` there is nothing to plan and the
         result is computed as usual.
+    attribution : list of str, optional
+        Lines of the providers of the inflow (ADR-0028); the envelope and the table of
+        ``output`` carry them, with those of ``input_file``.
 
     Returns
     -------
@@ -939,6 +1013,7 @@ def route_level_pool(
         force=force,
         check=check,
         other_inputs={"rating_file": rating_file},
+        attribution=attribution,
     )
 
 
@@ -1075,6 +1150,7 @@ def route_network(
     main_stem: Sequence[str] | None = None,
     force: bool = False,
     check: bool = False,
+    attribution: list[str] | None = None,
 ) -> OperationOutput:
     """Route hydrographs down a river network (``route network``).
 
@@ -1134,6 +1210,11 @@ def route_network(
         With ``output_dir`` or ``schematic``: plan without effects and return the
         ``hydrolog-plan/1`` document of the files. Without either there is nothing to
         plan and the result is computed as usual.
+    attribution : list of str, optional
+        Lines of the providers of the network's data (ADR-0028), e.g. those of
+        ``precip pmaxtp`` whose depth is a rainfall's ``total_mm``; the envelope, the
+        tables and the schematic carry them, with those of the document
+        (``attribution`` and ``terms_notice`` at its top) and of ``inflows_file``.
 
     Returns
     -------
@@ -1221,6 +1302,7 @@ def route_network(
             return plan_output(plan)
         if (error := conflict_error(plan)) is not None:
             raise error
+    cite(attribution)
     with capture_warnings() as warned:
         run = graph.route()
     returned = set(selected) if directory is None else set()
@@ -1276,23 +1358,28 @@ def route_network(
     if target is not None:
         result.schematic, laid_out = _schematic_of(graph, main_stem, run)
         notices.extend(laid_out)
-        drawing = schematic_svg(result.schematic)
+        drawing = schematic_svg(result.schematic, footer=_footer())
     files: list[Path] = []
+    replaced: list[str | os.PathLike[str]] = [] if plan is None else [*plan.replaced]
     if directory is not None:
         tables = {
-            f"{node_id}.csv": run.hydrographs[node_id].to_table()
+            f"{node_id}.csv": csv_with_attribution(
+                run.hydrographs[node_id].to_table(), current()
+            )
             for node_id in selected
         }
         _write_directory(directory, tables, force=force)
         files.extend(directory / name for name in tables)
+        existed = (directory / ATTRIBUTION_FILE).is_file()
+        if (sources := _write_attribution(directory, files)) is not None:
+            files.append(sources)
+            if existed:
+                replaced.append(sources)
     if target is not None and drawing is not None:
         _write_schematic(drawing, target, files)
         files.append(target)
     return OperationOutput(
-        result,
-        tuple(notices),
-        files=tuple(files),
-        replaced=() if plan is None else plan.replaced,
+        result, tuple(notices), files=tuple(files), replaced=tuple(replaced)
     )
 
 

@@ -34,6 +34,17 @@ without preprocessing. JSON may be a list of records, an object of equal-length
 columns, or a plain list of numbers (one column called ``values``); a missing JSON
 value is ``null`` (``NaN`` is not JSON and is rejected).
 
+Attribution
+-----------
+The lines the data providers' terms require travel with the data (Nogat DEV-20.5,
+DEV-20.6): the CSV columns ``attribution`` and ``terms_notice`` (one line per cell from
+the first data row down, a cell may hold several lines) and Obserwator's
+``attribution_source`` and ``attribution_processed`` are not data: :func:`read_table`
+leaves them out of the table, keeps their lines in :attr:`Table.attribution` and cites
+them for the run (:func:`hydrolog._attribution.cite`). The fields ``attribution`` and
+``terms_notice`` of a JSON object (a table of columns, a network, a watershed) are cited
+the same way.
+
 Numbers are read from ``12.5`` or ``12,5`` (decimal comma); an empty cell, ``NaN``,
 ``NA``, ``N/A``, ``null`` and ``none`` are missing values (``NaN``). A column name is
 matched exactly or, when unique, by its name without the ``[unit]`` suffix (``Q``
@@ -70,6 +81,13 @@ from typing import Any, NamedTuple, NoReturn, get_args, get_type_hints
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from hydrolog._attribution import (
+    CSV_COLUMNS,
+    Attribution,
+    cite,
+    lines_of_columns,
+    lines_of_document,
+)
 from hydrolog.exceptions import InputDataError, InvalidParameterError, NotFoundError
 from hydrolog.morphometry.watershed_params import WatershedParameters
 from hydrolog.precipitation.interpolation import Station
@@ -236,15 +254,19 @@ class Table:
     source : pathlib.Path
         The file the table was read from.
     columns : tuple of str
-        Column names in file order (names with surrounding whitespace stripped).
+        Column names in file order (names with surrounding whitespace stripped), the
+        attribution columns left out.
     data : dict
         Cells by column name: strings for CSV, JSON values for JSON files. All lists
         have the same length.
+    attribution : Attribution
+        The providers' lines of the file's attribution columns or fields.
     """
 
     source: Path
     columns: tuple[str, ...]
     data: dict[str, list[Any]]
+    attribution: Attribution = Attribution()
 
     @property
     def n_rows(self) -> int:
@@ -430,7 +452,15 @@ def _table_from_csv(path: Path, text: str) -> Table:
             )
         for index in keep:
             data[header[index]].append(row[index].strip())
-    return Table(source=path, columns=tuple(header[index] for index in keep), data=data)
+    cited: dict[str, list[Any]] = {
+        name: data.pop(name) for name in CSV_COLUMNS if name in data
+    }
+    return Table(
+        source=path,
+        columns=tuple(header[index] for index in keep if header[index] not in cited),
+        data=data,
+        attribution=lines_of_columns(cited),
+    )
 
 
 def _table_from_json(path: Path, document: Any) -> Table:
@@ -450,6 +480,15 @@ def _table_from_json(path: Path, document: Any) -> Table:
                 source=path, columns=("values",), data={"values": list(document)}
             )
         source.fail(f"unsupported list content; expected {shapes}", reason="shape")
+    if isinstance(document, Mapping):
+        attribution = lines_of_document(document)
+        document = {
+            key: value
+            for key, value in document.items()
+            if key not in ("attribution", "terms_notice")
+        }
+    else:
+        attribution = Attribution()
     if (
         isinstance(document, Mapping)
         and document
@@ -460,7 +499,7 @@ def _table_from_json(path: Path, document: Any) -> Table:
             source.fail("the columns have different lengths", reason="ragged_columns")
         columns = tuple(str(key) for key in document)
         data = {str(key): list(value) for key, value in document.items()}
-        return Table(source=path, columns=columns, data=data)
+        return Table(source=path, columns=columns, data=data, attribution=attribution)
     source.fail(f"unsupported JSON structure; expected {shapes}", reason="shape")
 
 
@@ -476,7 +515,8 @@ def read_table(path: str | os.PathLike[str]) -> Table:
     Returns
     -------
     Table
-        The columns of the file (see the module docstring for the accepted shapes).
+        The columns of the file (see the module docstring for the accepted shapes);
+        its attribution lines are cited for the run.
 
     Raises
     ------
@@ -489,8 +529,11 @@ def read_table(path: str | os.PathLike[str]) -> Table:
     resolved = _file_path(path)
     text = _read_text(resolved)
     if _is_json(resolved, text):
-        return _table_from_json(resolved, _parse_json(resolved, text))
-    return _table_from_csv(resolved, text)
+        table = _table_from_json(resolved, _parse_json(resolved, text))
+    else:
+        table = _table_from_csv(resolved, text)
+    cite(table.attribution)
+    return table
 
 
 def read_json(path: str | os.PathLike[str]) -> Any:
@@ -505,7 +548,8 @@ def read_json(path: str | os.PathLike[str]) -> Any:
     Returns
     -------
     object
-        The parsed document: a ``dict``, a ``list`` or a scalar.
+        The parsed document: a ``dict``, a ``list`` or a scalar. The fields
+        ``attribution`` and ``terms_notice`` of an object are cited for the run.
 
     Raises
     ------
@@ -517,7 +561,9 @@ def read_json(path: str | os.PathLike[str]) -> Any:
         ``details.column`` for a syntax error).
     """
     resolved = _file_path(path)
-    return _parse_json(resolved, _read_text(resolved))
+    document = _parse_json(resolved, _read_text(resolved))
+    cite(lines_of_document(document))
+    return document
 
 
 def load_records(path: str | os.PathLike[str]) -> list[dict[str, Any]]:
@@ -1323,6 +1369,7 @@ def load_watershed(
         source = _Source(option="watershed")
     if not isinstance(document, Mapping):
         source.fail("expected a JSON object with watershed parameters", reason="shape")
+    cite(lines_of_document(document))
     return _watershed_from_mapping(document, source)
 
 

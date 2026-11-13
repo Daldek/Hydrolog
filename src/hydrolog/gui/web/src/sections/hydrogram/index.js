@@ -24,6 +24,11 @@
 // outside the atlas stands on its field, any other failure (IMGW-PIB unreachable) on the
 // row of the depth, with „Pobierz ponownie”.
 //
+// The providers' lines (attribution.js, Nogat DEV-20): those of the PMAXTP depth in use
+// and of a received hand-off go to every run as its option `attribution` (a run waits
+// until GET api/session gives the lines of a depth kept without them), and the views and
+// exports show and carry the lines of the run's envelope.
+//
 // The section sets the store's "watershed" (the `watershed` of hydrolog-network/1, for
 // Kalkulatory), its "status" and "context", and draws the store's "reference" (a quantile
 // of Statystyka) on the hydrograph. The route #hydrogram/tc_method/<method> sets the method
@@ -32,6 +37,7 @@
 // useHandoffInbox as a patch of the inputs whose `origin` names the producer.
 
 import { api } from "../../api.js";
+import { linesOf, mergeLines, withAttribution } from "../../attribution.js";
 import { roundedText } from "../../format.js";
 import { withReason } from "../../forms/model.js";
 import { useHandoffInbox } from "../../handoff/handoff-panel.js";
@@ -222,12 +228,16 @@ export default function Hydrogram({ path = [] }) {
   const pmaxtpFailed = pmaxtp.failed;
   const pmaxtpBusy = pmaxtp.busy;
 
+  // The providers' lines of the data: the PMAXTP depth's and a received hand-off's (null
+  // while GET api/session, which gives a kept depth's, has not arrived: the run waits)
+  const lines = mergeLines(pmaxtp.lines, linesOf(inputs.handoff));
   const rainReady = inputs.rain_source !== "pmaxtp" || depth !== null;
-  const valid = checked !== null && inputs.uh_model !== null && Object.keys(checked.errors).length === 0 && rainReady;
+  const valid = checked !== null && inputs.uh_model !== null && Object.keys(checked.errors).length === 0 && rainReady && lines !== null;
+  const linesKey = JSON.stringify(lines);
   const request = useMemo(() => {
     if (!valid) return null;
-    return { inputs, options: toOptions(inputs) };
-  }, [valid, inputs]);
+    return { inputs, options: withAttribution(toOptions(inputs), lines) };
+  }, [valid, inputs, linesKey]);
   const key = request ? JSON.stringify(request.options) : null;
   const latestKey = useRef(key);
   latestKey.current = key;
@@ -403,7 +413,7 @@ export default function Hydrogram({ path = [] }) {
             computed=${result}
             models=${docs.models}
             infoValues=${values}
-            pmaxtp=${{ depth, busy: pmaxtpBusy, onRetry: pmaxtp.onRetry }}
+            pmaxtp=${{ depth, lines: pmaxtp.lines, busy: pmaxtpBusy, onRetry: pmaxtp.onRetry }}
             network=${null}
             hint=${{ anchor: "przyklad", name: "hydrogram" }}
           />`

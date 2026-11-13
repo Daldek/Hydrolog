@@ -538,22 +538,22 @@ function HydrographStep(props) {
  *   string, text: string) => void, errors: Object<string, string>, warnings: Object<string,
  *   string>, required: Object<string, {purpose: string}>, formError: {title: string, text:
  *   string}|null, computed: object|null, models: object|null, infoValues: object, pmaxtp:
- *   {depth: number|null, busy: boolean, onRetry: (() => void)|null}, network: {rainfall:
- *   string, timestep_min: string, onOpen: () => void}|null, origins?: {rainfall:
- *   object|null, runoff: object|null}|null, onFile: (file: File) => void, onHandoff?: (doc:
- *   object) => ({title: string, lines: string[]}|null), hint: {anchor: string, name:
- *   string}|null}} props the host's prefix of every id („hg”, „sn”); the inputs and the
- *   handlers of a patch of them and of a field of the watershed; the errors and warnings
- *   by field; what the chosen model needs (requirements); the error above the steps; the
- *   values a run gave (fields of `hydrograph generate`'s result, any missing) or null; the
- *   field models; the values the (i) explanations check; PMAXTP's fetched depth (null
- *   until known), whether it is being fetched and how to fetch it again after a failure;
- *   the network's rainfall in words, its time step and how to open it (Sieć; null on its
- *   own); the cards of where the rainfall and the runoff came from (handoff/mapping.js
- *   originCard; Sieć's node that came in a hand-off), shown first in steps 2 and 3; the
- *   handler of a watershed file; what „Wczytaj z Hydrografa” does with the opened
- *   hand-off (default: it opens where it belongs); the empty hint of a blank step 1, or
- *   null
+ *   {depth: number|null, lines: object|null, busy: boolean, onRetry: (() => void)|null},
+ *   network: {rainfall: string, timestep_min: string, onOpen: () => void}|null, origins?:
+ *   {rainfall: object|null, runoff: object|null}|null, onFile: (file: File) => void,
+ *   onHandoff?: (doc: object) => ({title: string, lines: string[]}|null), hint: {anchor:
+ *   string, name: string}|null}} props the host's prefix of every id („hg”, „sn”); the
+ *   inputs and the handlers of a patch of them and of a field of the watershed; the errors
+ *   and warnings by field; what the chosen model needs (requirements); the error above the
+ *   steps; the values a run gave (fields of `hydrograph generate`'s result, any missing) or
+ *   null; the field models; the values the (i) explanations check; PMAXTP's fetched depth
+ *   (null until known), its providers' lines, whether it is being fetched and how to fetch
+ *   it again after a failure; the network's rainfall in words, its time step and how to
+ *   open it (Sieć; null on its own); the cards of where the rainfall and the runoff came
+ *   from (handoff/mapping.js originCard; Sieć's node that came in a hand-off), shown first
+ *   in steps 2 and 3; the handler of a watershed file; what „Wczytaj z Hydrografa” does
+ *   with the opened hand-off (default: it opens where it belongs); the empty hint of a
+ *   blank step 1, or null
  * @returns {object} the steps
  */
 export function SubcatchmentSteps(props) {

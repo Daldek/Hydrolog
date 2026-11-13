@@ -79,6 +79,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Final, NoReturn
 
+from hydrolog._attribution import cite, lines_of_document
 from hydrolog.catalog.groups.route import (
     DISCHARGE_M3S,
     EXTEND_MIN,
@@ -474,6 +475,7 @@ def _document(
         return document, _Where(path), Path(os.path.realpath(path)).parent
     # a value that is not an object is reported by the reader, like one from a file
     document = NETWORK.normalize(network) if isinstance(network, Mapping) else network
+    cite(lines_of_document(document))  # a file's lines read_json cited
     return document, _Where(None), None
 
 

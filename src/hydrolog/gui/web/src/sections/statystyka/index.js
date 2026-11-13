@@ -22,9 +22,15 @@
 // inputs; „Auto” restores the ranges of the result (plan 2026-11-06, D8).
 // A station's series handed off by Archiwista (ADR-0020, „Wczytaj z Archiwisty”) arrives
 // through useHandoffInbox as the source and values it opens with, and the data panel names
-// where it came from until the series is changed.
+// where it came from until the series is changed, with the providers' lines of the series
+// (its hand-off's, or for an older one the set GET api/session gives for the provider its
+// provenance names: attribution.js receivedLines), which every run of it carries as its
+// option `attribution` (the flood quantiles, the curves and the homogeneity tests; a run
+// waits for the session the lines need). A file brings its own lines, which the server
+// reads. The views and exports show and carry the lines of the run's envelope.
 
 import { api } from "../../api.js";
+import { NO_LINES, receivedLines, withAttribution } from "../../attribution.js";
 import { extent } from "../../charts/scale.js";
 import { useSession } from "../../controls/file-field.js";
 import { useHandoffInbox } from "../../handoff/handoff-panel.js";
@@ -148,7 +154,14 @@ export default function Statystyka() {
   const model = useMemo(() => (doc ? fieldModel(doc, { values }) : null), [doc, values]);
   const problems = useMemo(() => (model ? validate(model, values) : {}), [model, values]);
   const valid = Boolean(model) && !Object.keys(problems).length;
-  const options = useMemo(() => (valid ? toOptions(model, values) : null), [valid, model, values]);
+  // The providers' lines of a received series (null while the session they need has not
+  // arrived: nothing runs before)
+  const lines = state.received ? receivedLines(state.received, session) : NO_LINES;
+  const linesKey = JSON.stringify(lines);
+  const options = useMemo(
+    () => (valid && lines !== null ? withAttribution(toOptions(model, values), lines) : null),
+    [valid, model, values, linesKey],
+  );
 
   const files = (session && session.files) || [];
   const path = state.source === "file" ? state.values.input_file || "" : "";
@@ -408,6 +421,7 @@ export default function Statystyka() {
       values=${values}
       source=${state.source}
       received=${state.received || null}
+      lines=${lines}
       errors=${shownErrors}
       onValue=${onValue}
       onSource=${onSource}

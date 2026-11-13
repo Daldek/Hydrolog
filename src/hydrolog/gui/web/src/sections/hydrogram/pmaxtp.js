@@ -4,17 +4,20 @@
 // depth remembered with the inputs (`pmaxtp_fetched`) is used while it was fetched for the
 // same options; otherwise, once they are given and valid, `precip pmaxtp` fetches it on the
 // host's channel (debounced as a run, a newer fetch superseding an older one, never a run)
-// and the host keeps the record it is handed. A point outside the atlas stands on its
-// field, any other failure (IMGW-PIB unreachable, an answer without a depth) on the row of
-// the depth, with „Pobierz ponownie”.
+// and the host keeps the record it is handed, with the providers' lines of the answer
+// (Nogat DEV-20.2), which the step shows under the depth and the runs carry. A point
+// outside the atlas stands on its field, any other failure (IMGW-PIB unreachable, an
+// answer without a depth) on the row of the depth, with „Pobierz ponownie”.
 
 import { api } from "../../api.js";
+import { linesOf } from "../../attribution.js";
+import { useSession } from "../../controls/file-field.js";
 import { withReason } from "../../forms/model.js";
 import { useEffect, useMemo, useRef, useState } from "../../html.js";
 import { describeError } from "../../labels/errors.js";
 import { describeNotice } from "../../labels/notices.js";
 import { createChannel } from "../../recompute.js";
-import { PMAXTP_COMMAND, PMAXTP_FIELDS, pmaxtpDepth, pmaxtpKey, pmaxtpOptions, pmaxtpRecord } from "./state.js";
+import { PMAXTP_COMMAND, PMAXTP_FIELDS, pmaxtpDepth, pmaxtpKey, pmaxtpLines, pmaxtpOptions, pmaxtpRecord } from "./state.js";
 
 /**
  * Word an error of a PMAXTP fetch: on the field of the point it names (a point outside the
@@ -37,15 +40,18 @@ function wordPmaxtpError(doc) {
  * @param {{channel: string, valid: boolean, onDepth: (record: object) => void}} options the
  *   host's channel; whether the fields of PMAXTP passed their checks (nothing is fetched
  *   before); and what keeps a fetched depth: the record of pmaxtpRecord, the options it was
- *   fetched for with `depth_mm`, for the host's `pmaxtp_fetched`
- * @returns {{depth: number|null, busy: boolean, failed: {key: string, fields: Object<string,
- *   string>, text: string}|null, onRetry: (() => void)|null, reset: () => void}} the depth
- *   [mm] (null while it is to be fetched or the rainfall is not PMAXTP), whether it is being
- *   fetched, the failure of the fetch of these options with its messages by field, „Pobierz
- *   ponownie” after a failure of the source, and what drops a fetch and its failure
- *   („Wyczyść”)
+ *   fetched for with `depth_mm` and the answer's lines, for the host's `pmaxtp_fetched`
+ * @returns {{depth: number|null, lines: {attribution: string[], terms_notice:
+ *   string[]}|null, busy: boolean, failed: {key: string, fields: Object<string, string>,
+ *   text: string}|null, onRetry: (() => void)|null, reset: () => void}} the depth [mm]
+ *   (null while it is to be fetched or the rainfall is not PMAXTP), the providers' lines of
+ *   the depth (pmaxtpLines: none without one, null while GET api/session they need has not
+ *   arrived), whether it is being fetched, the failure of the fetch of these options with
+ *   its messages by field, „Pobierz ponownie” after a failure of the source, and what drops
+ *   a fetch and its failure („Wyczyść”)
  */
 export function usePmaxtp(inputs, { channel, valid, onDepth }) {
+  const session = useSession();
   const [failure, setFailure] = useState(null);
   const [busy, setBusy] = useState(false);
   const outcome = useRef(null);
@@ -83,7 +89,7 @@ export function usePmaxtp(inputs, { channel, valid, onDepth }) {
       return;
     }
     setFailure(null);
-    keep.current(pmaxtpRecord(value.options, result.depth_mm));
+    keep.current(pmaxtpRecord(value.options, result.depth_mm, linesOf(envelope)));
   };
 
   useEffect(() => {
@@ -105,6 +111,7 @@ export function usePmaxtp(inputs, { channel, valid, onDepth }) {
 
   return {
     depth,
+    lines: pmaxtpLines(inputs, session),
     busy,
     failed,
     // A failure of the source itself (not of the point) may pass: „Pobierz ponownie”

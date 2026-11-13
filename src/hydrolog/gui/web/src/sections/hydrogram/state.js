@@ -8,9 +8,11 @@
 // PMAXTP (ADR-0018): the person gives the point (latitude and longitude, WGS84), the
 // probability and the duration of IMGW-PIB's atlas and its method; the depth is never typed.
 // `precip pmaxtp` fetches it (pmaxtpOptions), and the depth it gave is kept with the inputs
-// as `pmaxtp_fetched` (the options it was fetched for and `depth_mm`), so a reload shows it
-// without fetching again; it is the `total_mm` of a run while the options are the same
-// (pmaxtpDepth).
+// as `pmaxtp_fetched` (the options it was fetched for, `depth_mm` and the providers' lines
+// of the answer, `attribution` and `terms_notice`), so a reload shows it without fetching
+// again; it is the `total_mm` of a run while the options are the same (pmaxtpDepth), and
+// its lines go with the run (pmaxtpLines: a depth kept before the lines came, or handed
+// off without them, takes PMAXTP's set of GET api/session).
 //
 // Nothing is required until a model is chosen in step 3; a value that is not a number or
 // leaves the bounds of `watershed` of hydrolog-network-1.schema.json or of the catalog
@@ -31,6 +33,7 @@
 // detail, label, mark, values}; a field that differs from `origin.values` is marked
 // „zmieniono” with „przywróć”.
 
+import { NO_LINES, hasLines, linesFields, linesOf, providerLines } from "../../attribution.js";
 import { inputText, parseNumber } from "../../format.js";
 import { commandEntry, fieldModel, parseSeries, validate, withReason } from "../../forms/model.js";
 import { t } from "../../labels/common.js";
@@ -512,14 +515,32 @@ export function pmaxtpDepth(inputs) {
 
 /**
  * What the inputs keep of a fetched depth (`pmaxtp_fetched`): the options it was fetched
- * for and the depth.
+ * for, the depth and the providers' lines of the answer.
  *
  * @param {object} options the options of `precip pmaxtp`
  * @param {number} depth the depth [mm]
+ * @param {{attribution: string[], terms_notice: string[]}} [lines] the `attribution` and
+ *   `terms_notice` of the answer (none for a depth handed off)
  * @returns {object} the record
  */
-export function pmaxtpRecord(options, depth) {
-  return { ...options, depth_mm: depth };
+export function pmaxtpRecord(options, depth, lines = NO_LINES) {
+  return { ...options, depth_mm: depth, ...linesFields(lines) };
+}
+
+/**
+ * The providers' lines of the PMAXTP depth the inputs use (Nogat DEV-20.2): the lines
+ * kept with it, else PMAXTP's set of GET api/session (a depth kept before the lines came,
+ * or handed off).
+ *
+ * @param {object} inputs the inputs
+ * @param {object|null} session hydrolog-gui-session/1, null while it has not arrived
+ * @returns {{attribution: string[], terms_notice: string[]}|null} the lines, none when the
+ *   rainfall uses no PMAXTP depth, null while the session they need is not known
+ */
+export function pmaxtpLines(inputs, session) {
+  if (pmaxtpDepth(inputs) === null) return NO_LINES;
+  const kept = linesOf(inputs.pmaxtp_fetched);
+  return hasLines(kept) ? kept : providerLines(session, "pmaxtp");
 }
 
 /**

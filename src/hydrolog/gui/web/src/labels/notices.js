@@ -77,8 +77,8 @@ export const notices = {
       plain: "Pominięto posterunki bez wieloboku Thiessena.",
     },
     pmaxtp_attribution: {
-      text: "Wysokość opadu pochodzi z atlasu PMAXTP IMGW-PIB; podaj źródło: „{attribution}”.",
-      plain: "Wysokość opadu pochodzi z atlasu PMAXTP IMGW-PIB; podaj IMGW-PIB jako źródło.",
+      text: "Wysokość opadu pochodzi z atlasu PMAXTP IMGW-PIB: jej źródło i warunki korzystania z danych są w części „Źródła danych” pod wynikiem (regulamin: {terms_url}).",
+      plain: "Wysokość opadu pochodzi z atlasu PMAXTP IMGW-PIB: jej źródło i warunki korzystania z danych są w części „Źródła danych” pod wynikiem.",
     },
     ia_coefficient_nonstandard: {
       text: "λ = {ia_coefficient} różni się od 0,2, wartości, dla której skalibrowano tablice CN.",

@@ -140,6 +140,7 @@ _TEXTS: Final[dict[str, tuple[str, str]]] = {
     "input": ("Wejście", "Input"),
     "result": ("Wynik", "Result"),
     "notices": ("Uwagi", "Notices"),
+    "sources": ("Źródła danych", "Data sources"),
     "files": ("Pliki", "Files"),
     "none": ("brak", "n/a"),
     "yes": ("tak", "yes"),

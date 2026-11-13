@@ -7,6 +7,8 @@
   the plan [2026-11-02-hydrolog-gui.md](../plans/2026-11-02-hydrolog-gui.md), D15 and D18, has an erratum of this date)
 - Builds on: [ADR-0006](0006-mcp-server-conformance.md) (the tool annotations, `openWorldHint` among them),
   [ADR-0015](0015-catalog-additions-for-the-gui.md) (the notice registry `NOTICES`)
+- Amended by [ADR-0028](0028-the-providers-lines-in-every-product.md) (2026-11-13): PMAXTP's own lines (PS, PP,
+  the monograph M; the notice N with PMAXTP's terms) replace the attribution of the general terms of IMGW-PIB
 
 ## Context
 

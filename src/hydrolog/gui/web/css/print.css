@@ -1,9 +1,10 @@
 /*
  * The print view (plan D14, D18 „Raport do druku”): the shown section on A4 in one column,
  * its charts first, then the results (tiles, notes, balance, parameters, a received
- * hand-off, the command line) and the data with their source (provenance); no controls.
- * PDF is the browser's „Zapisz jako PDF”. Linked with media="print"; print.js gives the
- * page the light theme and opens the section's closed parts while it prints. Tokens only.
+ * hand-off, the command line, the providers' lines of the data) and the data with their
+ * source (provenance); no controls. PDF is the browser's „Zapisz jako PDF”. Linked with
+ * media="print"; print.js gives the page the light theme and opens the section's closed
+ * parts while it prints. Tokens only.
  */
 
 @page {
@@ -180,6 +181,17 @@ dialog,
 }
 .chart.wide svg {
   min-width: 0 !important;
+}
+/* The providers' lines (Nogat DEV-20.5) on paper once, at the end of the results: the
+   centre's copy, which the screen shows under the charts, is left out */
+.attribution {
+  break-inside: avoid;
+}
+.view-center .attribution {
+  display: none !important;
+}
+.attribution a {
+  color: var(--text);
 }
 .canvas-scroll {
   max-height: none !important;

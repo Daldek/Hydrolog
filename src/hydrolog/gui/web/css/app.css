@@ -663,6 +663,19 @@ dialog.confirm .modal-body p { margin: 0 0 var(--space-3); line-height: var(--li
 .notes li.bad > svg, .notes li.bad .lvl { color: var(--bad-ink); }
 .notes .from { display: block; margin-top: 2px; font-size: var(--text-xs); color: var(--text-3); }
 
+/* The providers' lines under a result (attribution.js, Nogat DEV-20.5): visible and
+   legible, the attribution, then the terms notice; inside a part of a panel without the
+   heading (`compact`) */
+.attribution {
+  margin: var(--space-4) 0 0; padding: var(--space-2) 0 0; border-top: 1px solid var(--line);
+  font-size: var(--text-sm); line-height: 1.4; color: var(--text-2);
+}
+.attribution .group-title { margin: 0 0 var(--space-1); }
+.attribution p { margin: 0 0 2px; overflow-wrap: anywhere; }
+.attribution .attribution-terms { margin-top: var(--space-2); }
+.attribution.compact { margin: var(--space-1) 0 var(--space-2); padding: 0; border-top: 0; }
+.handoff .attribution.compact { margin: var(--space-1) 0 0; }
+
 .params { width: 100%; border-collapse: collapse; font-size: var(--text-base); margin: 0 0 var(--space-2); }
 .params th, .params td { padding: 6px 0; border-bottom: 1px solid var(--line); text-align: left; font-weight: var(--weight-regular); vertical-align: baseline; }
 .params tr:last-child th, .params tr:last-child td { border-bottom: 0; }

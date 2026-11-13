@@ -16,7 +16,13 @@ from typing import Any, Literal, get_args
 import numpy as np
 from numpy.typing import NDArray
 
-from hydrolog._pmaxtp import ATTRIBUTION, TERMS_URL, PmaxtpMethod, fetch_depth
+from hydrolog._attribution import (
+    PMAXTP_SOURCE,
+    PMAXTP_TERMS_URL,
+    Attribution,
+    cite,
+)
+from hydrolog._pmaxtp import PmaxtpMethod, fetch_depth
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.catalog.envelope import Notice, OperationOutput
 from hydrolog.catalog.inputs import load_stations
@@ -121,7 +127,8 @@ class PrecipPmaxtpResult(JsonResultMixin):
     probability_percent : float
         Probability of exceedance [%].
     attribution : str
-        The attribution that the terms of use of IMGW-PIB prescribe, in their wording.
+        The source line that the terms of PMAXTP prescribe (PS of Nogat DEV-20.2);
+        the envelope's ``attribution`` and ``terms_notice`` have every line.
     """
 
     depth_mm: float
@@ -286,6 +293,7 @@ def precip_hietogram(
     alpha: float | None = None,
     beta: float | None = None,
     peak_position: float | None = None,
+    attribution: list[str] | None = None,
 ) -> OperationOutput:
     """Design hyetograph (``precip hietogram``).
 
@@ -306,6 +314,9 @@ def precip_hietogram(
     peak_position : float, optional
         Relative peak position in (0, 1) (``triangular`` default 0.5, ``euler_ii``
         default 0.33).
+    attribution : list of str, optional
+        Lines of the providers of ``total_mm`` (ADR-0028), e.g. those of
+        ``precip pmaxtp``; the envelope carries them.
 
     Returns
     -------
@@ -318,6 +329,7 @@ def precip_hietogram(
     InvalidParameterError
         If a parameter is out of range or does not apply to the chosen type.
     """
+    cite(attribution)
     hietogram, parameters = build_hietogram(
         hietogram_type,
         total_mm,
@@ -375,8 +387,9 @@ def precip_pmaxtp(
     Returns
     -------
     OperationOutput
-        :class:`PrecipPmaxtpResult` and the notice ``pmaxtp_attribution``: IMGW-PIB
-        must be named as the source of the depth.
+        :class:`PrecipPmaxtpResult`, the notice ``pmaxtp_attribution`` and the lines
+        of PMAXTP (attribution PS, PP, M; terms notice N, RK; ADR-0028), which every
+        product of the depth carries.
 
     Raises
     ------
@@ -398,12 +411,12 @@ def precip_pmaxtp(
         method=depth.method,
         duration_min=depth.duration_min,
         probability_percent=depth.probability_percent,
-        attribution=ATTRIBUTION,
+        attribution=PMAXTP_SOURCE,
     )
     attribution = notice(
-        "pmaxtp_attribution", attribution=ATTRIBUTION, terms_url=TERMS_URL
+        "pmaxtp_attribution", attribution=PMAXTP_SOURCE, terms_url=PMAXTP_TERMS_URL
     )
-    return OperationOutput(result, [attribution])
+    return OperationOutput(result, [attribution], attribution=Attribution.of("pmaxtp"))
 
 
 _STATION_METHODS = ("arithmetic", "thiessen", "idw")
@@ -439,6 +452,7 @@ def precip_areal(
     max_distance: float | None = None,
     isohyet_values_mm: list[float] | None = None,
     area_fractions: list[float] | None = None,
+    attribution: list[str] | None = None,
 ) -> OperationOutput:
     """Areal precipitation from point data or isohyets (``precip areal``).
 
@@ -468,6 +482,9 @@ def precip_areal(
         Isohyet values [mm], at least two.
     area_fractions : list of float, optional
         Area fraction of each zone between isohyets, summing to 1.
+    attribution : list of str, optional
+        Lines of the providers of the gauges' precipitation (ADR-0028); the envelope
+        carries them, with those of ``stations_file``.
 
     Returns
     -------
@@ -486,6 +503,7 @@ def precip_areal(
     InputDataError
         If ``stations_file`` is malformed.
     """
+    cite(attribution)
     kind = check_choice("method", method, AREAL_METHODS)
     station_options = {"stations": stations, "stations_file": stations_file}
     if kind == "isohyet":

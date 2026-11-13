@@ -194,8 +194,9 @@ and probabilities of exceedance (`--probability-percent`, 0.01 to 99.9; the opti
 list the allowed values) and `--method` `POT` (the default) or `AMP`. It is the only command that
 uses the network: Obserwator (extra `pmaxtp`) asks IMGW-PIB for the table of the point
 ([ADR-0018](decisions/0018-pmaxtp-through-obserwator.md)). Pass `result.depth_mm` as `--total-mm`
-of `precip hietogram` or `hydrograph generate`, and name IMGW-PIB as its source
-(`result.attribution`, notice `pmaxtp_attribution`). A duration or probability the atlas lacks is
+of `precip hietogram` or `hydrograph generate` with the envelope's `attribution` and `terms_notice`
+as `--attribution '[...]'`: every product of the depth carries PMAXTP's lines ([ADR-0028](decisions/0028-the-providers-lines-in-every-product.md);
+`result.attribution` is the source line, notice `pmaxtp_attribution`). A duration or probability the atlas lacks is
 a `validation_error` before anything is sent, a point outside the atlas one with `details.reason`
 `outside_pmaxtp`, and IMGW-PIB unreachable `source_unavailable` (exit 5). IMGW-PIB may update the
 atlas, so the same call can give another depth later.
@@ -1306,7 +1307,8 @@ files. Formats and the division of responsibilities are in [INTEGRATION.md](INTE
   files, not a Kartograf store.
 - **Obserwator** (IMGW measurement series) writes a daily series with `obserwator series export`.
   The CSV has a `date` column and `Q [m3/s]`; pass it as `--input-file FILE --value-column Q
-  --date-column date` to the `stats` commands. Hydrolog ignores the attribution columns; keep them
+  --date-column date` to the `stats` commands. Its attribution columns are not data: Hydrolog
+  carries their lines into the result's `attribution` and `terms_notice` (ADR-0028); show them
   when you publish results.
 - **Hydrograf** (watershed delineation) produces a JSON in the `WatershedParameters` format.
   Only `area_km2` is required; `perimeter_km`, `length_km`, `elevation_min_m`,

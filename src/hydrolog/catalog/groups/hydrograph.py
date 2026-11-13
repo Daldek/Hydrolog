@@ -13,6 +13,7 @@ from __future__ import annotations
 import dataclasses
 
 from hydrolog._ranges import NASH_INPUTS
+from hydrolog.catalog.groups._attribution import ATTRIBUTION
 from hydrolog.catalog.groups._typical import (
     TC_METHODS,
     WATERSHED_TC_RANGES,
@@ -408,6 +409,7 @@ GENERATE_OPTIONS: tuple[Option, ...] = (
         ),
         exclusive_minimum=0,
     ),
+    ATTRIBUTION,
 )
 """Options of ``hydrograph generate`` (shared with ``report generate``)."""
 

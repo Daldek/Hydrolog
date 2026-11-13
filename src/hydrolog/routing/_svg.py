@@ -1,8 +1,10 @@
 """Draw the document ``hydrolog-network-schematic/1`` as SVG (ADR-0013).
 
-The drawing is a function of the document alone: lines in the colours of their line,
-a symbol for every kind of node, its label on the side that the document names, and a
-legend. Everything is plain SVG made with the standard library, so the text is the same
+The drawing is a function of the document alone, and of the lines a network of a
+provider's data carries under it (the attribution its terms require, Nogat DEV-20.5,
+ADR-0028): lines in the colours of their line, a symbol for every kind of node, its
+label on the side that the document names, and a legend. Everything is plain SVG made
+with the standard library, so the text is the same
 on every machine: no timestamps, no random ids, numbers rounded the same way. The text
 of the drawing is language-neutral: the ids of the nodes, the symbols ``Qp``, ``tp`` and
 ``V`` with their units, and the names of the kinds of node as the document has them.
@@ -27,6 +29,7 @@ _FONT: Final = "Helvetica, Arial, sans-serif"
 _ID_SIZE: Final = 13.0
 _VALUE_SIZE: Final = 11.0
 _TITLE_SIZE: Final = 17.0
+_FOOTER_SIZE: Final = 10.0
 _LINE_HEIGHT: Final = 1.22
 _MIN_UNIT: Final = 88.0
 _UNIT_STEP: Final = 8.0
@@ -362,7 +365,21 @@ def _legend(drawing: _Drawing) -> list[str]:
     return elements
 
 
-def schematic_svg(document: Mapping[str, Any]) -> str:
+def _footer_rows(text: str, width: float) -> list[str]:
+    """Break a line of the footer into rows at most ``width`` wide, between words."""
+    rows: list[str] = []
+    current = ""
+    for word in text.split():
+        candidate = f"{current} {word}" if current else word
+        if current and _width(candidate, _FOOTER_SIZE) > width:
+            rows.append(current)
+            current = word
+        else:
+            current = candidate
+    return [*rows, current] if current else rows
+
+
+def schematic_svg(document: Mapping[str, Any], footer: Sequence[str] = ()) -> str:
     """Draw a ``hydrolog-network-schematic/1`` document as SVG.
 
     Parameters
@@ -370,7 +387,11 @@ def schematic_svg(document: Mapping[str, Any]) -> str:
     document : mapping
         The document of :meth:`RoutingNetwork.schematic
         <hydrolog.routing.RoutingNetwork.schematic>`; the picture is a function of it
-        alone.
+        and of ``footer`` alone.
+    footer : sequence of str, optional
+        Lines drawn under the legend, each from a new row and broken between words to
+        the width of the picture: the attribution and the terms notice of the
+        providers whose data the network holds (ADR-0028).
 
     Returns
     -------
@@ -401,6 +422,15 @@ def schematic_svg(document: Mapping[str, Any]) -> str:
     1
     """
     drawing = _Drawing(document)
+    rows = [
+        row
+        for line in footer
+        for row in _footer_rows(line, drawing.width - 2 * _MARGIN)
+    ]
+    step = _FOOTER_SIZE * 1.3
+    footer_top = drawing.legend_y + 18.0 + 6.0
+    if rows:
+        drawing.height = footer_top + len(rows) * step + _MARGIN
     width, height = _number(drawing.width), _number(drawing.height)
     name = drawing.title or "Network schematic"
     nodes = drawing.nodes
@@ -442,5 +472,10 @@ def schematic_svg(document: Mapping[str, Any]) -> str:
     for node in nodes:
         parts.extend(_label(drawing, node))
     parts.extend(_legend(drawing))
+    parts.extend(
+        f'<text x="{_number(_MARGIN)}" y="{_number(footer_top + (number + 1) * step)}" '
+        f'font-size="{_number(_FOOTER_SIZE)}" fill="{_INK}">{escape(row)}</text>'
+        for number, row in enumerate(rows)
+    )
     parts.append("</svg>")
     return "\n".join(parts) + "\n"

@@ -30,6 +30,8 @@ typical ranges Hydrolog serves (``commands schema --command``), and the fields, 
 explanations and Wyniki give the example the same verdicts.
 """
 
+import csv
+import io
 import json
 import math
 import re
@@ -44,6 +46,7 @@ from typing import Any
 from playwright.sync_api import Locator, Page, Request, Route, expect
 
 from hydrolog import _pmaxtp
+from hydrolog._attribution import provider_lines
 from hydrolog.catalog import format_command, run_command
 from tests.conftest import recorded_pmaxtp
 from tests.e2e.conftest import KAMIENNIK as EXAMPLE
@@ -107,6 +110,14 @@ KAMIENNIK = {
     "timestep_min": 10,
     "uh_model": "scs",
 }
+PMAXTP_LINES = {
+    "attribution": [
+        *provider_lines()["pmaxtp"]["attribution"],
+        *provider_lines()["pmaxtp"]["terms_notice"],
+    ]
+}
+"""The option `attribution` of a run with the example's PMAXTP depth: its lines (a depth
+kept before them takes PMAXTP's set of GET api/session)."""
 LUTZ_OPTIONS = {
     "area_km2": 37.22,
     "lutz_length_km": 15.88,
@@ -385,7 +396,7 @@ def test_the_worked_example_shows_the_result_of_the_mockup(tab: Tab) -> None:
     with tab.page.expect_response(lambda answer: RUN in answer.url) as answered:
         page = open_hydrogram(tab)
     envelope = answered.value.json()
-    assert runs.generate[-1] == KAMIENNIK
+    assert runs.generate[-1] == {**KAMIENNIK, **PMAXTP_LINES}
     result = expected(KAMIENNIK)
     assert envelope["result"]["peak_discharge_m3s"] == result["peak_discharge_m3s"]
     assert envelope["result"]["total_volume_m3"] == result["total_volume_m3"]
@@ -626,7 +637,7 @@ def test_only_the_chosen_models_fields_exist_and_are_sent(tab: Tab) -> None:
         choose(page, "hg-uh-label", "SCS")
     sent = asked.value.post_data_json
     assert isinstance(sent, dict)
-    assert sent == KAMIENNIK
+    assert sent == {**KAMIENNIK, **PMAXTP_LINES}
     shows(page, "57,88", "6:40", "1 046 713")
     for name in others:
         expect(field(page, name)).to_have_count(0)
@@ -1401,13 +1412,18 @@ def test_the_hydrograph_exports_csv_json_and_png(tab: Tab, tmp_path: Path) -> No
 
     name, data = download(page, buttons.filter(has_text="CSV"))
     assert name == "Kamiennik — Świerzawa.csv"
-    header, *rows = [line.split(",") for line in data.decode("utf-8").splitlines()]
+    header, *rows = list(csv.reader(io.StringIO(data.decode("utf-8"))))
+    # The example's PMAXTP depth: DEV-20.5's two columns of its lines after the data
     assert header == [
         "time_min",
         "discharge_m3s",
         "precipitation_mm",
         "effective_precipitation_mm",
+        "attribution",
+        "terms_notice",
     ]
+    assert [row[4] for row in rows if row[4]] == envelope["attribution"]
+    assert [row[5] for row in rows if row[5]] == envelope["terms_notice"]
     assert [float(row[0]) for row in rows] == result["times_min"]
     assert [float(row[1]) for row in rows] == result["discharge_m3s"]
     rain = [float(row[2]) for row in rows]
@@ -1416,11 +1432,14 @@ def test_the_hydrograph_exports_csv_json_and_png(tab: Tab, tmp_path: Path) -> No
     assert rain[0] == 0 and not any(rain[1 + steps :])
     effective = [float(row[3]) for row in rows]
     assert effective[1 : 1 + steps] == result["effective_precipitation_mm"]
-    # A `route` command reads it as the hydrograph it routes
+    # A `route` command reads it as the hydrograph it routes, the lines carried on
     table = tmp_path / "hydrogram.csv"
     table.write_bytes(data)
-    routed = run_command("route lag", {"input_file": str(table), "lag_min": 30})
-    assert routed.to_dict()["result"]["inflow_peak_m3s"] == result["peak_discharge_m3s"]
+    routed = run_command(
+        "route lag", {"input_file": str(table), "lag_min": 30}
+    ).to_dict()
+    assert routed["result"]["inflow_peak_m3s"] == result["peak_discharge_m3s"]
+    assert routed["attribution"] == envelope["attribution"]
 
     name, data = download(page, buttons.filter(has_text="JSON"))
     assert name == "Kamiennik — Świerzawa.result.json"
@@ -1432,7 +1451,9 @@ def test_the_hydrograph_exports_csv_json_and_png(tab: Tab, tmp_path: Path) -> No
     box = page.locator(f"{CENTER} .chart.wide svg").bounding_box()
     assert box is not None
     drawn = (math.floor(box["width"] + 0.5), math.floor(box["height"] + 0.5))
-    assert struct.unpack(">II", data[16:24]) == (2 * drawn[0], 2 * drawn[1])
+    # Twice the drawn chart, taller by the footer of its lines
+    width, height = struct.unpack(">II", data[16:24])
+    assert width == 2 * drawn[0] and height > 2 * drawn[1]
 
 
 # --- persistence, routes and shared state --------------------------------------
@@ -1973,21 +1994,34 @@ def test_pmaxtp_fetches_the_depth_of_the_point_once_and_keeps_it(tab: Tab) -> No
         tab.open("#hydrogram")
     page = tab.page
     assert answered.value.request.post_data_json == FETCHED
-    result = answered.value.json()["result"]
+    envelope = answered.value.json()
+    result = envelope["result"]
     assert result["depth_mm"] == 101.82
+    lines = {
+        "attribution": envelope["attribution"],
+        "terms_notice": envelope["terms_notice"],
+    }
     depth = field(page, "pmaxtp_depth")
     expect(depth).to_have_value("101,82")
     expect(depth).not_to_be_editable()
     source = page.locator(f'{LEFT} [data-field="pmaxtp_depth"] .aux')
     expect(source).to_have_text("PMAXTP IMGW-PIB, metoda POT")
-    expect(page.locator(f'{LEFT} [data-attribution="pmaxtp"]')).to_have_text(
-        f"{result['attribution']}."
-    )
-    # The run waits for the depth and takes it: the guide's numbers
+    # The answer's providers' lines stand visibly under the depth, every one verbatim
+    shown = page.locator(f'{LEFT} [data-attribution="pmaxtp"] p')
+    expect(shown).to_have_text([*lines["attribution"], *lines["terms_notice"]])
+    # The run waits for the depth and takes it with its lines: the guide's numbers
     shows(page, "54,20", "6:40", "977 225")
     expect(kpi(page, "c")).to_have_text("0,258")
     assert [run["total_mm"] for run in runs.generate] == [101.82]
-    assert page.evaluate(STORED)["pmaxtp_fetched"] == {**FETCHED, "depth_mm": 101.82}
+    assert runs.generate[0]["attribution"] == [
+        *lines["attribution"],
+        *lines["terms_notice"],
+    ]
+    assert page.evaluate(STORED)["pmaxtp_fetched"] == {
+        **FETCHED,
+        "depth_mm": 101.82,
+        **lines,
+    }
 
     # A reload shows the kept depth without fetching it again
     page.reload()

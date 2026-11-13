@@ -5,11 +5,14 @@
 // balance of the rainfall; the parameters of the calculation (Nash's n and K as given or as
 // Lutz estimated them); the exports (with the Markdown report and the print view) and the
 // command line; „Przekazanie”, the hand-off nogat-handoff/1 of the shown run and a received
-// producer's result beside it (handoff/handoff-panel.js). `run` holds the shown result
-// ({inputs, options, envelope, values}: its inputs, the options it sent, its envelope and
-// the values its notes checked), `spec` its export spec (export.js) and `current` the
-// section's inputs now (with the record of a received hand-off, `handoff`).
+// producer's result beside it (handoff/handoff-panel.js). Both end with the providers'
+// lines of the run's envelope (attribution.js, Nogat DEV-20.5), none without them. `run`
+// holds the shown result ({inputs, options, envelope, values}: its inputs, the options it
+// sent, its envelope and the values its notes checked), `spec` its export spec (export.js)
+// and `current` the section's inputs now (with the record of a received hand-off,
+// `handoff`).
 
+import { Attribution, linesOf } from "../../attribution.js";
 import { Chart } from "../../charts/chart.js";
 import { richText } from "../../controls/field.js";
 import { hmm, inputText, num, roundedText } from "../../format.js";
@@ -207,6 +210,7 @@ export function CenterBody({ run, tab, reference, chartSvg, onClearReference, st
         <p class="note">${t(texts.center.tableNote, { time: hmm(result.time_to_peak_min) })}</p>
       </div>
     </div>
+    <${Attribution} lines=${linesOf(run.envelope)} />
   `;
 }
 
@@ -397,5 +401,6 @@ export function ResultsPanel({ run, spec, stale, current = null }) {
         <${HydrogramHandoff} run=${run} current=${current} subject=${spec.subject} rain=${rainLabel(inputs, result)} />
       <//>
     </div>
+    <${Attribution} lines=${linesOf(envelope)} />
   `;
 }

@@ -2,18 +2,22 @@
 // Nogat publishes it (schemas/nogat/handoff-1.schema.json, copied unchanged), carrying
 // `hydrolog-network/1` or `hydrolog-series/1` (ADR-0020). buildHandoff writes the envelope
 // around a network, with the origin of each node where `provenance` does not give it
-// (`node_provenance`, plan 2026-11-10-network-wizard, D9); readHandoff reads a text: Nogat's
-// kit parses it and checks the envelope against the schema's keywords (nogat-handoff.js
-// with envelope.js, DEV-15.5, ADR-0027), Hydrolog the payload's kind and, given its schema,
-// the payload's content (validate.js), then tells which section opens it: one subcatchment
-// made from rainfall with its outlet opens in „Hydrogram zlewni”, any other network in
-// „Sieć i trasowanie”, a station's series (Archiwista) in „Statystyka przepływów”; read in
-// Sieć, every network opens there (plan 2026-11-10-network-editor, D10). The producer's
-// result is for comparison only (compareResults): Hydrolog recomputes and shows both.
+// (`node_provenance`, plan 2026-11-10-network-wizard, D9) and the providers' lines of its
+// data (`attribution`, `terms_notice`; Nogat DEV-20.6, DEV-20.7); readHandoff reads a
+// text: Nogat's kit parses it and checks the envelope against the schema's keywords
+// (nogat-handoff.js with envelope.js, DEV-15.5, ADR-0027), Hydrolog the payload's kind and,
+// given its schema, the payload's content (validate.js), then tells which section opens
+// it: one subcatchment made from rainfall with its outlet opens in „Hydrogram zlewni”, any
+// other network in „Sieć i trasowanie”, a station's series (Archiwista) in „Statystyka
+// przepływów”; read in Sieć, every network opens there (plan 2026-11-10-network-editor,
+// D10). A section keeps what it opened (receivedOf), the lines included, and carries them
+// into its runs and its own hand-offs. The producer's result is for comparison only
+// (compareResults): Hydrolog recomputes and shows both.
 //
-// Pure functions without Preact, tested in the page (tests/e2e/test_exports.py).
+// Pure functions without components, tested in the page (tests/e2e/test_exports.py).
 
 import { readHandoff as readEnvelope } from "../../nogat/nogat-handoff.js";
+import { NO_LINES, csvWithLines, linesFields, linesOf } from "../attribution.js";
 import { hmm, inputText, num } from "../format.js";
 import { t } from "../labels/common.js";
 import { handoffLabels as texts } from "../labels/handoff.js";
@@ -61,16 +65,18 @@ export function stamp(date = new Date()) {
 /**
  * Write a hand-off (nogat-handoff/1) with Hydrolog as its producer.
  *
- * @param {{subject: string, provenance?: object, nodeProvenance?: object|null, payload:
- *   object, result?: object|null, page?: string, version: string, createdAt?: string}}
- *   parts what is handed off (the watershed's or network's name), where its inputs came
- *   from, where the inputs of each node came from where `provenance` does not say it
- *   (`node_provenance`, left out when empty), the hydrolog-network/1 document, Hydrolog's
- *   result of it (peak_discharge_m3s, time_to_peak_min, total_volume_m3, command), the
- *   page to return to ("#hydrogram"), Hydrolog's version and the moment (now)
+ * @param {{subject: string, provenance?: object, nodeProvenance?: object|null, lines?:
+ *   {attribution: string[], terms_notice: string[]}|null, payload: object, result?:
+ *   object|null, page?: string, version: string, createdAt?: string}} parts what is handed
+ *   off (the watershed's or network's name), where its inputs came from, where the inputs
+ *   of each node came from where `provenance` does not say it (`node_provenance`, left out
+ *   when empty), the providers' lines of the data (`attribution` and `terms_notice`, each
+ *   left out when empty), the hydrolog-network/1 document, Hydrolog's result of it
+ *   (peak_discharge_m3s, time_to_peak_min, total_volume_m3, command), the page to return
+ *   to ("#hydrogram"), Hydrolog's version and the moment (now)
  * @returns {object} the document
  */
-export function buildHandoff({ subject, provenance = {}, nodeProvenance = null, payload, result = null, page, version, createdAt }) {
+export function buildHandoff({ subject, provenance = {}, nodeProvenance = null, lines = null, payload, result = null, page, version, createdAt }) {
   const producer = { tool: TOOL, version: String(version) };
   if (page) producer.page = page;
   const doc = {
@@ -81,6 +87,7 @@ export function buildHandoff({ subject, provenance = {}, nodeProvenance = null, 
     provenance: provenance || {},
   };
   if (nodeProvenance && Object.keys(nodeProvenance).length) doc.node_provenance = nodeProvenance;
+  Object.assign(doc, linesFields(lines));
   doc.payload = payload;
   if (result && Object.keys(result).length) doc.result = result;
   return doc;
@@ -264,13 +271,16 @@ export function readHandoff(text, { networkSchema = null, seriesSchema = null, i
 /**
  * The inputs of Statystyka przepływów a series opens with: annual maxima as the pasted
  * values (the missing years left out), daily values as a file of the session, `date` and
- * the variable, whose columns the section then finds.
+ * the variable, whose columns the section then finds, with the providers' lines of the
+ * series in the two trailing columns of DEV-20.5.
  *
  * @param {object} payload a hydrolog-series/1 readHandoff opened
+ * @param {{attribution: string[], terms_notice: string[]}} [lines] the lines of the series
+ *   (receivedLines)
  * @returns {{source: "paste"|"file", values: object, csv: string|null}} the section's
  *   source and form values, and the file's text of a daily series
  */
-export function statystykaInputs(payload) {
+export function statystykaInputs(payload, lines = NO_LINES) {
   if (payload.step === "year") {
     const values = payload.values.filter((value) => typeof value === "number");
     return { source: "paste", values: { values: values.map(inputText).join("; ") }, csv: null };
@@ -279,7 +289,7 @@ export function statystykaInputs(payload) {
     const value = payload.values[index];
     return `${date},${typeof value === "number" ? String(value) : ""}`;
   });
-  return { source: "file", values: {}, csv: `date,${payload.variable}\n${rows.join("\n")}\n` };
+  return { source: "file", values: {}, csv: csvWithLines(`date,${payload.variable}\n${rows.join("\n")}\n`, lines) };
 }
 
 /**
@@ -330,11 +340,11 @@ export function compareResults(theirs, ours) {
 
 /**
  * What a section keeps of a hand-off it opened: who wrote it and when, its subject,
- * provenance and result.
+ * provenance, providers' lines (when it has them) and result.
  *
  * @param {object} doc the hand-off
  * @returns {{subject: string, created_at: string, producer: object, provenance: object,
- *   result: object|null}} the record
+ *   attribution?: string[], terms_notice?: string[], result: object|null}} the record
  */
 export function receivedOf(doc) {
   return {
@@ -342,6 +352,7 @@ export function receivedOf(doc) {
     created_at: doc.created_at,
     producer: { ...doc.producer },
     provenance: doc.provenance,
+    ...linesFields(linesOf(doc)),
     result: isObject(doc.result) ? doc.result : null,
   };
 }

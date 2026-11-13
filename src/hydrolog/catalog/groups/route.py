@@ -18,6 +18,7 @@ declares its model parameters and adds them.
 
 from __future__ import annotations
 
+from hydrolog.catalog.groups._attribution import ATTRIBUTION
 from hydrolog.catalog.groups._output import FORCE
 from hydrolog.catalog.spec import Command, Option
 
@@ -481,6 +482,7 @@ COMMANDS: tuple[Command, ...] = (
             *INFLOW_OPTIONS,
             *RUN_OPTIONS,
             *OUTPUT_OPTIONS,
+            ATTRIBUTION,
         ),
         one_of=INFLOW_ONE_OF,
         examples=(
@@ -604,6 +606,7 @@ COMMANDS: tuple[Command, ...] = (
             *INFLOW_OPTIONS,
             *RUN_OPTIONS,
             *OUTPUT_OPTIONS,
+            ATTRIBUTION,
         ),
         one_of=INFLOW_ONE_OF,
         examples=(
@@ -820,6 +823,7 @@ COMMANDS: tuple[Command, ...] = (
             *INFLOW_OPTIONS,
             *RUN_OPTIONS,
             *OUTPUT_OPTIONS,
+            ATTRIBUTION,
         ),
         one_of=INFLOW_ONE_OF,
         examples=(
@@ -1040,6 +1044,7 @@ COMMANDS: tuple[Command, ...] = (
             *INFLOW_OPTIONS,
             *RUN_OPTIONS,
             *OUTPUT_OPTIONS,
+            ATTRIBUTION,
         ),
         one_of=INFLOW_ONE_OF,
         examples=(
@@ -1224,6 +1229,7 @@ COMMANDS: tuple[Command, ...] = (
             *INFLOW_OPTIONS,
             *RUN_OPTIONS,
             *OUTPUT_OPTIONS,
+            ATTRIBUTION,
         ),
         one_of=INFLOW_ONE_OF,
         examples=(
@@ -1350,6 +1356,7 @@ COMMANDS: tuple[Command, ...] = (
             MAIN_STEM,
             NETWORK_FORCE,
             NETWORK_CHECK,
+            ATTRIBUTION,
         ),
         one_of=(("network",), ("network_file",)),
         examples=(

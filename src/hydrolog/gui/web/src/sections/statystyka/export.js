@@ -1,7 +1,9 @@
 // The export spec of „Statystyka przepływów” (plan D14): the quantiles of the combinations
 // ticked „W tabeli kwantyli” as CSV (comma separator, decimal dot, UTF-8), the envelope as
-// JSON, the probability plot as PNG and the call of the run.
+// JSON, the probability plot as PNG and the call of the run; the CSV and the PNG carry the
+// providers' lines of the run's envelope (Nogat DEV-20.5).
 
+import { linesOf } from "../../attribution.js";
 import { COMMAND, tickedFits } from "./state.js";
 
 /**
@@ -57,5 +59,6 @@ export function exportSpec({ options, envelope, ticked, chartSvg, pasted }) {
     json: () => envelope,
     chart: chartSvg ? () => chartSvg.current : undefined,
     cli: { command: COMMAND, options },
+    lines: linesOf(envelope),
   };
 }

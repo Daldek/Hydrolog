@@ -47,6 +47,7 @@ from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Any, cast
 
+from hydrolog._attribution import collecting
 from hydrolog.catalog.document import (
     Document,
     catalog_document,
@@ -447,10 +448,12 @@ def run_command(
     against the working directory, symlinks resolved) and, when ``allowed_dirs`` is
     given, require it to lie inside one of the directories; import the operation
     lazily from ``Command.function`` and call it with the normalized options as
-    keyword arguments; wrap its return value in a
+    keyword arguments, collecting the providers' lines its inputs carry
+    (:func:`hydrolog._attribution.collecting`: the input files, the option
+    ``attribution``); wrap its return value in a
     :class:`~hydrolog.catalog.envelope.CommandResult` (see
-    :mod:`hydrolog.catalog.envelope` for the return protocol: notices and written
-    files with SHA-256).
+    :mod:`hydrolog.catalog.envelope` for the return protocol: notices, written
+    files with SHA-256 and the lines ``attribution`` and ``terms_notice``).
 
     Parameters
     ----------
@@ -486,7 +489,8 @@ def run_command(
     normalized = validate_command(command, options)
     resolved = _apply_path_policy(command, normalized, allowed_dirs)
     function = _load_function(command.function)
-    output = function(**resolved)
+    with collecting() as cited:
+        output = function(**resolved)
     return CommandResult.from_output(
-        command.name, resolved, output, command.result_schema
+        command.name, resolved, output, command.result_schema, cited.value
     )

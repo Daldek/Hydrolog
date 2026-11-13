@@ -159,21 +159,23 @@ const SHOWN = {
 /**
  * The panel Dane.
  *
- * @param {{model: object, values: object, source: "file"|"paste", errors: object,
+ * @param {{model: object, values: object, source: "file"|"paste", received: object|null,
+ *   lines: {attribution: string[], terms_notice: string[]}|null, errors: object,
  *   onValue: (name: string, value: any) => void, onSource: (source: string) => void,
  *   session: object|null, preview: object, shown: {distributions: string[],
  *   methods: string[]}, onShown: (filter: "distributions"|"methods", value: string,
  *   on: boolean) => void, periods: number[], stressed: number|null,
  *   onChosen: (period: number|null) => void, seriesMeta: string|null, formId: string}}
- *   props the catalog's model and the form's values, the source, the messages by option, the
- *   change handlers, the session, the columns of the chosen file, the combinations shown and
- *   the change of a filter, the return periods with the stressed one (null for „brak”), the
- *   length of the series computed and the form's id (the result follows every change: no
- *   submit)
+ *   props the catalog's model and the form's values, the source, the record of a received
+ *   hand-off and the providers' lines of its series (shown in its card), the messages by
+ *   option, the change handlers, the session, the columns of the chosen file, the
+ *   combinations shown and the change of a filter, the return periods with the stressed
+ *   one (null for „brak”), the length of the series computed and the form's id (the result
+ *   follows every change: no submit)
  * @returns {object} the panel's body
  */
 export function DataPanel(props) {
-  const { model, values, source, received, errors, onValue, onSource, session, preview, shown, onShown, periods, stressed, onChosen, seriesMeta, formId } = props;
+  const { model, values, source, received, lines, errors, onValue, onSource, session, preview, shown, onShown, periods, stressed, onChosen, seriesMeta, formId } = props;
   const field = (name) => model.fields.find((item) => item.name === name);
   // The catalog's Polish meaning of a value of `distribution` or `fit_method`: a chip's title
   const meaning = (name, value) => {
@@ -202,7 +204,7 @@ export function DataPanel(props) {
       <div class="steps">
         <${Step} num=${1} title=${texts.steps.series} meta=${seriesMeta || rows}>
           <div class="btn-row"><${HandoffImport} series=${true} /></div>
-          ${received ? html`<${HandoffOrigin} received=${received} small=${true} />` : null}
+          ${received ? html`<${HandoffOrigin} received=${received} small=${true} lines=${lines} />` : null}
           <div class="field">
             <span class="label" id=${`${ID}-source-label`}>${texts.source}</span>
             <${Seg}

@@ -15,7 +15,9 @@ The summary is *generic*: it walks the JSON form of the envelope
 * several long numeric arrays of equal length in one object (a time axis and its
   values) become one table of the first :data:`ARRAY_ROWS` rows;
 * the ``schema`` of the result is not shown, its ``files`` come last as the written
-  files, after the notices.
+  files, after the notices; the lines of the data providers (``attribution`` and
+  ``terms_notice`` of the envelope, Nogat DEV-20.5) come before the notices, verbatim
+  in every language.
 
 Five documents have a layout of their own: the plan of ``--check``
 (``hydrolog-plan/1``: each target with its action, and a line that nothing was
@@ -445,8 +447,12 @@ def _page_lines(renderer: _Renderer, shown: int, page: object) -> list[str]:
 
 
 def _tail(renderer: _Renderer, data: Mapping[str, Any]) -> list[str]:
-    """Return the notices and the written files that follow every result."""
+    """Return the providers' lines, the notices and the written files of a result."""
     lines: list[str] = []
+    sources = [*(data.get("attribution") or []), *(data.get("terms_notice") or [])]
+    if sources:
+        lines.append(f"{renderer.label('sources')}:")
+        lines.extend(f"  {line}" for line in sources)
     notices = data.get("notices") or []
     if notices:
         lines.append(f"{renderer.label('notices')}:")
@@ -717,7 +723,8 @@ def render_result(
         inputs with their units and the result (without its ``schema`` and ``files``);
         the plan of ``--check``, ``commands list`` and ``schema``, ``commands guide``
         and ``config show`` have their own layout (see the module docstring). The
-        notices and the written files (``result.files``) come last.
+        providers' lines, the notices and the written files (``result.files``) come
+        last.
     """
     renderer = _Renderer(lang, width)
     result = data.get("result")
