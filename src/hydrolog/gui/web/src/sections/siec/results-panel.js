@@ -7,6 +7,7 @@
 // nogat-handoff/1 of the network (handoff/handoff-panel.js); at its end the providers'
 // lines of the run's envelope (attribution.js, Nogat DEV-20.5), none without them.
 
+import { api, downloadBlob } from "../../api.js";
 import { Attribution, linesOf } from "../../attribution.js";
 import { toPng } from "../../charts/png.js";
 import { Chart } from "../../charts/chart.js";
@@ -14,6 +15,7 @@ import { auto, hmm, num, parseNumber } from "../../format.js";
 import { Notices } from "../../forms/result-view.js";
 import { html, useMemo, useState } from "../../html.js";
 import { common, t } from "../../labels/common.js";
+import { describeError } from "../../labels/errors.js";
 import { exportLabels } from "../../labels/exports.js";
 import { handoffLabels } from "../../labels/handoff.js";
 import { resultFields, options as optionLabels } from "../../labels/options.js";
@@ -22,7 +24,7 @@ import { siec as texts } from "../../labels/siec.js";
 import { unitOfName } from "../../labels/units.js";
 import { SiecHandoff } from "../../handoff/handoff-panel.js";
 import { printView } from "../../print.js";
-import { CommandLine, downloadBlob } from "../../ui/export-panel.js";
+import { CommandLine } from "../../ui/export-panel.js";
 import { Part } from "../../ui/part.js";
 import { DataTable } from "../../ui/table.js";
 import { toast } from "../../ui/toast.js";
@@ -253,9 +255,17 @@ function Ordinates({ node, nodes }) {
  */
 function ExportRow({ items }) {
   const save = async (item) => {
-    if (item.href) return;
     if (item.print) {
       printView();
+      return;
+    }
+    if (item.file) {
+      try {
+        await api.downloadFile(item.file, item.name);
+        toast(t(exportLabels.saved, { name: item.name }));
+      } catch (error) {
+        toast(error.doc ? describeError(error.doc).text : String(error), "bad");
+      }
       return;
     }
     if (item.svg) {
@@ -274,19 +284,17 @@ function ExportRow({ items }) {
   };
   return html`
     <div class="btn-row export-row">
-      ${items.map((item) =>
-        item.href
-          ? html`<a class="btn" data-export=${item.id} href=${item.href} download=${item.name} title=${item.title}><span class="fmt">${item.format}</span>${item.label}</a>`
-          : html`<button
-              class="btn"
-              type="button"
-              data-export=${item.id}
-              title=${item.disabled || item.title}
-              disabled=${Boolean(item.disabled)}
-              onClick=${() => save(item)}
-            >
-              <span class="fmt">${item.format}</span>${item.label}
-            </button>`,
+      ${items.map(
+        (item) => html`<button
+          class="btn"
+          type="button"
+          data-export=${item.id}
+          title=${item.disabled || item.title}
+          disabled=${Boolean(item.disabled)}
+          onClick=${() => save(item)}
+        >
+          <span class="fmt">${item.format}</span>${item.label}
+        </button>`,
       )}
     </div>
   `;

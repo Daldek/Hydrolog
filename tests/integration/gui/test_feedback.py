@@ -1,16 +1,22 @@
-"""„Zgłoś uwagę” and its admin routes (Nogat plan 2026-11-03, D3 to D5) through
-Starlette's TestClient.
+"""„Zgłoś uwagę” and its admin routes (Nogat DEV-15.12, plan 2026-11-03, D3 to D5)
+through Starlette's TestClient.
 
-``POST api/feedback`` stores a report of a GUI session in
-``<data_dir>/hydrolog/feedback.sqlite3`` with Hydrograf's limits and answers;
+``POST api/feedback`` stores a report, its text and the context the page adds (view,
+station, parameters and the server's version), in
+``<data_dir>/hydrolog/feedback.sqlite3``, with no session and nothing else: a contact,
+the page's address, diagnostics or any other field are refused and the request's
+``User-Agent`` is not kept; a deleted report leaves no text in the file.
 ``api/admin/feedback`` lists, marks and deletes the reports only for the key of
 ``HYDROLOG_ADMIN_API_KEY`` or ``HYDROLOG_ADMIN_API_KEY_FILE`` in ``X-Admin-Key``, and
 refuses everything when the server has no key.
 """
 
 import json
+import os
 import re
+import sqlite3
 import threading
+from contextlib import closing
 
 import pytest
 
@@ -18,15 +24,23 @@ pytest.importorskip("starlette")
 
 from starlette.testclient import TestClient
 
+import hydrolog
 from hydrolog.gui import create_app
 from tests.contract._nogat import validator
 
 KEY = "klucz-administratora-0123"
 ERROR = validator("error-1")
-AGENT = "Mozilla/5.0 (X11; Linux x86_64) Testowa/1.0"
+AGENT = "Mozilla/5.0 (X11; Linux x86_64) TestowaPrzegladarka/9.8.7-unikalna"
 LIST = "/api/admin/feedback"
 ROUTES = [("GET", LIST), ("PATCH", f"{LIST}/1"), ("DELETE", f"{LIST}/1")]
 """The admin routes, each with a report that exists in the tests that make one."""
+CONTEXT_FIELDS = [
+    "context.app_version",
+    "context.parameters",
+    "context.station",
+    "context.view",
+]
+"""The fields a context may have, as an ``unknown_field`` error lists them."""
 
 
 @pytest.fixture
@@ -53,6 +67,20 @@ def database(data_dir):
     return data_dir / "hydrolog" / "feedback.sqlite3"
 
 
+def file_bytes(data_dir):
+    """Move the write-ahead log into the file and empty it; return the bytes of the
+    file and of what SQLite keeps beside it."""
+    path = database(data_dir)
+    with closing(sqlite3.connect(path)) as db:
+        busy = db.execute("PRAGMA wal_checkpoint(TRUNCATE)").fetchone()[0]
+    assert busy == 0
+    return b"".join(
+        (path.parent / name).read_bytes()
+        for name in os.listdir(path.parent)
+        if name.startswith(path.name)
+    )
+
+
 def error(response, status, code, reason):
     """Check an error answer; return its document."""
     document = response.json()
@@ -63,8 +91,13 @@ def error(response, status, code, reason):
     return document
 
 
-def report(client, body, **headers):
-    return client.post("/api/feedback", json=body, headers=headers)
+def body(message="x", **context):
+    """Return the body the page sends: the text and its context."""
+    return {"message": message, "context": {"view": "hydrogram", **context}}
+
+
+def report(client, content, **headers):
+    return client.post("/api/feedback", json=content, headers=headers)
 
 
 def listing(client, headers, query=""):
@@ -75,8 +108,8 @@ def listing(client, headers, query=""):
 
 def send(client, request, *, headers=None):
     method, path = request
-    body = {"is_read": True} if method == "PATCH" else None
-    return client.request(method, path, json=body, headers=headers or {})
+    content = {"is_read": True} if method == "PATCH" else None
+    return client.request(method, path, json=content, headers=headers or {})
 
 
 # --- a report -------------------------------------------------------------------------
@@ -88,13 +121,13 @@ def test_a_report_is_stored_by_the_first_report_and_answered_with_its_id(
     assert listing(client, admin) == {"items": [], "total": 0, "unread_count": 0}
     assert not database(data_dir).exists()  # reading creates nothing
 
-    response = report(
-        client, {"message": "Nie działa hydrogram"}, **{"User-Agent": AGENT}
-    )
+    response = report(client, body("Nie działa hydrogram"))
 
     assert response.status_code == 200
     assert response.json() == {"id": 1, "status": "ok"}
-    assert "hydrolog_gui=" in response.headers["set-cookie"]  # a GUI session
+    # a report needs no session: none is started, no cookie is set
+    assert "X-Hydrolog-Session" not in response.headers
+    assert "set-cookie" not in response.headers
     assert database(data_dir).is_file()
     [item] = listing(client, admin)["items"]
     created = item.pop("created_at")
@@ -102,98 +135,157 @@ def test_a_report_is_stored_by_the_first_report_and_answered_with_its_id(
     assert item == {
         "id": 1,
         "message": "Nie działa hydrogram",
-        "contact": None,
-        "page_url": None,
-        "user_agent": AGENT,
-        "diagnostics": None,
+        "context": {
+            "view": "hydrogram",
+            "station": None,
+            "parameters": {},
+            "app_version": hydrolog.__version__,
+        },
         "is_read": False,
     }
 
 
-def test_a_report_keeps_its_contact_page_and_diagnostics(client, admin):
-    diagnostics = {
-        "events": [{"t": "2026-11-03T10:15:00.000Z", "type": "api_call", "data": {}}],
-        "workspace": {"section": "hydrogram", "context": "Kamiennik — Świerzawa"},
-        "env": {"viewport": {"width": 1440, "height": 900}},
-    }
-    body = {
-        "message": "Qmax wygląda dziwnie",
-        "contact": "jan@example.com",
-        "page_url": "http://127.0.0.1:8070/#hydrogram",
-        "diagnostics": diagnostics,
-        "is_read": True,  # not the report's to say: ignored
-    }
+def test_a_report_keeps_its_view_station_and_parameters(client, admin):
+    parameters = {"area_km2": 12.5, "methods": ["scs", "snyder"], "storm": {"p": 1}}
+    content = body(
+        "Qmax wygląda dziwnie",
+        view="statystyka/przeplywy",
+        station="Kamiennik — Świerzawa",
+        parameters=parameters,
+    )
 
-    assert report(client, body).status_code == 200
+    assert report(client, content).status_code == 200
 
     [item] = listing(client, admin)["items"]
-    assert (item["contact"], item["page_url"]) == (body["contact"], body["page_url"])
-    assert item["diagnostics"] == diagnostics
+    assert item["context"] == {
+        "view": "statystyka/przeplywy",
+        "station": "Kamiennik — Świerzawa",
+        "parameters": parameters,
+        "app_version": hydrolog.__version__,
+    }
     assert item["is_read"] is False
 
 
 @pytest.mark.parametrize(
-    ("body", "parameter", "reason"),
+    "sent",
+    [{}, {"app_version": None}, {"app_version": ""}, {"app_version": "99.0.0-obca"}],
+)
+def test_the_context_has_the_servers_version_whatever_the_page_sends(
+    client, admin, sent
+):
+    assert report(client, body(**sent)).status_code == 200
+
+    [item] = listing(client, admin)["items"]
+    assert item["context"]["app_version"] == hydrolog.__version__
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
     [
-        ({}, "message", "required"),
-        ({"message": None}, "message", "required"),
-        ({"message": ""}, "message", "empty"),
-        ({"message": 5}, "message", "type"),
-        ({"message": "x" * 5001}, "message", "too_long"),
-        ({"message": "x", "contact": "a" * 201}, "contact", "too_long"),
-        ({"message": "x", "contact": ["jan"]}, "contact", "type"),
-        ({"message": "x", "page_url": "u" * 501}, "page_url", "too_long"),
-        ({"message": "x", "diagnostics": [1]}, "diagnostics", "type"),
-        (
-            {"message": "x", "diagnostics": {"events": ["e" * 100] * 1100}},
-            "diagnostics",
-            "too_large",
-        ),
+        ("contact", "jan@example.com"),
+        ("contact", None),  # even empty
+        ("page_url", "http://127.0.0.1:8070/#hydrogram"),
+        ("user_agent", AGENT),
+        ("diagnostics", {"events": []}),
+        ("is_read", True),  # not the report's to say
     ],
 )
-def test_a_report_beyond_hydrografs_limits_is_refused(
-    client, admin, body, parameter, reason
+def test_a_field_outside_the_form_is_refused_and_nothing_stored(
+    client, admin, data_dir, field, value
 ):
-    document = error(report(client, body), 400, "validation_error", reason)
+    response = report(client, {**body(), field: value})
+
+    document = error(response, 400, "validation_error", "unknown_field")
+    assert document["details"]["parameter"] == field
+    assert document["details"]["allowed"] == ["context", "message"]
+    assert listing(client, admin)["total"] == 0
+    assert not database(data_dir).exists()
+
+
+@pytest.mark.parametrize("field", ["url", "contact", "user_agent", "diagnostics"])
+def test_a_field_outside_the_context_is_refused_and_nothing_stored(
+    client, admin, data_dir, field
+):
+    response = report(client, body(**{field: "http://127.0.0.1:8070/#hydrogram"}))
+
+    document = error(response, 400, "validation_error", "unknown_field")
+    assert document["details"]["parameter"] == f"context.{field}"
+    assert document["details"]["allowed"] == CONTEXT_FIELDS
+    assert listing(client, admin)["total"] == 0
+    assert not database(data_dir).exists()
+
+
+@pytest.mark.parametrize(
+    ("content", "parameter", "reason"),
+    [
+        ({"context": {"view": "v"}}, "message", "required"),
+        ({**body(), "message": None}, "message", "required"),
+        (body(""), "message", "empty"),
+        (body(5), "message", "type"),
+        (body("x" * 5001), "message", "too_long"),
+        ({"message": "x"}, "context", "required"),
+        ({"message": "x", "context": None}, "context", "required"),
+        ({"message": "x", "context": ["hydrogram"]}, "context", "type"),
+        ({"message": "x", "context": {}}, "context.view", "required"),
+        (body(view=None), "context.view", "required"),
+        (body(view=""), "context.view", "empty"),
+        (body(view=["hydrogram"]), "context.view", "type"),
+        (body(view="v" * 201), "context.view", "too_long"),
+        (body(station=7), "context.station", "type"),
+        (body(station="s" * 201), "context.station", "too_long"),
+        (body(parameters=[1, 2]), "context.parameters", "type"),
+        (body(parameters="area_km2=12"), "context.parameters", "type"),
+        (body(app_version="9" * 51), "context.app_version", "too_long"),
+    ],
+)
+def test_a_report_beyond_the_limits_is_refused(
+    client, admin, data_dir, content, parameter, reason
+):
+    document = error(report(client, content), 400, "validation_error", reason)
 
     assert document["details"]["parameter"] == parameter
     assert listing(client, admin)["total"] == 0
+    assert not database(data_dir).exists()
 
 
 def test_the_largest_report_within_the_limits_is_stored(client, admin):
-    # 5000 characters of two UTF-8 bytes each: the limit counts characters
-    body = {"message": "ż" * 5000, "contact": "k" * 200, "page_url": "u" * 500}
-    # {"a":"…"} is 8 bytes of compact JSON around the text: 100 000 bytes in all
-    largest = {"a": "d" * 99_992}
+    """The message and the texts count characters; the context counts the bytes of
+    its compact JSON in UTF-8, with the server's version in it."""
+    view, station = "w" * 200, "ś" * 200
+    stored = {
+        "view": view,
+        "station": station,
+        "parameters": {"a": ""},
+        "app_version": hydrolog.__version__,
+    }
+    compact = json.dumps(stored, ensure_ascii=False, separators=(",", ":"))
+    pad = "d" * (100_000 - len(compact.encode()))
 
-    assert report(client, {**body, "diagnostics": largest}).status_code == 200
-    document = error(
-        report(client, {**body, "diagnostics": {"a": "d" * 99_993}}),
-        400,
-        "validation_error",
-        "too_large",
-    )
+    def sent(text):
+        return body("ż" * 5000, view=view, station=station, parameters={"a": text})
 
+    assert report(client, sent(pad)).status_code == 200
+    response = report(client, sent(pad + "d"))
+
+    document = error(response, 400, "validation_error", "too_large")
+    assert document["details"]["parameter"] == "context"
     assert document["details"]["limit_bytes"] == 100_000
+    assert document["details"]["size_bytes"] == 100_001
     [item] = listing(client, admin)["items"]
-    assert (item["message"], item["contact"], item["page_url"]) == (
-        body["message"],
-        body["contact"],
-        body["page_url"],
-    )
-    assert item["diagnostics"] == largest
+    assert item["message"] == "ż" * 5000
+    assert item["context"] == {**stored, "parameters": {"a": pad}}
 
 
 @pytest.mark.parametrize(
     ("content", "content_type", "reason"),
     [
-        (b'{"message": "x"}', "text/plain", "content_type"),
+        (json.dumps(body()).encode(), "text/plain", "content_type"),
         (b'{"message": ', "application/json", "invalid_json"),
         (b'["message"]', "application/json", "type"),
         # An id of its own: pytest puts the test's id into an environment variable,
         # which Windows limits to 32 767 characters
         pytest.param(
-            json.dumps({"message": "x", "pad": "p" * 300_000}).encode(),
+            json.dumps(body(parameters={"pad": "p" * 300_000})).encode(),
             "application/json",
             "too_large",
             id="too_large",
@@ -213,7 +305,10 @@ def test_a_report_is_a_json_object_of_a_bounded_size(
 
 def test_lone_surrogates_are_stored_as_replacement_characters(client, admin):
     """A browser that cut an emoji in half sends half a surrogate pair."""
-    content = b'{"message": "Qmax \\ud83d!", "diagnostics": {"stack": "\\udc00"}}'
+    content = (
+        b'{"message": "Qmax \\ud83d!", "context": {"view": "hydrogram\\udc00",'
+        b' "station": "\\ud83d", "parameters": {"stack": "\\udc00"}}}'
+    )
 
     response = client.post(
         "/api/feedback", content=content, headers={"Content-Type": "application/json"}
@@ -222,14 +317,42 @@ def test_lone_surrogates_are_stored_as_replacement_characters(client, admin):
     assert response.status_code == 200, response.json()
     [item] = listing(client, admin)["items"]
     assert item["message"] == "Qmax \ufffd!"
-    assert item["diagnostics"] == {"stack": "\ufffd"}
+    assert item["context"] == {
+        "view": "hydrogram\ufffd",
+        "station": "\ufffd",
+        "parameters": {"stack": "\ufffd"},
+        "app_version": hydrolog.__version__,
+    }
+
+
+def test_the_stored_report_holds_no_user_agent_of_the_request(client, admin, data_dir):
+    response = report(client, body("Nie działa"), **{"User-Agent": AGENT})
+    assert response.status_code == 200
+
+    assert AGENT not in json.dumps(listing(client, admin))
+    content = file_bytes(data_dir)
+    assert "Nie działa".encode() in content  # the bytes hold what was stored
+    assert b"TestowaPrzegladarka" not in content
+
+
+def test_a_deleted_report_leaves_no_text_in_the_file(client, admin, data_dir):
+    """``secure_delete``: the text is overwritten, not only unlinked."""
+    report(client, body("zostaje"))
+    report(client, body("Tajne zgłoszenie 4f9c-kasowane", station="Stacja 4f9c"))
+    assert b"4f9c-kasowane" in file_bytes(data_dir)  # the bytes hold what is stored
+
+    assert client.delete(f"{LIST}/2", headers=admin).status_code == 200
+
+    content = file_bytes(data_dir)
+    assert b"4f9c" not in content
+    assert b"zostaje" in content
 
 
 def test_reports_go_to_the_data_dir_of_the_settings(tmp_path, monkeypatch):
     monkeypatch.setenv("HYDROLOG_DATA_DIR", str(tmp_path / "shared"))
     created = create_app(work_root=tmp_path / "work")
     try:
-        response = report(TestClient(created), {"message": "x"})
+        response = report(TestClient(created), body())
     finally:
         created.state.gui.close()
 
@@ -243,7 +366,7 @@ def test_concurrent_reports_get_one_id_each(app, admin):
     def post_ten():
         client = TestClient(app)
         for index in range(10):
-            response = report(client, {"message": f"zgłoszenie {index}"})
+            response = report(client, body(f"zgłoszenie {index}"))
             numbers.append(response.json()["id"])
 
     threads = [threading.Thread(target=post_ten) for _ in range(8)]
@@ -261,13 +384,13 @@ def test_concurrent_reports_get_one_id_each(app, admin):
     [("POST", "/api/feedback"), ("PATCH", f"{LIST}/1"), ("DELETE", f"{LIST}/1")],
 )
 def test_writes_from_other_sites_are_refused(client, admin, request_):
-    report(client, {"message": "x"})
+    report(client, body())
     method, path = request_
 
     response = client.request(
         method,
         path,
-        json={"message": "y", "is_read": True},
+        json={**body("y"), "is_read": True},
         headers={**admin, "Sec-Fetch-Site": "cross-site"},
     )
 
@@ -284,7 +407,7 @@ def test_writes_from_other_sites_are_refused(client, admin, request_):
 def test_without_a_key_on_the_server_the_admin_routes_refuse_everything(
     client, request_, headers
 ):
-    report(client, {"message": "x"})
+    report(client, body())
 
     document = error(
         send(client, request_, headers=headers),
@@ -312,7 +435,7 @@ def test_without_a_key_on_the_server_the_admin_routes_refuse_everything(
 def test_a_missing_or_wrong_key_is_refused_and_changes_nothing(
     client, admin, request_, headers, reason
 ):
-    report(client, {"message": "x"})
+    report(client, body())
 
     error(send(client, request_, headers=headers), 401, "unauthorized", reason)
 
@@ -373,7 +496,7 @@ def test_a_key_beyond_ascii_is_compared_as_the_bytes_sent(client, monkeypatch):
 
 def test_the_list_is_newest_first_with_the_total_and_the_unread_count(client, admin):
     for message in ("pierwsze", "drugie", "trzecie"):
-        report(client, {"message": message})
+        report(client, body(message))
     client.patch(f"{LIST}/2", json={"is_read": True}, headers=admin)
 
     page = listing(client, admin)
@@ -390,7 +513,7 @@ def test_the_list_is_newest_first_with_the_total_and_the_unread_count(client, ad
 
 def test_the_list_pages_by_limit_and_offset(client, admin):
     for index in range(5):
-        report(client, {"message": f"zgłoszenie {index}"})
+        report(client, body(f"zgłoszenie {index}"))
 
     pages = [
         listing(client, admin, f"?limit=2&offset={offset}") for offset in (0, 2, 4, 6)
@@ -424,7 +547,7 @@ def test_the_page_parameters_are_checked(client, admin, query, parameter, reason
 
 
 def test_a_report_is_marked_read_and_unread_again(client, admin):
-    report(client, {"message": "x"})
+    report(client, body())
 
     marked = client.patch(f"{LIST}/1", json={"is_read": True}, headers=admin)
     read = listing(client, admin)
@@ -437,13 +560,13 @@ def test_a_report_is_marked_read_and_unread_again(client, admin):
 
 
 @pytest.mark.parametrize(
-    ("body", "reason"),
+    ("content", "reason"),
     [({}, "required"), ({"is_read": "yes"}, "type"), ({"is_read": 1}, "type")],
 )
-def test_marking_takes_only_a_boolean_is_read(client, admin, body, reason):
-    report(client, {"message": "x"})
+def test_marking_takes_only_a_boolean_is_read(client, admin, content, reason):
+    report(client, body())
 
-    response = client.patch(f"{LIST}/1", json=body, headers=admin)
+    response = client.patch(f"{LIST}/1", json=content, headers=admin)
 
     document = error(response, 400, "validation_error", reason)
     assert document["details"]["parameter"] == "is_read"
@@ -451,8 +574,8 @@ def test_marking_takes_only_a_boolean_is_read(client, admin, body, reason):
 
 
 def test_a_report_is_deleted_once(client, admin):
-    report(client, {"message": "pierwsze"})
-    report(client, {"message": "drugie"})
+    report(client, body("pierwsze"))
+    report(client, body("drugie"))
 
     deleted = client.delete(f"{LIST}/1", headers=admin)
     again = client.delete(f"{LIST}/1", headers=admin)
@@ -467,7 +590,7 @@ def test_a_report_is_deleted_once(client, admin):
 @pytest.mark.parametrize("method", ["PATCH", "DELETE"])
 @pytest.mark.parametrize("number", [7, 2**63])
 def test_reports_that_do_not_exist_are_not_found(client, admin, method, number):
-    report(client, {"message": "x"})
+    report(client, body())
 
     response = send(client, (method, f"{LIST}/{number}"), headers=admin)
 

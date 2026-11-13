@@ -36,6 +36,7 @@ from hydrolog.catalog import (
     parse_command,
 )
 from tests.e2e.conftest import NASH_TYPED, Tab, type_nash
+from tests.e2e.test_session import page_session
 
 NASH = "uh nash"
 """The command of the guide's worked example (instrukcja/#przyklad-polecenia)."""
@@ -145,9 +146,8 @@ def one_line(shown: str) -> str:
 
 
 def session_files(tab: Tab) -> dict[str, dict[str, Any]]:
-    """Return the files of the tab's session by path (``GET api/session``)."""
-    document = tab.page.request.get(tab.base + "api/session").json()
-    return {item["path"]: item for item in document["files"]}
+    """Return the files of the tab's session by path (the page's api/session)."""
+    return {item["path"]: item for item in page_session(tab.page)["files"]}
 
 
 def download(page: Page, trigger: Locator) -> tuple[str, bytes]:
@@ -494,7 +494,7 @@ def test_uploaded_files_feed_a_run_whose_output_downloads(tab: Tab) -> None:
         "output": "out/outflow.csv",
     }
     right = page.locator(RIGHT)
-    link = right.locator(".file-list a")
+    link = right.locator(".file-list button")
     expect(link).to_have_count(1)
     name, data = download(page, link)
     assert name == "outflow.csv"

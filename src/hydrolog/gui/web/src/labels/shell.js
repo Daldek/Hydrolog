@@ -1,8 +1,9 @@
 /**
  * Texts of the shell: the top bar, the rail, the panels Dane | Wykresy | Wyniki and the
  * second left panel beside Dane (ViewLayout's `detail`, plan 2026-11-10-network-wizard D2),
- * the phone sheets, the status badge, „Instrukcja” and the welcome dialog. `sections` names
- * every section by its id (router.js), the titles of GuiModule.sections (plan D4).
+ * the phone sheets, the status badge, „Instrukcja”, the welcome dialog and the footer of a
+ * public GUI. `sections` names every section by its id (router.js), the titles of
+ * GuiModule.sections (plan D4).
  */
 
 export const shell = {
@@ -41,6 +42,13 @@ export const shell = {
     guide: "Otwórz instrukcję",
     app: "Przejdź do aplikacji",
     close: "Zamknij",
+  },
+  /** The footer of a public GUI (Nogat DEV-15.7, DEV-15.8): the statement verbatim. */
+  footer: {
+    label: "Informacje o serwisie",
+    statement:
+      "Serwis jest niekomercyjny i bezpłatny, nie zawiera reklam i nie służy działalności gospodarczej operatora. Służy celom badawczym i edukacyjnym. Dane IMGW-PIB są w nim wykorzystywane do celów niezarobkowych, zgodnie z regulaminami IMGW-PIB.",
+    terms: "Regulamin",
   },
   panels: {
     left: "Dane",

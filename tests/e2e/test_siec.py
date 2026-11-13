@@ -38,6 +38,7 @@ from hydrolog.catalog import run_command
 from hydrolog.routing import RoutingNetwork
 from hydrolog.testing import example_network_document, placed
 from tests.e2e.conftest import Tab, load_network, open_part
+from tests.e2e.test_session import session_text
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
 BADGE = ".topbar .badge.status"
@@ -415,7 +416,7 @@ def test_keys_choose_nodes_and_a_new_method_marks_the_result_stale(tab: Tab) -> 
 
     compute(page)
     expect(page.locator('[data-stale="true"]')).to_have_count(0)
-    sent = json.loads(page.request.get(tab.base + "api/files/in/siec.json").text())
+    sent = json.loads(session_text(page, "in/siec.json"))
     reach = next(node for node in sent["nodes"] if node["id"] == "R_A")
     x, y = library(example_network_document())[0]["R_A"]
     assert reach == {
@@ -812,7 +813,7 @@ def test_a_reach_refused_at_its_step_takes_a_typed_lag_or_a_storage(tab: Tab) ->
     with page.expect_response(lambda answer: "/api/run/route/network" in answer.url):
         lag.click()
     expect(page.locator(BADGE)).to_have_attribute("data-state", "ok")
-    sent = json.loads(page.request.get(tab.base + "api/files/in/siec.json").text())
+    sent = json.loads(session_text(page, "in/siec.json"))
     reach = next(node for node in sent["nodes"] if node["id"] == "R_A")
     assert (reach["method"], reach["lag_min"]) == ("lag", 12.5)
 

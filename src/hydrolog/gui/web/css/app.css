@@ -323,6 +323,20 @@ html[data-host="nogat"] .main { grid-row: 1; grid-column: 1; }
 .section { height: 100%; min-height: 0; }
 .section-note { margin: var(--space-6); font-size: var(--text-sm); }
 
+/* The footer of a public GUI (Nogat DEV-15.7, DEV-15.8): one thin row under the main area,
+   the statement and „Regulamin”. The shell gains the row only when the footer is drawn, so
+   a GUI that is not public keeps its layout */
+.shell:has(> .app-footer) { grid-template-rows: var(--header-height) minmax(0, 1fr) auto; }
+.shell:has(> .app-footer) .rail { grid-row: 2 / 4; }
+.app-footer {
+  grid-row: 3; grid-column: 2; min-width: 0;
+  padding: var(--space-1) var(--space-4);
+  border-top: 1px solid var(--line); background: var(--surface);
+  color: var(--text-3); font-size: var(--text-xs); line-height: var(--line-height);
+}
+.app-footer p { margin: 0; }
+.app-footer a { color: var(--text-2); font-weight: var(--weight-medium); white-space: nowrap; }
+
 /* ---------- View layout: Dane | panel | Wykresy | Wyniki ---------- */
 /* The panel beside Dane (ViewLayout's detail, plan 2026-11-10-network-wizard D2): its
    column is 0px wide in a layout without it */
@@ -893,17 +907,9 @@ dialog.modal::backdrop { background: color-mix(in srgb, var(--code-bg) 45%, tran
 .welcome .modal-body p { margin: 0 0 var(--space-3); font-size: var(--text-site); line-height: var(--line-height); }
 .welcome .check { margin: var(--space-4) 0 var(--space-2); }
 .feedback .intro { margin: 0 0 var(--space-3); color: var(--text-2); }
-.feedback textarea, .feedback input[type="text"] { width: 100%; }
+.feedback textarea { width: 100%; }
 .feedback .counter { justify-self: end; font-size: var(--text-xs); color: var(--text-3); }
-.feedback .check { align-items: flex-start; margin: 0; }
-.feedback .check input { margin-top: 2px; }
-.preview { margin: var(--space-3) 0 0; font-size: var(--text-sm); }
-.preview summary { color: var(--text-3); cursor: pointer; }
-.preview pre {
-  max-height: 200px; overflow: auto; margin: var(--space-2) 0 0; padding: var(--space-2);
-  background: var(--surface-2); border-radius: var(--radius-md);
-  font: var(--text-xs)/var(--line-height) var(--font-mono); white-space: pre-wrap; word-break: break-word;
-}
+.feedback .note { margin: 0; font-size: var(--text-sm); }
 .feedback-status { margin: var(--space-3) 0 0; font-size: var(--text-sm); font-weight: var(--weight-bold); }
 .feedback-status.ok { color: var(--ok-ink); }
 .feedback-status.bad { color: var(--bad-ink); }
@@ -941,6 +947,10 @@ dialog.modal::backdrop { background: color-mix(in srgb, var(--code-bg) 45%, tran
   .rail-item:hover { background: transparent; color: var(--text); }
   .rail-item.active { background: transparent; color: var(--accent); font-weight: var(--weight-bold); }
   .main { grid-row: 2; grid-column: 1; }
+  /* Above the rail, wrapping */
+  .shell:has(> .app-footer) { grid-template-rows: 48px minmax(0, 1fr) auto 58px; }
+  .shell:has(> .app-footer) .rail { grid-row: 4; }
+  .app-footer { grid-column: 1; padding: var(--space-1) var(--space-3); }
 
   .view-layout { display: block; }
   .view-center { height: 100%; }

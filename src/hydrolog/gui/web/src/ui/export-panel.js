@@ -12,7 +12,7 @@
 // its two trailing columns and under the PNG's chart; the JSON has them already, and the
 // report gets them from the option `attribution` of the result's options.
 
-import { api } from "../api.js";
+import { api, downloadBlob } from "../api.js";
 import { csvWithLines, footerLines } from "../attribution.js";
 import { toPng } from "../charts/png.js";
 import { bytes } from "../format.js";
@@ -40,24 +40,6 @@ export function fileBase(subject) {
     .replace(/\s+/g, " ")
     .trim();
   return base || "hydrolog";
-}
-
-/**
- * Save a blob as a download.
- *
- * @param {Blob} blob the content
- * @param {string} name the file name
- */
-export function downloadBlob(blob, name) {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = name;
-  link.hidden = true;
-  document.body.append(link);
-  link.click();
-  link.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 /**
@@ -264,7 +246,8 @@ export function CommandLine({ command, options, title = true }) {
 }
 
 /**
- * The files of a result, each to download.
+ * The files of a result, each to download: fetched with the session's header and saved
+ * through a Blob (api.downloadFile), since a link could not carry the header.
  *
  * @param {{files: Array<{path: string, size_bytes?: number, status?: string}>}} props the
  *   files ("out/<name>")
@@ -272,6 +255,13 @@ export function CommandLine({ command, options, title = true }) {
  */
 export function FileList({ files }) {
   if (!files || !files.length) return null;
+  const save = async (path, name) => {
+    try {
+      await api.downloadFile(path, name);
+    } catch (error) {
+      toast(error.doc ? describeError(error.doc).text : String(error), "bad");
+    }
+  };
   return html`
     <h3 class="group-title">${texts.files.title}</h3>
     <ul class="file-list">
@@ -280,9 +270,9 @@ export function FileList({ files }) {
         const sessionPath = /^(in\/[^/]+|out\/.+)$/.test(String(file.path)) ? file.path : null;
         return html`<li>
           ${sessionPath
-            ? html`<a class="btn sm" href=${api.fileUrl(sessionPath)} download=${name} title=${t(texts.files.download, { name })}>
+            ? html`<button class="btn sm" type="button" data-file=${sessionPath} title=${t(texts.files.download, { name })} onClick=${() => save(sessionPath, name)}>
                 <span class="fmt">${(name.split(".").pop() || "").toUpperCase()}</span>${name}
-              </a>`
+              </button>`
             : html`<code>${file.path}</code>`}
           <span class="muted small">
             ${typeof file.size_bytes === "number" ? bytes(file.size_bytes) : ""}
@@ -338,13 +328,7 @@ export function ExportButtons({ spec }) {
       );
       if (envelope.status === "ok") {
         setReport(`out/${name}`);
-        const link = document.createElement("a");
-        link.href = api.fileUrl(`out/${name}`);
-        link.download = name;
-        link.hidden = true;
-        document.body.append(link);
-        link.click();
-        link.remove();
+        await api.downloadFile(`out/${name}`, name);
         toast(t(texts.saved, { name }));
       }
     } catch (error) {

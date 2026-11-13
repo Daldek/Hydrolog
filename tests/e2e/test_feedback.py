@@ -1,12 +1,13 @@
-"""„Zgłoś uwagę” and the admin page (Nogat plan 2026-11-03, D1, D3, D4) in Chromium.
+"""„Zgłoś uwagę” and the admin page (Nogat DEV-15.12) in Chromium.
 
-The button of the top bar opens a modal dialog with Hydrograf's fields; a report goes
-to the server with the very diagnostics its preview shows (the page's events, the
-section with its inputs, the environment), and the dialog closes 2 s after the thanks.
+The button of the top bar opens a modal dialog with one text field, its counter and the
+hint not to write personal data, with the operator's address for an answer on a public
+GUI; there is no contact field and no diagnostics. A report goes to the server as its
+text and the context the page builds (the view, the station, the view's parameters, the
+app version) and nothing about the browser; the dialog closes 2 s after the thanks.
 The admin page (``admin/``) asks for the key and keeps it in the tab, lists the reports
-newest first with the count of unread ones, opens one (which reads it), marks it unread
-again and deletes it; the markup of a report stays text. ``diagnostics.js`` keeps a
-snapshot within the server's 100 000 bytes and leaves long texts and lists out.
+newest first with the count of unread ones, opens one (which reads it) with its context,
+marks it unread again and deletes it; the markup of a report stays text.
 """
 
 import json
@@ -22,6 +23,8 @@ KEY = "klucz-testowy-0123"
 READY = 'section[data-section="hydrogram"] [data-kpi="q"] .v'
 """Hydrogram zlewni's peak: the app is mounted and has computed."""
 THANKS = "Dziękujemy! Zgłoszenie zostało zapisane."
+HINT = "Nie wpisuj danych osobowych."
+CONTEXT_KEYS = {"view", "station", "parameters", "app_version"}
 
 
 @pytest.fixture
@@ -61,87 +64,99 @@ def open_dialog(page: Page) -> Any:
     return found
 
 
-def test_a_report_goes_with_the_diagnostics_its_preview_shows(
+def send(page: Page, found: Any) -> dict[str, Any]:
+    """Press „Wyślij” and return the body the page posted to ``api/feedback``."""
+    with page.expect_request(
+        lambda request: (
+            request.method == "POST" and request.url.endswith("api/feedback")
+        )
+    ) as posted:
+        found.get_by_role("button", name="Wyślij").click()
+    body = posted.value.post_data_json
+    assert isinstance(body, dict), body
+    return body
+
+
+def test_a_report_goes_as_its_text_and_the_context_of_the_view(
     tab: Tab, gui_server: Served, admin_key: str
 ) -> None:
     seed_hydrogram(tab)
     tab.open("#hydrogram")
     page = tab.page
     expect(page.locator(READY)).to_contain_text("57,88")
+    version = page.request.get(gui_server.url("api/session")).json()["version"]
 
     found = open_dialog(page)
     assert found.evaluate("(d) => d.open && d.matches(':modal')")
-    message = found.get_by_label("Opis problemu lub sugestii")
+    message = found.get_by_label("Wiadomość")
     expect(message).to_be_focused()
+    # One text field and nothing else to fill: no contact, no diagnostics
+    expect(found.get_by_role("textbox")).to_have_count(1)
+    expect(found.get_by_role("checkbox")).to_have_count(0)
+    expect(found.locator("details, pre, input")).to_have_count(0)
+    # No operator on this server: the hint has no address
+    expect(message).to_have_accessible_description(HINT)
+    expect(found.get_by_text(HINT, exact=True)).to_be_visible()
+    expect(
+        found.get_by_text(
+            "Zgłoszenie zawiera też widok, jego parametry i wersję aplikacji."
+        )
+    ).to_be_visible()
     expect(found.get_by_text("0/5000")).to_be_visible()
     message.fill("Qmax wygląda na za duży")
     expect(found.get_by_text("23/5000")).to_be_visible()
-    found.get_by_label("Imię lub e-mail").fill("jan@example.com")
-    expect(
-        found.get_by_role("checkbox", name="Dołącz dane diagnostyczne")
-    ).to_be_checked()
-    found.get_by_text("Pokaż co zostanie wysłane").click()
-    preview = json.loads(found.locator("pre").inner_text())
 
-    assert set(preview) == {"events", "workspace", "env"}
-    assert preview["workspace"]["section"] == "hydrogram"
-    assert preview["workspace"]["inputs"]["tc_method"] == "kirpich"
-    assert preview["workspace"]["status"]["state"] == "ok"
-    runs = [
-        event["data"]
-        for event in preview["events"]
-        if event["type"] == "api_call"
-        and event["data"]["endpoint"].startswith("api/run/hydrograph/generate")
-    ]
-    assert runs and runs[-1]["status"] == 200
-    assert isinstance(runs[-1]["duration_ms"], int)
-    assert preview["env"]["viewport"] == {"width": 1440, "height": 900}
-
-    found.get_by_role("button", name="Wyślij").click()
+    body = send(page, found)
     expect(found.get_by_role("status")).to_have_text(THANKS)
     expect(found).to_be_hidden()  # 2 s after the thanks
+
+    assert set(body) == {"message", "context"}
+    context = body["context"]
+    assert set(context) == CONTEXT_KEYS
+    assert context["view"] == "hydrogram"
+    assert context["station"] is None
+    assert context["parameters"]["tc_method"] == "kirpich"
+    assert context["app_version"] == version
+    sent = json.dumps(body)
+    user_agent = page.evaluate("() => navigator.userAgent")
+    assert user_agent not in sent
+    assert tab.base not in sent
 
     stored = next(
         item
         for item in reports(page, gui_server)
         if item["message"] == "Qmax wygląda na za duży"
     )
-    assert stored["contact"] == "jan@example.com"
-    assert stored["page_url"] == tab.base + "#hydrogram"
-    assert "Chrome" in stored["user_agent"]
-    assert stored["diagnostics"] == preview
+    assert set(stored) == {"id", "created_at", "message", "context", "is_read"}
+    assert stored["context"] == context
 
 
-def test_an_empty_report_is_not_sent_and_unticked_diagnostics_stay_home(
+def test_an_empty_report_is_not_sent_and_the_view_names_its_route(
     tab: Tab, gui_server: Served, admin_key: str
 ) -> None:
-    tab.open("#statystyka")
+    tab.open("#polecenia/uh/nash")
     page = tab.page
     before = len(reports(page, gui_server))
     found = open_dialog(page)
-    found.get_by_label("Opis problemu lub sugestii").fill("   ")
+    found.get_by_label("Wiadomość").fill("   ")
 
     found.get_by_role("button", name="Wyślij").click()
 
-    expect(found.get_by_role("status")).to_have_text("Opis nie może być pusty.")
-    expect(found.get_by_label("Opis problemu lub sugestii")).to_be_focused()
+    expect(found.get_by_role("status")).to_have_text("Wiadomość nie może być pusta.")
+    expect(found.get_by_label("Wiadomość")).to_be_focused()
     assert len(reports(page, gui_server)) == before
 
-    found.get_by_label("Opis problemu lub sugestii").fill("  Bez diagnostyki  ")
-    found.get_by_role("checkbox", name="Dołącz dane diagnostyczne").uncheck()
-    found.get_by_text("Pokaż co zostanie wysłane").click()
-    expect(found.locator("pre")).to_have_text(
-        "Dane diagnostyczne nie zostaną dołączone."
-    )
-    found.get_by_role("button", name="Wyślij").click()
+    found.get_by_label("Wiadomość").fill("  Brak jednostki  ")
+    body = send(page, found)
     expect(found.get_by_role("status")).to_have_text(THANKS)
     expect(found).to_be_hidden()
 
+    assert body["message"] == "Brak jednostki"
+    assert body["context"]["view"] == "polecenia/uh/nash"
     newest = reports(page, gui_server)[0]
-    assert (newest["message"], newest["contact"], newest["diagnostics"]) == (
-        "Bez diagnostyki",
-        None,
-        None,
+    assert (newest["message"], newest["context"]["view"]) == (
+        "Brak jednostki",
+        "polecenia/uh/nash",
     )
 
     # Escape and „Anuluj” close it; the next opening asks afresh
@@ -152,6 +167,21 @@ def test_an_empty_report_is_not_sent_and_unticked_diagnostics_stay_home(
     expect(found).to_be_hidden()
 
 
+def test_a_public_gui_gives_the_operators_address_for_an_answer(
+    new_tab: Callable[..., Tab],
+) -> None:
+    tab = new_tab(server="public")
+    tab.open("#kalkulatory")
+    page = tab.page
+
+    message = open_dialog(page).get_by_label("Wiadomość")
+
+    expect(message).to_have_accessible_description(
+        "Nie wpisuj danych osobowych. Jeśli chcesz odpowiedzi, napisz na "
+        "kontakt@example.org"
+    )
+
+
 def test_the_admin_page_lists_opens_marks_and_deletes_reports(
     new_tab: Callable[..., Tab], gui_server: Served, admin_key: str
 ) -> None:
@@ -159,21 +189,26 @@ def test_the_admin_page_lists_opens_marks_and_deletes_reports(
     page = tab.page
     tab.open("admin/")  # the admin page under a host's prefix
     remove_all(page, gui_server)
+    # The server writes its own version into every report's context
+    version = page.request.get(gui_server.url("api/session")).json()["version"]
     markup = "<b>Pogrubione?</b> <img src=x> " + "długi opis " * 10
-    diagnostics = {
-        "events": [
-            {
-                "t": "2026-11-03T10:15:00.000Z",
-                "type": "api_call",
-                "data": {"status": 500},
-            }
-        ],
-        "workspace": {"section": "siec", "path": []},
-        "env": {"viewport": {"width": 390, "height": 844}},
+    context = {
+        "view": "statystyka",
+        "station": "Kłodzko (Nysa Kłodzka)",
+        "parameters": {"source": "file", "values": {"return_periods": "2; 10; 100"}},
+        "app_version": "9.9.9",
     }
     for body in (
-        {"message": "Pierwsze zgłoszenie"},
-        {"message": markup, "diagnostics": diagnostics},
+        {
+            "message": "Pierwsze zgłoszenie",
+            "context": {
+                "view": "siec",
+                "station": None,
+                "parameters": {},
+                "app_version": "9.9.9",
+            },
+        },
+        {"message": markup, "context": context},
     ):
         response = page.request.post(gui_server.url("api/feedback"), data=body)
         assert response.status == 200, response.text()
@@ -196,17 +231,31 @@ def test_the_admin_page_lists_opens_marks_and_deletes_reports(
     expect(newest.locator(".badge")).to_have_text("nowe")
     expect(rows.nth(1).locator(".report-excerpt")).to_have_text("Pierwsze zgłoszenie")
 
-    # Opened: its details as text, and read
+    # Opened: its text and context as text, and read
     newest.locator(".report-toggle").click()
+    details = newest.locator(".report-details")
     expect(newest.locator(".report-message")).to_have_text(markup)
     expect(page.locator("li.report b, li.report img")).to_have_count(0)
-    expect(newest.locator(".report-details")).to_contain_text('"section": "siec"')
-    expect(newest.locator(".report-events")).to_contain_text("api_call")
+    expect(details.locator(".report-meta")).to_have_text(
+        [
+            "Widok: statystyka",
+            "Stacja: Kłodzko (Nysa Kłodzka)",
+            f"Wersja aplikacji: {version}",
+        ]
+    )
+    expect(details.get_by_role("heading", name="Parametry widoku")).to_be_visible()
+    assert json.loads(details.locator("pre").inner_text()) == context["parameters"]
     expect(page.locator(".unread-count")).to_have_text("1")
     expect(newest.locator(".badge")).to_have_count(0)
     newest.get_by_role("button", name="Oznacz nieprzeczytane").click()
     expect(page.locator(".unread-count")).to_have_text("2")
     assert reports(page, gui_server)[0]["is_read"] is False
+
+    # A report without a station names none
+    rows.nth(1).locator(".report-toggle").click()
+    expect(rows.nth(1).locator(".report-meta")).to_have_text(
+        ["Widok: siec", f"Wersja aplikacji: {version}"]
+    )
 
     # The key stays in the tab: a reload lists again
     page.reload()
@@ -230,42 +279,3 @@ def test_the_admin_page_says_when_the_server_has_no_key(tab: Tab) -> None:
     page.get_by_role("button", name="Zaloguj").click()
 
     expect(page.get_by_role("alert")).to_contain_text("HYDROLOG_ADMIN_API_KEY")
-
-
-def test_the_diagnostics_stay_within_the_limit_and_leave_long_inputs_out(
-    tab: Tab,
-) -> None:
-    tab.open()
-    result = tab.page.evaluate(
-        """async () => {
-          const d = await import('./src/diagnostics.js');
-          for (let i = 0; i < 60; i += 1) {
-            d.logEvent('js_error', {i, stack: 'x'.repeat(3000)});
-          }
-          const snap = d.snapshot();
-          return {
-            bytes: d.jsonBytes(snap),
-            first: snap.events[0].data.i,
-            last: snap.events[snap.events.length - 1].data.i,
-            count: snap.events.length,
-            inputs: d.summarize({
-              total_mm: '105', method: 'beta', ok: true, n: 2.5,
-              pasted: '12.5\\n13.1', long: 'q'.repeat(201),
-              list: Array.from({length: 60}, (_, i) => i),
-            }),
-          };
-        }"""
-    )
-
-    assert result["bytes"] <= 100_000
-    assert result["last"] == 59  # the newest kept, the oldest gone
-    assert result["first"] > 10
-    assert result["inputs"] == {
-        "total_mm": "105",
-        "method": "beta",
-        "ok": True,
-        "n": 2.5,
-        "pasted": "[tekst: 9 znaków]",
-        "long": "[tekst: 201 znaków]",
-        "list": [*range(50), "[i 10 więcej]"],
-    }

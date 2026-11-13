@@ -40,7 +40,7 @@
 // siecLines) go to `route network` as its option `attribution` and into the saved
 // document; the views and exports of a run show and carry the run's lines.
 
-import { api } from "../../api.js";
+import { api, downloadBlob } from "../../api.js";
 import { Attribution, linesFields, linesOf, withAttribution } from "../../attribution.js";
 import { splitReason } from "../../controls/field.js";
 import { inputFiles, uploadFile, useSession } from "../../controls/file-field.js";
@@ -60,7 +60,6 @@ import { usePersistentState } from "../../persist.js";
 import { navigate } from "../../router.js";
 import { useStore } from "../../store.js";
 import { ConfirmDialog } from "../../ui/confirm.js";
-import { downloadBlob } from "../../ui/export-panel.js";
 import { registerInfo } from "../../ui/info.js";
 import { Seg } from "../../ui/seg.js";
 import { isPhone, openPanel } from "../../ui/sheet.js";

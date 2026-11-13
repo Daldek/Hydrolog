@@ -329,12 +329,13 @@ def test_paths_inside_the_session_become_relative(tmp_path):
 
 
 def test_the_limits_of_the_plan(tmp_path):
+    """Plan D7, the idle time shortened by ADR-0034: files only while they are used."""
     assert Limits().to_dict() == {
         "file_bytes": 20 * 2**20,
         "session_bytes": 100 * 2**20,
         "session_files": 200,
         "request_bytes": 5 * 2**20,
         "sessions": 64,
-        "idle_s": 12 * 3600.0,
+        "idle_s": 3600.0,
         "name_pattern": "^[A-Za-z0-9][A-Za-z0-9._ -]{0,127}$",
     }

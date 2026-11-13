@@ -6,14 +6,18 @@ before ``[nogat]``) and the built-in default. The file is ``nogat.toml`` in the 
 configuration directory (``platformdirs.user_config_path("nogat")``) or the path in
 ``NOGAT_CONFIG``; it is read with ``tomllib`` and Hydrolog works without it.
 
-Hydrolog has three settings: ``lang`` (language of human-readable output),
-``log_level`` (verbosity of the CLI log on stderr) and ``data_dir`` (the shared data
+Hydrolog has five settings: ``lang`` (language of human-readable output),
+``log_level`` (verbosity of the CLI log on stderr), ``data_dir`` (the shared data
 directory, DEV-18.2: the web GUI keeps the reports of „Zgłoś uwagę” in
-``<data_dir>/hydrolog/feedback.sqlite3``). It has no store and no cache, so
-``cache_dir`` of the shared section is not used. Its one credential, the key of the
-web GUI's admin page, comes from the environment only (DEV-18.4):
-:func:`admin_api_key`. The web GUI's app menu lists the deployment's GUIs from the
-shared table ``gui`` of ``[nogat]`` (DEV-15.4): :func:`gui_addresses`.
+``<data_dir>/hydrolog/feedback.sqlite3`` and, public, its daily totals in
+``<data_dir>/hydrolog/stats.jsonl``), and ``request_limit`` and ``request_window``
+(the requests a public web GUI answers per client address in a window of that many
+seconds, Nogat DEV-15.9). It has no store and no cache, so ``cache_dir`` of the
+shared section is not used. Its one credential, the key of the web GUI's admin page,
+comes from the environment only (DEV-18.4): :func:`admin_api_key`. The web GUI's app
+menu lists the deployment's GUIs from the shared table ``gui`` of ``[nogat]``
+(DEV-15.4): :func:`gui_addresses`; the table ``operator`` of ``[nogat]`` makes it a
+public GUI with its regulamin (DEV-15.7): :func:`operator_table`.
 """
 
 from __future__ import annotations
@@ -41,14 +45,25 @@ __all__ = [
     "default_data_dir",
     "gui_addresses",
     "load_file",
+    "operator_table",
     "resolve_setting",
 ]
 
 TOOL: Final = "hydrolog"
-KEYS: Final = ("lang", "log_level", "data_dir")
+KEYS: Final = ("lang", "log_level", "data_dir", "request_limit", "request_window")
 """Names of the settings of Hydrolog."""
-DEFAULTS: Final[Mapping[str, str]] = {"lang": "pl", "log_level": "warning"}
+DEFAULTS: Final[Mapping[str, str]] = {
+    "lang": "pl",
+    "log_level": "warning",
+    "request_limit": "300",
+    "request_window": "60",
+}
 """Built-in default of each setting but ``data_dir`` (:func:`default_data_dir`)."""
+_COUNTS: Final[Mapping[str, int]] = {
+    "request_limit": 1_000_000,
+    "request_window": 86_400,
+}
+"""The settings that are whole numbers, each with its largest value (at least 1)."""
 ADMIN_API_KEY: Final = "HYDROLOG_ADMIN_API_KEY"
 """The variable that holds the key of the web GUI's admin page (DEV-18.4)."""
 ADMIN_API_KEY_FILE: Final = "HYDROLOG_ADMIN_API_KEY_FILE"
@@ -145,6 +160,8 @@ def default_data_dir() -> str:
 
 def _normalize(key: str, raw: object) -> str | None:
     """Return the value of ``key`` from ``raw``, or ``None`` when it is not usable."""
+    if key in _COUNTS:
+        return _count(raw, _COUNTS[key])
     if not isinstance(raw, str) or not raw.strip():
         return None
     if key == "data_dir":
@@ -156,6 +173,20 @@ def _normalize(key: str, raw: object) -> str | None:
     if key == "log_level":
         return value if value in ("debug", "info", "warning", "error") else None
     return value
+
+
+def _count(raw: object, maximum: int) -> str | None:
+    """Return a whole number of 1 to ``maximum`` as text: a TOML integer or digits."""
+    if isinstance(raw, bool):
+        return None
+    if isinstance(raw, str):
+        text = raw.strip()
+        if not text.isascii() or not text.isdigit():
+            return None
+        raw = int(text)
+    if not isinstance(raw, int) or not 1 <= raw <= maximum:
+        return None
+    return str(raw)
 
 
 def resolve_setting(
@@ -299,3 +330,36 @@ def gui_addresses(
         for name, address in table.items()
         if isinstance(name, str) and isinstance(address, str) and address.strip()
     }
+
+
+def operator_table(
+    environ: Mapping[str, str] | None = None,
+    file_data: Mapping[str, Any] | None = None,
+) -> dict[str, Any] | None:
+    """Return the deployment's operator: the table ``operator`` of ``[nogat]``.
+
+    A deployment that opens the web GUI to anyone sets it (Nogat DEV-15.7, DEV-18.1):
+    ``name``, ``email``, ``terms_effective`` (a date), ``processor``,
+    ``processor_transfer``, ``processor_cookie``, ``mail_provider`` and
+    ``mail_transfer``. With it the GUI is public: it serves its regulamin, limits the
+    requests of each address, counts its use and writes its access log. Like ``gui``,
+    only ``[nogat]`` gives it.
+
+    Parameters
+    ----------
+    environ : Mapping, optional
+        Environment to read (``NOGAT_CONFIG``); defaults to ``os.environ``.
+    file_data : Mapping, optional
+        Parsed ``nogat.toml``; defaults to the file at :func:`config_path`.
+
+    Returns
+    -------
+    dict or None
+        The table as the file gives it (its values unchecked: the regulamin checks
+        them); ``None`` when the file is missing or unusable or has no such table.
+    """
+    source = os.environ if environ is None else environ
+    data = load_file(config_path(source)) if file_data is None else file_data
+    shared = data.get("nogat")
+    table = shared.get("operator") if isinstance(shared, Mapping) else None
+    return dict(table) if isinstance(table, Mapping) else None

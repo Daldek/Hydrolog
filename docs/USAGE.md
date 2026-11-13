@@ -1348,11 +1348,14 @@ the design is in [ADR 0006](decisions/0006-mcp-server-conformance.md).
 
 ## 6. Settings
 
-Hydrolog has three settings: `lang` (language of human-readable output, `pl` or `en`; default `pl`),
+Hydrolog has five settings: `lang` (language of human-readable output, `pl` or `en`; default `pl`),
 `log_level` (verbosity of the log on stderr; default `warning`; `-v` and `-q` change it for one
-call) and `data_dir` (the data directory the Nogat tools share; default the user data directory
-of `nogat`, `~/.local/share/nogat` on Linux). Only the web GUI uses `data_dir`: it keeps the
-reports of „Zgłoś uwagę” in `<data_dir>/hydrolog/feedback.sqlite3` ([section 8](#8-the-web-gui)).
+call), `data_dir` (the data directory the Nogat tools share; default the user data directory
+of `nogat`, `~/.local/share/nogat` on Linux), and `request_limit` and `request_window` (the
+requests a public web GUI answers per client address in a window of that many seconds; default
+300 and 60). Only the web GUI uses `data_dir`: it keeps the reports of „Zgłoś uwagę” in
+`<data_dir>/hydrolog/feedback.sqlite3` and, public, its daily totals in
+`<data_dir>/hydrolog/stats.jsonl` ([section 8](#8-the-web-gui)).
 Hydrolog has no store or cache. Its one credential, the key of the GUI's admin page, comes from
 the environment only (`HYDROLOG_ADMIN_API_KEY`, or a file named by
 `HYDROLOG_ADMIN_API_KEY_FILE`), never from `nogat.toml`.
@@ -1362,7 +1365,7 @@ hydrolog config show --json
 ```
 
 ```json output
-{"result": {"schema": "hydrolog-config/1", "settings": [{"key": "lang"}, {"key": "log_level"}, {"key": "data_dir"}]}}
+{"result": {"schema": "hydrolog-config/1", "settings": [{"key": "lang"}, {"key": "log_level"}, {"key": "data_dir"}, {"key": "request_limit"}, {"key": "request_window"}]}}
 ```
 
 `config show` prints each setting with its value and its source (`environment`, `file` or
@@ -1597,14 +1600,17 @@ gui = { hydrolog = "http://127.0.0.1:8070/", hydrograf = "http://127.0.0.1:8080/
   „Cofnij” stays in the page's memory). The widths of the panels are `hydrolog-gui/layout/1`,
   the choice „Nie pokazuj ponownie” of the welcome dialog `hydrolog-gui/welcome/1` and the theme
   `nogat-theme`, which Nogat's other pages on the same address share.
-- **Files go to the server.** A browser session (the cookie `hydrolog_gui`, HttpOnly,
-  SameSite=Strict) has a work directory of its own: `in/` holds the uploads and the documents the
-  page writes (the network of Sieć, for example), `out/` the files that commands write. A path
-  option takes only `in/<name>` or `out/<name>`; nothing else on the server is reachable. Limits:
-  20 MiB per file, 100 MiB and 200 files per session, 5 MiB of JSON per request and 64 sessions,
-  the least recently used idle one removed first. A session idle for 12 hours is removed, and so
-  are all of them when the server stops. `hydrolog gui serve` keeps them in a new directory of the
-  system's temporary directory (`TMPDIR`).
+- **Files go to the server, only while the page is open.** Each open page has a session with a
+  work directory of its own: `in/` holds the uploads and the documents the page writes (the
+  network of Sieć, for example), `out/` the files that commands write. The page keeps the
+  session's id in its memory and sends it in the header `X-Hydrolog-Session`; there is no cookie,
+  so a second tab has a session of its own and a reload starts a new one (give the files again).
+  The page ends its session when it is closed or reloaded, a session idle for an hour is removed,
+  and so are all of them when the server stops: the server uses the files only for the
+  computations. A path option takes only `in/<name>` or `out/<name>`; nothing else on the server
+  is reachable. Limits: 20 MiB per file, 100 MiB and 200 files per session, 5 MiB of JSON per
+  request and 64 sessions, the least recently used idle one removed first. `hydrolog gui serve`
+  keeps them in a new directory of the system's temporary directory (`TMPDIR`).
 - **Runs go to two worker processes.** A newer run of the same kind replaces a queued older one,
   and a run longer than 30 seconds is stopped (the notice `timeout`).
 - **Only PMAXTP goes out, from the server.** Under PMAXTP, Hydrogram zlewni and Sieć (the
@@ -1615,37 +1621,43 @@ gui = { hydrolog = "http://127.0.0.1:8070/", hydrograf = "http://127.0.0.1:8080/
   server.
 - **The page loads nothing from other sites.** The server sends a Content-Security-Policy of
   `'self'` without inline scripts or styles, `X-Frame-Options: DENY` and `no-store` for its API.
-- **A report goes to whoever runs the server, and only when it is sent.** The diagnostics of
-  „Zgłoś uwagę” live in the page's memory until a report is sent with them (below).
+- **A report goes to whoever runs the server, and only when it is sent** (below).
 
 ### Reports of users („Zgłoś uwagę”)
 
-„Zgłoś uwagę” in the top bar opens Hydrograf's dialog: a description (1 to 5,000 characters, with
-a counter), an optional name or e-mail (up to 200), „Dołącz dane diagnostyczne” (ticked) with
-„Pokaż co zostanie wysłane”, a preview of exactly the diagnostics that go with the report, and
-„Anuluj” or „Wyślij”; the dialog thanks and closes after 2 seconds. The diagnostics are at most
-100,000 bytes of JSON: `events`, the last 50 events of the page (JavaScript errors; API calls with
-the endpoint, method, status, duration and the error's code; changes of the section; the catalog
-documents the page reads when it loads only if they fail), `workspace`, what the person sees (the
-section, its route, the status badge, the context and the inputs the section keeps in the
-browser, a text longer than 200 characters or with lines and the rest of a list longer than 50
-replaced by their size), and `env` (the browser, its language, the window, the address, the
-theme). Never the contents of files, request bodies, cookies or keys. The address of the page
-and the browser's `User-Agent` go with every report.
+„Zgłoś uwagę” in the top bar opens a dialog with one text field (1 to 5,000 characters, with a
+counter) and, under it, „Nie wpisuj danych osobowych.”, in a public GUI followed by „Jeśli chcesz
+odpowiedzi, napisz na <the operator's address>” (Nogat DEV-15.12); then „Anuluj” or „Wyślij”, and
+the dialog thanks and closes after 2 seconds. There is no contact field. With the text the page
+sends a context it adds itself, at most 100,000 bytes of JSON: `view` (the section and its route,
+for example `polecenia/uh/nash`), `station` (the station of a station's series opened in
+Statystyka przepływów, else `null`), `parameters` (the inputs the section keeps in the browser, a
+text longer than 200 characters or with lines and the rest of a list longer than 50 replaced by
+their size) and `app_version` (the server's). Never the contents of files, the page's address, the
+browser's `User-Agent` or the client's IP address: the server refuses any other field.
 
 **Where reports are kept.** In the SQLite file `<data_dir>/hydrolog/feedback.sqlite3`
 ([section 6](#6-settings); `hydrolog config show` prints `data_dir`), which the first report
 makes, with its directory (mode 0700, the file 0600). One table, `feedback`: `id`, `created_at`
-(UTC), `message`, `contact`, `page_url`, `user_agent`, `diagnostics` (JSON text) and `is_read`,
-with the limits as checks. The file is in WAL mode, so the server, the admin page and `sqlite3`
-can read it at the same time. A host that mounts the GUI chooses the directory with
-`create_app(data_dir=...)`.
+(UTC), `message`, `context` (JSON text) and `is_read`, with the limits as checks; `PRAGMA
+user_version` is 2, and a deleted report is overwritten in the file (`secure_delete`). The file
+is in WAL mode, so the server, the admin page and `sqlite3` can read it at the same time. A host
+that mounts the GUI chooses the directory with `create_app(data_dir=...)`.
+
+**Reports of the earlier form.** A file of version 1 (the dialog with a name or e-mail, the
+page's address, the browser and diagnostics) is copied whole, with the sqlite backup API, to
+`feedback-v1-<UTC time>.sqlite3` beside it (mode 0600) the first time the server opens it; then
+its reports keep their ids, dates, texts and read flags, get the context their page's address and
+diagnostics give (`view`, `parameters`), and the rest leaves the file (it is vacuumed). The copy
+still holds the contacts, addresses and browsers: it is the operator's to read and delete once its
+reports are handled.
 
 **The admin page.** `admin/` under the GUI's address (`http://127.0.0.1:8070/admin/`) asks for the
 key, or a file that holds it, and keeps it in the browser tab only (`sessionStorage`,
 `hydrolog-gui/admin-key/1`, until „Wyloguj”). It lists the reports newest first with the count of
-unread ones; a report opens its message, contact, page, browser, workspace, environment and events
-(and is then read), can be marked unread again or deleted. The key is `HYDROLOG_ADMIN_API_KEY`, or
+unread ones; a report opens its message and its context (view, station, version and the view's
+parameters; it is then read), can be marked unread again or deleted. The key is
+`HYDROLOG_ADMIN_API_KEY`, or
 the text of the file that `HYDROLOG_ADMIN_API_KEY_FILE` names; the server reads it at every
 request, so a new key in the file applies at once. Without either, the admin page refuses everyone
 (`401 unauthorized`, `details.reason` `admin_key_not_configured`): no key is generated. A long
@@ -1655,16 +1667,17 @@ The page's private API, for scripts as well (paths relative to the GUI's address
 
 | Route | Request | Answer |
 |---|---|---|
-| `POST api/feedback` | `{"message", "contact", "page_url", "diagnostics"}` (JSON, at most 256 KiB) | `{"id": 7, "status": "ok"}` |
+| `POST api/feedback` | `{"message", "context": {"view", "station", "parameters", "app_version"}}` (JSON, at most 256 KiB); any other field is refused | `{"id": 7, "status": "ok"}` |
 | `GET api/admin/feedback?limit=50&offset=0` | `X-Admin-Key`; `limit` 1 to 200 | `{"items": [...], "total", "unread_count"}`, newest first |
 | `PATCH api/admin/feedback/{id}` | `X-Admin-Key`; `{"is_read": true}` | `{"status": "ok"}` |
 | `DELETE api/admin/feedback/{id}` | `X-Admin-Key` | `{"status": "deleted"}` |
 
 An error is a `hydrolog-error/1` document: `validation_error` (400; `details.parameter` and
-`details.reason`, for example `too_long` with `max_length`, or `too_large` for diagnostics over
-100,000 bytes), `unauthorized` (401; `admin_key_missing`, `admin_key_invalid` or
-`admin_key_not_configured`), `not_found` (404; `feedback_not_found`) or `io_error` (500; the
-file could not be used, `feedback_store_failed` and the like, without its path).
+`details.reason`, for example `unknown_field` for a field outside the form, `too_long` with
+`max_length`, or `too_large` for a context over 100,000 bytes), `unauthorized` (401;
+`admin_key_missing`, `admin_key_invalid` or `admin_key_not_configured`), `not_found` (404;
+`feedback_not_found`) or `io_error` (500; the file could not be used, `feedback_store_failed`
+and the like, without its path).
 
 **Reading and backing up.** Besides the admin page, `curl` with the key or `sqlite3` on the file
 read the reports; SQLite's `.backup` copies the file consistently while the server runs (a plain
@@ -1674,9 +1687,9 @@ server and put the copy in the file's place.
 ```sh
 curl -s -H "X-Admin-Key: $(cat admin.key)" "http://127.0.0.1:8070/api/admin/feedback?limit=50"
 sqlite3 -header -column ~/.local/share/nogat/hydrolog/feedback.sqlite3 \
-  "SELECT id, created_at, is_read, contact, substr(message, 1, 60) AS message FROM feedback ORDER BY created_at DESC"
+  "SELECT id, created_at, is_read, substr(message, 1, 60) AS message FROM feedback ORDER BY created_at DESC"
 sqlite3 ~/.local/share/nogat/hydrolog/feedback.sqlite3 \
-  "SELECT json_extract(diagnostics, '$.workspace.section') FROM feedback WHERE id = 7"
+  "SELECT json_extract(context, '$.view') FROM feedback WHERE id = 7"
 sqlite3 ~/.local/share/nogat/hydrolog/feedback.sqlite3 ".backup feedback-$(date +%F).sqlite3"
 ```
 
@@ -1712,3 +1725,88 @@ WantedBy=multi-user.target
 `curl -sI http://127.0.0.1:8070/` answers `200` with the `Content-Security-Policy` header when the
 server runs. Hosting the GUI inside another application (Nogat's GUI platform) is in
 [INTEGRATION.md](INTEGRATION.md#web-gui-a-module-of-nogats-gui-platform).
+
+### A public GUI (regulamin, limit, logs, totals)
+
+A deployment that opens the GUI to anyone without signing in sets the table `operator` of
+`[nogat]` in `nogat.toml` (Nogat DEV-15.7, DEV-18.1) and Hydrolog's public address in
+`[nogat] gui`. The server reads them at the start ([ADR-0034](decisions/0034-a-public-gui-regulamin-limit-logs-totals.md)):
+
+```toml
+[nogat]
+gui = { hydrolog = "https://hydrolog.example.org/" }
+
+[nogat.operator]          # a deployment open to others
+name = "…"
+email = "…"
+terms_effective = 2026-11-20
+processor = "Cloudflare, Inc."
+processor_transfer = "Dane mogą być przekazywane do USA na podstawie decyzji Komisji Europejskiej w sprawie EU-U.S. Data Privacy Framework."
+processor_cookie = ""
+mail_provider = "iCloud Mail (Apple)"
+mail_transfer = "Mogą być przetwarzane poza Europejskim Obszarem Gospodarczym."
+
+[hydrolog]                # optional: the request limit per client address
+request_limit = 300
+request_window = 60
+```
+
+- **The regulamin.** The server fills the regulamin of Nogat's GUI kit (`web/nogat/nogat-terms.html`,
+  kit 0.4.0, regulamin 1.0) with these values and the blocks of Hydrolog's sources (PMAXTP,
+  IMGW-PIB, ČHMÚ), serves it at `regulamin.html` beside the page, and every view shows at its
+  foot the statement of DEV-15.8 with the link „Regulamin”; the menu „Aplikacje” ends with it and
+  the guide shows the same footer. A key missing or empty (only `processor_transfer`,
+  `processor_cookie` and `mail_transfer` may be empty) leaves no page and no link, with the
+  warning `No regulamin: missing values: …` in the log. A change needs a restart.
+- **The request limit.** At most `request_limit` requests of one client address in
+  `request_window` seconds; the address stays in the server's memory for its window only. Static
+  files and the catalog documents (`api/commands…`, `api/schemas/…`) are not counted, a page load
+  costs about three requests and a computation one. Over it: `429` with `Retry-After`. Behind a
+  proxy, the client's address is the last one the proxy adds to `X-Forwarded-For`, trusted only
+  from the addresses in uvicorn's `FORWARDED_ALLOW_IPS` (default `127.0.0.1`: `cloudflared` on the
+  same machine); a proxy on another machine needs its address there.
+- **Logs.** uvicorn's access log is off; the server writes its own, one JSON line per request on
+  standard error without the client's address (`time`, `request_id`, `method`, `path`, `status`,
+  `size`, `duration_ms`, `user_agent`; `request_id` is also the answer's `X-Request-Id`). No other
+  line of the server names a client. Every log is deleted after 14 days (DEV-15.10): a service of
+  systemd logs to the journal, so set its retention, for example in
+  `/etc/systemd/journald.conf.d/retention.conf` (the setting covers every journal of the
+  machine), and restart `systemd-journald`:
+
+  ```ini
+  [Journal]
+  MaxRetentionSec=14day
+  MaxFileSec=1day
+  ```
+
+  `journalctl --user -u hydrolog-gui -o cat` prints the lines. A proxy in front keeps its own logs:
+  `cloudflared` at its default level (`info`) logs no client address; do not run it with
+  `--loglevel debug`.
+- **Daily totals** in `<data_dir>/hydrolog/stats.jsonl`, one JSON line per UTC day, rewritten
+  every five minutes, at midnight UTC and at the stop; a restart adds to the day's line:
+
+  ```json
+  {"date": "2026-11-20", "visitors": 41, "page_views": 77, "stations_opened": 6, "analyses_run": 512, "downloads": 19}
+  ```
+
+  `visitors`: distinct HMAC-SHA-256 of the client address and the `User-Agent` of the counted
+  requests under a 32-byte salt drawn at the start and at every midnight UTC, kept in memory only
+  (after a restart a visitor counts again); `page_views`: the app (`/`), its guide (`instrukcja/`)
+  and the regulamin served, not the admin page; `stations_opened`: stations' series from a
+  hand-off opened in Statystyka przepływów; `analyses_run`: computations the server ran and
+  answered (`api/run`, not the plans of `check`); `downloads`: files the page saved on the
+  person's disk (exports, the report, hand-off files, outputs of the server). The page tells the
+  server of the last two (`POST api/stats/station`, `POST api/stats/download`, no body).
+- **The admin page is the operator's.** Put `admin/` and `api/admin/` behind a sign-in, for
+  example a Cloudflare Access application on the paths `/admin/*` and `/api/admin/*` of the GUI's
+  hostname (and `/admin` without the slash, which redirects); the rest stays public. The admin key
+  still guards the API.
+
+Check a public GUI after a start:
+
+```sh
+curl -s https://hydrolog.example.org/api/terms                 # {"terms": "regulamin.html", ...}
+curl -sI https://hydrolog.example.org/regulamin.html | head -1  # 200
+journalctl --user -u hydrolog-gui -o cat -n 3                   # JSON lines, no address
+tail -n 2 ~/.local/share/nogat/hydrolog/stats.jsonl
+```
