@@ -1200,6 +1200,31 @@ The sources name neither the months nor a number for "nearly equal": the spring 
 
 **Verification** (`tests/unit/test_station_regime.py`; the mockup's numbers by a check outside the repository, plan 2026-11-13, Results). Sen's slope, interval and S reproduce Gilbert's (1987) Example 16.5 (5.5, 2.6 to 9.3 with two values in one time period) and Exercises 16.1–16.3 (S = 12, Var(S) = 44.3, slope 0.33 and 0.23, interval 0 to 0.94); the mean Pardé coefficients of Wrzesiński's (2018) Table 1 give types 1 to 5; the filter reproduces the BFIs that Ladson et al. (2013) publish with their code for the Bass River at Loch (0.1965759) and for its two spans parted by missing days (0.1411197); an exact two-harmonic sinusoid is recovered (amplitudes, days of the maxima, R² = 1); the seasonality index takes its bounds 0 and 11/6; Pardé's coefficients, the spring share, the circular mean of dates and the recession constant of an exponential recession are checked against hand computations.
 
+### 3.13 Meteorological Statistics of a Station (`meteo` group; plan 2026-11-13, D12; ADR-0032)
+
+The six commands read a station's daily series: Obserwator's export (`date`, `P [mm]`, `P_flag`, `Tmax [degC]`, `Tmin [degC]`, `Tmean [degC]`, `snow_cover [cm]`, `fresh_snow [cm]`; each column by its `*_column` option, the export's name by default) or inline lists with `dates`. The library functions are in `hydrolog.statistics` (`meteo_precipitation`, `meteo_spells`, `meteo_spi`, `meteo_temperature`, `meteo_snow`, `meteo_hydrothermal`, the shared rules in `_climate`). Years are calendar years, or hydrological years (XI–X, named after their end) with `year_type` `hydrological`; `first_year` and `last_year` keep the days of those years only (D1), and a result carries `first_year`, `last_year`, `period_years` and, under 30 years, the notice `short_reference_period`.
+
+**Missing days (WMO-No. 1203, 2017, section 4.4).** A monthly mean or count needs fewer than 11 missing days and fewer than 5 in a row (4.4.1 a, d); a count is the share of the observed days with the event times the days of the month (4.3). A monthly sum needs every day (4.4.1 c), except that a value flagged `accumulated` (IMGW-PIB's reading after unread days, `P_flag` of the export; `precipitation_flag_column`) stands for the missing days just before it when, with its own day, they are fewer than 5 and the totals represent fewer than 11 days of the month; for every daily statistic such a value is a missing day (notice `accumulated_totals`). Monthly extremes take any days (4.4.1 b). An annual value needs its 12 months; annual maxima, percentile sums, spells and the hydrothermal season need every day of the year. A normal is the mean of the years of the period with a value when they are at least 80 % of its years (4.4.2, no consecutive-years rule; notice `normal_not_computed`).
+
+| Command, index | Method |
+|---|---|
+| `meteo precipitation` `sums` (M1) | Sums of months, half-years XI–IV and V–X (named after the hydrological year), seasons DJF (December of the year before), MAM, JJA, SON, years; normals of the period; each sum in % of its normal; annual mean, standard deviation (n − 1), CV, extremes |
+| `maxima` (M2) | The n-day sum of a day is the sum of the n days ending on it (each window summed alone, to 1e-6 mm, so that equal sums tie), counted in the year of its last day; the yearly largest of 1 day and of `durations_days` (2, 3, 5, 10; Rx5day of the ETCCDI) with dates, the first window on a tie; monthly largest daily sums; quantiles: `stats flood-frequency` on the values |
+| `days` (M5) | Days with P ≥ `thresholds_mm` (0.1, 1, 10, 20; R10mm, R20mm of the ETCCDI) per month (scaled) and year |
+| `intensity` (M4) | Mean annual sum; SDII = PRCPTOT / wet days, a wet day P ≥ `wet_day_mm` (1 mm; Zhang et al., 2011) |
+| `heavy` (M7) | Thresholds: the `percentiles` (95, 99) of the wet days of the period, quantile type 8 (Hyndman and Fan, 1996; as climdex.pcic), from at least 100 wet days; per year Σ P over P > threshold (R95p, R99p) in % of PRCPTOT (R95pTOT, R99pTOT) |
+| `seasonality` (M9) | Regime of the 12 monthly normals (share, normal / mean normal); PCI = 100 Σp² / (Σp)² (Oliver, 1980; ≤ 10 uniform, ≤ 15 moderate, ≤ 20 irregular, above strongly irregular); SI = Σ\|x − R/12\| / R (Walsh and Lawler, 1981; < 0.2 … ≥ 1.2, seven classes) of the normals and of each year |
+| `meteo spells` (M6) | Runs of days with P < `threshold_mm` (`dry`) or ≥ it (`wet`), 1 mm by default (CDD, CWD of the ETCCDI), by `threshold_runs` of `stats threshold-events` (D4): a missing day ends a run (`open_start`, `open_end`); a spell counts in the year it starts; per complete year the longest, the spells of ≥ 10, 15, 20 days and their number; lengths in the classes 1, 2, 3, 4–5, 6–10, 11–15, 16–20, 21–30, ≥ 31 of the closed spells |
+| `meteo spi` (M8) | SPI of `scales_months` (1, 3, 6, 12): per calendar month a gamma distribution by Thom's (1958) approximation fitted to the positive k-month sums of the period (in at least 80 % of its years, 3 positive), H(x) = q + (1 − q) G(x), SPI = Φ⁻¹(H) within ±3.09 (McKee et al., 1993; Edwards and McKee, 1997; WMO-No. 1090, 2012; notice `spi_not_fitted`); each month and year in % of its normal: years in Kaczorowska's (1962) classes < 50, 50–74, 75–89, 90–110, 111–125, 126–150, > 150 % (whole percent), months in the monthly limits < 25, < 50, < 75, ≤ 125, ≤ 150, ≤ 200, > 200 % (Tomaszewska, 1994, after Kosiba, 1948; Gąsiorek and Musiał, 2011, Table 1: Kaczorowska gave no monthly classes) |
+| `meteo temperature` `means` (M11) | Monthly means of Tmean, Tmax, Tmin, annual = mean of 12; normal and anomaly of Tmean; extremes of Tmax and Tmin with dates |
+| `days` | Frost Tmin < 0, ice Tmax < 0, summer Tmax > 25, hot Tmax > 30 °C, tropical nights Tmin > 20 °C (FD, ID, SU, TR of Zhang et al., 2011; thresholds are options) |
+| `degree_days` | GDD = Σ max(Tmean − 5, 0) (Wypych et al., 2017); HDD = Σ (18 − Tmean) over the days with Tmean ≤ 15 °C (Eurostat, nrg_chdd metadata, 3.4); complete months |
+| `range` | DTR: monthly mean of Tmax − Tmin, annual = mean of 12 (ETCCDI) |
+| `meteo snow` (M10) | Winter = the snow season 1 August – 31 July named after the hydrological year it ends in (D12's "per winter (hydrological year)", read so that late-October snow starts its own winter; on Kraków a literal XI–X year moved 6 of 64 winters); days with cover ≥ 1 cm (scaled months), largest depth and its date, first and last day with cover, fresh snow; a winter needs enough days in X–V |
+| `meteo hydrothermal` (M14) | k = P / (0.1 Σt) (Selyaninov, 1928): months IV–IX with Σt = monthly mean × days for a mean above 0 °C (Skowera and Puła, 2004; Radzka, 2014), and the days of each calendar year with Tmean > 10 °C (Miś, 2026, eq. 4); classes ≤ 0.4, 0.7, 1.0, 1.3, 1.6, 2.0, 2.5, 3.0, above (Skowera and Puła, 2004, p. 172) |
+
+**Verification** (`tests/unit/test_meteo.py`): hand-computed sequences of each index (accumulated totals, scaled counts, the 80 % rule, maxima with dates, SDII, the type-8 percentile by hand, PCI 100/12 and SI 11/6 of the extreme regimes, spells cut by a missing day, Thom's estimates, the class limits, Eurostat's HDD, October snow, Sielianinov's k) and the ETCCDI counts of the fixture year 2021 (FD, ID, SU, TR, R10mm, R20mm, CDD, CWD, PRCPTOT, SDII, R95pTOT) counted from the rows of `tests/fixtures/meteo_daily.csv`. The mockup's prototypes (Obserwator, `_meteo_proto.py`) were reproduced on Kraków (250190390) and Praha-Klementinum (0-203-0-11514) to their rounding, with the differences of D1 (the period's days only) and the monthly classes above.
+
 ---
 
 ## 4. Literature Verification
@@ -1249,6 +1274,7 @@ The sources name neither the months nor a number for "nearly equal": the spring 
 | Harmonics of the annual cycle (`stats harmonics`) | Wilks (2011), section 9.4; an exact sinusoid recovered | ✅ |
 | Sen's slope, Conover's intercept, Gilbert's interval (`stats mann-kendall`) | Sen (1968), Conover (1980), Gilbert (1987) section 16.5; Example 16.5 and Exercises 16.1–16.3 reproduced | ✅ |
 | Baseflow by the Lyne and Hollick filter, recession constant (`stats baseflow`) | Lyne and Hollick (1979), Nathan and McMahon (1990), Ladson et al. (2013) (their published BFIs reproduced), Tallaksen (1995) | ✅ |
+| Meteorological statistics (`meteo` group) | WMO-No. 1203 (2017) 4.4; Zhang et al. (2011, ETCCDI); Hyndman and Fan (1996); Oliver (1980); Walsh and Lawler (1981); McKee et al. (1993), Thom (1958), WMO-No. 1090 (2012); Kaczorowska (1962), Gąsiorek and Musiał (2011); Wypych et al. (2017); Eurostat nrg_chdd; Selyaninov (1928), Skowera and Puła (2004), Radzka (2014); the prototypes of Obserwator's mockup reproduced on two stations | ✅ |
 
 ### 4.2 Key Publications
 
@@ -1495,6 +1521,40 @@ The sources name neither the months nor a number for "nearly equal": the spring 
 53. **Ladson, A.R., Brown, R., Neal, B. & Nathan, R.** (2013). A standard approach to baseflow separation using the Lyne and Hollick filter. *Australasian Journal of Water Resources*, 17(1), 25-34. doi:10.7158/13241583.2013.11465417; the authors' code and example: https://github.com/TonyLadson/BaseflowSeparation_LyneHollick
 
 54. **Tallaksen, L.M.** (1995). A review of baseflow recession analysis. *Journal of Hydrology*, 165(1-4), 349-370.
+
+### Meteorological Statistics
+
+55. **Edwards, D.C. & McKee, T.B.** (1997). Characteristics of 20th century drought in the United States at multiple time scales. *Climatology Report* 97-2, Colorado State University, Fort Collins.
+
+56. **Eurostat** (2024). Energy statistics – cooling and heating degree days (nrg_chdd), reference metadata, section 3.4.
+
+57. **Gąsiorek, E. & Musiał, E.** (2011). Porównanie i klasyfikacja warunków opadowych na podstawie wskaźnika standaryzowanego opadu i wskaźnika względnego opadu. *Woda-Środowisko-Obszary Wiejskie*, 11(4), 107-119 (Kaczorowska's classes on p. 108; the monthly limits of Tomaszewska, 1994, after Kosiba, 1948, in Table 1).
+
+58. **Hyndman, R.J. & Fan, Y.** (1996). Sample quantiles in statistical packages. *The American Statistician*, 50(4), 361-365.
+
+59. **Kaczorowska, Z.** (1962). Opady w Polsce w przekroju wieloletnim. *Prace Geograficzne IG PAN*, 33.
+
+60. **McKee, T.B., Doesken, N.J., & Kleist, J.** (1993). The relationship of drought frequency and duration to time scales. *8th Conference on Applied Climatology*, Anaheim, 179-184.
+
+61. **Miś, F.** (2026). Spatiotemporal variability of atmospheric drought during the growing season in Poland. *Theoretical and Applied Climatology*, 157, 790.
+
+62. **Oliver, J.E.** (1980). Monthly precipitation distribution: a comparative index. *Professional Geographer*, 32(3), 300-309.
+
+63. **Radzka, E.** (2014). Hydrothermal characteristics of vegetation period in central-eastern Poland in years 1971–2005. *Folia Pomeranae Universitatis Technologiae Stetinensis*, 312(31), 133-142.
+
+64. **Selyaninov, G.T.** (1928). On the agricultural estimation of climate. *Trudy po sel'skokhozyaystvennoy meteorologii*, 20, 165-177.
+
+65. **Skowera, B. & Puła, J.** (2004). Skrajne warunki pluwiotermiczne w okresie wiosennym na obszarze Polski w latach 1971–2000. *Acta Agrophysica*, 3(1), 171-177 (the classes of k on p. 172).
+
+66. **Thom, H.C.S.** (1958). A note on the gamma distribution. *Monthly Weather Review*, 86, 117-122.
+
+67. **WMO** (2012). *Standardized Precipitation Index User Guide*. WMO-No. 1090, World Meteorological Organization, Geneva.
+
+68. **WMO** (2017). *WMO Guidelines on the Calculation of Climate Normals*. WMO-No. 1203, World Meteorological Organization, Geneva (section 4.4, missing data).
+
+69. **Wypych, A., Sulikowska, A., Ustrnul, Z., & Czekierda, D.** (2017). Variability of growing degree days in Poland. *International Journal of Biometeorology*, 61(1), 49-59.
+
+70. **Zhang, X. et al.** (2011). Indices for monitoring changes in extremes based on daily temperature and precipitation data. *WIREs Climate Change*, 2(6), 851-870.
 
 ---
 

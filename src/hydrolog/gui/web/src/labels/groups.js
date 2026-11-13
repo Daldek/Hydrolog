@@ -16,6 +16,7 @@ export const groups = {
   network: "Sieć rzeczna",
   stats: "Statystyka przepływów",
   hydrometrics: "Hydrometria",
+  meteo: "Statystyka meteorologiczna",
   soil: "Uziarnienie i HSG",
   report: "Raport obliczeniowy",
   config: "Ustawienia",

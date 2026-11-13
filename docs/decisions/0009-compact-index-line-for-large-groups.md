@@ -3,6 +3,8 @@
 - Status: accepted
 - Date: 2026-10-24
 - Amended by [ADR-0015](0015-catalog-additions-for-the-gui.md) (2026-11-02): a command that is not in the guide's index
+- Amended by [ADR-0032](0032-meteorological-statistics-of-a-station-the-group-meteo.md) (2026-11-13): `tc`, `hydrometrics`
+  and `meteo` are compact too, chosen to keep the guide within its budget
 
 ## Context
 

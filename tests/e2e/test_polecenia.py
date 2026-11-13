@@ -188,7 +188,7 @@ def test_the_list_offers_the_servers_commands_under_polish_titles(tab: Tab) -> N
     names = offered(tab)
     catalog = [item["name"] for item in list_commands().to_dict()["commands"]]
     assert names == [name for name in catalog if name not in EXCLUDED]
-    assert len(names) == 52  # 56 commands less the four the GUI leaves out
+    assert len(names) == 58  # 62 commands less the four the GUI leaves out
 
     items = page.locator(f"{POL} .cmd-list .cmd-item")
     expect(items).to_have_count(len(names))

@@ -224,6 +224,12 @@ export const oneOf = {
   "stats monthly": { title: "Szereg", groups: ["Wartości i daty", "Plik"] },
   "hydrometrics rating-curve": { title: "Pomiary", groups: ["Wartości", "Plik"] },
   "hydrometrics water-level-zones": { title: "Szereg", groups: ["Wartości", "Plik"] },
+  "meteo hydrothermal": { title: "Szereg", groups: ["Wartości i daty", "Plik"] },
+  "meteo precipitation": { title: "Szereg", groups: ["Wartości i daty", "Plik"] },
+  "meteo snow": { title: "Szereg", groups: ["Wartości i daty", "Plik"] },
+  "meteo spells": { title: "Szereg", groups: ["Wartości i daty", "Plik"] },
+  "meteo spi": { title: "Szereg", groups: ["Wartości i daty", "Plik"] },
+  "meteo temperature": { title: "Szereg", groups: ["Wartości i daty", "Plik"] },
 };
 
 /** Words of the generated forms. */

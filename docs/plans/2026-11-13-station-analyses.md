@@ -414,6 +414,57 @@ for the author.
   slope, intercept and interval equal `_meteo_proto`'s; `mean_date` is `MM-DD` where the mockup writes
   „8 VI”; the period of 365.25 d against the meteorological prototype's 365 d changes Słupsk's
   amplitude by 0.0002 °C and the day of the maximum by 0.11 d.
+- S4, `feature/station-meteo` (D12; ADR-0032): as decided, with these details fixed in the code: a
+  winter of `meteo snow` is the snow season 1 August to 31 July named after the hydrological year it
+  ends in (D12's „per winter (hydrological year)” read so that a cold season stays whole; a literal
+  XI–X year would move 6 of Kraków's 64 winters), and the partial winters at the ends of a record are
+  listed in `skipped_years`; the classes of relative precipitation of months use the monthly limits
+  (Tomaszewska, 1994, in Gąsiorek and Musiał, 2011, Table 1), those of years Kaczorowska's (1962),
+  who defined no monthly classes; Sielianinov's classes are those of the unrounded k; `meteo spells`
+  takes one `kind` per call with `threshold_mm` 1 mm by default; months and years with missing days
+  follow WMO-No. 1203 (section 4.4), and IMGW-PIB's accumulated totals (`P_flag` `accumulated`)
+  stand for the missing days before them in the monthly sums (4.4.1 c); new notices
+  `normal_not_computed`, `accumulated_totals` and `spi_not_fitted`; the English text of
+  `short_reference_period` says „year(s)”, since the commands count calendar years too. D2's budget:
+  the meteo line with `hydrometrics` compact gave 16,588 bytes, over 16,384, so `tc`
+  is compact too (ADR-0032, which amends ADR-0009): `AGENTS.md` 16,224 of 16,384 bytes.
+  Every threshold and class limit was checked against its source before the tests
+  (`tests/unit/test_meteo.py`, fixture `tests/fixtures/meteo_daily.csv`, synthetic 2019–2023 with
+  gaps in 2022, accumulated totals and October snow): hand-computed sequences of each index and the
+  ETCCDI counts of the fixture year 2021 (FD, ID, SU, TR, R10mm, R20mm, CDD, CWD, PRCPTOT, SDII,
+  R95pTOT) counted from its rows; no published worked example with numbers was found for these
+  indices. The mockup's numbers (`_meteo_proto.py`) reproduced on Kraków (250190390,
+  `pl.imgw.meteo_climate_daily`) and Praha-Klementinum (0-203-0-11514, `cz.chmi.meteo_daily`), by a
+  check outside the repository, a value agreeing when it rounds to the mockup's rounded number:
+  86,546 values. Equal: the precipitation sums of calendar years at Kraków (2,179 values) and of
+  hydrological years (1,815), the seasonality (regime, PCI, SI of the period and of each year), the
+  days, intensity (SDII at 1 and 0.1 mm) and heavy precipitation (the 95th and 99th percentiles,
+  R95p, R99p), the maxima of 1, 2, 3, 5 and 10 days with dates and the monthly maxima, the dry and
+  wet spells at 0.1 and 1 mm, Kraków's SPI-1, 3, 6 and 12 of the whole record with their fits and
+  the SPI-1 of both stations, the relative precipitation of months and years and its annual classes, all temperature indices (one value
+  differs at Kraków, where the mockup averages rounded Tmax: 14.04 against 14.034), the hydrothermal
+  coefficients and classes (Kraków 588 values, Praha 1,844), and Kraków's snow cover (402 values).
+  Differences by decision: by D1 the normals of a winter half-year or DJF of the first year and of
+  an SON of the last need days outside the period (2 of Praha's 7,190 sums of calendar years, 1 of
+  its 5,871 of hydrological years, 4 and 2 of the sums of 1991–2020), and the SPI of 3, 6 and 12
+  months differs where its calibration differs: Kraków's on 1991–2020, where the mockup's sums reach
+  before the period (60, 152 and 329 months), and Praha's on the whole record, which Hydrolog starts
+  in 1804, the first year with a value, and the mockup in 1805 (285, 525 and 429 months); the monthly classes of
+  relative precipitation differ from the mockup's annual limits in 588 of Kraków's 780 months, and
+  Sielianinov's classes of unrounded k in 6 of Kraków's and 24 of Praha's months (the frequencies of
+  the classes equal). M12 and M13 checked the same way against the mockup's `meteo-harmonics` and `meteo-trends`
+  (9,916 values, 4,888 different as delivered, each by a definition): `stats harmonics` on Tmean fits
+  hydrological years (day 1 = 1 November) with P = 365.25 d, the mockup calendar years with the
+  year's 365 or 366 days and the period on its mean cycle of 365 days; with the dates moved 61 days
+  back and Hydrolog's `harmonic_fit` given the mockup's period and time axis, all 11,708 values agree
+  (largest relative difference 4.6e-11); the mockup's ev1 and ev2 of the period are shares of the
+  variance of its mean cycle, and its daily explained variance equals `r_squared`. M13, `stats
+  mann-kendall` with `years` on seven annual series of the `meteo` commands (precipitation sum,
+  1-day maximum, R10mm, CDD, mean temperature, FD, SU), agrees exactly in 1991–2020 and over the
+  whole record except the precipitation sums of both stations: the unrounded sums break ties that the
+  mockup's sums, rounded to 0.1 mm, keep (S 46 against 47 at Kraków, −345 against −340 at Praha; Z
+  and p by about 2 %, Sen's slope equal); rounded as the mockup's they agree (open question in
+  `docs/PROGRESS.md`).
 
 ## Risks
 

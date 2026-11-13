@@ -66,6 +66,14 @@ from hydrolog.operations.meta import (
     commands_list,
     commands_schema,
 )
+from hydrolog.operations.meteo import (
+    meteo_hydrothermal,
+    meteo_precipitation,
+    meteo_snow,
+    meteo_spells,
+    meteo_spi,
+    meteo_temperature,
+)
 from hydrolog.operations.morphometry import WatershedMorphometry, morphometry_watershed
 from hydrolog.operations.network import NetworkAnalysis, network_stats
 from hydrolog.operations.precip import (
@@ -218,6 +226,13 @@ __all__ = [
     "WaterLevelAnalysis",
     "hydrometrics_rating_curve",
     "hydrometrics_water_level_zones",
+    # meteo
+    "meteo_hydrothermal",
+    "meteo_precipitation",
+    "meteo_snow",
+    "meteo_spells",
+    "meteo_spi",
+    "meteo_temperature",
     # soil
     "SoilTextureResult",
     "soil_hsg",

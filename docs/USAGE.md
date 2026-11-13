@@ -962,6 +962,41 @@ taken from the directory of the input file. The batch's own envelope counts the 
 hydrolog commands batch --input-file tests/fixtures/station_batch.jsonl --output results.jsonl --check --json
 ```
 
+### Meteorological statistics from an Obserwator export
+
+The `meteo` commands read a station's daily export (`obserwator series export --dataset
+pl.imgw.meteo_climate_daily`, `pl.imgw.meteo_precip_daily` or `cz.chmi.meteo_daily`) as it is: the
+columns `date`, `P`, `P_flag`, `Tmax`, `Tmin`, `Tmean`, `snow_cover` and `fresh_snow` are found by
+their names (`--precipitation-column` and the like change them). `meteo precipitation` and
+`meteo temperature` take one `--index` per call; years are calendar years unless `--year-type
+hydrological`, and `--first-year`/`--last-year` choose the period (the whole record by default).
+Accumulated totals (`P_flag` `accumulated`) count in the monthly sums and are missing days for
+the daily statistics; months and years follow the missing-data rules of WMO-No. 1203.
+The export's attribution columns (`attribution_source`, `attribution_processed`) are not data:
+Hydrolog carries their lines into the result's `attribution` and `terms_notice` (ADR-0028); show
+them when you publish results. Values given inline take theirs with `--attribution '[...]'`.
+
+```bash
+hydrolog meteo precipitation --index sums --input-file tests/fixtures/meteo_daily.csv --first-year 2019 --last-year 2021 --json
+hydrolog meteo precipitation --index maxima --input-file tests/fixtures/meteo_daily.csv --durations-days 2,3,5,10
+hydrolog meteo spells --input-file tests/fixtures/meteo_daily.csv --kind dry --threshold-mm 1
+hydrolog meteo spi --input-file tests/fixtures/meteo_daily.csv --scales-months 1,3,6,12
+hydrolog meteo temperature --index days --input-file tests/fixtures/meteo_daily.csv
+hydrolog meteo snow --input-file tests/fixtures/meteo_daily.csv
+hydrolog meteo hydrothermal --input-file tests/fixtures/meteo_daily.csv
+```
+
+```python
+import hydrolog
+
+envelope = hydrolog.run_command(
+    "meteo precipitation", index="sums", input_file="tests/fixtures/meteo_daily.csv"
+)
+print(envelope.to_dict()["result"]["period"]["normal_mm"])   # 683.35
+```
+
+The quantiles of the annual maxima are `stats flood-frequency` on the values of `--index maxima`.
+
 ### Rating curve
 
 `hydrometrics rating-curve` fits `Q = a * (H - H0)^b` to stage-discharge pairs from a file with

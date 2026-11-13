@@ -193,9 +193,32 @@ _SPECS: Final[tuple[NoticeSpec, ...]] = (
     NoticeSpec(
         "short_reference_period",
         "info",
-        "The reference period {first_year}-{last_year} has {years} hydrological "
-        "year(s) with values; at least {minimum} years are recommended",
+        "The reference period {first_year}-{last_year} has {years} year(s) with "
+        "values; at least {minimum} years are recommended",
         ("years", "first_year", "last_year", "minimum"),
+    ),
+    NoticeSpec(
+        "normal_not_computed",
+        "warning",
+        "The normal of {first_year}-{last_year} needs annual values in {required} of "
+        "its years and {years} have one (WMO-No. 1203): the normal and the "
+        "percentages of it are null",
+        ("years", "required", "first_year", "last_year"),
+    ),
+    NoticeSpec(
+        "accumulated_totals",
+        "info",
+        "{count} values of {column} are accumulated totals of the missing days before "
+        "them: they stand for those days in the monthly sums and are missing days in "
+        "the daily statistics",
+        ("count", "column"),
+    ),
+    NoticeSpec(
+        "spi_not_fitted",
+        "warning",
+        "The {scale_months}-month sums of month(s) {months} have no gamma fit (sums "
+        "in fewer than 80 % of the years or fewer than 3 positive): their SPI is null",
+        ("scale_months", "months"),
     ),
     NoticeSpec(
         "years_with_missing_days",

@@ -142,6 +142,7 @@ through its Python API); Hydrograf and Retman use Hydrolog.
   `hydrolog.gui`) are a private API of that page, not a REST interface of Hydrolog: no
   `/api/v1`, no OpenAPI, no stability promise; agents use the CLI, MCP and Python (plan
   2026-11-02, D5).
-- DOC-4.2: the groups `route` and `stats` have one line each in the command index of
-  `AGENTS.md` instead of one per command, to keep the guide within 16 KiB (ADR-0009,
-  ADR-0022); `commands list` and `commands schema` still give every command.
+- DOC-4.2: the groups `route`, `stats`, `hydrometrics`, `meteo` and `tc` have one line each
+  in the command index of `AGENTS.md` instead of one per command, to keep the guide within
+  16 KiB (ADR-0009, ADR-0022, ADR-0032); `commands list` and `commands schema` still give
+  every command.

@@ -71,13 +71,7 @@ Errors are `hydrolog-error/1` documents (`schema`, `code`, `title`, `message`, `
 One line per command: name, `operation_id`, summary. Options, units, bounds and examples: `hydrolog commands schema --command "<name>"`.
 
 ### [tc: Time of concentration][paths]
-- `tc faa` (`hydrolog_tc_faa`): Compute overland flow time with the FAA method.
-- `tc giandotti` (`hydrolog_tc_giandotti`): Compute time of concentration with the Giandotti formula.
-- `tc kerby` (`hydrolog_tc_kerby`): Compute overland flow time with the Kerby formula.
-- `tc kerby-kirpich` (`hydrolog_tc_kerby_kirpich`): Compute time of concentration with the Kerby-Kirpich method.
-- `tc kirpich` (`hydrolog_tc_kirpich`): Compute time of concentration with the Kirpich formula.
-- `tc nrcs` (`hydrolog_tc_nrcs`): Compute time of concentration with the NRCS lag method (NEH 630).
-- `tc watershed` (`hydrolog_tc_watershed`): Compute time of concentration by a chosen method from a watershed.
+- `tc faa`, `tc giandotti`, `tc kerby`, `tc kerby-kirpich`, `tc kirpich`, `tc nrcs`, `tc watershed` (tools `hydrolog_tc_<verb>`, `-` as `_`): time of concentration or overland flow time by the FAA, Giandotti, Kerby, Kerby-Kirpich, Kirpich or NRCS lag formula, or by a chosen one from a watershed; summaries: `commands list`.
 ### [cn: Curve Number (TR-55)][paths]
 - `cn list` (`hydrolog_cn_list`): Return the whole TR-55 CN table (covers, conditions, groups A-D).
 - `cn lookup` (`hydrolog_cn_lookup`): Look up the TR-55 Curve Number for a soil group and a land cover.
@@ -105,8 +99,9 @@ One line per command: name, `operation_id`, summary. Options, units, bounds and 
 ### [stats: Flow statistics][paths]
 - `stats baseflow`, `stats characteristic`, `stats daily`, `stats duration-curve`, `stats flood-frequency`, `stats harmonics`, `stats homogeneity`, `stats low-flow`, `stats low-flow-sequences`, `stats mann-kendall`, `stats monthly`, `stats regime`, `stats runoff-volume`, `stats seasonality`, `stats threshold-events` (tools `hydrolog_stats_<verb>`, `-` as `_`): characteristic values, threshold events, duration curves, runoff volumes, daily and monthly statistics, flood and low-flow frequency, low-flow sequences, trend and homogeneity tests of station series; summaries: `commands list`.
 ### [hydrometrics: Hydrometry][paths]
-- `hydrometrics rating-curve` (`hydrolog_hydrometrics_rating_curve`): Fit a rating curve Q = a·(H − H₀)^b to stage–discharge pairs
-- `hydrometrics water-level-zones` (`hydrolog_hydrometrics_water_level_zones`): Delimit Rybczyński water level zones (NTW, STW, WTW) from level series
+- `hydrometrics rating-curve`, `hydrometrics water-level-zones` (tools `hydrolog_hydrometrics_<verb>`, `-` as `_`): rating curves of stage-discharge pairs, water level zones; summaries: `commands list`.
+### [meteo: Meteorological statistics][paths]
+- `meteo hydrothermal`, `meteo precipitation`, `meteo snow`, `meteo spells`, `meteo spi`, `meteo temperature` (tools `hydrolog_meteo_<verb>`, `-` as `_`): precipitation, spells, SPI, air temperature, snow cover and the hydrothermal coefficient of a weather station's daily series; summaries: `commands list`.
 ### [soil: Texture and HSG][paths]
 - `soil hsg` (`hydrolog_soil_hsg`): Write an HSG GeoTIFF classified from clay, sand and silt rasters.
 - `soil hsg-stats` (`hydrolog_soil_hsg_stats`): Compute areas and shares of the HSG groups A-D from an HSG raster.

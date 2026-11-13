@@ -133,6 +133,18 @@ export const notices = {
       text: "Okres odniesienia {first_year}–{last_year} ma {years} lat z danymi; zalecane jest co najmniej {minimum} lat.",
       plain: "Okres odniesienia jest krótszy niż zalecane 30 lat.",
     },
+    normal_not_computed: {
+      text: "Normalna okresu {first_year}–{last_year} wymaga wartości rocznych w {required} latach, a ma je {years} (WMO-No. 1203): normalna i procenty normalnej są puste.",
+      plain: "Za mało lat z wartościami rocznymi na normalną (WMO-No. 1203).",
+    },
+    accumulated_totals: {
+      text: "{count} wartości kolumny {column} to sumy dni bez pomiaru przed nimi: w sumach miesięcznych zastępują te dni, w statystykach dobowych są brakami.",
+      plain: "Niektóre wartości opadu to sumy z kilku dni bez pomiaru.",
+    },
+    spi_not_fitted: {
+      text: "Sumy {scale_months}-miesięczne miesięcy {months} nie mają dopasowanego rozkładu gamma (sumy w mniej niż 80% lat lub mniej niż 3 dodatnie): ich SPI jest puste.",
+      plain: "Dla niektórych miesięcy nie dopasowano rozkładu SPI.",
+    },
     years_with_missing_days: {
       text: "{count} z {total} lat hydrologicznych ma dni bez danych; ich wartości skrajne weszły do obliczeń i mogą być łagodniejsze od rzeczywistych: {years}.",
       plain: "Niektóre lata mają dni bez danych; ich wartości skrajne mogą być łagodniejsze od rzeczywistych.",
