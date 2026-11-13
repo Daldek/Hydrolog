@@ -129,6 +129,14 @@ export const notices = {
       plain: "Test odrzuca jednorodność ciągu.",
       names: { tests: { mann_whitney: "Mann-Whitney", kolmogorov_smirnov: "Kołmogorow-Smirnow", pettitt: "Pettitt" } },
     },
+    short_reference_period: {
+      text: "Okres odniesienia {first_year}–{last_year} ma {years} lat z danymi; zalecane jest co najmniej {minimum} lat.",
+      plain: "Okres odniesienia jest krótszy niż zalecane 30 lat.",
+    },
+    years_with_missing_days: {
+      text: "{count} z {total} lat hydrologicznych ma dni bez danych; ich wartości skrajne weszły do obliczeń i mogą być łagodniejsze od rzeczywistych: {years}.",
+      plain: "Niektóre lata mają dni bez danych; ich wartości skrajne mogą być łagodniejsze od rzeczywistych.",
+    },
     unknown_hietogram_type: {
       text: "Nieznany typ hietogramu {hietogram_type}; dozwolone: {allowed}.",
       plain: "Nieznany typ hietogramu.",

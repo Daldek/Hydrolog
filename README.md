@@ -145,7 +145,7 @@ anyio.run(call_tool)
 
 ## Capabilities
 
-48 commands in 16 groups, all computed offline except `precip pmaxtp`, the only one that opens a network connection: it fetches the PMAXTP depth of IMGW-PIB through Obserwator (extra `pmaxtp`). The MCP tool is `hydrolog_` plus the command name with `_`; every command is also available as `hydrolog.run_command("<command>", **options)`.
+51 commands in 16 groups, all computed offline except `precip pmaxtp`, the only one that opens a network connection: it fetches the PMAXTP depth of IMGW-PIB through Obserwator (extra `pmaxtp`). The MCP tool is `hydrolog_` plus the command name with `_`; every command is also available as `hydrolog.run_command("<command>", **options)`.
 
 | Group | Task | CLI command | MCP tool | Python (`hydrolog.operations`) |
 |---|---|---|---|---|
@@ -178,15 +178,18 @@ anyio.run(call_tool)
 | | The schematic of a river network, laid out without routing it | `route schematic` | `hydrolog_route_schematic` | `route_schematic` |
 | Morphometry | Geometric, shape and relief indicators | `morphometry watershed` | `hydrolog_morphometry_watershed` | `morphometry_watershed` |
 | River network | River network order statistics (Strahler, Shreve) | `network stats` | `hydrolog_network_stats` | `network_stats` |
-| Flow statistics | Characteristic values WWQ to NNQ of a daily series | `stats characteristic` | `hydrolog_stats_characteristic` | `stats_characteristic` |
+| Flow statistics | Characteristic values of the first and second degree (WQ to NQ, WWQ to NNQ, WWW to NNW) of a daily series or IMGW-PIB's half-years | `stats characteristic` | `hydrolog_stats_characteristic` | `stats_characteristic` |
 | | Day-of-year statistics | `stats daily` | `hydrolog_stats_daily` | `stats_daily` |
+| | Duration curve with class frequencies and the modal class | `stats duration-curve` | `hydrolog_stats_duration_curve` | `stats_duration_curve` |
 | | Flood quantiles from annual maxima | `stats flood-frequency` | `hydrolog_stats_flood_frequency` | `stats_flood_frequency` |
 | | Homogeneity tests of annual maxima (Mann-Whitney U, Kolmogorov-Smirnov, Pettitt) | `stats homogeneity` | `hydrolog_stats_homogeneity` | `stats_homogeneity` |
 | | Low-flow quantiles from annual minima | `stats low-flow` | `hydrolog_stats_low_flow` | `stats_low_flow` |
-| | Low-flow (drought) sequences below a threshold | `stats low-flow-sequences` | `hydrolog_stats_low_flow_sequences` | `stats_low_flow_sequences` |
+| | Low-flow (drought) sequences below a threshold, across gaps, with yearly summaries | `stats low-flow-sequences` | `hydrolog_stats_low_flow_sequences` | `stats_low_flow_sequences` |
 | | Monotonic trend test (Mann-Kendall) | `stats mann-kendall` | `hydrolog_stats_mann_kendall` | `stats_mann_kendall` |
 | | Monthly statistics with confidence interval | `stats monthly` | `hydrolog_stats_monthly` | `stats_monthly` |
-| Hydrometry | Rating curve Q = a(H - H0)^b | `hydrometrics rating-curve` | `hydrolog_hydrometrics_rating_curve` | `hydrometrics_rating_curve` |
+| | Annual and monthly runoff volumes, the cumulative volume of a year | `stats runoff-volume` | `hydrolog_stats_runoff_volume` | `stats_runoff_volume` |
+| | Events and days above or below a level | `stats threshold-events` | `hydrolog_stats_threshold_events` | `stats_threshold_events` |
+| Hydrometry | Rating curve Q = a(H - H0)^b, also of dated pairs by range of years and period | `hydrometrics rating-curve` | `hydrolog_hydrometrics_rating_curve` | `hydrometrics_rating_curve` |
 | | Water level zones NTW, STW, WTW (Rybczyński) | `hydrometrics water-level-zones` | `hydrolog_hydrometrics_water_level_zones` | `hydrometrics_water_level_zones` |
 | Soil | HSG GeoTIFF from clay, sand and silt rasters (writes a file) | `soil hsg` | `hydrolog_soil_hsg` | `soil_hsg` |
 | | Area and share of HSG A-D in an HSG raster | `soil hsg-stats` | `hydrolog_soil_hsg_stats` | `soil_hsg_stats` |

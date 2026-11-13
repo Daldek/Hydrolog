@@ -309,6 +309,11 @@ S4 checks each against its source before its tests.
 - New result fields are optional in the schemas (`_ADDED_FIELDS` of `scripts/generate_result_schemas.py`);
   new documents are generated from the examples (AGI-4.1).
 - New notice codes are in `NOTICES` and worded in Polish in `gui/web/src/labels/notices.js`.
+- Attribution: a result built from a provider's data (IMGW-PIB's or ČHMÚ's series, IMGW-PIB's half-year
+  file) carries the provider's attribution and terms notice through Hydrolog's mechanism (ADR-0028,
+  merged into `develop` at `48358a5`, on which the steps are based): the readers of `catalog/inputs.py`
+  cite the lines of an input file, and every new command that takes a series inline has the option
+  `attribution`, as the commands it extends have.
 - Every new or extended command has a catalog example that runs on `tests/fixtures`. The fixtures are
   synthetic series in the shape of Obserwator's exports (the daily file, the same for IMGW-PIB and ČHMÚ, and
   IMGW-PIB's half-year file), with gaps; IMGW-PIB's own data stay out of the repository until its terms are settled
@@ -331,6 +336,27 @@ for the author.
 | S2 | H4 | `feature/station-batch` | D9, D10; ADR-0030 | 1,000 calls in one batch equal the single calls; the half-year maxima equal the mockup's |
 | S3 | H2 | `feature/station-regime` | D11; ADR-0031 | published worked examples of each method |
 | S4 | H3 | `feature/station-meteo` | D12; ADR-0032 | hand-computed sequences; the ETCCDI counts of a fixture year |
+
+## Results
+
+- S1, `feature/station-hydro-analyses` (D1, D3 to D8; ADR-0029): as decided, with two names fixed in
+  the code: the rating curve's period option is `years_per_period`, the modal class takes the lowest
+  class on a tie. Fixtures `tests/fixtures/station_daily.csv` (synthetic, IMGW-PIB's daily export shape,
+  2019–2023 with 10 missing values and 5 absent dates) and `station_half_years.csv` (its half-years).
+  `AGENTS.md`: 16,045 of 16,384 bytes. The mockup's numbers reproduced on Kłodzko (150160180, demo
+  store, exported on 2026-11-13; `pl.imgw.hydro_daily` and `pl.imgw.hydro_semiannual`), by a check
+  outside the repository: the second degree of H and Q from the daily series and from IMGW-PIB's
+  half-years (12 values each), the first degree of every year and half-year (1,332 values from the
+  daily series, 1,110 from the half-years), the days and events beyond SWW, SSW, SNW and SWQ, SSQ,
+  SNQ (12,335 values), the low-flow periods with SNQ, Q90, H70 and 4 m³/s in 1991–2020 (4,416
+  values), the duration curves of H and Q with their modal classes and the class table by month
+  (1,266 values), the runoff volumes (1,781 values) and the rating curves of 2016–2025, of 2000–2020
+  without outliers and of the decades (96 values): equal to the last digit (largest relative
+  difference 1.2e-16). One difference, by D7: the January curve of H in 1991–2020 has its classes from
+  80 cm (a multiple of 10), the mockup's from the lowest value, so the modal class differs. Based on
+  `develop` `48358a5` (ADR-0028): the three new commands take `attribution`, and an Obserwator export
+  with its attribution columns gives `attribution` and `terms_notice` in the envelope of each
+  (`tests/unit/test_attribution.py`).
 
 ## Risks
 

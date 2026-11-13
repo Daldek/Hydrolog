@@ -95,3 +95,54 @@ DATED_ONE_OF: tuple[tuple[str, ...], ...] = (
     ("input_file", "value_column", "date_column"),
 )
 """Exactly one of: inline values with dates, or a file with its two columns."""
+
+FIRST_YEAR = Option(
+    name="first_year",
+    type="integer",
+    description_pl=(
+        "Pierwszy rok hydrologiczny okresu (XI–X, nazwany rokiem, w którym się "
+        "kończy); domyślnie pierwszy rok z danymi. Zalecany okres to co najmniej 30 "
+        "lat."
+    ),
+    description=(
+        "First hydrological year of the period (Nov–Oct, named after the year in "
+        "which it ends); by default the first year with a value. At least 30 years "
+        "are recommended."
+    ),
+    minimum=1,
+)
+
+LAST_YEAR = Option(
+    name="last_year",
+    type="integer",
+    description_pl=(
+        "Ostatni rok hydrologiczny okresu; domyślnie ostatni rok z danymi."
+    ),
+    description=(
+        "Last hydrological year of the period; by default the last year with a value."
+    ),
+    minimum=1,
+)
+
+PERIOD_OPTIONS: tuple[Option, ...] = (FIRST_YEAR, LAST_YEAR)
+"""The reference period of a dated series: hydrological years, the whole record by
+default (plan 2026-11-13, D1)."""
+
+HALF_YEAR_FILE = Option(
+    name="half_year_file",
+    type="path",
+    path_role="input",
+    description_pl=(
+        "Eksport półrocznych i rocznych charakterystyk IMGW-PIB z Obserwatora "
+        "(`pl.imgw.hydro_semiannual`, CSV albo JSON) zamiast szeregu dobowego: "
+        "kolumny `year`, `period` (winter, summer, annual) oraz `<P>_min`, `<P>_mean`, "
+        "`<P>_max` i daty `<P>_min_start`, `<P>_max_start` zmiennej `parameter`."
+    ),
+    description=(
+        "Obserwator's export of IMGW-PIB's half-year and annual characteristics "
+        "(`pl.imgw.hydro_semiannual`, CSV or JSON) instead of a daily series: the "
+        "columns `year`, `period` (winter, summer, annual) and `<P>_min`, `<P>_mean`, "
+        "`<P>_max` with the dates `<P>_min_start`, `<P>_max_start` of the variable "
+        "`parameter`."
+    ),
+)

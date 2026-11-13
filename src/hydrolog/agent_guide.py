@@ -108,8 +108,9 @@ _COMPACT_GROUPS: Final[Mapping[str, str]] = {
         "reservoir or a river network, or lay a network out"
     ),
     "stats": (
-        "characteristic values, daily and monthly statistics, flood and low-flow "
-        "frequency, low-flow sequences, and trend and homogeneity tests of flow series"
+        "characteristic values, threshold events, duration curves, runoff volumes, "
+        "daily and monthly statistics, flood and low-flow frequency, low-flow "
+        "sequences, trend and homogeneity tests of station series"
     ),
 }
 # The rules of AGENTS.md, the block and the instructions of the MCP server.

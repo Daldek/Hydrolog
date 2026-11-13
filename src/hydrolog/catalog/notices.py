@@ -191,6 +191,20 @@ _SPECS: Final[tuple[NoticeSpec, ...]] = (
         ("tests", "alpha"),
     ),
     NoticeSpec(
+        "short_reference_period",
+        "info",
+        "The reference period {first_year}-{last_year} has {years} hydrological "
+        "year(s) with values; at least {minimum} years are recommended",
+        ("years", "first_year", "last_year", "minimum"),
+    ),
+    NoticeSpec(
+        "years_with_missing_days",
+        "warning",
+        "{count} of {total} hydrological years have days without a value; their "
+        "extremes are included and may be milder than the true ones: {years}",
+        ("count", "total", "years"),
+    ),
+    NoticeSpec(
         "large_result",
         "warning",
         "the result is {size_chars:,} characters, over the {page_chars:,} of a page "

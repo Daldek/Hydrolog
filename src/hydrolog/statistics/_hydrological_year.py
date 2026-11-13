@@ -112,6 +112,49 @@ def days_in_hydrological_year(years: NDArray[np.int_]) -> NDArray[np.int_]:
     return days
 
 
+def hydrological_year_start(year: int) -> np.datetime64:
+    """Return the first day of a hydrological year.
+
+    Parameters
+    ----------
+    year : int
+        Hydrological year, named after the calendar year in which it ends.
+
+    Returns
+    -------
+    numpy.datetime64
+        1 November of the calendar year before ``year`` (``datetime64[D]``).
+    """
+    return np.datetime64(f"{year - 1:04d}-11-01", "D")
+
+
+def on_daily_calendar(
+    values: NDArray[np.float64], dates: NDArray[np.datetime64]
+) -> tuple[NDArray[np.datetime64], NDArray[np.float64]]:
+    """Lay a dated series on the calendar of its days.
+
+    Parameters
+    ----------
+    values : NDArray[np.float64]
+        Values of the series; ``NaN`` marks a missing value.
+    dates : NDArray
+        Their dates, strictly increasing (days may be absent).
+
+    Returns
+    -------
+    tuple of NDArray
+        Every day from the first to the last date (``datetime64[D]``) and its value,
+        ``NaN`` on a day whose date is absent or whose value is missing.
+    """
+    days = np.asarray(dates).astype("datetime64[D]")
+    first = days[0]
+    count = int((days[-1] - first).astype(np.int64)) + 1
+    daily = np.full(count, np.nan)
+    daily[(days - first).astype(np.int64)] = np.asarray(values, dtype=np.float64)
+    calendar: NDArray[np.datetime64] = first + np.arange(count)
+    return calendar, daily
+
+
 class IncompleteYear(NamedTuple):
     """A hydrological year in which some days have no value.
 

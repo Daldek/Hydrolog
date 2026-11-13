@@ -42,6 +42,31 @@
     },
     "sequences": {
       "type": "array"
+    },
+    "threshold_method": {
+      "type": "string"
+    },
+    "exceedance_percent": {},
+    "parameter": {
+      "type": "string"
+    },
+    "first_year": {
+      "type": "integer"
+    },
+    "last_year": {
+      "type": "integer"
+    },
+    "period_years": {
+      "type": "integer"
+    },
+    "n_missing_days": {
+      "type": "integer"
+    },
+    "total_deficit_volume_m3": {
+      "type": "number"
+    },
+    "years": {
+      "type": "array"
     }
   }
 }

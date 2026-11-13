@@ -408,6 +408,54 @@ class TestResults:
         assert "Notices:" not in out or out.index("Notices:") > sources
 
 
+STATION_ANALYSES = [
+    pytest.param("stats threshold-events", {"level": 7.0}, id="threshold-events"),
+    pytest.param("stats duration-curve", {}, id="duration-curve"),
+    pytest.param("stats runoff-volume", {}, id="runoff-volume"),
+]
+"""The commands of the station analyses (plan 2026-11-13) and their own options."""
+
+
+class TestStationAnalyses:
+    """The station analyses carry the lines of the series they read (ADR-0028)."""
+
+    @pytest.mark.parametrize(("command", "options"), STATION_ANALYSES)
+    def test_an_obserwator_export_gives_its_lines(self, tmp_path, command, options):
+        export = _observer_export(
+            tmp_path / "q_daily.csv",
+            lines=[IMGW_SOURCE, IMGW_PROCESSED],
+            terms=[IMGW_TERMS, TERMS_DANEPUBLICZNE],
+        )
+
+        envelope = hydrolog.run_command(
+            command,
+            input_file=str(export),
+            value_column="Q",
+            date_column="date",
+            **options,
+        ).to_dict()
+
+        assert envelope["attribution"] == [IMGW_SOURCE, IMGW_PROCESSED]
+        assert envelope["terms_notice"] == [IMGW_TERMS, TERMS_DANEPUBLICZNE]
+
+    @pytest.mark.parametrize(("command", "options"), STATION_ANALYSES)
+    def test_a_series_given_inline_takes_the_option(self, command, options):
+        """A handed-off series has no file: its source line comes as `attribution`."""
+        rows = (FIXTURES / "daily_flows_3y.csv").read_text("utf-8").splitlines()[1:]
+        dates, values = zip(*(row.split(",") for row in rows), strict=True)
+
+        envelope = hydrolog.run_command(
+            command,
+            values=[float(value) for value in values],
+            dates=list(dates),
+            attribution=[IMGW_SOURCE],
+            **options,
+        ).to_dict()
+
+        assert envelope["attribution"] == [IMGW_SOURCE, IMGW_PROCESSED]
+        assert envelope["terms_notice"] == [IMGW_TERMS, TERMS_DANEPUBLICZNE]
+
+
 class TestFilesOfCommands:
     """Files Hydrolog writes carry the lines of their data (DEV-20.5)."""
 

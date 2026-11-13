@@ -1,8 +1,9 @@
 """Group ``stats``: statistics of hydrological series.
 
-Characteristic values, daily and monthly statistics, flood frequency, low-flow
-frequency and sequences, the Mann-Kendall trend test and the homogeneity tests. The
-operations are in :mod:`hydrolog.operations.stats`.
+Characteristic values, events beyond a level, duration curves, runoff volumes, daily
+and monthly statistics, flood frequency, low-flow frequency and sequences, the
+Mann-Kendall trend test and the homogeneity tests. The operations are in
+:mod:`hydrolog.operations.stats`.
 """
 
 from __future__ import annotations
@@ -15,7 +16,9 @@ from hydrolog.catalog.groups._series import (
     DATED_ONE_OF,
     DATED_OPTIONS,
     DATES,
+    HALF_YEAR_FILE,
     INPUT_FILE,
+    PERIOD_OPTIONS,
     VALUE_COLUMN,
     VALUES,
 )
@@ -25,6 +28,17 @@ _FIXTURES = "tests/fixtures"
 _OBSERWATOR_EXPORT = f"{_FIXTURES}/obserwator_series_export.csv"
 _DAILY_FLOWS = f"{_FIXTURES}/daily_flows_3y.csv"
 _ANNUAL_MAXIMA = f"{_FIXTURES}/annual_maxima.csv"
+_STATION_DAILY = f"{_FIXTURES}/station_daily.csv"
+_STATION_HALF_YEARS = f"{_FIXTURES}/station_half_years.csv"
+
+# Errors of the commands that read a dated daily series.
+_STATION_ERRORS = (
+    "validation_error",
+    "not_found",
+    "data_error",
+    "calculation_error",
+    "forbidden",
+)
 
 _RETURN_PERIODS = Option(
     name="return_periods",
@@ -87,46 +101,37 @@ COMMANDS: tuple[Command, ...] = (
         name="stats characteristic",
         operation_id="hydrolog_stats_characteristic",
         summary_pl=(
-            "Oblicz wartości charakterystyczne II stopnia (WWQ…NNQ) z szeregu dobowego"
+            "Oblicz wartości charakterystyczne I i II stopnia (WQ…NQ, WWQ…NNQ, WWW…NNW)"
         ),
         summary=(
-            "Compute second-degree characteristic values (WWQ…NNQ) of a daily series"
+            "Compute first- and second-degree characteristic values (WQ…NQ, WWQ…NNQ)"
         ),
         description_pl=(
-            "Wartości charakterystyczne szeregu dobowego przepływów Q albo stanów H"
-            " wg IMGW-PIB, po latach hydrologicznych (XI–X): największa, średnia, "
-            "mediana i najmniejsza z maksimów, średnich i minimów rocznych. Do "
-            "tabel WWQ…NNQ; kwantyle wezbrań daje `stats flood-frequency`. Wymaga "
-            "dat; NaN jest pomijane."
+            "Wg IMGW-PIB: minimum, średnia i maksimum każdego roku hydrologicznego "
+            "(XI–X) i półrocza (I stopień) oraz w okresie ich największa, średnia, "
+            "mediana i najmniejsza (II stopień: WWQ…NNQ, WWW…NNW). Z szeregu dobowego "
+            "albo pliku półroczy IMGW-PIB; kwantyle wezbrań: `stats flood-frequency`."
         ),
         description=(
-            "Characteristic values of a daily discharge Q or stage H series per "
-            "IMGW-PIB, by hydrological year (Nov–Oct): highest, mean, median and "
-            "lowest of the annual maxima, means and minima. Use for WWQ…NNQ tables;"
-            " for flood quantiles use `stats flood-frequency`. Needs dates; NaN is "
-            "skipped."
+            "Per IMGW-PIB: the minimum, mean and maximum of each hydrological year "
+            "(Nov–Oct) and half-year (first degree) and, over the period, their "
+            "highest, mean, median and lowest (second degree: WWQ…NNQ, WWW…NNW). From "
+            "a daily series or IMGW-PIB's half-year file; flood quantiles: `stats "
+            "flood-frequency`."
         ),
         result_schema="hydrolog-stats-characteristic/1",
+        cardinality="bounded",
         rules=(
-            "Give dates with the values, or a file with a date column.",
-            "Check `notices` for skipped missing values.",
-            (
-                "Results are in the unit of the series; `period_years` counts partial "
-                "years."
-            ),
+            "Give a daily series with dates or `half_year_file`.",
+            "The period is the whole record unless `first_year`/`last_year` are given.",
+            "Read `notices` and `labels`; results are in the unit of the series.",
         ),
         rules_pl=(
-            "Podaj daty z wartościami albo plik z kolumną dat.",
-            "Sprawdź `notices` pod kątem pominiętych braków danych.",
-            ("Wyniki są w jednostce szeregu; `period_years` liczy też lata niepełne."),
+            "Podaj szereg dobowy z datami albo `half_year_file`.",
+            "Okres to całe wielolecie, chyba że podasz `first_year`/`last_year`.",
+            "Czytaj `notices` i `labels`; wyniki są w jednostce szeregu.",
         ),
-        errors=(
-            "validation_error",
-            "not_found",
-            "data_error",
-            "calculation_error",
-            "forbidden",
-        ),
+        errors=_STATION_ERRORS,
         example_results=(
             {
                 "wwx": 11.4,
@@ -142,34 +147,77 @@ COMMANDS: tuple[Command, ...] = (
                 "period_years": 3,
                 "parameter": "Q",
             },
+            {
+                "wwx": 329.0,
+                "swx": 260.25,
+                "nnx": 45.0,
+                "period_years": 4,
+                "first_year": 2020,
+                "last_year": 2023,
+                "labels": {"wwx": "WWW", "snx": "SNW"},
+                "incomplete_years": [2021, 2022],
+                "years": [
+                    {
+                        "year": 2020,
+                        "annual": {
+                            "max": 329.0,
+                            "max_date": "2020-06-24",
+                            "days_with_data": 366,
+                        },
+                    }
+                ],
+            },
+            {
+                "source": "half_years",
+                "wwx": 132.13,
+                "swx": 84.924,
+                "snx": 1.014,
+                "nnx": 0.52,
+                "period_years": 5,
+                "years": [
+                    {
+                        "year": 2019,
+                        "annual": {
+                            "max": 72.18,
+                            "max_date": "2019-05-22",
+                            "mean": 5.51,
+                        },
+                    }
+                ],
+            },
         ),
         function="hydrolog.operations.stats_characteristic",
         options=(
             *DATED_OPTIONS,
+            HALF_YEAR_FILE,
             Option(
                 name="parameter",
                 type="choice",
                 description_pl=(
-                    "Etykieta szeregu; nie wpływa na obliczenia, tylko na opis wyniku."
+                    "Zmienna szeregu: nazywa wartości (`labels`) i wskazuje kolumny "
+                    "`half_year_file`."
                 ),
                 description=(
-                    "Series label; it does not affect the computation, only the "
-                    "label of the result."
+                    "The variable of the series: it names the values (`labels`) and "
+                    "picks the columns of `half_year_file`."
                 ),
-                choices=("Q", "H"),
+                choices=("Q", "H", "T"),
                 meanings={
-                    "Q": "Discharge series (values WWQ…NNQ).",
-                    "H": "Stage series (values WWH…NNH).",
+                    "Q": "Discharge (WQ…NQ, WWQ…NNQ).",
+                    "H": "Stage (WW…NW, WWW…NNW).",
+                    "T": "Water temperature (WT…NT, WWT…NNT).",
                 },
                 meanings_pl={
-                    "Q": "Szereg przepływów (wartości WWQ…NNQ).",
-                    "H": "Szereg stanów wody (wartości WWH…NNH).",
+                    "Q": "Przepływ (WQ…NQ, WWQ…NNQ).",
+                    "H": "Stan wody (WW…NW, WWW…NNW).",
+                    "T": "Temperatura wody (WT…NT, WWT…NNT).",
                 },
                 default="Q",
             ),
+            *PERIOD_OPTIONS,
             ATTRIBUTION,
         ),
-        one_of=DATED_ONE_OF,
+        one_of=(*DATED_ONE_OF, ("half_year_file",)),
         examples=(
             {
                 "input_file": _OBSERWATOR_EXPORT,
@@ -181,6 +229,380 @@ COMMANDS: tuple[Command, ...] = (
                 "input_file": _DAILY_FLOWS,
                 "value_column": "Q",
                 "date_column": "date",
+            },
+            {
+                "input_file": _STATION_DAILY,
+                "value_column": "H",
+                "date_column": "date",
+                "parameter": "H",
+                "first_year": 2020,
+                "last_year": 2023,
+            },
+            {"half_year_file": _STATION_HALF_YEARS, "parameter": "Q"},
+        ),
+    ),
+    Command(
+        name="stats threshold-events",
+        operation_id="hydrolog_stats_threshold_events",
+        summary_pl=(
+            "Znajdź epizody i dni powyżej albo poniżej poziomu w szeregu dobowym"
+        ),
+        summary="Find the events and days above or below a level in a daily series",
+        description_pl=(
+            "Ciągi dni z wartością na poziomie `level` lub wyższą (albo niższą) z "
+            "początkiem, końcem, czasem trwania i kulminacją oraz dni poza poziomem w "
+            "każdym roku hydrologicznym (XI–X). Do stanów ostrzegawczych i "
+            "charakterystycznych; niedobory ciągów niżówkowych: `stats "
+            "low-flow-sequences`. Dzień "
+            "bez danych kończy epizod, chyba że `max_gap_days` go łączy."
+        ),
+        description=(
+            "Runs of days with a value at or above `level` (or below it) with start, "
+            "end, duration and peak, and the days beyond the level in each "
+            "hydrological year (Nov–Oct). Use for warning and characteristic levels; "
+            "for low-flow deficits use `stats low-flow-sequences`. A day without a "
+            "value ends an event unless `max_gap_days` bridges it."
+        ),
+        result_schema="hydrolog-stats-threshold-events/1",
+        cardinality="bounded",
+        rules=(
+            "Give `level` in the unit of the series.",
+            "`above` counts values >= level, `below` values < level.",
+            "An event counts in the year in which it starts.",
+        ),
+        rules_pl=(
+            "Podaj `level` w jednostce szeregu.",
+            "`above` liczy wartości >= level, `below` wartości < level.",
+            "Epizod liczy się w roku, w którym się zaczyna.",
+        ),
+        errors=_STATION_ERRORS,
+        example_results=(
+            {
+                "level": 180.0,
+                "direction": "above",
+                "days_beyond": 24,
+                "n_events": 8,
+                "max_duration_days": 6,
+                "events": [
+                    {
+                        "start_date": "2019-03-14",
+                        "end_date": "2019-03-15",
+                        "peak": 192.0,
+                    }
+                ],
+                "years": [{"year": 2019, "days_beyond": 5, "n_events": 2}],
+            },
+            {
+                "direction": "below",
+                "first_year": 2021,
+                "last_year": 2022,
+                "days_beyond": 59,
+                "n_events": 24,
+                "max_duration_days": 15,
+            },
+        ),
+        function="hydrolog.operations.stats_threshold_events",
+        options=(
+            *DATED_OPTIONS,
+            Option(
+                name="level",
+                type="number",
+                description_pl="Poziom w jednostce szeregu (np. stan [cm], Q [m³/s]).",
+                description="The level, in the unit of the series (H [cm], Q [m³/s]).",
+                required=True,
+            ),
+            Option(
+                name="direction",
+                type="choice",
+                description_pl="Dni na poziomie lub powyżej albo poniżej poziomu.",
+                description="Days at or above the level, or below it.",
+                choices=("above", "below"),
+                meanings={
+                    "above": "A day with a value >= level is beyond it.",
+                    "below": "A day with a value < level is beyond it.",
+                },
+                meanings_pl={
+                    "above": "Dzień z wartością >= level jest poza poziomem.",
+                    "below": "Dzień z wartością < level jest poza poziomem.",
+                },
+                default="above",
+            ),
+            Option(
+                name="min_duration_days",
+                type="integer",
+                description_pl="Najkrótszy raportowany epizod w dobach, co najmniej 1.",
+                description="Shortest event reported, in days, at least 1.",
+                default=1,
+                minimum=1,
+                unit="d",
+            ),
+            Option(
+                name="max_gap_days",
+                type="integer",
+                description_pl=(
+                    "Epizody rozdzielone mniejszą liczbą dób (bez danych albo nie poza "
+                    "poziomem) łączą się w jeden; 0 nie łączy."
+                ),
+                description=(
+                    "Events parted by fewer days (without a value or not beyond the "
+                    "level) merge into one; 0 merges none."
+                ),
+                default=0,
+                minimum=0,
+                unit="d",
+            ),
+            *PERIOD_OPTIONS,
+            ATTRIBUTION,
+        ),
+        one_of=DATED_ONE_OF,
+        examples=(
+            {
+                "input_file": _STATION_DAILY,
+                "value_column": "H",
+                "date_column": "date",
+                "level": 180,
+            },
+            {
+                "input_file": _STATION_DAILY,
+                "value_column": "T",
+                "date_column": "date",
+                "level": 1.0,
+                "direction": "below",
+                "first_year": 2021,
+                "last_year": 2022,
+            },
+        ),
+    ),
+    Command(
+        name="stats duration-curve",
+        operation_id="hydrolog_stats_duration_curve",
+        summary_pl=(
+            "Oblicz krzywą czasu trwania szeregu dobowego z liczebnościami klas i "
+            "klasą modalną"
+        ),
+        summary=(
+            "Compute the duration curve of a daily series with class counts and the "
+            "modal class"
+        ),
+        description_pl=(
+            "Wartość osiągana lub przekraczana przez p % dni (pozycje Weibulla "
+            "m/(n+1)) w okresie albo jednym miesiącu oraz dni każdej klasy (o równej "
+            "szerokości albo logarytmicznej) z sumami „z wyższymi” i „z niższymi” i "
+            "podziałem na miesiące hydrologiczne. Do krzywych czasu trwania H i Q; "
+            "strefy Rybczyńskiego: `hydrometrics water-level-zones`."
+        ),
+        description=(
+            "The value equalled or exceeded on p % of the days (Weibull positions "
+            "m/(n+1)) over the period or one month, and the days of each class (equal "
+            "width or logarithmic) with the cumulative days including higher and "
+            "lower, split by hydrological month. Use for H and Q duration curves; for "
+            "Rybczyński zones use `hydrometrics water-level-zones`."
+        ),
+        result_schema="hydrolog-stats-duration-curve/1",
+        cardinality="bounded",
+        rules=(
+            "Use `class_width` 10 (cm) for H and `class_method` log for Q.",
+            "`percents` are exceedance percentages; classes run from the highest.",
+        ),
+        rules_pl=(
+            "Użyj `class_width` 10 (cm) dla H i `class_method` log dla Q.",
+            "`percents` to procenty przekroczenia; klasy idą od najwyższej.",
+        ),
+        errors=_STATION_ERRORS,
+        example_results=(
+            {
+                "n_values": 1811,
+                "median": 75.0,
+                "percents": [1.0, 5.0, 10.0],
+                "values": [189.88, 115.4, 90.0],
+                "modal_class": {"lower": 80.0, "upper": 90.0, "days": 529},
+                "classes": [
+                    {
+                        "lower": 320.0,
+                        "upper": 330.0,
+                        "days": 1,
+                        "days_with_higher": 1,
+                        "days_with_lower": 1811,
+                    }
+                ],
+            },
+            {
+                "month": 9,
+                "n_values": 150,
+                "class_method": "log",
+                "values": [1.335, 0.61, 0.58],
+                "modal_class": {"lower": 0.54, "days": 60},
+            },
+        ),
+        function="hydrolog.operations.stats_duration_curve",
+        options=(
+            *DATED_OPTIONS,
+            *PERIOD_OPTIONS,
+            Option(
+                name="month",
+                type="integer",
+                description_pl=(
+                    "Tylko dni tego miesiąca kalendarzowego (1–12, 11 = listopad); "
+                    "domyślnie wszystkie dni."
+                ),
+                description=(
+                    "Only the days of this calendar month (1–12, 11 = November); by "
+                    "default every day."
+                ),
+                minimum=1,
+                maximum=12,
+            ),
+            Option(
+                name="percents",
+                type="number_list",
+                description_pl=(
+                    "Procenty przekroczenia tabeli, każdy z przedziału (0, 100); "
+                    "domyślnie 1, 5, 10, 30, 50, 70, 90, 95, 99."
+                ),
+                description=(
+                    "Exceedance percentages of the table, each in (0, 100); default "
+                    "1, 5, 10, 30, 50, 70, 90, 95, 99."
+                ),
+                default=(1.0, 5.0, 10.0, 30.0, 50.0, 70.0, 90.0, 95.0, 99.0),
+                exclusive_minimum=0,
+                maximum=100,
+            ),
+            Option(
+                name="class_method",
+                type="choice",
+                description_pl="Sposób podziału wartości na klasy.",
+                description="How the values are divided into classes.",
+                choices=("width", "log"),
+                meanings={
+                    "width": "Classes of `class_width` from a multiple of it.",
+                    "log": "`class_count` logarithmic classes (for discharge).",
+                },
+                meanings_pl={
+                    "width": "Klasy o szerokości `class_width` od jej wielokrotności.",
+                    "log": "`class_count` klas logarytmicznych (dla przepływów).",
+                },
+                default="width",
+            ),
+            Option(
+                name="class_width",
+                type="number",
+                description_pl=(
+                    "Szerokość klasy w jednostce szeregu (np. 10 cm), dodatnia."
+                ),
+                description="Width of a class, in the unit of the series (10 cm).",
+                default=10.0,
+                exclusive_minimum=0,
+            ),
+            Option(
+                name="class_count",
+                type="integer",
+                description_pl=(
+                    "Liczba klas logarytmicznych między najmniejszą dodatnią a "
+                    "największą wartością, co najmniej 2."
+                ),
+                description=(
+                    "Number of logarithmic classes between the smallest positive and "
+                    "the largest value, at least 2."
+                ),
+                default=40,
+                minimum=2,
+            ),
+            ATTRIBUTION,
+        ),
+        one_of=DATED_ONE_OF,
+        examples=(
+            {
+                "input_file": _STATION_DAILY,
+                "value_column": "H",
+                "date_column": "date",
+                "class_width": 10,
+            },
+            {
+                "input_file": _STATION_DAILY,
+                "value_column": "Q",
+                "date_column": "date",
+                "month": 9,
+                "percents": [50, 70, 90],
+                "class_method": "log",
+                "class_count": 20,
+            },
+        ),
+    ),
+    Command(
+        name="stats runoff-volume",
+        operation_id="hydrolog_stats_runoff_volume",
+        summary_pl=(
+            "Oblicz roczne i miesięczne objętości odpływu oraz krzywą sumową roku"
+        ),
+        summary=(
+            "Compute annual and monthly runoff volumes and the cumulative volume of a "
+            "year"
+        ),
+        description_pl=(
+            "Objętość V = ΣQ·86 400 s [m³] każdego roku hydrologicznego (XI–X) i jego "
+            "miesięcy, ich średnie z pełnych lat i miesięcy okresu oraz objętość "
+            "narastająca jednego roku obok średniej. Wymaga dobowych przepływów w m³/s "
+            "z datami; dzień bez danych nic nie dodaje i czyni rok niepełnym."
+        ),
+        description=(
+            "Volumes V = ΣQ·86,400 s [m³] of each hydrological year (Nov–Oct) and its "
+            "months, their means over the complete years and months of the period, and "
+            "the cumulative volume of one year beside the mean one. Needs daily "
+            "discharge in m³/s with dates; a day without a value adds nothing and "
+            "makes its year incomplete."
+        ),
+        result_schema="hydrolog-stats-runoff-volume/1",
+        cardinality="bounded",
+        rules=(
+            "Give daily discharge in m³/s with dates.",
+            "Means use complete years and months only; volumes are in m³.",
+        ),
+        rules_pl=(
+            "Podaj dobowe przepływy w m³/s z datami.",
+            "Średnie liczą tylko pełne lata i miesiące; objętości są w m³.",
+        ),
+        errors=_STATION_ERRORS,
+        example_results=(
+            {
+                "n_complete_years": 3,
+                "mean_annual_volume_m3": 181315872.0,
+                "cumulative_year": 2022,
+                "years": [
+                    {
+                        "year": 2019,
+                        "volume_m3": 173741760.0,
+                        "complete": True,
+                        "months": [{"month": 11, "volume_m3": 5818176.0}],
+                    }
+                ],
+            },
+        ),
+        function="hydrolog.operations.stats_runoff_volume",
+        options=(
+            *DATED_OPTIONS,
+            *PERIOD_OPTIONS,
+            Option(
+                name="cumulative_year",
+                type="integer",
+                description_pl=(
+                    "Rok hydrologiczny krzywej sumowej; domyślnie ostatni pełny rok "
+                    "okresu."
+                ),
+                description=(
+                    "Hydrological year of the cumulative volume; by default the last "
+                    "complete year of the period."
+                ),
+                minimum=1,
+            ),
+            ATTRIBUTION,
+        ),
+        one_of=DATED_ONE_OF,
+        examples=(
+            {
+                "input_file": _STATION_DAILY,
+                "value_column": "Q",
+                "date_column": "date",
+                "cumulative_year": 2022,
             },
         ),
     ),
@@ -530,36 +952,32 @@ COMMANDS: tuple[Command, ...] = (
         summary_pl=("Wykryj ciągi niżówkowe (susze) poniżej progu"),
         summary=("Detect low-flow (drought) sequences below a threshold"),
         description_pl=(
-            "Metoda poziomu progowego: ciągi dób poniżej `threshold`, łączone przez"
-            " krótkie przerwy, z datami początku i końca, czasem trwania, minimum, "
-            "średnią i niedoborem. Do zdarzeń suszy; częstość minimów rocznych: "
-            "`stats low-flow`. Wymaga kompletnego szeregu dobowego bez NaN."
+            "Metoda poziomu progowego: ciągi dób poniżej progu (podanego, SNQ okresu "
+            "albo przepływu przekraczanego przez p % dni), łączone przez krótkie "
+            "przerwy, z datami, czasem trwania, minimum, średnią, niedoborem i "
+            "podsumowaniem lat hydrologicznych. Luki w danych są dozwolone. Częstość "
+            "minimów rocznych: `stats low-flow`."
         ),
         description=(
-            "Threshold level method: runs of days below `threshold`, merged across "
-            "short gaps, with start and end dates, duration, minimum, mean and "
-            "deficit. Use for drought events; for frequency of annual minima use "
-            "`stats low-flow`. Needs a complete daily series without NaN."
+            "Threshold level method: runs of days below the threshold (given, SNQ of "
+            "the period, or the flow exceeded on p % of days), merged across short "
+            "gaps, with dates, duration, minimum, mean, deficit and a summary per "
+            "hydrological year. Gaps in the record are allowed. For annual minima "
+            "frequency use `stats low-flow`."
         ),
         result_schema="hydrolog-stats-low-flow-sequences/1",
         cardinality="bounded",
         rules=(
-            "Pass consecutive daily dates without gaps and without NaN.",
-            "Give `threshold` in the unit of the series.",
-            "Deficit is in series unit × day.",
+            "Give `threshold` (unit of the series) or another `threshold_method`.",
+            "Deficit is in series unit × day; `deficit_volume_m3` for Q in m³/s.",
+            "A sequence counts in the year in which it starts.",
         ),
         rules_pl=(
-            "Podaj kolejne daty dobowe bez luk i bez NaN.",
-            "Podaj `threshold` w jednostce szeregu.",
-            "Niedobór jest w jednostce szeregu × doba.",
+            "Podaj `threshold` (w jednostce szeregu) albo inną `threshold_method`.",
+            "Niedobór jest w jednostce szeregu × doba; `deficit_volume_m3` dla Q.",
+            "Ciąg liczy się w roku, w którym się zaczyna.",
         ),
-        errors=(
-            "validation_error",
-            "not_found",
-            "data_error",
-            "calculation_error",
-            "forbidden",
-        ),
+        errors=_STATION_ERRORS,
         example_results=(
             {
                 "threshold": 2.2,
@@ -568,47 +986,92 @@ COMMANDS: tuple[Command, ...] = (
                 "total_deficit": 23.78,
                 "max_duration_days": 48,
             },
+            {
+                "threshold_method": "mean_annual_minimum",
+                "threshold": 1.014,
+                "n_events": 2,
+                "total_deficit": 42.75,
+                "total_deficit_volume_m3": 3693600.0,
+                "max_duration_days": 67,
+                "n_missing_days": 15,
+                "sequences": [
+                    {
+                        "start_date": "2019-08-20",
+                        "end_date": "2019-10-13",
+                        "duration_days": 55,
+                        "deficit_volume_m3": 1613952.0,
+                    }
+                ],
+            },
         ),
         function="hydrolog.operations.stats_low_flow_sequences",
         options=(
-            VALUES,
-            replace(
-                DATES,
-                description_pl=(
-                    "Daty kolejnych dób w formacie ISO `RRRR-MM-DD`: kolejne dni, bez "
-                    "luk; tyle samo co `values`."
-                ),
-                description=(
-                    "Dates of consecutive days in ISO format `YYYY-MM-DD`: successive "
-                    "days without gaps; as many as `values`."
-                ),
-            ),
-            INPUT_FILE,
-            VALUE_COLUMN,
-            replace(
-                DATE_COLUMN,
-                description_pl=(
-                    "Nazwa kolumny z datami ISO w `input_file` (np. `date`); daty "
-                    "muszą być kolejnymi dniami, bez luk."
-                ),
-                description=(
-                    "Name of the column with ISO dates in `input_file` (e.g. "
-                    "`date`); the dates must be consecutive days without gaps."
-                ),
-            ),
+            *DATED_OPTIONS,
             Option(
                 name="threshold",
                 type="number",
                 description_pl=(
                     "Próg niżówkowy w jednostce szeregu (np. m³/s), dodatni; dni z "
-                    "wartością poniżej progu tworzą niżówkę."
+                    "wartością poniżej progu tworzą niżówkę. Tylko z "
+                    "`threshold_method` value."
                 ),
                 description=(
                     "Low-flow threshold in the unit of the series (e.g. m³/s), "
-                    "positive; days with a value below it make up a low-flow event."
+                    "positive; days with a value below it make up a low-flow event. "
+                    "Only with `threshold_method` value."
                 ),
-                required=True,
                 exclusive_minimum=0,
+            ),
+            Option(
+                name="threshold_method",
+                type="choice",
+                description_pl="Skąd pochodzi próg.",
+                description="Where the threshold comes from.",
+                choices=("value", "mean_annual_minimum", "exceedance"),
+                meanings={
+                    "value": "The given `threshold`.",
+                    "mean_annual_minimum": "SNQ (SNW): mean of the annual minima.",
+                    "exceedance": "The flow exceeded on `exceedance_percent` % of "
+                    "days.",
+                },
+                meanings_pl={
+                    "value": "Podany `threshold`.",
+                    "mean_annual_minimum": "SNQ (SNW): średnia z minimów rocznych.",
+                    "exceedance": "Przepływ przekraczany przez `exceedance_percent` % "
+                    "dni.",
+                },
+                default="value",
+            ),
+            Option(
+                name="exceedance_percent",
+                type="number",
+                description_pl=(
+                    "Procent dni przekroczenia dla `exceedance`, z przedziału "
+                    "(0, 100): 70 daje Q70, 90 daje Q90."
+                ),
+                description=(
+                    "Exceedance percentage of `exceedance`, in (0, 100): 70 gives Q70, "
+                    "90 gives Q90."
+                ),
+                default=70.0,
+                exclusive_minimum=0,
+                maximum=100,
+            ),
+            Option(
+                name="parameter",
+                type="choice",
+                description_pl="Zmienna szeregu.",
+                description="The variable of the series.",
+                choices=("Q", "H"),
+                meanings={
+                    "Q": "Discharge in m³/s: the deficits are also volumes in m³.",
+                    "H": "Stage: low-stage periods, without volumes.",
+                },
+                meanings_pl={
+                    "Q": "Przepływ w m³/s: niedobory także jako objętości w m³.",
+                    "H": "Stan wody: okresy niskich stanów, bez objętości.",
+                },
+                default="Q",
             ),
             Option(
                 name="min_duration_days",
@@ -627,17 +1090,20 @@ COMMANDS: tuple[Command, ...] = (
                 name="max_gap_days",
                 type="integer",
                 description_pl=(
-                    "Przerwy krótsze niż ta liczba dób między dwoma ciągami poniżej "
-                    "progu łączą je w jeden ciąg; 0 wyłącza łączenie."
+                    "Przerwy krótsze niż ta liczba dób (bez danych albo powyżej progu) "
+                    "między dwoma ciągami poniżej progu łączą je w jeden ciąg; 0 "
+                    "wyłącza łączenie."
                 ),
                 description=(
-                    "Gaps shorter than this number of days between two runs below the "
-                    "threshold merge them into one sequence; 0 disables merging."
+                    "Gaps shorter than this number of days (without a value or above "
+                    "the threshold) between two runs below the threshold merge them "
+                    "into one sequence; 0 disables merging."
                 ),
                 default=4,
                 minimum=0,
                 unit="d",
             ),
+            *PERIOD_OPTIONS,
             ATTRIBUTION,
         ),
         one_of=DATED_ONE_OF,
@@ -649,6 +1115,12 @@ COMMANDS: tuple[Command, ...] = (
                 "threshold": 2.2,
                 "min_duration_days": 5,
                 "max_gap_days": 4,
+            },
+            {
+                "input_file": _STATION_DAILY,
+                "value_column": "Q",
+                "date_column": "date",
+                "threshold_method": "mean_annual_minimum",
             },
         ),
     ),

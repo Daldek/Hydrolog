@@ -623,7 +623,11 @@ class TestObserwatorExport:
         assert values.wwx == values.nwx == 11.4
         assert values.nnx == 2.5
         assert values.ssx == pytest.approx(np.mean(self.VALID_Q))
-        assert [n.code for n in result.notices] == ["missing_values_removed"]
+        assert [n.code for n in result.notices] == [
+            "missing_values_removed",
+            "years_with_missing_days",
+            "short_reference_period",
+        ]
         assert "2 of 14" in result.notices[0].message
         assert result.notices[0].details == {
             "missing": 2,
@@ -645,7 +649,7 @@ class TestObserwatorExport:
             date_column="date",
             parameter="Q",
         )
-        assert plain.result == full.result
+        assert plain.result.to_dict() == full.result.to_dict()
 
     def test_stage_column_with_the_stage_label(self):
         result = run(
@@ -715,21 +719,6 @@ class TestObserwatorExport:
             10,
             12,
         ]
-
-    def test_missing_days_stop_the_sequence_detection(self):
-        with pytest.raises(CalculationError) as caught:
-            run(
-                "stats low-flow-sequences",
-                input_file=str(OBSERWATOR_EXPORT),
-                value_column="Q",
-                date_column="date",
-                threshold=4.0,
-            )
-        assert caught.value.details == {
-            "reason": "missing_values",
-            "n_missing": 2,
-            "first_missing_date": "2023-11-08",
-        }
 
     def test_water_level_zones_of_the_stage_column(self):
         result = run(
@@ -820,7 +809,7 @@ class TestCharacteristicDailyMonthly:
             date_column="date",
         )
         assert result.result == direct
-        assert result.notices == ()
+        assert [n.code for n in result.notices] == ["short_reference_period"]
         assert direct.period_years == 3
 
     def test_daily_statistics_equal_the_library(self):
@@ -1557,15 +1546,6 @@ class TestLowFlowSequences:
         assert result.sequences == []
         assert result.max_duration_days == 0
 
-    def test_dates_must_be_consecutive_days(self):
-        values, dates = _sequence_series()
-        del values[10], dates[10]
-        with pytest.raises(CalculationError) as caught:
-            run("stats low-flow-sequences", values=values, dates=dates, threshold=3.0)
-        assert caught.value.details["reason"] == "date_gap"
-        assert caught.value.details["after"] == "2023-01-10"
-        assert caught.value.details["next"] == "2023-01-12"
-
     @pytest.mark.parametrize(
         ("options", "option"),
         [({"threshold": 0.0}, "threshold"), ({"threshold": -1.0}, "threshold")],
@@ -1769,7 +1749,7 @@ class TestRatingCurve:
             h0_initial=40.0,
             remove_outliers=True,
         )
-        assert result.result == direct
+        assert _fitted(result.result) == direct
         assert result.notices == ()
 
     def test_inline_pairs_equal_the_file(self):
@@ -1828,7 +1808,7 @@ class TestRatingCurve:
             remove_outliers=True,
             outlier_std=10.0,
         ).result
-        assert result == direct
+        assert _fitted(result) == direct
         assert result.n_outliers_removed == 0
         assert result.n_points == 15
 
@@ -1853,7 +1833,7 @@ class TestRatingCurve:
         )
         keep = np.ones(len(levels), dtype=bool)
         keep[[3, 6]] = False
-        assert result.result == RatingCurve(levels[keep], flows[keep]).fit(
+        assert _fitted(result.result) == RatingCurve(levels[keep], flows[keep]).fit(
             h0_initial=40.0
         )
         assert result.result.n_points == 13
@@ -2942,3 +2922,17 @@ class TestReportGenerate:
         assert set(reference) <= set(parameters)
         for name, parameter in reference.items():
             assert parameters[name].default == parameter.default, name
+
+
+def _fitted(result):
+    """The curve of a rating-curve result as the library's own result."""
+    import dataclasses
+
+    from hydrolog.hydrometrics import RatingCurveResult
+
+    return RatingCurveResult(
+        **{
+            field.name: getattr(result, field.name)
+            for field in dataclasses.fields(RatingCurveResult)
+        }
+    )

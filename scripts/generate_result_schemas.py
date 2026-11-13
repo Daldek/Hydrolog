@@ -77,6 +77,35 @@ _ADDED_FIELDS: dict[str, tuple[str, ...]] = {
         "nash_estimation",
     ),
     "hydrolog-stats-flood-frequency/1": ("fit_method",),
+    "hydrolog-stats-characteristic/1": (
+        "labels",
+        "first_degree_labels",
+        "source",
+        "first_year",
+        "last_year",
+        "winter",
+        "summer",
+        "years",
+        "incomplete_years",
+    ),
+    "hydrolog-stats-low-flow-sequences/1": (
+        "threshold_method",
+        "exceedance_percent",
+        "parameter",
+        "first_year",
+        "last_year",
+        "period_years",
+        "n_missing_days",
+        "total_deficit_volume_m3",
+        "years",
+    ),
+    "hydrolog-hydrometrics-rating-curve/1": (
+        "first_year",
+        "last_year",
+        "periods",
+        "reference_level",
+        "reference_discharge_m3s",
+    ),
 }
 """Fields added to a document after its first version, by id: never ``required``."""
 
