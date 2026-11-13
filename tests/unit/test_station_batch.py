@@ -79,7 +79,7 @@ class TestBatch:
                 input_file="missing.csv",
                 value_column="Q",
                 date_column="date",
-                level=1,
+                threshold=1,
             ),
         ]
         path = write_calls(station, *calls)
@@ -155,6 +155,34 @@ class TestBatch:
             "code": "not_found",
             "message": documents[4]["message"],
         }
+
+    def test_a_call_that_goes_online_or_writes_a_file_is_refused(self, station):
+        hydrograph = {"times_min": [0, 10, 20, 30], "discharge_m3s": [0, 5, 2, 0]}
+        path = write_calls(
+            station,
+            call(
+                "precip pmaxtp",
+                latitude=51.0,
+                longitude=16.0,
+                duration_min=60,
+                probability_percent=1,
+            ),
+            call("route lag", lag_min=10, output="routed.csv", **hydrograph),
+            call("route lag", lag_min=10, **hydrograph),
+        )
+        envelope, documents = batch(path)
+
+        assert [item["status"] for item in envelope["items"]] == [
+            "failed",
+            "failed",
+            "ok",
+        ]
+        assert [d["details"]["reason"] for d in documents[:2]] == [
+            "not_in_batch",
+            "not_in_batch",
+        ]
+        assert not (station / "routed.csv").exists()
+        assert documents[2]["result"]["outflow_peak_m3s"] > 0
 
     def test_the_command_line_prints_the_envelope_and_exits_with_the_outcome(
         self, station, capsys

@@ -88,7 +88,7 @@ class BaseflowYear(JsonResultMixin):
         Hydrological year (1 November - 31 October, named after its end).
     bfi : float
         Baseflow index Σ b / Σ Q of its days with a baseflow.
-    days : int
+    n_values : int
         Days with a baseflow.
     baseflow_mean, discharge_mean : float
         Mean baseflow and mean discharge of those days [m³/s].
@@ -96,7 +96,7 @@ class BaseflowYear(JsonResultMixin):
 
     year: int
     bfi: float
-    days: int
+    n_values: int
     baseflow_mean: float
     discharge_mean: float
 
@@ -111,13 +111,13 @@ class RecessionConstant(JsonResultMixin):
         Median ratio Qₜ₊₁ / Qₜ over the recession segments; ``None`` without one.
     half_life_days : float or None
         ln 2 / (−ln k): the days in which a recession halves the flow.
-    segments : int
+    n_segments : int
         Recession segments found.
     """
 
     k: float | None
     half_life_days: float | None
-    segments: int
+    n_segments: int
 
 
 @dataclass
@@ -136,9 +136,9 @@ class BaseflowSeparation(JsonResultMixin):
         Hydrological years with a value.
     bfi : float
         Baseflow index Σ b / Σ Q over the days with a baseflow.
-    days : int
+    n_values : int
         Days with a baseflow: those of the gapless spans of at least 60 days.
-    spans : int
+    n_spans : int
         Gapless spans filtered.
     years : list of BaseflowYear
         Each year with at least :data:`MIN_YEAR_DAYS` days with a baseflow.
@@ -158,8 +158,8 @@ class BaseflowSeparation(JsonResultMixin):
     last_year: int
     period_years: int
     bfi: float
-    days: int
-    spans: int
+    n_values: int
+    n_spans: int
     years: list[BaseflowYear]
     recession: RecessionConstant
     series_year: int
@@ -268,10 +268,10 @@ def recession_constant(
         ratio[s:e] for s, e in zip(starts, ends, strict=True) if e - s >= min_days
     ]
     if not picked:
-        return RecessionConstant(k=None, half_life_days=None, segments=0)
+        return RecessionConstant(k=None, half_life_days=None, n_segments=0)
     k = float(np.median(np.concatenate(picked)))
     half_life = math.log(2.0) / -math.log(k) if 0.0 < k < 1.0 else None
-    return RecessionConstant(k=k, half_life_days=half_life, segments=len(picked))
+    return RecessionConstant(k=k, half_life_days=half_life, n_segments=len(picked))
 
 
 def baseflow_separation(
@@ -354,7 +354,7 @@ def baseflow_separation(
             BaseflowYear(
                 year=int(year),
                 bfi=float(base[mine].sum() / daily[mine].sum()),
-                days=count,
+                n_values=count,
                 baseflow_mean=float(base[mine].mean()),
                 discharge_mean=float(daily[mine].mean()),
             )
@@ -379,8 +379,8 @@ def baseflow_separation(
         last_year=int(present[-1]),
         period_years=int(present.size),
         bfi=float(base[filtered].sum() / daily[filtered].sum()),
-        days=int(filtered.sum()),
-        spans=spans,
+        n_values=int(filtered.sum()),
+        n_spans=spans,
         years=rows,
         recession=recession_constant(daily),
         series_year=int(series_year),

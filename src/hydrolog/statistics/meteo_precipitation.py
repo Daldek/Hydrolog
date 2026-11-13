@@ -24,14 +24,32 @@ the missing days it covers in the sums and is a missing day for every daily stat
 a monthly count of days is scaled to the days of the month when fewer than 11 days,
 and fewer than 5 in a row, are missing; an annual value needs its twelve months, and
 the annual maxima, the percentile sums and the spells need every day of the year. A
-normal is the mean of the years of the period with a value when they are at least
-80 % of its years.
+normal is the mean of the years of the reference period with a value when they are
+at least 80 % of its years (4.4.2). Every sum of daily precipitation is rounded to
+1e-6 mm, so that sums equal in decimal are equal numbers.
+
+The baselines of :func:`precipitation_sums`, :func:`heavy_precipitation` and
+:func:`precipitation_seasonality` come from a reference period
+(``reference_first_year`` to ``reference_last_year``, by default the analysed years
+``first_year`` to ``last_year``), the values of each analysed year from its own days:
+the normals are the benchmark of the sums in % of them (WMO-No. 1203, chapters 2 and
+3, section 5.1: the climatological standard normal 1991-2020 for monitoring, the
+reference normal 1961-1990 for climate change), the percentiles of R95p and R99p are
+those of the wet days of a base period (Klein Tank et al., 2009; Zhang et al., 2011:
+1961-1990; WMO-No. 1203, 5.2.2: a period longer than 30 years suits percentiles),
+and the regime is that of the normals.
 
 References
 ----------
 WMO (2017): WMO Guidelines on the Calculation of Climate Normals. WMO-No. 1203.
 Zhang, X. et al. (2011): Indices for monitoring changes in extremes based on daily
     temperature and precipitation data. WIREs Climate Change 2(6), 851-870.
+Zhang, X., Hegerl, G., Zwiers, F. W. & Kenyon, J. (2005): Avoiding inhomogeneity in
+    percentile-based indices of temperature extremes. Journal of Climate 18(11),
+    1641-1651.
+Klein Tank, A. M. G., Zwiers, F. W. & Zhang, X. (2009): Guidelines on analysis of
+    extremes in a changing climate in support of informed decisions for adaptation.
+    WCDMP-No. 72, WMO-TD No. 1500, Geneva.
 Oliver, J. E. (1980): Monthly precipitation distribution: a comparative index.
     Professional Geographer 32(3), 300-309.
 Walsh, R. P. D. & Lawler, D. M. (1981): Rainfall seasonality: description, spatial
@@ -45,7 +63,6 @@ from __future__ import annotations
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import NamedTuple
 
 import numpy as np
 from numpy.typing import NDArray
@@ -54,22 +71,21 @@ from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import CalculationError, InvalidParameterError
 from hydrolog.statistics._climate import (
     DailyGrid,
-    as_days,
+    DailyPrecipitation,
     block_extreme,
-    check_daily,
-    check_year_type,
     classify,
     complete_years,
     finite,
-    grid_of_values,
     mean_of,
     month_quality,
     monthly_counts,
-    monthly_precipitation,
     monthly_totals,
     normal,
+    precipitation_periods,
+    precipitation_record,
     rolling_sum,
-    years_with_values,
+    round_sum,
+    round_sums,
 )
 from hydrolog.statistics.regime import seasonality_index
 
@@ -169,46 +185,15 @@ _SI_LIMITS = (0.2, 0.4, 0.6, 0.8, 1.0, 1.2)
 # --- the series on its years ----------------------------------------------------------
 
 
-class _Daily(NamedTuple):
-    """Daily precipitation laid on the whole years of its values."""
-
-    grid: DailyGrid
-    raw: NDArray[np.float64]  # the values, accumulated totals included
-    daily: NDArray[np.float64]  # daily values: an accumulated total is missing
-    accumulated: NDArray[np.bool_]
-    present: NDArray[np.bool_]  # (years,) the year has a value
-
-
 def _daily(
     precipitation_mm: NDArray[np.float64] | Sequence[float],
     dates: NDArray[np.datetime64] | Sequence[object],
     accumulated: NDArray[np.bool_] | Sequence[bool] | None,
     year_type: str,
-) -> _Daily:
-    check_year_type(year_type)
-    values = np.asarray(precipitation_mm, dtype=np.float64)
-    days = as_days(dates)
-    check_daily(days, values)
-    flags = (
-        np.zeros(values.size, dtype=bool)
-        if accumulated is None
-        else np.asarray(accumulated, dtype=bool)
-    )
-    if flags.size != values.size:
-        raise InvalidParameterError("accumulated must have one flag per value")
-    if bool((values[np.isfinite(values)] < 0).any()):
-        raise InvalidParameterError("precipitation must not be negative")
-    known = np.isfinite(values)
-    grid = grid_of_values(days, known, year_type)
-    raw = grid.place(days, values)
-    totals = grid.place_flags(days, flags) & np.isfinite(raw)
-    return _Daily(
-        grid,
-        raw,
-        np.where(totals, np.nan, raw),
-        totals,
-        years_with_values(grid, np.isfinite(raw)),
-    )
+) -> DailyPrecipitation:
+    """Check a daily series and lay all its days on the years of its values."""
+    record = precipitation_record(precipitation_mm, dates, accumulated, year_type)
+    return record.on_grid()
 
 
 def _first_at(values: NDArray[np.float64], largest: bool) -> int:
@@ -230,7 +215,7 @@ class PrecipitationMonthSum(JsonResultMixin):
     total_mm : float or None
         Monthly sum [mm]; ``None`` when a day is missing (WMO-No. 1203, 4.4.1 c).
     percent_of_normal : float or None
-        ``total_mm`` in % of the normal of the month.
+        ``total_mm`` in % of the normal of the month (of the reference period).
     """
 
     month: int
@@ -249,7 +234,7 @@ class PrecipitationSumYear(JsonResultMixin):
     total_mm : float or None
         Annual sum [mm]; ``None`` without all twelve monthly sums.
     percent_of_normal : float or None
-        ``total_mm`` in % of the annual normal.
+        ``total_mm`` in % of the annual normal (of the reference period).
     winter_mm, summer_mm : float or None
         Sums of the half-years XI-IV and V-X of the hydrological year that ends in
         ``year`` [mm].
@@ -274,16 +259,17 @@ class PrecipitationSumYear(JsonResultMixin):
 
 @dataclass
 class PrecipitationMonthStatistics(JsonResultMixin):
-    """The monthly sums of one calendar month over the period.
+    """The monthly sums of one calendar month: their normal and the analysed years.
 
     Attributes
     ----------
     month : int
         Calendar month.
     normal_mm : float or None
-        Mean of the monthly sums when at least 80 % of the years have one [mm].
+        Mean of the monthly sums of the reference period when at least 80 % of its
+        years have one [mm].
     n_years : int
-        Years with a sum of the month.
+        Analysed years with a sum of the month.
     mean_mm, min_mm, max_mm : float or None
         Mean, smallest and largest sum of the month [mm].
     min_year, max_year : int or None
@@ -302,21 +288,21 @@ class PrecipitationMonthStatistics(JsonResultMixin):
 
 @dataclass
 class PrecipitationSumPeriod(JsonResultMixin):
-    """The normals and the statistics of the annual sums of the period.
+    """The normals of the reference period and the annual sums of the analysed years.
 
     Attributes
     ----------
     normal_mm : float or None
-        Annual normal: the mean annual sum when at least 80 % of the years of the
-        period have one [mm] (WMO-No. 1203, 4.4.2).
+        Annual normal: the mean annual sum of the reference period when at least 80 %
+        of its years have one [mm] (WMO-No. 1203, 4.4.2).
     normal_years : int
-        Years of the period with an annual sum.
+        Years of the reference period with an annual sum.
     winter_normal_mm, summer_normal_mm : float or None
         Normals of the half-years [mm].
     djf_normal_mm, mam_normal_mm, jja_normal_mm, son_normal_mm : float or None
         Normals of the seasons [mm].
     mean_mm : float or None
-        Mean annual sum of the years with one [mm].
+        Mean annual sum of the analysed years with one [mm].
     std_mm : float or None
         Its standard deviation (n - 1) [mm].
     cv : float or None
@@ -358,11 +344,16 @@ class PrecipitationSums(JsonResultMixin):
     year_type : str
         ``"calendar"`` or ``"hydrological"``.
     first_year, last_year : int
-        First and last year with a value.
+        First and last analysed year with a value.
     period_years : int
-        Years with a value.
+        Analysed years with a value.
+    reference_first_year, reference_last_year : int
+        The reference period of the normals, as given or by default the analysed
+        years (``first_year`` to ``last_year``).
+    reference_period_years : int
+        Its years with a value.
     years : list of PrecipitationSumYear
-        Every year with a value, in order.
+        Every analysed year with a value, in order.
     period : PrecipitationSumPeriod
         Normals and the statistics of the annual sums.
     """
@@ -372,6 +363,9 @@ class PrecipitationSums(JsonResultMixin):
     first_year: int
     last_year: int
     period_years: int
+    reference_first_year: int
+    reference_last_year: int
+    reference_period_years: int
     years: list[PrecipitationSumYear]
     period: PrecipitationSumPeriod
 
@@ -385,7 +379,7 @@ def _percent(value: float, reference: float | None) -> float | None:
 def _spans(
     grid: DailyGrid, flat: NDArray[np.float64]
 ) -> dict[str, NDArray[np.float64]]:
-    """Sum the half-years and seasons named after each year of the grid."""
+    """Sum the half-years and seasons named after each year of the grid [mm]."""
 
     def span(year: int, month: int, count: int) -> float:
         start = grid.flat_index(year, month)
@@ -402,9 +396,19 @@ def _spans(
         "son": (0, 9, 3),
     }
     return {
-        name: np.array([span(int(y) + shift, month, count) for y in grid.years])
+        name: round_sums(
+            np.array([span(int(y) + shift, month, count) for y in grid.years])
+        )
         for name, (shift, month, count) in parts.items()
     }
+
+
+def _sum_tables(
+    data: DailyPrecipitation,
+) -> tuple[NDArray[np.float64], NDArray[np.float64], dict[str, NDArray[np.float64]]]:
+    """Return the monthly, annual, half-year and season sums of the years [mm]."""
+    table = data.monthly()
+    return table, round_sums(table.sum(axis=1)), _spans(data.grid, table.reshape(-1))
 
 
 def precipitation_sums(
@@ -413,8 +417,17 @@ def precipitation_sums(
     *,
     accumulated: NDArray[np.bool_] | Sequence[bool] | None = None,
     year_type: str = "calendar",
+    first_year: int | None = None,
+    last_year: int | None = None,
+    reference_first_year: int | None = None,
+    reference_last_year: int | None = None,
 ) -> PrecipitationSums:
     """Sum the months, half-years, seasons and years and their normals (M1).
+
+    The sums of each analysed year come from its own days, the normals from the
+    reference period: the mean sum of its years with one when they are at least 80 %
+    of its years, those without data too (WMO-No. 1203, 4.4.2). The normals are the
+    benchmark of the sums in % of them (WMO-No. 1203, chapter 2).
 
     Parameters
     ----------
@@ -426,26 +439,51 @@ def precipitation_sums(
         The values that are accumulated totals of the missing days before them.
     year_type : {"calendar", "hydrological"}, optional
         Calendar years (default) or hydrological years (November - October).
+    first_year, last_year : int, optional
+        The analysed years (of ``year_type``), by default those of the record.
+    reference_first_year, reference_last_year : int, optional
+        The reference period of the normals (years of ``year_type``), each by default
+        that of the analysed years as resolved; each period keeps the days of its own
+        years only.
 
     Returns
     -------
     PrecipitationSums
-        The sums of each year with a value, in % of the normals of the period.
+        The sums of each analysed year with a value, in % of the normals.
 
     Raises
     ------
     InvalidParameterError
         If the arrays are empty or differ in length, the dates do not increase, a
-        value is negative, no day has a value or ``year_type`` is unknown.
+        value is negative, no day has a value, ``year_type`` is unknown or a period
+        starts after its last year (``details.reason`` ``range``).
+    CalculationError
+        If a period has no value (``details.reason`` ``no_values_in_period``).
     """
-    data = _daily(precipitation_mm, dates, accumulated, year_type)
+    periods = precipitation_periods(
+        precipitation_mm,
+        dates,
+        accumulated,
+        year_type,
+        first_year=first_year,
+        last_year=last_year,
+        reference_first_year=reference_first_year,
+        reference_last_year=reference_last_year,
+    )
+    data = periods.data
     grid = data.grid
-    table = monthly_precipitation(grid, data.raw, data.accumulated)
-    annual = table.sum(axis=1)
-    normal_mm, normal_years = normal(annual)
-    month_normals = [normal(table[:, slot])[0] for slot in range(12)]
-    spans = _spans(grid, table.reshape(-1))
-    span_normals = {name: normal(values)[0] for name, values in spans.items()}
+    table, annual, spans = _sum_tables(data)
+    base_table, base_annual, base_spans = (
+        (table, annual, spans)
+        if periods.reference is data
+        else _sum_tables(periods.reference)
+    )
+    span_years = periods.period.n_years
+    normal_mm, normal_years = normal(base_annual, span_years)
+    month_normals = [normal(base_table[:, slot], span_years)[0] for slot in range(12)]
+    span_normals = {
+        name: normal(values, span_years)[0] for name, values in base_spans.items()
+    }
     months = grid.months
     rows: list[PrecipitationSumYear] = []
     for row in np.flatnonzero(data.present).tolist():
@@ -521,6 +559,9 @@ def precipitation_sums(
         first_year=grid.first_year,
         last_year=grid.last_year,
         period_years=int(data.present.sum()),
+        reference_first_year=periods.period.first_year,
+        reference_last_year=periods.period.last_year,
+        reference_period_years=periods.reference_period_years,
         years=rows,
         period=period,
     )
@@ -1199,16 +1240,16 @@ def precipitation_intensity(
     known = np.isfinite(data.daily)
     with np.errstate(invalid="ignore"):
         wet = known & (data.daily >= threshold)
-    month_totals = monthly_totals(
-        grid, np.where(wet, data.daily, np.where(known, 0.0, np.nan))
+    month_totals = round_sums(
+        monthly_totals(grid, np.where(wet, data.daily, np.where(known, 0.0, np.nan)))
     )
     month_days = monthly_totals(grid, np.where(known, wet.astype(np.float64), np.nan))
-    year_totals = month_totals.sum(axis=1)
+    year_totals = round_sums(month_totals.sum(axis=1))
     year_days = month_days.sum(axis=1)
     with np.errstate(invalid="ignore", divide="ignore"):
         year_sdii = np.where(year_days > 0, year_totals / year_days, np.nan)
         month_sdii = np.where(month_days > 0, month_totals / month_days, np.nan)
-    annual = monthly_precipitation(grid, data.raw, data.accumulated).sum(axis=1)
+    annual = round_sums(data.monthly().sum(axis=1))
     months = grid.months
     rows: list[PrecipitationIntensityYear] = []
     for row in np.flatnonzero(data.present).tolist():
@@ -1234,7 +1275,7 @@ def precipitation_intensity(
     for slot, month in enumerate(months):
         both = np.isfinite(month_totals[:, slot]) & np.isfinite(month_days[:, slot])
         days = float(month_days[both, slot].sum())
-        total = float(month_totals[both, slot].sum())
+        total = round_sum(float(month_totals[both, slot].sum()))
         pooled.append(
             PrecipitationIntensityMonth(
                 month,
@@ -1297,17 +1338,17 @@ class HeavyPrecipitationYear(JsonResultMixin):
 
 @dataclass
 class HeavyPrecipitationPeriod(JsonResultMixin):
-    """The thresholds of the period and the mean shares.
+    """The thresholds of the reference period and the mean shares of the analysed years.
 
     Attributes
     ----------
     wet_days : int
-        Wet days of the period the percentiles are taken of.
+        Wet days of the reference period the percentiles are taken of.
     thresholds_mm : list of float
         The percentiles of their precipitation [mm] (quantile type 8, Hyndman and
         Fan, 1996).
     n_years : int
-        Complete years.
+        Complete analysed years.
     mean_shares_percent : list of float or None
         Mean annual share of each percentile [%].
     """
@@ -1329,13 +1370,18 @@ class HeavyPrecipitation(JsonResultMixin):
     year_type : str
         ``"calendar"`` or ``"hydrological"``.
     first_year, last_year, period_years : int
-        The period.
+        The analysed years: first and last year with a value, years with a value.
+    reference_first_year, reference_last_year : int
+        The reference period of the thresholds, as given or by default the analysed
+        years.
+    reference_period_years : int
+        Its years with a value.
     wet_day_mm : float
         A wet day has at least this precipitation [mm].
     percentiles : list of float
         The percentiles of the wet days [%].
     years : list of HeavyPrecipitationYear
-        Every year with a value.
+        Every analysed year with a value.
     period : HeavyPrecipitationPeriod
         The thresholds and the mean shares.
     """
@@ -1345,6 +1391,9 @@ class HeavyPrecipitation(JsonResultMixin):
     first_year: int
     last_year: int
     period_years: int
+    reference_first_year: int
+    reference_last_year: int
+    reference_period_years: int
     wet_day_mm: float
     percentiles: list[float]
     years: list[HeavyPrecipitationYear]
@@ -1359,14 +1408,23 @@ def heavy_precipitation(
     percentiles: Sequence[float] = DEFAULT_PERCENTILES,
     accumulated: NDArray[np.bool_] | Sequence[bool] | None = None,
     year_type: str = "calendar",
+    first_year: int | None = None,
+    last_year: int | None = None,
+    reference_first_year: int | None = None,
+    reference_last_year: int | None = None,
 ) -> HeavyPrecipitation:
     """Sum the days above percentiles of the wet days and give their shares (M7).
 
     The thresholds are percentiles of the precipitation of the wet days (P >=
-    ``wet_day_mm``) of the whole period, quantile type 8 (Hyndman and Fan, 1996, as
-    climdex.pcic of the ETCCDI); a year sums the precipitation of its days above each
-    threshold (R95p, R99p) and gives it in % of the precipitation of its wet days
-    (R95pTOT, R99pTOT; Zhang et al., 2011). A year needs every day.
+    ``wet_day_mm``) of the reference period, quantile type 8 (Hyndman and Fan, 1996,
+    as climdex.pcic of the ETCCDI), from at least 100 wet days; a year sums the
+    precipitation of its days above each threshold (R95p, R99p) and gives it in % of
+    the precipitation of its wet days (R95pTOT, R99pTOT; Zhang et al., 2011). A year
+    needs every day. The ETCCDI takes the percentiles of a base period, 1961-1990
+    (Klein Tank et al., 2009; Zhang et al., 2011), and a period longer than 30 years
+    gives steadier percentiles (WMO-No. 1203, 5.2.2); the bootstrap of the years
+    inside the base period (Zhang et al., 2005) is one of the temperature indices,
+    not of R95pTOT.
 
     Parameters
     ----------
@@ -1382,6 +1440,11 @@ def heavy_precipitation(
         Accumulated totals: missing days.
     year_type : {"calendar", "hydrological"}, optional
         The kind of year.
+    first_year, last_year : int, optional
+        The analysed years (of ``year_type``), by default those of the record.
+    reference_first_year, reference_last_year : int, optional
+        The reference period of the thresholds, each by default that of the analysed
+        years as resolved; each period keeps the days of its own years only.
 
     Returns
     -------
@@ -1391,11 +1454,11 @@ def heavy_precipitation(
     Raises
     ------
     InvalidParameterError
-        If the arrays are invalid, ``wet_day_mm`` is not positive or a percentile
-        is outside (0, 100).
+        If the arrays are invalid, ``wet_day_mm`` is not positive, a percentile is
+        outside (0, 100) or a period starts after its last year (``range``).
     CalculationError
-        If the period has fewer than 100 wet days (``details.reason``
-        ``too_few_wet_days``).
+        If a period has no value (``details.reason`` ``no_values_in_period``) or the
+        reference period has fewer than 100 wet days (``too_few_wet_days``).
     """
     threshold = _wet_day(wet_day_mm)
     levels = [float(item) for item in percentiles]
@@ -1403,30 +1466,42 @@ def heavy_precipitation(
         raise InvalidParameterError(
             f"percentiles must be numbers in (0, 100), got {percentiles!r}"
         )
-    data = _daily(precipitation_mm, dates, accumulated, year_type)
+    periods = precipitation_periods(
+        precipitation_mm,
+        dates,
+        accumulated,
+        year_type,
+        first_year=first_year,
+        last_year=last_year,
+        reference_first_year=reference_first_year,
+        reference_last_year=reference_last_year,
+    )
+    data = periods.data
     grid = data.grid
-    known = np.isfinite(data.daily)
+    base = periods.reference.daily
     with np.errstate(invalid="ignore"):
-        wet = known & (data.daily >= threshold)
-    sample = data.daily[wet]
+        sample = base[np.isfinite(base) & (base >= threshold)]
     if sample.size < MIN_WET_DAYS:
         raise CalculationError(
             f"The percentiles need at least {MIN_WET_DAYS} wet days (P >= "
-            f"{threshold:g} mm) in the period, got {sample.size}",
+            f"{threshold:g} mm) in the reference period {periods.period.first_year}-"
+            f"{periods.period.last_year}, got {sample.size}",
             details={
                 "reason": "too_few_wet_days",
                 "count": int(sample.size),
                 "minimum": MIN_WET_DAYS,
             },
-            hint="Choose a longer period.",
+            hint="Choose a longer reference period (by default the analysed years).",
         )
     limits = np.percentile(sample, levels, method="median_unbiased")
-    complete = complete_years(grid, known)
+    complete = complete_years(grid, np.isfinite(data.daily))
     filled = np.nan_to_num(data.daily)
     starts = grid.year_starts()
-    totals = np.add.reduceat(np.where(filled >= threshold, filled, 0.0), starts)
+    totals = round_sums(
+        np.add.reduceat(np.where(filled >= threshold, filled, 0.0), starts)
+    )
     sums = [
-        np.add.reduceat(np.where(filled > limit, filled, 0.0), starts)
+        round_sums(np.add.reduceat(np.where(filled > limit, filled, 0.0), starts))
         for limit in limits
     ]
     days = [
@@ -1470,6 +1545,9 @@ def heavy_precipitation(
         first_year=grid.first_year,
         last_year=grid.last_year,
         period_years=int(data.present.sum()),
+        reference_first_year=periods.period.first_year,
+        reference_last_year=periods.period.last_year,
+        reference_period_years=periods.reference_period_years,
         wet_day_mm=threshold,
         percentiles=levels,
         years=rows,
@@ -1537,7 +1615,7 @@ class PrecipitationRegimeMonth(JsonResultMixin):
     month : int
         Calendar month.
     normal_mm : float or None
-        Normal of the month [mm].
+        Normal of the month (of the reference period) [mm].
     share_percent : float or None
         Its share in the sum of the twelve normals [%].
     coefficient : float or None
@@ -1577,22 +1655,22 @@ class PrecipitationSeasonalityYear(JsonResultMixin):
 
 @dataclass
 class PrecipitationSeasonalityPeriod(JsonResultMixin):
-    """The regime of the normals and the mean indices of the years.
+    """The regime of the normals and the mean indices of the analysed years.
 
     Attributes
     ----------
     months : list of PrecipitationRegimeMonth
         The twelve months in the order of the year.
     pci, si : float or None
-        The indices of the twelve monthly normals.
+        The indices of the twelve monthly normals of the reference period.
     pci_class, si_class : str or None
         Their classes.
     mean_pci, mean_si : float or None
-        The means of the indices of the years.
+        The means of the indices of the analysed years.
     mean_pci_class, mean_si_class : str or None
         Their classes.
     n_years : int
-        Years with all twelve monthly sums.
+        Analysed years with all twelve monthly sums.
     """
 
     months: list[PrecipitationRegimeMonth]
@@ -1618,9 +1696,14 @@ class PrecipitationSeasonality(JsonResultMixin):
     year_type : str
         ``"calendar"`` or ``"hydrological"``.
     first_year, last_year, period_years : int
-        The period.
+        The analysed years: first and last year with a value, years with a value.
+    reference_first_year, reference_last_year : int
+        The reference period of the regime, as given or by default the analysed
+        years.
+    reference_period_years : int
+        Its years with a value.
     years : list of PrecipitationSeasonalityYear
-        Every year with a value.
+        Every analysed year with a value.
     period : PrecipitationSeasonalityPeriod
         The regime of the normals and the mean indices.
     """
@@ -1630,6 +1713,9 @@ class PrecipitationSeasonality(JsonResultMixin):
     first_year: int
     last_year: int
     period_years: int
+    reference_first_year: int
+    reference_last_year: int
+    reference_period_years: int
     years: list[PrecipitationSeasonalityYear]
     period: PrecipitationSeasonalityPeriod
 
@@ -1650,8 +1736,15 @@ def precipitation_seasonality(
     *,
     accumulated: NDArray[np.bool_] | Sequence[bool] | None = None,
     year_type: str = "calendar",
+    first_year: int | None = None,
+    last_year: int | None = None,
+    reference_first_year: int | None = None,
+    reference_last_year: int | None = None,
 ) -> PrecipitationSeasonality:
     """Compute the monthly regime, PCI and SI of the normals and of each year (M9).
+
+    The regime, PCI and SI of the period are those of the twelve monthly normals of
+    the reference period; the indices of each analysed year those of its own sums.
 
     Parameters
     ----------
@@ -1663,6 +1756,11 @@ def precipitation_seasonality(
         Accumulated totals of the missing days before them.
     year_type : {"calendar", "hydrological"}, optional
         The kind of year.
+    first_year, last_year : int, optional
+        The analysed years (of ``year_type``), by default those of the record.
+    reference_first_year, reference_last_year : int, optional
+        The reference period of the normals, each by default that of the analysed
+        years as resolved; each period keeps the days of its own years only.
 
     Returns
     -------
@@ -1672,12 +1770,26 @@ def precipitation_seasonality(
     Raises
     ------
     InvalidParameterError
-        If the arrays are invalid.
+        If the arrays are invalid or a period starts after its last year
+        (``details.reason`` ``range``).
+    CalculationError
+        If a period has no value (``details.reason`` ``no_values_in_period``).
     """
-    data = _daily(precipitation_mm, dates, accumulated, year_type)
+    periods = precipitation_periods(
+        precipitation_mm,
+        dates,
+        accumulated,
+        year_type,
+        first_year=first_year,
+        last_year=last_year,
+        reference_first_year=reference_first_year,
+        reference_last_year=reference_last_year,
+    )
+    data = periods.data
     grid = data.grid
-    table = monthly_precipitation(grid, data.raw, data.accumulated)
-    normals = [normal(table[:, slot])[0] for slot in range(12)]
+    table = data.monthly()
+    base = table if periods.reference is data else periods.reference.monthly()
+    normals = [normal(base[:, slot], periods.period.n_years)[0] for slot in range(12)]
     months = grid.months
     regime: list[PrecipitationRegimeMonth]
     if all(value is not None for value in normals):
@@ -1729,6 +1841,9 @@ def precipitation_seasonality(
         first_year=grid.first_year,
         last_year=grid.last_year,
         period_years=int(data.present.sum()),
+        reference_first_year=periods.period.first_year,
+        reference_last_year=periods.period.last_year,
+        reference_period_years=periods.reference_period_years,
         years=rows,
         period=PrecipitationSeasonalityPeriod(
             months=regime,

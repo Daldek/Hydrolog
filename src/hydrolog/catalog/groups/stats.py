@@ -272,20 +272,20 @@ COMMANDS: tuple[Command, ...] = (
         name="stats threshold-events",
         operation_id="hydrolog_stats_threshold_events",
         summary_pl=(
-            "Znajdź epizody i dni powyżej albo poniżej poziomu w szeregu dobowym"
+            "Znajdź epizody i dni powyżej albo poniżej progu w szeregu dobowym"
         ),
-        summary="Find the events and days above or below a level in a daily series",
+        summary="Find the events and days above or below a threshold in a daily series",
         description_pl=(
-            "Ciągi dni z wartością na poziomie `level` lub wyższą (albo niższą) z "
-            "początkiem, końcem, czasem trwania i kulminacją oraz dni poza poziomem w "
+            "Ciągi dni z wartością równą progowi `threshold` lub wyższą (albo niższą) "
+            "z początkiem, końcem, czasem trwania i kulminacją oraz dni poza progiem w "
             "każdym roku hydrologicznym (XI–X). Do stanów ostrzegawczych i "
             "charakterystycznych; niedobory ciągów niżówkowych: `stats "
             "low-flow-sequences`. Dzień "
             "bez danych kończy epizod, chyba że `max_gap_days` go łączy."
         ),
         description=(
-            "Runs of days with a value at or above `level` (or below it) with start, "
-            "end, duration and peak, and the days beyond the level in each "
+            "Runs of days with a value at or above `threshold` (or below it) with "
+            "start, end, duration and peak, and the days beyond the threshold in each "
             "hydrological year (Nov–Oct). Use for warning and characteristic levels; "
             "for low-flow deficits use `stats low-flow-sequences`. A day without a "
             "value ends an event unless `max_gap_days` bridges it."
@@ -293,19 +293,19 @@ COMMANDS: tuple[Command, ...] = (
         result_schema="hydrolog-stats-threshold-events/1",
         cardinality="bounded",
         rules=(
-            "Give `level` in the unit of the series.",
-            "`above` counts values >= level, `below` values < level.",
+            "Give `threshold` in the unit of the series.",
+            "`above` counts values >= threshold, `below` values < threshold.",
             "An event counts in the year in which it starts.",
         ),
         rules_pl=(
-            "Podaj `level` w jednostce szeregu.",
-            "`above` liczy wartości >= level, `below` wartości < level.",
+            "Podaj `threshold` w jednostce szeregu.",
+            "`above` liczy wartości >= threshold, `below` wartości < threshold.",
             "Epizod liczy się w roku, w którym się zaczyna.",
         ),
         errors=_STATION_ERRORS,
         example_results=(
             {
-                "level": 180.0,
+                "threshold": 180.0,
                 "direction": "above",
                 "days_beyond": 24,
                 "n_events": 8,
@@ -332,25 +332,30 @@ COMMANDS: tuple[Command, ...] = (
         options=(
             *DATED_OPTIONS,
             Option(
-                name="level",
+                name="threshold",
                 type="number",
-                description_pl="Poziom w jednostce szeregu (np. stan [cm], Q [m³/s]).",
-                description="The level, in the unit of the series (H [cm], Q [m³/s]).",
+                description_pl=(
+                    "Próg w jednostce szeregu (np. stan [cm], Q [m³/s], T [°C])."
+                ),
+                description=(
+                    "The threshold, in the unit of the series (H [cm], Q [m³/s], "
+                    "T [°C])."
+                ),
                 required=True,
             ),
             Option(
                 name="direction",
                 type="choice",
-                description_pl="Dni na poziomie lub powyżej albo poniżej poziomu.",
-                description="Days at or above the level, or below it.",
+                description_pl="Dni na progu lub powyżej albo poniżej progu.",
+                description="Days at or above the threshold, or below it.",
                 choices=("above", "below"),
                 meanings={
-                    "above": "A day with a value >= level is beyond it.",
-                    "below": "A day with a value < level is beyond it.",
+                    "above": "A day with a value >= threshold is beyond it.",
+                    "below": "A day with a value < threshold is beyond it.",
                 },
                 meanings_pl={
-                    "above": "Dzień z wartością >= level jest poza poziomem.",
-                    "below": "Dzień z wartością < level jest poza poziomem.",
+                    "above": "Dzień z wartością >= threshold jest poza progiem.",
+                    "below": "Dzień z wartością < threshold jest poza progiem.",
                 },
                 default="above",
             ),
@@ -368,11 +373,11 @@ COMMANDS: tuple[Command, ...] = (
                 type="integer",
                 description_pl=(
                     "Epizody rozdzielone mniejszą liczbą dób (bez danych albo nie poza "
-                    "poziomem) łączą się w jeden; 0 nie łączy."
+                    "progiem) łączą się w jeden; 0 nie łączy."
                 ),
                 description=(
                     "Events parted by fewer days (without a value or not beyond the "
-                    "level) merge into one; 0 merges none."
+                    "threshold) merge into one; 0 merges none."
                 ),
                 default=0,
                 minimum=0,
@@ -387,13 +392,13 @@ COMMANDS: tuple[Command, ...] = (
                 "input_file": _STATION_DAILY,
                 "value_column": "H",
                 "date_column": "date",
-                "level": 180,
+                "threshold": 180,
             },
             {
                 "input_file": _STATION_DAILY,
                 "value_column": "T",
                 "date_column": "date",
-                "level": 1.0,
+                "threshold": 1.0,
                 "direction": "below",
                 "first_year": 2021,
                 "last_year": 2022,
@@ -428,19 +433,20 @@ COMMANDS: tuple[Command, ...] = (
         result_schema="hydrolog-stats-duration-curve/1",
         cardinality="bounded",
         rules=(
-            "Use `class_width` 10 (cm) for H and `class_method` log for Q.",
-            "`percents` are exceedance percentages; classes run from the highest.",
+            "Use `bin_width` 10 (cm) for H and `bin_method` log for Q.",
+            "`exceedance_percents` are exceedance percentages; classes run from the "
+            "highest.",
         ),
         rules_pl=(
-            "Użyj `class_width` 10 (cm) dla H i `class_method` log dla Q.",
-            "`percents` to procenty przekroczenia; klasy idą od najwyższej.",
+            "Użyj `bin_width` 10 (cm) dla H i `bin_method` log dla Q.",
+            "`exceedance_percents` to procenty przekroczenia; klasy idą od najwyższej.",
         ),
         errors=_STATION_ERRORS,
         example_results=(
             {
                 "n_values": 1811,
                 "median": 75.0,
-                "percents": [1.0, 5.0, 10.0],
+                "exceedance_percents": [1.0, 5.0, 10.0],
                 "values": [189.88, 115.4, 90.0],
                 "modal_class": {"lower": 80.0, "upper": 90.0, "days": 529},
                 "classes": [
@@ -456,7 +462,7 @@ COMMANDS: tuple[Command, ...] = (
             {
                 "month": 9,
                 "n_values": 150,
-                "class_method": "log",
+                "bin_method": "log",
                 "values": [1.335, 0.61, 0.58],
                 "modal_class": {"lower": 0.54, "days": 60},
             },
@@ -480,7 +486,7 @@ COMMANDS: tuple[Command, ...] = (
                 maximum=12,
             ),
             Option(
-                name="percents",
+                name="exceedance_percents",
                 type="number_list",
                 description_pl=(
                     "Procenty przekroczenia tabeli, każdy z przedziału (0, 100); "
@@ -493,45 +499,50 @@ COMMANDS: tuple[Command, ...] = (
                 default=(1.0, 5.0, 10.0, 30.0, 50.0, 70.0, 90.0, 95.0, 99.0),
                 exclusive_minimum=0,
                 maximum=100,
+                unit="%",
             ),
             Option(
-                name="class_method",
+                name="bin_method",
                 type="choice",
                 description_pl="Sposób podziału wartości na klasy.",
                 description="How the values are divided into classes.",
                 choices=("width", "log"),
                 meanings={
-                    "width": "Classes of `class_width` from a multiple of it.",
-                    "log": "`class_count` logarithmic classes (for discharge).",
+                    "width": "Classes of `bin_width` from a multiple of it.",
+                    "log": "`bin_count` logarithmic classes (for discharge).",
                 },
                 meanings_pl={
-                    "width": "Klasy o szerokości `class_width` od jej wielokrotności.",
-                    "log": "`class_count` klas logarytmicznych (dla przepływów).",
+                    "width": "Klasy o szerokości `bin_width` od jej wielokrotności.",
+                    "log": "`bin_count` klas logarytmicznych (dla przepływów).",
                 },
                 default="width",
             ),
             Option(
-                name="class_width",
+                name="bin_width",
                 type="number",
                 description_pl=(
-                    "Szerokość klasy w jednostce szeregu (np. 10 cm), dodatnia."
+                    "Tylko dla `bin_method` width: szerokość klasy w jednostce "
+                    "szeregu, dodatnia; domyślnie 10 (np. 10 cm)."
                 ),
-                description="Width of a class, in the unit of the series (10 cm).",
-                default=10.0,
+                description=(
+                    "Only for `bin_method` width: width of a class, in the unit of the "
+                    "series, positive; default 10 (10 cm)."
+                ),
                 exclusive_minimum=0,
             ),
             Option(
-                name="class_count",
+                name="bin_count",
                 type="integer",
                 description_pl=(
-                    "Liczba klas logarytmicznych między najmniejszą dodatnią a "
-                    "największą wartością, co najmniej 2."
+                    "Tylko dla `bin_method` log: liczba klas logarytmicznych między "
+                    "najmniejszą dodatnią a największą wartością, co najmniej 2; "
+                    "domyślnie 40."
                 ),
                 description=(
-                    "Number of logarithmic classes between the smallest positive and "
-                    "the largest value, at least 2."
+                    "Only for `bin_method` log: number of logarithmic classes between "
+                    "the smallest positive and the largest value, at least 2; default "
+                    "40."
                 ),
-                default=40,
                 minimum=2,
             ),
             ATTRIBUTION,
@@ -542,16 +553,16 @@ COMMANDS: tuple[Command, ...] = (
                 "input_file": _STATION_DAILY,
                 "value_column": "H",
                 "date_column": "date",
-                "class_width": 10,
+                "bin_width": 10,
             },
             {
                 "input_file": _STATION_DAILY,
                 "value_column": "Q",
                 "date_column": "date",
                 "month": 9,
-                "percents": [50, 70, 90],
-                "class_method": "log",
-                "class_count": 20,
+                "exceedance_percents": [50, 70, 90],
+                "bin_method": "log",
+                "bin_count": 20,
             },
         ),
     ),
@@ -744,7 +755,7 @@ COMMANDS: tuple[Command, ...] = (
                 "source": "daily",
                 "statistic": "max",
                 "period_years": 3,
-                "extremes": [{"year": 2019, "value": 66.83, "date": "2019-05-22"}],
+                "years": [{"year": 2019, "value": 66.83, "date": "2019-05-22"}],
                 "mean_day": 188.385,
                 "mean_date": "07-07",
                 "concentration": 0.679086,
@@ -754,7 +765,7 @@ COMMANDS: tuple[Command, ...] = (
                 "source": "half_years",
                 "statistic": "min",
                 "period_years": 5,
-                "extremes": [{"year": 2019, "value": 0.54, "date": "2019-09-21"}],
+                "years": [{"year": 2019, "value": 0.54, "date": "2019-09-21"}],
                 "mean_date": "09-21",
                 "concentration": 0.959527,
             },
@@ -946,10 +957,10 @@ COMMANDS: tuple[Command, ...] = (
             {
                 "alpha": 0.925,
                 "bfi": 0.659483,
-                "days": 1811,
-                "spans": 3,
-                "years": [{"year": 2019, "bfi": 0.644608, "days": 365}],
-                "recession": {"k": 0.901895, "segments": 17},
+                "n_values": 1811,
+                "n_spans": 3,
+                "years": [{"year": 2019, "bfi": 0.644608, "n_values": 365}],
+                "recession": {"k": 0.901895, "n_segments": 17},
                 "series_year": 2023,
                 "series_dates": ["2022-11-01"],
             },
@@ -1489,16 +1500,17 @@ COMMANDS: tuple[Command, ...] = (
                 name="exceedance_percent",
                 type="number",
                 description_pl=(
-                    "Procent dni przekroczenia dla `exceedance`, z przedziału "
-                    "(0, 100): 70 daje Q70, 90 daje Q90."
+                    "Tylko dla `threshold_method` exceedance: procent dni "
+                    "przekroczenia z przedziału (0, 100), 70 daje Q70, 90 daje Q90; "
+                    "domyślnie 70."
                 ),
                 description=(
-                    "Exceedance percentage of `exceedance`, in (0, 100): 70 gives Q70, "
-                    "90 gives Q90."
+                    "Only for `threshold_method` exceedance: the exceedance percentage "
+                    "in (0, 100), 70 gives Q70, 90 gives Q90; default 70."
                 ),
-                default=70.0,
                 exclusive_minimum=0,
                 maximum=100,
+                unit="%",
             ),
             Option(
                 name="parameter",
@@ -1583,14 +1595,14 @@ COMMANDS: tuple[Command, ...] = (
             "trendu) z nachyleniem Sena, wyrazem wolnym Conovera i przedziałem ufności "
             "nachylenia 1 − alpha wg Gilberta. Do trendów wartości rocznych i oceny "
             "stacjonarności przed `stats flood-frequency`. NaN jest pomijane. "
-            "Wariancja bez poprawki na powtórzenia (test nieco zachowawczy)."
+            "Wariancja S z poprawką na powtórzenia wartości (Kendall 1975)."
         ),
         description=(
             "Non-parametric Mann–Kendall test (S, Z, two-sided p-value, trend "
             "direction) with Sen's slope, Conover's intercept and Gilbert's 1 − alpha "
             "confidence interval of the slope. Use for trends of annual values and to "
             "check stationarity before `stats flood-frequency`. NaN is skipped. "
-            "Variance has no tie correction (slightly conservative)."
+            "Var(S) is corrected for tied values (Kendall 1975)."
         ),
         result_schema="hydrolog-stats-mann-kendall/1",
         rules=(
@@ -1631,8 +1643,8 @@ COMMANDS: tuple[Command, ...] = (
                 "s_statistic": -6.0,
                 "sen_slope": -0.08,
                 "sen_intercept": 290.48,
-                "sen_slope_lower": -1.36255,
-                "sen_slope_upper": 1.31075,
+                "sen_slope_lower": -1.36249,
+                "sen_slope_upper": 1.31055,
             },
             {
                 "s_statistic": 4.0,

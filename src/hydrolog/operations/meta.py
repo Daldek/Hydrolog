@@ -53,7 +53,31 @@ __all__ = [
 _LOG = logging.getLogger(__name__)
 
 BATCH_REFUSED: Final = frozenset({"commands batch", "gui serve"})
-"""Commands that a batch does not run: itself and the server that runs until stopped."""
+"""Commands that a batch does not run: itself and the server that runs until stopped.
+
+A batch also refuses a call that would go online (``precip pmaxtp``) or write a file
+(an output option given, :func:`_refusal`): its plan is then the one file it writes
+and its effects those of its catalog entry (offline, one ``output``).
+"""
+
+
+def _refusal(command: Command, options: dict[str, Any]) -> str | None:
+    """Return why a batch does not run this call, or ``None`` when it does."""
+    if command.name in BATCH_REFUSED:
+        return "a batch does not run it"
+    if command.network:
+        return "it uses the network and a batch runs offline"
+    written = [
+        option.name
+        for option in command.options
+        if option.writes and options.get(option.name) not in (None, "")
+    ]
+    if written:
+        return (
+            f"it would write a file ({', '.join(written)}) and a batch writes only "
+            "its output"
+        )
+    return None
 
 
 def commands_list(*, limit: int = 100, cursor: str | None = None) -> OperationOutput:
@@ -330,8 +354,9 @@ def _call_of(item: object, number: int) -> tuple[Command, dict[str, Any]]:
     ------
     InvalidParameterError
         If the line is not ``{"command": str, "options": object}`` (``reason``
-        ``invalid_call``) or names a command that a batch does not run
-        (``not_in_batch``).
+        ``invalid_call``) or is a call that a batch does not run (``not_in_batch``):
+        ``commands batch``, ``gui serve``, a command that uses the network, a call
+        that gives an output option.
     NotFoundError
         If no command has the name.
     """
@@ -345,10 +370,11 @@ def _call_of(item: object, number: int) -> tuple[Command, dict[str, Any]]:
     if not isinstance(name, str) or not isinstance(options, dict):
         raise _bad_line(number, "command must be a string and options a JSON object")
     command = get_command(name)
-    if command.name in BATCH_REFUSED:
+    refusal = _refusal(command, options)
+    if refusal is not None:
         raise InvalidParameterError(
             f"Line {number} of the batch calls {command.name!r}, which a batch does "
-            "not run",
+            f"not run: {refusal}",
             details={"option": "input_file", "reason": "not_in_batch", "line": number},
             hint="Run it on its own.",
         )
@@ -434,8 +460,11 @@ def commands_batch(
     stop the batch. A relative path in the options of a call is taken from the
     directory of ``input_file``, and the call runs under the path policy of the batch
     itself (the ``allowed_dirs`` of its own call, MCP's ``--allow-dir``). A line that
-    is not such a call, and a call of ``commands batch`` or ``gui serve``, gets a
-    ``validation_error`` document.
+    is not such a call gets a ``validation_error`` document, and so does a call that a
+    batch does not run (``not_in_batch``): ``commands batch``, ``gui serve``, a
+    command that uses the network (``precip pmaxtp``) and a call that gives an output
+    option (``output``, ``output_dir``, ``schematic``): a batch runs offline and writes
+    only its ``output``, so its plan and its effects are those of its catalog entry.
 
     Parameters
     ----------

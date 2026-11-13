@@ -9,7 +9,8 @@ the days of the year with a mean daily temperature above 10 °C (Selyaninov, 192
 2026), in a year whose every day has both values. Classes of Skowera and Puła (2004,
 p. 172): k <= 0.4 extremely dry, <= 0.7 very dry, <= 1.0 dry, <= 1.3 fairly dry,
 <= 1.6 optimal, <= 2.0 fairly wet, <= 2.5 wet, <= 3.0 very wet, above 3.0 extremely
-wet. The monthly sums and means follow WMO-No. 1203 (4.4.1 a, c).
+wet. The monthly sums and means follow WMO-No. 1203 (4.4.1 a, c); the precipitation
+sums are rounded to 1e-6 mm, so that sums equal in decimal are equal numbers.
 
 References
 ----------
@@ -45,6 +46,7 @@ from hydrolog.statistics._climate import (
     mean_of,
     monthly_means,
     monthly_precipitation,
+    round_sums,
     years_with_values,
 )
 
@@ -261,7 +263,7 @@ def hydrothermal_coefficient(
     with np.errstate(invalid="ignore"):
         warm = both & (daily_t > SEASON_TEMPERATURE_C)
     starts = grid.year_starts()
-    warm_rain = np.add.reduceat(np.where(warm, daily_rain, 0.0), starts)
+    warm_rain = round_sums(np.add.reduceat(np.where(warm, daily_rain, 0.0), starts))
     warm_t = np.add.reduceat(np.where(warm, daily_t, 0.0), starts)
     warm_days = np.add.reduceat(warm.astype(np.int64), starts)
     with np.errstate(invalid="ignore", divide="ignore"):

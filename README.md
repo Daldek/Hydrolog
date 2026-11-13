@@ -13,7 +13,7 @@ Hydrolog computes the standard quantities of watershed hydrology:
 - hydrologic soil groups (HSG) from clay, sand and silt rasters such as SoilGrids;
 - watershed shape and relief indicators, river network order (Strahler, Shreve), areal precipitation (Thiessen, IDW, isohyets);
 - flow statistics of daily series: characteristic flows (Polish WWQ to NNQ), flood and low-flow frequency, Mann-Kendall trend with Sen's slope, the flow regime, the season of floods and low flows, the annual cycle, baseflow, rating curves, water level zones;
-- meteorological statistics of a weather station's daily series: precipitation sums and normals, maxima, wet days, intensity, heavy precipitation, dry and wet spells, SPI, air temperature indices and degree days, snow cover, Sielianinov's hydrothermal coefficient;
+- meteorological statistics of a weather station's daily series: precipitation sums and normals (of the analysed years or of a reference period such as 1991-2020, `--reference-first-year`, `--reference-last-year`), maxima, wet days, intensity, heavy precipitation, dry and wet spells (`--min-duration-days` shortens their list), SPI, air temperature indices and degree days, snow cover, Sielianinov's hydrothermal coefficient;
 
 - a Markdown calculation report of a design hydrograph.
 
@@ -197,7 +197,7 @@ anyio.run(call_tool)
 | | Flow regime: Pardé coefficients, Dynowska's regime type, seasonality index | `stats regime` | `hydrolog_stats_regime` | `stats_regime` |
 | | Annual and monthly runoff volumes, the cumulative volume of a year | `stats runoff-volume` | `hydrolog_stats_runoff_volume` | `stats_runoff_volume` |
 | | Mean date and concentration of the annual maxima or minima | `stats seasonality` | `hydrolog_stats_seasonality` | `stats_seasonality` |
-| | Events and days above or below a level | `stats threshold-events` | `hydrolog_stats_threshold_events` | `stats_threshold_events` |
+| | Events and days above or below a threshold | `stats threshold-events` | `hydrolog_stats_threshold_events` | `stats_threshold_events` |
 | Hydrometry | Rating curve Q = a(H - H0)^b, also of dated pairs by range of years and period | `hydrometrics rating-curve` | `hydrolog_hydrometrics_rating_curve` | `hydrometrics_rating_curve` |
 | | Water level zones NTW, STW, WTW (Rybczyński) | `hydrometrics water-level-zones` | `hydrolog_hydrometrics_water_level_zones` | `hydrometrics_water_level_zones` |
 | Meteorological statistics | Sielianinov's hydrothermal coefficient of the months April to September and of the warm season | `meteo hydrothermal` | `hydrolog_meteo_hydrothermal` | `meteo_hydrothermal` |

@@ -1,9 +1,9 @@
-"""Runs of days beyond a level: the threshold level method on a daily calendar.
+"""Runs of days beyond a threshold: the threshold level method on a daily calendar.
 
 A daily series is laid on the calendar of its days (:func:`on_daily_calendar`): a day
-whose date is absent or whose value is ``NaN`` has no value. A day is *beyond* a level
-when it has a value at or above the level (``direction="above"``) or below it
-(``"below"``); consecutive days beyond the level form a run, runs parted by fewer
+whose date is absent or whose value is ``NaN`` has no value. A day is *beyond* the
+threshold when it has a value at or above it (``direction="above"``) or below it
+(``"below"``); consecutive days beyond the threshold form a run, runs parted by fewer
 than ``max_gap_days`` days (without a value or not beyond) merge into one event, and
 events shorter than ``min_duration_days`` are dropped (:func:`threshold_runs`). The
 same rule finds the low-flow sequences of
@@ -49,12 +49,12 @@ def threshold_runs(
     min_duration_days: int = 1,
     max_gap_days: int = 0,
 ) -> tuple[NDArray[np.intp], NDArray[np.intp]]:
-    """Find the runs of days beyond a level, merged across short gaps.
+    """Find the runs of days beyond a threshold, merged across short gaps.
 
     Parameters
     ----------
     beyond : NDArray[np.bool_]
-        One flag per calendar day: the day has a value beyond the level.
+        One flag per calendar day: the day has a value beyond the threshold.
     min_duration_days : int, optional
         Shortest run kept, in days (gap days inside it included), by default 1.
     max_gap_days : int, optional
@@ -83,7 +83,7 @@ def threshold_runs(
 
 @dataclass
 class ThresholdEvent(JsonResultMixin):
-    """One event: a run of days beyond the level.
+    """One event: a run of days beyond the threshold.
 
     Attributes
     ----------
@@ -92,12 +92,12 @@ class ThresholdEvent(JsonResultMixin):
     duration_days : int
         Calendar days from the first to the last, bridged gap days included.
     days_beyond : int
-        Days of the event with a value beyond the level.
+        Days of the event with a value beyond the threshold.
     missing_days : int
         Days of the event without a value (bridged by ``max_gap_days``).
     peak : float
-        The extreme of the event: the largest value above a level, the smallest
-        below one.
+        The extreme of the event: the largest value above the threshold, the
+        smallest below it.
     peak_date : str
         The first day with the peak value.
     hydrological_year : int
@@ -121,14 +121,14 @@ class ThresholdEvent(JsonResultMixin):
 
 @dataclass
 class ThresholdEventYear(JsonResultMixin):
-    """Days beyond the level in one hydrological year.
+    """Days beyond the threshold in one hydrological year.
 
     Attributes
     ----------
     year : int
         Hydrological year (1 November - 31 October, named after its end).
     days_beyond : int
-        Days of the year with a value beyond the level.
+        Days of the year with a value beyond the threshold.
     n_events : int
         Events that start in the year.
     days_with_data : int
@@ -146,15 +146,15 @@ class ThresholdEventYear(JsonResultMixin):
 
 @dataclass
 class ThresholdEvents(JsonResultMixin):
-    """Events and days beyond a level in a daily series.
+    """Events and days beyond a threshold in a daily series.
 
     Attributes
     ----------
-    level : float
-        The level, in the unit of the series.
+    threshold : float
+        The threshold, in the unit of the series.
     direction : {"above", "below"}
-        ``"above"``: a day is beyond the level when its value is at least ``level``;
-        ``"below"``: when its value is below it.
+        ``"above"``: a day is beyond the threshold when its value is at least
+        ``threshold``; ``"below"``: when its value is below it.
     min_duration_days, max_gap_days : int
         The rules of the events (see :func:`threshold_runs`).
     first_year, last_year : int
@@ -166,7 +166,7 @@ class ThresholdEvents(JsonResultMixin):
     n_missing_days : int
         Days of ``n_days`` without a value.
     days_beyond : int
-        Days with a value beyond the level.
+        Days with a value beyond the threshold.
     n_events : int
         Number of events.
     max_duration_days : int
@@ -177,7 +177,7 @@ class ThresholdEvents(JsonResultMixin):
         Every hydrological year with a value, in order.
     """
 
-    level: float
+    threshold: float
     direction: str
     min_duration_days: int
     max_gap_days: int
@@ -197,12 +197,12 @@ def threshold_events(
     values: NDArray[np.float64],
     dates: NDArray[np.datetime64],
     *,
-    level: float,
+    threshold: float,
     direction: Direction = "above",
     min_duration_days: int = 1,
     max_gap_days: int = 0,
 ) -> ThresholdEvents:
-    """Find the events and count the days beyond a level in a daily series.
+    """Find the events and count the days beyond a threshold in a daily series.
 
     Parameters
     ----------
@@ -210,10 +210,10 @@ def threshold_events(
         Daily values; ``NaN`` marks a day without a value.
     dates : NDArray[np.datetime64]
         Their dates, strictly increasing (days may be absent).
-    level : float
-        The level, in the unit of the series.
+    threshold : float
+        The threshold, in the unit of the series.
     direction : {"above", "below"}, optional
-        Count the days at or above the level (``"above"``, default) or below it.
+        Count the days at or above the threshold (``"above"``, default) or below it.
     min_duration_days : int, optional
         Shortest event kept [days], at least 1, by default 1.
     max_gap_days : int, optional
@@ -222,12 +222,12 @@ def threshold_events(
     Returns
     -------
     ThresholdEvents
-        The events, the days beyond the level per hydrological year and totals.
+        The events, the days beyond the threshold per hydrological year and totals.
 
     Raises
     ------
     InvalidParameterError
-        If the arrays are empty or differ in length, ``level`` is not finite,
+        If the arrays are empty or differ in length, ``threshold`` is not finite,
         ``direction`` is unknown, ``min_duration_days`` is below 1 or
         ``max_gap_days`` below 0, or no day has a value.
     """
@@ -237,8 +237,10 @@ def threshold_events(
         raise InvalidParameterError(
             "values and dates must be non-empty and of the same length"
         )
-    if not np.isfinite(level):
-        raise InvalidParameterError(f"level must be a finite number, got {level}")
+    if not np.isfinite(threshold):
+        raise InvalidParameterError(
+            f"threshold must be a finite number, got {threshold}"
+        )
     if direction not in ("above", "below"):
         raise InvalidParameterError(
             f"direction must be 'above' or 'below', got {direction!r}"
@@ -252,7 +254,7 @@ def threshold_events(
     if not present.any():
         raise InvalidParameterError("the series has no value")
     with np.errstate(invalid="ignore"):
-        beyond = (daily >= level) if direction == "above" else (daily < level)
+        beyond = (daily >= threshold) if direction == "above" else (daily < threshold)
     beyond &= present
     starts, ends = threshold_runs(
         beyond, min_duration_days=min_duration_days, max_gap_days=max_gap_days
@@ -294,7 +296,7 @@ def threshold_events(
             )
         )
     return ThresholdEvents(
-        level=float(level),
+        threshold=float(threshold),
         direction=direction,
         min_duration_days=int(min_duration_days),
         max_gap_days=int(max_gap_days),

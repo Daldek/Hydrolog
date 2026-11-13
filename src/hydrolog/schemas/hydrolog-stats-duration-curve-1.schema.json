@@ -15,13 +15,13 @@
     "max",
     "mean",
     "median",
-    "percents",
+    "exceedance_percents",
     "values",
-    "curve_percents",
+    "curve_exceedance_percents",
     "curve_values",
-    "class_method",
-    "class_width",
-    "class_count",
+    "bin_method",
+    "bin_width",
+    "bin_count",
     "classes",
     "modal_class"
   ],
@@ -59,28 +59,28 @@
     "median": {
       "type": "number"
     },
-    "percents": {
+    "exceedance_percents": {
       "type": "array"
     },
     "values": {
       "type": "array"
     },
-    "curve_percents": {
+    "curve_exceedance_percents": {
       "type": "array"
     },
     "curve_values": {
       "type": "array"
     },
-    "class_method": {
+    "bin_method": {
       "type": "string"
     },
-    "class_width": {
+    "bin_width": {
       "type": [
         "null",
         "number"
       ]
     },
-    "class_count": {
+    "bin_count": {
       "type": [
         "null",
         "integer"

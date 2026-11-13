@@ -107,11 +107,11 @@ class ExtremeSeasonality(JsonResultMixin):
     source : {"daily", "half_years"}
         The complete years of a daily series, or IMGW-PIB's half-year file.
     first_year, last_year : int
-        First and last hydrological year of ``extremes``.
+        First and last hydrological year of ``years``.
     period_years : int
-        Number of ``extremes``.
-    extremes : list of DatedExtreme
-        The dated annual extremes, in order.
+        Number of ``years``.
+    years : list of DatedExtreme
+        The dated annual extreme of each year, in order.
     mean_day : float
         Day of the year of the mean date (1 = 1 January), see :class:`CircularMean`.
     mean_date : str
@@ -129,7 +129,7 @@ class ExtremeSeasonality(JsonResultMixin):
     first_year: int
     last_year: int
     period_years: int
-    extremes: list[DatedExtreme]
+    years: list[DatedExtreme]
     mean_day: float
     mean_date: str
     concentration: float
@@ -306,7 +306,7 @@ def extreme_seasonality(
         first_year=rows[0].year,
         last_year=rows[-1].year,
         period_years=len(rows),
-        extremes=rows,
+        years=rows,
         mean_day=mean.mean_day,
         mean_date=mean.mean_date,
         concentration=mean.concentration,

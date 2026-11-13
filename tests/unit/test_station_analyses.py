@@ -43,7 +43,7 @@ class TestThresholdRuns:
 class TestThresholdEvents:
     def test_a_missing_day_ends_an_event_and_peaks_are_dated(self):
         values = np.array([1.0, 5.0, 7.0, np.nan, 6.0, 2.0, 5.0])
-        result = threshold_events(values, days("2020-10-30", 7), level=5.0)
+        result = threshold_events(values, days("2020-10-30", 7), threshold=5.0)
         assert [e.start_date for e in result.events] == [
             "2020-10-31",
             "2020-11-03",
@@ -63,12 +63,12 @@ class TestThresholdEvents:
         ]
         assert result.n_missing_days == 1
 
-    def test_below_counts_values_under_the_level_and_bridges_gaps(self):
+    def test_below_counts_values_under_the_threshold_and_bridges_gaps(self):
         values = np.array([0.5, 2.0, 0.2, 3.0, 0.8])
         result = threshold_events(
             values,
             days("2021-01-01", 5),
-            level=1.0,
+            threshold=1.0,
             direction="below",
             max_gap_days=2,
         )
@@ -173,7 +173,7 @@ class TestDurationCurve:
             ["2020-11-01", "2020-12-01", "2021-01-01", "2021-05-01", "2021-10-31"],
             dtype="datetime64[D]",
         )
-        result = duration_curve(values, dates, class_width=10.0)
+        result = duration_curve(values, dates, bin_width=10.0)
         assert [(c.lower, c.days) for c in result.classes] == [
             (50.0, 1),
             (40.0, 2),
@@ -185,6 +185,26 @@ class TestDurationCurve:
         # 30-40 and 40-50 hold two days each: the lower one is modal
         assert result.modal_class is not None
         assert result.modal_class.lower == 30.0
+
+    @pytest.mark.parametrize(
+        ("options", "option"),
+        [
+            ({"bin_method": "width", "bin_count": 20}, "bin_count"),
+            ({"bin_method": "log", "bin_width": 10}, "bin_width"),
+        ],
+    )
+    def test_an_option_of_the_other_bin_method_is_refused(self, options, option):
+        with pytest.raises(InvalidParameterError) as caught:
+            run_command(
+                "stats duration-curve",
+                {
+                    "input_file": str(FIXTURES / "station_daily.csv"),
+                    "value_column": "Q",
+                    "date_column": "date",
+                    **options,
+                },
+            )
+        assert caught.value.details == {"option": option, "reason": "not_applicable"}
 
 
 class TestRunoffVolumes:
@@ -220,7 +240,18 @@ class TestLowFlowSequencesWithGaps:
         assert sequence["deficit_volume_m3"] == pytest.approx(6.0 * 86_400.0)
         assert result["years"][0]["n_events"] == 1
 
-    def test_a_threshold_from_the_series_excludes_a_given_one(self):
+    @pytest.mark.parametrize(
+        ("options", "option"),
+        [
+            ({"threshold": 2.0, "threshold_method": "exceedance"}, "threshold"),
+            ({"threshold": 2.0, "exceedance_percent": 90}, "exceedance_percent"),
+            (
+                {"threshold_method": "mean_annual_minimum", "exceedance_percent": 90},
+                "exceedance_percent",
+            ),
+        ],
+    )
+    def test_an_option_of_another_threshold_method_is_refused(self, options, option):
         with pytest.raises(InvalidParameterError) as caught:
             run_command(
                 "stats low-flow-sequences",
@@ -228,11 +259,10 @@ class TestLowFlowSequencesWithGaps:
                     "input_file": str(FIXTURES / "station_daily.csv"),
                     "value_column": "Q",
                     "date_column": "date",
-                    "threshold": 2.0,
-                    "threshold_method": "exceedance",
+                    **options,
                 },
             )
-        assert caught.value.details == {"option": "threshold", "reason": "conflict"}
+        assert caught.value.details == {"option": option, "reason": "not_applicable"}
 
 
 class TestRatingCurvePeriods:

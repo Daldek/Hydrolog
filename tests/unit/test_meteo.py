@@ -191,14 +191,14 @@ class TestSpells:
     def test_spells_end_at_a_wet_day_and_at_a_missing_one(self):
         values = [0.0, 0.0, 5.0, 0.0, 0.0, 0.0, math.nan, 0.0, 2.0]
         result = precipitation_spells(values, _days("2001-01-01", 9))
-        lengths = [(s.start_date, s.length_days, s.open_end) for s in result.spells]
-        assert lengths == [
+        durations = [(s.start_date, s.duration_days, s.open_end) for s in result.spells]
+        assert durations == [
             ("2001-01-01", 2, False),
             ("2001-01-04", 3, True),
             ("2001-01-08", 1, False),
         ]
         wet = precipitation_spells(values, _days("2001-01-01", 9), kind="wet")
-        assert [s.length_days for s in wet.spells] == [1, 1]
+        assert [s.duration_days for s in wet.spells] == [1, 1]
 
 
 class TestSpiAndClasses:
@@ -319,7 +319,7 @@ class TestEtccdiCountsOfTheFixtureYear:
                 "years"
             ]
             assert next(r for r in spells if r["year"] == 2021)[
-                "longest_days"
+                "max_duration_days"
             ] == longest(flags)  # CDD, CWD (no spell of 2021 crosses its ends)
 
     def test_r95ptot_with_the_percentile_of_the_period(self):

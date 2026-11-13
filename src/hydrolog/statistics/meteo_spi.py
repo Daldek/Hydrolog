@@ -6,16 +6,27 @@ calendar month: a gamma distribution fitted by Thom's (1958) approximation of ma
 likelihood to the positive sums, mixed with the probability of a zero sum,
 H(x) = q + (1 - q) G(x) (McKee et al., 1993; Edwards and McKee, 1997; WMO, 2012). A
 calendar month is fitted when its sums are known in at least 80 % of the years of the
-period (WMO-No. 1203, 4.4.2) and three or more of them are positive; the SPI is held
-within ±3.09 (the probabilities 0.001 and 0.999, as the ``climate_indices`` package).
+reference period (WMO-No. 1203, 4.4.2) and three or more of them are positive; the
+SPI is held within ±3.09 (the probabilities 0.001 and 0.999, as the
+``climate_indices`` package).
 
-The relative precipitation is the sum in % of its normal. A year is classed by
-Kaczorowska (1962): below 50 % extremely dry, 50-74 very dry, 75-89 dry, 90-110
-normal, 111-125 wet, 126-150 very wet, above 150 extremely wet (the percentage rounded
-to a whole number). Kaczorowska gave no classes of months; a month is classed by the
-limits used for months in Polish practice: below 25 % extremely dry, from 25 very dry,
-from 50 dry, 75-125 normal, above 125 wet, above 150 very wet, above 200 extremely wet
-(Tomaszewska, 1994, after Kosiba, 1948, as given by Gąsiorek and Musiał, 2011).
+The distributions are fitted to the k-month sums of a reference period
+(``reference_first_year`` to ``reference_last_year``, by default the analysed years),
+and the SPI of each analysed month is that of its own sum: the SPI compares a total
+with the totals of the same months in the years on record (WMO, 2012, 5.1.1 and
+5.1.2), which should be at least 30 years (WMO, 2012, chapter 2: 20-30 years at
+least, 50-60 preferred, after Guttman, 1994), and the Copernicus European Drought
+Observatory fits them on its baseline 1991-2020 (EDO, 2025). The k-month sums of each
+period stay within its own years.
+
+The relative precipitation is the sum in % of its normal, the mean of the reference
+period. A year is classed by Kaczorowska (1962): below 50 % extremely dry, 50-74 very
+dry, 75-89 dry, 90-110 normal, 111-125 wet, 126-150 very wet, above 150 extremely wet
+(the percentage rounded to a whole number). Kaczorowska gave no classes of months; a
+month is classed by the limits used for months in Polish practice: below 25 %
+extremely dry, from 25 very dry, from 50 dry, 75-125 normal, above 125 wet, above 150
+very wet, above 200 extremely wet (Tomaszewska, 1994, after Kosiba, 1948, as given by
+Gąsiorek and Musiał, 2011).
 
 References
 ----------
@@ -27,7 +38,12 @@ Edwards, D. C. & McKee, T. B. (1997): Characteristics of 20th century drought in
     University.
 Thom, H. C. S. (1958): A note on the gamma distribution. Monthly Weather Review 86,
     117-122.
+Guttman, N. B. (1994): On the sensitivity of sample L moments to sample size. Journal
+    of Climate 7(6), 1026-1029.
 WMO (2012): Standardized Precipitation Index User Guide. WMO-No. 1090, Geneva.
+WMO (2017): WMO Guidelines on the Calculation of Climate Normals. WMO-No. 1203.
+EDO (2025): Standardized Precipitation Index (SPI). EDO and GDO indicator factsheet,
+    Copernicus European and Global Drought Observatories.
 Kaczorowska, Z. (1962): Opady w Polsce w przekroju wieloletnim. Prace Geograficzne
     IG PAN 33.
 Gąsiorek, E. & Musiał, E. (2011): Porównanie i klasyfikacja warunków opadowych na
@@ -50,16 +66,12 @@ from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError
 from hydrolog.statistics._climate import (
     WMO_NORMAL_SHARE,
-    as_days,
-    check_daily,
-    check_year_type,
     classify,
     finite,
-    grid_of_values,
-    monthly_precipitation,
     normal,
+    precipitation_periods,
     rolling_sum,
-    years_with_values,
+    round_sums,
 )
 
 __all__ = [
@@ -114,7 +126,7 @@ class GammaFit(JsonResultMixin):
     zero_probability : float or None
         q, the share of zero sums.
     n_values : int
-        Sums of the period the fit is made from.
+        Sums of the reference period the fit is made from.
     """
 
     month: int
@@ -228,23 +240,27 @@ class SpiScale(JsonResultMixin):
 
 @dataclass
 class SpiMonth(JsonResultMixin):
-    """One month of the period.
+    """One month of the analysed years.
 
     Attributes
     ----------
-    month : str
-        The month, ``YYYY-MM``.
+    year : int
+        The year of ``year_type`` the month belongs to, as in ``years`` (November and
+        December belong to the hydrological year that ends in the next calendar year).
+    month : int
+        Calendar month (1-12).
     total_mm : float or None
         Its precipitation [mm] (WMO-No. 1203, 4.4.1 c).
     percent_of_normal : float or None
-        In % of the normal of the calendar month.
+        In % of the normal of the calendar month (of the reference period).
     precipitation_class : str or None
         Its class (:data:`KACZOROWSKA_CLASSES`, the limits of months).
     spi : list of float or None
-        The SPI of each of ``scales_months``.
+        The SPI of each of ``scales_months``, under the fits of the reference period.
     """
 
-    month: str
+    year: int
+    month: int
     total_mm: float | None
     percent_of_normal: float | None
     precipitation_class: str | None
@@ -253,7 +269,7 @@ class SpiMonth(JsonResultMixin):
 
 @dataclass
 class SpiYear(JsonResultMixin):
-    """One year of the period.
+    """One analysed year.
 
     Attributes
     ----------
@@ -262,7 +278,7 @@ class SpiYear(JsonResultMixin):
     total_mm : float or None
         Its precipitation [mm]; ``None`` without its twelve monthly sums.
     percent_of_normal : float or None
-        In % of the annual normal.
+        In % of the annual normal (of the reference period).
     precipitation_class : str or None
         Kaczorowska's (1962) class (:data:`KACZOROWSKA_CLASSES`).
     """
@@ -275,14 +291,15 @@ class SpiYear(JsonResultMixin):
 
 @dataclass
 class SpiPeriod(JsonResultMixin):
-    """The normals and the fits of the period.
+    """The normals and the fits of the reference period.
 
     Attributes
     ----------
     normal_mm : float or None
-        Annual normal [mm] (WMO-No. 1203, 4.4.2).
+        Annual normal [mm]: the mean annual sum of the reference period when at least
+        80 % of its years have one (WMO-No. 1203, 4.4.2).
     normal_years : int
-        Years with an annual sum.
+        Years of the reference period with an annual sum.
     months_normal_mm : list of float or None
         Normals of the calendar months, January first [mm].
     scales : list of SpiScale
@@ -306,11 +323,16 @@ class StandardizedPrecipitation(JsonResultMixin):
     year_type : str
         ``"calendar"`` or ``"hydrological"``: the years of ``years``.
     first_year, last_year, period_years : int
-        The period: first and last year with a value, years with a value.
+        The analysed years: first and last year with a value, years with a value.
+    reference_first_year, reference_last_year : int
+        The reference period of the fits and the normals, as given or by default the
+        analysed years.
+    reference_period_years : int
+        Its years with a value.
     months : list of SpiMonth
         Every month from the first to the last with a value.
     years : list of SpiYear
-        Every year with a value.
+        Every analysed year with a value.
     period : SpiPeriod
         The normals and the fits.
     """
@@ -320,6 +342,9 @@ class StandardizedPrecipitation(JsonResultMixin):
     first_year: int
     last_year: int
     period_years: int
+    reference_first_year: int
+    reference_last_year: int
+    reference_period_years: int
     months: list[SpiMonth]
     years: list[SpiYear]
     period: SpiPeriod
@@ -346,8 +371,18 @@ def standardized_precipitation_index(
     scales_months: Sequence[int] = DEFAULT_SCALES_MONTHS,
     accumulated: NDArray[np.bool_] | Sequence[bool] | None = None,
     year_type: str = "calendar",
+    first_year: int | None = None,
+    last_year: int | None = None,
+    reference_first_year: int | None = None,
+    reference_last_year: int | None = None,
 ) -> StandardizedPrecipitation:
     """SPI of each scale and the relative precipitation of each month and year (M8).
+
+    The k-month sums of each calendar month of the reference period are fitted; the
+    SPI of an analysed month is that of its own k-month sum under the fit, and its
+    precipitation is in % of the normals of the reference period. A fit needs the
+    sums in at least 80 % of the years of the reference period, those without data
+    too; the k-month sums of each period stay within its own years.
 
     Parameters
     ----------
@@ -361,7 +396,12 @@ def standardized_precipitation_index(
         Accumulated totals of the missing days before them (they stand for them in
         the monthly sums, WMO-No. 1203, 4.4.1 c).
     year_type : {"calendar", "hydrological"}, optional
-        The kind of year of ``years`` and of the period.
+        The kind of year of ``years`` and of the periods.
+    first_year, last_year : int, optional
+        The analysed years (of ``year_type``), by default those of the record.
+    reference_first_year, reference_last_year : int, optional
+        The reference period of the fits and the normals, each by default that of
+        the analysed years as resolved; WMO-No. 1090 asks for at least 30 years.
 
     Returns
     -------
@@ -372,49 +412,57 @@ def standardized_precipitation_index(
     Raises
     ------
     InvalidParameterError
-        If the arrays are invalid, no day has a value, ``year_type`` is unknown or a
-        scale is not a whole number from 1 to 48.
+        If the arrays are invalid, a value is negative, no day has a value,
+        ``year_type`` is unknown, a scale is not a whole number from 1 to 48 or a
+        period starts after its last year (``details.reason`` ``range``).
+    CalculationError
+        If a period has no value (``details.reason`` ``no_values_in_period``).
     """
     scales = _scales(scales_months)
-    check_year_type(year_type)
-    values = np.asarray(precipitation_mm, dtype=np.float64)
-    days = as_days(dates)
-    check_daily(days, values)
-    flags = (
-        np.zeros(values.size, dtype=bool)
-        if accumulated is None
-        else np.asarray(accumulated, dtype=bool)
+    periods = precipitation_periods(
+        precipitation_mm,
+        dates,
+        accumulated,
+        year_type,
+        first_year=first_year,
+        last_year=last_year,
+        reference_first_year=reference_first_year,
+        reference_last_year=reference_last_year,
     )
-    if flags.size != values.size:
-        raise InvalidParameterError("accumulated must have one flag per value")
-    known = np.isfinite(values)
-    grid = grid_of_values(days, known, year_type)
-    raw = grid.place(days, values)
-    table = monthly_precipitation(
-        grid, raw, grid.place_flags(days, flags) & np.isfinite(raw)
-    )
+    data = periods.data
+    grid = data.grid
+    table = data.monthly()
     flat = table.reshape(-1)
     calendar = np.array(grid.months * grid.n_years, dtype=np.int64)
-    present = years_with_values(grid, np.isfinite(raw))
+    base = periods.reference
+    same = base is data
+    base_table = table if same else base.monthly()
+    base_calendar = (
+        calendar
+        if same
+        else np.array(base.grid.months * base.grid.n_years, dtype=np.int64)
+    )
     month_with_value = (
-        grid.per_month(np.isfinite(raw).astype(np.float64)).reshape(-1) > 0
+        grid.per_month(np.isfinite(data.raw).astype(np.float64)).reshape(-1) > 0
     )
     have = np.flatnonzero(month_with_value)
     first, last = int(have[0]), int(have[-1])
+    span = periods.period.n_years
     normals = {
-        int(month): normal(table[:, slot])[0] for slot, month in enumerate(grid.months)
+        int(month): normal(base_table[:, slot], span)[0]
+        for slot, month in enumerate(grid.months)
     }
-    annual = table.sum(axis=1)
-    normal_mm, normal_years = normal(annual)
-    span = grid.n_years
+    annual = round_sums(table.sum(axis=1))
+    base_annual = annual if same else round_sums(base_table.sum(axis=1))
+    normal_mm, normal_years = normal(base_annual, span)
     spi_table = np.full((len(scales), flat.size), np.nan)
     scale_fits: list[SpiScale] = []
     for number, scale in enumerate(scales):
         sums = rolling_sum(flat, scale)
+        base_sums = sums if same else rolling_sum(base_table.reshape(-1), scale)
         fits: list[GammaFit] = []
         for month in range(1, 13):
-            where = calendar == month
-            sample = sums[where]
+            sample = base_sums[base_calendar == month]
             sample = sample[np.isfinite(sample)]
             fitted = (
                 fit_gamma(sample) if sample.size >= WMO_NORMAL_SHARE * span else None
@@ -431,21 +479,20 @@ def standardized_precipitation_index(
                     int(sample.size),
                 )
             )
+            where = calendar == month
             spi_table[number, where] = spi_values(sums[where], *fitted)
         scale_fits.append(SpiScale(scale, fits))
     months: list[SpiMonth] = []
     for cell in range(first, last + 1):
         row, slot = divmod(cell, 12)
         month = int(grid.months[slot])
-        year = grid.first_year + row
-        if grid.year_type == "hydrological" and month >= 11:
-            year -= 1
         total = finite(flat[cell])
         reference = normals[month]
         percent = 100.0 * total / reference if total is not None and reference else None
         months.append(
             SpiMonth(
-                month=f"{year:04d}-{month:02d}",
+                year=grid.first_year + row,
+                month=month,
                 total_mm=total,
                 percent_of_normal=percent,
                 precipitation_class=month_precipitation_class(percent),
@@ -453,7 +500,7 @@ def standardized_precipitation_index(
             )
         )
     years: list[SpiYear] = []
-    for row in np.flatnonzero(present).tolist():
+    for row in np.flatnonzero(data.present).tolist():
         total = finite(annual[row])
         percent = 100.0 * total / normal_mm if total is not None and normal_mm else None
         years.append(
@@ -466,7 +513,10 @@ def standardized_precipitation_index(
         year_type=year_type,
         first_year=grid.first_year,
         last_year=grid.last_year,
-        period_years=int(present.sum()),
+        period_years=int(data.present.sum()),
+        reference_first_year=periods.period.first_year,
+        reference_last_year=periods.period.last_year,
+        reference_period_years=periods.reference_period_years,
         months=months,
         years=years,
         period=SpiPeriod(

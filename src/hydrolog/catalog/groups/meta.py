@@ -32,18 +32,16 @@ COMMANDS: tuple[Command, ...] = (
             "każdego."
         ),
         description=(
-            'Runs each line of `input_file`, {"command": ..., "options": {...}}, as '
-            "`run_command` would, all in one process, and writes line i of `output`: "
-            "the envelope of call i or its error document, as `--json` prints them. "
-            "A failed call does not stop the others. Use for many calls, such as a "
-            "station's analyses; for one call run its command."
+            'Runs each line of `input_file`, {"command": ..., "options": {...}}, in '
+            "one process; line i of `output` is the envelope of call i or its error "
+            "document, as `--json` prints them. A failed call does not stop the rest. "
+            "Use for many calls, e.g. a station's analyses."
         ),
         description_pl=(
             'Uruchamia każdy wiersz `input_file`, {"command": ..., "options": {...}}, '
-            "jak `run_command`, wszystkie w jednym procesie, i zapisuje wiersz i "
-            "`output`: kopertę wywołania i albo dokument jego błędu, tak jak drukuje "
-            "je `--json`. Nieudane wywołanie nie zatrzymuje pozostałych. Do wielu "
-            "wywołań, np. analiz stacji; jedno wywołanie: jego polecenie."
+            "w jednym procesie; wiersz i `output` to koperta wywołania i albo "
+            "dokument jego błędu, tak jak drukuje je `--json`. Nieudane wywołanie nie "
+            "zatrzymuje pozostałych. Do wielu wywołań, np. analiz stacji."
         ),
         function="hydrolog.operations.commands_batch",
         options=(
@@ -88,6 +86,7 @@ COMMANDS: tuple[Command, ...] = (
         rules=(
             "Read `status`: `partial` or `failed` lists the failed lines in `items`.",
             "Paths of a call are relative to `input_file`; the path policy applies.",
+            "A call that writes a file or goes online is refused (`not_in_batch`).",
             "Run with `check` before writing a file.",
         ),
         rules_pl=(
@@ -95,6 +94,8 @@ COMMANDS: tuple[Command, ...] = (
             "`items`.",
             "Ścieżki wywołania są względne do `input_file`; obowiązuje polityka "
             "ścieżek.",
+            "Wywołanie, które zapisuje plik albo korzysta z sieci, jest odrzucane "
+            "(`not_in_batch`).",
             "Przed zapisem pliku uruchom z `check`.",
         ),
         errors=(

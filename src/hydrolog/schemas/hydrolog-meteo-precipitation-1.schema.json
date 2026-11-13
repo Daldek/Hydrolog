@@ -33,6 +33,15 @@
     "period_years": {
       "type": "integer"
     },
+    "reference_first_year": {
+      "type": "integer"
+    },
+    "reference_last_year": {
+      "type": "integer"
+    },
+    "reference_period_years": {
+      "type": "integer"
+    },
     "years": {
       "type": "array"
     },

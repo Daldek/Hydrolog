@@ -409,7 +409,7 @@ class TestResults:
 
 
 STATION_ANALYSES = [
-    pytest.param("stats threshold-events", {"level": 7.0}, id="threshold-events"),
+    pytest.param("stats threshold-events", {"threshold": 7.0}, id="threshold-events"),
     pytest.param("stats duration-curve", {}, id="duration-curve"),
     pytest.param("stats runoff-volume", {}, id="runoff-volume"),
     pytest.param("stats regime", {}, id="regime"),

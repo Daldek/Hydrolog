@@ -24,10 +24,23 @@ Missing data follow the WMO Guidelines on the Calculation of Climate Normals
 An annual value needs all twelve monthly values; annual extremes of daily values,
 spells and percentile sums need every day of the year.
 
+A period keeps the days of its own years only (plan 2026-11-13, D1): the analysed
+years (:func:`period_days`) and the reference period of the baselines
+(:func:`reference_period`; by default the analysed years) each lie on a grid of
+their own. The normals that serve as the benchmark of anomalies (WMO-No. 1203,
+chapter 2), the percentiles of the wet days and the fits of the SPI come from the
+reference period, the values of the analysed years from their own days; the 80 % of
+a normal count every year of the reference period, those without data too.
+
+Every sum of daily precipitation is rounded to 1e-6 (:func:`round_sums`): 0.1-mm
+data summed in binary carry errors that depend on the order of the additions, and
+sums equal in decimal must be equal numbers (a tie of the Mann-Kendall test, the
+first of equal windows).
+
 References
 ----------
 WMO (2017): WMO Guidelines on the Calculation of Climate Normals. WMO-No. 1203,
-    Geneva, section 4.4.
+    Geneva, chapters 2, 3 and 5, section 4.4.
 """
 
 from __future__ import annotations
@@ -39,7 +52,7 @@ from typing import Literal, NamedTuple
 import numpy as np
 from numpy.typing import NDArray
 
-from hydrolog.exceptions import InvalidParameterError
+from hydrolog.exceptions import CalculationError, InvalidParameterError
 
 YearType = Literal["calendar", "hydrological"]
 YEAR_TYPES: tuple[str, ...] = ("calendar", "hydrological")
@@ -302,6 +315,195 @@ def check_daily(dates: NDArray[np.datetime64], *arrays: NDArray[np.float64]) -> 
         raise InvalidParameterError("dates must be strictly increasing")
 
 
+# --- the analysed years and the reference period (plan 2026-11-13, D1) ---------------
+
+
+def in_years(
+    dates: NDArray[np.datetime64],
+    year_type: str,
+    first_year: int | None,
+    last_year: int | None,
+) -> NDArray[np.bool_]:
+    """Tell the days of the years ``first_year`` to ``last_year`` (``None``: open)."""
+    years = year_of(dates, year_type)
+    keep = np.ones(dates.size, dtype=bool)
+    if first_year is not None:
+        keep &= years >= first_year
+    if last_year is not None:
+        keep &= years <= last_year
+    return keep
+
+
+def _available(
+    dates: NDArray[np.datetime64], known: NDArray[np.bool_], year_type: str
+) -> list[int]:
+    """Return the first and the last year with a value."""
+    years = year_of(dates[known], year_type)
+    return [int(years.min()), int(years.max())]
+
+
+def period_days(
+    dates: NDArray[np.datetime64],
+    known: NDArray[np.bool_],
+    year_type: str,
+    first_year: int | None = None,
+    last_year: int | None = None,
+) -> NDArray[np.bool_]:
+    """Pick the days of the analysed years ``first_year`` to ``last_year``.
+
+    Parameters
+    ----------
+    dates : NDArray[np.datetime64]
+        The days of the record (``datetime64[D]``).
+    known : NDArray[np.bool_]
+        The days with a value.
+    year_type : str
+        The kind of year of the bounds.
+    first_year, last_year : int, optional
+        The first and the last year; by default those of the record.
+
+    Returns
+    -------
+    NDArray[np.bool_]
+        The days of those years.
+
+    Raises
+    ------
+    InvalidParameterError
+        If ``first_year`` is after ``last_year`` (``details``: ``option``
+        ``first_year``, ``reason`` ``range``, ``first_year``, ``last_year``).
+    CalculationError
+        If a day of the record has a value but none of those years
+        (``details.reason`` ``no_values_in_period``, ``first_year``, ``last_year`` and
+        ``available``, the first and the last year with a value).
+    """
+    if first_year is not None and last_year is not None and first_year > last_year:
+        raise InvalidParameterError(
+            f"Option 'first_year' ({first_year}) is after 'last_year' ({last_year})",
+            details={
+                "option": "first_year",
+                "reason": "range",
+                "first_year": first_year,
+                "last_year": last_year,
+            },
+            hint="Give the first year of the period, then the last.",
+        )
+    keep = in_years(dates, year_type, first_year, last_year)
+    if known.any() and not (keep & known).any():
+        raise CalculationError(
+            f"No value in the years {first_year} to {last_year}",
+            details={
+                "reason": "no_values_in_period",
+                "first_year": first_year,
+                "last_year": last_year,
+                "available": _available(dates, known, year_type),
+            },
+            hint="Choose years that the series covers.",
+        )
+    return keep
+
+
+class ReferencePeriod(NamedTuple):
+    """The reference period of the baselines: the normals, percentiles and SPI fits.
+
+    Normals are the benchmark against which observations are compared (WMO-No. 1203,
+    chapter 2): the climatological standard normal, the latest 30 years ending in a
+    year ending in 0 (now 1991-2020), for monitoring and anomalies, and the reference
+    normal of 1961-1990 for long-term climate change (chapters 2 and 3, section 5.1).
+
+    Attributes
+    ----------
+    first_year, last_year : int
+        Its first and last year, as given or by default those of the analysed years.
+    keep : NDArray[np.bool_]
+        The days of the record in its years.
+    """
+
+    first_year: int
+    last_year: int
+    keep: NDArray[np.bool_]
+
+    @property
+    def n_years(self) -> int:
+        """Count its years, those without data too: the base of the 80 % rule."""
+        return self.last_year - self.first_year + 1
+
+    def is_period_of(self, grid: DailyGrid) -> bool:
+        """Tell whether its years are those of ``grid`` (as by default)."""
+        return (self.first_year, self.last_year) == (grid.first_year, grid.last_year)
+
+
+def reference_period(
+    dates: NDArray[np.datetime64],
+    known: NDArray[np.bool_],
+    year_type: str,
+    analysed: DailyGrid,
+    first_year: int | None = None,
+    last_year: int | None = None,
+) -> ReferencePeriod:
+    """Resolve the reference period of the baselines and pick its days.
+
+    Parameters
+    ----------
+    dates, known, year_type
+        The whole record, as for :func:`period_days`.
+    analysed : DailyGrid
+        The analysed years: the default first and last year.
+    first_year, last_year : int, optional
+        ``reference_first_year`` and ``reference_last_year`` (years of
+        ``year_type``); each by default that of ``analysed``.
+
+    Returns
+    -------
+    ReferencePeriod
+        Its years and the days of the record in them.
+
+    Raises
+    ------
+    InvalidParameterError
+        If its first year is after its last (``details``: ``option``
+        ``reference_first_year``, ``reason`` ``range``, ``first_year``,
+        ``last_year``).
+    CalculationError
+        If no day of its years has a value (``details.reason``
+        ``no_values_in_period``, ``option`` ``reference_first_year``, ``first_year``,
+        ``last_year`` and ``available``).
+    """
+    first = analysed.first_year if first_year is None else int(first_year)
+    last = analysed.last_year if last_year is None else int(last_year)
+    if first > last:
+        defaulted = (
+            ""
+            if first_year is not None and last_year is not None
+            else " (a bound not given is that of the analysed years)"
+        )
+        raise InvalidParameterError(
+            f"The reference period starts in {first}, after its last year {last}"
+            f"{defaulted}",
+            details={
+                "option": "reference_first_year",
+                "reason": "range",
+                "first_year": first,
+                "last_year": last,
+            },
+            hint="Give reference_first_year not after reference_last_year.",
+        )
+    keep = in_years(dates, year_type, first, last)
+    if not (keep & known).any():
+        raise CalculationError(
+            f"No value in the reference period {first} to {last}",
+            details={
+                "reason": "no_values_in_period",
+                "option": "reference_first_year",
+                "first_year": first,
+                "last_year": last,
+                "available": _available(dates, known, year_type),
+            },
+            hint="Choose a reference period that the series covers.",
+        )
+    return ReferencePeriod(first, last, keep)
+
+
 class MonthQuality(NamedTuple):
     """How complete each month of a daily series is (WMO-No. 1203, 4.4.1).
 
@@ -396,6 +598,28 @@ def monthly_totals(grid: DailyGrid, values: NDArray[np.float64]) -> NDArray[np.f
     return totals
 
 
+_SUM_DECIMALS = 6
+"""Decimals every sum of daily precipitation is rounded to (:func:`round_sums`)."""
+
+
+def round_sums(sums: NDArray[np.float64]) -> NDArray[np.float64]:
+    """Round sums of daily precipitation to 1e-6 [mm].
+
+    Decimal data summed in binary carry errors that depend on the order of the
+    additions (0.1 + 0.2 gives 0.30000000000000004). Rounded, a sum of 0.1-mm values
+    is the number nearest its decimal value, so sums equal in decimal are equal
+    numbers: a tie of the Mann-Kendall test, the first of equal windows. ``NaN``
+    stays ``NaN``.
+    """
+    rounded: NDArray[np.float64] = np.round(sums, _SUM_DECIMALS)
+    return rounded
+
+
+def round_sum(value: float) -> float:
+    """Round one sum of daily precipitation as :func:`round_sums` does [mm]."""
+    return float(np.round(value, _SUM_DECIMALS))
+
+
 def sums_with_accumulated(
     raw: NDArray[np.float64], accumulated: NDArray[np.bool_]
 ) -> tuple[NDArray[np.float64], NDArray[np.bool_]]:
@@ -443,7 +667,7 @@ def monthly_precipitation(
 
     A month has a sum when every day is known after the accumulated totals stand for
     the days they cover (:func:`sums_with_accumulated`) and the totals represent
-    fewer than 11 of its days.
+    fewer than 11 of its days. The sums are rounded to 1e-6 (:func:`round_sums`).
 
     Returns
     -------
@@ -454,18 +678,22 @@ def monthly_precipitation(
     lost = grid.per_month(covered.astype(np.float64)) >= WMO_MISSING_DAYS
     known = np.isfinite(sums)
     quality = month_quality(grid, known)
-    totals = grid.per_month(np.where(known, sums, 0.0))
+    totals = round_sums(grid.per_month(np.where(known, sums, 0.0)))
     monthly: NDArray[np.float64] = np.where(quality.complete & ~lost, totals, np.nan)
     return monthly
 
 
-def normal(values: NDArray[np.float64]) -> tuple[float | None, int]:
+def normal(
+    values: NDArray[np.float64], years: int | None = None
+) -> tuple[float | None, int]:
     """Average the values of the years of a period, if enough years have one.
 
     Parameters
     ----------
     values : NDArray[np.float64]
-        One value per year of the period (``NaN`` where the year has none).
+        One value per year with data (``NaN`` where the year has none).
+    years : int, optional
+        The years of the period, those without data too; by default ``values.size``.
 
     Returns
     -------
@@ -475,29 +703,24 @@ def normal(values: NDArray[np.float64]) -> tuple[float | None, int]:
     """
     have = np.isfinite(values)
     count = int(have.sum())
-    if count == 0 or count < WMO_NORMAL_SHARE * values.size:
+    span = values.size if years is None else years
+    if count == 0 or count < WMO_NORMAL_SHARE * span:
         return None, count
     return float(values[have].mean()), count
-
-
-_SUM_DECIMALS = 6
-"""Decimals the window sums are rounded to: decimal data summed in binary carry errors
-that depend on the order of the additions, and windows with equal sums must tie (the
-first one is then taken)."""
 
 
 def rolling_sum(values: NDArray[np.float64], days: int) -> NDArray[np.float64]:
     """Sum the ``days`` values that end at each position.
 
-    Each window is summed on its own and rounded to 1e-6, so that equal sums tie; the
-    sum is ``NaN`` unless all its values are known (and for the first ``days - 1``
-    positions).
+    Each window is summed on its own and rounded to 1e-6 (:func:`round_sums`), so
+    that equal sums tie; the sum is ``NaN`` unless all its values are known (and for
+    the first ``days - 1`` positions).
     """
     out = np.full(values.size, np.nan)
     if days > values.size:
         return out
     windows = np.lib.stride_tricks.sliding_window_view(values, days)
-    out[days - 1 :] = np.round(windows.sum(axis=1), _SUM_DECIMALS)
+    out[days - 1 :] = round_sums(windows.sum(axis=1))
     return out
 
 
@@ -598,3 +821,171 @@ def classify(
         if value <= limit if inclusive else value < limit:
             return name
     return names[-1]
+
+
+# --- daily precipitation on its years -------------------------------------------------
+
+
+class DailyPrecipitation(NamedTuple):
+    """Daily precipitation laid on the whole years of its values.
+
+    Attributes
+    ----------
+    grid : DailyGrid
+        The years.
+    raw : NDArray[np.float64]
+        The values, accumulated totals included [mm]; ``NaN`` on a missing day.
+    daily : NDArray[np.float64]
+        The daily values [mm]: an accumulated total is a missing day.
+    accumulated : NDArray[np.bool_]
+        The days of the accumulated totals.
+    present : NDArray[np.bool_]
+        For each year of the grid, whether a day has a value.
+    """
+
+    grid: DailyGrid
+    raw: NDArray[np.float64]
+    daily: NDArray[np.float64]
+    accumulated: NDArray[np.bool_]
+    present: NDArray[np.bool_]
+
+    def monthly(self) -> NDArray[np.float64]:
+        """Return the monthly sums [mm], ``(years, 12)`` (WMO-No. 1203, 4.4.1 c)."""
+        return monthly_precipitation(self.grid, self.raw, self.accumulated)
+
+
+class PrecipitationRecord(NamedTuple):
+    """A checked daily precipitation series, before it is laid on years.
+
+    Attributes
+    ----------
+    days : NDArray[np.datetime64]
+        The dates, strictly increasing (``datetime64[D]``).
+    values : NDArray[np.float64]
+        Daily precipitation [mm]; ``NaN`` on a missing day.
+    accumulated : NDArray[np.bool_]
+        The values that are accumulated totals of the missing days before them.
+    year_type : str
+        The kind of year.
+    """
+
+    days: NDArray[np.datetime64]
+    values: NDArray[np.float64]
+    accumulated: NDArray[np.bool_]
+    year_type: str
+
+    def on_grid(self, keep: NDArray[np.bool_] | None = None) -> DailyPrecipitation:
+        """Lay the days of ``keep`` (every day by default) on the years of their values.
+
+        Raises
+        ------
+        InvalidParameterError
+            If no day of ``keep`` has a value.
+        """
+        days, values, flags = self.days, self.values, self.accumulated
+        if keep is not None:
+            days, values, flags = days[keep], values[keep], flags[keep]
+        grid = grid_of_values(days, np.isfinite(values), self.year_type)
+        raw = grid.place(days, values)
+        totals = grid.place_flags(days, flags) & np.isfinite(raw)
+        return DailyPrecipitation(
+            grid,
+            raw,
+            np.where(totals, np.nan, raw),
+            totals,
+            years_with_values(grid, np.isfinite(raw)),
+        )
+
+
+def precipitation_record(
+    precipitation_mm: NDArray[np.float64] | Sequence[float],
+    dates: NDArray[np.datetime64] | Sequence[object],
+    accumulated: NDArray[np.bool_] | Sequence[bool] | None,
+    year_type: str,
+) -> PrecipitationRecord:
+    """Check a daily precipitation series.
+
+    Raises
+    ------
+    InvalidParameterError
+        If the arrays are empty or differ in length, the dates do not increase, a
+        value is negative or ``year_type`` is unknown.
+    """
+    check_year_type(year_type)
+    values = np.asarray(precipitation_mm, dtype=np.float64)
+    days = as_days(dates)
+    check_daily(days, values)
+    flags = (
+        np.zeros(values.size, dtype=bool)
+        if accumulated is None
+        else np.asarray(accumulated, dtype=bool)
+    )
+    if flags.size != values.size:
+        raise InvalidParameterError("accumulated must have one flag per value")
+    if bool((values[np.isfinite(values)] < 0).any()):
+        raise InvalidParameterError("precipitation must not be negative")
+    return PrecipitationRecord(days, values, flags, year_type)
+
+
+class PrecipitationPeriods(NamedTuple):
+    """Daily precipitation of the analysed years and of the reference period.
+
+    Attributes
+    ----------
+    data : DailyPrecipitation
+        The analysed years: their values.
+    reference : DailyPrecipitation
+        The years of the reference period: the baselines; ``data`` itself when they
+        are the analysed years.
+    period : ReferencePeriod
+        The reference period.
+    """
+
+    data: DailyPrecipitation
+    reference: DailyPrecipitation
+    period: ReferencePeriod
+
+    @property
+    def reference_period_years(self) -> int:
+        """Count the years of the reference period with a value."""
+        return int(self.reference.present.sum())
+
+
+def precipitation_periods(
+    precipitation_mm: NDArray[np.float64] | Sequence[float],
+    dates: NDArray[np.datetime64] | Sequence[object],
+    accumulated: NDArray[np.bool_] | Sequence[bool] | None,
+    year_type: str,
+    *,
+    first_year: int | None = None,
+    last_year: int | None = None,
+    reference_first_year: int | None = None,
+    reference_last_year: int | None = None,
+) -> PrecipitationPeriods:
+    """Check a daily precipitation series and lay its two periods on their years.
+
+    Each period keeps the days of its own years only (plan 2026-11-13, D1).
+
+    Raises
+    ------
+    InvalidParameterError
+        If the series is invalid (:func:`precipitation_record`), has no value, or a
+        period's first year is after its last.
+    CalculationError
+        If a period has no value (``no_values_in_period``).
+    """
+    record = precipitation_record(precipitation_mm, dates, accumulated, year_type)
+    known = np.isfinite(record.values)
+    data = record.on_grid(
+        period_days(record.days, known, year_type, first_year, last_year)
+    )
+    period = reference_period(
+        record.days,
+        known,
+        year_type,
+        data.grid,
+        reference_first_year,
+        reference_last_year,
+    )
+    reference = data if period.is_period_of(data.grid) else record.on_grid(period.keep)
+    return PrecipitationPeriods(data, reference, period)

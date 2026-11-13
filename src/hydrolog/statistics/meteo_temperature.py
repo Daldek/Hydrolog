@@ -18,6 +18,14 @@ or count needs fewer than 11 missing days and fewer than 5 in a row (a count is 
 to the days of the month), a monthly degree-day sum needs every day, a monthly extreme
 takes whatever days there are; an annual value needs its twelve months.
 
+The normals of :func:`temperature_means` come from a reference period
+(``reference_first_year`` to ``reference_last_year``, by default the analysed years),
+the means and the anomalies of each analysed year from its own days: normals are the
+benchmark of anomalies (WMO-No. 1203, chapter 2), the climatological standard normal
+1991-2020 for monitoring and the reference normal 1961-1990 for climate change
+(chapters 2 and 3, section 5.1), and need values in 80 % of the years of the
+reference period (4.4.2).
+
 References
 ----------
 WMO (2017): WMO Guidelines on the Calculation of Climate Normals. WMO-No. 1203.
@@ -52,6 +60,8 @@ from hydrolog.statistics._climate import (
     monthly_means,
     monthly_totals,
     normal,
+    period_days,
+    reference_period,
     years_with_values,
 )
 
@@ -94,11 +104,36 @@ class _Series(NamedTuple):
     present: NDArray[np.bool_]
 
 
-def _series(
+class _Record(NamedTuple):
+    """The checked temperature series, before they are laid on years."""
+
+    days: NDArray[np.datetime64]
+    series: dict[str, NDArray[np.float64]]  # the given series by argument name
+    known: NDArray[np.bool_]  # a day with a value of any series
+    year_type: str
+
+    def on_grid(self, keep: NDArray[np.bool_] | None = None) -> _Series:
+        """Lay the days of ``keep`` (every day by default) on the years of values."""
+        days, series, known = self.days, self.series, self.known
+        if keep is not None:
+            days, known = days[keep], known[keep]
+            series = {name: values[keep] for name, values in series.items()}
+        grid = grid_of_values(days, known, self.year_type)
+        placed = {name: grid.place(days, values) for name, values in series.items()}
+        return _Series(
+            grid,
+            placed.get("tmean_c"),
+            placed.get("tmax_c"),
+            placed.get("tmin_c"),
+            years_with_values(grid, grid.place_flags(days, known)),
+        )
+
+
+def _record(
     dates: NDArray[np.datetime64] | Sequence[object],
     year_type: str,
     **series: NDArray[np.float64] | Sequence[float] | None,
-) -> _Series:
+) -> _Record:
     check_year_type(year_type)
     days = as_days(dates)
     given = {
@@ -112,16 +147,15 @@ def _series(
     known = np.zeros(days.size, dtype=bool)
     for values in given.values():
         known |= np.isfinite(values)
-    grid = grid_of_values(days, known, year_type)
-    placed = {name: grid.place(days, values) for name, values in given.items()}
-    present = years_with_values(grid, grid.place_flags(days, known))
-    return _Series(
-        grid,
-        placed.get("tmean_c"),
-        placed.get("tmax_c"),
-        placed.get("tmin_c"),
-        present,
-    )
+    return _Record(days, given, known, year_type)
+
+
+def _series(
+    dates: NDArray[np.datetime64] | Sequence[object],
+    year_type: str,
+    **series: NDArray[np.float64] | Sequence[float] | None,
+) -> _Series:
+    return _record(dates, year_type, **series).on_grid()
 
 
 def _require(values: NDArray[np.float64] | None, name: str) -> NDArray[np.float64]:
@@ -162,7 +196,7 @@ class TemperatureMeansMonth(JsonResultMixin):
     tmean_c, tmax_c, tmin_c : float or None
         Monthly means of Tmean, Tmax and Tmin [°C] (WMO-No. 1203, 4.4.1 a).
     anomaly_c : float or None
-        ``tmean_c`` minus the normal of the month [°C].
+        ``tmean_c`` minus the normal of the month (of the reference period) [°C].
     max_c, min_c : float or None
         The highest Tmax and the lowest Tmin of the month [°C] (any days).
     max_date, min_date : str or None
@@ -182,7 +216,7 @@ class TemperatureMeansMonth(JsonResultMixin):
 
 @dataclass
 class TemperatureMeansYear(JsonResultMixin):
-    """One year.
+    """One analysed year.
 
     Attributes
     ----------
@@ -191,7 +225,7 @@ class TemperatureMeansYear(JsonResultMixin):
     tmean_c, tmax_c, tmin_c : float or None
         Annual means: the mean of the twelve monthly means [°C].
     anomaly_c : float or None
-        ``tmean_c`` minus the annual normal [°C].
+        ``tmean_c`` minus the annual normal (of the reference period) [°C].
     max_c, min_c : float or None
         The highest Tmax and the lowest Tmin of the year [°C].
     max_date, min_date : str or None
@@ -214,18 +248,19 @@ class TemperatureMeansYear(JsonResultMixin):
 
 @dataclass
 class TemperatureMonthSummary(JsonResultMixin):
-    """One calendar month over the period.
+    """One calendar month: its normal and its means over the analysed years.
 
     Attributes
     ----------
     month : int
         Calendar month.
     normal_c : float or None
-        Normal of Tmean (at least 80 % of the years, WMO-No. 1203, 4.4.2) [°C].
+        Normal of Tmean of the reference period (at least 80 % of its years,
+        WMO-No. 1203, 4.4.2) [°C].
     n_years : int
-        Years with a monthly mean of Tmean.
+        Analysed years with a monthly mean of Tmean.
     tmean_c, tmax_c, tmin_c : float or None
-        Means of the monthly means [°C].
+        Means of the monthly means of the analysed years [°C].
     max_c, min_c : float or None
         The highest Tmax and the lowest Tmin of the month in the period [°C].
     max_date, min_date : str or None
@@ -246,16 +281,16 @@ class TemperatureMonthSummary(JsonResultMixin):
 
 @dataclass
 class TemperatureMeansPeriod(JsonResultMixin):
-    """The normal, the mean annual values and the records of the period.
+    """The normal of the reference period, the means and records of the analysed years.
 
     Attributes
     ----------
     normal_c : float or None
-        Annual normal of Tmean [°C].
+        Annual normal of Tmean of the reference period [°C].
     normal_years : int
-        Years with an annual mean of Tmean.
+        Years of the reference period with an annual mean of Tmean.
     tmean_c, tmax_c, tmin_c : float or None
-        Means of the annual means [°C].
+        Means of the annual means of the analysed years [°C].
     max_c, min_c : float or None
         The highest Tmax and the lowest Tmin of the period [°C].
     max_date, min_date : str or None
@@ -287,9 +322,14 @@ class TemperatureMeans(JsonResultMixin):
     year_type : str
         ``"calendar"`` or ``"hydrological"``.
     first_year, last_year, period_years : int
-        The period: first and last year with a value, years with a value.
+        The analysed years: first and last year with a value, years with a value.
+    reference_first_year, reference_last_year : int
+        The reference period of the normals, as given or by default the analysed
+        years.
+    reference_period_years : int
+        Its years with a value.
     years : list of TemperatureMeansYear
-        Every year with a value.
+        Every analysed year with a value.
     period : TemperatureMeansPeriod
         The normal, the means and the records.
     """
@@ -299,6 +339,9 @@ class TemperatureMeans(JsonResultMixin):
     first_year: int
     last_year: int
     period_years: int
+    reference_first_year: int
+    reference_last_year: int
+    reference_period_years: int
     years: list[TemperatureMeansYear]
     period: TemperatureMeansPeriod
 
@@ -310,8 +353,16 @@ def temperature_means(
     tmax_c: NDArray[np.float64] | Sequence[float] | None = None,
     tmin_c: NDArray[np.float64] | Sequence[float] | None = None,
     year_type: str = "calendar",
+    first_year: int | None = None,
+    last_year: int | None = None,
+    reference_first_year: int | None = None,
+    reference_last_year: int | None = None,
 ) -> TemperatureMeans:
     """Monthly and annual means, the normal and anomaly of Tmean, and the extremes.
+
+    The means of each analysed year come from its own days, the normals of Tmean
+    from the reference period: the mean of its years with a value when they are at
+    least 80 % of its years, those without data too (WMO-No. 1203, 4.4.2).
 
     Parameters
     ----------
@@ -323,6 +374,11 @@ def temperature_means(
         Daily maximum and minimum temperature [°C]: their means and the extremes.
     year_type : {"calendar", "hydrological"}, optional
         The kind of year.
+    first_year, last_year : int, optional
+        The analysed years (of ``year_type``), by default those of the record.
+    reference_first_year, reference_last_year : int, optional
+        The reference period of the normals, each by default that of the analysed
+        years as resolved; each period keeps the days of its own years only.
 
     Returns
     -------
@@ -333,9 +389,24 @@ def temperature_means(
     ------
     InvalidParameterError
         If an array is empty or of another length, the dates do not increase, no day
-        has a value or ``year_type`` is unknown.
+        has a value, ``year_type`` is unknown or a period starts after its last year
+        (``details.reason`` ``range``).
+    CalculationError
+        If a period has no value (``details.reason`` ``no_values_in_period``).
     """
-    data = _series(dates, year_type, tmean_c=tmean_c, tmax_c=tmax_c, tmin_c=tmin_c)
+    record = _record(dates, year_type, tmean_c=tmean_c, tmax_c=tmax_c, tmin_c=tmin_c)
+    data = record.on_grid(
+        period_days(record.days, record.known, year_type, first_year, last_year)
+    )
+    reference = reference_period(
+        record.days,
+        record.known,
+        year_type,
+        data.grid,
+        reference_first_year,
+        reference_last_year,
+    )
+    base = data if reference.is_period_of(data.grid) else record.on_grid(reference.keep)
     grid = data.grid
     tmean = _require(data.tmean, "tmean_c")
     shape = (grid.n_years, 12)
@@ -346,8 +417,16 @@ def temperature_means(
         for name, values in (("tmean", tmean), ("tmax", data.tmax), ("tmin", data.tmin))
     }
     annual = {name: _annual_mean(table) for name, table in means.items()}
-    normal_c, normal_years = normal(annual["tmean"])
-    month_normals = [normal(means["tmean"][:, slot])[0] for slot in range(12)]
+    base_means = (
+        means["tmean"]
+        if base is data
+        else monthly_means(base.grid, _require(base.tmean, "tmean_c"))
+    )
+    base_annual = annual["tmean"] if base is data else _annual_mean(base_means)
+    normal_c, normal_years = normal(base_annual, reference.n_years)
+    month_normals = [
+        normal(base_means[:, slot], reference.n_years)[0] for slot in range(12)
+    ]
     starts = grid.month_starts()
     if data.tmax is not None:
         high, high_at = block_extreme(data.tmax, starts, largest=True)
@@ -431,6 +510,9 @@ def temperature_means(
         first_year=grid.first_year,
         last_year=grid.last_year,
         period_years=int(data.present.sum()),
+        reference_first_year=reference.first_year,
+        reference_last_year=reference.last_year,
+        reference_period_years=int(base.present.sum()),
         years=rows,
         period=TemperatureMeansPeriod(
             normal_c=normal_c,

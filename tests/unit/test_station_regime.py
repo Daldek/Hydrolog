@@ -85,19 +85,24 @@ class TestSenSlope:
 
     def test_gilbert_exercises_16_1_to_16_3(self):
         # the two values below the detection limit at half of it, 0.25 (Exercise 16.2b)
+        values = [0.25, 1.1, 0.25, 3, 1.5, 1.2, 4]
         document = envelope(
-            "stats mann-kendall",
-            values=[0.25, 1.1, 0.25, 3, 1.5, 1.2, 4],
-            years=[1, 2, 3, 4, 5, 6, 7],
-            alpha=0.10,
+            "stats mann-kendall", values=values, years=[1, 2, 3, 4, 5, 6, 7], alpha=0.10
         )["result"]
         assert document["s_statistic"] == 12  # 16 - 4 (Exercise 16.1)
-        assert document["var_s"] == pytest.approx(44.3, abs=0.05)  # Exercise 16.3
+        # Exercise 16.1: the two NDs are one group of 2 tied values, Var(S) = 44.3 - 1
+        assert document["var_s"] == pytest.approx(43.3, abs=0.05)
+        assert document["z_score"] == pytest.approx(1.67, abs=0.005)
         assert document["sen_slope"] == pytest.approx(0.33, abs=0.005)  # 16.2 (b)
-        assert document["sen_slope_lower"] == pytest.approx(0.0, abs=0.005)  # 16.3
-        assert document["sen_slope_upper"] == pytest.approx(0.94, abs=0.005)
         # Conover's intercept: median(x) - slope * median(t) = 1.2 - 4/3
         assert document["sen_intercept"] == pytest.approx(1.2 - 4 / 3)
+        # Exercise 16.3 leaves the correction out on purpose (the tied values were NDs
+        # assigned to be equal): its 90 % interval is built on Var(S) = 44.3
+        estimate = sen_slope(
+            np.array(values, dtype=float), np.arange(1.0, 8.0), var_s=44.3, alpha=0.10
+        )
+        assert estimate.lower == pytest.approx(0.0, abs=0.005)
+        assert estimate.upper == pytest.approx(0.94, abs=0.005)
 
     def test_gilbert_exercise_16_2a_drops_the_missing_values(self):
         document, codes = direct(
@@ -216,9 +221,7 @@ class TestSeasonality:
         del dates[700], values[700]  # 2021-10-01 absent: 2021 is incomplete
         result = envelope("stats seasonality", values=values, dates=dates)
         document = result["result"]
-        assert document["extremes"] == [
-            {"year": 2020, "value": 9.0, "date": "2020-02-09"}
-        ]
+        assert document["years"] == [{"year": 2020, "value": 9.0, "date": "2020-02-09"}]
         assert (document["winter_share"], document["summer_share"]) == (1.0, 0.0)
         assert [n["code"] for n in result["notices"]] == [
             "incomplete_years",
@@ -249,7 +252,7 @@ class TestSeasonality:
         document = result["result"]
         # 2021: the dated winter maximum is the larger; 2022: the larger summer one has
         # no date and is left out
-        assert document["extremes"] == [
+        assert document["years"] == [
             {"year": 2020, "value": 90.0, "date": "2020-06-24"},
             {"year": 2021, "value": 50.0, "date": "2021-02-02"},
         ]
@@ -332,7 +335,7 @@ class TestBaseflow:
             alpha=0.98,
         )["result"]
         assert document["bfi"] == pytest.approx(0.1965759, abs=5e-8)
-        assert (document["days"], document["spans"]) == (67, 1)
+        assert (document["n_values"], document["n_spans"]) == (67, 1)
 
     def test_ladson_2013_missing_values_by_spans(self):
         # BFI_example.R: two spans of the flows parted by missing days, 36 and 33
@@ -351,7 +354,7 @@ class TestBaseflow:
         recession = recession_constant(10 * 0.9 ** np.arange(20.0))
         assert recession.k == pytest.approx(0.9)
         assert recession.half_life_days == pytest.approx(math.log(2) / -math.log(0.9))
-        assert recession.segments == 1
+        assert recession.n_segments == 1
 
     def test_a_rise_or_a_missing_day_ends_a_recession(self):
         flows = np.array(
@@ -360,7 +363,7 @@ class TestBaseflow:
              30, 24, 19.2, np.nan, 15.36, 12.288, 9.8304]  # a gap parts five falls
         )  # fmt: skip
         recession = recession_constant(flows)
-        assert recession.segments == 1
+        assert recession.n_segments == 1
         assert recession.k == pytest.approx(0.8)
 
     def test_short_spans_years_and_the_series_year(self):
@@ -371,8 +374,8 @@ class TestBaseflow:
         for index in (366 + 51, 366 + 5):
             del dates[index], values[index]
         document = envelope("stats baseflow", values=values, dates=dates)["result"]
-        assert document["spans"] == 2
-        assert document["days"] == 731 - 2 - 45
+        assert document["n_spans"] == 2
+        assert document["n_values"] == 731 - 2 - 45
         assert [row["year"] for row in document["years"]] == [2020, 2021]
         assert document["series_year"] == 2020  # the last complete year
         assert len(document["series_dates"]) == 366

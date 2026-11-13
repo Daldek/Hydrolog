@@ -288,8 +288,8 @@ The module requires optional dependencies: `pip install hydrolog[viz]`
 - Detection of low-flow sequences (threshold method)
 - Flow regime (Pardé's coefficients, Dynowska's types, Walsh and Lawler's seasonality index), the seasonality of annual maxima and minima (circular statistics of their dates) and the harmonics of the annual cycle
 - Baseflow separation (the Lyne and Hollick filter, Ladson et al. 2013), the baseflow index and the recession constant
-- Meteorological statistics of a weather station's daily series (command group `meteo`): precipitation sums, normals, maxima, wet days, intensity, heavy precipitation and regime (ETCCDI, PCI, SI), dry and wet spells, SPI and relative precipitation classes, air temperature means, characteristic days and degree days, snow cover per winter, Sielianinov's hydrothermal coefficient; missing days by WMO-No. 1203
-- Mann-Kendall trend test (stationarity check) with Sen's slope, Conover's intercept and Gilbert's confidence interval of the slope
+- Meteorological statistics of a weather station's daily series (command group `meteo`): precipitation sums, normals of the analysed or a chosen reference period (`reference_first_year`, `reference_last_year`), maxima, wet days, intensity, heavy precipitation and regime (ETCCDI, PCI, SI), dry and wet spells (the list shortened by `min_duration_days`), SPI calibrated on the reference period and relative precipitation classes, air temperature means and anomalies, characteristic days and degree days, snow cover per winter, Sielianinov's hydrothermal coefficient; missing days by WMO-No. 1203
+- Mann-Kendall trend test (stationarity check) with the variance of S corrected for ties, Sen's slope, Conover's intercept and Gilbert's confidence interval of the slope
 - Goodness-of-fit tests: Kolmogorov-Smirnov, Anderson-Darling
 - Akaike information criterion (AIC)
 

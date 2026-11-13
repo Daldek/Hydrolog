@@ -1,6 +1,6 @@
 """Operations of the group ``stats``: statistics of hydrological series.
 
-Characteristic values, events beyond a level, duration curves, runoff volumes, the
+Characteristic values, events beyond a threshold, duration curves, runoff volumes, the
 flow regime, the seasonality of annual extremes, the harmonics of the annual cycle,
 baseflow, daily and monthly statistics, flood frequency, low-flow frequency and
 sequences, the Mann-Kendall trend test with Sen's slope and the homogeneity tests.
@@ -59,6 +59,7 @@ from hydrolog.operations._analysis import (
     require_values,
     select_years,
 )
+from hydrolog.operations._common import forbid_options
 from hydrolog.statistics import (
     DEFAULT_PERCENTS,
     FIT_METHODS,
@@ -169,6 +170,9 @@ _MIN_ANNUAL_VALUES = 3
 _MIN_TREND_VALUES = 3  # the Mann-Kendall test of the library needs 3 observations
 _NUMERIC_WARNINGS: tuple[type[Warning], ...] = (UserWarning, RuntimeWarning)
 _ONE_DAY = np.timedelta64(1, "D")
+_DEFAULT_BIN_WIDTH = 10.0  # stats duration-curve, bin_method "width"
+_DEFAULT_BIN_COUNT = 40  # stats duration-curve, bin_method "log"
+_DEFAULT_EXCEEDANCE_PERCENT = 70.0  # stats low-flow-sequences, threshold "exceedance"
 
 
 # --- results --------------------------------------------------------------------------
@@ -1255,12 +1259,6 @@ def _low_flow_threshold(
                 },
             )
         return float(threshold)
-    if threshold is not None:
-        raise InvalidParameterError(
-            f"Option 'threshold' applies to threshold_method 'value', not "
-            f"{threshold_method!r}",
-            details={"option": "threshold", "reason": "conflict"},
-        )
     known = ~np.isnan(series.values)
     if threshold_method == "mean_annual_minimum":
         characteristic = calculate_characteristic_values(
@@ -1279,7 +1277,7 @@ def stats_low_flow_sequences(
     date_column: str | None = None,
     threshold: float | None = None,
     threshold_method: Literal["value", "mean_annual_minimum", "exceedance"] = "value",
-    exceedance_percent: float = 70.0,
+    exceedance_percent: float | None = None,
     parameter: Literal["Q", "H"] = "Q",
     min_duration_days: int = 5,
     max_gap_days: int = 4,
@@ -1319,7 +1317,8 @@ def stats_low_flow_sequences(
     threshold_method : {"value", "mean_annual_minimum", "exceedance"}, optional
         Where the threshold comes from, by default ``"value"``.
     exceedance_percent : float, optional
-        The exceedance percentage of ``"exceedance"``, in (0, 100), by default 70.
+        Only for ``threshold_method="exceedance"``: the exceedance percentage [%], in
+        (0, 100), by default 70.
     parameter : {"Q", "H"}, optional
         Discharge in m³/s (the deficits are also volumes in m³) or stage, by default
         ``"Q"``.
@@ -1344,8 +1343,9 @@ def stats_low_flow_sequences(
     Raises
     ------
     InvalidParameterError
-        If the series options are inconsistent, ``threshold`` is missing or given
-        with another method, a choice is not allowed, ``exceedance_percent`` is not
+        If the series options are inconsistent, ``threshold`` is missing, a choice is
+        not allowed, ``threshold`` or ``exceedance_percent`` is given with another
+        method (``details.reason`` ``not_applicable``), ``exceedance_percent`` is not
         in (0, 100), ``min_duration_days`` is below 1, ``max_gap_days`` below 0 or
         ``first_year`` after ``last_year``.
     NotFoundError, InputDataError
@@ -1357,7 +1357,23 @@ def stats_low_flow_sequences(
     cite(attribution)
     check_choice("threshold_method", threshold_method, _THRESHOLD_METHODS)
     check_choice("parameter", parameter, ("Q", "H"))
-    _check_percent("exceedance_percent", exceedance_percent)
+    if threshold_method == "exceedance":
+        if exceedance_percent is None:
+            exceedance_percent = _DEFAULT_EXCEEDANCE_PERCENT
+        _check_percent("exceedance_percent", exceedance_percent)
+    else:
+        forbid_options(
+            {"exceedance_percent": exceedance_percent},
+            context=f"threshold_method is {threshold_method!r}",
+            hint="exceedance_percent belongs to threshold_method 'exceedance'.",
+        )
+        exceedance_percent = _DEFAULT_EXCEEDANCE_PERCENT
+    if threshold_method != "value":
+        forbid_options(
+            {"threshold": threshold},
+            context=f"threshold_method is {threshold_method!r}",
+            hint="threshold belongs to threshold_method 'value'.",
+        )
     _check_days(min_duration_days, max_gap_days)
     series = require_values(
         load_series(
@@ -1490,7 +1506,7 @@ def _check_days(min_duration_days: int, max_gap_days: int) -> None:
             )
 
 
-# --- events beyond a level, duration curves, runoff volumes ---------------------------
+# --- events beyond a threshold, duration curves, runoff volumes -----------------------
 
 
 def stats_threshold_events(
@@ -1500,7 +1516,7 @@ def stats_threshold_events(
     input_file: str | os.PathLike[str] | None = None,
     value_column: str | None = None,
     date_column: str | None = None,
-    level: float,
+    threshold: float,
     direction: Literal["above", "below"] = "above",
     min_duration_days: int = 1,
     max_gap_days: int = 0,
@@ -1508,14 +1524,14 @@ def stats_threshold_events(
     last_year: int | None = None,
     attribution: list[str] | None = None,
 ) -> OperationOutput:
-    """Events and days beyond a level (``stats threshold-events``).
+    """Events and days beyond a threshold (``stats threshold-events``).
 
     Lays the daily series on its calendar and finds the runs of days with a value at
-    or above ``level`` (``direction="above"``) or below it (``"below"``): start, end,
-    duration and peak of each, and the days beyond the level in each hydrological
-    year (:func:`hydrolog.statistics.threshold_events`; the threshold level method,
-    Tallaksen and van Lanen, 2004). A day without a value ends a run unless
-    ``max_gap_days`` bridges it.
+    or above ``threshold`` (``direction="above"``) or below it (``"below"``): start,
+    end, duration and peak of each, and the days beyond the threshold in each
+    hydrological year (:func:`hydrolog.statistics.threshold_events`; the threshold
+    level method, Tallaksen and van Lanen, 2004). A day without a value ends a run
+    unless ``max_gap_days`` bridges it.
 
     Parameters
     ----------
@@ -1529,10 +1545,10 @@ def stats_threshold_events(
         Column of ``input_file`` with the values.
     date_column : str, optional
         Column of ``input_file`` with the dates.
-    level : float
-        The level, in the unit of the series.
+    threshold : float
+        The threshold, in the unit of the series.
     direction : {"above", "below"}, optional
-        Days at or above the level (default) or below it.
+        Days at or above the threshold (default) or below it.
     min_duration_days : int, optional
         Shortest event reported [days], at least 1, by default 1.
     max_gap_days : int, optional
@@ -1552,7 +1568,7 @@ def stats_threshold_events(
     Raises
     ------
     InvalidParameterError
-        If the series options are inconsistent, ``level`` is not finite,
+        If the series options are inconsistent, ``threshold`` is not finite,
         ``direction`` is not allowed, ``min_duration_days`` is below 1,
         ``max_gap_days`` below 0 or ``first_year`` after ``last_year``.
     NotFoundError, InputDataError
@@ -1562,10 +1578,10 @@ def stats_threshold_events(
     """
     cite(attribution)
     check_choice("direction", direction, ("above", "below"))
-    if not math.isfinite(level):
+    if not math.isfinite(threshold):
         raise InvalidParameterError(
-            f"Option 'level': must be a finite number, got {level!r}",
-            details={"option": "level", "reason": "type", "value": str(level)},
+            f"Option 'threshold': must be a finite number, got {threshold!r}",
+            details={"option": "threshold", "reason": "type", "value": str(threshold)},
         )
     _check_days(min_duration_days, max_gap_days)
     series = require_values(
@@ -1582,7 +1598,7 @@ def stats_threshold_events(
     result: ThresholdEvents = threshold_events(
         series.values,
         _dates_of(series),
-        level=level,
+        threshold=threshold,
         direction=direction,
         min_duration_days=min_duration_days,
         max_gap_days=max_gap_days,
@@ -1600,10 +1616,10 @@ def stats_duration_curve(
     first_year: int | None = None,
     last_year: int | None = None,
     month: int | None = None,
-    percents: Sequence[float] = DEFAULT_PERCENTS,
-    class_method: Literal["width", "log"] = "width",
-    class_width: float = 10.0,
-    class_count: int = 40,
+    exceedance_percents: Sequence[float] = DEFAULT_PERCENTS,
+    bin_method: Literal["width", "log"] = "width",
+    bin_width: float | None = None,
+    bin_count: int | None = None,
     attribution: list[str] | None = None,
 ) -> OperationOutput:
     """Duration curve with class frequencies (``stats duration-curve``).
@@ -1632,15 +1648,17 @@ def stats_duration_curve(
         record.
     month : int, optional
         Only the days of this calendar month (1-12).
-    percents : sequence of float, optional
-        Exceedance percentages of the table, each in (0, 100), by default 1, 5, 10,
-        30, 50, 70, 90, 95, 99.
-    class_method : {"width", "log"}, optional
+    exceedance_percents : sequence of float, optional
+        Exceedance percentages of the table [%], each in (0, 100), by default 1, 5,
+        10, 30, 50, 70, 90, 95, 99.
+    bin_method : {"width", "log"}, optional
         Classes of equal width (default) or logarithmic classes.
-    class_width : float, optional
-        Width of the classes in the unit of the series, positive, by default 10.
-    class_count : int, optional
-        Number of logarithmic classes, at least 2, by default 40.
+    bin_width : float, optional
+        Only for ``bin_method`` ``"width"``: the width of the classes in the unit of
+        the series, positive, by default 10.
+    bin_count : int, optional
+        Only for ``bin_method`` ``"log"``: the number of logarithmic classes, at
+        least 2, by default 40.
     attribution : list of str, optional
         Lines of the providers of the series (ADR-0028); the envelope carries them,
         with those of ``input_file``.
@@ -1655,34 +1673,44 @@ def stats_duration_curve(
     Raises
     ------
     InvalidParameterError
-        If the series options are inconsistent or an option is out of its range.
+        If the series options are inconsistent, an option is out of its range, or
+        ``bin_width`` (``bin_count``) is given for logarithmic (equal-width) classes
+        (``details.reason`` ``not_applicable``).
     NotFoundError, InputDataError
         If the file does not exist or cannot be read.
     CalculationError
         If every value is missing or the period (its ``month``) has no value.
     """
     cite(attribution)
-    check_choice("class_method", class_method, ("width", "log"))
-    for percent in percents:
-        _check_percent("percents", percent)
-    if not percents:
+    check_choice("bin_method", bin_method, ("width", "log"))
+    for percent in exceedance_percents:
+        _check_percent("exceedance_percents", percent)
+    if not exceedance_percents:
         raise InvalidParameterError(
-            "Option 'percents': must not be an empty list",
-            details={"option": "percents", "reason": "empty"},
+            "Option 'exceedance_percents': must not be an empty list",
+            details={"option": "exceedance_percents", "reason": "empty"},
         )
-    if not (math.isfinite(class_width) and class_width > 0):
+    if bin_method == "width":
+        forbid_options({"bin_count": bin_count}, context="bin_method is 'width'")
+        bin_count = _DEFAULT_BIN_COUNT
+        bin_width = _DEFAULT_BIN_WIDTH if bin_width is None else bin_width
+    else:
+        forbid_options({"bin_width": bin_width}, context="bin_method is 'log'")
+        bin_width = _DEFAULT_BIN_WIDTH
+        bin_count = _DEFAULT_BIN_COUNT if bin_count is None else bin_count
+    if not (math.isfinite(bin_width) and bin_width > 0):
         raise InvalidParameterError(
-            f"Option 'class_width': must be a positive number, got {class_width!r}",
+            f"Option 'bin_width': must be a positive number, got {bin_width!r}",
             details={
-                "option": "class_width",
+                "option": "bin_width",
                 "reason": "exclusive_minimum",
-                "value": str(class_width),
+                "value": str(bin_width),
             },
         )
-    if class_count < 2:
+    if bin_count < 2:
         raise InvalidParameterError(
-            f"Option 'class_count': must be at least 2, got {class_count}",
-            details={"option": "class_count", "reason": "minimum", "minimum": 2},
+            f"Option 'bin_count': must be at least 2, got {bin_count}",
+            details={"option": "bin_count", "reason": "minimum", "minimum": 2},
         )
     if month is not None and not 1 <= month <= 12:
         raise InvalidParameterError(
@@ -1711,10 +1739,10 @@ def stats_duration_curve(
         series.values,
         dates_array,
         month=month,
-        percents=percents,
-        class_method=class_method,
-        class_width=class_width,
-        class_count=class_count,
+        exceedance_percents=exceedance_percents,
+        bin_method=bin_method,
+        bin_width=bin_width,
+        bin_count=bin_count,
     )
     notices.extend(
         reference_period_notices(
@@ -2336,13 +2364,14 @@ def stats_mann_kendall(
     """Mann-Kendall trend test with Sen's slope (``stats mann-kendall``).
 
     Non-parametric test for a monotonic trend in a series ordered in time (Mann,
-    1945; Kendall, 1975): the S statistic, its variance (without the correction for
-    ties, so the test is slightly conservative), the continuity-corrected Z score and
-    the two-sided p-value, with Sen's (1968) slope, Conover's (1980) intercept and
-    the 100 (1 - alpha) % confidence interval of the slope (Gilbert, 1987) built on
-    that variance (:func:`hydrolog.statistics.mann_kendall_test`). The slope is per
-    year with the years of the values, otherwise per step of the series (a missing
-    value keeps its step).
+    1945; Kendall, 1975): the S statistic, its variance corrected for tied values
+    (Kendall, 1975; Hirsch, Slack and Smith, 1982; Gilbert, 1987, Eq. 16.3), the
+    continuity-corrected Z score and the two-sided p-value, with Sen's (1968) slope,
+    Conover's (1980) intercept and the 100 (1 - alpha) % confidence interval of the
+    slope (Gilbert, 1987) built on that variance
+    (:func:`hydrolog.statistics.mann_kendall_test`). The slope is per year with the
+    years of the values, otherwise per step of the series (a missing value keeps its
+    step).
 
     Parameters
     ----------

@@ -8,12 +8,13 @@
     "schema",
     "kind",
     "threshold_mm",
+    "min_duration_days",
     "year_type",
     "first_year",
     "last_year",
     "period_years",
     "n_spells",
-    "max_length_days",
+    "max_duration_days",
     "spells",
     "years",
     "period"
@@ -27,6 +28,9 @@
     },
     "threshold_mm": {
       "type": "number"
+    },
+    "min_duration_days": {
+      "type": "integer"
     },
     "year_type": {
       "type": "string"
@@ -43,7 +47,7 @@
     "n_spells": {
       "type": "integer"
     },
-    "max_length_days": {
+    "max_duration_days": {
       "type": "integer"
     },
     "spells": {

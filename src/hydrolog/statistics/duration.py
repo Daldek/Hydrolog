@@ -42,7 +42,7 @@ __all__ = [
     "exceedance_values",
 ]
 
-ClassMethod = Literal["width", "log"]
+BinMethod = Literal["width", "log"]
 
 CURVE_PERCENTS: tuple[float, ...] = (
     0.1,
@@ -118,8 +118,8 @@ class DurationClass(JsonResultMixin):
         highest class also holds its upper bound).
     days : int
         Days with a value in the class.
-    percent : float
-        ``days`` as a percentage of the days counted.
+    share_percent : float
+        ``days`` as a percentage of the days counted [%].
     days_with_higher : int
         Days in this class or a higher one („including higher”: the duration of the
         values from ``lower`` up).
@@ -132,7 +132,7 @@ class DurationClass(JsonResultMixin):
     lower: float
     upper: float
     days: int
-    percent: float
+    share_percent: float
     days_with_higher: int
     days_with_lower: int
     months: list[int]
@@ -148,14 +148,14 @@ class ModalClass(JsonResultMixin):
         Bounds of the class.
     days : int
         Its days.
-    percent : float
+    share_percent : float
         Its share of the days counted [%].
     """
 
     lower: float
     upper: float
     days: int
-    percent: float
+    share_percent: float
 
 
 @dataclass
@@ -174,19 +174,19 @@ class DurationCurve(JsonResultMixin):
         Days with a value used.
     min, max, mean, median : float
         Statistics of those values.
-    percents : list of float
-        Exceedance percentages of the table.
+    exceedance_percents : list of float
+        Exceedance percentages of the table [%].
     values : list of float
-        The value equalled or exceeded on each percentage of ``percents``.
-    curve_percents : list of float
-        Exceedance percentages of the drawn curve (:data:`CURVE_PERCENTS`).
+        The value equalled or exceeded on each percentage of ``exceedance_percents``.
+    curve_exceedance_percents : list of float
+        Exceedance percentages of the drawn curve (:data:`CURVE_PERCENTS`) [%].
     curve_values : list of float
-        The curve at ``curve_percents``.
-    class_method : {"width", "log"}
+        The curve at ``curve_exceedance_percents``.
+    bin_method : {"width", "log"}
         Classes of equal width or logarithmic classes.
-    class_width : float or None
+    bin_width : float or None
         Width of the classes (``"width"``), in the unit of the series.
-    class_count : int or None
+    bin_count : int or None
         Number of logarithmic classes (``"log"``).
     classes : list of DurationClass
         The classes from the highest down. Logarithmic classes count the positive
@@ -204,20 +204,20 @@ class DurationCurve(JsonResultMixin):
     max: float
     mean: float
     median: float
-    percents: list[float]
+    exceedance_percents: list[float]
     values: list[float]
-    curve_percents: list[float]
+    curve_exceedance_percents: list[float]
     curve_values: list[float]
-    class_method: str
-    class_width: float | None
-    class_count: int | None
+    bin_method: str
+    bin_width: float | None
+    bin_count: int | None
     classes: list[DurationClass] = field(default_factory=list)
     modal_class: ModalClass | None = None
 
 
 def _class_edges(
     values: NDArray[np.float64],
-    method: ClassMethod,
+    method: BinMethod,
     width: float,
     count: int,
 ) -> NDArray[np.float64]:
@@ -266,7 +266,7 @@ def _classes(
                 lower=float(edges[at]),
                 upper=float(edges[at + 1]),
                 days=count,
-                percent=count / total * 100.0 if total else 0.0,
+                share_percent=count / total * 100.0 if total else 0.0,
                 days_with_higher=higher,
                 days_with_lower=lower_days,
                 months=[int(item) for item in table[at]],
@@ -277,7 +277,7 @@ def _classes(
         lower=float(edges[modal]),
         upper=float(edges[modal + 1]),
         days=int(days[modal]),
-        percent=float(days[modal]) / total * 100.0 if total else 0.0,
+        share_percent=float(days[modal]) / total * 100.0 if total else 0.0,
     )
 
 
@@ -286,10 +286,10 @@ def duration_curve(
     dates: NDArray[np.datetime64],
     *,
     month: int | None = None,
-    percents: Sequence[float] = DEFAULT_PERCENTS,
-    class_method: ClassMethod = "width",
-    class_width: float = 10.0,
-    class_count: int = 40,
+    exceedance_percents: Sequence[float] = DEFAULT_PERCENTS,
+    bin_method: BinMethod = "width",
+    bin_width: float = 10.0,
+    bin_count: int = 40,
 ) -> DurationCurve:
     """Compute the duration curve and the class frequencies of a daily series.
 
@@ -301,16 +301,16 @@ def duration_curve(
         Their dates.
     month : int, optional
         Use only the days of this calendar month (1-12).
-    percents : sequence of float, optional
-        Exceedance percentages of the table, each in (0, 100), by default
+    exceedance_percents : sequence of float, optional
+        Exceedance percentages of the table [%], each in (0, 100), by default
         :data:`DEFAULT_PERCENTS`.
-    class_method : {"width", "log"}, optional
-        Classes of equal width ``class_width`` starting at the multiple of the width
-        at or below the smallest value (default), or ``class_count`` logarithmic
+    bin_method : {"width", "log"}, optional
+        Classes of equal width ``bin_width`` starting at the multiple of the width
+        at or below the smallest value (default), or ``bin_count`` logarithmic
         classes between the smallest positive and the largest value.
-    class_width : float, optional
+    bin_width : float, optional
         Width of the classes, positive, in the unit of the series, by default 10.
-    class_count : int, optional
+    bin_count : int, optional
         Number of logarithmic classes, at least 2, by default 40.
 
     Returns
@@ -328,18 +328,20 @@ def duration_curve(
     dates = np.asarray(dates).astype("datetime64[D]")
     if values.size != dates.size:
         raise InvalidParameterError("values and dates must have the same length")
-    table_percents = np.asarray(percents, dtype=np.float64)
+    table_percents = np.asarray(exceedance_percents, dtype=np.float64)
     if (
         table_percents.ndim != 1
         or table_percents.size == 0
         or not np.all((table_percents > 0) & (table_percents < 100))
     ):
-        raise InvalidParameterError("percents must lie in the open interval (0, 100)")
-    if class_method not in ("width", "log"):
-        raise InvalidParameterError(f"unknown class_method {class_method!r}")
-    if not (math.isfinite(class_width) and class_width > 0) or class_count < 2:
         raise InvalidParameterError(
-            "class_width must be positive and class_count at least 2"
+            "exceedance_percents must lie in the open interval (0, 100)"
+        )
+    if bin_method not in ("width", "log"):
+        raise InvalidParameterError(f"unknown bin_method {bin_method!r}")
+    if not (math.isfinite(bin_width) and bin_width > 0) or bin_count < 2:
+        raise InvalidParameterError(
+            "bin_width must be positive and bin_count at least 2"
         )
     calendar_months = dates.astype("datetime64[M]").astype(np.int64) % 12 + 1
     keep = np.isfinite(values)
@@ -353,7 +355,7 @@ def duration_curve(
     years = hydrological_year(dates[keep])
     curve = exceedance_values(used, CURVE_PERCENTS)
     table = exceedance_values(used, table_percents)
-    edges = _class_edges(used, class_method, class_width, class_count)
+    edges = _class_edges(used, bin_method, bin_width, bin_count)
     classes, modal = _classes(used, calendar_months[keep], edges)
     return DurationCurve(
         first_year=int(years.min()),
@@ -365,13 +367,13 @@ def duration_curve(
         max=float(used.max()),
         mean=float(used.mean()),
         median=float(np.median(used)),
-        percents=[float(item) for item in table_percents],
+        exceedance_percents=[float(item) for item in table_percents],
         values=[float(item) for item in table],
-        curve_percents=list(CURVE_PERCENTS),
+        curve_exceedance_percents=list(CURVE_PERCENTS),
         curve_values=[float(item) for item in curve],
-        class_method=class_method,
-        class_width=float(class_width) if class_method == "width" else None,
-        class_count=int(class_count) if class_method == "log" else None,
+        bin_method=bin_method,
+        bin_width=float(bin_width) if bin_method == "width" else None,
+        bin_count=int(bin_count) if bin_method == "log" else None,
         classes=classes,
         modal_class=modal,
     )

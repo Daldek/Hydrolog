@@ -21,9 +21,14 @@ Years are calendar years by default and hydrological years (November - October, 
 after the year in which they end) with ``year_type`` ``hydrological``; ``first_year``
 and ``last_year`` choose the years of that kind (by default the whole record), and a
 result that describes the period carries the notice ``short_reference_period`` when
-it has fewer than 30 years with a value (plan 2026-11-13, D1). Snow cover is counted
-per winter, a snow season August - July named after the year in which it ends (the
-hydrological year of its winter); the hydrothermal coefficient per calendar year.
+it has fewer than 30 years with a value (plan 2026-11-13, D1). The normals, the
+percentiles of the wet days and the SPI's fits come from the reference period
+``reference_first_year`` to ``reference_last_year`` (by default the analysed years;
+WMO-No. 1203, 2017), which has its own notice when it is another period of fewer than
+30 years. Snow cover is counted per winter, a snow season August - July named after
+the year in which it ends (the hydrological year of its winter); the hydrothermal
+coefficient per calendar year. An option of some values of ``index`` only, given with
+another, is a ``validation_error`` (``not_applicable``).
 """
 
 from __future__ import annotations
@@ -31,7 +36,7 @@ from __future__ import annotations
 import math
 import os
 import re
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Any, Literal, NamedTuple
 
 import numpy as np
@@ -47,13 +52,10 @@ from hydrolog.operations._analysis import (
     check_years,
     reference_period_notices,
 )
+from hydrolog.operations._common import forbid_options
 from hydrolog.statistics import (
-    DEFAULT_DURATIONS_DAYS,
-    DEFAULT_PERCENTILES,
     DEFAULT_SCALES_MONTHS,
     DEFAULT_SPELL_THRESHOLD_MM,
-    DEFAULT_THRESHOLDS_MM,
-    DEFAULT_WET_DAY_MM,
     PRECIPITATION_INDICES,
     TEMPERATURE_INDICES,
     YEAR_TYPES,
@@ -443,7 +445,82 @@ def _year_type(year_type: str) -> str:
     return check_choice("year_type", year_type, YEAR_TYPES)
 
 
+def _reference_period_notices(result: Any) -> list[Notice]:
+    """Return ``short_reference_period`` of a reference period that is not the period.
+
+    The analysed years have their own notice (:func:`_period_notices`); a reference
+    period other than them gets one too when it has fewer than 30 years with a value.
+    """
+    reference = (result.reference_first_year, result.reference_last_year)
+    if reference == (result.first_year, result.last_year):
+        return []
+    return reference_period_notices(result.reference_period_years, *reference)
+
+
+def _in_periods(station: _Station, year_type: str, result: Any) -> _Station:
+    """Keep the days of the analysed years and of the reference period of a result."""
+    years = year_of(station.dates, year_type)
+    keep = ((years >= result.first_year) & (years <= result.last_year)) | (
+        (years >= result.reference_first_year) & (years <= result.reference_last_year)
+    )
+    if keep.all():
+        return station
+    accumulated = None if station.accumulated is None else station.accumulated[keep]
+    return _Station(
+        station.dates[keep],
+        {key: values[keep] for key, values in station.values.items()},
+        accumulated,
+        station.flag_column,
+    )
+
+
+def _only_for(
+    index: str,
+    given: Mapping[str, object],
+    applies: Mapping[str, tuple[str, ...]],
+) -> None:
+    """Refuse an option given with an ``index`` it does not apply to.
+
+    Parameters
+    ----------
+    index : str
+        The chosen index.
+    given : Mapping[str, object]
+        The values of the variant options, ``None`` when not given.
+    applies : Mapping[str, tuple of str]
+        The indices each option applies to.
+
+    Raises
+    ------
+    InvalidParameterError
+        With ``reason`` ``not_applicable``, naming the first such option.
+    """
+    for option, value in given.items():
+        if index not in applies[option]:
+            names = " and ".join(f"'{name}'" for name in applies[option])
+            forbid_options(
+                {option: value},
+                context=f"index is {index!r}",
+                hint=f"{option} applies to index {names}.",
+            )
+
+
+def _given(options: Mapping[str, Any]) -> dict[str, Any]:
+    """Return the options that were given: the library's defaults fill the others."""
+    return {name: value for name, value in options.items() if value is not None}
+
+
 # --- precipitation --------------------------------------------------------------------
+
+_PRECIPITATION_VARIANTS: dict[str, tuple[str, ...]] = {
+    "reference_first_year": ("sums", "heavy", "seasonality"),
+    "reference_last_year": ("sums", "heavy", "seasonality"),
+    "durations_days": ("maxima",),
+    "thresholds_mm": ("days",),
+    "wet_day_mm": ("intensity", "heavy"),
+    "percentiles": ("heavy",),
+}
+"""The options of ``meteo precipitation`` that apply to some indices only."""
 
 
 def meteo_precipitation(
@@ -458,21 +535,25 @@ def meteo_precipitation(
     year_type: Literal["calendar", "hydrological"] = "calendar",
     first_year: int | None = None,
     last_year: int | None = None,
-    durations_days: Sequence[int] = DEFAULT_DURATIONS_DAYS,
-    thresholds_mm: Sequence[float] = DEFAULT_THRESHOLDS_MM,
-    wet_day_mm: float = DEFAULT_WET_DAY_MM,
-    percentiles: Sequence[float] = DEFAULT_PERCENTILES,
+    reference_first_year: int | None = None,
+    reference_last_year: int | None = None,
+    durations_days: Sequence[int] | None = None,
+    thresholds_mm: Sequence[float] | None = None,
+    wet_day_mm: float | None = None,
+    percentiles: Sequence[float] | None = None,
     attribution: list[str] | None = None,
 ) -> OperationOutput:
     """Precipitation statistics of a daily series (``meteo precipitation``).
 
     One ``index`` per call (:mod:`hydrolog.statistics.meteo_precipitation`): ``sums``
-    of months, half-years, seasons and years with the normals of the period and the
-    sums in % of them (M1); ``maxima``, the largest daily sums of each year and month
-    and the largest sums of ``durations_days`` with dates (M2); ``days`` with P at or
-    above ``thresholds_mm`` (M5); ``intensity``, the mean annual sum and the SDII
-    (M4); ``heavy``, the sums above the ``percentiles`` of the wet days (R95pTOT,
-    R99pTOT; M7); ``seasonality``, the regime of the normals, PCI and SI (M9).
+    of months, half-years, seasons and years with the normals and the sums in % of
+    them (M1); ``maxima``, the largest daily sums of each year and month and the
+    largest sums of ``durations_days`` with dates (M2); ``days`` with P at or above
+    ``thresholds_mm`` (M5); ``intensity``, the mean annual sum and the SDII (M4);
+    ``heavy``, the sums above the ``percentiles`` of the wet days (R95pTOT, R99pTOT;
+    M7); ``seasonality``, the regime of the normals, PCI and SI (M9). The normals of
+    ``sums`` and ``seasonality`` and the percentiles of ``heavy`` come from the
+    reference period, the values of each analysed year from its own days.
 
     Parameters
     ----------
@@ -495,16 +576,20 @@ def meteo_precipitation(
         Calendar years (default) or hydrological years (November - October).
     first_year, last_year : int, optional
         First and last year of the period, by default those of the record.
+    reference_first_year, reference_last_year : int, optional
+        Only for ``sums``, ``heavy`` and ``seasonality``: first and last year of the
+        reference period of the normals and percentiles; each by default that of the
+        analysed period as resolved (the result's ``first_year``, ``last_year``).
     durations_days : sequence of int, optional
-        ``maxima``: durations of the largest multi-day sums [days], default 2, 3, 5,
-        10.
+        Only for ``maxima``: durations of the largest multi-day sums [days]; default
+        2, 3, 5, 10.
     thresholds_mm : sequence of float, optional
-        ``days``: thresholds [mm], default 0.1, 1, 10, 20.
+        Only for ``days``: thresholds [mm]; default 0.1, 1, 10, 20.
     wet_day_mm : float, optional
-        ``intensity`` and ``heavy``: a wet day has at least this precipitation [mm],
-        default 1.
+        Only for ``intensity`` and ``heavy``: a wet day has at least this
+        precipitation [mm]; default 1.
     percentiles : sequence of float, optional
-        ``heavy``: percentiles of the wet days, default 95 and 99.
+        Only for ``heavy``: percentiles of the wet days [%]; default 95 and 99.
     attribution : list of str, optional
         Lines of the providers of the series (ADR-0028); the envelope carries them,
         with those of ``input_file``.
@@ -514,22 +599,40 @@ def meteo_precipitation(
     OperationOutput
         ``result`` is the index's result of :mod:`hydrolog.statistics`; the notices
         report accumulated totals (``accumulated_totals``), a normal that cannot be
-        computed (``normal_not_computed``) and a period shorter than 30 years
-        (``short_reference_period``).
+        computed (``normal_not_computed``) and a period, or another reference
+        period, shorter than 30 years (``short_reference_period``).
 
     Raises
     ------
     InvalidParameterError
-        If an option is invalid or the series options are inconsistent.
+        If an option is invalid, given with an index it does not apply to
+        (``not_applicable``), the series options are inconsistent or a period starts
+        after its last year (``range``).
     NotFoundError, InputDataError
         If the file does not exist, cannot be read or lacks a column.
     CalculationError
-        If the series or the period has no value, or ``heavy`` has fewer than 100
-        wet days.
+        If the series or a period has no value, or the reference period of ``heavy``
+        has fewer than 100 wet days.
     """
     cite(attribution)
     check_choice("index", index, PRECIPITATION_INDICES)
     _year_type(year_type)
+    reference = {
+        "reference_first_year": reference_first_year,
+        "reference_last_year": reference_last_year,
+    }
+    wet = {"wet_day_mm": wet_day_mm}
+    _only_for(
+        index,
+        {
+            **reference,
+            "durations_days": durations_days,
+            "thresholds_mm": thresholds_mm,
+            **wet,
+            "percentiles": percentiles,
+        },
+        _PRECIPITATION_VARIANTS,
+    )
     station = _load(
         dates=dates,
         input_file=input_file,
@@ -538,45 +641,63 @@ def meteo_precipitation(
         flag_column=precipitation_flag_column,
     )
     _check_not_negative(station, _P, input_file)
-    station = _select(station, year_type, first_year, last_year, [_P.inline])
-    values = station.values[_P.inline]
+    selected = _select(station, year_type, first_year, last_year, [_P.inline])
+    result: Any
+    if index in ("sums", "heavy", "seasonality"):
+        # the whole record: the reference period may lie outside the analysed years
+        whole: dict[str, Any] = {
+            "accumulated": station.accumulated,
+            "year_type": year_type,
+            "first_year": first_year,
+            "last_year": last_year,
+            **reference,
+        }
+        values = station.values[_P.inline]
+        if index == "sums":
+            result = precipitation_sums(values, station.dates, **whole)
+        elif index == "heavy":
+            result = heavy_precipitation(
+                values,
+                station.dates,
+                **_given({**wet, "percentiles": percentiles}),
+                **whole,
+            )
+        else:
+            result = precipitation_seasonality(values, station.dates, **whole)
+        notices = _accumulated_notices(_in_periods(station, year_type, result))
+        if index == "sums":
+            notices += _normal_notices(
+                result.period.normal_mm,
+                result.period.normal_years,
+                result.reference_first_year,
+                result.reference_last_year,
+            )
+        notices += _period_notices(result) + _reference_period_notices(result)
+        return OperationOutput(result, notices)
+    values = selected.values[_P.inline]
     common: dict[str, Any] = {
-        "accumulated": station.accumulated,
+        "accumulated": selected.accumulated,
         "year_type": year_type,
     }
-    notices = _accumulated_notices(station)
-    result: Any
-    if index == "sums":
-        result = precipitation_sums(values, station.dates, **common)
-        notices += _normal_notices(
-            result.period.normal_mm,
-            result.period.normal_years,
-            result.first_year,
-            result.last_year,
-        )
-    elif index == "maxima":
+    if index == "maxima":
         result = precipitation_maxima(
-            values, station.dates, durations_days=durations_days, **common
+            values,
+            selected.dates,
+            **_given({"durations_days": durations_days}),
+            **common,
         )
     elif index == "days":
         result = precipitation_days(
-            values, station.dates, thresholds_mm=thresholds_mm, **common
-        )
-    elif index == "intensity":
-        result = precipitation_intensity(
-            values, station.dates, wet_day_mm=wet_day_mm, **common
-        )
-    elif index == "heavy":
-        result = heavy_precipitation(
             values,
-            station.dates,
-            wet_day_mm=wet_day_mm,
-            percentiles=percentiles,
+            selected.dates,
+            **_given({"thresholds_mm": thresholds_mm}),
             **common,
         )
     else:
-        result = precipitation_seasonality(values, station.dates, **common)
-    notices += _period_notices(result)
+        result = precipitation_intensity(
+            values, selected.dates, **_given(wet), **common
+        )
+    notices = _accumulated_notices(selected) + _period_notices(result)
     return OperationOutput(result, notices)
 
 
@@ -584,6 +705,7 @@ def meteo_spells(
     *,
     kind: Literal["dry", "wet"] = "dry",
     threshold_mm: float = DEFAULT_SPELL_THRESHOLD_MM,
+    min_duration_days: int = 1,
     dates: Sequence[str] | None = None,
     precipitation_mm: Sequence[float] | None = None,
     input_file: str | os.PathLike[str] | None = None,
@@ -600,8 +722,9 @@ def meteo_spells(
     Runs of days with P below ``threshold_mm`` (``dry``) or at least it (``wet``),
     found by the run logic of ``stats threshold-events`` on the calendar of the
     series; per year the longest spell and the spells of at least 10, 15 and 20 days,
-    and the distribution of lengths (:func:`hydrolog.statistics.precipitation_spells`,
-    M6).
+    and the distribution of durations
+    (:func:`hydrolog.statistics.precipitation_spells`, M6). ``spells`` lists the
+    spells of at least ``min_duration_days``; the summaries take every spell.
 
     Parameters
     ----------
@@ -609,6 +732,9 @@ def meteo_spells(
         Dry spells (default) or wet spells.
     threshold_mm : float, optional
         The threshold [mm], positive, default 1.
+    min_duration_days : int, optional
+        The shortest spell listed in ``spells`` [days], at least 1, default 1 (every
+        spell).
     dates, precipitation_mm, input_file, date_column, precipitation_column, \
 precipitation_flag_column
         The daily series, as for :func:`meteo_precipitation`.
@@ -645,6 +771,16 @@ precipitation_flag_column
                 "value": str(threshold_mm),
             },
         )
+    if min_duration_days < 1:
+        raise InvalidParameterError(
+            f"Option 'min_duration_days': must be at least 1, got {min_duration_days}",
+            details={
+                "option": "min_duration_days",
+                "reason": "minimum",
+                "minimum": 1,
+                "value": str(min_duration_days),
+            },
+        )
     station = _load(
         dates=dates,
         input_file=input_file,
@@ -659,6 +795,7 @@ precipitation_flag_column
         station.dates,
         kind=kind,
         threshold_mm=threshold_mm,
+        min_duration_days=min_duration_days,
         accumulated=station.accumulated,
         year_type=year_type,
     )
@@ -679,14 +816,16 @@ def meteo_spi(
     year_type: Literal["calendar", "hydrological"] = "calendar",
     first_year: int | None = None,
     last_year: int | None = None,
+    reference_first_year: int | None = None,
+    reference_last_year: int | None = None,
     attribution: list[str] | None = None,
 ) -> OperationOutput:
     """SPI and the relative precipitation of months and years (``meteo spi``).
 
     The SPI of each month for each scale, from a gamma distribution with the
-    probability of zero fitted to the sums of each calendar month in the period
-    (McKee et al., 1993; WMO-No. 1090), and the precipitation of each month and year
-    in % of its normal with its class (Kaczorowska, 1962, for years)
+    probability of zero fitted to the sums of each calendar month in the reference
+    period (McKee et al., 1993; WMO-No. 1090), and the precipitation of each month and
+    year in % of its normal with its class (Kaczorowska, 1962, for years)
     (:func:`hydrolog.statistics.standardized_precipitation_index`, M8).
 
     Parameters
@@ -697,9 +836,12 @@ def meteo_spi(
 precipitation_flag_column
         The daily series, as for :func:`meteo_precipitation`.
     year_type : {"calendar", "hydrological"}, optional
-        The kind of year of the period and of the annual classes.
+        The kind of year of the periods and of the annual classes.
     first_year, last_year : int, optional
         First and last year of the period, by default those of the record.
+    reference_first_year, reference_last_year : int, optional
+        First and last year of the reference period of the fits and the normals;
+        each by default that of the analysed period as resolved.
     attribution : list of str, optional
         As for :func:`meteo_precipitation`.
 
@@ -708,16 +850,18 @@ precipitation_flag_column
     OperationOutput
         ``result`` is a :class:`~hydrolog.statistics.StandardizedPrecipitation`; the
         notices report months without a fit (``spi_not_fitted``), a normal that
-        cannot be computed and a period shorter than 30 years.
+        cannot be computed and a period, or another reference period, shorter than
+        30 years.
 
     Raises
     ------
     InvalidParameterError
-        If an option is invalid or the series options are inconsistent.
+        If an option is invalid, the series options are inconsistent or a period
+        starts after its last year (``range``).
     NotFoundError, InputDataError
         If the file does not exist, cannot be read or lacks a column.
     CalculationError
-        If the series or the period has no value.
+        If the series or a period has no value.
     """
     cite(attribution)
     _year_type(year_type)
@@ -740,15 +884,21 @@ precipitation_flag_column
         flag_column=precipitation_flag_column,
     )
     _check_not_negative(station, _P, input_file)
-    station = _select(station, year_type, first_year, last_year, [_P.inline])
+    # the analysed years must have a value; the whole record goes on, as the
+    # reference period may lie outside them
+    _select(station, year_type, first_year, last_year, [_P.inline])
     result = standardized_precipitation_index(
         station.values[_P.inline],
         station.dates,
         scales_months=[int(scale) for scale in scales_months],
         accumulated=station.accumulated,
         year_type=year_type,
+        first_year=first_year,
+        last_year=last_year,
+        reference_first_year=reference_first_year,
+        reference_last_year=reference_last_year,
     )
-    notices = _accumulated_notices(station)
+    notices = _accumulated_notices(_in_periods(station, year_type, result))
     for scale in result.period.scales:
         missing = [fit.month for fit in scale.fits if fit.alpha is None]
         if missing:
@@ -760,14 +910,28 @@ precipitation_flag_column
     notices += _normal_notices(
         result.period.normal_mm,
         result.period.normal_years,
-        result.first_year,
-        result.last_year,
+        result.reference_first_year,
+        result.reference_last_year,
     )
-    notices += _period_notices(result)
+    notices += _period_notices(result) + _reference_period_notices(result)
     return OperationOutput(result, notices)
 
 
 # --- temperature ----------------------------------------------------------------------
+
+_TEMPERATURE_VARIANTS: dict[str, tuple[str, ...]] = {
+    "reference_first_year": ("means",),
+    "reference_last_year": ("means",),
+    "frost_tmin_c": ("days",),
+    "ice_tmax_c": ("days",),
+    "summer_tmax_c": ("days",),
+    "hot_tmax_c": ("days",),
+    "tropical_tmin_c": ("days",),
+    "growing_base_c": ("degree_days",),
+    "heating_base_c": ("degree_days",),
+    "heating_limit_c": ("degree_days",),
+}
+"""The options of ``meteo temperature`` that apply to some indices only."""
 
 
 def meteo_temperature(
@@ -785,23 +949,26 @@ def meteo_temperature(
     year_type: Literal["calendar", "hydrological"] = "calendar",
     first_year: int | None = None,
     last_year: int | None = None,
-    frost_tmin_c: float = 0.0,
-    ice_tmax_c: float = 0.0,
-    summer_tmax_c: float = 25.0,
-    hot_tmax_c: float = 30.0,
-    tropical_tmin_c: float = 20.0,
-    growing_base_c: float = 5.0,
-    heating_base_c: float = 18.0,
-    heating_limit_c: float = 15.0,
+    reference_first_year: int | None = None,
+    reference_last_year: int | None = None,
+    frost_tmin_c: float | None = None,
+    ice_tmax_c: float | None = None,
+    summer_tmax_c: float | None = None,
+    hot_tmax_c: float | None = None,
+    tropical_tmin_c: float | None = None,
+    growing_base_c: float | None = None,
+    heating_base_c: float | None = None,
+    heating_limit_c: float | None = None,
     attribution: list[str] | None = None,
 ) -> OperationOutput:
     """Air temperature statistics of a daily series (``meteo temperature``).
 
     One ``index`` per call (:mod:`hydrolog.statistics.meteo_temperature`, M11):
-    ``means`` (monthly and annual means of Tmean, Tmax and Tmin, the normal and the
-    anomaly of Tmean, the extremes), ``days`` (frost, ice, summer and hot days and
-    tropical nights), ``degree_days`` (growing above ``growing_base_c``, heating by
-    Eurostat's rule) and ``range`` (the mean daily range).
+    ``means`` (monthly and annual means of Tmean, Tmax and Tmin, the normal of the
+    reference period and the anomaly of Tmean, the extremes), ``days`` (frost, ice,
+    summer and hot days and tropical nights), ``degree_days`` (growing above
+    ``growing_base_c``, heating by Eurostat's rule) and ``range`` (the mean daily
+    range).
 
     Parameters
     ----------
@@ -823,10 +990,14 @@ def meteo_temperature(
         Calendar years (default) or hydrological years.
     first_year, last_year : int, optional
         First and last year of the period, by default those of the record.
+    reference_first_year, reference_last_year : int, optional
+        Only for ``means``: first and last year of the reference period of the
+        normals; each by default that of the analysed period as resolved.
     frost_tmin_c, ice_tmax_c, summer_tmax_c, hot_tmax_c, tropical_tmin_c : float
-        ``days``: thresholds [°C], default 0, 0, 25, 30, 20.
+        Only for ``days``: thresholds [°C]; default 0, 0, 25, 30, 20.
     growing_base_c, heating_base_c, heating_limit_c : float
-        ``degree_days``: bases and the heating limit [°C], default 5, 18, 15.
+        Only for ``degree_days``: bases and the heating limit [°C]; default 5, 18,
+        15.
     attribution : list of str, optional
         As for :func:`meteo_precipitation`.
 
@@ -834,22 +1005,40 @@ def meteo_temperature(
     -------
     OperationOutput
         ``result`` is the index's result of :mod:`hydrolog.statistics`; the notices
-        report a normal that cannot be computed (``means``) and a period shorter than
-        30 years.
+        report a normal that cannot be computed (``means``) and a period, or another
+        reference period, shorter than 30 years.
 
     Raises
     ------
     InvalidParameterError
-        If an option is invalid, the series options are inconsistent or the index
-        lacks its series.
+        If an option is invalid, given with an index it does not apply to
+        (``not_applicable``), the series options are inconsistent, the index lacks
+        its series or a period starts after its last year (``range``).
     NotFoundError, InputDataError
         If the file does not exist, cannot be read or lacks a column.
     CalculationError
-        If the series or the period has no value.
+        If the series or a period has no value.
     """
     cite(attribution)
     check_choice("index", index, TEMPERATURE_INDICES)
     _year_type(year_type)
+    reference = {
+        "reference_first_year": reference_first_year,
+        "reference_last_year": reference_last_year,
+    }
+    thresholds = {
+        "frost_tmin_c": frost_tmin_c,
+        "ice_tmax_c": ice_tmax_c,
+        "summer_tmax_c": summer_tmax_c,
+        "hot_tmax_c": hot_tmax_c,
+        "tropical_tmin_c": tropical_tmin_c,
+    }
+    bases = {
+        "growing_base_c": growing_base_c,
+        "heating_base_c": heating_base_c,
+        "heating_limit_c": heating_limit_c,
+    }
+    _only_for(index, {**reference, **thresholds, **bases}, _TEMPERATURE_VARIANTS)
     needs = {
         "means": ((_TMEAN, True), (_TMAX, False), (_TMIN, False)),
         "days": ((_TMAX, False), (_TMIN, False)),
@@ -873,54 +1062,52 @@ def meteo_temperature(
             "Index 'days' needs the maximum or the minimum temperature",
             details={"option": option, "reason": "required"},
         )
-    station = _select(station, year_type, first_year, last_year, list(station.values))
-    series = station.values
+    selected = _select(station, year_type, first_year, last_year, list(station.values))
+    series = selected.values
     result: Any
-    notices: list[Notice] = []
     if index == "means":
+        # the whole record: the reference period may lie outside the analysed years
         result = temperature_means(
             station.dates,
-            tmean_c=series[_TMEAN.inline],
-            tmax_c=series.get(_TMAX.inline),
-            tmin_c=series.get(_TMIN.inline),
+            tmean_c=station.values[_TMEAN.inline],
+            tmax_c=station.values.get(_TMAX.inline),
+            tmin_c=station.values.get(_TMIN.inline),
             year_type=year_type,
+            first_year=first_year,
+            last_year=last_year,
+            **reference,
         )
-        notices += _normal_notices(
+        notices = _normal_notices(
             result.period.normal_c,
             result.period.normal_years,
-            result.first_year,
-            result.last_year,
+            result.reference_first_year,
+            result.reference_last_year,
         )
-    elif index == "days":
+        notices += _period_notices(result) + _reference_period_notices(result)
+        return OperationOutput(result, notices)
+    if index == "days":
         result = temperature_days(
-            station.dates,
+            selected.dates,
             tmax_c=series.get(_TMAX.inline),
             tmin_c=series.get(_TMIN.inline),
-            frost_tmin_c=frost_tmin_c,
-            ice_tmax_c=ice_tmax_c,
-            summer_tmax_c=summer_tmax_c,
-            hot_tmax_c=hot_tmax_c,
-            tropical_tmin_c=tropical_tmin_c,
             year_type=year_type,
+            **_given(thresholds),
         )
     elif index == "degree_days":
         result = degree_days(
-            station.dates,
+            selected.dates,
             tmean_c=series[_TMEAN.inline],
-            growing_base_c=growing_base_c,
-            heating_base_c=heating_base_c,
-            heating_limit_c=heating_limit_c,
             year_type=year_type,
+            **_given(bases),
         )
     else:
         result = temperature_range(
-            station.dates,
+            selected.dates,
             tmax_c=series[_TMAX.inline],
             tmin_c=series[_TMIN.inline],
             year_type=year_type,
         )
-    notices += _period_notices(result)
-    return OperationOutput(result, notices)
+    return OperationOutput(result, _period_notices(result))
 
 
 # --- snow and the hydrothermal coefficient --------------------------------------------

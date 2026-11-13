@@ -120,8 +120,8 @@ class SnowPeriod(JsonResultMixin):
     ----------
     n_years : int
         Complete winters.
-    skipped_years : list of int
-        Winters with a value that are not complete.
+    incomplete_years : list of int
+        Winters with a value that are not complete, left out of these statistics.
     mean_cover_days : float or None
         Mean days with snow cover.
     mean_max_depth_cm : float or None
@@ -145,7 +145,7 @@ class SnowPeriod(JsonResultMixin):
     """
 
     n_years: int
-    skipped_years: list[int]
+    incomplete_years: list[int]
     mean_cover_days: float | None
     mean_max_depth_cm: float | None
     max_depth_cm: float | None
@@ -297,7 +297,7 @@ def snow_cover(
         years=rows,
         period=SnowPeriod(
             n_years=len(counted),
-            skipped_years=[row.year for row in rows if not row.complete],
+            incomplete_years=[row.year for row in rows if not row.complete],
             mean_cover_days=mean([row.cover_days for row in counted]),
             mean_max_depth_cm=mean([row.max_depth_cm for row in counted]),
             max_depth_cm=record.max_depth_cm if record else None,

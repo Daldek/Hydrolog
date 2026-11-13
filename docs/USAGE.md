@@ -915,7 +915,7 @@ hydrolog stats baseflow --input-file tests/fixtures/station_daily.csv --value-co
 ```
 
 ```json output
-{"result": {"schema": "hydrolog-stats-baseflow/1", "days": 1811, "spans": 3, "series_year": 2023}}
+{"result": {"schema": "hydrolog-stats-baseflow/1", "n_values": 1811, "n_spans": 3, "series_year": 2023}}
 ```
 
 ```python
@@ -948,7 +948,10 @@ A station's analyses are tens of calls; `commands batch` runs them in one proces
 once). Each line of `--input-file` is a call, `{"command": "<group> <verb>", "options": {...}}`;
 line i of `--output` is what `--json` prints for call i alone: its `hydrolog-result/1` envelope,
 or its `hydrolog-error/1` document. A failed call does not stop the others; relative paths are
-taken from the directory of the input file. The batch's own envelope counts the calls
+taken from the directory of the input file. A batch runs offline and writes only its output: a
+call of `precip pmaxtp` (the network), a call that gives an output option (`output`,
+`output_dir`, `schematic`) and a call of `commands batch` or `gui serve` get a `validation_error`
+line (`not_in_batch`). The batch's own envelope counts the calls
 (`n_calls`, `n_ok`, `n_failed`, `failed`) and lists each line in `items`; with a failed call its
 `status` is `partial` (exit 10), with every call failed `failed` (exit 11). The calls of
 `tests/fixtures/station_batch.jsonl`, one per line:
@@ -972,6 +975,14 @@ their names (`--precipitation-column` and the like change them). `meteo precipit
 hydrological`, and `--first-year`/`--last-year` choose the period (the whole record by default).
 Accumulated totals (`P_flag` `accumulated`) count in the monthly sums and are missing days for
 the daily statistics; months and years follow the missing-data rules of WMO-No. 1203.
+The normals of `meteo precipitation` (`--index sums`, `heavy`, `seasonality`), `meteo spi` and
+`meteo temperature --index means` are those of the period unless `--reference-first-year` and
+`--reference-last-year` choose another reference, such as the standard normal 1991-2020: the
+years of the period keep their own values, and only the baselines come from the reference (the
+normals with the percentages of normal and the anomalies, the percentiles of `heavy`, the gamma
+fits of the SPI). `meteo spells` lists every spell; `--min-duration-days` lists only the longer
+ones (the yearly and period summaries still count every spell), which keeps the result of a long
+record small.
 The export's attribution columns (`attribution_source`, `attribution_processed`) are not data:
 Hydrolog carries their lines into the result's `attribution` and `terms_notice` (ADR-0028); show
 them when you publish results. Values given inline take theirs with `--attribution '[...]'`.
@@ -979,7 +990,8 @@ them when you publish results. Values given inline take theirs with `--attributi
 ```bash
 hydrolog meteo precipitation --index sums --input-file tests/fixtures/meteo_daily.csv --first-year 2019 --last-year 2021 --json
 hydrolog meteo precipitation --index maxima --input-file tests/fixtures/meteo_daily.csv --durations-days 2,3,5,10
-hydrolog meteo spells --input-file tests/fixtures/meteo_daily.csv --kind dry --threshold-mm 1
+hydrolog meteo precipitation --index sums --input-file tests/fixtures/meteo_daily.csv --first-year 2022 --last-year 2023 --reference-first-year 2019 --reference-last-year 2021
+hydrolog meteo spells --input-file tests/fixtures/meteo_daily.csv --kind dry --threshold-mm 1 --min-duration-days 10
 hydrolog meteo spi --input-file tests/fixtures/meteo_daily.csv --scales-months 1,3,6,12
 hydrolog meteo temperature --index days --input-file tests/fixtures/meteo_daily.csv
 hydrolog meteo snow --input-file tests/fixtures/meteo_daily.csv

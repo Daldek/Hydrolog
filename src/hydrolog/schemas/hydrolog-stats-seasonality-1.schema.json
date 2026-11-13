@@ -12,7 +12,7 @@
     "first_year",
     "last_year",
     "period_years",
-    "extremes",
+    "years",
     "mean_day",
     "mean_date",
     "concentration",
@@ -41,7 +41,7 @@
     "period_years": {
       "type": "integer"
     },
-    "extremes": {
+    "years": {
       "type": "array"
     },
     "mean_day": {

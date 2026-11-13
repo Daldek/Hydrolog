@@ -12,8 +12,8 @@
     "last_year",
     "period_years",
     "bfi",
-    "days",
-    "spans",
+    "n_values",
+    "n_spans",
     "years",
     "recession",
     "series_year",
@@ -42,10 +42,10 @@
     "bfi": {
       "type": "number"
     },
-    "days": {
+    "n_values": {
       "type": "integer"
     },
-    "spans": {
+    "n_spans": {
       "type": "integer"
     },
     "years": {

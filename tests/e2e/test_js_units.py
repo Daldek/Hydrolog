@@ -239,7 +239,9 @@ def test_fields_and_panes_of_real_commands(page: Any) -> None:
         const lag = m.fieldModel(await doc('route lag'));
         const net = m.fieldModel(await doc('route network'));
         const musk = m.fieldModel(await doc('route muskingum'));
-        const flood = m.fieldModel(await doc('stats flood-frequency'));
+        const floodDoc = await doc('stats flood-frequency');
+        const flood = m.fieldModel(floodDoc);
+        const label = (model, name) => model.fields.find((x) => x.name === name).label;
         return {
           nash: [pick(nash, 'area_km2', 'lutz_urban_pct', 'urban_fraction',
                       'timestep_min'), panes(nash), one(nash)],
@@ -250,6 +252,11 @@ def test_fields_and_panes_of_real_commands(page: Any) -> None:
           musk: pick(musk, 'subreaches'),
           flood: [pick(flood, 'distribution', 'dates', 'return_periods',
                        'date_column'), one(flood)],
+          // A command's own label before the shared one, the caller's before both
+          parameter: [label(flood, 'parameter'),
+            label(m.fieldModel(floodDoc, {labels: {parameter: 'Q albo H'}}),
+                  'parameter'),
+            label(m.fieldModel(await doc('stats characteristic')), 'parameter')],
         };""",
     )
     fields, panes, one_of = got["nash"]
@@ -363,8 +370,12 @@ def test_fields_and_panes_of_real_commands(page: Any) -> None:
     assert one_of["groups"] == [
         ["Wartości", ["values"]],
         ["Plik", ["input_file", "value_column", "date_column"]],
-        # IMGW-PIB's half-years (plan 2026-11-13, D9); no Polish label yet
-        ["half_year_file", ["half_year_file"]],
+        ["Plik półroczny IMGW-PIB", ["half_year_file"]],
+    ]
+    assert got["parameter"] == [
+        "Wielkość pliku półrocznego",
+        "Q albo H",
+        "Wielkość szeregu",
     ]
 
 
@@ -887,6 +898,14 @@ def test_result_view_of_real_runs(page: Any) -> None:
         const kirpich = await run('tc kirpich', {length_km: 8.2, slope_m_per_m: 0.023});
         const a = rv.analyzeResult(nash.body);
         const k = rv.analyzeResult(kirpich.body);
+        const days = Array.from({length: 400},
+          (_, i) => new Date(Date.UTC(2000, 10, 1 + i)).toISOString().slice(0, 10));
+        const flows = days.map((_, i) => 1 + (i % 7));
+        const thresholdLabel = async (command, threshold) => {
+          const answer = await run(command, {values: flows, dates: days, threshold});
+          return rv.analyzeResult(answer.body).scalars
+            .find((s) => s.key === 'threshold').label;
+        };
         return {
           envelope: nash.body,
           analysis: {schema: a.schema, status: a.status,
@@ -900,6 +919,9 @@ def test_result_view_of_real_runs(page: Any) -> None:
           scalarCsv: rv.resultCsv(k),
           cells: ['a,b', 'say "hi"', 'x\\ny', null, 1.5].map(rv.csvCell),
           empty: rv.analyzeResult(null),
+          // A field named as an option takes the command's own label of it first
+          thresholds: [await thresholdLabel('stats threshold-events', 5),
+            await thresholdLabel('stats low-flow-sequences', 2)],
         };""",
     )
     envelope = got["envelope"]
@@ -948,6 +970,7 @@ def test_result_view_of_real_runs(page: Any) -> None:
     assert got["cells"] == ['"a,b"', '"say ""hi"""', '"x\ny"', "", "1.5"]
     empty = got["empty"]
     assert (empty["schema"], empty["series"], empty["scalars"]) == (None, [], [])
+    assert got["thresholds"] == ["Poziom progowy", "Próg niżówkowy"]
 
 
 # --- Sieć's canvas: editor/geometry.js, editor/edits.js -----------------------

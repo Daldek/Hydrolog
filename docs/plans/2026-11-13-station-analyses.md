@@ -139,21 +139,21 @@ Method:
 | Option | Type, default | Meaning |
 |---|---|---|
 | series | the dated options of `stats daily` | a daily series |
-| `level` | number, required | the level, in the unit of the series |
-| `direction` | choice `above`, `below`; `above` | a day is beyond the level when its value is at least `level` (`above`) or below it (`below`) |
+| `threshold` | number, required | the threshold, in the unit of the series |
+| `direction` | choice `above`, `below`; `above` | a day is beyond the threshold when its value is at least `threshold` (`above`) or below it (`below`) |
 | `min_duration_days` | integer ≥ 1; 1 | shortest event kept |
 | `max_gap_days` | integer ≥ 0; 0 | runs parted by fewer days than this (days without a value or not beyond) merge; 0 merges none |
 | `first_year`, `last_year` | integer | D1 |
 
-Result `hydrolog-stats-threshold-events/1`: `level`, `direction`, `first_year`, `last_year`, `n_days`
+Result `hydrolog-stats-threshold-events/1`: `threshold`, `direction`, `first_year`, `last_year`, `n_days`
 (calendar days of the period), `n_missing_days`, `days_beyond`, `n_events`, `max_duration_days`;
 `events`, each `{start_date, end_date, duration_days, days_beyond, missing_days, peak, peak_date,
-hydrological_year, open_start, open_end}` (the peak is the maximum above a level, the minimum below one,
+hydrological_year, open_start, open_end}` (the peak is the maximum above the threshold, the minimum below it,
 dated by its first day; `open_start` and `open_end` say that the day before or after has no value, so the
 event may be longer); `years`, each `{year, days_beyond, n_events, days_with_data, days}` for the years of
 the period with a value, an event counted in the year it starts. Method: the threshold level method
 (Tallaksen and van Lanen, 2004) on the calendar of the series; a day without a value is never beyond the
-level and, with `max_gap_days` 0, ends an event. With the defaults it gives the mockup's
+threshold and, with `max_gap_days` 0, ends an event. With the defaults it gives the mockup's
 `days_beyond_per_year` and `events_beyond`.
 
 ### D5. `hydrometrics rating-curve`: dated pairs, a range of years, successive periods (Nogat H4)
@@ -182,9 +182,9 @@ level and, with `max_gap_days` 0, ends an event. With the defaults it gives the 
 
 | Option | Type, default | Meaning |
 |---|---|---|
-| `threshold` | number > 0, no longer required | the threshold of `threshold_method` `value` |
+| `threshold` | number > 0, no longer required | the threshold of `threshold_method` `value`; with a threshold from the series `not_applicable` (ADR-0033) |
 | `threshold_method` | choice `value`, `mean_annual_minimum`, `exceedance`; `value` | given; SNQ (SNW): the mean of the annual minima of the period, the `snx` of `stats characteristic`; the value of the duration curve of D7 at `exceedance_percent` (Q70, Q90) |
-| `exceedance_percent` | number in (0, 100); 70 | for `exceedance` |
+| `exceedance_percent` | number in (0, 100); no catalog default, 70 for `exceedance` (ADR-0033) | only for `exceedance`; with another method `not_applicable` |
 | `parameter` | choice `Q`, `H`; `Q` | with Q the deficits are also volumes in m³; with H (low-stage periods) they are not |
 | `first_year`, `last_year` | integer | D1 |
 | `min_duration_days`, `max_gap_days` | 5, 4 | unchanged: the author's 5 days and gaps under 4 days |
@@ -207,16 +207,16 @@ level and, with `max_gap_days` 0, ends an event. With the defaults it gives the 
 | series | the dated options | daily H or Q |
 | `first_year`, `last_year` | integer | D1 |
 | `month` | integer 1–12 | only the days of this calendar month (a curve per month) |
-| `percents` | number list in (0, 100); 1, 5, 10, 30, 50, 70, 90, 95, 99 | exceedance percentages of the table |
-| `class_method` | choice `width`, `log`; `width` | classes of equal width, or logarithmic classes |
-| `class_width` | number > 0; 10 | in the unit of the series (10 cm for H) |
-| `class_count` | integer ≥ 2; 40 | number of logarithmic classes between the smallest positive and the largest value (for Q) |
+| `exceedance_percents` | number list in (0, 100); 1, 5, 10, 30, 50, 70, 90, 95, 99 | exceedance percentages of the table |
+| `bin_method` | choice `width`, `log`; `width` | classes of equal width, or logarithmic classes |
+| `bin_width` | number > 0; no catalog default, 10 for `width` (ADR-0033) | in the unit of the series (10 cm for H); only for `width` |
+| `bin_count` | integer ≥ 2; no catalog default, 40 for `log` (ADR-0033) | number of logarithmic classes between the smallest positive and the largest value (for Q); only for `log` |
 
 Result `hydrolog-stats-duration-curve/1`: `n_values`, `first_year`, `last_year`, `month`, `min`, `max`,
-`mean`, `median`; `percents` and `values` (the table); `curve_percents` and `curve_values` (105 points
-from 0.1 to 99.9 %); `class_method`, `class_width`, `class_count`; `classes` from the highest down, each
-`{lower, upper, days, percent, days_with_higher, days_with_lower, months}` (`months`: the days of the class
-in each hydrological month, XI to X); `modal_class` `{lower, upper, days, percent}`.
+`mean`, `median`; `exceedance_percents` and `values` (the table); `curve_exceedance_percents` and `curve_values` (105 points
+from 0.1 to 99.9 %); `bin_method`, `bin_width`, `bin_count`; `classes` from the highest down, each
+`{lower, upper, days, share_percent, days_with_higher, days_with_lower, months}` (`months`: the days of the class
+in each hydrological month, XI to X); `modal_class` `{lower, upper, days, share_percent}`.
 
 Method: the value equalled or exceeded on p % of the days, from the Weibull plotting position
 p = m / (n + 1) of the values ranked from the highest, interpolated linearly between ranks and held at
@@ -275,10 +275,10 @@ over the days with a value; the author's daily volumes (`95ec3ea`) and the mocku
 | Command | Options (besides the dated series, `first_year`, `last_year`) | Result | Method |
 |---|---|---|---|
 | `stats regime` (new; H12) | none | `monthly_mean` (12, XI–X), `annual_mean`, `parde` (12), `regime_type` (`code`, `criteria`), `spring_share`, `seasonality_index` | Pardé's coefficients; Dynowska's (1997) types as Wrzesiński (2018) states their criteria (the mockup's `REGIME_RULE`, checked against both sources in S3); the March–April share of the annual volume; Walsh and Lawler (1981) |
-| `stats seasonality` (new; H13) | `half_year_file`, `parameter`, `statistic` (`max`, `min`; `max`) | the dated annual extremes, `mean_day`, `mean_date`, `concentration`, `winter_share`, `summer_share` | circular statistics of the dates (Bayliss and Jones, 1993; Burn, 1997) |
+| `stats seasonality` (new; H13) | `half_year_file`, `parameter`, `statistic` (`max`, `min`; `max`) | `years` (the dated annual extremes), `mean_day`, `mean_date`, `concentration`, `winter_share`, `summer_share` | circular statistics of the dates (Bayliss and Jones, 1993; Burn, 1997) |
 | `stats harmonics` (new; H14, M12) | `harmonics` (1–4; 2) | `period` and `years`, each `{mean, harmonics: [{amplitude, phase_day, explained_variance}], r_squared, n_values}` | least squares on the day of the year, P = 365.25 d |
 | `stats mann-kendall` (extended; H16, M13) | `years`, `year_column` | `sen_slope`, `sen_intercept`, `sen_slope_lower`, `sen_slope_upper` | Sen (1968), the intercept of Conover (1980), the 95 % interval of Gilbert (1987) |
-| `stats baseflow` (new; H18) | `alpha` (0.925), `passes` (3), `series_year` | `bfi`, `years` (`{year, bfi, days, baseflow_mean, discharge_mean}`), `recession` (`k`, `half_life_days`, `segments`), the daily baseflow of `series_year` | Lyne and Hollick's filter on gapless spans of at least 60 days, reflected 30 days at each end (Nathan and McMahon, 1990; Ladson et al., 2013); k the median Q(t+1)/Q(t) of recessions of at least 5 days (Tallaksen, 1995) |
+| `stats baseflow` (new; H18) | `alpha` (0.925), `passes` (3), `series_year` | `bfi`, `n_values`, `n_spans`, `years` (`{year, bfi, n_values, baseflow_mean, discharge_mean}`), `recession` (`k`, `half_life_days`, `n_segments`), the daily baseflow of `series_year` | Lyne and Hollick's filter on gapless spans of at least 60 days, reflected 30 days at each end (Nathan and McMahon, 1990; Ladson et al., 2013); k the median Q(t+1)/Q(t) of recessions of at least 5 days (Tallaksen, 1995) |
 
 The water temperature days of H15 (≥ 15, 20, 25 °C, < 1 °C) are `stats threshold-events` on the series of
 T, one call per level; the yearly maximum with its date is the first degree of D3 with `parameter` T.
@@ -288,12 +288,14 @@ T, one call per level; the yearly maximum with its date is the first degree of D
 The series of a meteorological station come as Obserwator's daily export (`P`, `Tmax`, `Tmin`, `Tmean`,
 `snow_cover`, `fresh_snow`); each command names its columns (`precipitation_column`,
 `tmax_column`, …) or takes inline values with dates. Years are calendar years by default and hydrological
-with `year_type` `hydrological`; `first_year`, `last_year` as D1.
+with `year_type` `hydrological`; `first_year`, `last_year` as D1. `meteo precipitation` (`sums`, `heavy`,
+`seasonality`), `meteo spi` and `meteo temperature` (`means`) also take the reference period of their
+normals, `reference_first_year` and `reference_last_year`, by default the period itself (ADR-0033).
 
 | Command | `index` and options | Result | Method |
 |---|---|---|---|
 | `meteo precipitation` | `index`: `sums` (M1: year, half-year, season, month; the normal of the period and the anomaly in % of it), `maxima` (M2: the yearly and monthly largest daily sum and the largest sums of `durations_days`, default 2, 3, 5, 10, with dates), `days` (M5: days with P ≥ `thresholds_mm`, default 0.1, 1, 10, 20, per month and year), `intensity` (M4: the mean yearly sum, the mean sum of a wet day ≥ 1 mm), `heavy` (M7: the sums on days above the 95th and 99th percentiles of the wet days of the period), `seasonality` (M9: the monthly regime, the precipitation concentration index, the seasonality index) | `index`, the period, `years` (per year, by index) and `period` (the normal and the summary) | ETCCDI (Zhang et al., 2011) for `days`, `intensity`, `heavy`; Oliver (1980); Walsh and Lawler (1981) |
-| `meteo spells` | `kind` (`dry`, `wet`; `dry`), `threshold_mm` (1.0) | the spells (`start_date`, `end_date`, `length_days`), per year the longest and the counts of at least 10, 15 and 20 days, the distribution of lengths | the run logic of D4 on P below (dry) or at least (wet) the threshold (M6) |
+| `meteo spells` | `kind` (`dry`, `wet`; `dry`), `threshold_mm` (1.0), `min_duration_days` (1; ADR-0033) | the spells of at least `min_duration_days` (`start_date`, `end_date`, `duration_days`), per year the longest and the counts of at least 10, 15 and 20 days, the distribution of durations | the run logic of D4 on P below (dry) or at least (wet) the threshold (M6) |
 | `meteo spi` | `scales_months` (1, 3, 6, 12) | per month the SPI of each scale and Kaczorowska's class of the month and the year | gamma fit with the zero-precipitation mixture per calendar month (McKee et al., 1993; WMO, 2012, WMO-No. 1090); Kaczorowska (1962) (M8) |
 | `meteo temperature` | `index`: `means` (monthly and yearly means and extremes, the normal and the anomaly), `days` (frost Tmin < 0, ice Tmax < 0, summer Tmax > 25, hot Tmax > 30 °C, tropical nights Tmin > 20 °C), `degree_days` (growing above 5 °C; heating 18 − Tmean on days with Tmean ≤ 15 °C, Eurostat's rule), `range` (the mean daily range) | per year and month, and `period` | ETCCDI (M11) |
 | `meteo snow` | none | per winter (hydrological year): days with snow cover, the largest depth with its date, the first and the last day, the sum of fresh snow | M10 |
@@ -418,7 +420,7 @@ for the author.
   winter of `meteo snow` is the snow season 1 August to 31 July named after the hydrological year it
   ends in (D12's „per winter (hydrological year)” read so that a cold season stays whole; a literal
   XI–X year would move 6 of Kraków's 64 winters), and the partial winters at the ends of a record are
-  listed in `skipped_years`; the classes of relative precipitation of months use the monthly limits
+  listed in `incomplete_years`; the classes of relative precipitation of months use the monthly limits
   (Tomaszewska, 1994, in Gąsiorek and Musiał, 2011, Table 1), those of years Kaczorowska's (1962),
   who defined no monthly classes; Sielianinov's classes are those of the unrounded k; `meteo spells`
   takes one `kind` per call with `threshold_mm` 1 mm by default; months and years with missing days
@@ -463,8 +465,74 @@ for the author.
   1-day maximum, R10mm, CDD, mean temperature, FD, SU), agrees exactly in 1991–2020 and over the
   whole record except the precipitation sums of both stations: the unrounded sums break ties that the
   mockup's sums, rounded to 0.1 mm, keep (S 46 against 47 at Kraków, −345 against −340 at Praha; Z
-  and p by about 2 %, Sen's slope equal); rounded as the mockup's they agree (open question in
-  `docs/PROGRESS.md`).
+  and p by about 2 %, Sen's slope equal); rounded as the mockup's they agree (settled by the review,
+  below).
+- Review, `feature/station-review` (ADR-0033, which amends ADR-0029 to ADR-0032; the author's request
+  of 2026-11-13): the commands of S1 to S4 checked against what `develop` `48358a5` deploys (CLI, MCP,
+  the GUI's „Wszystkie polecenia”, `hydrolog-result/1`): both catalogs compared option by option
+  (name, type, unit, default, `one_of`), every catalog example run, and the result documents, notices,
+  error reasons, the batch's envelope and the MCP annotations read. Fixed as one name per concept:
+  `threshold` of `stats threshold-events` (was `level`); `exceedance_percents`, `bin_method`,
+  `bin_width`, `bin_count`, `curve_exceedance_percents` and `share_percent` of `stats duration-curve`;
+  `years` of `stats seasonality`; `n_values`, `n_spans` and `recession.n_segments` of `stats baseflow`;
+  `duration_days`, `max_duration_days`, `max_start_date`, `max_end_date`, `n_years` and
+  `mean_max_duration_days` of `meteo spells`; `incomplete_years` of `meteo snow`; the SPI's months as
+  `year` and `month`. Options of one variant have no catalog default and are `not_applicable` with
+  another `index`, `bin_method` or `threshold_method`, as in `develop`; the batch runs offline and writes
+  only its output (`not_in_batch` for `precip pmaxtp` and for an output option), so its `effects`, its
+  MCP annotations and its `--check` plan hold. Three methodological decisions: (1) the normals, the
+  wet-day percentiles of R95p and R99p and the SPI's gamma fits come from a reference period,
+  `reference_first_year` to `reference_last_year`, by default the analysed one, while the analysed years
+  keep their own values (WMO-No. 1203, 2017, chapters 2, 3 and 5, section 4.4.2; WMO-No. 1090, 2012;
+  McKee et al., 1993; the ETCCDI's base period, Zhang et al., 2011, and Klein Tank, Zwiers and Zhang,
+  2009; the Copernicus EDO's baseline 1991–2020); (2) Mann–Kendall's Var(S) is corrected for ties
+  (Kendall, 1975; Hirsch, Slack and Smith, 1982; Gilbert, 1987, Eq. 16.3) and every sum of daily
+  precipitation in `meteo` is rounded to 1e-6 mm, with no tie tolerance; (3) `min_duration_days` of
+  `meteo spells` shortens the list of spells and never the summaries (the ETCCDI's CDD and CWD have no
+  minimum duration). The calendar-year precipitation sums of M13 (`meteo precipitation --index sums`,
+  the years with a sum), as S4 gave them, as the mockup rounds them and now:
+
+  | Station, years | n | Sums, variance | S | Var(S) | Z | p |
+  |---|---|---|---|---|---|---|
+  | Kraków, 1961–2025 | 65 | floats, uncorrected (S4) | +46 | 31,200.00 | +0.2548 | 0.7989 |
+  | | | 0.1 mm, uncorrected (the mockup) | +47 | 31,200.00 | +0.260424 | 0.794537 |
+  | | | exact, corrected (now) | +47 | 31,199.00 | +0.260428 | 0.794534 |
+  | Kraków, 1991–2020 | 30 | all three | +57 | 3,141.67 | +0.9991 | 0.3177 |
+  | Praha, 1805–2025 | 220 | floats, uncorrected (S4) | −345 | 1,191,116.67 | −0.3152 | 0.7526 |
+  | | | 0.1 mm, uncorrected (the mockup) | −340 | 1,191,116.67 | −0.310615 | 0.756093 |
+  | | | exact, corrected (now) | −340 | 1,191,106.00 | −0.310616 | 0.756092 |
+  | Praha, 1991–2020 | 30 | all three | −31 | 3,141.67 | −0.5352 | 0.5925 |
+
+  The floats differed from their 0.1-mm values by up to 2.3e-13 mm and broke Kraków's one tie (622.0
+  in 1975 and 1990) and 6 of Praha's 8 groups (430.4, 438.1, 445.5 of three years, 485.9, 490.6 and
+  498.4; 395.2 and 572.0 were equal as floats too); the correction itself lowers Var(S) by 1 and
+  10.67 and moves Z in the sixth digit, so Hydrolog now gives the mockup's S, Z and p, with the exact
+  Var(S). Gilbert's (1987) Exercise 16.1 (S 12, Var(S) 43.3, Z 1.67) and Example 16.2's tie groups
+  (Var(S) 1227.33, Z 3.1) are reproduced, and Exercise 16.3's interval stays on the uncorrected 44.3,
+  as Gilbert computes it. The size of
+  `meteo spells` of Obserwator's exports (characters of the compact JSON envelope, as MCP sends it; the
+  single-line `json.dumps` is about 10 % more) by `min_duration_days`, the spells listed in brackets:
+
+  | Station (years), kind, threshold | 1 | 5 | 10 | 15 | 20 | no list |
+  |---|---|---|---|---|---|---|
+  | Kraków (1961–2025), dry, 1 mm | 469,530 (3,859) | 162,731 (1,259) | 59,955 (388) | 28,421 (123) | 21,519 (65) | 13,771 |
+  | Kraków, dry, 0.1 mm | 491,954 (4,051) | 112,113 (832) | 32,701 (159) | 17,945 (35) | 14,970 (10) | 13,767 |
+  | Kraków, wet, 1 mm | 468,958 (3,858) | 34,364 (175) | 14,306 (5) | 13,830 (1) | 13,830 (1) | 13,698 |
+  | Kraków, wet, 0.1 mm | 491,902 (4,051) | 87,753 (626) | 25,333 (97) | 15,694 (16) | 14,385 (5) | 13,777 |
+  | Praha (1804–2025), dry, 1 mm | 1,442,556 (11,853) | 587,175 (4,604) | 256,069 (1,798) | 136,117 (790) | 83,638 (349) | 42,095 |
+  | Praha, dry, 0.1 mm | 1,748,056 (14,451) | 427,283 (3,258) | 132,757 (762) | 66,474 (205) | 48,267 (52) | 42,066 |
+  | Praha, wet, 1 mm | 1,440,453 (11,853) | 70,475 (243) | 42,157 (3) | 41,801 (0) | 41,801 (0) | 41,787 |
+  | Praha, wet, 0.1 mm | 1,747,371 (14,452) | 212,312 (1,443) | 55,492 (114) | 43,116 (10) | 42,045 (1) | 41,913 |
+
+  A spell costs about 118 characters; Kraków fits DOC-1.7's default page of 20,000 characters only
+  with a long `min_duration_days`, Praha not even without a list (open question in
+  `docs/PROGRESS.md`). The GUI: a Polish label for every option of the 58 commands of „Wszystkie
+  polecenia” (51 new shared labels and a command's own where `develop` gives the name another meaning:
+  `threshold`, `precipitation_mm`, `alpha`, `parameter`, the winters of `meteo snow`), names of the
+  `one_of` groups, the units `cm` and `°C` and the suffixes `_percent`, `_cm` and `_c`, the result view
+  with the command's own labels, a contract test that keeps every option labelled, and the guide's
+  Polecenia picture taken again (58 commands in 15 groups). `docs/COMPUTATION_PATHS.md` gains the
+  methods of S1 and S2 (section 3.14). `AGENTS.md`: 16,224 of 16,384 bytes, unchanged.
 
 ## Risks
 

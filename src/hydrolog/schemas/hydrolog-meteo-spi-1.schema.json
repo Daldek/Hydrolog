@@ -11,6 +11,9 @@
     "first_year",
     "last_year",
     "period_years",
+    "reference_first_year",
+    "reference_last_year",
+    "reference_period_years",
     "months",
     "years",
     "period"
@@ -32,6 +35,15 @@
       "type": "integer"
     },
     "period_years": {
+      "type": "integer"
+    },
+    "reference_first_year": {
+      "type": "integer"
+    },
+    "reference_last_year": {
+      "type": "integer"
+    },
+    "reference_period_years": {
       "type": "integer"
     },
     "months": {

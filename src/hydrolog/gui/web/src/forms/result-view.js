@@ -9,7 +9,7 @@ import { html, useMemo } from "../html.js";
 import { common, t } from "../labels/common.js";
 import { exportLabels } from "../labels/exports.js";
 import { describeNotice, notices as noticeTexts } from "../labels/notices.js";
-import { resultFields, options as optionLabels } from "../labels/options.js";
+import { commandOptions, resultFields, options as optionLabels } from "../labels/options.js";
 import { results as texts } from "../labels/results.js";
 import { NO_UNIT, unitOfName } from "../labels/units.js";
 import { richText } from "../controls/field.js";
@@ -20,12 +20,17 @@ import { DataTable } from "../ui/table.js";
 export const JSON_FOLD = 8;
 
 /**
- * The label of a result field: the GUI's Polish name, else none.
+ * The label of a result field: the GUI's Polish name, else none. A field named as an
+ * option of the command that gave the result takes the command's own label of that
+ * option first (`stats threshold-events`: `threshold` „Poziom progowy”).
  *
  * @param {string} key the field's name
+ * @param {string|null} [command] the command of the result, e.g. "stats threshold-events"
  * @returns {string|null} the label
  */
-export function fieldLabel(key) {
+export function fieldLabel(key, command = null) {
+  const own = command && Object.hasOwn(commandOptions, command) ? commandOptions[command] : null;
+  if (own && Object.hasOwn(own, key)) return own[key];
   if (Object.hasOwn(resultFields, key)) return resultFields[key];
   if (Object.hasOwn(optionLabels, key)) return optionLabels[key];
   return null;
@@ -46,10 +51,11 @@ function isTimeKey(key) {
  *
  * @param {string} key the field's name
  * @param {unknown} value its value
+ * @param {string|null} command the command of the result
  * @returns {{key: string, label: string|null, value: unknown, unit: string|null}} the row
  */
-function row(key, value) {
-  return { key, label: fieldLabel(key), value, unit: typeof value === "number" ? unitOfName(key) : null };
+function row(key, value, command) {
+  return { key, label: fieldLabel(key, command), value, unit: typeof value === "number" ? unitOfName(key) : null };
 }
 
 /**
@@ -88,6 +94,7 @@ export function analyzeResult(envelope) {
   };
   const result = envelope && envelope.result;
   if (!result || typeof result !== "object" || Array.isArray(result)) return empty;
+  const command = envelope.command || null;
   const found = { ...empty, schema: result.schema || null };
   if (Array.isArray(result.targets)) found.targets = result.targets;
   if (Array.isArray(result.files)) found.files = result.files;
@@ -102,7 +109,7 @@ export function analyzeResult(envelope) {
   for (const [key, value] of Object.entries(result)) {
     if (key === "schema" || key === "files" || key === "targets" || value === null) continue;
     if (isScalar(value)) {
-      found.scalars.push(row(key, value));
+      found.scalars.push(row(key, value, command));
     } else if (collect(key, value, null)) {
       // a numeric array, grouped below
     } else if (Array.isArray(value) && value.length && value.every((item) => item && typeof item === "object" && !Array.isArray(item))) {
@@ -112,14 +119,14 @@ export function analyzeResult(envelope) {
           if (isScalar(cell) && !columns.includes(name)) columns.push(name);
         }
       }
-      if (columns.length) found.records.push({ key, label: fieldLabel(key), columns, rows: value });
+      if (columns.length) found.records.push({ key, label: fieldLabel(key, command), columns, rows: value });
     } else if (value && typeof value === "object" && !Array.isArray(value)) {
       const rows = [];
       for (const [name, item] of Object.entries(value)) {
-        if (isScalar(item)) rows.push(row(name, item));
+        if (isScalar(item)) rows.push(row(name, item, command));
         else collect(name, item, key);
       }
-      if (rows.length) found.objects.push({ key, label: fieldLabel(key), rows });
+      if (rows.length) found.objects.push({ key, label: fieldLabel(key, command), rows });
     }
   }
   const byLength = new Map();
@@ -133,8 +140,8 @@ export function analyzeResult(envelope) {
     if (!ys.length) continue;
     found.series.push({
       length,
-      x: axis ? { ...axis, label: fieldLabel(axis.name), unit: unitOfName(axis.name) } : null,
-      ys: ys.map((array) => ({ ...array, label: fieldLabel(array.name), unit: unitOfName(array.name) })),
+      x: axis ? { ...axis, label: fieldLabel(axis.name, command), unit: unitOfName(axis.name) } : null,
+      ys: ys.map((array) => ({ ...array, label: fieldLabel(array.name, command), unit: unitOfName(array.name) })),
     });
   }
   return found;

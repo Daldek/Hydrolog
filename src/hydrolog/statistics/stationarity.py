@@ -9,14 +9,17 @@ References
 ----------
 Mann, H.B. (1945). Nonparametric tests against trend.
     Econometrica, 13, 245–259.
-Kendall, M.G. (1975). Rank Correlation Methods.
-    Griffin, London.
+Kendall, M.G. (1975). Rank Correlation Methods, 4th ed.
+    Griffin, London (the variance of S corrected for ties).
+Hirsch, R.M., Slack, J.R., Smith, R.A. (1982). Techniques of trend analysis for
+    monthly water quality data. Water Resources Research, 18(1), 107–121.
 Sen, P.K. (1968). Estimates of the regression coefficient based on Kendall's tau.
     Journal of the American Statistical Association, 63, 1379–1389.
 Conover, W.J. (1980). Practical Nonparametric Statistics, 2nd ed. Wiley, New York
     (the intercept median(x) − slope · median(t)).
 Gilbert, R.O. (1987). Statistical Methods for Environmental Pollution Monitoring.
-    Van Nostrand Reinhold, New York, section 16.5 (the confidence interval).
+    Van Nostrand Reinhold, New York, Eq. 16.3 (the variance of S with ties) and
+    section 16.5 (the confidence interval of the slope).
 """
 
 from __future__ import annotations
@@ -66,7 +69,8 @@ class MannKendallResult(JsonResultMixin):
     s_statistic : float
         Mann-Kendall S statistic (sum of sign differences).
     var_s : float
-        Variance of S under the null hypothesis of no trend.
+        Variance of S under the null hypothesis of no trend, corrected for the
+        groups of tied values: [n(n − 1)(2n + 5) − Σ t(t − 1)(2t + 5)] / 18.
     z_score : float
         Standardised test statistic (approximately N(0,1)).
     p_value : float
@@ -110,10 +114,11 @@ def sen_slope(
 
     The slope is the median of the N' slopes (xⱼ − xᵢ) / (tⱼ − tᵢ) of the pairs with
     tᵢ < tⱼ (two values of the same time give no slope). The interval follows
-    Gilbert (1987, section 16.5): C = z₁₋α/₂ √Var(S), M₁ = (N' − C)/2 and
-    M₂ = (N' + C)/2; its limits are the M₁-th and the (M₂ + 1)-th of the ordered
-    slopes, interpolated linearly between ranks (Gilbert's Example 16.5), ``None``
-    when that rank is outside 1 … N'.
+    Gilbert (1987, section 16.5): C = z₁₋α/₂ √Var(S), with Var(S) corrected for
+    tied values (his Eq. 16.3; Eq. 16.5 with several values of one time),
+    M₁ = (N' − C)/2 and M₂ = (N' + C)/2; its limits are the M₁-th and the
+    (M₂ + 1)-th of the ordered slopes, interpolated linearly between ranks (Gilbert's
+    Example 16.5), ``None`` when that rank is outside 1 … N'.
 
     Parameters
     ----------
@@ -122,8 +127,9 @@ def sen_slope(
     times : NDArray[np.floating]
         Their times (years, or the steps of the series), in order.
     var_s : float
-        The variance of Kendall's S that the interval is built on (that of the
-        Mann-Kendall test of the values).
+        The variance of Kendall's S that the interval is built on: that of the
+        Mann-Kendall test of the values, corrected for their ties
+        (:func:`mann_kendall_test`).
     alpha : float, optional
         The interval covers 1 − alpha, by default 0.05 (95 %).
 
@@ -192,9 +198,13 @@ def mann_kendall_test(
 
     Computes the S statistic, its variance, the standardised Z score and the
     two-sided p-value.  The test is appropriate for hydro-meteorological time
-    series that may be non-normal and contain ties.  Sen's slope of the series,
-    its intercept and its 100 (1 − alpha) % confidence interval, built on the
-    variance of S of the test, come with it (:func:`sen_slope`).
+    series that may be non-normal and contain ties.  The variance of S is corrected
+    for the groups of tied values (Kendall, 1975; Hirsch et al., 1982; Gilbert,
+    1987, Eq. 16.3): Var(S) = [n(n − 1)(2n + 5) − Σ t(t − 1)(2t + 5)] / 18, the sum
+    over the groups of t equal values (exact equality of the given values; round
+    them first to tie the values that differ below their precision).  Sen's slope
+    of the series, its intercept and its 100 (1 − alpha) % confidence interval,
+    built on that variance of S, come with it (:func:`sen_slope`).
 
     Parameters
     ----------
@@ -263,12 +273,11 @@ def mann_kendall_test(
     for i in range(n - 1):
         s += float(np.sum(np.sign(series[i + 1 :] - series[i])))
 
-    # Var(S) = n(n-1)(2n+5) / 18  (no-ties formula)
-    # Note: when ties exist, the exact formula includes a correction:
-    #   Var(S) = [n(n-1)(2n+5) - sum_g t_g(t_g-1)(2t_g+5)] / 18
-    # The no-ties formula slightly overestimates Var(S), making the test
-    # conservative. Acceptable for most hydrological annual series.
-    var_s: float = n * (n - 1) * (2 * n + 5) / 18.0
+    # Var(S) = [n(n-1)(2n+5) - Σ_g t_g(t_g-1)(2t_g+5)] / 18 over the groups of
+    # t_g equal values (Gilbert, 1987, Eq. 16.3); in integers, exact
+    _, counts = np.unique(series, return_counts=True)
+    ties = sum(int(t) * (int(t) - 1) * (2 * int(t) + 5) for t in counts if t > 1)
+    var_s: float = (n * (n - 1) * (2 * n + 5) - ties) / 18.0
 
     # Continuity-corrected Z statistic
     if s > 0:
