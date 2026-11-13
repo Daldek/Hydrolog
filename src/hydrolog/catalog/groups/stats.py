@@ -55,6 +55,32 @@ _RETURN_PERIODS = Option(
     exclusive_minimum=1,
 )
 
+# The variable of IMGW-PIB's half-year file in the frequency commands (plan D9).
+_HALF_YEAR_PARAMETER = Option(
+    name="parameter",
+    type="choice",
+    description_pl=(
+        "Zmienna pliku `half_year_file`: wskazuje jego kolumny; szeregu dobowego ani "
+        "wartości nie zmienia."
+    ),
+    description=(
+        "The variable of `half_year_file`: it picks its columns; it does not change a "
+        "daily series or values."
+    ),
+    choices=("Q", "H"),
+    meanings={
+        "Q": "Discharge: the columns Q_min, Q_max.",
+        "H": "Stage: the columns H_min, H_max.",
+    },
+    meanings_pl={
+        "Q": "Przepływ: kolumny Q_min, Q_max.",
+        "H": "Stan wody: kolumny H_min, H_max.",
+    },
+    default="Q",
+)
+# The annual extremes of a frequency command: values, a daily series or the half-years.
+_ANNUAL_ONE_OF = (("values",), ("input_file", "value_column"), ("half_year_file",))
+
 # Series whose values are not dated: annual maxima or a series ordered in time.
 _UNDATED_ONE_OF = (("values",), ("input_file", "value_column"))
 
@@ -763,21 +789,22 @@ COMMANDS: tuple[Command, ...] = (
             "Dopasowuje rozkłady log-normalny, GEV, Pearsona III i Weibulla do "
             "maksimów rocznych (domyślnie L-momenty; największa wiarygodność, "
             "momenty, najmniejsze kwadraty albo wszystkie metody naraz) i podaje "
-            "kwantyle z miarami zgodności (KS, A², AIC). Do przepływów miarodajnych z "
-            "maksimów rocznych albo szeregu dobowego; niżówki: `stats low-flow`. Lata "
-            "z brakami dni są pomijane."
+            "kwantyle z miarami zgodności (KS, A², AIC). Do przepływów miarodajnych; "
+            "niżówki: `stats low-flow`."
         ),
         description=(
             "Fits log-normal, GEV, Pearson III and Weibull distributions to annual "
             "maxima (L-moments by default; maximum likelihood, moments, least squares "
             "or all at once) and gives quantiles with goodness-of-fit (KS, A², AIC). "
-            "Use for design discharges from annual maxima or a daily series; for low "
-            "flows use `stats low-flow`."
+            "Use for design discharges; for low flows use `stats low-flow`."
         ),
         result_schema="hydrolog-stats-flood-frequency/1",
         cardinality="bounded",
         rules=(
-            ("Pass annual maxima without dates, or a daily series with dates."),
+            (
+                "Pass annual maxima without dates, a daily series with dates or "
+                "`half_year_file`."
+            ),
             (
                 "Check `notices` for `incomplete_years` and samples shorter than 30 "
                 "years."
@@ -788,7 +815,10 @@ COMMANDS: tuple[Command, ...] = (
             ),
         ),
         rules_pl=(
-            "Podaj maksima roczne bez dat albo szereg dobowy z datami.",
+            (
+                "Podaj maksima roczne bez dat, szereg dobowy z datami albo "
+                "`half_year_file`."
+            ),
             ("Sprawdź `notices`: `incomplete_years` i próby krótsze niż 30 lat."),
             (
                 "Porządkuj rozkłady wg `aic`; `ks_valid=false` oznacza orientacyjne "
@@ -804,12 +834,20 @@ COMMANDS: tuple[Command, ...] = (
         ),
         core=True,
         example_results=(
-            {"n_years": 35, "best_distribution": "log_normal"},
+            {"n_years": 35, "best_distribution": "log_normal", "source": "values"},
             {
                 "n_years": 3,
                 "annual_maxima": [21.12, 13.99, 24.93],
                 "hydrological_years": [2022, 2023, 2024],
                 "best_distribution": "gev",
+                "source": "daily",
+            },
+            {
+                "n_years": 5,
+                "annual_maxima": [72.18, 132.13, 102.57, 41.19, 76.55],
+                "hydrological_years": [2019, 2020, 2021, 2022, 2023],
+                "incomplete_years": [],
+                "source": "half_years",
             },
         ),
         function="hydrolog.operations.stats_flood_frequency",
@@ -819,6 +857,8 @@ COMMANDS: tuple[Command, ...] = (
             INPUT_FILE,
             VALUE_COLUMN,
             _ANNUAL_DATE_COLUMN,
+            HALF_YEAR_FILE,
+            _HALF_YEAR_PARAMETER,
             Option(
                 name="distribution",
                 type="choice",
@@ -865,9 +905,10 @@ COMMANDS: tuple[Command, ...] = (
                 default="l_moments",
             ),
             _RETURN_PERIODS,
+            *PERIOD_OPTIONS,
             ATTRIBUTION,
         ),
-        one_of=_UNDATED_ONE_OF,
+        one_of=_ANNUAL_ONE_OF,
         typical_ranges=(RangeCheck("flood_frequency", "years", result="n_years"),),
         examples=(
             {
@@ -882,6 +923,7 @@ COMMANDS: tuple[Command, ...] = (
                 "date_column": "date",
                 "distribution": "gev",
             },
+            {"half_year_file": _STATION_HALF_YEARS, "return_periods": [10, 100]},
         ),
     ),
     Command(
@@ -895,19 +937,23 @@ COMMANDS: tuple[Command, ...] = (
             "Dopasowuje rozkład Fishera–Tippetta (GEV dla minimów) do minimów "
             "rocznych i podaje kwantyle niskich przepływów (osiągane lub niższe raz"
             " na T lat). Do częstości niżówek; wezbrania: `stats flood-frequency`, "
-            "zdarzenia suszy: `stats low-flow-sequences`. Wymaga dat."
+            "zdarzenia suszy: `stats low-flow-sequences`. Wymaga dat albo "
+            "`half_year_file`."
         ),
         description=(
             "Fits the Fisher–Tippett (GEV for minima) distribution to annual minima"
             " and gives low-flow quantiles (flow reached or undercut once in T "
             "years). Use for low-flow frequency; for floods use `stats "
             "flood-frequency`, for drought events `stats low-flow-sequences`. Needs"
-            " dates."
+            " dates or `half_year_file`."
         ),
         result_schema="hydrolog-stats-low-flow/1",
         cardinality="bounded",
         rules=(
-            ("Give a daily series with dates; years with a missing day are skipped."),
+            (
+                "Give a daily series with dates or `half_year_file`; years with a "
+                "missing day are skipped."
+            ),
             (
                 "Check `notices` for `incomplete_years` and samples shorter than 10 "
                 "years."
@@ -915,7 +961,10 @@ COMMANDS: tuple[Command, ...] = (
             "At least 3 complete hydrological years are required.",
         ),
         rules_pl=(
-            ("Podaj szereg dobowy z datami; lata z brakującym dniem są pomijane."),
+            (
+                "Podaj szereg dobowy z datami albo `half_year_file`; lata z "
+                "brakującym dniem są pomijane."
+            ),
             ("Sprawdź `notices`: `incomplete_years` i próby krótsze niż 10 lat."),
             "Wymagane są co najmniej 3 kompletne lata hydrologiczne.",
         ),
@@ -932,11 +981,25 @@ COMMANDS: tuple[Command, ...] = (
                 "hydrological_years": [2022, 2023, 2024],
                 "annual_minima": [1.79, 1.88, 1.66],
                 "incomplete_years": [],
+                "source": "daily",
+            },
+            {
+                "n_years": 5,
+                "hydrological_years": [2019, 2020, 2021, 2022, 2023],
+                "annual_minima": [0.54, 1.54, 1.48, 0.52, 0.99],
+                "source": "half_years",
             },
         ),
         function="hydrolog.operations.stats_low_flow",
-        options=(*DATED_OPTIONS, _RETURN_PERIODS, ATTRIBUTION),
-        one_of=DATED_ONE_OF,
+        options=(
+            *DATED_OPTIONS,
+            HALF_YEAR_FILE,
+            _HALF_YEAR_PARAMETER,
+            _RETURN_PERIODS,
+            *PERIOD_OPTIONS,
+            ATTRIBUTION,
+        ),
+        one_of=(*DATED_ONE_OF, ("half_year_file",)),
         examples=(
             {
                 "input_file": _DAILY_FLOWS,
@@ -944,6 +1007,7 @@ COMMANDS: tuple[Command, ...] = (
                 "date_column": "date",
                 "return_periods": [2, 10, 50],
             },
+            {"half_year_file": _STATION_HALF_YEARS, "return_periods": [2, 10]},
         ),
     ),
     Command(
@@ -1271,8 +1335,8 @@ COMMANDS: tuple[Command, ...] = (
         result_schema="hydrolog-stats-homogeneity/1",
         rules=(
             (
-                "Pass annual maxima (with `years` or `year_column` for `split_year`) "
-                "or a daily series with dates."
+                "Pass annual maxima (`years`/`year_column` for `split_year`), a daily "
+                "series with dates or `half_year_file`."
             ),
             (
                 "A test rejects homogeneity when `homogeneous` is false (`p_value` "
@@ -1286,7 +1350,7 @@ COMMANDS: tuple[Command, ...] = (
         rules_pl=(
             (
                 "Podaj maksima roczne (z `years` albo `year_column`, by użyć "
-                "`split_year`) albo szereg dobowy z datami."
+                "`split_year`), szereg dobowy z datami albo `half_year_file`."
             ),
             (
                 "Test odrzuca jednorodność, gdy `homogeneous` jest fałszem (`p_value` "
@@ -1311,8 +1375,9 @@ COMMANDS: tuple[Command, ...] = (
                 "split_year": 2000,
                 "mann_whitney": {"statistic": 124.0, "homogeneous": True},
                 "pettitt": {"change_point_year": 2020, "homogeneous": True},
+                "source": "values",
             },
-            {"n_years": 3, "split_index": 1, "split_year": 2023},
+            {"n_years": 3, "split_index": 1, "split_year": 2023, "source": "daily"},
             {
                 "n_years": 10,
                 "split_index": 5,
@@ -1320,6 +1385,12 @@ COMMANDS: tuple[Command, ...] = (
                 "mann_whitney": {"statistic": 0.0, "homogeneous": False},
                 "kolmogorov_smirnov": {"statistic": 1.0, "homogeneous": False},
                 "pettitt": {"change_point_index": 5, "homogeneous": True},
+            },
+            {
+                "n_years": 5,
+                "split_year": 2021,
+                "source": "half_years",
+                "hydrological_years": [2019, 2020, 2021, 2022, 2023],
             },
         ),
         function="hydrolog.operations.stats_homogeneity",
@@ -1368,6 +1439,8 @@ COMMANDS: tuple[Command, ...] = (
                     "`date_column`."
                 ),
             ),
+            HALF_YEAR_FILE,
+            _HALF_YEAR_PARAMETER,
             Option(
                 name="split_year",
                 type="integer",
@@ -1397,9 +1470,10 @@ COMMANDS: tuple[Command, ...] = (
                 exclusive_minimum=0,
                 maximum=1,
             ),
+            *PERIOD_OPTIONS,
             ATTRIBUTION,
         ),
-        one_of=_UNDATED_ONE_OF,
+        one_of=_ANNUAL_ONE_OF,
         examples=(
             {
                 "input_file": _ANNUAL_MAXIMA,
@@ -1415,6 +1489,7 @@ COMMANDS: tuple[Command, ...] = (
             {
                 "values": [52.0, 48.0, 55.0, 50.0, 47.0, 81.0, 86.0, 79.0, 90.0, 84.0],
             },
+            {"half_year_file": _STATION_HALF_YEARS, "parameter": "H"},
         ),
     ),
 )

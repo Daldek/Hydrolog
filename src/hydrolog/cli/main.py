@@ -14,7 +14,9 @@ command line or option value, ``3`` for an unknown command or a missing file, ``
 an output file that already exists (``conflict``), ``6`` for a missing optional extra,
 ``7`` for malformed input data, ``9`` for an unwritable output, ``12`` for a forbidden
 path, ``13`` for an impossible calculation and ``1`` for a bug -- ``130`` after Ctrl-C
-and ``143`` after ``SIGTERM``. A reader that closes the pipe early (``... | head``)
+and ``143`` after ``SIGTERM``. A batch (``commands batch``) with failed calls ends with
+the exit code of its outcome (ERR §1): ``10`` (``partial``) or ``11`` (``failed``), its
+envelope printed as for success. A reader that closes the pipe early (``... | head``)
 ends the command quietly with ``0``.
 
 Output
@@ -52,6 +54,7 @@ from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, NoReturn, TextIO
 
+from hydrolog._errors import OUTCOMES
 from hydrolog._settings import resolve_setting
 from hydrolog.catalog import catalog_document, data_commands, run_command
 from hydrolog.catalog.spec import Command, Lang
@@ -288,7 +291,7 @@ def _run_command(
     else:
         summary = render_result(data, command, lang, _terminal_width())
         _write(sys.stdout, summary + "\n")
-    return 0
+    return OUTCOMES[data["status"]]
 
 
 def _run_mcp(

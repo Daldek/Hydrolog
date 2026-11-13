@@ -35,3 +35,4 @@ the Nogat standard 2.1 adoption are in the plans of [plans/](plans/).
 | [0027](decisions/0027-nogats-gui-kit-the-app-menu-and-the-handoff.md) | Nogat's GUI kit: the app menu „Aplikacje” from `[nogat] gui` and the shared hand-off | accepted | 2026-11-12 |
 | [0028](decisions/0028-the-providers-lines-in-every-product.md) | The providers' lines in every product: `attribution` and `terms_notice` | accepted | 2026-11-13 |
 | [0029](decisions/0029-station-analyses-for-obserwator.md) | Station analyses for Obserwator: characteristic values of both degrees, threshold events, rating curves by period, low flows across gaps, duration curves, runoff volumes | accepted | 2026-11-13 |
+| [0030](decisions/0030-the-batch-and-imgw-pib-half-years-in-frequency-commands.md) | The batch of catalog calls (`commands batch`, the outcomes `partial` and `failed`) and IMGW-PIB's half-years in the frequency commands | accepted | 2026-11-13 |

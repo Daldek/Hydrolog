@@ -25,7 +25,7 @@ Python 3.12 or newer: `pip install "hydrolog @ git+https://github.com/Daldek/Hyd
 
 ## Workflow rules
 
-Discover (`hydrolog commands list`, then `hydrolog commands schema --command "<name>"`), check (`--check` first for a command that writes a file: `report generate`, `soil hsg`, `commands guide`, `route` with `output`, `output_dir` or `schematic`), run, read `result`, `notices` and `result.files`.
+Discover (`hydrolog commands list`, then `hydrolog commands schema --command "<name>"`), check (`--check` first for a command that writes a file: `report generate`, `soil hsg`, `commands guide`, `commands batch`, `route` with `output`, `output_dir` or `schematic`), run, read `result`, `notices` and `result.files`.
 
 Rules:
 
@@ -40,7 +40,7 @@ Rules:
 
 ## Result envelope
 
-A command returns `hydrolog-result/1`: `schema`, `tool` (`hydrolog`), `version`, `command`, `check` (true for a `--check` plan: `result.targets[]` with `option`, `path`, `action`), `status` (always `ok`: a failing command raises an error and leaves nothing half done), `result`, `notices`, `inputs`, `page` (paged lists).
+A command returns `hydrolog-result/1`: `schema`, `tool` (`hydrolog`), `version`, `command`, `check` (true for a `--check` plan: `result.targets[]` with `option`, `path`, `action`), `status` (`ok`; `partial` or `failed`, with `items`, for a batch with failed calls; a failing command raises an error and leaves nothing half done), `result`, `notices`, `inputs`, `page` (paged lists).
 
 - `result`: the values of the command with its own `schema`; units follow from field names (`tc_min`); `NaN` and infinities are `null`.
 - `result.files`: files the command wrote, each `{path, size_bytes, sha256, status}` with `status` `written` or `replaced`.
@@ -116,6 +116,7 @@ One line per command: name, `operation_id`, summary. Options, units, bounds and 
 ### [config: Effective settings][paths]
 - `config show` (`hydrolog_config_show`): Show the effective settings of Hydrolog and the source of each.
 ### [commands: The command catalog and this guide][paths]
+- `commands batch` (`hydrolog_commands_batch`): Run the catalog calls of a JSON Lines file in one process, a result each.
 - `commands guide` (`hydrolog_commands_guide`): Render the agent guide (AGENTS.md, llms.txt, block) from the catalog.
 - `commands list` (`hydrolog_commands_list`): List the catalog commands: name, operation id and summary.
 - `commands schema` (`hydrolog_commands_schema`): Return options, result and rules of one command or a catalog page.

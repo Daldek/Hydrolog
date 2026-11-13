@@ -58,7 +58,10 @@ from hydrolog.operations.hydrometrics import (
     hydrometrics_water_level_zones,
 )
 from hydrolog.operations.meta import (
+    BatchFailure,
+    BatchResult,
     GuideDocument,
+    commands_batch,
     commands_guide,
     commands_list,
     commands_schema,
@@ -95,6 +98,7 @@ from hydrolog.operations.soil import (
 )
 from hydrolog.operations.stats import (
     FloodFrequencyResult,
+    HomogeneityAnalysis,
     LowFlowEvent,
     LowFlowFrequencyAnalysis,
     LowFlowSequencesResult,
@@ -184,6 +188,7 @@ __all__ = [
     "network_stats",
     # stats
     "FloodFrequencyResult",
+    "HomogeneityAnalysis",
     "LowFlowEvent",
     "LowFlowFrequencyAnalysis",
     "LowFlowSequencesResult",
@@ -220,7 +225,10 @@ __all__ = [
     "GuiServeResult",
     "gui_serve",
     # commands
+    "BatchFailure",
+    "BatchResult",
     "GuideDocument",
+    "commands_batch",
     "commands_guide",
     "commands_list",
     "commands_schema",

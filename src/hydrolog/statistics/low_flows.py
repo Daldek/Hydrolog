@@ -349,41 +349,7 @@ class LowFlowAnalysis:
         by maximum likelihood; for short records (a few tens of years) the shape,
         and with it the quantiles of rare droughts, is very uncertain.
         """
-        minima = self.annual_minima()
-        # min(x) = -max(-x): the minima-type GEV is the maxima-type GEV of -x.
-        negated = -minima
-
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", UserWarning)
-            c, loc_negated, scale = genextreme.fit(negated)
-        fitted = genextreme(c, loc=loc_negated, scale=scale)
-
-        # ``0.0 - x`` instead of ``-x``: an all-zero record must give 0.0, not -0.0.
-        params: dict[str, float] = {
-            "shape": float(c),
-            "loc": float(0.0 - loc_negated),
-            "scale": float(scale),
-        }
-
-        # Non-exceedance probability p = 1/T of the minima = exceedance
-        # probability of the negated series; isf stays accurate for tiny p.
-        p = 1.0 / self._return_periods
-        quantiles = 0.0 - fitted.isf(p)
-
-        # K-S test (informational; invalid when parameters estimated from data).
-        # The statistic is the same for a sample and its mirror image.
-        ks_stat, ks_pval = kstest(negated, fitted.cdf)
-
-        return LowFlowFrequencyResult(
-            distribution_name="fisher_tippett",
-            parameters=params,
-            return_periods=self._return_periods.copy(),
-            quantiles=np.asarray(quantiles, dtype=np.float64),
-            non_exceedance_probabilities=p,
-            ks_statistic=float(ks_stat),
-            ks_p_value=float(ks_pval),
-            ks_valid=False,
-        )
+        return _fisher_tippett(self.annual_minima(), self._return_periods)
 
     def empirical_frequency(self, method: str = "weibull") -> EmpiricalFrequency:
         """Compute empirical plotting positions for annual minima.
@@ -577,3 +543,85 @@ class LowFlowAnalysis:
                 "without gaps.",
             )
         return extremes
+
+
+def fit_fisher_tippett_minima(
+    minima: NDArray[np.float64],
+    return_periods: NDArray[np.float64] | None = None,
+) -> LowFlowFrequencyResult:
+    """Fit the Fisher-Tippett distribution of smallest values to annual minima.
+
+    The fit of :meth:`LowFlowAnalysis.fit_fisher_tippett` for minima that are
+    already known, such as the smaller of IMGW-PIB's half-year minima: maximum
+    likelihood of :data:`scipy.stats.genextreme` on the negated minima, the quantile
+    of return period ``T`` at the non-exceedance probability ``1 / T``.
+
+    Parameters
+    ----------
+    minima : NDArray[np.float64]
+        Annual minima in the unit of the series.
+    return_periods : NDArray[np.float64] or None, optional
+        Return periods [years]; by default 2, 5, 10, 20, 50, 100, 500 and 1000.
+
+    Returns
+    -------
+    LowFlowFrequencyResult
+        The fitted parameters, the low-flow quantiles and the K-S statistics.
+
+    Warns
+    -----
+    UserWarning
+        If fewer than 10 minima are given (``small_sample``).
+    """
+    sample = np.asarray(minima, dtype=np.float64)
+    if sample.size < _MIN_RELIABLE_YEARS:
+        warnings.warn(
+            SmallSample(years=int(sample.size), minimum=_MIN_RELIABLE_YEARS),
+            stacklevel=2,
+        )
+    periods = (
+        np.asarray(return_periods, dtype=np.float64)
+        if return_periods is not None
+        else _DEFAULT_RETURN_PERIODS.copy()
+    )
+    return _fisher_tippett(sample, periods)
+
+
+def _fisher_tippett(
+    minima: NDArray[np.float64], periods: NDArray[np.float64]
+) -> LowFlowFrequencyResult:
+    """Return the maximum-likelihood fit of :func:`fit_fisher_tippett_minima`."""
+    # min(x) = -max(-x): the minima-type GEV is the maxima-type GEV of -x.
+    negated = -np.asarray(minima, dtype=np.float64)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        c, loc_negated, scale = genextreme.fit(negated)
+    fitted = genextreme(c, loc=loc_negated, scale=scale)
+
+    # ``0.0 - x`` instead of ``-x``: an all-zero record must give 0.0, not -0.0.
+    params: dict[str, float] = {
+        "shape": float(c),
+        "loc": float(0.0 - loc_negated),
+        "scale": float(scale),
+    }
+
+    # Non-exceedance probability p = 1/T of the minima = exceedance
+    # probability of the negated series; isf stays accurate for tiny p.
+    p = 1.0 / periods
+    quantiles = 0.0 - fitted.isf(p)
+
+    # K-S test (informational; invalid when parameters estimated from data).
+    # The statistic is the same for a sample and its mirror image.
+    ks_stat, ks_pval = kstest(negated, fitted.cdf)
+
+    return LowFlowFrequencyResult(
+        distribution_name="fisher_tippett",
+        parameters=params,
+        return_periods=periods.copy(),
+        quantiles=np.asarray(quantiles, dtype=np.float64),
+        non_exceedance_probabilities=p,
+        ks_statistic=float(ks_stat),
+        ks_p_value=float(ks_pval),
+        ks_valid=False,
+    )

@@ -11,6 +11,14 @@ First release of the stable API (1.0.0, not yet released; `develop` carries 1.0.
 
 ### Added
 
+#### The batch and IMGW-PIB's half-years in the frequency commands (plan `docs/plans/2026-11-13-station-analyses.md`, step S2; ADR-0030)
+One process computes a whole station's analyses (Nogat's plan of 2026-11-12, step H4). The catalog has 52 commands in 16 groups.
+- `commands batch` (new): runs the catalog calls of a JSON Lines file (`{"command", "options"}` per line) in one process and writes line i of `output` for call i: the call's `hydrolog-result/1` envelope or its `hydrolog-error/1` document, the very line that `--json` prints for the call alone. A failed call does not stop the batch; relative paths are taken from the directory of `input_file`; the path policy of the batch (MCP's `--allow-dir`) covers every call; `check` and `force` as for every writing command. Result `hydrolog-commands-batch/1`: `n_calls`, `n_ok`, `n_failed`, `failed`. The GUI does not offer it.
+- The envelope: `items` (`{id, status, code?, reason?, message?}`) for a batch, whose `status` is `partial` when some calls failed and `failed` when all did; the CLI then exits with 10 or 11 and prints the envelope (the outcomes of the Nogat standard). Every other command keeps `status` `ok`.
+- `stats flood-frequency`, `stats low-flow`, `stats homogeneity`: `half_year_file` (Obserwator's export of IMGW-PIB's half-year characteristics), `parameter` (`Q`, `H`) and `first_year`, `last_year`; the annual maximum (minimum) is the larger (smaller) of the half-year values of a year with both, a year with one only is left out and named in `incomplete_years`. The results gain `source` (`daily`, `values`, `half_years`) and, for homogeneity, `hydrological_years`.
+- The providers' lines (ADR-0028): each line of a batch's output carries the lines of its own call, the batch's envelope the union of them; the lines of IMGW-PIB's half-year file reach the results of the frequency commands.
+- Library: `hydrolog.statistics.annual_extremes_from_half_years`, `HalfYearExtremes`, `fit_fisher_tippett_minima`; `hydrolog.catalog.inputs.read_json_lines`; `hydrolog.catalog.dispatch.call_allowed_dirs`.
+
 #### Station analyses for Obserwator (plan `docs/plans/2026-11-13-station-analyses.md`, step S1; ADR-0029)
 The hydrological analyses that Obserwator stores and serves (Nogat's plan of 2026-11-12, step H1), computed by Hydrolog's catalog; the numbers of Obserwator's GUI mockup are reproduced on Kłodzko's series. The catalog has 51 commands in 16 groups.
 - The reference period of a daily series: `first_year` and `last_year` (hydrological years, the whole record by default); results name the period and add the notice `short_reference_period` (info) under 30 years; a period without a value is `calculation_error` `no_values_in_period`.

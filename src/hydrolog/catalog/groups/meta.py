@@ -4,7 +4,8 @@
 the ``hydrolog-commands/1`` description of one command or a page of the whole
 catalog, and ``commands guide`` the guide for AI agents generated from the catalog
 (:mod:`hydrolog.agent_guide`; with ``output`` it also writes the file, which is how
-the repository ``AGENTS.md`` and ``llms.txt`` are made).
+the repository ``AGENTS.md`` and ``llms.txt`` are made). ``commands batch`` runs the
+catalog calls of a JSON Lines file in one process (plan 2026-11-13, D10).
 """
 
 from __future__ import annotations
@@ -17,8 +18,95 @@ _CURSOR = (
     "The `page.next_cursor` of the previous page, unchanged; omitted for the first "
     "page."
 )
+_BATCH_FILE = "tests/fixtures/station_batch.jsonl"
 
 COMMANDS: tuple[Command, ...] = (
+    Command(
+        name="commands batch",
+        operation_id="hydrolog_commands_batch",
+        summary=(
+            "Run the catalog calls of a JSON Lines file in one process, a result each."
+        ),
+        summary_pl=(
+            "Uruchom wywołania katalogu z pliku JSON Lines w jednym procesie, wynik "
+            "każdego."
+        ),
+        description=(
+            'Runs each line of `input_file`, {"command": ..., "options": {...}}, as '
+            "`run_command` would, all in one process, and writes line i of `output`: "
+            "the envelope of call i or its error document, as `--json` prints them. "
+            "A failed call does not stop the others. Use for many calls, such as a "
+            "station's analyses; for one call run its command."
+        ),
+        description_pl=(
+            'Uruchamia każdy wiersz `input_file`, {"command": ..., "options": {...}}, '
+            "jak `run_command`, wszystkie w jednym procesie, i zapisuje wiersz i "
+            "`output`: kopertę wywołania i albo dokument jego błędu, tak jak drukuje "
+            "je `--json`. Nieudane wywołanie nie zatrzymuje pozostałych. Do wielu "
+            "wywołań, np. analiz stacji; jedno wywołanie: jego polecenie."
+        ),
+        function="hydrolog.operations.commands_batch",
+        options=(
+            Option(
+                name="input_file",
+                type="path",
+                description=(
+                    'The calls: a UTF-8 JSON Lines file, one {"command": "<name or '
+                    'operation_id>", "options": {...}} per line, no blank lines. '
+                    "Relative paths in the options are taken from its directory."
+                ),
+                description_pl=(
+                    'Wywołania: plik JSON Lines w UTF-8, jedno {"command": "<nazwa '
+                    'albo operation_id>", "options": {...}} w wierszu, bez pustych '
+                    "wierszy. Ścieżki względne w opcjach liczą się od jego katalogu."
+                ),
+                required=True,
+                path_role="input",
+            ),
+            Option(
+                name="output",
+                type="path",
+                description=(
+                    "JSON Lines file of the results, line i for call i, written when "
+                    "the last call is done; missing directories are created. An "
+                    "existing file is replaced only with `force`."
+                ),
+                description_pl=(
+                    "Plik JSON Lines z wynikami, wiersz i dla wywołania i, zapisywany "
+                    "po ostatnim wywołaniu; brakujące katalogi są tworzone. Istniejący "
+                    "plik jest zastępowany tylko z `force`."
+                ),
+                required=True,
+                path_role="output",
+            ),
+            FORCE,
+            CHECK,
+        ),
+        examples=({"input_file": _BATCH_FILE, "output": "results.jsonl"},),
+        result_schema="hydrolog-commands-batch/1",
+        cardinality="bounded",
+        rules=(
+            "Read `status`: `partial` or `failed` lists the failed lines in `items`.",
+            "Paths of a call are relative to `input_file`; the path policy applies.",
+            "Run with `check` before writing a file.",
+        ),
+        rules_pl=(
+            "Czytaj `status`: `partial` albo `failed` wskazuje nieudane wiersze w "
+            "`items`.",
+            "Ścieżki wywołania są względne do `input_file`; obowiązuje polityka "
+            "ścieżek.",
+            "Przed zapisem pliku uruchom z `check`.",
+        ),
+        errors=(
+            "validation_error",
+            "not_found",
+            "data_error",
+            "forbidden",
+            "io_error",
+            "conflict",
+        ),
+        example_results=({"n_calls": 4, "n_ok": 4, "n_failed": 0, "failed": []},),
+    ),
     Command(
         name="commands list",
         operation_id="hydrolog_commands_list",

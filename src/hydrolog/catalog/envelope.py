@@ -23,11 +23,15 @@ status}`` (DEV-19.19, status ``written`` or ``replaced``). ``inputs`` (the norma
 options of the call) is a Hydrolog addition; ``page`` appears for paginated
 collections. A run with data of IMGW-PIB or ČHMÚ (the PMAXTP depth, a station series
 of a file, lines given in the option ``attribution``) has ``attribution`` and
-``terms_notice`` after ``result``: the lines the providers' terms require on every
-product (Nogat DEV-20.6, DEV-20.7, ADR-0028; :mod:`hydrolog._attribution`), absent
-without such data. ``status`` is always ``"ok"``: a failing command raises (see
-:func:`hydrolog.exceptions.error_document`) and leaves no partial state, and
-Hydrolog has no batch commands, so there are no ``items``.
+``terms_notice`` after ``result`` (and a batch's ``items``): the lines the providers'
+terms require on every product (Nogat DEV-20.6, DEV-20.7, ADR-0028;
+:mod:`hydrolog._attribution`), absent without such data. A failing command raises (see
+:func:`hydrolog.exceptions.error_document`) and leaves no partial state, so ``status``
+is ``"ok"``, except for the one batch command, ``commands batch``: it lists the outcome
+of each of its calls in ``items`` (:class:`Item`, ``{id, status, code?, reason?,
+message?}``) and its ``status`` is ``"partial"`` when some of them failed and
+``"failed"`` when all did (the outcomes of ERR §1; the command line exits with 10 and 11
+and still prints the envelope).
 
 Return protocol of an operation
 -------------------------------
@@ -39,7 +43,8 @@ An operation (a function of :mod:`hydrolog.operations`) returns either
 2. **an** :class:`OperationOutput` -- ``OperationOutput(result, notices, files)``:
    the wrapper carries the result together with the non-fatal :class:`Notice`
    objects (short series, values removed, extrapolation...), the paths of the
-   files the operation wrote and the attribution of the providers of its own data.
+   files the operation wrote, the attribution of the providers of its own data and, for
+   a batch, the :class:`Item` of each unit.
 
 A result object may additionally expose ``output_files()`` returning an iterable of
 paths it wrote; these are added to ``result["files"]`` after the files of the
@@ -153,6 +158,63 @@ class Notice:
         return document
 
 
+ItemStatus = Literal["ok", "failed"]
+
+
+@dataclass(frozen=True)
+class Item:
+    """Outcome of one unit of a batch (AGI-4.2 ``items``).
+
+    Parameters
+    ----------
+    id : int or str
+        The unit: for ``commands batch`` the line of its call in the input file.
+    status : {"ok", "failed"}
+        The outcome of the unit.
+    code : str, optional
+        Error code of a failed unit (a registry code).
+    reason : str, optional
+        ``details.reason`` of that error, when it has one.
+    message : str, optional
+        English message of that error.
+
+    Raises
+    ------
+    ValueError
+        If ``status`` is unknown, or a failed unit has no ``code``.
+    """
+
+    id: int | str
+    status: ItemStatus
+    code: str | None = None
+    reason: str | None = None
+    message: str | None = None
+
+    def __post_init__(self) -> None:
+        """Validate the field values."""
+        if self.status not in ("ok", "failed"):
+            raise ValueError(
+                f"Unknown item status {self.status!r}; allowed: ok, failed"
+            )
+        if self.status == "failed" and not self.code:
+            raise ValueError("A failed item needs the code of its error")
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return ``{"id", "status"}`` and the given ``code``, ``reason``, ``message``.
+
+        Returns
+        -------
+        dict
+            The outcome of the unit, without the fields it does not have.
+        """
+        document: dict[str, Any] = {"id": self.id, "status": self.status}
+        for key in ("code", "reason", "message"):
+            value = getattr(self, key)
+            if value is not None:
+                document[key] = value
+        return document
+
+
 @dataclass(frozen=True)
 class FileRecord:
     """File written by a command, as listed in ``result["files"]`` (DEV-19.19).
@@ -206,6 +268,8 @@ class OperationOutput:
         The lines of the providers of data the operation obtained itself (the PMAXTP
         depth of ``precip pmaxtp``); the lines of its input files and of its option
         ``attribution`` are collected by :func:`~hydrolog.catalog.run_command`.
+    items : sequence of Item, optional
+        The outcome of each unit of a batch; ``None`` for every other command.
     """
 
     result: Any
@@ -215,6 +279,7 @@ class OperationOutput:
     check: bool = False
     page: Mapping[str, Any] | None = None
     attribution: Attribution = field(default_factory=Attribution)
+    items: Sequence[Item] | None = None
 
 
 @contextlib.contextmanager
@@ -355,6 +420,8 @@ class CommandResult:
         The run was a plan without effects.
     page : Mapping, optional
         Pagination of a collection result.
+    items : tuple of Item, optional
+        The outcome of each unit of a batch; ``None`` for every other command.
     attribution : tuple of str, optional
         The attribution lines the providers' terms require for the data of the run
         (``attribution`` of the envelope; Nogat DEV-20.6).
@@ -371,13 +438,22 @@ class CommandResult:
     notices: tuple[Notice, ...] = ()
     check: bool = False
     page: Mapping[str, Any] | None = None
+    items: tuple[Item, ...] | None = None
     attribution: tuple[str, ...] = ()
     terms_notice: tuple[str, ...] = ()
 
     @property
-    def status(self) -> Literal["ok"]:
-        """str: always ``"ok"``; a failing command raises instead."""
-        return "ok"
+    def status(self) -> Literal["ok", "partial", "failed"]:
+        """str: ``"ok"``; for a batch with failed units ``"partial"`` or ``"failed"``.
+
+        A failing command raises instead. A batch is ``"failed"`` when no unit
+        succeeded and ``"partial"`` when some did (ERR §1).
+        """
+        if not self.items or all(item.status == "ok" for item in self.items):
+            return "ok"
+        return (
+            "partial" if any(item.status == "ok" for item in self.items) else "failed"
+        )
 
     @classmethod
     def from_output(
@@ -421,6 +497,7 @@ class CommandResult:
         replaced: list[str | os.PathLike[str]] = []
         check = False
         page: Mapping[str, Any] | None = None
+        items: tuple[Item, ...] | None = None
         result = output
         cited = attribution or Attribution()
         if isinstance(output, OperationOutput):
@@ -431,6 +508,7 @@ class CommandResult:
             check = output.check
             page = output.page
             cited = output.attribution | cited
+            items = None if output.items is None else tuple(output.items)
         reporter = getattr(result, "output_files", None)
         if callable(reporter):
             paths.extend(reporter())
@@ -443,6 +521,7 @@ class CommandResult:
             notices=notices,
             check=check,
             page=page,
+            items=items,
             attribution=cited.lines,
             terms_notice=cited.terms_notice,
         )
@@ -456,8 +535,9 @@ class CommandResult:
             ``schema``, ``tool``, ``version``, ``command``, ``check``, ``status``,
             ``result`` (via :func:`~hydrolog._serialization.to_jsonable`, a document
             with its ``schema`` first and, when files were written, ``files``),
-            ``attribution`` and ``terms_notice`` when the run had a provider's data,
-            ``notices``, ``inputs`` and, for a collection, ``page``.
+            ``items`` for a batch, ``attribution`` and ``terms_notice`` when the run
+            had a provider's data, ``notices``, ``inputs`` and, for a collection,
+            ``page``.
 
         Raises
         ------
@@ -485,6 +565,8 @@ class CommandResult:
             "status": self.status,
             "result": domain,
         }
+        if self.items is not None:
+            envelope["items"] = [item.to_dict() for item in self.items]
         if self.attribution:
             envelope["attribution"] = list(self.attribution)
         if self.terms_notice:

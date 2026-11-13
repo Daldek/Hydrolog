@@ -76,7 +76,9 @@ _ADDED_FIELDS: dict[str, tuple[str, ...]] = {
         "uh_discharge_m3s_per_mm",
         "nash_estimation",
     ),
-    "hydrolog-stats-flood-frequency/1": ("fit_method",),
+    "hydrolog-stats-flood-frequency/1": ("fit_method", "source"),
+    "hydrolog-stats-low-flow/1": ("source",),
+    "hydrolog-stats-homogeneity/1": ("source", "hydrological_years"),
     "hydrolog-stats-characteristic/1": (
         "labels",
         "first_degree_labels",

@@ -1,0 +1,4 @@
+{"command": "stats characteristic", "options": {"input_file": "station_daily.csv", "value_column": "Q", "date_column": "date"}}
+{"command": "hydrolog_stats_threshold_events", "options": {"input_file": "station_daily.csv", "value_column": "H", "date_column": "date", "level": 180}}
+{"command": "stats flood-frequency", "options": {"half_year_file": "station_half_years.csv", "return_periods": [10, 100]}}
+{"command": "tc kirpich", "options": {"length_km": 8.2, "slope_m_per_m": 0.023}}

@@ -117,6 +117,7 @@ __all__ = [
     "load_watershed",
     "parse_dates",
     "read_json",
+    "read_json_lines",
     "read_table",
     "table_hydrograph",
 ]
@@ -573,6 +574,55 @@ def read_json(path: str | os.PathLike[str]) -> Any:
     document = _parse_json(resolved, _read_text(resolved))
     cite(lines_of_document(document))
     return document
+
+
+def read_json_lines(path: str | os.PathLike[str]) -> list[Any]:
+    r"""Read a JSON Lines file: one JSON value per line.
+
+    Lines end with ``\n`` (``\r\n`` too); a final line end does not start another
+    line. A line that is not JSON is not an error here: its item is the
+    :class:`json.JSONDecodeError` (or ``ValueError`` for ``NaN`` and ``Infinity``),
+    so that a caller can answer each line on its own (``commands batch``).
+
+    Parameters
+    ----------
+    path : str or os.PathLike
+        File to read: UTF-8, with or without a BOM.
+
+    Returns
+    -------
+    list
+        One item per line: the parsed value, or the exception of a line that is not
+        JSON.
+
+    Raises
+    ------
+    NotFoundError
+        If the file does not exist.
+    InputDataError
+        If the file cannot be read, is not UTF-8 or has no line (``details.reason``
+        ``empty``).
+    """
+    resolved = _file_path(path)
+    text = _read_text(resolved)
+    lines = text.split("\n")
+    if lines[-1] == "":
+        lines.pop()
+    if not lines:
+        raise InputDataError(
+            f"{resolved}: the file has no line",
+            details={"path": str(resolved), "reason": "empty"},
+            hint="Write one JSON value per line.",
+        )
+    items: list[Any] = []
+    for line in lines:
+        try:
+            items.append(
+                json.loads(line.removesuffix("\r"), parse_constant=_reject_constant)
+            )
+        except ValueError as exc:  # json.JSONDecodeError is a ValueError
+            items.append(exc)
+    return items
 
 
 def load_records(path: str | os.PathLike[str]) -> list[dict[str, Any]]:

@@ -455,6 +455,49 @@ class TestStationAnalyses:
         assert envelope["attribution"] == [IMGW_SOURCE, IMGW_PROCESSED]
         assert envelope["terms_notice"] == [IMGW_TERMS, TERMS_DANEPUBLICZNE]
 
+    def test_a_batch_line_has_its_own_calls_lines_the_batch_all(self, tmp_path):
+        """A line carries the lines of its own call only; the batch's envelope all."""
+        _observer_export(
+            tmp_path / "q_daily.csv",
+            lines=[IMGW_SOURCE, IMGW_PROCESSED],
+            terms=[IMGW_TERMS, TERMS_DANEPUBLICZNE],
+        )
+        calls = [
+            {
+                "command": "tc kirpich",
+                "options": {"length_km": 8.2, "slope_m_per_m": 0.02},
+            },
+            {
+                "command": "stats runoff-volume",
+                "options": {
+                    "input_file": "q_daily.csv",
+                    "value_column": "Q",
+                    "date_column": "date",
+                },
+            },
+            {
+                "command": "tc kirpich",
+                "options": {"length_km": 4.1, "slope_m_per_m": 0.01},
+            },
+        ]
+        batch = tmp_path / "calls.jsonl"
+        batch.write_text("".join(json.dumps(c) + "\n" for c in calls), "utf-8")
+
+        envelope = hydrolog.run_command(
+            "commands batch", input_file=str(batch), output=str(tmp_path / "out.jsonl")
+        ).to_dict()
+
+        lines = [
+            json.loads(line)
+            for line in (tmp_path / "out.jsonl").read_text("utf-8").splitlines()
+        ]
+        assert "attribution" not in lines[0]
+        assert lines[1]["attribution"] == [IMGW_SOURCE, IMGW_PROCESSED]
+        assert lines[1]["terms_notice"] == [IMGW_TERMS, TERMS_DANEPUBLICZNE]
+        assert "attribution" not in lines[2]
+        assert envelope["attribution"] == [IMGW_SOURCE, IMGW_PROCESSED]
+        assert envelope["terms_notice"] == [IMGW_TERMS, TERMS_DANEPUBLICZNE]
+
 
 class TestFilesOfCommands:
     """Files Hydrolog writes carry the lines of their data (DEV-20.5)."""

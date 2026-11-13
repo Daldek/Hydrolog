@@ -41,6 +41,15 @@
     },
     "significance_level": {
       "type": "number"
+    },
+    "source": {
+      "type": "string"
+    },
+    "hydrological_years": {
+      "type": [
+        "null",
+        "array"
+      ]
     }
   }
 }

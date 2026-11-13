@@ -26,6 +26,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+from typing import Literal, NamedTuple
 
 import numpy as np
 from numpy.typing import NDArray
@@ -612,6 +613,87 @@ def characteristic_values_from_half_years(
     if not rows:
         raise InvalidParameterError("The half-year characteristics hold no value.")
     return _characteristic_result(rows, parameter, "half_years", [])
+
+
+class HalfYearExtremes(NamedTuple):
+    """Annual maxima or minima of the years that have both half-year values.
+
+    Attributes
+    ----------
+    years : NDArray[np.int64]
+        Hydrological years with the winter and the summer value, ascending.
+    values : NDArray[np.float64]
+        The larger of the half-year maxima (the smaller of the minima) of each year.
+    dates : tuple of str or None
+        ISO date of each value, from the half-year it comes from; ``None`` where the
+        file gives none.
+    incomplete_years : list of int
+        Years with the value of one half-year only, left out.
+    """
+
+    years: NDArray[np.int64]
+    values: NDArray[np.float64]
+    dates: tuple[str | None, ...]
+    incomplete_years: list[int]
+
+
+def annual_extremes_from_half_years(
+    half_years: HalfYearValues, kind: Literal["max", "min"]
+) -> HalfYearExtremes:
+    """Annual extremes of IMGW-PIB's half-year characteristics.
+
+    The annual maximum is the larger of the winter (XI-IV) and the summer (V-X)
+    maximum, the winter one when they are equal; the annual minimum the smaller of
+    the minima. A year needs both half-year values: with one only, its annual
+    extreme is unknown (the other half-year may hold it), so the year is left out and
+    named in ``incomplete_years``. These are the annual values of
+    :func:`characteristic_values_from_half_years`.
+
+    Parameters
+    ----------
+    half_years : HalfYearValues
+        The published values of one variable.
+    kind : {"max", "min"}
+        Annual maxima or minima.
+
+    Returns
+    -------
+    HalfYearExtremes
+        The years with both half-years, their extremes and dates, and the years
+        with one half-year only.
+
+    Raises
+    ------
+    InvalidParameterError
+        If ``kind`` is not ``"max"`` or ``"min"``.
+    """
+    if kind not in ("max", "min"):
+        raise InvalidParameterError(
+            f"kind must be 'max' or 'min', got {kind!r}",
+            details={"option": "kind", "reason": "choice", "value": str(kind)},
+        )
+    winter, summer = half_years.winter, half_years.summer
+    if kind == "max":
+        first, second = winter.max, summer.max
+        first_dates, second_dates = winter.max_dates, summer.max_dates
+        pick_first = first >= second
+    else:
+        first, second = winter.min, summer.min
+        first_dates, second_dates = winter.min_dates, summer.min_dates
+        pick_first = first <= second
+    known_first, known_second = np.isfinite(first), np.isfinite(second)
+    both = known_first & known_second
+    rows = np.flatnonzero(both).tolist()
+    return HalfYearExtremes(
+        years=half_years.years[both].astype(np.int64),
+        values=np.where(pick_first, first, second)[both].astype(np.float64),
+        dates=tuple(
+            first_dates[row] if pick_first[row] else second_dates[row] for row in rows
+        ),
+        incomplete_years=[
+            int(year) for year in half_years.years[known_first ^ known_second]
+        ],
+    )
 
 
 def calculate_daily_statistics(

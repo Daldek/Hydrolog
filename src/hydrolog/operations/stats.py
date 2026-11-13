@@ -33,7 +33,7 @@ from __future__ import annotations
 import math
 import os
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from typing import Any, Literal
 
 import numpy as np
@@ -65,6 +65,7 @@ from hydrolog.statistics import (
     FitMethod,
     FloodFrequencyAnalysis,
     FrequencyAnalysisResult,
+    HalfYearExtremes,
     HalfYearValues,
     HomogeneityResult,
     LowFlowAnalysis,
@@ -74,12 +75,14 @@ from hydrolog.statistics import (
     MonthlyStatistics,
     RunoffVolumes,
     ThresholdEvents,
+    annual_extremes_from_half_years,
     calculate_characteristic_values,
     calculate_daily_statistics,
     calculate_monthly_statistics,
     characteristic_values_from_half_years,
     duration_curve,
     exceedance_values,
+    fit_fisher_tippett_minima,
     homogeneity_tests,
     mann_kendall_test,
     runoff_volumes,
@@ -93,11 +96,13 @@ from hydrolog.statistics._hydrological_year import (
     incomplete_years_details,
     on_daily_calendar,
 )
+from hydrolog.statistics._types import compute_non_exceedance_positions
 from hydrolog.statistics.volumes import DAY_SECONDS
 
 __all__ = [
     "DEFAULT_RETURN_PERIODS",
     "FloodFrequencyResult",
+    "HomogeneityAnalysis",
     "LowFlowEvent",
     "LowFlowFrequencyAnalysis",
     "LowFlowSequencesResult",
@@ -151,10 +156,12 @@ class FloodFrequencyResult(JsonResultMixin):
         Number of annual maxima the distributions were fitted to.
     annual_maxima : list of float
         The sample: annual maxima in time order (derived from a daily series by
-        complete hydrological year, or the values as given).
+        complete hydrological year, from IMGW-PIB's half-years, or the values as
+        given).
     hydrological_years : list of int or None
         Hydrological year of every annual maximum when they were derived from a daily
-        series; ``None`` when the annual maxima were given directly.
+        series or the half-year file; ``None`` when the annual maxima were given
+        directly.
     best_distribution : str
         ``distribution_name`` of the first entry of ``distributions`` (lowest AIC).
     distributions : list of FrequencyAnalysisResult
@@ -167,12 +174,15 @@ class FloodFrequencyResult(JsonResultMixin):
         Empirical frequency of the sample (Weibull plotting positions; values sorted
         descending, exceedance probabilities and return periods of exceedance).
     incomplete_years : list of int or None
-        Hydrological years of the daily series that were skipped because some day
-        has no value (empty when every year was complete); ``None`` when the annual
-        maxima were given directly.
+        Hydrological years that were skipped: of a daily series, because some day
+        has no value; of the half-year file, because one half-year has no maximum
+        (empty when none was); ``None`` when the annual maxima were given directly.
     fit_method : str
         Method requested: ``"mle"``, ``"moments"``, ``"l_moments"``,
         ``"least_squares"`` or ``"all"`` (every item names its own).
+    source : str
+        Where the annual maxima come from: ``"daily"`` (a daily series),
+        ``"half_years"`` (IMGW-PIB's half-year file) or ``"values"`` (given).
     """
 
     n_years: int
@@ -183,6 +193,7 @@ class FloodFrequencyResult(JsonResultMixin):
     empirical: EmpiricalFrequency
     incomplete_years: list[int] | None = None
     fit_method: str = "l_moments"
+    source: str = "values"
 
 
 @dataclass
@@ -192,12 +203,13 @@ class LowFlowFrequencyAnalysis(JsonResultMixin):
     Attributes
     ----------
     n_years : int
-        Number of complete hydrological years (annual minima) the distribution was
-        fitted to.
+        Number of annual minima the distribution was fitted to: complete
+        hydrological years of a daily series, or years of the half-year file with
+        both half-years.
     hydrological_years : list of int
         Hydrological year of every annual minimum.
     annual_minima : list of float
-        Annual minima in the unit of the series, one per complete hydrological year.
+        Annual minima in the unit of the series, one per year.
     fisher_tippett : LowFlowFrequencyResult
         Fitted Fisher-Tippett distribution of smallest values (GEV for minima):
         parameters, low-flow quantiles for the return periods and K-S statistics.
@@ -208,8 +220,12 @@ class LowFlowFrequencyAnalysis(JsonResultMixin):
         convention as ``fisher_tippett`` (the deepest low flow has the smallest
         ``F`` and the longest ``T``).
     incomplete_years : list of int
-        Hydrological years of the series that were skipped because some day has no
-        value (empty when every year was complete).
+        Hydrological years that were skipped: of a daily series, because some day
+        has no value; of the half-year file, because one half-year has no minimum
+        (empty when none was).
+    source : str
+        Where the annual minima come from: ``"daily"`` (a daily series) or
+        ``"half_years"`` (IMGW-PIB's half-year file).
     """
 
     n_years: int
@@ -218,6 +234,27 @@ class LowFlowFrequencyAnalysis(JsonResultMixin):
     fisher_tippett: LowFlowFrequencyResult
     empirical: LowFlowEmpiricalFrequency
     incomplete_years: list[int] = field(default_factory=list)
+    source: str = "daily"
+
+
+@dataclass
+class HomogeneityAnalysis(HomogeneityResult):
+    """Homogeneity tests of annual maxima, with where the maxima come from.
+
+    The fields of :class:`~hydrolog.statistics.HomogeneityResult` and:
+
+    Attributes
+    ----------
+    source : str
+        ``"daily"`` (the complete hydrological years of a daily series),
+        ``"half_years"`` (IMGW-PIB's half-year file) or ``"values"`` (given).
+    hydrological_years : list of int or None
+        Hydrological year of every annual maximum when they were derived from a daily
+        series or the half-year file; ``None`` for given values.
+    """
+
+    source: str = "values"
+    hydrological_years: list[int] | None = None
 
 
 @dataclass
@@ -521,6 +558,50 @@ def _half_years_of_period(
     return half
 
 
+# The variables of the frequency commands' half-year file (plan 2026-11-13, D9).
+_FREQUENCY_PARAMETERS: tuple[str, ...] = ("Q", "H")
+
+
+def _half_year_extremes(
+    half_year_file: str | os.PathLike[str],
+    parameter: str,
+    first_year: int | None,
+    last_year: int | None,
+    kind: Literal["max", "min"],
+    **daily: object,
+) -> HalfYearExtremes:
+    """Annual extremes of the years of the period with both half-year values.
+
+    ``daily`` holds the options of a daily series, which ``half_year_file`` excludes.
+    """
+    half = _half_years_of_period(
+        half_year_file, parameter, first_year, last_year, **daily
+    )
+    return annual_extremes_from_half_years(half, kind)
+
+
+def _refuse_period_of_values(first_year: int | None, last_year: int | None) -> None:
+    """Refuse a period for values without dates: they have no hydrological years.
+
+    Raises
+    ------
+    InvalidParameterError
+        If ``first_year`` or ``last_year`` is given (``details.reason``
+        ``not_applicable``).
+    """
+    for name, value in (("first_year", first_year), ("last_year", last_year)):
+        if value is not None:
+            raise InvalidParameterError(
+                f"Option {name!r} chooses the hydrological years of a daily series or "
+                "of 'half_year_file'; values without dates have none",
+                details={"option": name, "reason": "not_applicable"},
+                hint=(
+                    "Give the values of the years you want, or a daily series with "
+                    "dates."
+                ),
+            )
+
+
 def stats_characteristic(
     *,
     values: Sequence[float] | None = None,
@@ -800,19 +881,26 @@ def stats_flood_frequency(
     input_file: str | os.PathLike[str] | None = None,
     value_column: str | None = None,
     date_column: str | None = None,
+    half_year_file: str | os.PathLike[str] | None = None,
+    parameter: Literal["Q", "H"] = "Q",
     distribution: Distribution = "all",
     return_periods: Sequence[float] = DEFAULT_RETURN_PERIODS,
     fit_method: FitMethod | Literal["all"] = "l_moments",
+    first_year: int | None = None,
+    last_year: int | None = None,
     attribution: list[str] | None = None,
 ) -> OperationOutput:
     """Flood frequency analysis (``stats flood-frequency``).
 
     Fits the log-normal, GEV, Pearson type III and Weibull distributions to the annual
     maxima and estimates the quantiles of the given return periods
-    (:class:`hydrolog.statistics.FloodFrequencyAnalysis`). The series is either the
-    annual maxima themselves (no dates) or a daily series with dates, from which the
-    annual maxima of every *complete* hydrological year are taken first (a year with
-    a day without a value is skipped and named in the ``incomplete_years`` notice).
+    (:class:`hydrolog.statistics.FloodFrequencyAnalysis`). The series is the annual
+    maxima themselves (no dates), a daily series with dates, from which the annual
+    maxima of every *complete* hydrological year are taken first (a year with a day
+    without a value is skipped and named in the ``incomplete_years`` notice), or
+    IMGW-PIB's half-year characteristics, whose annual maximum is the larger of the
+    winter and summer maxima of a year with both
+    (:func:`hydrolog.statistics.annual_extremes_from_half_years`).
 
     Parameters
     ----------
@@ -826,6 +914,11 @@ def stats_flood_frequency(
         Column of ``input_file`` with the values.
     date_column : str, optional
         Column of ``input_file`` with the dates; omit for annual maxima.
+    half_year_file : str or os.PathLike, optional
+        Obserwator's export of IMGW-PIB's half-year characteristics
+        (``pl.imgw.hydro_semiannual``), instead of the other series options.
+    parameter : {"Q", "H"}, optional
+        The variable of ``half_year_file`` (its columns), by default ``"Q"``.
     distribution : {"all", "log_normal", "gev", "pearson3", "weibull"}, optional
         Distribution to fit; ``"all"`` fits the four, by default ``"all"``. The fits
         are sorted by AIC.
@@ -835,9 +928,13 @@ def stats_flood_frequency(
     fit_method : {"mle", "moments", "l_moments", "least_squares", "all"}, optional
         Method that estimates the parameters (ADR-0021), by default ``"l_moments"``;
         ``"all"`` fits each distribution by each of the four methods.
+    first_year, last_year : int, optional
+        First and last hydrological year of a daily series or of ``half_year_file``,
+        by default those of the record; not for annual maxima without dates.
     attribution : list of str, optional
         Lines of the providers of the series (ADR-0028), e.g. those of the hand-off
-        it came from; the envelope carries them, with those of ``input_file``.
+        it came from; the envelope carries them, with those of ``input_file`` or
+        ``half_year_file``.
 
     Returns
     -------
@@ -855,47 +952,80 @@ def stats_flood_frequency(
     Raises
     ------
     InvalidParameterError
-        If the series options are inconsistent, ``distribution`` or ``fit_method``
-        is not allowed or a return period is not greater than 1.
+        If the series options are inconsistent, ``distribution``, ``fit_method`` or
+        ``parameter`` is not allowed, a return period is not greater than 1,
+        ``first_year`` is after ``last_year`` or a period is given for values
+        without dates.
     NotFoundError, InputDataError
-        If the file does not exist or cannot be read.
+        If a file does not exist or cannot be read.
     CalculationError
-        If fewer than 3 annual maxima (complete hydrological years) are available, a
-        fit fails numerically, or ``fit_method`` gives no parameters of the
-        distribution requested (of none of the four for ``"all"``).
+        If fewer than 3 annual maxima are available, the period has no value, a fit
+        fails numerically, or ``fit_method`` gives no parameters of the distribution
+        requested (of none of the four for ``"all"``).
     """
     cite(attribution)
     check_choice("distribution", distribution, _DISTRIBUTIONS)
     check_choice("fit_method", fit_method, _FIT_METHOD_CHOICES)
+    check_choice("parameter", parameter, _FREQUENCY_PARAMETERS)
+    check_years(first_year, last_year)
     periods = _return_periods(return_periods)
-    series, notices = load_valid_series(
-        values=values,
-        dates=dates,
-        input_file=input_file,
-        value_column=value_column,
-        date_column=date_column,
-    )
+    notices: list[Notice] = []
     hydrological_years: list[int] | None = None
     incomplete_years: list[int] | None = None
-    if series.dates is None:
-        maxima = series.values
+    source = "values"
+    if half_year_file is not None:
+        half = _half_year_extremes(
+            half_year_file,
+            parameter,
+            first_year,
+            last_year,
+            "max",
+            values=values,
+            dates=dates,
+            input_file=input_file,
+            value_column=value_column,
+            date_column=date_column,
+        )
+        maxima = half.values
         require_count(
             len(maxima),
             _MIN_ANNUAL_VALUES,
             "Flood frequency analysis",
             unit="annual maxima",
         )
+        hydrological_years = [int(year) for year in half.years]
+        incomplete_years = half.incomplete_years
+        source = "half_years"
     else:
-        extremes, year_notices = _annual_extremes(series, "max")
-        _require_years(
-            extremes,
-            "Flood frequency analysis",
-            advice="Annual maxima that are already extracted go without dates.",
+        series, notices = load_valid_series(
+            values=values,
+            dates=dates,
+            input_file=input_file,
+            value_column=value_column,
+            date_column=date_column,
         )
-        maxima = extremes.values
-        hydrological_years = [int(year) for year in extremes.years]
-        incomplete_years = extremes.incomplete_years
-        notices.extend(year_notices)
+        if series.dates is None:
+            _refuse_period_of_values(first_year, last_year)
+            maxima = series.values
+            require_count(
+                len(maxima),
+                _MIN_ANNUAL_VALUES,
+                "Flood frequency analysis",
+                unit="annual maxima",
+            )
+        else:
+            series = select_years(series, first_year, last_year)
+            extremes, year_notices = _annual_extremes(series, "max")
+            _require_years(
+                extremes,
+                "Flood frequency analysis",
+                advice="Annual maxima that are already extracted go without dates.",
+            )
+            maxima = extremes.values
+            hydrological_years = [int(year) for year in extremes.years]
+            incomplete_years = extremes.incomplete_years
+            notices.extend(year_notices)
+            source = "daily"
     with capture_warnings(_NUMERIC_WARNINGS) as numeric:
         analysis = FloodFrequencyAnalysis(maxima, periods)
         fitted: list[FrequencyAnalysisResult] = list(
@@ -918,6 +1048,7 @@ def stats_flood_frequency(
         empirical=empirical,
         incomplete_years=incomplete_years,
         fit_method=fit_method,
+        source=source,
     )
     return OperationOutput(result, [*notices, *numeric])
 
@@ -932,20 +1063,25 @@ def stats_low_flow(
     input_file: str | os.PathLike[str] | None = None,
     value_column: str | None = None,
     date_column: str | None = None,
+    half_year_file: str | os.PathLike[str] | None = None,
+    parameter: Literal["Q", "H"] = "Q",
     return_periods: Sequence[float] = DEFAULT_RETURN_PERIODS,
+    first_year: int | None = None,
+    last_year: int | None = None,
     attribution: list[str] | None = None,
 ) -> OperationOutput:
     """Low-flow frequency analysis (``stats low-flow``).
 
     Takes the annual minima of a daily series by complete hydrological year (a year
     with a day without a value is skipped and named in the ``incomplete_years``
-    notice), fits the Fisher-Tippett distribution of smallest values (GEV for minima)
-    to them and estimates the low-flow quantile of every return period: the value not
-    exceeded once in ``T`` years, with non-exceedance probability ``1 / T``
-    (:class:`hydrolog.statistics.LowFlowAnalysis`; WMO No. 1029, 2009; Tallaksen and
-    van Lanen, 2004). The empirical block uses the same convention (ascending annual
-    minima with non-exceedance probabilities ``F = m / (n + 1)`` and return periods
-    ``T = 1 / F``).
+    notice), or of IMGW-PIB's half-year characteristics (the smaller of the winter
+    and summer minima of a year with both), fits the Fisher-Tippett distribution of
+    smallest values (GEV for minima) to them and estimates the low-flow quantile of
+    every return period: the value not exceeded once in ``T`` years, with
+    non-exceedance probability ``1 / T`` (:class:`hydrolog.statistics.LowFlowAnalysis`;
+    WMO No. 1029, 2009; Tallaksen and van Lanen, 2004). The empirical block uses the
+    same convention (ascending annual minima with non-exceedance probabilities
+    ``F = m / (n + 1)`` and return periods ``T = 1 / F``).
 
     Parameters
     ----------
@@ -959,12 +1095,19 @@ def stats_low_flow(
         Column of ``input_file`` with the values.
     date_column : str, optional
         Column of ``input_file`` with the dates.
+    half_year_file : str or os.PathLike, optional
+        Obserwator's export of IMGW-PIB's half-year characteristics
+        (``pl.imgw.hydro_semiannual``), instead of a daily series.
+    parameter : {"Q", "H"}, optional
+        The variable of ``half_year_file`` (its columns), by default ``"Q"``.
     return_periods : sequence of float, optional
         Return periods [years], each greater than 1, by default
         ``DEFAULT_RETURN_PERIODS``.
+    first_year, last_year : int, optional
+        First and last hydrological year, by default those of the record.
     attribution : list of str, optional
         Lines of the providers of the series (ADR-0028); the envelope carries them,
-        with those of ``input_file``.
+        with those of ``input_file`` or ``half_year_file``.
 
     Returns
     -------
@@ -976,15 +1119,54 @@ def stats_low_flow(
     Raises
     ------
     InvalidParameterError
-        If the series options are inconsistent or a return period is not greater
-        than 1.
+        If the series options are inconsistent, ``parameter`` is not allowed, a
+        return period is not greater than 1 or ``first_year`` is after
+        ``last_year``.
     NotFoundError, InputDataError
-        If the file does not exist or cannot be read.
+        If a file does not exist or cannot be read.
     CalculationError
-        If the series has fewer than 3 complete hydrological years or the fit fails.
+        If there are fewer than 3 annual minima, the period has no value or the fit
+        fails.
     """
     cite(attribution)
+    check_choice("parameter", parameter, _FREQUENCY_PARAMETERS)
+    check_years(first_year, last_year)
     periods = _return_periods(return_periods)
+    if half_year_file is not None:
+        half = _half_year_extremes(
+            half_year_file,
+            parameter,
+            first_year,
+            last_year,
+            "min",
+            values=values,
+            dates=dates,
+            input_file=input_file,
+            value_column=value_column,
+            date_column=date_column,
+        )
+        minima = half.values
+        require_count(
+            len(minima),
+            _MIN_ANNUAL_VALUES,
+            "Low-flow frequency analysis",
+            unit="annual minima",
+        )
+        with capture_warnings(_NUMERIC_WARNINGS) as numeric:
+            fitted: LowFlowFrequencyResult = _fit(
+                "the Fisher-Tippett distribution",
+                lambda: fit_fisher_tippett_minima(minima, periods),
+            )
+        result = LowFlowFrequencyAnalysis(
+            n_years=len(minima),
+            hydrological_years=[int(year) for year in half.years],
+            annual_minima=[float(value) for value in minima],
+            fisher_tippett=fitted,
+            empirical=compute_non_exceedance_positions(minima),
+            incomplete_years=half.incomplete_years,
+            source="half_years",
+        )
+        return OperationOutput(result, numeric)
     series, notices = load_valid_series(
         values=values,
         dates=dates,
@@ -993,6 +1175,7 @@ def stats_low_flow(
         date_column=date_column,
         require_dates=True,
     )
+    series = select_years(series, first_year, last_year)
     dates_array = _dates_of(series)
     extremes, year_notices = _annual_extremes(series, "min")
     _require_years(extremes, "Low-flow frequency analysis")
@@ -1001,9 +1184,7 @@ def stats_low_flow(
     complete = np.isin(hydrological_year(dates_array), extremes.years)
     analysis = LowFlowAnalysis(series.values[complete], dates_array[complete], periods)
     with capture_warnings(_NUMERIC_WARNINGS) as numeric:
-        fitted: LowFlowFrequencyResult = _fit(
-            "the Fisher-Tippett distribution", analysis.fit_fisher_tippett
-        )
+        fitted = _fit("the Fisher-Tippett distribution", analysis.fit_fisher_tippett)
         empirical = analysis.empirical_non_exceedance()
     result = LowFlowFrequencyAnalysis(
         n_years=len(extremes.years),
@@ -1679,8 +1860,12 @@ def stats_homogeneity(
     value_column: str | None = None,
     date_column: str | None = None,
     year_column: str | None = None,
+    half_year_file: str | os.PathLike[str] | None = None,
+    parameter: Literal["Q", "H"] = "Q",
     split_year: int | None = None,
     alpha: float = 0.05,
+    first_year: int | None = None,
+    last_year: int | None = None,
     attribution: list[str] | None = None,
 ) -> OperationOutput:
     """Homogeneity tests of annual maxima (``stats homogeneity``, ADR-0022).
@@ -1690,9 +1875,11 @@ def stats_homogeneity(
     Kolmogorov-Smirnov test; Pettitt's test finds the most probable change point
     (:func:`hydrolog.statistics.homogeneity_tests`). The series is the annual maxima
     themselves (no dates; their years, if given, name the split and the change
-    point) or a daily series with dates, whose annual maxima of the *complete*
+    point), a daily series with dates, whose annual maxima of the *complete*
     hydrological years are taken first (a year with a day without a value is skipped
-    and named in the ``incomplete_years`` notice).
+    and named in the ``incomplete_years`` notice), or IMGW-PIB's half-year
+    characteristics, whose annual maximum is the larger of the winter and summer
+    maxima of a year with both.
 
     Parameters
     ----------
@@ -1712,62 +1899,105 @@ def stats_homogeneity(
     year_column : str, optional
         Column of ``input_file`` with the years of the annual maxima; not with
         ``date_column``.
+    half_year_file : str or os.PathLike, optional
+        Obserwator's export of IMGW-PIB's half-year characteristics
+        (``pl.imgw.hydro_semiannual``), instead of the other series options.
+    parameter : {"Q", "H"}, optional
+        The variable of ``half_year_file`` (its columns), by default ``"Q"``.
     split_year : int, optional
-        First year of the second part; needs years (``years``, ``year_column`` or the
-        dates of a daily series). By default the first half of the values, ``n // 2``,
-        is the first part.
+        First year of the second part; needs years (``years``, ``year_column``, the
+        dates of a daily series or ``half_year_file``). By default the first half of
+        the values, ``n // 2``, is the first part.
     alpha : float, optional
         Significance level of the tests, in (0, 1), by default 0.05.
+    first_year, last_year : int, optional
+        First and last hydrological year of a daily series or of ``half_year_file``,
+        by default those of the record; not for annual maxima without dates.
     attribution : list of str, optional
         Lines of the providers of the series (ADR-0028); the envelope carries them,
-        with those of ``input_file``.
+        with those of ``input_file`` or ``half_year_file``.
 
     Returns
     -------
     OperationOutput
-        ``result`` is a :class:`~hydrolog.statistics.HomogeneityResult`; the notices
-        report removed missing values, skipped incomplete years
-        (``incomplete_years``) and the tests that reject homogeneity at ``alpha``
-        (``homogeneity_rejected``).
+        ``result`` is a :class:`HomogeneityAnalysis`; the notices report removed
+        missing values, skipped incomplete years (``incomplete_years``) and the tests
+        that reject homogeneity at ``alpha`` (``homogeneity_rejected``).
 
     Raises
     ------
     InvalidParameterError
-        If the series options are inconsistent, ``alpha`` is outside (0, 1), the
-        years are not whole numbers or not strictly increasing, or ``split_year`` is
-        given without years or leaves a part empty.
+        If the series options are inconsistent, ``alpha`` is outside (0, 1),
+        ``parameter`` is not allowed, the years are not whole numbers or not strictly
+        increasing, ``split_year`` is given without years or leaves a part empty,
+        ``first_year`` is after ``last_year`` or a period is given for values without
+        dates.
     NotFoundError, InputDataError
-        If the file does not exist or cannot be read.
+        If a file does not exist or cannot be read.
     CalculationError
-        If fewer than 3 annual maxima (complete hydrological years) are available or
-        all of them are equal.
+        If fewer than 3 annual maxima are available, the period has no value or all
+        the maxima are equal.
     """
     cite(attribution)
     level = check_open_unit_interval("alpha", alpha)
-    series, notices = load_valid_series(
-        values=values,
-        dates=dates,
-        years=years,
-        input_file=input_file,
-        value_column=value_column,
-        date_column=date_column,
-        year_column=year_column,
-    )
+    check_choice("parameter", parameter, _FREQUENCY_PARAMETERS)
+    check_years(first_year, last_year)
+    notices: list[Notice] = []
     labels: NDArray[np.integer] | None
-    if series.dates is None:
-        maxima, labels = series.values, series.years
+    hydrological_years: list[int] | None = None
+    source = "values"
+    if half_year_file is not None:
+        half = _half_year_extremes(
+            half_year_file,
+            parameter,
+            first_year,
+            last_year,
+            "max",
+            values=values,
+            dates=dates,
+            years=years,
+            input_file=input_file,
+            value_column=value_column,
+            date_column=date_column,
+            year_column=year_column,
+        )
+        maxima, labels = half.values, half.years
         require_count(
             len(maxima), _MIN_ANNUAL_VALUES, "Homogeneity testing", unit="annual maxima"
         )
+        hydrological_years = [int(year) for year in half.years]
+        source = "half_years"
     else:
-        extremes, year_notices = _annual_extremes(series, "max")
-        _require_years(
-            extremes,
-            "Homogeneity testing",
-            advice="Annual maxima that are already extracted go without dates.",
+        series, notices = load_valid_series(
+            values=values,
+            dates=dates,
+            years=years,
+            input_file=input_file,
+            value_column=value_column,
+            date_column=date_column,
+            year_column=year_column,
         )
-        maxima, labels = extremes.values, extremes.years
-        notices.extend(year_notices)
+        if series.dates is None:
+            _refuse_period_of_values(first_year, last_year)
+            maxima, labels = series.values, series.years
+            require_count(
+                len(maxima),
+                _MIN_ANNUAL_VALUES,
+                "Homogeneity testing",
+                unit="annual maxima",
+            )
+        else:
+            series = select_years(series, first_year, last_year)
+            extremes, year_notices = _annual_extremes(series, "max")
+            _require_years(
+                extremes,
+                "Homogeneity testing",
+                advice="Annual maxima that are already extracted go without dates.",
+            )
+            maxima, labels = extremes.values, extremes.years
+            hydrological_years = [int(year) for year in extremes.years]
+            notices.extend(year_notices)
+            source = "daily"
     if split_year is not None and labels is None:
         raise InvalidParameterError(
             "Option 'split_year' needs the years of the annual maxima",
@@ -1782,9 +2012,14 @@ def stats_homogeneity(
             ),
         )
     with capture_warnings(_NUMERIC_WARNINGS) as numeric:
-        result: HomogeneityResult = homogeneity_tests(
+        tested: HomogeneityResult = homogeneity_tests(
             maxima, labels, split_year=split_year, alpha=level
         )
+    result = HomogeneityAnalysis(
+        **{item.name: getattr(tested, item.name) for item in fields(tested)},
+        source=source,
+        hydrological_years=hydrological_years,
+    )
     rejected = [name for name in _TESTS if not getattr(result, name).homogeneous]
     if rejected:
         notices.append(notice("homogeneity_rejected", tests=rejected, alpha=level))

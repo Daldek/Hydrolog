@@ -357,6 +357,24 @@ for the author.
   `develop` `48358a5` (ADR-0028): the three new commands take `attribution`, and an Obserwator export
   with its attribution columns gives `attribution` and `terms_notice` in the envelope of each
   (`tests/unit/test_attribution.py`).
+- S2, `feature/station-batch` (D9, D10; ADR-0030): as decided, with three details fixed in the code:
+  the envelope of the batch carries AGI-4.2's `items` (one per line) and its `status` is `partial`
+  or `failed` when calls failed (CLI exit 10 or 11, the envelope printed), the requirement AGI-4.2 of
+  this plan; a blank line is a line that is not a call; the GUI does not offer the batch (its calls
+  would reach the commands the GUI leaves out). `AGENTS.md`: 16,246 of 16,384 bytes. Verified on
+  Kłodzko's exports (150160180, demo store, outside the repository): a batch of 1,000 calls
+  (characteristic values, frequency of the half-years, duration curves, volumes, low-flow
+  sequences and threshold events over many periods, 77 calls ending in `calculation_error`, one
+  `validation_error`, one `not_found`, and `tc kirpich`) wrote 1,000 lines equal byte for byte to
+  the `--json` output of each call run alone with the CLI (the envelope, or the last line of
+  stderr); the batch took 59 s in one process, the single calls 1,803 s of processes (1.8 s each;
+  451 s on 4 workers). The annual maxima of IMGW-PIB's half-years in `stats flood-frequency
+  --half-year-file` equal the mockup's (`hydro_flood_frequency`, source `semiannual`): 74 years of
+  1951–2025 and 29 of 1991–2020 (hydrological year 1997 is not in the file), with the same years, best distribution
+  and the 36 quantiles of its table equal to the last digit. Based on `develop` `48358a5` (ADR-0028): a
+  line of the batch's output is the envelope of its call with that call's own lines, the batch's
+  envelope has the union of the lines of its calls, and the lines of IMGW-PIB's half-year file reach the
+  results of the three frequency commands.
 
 ## Risks
 

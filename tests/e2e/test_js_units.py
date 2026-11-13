@@ -363,6 +363,8 @@ def test_fields_and_panes_of_real_commands(page: Any) -> None:
     assert one_of["groups"] == [
         ["Wartości", ["values"]],
         ["Plik", ["input_file", "value_column", "date_column"]],
+        # IMGW-PIB's half-years (plan 2026-11-13, D9); no Polish label yet
+        ["half_year_file", ["half_year_file"]],
     ]
 
 

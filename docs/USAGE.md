@@ -903,6 +903,37 @@ envelope = hydrolog.run_command(
 print(envelope.to_dict()["result"]["wwx"], [n.code for n in envelope.notices])
 ```
 
+`stats flood-frequency`, `stats low-flow` and `stats homogeneity` also read Obserwator's export
+of IMGW-PIB's half-year characteristics (`--half-year-file`, `pl.imgw.hydro_semiannual`; the
+columns of `--parameter` Q or H): the annual maximum is the larger of the winter and summer
+maxima of a year with both (the minimum the smaller of the minima), a year with one half-year
+only is named in `incomplete_years`, and `result.source` says where the values come from.
+`--first-year` and `--last-year` choose the hydrological years of a daily series or of the file.
+
+```bash
+hydrolog stats flood-frequency --half-year-file tests/fixtures/station_half_years.csv --first-year 2020 --last-year 2023 --json
+```
+
+### Many calls in one process: `commands batch`
+
+A station's analyses are tens of calls; `commands batch` runs them in one process (the imports
+once). Each line of `--input-file` is a call, `{"command": "<group> <verb>", "options": {...}}`;
+line i of `--output` is what `--json` prints for call i alone: its `hydrolog-result/1` envelope,
+or its `hydrolog-error/1` document. A failed call does not stop the others; relative paths are
+taken from the directory of the input file. The batch's own envelope counts the calls
+(`n_calls`, `n_ok`, `n_failed`, `failed`) and lists each line in `items`; with a failed call its
+`status` is `partial` (exit 10), with every call failed `failed` (exit 11). The calls of
+`tests/fixtures/station_batch.jsonl`, one per line:
+
+```text
+{"command": "stats characteristic", "options": {"input_file": "station_daily.csv", "value_column": "Q", "date_column": "date"}}
+{"command": "stats flood-frequency", "options": {"half_year_file": "station_half_years.csv", "return_periods": [10, 100]}}
+```
+
+```bash
+hydrolog commands batch --input-file tests/fixtures/station_batch.jsonl --output results.jsonl --check --json
+```
+
 ### Rating curve
 
 `hydrometrics rating-curve` fits `Q = a * (H - H0)^b` to stage-discharge pairs from a file with

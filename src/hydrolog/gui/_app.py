@@ -100,8 +100,11 @@ for _suffix, _type in (
 
 COOKIE: Final = "hydrolog_gui"
 """The cookie with the session id (HttpOnly, SameSite=Strict, the page's path)."""
-EXCLUDED: Final = frozenset({"gui serve", "config show", "commands guide"})
-"""Commands the GUI does not offer: a server in the server, server settings, guides."""
+EXCLUDED: Final = frozenset(
+    {"gui serve", "config show", "commands guide", "commands batch"}
+)
+"""Commands the GUI does not offer: a server in the server, server settings, guides
+and the batch, whose calls would reach the commands left out here."""
 SESSION_SCHEMA: Final = "hydrolog-gui-session/1"
 FILE_SCHEMA: Final = "hydrolog-gui-file/1"
 LINE_SCHEMA: Final = "hydrolog-gui-line/1"

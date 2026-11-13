@@ -145,7 +145,7 @@ anyio.run(call_tool)
 
 ## Capabilities
 
-51 commands in 16 groups, all computed offline except `precip pmaxtp`, the only one that opens a network connection: it fetches the PMAXTP depth of IMGW-PIB through Obserwator (extra `pmaxtp`). The MCP tool is `hydrolog_` plus the command name with `_`; every command is also available as `hydrolog.run_command("<command>", **options)`.
+52 commands in 16 groups, all computed offline except `precip pmaxtp`, the only one that opens a network connection: it fetches the PMAXTP depth of IMGW-PIB through Obserwator (extra `pmaxtp`). The MCP tool is `hydrolog_` plus the command name with `_`; every command is also available as `hydrolog.run_command("<command>", **options)`.
 
 | Group | Task | CLI command | MCP tool | Python (`hydrolog.operations`) |
 |---|---|---|---|---|
@@ -181,9 +181,9 @@ anyio.run(call_tool)
 | Flow statistics | Characteristic values of the first and second degree (WQ to NQ, WWQ to NNQ, WWW to NNW) of a daily series or IMGW-PIB's half-years | `stats characteristic` | `hydrolog_stats_characteristic` | `stats_characteristic` |
 | | Day-of-year statistics | `stats daily` | `hydrolog_stats_daily` | `stats_daily` |
 | | Duration curve with class frequencies and the modal class | `stats duration-curve` | `hydrolog_stats_duration_curve` | `stats_duration_curve` |
-| | Flood quantiles from annual maxima | `stats flood-frequency` | `hydrolog_stats_flood_frequency` | `stats_flood_frequency` |
+| | Flood quantiles from annual maxima, a daily series or IMGW-PIB's half-years | `stats flood-frequency` | `hydrolog_stats_flood_frequency` | `stats_flood_frequency` |
 | | Homogeneity tests of annual maxima (Mann-Whitney U, Kolmogorov-Smirnov, Pettitt) | `stats homogeneity` | `hydrolog_stats_homogeneity` | `stats_homogeneity` |
-| | Low-flow quantiles from annual minima | `stats low-flow` | `hydrolog_stats_low_flow` | `stats_low_flow` |
+| | Low-flow quantiles from annual minima of a daily series or IMGW-PIB's half-years | `stats low-flow` | `hydrolog_stats_low_flow` | `stats_low_flow` |
 | | Low-flow (drought) sequences below a threshold, across gaps, with yearly summaries | `stats low-flow-sequences` | `hydrolog_stats_low_flow_sequences` | `stats_low_flow_sequences` |
 | | Monotonic trend test (Mann-Kendall) | `stats mann-kendall` | `hydrolog_stats_mann_kendall` | `stats_mann_kendall` |
 | | Monthly statistics with confidence interval | `stats monthly` | `hydrolog_stats_monthly` | `stats_monthly` |
@@ -197,7 +197,8 @@ anyio.run(call_tool)
 | Report | Markdown calculation report (writes a file) | `report generate` | `hydrolog_report_generate` | `report_generate` |
 | Settings | Effective settings and their sources | `config show` | `hydrolog_config_show` | `config_show` |
 | Web GUI | The web GUI, served on this computer until it is stopped (for a person, so no MCP tool) | `gui serve` | none (`hydrolog_gui_serve` is not a tool) | `gui_serve` |
-| Catalog and guides | Render AGENTS.md, llms.txt or a block (writes a file) | `commands guide` | `hydrolog_commands_guide` | `commands_guide` |
+| Catalog and guides | Run the catalog calls of a JSON Lines file in one process (writes a file) | `commands batch` | `hydrolog_commands_batch` | `commands_batch` |
+| | Render AGENTS.md, llms.txt or a block (writes a file) | `commands guide` | `hydrolog_commands_guide` | `commands_guide` |
 | | List the commands | `commands list` | `hydrolog_commands_list` | `commands_list` |
 | | Options, units, rules and examples of a command | `commands schema` | `hydrolog_commands_schema` | `commands_schema` |
 
@@ -205,8 +206,8 @@ anyio.run(call_tool)
 
 - [llms.txt](https://github.com/Daldek/Hydrolog/blob/main/llms.txt) and [AGENTS.md](https://github.com/Daldek/Hydrolog/blob/main/AGENTS.md) state the scope, the workflow, the error codes and typical flows (design hydrograph of a watershed file, flood frequency from an Obserwator export, HSG from SoilGrids rasters); both are generated from the command catalog. `hydrolog commands guide --format agents` (or `llms`) prints them; `--format agents-md-block --inject AGENTS.md` puts a compact block into another repository's AGENTS.md.
 - The catalog is served by the tool: `hydrolog commands list` (names, operation ids, summaries) and `hydrolog commands schema --command "tc kirpich"` (options with units, bounds and allowed values, result schema, rules, examples, errors, and the typical ranges the command checks with their sources, `typical_ranges`, which only the document of one command carries). In MCP these are the tools `hydrolog_commands_list` and `hydrolog_commands_schema`; `--schema` after any command prints its description instead of running it.
-- Work in four steps: discover, check, run, read. A result is a `hydrolog-result/1` envelope (`status` is `ok`; a failing command ends with an error instead), an error a `hydrolog-error/1` document.
-- Calculations are read-only. Three commands write one file (`report generate`, `soil hsg`, `commands guide`), and so does every `route` command that is given `--output`; they take `--output`, `--check` and `--force`: `--check` writes nothing and returns the plan, `result.targets[]` with `option`, `path` and `action` (`write`, `replace` or `conflict`); an existing file is replaced only with `--force`. `route network` writes one table per node into the directory of `--output-dir` (`-o`) the same way: its plan lists every table, and a directory that is, or lies in, the store of another Nogat tool is refused (`conflict`, `details.reason` `output_in_store`). A `route` command without `--output`, and `route network` without `--output-dir`, has no file to plan: it returns the routed hydrographs, also with `--check`.
+- Work in four steps: discover, check, run, read. A result is a `hydrolog-result/1` envelope (`status` is `ok`; a failing command ends with an error instead, and `commands batch` with failed calls is `partial` or `failed` with an `items` entry per call, exit 10 or 11), an error a `hydrolog-error/1` document.
+- Calculations are read-only. Four commands write one file (`report generate`, `soil hsg`, `commands guide`, `commands batch`), and so does every `route` command that is given `--output`; they take `--output`, `--check` and `--force`: `--check` writes nothing and returns the plan, `result.targets[]` with `option`, `path` and `action` (`write`, `replace` or `conflict`); an existing file is replaced only with `--force`. `route network` writes one table per node into the directory of `--output-dir` (`-o`) the same way: its plan lists every table, and a directory that is, or lies in, the store of another Nogat tool is refused (`conflict`, `details.reason` `output_in_store`). A `route` command without `--output`, and `route network` without `--output-dir`, has no file to plan: it returns the routed hydrographs, also with `--check`.
 
 ```bash
 hydrolog commands schema --command "tc kirpich" --json
@@ -270,7 +271,7 @@ VS Code, `.vscode/mcp.json` (key `servers`):
 ```
 
 - `--allow-dir DIR` (repeatable): the only directories in which tools read files; without it every path option is refused (`forbidden`), while commands that take values still work.
-- `--allow-writes`: lets `report generate`, `soil hsg`, `commands guide` and the `route` commands (with `output`, `route network` with `output_dir`) write inside the allowed directories; without it they run as `check` and return the plan, while a `route` command without an output still returns the routed hydrographs.
+- `--allow-writes`: lets `report generate`, `soil hsg`, `commands guide`, `commands batch` (whose calls keep the server's `--allow-dir`) and the `route` commands (with `output`, `route network` with `output_dir`) write inside the allowed directories; without it they run as `check` and return the plan, while a `route` command without an output still returns the routed hydrographs.
 - `--tools FAMILIES`: comma-separated tool families, a command group (`tc`, `cn`, `scs`, `precip`, `uh`, `hydrograph`, `route`, `morphometry`, `network`, `stats`, `hydrometrics`, `soil`, `report`, `config`, `commands`) or `core`, the main tasks (`tc watershed`, `cn lookup`, `cn weighted`, `scs effective`, `hydrograph generate`, `morphometry watershed`, `stats flood-frequency`, `commands list`, `commands schema`).
 - The server speaks English only (`hydrolog mcp --lang en` is rejected). Instructions are at most 4,096 characters, each tool description at most 600; an execution error is an `isError` result that holds the `hydrolog-error/1` document.
 

@@ -54,6 +54,7 @@ from hydrolog.soil import classify_usda_texture, texture_to_hsg
 from hydrolog.statistics import (
     FIT_METHODS,
     FloodFrequencyAnalysis,
+    HomogeneityResult,
     LowFlowAnalysis,
     calculate_characteristic_values,
     calculate_daily_statistics,
@@ -1628,6 +1629,12 @@ class TestMannKendall:
         assert caught.value.details == {"count": 2, "minimum": 3}
 
 
+def _tests_of(result: HomogeneityResult) -> HomogeneityResult:
+    """Return the library's tests in a command's result (it adds ``source``...)."""
+    names = [item.name for item in dataclasses.fields(HomogeneityResult)]
+    return HomogeneityResult(**{name: getattr(result, name) for name in names})
+
+
 class TestHomogeneity:
     """``stats homogeneity``."""
 
@@ -1644,7 +1651,7 @@ class TestHomogeneity:
             split_year=2000,
         )
         years = read_table(ANNUAL_MAXIMA).numbers("year").astype(np.int64)
-        assert output.result == homogeneity_tests(
+        assert _tests_of(output.result) == homogeneity_tests(
             _annual_maxima(), years, split_year=2000
         )
         assert output.notices == ()
@@ -1653,7 +1660,7 @@ class TestHomogeneity:
         values, dates = _calendar_year_series(1991, 2020)
         output = run("stats homogeneity", values=values, dates=dates, split_year=2001)
         years = np.arange(1992, 2021)
-        assert output.result == homogeneity_tests(
+        assert _tests_of(output.result) == homogeneity_tests(
             10.0 + years % 7, years, split_year=2001
         )
         assert (output.result.split_index, output.result.split_year) == (9, 2001)
@@ -1689,7 +1696,7 @@ class TestHomogeneity:
             year_column="year",
         )
         kept = np.array([2001, 2002, 2003, *range(2005, 2012)])
-        assert output.result == homogeneity_tests(np.array(self.STEP), kept)
+        assert _tests_of(output.result) == homogeneity_tests(np.array(self.STEP), kept)
         assert output.result.pettitt.change_point_year == 2007
         assert output.notices[0].code == "missing_values_removed"
 

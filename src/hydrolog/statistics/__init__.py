@@ -18,11 +18,13 @@ from hydrolog.statistics.characteristic import (
     CharacteristicValues,
     DailyStatistics,
     FirstDegreeValues,
+    HalfYearExtremes,
     HalfYearPart,
     HalfYearValues,
     MonthlyStatistics,
     PeriodValues,
     SecondDegreeValues,
+    annual_extremes_from_half_years,
     calculate_characteristic_values,
     calculate_daily_statistics,
     calculate_monthly_statistics,
@@ -63,6 +65,7 @@ from hydrolog.statistics.low_flows import (
     LowFlowAnalysisResult,
     LowFlowFrequencyResult,
     LowFlowSequence,
+    fit_fisher_tippett_minima,
 )
 from hydrolog.statistics.stationarity import MannKendallResult, mann_kendall_test
 from hydrolog.statistics.volumes import (
@@ -78,10 +81,12 @@ __all__ = [
     "CHARACTERISTIC_KEYS",
     "CharacteristicValues",
     "FirstDegreeValues",
+    "HalfYearExtremes",
     "HalfYearPart",
     "HalfYearValues",
     "PeriodValues",
     "SecondDegreeValues",
+    "annual_extremes_from_half_years",
     "calculate_characteristic_values",
     "characteristic_labels",
     "characteristic_values_from_half_years",
@@ -122,6 +127,7 @@ __all__ = [
     "LowFlowEmpiricalFrequency",
     "LowFlowSequence",
     "LowFlowAnalysisResult",
+    "fit_fisher_tippett_minima",
     # Stationarity
     "mann_kendall_test",
     "MannKendallResult",
