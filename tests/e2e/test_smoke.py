@@ -128,6 +128,9 @@ def test_the_guides_examples_typed_give_the_guides_numbers(tab: Tab) -> None:
     network = page.locator("#siec a[download]").get_attribute("href")
     assert network
     network_file = page.request.get(tab.base + "instrukcja/" + network).body()
+    station = page.locator("#analizy-stacji a[download]").get_attribute("href")
+    assert station
+    station_file = page.request.get(tab.base + "instrukcja/" + station).body()
     shown: dict[str, str] = {}
 
     def read(key: str, locator: Locator) -> None:
@@ -305,6 +308,38 @@ def test_the_guides_examples_typed_give_the_guides_numbers(tab: Tab) -> None:
         ["uh-nash-n", "uh-nash-k", "uh-nash-lag", "uh-nash-qp"]
     ):
         read(key, kpis.nth(index))
+
+    # Analiza szeregów stacji: stats regime of the guide's station file, Q by date
+    page = reopen(tab, "#polecenia")
+    commands = page.locator('section[data-section="polecenia"]')
+    commands.locator('.cmd-item[data-command="stats regime"] button').click()
+    form = commands.locator(".cmd-form")
+    form.get_by_role("radio", name="Plik", exact=True).click()
+    form.locator('[data-option="input_file"] input[type="file"]').set_input_files(
+        {"name": "stacja.csv", "mimeType": "text/csv", "buffer": station_file}
+    )
+    expect(form.locator('[data-option="input_file"] select')).to_have_value(
+        "in/stacja.csv"
+    )
+    form.locator('[data-option="value_column"] input').fill("Q")
+    form.locator('[data-option="date_column"] input').fill("date")
+    page.get_by_role("button", name="Uruchom").click()
+    expect(page.locator(BADGE)).to_have_attribute("data-state", "ok")
+    right = commands.locator(".view-panel.right")
+    for key, field in [
+        ("stacja-first", "first_year"),
+        ("stacja-last", "last_year"),
+        ("stacja-mean", "annual_mean"),
+        ("stacja-spring", "spring_share"),
+        ("stacja-si", "seasonality_index"),
+    ]:
+        read(
+            key,
+            right.locator(
+                f'table.params[data-object="result"] tr[data-key="{field}"] td'
+            ).first,
+        )
+    read("stacja-type", right.locator('tr[data-key="code"] td').first)
 
     assert {key for key, _ in quoted} == set(shown)
     assert [(key, flat(text)) for key, text in quoted] == [

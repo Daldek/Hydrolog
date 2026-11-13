@@ -11,6 +11,9 @@ First release of the stable API (1.0.0, not yet released; `develop` carries 1.0.
 
 ### Added
 
+#### The GUI's guide: „Analiza szeregów stacji” (Nogat steps H1 to H4; ADR-0029 to ADR-0033)
+- A new chapter 07 of `instrukcja/` (chapters 07 to 10 become 08 to 11): the input of the station analyses (Obserwator's daily export, IMGW-PIB's half-year file, Archiwista's hand-off in „Statystyka przepływów”), what each command of `stats`, `hydrometrics rating-curve` and `meteo` computes, `commands batch` left out of the GUI, the defaults (the whole record, the 30-year notice, the reference period of normals, missing days), the methods' sources by name, and a worked example: `stats regime` of the synthetic station `przyklady/stacja.csv` (the fixture `station_daily.csv`), whose numbers the browser smoke test compares with the page.
+
 #### A public web GUI: the regulamin, the request limit, the access log, daily totals, „Zgłoś uwagę” without contact, sessions without a cookie (Nogat plan `2026-11-13-gui-terms`, step 4; DEV-15.7 to DEV-15.12; ADR-0034)
 With `[nogat.operator]` in `nogat.toml` the GUI is public and keeps Nogat's rules; without it (a local run) nothing below applies but the feedback form and the sessions.
 - The regulamin of Nogat's GUI kit 0.4.0 (copied byte for byte from Nogat `2b513d0` into `web/nogat/`), filled at the start with the blocks of PMAXTP, IMGW-PIB and ČHMÚ, served at `regulamin.html`; every view shows at its foot the statement „Serwis jest niekomercyjny i bezpłatny…” and „Regulamin”, the menu „Aplikacje” ends with it, and the guide shows the same footer (`GET api/terms`).
