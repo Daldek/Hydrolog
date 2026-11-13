@@ -44,7 +44,7 @@
 
 <nav class="guide-toc" aria-labelledby="toc-title">
   <h2 id="toc-title">Spis treści</h2>
-  <p class="toc-hint"><strong>Pierwszy raz?</strong> Wystarczy część „Na start”: kilka minut czytania bez szczegółów technicznych. Rozdziały 01–10 opisują każdą sekcję dokładnie; wracaj do nich, gdy będą potrzebne.</p>
+  <p class="toc-hint"><strong>Pierwszy raz?</strong> Wystarczy część „Na start”: kilka minut czytania bez szczegółów technicznych. Rozdziały 01–11 opisują każdą sekcję dokładnie; wracaj do nich, gdy będą potrzebne.</p>
   <ol class="toc">
     <li class="toc-start">
       <a href="#na-start"><span class="toc-num">▶</span> Na start</a>
@@ -63,10 +63,11 @@
     <li><a href="#statystyka"><span class="toc-num">04</span> Statystyka przepływów</a></li>
     <li><a href="#kalkulatory"><span class="toc-num">05</span> Kalkulatory</a></li>
     <li><a href="#polecenia"><span class="toc-num">06</span> Wszystkie polecenia</a></li>
-    <li><a href="#eksport"><span class="toc-num">07</span> Eksport i przekazanie wyników</a></li>
-    <li><a href="#telefon"><span class="toc-num">08</span> Telefon, motyw i Twoje dane</a></li>
-    <li><a href="#problemy"><span class="toc-num">09</span> Gdy coś nie działa</a></li>
-    <li><a href="#uruchomienie"><span class="toc-num">10</span> Uruchomienie u siebie</a></li>
+    <li><a href="#analizy-stacji"><span class="toc-num">07</span> Analiza szeregów stacji</a></li>
+    <li><a href="#eksport"><span class="toc-num">08</span> Eksport i przekazanie wyników</a></li>
+    <li><a href="#telefon"><span class="toc-num">09</span> Telefon, motyw i Twoje dane</a></li>
+    <li><a href="#problemy"><span class="toc-num">10</span> Gdy coś nie działa</a></li>
+    <li><a href="#uruchomienie"><span class="toc-num">11</span> Uruchomienie u siebie</a></li>
   </ol>
 </nav>
 
@@ -113,6 +114,7 @@
       <div><dt>Jak szybko woda spływa z najdalszego miejsca zlewni?</dt><dd><a href="#kalkulatory">Kalkulatory</a>: czas koncentracji policzony sześcioma metodami.</dd></div>
       <div><dt>Jak zmienia się fala, gdy płynie długim korytem albo przez staw lub zbiornik?</dt><dd><a href="#siec">Sieć i trasowanie</a>.</dd></div>
       <div><dt>Jak duży przepływ zdarza się w tej rzece średnio raz na 100 lat?</dt><dd><a href="#statystyka">Statystyka przepływów</a>, z największych przepływów kolejnych lat.</dd></div>
+      <div><dt>Jaki reżim ma rzeka, jak długo trwają niżówki albo ile było dni z mrozem?</dt><dd><a href="#analizy-stacji">Analiza szeregów stacji</a>, z wieloletniego szeregu dobowego stacji.</dd></div>
     </dl>
   </section>
 
@@ -388,7 +390,7 @@
 159,6; 102; 94,5; 117,8; 173,6; 148,2; 124,2; 171; 227,6; 81,6; 123,8; 123,8; 116</code></pre>
   <p>Zostaw cztery rozkłady, metodę L-momentów i domyślne okresy powtarzania i w „Wyróżniony w wynikach” wybierz 100; wynik liczy się sam. Wynik: najlepszy jest <span class="ex" data-example="statystyka-best">GEV</span>, Q&nbsp;1% = <span class="ex" data-example="statystyka-q1">324,9&nbsp;m³/s</span>, Q&nbsp;10% = <span class="ex" data-example="statystyka-q10">197,4&nbsp;m³/s</span>, z <span class="ex" data-example="statystyka-years">26 lat</span> danych. Uwaga przypomina, że wytyczne KZGW (2017) wymagają co najmniej 30 lat.</p>
   <p>„Jednorodność ciągu” pokazuje, że żaden z trzech testów nie odrzuca jednorodności tych maksimów: przy każdym jest „tak”.</p>
-  <p>Inne analizy szeregu (niżówki, trend, jednorodność z własnym rokiem podziału, przepływy charakterystyczne) są w <a href="#polecenia">Wszystkich poleceniach</a>, w grupie <code>stats</code>.</p>
+  <p>Inne analizy szeregu (niżówki, trend, reżim, przepływy charakterystyczne, krzywa czasu trwania i inne) są w <a href="#polecenia">Wszystkich poleceniach</a>; opisuje je <a href="#analizy-stacji">rozdział 07</a>.</p>
   <p class="back"><a href="#toc-title">↑ Spis treści</a></p>
 </section>
 
@@ -443,9 +445,63 @@
   <p class="back"><a href="#toc-title">↑ Spis treści</a></p>
 </section>
 
-<!-- ============================ 07 Eksport ============================ -->
+<!-- ============================ 07 Analiza szeregów stacji ============================ -->
+<section class="part" id="analizy-stacji" aria-labelledby="analizy-stacji-title">
+  <p class="kicker">07 · Polecenia dla stacji</p>
+  <h2 id="analizy-stacji-title">Analiza szeregów stacji</h2>
+  <p>Wieloletni szereg dobowy jednej stacji, wodowskazowej albo meteorologicznej, Hydrolog opisuje kilkunastoma poleceniami grup <code>stats</code> („Statystyka przepływów”), <code>hydrometrics</code> („Hydrometria”) i <code>meteo</code> („Statystyka meteorologiczna”). Z tych samych poleceń korzysta Obserwator w analizach stacji: ten sam szereg i te same ustawienia dają te same liczby. Nie mają własnej sekcji: wybierasz je w <a href="#polecenia">Wszystkich poleceniach</a>.</p>
+
+  <h3 id="analizy-stacji-dane">Skąd dane</h3>
+  <ul>
+    <li><strong>Szereg dobowy</strong>: plik CSV eksportu szeregu z Obserwatora, z kolumną dat <code>date</code> i kolumnami wielkości, np. <code>Q [m3/s]</code>, <code>H [cm]</code> i <code>T [degC]</code> dla wodowskazu albo <code>P [mm]</code>, <code>Tmean [degC]</code> i <code>snow_cover [cm]</code> dla stacji meteorologicznej. W formularzu przełącz „Szereg” na „Plik”, wczytaj plik („Wczytaj plik…”) i wpisz kolumnę wartości (wystarczy <code>Q</code>, <code>H</code> albo <code>T</code>) i kolumnę dat <code>date</code>; polecenia <code>meteo</code> same znajdują kolumny eksportu. Krótki szereg możesz też wpisać jako wartości z datami.</li>
+    <li><strong>Plik półroczy IMGW-PIB</strong>: eksport Obserwatora z charakterystykami półroczy (zima XI–IV, lato V–X: najmniejsza, średnia i największa wartość z datami) w polu <code>half_year_file</code> poleceń <code>stats characteristic</code>, <code>stats seasonality</code>, <code>stats flood-frequency</code>, <code>stats low-flow</code> i <code>stats homogeneity</code>. Maksimum roczne to większe z maksimów półroczy, minimum mniejsze z minimów; rok, który ma tylko jedno półrocze, jest pominięty i wymieniony w wyniku.</li>
+    <li><strong>Przekazanie z Archiwisty</strong> (szereg stacji) otwiera się w <a href="#statystyka">Statystyce przepływów</a> i daje tam maksima roczne; do analiz z tego rozdziału wczytaj eksport szeregu jako plik CSV.</li>
+  </ul>
+  <p>Wiersze źródła i warunków IMGW-PIB z pliku eksportu przechodzą do wyniku (zob. <a href="#zrodla-danych">Źródła danych</a>).</p>
+
+  <h3 id="analizy-stacji-polecenia">Co liczą</h3>
+  <dl class="defs">
+    <div><dt><code>stats characteristic</code>: wartości charakterystyczne</dt><dd>Najmniejsza, średnia i największa wartość każdego roku hydrologicznego i półrocza (I stopień: NQ, SQ, WQ) oraz z nich wartości II stopnia okresu, od WWQ do NNQ; tak samo dla stanów (WWW…NNW) i temperatury wody (WWT…NNT), także z pliku półroczy.</dd></div>
+    <div><dt><code>stats threshold-events</code>, <code>stats low-flow-sequences</code>: dni powyżej i poniżej progu</dt><dd>Ciągi dni z wartością co najmniej równą progowi albo niższą od niego (np. stan wody albo temperatura wody 20&nbsp;°C): początek, koniec, czas trwania, szczyt i liczba takich dni w roku. Niżówki liczą się poniżej progu podanego, SNQ albo Q70 z krzywej czasu trwania, z niedoborem objętości; przerwy krótsze niż 4 dni ich nie dzielą.</dd></div>
+    <div><dt><code>stats duration-curve</code>: krzywa czasu trwania</dt><dd>Wartość osiągana albo przekraczana przez p&nbsp;% dni (np. Q90), także dla jednego miesiąca, i liczby dni w klasach równej szerokości z klasą najczęstszą.</dd></div>
+    <div><dt><code>stats runoff-volume</code>: objętość odpływu</dt><dd>Objętości lat i miesięcy hydrologicznych, ich średnie z lat i miesięcy bez braków oraz krzywa sumowa wybranego roku.</dd></div>
+    <div><dt><code>stats regime</code>, <code>stats seasonality</code>, <code>stats harmonics</code>: rytm roku</dt><dd>Współczynniki Pardégo dwunastu miesięcy, typ reżimu według Dynowskiej i wskaźnik sezonowości; średni termin i skupienie maksimów albo minimów rocznych; cykl roczny (np. temperatury wody) jako suma 1–4 harmonik z amplitudą i dniem maksimum.</dd></div>
+    <div><dt><code>stats baseflow</code>: przepływ podstawowy</dt><dd>Filtr Lyne'a i Hollicka: wskaźnik przepływu podstawowego (BFI) okresu i lat oraz przepływ podstawowy każdego dnia wybranego roku.</dd></div>
+    <div><dt><code>stats mann-kendall</code>: trend</dt><dd>Test Manna-Kendalla z poprawką na wartości równe i nachylenie Sena z przedziałem ufności, np. dla wartości rocznych z latami.</dd></div>
+    <div><dt><code>hydrometrics rating-curve</code>: krzywa natężenia przepływu</dt><dd>Krzywa Q(H) z par stan–przepływ; z datami par także osobna krzywa każdego bloku lat (<code>years_per_period</code>), wszystkie odczytane przy tym samym stanie i przepływie, by porównać, jak zmieniało się koryto.</dd></div>
+    <div><dt><code>stats flood-frequency</code>, <code>stats low-flow</code>, <code>stats homogeneity</code>: także z półroczy</dt><dd>Przepływy o zadanym prawdopodobieństwie i jednorodność ciągu, jak w <a href="#statystyka">Statystyce przepływów</a>, z maksimów albo minimów rocznych szeregu dobowego albo pliku półroczy.</dd></div>
+    <div><dt><code>meteo precipitation</code>, <code>meteo spells</code>, <code>meteo spi</code>: opad</dt><dd>Sumy miesięcy, półroczy, pór roku i lat z normami i procentem normy, największe sumy 1–10 dni z datami, dni z opadem co najmniej 0,1, 1, 10 i 20&nbsp;mm, wskaźnik intensywności opadu (SDII), udział opadów silnych (R95pTOT, R99pTOT) i regularność opadu w roku (<code>index</code>, jeden na wywołanie); ciągi dni suchych albo mokrych (próg 1&nbsp;mm); wskaźnik SPI 1, 3, 6 i 12 miesięcy oraz klasy opadu miesięcy i lat względem normy.</dd></div>
+    <div><dt><code>meteo temperature</code>, <code>meteo snow</code>, <code>meteo hydrothermal</code>: temperatura i śnieg</dt><dd>Średnie, normy i anomalie temperatury powietrza, dni przymrozkowe, mroźne, gorące i upalne oraz noce tropikalne, stopniodni wzrostu i grzania, dobowa amplituda; pokrywa śnieżna każdej zimy (1 sierpnia – 31 lipca): dni z pokrywą, największa grubość, pierwszy i ostatni dzień; współczynnik hydrotermiczny Sielianinowa miesięcy IV–IX.</dd></div>
+  </dl>
+  <p class="note-box">Polecenia <code>commands batch</code>, które liczy wiele wywołań z pliku JSON Lines w jednym procesie (tak Obserwator liczy analizy całej stacji), nie ma w przeglądarce: jest w wierszu poleceń i w MCP.</p>
+
+  <h3 id="analizy-stacji-okres">Okres, 30 lat i normy</h3>
+  <ul>
+    <li><strong>Cały szereg</strong>: domyślnie polecenie liczy od pierwszego do ostatniego roku z danymi. „Pierwszy rok” i „Ostatni rok” (<code>first_year</code>, <code>last_year</code>) w „Opcjach dodatkowych” zawężają okres. Lata są hydrologiczne, od listopada do października, nazwane rokiem, w którym się kończą; <code>meteo</code> liczy lata kalendarzowe (hydrologiczne z <code>year_type</code>), a <code>meteo snow</code> zimy. Wynik podaje okres i liczbę lat z danymi.</li>
+    <li><strong>30 lat</strong>: gdy okres ma mniej niż 30 lat z danymi, wynik jest policzony, ale uwaga przypomina, że zalecane jest co najmniej 30 lat: z krótkiego okresu normy, wartości II stopnia i krzywa czasu trwania są mniej pewne.</li>
+    <li><strong>Okres norm</strong>: <code>meteo precipitation</code>, <code>meteo spi</code> i <code>meteo temperature</code> liczą normy, procent normy, anomalie i dopasowanie SPI z okresu <code>reference_first_year</code>–<code>reference_last_year</code>, domyślnie tego samego co analizowany. Podaj np. 1991–2020, standardowy okres normy klimatologicznej WMO, aby porównać z nim ostatnie lata; każdy analizowany rok zachowuje własne wartości.</li>
+    <li><strong>Braki</strong>: dzień bez wartości nie jest uzupełniany. W <code>stats</code> rok z brakami zostaje i jest wymieniony w uwadze; w <code>meteo</code> wartości miesiąca i roku liczą się według zasad WMO (np. suma miesięczna tylko z pełnego miesiąca), a norma tylko z co najmniej 80&nbsp;% lat okresu.</li>
+  </ul>
+
+  <h3 id="przyklad-stacja">Przykład: reżim odpływu</h3>
+  <p>Pobierz plik przykładu <a href="przyklady/stacja.csv" download="stacja.csv"><code>stacja.csv</code></a>: wymyślona stacja, pięć lat hydrologicznych przepływów, stanów i temperatury wody w układzie eksportu Obserwatora, z kilkoma dniami bez danych. We Wszystkich poleceniach wybierz <code>stats regime</code> (grupa <code>stats</code>), w „Szereg” przełącz na „Plik”, naciśnij „Wczytaj plik…” i wybierz pobrany plik, a potem wpisz kolumnę wartości <code>Q</code> i kolumnę dat <code>date</code>. Naciśnij „Uruchom”. Wynik: lata <span class="ex" data-example="stacja-first">2019</span>–<span class="ex" data-example="stacja-last">2023</span>, średni przepływ <span class="ex" data-example="stacja-mean">5,601</span>&nbsp;m³/s, typ reżimu <span class="ex" data-example="stacja-type">4</span> (niwalno-pluwialny: wezbranie roztopowe w marcu i letni wzrost przepływu ponad średnią roczną w czerwcu), udział marca i kwietnia w objętości rocznej <span class="ex" data-example="stacja-spring">0,2811</span> i wskaźnik sezonowości <span class="ex" data-example="stacja-si">0,4888</span> (0 to miesiące równe). Uwagi mówią, ile dni nie miało danych, i przypominają, że 5 lat to mniej niż zalecane 30.</p>
+  <p>Ten sam plik przyjmują pozostałe polecenia <code>stats</code> tego rozdziału, np. <code>stats characteristic</code> z kolumną <code>Q</code>; dla stanów albo temperatury wody wpisz kolumnę <code>H</code> albo <code>T</code> i tę samą wielkość w polu <code>parameter</code>.</p>
+
+  <h3 id="analizy-stacji-zrodla">Źródła metod</h3>
+  <ul>
+    <li>Wartości charakterystyczne, krzywa czasu trwania: definicje IMGW-PIB (Byczkowski, 1996); Searcy (1959), Vogel i Fennessey (1994).</li>
+    <li>Dni powyżej i poniżej progu, niżówki: metoda progowa (Tallaksen i van Lanen, 2004).</li>
+    <li>Reżim: Pardé (1933), Dynowska (1997) z kryteriami Wrzesińskiego (2017, 2018) i Perz (2019), wskaźnik sezonowości Walsha i Lawlera (1981); sezonowość ekstremów: Bayliss i Jones (1993), Burn (1997); harmoniki: Wilks (2011).</li>
+    <li>Przepływ podstawowy: Lyne i Hollick (1979), Nathan i McMahon (1990), Ladson i in. (2013).</li>
+    <li>Trend: Mann (1945), Kendall (1975), Hirsch, Slack i Smith (1982), Sen (1968), Conover (1980), Gilbert (1987).</li>
+    <li>Meteorologia: WMO-No. 1203 (2017, braki danych i normy), wskaźniki ETCCDI (Zhang i in., 2011), Hyndman i Fan (1996), Oliver (1980); SPI: McKee i in. (1993), Thom (1958), WMO-No. 1090 (2012); klasy opadu: Kaczorowska (1962), Gąsiorek i Musiał (2011); stopniodni: Wypych i in. (2017), Eurostat; współczynnik hydrotermiczny: Sielianinow (1928), Skowera i Puła (2004).</li>
+  </ul>
+  <p class="back"><a href="#toc-title">↑ Spis treści</a></p>
+</section>
+
+<!-- ============================ 08 Eksport ============================ -->
 <section class="part" id="eksport" aria-labelledby="eksport-title">
-  <p class="kicker">07 · Wyniki poza Hydrologiem</p>
+  <p class="kicker">08 · Wyniki poza Hydrologiem</p>
   <h2 id="eksport-title">Eksport i przekazanie wyników</h2>
   <p>Część „Eksport” w panelu „Wyniki” zapisuje bieżący wynik na Twoim komputerze. Jest zwinięta: rozwijasz ją, klikając jej nagłówek (tak samo „Przekazanie” w Hydrogramie zlewni i w Sieci).</p>
   <figure class="inline-figure">
@@ -476,9 +532,9 @@
   <p class="back"><a href="#toc-title">↑ Spis treści</a></p>
 </section>
 
-<!-- ============================ 08 Telefon ============================ -->
+<!-- ============================ 09 Telefon ============================ -->
 <section class="part" id="telefon" aria-labelledby="telefon-title">
-  <p class="kicker">08 · Wygląd i dane</p>
+  <p class="kicker">09 · Wygląd i dane</p>
   <h2 id="telefon-title">Telefon, motyw i Twoje dane</h2>
   <figure class="inline-figure phone-figure">
     <a href="img/telefon.png"><img src="img/telefon.png" width="390" height="844" loading="lazy" alt="Sieć i trasowanie na telefonie w ciemnym motywie z przykładem: nad schematem przyciski Dane i Wyniki, a na nim arkusz panelu Zlewnia A z przyciskiem ← Dane, krokiem Zlewnia (Wczytaj z Hydrografa, Plik zlewni…, powierzchnia 12 km², CN 75, obwód 18 km, długość zlewni 6 km) i stanem Dane kompletne, wynik po Oblicz sieć; na dole pasek sekcji."></a>
@@ -500,9 +556,9 @@
   <p class="back"><a href="#toc-title">↑ Spis treści</a></p>
 </section>
 
-<!-- ============================ 09 Problemy ============================ -->
+<!-- ============================ 10 Problemy ============================ -->
 <section class="part" id="problemy" aria-labelledby="problemy-title">
-  <p class="kicker">09 · Pomoc</p>
+  <p class="kicker">10 · Pomoc</p>
   <h2 id="problemy-title">Gdy coś nie działa</h2>
   <dl class="defs">
     <div><dt>„Dane niepełne: …”</dt><dd>Pole o tej nazwie jest puste albo ma wartość spoza zakresu; jest oznaczone na czerwono, a pod nim widać, co jest nie tak. Wynik na ekranie dotyczy poprzednich danych.</dd></div>
@@ -522,9 +578,9 @@
   <p class="back"><a href="#toc-title">↑ Spis treści</a></p>
 </section>
 
-<!-- ============================ 10 Uruchomienie ============================ -->
+<!-- ============================ 11 Uruchomienie ============================ -->
 <section class="part" id="uruchomienie" aria-labelledby="uruchomienie-title">
-  <p class="kicker">10 · Dla administratora</p>
+  <p class="kicker">11 · Dla administratora</p>
   <h2 id="uruchomienie-title">Uruchomienie u siebie</h2>
   <p>Hydrolog to program w Pythonie. Po instalacji z dodatkiem <code>gui</code> (polecenia instalacji są w README projektu) serwer uruchamia się poleceniem:</p>
   <pre class="cmd"><code>hydrolog gui serve</code></pre>
