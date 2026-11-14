@@ -67,8 +67,12 @@ them only with `HYDROLOG_ADMIN_API_KEY` or `HYDROLOG_ADMIN_API_KEY_FILE` set (no
 Read and back up the file with `sqlite3 FILE "SELECT ..."` and `sqlite3 FILE ".backup COPY"`;
 tests give `create_app(data_dir=tmp, config={...})`, never the developer's data directory or
 `nogat.toml`. With `[nogat.operator]` the GUI is public (ADR-0034, `gui/_public.py`,
-`gui/_terms.py`): the regulamin at `regulamin.html`, a request limit, an access log without
-IP addresses, `stats.jsonl`; the e2e fixtures `public_server` and `limited_server` serve one.
+`gui/_terms.py`): the regulamin at `regulamin.html`, a request limit, `stats.jsonl`; the e2e
+fixtures `public_server` and `limited_server` serve one. `gui serve` logs every run as Nogat
+prescribes (ADR-0037, `gui/nogat_logging.py`, Nogat's module copied byte for byte): records of
+`nogat-log/1` in `<state_dir>/hydrolog/logs/`, only lifecycle records and reduced errors on
+stderr; tests give `create_app(log=ServerLog(..., tmp))` or `HYDROLOG_STATE_DIR`, never the
+developer's state directory.
 The page has no cookie: its session is the header `X-Hydrolog-Session`, kept in its memory.
 A change that touches docs ships with its CHANGELOG entry (DOC-7.2).
 
@@ -81,13 +85,15 @@ src/hydrolog/
 ├── cli/          # CLI generated from the catalog; render.py (human text), texts.py (PL/EN)
 ├── mcp/          # MCP server (extra [mcp]): tools, instructions, calls
 ├── gui/          # web GUI (extra [gui]): server.py (serve), _app.py (Starlette app, private API),
-│                 # _runner.py, _worker.py (warm worker processes), _sessions.py (work directories),
-│                 # _feedback.py (reports of „Zgłoś uwagę”, SQLite); web/ (the page: Preact modules
-│                 # without a build; instrukcja/: the user guide; admin/: the reports; nogat/: Nogat's
-│                 # tokens, marks and GUI kit, copied byte for byte, ADR-0027)
+│                 # _serving.py (uvicorn, the logs' start and stop), nogat_logging.py (Nogat's logs,
+│                 # copied byte for byte, ADR-0037), _runner.py, _worker.py (warm worker processes),
+│                 # _sessions.py (work directories), _feedback.py (reports of „Zgłoś uwagę”, SQLite);
+│                 # web/ (the page: Preact modules without a build; instrukcja/: the user guide;
+│                 # admin/: the reports; nogat/: Nogat's tokens, marks and GUI kit, copied byte for
+│                 # byte, ADR-0027)
 ├── agent_guide.py, _data/agents/   # generator and templates of AGENTS.md, llms.txt, block
 ├── exceptions.py, _errors.py       # HydrologError classes; registry generated from schemas/nogat
-├── _settings.py                    # lang/log_level/data_dir: option > env > nogat.toml > default;
+├── _settings.py                    # lang/log_level/data_dir/state_dir: option > env > nogat.toml > default;
 │                                   # the admin key (env only)
 ├── routing/      # reaches (lag, muskingum, cunge, cascade, level_pool); network.py (nodes, RoutingNetwork),
 │                 # points.py (ControlPointNetwork), rainfall.py, runoff.py, document.py (hydrolog-network/1),

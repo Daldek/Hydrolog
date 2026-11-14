@@ -44,7 +44,11 @@ class TestPrecedence:
             "request_limit": "300",
             "request_window": "60",
         }
-        expected = {**DEFAULTS, "data_dir": str(platformdirs.user_data_path("nogat"))}
+        expected = {
+            **DEFAULTS,
+            "data_dir": str(platformdirs.user_data_path("nogat")),
+            "state_dir": str(platformdirs.user_state_path("nogat")),
+        }
         for key in KEYS:
             setting = resolve_setting(key, environ={}, file_data={})
             assert (setting.value, setting.source, setting.detail) == (
@@ -235,36 +239,37 @@ class TestConfigPath:
         assert config_path() == tmp_path / "absent.toml"
 
 
-class TestDataDir:
-    """``data_dir``: a path in the platform's notation, its case kept, ``~`` expanded.
+@pytest.mark.parametrize(
+    ("key", "variable"), [("data_dir", "DATA"), ("state_dir", "STATE")]
+)
+class TestDirectories:
+    """``data_dir`` and ``state_dir``: a path in the platform's notation, its case
+    kept, ``~`` expanded.
 
     Windows writes ``/Dane/Nogat`` as ``\\Dane\\Nogat``.
     """
 
-    @pytest.mark.parametrize(
-        "environ",
-        [
-            {"HYDROLOG_DATA_DIR": "/Dane/Nogat", "NOGAT_DATA_DIR": "/x"},
-            {"NOGAT_DATA_DIR": "/Dane/Nogat"},
-        ],
-    )
-    def test_the_variables_give_a_path_as_written(self, environ):
-        setting = resolve_setting("data_dir", environ=environ, file_data={})
-        expected = str(Path("/Dane/Nogat"))
-        assert (setting.value, setting.source) == (expected, "environment")
+    def test_the_variables_give_a_path_as_written(self, key, variable):
+        for environ in (
+            {f"HYDROLOG_{variable}_DIR": "/Dane/Nogat", f"NOGAT_{variable}_DIR": "/x"},
+            {f"NOGAT_{variable}_DIR": "/Dane/Nogat"},
+        ):
+            setting = resolve_setting(key, environ=environ, file_data={})
+            expected = str(Path("/Dane/Nogat"))
+            assert (setting.value, setting.source) == (expected, "environment")
 
-    def test_the_home_directory_is_expanded(self, home):
+    def test_the_home_directory_is_expanded(self, home, key, variable):
         setting = resolve_setting(
-            "data_dir", environ={"HYDROLOG_DATA_DIR": " ~/Dane "}, file_data={}
+            key, environ={f"HYDROLOG_{variable}_DIR": " ~/Dane "}, file_data={}
         )
         assert setting.value == str(home / "Dane")
 
-    def test_the_shared_section_of_the_file_gives_it(self):
+    def test_the_shared_section_of_the_file_gives_it(self, key, variable):
         setting = resolve_setting(
-            "data_dir", environ={}, file_data={"nogat": {"data_dir": "/srv/Nogat"}}
+            key, environ={}, file_data={"nogat": {key: "/srv/Nogat"}}
         )
         expected = str(Path("/srv/Nogat"))
-        assert (setting.value, setting.detail) == (expected, "[nogat] data_dir")
+        assert (setting.value, setting.detail) == (expected, f"[nogat] {key}")
 
 
 class TestCredentials:

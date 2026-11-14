@@ -6,13 +6,15 @@ before ``[nogat]``) and the built-in default. The file is ``nogat.toml`` in the 
 configuration directory (``platformdirs.user_config_path("nogat")``) or the path in
 ``NOGAT_CONFIG``; it is read with ``tomllib`` and Hydrolog works without it.
 
-Hydrolog has five settings: ``lang`` (language of human-readable output),
+Hydrolog has six settings: ``lang`` (language of human-readable output),
 ``log_level`` (verbosity of the CLI log on stderr), ``data_dir`` (the shared data
 directory, DEV-18.2: the web GUI keeps the reports of „Zgłoś uwagę” in
 ``<data_dir>/hydrolog/feedback.sqlite3`` and, public, its daily totals in
-``<data_dir>/hydrolog/stats.jsonl``), and ``request_limit`` and ``request_window``
-(the requests a public web GUI answers per client address in a window of that many
-seconds, Nogat DEV-15.9). It has no store and no cache, so ``cache_dir`` of the
+``<data_dir>/hydrolog/stats.jsonl``), ``state_dir`` (the shared state directory,
+DEV-18.1: ``hydrolog gui serve`` writes its logs to ``<state_dir>/hydrolog/logs``,
+Nogat DEV-12.6), and ``request_limit`` and ``request_window`` (the requests a public
+web GUI answers per client address in a window of that many seconds, Nogat
+DEV-15.9). It has no store and no cache, so ``cache_dir`` of the
 shared section is not used. Its one credential, the key of the web GUI's admin page,
 comes from the environment only (DEV-18.4): :func:`admin_api_key`. The web GUI's app
 menu lists the deployment's GUIs from the shared table ``gui`` of ``[nogat]``
@@ -43,6 +45,7 @@ __all__ = [
     "config_path",
     "credentials",
     "default_data_dir",
+    "default_state_dir",
     "gui_addresses",
     "load_file",
     "operator_table",
@@ -50,7 +53,14 @@ __all__ = [
 ]
 
 TOOL: Final = "hydrolog"
-KEYS: Final = ("lang", "log_level", "data_dir", "request_limit", "request_window")
+KEYS: Final = (
+    "lang",
+    "log_level",
+    "data_dir",
+    "state_dir",
+    "request_limit",
+    "request_window",
+)
 """Names of the settings of Hydrolog."""
 DEFAULTS: Final[Mapping[str, str]] = {
     "lang": "pl",
@@ -58,7 +68,10 @@ DEFAULTS: Final[Mapping[str, str]] = {
     "request_limit": "300",
     "request_window": "60",
 }
-"""Built-in default of each setting but ``data_dir`` (:func:`default_data_dir`)."""
+"""Built-in default of each setting but the directories (:func:`default_data_dir`,
+:func:`default_state_dir`)."""
+_PATHS: Final = frozenset({"data_dir", "state_dir"})
+"""The settings that are directories: ``~`` expanded, case kept."""
 _COUNTS: Final[Mapping[str, int]] = {
     "request_limit": 1_000_000,
     "request_window": 86_400,
@@ -158,13 +171,24 @@ def default_data_dir() -> str:
     return str(platformdirs.user_data_path("nogat"))
 
 
+def default_state_dir() -> str:
+    """Return the default ``state_dir``: the user state directory of ``nogat``.
+
+    Returns
+    -------
+    str
+        ``platformdirs.user_state_path("nogat")``, e.g. ``~/.local/state/nogat``.
+    """
+    return str(platformdirs.user_state_path("nogat"))
+
+
 def _normalize(key: str, raw: object) -> str | None:
     """Return the value of ``key`` from ``raw``, or ``None`` when it is not usable."""
     if key in _COUNTS:
         return _count(raw, _COUNTS[key])
     if not isinstance(raw, str) or not raw.strip():
         return None
-    if key == "data_dir":
+    if key in _PATHS:
         return str(Path(raw.strip()).expanduser())
     value = raw.strip().lower()
     if key == "lang":
@@ -233,9 +257,9 @@ def resolve_setting(
             value = _normalize(key, table.get(key))
             if value is not None:
                 return Setting(key, value, "file", f"[{section}] {key}")
-    return Setting(
-        key, default_data_dir() if key == "data_dir" else DEFAULTS[key], "default"
-    )
+    defaults = {"data_dir": default_data_dir, "state_dir": default_state_dir}
+    default = defaults[key]() if key in defaults else DEFAULTS[key]
+    return Setting(key, default, "default")
 
 
 def credentials(environ: Mapping[str, str] | None = None) -> list[dict[str, Any]]:

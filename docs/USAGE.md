@@ -1348,14 +1348,16 @@ the design is in [ADR 0006](decisions/0006-mcp-server-conformance.md).
 
 ## 6. Settings
 
-Hydrolog has five settings: `lang` (language of human-readable output, `pl` or `en`; default `pl`),
+Hydrolog has six settings: `lang` (language of human-readable output, `pl` or `en`; default `pl`),
 `log_level` (verbosity of the log on stderr; default `warning`; `-v` and `-q` change it for one
 call), `data_dir` (the data directory the Nogat tools share; default the user data directory
-of `nogat`, `~/.local/share/nogat` on Linux), and `request_limit` and `request_window` (the
-requests a public web GUI answers per client address in a window of that many seconds; default
-300 and 60). Only the web GUI uses `data_dir`: it keeps the reports of „Zgłoś uwagę” in
-`<data_dir>/hydrolog/feedback.sqlite3` and, public, its daily totals in
-`<data_dir>/hydrolog/stats.jsonl` ([section 8](#8-the-web-gui)).
+of `nogat`, `~/.local/share/nogat` on Linux), `state_dir` (the state directory they share;
+default the user state directory of `nogat`, `~/.local/state/nogat` on Linux), and
+`request_limit` and `request_window` (the requests a public web GUI answers per client address
+in a window of that many seconds; default 300 and 60). Only the web GUI uses `data_dir` and
+`state_dir`: it keeps the reports of „Zgłoś uwagę” in `<data_dir>/hydrolog/feedback.sqlite3`
+and, public, its daily totals in `<data_dir>/hydrolog/stats.jsonl`, and `gui serve` writes its
+logs to `<state_dir>/hydrolog/logs/` ([section 8](#logs)).
 Hydrolog has no store or cache. Its one credential, the key of the GUI's admin page, comes from
 the environment only (`HYDROLOG_ADMIN_API_KEY`, or a file named by
 `HYDROLOG_ADMIN_API_KEY_FILE`), never from `nogat.toml`.
@@ -1365,7 +1367,7 @@ hydrolog config show --json
 ```
 
 ```json output
-{"result": {"schema": "hydrolog-config/1", "settings": [{"key": "lang"}, {"key": "log_level"}, {"key": "data_dir"}, {"key": "request_limit"}, {"key": "request_window"}]}}
+{"result": {"schema": "hydrolog-config/1", "settings": [{"key": "lang"}, {"key": "log_level"}, {"key": "data_dir"}, {"key": "state_dir"}, {"key": "request_limit"}, {"key": "request_window"}]}}
 ```
 
 `config show` prints each setting with its value and its source (`environment`, `file` or
@@ -1375,8 +1377,9 @@ applies to that call only and is not reported. A setting comes from the first of
 
 1. the command-line option (`--lang`, `-v`, `-q`);
 2. the environment variable `HYDROLOG_<KEY>` (`HYDROLOG_LANG`, `HYDROLOG_LOG_LEVEL`,
-   `HYDROLOG_DATA_DIR`);
-3. the shared variable `NOGAT_<KEY>` (`NOGAT_LANG`, `NOGAT_LOG_LEVEL`, `NOGAT_DATA_DIR`);
+   `HYDROLOG_DATA_DIR`, `HYDROLOG_STATE_DIR`);
+3. the shared variable `NOGAT_<KEY>` (`NOGAT_LANG`, `NOGAT_LOG_LEVEL`, `NOGAT_DATA_DIR`,
+   `NOGAT_STATE_DIR`);
 4. the `[hydrolog]` table of `nogat.toml`, then its `[nogat]` table;
 5. the default.
 
@@ -1562,10 +1565,11 @@ hydrolog gui serve                              # http://127.0.0.1:8070/, opened
 hydrolog gui serve --no-browser --port 8071     # another port, no browser (a service)
 ```
 
-The server prints `Hydrolog GUI: <url>` on stderr once it listens and serves until Ctrl+C or
-SIGTERM, which stop it gracefully: the command ends with exit code 0, and with `--json` it prints
-`hydrolog-gui-serve/1` (`url`, `started_at`, `stopped_at`). Without the extra `gui` it ends with
-`missing_dependency`. `--check` serves nothing and reports the address and whether the port is free:
+The server writes its record `start`, with the address in `url`, on stderr once it listens
+([Logs](#logs)) and serves until Ctrl+C or SIGTERM, which stop it gracefully: the command ends
+with exit code 0, and with `--json` it prints `hydrolog-gui-serve/1` (`url`, `started_at`,
+`stopped_at`). Without the extra `gui` it ends with `missing_dependency`. `--check` serves
+nothing and reports the address and whether the port is free:
 
 ```bash
 hydrolog gui serve --check --json
@@ -1726,6 +1730,43 @@ WantedBy=multi-user.target
 server runs. Hosting the GUI inside another application (Nogat's GUI platform) is in
 [INTEGRATION.md](INTEGRATION.md#web-gui-a-module-of-nogats-gui-platform).
 
+### Logs
+
+`hydrolog gui serve` keeps Nogat's three logs (DEV-12.4 to DEV-12.9,
+[ADR-0037](decisions/0037-nogats-logs-in-gui-serve.md)) in every run, public or not, through
+Nogat's reference module, copied unchanged into `src/hydrolog/gui/nogat_logging.py`. Each record
+is one line of JSON valid against `nogat-log/1` (`schemas/nogat/record-1.schema.json`) in
+`<state_dir>/hydrolog/logs/<kind>-YYYY-MM-DD.jsonl`, by the UTC date of its `time`:
+
+- `access`: one record per request (`method`, `path` with its query, `status`, `bytes`,
+  `duration_ms`, `agent`, a random `request_id`), the answers of the request limit included. The
+  page's files (`css/`, `src/`, `vendor/`, `nogat/`, `theme-init.js`) and the catalog documents
+  (`api/commands…`, `api/schemas/…`) are logged only when answered with 400 or more. A query
+  parameter that may hold personal data or a secret (`q`, `name`, `email`, `key`, `token`…)
+  keeps its name only: `?q=&lat=51.2`.
+- `app`: warnings, errors and exceptions of the server, the exception's type, message and stack
+  with every IP address written `[ip]`.
+- `lifecycle`: `start` with the settings `url` and `public`, `stop`, and `prune` when old files
+  are deleted.
+
+No log holds the client's address, a cookie, a header, a request body or a file's name; of the
+`User-Agent` only its kind is kept (`agent`: `browser`, `bot`, `script` or `none`), and the
+`request_id` is never sent to the client. The server deletes a file once its date is 14 days old,
+at the start and at every midnight UTC, so no setting of journald, root or a cron job is needed.
+Standard error, and so the journal of a service, gets only the lifecycle records and errors
+reduced to their type (`request_id` and `message` `null`); uvicorn's own access log is off.
+Read the last 14 days without the successful requests with `jq` (`apt install jq`, or its static
+release binary in `~/.local/bin`):
+
+```sh
+jq -cs 'sort_by(.time)[] | select(.kind != "access" or .status >= 500)' ~/.local/state/nogat/hydrolog/logs/*.jsonl
+jq -r 'select(.kind == "access") | "\(.status) \(.agent)"' ~/.local/state/nogat/hydrolog/logs/access-*.jsonl | sort | uniq -c
+```
+
+Use is counted only by the daily totals of a public GUI (below), never from the logs. A proxy in
+front keeps its own logs: `cloudflared` at its default level (`info`) logs no client address; do
+not run it with `--loglevel debug`.
+
 ### A public GUI (regulamin, limit, logs, totals)
 
 A deployment that opens the GUI to anyone without signing in sets the table `operator` of
@@ -1752,7 +1793,7 @@ request_window = 60
 ```
 
 - **The regulamin.** The server fills the regulamin of Nogat's GUI kit (`web/nogat/nogat-terms.html`,
-  kit 0.6.0, regulamin 1.0) with these values and the blocks of Hydrolog's sources (PMAXTP,
+  kit 0.6.2, regulamin 1.0) with these values and the blocks of Hydrolog's sources (PMAXTP,
   IMGW-PIB, ČHMÚ), serves it at `regulamin.html` beside the page, and every view shows at its
   foot the statement of DEV-15.8 with the link „Regulamin”; the menu „Aplikacje” ends with it,
   the dialog „Źródła i warunki” of a view's strip of the providers' lines links it as „Regulamin
@@ -1767,23 +1808,8 @@ request_window = 60
   proxy, the client's address is the last one the proxy adds to `X-Forwarded-For`, trusted only
   from the addresses in uvicorn's `FORWARDED_ALLOW_IPS` (default `127.0.0.1`: `cloudflared` on the
   same machine); a proxy on another machine needs its address there.
-- **Logs.** uvicorn's access log is off; the server writes its own, one JSON line per request on
-  standard error without the client's address (`time`, `request_id`, `method`, `path`, `status`,
-  `size`, `duration_ms`, `user_agent`; `request_id` is also the answer's `X-Request-Id`). No other
-  line of the server names a client. Every log is deleted after 14 days (DEV-15.10): a service of
-  systemd logs to the journal, so set its retention, for example in
-  `/etc/systemd/journald.conf.d/retention.conf` (the setting covers every journal of the
-  machine), and restart `systemd-journald`:
-
-  ```ini
-  [Journal]
-  MaxRetentionSec=14day
-  MaxFileSec=1day
-  ```
-
-  `journalctl --user -u hydrolog-gui -o cat` prints the lines. A proxy in front keeps its own logs:
-  `cloudflared` at its default level (`info`) logs no client address; do not run it with
-  `--loglevel debug`.
+- **Logs.** The same as in every run ([Logs](#logs)): the requests over the limit are in the access
+  log with `429`, and no log names the client.
 - **Daily totals** in `<data_dir>/hydrolog/stats.jsonl`, one JSON line per UTC day, rewritten
   every five minutes, at midnight UTC and at the stop; a restart adds to the day's line:
 
@@ -1809,6 +1835,7 @@ Check a public GUI after a start:
 ```sh
 curl -s https://hydrolog.example.org/api/terms                 # {"terms": "regulamin.html", ...}
 curl -sI https://hydrolog.example.org/regulamin.html | head -1  # 200
-journalctl --user -u hydrolog-gui -o cat -n 3                   # JSON lines, no address
+journalctl --user -u hydrolog-gui -o cat -n 3                   # the record start, no request
+tail -n 3 ~/.local/state/nogat/hydrolog/logs/access-$(date -u +%F).jsonl  # no address
 tail -n 2 ~/.local/share/nogat/hydrolog/stats.jsonl
 ```

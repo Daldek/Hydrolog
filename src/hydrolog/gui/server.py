@@ -1,10 +1,11 @@
 """The standalone GUI server: ``hydrolog gui serve`` (plan D3, D8).
 
-:func:`serve` binds the address, serves :func:`hydrolog.gui.create_app` with uvicorn,
-writes ``Hydrolog GUI: <url>`` to standard error once it listens and blocks until
-Ctrl+C or ``SIGTERM``, which stop it gracefully: it returns, so the command ends with
-exit code 0. It has no sign-in: anyone who reaches the address can use it, so beyond
-loopback it belongs behind an authenticating proxy (``docs/USAGE.md``).
+:func:`serve` binds the address, serves :func:`hydrolog.gui.create_app` with uvicorn
+and blocks until Ctrl+C or ``SIGTERM``, which stop it gracefully: it returns, so the
+command ends with exit code 0. It keeps Nogat's logs (DEV-12.4 to DEV-12.9) in
+``<state_dir>/hydrolog/logs``; its record ``start`` on standard error names the
+address once it listens. It has no sign-in: anyone who reaches the address can use
+it, so beyond loopback it belongs behind an authenticating proxy (``docs/USAGE.md``).
 
 Importing this module imports neither Starlette nor uvicorn.
 """
@@ -15,6 +16,7 @@ import errno
 import socket
 import sys
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from hydrolog.exceptions import ConflictError, InvalidParameterError
@@ -52,7 +54,7 @@ def url_of(host: str, port: int) -> str:
 
 
 def _bind(host: str, port: int) -> socket.socket:
-    """Return a socket bound to ``host:port`` (port 0: a free one)."""
+    """Return a listening socket bound to ``host:port`` (port 0: a free one)."""
     try:
         family, kind, proto, _, address = socket.getaddrinfo(
             host, port, type=socket.SOCK_STREAM, flags=socket.AI_PASSIVE
@@ -67,6 +69,7 @@ def _bind(host: str, port: int) -> socket.socket:
         if sys.platform != "win32":  # on Windows the option would share the port
             listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         listener.bind(address)
+        listener.listen()
     except OSError as exc:
         listener.close()
         if exc.errno in _IN_USE:
@@ -87,7 +90,7 @@ def serve(*, host: str, port: int, open_browser: bool) -> dict[str, Any]:
     host : str
         Address to listen on (``127.0.0.1`` for this computer only).
     port : int
-        TCP port (``0`` takes a free one; the line on standard error names it).
+        TCP port (``0`` takes a free one; the record ``start`` names it).
     open_browser : bool
         Open the page in the default browser once the server listens.
 
@@ -105,17 +108,23 @@ def serve(*, host: str, port: int, open_browser: bool) -> dict[str, Any]:
     InvalidParameterError
         If ``host`` cannot be resolved (``details.reason`` ``invalid_host``).
     """
+    from hydrolog import __version__
+    from hydrolog._settings import TOOL, resolve_setting
     from hydrolog.gui import create_app
     from hydrolog.gui._extra import require_gui_extra
 
     require_gui_extra()
     from hydrolog.gui._serving import run
+    from hydrolog.gui.nogat_logging import ServerLog
 
+    state_dir = Path(resolve_setting("state_dir").value)
+    log = ServerLog(TOOL, __version__, state_dir / TOOL / "logs")
     listener = _bind(host, port)
     try:
         url = url_of(host, listener.getsockname()[1])
         started_at = _now()
-        run(create_app(), listener, url=url, open_browser=open_browser)
+        app = create_app(log=log)
+        run(app, listener, url=url, open_browser=open_browser, log=log)
     finally:
         listener.close()
     return {"url": url, "started_at": started_at, "stopped_at": _now()}

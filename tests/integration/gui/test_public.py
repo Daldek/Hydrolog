@@ -1,10 +1,11 @@
 """A public GUI (Nogat DEV-15.7 to DEV-15.11), through Starlette's TestClient.
 
 A deployment whose ``nogat.toml`` has ``[nogat.operator]`` opens the GUI to anyone:
-the app serves the filled regulamin, limits the requests of each client address, logs
-every request without the address and counts its use in daily totals. The clients
-come from the documentation address ``203.0.113.7`` (RFC 5737), which must never be
-written anywhere.
+the app serves the filled regulamin, limits the requests of each client address and
+counts its use in daily totals; given a ``ServerLog``, public or not, it logs every
+request but static content without the address (Nogat DEV-12.4 to DEV-12.9). The
+clients come from the documentation address ``203.0.113.7`` (RFC 5737), which must
+never be written anywhere.
 """
 
 import json
@@ -20,6 +21,7 @@ import pytest
 pytest.importorskip("starlette")
 
 from hydrolog.gui import create_app
+from hydrolog.gui.nogat_logging import ServerLog
 from tests.contract._nogat import validator
 
 FLOOD = (
@@ -43,18 +45,8 @@ mail_provider = "iCloud Mail (Apple)"
 mail_transfer = "Mogą być przetwarzane poza Europejskim Obszarem Gospodarczym."
 """
 OPERATOR = tomllib.loads(SETTINGS)["nogat"]["operator"]
-ACCESS_LOGGER = "hydrolog.gui.access"
-ACCESS_KEYS = {
-    "time",
-    "request_id",
-    "method",
-    "path",
-    "status",
-    "size",
-    "duration_ms",
-    "user_agent",
-}
 ERROR = validator("error-1")
+RECORD = validator("record-1")
 KIRPICH = {"length_km": 8.2, "slope_m_per_m": 0.023}
 FLOOD_OPTIONS = {"input_file": "in/flood.csv", "lag_min": 20, "output": "out/o.csv"}
 CATALOG = [
@@ -78,16 +70,17 @@ def settings(*, operator=OPERATOR, service_url=SERVICE_URL, limit=300, window=60
 
 @pytest.fixture
 def make_app(web, tmp_path):
-    """Yield ``make_app(config, data_dir=...)``: apps of one worker, closed at the end;
-    their daily totals go to ``tmp_path / "data"`` by default."""
+    """Yield ``make_app(config, data_dir=..., log=None)``: apps of one worker, closed
+    at the end; their daily totals go to ``tmp_path / "data"`` by default."""
     made = []
 
-    def make(config, *, data_dir=None):
+    def make(config, *, data_dir=None, log=None):
         created = create_app(
             work_root=tmp_path / f"work{len(made)}",
             workers=1,
             data_dir=tmp_path / "data" if data_dir is None else data_dir,
             config=config,
+            log=log,
         )
         made.append(created)
         return created
@@ -117,12 +110,12 @@ def assert_secure(response):
     assert response.headers["referrer-policy"] == "no-referrer"
 
 
-def access_lines(caplog):
-    """Return the access log's lines as objects, in order."""
+def log_records(directory):
+    """Return the records of every log file of ``directory``, by file then line."""
     return [
-        json.loads(record.getMessage())
-        for record in caplog.records
-        if record.name == ACCESS_LOGGER
+        json.loads(line)
+        for path in sorted(directory.glob("*.jsonl"))
+        for line in path.read_text(encoding="utf-8").splitlines()
     ]
 
 
@@ -333,25 +326,27 @@ def test_requests_pass_again_after_the_window(make_app, visitor):
     assert client.get("/api/terms").status_code == 429
 
 
-# --- the access log (DEV-15.10) -------------------------------------------------------
+# --- the access log (Nogat DEV-12.4 to DEV-12.9) --------------------------------------
 
 
-def test_every_request_gives_one_access_line_without_the_address(
-    make_app, visitor, caplog
+def test_every_request_but_static_content_gives_one_record_without_the_address(
+    make_app, visitor, tmp_path, caplog
 ):
     caplog.set_level(logging.DEBUG)
-    caplog.set_level(logging.INFO, logger=ACCESS_LOGGER)
-    client = visitor(make_app(settings(limit=6, window=60)), user_agent="Testowa/2.0")
+    logs = tmp_path / "logs"
+    app = make_app(settings(limit=6, window=60), log=ServerLog("hydrolog", "1", logs))
+    client = visitor(app, user_agent="Testowa/2.0")
     requests = [
         ("GET", "/?widok=siec&x=1", None),
-        ("GET", "/src/main.js", None),
-        ("GET", "/api/commands", None),
+        ("GET", "/src/main.js", None),  # a file of the page: not logged
+        ("GET", "/api/commands", None),  # a catalog document: not logged
+        ("GET", "/src/missing.js", None),  # not found: logged
         ("GET", "/api/session", None),
-        ("POST", "/api/run/tc/kirpich?channel=kalkulatory", KIRPICH),
+        ("POST", "/api/run/tc/kirpich?channel=kalkulatory&q=Kamienna", KIRPICH),
         ("POST", "/api/run/tc/nope", {}),
         ("GET", "/regulamin.html", None),
         ("GET", "/missing.html", None),
-        ("GET", "/api/terms", None),  # the 7th counted: over the limit
+        ("GET", "/api/terms", None),  # the 7th counted: over the limit, logged too
     ]
 
     responses = [
@@ -362,6 +357,7 @@ def test_every_request_gives_one_access_line_without_the_address(
         200,
         200,
         200,
+        404,
         200,
         200,
         404,
@@ -369,23 +365,27 @@ def test_every_request_gives_one_access_line_without_the_address(
         404,
         429,
     ]
-    lines = access_lines(caplog)
-    assert len(lines) == len(requests)
-    for line, (method, path, _), response in zip(
-        lines, requests, responses, strict=True
-    ):
-        assert set(line) == ACCESS_KEYS
-        assert line["request_id"] == response.headers["x-request-id"]
-        assert re.fullmatch(r"[0-9a-f]{16}", line["request_id"])
-        assert (line["method"], line["path"]) == (method, path)
-        assert (line["status"], line["size"]) == (
+    logged = [
+        (request, response)
+        for request, response in zip(requests, responses, strict=True)
+        if request[1] not in ("/src/main.js", "/api/commands")
+    ]
+    records = log_records(logs)
+    assert len(records) == len(logged)
+    for record, ((method, path, _), response) in zip(records, logged, strict=True):
+        RECORD.validate(record)
+        assert (record["kind"], record["app"]) == ("access", "hydrolog")
+        assert (record["method"], record["status"], record["bytes"]) == (
+            method,
             response.status_code,
             len(response.content),
         )
-        assert line["user_agent"] == "Testowa/2.0"
-        assert isinstance(line["duration_ms"], float) and line["duration_ms"] >= 0
-        assert datetime.fromisoformat(line["time"]).tzinfo is not None
-    assert len({line["request_id"] for line in lines}) == len(lines)
+        assert record["path"] == path.replace("q=Kamienna", "q=")
+        assert record["agent"] == "script"
+        assert "x-request-id" not in response.headers
+    assert len({record["request_id"] for record in records}) == len(records)
+    text = "".join(p.read_text(encoding="utf-8") for p in logs.glob("*.jsonl"))
+    assert ADDRESS not in text and "Testowa" not in text and "Kamienna" not in text
     for record in caplog.records:
         assert ADDRESS not in record.getMessage(), record.name
         assert ADDRESS not in repr(vars(record)), record.name
@@ -464,11 +464,14 @@ def test_an_unknown_event_is_not_a_total(make_app, visitor):
 # --- a GUI that is not public ---------------------------------------------------------
 
 
-def test_a_gui_that_is_not_public_counts_limits_and_logs_nothing(
-    make_app, visitor, tmp_path, caplog
+def test_a_gui_that_is_not_public_counts_and_limits_nothing_but_logs_its_requests(
+    make_app, visitor, tmp_path
 ):
-    caplog.set_level(logging.INFO, logger=ACCESS_LOGGER)
-    app = make_app(settings(operator=None, limit=1, window=60))
+    logs = tmp_path / "logs"
+    app = make_app(
+        settings(operator=None, limit=1, window=60),
+        log=ServerLog("hydrolog", "1", logs),
+    )
     client = visitor(app)
 
     responses = [
@@ -481,6 +484,19 @@ def test_a_gui_that_is_not_public_counts_limits_and_logs_nothing(
     app.state.gui.close()
 
     assert [r.status_code for r in responses] == [204, 204, 200, 200, 200]
-    assert all("x-request-id" not in r.headers for r in responses)
-    assert access_lines(caplog) == []
+    records = log_records(logs)
+    assert [(r["method"], r["path"], r["status"]) for r in records] == [
+        ("POST", "/api/stats/station", 204),
+        ("POST", "/api/stats/download", 204),
+        ("GET", "/", 200),
+        ("GET", "/api/terms", 200),
+        ("GET", "/api/terms", 200),
+    ]
     assert not (tmp_path / "data" / "hydrolog" / "stats.jsonl").exists()
+
+
+def test_without_a_server_log_the_app_logs_no_request(make_app, visitor, tmp_path):
+    client = visitor(make_app(settings()))
+
+    assert client.get("/").status_code == 200
+    assert not any(tmp_path.rglob("access-*.jsonl"))

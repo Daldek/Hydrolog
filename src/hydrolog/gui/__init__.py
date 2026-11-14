@@ -30,6 +30,8 @@ from hydrolog.gui.server import serve
 if TYPE_CHECKING:
     from starlette.applications import Starlette
 
+    from hydrolog.gui.nogat_logging import ServerLog
+
 __all__ = ["SECTIONS", "WEB_DIR", "GuiModule", "create_app", "gui_module", "serve"]
 
 WEB_DIR: Final = Path(__file__).resolve().parent / "web"
@@ -81,6 +83,7 @@ def create_app(
     run_timeout_s: float = 30.0,
     data_dir: Path | None = None,
     config: Mapping[str, Any] | None = None,
+    log: ServerLog | None = None,
 ) -> Starlette:
     """Create the ASGI app of the GUI: the page and the private API of plan D5.
 
@@ -111,9 +114,16 @@ def create_app(
         The parsed ``nogat.toml`` to use; ``None`` (default) reads the file
         (``NOGAT_CONFIG`` or the user configuration directory): at the start for
         ``[nogat.operator]`` (with it the GUI is public: its regulamin, the request
-        limit ``request_limit`` in ``request_window`` seconds, the access log and the
-        daily totals; Nogat DEV-15.7 to DEV-15.12), at every request for
-        ``[nogat] gui``.
+        limit ``request_limit`` in ``request_window`` seconds and the daily totals;
+        Nogat DEV-15.7 to DEV-15.12), at every request for ``[nogat] gui``.
+    log : ServerLog, optional
+        Where the access log goes (Nogat DEV-12.4 to DEV-12.9): with it the app's
+        outermost middleware is :class:`~hydrolog.gui.nogat_logging.AccessLog`, one
+        record per request but the page's static files and the catalog documents
+        answered below 400 (:data:`hydrolog.gui._app.QUIET`, paths at the root of
+        the origin), outside the request limit; ``None`` (default) logs no request,
+        as a host with its own access log mounts the app. ``hydrolog gui serve``
+        gives one and starts and stops it.
 
     Returns
     -------
@@ -155,6 +165,7 @@ def create_app(
         run_timeout_s=run_timeout_s,
         data_dir=Path(data_dir),
         config=config,
+        log=log,
     )
 
 

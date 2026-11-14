@@ -16,16 +16,16 @@ COMMANDS: tuple[Command, ...] = (
         summary="Show the effective settings of Hydrolog and the source of each.",
         summary_pl="Pokaż obowiązujące ustawienia Hydrologa i źródło każdego.",
         description=(
-            "Reports each setting (`lang`, `log_level`, `data_dir`, `request_limit`, "
-            "`request_window`) with its value and "
+            "Reports each setting (`lang`, `log_level`, `data_dir`, `state_dir`, "
+            "`request_limit`, `request_window`) with its value and "
             "source (command line, environment, nogat.toml or default), the settings "
             "file, whether each credential variable is set (the key of the web GUI's "
             "admin page; never its value) and the store root (none: Hydrolog has no "
             "store). Use it to explain a setting; it changes nothing."
         ),
         description_pl=(
-            "Podaje każde ustawienie (`lang`, `log_level`, `data_dir` oraz "
-            "`request_limit` i `request_window` GUI) z wartością i "
+            "Podaje każde ustawienie (`lang`, `log_level`, `data_dir`, `state_dir` "
+            "oraz `request_limit` i `request_window` GUI) z wartością i "
             "źródłem (linia poleceń, środowisko, nogat.toml albo domyślne), plik "
             "ustawień, czy ustawiono każdą zmienną danych uwierzytelniających (klucz "
             "strony administracyjnej GUI; nigdy jego wartość) i katalog magazynu "
