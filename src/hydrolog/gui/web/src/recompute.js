@@ -6,10 +6,10 @@
 // is scheduled or running and keep the last result.
 
 /** The delay of a run after the last change [ms]. */
-export const RUN_DELAY_MS = 250;
+const RUN_DELAY_MS = 250;
 
 /** How long a request waits before it is shown as busy [ms]. */
-export const BUSY_AFTER_MS = 150;
+const BUSY_AFTER_MS = 150;
 
 /**
  * A channel of live runs.

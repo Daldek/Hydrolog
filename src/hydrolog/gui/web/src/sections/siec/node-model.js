@@ -121,7 +121,7 @@ const SUFFIX_UNITS = [
  * @param {string} name the field's name
  * @returns {string|null} the unit, null for a dimensionless field
  */
-export function unitOf(name) {
+function unitOf(name) {
   if (Object.hasOwn(NAMED_UNITS, name)) return NAMED_UNITS[name];
   for (const [suffix, unit] of SUFFIX_UNITS) {
     if (name.endsWith(suffix) && name.length > suffix.length) return unit;
@@ -157,7 +157,7 @@ function resolve(schema, node) {
  *   network's own fields, and each node branch with its `type`, `method` (a reach) or
  *   `variant` (a subcatchment: "rain" or "given"), properties and required fields
  */
-export function readSchema(schema) {
+function readSchema(schema) {
   const defs = schema.$defs || {};
   const branchOf = (item) => ({
     properties: item.properties || {},
@@ -309,7 +309,7 @@ export function buildForms(schema, docs = new Map()) {
  * @param {unknown} value a JSON value
  * @returns {string|boolean} the text (a boolean stays a boolean)
  */
-export function textOf(value) {
+function textOf(value) {
   if (typeof value === "number") return inputText(value);
   if (typeof value === "boolean") return value;
   if (Array.isArray(value)) return value.map((item) => (typeof item === "number" ? inputText(item) : String(item))).join("; ");
@@ -571,7 +571,7 @@ export function nodeLayout(forms, node, values) {
  * @param {object} layout a layout of nodeLayout
  * @returns {Slot[]} the slots
  */
-export function layoutSlots(layout) {
+function layoutSlots(layout) {
   const found = [];
   if (layout.kind === "subcatchment") {
     if (layout.file) found.push(...layout.file);
@@ -590,7 +590,7 @@ export function layoutSlots(layout) {
  * @param {unknown} value its value
  * @returns {string|null} the message with its reason
  */
-export function slotProblem(slot, value) {
+function slotProblem(slot, value) {
   const name = slot.field.name;
   const found = validate({ fields: [slot.field], oneOf: null }, { [name]: value });
   return found[name] || null;
@@ -606,7 +606,7 @@ export function slotProblem(slot, value) {
  *   for times, "nondecreasing" for a storage table, whose every column is non-decreasing)
  * @returns {string|null} the first problem, null when the table is fine
  */
-export function tableProblem(table, rows, order) {
+function tableProblem(table, rows, order) {
   const list = Array.isArray(rows) ? rows.filter((row) => row.some((cell) => String(cell ?? "").trim() !== "")) : [];
   if (!list.length) return withReason(texts.table.empty, "required");
   const columns = table.columns;

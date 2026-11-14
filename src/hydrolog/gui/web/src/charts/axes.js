@@ -23,7 +23,7 @@ import {
 import { svgEl, textEl } from "./svg.js";
 
 /** The sizes of the viewBox: the mockup's wide chart and its small one. */
-export const SIZES = {
+const SIZES = {
   wide: { width: 760, height: 432 },
   small: { width: 360, height: 178 },
 };

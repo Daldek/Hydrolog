@@ -17,7 +17,7 @@ import { barWidth, points } from "./axes.js";
 import { c1, svgEl, textEl } from "./svg.js";
 
 /** The default colour classes, by the series' order. */
-export const SERIES_CLASSES = ["s1", "s2", "s3", "s4", "s5", "s6"];
+const SERIES_CLASSES = ["s1", "s2", "s3", "s4", "s5", "s6"];
 
 /**
  * A polyline's `d`: "M x,y L x,y …"; a non-finite point starts a new subpath.
@@ -25,7 +25,7 @@ export const SERIES_CLASSES = ["s1", "s2", "s3", "s4", "s5", "s6"];
  * @param {[number, number][]} xy points in viewBox units
  * @returns {string}
  */
-export function linePath(xy) {
+function linePath(xy) {
   let d = "";
   let pen = false;
   for (const [x, y] of xy) {
@@ -45,7 +45,7 @@ export function linePath(xy) {
  * @param {[number, number][]} xy points in viewBox units
  * @returns {[number, number][]} the corners
  */
-export function stepPoints(xy) {
+function stepPoints(xy) {
   const out = [];
   xy.forEach(([x, y], index) => {
     if (index > 0) out.push([x, xy[index - 1][1]]);
@@ -61,7 +61,7 @@ export function stepPoints(xy) {
  * @param {number} base the baseline's y
  * @returns {string}
  */
-export function areaPath(xy, base) {
+function areaPath(xy, base) {
   const runs = [];
   let run = [];
   for (const point of xy) {

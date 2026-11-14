@@ -10,7 +10,7 @@
 import { useEffect, useState } from "../html.js";
 
 /** Phone layout at this width and below: sheets and a bottom bar (design/README.md). */
-export const PHONE = "(max-width: 860px)";
+const PHONE = "(max-width: 860px)";
 
 const phoneQuery = window.matchMedia(PHONE);
 // detailOpened counts openPanel("detail") on a desktop: a layout that shows Wyniki in the

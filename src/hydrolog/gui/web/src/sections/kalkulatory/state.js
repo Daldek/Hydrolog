@@ -44,7 +44,7 @@ export const OVERLAND_SOURCE = Object.freeze({
 });
 
 /** The calculators in the order of the list, each with its group. */
-export const CALCULATORS = Object.freeze([
+const CALCULATORS = Object.freeze([
   { id: COMPARE, group: "tc" },
   { id: "tc kirpich", group: "tc", method: "kirpich" },
   { id: "tc nrcs", group: "tc", method: "nrcs" },

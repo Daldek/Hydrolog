@@ -16,7 +16,7 @@ const INFLOW_CLASSES = ["s4", "s5", "s6", "s2", "s3"];
  * @param {{times_min: number[], discharge_m3s: number[]}} node a node of the result
  * @returns {Array<[number, number]>} [time, discharge] pairs
  */
-export function hydrographPoints(node) {
+function hydrographPoints(node) {
   return node.times_min.map((time, index) => [time, node.discharge_m3s[index]]);
 }
 

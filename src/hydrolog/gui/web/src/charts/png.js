@@ -47,7 +47,7 @@ const PROPERTIES = [
  * @param {Element} source the drawn element
  * @param {Element} clone its clone
  */
-export function inlineStyles(source, clone) {
+function inlineStyles(source, clone) {
   const sources = [source, ...source.querySelectorAll("*")];
   const clones = [clone, ...clone.querySelectorAll("*")];
   sources.forEach((element, index) => {

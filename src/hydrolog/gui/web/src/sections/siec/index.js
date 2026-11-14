@@ -113,19 +113,19 @@ import { kindNoun, problemText, refusalText, tooManyOrdinates } from "./words.js
 registerInfo(routing);
 
 /** Delay of Hydrolog's layout and check after the last change of the network [ms]. */
-export const SCHEMATIC_DELAY_MS = 300;
+const SCHEMATIC_DELAY_MS = 300;
 
 /** The channel of Hydrolog's check of a complete network (the runs use the section's). */
-export const SCHEMATIC_CHANNEL = "siec-schematic";
+const SCHEMATIC_CHANNEL = "siec-schematic";
 
 /** The channel of Hydrolog's layout of the structure alone (ADR-0025). */
-export const LAYOUT_CHANNEL = "siec-layout";
+const LAYOUT_CHANNEL = "siec-layout";
 
 /** The channel of the fetches of the depth of the network's PMAXTP (plan 2026-11-10-network-wizard, D4). */
 export const PMAXTP_CHANNEL = "siec-pmaxtp";
 
 /** The channel of the fetches of the PMAXTP depth of the chosen subcatchment's own rainfall (D1). */
-export const NODE_PMAXTP_CHANNEL = "siec-node-pmaxtp";
+const NODE_PMAXTP_CHANNEL = "siec-node-pmaxtp";
 
 /** The prefix of the ids of the subcatchment's panel (D1): the steps of Hydrogram zlewni are „hg”. */
 const PANEL_PREFIX = "sn";
@@ -152,7 +152,7 @@ const STEP_CHOICES = new Set([
 const PMAXTP_NAMES = new Set(Object.values(PMAXTP_FIELDS));
 
 /** The most steps the history keeps (D9). */
-export const HISTORY_STEPS = 100;
+const HISTORY_STEPS = 100;
 
 /** Hydrolog's check of the complete network before it is asked for. */
 const NO_CHECK = Object.freeze({ key: null, error: null });
@@ -208,7 +208,7 @@ function mergeKey(prefix, keys) {
  * @returns {{title: string, text: string, node: string|null, field: string|null, reason:
  *   string|null, details: object}} the error
  */
-export function runFailure(error, rules = {}) {
+function runFailure(error, rules = {}) {
   const doc = error && error.doc ? error.doc : { code: "internal_error", message: String((error && error.message) || error) };
   const details = doc.details || {};
   const described = describeError(doc);

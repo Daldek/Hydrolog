@@ -14,7 +14,7 @@ import { describedBy, FieldLabel, FieldNotes } from "./field.js";
  * @param {object} field a field of fieldModel
  * @returns {string} the placeholder
  */
-export function numberPlaceholder(field) {
+function numberPlaceholder(field) {
   if (field.defaultText) return field.defaultText;
   const example = field.examples.find((value) => typeof value === "number");
   return example === undefined ? "" : t(formTexts.example, { value: inputText(example) });

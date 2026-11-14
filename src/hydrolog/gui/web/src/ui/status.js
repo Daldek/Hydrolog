@@ -6,15 +6,12 @@ import { html } from "../html.js";
 import { shell } from "../labels/shell.js";
 import { useStore } from "../store.js";
 
-/** The states of a result. */
-export const STATES = Object.freeze(["ok", "busy", "stale", "invalid", "error"]);
-
 const BADGE = { ok: "ok", busy: "info busy", stale: "warn", invalid: "warn", error: "bad" };
 
 /**
  * A status with the shell's text and title for its state.
  *
- * @param {string} state one of STATES
+ * @param {"ok"|"busy"|"stale"|"invalid"|"error"} state the state of the result
  * @param {string} [text] a text instead of the state's own, e.g. „Dane niepełne: cn”
  * @param {string} [title] a longer explanation
  * @returns {{state: string, text: string, title: string}} the status

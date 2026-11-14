@@ -47,7 +47,7 @@ const AND = new Intl.ListFormat("pl-PL", { type: "conjunction" });
  * @param {string} name the distribution's name in the result
  * @returns {string} the Polish name
  */
-export function distributionName(name) {
+function distributionName(name) {
   return Object.hasOwn(texts.distributions, name) ? texts.distributions[name].name : name;
 }
 

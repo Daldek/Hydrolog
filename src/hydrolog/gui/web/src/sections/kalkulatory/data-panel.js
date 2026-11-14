@@ -74,7 +74,7 @@ export function CalculatorList({ docs, group, query, current, active, onGroup, o
  *   fields) and the state of the last fill
  * @returns {object} the box
  */
-export function WatershedBox({ watershed, onFill, fill }) {
+function WatershedBox({ watershed, onFill, fill }) {
   if (!watershed) {
     return html`
       <div class="handoff sm kc-watershed" data-watershed="none">

@@ -111,6 +111,7 @@ from hydrolog.gui._public import (
     Upkeep,
     is_admin,
     load_public,
+    route_path,
     stats_report,
 )
 from hydrolog.gui._runner import Job, Outcome, Runner
@@ -188,13 +189,6 @@ QUIET: Final = (
 """The static content of the access log (Nogat DEV-12.5): the page's files and the
 catalog documents, the same for every client, are logged only when answered with 400
 or more."""
-
-
-def _route_path(scope: Scope) -> str:
-    """Return the path below the app's prefix (``/api/run/...``)."""
-    path = str(scope["path"])
-    root = str(scope.get("root_path", ""))
-    return path[len(root) :] if root and path.startswith(root) else path
 
 
 def _http_status(code: str) -> int:
@@ -322,7 +316,7 @@ def _query_day(request: Request, name: str, default: date) -> date:
 
 def _is_stored(scope: Scope) -> bool:
     """Tell whether a browser may keep the answer: not the API's, not the admin's."""
-    route = _route_path(scope)
+    route = route_path(scope)
     return not (route.startswith(_API + "/") or is_admin(route))
 
 

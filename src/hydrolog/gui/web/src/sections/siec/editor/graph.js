@@ -28,7 +28,7 @@ export const REASONS = Object.freeze([
 ]);
 
 /** The reasons of the whole network: in the list of problems only, on no node (D8). */
-export const NETWORK_REASONS = Object.freeze(["empty", "no_outlet", "several_outlets"]);
+const NETWORK_REASONS = Object.freeze(["empty", "no_outlet", "several_outlets"]);
 
 /** The longest id: it names the file of its node (the library's MAX_ID_CHARS). */
 export const MAX_ID_CHARS = 64;
@@ -56,7 +56,7 @@ export function foldId(id) {
  * @param {unknown} id an id
  * @returns {null|"invalid_id"|"reserved_name"} null for a valid id
  */
-export function idReason(id) {
+function idReason(id) {
   if (typeof id !== "string" || [...id].length > MAX_ID_CHARS || !WORD.test(id) || id.endsWith(".")) return "invalid_id";
   return RESERVED.test(id) ? "reserved_name" : null;
 }
@@ -234,7 +234,7 @@ function cycleIn(inflows, blocked) {
  * @param {Array<{id: string, from: string[]|null}>} skeleton the structure
  * @returns {string[][]} the cycles, each in flow order from its smallest id
  */
-export function cyclesOf(skeleton) {
+function cyclesOf(skeleton) {
   const inflows = inflowsOf(skeleton);
   const cycles = [];
   let left = new Set(inflows.keys());

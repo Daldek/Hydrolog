@@ -103,11 +103,6 @@ class LutzCalculationResult(JsonResultMixin):
         """Lag time = n * K [min]."""
         return self.n * self.k_min
 
-    @property
-    def tp_iuh_min(self) -> float:
-        """Time to peak of IUH = (n-1) * K [min]."""
-        return (self.n - 1) * self.k_min
-
 
 @dataclass
 class IUHResult(JsonResultMixin):

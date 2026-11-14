@@ -76,7 +76,7 @@ function termsInNewTab(event) {
  *
  * @returns {object} the element
  */
-export function AppMenu() {
+function AppMenu() {
   const session = useSession();
   const menu = useRef(null);
   const apps = (session && session.gui) || null;

@@ -9,7 +9,7 @@ worker threads of one process, and two calls may write the same target.
 A command that writes several files into a directory (``--output-dir``) goes through
 a staging directory instead (DEV-19.7, :func:`staging_directory`): every file is
 written there first, so an error or an interrupt before the moves leaves no partial
-target.
+target. :func:`is_same_file` lets a writer refuse an input as its own output.
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import Final
 
-__all__ = ["STAGING_NAME", "atomic_output", "staging_directory"]
+__all__ = ["STAGING_NAME", "atomic_output", "is_same_file", "staging_directory"]
 
 STAGING_NAME: Final = ".hydrolog-incoming"
 """Name of the directory, inside the output directory, that holds the staging of a
@@ -35,6 +35,14 @@ _STALE_SECONDS: Final = 24 * 3600.0
 _WINDOWS: Final = sys.platform == "win32"
 _REPLACE_PATIENCE_S: Final = 1.0
 """How long a move over a file that Windows refuses is tried again [s]."""
+
+
+def is_same_file(first: Path, second: Path) -> bool:
+    """Whether two paths name the same file (also when one does not exist yet)."""
+    try:
+        return first.samefile(second)
+    except OSError:
+        return first.resolve() == second.resolve()
 
 
 @contextlib.contextmanager

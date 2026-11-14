@@ -83,8 +83,6 @@ MCP_DESCRIPTION_MAX_CHARS: Final = 600
 """Maximum length of summary, description and rules together (DOC-1.7, AGI-5.3)."""
 TOOL_NAME_MAX_CHARS: Final = 48
 """Maximum length of an ``operation_id``, the MCP tool name (AGI-5.2)."""
-CORE_FAMILY_MAX: Final = 10
-"""Maximum number of commands of the ``core`` family (AGI-5.12); a catalog test."""
 ERROR_CODE_NAMES: Final[tuple[str, ...]] = (
     "validation_error",
     "not_found",

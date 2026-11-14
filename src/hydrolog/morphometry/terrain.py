@@ -3,9 +3,6 @@
 from dataclasses import dataclass
 from typing import Any
 
-import numpy as np
-from numpy.typing import NDArray
-
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError
 
@@ -301,49 +298,3 @@ class TerrainAnalysis:
             channel_slope_percent=ch_pct,
             channel_slope_m_per_m=ch_m,
         )
-
-    @staticmethod
-    def mean_elevation_from_dem(
-        elevations: NDArray[np.float64],
-        weights: NDArray[np.float64] | None = None,
-    ) -> float:
-        """
-        Calculate mean elevation from DEM data.
-
-        Parameters
-        ----------
-        elevations : NDArray[np.float64]
-            Array of elevation values [m].
-        weights : NDArray[np.float64], optional
-            Weights for each elevation (e.g., cell areas).
-            If not provided, uses uniform weights.
-
-        Returns
-        -------
-        float
-            Weighted mean elevation [m].
-
-        Examples
-        --------
-        >>> elevations = np.array([100, 150, 200, 250, 300])
-        >>> mean_elev = TerrainAnalysis.mean_elevation_from_dem(elevations)
-        >>> print(f"Mean elevation: {mean_elev} m")
-        Mean elevation: 200.0 m
-        """
-        elevations = np.asarray(elevations, dtype=np.float64)
-
-        if len(elevations) == 0:
-            raise InvalidParameterError("elevations array cannot be empty")
-
-        if weights is None:
-            mean_elev: float = float(np.mean(elevations))
-        else:
-            weights = np.asarray(weights, dtype=np.float64)
-            if len(weights) != len(elevations):
-                raise InvalidParameterError(
-                    f"weights length ({len(weights)}) must match "
-                    f"elevations length ({len(elevations)})"
-                )
-            mean_elev = float(np.average(elevations, weights=weights))
-
-        return mean_elev

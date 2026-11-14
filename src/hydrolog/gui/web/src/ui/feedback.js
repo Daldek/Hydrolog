@@ -36,7 +36,7 @@ let opener = null;
  *
  * @returns {boolean} false when no dialog is mounted
  */
-export function openFeedback() {
+function openFeedback() {
   if (!opener) return false;
   opener();
   return true;

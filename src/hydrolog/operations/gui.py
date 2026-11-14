@@ -18,23 +18,17 @@ import logging
 import os
 import socket
 from dataclasses import dataclass
-from importlib.util import find_spec
-from typing import Any, Final
+from typing import Any
 
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.catalog.envelope import Notice, OperationOutput
 from hydrolog.catalog.notices import notice
-from hydrolog.exceptions import InvalidParameterError, MissingDependencyError
+from hydrolog.exceptions import InvalidParameterError
 from hydrolog.operations._outputs import PLAN_SCHEMA
 
 __all__ = ["GuiServeResult", "gui_serve"]
 
 LOG = logging.getLogger(__name__)
-
-EXTRA_MODULES: Final = ("starlette", "uvicorn")
-"""Packages of the extra ``gui`` that the server needs."""
-INSTALL_HINT: Final = 'pip install "hydrolog[gui]"'
-"""How to install the extra ``gui``."""
 
 
 @dataclass
@@ -55,12 +49,6 @@ class GuiServeResult(JsonResultMixin):
     stopped_at: str
 
 
-def _url(host: str, port: int) -> str:
-    """Address of the page: an IPv6 address in brackets."""
-    shown = f"[{host}]" if ":" in host else host
-    return f"http://{shown}:{port}/"
-
-
 def _loopback(host: str) -> bool:
     """Whether ``host`` is reachable from this computer only."""
     if host.lower() == "localhost":
@@ -69,17 +57,6 @@ def _loopback(host: str) -> bool:
         return ipaddress.ip_address(host).is_loopback
     except ValueError:
         return False
-
-
-def _require_extra() -> None:
-    """Refuse to plan or serve without the packages of the extra ``gui``."""
-    for module in EXTRA_MODULES:
-        if find_spec(module) is None:
-            raise MissingDependencyError(
-                f"The GUI needs the package {module!r} of the extra 'gui'",
-                details={"extra": "gui", "module": module},
-                hint=INSTALL_HINT,
-            )
 
 
 def _invalid_host(host: str, reason: object) -> InvalidParameterError:
@@ -156,8 +133,13 @@ def gui_serve(
         If the port is taken when the server starts (``details.reason``
         ``port_in_use``).
     """
-    _require_extra()
-    url = _url(host, port)
+    # The package hydrolog.gui is imported only here: its server and app need
+    # Starlette and uvicorn, which the base install lacks; require_gui_extra says so.
+    from hydrolog.gui._extra import require_gui_extra
+    from hydrolog.gui.server import serve, url_of
+
+    require_gui_extra()
+    url = url_of(host, port)
     notices: list[Notice] = []
     if not _loopback(host):
         notices.append(notice("exposed_without_auth", host=host, url=url))
@@ -171,10 +153,6 @@ def gui_serve(
         return OperationOutput(plan, notices, check=True)
     for item in notices:
         LOG.warning("%s", item.message)
-    # The server is the package hydrolog.gui, imported only to serve: it imports
-    # Starlette and uvicorn, which the base install lacks.
-    from hydrolog.gui.server import serve
-
     served = serve(host=host, port=port, open_browser=not no_browser)
     result = GuiServeResult(
         url=str(served["url"]),

@@ -67,30 +67,6 @@ def hydrological_day_of_year(dates: NDArray[np.datetime64]) -> NDArray[np.int_]:
     return days
 
 
-def split_half_years(
-    values: NDArray[np.float64], dates: NDArray[np.datetime64]
-) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
-    """Split values into winter and summer half-years.
-
-    Parameters
-    ----------
-    values : NDArray[np.float64]
-        Data values corresponding to dates.
-    dates : NDArray
-        Array of dates (dtype datetime64[D]).
-
-    Returns
-    -------
-    tuple[NDArray[np.float64], NDArray[np.float64]]
-        (winter_values, summer_values) where:
-        - Winter: months 11, 12, 1, 2, 3, 4
-        - Summer: months 5, 6, 7, 8, 9, 10
-    """
-    months = dates.astype("datetime64[M]").astype(int) % 12 + 1
-    winter_mask = (months >= 11) | (months <= 4)
-    return values[winter_mask], values[~winter_mask]
-
-
 def days_in_hydrological_year(years: NDArray[np.int_]) -> NDArray[np.int_]:
     """Count calendar days of hydrological years.
 

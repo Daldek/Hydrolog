@@ -45,10 +45,7 @@ def _check_visualization_deps() -> None:
 
 # Only import submodules if matplotlib is available
 if HAS_MATPLOTLIB:
-    from hydrolog.visualization.combined import (
-        plot_rainfall_runoff,
-        # plot_generator_result,  # TODO: Temporarily disabled, to be removed
-    )
+    from hydrolog.visualization.combined import plot_rainfall_runoff
     from hydrolog.visualization.hietogram import (
         plot_hietogram,
         plot_hietogram_comparison,
@@ -120,7 +117,6 @@ if HAS_MATPLOTLIB:
         "plot_unit_hydrograph",
         # Combined
         "plot_rainfall_runoff",
-        # "plot_generator_result",  # TODO: Temporarily disabled, to be removed
         # Unit Hydrograph comparison
         "plot_uh_comparison",
         # Water balance

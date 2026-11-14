@@ -21,10 +21,10 @@ export const MAX_POSITION = 1000;
 export const HALO = 20;
 
 /** Pixels between a node's centre and its label. */
-export const LABEL_GAP = 22;
+const LABEL_GAP = 22;
 
 /** Pixels between the baselines of a label's lines. */
-export const LINE_HEIGHT = 14;
+const LINE_HEIGHT = 14;
 
 /** Width of a character of a label, a generous estimate [px] (12 px type). */
 const CHAR_PX = 7.2;
@@ -33,7 +33,7 @@ const CHAR_PX = 7.2;
 export const PLACES = Object.freeze(["right", "left", "right-below", "left-below"]);
 
 /** The steps [dx, dy] of the directions of the turned picture: up is upstream. */
-export const DIRECTIONS = Object.freeze({
+const DIRECTIONS = Object.freeze({
   up: Object.freeze([-1, 0]),
   down: Object.freeze([1, 0]),
   left: Object.freeze([0, -1]),
@@ -90,7 +90,7 @@ export function cellKey(cell) {
  * @param {[number, number]} point [x, y] of the grid
  * @returns {[number, number]} [column, row]
  */
-export function transpose(point) {
+function transpose(point) {
   return [point[1], point[0]];
 }
 
@@ -442,7 +442,7 @@ export function linesOf(skeleton, areas) {
  * @param {[number, number, number, number]} box [col0, col1, row0, row1]
  * @returns {boolean} true when some part of the segment lies in the box
  */
-export function segmentTouches(a, b, box) {
+function segmentTouches(a, b, box) {
   const [c0, c1, r0, r1] = box;
   const dc = b[0] - a[0];
   const dr = b[1] - a[1];
@@ -574,7 +574,7 @@ export function crowding(node, place, nodes, edges, index = null) {
  * @param {object|null} [index] crowdIndex of the nodes and edges (crowding)
  * @returns {string} one of PLACES
  */
-export function labelPlace(node, preferred, nodes, edges, index = null) {
+function labelPlace(node, preferred, nodes, edges, index = null) {
   const other = preferred === "right" ? "left" : "right";
   const order = [preferred, other, `${preferred}-below`, `${other}-below`];
   let best = order[0];

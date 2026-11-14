@@ -12,7 +12,7 @@ let restore = null;
  * Prepare the page for printing (once until finishPrint): the light theme and the shown
  * section's closed parts opened.
  */
-export function preparePrint() {
+function preparePrint() {
   if (restore) return;
   const root = document.documentElement;
   const theme = Object.hasOwn(root.dataset, "theme") ? root.dataset.theme : null;
@@ -29,7 +29,7 @@ export function preparePrint() {
 }
 
 /** Put the page back as it was before preparePrint. */
-export function finishPrint() {
+function finishPrint() {
   if (!restore) return;
   const undo = restore;
   restore = null;

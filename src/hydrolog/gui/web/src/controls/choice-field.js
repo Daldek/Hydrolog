@@ -9,7 +9,7 @@ import { Seg } from "../ui/seg.js";
 import { describedBy, FieldLabel, FieldNotes, richText } from "./field.js";
 
 /** The most values shown as a segmented control. */
-export const SEGMENTED_MAX = 4;
+const SEGMENTED_MAX = 4;
 
 /**
  * The value a choice shows: the value given, else the default, else none ("").
@@ -18,7 +18,7 @@ export const SEGMENTED_MAX = 4;
  * @param {string|undefined} value the value given
  * @returns {string} the value shown
  */
-export function shownChoice(field, value) {
+function shownChoice(field, value) {
   if (value !== undefined && value !== null && value !== "") return value;
   return field.default === null ? "" : String(field.default);
 }

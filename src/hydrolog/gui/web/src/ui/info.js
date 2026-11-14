@@ -95,7 +95,7 @@ export function infoRanges(id) {
  * @param {object|null} doc hydrolog-commands/1 of one command (`api.command`)
  * @returns {object[]} its `typical_ranges`, none when it has none
  */
-export function servedRanges(doc) {
+function servedRanges(doc) {
   const entry = doc && Array.isArray(doc.commands) ? doc.commands[0] : null;
   return entry && Array.isArray(entry.typical_ranges) ? entry.typical_ranges : [];
 }
@@ -367,7 +367,7 @@ export function closeInfo(how = {}) {
  *
  * @returns {boolean} true while the popover is shown
  */
-export function infoOpen() {
+function infoOpen() {
   return Boolean(popover && !popover.hidden);
 }
 
@@ -378,7 +378,7 @@ export function infoOpen() {
  * @param {HTMLElement} target the button
  * @param {Object<string, unknown>} [values] the current values by option name
  */
-export function openInfo(id, target, values = {}) {
+function openInfo(id, target, values = {}) {
   if (anchor === target && infoOpen()) {
     closeInfo();
     return;

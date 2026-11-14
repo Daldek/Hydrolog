@@ -31,6 +31,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Final, Literal
 
+from hydrolog._atomic import is_same_file
 from hydrolog.catalog.envelope import OperationOutput
 from hydrolog.exceptions import ConflictError, InvalidParameterError
 
@@ -333,14 +334,6 @@ def plan_output(plan: OutputPlan) -> OperationOutput:
     return OperationOutput(plan.document(), check=True)
 
 
-def _is_same_file(first: Path, second: Path) -> bool:
-    """Whether two paths name the same file (also when one does not exist yet)."""
-    try:
-        return first.samefile(second)
-    except OSError:
-        return first.resolve() == second.resolve()
-
-
 def refuse_input_as_output(
     output: str | os.PathLike[str],
     inputs: Mapping[str, str | os.PathLike[str] | None],
@@ -370,7 +363,7 @@ def refuse_input_as_output(
     """
     target = Path(os.fspath(output))
     for name, given in inputs.items():
-        if given is not None and _is_same_file(target, Path(os.fspath(given))):
+        if given is not None and is_same_file(target, Path(os.fspath(given))):
             raise InvalidParameterError(
                 f"Option {option!r} would overwrite the input file of {name!r}: "
                 f"{target}",

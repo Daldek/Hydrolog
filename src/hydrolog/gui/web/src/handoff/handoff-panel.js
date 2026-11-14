@@ -61,7 +61,7 @@ import {
 import { canonical, isObject } from "./validate.js";
 
 /** The most problems of a refused hand-off listed. */
-export const MAX_PROBLEMS = 8;
+const MAX_PROBLEMS = 8;
 
 const ICONS = {
   load: html`<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 14V4M6 8l4-4 4 4M4 16h12" /></svg>`,
@@ -86,7 +86,7 @@ const receivers = new Map();
  * @param {string} target the section's id ("hydrogram")
  * @param {unknown} value what the section takes (Hydrogram: a patch of its inputs)
  */
-export function deliver(target, value) {
+function deliver(target, value) {
   pending.set(target, value);
   for (const listener of [...(receivers.get(target) || [])]) listener();
   navigate(target);
@@ -163,7 +163,7 @@ async function payloadSchemas(refused) {
  * @returns {Promise<{title: string, lines: string[]}|null>} why it was refused, null when
  *   it opened
  */
-export async function openHandoff(text, { into = null } = {}) {
+async function openHandoff(text, { into = null } = {}) {
   const found = await payloadSchemas(texts.load.refused);
   if (found.refusal) return found.refusal;
   const read = readHandoff(text, { ...found.schemas, into });
@@ -235,7 +235,7 @@ export async function addHandoff(text, onAdd) {
  * @returns {Promise<{title: string, lines: string[]}|null>} why it was refused, null when
  *   the caller took it
  */
-export async function handoffFor(text, onOpen) {
+async function handoffFor(text, onOpen) {
   const found = await payloadSchemas(texts.fill.refused);
   if (found.refusal) return found.refusal;
   const read = readHandoff(text, found.schemas);
@@ -467,7 +467,7 @@ export function OriginCard({ card, input }) {
  *   ("same"), of changed data, missing or of an earlier state of the data
  * @returns {object} the comparison
  */
-export function ReceivedResult({ received, own, ownVersion, state }) {
+function ReceivedResult({ received, own, ownVersion, state }) {
   const engine = engineOf(received);
   const comparable = state === "same" && own;
   const comparison = received.result ? compareResults(received.result, comparable ? own : null) : null;

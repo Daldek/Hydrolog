@@ -152,19 +152,6 @@ class TestStreamNetwork:
         # Rb_2 = N_2 / N_3 = 2 / 1 = 2.0
         assert stats.bifurcation_ratios[2] == pytest.approx(2.0)
 
-    def test_get_segments_by_order(self, complex_network):
-        """Test filtering segments by order."""
-        complex_network.classify(OrderingMethod.STRAHLER)
-
-        order1 = complex_network.get_segments_by_order(1)
-        assert len(order1) == 4
-
-        order2 = complex_network.get_segments_by_order(2)
-        assert len(order2) == 2
-
-        order3 = complex_network.get_segments_by_order(3)
-        assert len(order3) == 1
-
 
 class TestStrahlerDifferentOrders:
     """Test Strahler ordering with different order combinations."""

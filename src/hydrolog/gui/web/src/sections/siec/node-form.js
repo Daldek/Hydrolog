@@ -171,7 +171,7 @@ function More({ title, slots, problems, render, name }) {
  *   onChange: (value: any) => void, name: string}} props
  * @returns {object} the choice
  */
-export function Choice({ id, title, items, value, onChange, name }) {
+function Choice({ id, title, items, value, onChange, name }) {
   return html`
     <div class="field choice-row" data-choice=${name}>
       <span class="label" id=${id}>${title}</span>
@@ -190,7 +190,7 @@ export function Choice({ id, title, items, value, onChange, name }) {
  *   the prefix of ids and the table's name
  * @returns {object} the table
  */
-export function TableEditor({ table, rows, onRows, error, prefix, label }) {
+function TableEditor({ table, rows, onRows, error, prefix, label }) {
   const list = Array.isArray(rows) && rows.length ? rows : [table.columns.map(() => "")];
   const picker = useRef(null);
   const [note, setNote] = useState(null);

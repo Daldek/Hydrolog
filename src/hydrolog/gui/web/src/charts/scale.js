@@ -74,7 +74,7 @@ export function formatTime(minutes) {
  * @param {number} step a tick step, e.g. 0.25
  * @returns {number} 2 for 0.25, 1 for 2.5, 0 for 50
  */
-export function stepDigits(step) {
+function stepDigits(step) {
   for (let digits = 0; digits < 10; digits += 1) {
     const scaled = step * 10 ** digits;
     if (Math.abs(scaled - Math.round(scaled)) < 1e-9 * Math.max(1, scaled)) return digits;
@@ -116,7 +116,7 @@ function clean(value, digits) {
  * @param {number} step the step
  * @returns {{value: number, label: string}[]} the ticks within [min, max]
  */
-export function linearTicks(min, max, step) {
+function linearTicks(min, max, step) {
   const digits = stepDigits(step);
   const ticks = [];
   const first = Math.ceil(min / step - 1e-9);

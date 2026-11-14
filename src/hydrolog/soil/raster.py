@@ -24,7 +24,7 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from hydrolog._atomic import atomic_output
+from hydrolog._atomic import atomic_output, is_same_file
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import (
     InputDataError,
@@ -210,14 +210,6 @@ def _check_same_grid(
         )
 
 
-def _is_same_file(first: Path, second: Path) -> bool:
-    """Whether two paths name the same file (also when one does not exist yet)."""
-    try:
-        return first.samefile(second)
-    except OSError:
-        return first.resolve() == second.resolve()
-
-
 def _write_hsg_geotiff(
     rasterio: Any, output_path: Path, hsg: NDArray[np.uint8], grid: _Grid
 ) -> None:
@@ -334,7 +326,7 @@ def hsg_from_rasters(
     }
     output = Path(output_path)
     for label, path in layers.items():
-        if _is_same_file(path, output):
+        if is_same_file(path, output):
             raise InvalidParameterError(
                 f"output_path must not be the {label} input raster: {output}",
                 details={"option": "output_path"},

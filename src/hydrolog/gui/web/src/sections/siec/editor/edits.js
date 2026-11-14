@@ -11,7 +11,7 @@ import { cellOf, cellKey, freeCell } from "./geometry.js";
 import { foldId, idProblem, receiversOf } from "./graph.js";
 
 /** The prefix of the id of a new element of each type (the ids of Hydrograf's hand-off). */
-export const PREFIXES = Object.freeze({ subcatchment: "Z", reach: "R", reservoir: "ZB", junction: "J", outlet: "OUT" });
+const PREFIXES = Object.freeze({ subcatchment: "Z", reach: "R", reservoir: "ZB", junction: "J", outlet: "OUT" });
 
 /**
  * The id of a new element: its type's prefix with the first free number (`Z1`, `R2`…),
@@ -61,7 +61,7 @@ export function freeId(skeleton, id, type) {
  * @param {Array<{position?: {x: number, y: number}}>} skeleton the structure
  * @returns {Set<string>} the keys (cellKey)
  */
-export function takenCells(skeleton) {
+function takenCells(skeleton) {
   return new Set(skeleton.filter((node) => node.position).map((node) => cellKey([node.position.x, node.position.y])));
 }
 

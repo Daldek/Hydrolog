@@ -24,7 +24,7 @@ let opener = null;
  *
  * @returns {boolean} true when the dialog stays closed on a visit
  */
-export function welcomeHidden() {
+function welcomeHidden() {
   const stored = loadState(PART, null);
   return Boolean(stored && stored.hidden === true);
 }

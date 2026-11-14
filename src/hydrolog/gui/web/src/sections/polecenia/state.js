@@ -30,7 +30,7 @@ export function initialState() {
  * @param {string} name e.g. "uh nash"
  * @returns {string} e.g. "uh"
  */
-export function groupOf(name) {
+function groupOf(name) {
   return String(name).split(" ")[0];
 }
 

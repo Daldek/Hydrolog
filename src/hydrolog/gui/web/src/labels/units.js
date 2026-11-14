@@ -83,13 +83,13 @@ export function unitOfName(name) {
 }
 
 /** The unit of a station series' values by its parameter (`parameter` of a result). */
-export const PARAMETER_UNITS = Object.freeze({ Q: "m³/s", H: "cm", T: "°C" });
+const PARAMETER_UNITS = Object.freeze({ Q: "m³/s", H: "cm", T: "°C" });
 
 /**
  * Result fields in the unit of the series (PARAMETER_UNITS), by command, each with what
  * follows that unit ("·d" for a sum of daily deficits).
  */
-export const SERIES_FIELDS = Object.freeze({
+const SERIES_FIELDS = Object.freeze({
   "stats characteristic": Object.freeze(
     Object.fromEntries(["wwx", "swx", "zwx", "nwx", "wsx", "ssx", "zsx", "nsx", "wnx", "snx", "znx", "nnx"].map((key) => [key, ""])),
   ),
@@ -100,7 +100,7 @@ export const SERIES_FIELDS = Object.freeze({
  * Units of result fields their names do not give, by command; null for a field whose
  * suffix would give a wrong one (a count of spells named "_days", the variance `var_s`).
  */
-export const FIELD_UNITS = Object.freeze({
+const FIELD_UNITS = Object.freeze({
   "hydrometrics rating-curve": Object.freeze({ std_residuals: "m³/s" }),
   "stats mann-kendall": Object.freeze({ var_s: null }),
   "stats regime": Object.freeze({ annual_mean: "m³/s", monthly_mean: "m³/s" }),
