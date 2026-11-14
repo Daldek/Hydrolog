@@ -62,7 +62,7 @@ viz = [
 # The PMAXTP depths of IMGW-PIB (`precip pmaxtp`, ADR-0018), fetched through Obserwator:
 # the only command that uses the network. The range admits the development version of
 # Obserwator's pending release; it is not tagged, so `[tool.uv.sources]` pins the commit
-# of Nogat's release set candidate-1 (the release pull request replaces it with a tag).
+# of Nogat's release set candidate-4 (the release pull request replaces it with a tag).
 # The "gui" and "all" extras repeat it.
 pmaxtp = [
     "obserwator>=3.0.0.dev0,<4",
@@ -112,8 +112,8 @@ hydrolog = ["py.typed", "_data/agents/*.md", "schemas/*.json", "gui/web/**/*"]
 version = {attr = "hydrolog.__version__"}
 
 [tool.uv.sources]
-# Obserwator is not tagged yet: the commit of Nogat's release set candidate-1.
-obserwator = { git = "https://github.com/Daldek/Obserwator.git", rev = "f9f4ee7927ba520d3e82d3e289872090ae24e2ec" }
+# Obserwator is not tagged yet: the commit of Nogat's release set candidate-4.
+obserwator = { git = "https://github.com/Daldek/Obserwator.git", rev = "0394af7c66b60cccb88f14b6118893b78443dc21" }
 
 [dependency-groups]
 dev = [

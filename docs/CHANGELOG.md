@@ -393,7 +393,8 @@ The author's decision of 2026-11-04: with PMAXTP a person gives the point, the p
 - **Breaking (the GUI's private API).** No cookie: the session is named by the header `X-Hydrolog-Session`, which the page keeps in its memory; it ends when the page is closed or reloaded (`DELETE api/session`) or after an hour idle (was 12 hours). Downloads of the session's files go through `fetch`. Links that leave the app open a new tab (ADR-0034).
 - GUI user guide: refreshed the Hydrograf network hand-off chapter against a live network (confluence and point IDs, outlet `O`, headwater and intermediate subcatchments, node provenance), corrected the statistics file action and retook the changed network, statistics and command-catalogue screenshots as indexed PNGs; the worked example fixture and its numbers remain unchanged.
 
-- Obserwator pin (extra `pmaxtp`, `[tool.uv.sources]`) moved from candidate-1 `1ee5457` to commit `f9f4ee7927ba520d3e82d3e289872090ae24e2ec` of Nogat's release set candidate-2; `uv.lock` updated.
+- Obserwator pin (extra `pmaxtp`, `[tool.uv.sources]`) moved from candidate-2 `f9f4ee7` to commit `0394af7c66b60cccb88f14b6118893b78443dc21` of Nogat's release set candidate-4 (first candidate-1 `1ee5457`); `uv.lock` updated. `fetch_pmaxtp` and the series export that Hydrolog reads are unchanged there.
+- `output_in_store` also recognises Obserwator's data root by its marker `obserwator-data.json` (Obserwator's ADR-017 splits its store into a raw root, `obserwator-store.json`, and a data root of series, catalogs and analyses): `route network --output-dir` refuses a directory that is, or lies in, either root (`STORE_MARKERS` of `hydrolog.operations._outputs`).
 
 - GUI: the cards „Eksport” and „Przekazanie” of the panel Wyniki (Hydrogram zlewni, Sieć; „Eksport” also in Statystyka) are collapsed by default; „Przekazanie” opens itself when a received hand-off brings a producer's result to compare.
 

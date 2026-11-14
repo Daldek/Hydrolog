@@ -429,7 +429,7 @@ Annual maxima and minima (`stats flood-frequency`, `stats low-flow`) are taken f
 
 ### Obserwator: the PMAXTP depth → `precip pmaxtp`
 
-The one thing Hydrolog fetches is the PMAXTP depth of IMGW-PIB ([ADR-0018](decisions/0018-pmaxtp-through-obserwator.md)), and it fetches it through Obserwator's Python API, not by itself: with the extra `pmaxtp` (`obserwator>=3.0.0.dev0,<4`, until Obserwator is tagged the commit of Nogat's release set candidate-1), `precip pmaxtp` calls `obserwator.fetch_pmaxtp(latitude, longitude, method=..., timeout=20)`, which asks the PMAXTP API of IMGW-PIB over HTTPS for the table of the point, and reads the cell of the duration and the probability. Only the coordinates and the method go out; nothing is cached or written. The depth is the `total_mm` of a design storm:
+The one thing Hydrolog fetches is the PMAXTP depth of IMGW-PIB ([ADR-0018](decisions/0018-pmaxtp-through-obserwator.md)), and it fetches it through Obserwator's Python API, not by itself: with the extra `pmaxtp` (`obserwator>=3.0.0.dev0,<4`, until Obserwator is tagged the commit of Nogat's release set candidate-4), `precip pmaxtp` calls `obserwator.fetch_pmaxtp(latitude, longitude, method=..., timeout=20)`, which asks the PMAXTP API of IMGW-PIB over HTTPS for the table of the point, and reads the cell of the duration and the probability. Only the coordinates and the method go out; nothing is cached or written. The depth is the `total_mm` of a design storm:
 
 ```bash
 hydrolog precip pmaxtp --latitude 51.01544 --longitude 15.88984 --duration-min 720 \
