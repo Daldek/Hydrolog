@@ -52,9 +52,15 @@ __all__ = [
 PLAN_SCHEMA: Final = "hydrolog-plan/1"
 """Value of the ``schema`` key of the plan of a ``check`` run."""
 
-STORE_MARKERS: Final = ("kartograf-store.json", "obserwator-store.json")
-"""Marker files of the versioned stores of the other Nogat tools (DEV-19.12); a store is
-recognised by the name of this file alone, nothing is imported from those tools."""
+STORE_MARKERS: Final = (
+    "kartograf-store.json",
+    "obserwator-store.json",
+    "obserwator-data.json",
+)
+"""Marker files of the versioned stores of the other Nogat tools (DEV-19.12):
+Kartograf's store, Obserwator's raw root and its data root (Obserwator's ADR-017); a
+store is recognised by the name of this file alone, nothing is imported from those
+tools."""
 
 Action = Literal["write", "replace", "conflict"]
 

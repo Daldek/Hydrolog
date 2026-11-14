@@ -629,6 +629,7 @@ class TestExistingTables:
         [
             ("kartograf-store.json", ""),
             ("obserwator-store.json", ""),
+            ("obserwator-data.json", "plain"),
             ("kartograf-store.json", "plain/tables"),
         ],
     )

@@ -40,7 +40,7 @@ and the depth is fetched from IMGW-PIB through Obserwator, never typed. This rev
   of `hydrolog-commands/1` and the `openWorldHint` of its MCP tool. The agent guides, the MCP instructions and the
   README say that only `precip pmaxtp` goes online.
 - **An optional extra.** `pmaxtp` brings `obserwator>=3.0.0.dev0,<4`, repeated in `gui` and `all`. Obserwator is not
-  tagged yet, so `[tool.uv.sources]` pins a commit of Nogat's release set (since 2026-11-10 candidate-2 `f9f4ee7`; first candidate-1 `1ee5457`);
+  tagged yet, so `[tool.uv.sources]` pins a commit of Nogat's release set (since 2026-11-14 candidate-4 `0394af7`; earlier candidate-2 `f9f4ee7`, first candidate-1 `1ee5457`);
   the release replaces it with a tag. `hydrolog._pmaxtp` (the durations, the probabilities, the methods,
   the box, the attribution, the timeout) is a leaf module that the catalog reads, and Obserwator is imported only when
   the command runs: without it the command ends with `missing_dependency` (`details.extra` `pmaxtp`,
