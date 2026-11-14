@@ -118,6 +118,30 @@ def test_statystyka_from_archiwista_shows_imgws_lines_with_the_result(
         assert [row[-1] for row in rows[1:3] if row[-1]] == IMGW["terms_notice"]
 
 
+def test_an_older_chmi_handoff_shows_and_sends_on_one_cp(
+    new_tab: Any, tmp_path: Path
+) -> None:
+    """Nogat ECO-071: a hand-off of before it says in parentheses how ČHMÚ's data were
+    processed, twice; the page and the run give the one CP."""
+    chmi = SETS["chmi"]["attribution"]
+    doc = archiwista(False)
+    doc["attribution"] = [
+        chmi[0],
+        "Dane ČHMÚ zostały przetworzone (normalizacja i zmiana formatu)",
+        "Dane ČHMÚ zostały przetworzone (obliczenia hydrologiczne programem Hydrolog)",
+    ]
+    page = visit(new_tab())
+    open_handoff(page, doc, tmp_path)
+    card = page.locator(
+        f'{SECTION} [data-handoff-source="archiwista"] [data-attribution="handoff"] p'
+    )
+    expect(card).to_have_text(chmi)
+    highlight(page, "100")
+    envelope = compute(page).json()
+    assert envelope["attribution"] == chmi
+    assert sources_listed(page, SECTION) == chmi
+
+
 def open_part_statystyka(page: Page) -> None:
     """Open Statystyka's part „Eksport” of the panel Wyniki."""
     part = page.locator(f'{RIGHT} details[data-part="exports"]')

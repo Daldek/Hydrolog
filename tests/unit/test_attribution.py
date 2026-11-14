@@ -32,10 +32,14 @@ from hydrolog.exceptions import InvalidParameterError
 from hydrolog.testing import example_network_document
 
 FIXTURES = Path(__file__).parents[1] / "fixtures"
-OBSERWATOR_CHMI_PROCESSED = (
+OLD_OBSERWATOR_CHMI_PROCESSED = (
     "Dane ČHMÚ zostały przetworzone (normalizacja i zmiana formatu)"
 )
-"""What Obserwator writes it did with ČHMÚ's data."""
+"""Obserwator's CP before Nogat ECO-071, which said what it did with ČHMÚ's data."""
+OLD_HYDROLOG_CHMI_PROCESSED = (
+    "Dane ČHMÚ zostały przetworzone (obliczenia hydrologiczne programem Hydrolog)"
+)
+"""Hydrolog's own CP before Nogat ECO-071."""
 RETIRED_NOTICE = (
     "Dane IMGW-PIB można wykorzystywać nieodpłatnie do celów prywatnych "
     "(niezarobkowych). Wykorzystanie w działalności gospodarczej, na stronach z "
@@ -82,7 +86,7 @@ class TestTheLines:
             "https://opendata.chmi.cz, licencja CC BY 4.0 "
             "(https://creativecommons.org/licenses/by/4.0/)"
         )
-        assert CHMI_PROCESSED.startswith("Dane ČHMÚ zostały przetworzone (")
+        assert CHMI_PROCESSED == "Dane ČHMÚ zostały przetworzone"
 
     def test_the_terms_lines(self):
         assert TERMS_DANEPUBLICZNE == (
@@ -123,19 +127,36 @@ class TestRecognition:
         assert attribution.lines == (IMGW_SOURCE, IMGW_PROCESSED)
 
     def test_an_older_chmi_credit_becomes_the_complete_one(self):
-        """Obserwator's credit without the licence's link; its CP stays before ours."""
+        """Obserwator's credit without the licence's link."""
         older = (
             "Źródło danych: Český hydrometeorologický ústav (ČHMÚ), "
             "https://opendata.chmi.cz, licencja CC BY 4.0"
         )
-        attribution = Attribution.from_lines([older, OBSERWATOR_CHMI_PROCESSED])
+        attribution = Attribution.from_lines([older])
 
-        assert attribution.lines == (
-            CHMI_SOURCE,
-            OBSERWATOR_CHMI_PROCESSED,
-            CHMI_PROCESSED,
-        )
+        assert attribution.lines == (CHMI_SOURCE, CHMI_PROCESSED)
         assert attribution.terms_notice == ()
+
+    @pytest.mark.parametrize(
+        "given",
+        [
+            [OLD_OBSERWATOR_CHMI_PROCESSED],
+            [OLD_HYDROLOG_CHMI_PROCESSED, CHMI_PROCESSED],
+            [OLD_OBSERWATOR_CHMI_PROCESSED, f"{OLD_HYDROLOG_CHMI_PROCESSED}."],
+            ["Dane ČHMÚ zostały przetworzone ()", CHMI_SOURCE],
+        ],
+    )
+    def test_an_older_cp_with_its_detail_is_the_one_cp(self, given):
+        """Nogat ECO-071: whatever its parentheses say, written once, without them."""
+        attribution = Attribution.from_lines(given)
+
+        assert attribution.lines == (CHMI_SOURCE, CHMI_PROCESSED)
+
+    def test_a_line_that_only_begins_like_cp_is_another_line(self):
+        """Only the parenthetical form of ECO-071 is CP; other words stay verbatim."""
+        other = "Dane ČHMÚ zostały przetworzone przez Przykład sp. z o.o."
+
+        assert Attribution.from_lines([other]).lines == (other,)
 
     def test_lines_of_several_providers_take_the_order_of_dev_20_4(self):
         attribution = (
@@ -360,22 +381,20 @@ class TestResults:
         assert envelope["attribution"] == [IMGW_SOURCE, IMGW_PROCESSED]
         assert envelope["terms_notice"] == [TERMS_DANEPUBLICZNE]
 
-    def test_a_chmi_export_carries_its_credit_and_both_modifications(self, tmp_path):
+    @pytest.mark.parametrize(
+        "processed", [CHMI_PROCESSED, OLD_OBSERWATOR_CHMI_PROCESSED]
+    )
+    def test_a_chmi_export_carries_its_credit_and_one_cp(self, tmp_path, processed):
+        """Obserwator's export of today or of before Nogat ECO-071."""
         export = _observer_export(
-            tmp_path / "chmi.csv",
-            lines=[CHMI_SOURCE, OBSERWATOR_CHMI_PROCESSED],
-            terms=[],
+            tmp_path / "chmi.csv", lines=[CHMI_SOURCE, processed], terms=[]
         )
 
         envelope = hydrolog.run_command(
             "stats mann-kendall", input_file=str(export), value_column="Q"
         ).to_dict()
 
-        assert envelope["attribution"] == [
-            CHMI_SOURCE,
-            OBSERWATOR_CHMI_PROCESSED,
-            CHMI_PROCESSED,
-        ]
+        assert envelope["attribution"] == [CHMI_SOURCE, CHMI_PROCESSED]
         assert "terms_notice" not in envelope
 
     def test_values_without_a_source_carry_nothing(self):

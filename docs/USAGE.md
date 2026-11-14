@@ -1827,7 +1827,7 @@ request_window = 60
 ```
 
 - **The regulamin.** The server fills the regulamin of Nogat's GUI kit (`web/nogat/nogat-terms.html`,
-  kit 0.7.0, regulamin 1.0) with these values and the blocks of Hydrolog's sources (PMAXTP,
+  kit 0.7.1, regulamin 1.1) with these values and the blocks of Hydrolog's sources (PMAXTP,
   IMGW-PIB, ČHMÚ), serves it at `regulamin.html` beside the page and links it without a footer
   ([ADR-0039](decisions/0039-the-regulamin-in-the-rail-and-the-welcome-no-footer.md)): the small
   link „Regulamin” at the bottom of the rail of the sections (not in a phone's bottom bar), the
@@ -1836,7 +1836,8 @@ request_window = 60
   it as „Regulamin serwisu” too; every such link opens a new tab. A key missing
   or empty (only `processor_transfer`, `processor_cookie` and `mail_transfer` may be empty)
   leaves no page and no link, with the warning `No regulamin: missing values: …` on standard
-  error, before the record `start` ([Logs](#logs)). A change needs a restart.
+  error, before the record `start` ([Logs](#logs)). A change needs a restart. A new version of
+  the regulamin (1.1 since kit 0.7.1, Nogat ECO-071) is published with its own `terms_effective`.
 - **The request limit.** At most `request_limit` requests of one client address in
   `request_window` seconds; the address stays in the server's memory for its window only. Static
   files and the catalog documents (`api/commands…`, `api/schemas/…`) are not counted, a page load
