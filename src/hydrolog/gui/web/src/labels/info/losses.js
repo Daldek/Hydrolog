@@ -1,19 +1,17 @@
 /**
- * Explanation (i) of the SCS-CN losses (plan D16, slice S3): the entry "losses-scs-cn" for the
- * options `cn`, `amc` and `ia_coefficient` of `hydrograph generate` and `scs effective`, in the
- * format of ui/info.js. The typical range of the AMC conversion, with its source, is
- * Hydrolog's (`typical_ranges`, method `scs_cn_amc`).
+ * Explanation (i) of the SCS-CN losses, by Nogat DEV-15.14: the entry "losses-scs-cn" for CN,
+ * AMC and λ of `hydrograph generate` and `scs effective`, in the format of ui/info.js, linking
+ * (`guide`) its subsection of the guide's chapter „Metody obliczeń”. The typical range of the
+ * AMC conversion, with its source, is Hydrolog's (`typical_ranges`, method `scs_cn_amc`).
  */
 
 export const lossesInfo = {
   "losses-scs-cn": {
     title: "SCS-CN: opad efektywny",
     intro:
-      "<p>Straty i opad efektywny z liczby krzywej CN; CN podaje się dla przeciętnej wilgotności AMC II, " +
-      "a AMC I i III go przeliczają. Polecenie <code>scs effective</code>, w hydrogramie opcje " +
-      "<code>cn</code>, <code>amc</code> i <code>ia_coefficient</code>.</p>" +
-      "<p>W hydrogramie P to suma opadu narastająca od początku: P<sub>e</sub> liczy się po każdym " +
-      "kroku, a jego przyrosty w krokach idą do splotu z hydrogramem jednostkowym.</p>",
+      "<p>Opad efektywny P<sub>e</sub> to część opadu, która odpływa po powierzchni terenu; reszta wsiąka w " +
+      "glebę lub zostaje zatrzymana przez roślinność i zagłębienia terenu. Metoda SCS-CN liczy go z liczby " +
+      "krzywej CN dla przeciętnej wilgotności gleby (AMC II).</p>",
     formula:
       "<math display='block'><msub><mi>P</mi><mi>e</mi></msub><mo>=</mo><mfrac><msup><mrow><mo>(</mo>" +
       "<mi>P</mi><mo>−</mo><msub><mi>I</mi><mi>a</mi></msub><mo>)</mo></mrow><mn>2</mn></msup><mrow>" +
@@ -33,9 +31,7 @@ export const lossesInfo = {
     vars: [
       {
         symbol: "<math><mi>P</mi></math>",
-        text:
-          "opad: suma narastająca od początku opadu (w <code>scs effective</code> z " +
-          "<code>precipitation_mm</code> – suma całego opadu)",
+        text: "opad całkowity; w hietogramie suma narastająca od początku opadu",
         unit: "mm",
       },
       {
@@ -55,27 +51,22 @@ export const lossesInfo = {
       },
       {
         symbol: "<math><mi>λ</mi></math>",
-        text: "współczynnik strat początkowych, <code>ia_coefficient</code>, 0 &lt; λ ≤ 1; domyślnie 0,2",
+        text: "współczynnik strat początkowych, 0 &lt; λ ≤ 1; standardowo 0,2",
         unit: "–",
       },
       {
         symbol: "<math><mi>CN</mi></math>",
-        text:
-          "liczba krzywej dla AMC II, 1–100 (może być ułamkowa): <code>cn</code> zlewni albo opcja " +
-          "<code>cn</code>; przy <code>amc</code> I lub III Hydrolog liczy CN<sub>I</sub> albo " +
-          "CN<sub>III</sub>, zaokrągla do liczby całkowitej i ogranicza do 1–100",
+        text: "liczba krzywej odpływu dla AMC II, 1–100; dla AMC I i III przeliczona i zaokrąglona do jedności",
         unit: "–",
       },
     ],
     symbols: { cn: "CN (AMC I i III)" },
     note:
-      "<p>λ = 0,2 to standard NRCS, dla którego skalibrowano tablice CN (TR-55, NEH 630); inny λ daje " +
-      "uwagę w wyniku. Proponowanej wartości 0,05 (Hawkins i in. 2002; Woodward i in. 2003) NRCS nie " +
-      "przyjęło: wymagałaby innych wartości CN. Wzory przeliczenia AMC przybliżają tabelę NEH 630 w " +
-      "zakresie stosowania podanym wyżej; Hydrolog stosuje je dla każdego CN, a poza tym zakresem daje uwagę. " +
-      "Przy odpływie poniżej ok. 13 mm metoda jest mniej dokładna.</p>",
+      "<p>Im wyższy CN, tym większa część opadu odpływa: przy CN = 80 z opadu 50&nbsp;mm odpływa około " +
+      "14&nbsp;mm. Sucha gleba (AMC I) obniża CN, mokra (AMC III) go podwyższa.</p>",
+    guide: "metoda-losses-scs-cn",
     sources:
-      "USDA-SCS 1986 (TR-55); USDA-NRCS 2004 (NEH 630-10); Hawkins i in. 1985 (za Ponce i Hawkins 1996); " +
-      "Hawkins i in. 2002; Woodward i in. 2003; opis polecenia <code>scs effective</code>",
+      "USDA-SCS 1986 (TR-55); USDA-NRCS 2004 (NEH 630, rozdz. 10); Hawkins i in. 1985 (za Ponce i Hawkins " +
+      "1996)",
   },
 };

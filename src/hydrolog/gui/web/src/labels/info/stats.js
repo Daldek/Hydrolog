@@ -1,106 +1,142 @@
 /**
- * Explanations (i) of „Statystyka przepływów” (plan D16): the flood frequency analysis of
- * `stats flood-frequency`, its four distributions, the measures of fit, the probability
- * plot and the homogeneity tests of `stats homogeneity`. Trusted HTML fragments with
- * MathML. The length of the record is checked against Hydrolog's range (`typical_ranges`
- * of `stats flood-frequency`, the result's `n_years`), which the section registers with
- * the explanations (registerInfo(statsInfo)).
+ * Explanations (i) of „Statystyka przepływów”, by Nogat DEV-15.14: the flood frequency
+ * analysis, its four distributions and fit methods, the measures of fit, the probability
+ * plot and the homogeneity tests; each a definition, its formula in MathML with its symbols
+ * and units, how to read it and the literature, and `guide`, the subsection of the guide's
+ * chapter „Metody obliczeń” that holds the longer explanation. Trusted HTML fragments. The
+ * length of the record is checked against Hydrolog's range (`typical_ranges` of `stats
+ * flood-frequency`, the result's `n_years`), which the section registers with the
+ * explanations (registerInfo(statsInfo)).
  */
 
 export const statsInfo = {
   "stats-flood-frequency": {
     title: "Analiza częstości wezbrań",
     intro:
-      "<p>Polecenie <code>stats flood-frequency</code> dopasowuje do maksimów rocznych cztery rozkłady wybraną metodą estymacji parametrów (domyślnie L-momentów) albo każdą z czterech metod (<code>fit_method</code> <code>all</code>) i podaje kwantyle <i>Q<sub>T</sub></i> dla okresów powtarzalności <i>T</i>. Statystyka liczy od razu każdą kombinację rozkładu i metody, a „Rozkłady” i „Metody estymacji” wybierają, które z nich pokazać. Kombinacje są uporządkowane wg kryterium AIC: najlepsza z pokazanych ma najmniejsze. Z szeregu dobowego z datami Hydrolog bierze najpierw maksima kompletnych lat hydrologicznych (XI–X); rok z brakującym dniem pomija.</p>",
+      "<p>Przepływy maksymalne o zadanym okresie powtarzalności <i>T</i>, liczone z rozkładów prawdopodobieństwa " +
+      "dopasowanych do maksimów rocznych. Kwantyl <i>Q<sub>T</sub></i> jest przewyższany w każdym roku z prawdopodobieństwem " +
+      "<i>p</i> = 1/<i>T</i>.</p>",
     formula:
       '<math display="block"><msub><mi>Q</mi><mi>T</mi></msub><mo>=</mo><msup><mi>F</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup><mo>(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo>)</mo><mo>,</mo><mspace width="1em"></mspace><mi>p</mi><mo>=</mo><mfrac><mn>1</mn><mi>T</mi></mfrac></math>',
     vars: [
-      { symbol: "<math><msub><mi>Q</mi><mi>T</mi></msub></math>", text: "przepływ o okresie powtarzalności T (kwantyl rozkładu)", unit: "m³/s" },
-      { symbol: "<math><mi>T</mi></math>", text: "okres powtarzalności: średnio raz na T lat", unit: "lata" },
-      { symbol: "<math><mi>p</mi></math>", text: "prawdopodobieństwo przewyższenia w roku (p = 1% dla T = 100 lat)", unit: "–" },
+      { symbol: "<math><msub><mi>Q</mi><mi>T</mi></msub></math>", text: "przepływ o okresie powtarzalności T: kwantyl dopasowanego rozkładu", unit: "m³/s" },
+      { symbol: "<math><mi>T</mi></math>", text: "okres powtarzalności: przepływ przewyższany średnio raz na T lat", unit: "lata" },
+      { symbol: "<math><mi>p</mi></math>", text: "prawdopodobieństwo przewyższenia w roku (1&nbsp;% dla T = 100 lat)", unit: "–" },
       { symbol: "<math><mi>F</mi></math>", text: "dystrybuanta dopasowanego rozkładu", unit: "–" },
     ],
     symbols: { years: "Długość szeregu N" },
     note:
-      "<p>Szereg krótszy niż zakres podany wyżej daje uwagę <code>short_record</code>, a bardzo krótki także <code>small_sample</code>. Kwantyl dla T znacznie dłuższego niż szereg jest ekstrapolacją: jego niepewność rośnie z T.</p>",
+      "<p>Q&nbsp;1% jest przewyższany średnio raz na 100 lat, ale w każdym roku z prawdopodobieństwem 1&nbsp;%. Kwantyl " +
+      "dla <i>T</i> dużo dłuższego niż szereg to ekstrapolacja, tym mniej pewna, im dłuższe <i>T</i>.</p>",
+    guide: "metoda-stats-flood-frequency",
     sources:
-      "KZGW (2017) Aktualizacja metodyki obliczania przepływów i opadów maksymalnych; Coles (2001) An Introduction to Statistical Modeling of Extreme Values; Hydrolog, <code>hydrolog.statistics.high_flows</code>",
+      "KZGW 2017 (Aktualizacja metodyki obliczania przepływów i opadów maksymalnych); " +
+      "Coles 2001 (An Introduction to Statistical Modeling of Extreme Values)",
   },
   "stats-distributions": {
     title: "Rozkłady maksimów rocznych",
     intro:
-      "<p><b>GEV</b>, uogólniony rozkład wartości ekstremalnych: położenie <i>μ</i>, skala <i>σ</i> i kształt <i>ξ</i> (ξ = 0 to rozkład Gumbela). <b>Log-normalny</b>: logarytm przepływu ma rozkład normalny; dwa parametry, położenie 0. <b>Pearson III</b>: skośność, położenie i skala. <b>Weibull</b>: kształt, położenie i skala. To rozkłady <code>scipy.stats</code> (<code>genextreme</code>, <code>lognorm</code>, <code>pearson3</code>, <code>weibull_min</code>); parametry szacuje wybrana metoda estymacji (domyślnie L-momentów), w wyniku są w <code>parameters</code>.</p>",
+      "<p>Cztery rozkłady maksimów rocznych: GEV (uogólniony rozkład wartości ekstremalnych), log-normalny o dwóch " +
+      "parametrach oraz trójparametrowe Pearson III i Weibull. Wzór to dystrybuanta GEV; <i>ξ</i> = 0 daje rozkład Gumbela.</p>",
     formula:
       '<math display="block"><mi>F</mi><mo>(</mo><mi>x</mi><mo>)</mo><mo>=</mo><mi>exp</mi><mrow><mo>{</mo><mo>−</mo><msup><mrow><mo>[</mo><mn>1</mn><mo>+</mo><mi>ξ</mi><mfrac><mrow><mi>x</mi><mo>−</mo><mi>μ</mi></mrow><mi>σ</mi></mfrac><mo>]</mo></mrow><mrow><mo>−</mo><mn>1</mn><mo>/</mo><mi>ξ</mi></mrow></msup><mo>}</mo></mrow></math>',
     vars: [
-      { symbol: "<math><mi>μ</mi></math>", text: "parametr położenia GEV (<code>loc</code>)", unit: "m³/s" },
-      { symbol: "<math><mi>σ</mi></math>", text: "parametr skali GEV (<code>scale</code>)", unit: "m³/s" },
-      { symbol: "<math><mi>ξ</mi></math>", text: "parametr kształtu; <code>scipy</code> podaje <code>shape</code> = −ξ", unit: "–" },
+      { symbol: "<math><mi>F</mi><mo>(</mo><mi>x</mi><mo>)</mo></math>", text: "dystrybuanta: prawdopodobieństwo, że maksimum roczne nie przekroczy x", unit: "–" },
+      { symbol: "<math><mi>x</mi></math>", text: "przepływ", unit: "m³/s" },
+      { symbol: "<math><mi>μ</mi></math>", text: "parametr położenia", unit: "m³/s" },
+      { symbol: "<math><mi>σ</mi></math>", text: "parametr skali", unit: "m³/s" },
+      { symbol: "<math><mi>ξ</mi></math>", text: "parametr kształtu", unit: "–" },
     ],
-    note: "<p>Kolor linii to rozkład: GEV, log-normalny, Pearson III i Weibull mają zawsze te same kolory. Styl linii to metoda estymacji: ciągła L-momenty, kreskowana największa wiarygodność, kropkowana momenty, kreska-kropka najmniejsze kwadraty. Aktywna kombinacja jest grubsza, pozostałe są przygaszone.</p>",
-    sources: "Coles (2001), rozdz. 3; Hosking i Wallis (1997) Regional Frequency Analysis; Hydrolog, <code>FloodFrequencyAnalysis</code>",
+    note:
+      "<p>Przy <i>ξ</i> &gt; 0 kwantyle rosną z <i>T</i> szybciej niż w rozkładzie Gumbela (ciężki ogon), a przy " +
+      "<i>ξ</i> &lt; 0 przepływ ma górną granicę. Rozkłady o podobnym AIC mogą dać różne kwantyle dla długich <i>T</i>.</p>",
+    guide: "metoda-stats-distributions",
+    sources:
+      "Coles 2001 (An Introduction to Statistical Modeling of Extreme Values, rozdz. 3); " +
+      "Hosking i Wallis 1997 (Regional Frequency Analysis)",
   },
   "stats-fit-method": {
     title: "Metoda estymacji parametrów",
     intro:
-      "<p>Każda metoda daje parametry tych samych czterech rozkładów; kwantyle, A², KS i AIC liczy się z nich tak samo. <b>mle</b>, największa wiarygodność: parametry, przy których próba jest najbardziej prawdopodobna. <b>moments</b>, metoda momentów: średnia, wariancja i skośność rozkładu równe tym z próby (wariancja z dzielnikiem n − 1, skośność skorygowana G1). <b>l_moments</b>, metoda L-momentów (domyślna): L-momenty λ1, λ2 i L-skośność τ3 rozkładu równe tym z próby; mniej czuła na pojedyncze duże maksima i stabilniejsza od największej wiarygodności na krótkich próbach maksimów rocznych. <b>least_squares</b>, najmniejsze kwadraty: najmniejsza suma kwadratów różnic między maksimami a kwantylami w położeniach Weibulla i/(n+1), od parametrów metody momentów.</p>",
+      "<p>Sposób szacowania parametrów rozkładów z maksimów rocznych: L-momenty (domyślnie), największa wiarygodność, " +
+      "momenty albo najmniejsze kwadraty. Wzór to L-momenty próby.</p>",
     formula:
       '<math display="block"><msub><mi>λ</mi><mn>1</mn></msub><mo>=</mo><msub><mi>b</mi><mn>0</mn></msub><mo>,</mo><mspace width="1em"></mspace><msub><mi>λ</mi><mn>2</mn></msub><mo>=</mo><mn>2</mn><msub><mi>b</mi><mn>1</mn></msub><mo>−</mo><msub><mi>b</mi><mn>0</mn></msub><mo>,</mo><mspace width="1em"></mspace><msub><mi>τ</mi><mn>3</mn></msub><mo>=</mo><mfrac><mrow><mn>6</mn><msub><mi>b</mi><mn>2</mn></msub><mo>−</mo><mn>6</mn><msub><mi>b</mi><mn>1</mn></msub><mo>+</mo><msub><mi>b</mi><mn>0</mn></msub></mrow><msub><mi>λ</mi><mn>2</mn></msub></mfrac></math>',
     vars: [
-      { symbol: "<math><msub><mi>b</mi><mi>r</mi></msub></math>", text: "nieobciążone momenty ważone prawdopodobieństwem próby uszeregowanej rosnąco", unit: "m³/s" },
-      { symbol: "<math><msub><mi>τ</mi><mn>3</mn></msub></math>", text: "L-skośność", unit: "–" },
+      { symbol: "<math><msub><mi>b</mi><mi>r</mi></msub></math>", text: "nieobciążone momenty ważone prawdopodobieństwem próby uszeregowanej rosnąco, r = 0, 1, 2", unit: "m³/s" },
+      { symbol: "<math><msub><mi>λ</mi><mn>1</mn></msub><mo>,</mo><msub><mi>λ</mi><mn>2</mn></msub></math>", text: "pierwszy i drugi L-moment: położenie i rozrzut próby", unit: "m³/s" },
+      { symbol: "<math><msub><mi>τ</mi><mn>3</mn></msub></math>", text: "L-skośność: asymetria próby", unit: "–" },
     ],
     note:
-      "<p>Statystyka dopasowuje każdy rozkład każdą metodą w jednym obliczeniu; „Metody estymacji” wybiera, które metody pokazać, bez ponownego liczenia. Styl linii odróżnia metody: ciągła L-momenty, kreskowana największa wiarygodność, kropkowana momenty, kreska-kropka najmniejsze kwadraty. Rozkład, którego metoda nie umie dopasować (np. Weibull przy skośności próby poniżej −1,14), jest pomijany z uwagą <code>distribution_left_out</code>. Rozkład, który nie obejmuje któregoś maksimum, zostaje z kwantylami, ale bez AIC (uwaga <code>outside_support</code>); przy momentach i L-momentach zdarza się to często Pearsonowi III i Weibullowi.</p>",
-    sources: "Hosking i Wallis (1997) Regional Frequency Analysis; Hydrolog, ADR-0021, <code>FloodFrequencyAnalysis</code>",
+      "<p>L-momenty są mniej czułe na pojedyncze duże maksima i stabilniejsze na krótkich szeregach niż największa " +
+      "wiarygodność, a najmniejsze kwadraty idą za największymi maksimami. Dla rzadkich wezbrań metody mogą dać różne " +
+      "kwantyle.</p>",
+    guide: "metoda-stats-fit-method",
+    sources: "Hosking i Wallis 1997 (Regional Frequency Analysis)",
   },
   "stats-fit": {
     title: "Zgodność dopasowania: AIC, A², KS",
     intro:
-      "<p><b>AIC</b> porównuje rozkłady dopasowane do tej samej próby: mniejszy jest lepszy, a różnica poniżej 2 jest nieistotna. <b>A²</b> Andersona–Darlinga mierzy odległość dystrybuanty od empirycznej z wagą na ogonach: wartość poniżej krytycznej 2,492 (poziom 5%) to ✓. <b>KS p</b> to p-value testu Kołmogorowa–Smirnowa; jest orientacyjne (<code>ks_valid = false</code>), bo parametry oszacowano z tej samej próby.</p>",
+      "<p>Miary zgodności rozkładu z maksimami rocznymi: kryterium AIC porównuje kombinacje rozkładu i metody, " +
+      "a A² Andersona–Darlinga i KS p testu Kołmogorowa–Smirnowa mierzą odległość od rozkładu empirycznego.</p>",
     formula:
       '<math display="block"><mi>AIC</mi><mo>=</mo><mn>2</mn><mi>k</mi><mo>−</mo><mn>2</mn><mi>ln</mi><mover><mi>L</mi><mo>^</mo></mover></math><math display="block"><msup><mi>A</mi><mn>2</mn></msup><mo>=</mo><mo>−</mo><mi>n</mi><mo>−</mo><munderover><mo>∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>n</mi></munderover><mfrac><mrow><mn>2</mn><mi>i</mi><mo>−</mo><mn>1</mn></mrow><mi>n</mi></mfrac><mrow><mo>[</mo><mi>ln</mi><mi>F</mi><mo>(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>)</mo><mo>+</mo><mi>ln</mi><mo>(</mo><mn>1</mn><mo>−</mo><mi>F</mi><mo>(</mo><msub><mi>x</mi><mrow><mi>n</mi><mo>+</mo><mn>1</mn><mo>−</mo><mi>i</mi></mrow></msub><mo>)</mo><mo>)</mo><mo>]</mo></mrow></math>',
     vars: [
-      { symbol: "<math><mi>k</mi></math>", text: "liczba parametrów rozkładu (2 albo 3)", unit: "–" },
-      { symbol: "<math><mover><mi>L</mi><mo>^</mo></mover></math>", text: "największa wiarygodność próby", unit: "–" },
+      { symbol: "<math><mi>k</mi></math>", text: "liczba parametrów rozkładu: 2 albo 3", unit: "–" },
+      { symbol: "<math><mover><mi>L</mi><mo>^</mo></mover></math>", text: "wiarygodność próby przy dopasowanych parametrach", unit: "–" },
       { symbol: "<math><mi>n</mi></math>", text: "liczba maksimów rocznych", unit: "–" },
       { symbol: "<math><msub><mi>x</mi><mi>i</mi></msub></math>", text: "maksima uszeregowane rosnąco", unit: "m³/s" },
+      { symbol: "<math><mi>F</mi></math>", text: "dystrybuanta dopasowanego rozkładu", unit: "–" },
     ],
     note:
-      "<p>Brak AIC (—) znaczy, że dopasowany rozkład nie obejmuje któregoś maksimum: jego wiarygodność jest zerowa, a AIC nieskończone. Tak bywa z Weibullem, gdy położenie wypada powyżej najmniejszego maksimum. Wartości krytyczne A² dotyczą rozkładu w pełni określonego, więc i ten test jest przybliżony.</p><p>Najlepsza jest pokazana kombinacja rozkładu i metody o najmniejszym AIC. AIC porównuje też metody: każde liczy się z wiarygodności przy parametrach swojej metody, a największa wiarygodność szuka parametrów, przy których ta wiarygodność jest największa, więc przy kilku pokazanych metodach zwykle wygrywa. Jej parametry szuka jednak numerycznie <code>scipy</code>, które może się zatrzymać przed maksimum; wtedy AIC innej metody tego samego rozkładu bywa mniejsze.</p>",
-    sources: "Akaike (1974); Anderson i Darling (1954); Stephens (1974); Hydrolog, <code>hydrolog.statistics.high_flows</code>",
+      "<p>Mniejsze AIC jest lepsze, różnica poniżej 2 nie rozstrzyga, a brak AIC (—) znaczy, że rozkład nie obejmuje " +
+      "któregoś maksimum. ✓ to A² poniżej wartości krytycznej dla 5&nbsp;%; oba testy są przybliżone.</p>",
+    guide: "metoda-stats-fit",
+    sources:
+      "Akaike 1974; Burnham i Anderson 2002 (Model Selection and Multimodel Inference); Anderson i Darling 1954; " +
+      "Stephens 1974",
   },
   "stats-plot": {
     title: "Siatka Gumbela i położenie Weibulla",
     intro:
-      "<p>Oś pozioma jest liniowa w zmiennej zredukowanej Gumbela <i>u</i>, więc rozkład Gumbela jest na niej prostą, a ogon wezbrań rzadkich jest rozciągnięty. Podpisy osi: prawdopodobieństwo przewyższenia <i>p</i> i okres powtarzalności <i>T</i> = 1/<i>p</i>. Punkty to maksima roczne uszeregowane malejąco, każde w położeniu Weibulla; linie przechodzą przez kwantyle policzone przez Hydrologa.</p>",
+      "<p>Wykres prawdopodobieństwa przewyższenia na siatce Gumbela: oś pozioma jest liniowa w zmiennej zredukowanej " +
+      "<i>u</i>, a jej podpisy to <i>p</i> i <i>T</i> = 1/<i>p</i>. Punkty to maksima roczne w położeniu Weibulla, " +
+      "linie to rozkłady.</p>",
     formula:
       '<math display="block"><mi>u</mi><mo>=</mo><mo>−</mo><mi>ln</mi><mo>(</mo><mo>−</mo><mi>ln</mi><mo>(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo>)</mo><mo>)</mo><mo>,</mo><mspace width="1em"></mspace><msub><mi>p</mi><mi>i</mi></msub><mo>=</mo><mfrac><mi>i</mi><mrow><mi>n</mi><mo>+</mo><mn>1</mn></mrow></mfrac></math>',
     vars: [
       { symbol: "<math><mi>u</mi></math>", text: "zmienna zredukowana Gumbela", unit: "–" },
+      { symbol: "<math><mi>p</mi></math>", text: "prawdopodobieństwo przewyższenia w roku", unit: "–" },
       { symbol: "<math><msub><mi>p</mi><mi>i</mi></msub></math>", text: "empiryczne prawdopodobieństwo przewyższenia maksimum o pozycji i", unit: "–" },
       { symbol: "<math><mi>i</mi></math>", text: "pozycja w szeregu malejącym (1 to największe maksimum)", unit: "–" },
       { symbol: "<math><mi>n</mi></math>", text: "liczba maksimów rocznych", unit: "–" },
     ],
     note:
-      "<p>Oś gęstości sięga 1,25 mediany największych gęstości kombinacji z AIC, bez względu na to, które są pokazane i która jest aktywna, więc skok gęstości przy granicy rozkładu ucina ramka wykresu, zamiast spłaszczać pozostałe krzywe.</p>",
-    sources: "Weibull (1939); Gumbel (1958) Statistics of Extremes; Hydrolog, <code>EmpiricalFrequency</code>",
+      "<p>Rozkład Gumbela jest tu prostą, a linia wygięta ku górze ma cięższy ogon. Dobrze dopasowana linia biegnie blisko " +
+      "punktów, zwłaszcza największych; największe z <i>n</i> maksimów stoi przy <i>T</i> = <i>n</i> + 1 lat.</p>",
+    guide: "metoda-stats-plot",
+    sources: "Weibull 1939; Gumbel 1958 (Statistics of Extremes)",
   },
   "stats-homogeneity": {
     title: "Jednorodność ciągu: testy Manna-Whitneya, Kołmogorowa-Smirnowa i Pettitta",
     intro:
-      "<p>Analiza częstości zakłada, że maksima roczne są próbą z jednego rozkładu; zmiana w zlewni albo na posterunku (zbiornik, regulacja koryta, przeniesiony wodowskaz) to założenie łamie. Polecenie <code>stats homogeneity</code> dzieli tu szereg na połowy (pierwsze ⌊n/2⌋ wartości i pozostałe) i porównuje je dwustronnymi testami. <b>Mann-Whitney</b>: <i>U</i> to liczba par z obu części, w których wartość z pierwszej jest większa (remis liczy się za ½); bez różnicy jest bliskie n₁n₂/2, a 0 znaczy, że cała pierwsza część jest mniejsza. <b>Kołmogorow-Smirnow</b> dla dwóch prób: <i>D</i> to największa odległość dystrybuant empirycznych obu części. <b>Pettitt</b> sam szuka miejsca zmiany: <i>K</i> to największe |<i>U<sub>t</sub></i>| po wszystkich podziałach <i>t</i>, a punkt zmiany to pierwszy rok po zmianie. Test odrzuca jednorodność, gdy p &lt; α = 0,05.</p>",
+      "<p>Sprawdzenie, czy maksima roczne pochodzą z jednego rozkładu, jak zakłada analiza częstości: testy " +
+      "Manna-Whitneya i Kołmogorowa-Smirnowa porównują połowy szeregu, a test Pettitta szuka roku zmiany.</p>",
     formula:
       '<math display="block"><msub><mi>U</mi><mi>t</mi></msub><mo>=</mo><mn>2</mn><munderover><mo>∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>t</mi></munderover><msub><mi>r</mi><mi>i</mi></msub><mo>−</mo><mi>t</mi><mo>(</mo><mi>n</mi><mo>+</mo><mn>1</mn><mo>)</mo><mo>,</mo><mspace width="1em"></mspace><mi>K</mi><mo>=</mo><munder><mi>max</mi><mi>t</mi></munder><mo>|</mo><msub><mi>U</mi><mi>t</mi></msub><mo>|</mo></math><math display="block"><mi>p</mi><mo>≈</mo><mn>2</mn><mi>exp</mi><mo>(</mo><mo>−</mo><mfrac><mrow><mn>6</mn><msup><mi>K</mi><mn>2</mn></msup></mrow><mrow><msup><mi>n</mi><mn>3</mn></msup><mo>+</mo><msup><mi>n</mi><mn>2</mn></msup></mrow></mfrac><mo>)</mo></math>',
     vars: [
-      { symbol: "<math><msub><mi>U</mi><mi>t</mi></msub></math>", text: "statystyka Pettitta podziału po t pierwszych wartościach", unit: "–" },
-      { symbol: "<math><msub><mi>r</mi><mi>i</mi></msub></math>", text: "ranga wartości i w całym szeregu (przy remisach średnia)", unit: "–" },
+      { symbol: "<math><msub><mi>U</mi><mi>t</mi></msub></math>", text: "statystyka Pettitta dla podziału po t pierwszych wartościach", unit: "–" },
+      { symbol: "<math><msub><mi>r</mi><mi>i</mi></msub></math>", text: "ranga wartości i w całym szeregu (przy remisach średnia ranga)", unit: "–" },
+      { symbol: "<math><mi>K</mi></math>", text: "statystyka testu Pettitta: największe |U<sub>t</sub>|", unit: "–" },
       { symbol: "<math><mi>n</mi></math>", text: "liczba maksimów rocznych", unit: "–" },
-      { symbol: "<math><mi>p</mi></math>", text: "przybliżone p-value testu Pettitta (najwyżej 1, dokładne dla p ≤ 0,5)", unit: "–" },
+      { symbol: "<math><mi>p</mi></math>", text: "przybliżone p testu Pettitta, najwyżej 1, trafne dla p ≤ 0,5", unit: "–" },
     ],
     note:
-      "<p>Krótki szereg rzadko daje odrzucenie: przy podziale na połowy testy Manna-Whitneya i Kołmogorowa-Smirnowa mogą odrzucić jednorodność od 8 wartości, test Pettitta od 11. „Jednorodny” znaczy, że test nie znalazł różnicy, a nie że jej nie ma. Punkt zmiany waży, gdy test Pettitta odrzuca jednorodność. Własny rok podziału (<code>split_year</code>) i poziom istotności (<code>alpha</code>) przyjmuje polecenie <code>stats homogeneity</code> we „Wszystkich poleceniach”.</p>",
+      "<p>Test odrzuca jednorodność, gdy <i>p</i> &lt; 0,05; przyczyną bywa zbiornik, regulacja koryta albo przeniesiony " +
+      "wodowskaz. „Jednorodny” znaczy, że test nie znalazł różnicy: krótki szereg rzadko daje odrzucenie.</p>",
+    guide: "metoda-stats-homogeneity",
     sources:
-      "Mann i Whitney (1947); Smirnov (1939); Pettitt (1979) A non-parametric approach to the change-point problem; Hydrolog, ADR-0022, <code>hydrolog.statistics.homogeneity</code>",
+      "Mann i Whitney 1947; Smirnov 1939; " +
+      "Pettitt 1979 (A non-parametric approach to the change-point problem)",
   },
 };

@@ -1,24 +1,20 @@
 /**
- * Explanations (i) of the rainfall of „Hydrogram zlewni” (plan D16, slice S3): the source of
- * the rainfall ("rain-source"), the four design hyetographs of `hietogram_type` ("rain-<type>")
- * and the time step ("rain-timestep", whose range against the unit hydrograph's time to peak
- * is Hydrolog's: `typical_ranges` of `hydrograph generate`), in the format of ui/info.js.
+ * Explanations (i) of the rainfall of „Hydrogram zlewni” and Sieć (Nogat DEV-15.14): its source
+ * ("rain-source"), the four design hyetographs ("rain-<type>": block, triangular, beta,
+ * euler_ii) and the time step ("rain-timestep", whose range against the unit hydrograph's time
+ * to peak is Hydrolog's: `typical_ranges` of `hydrograph generate`), in the format of
+ * ui/info.js: a definition, the formula with its symbols and units, how to read the value and
+ * the sources; an entry with a longer explanation links (`guide`) its subsection of the guide's
+ * chapter „Metody obliczeń”.
  */
 
 export const rainInfo = {
   "rain-source": {
     title: "Źródło opadu: PMAXTP, hietogram albo własna seria",
     intro:
-      "<p>PMAXTP: wysokość opadu P o prawdopodobieństwie przewyższenia p i czasie trwania D z atlasu " +
-      "PMAXTP IMGW-PIB dla punktu zlewni (szerokość i długość geograficzna WGS84; p, D i metodę POT albo " +
-      "AMP wybierasz z wartości atlasu). Pobiera ją Hydrolog (<code>precip pmaxtp</code>, przez " +
-      "Obserwatora); nie wpisuje się jej. " +
-      "Hietogram: wysokość i czas trwania podane wprost. W obu przypadkach Hydrolog rozkłada P w czasie " +
-      "hietogramem projektowym (<code>hietogram_type</code>, <code>total_mm</code>, " +
-      "<code>duration_min</code>; jak <code>precip hietogram</code>).</p>" +
-      "<p>Własna seria: wysokości opadu w kolejnych krokach Δt (<code>values</code>, w poleceniu także " +
-      "plik <code>input_file</code>), np. z deszczomierza; typ hietogramu nie jest wtedy używany, a czas " +
-      "trwania to n·Δt.</p>",
+      "<p>Opad, z którego liczy się odpływ: suma P o czasie trwania D rozłożona hietogramem projektowym " +
+      "albo własna seria wysokości w krokach Δt. Sumę P podaje atlas PMAXTP IMGW-PIB dla punktu zlewni, " +
+      "p i D albo wpisuje się ją wprost.</p>",
     formula:
       "<math display='block'><mi>T</mi><mo>=</mo><mfrac><mn>100</mn><mi>p</mi></mfrac>" +
       "<mspace width='1.5em'></mspace><mi>P</mi><mo>=</mo><munderover><mo>∑</mo><mrow><mi>i</mi>" +
@@ -26,27 +22,23 @@ export const rainInfo = {
     vars: [
       {
         symbol: "<math><mi>p</mi></math>",
-        text:
-          "prawdopodobieństwo przewyższenia: szansa, że w danym roku opad o czasie trwania D osiągnie lub " +
-          "przekroczy P",
+        text: "prawdopodobieństwo przewyższenia: szansa, że w danym roku opad o czasie D osiągnie lub przekroczy P",
         unit: "%",
       },
       { symbol: "<math><mi>T</mi></math>", text: "okres powtarzalności", unit: "lata" },
       {
         symbol: "<math><mi>P</mi></math>",
-        text: "suma opadu: <code>total_mm</code> albo suma serii",
+        text: "suma opadu: z atlasu, podana albo suma serii",
         unit: "mm",
       },
       {
         symbol: "<math><mi>D</mi></math>",
-        text: "czas trwania opadu, <code>duration_min</code>",
+        text: "czas trwania opadu; w serii n·Δt",
         unit: "min",
       },
       {
         symbol: "<math><msub><mi>P</mi><mi>i</mi></msub></math>",
-        text:
-          "wysokość opadu w i-tym kroku (<code>values</code>, każda ≥ 0); to wysokości w kroku, nie " +
-          "natężenia w mm/h",
+        text: "wysokość opadu w i-tym kroku (≥ 0), nie natężenie w mm/h",
         unit: "mm",
       },
       {
@@ -56,22 +48,17 @@ export const rainInfo = {
       },
     ],
     note:
-      "<p>Hydrogramowi przypisuje się to samo p co opadowi; to założenie metodyki, bo opad stuletni nie " +
-      "zawsze wywołuje wezbranie stuletnie. Krytyczny czas trwania, dający największe wezbranie, nie jest " +
-      "znany z góry (wg DVWK zwykle między t<sub>c</sub> a 2·t<sub>c</sub>), więc warto porównać kilka " +
-      "czasów trwania. Własna seria daje hydrogram konkretnego zdarzenia, bez przypisanego " +
-      "prawdopodobieństwa.</p>",
-    sources:
-      "IMGW-PIB 2022 (PMAXTP); DVWK 1984 (za KZGW 2017); KZGW 2017; USGS 2018; opisy poleceń " +
-      "<code>precip pmaxtp</code> i <code>hydrograph generate</code>",
+      "<p>Hydrogramowi przypisuje się p opadu, choć opad o danym p nie zawsze wywołuje wezbranie o tym " +
+      "samym p. Własna seria daje hydrogram jednego zdarzenia, bez prawdopodobieństwa.</p>",
+    guide: "metoda-rain-source",
+    sources: "IMGW-PIB 2022 (PMAXTP, red. B. Ozga-Zieliński); DVWK 1984 (za KZGW 2017); KZGW 2017; USGS 2018",
   },
 
   "rain-block": {
     title: "Hietogram blokowy",
     intro:
-      "<p>Stałe natężenie przez cały czas trwania: każdy krok dostaje tę samą wysokość opadu. Polecenie " +
-      "<code>precip hietogram</code>, w hydrogramie <code>hietogram_type = block</code>; typ nie ma " +
-      "parametrów kształtu.</p>",
+      "<p>Hietogram o stałym natężeniu przez cały czas trwania: każdy krok Δt dostaje tę samą wysokość " +
+      "opadu. Nie ma parametrów kształtu.</p>",
     formula:
       "<math display='block'><msub><mi>P</mi><mi>i</mi></msub><mo>=</mo><mfrac><mi>P</mi><mi>n</mi>" +
       "</mfrac><mspace width='1.5em'></mspace><mi>n</mi><mo>=</mo><mrow><mo>⌊</mo><mfrac><mi>D</mi>" +
@@ -82,28 +69,26 @@ export const rainInfo = {
         text: "wysokość opadu w i-tym kroku",
         unit: "mm",
       },
-      { symbol: "<math><mi>P</mi></math>", text: "suma opadu, <code>total_mm</code>", unit: "mm" },
+      { symbol: "<math><mi>P</mi></math>", text: "suma opadu", unit: "mm" },
       { symbol: "<math><mi>n</mi></math>", text: "liczba kroków", unit: "–" },
       {
         symbol: "<math><mi>D</mi></math>",
-        text: "czas trwania opadu, <code>duration_min</code>",
+        text: "czas trwania opadu",
         unit: "min",
       },
-      { symbol: "<math><mi>Δt</mi></math>", text: "krok czasowy, <code>timestep_min</code>", unit: "min" },
+      { symbol: "<math><mi>Δt</mi></math>", text: "krok czasowy", unit: "min" },
     ],
     note:
-      "<p>Przy tej samej sumie i czasie trwania rozkład natężenia zmienia wysokość i czas kulminacji: opad " +
-      "efektywny SCS-CN liczy się od sumy narastającej, więc ten sam blok opadu daje więcej odpływu, gdy " +
-      "spada później (straty I<sub>a</sub> są już pokryte).</p>",
-    sources: "Chow i in. 1988; KZGW 2017; opis polecenia <code>precip hietogram</code>",
+      "<p>Choć opad w krokach jest stały, opad efektywny rośnie z kroku na krok: SCS-CN liczy go od sumy " +
+      "narastającej, a pierwsze kroki pokrywają straty początkowe.</p>",
+    sources: "Chow i in. 1988; KZGW 2017",
   },
 
   "rain-triangular": {
     title: "Hietogram trójkątny",
     intro:
-      "<p>Wysokości w krokach rosną liniowo do maksimum w położeniu p czasu trwania, potem liniowo " +
-      "maleją. Polecenie <code>precip hietogram</code>, w hydrogramie " +
-      "<code>hietogram_type = triangular</code> z parametrem <code>peak_position</code> (domyślnie 0,5).</p>",
+      "<p>Hietogram trójkątny: wysokości opadu w krokach rosną liniowo do maksimum w położeniu p czasu " +
+      "trwania, potem liniowo maleją.</p>",
     formula:
       "<math display='block'><msub><mi>w</mi><mi>j</mi></msub><mo>=</mo><mfrac><mi>j</mi>" +
       "<msub><mi>j</mi><mi>p</mi></msub></mfrac><mspace width='0.6em'></mspace><mtext>dla</mtext>" +
@@ -126,7 +111,7 @@ export const rainInfo = {
       { symbol: "<math><msub><mi>w</mi><mi>j</mi></msub></math>", text: "waga kroku", unit: "–" },
       {
         symbol: "<math><mi>j</mi></math>",
-        text: "numer kroku, 1…n, gdzie n = ⌊D/Δt⌋ (<code>duration_min</code>, <code>timestep_min</code>)",
+        text: "numer kroku, 1…n, gdzie n = ⌊D/Δt⌋",
         unit: "–",
       },
       {
@@ -136,25 +121,22 @@ export const rainInfo = {
       },
       {
         symbol: "<math><mi>p</mi></math>",
-        text:
-          "względne położenie maksimum, <code>peak_position</code>: 0 &lt; p &lt; 1 (bez końców); " +
-          "domyślnie 0,5",
+        text: "względne położenie maksimum: 0 &lt; p &lt; 1 (bez końców); domyślnie 0,5",
         unit: "–",
       },
-      { symbol: "<math><mi>P</mi></math>", text: "suma opadu, <code>total_mm</code>", unit: "mm" },
+      { symbol: "<math><mi>P</mi></math>", text: "suma opadu", unit: "mm" },
     ],
     note:
       "<p>Przy p = 0,5 i parzystym n maksimum wypada w kroku tuż po połowie czasu trwania (np. w 7. " +
       "z 12). Polska metodyka (za DVWK 1984) zaleca deszcz z maksimum w środku czasu trwania.</p>",
-    sources: "KZGW 2017; DVWK 1984 (za KZGW 2017); opis polecenia <code>precip hietogram</code>",
+    sources: "KZGW 2017; DVWK 1984 (za KZGW 2017)",
   },
 
   "rain-beta": {
     title: "Hietogram beta",
     intro:
-      "<p>Wysokości w krokach według gęstości rozkładu beta o parametrach α i β, liczonej w środkach " +
-      "kroków. Polecenie <code>precip hietogram</code>, w hydrogramie <code>hietogram_type = beta</code> z " +
-      "parametrami <code>alpha</code> (domyślnie 2) i <code>beta</code> (domyślnie 5).</p>",
+      "<p>Hietogram beta: wysokości opadu w krokach są proporcjonalne do gęstości rozkładu beta o parametrach " +
+      "kształtu α i β, liczonej w środkach kroków. Para α, β ustala położenie i ostrość maksimum.</p>",
     formula:
       "<math display='block'><msub><mi>w</mi><mi>i</mi></msub><mo>=</mo><msubsup><mi>t</mi><mi>i</mi>" +
       "<mrow><mi>α</mi><mo>−</mo><mn>1</mn></mrow></msubsup><mo>·</mo><msup><mrow><mo>(</mo><mn>1</mn>" +
@@ -181,35 +163,35 @@ export const rainInfo = {
       },
       {
         symbol: "<math><mi>α</mi></math>",
-        text: "parametr kształtu ramienia wznoszącego, <code>alpha</code> &gt; 0; domyślnie 2",
+        text: "parametr kształtu ramienia wznoszącego, &gt; 0; domyślnie 2",
         unit: "–",
       },
       {
         symbol: "<math><mi>β</mi></math>",
-        text: "parametr kształtu ramienia opadającego, <code>beta</code> &gt; 0; domyślnie 5",
+        text: "parametr kształtu ramienia opadającego, &gt; 0; domyślnie 5",
         unit: "–",
       },
       {
         symbol: "<math><msub><mi>t</mi><mi>max</mi></msub></math>",
-        text: "położenie maksimum jako ułamek czasu trwania",
+        text:
+          "położenie maksimum jako ułamek czasu trwania; przy α ≤ 1 &lt; β pierwszy krok, przy β ≤ 1 &lt; α " +
+          "ostatni",
         unit: "–",
       },
-      { symbol: "<math><mi>P</mi></math>", text: "suma opadu, <code>total_mm</code>", unit: "mm" },
+      { symbol: "<math><mi>P</mi></math>", text: "suma opadu", unit: "mm" },
     ],
     note:
-      "<p>Para (2; 5) daje wczesne maksimum, w 0,2 czasu trwania (opad konwekcyjny), (2; 2) symetryczne, " +
-      "(5; 2) późne. Przy α ≤ 1 &lt; β największa wysokość jest w pierwszym kroku, przy β ≤ 1 &lt; α – w " +
-      "ostatnim. Wczesny szczyt pada na zlewnię, w której straty nie są jeszcze pokryte, więc kulminacja " +
-      "jest zwykle niższa i wcześniejsza.</p>",
-    sources: "Chow i in. 1988; Wachulec i in. 2016; opis polecenia <code>precip hietogram</code>",
+      "<p>Para (2; 5) daje maksimum wcześnie, w 0,2 czasu trwania (opad konwekcyjny), (2; 2) w środku, " +
+      "(5; 2) późno. Wczesne maksimum pada, zanim straty są pokryte, więc kulminacja jest zwykle niższa i " +
+      "wcześniejsza.</p>",
+    sources: "Chow i in. 1988; Wachulec i in. 2016",
   },
 
   "rain-euler_ii": {
     title: "Hietogram Euler II (DVWK)",
     intro:
-      "<p>Bloki naprzemienne: największy blok w położeniu p czasu trwania (domyślnie 0,33, ok. 1/3), " +
-      "kolejne coraz mniejsze na przemian przed nim i po nim. Polecenie <code>precip hietogram</code>, w " +
-      "hydrogramie <code>hietogram_type = euler_ii</code> z parametrem <code>peak_position</code>.</p>",
+      "<p>Hietogram bloków naprzemiennych wzorowany na deszczu Eulera II (DVWK): największy blok w " +
+      "położeniu p czasu trwania (domyślnie ok. 1/3), a kolejne coraz mniejsze na przemian przed nim i po nim.</p>",
     formula:
       "<math display='block'><msub><mi>w</mi><mi>r</mi></msub><mo>=</mo><mfrac><msup><mi>r</mi><mrow>" +
       "<mo>−</mo><mn>0,7</mn></mrow></msup><mrow><munderover><mo>∑</mo><mrow><mi>k</mi><mo>=</mo>" +
@@ -248,29 +230,25 @@ export const rainInfo = {
       },
       {
         symbol: "<math><mi>p</mi></math>",
-        text:
-          "względne położenie maksimum, <code>peak_position</code>: 0 &lt; p &lt; 1 (bez końców); " +
-          "domyślnie 0,33",
+        text: "względne położenie maksimum: 0 &lt; p &lt; 1 (bez końców); domyślnie 0,33",
         unit: "–",
       },
-      { symbol: "<math><mi>P</mi></math>", text: "suma opadu, <code>total_mm</code>", unit: "mm" },
+      { symbol: "<math><mi>P</mi></math>", text: "suma opadu", unit: "mm" },
     ],
     note:
-      "<p>Gdy po jednej stronie maksimum zabraknie kroków, pozostałe bloki idą po drugiej. To przybliżenie " +
-      "hietogramu Eulera typu II: wagi bloków nie pochodzą z lokalnej krzywej wysokość–czas trwania, tylko " +
-      "z zaniku r<sup>−0,7</sup>, a bloki leżą naprzemiennie, podczas gdy w Eulerze II kolejne co do " +
-      "wielkości bloki wypełniają czas przed szczytem, a pozostałe leżą po nim. Rozkład DVWK z polskiej " +
-      "metodyki (maksimum w środku czasu trwania) to inny hietogram.</p>",
-    sources:
-      "DVWK 1984; Chow i in. 1988; KZGW 2017; Malitz 2009; opis polecenia <code>precip hietogram</code>",
+      "<p>Wysokości bloków maleją jak r<sup>−0,7</sup>, a nie według lokalnej krzywej wysokość–czas " +
+      "trwania, więc hietogram tylko przybliża deszcz Eulera II. Gdy po jednej stronie zabraknie kroków, " +
+      "reszta bloków idzie po drugiej.</p>",
+    guide: "metoda-rain-euler-ii",
+    sources: "DVWK 1984; Chow i in. 1988; KZGW 2017; Malitz 2009",
   },
 
   "rain-timestep": {
     title: "Krok czasowy Δt",
     intro:
-      "<p>Krok <code>timestep_min</code> (domyślnie 5 min) jest wspólny dla hietogramu projektowego, " +
-      "własnej serii, hydrogramu jednostkowego i wyniku; w hydrogramie jednostkowym jest też czasem " +
-      "trwania opadu jednostkowego D. Czas trwania opadu nie może być krótszy niż Δt.</p>",
+      "<p>Krok czasowy obliczenia, wspólny dla opadu, hydrogramu jednostkowego i wyniku; w hydrogramie " +
+      "jednostkowym jest zarazem czasem trwania opadu jednostkowego. Czas trwania opadu D nie może być " +
+      "krótszy niż Δt.</p>",
     formula:
       "<math display='block'><mi>n</mi><mo>=</mo><mrow><mo>⌊</mo><mfrac><mi>D</mi><mi>Δt</mi></mfrac>" +
       "<mo>⌋</mo></mrow><mspace width='1.5em'></mspace><msub><mi>t</mi><mi>i</mi></msub><mo>=</mo>" +
@@ -283,12 +261,12 @@ export const rainInfo = {
       { symbol: "<math><mi>n</mi></math>", text: "liczba kroków hietogramu", unit: "–" },
       {
         symbol: "<math><mi>D</mi></math>",
-        text: "czas trwania opadu, <code>duration_min</code>; D ≥ Δt",
+        text: "czas trwania opadu; D ≥ Δt",
         unit: "min",
       },
       {
         symbol: "<math><mi>Δt</mi></math>",
-        text: "krok czasowy, <code>timestep_min</code> &gt; 0",
+        text: "krok czasowy, &gt; 0",
         unit: "min",
       },
       {
@@ -314,13 +292,10 @@ export const rainInfo = {
     ],
     symbols: { timestep_min: "Δt", uh_time_to_peak_min: "tp" },
     note:
-      "<p>Gdy D nie jest wielokrotnością Δt, hietogram ma ⌊D/Δt⌋ kroków i nie pokrywa końcówki czasu " +
-      "trwania (uwaga w wyniku), choć cała suma P trafia do tych kroków. Mniejszy krok lepiej oddaje " +
-      "szczyt: NEH 630 zaleca krok nie dłuższy niż część czasu do szczytu t<sub>p</sub> hydrogramu " +
-      "jednostkowego (zakres wyżej), a w modelu Clarka Δt nie może przekraczać 2R. Czas do szczytu " +
-      "odczytuje się z dokładnością do kroku.</p>",
-    sources:
-      "USDA-NRCS 2007 (NEH 630-16); Chow i in. 1988; Hydrolog, <code>docs/COMPUTATION_PATHS.md</code> 3.3; " +
-      "opis polecenia <code>hydrograph generate</code>",
+      "<p>Krótszy krok lepiej oddaje szczyt; krok dłuższy niż część czasu do szczytu t<sub>p</sub> " +
+      "hydrogramu jednostkowego (zakres wyżej) go spłaszcza. Czas do szczytu odczytuje się z dokładnością " +
+      "do kroku.</p>",
+    guide: "metoda-rain-timestep",
+    sources: "USDA-NRCS 2007 (NEH 630-16); Chow i in. 1988",
   },
 };

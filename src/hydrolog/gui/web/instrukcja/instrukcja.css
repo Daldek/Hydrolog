@@ -61,6 +61,7 @@ html.guide-page .topbar { position: sticky; top: 0; height: var(--header-height)
 .guide-text h2 { margin: 0 0 var(--space-4); font-size: var(--text-xl); line-height: 1.25; }
 .guide-text h3 { margin: var(--space-8) 0 var(--space-3); font-size: var(--text-lg); line-height: 1.3; }
 .guide-text section > h3:first-child { margin-top: var(--space-6); }
+.guide-text h4 { margin: var(--space-6) 0 var(--space-2); font-size: var(--text-md); line-height: 1.3; }
 .guide-text p { margin: 0 0 var(--space-3); }
 .guide-text ul, .guide-text ol { margin: 0 0 var(--space-3); padding-left: var(--space-6); }
 .guide-text li { margin: 0 0 var(--space-2); }

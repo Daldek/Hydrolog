@@ -1,19 +1,20 @@
 /**
- * Explanations (i) of the unit hydrograph models (plan D16, slice S3): the entries "uh-<model>"
- * for the four values of `uh_model` of `hydrograph generate` (SCS, Nash with n and K given or
- * estimated by Lutz from the watershed, `nash_estimation`, Clark, Snyder), in the format of
- * ui/info.js. They keep the symbols of the parameters only: the typical ranges, with their
- * sources, are Hydrolog's (`typical_ranges` of `hydrograph generate`, Lutz's area among them).
+ * Explanations (i) of the unit hydrograph models of „Hydrogram zlewni” and Sieć (Nogat DEV-15.14):
+ * the entries "uh-<model>" for SCS, Nash (n and K given or estimated by Lutz), Clark and Snyder,
+ * in the format of ui/info.js: a definition, the formula with its symbols and units, how to
+ * read the result and the sources; each links (`guide`) its subsection of the guide's chapter
+ * „Metody obliczeń”, which holds the longer explanation. They keep the symbols of the
+ * parameters only: the typical ranges, with their sources, are Hydrolog's (`typical_ranges` of
+ * `hydrograph generate`, Lutz's area among them).
  */
 
 export const uhInfo = {
   "uh-scs": {
     title: "Hydrogram jednostkowy SCS (NRCS)",
     intro:
-      "<p>Bezwymiarowy hydrogram NRCS (tablica 33 punktów q/q<sub>p</sub> od t/t<sub>p</sub>, do " +
-      "5·t<sub>p</sub>; Mockus 1957), skalowany czasem do szczytu t<sub>p</sub> i przepływem " +
-      "szczytowym q<sub>p</sub>. Polecenie <code>uh scs</code>, w hydrogramie <code>uh_model = scs</code> " +
-      "(domyślny); wymaga t<sub>c</sub>: <code>tc_min</code> albo metody <code>tc_method</code>.</p>",
+      "<p>Odpływ bezpośredni z 1&nbsp;mm opadu efektywnego spadłego w czasie Δt, o stałym kształcie " +
+      "bezwymiarowego hydrogramu NRCS (Mockus 1957), skalowanym czasem do szczytu t<sub>p</sub> z czasu " +
+      "koncentracji t<sub>c</sub> i przepływem szczytowym q<sub>p</sub>.</p>",
     formula:
       "<math display='block'><msub><mi>t</mi><mi>lag</mi></msub><mo>=</mo><mn>0,6</mn><mo>·</mo>" +
       "<msub><mi>t</mi><mi>c</mi></msub><mspace width='1.2em'></mspace><msub><mi>t</mi><mi>p</mi></msub>" +
@@ -27,7 +28,7 @@ export const uhInfo = {
     vars: [
       {
         symbol: "<math><msub><mi>t</mi><mi>c</mi></msub></math>",
-        text: "czas koncentracji (krok 2): <code>tc_min</code> albo z metody <code>tc_method</code>",
+        text: "czas koncentracji zlewni: z wybranej metody albo podany",
         unit: "min",
       },
       {
@@ -37,7 +38,7 @@ export const uhInfo = {
       },
       {
         symbol: "<math><mi>Δt</mi></math>",
-        text: "krok czasowy <code>timestep_min</code>, zarazem czas trwania opadu jednostkowego",
+        text: "krok czasowy, zarazem czas trwania opadu jednostkowego",
         unit: "min",
       },
       {
@@ -45,7 +46,7 @@ export const uhInfo = {
         text: "czas do szczytu hydrogramu jednostkowego (we wzorze na q<sub>p</sub> w godzinach)",
         unit: "min",
       },
-      { symbol: "<math><mi>A</mi></math>", text: "powierzchnia zlewni, <code>area_km2</code>", unit: "km²" },
+      { symbol: "<math><mi>A</mi></math>", text: "powierzchnia zlewni", unit: "km²" },
       {
         symbol: "<math><msub><mi>q</mi><mi>p</mi></msub></math>",
         text: "przepływ szczytowy hydrogramu jednostkowego",
@@ -59,22 +60,19 @@ export const uhInfo = {
     ],
     symbols: { area_km2: "A" },
     note:
-      "<p>Krok Δt ma swój zakres względem t<sub>p</sub> (objaśnienie kroku czasowego). Każda metoda " +
-      "t<sub>c</sub> nadaje się do SCS, przy czym FAA i Kerby tylko dla małych zlewni bez wyraźnego " +
-      "koryta (dają czas spływu po stoku).</p>",
-    sources:
-      "Mockus 1957 (za NEH 630-16); USDA-SCS 1986 (TR-55); USDA-NRCS 2007 (NEH 630-16); Hydrolog, " +
-      "<code>docs/COMPUTATION_PATHS.md</code> 3.1; opis polecenia <code>uh scs</code>",
+      "<p>Rzędne to przepływ na 1&nbsp;mm opadu efektywnego: q<sub>p</sub> = 5&nbsp;m³/s na 1&nbsp;mm daje " +
+      "50&nbsp;m³/s z 10&nbsp;mm w jednym kroku. Dłuższy t<sub>c</sub> opóźnia i obniża szczyt, bo objętość " +
+      "zostaje ta sama.</p>",
+    guide: "metoda-uh-scs",
+    sources: "Mockus 1957 (za NEH 630-16); USDA-SCS 1986 (TR-55); USDA-NRCS 2007 (NEH 630-16)",
   },
 
   "uh-nash": {
     title: "Nash: kaskada zbiorników liniowych",
     intro:
-      "<p>Zlewnia jako n jednakowych zbiorników liniowych o stałej K, połączonych szeregowo (Nash 1957). " +
-      "W hydrogramie <code>uh_model = nash</code> z <code>nash_n</code> i <code>nash_k_min</code> " +
-      "podanymi (skalibrowanymi) albo z <code>nash_estimation = lutz</code>: wtedy <code>hydrograph " +
-      "generate</code> szacuje n i K metodą Lutza z pól zlewni w tym samym obliczeniu; t<sub>c</sub> " +
-      "nie jest używany.</p>",
+      "<p>Hydrogram chwilowy kaskady n jednakowych zbiorników liniowych o stałej magazynowania K (Nash " +
+      "1957). n i K pochodzą z kalibracji albo, w zlewni niekontrolowanej, z metody Lutza: z cieku " +
+      "głównego, szorstkości koryta oraz udziału lasów i zabudowy.</p>",
     formula:
       "<math display='block'><mi>u</mi><mrow><mo>(</mo><mi>t</mi><mo>)</mo></mrow><mo>=</mo><mfrac>" +
       "<mn>1</mn><mrow><mi>K</mi><mo>·</mo><mi mathvariant='normal'>Γ</mi><mrow><mo>(</mo><mi>n</mi>" +
@@ -102,63 +100,52 @@ export const uhInfo = {
     vars: [
       {
         symbol: "<math><mi>n</mi></math>",
-        text: "liczba zbiorników (parametr kształtu, może być ułamkowa), <code>nash_n</code>",
+        text: "liczba zbiorników (parametr kształtu, może być ułamkowa)",
         unit: "–",
       },
       {
         symbol: "<math><mi>K</mi></math>",
-        text: "stała magazynowania zbiornika, <code>nash_k_min</code>",
+        text: "stała magazynowania zbiornika",
         unit: "min",
       },
       {
         symbol: "<math><msub><mi>t</mi><mi>lag</mi></msub></math>",
-        text:
-          "opóźnienie: środek ciężkości hydrogramu chwilowego, wynik kaskady, nie założenie; szczyt " +
-          "hydrogramu chwilowego wypada w (n − 1)·K dla n &gt; 1",
+        text: "opóźnienie: środek ciężkości hydrogramu chwilowego; jego szczyt wypada w (n − 1)·K dla n &gt; 1",
         unit: "min",
       },
       {
         symbol: "<math><mi>L</mi></math>",
-        text:
-          "Lutz: długość cieku głównego od działu wodnego do przekroju zamykającego, czyli najdłuższej " +
-          "drogi spływu; ze zlewni <code>flow_path_length_km</code>",
+        text: "Lutz: długość cieku głównego od działu wodnego do przekroju, czyli najdłuższej drogi spływu",
         unit: "km",
       },
       {
         symbol: "<math><msub><mi>L</mi><mi>c</mi></msub></math>",
-        text:
-          "Lutz: długość cieku od przekroju do punktu najbliższego środka ciężkości zlewni, nie większa " +
-          "niż L; ze zlewni <code>Lc_km</code>",
+        text: "Lutz: długość cieku od przekroju do punktu najbliższego środka ciężkości zlewni, nie większa niż L",
         unit: "km",
       },
       {
         symbol: "<math><mi>J</mi></math>",
-        text:
-          "Lutz: średni spadek cieku głównego od działu wodnego do przekroju zamykającego, czyli " +
-          "najdłuższej drogi spływu; ze zlewni <code>flow_path_slope_m_per_m</code>",
+        text: "Lutz: średni spadek cieku głównego, czyli najdłuższej drogi spływu",
         unit: "m/m",
       },
       {
         symbol: "<math><msub><mi>n</mi><mi>M</mi></msub></math>",
-        text:
-          "Lutz: współczynnik szorstkości Manninga koryta; ze zlewni <code>manning_n</code>",
+        text: "Lutz: współczynnik szorstkości Manninga koryta",
         unit: "s·m^(−1/3)",
       },
       {
         symbol: "<math><mi>U</mi></math>",
-        text: "Lutz: udział terenów zurbanizowanych; ze zlewni <code>urban_pct</code>, bez niego 0",
+        text: "Lutz: udział terenów zurbanizowanych; bez danych 0",
         unit: "%",
       },
       {
         symbol: "<math><mi>W</mi></math>",
-        text: "Lutz: udział lasów; ze zlewni <code>forest_pct</code>, bez niego 0",
+        text: "Lutz: udział lasów; bez danych 0",
         unit: "%",
       },
       {
         symbol: "<math><msub><mi>t</mi><mi>p</mi></msub></math>",
-        text:
-          "Lutz: czas do szczytu hydrogramu chwilowego; K = t<sub>p</sub>/(n − 1) wychodzi w godzinach, " +
-          "Hydrolog podaje je w minutach",
+        text: "Lutz: czas do szczytu hydrogramu chwilowego; K = t<sub>p</sub>/(n − 1) wychodzi w godzinach",
         unit: "h",
       },
       {
@@ -169,27 +156,18 @@ export const uhInfo = {
     ],
     symbols: { n: "n", k_min: "K", area_km2: "A (Lutz)" },
     note:
-      "<p>Zalecane: n i K skalibrowane albo z metody Lutza (zlewnie niekontrolowane). n i K z " +
-      "t<sub>c</sub> przez t<sub>lag</sub> = 0,6·t<sub>c</sub> to założenie hydrogramu SCS, nie modelu " +
-      "Nasha; Hydrolog oznacza tę drogę jako przestarzałą i hydrogram jej nie oferuje. Metoda Lutza " +
-      "wymaga L, L<sub>c</sub> ≤ L, J i n<sub>M</sub> (U i W domyślnie 0); n szuka w przedziale 1,1–20, " +
-      "a bez rozwiązania kończy się błędem. KZGW 2017 podaje ją dla niekontrolowanych zlewni " +
-      "quasi-naturalnych (o małym uszczelnieniu) jako alternatywę dla modelu Snydera. Hydrogram " +
-      "jednostkowy dla kroku Δt powstaje z krzywej S hydrogramu chwilowego i jest skalowany " +
-      "powierzchnią A.</p>",
-    sources:
-      "Nash 1957; Lutz 1984 (za KZGW 2017); KZGW 2017; Chow i in. 1988; Hydrolog, " +
-      "<code>docs/COMPUTATION_PATHS.md</code> 3.2 i 5.1; opis opcji <code>nash_estimation</code> " +
-      "polecenia <code>hydrograph generate</code>",
+      "<p>Dłuższe t<sub>lag</sub> = n·K daje szczyt niższy i późniejszy, a większe n przy tym samym " +
+      "t<sub>lag</sub> skupia hydrogram wokół szczytu. Czas koncentracji nie wpływa na wynik.</p>",
+    guide: "metoda-uh-nash",
+    sources: "Nash 1957; Lutz 1984 (za KZGW 2017); KZGW 2017 (zał. 2); Chow i in. 1988",
   },
 
   "uh-clark": {
     title: "Clark: translacja i zbiornik liniowy",
     intro:
-      "<p>Hydrogram chwilowy Clarka (1945): translacja przez krzywą czas–powierzchnia zlewni eliptycznej " +
-      "(HEC-HMS), potem zbiornik liniowy o stałej retencji R. Polecenie <code>uh clark</code>, w " +
-      "hydrogramie <code>uh_model = clark</code>; wymaga t<sub>c</sub> (czasu translacji) oraz " +
-      "<code>clark_r_min</code> albo <code>clark_r_tc_ratio</code>.</p>",
+      "<p>Hydrogram chwilowy Clarka (1945): opad efektywny dopływa do przekroju w czasie translacji " +
+      "t<sub>c</sub> według krzywej czas–powierzchnia zlewni, a potem przechodzi przez zbiornik liniowy o " +
+      "stałej retencji R, który spłaszcza i opóźnia odpływ.</p>",
     formula:
       "<math display='block'><msub><mi>A</mi><mi>cum</mi></msub><mo>=</mo><mn>1,414</mn><mo>·</mo>" +
       "<msup><mi>τ</mi><mn>1,5</mn></msup><mspace width='0.6em'></mspace><mtext>dla</mtext>" +
@@ -213,7 +191,7 @@ export const uhInfo = {
     vars: [
       {
         symbol: "<math><msub><mi>t</mi><mi>c</mi></msub></math>",
-        text: "czas koncentracji, w modelu Clarka czas translacji (krok 2)",
+        text: "czas koncentracji, w modelu Clarka czas translacji",
         unit: "min",
       },
       {
@@ -228,42 +206,34 @@ export const uhInfo = {
       },
       {
         symbol: "<math><msub><mi>I</mi><mi>i</mi></msub><mo>,</mo><msub><mi>O</mi><mi>i</mi></msub></math>",
-        text:
-          "dopływ do zbiornika (przyrosty A<sub>cum</sub> w krokach) i odpływ z niego w i-tym kroku; " +
-          "odpływ jest normowany do objętości 1",
+        text: "dopływ do zbiornika (przyrost A<sub>cum</sub> w kroku) i odpływ z niego, normowany do objętości 1",
         unit: "–",
       },
       {
         symbol: "<math><mi>R</mi></math>",
-        text:
-          "stała retencji zbiornika liniowego (S = R·O): <code>clark_r_min</code> albo " +
-          "<code>clark_r_tc_ratio</code> · t<sub>c</sub>",
+        text: "stała retencji zbiornika liniowego (S = R·O): podana albo R/t<sub>c</sub> razy t<sub>c</sub>",
         unit: "min",
       },
       {
         symbol: "<math><mi>Δt</mi></math>",
-        text: "krok czasowy <code>timestep_min</code>, zarazem czas trwania opadu jednostkowego; najwyżej 2R",
+        text: "krok czasowy, zarazem czas trwania opadu jednostkowego; najwyżej 2R",
         unit: "min",
       },
     ],
     symbols: { r_tc_ratio: "R/tc" },
     note:
-      "<p>R/t<sub>c</sub> jest małe w zlewniach stromych i zurbanizowanych (mała retencja), duże w " +
-      "płaskich i podmokłych (duża retencja); źródło zakresu podaje te klasy. Krok Δt dłuższy niż " +
-      "2R dałby ujemne rzędne, więc Hydrolog zgłasza błąd. Hydrogram jednostkowy dla kroku Δt " +
-      "powstaje z krzywej S hydrogramu chwilowego. Każda metoda t<sub>c</sub> nadaje się do modelu " +
-      "Clarka; FAA i Kerby – tylko dla małych zlewni bez wyraźnego koryta.</p>",
-    sources:
-      "Clark 1945; USACE, HEC-HMS Technical Reference Manual; Hydrolog, " +
-      "<code>docs/COMPUTATION_PATHS.md</code> 3.3; opis polecenia <code>uh clark</code>",
+      "<p>Większe R/t<sub>c</sub> daje szczyt niższy i późniejszy. Stosunek jest mały w zlewniach stromych " +
+      "i zurbanizowanych, duży w płaskich i podmokłych, które dłużej zatrzymują wodę.</p>",
+    guide: "metoda-uh-clark",
+    sources: "Clark 1945; USACE, HEC-HMS Technical Reference Manual",
   },
 
   "uh-snyder": {
     title: "Snyder: syntetyczny hydrogram jednostkowy",
     intro:
-      "<p>Opóźnienie i szczyt z długości cieku i położenia środka ciężkości zlewni (Snyder 1938), z " +
-      "własnym równaniem opóźnienia. Polecenie <code>uh snyder</code>, w hydrogramie " +
-      "<code>uh_model = snyder</code> z opcjami <code>snyder_*</code>; t<sub>c</sub> nie jest używany.</p>",
+      "<p>Syntetyczny hydrogram jednostkowy Snydera (1938) z własnym równaniem opóźnienia: opóźnienie " +
+      "t<sub>L</sub> z długości L i L<sub>c</sub> oraz współczynnika C<sub>t</sub>, szczyt ze współczynnika " +
+      "C<sub>p</sub>, oba przeliczone na czas trwania opadu równy krokowi Δt.</p>",
     formula:
       "<math display='block'><msub><mi>t</mi><mi>L</mi></msub><mo>=</mo><msub><mi>C</mi><mi>t</mi>" +
       "</msub><mo>·</mo><msup><mrow><mo>(</mo><mi>L</mi><mo>·</mo><msub><mi>L</mi><mi>c</mi></msub>" +
@@ -280,26 +250,22 @@ export const uhInfo = {
     vars: [
       {
         symbol: "<math><mi>L</mi></math>",
-        text:
-          "długość cieku głównego od działu wodnego do przekroju zamykającego, " +
-          "<code>snyder_length_km</code>; w GUI zawsze <code>channel_length_km</code> zlewni (krok 1)",
+        text: "długość cieku głównego od działu wodnego do przekroju zamykającego",
         unit: "km",
       },
       {
         symbol: "<math><msub><mi>L</mi><mi>c</mi></msub></math>",
-        text:
-          "długość cieku od przekroju do punktu najbliższego środka ciężkości zlewni, " +
-          "<code>snyder_centroid_length_km</code>; w GUI zawsze <code>Lc_km</code> zlewni",
+        text: "długość cieku od przekroju do punktu najbliższego środka ciężkości zlewni",
         unit: "km",
       },
       {
         symbol: "<math><msub><mi>C</mi><mi>t</mi></msub></math>",
-        text: "współczynnik czasowy w postaci metrycznej, <code>snyder_ct</code>; domyślnie 1,5",
+        text: "współczynnik czasowy w jednostkach SI: 0,75 współczynnika Snydera w jednostkach angielskich",
         unit: "–",
       },
       {
         symbol: "<math><msub><mi>C</mi><mi>p</mi></msub></math>",
-        text: "współczynnik szczytowy, <code>snyder_cp</code>; domyślnie 0,6",
+        text: "współczynnik szczytowy",
         unit: "–",
       },
       { symbol: "<math><msub><mi>t</mi><mi>L</mi></msub></math>", text: "opóźnienie zlewni", unit: "h" },
@@ -310,9 +276,7 @@ export const uhInfo = {
       },
       {
         symbol: "<math><mi>Δt</mi></math>",
-        text:
-          "krok czasowy <code>timestep_min</code>, we wzorach w godzinach; w hydrogramie czas trwania " +
-          "opadu jednostkowego D = Δt",
+        text: "krok czasowy, zarazem czas trwania opadu jednostkowego D (we wzorach w godzinach)",
         unit: "h",
       },
       {
@@ -320,26 +284,25 @@ export const uhInfo = {
         text: "opóźnienie i czas do szczytu dla D = Δt",
         unit: "h",
       },
-      { symbol: "<math><mi>A</mi></math>", text: "powierzchnia zlewni, <code>area_km2</code>", unit: "km²" },
+      { symbol: "<math><mi>A</mi></math>", text: "powierzchnia zlewni", unit: "km²" },
       {
         symbol: "<math><msub><mi>q</mi><mi>pR</mi></msub></math>",
         text: "przepływ szczytowy dla D = Δt",
         unit: "m³/s na 1 mm",
       },
-      { symbol: "<math><msub><mi>t</mi><mi>b</mi></msub></math>", text: "podstawa hydrogramu", unit: "h" },
+      {
+        symbol: "<math><msub><mi>t</mi><mi>b</mi></msub></math>",
+        text: "podstawa trójkąta o szczycie q<sub>pR</sub> i objętości 1&nbsp;mm; hydrogram trwa dłużej",
+        unit: "h",
+      },
     ],
     symbols: { ct: "Ct", cp: "Cp", area_km2: "A" },
     note:
-      "<p>Model nie używa t<sub>c</sub>: nie podawaj mu wyników grupy <code>tc</code>; podany " +
-      "t<sub>c</sub> Hydrolog pomija z uwagą w wyniku. W hydrogramie D = krok Δt, więc opóźnienie, czas " +
-      "do szczytu i szczyt są przeliczone na ten czas trwania (t<sub>LR</sub>, t<sub>pR</sub>, " +
-      "q<sub>pR</sub> wg HEC-HMS). Kształt to krzywa gamma (n = 3,7) ze szczytem w t<sub>pR</sub>, " +
-      "obcięta na t<sub>b</sub> i unormowana do 1 mm, dlatego C<sub>p</sub> zmienia szczyt tylko " +
-      "nieznacznie, przez długość podstawy. C<sub>t</sub> i C<sub>p</sub> bierze się z kalibracji w " +
-      "zlewniach tego samego regionu; C<sub>t</sub> w postaci metrycznej to 0,75 × C<sub>t</sub> " +
-      "Snydera.</p>",
+      "<p>Większy C<sub>t</sub> opóźnia i obniża szczyt, większy C<sub>p</sub> go podnosi; objętość " +
+      "hydrogramu zostaje równa 1&nbsp;mm. Model nie używa czasu koncentracji t<sub>c</sub>.</p>",
+    guide: "metoda-uh-snyder",
     sources:
-      "Snyder 1938 (za Chow i in. 1988); Chow i in. 1988; USACE 2000 (HEC-HMS); Hydrolog, " +
-      "<code>docs/COMPUTATION_PATHS.md</code> 3.4 i 5.2; opis polecenia <code>uh snyder</code>",
+      "Snyder 1938 (za Chow i in. 1988); Chow i in. 1988; USACE 2000 (HEC-HMS); Asquith i Roussel 2007 " +
+      "(USGS SIR 2007-5243)",
   },
 };

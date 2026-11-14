@@ -5,9 +5,10 @@ byte-identical to the SHA-256 their manifests record, and every file of ``web/no
 is recorded in one of them; the pages (the app, its guide ``instrukcja/`` and the admin
 page ``admin/``, the kit's shell alone) load nothing remote, have no inline script,
 style or event handler (CSP ``'self'``, D8) and link only files of ``web/``; the (i)
-texts hold no scripts, inline styles, event attributes or remote URLs; every option and
-every ``one_of`` group of the commands the GUI offers has a Polish label, and so does
-every field of the results of the station commands.
+texts hold no scripts, inline styles, event attributes or remote URLs, and their links
+to the guide lead to a part of it; every option and every ``one_of`` group of the
+commands the GUI offers has a Polish label, and so does every field of the results of
+the station commands.
 """
 
 import hashlib
@@ -234,6 +235,25 @@ def test_info_texts_hold_only_trusted_markup(pattern: str) -> None:
             pattern, NAMESPACE.sub("", path.read_text(encoding="utf-8")), re.IGNORECASE
         )
     ] == []
+
+
+def test_the_info_texts_link_parts_of_the_guide() -> None:
+    """The `guide` of an (i) text, its link „Więcej w instrukcji” to the longer
+    explanation (Nogat DEV-15.14), is the id of a part of the guide."""
+    guide = (WEB / "instrukcja" / "index.html").read_text(encoding="utf-8")
+    ids = set(re.findall(r'\sid="([^"]+)"', guide))
+    linked = [
+        (path.name, target)
+        for path in sorted((WEB / "src" / "labels" / "info").glob("*.js"))
+        for target in re.findall(
+            r'^\s+guide: "([^"]+)",$',
+            path.read_text(encoding="utf-8"),
+            flags=re.MULTILINE,
+        )
+    ]
+
+    assert linked
+    assert [(name, target) for name, target in linked if target not in ids] == []
 
 
 def test_every_notice_code_has_polish_text() -> None:
