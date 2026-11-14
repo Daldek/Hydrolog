@@ -391,6 +391,30 @@ def test_every_request_but_static_content_gives_one_record_without_the_address(
         assert ADDRESS not in repr(vars(record)), record.name
 
 
+def test_the_access_log_names_no_file(make_app, visitor, tmp_path):
+    logs = tmp_path / "logs"
+    app = make_app(settings(operator=None), log=ServerLog("hydrolog", "1", logs))
+    client = visitor(app)
+
+    responses = [
+        client.put("/api/files/in/Kowalski opad.csv", content=b"1"),
+        client.get("/api/files/in/Kowalski opad.csv?x=1"),
+        client.delete("/api/files/in/Kowalski opad.csv"),
+        client.get("/api/files/out/Kowalski/wynik.csv"),
+    ]
+    app.state.gui.close()
+
+    assert [r.status_code for r in responses] == [201, 200, 204, 404]
+    assert [(r["method"], r["path"]) for r in log_records(logs)] == [
+        ("PUT", "/api/files/in/[file]"),
+        ("GET", "/api/files/in/[file]?x=1"),
+        ("DELETE", "/api/files/in/[file]"),
+        ("GET", "/api/files/out/[file]"),
+    ]
+    text = "".join(p.read_text(encoding="utf-8") for p in logs.glob("*.jsonl"))
+    assert "Kowalski" not in text
+
+
 # --- the daily totals (DEV-15.11) -----------------------------------------------------
 
 

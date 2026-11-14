@@ -1,6 +1,5 @@
 """``gui serve``: the plan of ``check``, the guard of the extra and the result."""
 
-import logging
 import socket
 import sys
 import types
@@ -94,12 +93,12 @@ def test_without_the_extra_it_is_a_missing_dependency(monkeypatch):
     assert caught.value.hint == 'pip install "hydrolog[gui]"'
 
 
-def test_serving_returns_where_and_when_it_served(monkeypatch, caplog):
+def test_serving_returns_where_and_when_it_served(monkeypatch):
     """The server of the extra blocks until it is stopped; the result follows."""
     calls = []
 
-    def serve(*, host, port, open_browser):
-        calls.append((host, port, open_browser))
+    def serve(*, host, port, open_browser, warnings):
+        calls.append((host, port, open_browser, [code for code, _ in warnings]))
         return {
             "url": f"http://{host}:{port}/",
             "started_at": "2026-11-02T10:15:00Z",
@@ -111,12 +110,12 @@ def test_serving_returns_where_and_when_it_served(monkeypatch, caplog):
     server.url_of = url_of  # type: ignore[attr-defined]
     monkeypatch.setitem(sys.modules, "hydrolog.gui.server", server)
 
-    with caplog.at_level(logging.WARNING, logger="hydrolog"):
-        envelope = run_command(
-            "gui serve", {"host": "0.0.0.0", "port": 8099, "no_browser": True}
-        ).to_dict()
+    envelope = run_command(
+        "gui serve", {"host": "0.0.0.0", "port": 8099, "no_browser": True}
+    ).to_dict()
 
-    assert calls == [("0.0.0.0", 8099, False)]
+    # the warning goes to the server's log once it starts (Nogat DEV-12.7)
+    assert calls == [("0.0.0.0", 8099, False, ["exposed_without_auth"])]
     assert envelope["check"] is False
     assert envelope["result"] == {
         "schema": "hydrolog-gui-serve/1",
@@ -125,4 +124,3 @@ def test_serving_returns_where_and_when_it_served(monkeypatch, caplog):
         "stopped_at": "2026-11-02T11:00:00Z",
     }
     assert [n["code"] for n in envelope["notices"]] == ["exposed_without_auth"]
-    assert "no sign-in" in caplog.text, "the warning is shown when serving starts"

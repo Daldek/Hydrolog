@@ -501,7 +501,7 @@ cn = calculate_weighted_cn(parts)
 ```
 
 - The clay, sand and silt rasters must share the same coordinate reference system, grid and size (otherwise `InputDataError`, code `data_error`); units are arbitrary but must be consistent.
-- A GeoTIFF carries no providers' lines, so the HSG raster and the results of `soil hsg` and `soil hsg-stats` carry no SoilGrids line (SG): Hydrolog writes no G, SG or Z line itself.
+- The result of `soil hsg` (the envelope's `attribution`) carries the SoilGrids line (SG, Nogat DEV-20.10) when an input raster is Kartograf's SoilGrids: its sidecar `<raster>.meta.json` in the store has `dataset` `global.isric.soilgrids` (its `attribution` and `terms_notice` lines are kept too), or a plain file of `--output-dir`, which has no sidecar, keeps the store's directory `soil/global_soilgrids_<property>_<depth>_<stat>/`. A GeoTIFF carries no providers' lines, so the HSG raster itself, the library function `hsg_from_rasters` and `soil hsg-stats` (whose input is that raster) carry none: name SoilGrids yourself with the raster.
 - The equivalent Kartograf CLI call is `kartograf soil download ... --output-dir DIR` (plain files); `--root` would select a versioned store instead, which Hydrolog does not read directly.
 - The same path in the CLI: `hydrolog soil hsg --clay-path ... --sand-path ... --silt-path ... --output hsg.tif`, `hydrolog soil hsg-stats --hsg-path hsg.tif`, `hydrolog cn weighted --parts '[{"cn": 30, "area": 75.0}, ...]'`.
 - HSG is only one of the two CN factors: with several land covers the parts are (HSG × cover) pairs, and the intersection of the HSG and land-cover rasters is done by Hydrograf (Hydrolog does not do it).

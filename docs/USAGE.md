@@ -1774,21 +1774,21 @@ is one line of JSON valid against `nogat-log/1` (`schemas/nogat/record-1.schema.
   page's files (`css/`, `src/`, `vendor/`, `nogat/`, `theme-init.js`) and the catalog documents
   (`api/commands…`, `api/schemas/…`) are logged only when answered with 400 or more. A query
   parameter that may hold personal data or a secret (`q`, `name`, `email`, `key`, `token`…)
-  keeps its name only: `?q=&lat=51.2`.
+  keeps its name only: `?q=&lat=51.2`. A file's name is written `[file]`:
+  `PUT /api/files/in/[file]`.
 - `app`: warnings, errors and exceptions of the server, the exception's type, message and stack
   with every IP address written `[ip]`.
 - `lifecycle`: `start` with the settings `url` and `public`, `stop`, and `prune` when old files
   are deleted.
 
-No log holds the client's address, a cookie, a header or a request body (the path of a request
-for a session file names the file: `api/files/in/<name>`); of the
+No log holds the client's address, a cookie, a header, a request body or a file's name; of the
 `User-Agent` only its kind is kept (`agent`: `browser`, `bot`, `script` or `none`), and the
 `request_id` is never sent to the client. The server deletes a file once its date is 14 days old,
 at the start and at every midnight UTC, so no setting of journald, root or a cron job is needed.
-From the record `start` on, standard error, and so the journal of a service, gets only the
-lifecycle records and errors reduced to their type (`request_id` and `message` `null`); the
-warnings of the start before it (`exposed_without_auth`, `No regulamin: …`) are plain lines of the
-command's log. uvicorn's own access log is off.
+Standard error, and so the journal of a service, gets only the lifecycle records and errors
+reduced to their type (`request_id` and `message` `null`); the warnings of the start
+(`exposed_without_auth`, `No regulamin: …`) are held until the record `start` and then go to the
+`app` log. uvicorn's own access log is off.
 Read the last 14 days without the requests answered below 500 with `jq` (`apt install jq`, or its
 static release binary in `~/.local/bin`):
 
