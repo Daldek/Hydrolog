@@ -411,9 +411,14 @@ def test_wczytaj_z_hydrografa_fills_the_chosen_node(tab: Tab, tmp_path: Path) ->
     assert structure(page) == before
     assert canvas_cells(page) == cells
     expect(description).to_have_value("Kamiennik w Świerzawie")
-    # It keeps Hydrogram's inputs, no flat key of the former form
+    # It keeps Hydrogram's inputs, no flat key of the former form; the inputs are stored
+    # by an effect after the next frame, later on a slower runner than the fields shown
+    area = input_text(watershed["area_km2"])
+    page.wait_for_function(
+        f"(area) => ({STORED})()?.nodes?.Z1?.watershed?.area_km2 === area", arg=area
+    )
     stored = page.evaluate(STORED)["nodes"]["Z1"]
-    assert stored["watershed"]["area_km2"] == input_text(watershed["area_km2"])
+    assert stored["watershed"]["area_km2"] == area
     assert not [
         key
         for key in stored
