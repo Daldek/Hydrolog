@@ -62,8 +62,10 @@ light theme, a 390 px phone in the dark one, PNG of 256 colours); a change of an
 result, a label or the layout of the page updates them.
 „Zgłoś uwagę” (the top bar) stores reports, a text and the page's context, never a contact,
 in SQLite `<data_dir>/hydrolog/feedback.sqlite3` (version 2; `data_dir`: `HYDROLOG_DATA_DIR`,
-`NOGAT_DATA_DIR`, `nogat.toml`, else the user data directory); the admin page `admin/` reads
-them only with `HYDROLOG_ADMIN_API_KEY` or `HYDROLOG_ADMIN_API_KEY_FILE` set (no key: 401).
+`NOGAT_DATA_DIR`, `nogat.toml`, else the user data directory); the admin panel `admin/` (Nogat's
+kit shell `<nogat-admin>`, DEV-15.13: „Zgłoszenia”, „Statystyki”, „Stan” on `api/admin/feedback`,
+`stats`, `status`; `gui/_admin.py` holds the status checks) answers only with
+`HYDROLOG_ADMIN_API_KEY` or `HYDROLOG_ADMIN_API_KEY_FILE` set (no key: 401).
 Read and back up the file with `sqlite3 FILE "SELECT ..."` and `sqlite3 FILE ".backup COPY"`;
 tests give `create_app(data_dir=tmp, config={...})`, never the developer's data directory or
 `nogat.toml`. With `[nogat.operator]` the GUI is public (ADR-0034, `gui/_public.py`,
@@ -87,10 +89,11 @@ src/hydrolog/
 ├── gui/          # web GUI (extra [gui]): server.py (serve), _app.py (Starlette app, private API),
 │                 # _serving.py (uvicorn, the logs' start and stop), nogat_logging.py (Nogat's logs,
 │                 # copied byte for byte, ADR-0037), _runner.py, _worker.py (warm worker processes),
-│                 # _sessions.py (work directories), _feedback.py (reports of „Zgłoś uwagę”, SQLite);
+│                 # _sessions.py (work directories), _feedback.py (reports of „Zgłoś uwagę”, SQLite),
+│                 # _admin.py (the admin panel's status and checks);
 │                 # web/ (the page: Preact modules without a build; instrukcja/: the user guide;
-│                 # admin/: the reports; nogat/: Nogat's tokens, marks and GUI kit, copied byte for
-│                 # byte, ADR-0027)
+│                 # admin/: Nogat's admin panel, the kit shell alone; nogat/: Nogat's tokens,
+│                 # marks and GUI kit, copied byte for byte, ADR-0027)
 ├── agent_guide.py, _data/agents/   # generator and templates of AGENTS.md, llms.txt, block
 ├── exceptions.py, _errors.py       # HydrologError classes; registry generated from schemas/nogat
 ├── _settings.py                    # lang/log_level/data_dir/state_dir: option > env > nogat.toml > default;

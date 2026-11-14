@@ -133,7 +133,7 @@ def test_reading_an_absent_file_makes_nothing(path):
         "total": 0,
         "unread_count": 0,
     }
-    assert store.set_read(1, is_read=True) is False
+    assert store.set_read(1, is_read=True) is None
     assert store.delete(1) is False
     assert not path.parent.exists()
 

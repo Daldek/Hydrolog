@@ -18,7 +18,9 @@ the app then wraps every request in :class:`PublicGuard`:
   as HMAC-SHA-256 of the address and the ``User-Agent`` under a 32-byte salt drawn at
   start and at 00:00 UTC, in memory only, and the day's counts; it rewrites the day's
   line of ``<data_dir>/hydrolog/stats.jsonl`` every five minutes, at a new day and at
-  shutdown, and adds to the line of the day after a restart.
+  shutdown, and adds to the line of the day after a restart. The requests of the
+  admin panel (:func:`is_admin`, DEV-15.13) count in none of the totals;
+  :func:`stats_report` reads the totals back for ``api/admin/stats``.
 
 The client's address is the ASGI ``client`` of the request; behind a proxy, the server
 sets it from the proxy's header trusted only from the proxy (uvicorn's
@@ -35,6 +37,7 @@ import json
 import logging
 import math
 import os
+import re
 import secrets
 import threading
 import time
@@ -66,9 +69,12 @@ __all__ = [
     "PublicGuard",
     "RateLimiter",
     "Upkeep",
+    "is_admin",
     "is_counted",
     "is_page",
     "load_public",
+    "read_days",
+    "stats_report",
 ]
 
 STATS_FILE: Final = "stats.jsonl"
@@ -87,6 +93,7 @@ FLUSH_S: Final = 300.0
 _LOG = logging.getLogger(__name__)
 _CATALOG = ("/api/commands", "/api/schemas/")
 _READS = frozenset({"GET", "HEAD"})
+_DAY = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
 
 
 @dataclass(frozen=True)
@@ -132,6 +139,15 @@ def is_counted(method: str, route: str) -> bool:
     return "." not in name or name.endswith(".html")
 
 
+def is_admin(route: str) -> bool:
+    """Tell whether a request is the admin panel's (Nogat DEV-15.13).
+
+    ``/admin``, ``/admin/…`` and ``/api/admin/…``: never counted in the daily totals
+    (DEV-15.11), always under the request limit (DEV-15.9).
+    """
+    return route == "/admin" or route.startswith(("/admin/", "/api/admin/"))
+
+
 def is_page(method: str, route: str) -> bool:
     """Tell whether a request reads a public page (``page_views``).
 
@@ -139,8 +155,8 @@ def is_page(method: str, route: str) -> bool:
     """
     return (
         method in _READS
-        and not route.startswith(("/api/", "/admin/"))
-        and route != "/admin"
+        and not route.startswith("/api/")
+        and not is_admin(route)
         and is_counted(method, route)
     )
 
@@ -214,6 +230,65 @@ def _today(now: datetime) -> str:
     return now.astimezone(UTC).date().isoformat()
 
 
+def read_days(path: Path) -> list[dict[str, Any]]:
+    """Return the lines of ``stats.jsonl`` as objects; unusable lines are skipped.
+
+    A missing or unreadable file has no lines.
+    """
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return []
+    entries = []
+    for line in text.splitlines():
+        with contextlib.suppress(ValueError):
+            entry = json.loads(line)
+            if isinstance(entry, dict) and isinstance(entry.get("date"), str):
+                entries.append(entry)
+    return entries
+
+
+def _total(value: object) -> int:
+    """Return a stored total, 0 for a value that is not a whole number >= 0."""
+    if isinstance(value, int) and not isinstance(value, bool) and value >= 0:
+        return value
+    return 0
+
+
+def stats_report(
+    path: Path, first: str, last: str, today: Mapping[str, Any] | None = None
+) -> dict[str, Any]:
+    """Return ``{days, totals}`` of ``GET api/admin/stats`` (Nogat DEV-15.13).
+
+    Parameters
+    ----------
+    path : Path
+        ``<data_dir>/hydrolog/stats.jsonl``.
+    first, last : str
+        The UTC days ``YYYY-MM-DD`` of the period, both included.
+    today : mapping, optional
+        The current day as counted so far (:meth:`DailyStats.snapshot`), which
+        replaces the file's line of that day.
+
+    Returns
+    -------
+    dict
+        ``days``: one object per day of the file in the period, in date order, with
+        the keys of DEV-15.11 (a missing or unusable total is 0); ``totals``: the sum
+        of each key but ``visitors``, which is not additive over days.
+    """
+    entries = {entry["date"]: entry for entry in read_days(path)}
+    if today is not None:
+        entries[str(today["date"])] = dict(today)
+    days = [
+        {"date": day, **{key: _total(entries[day].get(key)) for key in STATS_KEYS}}
+        for day in sorted(entries)
+        if _DAY.fullmatch(day) and first <= day <= last
+    ]
+    totals = {key: sum(day[key] for day in days) for key in STATS_KEYS[1:]}
+    return {"days": days, "totals": totals}
+
+
 class DailyStats:
     """The day's totals of a public GUI and their file (DEV-15.11).
 
@@ -253,18 +328,7 @@ class DailyStats:
         return {}
 
     def _read(self) -> list[dict[str, Any]]:
-        """Return the lines of the file as objects; unusable lines are skipped."""
-        try:
-            text = self.path.read_text(encoding="utf-8")
-        except (OSError, UnicodeDecodeError):
-            return []
-        entries = []
-        for line in text.splitlines():
-            with contextlib.suppress(ValueError):
-                entry = json.loads(line)
-                if isinstance(entry, dict) and isinstance(entry.get("date"), str):
-                    entries.append(entry)
-        return entries
+        return read_days(self.path)
 
     def _roll(self) -> None:
         """Start a new day at 00:00 UTC: the old one's line is final, a new salt."""
@@ -457,7 +521,8 @@ class PublicGuard:
             if wait is not None:
                 await self._refuse(scope, receive, send, route, wait)
                 return
-            stats.visit(address, Headers(scope=scope).get("user-agent", ""))
+            if not is_admin(route):  # the operator is no visitor (DEV-15.11)
+                stats.visit(address, Headers(scope=scope).get("user-agent", ""))
         await self.app(scope, receive, watched)
         if status in (200, 304) and is_page(method, route):
             stats.count("page_views")

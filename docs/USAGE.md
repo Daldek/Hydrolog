@@ -1656,34 +1656,50 @@ diagnostics give (`view`, `parameters`), and the rest leaves the file (it is vac
 still holds the contacts, addresses and browsers: it is the operator's to read and delete once its
 reports are handled.
 
-**The admin page.** `admin/` under the GUI's address (`http://127.0.0.1:8070/admin/`) asks for the
-key, or a file that holds it, and keeps it in the browser tab only (`sessionStorage`,
-`hydrolog-gui/admin-key/1`, until „Wyloguj”). It lists the reports newest first with the count of
-unread ones; a report opens its message and its context (view, station, version and the view's
-parameters; it is then read), can be marked unread again or deleted. The key is
-`HYDROLOG_ADMIN_API_KEY`, or
-the text of the file that `HYDROLOG_ADMIN_API_KEY_FILE` names; the server reads it at every
-request, so a new key in the file applies at once. Without either, the admin page refuses everyone
-(`401 unauthorized`, `details.reason` `admin_key_not_configured`): no key is generated. A long
-random key does it, for example `openssl rand -hex 32 > admin.key`.
+**The admin panel** (Nogat DEV-15.13, ECO-067). `admin/` under the GUI's address
+(`http://127.0.0.1:8070/admin/`; `admin` without the slash answers `308` to it) is Nogat's kit
+panel `<nogat-admin>` (kit 0.7.0) alone: no footer, regulamin link or menu „Aplikacje”, and
+`noindex`. It asks for the key and keeps it in the browser tab only (`sessionStorage`,
+`hydrolog/admin-key/1`, until „Wyloguj”), then shows three sections:
 
-The page's private API, for scripts as well (paths relative to the GUI's address):
+- „Zgłoszenia”: the reports, 50 a page and newest first, with the count of unread ones; each
+  shows its text and, folded under „Kontekst”, its context (view, station, version and the
+  view's parameters); „Oznacz jako przeczytane” and back, and „Usuń” after a question.
+- „Statystyki”: the daily totals of `stats.jsonl` (a public GUI's, below) for 7, 30 or 90 days
+  or the whole record, with their sum, and „Pobierz CSV”.
+- „Stan”: the version, when the server started and for how long, the data directory
+  `<data_dir>/hydrolog`, the free space of its disk, and the checks `data_dir` (the directory
+  can be written; before the first report, the directory above it, where the first write makes
+  it) and `feedback_db` (the reports' file can be read, with its counts), each `ok` or `failed`.
+
+The key is `HYDROLOG_ADMIN_API_KEY`, or the text of the file that `HYDROLOG_ADMIN_API_KEY_FILE`
+names; the server reads it at every request, so a new key in the file applies at once. Without
+either, every admin route refuses everyone (`401 unauthorized`, `details.reason`
+`admin_key_not_configured`): no key is generated, and none is logged. A long random key does it,
+for example `openssl rand -hex 32 > admin.key`. No answer of the panel, its page or its API, is
+stored by the browser (`Cache-Control: no-store`).
+
+The page's private API, for scripts as well (paths relative to the GUI's address); the routes
+under `api/admin/` are Nogat's core admin API, the same in every GUI:
 
 | Route | Request | Answer |
 |---|---|---|
 | `POST api/feedback` | `{"message", "context": {"view", "station", "parameters", "app_version"}}` (JSON, at most 256 KiB); any other field is refused | `{"id": 7, "status": "ok"}` |
 | `GET api/admin/feedback?limit=50&offset=0` | `X-Admin-Key`; `limit` 1 to 200 | `{"items": [...], "total", "unread_count"}`, newest first |
-| `PATCH api/admin/feedback/{id}` | `X-Admin-Key`; `{"is_read": true}` | `{"status": "ok"}` |
+| `PATCH api/admin/feedback/{id}` | `X-Admin-Key`; `{"is_read": true}` | the report, as listed |
 | `DELETE api/admin/feedback/{id}` | `X-Admin-Key` | `{"status": "deleted"}` |
+| `GET api/admin/stats?from=2026-11-01&to=2026-11-30` | `X-Admin-Key`; UTC days, both included; by default the last 30 days up to today | `{"days": [...], "totals": {...}}`: the lines of `stats.jsonl` in the period, today's as counted so far, with the keys of the file (a missing total is 0); `totals` sums every key but `visitors` |
+| `GET api/admin/status` | `X-Admin-Key` | `{"app": "Hydrolog", "version", "started_at", "uptime_s", "data_dir", "disk": {"free_bytes", "total_bytes"}, "checks": [{"name", "status", "detail"}]}` |
 
 An error is a `hydrolog-error/1` document: `validation_error` (400; `details.parameter` and
 `details.reason`, for example `unknown_field` for a field outside the form, `too_long` with
-`max_length`, or `too_large` for a context over 100,000 bytes), `unauthorized` (401;
-`admin_key_missing`, `admin_key_invalid` or `admin_key_not_configured`), `not_found` (404;
-`feedback_not_found`) or `io_error` (500; the file could not be used, `feedback_store_failed`
-and the like, without its path).
+`max_length`, `too_large` for a context over 100,000 bytes, `format` for a day that is not
+`YYYY-MM-DD`, or `maximum` for `from` after `to`), `unauthorized` (401; `admin_key_missing`,
+`admin_key_invalid` or `admin_key_not_configured`), `not_found` (404; `feedback_not_found`) or
+`io_error` (500; the file could not be used, `feedback_store_failed` and the like, without its
+path).
 
-**Reading and backing up.** Besides the admin page, `curl` with the key or `sqlite3` on the file
+**Reading and backing up.** Besides the admin panel, `curl` with the key or `sqlite3` on the file
 read the reports; SQLite's `.backup` copies the file consistently while the server runs (a plain
 copy of the file alone can miss what is still in `feedback.sqlite3-wal`). To restore, stop the
 server and put the copy in the file's place.
@@ -1818,17 +1834,18 @@ request_window = 60
   ```
 
   `visitors`: distinct HMAC-SHA-256 of the client address and the `User-Agent` of the counted
-  requests under a 32-byte salt drawn at the start and at every midnight UTC, kept in memory only
-  (after a restart a visitor counts again); `page_views`: the app (`/`), its guide (`instrukcja/`)
-  and the regulamin served, not the admin page; `stations_opened`: stations' series from a
-  hand-off opened in Statystyka przepływów; `analyses_run`: computations the server ran and
-  answered (`api/run`, not the plans of `check`); `downloads`: files the page saved on the
-  person's disk (exports, the report, hand-off files, outputs of the server). The page tells the
-  server of the last two (`POST api/stats/station`, `POST api/stats/download`, no body).
-- **The admin page is the operator's.** Put `admin/` and `api/admin/` behind a sign-in, for
-  example a Cloudflare Access application on the paths `/admin/*` and `/api/admin/*` of the GUI's
-  hostname (and `/admin` without the slash, which redirects); the rest stays public. The admin key
-  still guards the API.
+  requests but the admin panel's, under a 32-byte salt drawn at the start and at every midnight
+  UTC, kept in memory only (after a restart a visitor counts again); `page_views`: the app (`/`),
+  its guide (`instrukcja/`) and the regulamin served, not the admin panel; `stations_opened`:
+  stations' series from a hand-off opened in Statystyka przepływów; `analyses_run`: computations
+  the server ran and answered (`api/run`, not the plans of `check`); `downloads`: files the page
+  saved on the person's disk (exports, the report, hand-off files, outputs of the server). The
+  page tells the server of the last two (`POST api/stats/station`, `POST api/stats/download`, no
+  body). The admin panel's „Statystyki” shows them.
+- **The admin panel is the operator's.** Put it behind a sign-in, for example a Cloudflare Access
+  application on exactly the paths `/admin`, `/admin/*` and `/api/admin/*` of the GUI's hostname
+  (Nogat DEV-15.13); the rest stays public. The admin key still guards the API, and the panel's
+  requests stay under the request limit.
 
 Check a public GUI after a start:
 

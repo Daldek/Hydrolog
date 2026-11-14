@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pl" class="admin-page">
+<html lang="pl">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -9,31 +9,13 @@
 <link rel="icon" type="image/svg+xml" href="../nogat/marks/hydrolog.svg">
 <script src="../theme-init.js"></script>
 <link rel="stylesheet" href="../nogat/tokens.css">
-<link rel="stylesheet" href="../css/app.css">
-<link rel="stylesheet" href="admin.css">
-<script type="module" src="admin.js"></script>
+<link rel="stylesheet" href="../nogat/nogat-admin.css">
+<script type="module" src="../nogat/nogat-admin.js"></script>
 </head>
 <body>
-
-<!-- The top bar of the GUI: the mark leads back to the app, the theme is shared with it -->
-<header class="topbar">
-  <a class="brand" href="../" aria-label="Hydrolog: wróć do aplikacji">
-    <img src="../nogat/marks/hydrolog.svg" alt="" width="24" height="24">
-    <span class="name">Hydrolog</span>
-  </a>
-  <nav class="crumbs" aria-label="Kontekst">
-    <strong>Administracja</strong>
-  </nav>
-  <div class="top-actions">
-    <a class="btn ghost" href="../" aria-label="Wróć do aplikacji">
-      <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5L7 10l5.5 5.5"/></svg>
-      <span class="label">Wróć do aplikacji</span>
-    </a>
-    <div id="theme"></div>
-  </div>
-</header>
-
-<main class="admin" id="admin"></main>
-<noscript><p class="noscript">Panel administracyjny potrzebuje JavaScriptu: włącz go w przeglądarce i odśwież stronę.</p></noscript>
+<!-- The admin panel of Nogat's kit (DEV-15.13): „Zgłoszenia”, „Statystyki” and „Stan” on
+     ../api/admin/, the key of HYDROLOG_ADMIN_API_KEY or HYDROLOG_ADMIN_API_KEY_FILE -->
+<nogat-admin app="Hydrolog" project="hydrolog" back="../" marks="../nogat/marks/"></nogat-admin>
+<noscript><p>Panel administracyjny potrzebuje JavaScriptu: włącz go w przeglądarce i odśwież stronę.</p></noscript>
 </body>
 </html>

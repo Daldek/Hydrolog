@@ -3,11 +3,11 @@
 The copies of Nogat's identity and kit and the vendored Preact and htm are
 byte-identical to the SHA-256 their manifests record, and every file of ``web/nogat/``
 is recorded in one of them; the pages (the app, its guide ``instrukcja/`` and the admin
-page ``admin/``) load nothing remote, have no inline script, style or event handler
-(CSP ``'self'``, D8) and link only files of ``web/``; the (i) texts hold no scripts,
-inline styles, event attributes or remote URLs; every option and every ``one_of`` group
-of the commands the GUI offers has a Polish label, and so does every field of the
-results of the station commands.
+page ``admin/``, the kit's shell alone) load nothing remote, have no inline script,
+style or event handler (CSP ``'self'``, D8) and link only files of ``web/``; the (i)
+texts hold no scripts, inline styles, event attributes or remote URLs; every option and
+every ``one_of`` group of the commands the GUI offers has a Polish label, and so does
+every field of the results of the station commands.
 """
 
 import hashlib
@@ -182,6 +182,42 @@ def test_every_local_file_the_page_links_exists(name: str) -> None:
     ]
 
     assert linked and missing == []
+
+
+def test_the_admin_page_is_the_kit_shell_alone() -> None:
+    """The admin page is Nogat's ``<nogat-admin>`` and nothing of the app's own
+    (DEV-15.13): ``noindex``, the kit's script and stylesheet on the tokens, the stored
+    theme, and no app menu, footer, regulamin link or script of the app."""
+    page = (WEB / "admin" / "index.html").read_text(encoding="utf-8")
+    tags = re.findall(r"<(script|link|meta|nogat-[a-z-]+|footer)\b([^>]*)>", page)
+    attributes = [
+        (tag, dict(re.findall(r'([a-z-]+)="([^"]*)"', text))) for tag, text in tags
+    ]
+
+    assert [a.get("src") for tag, a in attributes if tag == "script"] == [
+        "../theme-init.js",
+        "../nogat/nogat-admin.js",
+    ]
+    assert [a["href"] for tag, a in attributes if a.get("rel") == "stylesheet"] == [
+        "../nogat/tokens.css",
+        "../nogat/nogat-admin.css",
+    ]
+    assert ("meta", {"name": "robots", "content": "noindex"}) in attributes
+    assert [
+        (tag, a) for tag, a in attributes if tag.startswith(("nogat-", "footer"))
+    ] == [
+        (
+            "nogat-admin",
+            {
+                "app": "Hydrolog",
+                "project": "hydrolog",
+                "back": "../",
+                "marks": "../nogat/marks/",
+            },
+        )
+    ]
+    assert "regulamin" not in page.lower()
+    assert sorted(path.name for path in (WEB / "admin").iterdir()) == ["index.html"]
 
 
 @pytest.mark.parametrize(
