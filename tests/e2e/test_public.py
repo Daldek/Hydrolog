@@ -5,8 +5,9 @@ section of the standalone shell shows the footer with the statement of DEV-15.8 
 link „Regulamin”, which opens the filled regulamin in a new tab (the page's session
 lives in its memory only); the app menu ends with „Regulamin”, and the guide shows the
 same footer, its link in a new tab too. On a desktop the footer is one thin row under
-the main area, on a phone it sits above the bottom rail; neither covers the rest. A
-server that is not public has neither footer nor ``regulamin.html``, and Nogat's shell
+the main area (its text on one line, or two in a font too wide for one), on a phone it
+sits above the bottom rail; neither covers the rest. A server that is not public has
+neither footer nor ``regulamin.html``, and Nogat's shell
 (``?nogat=1``) has its own chrome. Over the request limit a page answers 429 with
 ``Retry-After`` and says when to try again.
 """
@@ -33,6 +34,22 @@ BLOCKS = [
     "IMGW-PIB: opady maksymalne PMAXTP",
     "ČHMÚ",
 ]
+FOOTER_TEXT = """(footer) => {
+  const text = footer.querySelector('p');
+  const unwrapped = text.cloneNode(true);
+  unwrapped.style.cssText = 'position: fixed; visibility: hidden; white-space: nowrap';
+  footer.append(unwrapped);
+  const width = unwrapped.getBoundingClientRect().width;
+  unwrapped.remove();
+  const height = text.getBoundingClientRect().height;
+  return {
+    lines: Math.round(height / parseFloat(getComputedStyle(text).lineHeight)),
+    needed: Math.ceil(width / text.clientWidth),
+    around: footer.getBoundingClientRect().height - height,
+  };
+}"""
+"""The footer's lines of text, the lines its unwrapped width needs in the row, and the
+height of the footer around the text (its padding and border)."""
 
 
 def open_app(tab: Tab, path: str = "") -> None:
@@ -72,7 +89,11 @@ def test_every_section_shows_the_statement_and_the_regulamin_in_a_new_tab(
         main, bar, side = box(page.locator("main.main")), box(footer), box(rail)
         assert bar["y"] == main["y"] + main["height"]
         assert (bar["x"], bar["y"] + bar["height"]) == (64, 900)
-        assert bar["height"] < 30  # one line of small text
+        # Small text in as few lines as the font's width allows: one with Lato, two
+        # with a wider font (macOS's system font) where the statement cannot fit in one
+        text = footer.evaluate(FOOTER_TEXT)
+        assert text["lines"] == text["needed"] <= 2, text
+        assert text["around"] < 10, text
         assert side["y"] + side["height"] == 900
         assert_page_fits(page)
 
