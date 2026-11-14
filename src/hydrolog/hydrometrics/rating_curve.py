@@ -124,7 +124,7 @@ class RatingCurveFitError(CalculationError, InvalidParameterError):
     Raised when the optimiser does not converge or the power law cannot be
     evaluated for the data (for example overflow for very large levels). It is a
     :class:`~hydrolog.exceptions.CalculationError` (code ``calculation_error``).
-    For compatibility with versions before 1.0.0, which raised
+    For compatibility with versions before 0.8.0, which raised
     :class:`~hydrolog.exceptions.InvalidParameterError` in these cases, it is
     also an ``InvalidParameterError`` (and therefore a ``ValueError``), so
     existing ``except`` clauses keep catching it.
@@ -244,7 +244,7 @@ class RatingCurve:
         problem is not convex in ``H0``: the start must be admissible (below every
         level) and should not be far from the solution.
 
-        Versions before 1.0.0 started from ``h0_initial = 0.0``, which is not
+        Versions before 0.8.0 started from ``h0_initial = 0.0``, which is not
         below the lowest level of a gauge with readings at or below zero (stages
         below the gauge zero, e.g. -10 cm, are normal): such a series could not be
         fitted without choosing a start by hand. In a benchmark of synthetic

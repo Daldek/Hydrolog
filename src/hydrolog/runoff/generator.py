@@ -136,7 +136,7 @@ class HydrographGenerator:
     1938; USACE-HEC, 2000, HEC-HMS Technical Reference Manual, "Snyder Unit
     Hydrograph Model"; Chow, Maidment and Mays, 1988, Applied Hydrology).
     ``HydrographGeneratorResult.unit_hydrograph_result`` is that hydrograph
-    (``duration_min`` is the time step). Before 1.0.0 the unit hydrograph of
+    (``duration_min`` is the time step). Before 0.8.0 the unit hydrograph of
     the standard duration was used for every time step: the peak was too low and
     too late for a time step shorter than tD, and too high and too early for a
     longer one.

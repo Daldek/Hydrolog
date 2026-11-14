@@ -2,9 +2,9 @@
 
 ## Hydrolog - Hydrological Toolkit Library
 
-**Version:** 1.0.0 (in preparation)
+**Version:** 0.8.0 (in preparation)
 **Date:** 2026-10-19
-**Status:** v1.0.0 in preparation
+**Status:** v0.8.0 in preparation
 
 ---
 
@@ -202,7 +202,7 @@ print(f"tc = {tc:.1f} min")
 
 ---
 
-### 2.6 CLI (v0.4.0, rebuilt in v1.0.0)
+### 2.6 CLI (v0.4.0, rebuilt in v0.8.0)
 
 #### US-C01: Generating a hydrograph through the CLI
 **As** a user
@@ -310,7 +310,7 @@ print(f"tc = {tc:.1f} min")
 
 ---
 
-### 2.14 Command catalog, MCP server and HSG (v1.0.0)
+### 2.14 Command catalog, MCP server and HSG (v0.8.0)
 
 #### US-K01: One command definition for all interfaces
 **As** a Hydrolog developer
@@ -584,7 +584,7 @@ print(f"tc = {tc:.1f} min")
 - [x] `precipitation.interpolation` - IDW, Thiessen, isohyets, arithmetic mean
 - [x] `network.classification` - Strahler, Shreve
 - [x] `network.parameters` - network indices (drainage density, bifurcation ratio)
-- [ ] `precipitation.scenarios` - PMAXTP integration (since v1.0.0 the PMAXTP depth of a point is `precip pmaxtp`, fetched through Obserwator, ADR-0018)
+- [ ] `precipitation.scenarios` - PMAXTP integration (since v0.8.0 the PMAXTP depth of a point is `precip pmaxtp`, fetched through Obserwator, ADR-0018)
 - [x] Tests and documentation (210 tests)
 
 ### v0.4.0 - CLI + advanced UH models *(completed)*
@@ -634,7 +634,7 @@ print(f"tc = {tc:.1f} min")
 - [x] `visualization.statistics` - 10 visualization functions
 - [x] Tests and documentation
 
-### v1.0.0 - Stable API, command catalog, MCP, HSG *(in preparation)*
+### v0.8.0 - Command catalog, MCP, HSG *(in preparation)*
 - [x] `catalog`, `operations` - a catalog of 62 commands in 17 groups and the operations layer
 - [x] `cli` - CLI generated from the catalog (breaking change: the former syntax was removed)
 - [x] `mcp` - MCP server (`hydrolog mcp`, extra `[mcp]`)
@@ -644,14 +644,14 @@ print(f"tc = {tc:.1f} min")
 - [x] Calculation fixes: Fisher-Tippett for minima, Clark UH for D that is not a multiple of the step, calculation report, StreamNetwork, RatingCurve (details: CHANGELOG)
 - [x] Station analyses for Obserwator's series: the groups `stats`, `hydrometrics` and `meteo` (ADR-0029 to ADR-0033)
 - [x] `gui` - the web GUI (`hydrolog gui serve`, extra `[gui]`, ADR-0014; section 2.16)
-- [ ] Empirical peak flow formulas (Punzet, Bogdanowicz-Stachy) - after v1.0.0
+- [ ] Empirical peak flow formulas (Punzet, Bogdanowicz-Stachy) - after v0.8.0
 - [ ] Complete API documentation (MkDocs/Sphinx)
 - [ ] Publication on PyPI
 
-### v1.0.0 - Flood routing *(merged into `develop`, ADR-0007)*
+### v0.8.0 - Flood routing *(merged into `develop`, ADR-0007)*
 - [x] `routing` and the command group `route`: `Hydrograph`, `Reach`, lag (`route lag`), Muskingum (`route muskingum`), Muskingum-Cunge (`route muskingum-cunge`), cascade of linear reservoirs (`route cascade`), level-pool reservoir (`route level-pool`), river network (`route network`) (plan: `docs/plans/2026-10-24-flood-routing.md`)
 
 ---
 
-**Document version:** 1.0.0 (in preparation)
+**Document version:** 0.8.0 (in preparation)
 **Last updated:** 2026-11-14

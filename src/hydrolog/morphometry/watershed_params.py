@@ -765,7 +765,7 @@ class WatershedParameters:
           the overland one, timed at the slope of the whole path (Roussel et al.
           2005, supplement).
 
-        .. versionchanged:: 1.0.0
+        .. versionchanged:: 0.8.0
             Every method takes the fields its source defines, without
             substitutes. Kirpich and NRCS took the channel length, else the
             watershed length, and Kirpich the channel slope, else the mean slope,

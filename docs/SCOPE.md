@@ -4,7 +4,7 @@
 
 **Version:** 1.9
 **Date:** 2026-11-14
-**Status:** v1.0.0 in preparation
+**Status:** v0.8.0 in preparation
 
 ---
 
@@ -29,7 +29,7 @@
 
 ### 1.3 Analogy
 
-Hydrolog is analogous to **Kartograf** (spatial data download) and **Obserwator** (IMGW data download) - a modular Python library with a clean API that can be used as a dependency in other projects. Since v1.0.0, like them, it exposes a single command catalog (CLI + MCP + AGENTS.md/llms.txt). It does not depend on Kartograf and depends on Obserwator only through the optional extra `pmaxtp`: Hydrolog downloads nothing but the PMAXTP depth of `precip pmaxtp`, which it fetches through Obserwator (ADR-0018), and other data files are supplied by external tools.
+Hydrolog is analogous to **Kartograf** (spatial data download) and **Obserwator** (IMGW data download) - a modular Python library with a clean API that can be used as a dependency in other projects. Since v0.8.0, like them, it exposes a single command catalog (CLI + MCP + AGENTS.md/llms.txt). It does not depend on Kartograf and depends on Obserwator only through the optional extra `pmaxtp`: Hydrolog downloads nothing but the PMAXTP depth of `precip pmaxtp`, which it fetches through Obserwator (ADR-0018), and other data files are supplied by external tools.
 
 ---
 
@@ -63,7 +63,7 @@ Hydrolog is analogous to **Kartograf** (spatial data download) and **Obserwator*
 - Runoff coefficient [-]
 - Time series: time vs discharge
 
-**Hydrologic soil groups (HSG) - module `soil` (v1.0.0):**
+**Hydrologic soil groups (HSG) - module `soil` (v0.8.0):**
 - USDA texture class from clay, sand and silt content (12 classes) and its assignment to HSG A-D (rules from Kartograf 0.8.0, Kartograf ADR-025)
 - HSG raster (GeoTIFF `uint8`: 0 - no data, 1-4 are A-D) from clay, sand and silt rasters (e.g. SoilGrids in g/kg) and group areas over the whole catchment or within a bbox rectangle (extra `hydrolog[raster]`)
 - USDA-NRCS CN tables for HSG + land cover combinations (`runoff.cn_lookup`) and area-weighted CN (`cn weighted`)
@@ -145,7 +145,7 @@ Hydrolog is analogous to **Kartograf** (spatial data download) and **Obserwator*
 - `urban_pct` - percentage of built-up area [%] (Nash)
 - `forest_pct` - percentage of forest cover [%] (Nash)
 
-**WatershedParameters - fields added in v1.0.0 (ADR-0019):**
+**WatershedParameters - fields added in v0.8.0 (ADR-0019):**
 - `flow_path_length_km` - length of the longest flow path, from the hydraulically most distant point of the watershed to the outlet [km] (Kirpich, NRCS, Kerby-Kirpich)
 - `flow_path_slope_m_per_m` - slope of that path, (elevation of its head - outlet elevation) / length [m/m] (Kirpich, Kerby-Kirpich)
 
@@ -169,9 +169,9 @@ Hydrolog is analogous to **Kartograf** (spatial data download) and **Obserwator*
 
 ---
 
-#### 2.1.6 Module `cli` - CLI (v0.4.0, rebuilt in v1.0.0) ✅
+#### 2.1.6 Module `cli` - CLI (v0.4.0, rebuilt in v0.8.0) ✅
 
-Since v1.0.0 the CLI is generated from the command catalog (`hydrolog.catalog`): 62 commands in 17 groups (list: `hydrolog commands list`). Syntax: `hydrolog <group> <command> --option value`; global flags `--json`, `--schema`, `--lang pl|en`, `-v`, `-q`, `-V`. The former CLI syntax (v0.4.0-v0.7.0) was removed without aliases.
+Since v0.8.0 the CLI is generated from the command catalog (`hydrolog.catalog`): 62 commands in 17 groups (list: `hydrolog commands list`). Syntax: `hydrolog <group> <command> --option value`; global flags `--json`, `--schema`, `--lang pl|en`, `-v`, `-q`, `-V`. The former CLI syntax (v0.4.0-v0.7.0) was removed without aliases.
 
 
 ```bash
@@ -208,7 +208,7 @@ Other groups: `precip`, `hydrograph`, `route`, `morphometry`, `network`, `stats`
 
 ---
 
-#### 2.1.6a Operations Layer, Command Catalog and Agent Interfaces (v1.0.0)
+#### 2.1.6a Operations Layer, Command Catalog and Agent Interfaces (v0.8.0)
 
 - **Command catalog** (`hydrolog.catalog`) - a single source of truth: `Command` and `Option` declarations (English texts with Polish translations, units, ranges, `one_of` groups, examples), `data_commands()`, `command_schema()`, `validate_command()`, `run_command()`, `format_command()`/`parse_command()` (a call as the canonical CLI line and back) and the registry of notice codes `NOTICES` (ADR-0015)
 - **Operations layer** (`hydrolog.operations`) - one public, typed function per command; it composes existing classes and contains no new hydrology
@@ -304,7 +304,7 @@ The module requires optional dependencies: `pip install hydrolog[viz]`
 
 ---
 
-#### 2.1.11 Module `routing` - Flood Routing (v1.0.0, ADR-0007)
+#### 2.1.11 Module `routing` - Flood Routing (v0.8.0, ADR-0007)
 
 Lumped hydrologic routing of discharge hydrographs (storage and translation); water levels,
 inundation, backwater and structures stay with Hydraulik, HEC-RAS and IMGW HD.
@@ -351,7 +351,7 @@ inundation, backwater and structures stay with Hydraulik, HEC-RAS and IMGW HD.
   waves, reservoir operation (gates and release rules: the outflow is the one the table gives;
   plan `docs/plans/2026-10-24-flood-routing.md`)
 
-#### 2.1.12 Module `gui` - Web GUI (v1.0.0, ADR-0014)
+#### 2.1.12 Module `gui` - Web GUI (v0.8.0, ADR-0014)
 
 A browser GUI in Polish and in Nogat's visual identity for people who compute with Hydrolog,
 started with `hydrolog gui serve` (extra `hydrolog[gui]`: Starlette, uvicorn and Obserwator;
@@ -417,7 +417,7 @@ group `nogat.gui`.
 **Data download:**
 - ❌ Downloading the digital elevation model (DEM, Polish NMT) (→ Kartograf)
 - ❌ Downloading land cover (→ Kartograf)
-- ❌ Downloading soil rasters (→ Kartograf `download_soil`); computing HSG from already downloaded texture rasters is in scope (module `soil`, since v1.0.0)
+- ❌ Downloading soil rasters (→ Kartograf `download_soil`); computing HSG from already downloaded texture rasters is in scope (module `soil`, since v0.8.0)
 - ❌ Downloading IMGW data (→ Obserwator); Hydrolog reads a ready-made CSV/JSON file from the export. The one exception is the PMAXTP depth of a point, which `precip pmaxtp` fetches through Obserwator (ADR-0018)
 - ❌ A public REST API (interfaces: Python library, CLI, MCP server and the web GUI; the GUI's private server routes serve its page only and are not a REST interface, ADR-0014)
 - ❌ Database operations (the GUI's own file of „Zgłoś uwagę” aside)
@@ -433,8 +433,8 @@ group `nogat.gui`.
 
 ### 2.3 ⏳ FUTURE SCOPE - Planned for the Future
 
-**Post v1.0:**
-- Empirical peak flow formulas (Punzet, Bogdanowicz-Stachy) - project owner decision of 2026-10-19: in scope, but after v1.0.0
+**After v0.8.0:**
+- Empirical peak flow formulas (Punzet, Bogdanowicz-Stachy) - project owner decision of 2026-10-19: in scope, but after the next release (then 1.0.0, now 0.8.0: the author's decision of 2026-11-14)
 - Rational method (Q = CIA) for small catchments
 - Parameter calibration
 - Uncertainty analysis (Monte Carlo)
@@ -481,7 +481,7 @@ hydrolog/
 ├── time/                    # Characteristic times
 │   ├── __init__.py
 │   └── concentration.py    # tc calculations (6 methods)
-├── routing/                 # Flood routing (v1.0.0, ADR-0007)
+├── routing/                 # Flood routing (v0.8.0, ADR-0007)
 │   ├── __init__.py
 │   ├── hydrograph.py       # Hydrograph (regular-step table), check_table
 │   ├── reach.py            # Reach (template), RoutingResult, RoutingNotice
@@ -492,13 +492,13 @@ hydrolog/
 │   ├── cascade.py          # CascadeReach (exact gamma kernel), cascade_weights
 │   ├── level_pool.py       # LevelPoolReach (storage indication), timestep_limit_min
 │   └── _kernels.py         # Three-point recurrences, shared with ClarkIUH
-├── _serialization.py        # to_jsonable(), JsonResultMixin (to_dict/to_json) (v1.0.0)
+├── _serialization.py        # to_jsonable(), JsonResultMixin (to_dict/to_json) (v0.8.0)
 ├── _warnings.py             # HydrologWarning: library warnings with stable codes and details (ADR-0015)
 ├── _pmaxtp.py               # PMAXTP of IMGW-PIB through Obserwator, imported lazily ([pmaxtp] extra, ADR-0018)
 ├── _attribution.py          # The providers' lines of every product (Nogat DEV §20, ADR-0028)
-├── agent_guide.py           # AGENTS.md / llms.txt generator from the catalog (v1.0.0)
+├── agent_guide.py           # AGENTS.md / llms.txt generator from the catalog (v0.8.0)
 ├── _data/agents/            # Agent guide templates (English)
-├── catalog/                 # Command catalog (v1.0.0)
+├── catalog/                 # Command catalog (v0.8.0)
 │   ├── spec.py              # Command, Option
 │   ├── envelope.py          # hydrolog-result/1 envelope, Notice
 │   ├── inputs.py            # Series, hydrographs, stations, catchments from JSON or CSV/JSON files
@@ -506,15 +506,15 @@ hydrolog/
 │   ├── lines.py             # format_command, parse_command (canonical CLI line, ADR-0015)
 │   ├── notices.py           # NOTICES registry, NoticeSpec, notice() (ADR-0015)
 │   └── groups/              # One module per command group (COMMANDS)
-├── operations/              # One public function per catalog command (v1.0.0)
-├── mcp/                     # MCP server (v1.0.0, [mcp] extra)
-├── gui/                     # Web GUI server and gui_module() (v1.0.0, [gui] extra, ADR-0014)
+├── operations/              # One public function per catalog command (v0.8.0)
+├── mcp/                     # MCP server (v0.8.0, [mcp] extra)
+├── gui/                     # Web GUI server and gui_module() (v0.8.0, [gui] extra, ADR-0014)
 │   └── web/                 # Static files of the page (Preact and htm without a build), Nogat's GUI kit (nogat/), the admin panel (admin/)
-├── soil/                    # HSG from soil texture (v1.0.0)
+├── soil/                    # HSG from soil texture (v0.8.0)
 │   ├── texture.py           # USDA texture triangle, texture → HSG (NumPy only)
 │   ├── hsg.py               # classify_hsg(), hsg_statistics_array()
 │   └── raster.py            # GeoTIFF input/output ([raster] extra)
-├── cli/                     # CLI generated from the catalog (v1.0.0)
+├── cli/                     # CLI generated from the catalog (v0.8.0)
 │   ├── main.py              # Entry point (hydrolog.cli.main:main)
 │   ├── parser.py            # argparse parser from catalog declarations
 │   ├── args.py, values.py   # Handling of command-line options and values
@@ -578,7 +578,7 @@ hydrolog/
 - `viz`: matplotlib >= 3.7 + seaborn >= 0.12 (module `visualization`)
 - `all`: all of the above
 
-Hydrolog does not depend on Kartograf, and on Obserwator only through the extras `pmaxtp`, `gui` and `all`; the former `spatial` extra (Kartograf) was removed in v1.0.0.
+Hydrolog does not depend on Kartograf, and on Obserwator only through the extras `pmaxtp`, `gui` and `all`; the former `spatial` extra (Kartograf) was removed in v0.8.0.
 
 ### 3.3 API Design
 
@@ -632,9 +632,9 @@ print(f"Time to peak: {result.time_to_peak_min} min")
 | **v0.6.3** | FAA + Kerby + Kerby-Kirpich tc, API audit, WatershedParameters extension | `time.concentration`, `morphometry.watershed_params`, `reports` | ✅ Released |
 | **v0.6.4** | WatershedParams extension + UH ordinates + docs audit | `morphometry.watershed_params`, `runoff.generator`, `reports`, `docs` | ✅ Released |
 | **v0.7.0** | Hydrological statistics + Hydrometry | `statistics`, `hydrometrics`, `visualization.statistics` | ✅ Released |
-| **v1.0.0** | Stable API, command catalog, catalog-based CLI, MCP server, HSG, result serialization, calculation fixes, station analyses | `catalog`, `operations`, `mcp`, `soil`, `cli`, `agent_guide`, `statistics`, `hydrometrics` | 🔄 In preparation |
-| **v1.0.0** | Flood routing | `routing` | ✅ Merged into `develop` (ADR-0007) |
-| **v1.0.0** | Web GUI, standalone and as a Nogat module | `gui`, `catalog` | ✅ Merged into `develop` (ADR-0014, ADR-0015) |
+| **v0.8.0** | Command catalog, catalog-based CLI, MCP server, HSG, result serialization, calculation fixes, station analyses | `catalog`, `operations`, `mcp`, `soil`, `cli`, `agent_guide`, `statistics`, `hydrometrics` | 🔄 In preparation |
+| **v0.8.0** | Flood routing | `routing` | ✅ Merged into `develop` (ADR-0007) |
+| **v0.8.0** | Web GUI, standalone and as a Nogat module | `gui`, `catalog` | ✅ Merged into `develop` (ADR-0014, ADR-0015) |
 
 ---
 
@@ -702,4 +702,4 @@ print(f"Time to peak: {result.time_to_peak_min} min")
 
 **Document version:** 1.9
 **Last updated:** 2026-11-14
-**Status:** v1.0.0 in preparation
+**Status:** v0.8.0 in preparation

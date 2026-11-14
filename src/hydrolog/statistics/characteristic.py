@@ -785,7 +785,7 @@ def calculate_monthly_statistics(
     interval (it needs ``n - 1 >= 1`` degrees of freedom): for such a month
     ``std_values``, ``cv_values``, ``skewness_values``, ``ci_lower`` and
     ``ci_upper`` are ``NaN`` (no warning is issued), while the maximum, mean,
-    median and minimum are the value itself. Before 1.0.0 the interval of such a
+    median and minimum are the value itself. Before 0.8.0 the interval of such a
     month was reported as the zero-width interval ``[mean, mean]``, which claims an
     exactly known mean, and NumPy warned about the undefined deviation.
 

@@ -34,7 +34,7 @@ from hydrolog.exceptions import (
 if TYPE_CHECKING:
     from hydrolog.catalog import CommandResult, Document, ParsedCommand
 
-__version__ = "1.0.0.dev0"
+__version__ = "0.8.0.dev0"
 __author__ = "Piotr de Bever"
 
 __all__ = [

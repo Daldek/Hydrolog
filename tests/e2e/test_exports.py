@@ -547,7 +547,10 @@ def test_nogats_example_opens_from_the_clipboard_and_matches_its_result(
         "data-handoff-verdict", "ok"
     )
     assert compared(page, HG) == {
-        "version": [f"Hydrolog {hydrolog.__version__}"] * 2,
+        "version": [
+            f"Hydrolog {D15['producer']['version']}",
+            f"Hydrolog {hydrolog.__version__}",
+        ],
         "q": ["57,88 m³/s", "57,88 m³/s"],
         "tp": ["6:40 h", "6:40 h"],
         "volume": ["1 046 713 m³", "1 046 713 m³"],

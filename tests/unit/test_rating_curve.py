@@ -130,7 +130,7 @@ class TestRatingCurveErrors:
     def test_non_convergence_is_a_calculation_error_catchable_as_before(
         self, curve_data, monkeypatch
     ):
-        """Raised as ``InvalidParameterError`` (a ``ValueError``) before 1.0.0, so
+        """Raised as ``InvalidParameterError`` (a ``ValueError``) before 0.8.0, so
         that is still what ``except`` clauses written for it catch."""
         from hydrolog.exceptions import CalculationError, InvalidParameterError
         from hydrolog.hydrometrics import RatingCurve, RatingCurveFitError, rating_curve
