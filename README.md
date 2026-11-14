@@ -327,7 +327,7 @@ sqlite3 ~/.local/share/nogat/hydrolog/feedback.sqlite3 \
 sqlite3 ~/.local/share/nogat/hydrolog/feedback.sqlite3 ".backup feedback-backup.sqlite3"
 ```
 
-**The admin panel** (Nogat DEV-15.13, ECO-067; kit 0.7.0) is `admin/` under the GUI's address (`http://127.0.0.1:8070/admin/`; `admin` answers `308` to it), Nogat's `<nogat-admin>` with three sections: „Zgłoszenia” lists the reports newest first with the count of unread ones, shows each one's context, marks it read or unread and deletes it after a question; „Statystyki” shows the daily totals of `stats.jsonl` for 7, 30 or 90 days or the whole record, and saves them as CSV; „Stan” shows the version, the start, the uptime, the data directory `<data_dir>/hydrolog`, the free disk and two checks:
+**The admin panel** (Nogat DEV-15.13, ECO-067; kit 1.0.0) is `admin/` under the GUI's address (`http://127.0.0.1:8070/admin/`; `admin` answers `308` to it), Nogat's `<nogat-admin>` with three sections: „Zgłoszenia” lists the reports newest first with the count of unread ones, shows each one's context, marks it read or unread and deletes it after a question; „Statystyki” shows the daily totals of `stats.jsonl` for 7, 30 or 90 days or the whole record, and saves them as CSV; „Stan” shows the version, the start, the uptime, the data directory `<data_dir>/hydrolog`, the free disk and two checks:
 
 - `data_dir`: the data directory can be written (a probe file, made and removed at once), or, before the first report, the directory above it, where the first write makes it; `failed` otherwise.
 - `feedback_db`: the reports' file can be read, with its counts of reports and unread ones; without a file, `ok` until the first report; `failed` when it is not a readable database.

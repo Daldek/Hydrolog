@@ -1612,10 +1612,12 @@ gui = { hydrolog = "http://127.0.0.1:8070/", hydrograf = "http://127.0.0.1:8080/
 ### Your data in the GUI
 
 - **Inputs stay in the browser.** Each section keeps its inputs, never its results, in the
-  browser's `localStorage` under `hydrolog-gui/<section>/<version>` until „Wyczyść” (Sieć's
-  version is 3 since its network wizard, and version 2 is not read); with them Hydrogram zlewni
-  and Sieć keep the PMAXTP depths they fetched (`pmaxtp_fetched`), so a reload does not fetch
-  them again, and Sieć the positions, descriptions and origins of its nodes (its history of
+  browser's `localStorage` under `hydrolog-gui/<section>/1` until „Wyczyść” (every stored shape
+  is version 1 until the first release, Nogat REL-1.4: inputs kept under an earlier id, e.g.
+  Sieć's `hydrolog-gui/siec/3`, move to version 1 when the section opens, and an older shape is
+  dropped); with them Hydrogram zlewni and Sieć keep the PMAXTP depths they fetched
+  (`pmaxtp_fetched`), so a reload does not fetch them again, and Sieć the positions,
+  descriptions and origins of its nodes (its history of
   „Cofnij” stays in the page's memory). The widths of the panels are `hydrolog-gui/layout/1`,
   the choice „Nie pokazuj ponownie” of the welcome dialog `hydrolog-gui/welcome/1` and the theme
   `nogat-theme`, which Nogat's other pages on the same address share.
@@ -1659,21 +1661,24 @@ browser's `User-Agent` or the client's IP address: the server refuses any other 
 ([section 6](#6-settings); `hydrolog config show` prints `data_dir`), which the first report
 makes, with its directory (mode 0700, the file 0600). One table, `feedback`: `id`, `created_at`
 (UTC), `message`, `context` (JSON text) and `is_read`, with the limits as checks; `PRAGMA
-user_version` is 2, and a deleted report is overwritten in the file (`secure_delete`). The file
+user_version` is 1, and a deleted report is overwritten in the file (`secure_delete`). The file
 is in WAL mode, so the server, the admin page and `sqlite3` can read it at the same time. A host
-that mounts the GUI chooses the directory with `create_app(data_dir=...)`.
+that mounts the GUI chooses the directory with `create_app(data_dir=...)`. A file of this table
+with `user_version` 2 (its id before Nogat REL-1.4, when every format went back to version 1
+until the first release) is read as it is and set to 1 when the server opens it.
 
-**Reports of the earlier form.** A file of version 1 (the dialog with a name or e-mail, the
-page's address, the browser and diagnostics) is copied whole, with the sqlite backup API, to
-`feedback-v1-<UTC time>.sqlite3` beside it (mode 0600) the first time the server opens it; then
-its reports keep their ids, dates, texts and read flags, get the context their page's address and
-diagnostics give (`view`, `parameters`), and the rest leaves the file (it is vacuumed). The copy
-still holds the contacts, addresses and browsers: it is the operator's to read and delete once its
-reports are handled.
+**Reports of the earlier form.** A file of the earlier form (the dialog with a name or e-mail,
+the page's address, the browser and diagnostics; `user_version` 1 or 0), recognised by its
+columns `contact`, `page_url`, `user_agent` and `diagnostics`, is copied whole, with the sqlite
+backup API, to `feedback-v1-<UTC time>.sqlite3` beside it (mode 0600) the first time the server
+opens it; then its reports keep their ids, dates, texts and read flags, get the context their
+page's address and diagnostics give (`view`, `parameters`), and the rest leaves the file (it is
+vacuumed). The copy still holds the contacts, addresses and browsers: it is the operator's to
+read and delete once its reports are handled.
 
 **The admin panel** (Nogat DEV-15.13, ECO-067). `admin/` under the GUI's address
 (`http://127.0.0.1:8070/admin/`; `admin` without the slash answers `308` to it) is Nogat's kit
-panel `<nogat-admin>` (kit 0.7.0) alone: no footer, regulamin link or menu „Aplikacje”, and
+panel `<nogat-admin>` (kit 1.0.0) alone: no footer, regulamin link or menu „Aplikacje”, and
 `noindex`. It asks for the key and keeps it in the browser tab only (`sessionStorage`,
 `hydrolog/admin-key/1`, until „Wyloguj”), then shows three sections:
 
@@ -1827,7 +1832,7 @@ request_window = 60
 ```
 
 - **The regulamin.** The server fills the regulamin of Nogat's GUI kit (`web/nogat/nogat-terms.html`,
-  kit 0.7.1, regulamin 1.0) with these values and the blocks of Hydrolog's sources (PMAXTP,
+  kit 1.0.0, regulamin 1.0) with these values and the blocks of Hydrolog's sources (PMAXTP,
   IMGW-PIB, ČHMÚ), serves it at `regulamin.html` beside the page and links it without a footer
   ([ADR-0039](decisions/0039-the-regulamin-in-the-rail-and-the-welcome-no-footer.md)): the small
   link „Regulamin” at the bottom of the rail of the sections (not in a phone's bottom bar), the
@@ -1837,7 +1842,7 @@ request_window = 60
   or empty (only `processor_transfer`, `processor_cookie` and `mail_transfer` may be empty)
   leaves no page and no link, with the warning `No regulamin: missing values: …` on standard
   error, before the record `start` ([Logs](#logs)). A change needs a restart. A new version of
-  the regulamin is published with its own `terms_effective`; kit 0.7.1 corrects 1.0 in place.
+  the regulamin is published with its own `terms_effective`; the kit corrects 1.0 in place.
 - **The request limit.** At most `request_limit` requests of one client address in
   `request_window` seconds; the address stays in the server's memory for its window only. Static
   files and the catalog documents (`api/commands…`, `api/schemas/…`) are not counted, a page load

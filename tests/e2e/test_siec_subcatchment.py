@@ -63,7 +63,7 @@ HYDROGRAF = FIXTURES / "handoff_hydrograf.json"
 LEFT = f"{SECTION} .view-panel.left"
 RIGHT = f"{SECTION} .view-panel.right"
 CENTRE = f"{SECTION} .view-center"
-STORED = "() => JSON.parse(localStorage.getItem('hydrolog-gui/siec/3'))"
+STORED = "() => JSON.parse(localStorage.getItem('hydrolog-gui/siec/1'))"
 RUNOFF_VALUES: dict[str, float] = {
     "tc_min": 120.0,
     "clark_r_min": 90.0,

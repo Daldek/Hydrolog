@@ -1,5 +1,5 @@
 // State of „Statystyka przepływów”: the inputs of `stats flood-frequency` kept in the browser
-// under "hydrolog-gui/statystyka/3" (the form's values, the source, the return period
+// under "hydrolog-gui/statystyka/1" (the form's values, the source, the return period
 // highlighted in the results, null for „brak”, the combinations shown and the axis ranges the
 // person set, as typed; no results); the columns of the chosen file, read in the browser from
 // its header; the ranking of the annual maxima for display; the combinations of distribution

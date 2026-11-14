@@ -295,7 +295,7 @@ def stored_options(page: Page) -> dict[str, Any]:
     options: dict[str, Any] = page.evaluate(
         """async () => {
           const s = await import('./src/sections/hydrogram/state.js');
-          const stored = localStorage.getItem('hydrolog-gui/hydrogram/2');
+          const stored = localStorage.getItem('hydrolog-gui/hydrogram/1');
           return s.toOptions(s.normalize(JSON.parse(stored)));
         }"""
     )
@@ -519,7 +519,7 @@ def test_nogats_example_opens_from_the_clipboard_and_matches_its_result(
         "uh_model": "scs",
     }
     kept = page.evaluate(
-        "() => JSON.parse(localStorage.getItem('hydrolog-gui/hydrogram/2')).watershed"
+        "() => JSON.parse(localStorage.getItem('hydrolog-gui/hydrogram/1')).watershed"
     )
     assert kept["channel_slope_m_per_m"] == input_text(
         node["watershed"]["channel_slope_m_per_m"]

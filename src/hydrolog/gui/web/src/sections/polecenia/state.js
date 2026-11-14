@@ -1,6 +1,6 @@
 // State of „Wszystkie polecenia”: the catalog (the list and each command's document), the
 // groups and the search, and the inputs kept in the browser under
-// "hydrolog-gui/polecenia/2": the chosen command, the group and the search, and the
+// "hydrolog-gui/polecenia/1": the chosen command, the group and the search, and the
 // values of each command's form (no results). A first visit chooses no command; a command
 // opened for the first time has an empty form (outputDefaults: only the default names of
 // its required output files).

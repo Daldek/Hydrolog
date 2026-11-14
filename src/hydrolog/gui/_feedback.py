@@ -14,11 +14,14 @@ time, so concurrent requests, and other processes on the same file, are safe.
 
 The table ``feedback`` holds ``id``, ``created_at`` (UTC, ``2026-11-03T10:15:00Z``),
 ``message``, ``context`` (JSON text) and ``is_read`` (0 or 1), with the limits as
-``CHECK`` constraints; ``PRAGMA user_version`` is 2. A file of version 1 (the form with
-a contact, the page's address, the browser and diagnostics) is copied whole to
-``feedback-v1-<UTC time>.sqlite3`` beside it, for the operator to decide on, before its
-reports are moved to version 2 with the context their address and diagnostics give
-(``view``, ``parameters``) and the rest dropped from the file.
+``CHECK`` constraints; ``PRAGMA user_version`` is 1 (Nogat REL-1.4: every format is
+version 1 until the first release). A file of the older form (a contact, the page's
+address, the browser and diagnostics; ``user_version`` 1 or 0), recognised by its
+columns, is copied whole to ``feedback-v1-<UTC time>.sqlite3`` beside it, for the
+operator to decide on, before its reports are moved to the current table with the
+context their address and diagnostics give (``view``, ``parameters``) and the rest
+dropped from the file. A file of the current table with ``user_version`` 2 (its id
+before REL-1.4) is the same table: its ``user_version`` is set to 1 on opening.
 """
 
 from __future__ import annotations
@@ -60,8 +63,12 @@ _LOG = logging.getLogger(__name__)
 
 FILE_NAME: Final = "feedback.sqlite3"
 """The file of the reports in ``<data_dir>/hydrolog``."""
-VERSION: Final = 2
-"""``PRAGMA user_version`` of the file."""
+VERSION: Final = 1
+"""``PRAGMA user_version`` of the file (Nogat REL-1.4)."""
+_EARLIER_VERSION: Final = 2
+"""``user_version`` of the current table before Nogat REL-1.4, read as ``VERSION``."""
+_OLD_COLUMNS: Final = frozenset({"contact", "page_url", "user_agent", "diagnostics"})
+"""The columns that mark the older form of the table, which is migrated."""
 MESSAGE_MAX: Final = 5000
 VIEW_MAX: Final = 200
 STATION_MAX: Final = 200
@@ -306,7 +313,7 @@ def _now() -> str:
 
 
 def _old_context(page_url: object, diagnostics: object) -> str:
-    """Return the context of a report of version 1: its view and inputs.
+    """Return the context of a report of the older form: its view and inputs.
 
     The view is the section and route of its diagnostics, else the fragment of its
     page's address; the parameters are the inputs of its diagnostics. The contact, the
@@ -363,7 +370,8 @@ class FeedbackStore:
         """Yield a connection in autocommit mode, one call at a time in this process.
 
         Without the file, ``create`` makes it (and its directory) and the table;
-        otherwise it yields ``None``. A file of version 1 is moved to version 2 first.
+        otherwise it yields ``None``. A file of the older form is migrated first, and a
+        ``user_version`` of 2 on the current table becomes 1.
         """
         with self._lock:
             if not self.path.is_file():
@@ -380,16 +388,24 @@ class FeedbackStore:
                 connection.execute("PRAGMA secure_delete = ON")
                 if not self._ready:
                     connection.execute("PRAGMA journal_mode = WAL")
-                    version = connection.execute("PRAGMA user_version").fetchone()[0]
-                    if version == 0:
+                    columns = {
+                        row[1]
+                        for row in connection.execute("PRAGMA table_info(feedback)")
+                    }
+                    if not columns:
                         connection.executescript(_SCHEMA)
-                    elif version == 1:
+                    elif _OLD_COLUMNS.issubset(columns):
                         self._migrate(connection)
+                    elif (
+                        connection.execute("PRAGMA user_version").fetchone()[0]
+                        == _EARLIER_VERSION
+                    ):
+                        connection.execute(f"PRAGMA user_version = {VERSION}")
                     self._ready = True
                 yield connection
 
     def _migrate(self, connection: sqlite3.Connection) -> None:
-        """Move a file of version 1 to version 2, after a whole copy beside it."""
+        """Move a file of the older form to the current table, after a whole copy."""
         stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
         copy = self.path.with_name(f"feedback-v1-{stamp}.sqlite3")
         os.close(os.open(copy, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600))
@@ -401,9 +417,9 @@ class FeedbackStore:
         ).fetchall()
         connection.execute("BEGIN IMMEDIATE")
         try:
-            connection.execute(_TABLE.format(name="feedback_v2"))
+            connection.execute(_TABLE.format(name="feedback_new"))
             connection.executemany(
-                "INSERT INTO feedback_v2 (id, created_at, message, context, is_read)"
+                "INSERT INTO feedback_new (id, created_at, message, context, is_read)"
                 " VALUES (?, ?, ?, ?, ?)",
                 [
                     (number, created, message, _old_context(page, recorded), read)
@@ -414,16 +430,16 @@ class FeedbackStore:
             # the old one's AUTOINCREMENT counter
             connection.execute(
                 "UPDATE sqlite_sequence SET seq = (SELECT seq FROM sqlite_sequence"
-                " WHERE name = 'feedback') WHERE name = 'feedback_v2' AND seq <"
+                " WHERE name = 'feedback') WHERE name = 'feedback_new' AND seq <"
                 " (SELECT seq FROM sqlite_sequence WHERE name = 'feedback')"
             )
             connection.execute(
-                "INSERT INTO sqlite_sequence (name, seq) SELECT 'feedback_v2', seq"
+                "INSERT INTO sqlite_sequence (name, seq) SELECT 'feedback_new', seq"
                 " FROM sqlite_sequence WHERE name = 'feedback' AND NOT EXISTS"
-                " (SELECT 1 FROM sqlite_sequence WHERE name = 'feedback_v2')"
+                " (SELECT 1 FROM sqlite_sequence WHERE name = 'feedback_new')"
             )
             connection.execute("DROP TABLE feedback")
-            connection.execute("ALTER TABLE feedback_v2 RENAME TO feedback")
+            connection.execute("ALTER TABLE feedback_new RENAME TO feedback")
             connection.execute(_INDEX)
             connection.execute(f"PRAGMA user_version = {VERSION}")
         except BaseException:
@@ -433,11 +449,10 @@ class FeedbackStore:
         connection.execute("VACUUM")  # no page of the old table stays in the file
         connection.execute("PRAGMA wal_checkpoint(TRUNCATE)")
         _LOG.warning(
-            "Moved %d feedback reports to version %d; the previous file, with its "
-            "contacts, addresses, browsers and diagnostics, is kept as %s for the "
-            "operator to decide on",
+            "Moved %d feedback reports of the older form to the current table; the "
+            "previous file, with its contacts, addresses, browsers and diagnostics, is "
+            "kept as %s for the operator to decide on",
             len(rows),
-            VERSION,
             copy.name,
         )
 

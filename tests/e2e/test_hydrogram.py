@@ -154,7 +154,7 @@ SIDEWAYS = """() => [document.documentElement,
   ...document.querySelectorAll('.view-panel.open .view-panel-body')]
   .filter((element) => element.scrollWidth > element.clientWidth)
   .map((element) => element.className || element.tagName)"""
-STORED = "() => JSON.parse(localStorage.getItem('hydrolog-gui/hydrogram/2'))"
+STORED = "() => JSON.parse(localStorage.getItem('hydrolog-gui/hydrogram/1'))"
 """The inputs the page keeps."""
 IDS = "items => items.map((item) => item.id)"
 EXPLAINED = """async () => {
@@ -334,12 +334,6 @@ def typed(*names: str) -> dict[str, str]:
 
 
 def test_a_first_visit_shows_three_empty_steps_and_runs_nothing(tab: Tab) -> None:
-    # The inputs of the five steps (the version 1 key) are no longer read
-    tab.page.add_init_script(
-        "try { localStorage.setItem('hydrolog-gui/hydrogram/1',"
-        " JSON.stringify({uh_model: 'scs', total_mm: '105', watershed: {cn: '65'}}));"
-        " } catch (error) {}"
-    )
     runs = Runs(tab.page)
     tab.open("#hydrogram")
     page = tab.page

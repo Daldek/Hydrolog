@@ -97,7 +97,7 @@ KAMIENNIK: dict[str, Any] = json.loads(
 )
 """The watershed of the guide's worked example, Kamiennik at Świerzawa (a
 WatershedParameters JSON, as ``--watershed-file`` reads it)."""
-HYDROGRAM_KEY = "hydrolog-gui/hydrogram/2"
+HYDROGRAM_KEY = "hydrolog-gui/hydrogram/1"
 """Where Hydrogram zlewni keeps its inputs (``persist.js``)."""
 GUIDE_NETWORK = (
     Path(__file__).resolve().parents[2]
