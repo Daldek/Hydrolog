@@ -8,6 +8,10 @@
 - Amends: [ADR-0002](0002-result-envelope-and-domain-documents.md) (the envelope gains `attribution` and
   `terms_notice`) and [ADR-0018](0018-pmaxtp-through-obserwator.md) (PMAXTP's own lines replace the attribution of
   the general terms of IMGW-PIB)
+- Amended by [ADR-0035](0035-one-strip-of-the-providers-lines-per-gui-view.md) (2026-11-13): point 7, what the GUI
+  shows on screen
+- Amended by [ADR-0036](0036-link-the-providers-terms-instead-of-restating-them.md) (2026-11-13): points 1 and 7, the
+  lines and the terms notice
 
 ## Context
 

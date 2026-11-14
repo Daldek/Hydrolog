@@ -1,8 +1,8 @@
 # Computation Paths for Unit Hydrograph Models (plus HSG and the Fisher–Tippett Distribution)
 
-**Document version:** 1.10
-**Date:** 2026-11-13
-**Applies to:** Hydrolog >= 1.0.0 (sections 3.2.2, 3.3.6, 3.4.6, 3.4.7, 3.5, 3.6, 3.7 and 3.8 describe behaviour from v1.0.0; the rest: >= 0.6.0)
+**Document version:** 1.11
+**Date:** 2026-11-14
+**Applies to:** Hydrolog >= 1.0.0 (sections 3.2.2, 3.2.7, 3.3.4 (the time step limit), 3.3.6, 3.4.6, 3.4.7 and 3.5 to 3.14 describe behaviour from v1.0.0; the rest: >= 0.6.0)
 
 ---
 
@@ -75,7 +75,7 @@ This document serves as a guide that:
 | Feature | Value |
 |---------|-------|
 | **Type** | Synthetic, empirical |
-| **Input parameters** | `L_km`, `Lc_km`, `Ct`, `Cp` |
+| **Input parameters** | `area_km2`, `L_km`, `Lc_km`, `ct`, `cp` |
 | **Source** | Snyder (1938) |
 | **Characteristics** | Built-in estimation: `tL = Ct × (L × Lc)^0.3` |
 
@@ -1607,5 +1607,5 @@ These commands reduce a station's daily series (Obserwator's export or inline va
 
 ---
 
-**Document version:** 1.10
-**Last updated:** 2026-11-13
+**Document version:** 1.11
+**Last updated:** 2026-11-14

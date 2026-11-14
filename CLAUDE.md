@@ -6,7 +6,7 @@ hydrologic soil groups). Profile `tool` (DEV-1.1). It has no data store and down
 nothing, except `precip pmaxtp`, the one command that uses the network: it fetches the
 PMAXTP depth of IMGW-PIB through Obserwator (extra `pmaxtp`, ADR-0018). Otherwise
 Kartograf and Obserwator supply the input files. User documentation:
-[README.md](README.md). Nogat standard 2.1:
+[README.md](README.md). Nogat standard 1.0:
 [DEVELOPMENT_STANDARDS](https://github.com/Daldek/Nogat/blob/main/standards/DEVELOPMENT_STANDARDS.md),
 [AGENT_INTERFACE](https://github.com/Daldek/Nogat/blob/main/standards/AGENT_INTERFACE.md),
 [DOCUMENTATION_STANDARDS](https://github.com/Daldek/Nogat/blob/main/standards/DOCUMENTATION_STANDARDS.md).
@@ -90,14 +90,17 @@ src/hydrolog/
 │                 # _serving.py (uvicorn, the logs' start and stop), nogat_logging.py (Nogat's logs,
 │                 # copied byte for byte, ADR-0037), _runner.py, _worker.py (warm worker processes),
 │                 # _sessions.py (work directories), _feedback.py (reports of „Zgłoś uwagę”, SQLite),
-│                 # _admin.py (the admin panel's status and checks);
+│                 # _admin.py (the admin panel's status and checks), _public.py (a public GUI: request
+│                 # limit, daily totals), _terms.py (the regulamin), _extra.py (the extra's check);
 │                 # web/ (the page: Preact modules without a build; instrukcja/: the user guide;
 │                 # admin/: Nogat's admin panel, the kit shell alone; nogat/: Nogat's tokens,
 │                 # marks and GUI kit, copied byte for byte, ADR-0027)
 ├── agent_guide.py, _data/agents/   # generator and templates of AGENTS.md, llms.txt, block
 ├── exceptions.py, _errors.py       # HydrologError classes; registry generated from schemas/nogat
-├── _settings.py                    # lang/log_level/data_dir/state_dir: option > env > nogat.toml > default;
-│                                   # the admin key (env only)
+├── _settings.py                    # lang/log_level/data_dir/state_dir/request_limit/request_window:
+│                                   # option > env > nogat.toml > default; the admin key (env only)
+├── _attribution.py                 # the providers' lines (Nogat DEV §20), one source for every product
+├── _atomic.py                      # atomic writes, the staging directory, is_same_file
 ├── routing/      # reaches (lag, muskingum, cunge, cascade, level_pool); network.py (nodes, RoutingNetwork),
 │                 # points.py (ControlPointNetwork), rainfall.py, runoff.py, document.py (hydrolog-network/1),
 │                 # schematic.py, _layout.py, _svg.py (the metro-style map, hydrolog-network-schematic/1)

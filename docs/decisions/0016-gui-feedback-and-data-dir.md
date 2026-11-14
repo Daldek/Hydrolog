@@ -4,6 +4,10 @@
 - Date: 2026-11-04
 - Amends: [ADR-0004](0004-settings-and-config-show.md) (`data_dir` is used; one credential),
   [ADR-0014](0014-web-gui-enters-the-scope.md) (the private API gains the report routes and an admin page)
+- Amended by [ADR-0034](0034-a-public-gui-regulamin-limit-logs-totals.md) (2026-11-13): the report and its file (no
+  contact, no diagnostics; `feedback.sqlite3` version 2)
+- Amended by [ADR-0038](0038-nogats-admin-panel.md) (2026-11-14): the admin page is Nogat's kit panel `<nogat-admin>`,
+  and `PATCH` answers the report
 
 ## Context
 

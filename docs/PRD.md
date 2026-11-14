@@ -12,7 +12,7 @@
 
 ### 1.1 Vision
 
-Hydrolog is a Python library, a CLI and an MCP server that provide a set of tools for hydrological calculations - from generating runoff hydrographs to analysing catchment morphometric parameters, flow statistics and determining hydrologic soil groups. All interfaces are built from a single command catalog, so the same command works in code, in the terminal and in AI agent tools.
+Hydrolog is a Python library, a CLI, an MCP server and a web GUI that provide a set of tools for hydrological calculations - from generating runoff hydrographs to analysing catchment morphometric parameters, flow statistics and determining hydrologic soil groups. All interfaces are built from a single command catalog, so the same command works in code, in the terminal, in AI agent tools and in the browser.
 
 ### 1.2 Business Goals
 
@@ -44,8 +44,8 @@ Hydrolog is a Python library, a CLI and an MCP server that provide a set of tool
 
 **Acceptance criteria:**
 - [ ] Accepts: catchment area [km²], CN, time of concentration [min]
-- [ ] Accepts: a hyetograph (intensity array) or a Hietogram object
-- [ ] Returns: a HydrographResult object with Qmax, time to peak and volume
+- [ ] Accepts: a hyetograph (precipitation depths per time step [mm]) or a `HietogramResult`
+- [ ] Returns: a `HydrographGeneratorResult` object with Qmax, time to peak and volume
 - [ ] Returns: a time series (time, discharge) as numpy arrays
 - [ ] Supports AMC-I, AMC-II and AMC-III conditions
 - [ ] Raises an exception for invalid input (CN<0, CN>100, area<=0)
@@ -172,9 +172,9 @@ print(f"tc = {tc:.1f} min")
 **So that** I can characterise its shape
 
 **Acceptance criteria:**
-- [ ] Accepts: an elevation array (2D array), cell size [m]
+- [ ] Accepts: area [km²], perimeter [km], length [km] (`WatershedGeometry`)
 - [ ] Computes: area, perimeter, length, width
-- [ ] Returns: a dictionary or an object with the parameters
+- [ ] Returns: an object with the parameters (`GeometricParameters`)
 
 ---
 
@@ -318,7 +318,7 @@ print(f"tc = {tc:.1f} min")
 **So that** the library, CLI, MCP server and agent guides share the same option names, units, ranges and validation
 
 **Acceptance criteria:**
-- [x] 44 commands in 15 groups, list: `hydrolog commands list`
+- [x] 62 commands in 17 groups, list: `hydrolog commands list`
 - [x] Option schema (JSON Schema) for the whole catalog or a single command: `commands schema`, `--schema`
 - [x] Result envelope `hydrolog-result/1` and error document `hydrolog-error/1` with a closed `ERROR_CODES` registry
 - [x] All result classes have `to_dict()` and `to_json()`
@@ -382,8 +382,8 @@ print(f"tc = {tc:.1f} min")
 **So that** I can try parameters and see their effect without a compute button
 
 **Acceptance criteria:**
-- [ ] Section „Hydrogram zlewni” in five steps (watershed, also read from a `WatershedParameters` JSON; tc; rainfall; losses; UH); a valid change recomputes after 250 ms through `hydrograph generate`, and only the newest response is shown
-- [ ] The Kamiennik example shows „60,21 m³/s” at „6:20” and „1 046 213 m³” with the typed 105 mm of the mockup; switching the tc method, the AMC and the UH model gives the runs of the mockup. Since ADR-0018 the PMAXTP depth is fetched, not typed: the guide's worked example (51,01544 / 15,88984, p 1 %, 12 h, POT) fetched 101,82 mm on 2026-11-04 and shows 56,39 m³/s at 6:20 and 976 759 m³
+- [ ] Section „Hydrogram zlewni” in three steps (Zlewnia: the watershed with CN, also read from a `WatershedParameters` JSON; Hietogram: the rainfall; Hydrogram: the UH model with the tc method it needs, then the SCS-CN losses); a valid change recomputes after 250 ms through `hydrograph generate`, and only the newest response is shown
+- [ ] The section starts empty; the guide's worked example (Kamiennik at Świerzawa: Hydrograf's outlet 51,01544 / 15,88984, p 1 %, 12 h, POT) fetched 101,82 mm on 2026-11-04 and shows 56,39 m³/s at 6:20 and 976 759 m³; switching the tc method, the AMC and the UH model gives the runs of the mockup (ADR-0018)
 - [ ] Under PMAXTP the depth comes from `precip pmaxtp` for the point, p, the duration and the method, read-only and kept with the inputs, so a reload does not fetch again; no hydrograph is computed until it is known (ADR-0018)
 - [ ] Charts: the hydrograph with the hyetograph, the cumulative P, F and Pe, and the unit hydrograph of the run (`uh_times_min`, `uh_discharge_m3s_per_mm`); a table, the balance, the parameters and the notices in Polish
 - [ ] An invalid value (e.g. CN 150) shows on its field and keeps the last result, marked; ten fast edits send at most two runs and show the last
@@ -408,7 +408,7 @@ print(f"tc = {tc:.1f} min")
 
 **Acceptance criteria:**
 - [ ] Section „Statystyka przepływów”: a file (columns from its header, `date_column` for daily series) or pasted values; distributions and return periods; the probability plot and tables
-- [ ] The shipped sample gives the mockup's GEV „Q1% 307,3 m³/s” and the KZGW notice in Polish (from the notice code `short_record`)
+- [ ] The guide's annual maxima 1998–2023, pasted, give GEV by maximum likelihood „Q 1% = 307,3 m³/s” (the default fit is the L-moments, ADR-0021) and the KZGW notice in Polish (from the notice code `short_record`)
 - [ ] „Do porównania” draws a chosen quantile on the hydrograph of „Hydrogram zlewni”
 
 #### US-G04: Calculators
@@ -427,7 +427,7 @@ print(f"tc = {tc:.1f} min")
 **So that** I can run any calculation in the browser, also a command added after the GUI
 
 **Acceptance criteria:**
-- [ ] Section „Wszystkie polecenia” lists the 43 commands of the GUI (all but `gui serve`, `config show` and `commands guide`) under Polish group titles, with search
+- [ ] Section „Wszystkie polecenia” lists the 58 commands of the GUI (all but `gui serve`, `config show`, `commands guide` and `commands batch`) under Polish group titles, with search
 - [ ] Fields from `commands-1`: units, bounds, allowed values with their meanings, `one_of` groups, series, files; the `scs effective` and `uh nash` forms reproduce the mockup's validation and run
 - [ ] Errors placed on their field by `details.option` and worded in Polish from `code` and `reason`; an error without an option stands above the form
 - [ ] Input files upload into the session and outputs download
@@ -528,6 +528,8 @@ print(f"tc = {tc:.1f} min")
 - Seaborn >= 0.12 (optional, visualization module)
 - rasterio >= 1.3, pyproj >= 3.6 (optional, extra `[raster]`: HSG from rasters)
 - mcp >= 2.3, < 3 (optional, extra `[mcp]`: MCP server)
+- starlette >= 1.10, < 2, uvicorn >= 0.54, < 1 (optional, extra `[gui]`: web GUI)
+- obserwator >= 3.0.0.dev0, < 4 (optional, extras `[pmaxtp]` and `[gui]`: the PMAXTP depth of `precip pmaxtp`)
 - No dependency on GeoPandas/Shapely in the core
 
 ---
@@ -545,7 +547,7 @@ print(f"tc = {tc:.1f} min")
 
 - Input data: NumPy arrays, basic Python types
 - Thread-safe (no global state)
-- Input/output operations (CSV/JSON files, GeoTIFF, report writing) only in the operations/catalog layer and in the CLI/MCP; calculation classes do not read files
+- Input/output operations (CSV/JSON files) only in the operations/catalog layer and in the CLI, MCP server and GUI, apart from GeoTIFF in `hydrolog.soil.raster` and a report's file in `HydrologyReportGenerator`; calculation classes do not read files
 - No data downloading and no network access, except `precip pmaxtp`, which fetches the PMAXTP depth of a point from IMGW-PIB through Obserwator (extra `pmaxtp`, ADR-0018); other data is supplied as files by Obserwator and Kartograf
 
 ---
@@ -633,21 +635,23 @@ print(f"tc = {tc:.1f} min")
 - [x] Tests and documentation
 
 ### v1.0.0 - Stable API, command catalog, MCP, HSG *(in preparation)*
-- [x] `catalog`, `operations` - a catalog of 44 commands and the operations layer
+- [x] `catalog`, `operations` - a catalog of 62 commands in 17 groups and the operations layer
 - [x] `cli` - CLI generated from the catalog (breaking change: the former syntax was removed)
 - [x] `mcp` - MCP server (`hydrolog mcp`, extra `[mcp]`)
 - [x] `agent_guide` - `AGENTS.md` and `llms.txt` generated from the catalog
 - [x] `soil` - HSG from texture rasters (extra `[raster]`), removal of the Kartograf dependency
 - [x] Result serialization (`JsonResultMixin`), `ERROR_CODES` error registry
 - [x] Calculation fixes: Fisher-Tippett for minima, Clark UH for D that is not a multiple of the step, calculation report, StreamNetwork, RatingCurve (details: CHANGELOG)
+- [x] Station analyses for Obserwator's series: the groups `stats`, `hydrometrics` and `meteo` (ADR-0029 to ADR-0033)
+- [x] `gui` - the web GUI (`hydrolog gui serve`, extra `[gui]`, ADR-0014; section 2.16)
 - [ ] Empirical peak flow formulas (Punzet, Bogdanowicz-Stachy) - after v1.0.0
 - [ ] Complete API documentation (MkDocs/Sphinx)
 - [ ] Publication on PyPI
 
-### After v1.0.0 - Flood routing *(branches `feature/routing-*`, ADR-0007)*
+### v1.0.0 - Flood routing *(merged into `develop`, ADR-0007)*
 - [x] `routing` and the command group `route`: `Hydrograph`, `Reach`, lag (`route lag`), Muskingum (`route muskingum`), Muskingum-Cunge (`route muskingum-cunge`), cascade of linear reservoirs (`route cascade`), level-pool reservoir (`route level-pool`), river network (`route network`) (plan: `docs/plans/2026-10-24-flood-routing.md`)
 
 ---
 
 **Document version:** 1.0.0 (in preparation)
-**Last updated:** 2026-11-04
+**Last updated:** 2026-11-14

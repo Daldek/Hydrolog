@@ -9,6 +9,9 @@ bug reports, fixes, features, and documentation — are welcome.
 # Install the locked development environment (uv: https://docs.astral.sh/uv/)
 uv sync --locked
 
+# Once: Chromium for the browser tests of the web GUI, which the gate runs
+uv run --no-sync playwright install chromium
+
 # Run the gate before opening a pull request: ruff, mypy, tests with coverage
 # and the commit check (contributors keep their own identity, so skip the
 # author check)
@@ -25,7 +28,8 @@ Before your first contribution can be merged, we ask you to sign our
 
 - **What it is.** A short agreement in which you confirm that you wrote (or have
   the right to submit) your contribution, and that you grant the necessary rights
-  to use and redistribute it. The full text is in [`docs/CLA.md`](docs/CLA.md).
+  to use and redistribute it. Its text will be in `docs/CLA.md`, which is not
+  published yet.
 
 - **Why it is required.** It keeps the project's licensing on solid legal footing
   and preserves the option to relicense in the future if that ever becomes

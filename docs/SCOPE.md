@@ -2,8 +2,8 @@
 
 ## Hydrological Toolkit Library
 
-**Version:** 1.7
-**Date:** 2026-11-02
+**Version:** 1.9
+**Date:** 2026-11-14
 **Status:** v1.0.0 in preparation
 
 ---
@@ -22,7 +22,7 @@
 - Interpolating precipitation data
 - Classifying the river network
 - Determining hydrologic soil groups (HSG) from soil texture rasters
-- Flow statistics and hydrometry
+- Flow statistics, hydrometry and the meteorological statistics of a weather station's series
 - Lumped hydrologic flood routing: lag, Muskingum, Muskingum-Cunge, cascade of linear reservoirs, level-pool reservoir, river network (ADR-0007)
 - A single command catalog as the source of truth for the library, the CLI, the MCP server, the web GUI and the agent guides
 - A browser GUI in Polish, standalone and as a module of Nogat's GUI platform, that computes through the catalog (ADR-0014)
@@ -171,7 +171,7 @@ Hydrolog is analogous to **Kartograf** (spatial data download) and **Obserwator*
 
 #### 2.1.6 Module `cli` - CLI (v0.4.0, rebuilt in v1.0.0) ✅
 
-Since v1.0.0 the CLI is generated from the command catalog (`hydrolog.catalog`): 62 commands in 17 groups (list: `hydrolog commands list`). Syntax: `hydrolog <group> <command> --option value`; global flags `--json`, `--schema`, `--lang pl|en`, `-V`. The former CLI syntax (v0.4.0-v0.7.0) was removed without aliases.
+Since v1.0.0 the CLI is generated from the command catalog (`hydrolog.catalog`): 62 commands in 17 groups (list: `hydrolog commands list`). Syntax: `hydrolog <group> <command> --option value`; global flags `--json`, `--schema`, `--lang pl|en`, `-v`, `-q`, `-V`. The former CLI syntax (v0.4.0-v0.7.0) was removed without aliases.
 
 
 ```bash
@@ -203,7 +203,7 @@ hydrolog uh snyder --area-km2 100 --length-km 15 --centroid-length-km 8 --timest
 hydrolog uh scs --area-km2 45 --tc-min 90 --json
 ```
 
-Other groups: `precip`, `hydrograph`, `morphometry`, `network`, `stats`, `hydrometrics`, `meteo`, `soil`, `report`, `config`, `commands`.
+Other groups: `precip`, `hydrograph`, `route`, `morphometry`, `network`, `stats`, `hydrometrics`, `meteo`, `soil`, `report`, `config`, `gui`, `commands`.
 
 
 ---
@@ -212,7 +212,7 @@ Other groups: `precip`, `hydrograph`, `morphometry`, `network`, `stats`, `hydrom
 
 - **Command catalog** (`hydrolog.catalog`) - a single source of truth: `Command` and `Option` declarations (English texts with Polish translations, units, ranges, `one_of` groups, examples), `data_commands()`, `command_schema()`, `validate_command()`, `run_command()`, `format_command()`/`parse_command()` (a call as the canonical CLI line and back) and the registry of notice codes `NOTICES` (ADR-0015)
 - **Operations layer** (`hydrolog.operations`) - one public, typed function per command; it composes existing classes and contains no new hydrology
-- **Result envelope** `hydrolog-result/1` and error document `hydrolog-error/1` with a closed `ERROR_CODES` registry (CLI exit codes: 1, 2, 3, 4, 5, 6, 7, 9, 12, 13)
+- **Result envelope** `hydrolog-result/1` and error document `hydrolog-error/1` with a closed `ERROR_CODES` registry (CLI exit codes: 1, 2, 3, 4, 5, 6, 7, 9, 12, 13, and 130 after Ctrl-C, 143 after SIGTERM; a batch with failed calls ends with 10 or 11)
 - **Serialization** - all result classes have `to_dict()` and `to_json()` (`JsonResultMixin`)
 - **Data from files** - series, stations, network segments and catchments as CSV/JSON (including the Obserwator `export_series` export, read without conversion); `WatershedParameters` JSON is the `catchment_characteristics` format in Retman
 - **MCP server** (`hydrolog mcp`, extra `hydrolog[mcp]`) - every catalog command is a tool except `gui serve` (`agent_tool=False`, ADR-0015); file access is restricted to `--allow-dir` directories and writing needs `--allow-writes`
@@ -240,8 +240,7 @@ Other groups: `precip`, `hydrograph`, `morphometry`, `network`, `stats`, `hydrom
 
 **Templates (`templates.py`):**
 - Polish headings and labels
-- Descriptions of methods and AMC conditions
-- Literature references, glossary of terms
+- Names of the methods and descriptions of the AMC conditions
 
 ---
 
@@ -283,11 +282,13 @@ The module requires optional dependencies: `pip install hydrolog[viz]`
 #### 2.1.9 Module `statistics` - Hydrological Statistics (v0.7.0)
 
 - Characteristic flow values (Polish system: NNQ-WWQ)
-- Frequency analysis of maximum flows (LogNormal, GEV, Pearson III, Weibull)
+- Frequency analysis of maximum flows (LogNormal, GEV, Pearson III, Weibull; fitted by maximum likelihood, moments, L-moments (the default) or least squares, ADR-0021)
 - Frequency analysis of minimum flows (Fisher-Tippett)
 - Detection of low-flow sequences (threshold method)
 - Flow regime (Pardé's coefficients, Dynowska's types, Walsh and Lawler's seasonality index), the seasonality of annual maxima and minima (circular statistics of their dates) and the harmonics of the annual cycle
 - Baseflow separation (the Lyne and Hollick filter, Ladson et al. 2013), the baseflow index and the recession constant
+- Daily and monthly statistics, flow duration curves with the frequencies of their classes, annual and monthly runoff volumes, runs of days above or below a threshold (station analyses of Obserwator's daily series and IMGW-PIB's half-year files, ADR-0029 to ADR-0031)
+- Homogeneity tests of annual maxima: Mann-Whitney, Kolmogorov-Smirnov, Pettitt (ADR-0022)
 - Meteorological statistics of a weather station's daily series (command group `meteo`): precipitation sums, normals of the analysed or a chosen reference period (`reference_first_year`, `reference_last_year`), maxima, wet days, intensity, heavy precipitation and regime (ETCCDI, PCI, SI), dry and wet spells (the list shortened by `min_duration_days`), SPI calibrated on the reference period and relative precipitation classes, air temperature means and anomalies, characteristic days and degree days, snow cover per winter, Sielianinov's hydrothermal coefficient; missing days by WMO-No. 1203
 - Mann-Kendall trend test (stationarity check) with the variance of S corrected for ties, Sen's slope, Conover's intercept and Gilbert's confidence interval of the slope
 - Goodness-of-fit tests: Kolmogorov-Smirnov, Anderson-Darling
@@ -303,14 +304,14 @@ The module requires optional dependencies: `pip install hydrolog[viz]`
 
 ---
 
-#### 2.1.11 Module `routing` - Flood Routing (after v1.0.0, ADR-0007)
+#### 2.1.11 Module `routing` - Flood Routing (v1.0.0, ADR-0007)
 
 Lumped hydrologic routing of discharge hydrographs (storage and translation); water levels,
 inundation, backwater and structures stay with Hydraulik, HEC-RAS and IMGW HD.
 
 - `Hydrograph`: a discharge table at a regular time step (`time_min`, `discharge_m3s`), checked
   as in ADR-0008 (no resampling), with the volume under it; read from inline lists or a CSV/JSON
-  file (`load_hydrograph`)
+  file (`hydrolog.catalog.inputs.load_hydrograph`)
 - `Reach`: the template of a routing element (initial condition, extension of the time axis until
   the outflow has settled, non-negativity, volume balance, notices) and `RoutingResult`
 - Lag: `LagReach`, command `route lag` (the outflow is the inflow, shifted in time)
@@ -350,7 +351,7 @@ inundation, backwater and structures stay with Hydraulik, HEC-RAS and IMGW HD.
   waves, reservoir operation (gates and release rules: the outflow is the one the table gives;
   plan `docs/plans/2026-10-24-flood-routing.md`)
 
-#### 2.1.12 Module `gui` - Web GUI (after v1.0.0, ADR-0014)
+#### 2.1.12 Module `gui` - Web GUI (v1.0.0, ADR-0014)
 
 A browser GUI in Polish and in Nogat's visual identity for people who compute with Hydrolog,
 started with `hydrolog gui serve` (extra `hydrolog[gui]`: Starlette, uvicorn and Obserwator;
@@ -364,7 +365,7 @@ group `nogat.gui`.
   the data; a network handed over by Hydrograf opens laid out, with the origin of each node; the
   network document keeps the positions and descriptions; `route network`), Statystyka
   przepływów, Kalkulatory and Wszystkie polecenia (a form generated from the catalog for every
-  command)
+  command but `gui serve`, `config show`, `commands guide` and `commands batch`)
 - Every value comes from the catalog (`run_command` in warm worker processes); the browser formats,
   sums series for display, draws, and checks the structure of a network while it is edited with
   the library's rules and reasons (Hydrolog confirms every complete network), and computes nothing
@@ -374,8 +375,21 @@ group `nogat.gui`.
   carrying `hydrolog-network/1`
 - A private server API relative to the page, generic over any `commands-1` catalog; it is not a
   REST interface of Hydrolog (no `/api/v1`, OpenAPI or stability promise)
-- One work directory per browser session with limits; no arbitrary paths, no store, no sign-in:
-  beyond loopback the server is exposed only behind an authenticating proxy
+- One work directory per open page with limits (named by the header `X-Hydrolog-Session`, no
+  cookie; deleted when the page is closed or reloaded, at the latest after an hour idle); no
+  arbitrary paths, no sign-in to the page: beyond loopback the server is shared behind an authenticating
+  proxy, or opened to everyone as a public GUI (`[nogat.operator]` in `nogat.toml`, ADR-0034:
+  the regulamin at `regulamin.html`, a request limit per client address, daily totals in
+  `<data_dir>/hydrolog/stats.jsonl`)
+- „Zgłoś uwagę”: a text and the context the page adds, no contact field, kept in SQLite
+  `<data_dir>/hydrolog/feedback.sqlite3`; the operator's admin panel `admin/` is Nogat's kit
+  panel `<nogat-admin>` (kit 0.7.0) with „Zgłoszenia”, „Statystyki” and „Stan”, signed in with
+  the key of `HYDROLOG_ADMIN_API_KEY` or `HYDROLOG_ADMIN_API_KEY_FILE` (ADR-0038)
+- `gui serve` keeps Nogat's logs (`nogat-log/1`: access, application and lifecycle, no IP
+  address) in `<state_dir>/hydrolog/logs/` and deletes each file 14 days after its date
+  (ADR-0037)
+- Each view shows the providers' lines of its data once, in Nogat's strip `<nogat-sources>`,
+  whose „Źródła i warunki” opens every line (ADR-0035)
 - Hydrogram zlewni and Sieć under PMAXTP fetch the depth for the given point, probability,
   duration and method through `precip pmaxtp` (the server runs it; the browser never calls
   IMGW-PIB) and keep it with the inputs (ADR-0018)
@@ -406,7 +420,7 @@ group `nogat.gui`.
 - ❌ Downloading soil rasters (→ Kartograf `download_soil`); computing HSG from already downloaded texture rasters is in scope (module `soil`, since v1.0.0)
 - ❌ Downloading IMGW data (→ Obserwator); Hydrolog reads a ready-made CSV/JSON file from the export. The one exception is the PMAXTP depth of a point, which `precip pmaxtp` fetches through Obserwator (ADR-0018)
 - ❌ A public REST API (interfaces: Python library, CLI, MCP server and the web GUI; the GUI's private server routes serve its page only and are not a REST interface, ADR-0014)
-- ❌ Database operations
+- ❌ Database operations (the GUI's own file of „Zgłoś uwagę” aside)
 
 **Visualizations and reports:**
 - ✅ Static plots (matplotlib) - module `visualization` (since v0.5.0)
@@ -467,7 +481,7 @@ hydrolog/
 ├── time/                    # Characteristic times
 │   ├── __init__.py
 │   └── concentration.py    # tc calculations (6 methods)
-├── routing/                 # Flood routing (after v1.0.0, ADR-0007)
+├── routing/                 # Flood routing (v1.0.0, ADR-0007)
 │   ├── __init__.py
 │   ├── hydrograph.py       # Hydrograph (regular-step table), check_table
 │   ├── reach.py            # Reach (template), RoutingResult, RoutingNotice
@@ -481,6 +495,7 @@ hydrolog/
 ├── _serialization.py        # to_jsonable(), JsonResultMixin (to_dict/to_json) (v1.0.0)
 ├── _warnings.py             # HydrologWarning: library warnings with stable codes and details (ADR-0015)
 ├── _pmaxtp.py               # PMAXTP of IMGW-PIB through Obserwator, imported lazily ([pmaxtp] extra, ADR-0018)
+├── _attribution.py          # The providers' lines of every product (Nogat DEV §20, ADR-0028)
 ├── agent_guide.py           # AGENTS.md / llms.txt generator from the catalog (v1.0.0)
 ├── _data/agents/            # Agent guide templates (English)
 ├── catalog/                 # Command catalog (v1.0.0)
@@ -493,8 +508,8 @@ hydrolog/
 │   └── groups/              # One module per command group (COMMANDS)
 ├── operations/              # One public function per catalog command (v1.0.0)
 ├── mcp/                     # MCP server (v1.0.0, [mcp] extra)
-├── gui/                     # Web GUI server and gui_module() (after v1.0.0, [gui] extra, ADR-0014)
-│   └── web/                 # Static files of the page (Preact and htm without a build)
+├── gui/                     # Web GUI server and gui_module() (v1.0.0, [gui] extra, ADR-0014)
+│   └── web/                 # Static files of the page (Preact and htm without a build), Nogat's GUI kit (nogat/), the admin panel (admin/)
 ├── soil/                    # HSG from soil texture (v1.0.0)
 │   ├── texture.py           # USDA texture triangle, texture → HSG (NumPy only)
 │   ├── hsg.py               # classify_hsg(), hsg_statistics_array()
@@ -526,7 +541,11 @@ hydrolog/
 │   ├── characteristic.py   # Characteristic values (NNQ-WWQ)
 │   ├── high_flows.py       # Frequency analysis of maximum flows
 │   ├── low_flows.py        # Fisher-Tippett, low flows
-│   └── stationarity.py     # Mann-Kendall test
+│   ├── stationarity.py     # Mann-Kendall test
+│   ├── homogeneity.py      # Mann-Whitney, Kolmogorov-Smirnov, Pettitt
+│   ├── duration.py, volumes.py, events.py # Duration curves, runoff volumes, runs beyond a threshold
+│   ├── regime.py, seasonality.py, harmonics.py, baseflow.py # Regime, seasonality, annual cycle, baseflow
+│   └── _climate.py, meteo_*.py # Meteorological statistics (group meteo)
 ├── hydrometrics/            # Hydrometry (v0.7.0)
 │   ├── __init__.py
 │   └── rating_curve.py     # Rating curve, Rybczyński zones
@@ -554,11 +573,12 @@ hydrolog/
 **Optional (extras `pip install hydrolog[...]`):**
 - `raster`: rasterio >= 1.3 + pyproj >= 3.6 (commands `soil hsg` and `soil hsg-stats`, `hydrolog.soil.raster`)
 - `mcp`: mcp >= 2.3, < 3 (MCP server `hydrolog mcp`)
-- `gui`: starlette >= 1.10, < 2 + uvicorn >= 0.54, < 1 (web GUI `hydrolog gui serve`, ADR-0014)
+- `gui`: starlette >= 1.10, < 2 + uvicorn >= 0.54, < 1 + obserwator >= 3.0.0.dev0, < 4 (web GUI `hydrolog gui serve`, ADR-0014)
+- `pmaxtp`: obserwator >= 3.0.0.dev0, < 4 (the PMAXTP depth of `precip pmaxtp`, ADR-0018)
 - `viz`: matplotlib >= 3.7 + seaborn >= 0.12 (module `visualization`)
 - `all`: all of the above
 
-Hydrolog does not depend on Kartograf or Obserwator; the former `spatial` extra (Kartograf) was removed in v1.0.0.
+Hydrolog does not depend on Kartograf, and on Obserwator only through the extras `pmaxtp`, `gui` and `all`; the former `spatial` extra (Kartograf) was removed in v1.0.0.
 
 ### 3.3 API Design
 
@@ -612,9 +632,9 @@ print(f"Time to peak: {result.time_to_peak_min} min")
 | **v0.6.3** | FAA + Kerby + Kerby-Kirpich tc, API audit, WatershedParameters extension | `time.concentration`, `morphometry.watershed_params`, `reports` | ✅ Released |
 | **v0.6.4** | WatershedParams extension + UH ordinates + docs audit | `morphometry.watershed_params`, `runoff.generator`, `reports`, `docs` | ✅ Released |
 | **v0.7.0** | Hydrological statistics + Hydrometry | `statistics`, `hydrometrics`, `visualization.statistics` | ✅ Released |
-| **v1.0.0** | Stable API, command catalog, catalog-based CLI, MCP server, HSG, result serialization, calculation fixes | `catalog`, `operations`, `mcp`, `soil`, `cli`, `agent_guide` | 🔄 In preparation |
-| **after v1.0.0** | Flood routing | `routing` | 🔄 Branches `feature/routing-*` (ADR-0007) |
-| **after v1.0.0** | Web GUI, standalone and as a Nogat module | `gui`, `catalog` | 🔄 Branch `feature/gui` (ADR-0014, ADR-0015) |
+| **v1.0.0** | Stable API, command catalog, catalog-based CLI, MCP server, HSG, result serialization, calculation fixes, station analyses | `catalog`, `operations`, `mcp`, `soil`, `cli`, `agent_guide`, `statistics`, `hydrometrics` | 🔄 In preparation |
+| **v1.0.0** | Flood routing | `routing` | ✅ Merged into `develop` (ADR-0007) |
+| **v1.0.0** | Web GUI, standalone and as a Nogat module | `gui`, `catalog` | ✅ Merged into `develop` (ADR-0014, ADR-0015) |
 
 ---
 
@@ -680,6 +700,6 @@ print(f"Time to peak: {result.time_to_peak_min} min")
 
 ---
 
-**Document version:** 1.8
-**Last updated:** 2026-11-04
+**Document version:** 1.9
+**Last updated:** 2026-11-14
 **Status:** v1.0.0 in preparation

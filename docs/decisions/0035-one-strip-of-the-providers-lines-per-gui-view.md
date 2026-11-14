@@ -5,6 +5,7 @@
 - Builds on: Nogat DEV-20.5 and ECO-064, Nogat's GUI kit 0.5.1 (`<nogat-sources>`, Nogat `5406e5c`, `cbe9f4e`)
 - Amends: [ADR-0028](0028-the-providers-lines-in-every-product.md) (point 7: what the GUI shows on screen) and
   [ADR-0034](0034-a-public-gui-regulamin-limit-logs-totals.md) (kit 0.5.1; the guide's „Regulamin” opens a new tab)
+- Amended by [ADR-0036](0036-link-the-providers-terms-instead-of-restating-them.md) (2026-11-13): kit 0.6.0
 
 ## Context
 

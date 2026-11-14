@@ -3,6 +3,7 @@
 - Status: accepted
 - Date: 2026-11-13
 - Builds on: plan `docs/plans/2026-11-13-station-analyses.md` (decisions D9, D10, step S2), Nogat's plan `2026-11-12-station-data-and-analyses` (step H4, decisions D6, F1), approved by the author on 2026-11-13; ADR-0002 (the envelope), ADR-0003 (writes), ADR-0028 (the providers' lines), ADR-0029
+- Amended by [ADR-0033](0033-review-of-the-station-analyses.md) (2026-11-13): the batch runs offline and writes only its output (its point 3)
 
 ## Context
 

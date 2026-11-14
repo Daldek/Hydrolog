@@ -40,7 +40,7 @@ Rules:
 
 ## Result envelope
 
-A command returns `hydrolog-result/1`: `schema`, `tool` (`hydrolog`), `version`, `command`, `check` (true for a `--check` plan: `result.targets[]` with `option`, `path`, `action`), `status` (`ok`; `partial` or `failed`, with `items`, for a batch with failed calls; a failing command raises an error and leaves nothing half done), `result`, `notices`, `inputs`, `page` (paged lists).
+A command returns `hydrolog-result/1`: `schema`, `tool` (`hydrolog`), `version`, `command`, `check` (true for a `--check` plan: `result.targets[]` with `option`, `path`, `action`), `status` (`ok`; `partial` or `failed`, with `items`, for a batch with failed calls; a failing command raises an error and leaves nothing half done), `result`, `notices`, `inputs`, `page` (paged lists), `attribution` and `terms_notice` (providers' lines to pass on).
 
 - `result`: the values of the command with its own `schema`; units follow from field names (`tc_min`); `NaN` and infinities are `null`.
 - `result.files`: files the command wrote, each `{path, size_bytes, sha256, status}` with `status` `written` or `replaced`.

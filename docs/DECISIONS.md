@@ -2,7 +2,7 @@
 
 Architecture decision records (DOC-8.1). One file per decision in
 [decisions/](decisions/); new records get the next number. Decisions taken before
-the Nogat standard 2.1 adoption are in the plans of [plans/](plans/).
+the adoption of the Nogat standard 1.0 (then called 2.1) are in the plans of [plans/](plans/).
 
 | ID | Title | Status | Date |
 |---|---|---|---|

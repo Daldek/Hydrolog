@@ -4,6 +4,7 @@
 - Date: 2026-11-13
 - Amends: [ADR-0009](0009-compact-index-line-for-large-groups.md) (the groups `tc`, `hydrometrics` and `meteo` get one index line each in `AGENTS.md`, chosen to keep the guide within its budget)
 - Builds on: plan `docs/plans/2026-11-13-station-analyses.md` (decision D12 with D1, D2 and D13, step S4), Nogat's plan `2026-11-12-station-data-and-analyses` (step H3: M1 to M14; decisions D8, D12), approved by the author on 2026-11-13; ADR-0029 (the reference period), ADR-0031 (`stats harmonics` and Sen's slope, which serve M12 and M13), ADR-0028 (the providers' lines), ADR-0022
+- Amended by [ADR-0033](0033-review-of-the-station-analyses.md) (2026-11-13): one name per concept, variant options, the reference period of normals and the list of spells (its points 1, 2, 4 and 6)
 
 ## Context
 

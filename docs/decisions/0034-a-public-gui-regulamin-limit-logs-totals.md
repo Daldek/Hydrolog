@@ -5,8 +5,13 @@
 - Amends: [ADR-0004](0004-settings-and-config-show.md) (two settings), [ADR-0014](0014-web-gui-enters-the-scope.md)
   (the session of the private API), [ADR-0016](0016-gui-feedback-and-data-dir.md) (the report and its file),
   [ADR-0027](0027-nogats-gui-kit-the-app-menu-and-the-handoff.md) (kit 0.4.0)
+- Amended by [ADR-0035](0035-one-strip-of-the-providers-lines-per-gui-view.md) (2026-11-13): kit 0.5.1; the guide's
+  „Regulamin” opens a new tab
+- Amended by [ADR-0036](0036-link-the-providers-terms-instead-of-restating-them.md) (2026-11-13): the regulamin's
+  blocks
 - Amended by [ADR-0037](0037-nogats-logs-in-gui-serve.md) (2026-11-13): the access log is Nogat's, in every run of
   `gui serve`, in files under `<state_dir>/hydrolog/logs`; no `X-Request-Id`
+- Amended by [ADR-0038](0038-nogats-admin-panel.md) (2026-11-14): the daily totals leave out the admin panel
 
 ## Context
 

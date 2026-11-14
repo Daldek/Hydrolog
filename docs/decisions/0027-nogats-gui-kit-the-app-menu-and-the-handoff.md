@@ -5,6 +5,7 @@
 - Builds on: Nogat ECO-058 and its plan `docs/plans/2026-11-12-gui-links-and-handoff.md` (approved 2026-11-12, stage 1
   of the GUI platform; this is its step 4), DEV-15.4 to DEV-15.6 and DEV-18.1 of the Nogat standard
 - Amends: [ADR-0014](0014-web-gui-enters-the-scope.md) (the private API's `GET api/session` gains `gui`)
+- Amended by [ADR-0034](0034-a-public-gui-regulamin-limit-logs-totals.md) (2026-11-13): kit 0.4.0
 
 ## Context
 
