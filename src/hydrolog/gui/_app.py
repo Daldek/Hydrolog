@@ -738,7 +738,7 @@ class _Gui:
         return Response(status_code=204)
 
     async def terms(self, request: Request, call: _Call) -> Response:
-        """``GET api/terms``: ``{"terms", "operator_email"}`` for the guide's footer."""
+        """``GET api/terms``: ``{"terms", "operator_email"}`` for the guide's page."""
         return JSONResponse(self.terms_document())
 
     async def stats_event(self, request: Request, call: _Call) -> Response:

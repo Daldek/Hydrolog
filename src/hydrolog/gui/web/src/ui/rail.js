@@ -1,9 +1,13 @@
 // The navigation rail (design/README.md): a 64 px dark column of the sections, icon over a
-// short label; a 58 px bottom bar on phones.
+// short label, and on a public GUI the small link „Regulamin” at its bottom (Nogat
+// DEV-15.7, terms.js); a 58 px bottom bar on phones, without the link (the app menu and
+// the welcome dialog give it there).
 
+import { useSession } from "../controls/file-field.js";
 import { html } from "../html.js";
 import { shell } from "../labels/shell.js";
 import { routeHash } from "../router.js";
+import { TermsLink, termsOf } from "./terms.js";
 
 /** Icons of the sections (24 × 24, stroked), from the approved mockup. */
 const SECTION_ICONS = {
@@ -15,13 +19,14 @@ const SECTION_ICONS = {
 };
 
 /**
- * The rail of the sections.
+ * The rail of the sections, ending with „Regulamin” on a public GUI.
  *
  * @param {{sections: string[], active: string|null}} props the ids of the sections shown,
  *   in the order of the rail, and the active one
  * @returns {object} the rail
  */
 export function Rail({ sections, active }) {
+  const terms = termsOf(useSession());
   return html`
     <nav class="rail" aria-label=${shell.nav}>
       ${sections.map((id) => {
@@ -40,6 +45,7 @@ export function Rail({ sections, active }) {
           </a>
         `;
       })}
+      ${terms ? html`<${TermsLink} terms=${terms} className="rail-terms" />` : null}
     </nav>
   `;
 }

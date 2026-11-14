@@ -6,14 +6,17 @@
 // A view gives the union of the lines of the data it shows (its inputs' and its last
 // run's, attribution.js mergeLines); the strip orders them as GET api/session's sets do
 // and keeps them as the section's "sources" in the store, from which the welcome dialog
-// lists the lines of the data on the page (WelcomeSources, the kit's fillSources). Files,
-// exports, PNG, hand-offs and the print view keep the full lines (attribution.js).
+// lists the lines of the data on the page (WelcomeSources, the kit's fillSources, whose
+// „Regulamin serwisu” is the welcome's link to the regulamin; without lines the welcome
+// shows that link alone). Files, exports, PNG, hand-offs and the print view keep the full
+// lines (attribution.js).
 
 import { hasLines, mergeLines, orderLines } from "../attribution.js";
 import { useSession } from "../controls/file-field.js";
 import { html, useEffect, useLayoutEffect, useRef, useState } from "../html.js";
+import { shell } from "../labels/shell.js";
 import { sectionValues, subscribe, useStore } from "../store.js";
-import { termsOf } from "./footer.js";
+import { TermsLink, termsOf } from "./terms.js";
 import { fillSources } from "../../nogat/nogat-sources.js";
 
 /**
@@ -64,8 +67,9 @@ function pageLines(session) {
 
 /**
  * The welcome dialog's part „Źródła danych”: every line of the data on the page, the terms
- * notice and „Regulamin serwisu” (the content of the strips' dialog); nothing while the
- * page shows no provider data, so a first visit keeps the welcome to its sentences.
+ * notice and „Regulamin serwisu” (the content of the strips' dialog). While the page shows
+ * no provider data, as on a first visit, it is „Regulamin serwisu” alone on a public GUI
+ * (Nogat DEV-15.7) and nothing on another, so the welcome keeps to its sentences.
  *
  * @returns {object|null} the part
  */
@@ -83,5 +87,6 @@ export function WelcomeSources() {
   useLayoutEffect(() => {
     if (lines && box.current) fillSources(box.current, { attribution: lines.attribution, termsNotice: lines.terms_notice, terms });
   }, [key]);
-  return lines ? html`<div class="welcome-sources" ref=${box} data-welcome-sources=""></div>` : null;
+  if (lines) return html`<div class="welcome-sources" ref=${box} data-welcome-sources=""></div>`;
+  return terms ? html`<p class="welcome-terms"><${TermsLink} terms=${terms} text=${shell.welcome.terms} /></p>` : null;
 }

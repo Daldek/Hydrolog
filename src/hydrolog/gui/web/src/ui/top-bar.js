@@ -13,7 +13,7 @@ import { html, useEffect, useRef } from "../html.js";
 import { t } from "../labels/common.js";
 import { shell } from "../labels/shell.js";
 import { useStore } from "../store.js";
-import { termsOf } from "./footer.js";
+import { termsOf } from "./terms.js";
 import { FeedbackButton } from "./feedback.js";
 import { Seg } from "./seg.js";
 import { StatusBadge } from "./status.js";
