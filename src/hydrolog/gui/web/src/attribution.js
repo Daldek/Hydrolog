@@ -17,6 +17,7 @@ import { useSession } from "./controls/file-field.js";
 import { fold } from "./format.js";
 import { html } from "./html.js";
 import { attributionLabels as texts } from "./labels/attribution.js";
+import { lines as kitLines } from "../nogat/nogat-sources.js";
 
 /** No lines: a product without provider data. */
 export const NO_LINES = Object.freeze({ attribution: Object.freeze([]), terms_notice: Object.freeze([]) });
@@ -95,7 +96,9 @@ export function mergeLines(...sets) {
  * M, C, CP; DEV-20.7: RD, RH, RK), a line the sets do not hold after them in its
  * first order: the order of lines merged in the page without a run of the server. A line
  * Nogat retired (ECO-065: H, N, „Regulamin: <address>”), kept with a depth or carried by
- * an older hand-off, becomes the line the session's `retired_lines` names, or goes.
+ * an older hand-off, becomes the line the session's `retired_lines` names, or goes; an
+ * older CP that said how the data were processed („Dane ČHMÚ zostały przetworzone (…)”)
+ * is the canonical CP, once (ECO-071, the kit's `lines`).
  *
  * @param {{attribution: string[], terms_notice: string[]}} lines the lines
  * @param {object|null} session hydrolog-gui-session/1
@@ -108,7 +111,7 @@ export function orderLines(lines, session) {
   const sorted = (field) => {
     const order = [...new Set(sets.flatMap((set) => linesOf(set)[field]))];
     const rank = (line) => (order.includes(line) ? order.indexOf(line) : order.length);
-    return [...new Set(lines[field].flatMap(current))].sort((a, b) => rank(a) - rank(b));
+    return [...new Set(kitLines(lines[field]).flatMap(current))].sort((a, b) => rank(a) - rank(b));
   };
   return { attribution: sorted("attribution"), terms_notice: sorted("terms_notice") };
 }

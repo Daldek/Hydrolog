@@ -12,6 +12,8 @@
   shows on screen
 - Amended by [ADR-0036](0036-link-the-providers-terms-instead-of-restating-them.md) (2026-11-13): points 1 and 7, the
   lines and the terms notice
+- Amended by [ADR-0040](0040-cp-without-the-detail-of-processing.md) (2026-11-14): point 1, CP is „Dane ČHMÚ
+  zostały przetworzone”, once, and an older CP with its detail is read as it
 
 ## Context
 

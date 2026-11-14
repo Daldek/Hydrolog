@@ -17,8 +17,7 @@ Attribution lines, in the order of DEV-20.4:
   and P (ust. 1 and 2);
 * :data:`CHMI_SOURCE` (C) and :data:`CHMI_PROCESSED` (CP): ČHMÚ open data under CC BY
   4.0, whose §3(a)(1) asks for the creator, the address, the licence with its link and
-  the fact of a modification; a producer's own CP (Obserwator's "normalizacja i zmiana
-  formatu") is kept before Hydrolog's;
+  the fact of a modification, stated once and never how (ECO-071);
 * :data:`SOILGRIDS_SOURCE` (SG): ISRIC SoilGrids under CC BY 4.0 (DEV-20.10); a line of
   GUGiK (G), which Hydrolog does not write, keeps its place before it.
 
@@ -36,7 +35,9 @@ producer's line is ever dropped. The lines Nogat retired (ECO-065) are read as w
 stood for, so an input or an ``ATTRIBUTION.txt`` written before gives the current lines:
 the line of hydro.imgw.pl (H) names its provider, the old „Regulamin: <address>” of a
 known terms becomes its new line, and IMGW-PIB's summary of its terms (N) and any other
-„Regulamin: …” line are dropped.
+„Regulamin: …” line are dropped. A CP that said how the data were processed („Dane ČHMÚ
+zostały przetworzone (…)”, whatever the words in parentheses: Obserwator's, Hydrolog's
+own) is the CP of today (ECO-071, DEV-20.4), so it is written once.
 
 A command collects the lines of its run: :func:`~hydrolog.catalog.run_command` opens
 :func:`collecting`, the readers of input files :func:`cite` the lines a file carries
@@ -133,10 +134,8 @@ CHMI_SOURCE: Final = (
     "licencja CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)"
 )
 """C: the creator, the address of the material and the licence with its link."""
-CHMI_PROCESSED: Final = (
-    "Dane ČHMÚ zostały przetworzone (obliczenia hydrologiczne programem Hydrolog)"
-)
-"""CP: what Hydrolog did with ČHMÚ's data (CC BY 4.0, §3(a)(1)(B))."""
+CHMI_PROCESSED: Final = "Dane ČHMÚ zostały przetworzone"
+"""CP: ČHMÚ's data were modified (CC BY 4.0, §3(a)(1)(B)), never how (ECO-071)."""
 SOILGRIDS_SOURCE: Final = (
     "Źródło: ISRIC – World Soil Information, SoilGrids, licencja CC BY 4.0 "
     "(https://creativecommons.org/licenses/by/4.0/); dane przetworzone"
@@ -174,8 +173,8 @@ _SOILGRIDS_SEGMENT: Final = "global_soilgrids_"
 
 _CHMI_CREDIT: Final = "Źródło danych: Český hydrometeorologický ústav (ČHMÚ)"
 """How every ČHMÚ credit begins, whatever its producer wrote after it."""
-_CHMI_MODIFIED: Final = "Dane ČHMÚ zostały przetworzone"
-"""How every statement of a modification of ČHMÚ's data begins."""
+_OLD_CHMI_PROCESSED: Final = re.compile(r"Dane ČHMÚ zostały przetworzone \(.*\)")
+"""CP before ECO-071, which said in parentheses how the data were processed."""
 _GUGIK_CREDIT: Final = "Źródło: Główny Urząd Geodezji i Kartografii – GUGiK"
 """How every GUGiK credit (G) begins; Hydrolog carries it, before SG (DEV-20.4)."""
 _TERMS_LINE: Final = re.compile(r"Regulamin [^:]+: \S")
@@ -223,8 +222,9 @@ _ORDER: Final = (
     PMAXTP_PROCESSED,
     PMAXTP_MONOGRAPH,
     CHMI_SOURCE,
+    CHMI_PROCESSED,
 )
-"""The known attribution lines before the ČHMÚ modifications (DEV-20.4)."""
+"""The known attribution lines before GUGiK's (DEV-20.4)."""
 _TERMS_ORDER: Final = (TERMS_DANEPUBLICZNE, TERMS_HYDRO, TERMS_PMAXTP)
 """The known terms lines, in the order of DEV-20.7."""
 _PROVIDER_OF: Final[Mapping[str, str]] = {
@@ -284,8 +284,8 @@ class Attribution:
     providers : frozenset of str
         The providers (:data:`Provider`) whose data the product holds.
     other_lines : tuple of str
-        Attribution lines Hydrolog does not know (a producer's statement of what it did
-        with ČHMÚ's data, another provider's credit), verbatim, in their first order.
+        Attribution lines Hydrolog does not know (another provider's credit),
+        verbatim, in their first order.
     terms : frozenset of str
         The known terms lines given with the data.
     other_terms : tuple of str
@@ -329,11 +329,12 @@ class Attribution:
 
         A known line names its provider, whose complete lines the result then has (a
         ČHMÚ credit is known by its beginning and replaced by :data:`CHMI_SOURCE`, which
-        has every element the licence asks for); a statement of a modification of
-        ČHMÚ's data other than Hydrolog's is kept. A known terms line is a terms line
-        wherever it is given; any other line is kept verbatim, as a terms line when it
-        is given in ``terms`` or has the form „Regulamin <whose terms>: <address>”. A
-        line retired by ECO-065 is read as what it stood for (see the module).
+        has every element the licence asks for; a CP that said in parentheses how the
+        data were processed is :data:`CHMI_PROCESSED`, ECO-071). A known terms line is
+        a terms line wherever it is given; any other line is kept verbatim, as a terms
+        line when it is given in ``terms`` or has the form „Regulamin <whose terms>:
+        <address>”. A line retired by ECO-065 is read as what it stood for (see the
+        module).
 
         Parameters
         ----------
@@ -362,11 +363,8 @@ class Attribution:
                 known_terms.add(_KNOWN_TERMS[key])
             elif key == _key(_RETIRED_NOTICE) or line.startswith(_RETIRED_TERMS_PREFIX):
                 continue  # N, or the bare address of a terms Hydrolog does not know
-            elif line.startswith(_CHMI_CREDIT):
+            elif line.startswith(_CHMI_CREDIT) or _OLD_CHMI_PROCESSED.fullmatch(key):
                 providers.add("chmi")
-            elif line.startswith(_CHMI_MODIFIED):
-                providers.add("chmi")
-                others.append(line)
             elif is_terms or _TERMS_LINE.match(line):
                 other_terms.append(line)
             else:
@@ -395,15 +393,11 @@ class Attribution:
     def lines(self) -> tuple[str, ...]:
         """Tuple of str: the attribution lines, in the order of DEV-20.4."""
         known = {line for name in self.providers for line in _LINES[name]}
-        modified = [
-            line for line in self.other_lines if line.startswith(_CHMI_MODIFIED)
-        ]
         gugik = [line for line in self.other_lines if line.startswith(_GUGIK_CREDIT)]
-        rest = [line for line in self.other_lines if line not in (*modified, *gugik)]
-        chmi = (*modified, CHMI_PROCESSED) if "chmi" in self.providers else modified
+        rest = [line for line in self.other_lines if line not in gugik]
         soil = (SOILGRIDS_SOURCE,) if "soilgrids" in self.providers else ()
         before = (line for line in _ORDER if line in known)
-        return _union(before, chmi, gugik, soil, rest)
+        return _union(before, gugik, soil, rest)
 
     @property
     def terms_notice(self) -> tuple[str, ...]:
