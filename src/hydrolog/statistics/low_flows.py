@@ -284,7 +284,7 @@ class LowFlowAnalysis:
 
         Notes
         -----
-        Versions before 1.0.0 took the minimum of every hydrological year that
+        Versions before 0.8.0 took the minimum of every hydrological year that
         appears in the dates, including the stub years at both ends of a
         calendar-year series (for a 1991-2020 series: 31 "years", the last holding
         only November and December 2020, with a minimum above the true annual one).
@@ -334,7 +334,7 @@ class LowFlowAnalysis:
 
         Notes
         -----
-        Versions before 1.0.0 fitted the distribution of *maxima* directly to the
+        Versions before 0.8.0 fitted the distribution of *maxima* directly to the
         minima and read its quantiles at ``p``. That is the mirror-image
         distribution family: it can approximate the bulk of the minima, but its
         left tail is not that of the smallest-value distribution, so the

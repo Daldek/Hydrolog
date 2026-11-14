@@ -2,7 +2,7 @@
 
 **Document version:** 1.11
 **Date:** 2026-11-14
-**Applies to:** Hydrolog >= 1.0.0 (sections 3.2.2, 3.2.7, 3.3.4 (the time step limit), 3.3.6, 3.4.6, 3.4.7 and 3.5 to 3.14 describe behaviour from v1.0.0; the rest: >= 0.6.0)
+**Applies to:** Hydrolog >= 0.8.0 (sections 3.2.2, 3.2.7, 3.3.4 (the time step limit), 3.3.6, 3.4.6, 3.4.7 and 3.5 to 3.14 describe behaviour from v0.8.0; the rest: >= 0.6.0)
 
 ---
 
@@ -254,7 +254,7 @@ print(f"Qmax = {hydrograph.peak_discharge_m3s:.2f} m³/s")
 #### 3.2.2 No Path from Tc
 
 The Nash model takes no time of concentration. `NashIUH.from_tc()` (`tlag = 0.6 × Tc`, `K = tlag / n`),
-deprecated since v0.6.2, was removed in v1.0.0:
+deprecated since v0.6.2, was removed in v0.8.0:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -285,7 +285,7 @@ deprecated since v0.6.2, was removed in v1.0.0:
 | `from_urban_regression()` | ✅ OK | Regression for urbanised catchments (Rao, Delleur, Sarma 1972) |
 | Directly `n`, `K` | ✅ OK | When you have calibrated values |
 | ~~Method of moments~~ | REMOVED in v0.5.1 | Requires data from an observed hydrograph |
-| ~~`from_tc()`~~ | REMOVED in v1.0.0 | No scientific justification (SCS relation `tlag = 0.6 × Tc`) |
+| ~~`from_tc()`~~ | REMOVED in v0.8.0 | No scientific justification (SCS relation `tlag = 0.6 × Tc`) |
 
 #### 3.2.4 Lutz Method Formulas
 
@@ -578,7 +578,7 @@ The S-curve is known only at the nodes `t_i = i × dt`, so the lagged curve `S(t
 
 The hydrograph volume (sum of ordinates × dt, converted to a water depth over the catchment) is **1 mm** for any D > 0, provided the whole response is covered by `total_duration_min` (by default `tc + 5R + D` loses only a negligible tail).
 
-> **Change in v1.0.0 (bug fix).** Versions < 1.0.0 shifted the S-curve by `round(D/dt)` steps but divided by D. For D that is not a multiple of the step, the volume was `round(D/dt)·dt/D` mm: **1.333 mm for D = 1.5·dt** and 0.8 mm for D = 2.5·dt (discharges 33% too large or 20% too small), and for D < dt/2 `to_unit_hydrograph` raised `ValueError` (`s_curve[:-0]`). Since v1.0.0 the volume is 1.000 mm for every D, and a non-positive or infinite D or step raises `InvalidParameterError`.
+> **Change in v0.8.0 (bug fix).** Versions < 0.8.0 shifted the S-curve by `round(D/dt)` steps but divided by D. For D that is not a multiple of the step, the volume was `round(D/dt)·dt/D` mm: **1.333 mm for D = 1.5·dt** and 0.8 mm for D = 2.5·dt (discharges 33% too large or 20% too small), and for D < dt/2 `to_unit_hydrograph` raised `ValueError` (`s_curve[:-0]`). Since v0.8.0 the volume is 1.000 mm for every D, and a non-positive or infinite D or step raises `InvalidParameterError`.
 
 ```python
 iuh = ClarkIUH(tc_min=60.0, r_min=30.0)
@@ -663,7 +663,7 @@ qpR = qp × (tL / tLR)                    [m³/s/mm]
 tb = 0.556 × A / qpR                     [h]
 ```
 
-**Shape of the hydrograph (since v1.0.0, section 3.4.7):**
+**Shape of the hydrograph (since v0.8.0, section 3.4.7):**
 ```
 q(t) = qpR × [(t/tpR) × exp(1 - t/tpR)]^K          [m³/s/mm]
 Γ(K) × (e/K)^K = V / (qpR × tpR),  V = A × 1000 m³   (1 mm over A)
@@ -720,7 +720,7 @@ result = generator.generate(precip)
 print(f"Qmax = {result.peak_discharge_m3s:.2f} m³/s")
 ```
 
-#### 3.4.6 Snyder in `HydrographGenerator`: Unit Hydrograph for D = Time Step (since v1.0.0)
+#### 3.4.6 Snyder in `HydrographGenerator`: Unit Hydrograph for D = Time Step (since v0.8.0)
 
 Discrete convolution treats the unit hydrograph as the response to 1 mm of effective precipitation in a single step `dt`. Therefore `HydrographGenerator` builds the Snyder hydrograph for a duration **D = dt** (the tLR, tpR and qpR correction from section 3.4.3), and not for the standard tD = tL/5.5 (Snyder 1938; USACE HEC-HMS, Technical Reference Manual, "Snyder Unit Hydrograph Model"; Chow, Maidment, Mays 1988):
 
@@ -728,21 +728,21 @@ Discrete convolution treats the unit hydrograph as the response to 1 mm of effec
 uh = snyder.generate(timestep_min=dt, duration_min=dt)   # this is how the generator computes it
 ```
 
-Versions < 1.0.0 called `snyder.generate(timestep_min=dt)`, i.e. the hydrograph for tD, and convolved it in steps of `dt`: for a step shorter than tD the peak was too low and too late (tpR = tLR + D/2, tLR = tL + 0.25 (D − tD)), for a longer one too high and too early. `uh_time_to_peak_min` in the `hydrograph generate` result is tpR, and the report documents Δt equal to the step.
+Versions < 0.8.0 called `snyder.generate(timestep_min=dt)`, i.e. the hydrograph for tD, and convolved it in steps of `dt`: for a step shorter than tD the peak was too low and too late (tpR = tLR + D/2, tLR = tL + 0.25 (D − tD)), for a longer one too high and too early. `uh_time_to_peak_min` in the `hydrograph generate` result is tpR, and the report documents Δt equal to the step.
 
-| Catchment 45 km², L = 12 km, Lc = 6 km, Ct = 1.5, Cp = 0.6, CN 72, beta rainfall 50 mm/120 min, step 5 min | before v1.0.0 (D = tD = 59.0 min) | since v1.0.0 (D = 5 min) |
+| Catchment 45 km², L = 12 km, Lc = 6 km, Ct = 1.5, Cp = 0.6, CN 72, beta rainfall 50 mm/120 min, step 5 min | before v0.8.0 (D = tD = 59.0 min) | since v0.8.0 (D = 5 min) |
 |------|------:|------:|
 | Unit hydrograph: time to peak tp [min] | 354.2 | 313.7 |
 | Unit hydrograph: peak qp [m³/s/mm] | 1.379 | 1.432 |
 | Runoff hydrograph: Qmax [m³/s] (time [min]) | 9.76 (405) | 10.12 (365) |
 
-The values since v1.0.0 include the shape of section 3.4.7, whose peak is qpR; with that shape the step alone moves Qmax from 9.71 m³/s at 405 min (D = tD) to 10.12 m³/s at 365 min (+4.3%). For a step equal to tD the correction vanishes (tLR = tL): the generator uses the hydrograph of the standard duration.
+The values since v0.8.0 include the shape of section 3.4.7, whose peak is qpR; with that shape the step alone moves Qmax from 9.71 m³/s at 405 min (D = tD) to 10.12 m³/s at 365 min (+4.3%). For a step equal to tD the correction vanishes (tLR = tL): the generator uses the hydrograph of the standard duration.
 
-#### 3.4.7 Shape of the Snyder Hydrograph and the End of Its Recession (since v1.0.0)
+#### 3.4.7 Shape of the Snyder Hydrograph and the End of Its Recession (since v0.8.0)
 
-Snyder's method gives the peak (tpR, qpR), the widths W50 and W75 and the triangular time base tb, not a curve. Versions < 1.0.0 took a gamma curve of one fixed shape (n = 3.7, `(t/k)^(n-1) × exp(-t/k)` with k = tp/(n-1)), scaled it to qp, cut it at tb and rescaled the ordinates to 1 mm. tb = 0.556 × A / qpR shrinks as Cp grows while that curve does not change, so the cut came at 4.6% of the peak for Cp = 0.6 and at 20% for Cp = 0.8 (Δt = 5 min), and from Cp ≈ 2 on at or before the peak itself. The runoff hydrograph then ended in a near-vertical drop (Hydrograf front-end test of 2026-11-01). The peak of the ordinates was not qpR either: Cp acted only through the cut (Kamiennik, Ct = 1.65: Cp 0.4 → 1.0 moves qpR 0.64 → 1.60 m³/s/mm, but the peak of the ordinates moved 1.02 → 1.22).
+Snyder's method gives the peak (tpR, qpR), the widths W50 and W75 and the triangular time base tb, not a curve. Versions < 0.8.0 took a gamma curve of one fixed shape (n = 3.7, `(t/k)^(n-1) × exp(-t/k)` with k = tp/(n-1)), scaled it to qp, cut it at tb and rescaled the ordinates to 1 mm. tb = 0.556 × A / qpR shrinks as Cp grows while that curve does not change, so the cut came at 4.6% of the peak for Cp = 0.6 and at 20% for Cp = 0.8 (Δt = 5 min), and from Cp ≈ 2 on at or before the peak itself. The runoff hydrograph then ended in a near-vertical drop (Hydrograf front-end test of 2026-11-01). The peak of the ordinates was not qpR either: Cp acted only through the cut (Kamiennik, Ct = 1.65: Cp 0.4 → 1.0 moves qpR 0.64 → 1.60 m³/s/mm, but the peak of the ordinates moved 1.02 → 1.22).
 
-Since v1.0.0 the ordinates are the gamma unit hydrograph through the peak (Asquith and Roussel 2007, USGS SIR 2007-5243, eq. 2 and 4):
+Since v0.8.0 the ordinates are the gamma unit hydrograph through the peak (Asquith and Roussel 2007, USGS SIR 2007-5243, eq. 2 and 4):
 
 ```
 q(t) = qpR × [(t/tpR) × exp(1 - t/tpR)]^K          [m³/s/mm]
@@ -764,7 +764,7 @@ The volume (130,400 m³) does not change. Before the change the steepest fall wa
 
 ---
 
-### 3.5 Hydrologic Soil Groups (HSG) and Area-Weighted CN (`hydrolog.soil`, since v1.0.0)
+### 3.5 Hydrologic Soil Groups (HSG) and Area-Weighted CN (`hydrolog.soil`, since v0.8.0)
 
 HSG (A-D) is one of the two factors of the CN number (the other is land cover). The `hydrolog.soil` module determines HSG from clay, sand and silt content; the rules and mapping were transferred from Kartograf 0.8.0 (`kartograf.hydrology.hsg`, Kartograf ADR-025), and Kartograf remains responsible for downloading rasters (`download_soil`).
 
@@ -846,7 +846,7 @@ cn = calculate_weighted_cn(parts)
 
 ---
 
-### 3.6 Minimum Flows: the Fisher–Tippett Distribution for Minima (`LowFlowAnalysis`, fix in v1.0.0)
+### 3.6 Minimum Flows: the Fisher–Tippett Distribution for Minima (`LowFlowAnalysis`, fix in v0.8.0)
 
 `LowFlowAnalysis.fit_fisher_tippett()` fits to the annual minima (hydrological year XI-X, i.e. November-October) a distribution of **smallest** values: the generalised extreme value (GEV) distribution for minima, whose special cases are the Gumbel distribution for minima and the three-parameter Weibull distribution.
 
@@ -868,7 +868,7 @@ as equal or smaller):
 
 Because the sample minimum is the negated sample maximum with the sign changed, `min(x) = -max(-x)`, the parameters are estimated by maximum likelihood from the **negated** minima (`scipy.stats.genextreme`), and the quantile is `Q_T = -genextreme.isf(p, c, loc=-loc, scale=scale)`. The reported `shape` is the `c` parameter from `scipy.stats.genextreme` (i.e. minus the shape parameter ξ in the usual GEV notation).
 
-> **Change in v1.0.0 (bug fix).** Versions < 1.0.0 fitted the distribution of **maxima** directly to the minima and read its quantile at the point p. That is the mirror-image distribution: it approximates the centre of the sample correctly, but its left tail is not the tail of the distribution of smallest values, so the quantiles of rare low flows were biased, increasingly so with T, and could be negative. For a synthetic sample of 1000 annual minima from the Gumbel distribution for minima (loc = 50, scale = 8), the quantile for T = 100 years was **−3821**, and since v1.0.0 it is **13.26** (theoretical value 13.20). For the Weibull distribution (k = 2, loc = 1, scale = 5) for T = 100 years: 1.24 → 1.51 (theory 1.50), for T = 1000 years: 0.33 → 1.18 (theory 1.16).
+> **Change in v0.8.0 (bug fix).** Versions < 0.8.0 fitted the distribution of **maxima** directly to the minima and read its quantile at the point p. That is the mirror-image distribution: it approximates the centre of the sample correctly, but its left tail is not the tail of the distribution of smallest values, so the quantiles of rare low flows were biased, increasingly so with T, and could be negative. For a synthetic sample of 1000 annual minima from the Gumbel distribution for minima (loc = 50, scale = 8), the quantile for T = 100 years was **−3821**, and since v0.8.0 it is **13.26** (theoretical value 13.20). For the Weibull distribution (k = 2, loc = 1, scale = 5) for T = 100 years: 1.24 → 1.51 (theory 1.50), for T = 1000 years: 0.33 → 1.18 (theory 1.16).
 
 #### 3.6.2 Limitations
 
@@ -876,13 +876,13 @@ Because the sample minimum is the negated sample maximum with the sign changed, 
 - Three parameters from a few decades of data are uncertain, especially the shape, and with it the quantiles of rare low flows (with fewer than 10 years of data the result carries a warning).
 - The Kolmogorov-Smirnov test is informational (`ks_valid = False`: the parameters were estimated from the same data).
 
-#### 3.6.3 Annual Minima (and Maxima): Complete Hydrological Years Only (fix in v1.0.0)
+#### 3.6.3 Annual Minima (and Maxima): Complete Hydrological Years Only (fix in v0.8.0)
 
 The annual minima of `LowFlowAnalysis` and the annual maxima of `stats flood-frequency` (from a daily series) are extremes of **whole years of observation** (KZGW 2017; WMO No. 1029, 2009): a hydrological year (1 November – 31 October) enters the sample only if the series has a value for **every** day of the year — 365 days, or 366 for a year containing 29 February (a so-called leap year: 1 November 2019 – 31 October 2020 has 366 days). A missing date or `NaN` excludes the whole year, because the year's maximum or minimum could have occurred on the day without a value. Omitted years (with the number of days with data) are reported by the notice `incomplete_years` and the result field `incomplete_years`; the library (`LowFlowAnalysis.annual_minima()`) warns with `UserWarning`, and a series without a complete year is a `CalculationError`. Practical consequence: an export covering calendar years (1 January – 31 December) loses the first hydrological year (without November and December) and the last one (only November and December).
 
-> **Change in v1.0.0 (bug fix).** Versions < 1.0.0 took the extreme from every year present in the dates, including an incomplete one. For a synthetic calendar series 1991–2020 (a flood on 15 March and a low flow on 15 September every year), the sample had 31 "years", including 2021 with only November and December 2020 (maximum and minimum equal to the base level 5.0, with the median of complete years 13.0 and 2.2). Since v1.0.0 the sample has 29 years (1992–2020): GEV for T = 100 years **16.08 → 16.35**, Fisher–Tippett for T = 100 years **2.002 → 1.968**. For a series with gaps: fill in the data or (for maxima) supply the annual maxima directly, without dates.
+> **Change in v0.8.0 (bug fix).** Versions < 0.8.0 took the extreme from every year present in the dates, including an incomplete one. For a synthetic calendar series 1991–2020 (a flood on 15 March and a low flow on 15 September every year), the sample had 31 "years", including 2021 with only November and December 2020 (maximum and minimum equal to the base level 5.0, with the median of complete years 13.0 and 2.2). Since v0.8.0 the sample has 29 years (1992–2020): GEV for T = 100 years **16.08 → 16.35**, Fisher–Tippett for T = 100 years **2.002 → 1.968**. For a series with gaps: fill in the data or (for maxima) supply the annual maxima directly, without dates.
 
-#### 3.6.4 Empirical Frequency of Minima: the Non-Exceedance Convention (fix in v1.0.0)
+#### 3.6.4 Empirical Frequency of Minima: the Non-Exceedance Convention (fix in v0.8.0)
 
 In low-flow analysis, the return period *T* belongs to the **non-exceedance** probability *F = 1/T* (a flow equal or lower once in *T* years; WMO No. 1029, 2009; Tallaksen and van Lanen, 2004) — this is how the `fisher_tippett` quantiles are computed. The empirical positions of `LowFlowAnalysis.empirical_non_exceedance()` (result `LowFlowEmpiricalFrequency`, the `empirical` block of the `stats low-flow` command) follow the same convention: annual minima in ascending order (`values_ascending`), the *m*-th smallest has
 
@@ -893,7 +893,7 @@ T_m = 1 / F_m                                  (the deepest low flow in n years:
 
 The points (F, value) therefore lie on the same plot as the `fisher_tippett` quantiles (`non_exceedance_probabilities = 1/T`). `LowFlowAnalysis.empirical_frequency()` still returns *exceedance* positions (values descending, `P = i/(n+1)`), i.e. the opposite side of the same sample (`F = 1 − P`).
 
-> **Change in v1.0.0 (bug fix).** The `empirical` block in `stats low-flow` was the result of `empirical_frequency()`, so next to `fisher_tippett.return_periods` using the non-exceedance convention it placed `return_periods` using the exceedance convention. For `tests/fixtures/daily_flows_3y.csv` (minima 1.79; 1.88; 1.66) the deepest low flow 1.66 had T = **1.33** (P = 0.75), and since v1.0.0 it has F = 0.25 and T = **4**.
+> **Change in v0.8.0 (bug fix).** The `empirical` block in `stats low-flow` was the result of `empirical_frequency()`, so next to `fisher_tippett.return_periods` using the non-exceedance convention it placed `return_periods` using the exceedance convention. For `tests/fixtures/daily_flows_3y.csv` (minima 1.79; 1.88; 1.66) the deepest low flow 1.66 had T = **1.33** (P = 0.75), and since v0.8.0 it has F = 0.25 and T = **4**.
 
 ```python
 from hydrolog.statistics import LowFlowAnalysis
@@ -906,7 +906,7 @@ print(ft.quantiles)    # flow [m³/s] once in 10, 50, 100 years
 
 The same analysis in the CLI: `hydrolog stats low-flow --input-file q_dobowe.csv --value-column Q --date-column date --return-periods 10,50,100`.
 
-### 3.7 Time of Concentration from a Catchment (`WatershedParameters.calculate_tc`, `tc watershed`; fixes in v1.0.0)
+### 3.7 Time of Concentration from a Catchment (`WatershedParameters.calculate_tc`, `tc watershed`; fixes in v0.8.0)
 
 `WatershedParameters.calculate_tc(method)` and the `tc watershed` command compute tc with the chosen method from the catchment fields. Each argument of the formula is the field the method's source defines, with no substitute ([ADR-0019](decisions/0019-tc-from-the-inputs-its-source-defines.md), `hydrolog._ranges.TC_INPUTS`): a missing field is `validation_error` with `details.reason` `missing_field` naming it, whatever other fields the catchment has. `WatershedParameters.tc_parameters(method)` returns the arguments; the same numbers appear in the command's `result.parameters` and in the time of concentration section of the report.
 
@@ -919,14 +919,14 @@ The same analysis in the CLI: `hydrolog stats low-flow --input-file q_dobowe.csv
 | Kerby | **`overland_length_km`** (up to a defined channel) | **`overland_slope_m_per_m`**, `retardance` (N) | Kerby 1959 (Roussel et al. 2005) |
 | Kerby-Kirpich | `overland_length_km`; channel = `flow_path_length_km` − `overland_length_km` | `overland_slope_m_per_m`; the channel at `flow_path_slope_m_per_m`, the slope of the whole path; `retardance` | Roussel et al. 2005 (TxDOT 0-4696-2), supplement; TxDOT HDM ch. 4 s. 11; Cleveland et al. 2012 (TxDOT 0-6382-P1) |
 
-- **The longest flow path** (`flow_path_length_km`, `flow_path_slope_m_per_m`) runs from the hydraulically most distant point of the watershed (the cell with the greatest flow distance to the outlet; usually on the divide, but possibly on a ridge inside the watershed) to the outlet; its slope is the elevation of that point minus the outlet elevation, over its length. Hydrograf's hydraulic length is this length. Before v1.0.0 Kirpich and NRCS took the channel length, else the catchment length, and Kirpich the channel slope, else the mean slope, else the relief over the length (which equals Kirpich's S only when the most remote point is also the highest), and Giandotti took the catchment length without a channel and the middle of the elevation range without a mean.
-- **FAA and Kerby are formulas for overland flow time** (FAA 1970, AC 150/5320-5B, fig. 7; Kerby 1959). Kerby derived his formula for flow paths up to 366 m (1200 ft; Roussel et al. 2005; TxDOT Hydraulic Design Manual, ch. 4, section 11); the FAA gives no limit of the length (its curves end at 800 ft). Before v1.0.0 the channel length and slope timed the channel with an overland flow formula, far beyond Kerby's paths. The result is the overland flow time; **the tc of a catchment with a channel is given by Kerby-Kirpich (or Kirpich)**. The later circulars AC 150/5320-5C and 5D do not have the FAA formula.
+- **The longest flow path** (`flow_path_length_km`, `flow_path_slope_m_per_m`) runs from the hydraulically most distant point of the watershed (the cell with the greatest flow distance to the outlet; usually on the divide, but possibly on a ridge inside the watershed) to the outlet; its slope is the elevation of that point minus the outlet elevation, over its length. Hydrograf's hydraulic length is this length. Before v0.8.0 Kirpich and NRCS took the channel length, else the catchment length, and Kirpich the channel slope, else the mean slope, else the relief over the length (which equals Kirpich's S only when the most remote point is also the highest), and Giandotti took the catchment length without a channel and the middle of the elevation range without a mean.
+- **FAA and Kerby are formulas for overland flow time** (FAA 1970, AC 150/5320-5B, fig. 7; Kerby 1959). Kerby derived his formula for flow paths up to 366 m (1200 ft; Roussel et al. 2005; TxDOT Hydraulic Design Manual, ch. 4, section 11); the FAA gives no limit of the length (its curves end at 800 ft). Before v0.8.0 the channel length and slope timed the channel with an overland flow formula, far beyond Kerby's paths. The result is the overland flow time; **the tc of a catchment with a channel is given by Kerby-Kirpich (or Kirpich)**. The later circulars AC 150/5320-5C and 5D do not have the FAA formula.
 - **NRCS**: in the lag equation (NEH 630, ch. 15, eq. 15-4; TR-55 does not contain it) Y is the mean land slope of the catchment [%], "not to be confused with the slope of the flow path".
 - **Kerby-Kirpich** splits the longest flow path: Kerby on the overland segment, Kirpich on the rest of the path at the slope of the whole path, with S + 0.0005 below 0.002 on both (Cleveland et al. 2012). Hydrolog reproduces the published examples: 24.6 + 32.0 = 56.5 min against "about 57" (Roussel et al. 2005; L 5,280 ft, overland 500 ft at 2%, N 0.40, S 0.0095), and 52.1 + 86.8 = 138.9 min against "about 140" with the low-slope offset (Cleveland et al. 2012). A flow path not longer than the overland segment is `exclusive_minimum` on `flow_path_length_km`.
 
 Example (catchment: L = 12 km, channel 10 km with slope 0.02, longest flow path 10.5 km with slope 0.019, terrain slope 0.025, CN 72, overland flow 0.2 km with slope 0.01, C = 0.5, N = 0.4):
 
-| Method | tc before v1.0.0 [min] | tc since v1.0.0 [min] | Reason |
+| Method | tc before v0.8.0 [min] | tc since v0.8.0 [min] | Reason |
 |--------|-----------------------:|----------------------:|--------|
 | FAA | 155.3 (warning: L = 10 km outside 0.015–3 km) | 27.7 | overland flow 0.2 km, S = 0.01 |
 | Kerby | 173.2 (two warnings) | 32.8 | as FAA |
@@ -938,7 +938,7 @@ Example (catchment: L = 12 km, channel 10 km with slope 0.02, longest flow path 
 
 The `cn` option given alongside a catchment is the CN of the whole calculation: it overrides the catchment's `cn` both in SCS-CN and in the time of concentration by the `nrcs` method, in which the retention S = 25400/CN − 254 of the lag equation (NEH 630, ch. 15, eq. 15-4) comes from the same CN. A catchment without `cn` also works when `cn` is given. Formerly the NRCS time of concentration took CN from the file and the effective precipitation took CN from the option. Example (CN 60 in the file, `cn` = 85, L = 12 km, Y = 2.5%, beta rainfall 50 mm/120 min): tc 657.7 → 322.1 min, Qmax 27.64 → 55.62 m³/s, time to peak 440 → 240 min.
 
-### 3.8 Rating Curve Q = a·(H − H₀)^b: the H₀ Starting Point (`RatingCurve`, fix in v1.0.0)
+### 3.8 Rating Curve Q = a·(H − H₀)^b: the H₀ Starting Point (`RatingCurve`, fix in v0.8.0)
 
 `RatingCurve.fit()` (`hydrometrics rating-curve`) fits `Q = a·(H − H₀)^b` by least squares (`scipy.optimize.curve_fit`, bounds a ≥ 0, b ≥ 0, H₀ < min(H)) with the starting point a = 1, b = 1.5, H₀ = `h0_initial`. Without `h0_initial` the H₀ start lies below the lowest stage by one tenth of the stage range, by at least one stage unit:
 
@@ -948,7 +948,7 @@ H₀,start = min(H) − max(1, 0.1·(max(H) − min(H)))
 
 Such a start is admissible for any sign of the stages (stages below the gauge zero, e.g. −10 cm, are normal). An explicitly supplied value must be finite and lower than the lowest stage (`validation_error`).
 
-> **Change in v1.0.0 (bug fix).** A fixed start of 0 was not lower than the lowest stage of a gauge with a reading ≤ 0, so `hydrolog hydrometrics rating-curve --water-levels=-10,5,20,40,80,120 --discharges 0.5,1.2,2.5,4.8,10.1,17.3` ended with an error ("h0_initial must be … below the lowest water level (−10), got 0.0"). Since v1.0.0 the start is −23 and the fit gives a = 0.004917, b = 1.640, H₀ = −25.17 (R² = 0.9998). On 60 synthetic curves (stages in cm and m, positive and negative, noise 1–8 %, 6–30 measurements) starts from 0.1 to 1 of the range below the lowest stage always gave the best least-squares solution.
+> **Change in v0.8.0 (bug fix).** A fixed start of 0 was not lower than the lowest stage of a gauge with a reading ≤ 0, so `hydrolog hydrometrics rating-curve --water-levels=-10,5,20,40,80,120 --discharges 0.5,1.2,2.5,4.8,10.1,17.3` ended with an error ("h0_initial must be … below the lowest water level (−10), got 0.0"). Since v0.8.0 the start is −23 and the fit gives a = 0.004917, b = 1.640, H₀ = −25.17 (R² = 0.9998). On 60 synthetic curves (stages in cm and m, positive and negative, noise 1–8 %, 6–30 measurements) starts from 0.1 to 1 of the range below the lowest stage always gave the best least-squares solution.
 
 ### 3.9 Flood Routing (`hydrolog.routing`, `route *`; ADR-0007)
 
@@ -1351,7 +1351,7 @@ These commands reduce a station's daily series (Obserwator's export or inline va
 │  K = 0.6 × Tc / n assumes the SCS relation tlag = 0.6 × Tc.        │
 │  This relation is specific to the SCS method and has NO scientific │
 │  justification for the Nash model (NashIUH.from_tc() was removed   │
-│  in v1.0.0 for this reason).                                       │
+│  in v0.8.0 for this reason).                                       │
 │                                                                     │
 │  CONSEQUENCES:                                                      │
 │  - Parameter K is computed from an invalid relationship            │

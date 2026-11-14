@@ -88,7 +88,7 @@ Enable easy data exchange between Hydrograf (GIS spatial analysis) and Hydrolog 
     "urban_pct": {"type": "number", "minimum": 0, "maximum": 100, "description": "Percentage of urbanized area [%] (Nash)"},
     "forest_pct": {"type": "number", "minimum": 0, "maximum": 100, "description": "Percentage of forested area [%] (Nash)"},
 
-    "__comment_v100": "Optional fields added in v1.0.0 (ADR-0019)",
+    "__comment_v100": "Optional fields added in v0.8.0 (ADR-0019)",
     "flow_path_length_km": {"type": "number", "exclusiveMinimum": 0, "description": "Length of the longest flow path, from the hydraulically most distant point of the watershed (usually on the divide, possibly on a ridge inside the watershed) to the outlet [km] (Kirpich, NRCS, Kerby-Kirpich)"},
     "flow_path_slope_m_per_m": {"type": "number", "minimum": 0, "description": "Slope of the longest flow path: (elevation of its head - outlet elevation) / its length [m/m] (Kirpich, Kerby-Kirpich)"}
   }
@@ -167,7 +167,7 @@ relief = params.relief_m   # max - min
 **Status:** ✅ Implemented, in Hydrograf's own way (its repository; its account of the integration is `docs/integrations/HYDROLOG.md`)
 
 - `POST /api/delineate-watershed` returns `watershed.morphometry`, the Pydantic model `MorphometricParameters` (`backend/models/schemas.py`) built by `build_morph_dict_from_graph()` (`backend/core/watershed_service.py`): the keys of `WatershedParameters` and Hydrograf's own (e.g. `hydraulic_length_km`, the value of `flow_path_length_km`), which `WatershedParameters.from_dict()` ignores.
-- Hydrograf depends on `hydrolog>=1.0.0.dev0,<2` (`backend/pyproject.toml`, pinned to a Hydrolog commit in `[tool.uv.sources]`) and computes its design hydrograph with it.
+- Hydrograf depends on `hydrolog>=1.0.0.dev0,<2` (`backend/pyproject.toml`, pinned to a Hydrolog commit in `[tool.uv.sources]`) and computes its design hydrograph with it. Since 2026-11-14 Hydrolog's `develop` carries `0.8.0.dev0`, which that range refuses; it becomes `>=0.8.0.dev0,<0.9` (Nogat REL-5.6), a change in Hydrograf's repository.
 - It hands a watershed or a delineated network to Hydrolog's GUI as `nogat-handoff/1` (`backend/core/handoff.py`; see "Web GUI: the hand-off with Hydrograf" below).
 
 ---
@@ -216,9 +216,9 @@ print(f"Qmax: {result.peak_discharge_m3s:.2f} m³/s")
 
 ---
 
-## Hydrolog 1.0.0: operations layer, command catalog and files
+## Hydrolog 0.8.0: operations layer, command catalog and files
 
-Since v1.0.0 Hydrolog has a single command catalog (`hydrolog.catalog`, 62 commands in 17 groups, list: `hydrolog commands list`) from which the following are generated: the Python operations layer (`hydrolog.operations`), the `hydrolog` CLI, the MCP server (`hydrolog mcp`) and the agent guides (`AGENTS.md`, `llms.txt`). The library classes (`HydrographGenerator`, `WatershedParameters`, ...) work as before; the sections below describe the new ways of integrating.
+Since v0.8.0 Hydrolog has a single command catalog (`hydrolog.catalog`, 62 commands in 17 groups, list: `hydrolog commands list`) from which the following are generated: the Python operations layer (`hydrolog.operations`), the `hydrolog` CLI, the MCP server (`hydrolog mcp`) and the agent guides (`AGENTS.md`, `llms.txt`). The library classes (`HydrographGenerator`, `WatershedParameters`, ...) work as before; the sections below describe the new ways of integrating.
 
 ### Flood routing over a network: Hydrograf and Hydraulik
 
@@ -318,7 +318,7 @@ Retman calls Hydrolog through the command layer, not through the library classes
 - **Catalog and envelope:** `hydrolog.catalog.run_command("<group> <command>", {options})` (also `hydrolog.run_command`) validates the options, runs the operation and returns a `hydrolog-result/1` envelope (`schema`, `tool`, `version`, `command`, `check`, `status`, `result`, `notices`, `inputs`, and `attribution` and `terms_notice`, the providers' lines of Nogat DEV §20, when the run has them; the files written are in `result.files[]` with SHA-256; `to_dict()`, `to_json()`). Option schema (JSON Schema): `command_schema()`, `hydrolog commands schema`. Errors are `HydrologError` exceptions with `code`, `hint` and `details` (registry `ERROR_CODES`; document `hydrolog-error/1`).
 - **`catchment_characteristics`:** the proposed format is `WatershedParameters` JSON (`WatershedParameters.to_json()`; only `area_km2` is required, a command that needs a missing field names it in `details.option` with `details.reason` `missing_field`). The file is passed to commands as `watershed_file`, and `WatershedParameters.from_dict()` ignores the extra `schema` key (e.g. `"hydrolog-catchment/1"`) added by the catalog tools.
 - **File inputs and outputs:** series (`input_file` + `value_column`/`date_column`), rainfall stations (`stations_file`), network segments (`segments_file`) and the watershed (`watershed_file`) as CSV/JSON; results that write files (`soil hsg` - GeoTIFF, `report generate` - Markdown, the `route` commands - hydrograph tables, `commands batch` and `commands guide`; one file given by `--output`, or `route network --output-dir` and `--schematic`; an existing file needs `--force`) list them in `result.files[]`. Retman does not need to paste series into arguments.
-- **Versions:** the tool manifest in Retman: `supported_versions=">=1.0,<2"` (semantic versioning applies from 1.0.0: options, command names and envelope shapes do not change incompatibly within the 1.x series).
+- **Versions:** Hydrolog's next release is 0.8.0 (`develop` carries `0.8.0.dev0`). In 0.y a minor release may change options, command names and envelope shapes incompatibly, from 1.0.0 only a major one (Nogat REL-1.1), so a consumer that pins a Hydrolog commit declares `>=0.8.0.dev0,<0.9` (REL-5.6) and narrows it to `>=0.8.0,<0.9` with the tag. Retman's tool manifest still says `supported_versions=">=1.0.0.dev0,<2"`, which refuses `0.8.0.dev0` until Retman changes it.
 
 ```python
 from hydrolog.catalog import run_command
@@ -455,7 +455,7 @@ Hydrolog computes discharge only: water levels, inundation and backwater are hyd
 
 ### Hydrograf: migrating HSG from Kartograf to Hydrolog
 
-Until now the hydrologic soil groups were computed by Kartograf (`calculate_hsg`, `hsg_statistics`; in Hydrograf: `get_hsg_from_soilgrids` in `backend/core/cn_calculator.py`, and `scripts/bootstrap.py`). Since Hydrolog 1.0.0, HSG calculation belongs to Hydrolog (module `hydrolog.soil`; the rules and the texture → HSG mapping were moved from Kartograf 0.8.0, Kartograf ADR-025), and Kartograf is to be left with raster download only (`download_soil`). Hydrolog does not depend on Kartograf (the former `hydrolog[spatial]` extra was removed).
+Until now the hydrologic soil groups were computed by Kartograf (`calculate_hsg`, `hsg_statistics`; in Hydrograf: `get_hsg_from_soilgrids` in `backend/core/cn_calculator.py`, and `scripts/bootstrap.py`). Since Hydrolog 0.8.0, HSG calculation belongs to Hydrolog (module `hydrolog.soil`; the rules and the texture → HSG mapping were moved from Kartograf 0.8.0, Kartograf ADR-025), and Kartograf is to be left with raster download only (`download_soil`). Hydrolog does not depend on Kartograf (the former `hydrolog[spatial]` extra was removed).
 
 Existing path in Hydrograf:
 
@@ -546,10 +546,10 @@ cn = calculate_weighted_cn(parts)
 | HydrographGenerator | ✅ | SCS bug fixed in v0.5.1 (constant 0.208) |
 | Unit tests | ✅ | 88 tests (`tests/unit/test_watershed_params.py`) |
 | Integration tests | ✅ | 16 tests (`tests/integration/test_hydrograf_integration.py`) |
-| Operations layer, command catalog, CLI, MCP (v1.0.0) | ✅ | 62 commands in 17 groups; `hydrolog.operations`, `hydrolog mcp` |
-| `routing` module (after v1.0.0, ADR-0007) | ✅ | `Hydrograph`, `Reach`, `LagReach`, `MuskingumReach`, `MuskingumCungeReach`, `CascadeReach`, `LevelPoolReach`, `RoutingNetwork`, `ControlPointNetwork`, `route lag`, `route muskingum`, `route muskingum-cunge`, `route cascade`, `route level-pool`, `route network`, `route schematic` |
-| `soil` module (HSG, v1.0.0) | ✅ | `hsg_from_rasters`, `hsg_statistics`, `soil *` commands |
-| Result serialization (v1.0.0) | ✅ | `to_dict()`/`to_json()` in all result classes |
+| Operations layer, command catalog, CLI, MCP (v0.8.0) | ✅ | 62 commands in 17 groups; `hydrolog.operations`, `hydrolog mcp` |
+| `routing` module (v0.8.0, ADR-0007) | ✅ | `Hydrograph`, `Reach`, `LagReach`, `MuskingumReach`, `MuskingumCungeReach`, `CascadeReach`, `LevelPoolReach`, `RoutingNetwork`, `ControlPointNetwork`, `route lag`, `route muskingum`, `route muskingum-cunge`, `route cascade`, `route level-pool`, `route network`, `route schematic` |
+| `soil` module (HSG, v0.8.0) | ✅ | `hsg_from_rasters`, `hsg_statistics`, `soil *` commands |
+| Result serialization (v0.8.0) | ✅ | `to_dict()`/`to_json()` in all result classes |
 
 **Fixed:** Bug in `SCSUnitHydrograph.peak_discharge()` — constant 2.08 → 0.208 (fixed in v0.5.1).
 

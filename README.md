@@ -421,4 +421,4 @@ hydrolog config show --json
 
 ## Status, licence, author
 
-Alpha: version 1.0.0 is not released yet (the repository carries `1.0.0.dev0`), and semantic versioning applies from 1.0.0. Licence: MIT. Author: Piotr de Bever ([Daldek](https://github.com/Daldek)). Hydrolog is part of the [Nogat](https://github.com/Daldek/Nogat) ecosystem and follows its standard 1.0.
+Alpha: the next release is 0.8.0 (the repository carries `0.8.0.dev0`; the last release is 0.7.0). Semantic versioning applies: in 0.y a minor release may break the public interface, from 1.0.0 only a major one. Licence: MIT. Author: Piotr de Bever ([Daldek](https://github.com/Daldek)). Hydrolog is part of the [Nogat](https://github.com/Daldek/Nogat) ecosystem and follows its standard 1.0.

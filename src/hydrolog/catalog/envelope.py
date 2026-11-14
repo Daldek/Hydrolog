@@ -7,7 +7,7 @@ and Python callers share (Nogat ``result-1``, AGI-4.2)::
     {
       "schema": "hydrolog-result/1",
       "tool": "hydrolog",
-      "version": "1.0.0",
+      "version": "0.8.0",
       "command": "tc kirpich",
       "check": false,
       "status": "ok",
