@@ -14,7 +14,7 @@ import { parseHash } from "./router.js";
 import { getActiveSection } from "./store.js";
 
 /** The server's limit of the context: its compact JSON in UTF-8 [bytes]. */
-export const LIMIT_BYTES = 100_000;
+const LIMIT_BYTES = 100_000;
 
 /** The size a context is cut to: Python writes some numbers longer (1e-7 as 1e-07). */
 const TARGET_BYTES = LIMIT_BYTES - 1_000;

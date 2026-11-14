@@ -74,7 +74,12 @@ from hydrolog.statistics import (
     temperature_means,
     temperature_range,
 )
-from hydrolog.statistics._climate import SNOW_SEASON, WMO_NORMAL_SHARE, year_of
+from hydrolog.statistics._climate import (
+    SNOW_SEASON,
+    WMO_NORMAL_SHARE,
+    YearType,
+    year_of,
+)
 
 __all__ = [
     "meteo_hydrothermal",
@@ -532,7 +537,7 @@ def meteo_precipitation(
     date_column: str | None = None,
     precipitation_column: str | None = None,
     precipitation_flag_column: str | None = None,
-    year_type: Literal["calendar", "hydrological"] = "calendar",
+    year_type: YearType = "calendar",
     first_year: int | None = None,
     last_year: int | None = None,
     reference_first_year: int | None = None,
@@ -712,7 +717,7 @@ def meteo_spells(
     date_column: str | None = None,
     precipitation_column: str | None = None,
     precipitation_flag_column: str | None = None,
-    year_type: Literal["calendar", "hydrological"] = "calendar",
+    year_type: YearType = "calendar",
     first_year: int | None = None,
     last_year: int | None = None,
     attribution: list[str] | None = None,
@@ -813,7 +818,7 @@ def meteo_spi(
     date_column: str | None = None,
     precipitation_column: str | None = None,
     precipitation_flag_column: str | None = None,
-    year_type: Literal["calendar", "hydrological"] = "calendar",
+    year_type: YearType = "calendar",
     first_year: int | None = None,
     last_year: int | None = None,
     reference_first_year: int | None = None,
@@ -946,7 +951,7 @@ def meteo_temperature(
     tmean_column: str | None = None,
     tmax_column: str | None = None,
     tmin_column: str | None = None,
-    year_type: Literal["calendar", "hydrological"] = "calendar",
+    year_type: YearType = "calendar",
     first_year: int | None = None,
     last_year: int | None = None,
     reference_first_year: int | None = None,

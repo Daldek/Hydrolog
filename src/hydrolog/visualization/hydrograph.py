@@ -220,7 +220,7 @@ def plot_unit_hydrograph(
 
     # Stats box
     if show_params:
-        stats = _get_uh_stats(result, isinstance(result, (IUHResult, ClarkIUHResult)))
+        stats = _get_uh_stats(result)
         add_stats_box(ax, stats, loc="upper right")
 
     # Labels
@@ -241,7 +241,7 @@ def plot_unit_hydrograph(
     return fig
 
 
-def _get_uh_stats(result: UHResultType, is_iuh: bool) -> dict[str, Any]:
+def _get_uh_stats(result: UHResultType) -> dict[str, Any]:
     """Extract statistics from UH result for display."""
     stats = {}
 

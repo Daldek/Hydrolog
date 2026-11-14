@@ -55,7 +55,7 @@ function warned(notices, methods, parameter = null) {
  * @returns {{level: string, text: string, from: string, info: string}|null} the note, null
  *   when Hydrolog warned about the method or no value lies inside a range
  */
-export function rangeNote(id, name, values, notices) {
+function rangeNote(id, name, values, notices) {
   const found = infoRanges(id).filter((range) => !range.relative_to);
   if (!found.length || warned(notices, new Set(found.map((range) => range.method)))) return null;
   const checked = [];
@@ -81,7 +81,7 @@ export function rangeNote(id, name, values, notices) {
  * @param {object[]} notices Hydrolog's notices of the run
  * @returns {{level: string, text: string, from: string, info: string}|null} the note
  */
-export function timestepNote(model, result, notices) {
+function timestepNote(model, result, notices) {
   if (!result || typeof result.timestep_min !== "number") return null;
   const range = infoRanges("rain-timestep").find((found) => found.method === model && found.parameter === "timestep_min");
   if (!range || typeof range.maximum !== "number" || warned(notices, new Set([model]), "timestep_min")) return null;

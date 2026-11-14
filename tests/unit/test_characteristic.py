@@ -45,19 +45,6 @@ class TestHydrologicalYear:
         result = hydrological_day_of_year(dates)
         assert result[0] in (365, 366)
 
-    def test_split_half_years_winter_summer(self):
-        """Winter = Nov-Apr, Summer = May-Oct."""
-        from hydrolog.statistics._hydrological_year import split_half_years
-
-        dates = np.array(
-            ["2021-01-15", "2021-05-15", "2021-11-15", "2021-07-20"],
-            dtype="datetime64[D]",
-        )
-        values = np.array([10.0, 20.0, 30.0, 40.0])
-        winter, summer = split_half_years(values, dates)
-        np.testing.assert_array_equal(winter, [10.0, 30.0])  # Jan, Nov
-        np.testing.assert_array_equal(summer, [20.0, 40.0])  # May, Jul
-
 
 class TestCharacteristicValues:
     """Tests for characteristic flow values (Polish system)."""

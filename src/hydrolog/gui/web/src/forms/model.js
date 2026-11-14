@@ -72,7 +72,7 @@ export function commandEntry(doc) {
  * @returns {string} number | integer | choice | boolean | series | chips | json | objects |
  *   file-in | file-out | text
  */
-export function kindOf(option) {
+function kindOf(option) {
   if (option.path_role === "input") return "file-in";
   if (option.path_role === "output") return "file-out";
   switch (option.type) {
@@ -114,7 +114,7 @@ function prefixOf(name) {
  * @param {object} entry the command entry
  * @returns {Map<string, {groups: number[], member: boolean}>} by option name
  */
-export function paneMembership(entry) {
+function paneMembership(entry) {
   const groups = Array.isArray(entry.one_of) ? entry.one_of : [];
   const found = new Map();
   groups.forEach((members, index) => {
@@ -292,7 +292,7 @@ export function fieldModel(commandDoc, settings = {}) {
  * @param {unknown} value its value
  * @returns {boolean} true when the value would be sent
  */
-export function isGiven(field, value) {
+function isGiven(field, value) {
   if (field.kind === "boolean") return typeof value === "boolean";
   if (Array.isArray(value)) return value.length > 0;
   return value !== undefined && value !== null && String(value).trim() !== "";

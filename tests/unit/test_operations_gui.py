@@ -10,7 +10,7 @@ import pytest
 import hydrolog
 from hydrolog.catalog import run_command
 from hydrolog.exceptions import InvalidParameterError, MissingDependencyError
-from hydrolog.operations import gui as gui_module
+from hydrolog.gui.server import url_of
 
 
 def _free_port() -> int:
@@ -68,9 +68,6 @@ class TestCheck:
             pytest.skip(f"{host} is not an address of this computer")
         assert envelope["notices"] == []
 
-    def test_an_ipv6_address_is_written_in_brackets(self):
-        assert gui_module._url("::1", 8070) == "http://[::1]:8070/"
-
     def test_an_unresolvable_host_is_refused_by_its_reason(self):
         with pytest.raises(InvalidParameterError) as caught:
             run_command("gui serve", {"host": "no-such-host.invalid", "check": True})
@@ -88,12 +85,7 @@ class TestCheck:
 
 
 def test_without_the_extra_it_is_a_missing_dependency(monkeypatch):
-    real = gui_module.find_spec
-    monkeypatch.setattr(
-        gui_module,
-        "find_spec",
-        lambda name: None if name == "uvicorn" else real(name),
-    )
+    monkeypatch.setitem(sys.modules, "uvicorn", None)
 
     with pytest.raises(MissingDependencyError) as caught:
         run_command("gui serve", {"check": True})
@@ -116,6 +108,7 @@ def test_serving_returns_where_and_when_it_served(monkeypatch, caplog):
 
     server = types.ModuleType("hydrolog.gui.server")
     server.serve = serve  # type: ignore[attr-defined]
+    server.url_of = url_of  # type: ignore[attr-defined]
     monkeypatch.setitem(sys.modules, "hydrolog.gui.server", server)
 
     with caplog.at_level(logging.WARNING, logger="hydrolog"):

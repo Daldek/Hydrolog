@@ -40,7 +40,7 @@ const CONTROLS = {
  * @param {{entry: object}} props the command entry
  * @returns {object} the head
  */
-export function CommandHead({ entry }) {
+function CommandHead({ entry }) {
   const polish = (entry.i18n && entry.i18n.pl) || {};
   const effects = entry.effects || {};
   return html`

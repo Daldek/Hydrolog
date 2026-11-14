@@ -26,14 +26,14 @@ import { closePanel, closeSheet, openPanel, togglePanel, usePanels } from "./she
 import { Sources } from "./sources.js";
 
 /** Bounds of the side panels [px]. */
-export const LIMITS = Object.freeze({
+const LIMITS = Object.freeze({
   left: Object.freeze({ min: 260, max: 560 }),
   detail: Object.freeze({ min: 260, max: 560 }),
   right: Object.freeze({ min: 340, max: 720 }),
 });
 
 /** The narrowest centre [px]. */
-export const CENTRE_MIN = 480;
+const CENTRE_MIN = 480;
 
 /** The side panels in the order of their columns. */
 const SIDES = ["left", "detail", "right"];

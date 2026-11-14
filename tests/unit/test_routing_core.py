@@ -83,7 +83,7 @@ class TestHydrographTable:
 
         assert hydrograph.extended(0) is hydrograph
 
-    def test_refined_and_coarsened_are_inverse_and_keep_the_volume(self):
+    def test_refined_keeps_the_ordinates_and_the_volume(self):
         hydrograph = flood()
 
         fine = hydrograph.refined(4)
@@ -92,14 +92,8 @@ class TestHydrographTable:
         assert fine.timestep_min == pytest.approx(2.5)
         assert fine.volume_m3 == pytest.approx(hydrograph.volume_m3, rel=1e-12)
         assert fine.discharge_m3s[1] == pytest.approx(0.25 * 10.0)  # on the line 0-10
-        np.testing.assert_array_equal(
-            fine.coarsened(4).discharge_m3s, hydrograph.discharge_m3s
-        )
-        np.testing.assert_allclose(fine.coarsened(4).times_min, hydrograph.times_min)
-
-    def test_coarsened_needs_a_whole_number_of_groups(self):
-        with pytest.raises(InvalidParameterError, match="cannot be divided"):
-            flood().coarsened(4)
+        np.testing.assert_array_equal(fine.discharge_m3s[::4], hydrograph.discharge_m3s)
+        np.testing.assert_allclose(fine.times_min[::4], hydrograph.times_min)
 
     def test_the_table_text_reads_back_the_same_numbers(self):
         hydrograph = Hydrograph.from_step([0.1, 0.30000000000000004, 7.0], 0.5)

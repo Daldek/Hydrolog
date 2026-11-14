@@ -20,7 +20,7 @@ import { createContext, useCallback, useContext, useEffect, useState } from "./h
 export const SectionContext = createContext(null);
 
 /** Keys of the shared values. */
-export const STORE_KEYS = Object.freeze(["watershed", "reference", "status", "context", "sources"]);
+const STORE_KEYS = Object.freeze(["watershed", "reference", "status", "context", "sources"]);
 
 /** Keys whose value belongs to a section. */
 const PER_SECTION = new Set(["status", "context", "sources"]);

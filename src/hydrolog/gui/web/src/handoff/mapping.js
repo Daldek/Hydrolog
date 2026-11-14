@@ -60,8 +60,8 @@ import { MARKS, PAYLOAD_SCHEMA, buildHandoff, momentText, receivedOf, toolName }
 import { canonical, isObject } from "./validate.js";
 
 /** The id of Hydrogram's subcatchment and of its outlet in the payload (D15). */
-export const SUBCATCHMENT_ID = "Z1";
-export const OUTLET_ID = "OUT";
+const SUBCATCHMENT_ID = "Z1";
+const OUTLET_ID = "OUT";
 
 /** The time step of `hydrograph generate` and of a network that gives none [min]. */
 export const DEFAULT_TIMESTEP_MIN = 5;

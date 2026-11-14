@@ -16,7 +16,7 @@ import { COMMAND, tickedFits } from "./state.js";
  * @param {string[]} ticked the keys of the ticked combinations
  * @returns {string} the CSV text
  */
-export function quantilesCsv(result, ticked) {
+function quantilesCsv(result, ticked) {
   const fits = tickedFits(result, ticked);
   // Every combination of a run has the same periods and probabilities
   const [first] = result.distributions;
@@ -37,7 +37,7 @@ export function quantilesCsv(result, ticked) {
  * @param {string} pasted the name of a pasted series
  * @returns {string} e.g. "maksima_roczne-kwantyle"
  */
-export function subjectOf(options, pasted) {
+function subjectOf(options, pasted) {
   const file = typeof options.input_file === "string" ? options.input_file.replace(/^in\//, "").replace(/\.[^.]+$/, "") : pasted;
   return `${file}-kwantyle`;
 }

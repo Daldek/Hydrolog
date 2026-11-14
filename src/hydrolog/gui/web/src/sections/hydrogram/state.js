@@ -74,7 +74,7 @@ export const WATERSHED_STEP = Object.freeze([
 ]);
 
 /** Fields of the watershed only some models and tc methods read, shown in their block of step 3. */
-export const MODEL_FIELDS = Object.freeze([
+const MODEL_FIELDS = Object.freeze([
   "Lc_km",
   "manning_n",
   "forest_pct",
@@ -158,7 +158,7 @@ export const SLOPE_FIELDS = new Set(["mean_slope_m_per_m", "flow_path_slope_m_pe
 const TEXT_OPTIONS = new Set(["tc_method", "amc", "hietogram_type", "uh_model", "nash_estimation"]);
 
 /** Options of `hydrograph generate` the section gives in another way (or not at all). */
-export const HIDDEN_OPTIONS = Object.freeze(["watershed", "watershed_file", "area_km2", "cn", "input_file", "value_column"]);
+const HIDDEN_OPTIONS = Object.freeze(["watershed", "watershed_file", "area_km2", "cn", "input_file", "value_column"]);
 
 /** Units of the fields, as shown. */
 export const UNITS = Object.freeze({
@@ -612,7 +612,7 @@ export function numberOf(text) {
  * @param {string} name the field
  * @returns {unknown} its text
  */
-export function fieldText(inputs, name) {
+function fieldText(inputs, name) {
   return WATERSHED_FIELDS.includes(name) ? (inputs.watershed || {})[name] : inputs[name];
 }
 
@@ -789,7 +789,7 @@ export function fieldLabel(name) {
  * @param {object} schema hydrolog-network-1.schema.json
  * @returns {{name: string, options: object[]}} the entry
  */
-export function watershedEntry(schema) {
+function watershedEntry(schema) {
   const definition = schema && schema.$defs ? schema.$defs.watershed : null;
   if (!definition || !definition.properties) throw new Error(`${NETWORK_SCHEMA}: no $defs.watershed`);
   const options = Object.entries(definition.properties).map(([name, property]) => {
@@ -814,7 +814,7 @@ export function watershedEntry(schema) {
  * @param {object} commandDoc the catalog document of `precip pmaxtp`
  * @returns {object} the field model
  */
-export function pmaxtpModel(commandDoc) {
+function pmaxtpModel(commandDoc) {
   const entry = commandEntry(commandDoc);
   return fieldModel({ ...entry, options: (entry.options || []).map((option) => ({ ...option, required: false })) });
 }
@@ -946,7 +946,7 @@ export function watershedErrors(watershed, models, names = WATERSHED_FIELDS) {
  * @param {object} inputs the inputs of the run
  * @returns {Object<string, string>} a message by field name
  */
-export function noticeWarnings(notices, inputs) {
+function noticeWarnings(notices, inputs) {
   const found = {};
   const add = (name, text, code) => {
     const message = withReason(text, code);

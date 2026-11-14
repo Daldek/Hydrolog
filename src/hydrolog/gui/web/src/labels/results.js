@@ -20,7 +20,6 @@ export const results = {
   fold: "… razem {count}",
   cancelled: "Obliczenie anulowano",
   plan: "Plan zapisu",
-  nothing: "Wynik nie ma pól liczbowych ani szeregów; zobacz JSON.",
   truncated: "Pokazano {shown} z {rows}; całość w CSV i JSON.",
   more: "Pokaż wszystkie wiersze",
   /** Short names of the tiles (a field without one shows its label or name). */

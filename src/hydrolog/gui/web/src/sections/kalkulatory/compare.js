@@ -29,7 +29,7 @@ function symbolOf(name) {
  * @param {object[]} notices the notices of the method's run
  * @returns {string[]} the words
  */
-export function warningWords(notices) {
+function warningWords(notices) {
   const seen = new Set();
   const words = [];
   for (const notice of notices) {
@@ -81,7 +81,7 @@ export function parameterWords(parameters) {
  *   tc_h: number|null, parameters: object, notices: object[], cls: string, word: string,
  *   sub: string, used: boolean}} the row: `cls` is ok | warn | bad (and " used")
  */
-export function methodRow(method, outcome, used) {
+function methodRow(method, outcome, used) {
   const name = texts.methods[method] || method;
   const isUsed = method === used;
   const result = outcome.envelope && outcome.envelope.status === "ok" ? outcome.envelope.result : null;

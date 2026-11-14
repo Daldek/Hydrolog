@@ -37,7 +37,7 @@ export function splitReason(message) {
  * @param {{field: object, required: boolean}} props the field and whether it is required now
  * @returns {object|null} the flag
  */
-export function FieldFlag({ field, required }) {
+function FieldFlag({ field, required }) {
   if (required) return html`<span class="req">${common.required}</span>`;
   if (field.defaultText !== null && field.defaultText !== "") {
     return html`<span class="opt-flag">${t(common.defaultIs, { value: field.defaultText })}</span>`;

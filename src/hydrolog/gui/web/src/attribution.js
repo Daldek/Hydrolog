@@ -120,7 +120,7 @@ export function orderLines(lines, session) {
  * @param {{attribution: string[], terms_notice: string[]}|null} lines the lines
  * @returns {string[]|null} the lines, null without any
  */
-export function attributionOption(lines) {
+function attributionOption(lines) {
   return hasLines(lines) ? [...new Set([...lines.attribution, ...lines.terms_notice])] : null;
 }
 
@@ -172,7 +172,7 @@ export function providerLines(session, provider) {
  * @param {unknown} provenance the provenance of a hand-off
  * @returns {"imgw"|"chmi"|null} the provider, null when none is named
  */
-export function providerOf(provenance) {
+function providerOf(provenance) {
   const series = isObject(provenance) && isObject(provenance.series) ? provenance.series : null;
   if (!series) return null;
   for (const key of ["provider", "source", "dataset"]) {

@@ -74,6 +74,7 @@ __all__ = [
     "is_page",
     "load_public",
     "read_days",
+    "route_path",
     "stats_report",
 ]
 
@@ -119,7 +120,7 @@ class Public:
     request_window_s: int
 
 
-def _route(scope: Scope) -> str:
+def route_path(scope: Scope) -> str:
     """Return the path below the app's prefix (``/api/run/...``, ``/index.html``)."""
     path = str(scope["path"])
     root = str(scope.get("root_path", ""))
@@ -505,7 +506,7 @@ class PublicGuard:
             await self.app(scope, receive, send)
             return
         method = str(scope["method"])
-        route = _route(scope)
+        route = route_path(scope)
         stats = self.upkeep.stats
         status = 0
 

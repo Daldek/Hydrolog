@@ -314,33 +314,6 @@ class Hydrograph(JsonResultMixin):
             self.start_min + step * np.arange(count), np.append(fine, values[-1])
         )
 
-    def coarsened(self, factor: int) -> Hydrograph:
-        """Return every ``factor``-th ordinate (the inverse of :meth:`refined`).
-
-        Parameters
-        ----------
-        factor : int
-            Take every ``factor``-th ordinate; ``n - 1`` must be a multiple of it.
-
-        Returns
-        -------
-        Hydrograph
-            ``(n - 1) / factor + 1`` ordinates.
-
-        Raises
-        ------
-        InvalidParameterError
-            If ``n - 1`` is not a multiple of ``factor``.
-        """
-        if factor <= 1:
-            return self
-        if (len(self) - 1) % factor:
-            raise InvalidParameterError(
-                f"{len(self) - 1} steps cannot be divided into groups of {factor}",
-                details={"option": "factor", "reason": "indivisible"},
-            )
-        return Hydrograph(self.times_min[::factor], self.discharge_m3s[::factor])
-
     def to_table(self) -> str:
         r"""Return the table as CSV text, a row per ordinate.
 

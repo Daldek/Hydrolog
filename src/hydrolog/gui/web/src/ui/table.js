@@ -8,7 +8,7 @@ import { t } from "../labels/common.js";
 import { results as texts } from "../labels/results.js";
 
 /** Rows shown before „Pokaż wszystkie wiersze”. */
-export const ROW_LIMIT = 500;
+const ROW_LIMIT = 500;
 
 /** The controls inside a row whose clicks stay theirs, not the row's. */
 const CONTROLS = "input, button, a, select, textarea, label";

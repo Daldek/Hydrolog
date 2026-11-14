@@ -78,10 +78,10 @@ import {
 export const SECTION = "siec";
 
 /** The name of the network's document when its source gives none. */
-export const DOCUMENT_NAME = "siec.json";
+const DOCUMENT_NAME = "siec.json";
 
 /** The schema of a network (GET api/schemas/…). */
-export const SCHEMA_FILE = "hydrolog-network-1.schema.json";
+const SCHEMA_FILE = "hydrolog-network-1.schema.json";
 
 /** The key of a node's problem „Brak opadu” (buildDocument): its choice of the rainfall. */
 export const NO_RAINFALL_KEY = "rain_source";
@@ -343,7 +343,7 @@ export function placementNotes(doc, state) {
  * @param {object} inputs the subcatchment's inputs (siecInputs)
  * @returns {Array<{key: string, message: string, shown?: boolean}>} the problems
  */
-export function subcatchmentProblems(forms, inputs) {
+function subcatchmentProblems(forms, inputs) {
   const found = [];
   if (!inputs.uh_model) found.push({ key: "uh_model", message: withReason(texts.form.noModel, "required") });
   const errors = checkInputs(inputs, forms.rain).errors;
@@ -514,7 +514,7 @@ const METHOD_RANGES = Object.freeze({ muskingum: ["x"] });
  *
  * @param {object} forms the forms of buildForms
  */
-export function registerMethodRanges(forms) {
+function registerMethodRanges(forms) {
   for (const [method, names] of Object.entries(METHOD_RANGES)) {
     const fields = forms.methods[method];
     if (!fields) continue;
@@ -594,7 +594,7 @@ export function openNetwork(doc, meta = {}) {
  *
  * @returns {{doc: object, meta: {name: string, kind: string}}|null} the network, or null
  */
-export function takeOpened() {
+function takeOpened() {
   const found = opened;
   opened = null;
   return found;

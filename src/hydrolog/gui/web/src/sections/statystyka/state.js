@@ -250,7 +250,7 @@ export function formValues(state, model) {
  * @param {string} name the column's name
  * @returns {string} the name without the unit
  */
-export function stripUnit(name) {
+function stripUnit(name) {
   return String(name).replace(/\s*\[[^\]]*\]\s*$/, "").trim();
 }
 
@@ -295,7 +295,7 @@ export function resolveColumn(value, columns) {
  *   column names, the count of data rows and the cells of a column
  * @throws {Error} when the file has no header or is not valid JSON
  */
-export function readColumns(text) {
+function readColumns(text) {
   const source = String(text || "").replace(/^\ufeff/, "");
   const start = source.trimStart()[0];
   const data = (name) => !LINE_COLUMNS.includes(name);
@@ -397,7 +397,7 @@ function columnYears(table, column) {
  * @param {number} count the count of maxima the result holds
  * @returns {number[]|null} the years in file order, null when there is no such column
  */
-export function fileYears(table, valueColumn, count) {
+function fileYears(table, valueColumn, count) {
   if (!table || table.rows !== count) return null;
   for (const column of table.columns) {
     if (column === valueColumn) continue;

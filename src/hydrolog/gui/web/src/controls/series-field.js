@@ -39,7 +39,7 @@ export function readTable(text) {
  * @param {{header: string[]|null, rows: string[][]}} table a table of readTable
  * @returns {Array<{index: number, name: string}>} the columns
  */
-export function numericColumns(table) {
+function numericColumns(table) {
   const width = Math.max(0, ...table.rows.map((row) => row.length));
   const columns = [];
   for (let index = 0; index < width; index += 1) {
@@ -62,7 +62,7 @@ export function numericColumns(table) {
  * @param {number} index the column
  * @returns {string} the series text
  */
-export function columnText(table, index) {
+function columnText(table, index) {
   return table.rows.map((row) => inputText(parseNumber(row[index]))).join("; ");
 }
 
@@ -72,7 +72,7 @@ export function columnText(table, index) {
  * @param {object} field a field of fieldModel
  * @returns {string|null} e.g. „każda ≥ 0”
  */
-export function eachBound(field) {
+function eachBound(field) {
   const min = field.min === null ? null : inputText(field.min);
   const max = field.max === null ? null : inputText(field.max);
   const above = field.exclusiveMinimum === null ? null : inputText(field.exclusiveMinimum);

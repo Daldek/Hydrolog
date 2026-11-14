@@ -56,7 +56,7 @@ function resolve(path) {
  * @param {string} name the command's name, "<group> <verb>"
  * @returns {string} "<group>/<verb>", each part percent-encoded
  */
-export function commandPath(name) {
+function commandPath(name) {
   const words = String(name).trim().split(/\s+/);
   if (words.length !== 2) throw new TypeError(`Not a command name: ${name}`);
   return words.map(encodeURIComponent).join("/");
@@ -69,7 +69,7 @@ export function commandPath(name) {
  * @param {string} path "in/<name>" or "out/<name>[/<name>…]"
  * @returns {string} the encoded path
  */
-export function filePath(path) {
+function filePath(path) {
   const [area, ...rest] = String(path).split("/");
   const nested = area === "out" ? rest.length >= 1 : rest.length === 1;
   if ((area !== "in" && area !== "out") || !nested || rest.some((part) => !part || part === "." || part === "..")) {

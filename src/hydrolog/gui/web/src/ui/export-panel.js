@@ -75,7 +75,7 @@ export function copyText(text) {
  * @param {object} options the options sent to the server
  * @returns {object} the options to show
  */
-export function shownOptions(options) {
+function shownOptions(options) {
   const shown = {};
   for (const [name, value] of Object.entries(options || {})) {
     shown[name] = typeof value === "string" ? value.replace(/^(in|out)\//, "") : value;
@@ -150,7 +150,7 @@ function pythonValue(value) {
  * @param {object} options the options as shown
  * @returns {string} the code
  */
-export function pythonCall(command, options) {
+function pythonCall(command, options) {
   const parts = [JSON.stringify(command), ...Object.entries(options).map(([key, value]) => `${key}=${pythonValue(value)}`)];
   const lines = [];
   let row = "";
@@ -174,7 +174,7 @@ export function pythonCall(command, options) {
  * @param {object} options the options as shown
  * @returns {string} the tool and the JSON arguments
  */
-export function mcpCall(command, options) {
+function mcpCall(command, options) {
   const tool = `hydrolog_${String(command).trim().replace(/[\s-]+/g, "_")}`;
   return `${t(texts.call.tool, { tool })}\n${JSON.stringify(options, null, 1).replace(/\n\s*/g, " ")}`;
 }

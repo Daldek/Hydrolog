@@ -21,7 +21,7 @@ import { c1, htmlEl, svgEl, textEl } from "./svg.js";
  * @param {number} [digits]
  * @returns {string}
  */
-export function readoutNumber(value, digits) {
+function readoutNumber(value, digits) {
   if (digits !== undefined) return formatNumber(value, digits);
   const size = Math.abs(value);
   return formatNumber(value, size >= 1000 ? 0 : size >= 100 ? 1 : size >= 1 || size === 0 ? 2 : 3);
@@ -52,7 +52,7 @@ function headingText(layout, x, spec) {
  * @param {number} index an index of the master's points
  * @returns {{heading: string, at: number, rows: {id: string, cls: string, text: string, py: number | null}[]}}
  */
-export function readoutAt(spec, layout, geometries, master, index) {
+function readoutAt(spec, layout, geometries, master, index) {
   const at = master.kind === "bars" ? (master.spans[index][0] + master.spans[index][1]) / 2 : master.px[index];
   const x = master.xs[index];
   const rows = [];

@@ -7,7 +7,7 @@
  */
 
 /** The SVG namespace. */
-export const SVG_NS = "http://www.w3.org/2000/svg";
+const SVG_NS = "http://www.w3.org/2000/svg";
 
 /** Round a coordinate to 0.1 of the viewBox (short paths, stable tests). */
 export function c1(value) {

@@ -377,7 +377,7 @@ class TestTimeStepDivision:
         assert "timestep_refined" not in codes(fine)
         np.testing.assert_allclose(
             divided.outflow.discharge_m3s,
-            fine.outflow.coarsened(3).discharge_m3s,
+            fine.outflow.discharge_m3s[::3],
             rtol=1e-12,
         )
         assert divided.storage_end_m3 == pytest.approx(fine.storage_end_m3)

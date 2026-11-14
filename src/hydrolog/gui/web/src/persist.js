@@ -14,7 +14,7 @@ import { useCallback, useEffect, useRef, useState } from "./html.js";
  * (2026-11-06), and Sieć's network rainfall as Hydrogram's step 2 left its rainfall of the
  * schema's form behind (plan 2026-11-10-network-wizard, D3, D4).
  */
-export const VERSIONS = Object.freeze({ hydrogram: 2, siec: 3, statystyka: 3, kalkulatory: 2, polecenia: 2 });
+const VERSIONS = Object.freeze({ hydrogram: 2, siec: 3, statystyka: 3, kalkulatory: 2, polecenia: 2 });
 
 /**
  * The storage key of a section's inputs.

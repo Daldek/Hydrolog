@@ -39,7 +39,7 @@ import { reservoirsText } from "./words.js";
  * @param {number} volume the volume [m³]
  * @returns {{value: string, unit: string}} the number and its unit
  */
-export function volumeText(volume) {
+function volumeText(volume) {
   if (typeof volume !== "number" || !Number.isFinite(volume)) return { value: common.empty, unit: "" };
   if (volume >= 1e6) return { value: num(volume / 1e6, 3), unit: texts.units.million };
   return { value: num(volume / 1e3, 1), unit: texts.units.thousand };

@@ -53,13 +53,13 @@ import { linkVerdict, linkVerdicts, receiversOf, structureKey } from "./graph.js
 export const ZOOMS = Object.freeze([0.25, 0.33, 0.5, 0.67, 0.8, 1, 1.25, 1.5, 2]);
 
 /** How far a press moves before it is a drag rather than a click [px]. */
-export const DRAG_PX = 4;
+const DRAG_PX = 4;
 
 /** How long a touch rests on a node before it opens the node's menu [ms]. */
-export const LONG_PRESS_MS = 550;
+const LONG_PRESS_MS = 550;
 
 /** How long moves of one node by keys stay one step of the history [ms] (D9). */
-export const KEY_MOVES_MS = 1000;
+const KEY_MOVES_MS = 1000;
 
 /** The five elements of the palette, in the order of the legend (D2). */
 export const PALETTE = Object.freeze(["subcatchment", "reach", "reservoir", "junction", "outlet"]);
@@ -109,7 +109,7 @@ function Glyph({ node }) {
  * @param {{peak_m3s: number, time_to_peak_min: number}|undefined} value its result
  * @returns {Array<{cls: string, text: string}>} the lines
  */
-export function labelOf(id, words, value) {
+function labelOf(id, words, value) {
   const area = words && words.area !== null ? t(texts.schematic.area, { area: num(words.area, 1) }) : null;
   const lines = [{ cls: "lbl-id", text: area ? `${id} · ${area}` : id }];
   if (words && words.short) lines.push({ cls: "lbl-m", text: words.short });
@@ -130,7 +130,7 @@ export function labelOf(id, words, value) {
  *   node's description, the texts of its problems and its hints
  * @returns {string} the name
  */
-export function nodeName(node, words, value, notes = {}) {
+function nodeName(node, words, value, notes = {}) {
   const kind = texts.kinds[node.type] ? texts.kinds[node.type].noun : node.type;
   const parts = [`${node.id} · ${kind}`];
   if (words && words.meta) parts[0] += `, ${words.meta}`;

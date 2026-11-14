@@ -317,22 +317,6 @@ class StreamNetwork:
             drainage_density=drainage_density,
         )
 
-    def get_segments_by_order(self, order: int) -> list[StreamSegment]:
-        """
-        Get all segments of a specific order.
-
-        Parameters
-        ----------
-        order : int
-            Stream order to filter by.
-
-        Returns
-        -------
-        list[StreamSegment]
-            Segments with the specified order.
-        """
-        return [seg for seg in self.segments.values() if seg.order == order]
-
 
 def bifurcation_ratio(n_lower: int, n_higher: int) -> float:
     """

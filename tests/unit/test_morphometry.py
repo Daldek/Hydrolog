@@ -309,23 +309,6 @@ class TestTerrainAnalysis:
         assert params.watershed_slope_percent > 0
         assert params.channel_slope_percent > 0
 
-    def test_mean_elevation_from_dem(self):
-        """Test mean elevation calculation from DEM."""
-        elevations = np.array([100, 150, 200, 250, 300])
-        mean_elev = TerrainAnalysis.mean_elevation_from_dem(elevations)
-
-        assert mean_elev == 200.0
-
-    def test_mean_elevation_from_dem_weighted(self):
-        """Test weighted mean elevation calculation."""
-        elevations = np.array([100, 200, 300])
-        weights = np.array([1, 2, 1])  # Middle value has double weight
-
-        mean_elev = TerrainAnalysis.mean_elevation_from_dem(elevations, weights)
-
-        # Weighted mean: (100*1 + 200*2 + 300*1) / 4 = 200
-        assert mean_elev == 200.0
-
     def test_invalid_elevation_order(self):
         """Test that max <= min raises error."""
         with pytest.raises(InvalidParameterError, match="elevation_max_m"):

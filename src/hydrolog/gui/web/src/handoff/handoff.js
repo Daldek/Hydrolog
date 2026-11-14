@@ -25,13 +25,13 @@ import { ENVELOPE_SCHEMA } from "./envelope.js";
 import { isObject, schemaProblems } from "./validate.js";
 
 /** The envelope's `schema`. */
-export const HANDOFF_SCHEMA = "nogat-handoff/1";
+const HANDOFF_SCHEMA = "nogat-handoff/1";
 
 /** The payload Hydrolog writes and takes into Hydrogram zlewni and Sieć. */
 export const PAYLOAD_SCHEMA = "hydrolog-network/1";
 
 /** The payload of a station's series, taken into Statystyka przepływów (ADR-0020). */
-export const SERIES_SCHEMA = "hydrolog-series/1";
+const SERIES_SCHEMA = "hydrolog-series/1";
 
 /** The schema of the network payload, GET api/schemas/… */
 export const NETWORK_SCHEMA_FILE = "hydrolog-network-1.schema.json";
@@ -46,7 +46,7 @@ export const TOOL = "hydrolog";
 export const MARKS = Object.freeze(["archiwista", "hydrograf", "hydrolog", "nogat", "obserwator"]);
 
 /** The quantities of a result compared, with their D15 names and how they are shown. */
-export const QUANTITIES = Object.freeze([
+const QUANTITIES = Object.freeze([
   { key: "q", field: "peak_discharge_m3s", unit: "m³/s", format: (value) => num(value, 2) },
   { key: "tp", field: "time_to_peak_min", unit: "h", format: (value) => hmm(value) },
   { key: "volume", field: "total_volume_m3", unit: "m³", format: (value) => num(value, 0) },
@@ -100,7 +100,7 @@ export function buildHandoff({ subject, provenance = {}, nodeProvenance = null, 
  * @param {object} payload hydrolog-network/1
  * @returns {"hydrogram"|"siec"} the section
  */
-export function targetOf(payload) {
+function targetOf(payload) {
   const nodes = isObject(payload) && Array.isArray(payload.nodes) ? payload.nodes : [];
   if (nodes.length !== 2) return "siec";
   const sub = nodes.find((node) => isObject(node) && node.type === "subcatchment" && isObject(node.watershed) && isObject(node.runoff));
@@ -117,7 +117,7 @@ export function targetOf(payload) {
  * @param {unknown} doc the document the path is in
  * @returns {string} the path
  */
-export function pathText(path, doc) {
+function pathText(path, doc) {
   if (!path.length) return texts.problems.root;
   let text = "";
   let at = doc;

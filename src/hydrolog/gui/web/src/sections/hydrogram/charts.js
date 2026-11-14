@@ -9,7 +9,7 @@ import { t } from "../../labels/common.js";
 import { hydrogram as texts } from "../../labels/hydrogram.js";
 
 /** The unit hydrograph is drawn until it falls below this share of its peak. */
-export const UH_TAIL_SHARE = 0.01;
+const UH_TAIL_SHARE = 0.01;
 
 /**
  * The index of the first step with effective rainfall.
@@ -17,7 +17,7 @@ export const UH_TAIL_SHARE = 0.01;
  * @param {number[]} effective the effective rainfall per step [mm]
  * @returns {number} the index, -1 when there is none
  */
-export function firstEffective(effective) {
+function firstEffective(effective) {
   return (effective || []).findIndex((value) => value > 0);
 }
 
@@ -27,7 +27,7 @@ export function firstEffective(effective) {
  * @param {number[]} rainfall the rainfall per step [mm]
  * @returns {number} the index, -1 for no steps
  */
-export function largestStep(rainfall) {
+function largestStep(rainfall) {
   let found = -1;
   (rainfall || []).forEach((value, index) => {
     if (found < 0 || value > rainfall[found]) found = index;

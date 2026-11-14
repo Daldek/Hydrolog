@@ -19,7 +19,7 @@ import { fileStem } from "./state.js";
  * @param {{times_min: number[], discharge_m3s: number[]}} node a node of the result
  * @returns {string} the CSV text
  */
-export function nodeCsv(node) {
+function nodeCsv(node) {
   const lines = ["time_min,discharge_m3s"];
   node.times_min.forEach((time, index) => lines.push(`${time},${node.discharge_m3s[index]}`));
   return `${lines.join("\n")}\n`;
@@ -33,7 +33,7 @@ export function nodeCsv(node) {
  * @returns {string} the CSV text: time_min and one column per node, in the order of the
  *   calculation
  */
-export function networkCsv(result) {
+function networkCsv(result) {
   const byId = new Map((result.nodes || []).map((node) => [node.id, node]));
   const order = (result.order || []).filter((id) => byId.has(id) && Array.isArray(byId.get(id).times_min));
   const key = (time) => Math.round(time * 1e6) / 1e6;

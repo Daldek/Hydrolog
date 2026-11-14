@@ -6,10 +6,7 @@
 import { useEffect, useState } from "./html.js";
 
 /** localStorage key of the theme, shared by Nogat's pages on one origin. */
-export const THEME_KEY = "nogat-theme";
-
-/** The theme choices of the top bar's switch. */
-export const THEMES = Object.freeze(["auto", "light", "dark"]);
+const THEME_KEY = "nogat-theme";
 
 const root = document.documentElement;
 
@@ -23,7 +20,7 @@ export const host = Object.freeze({
  *
  * @returns {"auto"|"light"|"dark"} "auto" follows the system
  */
-export function storedTheme() {
+function storedTheme() {
   try {
     const value = window.localStorage.getItem(THEME_KEY);
     return value === "light" || value === "dark" ? value : "auto";
@@ -47,7 +44,7 @@ function showTheme(choice) {
  *
  * @param {"auto"|"light"|"dark"} choice the theme
  */
-export function setTheme(choice) {
+function setTheme(choice) {
   showTheme(choice);
   try {
     window.localStorage.setItem(THEME_KEY, choice);

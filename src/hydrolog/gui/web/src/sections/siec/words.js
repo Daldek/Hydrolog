@@ -24,7 +24,7 @@ export function kindNoun(type) {
  * @param {{fewest: number, most: number|null}|undefined} rule the type's rule (inflowRules)
  * @returns {string} e.g. „przyjmuje dokładnie jeden dopływ”
  */
-export function ruleWords(rule) {
+function ruleWords(rule) {
   if (!rule) return texts.inflowRules.other;
   if (rule.most === 0) return texts.inflowRules.none;
   if (rule.most === 1) return texts.inflowRules.one;
@@ -38,7 +38,7 @@ export function ruleWords(rule) {
  * @param {string[]} nodes the nodes of the cycle in flow order
  * @returns {string} the loop
  */
-export function loopWords(nodes) {
+function loopWords(nodes) {
   return nodes.length ? [...nodes, nodes[0]].join(" → ") : "–";
 }
 

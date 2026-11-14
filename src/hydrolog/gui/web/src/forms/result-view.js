@@ -1,7 +1,7 @@
 // The generic view of a hydrolog-result/1 envelope (plan D11): notices in Polish, scalars
 // with units from their name suffixes, series as a chart and a table, tables of records,
-// the targets of a plan, files to download and the JSON. The pure part (analyzeResult and
-// the helpers) reads the envelope; the components show it.
+// the targets of a plan and the JSON. The pure part (analyzeResult and the helpers) reads
+// the envelope; the components show it, and each section's results panel puts them together.
 
 import { Chart } from "../charts/chart.js";
 import { auto, decimalsFor, hmm, num, plural } from "../format.js";
@@ -13,11 +13,10 @@ import { commandOptions, commandResultFields, resultFields, options as optionLab
 import { results as texts } from "../labels/results.js";
 import { NO_UNIT, fieldUnit } from "../labels/units.js";
 import { richText } from "../controls/field.js";
-import { FileList } from "../ui/export-panel.js";
 import { DataTable } from "../ui/table.js";
 
 /** The longest array shown in full in the JSON view. */
-export const JSON_FOLD = 8;
+const JSON_FOLD = 8;
 
 /**
  * The label of a result field: the GUI's Polish name, else none. A field named as an
@@ -252,7 +251,7 @@ export function headline(analysis, inputs = {}, keys = null) {
  * @param {number[]} values the column
  * @returns {number} the decimals
  */
-export function columnDecimals(values) {
+function columnDecimals(values) {
   if (values.every((value) => Number.isInteger(value))) return 0;
   let largest = 0;
   for (const value of values) if (Math.abs(value) > largest) largest = Math.abs(value);
@@ -265,7 +264,7 @@ export function columnDecimals(values) {
  * @param {object} group a group of analyzeResult's `series`
  * @returns {string} the CSV text
  */
-export function seriesCsv(group) {
+function seriesCsv(group) {
   const columns = [group.x || { name: "index", values: Array.from({ length: group.length }, (_, index) => index + 1) }, ...group.ys];
   const lines = [columns.map((column) => column.name).join(",")];
   for (let index = 0; index < group.length; index += 1) {
@@ -292,7 +291,7 @@ export function csvCell(value) {
  * @param {{columns: string[], rows: object[]}} record a record table of analyzeResult
  * @returns {string} the CSV text
  */
-export function recordsCsv(record) {
+function recordsCsv(record) {
   const lines = [record.columns.map(csvCell).join(",")];
   for (const item of record.rows) lines.push(record.columns.map((name) => csvCell(item[name])).join(","));
   return `${lines.join("\n")}\n`;
@@ -595,7 +594,7 @@ export function PlanTargets({ targets }) {
  * @param {string} [indent] the current indentation
  * @returns {Array<string|object>} children for htm
  */
-export function foldedJson(value, indent = "") {
+function foldedJson(value, indent = "") {
   const inner = `${indent}  `;
   if (Array.isArray(value)) {
     if (!value.length) return ["[]"];
@@ -642,33 +641,6 @@ export function ResultJson({ envelope }) {
         <span class="card-sub">${richText(t(texts.jsonSub, { envelope: `\`${envelope.schema}\``, schema: `\`${schema}\`` }))}</span>
       </div>
       <pre class="code json" tabindex="0">${foldedJson(envelope)}</pre>
-    </div>
-  `;
-}
-
-/**
- * The whole generic view of a result.
- *
- * @param {{envelope: object, chart?: boolean}} props the envelope, and whether to draw
- *   the charts of series
- * @returns {object} the view
- */
-export function ResultView({ envelope, chart = true }) {
-  const analysis = analyzeResult(envelope);
-  if (envelope.status === "cancelled") {
-    return html`<div class="result-view"><${Notices} notices=${analysis.notices} /></div>`;
-  }
-  const nothing = !analysis.scalars.length && !analysis.objects.length && !analysis.series.length && !analysis.records.length && !analysis.targets;
-  return html`
-    <div class="result-view">
-      <${Notices} notices=${analysis.notices} />
-      <${ResultSummary} analysis=${analysis} inputs=${envelope.inputs} />
-      ${analysis.targets ? html`<${PlanTargets} targets=${analysis.targets} />` : null}
-      ${analysis.series.map((group) => html`<${ResultSeries} key=${group.length} group=${group} chart=${chart} />`)}
-      <${ResultRecords} records=${analysis.records} />
-      <${FileList} files=${analysis.files} />
-      ${nothing ? html`<p class="note">${texts.nothing}</p>` : null}
-      <${ResultJson} envelope=${envelope} />
     </div>
   `;
 }

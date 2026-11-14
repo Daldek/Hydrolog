@@ -11,10 +11,10 @@ import { linesOf } from "../../attribution.js";
 import { COMMAND } from "./state.js";
 
 /** The command of the Markdown report: the options of `hydrograph generate` and `output`. */
-export const REPORT_COMMAND = "report generate";
+const REPORT_COMMAND = "report generate";
 
 /** The columns of the hydrograph's CSV (hydrolog-hydrograph-csv). */
-export const CSV_COLUMNS = Object.freeze([
+const CSV_COLUMNS = Object.freeze([
   "time_min",
   "discharge_m3s",
   "precipitation_mm",
@@ -29,7 +29,7 @@ export const CSV_COLUMNS = Object.freeze([
  * @param {number} index the ordinate
  * @returns {number} the value, 0 outside the series
  */
-export function stepEndingAt(series, index) {
+function stepEndingAt(series, index) {
   const step = index - 1;
   return Array.isArray(series) && step >= 0 && step < series.length ? series[step] : 0;
 }
@@ -41,7 +41,7 @@ export function stepEndingAt(series, index) {
  * @param {object} result the result of `hydrograph generate`
  * @returns {string} the CSV text
  */
-export function hydrographCsv(result) {
+function hydrographCsv(result) {
   const times = result.times_min || [];
   const flows = result.discharge_m3s || [];
   const lines = [CSV_COLUMNS.join(",")];

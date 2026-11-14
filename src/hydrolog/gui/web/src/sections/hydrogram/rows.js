@@ -53,7 +53,7 @@ export function percentHint(text) {
  *   control's id and the key shown (default: the name; false: none)
  * @returns {object} the label
  */
-export function FieldName({ name, id, keyText }) {
+function FieldName({ name, id, keyText }) {
   const words = texts.fields[name] || { label: name };
   const key = keyText === false ? null : keyText || name;
   return html`<label for=${id}>${words.label}${words.symbol ? html` <i class="sym">${words.symbol}</i>` : null}${key ? html`<span class="key">${key}</span>` : null}</label>`;
