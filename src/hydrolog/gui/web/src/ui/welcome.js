@@ -4,8 +4,10 @@
 // it is inert, Escape or a click beside it closes it, and every way out keeps the choice of
 // the checkbox. „Otwórz instrukcję” opens the guide (instrukcja/) in a new tab. Below the
 // sentences stand the providers' lines of the data the page shows (sources.js
-// WelcomeSources: the content of the strips' „Źródła i warunki”), only while it shows some,
-// so a first visit, with every section empty, sees the sentences alone. The shell
+// WelcomeSources: the content of the strips' „Źródła i warunki”, which ends with
+// „Regulamin serwisu” on a public GUI), only while it shows some; a first visit, with every
+// section empty, sees the sentences and, on a public GUI, that link alone (Nogat DEV-15.7,
+// a new tab). The shell
 // mounts it only standalone: inside Nogat's shell there is no top bar to reopen it.
 
 import { html, useEffect, useId, useRef, useState } from "../html.js";

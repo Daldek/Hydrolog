@@ -138,9 +138,11 @@ html.guide-page .topbar { position: sticky; top: 0; height: var(--header-height)
   border-radius: var(--radius-md); background: var(--code-bg); color: var(--code-text); font-size: var(--text-md);
 }
 
-/* ---------- The footer of a public GUI (the app's, ../src/ui/footer.js) under the page ---------- */
-html.guide-page .app-footer { padding: var(--space-4) var(--space-6); }
-html.guide-page .app-footer p { max-width: 1200px; margin: 0 auto; }
+/* ---------- The regulamin of a public GUI (../src/ui/terms.js) at the end of the contents ---------- */
+.guide-toc-terms { margin: var(--space-3) 0 0; padding: var(--space-2) var(--space-2) 0; border-top: 1px solid var(--line); font-size: var(--text-xs); }
+.guide-toc-terms:empty { display: none; }
+.guide-terms { color: var(--text-3); text-decoration: none; }
+.guide-terms:hover { color: var(--text); text-decoration: underline; }
 
 /* ---------- Narrow screens: one column, the contents between the title and the text ---------- */
 @media (max-width: 1000px) {

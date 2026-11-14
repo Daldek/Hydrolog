@@ -12,6 +12,8 @@
 - Amended by [ADR-0037](0037-nogats-logs-in-gui-serve.md) (2026-11-13): the access log is Nogat's, in every run of
   `gui serve`, in files under `<state_dir>/hydrolog/logs`; no `X-Request-Id`
 - Amended by [ADR-0038](0038-nogats-admin-panel.md) (2026-11-14): the daily totals leave out the admin panel
+- Amended by [ADR-0039](0039-the-regulamin-in-the-rail-and-the-welcome-no-footer.md) (2026-11-14): no footer; the
+  regulamin is linked at the bottom of the rail, in the welcome dialog and at the end of the guide's contents
 
 ## Context
 

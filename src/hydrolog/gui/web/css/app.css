@@ -318,24 +318,18 @@ html[data-host="nogat"] .main { grid-row: 1; grid-column: 1; }
 .rail-item img { width: 22px; height: 22px; display: block; }
 .rail-item:hover { background: var(--rail-hover); color: var(--rail-ink-active); }
 .rail-item.active { background: var(--rail-active); color: var(--rail-ink-active); }
+/* The regulamin of a public GUI (Nogat DEV-15.7, terms.js): a small quiet link at the
+   bottom of the rail; on phones the bottom bar leaves it out */
+.rail-terms {
+  margin-top: auto; padding: var(--space-1) 0;
+  color: var(--rail-ink); opacity: 0.75; text-decoration: none;
+  font-size: 10px; line-height: 1.2;
+}
+.rail-terms:hover { opacity: 1; color: var(--rail-ink-active); text-decoration: underline; }
 
 .main { grid-row: 2; grid-column: 2; min-width: 0; min-height: 0; }
 .section { height: 100%; min-height: 0; }
 .section-note { margin: var(--space-6); font-size: var(--text-sm); }
-
-/* The footer of a public GUI (Nogat DEV-15.7, DEV-15.8): one thin row under the main area,
-   the statement and „Regulamin”. The shell gains the row only when the footer is drawn, so
-   a GUI that is not public keeps its layout */
-.shell:has(> .app-footer) { grid-template-rows: var(--header-height) minmax(0, 1fr) auto; }
-.shell:has(> .app-footer) .rail { grid-row: 2 / 4; }
-.app-footer {
-  grid-row: 3; grid-column: 2; min-width: 0;
-  padding: var(--space-1) var(--space-4);
-  border-top: 1px solid var(--line); background: var(--surface);
-  color: var(--text-3); font-size: var(--text-xs); line-height: var(--line-height);
-}
-.app-footer p { margin: 0; }
-.app-footer a { color: var(--text-2); font-weight: var(--weight-medium); white-space: nowrap; }
 
 /* ---------- View layout: Dane | panel | Wykresy | Wyniki ---------- */
 /* The panel beside Dane (ViewLayout's detail, plan 2026-11-10-network-wizard D2): its
@@ -918,6 +912,8 @@ dialog.modal::backdrop { background: color-mix(in srgb, var(--code-bg) 45%, tran
    content (nogat-sources.css) below the sentences, in the size of the strips' dialog */
 .welcome-sources { padding-top: var(--space-1); border-top: 1px solid var(--line); font-size: var(--text-base); line-height: var(--line-height); }
 .welcome .welcome-sources p { margin: var(--space-2) 0 0; font-size: inherit; }
+/* The regulamin alone, while the page shows no provider data (sources.js WelcomeSources) */
+.welcome .modal-body .welcome-terms { margin: 0; padding-top: var(--space-2); border-top: 1px solid var(--line); font-size: var(--text-base); }
 .feedback .intro { margin: 0 0 var(--space-3); color: var(--text-2); }
 .feedback textarea { width: 100%; }
 .feedback .counter { justify-self: end; font-size: var(--text-xs); color: var(--text-3); }
@@ -958,11 +954,8 @@ dialog.modal::backdrop { background: color-mix(in srgb, var(--code-bg) 45%, tran
   .rail-item { color: var(--text-2); padding: 6px 0 4px; width: 64px; }
   .rail-item:hover { background: transparent; color: var(--text); }
   .rail-item.active { background: transparent; color: var(--accent); font-weight: var(--weight-bold); }
+  .rail-terms { display: none; }
   .main { grid-row: 2; grid-column: 1; }
-  /* Above the rail, wrapping */
-  .shell:has(> .app-footer) { grid-template-rows: 48px minmax(0, 1fr) auto 58px; }
-  .shell:has(> .app-footer) .rail { grid-row: 4; }
-  .app-footer { grid-column: 1; padding: var(--space-1) var(--space-3); }
 
   .view-layout { display: block; }
   .view-center { height: 100%; }

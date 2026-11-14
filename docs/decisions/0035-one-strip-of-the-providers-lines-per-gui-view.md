@@ -6,6 +6,8 @@
 - Amends: [ADR-0028](0028-the-providers-lines-in-every-product.md) (point 7: what the GUI shows on screen) and
   [ADR-0034](0034-a-public-gui-regulamin-limit-logs-totals.md) (kit 0.5.1; the guide's „Regulamin” opens a new tab)
 - Amended by [ADR-0036](0036-link-the-providers-terms-instead-of-restating-them.md) (2026-11-13): kit 0.6.0
+- Amended by [ADR-0039](0039-the-regulamin-in-the-rail-and-the-welcome-no-footer.md) (2026-11-14): no footer; the
+  welcome's „Regulamin serwisu” stands alone while the page shows no provider data
 
 ## Context
 
