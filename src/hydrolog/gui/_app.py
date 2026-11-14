@@ -24,7 +24,8 @@ A deployment with ``[nogat.operator]`` in ``nogat.toml`` is public (Nogat DEV-15
 DEV-15.11, :mod:`hydrolog.gui._public`): the app serves ``regulamin.html``, limits the
 requests of each address and counts its use in daily totals. Given a
 :class:`~hydrolog.gui.nogat_logging.ServerLog`, public or not, it writes the access log
-of Nogat DEV-12.4 with :class:`~hydrolog.gui.nogat_logging.AccessLog`, outermost.
+of Nogat DEV-12.4 with :class:`~hydrolog.gui.nogat_logging.AccessLog`, outermost; the
+name of a file in ``api/files/<area>/<name>`` is logged as ``[file]`` (DEV-12.5).
 """
 
 from __future__ import annotations
@@ -49,7 +50,7 @@ from datetime import UTC, date, datetime, timedelta
 from importlib import resources
 from importlib.resources.abc import Traversable
 from pathlib import Path
-from typing import Any, Final
+from typing import Any, Final, cast
 
 import anyio
 from starlette.applications import Starlette
@@ -189,6 +190,30 @@ QUIET: Final = (
 """The static content of the access log (Nogat DEV-12.5): the page's files and the
 catalog documents, the same for every client, are logged only when answered with 400
 or more."""
+FILE_PATH: Final = re.compile(r"(/api/files/[^/?]+/)[^?]+")
+"""A file's address in the API, whose name the access log writes ``[file]``."""
+
+
+class _NamelessLog:
+    """The server's log as :class:`AccessLog` writes to it, without file names.
+
+    ``PUT api/files/in/<name>`` and the reads and deletions of ``api/files`` name a
+    file a visitor uploaded, or a result named after one: the access record keeps the
+    area and writes the name ``[file]``, e.g. ``/api/files/in/[file]`` (Nogat
+    DEV-12.5). The reference module is copied byte for byte (DEV-12.9), so the path
+    is replaced here, between its :class:`AccessLog` and the log.
+    """
+
+    def __init__(self, log: ServerLog) -> None:
+        self._log = log
+
+    def access(self, *, path: str, **fields: Any) -> None:
+        """Write the access record with the file's name replaced."""
+        self._log.access(path=FILE_PATH.sub(r"\1[file]", path, count=1), **fields)
+
+    def application(self, *args: Any) -> None:
+        """Write an app record as :meth:`ServerLog.application` does."""
+        self._log.application(*args)
 
 
 def _http_status(code: str) -> int:
@@ -1122,7 +1147,8 @@ def build_app(
             ),
         )
     if log is not None:
-        middleware.insert(0, Middleware(AccessLog, log=log, quiet=QUIET))
+        nameless = cast(ServerLog, _NamelessLog(log))
+        middleware.insert(0, Middleware(AccessLog, log=nameless, quiet=QUIET))
     app = Starlette(
         routes=[
             Route(f"/{TERMS_PAGE}", regulamin, methods=["GET"]),

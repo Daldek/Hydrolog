@@ -15,6 +15,7 @@ from __future__ import annotations
 import errno
 import socket
 import sys
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -82,7 +83,13 @@ def _bind(host: str, port: int) -> socket.socket:
     return listener
 
 
-def serve(*, host: str, port: int, open_browser: bool) -> dict[str, Any]:
+def serve(
+    *,
+    host: str,
+    port: int,
+    open_browser: bool,
+    warnings: Sequence[tuple[str, str]] = (),
+) -> dict[str, Any]:
     """Serve the GUI until Ctrl+C or ``SIGTERM``.
 
     Parameters
@@ -93,6 +100,9 @@ def serve(*, host: str, port: int, open_browser: bool) -> dict[str, Any]:
         TCP port (``0`` takes a free one; the record ``start`` names it).
     open_browser : bool
         Open the page in the default browser once the server listens.
+    warnings : sequence of (str, str), optional
+        ``(event, message)`` warnings of the caller, written as app records of the
+        log once it has started, never on standard error (Nogat DEV-12.7).
 
     Returns
     -------
@@ -123,8 +133,14 @@ def serve(*, host: str, port: int, open_browser: bool) -> dict[str, Any]:
     try:
         url = url_of(host, listener.getsockname()[1])
         started_at = _now()
-        app = create_app(log=log)
-        run(app, listener, url=url, open_browser=open_browser, log=log)
+        run(
+            lambda: create_app(log=log),
+            listener,
+            url=url,
+            open_browser=open_browser,
+            log=log,
+            warnings=warnings,
+        )
     finally:
         listener.close()
     return {"url": url, "started_at": started_at, "stopped_at": _now()}

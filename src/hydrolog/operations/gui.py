@@ -5,7 +5,8 @@ Starlette and uvicorn) on this computer and blocks until Ctrl+C or ``SIGTERM`` s
 it; the result says where it served and when. With ``check`` it serves nothing and
 returns the plan of the call: the address it would serve on and whether the port is
 free. The server has no sign-in, so an address that other computers reach adds the
-notice ``exposed_without_auth``, which is also logged when the server starts (the
+notice ``exposed_without_auth``, which the server also writes as a warning to its
+application log once that log starts (never on standard error, Nogat DEV-12.7; the
 result comes only when it stops). The function is re-exported by
 :mod:`hydrolog.operations`.
 """
@@ -14,7 +15,6 @@ from __future__ import annotations
 
 import errno
 import ipaddress
-import logging
 import os
 import socket
 from dataclasses import dataclass
@@ -27,8 +27,6 @@ from hydrolog.exceptions import InvalidParameterError
 from hydrolog.operations._outputs import PLAN_SCHEMA
 
 __all__ = ["GuiServeResult", "gui_serve"]
-
-LOG = logging.getLogger(__name__)
 
 
 @dataclass
@@ -151,9 +149,12 @@ def gui_serve(
             "port_free": _port_free(host, port),
         }
         return OperationOutput(plan, notices, check=True)
-    for item in notices:
-        LOG.warning("%s", item.message)
-    served = serve(host=host, port=port, open_browser=not no_browser)
+    served = serve(
+        host=host,
+        port=port,
+        open_browser=not no_browser,
+        warnings=[(item.code, item.message) for item in notices],
+    )
     result = GuiServeResult(
         url=str(served["url"]),
         started_at=str(served["started_at"]),

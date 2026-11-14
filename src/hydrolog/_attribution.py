@@ -1,11 +1,11 @@
 """The lines that the data providers' terms require on every product (Nogat DEV §20).
 
-Hydrolog computes with data of IMGW-PIB and ČHMÚ: the PMAXTP depth that ``precip
-pmaxtp`` fetches, and the station series that Obserwator exports or Archiwista hands
-off. Their terms bind every product made with the data, so a result, a file Hydrolog
-writes and every view of the GUI carry, verbatim, the lines below (Nogat's standard,
-DEV-20.1 to DEV-20.7, decisions ECO-060 and ECO-065). This module is their one source in
-Hydrolog.
+Hydrolog computes with data of IMGW-PIB, ČHMÚ and ISRIC: the PMAXTP depth that ``precip
+pmaxtp`` fetches, the station series that Obserwator exports or Archiwista hands off,
+and the SoilGrids rasters that Kartograf downloads for ``soil hsg``. Their terms bind
+every product made with the data, so a result, a file Hydrolog writes and every view of
+the GUI carry, verbatim, the lines below (Nogat's standard, DEV-20.1 to DEV-20.10,
+decisions ECO-060, ECO-065 and ECO-068). This module is their one source in Hydrolog.
 
 Attribution lines, in the order of DEV-20.4:
 
@@ -18,11 +18,14 @@ Attribution lines, in the order of DEV-20.4:
 * :data:`CHMI_SOURCE` (C) and :data:`CHMI_PROCESSED` (CP): ČHMÚ open data under CC BY
   4.0, whose §3(a)(1) asks for the creator, the address, the licence with its link and
   the fact of a modification; a producer's own CP (Obserwator's "normalizacja i zmiana
-  formatu") is kept before Hydrolog's.
+  formatu") is kept before Hydrolog's;
+* :data:`SOILGRIDS_SOURCE` (SG): ISRIC SoilGrids under CC BY 4.0 (DEV-20.10); a line of
+  GUGiK (G), which Hydrolog does not write, keeps its place before it.
 
 The terms lines (DEV-20.7), a link to each terms that apply, in their order:
 :data:`TERMS_DANEPUBLICZNE` (RD), :data:`TERMS_HYDRO` (RH), :data:`TERMS_PMAXTP` (RK);
-none for ČHMÚ, whose C links its licence. No product restates the terms (ECO-065).
+none for ČHMÚ and ISRIC, whose C and SG link their licence. No product restates the
+terms (ECO-065).
 
 Hydrolog processes every input it computes with, so a product always has the processed
 line of its provider: :class:`Attribution` turns the providers found in an input into
@@ -39,9 +42,11 @@ A command collects the lines of its run: :func:`~hydrolog.catalog.run_command` o
 :func:`collecting`, the readers of input files :func:`cite` the lines a file carries
 (the CSV columns ``attribution`` and ``terms_notice``, Obserwator's
 ``attribution_source`` and ``attribution_processed``, the fields ``attribution`` and
-``terms_notice`` of a JSON document), an operation cites its option ``attribution`` and
-the lines of its own source, a writing operation puts :func:`current` into its files,
-and the envelope gets the fields ``attribution`` and ``terms_notice``.
+``terms_notice`` of a JSON document, a Kartograf raster's sidecar ``<file>.meta.json``
+or its SoilGrids name, :func:`lines_of_kartograf`), an operation cites its option
+``attribution`` and the lines of its own source, a writing operation puts
+:func:`current` into its files, and the envelope gets the fields ``attribution`` and
+``terms_notice``.
 
 The module is a leaf (standard library only), so the catalog, the readers and the
 operations import it without cycles.
@@ -51,9 +56,12 @@ from __future__ import annotations
 
 import contextlib
 import contextvars
+import json
+import os
 import re
 from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Final, Literal, get_args
 
 __all__ = [
@@ -69,6 +77,8 @@ __all__ = [
     "PMAXTP_SOURCE",
     "PMAXTP_TERMS_URL",
     "PROVIDERS",
+    "SIDECAR_SUFFIX",
+    "SOILGRIDS_SOURCE",
     "TERMS_COLUMN",
     "TERMS_DANEPUBLICZNE",
     "TERMS_HYDRO",
@@ -83,14 +93,15 @@ __all__ = [
     "current",
     "lines_of_columns",
     "lines_of_document",
+    "lines_of_kartograf",
     "provider_lines",
     "retired_lines",
 ]
 
-Provider = Literal["imgw", "imgw_hydro", "pmaxtp", "chmi"]
+Provider = Literal["imgw", "imgw_hydro", "pmaxtp", "chmi", "soilgrids"]
 """A provider whose terms Hydrolog knows: IMGW-PIB's public data
 (danepubliczne.imgw.pl), its hydrological service (hydro.imgw.pl), the PMAXTP project,
-ČHMÚ's open data."""
+ČHMÚ's open data, ISRIC's SoilGrids."""
 PROVIDERS: Final[tuple[str, ...]] = get_args(Provider)
 """The values of :data:`Provider`, in the order of their lines."""
 
@@ -126,6 +137,11 @@ CHMI_PROCESSED: Final = (
     "Dane ČHMÚ zostały przetworzone (obliczenia hydrologiczne programem Hydrolog)"
 )
 """CP: what Hydrolog did with ČHMÚ's data (CC BY 4.0, §3(a)(1)(B))."""
+SOILGRIDS_SOURCE: Final = (
+    "Źródło: ISRIC – World Soil Information, SoilGrids, licencja CC BY 4.0 "
+    "(https://creativecommons.org/licenses/by/4.0/); dane przetworzone"
+)
+"""SG: the creator, the data, the licence with its link and their processing."""
 TERMS_DANEPUBLICZNE: Final = (
     "Regulamin danych IMGW-PIB: https://danepubliczne.imgw.pl/regulations"
 )
@@ -148,11 +164,20 @@ _SOURCE_COLUMNS: Final = ("attribution_source", "attribution_processed")
 """Obserwator's columns of its two lines, read like ``attribution`` (DEV-20.6)."""
 CSV_COLUMNS: Final = (ATTRIBUTION_COLUMN, TERMS_COLUMN, *_SOURCE_COLUMNS)
 """Every column that holds lines, not data."""
+SIDECAR_SUFFIX: Final = ".meta.json"
+"""The suffix of Kartograf's sidecar beside a data file (``kartograf-meta/1``)."""
+_SOILGRIDS_DATASET: Final = "global.isric.soilgrids"
+"""The ``dataset`` of a Kartograf sidecar of SoilGrids."""
+_SOILGRIDS_SEGMENT: Final = "global_soilgrids_"
+"""How Kartograf's directory of a SoilGrids file begins, in its store and in a plain
+``--output-dir`` (``soil/global_soilgrids_<property>_<depth>_<stat>/``)."""
 
 _CHMI_CREDIT: Final = "Źródło danych: Český hydrometeorologický ústav (ČHMÚ)"
 """How every ČHMÚ credit begins, whatever its producer wrote after it."""
 _CHMI_MODIFIED: Final = "Dane ČHMÚ zostały przetworzone"
 """How every statement of a modification of ČHMÚ's data begins."""
+_GUGIK_CREDIT: Final = "Źródło: Główny Urząd Geodezji i Kartografii – GUGiK"
+"""How every GUGiK credit (G) begins; Hydrolog carries it, before SG (DEV-20.4)."""
 _TERMS_LINE: Final = re.compile(r"Regulamin [^:]+: \S")
 """The form of every terms line, „Regulamin <whose terms>: <address>” (DEV §20)."""
 _RETIRED_TERMS_PREFIX: Final = "Regulamin: "
@@ -182,12 +207,14 @@ _LINES: Final[Mapping[str, tuple[str, ...]]] = {
     "imgw_hydro": (IMGW_SOURCE, IMGW_PROCESSED),
     "pmaxtp": (PMAXTP_SOURCE, PMAXTP_PROCESSED, PMAXTP_MONOGRAPH),
     "chmi": (CHMI_SOURCE, CHMI_PROCESSED),
+    "soilgrids": (SOILGRIDS_SOURCE,),
 }
 _TERMS: Final[Mapping[str, tuple[str, ...]]] = {
     "imgw": (TERMS_DANEPUBLICZNE,),
     "imgw_hydro": (TERMS_HYDRO,),
     "pmaxtp": (TERMS_PMAXTP,),
     "chmi": (),
+    "soilgrids": (),
 }
 _ORDER: Final = (
     IMGW_SOURCE,
@@ -208,6 +235,7 @@ _PROVIDER_OF: Final[Mapping[str, str]] = {
     PMAXTP_MONOGRAPH: "pmaxtp",
     CHMI_SOURCE: "chmi",
     CHMI_PROCESSED: "chmi",
+    SOILGRIDS_SOURCE: "soilgrids",
 }
 
 
@@ -275,7 +303,7 @@ class Attribution:
 
         Parameters
         ----------
-        *providers : {"imgw", "imgw_hydro", "pmaxtp", "chmi"}
+        *providers : {"imgw", "imgw_hydro", "pmaxtp", "chmi", "soilgrids"}
             The providers of the data.
 
         Returns
@@ -370,9 +398,12 @@ class Attribution:
         modified = [
             line for line in self.other_lines if line.startswith(_CHMI_MODIFIED)
         ]
-        rest = [line for line in self.other_lines if line not in modified]
+        gugik = [line for line in self.other_lines if line.startswith(_GUGIK_CREDIT)]
+        rest = [line for line in self.other_lines if line not in (*modified, *gugik)]
         chmi = (*modified, CHMI_PROCESSED) if "chmi" in self.providers else modified
-        return _union((line for line in _ORDER if line in known), chmi, rest)
+        soil = (SOILGRIDS_SOURCE,) if "soilgrids" in self.providers else ()
+        before = (line for line in _ORDER if line in known)
+        return _union(before, chmi, gugik, soil, rest)
 
     @property
     def terms_notice(self) -> tuple[str, ...]:
@@ -405,7 +436,7 @@ def provider_lines() -> dict[str, dict[str, list[str]]]:
     -------
     dict
         ``{provider: {"attribution": [...], "terms_notice": [...]}}`` for every
-        :data:`Provider`; ``terms_notice`` is empty for ČHMÚ.
+        :data:`Provider`; ``terms_notice`` is empty for ČHMÚ and SoilGrids.
     """
     return {
         name: {
@@ -558,6 +589,41 @@ def lines_of_document(document: object) -> Attribution:
         lines if isinstance(lines, list) else (),
         terms if isinstance(terms, list) else (),
     )
+
+
+def lines_of_kartograf(path: str | os.PathLike[str]) -> Attribution:
+    """Recognise the lines of a data file that Kartograf wrote.
+
+    In its store Kartograf writes ``<file>.meta.json`` (``kartograf-meta/1``) beside
+    every file: its fields ``attribution`` and ``terms_notice`` are read as those of a
+    JSON document, and a sidecar of SoilGrids (``dataset`` ``global.isric.soilgrids``)
+    gives SG (DEV-20.10). A plain file of ``--output-dir`` has no sidecar but keeps the
+    store's name, whose segment of SoilGrids (``global_soilgrids_<...>``, e.g.
+    ``soil/global_soilgrids_clay_0-5cm_mean/bbox/<coords>.tif``) gives SG too.
+
+    Parameters
+    ----------
+    path : str or os.PathLike
+        The data file, not its sidecar.
+
+    Returns
+    -------
+    Attribution
+        The lines; empty for a file Kartograf's sidecar or name does not describe.
+    """
+    data = Path(path)
+    found = Attribution()
+    if any(part.startswith(_SOILGRIDS_SEGMENT) for part in data.parent.parts):
+        found = Attribution.of("soilgrids")
+    sidecar = data.with_name(data.name + SIDECAR_SUFFIX)
+    try:
+        document = json.loads(sidecar.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return found
+    found = found | lines_of_document(document)
+    if isinstance(document, Mapping) and document.get("dataset") == _SOILGRIDS_DATASET:
+        found = found | Attribution.of("soilgrids")
+    return found
 
 
 @dataclass

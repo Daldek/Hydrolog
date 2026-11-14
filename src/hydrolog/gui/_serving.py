@@ -8,7 +8,9 @@ by the server itself; standard error gets only the lifecycle records and the err
 reduced to their type. uvicorn runs with ``log_config=None`` and ``access_log=False``
 (its access line names the client), and while the server runs the CLI's own handler
 of the ``hydrolog`` logger is set aside, so the log reaches standard error only as
-those records. Behind a proxy uvicorn takes the client's address from
+those records. What is logged before the log starts (the warnings of ``gui serve``
+and of building the app) is held and written as app records once it has started
+(DEV-12.7). Behind a proxy uvicorn takes the client's address from
 ``X-Forwarded-For`` only when the connection comes from ``FORWARDED_ALLOW_IPS``
 (``127.0.0.1`` by default: a proxy on the same machine, such as ``cloudflared``); no
 log holds it.
@@ -23,7 +25,7 @@ import socket
 import sys
 import threading
 import webbrowser
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator, Sequence
 
 import uvicorn
 from starlette.applications import Starlette
@@ -34,6 +36,7 @@ _GRACE_S = 5
 """How long open requests may take to end at a stop [s]."""
 _CLI_LOGGER = "hydrolog"
 """The logger whose stderr handler the CLI adds (``hydrolog.cli.main``)."""
+_LOG = logging.getLogger(__name__)
 
 
 class _Server(uvicorn.Server):
@@ -96,20 +99,60 @@ def _without_cli_handlers() -> Iterator[None]:
             logger.addHandler(handler)
 
 
+class _Holder(logging.Handler):
+    """Keeps the records of ``warning`` and above until the server's log starts."""
+
+    def __init__(self) -> None:
+        super().__init__(logging.WARNING)
+        self.records: list[logging.LogRecord] = []
+
+    def emit(self, record: logging.LogRecord) -> None:
+        """Keep the record."""
+        self.records.append(record)
+
+
+@contextlib.contextmanager
+def _held(holder: _Holder) -> Iterator[None]:
+    """Hold what reaches the root logger, Python's warnings too, in ``holder``."""
+    root = logging.getLogger()
+    root.addHandler(holder)
+    logging.captureWarnings(True)
+    try:
+        yield
+    finally:
+        logging.captureWarnings(False)
+        root.removeHandler(holder)
+
+
 def run(
-    app: Starlette,
+    make_app: Callable[[], Starlette],
     listener: socket.socket,
     *,
     url: str,
     open_browser: bool,
     log: ServerLog,
+    warnings: Sequence[tuple[str, str]] = (),
 ) -> None:
-    """Serve ``app`` on the bound ``listener`` until a signal stops it.
+    """Serve the app of ``make_app`` on the bound ``listener`` until a signal stops it.
 
     ``log`` starts before uvicorn, with the settings ``url`` and ``public`` in its
     record ``start``, and stops after it; the listener already listens, so a client
-    that reads the record may connect at once.
+    that reads the record may connect at once. ``warnings`` (``(event, message)``
+    pairs) and what is logged while ``make_app`` builds the app are written as app
+    records once ``log`` has started, never printed on standard error (Nogat
+    DEV-12.7); when the app cannot be built, no log starts and the CLI's handler
+    gets them with the error.
     """
+    holder = _Holder()
+    try:
+        with _without_cli_handlers(), _held(holder):
+            for event, message in warnings:
+                _LOG.warning("%s", message, extra={"event": event})
+            app = make_app()
+    except BaseException:
+        for record in holder.records:
+            logging.getLogger(record.name).handle(record)
+        raise
     config = uvicorn.Config(
         app,
         log_config=None,
@@ -123,6 +166,9 @@ def run(
     with _without_cli_handlers():
         log.start({"url": url, "public": public})
         try:
+            root = logging.getLogger()
+            for record in holder.records:
+                root.handle(record)
             server = _Server(config, url=url, open_browser=open_browser)
             server.run(sockets=[listener])
         finally:

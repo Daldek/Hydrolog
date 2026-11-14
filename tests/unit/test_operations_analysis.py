@@ -19,6 +19,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from hydrolog._attribution import CHMI_PROCESSED, CHMI_SOURCE, SOILGRIDS_SOURCE
 from hydrolog.catalog import Command, get_command, run_command
 from hydrolog.catalog.envelope import sha256_file
 from hydrolog.catalog.groups import collect_commands
@@ -2193,6 +2194,62 @@ class TestSoilHsg:
         assert document["result"]["output_path"] == (tmp_path / "hsg.tif").as_posix()
         assert document["result"]["files"][0]["path"] == str(tmp_path / "hsg.tif")
         assert len(document["result"]["files"][0]["sha256"]) == 64
+
+    def test_soilgrids_inputs_give_sg_and_keep_the_other_lines(
+        self, soil_rasters, tmp_path
+    ):
+        """DEV-20.10: Kartograf's sidecar of SoilGrids gives SG; the lines a sidecar
+        carries stay, each once and in the order of DEV-20.4."""
+        gugik = "Źródło: Główny Urząd Geodezji i Kartografii – GUGiK, NMT"
+        other = "Dane przygotował zespół projektu"
+        sidecars = {
+            "clay_path": {"dataset": "global.isric.soilgrids", "provider": "ISRIC"},
+            "sand_path": {"dataset": "global.isric.soilgrids", "attribution": [other]},
+            "silt_path": {
+                "dataset": "global.isric.soilgrids",
+                "attribution": [CHMI_SOURCE, gugik],
+            },
+        }
+        for name, sidecar in sidecars.items():
+            path = Path(soil_rasters[name] + ".meta.json")
+            path.write_text(json.dumps(sidecar), encoding="utf-8")
+
+        document = _json_roundtrip(
+            run("soil hsg", output=str(tmp_path / "hsg.tif"), **soil_rasters)
+        )
+
+        assert document["attribution"] == [
+            CHMI_SOURCE,
+            CHMI_PROCESSED,
+            gugik,
+            SOILGRIDS_SOURCE,
+            other,
+        ]
+        assert "terms_notice" not in document
+
+    def test_plain_kartograf_files_of_soilgrids_give_sg(self, soil_rasters, tmp_path):
+        """``--output-dir`` writes no sidecar but keeps the store's name."""
+        plain = {}
+        for name, path in soil_rasters.items():
+            segment = f"global_soilgrids_{name.removesuffix('_path')}_0-5cm_mean"
+            directory = tmp_path / "soil" / segment / "bbox"
+            directory.mkdir(parents=True)
+            plain[name] = str(Path(path).rename(directory / "1_2_3_4.tif"))
+
+        document = _json_roundtrip(
+            run("soil hsg", output=str(tmp_path / "hsg.tif"), **plain)
+        )
+
+        assert document["attribution"] == [SOILGRIDS_SOURCE]
+
+    def test_rasters_kartograf_does_not_describe_carry_no_lines(
+        self, soil_rasters, tmp_path
+    ):
+        document = _json_roundtrip(
+            run("soil hsg", output=str(tmp_path / "hsg.tif"), **soil_rasters)
+        )
+
+        assert "attribution" not in document
 
     def test_a_missing_input_is_not_found_and_nothing_is_written(
         self, soil_rasters, tmp_path

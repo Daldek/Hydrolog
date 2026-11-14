@@ -13,6 +13,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+from hydrolog._attribution import cite, lines_of_kartograf
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.catalog.envelope import Notice, OperationOutput
 from hydrolog.catalog.notices import notice
@@ -114,7 +115,10 @@ def soil_hsg(
     Classifies every cell with the USDA texture triangle and the texture to HSG table
     and writes a single-band ``uint8`` GeoTIFF (Deflate, nodata 0; 1-4 are the groups
     A-D) on the grid of the inputs (:func:`hydrolog.soil.hsg_from_rasters`). Needs the
-    extra ``hydrolog[raster]``.
+    extra ``hydrolog[raster]``. The lines of an input that Kartograf wrote are carried
+    into the result (:func:`hydrolog._attribution.lines_of_kartograf`): SG for
+    SoilGrids (Nogat DEV-20.10) and any ``attribution`` or ``terms_notice`` of its
+    sidecar ``<raster>.meta.json``.
 
     Parameters
     ----------
@@ -134,7 +138,8 @@ def soil_hsg(
     -------
     OperationOutput
         ``result`` is a :class:`~hydrolog.soil.HsgRasterResult`; the written file is
-        listed in ``files``. With ``check`` the result is the plan.
+        listed in ``files``; ``attribution`` holds the lines of the inputs. With
+        ``check`` the result is the plan.
 
     Raises
     ------
@@ -164,6 +169,8 @@ def soil_hsg(
         Path(os.fspath(silt_path)),
         Path(os.fspath(output)),
     )
+    for path in (clay_path, sand_path, silt_path):
+        cite(lines_of_kartograf(path))
     return OperationOutput(result, files=(result.output_path,), replaced=plan.replaced)
 
 

@@ -51,11 +51,12 @@ def state_dir(tmp_path_factory):
 class Started:
     """A server process, the address of its record ``start`` and its standard error."""
 
-    def __init__(self, argv, tmp_path, state_dir):
+    def __init__(self, argv, tmp_path, state_dir, **environ):
         environment = {
             **os.environ,
             "TMPDIR": str(tmp_path),
             "HYDROLOG_STATE_DIR": str(state_dir),
+            **environ,
         }
         self.process = subprocess.Popen(
             argv,
@@ -179,6 +180,47 @@ def test_hydrolog_gui_serve_logs_to_files_and_prints_only_its_lifecycle(
         200,
     )
     assert access["agent"] == "script"
+
+
+@posix_signals
+def test_warnings_before_the_log_starts_go_to_the_app_log_not_to_stderr(
+    tmp_path, state_dir, tmp_path_factory
+):
+    """DEV-12.7: the warning of a host beyond loopback (``gui serve``) and that of an
+    incomplete operator (building the app) are app records, never plain lines."""
+    config = tmp_path_factory.mktemp("config") / "nogat.toml"
+    config.write_text('[nogat.operator]\nname = "Jan"\n', encoding="utf-8")
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", 0))
+        port = probe.getsockname()[1]
+    argv = [sys.executable, "-m", "hydrolog.cli", "gui", "serve", "--no-browser"]
+    argv += ["--host", "0.0.0.0", "--port", str(port), "--json"]
+
+    server = Started(argv, tmp_path, state_dir, NOGAT_CONFIG=str(config))
+    try:  # an answer: uvicorn serves and stops on the signal
+        status, _, _ = get(f"http://127.0.0.1:{port}/api/session")
+    finally:
+        out = server.stop(signal.SIGTERM)
+
+    assert status == 200
+
+    assert server.process.returncode == 0
+    printed = [json.loads(line) for line in server.stderr]
+    assert [(r["kind"], r["event"]) for r in printed] == [
+        ("lifecycle", "start"),
+        ("lifecycle", "stop"),
+    ]
+    held = log_records(state_dir, "app")
+    for record in held:
+        RECORD.validate(record)
+    assert [(r["level"], r["event"]) for r in held] == [
+        ("warning", "exposed_without_auth"),
+        ("warning", "hydrolog.gui._public"),
+    ]
+    assert "no sign-in" in held[0]["message"]
+    assert "No regulamin" in held[1]["message"]
+    notices = json.loads(out)["notices"]
+    assert [n["code"] for n in notices] == ["exposed_without_auth"]
 
 
 def test_a_port_in_use_is_a_conflict():

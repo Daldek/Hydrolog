@@ -112,11 +112,13 @@ _TEXTS: Final[dict[str, tuple[str, str]]] = {
     ),
     "mcp_description": (
         "Uruchamia serwer MCP (Model Context Protocol) na standardowym "
-        "wejściu/wyjściu: każda komenda katalogu jest narzędziem. Wymaga dodatku "
-        "hydrolog[mcp]. Na stdout idzie wyłącznie protokół.",
+        "wejściu/wyjściu: narzędziem jest każda komenda katalogu poza gui serve, "
+        "z --tools tylko komendy podanych rodzin. Wymaga dodatku hydrolog[mcp]. Na "
+        "stdout idzie wyłącznie protokół.",
         "Starts the MCP (Model Context Protocol) server on standard input/output: "
-        "every catalog command is a tool. Needs the hydrolog[mcp] extra. Only the "
-        "protocol goes to stdout.",
+        "every catalog command but gui serve is a tool, with --tools only those of "
+        "the families given. Needs the hydrolog[mcp] extra. Only the protocol goes "
+        "to stdout.",
     ),
     "mcp_allow_dir": (
         "Katalog, z którego narzędzia mogą czytać pliki, a z --allow-writes także "
