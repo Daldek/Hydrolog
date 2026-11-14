@@ -3,15 +3,19 @@
 // popover with the DOM and listens, once, to clicks on any element with data-info="<id>"
 // (its current values in data-info-values, a JSON object).
 //
-// An explanation, as the files of labels/info/*.js export them (keys are the ids):
+// An explanation, as the files of labels/info/*.js export them (keys are the ids), in the
+// order and shape of Nogat DEV-15.14 (a definition, the formula with its symbols and units,
+// how to read the value, the sources; at most about 400 characters without the formula and
+// the sources, a longer explanation in the guide's chapter „Metody obliczeń”):
 //   {
 //     title: "Kirpich (1940): czas koncentracji",
-//     intro: "<p>…</p>",                      HTML: what it is, which command and option
+//     intro: "<p>…</p>",                      HTML: the definition, one or two sentences
 //     formula: "<math display=\"block\">…</math>",          MathML, one or more
 //     vars: [{symbol: "<math>…</math>", text: "czas koncentracji", unit: "min"}],
 //     symbols: {area_km2: "A", slope_m_per_m: "S"},  the symbol of a range's parameter
-//     note: "<p>…</p>",                       HTML, optional
-//     sources: "Kirpich 1940; Hydrolog, <code>docs/COMPUTATION_PATHS.md</code> 3.1",
+//     note: "<p>…</p>",                       HTML, optional: how to read the value
+//     guide: "metoda-tc-kirpich",             optional: the id of its part of the guide
+//     sources: "Kirpich 1940 (za Mota i Kobiyama 2015); Fang i in. 2005",
 //   }
 // The fragments are trusted repository files (a contract test refuses scripts, inline
 // styles, event attributes and remote URLs in them); they are set as HTML.
@@ -320,6 +324,10 @@ export function infoBody(entry, values = {}, found = []) {
     parts.push(`<h3>${shell.info.ranges}</h3><ul class="range-list">${items}</ul>`);
   }
   if (entry.note) parts.push(`<div class="note">${entry.note}</div>`);
+  if (entry.guide) {
+    const href = `instrukcja/#${encodeURIComponent(entry.guide)}`;
+    parts.push(`<p class="guide-link"><a href="${href}" target="_blank" rel="noopener">${shell.info.guide}</a></p>`);
+  }
   if (entry.sources) parts.push(`<p class="sources">${shell.info.sources}: ${entry.sources}</p>`);
   return parts.join("");
 }

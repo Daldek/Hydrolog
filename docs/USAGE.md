@@ -53,7 +53,9 @@ hydrolog tc kirpich --length-km 8.2 --slope-m-per-m 0.023 --json
 ```
 
 The envelope keys are `schema`, `tool`, `version`, `command`, `check`, `status`, `result`,
-`notices`, `inputs` and, for paged lists, `page`. The domain result has its own `schema`
+`items` (the calls of `commands batch`), `attribution` and `terms_notice` (the lines that the terms
+of the data's providers require, only when the run used such data; ADR-0028), `notices`, `inputs`
+and, for paged lists, `page`. The domain result has its own `schema`
 (`hydrolog-<group>-<command>/1`); units follow from field names (`tc_min`, `area_ha`); `NaN` and
 infinities are `null`. `inputs` echoes the options after normalisation (defaults filled in, paths
 made absolute). `notices` carries non-fatal warnings (a short series, a value outside the typical
@@ -72,6 +74,7 @@ the message text.
 | 2 | `validation_error` | a wrong or missing option (`details.option`) |
 | 3 | `not_found` | unknown command (`details.suggestions`) or missing input file |
 | 4 | `conflict` | the output file exists ([Writing files](#3-writing-files)) |
+| 5 | `source_unavailable` | IMGW-PIB does not answer `precip pmaxtp`, the one command that uses the network |
 | 6 | `missing_dependency` | an optional extra is not installed (`hint` names it) |
 | 7 | `data_error` | a malformed input file (`details.path`, `details.reason`) |
 | 9 | `io_error` | the output cannot be written |
@@ -862,8 +865,10 @@ quantiles need at least 30 years).
   default, `mle`, `moments` or `least_squares`, and `all` fits each distribution by each method,
   every item naming its `fit_method`, ADR-0021); `stats low-flow`: low-flow quantiles from annual
   minima; `stats low-flow-sequences`: drought sequences below a threshold.
-- `stats characteristic`: second-degree characteristic values (WWQ ... NNQ); `stats daily` and
-  `stats monthly`: day-of-year and monthly statistics.
+- `stats characteristic`: first- and second-degree characteristic values (WQ ... NQ of each year
+  and half-year, WWQ ... NNQ of the period); `stats daily` and `stats monthly`: day-of-year and
+  monthly statistics; `stats duration-curve`: the duration curve with the days of each class;
+  `stats runoff-volume`: annual and monthly runoff volumes.
 - `stats mann-kendall`: monotonic trend test with Sen's slope, Conover's intercept and Gilbert's
   1 - alpha interval of the slope (per year with `--year-column` or inline `--years`, otherwise
   per step); `stats homogeneity`: the homogeneity of annual maxima
@@ -950,15 +955,17 @@ line i of `--output` is what `--json` prints for call i alone: its `hydrolog-res
 or its `hydrolog-error/1` document. A failed call does not stop the others; relative paths are
 taken from the directory of the input file. A batch runs offline and writes only its output: a
 call of `precip pmaxtp` (the network), a call that gives an output option (`output`,
-`output_dir`, `schematic`) and a call of `commands batch` or `gui serve` get a `validation_error`
-line (`not_in_batch`). The batch's own envelope counts the calls
+`output_dir`, `schematic`, `inject`) and a call of `commands batch` or `gui serve` get a
+`validation_error` line (`not_in_batch`). The batch's own envelope counts the calls
 (`n_calls`, `n_ok`, `n_failed`, `failed`) and lists each line in `items`; with a failed call its
 `status` is `partial` (exit 10), with every call failed `failed` (exit 11). The calls of
 `tests/fixtures/station_batch.jsonl`, one per line:
 
 ```text
 {"command": "stats characteristic", "options": {"input_file": "station_daily.csv", "value_column": "Q", "date_column": "date"}}
+{"command": "hydrolog_stats_threshold_events", "options": {"input_file": "station_daily.csv", "value_column": "H", "date_column": "date", "threshold": 180}}
 {"command": "stats flood-frequency", "options": {"half_year_file": "station_half_years.csv", "return_periods": [10, 100]}}
+{"command": "tc kirpich", "options": {"length_km": 8.2, "slope_m_per_m": 0.023}}
 ```
 
 ```bash
@@ -984,7 +991,7 @@ fits of the SPI). `meteo spells` lists every spell; `--min-duration-days` lists 
 ones (the yearly and period summaries still count every spell), which keeps the result of a long
 record small.
 The export's attribution columns (`attribution_source`, `attribution_processed`) are not data:
-Hydrolog carries their lines into the result's `attribution` and `terms_notice` (ADR-0028); show
+Hydrolog carries their lines into the envelope's `attribution` and `terms_notice` (ADR-0028); show
 them when you publish results. Values given inline take theirs with `--attribution '[...]'`.
 
 ```bash
@@ -1078,10 +1085,11 @@ hydrolog report generate --output report.md --watershed-file tests/fixtures/wate
 
 ## 3. Writing files
 
-Three commands write a file: `report generate`, `soil hsg` and `commands guide` (the agent guide
-rendered from the catalog). The `route` commands write the outflow only when they are given
-`--output` (without it `--check` has nothing to plan and computes), and `route network` writes one
-file per node into `--output-dir`. Every other command only reads. A writing command takes:
+Four commands write a file: `report generate`, `soil hsg`, `commands batch` (the results of its
+calls) and `commands guide` (the agent guide rendered from the catalog). The `route` commands write
+the outflow only when they are given `--output` (without it `--check` has nothing to plan and
+computes), and `route network` writes one file per node into `--output-dir` and its schematic into
+`--schematic`. Every other command only reads. A writing command takes:
 
 - `--output FILE`: exactly one plain file; missing directories are created. Hydrolog has no store
   and no managed directory layout.
@@ -1138,15 +1146,19 @@ and a conflict raises `hydrolog.ConflictError` (code `conflict`, `details["paths
 
 ## 4. The Python interface
 
-`import hydrolog` reads no files and imports no numerical library. The public API is the error
-classes and five functions that drive any catalog command:
+`import hydrolog` reads no files and imports no numerical library. The public API is `__version__`,
+the error classes, the error registry `ERROR_CODES`, five functions that drive any catalog command
+and two that write and read its command line:
 
 - `run_command(command, **options)` runs a command and returns the envelope;
 - `validate_command(command, **options)` checks the options without running and returns them
   normalised, with the defaults filled in;
 - `check_command(command, **options)` plans a writing command (the plan of `--check`);
 - `list_commands(limit=None, cursor=None)` returns the command list document, optionally paged;
-- `command_schema(command)` returns the `hydrolog-commands/1` document of one command.
+- `command_schema(command)` returns the `hydrolog-commands/1` document of one command;
+- `format_command(command, options=None, run=None)` returns the canonical command line of a call
+  (`hydrolog cn lookup --hsg B --land-cover forest`), and `parse_command(line)` reads a line back
+  into `(command, options, run)`.
 
 `command` is a catalog name (`"tc kirpich"`) or an `operation_id` (`"hydrolog_tc_kirpich"`).
 Options are keyword arguments with the catalog names; lists are Python lists and objects are
@@ -1169,8 +1181,9 @@ print([item["name"] for item in page["commands"]], page["page"]["next_cursor"])
 print(hydrolog.command_schema("tc kirpich").to_dict()["commands"][0]["operation_id"])
 ```
 
-The envelope has `command`, `inputs`, `result`, `notices`, `files`, `check` and `status`; `to_dict()`
-and `to_json()` give the document of `--json`. The function behind a command is named in the
+The envelope has `command`, `inputs`, `result`, `notices`, `files`, `check`, `status`, `page`,
+`items`, `attribution` and `terms_notice`; `to_dict()` and `to_json()` give the document of
+`--json`. The function behind a command is named in the
 `function` field of `commands schema` (`hydrolog.operations.hydrograph_generate`).
 
 **Errors are exceptions.** Every failure is a subclass of `hydrolog.HydrologError` with `code`
@@ -1266,7 +1279,7 @@ print(texture, texture_to_hsg(texture))
 Also in the library: `WatershedGeometry` and `TerrainAnalysis` (shape and relief indicators),
 `HypsometricCurve`, `StreamNetwork` (Strahler and Shreve), `thiessen_polygons` and
 `inverse_distance_weighting` (areal precipitation), `hydrolog.routing` (`Hydrograph`,
-`LagReach`, `MuskingumReach`, `MuskingumCungeReach`: the flood routing of [Flood routing](#flood-routing)) and
+`LagReach`, `MuskingumReach`, `MuskingumCungeReach`, `CascadeReach`, `LevelPoolReach`: the flood routing of [Flood routing](#flood-routing)) and
 `hydrolog.reports.HydrologyReportGenerator` with a `ReportConfig` (the command
 `report generate` is the shorter way).
 
@@ -1299,8 +1312,9 @@ plot_hydrograph(result.hydrograph, show_peak=True).savefig("hydrograph.png", dpi
 
 ## 5. The MCP server
 
-The server (extra `mcp`) exposes every catalog command as a tool over standard input and output.
-The console script `hydrolog-mcp` and the command `hydrolog mcp` start the same server.
+The server (extra `mcp`) exposes every catalog command but `gui serve` as a tool over standard
+input and output. The console script `hydrolog-mcp` and the command `hydrolog mcp` start the same
+server.
 
 ```sh
 hydrolog mcp --allow-dir ~/hydrolog-data
@@ -1315,13 +1329,14 @@ uvx --from "hydrolog[mcp] @ git+https://github.com/Daldek/Hydrolog.git" hydrolog
   `--allow-dir` every path option is refused, while commands that take numbers (`tc_kirpich`,
   `cn_weighted`, `scs_effective`) work. Give absolute paths inside an allowed directory.
 - **`--allow-writes`** lets the writing tools (`hydrolog_report_generate`, `hydrolog_soil_hsg`,
-  `hydrolog_commands_guide`) write inside the allowed directories; an existing file is replaced
+  `hydrolog_commands_batch`, `hydrolog_commands_guide` and the `route` tools given `output`,
+  `output_dir` or `schematic`) write inside the allowed directories; an existing file is replaced
   only with `force`. Without it the server is read-only: a writing tool runs as `check` (`check`
   is forced to true, `force` is ignored) and returns the plan; nothing is written.
 - **`--tools FAMILIES`** limits the tools to comma-separated families: a command group (`tc`,
-  `cn`, `scs`, `precip`, `uh`, `hydrograph`, `morphometry`, `network`, `stats`, `hydrometrics`,
-  `soil`, `report`, `config`, `commands`) or `core`, the main tasks. An unknown family is a
-  `validation_error` that lists the allowed ones.
+  `cn`, `scs`, `precip`, `uh`, `hydrograph`, `route`, `morphometry`, `network`, `stats`,
+  `hydrometrics`, `meteo`, `soil`, `report`, `config`, `commands`) or `core`, the main tasks. An
+  unknown family is a `validation_error` that lists the allowed ones.
 - The server output is always English; `--lang` only selects the language of
   `hydrolog mcp --help`.
 
@@ -1377,9 +1392,9 @@ applies to that call only and is not reported. A setting comes from the first of
 
 1. the command-line option (`--lang`, `-v`, `-q`);
 2. the environment variable `HYDROLOG_<KEY>` (`HYDROLOG_LANG`, `HYDROLOG_LOG_LEVEL`,
-   `HYDROLOG_DATA_DIR`, `HYDROLOG_STATE_DIR`);
+   `HYDROLOG_DATA_DIR`, `HYDROLOG_STATE_DIR`, `HYDROLOG_REQUEST_LIMIT`, `HYDROLOG_REQUEST_WINDOW`);
 3. the shared variable `NOGAT_<KEY>` (`NOGAT_LANG`, `NOGAT_LOG_LEVEL`, `NOGAT_DATA_DIR`,
-   `NOGAT_STATE_DIR`);
+   `NOGAT_STATE_DIR`, `NOGAT_REQUEST_LIMIT`, `NOGAT_REQUEST_WINDOW`);
 4. the `[hydrolog]` table of `nogat.toml`, then its `[nogat]` table;
 5. the default.
 
@@ -1420,7 +1435,7 @@ files. Formats and the division of responsibilities are in [INTEGRATION.md](INTE
 - **Obserwator** (IMGW measurement series) writes a daily series with `obserwator series export`.
   The CSV has a `date` column and `Q [m3/s]`; pass it as `--input-file FILE --value-column Q
   --date-column date` to the `stats` commands. Its attribution columns are not data: Hydrolog
-  carries their lines into the result's `attribution` and `terms_notice` (ADR-0028); show them
+  carries their lines into the envelope's `attribution` and `terms_notice` (ADR-0028); show them
   when you publish results.
 - **Hydrograf** (watershed delineation) produces a JSON in the `WatershedParameters` format.
   Only `area_km2` is required; `perimeter_km`, `length_km`, `elevation_min_m`,
@@ -1460,7 +1475,7 @@ short welcome that links it (`instrukcja/` under the GUI's address).
 | Sieć i trasowanie | a network of subcatchments, reaches, reservoirs, junctions and an outlet, built on a canvas as in HEC-HMS's basin model editor or opened from a file or a hand-off: the network's rainfall first, then the elements, then each subcatchment in Hydrogram zlewni's three steps; checked as it is edited and routed by „Oblicz sieć” ([below](#building-a-network-in-sieć)); the guide's worked example is `hydrolog.testing.example_network_document()` | `route schematic` (the layout of the structure and Hydrolog's check), `route network`, `precip pmaxtp` for a PMAXTP depth |
 | Statystyka przepływów | flood frequency of annual maxima or of a daily series (the example: 26 annual maxima, 1998 to 2023) and the homogeneity of the series | `stats flood-frequency`, `stats homogeneity` |
 | Kalkulatory | the time of concentration by six methods for the watershed of Hydrogram zlewni, and fifteen single calculators | `tc watershed` and fifteen others |
-| Wszystkie polecenia | a form for every command of the catalog | all but `gui serve`, `config show` and `commands guide` |
+| Wszystkie polecenia | a form for every command of the catalog | all but `gui serve`, `config show`, `commands guide` and `commands batch` |
 
 A result leaves the page as CSV, JSON or PNG; from Hydrogram zlewni also as a Markdown report
 (`report generate`), and from Hydrogram zlewni and Sieć through a print view on A4 (a PDF by the
@@ -1723,8 +1738,8 @@ address (`--host 0.0.0.0`) exposes the GUI without a sign-in; the command warns 
 `exposed_without_auth`. The page uses relative URLs only, so a proxy may also publish it under a
 path prefix.
 
-A systemd unit for a user `hydrolog` who installed Hydrolog with `uv tool install` (adjust the
-path of the executable):
+A systemd unit, `/etc/systemd/system/hydrolog-gui.service`, for a user `hydrolog` who installed
+Hydrolog with `uv tool install` (adjust the path of the executable):
 
 ```ini
 [Unit]
@@ -1765,14 +1780,17 @@ is one line of JSON valid against `nogat-log/1` (`schemas/nogat/record-1.schema.
 - `lifecycle`: `start` with the settings `url` and `public`, `stop`, and `prune` when old files
   are deleted.
 
-No log holds the client's address, a cookie, a header, a request body or a file's name; of the
+No log holds the client's address, a cookie, a header or a request body (the path of a request
+for a session file names the file: `api/files/in/<name>`); of the
 `User-Agent` only its kind is kept (`agent`: `browser`, `bot`, `script` or `none`), and the
 `request_id` is never sent to the client. The server deletes a file once its date is 14 days old,
 at the start and at every midnight UTC, so no setting of journald, root or a cron job is needed.
-Standard error, and so the journal of a service, gets only the lifecycle records and errors
-reduced to their type (`request_id` and `message` `null`); uvicorn's own access log is off.
-Read the last 14 days without the successful requests with `jq` (`apt install jq`, or its static
-release binary in `~/.local/bin`):
+From the record `start` on, standard error, and so the journal of a service, gets only the
+lifecycle records and errors reduced to their type (`request_id` and `message` `null`); the
+warnings of the start before it (`exposed_without_auth`, `No regulamin: …`) are plain lines of the
+command's log. uvicorn's own access log is off.
+Read the last 14 days without the requests answered below 500 with `jq` (`apt install jq`, or its
+static release binary in `~/.local/bin`):
 
 ```sh
 jq -cs 'sort_by(.time)[] | select(.kind != "access" or .status >= 500)' ~/.local/state/nogat/hydrolog/logs/*.jsonl
@@ -1809,14 +1827,14 @@ request_window = 60
 ```
 
 - **The regulamin.** The server fills the regulamin of Nogat's GUI kit (`web/nogat/nogat-terms.html`,
-  kit 0.6.2, regulamin 1.0) with these values and the blocks of Hydrolog's sources (PMAXTP,
+  kit 0.7.0, regulamin 1.0) with these values and the blocks of Hydrolog's sources (PMAXTP,
   IMGW-PIB, ČHMÚ), serves it at `regulamin.html` beside the page, and every view shows at its
   foot the statement of DEV-15.8 with the link „Regulamin”; the menu „Aplikacje” ends with it,
   the dialog „Źródła i warunki” of a view's strip of the providers' lines links it as „Regulamin
   serwisu”, and the guide shows the same footer; every such link opens a new tab. A key missing
   or empty (only `processor_transfer`, `processor_cookie` and `mail_transfer` may be empty)
-  leaves no page and no link, with the warning `No regulamin: missing values: …` in the log. A
-  change needs a restart.
+  leaves no page and no link, with the warning `No regulamin: missing values: …` on standard
+  error, before the record `start` ([Logs](#logs)). A change needs a restart.
 - **The request limit.** At most `request_limit` requests of one client address in
   `request_window` seconds; the address stays in the server's memory for its window only. Static
   files and the catalog documents (`api/commands…`, `api/schemas/…`) are not counted, a page load
@@ -1847,12 +1865,12 @@ request_window = 60
   (Nogat DEV-15.13); the rest stays public. The admin key still guards the API, and the panel's
   requests stay under the request limit.
 
-Check a public GUI after a start:
+Check a public GUI after a start (the service above, whose user `hydrolog` keeps the files):
 
 ```sh
 curl -s https://hydrolog.example.org/api/terms                 # {"terms": "regulamin.html", ...}
 curl -sI https://hydrolog.example.org/regulamin.html | head -1  # 200
-journalctl --user -u hydrolog-gui -o cat -n 3                   # the record start, no request
-tail -n 3 ~/.local/state/nogat/hydrolog/logs/access-$(date -u +%F).jsonl  # no address
-tail -n 2 ~/.local/share/nogat/hydrolog/stats.jsonl
+journalctl -u hydrolog-gui -o cat -n 3                          # the record start, no request
+tail -n 3 /home/hydrolog/.local/state/nogat/hydrolog/logs/access-$(date -u +%F).jsonl  # no address
+tail -n 2 /home/hydrolog/.local/share/nogat/hydrolog/stats.jsonl
 ```

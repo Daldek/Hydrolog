@@ -3,6 +3,7 @@
 - Status: accepted
 - Date: 2026-11-13
 - Builds on: plan `docs/plans/2026-11-13-station-analyses.md` (decision D11 with D1, D2 and D13, step S3), Nogat's plan `2026-11-12-station-data-and-analyses` (step H2: H12 to H16 and H18, with M12 and M13 of H3; decisions D8, D12, F1), approved by the author on 2026-11-13; ADR-0029 (the reference period, the half-year file), ADR-0028 (the providers' lines)
+- Amended by [ADR-0033](0033-review-of-the-station-analyses.md) (2026-11-13): one name per concept, and the variance of Mann–Kendall's S corrected for ties (its points 1 and 5)
 
 ## Context
 

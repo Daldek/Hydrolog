@@ -3,6 +3,8 @@
 - Status: accepted
 - Date: 2026-10-24
 - Amended by [ADR-0016](0016-gui-feedback-and-data-dir.md) (2026-11-04): `data_dir` is used; one credential
+- Amended by [ADR-0034](0034-a-public-gui-regulamin-limit-logs-totals.md) (2026-11-13): two settings, `request_limit`
+  and `request_window`
 - Amended by [ADR-0037](0037-nogats-logs-in-gui-serve.md) (2026-11-13): the setting `state_dir`
 
 ## Context

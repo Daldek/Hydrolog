@@ -80,6 +80,7 @@ export const shell = {
     close: "Zamknij objaśnienie",
     ranges: "Zakres stosowania",
     sources: "Źródła",
+    guide: "Więcej w instrukcji",
     inRange: "w zakresie",
     outOfRange: "poza zakresem",
     noValue: "zakres",

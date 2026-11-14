@@ -3,6 +3,7 @@
 - Status: accepted
 - Date: 2026-11-13
 - Builds on: plan `docs/plans/2026-11-13-station-analyses.md` (decisions D1 to D8, step S1), Nogat's plan `2026-11-12-station-data-and-analyses` (step H1, decisions D6, D8, D12, F1), approved by the author on 2026-11-13; ADR-0028 (the providers' lines)
+- Amended by [ADR-0033](0033-review-of-the-station-analyses.md) (2026-11-13): one name per concept and variant options without a catalog default (its points 1 and 2)
 
 ## Context
 
