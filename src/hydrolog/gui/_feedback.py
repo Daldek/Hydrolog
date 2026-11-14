@@ -522,20 +522,31 @@ class FeedbackStore:
             ) from exc
         return {"items": items, "total": total, "unread_count": unread}
 
-    def set_read(self, number: int, *, is_read: bool) -> bool:
-        """Mark a report read or unread; ``False`` when there is no such report.
+    def set_read(self, number: int, *, is_read: bool) -> dict[str, Any] | None:
+        """Mark a report read or unread; return it, ``None`` when there is none.
 
         Raises
         ------
         HydrologError
             ``io_error`` (``feedback_update_failed``) if the file cannot be written.
         """
-        return self._change(
-            "UPDATE feedback SET is_read = ? WHERE id = ?",
-            (int(is_read), number),
-            "feedback_update_failed",
-            "The feedback could not be updated",
-        )
+        if number > ID_MAX:
+            return None
+        try:
+            with self._connection(create=False) as connection:
+                if connection is None:
+                    return None
+                # fetchall steps the statement to its end, which commits the change
+                rows = connection.execute(
+                    "UPDATE feedback SET is_read = ? WHERE id = ?"
+                    f" RETURNING {', '.join(_COLUMNS)}",
+                    (int(is_read), number),
+                ).fetchall()
+                return _item(rows[0]) if rows else None
+        except (OSError, sqlite3.Error, ValueError) as exc:
+            raise _failure(
+                "feedback_update_failed", "The feedback could not be updated"
+            ) from exc
 
     def delete(self, number: int) -> bool:
         """Delete a report; ``False`` when there is no such report.
@@ -547,23 +558,17 @@ class FeedbackStore:
         HydrologError
             ``io_error`` (``feedback_delete_failed``) if the file cannot be written.
         """
-        return self._change(
-            "DELETE FROM feedback WHERE id = ?",
-            (number,),
-            "feedback_delete_failed",
-            "The feedback could not be deleted",
-        )
-
-    def _change(
-        self, statement: str, values: tuple[int, ...], reason: str, message: str
-    ) -> bool:
-        """Run one ``UPDATE`` or ``DELETE`` of report ``values[-1]``."""
-        if values[-1] > ID_MAX:
+        if number > ID_MAX:
             return False
         try:
             with self._connection(create=False) as connection:
                 if connection is None:
                     return False
-                return connection.execute(statement, values).rowcount > 0
+                deleted = connection.execute(
+                    "DELETE FROM feedback WHERE id = ?", (number,)
+                ).rowcount
+                return deleted > 0
         except (OSError, sqlite3.Error) as exc:
-            raise _failure(reason, message) from exc
+            raise _failure(
+                "feedback_delete_failed", "The feedback could not be deleted"
+            ) from exc

@@ -96,8 +96,8 @@ async function readJson(response) {
 
 /**
  * Take the session id a response names (the server started a session for the request);
- * the first id installs the pagehide listener, so a page that never holds a session (the
- * admin page) never ends one.
+ * the first id installs the pagehide listener, so a page that never holds a session
+ * never ends one.
  *
  * @param {Response} response any answer, ok or not
  */

@@ -12,10 +12,13 @@ in its memory only: no cookie (ADR-0034). A request that needs a session and nam
 none, or an unknown one, starts one, whose id the answer gives in the same header.
 
 „Zgłoś uwagę” (Nogat DEV-15.12): ``POST api/feedback`` stores a report, its text and
-the context the page adds, in ``<data_dir>/hydrolog/feedback.sqlite3``; the admin page
-(``admin/``) reads, marks and deletes them through ``api/admin/feedback``, which
-answers only the key of ``HYDROLOG_ADMIN_API_KEY`` or ``HYDROLOG_ADMIN_API_KEY_FILE``
-in ``X-Admin-Key`` and refuses everything (``401 unauthorized``) when neither is set.
+the context the page adds, in ``<data_dir>/hydrolog/feedback.sqlite3``. The admin
+panel (Nogat DEV-15.13) is Nogat's kit shell at ``admin/`` (``admin`` answers ``308``
+to it) on the core API ``api/admin/feedback``, ``api/admin/stats`` and
+``api/admin/status``, which answers only the key of ``HYDROLOG_ADMIN_API_KEY`` or
+``HYDROLOG_ADMIN_API_KEY_FILE`` in ``X-Admin-Key`` and refuses everything
+(``401 unauthorized``) when neither is set; no admin answer is stored
+(``Cache-Control: no-store``).
 
 A deployment with ``[nogat.operator]`` in ``nogat.toml`` is public (Nogat DEV-15.7 to
 DEV-15.11, :mod:`hydrolog.gui._public`): the app serves ``regulamin.html``, limits the
@@ -37,10 +40,12 @@ import os
 import re
 import secrets
 import shutil
+import time
 import weakref
 from collections.abc import AsyncIterator, Awaitable, Callable, Mapping
 from concurrent.futures import Future
 from dataclasses import dataclass
+from datetime import UTC, date, datetime, timedelta
 from importlib import resources
 from importlib.resources.abc import Traversable
 from pathlib import Path
@@ -57,6 +62,7 @@ from starlette.responses import (
     HTMLResponse,
     JSONResponse,
     PlainTextResponse,
+    RedirectResponse,
     Response,
 )
 from starlette.routing import Mount, Route
@@ -85,6 +91,7 @@ from hydrolog.exceptions import (
     error_document,
 )
 from hydrolog.gui import WEB_DIR
+from hydrolog.gui._admin import status_document
 from hydrolog.gui._feedback import (
     FILE_NAME,
     ID_MAX,
@@ -102,7 +109,9 @@ from hydrolog.gui._public import (
     PublicGuard,
     RateLimiter,
     Upkeep,
+    is_admin,
     load_public,
+    stats_report,
 )
 from hydrolog.gui._runner import Job, Outcome, Runner
 from hydrolog.gui._sessions import (
@@ -134,6 +143,8 @@ STATS_EVENTS: Final[Mapping[str, str]] = {
     "download": "downloads",
 }
 """What the page counts itself (``POST api/stats/{event}``): event -> daily total."""
+STATS_DAYS: Final = 30
+"""The days ``api/admin/stats`` gives without ``from`` (Nogat DEV-15.13)."""
 EXCLUDED: Final = frozenset(
     {"gui serve", "config show", "commands guide", "commands batch"}
 )
@@ -159,6 +170,8 @@ SECURITY_HEADERS: Final[tuple[tuple[str, str], ...]] = (
     ("permissions-policy", "camera=(), microphone=(), geolocation=()"),
 )
 """Headers of every response (plan D8); ``Cache-Control`` depends on the path."""
+ADMIN_PAGE: Final = "/admin"
+"""The admin page's path without its slash, which answers ``308`` to the page."""
 
 _API = "/api"
 _UNSAFE = frozenset({"POST", "PUT", "PATCH", "DELETE"})
@@ -286,32 +299,55 @@ def _query_int(
     return value
 
 
-def _is_api(scope: Scope) -> bool:
-    """Tell whether a request is under ``api/``.
+def _query_day(request: Request, name: str, default: date) -> date:
+    """Return the query parameter ``name``, a UTC day ``YYYY-MM-DD``."""
+    text = request.query_params.get(name)
+    if text is None:
+        return default
+    try:
+        if re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", text) is None:
+            raise ValueError(text)
+        return date.fromisoformat(text)
+    except ValueError:
+        raise InvalidParameterError(
+            f"The parameter {name} must be a day YYYY-MM-DD, got {text!r}",
+            details={
+                "parameter": name,
+                "reason": "format",
+                "expected": "YYYY-MM-DD",
+                "value": text,
+            },
+        ) from None
 
-    Ask before the router runs: a ``Mount`` changes the scope's ``root_path``.
+
+def _is_stored(scope: Scope) -> bool:
+    """Tell whether a browser may keep the answer: not the API's, not the admin's."""
+    route = _route_path(scope)
+    return not (route.startswith(_API + "/") or is_admin(route))
+
+
+def _secure(headers: MutableHeaders, stored: bool) -> None:
+    """Set the security headers of every response and its ``Cache-Control`` (D8).
+
+    The page's files are revalidated (``no-cache``); the API's answers and every
+    answer of the admin panel are not stored (``no-store``, Nogat DEV-15.13).
     """
-    return _route_path(scope).startswith(_API + "/")
-
-
-def _secure(headers: MutableHeaders, api: bool) -> None:
-    """Set the security headers of every response and its ``Cache-Control`` (D8)."""
     for name, value in SECURITY_HEADERS:
         headers[name] = value
-    headers["cache-control"] = "no-store" if api else "no-cache"
+    headers["cache-control"] = "no-cache" if stored else "no-store"
 
 
 def _secure_request(headers: MutableHeaders, scope: Scope) -> None:
     """:func:`_secure` for the answer to a request no router has seen (a ``429``)."""
-    _secure(headers, _is_api(scope))
+    _secure(headers, _is_stored(scope))
 
 
 class _Guard:
     """Security headers of every response and the refusal of cross-site writes (D8).
 
     ``POST``, ``PUT`` and ``DELETE`` are refused when ``Sec-Fetch-Site`` is
-    ``cross-site`` or ``same-site``. Responses under ``api/`` are not stored
-    (``no-store``); the page's files are revalidated (``no-cache``).
+    ``cross-site`` or ``same-site``. Responses under ``api/`` and of the admin panel
+    are not stored (``no-store``); the page's files are revalidated (``no-cache``).
     """
 
     def __init__(self, app: ASGIApp) -> None:
@@ -322,13 +358,13 @@ class _Guard:
             await self.app(scope, receive, send)
             return
         started = False
-        api = _is_api(scope)
+        stored = _is_stored(scope)
 
         async def guarded(message: Message) -> None:
             nonlocal started
             if message["type"] == "http.response.start":
                 started = True
-                _secure(MutableHeaders(scope=message), api)
+                _secure(MutableHeaders(scope=message), stored)
             await send(message)
 
         site = Headers(scope=scope).get("sec-fetch-site", "").lower()
@@ -477,13 +513,17 @@ class _Gui:
         self.runner = Runner(
             workers=workers, timeout_s=run_timeout_s, cwd=self.sessions.root
         )
-        self.reports = FeedbackStore(data_dir / TOOL / FILE_NAME)
+        self.started_at = datetime.now(UTC)
+        self.started = time.monotonic()
+        self.data_dir = data_dir / TOOL
+        """``<data_dir>/hydrolog``: the reports and the daily totals."""
+        self.reports = FeedbackStore(self.data_dir / FILE_NAME)
         self.config = config
         self.public: Public | None = load_public(config)
         self.stats: DailyStats | None = None
         self.upkeep: Upkeep | None = None
         if self.public is not None:
-            self.stats = DailyStats(data_dir / TOOL / STATS_FILE)
+            self.stats = DailyStats(self.data_dir / STATS_FILE)
             limiter = RateLimiter(
                 self.public.request_limit, self.public.request_window_s
             )
@@ -878,30 +918,78 @@ class _Gui:
         return JSONResponse(listing)
 
     async def feedback_mark(self, request: Request, call: _Call) -> Response:
-        """``PATCH api/admin/feedback/{id}`` with ``{"is_read": bool}``."""
+        """``PATCH api/admin/feedback/{id}`` with ``{"is_read": bool}``: the report."""
         number = request.path_params["feedback_id"]
         is_read = parse_read(await self.options(request, limit=REQUEST_MAX_BYTES))
-        found = await anyio.to_thread.run_sync(
+        report = await anyio.to_thread.run_sync(
             functools.partial(self.reports.set_read, number, is_read=is_read)
         )
-        _found(found, number)
-        return JSONResponse({"status": "ok"})
+        if report is None:
+            raise _missing(number)
+        return JSONResponse(report)
 
     async def feedback_delete(self, request: Request, call: _Call) -> Response:
         """``DELETE api/admin/feedback/{id}``: ``{"status": "deleted"}``."""
         number = request.path_params["feedback_id"]
-        found = await anyio.to_thread.run_sync(self.reports.delete, number)
-        _found(found, number)
+        if not await anyio.to_thread.run_sync(self.reports.delete, number):
+            raise _missing(number)
         return JSONResponse({"status": "deleted"})
 
+    async def admin_stats(self, request: Request, call: _Call) -> Response:
+        """``GET api/admin/stats?from=&to=``: ``{days, totals}`` (Nogat DEV-15.13).
 
-def _found(found: bool, number: int) -> None:
-    """Refuse a report that does not exist (``404``, ``feedback_not_found``)."""
-    if not found:
-        raise NotFoundError(
-            f"Feedback {number} not found",
-            details={"reason": "feedback_not_found", "feedback_id": number},
+        The days of ``stats.jsonl`` from ``from`` to ``to``, UTC days ``YYYY-MM-DD``
+        both included: by default the last :data:`STATS_DAYS` up to today, the
+        current day as counted so far. A GUI that is not public counts nothing, but
+        gives the lines a public run left.
+        """
+        last = _query_day(request, "to", datetime.now(UTC).date())
+        first = _query_day(request, "from", last - timedelta(days=STATS_DAYS - 1))
+        if first > last:
+            raise InvalidParameterError(
+                f"The day from ({first}) is after the day to ({last})",
+                details={
+                    "parameter": "from",
+                    "reason": "maximum",
+                    "maximum": last.isoformat(),
+                    "value": first.isoformat(),
+                },
+            )
+        today = None if self.stats is None else self.stats.snapshot()
+        report = await anyio.to_thread.run_sync(
+            stats_report,
+            self.data_dir / STATS_FILE,
+            first.isoformat(),
+            last.isoformat(),
+            today,
         )
+        return JSONResponse(report)
+
+    async def admin_status(self, request: Request, call: _Call) -> Response:
+        """``GET api/admin/status``: the server and its checks (Nogat DEV-15.13).
+
+        The checks are ``data_dir`` and ``feedback_db``
+        (:mod:`hydrolog.gui._admin`).
+        """
+        document = await anyio.to_thread.run_sync(
+            functools.partial(
+                status_document,
+                version=hydrolog.__version__,
+                started_at=self.started_at,
+                uptime_s=time.monotonic() - self.started,
+                data_dir=self.data_dir,
+                reports=self.reports,
+            )
+        )
+        return JSONResponse(document)
+
+
+def _missing(number: int) -> NotFoundError:
+    """Return the ``404`` of a report that does not exist (``feedback_not_found``)."""
+    return NotFoundError(
+        f"Feedback {number} not found",
+        details={"reason": "feedback_not_found", "feedback_id": number},
+    )
 
 
 def _close(runner: Runner, sessions: Sessions, stats: DailyStats | None) -> None:
@@ -983,9 +1071,28 @@ def build_app(
                 gui.endpoint(gui.admin(gui.feedback_delete)),
                 methods=["DELETE"],
             ),
+            Route(
+                "/admin/stats",
+                gui.endpoint(gui.admin(gui.admin_stats)),
+                methods=["GET"],
+            ),
+            Route(
+                "/admin/status",
+                gui.endpoint(gui.admin(gui.admin_status)),
+                methods=["GET"],
+            ),
         ],
         exception_handlers={HTTPException: _api_http_error, Exception: _api_defect},
     )
+
+    async def admin_page(request: Request) -> Response:
+        """``admin``: ``308`` to ``admin/``, the panel (Nogat DEV-15.13).
+
+        The address is relative, so it holds under a host's prefix.
+        """
+        query = request.url.query
+        target = "admin/" + (f"?{query}" if query else "")
+        return RedirectResponse(target, status_code=308)
 
     async def regulamin(request: Request) -> Response:
         """``regulamin.html``: the filled regulamin of a public deployment, else 404."""
@@ -1025,6 +1132,7 @@ def build_app(
     app = Starlette(
         routes=[
             Route(f"/{TERMS_PAGE}", regulamin, methods=["GET"]),
+            Route(ADMIN_PAGE, admin_page, methods=["GET"]),
             Mount(_API, app=api),
             Mount("/", app=StaticFiles(directory=WEB_DIR, html=True, check_dir=False)),
         ],

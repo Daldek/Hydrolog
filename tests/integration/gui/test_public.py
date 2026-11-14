@@ -461,6 +461,76 @@ def test_an_unknown_event_is_not_a_total(make_app, visitor):
     assert document["details"]["allowed"] == ["station", "download"]
 
 
+def test_the_admin_panel_is_no_visitor_but_stays_under_the_limit(
+    make_app, visitor, monkeypatch
+):
+    """DEV-15.11 and DEV-15.13: the operator's requests count in no total, and the
+    request limit holds for them too (DEV-15.9)."""
+    monkeypatch.setenv("HYDROLOG_ADMIN_API_KEY", "klucz")
+    app = make_app(settings(limit=4, window=60))
+    operator = visitor(app, address=OTHER_ADDRESS)
+    key = {"X-Admin-Key": "klucz"}
+
+    answers = [
+        operator.get("/admin/").status_code,
+        operator.get("/admin", follow_redirects=False).status_code,
+        operator.get("/api/admin/feedback", headers=key).status_code,
+        operator.get("/api/admin/status").status_code,  # refused, still counted
+        operator.get("/api/admin/stats", headers=key).status_code,
+    ]
+
+    assert answers == [200, 308, 200, 401, 429]
+    assert app.state.gui.stats.snapshot() == {
+        "date": datetime.now(UTC).date().isoformat(),
+        **dict.fromkeys(
+            ("visitors", "page_views", "stations_opened", "analyses_run", "downloads"),
+            0,
+        ),
+    }
+
+
+def test_the_admin_stats_give_the_current_day_as_counted_so_far(
+    make_app, visitor, monkeypatch, tmp_path
+):
+    monkeypatch.setenv("HYDROLOG_ADMIN_API_KEY", "klucz")
+    today = datetime.now(UTC).date().isoformat()
+    stored = {
+        "date": today,
+        "visitors": 2,
+        "page_views": 3,
+        "stations_opened": 0,
+        "analyses_run": 1,
+        "downloads": 0,
+    }
+    earlier = {**stored, "date": "2026-01-01"}
+    path = tmp_path / "data" / "hydrolog" / "stats.jsonl"
+    path.parent.mkdir(parents=True)
+    path.write_text(
+        "".join(json.dumps(line) + "\n" for line in (earlier, stored)),
+        encoding="utf-8",
+    )
+    app = make_app(settings())
+    assert visitor(app).get("/").status_code == 200  # not yet written to the file
+
+    document = (
+        visitor(app, address=OTHER_ADDRESS)
+        .get("/api/admin/stats?from=2026-01-01", headers={"X-Admin-Key": "klucz"})
+        .json()
+    )
+
+    assert document["days"] == [
+        earlier,
+        {**stored, "visitors": 3, "page_views": 4},
+    ]
+    assert document["totals"] == {
+        "page_views": 7,
+        "stations_opened": 0,
+        "analyses_run": 2,
+        "downloads": 0,
+    }
+    assert stats_lines(tmp_path / "data")[-1] == stored
+
+
 # --- a GUI that is not public ---------------------------------------------------------
 
 

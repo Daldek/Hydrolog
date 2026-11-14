@@ -11,6 +11,14 @@ First release of the stable API (1.0.0, not yet released; `develop` carries 1.0.
 
 ### Added
 
+#### Nogat's admin panel (Nogat DEV-15.13, ECO-067, kit 0.7.0; plan `2026-11-13-admin-panel`, step 2; ADR-0038)
+- **Breaking for the admin page:** `admin/` is Nogat's kit panel `<nogat-admin>` (kit 0.7.0, copied byte for byte from Nogat `229ade3`: `nogat-admin.js` and `nogat-admin.css` are new) with „Zgłoszenia”, „Statystyki” and „Stan”; the Preact page (`admin/admin.js`, `admin/admin.css`, `src/labels/admin.js`) is gone. The key is kept in the tab under `hydrolog/admin-key/1` (was `hydrolog-gui/admin-key/1`), so the operator signs in once more.
+- `GET api/admin/stats?from=&to=` answers `{days, totals}`: the lines of `<data_dir>/hydrolog/stats.jsonl` between two UTC days, both included (default the last 30 days), today's as counted so far, and the sums of every key but `visitors`; a day not `YYYY-MM-DD` or `from` after `to` is `validation_error`.
+- `GET api/admin/status` answers `{app, version, started_at, uptime_s, data_dir, disk: {free_bytes, total_bytes}, checks}` with the checks `data_dir` (the data directory can be written) and `feedback_db` (the reports' file can be read, with its counts).
+- **Breaking:** `PATCH api/admin/feedback/{id}` answers the report instead of `{"status": "ok"}`.
+- `admin` answers `308` to `admin/` (was Starlette's `307`), every answer of `admin`, `admin/…` and `api/admin/…` has `Cache-Control: no-store`, and a public GUI counts the admin panel's requests in no daily total (they stay under the request limit).
+- The sign-in is unchanged: `HYDROLOG_ADMIN_API_KEY` or `HYDROLOG_ADMIN_API_KEY_FILE`, read at every request, and `401 unauthorized` with `admin_key_not_configured`, `admin_key_missing` or `admin_key_invalid` on every admin route, `stats` and `status` included.
+
 #### Nogat's logs in `gui serve` (Nogat DEV-12.4 to DEV-12.9, ECO-066; plan `2026-11-13-terms-fix`, step 4; ADR-0037)
 - `hydrolog gui serve` keeps an access, an application and a lifecycle log in every run, public or not, as JSON Lines of `nogat-log/1` in `<state_dir>/hydrolog/logs/<kind>-YYYY-MM-DD.jsonl` (UTC dates), and deletes each file itself 14 days after its date, at the start and at every midnight UTC: Nogat's reference module, copied byte for byte into `src/hydrolog/gui/nogat_logging.py` from Nogat `a41d971`, and its schema into `schemas/nogat/record-1.schema.json`.
 - The access log: one record per request (`method`, `path` with its query, the values of personal or secret parameters dropped, `status`, `bytes`, `duration_ms`, `agent` the kind of client, a random `request_id`), the request limit's `429` included; the page's files and the catalog documents are logged only when answered with 400 or more. No log holds an IP address, a cookie or the `User-Agent`.

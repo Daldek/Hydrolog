@@ -6,9 +6,10 @@ station, parameters and the server's version), in
 ``<data_dir>/hydrolog/feedback.sqlite3``, with no session and nothing else: a contact,
 the page's address, diagnostics or any other field are refused and the request's
 ``User-Agent`` is not kept; a deleted report leaves no text in the file.
-``api/admin/feedback`` lists, marks and deletes the reports only for the key of
-``HYDROLOG_ADMIN_API_KEY`` or ``HYDROLOG_ADMIN_API_KEY_FILE`` in ``X-Admin-Key``, and
-refuses everything when the server has no key.
+``api/admin/feedback`` lists, marks and deletes the reports, and every other admin route
+answers, only for the key of ``HYDROLOG_ADMIN_API_KEY`` or
+``HYDROLOG_ADMIN_API_KEY_FILE`` in ``X-Admin-Key``; without a key on the server they
+refuse everything.
 """
 
 import json
@@ -32,8 +33,15 @@ KEY = "klucz-administratora-0123"
 ERROR = validator("error-1")
 AGENT = "Mozilla/5.0 (X11; Linux x86_64) TestowaPrzegladarka/9.8.7-unikalna"
 LIST = "/api/admin/feedback"
-ROUTES = [("GET", LIST), ("PATCH", f"{LIST}/1"), ("DELETE", f"{LIST}/1")]
-"""The admin routes, each with a report that exists in the tests that make one."""
+ROUTES = [
+    ("GET", LIST),
+    ("PATCH", f"{LIST}/1"),
+    ("DELETE", f"{LIST}/1"),
+    ("GET", "/api/admin/stats"),
+    ("GET", "/api/admin/status"),
+]
+"""Every admin route (Nogat DEV-15.13), a report's with a report that exists in the
+tests that make one."""
 CONTEXT_FIELDS = [
     "context.app_version",
     "context.parameters",
@@ -553,9 +561,10 @@ def test_a_report_is_marked_read_and_unread_again(client, admin):
     read = listing(client, admin)
     unmarked = client.patch(f"{LIST}/1", json={"is_read": False}, headers=admin)
 
-    assert (marked.status_code, marked.json()) == (200, {"status": "ok"})
+    assert marked.status_code == 200
+    assert marked.json() == read["items"][0]  # the report, as listed
     assert (read["items"][0]["is_read"], read["unread_count"]) == (True, 0)
-    assert unmarked.json() == {"status": "ok"}
+    assert unmarked.json() == {**read["items"][0], "is_read": False}
     assert listing(client, admin)["unread_count"] == 1
 
 

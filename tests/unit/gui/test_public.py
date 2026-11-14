@@ -20,6 +20,7 @@ from hydrolog.gui._public import (
     STATS_KEYS,
     DailyStats,
     RateLimiter,
+    is_admin,
     is_counted,
     is_page,
 )
@@ -86,6 +87,26 @@ def test_what_the_limit_counts_and_what_is_a_page_view(method, route, counted, p
     is a read of a public page, not of the admin page or the API."""
     assert is_counted(method, route) is counted
     assert is_page(method, route) is page
+
+
+@pytest.mark.parametrize(
+    ("route", "admin"),
+    [
+        ("/admin", True),
+        ("/admin/", True),
+        ("/admin/index.html", True),
+        ("/api/admin/feedback/3", True),
+        ("/api/admin/stats", True),
+        ("/administracja", False),
+        ("/api/administracja", False),
+        ("/api/feedback", False),
+        ("/instrukcja/admin/", False),
+    ],
+)
+def test_the_admin_panel_is_its_three_paths(route, admin):
+    """``/admin``, ``/admin/…`` and ``/api/admin/…`` (DEV-15.13), which no total
+    counts (DEV-15.11)."""
+    assert is_admin(route) is admin
 
 
 # --- the request limit ----------------------------------------------------------------

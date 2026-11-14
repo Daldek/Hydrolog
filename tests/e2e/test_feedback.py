@@ -1,17 +1,20 @@
-"""„Zgłoś uwagę” and the admin page (Nogat DEV-15.12) in Chromium.
+"""„Zgłoś uwagę” and the admin panel (Nogat DEV-15.12, DEV-15.13) in Chromium.
 
 The button of the top bar opens a modal dialog with one text field, its counter and the
 hint not to write personal data, with the operator's address for an answer on a public
 GUI; there is no contact field and no diagnostics. A report goes to the server as its
 text and the context the page builds (the view, the station, the view's parameters, the
 app version) and nothing about the browser; the dialog closes 2 s after the thanks.
-The admin page (``admin/``) asks for the key and keeps it in the tab, lists the reports
-newest first with the count of unread ones, opens one (which reads it) with its context,
-marks it unread again and deletes it; the markup of a report stays text.
+The admin panel (``admin/``, Nogat's kit shell, DEV-15.13) asks for the key and keeps
+it in the tab, lists the reports newest first with the count of unread ones, shows each
+one's context, marks it read and deletes it after a question; the markup of a report
+stays text; „Statystyki” shows the days of ``stats.jsonl`` and „Stan” the checks.
 """
 
 import json
+import re
 from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
@@ -182,12 +185,13 @@ def test_a_public_gui_gives_the_operators_address_for_an_answer(
     )
 
 
-def test_the_admin_page_lists_opens_marks_and_deletes_reports(
+def test_the_admin_panel_lists_marks_and_deletes_reports_and_shows_stats_and_status(
     new_tab: Callable[..., Tab], gui_server: Served, admin_key: str
 ) -> None:
     tab = new_tab(prefixed=True)
     page = tab.page
-    tab.open("admin/")  # the admin page under a host's prefix
+    tab.open("admin")  # under a host's prefix, without the slash: 308 to the panel
+    expect(page).to_have_url(re.compile(r"/m/hydrolog/admin/$"))
     remove_all(page, gui_server)
     # The server writes its own version into every report's context
     version = page.request.get(gui_server.url("api/session")).json()["version"]
@@ -199,83 +203,121 @@ def test_the_admin_page_lists_opens_marks_and_deletes_reports(
         "app_version": "9.9.9",
     }
     for body in (
-        {
-            "message": "Pierwsze zgłoszenie",
-            "context": {
-                "view": "siec",
-                "station": None,
-                "parameters": {},
-                "app_version": "9.9.9",
-            },
-        },
+        {"message": "Pierwsze zgłoszenie", "context": {"view": "siec"}},
         {"message": markup, "context": context},
     ):
         response = page.request.post(gui_server.url("api/feedback"), data=body)
         assert response.status == 200, response.text()
+    stats = gui_server.data_dir / "hydrolog" / "stats.jsonl"
+    yesterday = (datetime.now(UTC).date() - timedelta(days=1)).isoformat()
+    stats.write_text(
+        json.dumps({"date": "2020-01-01", "visitors": 9, "page_views": 9})
+        + "\n"
+        + json.dumps(
+            {
+                "date": yesterday,
+                "visitors": 3,
+                "page_views": 5,
+                "stations_opened": 1,
+                "analyses_run": 2,
+                "downloads": 0,
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
 
-    expect(page.get_by_role("heading", name="Panel administracyjny")).to_be_visible()
-    page.get_by_label("Klucz API").fill("zly-klucz")
-    page.get_by_role("button", name="Zaloguj").click()
+    expect(page.get_by_role("heading", level=1)).to_have_text(
+        "Hydrolog · Administracja"
+    )
+    expect(page.get_by_role("link", name="Wróć do aplikacji")).to_have_attribute(
+        "href", gui_server.prefixed
+    )
+    page.get_by_label("Klucz administratora").fill("zly-klucz")
+    page.get_by_role("button", name="Zaloguj", exact=True).click()
     expect(page.get_by_role("alert")).to_have_text(
-        "Nieprawidłowy klucz API. Spróbuj ponownie."
+        "Nieprawidłowy klucz. Spróbuj ponownie."
     )
-    page.get_by_label("Klucz API").fill(KEY)
-    page.get_by_role("button", name="Zaloguj").click()
+    page.get_by_label("Klucz administratora").fill(KEY)
+    page.get_by_role("button", name="Zaloguj", exact=True).click()
 
-    expect(page.get_by_role("heading", name="Zgłoszenia użytkowników")).to_be_visible()
-    rows = page.locator("li.report")
+    nav = page.get_by_role("navigation", name="Sekcje panelu")
+    expect(nav.get_by_role("link")).to_have_text(["Zgłoszenia", "Statystyki", "Stan"])
+    rows = page.locator(".nogat-admin-report")
     expect(rows).to_have_count(2)
-    expect(page.locator(".unread-count")).to_have_text("2")
+    expect(page.locator(".nogat-admin-count")).to_have_text("Nieprzeczytane: 2 z 2")
     newest = rows.first
-    expect(newest.locator(".report-excerpt")).to_have_text(markup[:80] + "…")
-    expect(newest.locator(".badge")).to_have_text("nowe")
-    expect(rows.nth(1).locator(".report-excerpt")).to_have_text("Pierwsze zgłoszenie")
-
-    # Opened: its text and context as text, and read
-    newest.locator(".report-toggle").click()
-    details = newest.locator(".report-details")
-    expect(newest.locator(".report-message")).to_have_text(markup)
-    expect(page.locator("li.report b, li.report img")).to_have_count(0)
-    expect(details.locator(".report-meta")).to_have_text(
-        [
-            "Widok: statystyka",
-            "Stacja: Kłodzko (Nysa Kłodzka)",
-            f"Wersja aplikacji: {version}",
-        ]
+    expect(newest.locator(".nogat-admin-message")).to_have_text(markup)
+    expect(newest.locator(".nogat-admin-badge")).to_have_text("nowe")
+    expect(
+        page.locator(".nogat-admin-report b, .nogat-admin-report img")
+    ).to_have_count(0)
+    expect(rows.nth(1).locator(".nogat-admin-message")).to_have_text(
+        "Pierwsze zgłoszenie"
     )
-    expect(details.get_by_role("heading", name="Parametry widoku")).to_be_visible()
-    assert json.loads(details.locator("pre").inner_text()) == context["parameters"]
-    expect(page.locator(".unread-count")).to_have_text("1")
-    expect(newest.locator(".badge")).to_have_count(0)
-    newest.get_by_role("button", name="Oznacz nieprzeczytane").click()
-    expect(page.locator(".unread-count")).to_have_text("2")
-    assert reports(page, gui_server)[0]["is_read"] is False
 
-    # A report without a station names none
-    rows.nth(1).locator(".report-toggle").click()
-    expect(rows.nth(1).locator(".report-meta")).to_have_text(
-        ["Widok: siec", f"Wersja aplikacji: {version}"]
+    # The context, folded, as text; the server's version, not the page's
+    newest.locator("summary", has_text="Kontekst").click()
+    expect(newest.locator("dt")).to_have_text(
+        ["Widok", "Stacja", "Wersja aplikacji", "Parametry widoku"]
     )
+    expect(newest.locator("dd").nth(2)).to_have_text(version)
+    assert json.loads(newest.locator("pre").inner_text()) == context["parameters"]
+
+    newest.get_by_role("button", name="Oznacz jako przeczytane").click()
+    expect(page.locator(".nogat-admin-count")).to_have_text("Nieprzeczytane: 1 z 2")
+    expect(
+        newest.get_by_role("button", name="Oznacz jako nieprzeczytane")
+    ).to_be_visible()
+    assert reports(page, gui_server)[0]["is_read"] is True
 
     # The key stays in the tab: a reload lists again
+    assert page.evaluate("() => Object.keys(sessionStorage)") == [
+        "hydrolog/admin-key/1"
+    ]
     page.reload()
     expect(rows).to_have_count(2)
 
-    page.once("dialog", lambda question: question.accept())
     rows.nth(1).get_by_role("button", name="Usuń").click()
+    question = page.get_by_role("dialog")
+    expect(question.get_by_role("heading")).to_have_text(
+        re.compile(r"^Usunąć zgłoszenie #\d+\?$")
+    )
+    question.get_by_role("button", name="Usuń").click()
     expect(rows).to_have_count(1)
     assert [item["message"] for item in reports(page, gui_server)] == [markup]
 
+    # „Statystyki”: the days of stats.jsonl of the last 30 days
+    nav.get_by_role("link", name="Statystyki").click()
+    table = page.locator(".nogat-admin-table")
+    expect(table.locator("tbody tr")).to_have_count(1)
+    expect(table.locator("tbody tr th")).to_have_text(yesterday)
+    expect(table.locator("tfoot td").nth(1)).to_have_text("5")
+
+    # „Stan”: the version and the two checks
+    nav.get_by_role("link", name="Stan").click()
+    expect(page.locator("nogat-admin-status dd").nth(1)).to_have_text(version)
+    checks = page.locator(".nogat-admin-check")
+    expect(checks.locator(".nogat-admin-check-name")).to_have_text(
+        ["data_dir", "feedback_db"]
+    )
+    expect(checks.locator(".nogat-admin-badge")).to_have_text(["OK", "OK"])
+    expect(checks.nth(1)).to_contain_text("Zgłoszenia: 1, nieprzeczytane: 0.")
+
     page.get_by_role("button", name="Wyloguj").click()
-    expect(page.get_by_role("heading", name="Panel administracyjny")).to_be_visible()
+    expect(page.get_by_label("Klucz administratora")).to_be_visible()
+    expect(nav).to_be_hidden()
     assert page.evaluate("() => sessionStorage.length") == 0
 
 
-def test_the_admin_page_says_when_the_server_has_no_key(tab: Tab) -> None:
+def test_the_admin_panel_says_when_the_server_has_no_key(tab: Tab) -> None:
     tab.open("admin/")
     page = tab.page
 
-    page.get_by_label("Klucz API").fill("dowolny")
-    page.get_by_role("button", name="Zaloguj").click()
+    page.get_by_label("Klucz administratora").fill("dowolny")
+    page.get_by_role("button", name="Zaloguj", exact=True).click()
 
-    expect(page.get_by_role("alert")).to_contain_text("HYDROLOG_ADMIN_API_KEY")
+    expect(page.get_by_role("alert")).to_have_text(
+        "Serwer nie ma ustawionego klucza administratora."
+    )
+    expect(page.get_by_role("navigation", name="Sekcje panelu")).to_be_hidden()
