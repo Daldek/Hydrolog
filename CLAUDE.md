@@ -61,7 +61,7 @@ the numbers of the shipped examples (`data-example`, compared with the computed 
 light theme, a 390 px phone in the dark one, PNG of 256 colours); a change of an example, a
 result, a label or the layout of the page updates them.
 „Zgłoś uwagę” (the top bar) stores reports, a text and the page's context, never a contact,
-in SQLite `<data_dir>/hydrolog/feedback.sqlite3` (version 2; `data_dir`: `HYDROLOG_DATA_DIR`,
+in SQLite `<data_dir>/hydrolog/feedback.sqlite3` (version 1; `data_dir`: `HYDROLOG_DATA_DIR`,
 `NOGAT_DATA_DIR`, `nogat.toml`, else the user data directory); the admin panel `admin/` (Nogat's
 kit shell `<nogat-admin>`, DEV-15.13: „Zgłoszenia”, „Statystyki”, „Stan” on `api/admin/feedback`,
 `stats`, `status`; `gui/_admin.py` holds the status checks) answers only with

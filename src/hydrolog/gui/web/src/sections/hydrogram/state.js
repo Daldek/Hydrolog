@@ -1,6 +1,6 @@
 // State of „Hydrogram zlewni” (plan D9, D13; the author's three steps of 2026-11-04): the
 // inputs of the steps Zlewnia, Hietogram and Hydrogram, kept in the browser under
-// "hydrolog-gui/hydrogram/2" (inputs only, no results), what the chosen model needs
+// "hydrolog-gui/hydrogram/1" (inputs only, no results), what the chosen model needs
 // (requirements), their checks (checkInputs: errors that stop a run, warnings that do not)
 // and the options of `hydrograph generate` (toOptions). A first visit starts empty: no
 // watershed, no storm, no model.

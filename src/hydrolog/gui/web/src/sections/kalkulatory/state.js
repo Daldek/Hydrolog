@@ -1,6 +1,6 @@
 // State of „Kalkulatory”: the sixteen calculators (the comparison of the methods of the time
 // of concentration and fifteen catalog commands), their entries in the catalog, and the
-// inputs kept under "hydrolog-gui/kalkulatory/2": the chosen calculator, the group and the
+// inputs kept under "hydrolog-gui/kalkulatory/1": the chosen calculator, the group and the
 // search, the methods and the overland fields of the comparison, and each command's form
 // (no results). A form opened for the first time is empty (outputDefaults), then filled
 // with the fields of the watershed of Hydrogram zlewni when there is one.

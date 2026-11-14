@@ -1,30 +1,46 @@
 // Inputs kept in the browser between visits: one localStorage key per section,
-// "hydrolog-gui/<section>/<version>", holding inputs only (no results). A missing key is a
-// first visit, which starts empty (no section opens an example); „Wyczyść” removes the
-// key. A section whose stored shape changed gets a new version in VERSIONS, so what the
-// old shape stored is no longer read.
+// "hydrolog-gui/<section>/1", holding inputs only (no results). A missing key is a first
+// visit, which starts empty (no section opens an example); „Wyczyść” removes the key.
+// Every stored shape is version 1 until the first release (Nogat REL-1.4).
 
 import { useCallback, useEffect, useRef, useState } from "./html.js";
 
 /**
- * The versions of the stored shapes other than 1: Hydrogram zlewni's three steps of
- * 2026-11-04 left the five steps with the shipped example behind, the other sections left
- * their stored examples behind when every section started empty (2026-11-04), Statystyka's
- * filters of the combinations shown left one distribution and one fit method a run behind
- * (2026-11-06), and Sieć's network rainfall as Hydrogram's step 2 left its rainfall of the
- * schema's form behind (plan 2026-11-10-network-wizard, D3, D4).
+ * The highest version of a section's stored shape before Nogat REL-1.4 set every id to 1:
+ * its key holds the current shape and moves to version 1; a lower key above 1 held an
+ * older shape (Hydrogram zlewni's five steps with the shipped example, the stored
+ * examples of 2026-11-04, Statystyka's one distribution and fit method a run, Sieć's
+ * rainfall of the schema's form), and so did the key of version 1 beside it, so neither is
+ * read.
  */
-const VERSIONS = Object.freeze({ hydrogram: 2, siec: 3, statystyka: 3, kalkulatory: 2, polecenia: 2 });
+const BEFORE = Object.freeze({ hydrogram: 2, siec: 3, statystyka: 3, kalkulatory: 2, polecenia: 2 });
 
 /**
  * The storage key of a section's inputs.
  *
  * @param {string} name section or part ("polecenia", "layout")
- * @param {number} [version] version of the stored shape (default: VERSIONS, else 1)
- * @returns {string} "hydrolog-gui/<name>/<version>"
+ * @returns {string} "hydrolog-gui/<name>/1"
  */
-export function storageKey(name, version = Object.hasOwn(VERSIONS, name) ? VERSIONS[name] : 1) {
-  return `hydrolog-gui/${name}/${version}`;
+export function storageKey(name) {
+  return `hydrolog-gui/${name}/1`;
+}
+
+/**
+ * Move a section's inputs stored before Nogat REL-1.4 to its key of version 1; older
+ * shapes are removed. Storage errors reach the caller.
+ *
+ * @param {string} name section or part
+ */
+function moveEarlier(name) {
+  if (!Object.hasOwn(BEFORE, name)) return;
+  const storage = window.localStorage;
+  const earlier = [];
+  for (let version = 2; version <= BEFORE[name]; version += 1) earlier.push(`hydrolog-gui/${name}/${version}`);
+  if (earlier.every((key) => storage.getItem(key) === null)) return;
+  const current = storage.getItem(earlier[earlier.length - 1]);
+  if (current === null) storage.removeItem(storageKey(name));
+  else storage.setItem(storageKey(name), current);
+  for (const key of earlier) storage.removeItem(key);
 }
 
 /**
@@ -37,6 +53,7 @@ export function storageKey(name, version = Object.hasOwn(VERSIONS, name) ? VERSI
  */
 export function loadState(name, fallback = undefined) {
   try {
+    moveEarlier(name);
     const text = window.localStorage.getItem(storageKey(name));
     return text === null ? fallback : JSON.parse(text);
   } catch {
@@ -52,6 +69,7 @@ export function loadState(name, fallback = undefined) {
  */
 export function saveState(name, value) {
   try {
+    moveEarlier(name);
     window.localStorage.setItem(storageKey(name), JSON.stringify(value));
   } catch {
     // Private mode or a full storage: the inputs live until the page closes.
@@ -65,6 +83,7 @@ export function saveState(name, value) {
  */
 export function clearState(name) {
   try {
+    moveEarlier(name);
     window.localStorage.removeItem(storageKey(name));
   } catch {
     // Nothing stored or storage blocked.

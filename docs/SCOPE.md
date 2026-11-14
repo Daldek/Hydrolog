@@ -383,7 +383,7 @@ group `nogat.gui`.
   `<data_dir>/hydrolog/stats.jsonl`)
 - „Zgłoś uwagę”: a text and the context the page adds, no contact field, kept in SQLite
   `<data_dir>/hydrolog/feedback.sqlite3`; the operator's admin panel `admin/` is Nogat's kit
-  panel `<nogat-admin>` (kit 0.7.0) with „Zgłoszenia”, „Statystyki” and „Stan”, signed in with
+  panel `<nogat-admin>` (kit 1.0.0) with „Zgłoszenia”, „Statystyki” and „Stan”, signed in with
   the key of `HYDROLOG_ADMIN_API_KEY` or `HYDROLOG_ADMIN_API_KEY_FILE` (ADR-0038)
 - `gui serve` keeps Nogat's logs (`nogat-log/1`: access, application and lifecycle, no IP
   address) in `<state_dir>/hydrolog/logs/` and deletes each file 14 days after its date

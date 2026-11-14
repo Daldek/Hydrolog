@@ -268,7 +268,7 @@ def test_a_command_chosen_in_the_list_is_in_the_hash_and_a_hash_opens_it(
     # A command the server does not offer: its hash opens the last one chosen, once
     # stored (an effect after the next frame, later on a slower runner)
     page.wait_for_function(
-        "() => JSON.parse(localStorage.getItem('hydrolog-gui/polecenia/2'))"
+        "() => JSON.parse(localStorage.getItem('hydrolog-gui/polecenia/1'))"
         "?.command === 'scs effective'"
     )
     page.evaluate("location.hash = '#polecenia/gui/serve'")

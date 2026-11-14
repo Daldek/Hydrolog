@@ -589,15 +589,37 @@ def test_routes_and_stored_inputs(page: Any) -> None:
         localStorage.setItem('hydrolog-gui/broken/1', '{bad');
         const broken = persist.loadState('broken', 'first');
         localStorage.removeItem('hydrolog-gui/broken/1');
+        const moved = () => {
+          const keys = (name) => Object.keys(localStorage)
+            .filter((key) => key.startsWith(`hydrolog-gui/${name}/`)).sort();
+          // Before REL-1.4: Sieć's current shape under 3, older ones under 2 and 1
+          localStorage.setItem('hydrolog-gui/siec/1', '"five steps"');
+          localStorage.setItem('hydrolog-gui/siec/2', '"older"');
+          localStorage.setItem('hydrolog-gui/siec/3', '"current"');
+          const siec = [persist.loadState('siec', 'first'), keys('siec')];
+          persist.clearState('siec');
+          // Statystyka's older shapes alone: nothing is read
+          localStorage.setItem('hydrolog-gui/statystyka/1', '"oldest"');
+          localStorage.setItem('hydrolog-gui/statystyka/2', '"older"');
+          const statystyka =
+            [persist.loadState('statystyka', 'first'), keys('statystyka')];
+          // „Wyczyść” removes an earlier key too, so a reload does not bring it back
+          localStorage.setItem('hydrolog-gui/polecenia/2', '"current"');
+          persist.clearState('polecenia');
+          const polecenia =
+            [persist.loadState('polecenia', 'first'), keys('polecenia')];
+          return {siec, statystyka, polecenia};
+        };
         return {
           parse: ['#polecenia/uh/nash', '', '#', '#nowhere//a/',
                   '#polecenia/a%20b/%E2%9C%93', '#x/%E0%A4%A'].map(router.parseHash),
           hash: [router.routeHash('polecenia', ['uh', 'nash']),
                  router.routeHash('polecenia'), router.routeHash('polecenia', odd)],
           back: router.parseHash(router.routeHash('polecenia', odd)),
-          keys: [persist.storageKey('polecenia'), persist.storageKey('layout', 2)],
+          keys: [persist.storageKey('polecenia'), persist.storageKey('layout')],
           stored: stored(),
           broken,
+          moved: moved(),
         };""",
     )
     assert got["parse"] == [
@@ -614,12 +636,17 @@ def test_routes_and_stored_inputs(page: Any) -> None:
         "#polecenia/a%20b%2Fc/%C5%82%23%3F/100%25",
     ]
     assert got["back"] == {"section": "polecenia", "path": ["a b/c", "ł#?", "100%"]}
-    assert got["keys"] == ["hydrolog-gui/polecenia/2", "hydrolog-gui/layout/2"]
+    assert got["keys"] == ["hydrolog-gui/polecenia/1", "hydrolog-gui/layout/1"]
     raw, back, cleared = got["stored"]
     assert raw == '{"command":"uh nash","values":{"n":"3"}}'
     assert back == {"command": "uh nash", "values": {"n": "3"}}
     assert cleared == "first"  # „Wyczyść”: a first visit again
     assert got["broken"] == "first"
+    assert got["moved"] == {
+        "siec": ["current", ["hydrolog-gui/siec/1"]],
+        "statystyka": ["first", []],
+        "polecenia": ["first", []],
+    }
 
 
 def test_the_context_of_a_report_names_the_view_station_inputs_and_version(

@@ -56,7 +56,7 @@ CELLS = """() => Object.fromEntries(
   [...document.querySelectorAll('svg.schem g.node')].map((node) =>
     [node.dataset.node, [Number(node.dataset.x), Number(node.dataset.y)]]))"""
 KEPT = """(cells) => {
-  const kept = JSON.parse(localStorage.getItem('hydrolog-gui/siec/3')).skeleton;
+  const kept = JSON.parse(localStorage.getItem('hydrolog-gui/siec/1')).skeleton;
   const at = Object.fromEntries(kept.map((node) => [node.id, node.position]));
   return Object.entries(cells).every(([node, [x, y]]) =>
     at[node] && at[node].x === x && at[node].y === y);
@@ -702,7 +702,7 @@ def test_inputs_stored_before_the_canvas_are_laid_out_like_a_file(tab: Tab) -> N
     page = open_section(tab)
     page.evaluate(
         """() => {
-          const key = 'hydrolog-gui/siec/3';
+          const key = 'hydrolog-gui/siec/1';
           const stored = JSON.parse(localStorage.getItem(key));
           delete stored.provisional;
           stored.skeleton = stored.skeleton.map(({position, ...node}) => node);

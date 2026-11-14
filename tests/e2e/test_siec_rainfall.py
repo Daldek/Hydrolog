@@ -4,7 +4,7 @@ Stage W3: „Nowa sieć” opens step 1 with the name, the description, the netw
 step and „Opad sieci” (Hydrogram zlewni's step 2, PMAXTP at first), and the empty canvas
 says to give that rainfall first. The network's PMAXTP depth is fetched once at its
 point, p and duration on the channel ``siec-pmaxtp``, kept with the stored inputs
-(``hydrolog-gui/siec/3``) and not fetched again after a reload. A subcatchment made from
+(``hydrolog-gui/siec/1``) and not fetched again after a reload. A subcatchment made from
 rainfall in a network without a rainfall („Brak”) is the problem „Brak opadu” of its
 node, and „Oblicz sieć” sends nothing until the network has a rainfall. Every section
 mounted with Sieć's network open, a subcatchment chosen (its panel beside „Dane”, stage
@@ -36,7 +36,7 @@ from tests.e2e.test_siec_editor import (
 
 STEP = f'{SECTION} [data-step="network"]'
 RAIN = f'{STEP} [data-rain-part="siec-net"]'
-STORED = "hydrolog-gui/siec/3"
+STORED = "hydrolog-gui/siec/1"
 PMAXTP = "/api/run/precip/pmaxtp"
 ROUTE = "/api/run/route/network"
 # The parts of step 1 in the order of the page: the name, the description, the time step

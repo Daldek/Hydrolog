@@ -2,9 +2,11 @@
 
 The first report makes the file, private to its owner; reading makes nothing; two
 writers on one file lose nothing; a file that cannot be used fails without its path;
-the table itself refuses what the limits refuse. A file of version 1 (the form with a
-contact, the page's address, the browser and diagnostics) is copied whole beside it and
-moved to version 2, which keeps the reports and drops everything else from the file.
+the table itself refuses what the limits refuse. A file of the older form (a contact,
+the page's address, the browser and diagnostics; ``user_version`` 1 or 0) is copied
+whole beside it and moved to the current table (``user_version`` 1, Nogat REL-1.4),
+which keeps the reports and drops everything else from the file; the current table
+with ``user_version`` 2, its id before REL-1.4, is kept and set to 1.
 """
 
 import json
@@ -43,9 +45,8 @@ CREATE TABLE IF NOT EXISTS feedback (
     is_read INTEGER NOT NULL DEFAULT 0 CHECK (is_read IN (0, 1))
 );
 CREATE INDEX IF NOT EXISTS idx_feedback_created_at ON feedback (created_at DESC);
-PRAGMA user_version = 1;
 """
-"""The schema of a file of version 1, as the previous Hydrolog made it."""
+"""The schema of a file of the older form, as the previous Hydrolog made it."""
 V1_COLUMNS = (
     "id",
     "created_at",
@@ -90,7 +91,7 @@ V1_ROWS = [
     ),
     (4, "2026-10-03T10:45:00Z", "Bez niczego", None, None, None, None, 0),
 ]
-"""Reports of version 1: id 3 was deleted before the move."""
+"""Reports of the older form: id 3 was deleted before the move."""
 
 
 def make(message="x", context=None):
@@ -113,12 +114,13 @@ def checkpoint(path):
     )
 
 
-def write_v1(path):
-    """Write a file of version 1 with ``V1_ROWS``, in WAL mode as it was served."""
+def write_v1(path, user_version=1):
+    """Write a file of the older form with ``V1_ROWS``, in WAL mode as it was served."""
     path.parent.mkdir(parents=True)
     with closing(sqlite3.connect(path, isolation_level=None)) as db:
         db.execute("PRAGMA journal_mode = WAL")
         db.executescript(V1_SCHEMA)
+        db.execute(f"PRAGMA user_version = {user_version}")
         marks = ", ".join("?" * len(V1_COLUMNS))
         db.executemany(
             f"INSERT INTO feedback ({', '.join(V1_COLUMNS)}) VALUES ({marks})", V1_ROWS
@@ -151,7 +153,7 @@ def test_the_file_is_in_wal_mode_with_the_schema_version(path):
 
     with closing(sqlite3.connect(path)) as db:
         assert db.execute("PRAGMA journal_mode").fetchone()[0] == "wal"
-        assert db.execute("PRAGMA user_version").fetchone()[0] == 2
+        assert db.execute("PRAGMA user_version").fetchone()[0] == 1
 
 
 def test_a_report_is_listed_with_its_context_as_an_object(path):
@@ -269,11 +271,12 @@ def test_a_file_has_no_column_for_a_contact_an_address_or_a_browser(path):
     assert columns == ["id", "created_at", "message", "context", "is_read"]
 
 
-# --- a file of version 1 --------------------------------------------------------------
+# --- a file of the older form ---------------------------------------------------------
 
 
-def test_a_file_of_version_1_is_moved_to_version_2_keeping_its_reports(path):
-    write_v1(path)
+@pytest.mark.parametrize("user_version", [1, 0])
+def test_a_file_of_the_older_form_is_moved_keeping_its_reports(path, user_version):
+    write_v1(path, user_version)
     store = FeedbackStore(path)
 
     page = store.listing(limit=50, offset=0)
@@ -318,12 +321,12 @@ def test_a_file_of_version_1_is_moved_to_version_2_keeping_its_reports(path):
     ]
     assert (page["total"], page["unread_count"]) == (3, 2)
     with closing(sqlite3.connect(path)) as db:
-        assert db.execute("PRAGMA user_version").fetchone()[0] == 2
+        assert db.execute("PRAGMA user_version").fetchone()[0] == 1
         columns = [row[1] for row in db.execute("PRAGMA table_info(feedback)")]
     assert columns == ["id", "created_at", "message", "context", "is_read"]
 
 
-def test_a_file_of_version_1_is_copied_whole_beside_it_before_the_move(path):
+def test_a_file_of_the_older_form_is_copied_whole_beside_it_before_the_move(path):
     write_v1(path)
 
     FeedbackStore(path).listing(limit=50, offset=0)
@@ -366,7 +369,7 @@ def test_the_move_is_logged_with_the_name_of_the_copy(path, caplog):
 
 
 def test_after_the_move_no_id_is_given_twice_and_no_second_copy_is_made(path):
-    """An id given in version 1, even of a report deleted since, is never given
+    """An id given in the older form, even of a report deleted since, is never given
     again (``AUTOINCREMENT``), so an id names one report for good."""
     write_v1(path)
     with closing(sqlite3.connect(path, isolation_level=None)) as db:
@@ -378,10 +381,27 @@ def test_after_the_move_no_id_is_given_twice_and_no_second_copy_is_made(path):
         db.execute("DELETE FROM feedback WHERE id > 4")
     FeedbackStore(path).listing(limit=50, offset=0)
 
-    store = FeedbackStore(path)  # a restart: the file is of version 2 now
+    store = FeedbackStore(path)  # a restart: the file has the current table now
     number = store.add(make("po przeniesieniu"))
 
     assert number == 8
     assert store.listing(limit=50, offset=0)["total"] == 4
     copies = [p for p in path.parent.iterdir() if p.name.startswith("feedback-v1-")]
     assert len(copies) == 1
+
+
+def test_the_current_table_with_user_version_2_is_kept_and_set_to_1(path):
+    """``user_version`` 2 was the current table's id before Nogat REL-1.4: the live
+    file is read as it is, without a copy or a move, and marked 1."""
+    FeedbackStore(path).add(make("przed REL-1.4"))
+    with closing(sqlite3.connect(path, isolation_level=None)) as db:
+        db.execute("PRAGMA user_version = 2")
+
+    store = FeedbackStore(path)
+    [item] = store.listing(limit=50, offset=0)["items"]
+
+    assert (item["id"], item["message"]) == (1, "przed REL-1.4")
+    assert store.add(make("po REL-1.4")) == 2
+    with closing(sqlite3.connect(path)) as db:
+        assert db.execute("PRAGMA user_version").fetchone()[0] == 1
+    assert [p.name for p in path.parent.iterdir() if "-v1-" in p.name] == []

@@ -18,12 +18,12 @@
 // `pmaxtp_fetched`; handoff/mapping.js networkInputs). A subcatchment made from rainfall
 // keeps Hydrogram's inputs as its values (D3: `watershed`, `tc_method`, `uh_model`,
 // `rain_source` with „Jak w sieci” as "network"…, beside its `#variant`; mapping.js
-// siecValues), any other node the values of its form (node-model.js); version 3 of the
-// stored shape, version 2 is not read. buildDocument writes the document of the inputs: the
-// top `rainfall` is what a run of `hydrograph generate` takes (rainfallOf), each such
-// subcatchment the node of its inputs (siecSubcatchment) checked by Hydrogram's own checks
-// (subcatchmentProblems), and a subcatchment made from rainfall that has neither its own
-// rainfall nor the network's is a problem of its node.
+// siecValues), any other node the values of its form (node-model.js); version 1 of the
+// stored shape (persist.js moves the ids before Nogat REL-1.4). buildDocument writes the
+// document of the inputs: the top `rainfall` is what a run of `hydrograph generate` takes
+// (rainfallOf), each such subcatchment the node of its inputs (siecSubcatchment) checked
+// by Hydrogram's own checks (subcatchmentProblems), and a subcatchment made from rainfall
+// that has neither its own rainfall nor the network's is a problem of its node.
 //
 // Another part of the page opens a network here with openNetwork(document, {name}) (the
 // hand-off of S6); the section takes it when it is mounted, or on its first render.

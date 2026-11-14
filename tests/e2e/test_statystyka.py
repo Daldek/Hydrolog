@@ -66,7 +66,7 @@ PROBABILITY = f"{SECTION} .view-center .st-chart svg.chart-svg"
 DENSITY = f'{SECTION} .view-center [data-chart="density"] svg.chart-svg'
 DISTRIBUTION = f'{SECTION} .view-center [data-chart="distribution"] svg.chart-svg'
 CHARTS = [PROBABILITY, DENSITY, DISTRIBUTION]
-STORED = "() => JSON.parse(localStorage.getItem('hydrolog-gui/statystyka/3'))"
+STORED = "() => JSON.parse(localStorage.getItem('hydrolog-gui/statystyka/1'))"
 DEFAULT_PERIODS = [2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 500.0, 1000.0]
 NAMES = {
     "gev": "GEV",

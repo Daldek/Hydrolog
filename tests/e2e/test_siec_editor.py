@@ -73,11 +73,11 @@ CELL_POINT = """([x, y]) => {
   return [point.x, point.y];
 }"""
 """Where on the screen the centre of a cell of the canvas is, scrolled into the card."""
-STRUCTURE = """() => JSON.parse(localStorage.getItem('hydrolog-gui/siec/3')).skeleton
+STRUCTURE = """() => JSON.parse(localStorage.getItem('hydrolog-gui/siec/1')).skeleton
   .map((node) => [node.id, node.type, node.from])"""
 """The structure the section keeps: each node's id, type and inflows."""
 STORED = """() => {
-  const stored = JSON.parse(localStorage.getItem('hydrolog-gui/siec/3'));
+  const stored = JSON.parse(localStorage.getItem('hydrolog-gui/siec/1'));
   const skeleton = stored ? stored.skeleton : [];
   const ids = (nodes) => nodes.sort().join(' ');
   const drawn = [...document.querySelectorAll('svg.schem g.node')]
