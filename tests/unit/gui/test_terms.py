@@ -13,6 +13,7 @@ from pathlib import Path
 import pytest
 
 from hydrolog.gui._terms import (
+    BLOCKS,
     OPERATOR_FIELDS,
     OPTIONAL,
     PROJECT,
@@ -133,9 +134,20 @@ def test_the_kits_template_is_filled_from_a_toml_operator():
     assert f"pod adresem {SERVICE_URL}" in page
     assert "{{" not in page
     assert "<!--" not in page.split("</head>", 1)[1]
-    assert "<h3>IMGW-PIB: dane publiczne</h3>" in page
-    assert "<h3>ČHMÚ</h3>" in page
-    assert "<h3>OpenStreetMap</h3>" not in page
+
+
+def test_the_filled_page_has_the_blocks_hydrolog_lists_and_no_other():
+    """Nogat's plan 2026-11-13-terms-fix: only Hydrolog's sources in § 5."""
+    blocks = re.findall(
+        r"^<!-- block: ([a-z][a-z0-9-]*) -->\n(.*?)^<!-- /block -->$",
+        TEMPLATE.read_text(encoding="utf-8"),
+        re.MULTILINE | re.DOTALL,
+    )
+    page = load_terms(operator(), SERVICE_URL).page.decode("utf-8")
+
+    assert set(BLOCKS) <= {name for name, _ in blocks}
+    for name, body in blocks:
+        assert (body.strip() in page) == (name in BLOCKS), name
 
 
 @pytest.mark.parametrize(

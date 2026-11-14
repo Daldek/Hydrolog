@@ -1793,7 +1793,7 @@ request_window = 60
 ```
 
 - **The regulamin.** The server fills the regulamin of Nogat's GUI kit (`web/nogat/nogat-terms.html`,
-  kit 0.6.0, regulamin 1.0) with these values and the blocks of Hydrolog's sources (PMAXTP,
+  kit 0.6.2, regulamin 1.0) with these values and the blocks of Hydrolog's sources (PMAXTP,
   IMGW-PIB, ČHMÚ), serves it at `regulamin.html` beside the page, and every view shows at its
   foot the statement of DEV-15.8 with the link „Regulamin”; the menu „Aplikacje” ends with it,
   the dialog „Źródła i warunki” of a view's strip of the providers' lines links it as „Regulamin
