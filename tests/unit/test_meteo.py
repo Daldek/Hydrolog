@@ -343,7 +343,7 @@ class TestYearsWithoutValuesAtTheEnds:
 
     FIRST, LAST = 2000, 2002
     """The years with values."""
-    COMMANDS = (
+    COMMANDS: tuple[tuple[str, dict[str, str]], ...] = (
         ("meteo precipitation", {"index": "sums"}),
         ("meteo spells", {}),
         ("meteo spi", {}),
