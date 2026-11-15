@@ -21,6 +21,7 @@ export const polecenia = {
   loadFailed: "Nie udało się wczytać katalogu: {message}",
   pick: "Wybierz polecenie z listy: jego formularz jest pusty, wpisz dane i naciśnij „Uruchom”.",
   formLoading: "Wczytywanie opisu polecenia…",
+  formFailed: "Nie udało się wczytać opisu polecenia: {message}",
   hint: "Formularz, tabela i JSON z katalogu (commands schema), bez kodu dla polecenia",
   view: "Widok",
   tabs: { table: "Tabela", chart: "Wykres", json: "JSON" },

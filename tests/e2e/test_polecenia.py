@@ -277,6 +277,38 @@ def test_a_command_chosen_in_the_list_is_in_the_hash_and_a_hash_opens_it(
     expect(page.locator(f'{POL} .cmd-item[data-command="gui serve"]')).to_have_count(0)
 
 
+def test_a_command_whose_entry_fails_to_load_says_so_until_a_reload(tab: Tab) -> None:
+    entry_url = "**/api/commands/route/lag"
+    failure = {
+        "schema": "hydrolog-error/1",
+        "code": "internal_error",
+        "title": "Internal error",
+        "message": "boom",
+        "exit_code": 1,
+    }
+    tab.page.route(
+        entry_url,
+        lambda route: route.fulfill(
+            status=500, content_type="application/json", body=json.dumps(failure)
+        ),
+    )
+    tab.open("#polecenia/route/lag")
+    page = tab.page
+    # The form's place says why it is empty, not „Wczytywanie opisu polecenia…”
+    expect(page.locator(f'{POL} .view-panel.left [role="alert"]')).to_have_text(
+        "Nie udało się wczytać opisu polecenia: boom (EN)"
+    )
+    expect(page.locator(f"{POL} .cmd-form")).to_have_count(0)
+    expect(page.get_by_text("Wczytywanie opisu polecenia…")).to_have_count(0)
+    expect(page.get_by_role("button", name="Uruchom")).to_be_disabled()
+
+    # A reload asks the server again
+    page.unroute(entry_url)
+    page.reload()
+    expect(page.locator(HEAD)).to_have_text("route lag")
+    expect(page.locator(f'{POL} .view-panel.left [role="alert"]')).to_have_count(0)
+
+
 # --- uh nash -------------------------------------------------------------------
 
 
