@@ -17,6 +17,7 @@ from typing import Any
 from hydrolog._atomic import atomic_output
 from hydrolog._attribution import Attribution, current
 from hydrolog._serialization import JsonResultMixin
+from hydrolog._warnings import UnknownHietogramType
 from hydrolog.catalog.envelope import Notice, OperationOutput, capture_warnings
 from hydrolog.exceptions import InvalidParameterError, OutputError
 from hydrolog.morphometry.watershed_params import WatershedParameters
@@ -447,7 +448,7 @@ def report_generate(
     kept: list[Notice] = [
         notice
         for notice in warned
-        if not (series_given and "ReportConfig.hietogram_type" in notice.message)
+        if not (series_given and notice.code == UnknownHietogramType.code())
     ]
     content = _with_sources(content, current())
     _write(content, target)

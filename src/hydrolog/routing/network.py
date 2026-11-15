@@ -515,8 +515,10 @@ def _observed() -> Iterator[list[RoutingNotice]]:
     """Collect the warnings that the library issues inside the block as notices.
 
     A ``UserWarning`` (a value outside the usual range of a formula) becomes a notice of
-    level ``"warning"`` and the code ``user_warning``, once for the same text; a warning
-    of another category is issued again when the block ends. The list is filled then.
+    level ``"warning"`` whose code is its class's name in snake_case
+    (``outside_typical_range`` for :class:`~hydrolog._warnings.OutsideTypicalRange`,
+    ``user_warning`` for a plain ``UserWarning``), once for the same text; a warning of
+    another category is issued again when the block ends. The list is filled then.
     """
     notices: list[RoutingNotice] = []
     with warnings.catch_warnings(record=True) as caught:

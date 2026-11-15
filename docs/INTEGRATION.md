@@ -1,7 +1,7 @@
 # Hydrograf ↔ Hydrolog integration
 
 **Created:** 2026-01-20
-**Last updated:** 2026-11-14 (audit against the code: Hydrograf's side implemented, the providers' lines, the GUI kit 1.0.0)
+**Last updated:** 2026-11-15 (Hydrograf's and Retman's ranges of 0.8.0.dev0; audited against the code on 2026-11-14: Hydrograf's side implemented, the providers' lines, the GUI kit 1.0.0)
 **Status:** Implemented (Hydrolog - ready; Hydrograf - morphometry and the hand-off implemented)
 
 ---
@@ -167,7 +167,7 @@ relief = params.relief_m   # max - min
 **Status:** ✅ Implemented, in Hydrograf's own way (its repository; its account of the integration is `docs/integrations/HYDROLOG.md`)
 
 - `POST /api/delineate-watershed` returns `watershed.morphometry`, the Pydantic model `MorphometricParameters` (`backend/models/schemas.py`) built by `build_morph_dict_from_graph()` (`backend/core/watershed_service.py`): the keys of `WatershedParameters` and Hydrograf's own (e.g. `hydraulic_length_km`, the value of `flow_path_length_km`), which `WatershedParameters.from_dict()` ignores.
-- Hydrograf depends on `hydrolog>=1.0.0.dev0,<2` (`backend/pyproject.toml`, pinned to a Hydrolog commit in `[tool.uv.sources]`) and computes its design hydrograph with it. Since 2026-11-14 Hydrolog's `develop` carries `0.8.0.dev0`, which that range refuses; it becomes `>=0.8.0.dev0,<0.9` (Nogat REL-5.6), a change in Hydrograf's repository.
+- Hydrograf depends on `hydrolog>=0.8.0.dev0,<0.9` (`backend/pyproject.toml`, since its `1b3387f` of 2026-11-14, Nogat REL-5.6; pinned to a Hydrolog commit in `[tool.uv.sources]`) and computes its design hydrograph with it.
 - It hands a watershed or a delineated network to Hydrolog's GUI as `nogat-handoff/1` (`backend/core/handoff.py`; see "Web GUI: the hand-off with Hydrograf" below).
 
 ---
@@ -318,7 +318,7 @@ Retman calls Hydrolog through the command layer, not through the library classes
 - **Catalog and envelope:** `hydrolog.catalog.run_command("<group> <command>", {options})` (also `hydrolog.run_command`) validates the options, runs the operation and returns a `hydrolog-result/1` envelope (`schema`, `tool`, `version`, `command`, `check`, `status`, `result`, `notices`, `inputs`, and `attribution` and `terms_notice`, the providers' lines of Nogat DEV §20, when the run has them; the files written are in `result.files[]` with SHA-256; `to_dict()`, `to_json()`). Option schema (JSON Schema): `command_schema()`, `hydrolog commands schema`. Errors are `HydrologError` exceptions with `code`, `hint` and `details` (registry `ERROR_CODES`; document `hydrolog-error/1`).
 - **`catchment_characteristics`:** the proposed format is `WatershedParameters` JSON (`WatershedParameters.to_json()`; only `area_km2` is required, a command that needs a missing field names it in `details.option` with `details.reason` `missing_field`). The file is passed to commands as `watershed_file`, and `WatershedParameters.from_dict()` ignores the extra `schema` key (e.g. `"hydrolog-catchment/1"`) added by the catalog tools.
 - **File inputs and outputs:** series (`input_file` + `value_column`/`date_column`), rainfall stations (`stations_file`), network segments (`segments_file`) and the watershed (`watershed_file`) as CSV/JSON; results that write files (`soil hsg` - GeoTIFF, `report generate` - Markdown, the `route` commands - hydrograph tables, `commands batch` and `commands guide`; one file given by `--output`, or `route network --output-dir` and `--schematic`; an existing file needs `--force`) list them in `result.files[]`. Retman does not need to paste series into arguments.
-- **Versions:** Hydrolog's next release is 0.8.0 (`develop` carries `0.8.0.dev0`). In 0.y a minor release may change options, command names and envelope shapes incompatibly, from 1.0.0 only a major one (Nogat REL-1.1), so a consumer that pins a Hydrolog commit declares `>=0.8.0.dev0,<0.9` (REL-5.6) and narrows it to `>=0.8.0,<0.9` with the tag. Retman's tool manifest still says `supported_versions=">=1.0.0.dev0,<2"`, which refuses `0.8.0.dev0` until Retman changes it.
+- **Versions:** Hydrolog's next release is 0.8.0 (`develop` carries `0.8.0.dev0`). In 0.y a minor release may change options, command names and envelope shapes incompatibly, from 1.0.0 only a major one (Nogat REL-1.1), so a consumer that pins a Hydrolog commit declares `>=0.8.0.dev0,<0.9` (REL-5.6) and narrows it to `>=0.8.0,<0.9` with the tag. Retman's tool manifest says `supported_versions=">=0.8.0.dev0,<0.9"` since its `4329dba` (2026-11-14).
 
 ```python
 from hydrolog.catalog import run_command
@@ -505,7 +505,7 @@ cn = calculate_weighted_cn(parts)
 - The equivalent Kartograf CLI call is `kartograf soil download ... --output-dir DIR` (plain files); `--root` would select a versioned store instead, which Hydrolog does not read directly.
 - The same path in the CLI: `hydrolog soil hsg --clay-path ... --sand-path ... --silt-path ... --output hsg.tif`, `hydrolog soil hsg-stats --hsg-path hsg.tif`, `hydrolog cn weighted --parts '[{"cn": 30, "area": 75.0}, ...]'`.
 - HSG is only one of the two CN factors: with several land covers the parts are (HSG × cover) pairs, and the intersection of the HSG and land-cover rasters is done by Hydrograf (Hydrolog does not do it).
-- Removing HSG from Kartograf and rewiring Hydrograf (`get_hsg_from_soilgrids`, `bootstrap.py`) are separate changes in those repositories; until they are done, Hydrograf (which pins Hydrolog `>=1.0.0.dev0,<2`) keeps Kartograf's path.
+- Removing HSG from Kartograf and rewiring Hydrograf (`get_hsg_from_soilgrids`, `bootstrap.py`) are separate changes in those repositories; until they are done, Hydrograf (which requires Hydrolog `>=0.8.0.dev0,<0.9`) keeps Kartograf's path.
 
 ---
 
@@ -529,7 +529,7 @@ cn = calculate_weighted_cn(parts)
 | `backend/core/watershed_service.py` | `build_morph_dict_from_graph()` | ✅ |
 | `backend/models/schemas.py` | + `MorphometricParameters` | ✅ |
 | `backend/api/endpoints/watershed.py` | Return `morphometry` | ✅ |
-| `backend/pyproject.toml` | + `hydrolog>=1.0.0.dev0,<2` | ✅ |
+| `backend/pyproject.toml` | + `hydrolog>=0.8.0.dev0,<0.9` | ✅ |
 | `backend/core/handoff.py` | Hand-off `nogat-handoff/1` of a watershed or a network | ✅ |
 
 ---
@@ -560,7 +560,7 @@ cn = calculate_weighted_cn(parts)
 | MorphometricParameters schema | ✅ | Pydantic model |
 | build_morph_dict_from_graph() | ✅ | Calculation function |
 | `watershed.morphometry` of `POST /api/delineate-watershed` | ✅ | API extension |
-| Hydrolog integration | ✅ | `hydrolog>=1.0.0.dev0,<2`; HSG still through Kartograf: section "Hydrograf: migrating HSG from Kartograf to Hydrolog" |
+| Hydrolog integration | ✅ | `hydrolog>=0.8.0.dev0,<0.9`; HSG still through Kartograf: section "Hydrograf: migrating HSG from Kartograf to Hydrolog" |
 | Hand-off to Hydrolog's GUI | ✅ | `nogat-handoff/1`: a watershed or a network |
 
 ### Tested scenarios
