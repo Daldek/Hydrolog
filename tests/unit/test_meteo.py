@@ -333,6 +333,73 @@ class TestEtccdiCountsOfTheFixtureYear:
         )
 
 
+class TestYearsWithoutValuesAtTheEnds:
+    """Whole years of missing days before or after the values change no result.
+
+    An Obserwator export may begin or end with years whose every day is missing (a
+    station's record padded to the exported period); each command reads the years with
+    values, as from the file without those rows (they were an ``IndexError``).
+    """
+
+    FIRST, LAST = 2000, 2002
+    """The years with values."""
+    COMMANDS = (
+        ("meteo precipitation", {"index": "sums"}),
+        ("meteo spells", {}),
+        ("meteo spi", {}),
+        ("meteo temperature", {"index": "means"}),
+        ("meteo snow", {}),
+        ("meteo hydrothermal", {}),
+    )
+
+    def _export(self, path: Path, first: str, last: str) -> str:
+        """Write an Obserwator daily export from ``first`` to ``last``; return its path.
+
+        The days of the years ``FIRST`` to ``LAST`` have values that depend on the date
+        alone; every other day is missing in every column.
+        """
+        rows = [
+            "date,year,Tmax [degC],Tmax_flag,Tmin [degC],Tmin_flag,Tmean [degC],"
+            "Tmean_flag,P [mm],P_flag,snow_cover [cm],snow_cover_flag,fresh_snow [cm],"
+            "fresh_snow_flag"
+        ]
+        stop = np.datetime64(last) + np.timedelta64(1, "D")
+        for day in np.arange(np.datetime64(first), stop):
+            year = int(str(day)[:4])
+            if not self.FIRST <= year <= self.LAST:
+                rows.append(f"{day},{year}" + ",,missing" * 6)
+                continue
+            n = int((day - np.datetime64("2000-01-01")).astype(int))
+            mean = round(8.0 + 12.0 * math.sin((n - 100) / 365.25 * 2 * math.pi), 1)
+            rain = (n % 11) * 1.3 if n % 3 == 0 else 0.0
+            snow = (n % 7) * 2.0 if mean < 0 else 0.0
+            fresh = float(n % 3) if mean < -2 else 0.0
+            values = (mean + 4.0, mean - 4.0, mean, rain, snow, fresh)
+            rows.append(f"{day},{year}" + "".join(f",{v:.1f},value" for v in values))
+        path.write_text("\n".join(rows) + "\n", encoding="utf-8")
+        return str(path)
+
+    @pytest.mark.parametrize(
+        "first, last",
+        [
+            pytest.param("1999-01-01", "2003-12-31", id="a-year-at-each-end"),
+            pytest.param("1996-01-01", "2002-12-31", id="more-years-before-than-with"),
+        ],
+    )
+    @pytest.mark.parametrize(
+        "command, options", COMMANDS, ids=[name for name, _ in COMMANDS]
+    )
+    def test_the_result_is_that_of_the_years_with_values(
+        self, tmp_path, command, options, first, last
+    ):
+        padded = self._export(tmp_path / "padded.csv", first, last)
+        valued = self._export(tmp_path / "valued.csv", "2000-01-01", "2002-12-31")
+
+        assert _result(command, **options, input_file=padded) == _result(
+            command, **options, input_file=valued
+        )
+
+
 class TestErrors:
     """Errors of the operations, by registry code and reason."""
 

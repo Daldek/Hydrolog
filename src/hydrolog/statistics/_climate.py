@@ -187,18 +187,37 @@ class DailyGrid(NamedTuple):
     def place(
         self, dates: NDArray[np.datetime64], values: NDArray[np.float64]
     ) -> NDArray[np.float64]:
-        """Lay values at their dates on the grid, ``NaN`` on the other days."""
+        """Lay values at their dates on the grid, ``NaN`` on the other days.
+
+        Days outside the grid's years are left out: a series may begin or end with
+        whole years of missing days, before the first or after the last year with a
+        value (:func:`grid_of_values`).
+        """
         out = np.full(self.dates.size, np.nan)
-        out[(dates - self.dates[0]).astype(np.int64)] = values
+        positions, inside = self._positions(dates)
+        out[positions] = values[inside]
         return out
 
     def place_flags(
         self, dates: NDArray[np.datetime64], flags: NDArray[np.bool_]
     ) -> NDArray[np.bool_]:
-        """Lay boolean flags at their dates on the grid, ``False`` on the other days."""
+        """Lay boolean flags at their dates on the grid, ``False`` on the other days.
+
+        Days outside the grid's years are left out, as in :meth:`place`.
+        """
         out = np.zeros(self.dates.size, dtype=bool)
-        out[(dates - self.dates[0]).astype(np.int64)] = flags
+        positions, inside = self._positions(dates)
+        out[positions] = flags[inside]
         return out
+
+    def _positions(
+        self, dates: NDArray[np.datetime64]
+    ) -> tuple[NDArray[np.int64], NDArray[np.bool_]]:
+        """Return where the days of ``dates`` lie on the grid, and which of them do."""
+        offsets = (dates - self.dates[0]).astype(np.int64)
+        inside = (offsets >= 0) & (offsets < self.dates.size)
+        positions: NDArray[np.int64] = offsets[inside]
+        return positions, inside
 
     def per_month(self, weights: NDArray[np.float64]) -> NDArray[np.float64]:
         """Sum ``weights`` in each month, as a ``(years, 12)`` table."""
