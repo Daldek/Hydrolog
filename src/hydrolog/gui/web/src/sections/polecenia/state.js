@@ -97,13 +97,16 @@ export function filterCommands(commands, docs, group, query) {
 
 /**
  * The catalog: the command list, then every command's document (its Polish summary and
- * options, for the list and the search), fetched once.
+ * options, for the list and the search), fetched once. A document that fails to load is
+ * recorded with its message, so the chosen command's form says so instead of waiting; a
+ * reload asks again (a failed fetch is not cached).
  *
- * @returns {{commands: object[]|null, docs: Map<string, object>, error: string|null}} the
- *   list (null until it arrives), the documents by name and a loading error
+ * @returns {{commands: object[]|null, docs: Map<string, object>, failed: Map<string,
+ *   string>, error: string|null}} the list (null until it arrives), the documents by name,
+ *   the messages of the documents that failed by name and a loading error of the list
  */
 export function useCatalog() {
-  const [catalog, setCatalog] = useState({ commands: null, docs: new Map(), error: null });
+  const [catalog, setCatalog] = useState({ commands: null, docs: new Map(), failed: new Map(), error: null });
   useEffect(() => {
     let alive = true;
     api
@@ -118,7 +121,10 @@ export function useCatalog() {
             .then((doc) => {
               if (alive) setCatalog((old) => ({ ...old, docs: new Map(old.docs).set(item.name, doc) }));
             })
-            .catch(() => {});
+            .catch((error) => {
+              const message = error && error.doc ? describeError(error.doc).text : String((error && error.message) || error);
+              if (alive) setCatalog((old) => ({ ...old, failed: new Map(old.failed).set(item.name, message) }));
+            });
         }
       })
       .catch((error) => {

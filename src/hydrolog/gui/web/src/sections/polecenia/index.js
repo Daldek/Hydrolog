@@ -227,11 +227,13 @@ export default function Polecenia({ active, path = [] }) {
             formId=${FORM_ID}
             onSubmit=${submit}
           />`
-        : command && catalog.commands
-          ? html`<p class="muted" role="status">${texts.formLoading}</p>`
-          : catalog.commands
-            ? html`<${EmptyHint} text=${texts.pick} anchor="przyklad-polecenia" name="polecenia" />`
-            : null}
+        : command && catalog.failed.has(command)
+          ? html`<p class="err" role="alert">${t(texts.formFailed, { message: catalog.failed.get(command) })}</p>`
+          : command && catalog.commands
+            ? html`<p class="muted" role="status">${texts.formLoading}</p>`
+            : catalog.commands
+              ? html`<${EmptyHint} text=${texts.pick} anchor="przyklad-polecenia" name="polecenia" />`
+              : null}
     `,
     foot: html`
       <button class="btn primary" type="submit" form=${FORM_ID} disabled=${!model || visibleCount > 0 || busy === command}>
