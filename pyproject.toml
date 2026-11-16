@@ -60,12 +60,10 @@ viz = [
     "seaborn>=0.12",
 ]
 # The PMAXTP depths of IMGW-PIB (`precip pmaxtp`, ADR-0018), fetched through Obserwator:
-# the only command that uses the network. The range admits the development version of
-# Obserwator's pending release; it is not tagged, so `[tool.uv.sources]` pins the commit
-# of Nogat's release set candidate-6 (the release commit replaces it with a tag).
-# The "gui" and "all" extras repeat it.
+# the only command that uses the network. Obserwator 3.0.0 is a Git tag, not on PyPI,
+# so `[tool.uv.sources]` pins the tag (REL-5.1). The "gui" and "all" extras repeat it.
 pmaxtp = [
-    "obserwator>=3.0.0.dev0,<4",
+    "obserwator>=3.0.0,<4",
 ]
 # The web GUI (`hydrolog gui serve`, the `nogat.gui` module): Starlette's routing,
 # StaticFiles and TestClient, served by uvicorn, and Obserwator for the PMAXTP depth of
@@ -73,7 +71,7 @@ pmaxtp = [
 gui = [
     "starlette>=1.10,<2",
     "uvicorn>=0.54,<1",
-    "obserwator>=3.0.0.dev0,<4",
+    "obserwator>=3.0.0,<4",
 ]
 all = [
     "rasterio>=1.3",
@@ -83,7 +81,7 @@ all = [
     "seaborn>=0.12",
     "starlette>=1.10,<2",
     "uvicorn>=0.54,<1",
-    "obserwator>=3.0.0.dev0,<4",
+    "obserwator>=3.0.0,<4",
 ]
 
 [project.scripts]
@@ -112,8 +110,8 @@ hydrolog = ["py.typed", "_data/agents/*.md", "schemas/*.json", "gui/web/**/*"]
 version = {attr = "hydrolog.__version__"}
 
 [tool.uv.sources]
-# Obserwator is not tagged yet: the commit of Nogat's release set candidate-6.
-obserwator = { git = "https://github.com/Daldek/Obserwator.git", rev = "11eedea833d40e64063d30a8fd7df606cb0db746" }
+# Obserwator 3.0.0, the release of Nogat's first joint release set.
+obserwator = { git = "https://github.com/Daldek/Obserwator.git", tag = "v3.0.0" }
 
 [dependency-groups]
 dev = [
