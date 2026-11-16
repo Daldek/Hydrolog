@@ -55,28 +55,25 @@ answers Obserwator's PMAXTP fetch from a recorded table, and the browser tests a
 (`precip pmaxtp` against IMGW-PIB) is deselected by default and by the gate;
 `uv run pytest -m live` runs it. Coverage floor 80%.
 The browser tests of the GUI (`tests/e2e`, Playwright) run in the gate and need Chromium
-(installed as above). The GUI's user guide (`src/hydrolog/gui/web/instrukcja/`, Polish) quotes
-the numbers of the shipped examples (`data-example`, compared with the computed page by
-`tests/e2e/test_smoke.py`) and shows pictures of the page (`instrukcja/img/`: 1440 x 900 in the
-light theme, a 390 px phone in the dark one, PNG of 256 colours); a change of an example, a
-result, a label or the layout of the page updates them.
-„Zgłoś uwagę” (the top bar) stores reports, a text and the page's context, never a contact,
-in SQLite `<data_dir>/hydrolog/feedback.sqlite3` (version 1; `data_dir`: `HYDROLOG_DATA_DIR`,
-`NOGAT_DATA_DIR`, `nogat.toml`, else the user data directory); the admin panel `admin/` (Nogat's
-kit shell `<nogat-admin>`, DEV-15.13: „Zgłoszenia”, „Statystyki”, „Stan” on `api/admin/feedback`,
-`stats`, `status`; `gui/_admin.py` holds the status checks) answers only with
-`HYDROLOG_ADMIN_API_KEY` or `HYDROLOG_ADMIN_API_KEY_FILE` set (no key: 401).
-Read and back up the file with `sqlite3 FILE "SELECT ..."` and `sqlite3 FILE ".backup COPY"`;
-tests give `create_app(data_dir=tmp, config={...})`, never the developer's data directory or
-`nogat.toml`. With `[nogat.operator]` the GUI is public (ADR-0034, `gui/_public.py`,
-`gui/_terms.py`): the regulamin at `regulamin.html`, a request limit, `stats.jsonl`; the e2e
-fixtures `public_server` and `limited_server` serve one. `gui serve` logs every run as Nogat
-prescribes (ADR-0037, `gui/nogat_logging.py`, Nogat's module copied byte for byte): records of
-`nogat-log/1` in `<state_dir>/hydrolog/logs/`, only lifecycle records and reduced errors on
-stderr; tests give `create_app(log=ServerLog(..., tmp))` or `HYDROLOG_STATE_DIR`, never the
-developer's state directory.
-The page has no cookie: its session is the header `X-Hydrolog-Session`, kept in its memory.
-A change that touches docs ships with its CHANGELOG entry (DOC-7.2).
+(installed as above).
+
+- A change of an example, a result, a label or the layout of the GUI page updates its user
+  guide (`src/hydrolog/gui/web/instrukcja/`, Polish): the numbers of the shipped examples
+  (`data-example`, compared with the computed page by `tests/e2e/test_smoke.py`) and the
+  pictures (`instrukcja/img/`: 1440 x 900 in the light theme, a 390 px phone in the dark one,
+  PNG of 256 colours).
+- Tests never use the developer's data directory, state directory or `nogat.toml`: give
+  `create_app(data_dir=tmp, config={...})`, `create_app(log=ServerLog(..., tmp))` or
+  `HYDROLOG_STATE_DIR`. A public GUI (`[nogat.operator]`, ADR-0034) is served by the e2e
+  fixtures `public_server` and `limited_server`.
+- Never edit Nogat's copied files (`gui/nogat_logging.py`, ADR-0037; `gui/web/nogat/`,
+  ADR-0027): copy them again from Nogat.
+- Keep the page without cookies: its session is the header `X-Hydrolog-Session` (ADR-0034).
+- „Zgłoś uwagę” and the admin panel (`gui/_feedback.py`, `gui/_admin.py`), a public GUI
+  (`gui/_public.py`, `gui/_terms.py`) and the logs of `gui serve` are described in
+  [docs/USAGE.md](docs/USAGE.md#8-the-web-gui); the admin routes answer only with
+  `HYDROLOG_ADMIN_API_KEY` or `HYDROLOG_ADMIN_API_KEY_FILE` set.
+- A change that touches docs ships with its CHANGELOG entry (DOC-7.2).
 
 ## Code map
 

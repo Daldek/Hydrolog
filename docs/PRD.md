@@ -645,8 +645,8 @@ print(f"tc = {tc:.1f} min")
 - [x] Station analyses for Obserwator's series: the groups `stats`, `hydrometrics` and `meteo` (ADR-0029 to ADR-0033)
 - [x] `gui` - the web GUI (`hydrolog gui serve`, extra `[gui]`, ADR-0014; section 2.16)
 - [ ] Empirical peak flow formulas (Punzet, Bogdanowicz-Stachy) - after v0.8.0
-- [ ] Complete API documentation (MkDocs/Sphinx)
-- [ ] Publication on PyPI
+- [ ] Complete API documentation (MkDocs/Sphinx) - after v0.8.0
+- [ ] Publication on PyPI - after v0.8.0, with the rename to `nogat-hydrolog`; v0.8.0 installs from its Git tag
 
 ### v0.8.0 - Flood routing *(merged into `develop`, ADR-0007)*
 - [x] `routing` and the command group `route`: `Hydrograph`, `Reach`, lag (`route lag`), Muskingum (`route muskingum`), Muskingum-Cunge (`route muskingum-cunge`), cascade of linear reservoirs (`route cascade`), level-pool reservoir (`route level-pool`), river network (`route network`) (plan: `docs/plans/2026-10-24-flood-routing.md`)

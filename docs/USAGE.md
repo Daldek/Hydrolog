@@ -1846,7 +1846,8 @@ request_window = 60
 - **The request limit.** At most `request_limit` requests of one client address in
   `request_window` seconds; the address stays in the server's memory for its window only. Static
   files and the catalog documents (`api/commands…`, `api/schemas/…`) are not counted, a page load
-  costs about three requests and a computation one. Over it: `429` with `Retry-After`. Behind a
+  costs about three requests and a computation one. Over it: `429` with `Retry-After`, for an API
+  route the error `rate_limited`, for a page „Zbyt wiele żądań. Spróbuj ponownie za <n> s.”. Behind a
   proxy, the client's address is the last one the proxy adds to `X-Forwarded-For`, trusted only
   from the addresses in uvicorn's `FORWARDED_ALLOW_IPS` (default `127.0.0.1`: `cloudflared` on the
   same machine); a proxy on another machine needs its address there.
