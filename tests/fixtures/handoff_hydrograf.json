@@ -1,0 +1,85 @@
+{
+  "schema": "nogat-handoff/1",
+  "created_at": "2026-11-04T18:39:56Z",
+  "producer": {
+    "tool": "hydrograf",
+    "version": "0.5.0.dev0"
+  },
+  "subject": "Zlewnia 51,01679° N, 15,88923° E",
+  "provenance": {
+    "watershed": {
+      "source": "hydrograf",
+      "latitude": 51.016785552617904,
+      "longitude": 15.889229228459445
+    },
+    "rainfall": {
+      "source": "pmaxtp",
+      "method": "POT",
+      "probability_percent": 1.0,
+      "duration_min": 360.0,
+      "latitude": 51.01544,
+      "longitude": 15.88984,
+      "interpolation": "idw"
+    },
+    "runoff": {
+      "source": "hydrograf",
+      "tc_method": "kirpich"
+    }
+  },
+  "payload": {
+    "schema": "hydrolog-network/1",
+    "name": "Zlewnia 51,01679° N, 15,88923° E",
+    "timestep_min": 5.0,
+    "nodes": [
+      {
+        "id": "Z1",
+        "type": "subcatchment",
+        "watershed": {
+          "name": "Zlewnia 51,01679° N, 15,88923° E",
+          "area_km2": 134.9683,
+          "perimeter_km": 84.4609,
+          "length_km": 22.2789,
+          "elevation_min_m": 256.77,
+          "elevation_max_m": 722.68,
+          "elevation_mean_m": 418.93,
+          "mean_slope_m_per_m": 0.135824,
+          "channel_length_km": 21.3978,
+          "channel_slope_m_per_m": 0.016872,
+          "cn": 69.6,
+          "Lc_km": 13.6173
+        },
+        "runoff": {
+          "model": "curve-number",
+          "tc_min": 209.12754171973125,
+          "amc": "II",
+          "uh_model": "scs"
+        },
+        "rainfall": {
+          "kind": "design",
+          "hietogram_type": "beta",
+          "total_mm": 73.123456789,
+          "duration_min": 360.0,
+          "alpha": 2.0,
+          "beta": 5.0
+        }
+      },
+      {
+        "id": "OUT",
+        "type": "outlet",
+        "from": [
+          "Z1"
+        ]
+      }
+    ]
+  },
+  "result": {
+    "command": "POST /api/generate-hydrograph",
+    "computed_with": {
+      "tool": "hydrolog",
+      "version": "1.0.0.dev0"
+    },
+    "peak_discharge_m3s": 168.9096726127118,
+    "time_to_peak_min": 280.0,
+    "total_volume_m3": 2163923.904947745
+  }
+}

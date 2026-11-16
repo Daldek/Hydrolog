@@ -1,9 +1,12 @@
 """Tests for time of concentration calculations."""
 
+import warnings
+
 import pytest
 
-from hydrolog.time import ConcentrationTime
+from hydrolog._warnings import OutsideTypicalRange
 from hydrolog.exceptions import InvalidParameterError
+from hydrolog.time import ConcentrationTime
 
 
 class TestKirpich:
@@ -553,23 +556,23 @@ class TestKerbyKirpich:
     """Tests for Kerby-Kirpich composite method."""
 
     def test_kerby_kirpich_typical_values(self):
-        """Test Kerby-Kirpich with typical values equals sum of parts."""
+        """Kerby on the overland segment plus Kirpich on the rest of the flow path."""
         ov_length = 0.25
         ov_slope = 0.008
         retardance = 0.40
-        ch_length = 5.0
-        ch_slope = 0.005
+        fp_length = 5.25
+        fp_slope = 0.005
 
         tc = ConcentrationTime.kerby_kirpich(
             overland_length_km=ov_length,
             overland_slope_m_per_m=ov_slope,
             retardance=retardance,
-            channel_length_km=ch_length,
-            channel_slope_m_per_m=ch_slope,
+            flow_path_length_km=fp_length,
+            flow_path_slope_m_per_m=fp_slope,
         )
 
         t_overland = ConcentrationTime.kerby(ov_length, ov_slope, retardance)
-        t_channel = ConcentrationTime.kirpich(ch_length, ch_slope)
+        t_channel = ConcentrationTime.kirpich(fp_length - ov_length, fp_slope)
 
         assert abs(tc - (t_overland + t_channel)) < 0.01
 
@@ -579,44 +582,44 @@ class TestKerbyKirpich:
             overland_length_km=0.25,
             overland_slope_m_per_m=0.008,
             retardance=0.40,
-            channel_length_km=5.0,
-            channel_slope_m_per_m=0.005,
+            flow_path_length_km=5.25,
+            flow_path_slope_m_per_m=0.005,
         )
 
-        # t_overland ≈ 35.1 min, t_channel ≈ 108.9 min → total ≈ 144.0 min
+        # t_overland ≈ 35.1 min, t_channel (5.0 km) ≈ 108.9 min → total ≈ 144.0 min
         assert 135.0 < tc < 146.0
 
     def test_kerby_kirpich_equals_sum_of_parts(self):
-        """Verify composite equals kerby() + kirpich() for same params."""
+        """Verify composite equals kerby() + kirpich() on the channel segment."""
         ov_length = 0.15
         ov_slope = 0.005
         retardance = 0.20
-        ch_length = 3.0
-        ch_slope = 0.010
+        fp_length = 3.15
+        fp_slope = 0.010
 
         tc_composite = ConcentrationTime.kerby_kirpich(
             overland_length_km=ov_length,
             overland_slope_m_per_m=ov_slope,
             retardance=retardance,
-            channel_length_km=ch_length,
-            channel_slope_m_per_m=ch_slope,
+            flow_path_length_km=fp_length,
+            flow_path_slope_m_per_m=fp_slope,
         )
 
         t_overland = ConcentrationTime.kerby(ov_length, ov_slope, retardance)
-        t_channel = ConcentrationTime.kirpich(ch_length, ch_slope)
+        t_channel = ConcentrationTime.kirpich(3.0, fp_slope)
 
         assert abs(tc_composite - (t_overland + t_channel)) < 0.01
 
     def test_kerby_kirpich_channel_low_slope_adjustment(self):
-        """Test low-slope adjustment is applied to channel slope."""
-        ch_slope = 0.001  # Below threshold → adjusted to 0.0015
+        """Test low-slope adjustment is applied to the flow path slope."""
+        fp_slope = 0.001  # Below threshold → adjusted to 0.0015
 
         tc = ConcentrationTime.kerby_kirpich(
             overland_length_km=0.10,
             overland_slope_m_per_m=0.005,
             retardance=0.40,
-            channel_length_km=5.0,
-            channel_slope_m_per_m=ch_slope,
+            flow_path_length_km=5.10,
+            flow_path_slope_m_per_m=fp_slope,
         )
 
         # Compute expected: kerby uses 0.005 (no adj), kirpich uses 0.0015
@@ -630,19 +633,19 @@ class TestKerbyKirpich:
         assert abs(tc - (t_overland + t_channel_raw)) > 1.0
 
     def test_kerby_kirpich_overland_dominates(self):
-        """Very short channel → result approximately equals kerby alone."""
+        """Flow path barely longer than the overland segment → about kerby alone."""
         ov_length = 0.30
         ov_slope = 0.005
         retardance = 0.60
-        ch_length = 0.01  # Very short channel
-        ch_slope = 0.05
+        fp_length = 0.31  # Channel segment of 0.01 km
+        fp_slope = 0.05
 
         tc = ConcentrationTime.kerby_kirpich(
             overland_length_km=ov_length,
             overland_slope_m_per_m=ov_slope,
             retardance=retardance,
-            channel_length_km=ch_length,
-            channel_slope_m_per_m=ch_slope,
+            flow_path_length_km=fp_length,
+            flow_path_slope_m_per_m=fp_slope,
         )
 
         t_overland = ConcentrationTime.kerby(ov_length, ov_slope, retardance)
@@ -655,21 +658,82 @@ class TestKerbyKirpich:
         ov_length = 0.01  # Very short overland
         ov_slope = 0.008
         retardance = 0.10
-        ch_length = 10.0
-        ch_slope = 0.010
+        fp_length = 10.0
+        fp_slope = 0.010
 
         tc = ConcentrationTime.kerby_kirpich(
             overland_length_km=ov_length,
             overland_slope_m_per_m=ov_slope,
             retardance=retardance,
-            channel_length_km=ch_length,
-            channel_slope_m_per_m=ch_slope,
+            flow_path_length_km=fp_length,
+            flow_path_slope_m_per_m=fp_slope,
         )
 
-        t_channel = ConcentrationTime.kirpich(ch_length, ch_slope)
+        t_channel = ConcentrationTime.kirpich(fp_length, fp_slope)
 
         # Overland contribution should be negligible
         assert abs(tc - t_channel) / t_channel < 0.05
+
+    @pytest.mark.parametrize(
+        ("slope_ov", "slope_fp", "hydrolog_min", "published_min"),
+        [
+            # Roussel et al. (2005), TxDOT 0-4696-2, supplement; TxDOT Hydraulic
+            # Design Manual, ch. 4, section 11: 50 ft of drop over the mile
+            (0.02, 50.0 / 5280.0, 56.5, 57.0),
+            # Cleveland et al. (2012), TxDOT 0-6382-P1, low-slope example: 1.1 ft
+            # over the mile, both slopes below 0.002 and offset by 0.0005
+            (0.0003, 1.1 / 5280.0, 138.9, 140.0),
+        ],
+    )
+    def test_kerby_kirpich_reproduces_the_published_examples(
+        self, slope_ov, slope_fp, hydrolog_min, published_min
+    ):
+        """The worked examples of the method's sources: 500 ft of overland flow on
+        pasture (N = 0.40) at the head of a flow path of one mile (5280 ft) from the
+        divide to the outlet.
+
+        Roussel, M.C., Thompson, D.B., Fang, X., Cleveland, T.G., and Garcia, C.A.
+        (2005). Time-parameter estimation for applicable Texas watersheds. TxDOT
+        Research Report 0-4696-2, supplement; Texas Department of Transportation
+        (2019), Hydraulic Design Manual, ch. 4, section 11: about 25 + 32 = 57 min.
+
+        Cleveland, T.G., Thompson, D.B., Fang, X., and Li, M.-H. (2012). Guidance
+        for estimation of time of concentration in Texas for low-slope conditions.
+        TxDOT Product 0-6382-P1: about 53 + 87 = 140 min.
+        """
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", OutsideTypicalRange)
+            tc = ConcentrationTime.kerby_kirpich(
+                overland_length_km=0.1524,
+                overland_slope_m_per_m=slope_ov,
+                retardance=0.40,
+                flow_path_length_km=1.609344,
+                flow_path_slope_m_per_m=slope_fp,
+            )
+
+        assert tc == pytest.approx(hydrolog_min, abs=1.0)
+        assert tc == pytest.approx(published_min, abs=2.0)
+
+    @pytest.mark.parametrize("flow_path_length_km", [0.25, 0.20])
+    def test_kerby_kirpich_flow_path_not_longer_than_overland_raises(
+        self, flow_path_length_km
+    ):
+        """The flow path includes the overland segment: it must be longer."""
+        with pytest.raises(InvalidParameterError) as excinfo:
+            ConcentrationTime.kerby_kirpich(
+                overland_length_km=0.25,
+                overland_slope_m_per_m=0.008,
+                retardance=0.40,
+                flow_path_length_km=flow_path_length_km,
+                flow_path_slope_m_per_m=0.005,
+            )
+
+        assert excinfo.value.details == {
+            "option": "flow_path_length_km",
+            "reason": "exclusive_minimum",
+            "exclusive_minimum": 0.25,
+            "value": flow_path_length_km,
+        }
 
     def test_kerby_kirpich_zero_overland_length_raises(self):
         """Test that zero overland length raises InvalidParameterError."""
@@ -680,8 +744,8 @@ class TestKerbyKirpich:
                 overland_length_km=0,
                 overland_slope_m_per_m=0.008,
                 retardance=0.40,
-                channel_length_km=5.0,
-                channel_slope_m_per_m=0.005,
+                flow_path_length_km=5.25,
+                flow_path_slope_m_per_m=0.005,
             )
 
     def test_kerby_kirpich_negative_overland_length_raises(self):
@@ -693,34 +757,34 @@ class TestKerbyKirpich:
                 overland_length_km=-0.25,
                 overland_slope_m_per_m=0.008,
                 retardance=0.40,
-                channel_length_km=5.0,
-                channel_slope_m_per_m=0.005,
+                flow_path_length_km=5.25,
+                flow_path_slope_m_per_m=0.005,
             )
 
-    def test_kerby_kirpich_zero_channel_length_raises(self):
-        """Test that zero channel length raises InvalidParameterError."""
+    def test_kerby_kirpich_zero_flow_path_length_raises(self):
+        """Test that zero flow path length raises InvalidParameterError."""
         with pytest.raises(
-            InvalidParameterError, match="channel_length_km must be positive"
+            InvalidParameterError, match="flow_path_length_km must be positive"
         ):
             ConcentrationTime.kerby_kirpich(
                 overland_length_km=0.25,
                 overland_slope_m_per_m=0.008,
                 retardance=0.40,
-                channel_length_km=0,
-                channel_slope_m_per_m=0.005,
+                flow_path_length_km=0,
+                flow_path_slope_m_per_m=0.005,
             )
 
-    def test_kerby_kirpich_negative_channel_length_raises(self):
-        """Test that negative channel length raises InvalidParameterError."""
+    def test_kerby_kirpich_negative_flow_path_length_raises(self):
+        """Test that negative flow path length raises InvalidParameterError."""
         with pytest.raises(
-            InvalidParameterError, match="channel_length_km must be positive"
+            InvalidParameterError, match="flow_path_length_km must be positive"
         ):
             ConcentrationTime.kerby_kirpich(
                 overland_length_km=0.25,
                 overland_slope_m_per_m=0.008,
                 retardance=0.40,
-                channel_length_km=-5.0,
-                channel_slope_m_per_m=0.005,
+                flow_path_length_km=-5.25,
+                flow_path_slope_m_per_m=0.005,
             )
 
     def test_kerby_kirpich_zero_overland_slope_raises(self):
@@ -733,8 +797,8 @@ class TestKerbyKirpich:
                 overland_length_km=0.25,
                 overland_slope_m_per_m=0,
                 retardance=0.40,
-                channel_length_km=5.0,
-                channel_slope_m_per_m=0.005,
+                flow_path_length_km=5.25,
+                flow_path_slope_m_per_m=0.005,
             )
 
     def test_kerby_kirpich_negative_overland_slope_raises(self):
@@ -747,36 +811,36 @@ class TestKerbyKirpich:
                 overland_length_km=0.25,
                 overland_slope_m_per_m=-0.008,
                 retardance=0.40,
-                channel_length_km=5.0,
-                channel_slope_m_per_m=0.005,
+                flow_path_length_km=5.25,
+                flow_path_slope_m_per_m=0.005,
             )
 
-    def test_kerby_kirpich_zero_channel_slope_raises(self):
-        """Test that zero channel slope raises InvalidParameterError."""
+    def test_kerby_kirpich_zero_flow_path_slope_raises(self):
+        """Test that zero flow path slope raises InvalidParameterError."""
         with pytest.raises(
             InvalidParameterError,
-            match="channel_slope_m_per_m must be positive",
+            match="flow_path_slope_m_per_m must be positive",
         ):
             ConcentrationTime.kerby_kirpich(
                 overland_length_km=0.25,
                 overland_slope_m_per_m=0.008,
                 retardance=0.40,
-                channel_length_km=5.0,
-                channel_slope_m_per_m=0,
+                flow_path_length_km=5.25,
+                flow_path_slope_m_per_m=0,
             )
 
-    def test_kerby_kirpich_negative_channel_slope_raises(self):
-        """Test that negative channel slope raises InvalidParameterError."""
+    def test_kerby_kirpich_negative_flow_path_slope_raises(self):
+        """Test that negative flow path slope raises InvalidParameterError."""
         with pytest.raises(
             InvalidParameterError,
-            match="channel_slope_m_per_m must be positive",
+            match="flow_path_slope_m_per_m must be positive",
         ):
             ConcentrationTime.kerby_kirpich(
                 overland_length_km=0.25,
                 overland_slope_m_per_m=0.008,
                 retardance=0.40,
-                channel_length_km=5.0,
-                channel_slope_m_per_m=-0.005,
+                flow_path_length_km=5.25,
+                flow_path_slope_m_per_m=-0.005,
             )
 
     def test_kerby_kirpich_zero_retardance_raises(self):
@@ -786,8 +850,8 @@ class TestKerbyKirpich:
                 overland_length_km=0.25,
                 overland_slope_m_per_m=0.008,
                 retardance=0,
-                channel_length_km=5.0,
-                channel_slope_m_per_m=0.005,
+                flow_path_length_km=5.25,
+                flow_path_slope_m_per_m=0.005,
             )
 
     def test_kerby_kirpich_negative_retardance_raises(self):
@@ -797,8 +861,8 @@ class TestKerbyKirpich:
                 overland_length_km=0.25,
                 overland_slope_m_per_m=0.008,
                 retardance=-0.40,
-                channel_length_km=5.0,
-                channel_slope_m_per_m=0.005,
+                flow_path_length_km=5.25,
+                flow_path_slope_m_per_m=0.005,
             )
 
 
@@ -818,335 +882,131 @@ class TestConcentrationTimeImport:
         assert hasattr(CT, "kerby_kirpich")
 
 
+# Arguments of each formula inside every typical range of the method; a case replaces
+# one of them.
+INSIDE = {
+    "kirpich": {"length_km": 5.0, "slope_m_per_m": 0.05},
+    "nrcs": {"length_km": 5.0, "slope_m_per_m": 0.02, "cn": 72},
+    "giandotti": {"area_km2": 200.0, "length_km": 15.0, "elevation_diff_m": 300.0},
+    "faa": {"length_km": 0.15, "slope_m_per_m": 0.02, "runoff_coeff": 0.6},
+    "kerby": {"length_km": 0.10, "slope_m_per_m": 0.005, "retardance": 0.40},
+    "kerby_kirpich": {
+        "overland_length_km": 0.10,
+        "overland_slope_m_per_m": 0.005,
+        "retardance": 0.40,
+        "flow_path_length_km": 5.1,
+        "flow_path_slope_m_per_m": 0.005,
+    },
+}
+
+
+def range_warnings(method: str, parameter: str, value: float) -> list[dict]:
+    """The details of the range warnings of a formula with one argument changed."""
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        getattr(ConcentrationTime, method)(**{**INSIDE[method], parameter: value})
+    return [
+        warning.message.details
+        for warning in caught
+        if isinstance(warning.message, OutsideTypicalRange)
+    ]
+
+
 class TestParameterRangeWarnings:
-    """Tests for parameter range warnings."""
+    """The typical ranges of the formulas, each from the data or the literature of its
+    method: a value just outside a bound warns with the published bounds, a value on
+    a bound (bounds are included) or inside does not."""
 
-    def test_kirpich_warns_on_short_channel(self):
-        """Test warning for length below typical range."""
-        with pytest.warns(UserWarning, match="outside typical range"):
-            ConcentrationTime.kirpich(length_km=0.0005, slope_m_per_m=0.02)
+    @pytest.mark.parametrize(
+        ("method", "parameter", "value", "minimum", "maximum"),
+        [
+            # Kirpich (1940): the slopes of his 7 Tennessee watersheds, 3-10 %
+            ("kirpich", "slope_m_per_m", 0.0299, 0.03, 0.10),
+            ("kirpich", "slope_m_per_m", 0.1001, 0.03, 0.10),
+            # Mockus (1961): CN 50-95 in the lag equation
+            ("nrcs", "cn", 49.9, 50.0, 95.0),
+            ("nrcs", "cn", 95.1, 50.0, 95.0),
+            # Giandotti (1934): basins of 170-70 000 km2
+            ("giandotti", "area_km2", 169.9, 170.0, 70000.0),
+            ("giandotti", "area_km2", 70000.1, 170.0, 70000.0),
+            # FAA (1970), table I: C up to 0.95
+            ("faa", "runoff_coeff", 0.951, 0.0, 0.95),
+            # Kerby (1959): up to 1200 ft, slopes below 1 %, N 0.02-0.80
+            ("kerby", "length_km", 0.367, 0.0, 0.366),
+            ("kerby", "slope_m_per_m", 0.0101, 0.0, 0.01),
+            ("kerby", "retardance", 0.0199, 0.02, 0.80),
+            ("kerby", "retardance", 0.8001, 0.02, 0.80),
+            # Kerby-Kirpich: Kerby's overland flow, the main channels (flow paths from
+            # the divide) of 92 Texas watersheds (Roussel et al. 2005): 1.6-80 km,
+            # slopes 0.002-0.02
+            ("kerby_kirpich", "overland_length_km", 0.367, 0.0, 0.366),
+            ("kerby_kirpich", "retardance", 0.0199, 0.02, 0.80),
+            ("kerby_kirpich", "retardance", 0.8001, 0.02, 0.80),
+            ("kerby_kirpich", "flow_path_length_km", 1.599, 1.6, 80.0),
+            ("kerby_kirpich", "flow_path_length_km", 80.01, 1.6, 80.0),
+            ("kerby_kirpich", "flow_path_slope_m_per_m", 0.00199, 0.002, 0.02),
+            ("kerby_kirpich", "flow_path_slope_m_per_m", 0.0201, 0.002, 0.02),
+        ],
+    )
+    def test_a_value_just_outside_a_range_warns_with_its_bounds(
+        self, method, parameter, value, minimum, maximum
+    ):
+        assert range_warnings(method, parameter, value) == [
+            {
+                "method": method,
+                "parameter": parameter,
+                "field": parameter,
+                "value": value,
+                "minimum": minimum,
+                "maximum": maximum,
+            }
+        ]
 
-    def test_kirpich_warns_on_long_channel(self):
-        """Test warning for length above typical range."""
-        with pytest.warns(UserWarning, match="outside typical range"):
-            ConcentrationTime.kirpich(length_km=100.0, slope_m_per_m=0.02)
+    @pytest.mark.parametrize(
+        ("method", "parameter", "value"),
+        [
+            ("kirpich", "slope_m_per_m", 0.03),
+            ("kirpich", "slope_m_per_m", 0.10),
+            ("nrcs", "cn", 50),
+            ("nrcs", "cn", 95),
+            ("giandotti", "area_km2", 170.0),
+            ("giandotti", "area_km2", 70000.0),
+            ("faa", "runoff_coeff", 0.95),
+            # no lower bound any more: 0.10 had no source
+            ("faa", "runoff_coeff", 0.05),
+            ("kerby", "length_km", 0.366),
+            ("kerby", "slope_m_per_m", 0.01),
+            ("kerby", "retardance", 0.02),
+            ("kerby", "retardance", 0.80),
+            # no lower bounds any more: 0.01 km and 0.001 had no source
+            ("kerby", "length_km", 0.005),
+            ("kerby", "slope_m_per_m", 0.0005),
+            ("kerby_kirpich", "overland_length_km", 0.366),
+            ("kerby_kirpich", "overland_length_km", 0.005),
+            ("kerby_kirpich", "retardance", 0.02),
+            ("kerby_kirpich", "retardance", 0.80),
+            ("kerby_kirpich", "flow_path_length_km", 1.6),
+            ("kerby_kirpich", "flow_path_length_km", 80.0),
+            ("kerby_kirpich", "flow_path_slope_m_per_m", 0.002),
+            ("kerby_kirpich", "flow_path_slope_m_per_m", 0.02),
+        ],
+    )
+    def test_a_value_on_a_bound_does_not_warn(self, method, parameter, value):
+        assert range_warnings(method, parameter, value) == []
 
-    def test_kirpich_warns_on_small_slope(self):
-        """Test warning for slope below typical range."""
-        with pytest.warns(UserWarning, match="outside typical range"):
-            ConcentrationTime.kirpich(length_km=5.0, slope_m_per_m=0.001)
-
-    def test_kirpich_warns_on_large_slope(self):
-        """Test warning for slope above typical range."""
-        with pytest.warns(UserWarning, match="outside typical range"):
-            ConcentrationTime.kirpich(length_km=5.0, slope_m_per_m=0.20)
-
-    def test_kirpich_no_warning_in_range(self):
-        """Test no warning when parameters are in typical range."""
-        import warnings
-
-        with warnings.catch_warnings():
-            warnings.simplefilter("error")
-            ConcentrationTime.kirpich(length_km=5.0, slope_m_per_m=0.03)
-
-    def test_nrcs_warns_on_low_cn(self):
-        """Test warning for CN below recommended range."""
-        with pytest.warns(UserWarning, match="outside typical range"):
-            ConcentrationTime.nrcs(length_km=5.0, slope_m_per_m=0.02, cn=45)
-
-    def test_nrcs_warns_on_high_cn(self):
-        """Test warning for CN above recommended range."""
-        with pytest.warns(UserWarning, match="outside typical range"):
-            ConcentrationTime.nrcs(length_km=5.0, slope_m_per_m=0.02, cn=98)
-
-    def test_nrcs_warns_on_short_length(self):
-        """Test warning for length below typical range."""
-        with pytest.warns(UserWarning, match="outside typical range"):
-            ConcentrationTime.nrcs(length_km=0.01, slope_m_per_m=0.02, cn=72)
-
-    def test_nrcs_warns_on_long_length(self):
-        """Test warning for length above typical range."""
-        with pytest.warns(UserWarning, match="outside typical range"):
-            ConcentrationTime.nrcs(length_km=50.0, slope_m_per_m=0.02, cn=72)
-
-    def test_nrcs_warns_on_small_slope(self):
-        """Test warning for slope below typical range."""
-        with pytest.warns(UserWarning, match="outside typical range"):
-            ConcentrationTime.nrcs(length_km=5.0, slope_m_per_m=0.0005, cn=72)
-
-    def test_nrcs_warns_on_large_slope(self):
-        """Test warning for slope above typical range."""
-        with pytest.warns(UserWarning, match="outside typical range"):
-            ConcentrationTime.nrcs(length_km=5.0, slope_m_per_m=0.20, cn=72)
-
-    def test_nrcs_no_warning_in_range(self):
-        """Test no warning when parameters are in typical range."""
-        import warnings
-
-        with warnings.catch_warnings():
-            warnings.simplefilter("error")
-            ConcentrationTime.nrcs(length_km=5.0, slope_m_per_m=0.02, cn=72)
-
-    def test_giandotti_warns_on_small_area(self):
-        """Test warning for area below recommended range."""
-        with pytest.warns(UserWarning, match="outside typical range"):
-            ConcentrationTime.giandotti(
-                area_km2=50.0, length_km=10.0, elevation_diff_m=200.0
-            )
-
-    def test_giandotti_warns_on_large_area(self):
-        """Test warning for area above recommended range."""
-        with pytest.warns(UserWarning, match="outside typical range"):
-            ConcentrationTime.giandotti(
-                area_km2=15000.0, length_km=100.0, elevation_diff_m=500.0
-            )
-
-    def test_giandotti_warns_on_small_length(self):
-        """Test warning for length below typical range."""
-        with pytest.warns(UserWarning, match="outside typical range"):
-            ConcentrationTime.giandotti(
-                area_km2=200.0, length_km=0.5, elevation_diff_m=200.0
-            )
-
-    def test_giandotti_warns_on_large_length(self):
-        """Test warning for length above typical range."""
-        with pytest.warns(UserWarning, match="outside typical range"):
-            ConcentrationTime.giandotti(
-                area_km2=200.0, length_km=500.0, elevation_diff_m=200.0
-            )
-
-    def test_giandotti_warns_on_small_elevation(self):
-        """Test warning for elevation below typical range."""
-        with pytest.warns(UserWarning, match="outside typical range"):
-            ConcentrationTime.giandotti(
-                area_km2=200.0, length_km=15.0, elevation_diff_m=10.0
-            )
-
-    def test_giandotti_warns_on_large_elevation(self):
-        """Test warning for elevation above typical range."""
-        with pytest.warns(UserWarning, match="outside typical range"):
-            ConcentrationTime.giandotti(
-                area_km2=200.0, length_km=15.0, elevation_diff_m=5000.0
-            )
-
-    def test_giandotti_no_warning_in_range(self):
-        """Test no warning when parameters are in typical range."""
-        import warnings
-
-        with warnings.catch_warnings():
-            warnings.simplefilter("error")
-            ConcentrationTime.giandotti(
-                area_km2=200.0, length_km=15.0, elevation_diff_m=300.0
-            )
-
-    def test_faa_warns_on_short_length(self):
-        """Test warning for length below typical range."""
-        with pytest.warns(UserWarning, match="outside typical range"):
-            ConcentrationTime.faa(length_km=0.005, slope_m_per_m=0.02, runoff_coeff=0.6)
-
-    def test_faa_warns_on_long_length(self):
-        """Test warning for length above typical range."""
-        with pytest.warns(UserWarning, match="outside typical range"):
-            ConcentrationTime.faa(length_km=5.0, slope_m_per_m=0.02, runoff_coeff=0.6)
-
-    def test_faa_warns_on_small_slope(self):
-        """Test warning for slope below typical range."""
-        with pytest.warns(UserWarning, match="outside typical range"):
-            ConcentrationTime.faa(length_km=0.15, slope_m_per_m=0.003, runoff_coeff=0.6)
-
-    def test_faa_warns_on_large_slope(self):
-        """Test warning for slope above typical range."""
-        with pytest.warns(UserWarning, match="outside typical range"):
-            ConcentrationTime.faa(length_km=0.15, slope_m_per_m=0.15, runoff_coeff=0.6)
-
-    def test_faa_warns_on_low_c(self):
-        """Test warning for runoff coefficient below typical range."""
-        with pytest.warns(UserWarning, match="outside typical range"):
-            ConcentrationTime.faa(length_km=0.15, slope_m_per_m=0.02, runoff_coeff=0.05)
-
-    def test_faa_warns_on_high_c(self):
-        """Test warning for runoff coefficient above typical range."""
-        with pytest.warns(UserWarning, match="outside typical range"):
-            ConcentrationTime.faa(length_km=0.15, slope_m_per_m=0.02, runoff_coeff=0.99)
-
-    def test_faa_no_warning_in_range(self):
-        """Test no warning when parameters are in typical range."""
-        import warnings
-
-        with warnings.catch_warnings():
-            warnings.simplefilter("error")
-            ConcentrationTime.faa(length_km=0.15, slope_m_per_m=0.02, runoff_coeff=0.6)
-
-    def test_kerby_warns_on_short_length(self):
-        """Test warning for length below typical range."""
-        with pytest.warns(UserWarning, match="outside typical range"):
-            ConcentrationTime.kerby(
-                length_km=0.005, slope_m_per_m=0.005, retardance=0.40
-            )
-
-    def test_kerby_warns_on_long_length(self):
-        """Test warning for length above typical range."""
-        with pytest.warns(UserWarning, match="outside typical range"):
-            ConcentrationTime.kerby(
-                length_km=0.50, slope_m_per_m=0.005, retardance=0.40
-            )
-
-    def test_kerby_warns_on_small_slope(self):
-        """Test warning for slope below typical range."""
-        with pytest.warns(UserWarning, match="outside typical range"):
-            ConcentrationTime.kerby(
-                length_km=0.10, slope_m_per_m=0.0005, retardance=0.40
-            )
-
-    def test_kerby_warns_on_large_slope(self):
-        """Test warning for slope above typical range."""
-        with pytest.warns(UserWarning, match="outside typical range"):
-            ConcentrationTime.kerby(length_km=0.10, slope_m_per_m=0.02, retardance=0.40)
-
-    def test_kerby_warns_on_low_n(self):
-        """Test warning for retardance below typical range."""
-        with pytest.warns(UserWarning, match="outside typical range"):
-            ConcentrationTime.kerby(
-                length_km=0.10, slope_m_per_m=0.005, retardance=0.01
-            )
-
-    def test_kerby_warns_on_high_n(self):
-        """Test warning for retardance above typical range."""
-        with pytest.warns(UserWarning, match="outside typical range"):
-            ConcentrationTime.kerby(
-                length_km=0.10, slope_m_per_m=0.005, retardance=0.90
-            )
-
-    def test_kerby_no_warning_in_range(self):
-        """Test no warning when parameters are in typical range."""
-        import warnings
-
-        with warnings.catch_warnings():
-            warnings.simplefilter("error")
-            ConcentrationTime.kerby(
-                length_km=0.10, slope_m_per_m=0.005, retardance=0.40
-            )
-
-    def test_kerby_kirpich_warns_on_long_overland(self):
-        """Test warning for overland length above typical range."""
-        with pytest.warns(UserWarning, match="outside typical range"):
-            ConcentrationTime.kerby_kirpich(
-                overland_length_km=0.50,
-                overland_slope_m_per_m=0.005,
-                retardance=0.40,
-                channel_length_km=5.0,
-                channel_slope_m_per_m=0.005,
-            )
-
-    def test_kerby_kirpich_warns_on_short_overland(self):
-        """Test warning for overland length below typical range."""
-        with pytest.warns(UserWarning, match="outside typical range"):
-            ConcentrationTime.kerby_kirpich(
-                overland_length_km=0.005,
-                overland_slope_m_per_m=0.005,
-                retardance=0.40,
-                channel_length_km=5.0,
-                channel_slope_m_per_m=0.005,
-            )
-
-    def test_kerby_kirpich_warns_on_long_channel(self):
-        """Test warning for channel length above typical range."""
-        with pytest.warns(UserWarning, match="outside typical range"):
-            ConcentrationTime.kerby_kirpich(
-                overland_length_km=0.10,
-                overland_slope_m_per_m=0.005,
-                retardance=0.40,
-                channel_length_km=100.0,
-                channel_slope_m_per_m=0.005,
-            )
-
-    def test_kerby_kirpich_warns_on_short_channel(self):
-        """Test warning for channel length below typical range."""
-        with pytest.warns(UserWarning, match="outside typical range"):
-            ConcentrationTime.kerby_kirpich(
-                overland_length_km=0.10,
-                overland_slope_m_per_m=0.005,
-                retardance=0.40,
-                channel_length_km=0.0005,
-                channel_slope_m_per_m=0.005,
-            )
-
-    def test_kerby_kirpich_warns_on_small_overland_slope(self):
-        """Test warning for overland slope below typical range."""
-        with pytest.warns(UserWarning, match="outside typical range"):
-            ConcentrationTime.kerby_kirpich(
-                overland_length_km=0.10,
-                overland_slope_m_per_m=0.0005,
-                retardance=0.40,
-                channel_length_km=5.0,
-                channel_slope_m_per_m=0.005,
-            )
-
-    def test_kerby_kirpich_warns_on_large_overland_slope(self):
-        """Test warning for overland slope above typical range."""
-        with pytest.warns(UserWarning, match="outside typical range"):
-            ConcentrationTime.kerby_kirpich(
-                overland_length_km=0.10,
-                overland_slope_m_per_m=0.02,
-                retardance=0.40,
-                channel_length_km=5.0,
-                channel_slope_m_per_m=0.005,
-            )
-
-    def test_kerby_kirpich_warns_on_small_channel_slope(self):
-        """Test warning for channel slope below typical range."""
-        with pytest.warns(UserWarning, match="outside typical range"):
-            ConcentrationTime.kerby_kirpich(
-                overland_length_km=0.10,
-                overland_slope_m_per_m=0.005,
-                retardance=0.40,
-                channel_length_km=5.0,
-                channel_slope_m_per_m=0.001,
-            )
-
-    def test_kerby_kirpich_warns_on_large_channel_slope(self):
-        """Test warning for channel slope above typical range."""
-        with pytest.warns(UserWarning, match="outside typical range"):
-            ConcentrationTime.kerby_kirpich(
-                overland_length_km=0.10,
-                overland_slope_m_per_m=0.005,
-                retardance=0.40,
-                channel_length_km=5.0,
-                channel_slope_m_per_m=0.20,
-            )
-
-    def test_kerby_kirpich_warns_on_low_retardance(self):
-        """Test warning for retardance below typical range."""
-        with pytest.warns(UserWarning, match="outside typical range"):
-            ConcentrationTime.kerby_kirpich(
-                overland_length_km=0.10,
-                overland_slope_m_per_m=0.005,
-                retardance=0.01,
-                channel_length_km=5.0,
-                channel_slope_m_per_m=0.005,
-            )
-
-    def test_kerby_kirpich_warns_on_high_retardance(self):
-        """Test warning for retardance above typical range."""
-        with pytest.warns(UserWarning, match="outside typical range"):
-            ConcentrationTime.kerby_kirpich(
-                overland_length_km=0.10,
-                overland_slope_m_per_m=0.005,
-                retardance=0.90,
-                channel_length_km=5.0,
-                channel_slope_m_per_m=0.005,
-            )
-
-    def test_kerby_kirpich_no_warning_in_range(self):
-        """Test no warning when all parameters are in typical range."""
-        import warnings
-
-        with warnings.catch_warnings():
-            warnings.simplefilter("error")
-            ConcentrationTime.kerby_kirpich(
-                overland_length_km=0.10,
-                overland_slope_m_per_m=0.005,
-                retardance=0.40,
-                channel_length_km=5.0,
-                channel_slope_m_per_m=0.005,
-            )
+    @pytest.mark.parametrize(
+        ("method", "parameter", "value"),
+        [
+            # The former thresholds, which had no published source (2026-11-04)
+            ("kirpich", "length_km", 100.0),  # was 0.001-80 km
+            ("nrcs", "length_km", 50.0),  # was 0.03-30 km
+            ("nrcs", "slope_m_per_m", 0.20),  # was 0.001-0.15
+            ("giandotti", "length_km", 500.0),  # was 1-300 km
+            ("giandotti", "elevation_diff_m", 5000.0),  # was 20-3000 m
+            ("faa", "length_km", 5.0),  # was 0.015-3 km
+            ("faa", "slope_m_per_m", 0.15),  # was 0.005-0.10
+            ("kerby_kirpich", "overland_slope_m_per_m", 0.02),  # was 0.001-0.01
+        ],
+    )
+    def test_a_removed_range_no_longer_warns(self, method, parameter, value):
+        assert range_warnings(method, parameter, value) == []

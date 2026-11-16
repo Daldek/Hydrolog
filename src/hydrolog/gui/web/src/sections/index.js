@@ -1,0 +1,12 @@
+// The sections of the GUI, one line each: `id` (router.js, GuiModule.sections) and the
+// module whose default export is the section's component (plan D9). The rail shows them in
+// the order of SECTION_ORDER; a section not listed here is not shown.
+
+/** @type {Array<{id: string, load: () => Promise<{default: Function}>}>} */
+export const SECTIONS = [
+  { id: "hydrogram", load: () => import("./hydrogram/index.js") },
+  { id: "siec", load: () => import("./siec/index.js") },
+  { id: "statystyka", load: () => import("./statystyka/index.js") },
+  { id: "kalkulatory", load: () => import("./kalkulatory/index.js") },
+  { id: "polecenia", load: () => import("./polecenia/index.js") },
+];

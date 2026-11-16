@@ -1,0 +1,6 @@
+# Line endings (DEV-14.1): LF in the repository and in every working copy.
+* text=auto eol=lf
+
+# Byte-exact files keep their bytes: fixtures that tests read or compare byte
+# for byte (rasters and CSV exports in their original form).
+tests/fixtures/** -text

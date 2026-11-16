@@ -1,96 +1,96 @@
-# Ścieżki obliczeniowe dla modeli hydrogramów jednostkowych
+# Computation Paths for Unit Hydrograph Models (plus HSG and the Fisher–Tippett Distribution)
 
-**Wersja dokumentu:** 1.1
-**Data:** 2026-03-25
-**Dotyczy:** Hydrolog >= 0.6.0
+**Document version:** 1.11
+**Date:** 2026-11-14
+**Applies to:** Hydrolog >= 0.8.0 (sections 3.2.2, 3.2.7, 3.3.4 (the time step limit), 3.3.6, 3.4.6, 3.4.7 and 3.5 to 3.14 describe behaviour from v0.8.0; the rest: >= 0.6.0)
 
 ---
 
-## 1. Wprowadzenie
+## 1. Introduction
 
-### 1.1 Cel dokumentu
+### 1.1 Purpose of the Document
 
-Hydrolog implementuje 4 modele hydrogramów jednostkowych: **SCS**, **Nash**, **Clark** i **Snyder**. Każdy model ma inne parametry wejściowe i różne metody ich estymacji.
+Hydrolog implements 4 unit hydrograph models: **SCS**, **Nash**, **Clark** and **Snyder**. Each model has different input parameters and different methods for estimating them.
 
-**Nieprawidłowe połączenie metod** (np. użycie czasu koncentracji z wzoru Kirpicha do modelu Nasha przez `from_tc()`) może prowadzić do błędnych wyników bez naukowego uzasadnienia.
+**An incorrect combination of methods** (e.g. turning the time of concentration from the Kirpich formula into the Nash storage constant through the SCS relation `tlag = 0.6 × Tc`) can lead to wrong results without scientific justification.
 
-Dokument ten służy jako przewodnik, który:
-- Jasno wskazuje **prawidłowe ścieżki obliczeniowe** dla każdego modelu
-- **Ostrzega** przed nieprawidłowym użyciem metod
-- Podaje **uzasadnienie literaturowe** dla każdej ścieżki
+This document serves as a guide that:
+- States clearly the **correct computation paths** for each model
+- **Warns** against incorrect use of methods
+- Gives the **literature justification** for each path
 
-### 1.2 Macierz kompatybilności
+### 1.2 Compatibility Matrix
 
-| Model | Kirpich | NRCS | Giandotti | FAA | Kerby | Kerby-Kirpich | from_lutz() | from_urban_regression() | Bezpośrednio | Własna metoda |
+| Model | Kirpich | NRCS | Giandotti | FAA | Kerby | Kerby-Kirpich | from_lutz() | from_urban_regression() | Directly | Own method |
 |-------|:-------:|:-------:|:---------:|:---:|:-----:|:-------------:|:-----------:|:-----------------------:|:------------:|:-------------:|
-| **SCS UH** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | - | - | - | - |
-| **Nash IUH** | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ✅ | ✅ | ✅ | - |
-| **Clark IUH** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | - | - | ✅ | - |
+| **SCS UH** | ✅ | ✅ | ✅ | ✅¹ | ✅¹ | ✅ | - | - | - | - |
+| **Nash IUH** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | - |
+| **Clark IUH** | ✅ | ✅ | ✅ | ✅¹ | ✅¹ | ✅ | - | - | ✅ | - |
 | **Snyder UH** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | - | - | ✅ | ✅ |
 
-**Legenda:**
-- ✅ **OK** - prawidłowe użycie, potwierdzone literaturą
-- ⚠️ **DEPRECATED** - działające, ale bez uzasadnienia naukowego (będzie usunięte w v1.0.0)
-- ❌ **NIE DOTYCZY** - model nie używa zewnętrznego Tc
+**Legend:**
+- ✅ **OK** - correct use, confirmed by the literature
+- ❌ **NOT APPLICABLE** - the model does not use an external Tc
+- ✅¹ **OK with a limitation** - FAA and Kerby compute the overland flow time (flow paths of the order of hundreds of metres), so as a catchment Tc they are suitable only for small catchments without a distinct channel; for a catchment with a channel, Tc is given by Kerby-Kirpich (overland flow + channel) or by Kirpich (section 3.7)
 
 ---
 
-## 2. Modele hydrogramów - przegląd
+## 2. Hydrograph Models - Overview
 
 ### 2.1 SCS Unit Hydrograph
 
-| Cecha | Wartość |
-|-------|---------|
-| **Typ** | Syntetyczny, empiryczny |
-| **Parametry wejściowe** | `area_km2`, `tc_min` |
-| **Źródło** | USDA-NRCS TR-55 (1986) |
-| **Charakterystyka** | Bezwymiarowa krzywa NRCS (33 punkty) |
+| Feature | Value |
+|---------|-------|
+| **Type** | Synthetic, empirical |
+| **Input parameters** | `area_km2`, `tc_min` |
+| **Source** | USDA-NRCS TR-55 (1986) |
+| **Characteristics** | NRCS dimensionless curve (33 points) |
 
-**Kluczowa relacja:** `tlag = 0.6 × Tc` (część metody SCS)
+**Key relation:** `tlag = 0.6 × Tc` (part of the SCS method)
 
 ### 2.2 Nash IUH
 
-| Cecha | Wartość |
-|-------|---------|
-| **Typ** | Koncepcyjny (kaskada zbiorników liniowych) |
-| **Parametry wejściowe** | `n` (liczba zbiorników), `k_min` (stała magazynowania) |
-| **Źródło** | Nash (1957), Lutz (1984) |
-| **Charakterystyka** | Rozkład gamma, `u(t) = (t/K)^(n-1) × e^(-t/K) / (K×Γ(n))` |
+| Feature | Value |
+|---------|-------|
+| **Type** | Conceptual (cascade of linear reservoirs) |
+| **Input parameters** | `n` (number of reservoirs), `k_min` (storage constant) |
+| **Source** | Nash (1957), Lutz (1984) |
+| **Characteristics** | Gamma distribution, `u(t) = (t/K)^(n-1) × e^(-t/K) / (K×Γ(n))` |
 
-**Kluczowa relacja:** `tlag = n × K` (wynik matematyczny, nie założenie!)
+**Key relation:** `tlag = n × K` (a mathematical result, not an assumption!)
 
 ### 2.3 Clark IUH
 
-| Cecha | Wartość |
-|-------|---------|
-| **Typ** | Koncepcyjny (translacja + zbiornik liniowy) |
-| **Parametry wejściowe** | `tc_min` (czas translacji), `r_min` (stała retencji) |
-| **Źródło** | Clark (1945), HEC-HMS |
-| **Charakterystyka** | Histogram czas-powierzchnia + routing |
+| Feature | Value |
+|---------|-------|
+| **Type** | Conceptual (translation + linear reservoir) |
+| **Input parameters** | `tc_min` (translation time), `r_min` (storage constant) |
+| **Source** | Clark (1945), HEC-HMS |
+| **Characteristics** | Time-area histogram + routing |
 
-**Kluczowa relacja:** Tc = czas translacji przez zlewnię
+**Key relation:** Tc = translation time through the catchment
 
 ### 2.4 Snyder UH
 
-| Cecha | Wartość |
-|-------|---------|
-| **Typ** | Syntetyczny, empiryczny |
-| **Parametry wejściowe** | `L_km`, `Lc_km`, `Ct`, `Cp` |
-| **Źródło** | Snyder (1938) |
-| **Charakterystyka** | Wbudowana estymacja: `tL = Ct × (L × Lc)^0.3` |
+| Feature | Value |
+|---------|-------|
+| **Type** | Synthetic, empirical |
+| **Input parameters** | `area_km2`, `L_km`, `Lc_km`, `ct`, `cp` |
+| **Source** | Snyder (1938) |
+| **Characteristics** | Built-in estimation: `tL = Ct × (L × Lc)^0.3` |
 
-**Kluczowa relacja:** Model **NIE potrzebuje** zewnętrznego Tc!
+**Key relation:** The model **does NOT need** an external Tc!
 
 ---
 
-## 3. Ścieżki obliczeniowe - szczegóły
+## 3. Computation Paths - Details
 
 ### 3.1 SCS Unit Hydrograph
 
-#### 3.1.1 Diagram przepływu danych
+#### 3.1.1 Data Flow Diagram
 
 ```
-                    DANE WEJŚCIOWE
+                      INPUT DATA
                     ┌─────────────────┐
                     │  L_km, S (m/m)  │
                     │     CN (opt)    │
@@ -116,74 +116,77 @@ Dokument ten służy jako przewodnik, który:
             ┌─────────────────┼─────────────────┐
             ▼                 │                 ▼
     ┌───────────────┐         │         ┌───────────────┐
-    │  tlag = 0.6×Tc│ ←───────┴─────────│ RELACJA SCS   │
+    │  tlag = 0.6×Tc│ ←───────┴─────────│ SCS RELATION  │
     └───────┬───────┘                   │ (TR-55, 1986) │
             │                           └───────────────┘
             ▼
     ┌───────────────────────┐
-    │  tp = D/2 + tlag      │ D = krok czasowy
+    │  tp = D/2 + tlag      │ D = time step
     │  qp = 0.208 × A / tp  │
     └───────────┬───────────┘
                 │
                 ▼
     ┌───────────────────────┐
     │   SCS UNIT HYDROGRAPH │
-    │   (tablica 33 punkty) │
+    │   (table, 33 points)  │
     └───────────────────────┘
 ```
 
-> **Uwaga o stałej Kirpicha:** W literaturze spotyka się dwie równoważne formy:
-> - `tc[min] = 3.981 × L[km]^0.77 × S^(-0.385)` (wynik w minutach -- używana w kodzie)
-> - `tc[h] = 0.0663 × L[km]^0.77 × S^(-0.385)` (wynik w godzinach)
+> **Note on the Kirpich constant:** The literature contains two equivalent forms:
+> - `tc[min] = 3.981 × L[km]^0.77 × S^(-0.385)` (result in minutes -- used in the code)
+> - `tc[h] = 0.0663 × L[km]^0.77 × S^(-0.385)` (result in hours)
 >
-> Obie formy są tożsame: `3.981 / 60 ≈ 0.0663`. Implementacja w Hydrolog używa stałej **3.981** i zwraca wynik w **minutach**.
+> Both forms are identical: `3.981 / 60 ≈ 0.0663`. The Hydrolog implementation uses the constant **3.981** and returns the result in **minutes**.
 
-#### 3.1.2 Prawidłowe metody estymacji Tc
+The inputs in the diagram are generic; each method takes those its source defines (section 3.7): Kirpich the length and slope of the longest flow path, NRCS that length, the average land slope Y and CN, Giandotti A, the main channel and H = mean elevation − outlet elevation.
 
-| Metoda | Status | Uzasadnienie |
-|--------|--------|--------------|
-| Kirpich | ✅ OK | Tc jest parametrem wejściowym metody SCS |
-| NRCS | ✅ OK | Metoda opracowana razem z SCS UH (TR-55) |
-| Giandotti | ✅ OK | Tc jest parametrem wejściowym metody SCS |
-| FAA | ✅ OK | Tc jest parametrem wejściowym metody SCS (spływ powierzchniowy) |
-| Kerby | ✅ OK | Tc jest parametrem wejściowym metody SCS (spływ arkuszowy) |
-| Kerby-Kirpich | ✅ OK | Kompozytowe Tc (spływ powierzchniowy + korytowy) jest parametrem wejściowym SCS |
+#### 3.1.2 Correct Tc Estimation Methods
 
-**Uzasadnienie literaturowe:**
-- Relacja `tlag = 0.6 × Tc` pochodzi z USDA TR-55 (1986)
-- Została opracowana **specjalnie** dla SCS Dimensionless Unit Hydrograph
-- Wszystkie metody obliczania Tc są odpowiednie jako wejście
+| Method | Status | Justification |
+|--------|--------|---------------|
+| Kirpich | ✅ OK | Tc is an input parameter of the SCS method |
+| NRCS | ✅ OK | Lag method of the SCS UH (NEH 630, ch. 15: L = 0.6 Tc, eq. 15-4) |
+| Giandotti | ✅ OK | Tc is an input parameter of the SCS method |
+| FAA | ✅ OK¹ | Tc is an input parameter of the SCS method (overland flow time) |
+| Kerby | ✅ OK¹ | Tc is an input parameter of the SCS method (sheet flow time, path up to 366 m) |
+| Kerby-Kirpich | ✅ OK | Composite Tc (overland + channel flow) is an input parameter of SCS |
 
-#### 3.1.3 Wzory
+**Literature justification:**
+- The relation `tlag = 0.6 × Tc` comes from USDA TR-55 (1986)
+- It was developed **specifically** for the SCS Dimensionless Unit Hydrograph
+- All Tc computation methods are suitable as input
+- ¹ FAA and Kerby are formulas for overland flow time, not for the time of concentration of a catchment with a channel; for such a catchment use Kerby-Kirpich (section 3.7)
+
+#### 3.1.3 Formulas
 
 ```
 tlag = 0.6 × Tc                              [min]
-tp = D/2 + tlag                              [min]   (D = krok czasowy)
-qp = 0.208 × A / tp                          [m³/s/mm]   (tp w godzinach!)
+tp = D/2 + tlag                              [min]   (D = time step)
+qp = 0.208 × A / tp                          [m³/s/mm]   (tp in hours!)
 tb = 5.0 × tp                                [min]
 ```
 
-**Uwaga o czasie bazy (tb):** W kontekście SCS UH występują dwie wartości tb — obie są poprawne dla swoich celów:
-- `tb ≈ 2.67 × tp` — przybliżenie trójkątne, używane do wyprowadzenia stałej 0.208
-- `tb = 5.0 × tp` — pełny zakres bezwymiarowej tablicy NRCS (33 punkty), używany przy dyskretyzacji UH
+**Note on the base time (tb):** In the context of the SCS UH there are two values of tb — both are correct for their purposes:
+- `tb ≈ 2.67 × tp` — triangular approximation, used to derive the constant 0.208
+- `tb = 5.0 × tp` — full range of the NRCS dimensionless table (33 points), used when discretising the UH
 
-**Wyprowadzenie stałej 0.208:**
-- Dla trójkątnego przybliżenia: V = 0.5 × qp × tb
-- Objętość 1 mm na A km²: V = A × 1000 m³
-- Z tb ≈ 2.67 × tp: qp = 2V / (2.67 × tp × 3600) ≈ 0.208 × A / tp
+**Derivation of the constant 0.208:**
+- For the triangular approximation: V = 0.5 × qp × tb
+- Volume of 1 mm over A km²: V = A × 1000 m³
+- With tb ≈ 2.67 × tp: qp = 2V / (2.67 × tp × 3600) ≈ 0.208 × A / tp
 
-#### 3.1.4 Przykład kodu
+#### 3.1.4 Code Example
 
 ```python
 from hydrolog.time import ConcentrationTime
 from hydrolog.runoff import SCSUnitHydrograph, HydrographGenerator
 from hydrolog.precipitation import BetaHietogram
 
-# Krok 1: Oblicz Tc dowolną metodą
+# Step 1: Compute Tc with any method
 tc = ConcentrationTime.kirpich(length_km=8.2, slope_m_per_m=0.023)
 print(f"Tc (Kirpich) = {tc:.1f} min")
 
-# Krok 2: Utwórz SCS UH
+# Step 2: Create the SCS UH
 scs_uh = SCSUnitHydrograph(area_km2=45.0, tc_min=tc)
 result = scs_uh.generate(timestep_min=5.0)
 
@@ -191,7 +194,7 @@ print(f"tlag = {result.lag_time_min:.1f} min")
 print(f"tp = {result.time_to_peak_min:.1f} min")
 print(f"qp = {result.peak_discharge_m3s:.2f} m³/s/mm")
 
-# Krok 3: Pełna transformacja opad → odpływ
+# Step 3: Full rainfall → runoff transformation
 hietogram = BetaHietogram(alpha=2.0, beta=5.0)
 precip = hietogram.generate(total_mm=50.0, duration_min=60.0, timestep_min=5.0)
 
@@ -205,13 +208,13 @@ print(f"Qmax = {hydrograph.peak_discharge_m3s:.2f} m³/s")
 
 ### 3.2 Nash IUH
 
-#### 3.2.1 Diagram - prawidłowe ścieżki
+#### 3.2.1 Diagram - Correct Paths
 
 ```
-                              DANE WEJŚCIOWE
+                              INPUT DATA
     ┌──────────────────────────────────────────────────────────────────────┐
-    │   METODA LUTZA            │  REGRESJA URBAN.    │  BEZPOŚREDNIE     │
-    │  L_km, Lc_km, slope,      │  area_km2,          │  n (liczba zb.)   │
+    │   LUTZ METHOD             │  URBAN REGRESSION   │  DIRECT           │
+    │  L_km, Lc_km, slope,      │  area_km2,          │  n (no. of res.)  │
     │  manning_n, urban_pct,    │  effective_precip_mm,│  K [min]          │
     │  forest_pct              │  duration_h,         │                   │
     │                          │  urban_fraction      │                   │
@@ -228,7 +231,7 @@ print(f"Qmax = {hydrograph.peak_discharge_m3s:.2f} m³/s")
     │    ×e^(0.004W)           │ │    ×D^0.37           │    │
     │  3. up = 0.66/tp^1.04    │ │ 2. k = 0.56×A^0.39   │    │
     │  4. f(N) = tp×up →      │ │    ×(1+U)^(-0.62)    │    │
-    │     rozwiąż dla N        │ │    ×H^(-0.11)        │    │
+    │     solve for N          │ │    ×H^(-0.11)        │    │
     │  5. K = tp / (N-1)       │ │    ×D^0.22           │    │
     └──────────┬────────────────┘ │ 3. N = tL / k        │    │
                │                  └──────────┬────────────┘    │
@@ -248,53 +251,43 @@ print(f"Qmax = {hydrograph.peak_discharge_m3s:.2f} m³/s")
                              └──────────────────────────────┘
 ```
 
-#### 3.2.2 OSTRZEŻENIE: from_tc() jest DEPRECATED
+#### 3.2.2 No Path from Tc
+
+The Nash model takes no time of concentration. `NashIUH.from_tc()` (`tlag = 0.6 × Tc`, `K = tlag / n`),
+deprecated since v0.6.2, was removed in v0.8.0:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                   ⚠️  ŚCIEŻKA DEPRECATED  ⚠️                        │
-├─────────────────────────────────────────────────────────────────────┤
+│  The relation tlag = 0.6 × Tc comes from the SCS method (TR-55,    │
+│  1986) and has NO scientific justification for the Nash model.     │
 │                                                                     │
-│  PROBLEM:                                                           │
-│  Metoda NashIUH.from_tc() używa relacji: tlag = 0.6 × Tc           │
-│                                                                     │
-│  Ta relacja pochodzi z metody SCS (TR-55, 1986) i NIE ma           │
-│  naukowego uzasadnienia dla modelu Nasha!                          │
-│                                                                     │
-│  W modelu Nasha: tlag = n × K jest WYNIKIEM MATEMATYCZNYM          │
-│  kaskady zbiorników, NIE parametrem wejściowym!                    │
+│  In the Nash model: tlag = n × K is a MATHEMATICAL RESULT          │
+│  of the reservoir cascade, NOT an input parameter!                 │
 │                                                                     │
 │  ┌─────────────────────────┐       ┌─────────────────────────┐     │
 │  │   SCS Unit Hydrograph   │       │      Nash IUH           │     │
 │  ├─────────────────────────┤       ├─────────────────────────┤     │
 │  │ tlag = 0.6 × Tc         │       │ tlag = n × K            │     │
-│  │ (ZAŁOŻENIE PROJEKTOWE)  │       │ (WYNIK MATEMATYCZNY)    │     │
-│  │ Tc jest WEJŚCIEM        │       │ n, K są WEJŚCIEM       │     │
+│  │ (DESIGN ASSUMPTION)     │       │ (MATHEMATICAL RESULT)   │     │
+│  │ Tc is the INPUT         │       │ n, K are the INPUT      │     │
 │  └─────────────────────────┘       └─────────────────────────┘     │
 │                                                                     │
-│  KONSEKWENCJE BŁĘDNEGO UŻYCIA:                                     │
-│  - Parametr K obliczany z nieprawidłowej zależności                │
-│  - Kształt IUH może nie odpowiadać charakterystyce zlewni          │
-│  - Brak możliwości weryfikacji z danymi obserwowanymi              │
-│                                                                     │
-│  ROZWIĄZANIE:                                                       │
-│  Użyj NashIUH.from_lutz() lub podaj n i K bezpośrednio            │
+│  Use NashIUH.from_lutz(), NashIUH.from_urban_regression() or       │
+│  supply n and K directly                                           │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-**Status:** `from_tc()` zostanie usunięta w wersji 1.0.0
+#### 3.2.3 Correct Estimation Methods
 
-#### 3.2.3 Prawidłowe metody estymacji
+| Method | Status | Justification |
+|--------|--------|---------------|
+| `from_lutz()` | ✅ RECOMMENDED | Developed specifically for Nash (Lutz, 1984) |
+| `from_urban_regression()` | ✅ OK | Regression for urbanised catchments (Rao, Delleur, Sarma 1972) |
+| Directly `n`, `K` | ✅ OK | When you have calibrated values |
+| ~~Method of moments~~ | REMOVED in v0.5.1 | Requires data from an observed hydrograph |
+| ~~`from_tc()`~~ | REMOVED in v0.8.0 | No scientific justification (SCS relation `tlag = 0.6 × Tc`) |
 
-| Metoda | Status | Uzasadnienie |
-|--------|--------|--------------|
-| `from_lutz()` | ✅ ZALECANA | Opracowana specjalnie dla Nasha (Lutz, 1984) |
-| `from_urban_regression()` | ✅ OK | Regresja dla zlewni zurbanizowanych (Rao, Delleur, Sarma 1972) |
-| Bezpośrednio `n`, `K` | ✅ OK | Gdy masz skalibrowane wartości |
-| ~~Metoda momentów~~ | USUNIĘTA w v0.5.1 | Wymaga danych z obserwowanego hydrogramu |
-| `from_tc()` | ⚠️ DEPRECATED | Brak uzasadnienia naukowego |
-
-#### 3.2.4 Wzory metody Lutza
+#### 3.2.4 Lutz Method Formulas
 
 ```
 1. P₁ = 3.989 × n_manning + 0.028
@@ -303,82 +296,82 @@ print(f"Qmax = {hydrograph.peak_discharge_m3s:.2f} m³/s")
 
 3. up = 0.66 / tp^1.04                                            [1/h]
 
-4. f(N) = tp × up → rozwiąż numerycznie dla N
-   (gdzie f(N) = (N-1)^N × e^(-(N-1)) / Γ(N))
+4. f(N) = tp × up → solve numerically for N
+   (where f(N) = (N-1)^N × e^(-(N-1)) / Γ(N))
 
 5. K = tp / (N-1)                                                 [h]
 ```
 
-**Wpływ parametrów fizjograficznych:**
+**Influence of physiographic parameters:**
 
-| Czynnik | Wpływ na odpływ |
-|---------|-----------------|
-| ↑ Las (W) | Wolniejszy (↑ tp, ↑ tlag) |
-| ↑ Urbanizacja (U) | Szybszy (↓ tp, ↓ tlag) |
-| ↑ Spadek (Jg) | Szybszy (↓ tp) |
-| ↑ Manning (n) | Wolniejszy (↑ tp) |
+| Factor | Effect on runoff |
+|--------|------------------|
+| ↑ Forest (W) | Slower (↑ tp, ↑ tlag) |
+| ↑ Urbanisation (U) | Faster (↓ tp, ↓ tlag) |
+| ↑ Slope (Jg) | Faster (↓ tp) |
+| ↑ Manning (n) | Slower (↑ tp) |
 
-#### 3.2.5 Wzory metody regresji dla zlewni zurbanizowanych
+#### 3.2.5 Formulas of the Regression Method for Urbanised Catchments
 
-Metoda `from_urban_regression()` wykorzystuje empiryczne równania regresji potęgowej
-(Rao, Delleur, Sarma 1972) opracowane dla zlewni zurbanizowanych i częściowo
-zurbanizowanych:
+The `from_urban_regression()` method uses empirical power-law regression equations
+(Rao, Delleur, Sarma 1972) developed for urbanised and partly
+urbanised catchments:
 
 ```
-1. Czas opóźnienia:
+1. Lag time:
    tL = 1.28 × A^0.46 × (1+U)^(-1.66) × H^(-0.27) × D^0.37        [h]
 
-2. Stała magazynowania:
+2. Storage constant:
    k = 0.56 × A^0.39 × (1+U)^(-0.62) × H^(-0.11) × D^0.22         [h]
 
-3. Liczba zbiorników:
+3. Number of reservoirs:
    N = tL / k                                                        [-]
 ```
 
-**Parametry wejściowe:**
+**Input parameters:**
 
-| Symbol | Parametr | Jednostka |
-|--------|----------|-----------|
-| A | Powierzchnia zlewni | km² |
-| U | Wskaźnik urbanizacji (0 = naturalna, 0.5 = 50% zurbanizowana) | - |
-| H | Opad efektywny (suma) | mm |
-| D | Czas trwania opadu efektywnego | h |
+| Symbol | Parameter | Unit |
+|--------|-----------|------|
+| A | Catchment area | km² |
+| U | Urbanisation index (0 = natural, 0.5 = 50% urbanised) | - |
+| H | Effective precipitation (total) | mm |
+| D | Duration of effective precipitation | h |
 
-**Pochodzenie stałych metrycznych:**
-Oryginalna regresja (Sarma, Delleur, Rao 1969) została opracowana w jednostkach
-imperialnych (mi², in). Stałe metryczne 1.28 i 0.56 uwzględniają konwersję jednostek
-i pojawiają się w publikacji ASCE z 1972 roku.
+**Origin of the metric constants:**
+The original regression (Sarma, Delleur, Rao 1969) was developed in imperial
+units (mi², in). The metric constants 1.28 and 0.56 incorporate the unit conversion
+and appear in the 1972 ASCE publication.
 
-**Wpływ parametrów:**
+**Effect of the parameters:**
 
-| Czynnik | Wpływ na odpływ |
-|---------|-----------------|
-| ↑ Powierzchnia (A) | Wolniejszy (↑ tL, ↑ k) |
-| ↑ Urbanizacja (U) | Szybszy (↓ tL, ↓ k) |
-| ↑ Opad efektywny (H) | Szybszy (↓ tL, ↓ k) |
-| ↑ Czas trwania (D) | Wolniejszy (↑ tL, ↑ k) |
+| Factor | Effect on runoff |
+|--------|------------------|
+| ↑ Area (A) | Slower (↑ tL, ↑ k) |
+| ↑ Urbanisation (U) | Faster (↓ tL, ↓ k) |
+| ↑ Effective precipitation (H) | Faster (↓ tL, ↓ k) |
+| ↑ Duration (D) | Slower (↑ tL, ↑ k) |
 
-#### 3.2.6 Przykład kodu - PRAWIDŁOWE UŻYCIE
+#### 3.2.6 Code Example - CORRECT USE
 
 ```python
 from hydrolog.runoff import NashIUH, HydrographGenerator
 from hydrolog.precipitation import BetaHietogram
 
-# METODA 1: from_lutz() - ZALECANA dla zlewni bez danych pomiarowych
+# METHOD 1: from_lutz() - RECOMMENDED for catchments without measurement data
 nash = NashIUH.from_lutz(
-    L_km=15.0,          # Długość cieku głównego
-    Lc_km=8.0,          # Długość do centroidu zlewni
-    slope=0.02,         # Spadek cieku
-    manning_n=0.035,    # Współczynnik Manninga
-    forest_pct=40.0,    # Udział lasów [%]
-    urban_pct=5.0,      # Udział urbanizacji [%]
-    area_km2=50.0       # Powierzchnia zlewni
+    L_km=15.0,          # Main stream length
+    Lc_km=8.0,          # Length to the catchment centroid
+    slope=0.02,         # Stream slope
+    manning_n=0.035,    # Manning coefficient
+    forest_pct=40.0,    # Forest share [%]
+    urban_pct=5.0,      # Urbanisation share [%]
+    area_km2=50.0       # Catchment area
 )
 print(f"n = {nash.n:.2f}")
 print(f"K = {nash.k_min:.1f} min")
 print(f"tlag = {nash.lag_time_min:.1f} min")
 
-# METODA 2: from_urban_regression() - dla zlewni zurbanizowanych
+# METHOD 2: from_urban_regression() - for urbanised catchments
 nash_urban = NashIUH.from_urban_regression(
     area_km2=1.3,
     effective_precip_mm=1.305,
@@ -388,11 +381,11 @@ nash_urban = NashIUH.from_urban_regression(
 print(f"n = {nash_urban.n:.3f}")
 print(f"K = {nash_urban.k_min:.1f} min")
 
-# METODA 3: Bezpośrednie podanie parametrów
-# (gdy masz skalibrowane wartości)
+# METHOD 3: Supplying the parameters directly
+# (when you have calibrated values)
 nash_direct = NashIUH(n=3.5, k_min=45.0, area_km2=50.0)
 
-# Generowanie hydrogramu
+# Generating the hydrograph
 hietogram = BetaHietogram(alpha=2.0, beta=5.0)
 precip = hietogram.generate(total_mm=50.0, duration_min=60.0, timestep_min=5.0)
 
@@ -405,30 +398,38 @@ result = generator.generate(precip)
 print(f"Qmax = {result.peak_discharge_m3s:.2f} m³/s")
 ```
 
-#### 3.2.7 Przykład kodu - BŁĘDNE UŻYCIE (NIE RÓB TEGO!)
+#### 3.2.7 Lutz from a Watershed: `nash_estimation` (ADR-0024)
 
-```python
-from hydrolog.time import ConcentrationTime
-from hydrolog.runoff import NashIUH
+`hydrograph generate`, `report generate` and the `curve-number` runoff of a network
+(`hydrolog-network/1`) estimate n and K by Lutz from the watershed when given
+`nash_estimation: "lutz"` instead of `nash_n` and `nash_k_min`, in the same run. Each input
+is the watershed field the method defines (`hydrolog._ranges.NASH_INPUTS`,
+`WatershedParameters.nash_parameters("lutz")`), with no substitute:
 
-# ⚠️ NIEPRAWIDŁOWE - TO WYEMITUJE DeprecationWarning!
-tc = ConcentrationTime.kirpich(length_km=8.2, slope_m_per_m=0.023)
-nash = NashIUH.from_tc(tc_min=tc, n=3.0)  # DEPRECATED!
+| Symbol | Field | Note |
+|--------|-------|------|
+| L | `flow_path_length_km` | the main stream from the divide to the outlet: the longest flow path (ADR-0019), not the channel, which ends at the channel head |
+| Lc | `Lc_km` | along the stream to the point nearest the centroid; not longer than L (`maximum` on `Lc_km`) |
+| Jg | `flow_path_slope_m_per_m` | the mean slope of that stream, > 0 |
+| n_M | `manning_n` | Manning's coefficient of the channel |
+| U, W | `urban_pct`, `forest_pct` | 0 when the watershed has none |
+| A | `area_km2` | scales the unit hydrograph; above 236 km2 the notice `outside_typical_range` (method `lutz`, KZGW 2017) |
 
-# Zamiast tego użyj from_lutz():
-nash_correct = NashIUH.from_lutz(
-    L_km=8.2, Lc_km=4.5, slope=0.023, manning_n=0.035
-)
-```
+The estimate is the one of `NashIUH.from_lutz`, so one run equals `uh nash` with the same L, Lc,
+J, n_M, U and W followed by `hydrograph generate` with its n and K, to the last ordinate. Unlike
+given n and K, the estimate is not checked against their ranges (`outside_unverified_range`):
+those are ranges of given values. The report prints Lutz's inputs and steps in its unit
+hydrograph section, and a network node lists `nash_estimation` (given) and `nash_n`,
+`nash_k_min` (computed). A missing field is `missing_field` with `details.method` `lutz`.
 
 ---
 
 ### 3.3 Clark IUH
 
-#### 3.3.1 Diagram przepływu danych
+#### 3.3.1 Data Flow Diagram
 
 ```
-                    DANE WEJŚCIOWE
+                      INPUT DATA
                     ┌─────────────────┐
                     │  L_km, S (m/m)  │
                     │  A_km², H_m     │
@@ -443,7 +444,7 @@ nash_correct = NashIUH.from_lutz(
              └─────────────────┼───────────────┘
                                ▼
                          ┌──────────┐
-                         │   Tc     │  ← CZAS TRANSLACJI
+                         │   Tc     │  ← TRANSLATION TIME
                          │  [min]   │
                          └────┬─────┘
                               │
@@ -452,82 +453,89 @@ nash_correct = NashIUH.from_lutz(
                     ▼                   ▼
             ┌───────────────┐   ┌───────────────┐
             │     Tc        │   │  R [min]      │
-            │  (translacja) │   │  (retencja)   │
+            │ (translation) │   │  (storage)    │
             └───────┬───────┘   └───────┬───────┘
                     │                   │
                     └─────────┬─────────┘
                               ▼
             ┌──────────────────────────────────┐
             │           CLARK IUH              │
-            │  1. Histogram czas-powierzchnia  │
-            │  2. Routing przez zbiornik       │
-            │     liniowy (S = R × O)          │
+            │  1. Time-area histogram          │
+            │  2. Routing through a linear     │
+            │     reservoir (S = R × O)        │
             └──────────────────────────────────┘
 ```
 
-#### 3.3.2 Prawidłowe metody estymacji
+#### 3.3.2 Correct Estimation Methods
 
-| Metoda | Status | Uzasadnienie |
-|--------|--------|--------------|
-| Kirpich → Tc | ✅ OK | Tc = czas translacji (zgodne z modelem Clark) |
-| NRCS → Tc | ✅ OK | Tc = czas translacji |
-| Giandotti → Tc | ✅ OK | Tc = czas translacji |
-| FAA → Tc | ✅ OK | Tc = czas translacji (spływ powierzchniowy) |
-| Kerby → Tc | ✅ OK | Tc = czas translacji (spływ arkuszowy) |
-| Kerby-Kirpich → Tc | ✅ OK | Tc = czas translacji (kompozytowy: spływ powierzchniowy + korytowy) |
-| Bezpośrednio Tc, R | ✅ OK | Gdy masz zmierzone/skalibrowane wartości |
-| R/Tc ratio | ✅ OK | Typowe wartości: 0.2-1.5 |
+| Method | Status | Justification |
+|--------|--------|---------------|
+| Kirpich → Tc | ✅ OK | Tc = translation time (consistent with the Clark model) |
+| NRCS → Tc | ✅ OK | Tc = translation time |
+| Giandotti → Tc | ✅ OK | Tc = translation time |
+| FAA → Tc | ✅ OK¹ | Tc = translation time (overland flow time) |
+| Kerby → Tc | ✅ OK¹ | Tc = translation time (sheet flow time) |
+| Kerby-Kirpich → Tc | ✅ OK | Tc = translation time (composite: overland + channel flow) |
+| Directly Tc, R | ✅ OK | When you have measured/calibrated values |
+| R/Tc ratio | ✅ OK | Typical values: 0.2-1.5 |
 
-**Uzasadnienie literaturowe:**
-- W modelu Clarka, Tc reprezentuje **czas translacji** - czas przejścia wody od najdalszego punktu zlewni do ujścia
-- Jest to **zgodne** z fizyczną interpretacją czasu koncentracji
-- Źródło: Clark (1945), HEC-HMS Technical Reference Manual
+**Literature justification:**
+- In the Clark model, Tc represents the **translation time** - the time water takes to travel from the farthest point of the catchment to the outlet
+- This is **consistent** with the physical interpretation of the time of concentration
+- Source: Clark (1945), HEC-HMS Technical Reference Manual
+- ¹ FAA and Kerby: only small catchments without a channel (as in section 3.1.2); for a catchment with a channel use Kerby-Kirpich
 
-#### 3.3.3 Dobór współczynnika R
+#### 3.3.3 Choosing the R Coefficient
 
-| Typ zlewni | R/Tc ratio | Opis |
-|------------|------------|------|
-| Strome, miejskie | 0.2-0.4 | Mała retencja, szybki odpływ |
-| Naturalne, przeciętne | 0.4-0.8 | Typowe warunki |
-| Płaskie, bagienne | 0.8-1.5 | Duża retencja, wolny odpływ |
+| Catchment type | R/Tc ratio | Description |
+|----------------|------------|-------------|
+| Steep, urban | 0.2-0.4 | Little storage, fast runoff |
+| Natural, average | 0.4-0.8 | Typical conditions |
+| Flat, swampy | 0.8-1.5 | Large storage, slow runoff |
 
-#### 3.3.4 Wzory
+#### 3.3.4 Formulas
 
 ```
-Model dwuetapowy:
+Two-stage model:
 
-1. TRANSLACJA (histogram czas-powierzchnia):
-   Krzywa HEC-HMS dla zlewni eliptycznej (dwuczęściowa):
+1. TRANSLATION (time-area histogram):
+   HEC-HMS curve for an elliptical catchment (two-part):
 
    tau = t / Tc
 
-   Dla tau ≤ 0.5:  A_cum(t) = 1.414 × tau^1.5
-   Dla tau > 0.5:  A_cum(t) = 1.0 - 1.414 × (1.0 - tau)^1.5
+   For tau ≤ 0.5:  A_cum(t) = 1.414 × tau^1.5
+   For tau > 0.5:  A_cum(t) = 1.0 - 1.414 × (1.0 - tau)^1.5
 
-   Warunki brzegowe:
+   Boundary conditions:
    - A_cum(0)    = 0
-   - A_cum(Tc/2) = 1.414 × 0.5^1.5 ≈ 0.5  (symetryczny centroid)
+   - A_cum(Tc/2) = 1.414 × 0.5^1.5 ≈ 0.5  (symmetric centroid)
    - A_cum(Tc)   = 1.0
 
-2. ATENUACJA (zbiornik liniowy):
+2. ATTENUATION (linear reservoir):
    O(t) = O(t-1) + C1 × (I(t) + I(t-1) - 2×O(t-1))
-   gdzie C1 = dt / (2R + dt)
+   where C1 = dt / (2R + dt)
 ```
 
-#### 3.3.5 Przykład kodu
+The scheme is the Muskingum routing with X = 0. The weight of the previous outflow,
+(2R - dt) / (2R + dt), is negative for dt > 2R and the hydrograph would oscillate, so
+`ClarkIUH` (and `uh clark`, `hydrograph generate` with `uh_model=clark`) accepts a time
+step of at most 2R; a longer one is a `validation_error` with
+`details.reason = "unstable_timestep"`.
+
+#### 3.3.5 Code Example
 
 ```python
 from hydrolog.time import ConcentrationTime
 from hydrolog.runoff import ClarkIUH, HydrographGenerator
 from hydrolog.precipitation import BetaHietogram
 
-# Krok 1: Oblicz Tc
+# Step 1: Compute Tc
 tc = ConcentrationTime.kirpich(length_km=8.2, slope_m_per_m=0.023)
 
-# Krok 2: Określ współczynnik retencji R
-r_min = 0.5 * tc  # R/Tc = 0.5 (typowa wartość)
+# Step 2: Determine the storage coefficient R
+r_min = 0.5 * tc  # R/Tc = 0.5 (typical value)
 
-# Krok 3: Utwórz Clark IUH
+# Step 3: Create the Clark IUH
 clark = ClarkIUH(tc_min=tc, r_min=r_min, area_km2=45.0)
 result = clark.generate(timestep_min=5.0)
 
@@ -535,10 +543,10 @@ print(f"Tc = {tc:.1f} min")
 print(f"R = {r_min:.1f} min")
 print(f"Qmax UH = {result.peak_discharge_m3s:.2f} m³/s/mm")
 
-# Alternatywnie: metoda from_tc_r_ratio
+# Alternatively: the from_tc_r_ratio method
 clark_alt = ClarkIUH.from_tc_r_ratio(tc_min=tc, r_tc_ratio=0.5)
 
-# Pełna transformacja
+# Full transformation
 hietogram = BetaHietogram(alpha=2.0, beta=5.0)
 precip = hietogram.generate(total_mm=50.0, duration_min=60.0, timestep_min=5.0)
 
@@ -551,31 +559,60 @@ result = generator.generate(precip)
 print(f"Qmax = {result.peak_discharge_m3s:.2f} m³/s")
 ```
 
+#### 3.3.6 D-minute Hydrograph from the S-curve (`to_unit_hydrograph`)
+
+`ClarkIUH.to_unit_hydrograph(area_km2, duration_min, timestep_min)` converts the IUH into a unit hydrograph of effective precipitation of duration D using the S-curve method:
+
+```
+S(t)  = ∑ u(t_i) × dt                     (cumulative sum of the IUH ordinates; response to continuous rainfall of unit intensity)
+U_D(t) = [ S(t) - S(t - D) ] / D          (unit hydrograph for 1 mm of rainfall over time D)
+```
+
+The S-curve is known only at the nodes `t_i = i × dt`, so the lagged curve `S(t_i - D)` is read by linear interpolation (before t = 0 it equals 0). Thanks to this, **D does not have to be a multiple of the step `dt`**:
+
+| D / dt | Behaviour |
+|--------|-----------|
+| integer k (D = k·dt) | exactly the S-curve shifted by k steps (as before) |
+| non-integer (e.g. 1.5) | linear interpolation between two neighbouring nodes; UH volume = 1 mm |
+| < 1 | S resolved at best to the step: result as for D = dt; to resolve a short rainfall use `timestep_min <= duration_min` |
+
+The hydrograph volume (sum of ordinates × dt, converted to a water depth over the catchment) is **1 mm** for any D > 0, provided the whole response is covered by `total_duration_min` (by default `tc + 5R + D` loses only a negligible tail).
+
+> **Change in v0.8.0 (bug fix).** Versions < 0.8.0 shifted the S-curve by `round(D/dt)` steps but divided by D. For D that is not a multiple of the step, the volume was `round(D/dt)·dt/D` mm: **1.333 mm for D = 1.5·dt** and 0.8 mm for D = 2.5·dt (discharges 33% too large or 20% too small), and for D < dt/2 `to_unit_hydrograph` raised `ValueError` (`s_curve[:-0]`). Since v0.8.0 the volume is 1.000 mm for every D, and a non-positive or infinite D or step raises `InvalidParameterError`.
+
+```python
+iuh = ClarkIUH(tc_min=60.0, r_min=30.0)
+# D = 1.5 steps: UH volume = 1 mm (formerly 1.333 mm)
+uh = iuh.to_unit_hydrograph(area_km2=45.0, duration_min=7.5, timestep_min=5.0,
+                            total_duration_min=1000.0)
+print(f"{uh.ordinates_m3s.sum() * 5.0 * 60.0 / 45000.0:.3f} mm")   # 1.000 mm
+```
+
 ---
 
 ### 3.4 Snyder UH
 
-#### 3.4.1 Diagram przepływu danych
+#### 3.4.1 Data Flow Diagram
 
 ```
-                    DANE WEJŚCIOWE
+                      INPUT DATA
     ┌───────────────────────────────────────────────────────┐
-    │  A_km²  - powierzchnia zlewni                         │
-    │  L_km   - długość cieku głównego                      │
-    │  Lc_km  - długość do centroidu zlewni                 │
-    │  Ct     - współczynnik czasowy (1.35-1.65)            │
-    │  Cp     - współczynnik szczytowy (0.4-0.8)            │
+    │  A_km²  - catchment area                              │
+    │  L_km   - main stream length                          │
+    │  Lc_km  - length to the catchment centroid            │
+    │  Ct     - time coefficient (1.35-1.65)                │
+    │  Cp     - peak coefficient (0.4-0.8)                  │
     └───────────────────────┬───────────────────────────────┘
                             │
                             ▼
     ┌───────────────────────────────────────────────────────┐
-    │              WBUDOWANA METODA SNYDERA                 │
+    │              BUILT-IN SNYDER METHOD                   │
     │  ───────────────────────────────────────────────      │
     │  tL = Ct × (L × Lc)^0.3           [h]                │
     │       ↑                                               │
-    │       └─── WŁASNA FORMUŁA (NIE Kirpich!)              │
+    │       └─── OWN FORMULA (NOT Kirpich!)                 │
     │                                                       │
-    │  tD = tL / 5.5                    [h] (standardowy)   │
+    │  tD = tL / 5.5                    [h] (standard)      │
     │  tp = tL + tD/2                   [h]                 │
     │  qp = 0.275 × Cp × A / tL         [m³/s/mm]          │
     └───────────────────────┬───────────────────────────────┘
@@ -583,34 +620,34 @@ print(f"Qmax = {result.peak_discharge_m3s:.2f} m³/s")
                             ▼
     ┌───────────────────────────────────────────────────────┐
     │                    SNYDER UH                          │
-    │              (kształt gamma-podobny)                  │
+    │  gamma curve through (tpR, qpR), 1 mm (section 3.4.7) │
     └───────────────────────────────────────────────────────┘
 ```
 
-#### 3.4.2 Model NIE używa zewnętrznego Tc!
+#### 3.4.2 The Model Does NOT Use an External Tc!
 
 ```
 ┌───────────────────────────────────────────────────────────────────────┐
 │                                                                       │
-│  ⚠️  MODEL SNYDERA NIE POTRZEBUJE ZEWNĘTRZNEGO Tc!                   │
+│  ⚠️  THE SNYDER MODEL DOES NOT NEED AN EXTERNAL Tc!                  │
 │                                                                       │
-│  Snyder ma WŁASNĄ metodę estymacji czasu opóźnienia (tL)             │
-│  na podstawie L, Lc i współczynnika Ct.                              │
+│  Snyder has its OWN method of estimating the lag time (tL)           │
+│  based on L, Lc and the coefficient Ct.                              │
 │                                                                       │
-│  NIE UŻYWAJ z modelem Snydera:                                       │
+│  DO NOT USE with the Snyder model:                                   │
 │  ❌ ConcentrationTime.kirpich()                                       │
 │  ❌ ConcentrationTime.nrcs()                                          │
 │  ❌ ConcentrationTime.giandotti()                                     │
 │                                                                       │
-│  Użycie zewnętrznego Tc byłoby nieuzasadnione metodologicznie,       │
-│  ponieważ model Snydera został opracowany jako KOMPLETNA metoda.     │
+│  Using an external Tc would be methodologically unjustified,         │
+│  because the Snyder model was developed as a COMPLETE method.        │
 │                                                                       │
 └───────────────────────────────────────────────────────────────────────┘
 ```
 
-#### 3.4.3 Wzory
+#### 3.4.3 Formulas
 
-**Dla standardowego czasu trwania (Δt = tD):**
+**For the standard duration (Δt = tD):**
 ```
 tL = Ct × (L × Lc)^0.3                   [h]
 tD = tL / 5.5                            [h]
@@ -618,7 +655,7 @@ tp = tL + tD/2                           [h]
 qp = 0.275 × Cp × A / tL                 [m³/s/mm]
 ```
 
-**Dla niestandardowego czasu trwania (Δt ≠ tD):**
+**For a non-standard duration (Δt ≠ tD):**
 ```
 tLR = tL + 0.25 × (Δt - tD)              [h]
 tpR = tLR + Δt/2                         [h]
@@ -626,43 +663,51 @@ qpR = qp × (tL / tLR)                    [m³/s/mm]
 tb = 0.556 × A / qpR                     [h]
 ```
 
-#### 3.4.4 Dobór współczynników Ct i Cp
+**Shape of the hydrograph (since v0.8.0, section 3.4.7):**
+```
+q(t) = qpR × [(t/tpR) × exp(1 - t/tpR)]^K          [m³/s/mm]
+Γ(K) × (e/K)^K = V / (qpR × tpR),  V = A × 1000 m³   (1 mm over A)
+```
 
-| Typ zlewni | Ct (SI) | Cp | Opis |
-|------------|---------|-----|------|
-| Górska, stroma | 1.35-1.45 | 0.60-0.80 | Szybki odpływ, mała retencja |
-| Pagórkowata | 1.45-1.55 | 0.50-0.65 | Typowe warunki |
-| Nizinna, płaska | 1.55-1.65 | 0.40-0.55 | Wolny odpływ, duża retencja |
+tb is the base of the triangle with the peak qpR and the volume of 1 mm: a parameter of the method (`time_base_min`), not the end of the hydrograph.
 
-**Uwaga:** Ct i Cp są **odwrotnie skorelowane** (większy Ct → mniejszy Cp)
+#### 3.4.4 Choosing the Ct and Cp Coefficients
 
-#### 3.4.5 Przykład kodu
+| Catchment type | Ct (SI) | Cp | Description |
+|----------------|---------|-----|-------------|
+| Mountainous, steep | 1.35-1.45 | 0.60-0.80 | Fast runoff, little storage |
+| Hilly | 1.45-1.55 | 0.50-0.65 | Typical conditions |
+| Lowland, flat | 1.55-1.65 | 0.40-0.55 | Slow runoff, large storage |
+
+**Note:** Ct and Cp are **inversely correlated** (larger Ct → smaller Cp)
+
+#### 3.4.5 Code Example
 
 ```python
 from hydrolog.runoff import SnyderUH, HydrographGenerator
 from hydrolog.precipitation import BetaHietogram
 
-# Snyder NIE potrzebuje zewnętrznego Tc!
+# Snyder does NOT need an external Tc!
 snyder = SnyderUH(
     area_km2=100.0,
-    L_km=15.0,      # Długość cieku
-    Lc_km=8.0,      # Długość do centroidu
-    ct=1.5,         # Współczynnik czasowy
-    cp=0.6          # Współczynnik szczytowy
+    L_km=15.0,      # Stream length
+    Lc_km=8.0,      # Length to the centroid
+    ct=1.5,         # Time coefficient
+    cp=0.6          # Peak coefficient
 )
 
-# Parametry są obliczane automatycznie
+# The parameters are computed automatically
 print(f"tL = {snyder.lag_time_min:.1f} min")
 print(f"tD = {snyder.standard_duration_min:.1f} min")
 
-# Generowanie UH dla konkretnego czasu trwania opadu
+# Generating the UH for a specific rainfall duration
 delta_t = 60  # min
 print(f"tpR = {snyder.time_to_peak_min(delta_t):.1f} min")
 print(f"qpR = {snyder.peak_discharge(delta_t):.3f} m³/s/mm")
 
 result = snyder.generate(timestep_min=10.0, duration_min=delta_t)
 
-# Z HydrographGenerator
+# With HydrographGenerator
 hietogram = BetaHietogram(alpha=2.0, beta=5.0)
 precip = hietogram.generate(total_mm=50.0, duration_min=60.0, timestep_min=10.0)
 
@@ -675,100 +720,675 @@ result = generator.generate(precip)
 print(f"Qmax = {result.peak_discharge_m3s:.2f} m³/s")
 ```
 
+#### 3.4.6 Snyder in `HydrographGenerator`: Unit Hydrograph for D = Time Step (since v0.8.0)
+
+Discrete convolution treats the unit hydrograph as the response to 1 mm of effective precipitation in a single step `dt`. Therefore `HydrographGenerator` builds the Snyder hydrograph for a duration **D = dt** (the tLR, tpR and qpR correction from section 3.4.3), and not for the standard tD = tL/5.5 (Snyder 1938; USACE HEC-HMS, Technical Reference Manual, "Snyder Unit Hydrograph Model"; Chow, Maidment, Mays 1988):
+
+```python
+uh = snyder.generate(timestep_min=dt, duration_min=dt)   # this is how the generator computes it
+```
+
+Versions < 0.8.0 called `snyder.generate(timestep_min=dt)`, i.e. the hydrograph for tD, and convolved it in steps of `dt`: for a step shorter than tD the peak was too low and too late (tpR = tLR + D/2, tLR = tL + 0.25 (D − tD)), for a longer one too high and too early. `uh_time_to_peak_min` in the `hydrograph generate` result is tpR, and the report documents Δt equal to the step.
+
+| Catchment 45 km², L = 12 km, Lc = 6 km, Ct = 1.5, Cp = 0.6, CN 72, beta rainfall 50 mm/120 min, step 5 min | before v0.8.0 (D = tD = 59.0 min) | since v0.8.0 (D = 5 min) |
+|------|------:|------:|
+| Unit hydrograph: time to peak tp [min] | 354.2 | 313.7 |
+| Unit hydrograph: peak qp [m³/s/mm] | 1.379 | 1.432 |
+| Runoff hydrograph: Qmax [m³/s] (time [min]) | 9.76 (405) | 10.12 (365) |
+
+The values since v0.8.0 include the shape of section 3.4.7, whose peak is qpR; with that shape the step alone moves Qmax from 9.71 m³/s at 405 min (D = tD) to 10.12 m³/s at 365 min (+4.3%). For a step equal to tD the correction vanishes (tLR = tL): the generator uses the hydrograph of the standard duration.
+
+#### 3.4.7 Shape of the Snyder Hydrograph and the End of Its Recession (since v0.8.0)
+
+Snyder's method gives the peak (tpR, qpR), the widths W50 and W75 and the triangular time base tb, not a curve. Versions < 0.8.0 took a gamma curve of one fixed shape (n = 3.7, `(t/k)^(n-1) × exp(-t/k)` with k = tp/(n-1)), scaled it to qp, cut it at tb and rescaled the ordinates to 1 mm. tb = 0.556 × A / qpR shrinks as Cp grows while that curve does not change, so the cut came at 4.6% of the peak for Cp = 0.6 and at 20% for Cp = 0.8 (Δt = 5 min), and from Cp ≈ 2 on at or before the peak itself. The runoff hydrograph then ended in a near-vertical drop (Hydrograf front-end test of 2026-11-01). The peak of the ordinates was not qpR either: Cp acted only through the cut (Kamiennik, Ct = 1.65: Cp 0.4 → 1.0 moves qpR 0.64 → 1.60 m³/s/mm, but the peak of the ordinates moved 1.02 → 1.22).
+
+Since v0.8.0 the ordinates are the gamma unit hydrograph through the peak (Asquith and Roussel 2007, USGS SIR 2007-5243, eq. 2 and 4):
+
+```
+q(t) = qpR × [(t/tpR) × exp(1 - t/tpR)]^K          [m³/s/mm]
+V = qpR × tpR × Γ(K) × (e/K)^K                      (volume of the curve)
+```
+
+K is the root of `Γ(K) × (e/K)^K = V / (qpR × tpR)` for V = 1 mm over A (`brentq` on ln K; the left side falls monotonically from +∞ to 0, so the root is unique). Ct thus sets the time of the peak and Cp its height: for Δt = tD, K ≈ 2.0, 2.8, 3.8 and 4.9 for Cp = 0.5, 0.6, 0.7 and 0.8 (the former fixed n = 3.7 corresponds to K = 2.7). In t/tpR the curve is proportional to the density of the gamma distribution with the shape K + 1 and the rate K, so by default the ordinates run until 99.99% of the volume has passed, `P(K + 1, K × t/tpR) = 0.9999`, where the curve is below 0.1% of the peak; they are then rescaled to 1 mm (sampling at the step). A shorter `total_duration_min` still cuts the recession. `time_base_min` stays tb. A Cp for which no hydrograph of 1 mm has the peak qpR (K outside 10⁻¹²…10¹², i.e. Cp below about 10⁻¹² or above about 10⁵) raises `InvalidParameterError`.
+
+| Kamiennik catchment (Hydrograf): A = 37.23 km², L = 15.22 km, Lc = 6.92 km, CN 67.9, PMAXTP 1 h p = 1% (46.35 mm, beta), AMC II, step 5 min | Ct 1.65, Cp 0.8: before | after | Ct 1.5, Cp 0.6: before | after |
+|------|------:|------:|------:|------:|
+| K | 2.7 | 4.16 | 2.7 | 2.41 |
+| Unit hydrograph: peak [m³/s/mm] (qpR) | 1.100 (1.282) | 1.282 | 1.140 (1.057) | 1.057 |
+| Unit hydrograph: end [min] (ordinate there, % of the peak) | 970 (20.2) | 1680 (0.04) | 1175 (4.6) | 2155 (0.03) |
+| Runoff hydrograph: Qmax [m³/s] (time [min]) | 3.852 (410) | 4.487 (410) | 3.990 (375) | 3.701 (375) |
+| Runoff hydrograph: below 1% of Qmax from [min] / end [min] | 1015 / 1025 | 1305 / 1735 | 1210 / 1230 | 1570 / 2210 |
+| Steepest 5-minute fall [% of Qmax] (time [min]) | 5.7 (995) | 1.2 (600) | 1.3 (1195) | 0.9 (600) |
+
+The volume (130,400 m³) does not change. Before the change the steepest fall was the cut-off at the end of the recession, after it it lies on the falling limb at about 70% of the peak.
+
 ---
 
-## 4. Weryfikacja literaturowa
+### 3.5 Hydrologic Soil Groups (HSG) and Area-Weighted CN (`hydrolog.soil`, since v0.8.0)
 
-### 4.1 Tabela źródeł dla każdej ścieżki obliczeniowej
+HSG (A-D) is one of the two factors of the CN number (the other is land cover). The `hydrolog.soil` module determines HSG from clay, sand and silt content; the rules and mapping were transferred from Kartograf 0.8.0 (`kartograf.hydrology.hsg`, Kartograf ADR-025), and Kartograf remains responsible for downloading rasters (`download_soil`).
 
-| Ścieżka obliczeniowa | Źródło | Status |
-|----------------------|--------|:------:|
+#### 3.5.1 Data Flow Diagram
+
+```
+Kartograf download_soil (property = clay | sand | silt, SoilGrids, g/kg)
+        │   three GeoTIFF rasters: same CRS, grid and size
+        ▼
+hydrolog.soil.hsg_from_rasters(clay, sand, silt, output_path)      [extra hydrolog[raster]]
+        │   USDA texture class (12 classes) → HSG; GeoTIFF uint8: 0 = no data, 1-4 = A-D
+        ▼
+hydrolog.soil.hsg_statistics(hsg_path, bbox=None, bbox_crs=None)
+        │   area (m², ha) and share (%) of groups A-D and of no data
+        ▼
+get_cn(HSG, land cover, condition) × group area  →  calculate_weighted_cn(...)
+        ▼
+Catchment CN  →  SCSCN / HydrographGenerator
+```
+
+The same steps in the CLI: `soil hsg`, `soil hsg-stats`, `cn weighted`; the texture class and HSG of a single sample are given by `soil texture` (`classify_usda_texture`, `texture_to_hsg`).
+
+#### 3.5.2 Texture Classification (USDA Triangle)
+
+Rules (c - clay, s - sand, si - silt, in % of the sum of the three fractions), the first one satisfied wins:
+
+| # | Class | Condition |
+|---|-------|-----------|
+| 1 | `sand` | si + 1.5·c < 15 |
+| 2 | `loamy_sand` | si + 1.5·c ≥ 15 and si + 2·c < 30 |
+| 3 | `sandy_loam` | (7 ≤ c ≤ 20, s > 52, si + 2·c ≥ 30) or (c < 7, si < 50, si + 2·c ≥ 30) |
+| 4 | `silt` | si ≥ 80, c < 12 |
+| 5 | `silt_loam` | (si ≥ 50, 12 ≤ c < 27) or (50 ≤ si < 80, c < 12) |
+| 6 | `loam` | 7 ≤ c ≤ 27, 28 ≤ si < 50, s ≤ 52 |
+| 7 | `sandy_clay_loam` | 20 ≤ c < 35, si < 28, s > 45 |
+| 8 | `clay_loam` | 27 ≤ c < 40, 20 < s ≤ 45 |
+| 9 | `silty_clay_loam` | 27 ≤ c < 40, s ≤ 20 |
+| 10 | `sandy_clay` | c ≥ 35, s > 45 |
+| 11 | `silty_clay` | c ≥ 40, si ≥ 40 |
+| 12 | `clay` | c ≥ 40, s ≤ 45, si < 40 |
+
+- The rules compare the **amounts** of the fractions with their sum (without division, in `float64`), so the result does not depend on the unit (%, g/kg) as long as it is common to the three rasters, and values on the triangle boundaries are classified exactly.
+- A sum equal to zero gives `loam` in the texture classifier; in `classify_hsg` such a cell (all three fractions equal to 0, the SoilGrids convention for gaps) is no data.
+- No data (code 0) is also NaN/±Inf and a value equal to the `nodata` marker of any of the three rasters. A negative amount in a cell with data is an error.
+
+#### 3.5.3 Texture → HSG
+
+| HSG | Texture classes |
+|-----|-----------------|
+| A | `sand`, `loamy_sand` |
+| B | `sandy_loam`, `loam`, `silt_loam`, `silt` |
+| C | `sandy_clay_loam`, `clay_loam`, `silty_clay_loam` |
+| D | `sandy_clay`, `silty_clay`, `clay` |
+
+The mapping is **more lenient than the TR-55 table** (USDA-NRCS NEH Part 630, ch. 7) for three transitional classes: `sandy_loam` = B (TR-55: A), `clay_loam` and `silty_clay_loam` = C (TR-55: D). Their actual group also depends on soil structure, and the middle group is conservative for the SCS-CN method (Kartograf ADR-025, decision b). Changing the `TEXTURE_TO_HSG` table changes CN for every user.
+
+#### 3.5.4 Area Statistics
+
+- Cell area: for a **geographic** coordinate system it is computed geodetically for each raster row (it depends on latitude), for a **projected** one from the affine transform.
+- The `percent` of groups A-D is the share of the area **with data**, the `percent` of no data is the share of the total area; the sums of the groups and of no data give `total_area_m2`.
+- An optional `bbox` rectangle (with `bbox_crs`) clips the statistics, taking into account the share of edge cells.
+
+#### 3.5.5 Code Example
+
+```python
+from hydrolog.runoff import calculate_weighted_cn, get_cn
+from hydrolog.soil import hsg_from_rasters, hsg_statistics   # requires hydrolog[raster]
+
+hsg_from_rasters("clay.tif", "sand.tif", "silt.tif", output_path="hsg.tif")
+stats = hsg_statistics("hsg.tif")
+
+# Area-weighted CN (a single land cover, e.g. meadow in good condition)
+parts = [(get_cn(g, "meadow", "good"), s.area_ha)
+         for g, s in stats.groups.items() if s.area_ha > 0]
+cn = calculate_weighted_cn(parts)
+```
+
+> **Note.** HSG is not a CN number. With several land covers, the CN parts are pairs (HSG × land cover), and intersecting the HSG raster with the land cover raster is done outside Hydrolog.
+
+---
+
+### 3.6 Minimum Flows: the Fisher–Tippett Distribution for Minima (`LowFlowAnalysis`, fix in v0.8.0)
+
+`LowFlowAnalysis.fit_fisher_tippett()` fits to the annual minima (hydrological year XI-X, i.e. November-October) a distribution of **smallest** values: the generalised extreme value (GEV) distribution for minima, whose special cases are the Gumbel distribution for minima and the three-parameter Weibull distribution.
+
+#### 3.6.1 Formulas
+
+```
+Distribution function of annual minima x:
+
+   F(x) = 1 - exp( -( 1 + c × (x - loc) / scale )^(1/c) ),     1 + c × (x - loc) / scale > 0
+
+   c → 0   Gumbel distribution for minima:  F(x) = 1 - exp( -exp( (x - loc) / scale ) )
+   c > 0   minima have a lower bound  loc - scale / c  (Weibull with shape 1/c)
+
+Quantile with non-exceedance probability p = 1/T (the flow that occurs once in T years
+as equal or smaller):
+
+   Q_T = loc + scale / c × ( (-ln(1 - p))^c - 1 )
+```
+
+Because the sample minimum is the negated sample maximum with the sign changed, `min(x) = -max(-x)`, the parameters are estimated by maximum likelihood from the **negated** minima (`scipy.stats.genextreme`), and the quantile is `Q_T = -genextreme.isf(p, c, loc=-loc, scale=scale)`. The reported `shape` is the `c` parameter from `scipy.stats.genextreme` (i.e. minus the shape parameter ξ in the usual GEV notation).
+
+> **Change in v0.8.0 (bug fix).** Versions < 0.8.0 fitted the distribution of **maxima** directly to the minima and read its quantile at the point p. That is the mirror-image distribution: it approximates the centre of the sample correctly, but its left tail is not the tail of the distribution of smallest values, so the quantiles of rare low flows were biased, increasingly so with T, and could be negative. For a synthetic sample of 1000 annual minima from the Gumbel distribution for minima (loc = 50, scale = 8), the quantile for T = 100 years was **−3821**, and since v0.8.0 it is **13.26** (theoretical value 13.20). For the Weibull distribution (k = 2, loc = 1, scale = 5) for T = 100 years: 1.24 → 1.51 (theory 1.50), for T = 1000 years: 0.33 → 1.18 (theory 1.16).
+
+#### 3.6.2 Limitations
+
+- The distribution is not restricted to positive flows: for `shape ≤ 0` the minima have no lower bound, and quantiles for very long return periods can be negative.
+- Three parameters from a few decades of data are uncertain, especially the shape, and with it the quantiles of rare low flows (with fewer than 10 years of data the result carries a warning).
+- The Kolmogorov-Smirnov test is informational (`ks_valid = False`: the parameters were estimated from the same data).
+
+#### 3.6.3 Annual Minima (and Maxima): Complete Hydrological Years Only (fix in v0.8.0)
+
+The annual minima of `LowFlowAnalysis` and the annual maxima of `stats flood-frequency` (from a daily series) are extremes of **whole years of observation** (KZGW 2017; WMO No. 1029, 2009): a hydrological year (1 November – 31 October) enters the sample only if the series has a value for **every** day of the year — 365 days, or 366 for a year containing 29 February (a so-called leap year: 1 November 2019 – 31 October 2020 has 366 days). A missing date or `NaN` excludes the whole year, because the year's maximum or minimum could have occurred on the day without a value. Omitted years (with the number of days with data) are reported by the notice `incomplete_years` and the result field `incomplete_years`; the library (`LowFlowAnalysis.annual_minima()`) warns with `UserWarning`, and a series without a complete year is a `CalculationError`. Practical consequence: an export covering calendar years (1 January – 31 December) loses the first hydrological year (without November and December) and the last one (only November and December).
+
+> **Change in v0.8.0 (bug fix).** Versions < 0.8.0 took the extreme from every year present in the dates, including an incomplete one. For a synthetic calendar series 1991–2020 (a flood on 15 March and a low flow on 15 September every year), the sample had 31 "years", including 2021 with only November and December 2020 (maximum and minimum equal to the base level 5.0, with the median of complete years 13.0 and 2.2). Since v0.8.0 the sample has 29 years (1992–2020): GEV for T = 100 years **16.08 → 16.35**, Fisher–Tippett for T = 100 years **2.002 → 1.968**. For a series with gaps: fill in the data or (for maxima) supply the annual maxima directly, without dates.
+
+#### 3.6.4 Empirical Frequency of Minima: the Non-Exceedance Convention (fix in v0.8.0)
+
+In low-flow analysis, the return period *T* belongs to the **non-exceedance** probability *F = 1/T* (a flow equal or lower once in *T* years; WMO No. 1029, 2009; Tallaksen and van Lanen, 2004) — this is how the `fisher_tippett` quantiles are computed. The empirical positions of `LowFlowAnalysis.empirical_non_exceedance()` (result `LowFlowEmpiricalFrequency`, the `empirical` block of the `stats low-flow` command) follow the same convention: annual minima in ascending order (`values_ascending`), the *m*-th smallest has
+
+```
+Weibull (default):  F_m = m / (n + 1)          Hazen: (m − 0.5) / n          Cunnane: (m − 0.4) / (n + 0.2)
+T_m = 1 / F_m                                  (the deepest low flow in n years: T = n + 1)
+```
+
+The points (F, value) therefore lie on the same plot as the `fisher_tippett` quantiles (`non_exceedance_probabilities = 1/T`). `LowFlowAnalysis.empirical_frequency()` still returns *exceedance* positions (values descending, `P = i/(n+1)`), i.e. the opposite side of the same sample (`F = 1 − P`).
+
+> **Change in v0.8.0 (bug fix).** The `empirical` block in `stats low-flow` was the result of `empirical_frequency()`, so next to `fisher_tippett.return_periods` using the non-exceedance convention it placed `return_periods` using the exceedance convention. For `tests/fixtures/daily_flows_3y.csv` (minima 1.79; 1.88; 1.66) the deepest low flow 1.66 had T = **1.33** (P = 0.75), and since v0.8.0 it has F = 0.25 and T = **4**.
+
+```python
+from hydrolog.statistics import LowFlowAnalysis
+
+analysis = LowFlowAnalysis(daily_flows, dates, return_periods=[10, 50, 100])
+ft = analysis.fit_fisher_tippett()
+print(ft.parameters)   # {"shape": ..., "loc": ..., "scale": ...}
+print(ft.quantiles)    # flow [m³/s] once in 10, 50, 100 years
+```
+
+The same analysis in the CLI: `hydrolog stats low-flow --input-file q_dobowe.csv --value-column Q --date-column date --return-periods 10,50,100`.
+
+### 3.7 Time of Concentration from a Catchment (`WatershedParameters.calculate_tc`, `tc watershed`; fixes in v0.8.0)
+
+`WatershedParameters.calculate_tc(method)` and the `tc watershed` command compute tc with the chosen method from the catchment fields. Each argument of the formula is the field the method's source defines, with no substitute ([ADR-0019](decisions/0019-tc-from-the-inputs-its-source-defines.md), `hydrolog._ranges.TC_INPUTS`): a missing field is `validation_error` with `details.reason` `missing_field` naming it, whatever other fields the catchment has. `WatershedParameters.tc_parameters(method)` returns the arguments; the same numbers appear in the command's `result.parameters` and in the time of concentration section of the report.
+
+| Method | Length | Slope and other inputs | Source |
+|--------|--------|------------------------|--------|
+| Kirpich | `flow_path_length_km`: the longest flow path, from the outlet to the hydraulically most distant point of the watershed (usually on the divide, possibly on a ridge inside it) | `flow_path_slope_m_per_m`: elevation of that point minus the outlet, over the length | Fang et al. 2005 (TxDOT 0-4696-1), eq. 3.14; Mota and Kobiyama 2015 |
+| NRCS | `flow_path_length_km` (the flow length ℓ, most distant point to outlet) | `mean_slope_m_per_m` (average land slope Y, not the slope of the flow path), `cn` | USDA-NRCS 2010, NEH 630 ch. 15, eq. 15-4 |
+| Giandotti | `channel_length_km` (main channel) | H = `elevation_mean_m` − `elevation_min_m` | Grimaldi et al. 2012 |
+| FAA | **`overland_length_km`** | **`overland_slope_m_per_m`** (slope of the overland surface), `runoff_coeff` (C, table I) | FAA 1970, AC 150/5320-5B, fig. 7 |
+| Kerby | **`overland_length_km`** (up to a defined channel) | **`overland_slope_m_per_m`**, `retardance` (N) | Kerby 1959 (Roussel et al. 2005) |
+| Kerby-Kirpich | `overland_length_km`; channel = `flow_path_length_km` − `overland_length_km` | `overland_slope_m_per_m`; the channel at `flow_path_slope_m_per_m`, the slope of the whole path; `retardance` | Roussel et al. 2005 (TxDOT 0-4696-2), supplement; TxDOT HDM ch. 4 s. 11; Cleveland et al. 2012 (TxDOT 0-6382-P1) |
+
+- **The longest flow path** (`flow_path_length_km`, `flow_path_slope_m_per_m`) runs from the hydraulically most distant point of the watershed (the cell with the greatest flow distance to the outlet; usually on the divide, but possibly on a ridge inside the watershed) to the outlet; its slope is the elevation of that point minus the outlet elevation, over its length. Hydrograf's hydraulic length is this length. Before v0.8.0 Kirpich and NRCS took the channel length, else the catchment length, and Kirpich the channel slope, else the mean slope, else the relief over the length (which equals Kirpich's S only when the most remote point is also the highest), and Giandotti took the catchment length without a channel and the middle of the elevation range without a mean.
+- **FAA and Kerby are formulas for overland flow time** (FAA 1970, AC 150/5320-5B, fig. 7; Kerby 1959). Kerby derived his formula for flow paths up to 366 m (1200 ft; Roussel et al. 2005; TxDOT Hydraulic Design Manual, ch. 4, section 11); the FAA gives no limit of the length (its curves end at 800 ft). Before v0.8.0 the channel length and slope timed the channel with an overland flow formula, far beyond Kerby's paths. The result is the overland flow time; **the tc of a catchment with a channel is given by Kerby-Kirpich (or Kirpich)**. The later circulars AC 150/5320-5C and 5D do not have the FAA formula.
+- **NRCS**: in the lag equation (NEH 630, ch. 15, eq. 15-4; TR-55 does not contain it) Y is the mean land slope of the catchment [%], "not to be confused with the slope of the flow path".
+- **Kerby-Kirpich** splits the longest flow path: Kerby on the overland segment, Kirpich on the rest of the path at the slope of the whole path, with S + 0.0005 below 0.002 on both (Cleveland et al. 2012). Hydrolog reproduces the published examples: 24.6 + 32.0 = 56.5 min against "about 57" (Roussel et al. 2005; L 5,280 ft, overland 500 ft at 2%, N 0.40, S 0.0095), and 52.1 + 86.8 = 138.9 min against "about 140" with the low-slope offset (Cleveland et al. 2012). A flow path not longer than the overland segment is `exclusive_minimum` on `flow_path_length_km`.
+
+Example (catchment: L = 12 km, channel 10 km with slope 0.02, longest flow path 10.5 km with slope 0.019, terrain slope 0.025, CN 72, overland flow 0.2 km with slope 0.01, C = 0.5, N = 0.4):
+
+| Method | tc before v0.8.0 [min] | tc since v0.8.0 [min] | Reason |
+|--------|-----------------------:|----------------------:|--------|
+| FAA | 155.3 (warning: L = 10 km outside 0.015–3 km) | 27.7 | overland flow 0.2 km, S = 0.01 |
+| Kerby | 173.2 (two warnings) | 32.8 | as FAA |
+| NRCS | 463.9 | 431.4 | the flow path (10.5 km) instead of the channel; Y = 2.5% (terrain) instead of 2.0% (channel) |
+| Kirpich | 105.7 | 111.9 | the flow path, 10.5 km at 0.019, instead of the channel, 10 km at 0.02 |
+| Kerby-Kirpich | 138.5 | 143.1 | channel = 10.5 − 0.2 km at 0.019 instead of the given channel |
+
+#### 3.7.1 `cn` Alongside a Catchment in `hydrograph generate` and `report generate`
+
+The `cn` option given alongside a catchment is the CN of the whole calculation: it overrides the catchment's `cn` both in SCS-CN and in the time of concentration by the `nrcs` method, in which the retention S = 25400/CN − 254 of the lag equation (NEH 630, ch. 15, eq. 15-4) comes from the same CN. A catchment without `cn` also works when `cn` is given. Formerly the NRCS time of concentration took CN from the file and the effective precipitation took CN from the option. Example (CN 60 in the file, `cn` = 85, L = 12 km, Y = 2.5%, beta rainfall 50 mm/120 min): tc 657.7 → 322.1 min, Qmax 27.64 → 55.62 m³/s, time to peak 440 → 240 min.
+
+### 3.8 Rating Curve Q = a·(H − H₀)^b: the H₀ Starting Point (`RatingCurve`, fix in v0.8.0)
+
+`RatingCurve.fit()` (`hydrometrics rating-curve`) fits `Q = a·(H − H₀)^b` by least squares (`scipy.optimize.curve_fit`, bounds a ≥ 0, b ≥ 0, H₀ < min(H)) with the starting point a = 1, b = 1.5, H₀ = `h0_initial`. Without `h0_initial` the H₀ start lies below the lowest stage by one tenth of the stage range, by at least one stage unit:
+
+```
+H₀,start = min(H) − max(1, 0.1·(max(H) − min(H)))
+```
+
+Such a start is admissible for any sign of the stages (stages below the gauge zero, e.g. −10 cm, are normal). An explicitly supplied value must be finite and lower than the lowest stage (`validation_error`).
+
+> **Change in v0.8.0 (bug fix).** A fixed start of 0 was not lower than the lowest stage of a gauge with a reading ≤ 0, so `hydrolog hydrometrics rating-curve --water-levels=-10,5,20,40,80,120 --discharges 0.5,1.2,2.5,4.8,10.1,17.3` ended with an error ("h0_initial must be … below the lowest water level (−10), got 0.0"). Since v0.8.0 the start is −23 and the fit gives a = 0.004917, b = 1.640, H₀ = −25.17 (R² = 0.9998). On 60 synthetic curves (stages in cm and m, positive and negative, noise 1–8 %, 6–30 measurements) starts from 0.1 to 1 of the range below the lowest stage always gave the best least-squares solution.
+
+### 3.9 Flood Routing (`hydrolog.routing`, `route *`; ADR-0007)
+
+Lumped hydrologic routing turns an inflow hydrograph into the outflow hydrograph of a reach from storage and translation alone. It computes discharge only: water levels, inundation and backwater are hydraulics (Hydraulik, HEC-RAS, IMGW HD). The parameters of a model come from the user, from observed inflow and outflow, or from channel geometry; they are not derived from the catchment fields, and a routing model is not a substitute for a hydraulic model where the flood wave is not attenuated by storage and diffusion alone.
+
+#### 3.9.1 Conventions Shared by All Models (ADR-0008)
+
+| Item | Rule |
+|------|------|
+| Hydrograph table | `time_min` (minutes since any origin, strictly increasing at a regular step: every step within 1e-6 of the mean step) and `discharge_m3s` (not negative, finite), at least two ordinates. An irregular table is refused, nothing is resampled (`details.reason`: `irregular_step`, `not_increasing`, `negative`, `length_mismatch`, `too_short`, `not_finite`) |
+| Initial condition | the outflow at the first ordinate equals the inflow there (steady state) unless `initial_outflow_m3s` is given |
+| Tail | the outflow outlasts the inflow: the time axis is extended after the last inflow ordinate, where the inflow is held, until the last outflow differs from the final inflow by at most 0.1 % of the inflow peak and the water still stored above its steady amount is below 0.1 % of the inflow volume; at most ten times the inflow duration (at least 100 steps), otherwise the series ends with the warning `tail_truncated`. `extend_min` fixes the extension (`0` adds none). The notice `tail_extended` reports the added minutes |
+| Balance | volumes are trapezoid sums; `balance_error_m3` = inflow volume (on the extended axis) - outflow volume - change of storage: zero to rounding for the recurrences, unless the scheme ran on a refined time step; the quadrature error of the trapezoid rule where the outflow is not a recurrence of the ordinates (the exact cascade, 3.9.5) |
+| Non-negativity | a non-negative inflow gives a non-negative outflow; a scheme that returned a negative outflow is a `calculation_error` (a bug, not an input) |
+| Notices | accuracy limits are notices of the result, never errors |
+
+#### 3.9.2 Lag (`LagReach`, `route lag`)
+
+```
+O(t) = I(t - lag)        before the first ordinate: I = the initial outflow
+```
+
+The hydrograph is translated without attenuation, as in HEC-HMS (Lag): for a short reach with a predictable travel time. A lag that is a whole number of time steps shifts the ordinates exactly; otherwise the shifted ordinates are interpolated linearly between ordinates, which flattens sharp peaks (notice `lag_interpolated`). The storage of the reach is the water in transit, `lag` times the inflow. A shift by whole steps is exact (the identity tested in `tests/unit/test_routing_core.py`).
+
+```python
+from hydrolog.routing import Hydrograph, LagReach
+
+inflow = Hydrograph.from_step([0.0, 10.0, 40.0, 20.0, 0.0], timestep_min=30.0)
+result = LagReach(lag_min=60.0).route(inflow)
+print(result.outflow.time_to_peak_min, result.peak_delay_min)   # 120.0 60.0
+```
+
+#### 3.9.3 Muskingum (`MuskingumReach`, `route muskingum`)
+
+```
+S = K [X I + (1 - X) O]          K travel time [min], X weight, 0 <= X <= 0.5
+O_t = c_current I_t + c_previous I_{t-1} + c_outflow O_{t-1}        D = 2K(1 - X) + dt
+c_current = (dt - 2KX) / D     c_previous = (dt + 2KX) / D     c_outflow = (2K(1 - X) - dt) / D
+```
+
+The storage is a prism (`K O`) plus a wedge (`K X (I - O)`); the continuity equation over a step with the trapezoid rule gives the recurrence (McCarthy 1938; Chow, Maidment and Mays 1988; [HEC-HMS Muskingum model](https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/channel-flow/muskingum-model)). The weights sum to 1, so a steady state is kept. `X = 0` is a linear reservoir (maximum attenuation, the scheme of `ClarkIUH`), `X = 0.5` a wave that does not attenuate. Whatever the step, the first two moments of the discrete impulse response are those of the continuous model: the mean delay is `K` and the variance `K²(1 - 2X)`.
+
+**Positivity window.** The three weights are non-negative only when `|2KX| <= dt <= 2K(1 - X)`. Below `2KX` the weight of the current inflow is negative, so the first ordinate of a rising limb takes water out of the outflow; above `2K(1 - X)` the weight of the previous outflow is negative and the outflow oscillates. With `K = 20 h`: `X = 0`: `dt` from 0 to 40 h; `0.25`: 10 to 30 h; `0.5`: exactly 20 h.
+
+**Sub-reaches.** The reach is divided into `N` equal sub-reaches of `K/N`, in series, each with the same `X` and each starting with the initial outflow (HEC-HMS). The mean delay stays `K` and the variance becomes `K²(1 - 2X)/N`: more sub-reaches, less attenuation. Every sub-reach has to be inside the window, that is `2KX/dt <= N <= 2K(1 - X)/dt` (`hydrolog.routing.muskingum.subreach_window`). Unless `subreaches` is given, `N` is `K/dt` rounded to the nearest whole number (a half goes up), the HEC-HMS rule that the travel time of a sub-reach is about one time step. The window is symmetric about `K/dt`, so that number is inside it whenever the window holds any whole number. A `subreaches` given by the caller is never changed: outside the window it is a `validation_error` (`details.reason` `unstable_timestep`, `details.minimum` and `details.maximum` the window, `details.timestep_min` the step).
+
+**When no whole number fits** (`K` shorter than the step allows, or `X` near 0.5 with `K/dt` not a whole number) every time step is divided into the fewest equal sub-steps, from 2 to 100, for which a window exists; the inflow is interpolated linearly, the scheme runs on the sub-step and the outflow is read at the original ordinates (notice `substeps_added`). The volume balance then has the sampling error of the trapezoid rule on the original ordinates, which `balance_error_m3` reports. If 100 sub-steps give no window (`K` shorter than `dt / (200 (1 - X))`, or `X = 0.5` with `K/dt` not a ratio of small whole numbers) or the divided series would have more than 1,000,000 ordinates, the reach is refused (`validation_error`, `details.option` `k_min`, `details.reason` `unstable_timestep`); `route lag` has no storage and no such limit.
+
+**Storage and balance.** The storage is the sum over the sub-reaches of `K/N [X I_j + (1 - X) O_j]`, where `I_j` is the inflow of sub-reach `j` (the outflow of `j - 1`); at the first ordinate every sub-reach but the first is fed by the initial outflow. The steady storage is `K` times the final inflow. The balance error is zero to rounding because the trapezoid continuity holds in every sub-reach and the flows at the junctions cancel.
+
+**Reference values.** The [University of Iowa handout](https://user.engineering.uiowa.edu/~flood/handouts/EX-L27-Muskingum-soln.pdf) (Lesson 27) routes ten inflow ordinates at `dt = 12 h` through one reach with `K = 20 h` and `X = 0.25`, starting from the steady outflow of 100 cfs. It prints the weights 0.0476, 0.5238 and 0.4286 and the outflow to 0.1 cfs, so a printed value is right to 0.05 cfs:
+
+| Time (h) | 12 | 24 | 36 | 48 | 60 | 72 | 84 | 96 | 108 | 120 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Inflow (cfs) | 100 | 300 | 680 | 500 | 400 | 310 | 230 | 180 | 100 | 50 |
+| Published outflow (cfs) | 100.0 | 109.5 | 236.5 | 481.3 | 487.2 | 433.1 | 358.9 | 282.9 | 220.3 | 149.2 |
+| `MuskingumReach` (cfs) | 100.0000 | 109.5238 | 236.4626 | 481.3411 | 487.2414 | 433.1035 | 358.9491 | 282.8830 | 220.2832 | 149.1690 |
+
+The largest difference is 0.049 cfs, inside the rounding of the table (`tests/unit/test_routing_muskingum.py`). The same file tests the identities: `X = 0.5` with `K` equal to `N` steps is `LagReach` of `N` steps (exact, and with a fractional number of steps the interpolated lag), `X = 0` is the Clark loop, the mean delay is `K` and the variance `K²(1 - 2X)/N` to 1e-9 for 1 to 4 sub-reaches, and `tests/unit/test_routing_kernels.py` shows second-order convergence of the sinusoidal response to the transfer function `(1 - KXs) / (1 + K(1 - X)s)`.
+
+```python
+from hydrolog.routing import Hydrograph, MuskingumReach
+
+inflow = Hydrograph.from_step([100, 300, 680, 500, 400, 310, 230, 180, 100, 50], 720.0)
+result = MuskingumReach(k_min=1200.0, x=0.25, subreaches=1).route(inflow, extend_min=0.0)
+print(result.outflow.discharge_m3s.round(1).tolist())
+# [100.0, 109.5, 236.5, 481.3, 487.2, 433.1, 358.9, 282.9, 220.3, 149.2]
+```
+
+#### 3.9.4 Muskingum-Cunge with Constant Coefficients (`MuskingumCungeReach`)
+
+```
+K = dx / c        X = (1 - Q / (T S0 c dx)) / 2        dx_c = (c dt + Q / (T S0 c)) / 2
+```
+
+Cunge (1969) set the numerical diffusion of the Muskingum scheme equal to the physical diffusion of the flood wave, `mu = Q / (2 T S0)`, which gives `K` and `X` of a routing distance step `dx` from the celerity `c`, the top width `T`, the slope `S0` and a reference discharge `Q` (NEH-630 chapter 17, eq. 17-20 to 17-22). `X` may be negative. The reach of length `L` is divided into `ceil(L / dx_c)` equal steps (eq. 17-21), each routed as a Muskingum sub-reach, so the volume is conserved; with `D = Q / (T S0 c)` the weights of a step are all non-negative exactly when `|c dt - D| <= dx <= c dt + D` (the window of 3.9.3 with `K = dx / c`).
+
+**Hydraulics and reference.** `c` and `T` are given, or follow from a prismatic section (`TrapezoidalSection`: rectangle, trapezoid, triangle) and Manning's equation at the reference discharge: `c = dQ/dA` (HEC-HMS), which is NRCS `c = m Q / A` with the local slope of the rating instead of the weighted log-log slope `m` of the whole table (2 % lower for example 17-4). The reference is the inflow peak, or `reference_discharge_m3s` (EM 1110-2-1417: base flow plus half of the rise). WinTR-20 takes the peak at the upstream end of each distance step; here every step has the reference of the reach (HEC-HMS), which is the same for one step and keeps the scheme linear and independent of the extension of the series.
+
+**Rules of NEH-630.** (1) The hydrograph must rise from 5 % of its peak to the peak in at least 10 time steps (`rise_steps`); otherwise each step is divided into `ceil(10 / steps)` sub-steps, the inflow interpolated linearly and the outflow read at the original ordinates (notice `timestep_refined`; the balance has a sampling error). (2) Accuracy: with `Cg = c dt / dx` and `Dg = 1 - 2X` the routing is within the limits when `Dg <= exp(2.3 Cg)` (appendix B). Every grid inside the window above meets it: for `Dg <= 1` the limit is at least 1 and holds at once; for `Dg > 1` the window `|Cg - Dg| <= 1` gives `Cg >= Dg - 1`, and `exp(2.3 (Dg - 1)) >= 1 + 2.3 (Dg - 1) >= Dg` (checked on 73,804 random grids as well, the closest margin is 0.0017). A grid beyond the limit is therefore one that the planner replaced: it keeps the NRCS number of steps when the window allows it, otherwise takes the largest number of steps inside the window (`subreaches_adjusted`), or divides the time step further (`substeps_added`), and reports the grid of the NRCS rule when it was beyond the limit (`accuracy_limit`, ADR-0008). A grid that needs so many sub-steps that the series would have more than a million ordinates is refused (`validation_error`, `details.reason` `unstable_timestep`, `details.option` `times_min`).
+
+**A reach without a grid ([ADR-0026](decisions/0026-a-reach-without-a-muskingum-cunge-grid.md)).** When no division of the reach and of the step into 1 to 100 sub-steps has a window, the reach is not refused. Typically the diffusion length `D` is long against the distance `c dt` that the wave travels in a step and lies far from every whole fraction `L / n` of the reach (a flat, short or narrow reach at a large discharge): sub-steps only shorten `dt`, and the rise rule refines a long step, so no step that the run can take helps. The reach is routed as `n` equal linear reservoirs of `K = L / (n c)` with the exact kernel of the cascade (3.9.5), the Muskingum scheme with `X = 0` and no window at all. The diffusion wave of the reach has the mean travel time `L / c` and the variance `D L / c²`; `n` reservoirs have `n K` and `n K²`, so `K = L / (n c)` keeps the travel time and `n = L / D` rounded (a half up, at least 1) matches the variance as nearly as a whole number can. The warning `diffusion_dominated` gives `L`, `c`, `D`, `n` and `K` (and `X = (1 - D / L) / 2`, negative, when `D > L`), and `parameters` hold `scheme` `linear_reservoir`, `n`, `k_min` (one reservoir), `lag_min` (`L / c`) and `diffusion_length_m` instead of those of a grid; the rise rule does not apply, the volume is kept to rounding when the series ends at rest, and the outflow is not negative. Against the linear diffusion wave (`dQ/dt + c dQ/dx = (c D / 2) d²Q/dx²` on a semi-infinite channel, the exact Hayami response, checked by Crank-Nicolson to 3e-4 m3/s) on the inflow of Hydrograf's reach R2 (Nysa Szalona, 60 mm in a 120 min block, `n` 0.05 and a 5 m bottom: peak 180.5 m3/s, 5 min step) the peak is 4.9 % low for R2 itself (`L` = 7,701 m, `D` = 6,740 m, one reservoir), 0.6 % high for a 490 m reach with `D` = 9,028 m, and 7.8 % low (5 min late) with three reservoirs for `L / D` = 3.3, where one reservoir would be 21.4 % low and 70 min early; the volume is the same and the time to peak equal otherwise (ADR-0026 has the table).
+
+**Reference values.** NEH-630 example 17-4 (`L` = 2,600 ft, `S0` = 0.00091, `dt` = 0.1 h, reference 684.18 ft3/s, `c` = 4.297 ft/s, `T` = 44.6 ft) gives `dx_c` = 2,735 ft (here 833.63 m), one step, `K` = 605.07 s, `X` = -0.2544 (printed -0.254), the weights 0.0277, 0.3556 and 0.6166 (printed 0.028, 0.355, 0.617), `Cg` = 0.595, `Dg` = 1.509 (printed 1.508) and the limit 3.93. The outflow of Table 17-18 follows from the printed coefficients to 0.0049 ft3/s, half of the printed digit, so the table was computed with the rounded coefficients; the exact weights give it to 0.24 ft3/s (0.04 % of the peak; 645.78 ft3/s at 13.1 h against 645.72 ft3/s), and varying `c`, `T` or `S0` within their printed rounding cannot remove that. Routing the same reach from its section (15 ft bottom, 2:1, `n` = 0.04) gives the table to 2.4 ft3/s (0.4 %), the effect of the 2 % lower celerity. The tests are in `tests/unit/test_routing_cunge.py` and `tests/unit/test_routing_sections.py` (the library) and `tests/unit/test_operations_route.py` (the command `route muskingum-cunge`, in SI).
+
+#### 3.9.5 Cascade of Linear Reservoirs (`CascadeReach`, `route cascade`)
+
+```
+u(t) = (t/K)^(n-1) exp(-t/K) / (K Γ(n))        mean delay n K        variance n K²
+```
+
+The reach is `n` equal linear reservoirs `S = K O` in series. Nash (1957) showed that the response to a unit impulse is the gamma density above (the kernel of `NashIUH`); `n` need not be whole. The Kalinin-Milyukov method of the Soviet Union is the same model with a characteristic reach length `Δx_c = Q / (T S0 c)` (Cunge's expression with `X = 0`, 3.9.4): `n = L / Δx_c` reservoirs of `K = Δx_c / c` (Ponce, "Linear reservoirs and numerical diffusion"). `CascadeReach` takes `n` with `k_min`, or with `length_km` and `celerity_m_per_s`, which fix the travel time `L / c = n K`. The SSARR routing equation (Muskingum with `X = 0`, the Clark scheme of `route_muskingum_cascade`) is a trapezoid-rule recurrence of this model: its weights are not negative only for `dt <= 2K`, and its numerical diffusion grows with `dt / K`.
+
+**Exact kernel.** The cascade is evaluated with its kernel and not with a recurrence, so every time step is allowed: there is no positivity window, no sub-reach and no sub-step. The inflow is read as the piecewise-linear interpolation of its ordinates and the outflow at an ordinate is the exact response to it. With `x = t / K`, `a = dt / K`, `P(n, x)` the regularised lower incomplete gamma function (`scipy.special.gammainc`) and `Q = 1 - P`, the response to a unit step is `P(n, x)` and to a unit ramp `S2(x) = ∫P = x P(n, x) - n P(n + 1, x)`. A piecewise-linear inflow is a sum of hats, and a hat is the second difference of the ramp over `dt`, so the outflow at ordinate `j` is `Σ h_m I(j - m)` with
+
+```
+h_0 = S2(a) / a        h_m = [S2((m + 1) a) - 2 S2(m a) + S2((m - 1) a)] / a
+```
+
+(`cascade_weights`). The weights are integrals of the gamma density against a hat, so they are not negative; they add up to 1, and `Σ m h_m a = n`, so the mean delay is exact. The code evaluates them from `V(x) = x - S2(x) = x Q(n, x) + n P(n + 1, x)`, which tends to `n` and so loses no digits at large `x`; the weights lose accuracy as `a` falls, relative to the largest weight about 1e-14 at `a = 1`, 1e-12 at `a = 0.1`, 1e-10 at `a = 0.01` and 2e-8 at `a = 0.001`.
+
+**Start, storage and balance.** All `n` reservoirs start with the initial outflow `O_0` (the first inflow ordinate unless `initial_outflow_m3s` is given), and the inflow follows its ordinates from `I_0`, which may differ: `O_j = O_0 [1 - P(n, ja)] + I_0 [P(n, ja) - D_j] + Σ_{i>=1} I_i h_{j-i}`, where `D_j` is the mean of `P` over the step before ordinate `j`. The storage is the water of the inflow that has not yet left, `∫ I(t - τ) Q(n, τ/K) dτ`, in closed form from `V` and `∫ x Q`; at rest it is `n K I`. The outflow between the ordinates is not a straight line, so its trapezoid volume differs from its integral: `balance_error_m3` is that quadrature error, `(dt² / 12) [O'(end) - O'(start)]` to leading order, second order in `dt` and negligible when the series starts and ends at rest.
+
+```python
+from hydrolog.routing import CascadeReach, Hydrograph
+
+inflow = Hydrograph.from_step([0.0, 10.0, 40.0, 20.0, 0.0], timestep_min=30.0)
+result = CascadeReach(n=3, k_min=30.0).route(inflow)
+print(result.outflow.time_to_peak_min, round(result.outflow.peak_discharge_m3s, 2))   # 120.0 16.02
+```
+
+**Reference values.** There is no published table for the cascade; the references are its definition and computations that share nothing with the code (`tests/unit/test_routing_cascade.py`). For whole `n`, the exact solution of the chain of reservoirs by the matrix exponential (outflow and storage to 1e-10, also with an initial outflow that differs from the first inflow). For any `n`, the convolution integral of the gamma density of `NashIUH` with the interpolated inflow (1e-8). The weights as the integral of `NashIUH.ordinate` against a hat (1e-11) and against 60-digit arithmetic. A unit-volume pulse of width `dt` reproduces the IUH with an error that falls with `dt²`. One reservoir by hand (`h_0 = 1/e` for `dt = K`). The trapezoid recurrence of the Clark scheme converges to the kernel with second order.
+
+**Command.** `route cascade` takes `n` and exactly one time scale, `k_min` or `length_km` with `celerity_m_per_s` (anything else is a `validation_error`, `details.reason` `one_of`), next to the hydrograph, run and output options of `route lag`. It has no `unstable_timestep`: `parameters` hold `n`, `k_min`, the delay `lag_min = n K`, `timestep_over_k = dt / K` and the length and celerity when they were given, and the only notices are `tail_extended` and `tail_truncated`.
+
+#### 3.9.6 Level-Pool Routing, Storage Indication (`LevelPoolReach`, `route level-pool`)
+
+```
+S2/dt + O2/2 = (I1 + I2)/2 + (S1/dt - O1/2)        working curve  Y(O) = S(O)/dt + O/2
+```
+
+A reservoir, a pond or a reach holds one storage for each outflow, and the table of rows `(S, O)` (with an optional stage) is its only parameter (NEH-630 chapter 17; [HEC-HMS Modified Puls](https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/channel-flow/modified-puls-model)). Continuity over a step with the trapezoid rule puts the unknown storage and outflow on one side; the outflow is read from the working curve by linear interpolation of the table, so the volume is conserved exactly (the balance error is zero to rounding unless the step was divided). The table is a polyline with both columns not decreasing; a stretch with no outflow below a crest or an invert (a dead zone) is allowed, and the pool then rests at its highest storage, full to the crest. Only differences of storage enter, so its datum is free. With `subreaches = N` the reach is `N` pools in series, each holding `S/N` for the same outflow (HEC-HMS: more of them, less attenuation).
+
+**Step rule.** Where the storage constant `K = dS/dO` of a segment is shorter than `dt/2`, the weight of the previous outflow of the linear reservoir of that `K`, `(2K - dt)/(2K + dt)`, is negative (3.9.3 with `X = 0`): the outflow overshoots, and can go negative. NEH-630 states the rule for the whole curve, `dt <= 2 S/O` (the working curve to the right of the line of equal values), and `S/O` is a mean of the `K` below it, so a table with a sharp change of slope passes it while the outflow still overshoots the inflow peak: on 1,499 random tables (a dead zone, 3 to 10 rows) a step at 0.99 of that limit gave a peak outflow above the inflow peak in 201 of them, by up to 24 %, and in none when `dt <= 2K` is applied to each segment. The library applies it per segment (`timestep_limit_min`), from the state at rest under the lowest flow of the run up to the first row that reaches the largest, so a row for overtopping far above the flood does not shorten the step; the scheme is then monotone, which is the discrete maximum principle: the outflow stays between those flows. A longer step is divided into the fewest equal sub-steps (the inflow interpolated linearly, the outflow read at the original ordinates, notice `timestep_refined`, a sampling error in the balance); more than 100 parts are `unstable_timestep`.
+
+**Initial state and range.** Every pool starts at rest with the initial outflow (the first inflow ordinate unless given), at the storage the table gives for it. An initial outflow outside the table is a `validation_error`; a flood that fills the reservoir beyond the last row or empties it below the first is a `calculation_error` (`table_exceeded`, `table_emptied`): the table is never extrapolated.
+
+```python
+from hydrolog.routing import Hydrograph, LevelPoolReach
+
+pond = LevelPoolReach(storage_m3=[0, 360000], outflow_m3s=[0, 100])   # 3,600 m3 per m3/s
+flood = Hydrograph.from_step([0.0, 5.0, 10.0, 5.0, 0.0], timestep_min=60.0)
+print(round(pond.route(flood).outflow.peak_discharge_m3s, 3))          # 6.852
+```
+
+**Reference values.** NEH-630 example 17-1 (the channel reach of Table 17-4, `dt` = 0.5 h, 19 ordinates) is reproduced to 0.85 ft3/s (0.02 % of the 3,827 ft3/s peak), inside the 1 ft3/s of the plan but above the half unit of the print. Table 17-7 prints each average inflow rounded (4,687.5 as 4,688, and so on): those averages belong to ordinates 1 ft3/s higher at 2.5, 3.5, 4.5 and 5.5 h, and with them all 19 printed values are reproduced to 0.49 ft3/s. The storage at the peak follows from the printed 9,056 and 3,827 ft3/s. The shortest `K` of the table up to the 5,000 ft3/s peak is 0.651 h (50 to 150 ft3/s), so the limit is 78.12 min (60.83 min for the whole table) and the published step of 30 min is not divided. The other references share nothing with the code (`tests/unit/test_routing_level_pool.py`): a table of constant `K` is the linear reservoir, equal to Muskingum with `X = 0` and `N` sub-reaches to 1e-12; a tank draining through a weir has the exact solution `h = (h0^(-1/2) + C t / (2A))^(-2)`, and a tank filled by a flood is integrated with an ODE solver, both converging with second order in `dt` (the error falls by 4.0 when the step is halved); and random tables with a dead zone keep the outflow between the lowest and the highest flow of the run with the volume balance closed to 1e-9.
+
+**Command.** `route level-pool` takes the table inline (`storage_m3` with `outflow_m3s`, and optionally `stage_m`) or as a `rating_file` with those columns, exactly one of the two (anything else is a `validation_error`, `details.reason` `one_of`; a `stage_m` next to a `rating_file` is a `conflict`, the file brings its own column), and `subreaches` (default 1), next to the hydrograph, run and output options of `route lag`. The file is read after the output has been planned; `output` must not be the `rating_file`. A bad inline table is a `validation_error` and a bad file a `data_error` with the row and the column. `parameters` hold the sub-reaches and sub-steps, the longest step of the table, the peak storage and its time and, with a stage, the peak stage and its time; the notice `timestep_refined` says that the step was divided, and a flood beyond the table is a `calculation_error`.
+
+#### 3.9.7 Routing over a River Network (`RoutingNetwork`, `route network`)
+
+A network is a directed acyclic graph of node objects that link by reference: a node holds the nodes that flow into it (`inflows`; in a document `from`, their ids, the convention of `StreamSegment.upstream_ids`). The classes are `Subcatchment` (type `subcatchment`, a source hydrograph), `Channel` (`reach`: any element above, routing the hydrograph of its upstream node), `Reservoir` (`reservoir`: a `LevelPoolReach`), `Junction` (`junction`: the sum of the hydrographs that flow into it) and one `Outlet` (`outlet`); `RoutingNetwork(outlet)` is the network that ends there, everything upstream of the outlet being in it. The nodes are evaluated headwaters first and, among those that are ready, the smallest id first, so neither the order of the nodes in a list or a file nor anything but the links decides the result. A node flows into one node (a bifurcation would count its water twice) and every node reaches the outlet; two outlets or none and a node that flows nowhere are errors with a `details.reason`, and in a document so are a cycle and an unknown id (objects can form neither).
+
+**Time axes.** One step and one first time for all sources; nothing is resampled (ADR-0008). Their lengths may differ, and so do those of the outflows, which each reach extends until it has settled; a junction holds a shorter hydrograph at its last value, as a reach holds its inflow over the extension.
+
+```python
+from hydrolog.routing import (
+    Channel, Hydrograph, Junction, LagReach, Outlet, RoutingNetwork, Subcatchment
+)
+
+small = Hydrograph.from_step([1.0, 4.0, 1.0], timestep_min=10.0)
+large = Hydrograph.from_step([2.0, 8.0, 2.0], timestep_min=10.0)
+a, b = Subcatchment("A", small), Subcatchment("B", large)
+reach = Channel("R", LagReach(lag_min=10.0), inflow=Junction("J", inflows=[a, b]))
+network = RoutingNetwork(Outlet("OUT", inflow=reach))
+print(network.route().hydrographs["OUT"].peak_discharge_m3s)           # 12.0
+```
+
+**Reference values.** No published table exists for a network, so the tests are the identities of the plan. A one-reach network equals the single command: the table it writes is the same file, byte for byte, for each of the five methods. A junction adds; the sum of the routed parts is the routed sum for a linear reach; the order of the nodes changes nothing. `N` reaches of `K / N` in series equal one `MuskingumReach` with `N` sub-reaches: exactly (1e-12) when `extend_min` fixes the extension, and to the size of the settling tolerance when the extension is automatic, because each reach cuts its tail at 0.1 % of its inflow peak (0.099 m3/s of a 90 m3/s peak over three reaches).
+
+**Command.** `route network` reads the document `hydrolog-network/1` ([ADR-0010](decisions/0010-route-network-document-and-output-directory.md)) inline or from `network_file`. A subcatchment has its discharges inline or in a column of `inflows_file`; a reach has a `method` and the options of `route <method>`, validated by their catalog declaration; a reservoir has those of `route level-pool`; a `rating_file` lies in the directory of the network file. A wrong document is a `data_error` for a file and a `validation_error` for the inline option, with the node and the field in `details`. `result.nodes[]` gives the peak, its time and the volume of every node and, for a reach or a reservoir, the figures of `route <method>`; the notices begin with the node id. `output_dir` writes `<id>.csv` for each selected node, which every `route` command reads again; without it the hydrographs of the selected nodes are in the result.
+
+**Subcatchments that make their hydrograph** ([ADR-0012](decisions/0012-network-objects-rainfall-and-runoff.md)). A `Subcatchment` is one lumped, homogeneous area, with no flow paths inside. It is given its hydrograph, or makes it from a `WatershedParameters`, a `RunoffModel` and a `RainfallSource`; the path of a made one is the path of `hydrograph generate`, fed with the rain of that subcatchment:
+
+```
+rainfall.hyetograph(step)  ->  SCS-CN effective rainfall (CN of the watershed, AMC, Ia)
+                           ->  unit hydrograph (SCS, Nash, Clark or Snyder; tc given or from the watershed)
+                           ->  discharge [m3/s] at the time step of the network, from time 0
+```
+
+`DesignStorm` is a design storm (a depth over a duration in the shape of a `Hietogram`) cut at the step of the network; `RainfallSeries` is a record, never resampled (a network of another step refuses it, `timestep_mismatch`); `CurveNumberRunoff` is `HydrographGenerator` as a `RunoffModel`, with the options of the command, and its hydrograph is the generator's to the last ordinate (`assert_array_equal`, for the four unit hydrograph models). The **rainfall belongs to the subcatchment**: two of them take it from different sources, and `RoutingNetwork(..., rainfall=)` is only a default for those that have none (`missing_field` when neither exists). A network has one time step: the one given, else that of the given hydrographs and series (they must agree), else 5 min. A warning of the library on the way (a time-of-concentration formula outside its range) is a notice of the node that caused it.
+
+**Control points** ([ADR-0012](decisions/0012-network-objects-rainfall-and-runoff.md)). An application that lets its user pick points on the streams builds the network with `ControlPointNetwork`: the outlet first, then points upstream of it. A point closes its *residual* area, the contributing area minus the areas of the points picked above it (the application computes it; Hydrolog does not know areas), and the stream between two points is a channel. Every point is a junction that adds its own residual subcatchment and the outflow of the channel of each point that flows into it:
+
+```
+Q(P) = Q_residual(P) + sum over the points U that flow into P of  route(channel U->P, Q(U))
+```
+
+so `hydrographs[P]` of the result is the discharge at the point. Where another stream joins a channel `U->D`, `add_confluence` splits it into `U->C` and `C->D` (both given, never made up) and the tributary `T` flows into `C`: `Q(C) = route(U->C, Q(U)) + route(T->C, Q(T))` and `D` receives `route(C->D, Q(C))`. The stream below the confluence is routed once, for the water of both. For a **linear** reach that is the same as routing each stream through its own copy of `C->D`, because routing is linear and a sum of routed parts is the routed sum; for a **nonlinear** one it is not. In the test (`tests/unit/test_routing_points.py`: two streams of 4 and 9 m3/s peaks, each through a 10 min lag, joining above one reach) the peak below the confluence is 7.62 m3/s with a Muskingum reach whichever way it is built, 3.91 m3/s with a Muskingum-Cunge reach (the coefficients follow the inflow peak: 6 km, 1 m/s, 25 m, slope 0.001) against 5.06 m3/s when each stream is routed through its own copy, and 3.21 against 3.03 m3/s with a pond. Removing a point keeps the points above it: they flow into the point below through the two channels in series (what the stream was), or through the one that the application gives for both; two streams that meet in the removed point keep a confluence there; a confluence that is left with one stream is dropped.
+
+### 3.10 Flood Frequency: Fit Methods (`FloodFrequencyAnalysis`, `stats flood-frequency`; ADR-0021)
+
+`stats flood-frequency` fits the log-normal (location 0, two parameters), GEV, Pearson III and Weibull distributions to the annual maxima and ranks them by AIC. `fit_method` (default `l_moments`) chooses how the parameters are estimated ([ADR-0021](decisions/0021-fit-methods-of-flood-frequency.md)); `all` fits each distribution by each of the four methods. Every method gives the parameters of the same scipy distributions (`lognorm` with `loc = 0`, `genextreme`, `pearson3`, `weibull_min`), and the quantiles, K-S, A² and AIC follow from them alike. Every item of `distributions` carries its `fit_method`; the result's `fit_method` is the value asked for.
+
+Each distribution of the result also carries `densities` [1/(m³/s)]: the fitted probability density at each of its `quantiles`, in the same order (the exponential of scipy's log-density there). A quantile of T > 1 lies inside the support, where the four densities are positive. The GUI draws the density and the distribution function F = 1 − p against Q from these fields and computes nothing else.
+
+| `fit_method` | Estimator |
+|---|---|
+| `mle` | Maximum likelihood, `scipy.stats.<distribution>.fit` (the log-normal with `floc=0`) |
+| `moments` | The distribution's mean, standard deviation and (three parameters) skewness equal the sample's: the mean, the standard deviation with the divisor n − 1 and the adjusted skewness G1 = √(n(n − 1)) / (n − 2) · m3 / m2^(3/2). Log-normal: s² = ln(1 + Cv²), scale = mean / √(1 + Cv²); Pearson III: (G1, mean, standard deviation), scipy's own parameters; GEV: the shape c whose skewness is G1 (Brent's method), then the scale and the location from the variance and the mean |
+| `l_moments` | The distribution's λ1, λ2 and (three parameters) τ3 equal the sample's, from the unbiased probability-weighted moments of the ascending sample: λ1 = b0, λ2 = 2b1 − b0, τ3 = (6b2 − 6b1 + b0) / λ2. Log-normal: s = 2 erf⁻¹(λ2 / λ1), scale = λ1 exp(−s²/2); GEV: c solving τ3 = 2(1 − 3^−c) / (1 − 2^−c) − 3 (Brent's method), α = λ2 c / ((1 − 2^−c) Γ(1 + c)), ξ = λ1 − α (1 − Γ(1 + c)) / c; Pearson III: α = 4/γ² from \|τ3\| by the rational approximations of Hosking and Wallis (1997), γ = 2 sign(τ3) / √α, σ = λ2 √(πα) Γ(α) / Γ(α + ½), μ = λ1 |
+| `least_squares` | The minimum of Σ (x₍ⱼ₎ − Q(j / (n + 1)))² over the ascending sample and the quantiles at the Weibull plotting positions of `empirical`, by Nelder-Mead from the `moments` estimate (the scale and the log-normal and Weibull shapes searched as logarithms) |
+
+For the moments and the L-moments (and so the start of least squares) the **Weibull distribution is the GEV of the negated sample**: −X ~ GEV(c, ξ, α) with c > 0 is X ~ `weibull_min`(1/c, −ξ − α/c, α/c). It needs a sample skewness above −1.1395 or an L-skewness between −0.1699 and 1, the values of the Gumbel distribution (c = 0).
+
+**No parameters.** The methods other than `mle` need 3 values, not all equal, a sample skewness or L-skewness inside the distribution's range, and values above 0 for the log-normal. Otherwise the fit is a `calculation_error` with `details.reason` `too_few_values`, `constant_values`, `out_of_range` or `non_positive_values`. When several combinations are fitted (`distribution = "all"` or `fit_method = "all"`) that combination is left out with the notice `distribution_left_out`, which names its distribution and method; the call fails only when none remains, which `fit_method = "all"` never meets (maximum likelihood fits each distribution).
+
+**Every method at once.** With `fit_method = "all"` one AIC ranking covers all the combinations, up to 16 (`FloodFrequencyAnalysis.fit_all` keys them `"<distribution>/<fit_method>"`). Each AIC is the log-likelihood at that method's parameters with the distribution's number of parameters, so AIC across the methods of one distribution favours maximum likelihood when its search converges; scipy's `fit` may stop short of the maximum, though: on the 11 values of the unit tests (`_FLOODS`) its GEV has the AIC 129.1 and the L-moments' GEV 118.6. The default is `l_moments` because maximum likelihood is less stable on the short samples of annual maxima.
+
+**Outside the support: AIC null.** A fitted distribution may give no density to an annual maximum, most often a lower bound of Pearson III or Weibull above the smallest one. Its log-likelihood is −∞, so its AIC is infinite (`null` in JSON) and it ranks after the fits with a finite AIC; its quantiles, K-S and A² stay, and the notice `outside_support` names the values. With the moments and the L-moments this is frequent: in trials of 300 samples of 30 and 60 years it happened in 9–81 % of the Pearson III fits and 16–91 % of the Weibull fits. Maximum likelihood can do it too: its Weibull of `tests/fixtures/maksima_roczne.csv` has the location 94.2, above the maxima 81.6 and 87.2.
+
+**Least squares follows the largest values.** Its residuals are in m³/s, and the largest annual maxima lie farthest apart, so they weigh most. On the 26 annual maxima of `tests/fixtures/maksima_roczne.csv` the GEV Q 1% is 307.3 m³/s by `mle`, 309.8 by `moments`, 324.9 by `l_moments` and 517.3 by `least_squares`.
+
+**Verification** (`tests/unit/test_high_flows.py`). Every method recovers known parameters of every distribution to 1 % from a synthetic sample of 20,000 values (the quantiles at (i − 0.5)/n); the sample L-moments of 1, 2, 3, 4, 10 are λ1 = 4, λ2 = 2, τ3 = 0.5, computed by hand from the 10 pairs and 10 triples; the moments fit reproduces the sample's mean, variance (n − 1) and G1; least squares brings the quantiles closer to the sample than its start. The Pearson III approximation was checked against the exact τ3 = 6 I₁/₃(α, 2α) − 3: α within 3·10⁻⁵ (relative) over the whole range. For every distribution and method, the densities equal scipy's pdf at the quantiles (relative 10⁻¹²) and are above 0, from T = 1.01 to 1000 years. With `all`, the 16 combinations are each equal to their own fit, sorted by AIC, each method's in the order of its own ranking, and a left-skewed sample leaves out the Weibull fits of the moments, the L-moments and least squares.
+
+### 3.11 Homogeneity of Annual Maxima (`homogeneity_tests`, `stats homogeneity`; ADR-0022)
+
+A flood frequency analysis takes the annual maxima as a sample of one distribution; a change of the catchment or of the gauge (a reservoir, a regulated reach, a moved station) breaks that. `stats homogeneity` (`hydrolog.statistics.homogeneity_tests`) checks the series with three non-parametric tests ([ADR-0022](decisions/0022-homogeneity-tests.md)). Its series is that of `stats flood-frequency`: the annual maxima of the complete hydrological years of a daily series (section 3.6.3; their hydrological years are the years), or annual maxima as values with optional years (`years` inline, `year_column` in a file: whole numbers, strictly increasing, gaps allowed).
+
+**The split.** The first part holds the values of the years before `split_year`, the second those from `split_year` on; without `split_year` the first part is the first ⌊n/2⌋ values (an odd n puts the middle value in the second part). `split_year` need not be a year of the series (a skipped incomplete year splits between its neighbours) but must leave a value in each part: from the first year + 1 to the last year. The result gives `split_index`, the number of values of the first part (the 0-based index of the first value of the second part), and `split_year`, the year of that value (`null` without years).
+
+| Test | Statistic | p-value (two-sided) |
+|---|---|---|
+| Mann-Whitney U (the two parts) | U of the first part: the pairs (x from the first part, y from the second) with x > y, a tie counting ½; about n₁n₂/2 without a difference, 0 when every value of the first part is smaller | `scipy.stats.mannwhitneyu`: exact when a part has at most 8 values and there are no ties, otherwise the normal approximation with the corrections for ties and continuity |
+| Kolmogorov-Smirnov, two samples (the two parts) | D = max \|F₁(x) − F₂(x)\|, the largest distance between the empirical distribution functions of the parts | `scipy.stats.ks_2samp`, exact for series of annual maxima |
+| Pettitt (the whole series) | U_t = Σ_{i≤t} Σ_{j>t} sgn(x_i − x_j) = 2 Σ_{i≤t} r_i − t(n + 1) for t = 1, …, n − 1 (r_i the ranks, mid-ranks for ties); K = max_t \|U_t\| | p ≈ 2 exp(−6K² / (n³ + n²)), capped at 1 (good for p ≤ 0.5) |
+
+**The change point** of Pettitt's test is the t of K (the first t if several give K), named like the split: `change_point_index` = t, the number of values before the change, and `change_point_year`, the year of the first value after the change. So `split_year = change_point_year` makes the two-sample tests compare the parts that Pettitt's test found. Pettitt (1979) and R's `trend` name the position t of the last value before the change; it is the same number as `change_point_index`, but the year given here is the next one.
+
+**The decision.** `homogeneous` is `p_value ≥ alpha` (default 0.05), as `trend_detected` of the Mann-Kendall test is `p_value < alpha`; the command adds the notice `homogeneity_rejected`, whose `details.tests` lists the tests that reject. A short series rarely rejects: split into halves, Mann-Whitney and Kolmogorov-Smirnov can reject at α = 0.05 from 8 values (4 + 4), Pettitt's test from 11, so `homogeneous` says that a test found no difference, not that there is none. The tests take the values as independent. Fewer than 3 values and all values equal are a `calculation_error` (`too_few_values`, `constant_values`: Mann-Whitney's U has no variance and Pettitt's test no change point).
+
+**Verification** (`tests/unit/test_homogeneity.py`, `tests/unit/test_operations_analysis.py`). A step in the middle of a deterministic series (golden-ratio steps) is rejected by all three tests and the same values without the step by none; Pettitt's K of 1, 3, 2, 5, 4 is 6 (U_t = −4, −4, −6, −2, counted pair by pair) with p = 2 exp(−1.44) = 0.474 and the change point after the third value, and of 2, 1, 2, 3 is 3 with mid-ranks and p capped at 1; the change point of a two-level step of 12 and 18 years is the first year of the second level, with K = 12 · 18, and as the split year it separates the levels exactly (U = 0, D = 1); U of the first part (not the smaller U), the split year, a year missing from the series, the errors and the series of a daily file are checked.
+
+### 3.12 Regime, Seasonality, Harmonics, Trends and Baseflow of a Station (`stats regime`, `stats seasonality`, `stats harmonics`, `stats mann-kendall`, `stats baseflow`; plan 2026-11-13, D11; ADR-0031, ADR-0033)
+
+These commands describe a station's daily series over a reference period: the hydrological years `first_year` to `last_year` (November to October, the whole record by default). A result that characterises the period names it (`first_year`, `last_year`, `period_years`) and carries the notice `short_reference_period` when it has fewer than 30 years (plan D1). They give the numbers of the prototypes of Obserwator's GUI mockup (`_hydro_proto.py`) on the same series, except where a step below names a difference.
+
+**Regime (`stats regime`, `flow_regime`).** The mean flow Q̄ₘ of each calendar month is the mean of its days with a value over the period, the mean annual flow Q̄ the mean of all days with a value; Pardé's coefficient is Kₘ = Q̄ₘ / Q̄ (Pardé, 1933). The lists `monthly_mean` and `parde` run from November to October. The monthly volumes Vₘ = Q̄ₘ dₘ (dₘ the days of the month, 28.25 for February) give `spring_share` = (V_III + V_IV) / Σ V and Walsh and Lawler's (1981) seasonality index SI = Σ \|Vₘ − R/12\| / R, R = Σ V: 0 for equal months, 11/6 ≈ 1.83 when one month holds the whole volume. Dynowska's (1997) type is read from the coefficients of the spring month, the larger of March and April, and of the summer month, the largest of June to August, with the criteria as Wrzesiński (2018, p. 250; the same words in Wrzesiński, 2017, p. 255) states them:
+
+| `code` | Type | Criterion (Wrzesiński, 2018) | Test |
+|---|---|---|---|
+| 5 | pluvio-nival | the summer month's mean flow is higher than or nearly equal to the spring month's (both as a rule 130–180 % of the annual mean) | summer ≥ 0.95 · spring, tested first |
+| 4 | nival-pluvial | the spring month as a rule 130–180 %, a clear summer rise to at least 100 % of the annual mean | summer ≥ 1.00 |
+| 1 | nival, weakly developed | the spring month at most 130 % | spring ≤ 1.30 |
+| 2 | nival, moderately developed | the spring month 130–180 % | spring ≤ 1.80 |
+| 3 | nival, strongly developed | the spring month above 180 % | spring > 1.80 |
+
+The sources name neither the months nor a number for "nearly equal": the spring month as March or April follows Perz (2019, p. 79), who applies Dynowska's criteria to the rivers of the Kłodzko basin; June to August and 0.95 are Hydrolog's reading (the mockup's `REGIME_RULE`), and the "as a rule 130–180 %" of types 4 and 5 is not tested. Dynowska's (1997) Atlas sheet itself was not available; the criteria were checked against Wrzesiński (2017, 2018) and Perz (2019). `regime_type.criteria` gives the two months, their coefficients and the limits. The mean coefficients of each type in Wrzesiński's (2018) Table 1 give that type, and Kłodzko's discharge of 1971–2015 gives type 4, as Perz (2019) found for the same years.
+
+**Seasonality of annual extremes (`stats seasonality`).** The annual maxima (`statistic` `max`) or minima of the complete hydrological years of a daily series, dated by the first day of the extreme (a year with a day without a value is skipped, notice `incomplete_years`), or IMGW-PIB's from `half_year_file`: the larger of the two half-year maxima (the winter one on a tie), the smaller of the minima, with that half-year's date, as `stats characteristic` takes them (a year without both half-years has none; an extreme without a date is left out, notice `undated_extremes`). Each date is an angle on the circle of its calendar year, θ = 2π (d − 0.5) / L, d the day of the year (1 = 1 January) and L = 365 or 366; the mean of the unit vectors, x̄ = Σ cos θ / n, ȳ = Σ sin θ / n, points to the mean date, `mean_day` = atan2(ȳ, x̄) / 2π · 365.25 + 0.5 (`mean_date` its `MM-DD` in a common year), and its length r = √(x̄² + ȳ²), `concentration`, is 1 when every extreme falls on one day and near 0 when they spread over the year (Bayliss and Jones, 1993; Burn, 1997). With a concentration near 0 the mean date says little. `winter_share` and `summer_share` are the shares of the extremes dated in November–April and May–October.
+
+**Harmonics of the annual cycle (`stats harmonics`, `annual_cycle`).** Least squares fit of x(t) = A₀ + Σₖ [aₖ cos(2πkt/P) + bₖ sin(2πkt/P)], k = 1 … K (`harmonics`, 1 to 4, default 2), with t the day of the hydrological year counted from 0 on 1 November and P = 365.25 d (Wilks, 2011, section 9.4). Each harmonic gives its `amplitude` Cₖ = √(aₖ² + bₖ²), its `phase_day` = φₖ P / (2πk) + 1 with φₖ = atan2(bₖ, aₖ), the day of the hydrological year of its first maximum, and its `explained_variance`, what it adds to the R² of the harmonics before it (the coefficients of the whole fit, cut after harmonic k); `r_squared` is the R² of all K. `period` fits every day of the period (the mean annual cycle), `years` each hydrological year with at least 300 days with a value (the others are named in the notice `short_years_left_out`). The command serves any daily variable: water temperature (H14), air temperature (M12), discharge. The mockup's meteorological prototype (`_meteo_proto.harmonic_fit`) puts t at the middle of the day as a fraction of its own calendar year and reads the peaks on 365 days; on the water temperature of Słupsk (1984–2025) the difference is 0.0002 °C in the amplitudes, 0.11 day in the day of the first maximum and 3·10⁻⁵ in the explained variance.
+
+**Trends with Sen's slope (`stats mann-kendall`, `mann_kendall_test`, `sen_slope`).** The Mann-Kendall test (Mann, 1945; Kendall, 1975) takes S = Σᵢ<ⱼ sgn(xⱼ − xᵢ) and its variance under no trend corrected for tied values, Var(S) = [n(n − 1)(2n + 5) − Σₚ tₚ(tₚ − 1)(2tₚ + 5)] / 18, the sum over the groups of tₚ equal values (Kendall, 1975; Hirsch, Slack and Smith, 1982; Gilbert, 1987, Eq. 16.3); without ties it is n(n − 1)(2n + 5)/18 as before (ADR-0033: until then a series with ties had the larger variance without the correction). Values tie when they are exactly equal: a series computed in floating point should be rounded to its precision first (the `meteo` sums are, to 1e-6 mm). Z = (S − 1)/√Var(S) for S > 0, (S + 1)/√Var(S) for S < 0, 0 for S = 0 (Gilbert's Eq. 16.4), p two-sided; a series of equal values has Var(S) = 0, Z = 0, p = 1. Sen's (1968) slope is the median of the N' slopes (xⱼ − xᵢ) / (tⱼ − tᵢ) of the pairs tᵢ < tⱼ, with t the `years` (`year_column` in a file) or, without them, the steps 0, 1, 2 … of the series, a missing value keeping its step. The intercept is Conover's (1980) median(x) − slope · median(t), the value of the line at t = 0 (year 0 with years). The 100 (1 − alpha) % confidence interval follows Gilbert (1987, section 16.5): C = z₁₋α/₂ √Var(S) with the test's tie-corrected Var(S), M₁ = (N' − C)/2, M₂ = (N' + C)/2, the limits are the M₁-th and the (M₂ + 1)-th of the ordered slopes, interpolated linearly between ranks as in Gilbert's Example 16.5 and his program (appendix B), and `null` when such a rank is outside 1 … N' (fewer than 5 values at alpha 0.05). The mockup's `_hydro_proto.sen_slope` differs, as the plan's sources do not: its intercept is median(x − slope · t), its limits are truncated ranks and its interval is always 95 %; `_meteo_proto.sen_slope` gives Hydrolog's numbers.
+
+**Baseflow (`stats baseflow`, `baseflow_separation`).** The recursive digital filter of Lyne and Hollick (1979), qₜ = α qₜ₋₁ + (1 + α)/2 (Qₜ − Qₜ₋₁) and bₜ = Qₜ − qₜ when qₜ > 0, else Qₜ, with `alpha` 0.925 and `passes` 3 (forward, backward, forward, each on the baseflow of the pass before; Nathan and McMahon, 1990), in the standard of Ladson et al. (2013) and their published code: each span is reflected by 30 days at both ends (Q₃₀ … Q₁ before it, Qₙ₋₂ … Qₙ₋₃₁ after it), each pass starts its quickflow at the first value of its input and keeps it unclipped, negative too, as the state of the next day, and a baseflow below 0 becomes 0 after the last pass. A series with gaps is filtered on each gapless span of at least 60 days (`n_spans` spans, `n_values` days). `bfi` = Σ b / Σ Q over the days filtered, of the period and of each year with at least 300 of them (`years`); `series_baseflow` gives every day of `series_year`, by default the last complete year of the period (as `cumulative_year` of `stats runoff-volume`). The recession constant k is the median of the ratios Q(t+1) / Q(t) over the recession segments (`recession.n_segments`), runs of at least 5 daily falls (a missing day ends one; Tallaksen, 1995), and `half_life_days` = ln 2 / (−ln k). The mockup's `_hydro_proto.lyne_hollick` clips the quickflow to 0 … Q at every step and starts each pass at 0: on Ladson's Bass River example (α = 0.98) it gives a BFI of 0.094 instead of the published 0.197, and on Kłodzko's record (1951–2025) 0.585 instead of 0.663; with that filter swapped in, Hydrolog's command gives the mockup's numbers to the last digit.
+
+**Water temperature (H15)** needs no command of its own: the days at or above 15, 20 and 25 °C and below 1 °C are `stats threshold-events` on the series of T (one call per level), the yearly maximum with its date the first degree of `stats characteristic` with `parameter` T, the annual cycle `stats harmonics`.
+
+**Verification** (`tests/unit/test_station_regime.py`, `tests/unit/test_stationarity.py`; the mockup's numbers by a check outside the repository, plan 2026-11-13, Results). Sen's slope, interval and S reproduce Gilbert's (1987) Example 16.5 (5.5, 2.6 to 9.3 with two values in one time period) and Exercises 16.1–16.3: S = 12, Var(S) = 43.3 and Z = 1.67 with the two non-detects (ND) as one group of 2 ties (16.1), slope 0.33 and 0.23 (16.2), and the interval 0 to 0.94 built, as Gilbert does on purpose, on the uncorrected Var(S) = 44.3 (16.3); Eq. 16.3 with Example 16.2's tie groups (n = 22; 6 × 20, 2 × 23, 2 × 30) gives Var(S) = 1227.33 and, with S = +108, Z = 3.1; the mean Pardé coefficients of Wrzesiński's (2018) Table 1 give types 1 to 5; the filter reproduces the BFIs that Ladson et al. (2013) publish with their code for the Bass River at Loch (0.1965759) and for its two spans parted by missing days (0.1411197); an exact two-harmonic sinusoid is recovered (amplitudes, days of the maxima, R² = 1); the seasonality index takes its bounds 0 and 11/6; Pardé's coefficients, the spring share, the circular mean of dates and the recession constant of an exponential recession are checked against hand computations.
+
+### 3.13 Meteorological Statistics of a Station (`meteo` group; plan 2026-11-13, D12; ADR-0032, ADR-0033)
+
+The six commands read a station's daily series: Obserwator's export (`date`, `P [mm]`, `P_flag`, `Tmax [degC]`, `Tmin [degC]`, `Tmean [degC]`, `snow_cover [cm]`, `fresh_snow [cm]`; each column by its `*_column` option, the export's name by default) or inline lists with `dates`. The library functions are in `hydrolog.statistics` (`meteo_precipitation`, `meteo_spells`, `meteo_spi`, `meteo_temperature`, `meteo_snow`, `meteo_hydrothermal`, the shared rules in `_climate`). Years are calendar years, or hydrological years (XI–X, named after their end) with `year_type` `hydrological`; `first_year` and `last_year` keep the days of those years only (D1), and a result carries `first_year`, `last_year`, `period_years` and, under 30 years, the notice `short_reference_period`. The normals, the wet-day percentiles and the SPI's fits come from a reference period, by default the same years (below).
+
+**Missing days (WMO-No. 1203, 2017, section 4.4).** A monthly mean or count needs fewer than 11 missing days and fewer than 5 in a row (4.4.1 a, d); a count is the share of the observed days with the event times the days of the month (4.3). A monthly sum needs every day (4.4.1 c), except that a value flagged `accumulated` (IMGW-PIB's reading after unread days, `P_flag` of the export; `precipitation_flag_column`) stands for the missing days just before it when, with its own day, they are fewer than 5 and the totals represent fewer than 11 days of the month; for every daily statistic such a value is a missing day (notice `accumulated_totals`). Monthly extremes take any days (4.4.1 b). An annual value needs its 12 months; annual maxima, percentile sums, spells and the hydrothermal season need every day of the year. A normal is the mean of the years of the reference period with a value when they are at least 80 % of its years, counted from `reference_first_year` to `reference_last_year`, years outside the record included (4.4.2, no consecutive-years rule; notice `normal_not_computed` with the reference's bounds).
+
+**Reference period of the baselines (ADR-0033).** `meteo precipitation` (`index` `sums`, `heavy`, `seasonality`), `meteo spi` and `meteo temperature` (`index` `means`) take `reference_first_year` and `reference_last_year` (years of `year_type`; another index refuses them, `not_applicable`). Each defaults to the analysed period as resolved (the result's `first_year`, `last_year`), so a call without them gives the numbers it gave before; the result names `reference_first_year`, `reference_last_year` and `reference_period_years` (its years with a value) after `period_years`. Each period keeps the days of its own years only (D1): the analysed years and the reference period are laid on separate grids, so a winter half-year or DJF of the reference's first year, and a k-month SPI sum ending in its first months, need days before the reference and are missing there even when the record has them. The analysed years' own days give, unchanged by the reference, the sums, means and monthly and annual values, the SPI's k-month sums, the R95p and R99p sums, PRCPTOT, each year's PCI and SI and every other statistic of `period` (means, standard deviation, CV, extremes, `n_years`, `mean_pci`, `mean_si`, `mean_shares_percent`). The reference period alone gives the baselines: the normals (annual, monthly, half-year and season; the annual and monthly normals of Tmean) and with them `percent_of_normal`, `anomaly_c` and the classes of relative precipitation of `meteo spi`; the wet-day percentiles of `heavy` (`period.thresholds_mm`, `period.wet_days` and the check of at least 100 wet days); the regime of `seasonality` (the monthly normals' shares and coefficients, the PCI and SI of the normals); the SPI's gamma fits of each scale and calendar month (`period.scales[].fits`, whose `n_values` are sums of the reference) and `period.normal_mm`, `normal_years`, `months_normal_mm`. Normals are the benchmark against which observations are compared and anomalies formed, over 30 years; the climatological standard normal is the latest 30-year period ending in a year ending in 0, now 1991–2020, and 1961–1990 is kept as the reference period for long-term climate change assessment (WMO-No. 1203, chapters 2 and 3); the standard normal serves monitoring and anomaly products, the reference normal climate change (5.1), and periods longer than 30 years suit higher-order statistics such as percentiles (5.2.2). The SPI compares a k-month total with the totals of the same months in the years on record, with at least 20 to 30 years of monthly values, 50 to 60 preferred (WMO-No. 1090, 2012, chapter 2 and sections 5.1.1 to 5.1.2; McKee et al., 1993); the Copernicus European and Global Drought Observatories fit the gamma distribution on the baseline 1991–2020 (EDO and GDO SPI factsheet, 2025). The ETCCDI takes the wet-day percentiles of R95p and R99p from a base period, 1961–1990 (Zhang et al., 2011; Klein Tank, Zwiers and Zhang, 2009); its in-base bootstrap serves the temperature exceedance indices, not R95pTOT, so none is applied. A reference period under 30 years with values has its own `short_reference_period` when it differs from the analysed one; `reference_first_year` after `reference_last_year` (a bound not given takes the analysed one) is `validation_error` `range`, a reference period without a value `calculation_error` `no_values_in_period`.
+
+**Exact sums (ADR-0033).** Every sum of daily precipitation is rounded to 1e-6 mm where it is formed, as the n-day windows of `maxima` were: the monthly totals, the half-year and season spans, the annual totals, the SPI's k-month sums and its monthly and annual totals, the yearly wet-day totals and the R95p and R99p sums of `heavy`, the wet-day totals of `intensity` and the precipitation of the hydrothermal season. A sum of 0.1-mm data is then the number nearest its decimal value (the fixture's 2020: 736.7, was 736.6999999999999; Kraków's 1990: 622.0, was 621.9999999999999), and sums equal in decimal are equal numbers, so that Mann–Kendall's S counts them as ties (section 3.12). Means (the normals, means, SDII, shares) are not rounded.
+
+| Command, index | Method |
+|---|---|
+| `meteo precipitation` `sums` (M1) | Sums of months, half-years XI–IV and V–X (named after the hydrological year), seasons DJF (December of the year before), MAM, JJA, SON, years; normals of the reference period; each sum in % of its normal; annual mean, standard deviation (n − 1), CV, extremes |
+| `maxima` (M2) | The n-day sum of a day is the sum of the n days ending on it (each window summed alone, to 1e-6 mm, so that equal sums tie), counted in the year of its last day; the yearly largest of 1 day and of `durations_days` (2, 3, 5, 10; Rx5day of the ETCCDI) with dates, the first window on a tie; monthly largest daily sums; quantiles: `stats flood-frequency` on the values |
+| `days` (M5) | Days with P ≥ `thresholds_mm` (0.1, 1, 10, 20; R10mm, R20mm of the ETCCDI) per month (scaled) and year |
+| `intensity` (M4) | Mean annual sum; SDII = PRCPTOT / wet days, a wet day P ≥ `wet_day_mm` (1 mm; Zhang et al., 2011) |
+| `heavy` (M7) | Thresholds: the `percentiles` (95, 99) of the wet days of the reference period, quantile type 8 (Hyndman and Fan, 1996; as climdex.pcic), from at least 100 wet days; per year Σ P over P > threshold (R95p, R99p) in % of PRCPTOT (R95pTOT, R99pTOT) |
+| `seasonality` (M9) | Regime of the 12 monthly normals of the reference period (share, normal / mean normal); PCI = 100 Σp² / (Σp)² (Oliver, 1980; ≤ 10 uniform, ≤ 15 moderate, ≤ 20 irregular, above strongly irregular); SI = Σ\|x − R/12\| / R (Walsh and Lawler, 1981; < 0.2 … ≥ 1.2, seven classes) of the normals and of each year |
+| `meteo spells` (M6) | Runs of days with P < `threshold_mm` (`dry`) or ≥ it (`wet`), 1 mm by default (CDD, CWD of the ETCCDI), by `threshold_runs` of `stats threshold-events` (D4): a missing day ends a run (`open_start`, `open_end`); a spell counts in the year it starts; per complete year the longest (`max_duration_days`, `max_start_date`, `max_end_date`), the spells of ≥ 10, 15, 20 days and their number; durations in the classes 1, 2, 3, 4–5, 6–10, 11–15, 16–20, 21–30, ≥ 31 of the closed spells. `spells` lists the spells of at least `min_duration_days` (1 by default: every spell); the yearly and period summaries take every spell, because CDD and CWD are yearly maxima with no minimum duration (Zhang et al., 2011; Klein Tank, Zwiers and Zhang, 2009) and a distribution of durations needs every spell |
+| `meteo spi` (M8) | SPI of `scales_months` (1, 3, 6, 12): per calendar month a gamma distribution by Thom's (1958) approximation fitted to the positive k-month sums of the reference period (in at least 80 % of its years, 3 positive), H(x) = q + (1 − q) G(x), SPI = Φ⁻¹(H) within ±3.09 (McKee et al., 1993; Edwards and McKee, 1997; WMO-No. 1090, 2012; notice `spi_not_fitted`), for each month of the analysed years (`year` of `year_type`, `month` 1–12); each month and year in % of its normal: years in Kaczorowska's (1962) classes < 50, 50–74, 75–89, 90–110, 111–125, 126–150, > 150 % (whole percent), months in the monthly limits < 25, < 50, < 75, ≤ 125, ≤ 150, ≤ 200, > 200 % (Tomaszewska, 1994, after Kosiba, 1948; Gąsiorek and Musiał, 2011, Table 1: Kaczorowska gave no monthly classes) |
+| `meteo temperature` `means` (M11) | Monthly means of Tmean, Tmax, Tmin, annual = mean of 12; normal of Tmean of the reference period and the anomaly against it; extremes of Tmax and Tmin with dates |
+| `days` | Frost Tmin < 0, ice Tmax < 0, summer Tmax > 25, hot Tmax > 30 °C, tropical nights Tmin > 20 °C (FD, ID, SU, TR of Zhang et al., 2011; thresholds are options) |
+| `degree_days` | GDD = Σ max(Tmean − 5, 0) (Wypych et al., 2017); HDD = Σ (18 − Tmean) over the days with Tmean ≤ 15 °C (Eurostat, nrg_chdd metadata, 3.4); complete months |
+| `range` | DTR: monthly mean of Tmax − Tmin, annual = mean of 12 (ETCCDI) |
+| `meteo snow` (M10) | Winter = the snow season 1 August – 31 July named after the hydrological year it ends in (D12's "per winter (hydrological year)", read so that late-October snow starts its own winter; on Kraków a literal XI–X year moved 6 of 64 winters); days with cover ≥ 1 cm (scaled months), largest depth and its date, first and last day with cover, fresh snow; a winter needs enough days in X–V, and the winters with a value that do not are `incomplete_years`, left out of the period's statistics |
+| `meteo hydrothermal` (M14) | k = P / (0.1 Σt) (Selyaninov, 1928): months IV–IX with Σt = monthly mean × days for a mean above 0 °C (Skowera and Puła, 2004; Radzka, 2014), and the days of each calendar year with Tmean > 10 °C (Miś, 2026, eq. 4); classes ≤ 0.4, 0.7, 1.0, 1.3, 1.6, 2.0, 2.5, 3.0, above (Skowera and Puła, 2004, p. 172) |
+
+**Verification** (`tests/unit/test_meteo.py`, `tests/unit/test_meteo_reference.py`, `tests/unit/test_meteo_spells.py`): hand-computed sequences of each index (accumulated totals, scaled counts, the 80 % rule, maxima with dates, SDII, the type-8 percentile by hand, PCI 100/12 and SI 11/6 of the extreme regimes, spells cut by a missing day, Thom's estimates, the class limits, Eurostat's HDD, October snow, Sielianinov's k) and the ETCCDI counts of the fixture year 2021 (FD, ID, SU, TR, R10mm, R20mm, CDD, CWD, PRCPTOT, SDII, R95pTOT) counted from the rows of `tests/fixtures/meteo_daily.csv`; the baselines of a reference period by hand on the fixture (the sums in % of its normals, the anomalies of Tmean, the SPI's fits from its sums only, the percentiles of its wet days, the regime of its normals) with the analysed years' values unchanged, the 80 % rule of a reference reaching beyond the record, the default reference equal to the analysed period in every catalog example, the errors and the variant options; sums equal in decimal equal as numbers (0.1 + 0.2 and 0.3 mm); the list of spells by `min_duration_days` with the summaries unchanged. The mockup's prototypes (Obserwator, `_meteo_proto.py`) were reproduced on Kraków (250190390) and Praha-Klementinum (0-203-0-11514) to their rounding, with the differences of D1 (the period's days only) and the monthly classes above.
+
+### 3.14 Station Analyses of a Daily Series (`stats characteristic`, `stats threshold-events`, `stats low-flow-sequences`, `stats duration-curve`, `stats runoff-volume`, `hydrometrics rating-curve`, half-years in `stats flood-frequency`, `stats low-flow`, `stats homogeneity`; plan 2026-11-13, D1, D3 to D9; ADR-0029, ADR-0030, ADR-0033)
+
+These commands reduce a station's daily series (Obserwator's export or inline values with `dates`; a day whose date is absent or whose value is empty has no value) over the reference period of D1: the hydrological years `first_year` to `last_year` (1 November – 31 October, named after the year in which they end; by default the first and the last year with a value), from the days of those years only. A result names the period (`first_year`, `last_year`, `period_years`, its years with a value); a result that characterises the period as a whole (the second degree of `stats characteristic`, a threshold of `stats low-flow-sequences` taken from the series, `stats duration-curve`, the means of `stats runoff-volume`) carries the notice `short_reference_period` under 30 years, the length of a climatological standard normal (WMO-No. 1203, 2017); lists of events and fits of chosen years do not. A period without a value is `calculation_error` `no_values_in_period`.
+
+**Characteristic values of both degrees (`stats characteristic`, `calculate_characteristic_values`, `characteristic_values_from_half_years`).** The first degree of a hydrological year and of its half-years (winter XI–IV, summer V–X) is the minimum, the mean and the maximum of its days with a value (`years`: `winter`, `summer`, `annual`, each with the dates of its extremes, the first day on which each occurs, `days_with_data` and the calendar `days`). The second degree of the year and of each half-year (`winter`, `summer`) is the highest (W), the mean (S), the median (Z) and the lowest (N) of the first-degree maxima, means and minima of the years that have them: WWQ … NNQ for Q, WWW … NNW for the stage, WWT … NNT for T by analogy (`labels`, `first_degree_labels`); SWQ is the mean of the *annual* maxima, never of the pooled half-year maxima (IMGW-PIB's definition; Byczkowski, 1996). A year with missing days stays in the values (its extremes may be milder than the true ones) and is named in `incomplete_years` and the notice `years_with_missing_days`. From IMGW-PIB's published half-year characteristics (`half_year_file`, Obserwator's export of `pl.imgw.hydro_semiannual`) the half-years keep their published values and dates, the annual maximum is the larger of the two half-year maxima (the winter one on a tie), the annual minimum the smaller of the minima, both unknown when a half-year is missing, and the annual mean is the published one (`days_with_data` and `days` are `null`).
+
+**Threshold events (`stats threshold-events`, `threshold_events`, `threshold_runs`).** The threshold level method (Tallaksen and van Lanen, 2004, ch. 5) on the calendar of the series: a day is beyond `threshold` when its value is at or above it (`direction` `above`) or below it (`below`), and a day without a value never is; consecutive days beyond form a run, runs parted by fewer than `max_gap_days` days (without a value or not beyond; 0 merges none) merge into one event, and events shorter than `min_duration_days` (gap days inside included) are dropped. Each event has its start, end, duration, the days beyond, the missing days, the peak (the largest value above the threshold, the smallest below it, dated by its first day) and `open_start`, `open_end` when the day before or after it has no value, so that the event may be longer; an event counts in the hydrological year in which it starts, and `years` gives per year the days beyond, the events and the days with data. With the defaults it gives the mockup's days and events beyond SWW, SSW, SNW, SWQ, SSQ and SNQ; the water temperature days of H15 are this command on T.
+
+**Low-flow sequences across gaps (`stats low-flow-sequences`, `LowFlowAnalysis.detect_sequences`).** The same runs below a threshold, with `min_duration_days` 5 and `max_gap_days` 4 by default (the author's 5 days and gaps under 4 days, the mockup's `merge_low_flow_events`), on the calendar of the series, so that missing values and absent dates are gap days (before ADR-0029 they were refused, `missing_values`, `date_gap`). The threshold is given (`threshold_method` `value`), SNQ or SNW of the period (`mean_annual_minimum`, the `snx` of `stats characteristic`) or the value of the duration curve below exceeded on `exceedance_percent` % of the days (`exceedance`, 70 by default: Q70, Q90); `threshold` or `exceedance_percent` given with another method is `not_applicable` (ADR-0033). The deficit of a sequence is Σ (threshold − Q) over its days with a value below the threshold, in the unit of the series times days, and with `parameter` Q also a volume, times 86,400 s (`deficit_volume_m3`, m³); `mean_flow` is the mean of its days with a value. `years` counts a sequence in the hydrological year in which it starts (the mockup's summary).
+
+**Duration curve (`stats duration-curve`, `duration_curve`, `exceedance_values`).** The value equalled or exceeded on p % of the days: the n values of the period (of one calendar month with `month`) ranked from the highest have the Weibull plotting positions p = m / (n + 1), and a percentage between two positions is interpolated linearly between their values, held at the end values beyond them (Searcy, 1959; Vogel and Fennessey, 1994); `values` are read at `exceedance_percents` (1, 5, 10, 30, 50, 70, 90, 95, 99 by default), `curve_values` at the 105 percentages 0.1 … 99.9 of `curve_exceedance_percents`. The classes (`bin_method`) are of equal `bin_width` (10 by default; 10 cm for H), [k·w, (k + 1)·w) from the multiple of the width at or below the smallest value (the author's 10 cm table), or `bin_count` (40 by default) logarithmic classes between the smallest positive and the largest value, which are their end edges (the mockup's `log_classes`: equal classes would put the mode of a skewed flow series in its lowest class); `bin_width` with `log` and `bin_count` with `width` are `not_applicable` (ADR-0033). Each class, from the highest down, has its `days`, `share_percent`, the cumulative `days_with_higher` and `days_with_lower` („including higher”, „including lower”; Byczkowski, 1996) and its days in each hydrological month XI–X; the modal class is the most frequent, the lowest one on a tie.
+
+**Runoff volumes (`stats runoff-volume`, `runoff_volumes`).** V = Σ Q · 86,400 s over the days with a value of a month or a hydrological year [m³] (the author's daily volumes, the mockup's `runoff`). A month or a year is complete when each of its days has a value, and the means (`mean_annual_volume_m3`, `monthly_mean_volume_m3` XI–X) take the complete ones only. The cumulative volume of `cumulative_year` (by default the last complete year of the period) adds the days in order, a missing day adding nothing; `mean_cumulative_volume_m3` is the mean of the complete years' curves over their first 365 days.
+
+**Rating curves by period (`hydrometrics rating-curve`).** With the dates of the pairs (`dates`, `date_column`) the pairs are the days with both values; `first_year`, `last_year` limit them to those hydrological years, and the curve of the range is the fit of section 3.8. With `years_per_period` n the curve of each block of n years is fitted too, with the same `h0_initial`, `remove_outliers` and `outlier_std`: the blocks start at the years y with (y − 1) mod n = 0 (1951–1960, 1961–1970 for 10), the first and the last cut to the years of the pairs; a block with fewer than 30 pairs has no curve (`reason` `too_few_pairs`), one whose fit fails `fit_failed`. Each period's curve is read at the medians of the level and of the discharge of all the pairs (`reference_level`, `reference_discharge_m3s`), so that the shift of the curve between periods is a number (`discharge_at_reference_m3s`, `level_at_reference_discharge`). Without dates nothing changes; `first_year`, `last_year` and `years_per_period` need dates.
+
+**IMGW-PIB's half-years in the frequency commands (`stats flood-frequency`, `stats low-flow`, `stats homogeneity`; `annual_extremes_from_half_years`).** With `half_year_file` and `parameter` Q or H (the columns of the file) the annual maximum is the larger of the winter and the summer maximum of a year that has both (the winter one on a tie), the annual minimum the smaller of the minima: the annual values of the first degree of `stats characteristic`. A year with one half-year only is left out and named in `incomplete_years`, because its other half-year may hold the extreme; `first_year`, `last_year` choose the years of the file, and `source` says where the values come from (`daily`, `values`, `half_years`). `stats low-flow` fits the minima directly (`fit_fisher_tippett_minima`), as it fits the annual minima of a daily series.
+
+**Verification** (`tests/unit/test_station_analyses.py`, `tests/unit/test_station_batch.py`; the mockup's numbers by a check outside the repository, plan 2026-11-13, Results). Hand-computed series: runs merged across gaps shorter than the limit and none with 0, a missing day that ends an event, dated peaks, days below a threshold across gaps; the first and second degree of years and half-years and the larger half-year maximum of a file; Weibull positions interpolated between ranks and classes from a multiple of the width with their cumulative days; the volumes of complete and incomplete years; low-flow sequences across missing days with their yearly summary; the periods of a rating curve without enough pairs. On Kłodzko's exports (150160180, 1951–2025 without hydrological year 1997) the commands give the mockup's numbers to the last digit (largest relative difference 1.2e-16): the characteristic values of both degrees from the daily series and from IMGW-PIB's half-years, the days and events beyond SWW … SNQ, the low-flow periods with SNQ, Q90, H70 and 4 m³/s in 1991–2020, the duration curves of H and Q with their classes by month, the runoff volumes and the rating curves of 2016–2025, of 2000–2020 without outliers and of the decades; the annual maxima of the half-years in `stats flood-frequency` equal the mockup's (74 years of 1951–2025, 29 of 1991–2020) with the same best distribution and quantiles. One difference, by D7: the January curve of H in 1991–2020 has its classes from 80 cm (a multiple of 10), the mockup's from its lowest value, so the modal class differs.
+
+---
+
+## 4. Literature Verification
+
+### 4.1 Table of Sources for Each Computation Path
+
+| Computation path | Source | Status |
+|------------------|--------|:------:|
 | SCS UH + Kirpich → Tc | USDA TR-55 (1986), Kirpich (1940) | ✅ |
-| SCS UH + NRCS → Tc | USDA TR-55 (1986) | ✅ |
+| SCS UH + NRCS → Tc | USDA-NRCS (2010), NEH Part 630 ch. 15 | ✅ |
 | SCS UH + Giandotti → Tc | Giandotti (1934), TR-55 | ✅ |
-| SCS UH + FAA → Tc | FAA AC 150/5320-5D (2013), TR-55 | ✅ |
-| SCS UH + Kerby → Tc | Kerby (1959), TR-55 | ✅ |
-| Clark IUH + FAA → Tc | FAA AC 150/5320-5D (2013), Clark (1945) | ✅ |
-| Clark IUH + Kerby → Tc | Kerby (1959), Clark (1945) | ✅ |
+| SCS UH + FAA → Tc | FAA AC 150/5320-5B (1970), TR-55 | ✅ (small catchments without a channel) |
+| SCS UH + Kerby → Tc | Kerby (1959), TR-55 | ✅ (small catchments without a channel) |
+| Clark IUH + FAA → Tc | FAA AC 150/5320-5B (1970), Clark (1945) | ✅ (small catchments without a channel) |
+| Clark IUH + Kerby → Tc | Kerby (1959), Clark (1945) | ✅ (small catchments without a channel) |
 | SCS UH + Kerby-Kirpich → Tc | Roussel et al. (2005), TR-55 | ✅ |
 | Clark IUH + Kerby-Kirpich → Tc | Roussel et al. (2005), Clark (1945) | ✅ |
 | Nash IUH + from_lutz() | Lutz (1984), KZGW (2017) | ✅ |
 | Nash IUH + from_urban_regression() | Rao, Delleur, Sarma (1972), Banasik (2009) | ✅ |
-| Nash IUH + bezpośrednio n, K | Nash (1957) | ✅ |
-| Nash IUH + from_tc() | **BRAK UZASADNIENIA** | ⚠️ |
-| Clark IUH + Tc (dowolna metoda) | Clark (1945), HEC-HMS | ✅ |
-| Clark IUH + R/Tc ratio | HEC-HMS, praktyka inżynierska | ✅ |
+| Nash IUH + directly n, K | Nash (1957) | ✅ |
+| Clark IUH + Tc (any method) | Clark (1945), HEC-HMS | ✅ |
+| Clark IUH + R/Tc ratio | HEC-HMS, engineering practice | ✅ |
 | Snyder UH + L, Lc, Ct, Cp | Snyder (1938) | ✅ |
+| Snyder UH in `HydrographGenerator` (D = time step: tLR, tpR, qpR) | Snyder (1938), HEC-HMS Technical Reference Manual, Chow, Maidment, Mays (1988) | ✅ |
+| Kirpich from a catchment (the longest flow path, `flow_path_length_km`, `flow_path_slope_m_per_m`) | Fang et al. (2005) eq. 3.14, Mota and Kobiyama (2015) | ✅ |
+| NRCS from a catchment (the longest flow path; Y = mean terrain slope of the catchment) | NEH Part 630 ch. 15 (2010), eq. 15-4 | ✅ |
+| Giandotti from a catchment (main channel; mean elevation − outlet) | Grimaldi et al. (2012) | ✅ |
+| Kerby-Kirpich from a catchment (channel = flow path − overland, at the slope of the flow path) | Roussel et al. (2005) supplement, TxDOT Hydraulic Design Manual ch. 4 section 11, Cleveland et al. (2012); both published examples reproduced | ✅ |
+| FAA, Kerby from a catchment (overland flow time from `overland_*`) | FAA AC 150/5320-5B (1970), Kerby (1959), Roussel et al. (2005), TxDOT Hydraulic Design Manual ch. 4 section 11 | ✅ |
+| D-minute Clark UH (S-curve, any D > 0) | Clark (1945), S-curve method (e.g. Chow, Maidment, Mays 1988) | ✅ |
+| HSG from USDA texture (class mapping) | USDA Soil Survey Manual (Handbook 18), NEH Part 630 ch. 7 (TR-55), Kartograf ADR-025 | ✅ (with a deviation for 3 classes) |
+| Distribution of annual minima (GEV for minima) | Fisher and Tippett (1928), Gumbel (1958), Coles (2001) | ✅ |
+| Annual extremes from a daily series: complete hydrological years only | KZGW (2017), WMO No. 1029 (2009) | ✅ |
+| Empirical frequency of minima (non-exceedance positions) | Weibull (1939), Hazen (1930), Cunnane (1978); WMO No. 1029 (2009), Tallaksen and van Lanen (2004) | ✅ |
+| Lag routing (`route lag`, `LagReach`) | HEC-HMS Technical Reference Manual (Lag routing model) | ✅ |
+| Muskingum routing with sub-reaches (`route muskingum`, `MuskingumReach`) | McCarthy (1938), Chow, Maidment, Mays (1988), HEC-HMS Technical Reference Manual (Muskingum model), University of Iowa Lesson 27 (worked example) | ✅ |
+| Muskingum-Cunge, constant coefficients (`route muskingum-cunge`, `MuskingumCungeReach`) | Cunge (1969), NRCS NEH Part 630 ch. 17 (2014) eq. 17-20 to 17-22, example 17-4 and appendix B, HEC-HMS Technical Reference Manual (Muskingum-Cunge model) | ✅ |
+| Cascade of linear reservoirs, exact kernel (`route cascade`, `CascadeReach`) | Nash (1957) (the IUH of `NashIUH`), Kalinin and Milyukov (1957) as presented by Ponce (linear reservoirs and numerical diffusion), Chow, Maidment, Mays (1988); weights checked against the numerical integral of the gamma density and the exact solution of the chain | ✅ |
+| Level-pool routing, storage indication (`route level-pool`, `LevelPoolReach`) | NRCS NEH Part 630 ch. 17 (2014) eq. 17-3 and example 17-1, HEC-HMS Technical Reference Manual (Modified Puls model); the step rule per segment checked on random tables and against the exact solution of a tank with a weir | ✅ |
+| River network of reaches, reservoirs and junctions (`route network`, `RoutingNetwork`) | Composition of the elements above in the order of the stream (the convention of `StreamSegment.upstream_ids`); no published table, the identities of the plan instead: a one-reach network equals the command, series equivalence with the sub-reaches of `MuskingumReach`, junction sums, order independence | ✅ |
+| Subcatchment that makes its hydrograph from its rain (`Subcatchment(watershed=, runoff=, rainfall=)`, `CurveNumberRunoff`, `DesignStorm`, `RainfallSeries`) | The SCS-CN and unit hydrograph paths above (`HydrographGenerator`): the hydrograph of the node equals the generator's to the last ordinate for the four unit hydrograph models, and a network of such nodes routes as the network of their hydrographs | ✅ |
+| Control points (`ControlPointNetwork`) | Expansion into the nodes above, no formula of its own: the network of points equals the same nodes built by hand (document and hydrographs); a linear reach routes the same with and without a confluence, a nonlinear one (Muskingum-Cunge with the inflow peak, a pond) does not | ✅ |
+| Flood frequency fit methods (`fit_method`) | Hosking and Wallis (1997): sample L-moments, GEV and Pearson III from L-moments; moments and least squares on the same scipy distributions (ADR-0021) | ✅ |
+| Homogeneity of annual maxima (`stats homogeneity`, `homogeneity_tests`): Mann-Whitney U, two-sample Kolmogorov-Smirnov, Pettitt | Mann and Whitney (1947), Smirnov (1939), Pettitt (1979); `scipy.stats.mannwhitneyu` and `ks_2samp`; Pettitt's K checked by hand on small series (ADR-0022) | ✅ |
+| Flow regime (`stats regime`): Pardé's coefficients, Dynowska's types, the seasonality index | Pardé (1933); Dynowska (1997) with the criteria of Wrzesiński (2017, 2018) and the spring months of Perz (2019); Walsh and Lawler (1981); the types of Wrzesiński's (2018) Table 1 reproduced | ✅ (the summer months and "nearly equal" = 0.95 are Hydrolog's reading) |
+| Seasonality of annual extremes (`stats seasonality`): circular mean date and concentration | Bayliss and Jones (1993), Burn (1997) | ✅ |
+| Harmonics of the annual cycle (`stats harmonics`) | Wilks (2011), section 9.4; an exact sinusoid recovered | ✅ |
+| Mann-Kendall test with the variance corrected for ties, Sen's slope, Conover's intercept, Gilbert's interval (`stats mann-kendall`) | Mann (1945), Kendall (1975), Hirsch, Slack and Smith (1982), Sen (1968), Conover (1980), Gilbert (1987) Eq. 16.3 and section 16.5; Examples 16.2, 16.5 and Exercises 16.1–16.3 reproduced | ✅ |
+| Baseflow by the Lyne and Hollick filter, recession constant (`stats baseflow`) | Lyne and Hollick (1979), Nathan and McMahon (1990), Ladson et al. (2013) (their published BFIs reproduced), Tallaksen (1995) | ✅ |
+| Meteorological statistics (`meteo` group) | WMO-No. 1203 (2017) 4.4; Zhang et al. (2011, ETCCDI); Hyndman and Fan (1996); Oliver (1980); Walsh and Lawler (1981); McKee et al. (1993), Thom (1958), WMO-No. 1090 (2012); Kaczorowska (1962), Gąsiorek and Musiał (2011); Wypych et al. (2017); Eurostat nrg_chdd; Selyaninov (1928), Skowera and Puła (2004), Radzka (2014); the prototypes of Obserwator's mockup reproduced on two stations | ✅ |
+| The reference period of normals, percentiles and the SPI's fits (`reference_first_year`, `reference_last_year` of `meteo precipitation`, `meteo spi`, `meteo temperature`) | WMO-No. 1203 (2017) chapters 2, 3, sections 4.4.2, 5.1, 5.2.2; WMO-No. 1090 (2012); McKee et al. (1993); Zhang et al. (2011), Klein Tank, Zwiers and Zhang (2009); the Copernicus EDO's SPI factsheet (2025) | ✅ |
+| Characteristic values of the first and second degree from a daily series or IMGW-PIB's half-years (`stats characteristic`; the half-years in the frequency commands) | IMGW-PIB's definitions (Byczkowski, 1996); the mockup's Kłodzko numbers reproduced | ✅ |
+| Threshold events and low-flow sequences across gaps (`stats threshold-events`, `stats low-flow-sequences`) | Tallaksen and van Lanen (2004), chapter 5 (the threshold level method); hand-computed runs | ✅ |
+| Duration curve and the frequencies of its classes (`stats duration-curve`) | Searcy (1959), Vogel and Fennessey (1994), Byczkowski (1996); the mockup's Kłodzko numbers reproduced | ✅ |
+| Runoff volumes (`stats runoff-volume`), rating curves by period (`hydrometrics rating-curve`) | V = Σ Q · 86,400 s; the power-law fit of section 3.8 per block of years; the mockup's Kłodzko numbers reproduced | ✅ |
 
-### 4.2 Kluczowe publikacje
+### 4.2 Key Publications
 
-| Źródło | Rok | Znaczenie dla Hydrolog |
-|--------|-----|------------------------|
-| Nash, J.E. | 1957 | Podstawa teoretyczna modelu Nash IUH |
-| Snyder, F.F. | 1938 | Definicja syntetycznego UH Snydera |
-| Kirpich, Z.P. | 1940 | Formuła czasu koncentracji |
-| Clark, C.O. | 1945 | Model translacja + zbiornik |
-| FAA | 2013 | Formuła Tc dla spływu powierzchniowego (AC 150/5320-5D) |
-| Kerby, W.S. | 1959 | Formuła Tc dla spływu arkuszowego (retardance coefficient) |
-| Giandotti, M. | 1934 | Formuła Tc dla zlewni włoskich |
-| Roussel, M.C. et al. | 2005 | Metoda kompozytowa Kerby-Kirpich (TxDOT 0-4696-2) |
-| Rao, Delleur, Sarma | 1972 | Regresja parametrów Nasha dla zlewni zurbanizowanych |
-| Lutz, W. | 1984 | Estymacja parametrów Nasha z cech fizjograficznych |
-| USDA TR-55 | 1986 | Metoda SCS-CN, relacja tlag = 0.6×Tc |
-| KZGW | 2017 | Polska metodyka, tabela f(N) dla Lutza |
+| Source | Year | Significance for Hydrolog |
+|--------|------|---------------------------|
+| Nash, J.E. | 1957 | Theoretical basis of the Nash IUH model |
+| Snyder, F.F. | 1938 | Definition of the Snyder synthetic UH |
+| Kirpich, Z.P. | 1940 | Time of concentration formula |
+| Clark, C.O. | 1945 | Translation + reservoir model |
+| McCarthy, G.T. | 1938 | Muskingum method: wedge storage `S = K [X I + (1 - X) O]` |
+| Cunge, J.A. | 1969 | Muskingum parameters from the diffusion of the flood wave: `K = dx / c`, `X = (1 - Q / (T S0 c dx)) / 2` |
+| Kalinin, G.P. and Milyukov, P.I. | 1957 | Cascade of reservoirs for channel routing with a characteristic reach length `Δx_c = Q / (T S0 c)` |
+| FAA | 1970 | Tc formula for overland flow (AC 150/5320-5B, fig. 7) |
+| Kerby, W.S. | 1959 | Tc formula for sheet flow (retardance coefficient) |
+| Giandotti, M. | 1934 | Tc formula for Italian catchments |
+| Roussel, M.C. et al. | 2005 | Composite Kerby-Kirpich method (TxDOT 0-4696-2) |
+| Fang, X. et al. | 2005 | Kirpich's L and S: the length to the most remote point and its drop (TxDOT 0-4696-1) |
+| USDA-NRCS, NEH 630 ch. 15 | 2010 | NRCS lag equation: flow length ℓ and land slope Y |
+| Cleveland, T.G. et al. | 2012 | Low-slope offset of Kerby-Kirpich (TxDOT 0-6382-P1) |
+| Rao, Delleur, Sarma | 1972 | Regression of Nash parameters for urbanised catchments |
+| Lutz, W. | 1984 | Estimation of Nash parameters from physiographic characteristics |
+| USDA TR-55 | 1986 | SCS-CN method, the relation tlag = 0.6×Tc |
+| KZGW | 2017 | Polish methodology, f(N) table for Lutz |
+| Fisher, R.A. and Tippett, L.H.C. | 1928 | Limiting distributions of the smallest and largest sample value |
+| Gumbel, E.J. | 1958 | Statistics of extreme values (distribution for minima) |
+| Coles, S. | 2001 | GEV estimation by maximum likelihood (ch. 3) |
+| Hosking, J.R.M. and Wallis, J.R. | 1997 | L-moments; parameters of the GEV and Pearson III from them (`fit_method` `l_moments`) |
+| Mann, H.B. and Whitney, D.R. | 1947 | The U test of two samples (`stats homogeneity`) |
+| Smirnov, N.V. | 1939 | The two-sample Kolmogorov-Smirnov test (`stats homogeneity`) |
+| Pettitt, A.N. | 1979 | The non-parametric change-point test and its approximate p-value (`stats homogeneity`) |
+| USDA Soil Survey Manual | 1993 | Texture triangle, texture classes |
 
 ---
 
-## 5. Typowe błędy i jak ich uniknąć
+## 5. Common Mistakes and How to Avoid Them
 
-### 5.1 Błąd: Nash IUH + Kirpich bez from_lutz()
+### 5.1 Mistake: Nash IUH + Kirpich without from_lutz()
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│  BŁĄD: Użycie ConcentrationTime.kirpich() → NashIUH.from_tc()      │
+│  MISTAKE: Deriving the Nash K from ConcentrationTime.kirpich()     │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
 │  PROBLEM:                                                           │
-│  from_tc() zakłada: tlag = 0.6 × Tc                                │
-│  Ta relacja jest specyficzna dla metody SCS i NIE ma naukowego     │
-│  uzasadnienia dla modelu Nasha.                                     │
+│  K = 0.6 × Tc / n assumes the SCS relation tlag = 0.6 × Tc.        │
+│  This relation is specific to the SCS method and has NO scientific │
+│  justification for the Nash model (NashIUH.from_tc() was removed   │
+│  in v0.8.0 for this reason).                                       │
 │                                                                     │
-│  KONSEKWENCJE:                                                      │
-│  - Parametr K jest obliczany z błędnej zależności                  │
-│  - Kształt IUH może nie odpowiadać charakterystyce zlewni          │
-│  - Wyniki mogą znacząco różnić się od metod skalibrowanych         │
+│  CONSEQUENCES:                                                      │
+│  - Parameter K is computed from an invalid relationship            │
+│  - The IUH shape may not match the catchment characteristics       │
+│  - Results may differ significantly from calibrated methods        │
 │                                                                     │
-│  ROZWIĄZANIE:                                                       │
-│  Użyj NashIUH.from_lutz() z parametrami fizjograficznymi:          │
-│  - L_km (długość cieku)                                            │
-│  - Lc_km (odległość do centroidu)                                  │
-│  - slope (spadek)                                                   │
-│  - manning_n (współczynnik Manninga)                               │
-│  - forest_pct, urban_pct (pokrycie terenu)                         │
+│  SOLUTION:                                                          │
+│  Use NashIUH.from_lutz() with physiographic parameters:            │
+│  - L_km (stream length)                                            │
+│  - Lc_km (distance to the centroid)                                │
+│  - slope (slope)                                                    │
+│  - manning_n (Manning coefficient)                                 │
+│  - forest_pct, urban_pct (land cover)                              │
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-### 5.2 Błąd: Snyder UH + zewnętrzne Tc
+### 5.2 Mistake: Snyder UH + an External Tc
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│  BŁĄD: Obliczanie Tc metodą Kirpicha i przekazywanie do Snydera    │
+│  MISTAKE: Computing Tc with Kirpich and passing it to Snyder       │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
 │  PROBLEM:                                                           │
-│  Model Snydera ma WBUDOWANĄ formułę estymacji czasu opóźnienia:    │
+│  The Snyder model has a BUILT-IN lag time estimation formula:      │
 │  tL = Ct × (L × Lc)^0.3                                            │
 │                                                                     │
-│  NIE ISTNIEJE parametr "tc" w konstruktorze SnyderUH!              │
+│  There is NO "tc" parameter in the SnyderUH constructor!           │
 │                                                                     │
-│  ROZWIĄZANIE:                                                       │
-│  Podaj L_km i Lc_km bezpośrednio:                                  │
+│  SOLUTION:                                                          │
+│  Supply L_km and Lc_km directly:                                   │
 │                                                                     │
 │  snyder = SnyderUH(                                                │
 │      area_km2=100,                                                 │
-│      L_km=15,      # długość cieku                                 │
-│      Lc_km=8,      # do centroidu                                  │
+│      L_km=15,      # stream length                                 │
+│      Lc_km=8,      # to the centroid                               │
 │      ct=1.5,                                                       │
 │      cp=0.6                                                        │
 │  )                                                                 │
@@ -776,27 +1396,28 @@ print(f"Qmax = {result.peak_discharge_m3s:.2f} m³/s")
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-### 5.3 Błąd: Mieszanie jednostek K w modelu Nasha
+### 5.3 Mistake: Mixing K Units in the Nash Model
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│  BŁĄD: Podanie K w godzinach gdy oczekiwane minuty (lub odwrotnie) │
+│  MISTAKE: Supplying K in hours when minutes are expected (or vice  │
+│  versa)                                                             │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
 │  PROBLEM:                                                           │
-│  - NashIUH(k_min=...) oczekuje K w MINUTACH                        │
-│  - HydrographGenerator(uh_params={"k": ...}) domyślnie w GODZINACH │
+│  - NashIUH(k_min=...) expects K in MINUTES                         │
+│  - HydrographGenerator(uh_params={"k": ...}) defaults to HOURS     │
 │                                                                     │
-│  ROZWIĄZANIE:                                                       │
-│  Zawsze określaj jednostkę jawnie:                                 │
+│  SOLUTION:                                                          │
+│  Always state the unit explicitly:                                 │
 │                                                                     │
-│  # Bezpośrednio (zawsze minuty)                                    │
+│  # Directly (always minutes)                                       │
 │  nash = NashIUH(n=3, k_min=45.0)                                   │
 │                                                                     │
-│  # Przez HydrographGenerator (domyślnie godziny)                   │
+│  # Through HydrographGenerator (hours by default)                  │
 │  gen = HydrographGenerator(                                        │
 │      uh_model="nash",                                              │
-│      uh_params={"n": 3, "k": 0.75, "k_unit": "hours"}  # 45 min   │
+│      uh_params={"n": 3, "k": 0.75, "k_unit": "hours"}  # 45 min    │
 │  )                                                                 │
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
@@ -804,9 +1425,9 @@ print(f"Qmax = {result.peak_discharge_m3s:.2f} m³/s")
 
 ---
 
-## 6. Referencje
+## 6. References
 
-### Publikacje oryginalne
+### Original Publications
 
 1. **Clark, C.O.** (1945). Storage and the Unit Hydrograph. *Transactions of the American Society of Civil Engineers*, 110, 1419-1446.
 
@@ -824,27 +1445,167 @@ print(f"Qmax = {result.peak_discharge_m3s:.2f} m³/s")
 
 8. **Snyder, F.F.** (1938). Synthetic unit-graphs. *Transactions of the American Geophysical Union*, 19, 447-454.
 
-### Dokumentacja techniczna
+### Technical Documentation
 
-9. **FAA** (2013). Airport Drainage Design. Advisory Circular AC 150/5320-5D. Federal Aviation Administration, U.S. Department of Transportation.
+9. **FAA** (1970). Airport Drainage. Advisory Circular AC 150/5320-5B, fig. 7 and table I. Federal Aviation Administration, U.S. Department of Transportation.
 
 10. **Kerby, W.S.** (1959). Time of concentration for overland flow. *Civil Engineering*, 29(3), 174.
 
 11. **Roussel, M.C., Thompson, D.B., Fang, X., Cleveland, T.G., & Garcia, C.A.** (2005). Time-parameter estimation for applicable Texas watersheds. *TxDOT Research Report 0-4696-2*. Texas Department of Transportation.
 
-12. **KZGW** (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych. Załącznik 2, Tabela C.2.
+12. **KZGW** (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych (Update of the methodology for computing maximum flows and precipitation; National Water Management Authority, Poland). Annex 2, Table C.2.
 
 13. **USACE HEC-HMS** (2024). Technical Reference Manual. https://www.hec.usace.army.mil/confluence/hmsdocs/hmstrm/
 
 14. **USDA-NRCS** (1986). Urban Hydrology for Small Watersheds. Technical Release 55 (TR-55).
 
-### Podręczniki
+15. **Fang, X., Cleveland, T.G., Garcia, C.A., Thompson, D.B., & Malla, R.** (2005). Literature review on timing parameters for hydrographs. *TxDOT Research Report 0-4696-1*.
 
-15. **Banasik, K.** (2009). Wyznaczanie wezbrań powodziowych w małych zlewniach zurbanizowanych. *Wyd. SGGW, Warszawa*.
+16. **Cleveland, T.G., Thompson, D.B., Fang, X., & Li, M.-H.** (2012). Guidance for estimation of time of concentration in Texas for low-slope conditions. *TxDOT Product 0-6382-P1*, Texas Tech University.
 
-16. **Bedient, P.B. & Huber, W.C.** (1992). *Hydrology and Floodplain Analysis*. Addison-Wesley.
+17. **Mota, A.A. & Kobiyama, M.** (2015). Reconsiderações sobre a fórmula de Kirpich para o cálculo de tempo de concentração. *Revista Brasileira de Recursos Hídricos*, 20(1), 55-59.
+
+### Textbooks
+
+18. **Banasik, K.** (2009). Wyznaczanie wezbrań powodziowych w małych zlewniach zurbanizowanych (Determining flood waves in small urbanised catchments). *Wyd. SGGW, Warszawa*.
+
+19. **Bedient, P.B. & Huber, W.C.** (1992). *Hydrology and Floodplain Analysis*. Addison-Wesley.
+
+20. **Fisher, R.A. & Tippett, L.H.C.** (1928). Limiting forms of the frequency distribution of the largest or smallest member of a sample. *Proceedings of the Cambridge Philosophical Society*, 24(2), 180-190.
+
+21. **Gumbel, E.J.** (1958). *Statistics of Extremes*. Columbia University Press, New York.
+
+22. **Coles, S.** (2001). *An Introduction to Statistical Modeling of Extreme Values*. Springer, London.
+
+23. **USDA** (1993). Soil Survey Manual. Handbook No. 18. Soil Survey Division Staff, USDA.
+
+24. **USDA-NRCS** (2007). National Engineering Handbook, Part 630 Hydrology, Chapter 7: Hydrologic Soil Groups.
+
+25. **Chow, V.T., Maidment, D.R. & Mays, L.W.** (1988). *Applied Hydrology*. McGraw-Hill (S-curve method for unit hydrographs, synthetic hydrographs including Snyder's).
+
+26. **USDA-NRCS** (2010). National Engineering Handbook, Part 630 Hydrology, Chapter 15: Time of Concentration (lag equation 15-4: ℓ is the longest flow path from the hydraulically most distant point of the watershed to the outlet, Y the mean terrain slope of the catchment).
+
+27. **TxDOT**. Hydraulic Design Manual, Chapter 4 Hydrology, Section 11: Time of Concentration (the 1200 ft = 366 m limit for the Kerby formula; the Kerby-Kirpich method).
+
+### Flood Routing
+
+28. **McCarthy, G.T.** (1938). The unit hydrograph and flood routing. Unpublished manuscript presented at the conference of the North Atlantic Division, U.S. Army Corps of Engineers, New London, Connecticut, 24 June 1938.
+
+29. **University of Iowa**. Lesson 27: Hydrologic Routing, Muskingum Method (course handout EX-L27-Muskingum-soln). https://user.engineering.uiowa.edu/~flood/handouts/EX-L27-Muskingum-soln.pdf
+
+30. **Cunge, J.A.** (1969). On the subject of a flood propagation computation method (Muskingum method). *Journal of Hydraulic Research*, 7(2), 205-230.
+
+31. **USDA-NRCS** (2014). National Engineering Handbook, Part 630 Hydrology, Chapter 17: Flood Routing (Amendment 69): example 17-4, appendices B and C. https://damtoolbox.org/images/a/a6/NEH17.pdf
+
+32. **Kalinin, G.P. and Milyukov, P.I.** (1957). O raschete neustanovivshegosya dvizheniya vody v otkrytykh ruslakh (On the computation of unsteady flow in open channels). *Meteorologiya i Gidrologiya*, 10, 10-18 (Leningrad); cited after Szilagyi, J. et al. (2005), *Journal of Hydrology*, 311, 219-229.
+
+33. **Ponce, V.M.** (1980, online version 2016). Linear reservoirs and numerical diffusion. https://ponce.sdsu.edu/linear_reservoirs_and_numerical_diffusion.html (the gamma response of Nash, the SSARR equation as Muskingum with `X = 0`, the Kalinin-Milyukov characteristic reach length).
+
+### Synthetic Unit Hydrographs
+
+34. **Asquith, W.H. & Roussel, M.C.** (2007). An initial-abstraction, constant-loss model for unit hydrograph modeling for applicable watersheds in Texas. *U.S. Geological Survey Scientific Investigations Report 2007-5243* (the gamma unit hydrograph from its peak and time to peak, eq. 2 and 4). https://pubs.usgs.gov/sir/2007/5243/
+
+### Flood Frequency
+
+35. **Hosking, J.R.M. & Wallis, J.R.** (1997). *Regional Frequency Analysis: An Approach Based on L-Moments*. Cambridge University Press (sample L-moments; the GEV, Pearson III and lognormal L-moments and the estimators of their parameters).
+
+### Homogeneity
+
+36. **Mann, H.B. & Whitney, D.R.** (1947). On a test of whether one of two random variables is stochastically larger than the other. *Annals of Mathematical Statistics*, 18(1), 50-60.
+
+37. **Smirnov, N.V.** (1939). On the estimation of the discrepancy between empirical curves of distribution for two independent samples. *Bulletin Mathématique de l'Université de Moscou*, 2(2).
+
+38. **Pettitt, A.N.** (1979). A non-parametric approach to the change-point problem. *Journal of the Royal Statistical Society, Series C (Applied Statistics)*, 28(2), 126-135.
+
+### Regime, Seasonality, Trends and Baseflow
+
+39. **Pardé, M.** (1933). *Fleuves et rivières*. Armand Colin, Paris.
+
+40. **Dynowska, I.** (1997). Reżim odpływu rzecznego (River runoff regime). In: *Atlas Rzeczypospolitej Polskiej*. Główny Geodeta Kraju, Warszawa.
+
+41. **Wrzesiński, D.** (2017). Typologia reżimu odpływu rzek w Polsce w podejściu nadzorowanym i nienadzorowanym (A typology of the river regime in Poland in supervised and unsupervised approaches). *Badania Fizjograficzne, Seria A – Geografia Fizyczna*, 8 (A68), 253-264. doi:10.14746/bfg.2017.8.19
+
+42. **Wrzesiński, D.** (2018). Typologia reżimu odpływu rzek w Polsce w różnych fazach oscylacji północnoatlantyckiej (A typology of the river regime in Poland in the phases of the North Atlantic Oscillation). *Badania Fizjograficzne, Seria A – Geografia Fizyczna*, 9 (A69), 249-261 (the criteria of Dynowska's types on p. 250, Table 1 on pp. 253-254). doi:10.14746/bfg.2018.9.19
+
+43. **Perz, A.** (2019). Cechy reżimu odpływu rzek Kotliny Kłodzkiej (Features of the runoff regime of the rivers of the Kłodzko Basin). *Badania Fizjograficzne, Seria A – Geografia Fizyczna*, 10 (A70), 65-83 (the spring month, March or April, p. 79). doi:10.14746/bfg.2019.10.6
+
+44. **Walsh, R.P.D. & Lawler, D.M.** (1981). Rainfall seasonality: description, spatial patterns and change through time. *Weather*, 36(7), 201-208.
+
+45. **Bayliss, A.C. & Jones, R.C.** (1993). Peaks-over-threshold flood database: summary statistics and seasonality. *Report No. 121*, Institute of Hydrology, Wallingford.
+
+46. **Burn, D.H.** (1997). Catchment similarity for regional flood frequency analysis using seasonality measures. *Journal of Hydrology*, 202(1-4), 212-230.
+
+47. **Wilks, D.S.** (2011). *Statistical Methods in the Atmospheric Sciences*, 3rd ed. Academic Press, Oxford (section 9.4, harmonic analysis).
+
+48. **Mann, H.B.** (1945). Nonparametric tests against trend. *Econometrica*, 13(3), 245-259.
+
+49. **Kendall, M.G.** (1975). *Rank Correlation Methods*, 4th ed. Charles Griffin, London.
+
+50. **Hirsch, R.M., Slack, J.R. & Smith, R.A.** (1982). Techniques of trend analysis for monthly water quality data. *Water Resources Research*, 18(1), 107-121.
+
+51. **Sen, P.K.** (1968). Estimates of the regression coefficient based on Kendall's tau. *Journal of the American Statistical Association*, 63(324), 1379-1389.
+
+52. **Conover, W.J.** (1980). *Practical Nonparametric Statistics*, 2nd ed. Wiley, New York.
+
+53. **Gilbert, R.O.** (1987). *Statistical Methods for Environmental Pollution Monitoring*. Van Nostrand Reinhold, New York (chapter 16: Eq. 16.3, Example 16.2, section 16.5, Example 16.5, Exercises 16.1-16.3 and their answers on p. 224, the program of appendix B).
+
+54. **Lyne, V. & Hollick, M.** (1979). Stochastic time-variable rainfall-runoff modelling. *Hydrology and Water Resources Symposium*, Institution of Engineers Australia, Perth.
+
+55. **Nathan, R.J. & McMahon, T.A.** (1990). Evaluation of automated techniques for base flow and recession analyses. *Water Resources Research*, 26(7), 1465-1473.
+
+56. **Ladson, A.R., Brown, R., Neal, B. & Nathan, R.** (2013). A standard approach to baseflow separation using the Lyne and Hollick filter. *Australasian Journal of Water Resources*, 17(1), 25-34. doi:10.7158/13241583.2013.11465417; the authors' code and example: https://github.com/TonyLadson/BaseflowSeparation_LyneHollick
+
+57. **Tallaksen, L.M.** (1995). A review of baseflow recession analysis. *Journal of Hydrology*, 165(1-4), 349-370.
+
+### Meteorological Statistics
+
+58. **Copernicus European and Global Drought Observatories (EDO, GDO)** (2025). *EDO and GDO Indicator Factsheet: Standardized Precipitation Index (SPI)*. European Union, https://drought.emergency.copernicus.eu/ (the gamma fits on the baseline January 1991 – December 2020).
+
+59. **Edwards, D.C. & McKee, T.B.** (1997). Characteristics of 20th century drought in the United States at multiple time scales. *Climatology Report* 97-2, Colorado State University, Fort Collins.
+
+60. **Eurostat** (2024). Energy statistics – cooling and heating degree days (nrg_chdd), reference metadata, section 3.4.
+
+61. **Gąsiorek, E. & Musiał, E.** (2011). Porównanie i klasyfikacja warunków opadowych na podstawie wskaźnika standaryzowanego opadu i wskaźnika względnego opadu. *Woda-Środowisko-Obszary Wiejskie*, 11(4), 107-119 (Kaczorowska's classes on p. 108; the monthly limits of Tomaszewska, 1994, after Kosiba, 1948, in Table 1).
+
+62. **Hyndman, R.J. & Fan, Y.** (1996). Sample quantiles in statistical packages. *The American Statistician*, 50(4), 361-365.
+
+63. **Kaczorowska, Z.** (1962). Opady w Polsce w przekroju wieloletnim. *Prace Geograficzne IG PAN*, 33.
+
+64. **Klein Tank, A.M.G., Zwiers, F.W. & Zhang, X.** (2009). *Guidelines on Analysis of Extremes in a Changing Climate in Support of Informed Decisions for Adaptation*. WMO-TD No. 1500 (WCDMP-No. 72), World Meteorological Organization, Geneva (the ETCCDI indices, CDD and CWD, and the base period of the percentile indices).
+
+65. **McKee, T.B., Doesken, N.J., & Kleist, J.** (1993). The relationship of drought frequency and duration to time scales. *8th Conference on Applied Climatology*, Anaheim, 179-184.
+
+66. **Miś, F.** (2026). Spatiotemporal variability of atmospheric drought during the growing season in Poland. *Theoretical and Applied Climatology*, 157, 790.
+
+67. **Oliver, J.E.** (1980). Monthly precipitation distribution: a comparative index. *Professional Geographer*, 32(3), 300-309.
+
+68. **Radzka, E.** (2014). Hydrothermal characteristics of vegetation period in central-eastern Poland in years 1971–2005. *Folia Pomeranae Universitatis Technologiae Stetinensis*, 312(31), 133-142.
+
+69. **Selyaninov, G.T.** (1928). On the agricultural estimation of climate. *Trudy po sel'skokhozyaystvennoy meteorologii*, 20, 165-177.
+
+70. **Skowera, B. & Puła, J.** (2004). Skrajne warunki pluwiotermiczne w okresie wiosennym na obszarze Polski w latach 1971–2000. *Acta Agrophysica*, 3(1), 171-177 (the classes of k on p. 172).
+
+71. **Thom, H.C.S.** (1958). A note on the gamma distribution. *Monthly Weather Review*, 86, 117-122.
+
+72. **WMO** (2012). *Standardized Precipitation Index User Guide*. WMO-No. 1090, World Meteorological Organization, Geneva (chapter 2, the length of the record; sections 5.1.1 and 5.1.2, the SPI against the totals of the years on record, at least 30 years).
+
+73. **WMO** (2017). *WMO Guidelines on the Calculation of Climate Normals*. WMO-No. 1203, World Meteorological Organization, Geneva (chapter 2, normals as the benchmark of anomalies; chapter 3 and section 5.1, the climatological standard normal 1991–2020 and the reference normal 1961–1990; section 4.4, missing data, 4.4.2 a normal from 80 % of the years; section 5.2.2, longer periods for percentiles).
+
+74. **Wypych, A., Sulikowska, A., Ustrnul, Z., & Czekierda, D.** (2017). Variability of growing degree days in Poland. *International Journal of Biometeorology*, 61(1), 49-59.
+
+75. **Zhang, X. et al.** (2011). Indices for monitoring changes in extremes based on daily temperature and precipitation data. *WIREs Climate Change*, 2(6), 851-870.
+
+### Station Analyses
+
+76. **Byczkowski, A.** (1996). *Hydrologia*, t. 1. Wydawnictwo SGGW, Warszawa (characteristic values of the first and second degree; the classes of the stages with the days including higher and lower).
+
+77. **Searcy, J.K.** (1959). Flow-duration curves. *Manual of Hydrology, Part 2*. USGS Water-Supply Paper 1542-A.
+
+78. **Tallaksen, L.M. & van Lanen, H.A.J.** (Eds.) (2004). *Hydrological Drought: Processes and Estimation Methods for Streamflow and Groundwater*. Elsevier, Amsterdam (chapter 5, the threshold level method).
+
+79. **Vogel, R.M. & Fennessey, N.M.** (1994). Flow-duration curves. I: New interpretation and confidence intervals. *Journal of Water Resources Planning and Management*, 120(4), 485-504.
 
 ---
 
-**Wersja dokumentu:** 1.1
-**Data ostatniej aktualizacji:** 2026-03-23
+**Document version:** 1.11
+**Last updated:** 2026-11-14

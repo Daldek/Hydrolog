@@ -1,0 +1,612 @@
+"""Group ``hydrograph``: design runoff hydrograph (precipitation -> discharge).
+
+``hydrograph generate`` composes the effective precipitation of SCS-CN, a unit
+hydrograph model and the discrete convolution of
+:class:`~hydrolog.runoff.HydrographGenerator`. The options and the ``one_of`` groups
+are public constants (:data:`GENERATE_OPTIONS`, :data:`GENERATE_ONE_OF`) because
+``report generate`` builds on the same inputs. The module imports only the catalog
+declarations, so reading the catalog stays cheap.
+"""
+
+from __future__ import annotations
+
+import dataclasses
+
+from hydrolog._ranges import NASH_INPUTS
+from hydrolog.catalog.groups._attribution import ATTRIBUTION
+from hydrolog.catalog.groups._typical import (
+    TC_METHODS,
+    WATERSHED_TC_RANGES,
+    typically,
+)
+from hydrolog.catalog.groups.precip import HIETOGRAM_OPTIONS
+from hydrolog.catalog.spec import Command, Option, RangeCheck
+
+_UH_MODELS = ("scs", "nash", "clark", "snyder")
+
+NASH_ESTIMATIONS = ("lutz",)
+"""The values of ``nash_estimation``: how Nash's n and K are estimated."""
+
+_SHAPE = {option.name: option for option in HIETOGRAM_OPTIONS}
+
+
+def _optional(option: Option) -> Option:
+    """Return the option, no longer required (the series alternative needs none)."""
+    return dataclasses.replace(option, required=False)
+
+
+GENERATE_OPTIONS: tuple[Option, ...] = (
+    Option(
+        name="watershed",
+        type="object",
+        description_pl=(
+            "Parametry zlewni jako obiekt WatershedParameters (wymagane tylko "
+            "`area_km2`; `cn` i pola metody `tc_method`, np. `flow_path_length_km`, "
+            "`flow_path_slope_m_per_m`, gdy tc liczy się ze zlewni; brakujące pole "
+            "to błąd `missing_field` z nazwą pola w `details.option`). Dostarcza "
+            "powierzchnię, CN, dane do czasu koncentracji i do `nash_estimation`; "
+            "parametry modeli Clark (R) i Snyder oraz podane n i K Nasha podaje się "
+            "jawnie."
+        ),
+        description=(
+            "Watershed parameters as a WatershedParameters object (only `area_km2` "
+            "is required; `cn` and the fields of `tc_method`, e.g. "
+            "`flow_path_length_km`, `flow_path_slope_m_per_m`, when tc is computed "
+            "from the watershed; a missing one is `missing_field` naming the field "
+            "in `details.option`). It supplies the area, the CN and the data for "
+            "the time of concentration and for `nash_estimation`; the parameters of "
+            "the Clark (R) and Snyder models and given Nash n and K are given "
+            "explicitly."
+        ),
+    ),
+    Option(
+        name="watershed_file",
+        type="path",
+        path_role="input",
+        description_pl=(
+            "Plik JSON z parametrami zlewni (format "
+            "`WatershedParameters.to_json()`); alternatywa dla `watershed` i "
+            "`area_km2` + `cn`."
+        ),
+        description=(
+            "JSON file with the watershed parameters (the "
+            "`WatershedParameters.to_json()` format); alternative to "
+            "`watershed` and `area_km2` + `cn`."
+        ),
+    ),
+    Option(
+        name="area_km2",
+        type="number",
+        description_pl=(
+            "Powierzchnia zlewni [km²]; > 0. Razem z `cn`, zamiast zlewni "
+            "(`watershed`, `watershed_file`)."
+        ),
+        description=(
+            "Catchment area [km2]; > 0. Together with `cn`, instead of a "
+            "watershed (`watershed`, `watershed_file`)."
+        ),
+        exclusive_minimum=0,
+        unit="km2",
+    ),
+    Option(
+        name="cn",
+        type="number",
+        description_pl=(
+            "Liczba krzywej CN dla AMC II, 1–100 (może być ułamkowa, np. z `cn "
+            "weighted`). Wymagana z `area_km2`; obok zlewni nadpisuje jej `cn` w "
+            "całym obliczeniu, także w czasie koncentracji metodą nrcs (a gdy "
+            "zlewnia nie ma `cn`, jest wymagana)."
+        ),
+        description=(
+            "Curve Number CN for AMC II, 1-100 (may be fractional, e.g. from "
+            "`cn weighted`). Required with `area_km2`; next to a watershed it "
+            "overrides its `cn` in the whole computation, also in the time of "
+            "concentration by nrcs (and is required when the watershed has none)."
+        ),
+        minimum=1,
+        maximum=100,
+    ),
+    Option(
+        name="tc_min",
+        type="number",
+        description_pl=(
+            "Czas koncentracji [min]; > 0. Potrzebny modelom scs i clark; "
+            "pominięty — liczony dla zlewni metodą `tc_method`. Modele nash i "
+            "snyder go nie używają."
+        ),
+        description=(
+            "Time of concentration [min]; > 0. Needed by the scs and clark "
+            "models; when omitted it is computed for a watershed by `tc_method`. "
+            "The nash and snyder models do not use it."
+        ),
+        exclusive_minimum=0,
+        unit="min",
+    ),
+    Option(
+        name="tc_method",
+        type="choice",
+        description_pl=(
+            "Metoda liczenia tc ze zlewni, gdy nie podano `tc_min`; domyślnie "
+            "kirpich. Pola zlewni wymagane przez metodę: patrz `tc watershed`."
+        ),
+        description=(
+            "Method for computing tc from a watershed when `tc_min` is not "
+            "given; default kirpich. The watershed fields a method needs: see "
+            "`tc watershed`."
+        ),
+        choices=TC_METHODS,
+        meanings={
+            "kirpich": "Kirpich formula (default).",
+            "nrcs": "NRCS lag method (uses the CN).",
+            "giandotti": "Giandotti formula.",
+            "faa": "FAA formula.",
+            "kerby": "Kerby formula for overland flow.",
+            "kerby_kirpich": "Kerby overland flow plus Kirpich channel flow.",
+        },
+        meanings_pl={
+            "kirpich": "Wzór Kirpicha (domyślny).",
+            "nrcs": "Metoda lagu NRCS (używa CN).",
+            "giandotti": "Wzór Giandottiego.",
+            "faa": "Wzór FAA.",
+            "kerby": "Wzór Kerby'ego dla spływu powierzchniowego.",
+            "kerby_kirpich": "Kerby (spływ powierzchniowy) plus Kirpich (koryto).",
+        },
+    ),
+    Option(
+        name="ia_coefficient",
+        type="number",
+        description_pl=(
+            "Współczynnik strat początkowych λ (Ia = λ·S), 0 < λ ≤ 1; domyślnie "
+            "0,2 (standard, dla którego skalibrowano tablice CN)."
+        ),
+        description=(
+            "Initial abstraction ratio λ (Ia = λ·S), 0 < λ <= 1; default 0.2 "
+            "(the standard the CN tables are calibrated for)."
+        ),
+        exclusive_minimum=0,
+        maximum=1,
+        default=0.2,
+    ),
+    Option(
+        name="amc",
+        type="choice",
+        description_pl=("Wilgotność poprzedzająca (AMC); domyślnie II."),
+        description=("Antecedent moisture condition (AMC); default II."),
+        choices=("I", "II", "III"),
+        meanings={
+            "I": "Dry antecedent moisture; CN lowered.",
+            "II": "Normal antecedent moisture; CN as given.",
+            "III": "Wet antecedent moisture; CN raised.",
+        },
+        meanings_pl={
+            "I": "Sucho przed opadem; CN obniżone.",
+            "II": "Przeciętna wilgotność; CN bez zmian.",
+            "III": "Mokro przed opadem; CN podwyższone.",
+        },
+        default="II",
+    ),
+    _optional(_SHAPE["hietogram_type"]),
+    _optional(_SHAPE["total_mm"]),
+    _optional(_SHAPE["duration_min"]),
+    _SHAPE["alpha"],
+    _SHAPE["beta"],
+    _SHAPE["peak_position"],
+    Option(
+        name="values",
+        type="number_list",
+        description_pl=(
+            "Szereg opadu zamiast hietogramu projektowego: wysokości opadu w "
+            "kolejnych krokach `timestep_min` [mm]; każda ≥ 0."
+        ),
+        description=(
+            "A precipitation series instead of a design hyetograph: precipitation "
+            "depths in consecutive steps of `timestep_min` [mm]; each >= 0."
+        ),
+        minimum=0,
+        unit="mm",
+    ),
+    Option(
+        name="input_file",
+        type="path",
+        path_role="input",
+        description_pl=(
+            "Plik CSV lub JSON z wysokościami opadu w krokach [mm] (zamiast `values`)."
+        ),
+        description=(
+            "CSV or JSON file with the precipitation depths per step [mm] "
+            "(instead of `values`)."
+        ),
+    ),
+    Option(
+        name="value_column",
+        type="string",
+        description_pl=(
+            "Kolumna pliku z wysokościami opadu; pomijana dla pliku jednokolumnowego."
+        ),
+        description=(
+            "File column with the precipitation depths; may be omitted for a "
+            "one-column file."
+        ),
+    ),
+    Option(
+        name="timestep_min",
+        type="number",
+        description_pl=(
+            "Krok czasowy [min]; > 0; domyślnie 5. Krok hietogramu "
+            "projektowego, szeregu opadu, hydrogramu jednostkowego i wyniku."
+        ),
+        description=(
+            "Time step [min]; > 0; default 5. The step of the design "
+            "hyetograph, the precipitation series, the unit hydrograph and the "
+            "result."
+        ),
+        exclusive_minimum=0,
+        unit="min",
+        default=5.0,
+    ),
+    Option(
+        name="uh_model",
+        type="choice",
+        description_pl=(
+            "Model hydrogramu jednostkowego; domyślnie scs. Opcje modelu: "
+            "`nash_*`, `clark_*`, `snyder_*`."
+        ),
+        description=(
+            "Unit hydrograph model; default scs. Model options: `nash_*`, "
+            "`clark_*`, `snyder_*`."
+        ),
+        choices=_UH_MODELS,
+        meanings={
+            "scs": "SCS dimensionless unit hydrograph; needs tc.",
+            "nash": "Nash cascade; needs `nash_n` and `nash_k_min`, or "
+            "`nash_estimation`.",
+            "clark": "Clark; needs tc and `clark_r_min` or `clark_r_tc_ratio`.",
+            "snyder": "Snyder; needs `snyder_length_km` and "
+            "`snyder_centroid_length_km`, no tc.",
+        },
+        meanings_pl={
+            "scs": "Bezwymiarowy hydrogram SCS; wymaga tc.",
+            "nash": "Kaskada Nasha; wymaga `nash_n` i `nash_k_min` albo "
+            "`nash_estimation`.",
+            "clark": "Clark; wymaga tc oraz `clark_r_min` lub `clark_r_tc_ratio`.",
+            "snyder": "Snyder; wymaga `snyder_length_km` i "
+            "`snyder_centroid_length_km`, bez tc.",
+        },
+        default="scs",
+    ),
+    Option(
+        name="nash_n",
+        type="number",
+        description_pl=(
+            f"Nash: liczba zbiorników n (> 0, {typically('nash', 'n', 'pl')}); razem "
+            "z `nash_k_min`, zamiast `nash_estimation`."
+        ),
+        description=(
+            f"Nash: number of reservoirs n (> 0, {typically('nash', 'n')}); together "
+            "with `nash_k_min`, instead of `nash_estimation`."
+        ),
+        exclusive_minimum=0,
+    ),
+    Option(
+        name="nash_k_min",
+        type="number",
+        description_pl=(
+            "Nash: stała magazynowania K [min] "
+            f"(> 0, {typically('nash', 'k_min', 'pl')}); razem z `nash_n`."
+        ),
+        description=(
+            "Nash: storage constant K [min] "
+            f"(> 0, {typically('nash', 'k_min')}); together with `nash_n`."
+        ),
+        exclusive_minimum=0,
+        unit="min",
+    ),
+    Option(
+        name="nash_estimation",
+        type="choice",
+        description_pl=(
+            "Nash: estymacja n i K ze zlewni zamiast podanych `nash_n` i `nash_k_min`"
+            "; lutz: metoda Lutza (1984, za KZGW 2017) z pól zlewni: L i J "
+            "najdłuższej drogi spływu (`flow_path_length_km`, "
+            "`flow_path_slope_m_per_m`), `Lc_km`, `manning_n` oraz `urban_pct` i "
+            "`forest_pct` (bez nich 0). Wymaga `watershed` lub `watershed_file`."
+        ),
+        description=(
+            "Nash: how n and K are estimated from the watershed instead of being "
+            "given (`nash_n`, `nash_k_min`); lutz: the Lutz method (1984, after KZGW "
+            "2017) from the watershed fields: L and J of the longest flow path "
+            "(`flow_path_length_km`, `flow_path_slope_m_per_m`), `Lc_km`, "
+            "`manning_n`, and `urban_pct` and `forest_pct` (0 without them). Needs "
+            "`watershed` or `watershed_file`."
+        ),
+        choices=NASH_ESTIMATIONS,
+        meanings={
+            "lutz": "Lutz (1984, after KZGW 2017): n and K from the main stream "
+            "from the divide (the longest flow path), Lc, Manning's n and the urban "
+            "and forest shares.",
+        },
+        meanings_pl={
+            "lutz": "Lutz (1984, za KZGW 2017): n i K z cieku głównego od działu "
+            "wodnego (najdłuższej drogi spływu), Lc, n Manninga oraz udziału "
+            "terenów zurbanizowanych i lasów.",
+        },
+    ),
+    Option(
+        name="clark_r_min",
+        type="number",
+        description_pl=(
+            "Clark: stała retencji R [min] (> 0); alternatywa dla `clark_r_tc_ratio`."
+        ),
+        description=(
+            "Clark: storage constant R [min] (> 0); alternative to `clark_r_tc_ratio`."
+        ),
+        exclusive_minimum=0,
+        unit="min",
+    ),
+    Option(
+        name="clark_r_tc_ratio",
+        type="number",
+        description_pl=(
+            f"Clark: stosunek R/tc (> 0, {typically('clark', 'r_tc_ratio', 'pl')}), "
+            "R = stosunek · tc; alternatywa dla `clark_r_min`."
+        ),
+        description=(
+            f"Clark: ratio R/tc (> 0, {typically('clark', 'r_tc_ratio')}), "
+            "R = ratio · tc; alternative to `clark_r_min`."
+        ),
+        exclusive_minimum=0,
+    ),
+    Option(
+        name="snyder_length_km",
+        type="number",
+        description_pl=(
+            "Snyder: długość cieku głównego L [km] (> 0); razem z "
+            "`snyder_centroid_length_km`."
+        ),
+        description=(
+            "Snyder: main stream length L [km] (> 0); together with "
+            "`snyder_centroid_length_km`."
+        ),
+        exclusive_minimum=0,
+        unit="km",
+    ),
+    Option(
+        name="snyder_centroid_length_km",
+        type="number",
+        description_pl=(
+            "Snyder: długość od przekroju zamykającego do środka ciężkości "
+            "zlewni Lc [km] (> 0)."
+        ),
+        description=(
+            "Snyder: length from the outlet to the catchment centroid Lc [km] (> 0)."
+        ),
+        exclusive_minimum=0,
+        unit="km",
+    ),
+    Option(
+        name="snyder_ct",
+        type="number",
+        description_pl=(
+            f"Snyder: współczynnik czasowy Ct (> 0, {typically('snyder', 'ct', 'pl')})"
+            "; domyślnie 1,5."
+        ),
+        description=(
+            f"Snyder: time coefficient Ct (> 0, {typically('snyder', 'ct')}); "
+            "default 1.5."
+        ),
+        exclusive_minimum=0,
+    ),
+    Option(
+        name="snyder_cp",
+        type="number",
+        description_pl=(
+            "Snyder: współczynnik szczytowy Cp "
+            f"(> 0, {typically('snyder', 'cp', 'pl')}); domyślnie 0,6."
+        ),
+        description=(
+            f"Snyder: peak coefficient Cp (> 0, {typically('snyder', 'cp')}); "
+            "default 0.6."
+        ),
+        exclusive_minimum=0,
+    ),
+    ATTRIBUTION,
+)
+"""Options of ``hydrograph generate`` (shared with ``report generate``)."""
+
+GENERATE_ONE_OF: tuple[tuple[str, ...], ...] = (
+    ("watershed",),
+    ("watershed_file",),
+    ("area_km2", "cn"),
+)
+"""Alternative sources of the catchment: a watershed or ``area_km2`` + ``cn``."""
+
+GENERATE_RANGES: tuple[RangeCheck, ...] = (
+    *WATERSHED_TC_RANGES,
+    RangeCheck("scs_cn_amc", "cn", ("cn",)),
+    RangeCheck("scs", "area_km2", ("area_km2",)),
+    RangeCheck("nash", "n", ("nash_n",)),
+    RangeCheck("nash", "k_min", ("nash_k_min",)),
+    RangeCheck("lutz", "area_km2", NASH_INPUTS["lutz"]["area_km2"]),
+    RangeCheck("clark", "r_tc_ratio", ("clark_r_tc_ratio",)),
+    RangeCheck("snyder", "ct", ("snyder_ct",)),
+    RangeCheck("snyder", "cp", ("snyder_cp",)),
+    RangeCheck("snyder", "area_km2", ("area_km2",)),
+    *(RangeCheck(model, "timestep_min", ("timestep_min",)) for model in _UH_MODELS),
+)
+"""Typical ranges of ``hydrograph generate`` (shared with ``report generate``): the
+time of concentration methods on the watershed, the CN of an AMC conversion, the
+model's parameters and area (Lutz's area with ``nash_estimation`` ``lutz``), and the
+time step against the unit hydrograph's time to peak; the inputs are the options
+(``cn`` and ``area_km2`` also the watershed's). Nash's n and K are checked when they
+are given, not when Lutz estimated them: their ranges are those of given values."""
+
+_WATERSHED_EXAMPLE = {
+    "name": "Potok Młynówka",
+    "area_km2": 45.3,
+    "perimeter_km": 32.1,
+    "length_km": 12.5,
+    "elevation_min_m": 150.0,
+    "elevation_max_m": 520.0,
+    "mean_slope_m_per_m": 0.025,
+    "cn": 72,
+    "flow_path_length_km": 12.5,
+    "flow_path_slope_m_per_m": 0.025,
+}
+
+COMMANDS: tuple[Command, ...] = (
+    Command(
+        name="hydrograph generate",
+        operation_id="hydrolog_hydrograph_generate",
+        summary_pl=(
+            "Oblicz projektowy hydrogram odpływu bezpośredniego: opad, SCS-CN, "
+            "hydrogram jednostkowy, splot."
+        ),
+        summary=(
+            "Compute the design direct-runoff hydrograph: rainfall, SCS-CN, unit "
+            "hydrograph, convolution."
+        ),
+        description_pl=(
+            "Projektowy hydrogram z hietogramu lub szeregu opadu, SCS-CN i hydrogramu "
+            "jednostkowego (`uh_model`). Zlewnia: `watershed` lub `area_km2` + `cn`. "
+            "Nie do szeregów obserwowanych (Obserwator) ani samych strat (`scs "
+            "effective`). Zwraca szczyt, objętość, bilans, szeregi."
+        ),
+        description=(
+            "Design hydrograph from a hyetograph or rainfall series, SCS-CN and a unit"
+            " hydrograph (`uh_model`). Catchment: a watershed or `area_km2` + `cn`. "
+            "Not for observed series (Obserwator) or losses only (`scs effective`). "
+            "Returns peak, volume, balance, series."
+        ),
+        function="hydrolog.operations.hydrograph_generate",
+        options=GENERATE_OPTIONS,
+        one_of=GENERATE_ONE_OF,
+        result_schema="hydrolog-hydrograph-generate/1",
+        cardinality="bounded",
+        rules=(
+            (
+                "Give one catchment source and one rainfall source (hyetograph or "
+                "series)."
+            ),
+            "scs and clark need tc: pass tc_min or a watershed.",
+            "Check `notices` for parameters outside typical ranges.",
+        ),
+        rules_pl=(
+            "Podaj jedno źródło zlewni i jedno źródło opadu (hietogram lub szereg).",
+            "scs i clark wymagają tc: podaj tc_min lub zlewnię.",
+            "Sprawdź `notices`: parametry poza typowym zakresem.",
+        ),
+        errors=("validation_error", "not_found", "data_error", "forbidden"),
+        core=True,
+        typical_ranges=GENERATE_RANGES,
+        example_results=(
+            {
+                "peak_discharge_m3s": 54.9222,
+                "time_to_peak_min": 95.0,
+                "total_volume_m3": 321295.0,
+                "runoff_coefficient": 0.141794,
+                "uh_model": "scs",
+            },
+            {
+                "peak_discharge_m3s": 210.709,
+                "time_to_peak_min": 110.0,
+                "total_volume_m3": 1376330.0,
+                "runoff_coefficient": 0.489735,
+                "uh_model": "scs",
+            },
+            {
+                "peak_discharge_m3s": 26.245,
+                "time_to_peak_min": 140.0,
+                "total_volume_m3": 282608.0,
+                "runoff_coefficient": 0.130841,
+                "uh_model": "nash",
+            },
+            {
+                "peak_discharge_m3s": 40.8926,
+                "time_to_peak_min": 120.0,
+                "total_volume_m3": 321163.0,
+                "runoff_coefficient": 0.141794,
+                "uh_model": "clark",
+            },
+            {
+                "peak_discharge_m3s": 19.2871,
+                "time_to_peak_min": 390.0,
+                "total_volume_m3": 708968.0,
+                "runoff_coefficient": 0.141794,
+                "uh_model": "snyder",
+            },
+            {
+                "peak_discharge_m3s": 22.171,
+                "time_to_peak_min": 180.0,
+                "total_volume_m3": 321161.0,
+                "uh_model": "nash",
+                "nash_estimation": "lutz",
+                "uh_parameters": {"n": 3.70061, "k_min": 56.5989},
+            },
+        ),
+        examples=(
+            {
+                "watershed": _WATERSHED_EXAMPLE,
+                "tc_method": "kirpich",
+                "hietogram_type": "beta",
+                "total_mm": 50.0,
+                "duration_min": 60.0,
+                "timestep_min": 5.0,
+                "uh_model": "scs",
+            },
+            {
+                "area_km2": 45.3,
+                "cn": 72,
+                "tc_min": 90.0,
+                "hietogram_type": "euler_ii",
+                "total_mm": 62.0,
+                "duration_min": 120.0,
+                "amc": "III",
+            },
+            {
+                "area_km2": 45.0,
+                "cn": 72,
+                "values": [5.0, 10.0, 15.0, 10.0, 5.0, 3.0],
+                "timestep_min": 10.0,
+                "uh_model": "nash",
+                "nash_n": 3.0,
+                "nash_k_min": 48.0,
+            },
+            {
+                "area_km2": 45.3,
+                "cn": 72,
+                "tc_min": 120.0,
+                "hietogram_type": "beta",
+                "total_mm": 50.0,
+                "duration_min": 60.0,
+                "timestep_min": 10.0,
+                "uh_model": "clark",
+                "clark_r_tc_ratio": 0.5,
+            },
+            {
+                "area_km2": 100.0,
+                "cn": 72,
+                "hietogram_type": "beta",
+                "total_mm": 50.0,
+                "duration_min": 60.0,
+                "timestep_min": 10.0,
+                "uh_model": "snyder",
+                "snyder_length_km": 15.0,
+                "snyder_centroid_length_km": 8.0,
+            },
+            {
+                "watershed": {
+                    **_WATERSHED_EXAMPLE,
+                    "Lc_km": 6.0,
+                    "manning_n": 0.035,
+                    "forest_pct": 40.0,
+                },
+                "hietogram_type": "beta",
+                "total_mm": 50.0,
+                "duration_min": 60.0,
+                "timestep_min": 10.0,
+                "uh_model": "nash",
+                "nash_estimation": "lutz",
+            },
+        ),
+    ),
+)

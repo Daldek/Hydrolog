@@ -1,0 +1,47 @@
+{
+  "description": "Third-party files of the interface, served from the package (no CDN at run time). Each file is byte-identical to the listed source except where 'modified' says otherwise; the same files and manifest format as Archiwista's src/archiwista/web/vendor/vendor.json.",
+  "libraries": [
+    {
+      "name": "preact",
+      "version": "10.29.8",
+      "license": "MIT",
+      "license_file": "preact/LICENSE",
+      "source": "https://registry.npmjs.org/preact/-/preact-10.29.8.tgz",
+      "integrity": "sha512-ej2aVZ+vZ8WO7tvlQWRM9N63A0KzF9q4mWJfDUHgYaIofWY9hu74QdnQrjoPMmZi2/nZ5gN0bJCQF49xQqx09Q==",
+      "files": {
+        "preact/preact.mjs": {
+          "from": "package/dist/preact.module.js",
+          "sha256": "c30e721ebfdc6e2ad4c18c14d2dfb82667829c8aec27de1207774e3fc16858a8"
+        },
+        "preact/hooks.mjs": {
+          "from": "package/hooks/dist/hooks.module.js",
+          "from_sha256": "a6ee626f2d01570592dd569a792e3f050154aa02890eead8c223fa3ed5aa3d5a",
+          "sha256": "ffff498c3006fea511e5a523c9494199bf6d80d3c5d3fe5161bb745203e98932",
+          "modified": "import{options as n}from\"preact\"; rewritten to import { options as n } from \"./preact.mjs\"; (the CSP script-src 'self' blocks inline import maps, so modules use relative paths)"
+        },
+        "preact/LICENSE": {
+          "from": "package/LICENSE",
+          "sha256": "1fe6958409c8c257a70c587a18b6f7f412b179b456630790d30b2ec9a8e4b7d4"
+        }
+      }
+    },
+    {
+      "name": "htm",
+      "version": "3.1.1",
+      "license": "Apache-2.0",
+      "license_file": "htm/LICENSE",
+      "source": "https://registry.npmjs.org/htm/-/htm-3.1.1.tgz",
+      "integrity": "sha512-983Vyg8NwUE7JkZ6NmOqpCZ+sh1bKv2iYTlUkzlWmA5JD2acKoxd4KVxbMmxX/85mtfdnDmTFoNKcg5DGAvxNQ==",
+      "files": {
+        "htm/htm.mjs": {
+          "from": "package/dist/htm.module.js",
+          "sha256": "ab33dd3f38059b9be4d5f5350128eefb2356639c4e0bbe9d9e8b3ba75847e9e4"
+        },
+        "htm/LICENSE": {
+          "from": "package/LICENSE",
+          "sha256": "740725f7252e750af735d0028cc534970772f513331e9f68150fede8fb3ce00f"
+        }
+      }
+    }
+  ]
+}

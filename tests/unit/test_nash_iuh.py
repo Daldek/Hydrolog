@@ -3,8 +3,8 @@
 import numpy as np
 import pytest
 
-from hydrolog.runoff import NashIUH, IUHResult, NashUHResult
 from hydrolog.exceptions import InvalidParameterError
+from hydrolog.runoff import IUHResult, NashIUH, NashUHResult
 
 
 class TestNashIUHInit:
@@ -273,65 +273,6 @@ class TestNashIUHToUnitHydrograph:
             InvalidParameterError, match="duration_min must be positive"
         ):
             iuh.to_unit_hydrograph(area_km2=45.0, duration_min=0)
-
-
-class TestNashIUHFromTC:
-    """Tests for creating NashIUH from time of concentration.
-
-    Note: from_tc() is deprecated and will be removed in v1.0.0.
-    These tests verify both functionality and deprecation warning.
-    """
-
-    def test_from_tc_emits_deprecation_warning(self):
-        """Test that from_tc emits DeprecationWarning."""
-        with pytest.warns(DeprecationWarning, match="from_tc.*deprecated"):
-            NashIUH.from_tc(tc_min=90.0)
-
-    def test_from_tc_default_n(self):
-        """Test from_tc with default n."""
-        with pytest.warns(DeprecationWarning):
-            iuh = NashIUH.from_tc(tc_min=90.0)
-
-        # Default n = 3, lag_ratio = 0.6
-        # tlag = 0.6 × 90 = 54 min
-        # K = tlag / n = 54 / 3 = 18 min
-        assert iuh.n == 3.0
-        assert abs(iuh.k_min - 18.0) < 0.01
-
-    def test_from_tc_custom_n(self):
-        """Test from_tc with custom n."""
-        with pytest.warns(DeprecationWarning):
-            iuh = NashIUH.from_tc(tc_min=90.0, n=4.0)
-
-        # tlag = 0.6 × 90 = 54 min
-        # K = 54 / 4 = 13.5 min
-        assert iuh.n == 4.0
-        assert abs(iuh.k_min - 13.5) < 0.01
-
-    def test_from_tc_custom_lag_ratio(self):
-        """Test from_tc with custom lag ratio."""
-        with pytest.warns(DeprecationWarning):
-            iuh = NashIUH.from_tc(tc_min=100.0, n=3.0, lag_ratio=0.5)
-
-        # tlag = 0.5 × 100 = 50 min
-        # K = 50 / 3 = 16.67 min
-        assert abs(iuh.lag_time_min - 50.0) < 0.01
-
-    def test_from_tc_zero_tc_raises(self):
-        """Test that zero tc raises error."""
-        with pytest.warns(DeprecationWarning):
-            with pytest.raises(InvalidParameterError, match="tc_min must be positive"):
-                NashIUH.from_tc(tc_min=0)
-
-    def test_from_tc_invalid_lag_ratio_raises(self):
-        """Test that invalid lag ratio raises error."""
-        with pytest.warns(DeprecationWarning):
-            with pytest.raises(InvalidParameterError, match="lag_ratio must be in"):
-                NashIUH.from_tc(tc_min=90.0, lag_ratio=0)
-
-        with pytest.warns(DeprecationWarning):
-            with pytest.raises(InvalidParameterError, match="lag_ratio must be in"):
-                NashIUH.from_tc(tc_min=90.0, lag_ratio=1.5)
 
 
 class TestNashIUHWithArea:
@@ -853,7 +794,7 @@ class TestNashIUHImport:
 
     def test_import_from_runoff_module(self):
         """Test that Nash classes can be imported from hydrolog.runoff."""
-        from hydrolog.runoff import NashIUH, IUHResult, NashUHResult
+        from hydrolog.runoff import IUHResult, NashIUH, NashUHResult
 
         assert NashIUH is not None
         assert IUHResult is not None

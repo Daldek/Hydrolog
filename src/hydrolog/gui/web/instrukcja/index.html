@@ -1,0 +1,732 @@
+<!doctype html>
+<html lang="pl" class="guide-page">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Hydrolog: instrukcja</title>
+<link rel="icon" type="image/svg+xml" href="../nogat/marks/hydrolog.svg">
+<script src="../theme-init.js"></script>
+<link rel="stylesheet" href="../nogat/tokens.css">
+<link rel="stylesheet" href="../css/app.css">
+<link rel="stylesheet" href="instrukcja.css">
+<script type="module" src="instrukcja.js"></script>
+</head>
+<body>
+<a class="skip" href="#tresc">Przejdź do treści</a>
+
+<!-- The top bar of the GUI: the mark leads back to the app, the theme is shared with it -->
+<header class="topbar">
+  <a class="brand" href="../" aria-label="Hydrolog: wróć do aplikacji">
+    <img src="../nogat/marks/hydrolog.svg" alt="" width="24" height="24">
+    <span class="name">Hydrolog</span>
+  </a>
+  <nav class="crumbs" aria-label="Kontekst">
+    <strong>Instrukcja</strong>
+  </nav>
+  <div class="top-actions">
+    <a class="btn ghost" href="../" aria-label="Wróć do aplikacji">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5L7 10l5.5 5.5"/></svg>
+      <span class="label">Wróć do aplikacji</span>
+    </a>
+    <div id="theme"></div>
+  </div>
+</header>
+
+<main class="guide" id="tresc">
+
+<div class="guide-head">
+  <p class="kicker">Przewodnik użytkownika</p>
+  <h1>Hydrolog w przeglądarce</h1>
+  <p class="lead">Ile wody spłynie po ulewie, jak fala płynie rzeką i jak często zdarzają się duże przepływy: obliczenia hydrologiczne bez instalowania programów i bez znajomości wzorów.</p>
+  <p class="note-box">To wersja rozwojowa: wygląd, funkcje i liczby mogą się jeszcze zmieniać.</p>
+</div>
+
+<nav class="guide-toc" aria-labelledby="toc-title">
+  <h2 id="toc-title">Spis treści</h2>
+  <p class="toc-hint"><strong>Pierwszy raz?</strong> Wystarczy część „Na start”: kilka minut czytania bez szczegółów technicznych. Rozdziały 01–11 opisują każdą sekcję dokładnie, a rozdział 12 metody obliczeń; wracaj do nich, gdy będą potrzebne.</p>
+  <ol class="toc">
+    <li class="toc-start">
+      <a href="#na-start"><span class="toc-num">▶</span> Na start</a>
+      <ol>
+        <li><a href="#czym-jest">Czym jest Hydrolog</a></li>
+        <li><a href="#czego-oczekiwac">Czego się spodziewać, a czego nie</a></li>
+        <li><a href="#pytania">Na jakie pytania odpowiada</a></li>
+        <li><a href="#kto">Kto może korzystać</a></li>
+        <li><a href="#trzy-kroki">Pierwszy wynik w trzech krokach</a></li>
+        <li><a href="#slowniczek">Słowniczek</a></li>
+      </ol>
+    </li>
+    <li><a href="#ekran"><span class="toc-num">01</span> Ekran i wspólne elementy</a></li>
+    <li><a href="#hydrogram"><span class="toc-num">02</span> Hydrogram zlewni</a></li>
+    <li><a href="#siec"><span class="toc-num">03</span> Sieć i trasowanie</a></li>
+    <li><a href="#statystyka"><span class="toc-num">04</span> Statystyka przepływów</a></li>
+    <li><a href="#kalkulatory"><span class="toc-num">05</span> Kalkulatory</a></li>
+    <li><a href="#polecenia"><span class="toc-num">06</span> Wszystkie polecenia</a></li>
+    <li><a href="#analizy-stacji"><span class="toc-num">07</span> Analiza szeregów stacji</a></li>
+    <li><a href="#eksport"><span class="toc-num">08</span> Eksport i przekazanie wyników</a></li>
+    <li><a href="#telefon"><span class="toc-num">09</span> Telefon, motyw i Twoje dane</a></li>
+    <li><a href="#problemy"><span class="toc-num">10</span> Gdy coś nie działa</a></li>
+    <li><a href="#uruchomienie"><span class="toc-num">11</span> Uruchomienie u siebie</a></li>
+    <li><a href="#metody"><span class="toc-num">12</span> Metody obliczeń</a></li>
+  </ol>
+  <p id="terms" class="guide-toc-terms"></p>
+</nav>
+
+<div class="guide-text">
+
+<!-- ============================ Na start ============================ -->
+<section class="part" id="na-start" aria-labelledby="na-start-title">
+  <p class="kicker">Na start · bez szczegółów technicznych</p>
+  <h2 id="na-start-title">Na start</h2>
+
+  <section id="czym-jest" aria-labelledby="czym-jest-title">
+    <h3 id="czym-jest-title">Czym jest Hydrolog?</h3>
+    <p>Hydrolog to kalkulator hydrologiczny w przeglądarce. Szacuje, ile wody spłynie do potoku lub rzeki po silnym deszczu i kiedy będzie jej najwięcej, jak taka fala zmienia się, płynąc dalej korytem i przez zbiorniki, oraz jak często w danej rzece zdarzają się duże przepływy.</p>
+    <p>Wystarczy przeglądarka na komputerze albo telefonie. Nie trzeba znać wzorów: Hydrolog liczy sam, a przycisk <span class="i-mark" aria-hidden="true">i</span> przy polu, metodzie lub uwadze wyjaśnia, co oznacza dana wartość, z jakiego wzoru pochodzi i w jakim zakresie warto go stosować.</p>
+    <p>Hydrolog nie ma mapy. Z internetu pobiera tylko jedno: wysokość opadu projektowego z atlasu PMAXTP IMGW-PIB dla punktu, który podasz. Liczby opisujące zlewnię (powierzchnię, długości, spadki, CN) wpisujesz albo wczytujesz z pliku, na przykład z Hydrografa, który wyznacza zlewnię na mapie. Każda sekcja jest na początku pusta, bez przykładowych danych; ten przewodnik ma dla każdej sekcji przykład krok po kroku: co wpisać albo wczytać i jaki wynik wyjdzie.</p>
+  </section>
+
+  <section id="czego-oczekiwac" aria-labelledby="czego-oczekiwac-title">
+    <h3 id="czego-oczekiwac-title">Czego się spodziewać, a czego nie</h3>
+    <div class="cols">
+      <div>
+        <h4 class="col-title">Hydrolog da Ci</h4>
+        <div class="card"><strong>Szacunek wezbrania po ulewie</strong><p>Największy przepływ, czas, po jakim nadejdzie, i objętość wody, która spłynie ze zlewni.</p></div>
+        <div class="card"><strong>Obraz fali w rzece</strong><p>Jak fale z kilku zlewni łączą się, spóźniają i spłaszczają w korytach i zbiornikach.</p></div>
+        <div class="card"><strong>Statystykę przepływów</strong><p>Przepływ, który w danej rzece zdarza się średnio raz na 10 albo na 100 lat, policzony z pomiarów z wielu lat.</p></div>
+        <div class="card"><strong>Przejrzyste obliczenia</strong><p>Przy każdym wyniku: dane, uwagi o zakresie stosowania metod i polecenie, które powtórzy obliczenie poza przeglądarką.</p></div>
+      </div>
+      <div>
+        <h4 class="col-title">Hydrolog nie jest</h4>
+        <div class="card"><strong>Prognozą</strong><p>Nie korzysta z bieżących pomiarów ani prognoz pogody: nie powie, czy rzeka wyleje jutro. Ostrzeżenia hydrologiczne wydaje IMGW-PIB.</p></div>
+        <div class="card"><strong>Oficjalną mapą zagrożenia</strong><p>Nie pokazuje, które tereny zaleje woda, i nie liczy poziomu wody w rzece. Oficjalne mapy zagrożenia powodziowego publikują Wody Polskie.</p></div>
+        <div class="card"><strong>Źródłem dokładnych liczb</strong><p>Wyniki to szacunki z uproszczonych metod, zależne od danych, które podasz; prawdziwy przepływ może być wyraźnie inny. Do decyzji i projektów potrzebna jest ocena specjalisty.</p></div>
+        <div class="card"><strong>Źródłem danych</strong><p>Nie pobiera danych o terenie ani pomiarów opadów i przepływów: wpisujesz je albo wczytujesz z pliku. Pobiera jedynie wysokość opadu projektowego z atlasu PMAXTP IMGW-PIB.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="pytania" aria-labelledby="pytania-title">
+    <h3 id="pytania-title">Na jakie pytania odpowiada?</h3>
+    <dl class="defs">
+      <div><dt>Ile wody popłynie potokiem po bardzo silnej ulewie i kiedy będzie jej najwięcej?</dt><dd><a href="#hydrogram">Hydrogram zlewni</a>: przepływ największy, czas do niego i objętość wody.</dd></div>
+      <div><dt>Czy wezbranie będzie większe, gdy gleba jest już mokra po wcześniejszych deszczach?</dt><dd><a href="#hydrogram">Hydrogram zlewni</a>, przełącznik wilgotności gleby przed opadem.</dd></div>
+      <div><dt>Jak zmieni się odpływ, gdy w zlewni przybędzie zabudowy albo ubędzie lasu?</dt><dd><a href="#kalkulatory">Kalkulatory</a>: liczba CN dla gleby i pokrycia terenu; nową wartość wpisujesz w Hydrogramie zlewni.</dd></div>
+      <div><dt>Jak szybko woda spływa z najdalszego miejsca zlewni?</dt><dd><a href="#kalkulatory">Kalkulatory</a>: czas koncentracji policzony sześcioma metodami.</dd></div>
+      <div><dt>Jak zmienia się fala, gdy płynie długim korytem albo przez staw lub zbiornik?</dt><dd><a href="#siec">Sieć i trasowanie</a>.</dd></div>
+      <div><dt>Jak duży przepływ zdarza się w tej rzece średnio raz na 100 lat?</dt><dd><a href="#statystyka">Statystyka przepływów</a>, z największych przepływów kolejnych lat.</dd></div>
+      <div><dt>Jaki reżim ma rzeka, jak długo trwają niżówki albo ile było dni z mrozem?</dt><dd><a href="#analizy-stacji">Analiza szeregów stacji</a>, z wieloletniego szeregu dobowego stacji.</dd></div>
+    </dl>
+  </section>
+
+  <section id="kto" aria-labelledby="kto-title">
+    <h3 id="kto-title">Kto może korzystać?</h3>
+    <div class="cards">
+      <div class="card"><strong>Przyrodnicy i miłośnicy przyrody</strong><p>Ile wody i jak szybko spływa po ulewie do potoku, stawu czy mokradła i co w zlewni zmieniają las, łąki, pola i zabudowa.</p></div>
+      <div class="card"><strong>Samorządy, organizacje i mieszkańcy</strong><p>Wstępny szacunek wody spływającej po ulewie, zanim zleci się dokładne obliczenia.</p></div>
+      <div class="card"><strong>Uczniowie, studenci i nauczyciele</strong><p>Metody z podręczników hydrologii na przykładzie prawdziwej zlewni, ze wzorami i źródłami pod przyciskiem <span class="i-mark" aria-hidden="true">i</span>.</p></div>
+      <div class="card"><strong>Hydrolodzy i projektanci</strong><p>Szybki pierwszy szacunek oraz wiersz polecenia, który powtórzy obliczenie w skrypcie.</p></div>
+    </div>
+  </section>
+
+  <section id="trzy-kroki" aria-labelledby="trzy-kroki-title">
+    <h3 id="trzy-kroki-title">Pierwszy wynik w trzech krokach</h3>
+    <ol class="steps-3">
+      <li class="card"><span class="number" aria-hidden="true">01</span><strong>Opisz zlewnię i deszcz</strong><p>Wybierz „Hydrogram” na pasku sekcji (po lewej, a na telefonie na dole). W kroku „Zlewnia” wpisz zlewnię potoku Kamiennik do Świerzawy: powierzchnia 37,22&nbsp;km², CN 65, długość najdłuższej drogi spływu 15,88&nbsp;km i jej spadek 0,0114&nbsp;m/m. W kroku „Hietogram” zostaw PMAXTP, wpisz punkt ujścia zlewni (szerokość geograficzna 51,01544, długość 15,88984), wybierz p 1% i 12&nbsp;h, a krok czasowy ustaw na 10&nbsp;min. Hydrolog sam pobierze z atlasu PMAXTP IMGW-PIB wysokość opadu: <span class="ex" data-example="hydrogram-depth">101,82&nbsp;mm</span> (deszcz, jaki zdarza się średnio raz na 100 lat).</p></li>
+      <li class="card"><span class="number" aria-hidden="true">02</span><strong>Wybierz model i przeczytaj wynik</strong><p>W kroku „Hydrogram” wybierz model SCS: Hydrolog sprawdzi dane i policzy. W panelu „Wyniki”: największy przepływ <span class="ex" data-example="hydrogram-q">54,20&nbsp;m³/s</span> nadejdzie po <span class="ex" data-example="hydrogram-tp">6:40&nbsp;h</span> od początku deszczu, a z całej ulewy spłynie <span class="ex" data-example="hydrogram-volume">977&nbsp;225&nbsp;m³</span> wody. Wykres w środku pokazuje deszcz u góry i odpływ pod nim.</p></li>
+      <li class="card"><span class="number" aria-hidden="true">03</span><strong>Zmień jedną rzecz</strong><p>W kroku „Hydrogram”, w części „Straty SCS-CN”, przełącz wilgotność poprzedzającą z II na III (gleba mokra po wcześniejszych deszczach). Wynik przeliczy się sam: <span class="ex" data-example="hydrogram-q-amc3">105,97&nbsp;m³/s</span>.</p></li>
+    </ol>
+    <p class="hint-box">Pozostałe pola kroku „Zlewnia” mogą zostać puste: model SCS z czasem koncentracji Kirpicha czyta tylko te cztery liczby, czyli powierzchnię, CN oraz długość i spadek najdłuższej drogi spływu. Pełne dane przykładu są w <a href="#przyklad">rozdziale 02</a>. Wysokość opadu to odpowiedź atlasu z listopada 2026: gdy IMGW-PIB zaktualizuje atlas, wysokość i wynik mogą się nieco zmienić. Przycisk <span class="key-mark" aria-hidden="true">↻</span> „Wyczyść” u dołu panelu „Dane” czyści kroki. Plakietka na górnym pasku mówi, czy wynik jest aktualny; „Instrukcja” obok niej otwiera okno powitalne z odnośnikiem do tego przewodnika. Dalej: <a href="#ekran">rozdział 01</a>.</p>
+    <p><a class="btn primary" href="../#hydrogram">Otwórz Hydrogram zlewni</a></p>
+  </section>
+
+  <section id="slowniczek" aria-labelledby="slowniczek-title">
+    <h3 id="slowniczek-title">Słowniczek</h3>
+    <dl class="defs glossary">
+      <div><dt>Zlewnia</dt><dd>Obszar, z którego woda deszczowa spływa do wybranego miejsca na rzece lub potoku. Jej granica, dział wodny, biegnie grzbietami wzniesień.</dd></div>
+      <div><dt>Przepływ</dt><dd>Ilość wody, która w ciągu sekundy płynie przez przekrój rzeki, w metrach sześciennych na sekundę (m³/s); 1&nbsp;m³ to 1000 litrów.</dd></div>
+      <div><dt>Opad projektowy</dt><dd>Umowny silny deszcz przyjmowany do obliczeń, opisany wysokością (mm), czasem trwania i prawdopodobieństwem, np. taki, który zdarza się średnio raz na 100 lat (p&nbsp;=&nbsp;1%). W Polsce takie wysokości podaje atlas PMAXTP opracowany przez IMGW-PIB.</dd></div>
+      <div><dt>Hietogram</dt><dd>Wykres opadu w czasie: ile milimetrów deszczu spada w kolejnych odstępach, np. co 10 minut.</dd></div>
+      <div><dt>Hydrogram</dt><dd>Wykres przepływu w czasie: jak po deszczu rośnie i opada ilość wody płynącej w cieku. Jego szczyt to przepływ największy, Qmax.</dd></div>
+      <div><dt>CN</dt><dd>Liczba od 0 do 100 (od ang. <i lang="en">curve number</i>) mówiąca, jak łatwo deszcz spływa po terenie zamiast wsiąkać. Zależy od gleby i pokrycia terenu: las ma małą, zabudowa dużą. Im większa, tym więcej wody spływa.</dd></div>
+      <div><dt>Czas koncentracji</dt><dd>Czas, w jakim woda spływa z najdalszego miejsca zlewni do jej wylotu. Im krótszy, tym szybciej rośnie fala.</dd></div>
+      <div><dt>Trasowanie fali</dt><dd>Obliczenie, jak fala wezbraniowa zmienia się, płynąc korytem rzeki albo przez zbiornik. Zwykle przychodzi później i jest niższa, bo część wody chwilowo zatrzymuje się po drodze.</dd></div>
+    </dl>
+  </section>
+</section>
+
+<!-- ============================ 01 Ekran ============================ -->
+<section class="part" id="ekran" aria-labelledby="ekran-title">
+  <p class="kicker">01 · Orientacja</p>
+  <h2 id="ekran-title">Ekran i wspólne elementy</h2>
+  <figure>
+    <a href="img/ekran.png"><img src="img/ekran.png" width="1440" height="900" alt="Ekran sekcji Hydrogram zlewni z przykładem Kamiennik — Świerzawa: u góry pasek z nazwą sekcji, kontekstem i plakietką „Wynik aktualny”, po lewej pasek sekcji i panel Dane z krokami Zlewnia i Hietogram (punkt, p 1%, 12 h i pobrana wysokość opadu 101,82 mm), w środku hietogram nad hydrogramem, a pod wykresami pasek źródeł danych PMAXTP IMGW-PIB z odnośnikiem Źródła i warunki, po prawej panel Wyniki z kafelkami Qmax 54,20 m³/s, Do szczytu 6:40 h, Objętość 977 225 m³ i Wsp. odpływu 0,258."></a>
+    <figcaption>Hydrogram zlewni z przykładem Kamiennik — Świerzawa. Kliknij obraz, aby zobaczyć go w pełnym rozmiarze.</figcaption>
+  </figure>
+  <dl class="defs">
+    <div><dt>Górny pasek</dt><dd>Znak Hydrologa (powrót do pierwszej sekcji), nazwa sekcji i jej kontekst (np. zlewnia i opad), plakietka stanu wyniku, „Zgłoś uwagę” (zgłoszenie błędu albo pomysłu), „Instrukcja” (okno powitalne z odnośnikiem do tego przewodnika), „Aplikacje” (inne aplikacje ekosystemu Nogat, np. Hydrograf, każda w swojej karcie; przycisk jest tylko wtedy, gdy serwer zna ich adresy, a w serwisie publicznym jego lista kończy się odnośnikiem „Regulamin”) i motyw: Auto, Jasny, Ciemny.</dd></div>
+    <div><dt>Pasek sekcji</dt><dd>Hydrogram, Sieć, Statystyka, Kalkulatory, Polecenia: po lewej, a na telefonie na dole. Sekcja pamięta swoje dane i ostatni wynik, gdy przechodzisz do innej.</dd></div>
+    <div><dt>Panel „Dane”</dt><dd>Po lewej: formularz, często w ponumerowanych krokach, które można zwinąć. Na dole przycisk obliczenia (w sekcjach, które go mają) i <span class="key-mark" aria-hidden="true">↻</span> „Wyczyść”, który wraca do stanu pierwszej wizyty: pustych pól, bez przykładu. Pusta sekcja mówi, co wpisać, i prowadzi do swojego przykładu w tym przewodniku.</dd></div>
+    <div><dt>Środek</dt><dd>Wykresy i tabele; nad nimi przełącznik widoku i krótka podpowiedź.</dd></div>
+    <div><dt>Panel „Wyniki”</dt><dd>Po prawej: najważniejsze liczby w kafelkach, uwagi, tabele, eksport i wywołanie.</dd></div>
+    <div><dt>Stopka</dt><dd>Tylko w serwisie publicznym: pod sekcją, a na telefonie nad paskiem sekcji, zdanie o tym, czym jest serwis, i odnośnik „Regulamin”. Regulamin, ten przewodnik i inne strony spoza aplikacji otwierają się w nowej karcie, bo zamknięcie albo odświeżenie karty aplikacji kończy jej sesję (zob. <a href="#twoje-dane">Twoje dane</a>).</dd></div>
+  </dl>
+
+  <h3>Plakietka stanu wyniku</h3>
+  <ul class="states">
+    <li><span class="badge ok">Wynik aktualny</span> wyniki odpowiadają danym w panelu „Dane”.</li>
+    <li><span class="badge info">Liczenie…</span> Hydrolog liczy wynik dla zmienionych danych.</li>
+    <li><span class="badge warn">Dane zmienione: oblicz ponownie</span> wyniki pokazują poprzednie dane; naciśnij przycisk obliczenia (w Sieci, Kalkulatorach i Poleceniach; Hydrogram zlewni i Statystyka liczą się same).</li>
+    <li><span class="badge warn">Dane niepełne</span> popraw pole oznaczone na czerwono; ostatni wynik zostaje na ekranie, oznaczony jako nieaktualny.</li>
+    <li><span class="badge bad">Błąd danych</span> Hydrolog nie policzył wyniku; opis błędu stoi przy polu albo nad formularzem.</li>
+  </ul>
+
+  <h3>Objaśnienia <span class="i-mark" aria-hidden="true">i</span></h3>
+  <figure class="inline-figure">
+    <a href="img/objasnienie.png"><img src="img/objasnienie.png" width="420" height="640" loading="lazy" alt="Okienko objaśnienia „Kirpich (1940): czas koncentracji”: opis, wzór, zmienne z jednostkami (długość i spadek najdłuższej drogi spływu), zakres stosowania podany przez Hydrolog ze źródłem, w którym powierzchnia zlewni i spadek najdłuższej drogi spływu przykładu są oznaczone „poza zakresem”, uwaga, odnośnik „Więcej w instrukcji” i źródła."></a>
+    <figcaption>Objaśnienie metody Kirpicha; zakres stosowania porównany z danymi przykładu.</figcaption>
+  </figure>
+  <p>Przycisk <span class="i-mark" aria-hidden="true">i</span> przy polu, metodzie albo uwadze otwiera objaśnienie: co to jest, wzór ze zmiennymi i jednostkami, zakres stosowania, jak odczytać wartość i źródła. Zakres stosowania, razem z publikacją, z której pochodzi, podaje Hydrolog; jest porównany z Twoimi danymi i oznaczony „w zakresie” albo „poza zakresem”. „Więcej w instrukcji” otwiera dłuższy opis metody w rozdziale <a href="#metody">Metody obliczeń</a>. Objaśnienie zamyka <span class="key-mark" aria-hidden="true">×</span>, klawisz <kbd>Esc</kbd> albo kliknięcie obok.</p>
+
+  <h3>Uwagi, wykresy i wywołanie</h3>
+  <ul>
+    <li><strong>Uwagi</strong> w panelu „Wyniki”: komunikaty Hydrologa („Informacja”, „Uwaga”) z ich kodem, także o wartości poza typowym zakresem metody, a w Hydrogramie zlewni przed nimi potwierdzenia, że dane mieszczą się w zakresie stosowania wybranych metod. Komunikat bez polskiego tłumaczenia ma dopisek (EN).</li>
+    <li><strong>Wykresy</strong> mają odczyt wartości: najedź kursorem albo przejdź do wykresu klawiszem <kbd>Tab</kbd> i przesuwaj się strzałkami (<kbd>Shift</kbd> lub <kbd>Page Up</kbd>/<kbd>Page Down</kbd> o dziesięć kroków, <kbd>Home</kbd>, <kbd>End</kbd>, <kbd>Esc</kbd> kończy odczyt).</li>
+    <li><strong>Wywołanie</strong> to to samo obliczenie poza przeglądarką: wiersz polecenia (CLI), Python albo MCP dla asystentów AI, z przyciskiem kopiowania.</li>
+  </ul>
+
+  <h3>Szerokość paneli</h3>
+  <p>Przeciągnij krawędź panelu, aby go poszerzyć albo zwęzić. Z klawiatury: przejdź do krawędzi klawiszem <kbd>Tab</kbd> i użyj strzałek (16&nbsp;px, z <kbd>Shift</kbd> 64&nbsp;px), <kbd>Home</kbd> i <kbd>End</kbd>; <kbd>Enter</kbd> albo dwuklik przywraca szerokość domyślną. Przeglądarka zapamiętuje szerokości dla wszystkich sekcji. <span class="key-mark" aria-hidden="true">×</span> w nagłówku zamyka panel, a przycisk „Dane” lub „Wyniki” nad wykresami otwiera go z powrotem.</p>
+  <p class="back"><a href="#toc-title">↑ Spis treści</a></p>
+</section>
+
+<!-- ============================ 02 Hydrogram ============================ -->
+<section class="part" id="hydrogram" aria-labelledby="hydrogram-title">
+  <p class="kicker">02 · Sekcja</p>
+  <h2 id="hydrogram-title">Hydrogram zlewni</h2>
+  <p>Jedna zlewnia i jeden deszcz: Hydrolog liczy, jaka część opadu spłynie (metoda SCS-CN), i rozkłada ją w czasie hydrogramem jednostkowym. Wynik to hydrogram odpływu z jego szczytem, czasem do szczytu i objętością. Liczy się sam po każdej zmianie danych: nie ma przycisku obliczenia.</p>
+  <figure>
+    <a href="img/hydrogram.png"><img src="img/hydrogram.png" width="1440" height="900" loading="lazy" alt="Hydrogram zlewni po przełączeniu wilgotności poprzedzającej na III: kafelki Qmax 105,97 m³/s, Do szczytu 6:00 h, Objętość 2 012 824 m³, wsp. odpływu 0,531; w panelu Dane krok Hydrogram z czasem koncentracji Kirpicha 187,4 min i częścią Straty SCS-CN z podpowiedzią CN 65 → 81."></a>
+    <figcaption>Ten sam przykład z mokrą glebą (AMC III): szczyt prawie dwa razy wyższy.</figcaption>
+  </figure>
+
+  <h3>Trzy kroki panelu „Dane”</h3>
+  <ol class="numbered">
+    <li><strong>Zlewnia.</strong> Dane zlewni wpisane ręcznie, z pliku albo z przekazania. „Plik zlewni…” czyta plik JSON zlewni w formacie WatershedParameters (np. z Hydrografa) w przeglądarce, bez wysyłania; wystarczy w nim powierzchnia. „Wczytaj z Hydrografa” wczytuje przekazanie: zlewnię razem z opadem i modelem (<a href="#przekazanie">Przekazanie</a>). Pole zmienione względem pliku jest oznaczone, a „przywróć” wraca do wartości źródła. Pola, których wybrany model nie czyta, mogą zostać puste; te, które czyta, mają dopisek „wymagane dla …”. Spadki podajesz w m/m, a obok widać je w procentach.</li>
+    <li><strong>Hietogram.</strong> PMAXTP: podajesz punkt zlewni, np. jej ujście (szerokość i długość geograficzną w stopniach dziesiętnych, WGS84), wybierasz prawdopodobieństwo i czas trwania z tablic atlasu oraz metodę (POT, zalecaną przez IMGW-PIB, albo AMP), a Hydrolog pobiera z atlasu PMAXTP IMGW-PIB wysokość opadu. Wysokości nie wpisuje się: pole „Wysokość opadu” tylko ją pokazuje, a przeglądarka zapamiętuje ją razem z danymi, więc po odświeżeniu strony nie jest pobierana ponownie. Wiersze, które IMGW-PIB każe podawać przy tych danych (źródło wysokości opadu), i odnośnik do regulaminu danych PMAXTP są w pasku pod wykresami (zob. <a href="#zrodla-danych">Źródła danych</a>). Hietogram: wysokość i czas trwania podane ręcznie. Własna seria: wysokości opadu w kolejnych krokach, wklejone z arkusza albo wczytane z kolumny pliku CSV. Rozkład deszczu w czasie: blokowy, trójkątny, Beta albo Euler II; krok czasowy (puste pole to 5&nbsp;min).</li>
+    <li><strong>Hydrogram.</strong> Model hydrogramu jednostkowego, który rozkłada opad efektywny w czasie: SCS, Nash (parametry metodą Lutza ze zlewni albo podane), Clark albo Snyder. Na początku żaden nie jest wybrany: dopiero wybór modelu uruchamia sprawdzenie danych i obliczenie. Pod wyborem widać tylko pola wybranego modelu: dla SCS i Clarka czas koncentracji (metoda Kirpich, NRCS, Giandotti, FAA, Kerby, Kerby–Kirpich albo czas podany ręcznie, a przy FAA i metodach Kerby’ego ich pola spływu po stoku), dla Nasha „Metoda Lutza” albo „Podane n i K”, dla Snydera długość do środka ciężkości i jego współczynniki Ct i Cp (długość cieku L to długość cieku głównego z kroku 1; obie długości Snyder bierze tylko ze zlewni). Metoda Lutza bierze długość i spadek najdłuższej drogi spływu z kroku 1 oraz długość do środka ciężkości, szorstkość koryta i udział lasów i zabudowy spod wyboru; n i K wylicza z nich Hydrolog w tym samym obliczeniu i pokazuje je w polach tylko do odczytu. Na końcu „Straty SCS-CN”, wspólne dla wszystkich modeli: wilgotność poprzedzająca (I sucho, II przeciętnie, III mokro; CN zmienia się wtedy, jak pokazuje podpowiedź) i straty początkowe λ (puste pole to 0,2). „Porównaj metody” otwiera porównanie metod czasu koncentracji w <a href="#kalkulatory">Kalkulatorach</a>.</li>
+  </ol>
+  <p>Po wyborze modelu puste pole, którego model potrzebuje, jest czerwone („Podaj wartość: potrzebna dla metody Kirpicha”) i wstrzymuje obliczenie; tak samo wartość niepoprawna, np. „Najwyżej 100 (podano 150)”, którą widać od razu. Wartość poza typowym zakresem metody jest pomarańczowa, w przykładzie spadek najdłuższej drogi spływu („<span class="ex" data-example="hydrogram-outside">Poza typowym zakresem od 0,03 do 0,1 (kirpich)</span>”): to uwaga Hydrologa, który podaje zakres metody i jego źródło, a wynik liczy się mimo niej. Pod wyborem modelu podsumowanie wymienia, czego brakuje, co poprawić i co jest poza zakresem, z odnośnikiem do każdego pola. Dopóki dane są niepełne, na ekranie zostaje ostatni wynik, oznaczony jako nieaktualny. Nagłówek kroku streszcza jego ustawienia, np. „SCS · 187,4 min · Kirpich”. Przekazanie wyniku (<a href="#przekazanie">Przekazanie</a>) wymaga pełnej zlewni: powierzchni, obwodu, długości zlewni oraz wysokości najmniejszej i największej.</p>
+
+  <h3 id="przyklad">Przykład: Kamiennik — Świerzawa</h3>
+  <p>Zlewnia potoku Kamiennik do Świerzawy i deszcz, jaki zdarza się średnio raz na 100 lat. Do pierwszego wyniku wystarczą pola pogrubione; pozostałe przydają się innym metodom i modelom oraz przekazaniu.</p>
+  <table class="dtable guide-table wrap">
+    <caption>Dane przykładu do wpisania</caption>
+    <thead><tr><th scope="col">Krok i pole</th><th scope="col">Wartość</th></tr></thead>
+    <tbody>
+      <tr><th scope="row">1 · Nazwa</th><td>Kamiennik — Świerzawa</td></tr>
+      <tr><th scope="row"><strong>1 · Powierzchnia A</strong></th><td class="num"><strong>37,22&nbsp;km²</strong></td></tr>
+      <tr><th scope="row"><strong>1 · CN dla AMC II</strong></th><td class="num"><strong>65</strong></td></tr>
+      <tr><th scope="row">1 · Obwód P</th><td class="num">40,89&nbsp;km</td></tr>
+      <tr><th scope="row">1 · Długość zlewni L</th><td class="num">16,05&nbsp;km</td></tr>
+      <tr><th scope="row">1 · Wysokość min., maks., średnia</th><td class="num">257,3; 475,1; 363,2&nbsp;m n.p.m.</td></tr>
+      <tr><th scope="row">1 · Średni spadek zlewni</th><td class="num">0,082&nbsp;m/m</td></tr>
+      <tr><th scope="row">1 · Długość cieku głównego</th><td class="num">14,78&nbsp;km</td></tr>
+      <tr><th scope="row"><strong>1 · Długość najdłuższej drogi spływu L</strong></th><td class="num"><strong>15,88&nbsp;km</strong></td></tr>
+      <tr><th scope="row"><strong>1 · Spadek najdłuższej drogi spływu S</strong></th><td class="num"><strong>0,0114&nbsp;m/m</strong></td></tr>
+      <tr><th scope="row"><strong>2 · PMAXTP: punkt (szerokość, długość)</strong></th><td class="num"><strong>51,01544; 15,88984</strong></td></tr>
+      <tr><th scope="row"><strong>2 · PMAXTP: p, czas trwania</strong></th><td class="num"><strong>1%, 12&nbsp;h</strong></td></tr>
+      <tr><th scope="row">2 · PMAXTP: metoda; pobrana wysokość opadu</th><td class="num">POT; 101,82&nbsp;mm</td></tr>
+      <tr><th scope="row">2 · Rozkład w czasie</th><td>Beta, α i β puste (2 i 5)</td></tr>
+      <tr><th scope="row"><strong>2 · Krok czasowy Δt</strong></th><td class="num"><strong>10&nbsp;min</strong></td></tr>
+      <tr><th scope="row"><strong>3 · Model, metoda tc, AMC</strong></th><td><strong>SCS, Kirpich, II</strong></td></tr>
+      <tr><th scope="row">3 · Nash (Lutz) i Snyder: Lc</th><td class="num">6,76&nbsp;km</td></tr>
+      <tr><th scope="row">3 · Nash (Lutz): szorstkość koryta, lasy, zabudowa</th><td class="num">0,035; 57,4%; 1%</td></tr>
+      <tr><th scope="row">3 · FAA i Kerby: spływ po stoku L, spadek stoku</th><td class="num">0,3&nbsp;km; 0,082&nbsp;m/m</td></tr>
+      <tr><th scope="row">3 · FAA: C; Kerby: N</th><td class="num">0,25; 0,4</td></tr>
+    </tbody>
+  </table>
+  <p>Punkt to ujście zlewni wyznaczone w Hydrografie. Najdłuższą drogę spływu też wyznaczył Hydrograf (5 listopada 2026): ma 15,88&nbsp;km od punktu zlewni najdalszego hydraulicznie (zwykle leży na dziale wodnym, ale może na grzbiecie wewnątrz zlewni), na wysokości 440,16&nbsp;m n.p.m. do ujścia na wysokości 258,72&nbsp;m n.p.m., więc jej spadek to (440,16&nbsp;−&nbsp;258,72)&nbsp;/&nbsp;15&nbsp;883&nbsp;m = 0,0114&nbsp;m/m. Wynik: Qmax 54,20&nbsp;m³/s po 6:40&nbsp;h, objętość 977&nbsp;225&nbsp;m³, współczynnik odpływu 0,258 (kafelki opisuje lista poniżej). Z wilgotnością III: 105,97&nbsp;m³/s. Wysokość 101,82&nbsp;mm podał atlas w listopadzie 2026; gdy IMGW-PIB go zaktualizuje, wysokość i wynik mogą się nieco zmienić.</p>
+  <p class="hint-box"><strong>Spróbuj:</strong> przy wilgotności II wybierz w kroku „Hydrogram” model Nash i „Metoda Lutza”, a pod wyborem wpisz z tabeli długość do środka ciężkości, szorstkość koryta, lasy i zabudowę. Hydrolog wyliczy ze zlewni n <span class="ex" data-example="hydrogram-lutz-n">3,61</span> i K <span class="ex" data-example="hydrogram-lutz-k">92,13&nbsp;min</span>, a szczyt spadnie do <span class="ex" data-example="hydrogram-lutz-q">35,03&nbsp;m³/s</span> po <span class="ex" data-example="hydrogram-lutz-tp">9:10&nbsp;h</span>: ten sam opad efektywny spływa przez kaskadę Nasha wolniej niż przez hydrogram SCS.</p>
+
+  <h3>Wykresy i wyniki</h3>
+  <ul>
+    <li><strong>Hietogram i hydrogram</strong> na wspólnej osi czasu: opad całkowity i efektywny u góry, przepływ pod nimi, ze szczytem opisanym na wykresie. Niżej <strong>składowe obliczenia</strong>: opad i straty narastająco oraz hydrogram jednostkowy. Widok „Tabela” pokazuje szeregi czasowe, z wyróżnionym wierszem szczytu.</li>
+    <li><strong>Kafelki</strong>: Qmax, czas do szczytu, objętość i współczynnik odpływu. W przykładzie: <span class="ex" data-example="hydrogram-q">54,20&nbsp;m³/s</span>, <span class="ex" data-example="hydrogram-tp">6:40&nbsp;h</span>, <span class="ex" data-example="hydrogram-volume">977&nbsp;225&nbsp;m³</span> i <span class="ex" data-example="hydrogram-c">0,258</span>, czyli spływa nieco ponad jedna czwarta deszczu.</li>
+    <li><strong>Bilans opadu</strong>: jak opad dzieli się na straty początkowe, infiltrację i opad efektywny; <strong>Parametry obliczenia</strong>: czas koncentracji, parametry hydrogramu jednostkowego, krok.</li>
+    <li><strong>Przepływ odniesienia</strong>: wynik ze <a href="#statystyka">Statystyki przepływów</a> („Do porównania”) rysuje się jako pozioma linia na hydrogramie; „Usuń odniesienie” go zdejmuje.</li>
+  </ul>
+  <p class="back"><a href="#toc-title">↑ Spis treści</a></p>
+</section>
+
+<!-- ============================ 03 Sieć ============================ -->
+<section class="part" id="siec" aria-labelledby="siec-title">
+  <p class="kicker">03 · Sekcja</p>
+  <h2 id="siec-title">Sieć i trasowanie</h2>
+  <p>Kilka zlewni połączonych korytami, zbiornikami i złączami, aż do jednego wylotu. Sieć budujesz na schemacie, podobnie jak model zlewni w programie HEC-HMS, w kolejności, w jakiej myśli o niej hydrolog: najpierw krok czasowy i opad sieci, potem elementy na schemacie (dodajesz je, łączysz każdy z elementem poniżej, nadajesz im nazwy i opisy), a na końcu dane każdej zlewni w jej panelu, w tych samych trzech krokach co w Hydrogramie zlewni. Hydrolog liczy hydrogram każdej zlewni, przeprowadza fale przez odcinki i zbiorniki i sumuje je w złączach. W przeciwieństwie do Hydrogramu zlewni sieć liczy się na przycisk „Oblicz sieć”.</p>
+  <figure>
+    <a href="img/siec.png"><img src="img/siec.png" width="1440" height="900" loading="lazy" alt="Sieć i trasowanie po obliczeniu przykładu z wybraną zlewnią C, w czterech kolumnach: w panelu Dane krok Sieć z krokiem czasowym Δt 5 min i opadem sieci (źródło Hietogram, 30 mm w 60 min, rozkład blokowy); obok panel Zlewnia C z krokiem Hietogram ustawionym na Jak w sieci (opad sieci z kroku 1: hietogram 30,0 mm w 1 h, z odnośnikiem do kroku 1, krok czasowy sieci tylko do odczytu) i krokiem Hydrogram z modelem SCS; w środku schemat ze zlewniami A, B i C, odcinkami R_A i R_J1, złączami J1 i J2 i wylotem OUT, przy każdym węźle szczyt i czas do szczytu; w panelu Wyniki kafelki wylotu 19,1 m³/s po 2:25 h i hydrogram zlewni C."></a>
+    <figcaption>Przykład po „Oblicz sieć”: opad sieci w kroku „Sieć”, a obok panel wybranej zlewni C, której opad jest „Jak w sieci”.</figcaption>
+  </figure>
+  <ul>
+    <li><strong>Sieć</strong> zaczynasz w kroku „Sieć” panelu „Dane”: „Nowa sieć” otwiera pusty schemat, „Plik sieci…” wczytuje dokument sieci (<code>hydrolog-network/1</code>) razem z plikami, które czyta („Pliki towarzyszące…”: dopływy, tabele zbiorników), a „Wczytaj z Hydrografa” otwiera przekazanie (zob. <a href="#przekazanie">Przekazanie</a> i <a href="#siec-z-hydrografa">Sieć z Hydrografa</a>). Na początku sekcja jest pusta. W tym samym kroku są nazwa i opis sieci, a pod nimi jej krok czasowy i opad.</li>
+    <li><strong>Opad sieci</strong> podajesz najpierw, zanim postawisz elementy: w kroku „Sieć” jest „Krok czasowy Δt”, a pod nim „Opad sieci” z tymi samymi polami co krok „Hietogram” Hydrogramu zlewni. „Brak” wystarczy sieci samych hydrogramów podanych. PMAXTP to punkt, prawdopodobieństwo, czas trwania i metoda atlasu: wysokość opadu pobiera Hydrolog, a przeglądarka ją zapamiętuje. „Hietogram” to wysokość, czas trwania i rozkład w czasie, a „Własna seria” wysokości opadu w kolejnych krokach Δt. Ten opad bierze każda zlewnia z opadu, która nie ma własnego. „Nowa sieć” otwiera właśnie ten krok, a pusty schemat przypomina o tej kolejności, ale niczego nie blokuje.</li>
+    <li><strong>Schemat</strong> jest rysowany pionowo: źródła u góry, wylot na dole. Węzeł stoi na tym polu siatki, na które go postawisz; sieć z pliku bez położeń węzłów Hydrolog układa sam: linia główna prosto, dopływy z boków. Kliknij węzeł: jego ustawienia otworzą się w panelu „Dane”, a wynik w panelu „Wyniki”. Te same węzły są na liście w kroku „Węzły” i w widoku „Tabela węzłów”, z opisem i węzłem, do którego odpływają.</li>
+    <li><strong>Ustawienia węzła</strong> (krok 3): id, opis, „Odpływa do” i parametry zależne od rodzaju węzła: odcinek (metoda: lag, Muskingum, Muskingum-Cunge, kaskada zbiorników albo level-pool, i jej parametry), zbiornik (tabela pojemność–odpływ), złącze i wylot (bez parametrów), a zlewnia rodzaj hydrogramu: „Z opadu”, „Podany” (czasy i przepływy) albo „Z pliku” (kolumna pliku dopływów). Dane zlewni z opadu są w jej panelu obok. Po zmianie parametru, id albo połączeń plakietka mówi „Dane zmienione: oblicz ponownie”, a wyniki są oznaczone jako dotyczące poprzednich danych. Przesunięcie węzła i opis nie zmieniają wyniku.</li>
+    <li><strong>Panel zlewni</strong>: wybór zlewni z opadu otwiera obok panelu „Dane” jej panel, np. „Zlewnia C”, z trzema krokami Hydrogramu zlewni (zob. <a href="#hydrogram">Hydrogram zlewni</a>): te same pola w tej samej kolejności, to samo sprawdzanie danych i te same objaśnienia <span class="i-mark" aria-hidden="true">i</span>. „Zlewnia” to dane zlewni; jej „Plik zlewni…” i „Wczytaj z Hydrografa” wczytują jedną zlewnię do wybranego węzła, który zachowuje id, połączenia i miejsce na schemacie. „Hietogram” zaczyna od „Jak w sieci”: opisu opadu sieci z odnośnikiem do kroku „Sieć”; PMAXTP, „Hietogram” albo „Własna seria” dają zlewni własny opad, zawsze z krokiem Δt sieci. „Hydrogram” najpierw pyta o model hydrogramu jednostkowego, potem pokazuje tylko jego pola, a na końcu straty SCS-CN. Zlewnia bez modelu albo bez żadnego opadu, ani własnego, ani sieci („Brak opadu”), jest problemem sieci. Po „Oblicz sieć” panel pokazuje wartości z tego obliczenia, np. czas koncentracji, dopóki nie zmienisz danych zlewni. <span class="key-mark" aria-hidden="true">×</span> zamyka panel, a zlewnia zostaje wybrana; wybór odcinka, zbiornika, złącza albo wylotu go zamyka. Gdy obok wykresów brakuje miejsca, najpierw zwęża się panel „Wyniki”, a na węższym ekranie ustępuje on panelowi zlewni: przycisk „Wyniki” pokazuje go wtedy w tym miejscu.</li>
+    <li><strong>Wyniki</strong>: przy każdym węźle schematu szczyt i czas do szczytu; w panelu „Wyniki” kafelki wylotu, a dla wybranego węzła jego hydrogram (dla odcinka dopływ i odpływ), parametry i rzędne.</li>
+  </ul>
+
+  <h3 id="elementy-sieci">Elementy sieci</h3>
+  <p>Paleta nad schematem ma pięć elementów. Odpowiadają elementom modelu zlewni HEC-HMS; źródło HEC-HMS zastępuje zlewnia z podanym hydrogramem, a rozdziału wody Hydrolog nie ma.</p>
+  <table class="dtable guide-table wrap">
+    <caption>Elementy palety i ich odpowiedniki w HEC-HMS</caption>
+    <thead><tr><th scope="col">Element</th><th scope="col">W HEC-HMS</th><th scope="col">Co robi</th><th scope="col">Dopływy</th></tr></thead>
+    <tbody>
+      <tr><th scope="row">Zlewnia</th><td>Subbasin, Source</td><td>daje hydrogram: z opadu, podany (czasy i przepływy) albo z kolumny pliku dopływów</td><td>żadnego</td></tr>
+      <tr><th scope="row">Odcinek</th><td>Reach</td><td>przesuwa i spłaszcza falę: lag, Muskingum, Muskingum-Cunge, kaskada zbiorników albo level-pool</td><td>dokładnie jeden</td></tr>
+      <tr><th scope="row">Zbiornik</th><td>Reservoir</td><td>zatrzymuje część fali według krzywej pojemność–odpływ</td><td>dokładnie jeden</td></tr>
+      <tr><th scope="row">Złącze</th><td>Junction</td><td>sumuje dopływy</td><td>co najmniej jeden</td></tr>
+      <tr><th scope="row">Wylot</th><td>Sink</td><td>koniec sieci: jego hydrogram jest wynikiem; w sieci jest dokładnie jeden</td><td>dokładnie jeden</td></tr>
+      <tr><th scope="row">brak</th><td>Diversion</td><td>rozdziału nie ma: każdy węzeł odpływa do jednego węzła poniżej, więc woda nie dzieli się na dwie drogi</td><td>–</td></tr>
+    </tbody>
+  </table>
+  <p>Nowy element dostaje id <code>Z1</code>, <code>R1</code>, <code>ZB1</code> albo <code>J1</code> z pierwszym wolnym numerem, a wylot <code>OUT</code>; możesz je zmienić. Id jest nazwą węzła i jego pliku wyników: litery (także polskie), cyfry, <code>_</code>, <code>.</code> i <code>-</code>, bez spacji, do 64 znaków, różne bez względu na wielkość liter. Inne słowa wpisz w „Opis”: zwykły tekst do 500 znaków, także w kilku wierszach.</p>
+
+  <h3 id="budowanie-sieci">Budowanie sieci</h3>
+  <figure class="card-figure">
+    <a href="img/siec-edycja.png"><img src="img/siec-edycja.png" width="652" height="700" loading="lazy" alt="Schemat sieci w trakcie edycji: lista „Problemy sieci (1)” z problemem „Węzeł C nie odpływa do żadnego węzła: połącz go z węzłem poniżej.”, zlewnia C ze znakiem „!” z boku schematu, a nad schematem pytanie „Wstawić złącze?”: R_J1 przyjmuje jeden dopływ i ma już J1, złącze nad R_J1 zbierze J1 i C; przyciski Wstaw złącze i Anuluj."></a>
+    <figcaption>Problem na schemacie i pytanie o złącze po przeciągnięciu uchwytu C na odcinek R_J1.</figcaption>
+  </figure>
+  <dl class="defs">
+    <div><dt>Dodawanie</dt><dd>Przeciągnij element z palety na wolne pole schematu albo kliknij element, a potem wolne pole. Najwygodniej zacząć od wylotu i dodawać elementy nad nim. Klawisz <kbd>D</kbd> na węźle (albo „Dodaj dopływ…” w menu węzła) stawia nowy element na wolnym polu nad nim i od razu łączy go z tym węzłem. „Dodaj węzeł” w kroku „Węzły” stawia element obok wybranego węzła, bez połączeń.</dd></div>
+    <div><dt>Łączenie</dt><dd>Każdy węzeł poza wylotem odpływa do jednego węzła poniżej. Przeciągnij uchwyt (kółko pod węzłem) na węzeł, do którego ma odpływać; w trakcie cel pokazuje „✓” albo „⊘” z przyczyną. Bez przeciągania: „Połącz z…” w menu węzła i kliknięcie celu, klawisz <kbd>P</kbd> i strzałki, albo pole „Odpływa do” w ustawieniach węzła. Nowe połączenie zastępuje dotychczasowe. Pętli, dopływu do zlewni ani odpływu z wylotu nie da się zrobić, a komunikat mówi dlaczego. Drugi dopływ do odcinka, zbiornika albo wylotu, które przyjmują jeden, kończy się pytaniem „Wstawić złącze?”: złącze nad tym węzłem zbierze oba dopływy.</dd></div>
+    <div><dt>Odłączanie i usuwanie</dt><dd>Kliknij połączenie i naciśnij <kbd>Delete</kbd>, albo wybierz „Odłącz” (<kbd>O</kbd>) w menu węzła, albo „brak” w polu „Odpływa do”. „Usuń” (<kbd>Delete</kbd> albo „Usuń węzeł” w ustawieniach) usuwa węzeł z jego połączeniami, a „Usuń i połącz” dodatkowo łączy jego jedyny dopływ z węzłem poniżej.</dd></div>
+    <div><dt>Id i opis</dt><dd>„Zmień id” w menu węzła albo <kbd>F2</kbd> przenosi do pola „Id węzła”. Nowe id obowiązuje po <kbd>Enter</kbd> albo po wyjściu z pola, a połączenia innych węzłów idą za nim; zlewnia, która czytała kolumnę pliku dopływów pod dawnym id, czyta ją dalej. „Opis” węzła i „Opis sieci” (krok „Sieć”) nie zmieniają obliczeń; opis węzła widać w jego podpowiedzi i w „Tabeli węzłów”.</dd></div>
+    <div><dt>Przesuwanie i układ</dt><dd>Przeciągnij węzeł na wolne pole, naciśnij <kbd>Shift</kbd> ze strzałką albo wybierz „Przesuń” i kliknij wolne pole. „Uporządkuj” ustawia węzły tak, jak układa je Hydrolog; działa, gdy budowa sieci nie ma problemów, także zanim podasz dane węzłów. Do tego czasu sieć z pliku bez położeń stoi w rzędach oznaczonych „Układ tymczasowy”. „−”, „+” i „Dopasuj” zmieniają powiększenie.</dd></div>
+    <div><dt>Problemy</dt><dd>Po każdej zmianie strona sprawdza budowę sieci tak, jak sprawdza ją Hydrolog: lista „Problemy sieci” nad schematem wymienia wszystkie problemy naraz (np. węzeł, który nigdzie nie odpływa, pętlę, brak wylotu, niepełne dane węzła), węzeł z problemem ma znak „!”, a kliknięcie problemu wybiera jego węzeł. Gdy lista nie jest pusta, „Oblicz sieć” niczego nie liczy, tylko wybiera węzeł pierwszego problemu. Gdy krawędź biegnie przez inny węzeł, mówi o tym wskazówka: obliczeń to nie zmienia, a „Uporządkuj” rozkłada sieć bez takich przejść.</dd></div>
+    <div><dt>Cofnij i ponów</dt><dd>„Cofnij” i „Ponów” (<kbd>Ctrl</kbd>+<kbd>Z</kbd>; <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd> albo <kbd>Ctrl</kbd>+<kbd>Y</kbd>) cofają i przywracają do 100 zmian: dodanie, połączenie, przesunięcie, zmianę id albo parametru. Sieć zostaje w przeglądarce po ponownym otwarciu strony, historia zmian nie.</dd></div>
+    <div><dt>Zapisywanie</dt><dd>„Zapisz sieć” pobiera dokument sieci z położeniami i opisami węzłów: otwarty ponownie wygląda tak samo, a schemat, który rysuje z niego Hydrolog (<code>route network --schematic</code>, „Schemat Hydrologa” w eksporcie), jest tym samym obrazem. Sieć z problemami zapisuje ten sam przycisk jako „Zapisz szkic”: Hydrolog policzy ją dopiero po poprawieniu problemów, a strona otworzy ją jak każdy plik. „Wyczyść” i „Nowa sieć” pytają, zanim zamkną sieć zmienioną od otwarcia albo zapisu.</dd></div>
+    <div><dt>Zlewnia z Hydrografa</dt><dd>„Dodaj zlewnię z Hydrografa” w kroku „Sieć” dodaje do otwartej sieci zlewnie z przekazania, bez jego wylotu, na wolnych polach górnego rzędu schematu; potem połącz je z siecią. Id, które sieć już ma, dostaje kolejny numer (<code>Z1</code> staje się <code>Z2</code>), a opisem zlewni zostaje temat przekazania. Sieć zachowuje swój krok czasowy, a opad przekazania, inny niż opad sieci, staje się opadem tej zlewni.</dd></div>
+  </dl>
+
+  <h3 id="klawisze-schematu">Klawisze schematu</h3>
+  <p>Schemat jest jednym przystankiem klawisza <kbd>Tab</kbd>; dalej między węzłami przechodzą strzałki. Litery i znaki z tabeli działają tylko wtedy, gdy schemat ma fokus, a w polu tekstowym działa zwykłe cofanie przeglądarki. Tę samą listę pokazuje przycisk „Skróty” albo klawisz <kbd>?</kbd>. Całą sieć zbudujesz samą klawiaturą: <kbd>Enter</kbd> na elemencie palety stawia go obok wybranego węzła.</p>
+  <table class="dtable guide-table wrap">
+    <caption>Klawisze, gdy fokus jest na węźle schematu</caption>
+    <thead><tr><th scope="col">Klawisze</th><th scope="col">Działanie</th></tr></thead>
+    <tbody>
+      <tr><th scope="row">strzałki</th><td>najbliższy węzeł w tym kierunku</td></tr>
+      <tr><th scope="row"><kbd>Enter</kbd></th><td>wybierz węzeł: ustawienia w panelu „Dane”; przy zlewni z opadu przejdź do jej panelu</td></tr>
+      <tr><th scope="row">spacja</th><td>wybierz węzeł</td></tr>
+      <tr><th scope="row"><kbd>Shift</kbd> + strzałka</th><td>przesuń węzeł o jedno pole</td></tr>
+      <tr><th scope="row"><kbd>D</kbd></th><td>dodaj dopływ: menu rodzajów elementu</td></tr>
+      <tr><th scope="row"><kbd>P</kbd></th><td>połącz z węzłem poniżej: strzałki wybierają cel, <kbd>Enter</kbd> łączy</td></tr>
+      <tr><th scope="row"><kbd>O</kbd></th><td>odłącz od węzła poniżej</td></tr>
+      <tr><th scope="row"><kbd>Delete</kbd></th><td>usuń węzeł albo wybrane połączenie</td></tr>
+      <tr><th scope="row"><kbd>F2</kbd></th><td>zmień id: pole w panelu „Dane”</td></tr>
+      <tr><th scope="row"><kbd>Shift</kbd>+<kbd>F10</kbd>, klawisz menu</th><td>menu węzła (także prawy przycisk myszy, długie dotknięcie albo „Węzeł…”)</td></tr>
+      <tr><th scope="row"><kbd>Ctrl</kbd>+<kbd>Z</kbd></th><td>cofnij</td></tr>
+      <tr><th scope="row"><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd>, <kbd>Ctrl</kbd>+<kbd>Y</kbd></th><td>ponów</td></tr>
+      <tr><th scope="row"><kbd>+</kbd>, <kbd>−</kbd></th><td>powiększ, pomniejsz</td></tr>
+      <tr><th scope="row"><kbd>?</kbd></th><td>pokaż albo ukryj listę skrótów</td></tr>
+      <tr><th scope="row"><kbd>Esc</kbd></th><td>przerwij przesuwanie, dodawanie albo łączenie</td></tr>
+    </tbody>
+  </table>
+
+  <h3 id="przyklad-siec">Przykład: trzy zlewnie</h3>
+  <p>Pobierz plik przykładu <a href="przyklady/siec.json" download="siec.json"><code>siec.json</code></a>. W sekcji Sieć naciśnij „Plik sieci…” i wybierz pobrany plik: na schemacie pojawi się osiem węzłów. Sieć nie czyta innych plików, więc „Pliki towarzyszące…” nie są potrzebne.</p>
+  <table class="dtable guide-table wrap">
+    <caption>Węzły sieci z pliku przykładu</caption>
+    <thead><tr><th scope="col">Węzeł</th><th scope="col">Dane</th></tr></thead>
+    <tbody>
+      <tr><th scope="row">A · zlewnia</th><td>12&nbsp;km², CN 75, najdłuższa droga spływu 6&nbsp;km o spadku 0,02&nbsp;m/m; własny opad: Euler II, 45&nbsp;mm w 60&nbsp;min</td></tr>
+      <tr><th scope="row">B · zlewnia</th><td>5&nbsp;km², CN 70, najdłuższa droga spływu 3,5&nbsp;km o spadku 0,0229&nbsp;m/m; własny opad: szereg co 5&nbsp;min (0; 2; 5; 10; 12; 6; 3&nbsp;mm)</td></tr>
+      <tr><th scope="row">C · zlewnia</th><td>8&nbsp;km², CN 72, tc 60&nbsp;min; opad sieci: blokowy, 30&nbsp;mm w 60&nbsp;min</td></tr>
+      <tr><th scope="row">R_A · odcinek</th><td>z A, metoda lag, 25&nbsp;min</td></tr>
+      <tr><th scope="row">J1 · złącze</th><td>R_A i B</td></tr>
+      <tr><th scope="row">R_J1 · odcinek</th><td>z J1, Muskingum, K 40&nbsp;min, X 0,2</td></tr>
+      <tr><th scope="row">J2 · złącze, OUT · wylot</th><td>R_J1 i C, a dalej wylot</td></tr>
+    </tbody>
+  </table>
+  <p>Naciśnij „Oblicz sieć”. Wynik: wylot OUT ma szczyt <span class="ex" data-example="siec-q">19,1&nbsp;m³/s</span> po <span class="ex" data-example="siec-tp">2:25&nbsp;h</span>.</p>
+  <p><strong>Ta sama sieć od zera.</strong> Naciśnij „Nowa sieć”: otworzy się krok „Sieć”. Najpierw opad sieci: w „Opad sieci” wybierz „Hietogram”, rozkład „Blokowy”, wysokość 30&nbsp;mm i czas trwania 60&nbsp;min; krok czasowy może zostać pusty. Potem postaw z palety osiem elementów tak jak na obrazku: u góry zlewnię A, pod nią odcinek R_A, złącze J1, odcinek R_J1, złącze J2 i wylot OUT, zlewnię B z boku nad J1, a zlewnię C z boku nad J2. Zmień ich id na te z tabeli i połącz każdy węzeł z węzłem poniżej; „Uporządkuj” ustawi je tak, jak układa je Hydrolog, jeszcze zanim podasz ich dane. Odcinkom wybierz metodę i wpisz jej parametry w panelu „Dane”. Każdą zlewnię uzupełnij w jej panelu: w kroku „Zlewnia” powierzchnię, CN i najdłuższą drogę spływu (C jej nie potrzebuje); w kroku „Hietogram” zostaw zlewni C „Jak w sieci”, a zlewniom A i B daj własny opad z tabeli („Hietogram” z rozkładem Euler II albo „Własna seria”); w kroku „Hydrogram” wybierz model SCS, dla A i B z czasem koncentracji Kirpicha, a dla C z czasem podanym ręcznie, 60&nbsp;min. „Oblicz sieć” da ten sam wynik, a „Zapisz sieć” zapisze plik, który otworzy się w tym samym układzie.</p>
+  <p class="hint-box"><strong>Spróbuj:</strong> wybierz odcinek R_A, zmień metodę z „lag” na „Muskingum”, wpisz K&nbsp;30&nbsp;min i X&nbsp;0,2, a potem „Oblicz sieć”. Fala spłaszczy się w korycie: szczyt na wylocie spadnie do <span class="ex" data-example="siec-q-muskingum">18,0&nbsp;m³/s</span> i nadejdzie po <span class="ex" data-example="siec-tp-muskingum">2:35&nbsp;h</span>.</p>
+
+  <h3 id="siec-z-hydrografa">Sieć z Hydrografa i pochodzenie węzłów</h3>
+  <p>W Hydrografie wybierz „Wybierz zlewnię”, a nad mapą „Sieć zlewni”. Wskaż najpierw przekrój zamykający na cieku, potem punkty powyżej niego. Punkt blisko zbiegu cieków staje się węzłem <code>J</code>, a punkt poza zbiegiem węzłem <code>P</code>; identyfikatory są nadawane od przekroju zamykającego w górę sieci. Hydrograf dzieli teren na dopływy do węzłów (również dopływ cieku głównego) i przyrzecza odcinków, a między nimi wyznacza odcinki i złącza. Po „Oblicz charakterystyki” użyj „Plik przekazania” albo „Kopiuj do Hydrologa”; w Hydrologu „Wczytaj z Hydrografa” w kroku „Sieć” otwiera sieć ułożoną na schemacie (zob. <a href="#przekazanie">Przekazanie</a>). Każdy węzeł pamięta, skąd pochodzą jego dane.</p>
+  <figure>
+    <a href="img/siec-hydrograf.png"><img src="img/siec-hydrograf.png" width="1440" height="900" loading="lazy" alt="Sieć ośmiu zlewni wczytana z Hydrografa: wybrana Z2 ma w obu panelach danych kartę „Z Hydrografa: przyrzecze odcinka R2”, powierzchnię 0,72 km² i CN 69,60; na schemacie są złącza J1–J4, odcinki R1–R3 i wylot O; po prawej karta przekazania bez wyniku producenta."></a>
+    <figcaption>Sieć z Hydrografa po wczytaniu: pochodzenie wybranego przyrzecza odcinka R2 i schemat z wylotem O.</figcaption>
+  </figure>
+  <ul>
+    <li><strong>Pochodzenie</strong> zlewni pokazuje karta w kroku „Zlewnia” jej panelu i w kroku 3 panelu „Dane”, np. „Z Hydrografa: przyrzecze odcinka R2” albo „Z Hydrografa: dopływ do punktu J4”, z miejscem ujścia zlewni (szerokość i długość geograficzna) i datą przekazania; pola zmienione od wczytania wymienia dopisek „zmienione: …”. W przekazaniu z pokazanego przykładu jest osiem zlewni, trzy odcinki, złącza <code>J1</code>–<code>J4</code> i wylot <code>O</code>: <code>Z7</code> to dopływ cieku głównego do <code>J4</code>, <code>Z8</code> drugi dopływ, a <code>Z2</code> przyrzecze odcinka <code>R2</code>. Pochodzenie opadu i modelu, gdy przekazanie je podaje, jest w krokach „Hietogram” i „Hydrogram”. Odcinek, złącze i wylot mają kartę w kroku 3 panelu „Dane”: odcinek opisuje pomiar długości i spadku, a złącze wskazuje zbieg, punkt lub przekrój zamykający. Węzeł bez własnego pochodzenia pokazuje kartę całego przekazania.</li>
+    <li><strong>Czego Hydrograf nie podaje</strong>: opadu sieci i przekroju odcinków. Podaj opad sieci w kroku „Sieć”; do tego czasu każda zlewnia ma „Brak opadu”. „Oblicz sieć” oznacza potem odcinki znakiem „!”, dopóki nie wpiszesz w każdym szorstkości Manninga i szerokości dna. Zlewnie przychodzą z polami zlewni i stratami SCS-CN, a bez wskazanego modelu otwierają się z modelem SCS i czasem koncentracji Kirpicha, tak jak liczy je Hydrolog; możesz je zmienić w ich panelach.</li>
+    <li><strong>Płaski albo krótki odcinek</strong>: na odcinku płaskim, krótkim albo z wąskim korytem i dużym przepływem długość dyfuzji fali (D&nbsp;=&nbsp;Q&nbsp;/&nbsp;(T·S0·c)) jest długa wobec drogi, jaką fala przebywa w jednym kroku czasowym, i metoda Muskingum-Cunge nie ma wtedy nieujemnych wag dla żadnego podziału odcinka ani kroku. Hydrolog nie odrzuca takiej sieci: trasuje odcinek jako zbiornik liniowy (gdy odcinek jest dłuższy niż półtorej długości dyfuzji, jako kaskadę n&nbsp;≈&nbsp;L/D zbiorników), który zachowuje czas przepływu fali L/c, i liczy sieć dalej. Wybrany w „Wynikach” odcinek ma wtedy ostrzeżenie, np. „Odcinek R2 trasowano jako zbiornik liniowy o K = … min, bo przy kroku 5 min metoda Muskingum-Cunge nie daje nieujemnych wag…”, z długością odcinka, prędkością fali i długością dyfuzji; uwagi wyniku mają uwagę tego węzła, a w jego parametrach „Schemat obliczeń” to „zbiorniki liniowe”. Tłumienie fali na takim odcinku jest przybliżone. Odcinek, którego metoda nie przyjmuje kroku sieci (np. Muskingum z podaną liczbą pododcinków), „Oblicz sieć” odrzuca: błąd mówi, czy krok jest za krótki (z zakresem kroków, które pasują), czy za długi, a pod nim „Zamień na opóźnienie (lag)” z wpisanym czasem od razu liczy sieć od nowa, a „Zamień na zbiornik (level-pool)” czeka na tabelę pojemność–odpływ w „Dane”. Krok czasowy sieci jest w kroku 1 „Sieć”, w polu „Krok czasowy”; puste pole to krok domyślny (krok źródeł, a bez nich 5&nbsp;min).</li>
+    <li><strong>Dalej</strong>: pochodzenie idzie za węzłem także po zmianie id, a zlewnia dodana przez „Dodaj zlewnię z Hydrografa” albo wczytana w panelu zlewni dostaje pochodzenie ze swojego przekazania. Przekazanie zapisane z Sieci niesie pochodzenie każdego węzła pod jego obecnym id, z polami zmienionymi od wczytania, a dane wpisane w Sieci mają pochodzenie „wpisane ręcznie”. Otwarte ponownie, np. w innej przeglądarce, pokazuje te same pochodzenia; karty podpisuje wtedy Hydrolog, który zapisał przekazanie.</li>
+  </ul>
+  <p class="back"><a href="#toc-title">↑ Spis treści</a></p>
+</section>
+
+<!-- ============================ 04 Statystyka ============================ -->
+<section class="part" id="statystyka" aria-labelledby="statystyka-title">
+  <p class="kicker">04 · Sekcja</p>
+  <h2 id="statystyka-title">Statystyka przepływów</h2>
+  <p>Z największych przepływów kolejnych lat (maksimów rocznych) Hydrolog dopasowuje rozkłady prawdopodobieństwa i podaje przepływy o zadanym okresie powtarzania, np. Q&nbsp;1%: przepływ, który zdarza się średnio raz na 100 lat. Nie ma przycisku „Oblicz”: wynik liczy się sam chwilę po każdej zmianie szeregu albo okresów powtarzania, a niepełne dane nie uruchamiają obliczenia i zostawiają poprzedni wynik.</p>
+  <figure>
+    <a href="img/statystyka.png"><img src="img/statystyka.png" width="1440" height="900" loading="lazy" alt="Statystyka przepływów dla 26 maksimów rocznych: po lewej filtry czterech rozkładów i wybranej metody L-momentów oraz wyróżniony okres 100 lat, pośrodku wykres prawdopodobieństwa i początek wykresu gęstości, po prawej najlepszy rozkład GEV, Q 1% 324,9 m³/s, Q 10% 197,4 m³/s, długość 26 lat i tabela rozkładów z kolumną metody."></a>
+    <figcaption>Maksima roczne przykładu z lat 1998–2023 po obliczeniu.</figcaption>
+  </figure>
+  <ul>
+    <li><strong>Szereg</strong>: plik CSV wczytany do sesji („Z pliku CSV…”) z kolumnami odczytanymi z jego nagłówka, wartości wklejone („Wklej”) albo „Wczytaj z Archiwisty” z przekazania. W szeregu dobowym, np. w eksporcie z Obserwatora z kolumnami daty i przepływu, wystarczy wskazać kolumnę dat: Hydrolog sam wybierze maksima z pełnych lat hydrologicznych (od listopada do października). Na początku sekcja jest pusta: nie ma pliku ani wartości.</li>
+    <li><strong>Rozkłady</strong>: Hydrolog dopasowuje za każdym razem każdy z czterech rozkładów (log-normalny, GEV, Pearson III, Weibull) każdą z czterech metod estymacji parametrów: metodą L-momentów (<code>l_moments</code>), największą wiarygodnością (<code>mle</code>), metodą momentów (<code>moments</code>) i najmniejszych kwadratów (<code>least_squares</code>, która idzie za największymi maksimami). „Rozkłady” i „Metody estymacji” wybierają tylko, które kombinacje pokazać (na początku wszystkie rozkłady metodą L-momentów; jeden rozkład i jedna metoda zostają zawsze wybrane), niczego nie przeliczają i są zapamiętywane. Kolor linii to rozkład, jej styl to metoda: L-momenty linia ciągła, największa wiarygodność kreskowana, momenty kropkowana, najmniejsze kwadraty kreska-kropka. Kombinacja, której metoda nie umie dopasować, jest pominięta z uwagą, a kombinacja, która nie obejmuje któregoś maksimum, nie ma AIC i stoi na końcu tabeli. „Wyróżniony w wynikach” zaczyna od „brak”: bez wyróżnionego okresu nie ma kafelka jego kwantyla, zaznaczonego wiersza tabeli kwantyli ani kwantyla zaznaczonego na wykresie prawdopodobieństwa, a „Do porównania” jest wyłączone. Wybrany okres trafia do kafelków, tabeli, wykresu i „Do porównania”, a wybór jest zapamiętywany.</li>
+    <li><strong>Wyniki</strong>: wykres prawdopodobieństwa przewyższenia na siatce Gumbela (punkty to maksima, linie to kombinacje rozkładu i metody), pod nim, jeden pod drugim, dwa wykresy względem przepływu Q, „Gęstość prawdopodobieństwa” (gęstość każdej kombinacji, maksima roczne jako kreski na osi Q) i „Dystrybuanta” (F = 1 − p każdej kombinacji, maksima jako punkty w położeniu Weibulla), widok „Maksima roczne” z latami, kafelki, uwagi, tabela rozkładów z kolumną „Metoda” i miarami dopasowania oraz tabela kwantyli. Żadna oś nie zaczyna się poniżej zera, a zakresy osi zależą tylko od wyniku, nie od pokazanych ani aktywnej kombinacji: oś Q wykresów gęstości i dystrybuanty sięga większego z dwóch przepływów, największego maksimum i mediany Q&nbsp;1% kombinacji, a oś gęstości 1,25 mediany największych gęstości kombinacji z AIC, więc skok gęstości przy granicy rozkładu ucina ramka wykresu. „Zakres osi” pod każdym wykresem ustawia własne granice „od” i „do” (okres powtarzania T i przepływ Q wykresu prawdopodobieństwa, Q i gęstość, Q dystrybuanty); puste pole to granica automatyczna, a „Auto” przywraca wszystkie granice wykresu. Po każdym obliczeniu aktywna jest najlepsza z pokazanych kombinacji (najmniejsze AIC): na wszystkich trzech wykresach jej krzywa jest pełna i gruba, pozostałe są przygaszone, a kafelki podają jej nazwę („Najlepszy”, gdy nią jest) i kwantyle. Kliknięcie wiersza tabeli rozkładów (albo Enter na zaznaczonym wierszu) czyni aktywną inną kombinację. Pole „W tabeli kwantyli” w każdym wierszu dodaje kolumnę kwantyli tej kombinacji do tabeli kwantyli i do eksportu CSV (kolumna <code>&lt;rozkład&gt;_&lt;metoda&gt;_m3s</code>), w kolejności tabeli rozkładów; po obliczeniu zaznaczona jest tylko najlepsza, a odznaczyć można każdy wiersz, także ostatni. Wybór nie jest zapamiętywany: nowy wynik wraca do najlepszej kombinacji.</li>
+    <li><strong>„Jednorodność ciągu”</strong>, pod tabelą kwantyli, to ten sam szereg sprawdzony poleceniem <code>stats homogeneity</code>: testy Manna-Whitneya i Kołmogorowa-Smirnowa porównują pierwszą i drugą połowę maksimów, a test Pettitta szuka miejsca zmiany. Tabela podaje dla każdego testu statystykę, p i odpowiedź „Jednorodny”: „tak” albo „nie” (p&nbsp;&lt;&nbsp;0,05); test, który odrzuca jednorodność, dodaje uwagę. Pod tabelą jest podział szeregu i najbardziej prawdopodobny punkt zmiany według Pettitta: pierwszy rok po zmianie. Lata Hydrolog bierze z dat szeregu dobowego albo z kolumny lat pliku z maksimami; wklejone wartości nie mają lat, więc podział i punkt zmiany są podane jako pozycje w szeregu. Inny rok podziału i poziom istotności przyjmuje polecenie <code>stats homogeneity</code> we <a href="#polecenia">Wszystkich poleceniach</a>.</li>
+    <li><strong>„Do porównania”</strong> przenosi wyróżniony przepływ aktywnej kombinacji do <a href="#hydrogram">Hydrogramu zlewni</a>, gdzie rysuje się jako linia odniesienia; przy „brak” w „Wyróżniony w wynikach” jest wyłączone.</li>
+  </ul>
+
+  <h3 id="przyklad-statystyka">Przykład: maksima roczne 1998–2023</h3>
+  <p>Największe przepływy kolejnych lat, od 1998 do 2023, w m³/s. W kroku „Szereg” przełącz źródło na „Wklej” i wklej je w pole wartości (skopiuj cały blok):</p>
+  <pre class="cmd"><code data-paste="statystyka-values">100,9; 148,6; 130; 140,3; 133,4; 87,2; 170,9; 141,1; 315,4; 126; 177,5; 116,9; 114;
+159,6; 102; 94,5; 117,8; 173,6; 148,2; 124,2; 171; 227,6; 81,6; 123,8; 123,8; 116</code></pre>
+  <p>Zostaw cztery rozkłady, metodę L-momentów i domyślne okresy powtarzania i w „Wyróżniony w wynikach” wybierz 100; wynik liczy się sam. Wynik: najlepszy jest <span class="ex" data-example="statystyka-best">GEV</span>, Q&nbsp;1% = <span class="ex" data-example="statystyka-q1">324,9&nbsp;m³/s</span>, Q&nbsp;10% = <span class="ex" data-example="statystyka-q10">197,4&nbsp;m³/s</span>, z <span class="ex" data-example="statystyka-years">26 lat</span> danych. Uwaga przypomina, że wytyczne KZGW (2017) wymagają co najmniej 30 lat.</p>
+  <p>„Jednorodność ciągu” pokazuje, że żaden z trzech testów nie odrzuca jednorodności tych maksimów: przy każdym jest „tak”.</p>
+  <p>Inne analizy szeregu (niżówki, trend, reżim, przepływy charakterystyczne, krzywa czasu trwania i inne) są w <a href="#polecenia">Wszystkich poleceniach</a>; opisuje je <a href="#analizy-stacji">rozdział 07</a>.</p>
+  <p class="back"><a href="#toc-title">↑ Spis treści</a></p>
+</section>
+
+<!-- ============================ 05 Kalkulatory ============================ -->
+<section class="part" id="kalkulatory" aria-labelledby="kalkulatory-title">
+  <p class="kicker">05 · Sekcja</p>
+  <h2 id="kalkulatory-title">Kalkulatory</h2>
+  <p>Szesnaście małych obliczeń w grupach: czas koncentracji, CN i straty, opad, hydrogramy jednostkowe i zlewnia. Lista ma wyszukiwarkę i wybór grupy. Formularze są na początku puste; gdy Hydrogram zlewni ma zlewnię, jej pola wpisują się same. Obliczenie uruchamia przycisk „Oblicz”.</p>
+  <figure>
+    <a href="img/kalkulatory.png"><img src="img/kalkulatory.png" width="1440" height="900" loading="lazy" alt="Kalkulatory, porównanie metod czasu koncentracji dla zlewni Kamiennik — Świerzawa: wykres słupkowy sześciu metod, zielone w zakresie, pomarańczowe z uwagą lub poza zakresem, kreskowane nie dla zlewni z korytem; w panelu Wyniki tabela metod ze słowami zakresu i uwagi Hydrologa."></a>
+    <figcaption>Porównanie sześciu metod czasu koncentracji dla zlewni przykładu.</figcaption>
+  </figure>
+  <h3>Porównanie metod czasu koncentracji</h3>
+  <p>Hydrolog liczy czas koncentracji zlewni sześcioma metodami i pokazuje, które pasują do niej według ich zakresu stosowania. Kolor słupka i słowo w tabeli mówią „w zakresie”, „poza zakresem” albo „nie dla zlewni”: FAA i Kerby liczą tylko spływ po stoku (setki metrów), a nie spływ zlewni z korytem. Obwiedziony słupek to metoda używana w Hydrogramie zlewni. Kliknij nazwę metody w tabeli i naciśnij „Użyj w Hydrogramie zlewni”, aby tam liczyć tą metodą. Porównanie bierze zlewnię z Hydrogramu zlewni: bez niej nie ma czego porównać.</p>
+  <p id="przyklad-kalkulatory"><strong>Przykład.</strong> W Hydrogramie zlewni wpisz w kroku „Zlewnia” wszystkie pola z <a href="#przyklad">tabeli przykładu w rozdziale 02</a> (nazwa, powierzchnia, CN, obwód, długość, wysokości, spadki, ciek główny i najdłuższa droga spływu). W Kalkulatorach wybierz „Porównanie metod tc” i w części „Spływ po stoku” wpisz długość 0,3&nbsp;km, spadek 0,082&nbsp;m/m, współczynnik C 0,25 i N 0,4 (FAA, Kerby i Kerby–Kirpich), potem „Oblicz”:</p>
+  <table class="dtable guide-table">
+    <caption>Czas koncentracji zlewni z przykładu (Kamiennik — Świerzawa)</caption>
+    <thead><tr><th scope="col">Metoda</th><th scope="col">tc [min]</th><th scope="col">Zakres stosowania</th></tr></thead>
+    <tbody>
+      <tr><th scope="row">Kirpich</th><td class="num"><span class="ex" data-example="tc-kirpich">187,4</span></td><td><span class="ex" data-example="tc-kirpich-range">poza zakresem</span></td></tr>
+      <tr><th scope="row">NRCS (NEH 630)</th><td class="num"><span class="ex" data-example="tc-nrcs">399,8</span></td><td><span class="ex" data-example="tc-nrcs-range">poza zakresem</span></td></tr>
+      <tr><th scope="row">Giandotti</th><td class="num"><span class="ex" data-example="tc-giandotti">339,4</span></td><td><span class="ex" data-example="tc-giandotti-range">poza zakresem</span></td></tr>
+      <tr><th scope="row">FAA</th><td class="num"><span class="ex" data-example="tc-faa">23,8</span></td><td><span class="ex" data-example="tc-faa-range">nie dla zlewni</span></td></tr>
+      <tr><th scope="row">Kerby</th><td class="num"><span class="ex" data-example="tc-kerby">24,2</span></td><td><span class="ex" data-example="tc-kerby-range">nie dla zlewni</span></td></tr>
+      <tr><th scope="row">Kerby–Kirpich</th><td class="num"><span class="ex" data-example="tc-kerby_kirpich">208,9</span></td><td><span class="ex" data-example="tc-kerby_kirpich-range">w zakresie</span></td></tr>
+    </tbody>
+  </table>
+  <h3>Pozostałe kalkulatory</h3>
+  <p>Każdy z piętnastu pozostałych to formularz jednego polecenia Hydrologa, np. czasu koncentracji jedną metodą, CN z tablic dla grupy gleby i pokrycia terenu (<code>cn lookup</code>), średniego CN zlewni z kilku pokryć (<code>cn weighted</code>), opadu efektywnego, hietogramu, hydrogramów jednostkowych albo wskaźników kształtu zlewni. Formularz jest na początku pusty; pola, które Hydrolog bierze ze zlewni z Hydrogramu zlewni, wpisują się same (przycisk „Wypełnij” wpisuje je ponownie). Pod wynikiem jest wywołanie, które daje ten sam wynik w wierszu poleceń.</p>
+  <p><strong>Przykład.</strong> Wybierz z listy <code>cn lookup</code> (CN z tablic), grupę gleby B i pokrycie terenu <code>forest</code> (las), potem „Oblicz”. Wynik: CN = <span class="ex" data-example="cn-lookup">60</span> (dla lasu w stanie przeciętnym).</p>
+  <p class="back"><a href="#toc-title">↑ Spis treści</a></p>
+</section>
+
+<!-- ============================ 06 Polecenia ============================ -->
+<section class="part" id="polecenia" aria-labelledby="polecenia-title">
+  <p class="kicker">06 · Sekcja</p>
+  <h2 id="polecenia-title">Wszystkie polecenia</h2>
+  <p>Wszystkie obliczenia Hydrologa dostępne w przeglądarce: te same polecenia, które ma program w wierszu poleceń (<code>hydrolog</code>), pogrupowane i z wyszukiwarką. Formularz każdego polecenia powstaje z jego opisu w katalogu Hydrologa, więc zawsze odpowiada temu, co polecenie przyjmuje.</p>
+  <figure>
+    <a href="img/polecenia.png"><img src="img/polecenia.png" width="1440" height="900" loading="lazy" alt="Wszystkie polecenia, katalog 58 poleceń, z uruchomionym uh nash: po lewej wybrane polecenie i formularz powierzchni 45,3 km² oraz parametrów n 3 i K 30 min; pośrodku tabela rzędnych hydrogramu jednostkowego, po prawej wyniki n, K, t_lag 90 min i q_p 6,797 m³/s na mm, wykres oraz wywołanie CLI."></a>
+    <figcaption>Polecenie <code>uh nash</code> z przykładem z tego rozdziału po „Uruchom”.</figcaption>
+  </figure>
+  <ul>
+    <li><strong>Lista</strong>: wybierz grupę albo wpisz w wyszukiwarkę nazwę, metodę lub słowo z opisu (wielkość liter i polskie znaki nie mają znaczenia). Wybrane polecenie trafia do adresu strony, więc odnośnik do niego można zapisać.</li>
+    <li><strong>Formularz</strong>: pola wymagane mają znacznik „wymagane”, liczby mają jednostki i dozwolone zakresy, a wybór z kilku wartości pokazuje znaczenie wybranej. Gdy polecenie przyjmuje dane na kilka sposobów, przełącznik „Grupa parametrów” pozwala wybrać jeden. Na początku żadne polecenie nie jest wybrane, a formularz wybranego jest pusty (wpisana jest tylko nazwa pliku, który polecenie musi zapisać).</li>
+    <li><strong>Pliki</strong>: polecenie, które czyta plik, przyjmuje plik wczytany do sesji („Wczytaj plik…”); polecenie, które zapisuje plik, pokazuje go w wynikach do pobrania.</li>
+    <li><strong>„Uruchom”</strong> liczy; wynik to kafelki, parametry, szeregi jako tabela i wykres oraz cały dokument JSON, a pod nimi wywołanie dla wiersza poleceń, Pythona i MCP.</li>
+  </ul>
+
+  <h3 id="przyklad-polecenia">Przykład: hydrogram jednostkowy Nasha</h3>
+  <p>Wybierz z listy <code>uh nash</code> (grupa <code>uh</code>). Zostaw grupę parametrów „n i K”, wpisz powierzchnię 45,3&nbsp;km², n 3 i K 30&nbsp;min; krok czasowy może zostać pusty (domyślnie 5&nbsp;min). Naciśnij „Uruchom”. Wynik: n <span class="ex" data-example="uh-nash-n">3</span>, K <span class="ex" data-example="uh-nash-k">30&nbsp;min</span>, czas opóźnienia <span class="ex" data-example="uh-nash-lag">90&nbsp;min</span> i szczyt hydrogramu jednostkowego <span class="ex" data-example="uh-nash-qp">6,797&nbsp;m³/s na 1&nbsp;mm</span>.</p>
+  <p class="back"><a href="#toc-title">↑ Spis treści</a></p>
+</section>
+
+<!-- ============================ 07 Analiza szeregów stacji ============================ -->
+<section class="part" id="analizy-stacji" aria-labelledby="analizy-stacji-title">
+  <p class="kicker">07 · Polecenia dla stacji</p>
+  <h2 id="analizy-stacji-title">Analiza szeregów stacji</h2>
+  <p>Wieloletni szereg dobowy jednej stacji, wodowskazowej albo meteorologicznej, Hydrolog opisuje kilkunastoma poleceniami grup <code>stats</code> („Statystyka przepływów”), <code>hydrometrics</code> („Hydrometria”) i <code>meteo</code> („Statystyka meteorologiczna”). Z tych samych poleceń korzysta Obserwator w analizach stacji: ten sam szereg i te same ustawienia dają te same liczby. Nie mają własnej sekcji: wybierasz je w <a href="#polecenia">Wszystkich poleceniach</a>.</p>
+
+  <h3 id="analizy-stacji-dane">Skąd dane</h3>
+  <ul>
+    <li><strong>Szereg dobowy</strong>: plik CSV eksportu szeregu z Obserwatora, z kolumną dat <code>date</code> i kolumnami wielkości, np. <code>Q [m3/s]</code>, <code>H [cm]</code> i <code>T [degC]</code> dla wodowskazu albo <code>P [mm]</code>, <code>Tmean [degC]</code> i <code>snow_cover [cm]</code> dla stacji meteorologicznej. W formularzu przełącz „Szereg” na „Plik”, wczytaj plik („Wczytaj plik…”) i wpisz kolumnę wartości (wystarczy <code>Q</code>, <code>H</code> albo <code>T</code>) i kolumnę dat <code>date</code>; polecenia <code>meteo</code> same znajdują kolumny eksportu. Krótki szereg możesz też wpisać jako wartości z datami.</li>
+    <li><strong>Plik półroczy IMGW-PIB</strong>: eksport Obserwatora z charakterystykami półroczy (zima XI–IV, lato V–X: najmniejsza, średnia i największa wartość z datami) w polu <code>half_year_file</code> poleceń <code>stats characteristic</code>, <code>stats seasonality</code>, <code>stats flood-frequency</code>, <code>stats low-flow</code> i <code>stats homogeneity</code>. Maksimum roczne to większe z maksimów półroczy, minimum mniejsze z minimów; rok, który ma tylko jedno półrocze, jest pominięty i wymieniony w wyniku.</li>
+    <li><strong>Przekazanie z Archiwisty</strong> (szereg stacji) otwiera się w <a href="#statystyka">Statystyce przepływów</a> i daje tam maksima roczne; do analiz z tego rozdziału wczytaj eksport szeregu jako plik CSV.</li>
+  </ul>
+  <p>Wiersze źródła IMGW-PIB i odnośnik do regulaminu danych z pliku eksportu przechodzą do wyniku (zob. <a href="#zrodla-danych">Źródła danych</a>).</p>
+
+  <h3 id="analizy-stacji-polecenia">Co liczą</h3>
+  <dl class="defs">
+    <div><dt><code>stats characteristic</code>: wartości charakterystyczne</dt><dd>Najmniejsza, średnia i największa wartość każdego roku hydrologicznego i półrocza (I stopień: NQ, SQ, WQ) oraz z nich wartości II stopnia okresu, od WWQ do NNQ; tak samo dla stanów (WWW…NNW) i temperatury wody (WWT…NNT), także z pliku półroczy.</dd></div>
+    <div><dt><code>stats threshold-events</code>, <code>stats low-flow-sequences</code>: dni powyżej i poniżej progu</dt><dd>Ciągi dni z wartością co najmniej równą progowi albo niższą od niego (np. stan wody albo temperatura wody 20&nbsp;°C): początek, koniec, czas trwania, szczyt i liczba takich dni w roku. Niżówki liczą się poniżej progu podanego, SNQ albo Q70 z krzywej czasu trwania, z niedoborem objętości; przerwy krótsze niż 4 dni ich nie dzielą.</dd></div>
+    <div><dt><code>stats duration-curve</code>: krzywa czasu trwania</dt><dd>Wartość osiągana albo przekraczana przez p&nbsp;% dni (np. Q90), także dla jednego miesiąca, i liczby dni w klasach równej szerokości z klasą najczęstszą.</dd></div>
+    <div><dt><code>stats runoff-volume</code>: objętość odpływu</dt><dd>Objętości lat i miesięcy hydrologicznych, ich średnie z lat i miesięcy bez braków oraz krzywa sumowa wybranego roku.</dd></div>
+    <div><dt><code>stats regime</code>, <code>stats seasonality</code>, <code>stats harmonics</code>: rytm roku</dt><dd>Współczynniki Pardégo dwunastu miesięcy, typ reżimu według Dynowskiej i wskaźnik sezonowości; średni termin i skupienie maksimów albo minimów rocznych; cykl roczny (np. temperatury wody) jako suma 1–4 harmonik z amplitudą i dniem maksimum.</dd></div>
+    <div><dt><code>stats baseflow</code>: przepływ podstawowy</dt><dd>Filtr Lyne'a i Hollicka: wskaźnik przepływu podstawowego (BFI) okresu i lat oraz przepływ podstawowy każdego dnia wybranego roku.</dd></div>
+    <div><dt><code>stats mann-kendall</code>: trend</dt><dd>Test Manna-Kendalla z poprawką na wartości równe i nachylenie Sena z przedziałem ufności, np. dla wartości rocznych z latami.</dd></div>
+    <div><dt><code>hydrometrics rating-curve</code>: krzywa natężenia przepływu</dt><dd>Krzywa Q(H) z par stan–przepływ; z datami par także osobna krzywa każdego bloku lat (<code>years_per_period</code>), wszystkie odczytane przy tym samym stanie i przepływie, by porównać, jak zmieniało się koryto.</dd></div>
+    <div><dt><code>stats flood-frequency</code>, <code>stats low-flow</code>, <code>stats homogeneity</code>: także z półroczy</dt><dd>Przepływy o zadanym prawdopodobieństwie i jednorodność ciągu, jak w <a href="#statystyka">Statystyce przepływów</a>, z maksimów albo minimów rocznych szeregu dobowego albo pliku półroczy.</dd></div>
+    <div><dt><code>meteo precipitation</code>, <code>meteo spells</code>, <code>meteo spi</code>: opad</dt><dd>Sumy miesięcy, półroczy, pór roku i lat z normami i procentem normy, największe sumy 1–10 dni z datami, dni z opadem co najmniej 0,1, 1, 10 i 20&nbsp;mm, wskaźnik intensywności opadu (SDII), udział opadów silnych (R95pTOT, R99pTOT) i regularność opadu w roku (<code>index</code>, jeden na wywołanie); ciągi dni suchych albo mokrych (próg 1&nbsp;mm); wskaźnik SPI 1, 3, 6 i 12 miesięcy oraz klasy opadu miesięcy i lat względem normy.</dd></div>
+    <div><dt><code>meteo temperature</code>, <code>meteo snow</code>, <code>meteo hydrothermal</code>: temperatura i śnieg</dt><dd>Średnie, normy i anomalie temperatury powietrza, dni przymrozkowe, mroźne, gorące i upalne oraz noce tropikalne, stopniodni wzrostu i grzania, dobowa amplituda; pokrywa śnieżna każdej zimy (1 sierpnia – 31 lipca): dni z pokrywą, największa grubość, pierwszy i ostatni dzień; współczynnik hydrotermiczny Sielianinowa miesięcy IV–IX.</dd></div>
+  </dl>
+  <p class="note-box">Polecenia <code>commands batch</code>, które liczy wiele wywołań z pliku JSON Lines w jednym procesie (tak Obserwator liczy analizy całej stacji), nie ma w przeglądarce: jest w wierszu poleceń i w MCP.</p>
+
+  <h3 id="analizy-stacji-okres">Okres, 30 lat i normy</h3>
+  <ul>
+    <li><strong>Cały szereg</strong>: domyślnie polecenie liczy od pierwszego do ostatniego roku z danymi. „Pierwszy rok” i „Ostatni rok” (<code>first_year</code>, <code>last_year</code>) w „Opcjach dodatkowych” zawężają okres. Lata są hydrologiczne, od listopada do października, nazwane rokiem, w którym się kończą; <code>meteo</code> liczy lata kalendarzowe (hydrologiczne z <code>year_type</code>), a <code>meteo snow</code> zimy. Wynik podaje okres i liczbę lat z danymi.</li>
+    <li><strong>30 lat</strong>: gdy okres ma mniej niż 30 lat z danymi, wynik jest policzony, ale uwaga przypomina, że zalecane jest co najmniej 30 lat: z krótkiego okresu normy, wartości II stopnia i krzywa czasu trwania są mniej pewne.</li>
+    <li><strong>Okres norm</strong>: <code>meteo precipitation</code>, <code>meteo spi</code> i <code>meteo temperature</code> liczą normy, procent normy, anomalie i dopasowanie SPI z okresu <code>reference_first_year</code>–<code>reference_last_year</code>, domyślnie tego samego co analizowany. Podaj np. 1991–2020, standardowy okres normy klimatologicznej WMO, aby porównać z nim ostatnie lata; każdy analizowany rok zachowuje własne wartości.</li>
+    <li><strong>Braki</strong>: dzień bez wartości nie jest uzupełniany. W <code>stats</code> rok z brakami zostaje i jest wymieniony w uwadze; w <code>meteo</code> wartości miesiąca i roku liczą się według zasad WMO (np. suma miesięczna tylko z pełnego miesiąca), a norma tylko z co najmniej 80&nbsp;% lat okresu.</li>
+  </ul>
+
+  <h3 id="przyklad-stacja">Przykład: reżim odpływu</h3>
+  <p>Pobierz plik przykładu <a href="przyklady/stacja.csv" download="stacja.csv"><code>stacja.csv</code></a>: wymyślona stacja, pięć lat hydrologicznych przepływów, stanów i temperatury wody w układzie eksportu Obserwatora, z kilkoma dniami bez danych. We Wszystkich poleceniach wybierz <code>stats regime</code> (grupa <code>stats</code>), w „Szereg” przełącz na „Plik”, naciśnij „Wczytaj plik…” i wybierz pobrany plik, a potem wpisz kolumnę wartości <code>Q</code> i kolumnę dat <code>date</code>. Naciśnij „Uruchom”. Wynik: lata <span class="ex" data-example="stacja-first">2019</span>–<span class="ex" data-example="stacja-last">2023</span>, średni przepływ <span class="ex" data-example="stacja-mean">5,601</span>&nbsp;m³/s, typ reżimu <span class="ex" data-example="stacja-type">4</span> (niwalno-pluwialny: wezbranie roztopowe w marcu i letni wzrost przepływu ponad średnią roczną w czerwcu), udział marca i kwietnia w objętości rocznej <span class="ex" data-example="stacja-spring">0,2811</span> i wskaźnik sezonowości <span class="ex" data-example="stacja-si">0,4888</span> (0 to miesiące równe). Uwagi mówią, ile dni nie miało danych, i przypominają, że 5 lat to mniej niż zalecane 30.</p>
+  <p>Ten sam plik przyjmują pozostałe polecenia <code>stats</code> tego rozdziału, np. <code>stats characteristic</code> z kolumną <code>Q</code>; dla stanów albo temperatury wody wpisz kolumnę <code>H</code> albo <code>T</code> i tę samą wielkość w polu <code>parameter</code>.</p>
+
+  <h3 id="analizy-stacji-zrodla">Źródła metod</h3>
+  <ul>
+    <li>Wartości charakterystyczne, krzywa czasu trwania: definicje IMGW-PIB (Byczkowski, 1996); Searcy (1959), Vogel i Fennessey (1994).</li>
+    <li>Dni powyżej i poniżej progu, niżówki: metoda progowa (Tallaksen i van Lanen, 2004).</li>
+    <li>Reżim: Pardé (1933), Dynowska (1997) z kryteriami Wrzesińskiego (2017, 2018) i Perz (2019), wskaźnik sezonowości Walsha i Lawlera (1981); sezonowość ekstremów: Bayliss i Jones (1993), Burn (1997); harmoniki: Wilks (2011).</li>
+    <li>Przepływ podstawowy: Lyne i Hollick (1979), Nathan i McMahon (1990), Ladson i in. (2013).</li>
+    <li>Trend: Mann (1945), Kendall (1975), Hirsch, Slack i Smith (1982), Sen (1968), Conover (1980), Gilbert (1987).</li>
+    <li>Meteorologia: WMO-No. 1203 (2017, braki danych i normy), wskaźniki ETCCDI (Zhang i in., 2011), Hyndman i Fan (1996), Oliver (1980); SPI: McKee i in. (1993), Thom (1958), WMO-No. 1090 (2012); klasy opadu: Kaczorowska (1962), Gąsiorek i Musiał (2011); stopniodni: Wypych i in. (2017), Eurostat; współczynnik hydrotermiczny: Sielianinow (1928), Skowera i Puła (2004).</li>
+  </ul>
+  <p class="back"><a href="#toc-title">↑ Spis treści</a></p>
+</section>
+
+<!-- ============================ 08 Eksport ============================ -->
+<section class="part" id="eksport" aria-labelledby="eksport-title">
+  <p class="kicker">08 · Wyniki poza Hydrologiem</p>
+  <h2 id="eksport-title">Eksport i przekazanie wyników</h2>
+  <p>Część „Eksport” w panelu „Wyniki” zapisuje bieżący wynik na Twoim komputerze. Jest zwinięta: rozwijasz ją, klikając jej nagłówek (tak samo „Przekazanie” w Hydrogramie zlewni i w Sieci).</p>
+  <figure class="inline-figure">
+    <a href="img/eksport.png"><img src="img/eksport.png" width="399" height="703" loading="lazy" alt="Dół panelu Wyniki Hydrogramu zlewni: koniec wywołania hydrograph generate z opcją attribution (wiersze źródła opadu PMAXTP, monografia projektu PMAXTP i odnośnik do regulaminu danych PMAXTP) oraz część Przekazanie z przyciskami Plik przekazania i Kopiuj do Hydrologa i opisem, co zawiera przekazanie."></a>
+    <figcaption>Koniec panelu „Wyniki” w Hydrogramie zlewni: wywołanie i przekazanie.</figcaption>
+  </figure>
+  <dl class="defs">
+    <div><dt>CSV · Tabela</dt><dd>Szeregi wyniku w arkuszu kalkulacyjnym (przecinek jako separator, kropka dziesiętna, UTF-8). Hydrogram zlewni zapisuje kolumny <code>time_min,discharge_m3s,precipitation_mm,effective_precipitation_mm</code>, które czytają polecenia trasowania Hydrologa i Hydraulik. Sieć zapisuje jeden węzeł albo wszystkie węzły.</dd></div>
+    <div><dt>JSON · Wynik</dt><dd>Cały wynik tak, jak go zwrócił Hydrolog; Sieć zapisuje też dokument sieci.</dd></div>
+    <div><dt>PNG · Wykres</dt><dd>Widoczny wykres jako obraz; w Sieci schemat. Sieć zapisuje też schemat Hydrologa jako SVG.</dd></div>
+    <div><dt>MD · Raport</dt><dd>Hydrogram zlewni: raport obliczeniowy w Markdown, pliku tekstowym z nagłówkami i tabelami, który otworzy każdy edytor tekstu. Hydrolog pisze go poleceniem <code>report generate</code> z danymi i ustawieniami pokazanego wyniku, a przeglądarka pobiera plik.</dd></div>
+    <div><dt>PDF · Raport do druku</dt><dd>Hydrogram zlewni i Sieć: okno drukowania przeglądarki z sekcją ułożoną na kartkach A4: wykresy, wyniki, uwagi i wywołanie, a na końcu dane z ich pochodzeniem; bez przycisków, w jasnym motywie i ze wszystkimi częściami rozwiniętymi. Plik PDF zapiszesz w tym oknie, wybierając „Zapisz jako PDF”. Zwykłe drukowanie strony (<kbd>Ctrl</kbd>+<kbd>P</kbd>) daje ten sam widok.</dd></div>
+    <div><dt>Wywołanie</dt><dd>Wiersz polecenia (CLI), kod Pythona albo wywołanie MCP, które powtórzą obliczenie poza przeglądarką.</dd></div>
+  </dl>
+
+  <h3 id="zrodla-danych">Źródła danych</h3>
+  <p>Gdy na ekranie są dane IMGW-PIB (wysokość opadu z atlasu PMAXTP, szereg przepływów z Archiwisty albo z pliku Obserwatora) albo czeskiego ČHMÚ, pod wykresami sekcji stoi jeden pasek drobnym drukiem: krótkie wiersze, których wymagają warunki tych instytucji (źródło danych i to, że zostały przetworzone; dla ČHMÚ „Źródło: ČHMÚ, CC BY 4.0”), i odnośnik „Źródła i warunki”. Otwiera on okno z pełnymi wierszami, odnośnikami do regulaminów danych IMGW-PIB i, w serwisie publicznym, „Regulaminem serwisu”. Tę samą treść pokazuje okienko powitalne (także otwarte przyciskiem „Instrukcja” na górnym pasku), gdy strona ma takie dane; przy pierwszej wizycie, z pustymi sekcjami, okienko ma tylko swój opis. Pełne wiersze niesie każdy eksport: CSV w dwóch ostatnich kolumnach, <code>attribution</code> i <code>terms_notice</code> (polecenia Hydrologa je pomijają, więc plik nadal da się wczytać), JSON i przekazanie w polach o tych nazwach, PNG pod wykresem, raport Markdown w rozdziale „Źródła danych”, a widok do druku na końcu wyników i pod danymi, z którymi przyszły. Bez takich danych paska nie ma.</p>
+
+  <h3 id="przekazanie">Przekazanie: Hydrograf i Hydrolog</h3>
+  <p>Hydrograf wyznacza zlewnię na mapie, a Hydrolog liczy dla niej wezbranie. Dane przechodzą między nimi jako <strong>przekazanie</strong>: plik JSON w formacie <code>nogat-handoff/1</code> ekosystemu Nogat. Niesie zlewnię albo całą sieć, pochodzenie danych (np. opad PMAXTP p&nbsp;1% w 12&nbsp;h z punktem, dla którego pobrano wysokość, plik zlewni albo punkt na mapie) i wynik do porównania.</p>
+  <ul>
+    <li><strong>Wysyłanie.</strong> Część „Przekazanie” na końcu panelu „Wyniki” w Hydrogramie zlewni i w Sieci: „Plik przekazania” pobiera plik nazwany jak zlewnia albo sieć, <code>&lt;nazwa&gt;.handoff.json</code>, a „Kopiuj do Hydrologa” kopiuje to samo do schowka. Gdy przeglądarka nie pozwala skopiować (np. pod adresem <code>http://</code> innego komputera), tekst przekazania pojawia się zaznaczony w polu pod przyciskami: naciśnij <kbd>Ctrl</kbd>+<kbd>C</kbd>. Z Hydrogramu zlewni idzie zlewnia z opadem, stratami, modelem i wynikiem, z Sieci cała sieć z pochodzeniem każdego węzła, a po „Oblicz sieć” także wynik wylotu.</li>
+    <li><strong>Wczytywanie.</strong> „Wczytaj z Hydrografa” w pierwszym kroku panelu „Dane” (w Hydrogramie zlewni krok „Zlewnia”, w Sieci krok „Sieć”), a w nim „Plik przekazania…” albo „Wklej ze schowka”. Gdy przeglądarka nie daje dostępu do schowka, pojawia się pole, w które wklejasz przekazanie (<kbd>Ctrl</kbd>+<kbd>V</kbd>). Jedna zlewnia, z opadem albo bez, otwiera się w Hydrogramie zlewni, każda inna sieć w Sieci i trasowaniu; „Wczytaj z Hydrografa” w Sieci otwiera tam każde przekazanie, także jedną zlewnię z wylotem. Zlewnie z przekazania do otwartej sieci dodaje „Dodaj zlewnię z Hydrografa” (zob. <a href="#budowanie-sieci">Budowanie sieci</a>). Karta w panelu „Dane” mówi, skąd są dane, np. „Z Hydrografa: zlewnia punktu 51,0154° N, 15,8900° E”. Opad PMAXTP otwiera się z punktem opadu, a bez niego z punktem zlewni: gdy przekazanie podaje punkt opadu, jego wysokość zostaje taka, jak w przekazaniu; w przeciwnym razie Hydrolog pobiera wysokość dla punktu zlewni. Przekazanie bez żadnego punktu otwiera opad jako „Hietogram” z wysokością i czasem trwania z przekazania. Sama zlewnia, bez opadu (tak Hydrograf przekazuje zlewnię, zanim policzy hydrogram), otwiera się z opadem PMAXTP w punkcie zlewni i bez modelu: wybierz prawdopodobieństwo i czas trwania w kroku „Hietogram”, a Hydrolog pobierze wysokość opadu, i model w kroku „Hydrogram”. Bez punktu zlewni krok „Hietogram” zostaje pusty.</li>
+    <li><strong>Porównanie.</strong> Gdy przekazanie niesie wynik, część „Przekazanie” rozwija się sama i stawia go obok wyniku Hydrologa: Qmax, czas do szczytu, objętość i wersję programu, który liczył. Wartości, które się różnią, są wyróżnione; zwykle to skutek innej wersji Hydrologa, której używa Hydrograf. Po zmianie danych porównanie przypomina, że wynik producenta dotyczy danych z przekazania. W Sieci wynik Hydrologa do porównania daje „Oblicz sieć”.</li>
+  </ul>
+  <p>Przed wczytaniem Hydrolog sprawdza przekazanie. Gdy coś się nie zgadza, niczego nie zmienia i wypisuje przyczyny (zob. <a href="#problemy">Gdy coś nie działa</a>).</p>
+  <p class="note-box">W Hydrografie przekazanie kopiuje przycisk „Kopiuj do Hydrologa” w panelu „Zlewnia” (od wydania Hydrografa następnego po v0.5.0); tutaj wklejasz je przez „Wczytaj z Hydrografa” → „Wklej ze schowka”. „Plik przekazania” obok zapisuje to samo jako plik, który wczytasz przez „Plik przekazania…”. Zanim Hydrograf policzy hydrogram, przekazuje samą zlewnię, bez opadu i wyniku; potem także opad, model i wynik do porównania. Sieć zlewni wyznaczoną w punktach kontrolnych Hydrograf przekazuje bez opadu i bez przekrojów odcinków, z pochodzeniem każdego węzła; otwiera się ona w Sieci (zob. <a href="#siec-z-hydrografa">Sieć z Hydrografa</a>). Hydrograf nie wczytuje przekazań: przekazanie z Hydrologa wczytasz z powrotem w Hydrologu, np. w innej przeglądarce albo na innym komputerze.</p>
+  <p class="back"><a href="#toc-title">↑ Spis treści</a></p>
+</section>
+
+<!-- ============================ 09 Telefon ============================ -->
+<section class="part" id="telefon" aria-labelledby="telefon-title">
+  <p class="kicker">09 · Wygląd i dane</p>
+  <h2 id="telefon-title">Telefon, motyw i Twoje dane</h2>
+  <figure class="inline-figure phone-figure">
+    <a href="img/telefon.png"><img src="img/telefon.png" width="390" height="844" loading="lazy" alt="Sieć i trasowanie na telefonie w ciemnym motywie z przykładem: nad schematem przyciski Dane i Wyniki, a na nim arkusz panelu Zlewnia A z przyciskiem ← Dane, krokiem Zlewnia (Wczytaj z Hydrografa, Plik zlewni…, powierzchnia 12 km², CN 75, obwód 18 km, długość zlewni 6 km) i stanem Dane kompletne, wynik po Oblicz sieć; na dole pasek sekcji."></a>
+    <figcaption>Telefon, ciemny motyw: panel zlewni A w Sieci; „← Dane” wraca do panelu „Dane”.</figcaption>
+  </figure>
+  <h3>Telefon i wąski ekran</h3>
+  <p>Do szerokości 860&nbsp;px sekcje są na pasku u dołu ekranu, a panele „Dane” i „Wyniki” wysuwają się od dołu jako arkusze: otwierają je przyciski nad wykresem, zamyka <span class="key-mark" aria-hidden="true">×</span> albo <kbd>Esc</kbd>.</p>
+  <p>W Sieci paleta elementów jest na telefonie menu „Dodaj element”. Węzły przesuwasz palcem, menu węzła otwiera długie dotknięcie albo „Węzeł…”, a połączenia robisz także w polu „Odpływa do” w ustawieniach węzła; przesunięcie palcem po pustym miejscu przewija schemat. Panel zlewni i panel „Dane” są na telefonie tym samym arkuszem, na zmianę: wybór zlewni z opadu pokazuje jej panel z przyciskiem „← Dane”, a krok 3 panelu „Dane” ma przycisk „Dane zlewni →”.</p>
+  <h3>Motyw</h3>
+  <p>Przełącznik na górnym pasku: Auto (jak w systemie), Jasny albo Ciemny. Wybór obowiązuje też w tym przewodniku i na innych stronach ekosystemu Nogat pod tym samym adresem.</p>
+  <h3 id="twoje-dane">Twoje dane</h3>
+  <ul>
+    <li>Dane wpisane w formularzach zostają w tej przeglądarce, osobno dla każdej sekcji, aż do „Wyczyść”; w Hydrogramie zlewni i w Sieci także pobrana wysokość opadu PMAXTP, w Sieci także położenia, opisy i pochodzenie węzłów (bez historii „Cofnij”). Wyniki nie są zapisywane: po ponownym otwarciu strony Hydrogram zlewni liczy wynik od nowa, a w pozostałych sekcjach wystarczy nacisnąć przycisk obliczenia.</li>
+    <li>Pliki, które wczytujesz, trafiają do sesji tej karty na serwerze Hydrologa i są tam tylko, dopóki strona jest otwarta: serwer usuwa je, gdy zamkniesz albo odświeżysz stronę, najpóźniej po godzinie bez aktywności, a także gdy się zatrzyma. Wykorzystuje je tylko do obliczeń. Po ponownym otwarciu strony plik trzeba wczytać jeszcze raz. Limity: 20&nbsp;MB na plik, 100&nbsp;MB i 200 plików na sesję.</li>
+    <li>Hydrolog nie ma kont ani logowania i nie ustawia własnych plików cookie; sesję zna tylko otwarta karta. Poza swój serwer wysyła tylko punkt opadu PMAXTP (szerokość i długość geograficzną) z metodą atlasu do IMGW-PIB, gdy pobiera wysokość opadu; innych danych nie wysyła.</li>
+    <li>Serwis publiczny (z odnośnikiem „Regulamin”) nie zapisuje adresów IP, także w dziennikach serwera. Na dysk zapisuje tylko łączne liczby z każdego dnia: odwiedzających, odsłon, otwartych stacji, wykonanych analiz i pobrań. Zasady opisuje regulamin.</li>
+    <li>„Zgłoś uwagę” wysyła tylko treść zgłoszenia i kontekst, który dodaje strona: otwarty widok, stację (gdy w Statystyce przepływów jest szereg stacji z Archiwisty), parametry widoku i wersję aplikacji. Formularz nie ma pól kontaktowych, a zgłoszenie nie zawiera adresu IP, nazwy przeglądarki ani treści Twoich plików (długi albo wielowierszowy tekst zastępuje jego długość). Nie wpisuj w nim danych osobowych; jeśli chcesz odpowiedzi, napisz e-mail na adres podany pod polem.</li>
+  </ul>
+  <p class="back"><a href="#toc-title">↑ Spis treści</a></p>
+</section>
+
+<!-- ============================ 10 Problemy ============================ -->
+<section class="part" id="problemy" aria-labelledby="problemy-title">
+  <p class="kicker">10 · Pomoc</p>
+  <h2 id="problemy-title">Gdy coś nie działa</h2>
+  <dl class="defs">
+    <div><dt>„Dane niepełne: …”</dt><dd>Pole o tej nazwie jest puste albo ma wartość spoza zakresu; jest oznaczone na czerwono, a pod nim widać, co jest nie tak. Wynik na ekranie dotyczy poprzednich danych.</dd></div>
+    <div><dt>„Błąd danych”</dt><dd>Hydrolog odrzucił dane jako całość, np. gdy długość do środka ciężkości zlewni jest większa od długości cieku. Komunikat stoi nad formularzem albo przy polu.</dd></div>
+    <div><dt>„Problemy sieci (n)”</dt><dd>Budowa sieci w Sieci nie pozwala jej policzyć, np. węzeł nigdzie nie odpływa, sieć nie ma wylotu, zlewnia nie ma opadu albo modelu, albo węzeł ma niepełne dane. Lista nad schematem wymienia wszystkie problemy, a kliknięcie problemu wybiera jego węzeł (zob. <a href="#budowanie-sieci">Budowanie sieci</a>). Sieć z problemami zapiszesz przyciskiem „Zapisz szkic”.</dd></div>
+    <div><dt>„Brak opadu”</dt><dd>Zlewnia z opadu nie ma ani własnego opadu, ani opadu sieci. Ustaw opad sieci w kroku „Sieć” albo własny opad zlewni w kroku „Hietogram” jej panelu (zob. <a href="#siec">Sieć i trasowanie</a>). Sieć samych hydrogramów podanych opadu nie potrzebuje.</dd></div>
+    <div><dt>„Nie można…”</dt><dd>Schemat odrzucił połączenie, dodanie albo przesunięcie i podaje przyczynę: pętlę, dopływ do zlewni, odpływ z wylotu albo zajęte pole. Sieć się nie zmieniła.</dd></div>
+    <div><dt>„Uporządkuj” nie działa, „Układ tymczasowy”</dt><dd>Hydrolog układa sieć, gdy jej budowa nie ma problemów: popraw problemy budowy z listy „Problemy sieci” nad schematem (np. węzeł, który nigdzie nie odpływa, albo pętlę). Niepełne dane węzłów nie przeszkadzają. Do tego czasu węzły stoją w rzędach według odległości od źródeł albo tam, gdzie je postawisz.</dd></div>
+    <div><dt>Obliczenie przerwane</dt><dd>Obliczenie dłuższe niż 30 sekund jest przerywane. Zmniejsz zadanie, np. wydłuż krok czasowy albo skróć szereg.</dd></div>
+    <div><dt>„Nie pobrano wysokości opadu PMAXTP”</dt><dd>Punkt poza atlasem (poza Polską albo na morzu) jest oznaczony przy szerokości geograficznej: popraw punkt. Gdy IMGW-PIB nie odpowiada, komunikat stoi przy wysokości opadu: sprawdź połączenie z internetem i naciśnij „Pobierz ponownie”. Wynik na ekranie dotyczy poprzednich danych.</dd></div>
+    <div><dt>Komunikat z dopiskiem (EN)</dt><dd>Hydrolog nie ma jeszcze jego polskiej wersji; treść jest po angielsku.</dd></div>
+    <div><dt>Plik nie wczytuje się</dt><dd>Sprawdź rozmiar (najwyżej 20&nbsp;MB) i format: CSV z wierszem nagłówka, przecinkiem albo średnikiem jako separatorem, albo JSON.</dd></div>
+    <div><dt>„Nie wczytano przekazania”</dt><dd>Plik albo tekst ze schowka nie jest poprawnym przekazaniem <code>nogat-handoff/1</code>. Lista pod przyciskiem mówi, co i gdzie się nie zgadza, np. nieznane pole albo wartość spoza zakresu; dane sekcji się nie zmieniły. Sam plik zlewni wczytaj przyciskiem „Plik zlewni…”, a dokument sieci przyciskiem „Plik sieci…”.</dd></div>
+    <div><dt>Chcesz zacząć od nowa</dt><dd><span class="key-mark" aria-hidden="true">↻</span> „Wyczyść” u dołu panelu „Dane” wraca do stanu pierwszej wizyty: pustej sekcji. Przykłady do wpisania są w rozdziałach sekcji tego przewodnika.</dd></div>
+    <div><dt>Coś działa źle albo masz pomysł</dt><dd>„Zgłoś uwagę” na górnym pasku: opisz, co się stało, i naciśnij „Wyślij”. Zgłoszenie trafia do osoby, która prowadzi serwer Hydrologa, razem z widokiem, jego parametrami i wersją aplikacji, które pomagają odtworzyć problem. Na zgłoszenie z formularza nie można odpowiedzieć: jeśli chcesz odpowiedzi, napisz e-mail na adres podany pod polem.</dd></div>
+  </dl>
+  <p class="back"><a href="#toc-title">↑ Spis treści</a></p>
+</section>
+
+<!-- ============================ 11 Uruchomienie ============================ -->
+<section class="part" id="uruchomienie" aria-labelledby="uruchomienie-title">
+  <p class="kicker">11 · Dla administratora</p>
+  <h2 id="uruchomienie-title">Uruchomienie u siebie</h2>
+  <p>Hydrolog to program w Pythonie. Po instalacji z dodatkiem <code>gui</code> (polecenia instalacji są w README projektu) serwer uruchamia się poleceniem:</p>
+  <pre class="cmd"><code>hydrolog gui serve</code></pre>
+  <p>Strona otwiera się w przeglądarce pod adresem <code>127.0.0.1:8070</code>; <code>--port</code> zmienia port, <code>--no-browser</code> nie otwiera przeglądarki, a <kbd>Ctrl</kbd>+<kbd>C</kbd> zatrzymuje serwer. Hydrolog nie ma logowania: kto dotrze do serwera, może z niego korzystać. Wysokość opadu PMAXTP pobiera serwer (przez Obserwatora, z API danych publicznych IMGW-PIB), więc potrzebuje on dostępu do internetu; bez niego pozostałe obliczenia działają, a PMAXTP zgłasza brak połączenia.</p>
+  <p>Uruchomiony u siebie Hydrolog nie jest serwisem publicznym: nie ma regulaminu. Publicznym staje się, gdy <code>nogat.toml</code> (zob. niżej) ma tabelę <code>operator</code> sekcji <code>[nogat]</code> (<code>name</code>, <code>email</code>, <code>terms_effective</code>, <code>processor</code>, <code>processor_transfer</code>, <code>processor_cookie</code>, <code>mail_provider</code>, <code>mail_transfer</code>). Serwer wypełnia wtedy regulamin i podaje go pod adresem <code>regulamin.html</code> obok strony; odnośnik do niego stoi na dole paska sekcji po lewej (na telefonie go tam nie ma), w oknie powitalnym, w menu „Aplikacje” i na końcu spisu treści tego przewodnika, a „Zgłoś uwagę” podaje pod polem e-mail operatora. Serwis publiczny ogranicza liczbę żądań z jednego adresu (domyślnie 300 w 60&nbsp;s, ustawienia <code>request_limit</code> i <code>request_window</code>; ponad limit odpowiada „Zbyt wiele żądań. Spróbuj ponownie za … s.”), nie zapisuje adresów IP i zapisuje dzienne sumy użycia w pliku <code>stats.jsonl</code> w katalogu danych. Bez tabeli <code>operator</code> udostępniaj Hydrologa poza własnym komputerem tylko za serwerem pośredniczącym, który wymaga logowania, np. Cloudflare Access.</p>
+  <p>Zgłoszenia z „Zgłoś uwagę” (treść i kontekst: widok, stacja, parametry widoku, wersja aplikacji) zapisują się w pliku SQLite <code>feedback.sqlite3</code> w katalogu danych (<code>~/.local/share/nogat/hydrolog/</code> albo <code>hydrolog/</code> w katalogu z <code>HYDROLOG_DATA_DIR</code>). Czyta je panel administracyjny <code>admin/</code> pod adresem Hydrologa, po podaniu klucza ustawionego w zmiennej <code>HYDROLOG_ADMIN_API_KEY</code> (albo w pliku, który wskazuje <code>HYDROLOG_ADMIN_API_KEY_FILE</code>); bez klucza panel nikogo nie wpuszcza. W serwisie publicznym zabezpiecz go dodatkowo logowaniem serwera pośredniczącego (np. Cloudflare Access na ścieżkach <code>/admin</code>, <code>/admin/*</code> i <code>/api/admin/*</code>) i usuwaj zgłoszenia po załatwieniu sprawy, jak mówi regulamin. Panel ma trzy sekcje: „Zgłoszenia” (treść, widok, stacja, wersja aplikacji i parametry widoku każdego zgłoszenia), „Statystyki” (dzienne sumy serwisu publicznego) i „Stan” (wersja, czas działania, katalog danych, wolne miejsce i kontrole <code>data_dir</code> oraz <code>feedback_db</code>). Kopię zapasową zrobisz w trakcie pracy serwera:</p>
+  <pre class="cmd"><code>sqlite3 feedback.sqlite3 ".backup kopia.sqlite3"</code></pre>
+  <p>Przycisk „Aplikacje” na górnym pasku pojawia się, gdy plik ustawień ekosystemu <code>nogat.toml</code> (w katalogu konfiguracji użytkownika albo pod ścieżką ze zmiennej <code>NOGAT_CONFIG</code>) podaje w tabeli <code>gui</code> sekcji <code>[nogat]</code> adresy innych aplikacji: jeden klucz na aplikację (<code>archiwista</code>, <code>hydrograf</code>, <code>hydrolog</code>, <code>obserwator</code>), adres pełny albo ścieżka na tym samym serwerze. Serwer czyta plik przy każdym otwarciu strony, więc zmiana adresu nie wymaga ponownego uruchomienia.</p>
+  <pre class="cmd"><code>[nogat]
+gui = { hydrolog = "http://127.0.0.1:8070/", hydrograf = "http://127.0.0.1:8080/" }</code></pre>
+  <p class="back"><a href="#toc-title">↑ Spis treści</a></p>
+</section>
+
+<!-- ============================ 12 Metody obliczeń ============================ -->
+<section class="part" id="metody" aria-labelledby="metody-title">
+  <p class="kicker">12 · Objaśnienia metod</p>
+  <h2 id="metody-title">Metody obliczeń</h2>
+  <p>Ten rozdział rozwija objaśnienia <span class="i-mark" aria-hidden="true">i</span> metod: skąd biorą się dane metody, kiedy pasuje ona do zlewni, odcinka albo szeregu, a kiedy nie, i czym różni się od sąsiednich. Wzory ze zmiennymi, zakresy stosowania i źródła są w samych objaśnieniach, a ich odnośnik „Więcej w instrukcji” prowadzi do właściwej części tego rozdziału.</p>
+
+<h3 id="metody-czas-koncentracji">Czas koncentracji</h3>
+<p>Czas koncentracji t<sub>c</sub> to czas, w którym woda dopływa do przekroju zamykającego z punktu zlewni najdalszego hydraulicznie; potrzebują go modele SCS i Clark, więc w <a href="#hydrogram">Hydrogramie zlewni</a> i w panelu zlewni w <a href="#siec">Sieci</a> wybierasz w kroku „Hydrogram” jedną z sześciu metod albo zaznaczasz „Podaj tc ręcznie”. Metody różnią się danymi, z których je wyprowadzono, i polami zlewni, które czytają: każda bierze tylko pola zdefiniowane przez jej źródło, bez zastępników, wartość spoza danych metody daje uwagę, ale nie zatrzymuje obliczenia, a porównanie metod w <a href="#kalkulatory">Kalkulatorach</a> liczy wszystkie sześć dla tej samej zlewni.</p>
+
+<h4 id="metoda-tc-kirpich">Kirpich</h4>
+<p>Metoda domyślna: liczy t<sub>c</sub>, dopóki nie wybierzesz innej albo nie podasz go ręcznie. Wzór wyprowadzono z danych siedmiu małych zlewni rolniczych w Tennessee (0,005–0,45&nbsp;km², spadki 3–10&nbsp;%) z wyraźnymi korytami, więc opisuje głównie przepływ korytem. L i S to pola kroku „Zlewnia” „Długość najdłuższej drogi spływu” (<code>flow_path_length_km</code>) i „Spadek najdłuższej drogi spływu” (<code>flow_path_slope_m_per_m</code>): droga biegnie od punktu zlewni najdalszego hydraulicznie (zwykle na dziale wodnym, czasem na grzbiecie wewnątrz zlewni) do przekroju zamykającego, a jej spadek to różnica wysokości tych dwóch punktów podzielona przez jej długość; obie wartości wyznacza np. Hydrograf. Bez nich t<sub>c</sub> nie da się policzyć, a żadna inna długość (np. cieku głównego) ani inny spadek ich nie zastępuje. W <a href="#przyklad">przykładzie Kamiennik — Świerzawa</a> powierzchnia i spadek leżą poza danymi Kirpicha, więc wynik ma uwagę, a w porównaniu metod w zakresie jest tylko <a href="#metoda-tc-kerby-kirpich">Kerby–Kirpich</a>.</p>
+
+<h4 id="metoda-tc-nrcs">NRCS (NEH 630)</h4>
+<p>Równanie opóźnienia Mockusa (1961), wyprowadzone z 24 zlewni od 1,3 akra do 9,2&nbsp;mi² (0,005–24&nbsp;km²), podaje NEH 630, rozdz. 15; TR-55 go nie zawiera. Daje opóźnienie t<sub>lag</sub>, czyli czas od środka masy opadu do szczytu, a Hydrolog zwraca t<sub>c</sub> = t<sub>lag</sub>/0,6. Czyta trzy pola kroku „Zlewnia”: „Długość najdłuższej drogi spływu” (<code>flow_path_length_km</code>, tę samą co Kirpich; jej spadku NRCS nie używa), „Średni spadek zlewni” (<code>mean_slope_m_per_m</code>: średni spadek terenu, nie cieku ani drogi spływu; podajesz go w m/m, a do wzoru trafia w procentach) i „CN dla AMC II” (<code>cn</code>). To ten sam CN, z którego liczą się <a href="#metoda-losses-scs-cn">straty SCS-CN</a>: wilgotność AMC I albo III zmienia straty, ale nie t<sub>c</sub>, a w poleceniu <code>hydrograph generate</code> opcja <code>cn</code> podana obok zlewni zastępuje jej CN także tutaj. Według NEH 630 CN spoza 50–95 nie stosuje się w tym równaniu: taki CN, podobnie jak zlewnia spoza 0,005–24&nbsp;km², daje uwagę.</p>
+
+<h4 id="metoda-tc-giandotti">Giandotti</h4>
+<p>Wzór Giandottiego (1934) pochodzi z dużych zlewni włoskich o powierzchni 170–70&nbsp;000&nbsp;km² (za Grimaldi i in. 2012): zlewnia spoza tego przedziału daje uwagę. Oprócz powierzchni czyta trzy pola kroku „Zlewnia”: „Długość cieku głównego” (<code>channel_length_km</code>; najdłuższa droga spływu jej nie zastępuje), „Wysokość średnia” (<code>elevation_mean_m</code>) i „Wysokość min.” (<code>elevation_min_m</code>), czyli wysokość przekroju zamykającego. ΔH to różnica tych wysokości i musi być dodatnia; wysokości maksymalnej wzór nie używa.</p>
+
+<h4 id="metoda-tc-faa">FAA</h4>
+<p>Wzór z okólnika FAA AC 150/5320-5B (1970, rys. 7) liczy czas spływu po powierzchni do wpustu, np. po płycie lotniska. Czyta pola spływu po stoku, które w kroku „Hydrogram” pojawiają się pod wyborem metody: „Długość spływu po stoku” (<code>overland_length_km</code>), „Spadek stoku” (<code>overland_slope_m_per_m</code>) i „Współczynnik spływu” C (<code>runoff_coeff</code>) z tabeli I okólnika; długości ani spadku cieku w ich miejsce Hydrolog nie bierze. Uwagę daje tylko C powyżej 0,95, największej wartości tej tabeli: długości ani spadku FAA nie ogranicza (krzywe rysunku kończą się na 800 stopach, ok. 244&nbsp;m, a dłuższe drogi liczy się wzorem). Wynik nie jest t<sub>c</sub> zlewni z korytem, więc w porównaniu metod w Kalkulatorach FAA ma zawsze słowo „nie dla zlewni”.</p>
+
+<h4 id="metoda-tc-kerby">Kerby</h4>
+<p>Kerby (1959) wyprowadził wzór dla spływu po stoku do 1200 stóp (366&nbsp;m), spadków poniżej 1&nbsp;% i zlewni poniżej 10 akrów (0,04&nbsp;km²); wartość spoza tych danych daje uwagę. Czyta pola spływu po stoku, które w kroku „Hydrogram” pojawiają się pod wyborem metody: „Długość spływu po stoku” (<code>overland_length_km</code>), „Spadek stoku” (<code>overland_slope_m_per_m</code>) i N (<code>retardance</code>), nigdy długości ani spadku cieku. N wybierz z tabeli Kerby’ego:</p>
+<ul>
+  <li>0,02: gładka powierzchnia nieprzepuszczalna (asfalt, beton);</li>
+  <li>0,10: gładka, ubita, odkryta gleba;</li>
+  <li>0,20: słaba trawa, uprawy rzędowe;</li>
+  <li>0,40: pastwisko, przeciętna trawa;</li>
+  <li>0,60: las liściasty;</li>
+  <li>0,80: gęsta trawa, las iglasty, las liściasty z grubą ściółką.</li>
+</ul>
+<p>Na stoku o spadku poniżej 0,002 wzór bierze spadek większy o 0,0005 (Cleveland i in. 2012, TxDOT 0-6382-P1), żeby na prawie płaskim terenie czas nie wychodził nierealnie długi; zakres sprawdza spadek podany, przed poprawką. Wynik to czas spływu po stoku, więc w porównaniu metod w Kalkulatorach Kerby ma zawsze słowo „nie dla zlewni”; t<sub>c</sub> zlewni z korytem daje <a href="#metoda-tc-kerby-kirpich">Kerby–Kirpich</a>.</p>
+
+<h4 id="metoda-tc-kerby-kirpich">Kerby–Kirpich</h4>
+<p>Metoda złożona Roussela i in. (2005, raport TxDOT 0-4696-2, suplement), opisana też w podręczniku TxDOT (2019, rozdz. 4), dzieli najdłuższą drogę spływu na odcinek po stoku i resztę, przepływ korytem. Czyta pięć pól: z kroku „Zlewnia” „Długość najdłuższej drogi spływu” (<code>flow_path_length_km</code>) i „Spadek najdłuższej drogi spływu” (<code>flow_path_slope_m_per_m</code>), a z kroku „Hydrogram”, spod wyboru metody, „Długość spływu po stoku” (<code>overland_length_km</code>), „Spadek stoku” (<code>overland_slope_m_per_m</code>) i N (<code>retardance</code>, tabela przy metodzie <a href="#metoda-tc-kerby">Kerby’ego</a>). W porównaniu metod w Kalkulatorach pola stoku wpisujesz w części „Spływ po stoku”, a puste pole bierze wartość zlewni. Podaj całą drogę spływu, z odcinkiem po stoku: odcinek korytem to ona minus stok, więc gdy nie jest dłuższa od stoku, Hydrolog odrzuca dane.</p>
+<p>Zakres stosowania to dane weryfikacji metody, 92 zlewnie w Teksasie o powierzchni 0,65–388&nbsp;km² z drogami spływu 1,6–80&nbsp;km o spadku 0,002–0,02, oraz dane Kerby’ego dla stoku (do 366&nbsp;m, N 0,02–0,80); dla spadku stoku źródła metody nie podają zakresu. Poprawkę płaskiego terenu (spadek poniżej 0,002 powiększony o 0,0005; Cleveland i in. 2012) Hydrolog stosuje osobno do stoku i do drogi spływu, a zakresy sprawdzają spadki podane, przed poprawką.</p>
+
+<h3 id="metody-opad-projektowy">Opad projektowy i hietogram</h3>
+<p>Krok „Hietogram” <a href="#hydrogram">Hydrogramu zlewni</a> (w <a href="#siec">Sieci</a> także opad sieci i opad własny zlewni) mówi, ile deszczu spada i jak rozkłada się on w czasie: suma opadu z atlasu PMAXTP albo wpisana, rozłożona w krokach Δt jednym z czterech hietogramów projektowych (blokowy, trójkątny, Beta, Euler II), albo własna seria wysokości opadu. Z opadu metoda SCS-CN liczy opad efektywny, a hydrogram jednostkowy zamienia go w odpływ (<a href="#metody-hydrogram-jednostkowy">Hydrogram jednostkowy</a>). Sam hietogram, bez odpływu, liczy polecenie <code>precip hietogram</code> w <a href="#kalkulatory">Kalkulatorach</a>.</p>
+
+<h4 id="metoda-rain-source">Źródło opadu</h4>
+<p><strong>PMAXTP.</strong> Podajesz punkt zlewni, np. jej ujście, w stopniach dziesiętnych WGS84 i wybierasz z tablic atlasu prawdopodobieństwo przewyższenia p (od 0,01 do 99,9&nbsp;%; 1&nbsp;% to opad stuletni, T = 100 lat) oraz czas trwania D (od 5&nbsp;min do 72&nbsp;h). Metoda POT (szczyty ponad progiem) jest zalecana przez IMGW-PIB i domyślna, AMP opiera się na maksimach rocznych. Wysokość opadu pobiera z atlasu serwer; nie wpisuje się jej, a przeglądarka zapamiętuje ją z danymi. Wiersze źródła, których wymaga IMGW-PIB, stoją w pasku pod wykresami (<a href="#zrodla-danych">Źródła danych</a>).</p>
+<p><strong>Hietogram.</strong> Sumę i czas trwania wpisujesz sam, np. z innego opracowania. W obu przypadkach sumę rozkłada w krokach Δt wybrany rozkład w czasie: blokowy, trójkątny, Beta (domyślny) albo Euler II.</p>
+<p><strong>Własna seria.</strong> Wysokości opadu [mm] w kolejnych krokach Δt, np. z deszczomierza: wklej je z arkusza albo wczytaj kolumnę pliku CSV. Rozkład w czasie nie jest wtedy używany, a czas trwania to liczba wartości razy Δt. W Sieci zlewnia może też wziąć opad sieci („Jak w sieci”), a sieć może nie mieć opadu („Brak”).</p>
+<p>Hydrogramowi z opadu projektowego przypisuje się p opadu. To założenie metodyki: opad stuletni nie zawsze wywołuje wezbranie stuletnie. Czas trwania, który daje największe wezbranie, nie jest znany z góry; wg DVWK (1984, za KZGW 2017) leży zwykle między t<sub>c</sub> a 2·t<sub>c</sub>, więc porównaj wyniki kilku czasów trwania. Hydrogram z własnej serii opisuje jedno zdarzenie i nie ma prawdopodobieństwa.</p>
+
+<h4 id="metoda-rain-euler-ii">Euler II</h4>
+<p>Hietogram przybliża deszcz Eulera typu II (DVWK 1984; Malitz 2009). W deszczu Eulera II wysokości bloków to przyrosty lokalnej krzywej wysokość–czas trwania, a kolejne co do wielkości bloki wypełniają czas przed szczytem, pozostałe leżą po nim. Tu wagi bloków maleją jak r<sup>−0,7</sup>, a bloki leżą na przemian przed szczytem i po nim. Puste pole położenia maksimum to p = 0,33, ok. 1/3 czasu trwania. Deszcz Eulera II zbudowany z lokalnej krzywej wysokość–czas trwania możesz podać jako własną serię (<a href="#metoda-rain-source">Źródło opadu</a>). Rozkład DVWK z polskiej metodyki (KZGW 2017), z maksimum w środku czasu trwania, to inny hietogram; maksimum w środku dają tu hietogram trójkątny z p = 0,5 i Beta (2; 2).</p>
+
+<h4 id="metoda-rain-timestep">Krok czasowy Δt</h4>
+<p>W Hydrogramie zlewni krok wpisujesz w kroku „Hietogram”; puste pole to 5&nbsp;min. W Sieci krok jest jeden dla całej sieci i wpisujesz go w kroku „Sieć”: bez niego obowiązuje krok podanych hydrogramów i serii opadu (muszą być zgodne), a bez nich 5&nbsp;min. Opad sieci, zlewnie i odcinki liczą się z tym krokiem, a panel zlewni pokazuje go tylko do odczytu.</p>
+<p>Czas trwania opadu nie może być krótszy niż krok. Gdy nie jest jego wielokrotnością, hietogram ma ⌊D/Δt⌋ kroków i nie pokrywa końcówki czasu trwania (wynik ma uwagę), choć cała suma opadu trafia do tych kroków; wybierz wtedy krok, który dzieli czas trwania, np. 10&nbsp;min dla 12&nbsp;h. Wynik jest liczony co Δt, więc czas do szczytu jest znany z dokładnością do kroku.</p>
+<p>Krok jest zarazem czasem trwania opadu jednostkowego: SCS wydłuża czas do szczytu o Δt/2, Nash i Clark liczą hydrogram jednostkowy dla Δt z krzywej S hydrogramu chwilowego, a Snyder przelicza opóźnienie i szczyt na czas trwania Δt. Dłuższy krok spłaszcza szczyt hydrogramu jednostkowego: wg NEH 630 (rozdz. 16) krok nie powinien przekraczać 0,25·t<sub>p</sub>. W Hydrogramie zlewni uwagi potwierdzają to przy każdym modelu („Krok Δt = 10&nbsp;min ≤ 0,25·tp hydrogramu jednostkowego …”) albo ostrzegają o wartości poza typowym zakresem. W modelu Clarka krok nie może przekraczać 2R (<a href="#metoda-uh-clark">Clark</a>). W Sieci odcinek, którego metoda nie działa przy danym kroku, zatrzymuje obliczenie, a komunikat podpowiada zmianę kroku albo metody.</p>
+
+<h3 id="metody-opad-efektywny">Opad efektywny SCS-CN</h3>
+<p>Metoda SCS-CN dzieli opad na straty i opad efektywny, który odpływa po powierzchni terenu i który hydrogram jednostkowy rozkłada w czasie. W <a href="#hydrogram">Hydrogramie zlewni</a> i w panelu zlewni w <a href="#siec">Sieci</a> liczy straty dla każdego modelu, a w <a href="#kalkulatory">Kalkulatorach</a> także osobno, z sumy opadu albo z hietogramu.</p>
+
+<h4 id="metoda-losses-scs-cn">SCS-CN</h4>
+<p>CN to pole „CN dla AMC II” kroku „Zlewnia” (<code>cn</code>): liczba krzywej odpływu dla przeciętnej wilgotności gleby, 1–100, także ułamkowa, np. średnia ważona kilku pokryć terenu z kalkulatora <code>cn weighted</code>; CN z tablic dla grupy gleby i pokrycia terenu daje <code>cn lookup</code>. „Wilgotność poprzedzającą” wybierasz w części „Straty SCS-CN” kroku „Hydrogram”: I (sucho) obniża CN, II zostawia go bez zmian, III (mokro) podwyższa. Przeliczony CN jest zaokrąglany do jedności i ograniczony do 1–100, a podpowiedź pod wyborem pokazuje go np. jako „CN 65 → 81”. Wzory przeliczenia (Hawkins i in. 1985, za Ponce i Hawkins 1996) przybliżają tabelę NEH 630 dla CN 55–95: Hydrolog stosuje je dla każdego CN, a poza tym przedziałem daje uwagę.</p>
+<p>„Straty początkowe” λ (<code>ia_coefficient</code>; puste pole to 0,2) wyznaczają I<sub>a</sub> = λ·S. Wartość 0,2 to standard NRCS, dla którego skalibrowano tablice CN (TR-55, NEH 630), a każda inna daje uwagę: proponowanego λ = 0,05 (Hawkins i in. 2002; Woodward i in. 2003) NRCS nie przyjęło, a z innym λ tablice CN nie pasują, potrzebne są wartości CN skalibrowane dla niego.</p>
+<p>W hydrogramie P to suma opadu narastająca od początku deszczu: P<sub>e</sub> liczy się po każdym kroku, a jego przyrosty z kolejnych kroków trafiają do splotu z hydrogramem jednostkowym. „Bilans opadu” w panelu „Wyniki” pokazuje podział opadu na straty początkowe I<sub>a</sub>, infiltrację F i P<sub>e</sub>. Ten sam CN dla AMC II, bez przeliczenia AMC, bierze czas koncentracji metodą <a href="#metoda-tc-nrcs">NRCS</a>. Przy odpływie poniżej ok. 13&nbsp;mm (0,5 cala) metoda jest mniej dokładna (TR-55).</p>
+
+<h3 id="metody-hydrogram-jednostkowy">Hydrogram jednostkowy</h3>
+<p>Hydrogram jednostkowy zamienia opad efektywny w odpływ: to odpowiedź zlewni na 1&nbsp;mm opadu efektywnego spadłego w jednym kroku Δt, a hydrogram odpływu jest sumą takich odpowiedzi na opad kolejnych kroków. Model wybierasz w kroku „Hydrogram” <a href="#hydrogram">Hydrogramu zlewni</a> i w panelu zlewni w <a href="#siec">Sieci</a>. SCS i Clark potrzebują czasu koncentracji t<sub>c</sub> (z metody wybranej pod modelem albo podanego ręcznie), Nash i Snyder mają własne parametry i t<sub>c</sub> nie używają. Każdy model liczy też osobno polecenie grupy <code>uh</code> w <a href="#kalkulatory">Kalkulatorach</a> i we <a href="#polecenia">Wszystkich poleceniach</a>.</p>
+
+<h4 id="metoda-uh-scs">SCS (NRCS)</h4>
+<p>Wystarczą powierzchnia zlewni i czas koncentracji. Nadaje się każda metoda t<sub>c</sub>, ale FAA i Kerby liczą tylko spływ po stoku, więc pasują jedynie do małych zlewni bez wyraźnego koryta; dla zlewni z korytem służą pozostałe metody, a Kerby–Kirpich łączy stok z korytem. Opóźnienie t<sub>lag</sub> = 0,6·t<sub>c</sub> jest założeniem tej metody, nie innych modeli. Kształt jest stały: tablica NRCS 33 punktów od t/t<sub>p</sub> = 0 do 5, więc hydrogram jednostkowy kończy się po 5·t<sub>p</sub>. Krok Δt wydłuża t<sub>p</sub> o Δt/2 i ma swój zakres względem t<sub>p</sub> (<a href="#metoda-rain-timestep">Krok czasowy Δt</a>). Zakres stosowania ogranicza powierzchnię: na dużej zlewni opad nie jest równomierny, więc dzieli się ją na mniejsze, np. na zlewnie cząstkowe w <a href="#siec">Sieci</a>. W poleceniu <code>uh scs</code> czas koncentracji podajesz sam (<code>tc_min</code>, np. z polecenia grupy <code>tc</code>).</p>
+
+<h4 id="metoda-uh-nash">Nash</h4>
+<p>Pod wyborem modelu decydujesz, skąd są n i K. <strong>Metoda Lutza</strong> (domyślna) szacuje je ze zlewni w tym samym obliczeniu: długość L i spadek J najdłuższej drogi spływu bierze z kroku „Zlewnia” (<code>flow_path_length_km</code>, <code>flow_path_slope_m_per_m</code>), a długość do środka ciężkości L<sub>c</sub>, szorstkość koryta n<sub>M</sub> oraz udziały lasów W i zabudowy U z pól pod wyborem (<code>Lc_km</code>, <code>manning_n</code>, <code>forest_pct</code>, <code>urban_pct</code>; puste udziały to 0). L<sub>c</sub> nie może być dłuższa od L. Oszacowane n i K stoją w polach tylko do odczytu. Więcej lasu i bardziej szorstkie koryto spowalniają odpływ, zabudowa i większy spadek go przyspieszają. n jest szukane w przedziale 1,1–20; gdy w nim nie ma rozwiązania, obliczenie kończy się błędem. KZGW (2017) podaje metodę Lutza dla niekontrolowanych zlewni quasi-naturalnych, o małym uszczelnieniu, jako alternatywę dla modelu Snydera.</p>
+<p><strong>Podane n i K</strong> to wartości skalibrowane na zmierzonych wezbraniach albo wzięte z innego opracowania; po przełączeniu z metody Lutza puste pola dostają jej ostatnie oszacowanie. Typowe zakresy podanych n i K nie mają opublikowanego źródła („do weryfikacji”), a oszacowań Lutza się z nimi nie porównuje. Czasu koncentracji model nie używa: n i K z t<sub>c</sub> przez t<sub>lag</sub> = 0,6·t<sub>c</sub> to założenie hydrogramu SCS, nie modelu Nasha, więc takiej drogi nie ma. Polecenie <code>uh nash</code> ma jeszcze trzecią grupę parametrów: regresję dla zlewni zurbanizowanych (Rao, Delleur i Sarma 1972).</p>
+
+<h4 id="metoda-uh-clark">Clark</h4>
+<p>Czas koncentracji jest tu czasem translacji: z metody wybranej pod modelem albo podany ręcznie. Nadaje się każda metoda t<sub>c</sub>, przy czym FAA i Kerby tylko dla małych zlewni bez wyraźnego koryta. Krzywa czas–powierzchnia to symetryczna krzywa zlewni eliptycznej z podręcznika HEC-HMS: połowa powierzchni dopływa do przekroju po t<sub>c</sub>/2. Stałą retencji podajesz pod wyborem jako stosunek R/t<sub>c</sub> (domyślnie) albo wprost R w minutach. Typowe R/t<sub>c</sub>: 0,2–0,4 w zlewniach stromych i zurbanizowanych, 0,4–0,8 w przeciętnych naturalnych, 0,8–1,5 w płaskich i podmokłych (USACE, HEC-HMS Technical Reference Manual; praktyka inżynierska). Krok Δt nie może przekraczać 2R, bo zbiornik liniowy dałby ujemne rzędne: dłuższy krok kończy obliczenie błędem, więc skróć krok albo zwiększ R. Hydrogram jednostkowy dla kroku Δt powstaje z krzywej S hydrogramu chwilowego.</p>
+
+<h4 id="metoda-uh-snyder">Snyder</h4>
+<p>Obie długości Snyder bierze ze zlewni: L to „Długość cieku głównego” z kroku „Zlewnia” (<code>channel_length_km</code>), a L<sub>c</sub> to „Długość do środka ciężkości” spod wyboru modelu (<code>Lc_km</code>). Puste pola C<sub>t</sub> i C<sub>p</sub> to 1,5 i 0,6. Oba współczynniki najlepiej wziąć z kalibracji w kontrolowanych zlewniach tego samego regionu. C<sub>t</sub> jest w jednostkach SI: to 0,75 wartości Snydera w jednostkach angielskich, więc jego 1,8–2,2 to 1,35–1,65.</p>
+<p>Hydrogram jednostkowy jest liczony dla czasu trwania opadu równego krokowi Δt (t<sub>LR</sub>, t<sub>pR</sub> i q<sub>pR</sub> jak w HEC-HMS), a nie dla standardowego t<sub>D</sub>, bo splot traktuje go jako odpowiedź na opad jednego kroku. Jego kształt to krzywa gamma przez szczyt (t<sub>pR</sub>, q<sub>pR</sub>) o objętości 1&nbsp;mm (Asquith i Roussel 2007): C<sub>t</sub> ustala czas szczytu, C<sub>p</sub> jego wysokość. Rzędne biegną, aż odpłynie 99,99&nbsp;% objętości; t<sub>b</sub> to parametr metody (podstawa trójkąta o tym samym szczycie i objętości), nie koniec hydrogramu. Czasu koncentracji model nie używa, więc nie ma pola t<sub>c</sub>. Polecenie <code>uh snyder</code> liczy domyślnie dla standardowego t<sub>D</sub> = t<sub>L</sub>/5,5, z krokiem 30&nbsp;min.</p>
+
+<h3 id="metody-trasowanie">Trasowanie fali</h3>
+<p>Trasowanie przeprowadza hydrogram dopływu przez odcinek koryta albo zbiornik i daje hydrogram odpływu: późniejszy, zwykle niższy i o tej samej objętości. W <a href="#siec">Sieci</a> odcinek ma jedną z pięciu metod (lag tylko przesuwa falę, a Muskingum, Muskingum-Cunge, kaskada zbiorników i level-pool także ją spłaszczają), a zbiornik zawsze level-pool; pola „Początek i koniec fali” każdej metody to „Odpływ początkowy” (domyślnie równy pierwszemu dopływowi) i „Wydłużenie” wyniku po końcu dopływu (domyślnie aż fala odpłynie).</p>
+
+<h4 id="metoda-routing-muskingum">Muskingum</h4>
+<p>K to czas przepływu fali przez odcinek, w przybliżeniu jego długość podzielona przez prędkość fali powodziowej, a X (od 0 do 0,5) waży dopływ względem odpływu. Średnie opóźnienie fali wynosi K bez względu na X i krok czasowy; spłaszczenie rośnie, gdy X maleje.</p>
+<p>Wagi metody są nieujemne tylko wtedy, gdy krok czasowy Δt leży między 2KX a 2K(1&nbsp;−&nbsp;X): przy krótszym kroku pierwsza rzędna wznoszącej się fali odbiera wodę z odpływu, a przy dłuższym odpływ oscyluje. Dlatego odcinek dzieli się na N równych pododcinków o K/N, każdy z tym samym X; pasują liczby od 2KX/Δt do 2K(1&nbsp;−&nbsp;X)/Δt. Puste pole „Pododcinki” dobiera N = K/Δt zaokrąglone, tak że fala przechodzi przez pododcinek w około jednym kroku. Więcej pododcinków spłaszcza falę mniej: wariancja odpowiedzi odcinka to K²(1&nbsp;−&nbsp;2X)/N.</p>
+<p>Liczba pododcinków wpisana poza tym zakresem nie jest zmieniana: „Oblicz sieć” odrzuca odcinek, a błąd podaje kroki czasowe, które do niej pasują (zob. <a href="#siec-z-hydrografa">Sieć z Hydrografa</a>, „Płaski albo krótki odcinek”). Gdy przy pustym polu żadna liczba całkowita nie pasuje (K krótsze, niż pozwala krok, albo X blisko 0,5), każdy krok czasowy jest dzielony na 2–100 kroków pośrednich, o czym mówi uwaga wyniku, a bilans objętości ma wtedy mały błąd próbkowania. Gdy nie wystarcza nawet 100 kroków pośrednich, odcinek jest odrzucany.</p>
+
+<h4 id="metoda-routing-muskingum-cunge">Muskingum-Cunge</h4>
+<p>Odcinek potrzebuje długości i spadku dna, a koryto opisujesz w „Koryto” na jeden z dwóch sposobów. „Przekrój” to szorstkość Manninga n, szerokość dna b i nachylenie skarp m (m = 0 to prostokąt, b = 0 trójkąt): prędkość fali c i szerokość zwierciadła T wynikają wtedy ze wzoru Manninga przy przepływie odniesienia. „Prędkość fali” to c i T podane wprost. „Przepływ odniesienia” jest domyślnie szczytem dopływu; USACE (EM 1110-2-1417) zaleca przepływ bazowy plus połowę wzrostu do szczytu. Inny przepływ odniesienia daje inne c i T, a więc inne K i X; współczynniki są stałe przez całą falę.</p>
+<p>Odcinek dzieli się na równe kroki drogi Δx nie dłuższe niż Δx<sub>c</sub> = (c·Δt + Q/(T·S<sub>0</sub>·c))/2 (NEH 630), a każdy krok drogi jest pododcinkiem metody Muskingum; X może być ujemne. Hydrogram dopływu musi rosnąć od 5&nbsp;% szczytu do szczytu przez co najmniej 10 kroków czasowych; krótszy wzrost zagęszcza krok czasowy, o czym mówi uwaga wyniku. Gdy przy tej siatce wagi byłyby ujemne albo dokładność za mała, liczba kroków drogi jest zmieniana w granicach, w których wagi są nieujemne, albo krok czasowy jest dzielony; i to opisują uwagi wyniku.</p>
+<p>Na odcinku płaskim, krótkim albo z wąskim korytem przy dużym przepływie żaden podział nie daje nieujemnych wag. Odcinek jest wtedy liczony jako zbiornik liniowy albo kaskada zbiorników o tym samym czasie przepływu L/c, z ostrzeżeniem, a tłumienie fali jest przybliżone (zob. <a href="#siec-z-hydrografa">Sieć z Hydrografa</a>). Odcinek z Hydrografa ma długość i spadek, ale nie ma przekroju: szorstkość i szerokość dna wpisujesz sam.</p>
+
+<h4 id="metoda-routing-cascade">Kaskada zbiorników liniowych</h4>
+<p>Kaskada ma liczbę zbiorników n (większą od 0, nie musi być całkowita) i skalę czasu. W „Skala czasu” podajesz „Stałą K” jednego zbiornika albo „Długość i prędkość”: długość odcinka L i prędkość fali c, z których K = L/(n·c), tak że średnie opóźnienie n·K równa się czasowi przepływu L/c. Przy tym samym opóźnieniu n = 1 spłaszcza falę najbardziej, a im większe n, tym bardziej kaskada tylko przesuwa falę: wariancja odpowiedzi, n·K², maleje przy stałym n·K jak 1/n.</p>
+<p>Liczbę zbiorników można powiązać z korytem jak w metodzie Kalinina-Miljukowa: n = L/Δx<sub>c</sub> zbiorników o K = Δx<sub>c</sub>/c, gdzie Δx<sub>c</sub> = Q/(T·S<sub>0</sub>·c) to długość charakterystyczna z przepływu Q, szerokości zwierciadła T, spadku dna S<sub>0</sub> i prędkości fali c. Odpływ jest dokładną odpowiedzią kaskady na dopływ zmieniający się liniowo między rzędnymi, więc każdy krok czasowy jest dozwolony: nic nie jest dzielone ani odrzucane. Mały błąd bilansu objętości to błąd całkowania odpływu metodą trapezów, znikomy, gdy fala zaczyna się i kończy w spoczynku.</p>
+
+<h4 id="metoda-routing-level-pool">Level-pool</h4>
+<p>Tabela pojemność–odpływ opisuje zbiornik, staw albo odcinek od stanu pustego do pełnego: w każdym wierszu pojemność [m³] i odpływ [m³/s], obie kolumny niemalejące, i opcjonalnie rzędna wody albo głębokość, z której wynik podaje „Najwyższą rzędną”. W „Krzywa pojemność–odpływ” wpisujesz ją „W dokumencie” albo wskazujesz „Plik” CSV lub JSON z kolumnami <code>storage_m3</code>, <code>outflow_m3s</code> i opcjonalnie <code>stage_m</code>. Liczą się tylko różnice pojemności, więc jej poziom odniesienia jest dowolny. Odpływ 0 w pierwszych wierszach to pojemność martwa poniżej progu przelewu: przy odpływie 0 zbiornik stoi pełny do progu, więc ta pojemność nie zatrzymuje fali.</p>
+<p>Krok czasowy nie może przekraczać 2·K żadnego odcinka tabeli w zakresie przepływów fali, gdzie K = ΔS/ΔO to stała retencji między sąsiednimi wierszami; przy dłuższym kroku odpływ mógłby przeskoczyć szczyt dopływu. Dłuższy krok jest dzielony na najmniejszą liczbę równych części (uwaga wyniku i parametr „Najdłuższy krok tabeli”), a podział na więcej niż 100 części to błąd. Fala, która wypełnia zbiornik ponad ostatni wiersz albo opróżnia go poniżej pierwszego, przerywa obliczenie: rozszerz tabelę. „Pododcinki” N (domyślnie 1, czyli zbiornik) dzielą odcinek na N zbiorników w szeregu, każdy o pojemności S/N przy tym samym odpływie: więcej pododcinków spłaszcza falę mniej.</p>
+
+<h3 id="metody-statystyka">Statystyka przepływów</h3>
+<p>Analiza częstości wezbrań szacuje przepływy o zadanym okresie powtarzalności z maksimów rocznych: dopasowuje do nich cztery rozkłady prawdopodobieństwa czterema metodami estymacji, porównuje dopasowania miarami zgodności i sprawdza, czy szereg jest jednorodny. Robi to sekcja <a href="#statystyka">Statystyka przepływów</a>; inny rok podziału, poziom istotności albo plik półroczy przyjmują polecenia <code>stats flood-frequency</code> i <code>stats homogeneity</code> we <a href="#polecenia">Wszystkich poleceniach</a>.</p>
+
+<h4 id="metoda-stats-flood-frequency">Analiza częstości wezbrań</h4>
+<p>Próbą są maksima roczne: wklejone, z kolumny pliku albo wybrane z szeregu dobowego z datami. Z szeregu dobowego Hydrolog bierze tylko pełne lata hydrologiczne (od 1 listopada do 31 października, nazwane rokiem, w którym się kończą): rok, w którym brakuje choćby jednego dnia, jest pomijany, bo jego maksimum mogło przypaść właśnie na ten dzień, a uwaga wyniku wymienia pominięte lata. Eksport obejmujący lata kalendarzowe traci więc pierwszy i ostatni rok hydrologiczny; gdy szereg ma luki, uzupełnij dane albo podaj same maksima roczne.</p>
+<p>Wytyczne KZGW (2017) wymagają co najmniej 30 lat: krótszy szereg jest liczony, ale z uwagą, a szereg krótszy niż 10 lat ma uwagę o małej próbie. Kwantyl dla okresu kilka razy dłuższego niż szereg (np. Q&nbsp;0,1% z 30 lat) to ekstrapolacja poza dane, zależna głównie od kształtu rozkładu w ogonie, więc tam rozkłady i metody różnią się najbardziej: porównaj kombinacje w tabeli rozkładów, zanim przyjmiesz jedną wartość.</p>
+
+<h4 id="metoda-stats-distributions">Rozkłady maksimów rocznych</h4>
+<p><strong>GEV</strong> ma położenie μ, skalę σ i kształt ξ: ξ = 0 to rozkład Gumbela, ξ &gt; 0 rozkład z ciężkim górnym ogonem, nieograniczony od góry, a ξ &lt; 0 rozkład z górną granicą. <strong>Log-normalny</strong> ma dwa parametry, bo jego położenie jest równe 0: logarytm przepływu ma rozkład normalny, więc wszystkie maksima muszą być większe od 0. <strong>Pearson III</strong> (rozkład gamma z przesunięciem) ma skośność, położenie i skalę; przy dodatniej skośności jest ograniczony od dołu. <strong>Weibull</strong> ma kształt, położenie i skalę i jest ograniczony od dołu swoim położeniem.</p>
+<p>Rozkład ograniczony od dołu może nie objąć najmniejszych maksimów: ich gęstość jest wtedy zerowa, AIC nieokreślone, a kombinacja stoi na końcu tabeli rozkładów z uwagą (zob. <a href="#metoda-stats-fit">Zgodność dopasowania</a>). Parametry każdej kombinacji są w eksporcie JSON wyniku, w polu <code>parameters</code> (<code>shape</code>, <code>loc</code>, <code>scale</code>, w Pearsonie III <code>skew</code>); <code>shape</code> rozkładu GEV ma znak przeciwny niż ξ we wzorze.</p>
+
+<h4 id="metoda-stats-fit-method">Metoda estymacji parametrów</h4>
+<p><strong>L-momenty</strong> (<code>l_moments</code>, domyślnie): parametry, przy których L-momenty rozkładu λ<sub>1</sub>, λ<sub>2</sub> i L-skośność τ<sub>3</sub> są równe L-momentom próby. L-momenty są liniowymi kombinacjami uporządkowanych maksimów, więc pojedyncze duże maksimum waży w nich mniej niż w zwykłych momentach, a na krótkich próbach są stabilniejsze od największej wiarygodności. <strong>Największa wiarygodność</strong> (<code>mle</code>): parametry, przy których próba jest najbardziej prawdopodobna, szukane numerycznie. <strong>Momenty</strong> (<code>moments</code>): średnia, odchylenie standardowe (z dzielnikiem n&nbsp;−&nbsp;1) i skośność rozkładu (skorygowana, G1) równe tym z próby. <strong>Najmniejsze kwadraty</strong> (<code>least_squares</code>): najmniejsza suma kwadratów różnic między maksimami a kwantylami rozkładu w położeniach Weibulla, szukana od parametrów metody momentów; różnice są w m³/s, a największe maksima leżą najdalej od siebie, więc to one ważą najwięcej.</p>
+<p>Metody inne niż największa wiarygodność potrzebują co najmniej 3 wartości, nie wszystkich równych, skośności próby z zakresu rozkładu, a rozkład log-normalny wartości większych od 0. Weibull wymaga skośności próby większej niż −1,14 (momenty i najmniejsze kwadraty) albo L-skośności większej niż −0,17 (L-momenty), czyli wartości rozkładu Gumbela. Kombinacja bez parametrów jest pominięta z uwagą; największa wiarygodność dopasowuje każdy rozkład. Na 26 maksimach <a href="#przyklad-statystyka">przykładu z rozdziału 04</a> Q&nbsp;1% rozkładu GEV wynosi 307,3&nbsp;m³/s największą wiarygodnością, 309,8&nbsp;m³/s momentami, 324,9&nbsp;m³/s L-momentami i 517,3&nbsp;m³/s najmniejszymi kwadratami.</p>
+
+<h4 id="metoda-stats-fit">Zgodność dopasowania</h4>
+<p>AIC nagradza dużą wiarygodność próby i karze liczbę parametrów, więc porównuje rozkłady dwu- i trójparametrowe dopasowane do tych samych maksimów; liczą się różnice AIC, nie jego wartość. Po każdym obliczeniu aktywna jest pokazana kombinacja o najmniejszym AIC. AIC porównuje też metody jednego rozkładu: liczy się z wiarygodności przy parametrach danej metody, a największa wiarygodność szuka właśnie jej maksimum, więc przy kilku pokazanych metodach zwykle wygrywa; szukanie numeryczne może się jednak zatrzymać przed maksimum, i wtedy mniejsze AIC ma inna metoda tego samego rozkładu. Na <a href="#przyklad-statystyka">przykładzie z rozdziału 04</a> cztery najlepsze kombinacje mają AIC od 267,4 do 267,9, a ich Q&nbsp;1% od 263,0 do 324,9&nbsp;m³/s: tak mała różnica AIC nie rozstrzyga o wyborze.</p>
+<p>Rozkład, który nie obejmuje któregoś maksimum (najczęściej Pearson III albo Weibull, gdy ich dolna granica wypada powyżej najmniejszych maksimów), daje mu gęstość 0: wiarygodność jest zerowa, AIC nieskończone („—” w tabeli), a kombinacja stoi na końcu tabeli rozkładów; jej kwantyle, A² i KS p zostają. Przy momentach i L-momentach zdarza się to często. A² Andersona–Darlinga mocniej waży ogony rozkładu; ✓ oznacza wartość poniżej krytycznej 2,49 dla poziomu 5&nbsp;%, policzonej dla rozkładu o parametrach znanych z góry, więc przy parametrach oszacowanych z próby test jest przybliżony. KS p to p testu Kołmogorowa–Smirnowa, z tego samego powodu tylko orientacyjne: rozkład wybieraj według A² i AIC.</p>
+
+<h4 id="metoda-stats-plot">Siatka Gumbela i położenie Weibulla</h4>
+<p>Maksima roczne uszeregowane malejąco dostają empiryczne prawdopodobieństwo przewyższenia p<sub>i</sub> = i/(n&nbsp;+&nbsp;1): największe z n maksimów stoi przy T = n&nbsp;+&nbsp;1 lat (z 26 lat przy 27 latach), a najmniejsze przy p = n/(n&nbsp;+&nbsp;1). Położenie Weibulla nie daje żadnemu maksimum p = 0 ani p = 1, ale też nie mówi, jak rzadkie było największe wezbranie: punkt nie sięga dalej niż T = n&nbsp;+&nbsp;1. Pozycję, rok, wartość, p i T każdego maksimum podaje widok „Maksima roczne”.</p>
+<p>Na siatce Gumbela rozkład Gumbela jest prostą; krzywa wygięta ku górze ma cięższy ogon (GEV z ξ &gt; 0), a wygięta ku dołowi zmierza do górnej granicy (ξ &lt; 0). Linie przechodzą przez kwantyle policzone od p = 99,5&nbsp;% do 0,1&nbsp;%. Zakresy osi, także osi gęstości, zależą tylko od wyniku, a „Zakres osi” pod każdym wykresem je zmienia (zob. <a href="#statystyka">Statystyka przepływów</a>).</p>
+
+<h4 id="metoda-stats-homogeneity">Jednorodność ciągu</h4>
+<p>Analiza częstości zakłada, że maksima roczne są niezależną próbą z jednego rozkładu; zbiornik, regulacja koryta, przeniesiony wodowskaz albo zmiana w zlewni to założenie łamią. Trzy testy są nieparametryczne i dwustronne, a ich hipotezą zerową jest brak zmiany. Test Manna-Whitneya sprawdza, czy wartości jednej części są zwykle większe niż drugiej: U to liczba par z obu części, w których wartość z pierwszej jest większa (remis liczy się za ½), bliska n<sub>1</sub>n<sub>2</sub>/2 bez różnicy i równa 0, gdy cała pierwsza część jest mniejsza. Test Kołmogorowa-Smirnowa porównuje całe rozkłady obu części: D to największa odległość ich dystrybuant empirycznych, od 0 do 1. Test Pettitta sam szuka miejsca zmiany: K to największe |U<sub>t</sub>| po wszystkich podziałach, a punkt zmiany to pierwszy rok po zmianie.</p>
+<p>W sekcji Statystyka szereg jest dzielony na połowy (pierwsze ⌊n/2⌋ wartości i pozostałe; przy nieparzystym n środkowa wartość należy do drugiej części), a poziom istotności to α = 0,05. Przy takim podziale testy Manna-Whitneya i Kołmogorowa-Smirnowa mogą odrzucić jednorodność dopiero od 8 wartości, a test Pettitta od 11, więc „jednorodny” znaczy tylko, że test nie znalazł różnicy. Punkt zmiany ma znaczenie, gdy test Pettitta odrzuca jednorodność: podany jako rok podziału (<code>split_year</code>) polecenia <code>stats homogeneity</code> we <a href="#polecenia">Wszystkich poleceniach</a> sprawia, że dwa pozostałe testy porównują części, które znalazł; tam też ustawisz poziom istotności (<code>alpha</code>).</p>
+
+  <p class="back"><a href="#toc-title">↑ Spis treści</a></p>
+</section>
+
+</div>
+</main>
+</body>
+</html>

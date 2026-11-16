@@ -1,0 +1,474 @@
+// „Hydrogram zlewni” (plan D13, slice S3; the author's three steps of 2026-11-04): one
+// watershed, `hydrograph generate` through the three steps of the panel Dane (Zlewnia,
+// Hietogram, Hydrogram), SubcatchmentSteps of steps.js, which Sieć's subcatchment panel
+// shares (plan 2026-11-10-network-wizard, D1): this host gives it the ids' prefix "hg",
+// no network (its own rainfall and time step), the shown result as `computed`, the hint
+// of the guide's example on a blank step 1, and keeps the state, the runs and the
+// channels. A first visit is empty and runs nothing; the checks of what the
+// model needs start when a model is chosen in step 3. From then on the result follows every
+// change (no variants, no compute button): a change of valid data runs on channel
+// "hydrogram" 250 ms later (recompute.js: debounce, abort, only the newest response
+// applied); „Liczenie…” after 150 ms; invalid data run nothing and keep the last result,
+// marked („Dane niepełne” with the field); an error of the server stays on its field or
+// above the steps („Błąd danych”); Hydrolog's notices of a value outside its typical range
+// stand on their field as warnings, which never stop a run. Nash by Lutz sends
+// `nash_estimation: "lutz"` with the watershed: the one run of `hydrograph generate`
+// estimates n and K from it (plan 2026-11-10-network-wizard, D6). The typical ranges the
+// (i) explanations and the notes check are those the catalog document of `hydrograph
+// generate` serves (`typical_ranges`, Lutz's area among them), registered when it arrives.
+//
+// PMAXTP (ADR-0018): once the point, p and the duration of step 2 are given and valid, the
+// section runs `precip pmaxtp` on its own channel "hydrogram-pmaxtp" (usePmaxtp of
+// pmaxtp.js, which Sieć's network shares) and keeps the depth with the inputs
+// (`pmaxtp_fetched`), which is the `total_mm` of the runs; a run waits for it. A point
+// outside the atlas stands on its field, any other failure (IMGW-PIB unreachable) on the
+// row of the depth, with „Pobierz ponownie”.
+//
+// The providers' lines (attribution.js, Nogat DEV-20): those of the PMAXTP depth in use
+// and of a received hand-off go to every run as its option `attribution` (a run waits
+// until GET api/session gives the lines of a depth kept without them), and the views and
+// exports show and carry the lines of the run's envelope.
+//
+// The section sets the store's "watershed" (the `watershed` of hydrolog-network/1, for
+// Kalkulatory), its "status" and "context", and draws the store's "reference" (a quantile
+// of Statystyka) on the hydrograph. The route #hydrogram/tc_method/<method> sets the method
+// of tc (Kalkulatory's „Użyj w Hydrogramie zlewni”; it shows once SCS or Clark is chosen).
+// A hand-off of one subcatchment („Wczytaj z Hydrografa”, here or in Sieć) arrives through
+// useHandoffInbox as a patch of the inputs whose `origin` names the producer.
+
+import { api } from "../../api.js";
+import { linesOf, mergeLines, withAttribution } from "../../attribution.js";
+import { roundedText } from "../../format.js";
+import { withReason } from "../../forms/model.js";
+import { useHandoffInbox } from "../../handoff/handoff-panel.js";
+import { html, useCallback, useEffect, useMemo, useRef, useState } from "../../html.js";
+import { common, t } from "../../labels/common.js";
+import { describeError } from "../../labels/errors.js";
+import { hydrogram as texts } from "../../labels/hydrogram.js";
+import { lossesInfo } from "../../labels/info/losses.js";
+import { tcInfo } from "../../labels/info/tc.js";
+import { uhInfo } from "../../labels/info/uh.js";
+import { describeNotice } from "../../labels/notices.js";
+import { shell } from "../../labels/shell.js";
+import { usePersistentState } from "../../persist.js";
+import { createChannel } from "../../recompute.js";
+import { navigate } from "../../router.js";
+import { useStore } from "../../store.js";
+import { registerInfo, registerServed } from "../../ui/info.js";
+import { Seg } from "../../ui/seg.js";
+import { status } from "../../ui/status.js";
+import { toast } from "../../ui/toast.js";
+import { RenderGuard } from "../../ui/render-guard.js";
+import { ViewLayout } from "../../ui/view-layout.js";
+import { exportSpec } from "./export.js";
+import { usePmaxtp } from "./pmaxtp.js";
+import { CenterBody, ResultsPanel, modelLabel } from "./results-panel.js";
+import { durationText } from "./rows.js";
+import {
+  CHANNEL,
+  COMMAND,
+  NETWORK_SCHEMA,
+  PMAXTP_CHANNEL,
+  PMAXTP_COMMAND,
+  PMAXTP_FIELDS,
+  SECTION,
+  TC_METHODS,
+  checkInputs,
+  checkedValues,
+  fieldLabel,
+  initialState,
+  inputModels,
+  isEmpty,
+  normalize,
+  numberOf,
+  optionField,
+  panelFields,
+  rangeInfoId,
+  requirements,
+  toOptions,
+  watershedErrors,
+  watershedObject,
+} from "./state.js";
+import { SubcatchmentSteps, readWatershedFile } from "./steps.js";
+
+registerInfo({ ...tcInfo, ...lossesInfo, ...uhInfo });
+
+/**
+ * The catalog documents of `hydrograph generate` and `precip pmaxtp` and the network
+ * schema, turned into the models that check the inputs; the typical ranges the document of
+ * `hydrograph generate` serves are registered with the (i) explanations.
+ *
+ * @returns {{models: object|null, error: string|null, retry: () => void}} the models (null
+ *   until they arrive), a loading error and a retry
+ */
+function useModels() {
+  const [attempt, setAttempt] = useState(0);
+  const [state, setState] = useState({ models: null, error: null });
+  useEffect(() => {
+    let alive = true;
+    setState((old) => ({ ...old, error: null }));
+    Promise.all([api.command(COMMAND), api.schema(NETWORK_SCHEMA), api.command(PMAXTP_COMMAND)])
+      .then(([doc, schema, pmaxtpDoc]) => {
+        if (!alive) return;
+        registerServed(doc, rangeInfoId);
+        setState({ models: inputModels(doc, schema, pmaxtpDoc), error: null });
+      })
+      .catch((error) => {
+        if (alive) setState({ models: null, error: error && error.doc ? describeError(error.doc).text : String(error) });
+      });
+    return () => {
+      alive = false;
+    };
+  }, [attempt]);
+  return { ...state, retry: () => setAttempt((count) => count + 1) };
+}
+
+/**
+ * Word an error of a run: on its field when the panel shows it (every field a tc method
+ * or a model misses on its own), else above the steps.
+ *
+ * @param {object} doc the hydrolog-error/1 document
+ * @param {object|null} inputs the inputs of the run
+ * @returns {{fields: Object<string, string>, form: {title: string, text: string}|null,
+ *   text: string}} the messages
+ */
+function wordError(doc, inputs) {
+  const described = describeError(doc);
+  const details = (doc && doc.details) || {};
+  const shown = inputs ? panelFields(inputs) : [];
+  const place = (option) => {
+    const field = inputs ? optionField(inputs, option) : option;
+    return shown.includes(field) ? field : null;
+  };
+  const fields = {};
+  if (described.reason === "missing_field") {
+    const missing = Array.isArray(details.missing) ? details.missing : [described.option];
+    const text = typeof details.method === "string" ? t(texts.missingField, { method: details.method }) : texts.missingFieldPlain;
+    for (const option of missing) {
+      const name = typeof option === "string" ? place(option) : null;
+      if (name) fields[name] = withReason(text, "missing_field");
+    }
+    if (Object.keys(fields).length === missing.length) return { fields, form: null, text: described.text };
+  } else if (typeof described.option === "string" && place(described.option)) {
+    fields[place(described.option)] = withReason(described.text, described.reason);
+    return { fields, form: null, text: described.text };
+  }
+  return { fields, form: { title: described.title || texts.formError, text: described.text }, text: described.text };
+}
+
+/**
+ * The section „Hydrogram zlewni”.
+ *
+ * @param {{path: string[]}} props the route's path ("tc_method", "<method>" sets the method
+ *   of tc)
+ * @returns {object} the section
+ */
+export default function Hydrogram({ path = [] }) {
+  const docs = useModels();
+  const [stored, setState, reset] = usePersistentState(SECTION, initialState);
+  const inputs = useMemo(() => normalize(stored), [stored]);
+  const [, setStatus] = useStore("status");
+  const [, setContext] = useStore("context");
+  const [, setWatershedStore] = useStore("watershed");
+  const [reference, setReference] = useStore("reference");
+  const [tab, setTab] = useState("chart");
+  const [run, setRun] = useState(null);
+  const [failure, setFailure] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [broken, setBroken] = useState(null);
+  const chartSvg = useRef(null);
+  const outcome = useRef(null);
+  const channel = useMemo(
+    () =>
+      createChannel({
+        onBusy: setBusy,
+        onOutcome: (next) => outcome.current(next),
+      }),
+    [],
+  );
+  useEffect(() => () => channel.dispose(), [channel]);
+
+  /** Replace inputs (a patch of the inputs; a watershed file and a hand-off use it). */
+  const set = useCallback((patch) => setState((old) => ({ ...normalize(old), ...patch })), []);
+  useHandoffInbox(SECTION, set);
+  const setField = useCallback(
+    (name, text) =>
+      setState((old) => {
+        const base = normalize(old);
+        return { ...base, watershed: { ...base.watershed, [name]: text } };
+      }),
+    [],
+  );
+
+  // Kalkulatory's „Użyj w Hydrogramie zlewni”: #hydrogram/tc_method/<method>
+  const route = path.join("/");
+  useEffect(() => {
+    if (path[0] === "tc_method" && TC_METHODS.includes(path[1])) {
+      set({ tc_method: path[1], tc_manual: false });
+      navigate(SECTION, [], { replace: true });
+    }
+  }, [route]);
+
+  // The checks: errors stop a run; the warnings of the shown run's notices do not
+  const shownRun = run ? { inputs: run.inputs, notices: run.envelope.notices || [] } : null;
+  const checked = useMemo(
+    () => (docs.models ? checkInputs(inputs, docs.models, shownRun) : null),
+    [docs.models, inputs, run],
+  );
+  const required = useMemo(() => requirements(inputs).required, [inputs]);
+
+  // PMAXTP's depth: remembered with the inputs, else fetched once the point, p and the
+  // duration are given and valid; a run waits for it
+  const pmaxtp = usePmaxtp(inputs, {
+    channel: PMAXTP_CHANNEL,
+    valid: checked !== null && !Object.values(PMAXTP_FIELDS).some((name) => checked.errors[name]),
+    onDepth: (record) => set({ pmaxtp_fetched: record }),
+  });
+  const depth = pmaxtp.depth;
+  const pmaxtpFailed = pmaxtp.failed;
+  const pmaxtpBusy = pmaxtp.busy;
+
+  // The providers' lines of the data: the PMAXTP depth's and a received hand-off's (null
+  // while GET api/session, which gives a kept depth's, has not arrived: the run waits)
+  const lines = mergeLines(pmaxtp.lines, linesOf(inputs.handoff));
+  const rainReady = inputs.rain_source !== "pmaxtp" || depth !== null;
+  const valid = checked !== null && inputs.uh_model !== null && Object.keys(checked.errors).length === 0 && rainReady && lines !== null;
+  const linesKey = JSON.stringify(lines);
+  const request = useMemo(() => {
+    if (!valid) return null;
+    return { inputs, options: withAttribution(toOptions(inputs), lines) };
+  }, [valid, inputs, linesKey]);
+  const key = request ? JSON.stringify(request.options) : null;
+  const latestKey = useRef(key);
+  latestKey.current = key;
+
+  outcome.current = (next) => {
+    // The task returns its errors; a rejection would be a fault of the GUI itself
+    const value = next.ok ? next.value : { key: latestKey.current, error: { code: "internal_error", message: String(next.error) }, inputs: null };
+    if (value.error) {
+      setFailure({ key: value.key, ...wordError(value.error, value.inputs) });
+      return;
+    }
+    const envelope = value.envelope;
+    if (envelope.status !== "ok") {
+      const words = (envelope.notices || []).map((notice) => describeNotice(notice).text).join(" ");
+      setFailure({ key: value.key, fields: {}, form: { title: texts.formError, text: words }, text: words });
+      return;
+    }
+    setFailure(null);
+    setRun({ ...value, values: checkedValues(value.inputs, envelope.result) });
+  };
+
+  useEffect(() => {
+    if (!docs.models) return;
+    if (!request) {
+      channel.cancel();
+      return;
+    }
+    if ((run && run.key === key) || (failure && failure.key === key)) {
+      channel.cancel();
+      return;
+    }
+    const sent = { ...request, key };
+    channel.request(async (signal) => {
+      try {
+        const envelope = await api.run(COMMAND, sent.options, { channel: CHANNEL, signal });
+        return { key: sent.key, inputs: sent.inputs, options: sent.options, envelope };
+      } catch (error) {
+        if (error && error.name === "AbortError") throw error;
+        const doc = error && error.doc ? error.doc : { code: "internal_error", message: String(error) };
+        return { key: sent.key, error: doc, inputs: sent.inputs };
+      }
+    });
+  }, [key, docs.models]);
+
+  // The store's watershed: the last valid one with an area (Kalkulatory reads it)
+  const watershedKey =
+    docs.models &&
+    numberOf(inputs.watershed.area_km2) !== null &&
+    Object.keys(watershedErrors(inputs.watershed, docs.models)).length === 0
+      ? JSON.stringify(watershedObject(inputs.watershed))
+      : null;
+  useEffect(() => {
+    if (watershedKey) setWatershedStore(JSON.parse(watershedKey));
+  }, [watershedKey]);
+
+  const current = failure && failure.key === key ? failure : null;
+  const errors = {
+    ...(checked ? checked.errors : {}),
+    ...(current ? current.fields : {}),
+    ...(pmaxtpFailed ? pmaxtpFailed.fields : {}),
+  };
+  const warnings = checked ? checked.warnings : {};
+  const firstProblem = checked ? Object.keys(checked.errors)[0] : null;
+  let stale = null;
+  if (run && firstProblem) stale = { kind: "invalid", field: fieldLabel(firstProblem) };
+  else if (run && current) stale = { kind: "error", text: current.text };
+  else if (run && pmaxtpFailed) stale = { kind: "error", text: pmaxtpFailed.text };
+
+  // The badge and the state under the panel Dane
+  let badge = null;
+  let calc = null;
+  if (firstProblem) {
+    badge = status("invalid", `${shell.status.invalid.text}: ${firstProblem}`);
+    calc = { kind: "warn", text: t(texts.calc.invalid, { field: fieldLabel(firstProblem) }) };
+  } else if (current) {
+    badge = status("error", undefined, current.text);
+    calc = { kind: "bad", text: texts.calc.error };
+  } else if (pmaxtpFailed) {
+    badge = status("error", undefined, pmaxtpFailed.text);
+    calc = { kind: "bad", text: texts.calc.pmaxtp };
+  } else if (busy) {
+    badge = status("busy");
+    calc = { kind: "busy", text: texts.calc.busy };
+  } else if (pmaxtpBusy) {
+    badge = status("busy", texts.calc.fetchingBadge, texts.calc.fetching);
+    calc = { kind: "busy", text: texts.calc.fetching };
+  } else if (checked !== null && inputs.uh_model === null) {
+    calc = { kind: "idle", text: texts.calc.model };
+  } else if (run && broken === run) {
+    badge = status("error", common.render.badge, common.render.status);
+    calc = { kind: "bad", text: common.render.status };
+  } else if (run && run.key === key) {
+    badge = status("ok");
+    calc = { kind: "ok", text: texts.calc.ok };
+  } else if (checked !== null) {
+    calc = { kind: "ok", text: texts.calc.waiting };
+    if (run) badge = status("ok");
+  }
+  const badgeKey = JSON.stringify(badge);
+  useEffect(() => setStatus(badge), [badgeKey]);
+
+  // The breadcrumbs: the watershed, the probability and the duration of the rainfall
+  const named = String(inputs.watershed.name || "").trim();
+  const hasWatershed = Object.keys(watershedObject(inputs.watershed)).length > 0;
+  const name = named || texts.context.unnamed;
+  let context = name;
+  if (inputs.rain_source === "series") context = t(texts.context.series, { name });
+  else if (inputs.rain_source === "design" && !isEmpty(inputs.total_mm) && !isEmpty(inputs.duration_min)) {
+    context = t(texts.context.design, { name, total: roundedText(inputs.total_mm, 2), duration: durationText(inputs.duration_min) });
+  } else if (inputs.rain_source === "pmaxtp" && !isEmpty(inputs.pmaxtp_probability_pct) && !isEmpty(inputs.pmaxtp_duration_min)) {
+    context = t(texts.context.pmaxtp, {
+      name,
+      p: String(inputs.pmaxtp_probability_pct).replace(".", ","),
+      duration: durationText(inputs.pmaxtp_duration_min),
+    });
+  }
+  useEffect(() => setContext(hasWatershed ? context : null), [context, hasWatershed]);
+
+  const spec = useMemo(() => {
+    if (!run) return null;
+    const subject = (run.options.watershed && run.options.watershed.name) || SECTION;
+    return exportSpec({ subject, options: run.options, envelope: run.envelope, chartSvg });
+  }, [run]);
+
+  const onFile = async (file) => {
+    try {
+      set(await readWatershedFile(file));
+      toast(t(texts.watershed.fileLoaded, { file: file.name }));
+    } catch (error) {
+      toast(t(texts.watershed.fileFailed, { file: file.name, message: error.message || String(error) }), "bad");
+    }
+  };
+
+  // „Wyczyść”: the steps empty, as on a first visit; Kalkulatory loses the watershed too
+  const clear = () => {
+    channel.cancel();
+    pmaxtp.reset();
+    reset();
+    setRun(null);
+    setFailure(null);
+    setBroken(null);
+    setWatershedStore(null);
+  };
+
+  const values = useMemo(() => checkedValues(inputs, run && run.key === key ? run.envelope.result : null), [inputs, run, key]);
+  const result = run ? run.envelope.result : null;
+  const version = run ? run.envelope.version : null;
+  const working = busy || pmaxtpBusy;
+  const dimmed = working ? " computing" : "";
+  // A result that does not draw is marked, never shown as the current one (RenderGuard)
+  const onDrawError = () => setBroken(run);
+
+  const left = {
+    sub: texts.dataSub,
+    body: html`
+      ${docs.error
+        ? html`<div class="form-errors" role="alert">
+            <div>${docs.error}</div>
+            <button class="btn sm" type="button" onClick=${docs.retry}>${common.actions.retry}</button>
+          </div>`
+        : null}
+      ${docs.models
+        ? html`<${SubcatchmentSteps}
+            prefix="hg"
+            inputs=${inputs}
+            errors=${errors}
+            warnings=${warnings}
+            required=${required}
+            formError=${current ? current.form : null}
+            set=${set}
+            setField=${setField}
+            onFile=${onFile}
+            computed=${result}
+            models=${docs.models}
+            infoValues=${values}
+            pmaxtp=${{ depth, lines: pmaxtp.lines, busy: pmaxtpBusy, onRetry: pmaxtp.onRetry }}
+            network=${null}
+            hint=${{ anchor: "przyklad", name: "hydrogram" }}
+          />`
+        : docs.error
+          ? null
+          : html`<p class="muted" role="status">${texts.loading}</p>`}
+    `,
+    foot: html`
+      <span class=${`calc-state${calc && calc.kind !== "ok" ? ` ${calc.kind}` : ""}`} data-calc=${calc ? calc.kind : ""} role="status">
+        <i class="dot" aria-hidden="true"></i><span>${calc ? calc.text : texts.loading}</span>
+      </span>
+      ${version ? html`<span class="muted small">${t(texts.version, { version })}</span>` : null}
+      <button class="btn ghost sm icon foot-end" type="button" aria-label=${common.actions.clear} title=${texts.clearTitle} onClick=${clear}>
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10a6 6 0 1 0 1.8-4.3M4 4v3.5h3.5" /></svg>
+      </button>
+    `,
+  };
+  const center = {
+    label: texts.center.tabs.chart,
+    bar: html`
+      <${Seg}
+        items=${[
+          { value: "chart", label: texts.center.tabs.chart },
+          { value: "table", label: texts.center.tabs.table },
+        ]}
+        value=${tab}
+        onChange=${setTab}
+        label=${texts.center.view}
+      />
+      <span class="hint">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" /><path d="M8 7.5v4M8 5v.01" /></svg>
+        <span>${texts.center.hint}</span>
+      </span>
+    `,
+    body: html`<div class=${`result-area${dimmed}`} aria-busy=${working ? "true" : "false"} data-hg-center="">
+      <${RenderGuard} name="center" resetKey=${run} onError=${onDrawError}>
+        <${CenterBody}
+          run=${run}
+          tab=${tab}
+          reference=${reference}
+          chartSvg=${chartSvg}
+          onClearReference=${() => setReference(null)}
+          stale=${stale}
+        />
+      <//>
+    </div>`,
+  };
+  const right = {
+    sub: run ? t(texts.results.sub, { model: modelLabel(run.inputs), amc: result.amc }) : null,
+    body: html`<div class=${`result-area${dimmed}`} aria-busy=${working ? "true" : "false"} data-hg-results="">
+      <${RenderGuard} name="results" resetKey=${run} onError=${onDrawError}>
+        <${ResultsPanel} run=${run} spec=${spec} stale=${stale} current=${inputs} />
+      <//>
+    </div>`,
+  };
+  const sources = mergeLines(lines, run ? linesOf(run.envelope) : undefined);
+  return html`<${ViewLayout} left=${left} center=${center} right=${right} sources=${sources} />`;
+}

@@ -1,0 +1,23 @@
+{
+  "schema": "hydrolog-network/1",
+  "name": "Pond catchment",
+  "nodes": [
+    {"id": "A", "type": "subcatchment"},
+    {"id": "B", "type": "subcatchment", "value_column": "tributary_B"},
+    {
+      "id": "R1",
+      "type": "reach",
+      "from": ["A"],
+      "method": "muskingum-cunge",
+      "length_km": 6.0,
+      "slope_m_per_m": 0.002,
+      "manning_n": 0.035,
+      "bottom_width_m": 8.0,
+      "side_slope_m_per_m": 2.0,
+      "reference_discharge_m3s": 12.0
+    },
+    {"id": "J1", "type": "junction", "from": ["R1", "B"]},
+    {"id": "D", "type": "reservoir", "from": ["J1"], "rating_file": "pond_rating.csv"},
+    {"id": "OUT", "type": "outlet", "from": ["D"]}
+  ]
+}

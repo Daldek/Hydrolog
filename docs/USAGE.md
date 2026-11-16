@@ -1,0 +1,1885 @@
+# Hydrolog usage guide
+
+Task-oriented guide to Hydrolog for the command line, Python and MCP clients, and for people who
+use its web GUI ([8. The web GUI](#8-the-web-gui)). Options, units, ranges and allowed values are
+not repeated here: they come from the command catalog, the single source of truth of every
+interface (see [Finding options](#finding-options)). Installation and MCP client configuration are
+in the [README](../README.md); scope is in [SCOPE.md](SCOPE.md); which time-of-concentration method
+fits which unit hydrograph model is in [COMPUTATION_PATHS.md](COMPUTATION_PATHS.md).
+
+## Finding options
+
+```bash
+hydrolog commands list --lang en
+hydrolog commands schema --command "tc kirpich"
+hydrolog tc kirpich --help --lang en
+```
+
+- `hydrolog commands list` lists every command with its summary; with `--json` each entry also
+  has the `operation_id` (the MCP tool name).
+- `hydrolog commands schema --command "<name>"` returns the `hydrolog-commands/1` document of
+  one command (the name or the `operation_id`): options with type, unit, bounds and examples,
+  the result schema, the effects (does it write a file?), rules and the errors it can raise. The
+  JSON Schemas of the results ship in the package (`src/hydrolog/schemas/`).
+- `hydrolog <group> <command> --help` prints the same as readable text. Help and summaries are in
+  Polish by default; add `--lang en` or set `HYDROLOG_LANG=en` ([Settings](#6-settings)).
+
+## 1. CLI conventions
+
+```text
+hydrolog <group> <command> --option value [--json] [--schema] [--lang pl|en] [-v | -q]
+```
+
+- **Option names** are the catalog names in kebab-case with the unit in the name: `--length-km`,
+  `--slope-m-per-m`, `--total-mm`, `--tc-min`, `--area-km2`. A slope is in m/m, never in percent.
+- **Lists** are comma-separated without spaces (`--return-periods 10,50,100`); **objects** are
+  JSON text in single quotes (`--parts '[{"cn":55,"area":27.2}]'`). For more than a few numbers
+  give a file instead: `--input-file`, `--watershed-file`, `--segments-file`.
+- **Booleans** are `--flag` and `--no-flag` (`--remove-outliers`, `--no-remove-outliers`).
+- **Negative numbers**: `--option -5` and `--option=-5` are equivalent; write
+  `--water-levels=-10,5,20` for a list that starts with a minus sign.
+- **`--json`** prints the result envelope (`hydrolog-result/1`) as the only document on stdout,
+  on one line; without it you get a short summary. **`--schema`** prints the command description
+  (`hydrolog-commands/1`) instead of running it.
+- **`--lang pl|en`** selects the language of help and summaries only; JSON is always English.
+  **`-v`** shows debug messages and **`-q`** only errors, both on stderr.
+
+```bash
+hydrolog tc kirpich --length-km 8.2 --slope-m-per-m 0.023 --json
+```
+
+```json output
+{"schema": "hydrolog-result/1", "tool": "hydrolog", "command": "tc kirpich", "check": false, "status": "ok", "result": {"schema": "hydrolog-tc-kirpich/1", "method": "kirpich", "tc_min": 85.97330594494066, "tc_h": 1.4328884324156776}, "notices": [{"level": "warning", "code": "outside_typical_range", "message": "kirpich: slope_m_per_m=0.023 is outside typical range [0.03, 0.1]. Results may be unreliable.", "details": {"method": "kirpich", "parameter": "slope_m_per_m", "field": "slope_m_per_m", "value": 0.023, "minimum": 0.03, "maximum": 0.1}}], "inputs": {"length_km": 8.2, "slope_m_per_m": 0.023}}
+```
+
+The envelope keys are `schema`, `tool`, `version`, `command`, `check`, `status`, `result`,
+`items` (the calls of `commands batch`), `attribution` and `terms_notice` (the lines that the terms
+of the data's providers require, only when the run used such data; ADR-0028), `notices`, `inputs`
+and, for paged lists, `page`. The domain result has its own `schema`
+(`hydrolog-<group>-<command>/1`); units follow from field names (`tc_min`, `area_ha`); `NaN` and
+infinities are `null`. `inputs` echoes the options after normalisation (defaults filled in, paths
+made absolute). `notices` carries non-fatal warnings (a short series, a value outside the typical
+range of a formula, here a slope below the 3–10 % of Kirpich's data): read it next to the result.
+`--schema` of a command lists the typical ranges it checks, each with its source, in
+`typical_ranges`.
+
+**Errors.** A failing command prints nothing to stdout and leaves nothing half done. The last line
+of stderr is the `hydrolog-error/1` document (English): `code`, `title`, `message`, `hint`,
+`details`, `exit_code`, `command`. Decide by `code`, `details.option` and `details.reason`, not by
+the message text.
+
+| Exit | `code` | Typical cause |
+|---|---|---|
+| 1 | `internal_error` | a bug: report the command, the options and the version |
+| 2 | `validation_error` | a wrong or missing option (`details.option`) |
+| 3 | `not_found` | unknown command (`details.suggestions`) or missing input file |
+| 4 | `conflict` | the output file exists ([Writing files](#3-writing-files)) |
+| 5 | `source_unavailable` | IMGW-PIB does not answer `precip pmaxtp`, the one command that uses the network |
+| 6 | `missing_dependency` | an optional extra is not installed (`hint` names it) |
+| 7 | `data_error` | a malformed input file (`details.path`, `details.reason`) |
+| 9 | `io_error` | the output cannot be written |
+| 12 | `forbidden` | a path outside the directories an MCP server allows |
+| 13 | `calculation_error` | valid input, no result (for example a fit that does not converge) |
+| 130, 143 | `cancelled`, `terminated` | Ctrl+C or SIGTERM; nothing is left half written |
+
+```console
+$ hydrolog tc kirpich --length-km -1 --slope-m-per-m 0.023 --json
+{"schema": "hydrolog-error/1", "code": "validation_error", "title": "Invalid input", "message": "Option 'length_km': must be > 0, got -1", "details": {"option": "length_km", "reason": "exclusive_minimum", "exclusive_minimum": 0, "value": -1.0}, "exit_code": 2, "command": "tc kirpich"}
+```
+
+The same code is the CLI exit status, `HydrologError.code` in Python and the error `code` over MCP.
+
+## 2. Tasks
+
+Each task shows the CLI call, then the Python equivalent. In Python,
+`hydrolog.run_command("<command>", **options)` takes the catalog option names as keyword
+arguments (`slope_m_per_m=0.023`) and returns the envelope: `envelope.result` is the domain
+result and `envelope.to_dict()` the JSON-compatible form. The same calculation is a plain function
+in `hydrolog.operations` (`tc_kirpich`) returning an object with the `result`. The examples read
+the sample files of `tests/fixtures/` of the repository (watershed JSON, CSV series, GeoTIFF
+rasters).
+
+### Time of concentration
+
+Kirpich needs the length and the slope of the longest flow path, from the hydraulically most distant point of
+the watershed (usually on the divide, possibly on a ridge inside it) to the outlet; NRCS (the lag method of NEH 630, ch. 15) the same length, the average land slope of the
+watershed and the CN. Both return `tc_min` and `tc_h`. Other methods: `tc giandotti`, `tc faa`, `tc kerby`, `tc kerby-kirpich`.
+`tc watershed` computes any of them from a watershed JSON file (the `WatershedParameters` format,
+see [Exchange](#7-exchange-with-kartograf-obserwator-and-hydrograf)); a field the method needs
+but the file lacks is a `validation_error` that lists it.
+
+```bash
+hydrolog tc nrcs --length-km 8.2 --slope-m-per-m 0.023 --cn 72 --json
+```
+
+```bash
+hydrolog tc watershed --watershed-file tests/fixtures/watershed_example.json --method kirpich --json
+```
+
+```json output
+{"result": {"method": "kirpich", "tc_min": 135.89384108269536, "parameters": {"length_km": 14.2, "slope_m_per_m": 0.021}, "watershed_name": "Zlewnia Przykładowa"}}
+```
+
+```python
+import hydrolog
+
+envelope = hydrolog.run_command("tc kirpich", length_km=8.2, slope_m_per_m=0.023)
+print(f"tc = {envelope.result.tc_min:.1f} min")
+
+envelope = hydrolog.run_command(
+    "tc watershed", watershed_file="tests/fixtures/watershed_example.json", method="kirpich"
+)
+print(f"{envelope.result.watershed_name}: tc = {envelope.result.tc_min:.1f} min")
+```
+
+### Curve number: lookup and weighting
+
+`cn lookup` reads the TR-55 table for a hydrologic soil group (A-D) and a land cover (`cn list`
+and `cn range` show the table). `condition` (poor, fair, good) matters only for the covers that
+depend on it; the result reports `condition_applied`. `cn weighted` gives one area-weighted CN for
+a watershed of several parts: `--parts`, or parallel lists `--cn-values` with `--areas` or
+`--fractions`. The result is fractional and `scs effective`, `tc nrcs` and `hydrograph generate`
+accept it.
+
+```bash
+hydrolog cn lookup --hsg B --land-cover forest --condition good --json
+```
+
+```json output
+{"result": {"schema": "hydrolog-cn-lookup/1", "cn": 55, "hsg": "B", "land_cover": "forest", "condition": "good", "condition_applied": "good"}}
+```
+
+```bash
+hydrolog cn weighted --cn-values 55,79,98 --fractions 0.6,0.3,0.1 --json
+```
+
+```json output
+{"result": {"schema": "hydrolog-cn-weighted/1", "cn": 66.50000000000001, "n_parts": 3, "shares": [0.6, 0.3, 0.1]}}
+```
+
+```python
+import hydrolog
+
+cn = hydrolog.run_command("cn lookup", hsg="B", land_cover="forest", condition="good").result.cn
+parts = [{"cn": 55, "area": 27.2}, {"cn": 69, "area": 13.6}]
+print(cn, round(hydrolog.run_command("cn weighted", parts=parts).result.cn, 1))
+```
+
+### Effective precipitation and design hyetograph
+
+`scs effective` turns a total (`--precipitation-mm`) or a hyetograph (`--values`, or a file with
+`--input-file` and `--value-column`) into effective precipitation by the SCS-CN method; `--amc`
+selects the antecedent moisture condition (I, II, III; default II) and `--ia-coefficient` the
+initial abstraction ratio (default 0.2).
+
+`precip hietogram` builds a design rainfall of a total, duration and step; types are `block`,
+`triangular`, `beta` and `euler_ii`. Parameters of another type are rejected (`--alpha` and
+`--beta` belong to `beta`, `--peak-position` to `triangular` and `euler_ii`). A duration that is
+not a multiple of the step adds a notice about the uncovered tail. Depths and intensities are
+`result.depths_mm` and `result.intensities_mm_per_h`. `precip areal` computes areal precipitation
+from gauges (arithmetic mean, Thiessen, IDW, isohyets).
+
+```bash
+hydrolog scs effective --cn 72 --precipitation-mm 50 --amc III --json
+```
+
+```bash
+hydrolog precip hietogram --hietogram-type beta --total-mm 50 --duration-min 30 --timestep-min 10 --json
+```
+
+```json output
+{"result": {"schema": "hydrolog-precip-hietogram/1", "hietogram_type": "beta", "n_steps": 3, "times_min": [10.0, 20.0, 30.0], "parameters": {"alpha": 2.0, "beta": 5.0}}}
+```
+
+`precip pmaxtp` fetches the PMAXTP design depth of IMGW-PIB for a point in Poland (`--latitude`,
+`--longitude`, WGS84 decimal degrees), one of the atlas's durations (`--duration-min`, 5 to 4320)
+and probabilities of exceedance (`--probability-percent`, 0.01 to 99.9; the option descriptions
+list the allowed values) and `--method` `POT` (the default) or `AMP`. It is the only command that
+uses the network: Obserwator (extra `pmaxtp`) asks IMGW-PIB for the table of the point
+([ADR-0018](decisions/0018-pmaxtp-through-obserwator.md)). Pass `result.depth_mm` as `--total-mm`
+of `precip hietogram` or `hydrograph generate` with the envelope's `attribution` and `terms_notice`
+as `--attribution '[...]'`: every product of the depth carries PMAXTP's lines ([ADR-0028](decisions/0028-the-providers-lines-in-every-product.md);
+`result.attribution` is the source line, notice `pmaxtp_attribution`). A duration or probability the atlas lacks is
+a `validation_error` before anything is sent, a point outside the atlas one with `details.reason`
+`outside_pmaxtp`, and IMGW-PIB unreachable `source_unavailable` (exit 5). IMGW-PIB may update the
+atlas, so the same call can give another depth later.
+
+```bash
+hydrolog precip pmaxtp --latitude 52.23 --longitude 21.01 --duration-min 60 --probability-percent 1 --json
+```
+
+```json output
+{"result": {"schema": "hydrolog-precip-pmaxtp/1", "depth_mm": 39.16, "method": "POT", "duration_min": 60.0, "probability_percent": 1.0}}
+```
+
+### Unit hydrograph and runoff hydrograph
+
+`uh scs`, `uh nash`, `uh clark` and `uh snyder` return the ordinates (`ordinates_m3s_per_mm` at
+`times_min`) with `time_to_peak_min` and `peak_discharge_m3s_per_mm`. Nash takes `--n` and
+`--k-min`, the Lutz method (`--lutz-...`) or the urban regression (`--urban-...`); Clark takes
+`--r-min` or `--r-tc-ratio`.
+
+```bash
+hydrolog uh scs --area-km2 45.3 --tc-min 90 --timestep-min 5 --json
+```
+
+```json output
+{"result": {"schema": "hydrolog-uh-scs/1", "model": "scs", "time_to_peak_min": 56.5, "peak_discharge_m3s_per_mm": 10.006088495575222}}
+```
+
+`hydrograph generate` chains design rainfall, SCS-CN, a unit hydrograph and convolution. The
+watershed comes from `--watershed-file`, `--watershed` (JSON) or `--area-km2` with `--cn`. Without
+`--tc-min` the time of concentration is computed by `--tc-method` (default `kirpich`);
+`--uh-model` selects `scs` (default), `nash`, `clark` or `snyder` with their own parameters
+(`--nash-n`, `--nash-k-min`, `--clark-r-tc-ratio`, `--snyder-length-km`...). Measured rainfall
+(`--values`, `--input-file`) replaces the design rainfall.
+
+```bash
+hydrolog hydrograph generate --watershed-file tests/fixtures/watershed_example.json --tc-method kirpich --hietogram-type beta --total-mm 50 --duration-min 60 --json
+```
+
+```json output
+{"result": {"schema": "hydrolog-hydrograph-generate/1", "peak_discharge_m3s": 47.02725674740998, "time_to_peak_min": 110.0, "total_volume_m3": 321254.9494884561, "runoff_coefficient": 0.1417936234546637, "cn": 72.0, "tc_method": "kirpich", "uh_model": "scs"}}
+```
+
+```python
+import hydrolog
+
+result = hydrolog.run_command(
+    "hydrograph generate",
+    watershed_file="tests/fixtures/watershed_example.json",
+    tc_method="kirpich",
+    hietogram_type="beta",
+    total_mm=50,
+    duration_min=60,
+).result
+print(f"Qmax {result.peak_discharge_m3s:.1f} m3/s at {result.time_to_peak_min:.0f} min")
+```
+
+Nash's n and K can come from the watershed instead (`--nash-estimation lutz`,
+[ADR-0024](decisions/0024-nash-by-lutz-from-the-watershed.md)): the Lutz method (Lutz 1984, after
+KZGW 2017) reads the main stream from the divide, that is the longest flow path
+(`flow_path_length_km` and `flow_path_slope_m_per_m`, as Kirpich does), with `Lc_km`, `manning_n`,
+`urban_pct` and `forest_pct` (0 when missing). One run gives what `uh nash` with those inputs
+followed by `hydrograph generate` with its n and K gives; the result says `nash_estimation` and
+`uh_parameters` holds the estimate, which is not checked against the ranges of given n and K (a
+watershed above Lutz's 236 km2 gives `outside_typical_range`). A missing field is `missing_field`
+with `details.method` `lutz`; `nash_n` or `nash_k_min` beside it is `conflict`; another model or a
+run without a watershed (`--area-km2` with `--cn`) is `not_applicable`. `report generate` takes the
+same option and shows the steps of the estimation.
+
+```bash
+hydrolog hydrograph generate --watershed-file tests/fixtures/kamiennik.json --uh-model nash --nash-estimation lutz --hietogram-type beta --total-mm 101.82 --duration-min 720 --timestep-min 10 --json
+```
+
+```json output
+{"result": {"schema": "hydrolog-hydrograph-generate/1", "peak_discharge_m3s": 35.02598914549678, "time_to_peak_min": 550.0, "uh_model": "nash", "nash_estimation": "lutz", "uh_parameters": {"n": 3.609988774159906, "k_min": 92.13086997441953}}}
+```
+
+### Flood routing
+
+The `route` commands send a discharge hydrograph through one element and return the outflow
+hydrograph; they are lumped hydrologic methods, so they give discharge only (water levels and
+inundation are hydraulics: Hydraulik, HEC-RAS). `route lag` shifts the hydrograph by `--lag-min`
+without attenuating it; a lag that is not a whole number of time steps is interpolated linearly
+(notice `lag_interpolated`).
+
+- **The hydrograph** is given inline (`--times-min`, `--discharge-m3s`) or from a CSV or JSON file
+  (`--input-file`, with `--time-column` and `--value-column`, by default `time_min` and
+  `discharge_m3s`). Times are minutes, discharges m3/s and not negative, and the time step is
+  regular: an irregular table is an error (`details.reason` `irregular_step`), nothing is
+  resampled.
+- **The start** of the outflow is the first inflow ordinate (a steady state) unless
+  `--initial-outflow-m3s` is given.
+- **The tail**: the outflow outlasts the inflow, so the time axis is extended after the last inflow
+  ordinate, where the inflow is held, until the outflow has settled (notice `tail_extended`);
+  `--extend-min` sets the extension instead, `0` adds nothing.
+- **The result** has the parameters used, the peaks, the volumes, the storage at both ends and
+  `balance_error_m3` (inflow volume - outflow volume - change of storage, zero to rounding), and the
+  series `times_min` and `outflow_m3s`. With `--output` the series goes to a CSV file with the
+  columns `time_min` and `discharge_m3s` instead (`outflow_m3s` is then `null`), which is a valid
+  `--input-file` of every `route` command: the outflow of one reach is the inflow of the next, or
+  of a hydraulic model. Without `--output` there is no file to plan, so `--check` computes as usual.
+
+```bash
+hydrolog route lag --lag-min 30 --input-file tests/fixtures/flood_inflow.csv --output outflow.csv --json
+```
+
+```json output
+{"result": {"schema": "hydrolog-route-lag/1", "model": "lag", "parameters": {"lag_min": 30.0, "lag_steps": 3.0}, "extension_min": 10.0, "outflow_peak_m3s": 40.0, "outflow_time_to_peak_min": 90.0, "peak_delay_min": 30.0, "outflow_m3s": null, "files": [{"path": "...", "status": "written"}]}}
+```
+
+`route muskingum` is the Muskingum method (the University of Iowa example below: `K` = 20 h,
+`X` = 0.25, steps of 12 h, so `--k-min 1200` and times in minutes). The reach stores
+`K [X I + (1 - X) O]`: `--k-min` is the travel time `K` and `--x` the weight, from 0 (a linear
+reservoir, the most attenuation) to 0.5 (none). The reach is divided into `--subreaches` equal
+sub-reaches of `K/N`, and more of them attenuate less; without `--subreaches` the number is `K`
+over the time step, rounded. The weights of a sub-reach stay non-negative only while
+`|2KX| <= step <= 2K(1 - X)`: a `--subreaches` outside that window is an error
+(`details.reason` `unstable_timestep`, the window in `details.minimum` and `details.maximum`,
+and the steps on which the given number fits, `2KX / N` to `2K(1 - X) / N`, in
+`details.minimum_timestep_min` and `details.maximum_timestep_min`), and when no whole number of
+sub-reaches is inside it the time step is divided into sub-steps (notice `substeps_added`;
+`balance_error_m3` is then the sampling error of the trapezoid rule).
+
+```bash
+hydrolog route muskingum --k-min 1200 --x 0.25 --subreaches 1 --extend-min 0 \
+  --times-min 720,1440,2160,2880,3600,4320,5040,5760,6480,7200 \
+  --discharge-m3s 100,300,680,500,400,310,230,180,100,50 --json
+```
+
+```json output
+{"result": {"schema": "hydrolog-route-muskingum/1", "model": "muskingum", "parameters": {"k_min": 1200.0, "x": 0.25, "subreaches": 1, "substeps": 1, "c_current": 0.047619047619047616, "c_previous": 0.5238095238095238, "c_outflow": 0.42857142857142855}, "outflow_peak_m3s": 487.24142718311816, "outflow_time_to_peak_min": 3600.0, "peak_delay_min": 1440.0, "outflow_m3s": [100.0, 109.52380952380952, 236.46258503401359, 481.3411078717201, 487.24142718311816, 433.10346879276494, 358.9491056730898, 282.8829500503718, 220.28316906920696, 149.16897722013633]}}
+```
+
+The published outflow of the example is 100.0, 109.5, 236.5, 481.3, 487.2, 433.1, 358.9, 282.9,
+220.3 and 149.2 cfs: the largest difference from the printed table is 0.049 cfs, inside its
+rounding (see COMPUTATION_PATHS 3.9.3).
+
+`route muskingum-cunge` takes the Muskingum parameters from the reach itself (the NRCS form of
+NEH-630 chapter 17): `K = dx / c` and `X = (1 - Q / (T S0 c dx)) / 2` for a distance step `dx`,
+with the flood-wave celerity `c`, the top width `T`, the slope `S0` (`--slope-m-per-m`) and a
+reference discharge `Q` (the inflow peak, or `--reference-discharge-m3s`); `X` may be negative.
+`--length-km` is divided into equal steps, each a Muskingum sub-reach. Give the hydraulics as one
+of two groups: a channel section (`--manning-n` with `--bottom-width-m` and `--side-slope-m-per-m`,
+0 for a rectangle), from which Manning's equation gives `c` and `T` at `Q`, or the wave itself
+(`--celerity-m-per-s` with `--top-width-m`, for example from a hydraulic model); both groups or
+neither is an error (`details.reason` `one_of`). The steps are those of NRCS,
+`dx_c = (c dt + Q / (T S0 c)) / 2`, changed so that every weight stays non-negative (notice
+`subreaches_adjusted`; `substeps_added` when the time step has to be divided). A hydrograph that
+rises from 5 % of its peak to the peak in fewer than 10 steps is interpolated to a shorter step
+(`timestep_refined`). Every step inside the non-negative window meets the accuracy limit of
+NEH-630, so `accuracy_limit` only reports that the NRCS step was beyond it and was replaced. A
+reach for which no division of the reach or of the step gives non-negative weights (typically
+its diffusion length `D = Q / (T S0 c)` is long against `c dt`: a flat, short or narrow reach)
+is routed as `n = L / D` (rounded, at least 1) linear reservoirs of `K = L / (n c)`, which keep
+the travel time `L / c` of the diffusion wave and nearly its spread, with the warning
+`diffusion_dominated`; its `parameters` have `scheme` `linear_reservoir`, `n`, `k_min` (one
+reservoir), `lag_min` and `diffusion_length_m`, and its attenuation is approximate (ADR-0026).
+Only a grid that would give more than a million ordinates is refused (`unstable_timestep`).
+
+The example is NEH-630 example 17-4 in SI: `L` = 2,600 ft, `S0` = 0.00091, and `c` = 4.297 ft/s and
+`T` = 44.6 ft as printed in the text; the inflow is the 37 ordinates of Table 17-18 in m3/s
+(`tests/fixtures/neh17_4_inflow.csv`, one ordinate per 6 minutes).
+
+```bash
+hydrolog route muskingum-cunge --length-km 0.79248 --slope-m-per-m 0.00091 \
+  --celerity-m-per-s 1.3097256 --top-width-m 13.59408 \
+  --input-file tests/fixtures/neh17_4_inflow.csv --extend-min 0 --json
+```
+
+```json output
+{"result": {"schema": "hydrolog-route-muskingum-cunge/1", "model": "muskingum-cunge", "parameters": {"k_min": 10.084555115972385, "x": -0.25444124673728363, "subreaches": 1, "substeps": 1, "c_current": 0.3556393224656159, "c_previous": 0.027735454184956914, "c_outflow": 0.6166252233494272}, "outflow_peak_m3s": 18.286546121803077, "outflow_time_to_peak_min": 786.0, "peak_delay_min": 12.0, "outflow_m3s": [0.0, 0.007452066362944516, 0.01655604783271178, 0.02751124432336292, "..."]}}
+```
+
+The reach has one step (`K` = 605 s, `X` = -0.254, the weights 0.0277, 0.3556 and 0.6166 against
+the printed 0.028, 0.355 and 0.617). The outflow peaks at 645.78 ft3/s (18.2865 m3/s) at 13.1 h, the
+published 645.72 ft3/s, and the largest difference from Table 17-18 is 0.24 ft3/s, 0.04 % of the
+peak; the three-decimal coefficients printed in the text give the table to 0.0049 ft3/s, so the
+difference is their rounding (see COMPUTATION_PATHS 3.9.4). The notice `tail_truncated` is correct
+here: the published table ends in the recession and `--extend-min 0` keeps its axis.
+
+`route cascade` sends the hydrograph through `--n` equal linear reservoirs in series, each with the
+storage `S = K O` (the Nash model of `uh nash`; with `n` equal to the reach length over
+`Q / (T S0 c)` it is the Kalinin-Milyukov method). `--n` need not be whole: 1 is one reservoir (the
+most attenuation) and a large `n` only delays the wave by `n K`. Give the time scale as one of two
+groups: the storage constant of one reservoir (`--k-min`), or the length and the celerity of the
+reach (`--length-km` with `--celerity-m-per-s`), whose travel time `L / c` is the delay `n K`; both
+groups or neither is an error (`details.reason` `one_of`). The outflow is the exact response of the
+cascade to the inflow taken as straight lines between the ordinates, so there is no window of
+stable steps as in Muskingum: nothing is divided or refused, and a time step longer than `K` is
+routed as it is. Between the ordinates the outflow is a curve, so `balance_error_m3` is only the
+quadrature error of the trapezoid rule (9.7 m3 of 712,500 m3 here). The example is 18 km at 1.5
+m/s, a travel time of 200 min shared by 2.5 reservoirs of 80 min, with a time step of 60 min.
+
+```bash
+hydrolog route cascade --n 2.5 --length-km 18 --celerity-m-per-s 1.5 \
+  --times-min 0,60,120,180,240,300,360 --discharge-m3s 5,20,60,35,15,8,5 --json
+```
+
+```json output
+{"result": {"schema": "hydrolog-route-cascade/1", "model": "cascade", "parameters": {"n": 2.5, "k_min": 80.0, "lag_min": 200.0, "timestep_over_k": 0.75, "length_km": 18.0, "celerity_m_per_s": 1.5}, "extension_min": 660.0, "outflow_peak_m3s": 26.544046088994683, "outflow_time_to_peak_min": 300.0, "peak_delay_min": 180.0, "outflow_m3s": [5.0, 5.419435772176586, 8.94959612609301, 18.041114804691578, 25.403667771343876, 26.544046088994683, "..."]}}
+```
+
+`route level-pool` sends the hydrograph through a reservoir, a pond or a reach that is given by a
+storage-outflow table, by storage indication (the modified Puls method of NEH-630 chapter 17):
+each row of the table is a state of the pool, the storage `S` [m3] it holds while it releases the
+outflow `O` [m3/s], both not decreasing from the empty state. Give the table inline
+(`--storage-m3` with `--outflow-m3s`, and `--stage-m` for the water level of each row) or as a CSV
+or JSON `--rating-file` with the columns `storage_m3`, `outflow_m3s` and, if the table has one,
+`stage_m` (the file brings its own stage, so `--stage-m` next to it is an error); neither source or
+both is an error (`details.reason` `one_of`), and so is a table that decreases or repeats a row (a
+file names the row and the column). The table has to cover the flood: one that fills the reservoir
+beyond the last row (`table_exceeded`) or empties it below the first (`table_emptied`) is a
+`calculation_error`, never an extrapolation. The pool starts at rest with the first inflow
+ordinate, or with `--initial-outflow-m3s`, which must lie inside the table. The time step must not
+exceed twice the shortest `K = dS/dO` of the table between the lowest and the highest flow of the
+run, divided by `--subreaches`; a longer step is divided (notice `timestep_refined`) and one that
+would need more than 100 parts is refused (`unstable_timestep`). `--subreaches N` routes through
+`N` pools in series, each holding `S / N`, for a channel reach whose travel time is about `N`
+steps; the default 1 is a pond. The result gives the peak storage and its time and, with a stage,
+the peak stage.
+
+The example is NEH-630 example 17-1 in SI: the channel reach of Table 17-4
+(`tests/fixtures/neh17_1_rating.csv`) with the 19 ordinates at 30 min of the inflow of Table 17-7
+(`tests/fixtures/neh17_1_inflow.csv`).
+
+```bash
+hydrolog route level-pool --rating-file tests/fixtures/neh17_1_rating.csv \
+  --input-file tests/fixtures/neh17_1_inflow.csv --extend-min 0 --json
+```
+
+```json output
+{"result": {"schema": "hydrolog-route-level-pool/1", "model": "level-pool", "parameters": {"subreaches": 1, "substeps": 1, "timestep_limit_min": 78.11998862867867, "storage_peak_m3": 364057.24683300115, "storage_peak_time_min": 180.0}, "outflow_peak_m3s": 108.34456539046381, "outflow_time_to_peak_min": 180.0, "peak_delay_min": 60.0, "outflow_m3s": [0.0, 8.224364051456476, 28.76328459115899, 53.43626436816038, 81.58471391462896, 102.50593786102928, "..."]}}
+```
+
+The outflow peaks at 3,826 ft3/s (108.34 m3/s) at 3 h, the published 3,827 ft3/s, and the largest
+difference from Table 17-7 is 0.85 ft3/s, 0.02 % of the peak; the table prints each average inflow
+rounded up from .5, and with the ordinates that give the printed averages all 19 values agree to
+0.49 ft3/s (see COMPUTATION_PATHS 3.9.6). The limit of the step is 78.12 min, so the published
+step of 30 min is not divided. The notice `tail_truncated` is correct here: the published table
+ends in the recession and `--extend-min 0` keeps its axis.
+
+`route network` routes the hydrographs of many subcatchments down a river network. The network is a
+JSON document `hydrolog-network/1`, inline (`--network`, JSON text) or in a file
+(`--network-file`): `nodes` of five types linked by `from`, the ids of the nodes that flow into a
+node. A `subcatchment` brings a hydrograph, inline (`times_min` with `discharge_m3s`) or as a column
+of `--inflows-file` (a time column, `--time-column`, by default `time_min`, and a column per
+subcatchment named by its `value_column` or else by its `id`). A `reach` has a `method` (`lag`,
+`muskingum`, `muskingum-cunge`, `cascade` or `level-pool`) and the options of `route <method>` that
+describe the element (`lag_min`; `k_min`, `x`, `subreaches`; `length_km` and `slope_m_per_m` with a
+section or a celerity; `n` with `k_min`; a table), next to `initial_outflow_m3s` and `extend_min`; a
+`reservoir` has the options of `route level-pool`, a table inline or a `rating_file` that lies beside
+the network file (a path that leads out of its directory is `path_outside`, and an inline network
+cannot name files); a `junction` adds the hydrographs that flow into it; the `outlet` is the end.
+There is one outlet, every node leads to it and a node flows into one node: a bifurcation is
+refused. The order of the nodes in the document changes nothing. A document that is wrong is a
+`data_error` (a file) or a `validation_error` (inline) with the node and the field in `details`.
+All sources have one time step and one first time; nothing is resampled. `schema` is required. An
+id names the file `<id>.csv`, so it must not be a Windows device name (`con`, `prn`, `aux`, `nul`,
+`com1` to `com9`, `lpt1` to `lpt9`, any case, any extension): `validation_error`, `details.reason`
+`reserved_name`.
+
+Every node, of any type, may also have a `description` and a `position`, and the document a
+`description` of its own at its top, after `name`
+([ADR-0023](decisions/0023-positions-and-descriptions-in-the-network.md)). A description is plain text
+for people, never read as HTML or Markdown: 1 to 500 characters, not blank, with no control
+character but the line feed `\n` (`details.reason` `type`, `empty`, `too_long`,
+`control_character`). A position is the cell of the node in the grid of the schematic,
+`{"x": ..., "y": ...}` with whole numbers from −1000 to 1000 and no other key: `x` grows downstream
+and `y` sideways (`type`, `unknown_field`, `missing_field`, `minimum`, `maximum`, with
+`details.field` `position.x` or `position.y`). Neither changes a computation: the result and the
+tables are the same with and without them. The document stays `hydrolog-network/1` and the reader
+stays strict (a misspelt field is `unknown_field`); a Hydrolog from before these fields refuses a
+document that has them. The GUI's editor of the network writes both: the cell each node is placed
+on and the description typed in „Opis” ([section 8](#building-a-network-in-sieć)). A node with both:
+
+```json
+{"id": "ZB1", "type": "reservoir", "from": ["R1"],
+ "storage_m3": [0, 50000, 120000], "outflow_m3s": [0, 2.5, 8.0],
+ "description": "Suchy zbiornik powyżej Świerzawy", "position": {"x": 2, "y": 0}}
+```
+
+`--output-dir DIR` (`-o`) writes the hydrograph that leaves each node as `<id>.csv`, a table that
+every `route` command reads again and the hand-off to Hydraulik; `--nodes` selects the nodes
+(default all). Without a directory the hydrographs of the selected nodes are in the result; when
+that is more than 20,000 characters (one page, DOC-1.7) the notice `large_result` suggests `--nodes`
+or `--output-dir`. The files
+follow the rules of section 3 and are never written over an input file. The example is the fixture
+network: two subcatchments (`A` by its id, `B` by its `value_column`), a Muskingum-Cunge reach below
+`A`, a junction, a pond with a rating file and the outlet; the series of the outlet only:
+
+```bash
+hydrolog route network --network-file tests/fixtures/network_flood.json \
+  --inflows-file tests/fixtures/network_inflows.csv --nodes OUT --json
+```
+
+```json output
+{"result": {"schema": "hydrolog-route-network/1", "name": "Pond catchment", "timestep_min": 10.0, "outlet": "OUT", "order": ["A", "B", "R1", "J1", "D", "OUT"], "nodes": [{"id": "A", "type": "subcatchment", "from": [], "peak_m3s": 24.0, "time_to_peak_min": 60.0, "volume_m3": 143706.0}, {"id": "B", "type": "subcatchment", "from": [], "peak_m3s": 6.8, "time_to_peak_min": 40.0, "volume_m3": 53169.0}, {"id": "R1", "type": "reach", "from": ["A"], "peak_m3s": 22.23188918773083, "time_to_peak_min": 120.0, "model": "muskingum-cunge", "peak_attenuation_pct": 7.36712838445488, "peak_delay_min": 60.0}, {"id": "J1", "type": "junction", "from": ["R1", "B"], "peak_m3s": 25.47188918773083, "time_to_peak_min": 120.0}, {"id": "D", "type": "reservoir", "from": ["J1"], "peak_m3s": 13.863880195745784, "time_to_peak_min": 170.0, "model": "level-pool", "peak_attenuation_pct": 45.57184159538639, "peak_delay_min": 50.0}, {"id": "OUT", "type": "outlet", "from": ["D"], "peak_m3s": 13.863880195745784, "time_to_peak_min": 170.0, "times_min": [0.0, 10.0, 20.0, "..."], "discharge_m3s": [2.0, 2.101548946146755, 2.3546878578993646, "..."]}]}}
+```
+
+The outlet peaks at 13.86 m3/s at 170 min: the Muskingum-Cunge reach lowers the peak of `A` by 7.4 %
+and delays it by an hour, the junction adds `B`, and the pond lowers it by a further 45.6 % and
+delays it by 50 min.
+
+In Python the classes of `hydrolog.routing` do the same on arrays; `route` returns the outflow
+with the notices, the storage at both ends and the balance.
+
+```python
+from hydrolog.routing import Hydrograph, LagReach
+
+inflow = Hydrograph.from_step([0, 10, 40, 20, 0], timestep_min=30)
+result = LagReach(lag_min=60).route(inflow)
+print(result.outflow.time_to_peak_min, result.balance_error_m3)
+```
+
+#### Networks of objects, rainfall per subcatchment, control points
+
+In Python a network is also objects ([ADR-0012](decisions/0012-network-objects-rainfall-and-runoff.md)). The
+nodes (`Subcatchment`, `Channel` for any `Reach`, `Reservoir`, `Junction`, `Outlet`) link by reference, each
+holding the nodes that flow into it, and `RoutingNetwork(outlet)` is the network that ends there. The document
+`hydrolog-network/1` is the same graph written with ids: `RoutingNetwork.from_document` reads it and
+`to_document()` writes it, and a network read from what was written routes to the last ordinate as the first did.
+A `Subcatchment` is given its hydrograph or **makes it** from a `WatershedParameters`, a runoff model
+(`CurveNumberRunoff`, which is `HydrographGenerator` with the options of `hydrograph generate`) and **its own
+rainfall**: a `DesignStorm` (a depth over a duration in the shape of a hietogram) or a `RainfallSeries` (a record,
+never resampled). The rain belongs to the subcatchment, so two of them can take it from different sources;
+`RoutingNetwork(rainfall=...)` is only a default for those that have none, and a subcatchment that has no rain at
+all is refused (`missing_field`). The network has one time step: `timestep_min=`, else that of the given
+hydrographs and records (they must agree), else 5 min. Every part has `describe()`, and the result has, for each
+node, the peak, the time to peak, the volume, the values that the calculation used (`given`, `computed` or
+`default`, with their units) and its notices:
+
+```python
+from hydrolog.morphometry import WatershedParameters
+from hydrolog.precipitation import BlockHietogram, EulerIIHietogram
+from hydrolog.routing import (
+    Channel,
+    CurveNumberRunoff,
+    DesignStorm,
+    Junction,
+    LagReach,
+    MuskingumReach,
+    Outlet,
+    RainfallSeries,
+    RoutingNetwork,
+    Subcatchment,
+)
+
+upper = WatershedParameters(
+    area_km2=12.0, perimeter_km=18.0, length_km=6.0,
+    elevation_min_m=210.0, elevation_max_m=330.0, cn=75,
+    flow_path_length_km=6.0, flow_path_slope_m_per_m=0.02,   # Kirpich's inputs
+)
+lower = WatershedParameters(
+    area_km2=5.0, perimeter_km=11.0, length_km=3.5,
+    elevation_min_m=210.0, elevation_max_m=290.0, cn=70,
+    flow_path_length_km=3.5, flow_path_slope_m_per_m=0.0229,
+)
+model = CurveNumberRunoff(tc_method="kirpich")   # the options of hydrograph generate
+
+a = Subcatchment("A", watershed=upper, runoff=model,
+                 rainfall=DesignStorm(45.0, 60.0, EulerIIHietogram()))
+b = Subcatchment("B", watershed=lower, runoff=model,
+                 rainfall=RainfallSeries([0.0, 2.0, 5.0, 10.0, 12.0, 6.0, 3.0], timestep_min=5.0))
+c = Subcatchment("C", watershed=lower, runoff=model)   # no rain of its own: the network's
+
+j1 = Junction("J1", inflows=[Channel("R_A", LagReach(lag_min=25.0), inflow=a), b])
+j2 = Junction("J2", inflows=[Channel("R_J1", MuskingumReach(k_min=40.0, x=0.2), inflow=j1), c])
+network = RoutingNetwork(
+    Outlet("OUT", inflow=j2), rainfall=DesignStorm(30.0, 60.0, BlockHietogram())
+)
+
+result = network.route()
+print(network.order)       # ('A', 'B', 'C', 'R_A', 'J1', 'R_J1', 'J2', 'OUT')
+print({node: round(h.peak_discharge_m3s, 2) for node, h in result.hydrographs.items()})
+# {'A': 20.11, 'B': 4.36, 'C': 1.19, 'R_A': 20.11, 'J1': 20.43, 'R_J1': 18.85, 'J2': 18.89, 'OUT': 18.89}
+print({node: rain.total_mm for node, rain in result.rainfall.items()})   # A 45, B 38, C 30 (the default)
+tc = next(p for p in result.nodes["A"].parameters if p.name == "tc_min")
+print(tc.name, round(tc.value, 1), tc.unit, tc.source)                   # tc_min 71.3 min computed
+
+document = network.to_document()           # hydrolog-network/1, JSON-native
+again = RoutingNetwork.from_document(document).route()
+print(again.hydrographs["OUT"].peak_discharge_m3s == result.hydrographs["OUT"].peak_discharge_m3s)   # True
+
+schematic = network.schematic(result)      # hydrolog-network-schematic/1: the picture, JSON-native
+print([(node["id"], node["x"], node["y"]) for node in schematic["nodes"]])
+# [('A', 0, 1), ('B', 1, 0), ('C', 3, 2), ('R_A', 1, 1), ('J1', 2, 1), ('R_J1', 3, 1), ('J2', 4, 1), ('OUT', 5, 1)]
+from pathlib import Path
+from hydrolog.routing.schematic import schematic_svg
+Path("network.svg").write_text(schematic_svg(schematic), encoding="utf-8")   # the drawing below
+```
+
+**Nash's n and K from the watershed.** `CurveNumberRunoff(uh_model="nash", nash_estimation="lutz")`
+estimates them for the watershed of each subcatchment by Lutz, as `hydrograph generate --nash-estimation lutz` does
+([ADR-0024](decisions/0024-nash-by-lutz-from-the-watershed.md)): the watershed needs the longest flow path,
+`Lc_km` and `manning_n`, or the subcatchment is refused (`missing_field`, `details.method` `lutz`). The document
+says `"nash_estimation": "lutz"` instead of `nash_n` and `nash_k_min`, and `describe()` lists the estimate as
+`computed`:
+
+```python
+from hydrolog.morphometry import WatershedParameters
+from hydrolog.precipitation import BetaHietogram
+from hydrolog.routing import CurveNumberRunoff
+
+kamiennik = WatershedParameters(
+    area_km2=37.22, cn=65, Lc_km=6.76, manning_n=0.035, urban_pct=1.0, forest_pct=57.4,
+    flow_path_length_km=15.88, flow_path_slope_m_per_m=0.0114,   # Lutz's L and J
+)
+model = CurveNumberRunoff(uh_model="nash", nash_estimation="lutz")
+print(model.to_document())   # {'model': 'curve-number', 'uh_model': 'nash', 'nash_estimation': 'lutz'}
+rain = BetaHietogram().generate(total_mm=101.82, duration_min=720.0, timestep_min=10.0)
+flood = model.hydrograph(rain, kamiennik, timestep_min=10.0)
+print(round(flood.peak_discharge_m3s, 2))   # 35.03 m3/s, as hydrograph generate --nash-estimation lutz
+estimate = {p.name: p.value for p in model.describe(kamiennik) if p.source == "computed"}
+print(round(estimate["nash_n"], 3), round(estimate["nash_k_min"], 2))   # 3.61 92.13: Lutz's n and K [min]
+```
+
+**The schematic.** `network.schematic(result)` draws the network like a metro map
+([ADR-0013](decisions/0013-network-schematic.md)): the main stem is a straight line (from the outlet up through the
+branch that drains the larger area, or has more nodes), the tributaries join it at 45 degrees on alternating sides,
+every segment runs at 0, 45 or 90 degrees, the nodes are on an integer grid one unit apart and no two edges cross. It
+returns the document `hydrolog-network-schematic/1`: per node its place, its label, the `parameters` of its calculation
+and, with a result, its peak, time to peak, volume and notices (the numbers of `NetworkResult`); the picture does not
+depend on the result. `schematic_svg(document)` draws it, and `main_stem=` names the nodes that the main river passes
+when it is not the larger branch. This is the picture of the example above (a diamond is a subcatchment, a ring a
+reach, a double ring a junction and a target the outlet; `Qp` is the peak in m3/s, `tp` the time to peak in min and
+`V` the volume in m3; a `!` marks a node with a warning, here Kirpich's formula on areas and slopes outside its data,
+which the tooltip of the node lists):
+
+![The schematic of the example network](images/network-schematic.svg)
+
+`A`, `R_A`, `J1`, `R_J1`, `J2` and `OUT` are the main stem, because `A` drains the largest area; `B` joins `J1` from
+above and `C` joins `J2` from below. The command line writes the same drawing and returns the document with `--json`:
+
+```bash
+hydrolog route network --network-file tests/fixtures/network_flood.json \
+  --inflows-file tests/fixtures/network_inflows.csv --schematic pond.svg --nodes OUT --json
+```
+
+`--schematic FILE` follows the rules of section 3 (`--check` plans it, an existing file is replaced only with
+`--force`); `--main-stem ID,...` declares the stem. An application that draws the document itself:
+[INTEGRATION.md](INTEGRATION.md).
+
+**Positions and descriptions.** A node keeps an optional `description` (`str`) and `position` (`Position(x, y)`,
+exported from `hydrolog.routing` with `MAX_DESCRIPTION_CHARS` = 500 and `MAX_POSITION` = 1000); like
+`with_inflows()`, `with_description(text)` and `with_position(Position(x, y))` or `with_position((x, y))` return a
+checked copy, and `None` removes the field. `RoutingNetwork(..., description=...)` keeps the network's own
+description. The document writes them after the fields of the node's kind, `description` then `position`, and a
+document without them is written byte for byte as before. When every node has a position and no two share a cell,
+`schematic()` draws the **given** layout: the nodes stay on their cells, moved together so that the smallest `x` and
+`y` are 0, the lines and labels are chosen as in the computed layout (`main_stem` too), and every edge follows
+**rule D**, from the positions of its two nodes alone (with `dx`, `dy` the steps from a node to the one it flows
+into): one straight segment when `dx` or `dy` is 0; for `dx > 0` a sideways leg to the row next to the lower node's,
+one 45 degree step onto its row and along that row into it; for `dx < 0` a 45 degree leg of `min(|dx|, |dy|)`, then
+straight into it. A given picture may cross itself. Rule D is how the computed layout joins its lines too, so storing
+the computed positions stores the computed picture exactly. The schematic's `layout` says which it is (`given` or
+`computed`), and a node's `description` is in its schematic and in the tooltip of its SVG symbol; the network's own
+description is in neither the schematic nor the result. Positions on some nodes only, or two nodes on one cell, give
+the computed layout and the warning `positions_ignored` (`details.reason` `partial` or `shared_cell`, `node_id`: the
+first node at fault), a Python warning of `schematic()` and a notice of `route network --schematic` and
+`route schematic`:
+
+```python
+import warnings
+from hydrolog.routing import Hydrograph, Junction, Outlet, Position, RoutingNetwork, Subcatchment
+
+flood = Hydrograph.from_step([0.0, 10.0, 40.0, 20.0, 0.0], timestep_min=30)
+upper = Subcatchment("A", flood).with_description("Górna zlewnia\nponad progiem")
+outlet = Outlet("OUT", inflow=Junction("J1", inflows=[upper, Subcatchment("B", flood)]))
+network = RoutingNetwork(outlet, description="Two headwaters")
+computed = network.schematic()
+
+document = network.to_document()          # description at the top, A's description after its fields
+cells = {node["id"]: {"x": node["x"], "y": node["y"]} for node in computed["nodes"]}
+for node in document["nodes"]:
+    node["position"] = cells[node["id"]]  # the computed cells, stored
+given = RoutingNetwork.from_document(document).schematic()
+print(given["layout"], given["edges"] == computed["edges"])   # given True
+
+placed_outlet = outlet.with_position(Position(4, 1))          # only the outlet has a cell
+with warnings.catch_warnings(record=True) as caught:
+    warnings.simplefilter("always")
+    print(RoutingNetwork(placed_outlet).schematic()["layout"])  # computed
+print(caught[0].message)   # Positions ignored at node 'A' (partial): the layout is computed
+```
+
+`hydrolog.testing.placed(node, description=..., position=(x, y))` adds both fields to a node of its builders, checked
+by the library, and `network_document(..., description=...)` gives the network its description.
+
+**The structure alone.** A draft whose nodes still miss their values is laid out by `structure_schematic(document)`
+([ADR-0025](decisions/0025-the-structure-alone-in-the-schematic.md)): of the document it reads only `schema`, `name`,
+`timestep_min`, each node's `id`, `type` and `from` and each headwater's `watershed.area_km2`, checks the structure
+with the reasons and details of `RoutingNetwork.from_document` (one shared check of the graph) and returns the
+computed layout, positions ignored, whatever the other fields hold. The areas weigh the branches only when every
+headwater has a positive one. The document is `hydrolog-network-schematic/1` with `structure_only` `true`, empty
+`parameters` and `timestep_min` only when the draft gives it; for a document that makes a network, its picture is
+the computed picture of that network. `main_stem=` works as in `schematic()`:
+
+```python
+from hydrolog.routing import structure_schematic
+
+draft = {"schema": "hydrolog-network/1", "nodes": [
+    {"id": "A", "type": "subcatchment", "watershed": {"area_km2": 12.0}},
+    {"id": "B", "type": "subcatchment"},                 # no area, no discharges yet
+    {"id": "R1", "type": "reach", "from": ["A"]},          # no method yet
+    {"id": "J1", "type": "junction", "from": ["R1", "B"]},
+    {"id": "OUT", "type": "outlet", "from": ["J1"]},
+]}
+drawn = structure_schematic(draft)
+print({node["id"]: (node["x"], node["y"]) for node in drawn["nodes"]})
+# {'A': (0, 1), 'B': (1, 0), 'R1': (1, 1), 'J1': (2, 1), 'OUT': (3, 1)}: A's branch has more nodes
+```
+
+On the command line (and as the MCP tool, with `network` inline) `route schematic --structure-only` does the same
+with `--network-file` and `--main-stem`; it reads no file the document names, so `--inflows-file` and
+`--time-column` with it are refused (`conflict`). The network of the command line above, whose subcatchments read
+their discharges from the inflows file, is laid out without that file (without the option `route schematic`
+refuses it, `missing_field`):
+
+```bash
+hydrolog route schematic --network-file tests/fixtures/network_flood.json --structure-only --json
+```
+
+A new kind of node, rainfall, runoff model, shape of a storm or reach method is a class that implements the
+protocol (`Node`, `RainfallSource`, `RunoffModel`, `Hietogram`, `Reach`) and an entry in a registry (`NODE_TYPES`,
+`RAINFALL_KINDS`, `RUNOFF_MODELS`, `HIETOGRAMS`, `REACH_METHODS`); nothing else lists them, and a document names
+them by the same names. A new node type carries `description` and `position` without code of its own: the base class
+reads them (`Node.read_entry` returns a `NodeEntry(upstream, arguments, description, position)` and `Node.build`
+takes it) and writes them after `document_fields()`, and the kind's `read_document()` must not take fields of those
+names.
+
+**Control points.** An application that lets its user pick points on the streams builds the network with
+`ControlPointNetwork`, outlet first. A point closes its *residual* area, the contributing area minus the areas of
+the points above it: the application computes it and gives it as a `Subcatchment`; Hydrolog does not compute or
+check areas and makes up no channel. Each edit is checked by building the network, and one that is refused
+(`InvalidParameterError`, `details.reason` `unknown_point`, `duplicate_node`, `no_inflow`, `outlet_removal`...)
+changes nothing, so the network routes after every step. `hydrographs[point]` of the result is the discharge at
+the point. The example is the workflow pick by pick: the outlet alone, two points on a stream, a tributary that
+joins it at a confluence, and the tributary taken away again.
+
+```python
+from hydrolog.morphometry import WatershedParameters
+from hydrolog.precipitation import EulerIIHietogram
+from hydrolog.routing import (
+    ControlPoint,
+    ControlPointNetwork,
+    CurveNumberRunoff,
+    DesignStorm,
+    LagReach,
+    MuskingumReach,
+    OutletPoint,
+    RainfallSeries,
+    Subcatchment,
+)
+
+storm = DesignStorm(45.0, 60.0, EulerIIHietogram())
+record = RainfallSeries([0.0, 2.0, 5.0, 10.0, 12.0, 6.0, 3.0], timestep_min=5.0)
+
+
+def residual(node_id, area_km2, rain):
+    """What the application computes: the area that drains to a point and to none above it."""
+    watershed = WatershedParameters(
+        area_km2=area_km2,
+        perimeter_km=4.5 * area_km2**0.5,
+        length_km=1.2 * area_km2**0.5,
+        elevation_min_m=210.0,
+        elevation_max_m=330.0,
+        cn=75,
+    )
+    return Subcatchment(
+        node_id, watershed=watershed, runoff=CurveNumberRunoff(tc_min=60.0), rainfall=rain
+    )
+
+
+def show(step, points):
+    result = points.route()
+    peaks = {p: round(result.hydrographs[p].peak_discharge_m3s, 2) for p in points.ids}
+    print(step, peaks)
+
+
+# 1. the outlet first: the whole catchment drains to it
+points = ControlPointNetwork(OutletPoint("OUT", residual("OUT_area", 30.0, storm)))
+show("outlet", points)                    # outlet {'OUT': 55.82}
+
+# 2. a point on the stream above it takes 18 km2 of the 30, and a second one 9 km2 of those
+points.add_point(
+    ControlPoint("P1", residual("P1_area", 18.0, storm)),
+    downstream="OUT",
+    channel=MuskingumReach(k_min=40.0, x=0.2),
+)
+points.update_subcatchment("OUT", residual("OUT_area", 12.0, storm))
+points.add_point(
+    ControlPoint("P2", residual("P2_area", 9.0, record)),     # a record, not a storm
+    downstream="P1",
+    channel=LagReach(lag_min=20.0),
+)
+points.update_subcatchment("P1", residual("P1_area", 9.0, storm))
+show("two points", points)                # two points {'OUT': 32.86, 'P1': 28.62, 'P2': 11.97}
+
+# 3. a tributary of 6 km2 joins the stream between P2 and P1, at a confluence
+points.add_confluence(
+    "C1",
+    on_channel_of="P2",
+    upstream_channel=LagReach(lag_min=10.0),
+    downstream_channel=LagReach(lag_min=10.0),
+)
+points.add_point(
+    ControlPoint("T", residual("T_area", 6.0, storm)),
+    downstream="C1",
+    channel=LagReach(lag_min=15.0),
+)
+points.update_subcatchment("P1", residual("P1_area", 3.0, storm))
+show("tributary", points)
+# tributary {'OUT': 28.54, 'P1': 25.88, 'P2': 11.97, 'C1': 21.05, 'T': 11.16}
+print(points.kind("C1"), points.upstream("C1"), points.downstream("C1"))   # confluence ('P2', 'T') P1
+
+# 4. the user drops the tributary: its area goes back to P1 and the confluence goes with it
+points.remove_point("T")
+points.update_subcatchment("P1", residual("P1_area", 9.0, storm))
+show("removed", points)                   # removed {'OUT': 32.86, 'P1': 28.62, 'P2': 11.97}
+print(points.ids, [channel.id for channel in points.channels("P2")])
+# ('OUT', 'P1', 'P2') ['P2_channel', 'C1_channel']: the two channels of the stream, in series
+
+network = points.network()                 # the RoutingNetwork of this state: immutable
+print(len(network.order), network.to_document()["nodes"][0]["id"])   # 10 OUT_area
+```
+
+A confluence splits the channel of a point into `upstream_channel` and `downstream_channel`, which the application
+gives; the stream below it is routed once for the water of both, which matters for a nonlinear reach (see
+COMPUTATION_PATHS 3.9.7). `add_point(..., upstream={id: channel})` puts a point between two others;
+`remove_point` keeps the points above the removed one, through the two channels in series or the `channel=` that
+replaces both. The state is `points.network()`, an immutable `RoutingNetwork`, and `points.network().to_document()`
+is its document.
+
+### Morphometry and river network
+
+`morphometry watershed` returns geometry, shape indicators, elevation and slope figures from a
+watershed JSON. `network stats` computes Strahler or Shreve order statistics from segments; a CSV
+file has the columns `segment_id`, `upstream_ids` (separated by `;`) and `length_km`.
+
+```bash
+hydrolog morphometry watershed --watershed-file tests/fixtures/watershed_example.json --json
+```
+
+```bash
+hydrolog network stats --segments-file tests/fixtures/network_segments.csv --method strahler --area-km2 4.5 --json
+```
+
+```json output
+{"result": {"schema": "hydrolog-network-stats/1", "method": "strahler", "n_segments": 9, "statistics": {"max_order": 3, "total_stream_length_km": 12.7}}}
+```
+
+### Flow statistics from a CSV file
+
+The `stats` commands read a daily series from CSV: `--input-file`, the discharge column
+(`--value-column`) and, where the date matters, `--date-column`. A column is named without its
+unit, so `Q` finds `Q [m3/s]`. The CSV that Obserwator writes loads without preprocessing
+([Exchange](#7-exchange-with-kartograf-obserwator-and-hydrograf)). Hydrological years run from
+November to October. A series shorter than the method needs adds a notice (reliable flood
+quantiles need at least 30 years).
+
+- `stats flood-frequency`: flood quantiles for return periods from annual maxima, each with the
+  fitted density there (`distributions[].quantiles` and `densities`; `--distribution all`
+  compares several distributions; `--fit-method` estimates their parameters by `l_moments`, the
+  default, `mle`, `moments` or `least_squares`, and `all` fits each distribution by each method,
+  every item naming its `fit_method`, ADR-0021); `stats low-flow`: low-flow quantiles from annual
+  minima; `stats low-flow-sequences`: drought sequences below a threshold.
+- `stats characteristic`: first- and second-degree characteristic values (WQ ... NQ of each year
+  and half-year, WWQ ... NNQ of the period); `stats daily` and `stats monthly`: day-of-year and
+  monthly statistics; `stats duration-curve`: the duration curve with the days of each class;
+  `stats runoff-volume`: annual and monthly runoff volumes.
+- `stats mann-kendall`: monotonic trend test with Sen's slope, Conover's intercept and Gilbert's
+  1 - alpha interval of the slope (per year with `--year-column` or inline `--years`, otherwise
+  per step); `stats homogeneity`: the homogeneity of annual maxima
+  by the Mann-Whitney U and two-sample Kolmogorov-Smirnov tests of the series split at
+  `--split-year` (default: into halves) and Pettitt's change-point test (ADR-0022). Annual maxima
+  take their years from `--year-column` (or inline `--years`), a daily series from its dates;
+  `split_year` and Pettitt's `change_point_year` are the first year of the second part.
+- The regime of a station (plan 2026-11-13, D11; `--first-year`, `--last-year` choose the
+  hydrological years): `stats regime`: Pardé's coefficients of the months (XI-X), Dynowska's
+  regime type (`regime_type.code` 1-5), the March-April share of the volume and the seasonality
+  index; `stats seasonality`: the mean date and the concentration of the annual maxima
+  (`--statistic min`: minima) of the complete years or of IMGW-PIB's `--half-year-file`;
+  `stats harmonics`: the mean, amplitudes and days of maximum of the annual cycle (water or air
+  temperature, flow) over the period and per year; `stats baseflow`: the Lyne-Hollick baseflow,
+  the baseflow index of the period and of each year and the recession constant. The water
+  temperature days at or above 15, 20, 25 °C and below 1 °C are `stats threshold-events` on the
+  `T` column.
+
+```bash
+hydrolog stats flood-frequency --input-file tests/fixtures/annual_maxima.csv --value-column Qmax --distribution gev --fit-method all --return-periods 10,100 --json
+```
+
+```json output
+{"result": {"schema": "hydrolog-stats-flood-frequency/1", "n_years": 35, "best_distribution": "gev", "fit_method": "all"}}
+```
+
+```bash
+hydrolog stats mann-kendall --input-file tests/fixtures/annual_maxima.csv --value-column Qmax --alpha 0.05 --json
+```
+
+```bash
+hydrolog stats homogeneity --input-file tests/fixtures/annual_maxima.csv --value-column Qmax --year-column year --split-year 2000 --json
+```
+
+```json output
+{"result": {"schema": "hydrolog-stats-homogeneity/1", "n_years": 35, "split_index": 11, "split_year": 2000, "mann_whitney": {"homogeneous": true}, "pettitt": {"change_point_year": 2020, "homogeneous": true}}}
+```
+
+```bash
+hydrolog stats regime --input-file tests/fixtures/station_daily.csv --value-column Q --date-column date --json
+```
+
+```json output
+{"result": {"schema": "hydrolog-stats-regime/1", "period_years": 5, "regime_type": {"code": 4, "criteria": {"spring_month": 3, "summer_month": 6}}}}
+```
+
+```bash
+hydrolog stats baseflow --input-file tests/fixtures/station_daily.csv --value-column Q --date-column date --json
+```
+
+```json output
+{"result": {"schema": "hydrolog-stats-baseflow/1", "n_values": 1811, "n_spans": 3, "series_year": 2023}}
+```
+
+```python
+import hydrolog
+
+envelope = hydrolog.run_command(
+    "stats characteristic",
+    input_file="tests/fixtures/obserwator_series_export.csv",
+    value_column="Q",
+    date_column="date",
+    parameter="Q",
+)
+print(envelope.to_dict()["result"]["wwx"], [n.code for n in envelope.notices])
+```
+
+`stats flood-frequency`, `stats low-flow` and `stats homogeneity` also read Obserwator's export
+of IMGW-PIB's half-year characteristics (`--half-year-file`, `pl.imgw.hydro_semiannual`; the
+columns of `--parameter` Q or H): the annual maximum is the larger of the winter and summer
+maxima of a year with both (the minimum the smaller of the minima), a year with one half-year
+only is named in `incomplete_years`, and `result.source` says where the values come from.
+`--first-year` and `--last-year` choose the hydrological years of a daily series or of the file.
+
+```bash
+hydrolog stats flood-frequency --half-year-file tests/fixtures/station_half_years.csv --first-year 2020 --last-year 2023 --json
+```
+
+### Many calls in one process: `commands batch`
+
+A station's analyses are tens of calls; `commands batch` runs them in one process (the imports
+once). Each line of `--input-file` is a call, `{"command": "<group> <verb>", "options": {...}}`;
+line i of `--output` is what `--json` prints for call i alone: its `hydrolog-result/1` envelope,
+or its `hydrolog-error/1` document. A failed call does not stop the others; relative paths are
+taken from the directory of the input file. A batch runs offline and writes only its output: a
+call of `precip pmaxtp` (the network), a call that gives an output option (`output`,
+`output_dir`, `schematic`, `inject`) and a call of `commands batch` or `gui serve` get a
+`validation_error` line (`not_in_batch`). The batch's own envelope counts the calls
+(`n_calls`, `n_ok`, `n_failed`, `failed`) and lists each line in `items`; with a failed call its
+`status` is `partial` (exit 10), with every call failed `failed` (exit 11). The calls of
+`tests/fixtures/station_batch.jsonl`, one per line:
+
+```text
+{"command": "stats characteristic", "options": {"input_file": "station_daily.csv", "value_column": "Q", "date_column": "date"}}
+{"command": "hydrolog_stats_threshold_events", "options": {"input_file": "station_daily.csv", "value_column": "H", "date_column": "date", "threshold": 180}}
+{"command": "stats flood-frequency", "options": {"half_year_file": "station_half_years.csv", "return_periods": [10, 100]}}
+{"command": "tc kirpich", "options": {"length_km": 8.2, "slope_m_per_m": 0.023}}
+```
+
+```bash
+hydrolog commands batch --input-file tests/fixtures/station_batch.jsonl --output results.jsonl --check --json
+```
+
+### Meteorological statistics from an Obserwator export
+
+The `meteo` commands read a station's daily export (`obserwator series export --dataset
+pl.imgw.meteo_climate_daily`, `pl.imgw.meteo_precip_daily` or `cz.chmi.meteo_daily`) as it is: the
+columns `date`, `P`, `P_flag`, `Tmax`, `Tmin`, `Tmean`, `snow_cover` and `fresh_snow` are found by
+their names (`--precipitation-column` and the like change them). `meteo precipitation` and
+`meteo temperature` take one `--index` per call; years are calendar years unless `--year-type
+hydrological`, and `--first-year`/`--last-year` choose the period (the whole record by default).
+Accumulated totals (`P_flag` `accumulated`) count in the monthly sums and are missing days for
+the daily statistics; months and years follow the missing-data rules of WMO-No. 1203.
+The normals of `meteo precipitation` (`--index sums`, `heavy`, `seasonality`), `meteo spi` and
+`meteo temperature --index means` are those of the period unless `--reference-first-year` and
+`--reference-last-year` choose another reference, such as the standard normal 1991-2020: the
+years of the period keep their own values, and only the baselines come from the reference (the
+normals with the percentages of normal and the anomalies, the percentiles of `heavy`, the gamma
+fits of the SPI). `meteo spells` lists every spell; `--min-duration-days` lists only the longer
+ones (the yearly and period summaries still count every spell), which keeps the result of a long
+record small.
+The export's attribution columns (`attribution_source`, `attribution_processed`) are not data:
+Hydrolog carries their lines into the envelope's `attribution` and `terms_notice` (ADR-0028); show
+them when you publish results. Values given inline take theirs with `--attribution '[...]'`.
+
+```bash
+hydrolog meteo precipitation --index sums --input-file tests/fixtures/meteo_daily.csv --first-year 2019 --last-year 2021 --json
+hydrolog meteo precipitation --index maxima --input-file tests/fixtures/meteo_daily.csv --durations-days 2,3,5,10
+hydrolog meteo precipitation --index sums --input-file tests/fixtures/meteo_daily.csv --first-year 2022 --last-year 2023 --reference-first-year 2019 --reference-last-year 2021
+hydrolog meteo spells --input-file tests/fixtures/meteo_daily.csv --kind dry --threshold-mm 1 --min-duration-days 10
+hydrolog meteo spi --input-file tests/fixtures/meteo_daily.csv --scales-months 1,3,6,12
+hydrolog meteo temperature --index days --input-file tests/fixtures/meteo_daily.csv
+hydrolog meteo snow --input-file tests/fixtures/meteo_daily.csv
+hydrolog meteo hydrothermal --input-file tests/fixtures/meteo_daily.csv
+```
+
+```python
+import hydrolog
+
+envelope = hydrolog.run_command(
+    "meteo precipitation", index="sums", input_file="tests/fixtures/meteo_daily.csv"
+)
+print(envelope.to_dict()["result"]["period"]["normal_mm"])   # 683.35
+```
+
+The quantiles of the annual maxima are `stats flood-frequency` on the values of `--index maxima`.
+
+### Rating curve
+
+`hydrometrics rating-curve` fits `Q = a * (H - H0)^b` to stage-discharge pairs from a file with
+level and discharge columns or from two parallel lists. `--h0-initial` sets the start value of
+`H0`, `--remove-outliers` drops pairs far from the fit. A fit that does not converge is a
+`calculation_error` (exit 13). `hydrometrics water-level-zones` delimits the Rybczynski water
+level zones from a level series.
+
+```bash
+hydrolog hydrometrics rating-curve --input-file tests/fixtures/rating_curve_pairs.csv --level-column H --discharge-column Q --h0-initial 40 --json
+```
+
+### Hydrologic soil groups
+
+`soil texture` classifies one sample (clay, sand and silt in one common unit) into a USDA texture
+class and a hydrologic soil group. `soil hsg` classifies three rasters (clay, sand, silt; GeoTIFF
+with the same coordinate system, grid and size) into one HSG raster, a `uint8` GeoTIFF where 0 is
+no data and 1-4 are A-D; `soil hsg-stats` reports the area and share of each group. Both raster
+commands need the `raster` extra. `soil hsg` writes a file, so it takes `--output`, `--check` and
+`--force` ([Writing files](#3-writing-files)).
+
+```bash
+hydrolog soil texture --clay 200 --sand 400 --silt 400 --json
+```
+
+```bash
+hydrolog soil hsg --clay-path tests/fixtures/hsg_clay.tif --sand-path tests/fixtures/hsg_sand.tif --silt-path tests/fixtures/hsg_silt.tif --output hsg.tif --json
+hydrolog soil hsg-stats --hsg-path hsg.tif --json
+```
+
+```json output
+{"result": {"schema": "hydrolog-soil-hsg-stats/1", "groups": {"A": {"area_ha": 75.0}, "D": {"area_ha": 68.75}}, "nodata": {"count": 1}}}
+```
+
+The HSG is not the CN: the CN also needs the land cover. Intersecting the HSG raster with a land
+cover layer happens outside Hydrolog; the area of each group from `soil hsg-stats` then feeds
+`cn weighted` (`--parts '[{"cn":30,"area":75.0},{"cn":58,"area":75.0}]'`).
+
+```python
+import hydrolog
+
+hydrolog.run_command(
+    "soil hsg",
+    clay_path="tests/fixtures/hsg_clay.tif",
+    sand_path="tests/fixtures/hsg_sand.tif",
+    silt_path="tests/fixtures/hsg_silt.tif",
+    output="hsg.tif",
+)
+stats = hydrolog.run_command("soil hsg-stats", hsg_path="hsg.tif").result
+for group, area in stats.groups.items():
+    print(group, area.area_ha, "ha")
+```
+
+### Markdown report
+
+`report generate` runs the same computation as `hydrograph generate` (same options) and writes a
+Markdown report with formulas, tables and the water balance. The report text is Polish. It writes
+exactly one file, so it requires `--output`; `--max-table-rows` shortens long tables.
+
+```bash
+hydrolog report generate --output report.md --watershed-file tests/fixtures/watershed_example.json --tc-method kirpich --hietogram-type beta --total-mm 50 --duration-min 60 --json
+```
+
+```json output
+{"result": {"schema": "hydrolog-report-generate/1", "peak_discharge_m3s": 47.02725674740998, "files": [{"path": "...", "status": "written"}]}}
+```
+
+## 3. Writing files
+
+Four commands write a file: `report generate`, `soil hsg`, `commands batch` (the results of its
+calls) and `commands guide` (the agent guide rendered from the catalog). The `route` commands write
+the outflow only when they are given `--output` (without it `--check` has nothing to plan and
+computes), and `route network` writes one file per node into `--output-dir` and its schematic into
+`--schematic`. Every other command only reads. A writing command takes:
+
+- `--output FILE`: exactly one plain file; missing directories are created. Hydrolog has no store
+  and no managed directory layout.
+- `--output-dir DIR` (`route network` only, short flag `-o`): one plain file per node, `<id>.csv`;
+  the directory is created if it is missing. The plan lists every file; a directory that is, or
+  lies in, the store of another Nogat tool is a `conflict` (`details.reason` `output_in_store`: the
+  tool that owns a store writes into it with its own `--root`), and so is a node named twice in
+  `--nodes` (`duplicate_output_name`). The files are written into
+  `DIR/.hydrolog-incoming/<host>_<pid>_<token>/` and moved into place, so an error leaves no
+  partial file and the staging directory is removed; a file that appeared during the computation
+  is a conflict, not replaced.
+- `--check`: plan without effects. The result is a `hydrolog-plan/1` document whose
+  `result.targets[]` lists the `option` that names each file, its absolute `path` and the
+  `action`: `write` (no such file), `replace` (it exists and `--force` is given) or `conflict` (it
+  exists and `--force` is not given). `--check` exits 0 even for a conflict: read the action.
+- `--force`: replace an existing file. The replacement is atomic (a reader sees the old or the
+  new file; an interrupted run leaves the old one). Nothing is overwritten without `--force`.
+
+After a real run `result.files[]` lists each file as `{path, size_bytes, sha256, status}` with
+`status` `written` (new file) or `replaced`. This block plans, runs, and plans again; the last
+plan reports the conflict:
+
+```bash
+hydrolog report generate --output report.md --area-km2 45.3 --cn 72 --tc-min 90 --hietogram-type beta --total-mm 50 --duration-min 60 --check --json
+hydrolog report generate --output report.md --area-km2 45.3 --cn 72 --tc-min 90 --hietogram-type beta --total-mm 50 --duration-min 60 --json
+hydrolog report generate --output report.md --area-km2 45.3 --cn 72 --tc-min 90 --hietogram-type beta --total-mm 50 --duration-min 60 --check --json
+```
+
+```json output
+{"check": true, "result": {"schema": "hydrolog-plan/1", "targets": [{"option": "output", "path": "...", "action": "conflict"}]}}
+```
+
+Running without `--check` against an existing file fails with `conflict` and exit 4, and nothing
+is touched:
+
+```console
+$ hydrolog soil hsg --clay-path clay.tif --sand-path sand.tif --silt-path silt.tif --output hsg.tif --json
+{"schema": "hydrolog-error/1", "code": "conflict", "title": "State conflict", "message": "The output file already exists: /work/hsg.tif", "hint": "Give another path or add --force to replace the file.", "details": {"reason": "output_exists", "paths": ["/work/hsg.tif"]}, "exit_code": 4, "command": "soil hsg"}
+```
+
+Resolve it by giving another `--output` or by adding `--force`:
+
+```bash
+hydrolog report generate --output report.md --area-km2 45.3 --cn 72 --tc-min 90 --hietogram-type beta --total-mm 50 --duration-min 60 --json
+hydrolog report generate --output report.md --area-km2 45.3 --cn 72 --tc-min 90 --hietogram-type beta --total-mm 50 --duration-min 60 --force --json
+```
+
+```json output
+{"result": {"files": [{"path": "...", "status": "replaced"}]}}
+```
+
+In Python, `hydrolog.check_command("report generate", output="report.md", ...)` returns the plan,
+and a conflict raises `hydrolog.ConflictError` (code `conflict`, `details["paths"]`).
+
+## 4. The Python interface
+
+`import hydrolog` reads no files and imports no numerical library. The public API is `__version__`,
+the error classes, the error registry `ERROR_CODES`, five functions that drive any catalog command
+and two that write and read its command line:
+
+- `run_command(command, **options)` runs a command and returns the envelope;
+- `validate_command(command, **options)` checks the options without running and returns them
+  normalised, with the defaults filled in;
+- `check_command(command, **options)` plans a writing command (the plan of `--check`);
+- `list_commands(limit=None, cursor=None)` returns the command list document, optionally paged;
+- `command_schema(command)` returns the `hydrolog-commands/1` document of one command;
+- `format_command(command, options=None, run=None)` returns the canonical command line of a call
+  (`hydrolog cn lookup --hsg B --land-cover forest`), and `parse_command(line)` reads a line back
+  into `(command, options, run)`.
+
+`command` is a catalog name (`"tc kirpich"`) or an `operation_id` (`"hydrolog_tc_kirpich"`).
+Options are keyword arguments with the catalog names; lists are Python lists and objects are
+dicts, not JSON text.
+
+```python
+import hydrolog
+
+envelope = hydrolog.run_command("scs effective", cn=72, precipitation_mm=50)
+print(envelope.command, envelope.status, envelope.check)
+print(envelope.result.total_effective_mm)
+print(envelope.to_dict()["result"]["schema"])   # hydrolog-scs-effective/1
+print(envelope.to_json()[:60])                  # the document of the CLI --json
+
+options = hydrolog.validate_command("scs effective", cn=72, precipitation_mm=50)
+print(options["amc"], options["ia_coefficient"])  # defaults filled in
+
+page = hydrolog.list_commands(limit=5).to_dict()
+print([item["name"] for item in page["commands"]], page["page"]["next_cursor"])
+print(hydrolog.command_schema("tc kirpich").to_dict()["commands"][0]["operation_id"])
+```
+
+The envelope has `command`, `inputs`, `result`, `notices`, `files`, `check`, `status`, `page`,
+`items`, `attribution` and `terms_notice`; `to_dict()` and `to_json()` give the document of
+`--json`. The function behind a command is named in the
+`function` field of `commands schema` (`hydrolog.operations.hydrograph_generate`).
+
+**Errors are exceptions.** Every failure is a subclass of `hydrolog.HydrologError` with `code`
+(the codes of the table in section 1), `details` (a dict), `hint` (a string or `None`),
+`exit_code` and the English message as `str(exc)`. The classes are `InvalidParameterError`
+(`validation_error`; also a `ValueError`), `NotFoundError`, `ConflictError`,
+`MissingDependencyError`, `InputDataError` (`data_error`), `OutputError` (`io_error`),
+`ForbiddenPathError` and `CalculationError`.
+
+```python
+import hydrolog
+
+try:
+    hydrolog.run_command("tc kirpich", length_km=-1, slope_m_per_m=0.023)
+except hydrolog.HydrologError as error:
+    print(error.code, error.exit_code, error.details["option"], error.details["reason"])
+
+try:
+    hydrolog.run_command("tc kirpic")
+except hydrolog.NotFoundError as error:
+    print(error.code, error.details["suggestions"])
+```
+
+### The library classes
+
+The commands are thin wrappers over a calculation library. Use the classes directly when you need
+objects, arrays or several steps in one process; result objects have `to_dict()` and `to_json()`.
+Time of concentration, curve number, hyetograph, hydrograph and unit hydrograph models
+(`NashIUH` with `from_lutz` and `from_urban_regression`, `ClarkIUH` with `from_tc_r_ratio`,
+`SnyderUH`, `SCSUnitHydrograph`):
+
+```python
+from hydrolog.precipitation import BetaHietogram
+from hydrolog.runoff import AMC, SCSCN, HydrographGenerator, NashIUH, get_cn
+from hydrolog.time import ConcentrationTime
+
+tc = ConcentrationTime.kirpich(length_km=8.2, slope_m_per_m=0.023)   # min
+print(tc, ConcentrationTime.nrcs(length_km=8.2, slope_m_per_m=0.023, cn=72))
+print(get_cn("B", "forest", "good"), SCSCN(cn=72).effective_precipitation(50.0).total_effective_mm)
+
+precip = BetaHietogram(alpha=2.0, beta=5.0).generate(
+    total_mm=38.5, duration_min=60.0, timestep_min=5.0
+)
+generator = HydrographGenerator(area_km2=45.3, cn=72, tc_min=tc)
+result = generator.generate(precip)
+print(result.peak_discharge_m3s, result.time_to_peak_min, result.runoff_coefficient)
+print(generator.generate(precip, amc=AMC.III).peak_discharge_m3s)   # wetter soil, more runoff
+
+nash = HydrographGenerator(
+    area_km2=45.0, cn=72, uh_model="nash", uh_params={"n": 3.0, "k": 0.5}  # k in hours
+)
+print(nash.generate(precip).peak_discharge_m3s)
+lutz = NashIUH.from_lutz(
+    L_km=15.0, Lc_km=8.0, slope=0.02, manning_n=0.035,
+    forest_pct=40.0, urban_pct=5.0, area_km2=50.0,
+)
+print(round(lutz.n, 2), round(lutz.k_min, 1))
+```
+
+`WatershedParameters` is the exchange format with Hydrograf (`from_dict`, `from_json`,
+`to_dict`, `to_json`, `width_km`, `relief_m`, `calculate_tc(method=...)`). The statistics and the
+rating curve take NumPy arrays; the soil functions take numbers or raster paths:
+
+```python
+import numpy as np
+
+from hydrolog.hydrometrics import RatingCurve
+from hydrolog.morphometry import WatershedParameters
+from hydrolog.soil import classify_usda_texture, texture_to_hsg
+from hydrolog.statistics import FloodFrequencyAnalysis, homogeneity_tests, mann_kendall_test
+
+with open("tests/fixtures/watershed_example.json", encoding="utf-8") as handle:
+    watershed = WatershedParameters.from_json(handle.read())
+print(watershed.width_km, watershed.relief_m, watershed.calculate_tc(method="kirpich"))
+
+maxima = np.loadtxt("tests/fixtures/annual_maxima.csv", delimiter=",", skiprows=1, usecols=1)
+gev = FloodFrequencyAnalysis(maxima, return_periods=np.array([10.0, 100.0])).fit_gev()
+print(gev.distribution_name, gev.quantiles, mann_kendall_test(maxima).trend_detected)
+every_fit = FloodFrequencyAnalysis(maxima).fit_all(fit_method="all")  # L-moments by default
+print([(key, fit.aic) for key, fit in every_fit.items()])  # "gev/l_moments", ...: AIC order
+years = np.loadtxt("tests/fixtures/annual_maxima.csv", delimiter=",", skiprows=1, usecols=0)
+tested = homogeneity_tests(maxima, years.astype(int), split_year=2000)  # parts before / from 2000
+print(tested.mann_whitney.p_value, tested.pettitt.change_point_year, tested.pettitt.homogeneous)
+
+pairs = np.loadtxt("tests/fixtures/rating_curve_pairs.csv", delimiter=",", skiprows=1)
+fit = RatingCurve(pairs[:, 0], pairs[:, 1]).fit(h0_initial=40.0)
+print(fit.a, fit.b, fit.h0, fit.r_squared)
+
+texture = classify_usda_texture(clay=20, sand=40, silt=40)
+print(texture, texture_to_hsg(texture))
+```
+
+Also in the library: `WatershedGeometry` and `TerrainAnalysis` (shape and relief indicators),
+`HypsometricCurve`, `StreamNetwork` (Strahler and Shreve), `thiessen_polygons` and
+`inverse_distance_weighting` (areal precipitation), `hydrolog.routing` (`Hydrograph`,
+`LagReach`, `MuskingumReach`, `MuskingumCungeReach`, `CascadeReach`, `LevelPoolReach`: the flood routing of [Flood routing](#flood-routing)) and
+`hydrolog.reports.HydrologyReportGenerator` with a `ReportConfig` (the command
+`report generate` is the shorter way).
+
+Plots are in `hydrolog.visualization`. They need the `viz` extra (matplotlib and seaborn; without
+it a plot function raises `MissingDependencyError`) and are not part of the command catalog. The
+functions include `plot_hietogram`, `plot_hydrograph`, `plot_rainfall_runoff`,
+`plot_uh_comparison` and `plot_hypsometric_curve`.
+
+```sh
+pip install "hydrolog[viz] @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0"
+```
+
+```python
+import matplotlib
+
+matplotlib.use("Agg")  # no display needed
+
+from hydrolog.precipitation import BetaHietogram
+from hydrolog.runoff import HydrographGenerator
+from hydrolog.visualization import plot_hietogram, plot_hydrograph, setup_hydrolog_style
+
+setup_hydrolog_style()
+precip = BetaHietogram(alpha=2.0, beta=5.0).generate(
+    total_mm=50.0, duration_min=120.0, timestep_min=10.0
+)
+result = HydrographGenerator(area_km2=45.0, cn=72, tc_min=90.0).generate(precip)
+plot_hietogram(precip, show_cumulative=True).savefig("hietogram.png", dpi=150)
+plot_hydrograph(result.hydrograph, show_peak=True).savefig("hydrograph.png", dpi=150)
+```
+
+## 5. The MCP server
+
+The server (extra `mcp`) exposes every catalog command but `gui serve` as a tool over standard
+input and output. The console script `hydrolog-mcp` and the command `hydrolog mcp` start the same
+server.
+
+```sh
+hydrolog mcp --allow-dir ~/hydrolog-data
+hydrolog mcp --allow-dir ~/hydrolog-data --allow-writes
+hydrolog mcp --tools tc,cn,core
+uvx --from "hydrolog[mcp] @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0" hydrolog-mcp --allow-dir ~/hydrolog-data
+```
+
+- **`--allow-dir DIR`** (repeatable) is the only place tools may read files from and, with
+  `--allow-writes`, write to. A path outside it is refused with `forbidden`
+  (`details.allowed_dirs`); a missing directory is a `not_found` error at start-up. Without
+  `--allow-dir` every path option is refused, while commands that take numbers (`tc_kirpich`,
+  `cn_weighted`, `scs_effective`) work. Give absolute paths inside an allowed directory.
+- **`--allow-writes`** lets the writing tools (`hydrolog_report_generate`, `hydrolog_soil_hsg`,
+  `hydrolog_commands_batch`, `hydrolog_commands_guide` and the `route` tools given `output`,
+  `output_dir` or `schematic`) write inside the allowed directories; an existing file is replaced
+  only with `force`. Without it the server is read-only: a writing tool runs as `check` (`check`
+  is forced to true, `force` is ignored) and returns the plan; nothing is written.
+- **`--tools FAMILIES`** limits the tools to comma-separated families: a command group (`tc`,
+  `cn`, `scs`, `precip`, `uh`, `hydrograph`, `route`, `morphometry`, `network`, `stats`,
+  `hydrometrics`, `meteo`, `soil`, `report`, `config`, `commands`) or `core`, the main tasks. An
+  unknown family is a `validation_error` that lists the allowed ones.
+- The server output is always English; `--lang` only selects the language of
+  `hydrolog mcp --help`.
+
+A tool is named `hydrolog_<group>_<command>` with dashes turned into underscores
+(`hydrolog_tc_kirpich`, `hydrolog_stats_flood_frequency`, `hydrolog_soil_hsg_stats`): the
+`operation_id` of the command. Its arguments are the catalog options:
+
+```json
+{"name": "hydrolog_tc_kirpich", "arguments": {"length_km": 8.2, "slope_m_per_m": 0.023}}
+```
+
+`tools/list` returns the description, input schema, output schema and annotations (read-only,
+destructive, idempotent, open-world) of each tool; `hydrolog_commands_list` and
+`hydrolog_commands_schema` are the discovery tools. The server instructions (at most 4,096
+characters) state the working order: discover, check, run, read.
+
+- **Success:** `structuredContent` is the `hydrolog-result/1` envelope; the text content is the
+  same document as compact JSON.
+- **Failure:** `isError` is true and the `hydrolog-error/1` document comes in the same two forms
+  (`code`, `details`, `hint`). The code is the one the CLI uses as an exit status.
+
+Client configuration (Claude Code, other MCP clients, `uvx`) is in the [README](../README.md);
+the design is in [ADR 0006](decisions/0006-mcp-server-conformance.md).
+
+## 6. Settings
+
+Hydrolog has six settings: `lang` (language of human-readable output, `pl` or `en`; default `pl`),
+`log_level` (verbosity of the log on stderr; default `warning`; `-v` and `-q` change it for one
+call), `data_dir` (the data directory the Nogat tools share; default the user data directory
+of `nogat`, `~/.local/share/nogat` on Linux), `state_dir` (the state directory they share;
+default the user state directory of `nogat`, `~/.local/state/nogat` on Linux), and
+`request_limit` and `request_window` (the requests a public web GUI answers per client address
+in a window of that many seconds; default 300 and 60). Only the web GUI uses `data_dir` and
+`state_dir`: it keeps the reports of „Zgłoś uwagę” in `<data_dir>/hydrolog/feedback.sqlite3`
+and, public, its daily totals in `<data_dir>/hydrolog/stats.jsonl`, and `gui serve` writes its
+logs to `<state_dir>/hydrolog/logs/` ([section 8](#logs)).
+Hydrolog has no store or cache. Its one credential, the key of the GUI's admin page, comes from
+the environment only (`HYDROLOG_ADMIN_API_KEY`, or a file named by
+`HYDROLOG_ADMIN_API_KEY_FILE`), never from `nogat.toml`.
+
+```bash
+hydrolog config show --json
+```
+
+```json output
+{"result": {"schema": "hydrolog-config/1", "settings": [{"key": "lang"}, {"key": "log_level"}, {"key": "data_dir"}, {"key": "state_dir"}, {"key": "request_limit"}, {"key": "request_window"}]}}
+```
+
+`config show` prints each setting with its value and its source (`environment`, `file` or
+`default`), the path of the settings file and whether it exists, and whether each credential
+variable is set (`present`, never the value). An option of the call itself (`--lang en`)
+applies to that call only and is not reported. A setting comes from the first of:
+
+1. the command-line option (`--lang`, `-v`, `-q`);
+2. the environment variable `HYDROLOG_<KEY>` (`HYDROLOG_LANG`, `HYDROLOG_LOG_LEVEL`,
+   `HYDROLOG_DATA_DIR`, `HYDROLOG_STATE_DIR`, `HYDROLOG_REQUEST_LIMIT`, `HYDROLOG_REQUEST_WINDOW`);
+3. the shared variable `NOGAT_<KEY>` (`NOGAT_LANG`, `NOGAT_LOG_LEVEL`, `NOGAT_DATA_DIR`,
+   `NOGAT_STATE_DIR`, `NOGAT_REQUEST_LIMIT`, `NOGAT_REQUEST_WINDOW`);
+4. the `[hydrolog]` table of `nogat.toml`, then its `[nogat]` table;
+5. the default.
+
+`nogat.toml` is the settings file the Nogat tools share. Its path is `NOGAT_CONFIG`, else
+`nogat.toml` in the user configuration directory of `nogat` (`config show` prints it). A missing,
+broken or non-UTF-8 file is ignored, so it never stops a calculation. Besides the settings, the web
+GUI reads its table `gui` of `[nogat]`, the addresses of the deployment's GUIs for „Aplikacje”
+([section 8](#the-other-guis-aplikacje)); it is no setting of Hydrolog, so `config show` leaves it
+out.
+
+```toml
+[nogat]
+lang = "en"
+
+[hydrolog]
+log_level = "info"
+```
+
+```sh
+HYDROLOG_LANG=en hydrolog tc kirpich --length-km 8.2 --slope-m-per-m 0.023
+NOGAT_CONFIG=./nogat.toml hydrolog config show
+```
+
+`--lang` changes summaries and help only. JSON output, error documents, MCP output and the keys of
+results are always English; the Polish texts of the catalog are served from `i18n` of the command
+description, and the Markdown report is written in Polish.
+
+## 7. Exchange with Kartograf, Obserwator and Hydrograf
+
+Hydrolog does not depend on the other Nogat tools and downloads nothing, except the PMAXTP depth of
+`precip pmaxtp`, which it fetches through Obserwator (extra `pmaxtp`): other data arrives as plain
+files. Formats and the division of responsibilities are in [INTEGRATION.md](INTEGRATION.md).
+
+- **Kartograf** (spatial data) writes the clay, sand and silt rasters (SoilGrids, g/kg) of
+  `kartograf soil download --output-dir DIR`. The `files[].path` entries of its `--json` result
+  are the `--clay-path`, `--sand-path` and `--silt-path` of `soil hsg`. Hydrolog reads plain
+  files, not a Kartograf store.
+- **Obserwator** (IMGW measurement series) writes a daily series with `obserwator series export`.
+  The CSV has a `date` column and `Q [m3/s]`; pass it as `--input-file FILE --value-column Q
+  --date-column date` to the `stats` commands. Its attribution columns are not data: Hydrolog
+  carries their lines into the envelope's `attribution` and `terms_notice` (ADR-0028); show them
+  when you publish results.
+- **Hydrograf** (watershed delineation) produces a JSON in the `WatershedParameters` format.
+  Only `area_km2` is required; `perimeter_km`, `length_km`, `elevation_min_m`,
+  `elevation_max_m`, `cn`, `channel_length_km`, `flow_path_length_km`,
+  `flow_path_slope_m_per_m` and the others are optional, and a calculation that needs one
+  that is missing (the shape indicators of `morphometry watershed`, the fields of a
+  `tc_method`, which are those its source defines, with no substitute: Kirpich takes
+  the longest flow path, `flow_path_length_km` and `flow_path_slope_m_per_m`, Hydrograf's
+  hydraulic length and the slope of that path) ends with `validation_error`,
+  `details.reason` `missing_field` and the field in `details.option`. Give it as
+  `--watershed-file` to `morphometry watershed`, `tc watershed`, `hydrograph generate` and
+  `report generate`, or load it with `WatershedParameters.from_json`. A bad file is a
+  `data_error` with `details.path`.
+
+```sh
+kartograf soil download --property clay --depth 0-5cm --stat mean --bbox 626000,480000,628000,482000 --bbox-crs EPSG:2180 --output-dir data/kartograf --json
+obserwator series export --dataset pl.imgw.hydro_daily --station CODE --variables Q --format csv --output q_daily.csv
+```
+
+The agent-facing summary of these flows is in [AGENTS.md](../AGENTS.md).
+
+## 8. The web GUI
+
+In plain words: the GUI is a web page, in Polish, on which a person computes with Hydrolog without
+a command line. Each of its five sections starts empty: enter or load the data in the panel
+„Dane” (data) on the left and read the result in „Wyniki” (results) on the right, with the charts
+between them; the guide has a worked example for each section. The page itself computes nothing.
+Every value is a run of a catalog command on the server, the same as `hydrolog <group> <command>`,
+and every result shows that call for the CLI, Python and MCP. The results are estimates of
+simplified methods, not a forecast and not an official flood hazard map. The guide for users, in
+Polish and also starting in plain words, is part of the page: „Instrukcja” in the top bar opens a
+short welcome that links it (`instrukcja/` under the GUI's address).
+
+| Section | What it does | Commands |
+|---|---|---|
+| Hydrogram zlewni | the design hydrograph of one watershed in three steps (watershed, hyetograph, model): empty on a first visit, checked for what the chosen model needs (an empty required field is an error, a value outside its typical range a warning on its field), then recomputed after every change; under PMAXTP the depth is fetched from IMGW-PIB for the point, probability, duration and method given, not typed; Nash by Lutz estimates n and K in the same run; the guide's worked example is Kamiennik at Świerzawa | `hydrograph generate` (with `nash_estimation` for Nash by Lutz), `precip pmaxtp` for the PMAXTP depth |
+| Sieć i trasowanie | a network of subcatchments, reaches, reservoirs, junctions and an outlet, built on a canvas as in HEC-HMS's basin model editor or opened from a file or a hand-off: the network's rainfall first, then the elements, then each subcatchment in Hydrogram zlewni's three steps; checked as it is edited and routed by „Oblicz sieć” ([below](#building-a-network-in-sieć)); the guide's worked example is `hydrolog.testing.example_network_document()` | `route schematic` (the layout of the structure and Hydrolog's check), `route network`, `precip pmaxtp` for a PMAXTP depth |
+| Statystyka przepływów | flood frequency of annual maxima or of a daily series (the example: 26 annual maxima, 1998 to 2023) and the homogeneity of the series | `stats flood-frequency`, `stats homogeneity` |
+| Kalkulatory | the time of concentration by six methods for the watershed of Hydrogram zlewni, and fifteen single calculators | `tc watershed` and fifteen others |
+| Wszystkie polecenia | a form for every command of the catalog | all but `gui serve`, `config show`, `commands guide` and `commands batch` |
+
+A result leaves the page as CSV, JSON or PNG; from Hydrogram zlewni also as a Markdown report
+(`report generate`), and from Hydrogram zlewni and Sieć through a print view on A4 (a PDF by the
+browser's „Zapisz jako PDF”) and as a hand-off `nogat-handoff/1`. „Wczytaj z Hydrografa” opens a
+watershed or a network handed over that way, with the producer's result beside Hydrolog's
+([INTEGRATION.md](INTEGRATION.md#web-gui-the-hand-off-with-hydrograf-nogat-handoff1)), and
+„Wczytaj z Archiwisty” in Statystyka przepływów opens a station's daily series or annual maxima
+handed over by Archiwista
+([INTEGRATION.md](INTEGRATION.md#web-gui-a-stations-series-from-archiwista-hydrolog-series1)). „Zgłoś
+uwagę” in the top bar sends a report on a problem or an idea to whoever runs the server, who
+reads it on the admin page `admin/` ([below](#reports-of-users-zgłoś-uwagę)), and „Aplikacje”
+leads to the other GUIs of the deployment ([below](#the-other-guis-aplikacje)).
+
+### Building a network in Sieć
+
+„Schemat sieci” in the centre of Sieć i trasowanie is an editor of `hydrolog-network/1`, after
+the basin model editor of HEC-HMS (plan `docs/plans/2026-11-10-network-editor.md`,
+[ADR-0023](decisions/0023-positions-and-descriptions-in-the-network.md)), and the network is
+entered in the order a hydrologist thinks of it: its rainfall first, then the elements on the
+canvas, then each subcatchment's data in the order its method needs them (plan
+`docs/plans/2026-11-10-network-wizard.md`). The browser draws the network from its own inputs
+and never waits for the library, so an incomplete network has a picture too; Hydrolog still
+computes every value.
+
+- **The network first.** Step 1 „Sieć” of „Dane” holds the network's name and description,
+  then its time step („Krok czasowy Δt”, `timestep_min`) and „Opad sieci”, Hydrogram zlewni's
+  step 2 bound to the network: „Brak” (a network of given hydrographs needs none), PMAXTP (the
+  depth fetched by `precip pmaxtp` for the point, p, the duration and the method, and kept with
+  the inputs), a design hyetograph, or a series at Δt. It is the document's top `rainfall`, as
+  a run of `hydrograph generate` takes it. „Nowa sieć” opens this step, and the empty canvas
+  asks for the rainfall first and the elements then; nothing is locked.
+- **Elements.** The palette has Hydrolog's five node types: „Zlewnia” (`subcatchment`, also
+  HEC-HMS's source when it is given its hydrograph or reads a column of the inflows file),
+  „Odcinek” (`reach`), „Zbiornik” (`reservoir`), „Złącze” (`junction`) and „Wylot” (`outlet`).
+  HEC-HMS's diversion has no counterpart: a node flows into one node below it (ADR-0010). A new
+  element takes the id `Z1`, `R1`, `ZB1` or `J1` with the first free number, the outlet `OUT`.
+- **Editing.** An element is placed by a drag from the palette or a click and a cell; a node is
+  linked to the node below it by a drag from its handle, by `P` and the arrow keys, by „Połącz z…”
+  of the node menu or by „Odpływa do” in „Dane”. Nodes are moved, removed („Usuń i połącz” links
+  a removed node's one inflow to the node below it), renamed (the id is checked as the library
+  checks it, and every `from` follows) and described (`description`, plain text of up to 500
+  characters). „Cofnij” and „Ponów” go through up to 100 steps in memory. Every action has keys
+  and a way without dragging; the guide lists the keys.
+- **Checks.** After every edit the browser checks the structure with the library's reasons
+  (`empty`, `invalid_id`, `reserved_name`, `duplicate_node`, `unknown_upstream`,
+  `duplicate_upstream`, `upstream_count` by the `from` bounds of the schema, `several_downstream`,
+  `cycle`, `no_outlet`, `several_outlets`, `outlet_has_downstream`, `disconnected_node`), marks
+  each node at fault and lists every problem in „Problemy sieci”; a link that would make a cycle,
+  an inflow into a subcatchment or an outflow from the outlet is refused with its reason, and a
+  second inflow into a reach, a reservoir or the outlet offers „Wstaw złącze”. Once the structure
+  and the values are complete, `route schematic` confirms the network 300 ms after the last
+  change, and its refusal joins the list.
+- **Subcatchments.** Choosing a subcatchment made from rainfall opens its panel beside „Dane”
+  („Zlewnia Z1”, the second left panel of the layout; ✕ closes it and keeps the node chosen,
+  Enter on the node moves the focus into it): Hydrogram zlewni's own three steps, with the same
+  fields, order, checks and (i) explanations. „Zlewnia” has the watershed, „Plik zlewni…” and
+  „Wczytaj z Hydrografa”, which reads a hand-off of one watershed into the chosen node (its id,
+  links and place stay); „Hietogram” starts at „Jak w sieci”, the network's rainfall in words,
+  and takes PMAXTP, a design hyetograph or a series as the node's own `rainfall`, at the
+  network's Δt; „Hydrogram” asks for the unit hydrograph model first and then shows only its
+  fields (Nash by Lutz writes `nash_estimation`). One mapping turns these inputs into the node
+  and back (`subcatchmentNode`, `subcatchmentInputs` in `web/src/handoff/mapping.js`), the same
+  that makes Hydrogram zlewni's hand-off, and a field that the choice does not show is neither
+  saved nor sent. A subcatchment without a model, or with neither its own rainfall nor the
+  network's („Brak opadu”), is a problem of its node. After „Oblicz sieć” the panel shows the
+  values of that run (tc, the CN after AMC, the unit hydrograph's parameters) while the node is
+  unchanged. A subcatchment given its hydrograph („Podany”) or reading its column of the inflows
+  file („Z pliku”) keeps its small form in „Dane”, and so do the other nodes. On a phone the
+  panel and „Dane” alternate („Dane zlewni →”, „← Dane”).
+- **Positions.** Each node stands on a cell of ADR-0013's grid, kept as its `position`. A
+  document with a position for every node opens as placed; one without positions takes
+  Hydrolog's layout of its structure (`route schematic --structure-only`, ADR-0025) as soon as
+  the structure has no problem, whatever values the nodes still miss, and until then stands in
+  provisional rows. „Uporządkuj” puts every node where Hydrolog lays the structure out, also in
+  a network built from „Nowa sieć” before any value is given. A move or a description never
+  marks a result stale; a structural edit or a rename does.
+- **Files.** „Zapisz sieć” downloads the document with every `position` and `description` and
+  the network's own `description`; `route network --schematic` draws the same picture from it,
+  and the GUI reopens it as it was placed. A network with problems is saved by „Zapisz szkic”,
+  the same file, which `route network` refuses until the problems are fixed. „Dodaj zlewnię z
+  Hydrografa” adds the subcatchments of a hand-off to the open network
+  ([INTEGRATION.md](INTEGRATION.md#web-gui-the-hand-off-with-hydrograf-nogat-handoff1)).
+- **Hand-offs and the origin of each node.** A hand-off of a network, such as one Hydrograf
+  delineates at control points, opens laid out: its top rainfall as the network's, each
+  subcatchment through the mapping above, and every node with its origin by Nogat's precedence
+  (the node's own entry of `node_provenance`, else the hand-off's `provenance`; a key that names
+  no node is left out and named in the load's note). A subcatchment's panel shows the origin of
+  its watershed in step 1 (Hydrograf's element, such as „przyrzecze odcinka R1”, with the
+  fields changed since), of its rainfall in step 2 and of its runoff in step 3; a reach, a
+  junction or the outlet shows its origin in step 3 of „Dane” (how the length and the slope
+  were measured, the NMT at the ends, the check length of the vector line). A reach handed
+  over without its section is marked until Manning's n and the width are given. The origins
+  follow a node through a rename, and Sieć's own hand-off writes them again as `node_provenance`
+  under the current ids, with `changed` for the edited fields of a watershed or a reach and
+  `{"source": "user"}` for an edited rainfall or runoff and for a node made in Sieć.
+
+### Starting it
+
+```sh
+pip install "hydrolog[gui] @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0"
+hydrolog gui serve                              # http://127.0.0.1:8070/, opened in the browser
+hydrolog gui serve --no-browser --port 8071     # another port, no browser (a service)
+```
+
+The server writes its record `start`, with the address in `url`, on stderr once it listens
+([Logs](#logs)) and serves until Ctrl+C or SIGTERM, which stop it gracefully: the command ends
+with exit code 0, and with `--json` it prints `hydrolog-gui-serve/1` (`url`, `started_at`,
+`stopped_at`). Without the extra `gui` it ends with `missing_dependency`. `--check` serves
+nothing and reports the address and whether the port is free:
+
+```bash
+hydrolog gui serve --check --json
+```
+
+```json output
+{"command": "gui serve", "check": true, "result": {"schema": "hydrolog-plan/1", "targets": [], "url": "http://127.0.0.1:8070/", "port_free": "..."}}
+```
+
+### The other GUIs („Aplikacje”)
+
+„Aplikacje” in the top bar, left of the theme switch, is Nogat's app menu (DEV-15.4): it lists the
+GUIs of the ecosystem that the deployment names in the table `gui` of `[nogat]` in `nogat.toml`
+([section 6](#6-settings)), one key per GUI in lower case (`archiwista`, `hydrograf`, `hydrolog`,
+`obserwator`) with its address, absolute or a path on the page's own origin. An entry opens its
+GUI in a tab of its own, named `nogat-<name>`, and Hydrolog is marked as the current one.
+Without the table, or with Hydrolog alone in it, the button is not drawn; there is no default.
+The server reads the file at every page load, so a changed address needs no restart.
+
+```toml
+[nogat]
+gui = { hydrolog = "http://127.0.0.1:8070/", hydrograf = "http://127.0.0.1:8080/", archiwista = "http://127.0.0.1:8090/" }
+```
+
+### Your data in the GUI
+
+- **Inputs stay in the browser.** Each section keeps its inputs, never its results, in the
+  browser's `localStorage` under `hydrolog-gui/<section>/1` until „Wyczyść” (every stored shape
+  is version 1 until the first release, Nogat REL-1.4: inputs kept under an earlier id, e.g.
+  Sieć's `hydrolog-gui/siec/3`, move to version 1 when the section opens, and an older shape is
+  dropped); with them Hydrogram zlewni and Sieć keep the PMAXTP depths they fetched
+  (`pmaxtp_fetched`), so a reload does not fetch them again, and Sieć the positions,
+  descriptions and origins of its nodes (its history of
+  „Cofnij” stays in the page's memory). The widths of the panels are `hydrolog-gui/layout/1`,
+  the choice „Nie pokazuj ponownie” of the welcome dialog `hydrolog-gui/welcome/1` and the theme
+  `nogat-theme`, which Nogat's other pages on the same address share.
+- **Files go to the server, only while the page is open.** Each open page has a session with a
+  work directory of its own: `in/` holds the uploads and the documents the page writes (the
+  network of Sieć, for example), `out/` the files that commands write. The page keeps the
+  session's id in its memory and sends it in the header `X-Hydrolog-Session`; there is no cookie,
+  so a second tab has a session of its own and a reload starts a new one (give the files again).
+  The page ends its session when it is closed or reloaded, a session idle for an hour is removed,
+  and so are all of them when the server stops: the server uses the files only for the
+  computations. A path option takes only `in/<name>` or `out/<name>`; nothing else on the server
+  is reachable. Limits: 20 MiB per file, 100 MiB and 200 files per session, 5 MiB of JSON per
+  request and 64 sessions, the least recently used idle one removed first. `hydrolog gui serve`
+  keeps them in a new directory of the system's temporary directory (`TMPDIR`).
+- **Runs go to two worker processes.** A newer run of the same kind replaces a queued older one,
+  and a run longer than 30 seconds is stopped (the notice `timeout`).
+- **Only PMAXTP goes out, from the server.** Under PMAXTP, Hydrogram zlewni and Sieć (the
+  network's rainfall, or a subcatchment's own) run `precip pmaxtp` on the server once the
+  point, the probability and the duration are given (Wszystkie polecenia runs it on its
+  button): the point's coordinates and the method go to IMGW-PIB through Obserwator, which the
+  extra `gui` installs. Nothing else leaves the server, and the page itself calls only its
+  server.
+- **The page loads nothing from other sites.** The server sends a Content-Security-Policy of
+  `'self'` without inline scripts or styles, `X-Frame-Options: DENY` and `no-store` for its API.
+- **A report goes to whoever runs the server, and only when it is sent** (below).
+
+### Reports of users („Zgłoś uwagę”)
+
+„Zgłoś uwagę” in the top bar opens a dialog with one text field (1 to 5,000 characters, with a
+counter) and, under it, „Nie wpisuj danych osobowych.”, in a public GUI followed by „Jeśli chcesz
+odpowiedzi, napisz na <the operator's address>” (Nogat DEV-15.12); then „Anuluj” or „Wyślij”, and
+the dialog thanks and closes after 2 seconds. There is no contact field. With the text the page
+sends a context it adds itself, at most 100,000 bytes of JSON: `view` (the section and its route,
+for example `polecenia/uh/nash`), `station` (the station of a station's series opened in
+Statystyka przepływów, else `null`), `parameters` (the inputs the section keeps in the browser, a
+text longer than 200 characters or with lines and the rest of a list longer than 50 replaced by
+their size) and `app_version` (the server's). Never the contents of files, the page's address, the
+browser's `User-Agent` or the client's IP address: the server refuses any other field.
+
+**Where reports are kept.** In the SQLite file `<data_dir>/hydrolog/feedback.sqlite3`
+([section 6](#6-settings); `hydrolog config show` prints `data_dir`), which the first report
+makes, with its directory (mode 0700, the file 0600). One table, `feedback`: `id`, `created_at`
+(UTC), `message`, `context` (JSON text) and `is_read`, with the limits as checks; `PRAGMA
+user_version` is 1, and a deleted report is overwritten in the file (`secure_delete`). The file
+is in WAL mode, so the server, the admin page and `sqlite3` can read it at the same time. A host
+that mounts the GUI chooses the directory with `create_app(data_dir=...)`. A file of this table
+with `user_version` 2 (its id before Nogat REL-1.4, when every format went back to version 1
+until the first release) is read as it is and set to 1 when the server opens it.
+
+**Reports of the earlier form.** A file of the earlier form (the dialog with a name or e-mail,
+the page's address, the browser and diagnostics; `user_version` 1 or 0), recognised by its
+columns `contact`, `page_url`, `user_agent` and `diagnostics`, is copied whole, with the sqlite
+backup API, to `feedback-v1-<UTC time>.sqlite3` beside it (mode 0600) the first time the server
+opens it; then its reports keep their ids, dates, texts and read flags, get the context their
+page's address and diagnostics give (`view`, `parameters`), and the rest leaves the file (it is
+vacuumed). The copy still holds the contacts, addresses and browsers: it is the operator's to
+read and delete once its reports are handled.
+
+**The admin panel** (Nogat DEV-15.13, ECO-067). `admin/` under the GUI's address
+(`http://127.0.0.1:8070/admin/`; `admin` without the slash answers `308` to it) is Nogat's kit
+panel `<nogat-admin>` (kit 1.0.0) alone: no footer, regulamin link or menu „Aplikacje”, and
+`noindex`. It asks for the key and keeps it in the browser tab only (`sessionStorage`,
+`hydrolog/admin-key/1`, until „Wyloguj”), then shows three sections:
+
+- „Zgłoszenia”: the reports, 50 a page and newest first, with the count of unread ones; each
+  shows its text and, folded under „Kontekst”, its context (view, station, version and the
+  view's parameters); „Oznacz jako przeczytane” and back, and „Usuń” after a question.
+- „Statystyki”: the daily totals of `stats.jsonl` (a public GUI's, below) for 7, 30 or 90 days
+  or the whole record, with their sum, and „Pobierz CSV”.
+- „Stan”: the version, when the server started and for how long, the data directory
+  `<data_dir>/hydrolog`, the free space of its disk, and the checks `data_dir` (the directory
+  can be written; before the first report, the directory above it, where the first write makes
+  it) and `feedback_db` (the reports' file can be read, with its counts), each `ok` or `failed`.
+
+The key is `HYDROLOG_ADMIN_API_KEY`, or the text of the file that `HYDROLOG_ADMIN_API_KEY_FILE`
+names; the server reads it at every request, so a new key in the file applies at once. Without
+either, every admin route refuses everyone (`401 unauthorized`, `details.reason`
+`admin_key_not_configured`): no key is generated, and none is logged. A long random key does it,
+for example `openssl rand -hex 32 > admin.key`. No answer of the panel, its page or its API, is
+stored by the browser (`Cache-Control: no-store`).
+
+The page's private API, for scripts as well (paths relative to the GUI's address); the routes
+under `api/admin/` are Nogat's core admin API, the same in every GUI:
+
+| Route | Request | Answer |
+|---|---|---|
+| `POST api/feedback` | `{"message", "context": {"view", "station", "parameters", "app_version"}}` (JSON, at most 256 KiB); any other field is refused | `{"id": 7, "status": "ok"}` |
+| `GET api/admin/feedback?limit=50&offset=0` | `X-Admin-Key`; `limit` 1 to 200 | `{"items": [...], "total", "unread_count"}`, newest first |
+| `PATCH api/admin/feedback/{id}` | `X-Admin-Key`; `{"is_read": true}` | the report, as listed |
+| `DELETE api/admin/feedback/{id}` | `X-Admin-Key` | `{"status": "deleted"}` |
+| `GET api/admin/stats?from=2026-11-01&to=2026-11-30` | `X-Admin-Key`; UTC days, both included; by default the last 30 days up to today | `{"days": [...], "totals": {...}}`: the lines of `stats.jsonl` in the period, today's as counted so far, with the keys of the file (a missing total is 0); `totals` sums every key but `visitors` |
+| `GET api/admin/status` | `X-Admin-Key` | `{"app": "Hydrolog", "version", "started_at", "uptime_s", "data_dir", "disk": {"free_bytes", "total_bytes"}, "checks": [{"name", "status", "detail"}]}` |
+
+An error is a `hydrolog-error/1` document: `validation_error` (400; `details.parameter` and
+`details.reason`, for example `unknown_field` for a field outside the form, `too_long` with
+`max_length`, `too_large` for a context over 100,000 bytes, `format` for a day that is not
+`YYYY-MM-DD`, or `maximum` for `from` after `to`), `unauthorized` (401; `admin_key_missing`,
+`admin_key_invalid` or `admin_key_not_configured`), `not_found` (404; `feedback_not_found`) or
+`io_error` (500; the file could not be used, `feedback_store_failed` and the like, without its
+path).
+
+**Reading and backing up.** Besides the admin panel, `curl` with the key or `sqlite3` on the file
+read the reports; SQLite's `.backup` copies the file consistently while the server runs (a plain
+copy of the file alone can miss what is still in `feedback.sqlite3-wal`). To restore, stop the
+server and put the copy in the file's place.
+
+```sh
+curl -s -H "X-Admin-Key: $(cat admin.key)" "http://127.0.0.1:8070/api/admin/feedback?limit=50"
+sqlite3 -header -column ~/.local/share/nogat/hydrolog/feedback.sqlite3 \
+  "SELECT id, created_at, is_read, substr(message, 1, 60) AS message FROM feedback ORDER BY created_at DESC"
+sqlite3 ~/.local/share/nogat/hydrolog/feedback.sqlite3 \
+  "SELECT json_extract(context, '$.view') FROM feedback WHERE id = 7"
+sqlite3 ~/.local/share/nogat/hydrolog/feedback.sqlite3 ".backup feedback-$(date +%F).sqlite3"
+```
+
+### Running it as a service behind a proxy
+
+The GUI has no accounts and no sign-in: anyone who reaches it can compute and upload files within
+the limits above. Keep it on `127.0.0.1` and let an authenticating reverse proxy publish it, for
+example a Cloudflare Tunnel whose public hostname points at `http://127.0.0.1:8070` together with a
+Cloudflare Access application on that hostname, or a web server that asks for a sign-in. Another
+address (`--host 0.0.0.0`) exposes the GUI without a sign-in; the command warns with
+`exposed_without_auth`. The page uses relative URLs only, so a proxy may also publish it under a
+path prefix.
+
+A systemd unit, `/etc/systemd/system/hydrolog-gui.service`, for a user `hydrolog` who installed
+Hydrolog with `uv tool install` (adjust the path of the executable):
+
+```ini
+[Unit]
+Description=Hydrolog web GUI
+After=network.target
+
+[Service]
+User=hydrolog
+Environment=HYDROLOG_ADMIN_API_KEY_FILE=/home/hydrolog/.config/hydrolog/admin.key
+ExecStart=/home/hydrolog/.local/bin/hydrolog gui serve --no-browser --host 127.0.0.1 --port 8070
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+```
+
+`systemctl stop` sends SIGTERM, which stops the server and removes the session directories.
+`curl -sI http://127.0.0.1:8070/` answers `200` with the `Content-Security-Policy` header when the
+server runs. Hosting the GUI inside another application (Nogat's GUI platform) is in
+[INTEGRATION.md](INTEGRATION.md#web-gui-a-module-of-nogats-gui-platform).
+
+### Logs
+
+`hydrolog gui serve` keeps Nogat's three logs (DEV-12.4 to DEV-12.9,
+[ADR-0037](decisions/0037-nogats-logs-in-gui-serve.md)) in every run, public or not, through
+Nogat's reference module, copied unchanged into `src/hydrolog/gui/nogat_logging.py`. Each record
+is one line of JSON valid against `nogat-log/1` (`schemas/nogat/record-1.schema.json`) in
+`<state_dir>/hydrolog/logs/<kind>-YYYY-MM-DD.jsonl`, by the UTC date of its `time`:
+
+- `access`: one record per request (`method`, `path` with its query, `status`, `bytes`,
+  `duration_ms`, `agent`, a random `request_id`), the answers of the request limit included. The
+  page's files (`css/`, `src/`, `vendor/`, `nogat/`, `theme-init.js`) and the catalog documents
+  (`api/commands…`, `api/schemas/…`) are logged only when answered with 400 or more. A query
+  parameter that may hold personal data or a secret (`q`, `name`, `email`, `key`, `token`…)
+  keeps its name only: `?q=&lat=51.2`. A file's name is written `[file]`:
+  `PUT /api/files/in/[file]`.
+- `app`: warnings, errors and exceptions of the server, the exception's type, message and stack
+  with every IP address written `[ip]`.
+- `lifecycle`: `start` with the settings `url` and `public`, `stop`, and `prune` when old files
+  are deleted.
+
+No log holds the client's address, a cookie, a header, a request body or a file's name; of the
+`User-Agent` only its kind is kept (`agent`: `browser`, `bot`, `script` or `none`), and the
+`request_id` is never sent to the client. The server deletes a file once its date is 14 days old,
+at the start and at every midnight UTC, so no setting of journald, root or a cron job is needed.
+Standard error, and so the journal of a service, gets only the lifecycle records and errors
+reduced to their type (`request_id` and `message` `null`); the warnings of the start
+(`exposed_without_auth`, `No regulamin: …`) are held until the record `start` and then go to the
+`app` log. uvicorn's own access log is off.
+Read the last 14 days without the requests answered below 500 with `jq` (`apt install jq`, or its
+static release binary in `~/.local/bin`):
+
+```sh
+jq -cs 'sort_by(.time)[] | select(.kind != "access" or .status >= 500)' ~/.local/state/nogat/hydrolog/logs/*.jsonl
+jq -r 'select(.kind == "access") | "\(.status) \(.agent)"' ~/.local/state/nogat/hydrolog/logs/access-*.jsonl | sort | uniq -c
+```
+
+Use is counted only by the daily totals of a public GUI (below), never from the logs. A proxy in
+front keeps its own logs: `cloudflared` at its default level (`info`) logs no client address; do
+not run it with `--loglevel debug`.
+
+### A public GUI (regulamin, limit, logs, totals)
+
+A deployment that opens the GUI to anyone without signing in sets the table `operator` of
+`[nogat]` in `nogat.toml` (Nogat DEV-15.7, DEV-18.1) and Hydrolog's public address in
+`[nogat] gui`. The server reads them at the start ([ADR-0034](decisions/0034-a-public-gui-regulamin-limit-logs-totals.md)):
+
+```toml
+[nogat]
+gui = { hydrolog = "https://hydrolog.example.org/" }
+
+[nogat.operator]          # a deployment open to others
+name = "…"
+email = "…"
+terms_effective = 2026-11-20
+processor = "Cloudflare, Inc."
+processor_transfer = "Dane mogą być przekazywane do USA na podstawie decyzji Komisji Europejskiej w sprawie EU-U.S. Data Privacy Framework."
+processor_cookie = ""
+mail_provider = "iCloud Mail (Apple)"
+mail_transfer = "Mogą być przetwarzane poza Europejskim Obszarem Gospodarczym."
+
+[hydrolog]                # optional: the request limit per client address
+request_limit = 300
+request_window = 60
+```
+
+- **The regulamin.** The server fills the regulamin of Nogat's GUI kit (`web/nogat/nogat-terms.html`,
+  kit 1.0.0, regulamin 1.0) with these values and the blocks of Hydrolog's sources (PMAXTP,
+  IMGW-PIB, ČHMÚ), serves it at `regulamin.html` beside the page and links it without a footer
+  ([ADR-0039](decisions/0039-the-regulamin-in-the-rail-and-the-welcome-no-footer.md)): the small
+  link „Regulamin” at the bottom of the rail of the sections (not in a phone's bottom bar), the
+  welcome dialog's „Regulamin serwisu”, the last entry of the menu „Aplikacje” and the end of the
+  guide's contents; the dialog „Źródła i warunki” of a view's strip of the providers' lines links
+  it as „Regulamin serwisu” too; every such link opens a new tab. A key missing
+  or empty (only `processor_transfer`, `processor_cookie` and `mail_transfer` may be empty)
+  leaves no page and no link, with the warning `No regulamin: missing values: …` on standard
+  error, before the record `start` ([Logs](#logs)). A change needs a restart. A new version of
+  the regulamin is published with its own `terms_effective`; the kit corrects 1.0 in place.
+- **The request limit.** At most `request_limit` requests of one client address in
+  `request_window` seconds; the address stays in the server's memory for its window only. Static
+  files and the catalog documents (`api/commands…`, `api/schemas/…`) are not counted, a page load
+  costs about three requests and a computation one. Over it: `429` with `Retry-After`, for an API
+  route the error `rate_limited`, for a page „Zbyt wiele żądań. Spróbuj ponownie za <n> s.”. Behind a
+  proxy, the client's address is the last one the proxy adds to `X-Forwarded-For`, trusted only
+  from the addresses in uvicorn's `FORWARDED_ALLOW_IPS` (default `127.0.0.1`: `cloudflared` on the
+  same machine); a proxy on another machine needs its address there.
+- **Logs.** The same as in every run ([Logs](#logs)): the requests over the limit are in the access
+  log with `429`, and no log names the client.
+- **Daily totals** in `<data_dir>/hydrolog/stats.jsonl`, one JSON line per UTC day, rewritten
+  every five minutes, at midnight UTC and at the stop; a restart adds to the day's line:
+
+  ```json
+  {"date": "2026-11-20", "visitors": 41, "page_views": 77, "stations_opened": 6, "analyses_run": 512, "downloads": 19}
+  ```
+
+  `visitors`: distinct HMAC-SHA-256 of the client address and the `User-Agent` of the counted
+  requests but the admin panel's, under a 32-byte salt drawn at the start and at every midnight
+  UTC, kept in memory only (after a restart a visitor counts again); `page_views`: the app (`/`),
+  its guide (`instrukcja/`) and the regulamin served, not the admin panel; `stations_opened`:
+  stations' series from a hand-off opened in Statystyka przepływów; `analyses_run`: computations
+  the server ran and answered (`api/run`, not the plans of `check`); `downloads`: files the page
+  saved on the person's disk (exports, the report, hand-off files, outputs of the server). The
+  page tells the server of the last two (`POST api/stats/station`, `POST api/stats/download`, no
+  body). The admin panel's „Statystyki” shows them.
+- **The admin panel is the operator's.** Put it behind a sign-in, for example a Cloudflare Access
+  application on exactly the paths `/admin`, `/admin/*` and `/api/admin/*` of the GUI's hostname
+  (Nogat DEV-15.13); the rest stays public. The admin key still guards the API, and the panel's
+  requests stay under the request limit.
+
+Check a public GUI after a start (the service above, whose user `hydrolog` keeps the files):
+
+```sh
+curl -s https://hydrolog.example.org/api/terms                 # {"terms": "regulamin.html", ...}
+curl -sI https://hydrolog.example.org/regulamin.html | head -1  # 200
+journalctl -u hydrolog-gui -o cat -n 3                          # the record start, no request
+tail -n 3 /home/hydrolog/.local/state/nogat/hydrolog/logs/access-$(date -u +%F).jsonl  # no address
+tail -n 2 /home/hydrolog/.local/share/nogat/hydrolog/stats.jsonl
+```

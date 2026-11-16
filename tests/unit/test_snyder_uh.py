@@ -361,3 +361,78 @@ class TestSnyderUHBehavior:
             p for p in peaks if ordinates[p] > 0.1 * result.peak_discharge_m3s
         ]
         assert len(significant_peaks) == 1
+
+
+class TestSnyderUHRecession:
+    """The hydrograph peaks at qpR and runs to the end of its recession.
+
+    Hydrograf front-end test of 2026-11-01 (B3): a gamma curve of one fixed shape
+    was cut at the triangular time base tb = 0.556 A / qpR, which shrinks as Cp
+    grows. For Cp = 0.8 the cut came at 20 % of the peak, and the runoff hydrograph
+    of the Kamiennik catchment fell from about a fifth of its peak to zero in half an
+    hour; its peak was not qpR either, Cp acted only through the cut.
+    """
+
+    # The Kamiennik catchment of the report and the unit hydrograph of the 5-minute
+    # step, as HydrographGenerator builds it
+    AREA, L_KM, LC_KM, CT, STEP = 37.23, 15.2232, 6.9207, 1.65, 5.0
+
+    # Effective rainfall of the report [mm per 5 min]: PMAXTP 1 h, p = 1 %, beta
+    # hyetograph, CN 67.9, AMC II
+    EFFECTIVE_MM = [
+        0.0,
+        0.0,
+        0.0,
+        0.312,
+        0.931,
+        0.956,
+        0.692,
+        0.389,
+        0.167,
+        0.049,
+        0.007,
+    ]
+
+    def unit(self, cp: float) -> tuple[SnyderUH, SnyderUHResult]:
+        model = SnyderUH(self.AREA, self.L_KM, self.LC_KM, ct=self.CT, cp=cp)
+        return model, model.generate(timestep_min=self.STEP, duration_min=self.STEP)
+
+    @pytest.mark.parametrize("cp", [0.4, 0.6, 0.8, 1.0])
+    def test_the_recession_falls_to_zero(self, cp):
+        """After the peak every ordinate is lower, the last below 0.1 % of the peak."""
+        _, result = self.unit(cp)
+        recession = result.ordinates_m3s[np.argmax(result.ordinates_m3s) :]
+
+        assert np.all(np.diff(recession) < 0)
+        assert recession[-1] < 1e-3 * recession[0]
+
+    @pytest.mark.parametrize("cp", [0.4, 0.6, 0.8, 1.0])
+    def test_the_peak_is_qpr_at_tpr(self, cp):
+        """Cp sets the peak of the ordinates: qpR = 0.275 Cp A / tLR."""
+        model, result = self.unit(cp)
+        peak = int(np.argmax(result.ordinates_m3s))
+
+        assert result.peak_discharge_m3s == pytest.approx(
+            model.peak_discharge(self.STEP), rel=1e-3
+        )
+        assert abs(result.times_min[peak] - result.time_to_peak_min) <= self.STEP / 2
+
+    def test_the_runoff_hydrograph_falls_without_a_step(self):
+        """Ct 1.65, Cp 0.8: no 5-minute fall exceeds 2 % of the peak.
+
+        The steepest fall of the curve (at its inflection) is 1.2 % of the peak per
+        step; the cut-off fell by 5.7 % of the peak in one step.
+        """
+        _, result = self.unit(0.8)
+        runoff = np.convolve(self.EFFECTIVE_MM, result.ordinates_m3s)
+        falls = -np.diff(runoff[np.argmax(runoff) :])
+
+        assert falls.max() < 0.02 * runoff.max()
+        assert runoff[-1] < 1e-3 * runoff.max()
+
+    def test_an_extreme_cp_is_refused(self):
+        """No hydrograph of 1 mm peaks at qpR when qp·tp/V is about 10^6."""
+        model = SnyderUH(self.AREA, self.L_KM, self.LC_KM, ct=self.CT, cp=1e6)
+
+        with pytest.raises(InvalidParameterError, match="no unit hydrograph"):
+            model.generate(timestep_min=self.STEP, duration_min=self.STEP)

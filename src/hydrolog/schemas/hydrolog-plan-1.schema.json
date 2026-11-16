@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Daldek/Hydrolog/blob/main/src/hydrolog/schemas/hydrolog-plan-1.schema.json",
+  "title": "hydrolog-plan/1",
+  "description": "Plan of a `check` run: each output file with its action (DEV-19.10). The plan of `gui serve` has no targets and gives the address it would serve on (`url`) and whether its port is free (`port_free`).",
+  "type": "object",
+  "required": [
+    "schema",
+    "targets"
+  ],
+  "properties": {
+    "schema": {
+      "const": "hydrolog-plan/1"
+    },
+    "url": {
+      "type": "string"
+    },
+    "port_free": {
+      "type": "boolean"
+    },
+    "targets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "option",
+          "path",
+          "action"
+        ],
+        "properties": {
+          "option": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "action": {
+            "enum": [
+              "write",
+              "replace",
+              "conflict"
+            ]
+          },
+          "reason": {
+            "enum": [
+              "output_exists",
+              "duplicate_output_name",
+              "output_in_store"
+            ]
+          }
+        }
+      }
+    }
+  }
+}
