@@ -4,7 +4,7 @@
 
 **Version:** 1.9
 **Date:** 2026-11-14
-**Status:** v0.8.0 in preparation
+**Status:** v0.8.0 frozen on 2026-11-16 for the first joint release of the Nogat ecosystem
 
 ---
 
@@ -701,5 +701,5 @@ print(f"Time to peak: {result.time_to_peak_min} min")
 ---
 
 **Document version:** 1.9
-**Last updated:** 2026-11-14
-**Status:** v0.8.0 in preparation
+**Last updated:** 2026-11-16
+**Status:** v0.8.0 frozen on 2026-11-16 for the first joint release of the Nogat ecosystem

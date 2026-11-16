@@ -30,16 +30,16 @@ The same commands run from Python, from a shell or a CI job, from an AI agent ov
 
 ## Install
 
-Python 3.12 or newer. Hydrolog is not on PyPI yet, so the lines below install from Git with [uv](https://docs.astral.sh/uv/); with pip: `pip install "hydrolog @ git+https://github.com/Daldek/Hydrolog.git"`.
+Python 3.12 or newer. Hydrolog is not on PyPI yet, so the lines below install the release v0.8.0 from its Git tag with [uv](https://docs.astral.sh/uv/); with pip: `pip install "hydrolog @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0"`.
 
 ```sh
-uv tool install "git+https://github.com/Daldek/Hydrolog.git"                           # CLI: hydrolog
-uv add "hydrolog @ git+https://github.com/Daldek/Hydrolog.git"                         # Python library
-uvx --from "hydrolog[mcp] @ git+https://github.com/Daldek/Hydrolog.git" hydrolog-mcp  # MCP server
-uv tool install "hydrolog[gui] @ git+https://github.com/Daldek/Hydrolog.git"           # CLI with the web GUI
+uv tool install "git+https://github.com/Daldek/Hydrolog.git@v0.8.0"                           # CLI: hydrolog
+uv add "hydrolog @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0"                         # Python library
+uvx --from "hydrolog[mcp] @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0" hydrolog-mcp  # MCP server
+uv tool install "hydrolog[gui] @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0"           # CLI with the web GUI
 ```
 
-Optional dependencies are extras; add them in brackets, for example `"hydrolog[raster,mcp] @ git+https://github.com/Daldek/Hydrolog.git"`. Without extras, the library, the CLI and every command except the two raster commands, `precip pmaxtp` and `gui serve` run on NumPy, SciPy and platformdirs.
+Optional dependencies are extras; add them in brackets, for example `"hydrolog[raster,mcp] @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0"`. Without extras, the library, the CLI and every command except the two raster commands, `precip pmaxtp` and `gui serve` run on NumPy, SciPy and platformdirs.
 
 | Extra | Brings | Needed for |
 |---|---|---|
@@ -243,7 +243,7 @@ hydrolog commands guide --format llms --output guide.txt --check --json
 Claude Code:
 
 ```sh
-claude mcp add hydrolog -- uvx --from "hydrolog[mcp] @ git+https://github.com/Daldek/Hydrolog.git" hydrolog-mcp --allow-dir /path/to/data
+claude mcp add hydrolog -- uvx --from "hydrolog[mcp] @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0" hydrolog-mcp --allow-dir /path/to/data
 ```
 
 Cursor, `.cursor/mcp.json`:
@@ -254,7 +254,7 @@ Cursor, `.cursor/mcp.json`:
     "hydrolog": {
       "command": "uvx",
       "args": [
-        "--from", "hydrolog[mcp] @ git+https://github.com/Daldek/Hydrolog.git",
+        "--from", "hydrolog[mcp] @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0",
         "hydrolog-mcp", "--allow-dir", "/path/to/data"
       ]
     }
@@ -265,7 +265,7 @@ Cursor, `.cursor/mcp.json`:
 Codex:
 
 ```sh
-codex mcp add hydrolog -- uvx --from "hydrolog[mcp] @ git+https://github.com/Daldek/Hydrolog.git" hydrolog-mcp --allow-dir /path/to/data
+codex mcp add hydrolog -- uvx --from "hydrolog[mcp] @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0" hydrolog-mcp --allow-dir /path/to/data
 ```
 
 VS Code, `.vscode/mcp.json` (key `servers`):
@@ -277,7 +277,7 @@ VS Code, `.vscode/mcp.json` (key `servers`):
       "type": "stdio",
       "command": "uvx",
       "args": [
-        "--from", "hydrolog[mcp] @ git+https://github.com/Daldek/Hydrolog.git",
+        "--from", "hydrolog[mcp] @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0",
         "hydrolog-mcp", "--allow-dir", "/path/to/data"
       ]
     }
@@ -421,4 +421,4 @@ hydrolog config show --json
 
 ## Status, licence, author
 
-Alpha: the next release is 0.8.0 (the repository carries `0.8.0.dev0`; the last release is 0.7.0). Semantic versioning applies: in 0.y a minor release may break the public interface, from 1.0.0 only a major one. Licence: MIT. Author: Piotr de Bever ([Daldek](https://github.com/Daldek)). Hydrolog is part of the [Nogat](https://github.com/Daldek/Nogat) ecosystem and follows its standard 1.0.
+Alpha: the release 0.8.0, a member of the first joint release of the Nogat ecosystem (frozen on 2026-11-16; the previous release is 0.7.0). Semantic versioning applies: in 0.y a minor release may break the public interface, from 1.0.0 only a major one. Licence: MIT. Author: Piotr de Bever ([Daldek](https://github.com/Daldek)). Hydrolog is part of the [Nogat](https://github.com/Daldek/Nogat) ecosystem and follows its standard 1.0.

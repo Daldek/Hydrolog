@@ -1289,7 +1289,7 @@ functions include `plot_hietogram`, `plot_hydrograph`, `plot_rainfall_runoff`,
 `plot_uh_comparison` and `plot_hypsometric_curve`.
 
 ```sh
-pip install "hydrolog[viz] @ git+https://github.com/Daldek/Hydrolog.git"
+pip install "hydrolog[viz] @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0"
 ```
 
 ```python
@@ -1320,7 +1320,7 @@ server.
 hydrolog mcp --allow-dir ~/hydrolog-data
 hydrolog mcp --allow-dir ~/hydrolog-data --allow-writes
 hydrolog mcp --tools tc,cn,core
-uvx --from "hydrolog[mcp] @ git+https://github.com/Daldek/Hydrolog.git" hydrolog-mcp --allow-dir ~/hydrolog-data
+uvx --from "hydrolog[mcp] @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0" hydrolog-mcp --allow-dir ~/hydrolog-data
 ```
 
 - **`--allow-dir DIR`** (repeatable) is the only place tools may read files from and, with
@@ -1575,7 +1575,7 @@ computes every value.
 ### Starting it
 
 ```sh
-pip install "hydrolog[gui] @ git+https://github.com/Daldek/Hydrolog.git"
+pip install "hydrolog[gui] @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0"
 hydrolog gui serve                              # http://127.0.0.1:8070/, opened in the browser
 hydrolog gui serve --no-browser --port 8071     # another port, no browser (a service)
 ```
