@@ -1289,7 +1289,7 @@ functions include `plot_hietogram`, `plot_hydrograph`, `plot_rainfall_runoff`,
 `plot_uh_comparison` and `plot_hypsometric_curve`.
 
 ```sh
-pip install "hydrolog[viz] @ git+https://github.com/Daldek/Hydrolog.git"
+pip install "hydrolog[viz] @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0"
 ```
 
 ```python
@@ -1320,7 +1320,7 @@ server.
 hydrolog mcp --allow-dir ~/hydrolog-data
 hydrolog mcp --allow-dir ~/hydrolog-data --allow-writes
 hydrolog mcp --tools tc,cn,core
-uvx --from "hydrolog[mcp] @ git+https://github.com/Daldek/Hydrolog.git" hydrolog-mcp --allow-dir ~/hydrolog-data
+uvx --from "hydrolog[mcp] @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0" hydrolog-mcp --allow-dir ~/hydrolog-data
 ```
 
 - **`--allow-dir DIR`** (repeatable) is the only place tools may read files from and, with
@@ -1575,7 +1575,7 @@ computes every value.
 ### Starting it
 
 ```sh
-pip install "hydrolog[gui] @ git+https://github.com/Daldek/Hydrolog.git"
+pip install "hydrolog[gui] @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0"
 hydrolog gui serve                              # http://127.0.0.1:8070/, opened in the browser
 hydrolog gui serve --no-browser --port 8071     # another port, no browser (a service)
 ```
@@ -1846,7 +1846,8 @@ request_window = 60
 - **The request limit.** At most `request_limit` requests of one client address in
   `request_window` seconds; the address stays in the server's memory for its window only. Static
   files and the catalog documents (`api/commands…`, `api/schemas/…`) are not counted, a page load
-  costs about three requests and a computation one. Over it: `429` with `Retry-After`. Behind a
+  costs about three requests and a computation one. Over it: `429` with `Retry-After`, for an API
+  route the error `rate_limited`, for a page „Zbyt wiele żądań. Spróbuj ponownie za <n> s.”. Behind a
   proxy, the client's address is the last one the proxy adds to `X-Forwarded-For`, trusted only
   from the addresses in uvicorn's `FORWARDED_ALLOW_IPS` (default `127.0.0.1`: `cloudflared` on the
   same machine); a proxy on another machine needs its address there.

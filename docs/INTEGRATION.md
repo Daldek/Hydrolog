@@ -1,7 +1,7 @@
 # Hydrograf ↔ Hydrolog integration
 
 **Created:** 2026-01-20
-**Last updated:** 2026-11-15 (Hydrograf's and Retman's ranges of 0.8.0.dev0; audited against the code on 2026-11-14: Hydrograf's side implemented, the providers' lines, the GUI kit 1.0.0)
+**Last updated:** 2026-11-16 (the release 0.8.0 frozen: consumers pin the tag `v0.8.0`; Hydrograf's and Retman's ranges of 0.8.0.dev0; audited against the code on 2026-11-14: Hydrograf's side implemented, the providers' lines, the GUI kit 1.0.0)
 **Status:** Implemented (Hydrolog - ready; Hydrograf - morphometry and the hand-off implemented)
 
 ---
@@ -318,7 +318,7 @@ Retman calls Hydrolog through the command layer, not through the library classes
 - **Catalog and envelope:** `hydrolog.catalog.run_command("<group> <command>", {options})` (also `hydrolog.run_command`) validates the options, runs the operation and returns a `hydrolog-result/1` envelope (`schema`, `tool`, `version`, `command`, `check`, `status`, `result`, `notices`, `inputs`, and `attribution` and `terms_notice`, the providers' lines of Nogat DEV §20, when the run has them; the files written are in `result.files[]` with SHA-256; `to_dict()`, `to_json()`). Option schema (JSON Schema): `command_schema()`, `hydrolog commands schema`. Errors are `HydrologError` exceptions with `code`, `hint` and `details` (registry `ERROR_CODES`; document `hydrolog-error/1`).
 - **`catchment_characteristics`:** the proposed format is `WatershedParameters` JSON (`WatershedParameters.to_json()`; only `area_km2` is required, a command that needs a missing field names it in `details.option` with `details.reason` `missing_field`). The file is passed to commands as `watershed_file`, and `WatershedParameters.from_dict()` ignores the extra `schema` key (e.g. `"hydrolog-catchment/1"`) added by the catalog tools.
 - **File inputs and outputs:** series (`input_file` + `value_column`/`date_column`), rainfall stations (`stations_file`), network segments (`segments_file`) and the watershed (`watershed_file`) as CSV/JSON; results that write files (`soil hsg` - GeoTIFF, `report generate` - Markdown, the `route` commands - hydrograph tables, `commands batch` and `commands guide`; one file given by `--output`, or `route network --output-dir` and `--schematic`; an existing file needs `--force`) list them in `result.files[]`. Retman does not need to paste series into arguments.
-- **Versions:** Hydrolog's next release is 0.8.0 (`develop` carries `0.8.0.dev0`). In 0.y a minor release may change options, command names and envelope shapes incompatibly, from 1.0.0 only a major one (Nogat REL-1.1), so a consumer that pins a Hydrolog commit declares `>=0.8.0.dev0,<0.9` (REL-5.6) and narrows it to `>=0.8.0,<0.9` with the tag. Retman's tool manifest says `supported_versions=">=0.8.0.dev0,<0.9"` since its `4329dba` (2026-11-14).
+- **Versions:** Hydrolog's release 0.8.0 is frozen (2026-11-16) for the first joint release of the Nogat ecosystem; `develop` carries `0.8.0.dev0` until the release commit. In 0.y a minor release may change options, command names and envelope shapes incompatibly, from 1.0.0 only a major one (Nogat REL-1.1), so a consumer that pins a Hydrolog commit declares `>=0.8.0.dev0,<0.9` (REL-5.6) and, with the tag, pins `git+https://github.com/Daldek/Hydrolog.git@v0.8.0` (REL-5.1) and narrows the range to `>=0.8.0,<0.9`. Retman's tool manifest says `supported_versions=">=0.8.0.dev0,<0.9"` since its `4329dba` (2026-11-14).
 
 ```python
 from hydrolog.catalog import run_command
@@ -342,7 +342,7 @@ envelope = result.to_dict()  # hydrolog-result/1 envelope as a dict (result.to_j
 The MCP server exposes every catalog command but `gui serve` as a tool (name = `operation_id`, e.g. `hydrolog_tc_kirpich`). It requires the `hydrolog[mcp]` extra (`mcp>=2.3,<3`) and runs over stdio.
 
 ```bash
-pip install "hydrolog[mcp,raster] @ git+https://github.com/Daldek/Hydrolog.git"
+pip install "hydrolog[mcp,raster] @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0"
 
 # Claude Code
 claude mcp add hydrolog -- hydrolog mcp --allow-dir ~/hydrolog-data

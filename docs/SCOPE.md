@@ -4,7 +4,7 @@
 
 **Version:** 1.9
 **Date:** 2026-11-14
-**Status:** v0.8.0 in preparation
+**Status:** v0.8.0 frozen on 2026-11-16 for the first joint release of the Nogat ecosystem
 
 ---
 
@@ -246,7 +246,7 @@ Other groups: `precip`, `hydrograph`, `route`, `morphometry`, `network`, `stats`
 
 #### 2.1.8 Module `visualization` - Plots (v0.5.0)
 
-The module requires optional dependencies: `pip install hydrolog[viz]`
+The module requires the extra `viz`: `pip install "hydrolog[viz] @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0"`
 
 **Hyetographs:**
 - `plot_hietogram()` - rainfall intensity plot with an optional cumulative line
@@ -569,8 +569,9 @@ hydrolog/
 - Python >= 3.12
 - NumPy >= 1.24
 - SciPy >= 1.10 (statistical distributions, gamma function, optimization - required since v0.7.0)
+- platformdirs >= 4.0 (the user config, data and state directories)
 
-**Optional (extras `pip install hydrolog[...]`):**
+**Optional (extras, `"hydrolog[...] @ git+https://github.com/Daldek/Hydrolog.git@v0.8.0"`):**
 - `raster`: rasterio >= 1.3 + pyproj >= 3.6 (commands `soil hsg` and `soil hsg-stats`, `hydrolog.soil.raster`)
 - `mcp`: mcp >= 2.3, < 3 (MCP server `hydrolog mcp`)
 - `gui`: starlette >= 1.10, < 2 + uvicorn >= 0.54, < 1 + obserwator >= 3.0.0.dev0, < 4 (web GUI `hydrolog gui serve`, ADR-0014)
@@ -701,5 +702,5 @@ print(f"Time to peak: {result.time_to_peak_min} min")
 ---
 
 **Document version:** 1.9
-**Last updated:** 2026-11-14
-**Status:** v0.8.0 in preparation
+**Last updated:** 2026-11-16
+**Status:** v0.8.0 frozen on 2026-11-16 for the first joint release of the Nogat ecosystem

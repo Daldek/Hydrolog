@@ -2,9 +2,9 @@
 
 ## Hydrolog - Hydrological Toolkit Library
 
-**Version:** 0.8.0 (in preparation)
+**Version:** 0.8.0 (frozen on 2026-11-16)
 **Date:** 2026-10-19
-**Status:** v0.8.0 in preparation
+**Status:** v0.8.0 frozen on 2026-11-16 for the first joint release of the Nogat ecosystem
 
 ---
 
@@ -634,7 +634,7 @@ print(f"tc = {tc:.1f} min")
 - [x] `visualization.statistics` - 10 visualization functions
 - [x] Tests and documentation
 
-### v0.8.0 - Command catalog, MCP, HSG *(in preparation)*
+### v0.8.0 - Command catalog, MCP, HSG *(frozen on 2026-11-16)*
 - [x] `catalog`, `operations` - a catalog of 62 commands in 17 groups and the operations layer
 - [x] `cli` - CLI generated from the catalog (breaking change: the former syntax was removed)
 - [x] `mcp` - MCP server (`hydrolog mcp`, extra `[mcp]`)
@@ -645,13 +645,13 @@ print(f"tc = {tc:.1f} min")
 - [x] Station analyses for Obserwator's series: the groups `stats`, `hydrometrics` and `meteo` (ADR-0029 to ADR-0033)
 - [x] `gui` - the web GUI (`hydrolog gui serve`, extra `[gui]`, ADR-0014; section 2.16)
 - [ ] Empirical peak flow formulas (Punzet, Bogdanowicz-Stachy) - after v0.8.0
-- [ ] Complete API documentation (MkDocs/Sphinx)
-- [ ] Publication on PyPI
+- [ ] Complete API documentation (MkDocs/Sphinx) - after v0.8.0
+- [ ] Publication on PyPI - after v0.8.0, with the rename to `nogat-hydrolog`; v0.8.0 installs from its Git tag
 
 ### v0.8.0 - Flood routing *(merged into `develop`, ADR-0007)*
 - [x] `routing` and the command group `route`: `Hydrograph`, `Reach`, lag (`route lag`), Muskingum (`route muskingum`), Muskingum-Cunge (`route muskingum-cunge`), cascade of linear reservoirs (`route cascade`), level-pool reservoir (`route level-pool`), river network (`route network`) (plan: `docs/plans/2026-10-24-flood-routing.md`)
 
 ---
 
-**Document version:** 0.8.0 (in preparation)
-**Last updated:** 2026-11-14
+**Document version:** 0.8.0 (frozen on 2026-11-16)
+**Last updated:** 2026-11-16
