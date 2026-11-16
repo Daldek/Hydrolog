@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.8.0] - 2026-11-16
 
 This is the release 0.8.0 (the author's decision of 2026-11-14, which supersedes his decision of 2026-11-09 to tag 1.0.0), frozen on 2026-11-16 as a member of the first joint release of the Nogat ecosystem (Nogat release set candidate-6; ECO-074) and made together with the adoption of the Nogat standard 1.0 (its drafts were called 2.0 and 2.1; decisions in [DECISIONS.md](DECISIONS.md)). Semantic versioning applies: command and option names, `operation_id`s, the `hydrolog-result/1`, `hydrolog-error/1` and domain result schemas, and the error codes and exit codes are public API; in 0.y a minor release may break them, from 1.0.0 only a major one (Nogat REL-1.1). The library classes (`SCSCN`, `HydrographGenerator`, `NashIUH`, `ClarkIUH`, `SnyderUH`, `ConcentrationTime`, hyetographs, `WatershedParameters`, statistics, hydrometrics, reports, visualization) keep their names and signatures; changes to them are additions or bug fixes described below. **Breaking** entries are relative to 0.7.0; the ones that also change `develop` as it was when it carried 1.0.0.dev0 (2026-10-19 to 2026-11-14) say so ("since 1.0.0.dev0"). The known defects left to the next release are listed in [PROGRESS.md](PROGRESS.md#next), Next 2.
 
@@ -1367,4 +1367,4 @@ Requires optional dependencies: `pip install hydrolog[visualization]`
 | **0.6.3** | 2026-03-23 | FAA + Kerby + Kerby-Kirpich tc, API audit |
 | **0.6.4** | 2026-03-25 | WatershedParams extension + UH ordinates + docs audit |
 | **0.7.0** | 2026-03-26 | Hydrological statistics + Hydrometrics |
-| **Unreleased** | - | 0.8.0 (frozen on 2026-11-16, first joint release of the Nogat ecosystem): Stable API: command catalog, CLI from catalog, MCP server, HSG (`hydrolog.soil`), result serialization, calculation fixes |
+| **0.8.0** | 2026-11-16 | First joint release of the Nogat ecosystem: Stable API: command catalog, CLI from catalog, MCP server, HSG (`hydrolog.soil`), result serialization, calculation fixes |
