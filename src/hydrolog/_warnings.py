@@ -123,8 +123,16 @@ class HydrologWarning(UserWarning):
     message is the template filled with them (:func:`render`). An instance pickles
     and copies.
 
+    An instance is also made from its message alone, as ``warnings.warn(text, kind)``
+    and ``warnings.warn_explicit(text, kind, ...)`` make it: code that records
+    warnings and issues them again by their text and class does so (numba's
+    ``WarningsFixer``, whose ``catch_warnings`` is process-wide and so may record a
+    warning of another thread). Such a warning has its message and no details.
+
     Parameters
     ----------
+    *message : object
+        Its message alone, when the warning is made again from it; then no details.
     **details : Any
         The values of the keys of the class.
 
@@ -137,13 +145,15 @@ class HydrologWarning(UserWarning):
     keys : tuple of str
         Names of the details (class attribute).
     details : dict
-        The details of this warning, in the order of ``keys``.
+        The details of this warning, in the order of ``keys``; empty for a warning
+        made from its message.
 
     Raises
     ------
     TypeError
-        If the details are not exactly ``keys``, or the class is ``HydrologWarning``
-        itself (it has no code).
+        If the details are not exactly ``keys``, details come with a message or more
+        than one message is given, or the class is ``HydrologWarning`` itself (it has
+        no code).
 
     Examples
     --------
@@ -152,25 +162,38 @@ class HydrologWarning(UserWarning):
     ('small_sample', {'years': 6, 'minimum': 10})
     >>> str(warning).split(":")[0]
     'Only 6 year(s) in the sample, fewer than 10'
+    >>> again = SmallSample(str(warning))
+    >>> str(again) == str(warning), again.details
+    (True, {})
     """
 
     level: ClassVar[Literal["info", "warning"]] = "warning"
     template: ClassVar[str] = ""
     keys: ClassVar[tuple[str, ...]] = ()
 
-    def __init__(self, **details: Any) -> None:
+    def __init__(self, *message: object, **details: Any) -> None:
         kind = type(self)
         if kind is HydrologWarning:
             raise TypeError(
                 "HydrologWarning has no code: warn with one of its subclasses"
             )
+        self.details: dict[str, Any] = {}
+        self._from_message = bool(message)
+        if message:
+            if len(message) > 1 or details:
+                raise TypeError(
+                    f"{kind.__name__} takes its details as keywords, or its message "
+                    "alone"
+                )
+            super().__init__(message[0])
+            return
         if set(details) != set(kind.keys):
             expected = ", ".join(kind.keys) or "(none)"
             raise TypeError(
                 f"{kind.__name__} takes the details {expected}; "
                 f"got {', '.join(details) or '(none)'}"
             )
-        self.details: dict[str, Any] = {key: details[key] for key in kind.keys}
+        self.details = {key: details[key] for key in kind.keys}
         super().__init__(render(kind.template, self.details))
 
     @classmethod
@@ -185,7 +208,9 @@ class HydrologWarning(UserWarning):
         return warning_code(cls)
 
     def __reduce__(self) -> tuple[Any, ...]:
-        """Rebuild the warning from its class and details (pickle, copy)."""
+        """Rebuild the warning from its details or its message (pickle, copy)."""
+        if self._from_message:
+            return (type(self), self.args)
         return (_restore, (type(self), self.details))
 
 
