@@ -137,6 +137,13 @@ export const notices = {
       text: "Okres odniesienia {first_year}–{last_year} ma {years} lat z danymi; zalecane jest co najmniej {minimum} lat.",
       plain: "Okres odniesienia jest krótszy niż zalecane 30 lat.",
     },
+    zero_flow_threshold: {
+      text: "Próg z szeregu ({threshold_method}) to przepływ 0 m³/s: żaden dzień nie ma mniejszego przepływu, więc nie ma ciągów niżówkowych; rzeka wysycha.",
+      plain: "Próg z szeregu to przepływ 0 m³/s: żaden dzień nie ma mniejszego przepływu, więc nie ma ciągów niżówkowych.",
+      names: {
+        threshold_method: { mean_annual_minimum: "SNQ, średni z minimów rocznych", exceedance: "przepływ przekraczany przez p % dni" },
+      },
+    },
     normal_not_computed: {
       text: "Normalna okresu {first_year}–{last_year} wymaga wartości rocznych w {required} latach, a ma je {years} (WMO-No. 1203): normalna i procenty normalnej są puste.",
       plain: "Za mało lat z wartościami rocznymi na normalną (WMO-No. 1203).",

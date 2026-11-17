@@ -206,6 +206,13 @@ _SPECS: Final[tuple[NoticeSpec, ...]] = (
         ("years", "first_year", "last_year", "minimum"),
     ),
     NoticeSpec(
+        "zero_flow_threshold",
+        "warning",
+        "The threshold from the series ({threshold_method}) is a discharge of 0: no "
+        "day is below it, so no low-flow sequence is found; the river runs dry",
+        ("threshold_method",),
+    ),
+    NoticeSpec(
         "normal_not_computed",
         "warning",
         "The normal of {first_year}-{last_year} needs annual values in {required} of "

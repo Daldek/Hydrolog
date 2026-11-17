@@ -95,8 +95,22 @@ class TestLowFlowAnalysis:
         result = lfa.detect_sequences(threshold=10.0, min_duration_days=5)
         assert result.sequences[0].deficit_volume == pytest.approx(25.0)
 
-    def test_detect_sequences_negative_threshold_raises(self):
-        """Negative threshold should raise InvalidParameterError."""
+    def test_detect_sequences_takes_a_stage_threshold_below_the_gauge_zero(self):
+        """Stages below the gauge zero are normal: a threshold of -5 cm finds them."""
+        from hydrolog.statistics.low_flows import LowFlowAnalysis
+
+        dates = np.arange(
+            np.datetime64("2020-11-01"),
+            np.datetime64("2021-10-31"),
+            dtype="datetime64[D]",
+        )
+        values = np.full(len(dates), 10.0)
+        values[50:57] = -8.0
+        result = LowFlowAnalysis(values, dates).detect_sequences(threshold=-5.0)
+        assert [(s.start_index, s.end_index) for s in result.sequences] == [(50, 56)]
+        assert result.total_deficit == pytest.approx(7 * 3.0)
+
+    def test_detect_sequences_non_finite_threshold_raises(self):
         from hydrolog.exceptions import InvalidParameterError
         from hydrolog.statistics.low_flows import LowFlowAnalysis
 
@@ -105,10 +119,9 @@ class TestLowFlowAnalysis:
             np.datetime64("2021-10-31"),
             dtype="datetime64[D]",
         )
-        values = np.full(len(dates), 50.0)
-        lfa = LowFlowAnalysis(values, dates)
-        with pytest.raises(InvalidParameterError):
-            lfa.detect_sequences(threshold=-5.0)
+        lfa = LowFlowAnalysis(np.full(len(dates), 50.0), dates)
+        with pytest.raises(InvalidParameterError, match="finite"):
+            lfa.detect_sequences(threshold=float("nan"))
 
     def test_detect_sequences_zero_min_duration_raises(self):
         """min_duration_days < 1 should raise InvalidParameterError."""

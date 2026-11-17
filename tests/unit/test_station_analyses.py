@@ -265,6 +265,63 @@ class TestLowFlowSequencesWithGaps:
         assert caught.value.details == {"option": option, "reason": "not_applicable"}
 
 
+def _two_hydrological_years(low: dict[int, float], base: float) -> dict[str, list]:
+    """Daily values of 2019-11-01 to 2021-10-31 at ``base`` with ``low`` days."""
+    values = np.full(731, base)
+    for day, value in low.items():
+        values[day] = value
+    return {
+        "values": values.tolist(),
+        "dates": [str(d) for d in days("2019-11-01", 731)],
+    }
+
+
+class TestLowFlowThresholdFromTheSeries:
+    def test_a_stage_threshold_below_the_gauge_zero_is_a_threshold(self):
+        """SNW below the gauge zero (ČHMÚ 0-203-1-212600: -1.95 cm) was refused with
+        threshold_not_positive; stages below the zero are normal."""
+        low = dict.fromkeys(range(100, 110), -12.0)  # 2020: minimum -12 cm
+        low |= dict.fromkeys(range(465, 475), -8.0)  # 2021: minimum -8 cm
+        output = stats_low_flow_sequences(
+            **_two_hydrological_years(low, base=20.0),
+            parameter="H",
+            threshold_method="mean_annual_minimum",
+        )
+        result = output.result
+        assert result.threshold == pytest.approx(-10.0)  # SNW
+        [sequence] = result.sequences
+        assert (sequence.start_date, sequence.duration_days) == ("2020-02-09", 10)
+        assert sequence.deficit_volume == pytest.approx(10 * 2.0)
+        assert sequence.deficit_volume_m3 is None
+        assert "zero_flow_threshold" not in [n.code for n in output.notices]
+
+    def test_a_river_that_runs_dry_every_year_has_a_discharge_threshold_of_0(self):
+        """SNQ 0 (IMGW 152170160) was refused with threshold_not_positive: no day lies
+        below it, which the notice says."""
+        low = dict.fromkeys((*range(250, 270), *range(600, 640)), 0.0)
+        output = stats_low_flow_sequences(
+            **_two_hydrological_years(low, base=1.5),
+            threshold_method="mean_annual_minimum",
+        )
+        assert (output.result.threshold, output.result.n_events) == (0.0, 0)
+        assert output.result.sequences == []
+        [zero] = [n for n in output.notices if n.code == "zero_flow_threshold"]
+        assert (zero.level, zero.details) == (
+            "warning",
+            {"threshold_method": "mean_annual_minimum"},
+        )
+
+    def test_a_negative_discharge_threshold_is_still_refused(self):
+        low = dict.fromkeys(range(100, 110), -0.5)
+        low |= dict.fromkeys(range(465, 475), -0.3)
+        with pytest.raises(CalculationError) as caught:
+            stats_low_flow_sequences(
+                **_two_hydrological_years(low, base=1.5),
+                threshold_method="mean_annual_minimum",
+            )
+        assert caught.value.details["reason"] == "threshold_not_positive"
+
+
 class TestRatingCurvePeriods:
     def test_periods_without_enough_pairs_have_no_curve(self):
         result = run_command(
