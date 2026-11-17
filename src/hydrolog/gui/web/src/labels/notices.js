@@ -50,6 +50,10 @@ export const notices = {
       text: "Usunięto {missing} z {total} par z brakującą wartością.",
       plain: "Usunięto pary z brakującą wartością.",
     },
+    reference_level_not_computed: {
+      text: "Krzywa okresów {periods} nie daje skończonego stanu wody przy przepływie odniesienia {reference_discharge_m3s} m³/s: ich stan przy przepływie odniesienia jest pusty.",
+      plain: "Krzywa niektórych okresów nie daje skończonego stanu wody przy przepływie odniesienia: ich stan przy tym przepływie jest pusty.",
+    },
     condition_defaulted: {
       text: "Nie podano stanu hydrologicznego dla {land_cover}: przyjęto „fair”.",
       plain: "Nie podano stanu hydrologicznego: przyjęto „fair”.",

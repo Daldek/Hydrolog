@@ -66,9 +66,11 @@ class RatingPeriod(JsonResultMixin):
         Pairs of the final fit and pairs removed as outliers.
     discharge_at_reference_m3s : float or None
         Q of the period's curve at the result's ``reference_level`` [m³/s]; ``None``
-        when that level is not above H₀.
+        when that level is not above H₀ or the curve gives no finite Q there.
     level_at_reference_discharge : float or None
-        H of the period's curve at the result's ``reference_discharge_m3s``.
+        H of the period's curve at the result's ``reference_discharge_m3s``; ``None``
+        when the curve gives no finite level there (a flat curve, ``b`` near 0, below
+        that discharge), with the notice ``reference_level_not_computed``.
     reason : str or None
         Why the period has no curve: ``too_few_pairs`` (fewer than 30) or
         ``fit_failed``; ``None`` when it has one.
@@ -263,17 +265,30 @@ def _rating_pairs(
 
 
 def _discharge_at(curve: RatingCurveResult, level: float) -> float | None:
-    """Q of a curve at a level; ``None`` at or below H0."""
+    """Q of a curve at a level; ``None`` at or below H0 or when Q is not finite."""
     if level <= curve.h0:
         return None
-    return float(curve.a * (level - curve.h0) ** curve.b)
+    try:
+        discharge = curve.a * (level - curve.h0) ** curve.b
+    except OverflowError:  # a power of floats beyond their range
+        return None
+    return float(discharge) if math.isfinite(discharge) else None
 
 
 def _level_at(curve: RatingCurveResult, discharge: float) -> float | None:
-    """H of a curve at a discharge; ``None`` when the curve cannot give it."""
+    """H of a curve at a discharge; ``None`` when the curve gives no finite H.
+
+    A flat curve (``b`` near 0, the fit of pairs whose discharge does not rise with
+    the stage) reaches a discharge above its plateau ``a`` only at a level beyond any
+    float: ``(Q / a) ** (1 / b)`` overflows.
+    """
     if curve.a <= 0 or curve.b <= 0 or discharge <= 0:
         return None
-    return float(curve.h0 + (discharge / curve.a) ** (1.0 / curve.b))
+    try:
+        level = curve.h0 + (discharge / curve.a) ** (1.0 / curve.b)
+    except OverflowError:  # a power of floats beyond their range
+        return None
+    return float(level) if math.isfinite(level) else None
 
 
 def _rating_periods(
@@ -398,8 +413,10 @@ def hydrometrics_rating_curve(
     -------
     OperationOutput
         ``result`` is a :class:`RatingCurveAnalysis`; the notices report pairs
-        removed for a missing value (``missing_pairs_removed``) and the warnings of
-        NumPy and SciPy (``runtime_warning``, ``user_warning``).
+        removed for a missing value (``missing_pairs_removed``), periods whose curve
+        gives no finite level at the reference discharge
+        (``reference_level_not_computed``) and the warnings of NumPy and SciPy
+        (``runtime_warning``, ``user_warning``).
 
     Raises
     ------
@@ -500,6 +517,19 @@ def hydrometrics_rating_curve(
             periods = _rating_periods(
                 levels, flows, years, years_per_period, reference, fit
             )
+            unreached = [
+                f"{period.first_year}-{period.last_year}"
+                for period in periods
+                if period.reason is None and period.level_at_reference_discharge is None
+            ]
+            if unreached:
+                notices.append(
+                    notice(
+                        "reference_level_not_computed",
+                        periods=unreached,
+                        reference_discharge_m3s=reference[1],
+                    )
+                )
     result = RatingCurveAnalysis(
         **{
             field.name: getattr(curve, field.name)

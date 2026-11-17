@@ -283,6 +283,43 @@ class TestRatingCurvePeriods:
         ]
         assert all(p["reason"] is None for p in result["periods"])
 
+    def test_a_flat_period_has_no_level_at_the_reference_discharge(self):
+        """A period whose discharge falls as the stage rises fits a flat curve (b near
+        0): above its plateau it reaches the reference discharge at no finite level.
+        (Q / a) ** (1 / b) overflowed into an internal error (IMGW 150189997, 1991)."""
+        rising = np.linspace(50.0, 150.0, 40)
+        falling = np.linspace(40.0, 90.0, 40)
+        envelope = run_command(
+            "hydrometrics rating-curve",
+            {
+                "water_levels": [*rising, *falling],
+                "discharges": [
+                    *(0.01 * (rising - 20.0) ** 1.5),
+                    *np.linspace(1.0, 0.5, 40),
+                ],
+                "dates": [
+                    str(day)
+                    for day in (*days("2001-01-01", 40), *days("2002-01-01", 40))
+                ],
+                "years_per_period": 1,
+            },
+        ).to_dict()
+        result = envelope["result"]
+        rated, flat = result["periods"]
+        assert rated["level_at_reference_discharge"] is not None
+        assert flat["reason"] is None and flat["b"] < 1e-3
+        assert flat["a"] < result["reference_discharge_m3s"]
+        assert flat["level_at_reference_discharge"] is None
+        notice = next(
+            n
+            for n in envelope["notices"]
+            if n["code"] == "reference_level_not_computed"
+        )
+        assert notice["details"] == {
+            "periods": ["2002-2002"],
+            "reference_discharge_m3s": result["reference_discharge_m3s"],
+        }
+
     def test_years_need_dates(self):
         with pytest.raises(InvalidParameterError) as caught:
             run_command(

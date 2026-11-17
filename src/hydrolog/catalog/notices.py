@@ -105,6 +105,14 @@ _SPECS: Final[tuple[NoticeSpec, ...]] = (
         ("missing", "total"),
     ),
     NoticeSpec(
+        "reference_level_not_computed",
+        "warning",
+        "The curve of period(s) {periods} gives no finite water level at the reference "
+        "discharge of {reference_discharge_m3s:g} m³/s: their "
+        "level_at_reference_discharge is null",
+        ("periods", "reference_discharge_m3s"),
+    ),
+    NoticeSpec(
         "condition_defaulted",
         "info",
         "No hydrologic condition given for {land_cover!r}: 'fair' was used.",
