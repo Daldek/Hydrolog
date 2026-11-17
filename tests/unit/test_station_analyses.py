@@ -377,6 +377,72 @@ class TestRatingCurvePeriods:
             "reference_discharge_m3s": result["reference_discharge_m3s"],
         }
 
+    def test_a_period_that_mixes_two_stage_regimes_is_implausible(self):
+        """Daily pairs that span a change of the stage-discharge relation (zero flow at
+        20 cm, from 2004 at 80 cm) fit a curve of neither: b above 4 and H0 far below
+        the stages, as IMGW-PIB 150170070 in 1981-1990 (b = 6.50, H0 = -88 cm). Such a
+        curve is given but flagged; the curves of one relation are not."""
+        before = np.linspace(40.0, 160.0, 40)
+        after = np.linspace(85.0, 160.0, 40)
+        levels, discharges, dates = [], [], []
+        for year in range(2001, 2007):
+            stages, zero = (before, 20.0) if year < 2004 else (after, 80.0)
+            levels += [*stages]
+            discharges += [*(0.01 * (stages - zero) ** 1.6)]
+            dates += [str(day) for day in days(f"{year}-01-01", 40)]
+        envelope = run_command(
+            "hydrometrics rating-curve",
+            {
+                "water_levels": [*levels, *before[:10]],
+                "discharges": [*discharges, *(0.01 * (before[:10] - 20.0) ** 1.6)],
+                "dates": [*dates, *(str(day) for day in days("2007-01-01", 10))],
+                "years_per_period": 2,
+            },
+        ).to_dict()
+        result = envelope["result"]
+        one, mixed, other, short = result["periods"]
+        assert (mixed["first_year"], mixed["last_year"]) == (2003, 2004)
+        assert mixed["b"] > 4 and min(levels) - mixed["h0"] > np.ptp(levels)
+        assert [p["plausible"] for p in result["periods"]] == [True, False, True, None]
+        assert [p["implausibility_reasons"] for p in result["periods"]] == [
+            [],
+            ["b_out_of_range", "h0_too_low"],
+            [],
+            None,
+        ]
+        assert short["reason"] == "too_few_pairs"
+        assert (one["b"], other["b"]) == (pytest.approx(1.6), pytest.approx(1.6))
+        # the curve of all the pairs mixes both relations too
+        assert result["plausible"] is False
+        assert result["implausibility_reasons"] == ["b_out_of_range", "h0_too_low"]
+        notice = next(
+            n for n in envelope["notices"] if n["code"] == "implausible_rating_curve"
+        )
+        assert notice["level"] == "warning"
+        assert notice["details"] == {
+            "curves": ["all pairs", "2003-2004"],
+            "b": pytest.approx([result["b"], mixed["b"]], rel=1e-5),
+            "h0": pytest.approx([result["h0"], mixed["h0"]], rel=1e-5),
+        }
+
+    def test_a_curve_of_one_relation_is_plausible_without_a_notice(self):
+        envelope = run_command(
+            "hydrometrics rating-curve",
+            {
+                "input_file": str(FIXTURES / "station_daily.csv"),
+                "level_column": "H",
+                "discharge_column": "Q",
+                "date_column": "date",
+                "years_per_period": 2,
+            },
+        ).to_dict()
+        result = envelope["result"]
+        assert (result["plausible"], result["implausibility_reasons"]) == (True, [])
+        assert all(p["plausible"] for p in result["periods"])
+        assert "implausible_rating_curve" not in {
+            n["code"] for n in envelope["notices"]
+        }
+
     def test_years_need_dates(self):
         with pytest.raises(InvalidParameterError) as caught:
             run_command(

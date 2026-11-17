@@ -839,6 +839,9 @@ def test_notices_in_polish(page: Any) -> None:
           {code: 'user_warning', message: 'Careful'},
           {code: 'homogeneity_rejected', message: 'm',
            details: {tests: ['mann_whitney', 'pettitt'], alpha: 0.05}},
+          {code: 'implausible_rating_curve', message: 'm',
+           details: {curves: ['all pairs', '1981-1990'], b: [6.23341, 6.49733],
+             h0: [-205.651, -87.9713]}},
           {code: 'no_such_code', message: 'Something odd'},
         ].map(notices.describeNotice);""",
     )
@@ -861,6 +864,15 @@ def test_notices_in_polish(page: Any) -> None:
         {
             "text": "Testy odrzucające jednorodność ciągu przy α = 0,05: "
             "Mann-Whitney, Pettitt.",
+            "english": False,
+        },
+        # a list detail item by item, with the items of the other lists
+        {
+            "text": "Krzywe przepływu mało wiarygodne, z wykładnikiem b spoza "
+            "przedziału od 1 do 4 albo z H₀ niżej od najniższego stanu o więcej niż "
+            "rozstęp stanów: wszystkich par (b = 6,233; H₀ = −205,7), 1981-1990 "
+            "(b = 6,497; H₀ = −87,97); pary łączą zapewne dwie zależności "
+            "stan–przepływ.",
             "english": False,
         },
         {"text": "Something odd" + EN, "english": True},

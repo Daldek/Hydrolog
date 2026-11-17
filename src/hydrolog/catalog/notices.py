@@ -113,6 +113,14 @@ _SPECS: Final[tuple[NoticeSpec, ...]] = (
         ("periods", "reference_discharge_m3s"),
     ),
     NoticeSpec(
+        "implausible_rating_curve",
+        "warning",
+        "Implausible rating curve(s), b outside 1 to 4 or H₀ below the lowest stage "
+        "by more than the range of the stages: {curves} (b = {b}; H₀ = {h0}); the "
+        "pairs may mix two stage–discharge relations",
+        ("curves", "b", "h0"),
+    ),
+    NoticeSpec(
         "condition_defaulted",
         "info",
         "No hydrologic condition given for {land_cover!r}: 'fair' was used.",
