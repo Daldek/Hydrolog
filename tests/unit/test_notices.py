@@ -29,6 +29,7 @@ from hydrolog._warnings import (
     ShortRecord,
     SmallSample,
     UhModelMismatch,
+    UhSubsteps,
     UnknownHietogramType,
     render,
 )
@@ -84,6 +85,12 @@ SAMPLES = {
         "allowed": ["beta", "block", "euler_ii", "triangular"],
     },
     UhModelMismatch: {"uh_model": "scs", "result_uh_model": "nash"},
+    UhSubsteps: {
+        "timestep_min": 1440.0,
+        "maximum_min": 193.605,
+        "substeps": 93,
+        "substep_min": 15.4839,
+    },
     PositionsIgnored: {"reason": "partial", "node_id": "R3"},
 }
 
@@ -129,6 +136,7 @@ class TestLibraryWarnings:
             "incomplete_years",
             "unknown_hietogram_type",
             "uh_model_mismatch",
+            "uh_substeps",
             "positions_ignored",
         ]
 
@@ -181,19 +189,53 @@ class TestLibraryWarnings:
             SmallSample(years=6)
         with pytest.raises(TypeError, match="years, minimum"):
             SmallSample(years=6, minimum=10, extra=1)
-        with pytest.raises(TypeError):
-            SmallSample("only 6 years")  # type: ignore[call-arg]
+        with pytest.raises(TypeError, match="message alone"):
+            SmallSample("only 6 years", years=6, minimum=10)
+        with pytest.raises(TypeError, match="message alone"):
+            SmallSample("only 6 years", "and more")
+
+    @pytest.mark.parametrize("kind", LIBRARY_WARNINGS, ids=lambda k: k.__name__)
+    def test_a_warning_issued_again_by_its_text_and_class_is_made_again(self, kind):
+        """Code that records warnings and issues them again by their text and class
+        (numba's WarningsFixer: warn_explicit(str(message), category, ...)) made
+        warn_explicit raise TypeError: __init__ took the details only (E5b-08)."""
+        first = kind(**SAMPLES[kind])
+        with warnings.catch_warnings(record=True) as recorded:
+            warnings.simplefilter("always")
+            warnings.warn(first, stacklevel=1)
+        with capture_warnings() as notices:
+            for item in recorded:
+                warnings.warn_explicit(
+                    str(item.message), item.category, item.filename, item.lineno
+                )
+        assert [(n.code, n.message, n.details) for n in notices] == [
+            (kind.code(), str(first), None)
+        ]
+
+    @pytest.mark.parametrize(
+        "clone", [copy.copy, copy.deepcopy, lambda w: pickle.loads(pickle.dumps(w))]
+    )
+    def test_a_warning_made_from_its_message_pickles_copies_and_raises(self, clone):
+        text = str(SmallSample(**SAMPLES[SmallSample]))
+        again = clone(SmallSample(text))
+        assert (type(again), str(again), again.details) == (SmallSample, text, {})
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", SmallSample)
+            with pytest.raises(SmallSample, match="Only 6 year"):
+                warnings.warn(text, SmallSample, stacklevel=1)
 
     def test_the_base_class_has_no_code_to_warn_with(self):
         with pytest.raises(TypeError, match="subclasses"):
             HydrologWarning()
 
-    def test_inside_a_routing_network_each_class_keeps_its_code(self):
-        """The network names a caught warning after its class (routing/network.py)."""
+    def test_inside_a_routing_network_each_class_keeps_its_code_and_level(self):
+        """The network names a caught warning after its class (routing/network.py),
+        at the level of its class: uh_substeps is info, as in an operation."""
         with _observed() as caught:
             for kind in LIBRARY_WARNINGS:
                 warnings.warn(kind(**SAMPLES[kind]), stacklevel=2)
         assert [item.code for item in caught] == [k.code() for k in LIBRARY_WARNINGS]
+        assert [item.level for item in caught] == [k.level for k in LIBRARY_WARNINGS]
         assert all(item.code in NOTICES for item in caught)
 
 

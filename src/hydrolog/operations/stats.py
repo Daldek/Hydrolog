@@ -1338,21 +1338,24 @@ def stats_low_flow_sequences(
     OperationOutput
         ``result`` is a :class:`LowFlowSequencesResult`; with a threshold from the
         series, the notices report a period shorter than 30 years
-        (``short_reference_period``).
+        (``short_reference_period``) and a discharge threshold of 0, below which no
+        day lies (``zero_flow_threshold``).
 
     Raises
     ------
     InvalidParameterError
-        If the series options are inconsistent, ``threshold`` is missing, a choice is
-        not allowed, ``threshold`` or ``exceedance_percent`` is given with another
-        method (``details.reason`` ``not_applicable``), ``exceedance_percent`` is not
-        in (0, 100), ``min_duration_days`` is below 1, ``max_gap_days`` below 0 or
-        ``first_year`` after ``last_year``.
+        If the series options are inconsistent, ``threshold`` is missing or not
+        positive, a choice is not allowed, ``threshold`` or ``exceedance_percent`` is
+        given with another method (``details.reason`` ``not_applicable``),
+        ``exceedance_percent`` is not in (0, 100), ``min_duration_days`` is below 1,
+        ``max_gap_days`` below 0 or ``first_year`` after ``last_year``.
     NotFoundError, InputDataError
         If the file does not exist or cannot be read.
     CalculationError
-        If every value is missing, the period has no value, or the threshold is not
-        positive (``details.reason`` ``threshold_not_positive``).
+        If every value is missing, the period has no value, or the threshold from the
+        series is a negative discharge (``details.reason``
+        ``threshold_not_positive``). A stage threshold from the series may be at or
+        below the gauge zero.
     """
     cite(attribution)
     check_choice("threshold_method", threshold_method, _THRESHOLD_METHODS)
@@ -1388,15 +1391,20 @@ def stats_low_flow_sequences(
     series = select_years(series, first_year, last_year)
     dates_array = _dates_of(series)
     level = _low_flow_threshold(series, threshold, threshold_method, exceedance_percent)
-    if not (math.isfinite(level) and level > 0):
+    # A threshold from the series is a value of it: a stage may lie at or below the
+    # gauge zero and a discharge be 0 where the river runs dry; a negative discharge is
+    # none (a given threshold is positive, _low_flow_threshold).
+    if not math.isfinite(level) or (parameter == "Q" and level < 0):
+        variable = "discharge" if parameter == "Q" else "stage"
         raise CalculationError(
-            f"The low-flow threshold must be positive, got {level:g}",
+            f"The low-flow threshold from the series, {level:g}, is not a valid "
+            f"{variable}",
             details={
                 "reason": "threshold_not_positive",
                 "threshold": level,
                 "threshold_method": threshold_method,
             },
-            hint="Give a positive threshold or another threshold_method.",
+            hint="Check the series for negative discharges, or give a threshold.",
         )
     found = LowFlowAnalysis(series.values, dates_array).detect_sequences(
         threshold=level,
@@ -1472,8 +1480,10 @@ def stats_low_flow_sequences(
         years=years,
     )
     notices: list[Notice] = []
+    if parameter == "Q" and level == 0:
+        notices.append(notice("zero_flow_threshold", threshold_method=threshold_method))
     if threshold_method != "value":
-        notices = reference_period_notices(len(years), years[0].year, years[-1].year)
+        notices += reference_period_notices(len(years), years[0].year, years[-1].year)
     return OperationOutput(result, notices)
 
 

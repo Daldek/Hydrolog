@@ -47,6 +47,8 @@ _MIN_PAIRS = 3  # the rating curve has three parameters
 _MIN_PERIOD_PAIRS = 30  # a period of a dated series is fitted from this many pairs
 _MAX_BINS = 100_000  # guards the histogram of the water level zones against a tiny bin
 _NUMERIC_WARNINGS: tuple[type[Warning], ...] = (UserWarning, RuntimeWarning)
+_PLAUSIBLE_EXPONENT = (1.0, 4.0)  # b of one stage-discharge relation (ADR-0041)
+_ALL_PAIRS = "all pairs"  # the curve of all the pairs in implausible_rating_curve
 
 
 @dataclass
@@ -66,12 +68,22 @@ class RatingPeriod(JsonResultMixin):
         Pairs of the final fit and pairs removed as outliers.
     discharge_at_reference_m3s : float or None
         Q of the period's curve at the result's ``reference_level`` [m³/s]; ``None``
-        when that level is not above H₀.
+        when that level is not above H₀ or the curve gives no finite Q there.
     level_at_reference_discharge : float or None
-        H of the period's curve at the result's ``reference_discharge_m3s``.
+        H of the period's curve at the result's ``reference_discharge_m3s``; ``None``
+        when the curve gives no finite level there (a flat curve, ``b`` near 0, below
+        that discharge), with the notice ``reference_level_not_computed``.
     reason : str or None
         Why the period has no curve: ``too_few_pairs`` (fewer than 30) or
         ``fit_failed``; ``None`` when it has one.
+    plausible : bool or None
+        Whether the period's curve is plausible for one stage-discharge relation
+        (ADR-0041); ``None`` when the period has no curve.
+    implausibility_reasons : list of str or None
+        Why the curve is not plausible: ``b_out_of_range`` (``b`` outside 1 to 4)
+        and ``h0_too_low`` (H₀ below the lowest level of the period's pairs by more
+        than the range of their levels); empty for a plausible curve, ``None`` when
+        the period has no curve.
     """
 
     first_year: int
@@ -87,6 +99,8 @@ class RatingPeriod(JsonResultMixin):
     discharge_at_reference_m3s: float | None = None
     level_at_reference_discharge: float | None = None
     reason: str | None = None
+    plausible: bool | None = None
+    implausibility_reasons: list[str] | None = None
 
 
 @dataclass
@@ -108,6 +122,12 @@ class RatingCurveAnalysis(RatingCurveResult):
         ``None`` without periods.
     reference_discharge_m3s : float or None
         Median discharge of the pairs [m³/s]; ``None`` without periods.
+    plausible : bool or None
+        Whether the curve of all the pairs is plausible for one stage-discharge
+        relation (ADR-0041); ``None`` in a result made without that check.
+    implausibility_reasons : list of str or None
+        Why that curve is not plausible, as for :class:`RatingPeriod` (its levels
+        are those of all the pairs); empty for a plausible curve.
     """
 
     first_year: int | None = None
@@ -115,6 +135,8 @@ class RatingCurveAnalysis(RatingCurveResult):
     periods: list[RatingPeriod] | None = None
     reference_level: float | None = None
     reference_discharge_m3s: float | None = None
+    plausible: bool | None = None
+    implausibility_reasons: list[str] | None = None
 
 
 @dataclass
@@ -263,17 +285,47 @@ def _rating_pairs(
 
 
 def _discharge_at(curve: RatingCurveResult, level: float) -> float | None:
-    """Q of a curve at a level; ``None`` at or below H0."""
+    """Q of a curve at a level; ``None`` at or below H0 or when Q is not finite."""
     if level <= curve.h0:
         return None
-    return float(curve.a * (level - curve.h0) ** curve.b)
+    try:
+        discharge = curve.a * (level - curve.h0) ** curve.b
+    except OverflowError:  # a power of floats beyond their range
+        return None
+    return float(discharge) if math.isfinite(discharge) else None
 
 
 def _level_at(curve: RatingCurveResult, discharge: float) -> float | None:
-    """H of a curve at a discharge; ``None`` when the curve cannot give it."""
+    """H of a curve at a discharge; ``None`` when the curve gives no finite H.
+
+    A flat curve (``b`` near 0, the fit of pairs whose discharge does not rise with
+    the stage) reaches a discharge above its plateau ``a`` only at a level beyond any
+    float: ``(Q / a) ** (1 / b)`` overflows.
+    """
     if curve.a <= 0 or curve.b <= 0 or discharge <= 0:
         return None
-    return float(curve.h0 + (discharge / curve.a) ** (1.0 / curve.b))
+    try:
+        level = curve.h0 + (discharge / curve.a) ** (1.0 / curve.b)
+    except OverflowError:  # a power of floats beyond their range
+        return None
+    return float(level) if math.isfinite(level) else None
+
+
+def _implausibility(curve: RatingCurveResult, levels: NDArray[np.float64]) -> list[str]:
+    """Why a curve is not plausible for one stage-discharge relation (ADR-0041).
+
+    A curve of one control has ``b`` from 1 to 4 and its H₀ at most the range of the
+    levels below the lowest level. A curve fitted to the pairs of two relations (a
+    gauge zero moved, a channel changed within a period) usually fails both: the
+    least squares bend it with a large ``b`` and an H₀ far below every level.
+    """
+    reasons: list[str] = []
+    lowest, highest = float(levels.min()), float(levels.max())
+    if not _PLAUSIBLE_EXPONENT[0] <= curve.b <= _PLAUSIBLE_EXPONENT[1]:
+        reasons.append("b_out_of_range")
+    if lowest - curve.h0 > highest - lowest:
+        reasons.append("h0_too_low")
+    return reasons
 
 
 def _rating_periods(
@@ -321,6 +373,8 @@ def _rating_periods(
                     setattr(period, name, getattr(curve, name))
                 period.discharge_at_reference_m3s = _discharge_at(curve, reference[0])
                 period.level_at_reference_discharge = _level_at(curve, reference[1])
+                period.implausibility_reasons = _implausibility(curve, levels[rows])
+                period.plausible = not period.implausibility_reasons
         periods.append(period)
         start += years_per_period
     return periods
@@ -358,6 +412,11 @@ def hydrometrics_rating_curve(
     of that many years is fitted too (a block with fewer than 30 pairs has no curve)
     and read at the median level and the median discharge of all the pairs, so that
     the shift of the curve between periods is a number.
+
+    Each curve is checked as the curve of one stage-discharge relation (ADR-0041):
+    ``b`` from 1 to 4 and H0 at most the range of its levels below its lowest level.
+    A curve that fails it is still given, with ``plausible`` false, its
+    ``implausibility_reasons`` and the notice ``implausible_rating_curve``.
 
     Parameters
     ----------
@@ -398,8 +457,11 @@ def hydrometrics_rating_curve(
     -------
     OperationOutput
         ``result`` is a :class:`RatingCurveAnalysis`; the notices report pairs
-        removed for a missing value (``missing_pairs_removed``) and the warnings of
-        NumPy and SciPy (``runtime_warning``, ``user_warning``).
+        removed for a missing value (``missing_pairs_removed``), periods whose curve
+        gives no finite level at the reference discharge
+        (``reference_level_not_computed``), implausible curves
+        (``implausible_rating_curve``) and the warnings of NumPy and SciPy
+        (``runtime_warning``, ``user_warning``).
 
     Raises
     ------
@@ -500,6 +562,36 @@ def hydrometrics_rating_curve(
             periods = _rating_periods(
                 levels, flows, years, years_per_period, reference, fit
             )
+            unreached = [
+                f"{period.first_year}-{period.last_year}"
+                for period in periods
+                if period.reason is None and period.level_at_reference_discharge is None
+            ]
+            if unreached:
+                notices.append(
+                    notice(
+                        "reference_level_not_computed",
+                        periods=unreached,
+                        reference_discharge_m3s=reference[1],
+                    )
+                )
+    reasons = _implausibility(curve, levels)
+    implausible = [(_ALL_PAIRS, curve.b, curve.h0)] if reasons else []
+    implausible += [
+        (f"{period.first_year}-{period.last_year}", period.b, period.h0)
+        for period in periods or ()
+        if period.plausible is False and period.b is not None and period.h0 is not None
+    ]
+    if implausible:
+        # b and H0 as the message writes them (six significant digits, as :g)
+        notices.append(
+            notice(
+                "implausible_rating_curve",
+                curves=[label for label, _, _ in implausible],
+                b=[float(f"{b:.6g}") for _, b, _ in implausible],
+                h0=[float(f"{h0:.6g}") for _, _, h0 in implausible],
+            )
+        )
     result = RatingCurveAnalysis(
         **{
             field.name: getattr(curve, field.name)
@@ -510,6 +602,8 @@ def hydrometrics_rating_curve(
         periods=periods,
         reference_level=None if reference is None else reference[0],
         reference_discharge_m3s=None if reference is None else reference[1],
+        plausible=not reasons,
+        implausibility_reasons=reasons,
     )
     return OperationOutput(result, [*notices, *numeric])
 

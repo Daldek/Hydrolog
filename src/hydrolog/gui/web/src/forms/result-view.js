@@ -317,8 +317,8 @@ export function resultCsv(analysis) {
 
 /**
  * A group of series as a Chart spec (charts/chart.js): lines against the time axis (in
- * hours), the months (one step each, named, in the group's order: November first in a
- * hydrological year), another axis of the group or the step.
+ * minutes when short, else in hours), the months (one step each, named, in the group's
+ * order: November first in a hydrological year), another axis of the group or the step.
  *
  * @param {object} group a group of analyzeResult's `series`
  * @param {{size?: string}} [how] the chart's size ("wide", the default, or "small")

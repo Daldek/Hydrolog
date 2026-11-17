@@ -1,10 +1,12 @@
 /**
  * Notices of results in Polish (plan D16): one text per stable code of Hydrolog's NOTICES
  * registry, filled from the notice's `details`. A text with values has a plain form for a
- * notice without them (`route network` gives its nodes' notices only `node_id`), and may
- * name the codes a detail holds (`names`: detail -> code -> Polish name). A contract test
- * fails for a code without a text here; a code the GUI does not know shows the English
- * message marked „(EN)”.
+ * notice without them (`route network` gives its nodes' notices only `node_id`), may
+ * name the codes a detail holds (`names`: detail -> code -> Polish name), and may word a
+ * list detail item by item (`each`: detail -> the text of one item, filled with the items
+ * at its place in the lists of details of that length). A contract test fails for a code
+ * without a text here; a code the GUI does not know shows the English message marked
+ * „(EN)”.
  */
 
 import { auto } from "../format.js";
@@ -49,6 +51,16 @@ export const notices = {
     missing_pairs_removed: {
       text: "Usunięto {missing} z {total} par z brakującą wartością.",
       plain: "Usunięto pary z brakującą wartością.",
+    },
+    reference_level_not_computed: {
+      text: "Krzywa okresów {periods} nie daje skończonego stanu wody przy przepływie odniesienia {reference_discharge_m3s} m³/s: ich stan przy przepływie odniesienia jest pusty.",
+      plain: "Krzywa niektórych okresów nie daje skończonego stanu wody przy przepływie odniesienia: ich stan przy tym przepływie jest pusty.",
+    },
+    implausible_rating_curve: {
+      text: "Krzywe przepływu mało wiarygodne, z wykładnikiem b spoza przedziału od 1 do 4 albo z H₀ niżej od najniższego stanu o więcej niż rozstęp stanów: {curves}; pary łączą zapewne dwie zależności stan–przepływ.",
+      plain: "Niektóre krzywe przepływu są mało wiarygodne: wykładnik b spoza przedziału od 1 do 4 albo H₀ niżej od najniższego stanu o więcej niż rozstęp stanów.",
+      names: { curves: { "all pairs": "wszystkich par" } },
+      each: { curves: "{curves} (b = {b}; H₀ = {h0})" },
     },
     condition_defaulted: {
       text: "Nie podano stanu hydrologicznego dla {land_cover}: przyjęto „fair”.",
@@ -133,6 +145,13 @@ export const notices = {
       text: "Okres odniesienia {first_year}–{last_year} ma {years} lat z danymi; zalecane jest co najmniej {minimum} lat.",
       plain: "Okres odniesienia jest krótszy niż zalecane 30 lat.",
     },
+    zero_flow_threshold: {
+      text: "Próg z szeregu ({threshold_method}) to przepływ 0 m³/s: żaden dzień nie ma mniejszego przepływu, więc nie ma ciągów niżówkowych; rzeka wysycha.",
+      plain: "Próg z szeregu to przepływ 0 m³/s: żaden dzień nie ma mniejszego przepływu, więc nie ma ciągów niżówkowych.",
+      names: {
+        threshold_method: { mean_annual_minimum: "SNQ, średni z minimów rocznych", exceedance: "przepływ przekraczany przez p % dni" },
+      },
+    },
     normal_not_computed: {
       text: "Normalna okresu {first_year}–{last_year} wymaga wartości rocznych w {required} latach, a ma je {years} (WMO-No. 1203): normalna i procenty normalnej są puste.",
       plain: "Za mało lat z wartościami rocznymi na normalną (WMO-No. 1203).",
@@ -164,6 +183,10 @@ export const notices = {
     uh_model_mismatch: {
       text: "Model hydrogramu jednostkowego {uh_model} różni się od użytego w wyniku: {result_uh_model}.",
       plain: "Model hydrogramu jednostkowego różni się od użytego w wyniku.",
+    },
+    uh_substeps: {
+      text: "Krok czasowy {timestep_min} min jest dłuższy niż {maximum_min} min, typowy zakres hydrogramu jednostkowego SCS: hydrogram policzono na {substeps} krokach pośrednich po {substep_min} min, z opadem każdego kroku rozłożonym na nie równo, i odczytano w chwilach kroków, więc zachowuje objętość 1 mm.",
+      plain: "Krok czasowy jest dłuższy niż typowy zakres hydrogramu jednostkowego SCS: hydrogram policzono na krokach pośrednich, więc zachowuje objętość 1 mm.",
     },
     positions_ignored: {
       text: "{reason}; schemat ułożono automatycznie, bez podanych położeń węzłów.",
@@ -238,6 +261,14 @@ export function describeNotice(notice) {
   const values = { message };
   const names = (typeof entry === "object" && entry.names) || {};
   for (const [key, value] of Object.entries(details)) values[key] = noticeValue(named(names[key], value));
+  const each = (typeof entry === "object" && entry.each) || {};
+  for (const [key, item] of Object.entries(each)) {
+    const items = details[key];
+    if (!Array.isArray(items)) continue;
+    const lists = Object.entries(details).filter(([, value]) => Array.isArray(value) && value.length === items.length);
+    const at = (index) => Object.fromEntries(lists.map(([name, value]) => [name, noticeValue(named(names[name], value[index]))]));
+    values[key] = items.map((_, index) => t(item, at(index))).join(", ");
+  }
   const full = typeof entry === "string" ? entry : entry.text;
   const needed = [...full.matchAll(/\{(\w+)\}/g)].map((match) => match[1]);
   const template = needed.every((key) => Object.hasOwn(values, key)) ? full : entry.plain || full;

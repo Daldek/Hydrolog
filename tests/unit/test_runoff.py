@@ -1,8 +1,11 @@
 """Tests for runoff generation module."""
 
+import warnings
+
 import numpy as np
 import pytest
 
+from hydrolog._warnings import UhSubsteps
 from hydrolog.exceptions import InvalidParameterError
 from hydrolog.precipitation import BetaHietogram, BlockHietogram
 from hydrolog.runoff import (
@@ -14,6 +17,7 @@ from hydrolog.runoff import (
     SnyderUH,
     convolve_discrete,
 )
+from hydrolog.runoff.unit_hydrograph import SCS_DIMENSIONLESS_UH
 
 
 class TestSCSCN:
@@ -219,6 +223,42 @@ class TestSCSUnitHydrograph:
         uh = SCSUnitHydrograph(area_km2=45.0, tc_min=90.0)
         with pytest.raises(InvalidParameterError, match="timestep_min"):
             uh.generate(timestep_min=0)
+
+    def test_a_step_on_the_bound_of_its_range_is_sampled_as_before(self):
+        """tc 70 min, step 12 min: 0.25 tp = 0.25 (6 + 42) = 12 min, the bound
+        itself. The ordinates are the dimensionless curve at the step times, with no
+        sub-steps (E5b-07 changes only steps beyond the range)."""
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", UhSubsteps)
+            result = SCSUnitHydrograph(area_km2=45.3, tc_min=70.0).generate(12.0)
+        table = SCS_DIMENSIONLESS_UH
+        sampled = np.interp(
+            result.times_min / result.time_to_peak_min,
+            table[:, 0],
+            table[:, 1],
+            left=0.0,
+            right=0.0,
+        )
+        assert np.array_equal(result.ordinates_m3s, sampled * result.peak_discharge_m3s)
+        assert result.times_min[-1] >= result.time_base_min
+
+    def test_a_step_beyond_the_bound_is_computed_on_sub_steps(self):
+        """tc 69.9 min, step 12 min: 0.25 tp = 11.985 min, so the step is divided in
+        two; the unit hydrograph keeps its 1 mm, tp and qp stay those of D = 12 min."""
+        unit = SCSUnitHydrograph(area_km2=45.3, tc_min=69.9)
+        with pytest.warns(UhSubsteps) as caught:
+            result = unit.generate(12.0)
+        assert caught[0].message.details == {
+            "timestep_min": 12.0,
+            "maximum_min": pytest.approx(11.985),
+            "substeps": 2,
+            "substep_min": 6.0,
+        }
+        volume_mm = result.ordinates_m3s.sum() * 12.0 * 60.0 / (45.3 * 1000.0)
+        assert volume_mm == pytest.approx(1.0, abs=2e-3)
+        assert result.ordinates_m3s[0] == result.ordinates_m3s[-1] == 0.0
+        assert result.time_to_peak_min == pytest.approx(6.0 + 0.6 * 69.9)
+        assert result.peak_discharge_m3s == unit.peak_discharge(12.0)
 
 
 class TestConvolution:

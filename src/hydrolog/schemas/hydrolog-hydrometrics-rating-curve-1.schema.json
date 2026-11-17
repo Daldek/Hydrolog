@@ -68,6 +68,12 @@
         "null",
         "number"
       ]
+    },
+    "plausible": {
+      "type": "boolean"
+    },
+    "implausibility_reasons": {
+      "type": "array"
     }
   }
 }

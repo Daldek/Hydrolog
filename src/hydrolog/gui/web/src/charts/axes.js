@@ -8,7 +8,7 @@
  * `drawGrid` and `drawAxes` turn a layout into SVG elements.
  */
 
-import { CHART_TEXT } from "./labels.js";
+import { CHART_TEXT, fill } from "./labels.js";
 import {
   gumbelDomain,
   gumbelScale,
@@ -129,7 +129,9 @@ function xAxis(axisSpec, values, range, small) {
   const kind = options.scale ?? "linear";
   if (kind === "time") {
     const domain = timeDomain(values, { min: options.min, max: options.max, count: small ? 8 : 13 });
-    return { ...domain, scale: linearScale([domain.min, domain.max], range) };
+    // The label names the unit of the ticks: its `{unit}` becomes min or h
+    const label = options.label && fill(options.label, { unit: domain.unit });
+    return { ...domain, label, scale: linearScale([domain.min, domain.max], range) };
   }
   if (kind === "gumbel") {
     const [left, right] = options.domain ?? gumbelDomain(values);

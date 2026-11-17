@@ -42,6 +42,7 @@ from hydrolog._warnings import (
     ShortRecord,
     SmallSample,
     UhModelMismatch,
+    UhSubsteps,
     UnknownHietogramType,
     render,
 )
@@ -103,6 +104,22 @@ _SPECS: Final[tuple[NoticeSpec, ...]] = (
         "{missing} of {total} measurement pairs have a missing value (NaN) and were "
         "removed before the fit",
         ("missing", "total"),
+    ),
+    NoticeSpec(
+        "reference_level_not_computed",
+        "warning",
+        "The curve of period(s) {periods} gives no finite water level at the reference "
+        "discharge of {reference_discharge_m3s:g} m³/s: their "
+        "level_at_reference_discharge is null",
+        ("periods", "reference_discharge_m3s"),
+    ),
+    NoticeSpec(
+        "implausible_rating_curve",
+        "warning",
+        "Implausible rating curve(s), b outside 1 to 4 or H₀ below the lowest stage "
+        "by more than the range of the stages: {curves} (b = {b}; H₀ = {h0}); the "
+        "pairs may mix two stage–discharge relations",
+        ("curves", "b", "h0"),
     ),
     NoticeSpec(
         "condition_defaulted",
@@ -198,6 +215,13 @@ _SPECS: Final[tuple[NoticeSpec, ...]] = (
         ("years", "first_year", "last_year", "minimum"),
     ),
     NoticeSpec(
+        "zero_flow_threshold",
+        "warning",
+        "The threshold from the series ({threshold_method}) is a discharge of 0: no "
+        "day is below it, so no low-flow sequence is found; the river runs dry",
+        ("threshold_method",),
+    ),
+    NoticeSpec(
         "normal_not_computed",
         "warning",
         "The normal of {first_year}-{last_year} needs annual values in {required} of "
@@ -258,6 +282,7 @@ _SPECS: Final[tuple[NoticeSpec, ...]] = (
     _library(OutsideSupport),
     _library(UnknownHietogramType),
     _library(UhModelMismatch),
+    _library(UhSubsteps),
     _library(PositionsIgnored),
     NoticeSpec(
         "exposed_without_auth",

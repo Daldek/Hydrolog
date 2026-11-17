@@ -265,6 +265,63 @@ class TestLowFlowSequencesWithGaps:
         assert caught.value.details == {"option": option, "reason": "not_applicable"}
 
 
+def _two_hydrological_years(low: dict[int, float], base: float) -> dict[str, list]:
+    """Daily values of 2019-11-01 to 2021-10-31 at ``base`` with ``low`` days."""
+    values = np.full(731, base)
+    for day, value in low.items():
+        values[day] = value
+    return {
+        "values": values.tolist(),
+        "dates": [str(d) for d in days("2019-11-01", 731)],
+    }
+
+
+class TestLowFlowThresholdFromTheSeries:
+    def test_a_stage_threshold_below_the_gauge_zero_is_a_threshold(self):
+        """SNW below the gauge zero (ČHMÚ 0-203-1-212600: -1.95 cm) was refused with
+        threshold_not_positive; stages below the zero are normal."""
+        low = dict.fromkeys(range(100, 110), -12.0)  # 2020: minimum -12 cm
+        low |= dict.fromkeys(range(465, 475), -8.0)  # 2021: minimum -8 cm
+        output = stats_low_flow_sequences(
+            **_two_hydrological_years(low, base=20.0),
+            parameter="H",
+            threshold_method="mean_annual_minimum",
+        )
+        result = output.result
+        assert result.threshold == pytest.approx(-10.0)  # SNW
+        [sequence] = result.sequences
+        assert (sequence.start_date, sequence.duration_days) == ("2020-02-09", 10)
+        assert sequence.deficit_volume == pytest.approx(10 * 2.0)
+        assert sequence.deficit_volume_m3 is None
+        assert "zero_flow_threshold" not in [n.code for n in output.notices]
+
+    def test_a_river_that_runs_dry_every_year_has_a_discharge_threshold_of_0(self):
+        """SNQ 0 (IMGW 152170160) was refused with threshold_not_positive: no day lies
+        below it, which the notice says."""
+        low = dict.fromkeys((*range(250, 270), *range(600, 640)), 0.0)
+        output = stats_low_flow_sequences(
+            **_two_hydrological_years(low, base=1.5),
+            threshold_method="mean_annual_minimum",
+        )
+        assert (output.result.threshold, output.result.n_events) == (0.0, 0)
+        assert output.result.sequences == []
+        [zero] = [n for n in output.notices if n.code == "zero_flow_threshold"]
+        assert (zero.level, zero.details) == (
+            "warning",
+            {"threshold_method": "mean_annual_minimum"},
+        )
+
+    def test_a_negative_discharge_threshold_is_still_refused(self):
+        low = dict.fromkeys(range(100, 110), -0.5)
+        low |= dict.fromkeys(range(465, 475), -0.3)
+        with pytest.raises(CalculationError) as caught:
+            stats_low_flow_sequences(
+                **_two_hydrological_years(low, base=1.5),
+                threshold_method="mean_annual_minimum",
+            )
+        assert caught.value.details["reason"] == "threshold_not_positive"
+
+
 class TestRatingCurvePeriods:
     def test_periods_without_enough_pairs_have_no_curve(self):
         result = run_command(
@@ -282,6 +339,109 @@ class TestRatingCurvePeriods:
             (2021, 2023),
         ]
         assert all(p["reason"] is None for p in result["periods"])
+
+    def test_a_flat_period_has_no_level_at_the_reference_discharge(self):
+        """A period whose discharge falls as the stage rises fits a flat curve (b near
+        0): above its plateau it reaches the reference discharge at no finite level.
+        (Q / a) ** (1 / b) overflowed into an internal error (IMGW 150189997, 1991)."""
+        rising = np.linspace(50.0, 150.0, 40)
+        falling = np.linspace(40.0, 90.0, 40)
+        envelope = run_command(
+            "hydrometrics rating-curve",
+            {
+                "water_levels": [*rising, *falling],
+                "discharges": [
+                    *(0.01 * (rising - 20.0) ** 1.5),
+                    *np.linspace(1.0, 0.5, 40),
+                ],
+                "dates": [
+                    str(day)
+                    for day in (*days("2001-01-01", 40), *days("2002-01-01", 40))
+                ],
+                "years_per_period": 1,
+            },
+        ).to_dict()
+        result = envelope["result"]
+        rated, flat = result["periods"]
+        assert rated["level_at_reference_discharge"] is not None
+        assert flat["reason"] is None and flat["b"] < 1e-3
+        assert flat["a"] < result["reference_discharge_m3s"]
+        assert flat["level_at_reference_discharge"] is None
+        notice = next(
+            n
+            for n in envelope["notices"]
+            if n["code"] == "reference_level_not_computed"
+        )
+        assert notice["details"] == {
+            "periods": ["2002-2002"],
+            "reference_discharge_m3s": result["reference_discharge_m3s"],
+        }
+
+    def test_a_period_that_mixes_two_stage_regimes_is_implausible(self):
+        """Daily pairs that span a change of the stage-discharge relation (zero flow at
+        20 cm, from 2004 at 80 cm) fit a curve of neither: b above 4 and H0 far below
+        the stages, as IMGW-PIB 150170070 in 1981-1990 (b = 6.50, H0 = -88 cm). Such a
+        curve is given but flagged; the curves of one relation are not."""
+        before = np.linspace(40.0, 160.0, 40)
+        after = np.linspace(85.0, 160.0, 40)
+        levels, discharges, dates = [], [], []
+        for year in range(2001, 2007):
+            stages, zero = (before, 20.0) if year < 2004 else (after, 80.0)
+            levels += [*stages]
+            discharges += [*(0.01 * (stages - zero) ** 1.6)]
+            dates += [str(day) for day in days(f"{year}-01-01", 40)]
+        envelope = run_command(
+            "hydrometrics rating-curve",
+            {
+                "water_levels": [*levels, *before[:10]],
+                "discharges": [*discharges, *(0.01 * (before[:10] - 20.0) ** 1.6)],
+                "dates": [*dates, *(str(day) for day in days("2007-01-01", 10))],
+                "years_per_period": 2,
+            },
+        ).to_dict()
+        result = envelope["result"]
+        one, mixed, other, short = result["periods"]
+        assert (mixed["first_year"], mixed["last_year"]) == (2003, 2004)
+        assert mixed["b"] > 4 and min(levels) - mixed["h0"] > np.ptp(levels)
+        assert [p["plausible"] for p in result["periods"]] == [True, False, True, None]
+        assert [p["implausibility_reasons"] for p in result["periods"]] == [
+            [],
+            ["b_out_of_range", "h0_too_low"],
+            [],
+            None,
+        ]
+        assert short["reason"] == "too_few_pairs"
+        assert (one["b"], other["b"]) == (pytest.approx(1.6), pytest.approx(1.6))
+        # the curve of all the pairs mixes both relations too
+        assert result["plausible"] is False
+        assert result["implausibility_reasons"] == ["b_out_of_range", "h0_too_low"]
+        notice = next(
+            n for n in envelope["notices"] if n["code"] == "implausible_rating_curve"
+        )
+        assert notice["level"] == "warning"
+        assert notice["details"] == {
+            "curves": ["all pairs", "2003-2004"],
+            "b": pytest.approx([result["b"], mixed["b"]], rel=1e-5),
+            "h0": pytest.approx([result["h0"], mixed["h0"]], rel=1e-5),
+        }
+
+    def test_a_curve_of_one_relation_is_plausible_without_a_notice(self):
+        envelope = run_command(
+            "hydrometrics rating-curve",
+            {
+                "input_file": str(FIXTURES / "station_daily.csv"),
+                "level_column": "H",
+                "discharge_column": "Q",
+                "date_column": "date",
+                "years_per_period": 2,
+            },
+        ).to_dict()
+        result = envelope["result"]
+        assert (result["plausible"], result["implausibility_reasons"]) == (True, [])
+        assert all(p["plausible"] for p in result["periods"])
+        assert "implausible_rating_curve" not in {
+            n["code"] for n in envelope["notices"]
+        }
 
     def test_years_need_dates(self):
         with pytest.raises(InvalidParameterError) as caught:

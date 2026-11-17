@@ -3,11 +3,12 @@
  *
  * A scale maps a domain value to a coordinate of the SVG's viewBox and back
  * (`invert`). Linear and log scales map values; the time scale is linear in
- * minutes with ticks on whole hours; the Gumbel scale maps an exceedance
- * probability in percent through the reduced variate u = −ln(−ln(1 − p/100)),
- * so a Gumbel distribution is a straight line (probability paper). Tick labels
- * are Polish numbers: a decimal comma, a non-breaking space between thousands
- * from five digits, the minus sign U+2212.
+ * minutes with ticks in whole minutes on a short axis and in whole hours on a
+ * long one; the Gumbel scale maps an exceedance probability in percent through
+ * the reduced variate u = −ln(−ln(1 − p/100)), so a Gumbel distribution is a
+ * straight line (probability paper). Tick labels are Polish numbers: a decimal
+ * comma, a non-breaking space between thousands from five digits, the minus sign
+ * U+2212.
  */
 
 /** The minus sign of the labels. */
@@ -196,28 +197,32 @@ export function logDomain(values) {
   return { min, max, ticks: logTicks(min, max) };
 }
 
-// Steps that are whole tenths of an hour or 15 min multiples, so the labels in hours are exact
-const TIME_STEPS = [6, 12, 15, 30, 60, 120, 180, 240, 360, 720, 1440, 2880, 10080];
+// Tick steps [min]: under an hour labelled in minutes, from an hour on in whole hours
+const TIME_STEPS = [1, 2, 5, 10, 15, 20, 30, 60, 120, 180, 240, 360, 720, 1440, 2880, 10080];
 
 /**
- * Return the time ticks of a domain in minutes, labelled in hours.
+ * Return the time ticks of a domain in minutes. A step under an hour (at most 30 min
+ * between ticks: a short rain) is labelled in minutes, any other in whole hours, so no
+ * label is a fraction of an hour („0,2” h for 12 min).
  *
  * @param {number} min the start [min]
  * @param {number} max the end [min]
  * @param {number} [count=13] the most ticks
- * @returns {{step: number, ticks: {value: number, label: string}[]}} `step` in minutes
+ * @returns {{step: number, unit: "min" | "h", ticks: {value: number, label: string}[]}}
+ *   `step` in minutes, `unit` the unit of the labels
  */
 export function timeTicks(min, max, count = 13) {
   const span = Math.max(max - min, 1);
   // Beyond the steps: whole weeks, still at most `count` ticks (a unit hydrograph of months)
   const week = TIME_STEPS.at(-1);
   const step = TIME_STEPS.find((candidate) => span / candidate <= count - 1) ?? week * Math.ceil(span / (week * (count - 1)));
-  const digits = stepDigits(step / 60);
+  const unit = step < 60 ? "min" : "h";
+  const unitMinutes = unit === "h" ? 60 : 1;
   const ticks = [];
   for (let k = Math.ceil(min / step - 1e-9); k * step <= max + 1e-9; k += 1) {
-    ticks.push({ value: k * step, label: formatNumber((k * step) / 60, digits) });
+    ticks.push({ value: k * step, label: formatNumber((k * step) / unitMinutes) });
   }
-  return { step, ticks };
+  return { step, unit, ticks };
 }
 
 /**
@@ -226,7 +231,7 @@ export function timeTicks(min, max, count = 13) {
  *
  * @param {number[]} values the times [min]
  * @param {{min?: number, max?: number, count?: number}} [options] fixed ends
- * @returns {{min: number, max: number, step: number, ticks: {value: number, label: string}[]}}
+ * @returns {{min: number, max: number, step: number, unit: "min" | "h", ticks: {value: number, label: string}[]}}
  */
 export function timeDomain(values, options = {}) {
   const range = extent(values);

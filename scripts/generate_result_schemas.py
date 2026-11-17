@@ -107,6 +107,8 @@ _ADDED_FIELDS: dict[str, tuple[str, ...]] = {
         "periods",
         "reference_level",
         "reference_discharge_m3s",
+        "plausible",
+        "implausibility_reasons",
     ),
     "hydrolog-stats-mann-kendall/1": (
         "sen_slope",

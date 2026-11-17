@@ -277,7 +277,8 @@ export const hydrogram = {
     referenceTitle: "Usuń z wykresu przepływ odniesienia ({label})",
   },
   chart: {
-    time: "czas [h]",
+    /** The time axis: the chart fills `{unit}` with the unit of its ticks, min or h. */
+    time: "czas [{unit}]",
     q: "Q [m³/s]",
     rain: "P, Pe [mm / {dt} min]",
     p: "Opad całkowity P",
