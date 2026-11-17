@@ -1,12 +1,16 @@
 """SCS Unit Hydrograph generation."""
 
+import math
+import warnings
 from dataclasses import dataclass
+from typing import cast
 
 import numpy as np
 from numpy.typing import NDArray
 
-from hydrolog._ranges import warn_if_outside
+from hydrolog._ranges import typical_range, warn_if_outside
 from hydrolog._serialization import JsonResultMixin
+from hydrolog._warnings import UhSubsteps
 from hydrolog.exceptions import InvalidParameterError
 
 # SCS dimensionless unit hydrograph ratios (t/tp vs q/qp)
@@ -49,6 +53,10 @@ SCS_DIMENSIONLESS_UH = np.array(
     ],
     dtype=np.float64,
 )
+
+# The longest time step of the unit hydrograph, a share of its time to peak (the typical
+# range of hydrolog._ranges): a longer step is computed on sub-steps (see generate)
+_STEP_SHARE = cast(float, typical_range("scs", "timestep_min").maximum)
 
 
 @dataclass
@@ -256,6 +264,18 @@ class SCSUnitHydrograph:
         """
         Generate SCS unit hydrograph.
 
+        The ordinates are the dimensionless unit hydrograph of the duration D =
+        ``timestep_min`` sampled at the step times. A step beyond the typical range
+        of the time step (``timestep_min`` above a share of tp,
+        :data:`hydrolog._ranges.TYPICAL_RANGES`) leaves too few ordinates, and their
+        sum loses volume: 0.52 mm instead of 1 mm for tc = 90.7 min at a step of
+        1440 min. Such a step is divided into the fewest equal sub-steps inside the
+        range: the unit hydrograph of a sub-step, sampled on the sub-steps, takes the
+        1 mm of the step spread evenly over them, and the result is read at the step
+        times. It keeps the volume of the sub-step's unit hydrograph, while ``tp``,
+        ``qp`` and ``tb`` stay the formulas' values for D = ``timestep_min``. A step
+        inside the range is sampled as it always was.
+
         Parameters
         ----------
         timestep_min : float, optional
@@ -269,7 +289,13 @@ class SCSUnitHydrograph:
         Raises
         ------
         InvalidParameterError
-            If timestep_min is not positive.
+            If timestep_min is not positive, or the time of concentration is too
+            short to divide the step into sub-steps inside its range.
+
+        Warns
+        -----
+        UhSubsteps
+            When the step was computed on sub-steps (notice ``uh_substeps``, info).
 
         Examples
         --------
@@ -282,6 +308,57 @@ class SCSUnitHydrograph:
                 f"timestep_min must be positive, got {timestep_min}"
             )
 
+        tp = self.time_to_peak(timestep_min)
+        qp = self.peak_discharge(timestep_min)
+        tb = self.time_base(timestep_min)
+        substeps = self._substeps(timestep_min)
+        if substeps == 1:
+            times, ordinates = self._sampled(timestep_min)
+        else:
+            times, ordinates = self._spread(timestep_min, substeps)
+            warnings.warn(
+                UhSubsteps(
+                    timestep_min=timestep_min,
+                    maximum_min=_STEP_SHARE * tp,
+                    substeps=substeps,
+                    substep_min=timestep_min / substeps,
+                ),
+                stacklevel=2,
+            )
+
+        return UnitHydrographResult(
+            times_min=times,
+            ordinates_m3s=ordinates,
+            time_to_peak_min=tp,
+            peak_discharge_m3s=qp,
+            time_base_min=tb,
+            lag_time_min=self.lag_time_min,
+            timestep_min=timestep_min,
+        )
+
+    def _substeps(self, timestep_min: float) -> int:
+        """Return the fewest equal sub-steps of a step inside its range (1: none)."""
+        if timestep_min <= _STEP_SHARE * self.time_to_peak(timestep_min):
+            return 1
+        # The longest sub-step d inside the range: d <= share * (d / 2 + tlag)
+        longest = _STEP_SHARE * self.lag_time_min / (1.0 - _STEP_SHARE / 2.0)
+        ratio = timestep_min / longest if longest > 0 else math.inf
+        if not math.isfinite(ratio):
+            raise InvalidParameterError(
+                f"tc_min = {self.tc_min:g} min is too short to divide the time step "
+                f"of {timestep_min:g} min into sub-steps of the SCS unit hydrograph"
+            )
+        substeps = max(2, math.ceil(ratio))
+        while timestep_min / substeps > _STEP_SHARE * self.time_to_peak(
+            timestep_min / substeps
+        ):  # rounding at the bound
+            substeps += 1
+        return substeps
+
+    def _sampled(
+        self, timestep_min: float
+    ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+        """Return the dimensionless unit hydrograph sampled at the step times."""
         tp = self.time_to_peak(timestep_min)
         qp = self.peak_discharge(timestep_min)
         tb = self.time_base(timestep_min)
@@ -303,14 +380,29 @@ class SCSUnitHydrograph:
         )
 
         # Scale to actual discharge
-        ordinates = q_qp_ratios * qp
+        return times, q_qp_ratios * qp
 
-        return UnitHydrographResult(
-            times_min=times,
-            ordinates_m3s=ordinates,
-            time_to_peak_min=tp,
-            peak_discharge_m3s=qp,
-            time_base_min=tb,
-            lag_time_min=self.lag_time_min,
-            timestep_min=timestep_min,
-        )
+    def _spread(
+        self, timestep_min: float, substeps: int
+    ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+        """Return the response to 1 mm spread over the sub-steps, at the step times.
+
+        With u the unit hydrograph of a sub-step d on the sub-steps and n of them in
+        a step, the step's 1 mm is 1/n mm in each, so the ordinate at the step time
+        k n d is the mean of u over the n sub-steps up to it,
+        (u[(k - 1) n + 1] + ... + u[k n]) / n: the discrete convolution on the
+        sub-steps read at every n-th of them, from cumulative sums, so that a large n
+        costs nothing. The ordinates sum to the sub-steps' ordinates divided by n,
+        hence the same volume. The last one is 0.
+        """
+        _, fine = self._sampled(timestep_min / substeps)
+        last = fine.size - 1  # u[last] is 0: t / tp beyond the table
+        cumulative = np.concatenate(([0.0], np.cumsum(fine)))
+        steps = -(-last // substeps) + 1
+        sums = [
+            cumulative[min(k * substeps, last) + 1]
+            - cumulative[min(max((k - 1) * substeps + 1, 0), last + 1)]
+            for k in range(steps + 1)
+        ]
+        times = np.arange(steps + 1, dtype=np.float64) * timestep_min
+        return times, np.asarray(sums, dtype=np.float64) / substeps

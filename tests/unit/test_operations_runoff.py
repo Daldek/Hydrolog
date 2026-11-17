@@ -2710,6 +2710,38 @@ class TestTypicalRangesOfTheModels:
             }
         ]
 
+    def test_a_step_beyond_the_range_keeps_the_volume_on_sub_steps(self):
+        """E5b-07: a daily step at tc 90.7 min left the SCS unit hydrograph three
+        ordinates, and the hydrograph held 52 % of Pe·A. The unit hydrograph is now
+        computed on sub-steps inside the range and read at the daily steps."""
+        result, notices = unwrap(
+            ops.hydrograph_generate(
+                area_km2=45.3,
+                cn=72,
+                tc_min=90.7,
+                values=[40.0, 10.0, 0.0, 25.0],
+                timestep_min=1440.0,
+            )
+        )
+        assert result.total_volume_m3 == pytest.approx(
+            result.total_effective_mm * 45.3 * 1000.0, rel=0.01
+        )
+        assert [(n.level, n.details) for n in notices if n.code == "uh_substeps"] == [
+            (
+                "info",
+                {
+                    "timestep_min": 1440.0,
+                    "maximum_min": pytest.approx(193.605),
+                    "substeps": 93,
+                    "substep_min": pytest.approx(1440.0 / 93),
+                },
+            )
+        ]
+        # the step itself stays outside its range: the hydrograph has daily ordinates
+        assert [
+            n.details["value"] for n in notices if n.code == "outside_typical_range"
+        ] == [1440.0]
+
 
 # --- declarations ---------------------------------------------------------------------
 

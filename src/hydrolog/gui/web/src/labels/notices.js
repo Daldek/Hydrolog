@@ -184,6 +184,10 @@ export const notices = {
       text: "Model hydrogramu jednostkowego {uh_model} różni się od użytego w wyniku: {result_uh_model}.",
       plain: "Model hydrogramu jednostkowego różni się od użytego w wyniku.",
     },
+    uh_substeps: {
+      text: "Krok czasowy {timestep_min} min jest dłuższy niż {maximum_min} min, typowy zakres hydrogramu jednostkowego SCS: hydrogram policzono na {substeps} krokach pośrednich po {substep_min} min, z opadem każdego kroku rozłożonym na nie równo, i odczytano w chwilach kroków, więc zachowuje objętość 1 mm.",
+      plain: "Krok czasowy jest dłuższy niż typowy zakres hydrogramu jednostkowego SCS: hydrogram policzono na krokach pośrednich, więc zachowuje objętość 1 mm.",
+    },
     positions_ignored: {
       text: "{reason}; schemat ułożono automatycznie, bez podanych położeń węzłów.",
       plain: "Podanych położeń węzłów nie użyto: schemat ułożono automatycznie.",

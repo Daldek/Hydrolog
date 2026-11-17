@@ -2,7 +2,7 @@
 
 **Document version:** 1.12
 **Date:** 2026-11-17
-**Applies to:** Hydrolog >= 0.8.0 (sections 3.2.2, 3.2.7, 3.3.4 (the time step limit), 3.3.6, 3.4.6, 3.4.7 and 3.5 to 3.14 describe behaviour from v0.8.0, the plausibility of a rating curve (3.8) from 0.8.1; the rest: >= 0.6.0)
+**Applies to:** Hydrolog >= 0.8.0 (sections 3.2.2, 3.2.7, 3.3.4 (the time step limit), 3.3.6, 3.4.6, 3.4.7 and 3.5 to 3.14 describe behaviour from v0.8.0, the sub-steps of the SCS unit hydrograph (3.1.3) and the plausibility of a rating curve (3.8) from 0.8.1; the rest: >= 0.6.0)
 
 ---
 
@@ -174,6 +174,8 @@ tb = 5.0 × tp                                [min]
 - For the triangular approximation: V = 0.5 × qp × tb
 - Volume of 1 mm over A km²: V = A × 1000 m³
 - With tb ≈ 2.67 × tp: qp = 2V / (2.67 × tp × 3600) ≈ 0.208 × A / tp
+
+**A time step beyond its range (0.8.1, E5b-07).** The ordinates are the dimensionless curve sampled at the step times k·Δt. A step beyond its typical range, Δt > 0.25·tp with tp = Δt/2 + tlag (the `timestep_min` range of `hydrolog._ranges`, NEH 630 ch. 16), leaves too few ordinates, and their sum loses volume: tc = 90.7 min at Δt = 1440 min gave three ordinates, 0, 0.355·qp and 0.017·qp, and 0.52 mm instead of 1 mm (about 61 % of Pe·A in a network's elements of the scenario test). Such a step is divided into the fewest equal sub-steps d = Δt/n inside the range (d ≤ 0.25·(d/2 + tlag)); the unit hydrograph of D = d, sampled on the sub-steps, takes the 1 mm of the step spread evenly over them, 1/n mm each, and is read at the step times: u(k·Δt) = (u_d(((k − 1)·n + 1)·d) + … + u_d(k·n·d))/n. The ordinates hold the volume of the sub-step's unit hydrograph (0.998 mm in that example, 93 sub-steps of 15.48 min: ordinates 0, 0.01156·A, 0 m³/s per mm), the convolution of the step's effective rain is unchanged, and the notice `uh_substeps` (info: `timestep_min`, `maximum_min`, `substeps`, `substep_min`) says so beside the `outside_typical_range` of the step, which stays: the result still has one ordinate per step. tp, qp and tb stay those of the formulas for D = Δt, which the ordinates no longer reach. A step inside the range is sampled as before, to the last bit.
 
 #### 3.1.4 Code Example
 

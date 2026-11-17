@@ -40,6 +40,7 @@ __all__ = [
     "ShortRecord",
     "SmallSample",
     "UhModelMismatch",
+    "UhSubsteps",
     "UnknownHietogramType",
     "render",
     "typical_range_fields",
@@ -437,6 +438,28 @@ class UhModelMismatch(HydrologWarning):
     keys = ("uh_model", "result_uh_model")
 
 
+class UhSubsteps(HydrologWarning):
+    """The SCS unit hydrograph of a long time step was computed on sub-steps.
+
+    A step beyond its typical range (a share of the time to peak,
+    ``hydrolog._ranges.TYPICAL_RANGES``) samples too few ordinates of the
+    dimensionless unit hydrograph, which then loses volume (E5b-07). The step is
+    divided into the fewest equal sub-steps inside the range, the rain of the step
+    spread evenly over them, and the unit hydrograph is read at the step times.
+    Details: ``timestep_min``, the longest step of the range ``maximum_min``, the
+    number of ``substeps`` and their length ``substep_min``.
+    """
+
+    level = "info"
+    template = (
+        "The time step of {timestep_min:g} min is longer than {maximum_min:.4g} min, "
+        "the typical range of the SCS unit hydrograph: it was computed on {substeps} "
+        "sub-steps of {substep_min:.4g} min, the rain of each step spread evenly over "
+        "them, and read at the step times, so it keeps its volume of 1 mm."
+    )
+    keys = ("timestep_min", "maximum_min", "substeps", "substep_min")
+
+
 class PositionsIgnored(HydrologWarning):
     """The positions of a network's nodes cannot be drawn: its layout is computed.
 
@@ -465,6 +488,7 @@ LIBRARY_WARNINGS: Final[tuple[type[HydrologWarning], ...]] = (
     IncompleteYears,
     UnknownHietogramType,
     UhModelMismatch,
+    UhSubsteps,
     PositionsIgnored,
 )
 """Every warning class of the library, one per code."""
