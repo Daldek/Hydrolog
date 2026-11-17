@@ -12,7 +12,8 @@ export const results = {
   valueForms: ["wartość", "wartości", "wartości"],
   index: "Krok",
   time: "t [h:min]",
-  timeAxis: "czas [h]",
+  /** The time axis: the chart fills `{unit}` with the unit of its ticks, min or h. */
+  timeAxis: "czas [{unit}]",
   chart: "Wykres",
   records: "{name} · {rows}",
   json: "Dokument wyniku",

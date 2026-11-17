@@ -55,7 +55,7 @@ const q = Array.from({length: 145}, (_, i) => {
 });
 const spec = {
   title: "Hietogram i hydrogram",
-  x: {label: "czas [h]", scale: "time"},
+  x: {label: "czas [{unit}]", scale: "time"},
   y: {label: "Q [m³/s]", unit: "m³/s"},
   y2: {label: "P, Pe [mm / 10 min]", unit: "mm"},
   series: [
@@ -182,8 +182,13 @@ def test_nice_steps_and_domains(page: Any) -> None:
     assert (empty["min"], empty["max"]) == (0, 1.2)  # all zero: 0 to 1 with headroom
 
 
+def tick_labels(axis: dict[str, Any]) -> list[str]:
+    """Return the tick labels of a result of ``timeTicks`` or ``timeDomain``."""
+    return [tick["label"] for tick in axis["ticks"]]
+
+
 def test_log_and_time_ticks(page: Any) -> None:
-    decades, close, day, short, hour, small, domain = scale_js(
+    decades, close, day, short, hour, small, edge, hours, rain, domain = scale_js(
         page,
         "[s.logTicks(1, 1000).map((t) => t.label),"
         " s.logTicks(0.1, 10).map((t) => t.label),"
@@ -191,25 +196,50 @@ def test_log_and_time_ticks(page: Any) -> None:
         " s.timeTicks(0, 90, 8),"
         " s.timeTicks(0, 60),"
         " s.timeTicks(0, 60, 8),"
+        " s.timeTicks(0, 210, 8),"
+        " s.timeTicks(0, 240, 8),"
+        " s.timeDomain([0, 15], {count: 8}),"
         " s.timeDomain([0, 10, 1430])]",
     )
     assert decades == ["1", "10", "100", "1000"]
     assert close == ["0,1", "0,2", "0,5", "1", "2", "5", "10"]
-    assert day["step"] == 120
-    assert [tick["label"] for tick in day["ticks"]] == [str(h) for h in range(0, 25, 2)]
-    assert short["step"] == 15
-    assert [tick["label"] for tick in short["ticks"]][:3] == ["0,00", "0,25", "0,50"]
-    # A one-hour rain: tenths of an hour, not 0,1666666667
-    assert [tick["label"] for tick in hour["ticks"]][:3] == ["0,0", "0,1", "0,2"]
-    assert [tick["label"] for tick in small["ticks"]] == [
-        "0,0",
-        "0,2",
-        "0,4",
-        "0,6",
-        "0,8",
-        "1,0",
-    ]
-    assert (domain["min"], domain["max"]) == (0, 1440)
+    # A long axis in whole hours
+    assert (day["step"], day["unit"]) == (120, "h")
+    assert tick_labels(day) == [str(h) for h in range(0, 25, 2)]
+    # A short one in minutes, not in fractions of an hour („0,2” h for 12 min)
+    assert (short["step"], short["unit"]) == (15, "min")
+    assert tick_labels(short) == ["0", "15", "30", "45", "60", "75", "90"]
+    assert hour["unit"] == "min"
+    assert tick_labels(hour) == [str(m) for m in range(0, 61, 5)]
+    # The report's one-hour rain on a small chart
+    assert small["unit"] == "min"
+    assert tick_labels(small) == ["0", "10", "20", "30", "40", "50", "60"]
+    # Minutes up to 30 min between ticks, whole hours from an hour on
+    assert (edge["step"], edge["unit"], tick_labels(edge)[-1]) == (30, "min", "210")
+    assert (hours["step"], hours["unit"]) == (60, "h")
+    assert tick_labels(hours) == ["0", "1", "2", "3", "4"]
+    # A 15 min rain ends at 15 min, not at the next tenth of an hour (18 min)
+    assert (rain["max"], rain["unit"]) == (15, "min")
+    assert tick_labels(rain) == ["0", "5", "10", "15"]
+    assert (domain["min"], domain["max"], domain["unit"]) == (0, 1440, "h")
+
+
+def test_a_time_label_reads_its_tick_in_the_axis_unit(page: Any) -> None:
+    # Every span from 1 min to 3 days on both sizes of chart: a whole number of the
+    # unit (minutes under an hour's step, hours from it on), never a fraction of an hour
+    wrong = scale_js(
+        page,
+        "(() => { const wrong = [];"
+        " for (const count of [8, 13]) for (let span = 1; span <= 4320; span += 1) {"
+        "  const {step, unit, ticks} = s.timeTicks(0, span, count);"
+        "  const minutes = unit === 'h' ? 60 : 1;"
+        "  const read = (t) => /^\\d+$/.test(t.label)"
+        "   && Number(t.label) * minutes === t.value;"
+        "  if ((unit === 'h') !== (step >= 60) || ticks.length > count"
+        "      || !ticks.every(read)) wrong.push([count, span, step, unit]); }"
+        " return wrong; })()",
+    )
+    assert wrong == []
 
 
 def test_a_series_of_years_keeps_its_ticks_and_its_peak(page: Any) -> None:
@@ -320,6 +350,7 @@ def test_a_hydrograph_with_its_hyetograph_and_peak(page: Any) -> None:
     assert box[0] < box[2] and box[2] + box[3] < box[0] + box[1]
     ticks = page.locator("#host text.tick[text-anchor=middle]").all_text_contents()
     assert ticks == [str(h) for h in range(0, 25, 2)]
+    assert "czas [h]" in page.locator("#host text.axis-label").all_text_contents()
     assert page.locator("#host .mark.vline .note").text_content() == "Pe > 0 od 3:20"
     legend = page.locator("#host .chart-legend > span")
     assert legend.all_text_contents() == [
@@ -335,7 +366,7 @@ def test_a_small_unit_hydrograph(page: Any) -> None:
     uh = """
     const u = Array.from({length: 31},
       (_, i) => [i * 10, 1.2 * (i / 9) ** 3 * Math.exp(3 - i / 3)]);
-    const spec = {size: "small", x: {label: "czas [h]", scale: "time", max: 300},
+    const spec = {size: "small", x: {label: "czas [{unit}]", scale: "time", max: 300},
       y: {label: "u [m³/s na 1 mm]"}, series: [{id: "u", kind: "area", data: u}],
       marks: [{kind: "peak", x: 90, y: 1.2, label: "qp 1,20 · tp 1:30"}],
       readout: true};
@@ -348,6 +379,22 @@ def test_a_small_unit_hydrograph(page: Any) -> None:
     labels = page.locator("#host text.tick[text-anchor=end]").all_text_contents()
     assert labels[0] == "0,0" and "1,5" in labels
     assert page.locator("#host .chart-legend").count() == 0
+    ticks = page.locator("#host text.tick[text-anchor=middle]").all_text_contents()
+    assert ticks == ["0", "1", "2", "3", "4", "5"]
+    assert "czas [h]" in page.locator("#host text.axis-label").all_text_contents()
+
+
+def test_a_short_time_axis_is_labelled_in_minutes(page: Any) -> None:
+    # The report's „Opad i straty narastająco”: a one-hour rain of 28,5 mm, 5 min steps
+    rain = """
+    const p = Array.from({length: 13}, (_, i) => [i * 5, 28.5 * (i / 12) ** 2]);
+    const spec = {size: "small", x: {label: "czas [{unit}]", scale: "time"},
+      y: {label: "suma [mm]"}, series: [{id: "p", kind: "line", data: p}]};
+    """
+    draw(page, rain)
+    ticks = page.locator("#host text.tick[text-anchor=middle]").all_text_contents()
+    assert ticks == ["0", "10", "20", "30", "40", "50", "60"]
+    assert "czas [min]" in page.locator("#host text.axis-label").all_text_contents()
 
 
 def test_a_probability_plot_on_gumbel_paper(page: Any) -> None:
@@ -546,7 +593,7 @@ async () => {
 }
 """
 UH = """
-const spec = {size: "small", x: {label: "czas [h]", scale: "time", max: 300},
+const spec = {size: "small", x: {label: "czas [{unit}]", scale: "time", max: 300},
   y: {label: "u [m³/s na 1 mm]"}, readout: true,
   series: [{id: "u", kind: "area", label: "u(t)", data: Array.from({length: 31},
     (_, i) => [i * 10, 1.2 * (i / 9) ** 3 * Math.exp(3 - i / 3)])}],

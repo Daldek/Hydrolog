@@ -420,7 +420,8 @@ export const siec = {
       junction: "dopływy i suma",
       outlet: "hydrogram wylotu",
     },
-    time: "czas [h]",
+    /** The time axis: the chart fills `{unit}` with the unit of its ticks, min or h. */
+    time: "czas [{unit}]",
     discharge: "Q [m³/s]",
     inflow: "Dopływ {id}",
     own: {
