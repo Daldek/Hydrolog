@@ -727,6 +727,7 @@ def meteo_spells(
     Runs of days with P below ``threshold_mm`` (``dry``) or at least it (``wet``),
     found by the run logic of ``stats threshold-events`` on the calendar of the
     series; per year the longest spell and the spells of at least 10, 15 and 20 days,
+    a spell counting whole in the year in which it ends (ETCCDI's software, ECA&D),
     and the distribution of durations
     (:func:`hydrolog.statistics.precipitation_spells`, M6). ``spells`` lists the
     spells of at least ``min_duration_days``; the summaries take every spell.

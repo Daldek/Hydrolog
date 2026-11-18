@@ -498,12 +498,13 @@ COMMANDS: tuple[Command, ...] = (
         result_schema="hydrolog-meteo-spells/1",
         cardinality="bounded",
         rules=(
-            "A spell counts in the year in which it starts.",
+            "A spell over a year's start counts whole in the year it ends (as ETCCDI).",
             "Yearly counts need every day of the year.",
             "`spells` lists those of at least `min_duration_days`; summaries take all.",
         ),
         rules_pl=(
-            "Ciąg liczy się w roku, w którym się zaczyna.",
+            "Ciąg przez początek roku liczy się w całości w roku, w którym się kończy "
+            "(jak w ETCCDI).",
             "Liczebności roku wymagają danych z każdego dnia.",
             "`spells` wymienia ciągi co najmniej `min_duration_days`; podsumowania "
             "biorą wszystkie.",
