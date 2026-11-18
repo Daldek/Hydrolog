@@ -130,3 +130,76 @@ class TestSnowPeriod:
         assert period["n_years"] == 1
         assert period["incomplete_years"] == [2022]
         assert period["max_depth_cm"] == 12.0  # not the 30 cm of winter 2022
+
+
+def _snow_period(winters: int, cover: list[tuple[str, str]]) -> dict:
+    """``meteo snow`` over complete winters from 1 August 2019, 5 cm on each span."""
+    stop = np.datetime64(f"{2019 + winters}-08-01")
+    dates = _days("2019-08-01", int((stop - np.datetime64("2019-08-01")).astype(int)))
+    days = np.array(dates, dtype="datetime64[D]")
+    depth = np.zeros(days.size)
+    for first, last in cover:
+        depth[(days >= np.datetime64(first)) & (days <= np.datetime64(last))] = 5.0
+    return _result("meteo snow", dates=dates, snow_cover_cm=depth.tolist())["period"]
+
+
+class TestSnowMedianDaysOfLeapSeasons:
+    """A calendar date is the same day of the season in every winter.
+
+    The oracle is the calendar: the median of one winter is its own date; that of
+    several is the middle date by hand. 29 February counts as 28 February.
+    """
+
+    def test_a_leap_winter_keeps_its_last_day(self):
+        period = _snow_period(1, [("2019-12-10", "2020-04-15")])
+        assert (period["median_first_day"], period["median_last_day"]) == (
+            "12-10",
+            "04-15",
+        )
+
+    def test_the_same_winter_a_year_later(self):
+        period = _snow_period(2, [("2020-12-10", "2021-04-15")])
+        assert period["n_years"] == 2
+        assert period["years_without_cover"] == 1
+        assert (period["median_first_day"], period["median_last_day"]) == (
+            "12-10",
+            "04-15",
+        )
+
+    def test_a_first_day_in_march_of_a_leap_winter(self):
+        period = _snow_period(1, [("2020-03-05", "2020-03-07")])
+        assert (period["median_first_day"], period["median_last_day"]) == (
+            "03-05",
+            "03-07",
+        )
+
+    def test_the_middle_of_leap_and_common_winters(self):
+        period = _snow_period(
+            3,
+            [
+                ("2019-12-01", "2020-04-15"),
+                ("2020-12-01", "2021-04-10"),
+                ("2021-12-01", "2022-04-20"),
+            ],
+        )
+        assert period["median_last_day"] == "04-15"
+
+    def test_an_even_count_takes_the_day_between(self):
+        # 1 March of 2020 and 3 March of 2021: 2 March lies between them.
+        period = _snow_period(
+            2, [("2019-12-01", "2020-03-01"), ("2020-12-01", "2021-03-03")]
+        )
+        assert period["median_last_day"] == "03-02"
+
+    def test_29_february_counts_as_28_february(self):
+        period = _snow_period(1, [("2020-02-29", "2020-02-29")])
+        assert (period["median_first_day"], period["median_last_day"]) == (
+            "02-28",
+            "02-28",
+        )
+
+    def test_the_latest_last_day_is_the_latest_date_of_the_season(self):
+        period = _snow_period(
+            2, [("2019-12-01", "2020-03-10"), ("2020-12-01", "2021-03-11")]
+        )
+        assert period["latest_last_date"] == "2021-03-11"
