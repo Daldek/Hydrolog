@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Gross formula defects (Nogat CMP-9.1, released at once under CMP-9.2), found by the literature research of the formulas of 2026-11-18. Hydrolog does not version its formulas yet (`formula_version`): each entry concerns every release up to 0.8.1 and says how to find and recompute the results it changes.
+
+### Fixed
+
+- **Breaking: `SnyderUH.width_at_percent` gives only Snyder's widths at 50 % and 75 % of the peak.** Snyder's method (Chow, Maidment and Mays 1988, sec. 7.7) publishes two widths of the unit hydrograph, W50 = 0.1783 / (qp/A)^1.08 and W75 = 0.1019 / (qp/A)^1.08 h with qp/A in m³/s/km²/mm, and these are unchanged. For any other percentage p of (0, 100] the method returned a width of its own invention (W50 · 50/p below 50 %, a straight line from W50 to W75 between them, W75 · 75/p above 75 %; the docstring promised a linear interpolation): for Kamiennik at Świerzawa (A 37.22 km², L 16.05 km, Lc 6.76 km, Ct 1.5, Cp 0.6) 3.78 h at 100 %, where the width at the peak is 0, 44 h at 10 % and 441 h at 1 %, against 37 h for the whole unit hydrograph. Such a percentage is now an `InvalidParameterError` (`details.option` `percent`, `details.reason` `choice`, `details.allowed` [50, 75]). Only library code that called the method with another percentage is affected: no command, the GUI or the report calls it (`uh snyder`, `hydrograph generate` and `report generate` compute W50 and W75 themselves and are unchanged), nor do Hydrograf, Obserwator or Hydraulik. Its values had no source and nothing replaces them; the ordinates of `SnyderUH.generate` give the width of Hydrolog's gamma curve at any level.
+
 ## [0.8.1] - 2026-11-18
 
 Changes since 0.8.0, to be released as 0.8.1: defect fixes only (the author's approval of patch releases after the first joint release of the Nogat ecosystem). The branch carries `0.8.1.dev0`; the release commit sets 0.8.1 and the date.

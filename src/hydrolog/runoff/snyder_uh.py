@@ -23,6 +23,12 @@ from hydrolog.exceptions import InvalidParameterError
 # recession is followed until 99.99 % of the 1 mm has run off.
 _TAIL_VOLUME = 1e-4
 
+# Coefficients C of the widths W = C / (qp/A)^1.08 [h] at 50 % and 75 % of the peak,
+# qp/A in m³/s/km²/mm: Snyder's 770 and 440 (qp/A in cfs/mi²/inch) divided by
+# 2323.2^1.08 (Chow, Maidment and Mays 1988, sec. 7.7). The method publishes no
+# width at any other percentage of the peak.
+_WIDTH_COEFFICIENTS: dict[float, float] = {50.0: 0.1783, 75.0: 0.1019}
+
 
 @dataclass
 class SnyderUHResult(JsonResultMixin):
@@ -147,7 +153,9 @@ class SnyderUH:
     The constants 0.1783 and 0.1019 are the metric conversions of the
     original imperial constants W50=770 and W75=440 (with qp/A in
     cfs/mi²/inch): C_metric = C_imperial / conv^1.08 where
-    conv = (2.58999 × 25.4) / 0.028317 ≈ 2323.2.
+    conv = (2.58999 × 25.4) / 0.028317 ≈ 2323.2. The method publishes these
+    two widths only (Chow, Maidment and Mays 1988, sec. 7.7), so
+    :meth:`width_at_percent` takes 50 or 75 and refuses any other percentage.
 
     The coefficients Ct and Cp characterize the watershed:
     - Ct: Related to watershed slope and storage (SI: 1.35-1.65)
@@ -161,6 +169,8 @@ class SnyderUH:
     References
     ----------
     Snyder, F.F. (1938). Synthetic unit-graphs.
+    Chow, V.T., Maidment, D.R. & Mays, L.W. (1988). Applied Hydrology,
+    sec. 7.7. McGraw-Hill.
     Bedient, P.B. & Huber, W.C. (1992). Hydrology and Floodplain Analysis.
     Asquith, W.H. & Roussel, M.C. (2007). An initial-abstraction, constant-loss
     model for unit hydrograph modeling for applicable watersheds in Texas.
@@ -435,53 +445,52 @@ class SnyderUH:
 
     def width_at_percent(self, percent: float) -> float:
         """
-        Calculate hydrograph width at given percent of peak [hours].
+        Calculate the hydrograph width at 50 % or 75 % of the peak [hours].
 
         Parameters
         ----------
         percent : float
-            Percentage of peak discharge (0-100).
+            Percentage of the peak discharge: 50 or 75, the two widths that
+            Snyder's method defines.
 
         Returns
         -------
         float
-            Width of hydrograph at specified percentage [hours].
+            Width W50 or W75 of the unit hydrograph [hours].
+
+        Raises
+        ------
+        InvalidParameterError
+            If ``percent`` is neither 50 nor 75 (``details``: ``option="percent"``,
+            ``reason="choice"``, ``allowed=[50, 75]``, ``value``).
 
         Notes
         -----
-        Formulas (metric units, qp/A in m³/s/km²/mm):
+        Formulas (metric units, qp/A in m³/s/km²/mm, standard duration):
             W50 = 0.1783 / (qp/A)^1.08
             W75 = 0.1019 / (qp/A)^1.08
 
-        For other percentages, linear interpolation is used.
+        Snyder's method (Chow, Maidment and Mays 1988, sec. 7.7) gives no width
+        at any other percentage of the peak, and none is extrapolated from these
+        two.
         """
-        if not 0 < percent <= 100:
-            raise InvalidParameterError(f"percent must be in (0, 100], got {percent}")
+        coefficient = _WIDTH_COEFFICIENTS.get(percent)
+        if coefficient is None:
+            raise InvalidParameterError(
+                f"percent must be 50 or 75 (Snyder's widths W50 and W75), "
+                f"got {percent}",
+                details={
+                    "option": "percent",
+                    "reason": "choice",
+                    "allowed": [50, 75],
+                    "value": str(percent),
+                },
+                hint="Snyder's method defines the widths at 50 % and 75 % of the "
+                "peak only.",
+            )
 
-        qp = self.peak_discharge()
-        qp_per_area = qp / self.area_km2
-
-        # Base widths at 50% and 75% (metric constants, qp/A in m³/s/km²/mm)
-        w50 = 0.1783 / (qp_per_area**1.08)
-        w75 = 0.1019 / (qp_per_area**1.08)
-
-        if abs(percent - 50.0) < 0.01:
-            return float(w50)
-        elif abs(percent - 75.0) < 0.01:
-            return float(w75)
-        elif percent < 50.0:
-            # Extrapolate below 50%
-            # Assume linear relationship in log space
-            ratio = percent / 50.0
-            return float(w50 / ratio)
-        elif percent < 75.0:
-            # Interpolate between 50% and 75%
-            t = (percent - 50.0) / 25.0
-            return float(w50 + t * (w75 - w50))
-        else:
-            # Extrapolate above 75%
-            ratio = percent / 75.0
-            return float(w75 * (1.0 / ratio))
+        qp_per_area = self.peak_discharge() / self.area_km2
+        return float(coefficient / qp_per_area**1.08)
 
     def _shape_exponent(self, duration_min: float) -> float:
         """

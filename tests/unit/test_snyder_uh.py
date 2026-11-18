@@ -177,19 +177,23 @@ class TestSnyderUHPeakDischarge:
 class TestSnyderUHWidth:
     """Tests for hydrograph width calculations."""
 
-    def test_width_at_50_percent(self):
-        """Test width at 50% of peak."""
-        uh = SnyderUH(area_km2=100.0, L_km=15.0, Lc_km=8.0)
+    @pytest.mark.parametrize(("percent", "cw_per_cm"), [(50.0, 2.14), (75.0, 1.22)])
+    def test_widths_follow_the_published_coefficients(self, percent, cw_per_cm):
+        """W = Cw (qp/A)^-1.08 with Cw 2.14 (50 %) and 1.22 (75 %), qp/A in
+        m³/s/km² per cm (Chow, Maidment and Mays 1988, sec. 7.7, in Rajagopalan,
+        CVEN 5333 notes "Unit Hydrographs (Chow Chap 7)", University of Colorado).
 
-        w50 = uh.width_at_percent(50.0)
-        assert w50 > 0
+        qp = 1.06 m³/s per mm: KZGW (2017), annex 2 to the OPZ, Example 6.1
+        (Jasienica at the Międzyrzecze dam, A 45.3 km², L 14.9 km, Lc 7.0 km,
+        Ct 1.65, Cp 0.565), p. 93. Tolerance: qp printed to 0.01 (0.5 % on W)
+        and Cw to three digits (0.4 %).
+        """
+        uh = SnyderUH(area_km2=45.3, L_km=14.9, Lc_km=7.0, ct=1.65, cp=0.565)
+        qp_per_area_per_cm = 10.0 * 1.06 / 45.3
 
-    def test_width_at_75_percent(self):
-        """Test width at 75% of peak."""
-        uh = SnyderUH(area_km2=100.0, L_km=15.0, Lc_km=8.0)
+        expected_h = cw_per_cm * qp_per_area_per_cm**-1.08
 
-        w75 = uh.width_at_percent(75.0)
-        assert w75 > 0
+        assert uh.width_at_percent(percent) == pytest.approx(expected_h, rel=0.01)
 
     def test_width_75_less_than_50(self):
         """Test that width at 75% is less than at 50%."""
@@ -200,17 +204,25 @@ class TestSnyderUHWidth:
 
         assert w75 < w50
 
-    def test_width_invalid_percent_raises(self):
-        """Test that invalid percent raises error."""
-        uh = SnyderUH(area_km2=100.0, L_km=15.0, Lc_km=8.0)
+    @pytest.mark.parametrize(
+        "percent", [0.0, 1.0, 10.0, 49.99, 60.0, 75.01, 99.0, 100.0, 150.0, np.nan]
+    )
+    def test_a_percentage_other_than_50_or_75_is_refused(self, percent):
+        """Snyder's method publishes the widths at 50 % and 75 % of the peak only
+        (Chow, Maidment and Mays 1988, sec. 7.7).
 
-        with pytest.raises(InvalidParameterError) as exc_info:
-            uh.width_at_percent(0.0)
-        assert "percent must be in (0, 100]" in str(exc_info.value)
+        Hydrolog 0.8.1 extrapolated the others: for Kamiennik (A 37.22 km², L
+        16.05 km, Lc 6.76 km) 3.78 h at 100 %, where the width at the peak is 0 by
+        definition, and 441 h at 1 %, beyond the 37 h of the whole hydrograph.
+        """
+        uh = SnyderUH(area_km2=37.22, L_km=16.05, Lc_km=6.76)
 
-        with pytest.raises(InvalidParameterError) as exc_info:
-            uh.width_at_percent(150.0)
-        assert "percent must be in (0, 100]" in str(exc_info.value)
+        with pytest.raises(InvalidParameterError) as caught:
+            uh.width_at_percent(percent)
+
+        assert caught.value.details["option"] == "percent"
+        assert caught.value.details["reason"] == "choice"
+        assert caught.value.details["allowed"] == [50, 75]
 
 
 class TestSnyderUHGenerate:
