@@ -40,13 +40,16 @@ _HSG = ("A", "B", "C", "D")
 
 _LAND_COVER_MEANINGS = {
     "fallow": "Bare soil kept without crop.",
-    "row_crops": "Row crops.",
-    "small_grain": "Small grain.",
+    "row_crops": "Row crops, straight row (TR-55 table 2-2b): poor or good only.",
+    "small_grain": "Small grain, straight row (TR-55 table 2-2b): poor or good only.",
     "pasture": "Pasture and grassland.",
     "meadow": "Meadow, cut for hay.",
     "brush": "Brush and shrubs.",
     "forest": "Woods.",
-    "herbaceous": "Herbaceous vegetation.",
+    "herbaceous": (
+        "Herbaceous range in a humid region: the pasture values of TR-55 table 2-2c "
+        "(table 2-2d, footnote 1)."
+    ),
     "woods_grass": (
         "Woods-grass combination: orchard or tree farm (TR-55 table 2-2c, p. 2-7)."
     ),
@@ -77,13 +80,21 @@ _LAND_COVER_MEANINGS = {
 }
 _LAND_COVER_MEANINGS_PL = {
     "fallow": "Ugór (gleba odkryta bez uprawy).",
-    "row_crops": "Uprawy rzędowe.",
-    "small_grain": "Zboża drobnoziarniste.",
+    "row_crops": (
+        "Uprawy rzędowe, w rzędach prostych (TR-55 tabl. 2-2b): tylko poor lub good."
+    ),
+    "small_grain": (
+        "Zboża drobnoziarniste, w rzędach prostych (TR-55 tabl. 2-2b): tylko poor "
+        "lub good."
+    ),
     "pasture": "Pastwisko, użytek zielony.",
     "meadow": "Łąka kośna.",
     "brush": "Zarośla, krzewy.",
     "forest": "Las.",
-    "herbaceous": "Roślinność zielna.",
+    "herbaceous": (
+        "Roślinność zielna w klimacie wilgotnym: wartości pastwiska z TR-55 tabl. "
+        "2-2c (tabl. 2-2d, przypis 1)."
+    ),
     "woods_grass": "Las z trawą: sad lub plantacja drzew (TR-55 tabl. 2-2c, s. 2-7).",
     "farmstead": "Zabudowa zagrodowa.",
     "residential_low": (
@@ -170,16 +181,21 @@ COMMANDS: tuple[Command, ...] = (
                 required=True,
                 choices=_HSG,
                 meanings={
-                    "A": "Low runoff potential (sands).",
-                    "B": "Moderately low runoff potential (sandy loams).",
-                    "C": "Moderately high runoff potential (clay loams).",
-                    "D": "High runoff potential (clays).",
+                    "A": "Low runoff potential: typically sand or gravel, < 10% clay.",
+                    "B": "Moderately low: typically loamy sand or sandy loam.",
+                    "C": "Moderately high: typically loam, silt loam, sandy clay loam, "
+                    "clay loam or silty clay loam.",
+                    "D": "High: typically clayey, > 40% clay, or a shallow restriction "
+                    "or water table (NEH 630 ch. 7).",
                 },
                 meanings_pl={
-                    "A": "Mały potencjał odpływu (piaski).",
-                    "B": "Umiarkowanie mały potencjał odpływu (gliny piaszczyste).",
-                    "C": "Umiarkowanie duży potencjał odpływu (gliny ilaste).",
-                    "D": "Duży potencjał odpływu (iły).",
+                    "A": "Mały potencjał odpływu: zwykle piasek lub żwir, < 10% iłu.",
+                    "B": "Umiarkowanie mały: zwykle piasek gliniasty lub glina "
+                    "piaszczysta.",
+                    "C": "Umiarkowanie duży: zwykle glina, glina pylasta, glina "
+                    "piaszczysto-ilasta, glina ilasta lub glina pylasto-ilasta.",
+                    "D": "Duży: zwykle ilaste, > 40% iłu, lub płytka warstwa "
+                    "nieprzepuszczalna lub woda gruntowa (NEH 630 rozdz. 7).",
                 },
             ),
             _LAND_COVER,
@@ -187,16 +203,14 @@ COMMANDS: tuple[Command, ...] = (
                 name="condition",
                 type="choice",
                 description_pl=(
-                    "Stan hydrologiczny pokrycia; dotyczy pokryć zależnych od "
-                    "stanu (row_crops, small_grain, pasture, brush, forest, "
-                    "woods_grass, herbaceous, open_space), domyślnie fair; dla "
-                    "pozostałych jest ignorowany."
+                    "Stan hydrologiczny pokrycia zależnego od stanu; bez niego fair, "
+                    "a row_crops i small_grain (w TR-55 tylko poor i good) go "
+                    "wymagają; dla pozostałych pokryć jest ignorowany."
                 ),
                 description=(
-                    "Hydrologic condition of the cover; applies to "
-                    "condition-dependent covers (row_crops, small_grain, pasture, "
-                    "brush, forest, woods_grass, herbaceous, open_space), fair when "
-                    "omitted; ignored for the other covers."
+                    "Hydrologic condition of a condition-dependent cover; fair when "
+                    "omitted, but row_crops and small_grain (TR-55 gives poor and "
+                    "good only) need it; ignored for the other covers."
                 ),
                 choices=_CONDITIONS,
                 meanings=_CONDITION_MEANINGS,
