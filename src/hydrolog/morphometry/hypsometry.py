@@ -73,6 +73,7 @@ class HypsometricCurve:
     >>> hypso = HypsometricCurve(elevations)
     >>> result = hypso.analyze()
     >>> print(f"Hypsometric integral: {result.hypsometric_integral:.3f}")
+    Hypsometric integral: 0.501
     """
 
     def __init__(
@@ -238,8 +239,9 @@ class HypsometricCurve:
 
         Examples
         --------
-        >>> hypso = HypsometricCurve(elevations)
-        >>> median_elev = hypso.elevation_at_percentile(50)
+        >>> hypso = HypsometricCurve(np.array([100, 150, 200, 250, 300, 350, 400]))
+        >>> hypso.elevation_at_percentile(50)
+        250.0
         """
         if not 0 <= percentile <= 100:
             raise InvalidParameterError(
@@ -296,7 +298,9 @@ class HypsometricCurve:
         >>> hypso = HypsometricCurve(elevations)
         >>> result = hypso.analyze()
         >>> print(f"HI: {result.hypsometric_integral:.3f}")
+        HI: 0.500
         >>> print(f"Mean elev: {result.elevation_mean_m:.1f} m")
+        Mean elev: 300.0 m
         """
         rel_heights, rel_areas = self.generate_curve(n_points)
         hi = self.hypsometric_integral(n_points)
