@@ -836,7 +836,14 @@ is its document.
 
 `morphometry watershed` returns geometry, shape indicators, elevation and slope figures from a
 watershed JSON. `network stats` computes Strahler or Shreve order statistics from segments; a CSV
-file has the columns `segment_id`, `upstream_ids` (separated by `;`) and `length_km`.
+file has the columns `segment_id`, `upstream_ids` (separated by `;`) and `length_km`. The counts
+are streams, not segments: a stream of order u runs from where order u begins to its junction
+with a stream of an equal or higher order (Strahler 1957), so a lower-order tributary does not
+split it (for Shreve, a segment with one upstream segment continues its link). Horton's
+bifurcation and length ratios are given for Strahler orders only, and the stream frequency is
+the number of Strahler streams per km² for either method. In the fixture below, segment 9
+continues the third-order stream of segment 7 (segment 8 is of order 1): 9 segments, 5 + 2 + 1
+streams.
 
 ```bash
 hydrolog morphometry watershed --watershed-file tests/fixtures/watershed_example.json --json
@@ -847,7 +854,7 @@ hydrolog network stats --segments-file tests/fixtures/network_segments.csv --met
 ```
 
 ```json output
-{"result": {"schema": "hydrolog-network-stats/1", "method": "strahler", "n_segments": 9, "statistics": {"max_order": 3, "total_stream_length_km": 12.7}}}
+{"result": {"schema": "hydrolog-network-stats/1", "method": "strahler", "n_segments": 9, "statistics": {"max_order": 3, "segment_counts": {"1": 5, "2": 2, "3": 1}, "bifurcation_ratios": {"1": 2.5, "2": 2.0}, "total_stream_length_km": 12.7}}}
 ```
 
 ### Flow statistics from a CSV file

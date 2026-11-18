@@ -26,9 +26,10 @@ def plot_stream_order_stats(
     Plot comprehensive stream network statistics.
 
     Creates a three-panel figure showing:
-    1. Number of segments by stream order
-    2. Mean length by stream order
-    3. Bifurcation and length ratios
+    1. Number of streams by stream order
+    2. Mean stream length by stream order
+    3. Horton's bifurcation and length ratios (Strahler orders only; a note
+       instead when the statistics have none, e.g. for Shreve magnitudes)
 
     Parameters
     ----------
@@ -59,14 +60,14 @@ def plot_stream_order_stats(
     orders = sorted(stats.segment_counts.keys())
     x = np.arange(len(orders))
 
-    # Panel 1: Segment counts
+    # Panel 1: Stream counts
     ax1 = axes[0]
     counts = [stats.segment_counts[o] for o in orders]
     bars1 = ax1.bar(x, counts, color=get_color("stream"), edgecolor="white", alpha=0.8)
 
     ax1.set_xlabel(get_label("stream_order"))
     ax1.set_ylabel(get_label("segment_count"))
-    ax1.set_title("Liczba segmentów")
+    ax1.set_title("Liczba cieków")
     ax1.set_xticks(x)
     ax1.set_xticklabels(orders)
 
@@ -88,7 +89,7 @@ def plot_stream_order_stats(
 
     ax2.set_xlabel(get_label("stream_order"))
     ax2.set_ylabel(get_label("stream_length"))
-    ax2.set_title("Średnia długość segmentu")
+    ax2.set_title("Średnia długość cieku")
     ax2.set_xticks(x)
     ax2.set_xticklabels(orders)
 
@@ -140,10 +141,20 @@ def plot_stream_order_stats(
             label=f"Rl (śr. = {np.mean(rl_values):.2f})",
         )
 
+    if not stats.bifurcation_ratios and not stats.length_ratios:
+        ax3.text(
+            0.5,
+            0.5,
+            "Brak współczynników Rb i Rl\n(liczone dla rzędów Strahlera)",
+            ha="center",
+            va="center",
+            transform=ax3.transAxes,
+        )
+    else:
+        ax3.legend(loc="upper right")
     ax3.set_xlabel("Stosunek rzędów")
     ax3.set_ylabel("Wartość współczynnika")
     ax3.set_title("Współczynniki Rb i Rl")
-    ax3.legend(loc="upper right")
     ax3.grid(True, alpha=0.3)
 
     # Overall title
