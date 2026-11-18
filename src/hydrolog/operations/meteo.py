@@ -971,10 +971,10 @@ def meteo_temperature(
 
     One ``index`` per call (:mod:`hydrolog.statistics.meteo_temperature`, M11):
     ``means`` (monthly and annual means of Tmean, Tmax and Tmin, the normal of the
-    reference period and the anomaly of Tmean, the extremes), ``days`` (frost, ice,
-    summer and hot days and tropical nights), ``degree_days`` (growing above
-    ``growing_base_c``, heating by Eurostat's rule) and ``range`` (the mean daily
-    range).
+    reference period and the anomaly of Tmean, the extremes), ``days`` (frost,
+    freeze-thaw, ice, summer and hot days and tropical nights), ``degree_days``
+    (growing above ``growing_base_c``, heating by Eurostat's rule, over the whole
+    year) and ``range`` (the mean daily range).
 
     Parameters
     ----------

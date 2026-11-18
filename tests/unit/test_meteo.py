@@ -306,6 +306,10 @@ class TestEtccdiCountsOfTheFixtureYear:
         ]
         year = next(row for row in days if row["year"] == 2021)
         assert year["frost_days"] == sum(t < 0 for t in tmin)  # FD
+        # the „dzień przymrozkowy” of the Słownik meteorologiczny and of IMGW-PIB
+        assert year["freeze_thaw_days"] == sum(
+            n < 0 < x for n, x in zip(tmin, tmax, strict=True)
+        )
         assert year["ice_days"] == sum(t < 0 for t in tmax)  # ID
         assert year["summer_days"] == sum(t > 25 for t in tmax)  # SU
         assert year["hot_days"] == sum(t > 30 for t in tmax)

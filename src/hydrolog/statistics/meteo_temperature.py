@@ -8,9 +8,14 @@ Four indices of the daily mean, maximum and minimum air temperature (Tmean, Tmax
 * :func:`temperature_days` -- frost days (Tmin < 0 °C), ice days (Tmax < 0 °C), summer
   days (Tmax > 25 °C), hot days (Tmax > 30 °C) and tropical nights (Tmin > 20 °C): FD,
   ID, SU and TR of the ETCCDI (Zhang et al., 2011) and the hot day of Polish practice;
-* :func:`degree_days` -- growing degree days above 5 °C, Σ max(Tmean - 5, 0), and
-  heating degree days by Eurostat's rule, Σ (18 - Tmean) over the days with Tmean
-  <= 15 °C (Eurostat, 2024);
+  and the freeze-thaw days (Tmin < 0 °C and Tmax > 0 °C), the Polish "dni
+  przymrozkowe" of the Słownik meteorologiczny and of IMGW-PIB's normals;
+* :func:`degree_days` -- growing degree days above 5 °C, Σ max(Tmean - 5, 0)
+  (Wypych et al., 2017, eq. 1), and heating degree days by Eurostat's rule, Σ (18 -
+  Tm) over the days with Tm <= 15 °C (Eurostat, 2024; Commission Directive (EU)
+  2015/1127), both summed over every day of the year (no growing or heating season is
+  cut out); Tm is the daily mean given, Tmean, where the Directive takes (Tmin +
+  Tmax) / 2;
 * :func:`temperature_range` -- the mean daily range Tmax - Tmin, DTR of the ETCCDI.
 
 Missing days follow WMO-No. 1203 (:mod:`hydrolog.statistics._climate`): a monthly mean
@@ -34,6 +39,19 @@ Zhang, X. et al. (2011): Indices for monitoring changes in extremes based on dai
     temperature and precipitation data. WIREs Climate Change 2(6), 851-870.
 Eurostat (2024): Energy statistics - cooling and heating degree days (nrg_chdd),
     reference metadata, section 3.4: HDD = Σ (18 °C - Tm) when Tm <= 15 °C.
+Commission Directive (EU) 2015/1127 of 10 July 2015, Annex (as corrected, OJ L 297,
+    13.11.2015, p. 9): Tm = (Tmin + Tmax) / 2, computed daily and summed to the year.
+Dopke, J. (2010): Obliczanie liczby stopniodni grzania według metody Eurostat
+    (cire.pl), eq. 2: „temperatura bazowa” 18 °C, „temperatura graniczna” 15 °C.
+Wypych, A., Sulikowska, A., Ustrnul, Z. & Czekierda, D. (2017): Variability of
+    growing degree days in Poland in response to ongoing climate changes in Europe.
+    International Journal of Biometeorology 61, 49-59 (eq. 1; bases 0, 5, 10 °C).
+Kossowska-Cezak, U. (2014): Zmiany wieloletnie liczby termicznych dni
+    charakterystycznych w Warszawie (1951-2010). Prace Geograficzne 136, 9-30 (p. 14:
+    the Słownik meteorologiczny, 2003, "dzień przymrozkowy", Tmin < 0 °C and Tmax >
+    0 °C; the Atlas klimatu Polski, 2005, Tmin < 0 °C).
+IMGW-PIB: Normy klimatyczne 1991-2020 (klimat.imgw.pl), product PRZYMROZKI, "Liczba
+    dni przymrozkowych (TMAX>0 & TMIN<0)".
 """
 
 from __future__ import annotations
@@ -548,10 +566,14 @@ class TemperatureDaysMonth(JsonResultMixin):
         scaled to the days of the month when some are missing (WMO-No. 1203,
         4.4.1 d); ``None`` without enough days or without the series. In
         ``period.months`` the means over the years.
+    freeze_thaw_days : float or None
+        Days with Tmin < ``frost_tmin_c`` and Tmax > ``ice_tmax_c`` (both on the
+        day), scaled likewise; ``None`` without both series.
     """
 
     month: int
     frost_days: float | None
+    freeze_thaw_days: float | None
     ice_days: float | None
     summer_days: float | None
     hot_days: float | None
@@ -566,15 +588,17 @@ class TemperatureDaysYear(JsonResultMixin):
     ----------
     year : int
         The year.
-    frost_days, ice_days, summer_days, hot_days, tropical_nights : float or None
-        The sums of the twelve monthly counts (FD, ID, SU, TR of the ETCCDI and the
-        hot days); ``None`` without all of them.
+    frost_days, freeze_thaw_days, ice_days, summer_days, hot_days, tropical_nights :
+        float or None
+        The sums of the twelve monthly counts (FD, ID, SU, TR of the ETCCDI, the
+        freeze-thaw days and the hot days); ``None`` without all of them.
     months : list of TemperatureDaysMonth
         The twelve months in the order of the year.
     """
 
     year: int
     frost_days: float | None
+    freeze_thaw_days: float | None
     ice_days: float | None
     summer_days: float | None
     hot_days: float | None
@@ -588,13 +612,15 @@ class TemperatureDaysPeriod(JsonResultMixin):
 
     Attributes
     ----------
-    frost_days, ice_days, summer_days, hot_days, tropical_nights : float or None
+    frost_days, freeze_thaw_days, ice_days, summer_days, hot_days, tropical_nights :
+        float or None
         Mean annual counts of the years with one.
     months : list of TemperatureDaysMonth
         Mean monthly counts, in the order of the year.
     """
 
     frost_days: float | None
+    freeze_thaw_days: float | None
     ice_days: float | None
     summer_days: float | None
     hot_days: float | None
@@ -604,7 +630,7 @@ class TemperatureDaysPeriod(JsonResultMixin):
 
 @dataclass
 class TemperatureDays(JsonResultMixin):
-    """Frost, ice, summer and hot days and tropical nights.
+    """Frost, freeze-thaw, ice, summer and hot days and tropical nights.
 
     Attributes
     ----------
@@ -636,7 +662,14 @@ class TemperatureDays(JsonResultMixin):
     period: TemperatureDaysPeriod
 
 
-_DAY_KINDS = ("frost_days", "ice_days", "summer_days", "hot_days", "tropical_nights")
+_DAY_KINDS = (
+    "frost_days",
+    "freeze_thaw_days",
+    "ice_days",
+    "summer_days",
+    "hot_days",
+    "tropical_nights",
+)
 
 
 def _finite_threshold(name: str, value: float) -> float:
@@ -657,11 +690,19 @@ def temperature_days(
     tropical_tmin_c: float = 20.0,
     year_type: str = "calendar",
 ) -> TemperatureDays:
-    """Count the frost, ice, summer and hot days and the tropical nights.
+    """Count the frost, freeze-thaw, ice, summer and hot days and the tropical nights.
 
     A frost day has Tmin < 0 °C (FD of the ETCCDI), an ice day Tmax < 0 °C (ID), a
     summer day Tmax > 25 °C (SU), a hot day Tmax > 30 °C and a tropical night Tmin >
-    20 °C (TR), with the thresholds as defaults (Zhang et al., 2011).
+    20 °C (TR), with the thresholds as defaults (Zhang et al., 2011). A freeze-thaw
+    day has Tmin below ``frost_tmin_c`` and Tmax above ``ice_tmax_c``, by default
+    Tmin < 0 °C and Tmax > 0 °C: the "dzień przymrozkowy" of the Słownik
+    meteorologiczny (2003, after Kossowska-Cezak, 2014, p. 14), of IMGW-PIB's normals
+    1991-2020 (PRZYMROZKI) and of IMGW-PIB Agrometeo. Polish usage is not uniform: the
+    Atlas klimatu Polski (2005) and KLIMADA 2.0 call FD "dni przymrozkowe", so FD is
+    named here the days with frost ("dni z przymrozkiem", Tmin < 0 °C), of which the
+    freeze-thaw days are those that also thaw. Note the strict signs: IMGW-PIB's
+    yearbooks count Tmin <= 0 and Tmax >= 25 or 30 °C.
 
     Parameters
     ----------
@@ -708,8 +749,20 @@ def temperature_days(
             hit = values < limit if event == "below" else values > limit
         return monthly_counts(grid, values, hit)
 
+    def both() -> NDArray[np.float64]:
+        """Tmin on the days that have both series, ``NaN`` on the others."""
+        if data.tmin is None or data.tmax is None:
+            return empty
+        paired = np.where(np.isfinite(data.tmax), data.tmin, np.nan)
+        with np.errstate(invalid="ignore"):
+            hit = (data.tmin < limits["frost_tmin_c"]) & (
+                data.tmax > limits["ice_tmax_c"]
+            )
+        return monthly_counts(grid, paired, hit)
+
     tables = {
         "frost_days": count(data.tmin, "below", limits["frost_tmin_c"]),
+        "freeze_thaw_days": both(),
         "ice_days": count(data.tmax, "below", limits["ice_tmax_c"]),
         "summer_days": count(data.tmax, "above", limits["summer_tmax_c"]),
         "hot_days": count(data.tmax, "above", limits["hot_tmax_c"]),
@@ -718,32 +771,26 @@ def temperature_days(
     annual = {name: table.sum(axis=1) for name, table in tables.items()}
     months = grid.months
 
-    def month_counts(month: int, values: list[float | None]) -> TemperatureDaysMonth:
-        frost, ice, summer, hot, tropical = values
-        return TemperatureDaysMonth(month, frost, ice, summer, hot, tropical)
+    def counts(values: list[float | None]) -> dict[str, float | None]:
+        return dict(zip(_DAY_KINDS, values, strict=True))
 
     rows: list[TemperatureDaysYear] = []
     for row in np.flatnonzero(data.present).tolist():
-        frost, ice, summer, hot, tropical = (
-            finite(annual[name][row]) for name in _DAY_KINDS
-        )
         rows.append(
             TemperatureDaysYear(
-                grid.first_year + row,
-                frost,
-                ice,
-                summer,
-                hot,
-                tropical,
-                [
-                    month_counts(
-                        month, [finite(tables[name][row, slot]) for name in _DAY_KINDS]
+                year=grid.first_year + row,
+                **counts([finite(annual[name][row]) for name in _DAY_KINDS]),
+                months=[
+                    TemperatureDaysMonth(
+                        month=month,
+                        **counts(
+                            [finite(tables[name][row, slot]) for name in _DAY_KINDS]
+                        ),
                     )
                     for slot, month in enumerate(months)
                 ],
             )
         )
-    frost, ice, summer, hot, tropical = (mean_of(annual[name]) for name in _DAY_KINDS)
     return TemperatureDays(
         index="days",
         year_type=year_type,
@@ -753,14 +800,11 @@ def temperature_days(
         **limits,
         years=rows,
         period=TemperatureDaysPeriod(
-            frost,
-            ice,
-            summer,
-            hot,
-            tropical,
-            [
-                month_counts(
-                    month, [mean_of(tables[name][:, slot]) for name in _DAY_KINDS]
+            **counts([mean_of(annual[name]) for name in _DAY_KINDS]),
+            months=[
+                TemperatureDaysMonth(
+                    month=month,
+                    **counts([mean_of(tables[name][:, slot]) for name in _DAY_KINDS]),
                 )
                 for slot, month in enumerate(months)
             ],

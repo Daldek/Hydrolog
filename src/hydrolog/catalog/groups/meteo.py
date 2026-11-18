@@ -673,17 +673,18 @@ COMMANDS: tuple[Command, ...] = (
         description_pl=(
             "Jeden wskaźnik `index` na wywołanie: `means` (średnie miesięczne i roczne "
             "Tśr, Tmax, Tmin, normalna okresu odniesienia i anomalia, ekstrema), "
-            "`days` (dni z przymrozkiem, mroźne, gorące, upalne, noce tropikalne; "
-            "ETCCDI), `degree_days` (stopniodni wzrostu > 5 °C, grzania 18 − Tśr gdy "
-            "Tśr ≤ 15 °C, Eurostat), `range` (średnia amplituda dobowa). Braki wg "
-            "WMO-No. 1203."
+            "`days` (dni z przymrozkiem FD, przymrozkowe Tmin < 0 < Tmax wg IMGW-PIB, "
+            "mroźne, gorące, upalne, noce tropikalne), `degree_days` (stopniodni "
+            "wzrostu > 5 °C, grzania 18 − Tśr gdy Tśr ≤ 15 °C, Eurostat; cały rok), "
+            "`range` (średnia amplituda dobowa). Braki wg WMO-No. 1203."
         ),
         description=(
             "One `index` per call: `means` (monthly and annual Tmean, Tmax, Tmin, the "
-            "normal of a reference period and anomaly, extremes), `days` (frost, ice, "
-            "summer, hot days, tropical nights; ETCCDI), `degree_days` (growing above "
-            "5 °C; heating 18 − Tmean when Tmean ≤ 15 °C, Eurostat), `range` (mean "
-            "daily range). Missing days by WMO-No. 1203."
+            "normal of a reference period and anomaly, extremes), `days` (frost days "
+            "FD, freeze-thaw Tmin < 0 < Tmax, ice, summer, hot days, tropical nights), "
+            "`degree_days` (growing above 5 °C; heating 18 − Tmean when Tmean ≤ 15 °C, "
+            "Eurostat; whole year), `range` (mean daily range). Missing days by "
+            "WMO-No. 1203."
         ),
         result_schema="hydrolog-meteo-temperature/1",
         cardinality="bounded",
@@ -718,13 +719,15 @@ COMMANDS: tuple[Command, ...] = (
                 choices=("means", "days", "degree_days", "range"),
                 meanings={
                     "means": "Monthly and annual means, normal, anomaly, extremes.",
-                    "days": "Frost, ice, summer and hot days, tropical nights.",
+                    "days": "Frost, freeze-thaw, ice, summer, hot days, tropical "
+                    "nights.",
                     "degree_days": "Growing and heating degree days.",
                     "range": "Mean daily range Tmax - Tmin.",
                 },
                 meanings_pl={
                     "means": "Średnie, normalna, anomalia, ekstrema.",
-                    "days": "Dni z przymrozkiem, mroźne, gorące, upalne, noce tropik.",
+                    "days": "Z przymrozkiem, przymrozkowe, mroźne, gorące, upalne, "
+                    "noce.",
                     "degree_days": "Stopniodni wzrostu i grzania.",
                     "range": "Średnia amplituda dobowa Tmax - Tmin.",
                 },
@@ -743,17 +746,17 @@ COMMANDS: tuple[Command, ...] = (
             *_reference_years("means", "means", "the normals", "normalnych"),
             _celsius(
                 "frost_tmin_c",
-                "Only for `index` days: a frost day has Tmin below this [°C]; "
-                "default 0 (FD).",
-                "Tylko dla `index` days: dzień z przymrozkiem ma Tmin poniżej [°C]; "
-                "domyślnie 0.",
+                "Only for `index` days: a frost day (and a freeze-thaw day) has Tmin "
+                "below this [°C]; default 0 (FD).",
+                "Tylko dla `index` days: dzień z przymrozkiem (i przymrozkowy) ma Tmin "
+                "poniżej [°C]; domyślnie 0 (FD).",
             ),
             _celsius(
                 "ice_tmax_c",
-                "Only for `index` days: an ice day has Tmax below this [°C]; default "
-                "0 (ID).",
-                "Tylko dla `index` days: dzień mroźny ma Tmax poniżej [°C]; "
-                "domyślnie 0.",
+                "Only for `index` days: an ice day has Tmax below this, a freeze-thaw "
+                "day above it [°C]; default 0 (ID).",
+                "Tylko dla `index` days: dzień mroźny ma Tmax poniżej, przymrozkowy "
+                "powyżej [°C]; domyślnie 0.",
             ),
             _celsius(
                 "summer_tmax_c",
