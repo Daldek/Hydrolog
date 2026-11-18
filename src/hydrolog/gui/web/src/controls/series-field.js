@@ -76,11 +76,15 @@ function eachBound(field) {
   const min = field.min === null ? null : inputText(field.min);
   const max = field.max === null ? null : inputText(field.max);
   const above = field.exclusiveMinimum === null ? null : inputText(field.exclusiveMinimum);
+  const below = field.exclusiveMaximum === null ? null : inputText(field.exclusiveMaximum);
   if (min !== null && max !== null) return t(formTexts.eachBetween, { min, max });
   if (above !== null && max !== null) return t(formTexts.eachAboveMax, { min: above, max });
+  if (min !== null && below !== null) return t(formTexts.eachMinBelow, { min, max: below });
+  if (above !== null && below !== null) return t(formTexts.eachAboveBelow, { min: above, max: below });
   if (above !== null) return t(formTexts.eachAbove, { min: above });
   if (min !== null) return t(formTexts.eachMin, { min });
   if (max !== null) return t(formTexts.eachMax, { max });
+  if (below !== null) return t(formTexts.eachBelow, { max: below });
   return null;
 }
 

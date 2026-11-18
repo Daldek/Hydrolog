@@ -25,9 +25,10 @@ reason                 meaning (extra ``details`` keys)
 ``type``               wrong JSON type (``expected``, ``value``, ``got``; ``index``
                        inside lists)
 ``not_finite``         NaN or infinity where a finite number is required
-``minimum``,           bound violated (``minimum``/``maximum``/``exclusive_minimum``,
-``maximum``,           ``value``)
-``exclusive_minimum``
+``minimum``,           bound violated (``minimum``/``maximum``/``exclusive_minimum``/
+``maximum``,           ``exclusive_maximum``, ``value``)
+``exclusive_minimum``,
+``exclusive_maximum``
 ``choice``             value not among the choices (``allowed``, ``value``)
 ``empty``              empty string, path or list
 ``invalid_path``       path that cannot be used (NUL character, unresolvable)

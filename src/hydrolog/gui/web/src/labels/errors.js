@@ -23,6 +23,7 @@ export const errors = {
     minimum: "Najmniej {minimum} (podano {value})",
     maximum: "Najwyżej {maximum} (podano {value})",
     exclusive_minimum: "Musi być większa od {exclusive_minimum} (podano {value})",
+    exclusive_maximum: "Musi być mniejsza od {exclusive_maximum} (podano {value})",
     choice: "Dozwolone wartości: {allowed}",
     empty: "Nie może być puste",
     invalid_path: "Nieprawidłowa ścieżka pliku",
@@ -154,6 +155,7 @@ export function reasonText(reason, details = {}) {
     case "minimum":
     case "maximum":
     case "exclusive_minimum":
+    case "exclusive_maximum":
       text = t(r[reason], {
         [reason]: shown(details[reason]),
         value: shown(details.value),
