@@ -4,6 +4,8 @@
 - Date: 2026-11-04
 - Amended by [ADR-0019](0019-tc-from-the-inputs-its-source-defines.md) (2026-11-05): the inputs of a range checked on
   a watershed are the one field the method's source defines
+- Amended by [ADR-0050](0050-formulas-declared-by-specs.md) (2026-11-18): the ranges of a formula with a
+  spec are the applicability ranges of its spec, generated into `hydrolog._applicability`
 - Amends: [ADR-0015](0015-catalog-additions-for-the-gui.md) (the `outside_typical_range` notices: their bounds come
   from one table, a threshold without a published source is gone, and the area of a watershed and of three unit
   hydrographs is checked)

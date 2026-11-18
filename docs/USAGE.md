@@ -53,9 +53,11 @@ hydrolog tc kirpich --length-km 8.2 --slope-m-per-m 0.023 --json
 ```
 
 The envelope keys are `schema`, `tool`, `version`, `command`, `check`, `status`, `result`,
-`items` (the calls of `commands batch`), `attribution` and `terms_notice` (the lines that the terms
-of the data's providers require, only when the run used such data; ADR-0028), `notices`, `inputs`
-and, for paged lists, `page`. The domain result has its own `schema`
+`formula_versions` (the `formula_version` of each formula with a spec that gave the result, by the
+name of its spec; `docs/FORMULAS.md`, ADR-0050), `items` (the calls of `commands batch`),
+`attribution` and `terms_notice` (the lines that the terms of the data's providers require, only
+when the run used such data; ADR-0028), `notices`, `inputs` and, for paged lists, `page`. The
+domain result has its own `schema`
 (`hydrolog-<group>-<command>/1`); units follow from field names (`tc_min`, `area_ha`); `NaN` and
 infinities are `null`. `inputs` echoes the options after normalisation (defaults filled in, paths
 made absolute). `notices` carries non-fatal warnings (a short series, a value outside the typical

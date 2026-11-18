@@ -5,6 +5,8 @@
 - Amended by [ADR-0015](0015-catalog-additions-for-the-gui.md) (2026-11-02): notices gain `details`
 - Amended by [ADR-0028](0028-the-providers-lines-in-every-product.md) (2026-11-13): the envelope gains
   `attribution` and `terms_notice`, the providers' lines
+- Amended by [ADR-0050](0050-formulas-declared-by-specs.md) (2026-11-18): the envelope gains
+  `formula_versions`, the `formula_version` of each formula with a spec behind the result
 
 ## Context
 
