@@ -77,7 +77,7 @@ Hydrolog is analogous to **Kartograf** (spatial data download) and **Obserwator*
 - Beta distribution (configurable α, β; default α=2, β=5)
 - Block distribution (constant intensity)
 - Triangular distribution
-- DVWK Euler Type II distribution (`EulerIIHietogram`)
+- Euler type II design storm of ATV-DVWK-A 118 (`EulerIIHietogram`), built from the depth-duration curve of one probability (PMAXTP, KOSTRA-DWD or a local formula): the increments of the curve, the peak interval from 0.3 of the duration; until 0.8.1 a fixed `r^-0.7` approximation that took only the total ([ADR-0042](decisions/0042-the-euler-type-ii-storm-from-a-depth-duration-curve.md))
 
 **Interpolation (v0.3.0):**
 - IDW (Inverse Distance Weighting)
@@ -87,8 +87,8 @@ Hydrolog is analogous to **Kartograf** (spatial data download) and **Obserwator*
 - Kriging (optional - not implemented)
 
 **PMAXTP design depth (ADR-0018):** ✅
-- `precip pmaxtp` fetches the PMAXTP depth (IMGW-PIB's atlas of maximum precipitation) of a point in Poland, for one of its 16 durations (5 min to 72 h) and 27 probabilities (0.01 % to 99.9 %), by POT or AMP, from IMGW-PIB through Obserwator (extra `pmaxtp`); the only command that uses the network
-- The depth is the `total_mm` of `precip hietogram` and `hydrograph generate`, which do not fetch it; a depth from elsewhere is still given as `total_mm`
+- `precip pmaxtp` fetches the PMAXTP depth (IMGW-PIB's atlas of maximum precipitation) of a point in Poland, for one of its 16 durations (5 min to 72 h) and 27 probabilities (0.01 % to 99.9 %), by POT or AMP, from IMGW-PIB through Obserwator (extra `pmaxtp`), with the depths of all 16 durations at the probability (`depth_duration_mm`); the only command that uses the network
+- The depth is the `total_mm` of `precip hietogram` and `hydrograph generate`, and the depths are the curve of their Euler II storm (`depth_duration_mm`, ADR-0042); those commands do not fetch them, and a depth or a curve from elsewhere is still given as `total_mm` or `depth_duration_mm`
 
 ---
 
