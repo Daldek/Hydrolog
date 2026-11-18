@@ -70,9 +70,12 @@ export const statsInfo = {
     note:
       "<p>L-momenty są mniej czułe na pojedyncze duże maksima i stabilniejsze na krótkich szeregach niż największa " +
       "wiarygodność, a najmniejsze kwadraty idą za największymi maksimami. Dla rzadkich wezbrań metody mogą dać różne " +
-      "kwantyle.</p>",
+      "kwantyle. Największa wiarygodność nie daje parametrów, gdy wiarygodność rośnie bez końca (nieskończona gęstość " +
+      "na granicy rozkładu, która wypada na skrajnym maksimum): taka kombinacja jest pominięta z uwagą.</p>",
     guide: "metoda-stats-fit-method",
-    sources: "Hosking i Wallis 1997 (Regional Frequency Analysis)",
+    sources:
+      "Hosking i Wallis 1997 (Regional Frequency Analysis); " +
+      "Smith 1985 (Maximum likelihood estimation in a class of nonregular cases)",
   },
   "stats-fit": {
     title: "Zgodność dopasowania: AIC, A², KS",
