@@ -19,4 +19,31 @@ class Applicability(NamedTuple):
     source: str
 
 
-APPLICABILITY: Final[tuple[Applicability, ...]] = ()
+APPLICABILITY: Final[tuple[Applicability, ...]] = (
+    Applicability(
+        method="scs_cn_runoff",
+        parameter="cn",
+        minimum=40.0,
+        maximum=100.0,
+        unit="-",
+        source=(
+            "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical "
+            "Release 55, 2nd ed. (210-VI-TR-55, June 1986), chapter 2, limitations,"
+            " p. 2-11: when the weighted CN is less than 40, use another procedure"
+        ),
+    ),
+    Applicability(
+        method="scs_cn_amc",
+        parameter="cn",
+        minimum=55.0,
+        maximum=95.0,
+        unit="-",
+        source=(
+            "Ponce, V.M. and Hawkins, R.H. (1996). Runoff curve number: has it "
+            "reached maturity? Journal of Hydrologic Engineering 1(1), 11-19, "
+            "reporting Hawkins, R.H., Hjelmfelt, A.T. and Zevenbergen, A.W. (1985),"
+            " Journal of Irrigation and Drainage Engineering 111(4), 330-340, p. "
+            "15: eqs. 15-16 applicable in the range 55 <= CN <= 95"
+        ),
+    ),
+)

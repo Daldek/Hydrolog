@@ -1,7 +1,8 @@
 """The typical ranges of the formulas and models, each with its source (one table).
 
 A typical range is the range of the data a formula was derived from, or the range its
-literature recommends. Outside it the formula still computes and the library warns
+literature recommends: the applicability range of Nogat's computation standard. Outside
+it the formula still computes and the library warns
 (:class:`~hydrolog._warnings.OutsideTypicalRange`, notice ``outside_typical_range``)
 with the bounds of :data:`TYPICAL_RANGES`; the record length of a flood frequency
 analysis has the notice ``short_record`` instead. The catalog serves the table in the
@@ -13,14 +14,22 @@ plan 2026-11-02), except the given parameters of the Nash cascade: they are kept
 to be verified (``verified`` false), and a value outside them gives the notice
 ``outside_unverified_range`` (:class:`~hydrolog._warnings.OutsideUnverifiedRange`).
 
+The ranges of a formula with a spec (Nogat CMP-2.1, ADR-0050) are its spec's: the rows
+of :data:`hydrolog._applicability.APPLICABILITY`, generated from the specs, with the
+Polish text of their sources in :data:`_SOURCE_PL`; the formula's own spec checks them.
+The rows written here are those of the formulas without a spec yet, and the area of the
+watershed of a time of concentration formula, which is not an input of its equation and
+is checked by ``WatershedParameters.calculate_tc``.
+
 :data:`TC_INPUTS` names the watershed field each argument of a time of concentration
 formula is taken from, the one its source defines, with no substitute:
 ``WatershedParameters`` selects with it, and the catalog serves it as the ``inputs`` of
 a range checked on a watershed. :data:`NASH_INPUTS` does the same for the estimation of
 Nash's n and K from a watershed (Lutz).
 
-The module is a leaf: it imports only :mod:`hydrolog._warnings`, so the catalog can
-read it without the numerical libraries.
+The module is a leaf: it imports only :mod:`hydrolog._warnings` and the generated
+:mod:`hydrolog._applicability`, so the catalog can read it without the numerical
+libraries.
 """
 
 from __future__ import annotations
@@ -29,6 +38,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Final
 
+from hydrolog._applicability import APPLICABILITY
 from hydrolog._warnings import warn_outside_typical_range
 
 __all__ = [
@@ -173,6 +183,36 @@ _TIMESTEP = (
     ),
 )
 
+_SOURCE_PL: Final[Mapping[tuple[str, str], str]] = {
+    ("scs_cn_runoff", "cn"): (
+        "USDA-SCS (1986), TR-55, rozdz. 2, ograniczenia, s. 2-11: przy ważonym CN "
+        "poniżej 40 należy użyć innej metody"
+    ),
+    ("scs_cn_amc", "cn"): (
+        "Ponce i Hawkins (1996), s. 15: wzory 15-16 Hawkinsa i in. (1985) obowiązują "
+        "dla 55 ≤ CN ≤ 95"
+    ),
+}
+"""The Polish text of the source of each range of a formula with a spec."""
+
+
+def _specified(method: str) -> tuple[TypicalRange, ...]:
+    """Return the applicability ranges of the spec ``method``, in its order."""
+    return tuple(
+        TypicalRange(
+            found.method,
+            found.parameter,
+            found.minimum,
+            found.maximum,
+            found.unit,
+            found.source,
+            _SOURCE_PL[(found.method, found.parameter)],
+        )
+        for found in APPLICABILITY
+        if found.method == method
+    )
+
+
 TYPICAL_RANGES: Final[tuple[TypicalRange, ...]] = (
     # --- time of concentration ---------------------------------------------------
     TypicalRange(
@@ -311,17 +351,8 @@ TYPICAL_RANGES: Final[tuple[TypicalRange, ...]] = (
         "przekroju 92 zlewni w Teksasie",
     ),
     # --- SCS-CN ------------------------------------------------------------------
-    TypicalRange(
-        "scs_cn_amc",
-        "cn",
-        55.0,
-        95.0,
-        "-",
-        "Hawkins et al. (1985): the AMC conversion formulas approximate the table of "
-        "NEH 630 (after Ponce and Hawkins 1996)",
-        "Hawkins i in. (1985): wzory przeliczenia AMC przybliżają tabelę NEH 630 (za "
-        "Ponce i Hawkins 1996)",
-    ),
+    *_specified("scs_cn_runoff"),
+    *_specified("scs_cn_amc"),
     # --- unit hydrographs --------------------------------------------------------
     TypicalRange(
         "scs",
