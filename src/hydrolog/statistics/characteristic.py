@@ -8,11 +8,19 @@ a period (NNQ-WWQ, NNW-WWW). The first degree comes from a daily series
 (:func:`calculate_characteristic_values`) or from IMGW-PIB's published half-year
 characteristics (:func:`characteristic_values_from_half_years`).
 
+Only the half-year mode gives IMGW-PIB's characteristic values. IMGW-PIB takes the
+extremes of a month, half-year and year from all observations (Rocznik Hydrologiczny
+2022, p. 7) and publishes no characteristic of a period with a break in observations;
+the daily mode takes the extremes of the daily values (one value a day, e.g. a daily
+mean) and keeps a year with missing days. Its maxima are as a rule lower and its
+minima higher than IMGW-PIB's (Kłodzko 150160180, hydrological year 2010: WQ 96.0
+against the published 145 m³/s, NQ 4.93 against 4.17 m³/s; the mean 19.14 against 19.1).
+
 Additionally provides daily and monthly statistics with confidence intervals.
 
 References
 ----------
-IMGW-PIB methodology for characteristic values:
+Second degree from the first-degree values of each year:
 - WWQ = max of annual maxima
 - SWQ = mean of annual maxima (NOT mean of half-year maxima)
 - ZWQ = median of annual maxima
@@ -20,6 +28,8 @@ IMGW-PIB methodology for characteristic values:
 - (same pattern for means and minima)
 Byczkowski, A. (1996): Hydrologia, t. 1. Wydawnictwo SGGW, Warszawa (characteristic
 values of the first and second degree).
+IMGW-PIB: Rocznik Hydrologiczny 2022, pp. 5-8 (definitions of the published
+characteristic values).
 """
 
 from __future__ import annotations
@@ -494,7 +504,16 @@ def calculate_characteristic_values(
     Notes
     -----
     SWQ is the mean of annual maxima, NOT the mean of half-year maxima.
-    This follows the correct IMGW-PIB methodology.
+
+    These are not IMGW-PIB's characteristic values. IMGW-PIB takes the extremes of
+    a half-year and year from all observations (Rocznik Hydrologiczny 2022, p. 7)
+    and publishes none for a period with a break in observations; here the extremes
+    are those of the daily values and a year with missing days stays. The maxima
+    are as a rule lower and the minima higher than IMGW-PIB's (Kłodzko 150160180,
+    hydrological year 2010: WQ 96.0 against 145 m³/s, winter WQ 62.6 against 77.4
+    m³/s, NQ 4.93 against 4.17 m³/s), while the means agree (19.14 against 19.1
+    m³/s). IMGW-PIB's values come from its half-year file
+    (:func:`characteristic_values_from_half_years`).
     """
     if len(daily_values) == 0 or len(dates) == 0:
         raise InvalidParameterError("Input arrays must not be empty.")

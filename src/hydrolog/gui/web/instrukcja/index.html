@@ -463,7 +463,7 @@
 
   <h3 id="analizy-stacji-polecenia">Co liczą</h3>
   <dl class="defs">
-    <div><dt><code>stats characteristic</code>: wartości charakterystyczne</dt><dd>Najmniejsza, średnia i największa wartość każdego roku hydrologicznego i półrocza (I stopień: NQ, SQ, WQ) oraz z nich wartości II stopnia okresu, od WWQ do NNQ; tak samo dla stanów (WWW…NNW) i temperatury wody (WWT…NNT), także z pliku półroczy.</dd></div>
+    <div><dt><code>stats characteristic</code>: wartości charakterystyczne</dt><dd>Najmniejsza, średnia i największa wartość każdego roku hydrologicznego i półrocza (I stopień: NQ, SQ, WQ) oraz z nich wartości II stopnia okresu, od WWQ do NNQ; tak samo dla stanów (WWW…NNW) i temperatury wody (WWT…NNT), także z pliku półroczy. Z szeregu dobowego ekstrema są ekstremami wartości dobowych (np. średnich dobowych), a lata z brakami zostają w okresie; IMGW-PIB bierze ekstrema ze wszystkich pomiarów i obserwacji i nie podaje charakterystyk okresu z przerwą w obserwacjach, więc z szeregu dobowego maksima wychodzą niższe, a minima wyższe niż w Roczniku (Kłodzko, rok 2010: WQ 96,0 zamiast 145&nbsp;m³/s, NQ 4,93 zamiast 4,17&nbsp;m³/s; średnie zgodne). Wartości charakterystyczne IMGW-PIB daje plik półroczy (<code>half_year_file</code>).</dd></div>
     <div><dt><code>stats threshold-events</code>, <code>stats low-flow-sequences</code>: dni powyżej i poniżej progu</dt><dd>Ciągi dni z wartością co najmniej równą progowi albo niższą od niego (np. stan wody albo temperatura wody 20&nbsp;°C): początek, koniec, czas trwania, szczyt i liczba takich dni w roku. Niżówki liczą się poniżej progu podanego, SNQ albo Q70 z krzywej czasu trwania, z niedoborem objętości; przerwy krótsze niż 4 dni ich nie dzielą.</dd></div>
     <div><dt><code>stats duration-curve</code>: krzywa czasu trwania</dt><dd>Wartość osiągana albo przekraczana przez p&nbsp;% dni (np. Q90), także dla jednego miesiąca, i liczby dni w klasach równej szerokości z klasą najczęstszą.</dd></div>
     <div><dt><code>stats runoff-volume</code>: objętość odpływu</dt><dd>Objętości lat i miesięcy hydrologicznych, ich średnie z lat i miesięcy bez braków oraz krzywa sumowa wybranego roku.</dd></div>
@@ -491,7 +491,7 @@
 
   <h3 id="analizy-stacji-zrodla">Źródła metod</h3>
   <ul>
-    <li>Wartości charakterystyczne, krzywa czasu trwania: definicje IMGW-PIB (Byczkowski, 1996); Searcy (1959), Vogel i Fennessey (1994).</li>
+    <li>Wartości charakterystyczne, krzywa czasu trwania: definicje IMGW-PIB (Byczkowski, 1996; Rocznik Hydrologiczny IMGW-PIB 2022, s. 5–7: ekstrema ze wszystkich pomiarów i obserwacji); Searcy (1959), Vogel i Fennessey (1994).</li>
     <li>Dni powyżej i poniżej progu, niżówki: metoda progowa (Tallaksen i van Lanen, 2004).</li>
     <li>Reżim: Pardé (1933), Dynowska (1997) z kryteriami Wrzesińskiego (2017, 2018) i Perz (2019), wskaźnik sezonowości Walsha i Lawlera (1981); sezonowość ekstremów: Bayliss i Jones (1993), Burn (1997); harmoniki: Wilks (2011).</li>
     <li>Przepływ podstawowy: Lyne i Hollick (1979), Nathan i McMahon (1990), Ladson i in. (2013).</li>

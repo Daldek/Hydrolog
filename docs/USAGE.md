@@ -866,9 +866,10 @@ quantiles need at least 30 years).
   every item naming its `fit_method`, ADR-0021); `stats low-flow`: low-flow quantiles from annual
   minima; `stats low-flow-sequences`: drought sequences below a threshold.
 - `stats characteristic`: first- and second-degree characteristic values (WQ ... NQ of each year
-  and half-year, WWQ ... NNQ of the period); `stats daily` and `stats monthly`: day-of-year and
-  monthly statistics; `stats duration-curve`: the duration curve with the days of each class;
-  `stats runoff-volume`: annual and monthly runoff volumes.
+  and half-year, WWQ ... NNQ of the period; from a daily series the extremes of the daily values,
+  milder than IMGW-PIB's published ones, which `--half-year-file` gives); `stats daily` and
+  `stats monthly`: day-of-year and monthly statistics; `stats duration-curve`: the duration curve
+  with the days of each class; `stats runoff-volume`: annual and monthly runoff volumes.
 - `stats mann-kendall`: monotonic trend test with Sen's slope, Conover's intercept and Gilbert's
   1 - alpha interval of the slope (per year with `--year-column` or inline `--years`, otherwise
   per step); `stats homogeneity`: the homogeneity of annual maxima
