@@ -14,9 +14,11 @@ quickflow of each pass starting at the first value of its input and kept as it i
 daily series with gaps is filtered on each gapless span of at least 60 days; the
 baseflow index is BFI = Σ b / Σ Q over the days filtered.
 
-The recession constant k is the median of the daily ratios Qₜ₊₁ / Qₜ on the recession
-segments of the series, runs of at least 5 consecutive days of falling flow (Tallaksen,
-1995); the half-life of a recession is ln 2 / (−ln k) days.
+The recession constant k is the median of the daily ratios Qₜ₊₁ / Qₜ of the total flow
+on the runs of at least 5 consecutive days of falling flow, Hydrolog's own choice of
+recession segments; k is the daily constant of Qₜ = Q₀ kᵗ (WMO No. 1029, 2009, sec.
+5.3), but its segments include the quickflow after a peak, which WMO's baseflow
+recession analysis leaves out. The half-life of a recession is ln 2 / (−ln k) days.
 
 References
 ----------
@@ -27,8 +29,8 @@ Nathan, R. J. & McMahon, T. A. (1990): Evaluation of automated techniques for ba
 Ladson, A. R., Brown, R., Neal, B. & Nathan, R. (2013): A standard approach to baseflow
     separation using the Lyne and Hollick filter. Australasian Journal of Water
     Resources, 17(1), 25–34; code: github.com/TonyLadson/BaseflowSeparation_LyneHollick.
-Tallaksen, L. M. (1995): A review of baseflow recession analysis. Journal of
-    Hydrology, 165, 349–370.
+World Meteorological Organization (2009): Manual on Low-flow Estimation and
+    Prediction. WMO No. 1029, Operational Hydrology Report No. 50, Geneva, sec. 5.3.
 """
 
 from __future__ import annotations
@@ -108,9 +110,10 @@ class RecessionConstant(JsonResultMixin):
     Attributes
     ----------
     k : float or None
-        Median ratio Qₜ₊₁ / Qₜ over the recession segments; ``None`` without one.
+        Median ratio Qₜ₊₁ / Qₜ of the total flow over the recession segments;
+        ``None`` without one.
     half_life_days : float or None
-        ln 2 / (−ln k): the days in which a recession halves the flow.
+        ln 2 / (−ln k): the days in which such a recession halves the flow.
     n_segments : int
         Recession segments found.
     """
@@ -240,7 +243,16 @@ def lyne_hollick_filter(
 def recession_constant(
     discharge: NDArray[np.float64], *, min_days: int = MIN_RECESSION_DAYS
 ) -> RecessionConstant:
-    """Compute the recession constant of a daily discharge series.
+    """Compute the recession constant of the total flow of a daily series.
+
+    k is the median of the daily ratios Qₜ₊₁ / Qₜ over the runs of at least
+    ``min_days`` consecutive falls of the flow, the daily recession constant of
+    Q_t = Q_0 k^t (WMO No. 1029, 2009, sec. 5.3, Eq. 5.1–5.3). The segments are
+    Hydrolog's own rule: they start at any fall, the first days after a peak
+    (quickflow) included, so k describes the recession of the total flow and is
+    smaller (a faster recession) than the baseflow recession constant of WMO's
+    master recession curve, built from 7-day segments below Q70 without the days
+    right after a peak.
 
     Parameters
     ----------
