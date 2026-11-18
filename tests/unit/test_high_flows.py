@@ -13,11 +13,15 @@ _DISTRIBUTIONS = {
     "pearson3": (pearson3, (1.0, 100.0, 30.0)),
     "weibull": (weibull_min, (1.5, 20.0, 50.0)),
 }
-# Fitted by all four distributions and both methods; by the L-moments the lower bound
-# of Pearson III and of Weibull lies above its smallest value.
+# Fitted by all four distributions and every method but two (_NO_MAXIMUM); by the
+# L-moments the lower bound of Pearson III and of Weibull lies above its smallest value.
 _FLOODS = np.array(
     [95.0, 102.0, 110.0, 118.0, 125.0, 133.0, 140.0, 152.0, 170.0, 215.0, 290.0]
 )
+# The likelihood of Pearson III and of Weibull has no maximum on _FLOODS (a skewness
+# above 2, a shape below 1: test_maximum_likelihood.py), so maximum likelihood gives
+# them no parameters.
+_NO_MAXIMUM = {("pearson3", "mle"), ("weibull", "mle")}
 
 
 def _fit(analysis, distribution, fit_method):
@@ -135,9 +139,14 @@ class TestFloodFrequencyAnalysis:
         assert len(result.quantiles) == 3
 
     @pytest.mark.parametrize(
-        "fit_method", ["mle", "moments", "l_moments", "least_squares"]
+        ("distribution", "fit_method"),
+        [
+            (distribution, fit_method)
+            for distribution in _DISTRIBUTIONS
+            for fit_method in ("mle", "moments", "l_moments", "least_squares")
+            if (distribution, fit_method) not in _NO_MAXIMUM
+        ],
     )
-    @pytest.mark.parametrize("distribution", list(_DISTRIBUTIONS))
     def test_densities_are_the_pdf_at_the_quantiles(self, distribution, fit_method):
         from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
 
@@ -324,11 +333,12 @@ class TestEveryFitMethod:
 
         ranked = FloodFrequencyAnalysis(_FLOODS).fit_all(fit_method="all")
 
-        assert len(ranked) == 16
+        assert len(ranked) == 14
         assert set(ranked) == {
             f"{distribution}/{method}"
             for distribution in _DISTRIBUTIONS
             for method in FIT_METHODS
+            if (distribution, method) not in _NO_MAXIMUM
         }
 
     def test_each_item_is_the_fit_of_its_own_method(self):
@@ -372,24 +382,33 @@ class TestEveryFitMethod:
         from hydrolog._warnings import DistributionLeftOut
         from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
 
-        # skewness and L-skewness below the Weibull's (the Gumbel's) limit
+        # skewness and L-skewness below the Weibull's (the Gumbel's) limit; the
+        # likelihood of the GEV and Pearson III grows without limit as their upper
+        # bound reaches the largest value
         analysis = FloodFrequencyAnalysis(np.array([1.0, *[10.0] * 8, 10.5]))
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             ranked = analysis.fit_all(fit_method="all")
 
-        left_out = {"weibull/moments", "weibull/l_moments", "weibull/least_squares"}
-        assert len(ranked) == 13
+        reasons = {
+            "weibull/moments": "out_of_range",
+            "weibull/l_moments": "out_of_range",
+            "weibull/least_squares": "out_of_range",
+            "gev/mle": "unbounded_likelihood",
+            "pearson3/mle": "unbounded_likelihood",
+        }
+        assert len(ranked) == 11
         assert "weibull/mle" in ranked
-        assert left_out.isdisjoint(ranked)
+        assert set(reasons).isdisjoint(ranked)
         notices = [
             w.message for w in caught if isinstance(w.message, DistributionLeftOut)
         ]
         assert {
-            f"{notice.details['distribution']}/{notice.details['fit_method']}"
+            f"{notice.details['distribution']}/{notice.details['fit_method']}": (
+                notice.details["reason"]
+            )
             for notice in notices
-        } == left_out
-        assert {notice.details["reason"] for notice in notices} == {"out_of_range"}
+        } == reasons
 
     def test_a_fit_outside_its_support_names_its_method(self):
         from hydrolog._warnings import OutsideSupport

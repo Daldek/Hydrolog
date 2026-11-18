@@ -870,8 +870,13 @@ quantiles need at least 30 years).
   fitted density there (`distributions[].quantiles` and `densities`; `--distribution all`
   compares several distributions; `--fit-method` estimates their parameters by `l_moments`, the
   default, `mle`, `moments` or `least_squares`, and `all` fits each distribution by each method,
-  every item naming its `fit_method`, ADR-0021); `stats low-flow`: low-flow quantiles from annual
-  minima; `stats low-flow-sequences`: drought sequences below a threshold.
+  every item naming its `fit_method`, ADR-0021). Maximum likelihood needs one value more than
+  the distribution has parameters, and a distribution whose likelihood has no maximum (its
+  density infinite at a bound placed on a value) gets no parameters (`unbounded_likelihood`):
+  among several it is left out with the notice `distribution_left_out`. `stats low-flow`:
+  low-flow quantiles from annual minima, the Fisher-Tippett distribution by maximum likelihood
+  from at least 4 complete years; a quantile of a discharge below 0 is `null`, with the notice
+  `negative_quantiles`. `stats low-flow-sequences`: drought sequences below a threshold.
 - `stats characteristic`: first- and second-degree characteristic values (WQ ... NQ of each year
   and half-year, WWQ ... NNQ of the period; from a daily series the extremes of the daily values,
   milder than IMGW-PIB's published ones, which `--half-year-file` gives); `stats daily` and

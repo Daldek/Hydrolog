@@ -4,7 +4,9 @@
 - Date: 2026-11-06
 - Builds on: plan `docs/plans/2026-11-06-flow-statistics-feedback.md` (decision D1), the reports 4 and 12 of „Zgłoś
   uwagę”
-- Amended: 2026-11-06 (below), `fit_method` `all` and the default `l_moments` (the plan's erratum, decision D6)
+- Amended: 2026-11-06 (below), `fit_method` `all` and the default `l_moments` (the plan's erratum, decision D6);
+  2026-11-18 (below), maximum likelihood by Hydrolog's own search, no parameters without a maximum, its
+  preconditions and no negative low flows (the fix of a gross defect, Nogat CMP-9.2)
 
 ## Context
 
@@ -116,3 +118,46 @@ The author's review of the deployed Statystyka (the plan's erratum of 2026-11-06
   three-parameter searches depend on their start and may end in a local optimum (above); the L-moments are linear in
   the ordered sample, so the largest floods weigh less, and they exist whenever the mean does (Hosking and Wallis
   1997). The default results change; the numbers the guide quotes follow.
+
+## Amendment (2026-11-18, maximum likelihood that reaches the maximum or reports that there is none)
+
+The literature research of the formulas of 2026-11-18 found scipy's `fit` far from the maximum of the likelihood (two
+gross defects, Nogat CMP-9.1) and maximum likelihood run at its singularity and without preconditions. The fix,
+released at once (CMP-9.2), changes points 1, 7, 8 and 9 and the first amendment:
+
+- **Maximum likelihood is Hydrolog's own search** (point 1). scipy's `fit` starts the GEV from c = −0.5 and the scale
+  1 and, on annual maxima of hundreds of m³/s, often stopped at a degenerate point: on the sample of the unit tests
+  (`_FLOODS`) at c = −6.26 with the log-likelihood −61.55 against the maximum −56.13 of R's `evd`, `extRemes` and
+  `ismev`, and Q100 = 2.5·10¹² m³/s instead of 505. The GEV, Pearson III and Weibull are now fitted by Nelder-Mead on
+  the standardised sample (x − mean) / sd from the L-moments' estimate, moved inside the support, run again from the
+  point found until a run gains at most 10⁻⁹ of log-likelihood and checked to be no less likely than its start; the
+  log-normal keeps its closed form. The Fisher-Tippett fit of annual minima (`stats low-flow`,
+  `fit_fisher_tippett_minima`), the GEV of the negated minima, takes the same search.
+- **No maximum, no parameters** (points 7 and 8, the first amendment). The likelihood of a three-parameter
+  distribution grows without limit where its density is infinite at a bound placed at the closest value (Smith
+  1985): the GEV with c ≥ 1, Pearson III with |skewness| ≥ 2 and Weibull with a shape ≤ 1. The search keeps the
+  shapes short of these limits, and one that ends within 10⁻³ of a limit is a `calculation_error` with
+  `details.reason` `unbounded_likelihood` (`not_converged` when no run settles). Among several combinations such a
+  fit is left out with `distribution_left_out` and never ranked: scipy's fits at the singularity led the AIC ranking
+  (`_FLOODS`: Pearson III with AIC 102.3 ahead of every regular fit, 118.6 to 121.6). Maximum likelihood therefore no
+  longer fits each distribution, and `all` can end with the error of none remaining (values all equal).
+- **Preconditions** (point 8). Maximum likelihood needs one value more than the distribution has parameters (3 for
+  the log-normal, 4 for the others), values not all equal and, for the log-normal, above 0 (`too_few_values`,
+  `constant_values`, `non_positive_values`). `FloodFrequencyAnalysis` and `fit_fisher_tippett_minima` refuse a value
+  that is not a finite number (`validation_error`, `details.reason` `not_finite`), and `stats low-flow` needs 4
+  complete hydrological years instead of 3.
+- **No negative discharge** (the low-flow fit). A quantile of annual minima below 0 comes from a fitted support that
+  reaches below zero flow, which WMO-No. 1029 (2009, sec. 7.5) excludes (a lower bound at 0 or above). It is NaN
+  (`null` in JSON) with the new warning `negative_quantiles` (`details.return_periods` of the quantiles left out,
+  `details.zero_return_period` = 1 / F(0), the years at which the fitted distribution reaches 0), never a negative
+  number; the quantiles of the other return periods stay. A stage (`parameter` H of `half_year_file`;
+  `discharge=False` of `fit_fisher_tippett_minima`), whose zero is the gauge's, keeps its quantiles.
+- **Point 9 holds for the other methods only**: a fit by maximum likelihood gives a density to every value.
+
+The default (`l_moments`) results do not change; those of `mle` and `all` change where scipy stopped short of the
+maximum (on samples whose spread is far from 1) or at a singularity. The CHANGELOG says which stored results to
+recompute. Alternatives considered: refusing a low-flow fit with a negative quantile (its valid quantiles of the other
+return periods would be lost: Obserwator stores 25 of them, up to 1000 years); keeping scipy's `fit` on a rescaled
+sample or checked against the L-moments' likelihood (both still return a point at the singularity); a lower bound of
+Pearson III or Weibull fixed below the smallest value, as KZGW 2017 (p. 36) does by hand (another estimator than
+maximum likelihood, for another decision).

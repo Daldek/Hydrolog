@@ -136,6 +136,10 @@ export const notices = {
       plain: "Dopasowany rozkład nie obejmuje wszystkich maksimów: jego AIC jest nieokreślone.",
       names: FREQUENCY_NAMES,
     },
+    negative_quantiles: {
+      text: "Dopasowany rozkład Fishera–Tippetta osiąga przepływ 0 raz na {zero_return_period} lat: kwantyle okresów {return_periods} lat byłyby ujemne i pominięto je.",
+      plain: "Część kwantyli niżówek byłaby ujemnym przepływem: pominięto je.",
+    },
     homogeneity_rejected: {
       text: "Testy odrzucające jednorodność ciągu przy α = {alpha}: {tests}.",
       plain: "Test odrzuca jednorodność ciągu.",
