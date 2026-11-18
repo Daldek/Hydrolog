@@ -134,27 +134,29 @@ COMMANDS: tuple[Command, ...] = (
             "Compute first- and second-degree characteristic values (WQ…NQ, WWQ…NNQ)"
         ),
         description_pl=(
-            "Wg IMGW-PIB: minimum, średnia i maksimum każdego roku hydrologicznego "
-            "(XI–X) i półrocza (I stopień) oraz w okresie ich największa, średnia, "
-            "mediana i najmniejsza (II stopień: WWQ…NNQ, WWW…NNW). Z szeregu dobowego "
-            "albo pliku półroczy IMGW-PIB; kwantyle wezbrań: `stats flood-frequency`."
+            "I stopień: minimum, średnia i maksimum każdego roku hydrologicznego "
+            "(XI–X) i półrocza; II stopień: ich największa, średnia, mediana i "
+            "najmniejsza w okresie (WWQ…NNQ, WWW…NNW). Szereg dobowy daje ekstrema "
+            "wartości dobowych, łagodniejsze od publikowanych przez IMGW-PIB, i "
+            "zachowuje lata niepełne. Kwantyle wezbrań: `stats flood-frequency`."
         ),
         description=(
-            "Per IMGW-PIB: the minimum, mean and maximum of each hydrological year "
-            "(Nov–Oct) and half-year (first degree) and, over the period, their "
-            "highest, mean, median and lowest (second degree: WWQ…NNQ, WWW…NNW). From "
-            "a daily series or IMGW-PIB's half-year file; flood quantiles: `stats "
-            "flood-frequency`."
+            "First degree: min, mean and max of each hydrological year (Nov–Oct) and "
+            "half-year; second degree: their highest, mean, median and lowest over the "
+            "period (WWQ…NNQ, WWW…NNW). A daily series gives extremes of daily values, "
+            "milder than IMGW-PIB's, and keeps incomplete years. Flood quantiles: "
+            "`stats flood-frequency`."
         ),
         result_schema="hydrolog-stats-characteristic/1",
         cardinality="bounded",
         rules=(
-            "Give a daily series with dates or `half_year_file`.",
+            "Give a daily series with dates, or `half_year_file` for IMGW-PIB's "
+            "values.",
             "The period is the whole record unless `first_year`/`last_year` are given.",
             "Read `notices` and `labels`; results are in the unit of the series.",
         ),
         rules_pl=(
-            "Podaj szereg dobowy z datami albo `half_year_file`.",
+            "Podaj szereg dobowy z datami albo `half_year_file` dla wartości IMGW-PIB.",
             "Okres to całe wielolecie, chyba że podasz `first_year`/`last_year`.",
             "Czytaj `notices` i `labels`; wyniki są w jednostce szeregu.",
         ),

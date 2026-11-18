@@ -836,7 +836,14 @@ is its document.
 
 `morphometry watershed` returns geometry, shape indicators, elevation and slope figures from a
 watershed JSON. `network stats` computes Strahler or Shreve order statistics from segments; a CSV
-file has the columns `segment_id`, `upstream_ids` (separated by `;`) and `length_km`.
+file has the columns `segment_id`, `upstream_ids` (separated by `;`) and `length_km`. The counts
+are streams, not segments: a stream of order u runs from where order u begins to its junction
+with a stream of an equal or higher order (Strahler 1957), so a lower-order tributary does not
+split it (for Shreve, a segment with one upstream segment continues its link). Horton's
+bifurcation and length ratios are given for Strahler orders only, and the stream frequency is
+the number of Strahler streams per km² for either method. In the fixture below, segment 9
+continues the third-order stream of segment 7 (segment 8 is of order 1): 9 segments, 5 + 2 + 1
+streams.
 
 ```bash
 hydrolog morphometry watershed --watershed-file tests/fixtures/watershed_example.json --json
@@ -847,7 +854,7 @@ hydrolog network stats --segments-file tests/fixtures/network_segments.csv --met
 ```
 
 ```json output
-{"result": {"schema": "hydrolog-network-stats/1", "method": "strahler", "n_segments": 9, "statistics": {"max_order": 3, "total_stream_length_km": 12.7}}}
+{"result": {"schema": "hydrolog-network-stats/1", "method": "strahler", "n_segments": 9, "statistics": {"max_order": 3, "segment_counts": {"1": 5, "2": 2, "3": 1}, "bifurcation_ratios": {"1": 2.5, "2": 2.0}, "total_stream_length_km": 12.7}}}
 ```
 
 ### Flow statistics from a CSV file
@@ -866,9 +873,10 @@ quantiles need at least 30 years).
   every item naming its `fit_method`, ADR-0021); `stats low-flow`: low-flow quantiles from annual
   minima; `stats low-flow-sequences`: drought sequences below a threshold.
 - `stats characteristic`: first- and second-degree characteristic values (WQ ... NQ of each year
-  and half-year, WWQ ... NNQ of the period); `stats daily` and `stats monthly`: day-of-year and
-  monthly statistics; `stats duration-curve`: the duration curve with the days of each class;
-  `stats runoff-volume`: annual and monthly runoff volumes.
+  and half-year, WWQ ... NNQ of the period; from a daily series the extremes of the daily values,
+  milder than IMGW-PIB's published ones, which `--half-year-file` gives); `stats daily` and
+  `stats monthly`: day-of-year and monthly statistics; `stats duration-curve`: the duration curve
+  with the days of each class; `stats runoff-volume`: annual and monthly runoff volumes.
 - `stats mann-kendall`: monotonic trend test with Sen's slope, Conover's intercept and Gilbert's
   1 - alpha interval of the slope (per year with `--year-column` or inline `--years`, otherwise
   per step); `stats homogeneity`: the homogeneity of annual maxima
@@ -1019,10 +1027,12 @@ The quantiles of the annual maxima are `stats flood-frequency` on the values of 
 ### Rating curve
 
 `hydrometrics rating-curve` fits `Q = a * (H - H0)^b` to stage-discharge pairs from a file with
-level and discharge columns or from two parallel lists. `--h0-initial` sets the start value of
-`H0`, `--remove-outliers` drops pairs far from the fit. A fit that does not converge is a
-`calculation_error` (exit 13). `hydrometrics water-level-zones` delimits the Rybczynski water
-level zones from a level series.
+level and discharge columns or from two parallel lists. `H0` is the stage of zero flow (not the
+gauge zero), in the unit of the levels (cm for IMGW-PIB stages, or m); `a` is in m3/s per that
+unit^b, so the same curve has an `a` 100^b times larger with levels in m than in cm.
+`--h0-initial` sets the start value of `H0`, `--remove-outliers` drops pairs far from the fit.
+A fit that does not converge is a `calculation_error` (exit 13). `hydrometrics water-level-zones`
+delimits the Rybczynski water level zones from a level series.
 
 ```bash
 hydrolog hydrometrics rating-curve --input-file tests/fixtures/rating_curve_pairs.csv --level-column H --discharge-column Q --h0-initial 40 --json

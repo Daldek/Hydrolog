@@ -653,11 +653,14 @@ def stats_characteristic(
     October) and of its half-years (XI-IV, V-X) of the period, the first degree, and
     the highest, mean, median and lowest of each over the years, the second degree
     (WWQ ... NNQ for discharge, WWW ... NNW for the stage, WWT ... NNT for water
-    temperature), following the IMGW-PIB methodology. The first degree comes from a
-    daily series (:func:`hydrolog.statistics.calculate_characteristic_values`) or
-    from IMGW-PIB's published half-year characteristics, whose annual maximum is the
-    larger of the half-year maxima
-    (:func:`hydrolog.statistics.characteristic_values_from_half_years`).
+    temperature). The first degree comes from a daily series
+    (:func:`hydrolog.statistics.calculate_characteristic_values`): the extremes of
+    the daily values, with the years with missing days, so that its maxima are as a
+    rule lower and its minima higher than IMGW-PIB's, which come from all
+    observations; or from IMGW-PIB's published half-year characteristics, whose
+    annual maximum is the larger of the half-year maxima
+    (:func:`hydrolog.statistics.characteristic_values_from_half_years`), the mode that
+    gives IMGW-PIB's characteristic values.
 
     Parameters
     ----------

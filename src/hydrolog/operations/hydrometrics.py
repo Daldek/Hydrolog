@@ -62,8 +62,9 @@ class RatingPeriod(JsonResultMixin):
     n_pairs : int
         Pairs of the period.
     a, b, h0, r_squared, std_residuals : float or None
-        The curve Q = a·(H − H₀)^b and its fit (as ``RatingCurveResult``); ``None``
-        when the period has no curve (see ``reason``).
+        The curve Q = a·(H − H₀)^b and its fit (as ``RatingCurveResult``: ``a`` in
+        m³/s per (unit of H)^b, ``h0`` the stage of zero flow in the unit of H);
+        ``None`` when the period has no curve (see ``reason``).
     n_points, n_outliers_removed : int or None
         Pairs of the final fit and pairs removed as outliers.
     discharge_at_reference_m3s : float or None

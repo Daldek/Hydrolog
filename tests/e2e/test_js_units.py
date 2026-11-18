@@ -391,6 +391,8 @@ def test_validation_of_real_commands(page: Any) -> None:
         const musk = m.fieldModel(await doc('route muskingum'));
         const lag = m.fieldModel(await doc('route lag'));
         const net = m.fieldModel(await doc('route network'));
+        const rain = m.fieldModel(await doc('meteo precipitation'),
+          {values: {'#one_of': 1}});
         const lutzValues = {area_km2: '45,3', lutz_length_km: '8,2',
           lutz_centroid_length_km: '4,5', lutz_slope_m_per_m: '0,023',
           lutz_manning_n: '0,035'};
@@ -415,6 +417,10 @@ def test_validation_of_real_commands(page: Any) -> None:
             discharge_m3s: '1; 2', output: '../x.csv'}),
           net: [m.validate(net, {network: '[1]'}).network,
                 m.validate(net, {network: '{'}).network],
+          percentiles: [
+            m.validate(rain, {index: 'heavy', percentiles: '50; 100'}).percentiles,
+            m.validate(rain, {index: 'heavy', percentiles: '0,5; 99,9'}).percentiles,
+          ],
         };""",
     )
     assert got["nash"] == {
@@ -454,6 +460,11 @@ def test_validation_of_real_commands(page: Any) -> None:
     wrong_kind, broken = got["net"]
     assert wrong_kind == "Oczekiwano obiektu JSON · type"
     assert broken.startswith("Nieprawidłowy JSON: ") and broken.endswith(" · type")
+    # The open interval (0, 100) of the catalog, as the run refuses it
+    assert got["percentiles"] == [
+        "Wartość 2: Musi być mniejsza od 100 (podano 100) · exclusive_maximum",
+        None,
+    ]
 
 
 def test_options_sent_by_a_form(page: Any) -> None:

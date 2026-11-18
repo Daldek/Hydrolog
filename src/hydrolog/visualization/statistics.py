@@ -769,6 +769,9 @@ def plot_rating_curve(
 ) -> Figure:
     """Plot rating curve scatter and fitted power-law curve.
 
+    The H axis has no unit: the curve takes H in the unit of the levels (cm for
+    IMGW-PIB stages, or m), and ``a`` and ``h0`` are in that unit.
+
     Parameters
     ----------
     rating : RatingCurve
@@ -829,10 +832,10 @@ def plot_rating_curve(
         color="black",
         linewidth=2,
         zorder=4,
-        label=f"Q = {result.a:.4f}·(H − {result.h0:.1f})^{result.b:.3f}",
+        label=f"Q = {result.a:.4g}·(H − {result.h0:.4g})^{result.b:.3f}",
     )
 
-    ax.set_xlabel("Stan wody H [cm]")
+    ax.set_xlabel("Stan wody H")
     ax.set_ylabel("Przepływ Q [m³/s]")
 
     if title is None:
@@ -843,9 +846,9 @@ def plot_rating_curve(
     ax.grid(True, alpha=0.3)
 
     stats = {
-        "a": f"{result.a:.4f}",
+        "a": f"{result.a:.4g}",
         "b": f"{result.b:.3f}",
-        "H₀": f"{result.h0:.1f}",
+        "H₀": f"{result.h0:.4g}",
         "R²": f"{result.r_squared:.4f}",
         "n": str(result.n_points),
     }
@@ -946,7 +949,7 @@ def plot_water_level_frequency(
     ax2.set_ylabel("Czas trwania [%]")
     ax2.set_ylim(0, 105)
 
-    ax.set_xlabel("Stan wody H [cm]")
+    ax.set_xlabel("Stan wody H")
     ax.set_ylabel("Częstość [%]")
 
     if title is None:

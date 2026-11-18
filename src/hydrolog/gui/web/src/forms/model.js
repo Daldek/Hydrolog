@@ -209,6 +209,8 @@ export function fieldModel(commandDoc, settings = {}) {
       max: typeof option.max === "number" ? option.max : null,
       exclusiveMinimum:
         typeof option.exclusive_minimum === "number" ? option.exclusive_minimum : null,
+      exclusiveMaximum:
+        typeof option.exclusive_maximum === "number" ? option.exclusive_maximum : null,
       choices: (option.enum || []).map((item) => ({
         value: item.value,
         meaning: Object.hasOwn(meanings, item.value) ? meanings[item.value] : item.meaning || "",
@@ -404,6 +406,9 @@ function boundProblem(field, value) {
   }
   if (field.max !== null && value > field.max) {
     return { reason: "maximum", details: { maximum: field.max, value } };
+  }
+  if (field.exclusiveMaximum !== null && !(value < field.exclusiveMaximum)) {
+    return { reason: "exclusive_maximum", details: { exclusive_maximum: field.exclusiveMaximum, value } };
   }
   return null;
 }

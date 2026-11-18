@@ -436,7 +436,7 @@ COMMANDS: tuple[Command, ...] = (
                     "99 (R95pTOT, R99pTOT)."
                 ),
                 exclusive_minimum=0,
-                maximum=100,
+                exclusive_maximum=100,
                 unit="%",
             ),
             ATTRIBUTION,

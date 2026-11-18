@@ -417,21 +417,33 @@ class TestNetworkStats:
         assert result.statistics == direct.get_statistics()
         assert result.method == method
         assert result.n_segments == 9
-        assert result.stream_frequency_per_km2 == pytest.approx(9 / 12.0)
+        # Fs counts the 8 Strahler streams for either method (Horton 1945; Strahler
+        # 1957; Baścik 2006 eq. 1.2.22): 5 + 2 + 1, link 9 continues the stream of 7
+        assert result.stream_frequency_per_km2 == pytest.approx(8 / 12.0)
 
-    def test_known_strahler_orders_and_ratios(self):
-        """Hand-computed orders of the fixture network (5 + 2 + 2 segments)."""
+    def test_known_strahler_streams_and_ratios(self):
+        """Hand count of the fixture: 9 links, but 5 + 2 + 1 Strahler streams.
+
+        Link 9 continues the order-3 stream of link 7 (tributary 8 is of order 1):
+        N = {1: 5, 2: 2, 3: 1}, mean L3 = (2.2 + 3.0) / 1, Rb = {5 / 2, 2 / 1},
+        Rl = {1.45 / 0.92, 5.2 / 1.45} (Strahler 1957, Trans. AGU 38(6), p. 914).
+        """
         statistics = run(
             "network stats", segments_file=str(NETWORK_SEGMENTS)
         ).result.statistics
         assert statistics.max_order == 3
-        assert statistics.segment_counts == {1: 5, 2: 2, 3: 2}
+        assert statistics.segment_counts == {1: 5, 2: 2, 3: 1}
         assert statistics.total_lengths_km[1] == pytest.approx(
             1.2 + 0.8 + 1.0 + 0.9 + 0.7
         )
+        assert statistics.mean_lengths_km[3] == pytest.approx(5.2)
         assert statistics.bifurcation_ratios == {
             1: pytest.approx(2.5),
-            2: pytest.approx(1.0),
+            2: pytest.approx(2.0),
+        }
+        assert statistics.length_ratios == {
+            1: pytest.approx(1.45 / 0.92),
+            2: pytest.approx(5.2 / 1.45),
         }
         assert statistics.total_stream_length_km == pytest.approx(12.7)
         assert statistics.drainage_density is None
@@ -441,20 +453,24 @@ class TestNetworkStats:
             "network stats", segments_file=str(NETWORK_SEGMENTS), area_km2=10.0
         ).result
         assert with_area.statistics.drainage_density == pytest.approx(1.27)
-        assert with_area.stream_frequency_per_km2 == pytest.approx(0.9)
+        assert with_area.stream_frequency_per_km2 == pytest.approx(8 / 10.0)
 
-    def test_shreve_with_missing_magnitudes_has_ratios_only_between_present_ones(self):
-        """Regression: Shreve magnitudes 1, 2, 4, 5 (no 3) raised ``KeyError``."""
+    def test_shreve_magnitudes_have_no_horton_ratios(self):
+        """Magnitudes 1, 2, 4, 5 (no 3); Horton's ratios exist for Strahler orders only.
+
+        The fixture has no pass-through segment, so each segment is a Shreve link.
+        """
         result = run(
-            "network stats", segments_file=str(NETWORK_SEGMENTS), method="shreve"
-        ).result.statistics
-        assert result.segment_counts == {1: 5, 2: 2, 4: 1, 5: 1}
-        assert result.max_order == 5
-        # pairs (1, 2) and (4, 5) exist; the gaps 2-3 and 3-4 have no ratio
-        assert set(result.bifurcation_ratios) == {1, 4}
-        assert result.bifurcation_ratios[1] == pytest.approx(5 / 2)
-        assert result.bifurcation_ratios[4] == pytest.approx(1.0)
-        assert set(result.length_ratios) == {1, 4}
+            "network stats",
+            segments_file=str(NETWORK_SEGMENTS),
+            method="shreve",
+            area_km2=12.0,
+        ).result
+        assert result.statistics.segment_counts == {1: 5, 2: 2, 4: 1, 5: 1}
+        assert result.statistics.max_order == 5
+        assert result.statistics.bifurcation_ratios == {}
+        assert result.statistics.length_ratios == {}
+        assert result.stream_frequency_per_km2 == pytest.approx(8 / 12.0)
 
     def test_library_statistics_survive_non_contiguous_magnitudes(self):
         """Regression of ``StreamNetwork.get_statistics`` itself."""
@@ -599,7 +615,7 @@ class TestNetworkStats:
         assert document["result"]["statistics"]["segment_counts"] == {
             "1": 5,
             "2": 2,
-            "3": 2,
+            "3": 1,
         }
 
 

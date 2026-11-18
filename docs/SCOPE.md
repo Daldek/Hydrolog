@@ -158,13 +158,16 @@ Hydrolog is analogous to **Kartograf** (spatial data download) and **Obserwator*
 - Shreve method
 
 **Indices:**
-- Bifurcation ratio (`bifurcation_ratio`)
+- Bifurcation ratio (`bifurcation_ratio`), Rb = N_u / N_(u+1) of streams
 - Drainage density (`drainage_density`)
-- Stream frequency (`stream_frequency`)
+- Stream frequency (`stream_frequency`), number of Strahler streams / area (Horton 1945)
 
 **Network statistics (`NetworkStatistics`):**
-- Number of streams by order
+- Number of streams by order (`segment_counts`): a stream of order u runs from where order u
+  begins to its junction with a stream of an equal or higher order (Strahler 1957), so a
+  lower-order tributary does not split it; for Shreve, the links between confluences
 - Mean stream length by order
+- Horton's bifurcation and length ratios, for Strahler orders only
 - Maximum stream order
 
 ---

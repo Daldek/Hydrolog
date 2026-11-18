@@ -136,12 +136,26 @@ class TestWatershedGeometry:
 
         assert abs(geom.elongation_ratio() - 1.0) < 0.01
 
-    def test_lemniscate_ratio(self):
-        """Test Chorley's lemniscate ratio."""
-        geom = WatershedGeometry(area_km2=45.0, perimeter_km=32.0, length_km=12.0)
+    @pytest.mark.parametrize(
+        ("area_km2", "perimeter_km", "length_km", "expected"),
+        [
+            # circle of radius 2 km, L = its diameter: k = 1
+            (4.0 * math.pi, 4.0 * math.pi, 4.0, 1.0),
+            # square of side 3 km, outlet at a corner, L = the diagonal: k = π/2
+            (9.0, 12.0, 3.0 * math.sqrt(2.0), math.pi / 2.0),
+            # A = 45 km², L = 12 km: k = 144π/180 = 0.8π (Hydrolog 0.8.1 gave 0.8)
+            (45.0, 32.0, 12.0, 0.8 * math.pi),
+        ],
+    )
+    def test_lemniscate_ratio(self, area_km2, perimeter_km, length_km, expected):
+        """Chorley's k = πL²/(4A): one loop of the lemniscate ρ = L·cos(kθ) has
+        the area πL²/(4k), so a circle of diameter L has k = 1 (Chorley, Malm and
+        Pogorzelski 1957, after Bendjoudi and Hubert 2002, eqs. 3-5)."""
+        geom = WatershedGeometry(
+            area_km2=area_km2, perimeter_km=perimeter_km, length_km=length_km
+        )
 
-        # Cl = L² / (4A) = 144 / 180 = 0.8
-        assert abs(geom.lemniscate_ratio() - 0.8) < 0.001
+        assert geom.lemniscate_ratio() == pytest.approx(expected, rel=1e-12)
 
     def test_get_shape_indicators(self):
         """Test get_shape_indicators returns correct dataclass."""

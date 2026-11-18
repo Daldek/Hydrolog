@@ -12,7 +12,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from hydrolog.catalog import run_command
+from hydrolog.catalog import get_command, run_command, validate_command
 from hydrolog.exceptions import CalculationError, InputDataError, InvalidParameterError
 from hydrolog.statistics import (
     fit_gamma,
@@ -425,6 +425,38 @@ class TestErrors:
                 },
             )
         assert caught.value.details["reason"] == "too_few_wet_days"
+
+    @pytest.mark.parametrize("percentiles", [[100], [50, 100]])
+    def test_percentile_100_is_refused_by_the_catalog(self, percentiles):
+        """The declared range is the code's open interval (0, 100): the catalog
+        refuses 100 before the operation runs (research meteo-indices §26)."""
+        with pytest.raises(InvalidParameterError) as caught:
+            run_command(
+                "meteo precipitation",
+                {
+                    "index": "heavy",
+                    "dates": _days("2001-01-01", 30),
+                    "precipitation_mm": [5.0] * 30,
+                    "percentiles": percentiles,
+                },
+            )
+        assert caught.value.code == "validation_error"
+        assert caught.value.details["option"] == "percentiles"
+        assert caught.value.details["reason"] == "exclusive_maximum"
+        assert caught.value.details["exclusive_maximum"] == 100
+        assert caught.value.details["value"] == 100
+        assert caught.value.details["index"] == len(percentiles) - 1
+
+    def test_a_percentile_below_100_passes_the_catalog(self):
+        command = get_command("meteo precipitation")
+        options = validate_command(
+            command,
+            {"index": "heavy", "input_file": str(FIXTURE), "percentiles": [99.9]},
+        )
+        assert options["percentiles"] == [99.9]
+        schema = command.option("percentiles").json_schema()
+        assert schema["items"]["exclusiveMaximum"] == 100
+        assert "maximum" not in schema["items"]
 
     def test_a_period_without_values(self):
         with pytest.raises(CalculationError) as caught:

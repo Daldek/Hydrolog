@@ -28,8 +28,9 @@ class ShapeIndicators(JsonResultMixin):
         Schumm's elongation ratio Ce = (2/L) * sqrt(A/π) [-].
         Value of 1.0 indicates a circular watershed.
     lemniscate_ratio : float
-        Chorley's lemniscate ratio Cl = L² / (4A) [-].
-        Value of 0.79 indicates a circular watershed.
+        Chorley's lemniscate ratio k = πL² / (4A) [-].
+        Value of 1.0 indicates a circle of diameter L; larger values indicate
+        more elongated watersheds.
     """
 
     form_factor: float
@@ -288,22 +289,35 @@ class WatershedGeometry:
 
     def lemniscate_ratio(self) -> float:
         """
-        Calculate Chorley's lemniscate ratio.
+        Calculate Chorley's lemniscate ratio k.
 
         Returns
         -------
         float
-            Lemniscate ratio Cl = L² / (4A) [-].
+            Lemniscate ratio k = πL² / (4A) [-].
 
         Notes
         -----
-        The lemniscate ratio indicates watershed shape:
-        - Cl = π/4 ≈ 0.785: Circular watershed
-        - Cl > 1.0: Elongated watershed
-        - Cl < 0.785: Compact watershed
+        Chorley, Malm and Pogorzelski (1957) compare the watershed with one loop
+        of the lemniscate ρ = L·cos(kθ), whose area is πL²/(4k), so k is the area
+        of the circle of diameter L divided by the watershed area (Bendjoudi and
+        Hubert 2002, eqs. 3-5):
+        - k = 1: Circle of diameter L
+        - k > 1: Elongated watershed, the more elongated the larger k
+
+        k = π / (4·Cf) = 1 / Ce². A length shorter than the longest dimension of
+        the watershed (an outlet in the middle of a side) can give k < 1.
+
+        References
+        ----------
+        Chorley, R.J., Malm, D.E.G. & Pogorzelski, H.A. (1957). A new standard for
+        estimating drainage basin shape. American Journal of Science, 255, 138-141.
+        Bendjoudi, H. & Hubert, P. (2002). Le coefficient de compacité de
+        Gravelius : analyse critique d'un indice de forme des bassins versants.
+        Hydrological Sciences Journal, 47(6), 921-930.
         """
-        cl: float = (self.length_km**2) / (4.0 * self.area_km2)
-        return cl
+        k: float = math.pi * self.length_km**2 / (4.0 * self.area_km2)
+        return k
 
     def get_shape_indicators(self) -> ShapeIndicators:
         """

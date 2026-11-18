@@ -4,6 +4,7 @@ This module provides methods for classifying river networks using
 various stream ordering systems (Strahler, Shreve).
 """
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import Enum
 
@@ -47,20 +48,33 @@ class NetworkStatistics(JsonResultMixin):
     """
     Statistics of a classified river network.
 
+    The counts and mean lengths are those of streams, not of segments. A segment
+    continues the stream of the segment upstream of it that has the same order, so a
+    stream is the chain of segments from where its order begins to its junction with a
+    stream of an equal or higher order (Strahler 1957): a tributary of a lower order
+    does not split it. Applied to Shreve magnitudes, the same rule joins only a
+    segment with one upstream segment to it, which gives Shreve's (1966) links between
+    confluences.
+
     Attributes
     ----------
     max_order : int
         Maximum stream order in the network.
     segment_counts : dict[int, int]
-        Number of segments for each order.
+        Number of streams N_u of each order u (for Shreve, the number of links of
+        each magnitude). The number of segments is ``StreamNetwork.n_segments``.
     total_lengths_km : dict[int, float]
-        Total length of segments for each order [km].
+        Total length of the segments of each order [km].
     mean_lengths_km : dict[int, float]
-        Mean length of segments for each order [km].
+        Mean stream length of each order: total length / number of streams [km].
     bifurcation_ratios : dict[int, float]
-        Bifurcation ratio between consecutive orders.
+        Horton's bifurcation ratio Rb = N_u / N_(u+1), keyed by u; Strahler orders
+        only (empty for Shreve magnitudes: Horton's laws are defined on Strahler
+        orders).
     length_ratios : dict[int, float]
-        Length ratio between consecutive orders.
+        Horton's length ratio Rl = mean length_(u+1) / mean length_u, keyed by u;
+        Strahler orders only (empty for Shreve), none above an order whose streams
+        have zero length.
     total_stream_length_km : float
         Total length of all streams [km].
     drainage_density : float
@@ -83,7 +97,7 @@ class StreamNetwork:
 
     This class provides methods for stream ordering using Strahler
     and Shreve methods, and calculates network statistics including
-    bifurcation ratios and drainage density.
+    stream numbers, Horton's bifurcation and length ratios and drainage density.
 
     Parameters
     ----------
@@ -107,14 +121,22 @@ class StreamNetwork:
 
     Notes
     -----
-    Strahler ordering:
+    A segment is a link: the channel between two junctions, or between a source
+    or a junction and the outlet; a segment may also have one upstream segment (a
+    pass-through split of a link).
+
+    Strahler ordering (Strahler 1952, 1957):
     - Order 1: Headwater streams (no tributaries)
     - When two streams of order n join: order n+1
     - When streams of different orders join: higher order continues
 
-    Shreve ordering:
+    Shreve ordering (Shreve 1966):
     - Order 1: Headwater streams
     - Orders are additive at confluences
+
+    The statistics count streams: a stream of order u runs from where order u begins
+    to its junction with a stream of an equal or higher order (Strahler 1957), so
+    the segments below a junction with a lower-order tributary continue it.
     """
 
     def __init__(
@@ -153,6 +175,23 @@ class StreamNetwork:
         """Number of segments in the network."""
         return len(self.segments)
 
+    @property
+    def n_streams(self) -> int:
+        """Number of Strahler streams of all orders, whatever the classification.
+
+        Horton's (1945) stream frequency counts them (:func:`stream_frequency`;
+        Strahler 1957; Baścik 2006, eq. 1.2.22). Computed from Strahler orders of
+        the segments without changing their ``order``, so it is the same after a
+        Shreve classification.
+
+        Raises
+        ------
+        InvalidParameterError
+            If the network has no order (a cycle or an unknown upstream id), as in
+            :meth:`classify`.
+        """
+        return sum(self._stream_counts(self._orders(OrderingMethod.STRAHLER)).values())
+
     def classify(self, method: OrderingMethod = OrderingMethod.STRAHLER) -> None:
         """
         Classify stream network using specified ordering method.
@@ -171,6 +210,17 @@ class StreamNetwork:
             segment being upstream of itself (``details``: ``reason="cycle"``,
             ``segments``: the segments of one cycle in flow order). Such a network
             has no order; the segments are left unchanged.
+        """
+        orders = self._orders(method)
+        for seg_id, seg in self.segments.items():
+            seg.order = orders[seg_id]
+        self._method = method
+        self._classified = True
+
+    def _orders(self, method: OrderingMethod) -> dict[int, int]:
+        """Order of every segment by ``method``; the segments are not changed.
+
+        Raises the errors of :meth:`classify` for a network without an order.
         """
         try:
             order = upstream_first(
@@ -214,11 +264,7 @@ class StreamNetwork:
                 orders[seg_id] = self._strahler_order(upstream_orders)
             else:  # SHREVE
                 orders[seg_id] = self._shreve_order(upstream_orders)
-
-        for seg_id, seg in self.segments.items():
-            seg.order = orders[seg_id]
-        self._method = method
-        self._classified = True
+        return orders
 
     def _strahler_order(self, upstream_orders: list[int]) -> int:
         """Calculate Strahler order from upstream orders."""
@@ -257,46 +303,30 @@ class StreamNetwork:
                 "Network must be classified first. Call classify() method."
             )
 
-        # Group segments by order
-        orders: dict[int, list[StreamSegment]] = {}
+        orders = {seg_id: seg.order for seg_id, seg in self.segments.items()}
+        segment_counts = self._stream_counts(orders)
+        max_order = max(segment_counts)
+
+        # Lengths: total of the segments of an order, mean over its streams
+        total_lengths = dict.fromkeys(segment_counts, 0.0)
         for seg in self.segments.values():
-            if seg.order not in orders:
-                orders[seg.order] = []
-            orders[seg.order].append(seg)
+            total_lengths[seg.order] += seg.length_km
+        mean_lengths = {
+            order: total_lengths[order] / count
+            for order, count in segment_counts.items()
+        }
 
-        max_order = max(orders.keys())
-
-        # Calculate counts and lengths
-        segment_counts: dict[int, int] = {}
-        total_lengths: dict[int, float] = {}
-        mean_lengths: dict[int, float] = {}
-
-        for order, segs in orders.items():
-            segment_counts[order] = len(segs)
-            total_lengths[order] = sum(s.length_km for s in segs)
-            mean_lengths[order] = total_lengths[order] / len(segs) if segs else 0.0
-
-        # Calculate bifurcation ratios (Rb = N_i / N_{i+1})
+        # Horton's ratios Rb = N_u / N_(u+1) and Rl = L_(u+1) / L_u: Strahler orders
+        # only (contiguous from 1 to max_order, every order has a stream)
         bifurcation_ratios: dict[int, float] = {}
-        for order in range(1, max_order):
-            if (
-                order in segment_counts
-                and order + 1 in segment_counts
-                and segment_counts[order + 1] > 0
-            ):
+        length_ratios: dict[int, float] = {}
+        if self._method == OrderingMethod.STRAHLER:
+            for order in range(1, max_order):
                 bifurcation_ratios[order] = (
                     segment_counts[order] / segment_counts[order + 1]
                 )
-
-        # Calculate length ratios (Rl = L_{i+1} / L_i)
-        length_ratios: dict[int, float] = {}
-        for order in range(1, max_order):
-            if (
-                order in mean_lengths
-                and order + 1 in mean_lengths
-                and mean_lengths[order] > 0
-            ):
-                length_ratios[order] = mean_lengths[order + 1] / mean_lengths[order]
+                if mean_lengths[order] > 0:
+                    length_ratios[order] = mean_lengths[order + 1] / mean_lengths[order]
 
         # Total stream length
         total_length = sum(total_lengths.values())
@@ -317,6 +347,22 @@ class StreamNetwork:
             drainage_density=drainage_density,
         )
 
+    def _stream_counts(self, orders: Mapping[int, int]) -> dict[int, int]:
+        """Count the streams of each order, ascending by order.
+
+        A segment continues the stream of an upstream segment of its own order; a
+        segment with none is where a stream begins. Strahler: a source, or the
+        junction of two streams of the order below (a lower-order tributary keeps
+        the order, so the stream goes on). Shreve: the magnitude adds up at every
+        confluence, so only a segment with one upstream segment continues one.
+        """
+        counts: dict[int, int] = {}
+        for seg_id, seg in self.segments.items():
+            order = orders[seg_id]
+            if all(orders[up_id] != order for up_id in seg.upstream_ids):
+                counts[order] = counts.get(order, 0) + 1
+        return dict(sorted(counts.items()))
+
 
 def bifurcation_ratio(n_lower: int, n_higher: int) -> float:
     """
@@ -324,7 +370,8 @@ def bifurcation_ratio(n_lower: int, n_higher: int) -> float:
 
     The bifurcation ratio (Rb) is defined as the ratio of the number
     of streams of a given order to the number of streams of the next
-    higher order.
+    higher order (Horton 1945; Strahler 1957), streams in Strahler's sense
+    (:attr:`NetworkStatistics.segment_counts`), not segments between junctions.
 
     Parameters
     ----------
@@ -345,10 +392,12 @@ def bifurcation_ratio(n_lower: int, n_higher: int) -> float:
 
     Notes
     -----
-    Typical values:
-    - Rb = 3-5 for natural streams
-    - Rb < 3 suggests structural control
-    - Rb > 5 suggests elongated basin
+    Horton's law of stream numbers makes Rb nearly constant across orders. It is
+    about 3 to 5 where geological structure does not distort the drainage pattern
+    ("highly stable ... except where powerful geologic controls dominate",
+    Strahler 1957, p. 914: 3.52 in his example; Coates 1956: 2.8 to 5.1); Rb above
+    about 5 indicates structural control (Strahler 1964, cited by Rai et al.,
+    Applied Water Science, doi:10.1007/s13201-014-0238-y).
 
     Examples
     --------
@@ -417,13 +466,14 @@ def stream_frequency(n_streams: int, area_km2: float) -> float:
     """
     Calculate stream frequency.
 
-    Stream frequency (Fs) is the number of stream segments
-    per unit area.
+    Stream frequency (Fs) is the number of streams per unit area (Horton 1945;
+    Strahler 1957; Baścik 2006, eq. 1.2.22): streams in Strahler's sense, of all
+    orders (:attr:`StreamNetwork.n_streams`), not segments between junctions.
 
     Parameters
     ----------
     n_streams : int
-        Total number of stream segments.
+        Total number of streams.
     area_km2 : float
         Watershed area [km²].
 

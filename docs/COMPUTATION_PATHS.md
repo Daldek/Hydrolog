@@ -1,7 +1,7 @@
 # Computation Paths for Unit Hydrograph Models (plus HSG and the Fisher–Tippett Distribution)
 
-**Document version:** 1.12
-**Date:** 2026-11-17
+**Document version:** 1.13
+**Date:** 2026-11-18
 **Applies to:** Hydrolog >= 0.8.0 (sections 3.2.2, 3.2.7, 3.3.4 (the time step limit), 3.3.6, 3.4.6, 3.4.7 and 3.5 to 3.14 describe behaviour from v0.8.0, the sub-steps of the SCS unit hydrograph (3.1.3) and the plausibility of a rating curve (3.8) from 0.8.1; the rest: >= 0.6.0)
 
 ---
@@ -791,16 +791,16 @@ The same steps in the CLI: `soil hsg`, `soil hsg-stats`, `cn weighted`; the text
 
 #### 3.5.2 Texture Classification (USDA Triangle)
 
-Rules (c - clay, s - sand, si - silt, in % of the sum of the three fractions), the first one satisfied wins:
+Class definitions of the USDA Soil Survey Manual (Soil Science Division Staff, 2017, ch. 3, pp. 122–124), with c - clay, s - sand, si - silt in % of the sum of the three fractions. "X to less than Y percent" includes X and excludes Y (sandy loams: "7 to less than 20 percent clay", 7 ≤ c < 20); the sand ranges the Manual also gives for sands (more than 85 %) and loamy sands (70 to 90 %) follow from the inequalities. The twelve definitions do not overlap and leave no gap, so every composition belongs to exactly one class: there are no ties on the boundaries, and the order of the rules does not matter.
 
 | # | Class | Condition |
 |---|-------|-----------|
 | 1 | `sand` | si + 1.5·c < 15 |
 | 2 | `loamy_sand` | si + 1.5·c ≥ 15 and si + 2·c < 30 |
-| 3 | `sandy_loam` | (7 ≤ c ≤ 20, s > 52, si + 2·c ≥ 30) or (c < 7, si < 50, si + 2·c ≥ 30) |
+| 3 | `sandy_loam` | (7 ≤ c < 20, s > 52, si + 2·c ≥ 30) or (c < 7, si < 50, si + 2·c ≥ 30) |
 | 4 | `silt` | si ≥ 80, c < 12 |
 | 5 | `silt_loam` | (si ≥ 50, 12 ≤ c < 27) or (50 ≤ si < 80, c < 12) |
-| 6 | `loam` | 7 ≤ c ≤ 27, 28 ≤ si < 50, s ≤ 52 |
+| 6 | `loam` | 7 ≤ c < 27, 28 ≤ si < 50, s ≤ 52 |
 | 7 | `sandy_clay_loam` | 20 ≤ c < 35, si < 28, s > 45 |
 | 8 | `clay_loam` | 27 ≤ c < 40, 20 < s ≤ 45 |
 | 9 | `silty_clay_loam` | 27 ≤ c < 40, s ≤ 20 |
@@ -942,7 +942,7 @@ The `cn` option given alongside a catchment is the CN of the whole calculation: 
 
 ### 3.8 Rating Curve Q = a·(H − H₀)^b: the H₀ Starting Point and the Plausibility (`RatingCurve`, fixes in v0.8.0 and 0.8.1)
 
-`RatingCurve.fit()` (`hydrometrics rating-curve`) fits `Q = a·(H − H₀)^b` by least squares (`scipy.optimize.curve_fit`, bounds a ≥ 0, b ≥ 0, H₀ < min(H)) with the starting point a = 1, b = 1.5, H₀ = `h0_initial`. Without `h0_initial` the H₀ start lies below the lowest stage by one tenth of the stage range, by at least one stage unit:
+`RatingCurve.fit()` (`hydrometrics rating-curve`) fits `Q = a·(H − H₀)^b` by least squares (`scipy.optimize.curve_fit`, bounds a ≥ 0, b ≥ 0, H₀ < min(H)) with the starting point a = 1, b = 1.5, H₀ = `h0_initial`. H₀ is the stage of zero flow, the gauge height at which the flow is zero or, for a control of irregular shape, effectively zero (WMO-No. 1044, 2010, Vol. II, eq. 1.4), not the gauge zero (the datum of the staff gauge from which the stages are read). The stages may be in any unit (IMGW-PIB's are in cm): H₀ is in that unit and a, the discharge at a head of one unit, in m³/s per unit^b, so the same curve has a 100^b times larger a with stages in m than in cm (Q = 0.012·(H − 32 cm)^1.62 is Q = 20.85·(H − 0.32 m)^1.62). Without `h0_initial` the H₀ start lies below the lowest stage by one tenth of the stage range, by at least one stage unit:
 
 ```
 H₀,start = min(H) − max(1, 0.1·(max(H) − min(H)))
@@ -1228,7 +1228,7 @@ The six commands read a station's daily series: Obserwator's export (`date`, `P 
 | `days` | Frost Tmin < 0, ice Tmax < 0, summer Tmax > 25, hot Tmax > 30 °C, tropical nights Tmin > 20 °C (FD, ID, SU, TR of Zhang et al., 2011; thresholds are options) |
 | `degree_days` | GDD = Σ max(Tmean − 5, 0) (Wypych et al., 2017); HDD = Σ (18 − Tmean) over the days with Tmean ≤ 15 °C (Eurostat, nrg_chdd metadata, 3.4); complete months |
 | `range` | DTR: monthly mean of Tmax − Tmin, annual = mean of 12 (ETCCDI) |
-| `meteo snow` (M10) | Winter = the snow season 1 August – 31 July named after the hydrological year it ends in (D12's "per winter (hydrological year)", read so that late-October snow starts its own winter; on Kraków a literal XI–X year moved 6 of 64 winters); days with cover ≥ 1 cm (scaled months), largest depth and its date, first and last day with cover, fresh snow; a winter needs enough days in X–V, and the winters with a value that do not are `incomplete_years`, left out of the period's statistics |
+| `meteo snow` (M10) | Winter = the snow season 1 August – 31 July named after the hydrological year it ends in (D12's "per winter (hydrological year)", read so that late-October snow starts its own winter; on Kraków a literal XI–X year moved 6 of 64 winters); days with cover ≥ 1 cm (scaled months), largest depth and its date, first and last day with cover, fresh snow; a winter needs enough days in X–V, and the winters with a value that do not are `incomplete_years`, left out of the period's statistics; the period's median first and last day (`MM-DD`) take each date as its day of the season on a calendar without 29 February (29 February counts as 28 February), so that a date is the same day in every winter, and of an even number of winters the mean of the two middle days, rounded half to even |
 | `meteo hydrothermal` (M14) | k = P / (0.1 Σt) (Selyaninov, 1928): months IV–IX with Σt = monthly mean × days for a mean above 0 °C (Skowera and Puła, 2004; Radzka, 2014), and the days of each calendar year with Tmean > 10 °C (Miś, 2026, eq. 4); classes ≤ 0.4, 0.7, 1.0, 1.3, 1.6, 2.0, 2.5, 3.0, above (Skowera and Puła, 2004, p. 172) |
 
 **Verification** (`tests/unit/test_meteo.py`, `tests/unit/test_meteo_reference.py`, `tests/unit/test_meteo_spells.py`): hand-computed sequences of each index (accumulated totals, scaled counts, the 80 % rule, maxima with dates, SDII, the type-8 percentile by hand, PCI 100/12 and SI 11/6 of the extreme regimes, spells cut by a missing day, Thom's estimates, the class limits, Eurostat's HDD, October snow, Sielianinov's k) and the ETCCDI counts of the fixture year 2021 (FD, ID, SU, TR, R10mm, R20mm, CDD, CWD, PRCPTOT, SDII, R95pTOT) counted from the rows of `tests/fixtures/meteo_daily.csv`; the baselines of a reference period by hand on the fixture (the sums in % of its normals, the anomalies of Tmean, the SPI's fits from its sums only, the percentiles of its wet days, the regime of its normals) with the analysed years' values unchanged, the 80 % rule of a reference reaching beyond the record, the default reference equal to the analysed period in every catalog example, the errors and the variant options; sums equal in decimal equal as numbers (0.1 + 0.2 and 0.3 mm); the list of spells by `min_duration_days` with the summaries unchanged. The mockup's prototypes (Obserwator, `_meteo_proto.py`) were reproduced on Kraków (250190390) and Praha-Klementinum (0-203-0-11514) to their rounding, with the differences of D1 (the period's days only) and the monthly classes above.
@@ -1237,7 +1237,7 @@ The six commands read a station's daily series: Obserwator's export (`date`, `P 
 
 These commands reduce a station's daily series (Obserwator's export or inline values with `dates`; a day whose date is absent or whose value is empty has no value) over the reference period of D1: the hydrological years `first_year` to `last_year` (1 November – 31 October, named after the year in which they end; by default the first and the last year with a value), from the days of those years only. A result names the period (`first_year`, `last_year`, `period_years`, its years with a value); a result that characterises the period as a whole (the second degree of `stats characteristic`, a threshold of `stats low-flow-sequences` taken from the series, `stats duration-curve`, the means of `stats runoff-volume`) carries the notice `short_reference_period` under 30 years, the length of a climatological standard normal (WMO-No. 1203, 2017); lists of events and fits of chosen years do not. A period without a value is `calculation_error` `no_values_in_period`.
 
-**Characteristic values of both degrees (`stats characteristic`, `calculate_characteristic_values`, `characteristic_values_from_half_years`).** The first degree of a hydrological year and of its half-years (winter XI–IV, summer V–X) is the minimum, the mean and the maximum of its days with a value (`years`: `winter`, `summer`, `annual`, each with the dates of its extremes, the first day on which each occurs, `days_with_data` and the calendar `days`). The second degree of the year and of each half-year (`winter`, `summer`) is the highest (W), the mean (S), the median (Z) and the lowest (N) of the first-degree maxima, means and minima of the years that have them: WWQ … NNQ for Q, WWW … NNW for the stage, WWT … NNT for T by analogy (`labels`, `first_degree_labels`); SWQ is the mean of the *annual* maxima, never of the pooled half-year maxima (IMGW-PIB's definition; Byczkowski, 1996). A year with missing days stays in the values (its extremes may be milder than the true ones) and is named in `incomplete_years` and the notice `years_with_missing_days`. From IMGW-PIB's published half-year characteristics (`half_year_file`, Obserwator's export of `pl.imgw.hydro_semiannual`) the half-years keep their published values and dates, the annual maximum is the larger of the two half-year maxima (the winter one on a tie), the annual minimum the smaller of the minima, both unknown when a half-year is missing, and the annual mean is the published one (`days_with_data` and `days` are `null`).
+**Characteristic values of both degrees (`stats characteristic`, `calculate_characteristic_values`, `characteristic_values_from_half_years`).** The first degree of a hydrological year and of its half-years (winter XI–IV, summer V–X) is the minimum, the mean and the maximum of its days with a value (`years`: `winter`, `summer`, `annual`, each with the dates of its extremes, the first day on which each occurs, `days_with_data` and the calendar `days`). The second degree of the year and of each half-year (`winter`, `summer`) is the highest (W), the mean (S), the median (Z) and the lowest (N) of the first-degree maxima, means and minima of the years that have them: WWQ … NNQ for Q, WWW … NNW for the stage, WWT … NNT for T by analogy (`labels`, `first_degree_labels`); SWQ is the mean of the *annual* maxima, never of the pooled half-year maxima (IMGW-PIB's definition; Byczkowski, 1996). A year with missing days stays in the values (its extremes may be milder than the true ones) and is named in `incomplete_years` and the notice `years_with_missing_days`. From a daily series the result is therefore not IMGW-PIB's characteristic values: IMGW-PIB takes the extremes of a month, half-year and year from all observations ("Wartości ekstremalne opracowane zostały na podstawie wszystkich dostępnych pomiarów i obserwacji", Rocznik Hydrologiczny 2022, p. 7) and publishes no characteristic of a period with a break in observations, while the daily mode takes the extremes of the daily values (one a day, e.g. the daily mean), so its maxima are as a rule lower and its minima higher (Kłodzko 150160180, hydrological year 2010: WQ 96.0 against IMGW-PIB's 145 m³/s, winter WQ 62.6 against 77.4 m³/s, NQ 4.93 against 4.17 m³/s; the annual mean 19.14 against 19.1 m³/s). IMGW-PIB's characteristic values come from its half-year file. From IMGW-PIB's published half-year characteristics (`half_year_file`, Obserwator's export of `pl.imgw.hydro_semiannual`) the half-years keep their published values and dates, the annual maximum is the larger of the two half-year maxima (the winter one on a tie), the annual minimum the smaller of the minima, both unknown when a half-year is missing, and the annual mean is the published one (`days_with_data` and `days` are `null`).
 
 **Threshold events (`stats threshold-events`, `threshold_events`, `threshold_runs`).** The threshold level method (Tallaksen and van Lanen, 2004, ch. 5) on the calendar of the series: a day is beyond `threshold` when its value is at or above it (`direction` `above`) or below it (`below`), and a day without a value never is; consecutive days beyond form a run, runs parted by fewer than `max_gap_days` days (without a value or not beyond; 0 merges none) merge into one event, and events shorter than `min_duration_days` (gap days inside included) are dropped. Each event has its start, end, duration, the days beyond, the missing days, the peak (the largest value above the threshold, the smallest below it, dated by its first day) and `open_start`, `open_end` when the day before or after it has no value, so that the event may be longer; an event counts in the hydrological year in which it starts, and `years` gives per year the days beyond, the events and the days with data. With the defaults it gives the mockup's days and events beyond SWW, SSW, SNW, SWQ, SSQ and SNQ; the water temperature days of H15 are this command on T.
 
@@ -1283,7 +1283,7 @@ These commands reduce a station's daily series (Obserwator's export or inline va
 | Kerby-Kirpich from a catchment (channel = flow path − overland, at the slope of the flow path) | Roussel et al. (2005) supplement, TxDOT Hydraulic Design Manual ch. 4 section 11, Cleveland et al. (2012); both published examples reproduced | ✅ |
 | FAA, Kerby from a catchment (overland flow time from `overland_*`) | FAA AC 150/5320-5B (1970), Kerby (1959), Roussel et al. (2005), TxDOT Hydraulic Design Manual ch. 4 section 11 | ✅ |
 | D-minute Clark UH (S-curve, any D > 0) | Clark (1945), S-curve method (e.g. Chow, Maidment, Mays 1988) | ✅ |
-| HSG from USDA texture (class mapping) | USDA Soil Survey Manual (Handbook 18), NEH Part 630 ch. 7 (TR-55), Kartograf ADR-025 | ✅ (with a deviation for 3 classes) |
+| HSG from USDA texture (class mapping) | USDA Soil Survey Manual (Handbook 18, 2017, ch. 3), NEH Part 630 ch. 7 (TR-55), Kartograf ADR-025 | ✅ (with a deviation for 3 classes) |
 | Distribution of annual minima (GEV for minima) | Fisher and Tippett (1928), Gumbel (1958), Coles (2001) | ✅ |
 | Annual extremes from a daily series: complete hydrological years only | KZGW (2017), WMO No. 1029 (2009) | ✅ |
 | Empirical frequency of minima (non-exceedance positions) | Weibull (1939), Hazen (1930), Cunnane (1978); WMO No. 1029 (2009), Tallaksen and van Lanen (2004) | ✅ |
@@ -1304,7 +1304,7 @@ These commands reduce a station's daily series (Obserwator's export or inline va
 | Baseflow by the Lyne and Hollick filter, recession constant (`stats baseflow`) | Lyne and Hollick (1979), Nathan and McMahon (1990), Ladson et al. (2013) (their published BFIs reproduced), Tallaksen (1995) | ✅ |
 | Meteorological statistics (`meteo` group) | WMO-No. 1203 (2017) 4.4; Zhang et al. (2011, ETCCDI); Hyndman and Fan (1996); Oliver (1980); Walsh and Lawler (1981); McKee et al. (1993), Thom (1958), WMO-No. 1090 (2012); Kaczorowska (1962), Gąsiorek and Musiał (2011); Wypych et al. (2017); Eurostat nrg_chdd; Selyaninov (1928), Skowera and Puła (2004), Radzka (2014); the prototypes of Obserwator's mockup reproduced on two stations | ✅ |
 | The reference period of normals, percentiles and the SPI's fits (`reference_first_year`, `reference_last_year` of `meteo precipitation`, `meteo spi`, `meteo temperature`) | WMO-No. 1203 (2017) chapters 2, 3, sections 4.4.2, 5.1, 5.2.2; WMO-No. 1090 (2012); McKee et al. (1993); Zhang et al. (2011), Klein Tank, Zwiers and Zhang (2009); the Copernicus EDO's SPI factsheet (2025) | ✅ |
-| Characteristic values of the first and second degree from a daily series or IMGW-PIB's half-years (`stats characteristic`; the half-years in the frequency commands) | IMGW-PIB's definitions (Byczkowski, 1996); the mockup's Kłodzko numbers reproduced | ✅ |
+| Characteristic values of the first and second degree from a daily series or IMGW-PIB's half-years (`stats characteristic`; the half-years in the frequency commands) | IMGW-PIB's definitions (Byczkowski, 1996; Rocznik Hydrologiczny 2022, pp. 5–8); the mockup's Kłodzko numbers reproduced; from a daily series the extremes are those of the daily values, milder than IMGW-PIB's published ones (section 3.14) | ✅ |
 | Threshold events and low-flow sequences across gaps (`stats threshold-events`, `stats low-flow-sequences`) | Tallaksen and van Lanen (2004), chapter 5 (the threshold level method); hand-computed runs | ✅ |
 | Duration curve and the frequencies of its classes (`stats duration-curve`) | Searcy (1959), Vogel and Fennessey (1994), Byczkowski (1996); the mockup's Kłodzko numbers reproduced | ✅ |
 | Runoff volumes (`stats runoff-volume`), rating curves by period (`hydrometrics rating-curve`) | V = Σ Q · 86,400 s; the power-law fit of section 3.8 per block of years; the mockup's Kłodzko numbers reproduced | ✅ |
@@ -1338,7 +1338,7 @@ These commands reduce a station's daily series (Obserwator's export or inline va
 | Mann, H.B. and Whitney, D.R. | 1947 | The U test of two samples (`stats homogeneity`) |
 | Smirnov, N.V. | 1939 | The two-sample Kolmogorov-Smirnov test (`stats homogeneity`) |
 | Pettitt, A.N. | 1979 | The non-parametric change-point test and its approximate p-value (`stats homogeneity`) |
-| USDA Soil Survey Manual | 1993 | Texture triangle, texture classes |
+| USDA Soil Survey Manual | 2017 | Texture triangle, definitions of the 12 texture classes (ch. 3, pp. 122–124) |
 
 ---
 
@@ -1481,7 +1481,7 @@ These commands reduce a station's daily series (Obserwator's export or inline va
 
 22. **Coles, S.** (2001). *An Introduction to Statistical Modeling of Extreme Values*. Springer, London.
 
-23. **USDA** (1993). Soil Survey Manual. Handbook No. 18. Soil Survey Division Staff, USDA.
+23. **USDA** (2017). Soil Survey Manual. Handbook No. 18. Soil Science Division Staff, USDA-NRCS (ch. 3, "Definitions of Soil Texture Classes and Subclasses", pp. 122-124; textural triangle Fig. 3-7, p. 125).
 
 24. **USDA-NRCS** (2007). National Engineering Handbook, Part 630 Hydrology, Chapter 7: Hydrologic Soil Groups.
 
@@ -1611,5 +1611,5 @@ These commands reduce a station's daily series (Obserwator's export or inline va
 
 ---
 
-**Document version:** 1.12
-**Last updated:** 2026-11-17
+**Document version:** 1.13
+**Last updated:** 2026-11-18

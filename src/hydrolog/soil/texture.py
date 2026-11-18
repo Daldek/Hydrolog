@@ -1,7 +1,7 @@
 """USDA soil texture triangle and the texture -> Hydrologic Soil Group mapping.
 
 Classifies soil texture from clay, sand and silt contents with the canonical
-USDA texture triangle (USDA Soil Survey Manual, Handbook 18) and maps the 12
+USDA texture triangle (USDA Soil Survey Manual, Handbook 18, 2017) and maps the 12
 texture classes to the Hydrologic Soil Groups (HSG) A-D of the SCS-CN method
 (USDA-NRCS TR-55, National Engineering Handbook Part 630, Chapter 7).
 
@@ -17,9 +17,13 @@ Notes
   comparison is evaluated in ``float64``; integer inputs (the g/kg of SoilGrids) are
   therefore classified exactly, also on the boundaries of the triangle, where a
   computed share (``clay / total * 100``) would fall on either side by rounding.
-- **First match wins.** On a few boundaries two rules both hold (for example
-  ``clay = 27 %`` with ``20 < sand <= 45``: ``loam`` and ``clay_loam``); the
-  order of the rules decides, as specified in Kartograf ADR-025.
+- **No ties.** The twelve class definitions of the Soil Survey Manual (2017, ch. 3,
+  pp. 122-124) do not overlap and leave no gap: every composition belongs to
+  exactly one class, so the order of the rules does not matter. "X to less than
+  Y percent" includes X and excludes Y: clay 20 % with more than 52 % sand is
+  ``sandy_clay_loam`` (sandy loams have "7 to less than 20 percent clay"), and
+  clay 27 % with 28 to less than 50 % silt is ``clay_loam`` (loam has "7 to less
+  than 27 percent clay").
 - **Zero total is loam.** Cells whose amounts sum to zero carry no soil at all and
   are pinned to ``loam`` explicitly (the zeros would otherwise fall into the
   ``sand`` rule). :func:`hydrolog.soil.hsg.classify_hsg` masks such cells as
@@ -97,23 +101,29 @@ _LOAM: Final = TEXTURE_CLASSES["loam"]
 _Amounts = NDArray[np.float64]
 _Rule = Callable[[_Amounts, _Amounts, _Amounts, _Amounts], NDArray[np.bool_]]
 
-# Canonical USDA texture triangle (Soil Survey Manual) - the SINGLE source of truth
-# of the scalar and of the vectorised classifier (Kartograf ADR-025). In percent of
-# clay (c), sand (s) and silt (si), first matching rule wins:
+# Canonical USDA texture triangle - the SINGLE source of truth of the scalar and of
+# the vectorised classifier (ported from Kartograf ADR-025). The class definitions
+# of the Soil Survey Manual (Soil Science Division Staff 2017, USDA Agriculture
+# Handbook 18, ch. 3, pp. 122-124), in percent of clay (c), sand (s) and silt (si);
+# "X to less than Y percent" is X <= v < Y:
 #
 #   1. sand             si + 1.5*c < 15
 #   2. loamy_sand       si + 1.5*c >= 15 and si + 2*c < 30
-#   3. sandy_loam       (7 <= c <= 20 and s > 52 and si + 2*c >= 30)
+#   3. sandy_loam       (7 <= c < 20 and s > 52 and si + 2*c >= 30)
 #                       or (c < 7 and si < 50 and si + 2*c >= 30)
 #   4. silt             si >= 80 and c < 12
 #   5. silt_loam        (si >= 50 and 12 <= c < 27) or (50 <= si < 80 and c < 12)
-#   6. loam             7 <= c <= 27 and 28 <= si < 50 and s <= 52
+#   6. loam             7 <= c < 27 and 28 <= si < 50 and s <= 52
 #   7. sandy_clay_loam  20 <= c < 35 and si < 28 and s > 45
 #   8. clay_loam        27 <= c < 40 and 20 < s <= 45
 #   9. silty_clay_loam  27 <= c < 40 and s <= 20
 #  10. sandy_clay       c >= 35 and s > 45
 #  11. silty_clay       c >= 40 and si >= 40
 #  12. clay             c >= 40 and s <= 45 and si < 40
+#
+# The sand limits the Manual also gives for sands (more than 85 %) and loamy sands
+# (70 to 90 %) follow from their inequalities. The definitions partition the
+# triangle: exactly one rule holds for every composition, whatever their order.
 #
 # A predicate gets 100 x the amounts (``c``, ``s``, ``si``) and their total ``u``:
 # the share of clay in percent is ``c / u``, so "k percent" is ``k * u``. The
@@ -128,7 +138,7 @@ _USDA_RULES: tuple[tuple[str, _Rule], ...] = (
     (
         "sandy_loam",
         lambda c, s, si, u: (
-            ((c >= 7 * u) & (c <= 20 * u) & (s > 52 * u) & (si + 2 * c >= 30 * u))
+            ((c >= 7 * u) & (c < 20 * u) & (s > 52 * u) & (si + 2 * c >= 30 * u))
             | ((c < 7 * u) & (si < 50 * u) & (si + 2 * c >= 30 * u))
         ),
     ),
@@ -143,11 +153,7 @@ _USDA_RULES: tuple[tuple[str, _Rule], ...] = (
     (
         "loam",
         lambda c, s, si, u: (
-            (c >= 7 * u)
-            & (c <= 27 * u)
-            & (si >= 28 * u)
-            & (si < 50 * u)
-            & (s <= 52 * u)
+            (c >= 7 * u) & (c < 27 * u) & (si >= 28 * u) & (si < 50 * u) & (s <= 52 * u)
         ),
     ),
     (
@@ -237,8 +243,9 @@ def classify_usda_texture(clay: float, sand: float, silt: float) -> str:
     """
     Classify soil texture according to the USDA texture triangle.
 
-    Canonical USDA texture triangle (Soil Survey Manual), the same rule list as
-    the vectorised :func:`classify_usda_texture_array`.
+    Canonical USDA texture triangle: the class definitions of the Soil Survey
+    Manual (2017, ch. 3, pp. 122-124), the same rule list as the vectorised
+    :func:`classify_usda_texture_array`.
 
     Parameters
     ----------
@@ -264,12 +271,19 @@ def classify_usda_texture(clay: float, sand: float, silt: float) -> str:
     The amounts are compared with their total, so they need not sum to 100 and any
     consistent unit works. Amounts summing to 0 (no data) return ``"loam"``.
 
+    A limit worded "X to less than Y percent" includes X and excludes Y, so a
+    composition on a limit belongs to exactly one class: clay exactly 20 % with
+    more than 52 % sand is ``sandy_clay_loam``, clay exactly 27 % with 28 to less
+    than 50 % silt is ``clay_loam``.
+
     Examples
     --------
     >>> classify_usda_texture(clay=5, sand=90, silt=5)
     'sand'
     >>> classify_usda_texture(clay=450, sand=200, silt=350)  # g/kg
     'clay'
+    >>> classify_usda_texture(clay=27, sand=38, silt=35)  # "27 to less than 40"
+    'clay_loam'
     """
     values = []
     for name, value in (("clay", clay), ("sand", sand), ("silt", silt)):

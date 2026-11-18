@@ -1,7 +1,10 @@
 """Unit tests for hydrolog.soil.texture (USDA texture triangle, texture -> HSG).
 
-Ported from the Kartograf 0.8.0 tests of ``kartograf.hydrology.hsg`` (ADR-025).
+Ported from the Kartograf 0.8.0 tests of ``kartograf.hydrology.hsg`` (ADR-025). The
+class limits are tested against the definitions of the Soil Survey Manual (2017).
 """
+
+from fractions import Fraction
 
 import numpy as np
 import pytest
@@ -19,17 +22,13 @@ from hydrolog.soil.texture import (
     texture_to_hsg_array,
 )
 
-# Control points of the canonical USDA triangle (Soil Survey Manual):
-# 4 points from the Kartograf audit (A4-4), the 2 boundary ties of ADR-025 and the
-# centres of all 12 classes.
-CANONICAL_CONTROL_POINTS = [
+# Soil Science Division Staff (2017), Soil Survey Manual, USDA Agriculture Handbook
+# No. 18, ch. 3, "Definitions of Soil Texture Classes and Subclasses", pp. 122-124
+# (textural triangle Fig. 3-7, p. 125); "SSM 2017" below. Amounts in percent.
+
+# One point inside each of the 12 classes, on none of the limits of its class.
+CLASS_INTERIOR_POINTS = [
     # (clay, sand, silt, expected)
-    (0, 70, 30, "sandy_loam"),  # silt + 2*clay = 30 >= 30
-    (20, 45, 35, "loam"),  # sand <= 52, silt 28-50
-    (35, 45, 20, "clay_loam"),  # sand <= 45 => not sandy_clay
-    (12, 75, 13, "sandy_loam"),  # silt + 2*clay = 37 >= 30
-    (20, 60, 20, "sandy_loam"),  # tie: also sandy_clay_loam, sandy_loam comes first
-    (27, 30, 43, "loam"),  # tie: also clay_loam, loam comes first
     (5, 90, 5, "sand"),
     (5, 80, 15, "loamy_sand"),
     (10, 65, 25, "sandy_loam"),
@@ -44,6 +43,134 @@ CANONICAL_CONTROL_POINTS = [
     (60, 20, 20, "clay"),
 ]
 
+# Points on the limits of the SSM 2017 definitions, each limit from both sides:
+# "X to less than Y percent" includes X and excludes Y, "more than X" excludes X,
+# "X percent or more" and "X percent or less" include X. The class follows from the
+# wording alone; the HSG is the one of TEXTURE_TO_HSG.
+SSM2017_BOUNDARY_POINTS = [
+    # (clay, sand, silt, texture, hsg)
+    # p. 122: sands "silt plus 1.5 times the percentage of clay is less than 15",
+    # loamy sands "15 or more"
+    (0, 85, 15, "loamy_sand", "A"),
+    (2, 86, 12, "loamy_sand", "A"),
+    (0, 86, 14, "sand", "A"),
+    (2, 87, 11, "sand", "A"),
+    # pp. 122-123: loamy sands "silt plus twice the percentage of clay is less than
+    # 30", sandy loams "30 or more"
+    (0, 70, 30, "sandy_loam", "B"),
+    (10, 80, 10, "sandy_loam", "B"),
+    (0, 71, 29, "loamy_sand", "A"),
+    (10, 81, 9, "loamy_sand", "A"),
+    # pp. 123-124: sandy loams "7 to less than 20 percent clay", sandy clay loam
+    # "20 to less than 35 percent clay"
+    (20, 60, 20, "sandy_clay_loam", "C"),
+    (20, 53, 27, "sandy_clay_loam", "C"),
+    (19, 61, 20, "sandy_loam", "B"),
+    (19, 54, 27, "sandy_loam", "B"),
+    # pp. 123-124: sandy loams "more than 52 percent sand", loam "52 percent or less"
+    (15, 52, 33, "loam", "B"),
+    (15, 53, 32, "sandy_loam", "B"),
+    # pp. 123-124: loam "7 to less than 27 percent clay", sandy loams "less than 7
+    # percent clay and less than 50 percent silt", silt loam "50 to less than 80
+    # percent silt and less than 12 percent clay"
+    (7, 45, 48, "loam", "B"),
+    (6, 45, 49, "sandy_loam", "B"),
+    (6, 44, 50, "silt_loam", "B"),
+    # p. 124: loam "7 to less than 27 percent clay", clay loam "27 to less than 40"
+    (27, 38, 35, "clay_loam", "C"),
+    (27, 45, 28, "clay_loam", "C"),
+    (26, 38, 36, "loam", "B"),
+    (26, 46, 28, "loam", "B"),
+    # p. 124: loam "28 to less than 50 percent silt", sandy clay loam "less than 28
+    # percent silt", silt loam "50 percent or more silt"
+    (25, 47, 28, "loam", "B"),
+    (25, 48, 27, "sandy_clay_loam", "C"),
+    (10, 40, 50, "silt_loam", "B"),
+    (10, 41, 49, "loam", "B"),
+    # p. 124: silt loam "12 to less than 27 percent clay", clay loam and silty clay
+    # loam "27 to less than 40 percent clay"
+    (27, 22, 51, "clay_loam", "C"),
+    (27, 15, 58, "silty_clay_loam", "C"),
+    (26, 22, 52, "silt_loam", "B"),
+    (26, 15, 59, "silt_loam", "B"),
+    # p. 124: silt "80 percent or more silt and less than 12 percent clay"
+    (5, 15, 80, "silt", "B"),
+    (5, 16, 79, "silt_loam", "B"),
+    (12, 8, 80, "silt_loam", "B"),
+    (11, 9, 80, "silt", "B"),
+    # p. 124: sandy clay loam "20 to less than 35 percent clay", sandy clay "35
+    # percent or more clay"
+    (35, 46, 19, "sandy_clay", "D"),
+    (34, 46, 20, "sandy_clay_loam", "C"),
+    # p. 124: sandy clay loam and sandy clay "more than 45 percent sand", clay loam
+    # "more than 20 to 45 percent sand", silty clay loam "20 percent or less sand"
+    (30, 45, 25, "clay_loam", "C"),
+    (30, 46, 24, "sandy_clay_loam", "C"),
+    (35, 45, 20, "clay_loam", "C"),
+    (30, 21, 49, "clay_loam", "C"),
+    (30, 20, 50, "silty_clay_loam", "C"),
+    # p. 124: clay loam and silty clay loam "27 to less than 40 percent clay", clay
+    # and silty clay "40 percent or more clay"
+    (40, 30, 30, "clay", "D"),
+    (39, 30, 31, "clay_loam", "C"),
+    (40, 20, 40, "silty_clay", "D"),
+    (39, 20, 41, "silty_clay_loam", "C"),
+    # p. 124: clay "45 percent or less sand, and less than 40 percent silt", sandy
+    # clay "more than 45 percent sand", silty clay "40 percent or more silt"
+    (40, 45, 15, "clay", "D"),
+    (40, 46, 14, "sandy_clay", "D"),
+    (45, 15, 40, "silty_clay", "D"),
+    (45, 16, 39, "clay", "D"),
+]
+
+
+def _ssm2017_classes(clay: int, sand: int, silt: int) -> list[str]:
+    """The SSM 2017 definitions (pp. 122-124) that one composition satisfies.
+
+    Transcribed from the wording, independently of the rules of the code, and
+    evaluated in exact rational arithmetic on the shares in percent. All twelve
+    definitions are evaluated; no rule order is involved.
+    """
+    total = Fraction(clay + sand + silt)
+    c, s, si = (100 * Fraction(amount) / total for amount in (clay, sand, silt))
+    silt_1_5_clay = si + Fraction(3, 2) * c  # "silt plus 1.5 times ... clay"
+    silt_2_clay = si + 2 * c  # "silt plus twice the percentage of clay"
+    definitions = {
+        # "more than 85 percent sand, and ... less than 15"
+        "sand": s > 85 and silt_1_5_clay < 15,
+        # "between 70 and 90 percent sand, ... 15 or more, and ... less than 30"
+        # (the two inequalities alone give 70 < sand <= 90)
+        "loamy_sand": 70 <= s <= 90 and silt_1_5_clay >= 15 and silt_2_clay < 30,
+        # "7 to less than 20 percent clay and more than 52 percent sand, and ... 30
+        # or more; OR ... less than 7 percent clay and less than 50 percent silt,
+        # and ... 30 or more"
+        "sandy_loam": (7 <= c < 20 and s > 52 and silt_2_clay >= 30)
+        or (c < 7 and si < 50 and silt_2_clay >= 30),
+        # "7 to less than 27 percent clay, 28 to less than 50 percent silt, and 52
+        # percent or less sand"
+        "loam": 7 <= c < 27 and 28 <= si < 50 and s <= 52,
+        # "50 percent or more silt and 12 to less than 27 percent clay; OR ... 50 to
+        # less than 80 percent silt and less than 12 percent clay"
+        "silt_loam": (si >= 50 and 12 <= c < 27) or (50 <= si < 80 and c < 12),
+        # "80 percent or more silt and less than 12 percent clay"
+        "silt": si >= 80 and c < 12,
+        # "20 to less than 35 percent clay, less than 28 percent silt, and more than
+        # 45 percent sand"
+        "sandy_clay_loam": 20 <= c < 35 and si < 28 and s > 45,
+        # "27 to less than 40 percent clay and more than 20 to 45 percent sand"
+        "clay_loam": 27 <= c < 40 and 20 < s <= 45,
+        # "27 to less than 40 percent clay and 20 percent or less sand"
+        "silty_clay_loam": 27 <= c < 40 and s <= 20,
+        # "35 percent or more clay and more than 45 percent sand"
+        "sandy_clay": c >= 35 and s > 45,
+        # "40 percent or more clay and 40 percent or more silt"
+        "silty_clay": c >= 40 and si >= 40,
+        # "40 percent or more clay, 45 percent or less sand, and less than 40
+        # percent silt"
+        "clay": c >= 40 and s <= 45 and si < 40,
+    }
+    return [name for name, holds in definitions.items() if holds]
+
 
 def _simplex_points() -> list[tuple[int, int, int]]:
     """All points clay + sand + silt = 100 in 1 percent steps (5151 points)."""
@@ -54,22 +181,12 @@ def _simplex_points() -> list[tuple[int, int, int]]:
     ]
 
 
-# Class counts of the integer g/kg simplex (clay + sand + silt = 1000, 501 501 points)
-# computed with Kartograf 0.8.0 ``classify_usda_texture_array`` (ADR-025).
-G_PER_KG_SIMPLEX_CLASS_COUNTS = {
-    "sand": 7600,
-    "loamy_sand": 15050,
-    "sandy_loam": 57545,
-    "loam": 35705,
-    "silt_loam": 81975,
-    "silt": 16980,
-    "sandy_clay_loam": 38560,
-    "clay_loam": 32280,
-    "silty_clay_loam": 26130,
-    "sandy_clay": 20100,
-    "silty_clay": 20301,
-    "clay": 149275,
-}
+def _simplex_arrays(total: int) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Clay, sand and silt of all integer points with clay + sand + silt = total."""
+    clay, sand = np.meshgrid(np.arange(total + 1.0), np.arange(total + 1.0))
+    inside = clay + sand <= total
+    clay, sand = clay[inside], sand[inside]
+    return clay, sand, total - clay - sand
 
 
 class TestTextureClasses:
@@ -175,16 +292,17 @@ class TestClassifyUsdaTexture:
         assert classify_usda_texture(clay=60, sand=20, silt=20) == "clay"
 
     @pytest.mark.parametrize(
-        ("clay", "sand", "silt", "expected"), CANONICAL_CONTROL_POINTS
+        ("clay", "sand", "silt", "expected"), CLASS_INTERIOR_POINTS
     )
-    def test_canonical_control_points(self, clay, sand, silt, expected):
-        """Test the canonical control points of the USDA triangle."""
+    def test_a_point_inside_each_class(self, clay, sand, silt, expected):
+        """Test one point inside each of the 12 classes of the USDA triangle."""
         assert classify_usda_texture(clay=clay, sand=sand, silt=silt) == expected
 
     @pytest.mark.parametrize("factor", [0.5, 2, 10, 1000])
     def test_unit_does_not_matter(self, factor):
         """Test that amounts are compared with their total, not with 100."""
-        for clay, sand, silt, expected in CANONICAL_CONTROL_POINTS:
+        points = CLASS_INTERIOR_POINTS + [p[:4] for p in SSM2017_BOUNDARY_POINTS]
+        for clay, sand, silt, expected in points:
             result = classify_usda_texture(
                 clay=clay * factor, sand=sand * factor, silt=silt * factor
             )
@@ -314,60 +432,6 @@ class TestClassifyUsdaTextureArray:
             ["loam", "clay_loam"],
         ]
 
-    def test_scalar_and_array_agree_on_whole_simplex(self):
-        """Test that scalar and vector classifiers agree on 5151 simplex points."""
-        points = _simplex_points()
-        assert len(points) == 5151
-
-        clay = np.array([p[0] for p in points], dtype=np.float64)
-        sand = np.array([p[1] for p in points], dtype=np.float64)
-        silt = np.array([p[2] for p in points], dtype=np.float64)
-
-        codes = classify_usda_texture_array(clay, sand, silt)
-        expected = np.array(
-            [TEXTURE_CLASSES[classify_usda_texture(c, s, si)] for c, s, si in points],
-            dtype=np.uint8,
-        )
-
-        assert np.array_equal(codes, expected)
-        assert (codes >= 1).all() and (codes <= 12).all()
-
-    def test_rules_cover_the_whole_simplex(self):
-        """Test that every simplex point matches at least one rule.
-
-        ``np.select`` falls back to loam for an unmatched point, which the 1-12
-        range check cannot tell from a real loam: the rules themselves are checked.
-        """
-        points = np.array(_simplex_points(), dtype=np.float64)
-        clay, sand, silt = points[:, 0], points[:, 1], points[:, 2]
-        total = clay + sand + silt
-
-        matched = np.zeros(len(points), dtype=bool)
-        for _, rule in _USDA_RULES:
-            matched |= rule(100 * clay, 100 * sand, 100 * silt, total)
-
-        assert matched.all()
-
-    def test_class_counts_on_the_g_per_kg_simplex_match_kartograf(self):
-        """Test every class count of the whole g/kg simplex (501 501 points).
-
-        Reference: ``classify_usda_texture_array`` of Kartograf 0.8.0 (ADR-025). All
-        boundaries of the triangle lie on whole g/kg, so a changed ``<`` / ``<=``
-        or threshold in any rule moves points between classes and fails here. It
-        also proves that all 12 classes are reachable.
-        """
-        clay, sand = np.meshgrid(np.arange(1001.0), np.arange(1001.0))
-        inside = clay + sand <= 1000
-        clay, sand = clay[inside], sand[inside]
-        silt = 1000 - clay - sand
-
-        codes = classify_usda_texture_array(clay, sand, silt)
-
-        counts = np.bincount(codes, minlength=13)
-        assert {TEXTURE_NAMES[code]: int(counts[code]) for code in range(1, 13)} == (
-            G_PER_KG_SIMPLEX_CLASS_COUNTS
-        )
-
     def test_unit_invariance_on_random_integer_amounts(self):
         """Test that scaling all amounts by a factor never changes the class."""
         rng = np.random.default_rng(42)
@@ -397,8 +461,10 @@ class TestClassifyUsdaTextureArray:
             (99, 901, 0, "sand"),
             (150, 850, 0, "sandy_loam"),  # silt + 2*clay = 300 = 30 % of 1000
             (149, 851, 0, "loamy_sand"),
-            (270, 330, 400, "loam"),  # clay = 270 g/kg = 27 %, tie with clay_loam
-            (271, 329, 400, "clay_loam"),
+            (200, 600, 200, "sandy_clay_loam"),  # clay = 200 g/kg = 20 %
+            (199, 601, 200, "sandy_loam"),
+            (270, 330, 400, "clay_loam"),  # clay = 270 g/kg = 27 %
+            (269, 331, 400, "loam"),
         ],
     )
     def test_integer_g_per_kg_on_the_boundaries_is_exact(
@@ -455,3 +521,82 @@ class TestClassifyUsdaTextureArray:
         """Test that non-numeric values raise InvalidParameterError."""
         with pytest.raises(InvalidParameterError, match="clay"):
             classify_usda_texture_array(["a"], [1.0], [1.0])
+
+
+class TestSoilSurveyManualClassLimits:
+    """Tests of the class limits against the Soil Survey Manual (2017) definitions."""
+
+    @pytest.mark.parametrize(
+        ("clay", "sand", "silt", "texture", "hsg"), SSM2017_BOUNDARY_POINTS
+    )
+    def test_point_on_a_limit_in_percent_and_g_per_kg(
+        self, clay, sand, silt, texture, hsg
+    ):
+        """Test that a point on a class limit gets the class of the SSM wording."""
+        assert classify_usda_texture(clay=clay, sand=sand, silt=silt) == texture
+        assert (
+            classify_usda_texture(clay=10 * clay, sand=10 * sand, silt=10 * silt)
+            == texture
+        )
+        assert texture_to_hsg(texture) == hsg
+
+    @pytest.mark.parametrize("dtype", [np.float64, np.float32, np.int16])
+    @pytest.mark.parametrize("scale", [1, 10], ids=["percent", "g_per_kg"])
+    def test_points_on_the_limits_as_arrays(self, scale, dtype):
+        """Test the points on the limits as one array, with their HSG codes."""
+        clay, sand, silt = (
+            scale * np.array([point[axis] for point in SSM2017_BOUNDARY_POINTS], dtype)
+            for axis in range(3)
+        )
+
+        codes = classify_usda_texture_array(clay, sand, silt)
+
+        assert [TEXTURE_NAMES[int(code)] for code in codes] == [
+            point[3] for point in SSM2017_BOUNDARY_POINTS
+        ]
+        assert texture_to_hsg_array(codes).tolist() == [
+            HSG_CODES[point[4]] for point in SSM2017_BOUNDARY_POINTS
+        ]
+
+    def test_integer_percent_simplex_follows_the_ssm_definitions(self):
+        """Test all 5151 integer compositions against the SSM 2017 transcription.
+
+        Every point satisfies exactly one definition of :func:`_ssm2017_classes`
+        (the definitions partition the triangle, with no ties), and the scalar and
+        the array classifier both return that class.
+        """
+        points = _simplex_points()
+        classes = [_ssm2017_classes(*point) for point in points]
+        assert [
+            p for p, hits in zip(points, classes, strict=True) if len(hits) != 1
+        ] == []
+        expected = [hits[0] for hits in classes]
+
+        codes = classify_usda_texture_array(*np.array(points, dtype=np.float64).T)
+        array = [TEXTURE_NAMES[int(code)] for code in codes]
+        scalar = [classify_usda_texture(*point) for point in points]
+
+        assert [
+            (point, got, want)
+            for point, got, want in zip(points, array, expected, strict=True)
+            if got != want
+        ] == []
+        assert scalar == array
+
+    @pytest.mark.parametrize("total", [100, 1000], ids=["percent", "g_per_kg"])
+    def test_exactly_one_rule_holds_on_the_integer_simplex(self, total):
+        """Test that the rules neither overlap nor leave a gap (5151 / 501 501 points).
+
+        The SSM 2017 definitions give each composition exactly one class, so the
+        order of the rules must not matter: ``np.select`` would hide an overlap
+        (the first rule wins) and a gap (the default loam).
+        """
+        clay, sand, silt = _simplex_arrays(total)
+        total_amount = clay + sand + silt
+
+        holding = sum(
+            rule(100 * clay, 100 * sand, 100 * silt, total_amount).astype(int)
+            for _, rule in _USDA_RULES
+        )
+
+        assert (holding == 1).all()

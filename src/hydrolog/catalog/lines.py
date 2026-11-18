@@ -157,7 +157,13 @@ def _form(option: Option, value: object) -> Any:
     if option.type == "choice" and isinstance(value, str) and value.strip():
         return value
     if option.type in _NUMERIC:
-        option = replace(option, minimum=None, maximum=None, exclusive_minimum=None)
+        option = replace(
+            option,
+            minimum=None,
+            maximum=None,
+            exclusive_minimum=None,
+            exclusive_maximum=None,
+        )
     return option.normalize(value)
 
 
