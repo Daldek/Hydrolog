@@ -78,7 +78,6 @@ Two tributaries joining above a reach:
 from __future__ import annotations
 
 import copy
-import math
 import numbers
 import re
 import unicodedata
@@ -1200,8 +1199,9 @@ class Subcatchment(Node):
         """Return the hydrograph of the node: the given one, or the one it makes.
 
         The rain is cut at the time step of the network and handed to the model with
-        the watershed. The warnings that the library issues on the way, and a storm that
-        ends before its duration, are notices of the output.
+        the watershed. The warnings that the library issues on the way are notices of
+        the output; a design storm whose duration is not a whole number of steps is
+        refused (``details.reason`` ``not_multiple``).
         """
         if self._hydrograph is not None:
             return NodeOutput(self._hydrograph)
@@ -1212,17 +1212,6 @@ class Subcatchment(Node):
         with _observed() as notices:
             hyetograph = source.hyetograph(step)
             hydrograph = self._runoff.hydrograph(hyetograph, self._watershed, step)
-        covered = hyetograph.n_steps * hyetograph.timestep_min
-        if not math.isclose(covered, hyetograph.duration_min, rel_tol=1e-9):
-            notices.append(
-                RoutingNotice(
-                    "duration_not_covered",
-                    f"The rainfall of {hyetograph.duration_min:g} min is not a "
-                    f"multiple of the time step of {hyetograph.timestep_min:g} min: "
-                    f"it has {hyetograph.n_steps} steps and covers {covered:g} min.",
-                    "warning",
-                )
-            )
         return NodeOutput(
             hydrograph,
             rainfall=hyetograph,

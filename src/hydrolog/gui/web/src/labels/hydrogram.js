@@ -188,7 +188,7 @@ export const hydrogram = {
     choose: "wybierz",
     pmaxtpNote:
       "Podaj punkt zlewni (np. jej ujście) w stopniach dziesiętnych WGS84, p i czas trwania z tablic atlasu: wysokość opadu pobierze Hydrolog z atlasu PMAXTP IMGW-PIB (`precip pmaxtp`, przez Obserwatora). Nie wpisuje się jej; pobrana zostaje zapamiętana z danymi.",
-    methods: { POT: "POT (zalecana)", AMP: "AMP" },
+    methods: { POT: "POT", AMP: "AMP" },
     depthSource: "PMAXTP IMGW-PIB, metoda {method}",
     depthPending: "po podaniu punktu, p i czasu",
     depthFetching: "pobieranie z IMGW-PIB…",
@@ -200,7 +200,7 @@ export const hydrogram = {
       "Wysokości opadu w kolejnych krokach `timestep_min` [mm]: wklej je z arkusza albo wczytaj kolumnę pliku CSV.",
     shape: "Rozkład w czasie",
     shapes: { block: "Blokowy", triangular: "Trójkątny", beta: "Beta", euler_ii: "Euler II" },
-    betaNote: "Para (2; 5) daje wczesne maksimum (opad konwekcyjny), (2; 2) symetryczne, (5; 2) późne.",
+    betaNote: "Para (2; 5) daje wczesne maksimum (0,2 czasu trwania), (2; 2) symetryczne, (5; 2) późne.",
     blockNote: "Stała intensywność w całym czasie trwania.",
     euler: {
       pmaxtp:

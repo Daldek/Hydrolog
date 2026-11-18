@@ -19,8 +19,7 @@ English ``message``:
 
 ``route network`` starts the message of a node's notice with ``"<node id>: "`` and
 gives it ``details.node_id``. A routing model or a library warning has no other
-details there, and the ``duration_not_covered`` of a node is worded by the routing
-module (the rain of a node, not a hyetograph of ``precip hietogram``).
+details there.
 """
 
 from __future__ import annotations
@@ -159,14 +158,6 @@ _SPECS: Final[tuple[NoticeSpec, ...]] = (
         "info",
         "channel_length_km is not given: the channel slope is computed with the "
         "watershed length",
-    ),
-    NoticeSpec(
-        "duration_not_covered",
-        "warning",
-        "duration_min = {duration_min:g} is not a multiple of timestep_min = "
-        "{timestep_min:g}: the hyetograph has {steps} steps and covers "
-        "{covered_min:g} min.",
-        ("duration_min", "timestep_min", "steps", "covered_min"),
     ),
     NoticeSpec(
         "stations_without_polygon",

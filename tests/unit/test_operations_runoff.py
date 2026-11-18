@@ -8,6 +8,7 @@ end through :func:`hydrolog.catalog.run_command`.
 
 import inspect
 import json
+import math
 import warnings
 from typing import Any
 
@@ -1046,22 +1047,75 @@ class TestHietogram:
         }
         assert caught.value.hint
 
-    def test_duration_not_a_multiple_of_the_step_is_reported(self):
-        """The library truncates to whole steps; the notice says what is covered."""
+    @pytest.mark.parametrize("hietogram_type", ["block", "triangular", "beta"])
+    def test_a_duration_that_is_not_a_whole_number_of_steps_is_refused(
+        self, hietogram_type
+    ):
+        """D 45 / Δt 10 used to put the total into 40 min (+12.5 % mean intensity)."""
+        with pytest.raises(InvalidParameterError) as caught:
+            ops.precip_hietogram(
+                hietogram_type=hietogram_type,
+                total_mm=36.58,
+                duration_min=45.0,
+                timestep_min=10.0,
+            )
+        assert caught.value.details == {
+            "option": "duration_min",
+            "reason": "not_multiple",
+            "timestep_min": 10.0,
+        }
+
+    @pytest.mark.parametrize("hietogram_type", ["block", "triangular", "beta"])
+    def test_the_storm_lasts_its_duration_and_holds_its_total(self, hietogram_type):
+        """A binary-inexact ratio (0.3 / 0.1) still gives every step: n = 3."""
         result, notices = unwrap(
             ops.precip_hietogram(
-                hietogram_type="block",
-                total_mm=30.0,
-                duration_min=100.0,
-                timestep_min=30.0,
+                hietogram_type=hietogram_type,
+                total_mm=36.58,
+                duration_min=0.3,
+                timestep_min=0.1,
             )
         )
         assert result.n_steps == 3
-        assert result.duration_min == 100.0
-        assert [(n.level, n.code) for n in notices] == [
-            ("warning", "duration_not_covered")
-        ]
-        assert "covers 90 min" in notices[0].message
+        assert result.times_min[-1] == pytest.approx(0.3, rel=1e-12)
+        assert result.depths_mm.sum() == pytest.approx(36.58, rel=1e-12)
+        assert notices == []
+
+    @pytest.mark.parametrize(
+        ("option", "value"),
+        [
+            ("total_mm", math.nan),
+            ("total_mm", math.inf),
+            ("duration_min", math.nan),
+            ("timestep_min", math.inf),
+            ("alpha", math.nan),
+            ("beta", math.inf),
+        ],
+    )
+    def test_a_value_that_is_not_finite_is_refused(self, option, value):
+        """CMP-3: NaN and inf through the Python API, as the CLI refuses them."""
+        options = {
+            "hietogram_type": "beta",
+            "total_mm": 30.0,
+            "duration_min": 60.0,
+            "timestep_min": 5.0,
+            option: value,
+        }
+        with pytest.raises(InvalidParameterError) as caught:
+            ops.precip_hietogram(**options)
+        assert caught.value.details["option"] == option
+        assert caught.value.details["reason"] == "not_finite"
+
+    def test_a_peak_position_that_is_not_finite_is_refused(self):
+        with pytest.raises(InvalidParameterError) as caught:
+            ops.precip_hietogram(
+                hietogram_type="triangular",
+                total_mm=30.0,
+                duration_min=60.0,
+                peak_position=math.nan,
+            )
+        assert caught.value.details["option"] == "peak_position"
+        assert caught.value.details["reason"] == "not_finite"
 
     def test_values_outside_the_library_ranges_are_validation_errors(self):
         """Step longer than the duration and a peak outside (0, 1)."""
@@ -2224,9 +2278,9 @@ class TestHydrographGenerate:
         ]
         assert "kirpich: slope_m_per_m=0.0005" in notices[1].message
 
-    def test_duration_not_covered_is_reported(self):
-        """The truncated hyetograph is flagged exactly like ``precip hietogram``."""
-        _, notices = unwrap(
+    def test_a_duration_that_is_not_a_whole_number_of_steps_is_refused(self):
+        """As ``precip hietogram``: no storm packed into 90 of its 100 min."""
+        with pytest.raises(InvalidParameterError) as caught:
             ops.hydrograph_generate(
                 area_km2=45.3,
                 cn=72,
@@ -2236,8 +2290,8 @@ class TestHydrographGenerate:
                 duration_min=100.0,
                 timestep_min=15.0,
             )
-        )
-        assert [n.code for n in notices] == ["duration_not_covered"]
+        assert caught.value.details["option"] == "duration_min"
+        assert caught.value.details["reason"] == "not_multiple"
 
     def test_a_watershed_of_an_area_and_a_cn_runs_with_a_given_tc(self):
         """Only area_km2 is required: SCS with tc_min needs nothing else."""

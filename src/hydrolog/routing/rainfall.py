@@ -270,8 +270,10 @@ class DesignStorm:
 
     The depth is spread over the duration by the ``hietogram`` (the generators of
     :mod:`hydrolog.precipitation`), cut at the time step of the network. The duration
-    is the duration of the storm, not of the network: a duration that is not a whole
-    number of steps gives a storm of the whole steps that it holds.
+    is the duration of the storm, not of the network, and must be a whole number of
+    steps: the storm then lasts its duration and holds its depth, and another step is
+    refused (``details.reason`` ``not_multiple``, ADR-0046) rather than packing the
+    depth into the whole steps the duration holds.
 
     Parameters
     ----------
@@ -345,7 +347,8 @@ class DesignStorm:
         Parameters
         ----------
         timestep_min : float
-            The time step [min], > 0 and not above the duration of the storm.
+            The time step [min], > 0, not above the duration of the storm and a
+            divisor of it.
         duration_min : float, optional
             Refused unless it is the duration of the storm.
 
@@ -357,7 +360,8 @@ class DesignStorm:
         Raises
         ------
         InvalidParameterError
-            If the step is not valid or longer than the storm, or ``duration_min`` is
+            If the step is not valid, longer than the storm or does not divide its
+            duration (``details.reason`` ``not_multiple``), or ``duration_min`` is
             another duration (``details.reason`` ``duration_mismatch``).
         """
         step = positive(timestep_min, "timestep_min")
@@ -474,9 +478,15 @@ class DesignStorm:
         try:
             hietogram = shape_cls(**shape)
         except InvalidParameterError as exc:
+            option = exc.details.get("option")
+            if option in names:
+                # the field of the document is the argument the shape refuses
+                raise InvalidParameterError(
+                    str(exc), details={**exc.details, "field": option}, hint=exc.hint
+                ) from exc
             if exc.details:
                 raise
-            # the shape classes begin the message with the argument they refuse
+            # a shape without details begins the message with the argument it refuses
             argument = str(exc).split(" ", 1)[0]
             fail(
                 str(exc),

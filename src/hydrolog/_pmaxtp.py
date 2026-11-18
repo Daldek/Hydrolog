@@ -2,7 +2,11 @@
 
 PMAXTP is the atlas of the maximum precipitation of a duration and a probability of
 exceedance that IMGW-PIB publishes for every point of Poland, estimated by two methods:
-POT (peaks over a threshold, the one IMGW-PIB recommends) and AMP (annual maxima).
+POT (peaks over a threshold) and AMP (annual maxima). IMGW-PIB recommends POT for
+p >= 50 % and treats the two as equivalent for p < 50 % (Ozga-Zieliński (red.) 2022,
+*Modele probabilistyczne opadów maksymalnych ... – projekt PMAXTP*, IMGW-PIB, p. 23).
+PMAXTP is not PMP, the physical upper bound of rainfall: it gives quantiles of a
+probability of exceedance.
 :func:`fetch_depth` asks Obserwator (``obserwator.fetch_pmaxtp``), which queries the
 PMAXTP API of IMGW-PIB for the table of a point, and picks the depth of one duration and
 one probability, with the depths of every duration at that probability: the
@@ -52,7 +56,8 @@ __all__ = [
 PmaxtpMethod = Literal["POT", "AMP"]
 """The estimation methods of PMAXTP: peaks over a threshold, annual maxima."""
 METHODS: Final[tuple[str, ...]] = ("POT", "AMP")
-"""The values of :data:`PmaxtpMethod`; POT is the default (IMGW-PIB recommends it)."""
+"""The values of :data:`PmaxtpMethod`; POT is Hydrolog's default (IMGW-PIB recommends it
+for p >= 50 % and treats AMP and POT as equivalent below)."""
 DURATIONS_MIN: Final[tuple[int, ...]] = (
     5,
     10,

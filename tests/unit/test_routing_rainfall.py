@@ -297,8 +297,13 @@ class TestTheDocument:
             ({**DESIGN, "total_mm": -1}, "exclusive_minimum", {"option": "total_mm"}),
             (
                 {**TRIANGLE, "hietogram_type": "beta", "alpha": -1},
-                "invalid_value",
-                {"field": "alpha"},
+                "exclusive_minimum",
+                {"field": "alpha", "option": "alpha"},
+            ),
+            (
+                {**TRIANGLE, "peak_position": float("nan")},
+                "not_finite",
+                {"field": "peak_position"},
             ),
             ({**SERIES, "timestep": 10}, "unknown_field", {"field": "timestep"}),
             (

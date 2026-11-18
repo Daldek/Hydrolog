@@ -186,8 +186,11 @@ start, the rest after it. So the m blocks that end with the peak hold the depth 
 first m blocks, for m beyond the peak), and the storm holds the depth of its duration, its
 `total_mm`: a `--total-mm` given must equal it to 0.005 mm (see COMPUTATION_PATHS 3.15).
 Parameters of another type are rejected (`--alpha` and `--beta` belong to `beta`,
-`--peak-position` to `triangular`, the curve to `euler_ii`). A duration that is not a multiple of
-the step adds a notice about the uncovered tail (Euler II refuses it). Depths and intensities are
+`--peak-position` to `triangular`, the curve to `euler_ii`). The duration must be a whole number of
+steps for every type (`validation_error`, `details.reason` `not_multiple`): the storm lasts its
+duration and holds its total. The triangular and Beta types give each step the depth of their shape
+in it, the integral of the triangle or the difference of the Beta distribution function (see
+COMPUTATION_PATHS 3.16). Depths and intensities are
 `result.depths_mm` and `result.intensities_mm_per_h`. `precip areal` computes areal precipitation
 from gauges (arithmetic mean, Thiessen, IDW, isohyets).
 

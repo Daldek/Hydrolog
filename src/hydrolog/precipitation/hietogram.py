@@ -1,4 +1,10 @@
-"""Hyetograph generation for temporal rainfall distribution."""
+"""Hyetograph generation for temporal rainfall distribution.
+
+Every generator cuts the storm into ``n = D / Δt`` whole steps of the time step Δt and
+puts the whole total into them, so the duration D must be a whole number of steps
+(``details.reason`` ``not_multiple`` otherwise; ADR-0046): the storm then lasts D and
+its mean intensity is the total over D.
+"""
 
 import itertools
 import math
@@ -10,9 +16,110 @@ from typing import ClassVar
 
 import numpy as np
 from numpy.typing import NDArray
+from scipy.special import betainc
 
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.exceptions import InvalidParameterError
+
+_SAME_DURATION = 1e-9
+"""Relative difference under which two durations are one (``5 * 12`` and ``60.0``)."""
+
+
+def _finite_number(name: str, value: object) -> float:
+    """Return ``value`` as a finite float, or refuse it naming ``name``."""
+    if isinstance(value, bool) or not isinstance(value, numbers.Real):
+        raise InvalidParameterError(
+            f"{name} must be a number, got {value!r}",
+            details={
+                "option": name,
+                "reason": "type",
+                "expected": "number",
+                "got": type(value).__name__,
+            },
+        )
+    number = float(value)
+    if not math.isfinite(number):
+        raise InvalidParameterError(
+            f"{name} must be a finite number, got {number}",
+            details={"option": name, "reason": "not_finite", "value": str(number)},
+        )
+    return number
+
+
+def _finite_positive(name: str, value: object) -> float:
+    """Return ``value`` as a float above zero, or refuse it naming ``name``."""
+    number = _finite_number(name, value)
+    if number <= 0:
+        raise InvalidParameterError(
+            f"{name} must be positive, got {number:g}",
+            details={
+                "option": name,
+                "reason": "exclusive_minimum",
+                "exclusive_minimum": 0,
+                "value": number,
+            },
+        )
+    return number
+
+
+def _storm_steps(
+    duration_min: object, timestep_min: object
+) -> tuple[float, float, int]:
+    """Return the duration [min], the step [min] and the number of whole steps.
+
+    Raises
+    ------
+    InvalidParameterError
+        If a value is not a finite number above zero (``details.option`` names it),
+        the step exceeds the duration (``reason`` ``maximum``) or the duration is not
+        a whole number of steps (``reason`` ``not_multiple``, with ``timestep_min``).
+    """
+    duration = _finite_positive("duration_min", duration_min)
+    step = _finite_positive("timestep_min", timestep_min)
+    if step > duration * (1 + _SAME_DURATION):
+        raise InvalidParameterError(
+            f"timestep_min ({step:g}) cannot exceed duration_min ({duration:g})",
+            details={
+                "option": "timestep_min",
+                "reason": "maximum",
+                "maximum": duration,
+                "value": step,
+            },
+        )
+    n_steps = max(round(duration / step), 1)
+    if abs(n_steps * step - duration) > _SAME_DURATION * duration:
+        raise InvalidParameterError(
+            f"duration_min ({duration:g}) is not a whole number of steps of "
+            f"{step:g} min: a hyetograph is made of whole steps, and fewer steps "
+            "would hold the whole total in a shorter storm",
+            details={
+                "option": "duration_min",
+                "reason": "not_multiple",
+                "timestep_min": step,
+            },
+            hint="Give a duration that is a multiple of the time step.",
+        )
+    return duration, step, n_steps
+
+
+def _storm(
+    total_mm: object, duration_min: object, timestep_min: object
+) -> tuple[float, float, float, int]:
+    """Return the total [mm], duration [min], step [min] and number of steps.
+
+    Raises
+    ------
+    InvalidParameterError
+        If the total is not a finite number above zero, or as :func:`_storm_steps`.
+    """
+    total = _finite_positive("total_mm", total_mm)
+    duration, step, n_steps = _storm_steps(duration_min, timestep_min)
+    return total, duration, step, n_steps
+
+
+def _step_ends(n_steps: int, timestep_min: float) -> NDArray[np.float64]:
+    """Return the ends of the steps [min]: ``Δt, 2Δt, ..., nΔt``."""
+    return np.arange(1, n_steps + 1, dtype=np.float64) * timestep_min
 
 
 @dataclass
@@ -81,7 +188,8 @@ class Hietogram(ABC):
         duration_min : float
             Duration of the storm event [min].
         timestep_min : float, optional
-            Time step for discretization [min], by default 5.0.
+            Time step for discretization [min], by default 5.0; the duration must be
+            a whole number of steps.
 
         Returns
         -------
@@ -95,41 +203,22 @@ class Hietogram(ABC):
         total_mm: float, duration_min: float, timestep_min: float
     ) -> int:
         """
-        Validate input parameters and return number of steps.
+        Validate the input and return the number of steps.
 
         Returns
         -------
         int
-            Number of time steps.
+            Number of time steps, ``duration_min / timestep_min``.
 
         Raises
         ------
         InvalidParameterError
-            If any parameter is invalid.
+            If a value is not a finite number above zero (``details.option`` names
+            it, ``reason`` ``type``, ``not_finite`` or ``exclusive_minimum``), the
+            step exceeds the duration (``reason`` ``maximum``) or the duration is
+            not a whole number of steps (``reason`` ``not_multiple``).
         """
-        if total_mm <= 0:
-            raise InvalidParameterError(f"total_mm must be positive, got {total_mm}")
-        if duration_min <= 0:
-            raise InvalidParameterError(
-                f"duration_min must be positive, got {duration_min}"
-            )
-        if timestep_min <= 0:
-            raise InvalidParameterError(
-                f"timestep_min must be positive, got {timestep_min}"
-            )
-        if timestep_min > duration_min:
-            raise InvalidParameterError(
-                f"timestep_min ({timestep_min}) cannot exceed duration_min "
-                f"({duration_min})"
-            )
-
-        n_steps = int(duration_min / timestep_min)
-        if n_steps < 1:
-            raise InvalidParameterError(
-                f"Duration must allow at least 1 time step, got {n_steps}"
-            )
-
-        return n_steps
+        return _storm(total_mm, duration_min, timestep_min)[3]
 
 
 class BlockHietogram(Hietogram):
@@ -177,41 +266,54 @@ class BlockHietogram(Hietogram):
         >>> print(f"Total: {result.intensities_mm.sum():.1f} mm")
         Total: 30.0 mm
         """
-        n_steps = self._validate_params(total_mm, duration_min, timestep_min)
-
-        # Uniform distribution: equal intensity in each step
-        intensity_per_step = total_mm / n_steps
-        intensities = np.full(n_steps, intensity_per_step, dtype=np.float64)
-
-        # Time at end of each interval
-        times = np.arange(1, n_steps + 1, dtype=np.float64) * timestep_min
-
+        total, duration, step, n_steps = _storm(total_mm, duration_min, timestep_min)
         return HietogramResult(
-            times_min=times,
-            intensities_mm=intensities,
-            total_mm=total_mm,
-            duration_min=duration_min,
-            timestep_min=timestep_min,
+            times_min=_step_ends(n_steps, step),
+            intensities_mm=np.full(n_steps, total / n_steps, dtype=np.float64),
+            total_mm=total,
+            duration_min=duration,
+            timestep_min=step,
         )
 
 
 class TriangularHietogram(Hietogram):
     """
-    Triangular hyetograph with peak at specified position.
+    Triangular hyetograph of Yen and Chow (1980): the block integrals of a triangle.
 
-    The triangular distribution has a linear increase to peak
-    and linear decrease after peak.
+    The intensity rises linearly from zero at t = 0 to its peak ``h = 2P/D`` at
+    ``t_a = r·D`` (``r`` = ``peak_position``, the storm advancement coefficient) and
+    falls linearly to zero at t = D. Each step holds the depth that falls in it, the
+    difference of the cumulative depth at its ends:
+
+    ``F(t) = P t² / (D t_a)`` for ``t <= t_a``,
+    ``F(t) = P [1 - (D - t)² / (D (D - t_a))]`` for ``t > t_a``,
+
+    so the steps hold exactly P whatever their number, and with r = 0.5 and an even
+    number of steps the two middle steps are equal.
 
     Parameters
     ----------
     peak_position : float, optional
-        Relative position of peak intensity (0.0 to 1.0),
-        by default 0.5 (peak at center).
+        The storm advancement coefficient r: the time of the peak as a fraction of the
+        duration, 0 < r < 1, by default 0.5 (peak at the centre). Chow et al. (1988,
+        Table 14.3.2) list 0.294 to 0.480 for US, Indian and Canadian cities.
+
+    References
+    ----------
+    .. [1] Yen B.C., Chow V.T. (1980). Design hyetographs for small drainage
+           structures. J. Hydraul. Div. ASCE 106(HY6), 1055-1076.
+    .. [2] Chow V.T., Maidment D.R., Mays L.W. (1988). Applied Hydrology.
+           McGraw-Hill, sec. 14.3, eqs. 14.3.1-14.3.3, Example 14.3.1, pp. 462-465.
 
     Examples
     --------
-    >>> hietogram = TriangularHietogram(peak_position=0.4)
-    >>> result = hietogram.generate(total_mm=30.0, duration_min=60.0)
+    Chow et al. (1988), Example 14.3.1 (Urbana, 5-year, 15 min, 1.07 in = 27.178 mm,
+    r = 0.38) in steps of 5 min:
+
+    >>> hietogram = TriangularHietogram(peak_position=0.38)
+    >>> result = hietogram.generate(27.178, duration_min=15.0, timestep_min=5.0)
+    >>> result.intensities_mm.round(3).tolist()
+    [7.947, 14.361, 4.871]
     """
 
     def __init__(self, peak_position: float = 0.5) -> None:
@@ -221,18 +323,28 @@ class TriangularHietogram(Hietogram):
         Parameters
         ----------
         peak_position : float, optional
-            Relative position of peak (0.0-1.0), by default 0.5.
+            The time of the peak as a fraction of the duration, 0 < r < 1, by
+            default 0.5.
 
         Raises
         ------
         InvalidParameterError
-            If peak_position is not in range (0, 1).
+            If peak_position is not a finite number in (0, 1) (``details.option``
+            ``peak_position``).
         """
-        if not 0 < peak_position < 1:
+        position = _finite_number("peak_position", peak_position)
+        if not 0 < position < 1:
+            bound = "exclusive_minimum" if position <= 0 else "exclusive_maximum"
             raise InvalidParameterError(
-                f"peak_position must be in range (0, 1), got {peak_position}"
+                f"peak_position must be in range (0, 1), got {position:g}",
+                details={
+                    "option": "peak_position",
+                    "reason": bound,
+                    bound: 0 if position <= 0 else 1,
+                    "value": position,
+                },
             )
-        self.peak_position = peak_position
+        self.peak_position = position
 
     def generate(
         self,
@@ -248,60 +360,50 @@ class TriangularHietogram(Hietogram):
         total_mm : float
             Total precipitation depth [mm].
         duration_min : float
-            Duration of the storm event [min].
+            Duration of the storm event [min], a whole number of steps.
         timestep_min : float, optional
             Time step for discretization [min], by default 5.0.
 
         Returns
         -------
         HietogramResult
-            Generated hyetograph with triangular distribution.
+            The depth of the triangle in each step.
+
+        Raises
+        ------
+        InvalidParameterError
+            As :meth:`Hietogram._validate_params`.
         """
-        n_steps = self._validate_params(total_mm, duration_min, timestep_min)
-
-        # Create triangular distribution
-        # Peak at relative position
-        peak_idx = int(n_steps * self.peak_position)
-        if peak_idx == 0:
-            peak_idx = 1
-        if peak_idx >= n_steps:
-            peak_idx = n_steps - 1
-
-        # Build triangular shape
-        intensities = np.zeros(n_steps, dtype=np.float64)
-
-        # Rising limb (0 to peak)
-        for i in range(peak_idx + 1):
-            intensities[i] = (i + 1) / (peak_idx + 1)
-
-        # Falling limb (peak to end)
-        remaining = n_steps - peak_idx - 1
-        if remaining > 0:
-            for i in range(remaining):
-                intensities[peak_idx + 1 + i] = (remaining - i) / (remaining + 1)
-
-        # Normalize to total precipitation
-        intensities = intensities / intensities.sum() * total_mm
-
-        # Time at end of each interval
-        times = np.arange(1, n_steps + 1, dtype=np.float64) * timestep_min
-
+        total, duration, step, n_steps = _storm(total_mm, duration_min, timestep_min)
+        peak = self.peak_position
+        # cumulative share of the triangle at the step ends, in relative time u = t/D
+        ends = np.arange(n_steps + 1, dtype=np.float64) / n_steps
+        cumulative = np.where(
+            ends <= peak, ends**2 / peak, 1.0 - (1.0 - ends) ** 2 / (1.0 - peak)
+        )
         return HietogramResult(
-            times_min=times,
-            intensities_mm=intensities,
-            total_mm=total_mm,
-            duration_min=duration_min,
-            timestep_min=timestep_min,
+            times_min=_step_ends(n_steps, step),
+            intensities_mm=total * np.diff(cumulative),
+            total_mm=total,
+            duration_min=duration,
+            timestep_min=step,
         )
 
 
 class BetaHietogram(Hietogram):
     """
-    Beta distribution hyetograph.
+    Beta distribution hyetograph: the block integrals of a Beta density.
 
-    Uses the Beta probability distribution to create a flexible
-    temporal rainfall pattern. The shape is controlled by alpha
-    and beta parameters.
+    The intensity over the relative time ``u = t/D`` follows the Beta density
+    ``f(u) = u^(α-1) (1-u)^(β-1) / B(α, β)`` (KZGW 2017, eq. 2.20, after Węglarczyk
+    1993). Each step holds the share of the total that the density gives it, the
+    difference of the regularised incomplete Beta function ``I_u(α, β)`` (the Beta
+    distribution function) at its ends:
+
+    ``P_i = P [I_(i/n)(α, β) - I_((i-1)/n)(α, β)]``,
+
+    so the steps hold exactly P for every α, β > 0, also where the density is
+    infinite (α < 1 or β < 1).
 
     Parameters
     ----------
@@ -314,15 +416,25 @@ class BetaHietogram(Hietogram):
 
     Notes
     -----
-    Common parameter combinations:
-    - alpha=2, beta=5: Peak early (typical convective storm)
-    - alpha=2, beta=2: Symmetric peak at center
-    - alpha=5, beta=2: Peak late
+    The peak of the density lies at ``(α-1)/(α+β-2)`` of the duration for α, β > 1:
+    (2, 5) puts it at 0.2, (2, 2) at the centre, (5, 2) at 0.8. KZGW (2017, Fig. 2.7)
+    shows (1, 10), (2, 10), (6, 6) and (10, 2) and fits α and β so that the peak flow
+    equals the flow of the same probability. KZGW evaluates the density at the ends
+    of the intervals; the block integrals here neither shift the storm by half a step
+    nor depend on where in the step the density is read.
+
+    References
+    ----------
+    .. [1] KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów
+           maksymalnych ... (Banasik K., Wałęga A., Węglarczyk S., Wiezik B.), ch. II.3,
+           eqs. 2.20-2.22, p. 25, after Węglarczyk S. (1993).
 
     Examples
     --------
     >>> hietogram = BetaHietogram(alpha=2.0, beta=5.0)
-    >>> result = hietogram.generate(total_mm=30.0, duration_min=60.0)
+    >>> result = hietogram.generate(total_mm=30.0, duration_min=60.0, timestep_min=10.0)
+    >>> result.intensities_mm.round(3).tolist()
+    [7.897, 11.568, 7.254, 2.746, 0.515, 0.02]
     """
 
     def __init__(self, alpha: float = 2.0, beta: float = 5.0) -> None:
@@ -339,14 +451,11 @@ class BetaHietogram(Hietogram):
         Raises
         ------
         InvalidParameterError
-            If alpha or beta is not positive.
+            If alpha or beta is not a finite number above zero (``details.option``
+            names it).
         """
-        if alpha <= 0:
-            raise InvalidParameterError(f"alpha must be positive, got {alpha}")
-        if beta <= 0:
-            raise InvalidParameterError(f"beta must be positive, got {beta}")
-        self.alpha = alpha
-        self.beta = beta
+        self.alpha = _finite_positive("alpha", alpha)
+        self.beta = _finite_positive("beta", beta)
 
     def generate(
         self,
@@ -362,84 +471,35 @@ class BetaHietogram(Hietogram):
         total_mm : float
             Total precipitation depth [mm].
         duration_min : float
-            Duration of the storm event [min].
+            Duration of the storm event [min], a whole number of steps.
         timestep_min : float, optional
             Time step for discretization [min], by default 5.0.
 
         Returns
         -------
         HietogramResult
-            Generated hyetograph with Beta distribution.
+            The depth of the Beta storm in each step.
+
+        Raises
+        ------
+        InvalidParameterError
+            As :meth:`Hietogram._validate_params`.
         """
-        n_steps = self._validate_params(total_mm, duration_min, timestep_min)
-
-        # Generate Beta distribution PDF values at interval midpoints
-        # Normalized time: 0 to 1
-        t_mid = (np.arange(n_steps) + 0.5) / n_steps
-
-        # Beta PDF: f(x) = x^(a-1) * (1-x)^(b-1) / B(a,b)
-        # We don't need the normalizing constant B(a,b) since we normalize anyway
-        intensities = (t_mid ** (self.alpha - 1)) * ((1 - t_mid) ** (self.beta - 1))
-
-        # Handle edge cases where intensities might be 0 or inf
-        intensities = np.nan_to_num(intensities, nan=0.0, posinf=0.0, neginf=0.0)
-
-        # Normalize to total precipitation
-        if intensities.sum() > 0:
-            intensities = intensities / intensities.sum() * total_mm
-        else:
-            # Fallback to uniform if Beta gives all zeros
-            intensities = np.full(n_steps, total_mm / n_steps, dtype=np.float64)
-
-        # Time at end of each interval
-        times = np.arange(1, n_steps + 1, dtype=np.float64) * timestep_min
-
+        total, duration, step, n_steps = _storm(total_mm, duration_min, timestep_min)
+        ends = np.arange(n_steps + 1, dtype=np.float64) / n_steps
+        cumulative = betainc(self.alpha, self.beta, ends)
         return HietogramResult(
-            times_min=times,
-            intensities_mm=intensities,
-            total_mm=total_mm,
-            duration_min=duration_min,
-            timestep_min=timestep_min,
+            times_min=_step_ends(n_steps, step),
+            intensities_mm=total * np.diff(cumulative),
+            total_mm=total,
+            duration_min=duration,
+            timestep_min=step,
         )
 
 
 DepthDurationCurve = Mapping[float, float] | Mapping[int, float] | Mapping[str, float]
 """A depth-duration curve: duration [min] -> depth [mm] of one probability. A key may
 also be the text of a number (``"60"``), as in a JSON object."""
-
-_SAME_DURATION = 1e-9
-"""Relative difference under which two durations are one (``5 * 12`` and ``60.0``)."""
-
-
-def _finite_positive(name: str, value: object) -> float:
-    """Return ``value`` as a float above zero, or refuse it naming ``name``."""
-    if isinstance(value, bool) or not isinstance(value, numbers.Real):
-        raise InvalidParameterError(
-            f"{name} must be a number, got {value!r}",
-            details={
-                "option": name,
-                "reason": "type",
-                "expected": "number",
-                "got": type(value).__name__,
-            },
-        )
-    number = float(value)
-    if not math.isfinite(number):
-        raise InvalidParameterError(
-            f"{name} must be a finite number, got {number}",
-            details={"option": name, "reason": "not_finite", "value": str(number)},
-        )
-    if number <= 0:
-        raise InvalidParameterError(
-            f"{name} must be positive, got {number:g}",
-            details={
-                "option": name,
-                "reason": "exclusive_minimum",
-                "exclusive_minimum": 0,
-                "value": number,
-            },
-        )
-    return number
 
 
 def _curve_error(message: str, reason: str, **details: object) -> InvalidParameterError:
@@ -776,32 +836,9 @@ class EulerIIHietogram(Hietogram):
         >>> int(storm.intensities_mm.argmax()), float(storm.intensities_mm.max())
         (3, 21.82)
         """
-        duration = _finite_positive("duration_min", duration_min)
-        step = _finite_positive("timestep_min", timestep_min)
-        if step > duration * (1 + _SAME_DURATION):
-            raise InvalidParameterError(
-                f"timestep_min ({step:g}) cannot exceed duration_min ({duration:g})",
-                details={
-                    "option": "timestep_min",
-                    "reason": "maximum",
-                    "maximum": duration,
-                    "value": step,
-                },
-            )
-        n_steps = max(round(duration / step), 1)
-        if abs(n_steps * step - duration) > _SAME_DURATION * duration:
-            raise InvalidParameterError(
-                f"duration_min ({duration:g}) is not a whole number of steps of "
-                f"{step:g} min: an Euler II storm is made of whole blocks",
-                details={
-                    "option": "duration_min",
-                    "reason": "not_multiple",
-                    "timestep_min": step,
-                },
-                hint="Give a duration that is a multiple of the time step.",
-            )
+        duration, step, n_steps = _storm_steps(duration_min, timestep_min)
         self._check_covers(step, duration)
-        times = np.arange(1, n_steps + 1, dtype=np.float64) * step
+        times = _step_ends(n_steps, step)
         cumulative = self._depths_at(times)
         depth = float(cumulative[-1])
         total = _finite_positive("total_mm", total_mm)

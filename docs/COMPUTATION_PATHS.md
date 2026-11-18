@@ -1301,6 +1301,45 @@ print(round(float(storm.intensities_mm[1:4].sum()), 2))   # 16.9: the 15 min tha
 
 **Verification** (`tests/unit/test_euler_ii.py`; the tolerance of each case is half a unit of its last printed digit plus the rounding of the printed inputs it is built from). DWD (Malitz 2009, slides 18 and 19, 60 min, the curve from the sums of the largest printed values): every block to 0.05 mm, the peak at position 4. itwh KOSTRA-DWD 2010R, Göllheim, T = 5 a (the printed 0.1-mm KOSTRA depths, storms of 30, 60 and 90 min to 0.01 mm): every block to 0.105 mm (the largest difference is 0.07 mm), the peaks in blocks 2, 4 and 6. itwh KOSTRA-DWD 2020, Aurich, 9 h: the peak interval 160–165 min (block 33) with 11.00 and 14.99 mm (T = 3 and 10 a) to 0.005 mm. Kaźmierczak and Kotowski (2012), Wrocław, formula (2.6), C = 3 years: the peak 101.71 mm/h to 0.005 mm/h at 60 min (15–20 min) and at 180 min (50–55 min by the rule). Wdowikowski et al. (2025), PMAXTP at Wrocław, C = 5 years, 60 min: the peak 146.18 mm/h (12.18 mm) to 0.2 mm, the paper's own 5-min depth coming from a fitted curve, at 15–20 min. The recorded PMAXTP tables of Warsaw and Kamiennik (POT, p = 1, 10 and 50 %, 60 min): the peak in block 4 holds h(5), and the largest 15 and 30 min hold h(15) and h(30), to 0.005 mm. The power law h = D^0.3: peak shares 0.5842, 0.4745 and 0.3854 for n = 6, 12 and 24. Properties: every window around the peak holds h(m Δt) to 1e-12 for every m (Kamiennik p = 50 % and 2 %, Warsaw p = 1 %; D from 15 to 720 min, Δt 5 and 15 min); the total is h(D); the peak interval starts at floor(0.3 n) Δt for n = 1 to 120, and at 10 min for Δt = 10 min and D = 60 min; growing increments keep their order; keys given as text; three blocks for 0.3 min in steps of 0.1 min. The refusals: a decreasing curve, a curve that does not cover the step or the duration, a duration that is not a whole number of steps, a step over the duration, a depth that is not finite or negative, a duration that is not a number above 0 or is given twice, an empty curve or one that is not a mapping, a total 0.006 mm off h(D) (and one within the rounding taken as h(D)), a total that is not finite or not above 0. The commands, the network document and the GUI are tested in `tests/unit/test_operations_runoff.py`, `tests/unit/test_routing_rainfall.py`, `tests/unit/test_route_network_made.py` and `tests/e2e/test_hydrogram.py`.
 
+### 3.16 Design Hyetographs: Whole Steps, the Triangle and the Beta Storm (`BlockHietogram`, `TriangularHietogram`, `BetaHietogram`, `DesignStorm`; ADR-0046)
+
+**Whole steps.** Every generator cuts the storm into `n = D / Δt` steps of the time step Δt (`times_min` = the ends of the steps, Δt..nΔt) and puts the whole total into them. The duration D must be a whole number of steps, to 1e-9 of D (`0.3 / 0.1` is 3 steps): another duration is refused (`validation_error`, `details.option` `duration_min`, `details.reason` `not_multiple`, `details.timestep_min`). The storm then lasts D and its mean intensity is the total over D. **Up to 0.8.1** the generators took `int(D / Δt)` steps and put the whole total into them, so a duration that was not a whole number of steps gave a shorter storm of a higher intensity (the PMAXTP depth of Warsaw for 45 min, 36.58 mm, in 40 min with steps of 10 min: +12.5 %; a network's `DesignStorm` of 50 min with steps of 20 min: +25 %) and the notice `duration_not_covered`, now removed. A design storm of a network follows the rule at the network's step and its refusal names the node.
+
+**Inputs.** The total, the duration, the step and the shape parameters must be finite numbers above zero (`not_finite`, `exclusive_minimum`, `type` for a bool), `peak_position` a finite number in (0, 1) (`exclusive_minimum`, `exclusive_maximum`); the library refuses them, as the CLI does, with `details.option` naming the value.
+
+**Block.** `P_i = P / n`.
+
+**Triangle** (Yen and Chow 1980, as given by Chow, Maidment and Mays 1988, sec. 14.3, eqs. 14.3.1–14.3.3). The intensity rises linearly from 0 at t = 0 to `h = 2P/D` at `t_a = r D` and falls linearly to 0 at t = D (r = `peak_position`, the storm advancement coefficient; Chow et al. 1988, Table 14.3.2: 0.294 to 0.480). Each step holds the depth that falls in it:
+
+```
+F(u) = u² / r                      for u <= r        (u = t / D)
+F(u) = 1 - (1 - u)² / (1 - r)      for u > r
+P_j  = P [F(j/n) - F((j-1)/n)],    j = 1..n
+```
+
+With r = 0.5 and an even n the two middle steps are equal. **Up to 0.8.1** the steps had the triangle sampled at their ends (`w_j = j/j_p` up to the step `j_p = max(2, floor(n r) + 1)`, then `(n-j+1)/(n-j_p+1)`, normalised): for 3 steps 1/2, 1, 1/2 of the peak whatever r; for 12 steps and r = 0.5 the steps differed from the integrals by up to 14 % of the peak.
+
+**Beta** (KZGW 2017, ch. II.3, eqs. 2.20–2.22, after Węglarczyk 1993). The intensity over u = t/D has the shape of the Beta density with α and β; each step holds the difference of the Beta distribution function, the regularised incomplete Beta function `I_u(α, β)` (`scipy.special.betainc`):
+
+```
+P_i = P [I_(i/n)(α, β) - I_((i-1)/n)(α, β)],    i = 1..n
+```
+
+The steps hold P for every α, β > 0, also where the density is infinite (α < 1 or β < 1). KZGW reads the density at the ends of the intervals, which shifts the storm by half a step (33 % of the peak for (2, 5) and 12 steps). **Up to 0.8.1** the steps had the density at their midpoints, normalised, and a uniform storm when every weight was 0 or not finite (NaN or infinite α, β; α = β ≥ ~535): for (2, 5) and 12 steps within 2.0 % of the peak, but for α = 0.5, β = 5 the first step held 0.5445 of the total instead of 0.6372.
+
+```python
+from hydrolog.precipitation import BetaHietogram, TriangularHietogram
+
+urbana = TriangularHietogram(peak_position=0.38).generate(27.178, duration_min=15.0, timestep_min=5.0)
+print(urbana.intensities_mm.round(3).tolist())   # [7.947, 14.361, 4.871]: Chow et al. 1988, Ex. 14.3.1
+beta = BetaHietogram(alpha=0.5, beta=5.0).generate(1.0, duration_min=12.0, timestep_min=1.0)
+print(round(float(beta.intensities_mm[0]), 4))   # 0.6372 = I_(1/12)(0.5, 5)
+```
+
+**Verification** (`tests/unit/test_hietogram.py`). Chow et al. (1988), Example 14.3.1 (Urbana, 15 min, 1.07 in, r = 0.38): the block integrals of the published triangle in steps of 1 and 5 min to 0.0005 mm. Beta (2, 5) with 6 and 12 steps and (0.5, 5) with 12 steps: every step equals the difference of `scipy.stats.beta.cdf` to 1e-12. Every type: the steps hold the total and the last ends at D; a duration that is not a whole number of steps and a value that is not finite are refused.
+
+**Areal precipitation by isohyets** (`isohyet_method`, `precip areal` `isohyet`; KZGW 2017, eq. 2.2; Chow et al. 1988, Fig. 3.4.3c). A zone's precipitation is the mean of its two bounding isohyets, so a zone at the edge of the watershed (beyond its highest or below its lowest isohyet) takes a notional bound that makes that mean the precipitation estimated for it: Chow's edge zones of 5 and 53 mm are the bounds 0 and 56 mm, and the example gives 27.9 mm.
+
 ---
 
 ## 4. Literature Verification
@@ -1357,6 +1396,7 @@ print(round(float(storm.intensities_mm[1:4].sum()), 2))   # 16.9: the 15 min tha
 | Duration curve and the frequencies of its classes (`stats duration-curve`) | Searcy (1959), Vogel and Fennessey (1994), Byczkowski (1996); the mockup's Kłodzko numbers reproduced | ✅ |
 | Runoff volumes (`stats runoff-volume`), rating curves by period (`hydrometrics rating-curve`) | V = Σ Q · 86,400 s; the power-law fit of section 3.8 per block of years; the mockup's Kłodzko numbers reproduced | ✅ |
 | Euler type II design storm from a depth-duration curve (`EulerIIHietogram`, `euler_ii`; section 3.15) | ATV-DVWK-A 118 (2001) Kap. 5.2.2.1 as quoted by Thewes (2005), Malitz (2009), Kaźmierczak and Kotowski (2012); the storms printed by DWD (Malitz 2009), itwh (KOSTRA-DWD 2010R and 2020), Kaźmierczak and Kotowski (2012) and Wdowikowski et al. (2025) and the recorded PMAXTP tables reproduced | ✅ (the peak from 0.3·D also beyond 150 min, where the Wrocław monograph ends it at D/3; depths between the points of the curve linear in ln D) |
+| Design hyetographs: whole steps, the triangle, the Beta storm (`BlockHietogram`, `TriangularHietogram`, `BetaHietogram`; section 3.16) | Chow, Maidment and Mays (1988) sec. 14.3 after Yen and Chow (1980), Example 14.3.1 reproduced; KZGW (2017) eqs. 2.20–2.22 after Węglarczyk (1993), the steps checked against `scipy.stats.beta.cdf` | ✅ (block integrals instead of KZGW's density at the ends of the intervals) |
 
 ### 4.2 Key Publications
 
@@ -1681,7 +1721,11 @@ print(round(float(storm.intensities_mm[1:4].sum()), 2))   # 16.9: the 15 min tha
 
 86. **Ozga-Zieliński, B. (Ed.)** (2022). *Modele probabilistyczne opadów maksymalnych o określonym czasie trwania i prawdopodobieństwie przewyższenia – projekt PMAXTP*. IMGW-PIB, Warszawa (pp. 32–35: the power law over the durations of a station).
 
+87. **Yen, B.C. & Chow, V.T.** (1980). Design hyetographs for small drainage structures. *Journal of the Hydraulics Division, ASCE*, 106(HY6), 1055–1076 (the triangular hyetograph, as given by Chow, Maidment and Mays 1988, sec. 14.3, pp. 462–465; the paper itself was not read).
+
+88. **Węglarczyk, S.** (1993), as cited by KZGW (2017), ch. II.3, eqs. 2.20–2.22, p. 25 (the Beta hyetograph of a daily design total; the paper itself was not read).
+
 ---
 
-**Document version:** 1.13
+**Document version:** 1.14
 **Last updated:** 2026-11-18

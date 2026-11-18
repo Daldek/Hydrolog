@@ -80,10 +80,6 @@ export const notices = {
     },
     mean_elevation_approximated: "Średnią wysokość zlewni przybliżono z wysokości najmniejszej i największej.",
     channel_length_defaulted: "Długość cieku głównego przyjęto równą długości zlewni.",
-    duration_not_covered: {
-      text: "Czas trwania {duration_min} min nie jest wielokrotnością kroku {timestep_min} min: hietogram ma {steps} kroków ({covered_min} min).",
-      plain: "Opad nie pokrywa całego czasu trwania obliczeń.",
-    },
     stations_without_polygon: {
       text: "Pominięto posterunki bez wieloboku Thiessena: {stations}.",
       plain: "Pominięto posterunki bez wieloboku Thiessena.",
