@@ -21,7 +21,7 @@ def generate_tc_section(
     slope_percent: float | None = None,
     area_km2: float | None = None,
     elevation_diff_m: float | None = None,
-    cn: int | None = None,
+    cn: float | None = None,
     runoff_coeff: float | None = None,
     retardance: float | None = None,
     overland_length_km: float | None = None,
@@ -54,7 +54,7 @@ def generate_tc_section(
         Watershed area [km²].
     elevation_diff_m : float, optional
         Elevation difference [m].
-    cn : int, optional
+    cn : float, optional
         Curve Number (for NRCS).
     runoff_coeff : float, optional
         Rational method runoff coefficient (for FAA).

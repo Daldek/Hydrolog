@@ -56,13 +56,13 @@ class FormulaRenderer:
     # =========================================================================
 
     @staticmethod
-    def scs_retention(cn: int) -> str:
+    def scs_retention(cn: float) -> str:
         """
         Render maximum retention formula: S = 25400/CN - 254.
 
         Parameters
         ----------
-        cn : int
+        cn : float
             Curve Number (1-100).
 
         Returns
@@ -143,15 +143,15 @@ class FormulaRenderer:
         )
 
     @staticmethod
-    def scs_amc_adjustment(cn_ii: int, cn_adjusted: int, amc: str) -> str:
+    def scs_amc_adjustment(cn_ii: float, cn_adjusted: float, amc: str) -> str:
         """
         Render AMC adjustment formula.
 
         Parameters
         ----------
-        cn_ii : int
+        cn_ii : float
             Original CN for AMC-II.
-        cn_adjusted : int
+        cn_adjusted : float
             Adjusted CN for target AMC.
         amc : str
             Target AMC condition ("I" or "III").
@@ -217,7 +217,7 @@ class FormulaRenderer:
     def nrcs_tc(
         length_km: float,
         slope_percent: float,
-        cn: int,
+        cn: float,
         tc_min: float,
     ) -> str:
         """
@@ -230,7 +230,7 @@ class FormulaRenderer:
             [km].
         slope_percent : float
             Average land slope of the watershed [%].
-        cn : int
+        cn : float
             Curve Number.
         tc_min : float
             Calculated concentration time [min].

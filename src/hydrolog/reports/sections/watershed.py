@@ -26,7 +26,7 @@ def generate_watershed_section(
     mean_slope_percent: float | None = None,
     channel_length_km: float | None = None,
     channel_slope_m_per_m: float | None = None,
-    cn: int | None = None,
+    cn: float | None = None,
     name: str | None = None,
     form_factor: float | None = None,
     compactness: float | None = None,
@@ -63,7 +63,7 @@ def generate_watershed_section(
         Main channel length [km].
     channel_slope_m_per_m : float, optional
         Main channel slope [m/m].
-    cn : int, optional
+    cn : float, optional
         Curve Number.
     name : str, optional
         Watershed name.
