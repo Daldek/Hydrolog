@@ -7,21 +7,54 @@ with substituted values and generating formatted Markdown tables.
 import numpy as np
 from numpy.typing import NDArray
 
-from hydrolog.time.concentration import (
-    _KERBY_LOW_SLOPE_OFFSET,
-    _KERBY_LOW_SLOPE_THRESHOLD,
+from hydrolog.nogat_formulas import convert
+from hydrolog.time.concentration import FAA, GIANDOTTI, KERBY, KIRPICH, NRCS
+
+# The metric forms the report prints, derived from the constants of the specs of the
+# time of concentration formulas (docs/FORMULAS.md), so no constant is written twice
+_THRESHOLD = KERBY.constant("low_slope_threshold")
+_OFFSET = KERBY.constant("low_slope_offset")
+_KIRPICH_L = KIRPICH.constant("kirpich_length_exponent")
+_KIRPICH_S = KIRPICH.constant("kirpich_slope_exponent")
+_KIRPICH_KM_H = convert(
+    KIRPICH.constant("kirpich_coefficient") * convert(1.0, "km", "ft") ** _KIRPICH_L,
+    "min",
+    "h",
 )
+"""Kirpich's constant for L in km and tc in h (0.0663)."""
+_NRCS_L = NRCS.constant("length_exponent")
+_NRCS_S = NRCS.constant("retention_exponent")
+_NRCS_M_MIN = convert(
+    convert(1.0, "m", "ft") ** _NRCS_L
+    * convert(1.0, "mm", "in") ** _NRCS_S
+    / NRCS.constant("tc_denominator"),
+    "h",
+    "min",
+)
+"""The NRCS constant for l in m, S in mm, Y in % and tc in min (0.014147)."""
+_NRCS_SHIFT_MM = convert(NRCS.constant("retention_shift"), "in", "mm")
+_NRCS_SCALE_MM = convert(NRCS.constant("s_scale"), "in", "mm")
+_NRCS_OFFSET_MM = convert(NRCS.constant("s_offset"), "in", "mm")
+_FAA_KM = (
+    FAA.constant("faa_coefficient")
+    * convert(1.0, "km", "ft") ** 0.5
+    / FAA.constant("percent") ** (1.0 / 3.0)
+)
+"""The FAA constant for L in km and S in m/m (22.213)."""
+_KERBY_E = KERBY.constant("kerby_exponent")
+_KERBY_KM = (KERBY.constant("kerby_coefficient") * convert(1.0, "km", "ft")) ** _KERBY_E
+"""Kerby's constant for L in km (36.37)."""
 
 
 def _low_slope_adjusted(slope_m_per_m: float) -> float:
     """Slope that Kerby and the channel part of Kerby-Kirpich substitute.
 
     ``ConcentrationTime`` adds an offset to slopes below a threshold (Cleveland et
-    al., 2012); the report substitutes the slope the formula was really evaluated
-    with.
+    al., 2012; specs ``kerby`` and ``kerby_kirpich``); the report substitutes the
+    slope the formula was really evaluated with.
     """
-    if slope_m_per_m < _KERBY_LOW_SLOPE_THRESHOLD:
-        return slope_m_per_m + _KERBY_LOW_SLOPE_OFFSET
+    if slope_m_per_m < _THRESHOLD:
+        return slope_m_per_m + _OFFSET
     return slope_m_per_m
 
 
@@ -32,9 +65,9 @@ def _low_slope_note(symbol: str, slope_m_per_m: float) -> str:
         return ""
     return (
         f"\n\nSpadek ${symbol}$ = {slope_m_per_m:.4f} m/m jest mniejszy od "
-        f"{_KERBY_LOW_SLOPE_THRESHOLD}, więc zastosowano korektę małych spadków "
+        f"{_THRESHOLD:g}, więc zastosowano korektę małych spadków "
         f"(Cleveland i in., 2012): ${symbol}$ = {slope_m_per_m:.4f} + "
-        f"{_KERBY_LOW_SLOPE_OFFSET} = {adjusted:.4f} m/m."
+        f"{_OFFSET:g} = {adjusted:.4f} m/m."
     )
 
 
@@ -184,7 +217,7 @@ class FormulaRenderer:
     @staticmethod
     def kirpich_tc(length_km: float, slope_m_per_m: float, tc_min: float) -> str:
         """
-        Render Kirpich formula: tc = 0.0663 * L^0.77 * S^(-0.385).
+        Render Kirpich's formula (spec ``kirpich``) for L in km and tc in hours.
 
         Parameters
         ----------
@@ -201,16 +234,18 @@ class FormulaRenderer:
         str
             LaTeX formula with substituted values.
         """
-        tc_h = tc_min / 60
+        tc_h = convert(tc_min, "min", "h")
+        constant = f"{_KIRPICH_KM_H:.4f}"
         return (
             "**Wzór ogólny:**\n\n"
-            "$$t_c = 0.0663 \\cdot L^{0.77} \\cdot S^{-0.385} \\text{ [h]}$$\n\n"
+            f"$$t_c = {constant} \\cdot L^{{{_KIRPICH_L:g}}} \\cdot "
+            f"S^{{{_KIRPICH_S:g}}} \\text{{ [h]}}$$\n\n"
             "gdzie:\n"
             "- $L$ - długość najdłuższej drogi spływu [km]\n"
             "- $S$ - spadek najdłuższej drogi spływu [m/m]\n\n"
             "**Podstawienie wartości:**\n\n"
-            f"$$t_c = 0.0663 \\cdot {length_km:.2f}^{{0.77}} \\cdot "
-            f"{slope_m_per_m:.4f}^{{-0.385}} = {tc_h:.3f} \\text{{ h}} = "
+            f"$$t_c = {constant} \\cdot {length_km:.2f}^{{{_KIRPICH_L:g}}} \\cdot "
+            f"{slope_m_per_m:.4f}^{{{_KIRPICH_S:g}}} = {tc_h:.3f} \\text{{ h}} = "
             f"{tc_min:.1f} \\text{{ min}}$$"
         )
 
@@ -218,11 +253,11 @@ class FormulaRenderer:
     def nrcs_tc(
         length_km: float,
         slope_percent: float,
-        cn: int,
+        cn: float,
         tc_min: float,
     ) -> str:
         """
-        Render NRCS formula.
+        Render the NRCS lag formula (spec ``nrcs``) for L in m, S in mm and Y in %.
 
         Parameters
         ----------
@@ -231,7 +266,7 @@ class FormulaRenderer:
             [km].
         slope_percent : float
             Average land slope of the watershed [%].
-        cn : int
+        cn : float
             Curve Number.
         tc_min : float
             Calculated concentration time [min].
@@ -241,11 +276,12 @@ class FormulaRenderer:
         str
             LaTeX formula with substituted values.
         """
-        length_m = length_km * 1000
-        s = (25400 / cn) - 254 if cn < 100 else 0
+        length_m = convert(length_km, "km", "m")
+        s = _NRCS_SCALE_MM / cn - _NRCS_OFFSET_MM
         return (
             "**Wzór ogólny:**\n\n"
-            "$$t_c = 0.01416 \\cdot L^{0.8} \\cdot (S + 25.4)^{0.7}"
+            f"$$t_c = {_NRCS_M_MIN:.6f} \\cdot L^{{{_NRCS_L:g}}} \\cdot "
+            f"(S + {_NRCS_SHIFT_MM:g})^{{{_NRCS_S:g}}}"
             " \\cdot Y^{-0.5} \\text{ [min]}$$\n\n"
             "gdzie:\n"
             "- $L$ - długość najdłuższej drogi spływu [m]\n"
@@ -253,7 +289,7 @@ class FormulaRenderer:
             "- $Y$ - średni spadek terenu zlewni [%]\n\n"
             "**Podstawienie wartości:**\n\n"
             f"- L = {length_m:.0f} m\n"
-            f"- S = {s:.2f} mm (dla CN = {cn})\n"
+            f"- S = {s:.2f} mm (dla CN = {cn:g})\n"
             f"- Y = {slope_percent:.2f} %\n\n"
             f"$$t_c = {tc_min:.1f} \\text{{ min}}$$"
         )
@@ -266,7 +302,7 @@ class FormulaRenderer:
         tc_min: float,
     ) -> str:
         """
-        Render Giandotti formula.
+        Render Giandotti's formula (spec ``giandotti``).
 
         Parameters
         ----------
@@ -284,18 +320,22 @@ class FormulaRenderer:
         str
             LaTeX formula with substituted values.
         """
-        tc_h = tc_min / 60
+        tc_h = convert(tc_min, "min", "h")
+        a = f"{GIANDOTTI.constant('area_factor'):g}"
+        b = f"{GIANDOTTI.constant('length_factor'):g}"
+        h = f"{GIANDOTTI.constant('height_factor'):g}"
         return (
             "**Wzór ogólny:**\n\n"
-            "$$t_c = \\frac{4\\sqrt{A} + 1.5L}{0.8\\sqrt{H}} \\text{ [h]}$$\n\n"
+            f"$$t_c = \\frac{{{a}\\sqrt{{A}} + {b}L}}{{{h}\\sqrt{{H}}}} "
+            "\\text{ [h]}$$\n\n"
             "gdzie:\n"
             "- $A$ - powierzchnia zlewni [km²]\n"
             "- $L$ - długość cieku głównego [km]\n"
             "- $H$ - średnia wysokość zlewni minus wysokość przekroju zamykającego "
             "[m]\n\n"
             "**Podstawienie wartości:**\n\n"
-            f"$$t_c = \\frac{{4\\sqrt{{{area_km2:.2f}}} + 1.5 \\cdot {length_km:.2f}}}"
-            f"{{0.8\\sqrt{{{elevation_diff_m:.1f}}}}} = "
+            f"$$t_c = \\frac{{{a}\\sqrt{{{area_km2:.2f}}} + {b} \\cdot "
+            f"{length_km:.2f}}}{{{h}\\sqrt{{{elevation_diff_m:.1f}}}}} = "
             f"{tc_h:.3f} \\text{{ h}} = {tc_min:.1f} \\text{{ min}}$$"
         )
 
@@ -307,7 +347,7 @@ class FormulaRenderer:
         tc_min: float,
     ) -> str:
         """
-        Render FAA formula: tc = 22.213 * (1.1 - C) * L^0.5 / S^(1/3).
+        Render the FAA formula (spec ``faa``) for L in km and S in m/m.
 
         Parameters
         ----------
@@ -325,16 +365,18 @@ class FormulaRenderer:
         str
             LaTeX formula with substituted values.
         """
+        constant = f"{_FAA_KM:.3f}"
+        offset = f"{FAA.constant('c_offset'):g}"
         return (
             "**Wzór ogólny:**\n\n"
-            "$$t_c = 22.213 \\cdot (1.1 - C) \\cdot L^{0.5}"
+            f"$$t_c = {constant} \\cdot ({offset} - C) \\cdot L^{{0.5}}"
             " \\cdot S^{-1/3} \\text{ [min]}$$\n\n"
             "gdzie:\n"
             "- $C$ - współczynnik spływu (metoda racjonalna) [-]\n"
             "- $L$ - długość spływu powierzchniowego [km]\n"
             "- $S$ - spadek powierzchni [m/m]\n\n"
             "**Podstawienie wartości:**\n\n"
-            f"$$t_c = 22.213 \\cdot (1.1 - {runoff_coeff:.2f}) \\cdot "
+            f"$$t_c = {constant} \\cdot ({offset} - {runoff_coeff:.2f}) \\cdot "
             f"{length_km:.3f}^{{0.5}} \\cdot "
             f"{slope_m_per_m:.4f}^{{-1/3}} = "
             f"{tc_min:.1f} \\text{{ min}}$$"
@@ -348,7 +390,7 @@ class FormulaRenderer:
         tc_min: float,
     ) -> str:
         """
-        Render Kerby formula: tc = 36.37 * (L * N)^0.467 * S^(-0.2335).
+        Render Kerby's formula (spec ``kerby``) for L in km.
 
         Parameters
         ----------
@@ -366,18 +408,19 @@ class FormulaRenderer:
         str
             LaTeX formula with substituted values.
         """
+        constant = f"{_KERBY_KM:.2f}"
         return (
             "**Wzór ogólny:**\n\n"
-            "$$t_c = 36.37 \\cdot (L \\cdot N)^{0.467}"
-            " \\cdot S^{-0.2335} \\text{ [min]}$$\n\n"
+            f"$$t_c = {constant} \\cdot (L \\cdot N)^{{{_KERBY_E:g}}}"
+            f" \\cdot S^{{{-_KERBY_E / 2:g}}} \\text{{ [min]}}$$\n\n"
             "gdzie:\n"
             "- $L$ - długość spływu powierzchniowego [km]\n"
             "- $N$ - współczynnik opóźnienia Kerby'ego [-]\n"
             "- $S$ - spadek powierzchni [m/m]\n\n"
             "**Podstawienie wartości:**\n\n"
-            f"$$t_c = 36.37 \\cdot ({length_km:.3f} \\cdot "
-            f"{retardance:.2f})^{{0.467}} \\cdot "
-            f"{_low_slope_adjusted(slope_m_per_m):.4f}^{{-0.2335}} = "
+            f"$$t_c = {constant} \\cdot ({length_km:.3f} \\cdot "
+            f"{retardance:.2f})^{{{_KERBY_E:g}}} \\cdot "
+            f"{_low_slope_adjusted(slope_m_per_m):.4f}^{{{-_KERBY_E / 2:g}}} = "
             f"{tc_min:.1f} \\text{{ min}}$$" + _low_slope_note("S", slope_m_per_m)
         )
 
@@ -393,7 +436,7 @@ class FormulaRenderer:
         tc_total_min: float,
     ) -> str:
         """
-        Render Kerby-Kirpich composite formula: tc = tc_ov + tc_ch.
+        Render the Kerby-Kirpich composite formula (spec ``kerby_kirpich``).
 
         The channel segment is the longest flow path minus the overland segment,
         at the slope of the whole path (Roussel et al. 2005, supplement).
@@ -424,15 +467,17 @@ class FormulaRenderer:
             LaTeX formula with substituted values.
         """
         ch_length_km = fp_length_km - ov_length_km
+        kerby = f"{_KERBY_KM:.2f}"
+        kirpich = f"{_KIRPICH_KM_H:.4f}"
         return (
             "**Metoda złożona Kerby-Kirpich:**\n\n"
             "$$t_c = t_{ov} + t_{ch}$$\n\n"
             "**Składnik spływu powierzchniowego (Kerby):**\n\n"
-            "$$t_{ov} = 36.37 \\cdot (L_{ov} \\cdot N)^{0.467}"
-            " \\cdot S_{ov}^{-0.2335} \\text{ [min]}$$\n\n"
-            f"$$t_{{ov}} = 36.37 \\cdot ({ov_length_km:.3f} \\cdot "
-            f"{retardance:.2f})^{{0.467}} \\cdot "
-            f"{_low_slope_adjusted(ov_slope_m_per_m):.4f}^{{-0.2335}} = "
+            f"$$t_{{ov}} = {kerby} \\cdot (L_{{ov}} \\cdot N)^{{{_KERBY_E:g}}}"
+            f" \\cdot S_{{ov}}^{{{-_KERBY_E / 2:g}}} \\text{{ [min]}}$$\n\n"
+            f"$$t_{{ov}} = {kerby} \\cdot ({ov_length_km:.3f} \\cdot "
+            f"{retardance:.2f})^{{{_KERBY_E:g}}} \\cdot "
+            f"{_low_slope_adjusted(ov_slope_m_per_m):.4f}^{{{-_KERBY_E / 2:g}}} = "
             f"{tc_ov_min:.1f} \\text{{ min}}$$"
             + _low_slope_note("S_{ov}", ov_slope_m_per_m)
             + "\n\n"
@@ -442,11 +487,11 @@ class FormulaRenderer:
             f"{ch_length_km:.2f}$ km, ze spadkiem całej drogi od punktu najdalszego "
             "hydraulicznie do przekroju zamykającego, "
             f"$S$ = {fp_slope_m_per_m:.4f} m/m.\n\n"
-            "$$t_{ch} = 0.0663 \\cdot L_{ch}^{0.77}"
-            " \\cdot S^{-0.385} \\text{ [h]}$$\n\n"
-            f"$$t_{{ch}} = 0.0663 \\cdot {ch_length_km:.2f}^{{0.77}} \\cdot "
-            f"{_low_slope_adjusted(fp_slope_m_per_m):.4f}^{{-0.385}} = "
-            f"{tc_ch_min / 60:.3f} \\text{{ h}} = "
+            f"$$t_{{ch}} = {kirpich} \\cdot L_{{ch}}^{{{_KIRPICH_L:g}}}"
+            f" \\cdot S^{{{_KIRPICH_S:g}}} \\text{{ [h]}}$$\n\n"
+            f"$$t_{{ch}} = {kirpich} \\cdot {ch_length_km:.2f}^{{{_KIRPICH_L:g}}} "
+            f"\\cdot {_low_slope_adjusted(fp_slope_m_per_m):.4f}^{{{_KIRPICH_S:g}}} = "
+            f"{convert(tc_ch_min, 'min', 'h'):.3f} \\text{{ h}} = "
             f"{tc_ch_min:.1f} \\text{{ min}}$$"
             + _low_slope_note("S", fp_slope_m_per_m)
             + "\n\n"

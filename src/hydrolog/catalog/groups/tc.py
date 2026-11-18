@@ -141,8 +141,8 @@ COMMANDS: tuple[Command, ...] = (
         example_results=(
             {
                 "method": "kirpich",
-                "tc_min": 85.9733,
-                "tc_h": 1.43289,
+                "tc_min": 85.8568,
+                "tc_h": 1.43095,
                 "parameters": {"length_km": 8.2, "slope_m_per_m": 0.023},
             },
         ),
@@ -220,8 +220,8 @@ COMMANDS: tuple[Command, ...] = (
         example_results=(
             {
                 "method": "nrcs",
-                "tc_min": 369.047,
-                "tc_h": 6.15078,
+                "tc_min": 368.696,
+                "tc_h": 6.14494,
                 "parameters": {"length_km": 8.2, "slope_m_per_m": 0.023, "cn": 72.0},
             },
         ),
@@ -397,8 +397,8 @@ COMMANDS: tuple[Command, ...] = (
         example_results=(
             {
                 "method": "faa",
-                "tc_min": 15.847,
-                "tc_h": 0.264116,
+                "tc_min": 15.8466,
+                "tc_h": 0.264111,
                 "parameters": {
                     "length_km": 0.15,
                     "slope_m_per_m": 0.02,
@@ -615,8 +615,8 @@ COMMANDS: tuple[Command, ...] = (
         example_results=(
             {
                 "method": "kerby_kirpich",
-                "tc_min": 144.02,
-                "tc_h": 2.40034,
+                "tc_min": 143.877,
+                "tc_h": 2.39795,
                 "parameters": {
                     "overland_length_km": 0.25,
                     "overland_slope_m_per_m": 0.008,
@@ -788,8 +788,8 @@ COMMANDS: tuple[Command, ...] = (
         example_results=(
             {
                 "method": "nrcs",
-                "tc_min": 495.966,
-                "tc_h": 8.2661,
+                "tc_min": 495.495,
+                "tc_h": 8.25826,
                 "watershed_name": "Potok Młynówka",
                 "parameters": {"length_km": 12.5, "slope_m_per_m": 0.025, "cn": 72.0},
             },

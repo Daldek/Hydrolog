@@ -503,7 +503,7 @@ COMMANDS: tuple[Command, ...] = (
         typical_ranges=GENERATE_RANGES,
         example_results=(
             {
-                "peak_discharge_m3s": 54.9222,
+                "peak_discharge_m3s": 54.9909,
                 "time_to_peak_min": 95.0,
                 "total_volume_m3": 321295.0,
                 "runoff_coefficient": 0.141794,
