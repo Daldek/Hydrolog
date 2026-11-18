@@ -40,7 +40,7 @@ from numpy.typing import NDArray
 from scipy.stats import genextreme, kstest
 
 from hydrolog._serialization import JsonResultMixin
-from hydrolog._warnings import IncompleteYears, SmallSample
+from hydrolog._warnings import IncompleteYears, NegativeQuantiles, SmallSample
 from hydrolog.exceptions import CalculationError, InvalidParameterError
 from hydrolog.statistics._hydrological_year import (
     AnnualExtremes,
@@ -55,6 +55,7 @@ from hydrolog.statistics._types import (
     compute_plotting_positions,
 )
 from hydrolog.statistics.events import threshold_runs
+from hydrolog.statistics.high_flows import _maximum_likelihood, _NoParameters
 
 _DEFAULT_RETURN_PERIODS = np.array([2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 500.0, 1000.0])
 _MIN_RELIABLE_YEARS = 10  # below it the estimates may be unreliable
@@ -92,7 +93,8 @@ class LowFlowFrequencyResult(JsonResultMixin):
         Return periods *T* (years) — in low-flow context these are
         *non-exceedance* return periods (drought recurrence intervals).
     quantiles : NDArray[np.float64]
-        Quantile estimates (minimum flow level) for each return period.
+        Quantile estimates (minimum flow level) for each return period; NaN (null in
+        JSON) where the fitted distribution would give a negative discharge.
     non_exceedance_probabilities : NDArray[np.float64]
         Non-exceedance probability 1/*T* for each return period.
     ks_statistic : float
@@ -312,10 +314,12 @@ class LowFlowAnalysis:
         minimum of a sample is the negative of the maximum of the negated sample,
         ``min(x) = -max(-x)``, the parameters are estimated by maximum
         likelihood from the *negated* minima with :data:`scipy.stats.genextreme`
-        (Fisher & Tippett 1928; Gumbel 1958; Coles 2001, ch. 3). The quantile of
-        the minima with non-exceedance probability ``p = 1/T`` is
-        ``Q_T = -genextreme.isf(p, c, loc=-loc, scale=scale)``, the flow that is
-        equalled or *not exceeded* once in *T* years on average.
+        (Fisher & Tippett 1928; Gumbel 1958; Coles 2001, ch. 3), by the search of
+        maximum likelihood of :class:`~hydrolog.statistics.FloodFrequencyAnalysis`
+        (the standardised sample, the L-moments' start, run again until it gains
+        nothing). The quantile of the minima with non-exceedance probability
+        ``p = 1/T`` is ``Q_T = -genextreme.isf(p, c, loc=-loc, scale=scale)``, the
+        flow that is equalled or *not exceeded* once in *T* years on average.
 
         Returns
         -------
@@ -325,13 +329,19 @@ class LowFlowAnalysis:
         Raises
         ------
         CalculationError
-            If the series has no complete hydrological year.
+            If the series has no complete hydrological year, or maximum likelihood
+            gives no parameters: fewer than 4 annual minima (``too_few_values``),
+            all equal (``constant_values``), a likelihood without a maximum
+            (``unbounded_likelihood``: a shape of 1 or more puts the lower bound at
+            the smallest minimum) or a search that does not settle
+            (``not_converged``).
 
         Warns
         -----
         UserWarning
             If incomplete years were skipped or fewer than 10 complete years are
-            available (see :meth:`annual_minima`).
+            available (see :meth:`annual_minima`), or quantiles are left out as
+            negative discharges (``negative_quantiles``).
 
         Notes
         -----
@@ -345,12 +355,20 @@ class LowFlowAnalysis:
         true ones.
 
         The fitted distribution is not constrained to positive flows: with
-        ``shape <= 0`` the minima have no lower bound and the quantiles of very
-        long return periods can be negative. The three parameters are estimated
-        by maximum likelihood; for short records (a few tens of years) the shape,
-        and with it the quantiles of rare droughts, is very uncertain.
+        ``shape <= 0`` the minima have no lower bound, and with ``shape > 0`` the
+        bound ``loc - scale / shape`` may lie below 0 (WMO No. 1029, 2009, sec. 7.5,
+        wants it at 0 or above). A quantile below 0 would be a negative discharge,
+        which cannot occur: it is NaN, and the warning ``negative_quantiles`` names
+        its return periods and the return period at which the fitted distribution
+        reaches 0. Versions up to 0.8.1 returned such quantiles, and also those of
+        scipy's ``fit`` stopped far from the maximum of the likelihood (the 10-year
+        low flow -0.047 m³/s instead of 0.017 for 20 minima of a small stream). For
+        short records (a few tens of years) the shape, and with it the quantiles of
+        rare droughts, is very uncertain.
         """
-        return _fisher_tippett(self.annual_minima(), self._return_periods)
+        return _fisher_tippett(
+            self.annual_minima(), self._return_periods, discharge=True
+        )
 
     def empirical_frequency(self, method: str = "weibull") -> EmpiricalFrequency:
         """Compute empirical plotting positions for annual minima.
@@ -554,6 +572,8 @@ class LowFlowAnalysis:
 def fit_fisher_tippett_minima(
     minima: NDArray[np.float64],
     return_periods: NDArray[np.float64] | None = None,
+    *,
+    discharge: bool = True,
 ) -> LowFlowFrequencyResult:
     """Fit the Fisher-Tippett distribution of smallest values to annual minima.
 
@@ -568,18 +588,37 @@ def fit_fisher_tippett_minima(
         Annual minima in the unit of the series.
     return_periods : NDArray[np.float64] or None, optional
         Return periods [years]; by default 2, 5, 10, 20, 50, 100, 500 and 1000.
+    discharge : bool, optional
+        Whether the minima are discharges, which cannot be negative (the default): a
+        quantile below 0 is then NaN with the warning ``negative_quantiles``. False
+        for a variable without that limit, such as a stage, whose zero is the
+        gauge's.
 
     Returns
     -------
     LowFlowFrequencyResult
         The fitted parameters, the low-flow quantiles and the K-S statistics.
 
+    Raises
+    ------
+    InvalidParameterError
+        If a minimum is not a finite number.
+    CalculationError
+        If maximum likelihood gives no parameters (see
+        :meth:`LowFlowAnalysis.fit_fisher_tippett`).
+
     Warns
     -----
     UserWarning
-        If fewer than 10 minima are given (``small_sample``).
+        If fewer than 10 minima are given (``small_sample``), or quantiles are left
+        out as negative discharges (``negative_quantiles``).
     """
     sample = np.asarray(minima, dtype=np.float64)
+    if not np.all(np.isfinite(sample)):
+        raise InvalidParameterError(
+            "minima must hold finite numbers only (no NaN or infinity).",
+            details={"option": "minima", "reason": "not_finite"},
+        )
     if sample.size < _MIN_RELIABLE_YEARS:
         warnings.warn(
             SmallSample(years=int(sample.size), minimum=_MIN_RELIABLE_YEARS),
@@ -590,22 +629,32 @@ def fit_fisher_tippett_minima(
         if return_periods is not None
         else _DEFAULT_RETURN_PERIODS.copy()
     )
-    return _fisher_tippett(sample, periods)
+    return _fisher_tippett(sample, periods, discharge=discharge)
 
 
 def _fisher_tippett(
-    minima: NDArray[np.float64], periods: NDArray[np.float64]
+    minima: NDArray[np.float64], periods: NDArray[np.float64], *, discharge: bool
 ) -> LowFlowFrequencyResult:
     """Return the maximum-likelihood fit of :func:`fit_fisher_tippett_minima`."""
     # min(x) = -max(-x): the minima-type GEV is the maxima-type GEV of -x.
     negated = -np.asarray(minima, dtype=np.float64)
-
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", UserWarning)
-        c, loc_negated, scale = genextreme.fit(negated)
+    try:
+        c, loc_negated, scale = _maximum_likelihood("gev", negated)
+    except _NoParameters as exc:
+        raise CalculationError(
+            "The method of maximum likelihood cannot fit the Fisher-Tippett "
+            f"distribution to these annual minima: {exc}",
+            details={
+                "distribution": "fisher_tippett",
+                "fit_method": "mle",
+                "reason": exc.reason,
+                **exc.details,
+            },
+            hint="Check the smallest annual minima or provide a longer series.",
+        ) from None
     fitted = genextreme(c, loc=loc_negated, scale=scale)
 
-    # ``0.0 - x`` instead of ``-x``: an all-zero record must give 0.0, not -0.0.
+    # ``0.0 - x`` instead of ``-x``: a location of 0 must give 0.0, not -0.0.
     params: dict[str, float] = {
         "shape": float(c),
         "loc": float(0.0 - loc_negated),
@@ -615,7 +664,18 @@ def _fisher_tippett(
     # Non-exceedance probability p = 1/T of the minima = exceedance
     # probability of the negated series; isf stays accurate for tiny p.
     p = 1.0 / periods
-    quantiles = 0.0 - fitted.isf(p)
+    quantiles = np.asarray(0.0 - fitted.isf(p), dtype=np.float64)
+    negative = quantiles < 0.0
+    if discharge and negative.any():
+        # The fitted distribution reaches below zero flow: F(0) = P(-x >= 0) > 1 / T.
+        warnings.warn(
+            NegativeQuantiles(
+                return_periods=[float(period) for period in periods[negative]],
+                zero_return_period=float(1.0 / fitted.sf(0.0)),
+            ),
+            stacklevel=3,
+        )
+        quantiles = np.where(negative, np.nan, quantiles)
 
     # K-S test (informational; invalid when parameters estimated from data).
     # The statistic is the same for a sample and its mirror image.
@@ -625,7 +685,7 @@ def _fisher_tippett(
         distribution_name="fisher_tippett",
         parameters=params,
         return_periods=periods.copy(),
-        quantiles=np.asarray(quantiles, dtype=np.float64),
+        quantiles=quantiles,
         non_exceedance_probabilities=p,
         ks_statistic=float(ks_stat),
         ks_p_value=float(ks_pval),

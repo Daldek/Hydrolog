@@ -22,6 +22,7 @@ from hydrolog._warnings import (
     HydrologWarning,
     IncompleteYears,
     KsTestApproximate,
+    NegativeQuantiles,
     OutsideSupport,
     OutsideTypicalRange,
     OutsideUnverifiedRange,
@@ -73,6 +74,7 @@ SAMPLES = {
         "fit_method": "l_moments",
         "values": [81.6, 87.2],
     },
+    NegativeQuantiles: {"return_periods": [500.0, 1000.0], "zero_return_period": 312.5},
     IncompleteYears: {
         "skipped": 2,
         "total": 31,
@@ -133,6 +135,7 @@ class TestLibraryWarnings:
             "ks_test_approximate",
             "distribution_left_out",
             "outside_support",
+            "negative_quantiles",
             "incomplete_years",
             "unknown_hietogram_type",
             "uh_model_mismatch",

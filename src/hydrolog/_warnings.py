@@ -33,6 +33,7 @@ __all__ = [
     "HydrologWarning",
     "IncompleteYears",
     "KsTestApproximate",
+    "NegativeQuantiles",
     "OutsideSupport",
     "OutsideTypicalRange",
     "OutsideUnverifiedRange",
@@ -396,6 +397,22 @@ class OutsideSupport(HydrologWarning):
     keys = ("distribution", "fit_method", "values")
 
 
+class NegativeQuantiles(HydrologWarning):
+    """Low-flow quantiles would be negative discharges and are left out (NaN).
+
+    Details: the ``return_periods`` [years] of the quantiles left out and the
+    ``zero_return_period`` [years] at which the fitted distribution of the annual
+    minima reaches a discharge of 0 (one over its probability of 0 or less).
+    """
+
+    template = (
+        "The fitted Fisher-Tippett distribution reaches a discharge of 0 once in "
+        "{zero_return_period:.4g} years: the quantiles of the return periods "
+        "{return_periods} would be negative and are left out (null)."
+    )
+    keys = ("return_periods", "zero_return_period")
+
+
 class IncompleteYears(HydrologWarning):
     """Hydrological years with a day without a value were skipped.
 
@@ -485,6 +502,7 @@ LIBRARY_WARNINGS: Final[tuple[type[HydrologWarning], ...]] = (
     KsTestApproximate,
     DistributionLeftOut,
     OutsideSupport,
+    NegativeQuantiles,
     IncompleteYears,
     UnknownHietogramType,
     UhModelMismatch,

@@ -69,6 +69,12 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = REPO_ROOT / "tests" / "fixtures"
 OBSERWATOR_EXPORT = FIXTURES / "obserwator_series_export.csv"
 DAILY_FLOWS = FIXTURES / "daily_flows_3y.csv"
+# A synthetic station of 15 complete hydrological years (2009-2023): the low-flow fit
+# by maximum likelihood needs more years than the three of daily_flows_3y.csv.
+DAILY_FLOWS_15Y = FIXTURES / "daily_flows_15y.csv"
+# Its annual minima [m3/s], hydrological years 2009-2023.
+MINIMA_15Y = [0.94, 0.77, 1.03, 1.35, 1.36, 0.67, 1.12, 2.01, 1.29, 1.22, 1.02]
+MINIMA_15Y += [1.11, 1.6, 1.26, 1.65]
 ANNUAL_MAXIMA = FIXTURES / "annual_maxima.csv"
 NETWORK_SEGMENTS = FIXTURES / "network_segments.csv"
 RATING_PAIRS = FIXTURES / "rating_curve_pairs.csv"
@@ -1150,16 +1156,25 @@ class TestFloodFrequency:
         assert sorted(d.fit_method for d in fitted) == sorted(FIT_METHODS)
 
     def test_all_leaves_out_each_combination_without_parameters(self):
-        left_skewed = [0.5, *[10.0] * 8, 10.5]  # skewness below Weibull's -1.14
+        # skewness below Weibull's -1.14; the likelihood of the GEV and of Pearson III
+        # grows without limit as their upper bound reaches the largest value
+        left_skewed = [0.5, *[10.0] * 8, 10.5]
         output = run("stats flood-frequency", values=left_skewed, fit_method="all")
         fitted = {
             (d.distribution_name, d.fit_method) for d in output.result.distributions
         }
         assert ("weibull", "mle") in fitted
         left_out = [n for n in output.notices if n.code == "distribution_left_out"]
-        expected = {("weibull", m) for m in ("moments", "l_moments", "least_squares")}
+        expected = {
+            ("weibull", "moments"): "out_of_range",
+            ("weibull", "l_moments"): "out_of_range",
+            ("weibull", "least_squares"): "out_of_range",
+            ("gev", "mle"): "unbounded_likelihood",
+            ("pearson3", "mle"): "unbounded_likelihood",
+        }
         assert {
-            (n.details["distribution"], n.details["fit_method"]) for n in left_out
+            (n.details["distribution"], n.details["fit_method"]): n.details["reason"]
+            for n in left_out
         } == expected
         assert fitted.isdisjoint(expected)
 
@@ -1266,13 +1281,13 @@ class TestLowFlow:
     """``stats low-flow``."""
 
     def test_fisher_tippett_equals_the_library(self):
-        series = _daily()
+        series = _daily(DAILY_FLOWS_15Y)
         direct = LowFlowAnalysis(
             series.values, series.dates, np.array([2.0, 10.0, 50.0])
         )
         result = run(
             "stats low-flow",
-            input_file=str(DAILY_FLOWS),
+            input_file=str(DAILY_FLOWS_15Y),
             value_column="Q",
             date_column="date",
             return_periods=[2, 10, 50],
@@ -1287,11 +1302,22 @@ class TestLowFlow:
             == direct.empirical_non_exceedance().to_dict()
         )
         assert result.result.incomplete_years == []
-        assert result.result.n_years == 3
-        assert result.result.hydrological_years == [2022, 2023, 2024]
+        assert result.result.n_years == 15
+        assert result.result.hydrological_years == list(range(2009, 2024))
+        assert result.notices == ()
+
+    def test_fewer_than_ten_years_are_a_small_sample(self):
+        result = run(
+            "stats low-flow",
+            input_file=str(DAILY_FLOWS_15Y),
+            value_column="Q",
+            date_column="date",
+            last_year=2015,
+        )
+        assert result.result.hydrological_years == list(range(2009, 2016))
         assert [n.code for n in result.notices] == ["small_sample"]
-        assert result.notices[0].details == {"years": 3, "minimum": 10}
-        assert "Only 3 year(s)" in result.notices[0].message
+        assert result.notices[0].details == {"years": 7, "minimum": 10}
+        assert "Only 7 year(s)" in result.notices[0].message
 
     def test_annual_minima_follow_the_hydrological_year(self):
         values, dates = _boundary_series()
@@ -1357,22 +1383,24 @@ class TestLowFlow:
 
     def test_the_empirical_block_uses_the_convention_of_the_fitted_quantiles(self):
         """Regression: values descending with *exceedance* probabilities, so the deepest
-        low flow of the fixture (1.66) had T = 1.33 (probability 0.75) while the
+        low flow of a three-year series had T = 1.33 (probability 0.75) while the
         Fisher-Tippett block counts T with the non-exceedance probability 1 / T; now
-        F = m / (n + 1) = 0.25 and T = 1 / F = 4.
+        F = m / (n + 1): the deepest of these fifteen years, 0.67, has F = 1 / 16 and
+        T = 1 / F = 16.
         """
         result = run(
             "stats low-flow",
-            input_file=str(DAILY_FLOWS),
+            input_file=str(DAILY_FLOWS_15Y),
             value_column="Q",
             date_column="date",
             return_periods=[2, 10, 50],
         ).result
         empirical = result.empirical
-        assert empirical.values_ascending.tolist() == [1.66, 1.79, 1.88]
-        assert empirical.non_exceedance_probabilities.tolist() == [0.25, 0.5, 0.75]
-        np.testing.assert_allclose(empirical.return_periods, [4.0, 2.0, 4.0 / 3.0])
-        assert result.annual_minima == [1.79, 1.88, 1.66]
+        ranks = np.arange(1, 16)
+        assert empirical.values_ascending.tolist() == sorted(MINIMA_15Y)
+        np.testing.assert_allclose(empirical.non_exceedance_probabilities, ranks / 16)
+        np.testing.assert_allclose(empirical.return_periods, 16 / ranks)
+        assert result.annual_minima == MINIMA_15Y
         assert result.fisher_tippett.non_exceedance_probabilities.tolist() == [
             0.5,
             0.1,
@@ -1383,7 +1411,7 @@ class TestLowFlow:
         document = _json_roundtrip(
             run(
                 "stats low-flow",
-                input_file=str(DAILY_FLOWS),
+                input_file=str(DAILY_FLOWS_15Y),
                 value_column="Q",
                 date_column="date",
                 return_periods=[2, 10, 50],
@@ -1395,31 +1423,37 @@ class TestLowFlow:
             "return_periods",
         ]
         assert document["incomplete_years"] == []
-        assert document["hydrological_years"] == [2022, 2023, 2024]
+        assert document["hydrological_years"] == list(range(2009, 2024))
 
     def test_low_flow_quantiles_fall_with_the_return_period(self):
         quantiles = run(
             "stats low-flow",
-            input_file=str(DAILY_FLOWS),
+            input_file=str(DAILY_FLOWS_15Y),
             value_column="Q",
             date_column="date",
             return_periods=[2, 10, 50],
         ).result.fisher_tippett.quantiles
         assert np.all(np.diff(quantiles) < 0)
 
-    def test_fewer_than_three_complete_years_are_a_calculation_error(self):
+    @pytest.mark.parametrize(
+        ("path", "details"),
+        [
+            (DAILY_FLOWS, {"count": 3, "minimum": 4}),
+            (OBSERWATOR_EXPORT, {"count": 0, "minimum": 4, "incomplete_years": [2024]}),
+        ],
+    )
+    def test_fewer_than_four_complete_years_are_a_calculation_error(
+        self, path, details
+    ):
+        """Maximum likelihood needs more annual minima than its three parameters."""
         with pytest.raises(CalculationError) as caught:
             run(
                 "stats low-flow",
-                input_file=str(OBSERWATOR_EXPORT),
+                input_file=str(path),
                 value_column="Q",
                 date_column="date",
             )
-        assert caught.value.details == {
-            "count": 0,
-            "minimum": 3,
-            "incomplete_years": [2024],
-        }
+        assert caught.value.details == details
 
     def test_return_periods_are_checked(self):
         with pytest.raises(InvalidParameterError):

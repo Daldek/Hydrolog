@@ -31,6 +31,10 @@ _DAILY_FLOWS = f"{_FIXTURES}/daily_flows_3y.csv"
 _ANNUAL_MAXIMA = f"{_FIXTURES}/annual_maxima.csv"
 _STATION_DAILY = f"{_FIXTURES}/station_daily.csv"
 _STATION_HALF_YEARS = f"{_FIXTURES}/station_half_years.csv"
+# A synthetic station of 15 complete hydrological years (2009-2023): its daily
+# discharge and its half-years, for the low-flow fit (maximum likelihood needs years).
+_DAILY_FLOWS_15Y = f"{_FIXTURES}/daily_flows_15y.csv"
+_HALF_YEARS_15Y = f"{_FIXTURES}/station_half_years_15y.csv"
 
 # Errors of the commands that read a dated daily series.
 _STATION_ERRORS = (
@@ -1345,18 +1349,21 @@ COMMANDS: tuple[Command, ...] = (
                 "missing day are skipped."
             ),
             (
-                "Check `notices` for `incomplete_years` and samples shorter than 10 "
-                "years."
+                "Check `notices` for `incomplete_years`, `negative_quantiles` (null) "
+                "and samples under 10 years."
             ),
-            "At least 3 complete hydrological years are required.",
+            "At least 4 complete hydrological years are required.",
         ),
         rules_pl=(
             (
                 "Podaj szereg dobowy z datami albo `half_year_file`; lata z "
                 "brakującym dniem są pomijane."
             ),
-            ("Sprawdź `notices`: `incomplete_years` i próby krótsze niż 10 lat."),
-            "Wymagane są co najmniej 3 kompletne lata hydrologiczne.",
+            (
+                "Sprawdź `notices`: `incomplete_years`, `negative_quantiles` (null) i "
+                "próby krótsze niż 10 lat."
+            ),
+            "Wymagane są co najmniej 4 kompletne lata hydrologiczne.",
         ),
         errors=(
             "validation_error",
@@ -1367,16 +1374,14 @@ COMMANDS: tuple[Command, ...] = (
         ),
         example_results=(
             {
-                "n_years": 3,
-                "hydrological_years": [2022, 2023, 2024],
-                "annual_minima": [1.79, 1.88, 1.66],
+                "n_years": 15,
+                "hydrological_years": list(range(2009, 2024)),
                 "incomplete_years": [],
                 "source": "daily",
             },
             {
-                "n_years": 5,
-                "hydrological_years": [2019, 2020, 2021, 2022, 2023],
-                "annual_minima": [0.54, 1.54, 1.48, 0.52, 0.99],
+                "n_years": 15,
+                "hydrological_years": list(range(2009, 2024)),
                 "source": "half_years",
             },
         ),
@@ -1392,12 +1397,12 @@ COMMANDS: tuple[Command, ...] = (
         one_of=(*DATED_ONE_OF, ("half_year_file",)),
         examples=(
             {
-                "input_file": _DAILY_FLOWS,
+                "input_file": _DAILY_FLOWS_15Y,
                 "value_column": "Q",
                 "date_column": "date",
                 "return_periods": [2, 10, 50],
             },
-            {"half_year_file": _STATION_HALF_YEARS, "return_periods": [2, 10]},
+            {"half_year_file": _HALF_YEARS_15Y, "return_periods": [2, 10]},
         ),
     ),
     Command(

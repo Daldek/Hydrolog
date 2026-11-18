@@ -165,8 +165,10 @@ Distribution = Literal["all", "log_normal", "gev", "pearson3", "weibull"]
 
 _DISTRIBUTIONS: tuple[str, ...] = ("all", "log_normal", "gev", "pearson3", "weibull")
 _FIT_METHOD_CHOICES: tuple[str, ...] = (*FIT_METHODS, "all")
-# Three parameters cannot be estimated from fewer than three annual values.
+# Three parameters cannot be estimated from fewer than three annual values; the
+# maximum likelihood of the low-flow fit needs more values than parameters.
 _MIN_ANNUAL_VALUES = 3
+_MIN_ANNUAL_MINIMA = 4
 _MIN_TREND_VALUES = 3  # the Mann-Kendall test of the library needs 3 observations
 _NUMERIC_WARNINGS: tuple[type[Warning], ...] = (UserWarning, RuntimeWarning)
 _ONE_DAY = np.timedelta64(1, "D")
@@ -481,8 +483,14 @@ def _annual_extremes(
     return extremes, notices
 
 
-def _require_years(extremes: AnnualExtremes, what: str, *, advice: str = "") -> None:
-    """Require ``_MIN_ANNUAL_VALUES`` complete hydrological years.
+def _require_years(
+    extremes: AnnualExtremes,
+    what: str,
+    *,
+    advice: str = "",
+    minimum: int = _MIN_ANNUAL_VALUES,
+) -> None:
+    """Require ``minimum`` complete hydrological years (by default 3).
 
     Parameters
     ----------
@@ -492,6 +500,8 @@ def _require_years(extremes: AnnualExtremes, what: str, *, advice: str = "") -> 
         Name of the analysis for the message.
     advice : str, optional
         Sentence appended to the hint when years were skipped.
+    minimum : int, optional
+        Number of complete years required.
 
     Raises
     ------
@@ -500,13 +510,12 @@ def _require_years(extremes: AnnualExtremes, what: str, *, advice: str = "") -> 
         were skipped, ``incomplete_years``).
     """
     count = len(extremes.years)
-    if count >= _MIN_ANNUAL_VALUES:
+    if count >= minimum:
         return
     message = (
-        f"{what} needs at least {_MIN_ANNUAL_VALUES} complete hydrological years, "
-        f"got {count}"
+        f"{what} needs at least {minimum} complete hydrological years, got {count}"
     )
-    details: dict[str, Any] = {"count": count, "minimum": _MIN_ANNUAL_VALUES}
+    details: dict[str, Any] = {"count": count, "minimum": minimum}
     hint = "Provide a longer series."
     if extremes.incomplete:
         message += f"; incomplete years: {describe_incomplete_years(extremes)}"
@@ -976,10 +985,10 @@ def stats_flood_frequency(
         warnings of the fit: a sample of fewer than 10 years (``small_sample``) or of
         fewer than the 30 years of the KZGW 2017 methodology (``short_record``), a
         K-S test that is not valid for fitted parameters (``ks_test_approximate``), a
-        combination of a distribution and a method that gives it no parameters, left
-        out when several are fitted (``distribution_left_out``), and annual maxima
-        without density under a fitted distribution, whose AIC is then null
-        (``outside_support``).
+        combination of a distribution and a method that gives it no parameters (also
+        maximum likelihood whose likelihood has no maximum), left out when several
+        are fitted (``distribution_left_out``), and annual maxima without density
+        under a fitted distribution, whose AIC is then null (``outside_support``).
 
     Raises
     ------
@@ -1111,9 +1120,13 @@ def stats_low_flow(
     smallest values (GEV for minima) to them and estimates the low-flow quantile of
     every return period: the value not exceeded once in ``T`` years, with
     non-exceedance probability ``1 / T`` (:class:`hydrolog.statistics.LowFlowAnalysis`;
-    WMO No. 1029, 2009; Tallaksen and van Lanen, 2004). The empirical block uses the
-    same convention (ascending annual minima with non-exceedance probabilities
-    ``F = m / (n + 1)`` and return periods ``T = 1 / F``).
+    WMO No. 1029, 2009; Tallaksen and van Lanen, 2004). The three parameters are
+    estimated by maximum likelihood, which needs 4 annual minima. A discharge cannot
+    be negative: a quantile of Q below 0 is null with the notice
+    ``negative_quantiles`` (stages, ``parameter`` H of ``half_year_file``, keep
+    theirs). The empirical block uses the same convention (ascending annual minima
+    with non-exceedance probabilities ``F = m / (n + 1)`` and return periods
+    ``T = 1 / F``).
 
     Parameters
     ----------
@@ -1131,7 +1144,8 @@ def stats_low_flow(
         Obserwator's export of IMGW-PIB's half-year characteristics
         (``pl.imgw.hydro_semiannual``), instead of a daily series.
     parameter : {"Q", "H"}, optional
-        The variable of ``half_year_file`` (its columns), by default ``"Q"``.
+        The variable of ``half_year_file`` (its columns), by default ``"Q"``; a daily
+        series is taken as discharges.
     return_periods : sequence of float, optional
         Return periods [years], each greater than 1, by default
         ``DEFAULT_RETURN_PERIODS``.
@@ -1146,7 +1160,8 @@ def stats_low_flow(
     OperationOutput
         ``result`` is a :class:`LowFlowFrequencyAnalysis`; the notices report removed
         missing values, skipped incomplete years (code ``incomplete_years``) and the
-        warnings of the fit (fewer than 10 years: ``small_sample``).
+        warnings of the fit (fewer than 10 years: ``small_sample``; quantiles that
+        would be negative discharges, null: ``negative_quantiles``).
 
     Raises
     ------
@@ -1157,8 +1172,9 @@ def stats_low_flow(
     NotFoundError, InputDataError
         If a file does not exist or cannot be read.
     CalculationError
-        If there are fewer than 3 annual minima, the period has no value or the fit
-        fails.
+        If there are fewer than 4 annual minima, the period has no value or the fit
+        gives no parameters (its ``details.reason``: ``constant_values``,
+        ``unbounded_likelihood``, ``not_converged``) or fails.
     """
     cite(attribution)
     check_choice("parameter", parameter, _FREQUENCY_PARAMETERS)
@@ -1180,14 +1196,16 @@ def stats_low_flow(
         minima = half.values
         require_count(
             len(minima),
-            _MIN_ANNUAL_VALUES,
+            _MIN_ANNUAL_MINIMA,
             "Low-flow frequency analysis",
             unit="annual minima",
         )
         with capture_warnings(_NUMERIC_WARNINGS) as numeric:
             fitted: LowFlowFrequencyResult = _fit(
                 "the Fisher-Tippett distribution",
-                lambda: fit_fisher_tippett_minima(minima, periods),
+                lambda: fit_fisher_tippett_minima(
+                    minima, periods, discharge=parameter == "Q"
+                ),
             )
         result = LowFlowFrequencyAnalysis(
             n_years=len(minima),
@@ -1210,7 +1228,7 @@ def stats_low_flow(
     series = select_years(series, first_year, last_year)
     dates_array = _dates_of(series)
     extremes, year_notices = _annual_extremes(series, "min")
-    _require_years(extremes, "Low-flow frequency analysis")
+    _require_years(extremes, "Low-flow frequency analysis", minimum=_MIN_ANNUAL_MINIMA)
     # The analysis takes the complete years of the days it is given; hand it those
     # only, so that the skipped years are reported once, in the notice above.
     complete = np.isin(hydrological_year(dates_array), extremes.years)

@@ -401,11 +401,13 @@ class TestRunning:
             "stats",
             "low-flow",
             "--input-file",
-            str(FIXTURES / "daily_flows_3y.csv"),
+            str(FIXTURES / "daily_flows_15y.csv"),
             "--value-column",
             "Q",
             "--date-column",
             "date",
+            "--last-year",
+            "2015",  # 7 years: the warning small_sample
         )
         assert code == 0
         assert "Uwagi:" in out and "[ostrzeżenie]" in out

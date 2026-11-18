@@ -29,14 +29,22 @@ class TestLowFlowAnalysis:
         assert len(minima) == 3
         assert min(minima) == 1.0
 
-    def test_fit_fisher_tippett(self, daily_flow_data):
+    def test_three_years_are_too_few_for_three_parameters(self, daily_flow_data):
+        """Maximum likelihood needs more annual minima than its three parameters."""
+        from hydrolog.exceptions import CalculationError
         from hydrolog.statistics.low_flows import LowFlowAnalysis
 
         dates, values = daily_flow_data
         lfa = LowFlowAnalysis(values, dates)
-        result = lfa.fit_fisher_tippett()
-        assert result.distribution_name == "fisher_tippett"
-        assert len(result.quantiles) > 0
+        with pytest.raises(CalculationError) as caught:
+            lfa.fit_fisher_tippett()
+        assert caught.value.details == {
+            "distribution": "fisher_tippett",
+            "fit_method": "mle",
+            "reason": "too_few_values",
+            "count": 3,
+            "minimum": 4,
+        }
 
     def test_empirical_frequency(self, daily_flow_data):
         from hydrolog.statistics.low_flows import LowFlowAnalysis
