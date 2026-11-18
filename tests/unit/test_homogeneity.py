@@ -84,6 +84,59 @@ class TestPettitt:
         assert split.kolmogorov_smirnov.statistic == 1.0
 
 
+class TestKolmogorovSmirnov:
+    # Helsel et al. (2020), Example 5.1: two samples of 10 with tied values
+    HELSEL = np.array(
+        [0.59, 0.87, 1.1, 1.1, 1.2, 1.3, 1.6, 1.7, 3.2, 4.0]
+        + [0.3, 0.36, 0.5, 0.7, 0.7, 0.9, 0.92, 1.0, 1.3, 9.7]
+    )
+
+    def test_the_p_value_of_tied_values_is_exact(self):
+        """D = 0.6, p = 0.0478036 (R 4.4.3 ``ks.test``, exact with ties; the exact
+        permutation over the 184 756 splits agrees); scipy's 0.0524 accepts at 0.05.
+        """
+        result = homogeneity_tests(self.HELSEL)
+        assert result.kolmogorov_smirnov.statistic == pytest.approx(0.6)
+        assert result.kolmogorov_smirnov.p_value == pytest.approx(
+            0.04780358959925522, rel=1e-12
+        )
+        assert result.kolmogorov_smirnov.homogeneous is False
+
+    def test_tied_values_against_every_split(self):
+        """P(D ≥ d) counted over every split of 11 pooled values with ties."""
+        import itertools
+
+        values = np.array([1.0, 2.0, 2.0, 3.0, 3.0, 2.0, 3.0, 4.0, 4.0, 5.0, 1.0])
+        result = homogeneity_tests(values)
+        grid = np.unique(values)
+
+        def distance(first: np.ndarray, second: np.ndarray) -> float:
+            below_first = np.searchsorted(np.sort(first), grid, side="right")
+            below_second = np.searchsorted(np.sort(second), grid, side="right")
+            return float(
+                np.max(np.abs(below_first / first.size - below_second / second.size))
+            )
+
+        observed = distance(values[:5], values[5:])
+        splits = list(itertools.combinations(range(values.size), 5))
+        extreme = sum(
+            distance(values[list(c)], np.delete(values, list(c))) >= observed - 1e-12
+            for c in splits
+        )
+        assert result.kolmogorov_smirnov.statistic == pytest.approx(observed)
+        assert result.kolmogorov_smirnov.p_value == pytest.approx(
+            extreme / len(splits), rel=1e-12
+        )
+
+    def test_without_ties_the_p_value_is_scipys_exact_one(self):
+        from scipy.stats import ks_2samp
+
+        values = np.array([3.1, 1.2, 4.5, 1.7, 5.9, 9.3, 2.6, 6.4, 5.8, 8.0, 7.7])
+        result = homogeneity_tests(values)
+        expected = ks_2samp(values[:5], values[5:], method="exact")
+        assert result.kolmogorov_smirnov.p_value == pytest.approx(expected.pvalue)
+
+
 class TestSplit:
     SEVEN = np.array([3.0, 1.0, 4.0, 1.5, 5.0, 9.0, 2.0])
 
