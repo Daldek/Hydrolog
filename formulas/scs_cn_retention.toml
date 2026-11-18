@@ -1,0 +1,122 @@
+schema = "nogat-formula-card/1"
+name = "scs_cn_retention"
+title = "Potential maximum retention S of the SCS curve number"
+function = "hydrolog.runoff.scs_cn.potential_retention"
+family = "empirical"
+formula_version = 1
+status = "referenced"
+equation = "S = 25.4 * (1000 / CN - 10) [mm]"
+latex = "S = 25.4\\left(\\frac{1000}{CN} - 10\\right)"
+validation = "none: S is the definition of the curve number (NEH 630-10, eq. 10-12)"
+conventions = ["S in mm from the inch form of NEH 630-10 eq. 10-12 by the exact 25.4 mm/in of the units table, which is eq. 10-13 (S = 25400/CN - 254)", "the CN of the antecedent runoff condition of the computation: ARC (AMC) II unless converted by scs_cn_amc"]
+assumptions = []
+notices = []
+reference_cases = ["tests/fixtures/formulas/scs-cn-cases.json"]
+constraints = []
+tables = []
+
+[properties]
+units = "unit_specific"
+scalings = []
+conservation = []
+symmetries = []
+
+[properties.monotonic]
+cn = -1
+
+[[properties.limits]]
+name = "no_retention"
+text = "CN = 100 gives S = 0"
+
+[[properties.limits]]
+name = "exact_rational"
+text = "S equals 25.4 (1000/CN - 10) mm in exact rational arithmetic for whole CN"
+
+[[sources]]
+citation = "USDA-NRCS (2004). National Engineering Handbook, Part 630 Hydrology, Chapter 10: Estimation of Direct Runoff from Storm Rainfall (210-VI-NEH, July 2004)"
+access = "open"
+locator = "eq. 10-12, p. 10-4 (S = 1000/CN - 10, in); eq. 10-13 (the same in mm)"
+url = "https://www.hydrocad.net/neh/630ch10.pdf"
+
+[[sources]]
+citation = "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)"
+access = "open"
+locator = "eq. 2-4, p. 2-1"
+url = "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf"
+
+[[sources]]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "eq. 6.1, p. 88"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[variables]]
+name = "cn"
+symbol = "CN"
+unit = "-"
+kind = "real"
+description = "Curve number of the antecedent runoff condition of the formula."
+applicability = "unstated"
+
+[variables.physical]
+low = 1.0
+low_inclusive = true
+high = 100.0
+high_inclusive = true
+
+[variables.typical]
+low = 30.0
+low_inclusive = true
+high = 98.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "Hydrolog's table of TR-55 curve numbers (cn list), the CN its users take for soil-cover complexes"
+access = "open"
+locator = "its least and largest CN, 30 (woods and brush, good, A) and 98 (impervious and water)"
+
+[[constants]]
+name = "s_scale"
+value = 1000.0
+unit = "in"
+symbol = "1000"
+
+[constants.source]
+citation = "USDA-NRCS (2004). National Engineering Handbook, Part 630 Hydrology, Chapter 10: Estimation of Direct Runoff from Storm Rainfall (210-VI-NEH, July 2004)"
+access = "open"
+locator = "eq. 10-12, p. 10-4"
+url = "https://www.hydrocad.net/neh/630ch10.pdf"
+
+[[constants]]
+name = "s_offset"
+value = 10.0
+unit = "in"
+symbol = "10"
+
+[constants.source]
+citation = "USDA-NRCS (2004). National Engineering Handbook, Part 630 Hydrology, Chapter 10: Estimation of Direct Runoff from Storm Rainfall (210-VI-NEH, July 2004)"
+access = "open"
+locator = "eq. 10-12, p. 10-4"
+url = "https://www.hydrocad.net/neh/630ch10.pdf"
+
+[[outputs]]
+name = "retention_mm"
+unit = "mm"
+kind = "real"
+symbol = "S"
+description = "Potential maximum retention after runoff begins."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+
+[[traps]]
+name = "singular_at_bound"
+description = "log, sqrt or a negative or fractional power of an input at a bound of its range."
+test = "range case cn-physical_low: CN = 1 gives S = 25,146 mm, finite; a CN below 1 is refused"
+
+[[oracles]]
+kind = "exact"
+description = "S = 25.4 (1000/CN - 10) in exact rational arithmetic (fractions) for whole CN"
+test = "tests/unit/test_formulas_scs_cn.py (limit exact_rational)"
+conventions = []

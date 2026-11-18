@@ -1,0 +1,101 @@
+schema = "nogat-formula-card/1"
+name = "tr55_cn"
+title = "Curve number of a soil-cover complex from the TR-55 tables"
+function = "hydrolog.runoff.cn_lookup.table_curve_number"
+family = "classification"
+formula_version = 1
+status = "referenced"
+equation = "CN = T(land cover, condition, hydrologic soil group), T the TR-55 table"
+latex = "CN = T(\\text{cover}, \\text{condition}, \\text{HSG})"
+validation = "NEH 630-9 (p. 9-1) derives the CN of its complexes from annual floods of small agricultural watersheds of one soil group and one cover; the table gives no error statistic"
+conventions = ["ARC (AMC) II and Ia = 0.2 S (TR-55 tables 2-2a to 2-2c, footnote 1)", "herbaceous is the pasture, grassland or range row of table 2-2c, as footnote 1 of table 2-2d directs for range in humid regions; table 2-2d itself (arid and semiarid rangelands) is not used", "row crops and small grain are the straight-row rows of table 2-2b, poor and good only: TR-55 has no fair condition for them", "water is CN 98 (NEH 630-9 p. 9-1), not the 100 of some texts"]
+assumptions = []
+notices = []
+reference_cases = ["tests/fixtures/formulas/cn-table-cases.json"]
+no_traps_reason = "a lookup of categorical keys: no numeric class limit and no series"
+constants = []
+traps = []
+oracles = []
+
+[properties]
+units = "unit_specific"
+scalings = []
+conservation = []
+symmetries = []
+
+[properties.monotonic]
+
+[[properties.limits]]
+name = "groups_in_order"
+text = "CN does not fall from group A to D in any row"
+
+[[sources]]
+citation = "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)"
+access = "open"
+locator = "tables 2-2a, 2-2b and 2-2c, pp. 2-5 to 2-7; table 2-2d, footnote 1, p. 2-8"
+url = "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf"
+
+[[sources]]
+citation = "USDA-NRCS (2004). National Engineering Handbook, Part 630 Hydrology, Chapter 9: Hydrologic Soil-Cover Complexes"
+access = "open"
+locator = "p. 9-1: impervious and water surfaces are always assigned a CN of 98"
+url = "https://www.hydrocad.net/neh/630ch9.pdf"
+
+[[variables]]
+name = "hsg"
+symbol = "\\text{HSG}"
+unit = "-"
+kind = "choice"
+description = "Hydrologic soil group."
+choices = ["A", "B", "C", "D"]
+
+[[variables]]
+name = "land_cover"
+symbol = "\\text{cover}"
+unit = "-"
+kind = "choice"
+description = "Land cover class of Hydrolog."
+choices = ["fallow", "row_crops", "small_grain", "pasture", "meadow", "brush", "forest", "herbaceous", "woods_grass", "farmstead", "residential_low", "residential_medium", "residential_quarter_acre", "residential_high", "commercial", "industrial", "open_space", "paved", "paved_road_open_ditches", "gravel", "dirt", "water"]
+
+[[variables]]
+name = "condition"
+symbol = "\\text{condition}"
+unit = "-"
+kind = "choice"
+description = "Hydrologic condition; none for a cover of a single row."
+choices = ["poor", "fair", "good", "none"]
+
+[[constraints]]
+name = "row_in_table"
+class = "precondition"
+text = "the table has a row of the land cover in the condition"
+
+[constraints.source]
+citation = "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)"
+access = "open"
+locator = "tables 2-2a, 2-2b and 2-2c, pp. 2-5 to 2-7; table 2-2d, footnote 1, p. 2-8"
+url = "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf"
+
+[[outputs]]
+name = "cn"
+unit = "-"
+kind = "integer"
+symbol = "CN"
+description = "Curve number for ARC II and Ia = 0.2 S."
+
+[outputs.physical]
+low = 1.0
+low_inclusive = true
+high = 100.0
+high_inclusive = true
+
+[[tables]]
+path = "src/hydrolog/_data/tables/tr55_cn.csv"
+sha256 = "781fdd02b39aa868571ec09cb92516716a79c0d74a77640fe810e794cfd3a6e8"
+comparison = "tests/oracles/tr55_cn_text_layer.csv (transcribed from the PDF's text layer by tests/oracles/transcribe_tr55_cn.py) against tests/oracles/tr55_cn_hydrolog_0_8_1.csv (typed for Hydrolog 0.8.1), compared by tests/unit/test_formulas_cn_table.py"
+
+[tables.source]
+citation = "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)"
+access = "open"
+locator = "tables 2-2a, 2-2b and 2-2c, pp. 2-5 to 2-7; table 2-2d, footnote 1, p. 2-8"
+url = "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf"

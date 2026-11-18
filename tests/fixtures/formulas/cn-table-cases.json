@@ -1,0 +1,3182 @@
+[
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-fallow-none-A",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2b, p. 2-6"
+  },
+  "inputs": {
+   "hsg": "A",
+   "land_cover": "fallow",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 77
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-fallow-none-B",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2b, p. 2-6"
+  },
+  "inputs": {
+   "hsg": "B",
+   "land_cover": "fallow",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 86
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-fallow-none-C",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2b, p. 2-6"
+  },
+  "inputs": {
+   "hsg": "C",
+   "land_cover": "fallow",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 91
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-fallow-none-D",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2b, p. 2-6"
+  },
+  "inputs": {
+   "hsg": "D",
+   "land_cover": "fallow",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 94
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-row_crops-poor-A",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2b, p. 2-6"
+  },
+  "inputs": {
+   "hsg": "A",
+   "land_cover": "row_crops",
+   "condition": "poor"
+  },
+  "expected": {
+   "cn": 72
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-row_crops-poor-B",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2b, p. 2-6"
+  },
+  "inputs": {
+   "hsg": "B",
+   "land_cover": "row_crops",
+   "condition": "poor"
+  },
+  "expected": {
+   "cn": 81
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-row_crops-poor-C",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2b, p. 2-6"
+  },
+  "inputs": {
+   "hsg": "C",
+   "land_cover": "row_crops",
+   "condition": "poor"
+  },
+  "expected": {
+   "cn": 88
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-row_crops-poor-D",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2b, p. 2-6"
+  },
+  "inputs": {
+   "hsg": "D",
+   "land_cover": "row_crops",
+   "condition": "poor"
+  },
+  "expected": {
+   "cn": 91
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-row_crops-good-A",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2b, p. 2-6"
+  },
+  "inputs": {
+   "hsg": "A",
+   "land_cover": "row_crops",
+   "condition": "good"
+  },
+  "expected": {
+   "cn": 67
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-row_crops-good-B",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2b, p. 2-6"
+  },
+  "inputs": {
+   "hsg": "B",
+   "land_cover": "row_crops",
+   "condition": "good"
+  },
+  "expected": {
+   "cn": 78
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-row_crops-good-C",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2b, p. 2-6"
+  },
+  "inputs": {
+   "hsg": "C",
+   "land_cover": "row_crops",
+   "condition": "good"
+  },
+  "expected": {
+   "cn": 85
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-row_crops-good-D",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2b, p. 2-6"
+  },
+  "inputs": {
+   "hsg": "D",
+   "land_cover": "row_crops",
+   "condition": "good"
+  },
+  "expected": {
+   "cn": 89
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-small_grain-poor-A",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2b, p. 2-6"
+  },
+  "inputs": {
+   "hsg": "A",
+   "land_cover": "small_grain",
+   "condition": "poor"
+  },
+  "expected": {
+   "cn": 65
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-small_grain-poor-B",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2b, p. 2-6"
+  },
+  "inputs": {
+   "hsg": "B",
+   "land_cover": "small_grain",
+   "condition": "poor"
+  },
+  "expected": {
+   "cn": 76
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-small_grain-poor-C",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2b, p. 2-6"
+  },
+  "inputs": {
+   "hsg": "C",
+   "land_cover": "small_grain",
+   "condition": "poor"
+  },
+  "expected": {
+   "cn": 84
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-small_grain-poor-D",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2b, p. 2-6"
+  },
+  "inputs": {
+   "hsg": "D",
+   "land_cover": "small_grain",
+   "condition": "poor"
+  },
+  "expected": {
+   "cn": 88
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-small_grain-good-A",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2b, p. 2-6"
+  },
+  "inputs": {
+   "hsg": "A",
+   "land_cover": "small_grain",
+   "condition": "good"
+  },
+  "expected": {
+   "cn": 63
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-small_grain-good-B",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2b, p. 2-6"
+  },
+  "inputs": {
+   "hsg": "B",
+   "land_cover": "small_grain",
+   "condition": "good"
+  },
+  "expected": {
+   "cn": 75
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-small_grain-good-C",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2b, p. 2-6"
+  },
+  "inputs": {
+   "hsg": "C",
+   "land_cover": "small_grain",
+   "condition": "good"
+  },
+  "expected": {
+   "cn": 83
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-small_grain-good-D",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2b, p. 2-6"
+  },
+  "inputs": {
+   "hsg": "D",
+   "land_cover": "small_grain",
+   "condition": "good"
+  },
+  "expected": {
+   "cn": 87
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-pasture-poor-A",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "A",
+   "land_cover": "pasture",
+   "condition": "poor"
+  },
+  "expected": {
+   "cn": 68
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-pasture-poor-B",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "B",
+   "land_cover": "pasture",
+   "condition": "poor"
+  },
+  "expected": {
+   "cn": 79
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-pasture-poor-C",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "C",
+   "land_cover": "pasture",
+   "condition": "poor"
+  },
+  "expected": {
+   "cn": 86
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-pasture-poor-D",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "D",
+   "land_cover": "pasture",
+   "condition": "poor"
+  },
+  "expected": {
+   "cn": 89
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-herbaceous-poor-A",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "A",
+   "land_cover": "herbaceous",
+   "condition": "poor"
+  },
+  "expected": {
+   "cn": 68
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)",
+   "herbaceous takes the pasture row of table 2-2c by footnote 1 of table 2-2d (range in humid regions)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-herbaceous-poor-B",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "B",
+   "land_cover": "herbaceous",
+   "condition": "poor"
+  },
+  "expected": {
+   "cn": 79
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)",
+   "herbaceous takes the pasture row of table 2-2c by footnote 1 of table 2-2d (range in humid regions)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-herbaceous-poor-C",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "C",
+   "land_cover": "herbaceous",
+   "condition": "poor"
+  },
+  "expected": {
+   "cn": 86
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)",
+   "herbaceous takes the pasture row of table 2-2c by footnote 1 of table 2-2d (range in humid regions)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-herbaceous-poor-D",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "D",
+   "land_cover": "herbaceous",
+   "condition": "poor"
+  },
+  "expected": {
+   "cn": 89
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)",
+   "herbaceous takes the pasture row of table 2-2c by footnote 1 of table 2-2d (range in humid regions)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-pasture-fair-A",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "A",
+   "land_cover": "pasture",
+   "condition": "fair"
+  },
+  "expected": {
+   "cn": 49
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-pasture-fair-B",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "B",
+   "land_cover": "pasture",
+   "condition": "fair"
+  },
+  "expected": {
+   "cn": 69
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-pasture-fair-C",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "C",
+   "land_cover": "pasture",
+   "condition": "fair"
+  },
+  "expected": {
+   "cn": 79
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-pasture-fair-D",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "D",
+   "land_cover": "pasture",
+   "condition": "fair"
+  },
+  "expected": {
+   "cn": 84
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-herbaceous-fair-A",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "A",
+   "land_cover": "herbaceous",
+   "condition": "fair"
+  },
+  "expected": {
+   "cn": 49
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)",
+   "herbaceous takes the pasture row of table 2-2c by footnote 1 of table 2-2d (range in humid regions)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-herbaceous-fair-B",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "B",
+   "land_cover": "herbaceous",
+   "condition": "fair"
+  },
+  "expected": {
+   "cn": 69
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)",
+   "herbaceous takes the pasture row of table 2-2c by footnote 1 of table 2-2d (range in humid regions)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-herbaceous-fair-C",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "C",
+   "land_cover": "herbaceous",
+   "condition": "fair"
+  },
+  "expected": {
+   "cn": 79
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)",
+   "herbaceous takes the pasture row of table 2-2c by footnote 1 of table 2-2d (range in humid regions)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-herbaceous-fair-D",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "D",
+   "land_cover": "herbaceous",
+   "condition": "fair"
+  },
+  "expected": {
+   "cn": 84
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)",
+   "herbaceous takes the pasture row of table 2-2c by footnote 1 of table 2-2d (range in humid regions)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-pasture-good-A",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "A",
+   "land_cover": "pasture",
+   "condition": "good"
+  },
+  "expected": {
+   "cn": 39
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-pasture-good-B",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "B",
+   "land_cover": "pasture",
+   "condition": "good"
+  },
+  "expected": {
+   "cn": 61
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-pasture-good-C",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "C",
+   "land_cover": "pasture",
+   "condition": "good"
+  },
+  "expected": {
+   "cn": 74
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-pasture-good-D",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "D",
+   "land_cover": "pasture",
+   "condition": "good"
+  },
+  "expected": {
+   "cn": 80
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-herbaceous-good-A",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "A",
+   "land_cover": "herbaceous",
+   "condition": "good"
+  },
+  "expected": {
+   "cn": 39
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)",
+   "herbaceous takes the pasture row of table 2-2c by footnote 1 of table 2-2d (range in humid regions)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-herbaceous-good-B",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "B",
+   "land_cover": "herbaceous",
+   "condition": "good"
+  },
+  "expected": {
+   "cn": 61
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)",
+   "herbaceous takes the pasture row of table 2-2c by footnote 1 of table 2-2d (range in humid regions)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-herbaceous-good-C",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "C",
+   "land_cover": "herbaceous",
+   "condition": "good"
+  },
+  "expected": {
+   "cn": 74
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)",
+   "herbaceous takes the pasture row of table 2-2c by footnote 1 of table 2-2d (range in humid regions)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-herbaceous-good-D",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "D",
+   "land_cover": "herbaceous",
+   "condition": "good"
+  },
+  "expected": {
+   "cn": 80
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)",
+   "herbaceous takes the pasture row of table 2-2c by footnote 1 of table 2-2d (range in humid regions)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-meadow-none-A",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "A",
+   "land_cover": "meadow",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 30
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-meadow-none-B",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "B",
+   "land_cover": "meadow",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 58
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-meadow-none-C",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "C",
+   "land_cover": "meadow",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 71
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-meadow-none-D",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "D",
+   "land_cover": "meadow",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 78
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-brush-poor-A",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "A",
+   "land_cover": "brush",
+   "condition": "poor"
+  },
+  "expected": {
+   "cn": 48
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-brush-poor-B",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "B",
+   "land_cover": "brush",
+   "condition": "poor"
+  },
+  "expected": {
+   "cn": 67
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-brush-poor-C",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "C",
+   "land_cover": "brush",
+   "condition": "poor"
+  },
+  "expected": {
+   "cn": 77
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-brush-poor-D",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "D",
+   "land_cover": "brush",
+   "condition": "poor"
+  },
+  "expected": {
+   "cn": 83
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-brush-fair-A",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "A",
+   "land_cover": "brush",
+   "condition": "fair"
+  },
+  "expected": {
+   "cn": 35
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-brush-fair-B",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "B",
+   "land_cover": "brush",
+   "condition": "fair"
+  },
+  "expected": {
+   "cn": 56
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-brush-fair-C",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "C",
+   "land_cover": "brush",
+   "condition": "fair"
+  },
+  "expected": {
+   "cn": 70
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-brush-fair-D",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "D",
+   "land_cover": "brush",
+   "condition": "fair"
+  },
+  "expected": {
+   "cn": 77
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-brush-good-A",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "A",
+   "land_cover": "brush",
+   "condition": "good"
+  },
+  "expected": {
+   "cn": 30
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-brush-good-B",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "B",
+   "land_cover": "brush",
+   "condition": "good"
+  },
+  "expected": {
+   "cn": 48
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-brush-good-C",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "C",
+   "land_cover": "brush",
+   "condition": "good"
+  },
+  "expected": {
+   "cn": 65
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-brush-good-D",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "D",
+   "land_cover": "brush",
+   "condition": "good"
+  },
+  "expected": {
+   "cn": 73
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-woods_grass-poor-A",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "A",
+   "land_cover": "woods_grass",
+   "condition": "poor"
+  },
+  "expected": {
+   "cn": 57
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-woods_grass-poor-B",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "B",
+   "land_cover": "woods_grass",
+   "condition": "poor"
+  },
+  "expected": {
+   "cn": 73
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-woods_grass-poor-C",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "C",
+   "land_cover": "woods_grass",
+   "condition": "poor"
+  },
+  "expected": {
+   "cn": 82
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-woods_grass-poor-D",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "D",
+   "land_cover": "woods_grass",
+   "condition": "poor"
+  },
+  "expected": {
+   "cn": 86
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-woods_grass-fair-A",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "A",
+   "land_cover": "woods_grass",
+   "condition": "fair"
+  },
+  "expected": {
+   "cn": 43
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-woods_grass-fair-B",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "B",
+   "land_cover": "woods_grass",
+   "condition": "fair"
+  },
+  "expected": {
+   "cn": 65
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-woods_grass-fair-C",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "C",
+   "land_cover": "woods_grass",
+   "condition": "fair"
+  },
+  "expected": {
+   "cn": 76
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-woods_grass-fair-D",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "D",
+   "land_cover": "woods_grass",
+   "condition": "fair"
+  },
+  "expected": {
+   "cn": 82
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-woods_grass-good-A",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "A",
+   "land_cover": "woods_grass",
+   "condition": "good"
+  },
+  "expected": {
+   "cn": 32
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-woods_grass-good-B",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "B",
+   "land_cover": "woods_grass",
+   "condition": "good"
+  },
+  "expected": {
+   "cn": 58
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-woods_grass-good-C",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "C",
+   "land_cover": "woods_grass",
+   "condition": "good"
+  },
+  "expected": {
+   "cn": 72
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-woods_grass-good-D",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "D",
+   "land_cover": "woods_grass",
+   "condition": "good"
+  },
+  "expected": {
+   "cn": 79
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-forest-poor-A",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "A",
+   "land_cover": "forest",
+   "condition": "poor"
+  },
+  "expected": {
+   "cn": 45
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-forest-poor-B",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "B",
+   "land_cover": "forest",
+   "condition": "poor"
+  },
+  "expected": {
+   "cn": 66
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-forest-poor-C",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "C",
+   "land_cover": "forest",
+   "condition": "poor"
+  },
+  "expected": {
+   "cn": 77
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-forest-poor-D",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "D",
+   "land_cover": "forest",
+   "condition": "poor"
+  },
+  "expected": {
+   "cn": 83
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-forest-fair-A",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "A",
+   "land_cover": "forest",
+   "condition": "fair"
+  },
+  "expected": {
+   "cn": 36
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-forest-fair-B",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "B",
+   "land_cover": "forest",
+   "condition": "fair"
+  },
+  "expected": {
+   "cn": 60
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-forest-fair-C",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "C",
+   "land_cover": "forest",
+   "condition": "fair"
+  },
+  "expected": {
+   "cn": 73
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-forest-fair-D",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "D",
+   "land_cover": "forest",
+   "condition": "fair"
+  },
+  "expected": {
+   "cn": 79
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-forest-good-A",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "A",
+   "land_cover": "forest",
+   "condition": "good"
+  },
+  "expected": {
+   "cn": 30
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-forest-good-B",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "B",
+   "land_cover": "forest",
+   "condition": "good"
+  },
+  "expected": {
+   "cn": 55
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-forest-good-C",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "C",
+   "land_cover": "forest",
+   "condition": "good"
+  },
+  "expected": {
+   "cn": 70
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-forest-good-D",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "D",
+   "land_cover": "forest",
+   "condition": "good"
+  },
+  "expected": {
+   "cn": 77
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-farmstead-none-A",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "A",
+   "land_cover": "farmstead",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 59
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-farmstead-none-B",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "B",
+   "land_cover": "farmstead",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 74
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-farmstead-none-C",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "C",
+   "land_cover": "farmstead",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 82
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-farmstead-none-D",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2c, p. 2-7"
+  },
+  "inputs": {
+   "hsg": "D",
+   "land_cover": "farmstead",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 86
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-open_space-poor-A",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "A",
+   "land_cover": "open_space",
+   "condition": "poor"
+  },
+  "expected": {
+   "cn": 68
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-open_space-poor-B",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "B",
+   "land_cover": "open_space",
+   "condition": "poor"
+  },
+  "expected": {
+   "cn": 79
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-open_space-poor-C",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "C",
+   "land_cover": "open_space",
+   "condition": "poor"
+  },
+  "expected": {
+   "cn": 86
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-open_space-poor-D",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "D",
+   "land_cover": "open_space",
+   "condition": "poor"
+  },
+  "expected": {
+   "cn": 89
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-open_space-fair-A",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "A",
+   "land_cover": "open_space",
+   "condition": "fair"
+  },
+  "expected": {
+   "cn": 49
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-open_space-fair-B",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "B",
+   "land_cover": "open_space",
+   "condition": "fair"
+  },
+  "expected": {
+   "cn": 69
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-open_space-fair-C",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "C",
+   "land_cover": "open_space",
+   "condition": "fair"
+  },
+  "expected": {
+   "cn": 79
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-open_space-fair-D",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "D",
+   "land_cover": "open_space",
+   "condition": "fair"
+  },
+  "expected": {
+   "cn": 84
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-open_space-good-A",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "A",
+   "land_cover": "open_space",
+   "condition": "good"
+  },
+  "expected": {
+   "cn": 39
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-open_space-good-B",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "B",
+   "land_cover": "open_space",
+   "condition": "good"
+  },
+  "expected": {
+   "cn": 61
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-open_space-good-C",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "C",
+   "land_cover": "open_space",
+   "condition": "good"
+  },
+  "expected": {
+   "cn": 74
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-open_space-good-D",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "D",
+   "land_cover": "open_space",
+   "condition": "good"
+  },
+  "expected": {
+   "cn": 80
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-paved-none-A",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "A",
+   "land_cover": "paved",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 98
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-paved-none-B",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "B",
+   "land_cover": "paved",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 98
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-paved-none-C",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "C",
+   "land_cover": "paved",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 98
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-paved-none-D",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "D",
+   "land_cover": "paved",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 98
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-paved_road_open_ditches-none-A",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "A",
+   "land_cover": "paved_road_open_ditches",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 83
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-paved_road_open_ditches-none-B",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "B",
+   "land_cover": "paved_road_open_ditches",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 89
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-paved_road_open_ditches-none-C",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "C",
+   "land_cover": "paved_road_open_ditches",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 92
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-paved_road_open_ditches-none-D",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "D",
+   "land_cover": "paved_road_open_ditches",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 93
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-gravel-none-A",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "A",
+   "land_cover": "gravel",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 76
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-gravel-none-B",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "B",
+   "land_cover": "gravel",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 85
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-gravel-none-C",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "C",
+   "land_cover": "gravel",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 89
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-gravel-none-D",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "D",
+   "land_cover": "gravel",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 91
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-dirt-none-A",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "A",
+   "land_cover": "dirt",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 72
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-dirt-none-B",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "B",
+   "land_cover": "dirt",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 82
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-dirt-none-C",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "C",
+   "land_cover": "dirt",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 87
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-dirt-none-D",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "D",
+   "land_cover": "dirt",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 89
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-commercial-none-A",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "A",
+   "land_cover": "commercial",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 89
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-commercial-none-B",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "B",
+   "land_cover": "commercial",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 92
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-commercial-none-C",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "C",
+   "land_cover": "commercial",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 94
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-commercial-none-D",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "D",
+   "land_cover": "commercial",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 95
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-industrial-none-A",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "A",
+   "land_cover": "industrial",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 81
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-industrial-none-B",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "B",
+   "land_cover": "industrial",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 88
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-industrial-none-C",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "C",
+   "land_cover": "industrial",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 91
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-industrial-none-D",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "D",
+   "land_cover": "industrial",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 93
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-residential_high-none-A",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "A",
+   "land_cover": "residential_high",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 77
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-residential_high-none-B",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "B",
+   "land_cover": "residential_high",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 85
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-residential_high-none-C",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "C",
+   "land_cover": "residential_high",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 90
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-residential_high-none-D",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "D",
+   "land_cover": "residential_high",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 92
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-residential_quarter_acre-none-A",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "A",
+   "land_cover": "residential_quarter_acre",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 61
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-residential_quarter_acre-none-B",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "B",
+   "land_cover": "residential_quarter_acre",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 75
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-residential_quarter_acre-none-C",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "C",
+   "land_cover": "residential_quarter_acre",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 83
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-residential_quarter_acre-none-D",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "D",
+   "land_cover": "residential_quarter_acre",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 87
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-residential_medium-none-A",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "A",
+   "land_cover": "residential_medium",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 57
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-residential_medium-none-B",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "B",
+   "land_cover": "residential_medium",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 72
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-residential_medium-none-C",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "C",
+   "land_cover": "residential_medium",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 81
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-residential_medium-none-D",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "D",
+   "land_cover": "residential_medium",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 86
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-residential_low-none-A",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "A",
+   "land_cover": "residential_low",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 46
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-residential_low-none-B",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "B",
+   "land_cover": "residential_low",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 65
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-residential_low-none-C",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "C",
+   "land_cover": "residential_low",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 77
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "tr55-residential_low-none-D",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "table 2-2a, p. 2-5"
+  },
+  "inputs": {
+   "hsg": "D",
+   "land_cover": "residential_low",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 82
+  },
+  "conventions": [
+   "ARC II, Ia = 0.2 S (footnote 1)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "neh630-9-water-A",
+  "source": {
+   "citation": "USDA-NRCS (2004). National Engineering Handbook, Part 630 Hydrology, Chapter 9: Hydrologic Soil-Cover Complexes",
+   "locator": "p. 9-1: impervious and water surfaces, which are not listed, are always assigned a CN of 98",
+   "url": "https://www.hydrocad.net/neh/630ch9.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "hsg": "A",
+   "land_cover": "water",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 98
+  },
+  "conventions": [
+   "water as an impervious surface: CN 98, not 100 (Chow et al. 1988; HEC-HMS)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "neh630-9-water-B",
+  "source": {
+   "citation": "USDA-NRCS (2004). National Engineering Handbook, Part 630 Hydrology, Chapter 9: Hydrologic Soil-Cover Complexes",
+   "locator": "p. 9-1: impervious and water surfaces, which are not listed, are always assigned a CN of 98",
+   "url": "https://www.hydrocad.net/neh/630ch9.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "hsg": "B",
+   "land_cover": "water",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 98
+  },
+  "conventions": [
+   "water as an impervious surface: CN 98, not 100 (Chow et al. 1988; HEC-HMS)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "neh630-9-water-C",
+  "source": {
+   "citation": "USDA-NRCS (2004). National Engineering Handbook, Part 630 Hydrology, Chapter 9: Hydrologic Soil-Cover Complexes",
+   "locator": "p. 9-1: impervious and water surfaces, which are not listed, are always assigned a CN of 98",
+   "url": "https://www.hydrocad.net/neh/630ch9.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "hsg": "C",
+   "land_cover": "water",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 98
+  },
+  "conventions": [
+   "water as an impervious surface: CN 98, not 100 (Chow et al. 1988; HEC-HMS)"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "tr55_cn",
+  "case_id": "neh630-9-water-D",
+  "source": {
+   "citation": "USDA-NRCS (2004). National Engineering Handbook, Part 630 Hydrology, Chapter 9: Hydrologic Soil-Cover Complexes",
+   "locator": "p. 9-1: impervious and water surfaces, which are not listed, are always assigned a CN of 98",
+   "url": "https://www.hydrocad.net/neh/630ch9.pdf",
+   "access": "open"
+  },
+  "inputs": {
+   "hsg": "D",
+   "land_cover": "water",
+   "condition": "none"
+  },
+  "expected": {
+   "cn": 98
+  },
+  "conventions": [
+   "water as an impervious surface: CN 98, not 100 (Chow et al. 1988; HEC-HMS)"
+  ],
+  "status": "single_source"
+ }
+]

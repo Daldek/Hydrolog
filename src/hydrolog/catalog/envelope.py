@@ -428,6 +428,10 @@ class CommandResult:
     terms_notice : tuple of str, optional
         The links to the terms that apply to the data, one line each
         (``terms_notice`` of the envelope; Nogat DEV-20.7).
+    formula_versions : Mapping of str to int, optional
+        The ``formula_version`` of each Tier A formula with a spec that gave the
+        result, by the name of its spec (``formula_versions`` of the envelope, absent
+        when none ran; Nogat CMP-2.8, :mod:`hydrolog._formula_versions`).
     """
 
     command: str
@@ -441,6 +445,7 @@ class CommandResult:
     items: tuple[Item, ...] | None = None
     attribution: tuple[str, ...] = ()
     terms_notice: tuple[str, ...] = ()
+    formula_versions: Mapping[str, int] = field(default_factory=dict)
 
     @property
     def status(self) -> Literal["ok", "partial", "failed"]:
@@ -463,6 +468,7 @@ class CommandResult:
         output: object,
         result_schema: str,
         attribution: Attribution | None = None,
+        formula_versions: Mapping[str, int] | None = None,
     ) -> CommandResult:
         """Build the envelope from what an operation returned.
 
@@ -480,6 +486,9 @@ class CommandResult:
         attribution : Attribution, optional
             The lines the run collected (input files, the option ``attribution``);
             merged with those of an :class:`OperationOutput`.
+        formula_versions : Mapping of str to int, optional
+            The formulas the run recorded
+            (:func:`hydrolog._formula_versions.recording`).
 
         Returns
         -------
@@ -524,6 +533,7 @@ class CommandResult:
             items=items,
             attribution=cited.lines,
             terms_notice=cited.terms_notice,
+            formula_versions=dict(formula_versions or {}),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -535,9 +545,10 @@ class CommandResult:
             ``schema``, ``tool``, ``version``, ``command``, ``check``, ``status``,
             ``result`` (via :func:`~hydrolog._serialization.to_jsonable`, a document
             with its ``schema`` first and, when files were written, ``files``),
-            ``items`` for a batch, ``attribution`` and ``terms_notice`` when the run
-            had a provider's data, ``notices``, ``inputs`` and, for a collection,
-            ``page``.
+            ``formula_versions`` when a formula with a spec gave the result (by the
+            name of the spec, sorted), ``items`` for a batch, ``attribution`` and
+            ``terms_notice`` when the run had a provider's data, ``notices``,
+            ``inputs`` and, for a collection, ``page``.
 
         Raises
         ------
@@ -565,6 +576,8 @@ class CommandResult:
             "status": self.status,
             "result": domain,
         }
+        if self.formula_versions:
+            envelope["formula_versions"] = dict(sorted(self.formula_versions.items()))
         if self.items is not None:
             envelope["items"] = [item.to_dict() for item in self.items]
         if self.attribution:

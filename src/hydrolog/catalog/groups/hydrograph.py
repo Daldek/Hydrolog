@@ -424,6 +424,7 @@ GENERATE_ONE_OF: tuple[tuple[str, ...], ...] = (
 
 GENERATE_RANGES: tuple[RangeCheck, ...] = (
     *WATERSHED_TC_RANGES,
+    RangeCheck("scs_cn_runoff", "cn", ("cn",)),
     RangeCheck("scs_cn_amc", "cn", ("cn",)),
     RangeCheck("scs", "area_km2", ("area_km2",)),
     RangeCheck("nash", "n", ("nash_n",)),

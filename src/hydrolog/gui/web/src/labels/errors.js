@@ -29,6 +29,9 @@ export const errors = {
     exclusive_minimum: "Musi być większa od {exclusive_minimum} (podano {value})",
     exclusive_maximum: "Musi być mniejsza od {exclusive_maximum} (podano {value})",
     choice: "Dozwolone wartości: {allowed}",
+    outside_physical_range: "Wartość {value} jest poza zakresem fizycznym {range}",
+    outside_physical_constraint: "Niespełniony warunek fizyczny: {text}",
+    precondition_failed: "Niespełniony warunek stosowalności wzoru: {text}",
     empty: "Nie może być puste",
     invalid_path: "Nieprawidłowa ścieżka pliku",
     unknown_option: "Nieznana opcja tego polecenia",
@@ -120,6 +123,20 @@ function shown(value) {
 }
 
 /**
+ * The physical range of a refused value, as `details.range` of the formula
+ * standard gives it (null for an unbounded end).
+ *
+ * @param {{low?: number|null, high?: number|null, low_inclusive?: boolean, high_inclusive?: boolean}|undefined} range
+ * @returns {string} "[1; 100]" or "[0; ∞)"
+ */
+function physicalRange(range) {
+  if (!range || typeof range !== "object") return "–";
+  const low = typeof range.low === "number" ? shown(range.low) : "−∞";
+  const high = typeof range.high === "number" ? shown(range.high) : "∞";
+  return `${range.low_inclusive ? "[" : "("}${low}; ${high}${range.high_inclusive ? "]" : ")"}`;
+}
+
+/**
  * A list of option names or groups in a message.
  *
  * @param {unknown} items names, or groups of names
@@ -184,6 +201,18 @@ export function reasonText(reason, details = {}) {
       break;
     case "choice":
       text = t(r.choice, { allowed: listed(details.allowed) });
+      break;
+    case "outside_physical_range":
+      text =
+        typeof details.constraint === "string"
+          ? t(r.outside_physical_constraint, { text: String(details.text || details.constraint) })
+          : t(r.outside_physical_range, {
+              value: typeof details.value === "number" ? shown(details.value) : String(details.value ?? "–"),
+              range: physicalRange(details.range),
+            });
+      break;
+    case "precondition_failed":
+      text = t(r.precondition_failed, { text: String(details.text || details.constraint || "–") });
       break;
     case "type": {
       const expected = String(details.expected || "");

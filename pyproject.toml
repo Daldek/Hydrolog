@@ -106,7 +106,7 @@ where = ["src"]
 include = ["hydrolog*"]
 
 [tool.setuptools.package-data]
-hydrolog = ["py.typed", "_data/agents/*.md", "schemas/*.json", "gui/web/**/*"]
+hydrolog = ["py.typed", "_data/agents/*.md", "_data/tables/*.csv", "schemas/*.json", "gui/web/**/*"]
 
 [tool.setuptools.dynamic]
 version = {attr = "hydrolog.__version__"}
@@ -127,6 +127,11 @@ dev = [
     # `uv run --no-sync playwright install chromium`).
     "httpx2>=2.16,<3",
     "playwright>=1.64,<2",
+    # The generated range, type and property tests of the formulas (Hypothesis,
+    # Nogat CMP-6.5, CMP-6.9) and their mutation testing (mutmut, CMP-7.1), at the
+    # versions of Nogat's release set (CMP-8.3).
+    "hypothesis>=6.170.15",
+    "mutmut>=3.8.1",
 ]
 
 [tool.ruff]
@@ -181,6 +186,7 @@ markers = [
     "live: real network services (the PMAXTP of IMGW-PIB); run on demand",
     "slow: more than ~10 s or Docker",
     "db: needs a database (none in this project)",
+    "formula: a test of a formula of the computation standard (Nogat CMP-6.8)",
 ]
 
 [tool.coverage.run]

@@ -1,14 +1,15 @@
 """Operations of the group ``scs``: effective precipitation by SCS-CN.
 
-Wraps :class:`~hydrolog.runoff.SCSCN`. The helpers :func:`to_amc`,
-:func:`load_precipitation_depths` and :func:`ia_coefficient_notices` are shared with
-``hydrograph generate``.
+Computes with :func:`~hydrolog.runoff.scs_cn.runoff_depths` (spec ``scs_cn_runoff``)
+and the AMC conversion of :class:`~hydrolog.runoff.SCSCN` (spec ``scs_cn_amc``). The
+helpers :func:`to_amc`, :func:`load_precipitation_depths` and
+:func:`ia_coefficient_notices` are shared with ``hydrograph generate``.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal, cast, get_args
+from typing import Literal, get_args
 
 import numpy as np
 from numpy.typing import NDArray
@@ -21,6 +22,7 @@ from hydrolog.catalog.notices import notice
 from hydrolog.exceptions import InputDataError
 from hydrolog.operations._common import check_choice, option_error, select_group
 from hydrolog.runoff import AMC, SCSCN
+from hydrolog.runoff.scs_cn import runoff_depths
 
 __all__ = [
     "AMC_CLASSES",
@@ -217,8 +219,10 @@ def scs_effective(
     -------
     OperationOutput
         :class:`ScsEffectiveResult`, an info notice when ``ia_coefficient`` is
-        not the standard 0.2 and an ``outside_typical_range`` notice for AMC I or
-        III with a ``cn`` outside 55-95, where the conversion formulas hold.
+        not the standard 0.2, and an ``outside_typical_range`` notice for a ``cn``
+        outside the applicability of the formulas (``docs/FORMULAS.md``): method
+        ``scs_cn_amc`` for AMC I or III outside 55-95, method ``scs_cn_runoff`` for
+        the CN of the computation below 40 (TR-55).
 
     Raises
     ------
@@ -246,34 +250,30 @@ def scs_effective(
         },
         extra={"value_column": "file"},
     )
-    calculator = SCSCN(cn=cast(int, cn), ia_coefficient=ia_coefficient)
     moisture = to_amc(amc)
-    total: float
-    effective: NDArray[np.float64] | None
+    storm: list[float] | NDArray[np.float64]
     if precipitation_mm is not None:
+        storm = [precipitation_mm]
         total = float(precipitation_mm)
-        rain: float | NDArray[np.float64] = total
-        effective = None
     else:
-        depths = load_precipitation_depths(
+        storm = load_precipitation_depths(
             values=values, input_file=input_file, value_column=value_column
         )
-        total = float(np.sum(depths))
-        rain = depths
+        total = float(np.sum(storm))
     with capture_warnings() as warned:
-        outcome = calculator.effective_precipitation(rain, moisture)
-    if precipitation_mm is None:
-        effective = np.asarray(outcome.effective_mm, dtype=np.float64)
+        calculator = SCSCN(cn=cn, ia_coefficient=ia_coefficient)
+        cn_adjusted = calculator.adjust_cn_for_amc(moisture)
+        outcome = runoff_depths(storm, cn_adjusted, ia_coefficient)
     result = ScsEffectiveResult(
         cn=float(cn),
         amc=amc,
-        cn_adjusted=outcome.cn_adjusted,
+        cn_adjusted=cn_adjusted,
         ia_coefficient=ia_coefficient,
         retention_mm=outcome.retention_mm,
         initial_abstraction_mm=outcome.initial_abstraction_mm,
         total_precipitation_mm=total,
         total_effective_mm=outcome.total_effective_mm,
-        runoff_coefficient=outcome.total_effective_mm / total if total > 0 else 0.0,
-        effective_mm=effective,
+        runoff_coefficient=outcome.runoff_coefficient,
+        effective_mm=None if precipitation_mm is not None else outcome.effective_mm,
     )
     return OperationOutput(result, [*warned, *ia_coefficient_notices(ia_coefficient)])

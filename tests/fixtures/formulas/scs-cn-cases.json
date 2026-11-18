@@ -1,0 +1,675 @@
+[
+ {
+  "formula": "scs_cn_runoff",
+  "case_id": "neh630-ex10-1",
+  "source": {
+   "citation": "USDA-NRCS (2004). National Engineering Handbook, Part 630 Hydrology, Chapter 10: Estimation of Direct Runoff from Storm Rainfall (210-VI-NEH, July 2004)",
+   "url": "https://www.hydrocad.net/neh/630ch10.pdf",
+   "access": "open",
+   "locator": "example 10-1, p. 10-9"
+  },
+  "inputs": {
+   "precipitation_mm": [
+    109.22
+   ],
+   "cn": 74,
+   "ia_coefficient": 0.2
+  },
+  "expected": {
+   "total_effective_mm": 46.228
+  },
+  "printed_precision": {
+   "total_effective_mm": 0.254
+  },
+  "intermediate_rounding": [
+   {
+    "step": "S printed and used as 3.51 in (exact 3.5135 in)",
+    "effect": {
+     "total_effective_mm": 0.036347
+    }
+   }
+  ],
+  "conventions": [
+   "inches in the source, mm here by the exact 25.4 mm/in; P and CN are the example's data",
+   "lambda = 0.2, ARC II"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "USDA-NRCS (2025). 210 NEH Part 630 Subpart H (amended August 2025)",
+   "url": "https://directives.nrcs.usda.gov/",
+   "access": "open",
+   "locator": "figure 630H-6, the same example and numbers"
+  }
+ },
+ {
+  "formula": "scs_cn_runoff",
+  "case_id": "tr55-ex2-1",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "figure 2-5, p. 2-13 (worksheet 2, 'Use CN')"
+  },
+  "inputs": {
+   "precipitation_mm": [
+    152.4
+   ],
+   "cn": 70,
+   "ia_coefficient": 0.2
+  },
+  "expected": {
+   "total_effective_mm": 71.374
+  },
+  "printed_precision": {
+   "total_effective_mm": 0.254
+  },
+  "intermediate_rounding": [
+   {
+    "step": "Q read from table 2-1 or computed with S rounded to 0.01 in",
+    "effect": {
+     "total_effective_mm": 0.04964
+    }
+   }
+  ],
+  "conventions": [
+   "inches in the source, mm here by the exact 25.4 mm/in; P and CN are the example's data",
+   "lambda = 0.2, ARC II"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "USDA-NRCS (2004). National Engineering Handbook, Part 630 Hydrology, Chapter 10: Estimation of Direct Runoff from Storm Rainfall (210-VI-NEH, July 2004)",
+   "url": "https://www.hydrocad.net/neh/630ch10.pdf",
+   "access": "open",
+   "locator": "appendix 10A, P = 6.0 in: the same printed runoff"
+  }
+ },
+ {
+  "formula": "scs_cn_runoff",
+  "case_id": "tr55-ex2-2",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "figure 2-6, p. 2-14 (worksheet 2, 'Use CN')"
+  },
+  "inputs": {
+   "precipitation_mm": [
+    152.4
+   ],
+   "cn": 75,
+   "ia_coefficient": 0.2
+  },
+  "expected": {
+   "total_effective_mm": 83.312
+  },
+  "printed_precision": {
+   "total_effective_mm": 0.254
+  },
+  "intermediate_rounding": [
+   {
+    "step": "Q read from table 2-1 or computed with S rounded to 0.01 in",
+    "effect": {
+     "total_effective_mm": 0.046507
+    }
+   }
+  ],
+  "conventions": [
+   "inches in the source, mm here by the exact 25.4 mm/in; P and CN are the example's data",
+   "lambda = 0.2, ARC II"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "USDA-NRCS (2004). National Engineering Handbook, Part 630 Hydrology, Chapter 10: Estimation of Direct Runoff from Storm Rainfall (210-VI-NEH, July 2004)",
+   "url": "https://www.hydrocad.net/neh/630ch10.pdf",
+   "access": "open",
+   "locator": "appendix 10A, P = 6.0 in: the same printed runoff"
+  }
+ },
+ {
+  "formula": "scs_cn_runoff",
+  "case_id": "tr55-ex2-3",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "figure 2-7, p. 2-15 (worksheet 2, 'Use CN')"
+  },
+  "inputs": {
+   "precipitation_mm": [
+    152.4
+   ],
+   "cn": 77,
+   "ia_coefficient": 0.2
+  },
+  "expected": {
+   "total_effective_mm": 88.392
+  },
+  "printed_precision": {
+   "total_effective_mm": 0.254
+  },
+  "intermediate_rounding": [
+   {
+    "step": "Q read from table 2-1 or computed with S rounded to 0.01 in",
+    "effect": {
+     "total_effective_mm": 0.044699
+    }
+   }
+  ],
+  "conventions": [
+   "inches in the source, mm here by the exact 25.4 mm/in; P and CN are the example's data",
+   "lambda = 0.2, ARC II"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "USDA-NRCS (2004). National Engineering Handbook, Part 630 Hydrology, Chapter 10: Estimation of Direct Runoff from Storm Rainfall (210-VI-NEH, July 2004)",
+   "url": "https://www.hydrocad.net/neh/630ch10.pdf",
+   "access": "open",
+   "locator": "appendix 10A, P = 6.0 in: the same printed runoff"
+  }
+ },
+ {
+  "formula": "scs_cn_runoff",
+  "case_id": "tr55-ex2-4",
+  "source": {
+   "citation": "USDA-SCS (1986). Urban Hydrology for Small Watersheds, Technical Release 55, 2nd ed. (210-VI-TR-55, June 1986)",
+   "url": "https://www.hydrocad.net/pdf/TR-55%20Manual.pdf",
+   "access": "open",
+   "locator": "figure 2-8, p. 2-16 (worksheet 2, 'Use CN')"
+  },
+  "inputs": {
+   "precipitation_mm": [
+    152.4
+   ],
+   "cn": 74,
+   "ia_coefficient": 0.2
+  },
+  "expected": {
+   "total_effective_mm": 81.026
+  },
+  "printed_precision": {
+   "total_effective_mm": 0.254
+  },
+  "intermediate_rounding": [
+   {
+    "step": "Q read from table 2-1 or computed with S rounded to 0.01 in",
+    "effect": {
+     "total_effective_mm": 0.047286
+    }
+   }
+  ],
+  "conventions": [
+   "inches in the source, mm here by the exact 25.4 mm/in; P and CN are the example's data",
+   "lambda = 0.2, ARC II"
+  ],
+  "status": "second_source",
+  "second_source": {
+   "citation": "USDA-NRCS (2004). National Engineering Handbook, Part 630 Hydrology, Chapter 10: Estimation of Direct Runoff from Storm Rainfall (210-VI-NEH, July 2004)",
+   "url": "https://www.hydrocad.net/neh/630ch10.pdf",
+   "access": "open",
+   "locator": "appendix 10A, P = 6.0 in: the same printed runoff"
+  }
+ },
+ {
+  "formula": "scs_cn_runoff",
+  "case_id": "chow1988-ex5-5-1",
+  "source": {
+   "citation": "Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill",
+   "url": "https://ponce.sdsu.edu/Applied_Hydrology_Chow_1988.pdf",
+   "access": "open",
+   "locator": "example 5.5.1, pp. 149-151"
+  },
+  "inputs": {
+   "precipitation_mm": [
+    127.0
+   ],
+   "cn": 83.8,
+   "ia_coefficient": 0.2
+  },
+  "expected": {
+   "total_effective_mm": 82.55
+  },
+  "printed_precision": {
+   "total_effective_mm": 0.254
+  },
+  "intermediate_rounding": [
+   {
+    "step": "S = 1000/83.8 - 10 printed and used as 1.93 in",
+    "effect": {
+     "total_effective_mm": 0.054781
+    }
+   }
+  ],
+  "conventions": [
+   "inches in the source, mm here by the exact 25.4 mm/in; P and CN are the example's data",
+   "lambda = 0.2, ARC II",
+   "CN 83.8 is the source's weighted CN as it uses it"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "scs_cn_runoff",
+  "case_id": "kzgw2017-ex6-2-niedzwiadka",
+  "source": {
+   "citation": "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych, załącznik 2 do OPZ (wersja ujednolicona)",
+   "url": "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf",
+   "access": "open",
+   "locator": "przykład 6.2 (potok Niedźwiadka, A = 7.2 km2, p = 1 %), tabela 6.3, p. 101"
+  },
+  "inputs": {
+   "precipitation_mm": [
+    0,
+    0,
+    0,
+    0.01,
+    0.05,
+    0.13,
+    0.27,
+    0.49,
+    0.82,
+    1.28,
+    1.86,
+    2.58,
+    3.44,
+    4.41,
+    5.48,
+    6.59,
+    7.7,
+    8.72,
+    9.56,
+    10.1,
+    10.19,
+    9.67,
+    8.34,
+    5.98,
+    2.33
+   ],
+   "cn": 79.4,
+   "ia_coefficient": 0.2
+  },
+  "expected": {
+   "effective_mm": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0.07,
+    0.73,
+    1.73,
+    2.95,
+    4.25,
+    5.51,
+    6.54,
+    7.18,
+    7.23,
+    6.5,
+    4.79,
+    1.89
+   ]
+  },
+  "printed_precision": {
+   "precipitation_mm": 0.01,
+   "effective_mm": 0.01
+  },
+  "conventions": [
+   "KZGW eqs. 6.1-6.2: S = 25.4 (1000/CN - 10) mm, cumulative effective rainfall, Ia = 0.2 S, average moisture (AMC II)",
+   "hourly rainfall printed to 0.01 mm"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "scs_cn_runoff",
+  "case_id": "kzgw2017-ex6-1-jasienica-total",
+  "source": {
+   "citation": "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych, załącznik 2 do OPZ (wersja ujednolicona)",
+   "url": "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf",
+   "access": "open",
+   "locator": "przykład 6.1 (Jasienica, A = 45.3 km2, p = 1 %), pkt 6-8 and tabela 6.1, pp. 92-94"
+  },
+  "inputs": {
+   "precipitation_mm": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0.1,
+    0.2,
+    0.6,
+    1.5,
+    3.0,
+    5.3,
+    8.5,
+    12.3,
+    16.1,
+    18.8,
+    19.6,
+    17.9,
+    13.7,
+    8.2,
+    3.4,
+    0.7,
+    0.0
+   ],
+   "cn": 81.5,
+   "ia_coefficient": 0.2
+  },
+  "expected": {
+   "total_effective_mm": 79.6,
+   "retention_mm": 57.66
+  },
+  "printed_precision": {
+   "precipitation_mm": 0.1,
+   "total_effective_mm": 0.1,
+   "retention_mm": 0.01
+  },
+  "conventions": [
+   "KZGW eqs. 6.1-6.2, AMC II; hourly rainfall printed to 0.1 mm"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "scs_cn_runoff",
+  "case_id": "kzgw2017-ex6-1-jasienica-hourly",
+  "source": {
+   "citation": "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych, załącznik 2 do OPZ (wersja ujednolicona)",
+   "url": "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf",
+   "access": "open",
+   "locator": "tabela 6.1, p. 94, hourly effective rainfall"
+  },
+  "inputs": {
+   "precipitation_mm": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0.1,
+    0.2,
+    0.6,
+    1.5,
+    3.0,
+    5.3,
+    8.5,
+    12.3,
+    16.1,
+    18.8,
+    19.6,
+    17.9,
+    13.7,
+    8.2,
+    3.4,
+    0.7,
+    0.0
+   ],
+   "cn": 81.5,
+   "ia_coefficient": 0.2
+  },
+  "expected": {
+   "effective_mm": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0.8,
+    4.0,
+    8.5,
+    12.8,
+    15.3,
+    15.0,
+    12.0,
+    7.4,
+    3.1,
+    0.7,
+    0.0
+   ]
+  },
+  "printed_precision": {
+   "precipitation_mm": 0.1,
+   "effective_mm": 0.1
+  },
+  "second_source": {
+   "citation": "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych, załącznik 2 do OPZ (wersja ujednolicona)",
+   "url": "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf",
+   "access": "open",
+   "locator": "przykład 6.1, pkt 6-8: the total 79.6 mm and S 57.66 mm agree with the formula"
+  },
+  "status": "discrepancy",
+  "discrepancy": "the hourly values at t = 14-16 h (0.8, 4.0, 8.5 mm) do not follow from the printed rainfall (the formula gives 0.9, 4.24, 8.74 mm), while their sum and S do: an inconsistency of the source's table"
+ },
+ {
+  "formula": "scs_cn_retention",
+  "case_id": "kzgw2017-ex6-1-s",
+  "source": {
+   "citation": "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych, załącznik 2 do OPZ (wersja ujednolicona)",
+   "url": "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf",
+   "access": "open",
+   "locator": "przykład 6.1, pkt 6, p. 93"
+  },
+  "inputs": {
+   "cn": 81.5
+  },
+  "expected": {
+   "retention_mm": 57.66
+  },
+  "printed_precision": {
+   "retention_mm": 0.01
+  },
+  "conventions": [
+   "S in mm; an inch value of the source times the exact 25.4"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "scs_cn_retention",
+  "case_id": "chow1988-ex5-5-1-s",
+  "source": {
+   "citation": "Chow, V.T., Maidment, D.R. and Mays, L.W. (1988). Applied Hydrology. McGraw-Hill",
+   "url": "https://ponce.sdsu.edu/Applied_Hydrology_Chow_1988.pdf",
+   "access": "open",
+   "locator": "example 5.5.1, p. 151"
+  },
+  "inputs": {
+   "cn": 83.8
+  },
+  "expected": {
+   "retention_mm": 49.022
+  },
+  "printed_precision": {
+   "retention_mm": 0.254
+  },
+  "conventions": [
+   "S in mm; an inch value of the source times the exact 25.4"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "scs_cn_retention",
+  "case_id": "neh630-ex10-1-s",
+  "source": {
+   "citation": "USDA-NRCS (2004). National Engineering Handbook, Part 630 Hydrology, Chapter 10: Estimation of Direct Runoff from Storm Rainfall (210-VI-NEH, July 2004)",
+   "url": "https://www.hydrocad.net/neh/630ch10.pdf",
+   "access": "open",
+   "locator": "example 10-1, p. 10-9"
+  },
+  "inputs": {
+   "cn": 74
+  },
+  "expected": {
+   "retention_mm": 89.154
+  },
+  "printed_precision": {
+   "retention_mm": 0.254
+  },
+  "conventions": [
+   "S in mm; an inch value of the source times the exact 25.4"
+  ],
+  "status": "single_source"
+ },
+ {
+  "formula": "scs_cn_retention",
+  "case_id": "kzgw2017-ex6-2-s",
+  "source": {
+   "citation": "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych, załącznik 2 do OPZ (wersja ujednolicona)",
+   "url": "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf",
+   "access": "open",
+   "locator": "przykład 6.2, pkt 5, p. 99"
+  },
+  "inputs": {
+   "cn": 79.4
+  },
+  "expected": {
+   "retention_mm": 68.9
+  },
+  "printed_precision": {
+   "retention_mm": 0.1
+  },
+  "conventions": [
+   "S in mm; an inch value of the source times the exact 25.4"
+  ],
+  "status": "discrepancy",
+  "second_source": {
+   "citation": "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych, załącznik 2 do OPZ (wersja ujednolicona)",
+   "url": "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf",
+   "access": "open",
+   "locator": "tabela 6.3, p. 101: the example's effective rainfall, reproduced with S = 65.90 mm only"
+  },
+  "discrepancy": "'S = 68,9 mm' is a misprint of 65,9: 25.4 (1000/79.4 - 10) = 65.90 mm, and the example's hourly runoff agrees with 65.90 mm within 0.006 mm but not with 68.9 mm (up to 0.18 mm)"
+ },
+ {
+  "formula": "scs_cn_amc",
+  "case_id": "banasik2014-zagozdzonka-arc-iii",
+  "source": {
+   "citation": "Banasik, K., Rutkowska, A. and Kohnová, S. (2014). Retention and curve number variability in a small agricultural catchment: the probabilistic approach. Water 6(5), 1118-1133, doi:10.3390/w6051118",
+   "url": "https://mdpi-res.com/d_attachment/water/water-06-01118/article_deploy/water-06-01118.pdf",
+   "access": "open",
+   "locator": "eq. 13, p. 1124; eq. 16, p. 1127"
+  },
+  "inputs": {
+   "cn": 74.6,
+   "amc": "III"
+  },
+  "expected": {
+   "cn_adjusted": 87
+  },
+  "conventions": [
+   "Hawkins et al. (1985) formula; the source prints 87.3, which the convention of scs_cn_amc rounds to 87",
+   "CN 74.6 is the tabulated CN of the Zagożdżonka catchment (23.4 km2, central Poland)"
+  ],
+  "second_source": {
+   "citation": "Ponce, V.M. and Hawkins, R.H. (1996). Runoff curve number: has it reached maturity? Journal of Hydrologic Engineering 1(1), 11-19",
+   "url": "https://www.uvm.edu/~bwemple/HydroModel/ponce1996.pdf",
+   "access": "open",
+   "locator": "eqs. 13-16, p. 15"
+  },
+  "status": "second_source"
+ },
+ {
+  "formula": "scs_cn_amc",
+  "case_id": "banasik2014-zagozdzonka-arc-i",
+  "source": {
+   "citation": "Banasik, K., Rutkowska, A. and Kohnová, S. (2014). Retention and curve number variability in a small agricultural catchment: the probabilistic approach. Water 6(5), 1118-1133, doi:10.3390/w6051118",
+   "url": "https://mdpi-res.com/d_attachment/water/water-06-01118/article_deploy/water-06-01118.pdf",
+   "access": "open",
+   "locator": "eq. 12, p. 1124; eq. 16, p. 1127"
+  },
+  "inputs": {
+   "cn": 74.6,
+   "amc": "I"
+  },
+  "expected": {
+   "cn_adjusted": 60
+  },
+  "conventions": [
+   "the source prints 59.6"
+  ],
+  "second_source": {
+   "citation": "Ponce, V.M. and Hawkins, R.H. (1996). Runoff curve number: has it reached maturity? Journal of Hydrologic Engineering 1(1), 11-19",
+   "url": "https://www.uvm.edu/~bwemple/HydroModel/ponce1996.pdf",
+   "access": "open",
+   "locator": "eqs. 13-16, p. 15"
+  },
+  "status": "discrepancy",
+  "discrepancy": "the source computed 59.6 with its misprinted coefficient 0.01381 (eq. 12); with 0.01281 of Ponce and Hawkins (1996, eq. 15) the formula gives 56.29, rounded 56"
+ },
+ {
+  "formula": "scs_cn_amc",
+  "case_id": "neh630-ex10-2-arc-i",
+  "source": {
+   "citation": "USDA-NRCS (2004). National Engineering Handbook, Part 630 Hydrology, Chapter 10: Estimation of Direct Runoff from Storm Rainfall (210-VI-NEH, July 2004)",
+   "url": "https://www.hydrocad.net/neh/630ch10.pdf",
+   "access": "open",
+   "locator": "example 10-2, p. 10-10; table 10-1, p. 10-6"
+  },
+  "inputs": {
+   "cn": 74.0,
+   "amc": "I"
+  },
+  "expected": {
+   "cn_adjusted": 55
+  },
+  "conventions": [
+   "NEH reads the CN of the condition from table 10-1"
+  ],
+  "second_source": {
+   "citation": "Ponce, V.M. and Hawkins, R.H. (1996). Runoff curve number: has it reached maturity? Journal of Hydrologic Engineering 1(1), 11-19",
+   "url": "https://www.uvm.edu/~bwemple/HydroModel/ponce1996.pdf",
+   "access": "open",
+   "locator": "eqs. 13-16, p. 15"
+  },
+  "status": "discrepancy",
+  "discrepancy": "another convention, not a defect: Hydrolog converts by the fit of Hawkins et al. (1985), which differs from NEH table 10-1 by up to 2 CN for ARC I and 1 CN for ARC III (the spec's validation); here 56 and 87"
+ },
+ {
+  "formula": "scs_cn_amc",
+  "case_id": "neh630-ex10-2-arc-iii",
+  "source": {
+   "citation": "USDA-NRCS (2004). National Engineering Handbook, Part 630 Hydrology, Chapter 10: Estimation of Direct Runoff from Storm Rainfall (210-VI-NEH, July 2004)",
+   "url": "https://www.hydrocad.net/neh/630ch10.pdf",
+   "access": "open",
+   "locator": "example 10-2, p. 10-10; table 10-1, p. 10-6"
+  },
+  "inputs": {
+   "cn": 74.0,
+   "amc": "III"
+  },
+  "expected": {
+   "cn_adjusted": 88
+  },
+  "conventions": [
+   "NEH reads the CN of the condition from table 10-1"
+  ],
+  "second_source": {
+   "citation": "Ponce, V.M. and Hawkins, R.H. (1996). Runoff curve number: has it reached maturity? Journal of Hydrologic Engineering 1(1), 11-19",
+   "url": "https://www.uvm.edu/~bwemple/HydroModel/ponce1996.pdf",
+   "access": "open",
+   "locator": "eqs. 13-16, p. 15"
+  },
+  "status": "discrepancy",
+  "discrepancy": "another convention, not a defect: Hydrolog converts by the fit of Hawkins et al. (1985), which differs from NEH table 10-1 by up to 2 CN for ARC I and 1 CN for ARC III (the spec's validation); here 56 and 87"
+ }
+]
