@@ -143,7 +143,7 @@ def test_the_tc_comparison_lists_six_methods_with_their_range_words(tab: Tab) ->
     expect(page.locator(f"{hydrogram} #hg-tc_method")).to_have_value("nrcs")
     expect(
         page.locator(f'{hydrogram} .view-panel.right [data-kpi="q"] .v')
-    ).to_have_text(re.compile(r"^41,64\s*m³/s$"))
+    ).to_have_text(re.compile(r"^41,63\s*m³/s$"))
     page.go_back()
     expect(bars.nth(3)).to_have_attribute("class", "hbar warn used")
     expect(bars.first).to_have_attribute("class", "hbar warn")

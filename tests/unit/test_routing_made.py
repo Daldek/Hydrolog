@@ -383,26 +383,22 @@ class TestTheTimeStep:
 
 
 class TestWhatTheRunObserves:
-    def test_a_duration_that_is_not_a_whole_number_of_steps_is_a_notice_of_the_node(
+    def test_a_storm_that_is_not_a_whole_number_of_steps_is_refused_with_its_node(
         self,
     ):
+        """62 min in steps of 5 min used to be 30 mm in 60 min and a notice."""
         short = DesignStorm(30.0, 62.0, BlockHietogram())
-        whole = DesignStorm(30.0, 60.0, BlockHietogram())
-        network = RoutingNetwork(
-            Outlet(
-                "OUT",
-                inflow=Junction(
-                    "J", inflows=[made("A", rainfall=short), made("B", rainfall=whole)]
-                ),
-            )
-        )
+        network = RoutingNetwork(Outlet("OUT", inflow=made("A", rainfall=short)))
 
-        result = network.route()
+        with pytest.raises(InvalidParameterError) as caught:
+            network.route()
 
-        (notice,) = result.nodes["A"].notices
-        assert (notice.code, notice.level) == ("duration_not_covered", "warning")
-        assert "62 min" in notice.message and "60 min" in notice.message
-        assert result.nodes["B"].notices == []
+        assert caught.value.details == {
+            "option": "duration_min",
+            "reason": "not_multiple",
+            "timestep_min": DEFAULT_TIMESTEP_MIN,
+            "node_id": "A",
+        }
 
     def test_a_warning_of_the_library_is_a_notice_of_the_node_that_caused_it(self):
         """Kirpich on 12 km2 with 10 m over 12 km: the area and the slope are outside

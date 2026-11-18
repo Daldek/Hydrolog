@@ -12,6 +12,9 @@
   rainfall reads the arguments its shape requires; `euler_ii` takes the curve `depth_duration_mm` and has no
   `peak_position`, and an old `euler_ii` rainfall without a curve is refused (`missing_field`) while the schema stays
   `/1`.
+- Amended by [ADR-0046](0046-design-hyetographs-of-whole-steps-and-exact-blocks.md) (2026-11-18): a design storm
+  whose duration is not a whole number of the network's steps is refused with its node (`not_multiple`); the notice
+  `duration_not_covered` is gone.
 
 ## Context
 

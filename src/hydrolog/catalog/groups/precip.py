@@ -30,8 +30,14 @@ _TYPE_EN = (
 
 _TYPE_MEANINGS = {
     "block": "Uniform intensity over the whole duration.",
-    "triangular": "Linear rise to the peak at `peak_position`, then linear fall.",
-    "beta": "Shape of a Beta density with parameters `alpha` and `beta`.",
+    "triangular": (
+        "Triangle of Yen and Chow: linear rise to the peak at `peak_position` of "
+        "the duration, linear fall; each step holds its integral."
+    ),
+    "beta": (
+        "Beta density with parameters `alpha` and `beta`; each step holds its "
+        "integral (differences of the Beta distribution function)."
+    ),
     "euler_ii": (
         "Euler type II of ATV-DVWK-A 118, built from a depth-duration curve: peak "
         "from 0.3 of the duration (rounded down to the step)."
@@ -39,8 +45,14 @@ _TYPE_MEANINGS = {
 }
 _TYPE_MEANINGS_PL = {
     "block": "Stała intensywność w całym czasie trwania.",
-    "triangular": "Liniowy wzrost do maksimum w `peak_position`, potem spadek.",
-    "beta": "Kształt gęstości rozkładu beta o parametrach `alpha` i `beta`.",
+    "triangular": (
+        "Trójkąt Yena i Chowa: liniowy wzrost do maksimum w `peak_position` czasu "
+        "trwania, potem spadek; krok ma całkę trójkąta w swoim przedziale."
+    ),
+    "beta": (
+        "Gęstość rozkładu beta o parametrach `alpha` i `beta`; krok ma jej całkę "
+        "(różnicę dystrybuanty) w swoim przedziale."
+    ),
     "euler_ii": (
         "Euler typu II wg ATV-DVWK-A 118, z krzywej wysokość–czas trwania: "
         "maksimum od 0,3 czasu trwania (w dół do wielokrotności kroku)."
@@ -78,16 +90,14 @@ HIETOGRAM_OPTIONS: tuple[Option, ...] = (
         name="duration_min",
         type="number",
         description_pl=(
-            "Czas trwania opadu [min]; > 0 i nie krótszy niż krok czasowy. "
-            "Hietogram ma `int(duration_min / timestep_min)` kroków; gdy czas "
-            "trwania nie jest wielokrotnością kroku, końcówka nie jest pokryta "
-            "(uwaga w wyniku), a `euler_ii` go odrzuca."
+            "Czas trwania opadu [min]; > 0, nie krótszy niż krok czasowy i jego "
+            "całkowita wielokrotność: hietogram ma `duration_min / timestep_min` "
+            "kroków i trwa cały czas trwania."
         ),
         description=(
-            "Rainfall duration [min]; > 0 and not shorter than the time step. The "
-            "hyetograph has `int(duration_min / timestep_min)` steps; when the "
-            "duration is not a multiple of the step the tail is not covered (a "
-            "notice reports it), and `euler_ii` refuses it."
+            "Rainfall duration [min]; > 0, not shorter than the time step and a "
+            "whole number of steps: the hyetograph has `duration_min / timestep_min` "
+            "steps and lasts the whole duration."
         ),
         required=True,
         exclusive_minimum=0,
@@ -107,13 +117,13 @@ HIETOGRAM_OPTIONS: tuple[Option, ...] = (
         type="number",
         description_pl=(
             "Parametr α rozkładu beta (kształt ramienia wznoszącego), > 0; "
-            "tylko dla `beta`; domyślnie 2. Para (2; 5) daje wczesne maksimum "
-            "(opad konwekcyjny), (2; 2) — symetryczne, (5; 2) — późne."
+            "tylko dla `beta`; domyślnie 2. Para (2; 5) daje maksimum w 0,2 "
+            "czasu trwania, (2; 2) — w środku, (5; 2) — w 0,8."
         ),
         description=(
             "Parameter α of the Beta distribution (shape of the rising limb), > 0; "
-            "only for `beta`; default 2. The pair (2; 5) gives an early peak "
-            "(convective storm), (2; 2) a symmetric one, (5; 2) a late one."
+            "only for `beta`; default 2. The pair (2; 5) puts the peak at 0.2 of "
+            "the duration, (2; 2) at the centre, (5; 2) at 0.8."
         ),
         exclusive_minimum=0,
     ),
@@ -134,15 +144,17 @@ HIETOGRAM_OPTIONS: tuple[Option, ...] = (
         name="peak_position",
         type="number",
         description_pl=(
-            "Względne położenie maksimum w czasie trwania, 0 < p < 1 (bez "
-            "końców); tylko dla `triangular`; domyślnie 0,5."
+            "Względne położenie maksimum trójkąta w czasie trwania (współczynnik "
+            "r Yena i Chowa), 0 < r < 1 (bez końców); tylko dla `triangular`; "
+            "domyślnie 0,5."
         ),
         description=(
-            "Relative position of the peak within the duration, 0 < p < 1 "
-            "(exclusive); only for `triangular`; default 0.5."
+            "Relative time of the peak of the triangle within the duration (Yen "
+            "and Chow's storm advancement coefficient r), 0 < r < 1 (exclusive); "
+            "only for `triangular`; default 0.5."
         ),
         exclusive_minimum=0,
-        maximum=1,
+        exclusive_maximum=1,
     ),
     Option(
         name="depth_duration_mm",
@@ -258,11 +270,17 @@ PMAXTP_OPTIONS: tuple[Option, ...] = (
         choices=METHODS,
         default="POT",
         meanings={
-            "POT": "Peaks over a threshold, the method IMGW-PIB recommends.",
+            "POT": (
+                "Peaks over a threshold; IMGW-PIB recommends it for p >= 50 % and "
+                "treats AMP and POT as equivalent below."
+            ),
             "AMP": "Annual maximum precipitation.",
         },
         meanings_pl={
-            "POT": "Szczyty ponad progiem, metoda zalecana przez IMGW-PIB.",
+            "POT": (
+                "Szczyty ponad progiem; IMGW-PIB zaleca ją dla p >= 50 %, a poniżej "
+                "uznaje AMP i POT za równorzędne."
+            ),
             "AMP": "Maksima roczne opadu.",
         },
     ),
@@ -299,27 +317,27 @@ COMMANDS: tuple[Command, ...] = (
         result_schema="hydrolog-precip-hietogram/1",
         cardinality="bounded",
         rules=(
-            "Pass duration_min >= timestep_min.",
+            "Pass duration_min as a whole multiple of timestep_min.",
             (
                 "Use alpha and beta only for beta, peak_position for triangular, "
                 "depth_duration_mm or depth_duration_file for euler_ii."
             ),
-            "Read depths_mm in mm per step; check `notices`.",
+            "Read depths_mm in mm per step.",
         ),
         rules_pl=(
-            "Podaj duration_min >= timestep_min.",
+            "Podaj duration_min jako całkowitą wielokrotność timestep_min.",
             (
                 "alpha i beta tylko dla beta, peak_position dla triangular, "
                 "depth_duration_mm lub depth_duration_file dla euler_ii."
             ),
-            "depths_mm to mm na krok; sprawdź `notices`.",
+            "depths_mm to mm na krok.",
         ),
         errors=("validation_error", "not_found", "data_error"),
         example_results=(
             {
                 "hietogram_type": "beta",
                 "n_steps": 12,
-                "peak_intensity_mm_per_h": 121.701,
+                "peak_intensity_mm_per_h": 121.704,
                 "parameters": {"alpha": 2.0, "beta": 5.0},
             },
             {
@@ -582,11 +600,18 @@ COMMANDS: tuple[Command, ...] = (
                 type="number_list",
                 description_pl=(
                     "Dla isohyet: wartości kolejnych izohiet [mm] (co najmniej "
-                    "2; n izohiet to n−1 stref)."
+                    "2; n izohiet to n−1 stref, średnia strefy to średnia jej "
+                    "granic). Strefa brzegowa zlewni dostaje granicę umowną, "
+                    "dla której ta średnia równa się opadowi oszacowanemu dla "
+                    "strefy (Chow i in. 1988: 0 i 56 mm dla 5 i 53 mm)."
                 ),
                 description=(
                     "For isohyet: values of the consecutive isohyets [mm] (at "
-                    "least 2; n isohyets make n-1 zones)."
+                    "least 2; n isohyets make n-1 zones, a zone's mean is the "
+                    "mean of its bounds). An edge zone of the watershed takes a "
+                    "notional bound that makes that mean the precipitation "
+                    "estimated for the zone (Chow et al. 1988: 0 and 56 mm for "
+                    "5 and 53 mm)."
                 ),
                 minimum=0,
                 unit="mm",

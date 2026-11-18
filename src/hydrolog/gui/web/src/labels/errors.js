@@ -59,7 +59,7 @@ export const errors = {
     timeout: "{source} nie odpowiedział na czas: spróbuj ponownie później",
     network: "Brak połączenia z {source}: sprawdź sieć i spróbuj ponownie",
     http_status: "{source} odpowiedział błędem HTTP {status}: spróbuj ponownie później",
-    not_multiple: "Czas trwania musi być wielokrotnością kroku Δt = {timestep} min: Euler II składa się z całych bloków",
+    not_multiple: "Czas trwania musi być wielokrotnością kroku Δt = {timestep} min: hietogram składa się z całych kroków",
     total_mismatch: "Euler II ma sumę równą wysokości krzywej wysokość–czas trwania dla {duration} min: {depth} mm",
   },
   /** The sentences of the errors of Euler II's depth-duration curve, by `details.reason`. */

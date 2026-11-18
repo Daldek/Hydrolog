@@ -1004,12 +1004,12 @@
             "duration_min": {
               "type": "number",
               "exclusiveMinimum": 0,
-              "description": "Rainfall duration [min]; > 0 and not shorter than the time step. The hyetograph has `int(duration_min / timestep_min)` steps; when the duration is not a multiple of the step the tail is not covered (a notice reports it), and `euler_ii` refuses it."
+              "description": "Rainfall duration [min]; > 0, not shorter than the time step and a whole number of steps: the hyetograph has `duration_min / timestep_min` steps and lasts the whole duration."
             },
             "alpha": {
               "type": "number",
               "exclusiveMinimum": 0,
-              "description": "Parameter α of the Beta distribution (shape of the rising limb), > 0; only for `beta`; default 2. The pair (2; 5) gives an early peak (convective storm), (2; 2) a symmetric one, (5; 2) a late one."
+              "description": "Parameter α of the Beta distribution (shape of the rising limb), > 0; only for `beta`; default 2. The pair (2; 5) puts the peak at 0.2 of the duration, (2; 2) at the centre, (5; 2) at 0.8."
             },
             "beta": {
               "type": "number",
@@ -1018,9 +1018,9 @@
             },
             "peak_position": {
               "type": "number",
-              "maximum": 1,
               "exclusiveMinimum": 0,
-              "description": "Relative position of the peak within the duration, 0 < p < 1 (exclusive); only for `triangular`; default 0.5."
+              "exclusiveMaximum": 1,
+              "description": "Relative time of the peak of the triangle within the duration (Yen and Chow's storm advancement coefficient r), 0 < r < 1 (exclusive); only for `triangular`; default 0.5."
             },
             "depth_duration_mm": {
               "type": "object",

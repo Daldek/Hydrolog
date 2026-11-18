@@ -292,7 +292,7 @@ export const PMAXTP_DURATIONS = Object.freeze([
   "4320",
 ]);
 
-/** The methods of PMAXTP: POT (Hydrolog's default, which IMGW-PIB recommends) and AMP. */
+/** The methods of PMAXTP: POT (Hydrolog's default; IMGW-PIB recommends it for p ≥ 50 %) and AMP. */
 export const PMAXTP_METHODS = Object.freeze(["POT", "AMP"]);
 
 /** The field of the panel that holds each option of `precip pmaxtp`. */
@@ -1053,14 +1053,13 @@ export function watershedErrors(watershed, models, names = WATERSHED_FIELDS) {
 
 /**
  * The warnings a run's notices give the panel's fields: a value outside its typical range
- * on the field Hydrolog names (`details.field`; a range to be verified says so), λ other
- * than 0,2 on λ and a duration the time step does not divide on the duration.
+ * on the field Hydrolog names (`details.field`; a range to be verified says so) and λ
+ * other than 0,2 on λ.
  *
  * @param {object[]} notices the notices of hydrolog-result/1
- * @param {object} inputs the inputs of the run
  * @returns {Object<string, string>} a message by field name
  */
-function noticeWarnings(notices, inputs) {
+function noticeWarnings(notices) {
   const found = {};
   const add = (name, text, code) => {
     const message = withReason(text, code);
@@ -1077,8 +1076,6 @@ function noticeWarnings(notices, inputs) {
       add(details.field, text, notice.code);
     } else if (notice.code === "ia_coefficient_nonstandard") {
       add("ia_coefficient", describeNotice(notice).text, notice.code);
-    } else if (notice.code === "duration_not_covered") {
-      add(optionField(inputs, "duration_min"), describeNotice(notice).text, notice.code);
     }
   }
   return found;
@@ -1127,7 +1124,7 @@ export function checkInputs(inputs, models, last = null) {
   const warnings = {};
   if (last && Array.isArray(last.notices)) {
     const same = SETTING.every((key) => last.inputs[key] === inputs[key]);
-    const words = same ? noticeWarnings(last.notices, last.inputs) : {};
+    const words = same ? noticeWarnings(last.notices) : {};
     for (const [name, message] of Object.entries(words)) {
       if (found[name] || !shown.includes(name)) continue;
       if (String(fieldText(last.inputs, name) ?? "") === String(fieldText(inputs, name) ?? "")) warnings[name] = message;

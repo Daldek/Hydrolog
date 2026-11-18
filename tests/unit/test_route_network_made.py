@@ -143,16 +143,22 @@ class TestTheSummary:
 
 class TestTheNotices:
     def test_a_notice_begins_with_the_id_of_its_node_and_names_it_in_details(self):
-        content = stream(rainfall={**BLOCK, "duration_min": 62})
-
-        notices = route_network(network=content).notices
+        notices = route_network(network=stream(rainfall=BLOCK)).notices
 
         by_code = {notice.code: notice for notice in notices}
-        assert by_code["duration_not_covered"].level == "warning"
-        assert by_code["duration_not_covered"].message.startswith("A: ")
-        assert by_code["duration_not_covered"].details == {"node_id": "A"}
         assert by_code["tail_extended"].message.startswith("R: ")
         assert by_code["tail_extended"].details == {"node_id": "R"}
+
+    def test_a_storm_that_is_not_a_whole_number_of_steps_is_refused_naming_its_node(
+        self,
+    ):
+        content = stream(rainfall={**BLOCK, "duration_min": 62})
+
+        with pytest.raises(InvalidParameterError) as caught:
+            route_network(network=content)
+
+        assert caught.value.details["node_id"] == "A"
+        assert caught.value.details["reason"] == "not_multiple"
 
     def test_a_warning_of_the_library_is_a_notice_and_is_not_printed(self):
         """Kirpich on 12 km2 with 10 m over 12 km: the area and the slope are outside

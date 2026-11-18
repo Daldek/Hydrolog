@@ -30,11 +30,7 @@ from hydrolog.operations._common import (
     require_option,
     select_group,
 )
-from hydrolog.operations.precip import (
-    HietogramType,
-    build_hietogram,
-    hietogram_notices,
-)
+from hydrolog.operations.precip import HietogramType, build_hietogram
 from hydrolog.operations.scs import (
     Amc,
     ia_coefficient_notices,
@@ -605,7 +601,6 @@ def compute_hydrograph(
                 depth_duration_mm=depth_duration_mm,
                 depth_duration_file=depth_duration_file,
             )
-            notices.extend(hietogram_notices(hietogram))
             generated: str | None = hietogram_type
         else:
             depths = load_precipitation_depths(

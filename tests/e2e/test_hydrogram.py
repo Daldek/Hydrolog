@@ -141,13 +141,13 @@ which ``nash_estimation`` reads): the first of the two runs the page made before
 # 29,14 came before those changes).
 MOCKUP = {
     ("scs", "kirpich", "II"): ("57,88", "6:40", "1 046 713"),
-    ("scs", "nrcs", "II"): ("41,64", "9:00", "1 046 957"),
-    ("scs", "giandotti", "II"): ("45,57", "8:20", "1 046 934"),
+    ("scs", "nrcs", "II"): ("41,63", "9:00", "1 046 957"),
+    ("scs", "giandotti", "II"): ("45,56", "8:20", "1 046 934"),
     ("scs", "kerby_kirpich", "II"): ("55,92", "6:50", "1 046 762"),
     ("scs", "kirpich", "III"): ("111,08", "6:00", "2 112 788"),
-    ("scs", "kirpich", "I"): ("12,19", "7:50", "193 986"),
-    ("clark", "kirpich", "II"): ("52,74", "7:10", "1 046 551"),
-    ("nash", None, "II"): ("37,48", "9:10", "1 046 543"),
+    ("scs", "kirpich", "I"): ("12,18", "7:50", "193 986"),
+    ("clark", "kirpich", "II"): ("52,73", "7:10", "1 046 551"),
+    ("nash", None, "II"): ("37,47", "9:10", "1 046 543"),
     ("snyder", None, "II"): ("27,46", "11:00", "1 046 551"),
 }
 # Scroll containers that must not scroll sideways: the page and an open sheet.
@@ -483,7 +483,7 @@ def test_the_worked_example_shows_the_result_of_the_mockup(tab: Tab) -> None:
     expect(peak.locator("td").last).to_have_text("57,88")
     rows = page.locator(f"{CENTER} .dtable tbody tr")
     expect(rows).to_have_count(len(result["times_min"]))
-    expect(rows.nth(1).locator("td").nth(1)).to_have_text("0,30")
+    expect(rows.nth(1).locator("td").nth(1)).to_have_text("0,29")
 
     # Kalkulatory reads the whole watershed from the store
     stored = page.evaluate(
@@ -1281,7 +1281,7 @@ def test_errors_stand_on_their_field_before_or_after_the_run_or_above(tab: Tab) 
     page = open_hydrogram(tab)
     # A tc method's field missing: marked at once, nothing runs
     field(page, "tc_method").select_option("faa")
-    shows(page, "72,23", "4:30", "1 046 077")
+    shows(page, "72,22", "4:30", "1 046 077")
     runs = Runs(page)
     field(page, "runoff_coeff").fill("")
     expect(message(page, "runoff_coeff")).to_have_text(
@@ -1294,7 +1294,7 @@ def test_errors_stand_on_their_field_before_or_after_the_run_or_above(tab: Tab) 
     page.wait_for_timeout(600)
     assert runs.generate == []
     field(page, "runoff_coeff").fill("0,25")
-    shows(page, "72,23", "4:30", "1 046 077")
+    shows(page, "72,22", "4:30", "1 046 077")
     field(page, "tc_method").select_option("kirpich")
     shows(page, "57,88", "6:40", "1 046 713")
 
@@ -1343,19 +1343,24 @@ def test_errors_stand_on_their_field_before_or_after_the_run_or_above(tab: Tab) 
     field(page, "tc_method").select_option("kirpich")
     shows(page, "57,88", "6:40", "1 046 713")
 
-    # A library error without an option stands above the steps, in English marked (EN)
+    # The hyetograph's refusals name their option, so they stand on its field in Polish:
+    # a duration shorter than the step, then one that is not a whole number of steps
     choose(page, "hg-rain-source-label", "Hietogram")
     field(page, "duration_min").fill("5")
-    above = page.locator(f"{LEFT} [data-form-error]")
-    expect(above).to_contain_text("Nieprawidłowe dane wejściowe")
-    expect(above).to_contain_text("cannot exceed duration_min (5.0) (EN)")
+    expect(message(page, "timestep_min")).to_contain_text("· maximum")
+    expect(page.locator(f"{LEFT} [data-form-error]")).to_have_count(0)
     expect(page.locator(BADGE)).to_have_text("Błąd danych")
     expect(page.locator(f"{LEFT} .calc-state")).to_have_text(
         "Błąd danych: wynik dla poprzednich danych"
     )
+    field(page, "duration_min").fill("725")
+    expect(message(page, "duration_min")).to_have_text(
+        "Czas trwania musi być wielokrotnością kroku Δt = 10 min: hietogram składa"
+        " się z całych kroków · not_multiple"
+    )
     expect(kpi(page, "q")).to_have_text(re.compile(r"^57,88"))
     field(page, "duration_min").fill("720")
-    expect(above).to_have_count(0)
+    expect(message(page, "duration_min")).to_have_count(0)
     shows(page, "57,88", "6:40", "1 046 713")
 
 

@@ -151,6 +151,7 @@ def thiessen_polygons(
     >>> areas = {"S1": 15.0, "S2": 20.0, "S3": 10.0}
     >>> result = thiessen_polygons(stations, areas)
     >>> print(f"Areal P: {result.areal_precipitation_mm:.1f} mm")
+    Areal P: 30.6 mm
     """
     if not stations:
         raise InvalidParameterError("stations list cannot be empty")
@@ -249,6 +250,7 @@ def inverse_distance_weighting(
     ... ]
     >>> result = inverse_distance_weighting(stations, 3, 0, power=2)
     >>> print(f"P at (3,0): {result.areal_precipitation_mm:.1f} mm")
+    P at (3,0): 26.6 mm
     """
     if not stations:
         raise InvalidParameterError("stations list cannot be empty")
@@ -400,15 +402,28 @@ def isohyet_method(
     The areal precipitation is:
     P_areal = sum(((P_i + P_{i+1}) / 2) * f_i)
 
-    where f_i is the area fraction of zone i.
+    where f_i is the area fraction of zone i (KZGW 2017, eq. 2.2; Chow et al. 1988,
+    Fig. 3.4.3c).
+
+    Every zone lies between two values, so the zones at the edges of the watershed
+    (beyond its highest or below its lowest isohyet) need a bounding value of their
+    own: the value that makes the mid-value of the zone the mean precipitation
+    estimated for it. Chow et al. (1988) estimate 5 mm for the zone below the 10-mm
+    isohyet and 53 mm for the one above the 50-mm isohyet; the bounds 0 and 56 mm give
+    those means and their 27.9 mm.
 
     Examples
     --------
+    Chow, Maidment and Mays (1988), Fig. 3.4.3(c), p. 80: zone areas 0.88, 1.59, 2.24,
+    3.01, 1.22 and 0.20 km² between the isohyets 10 to 50 mm, with edge bounds 0 and
+    56 mm:
+
     >>> import numpy as np
-    >>> isohyets = np.array([20.0, 30.0, 40.0, 50.0])  # 3 zones
-    >>> fractions = np.array([0.3, 0.5, 0.2])  # Must sum to 1
-    >>> result = isohyet_method(isohyets, fractions)
+    >>> isohyets = np.array([0.0, 10.0, 20.0, 30.0, 40.0, 50.0, 56.0])
+    >>> areas_km2 = np.array([0.88, 1.59, 2.24, 3.01, 1.22, 0.20])
+    >>> result = isohyet_method(isohyets, areas_km2 / areas_km2.sum())
     >>> print(f"Areal P: {result.areal_precipitation_mm:.1f} mm")
+    Areal P: 27.9 mm
     """
     isohyet_values_mm = np.asarray(isohyet_values_mm, dtype=np.float64)
     area_fractions = np.asarray(area_fractions, dtype=np.float64)

@@ -3,13 +3,11 @@
 Wrappers over the hyetograph generators of :mod:`hydrolog.precipitation.hietogram`, the
 PMAXTP depths of IMGW-PIB fetched through Obserwator (:mod:`hydrolog._pmaxtp`) and the
 interpolation functions of :mod:`hydrolog.precipitation.interpolation`.
-:func:`build_hietogram` and :func:`hietogram_notices` are shared with
-``hydrograph generate``.
+:func:`build_hietogram` is shared with ``hydrograph generate``.
 """
 
 from __future__ import annotations
 
-import math
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any, Literal, get_args
@@ -59,7 +57,6 @@ __all__ = [
     "PrecipHietogramResult",
     "PrecipPmaxtpResult",
     "build_hietogram",
-    "hietogram_notices",
     "precip_areal",
     "precip_hietogram",
     "precip_pmaxtp",
@@ -87,7 +84,7 @@ class PrecipHietogramResult(JsonResultMixin):
     timestep_min : float
         Time step [min].
     n_steps : int
-        Number of steps, ``int(duration_min / timestep_min)``.
+        Number of steps, ``duration_min / timestep_min`` (a whole number).
     parameters : dict of str to float
         Shape parameters used: ``alpha`` and ``beta`` (beta type), ``peak_position``
         (triangular type) or ``peak_start_min`` (Euler II: the start of the peak
@@ -211,7 +208,8 @@ def build_hietogram(
         depth of its curve at ``duration_min`` (a total given must equal it to
         :attr:`~hydrolog.precipitation.EulerIIHietogram.TOTAL_TOLERANCE_MM`).
     duration_min : float
-        Duration [min], > 0; for ``euler_ii`` a whole number of steps.
+        Duration [min], > 0, a whole number of steps (``details.reason``
+        ``not_multiple`` otherwise).
     timestep_min : float, optional
         Time step [min], by default 5.
     alpha, beta : float, optional
@@ -311,36 +309,6 @@ def build_hietogram(
     return result, parameters
 
 
-def hietogram_notices(hietogram: HietogramResult) -> list[Notice]:
-    """Notice for a duration that is not a multiple of the time step.
-
-    The generators use ``int(duration_min / timestep_min)`` steps, so the
-    hyetograph then ends before ``duration_min`` (Euler II refuses such a duration).
-
-    Parameters
-    ----------
-    hietogram : HietogramResult
-        Generated hyetograph.
-
-    Returns
-    -------
-    list of Notice
-        One warning notice when the steps do not cover the requested duration.
-    """
-    covered = hietogram.n_steps * hietogram.timestep_min
-    if math.isclose(covered, hietogram.duration_min, rel_tol=1e-9, abs_tol=1e-9):
-        return []
-    return [
-        notice(
-            "duration_not_covered",
-            duration_min=hietogram.duration_min,
-            timestep_min=hietogram.timestep_min,
-            steps=hietogram.n_steps,
-            covered_min=covered,
-        )
-    ]
-
-
 def precip_hietogram(
     *,
     hietogram_type: HietogramType,
@@ -367,8 +335,8 @@ def precip_hietogram(
         whose total is the depth of the curve at ``duration_min`` (a total given
         must equal it to 0.005 mm).
     duration_min : float
-        Storm duration [min], > 0 and >= ``timestep_min``; for ``euler_ii`` a whole
-        number of steps.
+        Storm duration [min], > 0, >= ``timestep_min`` and a whole number of steps
+        (``details.reason`` ``not_multiple`` otherwise).
     timestep_min : float, optional
         Time step [min], > 0, by default 5.
     alpha : float, optional
@@ -392,13 +360,13 @@ def precip_hietogram(
     Returns
     -------
     OperationOutput
-        :class:`PrecipHietogramResult` and a notice when the duration is not a
-        multiple of the step.
+        :class:`PrecipHietogramResult`.
 
     Raises
     ------
     InvalidParameterError
-        If a parameter is out of range, missing or does not apply to the chosen type.
+        If a parameter is not a finite number, is out of range, missing or does not
+        apply to the chosen type, or the duration is not a whole number of steps.
     NotFoundError
         If ``depth_duration_file`` does not exist.
     InputDataError
@@ -429,7 +397,7 @@ def precip_hietogram(
         depths_mm=hietogram.intensities_mm,
         intensities_mm_per_h=rates,
     )
-    return OperationOutput(result, hietogram_notices(hietogram))
+    return OperationOutput(result)
 
 
 def precip_pmaxtp(
@@ -460,7 +428,8 @@ def precip_pmaxtp(
         0.05, 0.1, 0.2, 0.3, 0.5, 1, 2, 3, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 95,
         98, 98.5, 99, 99.5 or 99.9.
     method : {"POT", "AMP"}, optional
-        Estimation method, by default POT (the one IMGW-PIB recommends).
+        Estimation method, by default POT (IMGW-PIB recommends it for p >= 50 % and
+        treats AMP and POT as equivalent below).
 
     Returns
     -------
