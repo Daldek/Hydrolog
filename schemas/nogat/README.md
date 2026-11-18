@@ -16,8 +16,9 @@ drift` reports each copy as current, behind or modified.
   `develop`, whose ECO-065 made `terms_notice` the links to the providers' terms only, RD, RH
   and RK, in its description and examples; `edd559b` had added the optional `attribution` and
   `terms_notice`, the providers' lines of DEV §20, and `8848c26` `node_provenance`, the origin
-  of each node of a network; SHA-256
-  `c26ce043b292284fa7e8f995589fee09fd5ffa046efb61c4b3736619b8b71d08`): the envelope
+  of each node of a network; then the recorded peak of its first example, 57.8773 m³/s, of
+  Hydrolog's Beta hyetograph by exact block integrals (ADR-0046); SHA-256
+  `de5ad34830208fb7739e5ecb355cfa16aa751aafe5919811ad276a714d7c90d6`): the envelope
   `nogat-handoff/1` of data handed between the GUIs of the ecosystem. The GUI writes and reads
   it with the payload `hydrolog-network/1` and the origin of each of its nodes
   (`src/hydrolog/gui/web/src/handoff/`, through Nogat's kit `web/nogat/nogat-handoff.js`).
