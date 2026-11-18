@@ -163,7 +163,7 @@ export const options = {
   snyder_centroid_length_km: "Snyder: długość Lc",
   snyder_cp: "Snyder: współczynnik Cp",
   snyder_ct: "Snyder: współczynnik Ct",
-  snyder_length_km: "Snyder: długość cieku L",
+  snyder_length_km: "Snyder: długość L do działu wodnego",
   split_year: "Rok podziału",
   stage_m: "Rzędna wody",
   stations: "Posterunki",

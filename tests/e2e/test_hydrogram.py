@@ -137,8 +137,8 @@ which ``nash_estimation`` reads): the first of the two runs the page made before
 # runs (its #hg-data, 6 tc methods x AMC I-III x 4 models), by (model, tc method, AMC),
 # as Hydrolog computes them: tc from the inputs each method's source defines (Kirpich
 # and NRCS from the longest flow path), Snyder's peak since its unit hydrograph peaks at
-# qpR, Nash by Lutz from L and J of the longest flow path (the mockup's tc and Snyder's
-# 29,14 came before those changes).
+# qpR and its L from the longest flow path to the divide, Nash by Lutz from L and J of
+# the longest flow path (the mockup's tc and Snyder's 29,14 came before those changes).
 MOCKUP = {
     ("scs", "kirpich", "II"): ("57,88", "6:40", "1 046 713"),
     ("scs", "nrcs", "II"): ("41,64", "9:00", "1 046 957"),
@@ -148,7 +148,7 @@ MOCKUP = {
     ("scs", "kirpich", "I"): ("12,19", "7:50", "193 986"),
     ("clark", "kirpich", "II"): ("52,74", "7:10", "1 046 551"),
     ("nash", None, "II"): ("37,48", "9:10", "1 046 543"),
-    ("snyder", None, "II"): ("27,46", "11:00", "1 046 551"),
+    ("snyder", None, "II"): ("26,98", "11:00", "1 046 551"),
 }
 # Scroll containers that must not scroll sideways: the page and an open sheet.
 SIDEWAYS = """() => [document.documentElement,
@@ -586,8 +586,9 @@ def test_the_tc_method_amc_and_model_reproduce_the_mockups_runs(tab: Tab) -> Non
 
     choose(page, "hg-uh-label", "Snyder")
     sent = check("snyder", None, "II")
+    # L is the longest flow path to the divide (15,88 km), not the channel (14,78 km)
     assert (sent["snyder_length_km"], sent["snyder_centroid_length_km"]) == (
-        14.78,
+        15.88,
         6.76,
     )
     choose(page, "hg-uh-label", "SCS")
@@ -778,8 +779,8 @@ def test_fields_no_model_reads_may_stay_empty(tab: Tab) -> None:
         "„Długość zlewni”, „Wysokość min.”, „Wysokość maks.”."
     )
 
-    # Every model runs without them: Clark, Nash with n and K, Snyder with its own L
-    # (the watershed has no channel to take it from) and Lc
+    # Every model runs without them: Clark, Nash with n and K, Snyder with the
+    # watershed's longest flow path as L (to the divide, not the channel) and its own Lc
     with run_of(page, uh_model="clark") as answered:
         choose(page, "hg-uh-label", "Clark")
     shows_peak(page, answered.value.request.post_data_json)
@@ -790,15 +791,12 @@ def test_fields_no_model_reads_may_stay_empty(tab: Tab) -> None:
         field(page, "nash_k_min").fill("82")
     shows_peak(page, answered.value.request.post_data_json)
     choose(page, "hg-uh-label", "Snyder")
-    expect(message(page, "channel_length_km")).to_have_text(
-        "Podaj wartość: potrzebna dla modelu Snydera · required"
-    )
+    expect(message(page, "flow_path_length_km")).to_have_count(0)
     expect(message(page, "Lc_km")).to_have_text(
         "Podaj wartość: potrzebna dla modelu Snydera · required"
     )
     expect(field(page, "snyder_length_km")).to_have_count(0)
     expect(field(page, "snyder_centroid_length_km")).to_have_count(0)
-    field(page, "channel_length_km").fill("14,78")
     with run_of(page, uh_model="snyder", snyder_centroid_length_km=6.76) as answered:
         field(page, "Lc_km").fill("6,76")
     shows_peak(page, answered.value.request.post_data_json)
@@ -809,10 +807,7 @@ def test_fields_no_model_reads_may_stay_empty(tab: Tab) -> None:
         "flow_path_length_km",
         "flow_path_slope_m_per_m",
     }
-    assert all(
-        set(sent["watershed"]) <= allowed | {"channel_length_km", "Lc_km"}
-        for sent in runs.generate
-    )
+    assert all(set(sent["watershed"]) <= allowed | {"Lc_km"} for sent in runs.generate)
 
     # Step 1 complete: the hand-off is offered
     for name in ["perimeter_km", "length_km", "elevation_min_m", "elevation_max_m"]:
@@ -1121,11 +1116,11 @@ def test_requirements_follow_the_model_and_the_tc_method(tab: Tab) -> None:
         "area_km2": "snyder",
         "cn": "losses",
         **pmaxtp,
-        "channel_length_km": "snyder",
+        "flow_path_length_km": "snyder",
         "Lc_km": "snyder",
     }
     # Snyder's own L and Lc of an earlier visit fill the watershed's empty fields only
-    assert got["migrated"]["watershed"] == {"channel_length_km": "12", "Lc_km": "6"}
+    assert got["migrated"]["watershed"] == {"flow_path_length_km": "12", "Lc_km": "6"}
     assert "snyder_length_km" not in got["migrated"]
     assert "snyder_centroid_length_km" not in got["migrated"]
     rain = [
@@ -1908,7 +1903,7 @@ def test_the_state_gives_the_options_of_the_mockups_calls(tab: Tab) -> None:
     assert {
         key: got["snyder"][key] for key in got["snyder"] if key.startswith("snyder")
     } == {
-        "snyder_length_km": 14.78,
+        "snyder_length_km": 15.88,
         "snyder_centroid_length_km": 6.76,
         "snyder_ct": 1.4,
     }

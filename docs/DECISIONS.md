@@ -48,3 +48,4 @@ the adoption of the Nogat standard 1.0 (then called 2.1) are in the plans of [pl
 | [0040](decisions/0040-cp-without-the-detail-of-processing.md) | CP without the detail of processing (Nogat ECO-071) | accepted | 2026-11-14 |
 | [0041](decisions/0041-implausible-rating-curves-flagged-not-refused.md) | Implausible rating curves flagged, not refused: `plausible`, `implausibility_reasons` and the notice `implausible_rating_curve` | accepted | 2026-11-17 |
 | [0042](decisions/0042-the-euler-type-ii-storm-from-a-depth-duration-curve.md) | The Euler type II storm from a depth-duration curve: `depth_duration_mm` and `depth_duration_file`, the curve of `precip pmaxtp`, no `peak_position`, `hydrolog.testing` on `beta` | accepted | 2026-11-18 |
+| [0043](decisions/0043-snyder-l-from-the-longest-flow-path.md) | Snyder's L in the web GUI is the longest flow path (to the divide), not the channel | accepted | 2026-11-18 |
