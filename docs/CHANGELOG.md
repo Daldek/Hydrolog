@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.8.1] - 2026-11-18
 
 Changes since 0.8.0, to be released as 0.8.1: defect fixes only (the author's approval of patch releases after the first joint release of the Nogat ecosystem). The branch carries `0.8.1.dev0`; the release commit sets 0.8.1 and the date.
 
@@ -1381,4 +1381,4 @@ Requires optional dependencies: `pip install hydrolog[visualization]`
 | **0.6.4** | 2026-03-25 | WatershedParams extension + UH ordinates + docs audit |
 | **0.7.0** | 2026-03-26 | Hydrological statistics + Hydrometrics |
 | **0.8.0** | 2026-11-16 | First joint release of the Nogat ecosystem: Stable API: command catalog, CLI from catalog, MCP server, HSG (`hydrolog.soil`), result serialization, calculation fixes |
-| **Unreleased** | - | 0.8.1: defect fixes after 0.8.0 |
+| **0.8.1** | 2026-11-18 | Defect fixes after 0.8.0: rating curves (overflow, implausible fits), low-flow thresholds, the SCS unit hydrograph of a long step, warnings issued again, GUI time axis |
