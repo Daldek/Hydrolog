@@ -959,7 +959,7 @@ export function inputModels(commandDoc, schema, pmaxtpDoc) {
 export function rangeInfoId(range) {
   if (range.parameter === "timestep_min") return "rain-timestep";
   if (TC_METHODS.includes(range.method)) return `tc-${range.method}`;
-  if (range.method === "scs_cn_amc") return "losses-scs-cn";
+  if (range.method === "scs_cn_amc" || range.method === "scs_cn_runoff") return "losses-scs-cn";
   if (UH_MODELS.includes(range.method)) return `uh-${range.method}`;
   if (range.method === "lutz") return "uh-nash";
   return null;

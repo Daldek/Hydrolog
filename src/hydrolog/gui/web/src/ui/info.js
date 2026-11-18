@@ -224,14 +224,18 @@ export function rangeMark(range) {
 }
 
 /**
- * The symbol of a range's parameter (or of any quantity) in an explanation.
+ * The symbol of a range's parameter (or of any quantity) in an explanation: the method's own
+ * symbol (`"<method>.<parameter>"`) before the parameter's.
  *
  * @param {object|null} entry the explanation
  * @param {string} name the parameter
+ * @param {string} [method] the method of the range
  * @returns {string} its symbol, else the name
  */
-export function symbolOf(entry, name) {
+export function symbolOf(entry, name, method) {
   const symbols = (entry && entry.symbols) || {};
+  const own = method ? `${method}.${name}` : null;
+  if (own && Object.hasOwn(symbols, own)) return symbols[own];
   return Object.hasOwn(symbols, name) ? symbols[name] : name;
 }
 
@@ -258,7 +262,7 @@ function escape(text) {
 
 /**
  * The ranges an explanation lists: each once (the four unit hydrograph models serve the same
- * range of the time step), with its label; a parameter listed twice names its method.
+ * range of the time step), with its label; two ranges with one label name their methods.
  *
  * @param {object} entry the explanation
  * @param {object[]} found the registered ranges
@@ -273,10 +277,11 @@ export function listedRanges(entry, found) {
     seen.add(same);
     listed.push(range);
   }
-  const count = (parameter) => listed.filter((range) => range.parameter === parameter).length;
-  return listed.map((range) => {
-    const label = symbolOf(entry, range.parameter);
-    return { range, label: count(range.parameter) > 1 ? `${label} (${range.method})` : label };
+  const labels = listed.map((range) => symbolOf(entry, range.parameter, range.method));
+  const count = (label) => labels.filter((other) => other === label).length;
+  return listed.map((range, index) => {
+    const label = labels[index];
+    return { range, label: count(label) > 1 ? `${label} (${range.method})` : label };
   });
 }
 

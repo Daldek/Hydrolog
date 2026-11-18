@@ -60,7 +60,7 @@ export const lossesInfo = {
         unit: "–",
       },
     ],
-    symbols: { cn: "CN (AMC I i III)" },
+    symbols: { cn: "CN", "scs_cn_amc.cn": "CN (AMC I i III)" },
     note:
       "<p>Im wyższy CN, tym większa część opadu odpływa: przy CN = 80 z opadu 50&nbsp;mm odpływa około " +
       "14&nbsp;mm. Sucha gleba (AMC I) obniża CN, mokra (AMC III) go podwyższa.</p>",

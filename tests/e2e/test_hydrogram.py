@@ -1636,12 +1636,13 @@ def test_the_explanations_check_hydrologs_ranges_against_the_watershed(
     title = popover.locator("#info-pop-title")
     rows = popover.locator(".range-list li")
     notes = page.locator(f'{RIGHT} [data-notes="gui"] li')
-    # The example's confirmations: SCS-CN, SCS and the time step against the unit
-    # hydrograph's time to peak (0,25 · 117,43 min); none for Kirpich, which Hydrolog's
-    # notices put outside its data
+    # The example's confirmations: SCS-CN (the runoff equation's CN and the AMC
+    # conversion's), SCS and the time step against the unit hydrograph's time to peak
+    # (0,25 · 117,43 min); none for Kirpich, which Hydrolog's notices put outside its
+    # data
     expect(notes).to_have_count(3)
     expect(notes.nth(0)).to_contain_text(
-        "SCS-CN: CN (AMC I i III) = 65 w zakresie stosowania."
+        "SCS-CN: CN = 65, CN (AMC I i III) = 65 w zakresie stosowania."
     )
     expect(notes.nth(1)).to_contain_text(
         "SCS: A = 37,22\u00a0km² w zakresie stosowania."
