@@ -4,6 +4,7 @@
 - Date: 2026-11-13
 - Amends: [ADR-0029](0029-station-analyses-for-obserwator.md), [ADR-0030](0030-the-batch-and-imgw-pib-half-years-in-frequency-commands.md), [ADR-0031](0031-regime-seasonality-harmonics-sens-slope-and-baseflow.md), [ADR-0032](0032-meteorological-statistics-of-a-station-the-group-meteo.md) (none of them released: AGI-4.1 lets an unreleased document keep its number)
 - Builds on: the author's request of 2026-11-13 (check that the CLI and API of the new commands match what `develop` `48358a5` deploys, then resolve three methodological questions); plan `docs/plans/2026-11-13-station-analyses.md`; Nogat AGI-1.2, AGI-2.3, AGI-4.2, AGI-5.4, DEV-8.2, DEV-19.10, ERR §1
+- Amended by [ADR-0044](0044-normals-spells-frost-days-and-the-hydrothermal-season.md) (2026-11-18): the annual, half-year and season normals of a reference period are sums (means) of its monthly normals (its point 4)
 
 ## Context
 
