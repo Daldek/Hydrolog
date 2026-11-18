@@ -320,7 +320,7 @@ COMMANDS: tuple[Command, ...] = (
                 "index": "sums",
                 "first_year": 2019,
                 "last_year": 2023,
-                "period": {"normal_mm": 683.35, "normal_years": 4},
+                "period": {"normal_mm": 703.285, "normal_years": 4},
             },
             {
                 "index": "maxima",
@@ -607,7 +607,7 @@ COMMANDS: tuple[Command, ...] = (
         ),
         errors=_ERRORS,
         example_results=(
-            {"scales_months": [1, 3, 6, 12], "period": {"normal_mm": 683.35}},
+            {"scales_months": [1, 3, 6, 12], "period": {"normal_mm": 703.285}},
             {"scales_months": [1, 3], "year_type": "hydrological"},
             {
                 "reference_last_year": 2021,

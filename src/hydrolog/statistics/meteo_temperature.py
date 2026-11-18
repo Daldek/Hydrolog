@@ -24,7 +24,8 @@ the means and the anomalies of each analysed year from its own days: normals are
 benchmark of anomalies (WMO-No. 1203, chapter 2), the climatological standard normal
 1991-2020 for monitoring and the reference normal 1961-1990 for climate change
 (chapters 2 and 3, section 5.1), and need values in 80 % of the years of the
-reference period (4.4.2).
+reference period (4.4.2); the annual normal is the mean of the twelve monthly normals
+(4.3.3).
 
 References
 ----------
@@ -58,8 +59,9 @@ from hydrolog.statistics._climate import (
     mean_of,
     monthly_counts,
     monthly_means,
+    monthly_normals,
     monthly_totals,
-    normal,
+    multimonth_normal,
     period_days,
     reference_period,
     years_with_values,
@@ -286,9 +288,11 @@ class TemperatureMeansPeriod(JsonResultMixin):
     Attributes
     ----------
     normal_c : float or None
-        Annual normal of Tmean of the reference period [°C].
+        Annual normal of Tmean of the reference period: the mean of the twelve
+        monthly normals, ``None`` when one is missing (WMO-No. 1203, 4.3.3) [°C].
     normal_years : int
-        Years of the reference period with an annual mean of Tmean.
+        The fewest years of the reference period with a monthly mean of Tmean among
+        the twelve months; every monthly normal needs 80 % of its years (4.4.2).
     tmean_c, tmax_c, tmin_c : float or None
         Means of the annual means of the analysed years [°C].
     max_c, min_c : float or None
@@ -361,8 +365,9 @@ def temperature_means(
     """Monthly and annual means, the normal and anomaly of Tmean, and the extremes.
 
     The means of each analysed year come from its own days, the normals of Tmean
-    from the reference period: the mean of its years with a value when they are at
-    least 80 % of its years, those without data too (WMO-No. 1203, 4.4.2).
+    from the reference period: the normal of a month is the mean of its years with a
+    value when they are at least 80 % of its years, those without data too (WMO-No.
+    1203, 4.4.2), the annual normal the mean of the twelve monthly normals (4.3.3).
 
     Parameters
     ----------
@@ -422,11 +427,8 @@ def temperature_means(
         if base is data
         else monthly_means(base.grid, _require(base.tmean, "tmean_c"))
     )
-    base_annual = annual["tmean"] if base is data else _annual_mean(base_means)
-    normal_c, normal_years = normal(base_annual, reference.n_years)
-    month_normals = [
-        normal(base_means[:, slot], reference.n_years)[0] for slot in range(12)
-    ]
+    month_normals, normal_years = monthly_normals(base_means, reference.n_years)
+    normal_c = multimonth_normal(month_normals, mean=True)
     starts = grid.month_starts()
     if data.tmax is not None:
         high, high_at = block_extreme(data.tmax, starts, largest=True)

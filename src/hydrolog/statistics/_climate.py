@@ -19,7 +19,10 @@ Missing data follow the WMO Guidelines on the Calculation of Climate Normals
   days of the month (4.4.1 c);
 * monthly extremes use whatever days there are (4.4.1 b);
 * a normal needs values in at least 80 % of the years of its period, with no
-  consecutive-years criterion (4.4.2).
+  consecutive-years criterion (4.4.2);
+* a normal of several months (a year, a half-year, a season) is the sum of the monthly
+  normals of its months for a sum or a count, their mean for a mean, and is missing
+  when one of them is (4.3.3), not the mean of the multi-month values of the years.
 
 An annual value needs all twelve monthly values; annual extremes of daily values,
 spells and percentile sums need every day of the year.
@@ -40,7 +43,7 @@ first of equal windows).
 References
 ----------
 WMO (2017): WMO Guidelines on the Calculation of Climate Normals. WMO-No. 1203,
-    Geneva, chapters 2, 3 and 5, section 4.4.
+    Geneva, chapters 2, 3 and 5, sections 4.3 and 4.4.
 """
 
 from __future__ import annotations
@@ -726,6 +729,50 @@ def normal(
     if count == 0 or count < WMO_NORMAL_SHARE * span:
         return None, count
     return float(values[have].mean()), count
+
+
+def monthly_normals(
+    table: NDArray[np.float64], years: int | None = None
+) -> tuple[list[float | None], int]:
+    """Return the normal of each month of a ``(years, 12)`` table (:func:`normal`).
+
+    Returns
+    -------
+    tuple of (list of float or None, int)
+        The normals in the order of the columns and the fewest years with a value
+        among the months: every monthly normal exists when that number reaches 80 %
+        of the years (WMO-No. 1203, 4.4.2).
+    """
+    pairs = [normal(table[:, slot], years) for slot in range(table.shape[1])]
+    return [value for value, _ in pairs], min(count for _, count in pairs)
+
+
+def multimonth_normal(
+    normals: Sequence[float | None], *, mean: bool = False
+) -> float | None:
+    """Combine the normals of the months of a year, half-year or season.
+
+    WMO-No. 1203, 4.3.3: the normal of several months is the sum of their monthly
+    normals for a sum or a count, their (unweighted) mean for a mean, and missing when
+    one of them is; it is not computed from the multi-month values of the years.
+
+    Parameters
+    ----------
+    normals : sequence of float or None
+        The normals of the months concerned.
+    mean : bool, optional
+        Average them (a mean parameter) instead of summing them.
+
+    Returns
+    -------
+    float or None
+        The normal, ``None`` when a monthly normal is.
+    """
+    values = [value for value in normals if value is not None]
+    if not values or len(values) < len(normals):
+        return None
+    total = math.fsum(values)
+    return total / len(values) if mean else total
 
 
 def rolling_sum(values: NDArray[np.float64], days: int) -> NDArray[np.float64]:
