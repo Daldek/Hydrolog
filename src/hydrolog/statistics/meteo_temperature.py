@@ -888,7 +888,8 @@ class DegreeDays(JsonResultMixin):
     first_year, last_year, period_years : int
         The period.
     growing_base_c, heating_base_c, heating_limit_c : float
-        The bases and the limit [°C].
+        The base of the growing degree days, the reference temperature and the
+        heating threshold of the heating degree days [°C].
     years : list of DegreeDaysYear
         Every year with a value.
     period : DegreeDaysPeriod
@@ -918,8 +919,17 @@ def degree_days(
 ) -> DegreeDays:
     """Growing degree days and heating degree days by Eurostat's rule.
 
-    GDD = Σ max(Tmean - 5, 0); HDD = Σ (18 - Tmean) over the days with Tmean <= 15 °C
-    (Eurostat), with the bases and the limit as defaults.
+    GDD = Σ max(Tmean - 5, 0), the thermal resources above the base of the growing
+    season (Wypych et al., 2017, eq. 1, who also use 0 and 10 °C); HDD = Σ (18 -
+    Tmean) over the days with Tmean <= 15 °C (Eurostat, nrg_chdd, 3.4; Commission
+    Directive (EU) 2015/1127), with the bases and the threshold as defaults. Both are
+    summed over every day of each month and the months of the year of ``year_type``
+    (Wypych et al.: "for the whole year"; the Directive: computed daily and summed to
+    the year); no growing or heating season is cut out. Eurostat's daily mean Tm is
+    (Tmin + Tmax) / 2 (the Directive), whereas this function takes the daily mean
+    given: with IMGW-PIB's daily mean, which is about 0.1 °C lower, HDD at
+    Warszawa-Okęcie 1991-2020 is 1.3 % above the value of (Tmin + Tmax) / 2; pass that
+    mean as ``tmean_c`` to reproduce Eurostat's definition.
 
     Parameters
     ----------
@@ -930,10 +940,12 @@ def degree_days(
     growing_base_c : float, optional
         Base of the growing degree days [°C], by default 5.
     heating_base_c : float, optional
-        Base of the heating degree days [°C], by default 18.
+        Reference temperature of the heating degree days, from which Tmean is
+        subtracted [°C], by default 18 (Polish „temperatura bazowa”, Dopke 2010).
     heating_limit_c : float, optional
-        A day counts in the heating degree days when Tmean <= this [°C], by default
-        15.
+        Heating threshold: a day counts in the heating degree days when Tmean <= this
+        [°C], by default 15 (Eurostat's English "base temperature", Polish
+        „temperatura graniczna”).
     year_type : {"calendar", "hydrological"}, optional
         The kind of year.
 

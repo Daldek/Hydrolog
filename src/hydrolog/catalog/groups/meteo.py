@@ -788,17 +788,18 @@ COMMANDS: tuple[Command, ...] = (
             ),
             _celsius(
                 "heating_base_c",
-                "Only for `index` degree_days: base of the heating degree days [°C]; "
-                "default 18.",
-                "Tylko dla `index` degree_days: baza stopniodni grzania [°C]; "
-                "domyślnie 18.",
+                "Only for `index` degree_days: reference temperature of the heating "
+                "degree days, HDD = Σ (this − Tmean) [°C]; default 18.",
+                "Tylko dla `index` degree_days: temperatura bazowa stopniodni grzania, "
+                "HDD = Σ (ta − Tśr) [°C]; domyślnie 18.",
             ),
             _celsius(
                 "heating_limit_c",
-                "Only for `index` degree_days: a day heats when Tmean is at most this "
-                "[°C]; default 15.",
-                "Tylko dla `index` degree_days: dzień grzewczy ma Tśr co najwyżej "
-                "[°C]; domyślnie 15.",
+                "Only for `index` degree_days: heating threshold (Eurostat's base "
+                "temperature), a day heats when Tmean is at most this [°C]; "
+                "default 15.",
+                "Tylko dla `index` degree_days: temperatura graniczna, dzień grzewczy "
+                "ma Tśr co najwyżej [°C]; domyślnie 15.",
             ),
             ATTRIBUTION,
         ),
