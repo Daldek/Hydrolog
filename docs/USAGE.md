@@ -1034,9 +1034,14 @@ The normals of `meteo precipitation` (`--index sums`, `heavy`, `seasonality`), `
 `--reference-last-year` choose another reference, such as the standard normal 1991-2020: the
 years of the period keep their own values, and only the baselines come from the reference (the
 normals with the percentages of normal and the anomalies, the percentiles of `heavy`, the gamma
-fits of the SPI). `meteo spells` lists every spell; `--min-duration-days` lists only the longer
-ones (the yearly and period summaries still count every spell), which keeps the result of a long
-record small.
+fits of the SPI). The normal of a year, half-year or season is the sum of the monthly normals
+(their mean for Tmean; WMO-No. 1203, 4.3.3). `meteo spells` counts a spell over the start of a
+year whole in the year it ends (as ETCCDI's software and ECA&D) and lists every spell;
+`--min-duration-days` lists only the longer ones (the yearly and period summaries still count
+every spell), which keeps the result of a long record small. `meteo temperature --index days`
+gives both FD (`frost_days`, Tmin < 0 °C) and IMGW-PIB's „dni przymrozkowe”
+(`freeze_thaw_days`, Tmin < 0 °C < Tmax), and `meteo hydrothermal` takes its season from the
+days of April-September above 10 °C.
 The export's attribution columns (`attribution_source`, `attribution_processed`) are not data:
 Hydrolog carries their lines into the envelope's `attribution` and `terms_notice` (ADR-0028); show
 them when you publish results. Values given inline take theirs with `--attribution '[...]'`.
@@ -1058,7 +1063,7 @@ import hydrolog
 envelope = hydrolog.run_command(
     "meteo precipitation", index="sums", input_file="tests/fixtures/meteo_daily.csv"
 )
-print(envelope.to_dict()["result"]["period"]["normal_mm"])   # 683.35
+print(envelope.to_dict()["result"]["period"]["normal_mm"])   # 703.285
 ```
 
 The quantiles of the annual maxima are `stats flood-frequency` on the values of `--index maxima`.
