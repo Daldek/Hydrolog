@@ -353,23 +353,26 @@ def curve_number_runoff(**options: Any) -> dict[str, Any]:
 
 def design_storm(
     *,
-    hietogram_type: str = "euler_ii",
+    hietogram_type: str = "beta",
     total_mm: float = 40.0,
     duration_min: float = 60.0,
-    **shape: float,
+    **shape: Any,
 ) -> dict[str, Any]:
     """Return a ``rainfall`` of the kind ``design``: a depth over a duration.
 
     Parameters
     ----------
     hietogram_type : {"block", "triangular", "beta", "euler_ii"}, optional
-        The shape of the storm, by default ``euler_ii``.
+        The shape of the storm, by default ``beta`` (with its defaults 2 and 5).
     total_mm : float, optional
-        Total depth [mm], by default 40.
+        Total depth [mm], by default 40; for ``euler_ii`` the depth of its curve at
+        ``duration_min``.
     duration_min : float, optional
         Duration [min], by default 60.
     **shape
-        ``alpha`` and ``beta`` or ``peak_position``, where the shape takes them.
+        ``alpha`` and ``beta``, ``peak_position``, or the ``depth_duration_mm`` of
+        ``euler_ii`` (an object of duration [min] to depth [mm], keys as text),
+        where the shape takes them.
 
     Returns
     -------
@@ -531,13 +534,13 @@ def write_network_document(
 def example_network_document() -> dict[str, Any]:
     """Return the document of a network of three subcatchments that make hydrographs.
 
-    ``A`` has a design storm of its own (Euler II, 45 mm in 60 min), ``B`` a record of
-    38 mm in steps of 5 min and ``C`` none: it takes the default of the network, a block
-    storm of 30 mm in 60 min. ``A`` and ``B`` take the time of concentration from their
-    watersheds (Kirpich), ``C`` is given 60 min. ``A`` reaches the junction ``J1`` by a
-    lag reach of 25 min, where ``B`` joins it, a Muskingum reach (K 40 min, X 0.2)
-    carries them to ``J2``, where ``C`` joins, and ``OUT`` ends the network. The time
-    step is that of the record of ``B``, 5 min.
+    ``A`` has a design storm of its own (Beta (2; 5), 45 mm in 60 min), ``B`` a
+    record of 38 mm in steps of 5 min and ``C`` none: it takes the default of the
+    network, a block storm of 30 mm in 60 min. ``A`` and ``B`` take the time of
+    concentration from their watersheds (Kirpich), ``C`` is given 60 min. ``A`` reaches
+    the junction ``J1`` by a lag reach of 25 min, where ``B`` joins it, a Muskingum
+    reach (K 40 min, X 0.2) carries them to ``J2``, where ``C`` joins, and ``OUT`` ends
+    the network. The time step is that of the record of ``B``, 5 min.
 
     Returns
     -------
@@ -755,26 +758,29 @@ def build_network_fixture(directory: str | os.PathLike[str]) -> NetworkFixture:
 
 def hietogram_envelope(
     *,
-    hietogram_type: str = "euler_ii",
-    total_mm: float = 40.0,
+    hietogram_type: str = "beta",
+    total_mm: float | None = 40.0,
     duration_min: float = 60.0,
     timestep_min: float = 10.0,
-    **options: float,
+    **options: Any,
 ) -> dict[str, Any]:
     """Return the envelope of ``precip hietogram``, as ``--json`` prints it.
 
     Parameters
     ----------
     hietogram_type : {"block", "triangular", "beta", "euler_ii"}, optional
-        Temporal distribution, by default ``euler_ii``.
-    total_mm : float, optional
-        Total depth [mm], by default 40.
+        Temporal distribution, by default ``beta`` (with its defaults 2 and 5).
+    total_mm : float or None, optional
+        Total depth [mm], by default 40; ``None`` for ``euler_ii``, whose total is
+        the depth of its curve at ``duration_min``.
     duration_min : float, optional
         Storm duration [min], by default 60.
     timestep_min : float, optional
         Time step [min], by default 10.
     **options
-        ``alpha``, ``beta`` or ``peak_position`` where the type takes them.
+        ``alpha``, ``beta``, ``peak_position`` or the ``depth_duration_mm`` of
+        ``euler_ii`` (an object of duration [min] to depth [mm]) where the type
+        takes them.
 
     Returns
     -------
@@ -803,17 +809,18 @@ def hietogram_envelope(
 def _hietogram_text(**options: Any) -> str:
     from hydrolog import run_command
 
-    return run_command("precip hietogram", **options).to_json()
+    given = {name: value for name, value in options.items() if value is not None}
+    return run_command("precip hietogram", **given).to_json()
 
 
 def write_hietogram_envelope(
     path: str | os.PathLike[str],
     *,
-    hietogram_type: str = "euler_ii",
-    total_mm: float = 40.0,
+    hietogram_type: str = "beta",
+    total_mm: float | None = 40.0,
     duration_min: float = 60.0,
     timestep_min: float = 10.0,
-    **options: float,
+    **options: Any,
 ) -> Path:
     """Write :func:`hietogram_envelope` to ``path`` and return the path.
 

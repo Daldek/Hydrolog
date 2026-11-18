@@ -8,6 +8,10 @@
   `NodeEntry` and `Node.build` takes it.
 - Amended by [ADR-0024](0024-nash-by-lutz-from-the-watershed.md) (2026-11-10): the `curve-number` runoff has an
   optional `nash_estimation` (`lutz`): Nash's n and K estimated from the watershed instead of given.
+- Amended by [ADR-0042](0042-the-euler-type-ii-storm-from-a-depth-duration-curve.md) (2026-11-18): a design
+  rainfall reads the arguments its shape requires; `euler_ii` takes the curve `depth_duration_mm` and has no
+  `peak_position`, and an old `euler_ii` rainfall without a curve is refused (`missing_field`) while the schema stays
+  `/1`.
 
 ## Context
 

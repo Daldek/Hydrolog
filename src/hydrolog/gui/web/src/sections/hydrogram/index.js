@@ -20,7 +20,8 @@
 // PMAXTP (ADR-0018): once the point, p and the duration of step 2 are given and valid, the
 // section runs `precip pmaxtp` on its own channel "hydrogram-pmaxtp" (usePmaxtp of
 // pmaxtp.js, which Sieć's network shares) and keeps the depth with the inputs
-// (`pmaxtp_fetched`), which is the `total_mm` of the runs; a run waits for it. A point
+// (`pmaxtp_fetched`), which is the `total_mm` of the runs, with the depths of every duration
+// at that p, the `depth_duration_mm` of an Euler II run; a run waits for them. A point
 // outside the atlas stands on its field, any other failure (IMGW-PIB unreachable) on the
 // row of the depth, with „Pobierz ponownie”.
 //
@@ -75,6 +76,7 @@ import {
   TC_METHODS,
   checkInputs,
   checkedValues,
+  errorOption,
   fieldLabel,
   initialState,
   inputModels,
@@ -125,7 +127,8 @@ function useModels() {
 
 /**
  * Word an error of a run: on its field when the panel shows it (every field a tc method
- * or a model misses on its own), else above the steps.
+ * or a model misses on its own; Euler II's depth-duration curve under PMAXTP on the fetched
+ * depth, or on the time step it does not reach down to: errorOption), else above the steps.
  *
  * @param {object} doc the hydrolog-error/1 document
  * @param {object|null} inputs the inputs of the run
@@ -141,16 +144,17 @@ function wordError(doc, inputs) {
     return shown.includes(field) ? field : null;
   };
   const fields = {};
+  const option = errorOption(details);
   if (described.reason === "missing_field") {
-    const missing = Array.isArray(details.missing) ? details.missing : [described.option];
+    const missing = Array.isArray(details.missing) ? details.missing : [option];
     const text = typeof details.method === "string" ? t(texts.missingField, { method: details.method }) : texts.missingFieldPlain;
-    for (const option of missing) {
-      const name = typeof option === "string" ? place(option) : null;
-      if (name) fields[name] = withReason(text, "missing_field");
+    for (const name of missing) {
+      const field = typeof name === "string" ? place(name) : null;
+      if (field) fields[field] = withReason(text, "missing_field");
     }
     if (Object.keys(fields).length === missing.length) return { fields, form: null, text: described.text };
-  } else if (typeof described.option === "string" && place(described.option)) {
-    fields[place(described.option)] = withReason(described.text, described.reason);
+  } else if (option && place(option)) {
+    fields[place(option)] = withReason(described.text, described.reason);
     return { fields, form: null, text: described.text };
   }
   return { fields, form: { title: described.title || texts.formError, text: described.text }, text: described.text };

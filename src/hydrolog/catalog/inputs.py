@@ -20,6 +20,9 @@ both into the objects the library works with:
   ``rating_file`` -> :class:`Rating`, the storage-outflow table of ``route level-pool``;
 * :func:`table_hydrograph` -- one column of a table that is already read as a
   hydrograph, for a file that holds several (``route network``: a column per source);
+* :func:`load_depth_duration` -- an inline ``depth_duration_mm`` object *or* a
+  ``depth_duration_file`` (columns ``duration_min`` and ``depth_mm``, or the JSON of
+  ``precip pmaxtp``) -> the depth-duration curve of an Euler II storm;
 * :func:`read_json` -- a JSON document of a file (the network of ``route network``);
 * :func:`load_half_years` -- IMGW-PIB's half-year characteristics of one variable from
   Obserwator's export of ``pl.imgw.hydro_semiannual`` ->
@@ -103,11 +106,14 @@ if TYPE_CHECKING:
     from hydrolog.statistics.characteristic import HalfYearValues
 
 __all__ = [
+    "DEPTH_COLUMN",
     "DISCHARGE_COLUMN",
+    "DURATION_COLUMN",
     "TIME_COLUMN",
     "Rating",
     "Series",
     "Table",
+    "load_depth_duration",
     "load_half_years",
     "load_hydrograph",
     "load_rating",
@@ -1768,3 +1774,148 @@ def load_stations(
             )
         seen[station.station_id] = row
     return result
+
+
+# --- the depth-duration curve of an Euler II storm ------------------------------------
+
+DURATION_COLUMN = "duration_min"
+"""The column of the durations [min] in a file of a depth-duration curve."""
+DEPTH_COLUMN = "depth_mm"
+"""The column of the depths [mm] in a file of a depth-duration curve."""
+_CURVE_FIELD = "depth_duration_mm"
+
+
+def _curve_of_document(path: Path, document: object) -> Mapping[Any, Any] | None:
+    """Return the curve a JSON document holds as an object, or ``None`` for a table.
+
+    The object is the ``depth_duration_mm`` of the document, of its ``result`` (the
+    envelope that ``precip pmaxtp --json`` prints) or the document itself (duration
+    -> depth); a list of records or an object of columns is a table.
+    """
+    source = _Source(path=path)
+    if isinstance(document, list):
+        return None
+    if not isinstance(document, Mapping):
+        source.fail(
+            "expected a depth-duration curve: an object of duration [min] to depth "
+            "[mm], a table with the columns duration_min and depth_mm, or what "
+            "`precip pmaxtp --json` prints",
+            reason="shape",
+        )
+    result = document.get("result")
+    holder = result if isinstance(result, Mapping) else document
+    if _CURVE_FIELD in holder:
+        curve = holder[_CURVE_FIELD]
+        if not isinstance(curve, Mapping):
+            source.fail(f"{_CURVE_FIELD!r} is not an object", reason="shape")
+        return curve
+    fields = {
+        key: value
+        for key, value in document.items()
+        if key not in ("attribution", "terms_notice")
+    }
+    if fields and all(isinstance(value, list) for value in fields.values()):
+        return None
+    if not fields:
+        source.fail("the curve has no point", reason="empty")
+    return fields
+
+
+def _curve_of_table(table: Table) -> dict[float, float]:
+    """Return the curve of the columns ``duration_min`` and ``depth_mm`` of a table."""
+    source = _Source(path=table.source)
+    durations = table.numbers(DURATION_COLUMN)
+    depths = table.numbers(DEPTH_COLUMN)
+    if not len(durations):
+        source.fail("the curve has no point", reason="empty")
+    curve: dict[float, float] = {}
+    rows: dict[float, int] = {}
+    for row, (duration, depth) in enumerate(
+        zip(durations.tolist(), depths.tolist(), strict=True), start=1
+    ):
+        if math.isnan(duration) or math.isnan(depth):
+            source.fail(
+                f"row {row} has no "
+                f"{DURATION_COLUMN if math.isnan(duration) else DEPTH_COLUMN}",
+                reason="missing_value",
+                row=row,
+                column=DURATION_COLUMN if math.isnan(duration) else DEPTH_COLUMN,
+            )
+        if duration in rows:
+            source.fail(
+                f"row {row}: the duration {duration:g} min is already in row "
+                f"{rows[duration]}",
+                reason="duplicate_duration",
+                row=row,
+                value=duration,
+            )
+        rows[duration] = row
+        curve[duration] = depth
+    return curve
+
+
+def load_depth_duration(
+    *,
+    depth_duration_mm: Mapping[str, Any] | None = None,
+    depth_duration_file: str | os.PathLike[str] | None = None,
+) -> Mapping[Any, Any]:
+    """Return the depth-duration curve of an Euler II storm, inline or from a file.
+
+    The values are checked by :class:`~hydrolog.precipitation.EulerIIHietogram`
+    (finite, not negative, not decreasing); this function reads them.
+
+    Parameters
+    ----------
+    depth_duration_mm : Mapping, optional
+        Inline curve: duration [min] (a JSON object key) -> depth [mm].
+    depth_duration_file : str or os.PathLike, optional
+        CSV with the columns ``duration_min`` and ``depth_mm``, or JSON: such a table
+        (records or columns), an object of duration -> depth, or an object with that
+        object as ``depth_duration_mm`` or ``result.depth_duration_mm`` (what
+        ``precip pmaxtp --json`` prints). The providers' lines of the file
+        (attribution columns or fields) are cited for the run.
+
+    Returns
+    -------
+    Mapping
+        Depth [mm] by duration [min] (numbers, or the keys of a JSON object).
+
+    Raises
+    ------
+    InvalidParameterError
+        If both or neither source is given (``details.option`` names it).
+    NotFoundError
+        If the file does not exist.
+    InputDataError
+        If the file cannot be read, has another shape, lacks a column or a value, or
+        gives a duration twice (``details.reason``, ``details.row``).
+    """
+    if depth_duration_mm is not None and depth_duration_file is not None:
+        raise InvalidParameterError(
+            "Give 'depth_duration_mm' or 'depth_duration_file', not both",
+            details={"option": "depth_duration_file", "reason": "conflict"},
+        )
+    if depth_duration_mm is not None:
+        return depth_duration_mm
+    if depth_duration_file is None:
+        raise InvalidParameterError(
+            "Option 'depth_duration_mm' or 'depth_duration_file' is required: an "
+            "Euler II storm is built from the depth-duration curve",
+            details={"option": "depth_duration_mm", "reason": "required"},
+            hint=(
+                "Give the depths of one probability by duration, e.g. the "
+                "depth_duration_mm of `precip pmaxtp`."
+            ),
+        )
+    path = _file_path(depth_duration_file, "depth_duration_file")
+    text = _read_text(path)
+    if _is_json(path, text):
+        document = _parse_json(path, text)
+        cite(lines_of_document(document))
+        curve = _curve_of_document(path, document)
+        if curve is not None:
+            return curve
+        return _curve_of_table(_table_from_json(path, document))
+    table = _table_from_csv(path, text)
+    cite(table.attribution)
+    return _curve_of_table(table)

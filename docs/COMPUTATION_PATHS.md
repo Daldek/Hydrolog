@@ -2,7 +2,7 @@
 
 **Document version:** 1.13
 **Date:** 2026-11-18
-**Applies to:** Hydrolog >= 0.8.0 (sections 3.2.2, 3.2.7, 3.3.4 (the time step limit), 3.3.6, 3.4.6, 3.4.7 and 3.5 to 3.14 describe behaviour from v0.8.0, the sub-steps of the SCS unit hydrograph (3.1.3) and the plausibility of a rating curve (3.8) from 0.8.1, maximum likelihood (3.6, 3.10) from the fix of 2026-11-18; the rest: >= 0.6.0)
+**Applies to:** Hydrolog >= 0.8.0 (sections 3.2.2, 3.2.7, 3.3.4 (the time step limit), 3.3.6, 3.4.6, 3.4.7 and 3.5 to 3.14 describe behaviour from v0.8.0, the sub-steps of the SCS unit hydrograph (3.1.3) and the plausibility of a rating curve (3.8) from 0.8.1, maximum likelihood (3.6, 3.10) and the Euler type II storm (3.15) from the fixes of 2026-11-18, not yet released; the rest: >= 0.6.0)
 
 ---
 
@@ -1260,6 +1260,45 @@ These commands reduce a station's daily series (Obserwator's export or inline va
 
 **Verification** (`tests/unit/test_station_analyses.py`, `tests/unit/test_station_batch.py`; the mockup's numbers by a check outside the repository, plan 2026-11-13, Results). Hand-computed series: runs merged across gaps shorter than the limit and none with 0, a missing day that ends an event, dated peaks, days below a threshold across gaps; the first and second degree of years and half-years and the larger half-year maximum of a file; Weibull positions interpolated between ranks and classes from a multiple of the width with their cumulative days; the volumes of complete and incomplete years; low-flow sequences across missing days with their yearly summary; the periods of a rating curve without enough pairs. On Kłodzko's exports (150160180, 1951–2025 without hydrological year 1997) the commands give the mockup's numbers to the last digit (largest relative difference 1.2e-16): the characteristic values of both degrees from the daily series and from IMGW-PIB's half-years, the days and events beyond SWW … SNQ, the low-flow periods with SNQ, Q90, H70 and 4 m³/s in 1991–2020, the duration curves of H and Q with their classes by month, the runoff volumes and the rating curves of 2016–2025, of 2000–2020 without outliers and of the decades; the annual maxima of the half-years in `stats flood-frequency` equal the mockup's (74 years of 1951–2025, 29 of 1991–2020) with the same best distribution and quantiles. One difference, by D7: the January curve of H in 1991–2020 has its classes from 80 cm (a multiple of 10), the mockup's from its lowest value, so the modal class differs.
 
+### 3.15 Design Hyetographs: the Euler Type II Storm (`EulerIIHietogram`, `euler_ii` of `precip hietogram`, `hydrograph generate`, `report generate` and `route network`; hotfix of 2026-11-18, ADR-0042)
+
+The Euler type II storm is the model rain of ATV-DVWK-A 118 for the design of urban drainage, used in Germany with KOSTRA-DWD and in Poland with the PMAXTP atlas of IMGW-PIB or a local formula. It is made from the depth-duration curve h(D) of **one** probability (one return period), so that the blocks around its peak hold, for every duration, the depth that the curve gives for that duration: the storm is critical for any catchment whose response time it contains.
+
+**Inputs.** `depth_duration_mm`, the depths h [mm] of one probability by duration D [min] (a mapping; in JSON an object whose keys are the durations, `"5"`), not decreasing (`decreasing`, naming the two durations), finite and not negative, each duration once; the duration D (`duration_min`), a whole number of time steps (`not_multiple`); the step Δt (`timestep_min`), at most D. The curve must reach from Δt to D (`not_covered`): nothing is extrapolated, so with PMAXTP (5 min to 72 h) Δt ≥ 5 min. `precip pmaxtp` gives the PMAXTP curve of a point (`result.depth_duration_mm`: the 16 durations at the asked probability and method). `precip hietogram`, `hydrograph generate` and `report generate` take the curve as `depth_duration_mm` or read it from `depth_duration_file`: a CSV `duration_min,depth_mm` (`,` or `;`, a decimal comma allowed) or JSON (such an object, a table of records or of columns, or the envelope or the result of `precip pmaxtp --json`, whose `attribution` and `terms_notice` the result then carries). A design rainfall of `hydrolog-network/1` holds the curve as `depth_duration_mm` (the schema keeps its version `/1`: the field is added, and a curve-less `euler_ii` is refused, `missing_field` `rainfall.depth_duration_mm`).
+
+**The blocks.** With `n = D / Δt`, the depths of the curve at the ends of the steps and their increments
+
+```
+h_j = h(j Δt), j = 1..n (h_0 = 0)        Δh_j = h_j - h_(j-1)
+k = floor(0.3 n)                          the peak block, counted from 0
+P_k = Δh_1        P_(k-i) = Δh_(i+1), i = 1..k        P_(k+i) = Δh_(k+i+1), i = 1..n-k-1
+```
+
+The peak interval starts at 0.3·D rounded down to a multiple of Δt (the result's `parameters.peak_start_min` = k·Δt), the increments of the next durations fill the time before it back to t = 0 and the rest follow it. The m blocks that end with the peak (k−m+1..k while m ≤ k+1, else the first m blocks) therefore hold `h(m Δt)` whatever the curve, and the whole storm holds h(D). For a curve whose increments decrease (intensities that fall with the duration, an IDF curve) this is the arrangement that A 118 and DWD describe: the largest increment at the peak, the next k larger ones before it in ascending order, the rest after it in descending order ("Der höchste 5-min-Wert steht an Position 4. Die drei nächsthöheren Werte sind links vom Spitzenwert angeordnet. Die restlichen Werte folgen (mit abnehmender Größe) rechts vom Spitzenwert", Malitz 2009, slide 17). Where the interpolation between the coarse points of a table makes an increment grow (the PMAXTP depths of Kamiennik at p = 50 % between 30 and 45 min), the increments keep their order by duration and are not sorted: sorted, the 30 min that end with the peak would hold 15.14 mm instead of h(30) = 15.01 mm, and the itwh software also leaves each increment at the block of its duration (its KOSTRA-DWD 2020 printout of Aurich keeps the negative increments of its surcharge at the blocks of the KOSTRA steps 90, 180, 240 and 360 min).
+
+**The total.** The depth of the storm is h(D). The commands take `total_mm` as optional for `euler_ii` (it is h(D)) and refuse a total that differs from h(D) by more than 0.005 mm, half of the 0.01 mm that the PMAXTP tables print (`total_mismatch`, `details.depth_mm` h(D)); `EulerIIHietogram.generate(total_mm, duration_min, timestep_min)` keeps the signature of every hyetograph and refuses another total in the same way, and `depth_mm(D)` gives h(D). In a network document `total_mm` stays required and must be h(D): another total is refused when the network is routed, with the id of the node.
+
+**Between the points of the curve.** Depths are interpolated linearly in ln D. That reproduces the itwh KOSTRA-DWD 2010R printouts of Göllheim from their 0.1-mm depths to 0.07 mm, where linear interpolation in D misses by 0.16 mm; the DWA's KOSTRA tool interpolates linearly in D, HEC-HMS's frequency storm in log–log, and PMAXTP smooths each station with a power law (Ozga-Zieliński 2022, pp. 32–35); no Polish rule for the gaps of PMAXTP was found. The peak block and every window whose duration is a point of the curve do not depend on the choice.
+
+**The peak rule.** ATV-DVWK-A 118, Kap. 5.2.2.1, as quoted by Thewes (2005, p. 10): "Beginn des Regenintervalls mit der höchsten Niederschlagsintensität beim 0,3-fachen der Modellregendauer … auf ein Vielfaches von 5 Minuten abgerundet. Daran schließen sich auf der Zeitachse nach links die nächst niedrigeren Intervalle an, bis der Zeitpunkt t = 0 erreicht ist"; Kaźmierczak and Kotowski (2012, pp. 31–32) give the same rule. Hydrolog rounds down to a multiple of the step, the same for Δt = 5 min (Δt = 10 min and D = 60 min: 18 min becomes 10 min, the second block). The position is not a parameter: `peak_position` is refused for `euler_ii`. Two published storms place the peak one block elsewhere: the itwh software puts the peak of a 15-min storm in the second block (the rule: 0.3·15 = 4.5 min, the first), and the Wrocław monograph's Tab. 4.6 ends the peak at D/3 for 165 and 180 min (55–60 min for 180 min, where the rule that its p. 31 states gives 50–55 min).
+
+**Applicability.** The storm is a design rain of urban drainage; A 118 asks for D of at least twice the longest flow time (Thewes 2005, p. 11; Kaźmierczak and Kotowski 2012, p. 31). Every depth of the curve must be of the same probability, as for HEC-HMS's frequency storm ("All depth-duration precipitation values must be for the same annual exceedance probability"). PMAXTP's short durations make a peaked storm (h(5)/h(60) = 0.557 at Warsaw, POT, p = 1 %, against 0.26–0.39 in the KOSTRA examples); whether IMGW-PIB's 5- and 10-min depths suit model rains is an open question (Open questions of `docs/PROGRESS.md`). In the GUI, Hydrogram zlewni and Sieć offer Euler II with PMAXTP: the curve is the table of the chosen probability and method, sent with the depth.
+
+```python
+from hydrolog.precipitation import EulerIIHietogram
+
+kostra = {5: 9.5, 10: 13.9, 15: 16.9, 20: 19.2, 30: 22.4, 45: 25.6, 60: 27.9}   # Göllheim, T = 5 a [min: mm]
+euler = EulerIIHietogram(kostra)
+storm = euler.generate(total_mm=euler.depth_mm(60.0), duration_min=60.0, timestep_min=5.0)
+print(storm.intensities_mm.round(2).tolist())
+# [2.3, 3.0, 4.4, 9.5, 1.76, 1.44, 1.22, 1.05, 0.93, 0.84, 0.76, 0.7]: itwh prints 2.23, 3.00, 4.44, 9.51 ...
+print(round(float(storm.intensities_mm[1:4].sum()), 2))   # 16.9: the 15 min that end with the peak hold h(15)
+```
+
+**Up to 0.8.1** the class took the total only. It weighted the blocks by rank, `w_r = r^-0.7 / Σ k^-0.7`, and placed them alternately left and right of the block `max(2, floor(n p) + 1)` with p = 0.33 (`peak_position`): the same shares for every place, probability and duration (for n = 12 the peak was 23.08 % of the total and h(60)/h(5) = 4.33 always), neither the local curve nor the Euler arrangement. Its peak block was 23 to 66 % below every published Euler type II storm and an Euler type II of PMAXTP (the cases below: DWD 10.4 mm → 6.138 mm; Göllheim 9.51 mm → 7.303, 6.438 and 5.746 mm at 30, 60 and 90 min; Aurich 11.00 mm → 3.771 mm in block 36; Wrocław 101.71 mm/h → 65.51 mm/h; PMAXTP at Warsaw and Kamiennik, 60 min, 49 to 59 % below h(5)), and its 15 min around the peak short of h(15) (Warsaw, p = 1 %: 18.79 mm against 28.22 mm). It even missed its own premise: an IDF curve `i ~ D^-0.7` gives `h ~ D^0.3` and a peak share of 0.4745 for n = 12, not 0.2308. The peak of a hydrograph moves less than the peak block, and only where the catchment answers within the storm: for the PMAXTP storm of Warsaw (p = 1 %, 60 min, 39.16 mm) on 5 km² of CN 80 with the SCS unit hydrograph the new peak is 120, 47 and 15 % above the old for tc 10, 20 and 30 min and within 3 % of it for tc 60 to 180 min (the volume of one total is the same). Every result made with `euler_ii` up to 0.8.1 (`precip hietogram`, `hydrograph generate`, `report generate`, `route network`, `RoutingNetwork`, the GUI) is to be computed again with the curve of its probability.
+
+**Verification** (`tests/unit/test_euler_ii.py`; the tolerance of each case is half a unit of its last printed digit plus the rounding of the printed inputs it is built from). DWD (Malitz 2009, slides 18 and 19, 60 min, the curve from the sums of the largest printed values): every block to 0.05 mm, the peak at position 4. itwh KOSTRA-DWD 2010R, Göllheim, T = 5 a (the printed 0.1-mm KOSTRA depths, storms of 30, 60 and 90 min to 0.01 mm): every block to 0.105 mm (the largest difference is 0.07 mm), the peaks in blocks 2, 4 and 6. itwh KOSTRA-DWD 2020, Aurich, 9 h: the peak interval 160–165 min (block 33) with 11.00 and 14.99 mm (T = 3 and 10 a) to 0.005 mm. Kaźmierczak and Kotowski (2012), Wrocław, formula (2.6), C = 3 years: the peak 101.71 mm/h to 0.005 mm/h at 60 min (15–20 min) and at 180 min (50–55 min by the rule). Wdowikowski et al. (2025), PMAXTP at Wrocław, C = 5 years, 60 min: the peak 146.18 mm/h (12.18 mm) to 0.2 mm, the paper's own 5-min depth coming from a fitted curve, at 15–20 min. The recorded PMAXTP tables of Warsaw and Kamiennik (POT, p = 1, 10 and 50 %, 60 min): the peak in block 4 holds h(5), and the largest 15 and 30 min hold h(15) and h(30), to 0.005 mm. The power law h = D^0.3: peak shares 0.5842, 0.4745 and 0.3854 for n = 6, 12 and 24. Properties: every window around the peak holds h(m Δt) to 1e-12 for every m (Kamiennik p = 50 % and 2 %, Warsaw p = 1 %; D from 15 to 720 min, Δt 5 and 15 min); the total is h(D); the peak interval starts at floor(0.3 n) Δt for n = 1 to 120, and at 10 min for Δt = 10 min and D = 60 min; growing increments keep their order; keys given as text; three blocks for 0.3 min in steps of 0.1 min. The refusals: a decreasing curve, a curve that does not cover the step or the duration, a duration that is not a whole number of steps, a step over the duration, a depth that is not finite or negative, a duration that is not a number above 0 or is given twice, an empty curve or one that is not a mapping, a total 0.006 mm off h(D) (and one within the rounding taken as h(D)), a total that is not finite or not above 0. The commands, the network document and the GUI are tested in `tests/unit/test_operations_runoff.py`, `tests/unit/test_routing_rainfall.py`, `tests/unit/test_route_network_made.py` and `tests/e2e/test_hydrogram.py`.
+
 ---
 
 ## 4. Literature Verification
@@ -1315,6 +1354,7 @@ These commands reduce a station's daily series (Obserwator's export or inline va
 | Threshold events and low-flow sequences across gaps (`stats threshold-events`, `stats low-flow-sequences`) | Tallaksen and van Lanen (2004), chapter 5 (the threshold level method); hand-computed runs | ✅ |
 | Duration curve and the frequencies of its classes (`stats duration-curve`) | Searcy (1959), Vogel and Fennessey (1994), Byczkowski (1996); the mockup's Kłodzko numbers reproduced | ✅ |
 | Runoff volumes (`stats runoff-volume`), rating curves by period (`hydrometrics rating-curve`) | V = Σ Q · 86,400 s; the power-law fit of section 3.8 per block of years; the mockup's Kłodzko numbers reproduced | ✅ |
+| Euler type II design storm from a depth-duration curve (`EulerIIHietogram`, `euler_ii`; section 3.15) | ATV-DVWK-A 118 (2001) Kap. 5.2.2.1 as quoted by Thewes (2005), Malitz (2009), Kaźmierczak and Kotowski (2012); the storms printed by DWD (Malitz 2009), itwh (KOSTRA-DWD 2010R and 2020), Kaźmierczak and Kotowski (2012) and Wdowikowski et al. (2025) and the recorded PMAXTP tables reproduced | ✅ (the peak from 0.3·D also beyond 150 min, where the Wrocław monograph ends it at D/3; depths between the points of the curve linear in ln D) |
 
 ### 4.2 Key Publications
 
@@ -1347,6 +1387,10 @@ These commands reduce a station's daily series (Obserwator's export or inline va
 | Smirnov, N.V. | 1939 | The two-sample Kolmogorov-Smirnov test (`stats homogeneity`) |
 | Pettitt, A.N. | 1979 | The non-parametric change-point test and its approximate p-value (`stats homogeneity`) |
 | USDA Soil Survey Manual | 2017 | Texture triangle, definitions of the 12 texture classes (ch. 3, pp. 122–124) |
+| ATV-DVWK (A 118) | 2001 | The Euler type II model rain: the increments of one depth-duration curve, the peak interval from 0.3·D (as quoted by Thewes, 2005) |
+| Malitz, G. (DWD) | 2009 | DWD's description of the Euler type II storm and its printed 60-min storms |
+| Kaźmierczak, B. and Kotowski, A. | 2012 | The Euler type II storm in Polish practice; the Wrocław depth-duration formula (2.6) |
+| Ozga-Zieliński, B. (Ed.), IMGW-PIB | 2022 | PMAXTP: the depth-duration curves that `precip pmaxtp` fetches |
 
 ---
 
@@ -1620,6 +1664,20 @@ These commands reduce a station's daily series (Obserwator's export or inline va
 ### Maximum Likelihood of the Frequency Analyses
 
 80. **Smith, R.L.** (1985). Maximum likelihood estimation in a class of nonregular cases. *Biometrika*, 72(1), 67-90.
+
+### Design Storms
+
+81. **ATV-DVWK** (2001). Arbeitsblatt ATV-DVWK-A 118, Kap. 5.2.2.1 (the Euler type II model rain), as quoted by Thewes (2005); the Arbeitsblatt itself was not read.
+
+82. **Thewes, K.** (2005). Diplomarbeit, Fachhochschule Trier (p. 10: the peak rule and the arrangement of ATV-DVWK-A 118; p. 11: the duration of a model rain).
+
+83. **Malitz, G.** (2009). Stark- und Extremniederschlag im Kurzzeitbereich. Deutscher Wetterdienst, slides of the 2. Trierer Workshop (slide 17, the Euler type II storm; slides 18 and 19, two storms of 60 min).
+
+84. **Kaźmierczak, B. & Kotowski, A.** (2012). *Weryfikacja przepustowości kanalizacji deszczowej w modelowaniu hydrodynamicznym* (Verifying the capacity of storm sewers in hydrodynamic modelling). Oficyna Wydawnicza Politechniki Wrocławskiej, Wrocław (formula 2.6 on p. 19; the Euler type II storm on pp. 31–32; Tab. 4.6).
+
+85. **Wdowikowski, M., Kaźmierczak, B., Wartalska, K., Kotowski, A., Szymczewski, S., Przestrzelska, K. & Domalewska, W.** (2025). The impact of climate change on the functioning of drainage systems in industrial areas—a case study. *Atmosphere*, 16(3), 347. doi:10.3390/atmos16030347 (Tab. 2: the PMAXTP depths of Wrocław, C = 5 years, and a 60-min Euler type II storm).
+
+86. **Ozga-Zieliński, B. (Ed.)** (2022). *Modele probabilistyczne opadów maksymalnych o określonym czasie trwania i prawdopodobieństwie przewyższenia – projekt PMAXTP*. IMGW-PIB, Warszawa (pp. 32–35: the power law over the durations of a station).
 
 ---
 

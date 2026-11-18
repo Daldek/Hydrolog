@@ -61,6 +61,7 @@ from tests.e2e.conftest import (
     kamiennik_inputs,
     load_network,
     open_part,
+    pmaxtp_curve,
     pmaxtp_route,
     seed_hydrogram,
 )
@@ -1247,7 +1248,8 @@ def test_the_mapping_computes_as_hydrograph_generate_for_every_setting(
                 "duration_min": 1440,
                 "probability_percent": 0.5,
                 "method": "POT",
-                "depth_mm": 130,
+                "depth_mm": pmaxtp_curve("0.5")["1440"],
+                "depth_duration_mm": pmaxtp_curve("0.5"),
             },
             "hietogram_type": "euler_ii",
         },

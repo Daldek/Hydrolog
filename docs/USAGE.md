@@ -172,10 +172,22 @@ print(cn, round(hydrolog.run_command("cn weighted", parts=parts).result.cn, 1))
 selects the antecedent moisture condition (I, II, III; default II) and `--ia-coefficient` the
 initial abstraction ratio (default 0.2).
 
-`precip hietogram` builds a design rainfall of a total, duration and step; types are `block`,
-`triangular`, `beta` and `euler_ii`. Parameters of another type are rejected (`--alpha` and
-`--beta` belong to `beta`, `--peak-position` to `triangular` and `euler_ii`). A duration that is
-not a multiple of the step adds a notice about the uncovered tail. Depths and intensities are
+`precip hietogram` builds a design rainfall of a duration and a step; types are `block`,
+`triangular`, `beta` and `euler_ii`. The first three spread a total (`--total-mm`). `euler_ii` is
+the Euler type II storm of ATV-DVWK-A 118, built from the depth-duration curve of one probability:
+`--depth-duration-mm` (a JSON object of duration [min] to depth [mm]) or `--depth-duration-file`
+(CSV `duration_min,depth_mm`, or JSON: such an object, a table, or the output of `precip pmaxtp
+--json`, whose providers' lines the result then carries). The curve must not decrease and must
+reach from the step to the duration (depths between its points are interpolated linearly in ln D,
+nothing is extrapolated), and the duration must be a whole number of steps. The blocks are the
+increments of the curve: the first in the interval that starts at 0.3 of the duration rounded down
+to a multiple of the step (`result.parameters.peak_start_min`), the next ones before it back to the
+start, the rest after it. So the m blocks that end with the peak hold the depth of m steps (the
+first m blocks, for m beyond the peak), and the storm holds the depth of its duration, its
+`total_mm`: a `--total-mm` given must equal it to 0.005 mm (see COMPUTATION_PATHS 3.15).
+Parameters of another type are rejected (`--alpha` and `--beta` belong to `beta`,
+`--peak-position` to `triangular`, the curve to `euler_ii`). A duration that is not a multiple of
+the step adds a notice about the uncovered tail (Euler II refuses it). Depths and intensities are
 `result.depths_mm` and `result.intensities_mm_per_h`. `precip areal` computes areal precipitation
 from gauges (arithmetic mean, Thiessen, IDW, isohyets).
 
@@ -191,13 +203,29 @@ hydrolog precip hietogram --hietogram-type beta --total-mm 50 --duration-min 30 
 {"result": {"schema": "hydrolog-precip-hietogram/1", "hietogram_type": "beta", "n_steps": 3, "times_min": [10.0, 20.0, 30.0], "parameters": {"alpha": 2.0, "beta": 5.0}}}
 ```
 
+The Euler II storm of the depths of Wrocław for a 3-year return period (Kaźmierczak and Kotowski,
+2012, formula 2.6): its 5-min peak block is the depth of 5 min, 8.48 mm (101.76 mm/h), from minute
+15 to 20.
+
+```bash
+hydrolog precip hietogram --hietogram-type euler_ii --duration-min 60 --timestep-min 5 \
+  --depth-duration-mm '{"5": 8.48, "10": 12.16, "15": 14.49, "30": 18.82, "45": 21.58, "60": 23.66}' --json
+```
+
+```json output
+{"result": {"schema": "hydrolog-precip-hietogram/1", "hietogram_type": "euler_ii", "total_mm": 23.66, "n_steps": 12, "parameters": {"peak_start_min": 15.0}, "peak_intensity_mm_per_h": 101.76}}
+```
+
 `precip pmaxtp` fetches the PMAXTP design depth of IMGW-PIB for a point in Poland (`--latitude`,
 `--longitude`, WGS84 decimal degrees), one of the atlas's durations (`--duration-min`, 5 to 4320)
 and probabilities of exceedance (`--probability-percent`, 0.01 to 99.9; the option descriptions
 list the allowed values) and `--method` `POT` (the default) or `AMP`. It is the only command that
 uses the network: Obserwator (extra `pmaxtp`) asks IMGW-PIB for the table of the point
 ([ADR-0018](decisions/0018-pmaxtp-through-obserwator.md)). Pass `result.depth_mm` as `--total-mm`
-of `precip hietogram` or `hydrograph generate` with the envelope's `attribution` and `terms_notice`
+of `precip hietogram` or `hydrograph generate`; for an Euler II storm pass
+`result.depth_duration_mm`, the depths of all 16 durations at the probability, as
+`--depth-duration-mm`, or the whole output as `--depth-duration-file`, which carries its lines
+itself. With a depth or a curve given by value, pass the envelope's `attribution` and `terms_notice`
 as `--attribution '[...]'`: every product of the depth carries PMAXTP's lines ([ADR-0028](decisions/0028-the-providers-lines-in-every-product.md);
 `result.attribution` is the source line, notice `pmaxtp_attribution`). A duration or probability the atlas lacks is
 a `validation_error` before anything is sent, a point outside the atlas one with `details.reason`
@@ -209,7 +237,7 @@ hydrolog precip pmaxtp --latitude 52.23 --longitude 21.01 --duration-min 60 --pr
 ```
 
 ```json output
-{"result": {"schema": "hydrolog-precip-pmaxtp/1", "depth_mm": 39.16, "method": "POT", "duration_min": 60.0, "probability_percent": 1.0}}
+{"result": {"schema": "hydrolog-precip-pmaxtp/1", "depth_mm": 39.16, "method": "POT", "duration_min": 60.0, "probability_percent": 1.0, "depth_duration_mm": {"5": 21.82, "15": 28.22, "60": 39.16, "4320": 114.97}}}
 ```
 
 ### Unit hydrograph and runoff hydrograph
@@ -231,7 +259,9 @@ hydrolog uh scs --area-km2 45.3 --tc-min 90 --timestep-min 5 --json
 watershed comes from `--watershed-file`, `--watershed` (JSON) or `--area-km2` with `--cn`. Without
 `--tc-min` the time of concentration is computed by `--tc-method` (default `kirpich`);
 `--uh-model` selects `scs` (default), `nash`, `clark` or `snyder` with their own parameters
-(`--nash-n`, `--nash-k-min`, `--clark-r-tc-ratio`, `--snyder-length-km`...). Measured rainfall
+(`--nash-n`, `--nash-k-min`, `--clark-r-tc-ratio`, `--snyder-length-km`...). The design rainfall
+takes the options of `precip hietogram` (for `euler_ii` the curve, `--depth-duration-mm` or
+`--depth-duration-file`, whose depth at `--duration-min` is the total). Measured rainfall
 (`--values`, `--input-file`) replaces the design rainfall.
 
 ```bash
@@ -558,8 +588,11 @@ lower = WatershedParameters(
 )
 model = CurveNumberRunoff(tc_method="kirpich")   # the options of hydrograph generate
 
+# Euler II is built from a depth-duration curve of one probability (here Wrocław, p = 1 %, Kaźmierczak and
+# Kotowski 2012; PMAXTP's depth_duration_mm of `precip pmaxtp` is another), and its depth is the curve's at 60 min
+curve = {5: 13.11, 10: 20.48, 15: 24.99, 30: 33.1, 45: 38.09, 60: 41.77}
 a = Subcatchment("A", watershed=upper, runoff=model,
-                 rainfall=DesignStorm(45.0, 60.0, EulerIIHietogram()))
+                 rainfall=DesignStorm(41.77, 60.0, EulerIIHietogram(curve)))
 b = Subcatchment("B", watershed=lower, runoff=model,
                  rainfall=RainfallSeries([0.0, 2.0, 5.0, 10.0, 12.0, 6.0, 3.0], timestep_min=5.0))
 c = Subcatchment("C", watershed=lower, runoff=model)   # no rain of its own: the network's
@@ -573,8 +606,8 @@ network = RoutingNetwork(
 result = network.route()
 print(network.order)       # ('A', 'B', 'C', 'R_A', 'J1', 'R_J1', 'J2', 'OUT')
 print({node: round(h.peak_discharge_m3s, 2) for node, h in result.hydrographs.items()})
-# {'A': 20.11, 'B': 4.36, 'C': 1.19, 'R_A': 20.11, 'J1': 20.43, 'R_J1': 18.85, 'J2': 18.89, 'OUT': 18.89}
-print({node: rain.total_mm for node, rain in result.rainfall.items()})   # A 45, B 38, C 30 (the default)
+# {'A': 15.76, 'B': 4.36, 'C': 1.19, 'R_A': 15.76, 'J1': 16.18, 'R_J1': 15.07, 'J2': 15.14, 'OUT': 15.14}
+print({node: rain.total_mm for node, rain in result.rainfall.items()})   # A 41.77, B 38, C 30 (the default)
 tc = next(p for p in result.nodes["A"].parameters if p.name == "tc_min")
 print(tc.name, round(tc.value, 1), tc.unit, tc.source)                   # tc_min 71.3 min computed
 
@@ -753,7 +786,8 @@ from hydrolog.routing import (
     Subcatchment,
 )
 
-storm = DesignStorm(45.0, 60.0, EulerIIHietogram())
+curve = {5: 13.11, 10: 20.48, 15: 24.99, 30: 33.1, 45: 38.09, 60: 41.77}   # depth [mm] by duration [min]
+storm = DesignStorm(41.77, 60.0, EulerIIHietogram(curve))                    # Euler II: its depth is h(60 min)
 record = RainfallSeries([0.0, 2.0, 5.0, 10.0, 12.0, 6.0, 3.0], timestep_min=5.0)
 
 
@@ -780,7 +814,7 @@ def show(step, points):
 
 # 1. the outlet first: the whole catchment drains to it
 points = ControlPointNetwork(OutletPoint("OUT", residual("OUT_area", 30.0, storm)))
-show("outlet", points)                    # outlet {'OUT': 55.82}
+show("outlet", points)                    # outlet {'OUT': 43.3}
 
 # 2. a point on the stream above it takes 18 km2 of the 30, and a second one 9 km2 of those
 points.add_point(
@@ -795,7 +829,7 @@ points.add_point(
     channel=LagReach(lag_min=20.0),
 )
 points.update_subcatchment("P1", residual("P1_area", 9.0, storm))
-show("two points", points)                # two points {'OUT': 32.86, 'P1': 28.62, 'P2': 11.97}
+show("two points", points)                # two points {'OUT': 27.0, 'P1': 24.29, 'P2': 11.97}
 
 # 3. a tributary of 6 km2 joins the stream between P2 and P1, at a confluence
 points.add_confluence(
@@ -811,13 +845,13 @@ points.add_point(
 )
 points.update_subcatchment("P1", residual("P1_area", 3.0, storm))
 show("tributary", points)
-# tributary {'OUT': 28.54, 'P1': 25.88, 'P2': 11.97, 'C1': 21.05, 'T': 11.16}
+# tributary {'OUT': 24.92, 'P1': 23.47, 'P2': 11.97, 'C1': 19.69, 'T': 8.66}
 print(points.kind("C1"), points.upstream("C1"), points.downstream("C1"))   # confluence ('P2', 'T') P1
 
 # 4. the user drops the tributary: its area goes back to P1 and the confluence goes with it
 points.remove_point("T")
 points.update_subcatchment("P1", residual("P1_area", 9.0, storm))
-show("removed", points)                   # removed {'OUT': 32.86, 'P1': 28.62, 'P2': 11.97}
+show("removed", points)                   # removed {'OUT': 27.0, 'P1': 24.29, 'P2': 11.97}
 print(points.ids, [channel.id for channel in points.channels("P2")])
 # ('OUT', 'P1', 'P2') ['P2_channel', 'C1_channel']: the two channels of the stream, in series
 

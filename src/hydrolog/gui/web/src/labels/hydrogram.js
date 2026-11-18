@@ -194,13 +194,22 @@ export const hydrogram = {
     depthFetching: "pobieranie z IMGW-PIB…",
     retry: "Pobierz ponownie",
     retryTitle: "Pobierz wysokość opadu z IMGW-PIB jeszcze raz",
-    designNote: "Hietogram projektowy z wysokości i czasu podanych ręcznie (`precip hietogram`).",
+    designNote:
+      "Hietogram projektowy z wysokości i czasu podanych ręcznie (`precip hietogram`). Euler II buduje się z wysokości PMAXTP kolejnych czasów trwania: daje go źródło PMAXTP.",
     seriesNote:
       "Wysokości opadu w kolejnych krokach `timestep_min` [mm]: wklej je z arkusza albo wczytaj kolumnę pliku CSV.",
     shape: "Rozkład w czasie",
     shapes: { block: "Blokowy", triangular: "Trójkątny", beta: "Beta", euler_ii: "Euler II" },
     betaNote: "Para (2; 5) daje wczesne maksimum (opad konwekcyjny), (2; 2) symetryczne, (5; 2) późne.",
     blockNote: "Stała intensywność w całym czasie trwania.",
+    euler: {
+      pmaxtp:
+        "Euler II wg ATV-DVWK-A 118: bloki to przyrosty wysokości PMAXTP tego p między czasami Δt, 2Δt, …, D. Pierwszy, h(Δt), leży w przedziale od 0,3·D (w dół do wielokrotności Δt), kolejne przed nim do początku opadu, reszta po nim. D musi być wielokrotnością Δt, a Δt co najmniej 5 min.",
+      curve: "Euler II z krzywej wysokość–czas trwania, która przyszła z tym opadem ({count}, od {from} do {to}): suma opadu musi być jej wysokością dla czasu trwania D.",
+      none: "Euler II buduje się z krzywej wysokość–czas trwania jednego p (wysokości PMAXTP), a „Hietogram” ma tylko wpisaną sumę, więc Hydrolog go nie policzy. Wybierz inny rozkład albo źródło PMAXTP.",
+      toPmaxtp: "Przełącz na PMAXTP",
+      durationForms: ["czas trwania", "czasy trwania", "czasów trwania"],
+    },
     shapeDefault: "domyślnie {value}",
     metaPmaxtp: "{total} mm · {duration} · p {p}%",
     metaDesign: "{total} mm · {duration}",

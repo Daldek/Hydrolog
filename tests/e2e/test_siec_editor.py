@@ -99,9 +99,8 @@ SHAPES = {
     "block": "Blokowy",
     "triangular": "Trójkątny",
     "beta": "Beta",
-    "euler_ii": "Euler II",
 }
-"""The hyetograph types as step 2 of the panel names them."""
+"""The hyetograph types „Hietogram” of step 2 names (Euler II comes with PMAXTP)."""
 
 Cell = tuple[int, int]
 

@@ -2,6 +2,9 @@
 
 - Status: accepted
 - Date: 2026-10-25
+- Amended by [ADR-0042](0042-the-euler-type-ii-storm-from-a-depth-duration-curve.md) (2026-11-18): the default
+  shape of `design_storm`, `hietogram_envelope` and `write_hietogram_envelope` is `beta`, since an Euler II storm
+  needs a depth-duration curve (`depth_duration_mm`), and `example_network_document()` gives node A a Beta storm.
 
 ## Context
 

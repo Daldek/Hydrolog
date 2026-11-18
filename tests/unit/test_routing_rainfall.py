@@ -29,11 +29,14 @@ from hydrolog.routing.rainfall import rainfall_from_document
 
 from ._routing_extensions import Constant, Growing
 
+# A depth-duration curve whose depth of 60 min is the 45 mm of the storms below.
+CURVE = {5.0: 15.0, 10.0: 22.0, 20.0: 30.0, 30.0: 35.0, 60.0: 45.0}
+
 SHAPES = {
     "block": BlockHietogram(),
     "triangular": TriangularHietogram(peak_position=0.4),
     "beta": BetaHietogram(alpha=3.0, beta=4.0),
-    "euler_ii": EulerIIHietogram(),
+    "euler_ii": EulerIIHietogram(CURVE),
 }
 
 
@@ -192,6 +195,13 @@ DESIGN = {
     "hietogram_type": "euler_ii",
     "total_mm": 45.0,
     "duration_min": 60.0,
+    "depth_duration_mm": {"5": 15.0, "10": 22.0, "20": 30.0, "30": 35.0, "60": 45.0},
+}
+TRIANGLE = {
+    "kind": "design",
+    "hietogram_type": "triangular",
+    "total_mm": 45.0,
+    "duration_min": 60.0,
 }
 SERIES = {"kind": "series", "depths_mm": [0.0, 4.0, 11.0], "timestep_min": 10.0}
 
@@ -215,13 +225,19 @@ class TestTheDocument:
         )
 
     def test_a_default_is_left_out_of_the_document_and_a_given_value_is_not(self):
-        plain = DesignStorm(45.0, 60.0, EulerIIHietogram())
-        peaked = DesignStorm(45.0, 60.0, EulerIIHietogram(peak_position=0.5))
+        plain = DesignStorm(45.0, 60.0, TriangularHietogram())
+        peaked = DesignStorm(45.0, 60.0, TriangularHietogram(peak_position=0.4))
 
         assert "peak_position" not in plain.to_document()
-        assert peaked.to_document()["peak_position"] == 0.5
-        assert rainfall_from_document({**DESIGN, "peak_position": 0.33}) == plain
+        assert peaked.to_document()["peak_position"] == 0.4
+        assert rainfall_from_document({**TRIANGLE, "peak_position": 0.5}) == plain
         assert plain != peaked
+
+    def test_the_curve_of_euler_ii_is_written_as_an_object_of_durations(self):
+        storm = DesignStorm(45.0, 60.0, EulerIIHietogram(CURVE))
+
+        assert storm.to_document() == DESIGN
+        assert "depth_duration_mm" not in {p.name for p in storm.describe()}
 
     def test_the_series_of_two_objects_are_compared_by_depths_and_step(self):
         assert RainfallSeries([1.0, 2.0], 5.0) == RainfallSeries([1.0, 2.0], 5.0)
@@ -254,7 +270,22 @@ class TestTheDocument:
                 {"field": "alpha"},
             ),
             (
-                {**DESIGN, "hietogram_type": "beta", "peak_position": 0.3},
+                {**DESIGN, "peak_position": 0.33},
+                "unknown_field",
+                {"field": "peak_position"},
+            ),
+            (
+                {k: v for k, v in DESIGN.items() if k != "depth_duration_mm"},
+                "missing_field",
+                {"field": "depth_duration_mm"},
+            ),
+            (
+                {**DESIGN, "depth_duration_mm": {"5": 15.0, "10": 12.0, "60": 45.0}},
+                "decreasing",
+                {"option": "depth_duration_mm", "durations_min": [5.0, 10.0]},
+            ),
+            (
+                {**TRIANGLE, "hietogram_type": "beta", "peak_position": 0.3},
                 "unknown_field",
                 {"field": "peak_position"},
             ),
@@ -265,7 +296,7 @@ class TestTheDocument:
             ),
             ({**DESIGN, "total_mm": -1}, "exclusive_minimum", {"option": "total_mm"}),
             (
-                {**DESIGN, "hietogram_type": "beta", "alpha": -1},
+                {**TRIANGLE, "hietogram_type": "beta", "alpha": -1},
                 "invalid_value",
                 {"field": "alpha"},
             ),
@@ -291,7 +322,7 @@ class TestTheDocument:
         assert HIETOGRAMS.names == ("block", "triangular", "beta", "euler_ii")
         assert RAINFALL_KINDS["series"] is RainfallSeries
         assert HIETOGRAMS["euler_ii"] is EulerIIHietogram
-        assert HIETOGRAMS.name_of(EulerIIHietogram()) == "euler_ii"
+        assert HIETOGRAMS.name_of(EulerIIHietogram(CURVE)) == "euler_ii"
 
 
 class TestExtending:
@@ -320,7 +351,7 @@ class TestExtending:
         monkeypatch.setitem(HIETOGRAMS._classes, "late", Growing)
 
         storm = rainfall_from_document(
-            {**DESIGN, "hietogram_type": "late", "growth": 2.0}
+            {**TRIANGLE, "hietogram_type": "late", "growth": 2.0}
         )
 
         assert isinstance(storm, DesignStorm)

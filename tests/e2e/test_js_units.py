@@ -22,10 +22,11 @@ junction, remove, rename, describe), ``editor/history.js``, the hints of
 ``editor/geometry.js`` and ``words.js`` are checked on small networks. The rainfall of
 Hydrogram's step 2 and of Sieć's network (plan 2026-11-10-network-wizard, D4) goes from
 ``rainfall`` of hydrolog-network/1 to the step's inputs and back (``mapping.js``'
-``rainfallInputs``, ``rainfallOf``), and ``RainStep`` shows a subcatchment's „Jak w
-sieci” with the network's time step read-only. A subcatchment made from rainfall goes to
-Hydrogram's inputs and back (``subcatchmentInputs``, ``subcatchmentNode``; D3): the
-inputs of each model choice, the guide's subcatchments and a hand-off's. The origin
+``rainfallInputs``, ``rainfallOf``), Euler II's depth-duration curve with it (PMAXTP's
+fetched one, a document's under „Hietogram”), and ``RainStep`` shows a subcatchment's
+„Jak w sieci” with the network's time step read-only. A subcatchment made from rainfall
+goes to Hydrogram's inputs and back (``subcatchmentInputs``, ``subcatchmentNode``; D3):
+the inputs of each model choice, the guide's subcatchments and a hand-off's. The origin
 of each node (D9) follows Nogat's precedence (``nodeOrigins``, a key of no node left
 out and said) and is written again by Sieć under the current ids with the changes
 marked (``siecNodeProvenance``), renamed, edited, drawn and added nodes included.
@@ -2509,6 +2510,95 @@ def test_a_rainfall_goes_to_the_steps_inputs_and_back(page: Any) -> None:
     }
     # „Brak” and „Jak w sieci” are no rainfall of their own
     assert got["kinds"] == [None, None]
+
+
+# Euler II (ATV-DVWK-A 118) is built from the depth-duration curve of one probability:
+# PMAXTP's fetch keeps it, a run and a document carry it, and „Hietogram” has only the
+# curve a document came with.
+EULER = """const mp = await import('./src/handoff/mapping.js');
+const hs = await import('./src/sections/hydrogram/state.js');
+const curve = {'5': 21.02, '10': 26.19, '15': 29.8, '30': 37.13, '45': 42.24,
+               '60': 46.28};
+const options = {latitude: 51.0154, longitude: 15.89, duration_min: 60,
+                 probability_percent: 1, method: 'POT'};
+const atlas = {...hs.initialRain(), rain_source: 'pmaxtp', pmaxtp_latitude: '51,0154',
+  pmaxtp_longitude: '15,89', pmaxtp_probability_pct: '1', pmaxtp_duration_min: '60',
+  hietogram_type: 'euler_ii', peak_position: '0,4'};
+const fetched = hs.pmaxtpRecord(options, {depth_mm: 46.28, depth_duration_mm: curve});
+const old = hs.pmaxtpRecord(options, {depth_mm: 46.28});
+const storm = {kind: 'design', hietogram_type: 'euler_ii', total_mm: 46.28,
+               duration_min: 60, depth_duration_mm: curve};
+const own = {rainfall: {source: 'pmaxtp', latitude: 51.0154, longitude: 15.89,
+                        probability_percent: 1, duration_min: 60, method: 'POT'}};
+const design = {...hs.initialRain(), ...mp.rainfallInputs(storm)};
+const bare = {...hs.initialRain(), rain_source: 'design', hietogram_type: 'euler_ii',
+              total_mm: '40', duration_min: '60'};
+return {
+  sent: hs.rainOptions({...atlas, pmaxtp_fetched: fetched}),
+  triangle: hs.rainOptions({...atlas, hietogram_type: 'triangular',
+                            pmaxtp_fetched: fetched}),
+  depthWithoutCurve: [hs.pmaxtpDepth({...atlas, pmaxtp_fetched: old}),
+    hs.pmaxtpDepth({...atlas, hietogram_type: 'beta', pmaxtp_fetched: old})],
+  written: mp.rainfallOf({...atlas, pmaxtp_fetched: fetched}),
+  design: [design.rain_source, mp.rainfallOf(design)],
+  ownPoint: mp.rainfallInputs(storm, own).pmaxtp_fetched,
+  bare: mp.rainfallOf(bare),
+  shapes: [hs.offeredShapes(bare), hs.offeredShapes(design), hs.offeredShapes(atlas)],
+  placed: [
+    {option: 'depth_duration_mm', reason: 'not_covered', duration_min: 2,
+     durations_min: [5, 4320]},
+    {option: 'depth_duration_mm', reason: 'not_covered', duration_min: 90,
+     durations_min: [5, 60]},
+    {option: 'depth_duration_mm', reason: 'decreasing'},
+  ].map((details) => hs.optionField(atlas, hs.errorOption(details))),
+};"""
+
+
+def test_euler_ii_takes_the_curve_of_its_pmaxtp_depth_or_of_its_document(
+    page: Any,
+) -> None:
+    got = js(page, EULER)
+    curve = {"5": 21.02, "10": 26.19, "15": 29.8, "30": 37.13, "45": 42.24, "60": 46.28}
+    storm = {
+        "kind": "design",
+        "hietogram_type": "euler_ii",
+        "total_mm": 46.28,
+        "duration_min": 60,
+        "depth_duration_mm": curve,
+    }
+    # A run of PMAXTP's Euler II sends the fetched depth and its curve, no peak position
+    # (a triangular one keeps it, without the curve)
+    assert got["sent"] == {key: value for key, value in storm.items() if key != "kind"}
+    assert "depth_duration_mm" not in got["triangle"]
+    assert got["triangle"]["peak_position"] == 0.4
+    # A depth kept without its curve is fetched again for Euler II only
+    assert got["depthWithoutCurve"] == [None, 46.28]
+    # The network's document carries the curve; read back, it is the same rainfall, as
+    # „Hietogram” with the document's curve, or PMAXTP's record at the record's point
+    assert got["written"] == storm
+    assert got["design"] == ["design", storm]
+    assert got["ownPoint"] == {
+        "latitude": 51.0154,
+        "longitude": 15.89,
+        "duration_min": 60,
+        "probability_percent": 1,
+        "method": "POT",
+        "depth_mm": 46.28,
+        "depth_duration_mm": curve,
+    }
+    # „Hietogram” without a curve offers no Euler II; one kept goes without a curve,
+    # which Hydrolog refuses rather than computing another storm
+    assert got["bare"] == {
+        "kind": "design",
+        "hietogram_type": "euler_ii",
+        "total_mm": 40,
+        "duration_min": 60,
+    }
+    every = ["block", "triangular", "beta", "euler_ii"]
+    assert got["shapes"] == [every[:3], every, every]
+    # A curve that does not reach down to the step is the step's error, one that does
+    # not reach the duration the duration's, any other the fetched depth's
+    assert got["placed"] == ["timestep_min", "pmaxtp_duration_min", "pmaxtp_depth"]
 
 
 # RainStep for a subcatchment in Sieć: „Jak w sieci” with the network's rainfall in

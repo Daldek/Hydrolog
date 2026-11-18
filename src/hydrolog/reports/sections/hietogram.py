@@ -8,6 +8,7 @@ from numpy.typing import NDArray
 
 from hydrolog.reports.formatters import TableGenerator
 from hydrolog.reports.templates import (
+    HIETOGRAM_NOTES,
     HIETOGRAM_TYPES,
     SECTION_HEADERS,
     SECTION_INTROS,
@@ -95,6 +96,8 @@ def generate_hietogram_section(
             f"**Typ rozkładu:** {dist_name}",
         ]
     )
+    if distribution in HIETOGRAM_NOTES:
+        lines.extend(["", HIETOGRAM_NOTES[distribution]])
 
     # Distribution table
     if include_table:

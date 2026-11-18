@@ -31,9 +31,18 @@ WATERSHED = {
     "flow_path_length_km": 6.0,
     "flow_path_slope_m_per_m": 0.02,
 }
+# A depth-duration curve whose depth of 60 min is the 45 mm of the Euler II storm.
+CURVE = {"5": 15.0, "10": 22.0, "20": 30.0, "30": 35.0, "60": 45.0}
 RAIN = {
     "kind": "design",
     "hietogram_type": "euler_ii",
+    "total_mm": 45,
+    "duration_min": 60,
+    "depth_duration_mm": CURVE,
+}
+BLOCK = {
+    "kind": "design",
+    "hietogram_type": "block",
     "total_mm": 45,
     "duration_min": 60,
 }
@@ -59,7 +68,7 @@ def stream(**fields):
 
 def reference(step=5.0):
     """The hydrograph of the generator for the rain and the watershed above."""
-    rain = EulerIIHietogram().generate(
+    rain = EulerIIHietogram(CURVE).generate(
         total_mm=45.0, duration_min=60.0, timestep_min=step
     )
     return HydrographGenerator(area_km2=12.0, cn=75, tc_min=90.0).generate(rain)
@@ -113,7 +122,7 @@ class TestTheSummary:
         )
 
     def test_the_rain_of_the_document_is_the_default_of_the_nodes_without_one(self):
-        own = {**RAIN, "total_mm": 20}
+        own = {**BLOCK, "total_mm": 20}
         content = document(
             made("A", rainfall=None),
             made("B", rainfall=own),
@@ -134,7 +143,7 @@ class TestTheSummary:
 
 class TestTheNotices:
     def test_a_notice_begins_with_the_id_of_its_node_and_names_it_in_details(self):
-        content = stream(rainfall={**RAIN, "duration_min": 62})
+        content = stream(rainfall={**BLOCK, "duration_min": 62})
 
         notices = route_network(network=content).notices
 
@@ -228,6 +237,13 @@ class TestBadDocuments:
                 {"node_id": "A", "field": "watershed.cn"},
             ),
             (
+                stream(
+                    rainfall={k: v for k, v in RAIN.items() if k != "depth_duration_mm"}
+                ),
+                "missing_field",
+                {"node_id": "A", "field": "rainfall.depth_duration_mm"},
+            ),
+            (
                 stream(rainfall=None),
                 "missing_field",
                 {"node_id": "A", "field": "rainfall"},
@@ -270,6 +286,17 @@ class TestBadDocuments:
                 run()
             assert caught.value.details["reason"] == "timestep_mismatch"
             assert caught.value.details["nodes"] == ["A", "B"]
+
+    def test_a_total_that_is_not_the_depth_of_the_curve_is_refused_at_the_run(self):
+        content = stream(rainfall={**RAIN, "total_mm": 20})
+
+        with pytest.raises(InvalidParameterError) as caught:
+            route_network(network=content)
+
+        assert caught.value.code == "validation_error"
+        assert caught.value.details["node_id"] == "A"
+        assert caught.value.details["reason"] == "total_mismatch"
+        assert caught.value.details["depth_mm"] == 45.0
 
 
 class TestInflows:

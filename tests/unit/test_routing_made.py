@@ -60,7 +60,8 @@ LOWER = WatershedParameters(
     flow_path_length_km=3.5,
     flow_path_slope_m_per_m=0.0229,
 )
-STORM = DesignStorm(45.0, 60.0, EulerIIHietogram())
+CURVE = {5.0: 15.0, 10.0: 22.0, 20.0: 30.0, 30.0: 35.0, 60.0: 45.0}
+STORM = DesignStorm(45.0, 60.0, EulerIIHietogram(CURVE))
 BLOCK = DesignStorm(30.0, 60.0, BlockHietogram())
 MODEL = CurveNumberRunoff(tc_min=90.0)
 FLOOD = Hydrograph.from_step([0.0, 10.0, 40.0, 90.0, 60.0, 30.0, 10.0, 0.0], 10.0)
@@ -574,6 +575,13 @@ class TestTheDocument:
         "hietogram_type": "euler_ii",
         "total_mm": 45.0,
         "duration_min": 60.0,
+        "depth_duration_mm": {
+            "5": 15.0,
+            "10": 22.0,
+            "20": 30.0,
+            "30": 35.0,
+            "60": 45.0,
+        },
     }
 
     def test_a_document_makes_the_network_that_the_objects_make(self):
@@ -622,9 +630,15 @@ class TestTheDocument:
         assert network.route().rainfall["A"].timestep_min == 10.0
 
     def test_the_rainfall_of_a_node_beats_the_one_of_the_document(self):
+        own = {
+            "kind": "design",
+            "hietogram_type": "block",
+            "total_mm": 20.0,
+            "duration_min": 60.0,
+        }
         network = RoutingNetwork.from_document(
             document(
-                made_node("A", rainfall={**self.RAIN, "total_mm": 20}),
+                made_node("A", rainfall=own),
                 {"id": "OUT", "type": "outlet", "from": ["A"]},
                 rainfall=self.RAIN,
             )

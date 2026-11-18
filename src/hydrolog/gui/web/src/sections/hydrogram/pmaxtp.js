@@ -2,12 +2,15 @@
 // whichever section shows the step (plan 2026-11-10-network-wizard, D4): Hydrogram zlewni
 // on its channel "hydrogram-pmaxtp", Sieć for its network's rainfall on "siec-pmaxtp". The
 // depth remembered with the inputs (`pmaxtp_fetched`) is used while it was fetched for the
-// same options; otherwise, once they are given and valid, `precip pmaxtp` fetches it on the
-// host's channel (debounced as a run, a newer fetch superseding an older one, never a run)
-// and the host keeps the record it is handed, with the providers' lines of the answer
-// (Nogat DEV-20.2), which the step shows under the depth and the runs carry. A point
-// outside the atlas stands on its field, any other failure (IMGW-PIB unreachable, an
-// answer without a depth) on the row of the depth, with „Pobierz ponownie”.
+// same options (and, for Euler II, holds the depth-duration curve of the answer: a depth kept
+// without it is fetched again); otherwise, once they are given and valid, `precip pmaxtp`
+// fetches it on the host's channel (debounced as a run, a newer fetch superseding an older
+// one, never a run) and the host keeps the record it is handed: the depth, the depths of
+// every duration at that probability (`depth_duration_mm`, which Euler II is built from) and
+// the providers' lines of the answer (Nogat DEV-20.2), which the step shows under the depth
+// and the runs carry. A point outside the atlas stands on its field, any other failure
+// (IMGW-PIB unreachable, an answer without a depth) on the row of the depth, with „Pobierz
+// ponownie”.
 
 import { api } from "../../api.js";
 import { linesOf } from "../../attribution.js";
@@ -40,7 +43,8 @@ function wordPmaxtpError(doc) {
  * @param {{channel: string, valid: boolean, onDepth: (record: object) => void}} options the
  *   host's channel; whether the fields of PMAXTP passed their checks (nothing is fetched
  *   before); and what keeps a fetched depth: the record of pmaxtpRecord, the options it was
- *   fetched for with `depth_mm` and the answer's lines, for the host's `pmaxtp_fetched`
+ *   fetched for with `depth_mm`, `depth_duration_mm` and the answer's lines, for the host's
+ *   `pmaxtp_fetched`
  * @returns {{depth: number|null, lines: {attribution: string[], terms_notice:
  *   string[]}|null, busy: boolean, failed: {key: string, fields: Object<string, string>,
  *   text: string}|null, onRetry: (() => void)|null, reset: () => void}} the depth [mm]
@@ -89,7 +93,7 @@ export function usePmaxtp(inputs, { channel, valid, onDepth }) {
       return;
     }
     setFailure(null);
-    keep.current(pmaxtpRecord(value.options, result.depth_mm, linesOf(envelope)));
+    keep.current(pmaxtpRecord(value.options, result, linesOf(envelope)));
   };
 
   useEffect(() => {

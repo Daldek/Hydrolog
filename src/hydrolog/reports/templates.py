@@ -45,8 +45,23 @@ HIETOGRAM_TYPES: dict[str, str] = {
     "block": "Rozkład blokowy (równomierny)",
     "triangular": "Rozkład trójkątny",
     "beta": "Rozkład Beta",
-    "euler_ii": "Rozkład Euler II (DVWK)",
+    "euler_ii": "Deszcz Eulera typu II (ATV-DVWK-A 118)",
 }
+
+HIETOGRAM_NOTES: dict[str, str] = {
+    "euler_ii": (
+        "Bloki deszczu Eulera typu II to przyrosty krzywej wysokość–czas trwania "
+        "jednego prawdopodobieństwa, "
+        "$\\Delta h_j = h(j\\Delta t) - h((j-1)\\Delta t)$; "
+        "czasy trwania między punktami krzywej interpolowano liniowo względem "
+        "$\\ln D$. Przedział szczytu zaczyna się po 0,3 czasu trwania, zaokrąglonym "
+        "w dół do wielokrotności kroku, i ma $\\Delta h_1$; $\\Delta h_2, \\Delta h_3, "
+        "\\ldots$ leżą przed nim aż do $t = 0$, pozostałe po nim. Każde $m$ kroków "
+        "wokół szczytu ma więc wysokość $h(m\\Delta t)$, a cały opad $h(D)$ "
+        "(ATV-DVWK-A 118, rozdz. 5.2.2.1; Malitz 2009, DWD)."
+    ),
+}
+"""Notes that explain how a hyetograph type is built, below its name."""
 
 AMC_DESCRIPTIONS: dict[str, str] = {
     "I": "warunki suche - najniższy potencjał odpływu",

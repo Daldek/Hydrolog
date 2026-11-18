@@ -226,8 +226,12 @@ print(f"tc = {tc:.1f} min")
 
 #### US-P04: Euler Type II hyetograph
 **As** a developer
-**I want** to generate an Euler Type II (DVWK) hyetograph
-**So that** I can apply the standard design rainfall used in German-speaking countries
+**I want** to generate the Euler type II design storm of ATV-DVWK-A 118 from the depth-duration curve of one probability (PMAXTP, KOSTRA-DWD or a local formula)
+**So that** I can apply the model rain of German and Polish urban drainage design, in which the blocks around the peak hold the design depths of their durations
+
+**Acceptance criteria** (corrected in the hotfix of 2026-11-18, [ADR-0042](decisions/0042-the-euler-type-ii-storm-from-a-depth-duration-curve.md)):
+- [x] The blocks are the increments of the curve: the first in the peak interval, which starts at 0.3 of the duration rounded down to the step, the next ones before it back to t = 0, the rest after it; the storm holds the depth of its duration
+- [x] The published storms of DWD (Malitz 2009) and the itwh KOSTRA-DWD 2010R printouts are reproduced to their printing, and the peak blocks of an itwh KOSTRA-DWD 2020 printout and of the Wrocław monograph (Kaźmierczak and Kotowski 2012) (COMPUTATION_PATHS 3.15)
 
 ---
 
@@ -601,7 +605,7 @@ print(f"tc = {tc:.1f} min")
   - [x] Water balance, CN curve, hypsometric curve
   - [x] River network statistics, rain gauge station map
   - [x] Dashboard with full calculation results
-- [x] `precipitation.hietogram` - Euler Type II (DVWK)
+- [x] `precipitation.hietogram` - Euler Type II (DVWK) (until 0.8.1 an approximation with fixed `r^-0.7` weights that took only the total; since the hotfix of 2026-11-18 the storm of ATV-DVWK-A 118 from a depth-duration curve, ADR-0042)
 - [x] `runoff.nash_iuh` - Lutz method (estimating n, K from catchment characteristics)
 - [x] Tests and documentation (538 tests)
 

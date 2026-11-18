@@ -241,6 +241,8 @@ def report_generate(
     alpha: float | None = None,
     beta: float | None = None,
     peak_position: float | None = None,
+    depth_duration_mm: dict[str, Any] | None = None,
+    depth_duration_file: str | None = None,
     values: list[float] | None = None,
     input_file: str | None = None,
     value_column: str | None = None,
@@ -307,6 +309,8 @@ def report_generate(
     hietogram_type, total_mm, duration_min, alpha, beta, peak_position : optional
         A design hyetograph: its type, total depth [mm], duration [min] and the shape
         parameters of the type.
+    depth_duration_mm, depth_duration_file : optional
+        The depth-duration curve of an ``euler_ii`` storm, inline or from a file.
     values, input_file, value_column : optional
         A precipitation series instead of the design hyetograph: depths [mm] per
         step, inline or from a file column.
@@ -374,7 +378,11 @@ def report_generate(
     target = Path(os.fspath(output))
     refuse_input_as_output(
         target,
-        {"watershed_file": watershed_file, "input_file": input_file},
+        {
+            "watershed_file": watershed_file,
+            "input_file": input_file,
+            "depth_duration_file": depth_duration_file,
+        },
         hint="Give another file name for the report.",
     )
     plan = plan_outputs({"output": target}, force=force)
@@ -399,6 +407,8 @@ def report_generate(
         alpha=alpha,
         beta=beta,
         peak_position=peak_position,
+        depth_duration_mm=depth_duration_mm,
+        depth_duration_file=depth_duration_file,
         values=values,
         input_file=input_file,
         value_column=value_column,

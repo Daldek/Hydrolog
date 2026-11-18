@@ -90,8 +90,8 @@ const RUNOFF_OPTIONS = Object.freeze([
   "snyder_cp",
 ]);
 
-/** The options of a design storm, the `rainfall` of kind design. */
-const DESIGN_OPTIONS = Object.freeze(["hietogram_type", "total_mm", "duration_min", "alpha", "beta", "peak_position"]);
+/** The options of a design storm, the `rainfall` of kind design (Euler II's with its curve). */
+const DESIGN_OPTIONS = Object.freeze(["hietogram_type", "total_mm", "duration_min", "alpha", "beta", "peak_position", "depth_duration_mm"]);
 
 /** The typed values that make the rainfall, for telling whether it changed. */
 const RAIN_TEXTS = Object.freeze(["values", ...DESIGN_OPTIONS, "timestep_min"]);
@@ -526,10 +526,21 @@ export function hydrogramInputs(doc) {
   if (inputs.rain_source === "network") inputs.rain_source = "pmaxtp";
   const rainfall = isObject(sub.rainfall) ? sub.rainfall : payload.rainfall;
   inputs.timestep_min = typeof payload.timestep_min === "number" ? inputText(payload.timestep_min) : inputs.timestep_min;
-  const handed = isObject(rainfall) && inputs.rain_source === "pmaxtp" ? pmaxtpRecord(pmaxtpOptions(normalize(inputs)), rainfall.total_mm) : null;
+  const handed = isObject(rainfall) && inputs.rain_source === "pmaxtp" ? pmaxtpRecord(pmaxtpOptions(normalize(inputs)), handedAnswer(rainfall)) : null;
   const opened = normalize({ ...inputs, pmaxtp_fetched: handed });
   inputs.handoff = { ...receivedOf(doc), key: dataKey(opened), rainfallKey: rainfallKey(opened) };
   return inputs;
+}
+
+/**
+ * What a PMAXTP rainfall handed off says of its fetch (pmaxtpRecord): its total as the
+ * depth, and the depth-duration curve it came with (Euler II's), if any.
+ *
+ * @param {object} rainfall a `rainfall` of kind design
+ * @returns {{depth_mm: number, depth_duration_mm?: object}} the answer
+ */
+function handedAnswer(rainfall) {
+  return { depth_mm: rainfall.total_mm, depth_duration_mm: rainfall.depth_duration_mm };
 }
 
 /**
@@ -538,10 +549,12 @@ export function hydrogramInputs(doc) {
  * design storm is PMAXTP when its origin's record (`rainfall` of the provenance, of
  * `source` pmaxtp) names the probability and the duration the section offers and a point
  * (its own, else the watershed's, such as Hydrograf's outlet) and the duration is the
- * rainfall's, else a design hyetograph; its depth is remembered as fetched only when the
- * record names its own point, otherwise the page fetches the depth of the point. A series
- * gives its depths and its step as `timestep_min`. Without a rainfall: „Brak”, with the
- * watershed's point for PMAXTP when the origin names one.
+ * rainfall's, else a design hyetograph; its depth (with the depth-duration curve Euler II
+ * came with) is remembered as fetched only when the record names its own point, otherwise
+ * the page fetches them for the point. A design hyetograph keeps the curve its rainfall came
+ * with (`depth_duration_mm`: Euler II under „Hietogram”, such as a network of Sieć saved
+ * with PMAXTP's Euler II). A series gives its depths and its step as `timestep_min`. Without
+ * a rainfall: „Brak”, with the watershed's point for PMAXTP when the origin names one.
  *
  * @param {object|null} rainfall the `rainfall`, or null
  * @param {object|null} [origin] where it came from: a hand-off's `provenance`, whose
@@ -592,7 +605,8 @@ export function rainfallInputs(rainfall, origin = null) {
   inputs.alpha = inputText(rainfall.alpha);
   inputs.beta = inputText(rainfall.beta);
   inputs.peak_position = inputText(rainfall.peak_position);
-  if (pmaxtp && own) inputs.pmaxtp_fetched = pmaxtpRecord(pmaxtpOptions({ ...initialRain(), ...inputs }), rainfall.total_mm);
+  if (pmaxtp && own) inputs.pmaxtp_fetched = pmaxtpRecord(pmaxtpOptions({ ...initialRain(), ...inputs }), handedAnswer(rainfall));
+  else if (!pmaxtp && isObject(rainfall.depth_duration_mm)) inputs.depth_duration_mm = rainfall.depth_duration_mm;
   return inputs;
 }
 
@@ -644,9 +658,10 @@ export function networkRainfallKey(network) {
 }
 
 /**
- * The key of a rainfall as it came (D9), with the depth the document gives a PMAXTP
- * rainfall whose depth the page fetches again for the point its record names: the same
- * depth keeps the received record, as in Hydrogram zlewni (hydrogramInputs).
+ * The key of a rainfall as it came (D9), with the depth (and the depth-duration curve) the
+ * document gives a PMAXTP rainfall whose depth the page fetches again for the point its
+ * record names: the same depth keeps the received record, as in Hydrogram zlewni
+ * (hydrogramInputs).
  *
  * @param {object} inputs the inputs of the rainfall as they came
  * @param {object|null} rainfall the `rainfall` it came as
@@ -655,7 +670,7 @@ export function networkRainfallKey(network) {
  */
 export function cameRainfallKey(inputs, rainfall, key = rainfallKey) {
   const fetch = inputs.rain_source === "pmaxtp" && isObject(rainfall) && pmaxtpDepth(inputs) === null;
-  return key({ ...inputs, pmaxtp_fetched: fetch ? pmaxtpRecord(pmaxtpOptions(inputs), rainfall.total_mm) : inputs.pmaxtp_fetched });
+  return key({ ...inputs, pmaxtp_fetched: fetch ? pmaxtpRecord(pmaxtpOptions(inputs), handedAnswer(rainfall)) : inputs.pmaxtp_fetched });
 }
 
 /**
