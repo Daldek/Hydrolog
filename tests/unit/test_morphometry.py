@@ -490,6 +490,27 @@ class TestHypsometricCurve:
         with pytest.raises(InvalidParameterError, match="n_points"):
             hypso.generate_curve(n_points=1)
 
+    def test_flat_elevations_have_no_integral(self):
+        """Zero relief: the curve is undefined (CMP-3), not NaN (TRIAGE T18)."""
+        hypso = HypsometricCurve(np.full(10, 120.0))
+
+        with pytest.raises(InvalidParameterError, match="relief"):
+            hypso.hypsometric_integral()
+
+    @pytest.mark.parametrize("bad", [np.nan, np.inf])
+    def test_non_finite_elevation_raises(self, bad):
+        """A NaN or inf cell raises instead of a silent NaN integral (TRIAGE T18)."""
+        with pytest.raises(InvalidParameterError, match="finite"):
+            HypsometricCurve(np.array([100.0, bad, 300.0]))
+
+    def test_non_finite_cell_area_raises(self):
+        """A NaN cell area raises instead of a NaN-weighted curve."""
+        with pytest.raises(InvalidParameterError, match="finite"):
+            HypsometricCurve(
+                np.array([100.0, 200.0, 300.0]),
+                cell_areas=np.array([1.0, np.nan, 1.0]),
+            )
+
 
 class TestWatershedParameters:
     """Tests for WatershedParameters dataclass."""

@@ -61,10 +61,11 @@ class HypsometricCurve:
 
     Notes
     -----
-    The hypsometric integral (HI) indicates the erosion stage:
-    - HI > 0.6: Young (convex curve) - little erosion
-    - HI = 0.4-0.6: Mature (S-shaped curve) - moderate erosion
-    - HI < 0.4: Old (concave curve) - extensive erosion
+    The hypsometric integral (HI) indicates the stage of the landscape
+    (Strahler, 1952, GSA Bulletin 63: 1117-1142, text with Fig. 7):
+    - HI > 0.60: inequilibrium (youthful) stage, convex curve
+    - HI = 0.35-0.60: equilibrium (mature) stage, S-shaped curve
+    - HI < 0.35: monadnock phase, concave curve with residual masses
 
     Examples
     --------
@@ -92,13 +93,16 @@ class HypsometricCurve:
         Raises
         ------
         InvalidParameterError
-            If elevations array is empty or has invalid values.
+            If elevations array is empty or holds non-finite values, or if
+            cell_areas holds non-finite or non-positive values.
         """
         self.elevations = np.asarray(elevations, dtype=np.float64).flatten()
 
         if len(self.elevations) == 0:
             raise InvalidParameterError("elevations array cannot be empty")
 
+        if not np.all(np.isfinite(self.elevations)):
+            raise InvalidParameterError("elevations must be finite (no NaN or inf)")
         if cell_areas is not None:
             self.cell_areas = np.asarray(cell_areas, dtype=np.float64).flatten()
             if len(self.cell_areas) != len(self.elevations):
@@ -106,8 +110,10 @@ class HypsometricCurve:
                     f"cell_areas length ({len(self.cell_areas)}) must match "
                     f"elevations length ({len(self.elevations)})"
                 )
-            if np.any(self.cell_areas <= 0):
-                raise InvalidParameterError("all cell_areas must be positive")
+            if not np.all(np.isfinite(self.cell_areas)) or np.any(self.cell_areas <= 0):
+                raise InvalidParameterError(
+                    "all cell_areas must be finite and positive"
+                )
         else:
             # Uniform cell areas
             self.cell_areas = np.ones_like(self.elevations)
@@ -157,6 +163,10 @@ class HypsometricCurve:
         """
         if n_points < 2:
             raise InvalidParameterError(f"n_points must be >= 2, got {n_points}")
+        if self.relief <= 0:
+            raise InvalidParameterError(
+                "elevations must differ (relief > 0) for a hypsometric curve"
+            )
 
         # Create elevation thresholds
         elev_thresholds = np.linspace(self.elevation_min, self.elevation_max, n_points)
@@ -191,12 +201,18 @@ class HypsometricCurve:
         float
             Hypsometric integral (0 to 1).
 
+        Raises
+        ------
+        InvalidParameterError
+            If the relief is zero (all elevations equal): the curve and its
+            integral are undefined.
+
         Notes
         -----
-        Interpretation:
-        - HI > 0.6: Youthful stage (convex curve)
-        - HI = 0.4-0.6: Mature stage (S-shaped curve)
-        - HI < 0.4: Old stage (concave curve)
+        Interpretation (Strahler, 1952, GSA Bulletin 63: 1117-1142):
+        - HI > 0.60: inequilibrium (youthful) stage (convex curve)
+        - HI = 0.35-0.60: equilibrium (mature) stage (S-shaped curve)
+        - HI < 0.35: monadnock phase (concave curve)
         """
         rel_heights, rel_areas = self.generate_curve(n_points)
 
