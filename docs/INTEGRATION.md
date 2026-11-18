@@ -39,7 +39,7 @@ Enable easy data exchange between Hydrograf (GIS spatial analysis) and Hydrolog 
 │                         HYDROLOG                                │
 │  Responsibility: HYDROLOGICAL CALCULATIONS                      │
 │                                                                 │
-│  - Time of concentration (Kirpich, SCS Lag, Giandotti, FAA,    │
+│  - Time of concentration (Kirpich, NRCS, Giandotti, FAA,       │
 │    Kerby, Kerby-Kirpich)                                        │
 │  - Unit hydrographs (SCS, Nash, Clark, Snyder)                  │
 │  - Rainfall→runoff transformation (convolution)                 │
@@ -74,7 +74,7 @@ Enable easy data exchange between Hydrograf (GIS spatial analysis) and Hydrolog 
     "mean_slope_m_per_m": {"type": "number", "minimum": 0, "description": "Mean land slope of the watershed [m/m] (NRCS: Y)"},
     "channel_length_km": {"type": "number", "exclusiveMinimum": 0, "description": "Main channel length [km] (Giandotti)"},
     "channel_slope_m_per_m": {"type": "number", "minimum": 0, "description": "Main channel slope [m/m]"},
-    "cn": {"type": "integer", "minimum": 0, "maximum": 100, "description": "Curve Number"},
+    "cn": {"type": "number", "minimum": 0, "maximum": 100, "description": "Curve Number, may be fractional (an area-weighted CN); the calculations take 1-100 (tc nrcs, SCS-CN)"},
     "source": {"type": "string", "description": "Data source"},
     "crs": {"type": "string", "description": "Coordinate reference system"},
 

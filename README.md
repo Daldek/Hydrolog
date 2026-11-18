@@ -68,23 +68,29 @@ hydrolog tc kirpich --length-km 8.2 --slope-m-per-m 0.023 --json
   "result": {
     "schema": "hydrolog-tc-kirpich/1",
     "method": "kirpich",
-    "tc_min": 85.97330594494066,
-    "tc_h": 1.4328884324156776,
+    "tc_min": 85.85676702638006,
+    "tc_h": 1.4309461171063342,
     "parameters": {"length_km": 8.2, "slope_m_per_m": 0.023}
   },
   "notices": [
     {
       "level": "warning",
       "code": "outside_typical_range",
-      "message": "kirpich: slope_m_per_m=0.023 is outside typical range [0.03, 0.1]. Results may be unreliable.",
-      "details": {"method": "kirpich", "parameter": "slope_m_per_m", "field": "slope_m_per_m", "value": 0.023, "minimum": 0.03, "maximum": 0.1}
+      "message": "kirpich: length_km=8.2 is outside typical range [0.10668, 1.2192]. Results may be unreliable.",
+      "details": {"method": "kirpich", "parameter": "length_km", "field": "length_km", "value": 8.2, "minimum": 0.10668, "maximum": 1.2192}
+    },
+    {
+      "level": "warning",
+      "code": "outside_typical_range",
+      "message": "kirpich: slope_m_per_m=0.023 is outside typical range [0.025, 0.1]. Results may be unreliable.",
+      "details": {"method": "kirpich", "parameter": "slope_m_per_m", "field": "slope_m_per_m", "value": 0.023, "minimum": 0.025, "maximum": 0.1}
     }
   ],
   "inputs": {"length_km": 8.2, "slope_m_per_m": 0.023}
 }
 ```
 
-`result` is the document of the command (its own `schema`; units are in the field names), `notices` holds non-fatal warnings (here: a slope below the 3–10 % of the watersheds Kirpich's formula comes from; `hydrolog tc kirpich --schema` lists the typical ranges a command checks, with their sources) and `inputs` the options after normalization. A second call computes the design hydrograph of a 45.3 km2 watershed (CN 72, time of concentration 86 min, 38.5 mm of Beta-distributed rain in 60 min):
+`result` is the document of the command (its own `schema`; units are in the field names), `notices` holds non-fatal warnings (here: a flow path of 8.2 km and a slope of 2.3 %, outside the 350–4000 ft, 0.107–1.22 km, and 2.5–10 % of the data Kirpich's formula comes from, Mota and Kobiyama 2015, p. 58; `hydrolog tc kirpich --schema` lists the typical ranges a command checks, with their sources) and `inputs` the options after normalization. A second call computes the design hydrograph of a 45.3 km2 watershed (CN 72, time of concentration 86 min, 38.5 mm of Beta-distributed rain in 60 min):
 
 ```bash
 hydrolog hydrograph generate --area-km2 45.3 --cn 72 --tc-min 86 --hietogram-type beta --total-mm 38.5 --duration-min 60 --json
@@ -114,7 +120,7 @@ print(envelope.to_json())
 ```
 
 ```json output
-{"command": "tc kirpich", "status": "ok", "result": {"tc_min": 85.97330594494066}}
+{"command": "tc kirpich", "status": "ok", "result": {"tc_min": 85.85676702638006}}
 ```
 
 `list_commands`, `command_schema`, `validate_command` and `check_command` complete the catalog API. The typed function of each command is in `hydrolog.operations`; the calculation classes (`SCSCN`, `HydrographGenerator`, `NashIUH`, `ConcentrationTime` and others) are described in [docs/USAGE.md](https://github.com/Daldek/Hydrolog/blob/main/docs/USAGE.md).
@@ -141,7 +147,7 @@ anyio.run(call_tool)
 ```
 
 ```json output
-{"command": "tc kirpich", "status": "ok", "result": {"tc_min": 85.97330594494066}}
+{"command": "tc kirpich", "status": "ok", "result": {"tc_min": 85.85676702638006}}
 ```
 
 **Web GUI.** `hydrolog gui serve` (extra `gui`) serves Hydrolog in a browser, in Polish, for people who do not use a command line: **Hydrogram zlewni** (the design hydrograph of one watershed, recomputed after every change, with the PMAXTP depth fetched by `precip pmaxtp`), **Sieć i trasowanie** (a river network built on a canvas, as in HEC-HMS's basin model editor, or opened from a file or a hand-off, and routed), **Statystyka przepływów** (flood frequency of annual maxima or a daily series, and the homogeneity of the series), **Kalkulatory** (time of concentration by six methods and fifteen single calculators) and **Wszystkie polecenia** (a form for every command but `gui serve`, `config show`, `commands guide` and `commands batch`). Every number is a run of a catalog command, and every result shows the command line that gives it; results leave the page as CSV, JSON or PNG, a Markdown report, a print view or a hand-off `nogat-handoff/1` to and from Hydrograf. The results are estimates of simplified methods, not a forecast or a flood hazard map. A guide in Polish opens from „Instrukcja” in the top bar.

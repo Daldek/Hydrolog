@@ -49,7 +49,7 @@ hydrolog tc kirpich --length-km 8.2 --slope-m-per-m 0.023 --json
 ```
 
 ```json output
-{"schema": "hydrolog-result/1", "tool": "hydrolog", "command": "tc kirpich", "check": false, "status": "ok", "result": {"schema": "hydrolog-tc-kirpich/1", "method": "kirpich", "tc_min": 85.97330594494066, "tc_h": 1.4328884324156776}, "notices": [{"level": "warning", "code": "outside_typical_range", "message": "kirpich: slope_m_per_m=0.023 is outside typical range [0.03, 0.1]. Results may be unreliable.", "details": {"method": "kirpich", "parameter": "slope_m_per_m", "field": "slope_m_per_m", "value": 0.023, "minimum": 0.03, "maximum": 0.1}}], "inputs": {"length_km": 8.2, "slope_m_per_m": 0.023}}
+{"schema": "hydrolog-result/1", "tool": "hydrolog", "command": "tc kirpich", "check": false, "status": "ok", "result": {"schema": "hydrolog-tc-kirpich/1", "method": "kirpich", "tc_min": 85.85676702638006, "tc_h": 1.4309461171063342}, "notices": [{"level": "warning", "code": "outside_typical_range", "message": "kirpich: length_km=8.2 is outside typical range [0.10668, 1.2192]. Results may be unreliable.", "details": {"method": "kirpich", "parameter": "length_km", "field": "length_km", "value": 8.2, "minimum": 0.10668, "maximum": 1.2192}}, {"level": "warning", "code": "outside_typical_range", "message": "kirpich: slope_m_per_m=0.023 is outside typical range [0.025, 0.1]. Results may be unreliable.", "details": {"method": "kirpich", "parameter": "slope_m_per_m", "field": "slope_m_per_m", "value": 0.023, "minimum": 0.025, "maximum": 0.1}}], "inputs": {"length_km": 8.2, "slope_m_per_m": 0.023}}
 ```
 
 The envelope keys are `schema`, `tool`, `version`, `command`, `check`, `status`, `result`,
@@ -61,7 +61,8 @@ domain result has its own `schema`
 (`hydrolog-<group>-<command>/1`); units follow from field names (`tc_min`, `area_ha`); `NaN` and
 infinities are `null`. `inputs` echoes the options after normalisation (defaults filled in, paths
 made absolute). `notices` carries non-fatal warnings (a short series, a value outside the typical
-range of a formula, here a slope below the 3–10 % of Kirpich's data): read it next to the result.
+range of a formula, here a flow path of 8.2 km and a slope of 2.3 %, outside the 0.107–1.22 km and
+2.5–10 % of Kirpich's data, Mota and Kobiyama 2015, p. 58): read it next to the result.
 `--schema` of a command lists the typical ranges it checks, each with its source, in
 `typical_ranges`.
 
@@ -119,7 +120,7 @@ hydrolog tc watershed --watershed-file tests/fixtures/watershed_example.json --m
 ```
 
 ```json output
-{"result": {"method": "kirpich", "tc_min": 135.89384108269536, "parameters": {"length_km": 14.2, "slope_m_per_m": 0.021}, "watershed_name": "Zlewnia Przykładowa"}}
+{"result": {"method": "kirpich", "tc_min": 135.7096336580214, "parameters": {"length_km": 14.2, "slope_m_per_m": 0.021}, "watershed_name": "Zlewnia Przykładowa"}}
 ```
 
 ```python
@@ -271,7 +272,7 @@ hydrolog hydrograph generate --watershed-file tests/fixtures/watershed_example.j
 ```
 
 ```json output
-{"result": {"schema": "hydrolog-hydrograph-generate/1", "peak_discharge_m3s": 47.02725674740998, "time_to_peak_min": 110.0, "total_volume_m3": 321254.9494884561, "runoff_coefficient": 0.1417936234546637, "cn": 72.0, "tc_method": "kirpich", "uh_model": "scs"}}
+{"result": {"schema": "hydrolog-hydrograph-generate/1", "peak_discharge_m3s": 47.08254299965717, "time_to_peak_min": 110.0, "total_volume_m3": 321262.25104058074, "runoff_coefficient": 0.14179362345466365, "cn": 72.0, "tc_method": "kirpich", "uh_model": "scs"}}
 ```
 
 ```python
@@ -1131,7 +1132,7 @@ hydrolog report generate --output report.md --watershed-file tests/fixtures/wate
 ```
 
 ```json output
-{"result": {"schema": "hydrolog-report-generate/1", "peak_discharge_m3s": 47.02725674740998, "files": [{"path": "...", "status": "written"}]}}
+{"result": {"schema": "hydrolog-report-generate/1", "peak_discharge_m3s": 47.08254299965717, "files": [{"path": "...", "status": "written"}]}}
 ```
 
 ## 3. Writing files

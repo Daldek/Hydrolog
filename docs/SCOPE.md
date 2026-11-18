@@ -94,13 +94,13 @@ Hydrolog is analogous to **Kartograf** (spatial data download) and **Obserwator*
 
 #### 2.1.3 Module `time` - Characteristic Times (v0.1.0)
 
-**Time of concentration (tc) - 6 methods:**
-- Kirpich formula: `tc = 0.0195 × L^0.77 × S^(-0.385)`
-- NRCS formula: `tc = 0.01416 × L^0.8 × (S+25.4)^0.7 × Y^-0.5`
-- Giandotti formula: `tc = (4√A + 1.5L) / (0.8 × √Hmean)`
-- FAA formula: `tc = 22.213 × (1.1 - C) × L^0.5 / S^(1/3)`
-- Kerby formula: `tc = 36.37 × (L × N)^0.467 × S^(-0.2335)`
-- Kerby-Kirpich method: `tc = t_overland(Kerby) + t_channel(Kirpich)`
+**Time of concentration (tc) - 6 methods** (each declared by a spec, ADR-0050: its equation, units, constants and applicability ranges are in [FORMULAS.md](FORMULAS.md)):
+- Kirpich (1940; Fang et al. 2005, eq. 3.14): the length and slope of the longest flow path
+- NRCS lag equation (USDA-NRCS 2010, NEH 630 ch. 15, eq. 15-4b): the length of the longest flow path, the average land slope of the catchment and CN
+- Giandotti (1934; Autorità di bacino del fiume Po 2001): area, main channel length and H = mean elevation − outlet elevation
+- FAA (AC 150/5320-5B, 1970, fig. 7): overland flow time from the overland length and slope and C
+- Kerby (1959; Fang et al. 2005, eq. 3.12): overland flow time from the overland length and slope and N
+- Kerby-Kirpich (Roussel et al. 2005; Cleveland et al. 2012): Kerby on the overland segment plus Kirpich on the rest of the longest flow path
 
 **Input parameters** (each method takes those its source defines, ADR-0019):
 - Length and slope of the longest flow path, from the hydraulically most distant point to the outlet [km, m/m] (Kirpich, NRCS, Kerby-Kirpich)
