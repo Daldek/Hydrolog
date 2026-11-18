@@ -157,7 +157,7 @@ COMMANDS: tuple[Command, ...] = (
             "Give a daily series with dates, or `half_year_file` for IMGW-PIB's "
             "values.",
             "The period is the whole record unless `first_year`/`last_year` are given.",
-            "Read `notices` and `labels`; results are in the unit of the series.",
+            "Read `notices` and `labels`; results are in the series' unit.",
         ),
         rules_pl=(
             "Podaj szereg dobowy z datami albo `half_year_file` dla wartości IMGW-PIB.",
