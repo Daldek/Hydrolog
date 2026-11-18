@@ -994,17 +994,17 @@
                 "beta",
                 "euler_ii"
               ],
-              "description": "Temporal distribution of the rainfall; `alpha`, `beta` apply to beta, `peak_position` to triangular and euler_ii."
+              "description": "Temporal distribution of the rainfall; `alpha`, `beta` apply to beta, `peak_position` to triangular, `depth_duration_mm` to euler_ii."
             },
             "total_mm": {
               "type": "number",
               "exclusiveMinimum": 0,
-              "description": "Total precipitation depth [mm]; > 0."
+              "description": "Total precipitation depth [mm]; > 0. For `euler_ii` the depth of its curve `depth_duration_mm` at `duration_min` (to 0.005 mm)."
             },
             "duration_min": {
               "type": "number",
               "exclusiveMinimum": 0,
-              "description": "Rainfall duration [min]; > 0 and not shorter than the time step. The hyetograph has `int(duration_min / timestep_min)` steps; when the duration is not a multiple of the step the tail is not covered (a notice reports it)."
+              "description": "Rainfall duration [min]; > 0 and not shorter than the time step. The hyetograph has `int(duration_min / timestep_min)` steps; when the duration is not a multiple of the step the tail is not covered (a notice reports it), and `euler_ii` refuses it."
             },
             "alpha": {
               "type": "number",
@@ -1020,7 +1020,11 @@
               "type": "number",
               "maximum": 1,
               "exclusiveMinimum": 0,
-              "description": "Relative position of the peak within the duration, 0 < p < 1 (exclusive); only for `triangular` (default 0.5) and `euler_ii` (default 0.33)."
+              "description": "Relative position of the peak within the duration, 0 < p < 1 (exclusive); only for `triangular`; default 0.5."
+            },
+            "depth_duration_mm": {
+              "type": "object",
+              "description": "Depth-duration curve of one probability for `euler_ii`: an object of duration [min] to depth [mm], e.g. `{\"5\": 8.48, \"10\": 12.16, ...}` or the `depth_duration_mm` of `precip pmaxtp`; not decreasing, from the time step to `duration_min`. Durations between its points are interpolated linearly in ln D. The blocks are its increments in the order of the durations: the first in the peak interval, the next before it back to t = 0, the rest after it (as itwh does; for an IDF curve the increments sorted from the largest)."
             }
           },
           "additionalProperties": false

@@ -1376,8 +1376,16 @@ COMMANDS: tuple[Command, ...] = (
                     "rainfall": {
                         "kind": "design",
                         "hietogram_type": "euler_ii",
-                        "total_mm": 45,
+                        "total_mm": 41.77,
                         "duration_min": 60,
+                        "depth_duration_mm": {
+                            "5": 13.11,
+                            "10": 20.48,
+                            "15": 24.99,
+                            "30": 33.1,
+                            "45": 38.09,
+                            "60": 41.77,
+                        },
                     },
                     "nodes": [
                         {
@@ -1522,14 +1530,14 @@ COMMANDS: tuple[Command, ...] = (
                     {
                         "id": "A",
                         "type": "subcatchment",
-                        "peak_m3s": 16.959234,
-                        "time_to_peak_min": 95.0,
+                        "peak_m3s": 13.411756,
+                        "time_to_peak_min": 90.0,
                         "parameters": {
-                            "total_mm": 45.0,
+                            "total_mm": 41.77,
                             "area_km2": 12.0,
                             "cn": 75,
                             "tc_min": 90.0,
-                            "total_effective_mm": 6.987621,
+                            "total_effective_mm": 5.633253,
                         },
                     },
                     {
@@ -1541,14 +1549,14 @@ COMMANDS: tuple[Command, ...] = (
                         "id": "R1",
                         "type": "reach",
                         "model": "lag",
-                        "peak_m3s": 16.959234,
+                        "peak_m3s": 13.411756,
                         "peak_delay_min": 30.0,
                     },
                     {
                         "id": "J1",
                         "type": "junction",
-                        "peak_m3s": 17.11763,
-                        "time_to_peak_min": 125.0,
+                        "peak_m3s": 13.621908,
+                        "time_to_peak_min": 120.0,
                         "times_min": [0.0, 5.0, 10.0],
                         "discharge_m3s": [0.0, 0.0, 0.0],
                     },

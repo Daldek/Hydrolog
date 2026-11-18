@@ -19,24 +19,32 @@ _AREAL_METHODS = ("arithmetic", "thiessen", "idw", "isohyet")
 
 _TYPE_PL = (
     "Typ rozkładu opadu w czasie; `alpha`, `beta` dotyczą typu beta, "
-    "`peak_position` typów triangular i euler_ii."
+    "`peak_position` typu triangular, krzywa `depth_duration_mm` (lub "
+    "`depth_duration_file`) typu euler_ii."
 )
 _TYPE_EN = (
     "Temporal distribution of the rainfall; `alpha`, `beta` apply to beta, "
-    "`peak_position` to triangular and euler_ii."
+    "`peak_position` to triangular, the curve `depth_duration_mm` (or "
+    "`depth_duration_file`) to euler_ii."
 )
 
 _TYPE_MEANINGS = {
     "block": "Uniform intensity over the whole duration.",
     "triangular": "Linear rise to the peak at `peak_position`, then linear fall.",
     "beta": "Shape of a Beta density with parameters `alpha` and `beta`.",
-    "euler_ii": "DVWK Euler type II: peak at about 1/3 of the duration.",
+    "euler_ii": (
+        "Euler type II of ATV-DVWK-A 118, built from a depth-duration curve: peak "
+        "from 0.3 of the duration (rounded down to the step)."
+    ),
 }
 _TYPE_MEANINGS_PL = {
     "block": "Stała intensywność w całym czasie trwania.",
     "triangular": "Liniowy wzrost do maksimum w `peak_position`, potem spadek.",
     "beta": "Kształt gęstości rozkładu beta o parametrach `alpha` i `beta`.",
-    "euler_ii": "DVWK Euler typ II: maksimum po ok. 1/3 czasu trwania.",
+    "euler_ii": (
+        "Euler typu II wg ATV-DVWK-A 118, z krzywej wysokość–czas trwania: "
+        "maksimum od 0,3 czasu trwania (w dół do wielokrotności kroku)."
+    ),
 }
 
 HIETOGRAM_OPTIONS: tuple[Option, ...] = (
@@ -53,9 +61,16 @@ HIETOGRAM_OPTIONS: tuple[Option, ...] = (
     Option(
         name="total_mm",
         type="number",
-        description_pl="Całkowita wysokość opadu [mm]; > 0.",
-        description="Total precipitation depth [mm]; > 0.",
-        required=True,
+        description_pl=(
+            "Całkowita wysokość opadu [mm]; > 0. Wymagana poza `euler_ii`, którego "
+            "suma to wysokość krzywej dla `duration_min` (podana musi być jej równa "
+            "z dokładnością 0,005 mm)."
+        ),
+        description=(
+            "Total precipitation depth [mm]; > 0. Required except for `euler_ii`, "
+            "whose total is the depth of its curve at `duration_min` (a total given "
+            "must equal it to 0.005 mm)."
+        ),
         exclusive_minimum=0,
         unit="mm",
     ),
@@ -66,13 +81,13 @@ HIETOGRAM_OPTIONS: tuple[Option, ...] = (
             "Czas trwania opadu [min]; > 0 i nie krótszy niż krok czasowy. "
             "Hietogram ma `int(duration_min / timestep_min)` kroków; gdy czas "
             "trwania nie jest wielokrotnością kroku, końcówka nie jest pokryta "
-            "(uwaga w wyniku)."
+            "(uwaga w wyniku), a `euler_ii` go odrzuca."
         ),
         description=(
             "Rainfall duration [min]; > 0 and not shorter than the time step. The "
             "hyetograph has `int(duration_min / timestep_min)` steps; when the "
             "duration is not a multiple of the step the tail is not covered (a "
-            "notice reports it)."
+            "notice reports it), and `euler_ii` refuses it."
         ),
         required=True,
         exclusive_minimum=0,
@@ -120,16 +135,53 @@ HIETOGRAM_OPTIONS: tuple[Option, ...] = (
         type="number",
         description_pl=(
             "Względne położenie maksimum w czasie trwania, 0 < p < 1 (bez "
-            "końców); tylko dla `triangular` (domyślnie 0,5) i `euler_ii` "
-            "(domyślnie 0,33)."
+            "końców); tylko dla `triangular`; domyślnie 0,5."
         ),
         description=(
             "Relative position of the peak within the duration, 0 < p < 1 "
-            "(exclusive); only for `triangular` (default 0.5) and `euler_ii` "
-            "(default 0.33)."
+            "(exclusive); only for `triangular`; default 0.5."
         ),
         exclusive_minimum=0,
         maximum=1,
+    ),
+    Option(
+        name="depth_duration_mm",
+        type="object",
+        description_pl=(
+            "Krzywa wysokość–czas trwania jednego prawdopodobieństwa dla `euler_ii`: "
+            'obiekt czas trwania [min] → wysokość [mm], np. `{"5": 8.48, "10": '
+            "12.16, ...}` albo `depth_duration_mm` z `precip pmaxtp`; niemalejąca, "
+            "od kroku czasowego do `duration_min`. Czasy między jej punktami są "
+            "interpolowane liniowo względem ln D. Bloki to jej przyrosty w kolejności "
+            "czasów trwania: pierwszy w przedziale szczytu, kolejne przed nim do "
+            "t = 0, reszta po nim (jak itwh; dla krzywej IDF to przyrosty "
+            "uporządkowane malejąco)."
+        ),
+        description=(
+            "Depth-duration curve of one probability for `euler_ii`: an object of "
+            'duration [min] to depth [mm], e.g. `{"5": 8.48, "10": 12.16, ...}` or '
+            "the `depth_duration_mm` of `precip pmaxtp`; not decreasing, from the "
+            "time step to `duration_min`. Durations between its points are "
+            "interpolated linearly in ln D. The blocks are its increments in the "
+            "order of the durations: the first in the peak interval, the next "
+            "before it back to t = 0, the rest after it (as itwh does; for an IDF "
+            "curve the increments sorted from the largest)."
+        ),
+    ),
+    Option(
+        name="depth_duration_file",
+        type="path",
+        path_role="input",
+        description_pl=(
+            "Plik z krzywą dla `euler_ii` zamiast `depth_duration_mm`: CSV "
+            "`duration_min,depth_mm` albo JSON (taki obiekt, tabela lub to, co "
+            "wypisuje `precip pmaxtp --json`; jego atrybucja przechodzi do wyniku)."
+        ),
+        description=(
+            "File with the curve for `euler_ii` instead of `depth_duration_mm`: CSV "
+            "`duration_min,depth_mm` or JSON (such an object, a table, or what "
+            "`precip pmaxtp --json` prints, whose attribution the result carries)."
+        ),
     ),
 )
 
@@ -228,16 +280,19 @@ COMMANDS: tuple[Command, ...] = (
             "Compute a design hyetograph: block, triangular, Beta or Euler type II."
         ),
         description_pl=(
-            "Hietogram o zadanej sumie, czasie trwania i kroku: wysokości i natężenia "
-            "w krokach. Stosuj jako opad projektowy dla `scs effective` lub "
-            "`hydrograph generate`. Nie do średnich obszarowych (`precip areal`). "
-            "Parametry innego typu są odrzucane."
+            "Hietogram o zadanym czasie trwania i kroku: wysokości i natężenia w "
+            "krokach. Blokowy, trójkątny i beta rozkładają `total_mm`; Euler II "
+            "(ATV-DVWK-A 118) powstaje z krzywej wysokość–czas trwania "
+            "jednego prawdopodobieństwa, np. z `precip pmaxtp`. Opad projektowy dla "
+            "`scs effective` lub `hydrograph generate`. Parametry innego typu są "
+            "odrzucane."
         ),
         description=(
-            "Hyetograph of a given total, duration and step: depths and intensities "
-            "per step. Use as the design rainfall for `scs effective` or `hydrograph "
-            "generate`. Not for areal averages (`precip areal`). Parameters of another"
-            " type are rejected."
+            "Hyetograph of a duration and step: depth and intensity per step. "
+            "Block, triangular and Beta spread `total_mm`; Euler II (ATV-DVWK-A 118) "
+            "is built from the depth-duration curve of one probability (e.g. "
+            "`precip pmaxtp`). Design rainfall for `scs effective` or `hydrograph "
+            "generate`. Parameters of another type are rejected."
         ),
         function="hydrolog.operations.precip_hietogram",
         options=(*HIETOGRAM_OPTIONS, ATTRIBUTION),
@@ -246,17 +301,20 @@ COMMANDS: tuple[Command, ...] = (
         rules=(
             "Pass duration_min >= timestep_min.",
             (
-                "Use alpha and beta only for beta, peak_position for triangular and "
-                "euler_ii."
+                "Use alpha and beta only for beta, peak_position for triangular, "
+                "depth_duration_mm or depth_duration_file for euler_ii."
             ),
             "Read depths_mm in mm per step; check `notices`.",
         ),
         rules_pl=(
             "Podaj duration_min >= timestep_min.",
-            "alpha i beta tylko dla beta, peak_position dla triangular i euler_ii.",
+            (
+                "alpha i beta tylko dla beta, peak_position dla triangular, "
+                "depth_duration_mm lub depth_duration_file dla euler_ii."
+            ),
             "depths_mm to mm na krok; sprawdź `notices`.",
         ),
-        errors=("validation_error",),
+        errors=("validation_error", "not_found", "data_error"),
         example_results=(
             {
                 "hietogram_type": "beta",
@@ -266,9 +324,10 @@ COMMANDS: tuple[Command, ...] = (
             },
             {
                 "hietogram_type": "euler_ii",
-                "n_steps": 24,
-                "peak_intensity_mm_per_h": 77.7862,
-                "parameters": {"peak_position": 0.33},
+                "total_mm": 23.66,
+                "n_steps": 12,
+                "peak_intensity_mm_per_h": 101.76,
+                "parameters": {"peak_start_min": 15.0},
             },
         ),
         examples=(
@@ -280,7 +339,18 @@ COMMANDS: tuple[Command, ...] = (
                 "alpha": 2.0,
                 "beta": 5.0,
             },
-            {"hietogram_type": "euler_ii", "total_mm": 38.4, "duration_min": 120.0},
+            {
+                "hietogram_type": "euler_ii",
+                "duration_min": 60.0,
+                "depth_duration_mm": {
+                    "5": 8.48,
+                    "10": 12.16,
+                    "15": 14.49,
+                    "30": 18.82,
+                    "45": 21.58,
+                    "60": 23.66,
+                },
+            },
         ),
     ),
     Command(
@@ -297,15 +367,17 @@ COMMANDS: tuple[Command, ...] = (
         description_pl=(
             "Wysokość opadu maksymalnego [mm] o czasie `duration_min` i "
             "prawdopodobieństwie przewyższenia `probability_percent` z atlasu PMAXTP "
-            "IMGW-PIB, metodą POT albo AMP. Korzysta z sieci: pobiera ją Obserwator "
-            "(dodatek `pmaxtp`). Podaj ją jako `total_mm` poleceniom `precip "
-            "hietogram` i `hydrograph generate`."
+            "IMGW-PIB (POT albo AMP) oraz wysokości wszystkich czasów trwania "
+            "(`depth_duration_mm`). Korzysta z sieci (Obserwator, dodatek `pmaxtp`). "
+            "Podaj wysokość jako `total_mm`, a krzywą jako `depth_duration_mm` "
+            "(euler_ii)."
         ),
         description=(
             "Maximum rainfall depth [mm] of `duration_min` at exceedance probability "
-            "`probability_percent` from the PMAXTP atlas of IMGW-PIB, by POT or AMP. "
-            "Uses the network: Obserwator fetches it (extra `pmaxtp`). Pass it as "
-            "`total_mm` of `precip hietogram` or `hydrograph generate`."
+            "`probability_percent` from the PMAXTP atlas of IMGW-PIB (POT or AMP), "
+            "with the depths of all its durations. Uses the network (Obserwator, "
+            "extra `pmaxtp`). Give the depth as `total_mm`, the depths as the curve "
+            "`depth_duration_mm` of euler_ii."
         ),
         function="hydrolog.operations.precip_pmaxtp",
         options=PMAXTP_OPTIONS,

@@ -58,6 +58,7 @@ from tests.e2e.conftest import (
     input_text,
     kamiennik_inputs,
     open_part,
+    pmaxtp_curve,
     pmaxtp_route,
     seed_hydrogram,
     sources_listed,
@@ -2021,6 +2022,7 @@ def test_pmaxtp_fetches_the_depth_of_the_point_once_and_keeps_it(tab: Tab) -> No
     assert page.evaluate(STORED)["pmaxtp_fetched"] == {
         **FETCHED,
         "depth_mm": 101.82,
+        "depth_duration_mm": pmaxtp_curve("1"),
         **lines,
     }
 
@@ -2095,3 +2097,121 @@ def test_a_point_outside_the_atlas_or_an_unreachable_imgw_stand_on_their_field(
         page.locator(f'{LEFT} [data-retry="pmaxtp"]').click()
     expect(field(page, "pmaxtp_depth")).to_have_value("101,82")
     shows(page, "54,20", "6:40", "977 225")
+
+
+# --- Euler II -------------------------------------------------------------------
+
+
+def test_euler_ii_is_built_from_the_pmaxtp_depths_of_its_probability(tab: Tab) -> None:
+    # The example at 1 h and Δt 5 min, its depth kept from before the depths of every
+    # duration came: Beta runs with it, Euler II fetches them first
+    hour = {**FETCHED, "duration_min": 60}
+    seed_hydrogram(
+        tab,
+        kamiennik_inputs(
+            pmaxtp_duration_min="60",
+            pmaxtp_fetched={**hour, "depth_mm": 46.28},
+            timestep_min="5",
+        ),
+    )
+    runs = Runs(tab.page)
+    tab.open("#hydrogram")
+    page = tab.page
+    shows_peak(
+        page, {**KAMIENNIK, "total_mm": 46.28, "duration_min": 60, "timestep_min": 5}
+    )
+    assert runs.pmaxtp == []
+    with (
+        run_of(page, hietogram_type="euler_ii") as ran,
+        page.expect_response(lambda answer: PMAXTP in answer.url) as answered,
+    ):
+        choose(page, "hg-shape-label", "Euler II")
+    curve = pmaxtp_curve("1")
+    assert answered.value.request.post_data_json == hour
+    assert answered.value.json()["result"]["depth_duration_mm"] == curve
+    # The run sends the PMAXTP depth of D and the depths of every duration, no peak
+    # position: the step has none, its note says how the storm is built
+    options = ran.value.request.post_data_json
+    assert {key: options[key] for key in ("total_mm", "duration_min")} == {
+        "total_mm": 46.28,
+        "duration_min": 60,
+    }
+    assert options["depth_duration_mm"] == curve
+    assert "peak_position" not in options
+    expect(page.locator(f'{LEFT} [data-field="peak_position"]')).to_have_count(0)
+    expect(page.locator(f'{LEFT} [data-euler="pmaxtp"]')).to_contain_text("0,3·D")
+    expect(field(page, "pmaxtp_depth")).to_have_value("46,28")
+    # The peak block is the fourth of twelve and holds h(5 min) of p 1 %: 21,02 mm, i.e.
+    # 252,24 mm/h; the 15 min around it hold h(15 min) and the storm h(60 min)
+    shows_peak(page, options)
+    expect(page.locator(CENTER)).to_contain_text("Pmax 21,02 mm / 5 min · 0:15–0:20")
+    expect(page.locator(CENTER)).to_contain_text("PMAXTP p 1%, 1 h, Euler II")
+    rain = ran.value.json()["result"]["precipitation_mm"]
+    assert max(rain) == rain[3] == curve["5"]
+    assert math.isclose(sum(rain[1:4]), curve["15"], abs_tol=1e-9)
+    assert math.isclose(sum(rain), curve["60"], abs_tol=1e-9)
+    assert page.evaluate(STORED)["pmaxtp_fetched"]["depth_duration_mm"] == curve
+
+    # A step the duration is no multiple of, or shorter than the curve's first duration
+    # (nothing is extrapolated): Hydrolog's refusal stands on the field to change
+    field(page, "timestep_min").fill("7")
+    expect(message(page, "pmaxtp_duration_min")).to_contain_text("Δt = 7 min")
+    expect(message(page, "pmaxtp_duration_min")).to_contain_text("· not_multiple")
+    field(page, "timestep_min").fill("2")
+    expect(message(page, "timestep_min")).to_contain_text("zaczyna się od 5 min")
+    expect(message(page, "timestep_min")).to_contain_text("· not_covered")
+    expect(kpi(page, "q")).to_have_text(
+        re.compile(rf"^{comma(expected(options)['peak_discharge_m3s'])}")
+    )  # the last result, marked
+
+
+def test_hietogram_offers_no_euler_ii_and_a_kept_one_says_why(tab: Tab) -> None:
+    # Inputs kept before Euler II needed its curve: „Hietogram” Euler II, a typed total
+    seed_hydrogram(
+        tab,
+        kamiennik_inputs(
+            rain_source="design",
+            total_mm="40",
+            duration_min="60",
+            hietogram_type="euler_ii",
+            peak_position="0,33",
+            timestep_min="5",
+        ),
+    )
+    runs = Runs(tab.page)
+    with tab.page.expect_response(lambda answer: RUN in answer.url) as refused:
+        tab.open("#hydrogram")
+    page = tab.page
+    shapes = page.locator('[aria-labelledby="hg-shape-label"]')
+    expect(shapes.get_by_role("radio")).to_have_text(["Blokowy", "Trójkątny", "Beta"])
+    expect(shapes.locator('[aria-checked="true"]')).to_have_count(0)
+    note = page.locator(f'{LEFT} [data-euler="none"]')
+    expect(note).to_be_visible()
+    # Sent as it is, never as another storm: Hydrolog refuses it and the panel says why
+    assert refused.value.status == 400
+    assert [
+        (run["hietogram_type"], "depth_duration_mm" in run, "peak_position" in run)
+        for run in runs.generate
+    ] == [("euler_ii", False, False)]
+    expect(page.locator(f"{LEFT} [data-form-error]")).to_contain_text(
+        "Euler II buduje się z krzywej wysokość–czas trwania"
+    )
+    expect(page.locator(BADGE)).to_have_text("Błąd danych")
+    expect(page.locator(RIGHT)).to_contain_text("Wynik pojawi się po pierwszym")
+
+    # One click moves it to PMAXTP: the depths of every duration are fetched (the kept
+    # depth has none) and Euler II runs with them
+    with (
+        run_of(page, hietogram_type="euler_ii") as ran,
+        page.expect_response(lambda answer: PMAXTP in answer.url),
+    ):
+        note.get_by_role("button", name="Przełącz na PMAXTP").click()
+    options = ran.value.request.post_data_json
+    assert (options["total_mm"], options["depth_duration_mm"]) == (
+        101.82,
+        pmaxtp_curve("1"),
+    )
+    expect(shapes.get_by_role("radio", name="Euler II", exact=True)).to_have_attribute(
+        "aria-checked", "true"
+    )
+    shows_peak(page, options)

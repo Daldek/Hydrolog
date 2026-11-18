@@ -300,11 +300,26 @@ def _rainfall_schema() -> dict[str, Any]:
     shape = {option.name: option for option in HIETOGRAM_OPTIONS}
     design_fields = _node_fields(
         tuple(shape[name] for name in ("hietogram_type", "total_mm", "duration_min"))
-        + tuple(shape[name] for name in ("alpha", "beta", "peak_position"))
+        + tuple(
+            shape[name]
+            for name in ("alpha", "beta", "peak_position", "depth_duration_mm")
+        )
     )
     design_fields["hietogram_type"] = {
         **design_fields["hietogram_type"],
         "enum": list(HIETOGRAMS.names),
+        "description": (
+            "Temporal distribution of the rainfall; `alpha`, `beta` apply to beta, "
+            "`peak_position` to triangular, `depth_duration_mm` to euler_ii."
+        ),
+    }
+    # a document always gives the total: for euler_ii it is h(duration_min)
+    design_fields["total_mm"] = {
+        **design_fields["total_mm"],
+        "description": (
+            "Total precipitation depth [mm]; > 0. For `euler_ii` the depth of its "
+            "curve `depth_duration_mm` at `duration_min` (to 0.005 mm)."
+        ),
     }
     design = {
         "title": "design storm",
@@ -869,10 +884,11 @@ def _hand_written() -> dict[str, dict[str, Any]]:
             "description": (
                 "The PMAXTP depth of IMGW-PIB that `precip pmaxtp` fetches through "
                 "Obserwator for a point, a duration and a probability, with the "
-                "source line the terms of PMAXTP prescribe (ADR-0018, ADR-0028); the "
-                "envelope's `attribution` and `terms_notice` have every line. Unknown "
-                "fields are allowed: adding optional fields keeps the version "
-                "(AGI-4.1)."
+                "depths of every duration at the probability (`depth_duration_mm`, "
+                "the curve of an Euler II storm) and the source line the terms of "
+                "PMAXTP prescribe (ADR-0018, ADR-0028); the envelope's `attribution` "
+                "and `terms_notice` have every line. Unknown fields are allowed: "
+                "adding optional fields keeps the version (AGI-4.1)."
             ),
             "type": "object",
             "required": [
@@ -894,6 +910,7 @@ def _hand_written() -> dict[str, dict[str, Any]]:
                 "duration_min": {"type": "number"},
                 "probability_percent": {"type": "number"},
                 "attribution": {"type": "string"},
+                "depth_duration_mm": {"type": "object"},
             },
         },
         plan_id: {

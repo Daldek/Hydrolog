@@ -14,7 +14,7 @@ import pytest
 
 from hydrolog.exceptions import InvalidParameterError
 from hydrolog.morphometry import WatershedParameters
-from hydrolog.precipitation import BlockHietogram, EulerIIHietogram
+from hydrolog.precipitation import BlockHietogram
 from hydrolog.routing import (
     Channel,
     ControlPoint,
@@ -130,7 +130,7 @@ class TestTheOutletAlone:
             "OUT_area",
             watershed=CATCHMENT,
             runoff=CurveNumberRunoff(tc_min=90.0),
-            rainfall=DesignStorm(45.0, 60.0, EulerIIHietogram()),
+            rainfall=DesignStorm(45.0, 60.0, BlockHietogram()),
         )
 
         points = ControlPointNetwork(OutletPoint("OUT", made))

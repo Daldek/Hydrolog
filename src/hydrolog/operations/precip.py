@@ -10,6 +10,7 @@ interpolation functions of :mod:`hydrolog.precipitation.interpolation`.
 from __future__ import annotations
 
 import math
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any, Literal, get_args
 
@@ -25,12 +26,13 @@ from hydrolog._attribution import (
 from hydrolog._pmaxtp import PmaxtpMethod, fetch_depth
 from hydrolog._serialization import JsonResultMixin
 from hydrolog.catalog.envelope import Notice, OperationOutput
-from hydrolog.catalog.inputs import load_stations
+from hydrolog.catalog.inputs import load_depth_duration, load_stations
 from hydrolog.catalog.notices import notice
 from hydrolog.operations._common import (
     check_choice,
     forbid_options,
     option_error,
+    option_names,
     real_number,
     require_option,
     select_group,
@@ -78,7 +80,8 @@ class PrecipHietogramResult(JsonResultMixin):
     hietogram_type : str
         ``"block"``, ``"triangular"``, ``"beta"`` or ``"euler_ii"``.
     total_mm : float
-        Total precipitation depth [mm].
+        Total precipitation depth [mm]; for ``euler_ii`` the depth of the curve at the
+        duration.
     duration_min : float
         Requested duration [min].
     timestep_min : float
@@ -86,8 +89,10 @@ class PrecipHietogramResult(JsonResultMixin):
     n_steps : int
         Number of steps, ``int(duration_min / timestep_min)``.
     parameters : dict of str to float
-        Shape parameters used: ``alpha`` and ``beta`` (beta type) or
-        ``peak_position`` (triangular and Euler II types); empty for ``block``.
+        Shape parameters used: ``alpha`` and ``beta`` (beta type), ``peak_position``
+        (triangular type) or ``peak_start_min`` (Euler II: the start of the peak
+        interval [min], 0.3 of the duration rounded down to a multiple of the step);
+        empty for ``block``.
     peak_intensity_mm_per_h : float
         Highest intensity [mm/h].
     times_min : numpy.ndarray
@@ -129,6 +134,11 @@ class PrecipPmaxtpResult(JsonResultMixin):
     attribution : str
         The source line that the terms of PMAXTP prescribe (PS of Nogat DEV-20.2);
         the envelope's ``attribution`` and ``terms_notice`` have every line.
+    depth_duration_mm : dict of int to float
+        The depth [mm] of every PMAXTP duration [min] at the probability: the
+        depth-duration curve of the point, which ``precip hietogram`` and
+        ``hydrograph generate`` take as ``depth_duration_mm`` for an Euler II storm
+        (in JSON the durations are the keys, ``"5"`` ... ``"4320"``).
     """
 
     depth_mm: float
@@ -138,6 +148,7 @@ class PrecipPmaxtpResult(JsonResultMixin):
     duration_min: float
     probability_percent: float
     attribution: str
+    depth_duration_mm: dict[int, float]
 
 
 @dataclass
@@ -179,13 +190,15 @@ class ArealPrecipitationResult(JsonResultMixin):
 
 def build_hietogram(
     hietogram_type: str,
-    total_mm: float,
+    total_mm: float | None,
     duration_min: float,
     timestep_min: float = 5.0,
     *,
     alpha: float | None = None,
     beta: float | None = None,
     peak_position: float | None = None,
+    depth_duration_mm: Mapping[str, Any] | None = None,
+    depth_duration_file: str | None = None,
 ) -> tuple[HietogramResult, dict[str, float]]:
     """Generate a hyetograph with the generator of the chosen type.
 
@@ -193,32 +206,76 @@ def build_hietogram(
     ----------
     hietogram_type : {"block", "triangular", "beta", "euler_ii"}
         Distribution.
-    total_mm : float
-        Total depth [mm], > 0.
+    total_mm : float or None
+        Total depth [mm], > 0; required except for ``euler_ii``, whose total is the
+        depth of its curve at ``duration_min`` (a total given must equal it to
+        :attr:`~hydrolog.precipitation.EulerIIHietogram.TOTAL_TOLERANCE_MM`).
     duration_min : float
-        Duration [min], > 0.
+        Duration [min], > 0; for ``euler_ii`` a whole number of steps.
     timestep_min : float, optional
         Time step [min], by default 5.
     alpha, beta : float, optional
         Beta distribution parameters (``beta`` type only; library defaults 2 and 5).
     peak_position : float, optional
-        Relative peak position (``triangular`` and ``euler_ii`` only; library
-        defaults 0.5 and 0.33).
+        Relative peak position (``triangular`` only; library default 0.5).
+    depth_duration_mm : Mapping, optional
+        The depth-duration curve of ``euler_ii``: duration [min] -> depth [mm].
+    depth_duration_file : str, optional
+        A file with that curve (:func:`hydrolog.catalog.inputs.load_depth_duration`),
+        instead of ``depth_duration_mm``.
 
     Returns
     -------
     HietogramResult
         The hyetograph.
     dict of str to float
-        The shape parameters actually used.
+        The shape parameters actually used (``peak_start_min`` for ``euler_ii``).
 
     Raises
     ------
     InvalidParameterError
-        If the type is unknown, a parameter of another type is given, or a value is
-        out of range.
+        If the type is unknown, a parameter of another type is given, ``total_mm``
+        or the curve is missing, or a value is out of range (for ``euler_ii`` see
+        :class:`~hydrolog.precipitation.EulerIIHietogram`; an error of a curve read
+        from a file names ``depth_duration_file``).
+    NotFoundError
+        If ``depth_duration_file`` does not exist.
+    InputDataError
+        If ``depth_duration_file`` cannot be read as a curve.
     """
     kind = check_choice("hietogram_type", hietogram_type, HIETOGRAM_TYPES)
+    if kind == "euler_ii":
+        forbid_options(
+            {"alpha": alpha, "beta": beta, "peak_position": peak_position},
+            context="hietogram_type is 'euler_ii'",
+            hint=(
+                "An Euler II storm is shaped by its depth-duration curve "
+                "(depth_duration_mm or depth_duration_file); its peak starts at 0.3 "
+                "of the duration."
+            ),
+        )
+        curve = load_depth_duration(
+            depth_duration_mm=depth_duration_mm,
+            depth_duration_file=depth_duration_file,
+        )
+        from_file = {"depth_duration_mm": "depth_duration_file"}
+        with option_names(from_file if depth_duration_file is not None else {}):
+            euler = EulerIIHietogram(curve)
+            total = euler.depth_mm(duration_min) if total_mm is None else total_mm
+            result = euler.generate(
+                total_mm=total, duration_min=duration_min, timestep_min=timestep_min
+            )
+        start = EulerIIHietogram.peak_block(result.n_steps) * result.timestep_min
+        return result, {"peak_start_min": start}
+    forbid_options(
+        {
+            "depth_duration_mm": depth_duration_mm,
+            "depth_duration_file": depth_duration_file,
+        },
+        context=f"hietogram_type is {kind!r}",
+        hint="Only the euler_ii hyetograph is built from a depth-duration curve.",
+    )
+    total = require_option("total_mm", total_mm, when=f"hietogram_type is {kind!r}")
     parameters: dict[str, float] = {}
     if kind == "block":
         forbid_options(
@@ -241,15 +298,15 @@ def build_hietogram(
     else:
         forbid_options(
             {"alpha": alpha, "beta": beta},
-            context=f"hietogram_type is {kind!r}",
-            hint="Use peak_position to shape this hyetograph.",
+            context="hietogram_type is 'triangular'",
+            hint="Use peak_position to shape the triangular hyetograph.",
         )
-        generator = (TriangularHietogram if kind == "triangular" else EulerIIHietogram)(
+        generator = TriangularHietogram(
             **({} if peak_position is None else {"peak_position": peak_position})
         )
         parameters = {"peak_position": generator.peak_position}
     result = generator.generate(
-        total_mm=total_mm, duration_min=duration_min, timestep_min=timestep_min
+        total_mm=total, duration_min=duration_min, timestep_min=timestep_min
     )
     return result, parameters
 
@@ -258,7 +315,7 @@ def hietogram_notices(hietogram: HietogramResult) -> list[Notice]:
     """Notice for a duration that is not a multiple of the time step.
 
     The generators use ``int(duration_min / timestep_min)`` steps, so the
-    hyetograph then ends before ``duration_min``.
+    hyetograph then ends before ``duration_min`` (Euler II refuses such a duration).
 
     Parameters
     ----------
@@ -287,12 +344,14 @@ def hietogram_notices(hietogram: HietogramResult) -> list[Notice]:
 def precip_hietogram(
     *,
     hietogram_type: HietogramType,
-    total_mm: float,
+    total_mm: float | None = None,
     duration_min: float,
     timestep_min: float = 5.0,
     alpha: float | None = None,
     beta: float | None = None,
     peak_position: float | None = None,
+    depth_duration_mm: Mapping[str, Any] | None = None,
+    depth_duration_file: str | None = None,
     attribution: list[str] | None = None,
 ) -> OperationOutput:
     """Design hyetograph (``precip hietogram``).
@@ -300,11 +359,16 @@ def precip_hietogram(
     Parameters
     ----------
     hietogram_type : {"block", "triangular", "beta", "euler_ii"}
-        Temporal distribution.
-    total_mm : float
-        Total precipitation depth [mm], > 0.
+        Temporal distribution; ``euler_ii`` is the Euler type II storm of ATV-DVWK-A
+        118 built from a depth-duration curve
+        (:class:`~hydrolog.precipitation.EulerIIHietogram`).
+    total_mm : float, optional
+        Total precipitation depth [mm], > 0; required except for ``euler_ii``,
+        whose total is the depth of the curve at ``duration_min`` (a total given
+        must equal it to 0.005 mm).
     duration_min : float
-        Storm duration [min], > 0 and >= ``timestep_min``.
+        Storm duration [min], > 0 and >= ``timestep_min``; for ``euler_ii`` a whole
+        number of steps.
     timestep_min : float, optional
         Time step [min], > 0, by default 5.
     alpha : float, optional
@@ -312,11 +376,18 @@ def precip_hietogram(
     beta : float, optional
         Beta distribution parameter (``beta`` type), > 0, default 5.
     peak_position : float, optional
-        Relative peak position in (0, 1) (``triangular`` default 0.5, ``euler_ii``
-        default 0.33).
+        Relative peak position in (0, 1) (``triangular`` type, default 0.5).
+    depth_duration_mm : Mapping, optional
+        The depth-duration curve of one probability for ``euler_ii``: duration [min]
+        (an object key) -> depth [mm], e.g. the ``depth_duration_mm`` of ``precip
+        pmaxtp``; not decreasing, from the step to the duration; depths between its
+        points are interpolated linearly in ln D.
+    depth_duration_file : str, optional
+        The curve from a file instead (CSV ``duration_min,depth_mm`` or JSON, also
+        what ``precip pmaxtp --json`` prints, whose lines it then carries).
     attribution : list of str, optional
-        Lines of the providers of ``total_mm`` (ADR-0028), e.g. those of
-        ``precip pmaxtp``; the envelope carries them.
+        Lines of the providers of ``total_mm`` or of the curve (ADR-0028), e.g. those
+        of ``precip pmaxtp``; the envelope carries them.
 
     Returns
     -------
@@ -327,7 +398,11 @@ def precip_hietogram(
     Raises
     ------
     InvalidParameterError
-        If a parameter is out of range or does not apply to the chosen type.
+        If a parameter is out of range, missing or does not apply to the chosen type.
+    NotFoundError
+        If ``depth_duration_file`` does not exist.
+    InputDataError
+        If ``depth_duration_file`` cannot be read as a curve.
     """
     cite(attribution)
     hietogram, parameters = build_hietogram(
@@ -338,6 +413,8 @@ def precip_hietogram(
         alpha=alpha,
         beta=beta,
         peak_position=peak_position,
+        depth_duration_mm=depth_duration_mm,
+        depth_duration_file=depth_duration_file,
     )
     rates = hietogram.intensity_mm_per_h
     result = PrecipHietogramResult(
@@ -368,7 +445,8 @@ def precip_pmaxtp(
     Obserwator (extra ``pmaxtp``) fetches the PMAXTP table of the point from IMGW-PIB;
     the depth is its cell of ``duration_min`` and ``probability_percent``. It is the
     ``total_mm`` of a design hyetograph of that duration (``precip hietogram``,
-    ``hydrograph generate``).
+    ``hydrograph generate``); the depths of every duration at the probability
+    (``depth_duration_mm``) are the curve of an Euler II storm.
 
     Parameters
     ----------
@@ -412,6 +490,7 @@ def precip_pmaxtp(
         duration_min=depth.duration_min,
         probability_percent=depth.probability_percent,
         attribution=PMAXTP_SOURCE,
+        depth_duration_mm=dict(depth.depth_duration_mm),
     )
     attribution = notice(
         "pmaxtp_attribution", attribution=PMAXTP_SOURCE, terms_url=PMAXTP_TERMS_URL

@@ -191,6 +191,8 @@ GENERATE_OPTIONS: tuple[Option, ...] = (
     _SHAPE["alpha"],
     _SHAPE["beta"],
     _SHAPE["peak_position"],
+    _SHAPE["depth_duration_mm"],
+    _SHAPE["depth_duration_file"],
     Option(
         name="values",
         type="number_list",
@@ -507,10 +509,10 @@ COMMANDS: tuple[Command, ...] = (
                 "uh_model": "scs",
             },
             {
-                "peak_discharge_m3s": 210.709,
+                "peak_discharge_m3s": 48.8367,
                 "time_to_peak_min": 110.0,
-                "total_volume_m3": 1376330.0,
-                "runoff_coefficient": 0.489735,
+                "total_volume_m3": 315806.0,
+                "runoff_coefficient": 0.239582,
                 "uh_model": "scs",
             },
             {
@@ -558,8 +560,17 @@ COMMANDS: tuple[Command, ...] = (
                 "cn": 72,
                 "tc_min": 90.0,
                 "hietogram_type": "euler_ii",
-                "total_mm": 62.0,
                 "duration_min": 120.0,
+                "depth_duration_mm": {
+                    "5": 8.48,
+                    "10": 12.16,
+                    "15": 14.49,
+                    "30": 18.82,
+                    "45": 21.58,
+                    "60": 23.66,
+                    "90": 26.75,
+                    "120": 29.08,
+                },
                 "amc": "III",
             },
             {

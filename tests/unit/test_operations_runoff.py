@@ -117,6 +117,10 @@ STATIONS: list[dict[str, Any]] = [
 ]
 GAUGES = [Station(s["name"], s["x"], s["y"], s["precipitation_mm"]) for s in STATIONS]
 
+# PMAXTP POT of Warszawa, p = 1 % (tests/fixtures/pmaxtp_warszawa_pot.json), 5 to 60
+# min, as a JSON object: the depth-duration curve of an Euler II storm of up to an hour.
+CURVE = {"5": 21.82, "10": 25.68, "15": 28.22, "30": 33.23, "45": 36.58, "60": 39.16}
+
 
 def unwrap(output):
     """Split what an operation returns into ``(result, notices)``."""
@@ -821,7 +825,6 @@ class TestHietogram:
             ("block", BlockHietogram()),
             ("triangular", TriangularHietogram()),
             ("beta", BetaHietogram()),
-            ("euler_ii", EulerIIHietogram()),
         ],
     )
     def test_matches_the_generator(self, kind, generator):
@@ -873,13 +876,6 @@ class TestHietogram:
                 TriangularHietogram(0.4),
                 {"peak_position": 0.4},
             ),
-            ("euler_ii", {}, EulerIIHietogram(), {"peak_position": 0.33}),
-            (
-                "euler_ii",
-                {"peak_position": 0.5},
-                EulerIIHietogram(0.5),
-                {"peak_position": 0.5},
-            ),
             ("block", {}, BlockHietogram(), {}),
         ],
     )
@@ -902,16 +898,127 @@ class TestHietogram:
         assert_arrays(result.depths_mm, expected.intensities_mm)
         assert result.parameters == reported
 
-    def test_euler_ii_peak_is_early(self):
-        """Euler type II puts its highest block near a third of the duration."""
-        result, _ = unwrap(
+    def test_euler_ii_is_the_storm_of_its_curve(self):
+        """The total is h(D) of the curve; the peak block starts at 0.3 * D."""
+        result, notices = unwrap(
             ops.precip_hietogram(
-                hietogram_type="euler_ii", total_mm=50.0, duration_min=60.0
+                hietogram_type="euler_ii", duration_min=60.0, depth_duration_mm=CURVE
             )
         )
-        assert (
-            int(np.argmax(result.depths_mm)) + 1 == 4
-        )  # library docstring: interval 4 of 12
+        expected = EulerIIHietogram(CURVE).generate(39.16, 60.0, 5.0)
+        assert_arrays(result.depths_mm, expected.intensities_mm)
+        assert result.total_mm == 39.16
+        assert result.parameters == {"peak_start_min": 15.0}
+        assert result.depths_mm[3] == 21.82
+        assert notices == []
+
+    def test_euler_ii_takes_a_total_equal_to_the_depth_of_its_duration(self):
+        """A given total must be h(D): the storm of another total is refused."""
+        given, _ = unwrap(
+            ops.precip_hietogram(
+                hietogram_type="euler_ii",
+                total_mm=39.16,
+                duration_min=60.0,
+                depth_duration_mm=CURVE,
+            )
+        )
+        assert given.total_mm == 39.16
+        with pytest.raises(InvalidParameterError) as caught:
+            ops.precip_hietogram(
+                hietogram_type="euler_ii",
+                total_mm=50.0,
+                duration_min=60.0,
+                depth_duration_mm=CURVE,
+            )
+        assert caught.value.details["option"] == "total_mm"
+        assert caught.value.details["reason"] == "total_mismatch"
+        assert caught.value.details["depth_mm"] == 39.16
+
+    def test_euler_ii_reads_the_curve_from_a_csv_file(self, tmp_path):
+        """A CSV ``duration_min,depth_mm`` (decimal commas allowed) is the curve."""
+        rows = "".join(f'{d};"{str(h).replace(".", ",")}"\n' for d, h in CURVE.items())
+        path = tmp_path / "curve.csv"
+        path.write_text("duration_min;depth_mm\n" + rows, encoding="utf-8")
+        from_file, _ = unwrap(
+            ops.precip_hietogram(
+                hietogram_type="euler_ii",
+                duration_min=60.0,
+                depth_duration_file=str(path),
+            )
+        )
+        inline, _ = unwrap(
+            ops.precip_hietogram(
+                hietogram_type="euler_ii", duration_min=60.0, depth_duration_mm=CURVE
+            )
+        )
+        assert_arrays(from_file.depths_mm, inline.depths_mm)
+
+    def test_euler_ii_reads_the_curve_of_precip_pmaxtp(self, tmp_path):
+        """What ``precip pmaxtp --json`` prints is a curve, and its lines go along."""
+        pmaxtp = run_command(
+            "precip pmaxtp",
+            {
+                "latitude": 52.23,
+                "longitude": 21.01,
+                "duration_min": 60.0,
+                "probability_percent": 1.0,
+            },
+        )
+        path = tmp_path / "pmaxtp.json"
+        path.write_text(pmaxtp.to_json(), encoding="utf-8")
+        envelope = json.loads(
+            run_command(
+                "precip hietogram",
+                {
+                    "hietogram_type": "euler_ii",
+                    "duration_min": 120.0,
+                    "depth_duration_file": str(path),
+                },
+            ).to_json()
+        )
+        result = envelope["result"]
+        curve = pmaxtp.result.depth_duration_mm
+        assert result["total_mm"] == curve[120]
+        assert max(result["depths_mm"]) == curve[5]
+        assert envelope["attribution"] == json.loads(pmaxtp.to_json())["attribution"]
+        assert envelope["terms_notice"] == json.loads(pmaxtp.to_json())["terms_notice"]
+
+    def test_an_error_of_a_curve_file_names_the_file_option(self, tmp_path):
+        """A decreasing curve read from a file is an error of depth_duration_file."""
+        path = tmp_path / "curve.json"
+        path.write_text(json.dumps({"5": 10.0, "10": 9.0}), encoding="utf-8")
+        with pytest.raises(InvalidParameterError) as caught:
+            ops.precip_hietogram(
+                hietogram_type="euler_ii",
+                duration_min=10.0,
+                depth_duration_file=str(path),
+            )
+        assert caught.value.details["option"] == "depth_duration_file"
+        assert caught.value.details["reason"] == "decreasing"
+
+    @pytest.mark.parametrize(
+        "given, option, reason",
+        [
+            ({}, "depth_duration_mm", "required"),
+            (
+                {"depth_duration_mm": CURVE, "depth_duration_file": "curve.csv"},
+                "depth_duration_file",
+                "conflict",
+            ),
+        ],
+    )
+    def test_euler_ii_needs_one_curve(self, given, option, reason):
+        """Without a curve there is no Euler II storm; two curves are a conflict."""
+        with pytest.raises(InvalidParameterError) as caught:
+            ops.precip_hietogram(hietogram_type="euler_ii", duration_min=60.0, **given)
+        assert caught.value.details["option"] == option
+        assert caught.value.details["reason"] == reason
+
+    def test_the_other_types_need_a_total(self):
+        """Only Euler II takes its total from a curve."""
+        with pytest.raises(InvalidParameterError) as caught:
+            ops.precip_hietogram(hietogram_type="beta", duration_min=60.0)
+        assert caught.value.details == {"option": "total_mm", "reason": "required"}
 
     @pytest.mark.parametrize(
         "kind, given",
@@ -922,6 +1029,9 @@ class TestHietogram:
             ("beta", {"peak_position": 0.4}),
             ("triangular", {"alpha": 2.0}),
             ("euler_ii", {"beta": 5.0}),
+            ("euler_ii", {"peak_position": 0.33}),
+            ("beta", {"depth_duration_mm": CURVE}),
+            ("triangular", {"depth_duration_file": "curve.csv"}),
         ],
     )
     def test_parameter_of_another_type_is_rejected(self, kind, given):
@@ -1812,28 +1922,38 @@ class TestHydrographGenerate:
         assert_arrays(by_ratio.discharge_m3s, by_value.discharge_m3s)
         assert by_ratio.uh_parameters == {"tc_min": 120.0, "r_min": 60.0}
 
-    @pytest.mark.parametrize("kind", ["block", "triangular", "euler_ii"])
-    def test_other_hyetograph_types(self, kind):
+    @pytest.mark.parametrize(
+        "kind, rain",
+        [
+            ("block", {"total_mm": 50.0}),
+            ("triangular", {"total_mm": 50.0}),
+            ("euler_ii", {"depth_duration_mm": CURVE}),
+        ],
+    )
+    def test_other_hyetograph_types(self, kind, rain):
         """The hyetograph comes from the generator of the chosen type."""
         generated = {
             "block": BlockHietogram(),
             "triangular": TriangularHietogram(),
-            "euler_ii": EulerIIHietogram(),
-        }[kind].generate(total_mm=50.0, duration_min=60.0, timestep_min=5.0)
+            "euler_ii": EulerIIHietogram(CURVE),
+        }[kind].generate(
+            total_mm=rain.get("total_mm", 39.16), duration_min=60.0, timestep_min=5.0
+        )
         result, _ = unwrap(
             ops.hydrograph_generate(
                 area_km2=45.3,
                 cn=72,
                 tc_min=90.0,
                 hietogram_type=kind,
-                total_mm=50.0,
                 duration_min=60.0,
+                **rain,
             )
         )
         expected = library_run(rain=generated)
         assert_arrays(result.precipitation_mm, generated.intensities_mm)
         assert result.peak_discharge_m3s == pytest.approx(expected.peak_discharge_m3s)
         assert result.hietogram_type == kind
+        assert result.total_precipitation_mm == pytest.approx(generated.total_mm)
 
     def test_hyetograph_parameters_are_forwarded(self):
         """``alpha``/``beta`` shape the Beta storm; ``peak_position`` the triangle."""

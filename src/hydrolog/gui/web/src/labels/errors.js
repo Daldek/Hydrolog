@@ -3,11 +3,15 @@
  * `reason`, `allowed`, the bounds, `groups`), under the registry's Polish `title` that the
  * server sends; the English `message` is the fallback, marked „(EN)”. The checks of the
  * forms word their messages with the same functions, so a field says the same before and
- * after a run.
+ * after a run. An error of the depth-duration curve of Euler II (`depth_duration_mm`, also
+ * a rainfall's field of a network document) is worded as the curve's.
  */
 
-import { bytes, inputText } from "../format.js";
+import { bytes, inputText, num } from "../format.js";
 import { common, t } from "./common.js";
+
+/** The option, and the field of a rainfall of a network, of Euler II's depth-duration curve. */
+const CURVE = "depth_duration_mm";
 
 export const errors = {
   reasons: {
@@ -54,6 +58,23 @@ export const errors = {
     timeout: "{source} nie odpowiedział na czas: spróbuj ponownie później",
     network: "Brak połączenia z {source}: sprawdź sieć i spróbuj ponownie",
     http_status: "{source} odpowiedział błędem HTTP {status}: spróbuj ponownie później",
+    not_multiple: "Czas trwania musi być wielokrotnością kroku Δt = {timestep} min: Euler II składa się z całych bloków",
+    total_mismatch: "Euler II ma sumę równą wysokości krzywej wysokość–czas trwania dla {duration} min: {depth} mm",
+  },
+  /** The sentences of the errors of Euler II's depth-duration curve, by `details.reason`. */
+  curve: {
+    required: "Euler II buduje się z krzywej wysokość–czas trwania jednego p (np. wysokości PMAXTP kolejnych czasów trwania), a jej nie podano",
+    type: "Krzywa wysokość–czas trwania to obiekt: czas trwania [min] → wysokość [mm]",
+    depthType: "Krzywa wysokość–czas trwania: wysokość dla {duration} min nie jest liczbą",
+    empty: "Krzywa wysokość–czas trwania nie ma żadnego punktu",
+    invalid_duration: "Krzywa wysokość–czas trwania: czas „{value}” nie jest liczbą minut większą od 0",
+    duplicate_duration: "Krzywa wysokość–czas trwania: czas {duration} min podano dwa razy",
+    not_finite: "Krzywa wysokość–czas trwania: wysokość dla {duration} min nie jest liczbą skończoną",
+    minimum: "Krzywa wysokość–czas trwania: wysokość dla {duration} min jest ujemna",
+    decreasing: "Krzywa wysokość–czas trwania nie może maleć: {first} mm dla {from} min, a {second} mm dla {to} min",
+    before:
+      "Krzywa wysokość–czas trwania zaczyna się od {first} min, a pierwszy blok potrzebuje wysokości dla {duration} min: krok Δt nie może być krótszy (nic nie jest ekstrapolowane)",
+    after: "Krzywa wysokość–czas trwania kończy się na {last} min, a opad trwa {duration} min: nic nie jest ekstrapolowane",
   },
   /** The sources of data an error of `source_unavailable` names (`details.source`). */
   sources: { "imgw-pmaxtp": "IMGW-PIB" },
@@ -180,6 +201,15 @@ export function reasonText(reason, details = {}) {
       }
       break;
     }
+    case "not_multiple":
+      text = t(r.not_multiple, { timestep: shown(details.timestep_min ?? "–") });
+      break;
+    case "total_mismatch":
+      text = t(r.total_mismatch, {
+        duration: shown(details.duration_min ?? "–"),
+        depth: typeof details.depth_mm === "number" ? num(details.depth_mm, 2) : "–",
+      });
+      break;
     default:
       return null;
   }
@@ -187,6 +217,59 @@ export function reasonText(reason, details = {}) {
     return t(r.item, { index: details.index + 1, message: text });
   }
   return text;
+}
+
+/**
+ * Whether an error is one of Euler II's depth-duration curve: it names the option
+ * `depth_duration_mm`, or the field of that name of a rainfall of a network document.
+ *
+ * @param {object} details the error's details
+ * @returns {boolean} true for an error of the curve
+ */
+export function isCurveError(details) {
+  const field = typeof details.field === "string" ? details.field : "";
+  return details.option === CURVE || field === CURVE || field.endsWith(`.${CURVE}`);
+}
+
+/**
+ * The Polish sentence of an error of Euler II's depth-duration curve, by its reason (a
+ * network document's `missing_field` is the curve not given).
+ *
+ * @param {string} reason the error's `details.reason`
+ * @param {object} details its details: the duration and the durations or depths it names
+ * @returns {string|null} the sentence, null for a reason the GUI does not word
+ */
+function curveText(reason, details) {
+  const c = errors.curve;
+  const pair = (name) => (Array.isArray(details[name]) ? details[name] : []);
+  const duration = shown(details.duration_min ?? "–");
+  switch (reason) {
+    case "required":
+    case "missing_field":
+      return c.required;
+    case "empty":
+      return c.empty;
+    case "type":
+      return typeof details.duration_min === "number" ? t(c.depthType, { duration }) : c.type;
+    case "invalid_duration":
+      return t(c.invalid_duration, { value: String(details.value ?? "–") });
+    case "duplicate_duration":
+    case "not_finite":
+    case "minimum":
+      return t(c[reason], { duration });
+    case "decreasing": {
+      const [from, to] = pair("durations_min");
+      const [first, second] = pair("depths_mm");
+      return t(c.decreasing, { from: shown(from ?? "–"), to: shown(to ?? "–"), first: shown(first ?? "–"), second: shown(second ?? "–") });
+    }
+    case "not_covered": {
+      const [shortest, longest] = pair("durations_min");
+      const before = typeof shortest === "number" && typeof details.duration_min === "number" && details.duration_min < shortest;
+      return t(before ? c.before : c.after, { first: shown(shortest ?? "–"), last: shown(longest ?? "–"), duration });
+    }
+    default:
+      return null;
+  }
 }
 
 /**
@@ -203,7 +286,8 @@ export function describeError(doc) {
   const details = (doc && doc.details) || {};
   const option = typeof details.option === "string" ? details.option : null;
   const reason = typeof details.reason === "string" ? details.reason : null;
-  let text = reason ? reasonText(reason, details) : null;
+  let text = null;
+  if (reason) text = isCurveError(details) ? curveText(reason, details) : reasonText(reason, details);
   if (!text && doc && doc.code === "forbidden" && option) text = errors.reasons.forbidden_path;
   const english = !text;
   if (!text) text = (doc && (doc.message || doc.title)) || "";

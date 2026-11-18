@@ -155,7 +155,7 @@ def test_the_envelope_is_the_line_that_precip_hietogram_prints(tmp_path: Path) -
     assert printed.count("\n") == 1
 
 
-def test_the_default_envelope_is_the_euler_ii_design_of_40_mm_in_an_hour() -> None:
+def test_the_default_envelope_is_the_beta_design_of_40_mm_in_an_hour() -> None:
     envelope = testing.hietogram_envelope()
 
     assert envelope["schema"] == "hydrolog-result/1"
@@ -163,7 +163,7 @@ def test_the_default_envelope_is_the_euler_ii_design_of_40_mm_in_an_hour() -> No
     assert envelope["version"] == hydrolog.__version__
     result = envelope["result"]
     assert result["schema"] == "hydrolog-precip-hietogram/1"
-    assert (result["hietogram_type"], result["n_steps"]) == ("euler_ii", 6)
+    assert (result["hietogram_type"], result["n_steps"]) == ("beta", 6)
     assert sum(result["depths_mm"]) == pytest.approx(40.0)
 
 

@@ -397,6 +397,8 @@ def compute_hydrograph(
     alpha: float | None = None,
     beta: float | None = None,
     peak_position: float | None = None,
+    depth_duration_mm: dict[str, Any] | None = None,
+    depth_duration_file: str | None = None,
     values: list[float] | None = None,
     input_file: str | None = None,
     value_column: str | None = None,
@@ -431,7 +433,8 @@ def compute_hydrograph(
         If the combination of options is wrong or a value is invalid, see
         :func:`hydrograph_generate`.
     NotFoundError
-        If ``watershed_file`` or ``input_file`` does not exist.
+        If ``watershed_file``, ``input_file`` or ``depth_duration_file`` does not
+        exist.
     InputDataError
         If a file is malformed.
     """
@@ -536,19 +539,24 @@ def compute_hydrograph(
             "alpha": alpha,
             "beta": beta,
             "peak_position": peak_position,
+            "depth_duration_mm": depth_duration_mm,
+            "depth_duration_file": depth_duration_file,
             "values": values,
             "input_file": input_file,
             "value_column": value_column,
         },
         {
-            "design": ("hietogram_type", "total_mm", "duration_min"),
+            "design": ("hietogram_type", "duration_min"),
             "values": ("values",),
             "file": ("input_file",),
         },
         extra={
+            "total_mm": "design",
             "alpha": "design",
             "beta": "design",
             "peak_position": "design",
+            "depth_duration_mm": "design",
+            "depth_duration_file": "design",
             "value_column": "file",
         },
     )
@@ -585,11 +593,7 @@ def compute_hydrograph(
             snyder_cp=snyder_cp,
         )
         if chosen == "design":
-            assert (
-                hietogram_type is not None
-                and total_mm is not None
-                and duration_min is not None
-            )
+            assert hietogram_type is not None and duration_min is not None
             hietogram, _ = build_hietogram(
                 hietogram_type,
                 total_mm,
@@ -598,6 +602,8 @@ def compute_hydrograph(
                 alpha=alpha,
                 beta=beta,
                 peak_position=peak_position,
+                depth_duration_mm=depth_duration_mm,
+                depth_duration_file=depth_duration_file,
             )
             notices.extend(hietogram_notices(hietogram))
             generated: str | None = hietogram_type
@@ -661,6 +667,8 @@ def hydrograph_generate(
     alpha: float | None = None,
     beta: float | None = None,
     peak_position: float | None = None,
+    depth_duration_mm: dict[str, Any] | None = None,
+    depth_duration_file: str | None = None,
     values: list[float] | None = None,
     input_file: str | None = None,
     value_column: str | None = None,
@@ -681,8 +689,9 @@ def hydrograph_generate(
 
     Exactly one catchment source is required: ``watershed``, ``watershed_file`` or
     ``area_km2`` with ``cn``; and exactly one precipitation source: a design
-    hyetograph (``hietogram_type``, ``total_mm``, ``duration_min``) or a series
-    (``values`` or ``input_file``).
+    hyetograph (``hietogram_type``, ``duration_min`` with ``total_mm``, or for
+    ``euler_ii`` its depth-duration curve) or a series (``values`` or
+    ``input_file``).
 
     Parameters
     ----------
@@ -713,13 +722,21 @@ def hydrograph_generate(
     hietogram_type : {"block", "triangular", "beta", "euler_ii"}, optional
         Design hyetograph type (see :func:`~hydrolog.operations.precip_hietogram`).
     total_mm : float, optional
-        Total precipitation [mm], > 0.
+        Total precipitation [mm], > 0; required by every type but ``euler_ii``, whose
+        total is the depth of its curve at ``duration_min``.
     duration_min : float, optional
         Precipitation duration [min], > 0.
     alpha, beta : float, optional
         Parameters of the ``beta`` hyetograph.
     peak_position : float, optional
-        Peak position of the ``triangular`` and ``euler_ii`` hyetographs.
+        Peak position of the ``triangular`` hyetograph.
+    depth_duration_mm : dict, optional
+        The depth-duration curve of the ``euler_ii`` storm: duration [min] (an
+        object key) -> depth [mm] of one probability, e.g. the
+        ``depth_duration_mm`` of ``precip pmaxtp``.
+    depth_duration_file : str, optional
+        A file with that curve instead (CSV ``duration_min,depth_mm`` or JSON, also
+        what ``precip pmaxtp --json`` prints).
     values : list of float, optional
         Precipitation depths per step [mm], each >= 0.
     input_file : str, optional
@@ -786,7 +803,8 @@ def hydrograph_generate(
         (``details.option`` the option or the field of the watershed; Lutz's
         ``Lc_km`` longer than ``flow_path_length_km`` is ``"maximum"``).
     NotFoundError
-        If ``watershed_file`` or ``input_file`` does not exist.
+        If ``watershed_file``, ``input_file`` or ``depth_duration_file`` does not
+        exist.
     InputDataError
         If a file is malformed or a precipitation value is missing or negative.
     """
@@ -805,6 +823,8 @@ def hydrograph_generate(
         alpha=alpha,
         beta=beta,
         peak_position=peak_position,
+        depth_duration_mm=depth_duration_mm,
+        depth_duration_file=depth_duration_file,
         values=values,
         input_file=input_file,
         value_column=value_column,

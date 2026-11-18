@@ -403,7 +403,7 @@ class TestRouting:
             "runoff": {"model": _Noisy.model, "share": 0.5},
             "rainfall": {
                 "kind": "design",
-                "hietogram_type": "euler_ii",
+                "hietogram_type": "block",
                 "total_mm": 45,
                 "duration_min": 60,
             },

@@ -67,7 +67,14 @@ BLOCK = {
     "total_mm": 30.0,
     "duration_min": 60.0,
 }
-EULER = {**BLOCK, "hietogram_type": "euler_ii", "total_mm": 45.0}
+# A depth-duration curve whose depth of 60 min is the 45 mm of the Euler II storm.
+CURVE = {"5": 15.0, "10": 22.0, "20": 30.0, "30": 35.0, "60": 45.0}
+EULER = {
+    **BLOCK,
+    "hietogram_type": "euler_ii",
+    "total_mm": 45.0,
+    "depth_duration_mm": CURVE,
+}
 POND = {
     "storage_m3": [0.0, 30000.0, 90000.0, 180000.0],
     "outflow_m3s": [0.0, 10.0, 40.0, 100.0],
@@ -136,7 +143,12 @@ UNTIDY = {
                 "amc": "II",
                 "uh_model": "scs",
             },
-            "rainfall": {**EULER, "total_mm": 45, "duration_min": 60},
+            "rainfall": {
+                **EULER,
+                "total_mm": 45,
+                "duration_min": 60,
+                "depth_duration_mm": {"60": 45, "5": 15, "10": 22, "20": 30, "30": 35},
+            },
         },
         {"id": "A", "type": "subcatchment", "times_min": TIMES, "discharge_m3s": FLOOD},
     ],
@@ -210,6 +222,7 @@ class TestTheCanonicalForm:
             "model": "curve-number",
             "tc_min": 90.0,
         }
+        assert text(written["nodes"][1]["rainfall"]) == text(EULER)
         again = RoutingNetwork.from_document(written)
         assert text(again.to_document()) == text(written)
         assert_same_results(network, again)
@@ -440,7 +453,7 @@ class TestObjectsThatWereNeverADocument:
             "A",
             watershed=WatershedParameters(**UPPER),
             runoff=CurveNumberRunoff(tc_method="kirpich"),
-            rainfall=DesignStorm(45.0, 60.0, EulerIIHietogram()),
+            rainfall=DesignStorm(45.0, 60.0, EulerIIHietogram(CURVE)),
         )
         b = Subcatchment(
             "B",

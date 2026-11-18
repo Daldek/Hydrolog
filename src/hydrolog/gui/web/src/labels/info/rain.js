@@ -188,59 +188,69 @@ export const rainInfo = {
   },
 
   "rain-euler_ii": {
-    title: "Hietogram Euler II (DVWK)",
+    title: "Deszcz Eulera typu II (ATV-DVWK-A 118)",
     intro:
-      "<p>Hietogram bloków naprzemiennych wzorowany na deszczu Eulera II (DVWK): największy blok w " +
-      "położeniu p czasu trwania (domyślnie ok. 1/3), a kolejne coraz mniejsze na przemian przed nim i po nim.</p>",
+      "<p>Deszcz modelowy zbudowany z krzywej wysokość–czas trwania h(D) jednego prawdopodobieństwa: " +
+      "w tym GUI z tablicy PMAXTP IMGW-PIB dla wybranego p i metody. Bloki to przyrosty tej krzywej w " +
+      "krokach Δt; największy leży w przedziale od 0,3·D, kolejne przed nim, reszta po nim.</p>",
     formula:
-      "<math display='block'><msub><mi>w</mi><mi>r</mi></msub><mo>=</mo><mfrac><msup><mi>r</mi><mrow>" +
-      "<mo>−</mo><mn>0,7</mn></mrow></msup><mrow><munderover><mo>∑</mo><mrow><mi>k</mi><mo>=</mo>" +
-      "<mn>1</mn></mrow><mi>n</mi></munderover><msup><mi>k</mi><mrow><mo>−</mo><mn>0,7</mn></mrow>" +
-      "</msup></mrow></mfrac><mspace width='1.2em'></mspace><msub><mi>P</mi><mi>r</mi></msub><mo>=</mo>" +
-      "<mi>P</mi><mo>·</mo><msub><mi>w</mi><mi>r</mi></msub></math>" +
-      "<math display='block'><msub><mi>j</mi><mi>p</mi></msub><mo>=</mo><mi>max</mi><mrow><mo>(</mo>" +
-      "<mn>2</mn><mo>,</mo><mrow><mo>⌊</mo><mi>n</mi><mo>·</mo><mi>p</mi><mo>⌋</mo></mrow><mo>+</mo>" +
-      "<mn>1</mn><mo>)</mo></mrow></math>" +
-      "<math display='block'><mi>r</mi><mo>:</mo><mspace width='0.6em'></mspace><mn>1</mn><mo>→</mo>" +
-      "<msub><mi>j</mi><mi>p</mi></msub><mo>,</mo><mspace width='0.5em'></mspace><mn>2</mn><mo>→</mo>" +
-      "<msub><mi>j</mi><mi>p</mi></msub><mo>−</mo><mn>1</mn><mo>,</mo><mspace width='0.5em'></mspace>" +
-      "<mn>3</mn><mo>→</mo><msub><mi>j</mi><mi>p</mi></msub><mo>+</mo><mn>1</mn><mo>,</mo>" +
-      "<mspace width='0.5em'></mspace><mn>4</mn><mo>→</mo><msub><mi>j</mi><mi>p</mi></msub><mo>−</mo>" +
-      "<mn>2</mn><mo>,</mo><mspace width='0.5em'></mspace><mo>…</mo></math>",
+      "<math display='block'><mi>n</mi><mo>=</mo><mfrac><mi>D</mi><mi>Δt</mi></mfrac>" +
+      "<mspace width='1.2em'></mspace><msub><mi>Δh</mi><mi>j</mi></msub><mo>=</mo><mi>h</mi><mo>(</mo>" +
+      "<mi>j</mi><mi>Δt</mi><mo>)</mo><mo>−</mo><mi>h</mi><mo>(</mo><mo>(</mo><mi>j</mi><mo>−</mo>" +
+      "<mn>1</mn><mo>)</mo><mi>Δt</mi><mo>)</mo><mo>,</mo><mspace width='0.5em'></mspace><mi>h</mi>" +
+      "<mo>(</mo><mn>0</mn><mo>)</mo><mo>=</mo><mn>0</mn></math>" +
+      "<math display='block'><mi>k</mi><mo>=</mo><mrow><mo>⌊</mo><mn>0,3</mn><mo>·</mo><mi>n</mi>" +
+      "<mo>⌋</mo></mrow><mspace width='1.2em'></mspace><msub><mi>P</mi><mi>k</mi></msub><mo>=</mo>" +
+      "<msub><mi>Δh</mi><mn>1</mn></msub><mo>,</mo><mspace width='0.5em'></mspace><msub><mi>P</mi>" +
+      "<mrow><mi>k</mi><mo>−</mo><mi>i</mi></mrow></msub><mo>=</mo><msub><mi>Δh</mi><mrow><mi>i</mi>" +
+      "<mo>+</mo><mn>1</mn></mrow></msub><mspace width='0.4em'></mspace><mtext>(i = 1…k)</mtext></math>" +
+      "<math display='block'><msub><mi>P</mi><mrow><mi>k</mi><mo>+</mo><mi>i</mi></mrow></msub><mo>=</mo>" +
+      "<msub><mi>Δh</mi><mrow><mi>k</mi><mo>+</mo><mi>i</mi><mo>+</mo><mn>1</mn></mrow></msub>" +
+      "<mspace width='0.4em'></mspace><mtext>(i = 1…n−k−1)</mtext></math>",
     vars: [
       {
-        symbol: "<math><msub><mi>w</mi><mi>r</mi></msub></math>",
-        text: "udział bloku o randze r w sumie opadu",
-        unit: "–",
-      },
-      {
-        symbol: "<math><mi>r</mi></math>",
-        text: "ranga bloku: 1 największy, n najmniejszy; n = ⌊D/Δt⌋",
-        unit: "–",
-      },
-      {
-        symbol: "<math><msub><mi>P</mi><mi>r</mi></msub></math>",
-        text: "wysokość opadu bloku o randze r",
+        symbol: "<math><mi>h</mi><mo>(</mo><mi>D</mi><mo>)</mo></math>",
+        text:
+          "wysokość opadu o czasie trwania D przy wybranym p (PMAXTP); czasy między punktami tablicy " +
+          "(20, 25, 35, 40, 50, 55 min…) interpolowane liniowo względem ln D, bez ekstrapolacji",
         unit: "mm",
       },
       {
-        symbol: "<math><msub><mi>j</mi><mi>p</mi></msub></math>",
-        text: "krok największego bloku",
+        symbol: "<math><mi>n</mi></math>",
+        text: "liczba bloków; D musi być całkowitą wielokrotnością Δt",
         unit: "–",
       },
       {
-        symbol: "<math><mi>p</mi></math>",
-        text: "względne położenie maksimum: 0 &lt; p &lt; 1 (bez końców); domyślnie 0,33",
+        symbol: "<math><msub><mi>Δh</mi><mi>j</mi></msub></math>",
+        text: "przyrost krzywej w j-tym kroku czasu trwania, j = 1…n",
+        unit: "mm",
+      },
+      {
+        symbol: "<math><mi>k</mi></math>",
+        text: "blok szczytu liczony od 0: przedział od 0,3·D zaokrąglonego w dół do wielokrotności Δt",
         unit: "–",
       },
-      { symbol: "<math><mi>P</mi></math>", text: "suma opadu", unit: "mm" },
+      {
+        symbol: "<math><msub><mi>P</mi><mi>i</mi></msub></math>",
+        text: "wysokość opadu bloku i (od 0) hietogramu",
+        unit: "mm",
+      },
+      {
+        symbol: "<math><mi>Δt</mi></math>",
+        text: "krok czasowy; krzywa musi sięgać od Δt do D, a PMAXTP zaczyna się od 5 min, więc Δt ≥ 5 min",
+        unit: "min",
+      },
     ],
     note:
-      "<p>Wysokości bloków maleją jak r<sup>−0,7</sup>, a nie według lokalnej krzywej wysokość–czas " +
-      "trwania, więc hietogram tylko przybliża deszcz Eulera II. Gdy po jednej stronie zabraknie kroków, " +
-      "reszta bloków idzie po drugiej.</p>",
+      "<p>Przyrosty idą w kolejności czasów trwania: dla krzywej IDF maleją, więc największy leży w " +
+      "szczycie, kolejne co do wielkości przed nim (rosnąco), a reszta po nim (malejąco). Każde m bloków " +
+      "wokół szczytu ma wysokość h(m·Δt): np. 15 min wokół szczytu ma wysokość PMAXTP dla 15 min, a cały " +
+      "deszcz h(D), wysokość PMAXTP dla D. Położenia maksimum się nie podaje.</p>",
     guide: "metoda-rain-euler-ii",
-    sources: "DVWK 1984; Chow i in. 1988; KZGW 2017; Malitz 2009",
+    sources:
+      "ATV-DVWK-A 118 (2001), kap. 5.2.2.1, za Thewes 2005 (praca dyplomowa, FH Trier, s. 10); Malitz 2009 " +
+      "(DWD, Stark- und Extremniederschlag im Kurzzeitbereich, slajdy 17–19); Kaźmierczak i Kotowski 2012 " +
+      "(PWr, s. 31–32)",
   },
 
   "rain-timestep": {

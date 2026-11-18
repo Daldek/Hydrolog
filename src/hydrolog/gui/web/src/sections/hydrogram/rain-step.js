@@ -5,13 +5,16 @@
 // `precip pmaxtp` fetched shown read-only (usePmaxtp; never typed) and the providers' lines
 // of the depth under the atlas's note, on paper (attribution.js, Nogat DEV-20.2; on screen
 // the view's strip, ui/sources.js); a design hyetograph
-// its depth and duration; both the shape of the hyetograph. A series gives its depths in
-// steps of the time step. Sieć adds „Brak” (its network without a rainfall, which a network
-// of given hydrographs needs) and, for a subcatchment, „Jak w sieci” (the network's rainfall
-// in words, with a link to it). The time step is the step's own (Hydrogram zlewni), the
-// network's shown read-only (a subcatchment in Sieć), or the host's field before the step
-// (Sieć's network). Hydrogram zlewni shows it as its numbered step 2; Sieć's network as a
-// part of its step 1, „Opad sieci”.
+// its depth and duration; both the shape of the hyetograph. Euler II is built from the
+// depths of PMAXTP of every duration, so „Hietogram” (a total typed by hand) offers it only
+// with the depth-duration curve its document came with, and a stored or handed Euler II
+// without one says why and moves to PMAXTP in one click (state.js offeredShapes). A series
+// gives its depths in steps of the time step. Sieć adds „Brak” (its network without a
+// rainfall, which a network of given hydrographs needs) and, for a subcatchment, „Jak w
+// sieci” (the network's rainfall in words, with a link to it). The time step is the step's
+// own (Hydrogram zlewni), the network's shown read-only (a subcatchment in Sieć), or the
+// host's field before the step (Sieć's network). Hydrogram zlewni shows it as its numbered
+// step 2; Sieć's network as a part of its step 1, „Opad sieci”.
 
 import { Attribution } from "../../attribution.js";
 import { richText } from "../../controls/field.js";
@@ -26,7 +29,16 @@ import { InfoButton } from "../../ui/info-button.js";
 import { registerInfo } from "../../ui/info.js";
 import { Seg } from "../../ui/seg.js";
 import { Row, SelectRow, Step, durationText } from "./rows.js";
-import { PEAK_DEFAULTS, PMAXTP_DURATIONS, PMAXTP_METHODS, PMAXTP_PROBABILITIES, SHAPES, isEmpty, numberOf } from "./state.js";
+import {
+  PEAK_DEFAULTS,
+  PMAXTP_DURATIONS,
+  PMAXTP_METHODS,
+  PMAXTP_PROBABILITIES,
+  isEmpty,
+  numberOf,
+  offeredShapes,
+  rainCurve,
+} from "./state.js";
 
 registerInfo(rainInfo);
 
@@ -129,7 +141,34 @@ function PmaxtpFields({ prefix, inputs, errors, set, pmaxtp, row }) {
 }
 
 /**
- * The shape of a design storm (PMAXTP's or a design hyetograph's) and its parameters.
+ * What Euler II is built from: the depths of PMAXTP of the chosen p; under „Hietogram” the
+ * depth-duration curve its document came with, or, without one, why it cannot be built
+ * there, with the move to PMAXTP.
+ *
+ * @param {{inputs: object, set: (patch: object) => void}} props the inputs and the handler
+ *   of a patch of them
+ * @returns {object} the note
+ */
+function EulerNote({ inputs, set }) {
+  const words = texts.rain.euler;
+  if (inputs.rain_source === "pmaxtp") return html`<p class="note" data-euler="pmaxtp">${words.pmaxtp}</p>`;
+  const curve = rainCurve(inputs);
+  if (curve) {
+    const durations = Object.keys(curve)
+      .map(numberOf)
+      .filter((value) => value !== null)
+      .sort((a, b) => a - b);
+    const span = { count: plural(durations.length, words.durationForms), from: durationText(durations[0]), to: durationText(durations.at(-1)) };
+    return html`<p class="note" data-euler="curve">${t(words.curve, span)}</p>`;
+  }
+  return html`<p class="note warn-note" data-euler="none">
+    ${words.none} <button class="link-btn" type="button" data-goto="pmaxtp" onClick=${() => set({ rain_source: "pmaxtp" })}>${words.toPmaxtp}</button>
+  </p>`;
+}
+
+/**
+ * The shape of a design storm (PMAXTP's or a design hyetograph's) and its parameters:
+ * Beta's α and β, the triangular's peak position, and what Euler II is built from.
  *
  * @param {object} props see RainStep, and `row` the step's number row
  * @returns {object} the fields
@@ -144,7 +183,7 @@ function ShapeFields({ prefix, inputs, set, infoValues, row }) {
         <${InfoButton} id=${`rain-${shape}`} values=${infoValues} />
       </span>
       <${Seg}
-        items=${SHAPES.map((value) => ({ value, label: texts.rain.shapes[value] }))}
+        items=${offeredShapes(inputs).map((value) => ({ value, label: texts.rain.shapes[value] }))}
         value=${shape}
         onChange=${(value) => set({ hietogram_type: value })}
         labelledBy=${`${prefix}-shape-label`}
@@ -162,6 +201,7 @@ function ShapeFields({ prefix, inputs, set, infoValues, row }) {
         })}</div>`
       : null}
     ${shape === "block" ? html`<p class="note">${texts.rain.blockNote}</p>` : null}
+    ${shape === "euler_ii" ? html`<${EulerNote} inputs=${inputs} set=${set} />` : null}
   `;
 }
 
