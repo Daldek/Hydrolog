@@ -30,6 +30,9 @@
     "p_value": {
       "type": "number"
     },
+    "p_value_method": {
+      "type": "string"
+    },
     "trend_detected": {
       "type": "boolean"
     },

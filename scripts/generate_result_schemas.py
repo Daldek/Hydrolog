@@ -115,6 +115,7 @@ _ADDED_FIELDS: dict[str, tuple[str, ...]] = {
         "sen_intercept",
         "sen_slope_lower",
         "sen_slope_upper",
+        "p_value_method",
     ),
 }
 """Fields added to a document after its first version, by id: never ``required``."""
