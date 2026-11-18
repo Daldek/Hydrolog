@@ -1019,10 +1019,12 @@ The quantiles of the annual maxima are `stats flood-frequency` on the values of 
 ### Rating curve
 
 `hydrometrics rating-curve` fits `Q = a * (H - H0)^b` to stage-discharge pairs from a file with
-level and discharge columns or from two parallel lists. `--h0-initial` sets the start value of
-`H0`, `--remove-outliers` drops pairs far from the fit. A fit that does not converge is a
-`calculation_error` (exit 13). `hydrometrics water-level-zones` delimits the Rybczynski water
-level zones from a level series.
+level and discharge columns or from two parallel lists. `H0` is the stage of zero flow (not the
+gauge zero), in the unit of the levels (cm for IMGW-PIB stages, or m); `a` is in m3/s per that
+unit^b, so the same curve has an `a` 100^b times larger with levels in m than in cm.
+`--h0-initial` sets the start value of `H0`, `--remove-outliers` drops pairs far from the fit.
+A fit that does not converge is a `calculation_error` (exit 13). `hydrometrics water-level-zones`
+delimits the Rybczynski water level zones from a level series.
 
 ```bash
 hydrolog hydrometrics rating-curve --input-file tests/fixtures/rating_curve_pairs.csv --level-column H --discharge-column Q --h0-initial 40 --json

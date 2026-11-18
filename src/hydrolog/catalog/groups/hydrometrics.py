@@ -45,12 +45,12 @@ COMMANDS: tuple[Command, ...] = (
         rules=(
             "Pass levels and discharges as equal-length lists, or a file's columns.",
             "Check `r_squared`, `n_outliers_removed` and `notices` before use.",
-            "`h0` is in the unit of the levels; discharge is in m³/s.",
+            "`h0` is in the unit of H, `a` in m³/s per (unit of H)^b; Q in m³/s.",
         ),
         rules_pl=(
             "Podaj stany i przepływy jako listy równej długości albo kolumny pliku.",
             "Sprawdź `r_squared`, `n_outliers_removed` i `notices` przed użyciem.",
-            "`h0` jest w jednostce stanów; przepływ w m³/s.",
+            "`h0` jest w jednostce H, `a` w m³/s na (jednostkę H)^b; Q w m³/s.",
         ),
         errors=(
             "validation_error",

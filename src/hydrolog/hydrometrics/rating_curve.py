@@ -26,11 +26,16 @@ class RatingCurveResult(JsonResultMixin):
     Attributes
     ----------
     a : float
-        Scale coefficient [m³/s / m^b].
+        Scale coefficient, the discharge at a head H - H0 of one unit of H
+        [m³/s per (unit of H)^b]. With H in cm (IMGW-PIB stages) it is typically
+        0.005-0.015; the same curve with H in m has an ``a`` 100^b times larger.
     b : float
         Power exponent [-].
     h0 : float
-        Zero-flow water level (gauge zero) [cm or m, same units as input].
+        Stage of zero flow H0, in the unit of H: the gauge height at which the
+        flow is zero, or effectively zero for a control of irregular shape
+        (WMO-No. 1044, 2010, Vol. II, eq. 1.4). It is not the gauge zero, the
+        datum of the staff gauge from which H is read.
     r_squared : float
         Coefficient of determination R² [-].
     std_residuals : float
@@ -140,7 +145,8 @@ class RatingCurve:
     Parameters
     ----------
     water_levels : NDArray[np.float64]
-        Observed water levels H [cm or m].
+        Observed water levels H, in one unit, e.g. cm (IMGW-PIB stages) or m; the
+        unit of ``h0`` and of ``a`` follows it.
     discharges : NDArray[np.float64]
         Corresponding discharge measurements Q [m³/s].
 

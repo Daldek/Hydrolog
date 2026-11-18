@@ -942,7 +942,7 @@ The `cn` option given alongside a catchment is the CN of the whole calculation: 
 
 ### 3.8 Rating Curve Q = a·(H − H₀)^b: the H₀ Starting Point and the Plausibility (`RatingCurve`, fixes in v0.8.0 and 0.8.1)
 
-`RatingCurve.fit()` (`hydrometrics rating-curve`) fits `Q = a·(H − H₀)^b` by least squares (`scipy.optimize.curve_fit`, bounds a ≥ 0, b ≥ 0, H₀ < min(H)) with the starting point a = 1, b = 1.5, H₀ = `h0_initial`. Without `h0_initial` the H₀ start lies below the lowest stage by one tenth of the stage range, by at least one stage unit:
+`RatingCurve.fit()` (`hydrometrics rating-curve`) fits `Q = a·(H − H₀)^b` by least squares (`scipy.optimize.curve_fit`, bounds a ≥ 0, b ≥ 0, H₀ < min(H)) with the starting point a = 1, b = 1.5, H₀ = `h0_initial`. H₀ is the stage of zero flow, the gauge height at which the flow is zero or, for a control of irregular shape, effectively zero (WMO-No. 1044, 2010, Vol. II, eq. 1.4), not the gauge zero (the datum of the staff gauge from which the stages are read). The stages may be in any unit (IMGW-PIB's are in cm): H₀ is in that unit and a, the discharge at a head of one unit, in m³/s per unit^b, so the same curve has a 100^b times larger a with stages in m than in cm (Q = 0.012·(H − 32 cm)^1.62 is Q = 20.85·(H − 0.32 m)^1.62). Without `h0_initial` the H₀ start lies below the lowest stage by one tenth of the stage range, by at least one stage unit:
 
 ```
 H₀,start = min(H) − max(1, 0.1·(max(H) − min(H)))
