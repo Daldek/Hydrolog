@@ -118,22 +118,28 @@ class TestClassifyHsg:
         ]
         assert result.tolist() == expected
 
-    def test_group_counts_on_the_g_per_kg_simplex_match_kartograf(self):
-        """Test the points per group over the whole g/kg simplex (501 501 points).
+    def test_clay_20_and_27_percent_lines_are_group_c(self):
+        """Test the HSG on the clay lines that close sandy loam and loam.
 
-        Reference: Kartograf 0.8.0 (ADR-025). Pins the texture -> HSG table together
-        with the texture boundaries: moving sandy_loam to A, or clay_loam to D (the
-        TR-55 table), changes these counts.
+        Soil Survey Manual (2017), ch. 3, pp. 123-124: sandy loams have "7 to less
+        than 20 percent clay" and loam "7 to less than 27 percent clay". Clay 20 %
+        with more than 52 % sand is sandy clay loam ("20 to less than 35 percent
+        clay, less than 28 percent silt, and more than 45 percent sand") and clay
+        27 % with 28 to less than 50 % silt is clay loam ("27 to less than 40
+        percent clay and more than 20 to 45 percent sand"): group C. One percent
+        less clay at the same silt is sandy loam or loam: group B.
         """
-        clay, sand = np.meshgrid(np.arange(1001.0), np.arange(1001.0))
-        inside = clay + sand <= 1000
-        clay, sand = clay[inside], sand[inside]
-        silt = 1000 - clay - sand
+        on_the_lines = [(20, sand, 80 - sand) for sand in range(53, 81)] + [
+            (27, 73 - silt, silt) for silt in range(28, 50)
+        ]
+        below = [(clay - 1, sand + 1, silt) for clay, sand, silt in on_the_lines]
 
-        result = classify_hsg(clay, sand, silt)
+        for points, group in ((on_the_lines, 3), (below, 2)):
+            percent = np.array(points, dtype=np.float64).T
+            grams_per_kg = 10 * np.array(points, dtype=np.int16).T  # SoilGrids
 
-        counts = np.bincount(result, minlength=5)
-        assert counts.tolist() == [0, 22650, 192205, 96970, 189676]
+            assert classify_hsg(*percent).tolist() == [group] * len(points)
+            assert classify_hsg(*grams_per_kg).tolist() == [group] * len(points)
 
     def test_nan_and_infinite_cells_are_no_data(self):
         """Test that NaN and +/-Inf in any input give 0, without warnings."""

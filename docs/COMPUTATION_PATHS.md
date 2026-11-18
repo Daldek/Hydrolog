@@ -1,7 +1,7 @@
 # Computation Paths for Unit Hydrograph Models (plus HSG and the Fisher–Tippett Distribution)
 
-**Document version:** 1.12
-**Date:** 2026-11-17
+**Document version:** 1.13
+**Date:** 2026-11-18
 **Applies to:** Hydrolog >= 0.8.0 (sections 3.2.2, 3.2.7, 3.3.4 (the time step limit), 3.3.6, 3.4.6, 3.4.7 and 3.5 to 3.14 describe behaviour from v0.8.0, the sub-steps of the SCS unit hydrograph (3.1.3) and the plausibility of a rating curve (3.8) from 0.8.1; the rest: >= 0.6.0)
 
 ---
@@ -791,16 +791,16 @@ The same steps in the CLI: `soil hsg`, `soil hsg-stats`, `cn weighted`; the text
 
 #### 3.5.2 Texture Classification (USDA Triangle)
 
-Rules (c - clay, s - sand, si - silt, in % of the sum of the three fractions), the first one satisfied wins:
+Class definitions of the USDA Soil Survey Manual (Soil Science Division Staff, 2017, ch. 3, pp. 122–124), with c - clay, s - sand, si - silt in % of the sum of the three fractions. "X to less than Y percent" includes X and excludes Y (sandy loams: "7 to less than 20 percent clay", 7 ≤ c < 20); the sand ranges the Manual also gives for sands (more than 85 %) and loamy sands (70 to 90 %) follow from the inequalities. The twelve definitions do not overlap and leave no gap, so every composition belongs to exactly one class: there are no ties on the boundaries, and the order of the rules does not matter.
 
 | # | Class | Condition |
 |---|-------|-----------|
 | 1 | `sand` | si + 1.5·c < 15 |
 | 2 | `loamy_sand` | si + 1.5·c ≥ 15 and si + 2·c < 30 |
-| 3 | `sandy_loam` | (7 ≤ c ≤ 20, s > 52, si + 2·c ≥ 30) or (c < 7, si < 50, si + 2·c ≥ 30) |
+| 3 | `sandy_loam` | (7 ≤ c < 20, s > 52, si + 2·c ≥ 30) or (c < 7, si < 50, si + 2·c ≥ 30) |
 | 4 | `silt` | si ≥ 80, c < 12 |
 | 5 | `silt_loam` | (si ≥ 50, 12 ≤ c < 27) or (50 ≤ si < 80, c < 12) |
-| 6 | `loam` | 7 ≤ c ≤ 27, 28 ≤ si < 50, s ≤ 52 |
+| 6 | `loam` | 7 ≤ c < 27, 28 ≤ si < 50, s ≤ 52 |
 | 7 | `sandy_clay_loam` | 20 ≤ c < 35, si < 28, s > 45 |
 | 8 | `clay_loam` | 27 ≤ c < 40, 20 < s ≤ 45 |
 | 9 | `silty_clay_loam` | 27 ≤ c < 40, s ≤ 20 |
@@ -1283,7 +1283,7 @@ These commands reduce a station's daily series (Obserwator's export or inline va
 | Kerby-Kirpich from a catchment (channel = flow path − overland, at the slope of the flow path) | Roussel et al. (2005) supplement, TxDOT Hydraulic Design Manual ch. 4 section 11, Cleveland et al. (2012); both published examples reproduced | ✅ |
 | FAA, Kerby from a catchment (overland flow time from `overland_*`) | FAA AC 150/5320-5B (1970), Kerby (1959), Roussel et al. (2005), TxDOT Hydraulic Design Manual ch. 4 section 11 | ✅ |
 | D-minute Clark UH (S-curve, any D > 0) | Clark (1945), S-curve method (e.g. Chow, Maidment, Mays 1988) | ✅ |
-| HSG from USDA texture (class mapping) | USDA Soil Survey Manual (Handbook 18), NEH Part 630 ch. 7 (TR-55), Kartograf ADR-025 | ✅ (with a deviation for 3 classes) |
+| HSG from USDA texture (class mapping) | USDA Soil Survey Manual (Handbook 18, 2017, ch. 3), NEH Part 630 ch. 7 (TR-55), Kartograf ADR-025 | ✅ (with a deviation for 3 classes) |
 | Distribution of annual minima (GEV for minima) | Fisher and Tippett (1928), Gumbel (1958), Coles (2001) | ✅ |
 | Annual extremes from a daily series: complete hydrological years only | KZGW (2017), WMO No. 1029 (2009) | ✅ |
 | Empirical frequency of minima (non-exceedance positions) | Weibull (1939), Hazen (1930), Cunnane (1978); WMO No. 1029 (2009), Tallaksen and van Lanen (2004) | ✅ |
@@ -1338,7 +1338,7 @@ These commands reduce a station's daily series (Obserwator's export or inline va
 | Mann, H.B. and Whitney, D.R. | 1947 | The U test of two samples (`stats homogeneity`) |
 | Smirnov, N.V. | 1939 | The two-sample Kolmogorov-Smirnov test (`stats homogeneity`) |
 | Pettitt, A.N. | 1979 | The non-parametric change-point test and its approximate p-value (`stats homogeneity`) |
-| USDA Soil Survey Manual | 1993 | Texture triangle, texture classes |
+| USDA Soil Survey Manual | 2017 | Texture triangle, definitions of the 12 texture classes (ch. 3, pp. 122–124) |
 
 ---
 
@@ -1481,7 +1481,7 @@ These commands reduce a station's daily series (Obserwator's export or inline va
 
 22. **Coles, S.** (2001). *An Introduction to Statistical Modeling of Extreme Values*. Springer, London.
 
-23. **USDA** (1993). Soil Survey Manual. Handbook No. 18. Soil Survey Division Staff, USDA.
+23. **USDA** (2017). Soil Survey Manual. Handbook No. 18. Soil Science Division Staff, USDA-NRCS (ch. 3, "Definitions of Soil Texture Classes and Subclasses", pp. 122-124; textural triangle Fig. 3-7, p. 125).
 
 24. **USDA-NRCS** (2007). National Engineering Handbook, Part 630 Hydrology, Chapter 7: Hydrologic Soil Groups.
 
@@ -1611,5 +1611,5 @@ These commands reduce a station's daily series (Obserwator's export or inline va
 
 ---
 
-**Document version:** 1.12
-**Last updated:** 2026-11-17
+**Document version:** 1.13
+**Last updated:** 2026-11-18
