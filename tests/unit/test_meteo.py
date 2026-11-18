@@ -290,7 +290,9 @@ class TestTemperatureSnowHydrothermal:
         )["years"][0]
         may = year["months"][1]
         assert may["coefficient"] == pytest.approx(10 * 62 / (12 * 31))
-        assert year["season_coefficient"] == pytest.approx(10 * 62 / (12 * 365))
+        # the season: the 183 days of April to September above 10 °C (Miś, 2026)
+        assert year["season_coefficient"] == pytest.approx(10 * 62 / (12 * 183))
+        assert year["season_days"] == 183
 
 
 class TestEtccdiCountsOfTheFixtureYear:

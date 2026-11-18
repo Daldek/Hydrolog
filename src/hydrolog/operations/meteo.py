@@ -1210,9 +1210,10 @@ def meteo_hydrothermal(
 ) -> OperationOutput:
     """Sielianinov's hydrothermal coefficient (``meteo hydrothermal``).
 
-    k = P / (0.1 Σt) of the months April to September and of the days with a mean
-    temperature above 10 °C of each calendar year, with the classes of Skowera and
-    Puła (2004) (:func:`hydrolog.statistics.hydrothermal_coefficient`, M14).
+    k = P / (0.1 Σt) of the months April to September and of the days of April to
+    September with a mean temperature above 10 °C (Miś, 2026), with the classes of
+    Skowera and Puła (2004) (:func:`hydrolog.statistics.hydrothermal_coefficient`,
+    M14).
 
     Parameters
     ----------

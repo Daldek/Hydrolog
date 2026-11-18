@@ -910,29 +910,30 @@ COMMANDS: tuple[Command, ...] = (
         name="meteo hydrothermal",
         operation_id="hydrolog_meteo_hydrothermal",
         summary_pl=(
-            "Oblicz współczynnik hydrotermiczny Sielianinowa miesięcy IV–IX i okresu "
-            "Tśr > 10 °C"
+            "Oblicz współczynnik hydrotermiczny Sielianinowa miesięcy IV–IX i dni "
+            "IV–IX z Tśr > 10 °C"
         ),
         summary=(
             "Compute Sielianinov's hydrothermal coefficient of the months IV–IX and "
-            "of the warm season"
+            "of their days above 10 °C"
         ),
         description_pl=(
             "k = P/(0,1 Σt) każdego miesiąca IV–IX (Σt to średnia miesięczna "
-            "temperatura razy liczba dni; Skowera i Puła, 2004) i dni z Tśr > 10 °C "
-            "każdego roku kalendarzowego (Sielianinow, 1928), z 9 klasami Skowery i "
-            "Puły. Wymaga dobowego opadu [mm] i Tśr [°C]."
+            "temperatura razy liczba dni; Skowera i Puła, 2004) i sezonu: dni "
+            "kwietnia–września z Tśr > 10 °C każdego roku (Miś, 2026, wzór 4), z 9 "
+            "klasami Skowery i Puły. Wymaga dobowego opadu [mm] i Tśr [°C]."
         ),
         description=(
             "k = P/(0.1 Σt) of each month April–September (Σt the monthly mean "
-            "temperature times its days; Skowera and Puła, 2004) and of the days with "
-            "Tmean > 10 °C of each calendar year (Selyaninov, 1928), with the nine "
-            "classes of Skowera and Puła. Needs daily P [mm] and Tmean [°C]."
+            "temperature times its days; Skowera and Puła, 2004) and of the season: "
+            "the days of April–September with Tmean > 10 °C of each year (Miś, 2026, "
+            "eq. 4), with the nine classes of Skowera and Puła. Needs daily P [mm] "
+            "and Tmean [°C]."
         ),
         result_schema="hydrolog-meteo-hydrothermal/1",
         cardinality="bounded",
-        rules=("The season needs both values on every day of the year.",),
-        rules_pl=("Okres wymaga obu wartości w każdym dniu roku.",),
+        rules=("The season needs both values on every day of April–September.",),
+        rules_pl=("Sezon wymaga obu wartości w każdym dniu kwietnia–września.",),
         errors=_ERRORS,
         example_results=(
             {"first_year": 2019, "period": {"mean_season_class": "optimal"}},
