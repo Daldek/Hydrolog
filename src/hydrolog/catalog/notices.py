@@ -194,6 +194,14 @@ _SPECS: Final[tuple[NoticeSpec, ...]] = (
         ("months",),
     ),
     NoticeSpec(
+        "single_year_month",
+        "warning",
+        "Month(s) {months} hold values of a single year: the confidence interval of "
+        "their mean, built on the means of the month in separate years, is undefined "
+        "(null)",
+        ("months",),
+    ),
+    NoticeSpec(
         "homogeneity_rejected",
         "warning",
         "Homogeneity of the series rejected at alpha = {alpha:g} by: {tests}",

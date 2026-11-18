@@ -101,6 +101,10 @@ export const notices = {
       text: "Miesiące z jedną wartością, bez przedziału ufności: {months}.",
       plain: "Niektóre miesiące mają jedną wartość: bez przedziału ufności.",
     },
+    single_year_month: {
+      text: "Miesiące z wartościami tylko jednego roku, bez przedziału ufności średniej (liczonego ze średnich miesiąca w kolejnych latach): {months}.",
+      plain: "Niektóre miesiące mają wartości tylko z jednego roku: bez przedziału ufności.",
+    },
     large_result: {
       text: "Duży wynik: {size_chars} znaków (strona: {page_chars}).",
       plain: "Duży wynik.",
@@ -121,7 +125,7 @@ export const notices = {
       text: "Liczba lat w szeregu: {years}; KZGW (2017) wymaga co najmniej {minimum} lat danych do analizy częstości wezbrań.",
       plain: "Szereg jest krótszy, niż KZGW (2017) wymaga do analizy częstości wezbrań.",
     },
-    ks_test_approximate: "Wartości krytyczne testu Kołmogorowa-Smirnowa są nieważne, gdy parametry szacuje się z tych samych danych; wybieraj rozkład wg A² i AIC.",
+    ks_test_approximate: "Wartości krytyczne testu Kołmogorowa-Smirnowa są nieważne, gdy parametry szacuje się z tych samych danych; wybieraj rozkład wg AIC albo A² z wartością krytyczną jego dopasowania (tylko L-momenty).",
     distribution_left_out: {
       text: "Rozkład {distribution} pominięty: metoda {fit_method} nie daje jego parametrów dla tej próby ({reason}).",
       plain: "Wybrana metoda nie daje parametrów jednego z rozkładów; pominięto go.",

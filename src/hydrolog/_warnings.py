@@ -365,8 +365,8 @@ class KsTestApproximate(HydrologWarning):
 
     template = (
         "Kolmogorov-Smirnov test critical values are invalid when parameters are "
-        "estimated from the same data. Use Anderson-Darling or AIC for model "
-        "selection."
+        "estimated from the same data. Use AIC, or A² against the critical values "
+        "of its fit (L-moments fits only), for model selection."
     )
     keys = ()
 

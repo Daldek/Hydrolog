@@ -85,13 +85,40 @@ class TestFloodFrequencyAnalysis:
             ks_warnings = [x for x in w if "Kolmogorov-Smirnov" in str(x.message)]
             assert len(ks_warnings) >= 1
 
-    def test_anderson_darling_statistic_present(self, synthetic_gev_data):
+    def test_ad_critical_values_are_those_of_a_fitted_gev(self):
+        """A GEV fitted by L-moments to 30 values: the 5 % point of A² is 0.535–0.576
+        (Monte Carlo of the audit, case AD-NULL-WITH-FITTED-PARAMETERS, ± 0.03), not
+        the 2.492 of a distribution given in advance; the points increase."""
+        from scipy.stats import genextreme
+
         from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
 
-        ffa = FloodFrequencyAnalysis(synthetic_gev_data)
-        result = ffa.fit_gev()
+        sample = genextreme.rvs(-0.1, loc=100, scale=30, size=30, random_state=1)
+        result = FloodFrequencyAnalysis(sample).fit_gev()
+        values = result.ad_critical_values
+        assert values is not None
+        assert 0.505 <= values["5%"] <= 0.606
+        levels = [values[key] for key in ("15%", "10%", "5%", "2.5%", "1%")]
+        assert levels == sorted(levels)
+
+    def test_a_misfit_is_rejected_at_five_percent(self):
+        """A GEV fitted to a bimodal sample (20 values about 100, 20 about 120):
+        A² = 1.32 lies above the bootstrap 5 % point (0.54) but below 2.492."""
+        from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
+
+        rng = np.random.default_rng(1)
+        sample = np.concatenate([rng.normal(100, 5, 20), rng.normal(120, 5, 20)])
+        result = FloodFrequencyAnalysis(sample).fit_gev()
+        assert result.ad_critical_values is not None
+        assert result.ad_statistic > result.ad_critical_values["5%"]
+        assert result.ad_statistic < 2.492
+
+    def test_other_methods_have_no_ad_critical_values(self, synthetic_gev_data):
+        from hydrolog.statistics.high_flows import FloodFrequencyAnalysis
+
+        result = FloodFrequencyAnalysis(synthetic_gev_data).fit_gev(fit_method="mle")
         assert result.ad_statistic >= 0.0
-        assert isinstance(result.ad_critical_values, dict)
+        assert result.ad_critical_values is None
 
     def test_aic_present(self, synthetic_gev_data):
         from hydrolog.statistics.high_flows import FloodFrequencyAnalysis

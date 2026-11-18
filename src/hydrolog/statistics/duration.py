@@ -23,6 +23,7 @@ from __future__ import annotations
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+from decimal import Decimal
 from typing import Literal
 
 import numpy as np
@@ -221,11 +222,22 @@ def _class_edges(
     width: float,
     count: int,
 ) -> NDArray[np.float64]:
-    """Edges of the classes, ascending; empty when the values allow no class."""
+    """Edges of the classes, ascending; empty when the values allow no class.
+
+    Classes of a width are counted in decimal arithmetic on the shortest decimal form
+    of the values and of the width (``repr``), so a value written on a class bound is
+    in the class it starts: 0.3 with the width 0.1 is in [0.3, 0.4), not in
+    [0.2, 0.3) as 0.3 / 0.1 = 2.9999999999999996 in binary floating point would put
+    it. The edges are the floats nearest to the decimal bounds, which rounding keeps
+    in order with the values.
+    """
     if method == "width":
-        origin = math.floor(float(values.min()) / width) * width
-        n_classes = max(1, math.floor((float(values.max()) - origin) / width) + 1)
-        return origin + width * np.arange(n_classes + 1, dtype=np.float64)
+        step = Decimal(repr(width))
+        first = _class_number(float(values.min()), step)
+        last = _class_number(float(values.max()), step)
+        return np.array(
+            [float(step * k) for k in range(first, last + 2)], dtype=np.float64
+        )
     positive = values[values > 0]
     if positive.size < 2 or positive.min() == positive.max():
         return np.empty(0, dtype=np.float64)
@@ -235,6 +247,12 @@ def _class_edges(
     # The end edges are the extreme values themselves, not their rounded logarithms.
     edges[0], edges[-1] = float(positive.min()), float(positive.max())
     return edges
+
+
+def _class_number(value: float, step: Decimal) -> int:
+    """Return the k of the class [k step, (k + 1) step) of ``value``, in decimals."""
+    whole, rest = divmod(Decimal(repr(value)), step)  # whole rounds toward zero
+    return int(whole) - 1 if rest and value < 0 else int(whole)
 
 
 def _classes(

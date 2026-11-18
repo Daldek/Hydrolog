@@ -362,6 +362,7 @@ export const resultFields = {
   outflow_time_to_peak_min: "Czas do szczytu odpływu",
   outflow_volume_m3: "Objętość odpływu",
   p_value: "Wartość p",
+  p_value_method: "Metoda wartości p (exact: dokładna, normal: z rozkładu normalnego)",
   parde: "Współczynnik Pardégo",
   pci: "Wskaźnik koncentracji opadu PCI",
   pci_class: "Klasa PCI",
