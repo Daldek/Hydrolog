@@ -24,9 +24,10 @@ the missing days it covers in the sums and is a missing day for every daily stat
 a monthly count of days is scaled to the days of the month when fewer than 11 days,
 and fewer than 5 in a row, are missing; an annual value needs its twelve months, and
 the annual maxima, the percentile sums and the spells need every day of the year. A
-normal is the mean of the years of the reference period with a value when they are
-at least 80 % of its years (4.4.2). Every sum of daily precipitation is rounded to
-1e-6 mm, so that sums equal in decimal are equal numbers.
+monthly normal is the mean of the years of the reference period with a value when
+they are at least 80 % of its years (4.4.2); the normal of a year, half-year or season
+is the sum of the normals of its months (4.3.3). Every sum of daily precipitation is
+rounded to 1e-6 mm, so that sums equal in decimal are equal numbers.
 
 The baselines of :func:`precipitation_sums`, :func:`heavy_precipitation` and
 :func:`precipitation_seasonality` come from a reference period
@@ -79,7 +80,9 @@ from hydrolog.statistics._climate import (
     mean_of,
     month_quality,
     monthly_counts,
+    monthly_normals,
     monthly_totals,
+    multimonth_normal,
     normal,
     precipitation_periods,
     precipitation_record,
@@ -293,14 +296,15 @@ class PrecipitationSumPeriod(JsonResultMixin):
     Attributes
     ----------
     normal_mm : float or None
-        Annual normal: the mean annual sum of the reference period when at least 80 %
-        of its years have one [mm] (WMO-No. 1203, 4.4.2).
+        Annual normal: the sum of the twelve monthly normals, ``None`` when one is
+        missing (WMO-No. 1203, 4.3.3) [mm].
     normal_years : int
-        Years of the reference period with an annual sum.
+        The fewest years of the reference period with a sum among the twelve months;
+        every monthly normal needs 80 % of its years (WMO-No. 1203, 4.4.2).
     winter_normal_mm, summer_normal_mm : float or None
-        Normals of the half-years [mm].
+        Normals of the half-years: the sums of the normals of their months [mm].
     djf_normal_mm, mam_normal_mm, jja_normal_mm, son_normal_mm : float or None
-        Normals of the seasons [mm].
+        Normals of the seasons: the sums of the normals of their months [mm].
     mean_mm : float or None
         Mean annual sum of the analysed years with one [mm].
     std_mm : float or None
@@ -376,6 +380,17 @@ def _percent(value: float, reference: float | None) -> float | None:
     return 100.0 * value / reference
 
 
+_SPAN_MONTHS: dict[str, tuple[int, ...]] = {
+    "winter": (11, 12, 1, 2, 3, 4),
+    "summer": (5, 6, 7, 8, 9, 10),
+    "djf": (12, 1, 2),
+    "mam": (3, 4, 5),
+    "jja": (6, 7, 8),
+    "son": (9, 10, 11),
+}
+"""The calendar months of the half-years and seasons."""
+
+
 def _spans(
     grid: DailyGrid, flat: NDArray[np.float64]
 ) -> dict[str, NDArray[np.float64]]:
@@ -425,9 +440,11 @@ def precipitation_sums(
     """Sum the months, half-years, seasons and years and their normals (M1).
 
     The sums of each analysed year come from its own days, the normals from the
-    reference period: the mean sum of its years with one when they are at least 80 %
-    of its years, those without data too (WMO-No. 1203, 4.4.2). The normals are the
-    benchmark of the sums in % of them (WMO-No. 1203, chapter 2).
+    reference period: the normal of a month is the mean sum of its years with one when
+    they are at least 80 % of its years, those without data too (WMO-No. 1203, 4.4.2),
+    and the normal of a year, half-year or season the sum of the normals of its months
+    (4.3.3). The normals are the benchmark of the sums in % of them (WMO-No. 1203,
+    chapter 2).
 
     Parameters
     ----------
@@ -473,16 +490,13 @@ def precipitation_sums(
     data = periods.data
     grid = data.grid
     table, annual, spans = _sum_tables(data)
-    base_table, base_annual, base_spans = (
-        (table, annual, spans)
-        if periods.reference is data
-        else _sum_tables(periods.reference)
-    )
-    span_years = periods.period.n_years
-    normal_mm, normal_years = normal(base_annual, span_years)
-    month_normals = [normal(base_table[:, slot], span_years)[0] for slot in range(12)]
+    base_table = table if periods.reference is data else periods.reference.monthly()
+    month_normals, normal_years = monthly_normals(base_table, periods.period.n_years)
+    by_month = dict(zip(grid.months, month_normals, strict=True))
+    normal_mm = multimonth_normal(month_normals)
     span_normals = {
-        name: normal(values, span_years)[0] for name, values in base_spans.items()
+        name: multimonth_normal([by_month[month] for month in members])
+        for name, members in _SPAN_MONTHS.items()
     }
     months = grid.months
     rows: list[PrecipitationSumYear] = []

@@ -19,7 +19,12 @@ import pytest
 
 from hydrolog.catalog import get_command, run_command
 from hydrolog.exceptions import CalculationError, InvalidParameterError
-from hydrolog.statistics import fit_gamma, precipitation_sums, spi_values
+from hydrolog.statistics import (
+    fit_gamma,
+    precipitation_sums,
+    spi_values,
+    standardized_precipitation_index,
+)
 
 FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "meteo_daily.csv"
 FILE = str(FIXTURE)
@@ -133,8 +138,11 @@ class TestBaselinesOfTheReferencePeriod:
         )
         assert period["months"][6]["normal_mm"] == pytest.approx(july)
         assert period["summer_normal_mm"] == pytest.approx(summer)
-        # the winter half-year of 2019 begins in November 2018, outside the reference
-        assert period["winter_normal_mm"] is None
+        # the half-year normal is the sum of the normals of its months (WMO-No. 1203,
+        # 4.3.3), although the winter half-year of 2019 begins in November 2018
+        winter = sum(_mean([_sum(year, m) for year in REFERENCE]) for m in (11, 12))
+        winter += sum(_mean([_sum(year, m) for year in REFERENCE]) for m in range(1, 5))
+        assert period["winter_normal_mm"] == pytest.approx(winter)
         year = result["years"][1]
         assert year["year"] == 2023
         assert year["percent_of_normal"] == pytest.approx(100 * _sum(2023) / normal)
@@ -378,9 +386,10 @@ class TestTheReferencePeriodOfARecord:
             reference_first_year=2001,
             reference_last_year=2002,
         )
-        # DJF of 2001 needs December 2000: in the analysed years, not the reference
+        # DJF of 2001 needs December 2000: in the analysed years, not the reference;
+        # the DJF normal is the sum of the monthly normals (WMO-No. 1203, 4.3.3)
         assert result.years[1].djf_mm == 90.0
-        assert result.period.djf_normal_mm is None
+        assert result.period.djf_normal_mm == 90.0
         assert result.period.mam_normal_mm == 92.0
 
     def test_a_reference_period_has_its_own_short_period_notice(self):
@@ -553,3 +562,34 @@ class TestSpiMonths:
             (2020, 12),
         ]
         assert {year for year, _ in months} == {row["year"] for row in result["years"]}
+
+
+class TestMultiMonthNormals:
+    """WMO-No. 1203 (2017), 4.3.3: a year's normal from the twelve monthly normals."""
+
+    def test_a_month_missing_in_seven_years_leaves_the_annual_normal(self):
+        """The audit's case ``wmo1203-4.3.3-annual-normal-from-monthly-normals``.
+
+        1991-2020 with one missing day in a different month of each of 1991-1997:
+        every monthly normal has 29 or 30 of the 30 years, while only 23 years have
+        an annual sum (< 24, 80 %). The annual normal is the sum of the monthly ones,
+        767.9501149425287 mm (the audit's script), not missing.
+        """
+        rng = np.random.default_rng(1203)
+        dates = np.arange(
+            np.datetime64("1991-01-01"),
+            np.datetime64("2021-01-01"),
+            dtype="datetime64[D]",
+        )
+        rain = np.round(rng.gamma(0.6, 3.5, dates.size), 1)
+        years = dates.astype("datetime64[Y]").astype(int) + 1970
+        months = dates.astype("datetime64[M]").astype(int) % 12 + 1
+        for number, year in enumerate(range(1991, 1998)):
+            rain[np.flatnonzero((years == year) & (months == number + 1))[10]] = np.nan
+        period = precipitation_sums(rain, dates).period
+        monthly = [month.normal_mm for month in period.months]
+        assert period.normal_mm == pytest.approx(767.9501149425287, abs=1e-6)
+        assert period.normal_mm == pytest.approx(math.fsum(monthly), abs=1e-9)
+        assert period.normal_years == 29
+        spi = standardized_precipitation_index(rain, dates, scales_months=[1])
+        assert spi.period.normal_mm == pytest.approx(period.normal_mm, abs=1e-9)

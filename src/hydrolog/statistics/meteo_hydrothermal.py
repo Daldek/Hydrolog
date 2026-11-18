@@ -2,15 +2,22 @@
 
 The coefficient relates precipitation to the sum of temperatures, a measure of the
 evaporation (Selyaninov, 1928): k = P / (0.1 Σt). For a month (Skowera and Puła,
-2004), P is its precipitation sum [mm] and Σt its mean daily temperature times its
-days [°C], for a month with a mean above 0 °C; the months of the growing season,
+2004, p. 172), P is its precipitation sum [mm] and Σt its mean daily temperature times
+its days [°C], for a month with a mean above 0 °C; the months of the growing season,
 April to September (Radzka, 2014), are given. For the season, P and Σt are summed over
-the days of the year with a mean daily temperature above 10 °C (Selyaninov, 1928; Miś,
-2026), in a year whose every day has both values. Classes of Skowera and Puła (2004,
-p. 172): k <= 0.4 extremely dry, <= 0.7 very dry, <= 1.0 dry, <= 1.3 fairly dry,
-<= 1.6 optimal, <= 2.0 fairly wet, <= 2.5 wet, <= 3.0 very wet, above 3.0 extremely
-wet. The monthly sums and means follow WMO-No. 1203 (4.4.1 a, c); the precipitation
-sums are rounded to 1e-6 mm, so that sums equal in decimal are equal numbers.
+the days of April to September with a mean daily temperature above 10 °C (Miś, 2026,
+eq. 4 and "calculated for the April-September period"; Chmist-Sikorska et al., 2022),
+in a year whose every day of April to September has both values. This is the day
+filter of Polish practice, not the classical season of Russian practice, which sums
+every day between the dates of the stable spring and autumn transition of the mean
+temperature through 10 °C (Национальный атлас России, vol. 2), cool days inside it
+included and warm days outside it left out; Selyaninov's own papers are not openly
+available. Classes of Skowera and Puła (2004, p. 172): k <= 0.4 extremely dry, <= 0.7
+very dry, <= 1.0 dry, <= 1.3 fairly dry, <= 1.6 optimal, <= 2.0 fairly wet, <= 2.5
+wet, <= 3.0 very wet, above 3.0 extremely wet (Miś and Chmist-Sikorska et al. use
+other limits). The monthly sums and means follow WMO-No. 1203 (4.4.1 a, c); the
+precipitation sums are rounded to 1e-6 mm, so that sums equal in decimal are equal
+numbers.
 
 References
 ----------
@@ -23,7 +30,11 @@ Radzka, E. (2014): Hydrothermal characteristics of vegetation period in central-
     eastern Poland in years 1971-2005. Folia Pomeranae Universitatis Technologiae
     Stetinensis, Agric., Aliment., Pisc., Zootech. 312(31), 133-142.
 Miś, F. (2026): Spatiotemporal variability of atmospheric drought during the growing
-    season in Poland. Theoretical and Applied Climatology 157, 790 (eq. 4).
+    season in Poland: a multi-index analysis based on SPEI, VPD, and HTC (1980-2024).
+    Theoretical and Applied Climatology 157(12), 790 (section 2, eq. 4).
+Chmist-Sikorska, J., Kępińska-Kasprzak, M. & Struzik, P. (2022): Agricultural drought
+    assessment on the base of Hydro-thermal Coefficient of Selyaninov in Poland.
+    Italian Journal of Agrometeorology (1), 3-12 (p. 5).
 """
 
 from __future__ import annotations
@@ -64,9 +75,11 @@ __all__ = [
 ]
 
 HYDROTHERMAL_MONTHS: tuple[int, ...] = (4, 5, 6, 7, 8, 9)
-"""The months of the growing season (April to September) whose coefficient is given."""
+"""The months of the growing season (April to September): their coefficients are
+given and the season is taken from their days."""
 SEASON_TEMPERATURE_C = 10.0
-"""The season sums the days with a mean temperature above this [°C]."""
+"""The season sums the days of April to September with a mean temperature above this
+[°C]."""
 SIELIANINOV_CLASSES: tuple[str, ...] = (
     "extremely_dry",
     "very_dry",
@@ -118,8 +131,8 @@ class HydrothermalYear(JsonResultMixin):
     months : list of HydrothermalMonth
         April to September.
     season_coefficient : float or None
-        k of the days with a mean temperature above 10 °C; ``None`` unless every day
-        of the year has both values.
+        k of the days of April to September with a mean temperature above 10 °C;
+        ``None`` unless every day of April to September has both values.
     season_class : str or None
         Its class.
     season_days : int or None
@@ -209,6 +222,9 @@ def hydrothermal_coefficient(
 ) -> HydrothermalCoefficient:
     """Sielianinov's hydrothermal coefficient of the months IV-IX and of the season.
 
+    The season is the days of April to September with a mean temperature above 10 °C
+    (Miś, 2026, eq. 4).
+
     Parameters
     ----------
     dates : array_like of datetime64
@@ -259,9 +275,10 @@ def hydrothermal_coefficient(
             month_t > 0, 10.0 * month_rain / (month_t * grid.days_in_month()), np.nan
         )
     both = np.isfinite(daily_rain) & np.isfinite(daily_t)
-    complete = complete_years(grid, both)
+    in_season = np.isin(grid.month, HYDROTHERMAL_MONTHS)
+    complete = complete_years(grid, both | ~in_season)
     with np.errstate(invalid="ignore"):
-        warm = both & (daily_t > SEASON_TEMPERATURE_C)
+        warm = both & in_season & (daily_t > SEASON_TEMPERATURE_C)
     starts = grid.year_starts()
     warm_rain = round_sums(np.add.reduceat(np.where(warm, daily_rain, 0.0), starts))
     warm_t = np.add.reduceat(np.where(warm, daily_t, 0.0), starts)
