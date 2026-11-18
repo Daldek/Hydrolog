@@ -46,13 +46,12 @@ _MIN_RELIABLE_YEARS = 10  # below it the estimates may be unreliable
 # KZGW (2017): the minimum record for flood frequency analysis (one table of ranges)
 _KZGW_MIN_YEARS = int(cast(float, typical_range("flood_frequency", "years").minimum))
 
-_AD_CRITICAL_VALUES: dict[str, float] = {
-    "15%": 1.610,
-    "10%": 1.933,
-    "5%": 2.492,
-    "2.5%": 3.070,
-    "1%": 3.857,
-}
+_AD_LEVELS: Final = {"15%": 0.15, "10%": 0.10, "5%": 0.05, "2.5%": 0.025, "1%": 0.01}
+"""Significance levels of the critical values of A²."""
+_AD_REPLICATES: Final = 999
+"""Samples of the parametric bootstrap of the critical values of A²."""
+_AD_SEED: Final = 20261118
+"""Seed of that bootstrap, so that a sample always gets the same critical values."""
 
 FitMethod = Literal["mle", "moments", "l_moments", "least_squares"]
 FIT_METHODS: tuple[str, ...] = get_args(FitMethod)
@@ -149,8 +148,11 @@ class FrequencyAnalysisResult(JsonResultMixin):
         Always ``False`` — parameters were estimated from the data.
     ad_statistic : float
         Anderson-Darling test statistic.
-    ad_critical_values : dict[str, float]
-        Approximate critical values (case 0: fully specified distribution).
+    ad_critical_values : dict[str, float] or None
+        Critical values of ``ad_statistic`` at the levels ``"15%"`` … ``"1%"`` for
+        the distribution fitted to this sample, from a parametric bootstrap
+        (:func:`_ad_critical_values`); ``None`` for a method other than
+        ``"l_moments"``, whose refits are too slow to bootstrap.
     aic : float
         Akaike Information Criterion, from the log-likelihood at the fitted
         parameters; infinite when an annual maximum lies outside the support of
@@ -168,8 +170,23 @@ class FrequencyAnalysisResult(JsonResultMixin):
     ks_p_value: float
     ks_valid: bool
     ad_statistic: float
-    ad_critical_values: dict[str, float]
+    ad_critical_values: dict[str, float] | None
     aic: float
+
+
+def _a_squared(probabilities: NDArray[np.float64]) -> NDArray[np.float64]:
+    """Anderson-Darling A² of the fitted CDF values of ascending samples.
+
+    The samples run along the last axis; the values are clipped to [1e-10,
+    1 - 1e-10], so that a value outside the support adds a large finite term.
+    A² = -n - Σ [(2i − 1)/n · (ln F(x_i) + ln(1 − F(x_{n+1−i})))].
+    """
+    n = probabilities.shape[-1]
+    clipped = np.clip(probabilities, 1e-10, 1 - 1e-10)
+    weights = (2.0 * np.arange(1, n + 1) - 1.0) / n
+    terms = np.log(clipped) + np.log(1.0 - clipped[..., ::-1])
+    result: NDArray[np.float64] = -n - np.sum(weights * terms, axis=-1)
+    return result
 
 
 def _anderson_darling(
@@ -188,24 +205,56 @@ def _anderson_darling(
     Returns
     -------
     float
-        Anderson-Darling *A*² statistic.
+        Anderson-Darling *A*² statistic (:func:`_a_squared`).
 
     Notes
     -----
     ``scipy.stats.anderson`` only supports a limited set of distributions
-    (norm, expon, logistic, gumbel, gumbel_l).  This function implements the
-    general formula:
-
-    A² = -n - Σ [(2i − 1)/n · (ln F(x_i) + ln(1 − F(x_{n+1−i})))]
+    (norm, expon, logistic, gumbel, gumbel_l), with their own estimators.
     """
-    n = len(data)
-    sorted_data = np.sort(data)
-    F = cdf_func(sorted_data)  # type: ignore[operator]
-    F = np.clip(F, 1e-10, 1 - 1e-10)  # avoid log(0)
-    i = np.arange(1, n + 1)
-    S = np.sum((2 * i - 1) / n * (np.log(F) + np.log(1 - F[::-1])))
-    A2: float = float(-n - S)
-    return A2
+    probabilities = np.asarray(cdf_func(np.sort(data)), dtype=np.float64)  # type: ignore[operator]
+    return float(_a_squared(probabilities))
+
+
+def _ad_critical_values(
+    name: str, parameters: tuple[float, float, float], size: int
+) -> dict[str, float] | None:
+    """Critical values of A² of an L-moments fit, by a parametric bootstrap.
+
+    With the parameters estimated from the sample, the distribution of A² is much
+    narrower than for a distribution given in advance (case 0 of Stephens 1974,
+    whose 5 % point 2.492 such a fit almost never reaches) and depends on the
+    distribution, the method of estimation, the sample size and the shape. So the
+    critical values are those of this fit: ``_AD_REPLICATES`` samples of ``size``
+    values drawn from the fitted distribution, each refitted by L-moments, give the
+    A² whose upper quantiles 1 - level are the critical values (the parametric
+    bootstrap of Stute, González Manteiga and Presedo Quindimil 1993; the seed is
+    fixed). A sample that the L-moments cannot fit is left out.
+    """
+    distribution = _DISTRIBUTIONS[name]
+    rng = np.random.default_rng(_AD_SEED)
+    samples = np.sort(
+        distribution.rvs(*parameters, size=(_AD_REPLICATES, size), random_state=rng),
+        axis=1,
+    )
+    kept: list[int] = []
+    refits: list[tuple[float, float, float]] = []
+    for row, sample in enumerate(samples):
+        try:
+            refits.append(_by_l_moments(name, sample))
+        except _NoParameters:
+            continue
+        kept.append(row)
+    if not refits:
+        return None
+    columns = zip(*refits, strict=True)
+    shape, loc, scale = (np.array(column)[:, None] for column in columns)
+    with np.errstate(all="ignore"):
+        statistics = _a_squared(distribution.cdf(samples[kept], shape, loc, scale))
+    return {
+        label: float(np.quantile(statistics, 1.0 - level))
+        for label, level in _AD_LEVELS.items()
+    }
 
 
 class _NoParameters(Exception):
@@ -1126,8 +1175,15 @@ class FloodFrequencyAnalysis:
         ks_stat, ks_pval = kstest(self._data, cdf_func)
         warnings.warn(KsTestApproximate(), stacklevel=3)
 
-        # Anderson-Darling (manual)
+        # Anderson-Darling: the critical values of this fit by a parametric
+        # bootstrap, for the L-moments only (the other refits are too slow)
         ad_stat = _anderson_darling(self._data, cdf_func)
+        shape, loc, scale = params.values()  # (shape, loc, scale) of every fit
+        ad_critical = (
+            _ad_critical_values(name, (shape, loc, scale), self._data.size)
+            if fit_method == "l_moments"
+            else None
+        )
 
         # AIC
         log_densities = np.asarray(logpdf_func(self._data))  # type: ignore[operator]
@@ -1156,6 +1212,6 @@ class FloodFrequencyAnalysis:
             ks_p_value=float(ks_pval),
             ks_valid=False,
             ad_statistic=ad_stat,
-            ad_critical_values=_AD_CRITICAL_VALUES.copy(),
+            ad_critical_values=ad_critical,
             aic=float(aic),
         )
