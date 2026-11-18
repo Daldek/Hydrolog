@@ -71,11 +71,42 @@ _DISTRIBUTION_NAMES: Final = {
     "weibull": "Weibull",
 }
 _METHOD_NAMES: Final = {
+    "mle": "method of maximum likelihood",
     "moments": "method of moments",
     "l_moments": "method of L-moments",
     "least_squares": "method of least squares",
 }
 _MIN_VALUES: Final = 3  # the skewness and the L-skewness need three values
+# Maximum likelihood needs more values than the distribution has parameters.
+_PARAMETER_COUNTS: Final = {"log_normal": 2, "gev": 3, "pearson3": 3, "weibull": 3}
+# The likelihood of a three-parameter distribution has no maximum where its density is
+# infinite at a bound of the support: placed at the closest value, the bound makes the
+# likelihood grow without limit (Smith 1985). That happens for the GEV with scipy's
+# shape c >= 1 (xi <= -1), Pearson III with |skewness| >= 2 (gamma shape <= 1) and
+# Weibull with shape <= 1, so the estimate is the maximum in the shapes short of these
+# limits (named here for an error message), if there is one.
+_UNBOUNDED_LIKELIHOOD: Final = {
+    "gev": "the shape c of 1",
+    "pearson3": "the skewness of 2 or -2",
+    "weibull": "the shape of 1",
+}
+# The search for the maximum likelihood (Nelder-Mead on the standardised sample) and
+# its check: it is run again from the point found until a run gains no more than
+# _ML_GAIN of log-likelihood, at most _ML_RUNS times. Its start has a shape at least
+# _ML_INSIDE short of the limit and a bound _ML_MARGIN standard deviations beyond the
+# sample; an end closer to the limit than _ML_EDGE is the limit, where there is no
+# maximum.
+_ML_NELDER_MEAD: Final = {
+    "xatol": 1e-10,
+    "fatol": 1e-12,
+    "maxiter": 10_000,
+    "maxfev": 20_000,
+}
+_ML_RUNS: Final = 20
+_ML_GAIN: Final = 1e-9
+_ML_INSIDE: Final = 0.1
+_ML_MARGIN: Final = 0.05
+_ML_EDGE: Final = 1e-3
 # The skewness and the L-skewness of the Gumbel distribution (the GEV with shape 0):
 # the Weibull distribution of the moments and L-moments needs a sample statistic above
 # minus these, the limit of its skewness and L-skewness as its shape grows.
@@ -199,14 +230,18 @@ class _NoParameters(Exception):
         self.details = details
 
 
-def _require_spread(data: NDArray[np.float64]) -> None:
-    """Require the 3 values of the skewness and the L-skewness, not all equal."""
-    if data.size < _MIN_VALUES:
+def _require_spread(data: NDArray[np.float64], minimum: int = _MIN_VALUES) -> None:
+    """Require ``minimum`` values, not all equal.
+
+    By default the 3 values of the skewness and the L-skewness; maximum likelihood asks
+    for one more than the distribution's parameters.
+    """
+    if data.size < minimum:
         raise _NoParameters(
             "too_few_values",
-            f"it needs at least {_MIN_VALUES} values, got {data.size}",
+            f"it needs at least {minimum} values, got {data.size}",
             count=int(data.size),
-            minimum=_MIN_VALUES,
+            minimum=minimum,
         )
     if data.min() == data.max():
         raise _NoParameters("constant_values", "all values are equal")
@@ -446,7 +481,161 @@ def _by_least_squares(
     return parameters(found.x)
 
 
+def _support(name: str, shape: float, scale: float) -> tuple[float, float]:
+    """Lower and upper bound of distribution ``name`` with location 0 (infinite: none).
+
+    The GEV with scipy's c > 0 has the upper bound scale / c and with c < 0 the lower
+    one; Pearson III with the skewness γ > 0 has the lower bound -2 scale / γ and with
+    γ < 0 the upper one; Weibull has the lower bound 0.
+    """
+    if name == "weibull":
+        return 0.0, np.inf
+    if shape == 0.0:
+        return -np.inf, np.inf
+    if name == "gev":
+        bound = scale / shape
+        return (-np.inf, bound) if shape > 0.0 else (bound, np.inf)
+    bound = -2.0 * scale / shape
+    return (bound, np.inf) if shape > 0.0 else (-np.inf, bound)
+
+
+def _limit_distance(name: str, shape: float) -> float:
+    """How far ``shape`` lies short of the limit of ``_UNBOUNDED_LIKELIHOOD``.
+
+    Positive where the likelihood of ``name`` can have a maximum, 0 or less where the
+    density is infinite at a bound of the support.
+    """
+    if name == "gev":
+        return 1.0 - shape
+    if name == "pearson3":
+        return 2.0 - abs(shape)
+    return shape - 1.0
+
+
+def _ml_start(name: str, sample: NDArray[np.float64]) -> tuple[float, float, float]:
+    """Start ``(shape, loc, scale)`` of the maximum-likelihood search on ``sample``.
+
+    ``sample`` is standardised (mean 0, standard deviation 1). The start is the
+    L-moments' estimate, else the moments', else the distribution of skewness 0, with
+    its shape moved ``_ML_INSIDE`` short of the limit if it is closer and its location
+    moved, if needed, so that a bound of the support lies ``_ML_MARGIN`` beyond the
+    sample: a value without density leaves no likelihood to improve.
+    """
+    for estimate in (_by_l_moments, _by_moments):
+        try:
+            shape, loc, scale = estimate(name, sample)
+            break
+        except _NoParameters:
+            continue
+    else:  # only Weibull: a sample skewness below that of every Weibull distribution
+        shape, loc, scale = _weibull_from_reversed_gev(
+            *_gev_from_moments(0.0, 1.0, 0.0)
+        )
+    if name == "gev":
+        shape = min(shape, 1.0 - _ML_INSIDE)
+    elif name == "pearson3":
+        shape = min(max(shape, _ML_INSIDE - 2.0), 2.0 - _ML_INSIDE)
+    else:
+        shape = max(shape, 1.0 + _ML_INSIDE)
+    lower, upper = _support(name, shape, scale)
+    lowest = float(sample.max()) - upper + _ML_MARGIN
+    highest = float(sample.min()) - lower - _ML_MARGIN
+    return shape, min(max(loc, lowest), highest), scale
+
+
+def _maximum_likelihood(
+    name: str, data: NDArray[np.float64]
+) -> tuple[float, float, float]:
+    """Maximum-likelihood ``(shape, loc, scale)`` of a three-parameter distribution.
+
+    ``name`` is ``"gev"``, ``"pearson3"`` or ``"weibull"``. The search runs on the
+    standardised sample z = (x - mean) / sd, whose scale is of the order of 1 in any
+    unit of x (scipy's own ``fit`` starts from the scale 1 and may stop far from the
+    maximum on annual maxima of hundreds of m³/s): Nelder-Mead on the shape, the
+    location and the logarithm of the scale from :func:`_ml_start`, over the shapes
+    short of the limit of ``_UNBOUNDED_LIKELIHOOD``, run again from the point it found
+    until a run gains no more than ``_ML_GAIN`` of log-likelihood. The parameters of x
+    are the shape, mean + sd · loc and sd · scale.
+
+    Raises
+    ------
+    _NoParameters
+        ``too_few_values`` (fewer values than 4), ``constant_values``,
+        ``unbounded_likelihood`` (the search ends at the limit: the likelihood has no
+        maximum) or ``not_converged`` (no run settles, or the end is less likely than
+        the start).
+    """
+    _require_spread(data, _PARAMETER_COUNTS[name] + 1)
+    distribution = _DISTRIBUTIONS[name]
+    mean = float(np.mean(data))
+    spread = float(np.std(data))
+    sample = (data - mean) / spread
+
+    def minus_log_likelihood(point: NDArray[np.float64]) -> float:
+        if _limit_distance(name, point[0]) <= 0.0:
+            return np.inf
+        with np.errstate(all="ignore"):
+            log_densities = distribution.logpdf(
+                sample, point[0], loc=point[1], scale=np.exp(point[2])
+            )
+            total = -float(np.sum(log_densities))
+        return np.inf if np.isnan(total) else total
+
+    shape, loc, scale = _ml_start(name, sample)
+    start = np.array([shape, loc, np.log(scale)])
+    found = minimize(
+        minus_log_likelihood, start, method="Nelder-Mead", options=_ML_NELDER_MEAD
+    )
+    settled = False
+    for _ in range(_ML_RUNS):
+        if not np.isfinite(found.fun):
+            break
+        again = minimize(
+            minus_log_likelihood, found.x, method="Nelder-Mead", options=_ML_NELDER_MEAD
+        )
+        gain = found.fun - again.fun
+        if gain > 0.0:
+            found = again
+        if gain <= _ML_GAIN:
+            settled = True
+            break
+    shape = float(found.x[0])
+    if _limit_distance(name, shape) < _ML_EDGE:
+        raise _NoParameters(
+            "unbounded_likelihood",
+            "its likelihood has no maximum: the search ends at "
+            f"{_UNBOUNDED_LIKELIHOOD[name]}, with a bound of the distribution at the "
+            "closest value, beyond which the likelihood grows without limit",
+            shape=shape,
+        )
+    if not settled or found.fun > minus_log_likelihood(start):
+        raise _NoParameters(
+            "not_converged",
+            f"the search for the maximum of the likelihood did not settle in {_ML_RUNS}"
+            " runs",
+        )
+    return shape, mean + spread * float(found.x[1]), spread * float(np.exp(found.x[2]))
+
+
+def _by_maximum_likelihood(
+    name: str, data: NDArray[np.float64]
+) -> tuple[float, float, float]:
+    """Parameters ``(shape, loc, scale)`` of distribution ``name``, maximum likelihood.
+
+    The log-normal with location 0 in closed form (``scipy.stats.lognorm.fit`` with
+    ``floc=0``: the mean and the standard deviation, divisor n, of ln x), from 3 values
+    above 0, not all equal; the others by :func:`_maximum_likelihood`.
+    """
+    if name != "log_normal":
+        return _maximum_likelihood(name, data)
+    _require_positive(data)
+    _require_spread(data, _PARAMETER_COUNTS[name] + 1)
+    shape, _, scale = lognorm.fit(data, floc=0)
+    return float(shape), 0.0, float(scale)
+
+
 _ESTIMATORS: Final = {
+    "mle": _by_maximum_likelihood,
     "moments": _by_moments,
     "l_moments": _by_l_moments,
     "least_squares": _by_least_squares,
@@ -470,7 +659,8 @@ class FloodFrequencyAnalysis:
     Raises
     ------
     InvalidParameterError
-        If *annual_maxima* is empty or contains NaN values.
+        If *annual_maxima* is empty or holds a value that is not finite (NaN or
+        infinity).
 
     Warns
     -----
@@ -486,7 +676,11 @@ class FloodFrequencyAnalysis:
     (``lognorm`` with location 0, ``genextreme``, ``pearson3``, ``weibull_min``),
     from which the quantiles, the goodness of fit and the AIC follow alike:
 
-    - ``"mle"``: maximum likelihood, ``scipy.stats.<distribution>.fit``;
+    - ``"mle"``: maximum likelihood; the log-normal in closed form
+      (``scipy.stats.lognorm.fit`` with ``floc=0``), the others by Nelder-Mead on
+      the standardised sample (x - mean) / sd from the L-moments' estimate, run
+      again from the point found until it gains nothing (scipy's own ``fit`` starts
+      from the scale 1 and may stop far from the maximum);
     - ``"moments"``: the distribution's mean, standard deviation and (three
       parameters) skewness equal the sample's, with the divisor n - 1 and the
       adjusted skewness G1 = √(n (n - 1)) / (n - 2) · m3 / m2^(3/2);
@@ -502,17 +696,25 @@ class FloodFrequencyAnalysis:
 
     For the moments and the L-moments the Weibull distribution is the GEV of the
     negated sample, which needs a sample skewness above -1.1395 or an L-skewness
-    above -0.1699 (the limits of the Gumbel distribution). The methods other than
-    maximum likelihood need 3 values, not all equal (least squares starts from the
-    moments and needs what they need), and raise :class:`CalculationError` when
-    they give no parameters, with ``details.reason``: ``too_few_values``,
-    ``constant_values``, ``out_of_range`` (the sample skewness or L-skewness
-    outside the range of the distribution) or ``non_positive_values`` (the
-    log-normal with location 0 needs values above 0). They may give a distribution
-    whose support leaves out an annual maximum, most often a lower bound of Pearson
-    III or Weibull above the smallest one (maximum likelihood rarely does): the
-    result keeps its quantiles and its AIC is infinite, so it ranks after every fit
-    with a finite AIC.
+    above -0.1699 (the limits of the Gumbel distribution). Every method needs values
+    not all equal: 3 for the moments, the L-moments and least squares (which starts
+    from the moments and needs what they need), and one more than the distribution
+    has parameters for maximum likelihood (3 for the log-normal, 4 for the others).
+    A method that gives no parameters raises :class:`CalculationError` with
+    ``details.reason``: ``too_few_values``, ``constant_values``, ``out_of_range``
+    (the sample skewness or L-skewness outside the range of the distribution),
+    ``non_positive_values`` (the log-normal with location 0 needs values above 0)
+    or, by maximum likelihood, ``unbounded_likelihood`` and ``not_converged``. The
+    likelihood of a three-parameter distribution has no maximum where its density is
+    infinite at a bound of the support, which then sits at the closest annual
+    maximum (Smith 1985): the GEV with c >= 1, Pearson III with a skewness of 2 or
+    more (or -2 or less), Weibull with a shape of 1 or less; a search that ends
+    there is ``unbounded_likelihood``, and one that does not settle (or ends less
+    likely than its start) ``not_converged``. The other methods may give a
+    distribution whose support leaves out an annual maximum, most often a lower
+    bound of Pearson III or Weibull above the smallest one: the result keeps its
+    quantiles and its AIC is infinite, so it ranks after every fit with a finite
+    AIC.
 
     Examples
     --------
@@ -532,8 +734,11 @@ class FloodFrequencyAnalysis:
     ) -> None:
         if len(annual_maxima) == 0:
             raise InvalidParameterError("annual_maxima must not be empty.")
-        if np.any(np.isnan(annual_maxima)):
-            raise InvalidParameterError("annual_maxima must not contain NaN values.")
+        if not np.all(np.isfinite(annual_maxima)):
+            raise InvalidParameterError(
+                "annual_maxima must hold finite numbers only (no NaN or infinity).",
+                details={"option": "annual_maxima", "reason": "not_finite"},
+            )
 
         years = len(annual_maxima)
         if years < _MIN_RELIABLE_YEARS:
@@ -577,7 +782,7 @@ class FloodFrequencyAnalysis:
         InvalidParameterError
             If ``fit_method`` is not one of :data:`FIT_METHODS`.
         CalculationError
-            If a method other than ``"mle"`` gives no parameters.
+            If the method gives no parameters (see the class notes).
 
         Notes
         -----
@@ -623,7 +828,7 @@ class FloodFrequencyAnalysis:
         InvalidParameterError
             If ``fit_method`` is not one of :data:`FIT_METHODS`.
         CalculationError
-            If a method other than ``"mle"`` gives no parameters.
+            If the method gives no parameters (see the class notes).
 
         Notes
         -----
@@ -667,7 +872,7 @@ class FloodFrequencyAnalysis:
         InvalidParameterError
             If ``fit_method`` is not one of :data:`FIT_METHODS`.
         CalculationError
-            If a method other than ``"mle"`` gives no parameters.
+            If the method gives no parameters (see the class notes).
         """
         skew, loc, scale = self._estimate("pearson3", fit_method)
         params = {"skew": skew, "loc": loc, "scale": scale}
@@ -707,7 +912,7 @@ class FloodFrequencyAnalysis:
         InvalidParameterError
             If ``fit_method`` is not one of :data:`FIT_METHODS`.
         CalculationError
-            If a method other than ``"mle"`` gives no parameters.
+            If the method gives no parameters (see the class notes).
         """
         shape, loc, scale = self._estimate("weibull", fit_method)
         params = {"shape": shape, "loc": loc, "scale": scale}
@@ -775,14 +980,14 @@ class FloodFrequencyAnalysis:
         CalculationError
             If the one combination asked for gives no parameters (its own error, as
             of ``fit_<distribution>``), or the method gives parameters of none of the
-            distributions (never with ``"all"``: maximum likelihood fits each).
+            distributions.
 
         Warns
         -----
         DistributionLeftOut
-            For each combination of several asked for whose method (other than
-            ``"mle"``) gives no parameters (see the class notes); that combination is
-            not in the result.
+            For each combination of several asked for whose method gives no
+            parameters (see the class notes), maximum likelihood without a maximum
+            included; that combination is not in the result, so it is never ranked.
         """
         if distribution != "all" and distribution not in _DISTRIBUTIONS:
             allowed = ", ".join(repr(name) for name in ("all", *_DISTRIBUTIONS))
@@ -852,8 +1057,8 @@ class FloodFrequencyAnalysis:
         InvalidParameterError
             If ``fit_method`` is not one of :data:`FIT_METHODS`.
         CalculationError
-            If a method other than ``"mle"`` gives no parameters (see the class
-            notes for ``details.reason``).
+            If the method gives no parameters (see the class notes for
+            ``details.reason``).
         """
         if fit_method not in FIT_METHODS:
             allowed = ", ".join(repr(method) for method in FIT_METHODS)
@@ -866,14 +1071,6 @@ class FloodFrequencyAnalysis:
                     "value": str(fit_method),
                 },
             )
-        distribution = _DISTRIBUTIONS[name]
-        if fit_method == "mle":
-            fitted = (
-                lognorm.fit(self._data, floc=0)
-                if name == "log_normal"
-                else distribution.fit(self._data)
-            )
-            return cast(tuple[float, float, float], fitted)
         estimate = _ESTIMATORS[fit_method]
         try:
             parameters = estimate(name, self._data)

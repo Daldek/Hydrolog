@@ -23,7 +23,8 @@ distributions table (or Enter on it) makes that combination the active one: the 
 the full curve of the three charts and „Do porównania” follow it, the other curves
 dimmed, until a new result. The axis ranges follow the result alone: neither the active
 combination nor the filters move them, and the density's frame ignores the spikes at a
-distribution's bound (a GEV's on twelve maxima by maximum likelihood, clipped at it).
+distribution's bound (a Weibull's of shape 0.40 on twelve maxima by least squares,
+clipped at it; the GEV by maximum likelihood stays inside the frame).
 No period is highlighted at first („brak”): no highlighted tile or row, no marked
 quantile on the charts and „Do porównania” off until one is chosen, the choice stored.
 A daily series takes its date column from its header; pasted maxima run
@@ -718,8 +719,8 @@ def test_a_daily_series_takes_its_date_column(tab: Tab) -> None:
 
 
 def test_the_axis_ranges_follow_the_result_alone(tab: Tab) -> None:
-    # Twelve maxima on which several combinations have a density spike at a bound: the
-    # GEV by maximum likelihood about 53, the log-normal by L-moments 0,0089 at most
+    # Twelve maxima on which some combinations have a density spike at a bound (the
+    # Weibull by least squares, shape 0.40), the log-normal by L-moments 0,0089 at most
     page = visit(tab)
     page.locator(f"{SECTION} .step").first.get_by_role("radio", name="Wklej").click()
     page.locator(f"{SECTION} #st-values").fill(
@@ -767,11 +768,18 @@ def test_the_axis_ranges_follow_the_result_alone(tab: Tab) -> None:
     expect(rows.nth(2)).to_have_attribute("aria-current", "true")
     assert ticks() == first
 
-    # Nor does a method added; the GEV's spike by maximum likelihood is cut at the top
+    # Nor does a method added: maximum likelihood's GEV inside the frame, the spike of
+    # least squares' Weibull at its bound cut at the top
     chip(page, "methods", "Największa wiarygodność").click()
     expect(density.locator('path.ser[data-series="gev/mle"]')).to_have_count(1)
     assert ticks() == first
-    assert heights()["gev/mle"] == pytest.approx(1.0, abs=0.01)
+    assert heights()["gev/mle"] < 1.0
+    chip(page, "methods", "Najmniejsze kwadraty").click()
+    expect(
+        density.locator('path.ser[data-series="weibull/least_squares"]')
+    ).to_have_count(1)
+    assert ticks() == first
+    assert heights()["weibull/least_squares"] == pytest.approx(1.0, abs=0.01)
     assert max(heights().values()) <= 1.01
 
 
