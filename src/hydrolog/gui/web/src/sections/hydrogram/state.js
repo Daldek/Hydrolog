@@ -330,8 +330,12 @@ const RAIN_FIELDS = new Set([
 /** The parts of the inputs a warning of a run belongs to: it stands while they are the run's. */
 const SETTING = Object.freeze(["uh_model", "tc_manual", "tc_method", "nash_source", "clark_kind", "rain_source", "hietogram_type"]);
 
-/** Snyder's L and Lc: the options `hydrograph generate` takes them as, by the watershed's field they come from. */
-export const SNYDER_LENGTHS = Object.freeze({ snyder_length_km: "channel_length_km", snyder_centroid_length_km: "Lc_km" });
+/**
+ * Snyder's L and Lc: the options `hydrograph generate` takes them as, by the watershed's field
+ * they come from. L runs to the divide (Snyder 1938; KZGW 2017, p. 90), so it is the longest
+ * flow path, not the channel to its head (ADR-0043, as Lutz's L in ADR-0024).
+ */
+export const SNYDER_LENGTHS = Object.freeze({ snyder_length_km: "flow_path_length_km", snyder_centroid_length_km: "Lc_km" });
 
 /**
  * The inputs of a first visit (and after „Wyczyść”): every field empty and no model
@@ -414,7 +418,7 @@ function isCurve(value) {
 
 /**
  * Stored inputs completed with the first visit's for keys they lack. Snyder's L and Lc of
- * earlier visits (own fields then) move to the watershed's channel_length_km and Lc_km
+ * earlier visits (own fields then) move to the watershed's flow_path_length_km and Lc_km
  * when those are empty, else are dropped.
  *
  * @param {object|null} stored the stored inputs
@@ -812,7 +816,7 @@ export function handoffMissing(watershed) {
  * mean elevation, FAA, Kerby and Kerby–Kirpich their overland fields, Kerby–Kirpich also
  * the longest flow path), Clark R or R/tc, Nash n and K or the fields of Lutz (the length
  * and the slope of the longest flow path, Lc and Manning's n), Snyder L and Lc of the
- * watershed (channel_length_km and Lc_km).
+ * watershed (flow_path_length_km and Lc_km).
  *
  * @param {object} inputs the inputs
  * @returns {{model: string|null, required: Object<string, {purpose: string, or?:
@@ -844,7 +848,7 @@ export function requirements(inputs) {
     need("nash_k_min", "nash");
   }
   if (model === "snyder") {
-    need("channel_length_km", "snyder");
+    need("flow_path_length_km", "snyder");
     need("Lc_km", "snyder");
   }
   return { model, required };

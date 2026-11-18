@@ -692,7 +692,7 @@ from hydrolog.precipitation import BetaHietogram
 # Snyder does NOT need an external Tc!
 snyder = SnyderUH(
     area_km2=100.0,
-    L_km=15.0,      # Stream length
+    L_km=15.0,      # Main stream length from the divide (longest flow path)
     Lc_km=8.0,      # Length to the centroid
     ct=1.5,         # Time coefficient
     cp=0.6          # Peak coefficient

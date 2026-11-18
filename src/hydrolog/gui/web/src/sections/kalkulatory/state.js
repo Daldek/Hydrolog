@@ -74,13 +74,13 @@ export const GROUPS = Object.freeze(["tc", "cn", "precip", "uh", "morphometry"])
  * fields (option: field). The six tc commands take what `tc watershed` itself derives from
  * the watershed (its `parameters`); `morphometry watershed` takes the whole watershed;
  * `uh nash` takes Lutz's L and J of the longest flow path, as `nash_estimation` of
- * `hydrograph generate` does.
+ * `hydrograph generate` does, and `uh snyder` its L, the same path to the divide.
  */
 export const FROM_WATERSHED = Object.freeze({
   "scs effective": { cn: "cn" },
   "uh scs": { area_km2: "area_km2" },
   "uh clark": { area_km2: "area_km2" },
-  "uh snyder": { area_km2: "area_km2", length_km: "channel_length_km", centroid_length_km: "Lc_km" },
+  "uh snyder": { area_km2: "area_km2", length_km: "flow_path_length_km", centroid_length_km: "Lc_km" },
   "uh nash": {
     area_km2: "area_km2",
     lutz_length_km: "flow_path_length_km",

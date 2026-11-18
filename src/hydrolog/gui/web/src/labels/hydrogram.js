@@ -248,7 +248,7 @@ export const hydrogram = {
     clarkNote: "Clark; wymaga tc oraz `clark_r_min` lub `clark_r_tc_ratio` (typowo {ranges}).",
     clarkNotePlain: "Clark; wymaga tc oraz `clark_r_min` lub `clark_r_tc_ratio`.",
     snyderNote:
-      "Snyder ma własny wzór na opóźnienie; nie podawaj mu tc. L to długość cieku głównego zlewni (krok 1), Lc to długość do środka ciężkości (powyżej).",
+      "Snyder ma własny wzór na opóźnienie; nie podawaj mu tc. L to długość najdłuższej drogi spływu, od działu wodnego do przekroju zamykającego (krok 1), nie długość cieku do jego źródła; Lc to długość do środka ciężkości (powyżej).",
     chipTc: "tc = {value} min",
     chipR: "R = {value} min",
     chipN: "n = {value}",
@@ -347,7 +347,7 @@ export const hydrogram = {
       r: "Stała retencji",
       ct: "Współczynnik czasowy",
       cp: "Współczynnik szczytowy",
-      snyderL: "Długość cieku",
+      snyderL: "Długość do działu wodnego",
       snyderLc: "Do środka ciężkości",
     },
     paramSyms: {

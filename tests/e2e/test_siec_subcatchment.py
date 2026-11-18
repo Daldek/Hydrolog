@@ -99,7 +99,7 @@ or R; Nash with n and K given or by Lutz; Snyder."""
 CHOICE_KEYS = {"model", "uh_model", "amc", "tc_method", "nash_estimation"}
 """The keys of a runoff that are its choices, not fields the panel shows."""
 SNYDER_COPIES = {
-    "channel_length_km": "snyder_length_km",
+    "flow_path_length_km": "snyder_length_km",
     "Lc_km": "snyder_centroid_length_km",
 }
 """Snyder's L and Lc: the watershed's fields the mapping copies into the runoff, the one

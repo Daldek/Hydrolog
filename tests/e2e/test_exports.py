@@ -1481,7 +1481,7 @@ def test_snyders_lengths_of_a_handoff_go_to_the_watersheds_fields(tab: Tab) -> N
             };
           };
           const bare = { ...example };
-          delete bare.channel_length_km;
+          delete bare.flow_path_length_km;
           delete bare.Lc_km;
           return {
             filled: opened(
@@ -1492,12 +1492,13 @@ def test_snyders_lengths_of_a_handoff_go_to_the_watersheds_fields(tab: Tab) -> N
         }""",
         [EXAMPLE, kamiennik_inputs()],
     )
-    # absent from the watershed: the runoff's L and Lc fill its fields
+    # absent from the watershed: the runoff's L (to the divide: the longest flow path,
+    # ADR-0043) and Lc fill its fields
     filled = got["filled"]
-    assert (filled["watershed"]["channel_length_km"], filled["watershed"]["Lc_km"]) == (
-        "12",
-        "5",
-    )
+    assert (
+        filled["watershed"]["flow_path_length_km"],
+        filled["watershed"]["Lc_km"],
+    ) == ("12", "5")
     assert (
         filled["sent"]["snyder_length_km"],
         filled["sent"]["snyder_centroid_length_km"],
@@ -1505,10 +1506,10 @@ def test_snyders_lengths_of_a_handoff_go_to_the_watersheds_fields(tab: Tab) -> N
     # different from the watershed's: the watershed's stays, the origin names
     # what was left out
     kept = got["kept"]
-    assert kept["watershed"]["channel_length_km"] == "14,78"
-    assert kept["sent"]["snyder_length_km"] == 14.78
+    assert kept["watershed"]["flow_path_length_km"] == "15,88"
+    assert kept["sent"]["snyder_length_km"] == 15.88
     assert (
-        "snyder_length_km = 12 pominięte: zlewnia ma channel_length_km = 14,78"
+        "snyder_length_km = 12 pominięte: zlewnia ma flow_path_length_km = 15,88"
         in kept["detail"]
     )
 

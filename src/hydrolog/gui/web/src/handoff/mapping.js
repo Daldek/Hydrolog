@@ -211,7 +211,7 @@ function handedOrigin(record, values, notes) {
 /**
  * Hydrogram's inputs of a subcatchment made from rainfall of hydrolog-network/1 (plan
  * 2026-11-10-network-wizard, D3): its watershed (every field the document gives; Snyder's
- * L and Lc of the runoff fill the watershed's channel_length_km and Lc_km it lacks, a
+ * L and Lc of the runoff fill the watershed's flow_path_length_km and Lc_km it lacks, a
  * different one is left out and said in the origin's detail), its runoff with the
  * library's defaults for what the document leaves out (`tc_method` kirpich, `amc` II, λ
  * 0,2 and `uh_model` scs; no model chosen without a runoff), Nash by Lutz from
@@ -239,7 +239,7 @@ export function subcatchmentInputs(node, { origin = null, networkRainfall = null
   const runoff = isObject(node.runoff) ? node.runoff : null;
   const given = runoff || {};
   const { texts: watershed, values } = watershedOf(node.watershed);
-  // Snyder's L and Lc are the watershed's channel_length_km and Lc_km: the runoff's fill
+  // Snyder's L and Lc are the watershed's flow_path_length_km and Lc_km: the runoff's fill
   // those the watershed lacks; a different one is left out, said in the origin's detail
   const skipped = [];
   for (const [option, field] of Object.entries(SNYDER_LENGTHS)) {
