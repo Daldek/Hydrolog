@@ -99,7 +99,7 @@ class TestMonthlyRulesOfWmo1203:
 class TestPrecipitationIndices:
     """Hand-computed sequences of the indices of ``meteo precipitation``."""
 
-    def test_the_normal_needs_eighty_percent_of_the_years(self):
+    def test_the_normal_needs_eighty_percent_of_the_years_of_each_month(self):
         every = _days("2001-01-01", 1826)  # 2001-2005, 2004 a leap year
         dates = [day for n, day in enumerate(every) if n != 400]  # 2002-02-05 absent
         result = _result(
@@ -110,13 +110,37 @@ class TestPrecipitationIndices:
         )
         assert result["period"]["normal_mm"] == pytest.approx(365.25)
         assert result["period"]["normal_years"] == 4
+        # 2002-02-05 and 2003-02-05 absent: February has sums in 3 of 5 years
+        dates = [day for n, day in enumerate(every) if n not in (400, 765)]
+        output = run_command(
+            "meteo precipitation",
+            {"index": "sums", "dates": dates, "precipitation_mm": [1.0] * len(dates)},
+        )
+        assert output.result.period.months[1].normal_mm is None
+        assert output.result.period.normal_mm is None
+        assert output.result.period.djf_normal_mm is None
+        assert output.result.period.mam_normal_mm == pytest.approx(92.0)
+        assert "normal_not_computed" in [item.code for item in output.notices]
+
+    def test_annual_normal_is_the_sum_of_the_monthly_normals(self):
+        """WMO-No. 1203 (2017), 4.3.3: annual normals from the monthly normals.
+
+        2002-02-05 and 2003-03-12 absent: 3 of 5 years lack an annual sum, but every
+        month has sums in 4 of 5 years, so every monthly normal and their sum exist
+        (February 28.25 days of 1 mm, the others the days of the month).
+        """
+        every = _days("2001-01-01", 1826)
         dates = [day for n, day in enumerate(every) if n not in (400, 800)]
         output = run_command(
             "meteo precipitation",
             {"index": "sums", "dates": dates, "precipitation_mm": [1.0] * len(dates)},
         )
-        assert output.result.period.normal_mm is None
-        assert "normal_not_computed" in [item.code for item in output.notices]
+        period = output.result.period
+        assert period.normal_mm == pytest.approx(365.25)
+        assert period.normal_years == 4
+        assert period.winter_normal_mm == pytest.approx(30 + 31 + 31 + 28.25 + 31 + 30)
+        assert period.djf_normal_mm == pytest.approx(31 + 31 + 28.25)
+        assert "normal_not_computed" not in [item.code for item in output.notices]
 
     def test_maxima_of_one_and_two_days_with_their_dates(self):
         dates = _days("2001-01-01", 365)
@@ -266,7 +290,9 @@ class TestTemperatureSnowHydrothermal:
         )["years"][0]
         may = year["months"][1]
         assert may["coefficient"] == pytest.approx(10 * 62 / (12 * 31))
-        assert year["season_coefficient"] == pytest.approx(10 * 62 / (12 * 365))
+        # the season: the 183 days of April to September above 10 °C (Miś, 2026)
+        assert year["season_coefficient"] == pytest.approx(10 * 62 / (12 * 183))
+        assert year["season_days"] == 183
 
 
 class TestEtccdiCountsOfTheFixtureYear:
@@ -282,6 +308,10 @@ class TestEtccdiCountsOfTheFixtureYear:
         ]
         year = next(row for row in days if row["year"] == 2021)
         assert year["frost_days"] == sum(t < 0 for t in tmin)  # FD
+        # the „dzień przymrozkowy” of the Słownik meteorologiczny and of IMGW-PIB
+        assert year["freeze_thaw_days"] == sum(
+            n < 0 < x for n, x in zip(tmin, tmax, strict=True)
+        )
         assert year["ice_days"] == sum(t < 0 for t in tmax)  # ID
         assert year["summer_days"] == sum(t > 25 for t in tmax)  # SU
         assert year["hot_days"] == sum(t > 30 for t in tmax)

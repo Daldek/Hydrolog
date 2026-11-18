@@ -119,6 +119,28 @@ class TestSpellFields:
         assert period["mean_n_spells"] == 3.0
         assert [c["count"] for c in period["classes"][:4]] == [1, 0, 0, 2]
 
+    def test_a_spell_over_new_year_counts_whole_in_the_year_it_ends(self):
+        """ECA&D ATBD v11 p. 20 and climdex.pcic (``spells.can.span.years``)."""
+        dates = _days("2001-01-01", 2 * 365)
+        rain = [5.0] * len(dates)
+        rain[353 : 365 + 10] = [0.0] * 22  # 20 December 2001 to 10 January 2002
+        rain[100:105] = [0.0] * 5  # 11-15 April 2001
+        result = _result("meteo spells", dates=dates, precipitation_mm=rain)
+        assert [s["year"] for s in result["spells"]] == [2001, 2002]
+        first, second = result["years"]
+        assert (first["n_spells"], first["max_duration_days"]) == (1, 5)
+        assert (second["n_spells"], second["max_duration_days"]) == (1, 22)
+        assert (second["max_start_date"], second["spells_20_days"]) == (
+            "2001-12-20",
+            1,
+        )
+
+    def test_a_year_inside_a_longer_spell_has_no_longest_spell(self):
+        dates = _days("2001-12-31", 1 + 365 + 1)  # to 1 January 2003
+        result = precipitation_spells([0.0] * len(dates), dates)
+        year = next(row for row in result.years if row.year == 2002)
+        assert (year.complete, year.n_spells, year.max_duration_days) == (True, 0, None)
+
 
 class TestSnowPeriod:
     def test_an_incomplete_winter_is_listed_and_left_out(self):
