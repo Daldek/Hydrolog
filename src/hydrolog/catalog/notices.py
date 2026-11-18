@@ -233,9 +233,10 @@ _SPECS: Final[tuple[NoticeSpec, ...]] = (
     NoticeSpec(
         "normal_not_computed",
         "warning",
-        "The normal of {first_year}-{last_year} needs annual values in {required} of "
-        "its years and {years} have one (WMO-No. 1203): the normal and the "
-        "percentages of it are null",
+        "A monthly normal of {first_year}-{last_year} needs values in {required} of "
+        "its years and the month with the fewest has {years} (WMO-No. 1203, 4.4.2): "
+        "that normal, the annual, half-year and season normals made of it (4.3.3) "
+        "and the percentages of them are null",
         ("years", "required", "first_year", "last_year"),
     ),
     NoticeSpec(

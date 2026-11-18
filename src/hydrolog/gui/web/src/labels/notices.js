@@ -161,8 +161,8 @@ export const notices = {
       },
     },
     normal_not_computed: {
-      text: "Normalna okresu {first_year}–{last_year} wymaga wartości rocznych w {required} latach, a ma je {years} (WMO-No. 1203): normalna i procenty normalnej są puste.",
-      plain: "Za mało lat z wartościami rocznymi na normalną (WMO-No. 1203).",
+      text: "Normalna miesięczna okresu {first_year}–{last_year} wymaga wartości w {required} latach, a miesiąc z najmniejszą ich liczbą ma {years} (WMO-No. 1203, 4.4.2): ta normalna, złożone z niej normalne roku, półroczy i pór roku (4.3.3) oraz procenty tych normalnych są puste.",
+      plain: "Za mało lat z wartościami miesięcznymi na normalną (WMO-No. 1203).",
     },
     accumulated_totals: {
       text: "{count} wartości kolumny {column} to sumy dni bez pomiaru przed nimi: w sumach miesięcznych zastępują te dni, w statystykach dobowych są brakami.",
