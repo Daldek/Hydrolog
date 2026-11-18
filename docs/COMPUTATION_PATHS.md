@@ -1,8 +1,8 @@
 # Computation Paths for Unit Hydrograph Models (plus HSG and the Fisher–Tippett Distribution)
 
-**Document version:** 1.11
-**Date:** 2026-11-14
-**Applies to:** Hydrolog >= 0.8.0 (sections 3.2.2, 3.2.7, 3.3.4 (the time step limit), 3.3.6, 3.4.6, 3.4.7 and 3.5 to 3.14 describe behaviour from v0.8.0; the rest: >= 0.6.0)
+**Document version:** 1.12
+**Date:** 2026-11-17
+**Applies to:** Hydrolog >= 0.8.0 (sections 3.2.2, 3.2.7, 3.3.4 (the time step limit), 3.3.6, 3.4.6, 3.4.7 and 3.5 to 3.14 describe behaviour from v0.8.0, the sub-steps of the SCS unit hydrograph (3.1.3) and the plausibility of a rating curve (3.8) from 0.8.1; the rest: >= 0.6.0)
 
 ---
 
@@ -174,6 +174,8 @@ tb = 5.0 × tp                                [min]
 - For the triangular approximation: V = 0.5 × qp × tb
 - Volume of 1 mm over A km²: V = A × 1000 m³
 - With tb ≈ 2.67 × tp: qp = 2V / (2.67 × tp × 3600) ≈ 0.208 × A / tp
+
+**A time step beyond its range (0.8.1, E5b-07).** The ordinates are the dimensionless curve sampled at the step times k·Δt. A step beyond its typical range, Δt > 0.25·tp with tp = Δt/2 + tlag (the `timestep_min` range of `hydrolog._ranges`, NEH 630 ch. 16), leaves too few ordinates, and their sum loses volume: tc = 90.7 min at Δt = 1440 min gave three ordinates, 0, 0.355·qp and 0.017·qp, and 0.52 mm instead of 1 mm (about 61 % of Pe·A in a network's elements of the scenario test). Such a step is divided into the fewest equal sub-steps d = Δt/n inside the range (d ≤ 0.25·(d/2 + tlag)); the unit hydrograph of D = d, sampled on the sub-steps, takes the 1 mm of the step spread evenly over them, 1/n mm each, and is read at the step times: u(k·Δt) = (u_d(((k − 1)·n + 1)·d) + … + u_d(k·n·d))/n. The ordinates hold the volume of the sub-step's unit hydrograph (0.998 mm in that example, 93 sub-steps of 15.48 min: ordinates 0, 0.01156·A, 0 m³/s per mm), the convolution of the step's effective rain is unchanged, and the notice `uh_substeps` (info: `timestep_min`, `maximum_min`, `substeps`, `substep_min`) says so beside the `outside_typical_range` of the step, which stays: the result still has one ordinate per step. tp, qp and tb stay those of the formulas for D = Δt, which the ordinates no longer reach. A step inside the range is sampled as before, to the last bit.
 
 #### 3.1.4 Code Example
 
@@ -938,7 +940,7 @@ Example (catchment: L = 12 km, channel 10 km with slope 0.02, longest flow path 
 
 The `cn` option given alongside a catchment is the CN of the whole calculation: it overrides the catchment's `cn` both in SCS-CN and in the time of concentration by the `nrcs` method, in which the retention S = 25400/CN − 254 of the lag equation (NEH 630, ch. 15, eq. 15-4) comes from the same CN. A catchment without `cn` also works when `cn` is given. Formerly the NRCS time of concentration took CN from the file and the effective precipitation took CN from the option. Example (CN 60 in the file, `cn` = 85, L = 12 km, Y = 2.5%, beta rainfall 50 mm/120 min): tc 657.7 → 322.1 min, Qmax 27.64 → 55.62 m³/s, time to peak 440 → 240 min.
 
-### 3.8 Rating Curve Q = a·(H − H₀)^b: the H₀ Starting Point (`RatingCurve`, fix in v0.8.0)
+### 3.8 Rating Curve Q = a·(H − H₀)^b: the H₀ Starting Point and the Plausibility (`RatingCurve`, fixes in v0.8.0 and 0.8.1)
 
 `RatingCurve.fit()` (`hydrometrics rating-curve`) fits `Q = a·(H − H₀)^b` by least squares (`scipy.optimize.curve_fit`, bounds a ≥ 0, b ≥ 0, H₀ < min(H)) with the starting point a = 1, b = 1.5, H₀ = `h0_initial`. Without `h0_initial` the H₀ start lies below the lowest stage by one tenth of the stage range, by at least one stage unit:
 
@@ -949,6 +951,8 @@ H₀,start = min(H) − max(1, 0.1·(max(H) − min(H)))
 Such a start is admissible for any sign of the stages (stages below the gauge zero, e.g. −10 cm, are normal). An explicitly supplied value must be finite and lower than the lowest stage (`validation_error`).
 
 > **Change in v0.8.0 (bug fix).** A fixed start of 0 was not lower than the lowest stage of a gauge with a reading ≤ 0, so `hydrolog hydrometrics rating-curve --water-levels=-10,5,20,40,80,120 --discharges 0.5,1.2,2.5,4.8,10.1,17.3` ended with an error ("h0_initial must be … below the lowest water level (−10), got 0.0"). Since v0.8.0 the start is −23 and the fit gives a = 0.004917, b = 1.640, H₀ = −25.17 (R² = 0.9998). On 60 synthetic curves (stages in cm and m, positive and negative, noise 1–8 %, 6–30 measurements) starts from 0.1 to 1 of the range below the lowest stage always gave the best least-squares solution.
+
+**Plausibility (0.8.1, ADR-0041).** Every fitted curve, the curve of all the pairs and the curve of each period, is checked as the curve of one stage–discharge relation: its exponent lies from 1 to 4 (a section control gives about 1.5 for a rectangular and 2.5 for a triangular section, a channel control by Manning's equation 5/3 in a wide rectangular channel) and its H₀ lies below the lowest stage of its pairs by at most the range of their stages, min(H) − H₀ ≤ max(H) − min(H), the stages being those of the pairs given to the fit, before outliers are removed. A curve outside either bound is still given, with `plausible` false and `implausibility_reasons` `b_out_of_range`, `h0_too_low` or both, and the notice `implausible_rating_curve` (warning; `details.curves` `"all pairs"` or a period such as `"1981-1990"`, with their `b` and `h0` to six significant digits) names it. Such a curve comes from pairs of more than one relation: the daily pairs of a period that spans a change of the rating (a moved gauge zero, a changed channel) bend the least squares into a steep curve with an H₀ far below every stage. At IMGW-PIB 150170070 with `years_per_period` 10, the curves of 1981–1990 (b = 6.50, H₀ = −88 cm, stages 45–161 cm) and 2001–2010 (b = 6.62, H₀ = −179 cm, stages 6–131 cm) fail both bounds; those of 1991–2000, 2011–2020 and 2021–2024 (b from 1.90 to 2.37) and of all the pairs (b = 3.02, H₀ = −34 cm) pass. The fits are unchanged.
 
 ### 3.9 Flood Routing (`hydrolog.routing`, `route *`; ADR-0007)
 
@@ -1243,7 +1247,7 @@ These commands reduce a station's daily series (Obserwator's export or inline va
 
 **Runoff volumes (`stats runoff-volume`, `runoff_volumes`).** V = Σ Q · 86,400 s over the days with a value of a month or a hydrological year [m³] (the author's daily volumes, the mockup's `runoff`). A month or a year is complete when each of its days has a value, and the means (`mean_annual_volume_m3`, `monthly_mean_volume_m3` XI–X) take the complete ones only. The cumulative volume of `cumulative_year` (by default the last complete year of the period) adds the days in order, a missing day adding nothing; `mean_cumulative_volume_m3` is the mean of the complete years' curves over their first 365 days.
 
-**Rating curves by period (`hydrometrics rating-curve`).** With the dates of the pairs (`dates`, `date_column`) the pairs are the days with both values; `first_year`, `last_year` limit them to those hydrological years, and the curve of the range is the fit of section 3.8. With `years_per_period` n the curve of each block of n years is fitted too, with the same `h0_initial`, `remove_outliers` and `outlier_std`: the blocks start at the years y with (y − 1) mod n = 0 (1951–1960, 1961–1970 for 10), the first and the last cut to the years of the pairs; a block with fewer than 30 pairs has no curve (`reason` `too_few_pairs`), one whose fit fails `fit_failed`. Each period's curve is read at the medians of the level and of the discharge of all the pairs (`reference_level`, `reference_discharge_m3s`), so that the shift of the curve between periods is a number (`discharge_at_reference_m3s`, `level_at_reference_discharge`). Without dates nothing changes; `first_year`, `last_year` and `years_per_period` need dates.
+**Rating curves by period (`hydrometrics rating-curve`).** With the dates of the pairs (`dates`, `date_column`) the pairs are the days with both values; `first_year`, `last_year` limit them to those hydrological years, and the curve of the range is the fit of section 3.8. With `years_per_period` n the curve of each block of n years is fitted too, with the same `h0_initial`, `remove_outliers` and `outlier_std`: the blocks start at the years y with (y − 1) mod n = 0 (1951–1960, 1961–1970 for 10), the first and the last cut to the years of the pairs; a block with fewer than 30 pairs has no curve (`reason` `too_few_pairs`), one whose fit fails `fit_failed`. Each period's curve is read at the medians of the level and of the discharge of all the pairs (`reference_level`, `reference_discharge_m3s`), so that the shift of the curve between periods is a number (`discharge_at_reference_m3s`, `level_at_reference_discharge`). A value the curve does not give is null: the discharge at a reference level at or below the period's H₀, and the level at the reference discharge when it is not a finite number, as for a flat curve (b near 0, the fit of a period whose discharge does not rise with the stage) whose plateau a lies below that discharge, where H₀ + (Q / a)^(1/b) is beyond any number. The periods without that level are named in the notice `reference_level_not_computed` (before 0.8.1 the overflow of the power ended the command with `internal_error`). Each period's curve is checked for plausibility against the stages of its own pairs (section 3.8: its `plausible` and `implausibility_reasons`, null for a period without a curve, and the notice `implausible_rating_curve`). Without dates nothing changes; `first_year`, `last_year` and `years_per_period` need dates.
 
 **IMGW-PIB's half-years in the frequency commands (`stats flood-frequency`, `stats low-flow`, `stats homogeneity`; `annual_extremes_from_half_years`).** With `half_year_file` and `parameter` Q or H (the columns of the file) the annual maximum is the larger of the winter and the summer maximum of a year that has both (the winter one on a tie), the annual minimum the smaller of the minima: the annual values of the first degree of `stats characteristic`. A year with one half-year only is left out and named in `incomplete_years`, because its other half-year may hold the extreme; `first_year`, `last_year` choose the years of the file, and `source` says where the values come from (`daily`, `values`, `half_years`). `stats low-flow` fits the minima directly (`fit_fisher_tippett_minima`), as it fits the annual minima of a daily series.
 
@@ -1607,5 +1611,5 @@ These commands reduce a station's daily series (Obserwator's export or inline va
 
 ---
 
-**Document version:** 1.11
-**Last updated:** 2026-11-14
+**Document version:** 1.12
+**Last updated:** 2026-11-17

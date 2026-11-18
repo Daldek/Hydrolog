@@ -1280,7 +1280,7 @@ def test_errors_stand_on_their_field_before_or_after_the_run_or_above(tab: Tab) 
     page = open_hydrogram(tab)
     # A tc method's field missing: marked at once, nothing runs
     field(page, "tc_method").select_option("faa")
-    shows(page, "71,57", "4:30", "1 038 431")
+    shows(page, "72,23", "4:30", "1 046 077")
     runs = Runs(page)
     field(page, "runoff_coeff").fill("")
     expect(message(page, "runoff_coeff")).to_have_text(
@@ -1293,7 +1293,7 @@ def test_errors_stand_on_their_field_before_or_after_the_run_or_above(tab: Tab) 
     page.wait_for_timeout(600)
     assert runs.generate == []
     field(page, "runoff_coeff").fill("0,25")
-    shows(page, "71,57", "4:30", "1 038 431")
+    shows(page, "72,23", "4:30", "1 046 077")
     field(page, "tc_method").select_option("kirpich")
     shows(page, "57,88", "6:40", "1 046 713")
 

@@ -92,6 +92,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Final, NamedTuple, NoReturn, Se
 import numpy as np
 
 from hydrolog._serialization import JsonResultMixin
+from hydrolog._warnings import HydrologWarning
 from hydrolog.exceptions import CalculationError, InvalidParameterError
 from hydrolog.morphometry.watershed_params import WatershedParameters
 from hydrolog.precipitation.hietogram import HietogramResult
@@ -514,11 +515,13 @@ def _check_fields(
 def _observed() -> Iterator[list[RoutingNotice]]:
     """Collect the warnings that the library issues inside the block as notices.
 
-    A ``UserWarning`` (a value outside the usual range of a formula) becomes a notice of
-    level ``"warning"`` whose code is its class's name in snake_case
-    (``outside_typical_range`` for :class:`~hydrolog._warnings.OutsideTypicalRange`,
-    ``user_warning`` for a plain ``UserWarning``), once for the same text; a warning of
-    another category is issued again when the block ends. The list is filled then.
+    A ``UserWarning`` (a value outside the usual range of a formula) becomes a notice
+    whose code is its class's name in snake_case (``outside_typical_range`` for
+    :class:`~hydrolog._warnings.OutsideTypicalRange`, ``user_warning`` for a plain
+    ``UserWarning``), once for the same text, of the level of a
+    :class:`~hydrolog._warnings.HydrologWarning` (``uh_substeps`` is ``"info"``), else
+    ``"warning"``; a warning of another category is issued again when the block ends.
+    The list is filled then.
     """
     notices: list[RoutingNotice] = []
     with warnings.catch_warnings(record=True) as caught:
@@ -531,7 +534,12 @@ def _observed() -> Iterator[list[RoutingNotice]]:
             if text not in seen:
                 seen.add(text)
                 code = re.sub(r"(?<!^)(?=[A-Z])", "_", item.category.__name__).lower()
-                notices.append(RoutingNotice(code, text, "warning"))
+                level = (
+                    item.category.level
+                    if issubclass(item.category, HydrologWarning)
+                    else "warning"
+                )
+                notices.append(RoutingNotice(code, text, level))
         else:
             warnings.warn_explicit(
                 item.message, item.category, item.filename, item.lineno

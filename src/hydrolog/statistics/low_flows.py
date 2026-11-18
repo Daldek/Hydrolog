@@ -31,6 +31,7 @@ Tallaksen & van Lanen (Eds., 2004): Hydrological Drought — Processes and
 
 from __future__ import annotations
 
+import math
 import warnings
 from dataclasses import dataclass, field
 
@@ -443,7 +444,8 @@ class LowFlowAnalysis:
         Parameters
         ----------
         threshold : float
-            Flow threshold (same unit as *daily_flows*).
+            Flow threshold (same unit as *daily_flows*), any finite number: a stage
+            may lie at or below the gauge zero, and no flow is below a threshold of 0.
         min_duration_days : int, optional
             Minimum event duration to report, by default 5 days.
         max_gap_days : int, optional
@@ -465,14 +467,18 @@ class LowFlowAnalysis:
         when two runs are merged; days without a value contribute nothing. The
         minimum and the mean are those of the days with a value.
 
+        Versions before 0.8.1 refused a threshold at or below 0, so the low-stage
+        periods of a gauge whose mean annual minimum stage (SNW) lies below its zero
+        could not be found.
+
         Raises
         ------
         InvalidParameterError
-            If threshold <= 0, min_duration_days < 1 or the dates do not increase
-            strictly.
+            If threshold is not finite, min_duration_days < 1 or the dates do not
+            increase strictly.
         """
-        if threshold <= 0:
-            raise InvalidParameterError(f"threshold must be positive, got {threshold}")
+        if not math.isfinite(threshold):
+            raise InvalidParameterError(f"threshold must be finite, got {threshold}")
         if min_duration_days < 1:
             raise InvalidParameterError(
                 f"min_duration_days must be >= 1, got {min_duration_days}"
