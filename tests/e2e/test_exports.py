@@ -5,10 +5,11 @@ Against the real server of ``gui_server``: „Plik przekazania” of Hydrogram z
 valid ``hydrolog-network/1``, whose outlet through ``route network`` peaks as the run of
 ``hydrograph generate``; opened again with „Wczytaj z Hydrografa” it gives the same
 inputs and result without fetching the PMAXTP depth it names the point of, and written
-once more the same hand-off. Nogat's own example (D15), whose watershed lacks the
-longest flow path Kirpich reads, opens from the clipboard with its depth fetched at
-Hydrograf's outlet and those two fields asked for; typed, they give 57,88 m³/s at 6:40
-and 1 046 713 m³ beside the example's 60,21 m³/s;
+once more the same hand-off. Nogat's own example (D15), which carries Kamiennik's
+longest flow path, opens from the clipboard with its depth fetched at Hydrograf's outlet
+and nothing asked for; Hydrolog's result, 57,90 m³/s at 6:40 and 1 046 738 m³, differs
+from the example's 57,88 m³/s and 1 046 713 m³ of an earlier Hydrolog, so the rows that
+differ are marked and the verdict names both versions;
 Hydrograf's own hand-offs, written by its builder, open from the clipboard too: one with
 its hydrograph gives Hydrograf's result again with the exact values it handed, and the
 watershed alone opens with PMAXTP at Hydrograf's outlet, the probability, the duration
@@ -218,7 +219,7 @@ def open_hydrogram(tab: Tab) -> Page:
     """Open Hydrogram zlewni with the guide's worked example; wait for its result."""
     seed_hydrogram(tab)
     tab.open("#hydrogram")
-    shows(tab.page, "57,88", "6:40", "1 046 713")
+    shows(tab.page, "57,90", "6:40", "1 046 738")
     return tab.page
 
 
@@ -439,7 +440,7 @@ def test_a_handoff_of_hydrogram_validates_reopens_and_round_trips(
         "cn": "65",
     }.items():
         expect(page.locator(f"#hg-{field}")).to_have_value(value)
-    shows(page, "57,88", "6:40", "1 046 713")
+    shows(page, "57,90", "6:40", "1 046 738")
     received = page.locator(f"{HG} [data-handoff-received]")
     expect(received).to_have_attribute("data-handoff-received", "same")
     expect(page.locator(f"{HG} [data-handoff-verdict]")).to_have_attribute(
@@ -447,9 +448,9 @@ def test_a_handoff_of_hydrogram_validates_reopens_and_round_trips(
     )
     assert compared(page, HG) == {
         "version": [f"Hydrolog {hydrolog.__version__}"] * 2,
-        "q": ["57,88 m³/s", "57,88 m³/s"],
+        "q": ["57,90 m³/s", "57,90 m³/s"],
         "tp": ["6:40 h", "6:40 h"],
-        "volume": ["1 046 713 m³", "1 046 713 m³"],
+        "volume": ["1 046 738 m³", "1 046 738 m³"],
     }
     # The comparison fits the panel Wyniki, at its default width and at the narrowest
     # desktop's (1240 px, a panel of 340 px), without its columns scrolling out of sight
@@ -463,7 +464,7 @@ def test_a_handoff_of_hydrogram_validates_reopens_and_round_trips(
     assert fetched == []
 
 
-def test_nogats_example_opens_from_the_clipboard_and_matches_its_result(
+def test_nogats_example_opens_from_the_clipboard_and_marks_its_older_result_apart(
     tab: Tab, tmp_path: Path
 ) -> None:
     tab.page.context.grant_permissions(["clipboard-read", "clipboard-write"])
@@ -539,23 +540,35 @@ def test_nogats_example_opens_from_the_clipboard_and_matches_its_result(
         "Kamiennik — Świerzawa · p 1% · 12 h"
     )
 
-    # Hydrolog reproduces the example's result
-    shows(page, "57,88", "6:40", "1 046 713")
+    # Hydrolog computes the example again with Kirpich's own constant (0,0078 with the
+    # length in feet), so its result differs from the example's, computed by an earlier
+    # Hydrolog with the rounded metric constant: the differing rows are marked and the
+    # verdict names both versions
+    shows(page, "57,90", "6:40", "1 046 738")
     expect(page.locator(f"{HG} [data-handoff-received]")).to_have_attribute(
         "data-handoff-received", "same"
     )
     expect(page.locator(f"{HG} [data-handoff-verdict]")).to_have_attribute(
-        "data-handoff-verdict", "ok"
+        "data-handoff-verdict", "warn"
+    )
+    producer = f"Hydrolog {D15['producer']['version']}"
+    expect(page.locator(f"{HG} [data-handoff-verdict] li")).to_have_text(
+        f"Wyniki się różnią: producent liczył wersją {producer}, ten wynik to "
+        f"Hydrolog {hydrolog.__version__}."
     )
     assert compared(page, HG) == {
-        "version": [
-            f"Hydrolog {D15['producer']['version']}",
-            f"Hydrolog {hydrolog.__version__}",
-        ],
-        "q": ["57,88 m³/s", "57,88 m³/s"],
+        "version": [producer, f"Hydrolog {hydrolog.__version__}"],
+        "q": ["57,88 m³/s", "57,90 m³/s"],
         "tp": ["6:40 h", "6:40 h"],
-        "volume": ["1 046 713 m³", "1 046 713 m³"],
+        "volume": ["1 046 713 m³", "1 046 738 m³"],
     }
+    marked = page.locator(f'{HG} [data-table="handoff-compare"] tbody tr.conflict')
+    expect(marked).to_have_count(3)
+    assert marked.evaluate_all("rows => rows.map((row) => row.dataset.row)") == [
+        "version",
+        "q",
+        "volume",
+    ]
 
     # A changed field marks the producer's result as of the data handed
     page.locator(f"{left} #hg-flow_path_slope_m_per_m").fill("0,0120")
@@ -945,7 +958,7 @@ def test_the_markdown_report_downloads_from_report_generate(tab: Tab) -> None:
     report = data.decode("utf-8")
     assert report.startswith("# Raport Hydrologiczny: Kamiennik — Świerzawa\n")
     assert f"Hydrolog v{hydrolog.__version__}" in report
-    assert "57.88" in report
+    assert "57.90" in report
     # The report stays listed: fetched again with the session's header, the same file
     listed = page.locator(f"{HG} .view-panel.right .file-list button")
     expect(listed).to_have_attribute("data-file", "out/Kamiennik _ Swierzawa.md")
@@ -998,7 +1011,7 @@ def test_the_print_view_is_linked_and_fits_a4(new_tab: Any) -> None:
     )
     # On paper (A4 less the margins, 703 px): the section in one column, no controls
     page.goto(tab.base + "#hydrogram")
-    shows(page, "57,88", "6:40", "1 046 713")
+    shows(page, "57,90", "6:40", "1 046 738")
     page.emulate_media(media="print")
     page.set_viewport_size({"width": 703, "height": 1000})
     assert page.evaluate("() => document.documentElement.scrollWidth") <= 703

@@ -311,7 +311,7 @@ def test_kamiennik_alone_and_as_a_networks_subcatchment_gives_one_peak(
     tab.open("#hydrogram")
     page = tab.page
     alone = page.locator('section[data-section="hydrogram"] [data-kpi="q"] .v')
-    expect(alone).to_have_text(re.compile(r"^57,88\s*m³/s$"))
+    expect(alone).to_have_text(re.compile(r"^57,90\s*m³/s$"))
     expect(page.locator(BADGE)).to_have_text("Wynik aktualny")
     page.evaluate("() => { location.hash = '#siec'; }")
 
@@ -343,9 +343,9 @@ def test_kamiennik_alone_and_as_a_networks_subcatchment_gives_one_peak(
     expect(page.locator(BADGE)).to_have_attribute("data-state", "ok")
     page.get_by_role("radio", name="Tabela węzłów").click()
     cells = page.locator('.node-table tr[data-node-row="Z1"] td')
-    expect(cells.nth(3)).to_have_text("57,88")
+    expect(cells.nth(3)).to_have_text("57,90")
     outlet = page.locator('.node-table tr[data-node-row="OUT"] td')
-    expect(outlet.nth(3)).to_have_text("57,88")
+    expect(outlet.nth(3)).to_have_text("57,90")
     # The values the run gave stand in the panel while the node is unchanged
     expect(panel.locator('[data-chip="tc"] .v')).not_to_have_text("–")
     expect(panel.locator('[data-calc="ok"]')).to_contain_text("ostatniego obliczenia")
