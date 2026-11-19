@@ -784,12 +784,17 @@ def test_errors_of_the_server_in_polish(page: Any) -> None:
         "amc",
         "Dozwolone wartości: I, II, III",
     )
-    # A library relation error names its field (Lc of Lutz), so it stands on it.
-    assert (library["option"], library["reason"]) == (
-        "lutz_centroid_length_km",
-        "maximum",
-    )
-    assert library["title"] == INVALID
+    # A library relation error names its field (Lc of Lutz), so it stands on it: the
+    # spec lutz's constraint centroid_within_length, worded in Polish by its name
+    assert library == {
+        "option": "lutz_centroid_length_km",
+        "reason": "outside_physical_range",
+        "title": INVALID,
+        "text": "Długość do środka ciężkości Lc nie może być większa od długości"
+        " cieku L: obie biegną wzdłuż cieku głównego od przekroju zamykającego, Lc"
+        " do punktu najbliższego środka ciężkości zlewni, L do działu wodnego",
+        "english": False,
+    }
     assert (group["option"], group["reason"]) == ("precipitation_mm", "one_of")
     assert group["text"] == (
         "Podaj dokładnie jedną kompletną grupę: precipitation_mm albo values albo "

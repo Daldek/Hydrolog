@@ -5,8 +5,9 @@
  * forms word their messages with the same functions, so a field says the same before and
  * after a run. An error of the depth-duration curve of Euler II (`depth_duration_mm`, also
  * a rainfall's field of a network document) is worded as the curve's. A refused constraint
- * of a formula (`details.constraint`) names no option: the GUI words the ones it knows and
- * puts them on the input the constraint asks to change (CONSTRAINT_OPTIONS).
+ * of a formula (`details.constraint`) the GUI knows is worded by its name (constraints);
+ * one that names no option stands on the input the constraint asks to change
+ * (CONSTRAINT_OPTIONS).
  */
 
 import { bytes, inputText, num } from "../format.js";
@@ -16,9 +17,10 @@ import { common, t } from "./common.js";
 const CURVE = "depth_duration_mm";
 
 /**
- * The option a refused constraint of a formula stands on, by `details.constraint`: the
- * input the constraint asks to change, since the library names none for a condition
- * between inputs.
+ * The option a refused constraint of a formula stands on, by `details.constraint`, when
+ * the refusal names none: the input the constraint asks to change. Lutz's constraints name
+ * theirs (`uh nash` and NashIUH.from_lutz), Kerby–Kirpich's condition between its inputs
+ * does not.
  */
 const CONSTRAINT_OPTIONS = Object.freeze({ flow_path_longer_than_overland: "flow_path_length_km" });
 
@@ -78,6 +80,8 @@ export const errors = {
   constraints: {
     flow_path_longer_than_overland:
       "Długość najdłuższej drogi spływu musi być większa od długości spływu po stoku: Kerby–Kirpich liczy resztę drogi jako przepływ korytem",
+    centroid_within_length:
+      "Długość do środka ciężkości Lc nie może być większa od długości cieku L: obie biegną wzdłuż cieku głównego od przekroju zamykającego, Lc do punktu najbliższego środka ciężkości zlewni, L do działu wodnego",
   },
   /** The sentences of the errors of Euler II's depth-duration curve, by `details.reason`. */
   curve: {
