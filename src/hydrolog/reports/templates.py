@@ -186,6 +186,9 @@ PARAMETER_LABELS: dict[str, str] = {
     "channel_slope_percent": "Spadek cieku głównego",
     "flow_path_length_km": "Długość najdłuższej drogi spływu",
     "flow_path_slope_m_per_m": "Spadek najdłuższej drogi spływu",
+    "flow_path_equal_area_slope_m_per_m": (
+        "Spadek wyrównany profilu najdłuższej drogi spływu (Jg)"
+    ),
     # SCS-CN
     "cn": "Curve Number (CN)",
     "cn_ii": "CN dla AMC-II",

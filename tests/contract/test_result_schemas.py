@@ -294,7 +294,9 @@ def _estimated(estimation: object) -> dict[str, Any]:
         0,
         times_min=None,
         discharge_m3s=None,
-        watershed=testing.watershed(Lc_km=3.0, manning_n=0.04),
+        watershed=testing.watershed(
+            flow_path_equal_area_slope_m_per_m=0.02, Lc_km=3.0, manning_n=0.04
+        ),
         runoff={
             "model": "curve-number",
             "uh_model": "nash",

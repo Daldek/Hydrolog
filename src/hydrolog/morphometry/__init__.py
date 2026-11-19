@@ -9,6 +9,7 @@ from hydrolog.morphometry.hypsometry import (
     HypsometricCurve,
     HypsometricResult,
 )
+from hydrolog.morphometry.profile import equal_area_slope
 from hydrolog.morphometry.terrain import (
     ElevationParameters,
     SlopeParameters,
@@ -19,6 +20,8 @@ from hydrolog.morphometry.watershed_params import WatershedParameters
 __all__ = [
     # Integration interface
     "WatershedParameters",
+    # Longitudinal profile
+    "equal_area_slope",
     # Geometric
     "WatershedGeometry",
     "GeometricParameters",

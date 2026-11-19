@@ -47,7 +47,7 @@ class LutzCalculationResult(JsonResultMixin):
     Lc_km : float
         Length to catchment centroid [km].
     slope : float
-        Stream slope [-].
+        Equal-area slope Jg of the main stream's longitudinal profile [m/m].
     manning_n : float
         Manning's roughness coefficient [-].
     urban_pct : float
@@ -669,7 +669,10 @@ class NashIUH:
             Length along main stream from outlet to the point
             nearest to catchment centroid [km].
         slope : float
-            Average slope of main stream [-] (e.g., 0.01 for 1%).
+            Equal-area slope Jg of the main stream's longitudinal profile [m/m]: the
+            slope of the line from the outlet with equal areas of the profile above
+            and below it (:func:`hydrolog.morphometry.equal_area_slope`), not the
+            slope between the stream's ends.
         manning_n : float
             Manning's roughness coefficient for main channel [-].
             Typical values: 0.025-0.050 for natural streams.

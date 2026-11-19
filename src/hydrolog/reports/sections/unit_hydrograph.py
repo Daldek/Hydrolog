@@ -275,7 +275,10 @@ def _generate_nash_section(
         lines.append(
             f"- Lc = {lutz_params.Lc_km:.2f} km (odległość do środka ciężkości)"
         )
-        lines.append(f"- Jg = {lutz_params.slope:.4f} (spadek cieku)")
+        lines.append(
+            f"- Jg = {lutz_params.slope:.5f} (spadek wyrównany profilu podłużnego "
+            "cieku)"
+        )
         lines.append(f"- n_M = {lutz_params.manning_n:.3f} (współczynnik Manninga)")
         lines.append(f"- U = {lutz_params.urban_pct:.1f}% (powierzchnia uszczelniona)")
         lines.append(f"- W = {lutz_params.forest_pct:.1f}% (lesistość)")
@@ -396,7 +399,12 @@ def _generate_nash_section(
                 ".3f",
             ),
             ("Lc_km", "Odległość do centroidu Lc", "km", ".3f"),
-            ("slope", "Spadek cieku głównego (najdłuższej drogi spływu) Jg", "", ".4f"),
+            (
+                "slope",
+                "Spadek wyrównany profilu cieku głównego (najdłuższej drogi spływu) Jg",
+                "",
+                ".5f",
+            ),
             ("manning_n", "Współczynnik Manninga n", "", ".3f"),
         ]
         lines.append("")

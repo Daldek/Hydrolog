@@ -409,7 +409,7 @@ is the watershed field the method defines (`hydrolog._ranges.NASH_INPUTS`,
 |--------|-------|------|
 | L | `flow_path_length_km` | the main stream from the divide to the outlet: the longest flow path (ADR-0019), not the channel, which ends at the channel head |
 | Lc | `Lc_km` | along the stream to the point nearest the centroid; not longer than L (`maximum` on `Lc_km`) |
-| Jg | `flow_path_slope_m_per_m` | the mean slope of that stream, > 0 |
+| Jg | `flow_path_equal_area_slope_m_per_m` | the equal-area slope of that stream's longitudinal profile (KZGW 2017, annex 2, p. 97; spec `equal_area_slope`, `hydrolog.morphometry.equal_area_slope`; ADR-0053), > 0; not `flow_path_slope_m_per_m`, the slope between its ends, which Kirpich takes |
 | n_M | `manning_n` | Manning's coefficient of the channel |
 | U, W | `urban_pct`, `forest_pct` | 0 when the watershed has none |
 | A | `area_km2` | scales the unit hydrograph; above 236 km2 the notice `outside_typical_range` (method `lutz`, KZGW 2017) |

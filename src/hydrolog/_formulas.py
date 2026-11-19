@@ -60,6 +60,7 @@ __all__ = [
 FORMULA_MODULES: Final[tuple[str, ...]] = (
     "hydrolog.runoff.scs_cn",
     "hydrolog.time.concentration",
+    "hydrolog.morphometry.profile",
 )
 """The modules whose ``SPECS`` (and ``TIER_B``) declare Hydrolog's formulas, in the
 order of ``docs/FORMULAS.md``."""

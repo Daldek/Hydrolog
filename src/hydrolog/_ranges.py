@@ -476,7 +476,7 @@ NASH_INPUTS: Final[Mapping[str, Mapping[str, tuple[str, ...]]]] = {
     "lutz": {
         "L_km": ("flow_path_length_km",),
         "Lc_km": ("Lc_km",),
-        "slope": ("flow_path_slope_m_per_m",),
+        "slope": ("flow_path_equal_area_slope_m_per_m",),
         "manning_n": ("manning_n",),
         "urban_pct": ("urban_pct",),
         "forest_pct": ("forest_pct",),
@@ -488,12 +488,14 @@ NASH_INPUTS: Final[Mapping[str, Mapping[str, tuple[str, ...]]]] = {
 For each method of ``nash_estimation``: argument of the estimating constructor
 (``NashIUH.from_lutz``) to the field its source defines for it, without substitutes.
 Lutz (1984, after KZGW 2017) takes the main stream from the divide to the outlet: its
-length L and its mean slope J are those of the longest flow path, as Kirpich's are
-(ADR-0019, ADR-0024), not of the channel, which ends at the channel head. Lc is the
-length along the stream from the outlet to the point nearest the centroid, n_M the
-Manning coefficient of the channel, U and W the urbanized and forested shares (0 when
-the watershed has none), and the area scales the unit hydrograph and is checked against
-the watersheds the method is recommended for.
+length L is that of the longest flow path, as Kirpich's is (ADR-0019, ADR-0024), not of
+the channel, which ends at the channel head, and its slope Jg the equal-area slope of
+that path's longitudinal profile (KZGW 2017, annex 2, p. 97; ADR-0053), not the slope
+between its ends that Kirpich takes. Lc is the length along the stream from the outlet
+to the point nearest the centroid, n_M the Manning coefficient of the channel, U and W
+the urbanized and forested shares (0 when the watershed has none), and the area scales
+the unit hydrograph and is checked against the watersheds the method is recommended
+for.
 """
 
 

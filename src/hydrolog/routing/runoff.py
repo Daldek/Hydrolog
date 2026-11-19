@@ -398,8 +398,9 @@ class CurveNumberRunoff:
         For ``nash``, instead of ``nash_n`` and ``nash_k_min``: estimate them from the
         watershed; ``lutz`` is the Lutz method (Lutz 1984, after KZGW 2017) with the
         fields of :meth:`~hydrolog.morphometry.WatershedParameters.nash_parameters`:
-        L and J of the longest flow path, ``Lc_km``, ``manning_n``, and ``urban_pct``
-        and ``forest_pct`` (0 when not set).
+        the length L of the longest flow path and the equal-area slope Jg of its
+        profile, ``Lc_km``, ``manning_n``, and ``urban_pct`` and ``forest_pct`` (0
+        when not set).
     clark_r_min : float, optional
         Clark storage constant ``R`` [min], > 0; for ``clark``, exactly one of it and
         ``clark_r_tc_ratio``.

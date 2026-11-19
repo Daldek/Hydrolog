@@ -754,9 +754,10 @@ def hydrograph_generate(
         ``lutz`` is the Lutz method (Lutz 1984, after KZGW 2017,
         :meth:`~hydrolog.runoff.NashIUH.from_lutz`) with the fields
         :meth:`~hydrolog.morphometry.WatershedParameters.nash_parameters` takes:
-        L and J of the longest flow path (``flow_path_length_km``,
-        ``flow_path_slope_m_per_m``), ``Lc_km``, ``manning_n``, ``urban_pct`` and
-        ``forest_pct`` (0 when not set). The estimate is not checked against the
+        the length L of the longest flow path (``flow_path_length_km``), the
+        equal-area slope Jg of its profile (``flow_path_equal_area_slope_m_per_m``),
+        ``Lc_km``, ``manning_n``, ``urban_pct`` and ``forest_pct`` (0 when not
+        set). The estimate is not checked against the
         typical ranges of given n and K; the area is checked against Lutz's.
     clark_r_min : float, optional
         Clark storage constant R [min]; exactly one of ``clark_r_min`` and

@@ -579,7 +579,8 @@ class FormulaRenderer:
         Lc_km : float
             Length to catchment centroid along stream [km].
         slope : float
-            Average main stream slope [-] (that of the longest flow path).
+            Equal-area slope Jg of the main stream's profile [m/m] (that of the
+            longest flow path).
         manning_n : float
             Manning's roughness coefficient [-].
         urban_pct : float
@@ -620,7 +621,8 @@ class FormulaRenderer:
             "gdzie:\n"
             f"- $L$ = {L_km:.3f} km (długość cieku głównego od działu wodnego)\n"
             f"- $L_c$ = {Lc_km:.3f} km (odległość do centroidu zlewni)\n"
-            f"- $J_g$ = {slope:.4f} (spadek cieku głównego, {slope_pct:.2f}%)\n"
+            f"- $J_g$ = {slope:.5f} (spadek wyrównany profilu cieku głównego, "
+            f"{slope_pct:.3f}%)\n"
             f"- $U$ = {urban_pct:.1f}% (tereny zurbanizowane)\n"
             f"- $W$ = {forest_pct:.1f}% (tereny leśne)\n\n"
             f"$$t_p = {P1:.4f} \\cdot \\left(\\frac{{{L_km:.3f} \\cdot {Lc_km:.3f}}}"

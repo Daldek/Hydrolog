@@ -268,6 +268,7 @@ def watershed(
     cn: float | None = 75,
     flow_path_length_km: float | None = 6.0,
     flow_path_slope_m_per_m: float | None = 0.02,
+    flow_path_equal_area_slope_m_per_m: float | None = None,
     **options: Any,
 ) -> dict[str, Any]:
     """Return the ``watershed`` of a subcatchment that makes its hydrograph.
@@ -291,8 +292,13 @@ def watershed(
     flow_path_length_km, flow_path_slope_m_per_m : float, optional
         Length [km] and slope [m/m] of the longest flow path, from the hydraulically
         most distant point of the watershed to the outlet; ``None`` leaves it out.
+    flow_path_equal_area_slope_m_per_m : float, optional
+        Equal-area slope [m/m] of the longitudinal profile of that path, Lutz's Jg
+        (``nash_estimation`` ``"lutz"`` also needs ``Lc_km`` and ``manning_n``);
+        left out by default.
     **options
-        The other fields of ``WatershedParameters`` (``name``, ``crs``...).
+        The other fields of ``WatershedParameters`` (``name``, ``crs``, ``Lc_km``,
+        ``manning_n``...).
 
     Returns
     -------
@@ -313,6 +319,7 @@ def watershed(
         "cn": cn,
         "flow_path_length_km": flow_path_length_km,
         "flow_path_slope_m_per_m": flow_path_slope_m_per_m,
+        "flow_path_equal_area_slope_m_per_m": flow_path_equal_area_slope_m_per_m,
     }
     document: dict[str, Any] = {
         name: value for name, value in given.items() if value is not None

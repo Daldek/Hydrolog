@@ -99,3 +99,12 @@ like `tc_method`, selects Lutz's estimation of Nash's n and K from the watershed
   `hydrograph generate` gives (the rainfall, the losses, the balance, the unit hydrograph's ordinates).
 - **Urban regression as a value of `nash_estimation`:** its inputs, the effective rainfall and its duration, belong to
   the storm, not to the watershed.
+
+## Erratum (2026-11-19, ADR-0053)
+
+Point 2 named `flow_path_slope_m_per_m`, the slope between the ends of the longest flow path, as Lutz's J and called it
+its mean slope. KZGW (2017, annex 2, p. 97) defines Lutz's Jg as the equal-area slope of the main stream's longitudinal
+profile, which is smaller on a concave profile. Since [ADR-0053](0053-lutz-jg-is-the-equal-area-slope.md) Lutz reads
+`flow_path_equal_area_slope_m_per_m`; point 3's missing field names it in the order L, Lc, Jg, n_M, and a zero slope is
+refused when the watershed is read (`exclusive_minimum` on that field). The numbers of the Consequences were computed
+with J = 0.0114; with Jg = 0.00848 the guide's Kamiennik gives n 3.587, K 104.30 min and 32.17 m³/s at 9:40 h.
