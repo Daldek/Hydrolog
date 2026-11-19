@@ -1,0 +1,202 @@
+schema = "nogat-formula-card/1"
+name = "ks_exact"
+title = "Exact two-sided p-value of the two-sample Kolmogorov-Smirnov D, ties respected"
+function = "hydrolog.statistics.homogeneity.ks_exact"
+family = "statistic"
+formula_version = 1
+status = "referenced"
+equation = "D = max_x |F1(x) - F2(x)| of the empirical distribution functions; p = P(D' >= D) over the C(m + n, m) equally likely splits of the pooled values into samples of m and n, ties respected: 1 - (the lattice paths from (0, 0) to (m, n) that keep |i n - j m| < m n D wherever a group of equal values ends) / C(m + n, m)"
+latex = "D = \\max_x |F_1(x) - F_2(x)|,\\quad p = 1 - \\frac{\\#\\{\\text{paths with } |i n - j m| < m n D \\text{ at the ends of the ties}\\}}{\\binom{m + n}{m}}"
+validation = "none: the exact null distribution of a test statistic; its sources compare it with no observations"
+conventions = ["two-sided; D taken only where a group of equal values ends, as the empirical distribution functions are steps there", "homogeneity_tests takes it for samples with ties and m n < 10000; scipy's ks_2samp, exact for a continuous distribution, without ties and beyond (conservative with ties: Helsel et al. 2020, Example 5.1, 0.0524 against 0.0478)", "the samples in any unit: D and p have none"]
+assumptions = ["independent values; under homogeneity every split of the pooled values is equally likely"]
+notices = []
+reference_cases = ["tests/fixtures/formulas/trend-cases.json"]
+tables = []
+
+[properties]
+units = "homogeneous"
+conservation = []
+
+[properties.monotonic]
+
+[[properties.scalings]]
+name = "unit_of_the_samples"
+
+[properties.scalings.inputs]
+first = 1.0
+second = 1.0
+
+[properties.scalings.outputs]
+
+[properties.scalings.tolerance]
+reason = "the statistics rank the values, which doubling or negating them keeps or mirrors exactly"
+abs = 0.0
+
+[[properties.limits]]
+name = "complete_separation"
+text = "three values all below four others: D = 1 and p = 2 / C(7, 3)"
+
+[[properties.limits]]
+name = "every_split"
+text = "p equals P(D' >= D) counted over every split of the pooled values in rational arithmetic"
+
+[[properties.symmetries]]
+name = "swapped_samples"
+text = "the samples swapped give the same D and p"
+
+[properties.symmetries.tolerance]
+reason = "the lattice transposed: the same whole numbers, quotients"
+abs = 0.0
+
+[[properties.symmetries]]
+name = "negated_samples"
+text = "the negated samples give the same D and p"
+
+[properties.symmetries.tolerance]
+reason = "the paths run backwards through the same ends of ties"
+abs = 0.0
+
+[[sources]]
+citation = "R Core Team. R: A Language and Environment for Statistical Computing, version 4.4.3, package stats, function ks.test"
+access = "open"
+locator = "help page ks.test, Details: in the two-sample case an exact p-value is computed if the product of the sample sizes is less than 10000, with or without ties (the algorithm of Schröer and Trenkler 1995); Examples: with ties, D = 3/7, p = 8/33"
+url = "https://stat.ethz.ch/R-manual/R-devel/library/stats/html/ks.test.html"
+
+[[sources]]
+citation = "Schröer, G., Trenkler, D. (1995). Exact and randomization distributions of Kolmogorov-Smirnov tests two or three samples. Computational Statistics & Data Analysis 20(2), 185-202"
+access = "author-provided"
+
+[[variables]]
+name = "first"
+symbol = "x"
+unit = "m3/s"
+kind = "real_array"
+description = "The first sample, e.g. the values before a split."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 1
+
+[variables.physical]
+test_low = -1000000.0
+test_high = 1000000.0
+test_reason = "the tests rank the values, so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below 0, so the same bound holds below 0"
+
+[variables.typical]
+low = 0.81
+low_inclusive = true
+high = 111.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "examples 1.1, 1.2, 3.3 and 3.4, tables 1.1, 1.2, 3.10 and 3.13 (pp. 11-56): the annual maxima of the Bóbr at Bukówka, the Czarna at Polana, the Rypienica at Rypin and the Świślina at Rzepin: annual maxima of 0.81 to 111 m3/s"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[variables]]
+name = "second"
+symbol = "y"
+unit = "m3/s"
+kind = "real_array"
+description = "The second sample, in the unit of the first."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 1
+
+[variables.physical]
+test_low = -1000000.0
+test_high = 1000000.0
+test_reason = "the tests rank the values, so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below 0, so the same bound holds below 0"
+
+[variables.typical]
+low = 0.81
+low_inclusive = true
+high = 111.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "examples 1.1, 1.2, 3.3 and 3.4, tables 1.1, 1.2, 3.10 and 3.13 (pp. 11-56): the annual maxima of the Bóbr at Bukówka, the Czarna at Polana, the Rypienica at Rypin and the Świślina at Rzepin: annual maxima of 0.81 to 111 m3/s"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[constraints]]
+name = "exact_size"
+class = "precondition"
+text = "m n < 10000, R's bound of its exact test: the paths are counted on the lattice of the m n points"
+
+[constraints.source]
+citation = "R Core Team. R: A Language and Environment for Statistical Computing, version 4.4.3, package stats, function ks.test"
+access = "open"
+locator = "help page ks.test, Details: in the two-sample case an exact p-value is computed if the product of the sample sizes is less than 10000, with or without ties (the algorithm of Schröer and Trenkler 1995); Examples: with ties, D = 3/7, p = 8/33"
+url = "https://stat.ethz.ch/R-manual/R-devel/library/stats/html/ks.test.html"
+
+[[constants]]
+name = "exact_product"
+value = 10000.0
+unit = "-"
+symbol = "m n"
+exact = "10000"
+
+[constants.source]
+citation = "R Core Team. R: A Language and Environment for Statistical Computing, version 4.4.3, package stats, function ks.test"
+access = "open"
+locator = "help page ks.test, Details: in the two-sample case an exact p-value is computed if the product of the sample sizes is less than 10000, with or without ties (the algorithm of Schröer and Trenkler 1995); Examples: with ties, D = 3/7, p = 8/33"
+url = "https://stat.ethz.ch/R-manual/R-devel/library/stats/html/ks.test.html"
+
+[[outputs]]
+name = "d"
+unit = "-"
+kind = "real"
+symbol = "D"
+description = "The largest distance between the samples' distribution functions."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = true
+high = 1.0
+high_inclusive = true
+
+[[outputs]]
+name = "p_value"
+unit = "-"
+kind = "real"
+symbol = "p"
+description = "The exact two-sided p-value of one distribution."
+
+[outputs.physical]
+low = 0.0
+low_inclusive = false
+high = 1.0
+high_inclusive = true
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type cases first-nan_element and second-nan_element: a gap is refused"
+
+[[traps]]
+name = "many_small_terms"
+description = "A sum of many small terms that loses precision."
+test = "the paths are counted in Python integers, exact however many (C(198, 99) is about 2e58), and p is one quotient (limit every_split)"
+
+[[oracles]]
+kind = "exact"
+description = "P(D' >= D) over every split of the pooled values, counted one by one in rational arithmetic"
+test = "tests/unit/test_formulas_trend.py (limit every_split)"
+conventions = []
+
+[[oracles]]
+kind = "established"
+description = "scipy.stats.ks_2samp with method='exact' (SciPy 1.18.1) on samples without ties"
+test = "tests/unit/test_formulas_trend.py (test_the_delegated_ks_2samp_is_exact_without_ties)"
+conventions = ["scipy's exact two-sided p assumes a continuous distribution, the spec's without ties"]
+
+[[oracles]]
+kind = "frozen"
+description = "R 4.4.3 stats::ks.test, exact, on three pairs of samples with ties"
+test = "tests/oracles/trend_regime/r_oracle_outputs_headed.csv (tests/unit/test_formulas_trend.py, test_ks_exact_is_rs)"
+conventions = ["R's ks.test from 4.3 computes the exact two-sided p with ties (psmirnov, Schröer and Trenkler 1995), the spec's"]

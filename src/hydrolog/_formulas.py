@@ -63,6 +63,8 @@ FORMULA_MODULES: Final[tuple[str, ...]] = (
     "hydrolog.time.concentration",
     "hydrolog.morphometry.profile",
     "hydrolog.runoff.nash_iuh",
+    "hydrolog.statistics.stationarity",
+    "hydrolog.statistics.homogeneity",
     "hydrolog.statistics.duration",
     "hydrolog.statistics.events",
     "hydrolog.statistics.volumes",
@@ -103,6 +105,30 @@ DELEGATED: Final[tuple[Delegated, ...]] = (
         "mean_interval_half_width)",
         test="tests/unit/test_formulas_characteristic.py::"
         "test_the_delegated_t_quantile_is_a_known_one",
+    ),
+    Delegated(
+        name="mann_whitney_u",
+        library="scipy.stats.mannwhitneyu (two-sided, method auto: exact for parts of "
+        "at most 8 values without ties, else normal with the corrections for ties "
+        "and continuity)",
+        versions="scipy>=1.10 (1.18.1 locked)",
+        smoke_case="Helsel et al. (2020), Example 5.1: U of the first part 76.5, p = "
+        "0.04911 (R's wilcox.test W = 76.5, p = 0.0491099747); the frozen oracle "
+        "tests/oracles/trend_regime holds R's U and p of three pairs of samples "
+        "(stats homogeneity)",
+        test="tests/unit/test_formulas_trend.py::"
+        "test_the_delegated_mann_whitney_is_helsels_and_rs",
+    ),
+    Delegated(
+        name="ks_two_sample",
+        library="scipy.stats.ks_2samp (two-sided, method auto: exact for a continuous "
+        "distribution)",
+        versions="scipy>=1.10 (1.18.1 locked)",
+        smoke_case="three values all below four others: D = 1, p = 2 / C(7, 3) = "
+        "0.0571429; seeded samples without ties against the exact count of spec "
+        "ks_exact (stats homogeneity without ties)",
+        test="tests/unit/test_formulas_trend.py::"
+        "test_the_delegated_ks_2samp_is_exact_without_ties",
     ),
 )
 """Computations delegated to third-party libraries (CMP-1.2)."""

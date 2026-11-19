@@ -18,6 +18,11 @@
 | [Time of concentration by the Kerby-Kirpich method (Roussel et al. 2005)](#kerby_kirpich) | `hydrolog.time.concentration.ConcentrationTime.kerby_kirpich` | referenced | 1 | not measured |
 | [Equal-area slope of a longitudinal profile (the line through the outlet with equal areas above and below it)](#equal_area_slope) | `hydrolog.morphometry.profile.equal_area_slope` | oracle only | 1 | not measured |
 | [Nash's n and K of an ungauged watershed by Lutz's method (KZGW 2017)](#lutz) | `hydrolog.runoff.nash_iuh.lutz_parameters` | referenced | 1 | not measured |
+| [Mann-Kendall test of a monotonic trend: S, Var(S) with ties, Z and the two-sided p](#mann_kendall) | `hydrolog.statistics.stationarity.mann_kendall` | referenced | 1 | not measured |
+| [Sen's slope of a series with Conover's intercept](#sen_slope) | `hydrolog.statistics.stationarity.sen_line` | referenced | 1 | not measured |
+| [Gilbert's confidence interval of Sen's slope](#sen_interval) | `hydrolog.statistics.stationarity.sen_interval` | referenced | 1 | not measured |
+| [Pettitt's change-point test: K, the change point and the approximate p](#pettitt) | `hydrolog.statistics.homogeneity.pettitt` | referenced | 1 | not measured |
+| [Exact two-sided p-value of the two-sample Kolmogorov-Smirnov D, ties respected](#ks_exact) | `hydrolog.statistics.homogeneity.ks_exact` | referenced | 1 | not measured |
 | [Values of the duration curve equalled or exceeded on p % of the days (Weibull positions, linear interpolation)](#exceedance_values) | `hydrolog.statistics.duration.exceedance_values` | referenced | 1 | not measured |
 | [Baseflow of a daily series by the Lyne and Hollick filter (standard approach of Ladson et al. 2013)](#lyne_hollick) | `hydrolog.statistics.baseflow.lyne_hollick_filter` | referenced | 1 | not measured |
 | [Baseflow index: the volume of baseflow over the volume of flow](#baseflow_index) | `hydrolog.statistics.baseflow.baseflow_index` | referenced | 1 | not measured |
@@ -973,6 +978,429 @@ Plain text: `tp = P1 * (L * Lc / Jg**1.5)**0.26 * exp(-0.016 * U) * exp(0.004 * 
 
 **Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); established implementations (CMP-6.3); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6).
 
+<a id="mann_kendall"></a>
+### Mann-Kendall test of a monotonic trend: S, Var(S) with ties, Z and the two-sided p
+
+`hydrolog.statistics.stationarity.mann_kendall` · family `statistic` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+S = \sum_{i<j} \operatorname{sgn}(x_j - x_i),\quad \operatorname{Var}(S) = \frac{n(n-1)(2n+5) - \sum_p t_p(t_p-1)(2t_p+5)}{18},\quad Z = \frac{S - \operatorname{sgn} S}{\sqrt{\operatorname{Var}(S)}},\quad p = \begin{cases} P(|S'| \ge |S|) & n < n_0 \\ 2\,P(Z' > |Z|) & n \ge n_0 \end{cases}
+$$
+
+Plain text: `S = sum_{i<j} sgn(x_j - x_i); Var(S) = [n (n - 1) (2n + 5) - sum_p t_p (t_p - 1) (2 t_p + 5)] / 18 over the groups of t_p equal values; Z = (S - 1) / sqrt(Var(S)) for S > 0, 0 for S = 0, (S + 1) / sqrt(Var(S)) for S < 0; p = P(|S'| >= |S|) of the exact distribution of S below n0 values, else 2 P(Z' > |Z|) of the standard normal`
+
+**Sources**
+
+- Gilbert, R.O. (1987). Statistical Methods for Environmental Pollution Monitoring. Van Nostrand Reinhold, New York, eqs. 16.1 to 16.4, pp. 209-211: S, Var(S) corrected for ties, Z with a continuity correction of one; section 16.4.1 and table A18: the exact probabilities of S below n = 10 (open) <https://digital.library.unt.edu/ark:/67531/metadc1197046/m2/1/high_res_d/7037501.pdf>
+- Hirsch, R.M., Slack, J.R., Smith, R.A. (1981). Techniques of trend analysis for monthly water quality data. U.S. Geological Survey Open-File Report 81-488 (Water Resources Research 18(1), 107-121, 1982), eqs. 1, 2, 3b and 4, PDF pp. 6-7: S, its variance with ties after Kendall (1975) and Z; 'even for n = 10 the normal approximation is excellent, provided one uses a continuity correction of one unit' (open) <https://pubs.usgs.gov/of/1981/0488/report.pdf>
+- KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), eqs. 1.1 to 1.4, pp. 10-11: S with sgn(0) = 0, its variance without the correction for ties, u = (S - sgn S) / sigma, the normal approximation 'już dla N >= 10' (open) <https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf>
+- Pohlert, T. trend: Non-Parametric Trend Tests and Change-Point Detection, R package version 1.1.10, CRAN, R/mk.test.R: at least 3 values ('x' must have at least 3 elements), S, varS corrected for ties, z = sgn(S) (|S| - 1) / sigma, the two-sided p 2 min(0.5, P(Z > |z|)) (open) <https://cran.r-project.org/package=trend>
+- Mann, H.B. (1945). Nonparametric tests against trend. Econometrica 13, 245-259 (author-provided)
+- Kendall, M.G. (1975). Rank Correlation Methods, 4th ed. Griffin, London, p. 55: the normal approximation of S from n = 10 (quoted by Gilbert 1987, p. 211) (author-provided)
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `values` | $x_i$ | m3/s | real_array | (-inf, inf), test bound low -1000000.0 and high 1000000.0 (the test counts the signs of differences and Sen's slope scales with the unit of the series, so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage or a temperature may lie below 0, so the same bound holds below 0) | unstated | [0.81, 111.0]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 1.1, 1.2, 3.3 and 3.4, tables 1.1 (pp. 11-12), 1.2 (pp. 13-14), 3.10 (p. 48) and 3.13 (pp. 55-56): the Mann-Kendall test of the annual maxima of the Bóbr at Bukówka, the Czarna at Polana, the Rypienica at Rypin and the Świślina at Rzepin: annual maxima of 0.81 to 111 m3/s |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `enough_values` | precondition | n >= 3 | Pohlert, T. trend: Non-Parametric Trend Tests and Change-Point Detection, R package version 1.1.10, CRAN, R/mk.test.R: at least 3 values ('x' must have at least 3 elements), S, varS corrected for ties, z = sgn(S) (\|S\| - 1) / sigma, the two-sided p 2 min(0.5, P(Z > \|z\|)) |
+
+**Constants**
+
+| Constant | Symbol | Value | Unit | Source |
+|---|---|---|---|---|
+| `exact_below` | $n_0$ | 10 | values | Gilbert, R.O. (1987). Statistical Methods for Environmental Pollution Monitoring. Van Nostrand Reinhold, New York, section 16.4.2, p. 211: the normal approximation from n = 10 after Kendall (1975, p. 55), as KZGW (2017, p. 11) and Hirsch et al. (1981, PDF p. 7) state it; section 16.4.1 and table A18: the exact probabilities below |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `s` | - | integer | (-inf, inf) | 4 ulp of the bound |
+| `var_s` | - | real | [0.0, inf) | 4 ulp of the bound |
+| `z` | - | real | (-inf, inf) | 4 ulp of the bound |
+| `p_value` | - | real | (0.0, 1.0] | 4 ulp of the bound |
+| `p_value_method` | - | choice | – | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- values tie when exactly equal (round a series computed in floating point to its precision first); sgn(0) = 0, as KZGW (2017) eq. 1.2 defines it, though its worked examples count a tied pair as -1
+- Var(S) corrected for the groups of ties (Gilbert eq. 16.3, Hirsch et al. eq. 3b, R's trend); KZGW (2017, p. 11) leaves the correction out
+- Z with a continuity correction of one toward 0 and Z = 0 for S = 0 (Gilbert eq. 16.4, KZGW eq. 1.4)
+- the p-value is two-sided: below n0 values the exact P(|S'| >= |S|) over every distinct ordering of the values, equally likely under no trend, ties respected (the q-multinomial coefficients, MacMahon 1916); from n0 values 2 P(Z' > |Z|) from the upper tail of the normal distribution (scipy's norm.sf, as R's trend), which keeps its digits for a strong trend
+- a p-value below the smallest positive float (|Z| above about 38.5) is set to it, the end of the physical range (0, 1]
+- the series in any unit: the statistics have none
+
+**Assumptions**
+
+- the values are independent and identically distributed under no trend (Gilbert 1987, p. 213; KZGW 2017, p. 10): serial correlation, as of daily or monthly flows, makes the test reject too often
+- the values are in time order, one per time step; gaps of the record do not enter the test
+
+**Validation:** none: a test of the hypothesis of no trend; its sources compare it with no observations
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: sqrt(Var(S)) at Var(S) = 0, a series of equal values: Z = 0 by S = 0, limit equal_values
+- `exp_overflow`: the normal tail exp(-z^2/2) of a strong trend: 50 increasing values keep p = 1.3e-24 and 10,000 give the smallest positive float, not 0 (test_a_strong_trend_keeps_a_p_value_above_zero)
+- `gap_propagation`: type case values-nan_element: a gap is refused
+- `many_small_terms`: S sums n(n - 1)/2 signs in integers and Var(S) is one division of integers (test_s_of_a_long_series_is_exact)
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- scaling `unit_of_the_series`: inputs times 2^e (`values` e = 1.0) give outputs times 2^e (none)
+- limit `equal_values`: a series of equal values: S = 0, Var(S) = 0, Z = 0 (Gilbert's eq. 16.4 for S = 0) and p = 1, every ordering being the same
+- limit `monotone_series_exact`: a strictly monotone series below n0 values has the exact p 2/n!
+- limit `normal_tail`: from n0 values p equals erfc(|Z| / sqrt(2)), the normal tail of another algorithm
+- symmetry `negated_series`: the negated series has the negated S and Z, the same Var(S) and p
+- symmetry `reversed_series`: the series in reverse order has the negated S and Z, the same Var(S) and p
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/trend-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: the null distribution of S by every ordering of the series (the permutation test's definition), with Fraction probabilities: p and the variance of the distribution, which is Var(S) with ties (`tests/unit/test_formulas_trend.py (test_the_exact_p_and_var_s_are_those_of_every_ordering)`)
+- exact: the Mahonian numbers of the inversions of the permutations of n by the recurrence M(n, k) = M(n, k - 1) + M(n - 1, k) - M(n - 1, k - n), not the product of the q-factorial (`tests/unit/test_formulas_trend.py (test_the_exact_p_without_ties_is_that_of_the_mahonian_numbers)`)
+- established: scipy.stats.kendalltau of the series against its times (SciPy 1.18.1): S from tau-b and, without ties below n0 values, the exact p (`tests/unit/test_formulas_trend.py (test_s_and_the_exact_p_are_scipys_kendalltau)`)
+- frozen: R 4.4.3 trend 1.1.10 mk.test, modifiedmk 1.6 mkttest and Kendall 2.2.2 MannKendall on 13 series (`tests/oracles/trend_regime/r_oracle_outputs_headed.csv (tests/unit/test_formulas_trend.py, test_mann_kendall_is_rs)`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); established implementations (CMP-6.3); frozen oracles (CMP-6.4); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
+
+<a id="sen_slope"></a>
+### Sen's slope of a series with Conover's intercept
+
+`hydrolog.statistics.stationarity.sen_line` · family `statistic` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+b = \operatorname*{median}_{t_i < t_j} \frac{x_j - x_i}{t_j - t_i},\quad a = \operatorname{median}(x) - b \operatorname{median}(t)
+$$
+
+Plain text: `b = median of the N' slopes (x_j - x_i) / (t_j - t_i) over the pairs with t_i < t_j; a = median(x) - b median(t)`
+
+**Sources**
+
+- Gilbert, R.O. (1987). Statistical Methods for Environmental Pollution Monitoring. Van Nostrand Reinhold, New York, section 16.5, eqs. 16.8 and 16.9, p. 218: the N' slopes (x_i' - x_i) / (i' - i) of the pairs of data i' > i of different times (several values of one time give no slope among themselves), their median; Example 16.5, p. 219 (open) <https://digital.library.unt.edu/ark:/67531/metadc1197046/m2/1/high_res_d/7037501.pdf>
+- Helsel, D.R., Hirsch, R.M., Ryberg, K.R., Archfield, S.A., Gilroy, E.J. (2020). Statistical Methods in Water Resources. U.S. Geological Survey Techniques and Methods 4-A3, section 10.1.1, eqs. 10.1 to 10.3, pp. 266-268: the Theil-Sen slope, the median of all pairwise slopes, and the intercept b0 = y_med - b1 x_med (Conover 1999) (open) <https://pubs.usgs.gov/tm/04/a03/tm4a3.pdf>
+- Sen, P.K. (1968). Estimates of the regression coefficient based on Kendall's tau. Journal of the American Statistical Association 63, 1379-1389 (author-provided)
+- Conover, W.J. (1980). Practical Nonparametric Statistics, 2nd ed. Wiley, New York, the intercept median(x) - slope median(t) (author-provided)
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `values` | $x_i$ | m3/s | real_array | (-inf, inf), test bound low -1000000.0 and high 1000000.0 (the test counts the signs of differences and Sen's slope scales with the unit of the series, so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage or a temperature may lie below 0, so the same bound holds below 0) | unstated | [0.81, 111.0]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 1.1, 1.2, 3.3 and 3.4, tables 1.1 (pp. 11-12), 1.2 (pp. 13-14), 3.10 (p. 48) and 3.13 (pp. 55-56): the Mann-Kendall test of the annual maxima of the Bóbr at Bukówka, the Czarna at Polana, the Rypienica at Rypin and the Świślina at Rzepin: annual maxima of 0.81 to 111 m3/s |
+| `times` | $t_i$ | a | real_array | (-inf, inf), test bound low -1000000.0 and high 1000000.0 (years of the Common Era or steps of a series of at most 5,000 values: a million exceeds both) | unstated | [1965.0, 2005.0]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 1.1, 1.2, 3.3 and 3.4, tables 1.1 (pp. 11-12), 1.2 (pp. 13-14), 3.10 (p. 48) and 3.13 (pp. 55-56): the Mann-Kendall test of the annual maxima of the Bóbr at Bukówka, the Czarna at Polana, the Rypienica at Rypin and the Świślina at Rzepin: the years 1965 to 2005 |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `same_length` | physical | one time per value | Gilbert, R.O. (1987). Statistical Methods for Environmental Pollution Monitoring. Van Nostrand Reinhold, New York, section 16.5, eqs. 16.8 and 16.9, p. 218: the N' slopes (x_i' - x_i) / (i' - i) of the pairs of data i' > i of different times (several values of one time give no slope among themselves), their median; Example 16.5, p. 219 |
+| `times_in_order` | physical | t[i+1] >= t[i]: the values in time order, several of one time allowed | Gilbert, R.O. (1987). Statistical Methods for Environmental Pollution Monitoring. Van Nostrand Reinhold, New York, section 16.5, eqs. 16.8 and 16.9, p. 218: the N' slopes (x_i' - x_i) / (i' - i) of the pairs of data i' > i of different times (several values of one time give no slope among themselves), their median; Example 16.5, p. 219 |
+| `two_times` | precondition | t[-1] > t[0]: two values of different times make a slope | Gilbert, R.O. (1987). Statistical Methods for Environmental Pollution Monitoring. Van Nostrand Reinhold, New York, section 16.5, eqs. 16.8 and 16.9, p. 218: the N' slopes (x_i' - x_i) / (i' - i) of the pairs of data i' > i of different times (several values of one time give no slope among themselves), their median; Example 16.5, p. 219 |
+| `slopes_in_float64` | precondition | 2 (max x - min x) / (least step of t) and the line (max x - min x) / (least step of t) max\|t\| + max\|x\| are finite in float64: every slope, the difference of two slopes and the intercept are | Gilbert, R.O. (1987). Statistical Methods for Environmental Pollution Monitoring. Van Nostrand Reinhold, New York, section 16.5, eqs. 16.8 and 16.9, p. 218: the N' slopes (x_i' - x_i) / (i' - i) of the pairs of data i' > i of different times (several values of one time give no slope among themselves), their median; Example 16.5, p. 219 |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `slope` | m3/s/a | real | (-inf, inf) | 4 ulp of the bound |
+| `intercept` | m3/s | real | (-inf, inf) | 4 ulp of the bound |
+| `n_slopes` | - | integer | [1.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- the slopes of the pairs of different times only: several values of one time (Gilbert's eq. 16.5 case) give no slope among themselves
+- per unit of the times given: per year with years, per step with the steps 0, 1, 2 … of the series; R's trend and modifiedmk take the slopes per step of the index, the same where the years follow each other
+- the median of an even number of slopes is the mean of the middle two
+- Conover's intercept median(x) - b median(t) (Helsel et al. 2020, eq. 10.3), the line at t = 0; the trend vignette's alternative is the median of the residuals
+- at most 5,000 values: every slope is held in memory, eight bytes each, 100 MB at 5,000 values; the estimator is meant for independent values, annual or monthly, whose longest records have a few hundred years
+
+**Assumptions**
+
+- a linear trend of the values in time; the estimator is robust to outliers, not to serial correlation of the values (as the Mann-Kendall test)
+
+**Validation:** none: an estimator of the slope of a monotonic trend; its sources compare it with no observations
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: 1 / (t_j - t_i): pairs of one time give no slope and series of one time are refused by the precondition two_times; slopes beyond float64 by slopes_in_float64 (test_a_series_of_one_time_and_slopes_beyond_float64_are_refused)
+- `gap_propagation`: type cases values-nan_element and times-nan_element: a gap is refused
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- scaling `unit_of_the_values`: inputs times 2^e (`values` e = 1.0) give outputs times 2^e (`slope` e = 1.0, `intercept` e = 1.0)
+- scaling `unit_of_the_times`: inputs times 2^e (`times` e = 1.0) give outputs times 2^e (`slope` e = -1.0)
+- limit `straight_line`: the values of a straight line give its slope
+- limit `exact_median`: the slope is the median of the slopes in exact rational arithmetic, rounded once
+- symmetry `negated_values`: the negated values have the negated slope and intercept
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/trend-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: the median of the slopes in exact rational arithmetic (fractions) (`tests/unit/test_formulas_trend.py (limit exact_median)`)
+- established: scipy.stats.theilslopes with method='separate': the median of the slopes of the pairs with x_j > x_i and the intercept median(y) - slope median(x) (SciPy 1.18.1) (`tests/unit/test_formulas_trend.py (test_the_line_is_scipys_theilslopes)`)
+- frozen: R 4.4.3 trend 1.1.10 sens.slope and modifiedmk 1.6 mkttest on 13 series (`tests/oracles/trend_regime/r_oracle_outputs_headed.csv (tests/unit/test_formulas_trend.py, test_sens_slope_is_rs)`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); established implementations (CMP-6.3); frozen oracles (CMP-6.4); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
+
+<a id="sen_interval"></a>
+### Gilbert's confidence interval of Sen's slope
+
+`hydrolog.statistics.stationarity.sen_interval` · family `statistic` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+C = z_{1-\alpha/2}\sqrt{\operatorname{Var}(S)},\quad M_1 = \frac{N' - C}{2},\quad M_2 = \frac{N' + C}{2},\quad b_L = Q_{(M_1)},\quad b_U = Q_{(M_2+1)}
+$$
+
+Plain text: `C = z(1 - alpha/2) sqrt(Var(S)); M1 = (N' - C) / 2, M2 = (N' + C) / 2; lower = the M1-th and upper = the (M2 + 1)-th of the N' ordered slopes, interpolated linearly between ranks`
+
+**Sources**
+
+- Gilbert, R.O. (1987). Statistical Methods for Environmental Pollution Monitoring. Van Nostrand Reinhold, New York, section 16.5, steps 1 to 4, p. 218: C = Z(1 - alpha/2) [Var(S)]^(1/2), M1 = (N' - C)/2, M2 = (N' + C)/2, the limits the M1-th and the (M2 + 1)-th of the ordered slopes, 'for n as small as 10 unless there are many ties'; Example 16.5, p. 219, interpolates between ranks, as subroutine CONINT, appendix B, p. 289 (open) <https://digital.library.unt.edu/ark:/67531/metadc1197046/m2/1/high_res_d/7037501.pdf>
+- Helsel, D.R., Hirsch, R.M., Ryberg, K.R., Archfield, S.A., Gilroy, E.J. (2020). Statistical Methods in Water Resources. U.S. Geological Survey Techniques and Methods 4-A3, section 10.1.1, eqs. 10.1 to 10.3, pp. 266-268: the Theil-Sen slope, the median of all pairwise slopes, and the intercept b0 = y_med - b1 x_med (Conover 1999) (open) <https://pubs.usgs.gov/tm/04/a03/tm4a3.pdf>
+- Sen, P.K. (1968). Estimates of the regression coefficient based on Kendall's tau. Journal of the American Statistical Association 63, 1379-1389 (author-provided)
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `values` | $x_i$ | m3/s | real_array | (-inf, inf), test bound low -1000000.0 and high 1000000.0 (the test counts the signs of differences and Sen's slope scales with the unit of the series, so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage or a temperature may lie below 0, so the same bound holds below 0) | unstated | [0.81, 111.0]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 1.1, 1.2, 3.3 and 3.4, tables 1.1 (pp. 11-12), 1.2 (pp. 13-14), 3.10 (p. 48) and 3.13 (pp. 55-56): the Mann-Kendall test of the annual maxima of the Bóbr at Bukówka, the Czarna at Polana, the Rypienica at Rypin and the Świślina at Rzepin: annual maxima of 0.81 to 111 m3/s |
+| `times` | $t_i$ | a | real_array | (-inf, inf), test bound low -1000000.0 and high 1000000.0 (years of the Common Era or steps of a series of at most 5,000 values: a million exceeds both) | unstated | [1965.0, 2005.0]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 1.1, 1.2, 3.3 and 3.4, tables 1.1 (pp. 11-12), 1.2 (pp. 13-14), 3.10 (p. 48) and 3.13 (pp. 55-56): the Mann-Kendall test of the annual maxima of the Bóbr at Bukówka, the Czarna at Polana, the Rypienica at Rypin and the Świślina at Rzepin: the years 1965 to 2005 |
+| `var_s` | $\operatorname{Var}(S)$ | - | real | [0.0, inf), test bound high 14000000000.0 (Var(S) of 5,000 values without ties, the most the spec takes, is 1.389e10) | unstated | [3139.0, 7921.0]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 1.1, 1.2, 3.3 and 3.4, tables 1.1 (pp. 11-12), 1.2 (pp. 13-14), 3.10 (p. 48) and 3.13 (pp. 55-56): the Mann-Kendall test of the annual maxima of the Bóbr at Bukówka, the Czarna at Polana, the Rypienica at Rypin and the Świślina at Rzepin: n = 30 to 41 with ties, Var(S) 3,139.7 to 7,920.7 |
+| `alpha` | $\alpha$ | - | real | (0.0, 1.0) | unstated | [0.05, 0.05]: Obserwator 3.1.0.dev0, analysis registry (src/obserwator/store/analysis_registry.py), the stored analyses mann_kendall.* of stats mann-kendall; KZGW (2017), p. 11, options alpha = 0.05; the significance level 0.05 of KZGW's test |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `same_length` | physical | one time per value | Gilbert, R.O. (1987). Statistical Methods for Environmental Pollution Monitoring. Van Nostrand Reinhold, New York, section 16.5, steps 1 to 4, p. 218: C = Z(1 - alpha/2) [Var(S)]^(1/2), M1 = (N' - C)/2, M2 = (N' + C)/2, the limits the M1-th and the (M2 + 1)-th of the ordered slopes, 'for n as small as 10 unless there are many ties'; Example 16.5, p. 219, interpolates between ranks, as subroutine CONINT, appendix B, p. 289 |
+| `times_in_order` | physical | t[i+1] >= t[i]: the values in time order, several of one time allowed | Gilbert, R.O. (1987). Statistical Methods for Environmental Pollution Monitoring. Van Nostrand Reinhold, New York, section 16.5, steps 1 to 4, p. 218: C = Z(1 - alpha/2) [Var(S)]^(1/2), M1 = (N' - C)/2, M2 = (N' + C)/2, the limits the M1-th and the (M2 + 1)-th of the ordered slopes, 'for n as small as 10 unless there are many ties'; Example 16.5, p. 219, interpolates between ranks, as subroutine CONINT, appendix B, p. 289 |
+| `two_times` | precondition | t[-1] > t[0]: two values of different times make a slope | Gilbert, R.O. (1987). Statistical Methods for Environmental Pollution Monitoring. Van Nostrand Reinhold, New York, section 16.5, steps 1 to 4, p. 218: C = Z(1 - alpha/2) [Var(S)]^(1/2), M1 = (N' - C)/2, M2 = (N' + C)/2, the limits the M1-th and the (M2 + 1)-th of the ordered slopes, 'for n as small as 10 unless there are many ties'; Example 16.5, p. 219, interpolates between ranks, as subroutine CONINT, appendix B, p. 289 |
+| `slopes_in_float64` | precondition | 2 (max x - min x) / (least step of t) and the line (max x - min x) / (least step of t) max\|t\| + max\|x\| are finite in float64: every slope, the difference of two slopes and the intercept are | Gilbert, R.O. (1987). Statistical Methods for Environmental Pollution Monitoring. Van Nostrand Reinhold, New York, section 16.5, steps 1 to 4, p. 218: C = Z(1 - alpha/2) [Var(S)]^(1/2), M1 = (N' - C)/2, M2 = (N' + C)/2, the limits the M1-th and the (M2 + 1)-th of the ordered slopes, 'for n as small as 10 unless there are many ties'; Example 16.5, p. 219, interpolates between ranks, as subroutine CONINT, appendix B, p. 289 |
+| `ranks_within_slopes` | precondition | 1 <= M1 and M2 + 1 <= N': both ranks lie among the N' ordered slopes (C <= N' - 2) | Gilbert, R.O. (1987). Statistical Methods for Environmental Pollution Monitoring. Van Nostrand Reinhold, New York, section 16.5, steps 1 to 4, p. 218: C = Z(1 - alpha/2) [Var(S)]^(1/2), M1 = (N' - C)/2, M2 = (N' + C)/2, the limits the M1-th and the (M2 + 1)-th of the ordered slopes, 'for n as small as 10 unless there are many ties'; Example 16.5, p. 219, interpolates between ranks, as subroutine CONINT, appendix B, p. 289 |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `lower` | m3/s/a | real | (-inf, inf) | 4 ulp of the bound |
+| `upper` | m3/s/a | real | (-inf, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- Gilbert's linear interpolation between ranks (his Example 16.5 and subroutine CONINT, appendix B); R's trend rounds the ranks (round(), half to even) and Helsel et al. (2020, eqs. 10.6-10.7) take whole ranks, which move the limits by up to 5 % of a limit at n <= 34 (frozen oracle, ADR-0063)
+- the Var(S) of the test of the same values, given by the caller; Gilbert's Exercise 16.3 builds it without the correction for ties on purpose
+- z(1 - alpha/2) of the standard normal distribution (scipy's norm.ppf); an alpha whose 1 - alpha/2 rounds to 1 has no interval
+- stats mann-kendall gives the interval from ten values (Gilbert 1987, p. 218: the normal approximation of S it rests on), null below
+- at most 5,000 values, as Sen's slope
+
+**Assumptions**
+
+- S approximately normal under no trend, from about ten values unless there are many ties (Gilbert 1987, p. 218)
+
+**Validation:** none: a non-parametric confidence interval of the slope (Gilbert 1987, section 16.5); its sources compare it with no observations
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `singular_at_bound`: sqrt(Var(S)) at Var(S) = 0: the middle slopes, limit holds_the_slope; ranks outside the slopes are refused by the precondition ranks_within_slopes
+- `gap_propagation`: type cases values-nan_element and times-nan_element: a gap is refused
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- monotonic: `var_s` decreasing, `alpha` increasing
+- scaling `unit_of_the_values`: inputs times 2^e (`values` e = 1.0) give outputs times 2^e (`lower` e = 1.0, `upper` e = 1.0)
+- scaling `unit_of_the_times`: inputs times 2^e (`times` e = 1.0) give outputs times 2^e (`lower` e = -1.0, `upper` e = -1.0)
+- limit `holds_the_slope`: the interval holds Sen's slope, and at Var(S) = 0 it is the middle slopes
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/trend-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- algorithm: the ordered slopes sorted in full (numpy.sort) and the ranks interpolated on the whole ladder of ranks (numpy.interp), as Hydrolog 0.9.0.dev2 computed them (`tests/unit/test_formulas_trend.py (test_the_interval_is_the_interpolation_of_the_sorted_slopes)`)
+- frozen: R 4.4.3 trend 1.1.10 sens.slope at 90 and 95 % on 13 series (`tests/oracles/trend_regime/r_oracle_outputs_headed.csv (tests/unit/test_formulas_trend.py, test_sens_interval_rounds_as_rs)`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); frozen oracles (CMP-6.4); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
+
+<a id="pettitt"></a>
+### Pettitt's change-point test: K, the change point and the approximate p
+
+`hydrolog.statistics.homogeneity.pettitt` · family `statistic` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+U_t = 2\sum_{i \le t} r_i - t(n + 1),\quad K = \max_{1 \le t < n} |U_t|,\quad p = \min\left(1,\ 2 e^{-6K^2/(n^3 + n^2)}\right)
+$$
+
+Plain text: `U_t = 2 sum_{i<=t} r_i - t (n + 1) = sum_{i<=t} sum_{j>t} sgn(x_i - x_j) for t = 1 … n - 1 with the mid-ranks r_i; K = max_t |U_t|, the change point the first t of K; p = min(1, 2 exp(-6 K^2 / (n^3 + n^2)))`
+
+**Sources**
+
+- Pohlert, T. trend: Non-Parametric Trend Tests and Change-Point Detection, R package version 1.1.10, CRAN, R/pettitt.test.R and its help page: U_k = 2 sum_{i<=k} r_i - k (n + 1) of the ranks, U* = max |U_k|, the change point where |U_k| is largest, p = min(1, 2 exp(-6 U*^2 / (n^3 + n^2))), 'good for p <= 0.5' (after Verstraeten et al. 2006) (open) <https://cran.r-project.org/package=trend>
+- Hussain, M.M. pyHomogeneity: a Python package for homogeneity tests of time series data, version 1.1, GitHub mmhs013/pyHomogeneity, pyhomogeneity.py, __pettitt and pettitt_test: U = 2 cumsum(r) - k (n + 1) over k = 1 … n - 1, the first k of max |U|, p = 2 exp(-6 U^2 / (n^3 + n^2)) (open) <https://github.com/mmhs013/pyHomogeneity>
+- Pettitt, A.N. (1979). A non-parametric approach to the change-point problem. Journal of the Royal Statistical Society, Series C (Applied Statistics) 28(2), 126-135 (author-provided)
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `values` | $x_i$ | m3/s | real_array | (-inf, inf), test bound low -1000000.0 and high 1000000.0 (the tests rank the values, so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below 0, so the same bound holds below 0) | unstated | [0.81, 111.0]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 1.1, 1.2, 3.3 and 3.4, tables 1.1, 1.2, 3.10 and 3.13 (pp. 11-56): the annual maxima of the Bóbr at Bukówka, the Czarna at Polana, the Rypienica at Rypin and the Świślina at Rzepin: annual maxima of 0.81 to 111 m3/s |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `enough_values` | precondition | n >= 2: a split t of 1 … n - 1 | Hussain, M.M. pyHomogeneity: a Python package for homogeneity tests of time series data, version 1.1, GitHub mmhs013/pyHomogeneity, pyhomogeneity.py, __pettitt and pettitt_test: U = 2 cumsum(r) - k (n + 1) over k = 1 … n - 1, the first k of max \|U\|, p = 2 exp(-6 U^2 / (n^3 + n^2)) |
+| `values_not_all_equal` | precondition | min(x) < max(x): equal values give U_t = 0 for every t, no change point | Pohlert, T. trend: Non-Parametric Trend Tests and Change-Point Detection, R package version 1.1.10, CRAN, R/pettitt.test.R and its help page: U_k = 2 sum_{i<=k} r_i - k (n + 1) of the ranks, U* = max \|U_k\|, the change point where \|U_k\| is largest, p = min(1, 2 exp(-6 U*^2 / (n^3 + n^2))), 'good for p <= 0.5' (after Verstraeten et al. 2006) |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `k` | - | integer | [0.0, inf) | 4 ulp of the bound |
+| `p_value` | - | real | (0.0, 1.0] | 4 ulp of the bound |
+| `change_point_index` | - | integer | [1.0, inf) | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- the mid-ranks of tied values (scipy's rankdata, R's rank)
+- K over t = 1 … n - 1 (R's trend also takes t = n, where U_n = 0); the change point is the first t of K (R's trend returns every t of K), the number of values before the change, which names the year of the first value after it in homogeneity_tests
+- p is Pettitt's approximation 2 exp(-6 K^2 / (n^3 + n^2)), capped at 1, good for p <= 0.5 (R's trend); it is conservative for short series: ten increasing values give 0.066 where the exact permutation p is 2 / C(10, 5) = 0.0079
+- a p-value below the smallest positive float is set to it, the end of the physical range (0, 1]
+
+**Assumptions**
+
+- independent values with one change of location at most
+
+**Validation:** none: a test of the hypothesis of no change; its sources compare it with no observations
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `exp_overflow`: exp(-6 K^2 / (n^3 + n^2)) of a long series with a step underflows: p is the smallest positive float, not 0 (test_a_long_step_keeps_a_p_value_above_zero)
+- `gap_propagation`: type case values-nan_element: a gap is refused
+- `many_small_terms`: the cumulative sums of the mid-ranks are whole numbers and half-numbers, exact in float64 (limit pairwise_definition, test_k_of_a_long_series_is_exact)
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- scaling `unit_of_the_series`: inputs times 2^e (`values` e = 1.0) give outputs times 2^e (none)
+- limit `complete_separation`: ten increasing values: K = n^2/4 = 25 at t = 5 and p = 2 exp(-6 625 / 1100)
+- limit `pairwise_definition`: K and its t from the ranks equal those of the double sum of signs
+- symmetry `negated_series`: the negated series has the same K, change point and p
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/trend-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- algorithm: U_t by its double sum of signs of the pairs on either side of t, not the ranks (`tests/unit/test_formulas_trend.py (limit pairwise_definition)`)
+- frozen: R 4.4.3 trend 1.1.10 pettitt.test on 13 series (`tests/oracles/trend_regime/r_oracle_outputs_headed.csv (tests/unit/test_formulas_trend.py, test_pettitt_is_rs)`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); frozen oracles (CMP-6.4); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
+
+<a id="ks_exact"></a>
+### Exact two-sided p-value of the two-sample Kolmogorov-Smirnov D, ties respected
+
+`hydrolog.statistics.homogeneity.ks_exact` · family `statistic` · formula_version 1 · status **referenced** · mutation score not measured
+
+$$
+D = \max_x |F_1(x) - F_2(x)|,\quad p = 1 - \frac{\#\{\text{paths with } |i n - j m| < m n D \text{ at the ends of the ties}\}}{\binom{m + n}{m}}
+$$
+
+Plain text: `D = max_x |F1(x) - F2(x)| of the empirical distribution functions; p = P(D' >= D) over the C(m + n, m) equally likely splits of the pooled values into samples of m and n, ties respected: 1 - (the lattice paths from (0, 0) to (m, n) that keep |i n - j m| < m n D wherever a group of equal values ends) / C(m + n, m)`
+
+**Sources**
+
+- R Core Team. R: A Language and Environment for Statistical Computing, version 4.4.3, package stats, function ks.test, help page ks.test, Details: in the two-sample case an exact p-value is computed if the product of the sample sizes is less than 10000, with or without ties (the algorithm of Schröer and Trenkler 1995); Examples: with ties, D = 3/7, p = 8/33 (open) <https://stat.ethz.ch/R-manual/R-devel/library/stats/html/ks.test.html>
+- Schröer, G., Trenkler, D. (1995). Exact and randomization distributions of Kolmogorov-Smirnov tests two or three samples. Computational Statistics & Data Analysis 20(2), 185-202 (author-provided)
+
+**Variables**
+
+| Variable | Symbol | Unit | Kind | Physical range | Applicability | Typical range |
+|---|---|---|---|---|---|---|
+| `first` | $x$ | m3/s | real_array | (-inf, inf), test bound low -1000000.0 and high 1000000.0 (the tests rank the values, so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below 0, so the same bound holds below 0) | unstated | [0.81, 111.0]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 1.1, 1.2, 3.3 and 3.4, tables 1.1, 1.2, 3.10 and 3.13 (pp. 11-56): the annual maxima of the Bóbr at Bukówka, the Czarna at Polana, the Rypienica at Rypin and the Świślina at Rzepin: annual maxima of 0.81 to 111 m3/s |
+| `second` | $y$ | m3/s | real_array | (-inf, inf), test bound low -1000000.0 and high 1000000.0 (the tests rank the values, so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage may lie below 0, so the same bound holds below 0) | unstated | [0.81, 111.0]: KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona), examples 1.1, 1.2, 3.3 and 3.4, tables 1.1, 1.2, 3.10 and 3.13 (pp. 11-56): the annual maxima of the Bóbr at Bukówka, the Czarna at Polana, the Rypienica at Rypin and the Świślina at Rzepin: annual maxima of 0.81 to 111 m3/s |
+
+**Constraints**
+
+| Constraint | Class | Condition | Source |
+|---|---|---|---|
+| `exact_size` | precondition | m n < 10000, R's bound of its exact test: the paths are counted on the lattice of the m n points | R Core Team. R: A Language and Environment for Statistical Computing, version 4.4.3, package stats, function ks.test, help page ks.test, Details: in the two-sample case an exact p-value is computed if the product of the sample sizes is less than 10000, with or without ties (the algorithm of Schröer and Trenkler 1995); Examples: with ties, D = 3/7, p = 8/33 |
+
+**Constants**
+
+| Constant | Symbol | Value | Unit | Source |
+|---|---|---|---|---|
+| `exact_product` | $m n$ | 10000 | - | R Core Team. R: A Language and Environment for Statistical Computing, version 4.4.3, package stats, function ks.test, help page ks.test, Details: in the two-sample case an exact p-value is computed if the product of the sample sizes is less than 10000, with or without ties (the algorithm of Schröer and Trenkler 1995); Examples: with ties, D = 3/7, p = 8/33 |
+
+**Outputs**
+
+| Output | Unit | Kind | Physical range | Boundary tolerance |
+|---|---|---|---|---|
+| `d` | - | real | [0.0, 1.0] | 4 ulp of the bound |
+| `p_value` | - | real | (0.0, 1.0] | 4 ulp of the bound |
+
+**Conventions (CMP-2.3)**
+
+- two-sided; D taken only where a group of equal values ends, as the empirical distribution functions are steps there
+- homogeneity_tests takes it for samples with ties and m n < 10000; scipy's ks_2samp, exact for a continuous distribution, without ties and beyond (conservative with ties: Helsel et al. 2020, Example 5.1, 0.0524 against 0.0478)
+- the samples in any unit: D and p have none
+
+**Assumptions**
+
+- independent values; under homogeneity every split of the pooled values is equally likely
+
+**Validation:** none: the exact null distribution of a test statistic; its sources compare it with no observations
+
+**Notices:** none
+
+**Numerical traps (CMP-6.6)**
+
+- `gap_propagation`: type cases first-nan_element and second-nan_element: a gap is refused
+- `many_small_terms`: the paths are counted in Python integers, exact however many (C(198, 99) is about 2e58), and p is one quotient (limit every_split)
+
+**Properties (CMP-6.5)**
+
+- units: homogeneous
+- scaling `unit_of_the_samples`: inputs times 2^e (`first` e = 1.0, `second` e = 1.0) give outputs times 2^e (none)
+- limit `complete_separation`: three values all below four others: D = 1 and p = 2 / C(7, 3)
+- limit `every_split`: p equals P(D' >= D) counted over every split of the pooled values in rational arithmetic
+- symmetry `swapped_samples`: the samples swapped give the same D and p
+- symmetry `negated_samples`: the negated samples give the same D and p
+
+**Reference cases (CMP-6.1)**
+
+- `tests/fixtures/formulas/trend-cases.json`
+
+**Oracles (CMP-6.2 to CMP-6.4)**
+
+- exact: P(D' >= D) over every split of the pooled values, counted one by one in rational arithmetic (`tests/unit/test_formulas_trend.py (limit every_split)`)
+- established: scipy.stats.ks_2samp with method='exact' (SciPy 1.18.1) on samples without ties (`tests/unit/test_formulas_trend.py (test_the_delegated_ks_2samp_is_exact_without_ties)`)
+- frozen: R 4.4.3 stats::ks.test, exact, on three pairs of samples with ties (`tests/oracles/trend_regime/r_oracle_outputs_headed.csv (tests/unit/test_formulas_trend.py, test_ks_exact_is_rs)`)
+
+**Tests by class (CMP §6):** reference cases (CMP-6.1); oracles (CMP-6.2); established implementations (CMP-6.3); frozen oracles (CMP-6.4); generated ranges and types (CMP-6.5); properties (CMP-6.5); numerical traps (CMP-6.6); statistical procedures (CMP-6.7).
+
 <a id="exceedance_values"></a>
 ### Values of the duration curve equalled or exceeded on p % of the days (Weibull positions, linear interpolation)
 
@@ -1597,6 +2025,10 @@ Plain text: `h = t(1 - alpha/2, k - 1) s / sqrt(k) with alpha = 1 - c and s = sq
 | Formula | Function | Definition | Constants | Convention | Source |
 |---|---|---|---|---|---|
 | `weighted_cn` | `hydrolog.runoff.cn_lookup.calculate_weighted_cn` | CN_w = sum(A_j CN_j) / sum(A_j), the area-weighted mean CN of the parts | – | areas or shares in any one unit; a part of zero area counts nothing | USDA-NRCS (2004). National Engineering Handbook, Part 630 Hydrology, Chapter 10, example 10-4, p. 10-12 (also KZGW 2017 eq. 6.3) |
+| `trend_decision` | `hydrolog.statistics.stationarity.mann_kendall_test` | trend_detected is p < alpha; trend_direction is increasing for S > 0 and decreasing for S < 0 when a trend is detected, else none; Sen's interval is given from ten values and is null below them or when a rank falls outside the slopes | – | a two-sided test at the caller's alpha, the interval at 1 - alpha; the times must increase strictly (one value a time step) | Gilbert, R.O. (1987). Statistical Methods for Environmental Pollution Monitoring. Van Nostrand Reinhold, New York, eqs. 16.1 to 16.4, pp. 209-211: S, Var(S) corrected for ties, Z with a continuity correction of one; section 16.4.1 and table A18: the exact probabilities of S below n = 10 |
+| `trend_times` | `hydrolog.operations.stats_mann_kendall` | the times of the values: their years (years, year_column) or, without them, the steps 0, 1, 2 … of the series; a missing value is left out and keeps its step | – | Sen's slope per year with years, per step without them | Gilbert, R.O. (1987). Statistical Methods for Environmental Pollution Monitoring. Van Nostrand Reinhold, New York, section 16.5, eqs. 16.8 and 16.9, p. 218: the N' slopes (x_i' - x_i) / (i' - i) of the pairs of data i' > i of different times (several values of one time give no slope among themselves), their median; Example 16.5, p. 219 |
+| `homogeneity_split` | `hydrolog.statistics.homogeneity.homogeneity_tests` | the first part is the first n // 2 values, or the values of the years before split_year; the second part the rest | – | split_year and Pettitt's change_point_year name the year of the first value of the second part (ADR-0022) | Hydrolog, ADR-0022 (2026-11-06): homogeneity tests of annual maxima, decisions 2 and 5 |
+| `homogeneity_decision` | `hydrolog.statistics.homogeneity.homogeneity_tests` | a test is homogeneous when its p-value is at least alpha; Mann-Whitney's U is scipy's mannwhitneyu, the Kolmogorov-Smirnov p scipy's ks_2samp without ties or with m n >= 10000, else the spec ks_exact | – | two-sided tests at the caller's alpha | Hydrolog, ADR-0022 (2026-11-06): homogeneity tests of annual maxima, decision 6 |
 | `duration_curve_days` | `hydrolog.statistics.duration.duration_curve` | the days the curve and the classes take: every day with a value, or only those of one calendar month (month); their count n_values, minimum, maximum, mean and median, the curve at CURVE_PERCENTS and the table at exceedance_percents (spec exceedance_values), and the hydrological years (1 November - 31 October, named after the year of their end) of those days: first_year, last_year and period_years | – | the total-period curve of all the days of the record (Searcy 1959, p. 3; WMO-No. 1029, sect. 6.1); a day whose value is NaN or not finite has no value and is left out, not filled; a month's curve takes that calendar month of every year; the dates increase strictly, one value a day | Searcy, J.K. (1959). Flow-duration curves. Manual of Hydrology, Part 2, Low-flow techniques. U.S. Geological Survey Water-Supply Paper 1542-A, p. 3: the total-period method, the days of each class cumulated from the highest class; figs. 4-5 (form 9-217c), p. 9: the days equal to or greater than a class limit and less than the next |
 | `duration_classes` | `hydrolog.statistics.duration.duration_curve` | classes of equal width w, [k w, (k + 1) w) from the multiple of w at or below the smallest value to the class of the largest, or bin_count classes of equal steps of log10 between the smallest positive and the largest value, whose end edges are those values and which count the positive values only; a value v is in the class with lower <= v < upper, the highest class also holding its upper edge; per class from the highest down: its days, their share of the days counted [%], the days of the class and every higher one (including higher) and of the class and every lower one (including lower), and its days by hydrological month, November to October; the modal class has the most days, the lowest one of equal counts | – | the days counted from the highest class down, a class holding the days equal to or greater than its lower limit and less than the next (Searcy 1959, figs. 4-5); the edges of equal widths are computed in decimal arithmetic on the shortest decimal forms of the values and the width, so a value written on a class bound starts its class (0.3 with the width 0.1 is in [0.3, 0.4); ADR-0048); the edges are the floats nearest those bounds | Searcy, J.K. (1959). Flow-duration curves. Manual of Hydrology, Part 2, Low-flow techniques. U.S. Geological Survey Water-Supply Paper 1542-A, p. 3: the total-period method, the days of each class cumulated from the highest class; figs. 4-5 (form 9-217c), p. 9: the days equal to or greater than a class limit and less than the next |
 | `threshold_runs` | `hydrolog.statistics.events.threshold_runs` | the runs of consecutive days flagged beyond a threshold; two runs parted by fewer than max_gap_days days (without a value or not beyond) merge into one, with the days between them; runs shorter than min_duration_days, counted with the days merged in, are dropped; each run is the positions of its first and last day, inclusive, in time order | – | the pooling of the inter-event time method: runs pool when the gap is less than t_min = max_gap_days days (WMO-No. 1029, p. 72; lfstat's pool_it, 'inter-event time is less than tmin'), where Fleig et al. (2006) write tau_i <= t_c in their formula against 'less than' in their text; max_gap_days 4 pools gaps of 1 to 3 days, as the program NIŻÓWKA pools low flows parted by 3 days (Tokarczyk 2010, p. 34) and Tomaszewski (2012, pp. 68-69) breaks of at most 3 days; the duration of a pooled run includes the gap, the full drought duration of Fleig et al. (2006, eq. 1) and lfstat's duration, while WMO-No. 1029 (eq. 8.1(a)), NIŻÓWKA (Tokarczyk 2010, p. 34) and Tomaszewski (2012, fig. 14) add the durations of the runs without the gap (the real duration, days_beyond of threshold_events); the minimum duration applies to the full duration after pooling (Fleig et al. apply d_min to the real one); 0 pools nothing | WMO (2008). Manual on Low-flow Estimation and Prediction, WMO-No. 1029, Operational Hydrology Report No. 50 (Gustard, A. and Demuth, S., eds.), sect. 8.2, pp. 71-72: a deficit starts when the flow goes below the threshold and ends as soon as it returns above it, with its duration, volume, minimum flow and time of occurrence; the IT method pools deficits that occur less than t_min days apart, d_pool = d_i + d_i+1 and v_pool = v_i + v_i+1 (eqs. 8.1) |
@@ -1627,3 +2059,5 @@ Plain text: `h = t(1 - alpha/2, k - 1) s / sqrt(k) with alpha = 1 - c and s = sq
 | nash_shape_root | scipy.optimize.brentq | scipy>=1.10 (1.18.1 locked) | the root N of f(N) = (N-1)^N e^-(N-1) / Gamma(N) = f(2.55) on [1.1, 20] with xtol 1e-6 is 2.55 within 1e-6 (spec lutz) | `tests/unit/test_formulas_lutz.py::test_the_delegated_root_finder_finds_a_known_root` |
 | lyne_hollick_recursion | scipy.signal.lfilter | scipy>=1.10 (1.18.1 locked) | lfilter([(1 + a) / 2], [1, -a], diff(Q), zi=[a Q_1]) gives the quickflow q_t = a q_(t-1) + (1 + a)/2 (Q_t - Q_(t-1)) from q_1 = Q_1 of the first pass of Ladson et al. (2013), Table 4 (Bass River, a = 0.98): 155.46 after 96 and 158 (spec lyne_hollick) | `tests/unit/test_formulas_baseflow.py::test_the_delegated_recursion_is_the_first_pass_of_table_4` |
 | student_t_quantile | scipy.stats.t.isf | scipy>=1.10 (1.18.1 locked) | the upper quantile of the tail 0.025 with one degree of freedom is tan(0.475 pi) = 12.7062047361747 within 1e-13 relative (spec mean_interval_half_width) | `tests/unit/test_formulas_characteristic.py::test_the_delegated_t_quantile_is_a_known_one` |
+| mann_whitney_u | scipy.stats.mannwhitneyu (two-sided, method auto: exact for parts of at most 8 values without ties, else normal with the corrections for ties and continuity) | scipy>=1.10 (1.18.1 locked) | Helsel et al. (2020), Example 5.1: U of the first part 76.5, p = 0.04911 (R's wilcox.test W = 76.5, p = 0.0491099747); the frozen oracle tests/oracles/trend_regime holds R's U and p of three pairs of samples (stats homogeneity) | `tests/unit/test_formulas_trend.py::test_the_delegated_mann_whitney_is_helsels_and_rs` |
+| ks_two_sample | scipy.stats.ks_2samp (two-sided, method auto: exact for a continuous distribution) | scipy>=1.10 (1.18.1 locked) | three values all below four others: D = 1, p = 2 / C(7, 3) = 0.0571429; seeded samples without ties against the exact count of spec ks_exact (stats homogeneity without ties) | `tests/unit/test_formulas_trend.py::test_the_delegated_ks_2samp_is_exact_without_ties` |

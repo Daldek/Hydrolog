@@ -1621,12 +1621,12 @@ COMMANDS: tuple[Command, ...] = (
         ),
         result_schema="hydrolog-stats-mann-kendall/1",
         rules=(
-            "Pass values in time order, at least 3; `years` make the slope per year.",
+            "Pass 3 to 5,000 values in time order; `years` make the slope per year.",
             "A trend is detected when `p_value` is below `alpha`.",
             "Check `notices` for skipped missing values.",
         ),
         rules_pl=(
-            "Podaj wartości w kolejności czasowej, co najmniej 3; z `years` nachylenie "
+            "Podaj od 3 do 5000 wartości w kolejności czasowej; z `years` nachylenie "
             "jest na rok.",
             "Trend jest wykryty, gdy `p_value` jest mniejsze niż `alpha`.",
             "Sprawdź `notices` pod kątem pominiętych braków danych.",
@@ -1673,11 +1673,11 @@ COMMANDS: tuple[Command, ...] = (
             replace(
                 VALUES,
                 description_pl=(
-                    "Szereg w kolejności czasowej, np. maksima roczne (co najmniej 3 "
+                    "Szereg w kolejności czasowej, np. maksima roczne (od 3 do 5000 "
                     "wartości). Długie szeregi podawaj w pliku (`input_file`)."
                 ),
                 description=(
-                    "Series in time order, e.g. annual maxima (at least 3 values). "
+                    "Series in time order, e.g. annual maxima (3 to 5,000 values). "
                     "Give long series in a file (`input_file`)."
                 ),
             ),
@@ -1734,7 +1734,7 @@ COMMANDS: tuple[Command, ...] = (
                 ),
                 default=0.05,
                 exclusive_minimum=0,
-                maximum=1,
+                exclusive_maximum=1,
             ),
             ATTRIBUTION,
         ),
@@ -1927,7 +1927,7 @@ COMMANDS: tuple[Command, ...] = (
                 ),
                 default=0.05,
                 exclusive_minimum=0,
-                maximum=1,
+                exclusive_maximum=1,
             ),
             *PERIOD_OPTIONS,
             ATTRIBUTION,

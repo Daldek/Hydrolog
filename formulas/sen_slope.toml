@@ -1,0 +1,245 @@
+schema = "nogat-formula-card/1"
+name = "sen_slope"
+title = "Sen's slope of a series with Conover's intercept"
+function = "hydrolog.statistics.stationarity.sen_line"
+family = "statistic"
+formula_version = 1
+status = "referenced"
+equation = "b = median of the N' slopes (x_j - x_i) / (t_j - t_i) over the pairs with t_i < t_j; a = median(x) - b median(t)"
+latex = "b = \\operatorname*{median}_{t_i < t_j} \\frac{x_j - x_i}{t_j - t_i},\\quad a = \\operatorname{median}(x) - b \\operatorname{median}(t)"
+validation = "none: an estimator of the slope of a monotonic trend; its sources compare it with no observations"
+conventions = ["the slopes of the pairs of different times only: several values of one time (Gilbert's eq. 16.5 case) give no slope among themselves", "per unit of the times given: per year with years, per step with the steps 0, 1, 2 … of the series; R's trend and modifiedmk take the slopes per step of the index, the same where the years follow each other", "the median of an even number of slopes is the mean of the middle two", "Conover's intercept median(x) - b median(t) (Helsel et al. 2020, eq. 10.3), the line at t = 0; the trend vignette's alternative is the median of the residuals", "at most 5,000 values: every slope is held in memory, eight bytes each, 100 MB at 5,000 values; the estimator is meant for independent values, annual or monthly, whose longest records have a few hundred years"]
+assumptions = ["a linear trend of the values in time; the estimator is robust to outliers, not to serial correlation of the values (as the Mann-Kendall test)"]
+notices = []
+reference_cases = ["tests/fixtures/formulas/trend-cases.json"]
+constants = []
+tables = []
+
+[properties]
+units = "homogeneous"
+conservation = []
+
+[properties.monotonic]
+
+[[properties.scalings]]
+name = "unit_of_the_values"
+
+[properties.scalings.inputs]
+values = 1.0
+
+[properties.scalings.outputs]
+slope = 1.0
+intercept = 1.0
+
+[properties.scalings.tolerance]
+reason = "doubling the values doubles every difference, slope and product exactly, but for results below the smallest normal float"
+abs = 2.2250738585072014e-308
+
+[[properties.scalings]]
+name = "unit_of_the_times"
+
+[properties.scalings.inputs]
+times = 1.0
+
+[properties.scalings.outputs]
+slope = -1.0
+
+[properties.scalings.tolerance]
+reason = "doubling the times halves every slope exactly and leaves the product slope median(t), so the intercept, as it was"
+abs = 2.2250738585072014e-308
+
+[[properties.limits]]
+name = "straight_line"
+text = "the values of a straight line give its slope"
+
+[[properties.limits]]
+name = "exact_median"
+text = "the slope is the median of the slopes in exact rational arithmetic, rounded once"
+
+[[properties.symmetries]]
+name = "negated_values"
+text = "the negated values have the negated slope and intercept"
+
+[properties.symmetries.tolerance]
+reason = "negation is exact in every operation"
+abs = 0.0
+
+[[sources]]
+citation = "Gilbert, R.O. (1987). Statistical Methods for Environmental Pollution Monitoring. Van Nostrand Reinhold, New York"
+access = "open"
+locator = "section 16.5, eqs. 16.8 and 16.9, p. 218: the N' slopes (x_i' - x_i) / (i' - i) of the pairs of data i' > i of different times (several values of one time give no slope among themselves), their median; Example 16.5, p. 219"
+url = "https://digital.library.unt.edu/ark:/67531/metadc1197046/m2/1/high_res_d/7037501.pdf"
+
+[[sources]]
+citation = "Helsel, D.R., Hirsch, R.M., Ryberg, K.R., Archfield, S.A., Gilroy, E.J. (2020). Statistical Methods in Water Resources. U.S. Geological Survey Techniques and Methods 4-A3"
+access = "open"
+locator = "section 10.1.1, eqs. 10.1 to 10.3, pp. 266-268: the Theil-Sen slope, the median of all pairwise slopes, and the intercept b0 = y_med - b1 x_med (Conover 1999)"
+url = "https://pubs.usgs.gov/tm/04/a03/tm4a3.pdf"
+
+[[sources]]
+citation = "Sen, P.K. (1968). Estimates of the regression coefficient based on Kendall's tau. Journal of the American Statistical Association 63, 1379-1389"
+access = "author-provided"
+
+[[sources]]
+citation = "Conover, W.J. (1980). Practical Nonparametric Statistics, 2nd ed. Wiley, New York"
+access = "author-provided"
+locator = "the intercept median(x) - slope median(t)"
+
+[[variables]]
+name = "values"
+symbol = "x_i"
+unit = "m3/s"
+kind = "real_array"
+description = "The series, one value per time of times, in any unit; the slope comes in its unit per unit of time."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 1
+max_length = 5000
+
+[variables.physical]
+test_low = -1000000.0
+test_high = 1000000.0
+test_reason = "the test counts the signs of differences and Sen's slope scales with the unit of the series, so any bound tests their arithmetic: a million m3/s exceeds the discharge of every river, and a stage or a temperature may lie below 0, so the same bound holds below 0"
+
+[variables.typical]
+low = 0.81
+low_inclusive = true
+high = 111.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "examples 1.1, 1.2, 3.3 and 3.4, tables 1.1 (pp. 11-12), 1.2 (pp. 13-14), 3.10 (p. 48) and 3.13 (pp. 55-56): the Mann-Kendall test of the annual maxima of the Bóbr at Bukówka, the Czarna at Polana, the Rypienica at Rypin and the Świślina at Rzepin: annual maxima of 0.81 to 111 m3/s"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[variables]]
+name = "times"
+symbol = "t_i"
+unit = "a"
+kind = "real_array"
+description = "The time of each value in order: its year, or its step 0, 1, 2 … of the series; several values may share a time. The slope is per unit of these times."
+applicability = "unstated"
+gaps_allowed = false
+dims = 1
+min_length = 1
+max_length = 5000
+
+[variables.physical]
+test_low = -1000000.0
+test_high = 1000000.0
+test_reason = "years of the Common Era or steps of a series of at most 5,000 values: a million exceeds both"
+
+[variables.typical]
+low = 1965.0
+low_inclusive = true
+high = 2005.0
+high_inclusive = true
+
+[variables.typical.source]
+citation = "KZGW (2017). Aktualizacja metodyki obliczania przepływów i opadów maksymalnych o określonym prawdopodobieństwie przewyższenia dla zlewni kontrolowanych i niekontrolowanych, załącznik 2 do OPZ (wersja ujednolicona)"
+access = "open"
+locator = "examples 1.1, 1.2, 3.3 and 3.4, tables 1.1 (pp. 11-12), 1.2 (pp. 13-14), 3.10 (p. 48) and 3.13 (pp. 55-56): the Mann-Kendall test of the annual maxima of the Bóbr at Bukówka, the Czarna at Polana, the Rypienica at Rypin and the Świślina at Rzepin: the years 1965 to 2005"
+url = "https://kzgw.gov.pl/files/zam-pub/20170402-przeglad-i-aktualizacja-map/zal-2-do-OPZ-ujednolicony-1.pdf"
+
+[[constraints]]
+name = "same_length"
+class = "physical"
+text = "one time per value"
+
+[constraints.source]
+citation = "Gilbert, R.O. (1987). Statistical Methods for Environmental Pollution Monitoring. Van Nostrand Reinhold, New York"
+access = "open"
+locator = "section 16.5, eqs. 16.8 and 16.9, p. 218: the N' slopes (x_i' - x_i) / (i' - i) of the pairs of data i' > i of different times (several values of one time give no slope among themselves), their median; Example 16.5, p. 219"
+url = "https://digital.library.unt.edu/ark:/67531/metadc1197046/m2/1/high_res_d/7037501.pdf"
+
+[[constraints]]
+name = "times_in_order"
+class = "physical"
+text = "t[i+1] >= t[i]: the values in time order, several of one time allowed"
+
+[constraints.source]
+citation = "Gilbert, R.O. (1987). Statistical Methods for Environmental Pollution Monitoring. Van Nostrand Reinhold, New York"
+access = "open"
+locator = "section 16.5, eqs. 16.8 and 16.9, p. 218: the N' slopes (x_i' - x_i) / (i' - i) of the pairs of data i' > i of different times (several values of one time give no slope among themselves), their median; Example 16.5, p. 219"
+url = "https://digital.library.unt.edu/ark:/67531/metadc1197046/m2/1/high_res_d/7037501.pdf"
+
+[[constraints]]
+name = "two_times"
+class = "precondition"
+text = "t[-1] > t[0]: two values of different times make a slope"
+
+[constraints.source]
+citation = "Gilbert, R.O. (1987). Statistical Methods for Environmental Pollution Monitoring. Van Nostrand Reinhold, New York"
+access = "open"
+locator = "section 16.5, eqs. 16.8 and 16.9, p. 218: the N' slopes (x_i' - x_i) / (i' - i) of the pairs of data i' > i of different times (several values of one time give no slope among themselves), their median; Example 16.5, p. 219"
+url = "https://digital.library.unt.edu/ark:/67531/metadc1197046/m2/1/high_res_d/7037501.pdf"
+
+[[constraints]]
+name = "slopes_in_float64"
+class = "precondition"
+text = "2 (max x - min x) / (least step of t) and the line (max x - min x) / (least step of t) max|t| + max|x| are finite in float64: every slope, the difference of two slopes and the intercept are"
+
+[constraints.source]
+citation = "Gilbert, R.O. (1987). Statistical Methods for Environmental Pollution Monitoring. Van Nostrand Reinhold, New York"
+access = "open"
+locator = "section 16.5, eqs. 16.8 and 16.9, p. 218: the N' slopes (x_i' - x_i) / (i' - i) of the pairs of data i' > i of different times (several values of one time give no slope among themselves), their median; Example 16.5, p. 219"
+url = "https://digital.library.unt.edu/ark:/67531/metadc1197046/m2/1/high_res_d/7037501.pdf"
+
+[[outputs]]
+name = "slope"
+unit = "m3/s/a"
+kind = "real"
+symbol = "b"
+description = "Sen's slope: the median of the slopes of the pairs of different times, in the unit of the values per unit of time."
+
+[outputs.physical]
+
+[[outputs]]
+name = "intercept"
+unit = "m3/s"
+kind = "real"
+symbol = "a"
+description = "Conover's intercept: the value of the line at time 0 (year 0 with years)."
+
+[outputs.physical]
+
+[[outputs]]
+name = "n_slopes"
+unit = "-"
+kind = "integer"
+symbol = "N'"
+description = "The number of pairs of different times."
+
+[outputs.physical]
+low = 1.0
+low_inclusive = true
+
+[[traps]]
+name = "singular_at_bound"
+description = "log, sqrt or a negative or fractional power of an input at a bound of its range."
+test = "1 / (t_j - t_i): pairs of one time give no slope and series of one time are refused by the precondition two_times; slopes beyond float64 by slopes_in_float64 (test_a_series_of_one_time_and_slopes_beyond_float64_are_refused)"
+
+[[traps]]
+name = "gap_propagation"
+description = "A gap (NaN) that propagates through a sum, a convolution or a moving window."
+test = "type cases values-nan_element and times-nan_element: a gap is refused"
+
+[[oracles]]
+kind = "exact"
+description = "the median of the slopes in exact rational arithmetic (fractions)"
+test = "tests/unit/test_formulas_trend.py (limit exact_median)"
+conventions = []
+
+[[oracles]]
+kind = "established"
+description = "scipy.stats.theilslopes with method='separate': the median of the slopes of the pairs with x_j > x_i and the intercept median(y) - slope median(x) (SciPy 1.18.1)"
+test = "tests/unit/test_formulas_trend.py (test_the_line_is_scipys_theilslopes)"
+conventions = ["theilslopes takes the pairs with x_j > x_i, the pairs of different times of the spec", "method='separate' is Conover's intercept, the spec's"]
+
+[[oracles]]
+kind = "frozen"
+description = "R 4.4.3 trend 1.1.10 sens.slope and modifiedmk 1.6 mkttest on 13 series"
+test = "tests/oracles/trend_regime/r_oracle_outputs_headed.csv (tests/unit/test_formulas_trend.py, test_sens_slope_is_rs)"
+conventions = ["R's slopes are per step of the index, the spec's per unit of the times: equal for consecutive years, the only series compared"]

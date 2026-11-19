@@ -1,0 +1,7 @@
+R version 4.4.3 (2025-02-28)
+platform x86_64-conda-linux-gnu
+trend 1.1.10
+Kendall 2.2.2
+modifiedmk 1.6
+date 2026-11-18 18:35:37 CET
+input datasets.csv sha256 eda93ebcf7d6aba5ec45cbfd41e72f5dcb065e6ba960e95c3f11d4ebd753535d  datasets.csv
