@@ -127,7 +127,7 @@ s_offset = "Składnik odejmowany od ilorazu (w calach)"
 [formulas.scs_cn_runoff]
 en_sha256 = "018322ca110ada2df39c72c577c82a98d70e907a72300eb57082fe7cc1131981"
 title = "Odpływ bezpośredni z opadu według metody SCS-CN"
-validation = "NEH 630-9 (s. 9-1) wyprowadza liczby CN swoich tablic z rocznych wezbrań małych zlewni rolniczych, na ogół mniejszych niż 1 mila kwadratowa, i z opadów trwających najwyżej jeden dzień; źródła nie podają żadnej miary błędu równania"
+validation = "NEH 630-9 (s. 9-1) wyprowadza liczby CN swoich tablic z rocznych wezbrań małych zlewni rolniczych o powierzchni na ogół poniżej 1 mili kwadratowej i z opadów trwających najwyżej jeden dzień; źródła nie podają żadnej miary błędu równania"
 conventions = [
     "jednostki SI: wysokości w mm",
     "równanie stosuje się do sumy narastającej opadu, a odpływ w każdym kroku to różnica sum narastających odpływu (NEH 630-10, przykład 10-6; KZGW 2017, wzór 6.2); sumę opadu traktuje się jak opad o jednym kroku",
@@ -136,9 +136,9 @@ conventions = [
     "C = Q / P dla całego opadu, 0 przy braku opadu",
 ]
 assumptions = [
-    "CN z tablic NRCS zakładają lambda = 0,2; inna wartość lambda wymaga CN dopasowanych do niej (NEH 630-10 s. 10-4; Woodward i in. 2003), a polecenie `scs effective` wydaje wtedy uwagę `ia_coefficient_nonstandard`",
+    "wartości CN z tablic NRCS zakładają lambda = 0,2; inna wartość lambda wymaga CN dopasowanych do niej (NEH 630-10 s. 10-4; Woodward i in. 2003), a polecenie `scs effective` wydaje wtedy uwagę `ia_coefficient_nonstandard`",
     "odpływ bezpośredni z jednego opadu, a nie model infiltracji ani symulacja ciągła (NEH 630-10 s. 10-19); nie dla topnienia śniegu ani deszczu na zamarzniętym gruncie (TR-55 s. 2-11)",
-    "TR-55 (s. 2-11) uznaje metodę za mniej dokładną dla odpływu poniżej 0,5 cala (12,7 mm); ta granica wyniku nie daje uwagi",
+    "TR-55 (s. 2-11) uznaje metodę za mniej dokładną dla odpływu poniżej 0,5 cala (12,7 mm); wynik poniżej tej granicy nie wywołuje uwagi",
 ]
 
 [formulas.scs_cn_runoff.variables]
@@ -158,9 +158,9 @@ en_sha256 = "aacbc03cc8d7fa31d7a0d2b9590abcebecfa49445388217f02e13d79adcba14f"
 title = "Liczba CN dla warunków wilgotnościowych poprzedzających I lub III (Hawkins i in. 1985)"
 validation = "Ponce i Hawkins (1996, s. 15) podają dopasowania S_I = 2,281 S_II (r2 0,999, błąd standardowy 0,206 cala) i S_III = 0,427 S_II (r2 0,994, 0,088 cala) do tab. 10-1 NEH oraz błędy standardowe 1,0 CN (wzór 15) i 0,7 CN (wzór 16); względem tej tablicy przy CN od 55 do 95 zaokrąglone przeliczenie różni się najwyżej o 2 CN dla ARC I i o 1 CN dla ARC III (bez zaokrąglenia najwyżej 2,45 CN dla ARC I przy CN 92 i 1,19 CN dla ARC III przy CN 79)"
 conventions = [
-    "dopasowanie Hawkinsa i in. (1985) do krzywych NRCS, a nie sama tab. 10-1 NEH 630-10 (NEH 630-10 s. 10-6; podaje tę tablicę) ani wzory 5.5.7-5.5.8 Chow i in. (1988), będące innym dopasowaniem",
+    "dopasowanie Hawkinsa i in. (1985) do krzywych NRCS, a nie sama tab. 10-1 NEH 630-10 (NEH 630-10 s. 10-6; podaje tę tablicę) ani wzory 5.5.7-5.5.8 Chowa i in. (1988), będące innym dopasowaniem",
     "zaokrąglana do najbliższej liczby całkowitej, tak jak drukuje je tab. 10-1, połowa do liczby parzystej; co najmniej 1",
-    "ARC II to CN w podanej postaci: bez wzoru",
+    "dla ARC II CN pozostaje taka, jak podano: bez wzoru",
 ]
 assumptions = [
     "NEH 630-10 (s. 10-5, 10-7) nie stwierdził związku między opadem z pięciu poprzedzających dni a CN: warunki wybiera inżynier",
@@ -185,7 +185,7 @@ validation = "NEH 630-9 (s. 9-1) wyprowadza CN swoich kompleksów z rocznych wez
 conventions = [
     "ARC (AMC) II i Ia = 0,2 S (TR-55, tab. 2-2a do 2-2c, przypis 1)",
     "`herbaceous` to wiersz „pastwisko, łąka lub wypas ekstensywny” (pasture, grassland or range) z tab. 2-2c, jak każe przypis 1 tab. 2-2d dla wypasu ekstensywnego w regionach wilgotnych; samej tab. 2-2d (pastwiska ekstensywne obszarów suchych i półsuchych) się nie używa",
-    "uprawy rzędowe i zboża to wiersze „rzędy prosto” z tab. 2-2b, tylko w stanie złym i dobrym: TR-55 nie ma dla nich stanu średniego",
+    "uprawy rzędowe i zboża to wiersze „rzędy proste” (straight row) z tab. 2-2b, tylko w stanie złym i dobrym: TR-55 nie ma dla nich stanu średniego",
     "woda ma CN 98 (NEH 630-9 s. 9-1), a nie 100 jak w niektórych opracowaniach",
 ]
 
@@ -211,8 +211,8 @@ conventions = [
     "sam wzór nie ma poprawki małych spadków; Kerby–Kirpich stosuje ją w swojej części korytowej (Cleveland i in. 2012)",
 ]
 assumptions = [
-    "małe zlewnie wiejskie z wyraźnymi korytami, 1,25-112 akrów (0,005-0,45 km2, sprawdzane przez `WatershedParameters.calculate_tc`), a więc głównie przepływ korytem; Kirpich stosował wzór do ok. 200 akrów (Roussel i in. 2005, s. 5); mnożniki 0,4 dla spływu po stoku po betonie lub asfalcie i 0,2 dla koryt betonowych z praktyki amerykańskiej (Fang i in. 2005, s. 22) nie są stosowane",
-    "zlewnie Hydrografu (drogi spływu 0,05-30 km) leżą w większości poza danymi Kirpicha (0,107-1,22 km): ich wyniki są ekstrapolacją, z uwagą",
+    "małe zlewnie wiejskie z wyraźnymi korytami, 1,25-112 akrów (0,005-0,45 km², sprawdzane przez `WatershedParameters.calculate_tc`), a więc głównie przepływ korytem; Kirpich stosował wzór do ok. 200 akrów (Roussel i in. 2005, s. 5); mnożniki 0,4 dla spływu po stoku po betonie lub asfalcie i 0,2 dla koryt betonowych z praktyki amerykańskiej (Fang i in. 2005, s. 22) nie są stosowane",
+    "zlewnie Hydrografu (drogi spływu 0,05-30 km) leżą w większości poza zakresem danych Kirpicha (0,107-1,22 km): ich wyniki są ekstrapolacją, z uwagą",
 ]
 
 [formulas.kirpich.variables]
@@ -235,10 +235,10 @@ conventions = [
     "wzór 15-4b w jednostkach źródła: l w stopach i S w calach przez dokładne przeliczniki 0,3048 m/ft i 25,4 mm/cal z tabeli jednostek, Y w procentach (100 na m/m), Tc w godzinach, przeliczany na minuty; w SI ma postać 100 l[m]^0,8 (S[mm] + 25,4)^0,7 / (7068,86 Y^0,5), gdzie 100/7068,86 = 0,0141466, podczas gdy Hydrolog do wersji 0.8.1 stosował 0,01416 (+0,095 %, TRIAGE T8)",
     "Tc = lag / 0,6 (wzór 15-3, Mockus 1957; Simas 1996); hydrogram jednostkowy przyjmuje tp = D/2 + 0,6 Tc (USACE HEC-HMS Technical Reference Manual, hydrogram jednostkowy SCS, wzory 1 i 3); TR-55 (1986) nie podaje zależności dla opóźnienia",
     "l to najdłuższa droga spływu od działu wodnego do przekroju (s. 15-5); Y to średni spadek terenu zlewni, „nie mylić ze spadkiem drogi spływu” (s. 15-5)",
-    "współczynnik oporu cn' to CN dla AMC II (s. 15-6: CN służy jako zastępnik cn'); S = 0 przy CN 100; ułamkowa CN, będąca średnią ważoną, jest używana bez zmian",
+    "współczynnik oporu cn' to CN dla AMC II (s. 15-6: CN służy jako zamiennik cn'); S = 0 przy CN 100; ułamkowa CN, będąca średnią ważoną, jest używana bez zmian",
 ]
 assumptions = [
-    "przeciętne naturalne warunki zlewni z w przybliżeniu równomiernym rozkładem odpływu (wzór 15-3); powierzchnię 24 zlewni, 0,005-24 km2, sprawdza `WatershedParameters.calculate_tc`",
+    "przeciętne naturalne warunki zlewni z w przybliżeniu równomiernym rozkładem odpływu (wzór 15-3); powierzchnię 24 zlewni, 0,005-24 km², sprawdza `WatershedParameters.calculate_tc`",
     "drogi spływu Hydrografu (0,05-30 km) i CN jego zlewni (51,8-81,4) leżą w zakresie CN równania; CN poniżej 50 lub powyżej 95 daje uwagę",
 ]
 
@@ -264,12 +264,12 @@ en_sha256 = "291d7cdf05011dd1b6fa47b2b141c91e13fb246bf3ea872cf9ccb70e251fdfb6"
 title = "Czas koncentracji według wzoru Giandottiego (1934)"
 validation = "brak w otwartych źródłach (Giandotti 1934 nie jest dostępny otwarcie)"
 conventions = [
-    "A w km2, L w km i H w m, jak podają źródła; tc w godzinach przeliczany na minuty",
+    "A w km², L w km i H w m, jak podają źródła; tc w godzinach przeliczany na minuty",
     "H to średnia wysokość zlewni minus wysokość przekroju, a nie deniwelacja (maksimum minus minimum) ani sama średnia wysokość",
-    "L to ciek główny, pole `channel_length_km`, za Grimaldim i in. (2012, wzór 5); Autorità di bacino del Po (2001, §6.1: 'percorso idraulicamente più lungo') i Michailidi i in. (2018) przyjmują najdłuższą drogę spływu, dłuższą o odcinek spływu po stoku (Kamiennik: 14,78 wobec 15,88 km, +3,5 % w tc)",
+    "L to ciek główny, pole `channel_length_km`, za Grimaldim i in. (2012, wzór 5); Autorità di bacino del Po (2001, §6.1: „percorso idraulicamente più lungo”) i Michailidi i in. (2018) przyjmują najdłuższą drogę spływu, dłuższą o odcinek spływu po stoku (Kamiennik: 14,78 wobec 15,88 km, +3,5 % w tc)",
 ]
 assumptions = [
-    "zlewnie środkowych i północnych Włoch o powierzchni 170-70 000 km2 (Almeida i in. 2014, tab. 1); zlewnie Hydrografu, do 250 km2, leżą w większości poniżej tego zakresu: ich wyniki są ekstrapolacją, z uwagą",
+    "zlewnie środkowych i północnych Włoch o powierzchni 170-70 000 km² (Almeida i in. 2014, tab. 1); zlewnie Hydrografu, do 250 km², leżą w większości poniżej tego zakresu: ich wyniki są ekstrapolacją, z uwagą",
 ]
 
 [formulas.giandotti.variables]
@@ -301,7 +301,7 @@ assumptions = [
 [formulas.faa.variables]
 length_km = "Długość spływu po stoku (warstwą), od najdalszego punktu do wyraźnego koryta lub wpustu"
 slope_m_per_m = "Spadek powierzchni, po której spływa woda"
-runoff_coeff = "Współczynnik spływu metody wymiernej"
+runoff_coeff = "Współczynnik spływu metody racjonalnej"
 
 [formulas.faa.outputs]
 tc_min = "Czas koncentracji"
@@ -321,7 +321,7 @@ conventions = [
     "poprawka małych spadków Clevelanda i in. (2012, wzory 1-2): spadek poniżej 0,002 przyjmuje się jako S + 0,0005; sam wzór rozstrzyga o niej według własnego spadku, podczas gdy Cleveland i in. rozstrzygają według spadku cieku głównego, którego sam spływ po stoku nie ma; przy 0,002 poprawka znika, więc tc rośnie o 5,35 %, gdy S dochodzi do 0,002 od dołu, i jest monotoniczny względem S tylko po każdej stronie 0,002",
 ]
 assumptions = [
-    "dane Kerby'ego: zlewnie poniżej 10 akrów (0,04 km2, sprawdzane przez `WatershedParameters.calculate_tc`), spływ po stoku do 1 200 ft, spadki poniżej 1 %, N do 0,8 (Roussel i in. 2005, s. 5); tylko spływ po stoku (warstwą)",
+    "dane Kerby'ego: zlewnie poniżej 10 akrów (0,04 km², sprawdzane przez `WatershedParameters.calculate_tc`), spływ po stoku do 1 200 ft, spadki poniżej 1 %, N do 0,8 (Roussel i in. 2005, s. 5); tylko spływ po stoku (warstwą)",
     "N z tablicy Kerby'ego (Roussel i in. 2005, suplement, s. 29): nawierzchnia utwardzona 0,02; gładka, naga, ubita gleba 0,10; słaba trawa, uprawy rzędowe lub umiarkowanie szorstkie ubite powierzchnie 0,20; pastwisko, przeciętna trawa 0,40; las liściasty 0,60; gęsta trawa, las iglasty lub las liściasty z grubą ściółką 0,80",
     "odcinki spływu po stoku w Hydrografie (0,04-0,7 km przy 0,005-0,19 m/m) są w większości bardziej strome niż w danych Kerby'ego: ich wyniki są ekstrapolacją, z uwagą",
 ]
@@ -350,7 +350,7 @@ conventions = [
     "przy spadku drogi spływu równym 0,002 część korytowa rośnie o 8,97 %, a przy spadku stoku równym 0,002 część po stoku o 5,35 %, gdy poprawka znika: tc nie jest monotoniczny względem żadnego z tych spadków",
 ]
 assumptions = [
-    "92 zlewnie w Teksasie z pracy Roussela i in. (2005): 0,25-150 mil kwadratowych (0,65-388 km2, sprawdzane przez `WatershedParameters.calculate_tc`), cieki główne o długości 1-50 mil i spadku 0,002-0,02; „w bazie danych, na której oparto metodę, nie ma zlewni o małych spadkach terenu” (suplement, s. 29)",
+    "92 zlewnie w Teksasie z pracy Roussela i in. (2005): 0,25-150 mil kwadratowych (0,65-388 km², sprawdzane przez `WatershedParameters.calculate_tc`), cieki główne o długości 1-50 mil i spadku 0,002-0,02; „w bazie danych, na której oparto metodę, nie ma zlewni o małych spadkach terenu” (suplement, s. 29)",
     "odcinek spływu po stoku do 1 200 ft, górnej granicy Kerby'ego (suplement, s. 29); metoda nie podaje zakresu spadku stoku, a jej własny przykład przyjmuje 2 %",
 ]
 
@@ -379,16 +379,16 @@ flow_path_longer_than_overland = "flow_path_length_km > overland_length_km"
 [formulas.equal_area_slope]
 en_sha256 = "17286e217232f36c19f39ea38a1edf24a6ee453f0806ae364730b1e29e39e414"
 title = "Spadek uśredniony profilu podłużnego metodą równych pól (prosta przez przekrój z równymi polami nad nią i pod nią)"
-validation = "brak: spadek metodą równych pól definiuje średni spadek profilu (TM61, załącznik A; KZGW 2017, s. 97); jego źródła nie porównują go z żadnymi obserwacjami, a TM61 (s. 12) zauważa, że w praktyce daje on wyniki w dużej mierze niezależne od wykonującego"
+validation = "brak: spadek uśredniony metodą równych pól definiuje średni spadek profilu (TM61, załącznik A; KZGW 2017, s. 97); jego źródła nie porównują go z żadnymi obserwacjami, a TM61 (s. 12) zauważa, że w praktyce daje on wyniki w dużej mierze niezależne od osoby wykonującej obliczenia"
 conventions = [
     "profil jest uporządkowany od przekroju w górę: x to odległość wzdłuż drogi spływu w m od dowolnego początku, bo liczą się tylko różnice, z to wysokość w m; L to ostatnia odległość minus pierwsza",
     "prosta przechodzi przez pierwszy punkt, czyli przekrój, na jego wysokości: TM61 prowadzi ją przez przekrój A, KZGW (2017, s. 97) z najniższego punktu profilu, którym jest przekrój drogi spływu na wypełnionym NMT; odcinek poniżej przekroju liczy się jako pole pod prostą, więc A to pole ze znakiem funkcji z - z[0]",
-    "A metodą trapezów, profil prosty między punktami (Barbosa Jr., wzór 17); trójkąt pod prostą, L (S L) / 2, ma pole równe A, więc pola profilu nad prostą i pod nią są równe (TM61, Sa = 2Ad/L^2)",
+    "A metodą trapezów, profil prostoliniowy między punktami (Barbosa Jr., wzór 17); trójkąt pod prostą, L (S L) / 2, ma pole równe A, więc pola profilu nad prostą i pod nią są równe (TM61, Sa = 2Ad/L^2)",
     "S w m/m, nie w procentach ani promilach",
     "Jg Lutza (KZGW 2017, s. 97) to właśnie ten spadek profilu podłużnego cieku głównego od działu wodnego do przekroju, czyli najdłuższej drogi spływu (`WatershedParameters.flow_path_equal_area_slope_m_per_m`); spadek między końcami tej drogi (`flow_path_slope_m_per_m`), S Kirpicha, jest na profilu wklęsłym większy i nie może go zastąpić",
 ]
 assumptions = [
-    "punkty należą do jednej drogi spływu tam, gdzie znana jest wysokość: komórki drogi D8 na wypełnionym NMT lub punkty pomierzone; ciąg punktów o równej wysokości można przerzedzić do jego końców bez zmiany A",
+    "punktami są te miejsca jednej drogi spływu, w których znana jest wysokość: komórki drogi D8 na wypełnionym NMT lub punkty pomierzone; ciąg punktów o równej wysokości można przerzedzić do jego końców bez zmiany A",
     "profil z wypełnionego NMT nie ma punktu poniżej przekroju; pomierzone dno może mieć poniżej niego przegłębienia, które zmniejszają A",
 ]
 
@@ -409,15 +409,15 @@ en_sha256 = "850e732c5a947b40458278e9fc46205e3a228385bd342fe57162b44d0b543cbe"
 title = "Parametry n i K kaskady Nasha dla zlewni niekontrolowanej metodą Lutza (KZGW 2017)"
 validation = "Lutz (1984) dopasował zależności do 75 zlewni południowo-zachodnich Niemiec o powierzchni do 250 km² (Sikorska i in. 2012, s. 1225); KZGW (2017, rys. 6.3) podaje R² = 0,9974 dla zależności P1 od współczynnika n Manninga; żadne źródło dostępne dla Hydrologu nie podaje błędów tp, up ani przepływów kulminacyjnych względem obserwacji"
 conventions = [
-    "up = 0,66 / tp**1,04 to zależność Lutza dla dt -> 0 (KZGW 2017, wzór 6.19, s. 98), czyli kulminacja chwilowego hydrogramu jednostkowego; hydrogram jednostkowy dla kroku dt uśrednia ten chwilowy hydrogram dokładnie na przedziale dt (`NashIUH.to_unit_hydrograph`). Przykład 6.2 KZGW (s. 100) przyjmuje natomiast zależność dla dt = 1 h, up = 0,464 / tp**0,824, a Sikorska i in. (2012, tab. 1) stwierdzają, że P2 i P3 zależą od przedziału czasu: tamta droga daje N 2,55 i k 0,70 h, podczas gdy ta daje N 3,88 i K 0,377 h (przypadek `kzgw2017-ex6-2-n-k`, rozbieżność)",
+    "up = 0,66 / tp**1,04 to zależność Lutza dla dt -> 0 (KZGW 2017, wzór 6.19, s. 98), czyli kulminacja chwilowego hydrogramu jednostkowego; hydrogram jednostkowy dla kroku dt uśrednia ten chwilowy hydrogram dokładnie na przedziale dt (`NashIUH.to_unit_hydrograph`). Przykład 6.2 KZGW (s. 100) przyjmuje natomiast zależność dla dt = 1 h, up = 0,464 / tp**0,824, a Sikorska i in. (2012, tab. 1) stwierdzają, że P2 i P3 zależą od przedziału czasu: tamto podejście daje N 2,55 i k 0,70 h, podczas gdy przyjęte tutaj daje N 3,88 i K 0,377 h (przypadek `kzgw2017-ex6-2-n-k`, rozbieżność)",
     "P1 = 3,989 nM + 0,028: wzór 6.18 (KZGW 2017, s. 97) podaje „- 0,028”, co jest błędem druku, jak pokazują rys. 6.3 (P1 = 3,9886 n + 0,0284) i przykład 6.2 (P1 = 0,128 dla n = 0,025)",
     "0,66 ze wzoru 6.19 KZGW, a nie 0,64 podane przez Sikorską i in. (2012, tab. 1), którzy powołują się na tę samą pracę Lutza (1984)",
-    "L i Lc w km, Jg w m/m — spadek profilu podłużnego cieku głównego uśredniony metodą równych pól (KZGW 2017, s. 97; specyfikacja `equal_area_slope`), nM w s m^-1/3, U i W w procentach powierzchni zlewni; tp w h, up w 1/h, K zwracane w min przez dokładne 60 min/h",
+    "L i Lc w km, Jg w m/m — spadek profilu podłużnego cieku głównego uśredniony metodą równych pól (KZGW 2017, s. 97; specyfikacja `equal_area_slope`), nM w s m^-1/3, U i W w procentach powierzchni zlewni; tp w h, up w 1/h, K zwracane w min po przeliczeniu przez dokładne 60 min/h",
     "N jest rozwiązaniem równania f(N) = tp up na przedziale [1,1; 20] metodą Brenta (`scipy.optimize.brentq`, `xtol` 1e-6), podczas gdy KZGW odczytuje je z tab. C.2 (s. 132–133); f jest tam ściśle rosnąca, od 0,0755 do 1,731, i zgadza się z 13 wierszami tabeli od N = 1,10 do 7,99 z dokładnością do połowy ostatniej drukowanej cyfry",
 ]
 assumptions = [
     "zlewnie o powierzchni do 236 km² z zabudową rozmieszczoną dość równomiernie (KZGW 2017, s. 97); `NashIUH.from_lutz` ostrzega przy większej powierzchni; dane Lutza obejmowały 75 zlewni o powierzchni do 250 km² (Sikorska i in. 2012, s. 1225)",
-    "zlewnia zbliżona do naturalnej: KZGW (2017, s. 96) stosuje model Nasha z parametrami Lutza przy udziale powierzchni nieprzepuszczalnych poniżej 5%",
+    "zlewnia zbliżona do naturalnej: KZGW (2017, s. 96) stosuje model Nasha z parametrami Lutza przy udziale powierzchni nieprzepuszczalnych poniżej 5 %",
 ]
 
 [formulas.lutz.variables]
@@ -456,14 +456,14 @@ title = "Bezwymiarowy hydrogram jednostkowy SCS (NRCS) dla jednostkowego czasu t
 validation = "Mockus (1957) wyprowadził bezwymiarowy hydrogram jednostkowy z wielu naturalnych hydrogramów jednostkowych zlewni bardzo zróżnicowanych pod względem wielkości i położenia geograficznego (NEH 630-16, s. 16-2; HEC-HMS 2000, s. 55: małe zlewnie rolnicze); źródła nie podają żadnej statystyki błędu jego kształtu ani kulminacji"
 conventions = [
     "jednostki SI: A w km², czasy w min, rzędne w m³/s na mm odpływu; C = 2,08 odnosi się do cm (HEC-HMS 2000, wzór 36), na mm przeliczone przez dokładne 10 mm/cm",
-    "C = 2,08 odpowiada współczynnikowi szczytu NEH 483,2 w jednostkach anglosaskich (stopa–funt), a nie 484: NEH 630 (s. 16A-2) przypisuje tab. 16-1 współczynnik 483,4 wynikający z zaokrągleń jej stosunków; przy 2,08 ciągła tabela zawiera 1,00036 mm",
+    "C = 2,08 odpowiada współczynnikowi szczytu NEH 483,2 w jednostkach anglosaskich (stopa–funt), a nie 484: NEH 630 (s. 16A-2) przypisuje tab. 16-1 współczynnik 483,4 wynikający z zaokrągleń jej stosunków; przy 2,08 objętość ciągłej tabeli wynosi 1,00036 mm",
     "czasy liczone od początku jednostkowego opadu efektywnego; D jest krokiem czasowym",
     "tab. 16-1 interpolowana liniowo między wierszami, tak jak w tab. 16-2 NEH 630 (t/Tp 2,1 daje 0,2435), oraz 0 od t/Tp = 5",
     "rzędne to wartości krzywej w chwilach kroków czasowych (NEH 630, przykład 16-1, krok 2)",
-    "krok dłuższy niż 0,25 Tp dzieli się na kroki cząstkowe, a opad kroku rozkłada równomiernie na nie (uwaga `uh_substeps`): objętość pozostaje równa 1 mm, natomiast qp, Tp i Tb pozostają wartościami ze wzoru dla D, więc qp przewyższa wtedy największą rzędną (o 21% dla tc 90,7 min przy kroku 60 min)",
+    "krok dłuższy niż 0,25 Tp dzieli się na podkroki, a opad kroku rozkłada się na nie równomiernie (uwaga `uh_substeps`): objętość pozostaje równa 1 mm, natomiast qp, Tp i Tb pozostają wartościami ze wzoru dla D, więc qp przewyższa wtedy największą rzędną (o 21 % dla tc 90,7 min przy kroku 60 min)",
 ]
 assumptions = [
-    "opad efektywny równomierny na całej zlewni i w czasie D; zlewnie cząstkowe o powierzchni najwyżej 20 mil kwadratowych, największa najwyżej 10 razy większa od najmniejszej (NEH 630, s. 16-4); większe zlewnie dzieli się, a ich hydrogramy transformuje w korytach",
+    "opad efektywny równomierny na całej zlewni i w czasie D; zlewnie cząstkowe o powierzchni najwyżej 20 mil kwadratowych, największa najwyżej 10 razy większa od najmniejszej (NEH 630, s. 16-4); większe zlewnie dzieli się, a ich hydrogramy transformuje się w korytach",
     "tlag = 0,6 tc, przeciętna zależność z rozdz. 15 NEH 630",
     "D = 0,2 Tp (D = 0,133 tc), najwyżej 0,25 Tp (NEH 630, s. 16A-3); powyżej tej granicy `hydrograph generate` ostrzega uwagą `outside_typical_range` dla `scs.timestep_min`",
 ]
@@ -487,18 +487,18 @@ peak_factor = "Współczynnik przepływu kulminacyjnego (współczynnik szczytu)
 step_share = "Największy zalecany stosunek kroku czasowego do czasu do kulminacji"
 
 [formulas.scs.constraints]
-steps_representable = "float64 przedstawia tlag, Tp, krok cząstkowy i kulminacje jako liczby znormalizowane, kroków cząstkowych jest najwyżej 2**53, a siatki kroku i kroku cząstkowego mają każda najwyżej milion rzędnych"
+steps_representable = "float64 przedstawia tlag, Tp, podkrok i kulminacje jako liczby znormalizowane, podkroków jest najwyżej 2**53, a siatki kroku i podkroku mają każda najwyżej milion rzędnych"
 
 [formulas.snyder]
 en_sha256 = "d21a0f74f51152fdfb6bb990ac683e6b3ba3cd140131e21e5845bcbac09845c4"
 title = "Syntetyczny hydrogram jednostkowy Snydera: czas opóźnienia, kulminacja, czas podstawy i szerokości"
-validation = "Snyder (1938) wyprowadził zależności dla zlewni Wyżyn Appalaskich o powierzchni od 10 do 10 000 mil kwadratowych (Chow i in. 1988 za notatkami Rajagopalana, s. 76); Ct i Cp są regionalne i najlepiej wyznaczać je przez kalibrację (HEC-HMS); źródła nie podają żadnej statystyki błędu"
+validation = "Snyder (1938) wyprowadził zależności dla zlewni w Appalachach o powierzchni od 10 do 10 000 mil kwadratowych (Chow i in. 1988 za notatkami Rajagopalana, s. 76); Ct i Cp są regionalne i najlepiej wyznaczać je przez kalibrację (HEC-HMS); źródła nie podają żadnej statystyki błędu"
 conventions = [
     "jednostki SI: A w km², L i Lc w km; Ct w jednostkach SI zawiera mnożnik 0,75 Snydera (HEC-HMS: tp = C Ct (L Lc)^0,3, C = 0,75 w SI), więc jego zakres od 1,35 do 1,65 to 0,75 razy zakres Snydera od 1,8 do 2,2 (KZGW 2017, s. 90)",
     "kulminacje w m³/s na mm odpływu: 0,275 i 0,556 na mm to wartości 2,75 i 5,56 na cm u Chowa (KZGW 2017, wzory 6.7 i 6.11)",
     "czasy liczone od początku opadu jednostkowego, podawane w min: czas opóźnienia tL to tp Snydera w HEC-HMS i u Chowa, czas do kulminacji to tp według KZGW, tp = tL + tD / 2 dla D = tD oraz tpR = tLR + D / 2 dla innego D",
     "tb to podstawa trójkąta o wierzchołku qpR i objętości 1 mm (KZGW 2017, wzór 6.11; C3 / qpR u Chowa), a nie koniec krzywej z `snyder_shape`",
-    "szerokości według Chow i in. (1988), z qpR na jednostkę powierzchni, ze współczynnikami Snydera 770 i 440 przeliczonymi dokładnie z ft³/s na mi² i cal (1 / 2323,2 m³/s na km² i mm, tabela jednostek): 0,17829 i 0,10188; wartości SI Chowa 2,14 i 1,22 na cm są ich zaokrągleniami (0,17800 i 0,10148 na mm, mniejsze o 0,2% i 0,4%)",
+    "szerokości według Chowa i in. (1988), z qpR na jednostkę powierzchni, ze współczynnikami Snydera 770 i 440 przeliczonymi dokładnie z ft³/s na mi² i cal (1 / 2323,2 m³/s na km² i mm, tabela jednostek): 0,17829 i 0,10188; wartości SI Chowa 2,14 i 1,22 na cm są ich zaokrągleniami (0,17800 i 0,10148 na mm, mniejsze o 0,2 % i 0,4 %)",
     "L to długość cieku głównego od przekroju zamykającego do działu wodnego, Lc — długość wzdłuż niego do punktu najbliższego środkowi ciężkości zlewni (KZGW 2017, s. 90)",
 ]
 assumptions = [
@@ -522,8 +522,8 @@ time_to_peak_min = "Czas do kulminacji dla czasu trwania D liczony od początku 
 standard_peak_discharge_m3s = "Kulminacja dla standardowego czasu trwania"
 peak_discharge_m3s = "Kulminacja dla czasu trwania D"
 time_base_min = "Podstawa trójkąta o wierzchołku qpR i objętości 1 mm"
-width_50_min = "Szerokość hydrogramu jednostkowego na wysokości 50% kulminacji qpR"
-width_75_min = "Szerokość hydrogramu jednostkowego na wysokości 75% kulminacji qpR"
+width_50_min = "Szerokość hydrogramu jednostkowego na wysokości 50 % kulminacji qpR"
+width_75_min = "Szerokość hydrogramu jednostkowego na wysokości 75 % kulminacji qpR"
 
 [formulas.snyder.constants]
 lag_exponent = "Wykładnik iloczynu długości L i Lc w zależności na czas opóźnienia"
@@ -545,10 +545,10 @@ validation = "brak: metoda Snydera daje kulminację, szerokości i czas podstawy
 conventions = [
     "czasy od początku opadu, w min; rzędne w m³/s na mm",
     "rzędne to wartości krzywej w chwilach kroków, przeskalowane tak, by zawierały dokładnie 1 mm: próbkowanie i część poza T zmieniałyby objętość",
-    "`SnyderUH` przyjmuje tpR i qpR ze specyfikacji `snyder` dla danego czasu trwania, a T, jeśli nie zostało podane, w punkcie 99,99% objętości krzywej, T = tpR P^-1(K + 1; 0,9999) / K, gdzie P to regularyzowana dolna niezupełna funkcja gamma",
+    "`SnyderUH` przyjmuje tpR i qpR ze specyfikacji `snyder` dla danego czasu trwania, a T, jeśli nie zostało podane, w chwili, w której krzywa osiąga 99,99 % swojej objętości, T = tpR P^-1(K + 1; 0,9999) / K, gdzie P to regularyzowana dolna niekompletna funkcja gamma",
 ]
 assumptions = [
-    "kształt hydrogramu jednostkowego między punktami wyznaczonymi metodą Snydera to krzywa gamma; KZGW 2017, przykład 6.1, łączy je odcinkami prostymi (jego tab. 6.1, kulminacja niższa o 6,9%)",
+    "kształt hydrogramu jednostkowego między punktami wyznaczonymi metodą Snydera to krzywa gamma; KZGW 2017, przykład 6.1, łączy je odcinkami prostymi (jego tab. 6.1, kulminacja niższa o 6,9 %)",
 ]
 
 [formulas.snyder_shape.variables]
@@ -610,7 +610,7 @@ representable = "float64 przedstawia jako liczby znormalizowane pierwszy odpływ
 [formulas.uh_convolution]
 en_sha256 = "5823a28edc36af513cb73cd927569a9c8bb3b8e7b8b3b580b76ebc50a67cb47b"
 title = "Odpływ bezpośredni z opadu efektywnego przez splot dyskretny z hydrogramem jednostkowym"
-validation = "brak: splot jest superpozycją, którą zakłada hydrogram jednostkowy; jego źródła nie podają własnej zgodności z obserwacjami"
+validation = "brak: splot jest superpozycją, którą zakłada hydrogram jednostkowy; jego źródła nie podają własnej oceny zgodności z obserwacjami"
 conventions = [
     "jednostki SI: wysokości w mm, rzędne w m³/s na mm, przepływy w m³/s",
     "Pe_m to opad efektywny przedziału od m dt do (m + 1) dt, a U_0 — rzędna w t = 0: Q_n w t = n dt to odpowiedź na końcu przedziału n, zgodnie z ustawieniem we wzorze 6.12 KZGW i w przykładzie 16-1 NEH (Q(0,6 h) = 0,12 in x UH(0,3 h))",
@@ -639,9 +639,9 @@ length_bounded = "hydrogram ma najwyżej milion rzędnych, M + K - 1"
 [formulas.muskingum]
 en_sha256 = "b25d4b2dc0a699e43050a6e2ae1f327759bfb323c9c5e1e87ec07a36772ae461"
 title = "Transformacja fali metodą Muskingum w N jednakowych pododcinkach (retencja McCarthy'ego, ciągłość wzorem trapezów)"
-validation = "brak: K i X kalibruje się na wezbraniach obserwowanych na odcinku (HEC-HMS TRM, model Muskingum; EM 1110-2-1417 rozdz. 9); źródła nie podają zgodności samego schematu z obserwacjami"
+validation = "brak: K i X kalibruje się na wezbraniach obserwowanych na odcinku (HEC-HMS TRM, model Muskingum; EM 1110-2-1417 rozdz. 9); źródła nie podają oceny zgodności samego schematu z obserwacjami"
 conventions = [
-    "jednostki SI: przepływ w m3/s, czas w min, retencja w m3 (K w min razy przepływ w m3/s razy 60 s minuty z tabeli jednostek)",
+    "jednostki SI: przepływ w m³/s, czas w min, retencja w m³ (K w min razy przepływ w m³/s razy 60 s minuty z tabeli jednostek)",
     "wagi nazwano według tego, co mnożą: `c_current` — I[t], `c_previous` — I[t-1], `c_outflow` — O[t-1]; NEH 630 i HEC-HMS nazywają je C2, C1 i C3, przykłady z Iowa i NPTEL — C1, C2 i C3",
     "ciągłość wzorem trapezów, (S[t] - S[t-1]) / dt = (I[t] + I[t-1]) / 2 - (O[t] + O[t-1]) / 2, przy S = k [X I + (1 - X) O] w każdym pododcinku",
     "N jednakowych pododcinków o stałej K / N połączonych szeregowo, z tym samym X (HEC-HMS); każdy pododcinek startuje w stanie ustalonym z odpływem O0, więc w pierwszej rzędnej wszystkie poza pierwszym są zasilane przez O0",
@@ -671,15 +671,15 @@ storage_end_m3 = "Objętość wody w pododcinkach w ostatniej rzędnej"
 storage_steady_m3 = "Objętość wody w pododcinkach w stanie ustalonym przy ostatnim dopływie, K I[-1]"
 
 [formulas.muskingum.constraints]
-representable = "dt, K / N i dt / (K / N) >= 2,2e-308, najmniejsza liczba znormalizowana float64, a 2 K [s] i objętość wody K max(I, O0) [m3] są skończone: poniżej tej granicy wagi zaokrąglają się do mniejszej liczby cyfr albo wagi dopływu ulegają niedomiarowi i wpływająca woda ginie; powyżej wagi są NaN"
+representable = "dt, K / N i dt / (K / N) >= 2,2e-308, najmniejsza liczba znormalizowana float64, a 2 K [s] i objętość wody K max(I, O0) [m³] są skończone: poniżej tej granicy wagi zaokrąglają się do mniejszej liczby cyfr albo wagi dopływu ulegają niedomiarowi i wpływająca woda ginie; powyżej wagi są NaN"
 nonnegative_weights = "2 K X / N <= dt <= 2 K (1 - X) / N, każdy koniec z dokładnością do 1e-9 swojej wartości: każda waga jest nieujemna, więc nieujemny dopływ daje nieujemny odpływ"
 
 [formulas.linear_reservoir_cascade]
 en_sha256 = "093fe776e06ff87714542323cf35650ccaf565c5b5ef1cdb0297aaa1bd0d82a4"
 title = "Kaskada n jednakowych zbiorników liniowych, ścisła dla dopływu liniowego między rzędnymi (Nash)"
-validation = "brak: n i K kalibruje się na obserwowanych wezbraniach lub wyznacza z cech odcinka (Kalinin–Milukow); źródła nie podają zgodności samej kaskady z obserwacjami"
+validation = "brak: n i K kalibruje się na obserwowanych wezbraniach lub wyznacza z cech odcinka (Kalinin–Milukow); źródła nie podają oceny zgodności samej kaskady z obserwacjami"
 conventions = [
-    "jednostki SI: przepływ w m3/s, czas w min, retencja w m3 (K w min razy przepływ w m3/s razy 60 s minuty z tabeli jednostek)",
+    "jednostki SI: przepływ w m³/s, czas w min, retencja w m³ (K w min razy przepływ w m³/s razy 60 s minuty z tabeli jednostek)",
     "dopływ jest liniowy między rzędnymi, a przed pierwszą z nich równy odpływowi początkowemu: każdy zbiornik startuje w stanie ustalonym z odpływem O0, a w pierwszej rzędnej dopływ skacze do I[0]",
     "odpływ w rzędnej jest ścisłą odpowiedzią na taki dopływ, a nie krokiem metody trapezów czy Eulera; między rzędnymi nie jest liniowy, więc objętość odpływu liczona wzorem trapezów różni się od jego całki",
     "waga, którą zaokrąglenie sprowadza poniżej zera, jest zerowana; tak samo reszta n - V i odpływ, które zaokrąglenie sprowadza poniżej zera",
@@ -710,9 +710,9 @@ representable = "n >= 2,2e-308, 0 < dt / K, a siatka N dt / K, największy przep
 [formulas.lag]
 en_sha256 = "da694affce24dc5c03c738967739d52ac556dc872e7e322ca2f6c5d5611f43c2"
 title = "Przesunięcie w czasie (lag): dopływ przesunięty o stały czas, liniowy między rzędnymi"
-validation = "brak: przesunięcie to czas przepływu przez odcinek, ustalany z jego długości i prędkości fali albo kalibrowany (HEC-HMS TRM, model Lag); źródło nie podaje zgodności z obserwacjami"
+validation = "brak: przesunięcie to czas przepływu przez odcinek, ustalany z jego długości i prędkości fali albo kalibrowany (HEC-HMS TRM, model Lag); źródło nie podaje oceny zgodności z obserwacjami"
 conventions = [
-    "jednostki SI: przepływ w m3/s, czas w min, retencja w m3 (przesunięcie w min razy przepływ w m3/s razy 60 s minuty z tabeli jednostek)",
+    "jednostki SI: przepływ w m³/s, czas w min, retencja w m³ (przesunięcie w min razy przepływ w m³/s razy 60 s minuty z tabeli jednostek)",
     "przed pierwszą rzędną dopływ jest równy odpływowi początkowemu (odcinek w stanie ustalonym, ADR-0008); HEC-HMS TRM, model Lag, wzór 1 przyjmuje zamiast tego O_t = I_t dla t < lag",
     "przesunięcie niebędące całkowitą liczbą kroków interpoluje dopływ liniowo między dwiema rzędnymi otaczającymi t - lag, co spłaszcza ostre kulminacje; jeden krok przed pierwszą rzędną dopływ wynosi O0, więc rzędne odpływu odpowiadają dopływowi rosnącemu liniowo od O0 do I[0] w tym kroku, podczas gdy objętości retencji przyjmują O0 aż do pierwszej rzędnej",
     "przesunięcie różniące się od całkowitej liczby kroków o nie więcej niż 1e-9 kroku liczy się jako całkowite (`LAG_ROUNDING`); objętości retencji zachowują przesunięcie w podanej postaci",
@@ -743,13 +743,13 @@ representable = "lag / dt i objętość wody w drodze lag max(I, O0) są skończ
 [formulas.manning_normal_flow]
 en_sha256 = "03cfb9c14b76e3d8d8c1de2df091eb7cc81a59b01b88dea63d32b331f9c09b79"
 title = "Przepływ normalny w korycie trapezowym, prostokątnym lub trójkątnym ze wzoru Manninga, z kinematyczną prędkością fali dQ/dA"
-validation = "brak: źródła podają wzór Manninga jako praktykę obliczeń ustalonego przepływu jednostajnego w korytach otwartych i nie podają własnej zgodności z obserwacjami; n dobiera się z tabel albo kalibruje (USGS WSP 2339)"
+validation = "brak: źródła podają wzór Manninga jako praktykę obliczeń ustalonego przepływu jednostajnego w korytach otwartych i nie podają własnej oceny zgodności z obserwacjami; n dobiera się z tabel albo kalibruje (USGS WSP 2339)"
 conventions = [
-    "jednostki SI: Q w m3/s, długości w m, n w s/m^(1/3); postać w jednostkach amerykańskich mnoży przez 1,486, zaokrąglony pierwiastek sześcienny z liczby stóp w metrze (1,4859), tak jak HEC-RAS (USGS WSP 2339 wzór 1)",
+    "jednostki SI: Q w m³/s, długości w m, n w s/m^(1/3); postać w jednostkach amerykańskich mnoży przez 1,486, zaokrąglony pierwiastek sześcienny z liczby stóp w metrze (1,4859), tak jak HEC-RAS (USGS WSP 2339, wzór 1)",
     "spadek dna jest spadkiem linii energii (spadkiem tarcia): przepływ jest jednostajny",
-    "prędkość fali to lokalna kinematyczna prędkość fali dQ/dA przy danej głębokości (HEC-HMS wzór 4; NEH wzór 17-25 z m = d ln Q / d ln A); przykład 17-4 z NEH przyjmuje m krzywej natężenia przepływu ważone przepływem od zera do Q (wzory 17-29, 17-30a), o 2 % większe od lokalnego (przypadek `mc_neh17_example17_4_from_section`)",
+    "prędkość fali to lokalna kinematyczna prędkość fali dQ/dA przy danej głębokości (HEC-HMS, wzór 4; NEH, wzór 17-25 z m = d ln Q / d ln A); przykład 17-4 z NEH przyjmuje m krzywej natężenia przepływu ważone przepływem od zera do Q (wzory 17-29, 17-30a), o 2 % większe od lokalnego (przypadek `mc_neh17_example17_4_from_section`)",
     "jedna szorstkość dla całego obwodu zwilżonego; trapez z obiema skarpami o nachyleniu z:1, prostokąt przy z = 0 i trójkąt przy b = 0; bez terenów zalewowych",
-    "głębokość normalną wyznacza się metodą Brenta względem ln y (`scipy.optimize.brentq`, delegowane, CMP-1.2) w przedziale wyznaczonym z nachylenia ln K względem ln y, mieszczącego się między 1 a 10/3, z dokładnością do czterech jednostek 1e-16 z max(1, |ln y|)",
+    "głębokość normalną wyznacza się metodą Brenta względem ln y (`scipy.optimize.brentq`, delegowane, CMP-1.2) w przedziale wyznaczonym z nachylenia ln K względem ln y, mieszczącego się między 1 a 10/3, z dokładnością do czterech jednostek 1e-16 wartości max(1, |ln y|)",
 ]
 assumptions = [
     "przepływ ustalony jednostajny: głębokość jest głębokością normalną danego przepływu",
@@ -781,12 +781,12 @@ representable_flow = "2,2e-308 <= y, A, T, V, c < inf: float64 przechowuje przep
 
 [formulas.muskingum_cunge]
 en_sha256 = "6cac6856b5f5830a000b172a34dca9de394d99f30d15b4d44764375b0b395634"
-title = "Transformacja fali metodą Muskingum-Cunge ze stałymi współczynnikami na N jednakowych krokach drogi (K i X według Cunge'a)"
+title = "Transformacja fali metodą Muskingum-Cunge ze stałymi współczynnikami na N jednakowych krokach przestrzennych (K i X według Cunge'a)"
 validation = "brak: źródła porównują schemat z modelami przepływu nieustalonego, a nie z obserwacjami (NEH 630 przykłady 17-4 i 17-5 w porównaniu z HEC-RAS: kulminacje zgodne w granicach 0,2 i 2,5 %); NRCS dopasował swoją granicę dokładności do 140 testowych transformacji (NEH 630 załącznik 17B)"
 conventions = [
-    "jednostki SI: przepływ w m3/s, czas w min, odcinek w km, krok drogi i długość dyfuzji w m, prędkość fali w m/s, retencja w m3",
+    "jednostki SI: przepływ w m³/s, czas w min, odcinek w km, krok przestrzenny i długość dyfuzji w m, prędkość fali w m/s, retencja w m³",
     "wagi nazwano według tego, co mnożą: `c_current` — I[t], `c_previous` — I[t-1], `c_outflow` — O[t-1]; NEH 630 i HEC-HMS nazywają je C2, C1 i C3",
-    "jeden przepływ odniesienia, jedna prędkość fali i jedna szerokość zwierciadła dla wszystkich kroków drogi i czasu, więc współczynniki są stałe: WinTR-20 z NRCS przyjmuje kulminację na górnym końcu każdego kroku drogi (NEH 630 przykład 17-5), a HEC-HMS przelicza współczynniki w każdym kroku czasu i drogi (metoda o zmiennych współczynnikach, Ponce 1986): przypadek `mc_neh17_example17_5_reach`",
+    "jeden przepływ odniesienia, jedna prędkość fali i jedna szerokość zwierciadła dla wszystkich kroków przestrzennych i czasowych, więc współczynniki są stałe: WinTR-20 z NRCS przyjmuje kulminację na górnym końcu każdego kroku przestrzennego (NEH 630 przykład 17-5), a HEC-HMS przelicza współczynniki w każdym kroku czasu i drogi (metoda o zmiennych współczynnikach, Ponce 1986): przypadek `mc_neh17_example17_5_reach`",
     "X może być ujemne (NEH 630 przykład 17-4, X = -0,254); siatkę z ujemną wagą, którą NEH dopuszcza (przykład 17-5, C1 = -0,187), odrzuca warunek wstępny `nonnegative_weights` (Hydrolog ADR-0008)",
     "w granicach tolerancji okna waga, którą zaokrąglenie sprowadza poniżej zera, jest zerowana, a pozostałe dzieli się przez ich sumę (`hydrolog.routing._kernels.nonnegative_coefficients`)",
     "Dg oblicza się jako D / dx (NEH wzór 17-34), co z dokładnością do zaokrągleń równa się 1 - 2X (wzór 17-35); granicę dokładności exp(2,3 Cg) ogranicza się do exp(700), co przewyższa każde Dg <= 1 + Cg z okna",
@@ -806,21 +806,21 @@ slope_m_per_m = "Spadek dna odcinka"
 celerity_m_per_s = "Prędkość fali wezbraniowej przy przepływie odniesienia"
 top_width_m = "Szerokość zwierciadła wody przy przepływie odniesienia"
 reference_discharge_m3s = "Przepływ odniesienia, przy którym przyjmuje się prędkość fali i szerokość zwierciadła, wspólny dla całego obliczenia"
-subreaches = "Liczba jednakowych kroków drogi dx = L / N"
+subreaches = "Liczba jednakowych kroków przestrzennych dx = L / N"
 initial_outflow_m3s = "Odpływ w pierwszej rzędnej; odcinek startuje z nim w stanie ustalonym"
 
 [formulas.muskingum_cunge.outputs]
 outflow_m3s = "Odpływ w rzędnych dopływu"
 k_min = "Czas przepływu L / c przez cały odcinek"
-x = "Współczynnik wagowy każdego kroku drogi, (1 - Dg) / 2"
-c_current = "Waga I[t] w jednym kroku drogi"
-c_previous = "Waga I[t-1] w jednym kroku drogi"
-c_outflow = "Waga O[t-1] w jednym kroku drogi"
-dx_m = "Krok drogi L / N"
+x = "Współczynnik wagowy każdego kroku przestrzennego, (1 - Dg) / 2"
+c_current = "Waga I[t] w jednym kroku przestrzennego"
+c_previous = "Waga I[t-1] w jednym kroku przestrzennego"
+c_outflow = "Waga O[t-1] w jednym kroku przestrzennego"
+dx_m = "Krok przestrzenny L / N"
 courant_number = "Liczba Couranta siatki, c dt / dx"
 grid_reynolds_number = "Siatkowa liczba Reynoldsa D / dx = 1 - 2X"
 grid_reynolds_limit = "Granica dokładności siatkowej liczby Reynoldsa według NEH, exp(2,3 Cg), ograniczona do exp(700)"
-storage_start_m3 = "Objętość wody w schemacie w pierwszej rzędnej, suma K/N [X I + (1 - X) O] po krokach drogi; ujemna, gdy X < 0, a dopływ dostatecznie przewyższa odpływ początkowy"
+storage_start_m3 = "Objętość wody w schemacie w pierwszej rzędnej, suma K/N [X I + (1 - X) O] po krokach przestrzennych; ujemna, gdy X < 0, a dopływ dostatecznie przewyższa odpływ początkowy"
 storage_end_m3 = "Objętość wody w schemacie w ostatniej rzędnej"
 storage_steady_m3 = "Objętość wody w schemacie w stanie ustalonym przy ostatnim dopływie, K I[-1]"
 
@@ -834,14 +834,14 @@ finite_grid = "L / c, c dt / dx, D / dx i N K (1 + 2|X|) max(I, O0) są skończo
 
 [formulas.level_pool]
 en_sha256 = "8946791291e738c61179f802ee307c16213b618a3bc9acbec5de0173f43ce788"
-title = "Transformacja metodą zbiornikową z krzywą roboczą (zmodyfikowana metoda Pulsa) przez N jednakowych zbiorników"
-validation = "brak: zależność retencja–odpływ odcinka lub zbiornika pochodzi z profili zwierciadła wody, topografii zbiornika lub obserwowanych wezbrań (HEC-HMS TRM, Modified Puls; NEH 630 rozdz. 17); źródła nie podają zgodności samego schematu z obserwacjami"
+title = "Transformacja fali metodą zbiornikową z krzywą roboczą (zmodyfikowana metoda Pulsa) przez N jednakowych zbiorników"
+validation = "brak: zależność retencja–odpływ odcinka lub zbiornika pochodzi z profili zwierciadła wody, topografii zbiornika lub obserwowanych wezbrań (HEC-HMS TRM, Modified Puls; NEH 630 rozdz. 17); źródła nie podają oceny zgodności samego schematu z obserwacjami"
 conventions = [
-    "jednostki SI: przepływ w m3/s, retencja w m3, krok w min (S / dt z 60 s minuty z tabeli jednostek)",
+    "jednostki SI: przepływ w m³/s, retencja w m³, krok w min (S / dt z 60 s minuty z tabeli jednostek)",
     "odpływ odczytuje się z krzywej roboczej S / (N dt) + O / 2 interpolacją liniową między wierszami tabeli, bo tabela jest między nimi liniowa (NEH 630 interpoluje swoją tabelę roboczą, HEC-HMS rozwiązuje to samo równanie metodą prób i błędów)",
     "każdy z N zbiorników połączonych szeregowo mieści S / N przy tym samym odpływie (pododcinki HEC-HMS); każdy zbiornik startuje w stanie ustalonym z odpływem O0, przy największej retencji, dla której tabela daje ten odpływ, więc zbiornik ze strefą martwą poniżej korony przelewu startuje napełniony do korony",
     "poziom odniesienia kolumny retencji jest dowolny: do odpływu wchodzą tylko różnice retencji, a podawane retencje mierzy się od tego poziomu",
-    "stan, który zaokrąglenie wyprowadza poza koniec tabeli o co najwyżej 1e-9 górnej wartości krzywej roboczej, utrzymuje się na tym końcu; dalej poza nim zbiornik opuścił tabelę, co odrzucają warunki wstępne `flood_below_table_top` i `flood_above_table_bottom`",
+    "stan, który zaokrąglenie wyprowadza poza koniec tabeli o co najwyżej 1e-9 górnej wartości krzywej roboczej, utrzymuje się na tym końcu; przy większym przekroczeniu zbiornik wychodzi poza tabelę, co odrzucają warunki wstępne `flood_below_table_top` i `flood_above_table_bottom`",
     "retencję w stanie ustalonym przy ostatniej rzędnej dopływu odczytuje się w skrajnym wierszu tabeli, gdy przepływ wykracza poza ten wiersz",
     "transformowane są tylko podane rzędne: `LevelPoolReach` dzieli dłuższy krok na podkroki przy dopływie liniowym między rzędnymi, wydłuża oś czasu i odczytuje stan wody w ostatnim zbiorniku (Tier B, ADR-0008)",
 ]
@@ -883,7 +883,7 @@ title = "Wskaźnik formy zlewni według Hortona"
 validation = "brak: wskaźnik geometryczny, którego źródła nie porównują z żadnymi obserwacjami"
 conventions = [
     "L to odcinek prosty od ujścia do najdalszego punktu działu wodnego (Baścik 2006, s. 21), tak jak `WatershedGeometry` opisuje `length_km`; Hydrograf przekazuje najdłuższą drogę spływu, która nie jest krótsza, więc przy niej wskaźnik wydłużenia jest mniejszy (k większy) niż przy odcinku prostym; L Schumma (1956), czyli największy wymiar równoległy do głównej linii odpływu, oraz Lm Baścika, czyli długość doliny, to inne konwencje",
-    "położenie A w kole o promieniu L wokół ujścia ogranicza Cf od góry przez pi; przy L równym największemu wymiarowi zlewni (nierówność izodiametryczna) ogranicza go przez pi/4, wartość dla koła",
+    "to, że A mieści się w kole o promieniu L wokół ujścia, ogranicza Cf z góry przez pi; przy L równym największemu wymiarowi zlewni (nierówność izodiametryczna) — przez pi/4, wartość dla koła",
 ]
 
 [formulas.form_factor.variables]
@@ -940,7 +940,7 @@ title = "Wskaźnik wydłużenia zlewni według Schumma"
 validation = "brak: wskaźnik geometryczny, którego źródła nie porównują z żadnymi obserwacjami"
 conventions = [
     "L to odcinek prosty od ujścia do najdalszego punktu działu wodnego (Baścik 2006, s. 21), tak jak `WatershedGeometry` opisuje `length_km`; Hydrograf przekazuje najdłuższą drogę spływu, która nie jest krótsza, więc przy niej wskaźnik wydłużenia jest mniejszy (k większy) niż przy odcinku prostym; L Schumma (1956), czyli największy wymiar równoległy do głównej linii odpływu, oraz Lm Baścika, czyli długość doliny, to inne konwencje",
-    "położenie A w kole o promieniu L wokół ujścia ogranicza Ce od góry przez 2; przy L równym największemu wymiarowi zlewni ogranicza go przez 1, wartość dla koła",
+    "to, że A mieści się w kole o promieniu L wokół ujścia, ogranicza Ce z góry przez 2; przy L równym największemu wymiarowi zlewni — przez 1, wartość dla koła",
 ]
 
 [formulas.elongation_ratio.variables]
@@ -960,7 +960,7 @@ validation = "brak: wskaźnik geometryczny, którego źródła nie porównują z
 conventions = [
     "L to odcinek prosty od ujścia do najdalszego punktu działu wodnego (Baścik 2006, s. 21), tak jak `WatershedGeometry` opisuje `length_km`; Hydrograf przekazuje najdłuższą drogę spływu, która nie jest krótsza, więc przy niej wskaźnik wydłużenia jest mniejszy (k większy) niż przy odcinku prostym; L Schumma (1956), czyli największy wymiar równoległy do głównej linii odpływu, oraz Lm Baścika, czyli długość doliny, to inne konwencje",
     "k Chorleya z pi (pętla lemniskaty), a nie wariant L^2 / (4A) z niektórych źródeł wtórnych, który Hydrolog obliczał do wersji 0.8.1",
-    "położenie A w kole o promieniu L wokół ujścia ogranicza k od dołu przez 1/4; przy L równym największemu wymiarowi zlewni ogranicza go przez 1, wartość dla koła",
+    "to, że A mieści się w kole o promieniu L wokół ujścia, ogranicza k z dołu przez 1/4; przy L równym największemu wymiarowi zlewni — przez 1, wartość dla koła",
 ]
 
 [formulas.lemniscate_ratio.variables]
@@ -976,12 +976,12 @@ within_float64 = "pi L^2 / (4A) mieści się w zakresie float64: żadna zlewnia 
 
 [formulas.relief_ratio]
 en_sha256 = "3b930d3980e827b572f73cee5b22dd5f019131029aa5ff41f1f113e040942186"
-title = "Wskaźnik rzeźby zlewni według Schumma"
+title = "Wskaźnik rzeźby: deniwelacja zlewni podzielona przez długość (Schumm)"
 validation = "brak: stosunek wielkości mierzonych, którego źródła nie porównują z żadnymi obserwacjami"
 conventions = [
     "Rh w m/m (bezwymiarowy): deniwelacja w m podzielona przez L przeliczone z km na m według tabeli jednostek; Baścik (2006) i Wartalska podają go w m/km (w promilach)",
     "deniwelacja całej zlewni, czyli jej najwyższy punkt minus ujście; Baścik (2006, s. 23) zauważa, że w praktyce hydrologicznej można przyjmować rzędną zwierciadła wody w ujściu",
-    "L to `length_km` zlewni we wskaźniku rzeźby (L Schumma to największy wymiar równoległy do głównej linii odpływu, Lm Baścika to długość doliny); `TerrainAnalysis` podaje ten sam stosunek jako spadek zlewni, który nie jest średnim nachyleniem terenu, a w odniesieniu do długości cieku jako spadek cieku głównego, którego różnicą wysokości jest wtedy deniwelacja zlewni, a nie różnica między źródłem a ujściem cieku",
+    "L to `length_km` zlewni we wskaźniku rzeźby (L Schumma to największy wymiar równoległy do głównej linii odpływu, Lm Baścika to długość doliny); `TerrainAnalysis` podaje ten sam stosunek jako spadek zlewni, który nie jest średnim spadkiem terenu, a w odniesieniu do długości cieku jako spadek cieku głównego, którego różnicą wysokości jest wtedy deniwelacja zlewni, a nie różnica między źródłem a ujściem cieku",
 ]
 
 [formulas.relief_ratio.variables]
@@ -1081,7 +1081,7 @@ within_float64 = "średnia L_(u+1) / średnia L_u mieści się w zakresie float6
 
 [formulas.drainage_density]
 en_sha256 = "c293bfbc05a118bb10cfc210ae31b910ce951da0f879e8e0de2ac712cf13f7ae"
-title = "Gęstość sieci rzecznej"
+title = "Gęstość sieci rzecznej: długość cieków podzielona przez powierzchnię zlewni"
 validation = "brak: stosunek wielkości mierzonych; Baścik (2006) zauważa, że silnie zależy on od skali mapy i od progu wydzielania cieku"
 conventions = [
     "długość wszystkich cieków sieci podzielona przez powierzchnię zlewni, km/km²; sieć z NMT zależy od progowej powierzchni zlewni cieku, a sieć z mapy od jej skali, więc wartości można porównywać tylko przy tej samej metodzie",
@@ -1099,7 +1099,7 @@ within_float64 = "sum(L) / A mieści się w zakresie float64"
 
 [formulas.stream_frequency]
 en_sha256 = "0e10247fdc95486a37682a92bb9530e6ec536bfd7add5c329f261a342bb9eac8"
-title = "Wskaźnik częstości cieków"
+title = "Wskaźnik częstości cieków: liczba cieków podzielona przez powierzchnię zlewni"
 validation = "brak: stosunek wielkości zliczonych i zmierzonych"
 conventions = [
     "cieki według Strahlera wszystkich rzędów (`StreamNetwork.n_streams`), a nie odcinki między węzłami; wskaźnik częstości cieków w Hydrografie liczy odcinki sieci BDOT10k i wyraźnie to zaznacza",
@@ -1145,10 +1145,10 @@ positive_total = "clay + sand + silt > 0"
 [formulas.texture_hsg]
 en_sha256 = "60dc6b847a2c3401eb5ba08926ee16da5e61fd1038df7dbb6d53fc3af5d316d1"
 title = "Grupa hydrologiczna gleby według klasy uziarnienia USDA"
-validation = "brak podanej: TR-55 wyprowadza grupy dla klas uziarnienia z pracy Brakensieka i Rawlsa (1983) dla profili przekształconych; NEH 630 rozdz. 7 podaje typowe uziarnienia, a nie dopasowanie"
+validation = "brak (źródła jej nie podają): TR-55 wyprowadza grupy dla klas uziarnienia z pracy Brakensieka i Rawlsa (1983) dla profili przekształconych; NEH 630 rozdz. 7 podaje typowe uziarnienia, a nie dopasowanie"
 conventions = [
-    "TR-55 załącznik A podaje grupy dla przekształconych profili glebowych (tereny zurbanizowane, bez istotnego zagęszczenia); tabela stosuje je do wszystkich gleb",
-    "udokumentowane odstępstwa od TR-55 załącznik A: glina piaszczysta B (w TR-55 A), glina ilasta i glina pylasto-ilasta C (w TR-55 D), ponieważ NEH 630 rozdz. 7 s. 7-2 wymienia typowe uziarnienia grup B i C (Kartograf ADR-025, decyzja b): surowiej niż TR-55 dla gliny piaszczystej, łagodniej dla obu glin ilastych",
+    "załącznik A TR-55 podaje grupy dla przekształconych profili glebowych (tereny zurbanizowane, bez istotnego zagęszczenia); tabela stosuje je do wszystkich gleb",
+    "udokumentowane odstępstwa od załącznika A TR-55: glina piaszczysta B (w TR-55 A), glina ilasta i glina pylasto-ilasta C (w TR-55 D), ponieważ NEH 630 rozdz. 7 s. 7-2 wymienia typowe uziarnienia grup B i C (Kartograf ADR-025, decyzja b): surowiej niż TR-55 dla gliny piaszczystej, łagodniej dla obu glin ilastych",
     "pył, którego TR-55 nie wymienia, otrzymuje grupę pyłu gliniastego, B; NEH 630 rozdz. 7 s. 7-2 zalicza dobrze zagregowany pył do grupy B",
     "według NEH 630 rozdz. 7 glina i pył gliniasty (a ze względu na Ksat także pył) należałyby do grupy C, a piasek gliniasty do B; tabela zachowuje dla nich grupy TR-55 (otwarta kwestia ADR-0066)",
 ]
@@ -1168,7 +1168,7 @@ title = "Rozkład gamma sum opadu według przybliżenia Thoma"
 validation = "Estymator Thoma przybliża estymator największej wiarygodności parametru kształtu: jego błąd względny wynosi 1e-4 przy A = 0,1 (alpha bliskie 5), 2e-3 przy A = 0,3 i 2,7 % przy A = 1 (alpha 0,62) w porównaniu z dokładnym rozwiązaniem równania ln(alpha) - digamma(alpha) = A (audyt z 2026-11-18); źródła nie podają testu dopasowania do obserwacji"
 conventions = [
     "sumy jednego miesiąca kalendarzowego i jednej skali czasowej z lat okresu odniesienia; wywołujący pomija lata bez sumy",
-    "q = m / n, udział sum zerowych wśród wszystkich n sum (Edwards i McKee 1997, w ujęciu Naresh Kumar i in. 2009, wzór A9); parametry kształtu i skali tylko z sum dodatnich",
+    "q = m / n, udział sum zerowych wśród wszystkich n sum (Edwards i McKee 1997, w ujęciu Naresha Kumara i in. 2009, wzór A9); parametry kształtu i skali tylko z sum dodatnich",
     "przybliżenie Thoma, a nie dokładny estymator największej wiarygodności, jak w climate_indices 3.2.0 i xclim 1.0.0 (metoda APP)",
     "A liczone jako średnia z d - ln(1 + d), gdzie d = x / (średnia x) - 1, co jest równe ln(średnia x) - średnia(ln x), lecz bez utraty dokładności przy odejmowaniu (ln x - ln(średnia x) dla sumy mniejszej od połowy średniej)",
 ]
@@ -1191,7 +1191,7 @@ positive_sums_differ = "sumy dodatnie nie są wszystkie równe (A > 0)"
 
 [formulas.spi]
 en_sha256 = "1a38fda9050a4d3c645f39e087a57ebe33fc18022b3d64413683edd5e117c183"
-title = "Standaryzowany wskaźnik opadu (SPI) sum opadu"
+title = "Standaryzowany wskaźnik opadu (SPI) dla sum opadu"
 validation = "brak: SPI jest przekształceniem dopasowanego rozkładu"
 conventions = [
     "klasyczne traktowanie sum zerowych, H(0) = q (Edwards i McKee 1997; climate_indices, `zero_handling` 'classic'); środek masy zer, Phi^-1(q / 2), nie jest stosowany",
@@ -1266,8 +1266,8 @@ title = "Dzień FD, przymrozkowy, mroźny, gorący i upalny oraz noc tropikalna 
 validation = "brak: klasyfikacja doby"
 conventions = [
     "nierówności ostre jak w ETCCDI: dzień dokładnie na progu nie jest żadnym z tych dni; roczniki IMGW-PIB liczą Tmin <= 0 oraz Tmax >= 25 lub 30 °C",
-    "dzień przymrozkowy to „dzień przymrozkowy” Słownika meteorologicznego i normalnych IMGW-PIB (PRZYMROZKI); dzień z ujemną temperaturą minimalną to FD",
-    "wskaźnik jest brakiem (NaN) tam, gdzie brakuje potrzebnej mu temperatury; funkcja dla serii zwraca serię samych braków dla wskaźnika, którego temperatury nie ma",
+    "dzień przymrozkowy (ang. freeze-thaw day) to „dzień przymrozkowy” w rozumieniu Słownika meteorologicznego i norm IMGW-PIB (PRZYMROZKI); dzień z ujemną temperaturą minimalną (ang. frost day) to FD",
+    "wskaźnik ma wartość brakującą (NaN) tam, gdzie brakuje potrzebnej mu temperatury; funkcja dla serii zwraca serię samych braków dla wskaźnika, którego temperatury nie ma",
 ]
 
 [formulas.threshold_days.variables]
@@ -1281,7 +1281,7 @@ tropical_tmin_c = "Próg: noc tropikalna ma Tmin powyżej tej wartości"
 
 [formulas.threshold_days.outputs]
 frost = "1 w dniu FD"
-freeze_thaw = "1 w dniu przymrozkowym; NaN bez obu temperatur"
+freeze_thaw = "1 w dniu przymrozkowym; NaN, gdy brakuje którejkolwiek z obu temperatur"
 ice = "1 w dniu mroźnym"
 summer = "1 w dniu gorącym"
 hot = "1 w dniu upalnym"
@@ -1333,70 +1333,70 @@ spell_days = "Liczba dni ciągu kończącego się w danym dniu, 0 w każdym inny
 
 [formulas.sdii]
 en_sha256 = "ba488b788b45e9fbe7d1461b1e2d0b3f4f16e4d98103c143c596e016a43b9b0b"
-title = "Wskaźnik intensywności opadu SDII: średni opad dnia mokrego"
+title = "Wskaźnik intensywności opadu SDII: średni opad dnia z opadem"
 validation = "brak: wskaźnik opadu dobowego"
 conventions = [
-    "dzień mokry ma P >= Pw (RR >= 1 mm według ETCCDI); dzień z brakiem danych (NaN) jest pomijany",
-    "funkcja dla serii bierze dni pełnego miesiąca lub roku albo łącznie pełne miesiące danego miesiąca kalendarzowego i zaokrągla PRCPTOT do 1e-6 mm; okres bez dnia mokrego nie ma SDII (climdex.pcic podaje 0)",
+    "dzień z opadem ma P >= Pw (RR >= 1 mm według ETCCDI); dzień z brakiem danych (NaN) jest pomijany",
+    "funkcja dla serii bierze dni pełnego miesiąca lub roku albo łącznie pełne miesiące danego miesiąca kalendarzowego i zaokrągla PRCPTOT do 1e-6 mm; okres bez dnia z opadem nie ma SDII (climdex.pcic podaje 0)",
 ]
 
 [formulas.sdii.variables]
 precipitation_mm = "Opad dobowy dni okresu; NaN w dniu z brakiem danych, który jest pomijany"
-wet_day_mm = "Najmniejszy opad dnia mokrego"
+wet_day_mm = "Najmniejszy opad dnia z opadem"
 
 [formulas.sdii.outputs]
-sdii_mm = "Średni opad dnia mokrego"
-wet_days = "Liczba dni mokrych"
-wet_day_total_mm = "Suma opadu dni mokrych"
+sdii_mm = "Średni opad dnia z opadem"
+wet_days = "Liczba dni z opadem"
+wet_day_total_mm = "Suma opadu dni z opadem"
 
 [formulas.sdii.constraints]
 a_wet_day = "co najmniej jeden dzień ma P >= P_w"
 
 [formulas.wet_day_percentile]
 en_sha256 = "fbe78006dd41ef7b31e8aa6395b511113ebba307d11ee58e8a73e0b9cbd1f8de"
-title = "Percentyl opadu dni mokrych (kwantyl typu 8)"
+title = "Percentyl opadu dni z opadem (kwantyl typu 8)"
 validation = "brak: kwantyl z próby"
 conventions = [
     "kwantyl typu 8 według Hyndmana i Fana (1996), nieobciążony względem mediany, jak w climdex.pcic 1.1-11 (kwantyl typu 8) i w metodzie `median_unbiased` biblioteki NumPy",
-    "dni mokre (P >= Pw) podanego okresu; dzień z brakiem danych (NaN) jest pomijany",
-    "funkcja dla serii podaje dni mokre okresu odniesienia i wymaga co najmniej 100 takich dni (`too_few_wet_days`, minimum przyjęte w Hydrologu, ADR-0032)",
+    "dni z opadem (P >= Pw) podanego okresu; dzień z brakiem danych (NaN) jest pomijany",
+    "funkcja dla serii podaje dni z opadem okresu odniesienia i wymaga co najmniej 100 takich dni (`too_few_wet_days`, minimum przyjęte w Hydrologu, ADR-0032)",
 ]
 
 [formulas.wet_day_percentile.variables]
 precipitation_mm = "Opad dobowy dni okresu; NaN w dniu z brakiem danych, który jest pomijany"
-wet_day_mm = "Najmniejszy opad dnia mokrego"
+wet_day_mm = "Najmniejszy opad dnia z opadem"
 percentile = "Percentyl"
 
 [formulas.wet_day_percentile.outputs]
-percentile_mm = "Percentyl opadu dni mokrych"
+percentile_mm = "Percentyl opadu dni z opadem"
 
 [formulas.wet_day_percentile.constraints]
 a_wet_day = "co najmniej jeden dzień ma P >= P_w"
 
 [formulas.heavy_precipitation_share]
 en_sha256 = "d763e688a7d69511cf8d8aca29e23d01f4edff42b21d6e7c28cabde4b28a9a33"
-title = "Opad dni powyżej progu i jego udział w opadzie dni mokrych"
+title = "Opad dni powyżej progu i jego udział w opadzie dni z opadem"
 validation = "brak: wskaźnik opadu dobowego"
 conventions = [
-    "dzień liczy się jako dzień powyżej progu, gdy P > Pt (ostra nierówność), a jako dzień mokry, gdy P >= Pw; dzień z brakiem danych (NaN) jest pomijany",
-    "R to R95p według ClimPACT i listy ETCCDI (suma w mm), a udział to R95pTOT według ClimPACT (100 R / PRCPTOT); R95pTOT w ECA&D dzieli się przez opad wszystkich dni",
-    "funkcja dla serii bierze dni pełnego roku i próg z `wet_day_percentile` oraz zaokrągla R i PRCPTOT do 1e-6 mm; rok bez dnia mokrego nie ma udziału",
+    "dzień liczy się jako dzień powyżej progu, gdy P > Pt (ostra nierówność), a jako dzień z opadem, gdy P >= Pw; dzień z brakiem danych (NaN) jest pomijany",
+    "R to R95p według ClimPACT i listy ETCCDI (suma w mm), a udział to R95pTOT według ClimPACT (100 R / PRCPTOT); R95pTOT według ECA&D dzieli przez opad wszystkich dni",
+    "funkcja dla serii bierze dni pełnego roku i próg z `wet_day_percentile` oraz zaokrągla R i PRCPTOT do 1e-6 mm; rok bez dnia z opadem nie ma udziału",
 ]
 
 [formulas.heavy_precipitation_share.variables]
 precipitation_mm = "Opad dobowy dni okresu; NaN w dniu z brakiem danych, który jest pomijany"
-wet_day_mm = "Najmniejszy opad dnia mokrego"
-threshold_mm = "Próg: percentyl opadu dni mokrych okresu odniesienia"
+wet_day_mm = "Najmniejszy opad dnia z opadem"
+threshold_mm = "Próg: percentyl opadu dni z opadem okresu odniesienia"
 
 [formulas.heavy_precipitation_share.outputs]
 heavy_mm = "Opad dni powyżej progu (R95p)"
 heavy_days = "Liczba dni powyżej progu"
-wet_day_total_mm = "Suma opadu dni mokrych"
+wet_day_total_mm = "Suma opadu dni z opadem"
 share_percent = "R w % PRCPTOT (R95pTOT według ClimPACT)"
 
 [formulas.heavy_precipitation_share.constraints]
 a_wet_day = "co najmniej jeden dzień ma P >= P_w"
-threshold_of_a_wet_day = "Pt >= Pw: dzień powyżej progu jest dniem mokrym"
+threshold_of_a_wet_day = "Pt >= Pw: dzień powyżej progu jest dniem z opadem"
 
 [formulas.precipitation_concentration_index]
 en_sha256 = "ccc09df9f5951578497495cea58ec9af90b129238b0e466d68319f0f3e0b662a"
@@ -1404,11 +1404,11 @@ title = "Wskaźnik koncentracji opadów Olivera z dwunastu sum miesięcznych"
 validation = "brak: wskaźnik sum miesięcznych"
 conventions = [
     "liczony z udziałów p_i / sum p, co daje to samo co równanie, ale bez podnoszenia sumy do kwadratu (bez przepełnienia i niedomiaru kwadratów)",
-    "funkcja dla serii podaje dwanaście normalnych okresu odniesienia albo dwanaście sum miesięcznych roku, który ma je wszystkie; suma równa 0 nie ma wskaźnika",
+    "funkcja dla serii podaje dwanaście norm miesięcznych okresu odniesienia albo dwanaście sum miesięcznych roku, który ma je wszystkie; suma równa 0 nie ma wskaźnika",
 ]
 
 [formulas.precipitation_concentration_index.variables]
-monthly_mm = "Dwanaście sum miesięcznych roku albo dwanaście normalnych miesięcznych, w dowolnej kolejności"
+monthly_mm = "Dwanaście sum miesięcznych roku albo dwanaście norm miesięcznych, w dowolnej kolejności"
 
 [formulas.precipitation_concentration_index.outputs]
 pci = "Wskaźnik: 100/12 przy równych miesiącach, 100 przy jednym miesiącu z opadem"
@@ -1454,8 +1454,8 @@ very_equable_below = "Granica, poniżej której opad jest bardzo wyrównany"
 equable_wetter_season_below = "Granica, poniżej której opad jest wyrównany z wyraźną porą wilgotniejszą"
 rather_seasonal_below = "Granica, poniżej której opad jest dość sezonowy z krótką porą suchszą"
 seasonal_below = "Granica, poniżej której opad jest sezonowy"
-markedly_seasonal_below = "Granica, poniżej której opad jest wyraźnie sezonowy z długą porą suchą"
-most_in_three_months_below = "Granica, poniżej której większość opadu przypada na trzy miesiące lub krócej"
+markedly_seasonal_below = "Granica, poniżej której opad jest wyraźnie sezonowy z długą porą suchszą"
+most_in_three_months_below = "Granica, poniżej której większość opadu przypada na trzy miesiące lub mniej"
 
 [formulas.sielianinov_coefficient]
 en_sha256 = "d774e6c97da07089f1e8b08993131e8863a4a6e08a9cf5e8153e266522e1a177"
@@ -1537,7 +1537,7 @@ conventions = [
     "L-skośność t3 = lambda3 / lambda2 (WMO-No. 168, tab. II.5.4)",
     "próba w dowolnej jednostce: l1 i l2 w jej jednostce, t3 bezwymiarowe",
     "lambda2 i lambda3 jako sumy ważone uporządkowanych odchyleń od średniej, które tworzą b_r (z wagami zsumowanymi najpierw), na próbie podzielonej przez potęgę dwójki; l1 to średnia centrowana dwukrotnie",
-    "|t3| = 1 dla wartości równych z wyjątkiem największej lub najmniejszej; sumy ważone n wartości mają błąd zaokrąglenia do n ulp, więc t3 przekraczające 1 lub -1 o nie więcej niż 1e-9 ustawia się na tę granicę (tolerancja brzegowa)",
+    "|t3| = 1, gdy wszystkie wartości poza największą lub najmniejszą są równe; sumy ważone n wartości mają błąd zaokrąglenia do n ulp, więc t3 przekraczające 1 lub -1 o nie więcej niż 1e-9 ustawia się na tę granicę (tolerancja brzegowa)",
 ]
 
 [formulas.sample_l_moments.variables]
@@ -1546,7 +1546,7 @@ values = "Próba: maksima lub minima roczne"
 [formulas.sample_l_moments.outputs]
 l1 = "Pierwszy L-moment, średnia"
 l2 = "Drugi L-moment, połowa średniej różnicy dwóch wartości"
-t3 = "L-skośność; 1 (lub -1) dla wartości równych z wyjątkiem największej (najmniejszej)"
+t3 = "L-skośność; 1 (lub -1), gdy wszystkie wartości poza największą (najmniejszą) są równe"
 
 [formulas.sample_l_moments.constraints]
 enough_values = "n >= 3"
@@ -1732,7 +1732,7 @@ scale = "Parametr skali; wartość, która uległaby niedomiarowi, zastępuje si
 enough_values = "n > p, liczba parametrów: n >= 3 dla rozkładu logarytmiczno-normalnego, n >= 4 dla pozostałych"
 values_not_all_equal = "min(x) < max(x)"
 positive_values = "min(x) > 0 dla rozkładu logarytmiczno-normalnego (parametr położenia 0)"
-likelihood_has_a_maximum = "wiarygodność ma maksimum wewnątrz przeszukiwanego zakresu parametru kształtu: poszukiwanie nie kończy się bliżej niż 1e-3 od kształtów, przy których gęstość jest nieskończona na granicy nośnika (GEV c >= 1, Pearson III |G| >= 2, kształt Weibulla <= 1), ani od GEV c = -1 (brak średniej) lub kształtu Weibulla 50, ani przy parametrze skali równym milionowej części odchylenia standardowego; GEV ma najwyżej połowę wartości równych najmniejszej; poszukiwanie się stabilizuje"
+likelihood_has_a_maximum = "wiarygodność ma maksimum wewnątrz przeszukiwanego zakresu parametru kształtu: poszukiwanie nie kończy się bliżej niż 1e-3 od kształtów, przy których gęstość jest nieskończona na granicy nośnika (GEV c >= 1, Pearson III |G| >= 2, kształt Weibulla <= 1), ani od GEV c = -1 (brak średniej) lub kształtu Weibulla 50, ani przy parametrze skali równym milionowej części odchylenia standardowego; przy GEV najwyżej połowa wartości to wartości wiązane równe najmniejszej; poszukiwanie się stabilizuje"
 
 [formulas.fit_least_squares]
 en_sha256 = "2810cbc97720bb515a770922c9f903a5b39cb49913e3ac07b845642f59fadb88"
@@ -1827,7 +1827,7 @@ validation = "brak: oszacowanie prawdopodobieństwa każdej wartości uporządko
 conventions = [
     "prawdopodobieństwo przewyższenia i-tej co do wielkości wartości, ranga 1 to wartość największa (WMO-No. 168, § 5.6.1; KZGW 2017, wzór 3.7, polskie p_i = i / (N + 1)); okres powtarzalności T = 1 / p, jak dla kwantyli maksimów",
     "postać ogólna (i - a) / (n + 1 - 2a) z WMO-No. 1029, wzór 7.3, z wartościami a z WMO-No. 168, § 5.6.1; bez wzoru Gringortena",
-    "równe wartości otrzymują kolejne rangi, każda z własną pozycją, tak jak KZGW 2017, tab. 3.13, nadaje kolejne rangi swoim dwóm wartościom 10,3 i dwóm wartościom 7,88 m3/s",
+    "wartości wiązane otrzymują kolejne rangi, każda z własną pozycją, tak jak w KZGW 2017, tab. 3.13, kolejne rangi mają dwie wartości 10,3 i dwie wartości 7,88 m³/s",
     "próba w dowolnej jednostce: pozycje zależą tylko od rang",
 ]
 
@@ -1852,7 +1852,7 @@ validation = "brak: oszacowanie prawdopodobieństwa każdej wartości uporządko
 conventions = [
     "prawdopodobieństwo nieprzewyższenia i-tej od najmniejszej wartości, ranga 1 to wartość najmniejsza (WMO-No. 1029, wzór 7.3 i § 7.8, krok I); okres powtarzalności T = 1 / F przepływu niskiego, od którego niższy przepływ występuje raz na T lat (WMO-No. 1029, wzór 7.14), jak dla kwantyli `fisher_tippett_minima`",
     "postać ogólna (i - a) / (n + 1 - 2a) z WMO-No. 1029, wzór 7.3, z wartościami a z WMO-No. 168, § 5.6.1; bez wzoru Gringortena",
-    "równe wartości otrzymują kolejne rangi, każda z własną pozycją, tak jak KZGW 2017, tab. 3.13, nadaje kolejne rangi swoim dwóm wartościom 10,3 i dwóm wartościom 7,88 m3/s",
+    "wartości wiązane otrzymują kolejne rangi, każda z własną pozycją, tak jak w KZGW 2017, tab. 3.13, kolejne rangi mają dwie wartości 10,3 i dwie wartości 7,88 m³/s",
     "próba w dowolnej jednostce: pozycje zależą tylko od rang",
 ]
 
@@ -1877,7 +1877,7 @@ validation = "brak: dopasowanie rozkładu minimów metodą największej wiarygod
 conventions = [
     "min(x) = -max(-x): rozkład Fishera–Tippetta minimów to rozkład GEV zanegowanych minimów, F(x) = 1 - exp{-[1 + c (x - loc) / scale]^(1/c)}, z parametrem kształtu c funkcji genextreme biblioteki scipy i parametrem położenia -loc zanegowanej próby",
     "kwantyl T-letni przy prawdopodobieństwie nieprzewyższenia 1/T (WMO-No. 1029, wzór 7.14), z odwrotnej funkcji przeżycia zanegowanej próby",
-    "kwantyl przepływu poniżej 0 jest luką (NaN, null w JSON) z komunikatem `negative_quantiles`; kwantyl stanu wody pozostaje",
+    "kwantyl przepływu poniżej 0 jest luką (NaN, null w JSON) z komunikatem `negative_quantiles`; ujemny kwantyl stanu wody zostaje zachowany",
     "poszukiwanie jak w `fit_maximum_likelihood`: rozkłady GEV mające średnią, -1 < c < 1",
 ]
 assumptions = [
@@ -1906,7 +1906,7 @@ en_sha256 = "27c8d11839e29ec3966376f51c5cfb40f87461799d720587943e3f1d57375a09"
 title = "Test trendu Manna–Kendalla: S, Var(S) z poprawką na wiązania, Z i dwustronne p"
 validation = "brak: test hipotezy o braku trendu; jego źródła nie porównują go z obserwacjami"
 conventions = [
-    "wartości są wiązane (remisy), gdy są dokładnie równe (szereg liczony w arytmetyce zmiennoprzecinkowej należy najpierw zaokrąglić do jego dokładności); sgn(0) = 0, jak definiuje KZGW (2017) we wzorze 1.2, choć jej przykłady obliczeniowe liczą parę wiązaną jako -1",
+    "wartości są wiązane, gdy są dokładnie równe (szereg liczony w arytmetyce zmiennoprzecinkowej należy najpierw zaokrąglić do jego dokładności); sgn(0) = 0, jak definiuje KZGW (2017) we wzorze 1.2, choć w podanych tam przykładach obliczeniowych parę wiązaną liczy się jako -1",
     "Var(S) z poprawką na grupy wartości wiązanych (Gilbert, wzór 16.3; Hirsch i in., wzór 3b; pakiet R trend); KZGW (2017, s. 11) pomija tę poprawkę",
     "Z z poprawką na ciągłość o jeden w stronę 0 oraz Z = 0 dla S = 0 (Gilbert, wzór 16.4; KZGW, wzór 1.4)",
     "wartość p jest dwustronna: poniżej n0 wartości — dokładne P(|S'| >= |S|) po wszystkich różnych uporządkowaniach wartości, jednakowo prawdopodobnych przy braku trendu, z uwzględnieniem wiązań (współczynniki q-wielomianowe, MacMahon 1916); od n0 wartości — 2 P(Z' > |Z|) z górnego ogona rozkładu normalnego (`norm.sf` z scipy, jak pakiet R trend), co zachowuje cyfry znaczące przy silnym trendzie",
@@ -1972,7 +1972,7 @@ conventions = [
     "liniowa interpolacja między rangami według Gilberta (jego przykład 16.5 i podprogram CONINT, załącznik B); pakiet R trend zaokrągla rangi (round(), połówki do parzystej), a Helsel i in. (2020, wzory 10.6–10.7) przyjmują rangi całkowite, co przesuwa granice nawet o 5 % wartości granicy przy n <= 34 (zamrożona wyrocznia testowa, ADR-0063)",
     "Var(S) testu tych samych wartości, podawana przez wywołującego; Gilbert w ćwiczeniu 16.3 celowo buduje ją bez poprawki na wiązania",
     "z(1 - alpha/2) standardowego rozkładu normalnego (`norm.ppf` z scipy); dla alpha, przy którym 1 - alpha/2 zaokrągla się do 1, przedział nie istnieje",
-    "`stats mann-kendall` podaje przedział od dziesięciu wartości (Gilbert 1987, s. 218: na tej liczbie opiera się przybliżenie normalne S), poniżej — null",
+    "`stats mann-kendall` podaje przedział od dziesięciu wartości (Gilbert 1987, s. 218: przedział opiera się na przybliżeniu normalnym S), poniżej — null",
     "co najwyżej 5 000 wartości, jak nachylenie Sena",
 ]
 assumptions = [
@@ -1983,7 +1983,7 @@ assumptions = [
 values = "Szereg, po jednej wartości na każdy czas z times, w dowolnej jednostce"
 times = "Czas każdej kolejnej wartości: jej rok albo krok 0, 1, 2 … szeregu; kilka wartości może mieć ten sam czas. Nachylenie jest wyrażone na jednostkę tych czasów"
 var_s = "Wariancja statystyki S Kendalla, na której opiera się przedział: wariancja z testu Manna–Kendalla tych wartości, z poprawką na wiązania (wzór 16.3 Gilberta albo wzór 16.5 przy kilku wartościach z jednego czasu)"
-alpha = "Parametr, dla którego przedział obejmuje 1 - alpha"
+alpha = "Poziom istotności: przedział ufności obejmuje 1 - alpha"
 
 [formulas.sen_interval.outputs]
 lower = "Dolna granica przedziału nachylenia"
@@ -2002,7 +2002,7 @@ title = "Test punktu zmiany Pettitta: K, punkt zmiany i przybliżone p"
 validation = "brak: test hipotezy o braku zmiany; jego źródła nie porównują go z obserwacjami"
 conventions = [
     "rangi środkowe wartości wiązanych (`rankdata` z scipy, `rank` w R)",
-    "K po t = 1 … n - 1 (pakiet R trend bierze także t = n, gdzie U_n = 0); punktem zmiany jest pierwsze t, przy którym występuje K (pakiet R trend zwraca wszystkie takie t), czyli liczba wartości przed zmianą, która w `homogeneity_tests` wskazuje rok pierwszej wartości po zmianie",
+    "K po t = 1 … n - 1 (pakiet R trend uwzględnia także t = n, gdzie U_n = 0); punktem zmiany jest pierwsze t, przy którym występuje K (pakiet R trend zwraca wszystkie takie t), czyli liczba wartości przed zmianą, która w `homogeneity_tests` wskazuje rok pierwszej wartości po zmianie",
     "p to przybliżenie Pettitta 2 exp(-6 K^2 / (n^3 + n^2)), ograniczone do 1, dobre dla p <= 0,5 (pakiet R trend); dla krótkich szeregów jest zachowawcze: dziesięć rosnących wartości daje 0,066, podczas gdy dokładne p permutacyjne wynosi 2 / C(10, 5) = 0,0079",
     "wartość p mniejszą od najmniejszej dodatniej liczby zmiennoprzecinkowej zastępuje się tą liczbą, końcem fizycznego przedziału (0, 1]",
 ]
@@ -2041,7 +2041,7 @@ second = "Druga próba, w jednostce pierwszej"
 
 [formulas.ks_exact.outputs]
 d = "Największa odległość między dystrybuantami prób"
-p_value = "Dokładna dwustronna wartość p hipotezy jednego rozkładu"
+p_value = "Dokładna dwustronna wartość p hipotezy, że obie próby pochodzą z jednego rozkładu"
 
 [formulas.ks_exact.constants]
 exact_product = "Graniczny iloczyn liczebności prób dla testu dokładnego"
@@ -2072,7 +2072,7 @@ values = "Wartości dobowe szeregu, w dowolnej kolejności; NaN w dniu bez warto
 exceedance_percent = "Procenty dni, w których wartość jest osiągana lub przekraczana"
 
 [formulas.exceedance_values.outputs]
-exceedance_values = "Wartość osiągana lub przekraczana przez każdy z procentów dni, w jednostce szeregu"
+exceedance_values = "Wartość osiągana lub przekraczana w każdym z podanych procentów dni, w jednostce szeregu"
 
 [formulas.exceedance_values.constraints]
 has_values = "n >= 1: co najmniej jeden dzień z wartością"
@@ -2080,7 +2080,7 @@ has_values = "n >= 1: co najmniej jeden dzień z wartością"
 [formulas.lyne_hollick]
 en_sha256 = "ad8a9bdd862dfdf9a4a8bff629f17a7b5caaeaebaa9736814e3b354979defe14"
 title = "Przepływ podstawowy szeregu dobowego z filtru Lyne'a i Hollicka (standard Ladsona i in. 2013)"
-validation = "Ladson i in. (2013, rozdz. 2.5, tab. 2, rys. 2): w 9 zlewniach australijskich BFI przy alfa 0,98 lepiej niż przy 0,925 zgadzał się z oszacowaniami z wskaźników chemicznych, przy dużym rozrzucie; Nathan i McMahon (1990) uznali alfa od 0,9 do 0,95 za zadowalające w porównaniu z ręcznym rozdzieleniem hydrogramu w 122 zlewniach o powierzchni od 4,2 do 210 km² (według Ladsona i in.)"
+validation = "Ladson i in. (2013, rozdz. 2.5, tab. 2, rys. 2): w 9 zlewniach australijskich BFI przy alfa 0,98 lepiej niż przy 0,925 zgadzał się z oszacowaniami opartymi na znacznikach chemicznych, przy dużym rozrzucie; Nathan i McMahon (1990) uznali alfa od 0,9 do 0,95 za zadowalające w porównaniu z ręcznym rozdzieleniem hydrogramu w 122 zlewniach o powierzchni od 4,2 do 210 km² (według Ladsona i in.)"
 conventions = [
     "standard w postaci, w jakiej Ladson i in. opracowali go w swoim arkuszu, tab. 4 i BFI.R: przepływ szybki jest zachowywany bez obcinania, także ujemny, jako stan następnego dnia (tab. 4, przypisy d–f), a nie ustawiany na 0, jak wynikałoby z drukowanego wzoru 1 („q_f = 0 otherwise”) i wzoru 7 Murphy'ego i in. (2009) („subject to q_f(i) >= 0”)",
     "30 wartości odbitych lustrzanie na każdym końcu bez powtarzania wartości końcowej: Q_31, ..., Q_2 przed szeregiem i Q_(n-1), ..., Q_(n-30) po nim (rozdz. 2.1)",
@@ -2140,7 +2140,7 @@ conventions = [
     "k jest dobowym ilorazem Q_(t+1) / Q_t ze wzoru 5.2 WMO-No. 1029, a czas połowicznego spadku ln 2 / (-ln k) to C ln 2 z jego wzoru 5.3",
     "odcinki według własnej reguły Hydrologa: każdy ciąg co najmniej min_days spadków, od pierwszego dnia po kulminacji, bez progu (WMO zaczyna poniżej Q70 i dwa dni po kulminacji, na odcinkach siedmiodniowych, i dopasowuje je regresją)",
     "mediana wszystkich ilorazów wszystkich odcinków łącznie, a nie regresja przez początek układu (główna krzywa recesji WMO) ani średnia stałych poszczególnych odcinków (pojedyncze odcinki recesji WMO)",
-    "spadek jest ostry: dzień o równym przepływie (remis) kończy ciąg, tak jak wzrost",
+    "spadek jest ostry: dzień o przepływie równym poprzedniemu (wartości wiązane) kończy ciąg, tak jak wzrost",
     "dzień bez wartości lub dzień bez przepływu (Q_t = 0) kończy ciąg; spadek do 0 jest ostatnim ilorazem swojego ciągu, więc k = 0 i czas połowicznego spadku 0 tylko przy min_days równym 1",
 ]
 assumptions = [
@@ -2167,11 +2167,11 @@ validation = "brak: współczynniki Pardégo opisują średni cykl roczny przep�
 conventions = [
     "Qbar_m to średnia z dni z wartością miesiąca kalendarzowego m w całym okresie (dni tego miesiąca ze wszystkich lat łącznie), Qbar to średnia ze wszystkich dni z wartością, tak jak średnie miesięczne i roczne roku w IMGW-PIB: dwanaście współczynników ważonych liczbą dni ich miesięcy daje średnio jeden, a sumuje się do 12 tylko wtedy, gdy każdy miesiąc ma tyle samo dni (rok bez luk: około 11,96 przy silnym wezbraniu wiosennym); średnia z dwunastu średnich miesięcznych dawałaby sumę 12",
     "dzień bez wartości (NaN) nie wchodzi do żadnej średniej; gdy luki skupiają się w niektórych miesiącach, Qbar przesuwa się ku miesiącom lepiej obserwowanym",
-    "miesiące wejściowe są kalendarzowe (styczeń = 1), wyniki biegną od listopada do października, miesięcy roku hydrologicznego",
+    "miesiące wejściowe są kalendarzowe (styczeń = 1), wyniki są uporządkowane od listopada do października, według miesięcy roku hydrologicznego",
     "przepływ w m³/s lub dowolnej jednostce (współczynniki są bezwymiarowe); tabele Wrzesińskiego podają je w % średniego przepływu rocznego",
 ]
 assumptions = [
-    "dni okresu reprezentują jego miesiące: okres kilku lat opisuje te lata, nie klimat (reżim rzek Polski odczytuje się z 30 do 40 lat, Wrzesiński 2017)",
+    "dni okresu reprezentują jego miesiące: okres kilku lat opisuje te lata, nie klimat (reżim rzek Polski określa się na podstawie 30–40 lat, Wrzesiński 2017)",
 ]
 
 [formulas.parde_coefficients.variables]
@@ -2195,7 +2195,7 @@ title = "Udział marca i kwietnia w rocznej objętości średnich przepływów m
 validation = "brak: opisowy wskaźnik reżimu przyjęty w Hydrologu (ADR-0031)"
 conventions = [
     "objętości to wieloletnie średnie miesięczne pomnożone przez liczbę dni miesiąca, luty 28,25 dnia (rok średni 365,25 dnia), a nie przez dni lat okresu",
-    "dane wejściowe biegną od listopada do października, jak wyniki `parde_coefficients`; marzec i kwiecień są piątym i szóstym miesiącem",
+    "dane wejściowe są uporządkowane od listopada do października, jak wyniki `parde_coefficients`; marzec i kwiecień są piątym i szóstym miesiącem",
     "objętości w m³/s razy dni, jednostce, która w udziale się skraca",
 ]
 
@@ -2217,12 +2217,12 @@ title = "Typ reżimu odpływu rzeki polskiej według Dynowskiej ze współczynni
 validation = "brak: typologia; Wrzesiński (2017, 2018) sklasyfikował według niej 516 posterunków z lat 1971-2010, a Perz (2019) rzeki Kotliny Kłodzkiej, bez miary zgodności"
 conventions = [
     "współczynniki to współczynniki Pardégo miesięcy od listopada do października, np. 1,30 dla 130 % średniego przepływu rocznego",
-    "miesiąc wiosenny to większy z marca i kwietnia (Perz 2019, s. 79), miesiąc letni to największy z czerwca–sierpnia (interpretacja Hydrologa); przy równych współczynnikach wcześniejszy miesiąc",
+    "miesiąc wiosenny to większy z marca i kwietnia (Perz 2019, s. 79), miesiąc letni to największy z miesięcy od czerwca do sierpnia (interpretacja Hydrologa); przy równych współczynnikach wybiera się wcześniejszy miesiąc",
     "typy są badane w kolejności 5, 4, potem od 1 do 3: „wyższy lub prawie równy” oznacza co najmniej 0,95 współczynnika wiosennego (interpretacja Hydrologa, żadne źródło nie podaje liczby); podane w źródłach „na ogół 130-180 %” dla typów 4 i 5 nie jest sprawdzane",
-    "granice domknięte tak, jak je formułują źródła: „co najwyżej 130 %” to typ 1, „powyżej 180 %” typ 3, więc 180 % to typ 2, „co najmniej 100 %” typ 4; granice porównuje się jako liczby zmiennoprzecinkowe 1,3, 1,8 i 1,0, a miesiąc letni z liczbą zmiennoprzecinkową 0,95 razy wiosenny, co utrzymuje każdy drukowany z trzema miejscami po przecinku przypadek równości w jego klasie",
+    "granice domknięte tak, jak je formułują źródła: „co najwyżej 130 %” to typ 1, „powyżej 180 %” typ 3, więc 180 % to typ 2, „co najmniej 100 %” typ 4; granice porównuje się jako liczby zmiennoprzecinkowe 1,3, 1,8 i 1,0, a miesiąc letni z liczbą zmiennoprzecinkową 0,95 razy wiosenny, dzięki czemu każdy przypadek równości z granicą, drukowany z trzema miejscami po przecinku, pozostaje w swojej klasie",
 ]
 assumptions = [
-    "współczynniki opisują długi okres, w źródłach od 30 do 40 lat; typ z kilku lat lub ze współczynników bliskich granicy nie jest odporny: czerwiec w Kłodzku w latach 1971-2015 leży 0,05 % powyżej 100 % (przypadek Perza)",
+    "współczynniki opisują długi okres, w źródłach od 30 do 40 lat; typ z kilku lat lub ze współczynników bliskich granicy jest niepewny: czerwiec w Kłodzku w latach 1971-2015 leży 0,05 % powyżej 100 % (przypadek Perza)",
     "dwie klasyfikacje Wrzesińskiego tych samych 516 posterunków z lat 1971-2010 liczą 24 (2017) i 33 (2018) rzeki o reżimie pluwialno-niwalnym: interpretacja „prawie równego” nie jest ustalona także w źródłach",
 ]
 
@@ -2243,15 +2243,15 @@ en_sha256 = "d16d0378fd00b3001d03bc7ec7a7440148697ac6feab6192a5a696070e1a08fd"
 title = "Wskaźnik sezonowości Walsha i Lawlera z dwunastu sum miesięcznych"
 validation = "brak: wskaźnik sum miesięcznych"
 conventions = [
-    "obliczany jako suma |x_n / R - 1/12|, równa wartości wzoru bez R/12, które dla podnormalnego R ulega niedomiarowi",
-    "`precipitation_seasonality` podaje dwanaście normalnych okresu referencyjnego albo dwanaście sum miesięcznych roku, w którym wszystkie są znane, `flow_regime` objętości miesięczne szeregu przepływów; suma równa 0 nie ma wskaźnika",
+    "obliczany jako suma |x_n / R - 1/12|, równa wartości wzoru bez R/12, które dla subnormalnego R ulega niedomiarowi",
+    "`precipitation_seasonality` podaje dwanaście norm miesięcznych okresu odniesienia albo dwanaście sum miesięcznych roku, w którym wszystkie są znane, `flow_regime` objętości miesięczne szeregu przepływów; suma równa 0 nie ma wskaźnika",
 ]
 
 [formulas.seasonality_index.variables]
 monthly_mm = "Dwanaście sum miesięcznych w dowolnej kolejności: opadu lub objętości odpływu w dowolnej jednostce (wskaźnik jest bezwymiarowy)"
 
 [formulas.seasonality_index.outputs]
-si = "Wskaźnik: 0 dla równych miesięcy, 11/6 dla jednego mokrego miesiąca"
+si = "Wskaźnik: 0 dla równych miesięcy, 11/6 dla jednego miesiąca z opadem"
 
 [formulas.seasonality_index.constraints]
 a_positive_total = "suma dwunastu miesięcy jest dodatnia"
@@ -2262,7 +2262,7 @@ title = "Średni kierunek i koncentracja terminów na okręgach ich lat (Bayliss
 validation = "brak: opis terminów wezbrań; Bayliss i Jones (1992) oraz FEH przedstawiają go na mapach dla rzek brytyjskich, Hall i Blöschl (2018) dla Europy"
 conventions = [
     "terminy i długości ich lat w jednej jednostce czasu, w dniach dla dat; kąt 2 pi t / L terminu t liczonego od początku jego roku o długości L",
-    "dla dat t to dzień roku minus połowa, czyli środek dnia, a L to 365 lub 366 (ADJUST u Baylissa i Jonesa, w FEH nr dnia - 0,5); Hall i Blöschl (2018) biorą sam dzień, D 2 pi / m_i",
+    "dla dat t to dzień roku minus połowa, czyli środek dnia, a L to 365 lub 366 (ADJUST u Baylissa i Jonesa, w FEH nr dnia - 0,5); Hall i Blöschl (2018) przyjmują sam dzień, D 2 pi / m_i",
     "średni kierunek atan2(ybar, xbar) sprowadzony do [0, 2 pi): Bayliss i Jones oraz FEH dodają pi lub 2 pi do arctan(ybar / xbar) zależnie od znaków, co daje ten sam kąt; przy xbar = ybar = 0 kierunek jest nieokreślony (Hall i Blöschl), a wzór daje 0, tak jak scipy.stats.circmean",
     "w pobliżu r = 0 kierunek jest źle uwarunkowany: przesuwa go zaokrąglenie; średnią należy odczytywać razem z r (Bayliss i Jones, rozdz. 3.3; FEH)",
 ]
@@ -2289,8 +2289,8 @@ validation = "brak: opis średniego cyklu rocznego; Wilks (2011) nie podaje miar
 conventions = [
     "t to dzień roku hydrologicznego minus jeden (1 listopada = 0), P = 365,25 dnia: 31 października roku przestępnego to t = 365, więc na przełomie roku t przeskakuje o 1,25 dnia",
     "dzień fazy to dzień roku hydrologicznego, w którego wartości harmonika osiąga maksimum: wartość dnia leży w t = dzień - 1, a dzień fazy to t + 1",
-    "udział harmoniki w wariancji to przyrost R² po dołączeniu jej do dopasowania metodą najmniejszych kwadratów harmonik poprzednich (dopasowania zagnieżdżone, dodatkowa suma kwadratów Drapera i Smitha); dla całkowitej liczby lat równo rozmieszczonych dni harmoniki są ortogonalne, a udział jest równy (n/2) C_k^2 / ((n - 1) s^2) Wilksa; Hydrolog 0.8 dzielił zamiast tego współczynniki całego dopasowania, co w latach z lukami dawało ujemne udziały",
-    "R² = 1 - SSR / SST, gdzie SST to suma kwadratów odchyleń od średniej wartości",
+    "udział harmoniki w wariancji to przyrost R² po dołączeniu jej do dopasowania metodą najmniejszych kwadratów harmonik poprzednich (dopasowania zagnieżdżone, dodatkowa suma kwadratów Drapera i Smitha); dla całkowitej liczby lat równo rozmieszczonych dni harmoniki są ortogonalne, a udział jest równy (n/2) C_k^2 / ((n - 1) s^2) Wilksa; Hydrolog 0.8 wycinał zamiast tego współczynniki z całego dopasowania, co w latach z lukami dawało ujemne udziały",
+    "R² = 1 - SSR / SST, gdzie SST to suma kwadratów odchyleń wartości od ich średniej",
     "wartości w dowolnej jednostce (°C w dokumentach): średnia i amplitudy są w tej jednostce",
 ]
 assumptions = [
@@ -2315,7 +2315,7 @@ period_days = "Okres cyklu rocznego, długość roku średniego"
 
 [formulas.harmonic_fit.constraints]
 same_length = "jeden dzień na każdą wartość"
-enough_values = "co najmniej 4 K + 2 wartości: dwa razy tyle co 2 K + 1 współczynników (reguła Hydrologa)"
+enough_values = "co najmniej 4 K + 2 wartości: dwukrotność liczby 2 K + 1 współczynników (reguła Hydrologa)"
 year_covered = "najdłuższa przerwa między dniami z wartością, na okręgu roku, jest krótsza niż P / (2 K): harmoniki są rozdzielone"
 values_not_all_equal = "0 < sum((x - mean)^2) < inf: wartości nie są wszystkie równe, a float64 mieści ich wariancję, więc istnieją R² i fazy"
 
@@ -2360,11 +2360,11 @@ positive_mean = "max(x) > 0, aby średnia była > 0"
 
 [formulas.fisher_pearson_skewness]
 en_sha256 = "47094b138d0a16094a0b63928b6f3aa150e4d7df705b57002318d092d75af8b2"
-title = "Współczynnik skośności Fishera-Pearsona g1 próby"
+title = "Współczynnik skośności Fishera–Pearsona g1 próby"
 validation = "brak: definicja statystyki z próby"
 conventions = [
-    "współczynnik Fishera-Pearsona g1 według NIST, rozdz. 1.3.5.11, z momentami o dzielniku n (scipy.stats.skew z bias=True), a nie skorygowany współczynnik G1 = sqrt(n (n - 1)) / (n - 2) g1 stosowany w analizie częstości wezbrań (Bulletin 17B)",
-    "próba w dowolnej jednostce; skośność niemianowana",
+    "współczynnik Fishera–Pearsona g1 według NIST, rozdz. 1.3.5.11, z momentami o dzielniku n (scipy.stats.skew z bias=True), a nie skorygowany współczynnik G1 = sqrt(n (n - 1)) / (n - 2) g1 stosowany w analizie częstości wezbrań (Bulletin 17B)",
+    "próba w dowolnej jednostce; skośność bezwymiarowa",
     "odchylenia od średniej, centrowane dwukrotnie, liczone na próbie podzielonej przez potęgę dwójki",
 ]
 
@@ -2372,7 +2372,7 @@ conventions = [
 values = "Próba: wartości danego miesiąca kalendarzowego z kolejnych lat"
 
 [formulas.fisher_pearson_skewness.outputs]
-skewness = "Współczynnik skośności Fishera-Pearsona"
+skewness = "Współczynnik skośności Fishera–Pearsona"
 
 [formulas.fisher_pearson_skewness.constraints]
 enough_values = "n >= 2"
@@ -2404,14 +2404,14 @@ enough_values = "n >= 2"
 [formulas.rating_curve]
 en_sha256 = "d39e85975fce59a49b3f67bfac2193c7a6e2349a641606a1124dc42f702f231d"
 title = "Przepływ przy danym stanie wody z potęgowej krzywej natężenia przepływu"
-validation = "brak: WMO-No. 1044 przedstawia równanie jako krzywą natężenia przepływu dla kontroli odcinkowych i korytowych (rozdz. 1.3 oraz 1.5.4 do 1.5.6) i nie podaje żadnej miary jego zgodności z pomiarami przepływu; dopasowanie krzywej do jej pomiarów opisuje specyfikacja `rating_curve_fit`"
+validation = "brak: WMO-No. 1044 przedstawia równanie jako krzywą natężenia przepływu dla kontroli przekrojowych i korytowych (rozdz. 1.3 oraz 1.5.4 do 1.5.6) i nie podaje żadnej miary jego zgodności z pomiarami przepływu; dopasowanie krzywej do jej pomiarów opisuje specyfikacja `rating_curve_fit`"
 conventions = [
-    "H i H0 w jednej jednostce stanów: cm, jak podaje je IMGW-PIB, albo m; a w m3/s na (jednostkę H)^b, więc ta sama krzywa ze stanami w m ma a 100^b razy większe i H0 100 razy mniejsze (symetria `levels_in_another_unit`); Q w m3/s",
+    "H i H0 w jednej jednostce stanów: cm, jak podaje je IMGW-PIB, albo m; a w m³/s na (jednostkę H)^b, więc ta sama krzywa ze stanami w m ma a 100^b razy większe i H0 100 razy mniejsze (symetria `levels_in_another_unit`); Q w m³/s",
     "Q = 0 przy H0 i poniżej, czyli przy stanie przepływu zerowego (e według WMO): brak przepływu przez kontrolę, niezależnie od b",
     "H0 to stan przepływu zerowego, a nie zero wodowskazu (poziom odniesienia łaty wodowskazowej)",
 ]
 assumptions = [
-    "jedna zależność stan–przepływ jednej kontroli (odcinkowej albo korytowej) w całym zakresie stanów: bez przesunięć krzywej, histerezy ani zmiennej cofki",
+    "jedna zależność stan–przepływ jednej kontroli (przekrojowej albo korytowej) w całym zakresie stanów: bez przesunięć krzywej, histerezy ani zmiennej cofki",
 ]
 
 [formulas.rating_curve.variables]
@@ -2435,7 +2435,7 @@ conventions = [
     "ograniczenia a >= 0, b >= 0 i H0 poniżej najniższego stanu o 2^-30 skali stanów (potęgi dwójki, która sprowadza największe |H| do [1/2, 1)), czyli około 5e-7 cm dla stanów rzędu kilku metrów",
     "poszukiwanie: `curve_fit` z SciPy, metoda trust region reflective z ftol, xtol i gtol równymi 1e-12 i co najwyżej 10 000 obliczeń funkcji, od a = 1, b = 1,5 i H0 = `h0_initial`, na stanach i przepływach podzielonych dokładnie przez potęgi dwójki sprowadzające ich największe wartości bezwzględne do [1/2, 1); krzywa jest następnie przeskalowana z powrotem, więc stany w cm albo m i przepływy przeskalowane przez potęgę dwójki dają tę samą krzywą",
     "R2 = 1 - SS_res / SS_tot na Q; s to odchylenie standardowe reszt z dzielnikiem n - 1 (numpy.std, ddof 1)",
-    "H, H0 i `h0_initial` w jednej jednostce stanów (cm albo m); a w m3/s na (jednostkę H)^b; Q w m3/s",
+    "H, H0 i `h0_initial` w jednej jednostce stanów (cm albo m); a w m³/s na (jednostkę H)^b; Q w m³/s",
 ]
 assumptions = [
     "pary odpowiadają jednej zależności stan–przepływ jednej kontroli w całym okresie (bez przesunięć krzywej, histerezy ani zmiennej cofki); sprawdzenie ze specyfikacji `rating_curve_plausibility` wskazuje krzywe, dla których tak nie jest",
@@ -2469,14 +2469,14 @@ enough_gaugings = "n >= 12: co najmniej 12 do 15 pomiarów przepływu z okresu a
 [formulas.rating_curve_plausibility]
 en_sha256 = "d86fcc8d528882f890467d6d6bf59795ca313810d4c282bfadeae615b360988f"
 title = "Wiarygodność krzywej natężenia przepływu jako krzywej jednej zależności stan–przepływ (reguła Hydrologa z ADR-0041)"
-validation = "brak: heurystyka Hydrologa (ADR-0041), niesprawdzona na obserwacjach; WMO-No. 1044 pokazuje rzeczywistą kontrolę odcinkową, której krzywa ma nachylenie około 4,3 poniżej 1,4 m (rys. II.1.5, s. II.1-9), a reguła oznacza ją jako `b_out_of_range`"
+validation = "brak: heurystyka Hydrologa (ADR-0041), niesprawdzona na obserwacjach; WMO-No. 1044 pokazuje rzeczywistą kontrolę przekrojową, której krzywa ma nachylenie około 4,3 poniżej 1,4 m (rys. II.1.5, s. II.1-9), a reguła oznacza ją jako `b_out_of_range`"
 conventions = [
-    "b od 1 do 4, z granicami włącznie: kontrole odcinkowe 1,5 do 2,5 oraz 2 lub więcej w korytach naturalnych, kontrole korytowe zwykle poniżej 2 (WMO-No. 1044, s. II.1-2 i II.1-8); przekroje złożone i przepływ pozakorytowy mieszczą się w zakresie; rzeczywista kontrola odcinkowa o nachyleniu 4,3 (rys. II.1.5) zostaje oznaczona",
+    "b od 1 do 4, z granicami włącznie: kontrole przekrojowe 1,5 do 2,5 oraz 2 lub więcej w korytach naturalnych, kontrole korytowe zwykle poniżej 2 (WMO-No. 1044, s. II.1-2 i II.1-8); przekroje złożone i przepływ pozakorytowy mieszczą się w zakresie; rzeczywista kontrola przekrojowa o nachyleniu 4,3 (rys. II.1.5) zostaje oznaczona",
     "H0 poniżej najniższego stanu co najwyżej o rozstęp stanów, z granicą włącznie: własne ograniczenie Hydrologa; stany to stany par przekazanych do dopasowania, przed usunięciem wartości odstających",
     "ocena, a nie odmowa: krzywa jest mimo to podawana (ADR-0041)",
 ]
 assumptions = [
-    "krzywa dopasowana do par z dwóch zależności (przesunięte zero wodowskazu, zmiana koryta w okresie) ma strome b i H0 daleko poniżej każdego stanu",
+    "krzywa dopasowana do par z dwóch zależności (przesunięte zero wodowskazu, zmiana koryta w okresie) ma bardzo duże b i H0 daleko poniżej każdego stanu",
 ]
 
 [formulas.rating_curve_plausibility.variables]
@@ -2495,7 +2495,7 @@ highest_exponent = "Górna granica wiarygodnego wykładnika b"
 [formulas.rybczynski_zones]
 en_sha256 = "c30b6214dbec7672a7db6a21e1dda91ede9e005383ee8c4554e10a5c1d7f000a"
 title = "Strefy niskiego, średniego i wysokiego tła wodnego według Rybczyńskiego (NTW, STW, WTW)"
-validation = "brak: źródła Rybczyńskiego nie otwarto"
+validation = "brak: źródło Rybczyńskiego nie zostało sprawdzone"
 conventions = [
     "granice są środkami klas: NTW kończy się w środku najliczniejszej klasy (pierwszej z równolicznych), STW w środku pierwszej klasy, na której dolnej granicy czas trwania (udział stanów równych tej granicy lub wyższych) jest mniejszy niż 50 %",
     "gdy żadna klasa nie ma czasu trwania poniżej 50 % albo STW nie leżałaby powyżej NTW, STW kończy się w środku klasy następnej po najliczniejszej; gdy jest to ostatnia klasa, o jedną szerokość klasy powyżej NTW, poza najwyższą granicą (WTW biegnie wtedy wstecz)",
@@ -2536,8 +2536,8 @@ convention = "przepływ zmienia się liniowo między rzędnymi; minuty przelicza
 [rules.hydrograph_refinement]
 en_sha256 = "e7dc97318c75b5d084700a2a1cebf652f291fd20352f7214e4112245f0b667b0"
 title = "Zagęszczenie kroku czasowego hydrogramu"
-definition = "hydrogram na kroku podzielonym na równe kroki cząstkowe, z nowymi rzędnymi na odcinkach prostych między dotychczasowymi"
-convention = "dotychczasowe rzędne zachowuje się dokładnie, a objętość się nie zmienia; wynik schematu liczonego na krokach cząstkowych odczytuje się z powrotem w chwilach pierwotnych rzędnych"
+definition = "hydrogram na kroku podzielonym na równe podkroki, z nowymi rzędnymi na odcinkach prostych między dotychczasowymi"
+convention = "dotychczasowe rzędne zachowuje się dokładnie, a objętość się nie zmienia; wynik schematu liczonego na podkrokach odczytuje się z powrotem w chwilach pierwotnych rzędnych"
 
 [rules.hydrograph_extension]
 en_sha256 = "769812de7433c02389c575c2de2f8deb216557ff3e53fd969ce3283a923f3e57"
@@ -2565,7 +2565,7 @@ min_extension_steps = "Minimalna liczba kroków wydłużenia osi czasu"
 en_sha256 = "383ca714a41d8c5df60fa211b5057a88c3f93c911032b73235e066a49e15d97f"
 title = "Błąd bilansu objętości transformacji fali"
 definition = "objętość dopływu na wydłużonej osi czasu (z utrzymanym ostatnim dopływem) minus objętość odpływu minus retencja na końcu plus retencja na początku, każda objętość obliczona metodą trapezów"
-convention = "zero z dokładnością do zaokrągleń dla rekurencji na pierwotnym kroku; w pozostałych przypadkach błąd próbkowania metody trapezów po podziale na kroki cząstkowe, błąd kwadratury ścisłego jądra (kaskada) albo interpolowanego opóźnienia"
+convention = "zero z dokładnością do zaokrągleń dla rekurencji na pierwotnym kroku; w pozostałych przypadkach błąd próbkowania metody trapezów po podziale na podkroki, błąd kwadratury ścisłego jądra (kaskada) albo interpolowanego opóźnienia"
 
 [rules.muskingum_subreaches]
 en_sha256 = "82b8d5d72be9412a10ca7a3766b939e85052f1d778c8f07c0bd8e151251f02e3"
@@ -2576,20 +2576,20 @@ convention = "czas przepływu przez pododcinek wynosi około jednego kroku czaso
 [rules.cascade_time_scale]
 en_sha256 = "99aba7bcdf1086a150a4b437924f217ea143873aeb8a2b7707af07f9baa22eff"
 title = "Stała retencji kaskady z długości odcinka i prędkości fali"
-definition = "stała retencji jednego zbiornika wyznaczona z długości L odcinka i prędkości c fali wezbraniowej, K = L / (n c): czas przepływu L / c jest średnim opóźnieniem n K kaskady; L w km i c w m/s przez tabelę jednostek (1 km = 1000 m, 1 min = 60 s)"
+definition = "stała retencji jednego zbiornika wyznaczona z długości L odcinka i prędkości c fali wezbraniowej, K = L / (n c): czas przepływu L / c jest średnim opóźnieniem n K kaskady; L w km i c w m/s przeliczane według tabeli jednostek (1 km = 1000 m, 1 min = 60 s)"
 convention = "K podaje się wprost albo wyznacza z L i c, nigdy oba naraz (`details.reason` `one_of`); Kalinin i Milukow przyjmują n jako L podzielone przez długość charakterystyczną Q / (T S0 c)"
 
 [rules.muskingum_cunge_rise]
 en_sha256 = "b15858da0ecf54e6da325b3f95b1e04e6acb144ea99250b52680974855bbb138"
 title = "Czas wznoszenia fali w metodzie Muskingum-Cunge"
-definition = "liczba kroków od rzędnej poprzedzającej pierwszą rzędną powyżej 5 % kulminacji dopływu do pierwszej kulminacji wynoszącej co najmniej połowę tej kulminacji; wznoszenie trwające od 1 do 9 kroków powoduje podział każdego kroku siatki na ceil(10 / wznoszenie) jednakowych podkroków (co najwyżej 100), przy dopływie liniowym między rzędnymi (uwaga `timestep_refined`)"
+definition = "liczba kroków od rzędnej poprzedzającej pierwszą rzędną powyżej 5 % kulminacji dopływu do pierwszej kulminacji wynoszącej co najmniej połowę kulminacji dopływu; wznoszenie trwające od 1 do 9 kroków powoduje podział każdego kroku siatki na ceil(10 / wznoszenie) jednakowych podkroków (co najwyżej 100), przy dopływie liniowym między rzędnymi (uwaga `timestep_refined`)"
 convention = "NEH 630 ponownie interpoluje hydrogram do dokładnie 10 przedziałów na wznoszeniu; Hydrolog dzieli krok na całkowitą liczbę podkroków, dając 10 przedziałów lub więcej, i zachowuje oryginalne rzędne; zbiorniki odcinka bez siatki są ścisłe przy każdym kroku i nie są zagęszczane"
 
 [rules.muskingum_cunge_grid]
 en_sha256 = "74a1581ac7540718c32e597ac15d1691e34bed1d7125d66cc11a7c48857379f4"
 title = "Siatka obliczeniowa metody Muskingum-Cunge"
-definition = "przepływem odniesienia jest kulminacja dopływu, o ile nie podano innego; krok drogi NRCS dx_c = (c dt + D) / 2 przy D = Q / (T S0 c) daje ceil(L / dx_c) kroków, zmienione na najbliższą liczbę w oknie nieujemnych wag |c dt - D| <= L / N <= c dt + D, każdy koniec z dokładnością do 1e-9 swojej wartości (`hydrolog.routing.formulas.cunge.distance_step_window`); krok, dla którego w oknie nie ma liczby całkowitej, dzieli się na najmniejszą liczbę od 2 do 100 jednakowych podkroków, dla której taka liczba istnieje, przy dopływie liniowym między rzędnymi (uwagi `subreaches_adjusted`, `substeps_added`); uwaga `accuracy_limit` sygnalizuje siatkę NRCS, której Dg = D / dx przekracza exp(2,3 Cg)"
-convention = "jeden przepływ odniesienia dla wszystkich kroków drogi, podczas gdy WinTR-20 przyjmuje kulminację na górnym końcu każdego z nich; siatka z ujemną wagą, którą NEH dopuszcza (przykład 17-5), jest zastępowana (ADR-0008); siatka wymagająca ponad miliona rzędnych jest odrzucana (`unstable_timestep`)"
+definition = "przepływem odniesienia jest kulminacja dopływu, o ile nie podano innego; krok przestrzenny NRCS dx_c = (c dt + D) / 2 przy D = Q / (T S0 c) daje ceil(L / dx_c) kroków, a liczbę tę zmienia się na najbliższą liczbę w oknie nieujemnych wag |c dt - D| <= L / N <= c dt + D, każdy koniec z dokładnością do 1e-9 swojej wartości (`hydrolog.routing.formulas.cunge.distance_step_window`); krok, dla którego w oknie nie ma liczby całkowitej, dzieli się na najmniejszą liczbę od 2 do 100 jednakowych podkroków, dla której taka liczba istnieje, przy dopływie liniowym między rzędnymi (uwagi `subreaches_adjusted`, `substeps_added`); uwaga `accuracy_limit` sygnalizuje siatkę NRCS, której Dg = D / dx przekracza exp(2,3 Cg)"
+convention = "jeden przepływ odniesienia dla wszystkich kroków przestrzennych, podczas gdy WinTR-20 przyjmuje kulminację na górnym końcu każdego z nich; siatka z ujemną wagą, którą NEH dopuszcza (przykład 17-5), jest zastępowana (ADR-0008); siatka wymagająca ponad miliona rzędnych jest odrzucana (`unstable_timestep`)"
 
 [rules.muskingum_cunge_fallback]
 en_sha256 = "ace7dac95e0047cba64bc42b957cb58e8d1bdb37ed5ddc24150a8f8b4b9145eb"
@@ -2606,7 +2606,7 @@ convention = "warunek dla każdego odcinka tabeli jest ostrzejszy niż warunek N
 [rules.level_pool_initial_outflow]
 en_sha256 = "a642cb9c306ee5cb46da32958f4f1046a4a7384df4458068347a664663c1f59b"
 title = "Odpływ początkowy w metodzie zbiornikowej"
-definition = "odpływ, z którym zbiorniki startują w stanie ustalonym: odpływ początkowy obliczenia (`routing_initial_state`), przyjmowany na końcu tabeli, gdy leży poza nią o co najwyżej 1e-9 największego odpływu z tabeli (co najmniej 1e-9 m3/s); dalej poza tabelą jest odrzucany (`initial_outflow_m3s`, minimum lub maksimum)"
+definition = "odpływ, z którym zbiorniki startują w stanie ustalonym: odpływ początkowy obliczenia (`routing_initial_state`), przyjmowany na końcu tabeli, gdy leży poza nią o co najwyżej 1e-9 największego odpływu z tabeli (co najmniej 1e-9 m³/s); dalej poza tabelą jest odrzucany (`initial_outflow_m3s`, minimum lub maksimum)"
 convention = "tabela obejmuje obliczenie, nigdy nie stosuje się ekstrapolacji; wyjście poza tabelę wynika z zaokrągleń, a nie z danych"
 
 [rules.level_pool_stage]
@@ -2679,10 +2679,10 @@ convention = "0 (brak danych) dla komórki z wartością NaN lub z nieskończon�
 en_sha256 = "f436f706edeca4f8a046c5504e6fcb434086b5020d1058ddb533c06fc8f63a66"
 title = "SPI k-miesięcznych sum opadu"
 definition = "k-miesięczna suma danego miesiąca to suma sum miesięcznych k miesięcy, które się w nim kończą; jest brakiem, jeśli nie wszystkie k sum są znane; sumy każdego miesiąca kalendarzowego z okresu odniesienia są dopasowywane (`spi_gamma_fit`), gdy są znane w co najmniej 80 % jego lat, wliczając lata bez danych"
-convention = "k-miesięczne sumy okresu odniesienia pozostają w obrębie jego lat (climate_indices 3.2.0 pozwala sumom jego pierwszych k - 1 miesięcy sięgać przed ten okres); każdy analizowany miesiąc otrzymuje SPI własnej sumy według dopasowania dla swojego miesiąca kalendarzowego; miesiąc, dla którego sum dopasowanie się nie udaje, nie ma SPI (komunikat `spi_not_fitted`)"
+convention = "k-miesięczne sumy okresu odniesienia pozostają w obrębie jego lat (climate_indices 3.2.0 pozwala sumom jego pierwszych k - 1 miesięcy sięgać przed ten okres); każdy analizowany miesiąc otrzymuje SPI własnej sumy według dopasowania dla swojego miesiąca kalendarzowego; miesiąc, którego sum dopasowanie nie przyjmuje, nie ma SPI (komunikat `spi_not_fitted`)"
 
 [rules.spi_k_month_sums.constants]
-normal_share = "Najmniejszy udział lat okresu odniesienia z wartościami"
+normal_share = "Najmniejszy udział lat okresu odniesienia z wartością"
 
 [rules.relative_precipitation]
 en_sha256 = "677f49723585f03d311271cbd7925c51c9072d9b9aba31c875de4a47612d4bda"
@@ -2741,13 +2741,13 @@ convention = "rok wymaga każdego dnia (climdex.pcic dopuszcza do 15 brakującyc
 [rules.precipitation_sums]
 en_sha256 = "77cfa3d39b5eab19317835691d7edf52025ebb74492a8febf7edd7d249be1ef4"
 title = "Sumy opadu miesięczne, półroczne, sezonowe i roczne"
-definition = "suma opadu dobowego miesiąca, wymagająca kompletu dni albo opadów zbiorczych obejmujących brakujące dni; suma półrocza (XI-IV, V-X), pory roku (DJF z poprzedzającym grudniem, MAM, JJA, SON) i roku jako suma jej miesięcy, wymagająca każdego z nich; suma w % normalnej, 100 P / N"
-convention = "każda suma opadu dobowego zaokrąglona do 1e-6 mm (`round_sums`); brak procentu, gdy nie ma normalnej lub normalna wynosi 0"
+definition = "suma opadu dobowego miesiąca, wymagająca kompletu dni albo opadów zbiorczych obejmujących brakujące dni; suma półrocza (XI–IV, V–X), pory roku (DJF z poprzedzającym grudniem, MAM, JJA, SON) i roku jako suma sum miesięcznych wchodzących w ich skład, wymagająca każdej z nich; suma w % swojej normy, 100 P / N"
+convention = "każda suma opadu dobowego zaokrąglona do 1e-6 mm (`round_sums`); brak odsetka, gdy brak normy lub norma wynosi 0"
 
 [rules.precipitation_normals]
 en_sha256 = "c7530f8645ea93e498dd38597b173541e85efca86075c1add2c389195fc710f0"
-title = "Normalne opadu miesięczne, półroczne, sezonowe i roczne"
-definition = "normalna miesiąca kalendarzowego: średnia jego sum z lat okresu odniesienia, w których suma istnieje, o ile stanowią one co najmniej 80 % lat okresu; normalna półrocza, pory roku lub roku: suma normalnych jej miesięcy"
+title = "Normy opadu miesięczne, półroczne, sezonowe i roczne"
+definition = "norma miesiąca kalendarzowego: średnia jego sum z lat okresu odniesienia, w których suma istnieje, o ile stanowią one co najmniej 80 % lat okresu; norma półrocza, pory roku lub roku: suma norm miesięcy, które obejmuje"
 convention = "okresem odniesienia są domyślnie lata analizy; jego lata bez danych liczą się do jego lat"
 
 [rules.precipitation_normals.constants]
@@ -2767,21 +2767,21 @@ convention = "P >= próg; przy lukach liczba w miesiącu nie jest liczbą całko
 
 [rules.precipitation_intensity]
 en_sha256 = "b3ef94000baa411d852f2dcf0357ba8293261a3243c7d1636408209929dd2b37"
-title = "Intensywność opadu dni mokrych (SDII) miesięcy i lat"
+title = "Intensywność opadu dni z opadem (SDII) miesięcy i lat"
 definition = "`sdii` każdego miesiąca i roku z kompletem dni oraz każdego miesiąca kalendarzowego z tych miesięcy okresu łącznie; średnia suma roczna i średni SDII lat, które go mają"
-convention = "opad zbiorczy jest dla `sdii` dniem z brakiem danych i wlicza się do sumy rocznej; PRCPTOT zaokrąglony do 1e-6 mm; miesiąc lub rok bez dnia mokrego ma W = 0 i nie ma SDII"
+convention = "opad zbiorczy jest dla `sdii` dniem z brakiem danych i wlicza się do sumy rocznej; PRCPTOT zaokrąglony do 1e-6 mm; miesiąc lub rok bez dnia z opadem ma W = 0 i nie ma SDII"
 
 [rules.heavy_precipitation_thresholds]
 en_sha256 = "ccc974c8ce7d162aabd105bfc71e945e776d5eff4cd8eab4b2c4ecf1d1de3234"
 title = "Progi opadu bardzo dużego i udział opadu powyżej progu"
-definition = "progi: `wet_day_percentile` dni mokrych okresu odniesienia dla każdego percentyla, z co najmniej 100 dni mokrych; dla każdego roku z kompletem dni: `heavy_precipitation_share` dla każdego progu oraz średni udział z tych lat"
-convention = "okresem odniesienia są domyślnie lata analizy (okres bazowy ETCCDI to 1961-1990); minimum 100 dni mokrych przyjął Hydrolog (ADR-0032), żadne źródło go nie podaje"
+definition = "progi: `wet_day_percentile` dni z opadem okresu odniesienia dla każdego percentyla, z co najmniej 100 dni z opadem; dla każdego roku z kompletem dni: `heavy_precipitation_share` dla każdego progu oraz średni udział z tych lat"
+convention = "okresem odniesienia są domyślnie lata analizy (okres bazowy ETCCDI to 1961-1990); minimum 100 dni z opadem przyjął Hydrolog (ADR-0032), żadne źródło go nie podaje"
 
 [rules.precipitation_regime]
 en_sha256 = "034aa1642422dcf4502eab9a2ba9332ccf7b5fdb9d10ddeee348a6edb090955a"
 title = "Reżim opadowy: udziały miesięcy, koncentracja i sezonowość opadu"
-definition = "każda normalna miesięczna okresu odniesienia w % ich sumy i w stosunku do ich średniej; `precipitation_concentration_index` i `seasonality_index` wraz z klasami dla dwunastu normalnych i dla każdego roku z kompletem dwunastu sum miesięcznych oraz średnie wskaźników rocznych"
-convention = "wskaźniki normalnych i średnie wskaźników rocznych różnią się i podaje się oba (Sumner i in. 2001); suma równa 0 nie ma wskaźnika"
+definition = "każda norma miesięczna okresu odniesienia w % ich sumy i w stosunku do ich średniej; `precipitation_concentration_index` i `seasonality_index` wraz z klasami dla dwunastu norm i dla każdego roku z kompletem dwunastu sum miesięcznych oraz średnie wskaźników rocznych"
+convention = "wskaźniki norm i średnie wskaźników rocznych różnią się i podaje się oba (Sumner i in. 2001); suma równa 0 nie ma wskaźnika"
 
 [rules.hydrothermal_months]
 en_sha256 = "3ab5cd3f2c9b3fb0585a1f96d14212318bb67ce12e70b5a78047656529f72dd0"
@@ -2793,7 +2793,7 @@ convention = "miesiące od kwietnia do września (Radzka 2014); sumy opadu zaokr
 en_sha256 = "6cebd306d748077e955f5060f3be2629a6a617f831f78b082d04f44855fbee88"
 title = "Sezonowy współczynnik hydrotermiczny Sielianinowa"
 definition = "`sielianinov_coefficient` z dni od kwietnia do września ze średnią temperaturą powyżej 10 °C: P i sum t sumowane po tych dniach, w roku, w którym każdy dzień od kwietnia do września ma obie wartości"
-convention = "filtr dni z praktyki polskiej (Miś 2026), a nie okres między trwałymi przejściami temperatury przez 10 °C z praktyki rosyjskiej; suma skumulowana z kilku dni liczy się jako dzień brakujący w sezonie"
+convention = "filtr dni z praktyki polskiej (Miś 2026), a nie okres między trwałymi przejściami temperatury przez 10 °C z praktyki rosyjskiej; opad zbiorczy liczy się jako dzień brakujący w sezonie"
 
 [rules.hydrothermal_period]
 en_sha256 = "6bf762607041dac526c101a4341bef4a0b9b07abb73cf349e3f2b9ef3c78dd8d"
@@ -2804,8 +2804,8 @@ convention = "klasa średniej, a nie najczęstsza klasa"
 [rules.snow_cover_day]
 en_sha256 = "35b0ef926678bf47a157efd8de656faabc923aa430ce57ae8b5fb9d7f2fa4b45"
 title = "Dzień z pokrywą śnieżną"
-definition = "dzień z pokrywą śnieżną ma jej grubość co najmniej 1 cm; liczbę takich dni w miesiącu przeskalowuje się do liczby jego dni, gdy brakuje mniej niż 11 dni i mniej niż 5 dni z rzędu; liczba dni w zimie to suma z jej miesięcy"
-convention = "co najmniej 1 cm, jak w rocznikach IMGW-PIB i we wskaźniku SD1 ECA&D; normalne IMGW-PIB liczą dni z pokrywą > 0 cm (SNIEG_0, to samo przy pełnych centymetrach) i > 1 cm (SNIEG_1)"
+definition = "dzień z pokrywą śnieżną to dzień, w którym jej grubość wynosi co najmniej 1 cm; liczbę takich dni w miesiącu przeskalowuje się do liczby jego dni, gdy brakuje mniej niż 11 dni i mniej niż 5 dni z rzędu; liczba dni w zimie to suma z jej miesięcy"
+convention = "co najmniej 1 cm, jak w rocznikach IMGW-PIB i we wskaźniku SD1 ECA&D; normy IMGW-PIB liczą dni z pokrywą > 0 cm (SNIEG_0, to samo przy pełnych centymetrach) i > 1 cm (SNIEG_1)"
 
 [rules.snow_cover_day.constants]
 snow_cover_cm = "Najmniejsza grubość pokrywy śnieżnej w dniu z pokrywą"
@@ -2826,7 +2826,7 @@ convention = "pierwsza z równych największych grubości"
 en_sha256 = "d9fb81b2405b01f16dc3aed7b746c55a5466ddafc1e039def16db24ea9f8e9d6"
 title = "Mediany dat pierwszego i ostatniego dnia z pokrywą śnieżną"
 definition = "mediana pierwszego i ostatniego dnia z pokrywą śnieżną z kompletnych zim: każda data jako numer dnia sezonu w kalendarzu bez 29 lutego, a mediana tych numerów z powrotem zamieniona na datę"
-convention = "29 lutego liczy się jako 28 lutego, więc data jest tym samym dniem w każdej zimie; mediana wypadająca między dwoma dniami jest zaokrąglana połową do liczby parzystej"
+convention = "29 lutego liczy się jako 28 lutego, więc data jest tym samym dniem w każdej zimie; mediana wypadająca między dwoma dniami jest zaokrąglana do parzystego numeru dnia"
 
 [rules.wmo_monthly_mean]
 en_sha256 = "b9d268886efb3f17deb0b15bebf655948959a503dd8d8a50618b4340a2b9eae0"
@@ -2842,7 +2842,7 @@ missing_run = "Liczba kolejnych brakujących dni, od której nie liczy się śre
 en_sha256 = "6419ebf9446fb28e9471acc4b133cee4dd92dbf030e7e75c8e3e242fbb8ab045"
 title = "Liczba dni ze zjawiskiem w miesiącu według WMO"
 definition = "liczba dni ze zjawiskiem w miesiącu, dla którego można było obliczyć średnią, przeliczona na liczbę dni miesiąca: liczba dni ze zjawiskiem podzielona przez liczbę dni z wartością i pomnożona przez liczbę dni miesiąca"
-convention = "przeliczenie dotyczy każdego takiego miesiąca (WMO-No. 1203 podaje ten stosunek dla normalnych); liczba nie jest wtedy liczbą całkowitą"
+convention = "przeliczenie dotyczy każdego takiego miesiąca (WMO-No. 1203 podaje ten stosunek dla norm); liczba nie jest wtedy liczbą całkowitą"
 
 [rules.wmo_monthly_sum]
 en_sha256 = "7953d61c03ba7cc8514df7f37c4caf8fa3e47e47cddf0c450dff63a4bd90485f"
@@ -2858,8 +2858,8 @@ convention = "blok obejmujący początek miesiąca ocenia się według całej je
 
 [rules.wmo_normal]
 en_sha256 = "ddf7e57230d56638159ad64807d33a89593f8373f268741b9234804b21e95ac4"
-title = "Normalna miesięczna według WMO"
-definition = "normalna miesiąca kalendarzowego: średnia jego wartości z lat okresu odniesienia, w których wartość istnieje, o ile stanowią one co najmniej 80 % lat okresu"
+title = "Norma miesięczna według WMO"
+definition = "norma miesiąca kalendarzowego: średnia jego wartości z lat okresu odniesienia, w których wartość istnieje, o ile stanowią one co najmniej 80 % lat okresu"
 convention = "liczy się każdy rok okresu odniesienia, także lata bez danych; bez kryterium kolejnych lat"
 
 [rules.wmo_normal.constants]
@@ -2867,26 +2867,26 @@ normal_share = "Najmniejszy udział lat okresu odniesienia z wartością"
 
 [rules.multimonth_normal]
 en_sha256 = "663375f1a91b7948d07001947782d29e13e3fd0ac54995a3bd072a62e673133f"
-title = "Normalna roczna, półroczna i sezonowa z normalnych miesięcznych"
-definition = "normalna roku, półrocza lub pory roku: suma normalnych jej miesięcy dla sumy lub liczby dni, ich średnia dla średniej"
-convention = "z normalnych miesięcznych, nie z wartości rocznych (WMO-No. 1203, 4.3.3: wyniki identyczne, gdy nie brakuje miesięcy)"
+title = "Norma roczna, półroczna i sezonowa z norm miesięcznych"
+definition = "norma roku, półrocza lub pory roku: suma norm miesięcy, które obejmuje, dla sumy lub liczby dni, a ich średnia dla średniej"
+convention = "z norm miesięcznych, nie z wartości rocznych (WMO-No. 1203, 4.3.3: wyniki identyczne, gdy nie brakuje miesięcy)"
 
 [rules.block_extreme]
 en_sha256 = "81989439721edb951d0c3badac6f9a561e7cbb2243d3f4889d57aa3a5c6c7535"
 title = "Ekstremum miesięczne i data jego wystąpienia"
 definition = "ekstremum miesiąca z dni, które mają wartość, wraz z pierwszą datą jego wystąpienia"
-convention = "ekstremum roczne statystyki wymagającej kompletu dni funkcja dla serii wyznacza tylko z pełnych lat"
+convention = "funkcja dla serii wyznacza ekstremum roczne statystyki wymagającej kompletu dni tylko z pełnych lat"
 
 [rules.rounded_sums]
 en_sha256 = "6d6b24b94507393b13022da103db40b6daef0e589fb6a2fbe426b429887d78f9"
 title = "Zaokrąglanie sum opadu dobowego"
 definition = "każda suma opadu dobowego zaokrąglona do 1e-6 mm"
-convention = "dane z dokładnością 0,1 mm sumowane w arytmetyce binarnej zależą od kolejności dodawania; po zaokrągleniu sumy równe w zapisie dziesiętnym są równymi liczbami (wartości wiązane w teście Manna-Kendalla, pierwsze z równych okien); najwyżej 5e-7 mm na sumę"
+convention = "dane z dokładnością 0,1 mm sumowane w arytmetyce binarnej zależą od kolejności dodawania; po zaokrągleniu sumy równe w zapisie dziesiętnym są równymi liczbami (wartości wiązane w teście Manna–Kendalla, pierwsze z równych okien); najwyżej 5e-7 mm na sumę"
 
 [rules.years_of_a_series]
 en_sha256 = "d8dd2d6ff49ecc84980777d38ef507f51c8a6691ed61280a5dadb613448fb96a"
 title = "Rok kalendarzowy, rok hydrologiczny i sezon śnieżny serii"
-definition = "rok kalendarzowy (styczeń - grudzień), polski rok hydrologiczny (listopad - październik) nazwany od roku, w którym się kończy, albo sezon śnieżny (sierpień - lipiec) nazwany od roku, w którym się kończy"
+definition = "rok kalendarzowy (styczeń–grudzień), polski rok hydrologiczny (listopad–październik) nazwany od roku, w którym się kończy, albo sezon śnieżny (sierpień–lipiec) nazwany od roku, w którym się kończy"
 convention = "rok nakłada się na siatkę dat w całości, a jego dni bez wartości są brakami"
 
 [rules.trend_decision]
@@ -2934,13 +2934,13 @@ convention = "łączenie metodą czasu między zdarzeniami (inter-event time): c
 [rules.threshold_events]
 en_sha256 = "b994a9b726b7625336d2c27c768afdafb677594996c0437fcd38a307085f2557"
 title = "Zdarzenia progowe w szeregu dobowym"
-definition = "szereg rozłożony na kalendarz jego dni; dzień leży poza progiem, gdy jego wartość jest >= threshold (above, powyżej) lub < threshold (below, poniżej); zdarzenia to `threshold_runs` tych dni; dla każdego zdarzenia: jego pierwszy i ostatni dzień, czas trwania w dniach kalendarzowych (łącznie z dniami dołączonymi), dni poza progiem, dni bez wartości, ekstremum (największa wartość dla above, najmniejsza dla below, datowane pierwszym dniem jego wystąpienia), rok hydrologiczny jego pierwszego dnia oraz to, czy dzień przed nim (po nim) nie ma wartości; dla każdego roku hydrologicznego z wartością: jego dni poza progiem, zdarzenia rozpoczynające się w nim, dni z wartością i dni kalendarzowe (365 lub 366); sumy dla całego okresu"
+definition = "szereg umieszczony w kalendarzu jego dni; dzień leży poza progiem, gdy jego wartość jest >= threshold (above, powyżej) lub < threshold (below, poniżej); zdarzenia to `threshold_runs` tych dni; dla każdego zdarzenia: jego pierwszy i ostatni dzień, czas trwania w dniach kalendarzowych (łącznie z dniami dołączonymi), dni poza progiem, dni bez wartości, ekstremum (największa wartość dla above, najmniejsza dla below, datowane pierwszym dniem jego wystąpienia), rok hydrologiczny jego pierwszego dnia oraz to, czy dzień przed nim (po nim) nie ma wartości; dla każdego roku hydrologicznego z wartością: jego dni poza progiem, zdarzenia rozpoczynające się w nim, dni z wartością i dni kalendarzowe (365 lub 366); sumy dla całego okresu"
 convention = "dzień równy progowi leży poza nim dla above, a nie dla below; dzień, którego daty brak lub którego wartość jest NaN lub nie jest liczbą skończoną, nie ma wartości i nigdy nie leży poza progiem; zdarzenie liczy się w roku hydrologicznym (1 listopada – 31 października, nazwanym rokiem jego końca), w którym się zaczyna; daty ściśle rosną"
 
 [rules.low_flow_sequences]
 en_sha256 = "4e35c18d8c4432dc79df90a174b4cda6f917d409b3489f682a6973ac9af573a8"
 title = "Niżówki wyznaczane metodą progową"
-definition = "przepływy rozłożone na kalendarz ich dat; ciągi dni z wartością poniżej progu T, Q < T (`threshold_runs`, domyślnie `min_duration_days` 5 i `max_gap_days` 4); dla każdej niżówki: czas trwania w dniach kalendarzowych (łącznie z dniami przerw), minimum i średnia z jej dni z wartością, niedobór (deficyt) sum(max(T - Q, 0)) po jej dniach z wartością w jednostce szeregu pomnożonej przez dobę, jej dni bez wartości oraz to, czy dzień przed nią (po niej) nie ma wartości; suma niedoborów, najdłuższy czas trwania i liczba niżówek"
+definition = "przepływy umieszczone w kalendarzu ich dat; ciągi dni z wartością poniżej progu T, Q < T (`threshold_runs`, domyślnie `min_duration_days` 5 i `max_gap_days` 4); dla każdej niżówki: czas trwania w dniach kalendarzowych (łącznie z dniami przerw), minimum i średnia z jej dni z wartością, niedobór (deficyt) sum(max(T - Q, 0)) po jej dniach z wartością w jednostce szeregu pomnożonej przez dobę, jej dni bez wartości oraz to, czy dzień przed nią (po niej) nie ma wartości; suma niedoborów, najdłuższy czas trwania i liczba niżówek"
 convention = "poniżej oznacza Q < T, jak podają WMO-No. 1029 (s. 71) i słownik IMGW-PIB (hasło 29, „niższe od”), a nie Q <= T według Yevjevicha u Tokarczyka (2010, s. 33) ani według lfstat; niedobór połączonej niżówki jest sumą niedoborów jej ciągów, bez odejmowania nadwyżki dni między nimi (Fleig i in. 2006, wzór 2; WMO-No. 1029, wzór 8.1(b); vbt w lfstat, podczas gdy volume w lfstat ją odejmuje); dzień bez wartości nie dodaje niedoboru i jest dniem przerwy; wartości domyślne to minimum 5 dni programu NIŻÓWKA i łączenie przez 3 dni (Tokarczyk 2010, s. 34); dowolny skończony próg, a więc także stan wody poniżej zera wodowskazu"
 
 [rules.low_flow_deficit_volumes]
@@ -2964,7 +2964,7 @@ day = "Liczba sekund w dobie"
 [rules.baseflow_spans]
 en_sha256 = "2d6a1c6632f2d3427c710032440a743bf3502dbb04886c0af6c4ff5528139b01"
 title = "Przepływ podstawowy szeregu dobowego z lukami, filtrowany odcinkami"
-definition = "szereg dobowy jest rozkładany na kalendarz kolejnych dni (brakująca data to dzień bez wartości); każdy odcinek bez luk o długości co najmniej 60 dni jest filtrowany osobno (specyfikacja `lyne_hollick`), z odbiciem na obu jego końcach; dzień krótszego odcinka nie ma przepływu podstawowego; series_baseflow to przepływ podstawowy każdego dnia roku series_year, domyślnie ostatniego pełnego roku hydrologicznego"
+definition = "szereg dobowy umieszcza się w kalendarzu kolejnych dni (brakująca data to dzień bez wartości); każdy odcinek bez luk o długości co najmniej 60 dni jest filtrowany osobno (specyfikacja `lyne_hollick`), z odbiciem na obu jego końcach; dzień krótszego odcinka nie ma przepływu podstawowego; `series_baseflow` to przepływ podstawowy każdego dnia roku `series_year`, domyślnie ostatniego pełnego roku hydrologicznego"
 convention = "odcinki co najmniej 60-dniowe są własną regułą Hydrologa; Ladson i in. (2013, rozdz. 2.4) filtrują każdy odcinek wartości niebrakujących, a ich BFI.R każdy dłuższy niż 30 wartości odbitych"
 
 [rules.baseflow_spans.constants]
@@ -2988,7 +2988,7 @@ convention = "recesja w `baseflow_separation` jest liczona dla całego kalendarz
 [rules.flow_regime_of_a_daily_series]
 en_sha256 = "12daaecc4b165a9900b427fb49aca044060bd3f46d999e2dba7996ff4a51953a"
 title = "Reżim odpływu szeregu dobowego"
-definition = "Miesiąc kalendarzowy każdej daty; współczynniki Pardégo, udział wiosenny i typ Dynowskiej szeregu (specyfikacje `parde_coefficients`, `spring_share`, `dynowska_regime_type`), wskaźnik Walsha i Lawlera objętości miesięcznych (średnie razy liczba dni miesiąca, luty 28,25 dnia) oraz pierwszy, ostatni i liczba lat hydrologicznych z wartością"
+definition = "Miesiąc kalendarzowy każdej daty; współczynniki Pardégo, udział wiosenny i typ reżimu szeregu według Dynowskiej (specyfikacje `parde_coefficients`, `spring_share`, `dynowska_regime_type`), wskaźnik Walsha i Lawlera objętości miesięcznych (średnie razy liczba dni miesiąca, luty 28,25 dnia) oraz pierwszy i ostatni rok hydrologiczny z wartością i liczba takich lat"
 convention = "miesiące kalendarza gregoriańskiego; listy od listopada do października; dzień bez wartości (NaN) jest pomijany; rok hydrologiczny trwa od listopada do października i nosi numer roku, w którym się kończy (IMGW-PIB)"
 
 [rules.flow_regime_of_a_daily_series.constants]
@@ -3024,7 +3024,7 @@ convention = "półrocza IMGW-PIB według miesiąca kalendarzowego każdej daty"
 [rules.annual_cycle_of_a_daily_series]
 en_sha256 = "f8603a0fd80dda61c17114d8dc1e73d7005b9c22a5a21d32758f5083fd70d7dc"
 title = "Cykl roczny szeregu dobowego"
-definition = "Dzień roku hydrologicznego każdej daty (1 = 1 listopada); `harmonic_fit` wszystkich dni okresu, czyli średni cykl roczny, oraz każdego roku hydrologicznego z co najmniej 300 dniami z wartością, który spełnia jego warunki wstępne"
+definition = "Dzień roku hydrologicznego każdej daty (1 = 1 listopada); `harmonic_fit` wszystkich dni okresu, czyli średni cykl roczny, oraz każdego roku hydrologicznego z co najmniej 300 dniami z wartością, który spełnia warunki wstępne dopasowania"
 convention = "rok hydrologiczny trwa od listopada do października i nosi numer roku, w którym się kończy (IMGW-PIB); rok, którego wartości dopasowanie odrzuca (wszystkie równe albo luka zbyt długa dla harmonik), nie ma własnego dopasowania"
 
 [rules.annual_cycle_of_a_daily_series.constants]
@@ -3034,7 +3034,7 @@ min_year_values = "Najmniejsza liczba wartości w roku hydrologicznym, który ma
 en_sha256 = "1b453de7638ce5731d469ffd531153ecd6ab4fa82be1fdcd3d7fecee872151e2"
 title = "Wartości charakterystyczne I stopnia"
 definition = "Wartości I stopnia każdego roku hydrologicznego i jego półroczy z szeregu dobowego: minimum, średnia i maksimum z dni, które mają wartość; każde ekstremum jest datowane pierwszym dniem, w którym wystąpiło."
-convention = "Zima XI–IV, lato V–X, rok XI–X. Ekstrema są ekstremami wartości dobowych, z reguły łagodniejszymi niż ekstrema IMGW-PIB ze wszystkich obserwacji (Kłodzko 2010: WQ 96,0 wobec 145 m3/s); rok z dniami bez wartości pozostaje, z tymi dniami, które ma, i jest wymieniony w `incomplete_years`, podczas gdy IMGW-PIB nie publikuje dla takiego okresu charakterystyk."
+convention = "Zima XI–IV, lato V–X, rok XI–X. Ekstrema są ekstremami wartości dobowych, z reguły łagodniejszymi niż ekstrema IMGW-PIB ze wszystkich obserwacji (Kłodzko 2010: WQ 96,0 wobec 145 m³/s); rok z dniami bez wartości pozostaje, z tymi dniami, które ma, i jest wymieniony w `incomplete_years`, podczas gdy IMGW-PIB nie publikuje dla takiego okresu charakterystyk."
 
 [rules.characteristic_first_degree.constants]
 summer_first_month = "Pierwszy miesiąc półrocza letniego"
@@ -3061,19 +3061,19 @@ convention = "Przy równości przyjmuje się wartość zimową, z datą z jej p�
 en_sha256 = "de73feadbc80a07169ec44d17b23c01c2b91d887d1daae907fb2db016dcbfd63"
 title = "Statystyki poszczególnych dni roku hydrologicznego"
 definition = "Maksimum, średnia, mediana, minimum i liczba wartości każdego dnia roku hydrologicznego z wielolecia."
-convention = "Dni liczone od 1 listopada (formuła Tier B `hydrological_day_of_year`): po 28 lutego dzień łączy dwie sąsiednie daty kalendarzowe lat przestępnych i zwykłych (dzień 121: 29 lutego i 1 marca), a dzień 366 obejmuje tylko lata przestępne; liczy się każda wartość, a NaN daje NaN w statystykach swojego dnia."
+convention = "Dni liczone od 1 listopada (Tier B `hydrological_day_of_year`): po 28 lutego dzień łączy dwie sąsiednie daty kalendarzowe lat przestępnych i zwykłych (dzień 121: 29 lutego i 1 marca), a dzień 366 obejmuje tylko lata przestępne; liczy się każda wartość, a NaN daje NaN w statystykach swojego dnia."
 
 [rules.monthly_statistics]
 en_sha256 = "fc990cb071602f68c08bf2725757e1a0410ee286745bff9aaf440659c3caa13d"
 title = "Statystyki miesięcy kalendarzowych"
 definition = "Maksimum, średnia, mediana i minimum wszystkich wartości każdego miesiąca kalendarzowego; ich odchylenie standardowe, współczynnik zmienności i skośność według odpowiednich specyfikacji; przedział średniej wieloletniej miesiąca: jego średnia +- połowa szerokości ze specyfikacji `mean_interval_half_width`, obliczona ze średnich rocznych tego miesiąca."
-convention = "Miesiące i lata kalendarzowe; estymata, której specyfikacja odrzuca wartości miesiąca, to NaN; przedział jest wyśrodkowany na średniej wszystkich wartości miesiąca (ADR-0049) i nie jest obcinany."
+convention = "Miesiące i lata kalendarzowe; oszacowanie, którego specyfikacja odrzuca wartości miesiąca, to NaN; przedział jest wyśrodkowany na średniej wszystkich wartości miesiąca (ADR-0049) i nie jest obcinany."
 
 [rules.hydrological_year]
 en_sha256 = "7d329c6923075f4a7945f7dfa5d90fb4f1ca21d26eac405ec821e626e0b35f80"
 title = "Rok hydrologiczny daty"
 definition = "Rok hydrologiczny daty: jej rok kalendarzowy, a dla listopada i grudnia rok następny."
-convention = "Rok IMGW-PIB trwa od 1 listopada do 31 października i nosi nazwę roku kalendarzowego, w którym się kończy (2016 = 1.11.2015 - 31.10.2016); w ČHMÚ tak samo (Hydrologická ročenka České republiky 2010, wstęp)."
+convention = "Rok IMGW-PIB trwa od 1 listopada do 31 października i nosi nazwę roku kalendarzowego, w którym się kończy (2016 = 1.11.2015–31.10.2016); w ČHMÚ tak samo (Hydrologická ročenka České republiky 2010, wstęp)."
 
 [rules.hydrological_year.constants]
 first_month = "Pierwszy miesiąc roku hydrologicznego"
